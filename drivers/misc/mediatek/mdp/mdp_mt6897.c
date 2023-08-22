@@ -1964,10 +1964,7 @@ static u32 mdp_get_poll_gpr(u16 engine, u32 reg_addr)
 
 bool mdp_eng_support_readback(u16 engine)
 {
-	if(!(engine & CMDQ_ENG_SUPPORT_READBACK_GROUP_BITS))
-		return false;
-	else
-		return true;
+	return ((1ll << engine) & CMDQ_ENG_SUPPORT_READBACK_GROUP_BITS);
 }
 
 void cmdq_mdp_platform_function_setting(void)

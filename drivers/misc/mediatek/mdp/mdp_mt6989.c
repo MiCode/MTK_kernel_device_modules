@@ -1601,10 +1601,7 @@ void mdp_vcp_pq_readback_impl(struct cmdqRecStruct *handle,
 
 bool mdp_eng_support_readback(u16 engine)
 {
-	if(!(engine & CMDQ_ENG_SUPPORT_READBACK_GROUP_BITS))
-		return false;
-	else
-		return true;
+	return ((1ll << engine) & CMDQ_ENG_SUPPORT_READBACK_GROUP_BITS);
 }
 
 void cmdq_mdp_platform_function_setting(void)
