@@ -4879,7 +4879,7 @@ static int mt6897_afe_runtime_resume(struct device *dev)
 	/* force cpu use 8_24 format when writing 32bit data */
 	regmap_update_bits(afe->regmap, AFE_MEMIF_CON0,
 			   CPU_HD_ALIGN_MASK_SFT, 0 << CPU_HD_ALIGN_SFT);
-
+#if 0
 	/* set all output port to 24bit */
 	regmap_write(afe->regmap, AFE_CONN_24BIT_0, 0xffffffff);
 	regmap_write(afe->regmap, AFE_CONN_24BIT_1, 0xffffffff);
@@ -4887,7 +4887,7 @@ static int mt6897_afe_runtime_resume(struct device *dev)
 	regmap_write(afe->regmap, AFE_CONN_24BIT_3, 0xffffffff);
 	regmap_write(afe->regmap, AFE_CONN_24BIT_4, 0xffffffff);
 	regmap_write(afe->regmap, AFE_CONN_24BIT_5, 0xffffffff);
-
+#endif
 	/* enable AFE */
 	regmap_update_bits(afe->regmap, AUDIO_ENGEN_CON0, 0x1, 0x1);
 

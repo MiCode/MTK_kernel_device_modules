@@ -26,7 +26,7 @@
 #include "mtk_drm_helper.h"
 #include "platform/mtk_drm_platform.h"
 #include "mtk_disp_pq_helper.h"
-
+#include "mi_disp/mi_dsi_display.h"
 #ifdef CONFIG_LEDS_MTK_MODULE
 #define CONFIG_LEDS_BRIGHTNESS_CHANGED
 #include <linux/leds-mtk.h>
@@ -452,10 +452,15 @@ void disp_pq_notify_backlight_changed(struct mtk_ddp_comp *comp, int bl_1024)
 	primary_data->pq_backlight = bl_1024;
 	spin_unlock_irqrestore(&primary_data->pq_bl_change_lock, flags);
 
+#if CONFIG_MI_DISP
+	mi_disp_feature_event_notify_by_type(mi_get_disp_id("primary"), MI_DISP_EVENT_BACKLIGHT, sizeof(bl_1024), bl_1024);
+#endif
+
 	if (atomic_read(&primary_data->ccorr_is_init_valid) != 1)
 		return;
 
 	DDPINFO("%s: %d\n", __func__, bl_1024);
+
 
 	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
 		if (primary_data->ccorr_relay_value != 1) {
@@ -615,14 +620,14 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		hint, identity_matrix, fte_flag, mtk_dump_comp_str(comp), ccorr_data->bypass_color);
 	if (((hint == 0) || ((hint == 1) && identity_matrix)) && (!fte_flag)) {
 		if (ccorr_data->bypass_color == true) {
-			ddp_color_bypass_color(ccorr_data->color_comp, false, handle);
+			mtk_color_bypass(ccorr_data->color_comp, false, handle);
 			ccorr_data->bypass_color = false;
 		}
 	} else {
 		if ((ccorr_data->bypass_color == false) &&
 				(primary_data->disp_ccorr_number == 1) &&
 				(!(primary_data->disp_ccorr_linear & 0x01))) {
-			ddp_color_bypass_color(ccorr_data->color_comp, true, handle);
+			mtk_color_bypass(ccorr_data->color_comp, true, handle);
 			ccorr_data->bypass_color = true;
 		}
 	}
@@ -961,8 +966,7 @@ int mtk_drm_ioctl_ccorr_eventctl_impl(struct mtk_ddp_comp *comp, void *data)
 	}
 	//mtk_crtc_user_cmd(crtc, comp, EVENTCTL, data);
 	DDPINFO("ccorr_eventctl, enabled = %d\n", *enabled);
-	mtk_crtc_user_cmd(&(comp->mtk_crtc->base), comp,
-		SET_INTERRUPT, enabled);
+	mtk_disp_ccorr_set_interrupt(comp, enabled);
 
 	return ret;
 }

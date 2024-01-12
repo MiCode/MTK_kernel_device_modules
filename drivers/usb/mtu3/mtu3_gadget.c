@@ -272,6 +272,7 @@ static int mtu3_gadget_ep_enable(struct usb_ep *ep,
 	mep->desc = desc;
 	mep->comp_desc = ep->comp_desc;
 
+	trace_mtu3_gadget_ep_enable(mep);
 	ret = mtu3_ep_enable(mep);
 	if (ret)
 		goto error;
@@ -283,7 +284,6 @@ error:
 	spin_unlock_irqrestore(&mtu->lock, flags);
 
 	dev_dbg(mtu->dev, "%s active_ep=%d\n", __func__, mtu->active_ep);
-	trace_mtu3_gadget_ep_enable(mep);
 
 	/* workaround for f_fs use after free issue */
 	if (!ret && !mtu3_ffs_state_valid(mep))
@@ -408,11 +408,11 @@ static int mtu3_gadget_queue(struct usb_ep *ep,
 		goto error;
 	}
 
+	trace_mtu3_gadget_queue(mreq);
 	list_add_tail(&mreq->list, &mep->req_list);
 	mtu3_insert_gpd(mep, mreq);
 	mtu3_qmu_resume(mep);
 
-	trace_mtu3_gadget_queue(mreq);
 error:
 	spin_unlock_irqrestore(&mtu->lock, flags);
 

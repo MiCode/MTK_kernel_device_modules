@@ -100,6 +100,7 @@ static int boost_ep[MAX_EP_NUM * 2 + 1];
 #endif
 
 #define MAX_LEN_WQ_NAME 32
+bool vcore_holding_by_others;
 static int trigger_cnt_disabled;
 static int enabled;
 static int inited;
@@ -149,6 +150,7 @@ static struct mtk_usb_boost {
 	int is_running;
 	struct timespec64 tv_ref_time;
 	int work_cnt;
+	bool force_single_trigger;
 	struct act_arg_obj act_arg;
 	void (*request_func)(int id);
 } boost_inst[_TYPE_MAXID];
@@ -158,6 +160,8 @@ static struct mtk_usb_audio_boost {
 	struct workqueue_struct	*wq;
 	struct timespec64 tv_ref_time;
 	void (*request_func)(int id);
+	int headset_vid;
+	int headset_pid;
 } audio_boost_inst;
 
 static int update_time(int id);
@@ -230,8 +234,10 @@ static void __usb_boost(void)
 	int id;
 
 	USB_BOOST_DBG("\n");
-	for (id = 0; id < _TYPE_MAXID; id++)
-		usb_boost_by_id(id);
+	for (id = 0; id < _TYPE_MAXID; id++) {
+		if (!boost_inst[id].force_single_trigger)
+			usb_boost_by_id(id);
+	}
 }
 
 static void __boost_act(int type_id, int action_id)
@@ -318,7 +324,8 @@ static void boost_work(struct work_struct *work_struct)
 	ptr_inst->is_running = true;
 	boost_inst[id].request_func = __request_empty;
 	ptr_inst->work_cnt++;
-	USB_BOOST_NOTICE("id:%d, begin of work\n", id);
+	USB_BOOST_NOTICE("id:%d, begin of work, timeout:%d\n",
+			id, boost_inst[id].para[ATTR_TIMEOUT]);
 
 	/* dump_info(id); */
 	__boost_act(id, ACT_HOLD);
@@ -385,8 +392,13 @@ static bool check_timeout_audio(void)
 
 static void audio_boost_work(struct work_struct *work_struct)
 {
+	int vid = audio_boost_inst.headset_vid;
+	int pid = audio_boost_inst.headset_pid;
+
 	audio_boost_inst.request_func = __request_empty;
-	USB_BOOST_NOTICE("audio_boost, begin of work\n");
+	USB_BOOST_NOTICE("audio_boost, begin of work (vid:0x%x pid:0x%x)\n",
+					vid, pid);
+	audio_boost_quirk_setting(vid, pid);
 	audio_core_hold();
 	audio_freq_hold();
 
@@ -405,6 +417,7 @@ static void audio_boost_work(struct work_struct *work_struct)
 
 	audio_core_release();
 	audio_freq_release();
+	audio_boost_default_setting();
 	audio_boost_inst.request_func = __request_audio;
 	USB_BOOST_NOTICE("audio_boost, end of work\n");
 }
@@ -643,6 +656,9 @@ static int create_sys_fs(void)
 			boost_inst[i].attr[n].show = attr_show;
 			boost_inst[i].attr[n].store = attr_store;
 
+			if (strcmp(type_name[i], "vcore") == 0)
+				boost_inst[i].attr[n].attr.mode = 0600;
+
 			ret = device_create_file(boost_inst[i].dev,
 				&boost_inst[i].attr[n]);
 			if (ret < 0) {
@@ -747,6 +763,18 @@ static int boost_get_ep_type(int num, int is_in)
 	return type;
 }
 
+static bool boost_has_ep_type(int type)
+{
+	int i;
+
+	for (i = 0; i < MAX_EP_NUM; i++) {
+		if (boost_ep[i] == type)
+			return true;
+	}
+
+	return false;
+}
+
 static void boost_ep_enable(void *unused, struct mtu3_ep *mep)
 {
 	struct usb_ep *ep = &mep->ep;
@@ -754,11 +782,18 @@ static void boost_ep_enable(void *unused, struct mtu3_ep *mep)
 	struct usb_composite_dev *cdev;
 	struct usb_function *f = NULL;
 	struct usb_descriptor_header **f_desc;
-	int addr;
-	int type;
+	int speed = g->speed;
+	int addr, type, i;
 
-	usb_boost_set_para_and_arg(TYPE_VCORE, vcore_dft_para,
-		ARRAY_SIZE(vcore_dft_para), &dram_vcore_dft_arg);
+	if (speed == USB_SPEED_HIGH) {
+		for (i = 0 ; i < _TYPE_MAXID ; i++) {
+			if (strcmp(type_name[i], "vcore") == 0) {
+				USB_BOOST_DBG("%s VCORE Boost for (3)s\n", __func__);
+				boost_inst[i].para[ATTR_TIMEOUT] = 3;
+				usb_boost_by_id(TYPE_VCORE);
+			}
+		}
+	}
 
 	cdev = get_gadget_data(&mep->mtu->g);
 	if (!cdev || !cdev->config)
@@ -785,10 +820,19 @@ find_f:
 
 static void boost_ep_disable(void *unused, struct mtu3_ep *mep)
 {
-	int vcore_para[_ATTR_PARA_RW_MAXID] = {1, 3, 300, 0};
+	struct usb_gadget *g = &mep->mtu->g;
+	int speed = g->speed;
+	int i;
 
-	usb_boost_set_para_and_arg(TYPE_VCORE, vcore_para,
-		ARRAY_SIZE(vcore_para), &dram_vcore_dft_arg);
+	if (speed == USB_SPEED_HIGH) {
+		for (i = 0 ; i < _TYPE_MAXID ; i++) {
+			if (strcmp(type_name[i], "vcore") == 0) {
+				USB_BOOST_DBG("%s VCORE Boost for (3)s\n", __func__);
+				boost_inst[i].para[ATTR_TIMEOUT] = 3;
+				usb_boost_by_id(TYPE_VCORE);
+			}
+		}
+	}
 
 	if (!mep->epnum)
 		return;
@@ -800,22 +844,35 @@ static void boost_gadget_queue(void *unused, struct mtu3_request *mreq)
 {
 	struct usb_request *req = &mreq->request;
 	struct mtu3_ep *mep = mreq->mep;
-	int type = boost_get_ep_type(mep->epnum, mep->is_in);
+	struct usb_gadget *g = &mep->mtu->g;
+	int speed = g->speed;
+	int epnum = mep->epnum;
+	int type = boost_get_ep_type(epnum, mep->is_in), i;
 
-	switch (type) {
-	case USB_TYPE_MTP:
-		if (req->length >= 8192)
-			usb_boost();
-		break;
-	case USB_TYPE_RNDIS:
-		if (mep->is_in && mep->type == USB_ENDPOINT_XFER_BULK)
-			usb_boost();
-		break;
-	default:
-		break;
+	USB_BOOST_DBG("%s speed:%d, epmum:%d, type:%d\n", __func__, speed, epnum, type);
+
+	if (epnum) {
+		switch (type) {
+		case USB_TYPE_MTP:
+			if (req->length >= 8192)
+				usb_boost();
+			break;
+		case USB_TYPE_RNDIS:
+			if (mep->is_in && mep->type == USB_ENDPOINT_XFER_BULK)
+				usb_boost();
+			break;
+		}
 	}
 
-	usb_boost_by_id(TYPE_VCORE);
+	if (speed == USB_SPEED_HIGH && (epnum || boost_has_ep_type(USB_TYPE_RNDIS))) {
+		for (i = 0 ; i < _TYPE_MAXID ; i++) {
+			if (strcmp(type_name[i], "vcore") == 0) {
+				USB_BOOST_DBG("%s VCORE Boost for (%d)s\n", __func__, vcore_dft_para[ATTR_TIMEOUT]);
+				boost_inst[i].para[ATTR_TIMEOUT] = vcore_dft_para[ATTR_TIMEOUT];
+				usb_boost_by_id(TYPE_VCORE);
+			}
+		}
+	}
 }
 
 static int mtu3_trace_init(void)
@@ -830,6 +887,65 @@ static int mtu3_trace_init(void)
 }
 #endif
 
+/* api which allows other modules to hold/release vcore */
+void usb_boost_vcore_control(bool hold)
+{
+	int action_id;
+
+	action_id = hold ? ACT_HOLD : ACT_RELEASE;
+	vcore_holding_by_others = hold ? true : false;
+	USB_BOOST_NOTICE("directly control vcore, action:%d\n", action_id);
+	__boost_act(TYPE_VCORE, action_id);
+}
+EXPORT_SYMBOL_GPL(usb_boost_vcore_control);
+
+/* host_request_vcore - determine hold vcore or not
+ * [policy]
+ *  not hold vcore in following condition
+ *  1. device which isn't in high speed.
+ *  2. audio playback (epn isoc out transfer).
+ */
+static void host_request_vcore(struct urb *urb)
+{
+	struct usb_endpoint_descriptor *desc;
+	int ep_type, ep_dir;
+	enum usb_device_speed speed;
+
+	desc = &urb->ep->desc;
+	if (!desc)
+		return;
+
+	ep_type = usb_endpoint_type(desc);
+	ep_dir = usb_endpoint_dir_in(desc);
+	speed = urb->dev->speed;
+
+	/* condition1. */
+	/*
+	 * if (ep_type == USB_ENDPOINT_XFER_CONTROL)
+	 *	return;
+	 */
+	/* condition2. */
+	if (speed != USB_SPEED_HIGH)
+		return;
+
+	/* condition3. */
+	if (ep_type == USB_ENDPOINT_XFER_ISOC &&
+		ep_dir == USB_DIR_OUT)
+		return;
+
+	/* 3s timeout for host mode */
+	boost_inst[TYPE_VCORE].para[ATTR_TIMEOUT] = 3;
+
+	USB_BOOST_DBG("type:%d dir:%d speed:%d\n", ep_type, ep_dir, speed);
+	/* hold vcore for the reset condition */
+	usb_boost_by_id(TYPE_VCORE);
+}
+
+void xhci_urb_enqueue_dbg(void *unused, struct urb *urb)
+{
+	host_request_vcore(urb);
+}
+
 void xhci_urb_giveback_dbg(void *unused, struct urb *urb)
 {
 	switch (usb_endpoint_type(&urb->ep->desc)) {
@@ -841,14 +957,18 @@ void xhci_urb_giveback_dbg(void *unused, struct urb *urb)
 		break;
 	case USB_ENDPOINT_XFER_ISOC:
 		update_time_audio();
+		audio_boost_inst.headset_vid = urb->dev->descriptor.idVendor;
+		audio_boost_inst.headset_pid = urb->dev->descriptor.idProduct;
 		audio_boost_inst.request_func(0);
 		break;
 	}
+	host_request_vcore(urb);
 }
 
 static int xhci_trace_init(void)
 {
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_XHCI_MTK)
+	WARN_ON(register_trace_xhci_urb_giveback_(xhci_urb_enqueue_dbg, NULL));
 	WARN_ON(register_trace_xhci_urb_giveback_(xhci_urb_giveback_dbg, NULL));
 #endif
 	return 0;
@@ -866,6 +986,7 @@ int usb_boost_init(void)
 		wq_name[count] = '\0';
 		boost_inst[id].id  = id;
 		update_time(id);
+		boost_inst[id].force_single_trigger = (id == TYPE_VCORE);
 		boost_inst[id].wq  = create_singlethread_workqueue(wq_name);
 		INIT_WORK(&boost_inst[id].work, boost_work);
 		USB_BOOST_DBG("ID<%d>, WQ<%p>, WORK<%p>\n",
@@ -903,6 +1024,7 @@ void usb_audio_boost(bool enable)
 
 	if (enable) {
 		/* hook workable interface */
+		audio_boost_default_setting();
 		audio_boost_inst.request_func = __request_audio;
 	}
 }

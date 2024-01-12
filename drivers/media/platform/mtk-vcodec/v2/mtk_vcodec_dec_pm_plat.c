@@ -295,7 +295,7 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 	int ret;
 	struct dev_pm_opp *opp = 0;
 	unsigned long freq = 0;
-	int i = 0, vdec_req = 0;
+	int i = 0, vdec_req = 0, flag = 0;
 	struct platform_device *pdev = 0;
 
 	pdev = dev->plat_dev;
@@ -310,6 +310,13 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 	if (ret)
 		mtk_v4l2_debug(0, "[VDEC] no need vdec-mmdvfs-in-adaptive");
 	dev->vdec_dvfs_params.mmdvfs_in_adaptive = vdec_req;
+
+	ret = of_property_read_s32(pdev->dev.of_node, "vdec-cpu-grp-aware", &flag);
+	if (ret) {
+		mtk_v4l2_debug(0, "[VDEC] no need vdec-cpu-gpr-aware");
+		dev->vdec_dvfs_params.cpu_top_grp_aware = -1;
+	}
+
 
 	ret = dev_pm_opp_of_add_table(&dev->plat_dev->dev);
 	if (ret < 0) {
@@ -434,6 +441,10 @@ void mtk_vdec_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 
 	dev->vdec_dvfs_params.target_freq = inst->vsi->target_freq;
 	ctx->dec_params.operating_rate = inst->vsi->op_rate;
+	mtk_vcodec_cpu_grp_aware_hint(ctx, inst->vsi->cpu_top_grp_aware);
+	inst->vsi->cpu_top_grp_aware = 0;
+
+	return;
 }
 
 void mtk_vdec_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx)
@@ -648,8 +659,10 @@ void mtk_vdec_prepare_vcp_dvfs_data(struct mtk_vcodec_ctx *ctx, unsigned long *i
 		return;
 
 	inst_handle = (struct vdec_inst *) ctx->drv_handle;
-	if (!inst_handle)
+	if (!inst_handle) {
+		mtk_v4l2_err("%s [VDVFS][%d] find null drv handler", __func__, ctx->id);
 		return;
+	}
 
 	vsi_data = inst_handle->vsi;
 
@@ -715,10 +728,12 @@ void mtk_vdec_dvfs_update_dvfs_params(struct mtk_vcodec_ctx *ctx)
 	struct vcodec_inst *inst = 0;
 	bool mmdvfs_in_vcp = (ctx->dev->vdec_reg == 0 && ctx->dev->vdec_mmdvfs_clk == 0);
 	unsigned long vcp_dvfs_data[1] = {MTK_INST_UPDATE};
+	int ret;
 
 	if (mmdvfs_in_vcp) {
 		mtk_vdec_dvfs_set_vsi_dvfs_params(ctx);
-		if (vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data) != 0)
+		ret = vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data);
+		if (ret != 0)
 			mtk_v4l2_err("[VDVFS] %s [%d] alive ipi timeout", __func__, ctx->id);
 	} else {
 		inst = get_inst(ctx);
@@ -742,7 +757,7 @@ bool mtk_vdec_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 {
 	unsigned int cur_in_timestamp, time_diff, threshold = 20;
 	unsigned int prev_op, cur_op, tmp_op;/* monitored op in the prev interval */
-	bool need_update = false;
+	bool update_op = false;
 
 	if (buf_type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE ||
 		!ctx->dev->vdec_dvfs_params.mmdvfs_in_adaptive)
@@ -773,10 +788,10 @@ bool mtk_vdec_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 
 		tmp_op = MAX(ctx->last_monitor_op, prev_op);
 
-		need_update = mtk_dvfs_check_op_diff(prev_op, ctx->last_monitor_op, threshold, 1) &&
+		update_op = mtk_dvfs_check_op_diff(prev_op, ctx->last_monitor_op, threshold, 1) &&
 			mtk_dvfs_check_op_diff(cur_op, tmp_op, threshold, -1);
 
-		if (need_update) {
+		if (update_op) {
 			ctx->op_rate_adaptive = tmp_op;
 			mtk_v4l2_debug(0, "[VDVFS][VDEC][ADAPTIVE][%d] update adaptive op %d -> %d",
 				ctx->id, cur_op, ctx->op_rate_adaptive);

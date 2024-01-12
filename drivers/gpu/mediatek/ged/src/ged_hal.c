@@ -251,6 +251,46 @@ static ssize_t ged_kpi_show(struct kobject *kobj, struct kobj_attribute *attr,
 
 static KOBJ_ATTR_RO(ged_kpi);
 #endif /* MTK_GED_KPI */
+//-------------------------------------------------------------------------
+extern unsigned int early_force_fallback_enable;
+static ssize_t early_force_fallback_policy_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+
+	int pos = 0;
+
+	if (early_force_fallback_enable)
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+			"early_force_fallback_policy is enabled\n");
+	else
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+			"early_force_fallback_policy is disabled\n");
+
+	return pos;
+}
+static ssize_t early_force_fallback_policy_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
+				if (i32Value > 0 && i32Value < 256)
+					early_force_fallback_enable = 1;
+				else
+					early_force_fallback_enable = 0;
+			}
+		}
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(early_force_fallback_policy);
+
 //-----------------------------------------------------------------------------
 static ssize_t dvfs_margin_value_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -1376,6 +1416,43 @@ static ssize_t ged_log_level_store(struct kobject *kobj,
 
 static KOBJ_ATTR_RW(ged_log_level);
 //-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+static ssize_t ged_fallback_tuning_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int pos = 0;
+	int length;
+
+	length = scnprintf(buf + pos, PAGE_SIZE - pos,
+				"ged_fallback_tuning: %d\n", ged_dvfs_get_fallback_tuning());
+
+	pos += length;
+
+	return pos;
+}
+
+static ssize_t ged_fallback_tuning_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
+				if (i32Value >= 0)
+					ged_dvfs_set_fallback_tuning(i32Value);
+			}
+		}
+	}
+
+	return count;
+}
+
+static KOBJ_ATTR_RW(ged_fallback_tuning);
+//-----------------------------------------------------------------------------
 unsigned int g_loading_slide_window_size = GED_DEFAULT_SLIDE_WINDOW_SIZE;
 
 static ssize_t loading_window_size_show(struct kobject *kobj,
@@ -1575,6 +1652,10 @@ GED_ERROR ged_hal_init(void)
 	if (unlikely(err != GED_OK))
 		GED_LOGE("Failed to create force_loading_base entry!\n");
 
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_early_force_fallback_policy);
+	if (unlikely(err != GED_OK))
+		GED_LOGE("Failed to create early_force_fallback_policy entry!\n");
+
 #ifdef GED_DCS_POLICY
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dcs_mode);
 	if (unlikely(err != GED_OK)) {
@@ -1683,6 +1764,13 @@ GED_ERROR ged_hal_init(void)
 		goto ERROR;
 	}
 
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_ged_fallback_tuning);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE(
+			"Failed to create ged_fallback_tuning entry!\n");
+		goto ERROR;
+	}
+
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_frame_base_optimize);
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE(
@@ -1742,6 +1830,8 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dvfs_async_ratio);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_ged_log_level);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_force_loading_base);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_early_force_fallback_policy);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_ged_fallback_tuning);
 #ifdef GED_DCS_POLICY
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_mode);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_stress);

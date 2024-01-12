@@ -2906,8 +2906,8 @@ static int mt_pga_l_event(struct snd_soc_dapm_widget *w,
 		return -EINVAL;
 	}
 
-	/* if vow is enabled, always set volume as 3(18dB) */
-	mic_gain_l = priv->vow_enable ? 3 :
+	/* if vow is enabled, always set volume as 4(24dB) */
+	mic_gain_l = priv->vow_enable ? 4 :
 		     priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP1];
 	dev_dbg(priv->dev, "%s(), event = 0x%x, mic_type %d, mic_gain_l %d, mux_pga %d\n",
 		__func__, event, mic_type, mic_gain_l, mux_pga);

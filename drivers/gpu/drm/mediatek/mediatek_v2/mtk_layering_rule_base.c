@@ -31,6 +31,7 @@
 #include "mtk_drm_assert.h"
 #include "mtk_log.h"
 #include "mtk_drm_mmp.h"
+#include "mtk_drm_graphics_base.h"
 #define CREATE_TRACE_POINTS
 #include "mtk_layer_layout_trace.h"
 #include "mtk_drm_gem.h"
@@ -40,6 +41,10 @@
 #include "../mml/mtk-mml-color.h"
 #include "../mml/mtk-mml-drm-adaptor.h"
 #include "mtk_disp_oddmr/mtk_disp_oddmr.h"
+
+#ifdef CONFIG_MI_DYNAMIC_OVL_WCG_ENABLE
+#include <uapi/drm/mi_disp.h>
+#endif
 
 #include <linux/module.h>
 
@@ -4105,7 +4110,8 @@ static void check_is_mml_layer(const int disp_idx,
 				down_scale_cnt++;
 		}
 	}
-	if ((down_scale_cnt > 1) && !(mtk_crtc->is_mml_dl || l_rule_info->bk_mml_dl_lye)) {
+	if ((down_scale_cnt > 1) && !(mtk_crtc->is_mml_dl
+		|| mtk_crtc->is_mml || l_rule_info->bk_mml_dl_lye)) {
 		u32 cnt = __builtin_popcount(mml_ovl_layers);
 		enum MTK_LAYERING_CAPS dc_cap = MTK_MML_DISP_DECOUPLE_LAYER;
 
@@ -4162,6 +4168,15 @@ static void check_is_mml_layer(const int disp_idx,
 				c->layer_caps |= MTK_MML_DISP_DECOUPLE_LAYER;
 				DDPINFO("%s hrt_idx:%d unable to get sram, set to MML_DC\n",
 					__func__, hrt_idx);
+			}
+		}
+
+		/* Rollback to DC if AOD mode */
+		if (MTK_MML_DISP_DIRECT_DECOUPLE_LAYER & c->layer_caps) {
+			if (g_disp_aod_mode == 1) {
+				c->layer_caps &= ~MTK_MML_DISP_DIRECT_DECOUPLE_LAYER;
+				c->layer_caps |= MTK_MML_DISP_DECOUPLE_LAYER;
+				DDPINFO("%s AOD, set to MML_DC\n", __func__);
 			}
 		}
 
@@ -4324,6 +4339,37 @@ static int get_crtc_num(
 	return crtc_num;
 }
 
+#ifdef CONFIG_MI_DYNAMIC_OVL_WCG_ENABLE
+static void mtk_ovl_wcg_enable(struct drm_mtk_layering_info *disp_info,
+				struct drm_device *dev)
+{
+	int i = 0, j = 0, enable = 0;
+	struct drm_mtk_layer_config *layer_info;
+	struct mtk_drm_private *priv = dev->dev_private;
+	int curColorMode = 0;
+	int curDolbyStatus = 0;
+
+	curColorMode = mi_dsi_panel_get_cur_color_mode();
+        curDolbyStatus = mi_dsi_panel_get_cur_dolby_status();
+	for (i = 0; i < HRT_DISP_TYPE_NUM; i++) {
+		if (disp_info->layer_num[i] <= 0)
+			continue;
+		for (j = 0; j < disp_info->layer_num[i]; j++) {
+			layer_info = &disp_info->input_config[i][j];
+			DDPINFO("%s:%d dataspace:%d\n", __func__, __LINE__, layer_info->dataspace);
+			if(layer_info->dataspace == MTK_DRM_DATASPACE_DISPLAY_P3
+				|| curColorMode == COLOR_MODE_STANDARD || curDolbyStatus)
+				enable = 1;
+		}
+	}
+	mtk_drm_helper_set_opt_by_name(priv->helper_opt,
+					"MTK_DRM_OPT_OVL_WCG", enable);
+
+	pr_info("%s:%d enable:%d, curColorMode:%d, curDolbyStatus:%d\n",
+			__func__, __LINE__, enable, curColorMode, curDolbyStatus);
+}
+#endif
+
 static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 			       int debug_mode, struct drm_device *dev)
 {
@@ -4367,6 +4413,10 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 #ifdef HRT_DEBUG_LEVEL1
 	DDPMSG("[Input data]\n");
 	dump_disp_info(&layering_info, DISP_DEBUG_LEVEL_INFO);
+#endif
+
+#ifdef CONFIG_MI_DYNAMIC_OVL_WCG_ENABLE
+	mtk_ovl_wcg_enable(&layering_info, dev);
 #endif
 
 	if (get_layering_opt(LYE_OPT_SPHRT))

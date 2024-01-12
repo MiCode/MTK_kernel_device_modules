@@ -178,6 +178,14 @@ static int is_fb_dvfs_triggered;
 static int is_fallback_mode_triggered;
 static unsigned int fallback_duration;   // unit: ms
 
+unsigned int early_force_fallback_enable;
+static unsigned int early_force_fallback;
+
+#define SHADER_CORE 6
+#define ULTRA_HIGH_STEP_SIZE 5
+#define ULTRA_LOW_STEP_SIZE 2
+static int g_max_core_num;
+
 /* overdue parameter*/
 #define OVERDUE_TH 14
 #define OVERDUE_LIMIT_FRAME 8
@@ -190,6 +198,8 @@ static int FORCE_TOP_OPP = -1;
 static int g_async_ratio_support;
 static int g_async_virtual_table_support;
 unsigned int get_min_oppidx;
+static int g_fallback_tuning = 50;
+static int g_lb_last_opp;
 
 void ged_dvfs_last_and_target_cb(int t_gpu_target, int boost_accum_gpu)
 {
@@ -242,6 +252,8 @@ static int gx_tb_dvfs_margin_cur = GED_DVFS_TIMER_BASED_DVFS_MARGIN;
 #define MIN_TB_DVFS_MARGIN_HIGH_FPS      10
 #define DVFS_MARGIN_HIGH_FPS_THRESHOLD   16000
 #define SLIDING_WINDOW_SIZE_THRESHOLD    32000
+#define GED_TIMESTAMP_TYPE_D       0x1
+#define GED_TIMESTAMP_TYPE_1       0x2
 // default loading-based margin mode + value is 30
 static int g_tb_dvfs_margin_value = GED_DVFS_TIMER_BASED_DVFS_MARGIN;
 static int g_tb_dvfs_margin_value_min = MIN_TB_DVFS_MARGIN;
@@ -249,6 +261,64 @@ static int g_tb_dvfs_margin_value_min_cmd;
 static int g_tb_dvfs_margin_step = GED_DVFS_TIMER_BASED_DVFS_MARGIN_STEP;
 static unsigned int g_tb_dvfs_margin_mode = DYNAMIC_TB_MASK | DYNAMIC_TB_PERF_MODE_MASK;
 static int g_loading_slide_window_size_cmd;
+static int g_fallback_idle;
+static int g_last_commit_type;
+
+static void ged_dvfs_early_force_fallback(struct GpuUtilization_Ex *Util_Ex)
+{
+	unsigned int util_iter = Util_Ex->util_iter;
+	unsigned int util_mcu = Util_Ex->util_mcu;
+	unsigned int sum = util_iter+util_mcu;
+
+	if ((sum >= 110 && util_iter >= 70) ||
+		(sum >= 110 && util_mcu >= 70) ||
+		util_iter >= 90 ||
+		util_mcu >= 90)
+		early_force_fallback = 1;
+	else
+		early_force_fallback = 0;
+
+}
+
+static unsigned int ged_dvfs_ultra_high_step_size_query(void)
+{
+	if (g_max_core_num == SHADER_CORE &&
+		gx_dvfs_loading_mode == LOADING_MAX_ITERMCU &&
+		early_force_fallback_enable)
+		return ULTRA_HIGH_STEP_SIZE ;
+	else
+		return (dvfs_step_mode & 0xff);
+}
+
+static unsigned int ged_dvfs_ultra_low_step_size_query(void)
+{
+	if (g_max_core_num == SHADER_CORE &&
+		gx_dvfs_loading_mode == LOADING_MAX_ITERMCU &&
+		early_force_fallback_enable)
+		return ULTRA_LOW_STEP_SIZE ;
+	else
+		return (dvfs_step_mode & 0xff00) >> 8;
+}
+
+static unsigned int ged_dvfs_high_step_size_query(void)
+{
+	if (g_max_core_num == SHADER_CORE &&
+		gx_dvfs_loading_mode == LOADING_MAX_ITERMCU &&
+		early_force_fallback_enable)
+		return ULTRA_LOW_STEP_SIZE ;
+	else
+		return 1;
+}
+
+static unsigned int ged_dvfs_low_step_size_query(void)
+{
+	if (g_max_core_num == SHADER_CORE &&
+		gx_dvfs_loading_mode == LOADING_MAX_ITERMCU &&
+		early_force_fallback_enable)
+		return ULTRA_LOW_STEP_SIZE ;
+	else
+		return 1;
+}
 
 static void _init_loading_ud_table(void)
 {
@@ -553,6 +623,15 @@ bool ged_dvfs_cal_gpu_utilization_ex(unsigned int *pui32Loading,
 				Util_Ex->util_3d, Util_Ex->util_compute, Util_Ex->util_iter,
 				Util_Ex->util_mcu);
 
+			//use loading to decide whether early force fallback in LOADING_MAX_ITERMCU & loading base
+			if (g_max_core_num == SHADER_CORE &&
+				gx_dvfs_loading_mode == LOADING_MAX_ITERMCU &&
+				!is_fb_dvfs_triggered &&
+				early_force_fallback_enable)
+				ged_dvfs_early_force_fallback(Util_Ex);
+			else
+				early_force_fallback = 0 ;
+
 			gpu_av_loading = *pui32Loading;
 			atomic_set(&g_gpu_loading_log, gpu_av_loading);
 		}
@@ -846,6 +925,7 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	if (ui32CurFreqID == -1)
 		return bCommited;
 
+	g_last_commit_type = eCommitType;
 	if (eCommitType == GED_DVFS_FRAME_BASE_COMMIT ||
 		eCommitType == GED_DVFS_LOADING_BASE_COMMIT)
 		g_last_def_commit_freq_id = stackNewFreqID;
@@ -1264,6 +1344,7 @@ int gx_fb_dvfs_margin = DEFAULT_DVFS_MARGIN;/* 10-bias */
 // default frame-based margin mode + value is 130
 static int dvfs_margin_value = DEFAULT_DVFS_MARGIN;
 unsigned int dvfs_margin_mode = DYNAMIC_MARGIN_MODE_PERF;
+static int g_uncomplete_type;
 
 static int dvfs_min_margin_inc_step = MIN_MARGIN_INC_STEP;
 static int dvfs_margin_low_bound = MIN_DVFS_MARGIN;
@@ -1660,6 +1741,8 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 
 		return gpu_freq_pre;
 	}
+	// reset if not in fallback mode
+	g_fallback_idle = 0;
 
 	spin_lock_irqsave(&gsGpuUtilLock, ui32IRQFlags);
 	if (is_fallback_mode_triggered)
@@ -2084,13 +2167,12 @@ static bool ged_dvfs_policy(
 		enum gpu_dvfs_policy_state policy_state;
 		int api_sync_flag;
 		int fallback_duration_flag;
+		int early_force_fallback_flag = 0;
 
 		int ultra_high = 0;
 		int high = 0;
 		int low = 0;
 		int ultra_low = 0;
-		int ultra_high_step_size = 0;
-		int ultra_low_step_size = 0;
 
 		/* set t_gpu via risky BQ analysis */
 		ged_kpi_update_t_gpu_latest_uncompleted();
@@ -2124,6 +2206,16 @@ static bool ged_dvfs_policy(
 				}
 				uncomplete_flag = 0;
 			}
+			//if loading is heavy and 120fps ,early force fallback in LOADING_MAX_ITERMCU
+			if (early_force_fallback && t_gpu_target <= 8333) {
+				early_force_fallback_flag = 1;
+				uncomplete_flag = early_force_fallback_flag;
+			}
+			if (g_max_core_num == SHADER_CORE &&
+				gx_dvfs_loading_mode == LOADING_MAX_ITERMCU &&
+				early_force_fallback_enable)
+				trace_tracing_mark_write(5566, "early_force_fallback"
+					, early_force_fallback_flag);
 		} else {
 			// risky BQ cannot be obtained, set t_gpu to default
 			t_gpu = -1;
@@ -2265,8 +2357,6 @@ static bool ged_dvfs_policy(
 		high = loading_ud_table[ui32GPUFreq].up;
 		low = loading_ud_table[ui32GPUFreq].down;
 		ultra_low = 20;
-		ultra_high_step_size = (dvfs_step_mode & 0xff);
-		ultra_low_step_size = (dvfs_step_mode & 0xff00) >> 8;
 
 		if (high > ultra_high)
 			high = ultra_high;
@@ -2285,29 +2375,46 @@ static bool ged_dvfs_policy(
 		else {
 			ged_update_window_size_by_fps(t_gpu_target);
 			window_size_ms = g_loading_slide_window_size;
+			// reset if not in fallback mode
+			g_fallback_idle = 0;
 		}
 		ui32GPULoading = gpu_util_history_query_loading(window_size_ms * 1000);
 		loading_mode = ged_get_dvfs_loading_mode();
-		trace_GPU_DVFS__Policy__Loading_based__Loading(ui32GPULoading,
-			loading_mode);
 
 		if (ui32GPULoading >= ultra_high)
-			i32NewFreqID -= ultra_high_step_size;
+			i32NewFreqID -= ged_dvfs_ultra_high_step_size_query();
 		else if (ui32GPULoading < ultra_low)
-			i32NewFreqID += ultra_low_step_size;
+			i32NewFreqID += ged_dvfs_ultra_low_step_size_query();
 		else if (ui32GPULoading >= high)
-			i32NewFreqID -= 1;
+			i32NewFreqID -= ged_dvfs_high_step_size_query();
 		else if (ui32GPULoading <= low)
-			i32NewFreqID += 1;
+			i32NewFreqID += ged_dvfs_low_step_size_query();
 
 		// prevent decreasing opp in fallback mode
 		if ((policy_state == POLICY_STATE_FB_FALLBACK ||
 				policy_state == POLICY_STATE_LB_FALLBACK ||
 				policy_state == POLICY_STATE_FORCE_LB_FALLBACK) &&
 				i32NewFreqID > ui32GPUFreq) {
-			if (g_fallback_frequency_adjust && !fallback_duration_flag)
+			bool enable_frequency_adjust = false;
+			trace_GPU_DVFS__Policy__Loading_based__Fallback_Tuning(
+				g_fallback_tuning, g_fallback_idle, g_uncomplete_type, uncomplete_flag, g_lb_last_opp);
+			// if gpu idle during fallback mode and uncomplete time is calculated by timeStampD
+			// allow gpu freq to decrease
+			if (g_fallback_tuning &&
+				g_fallback_idle &&
+				g_uncomplete_type == GED_TIMESTAMP_TYPE_D &&
+				uncomplete_flag &&
+				i32NewFreqID <= g_lb_last_opp &&
+				i32NewFreqID < ged_get_opp_num_real())
+				enable_frequency_adjust = true;
+
+			if (g_fallback_frequency_adjust && !fallback_duration_flag && !enable_frequency_adjust)
 				i32NewFreqID = ui32GPUFreq;
-		}
+
+			trace_GPU_DVFS__Policy__Loading_based__Loading(ui32GPULoading, loading_mode,
+				enable_frequency_adjust);
+		} else
+			trace_GPU_DVFS__Policy__Loading_based__Loading(ui32GPULoading, loading_mode, 0);
 
 		ged_log_buf_print(ghLogBuf_DVFS,
 			"[GED_K][LB_DVFS] mode:0x%x, u_b:%d, l_b:%d, margin:%d, complete:%d, uncomplete:%d, t_gpu:%d, target:%d",
@@ -2356,6 +2463,8 @@ static bool ged_dvfs_policy(
 	trace_GPU_DVFS__Policy__Loading_based__Opp(i32NewFreqID);
 	*pui32NewFreqID = (unsigned int)i32NewFreqID;
 	g_policy_tar_freq = ged_get_freq_by_idx(i32NewFreqID);
+	if (ged_get_policy_state() == POLICY_STATE_LB)
+		g_lb_last_opp = i32NewFreqID;
 
 	g_mode = 2;
 
@@ -3097,6 +3206,27 @@ void ged_dvfs_set_slide_window_size(int size)
 	g_loading_slide_window_size = size;
 }
 
+void ged_dvfs_set_uncomplete_ts_type(int type)
+{
+	g_uncomplete_type = type;
+}
+
+void ged_dvfs_set_fallback_tuning(int tuning)
+{
+	g_fallback_tuning = tuning;
+}
+
+int ged_dvfs_get_fallback_tuning(void)
+{
+	return g_fallback_tuning;
+}
+
+void ged_dvfs_notify_power_off(void)
+{
+	if (g_last_commit_type == GED_DVFS_FALLBACK_COMMIT)
+		g_fallback_idle++;
+}
+
 int ged_dvfs_get_recude_mips_policy_state(void)
 {
 	static unsigned int init_flag;
@@ -3131,6 +3261,7 @@ GED_ERROR ged_dvfs_system_init(void)
 	g_iSkipCount = MTK_DEFER_DVFS_WORK_MS / MTK_DVFS_SWITCH_INTERVAL_MS;
 
 	g_ulvsync_period = get_ns_period_from_fps(60);
+	g_max_core_num = gpufreq_get_core_num();
 
 	ged_kpi_gpu_dvfs_fp = ged_dvfs_fb_gpu_dvfs;
 	ged_kpi_trigger_fb_dvfs_fp = ged_dvfs_trigger_fb_dvfs;
@@ -3157,6 +3288,8 @@ GED_ERROR ged_dvfs_system_init(void)
 
 	ged_commit_freq = 0;
 	ged_commit_opp_freq = 0;
+
+	early_force_fallback_enable = 1;
 
 #ifdef ENABLE_TIMER_BACKUP
 	g_gpu_timer_based_emu = 0;

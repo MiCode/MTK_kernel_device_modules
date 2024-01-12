@@ -1526,6 +1526,11 @@ void mtk_vdec_error_handle(struct mtk_vcodec_ctx *ctx, char *debug_str)
 	mtk_vdec_lpw_stop_timer(ctx, true);
 
 	vdec_check_release_lock(ctx);
+
+	mutex_lock(&ctx->dev->dec_dvfs_mutex);
+	mtk_vcodec_cpu_grp_aware_hint(ctx, false);
+	mutex_unlock(&ctx->dev->dec_dvfs_mutex);
+
 	for (i = 0; i < MTK_VDEC_HW_NUM; i++)
 		atomic_set(&dev->dec_hw_active[i], 0);
 	mtk_vdec_queue_error_event(ctx);
@@ -2403,6 +2408,7 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 	bool mmdvfs_in_vcp, need_update = false;
 	struct vdec_check_alive_work_struct *caws;
 	unsigned long vcp_dvfs_data[1] = {0};
+	int ret;
 
 	caws = container_of(ws, struct vdec_check_alive_work_struct, work);
 	dev = caws->dev;
@@ -2472,8 +2478,9 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 			vcp_dvfs_data[0] = MTK_INST_SET;
 			// can use any valid ctx to set param
 			ctx = valid_ctx;
-			if (vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data) != 0)
-				mtk_v4l2_err("[VDVFS][%d] alive ipi fail", ctx->id);
+			ret = vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data);
+			if (ret != 0)
+				mtk_v4l2_err("[VDVFS][%d] alive ipi fail, ret %d", ctx->id, ret);
 			mtk_vdec_dvfs_sync_vsi_data(ctx);
 			mtk_v4l2_debug(0, "[VDVFS] check alive: freq: %d, op: %d",
 				ctx->dev->vdec_dvfs_params.target_freq,
@@ -4109,7 +4116,7 @@ static int vb2ops_vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 	unsigned long total_frame_bufq_count;
 	unsigned long vcp_dvfs_data[1] = {0};
 	unsigned long flags;
-	int origin_state;
+	int origin_state, ret;
 
 	vcodec_trace_begin("%s(%s)", __func__,
 		q->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE ? "out" : "in");
@@ -4142,8 +4149,9 @@ static int vb2ops_vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 		mutex_lock(&ctx->dev->dec_dvfs_mutex);
 		if (ctx->dev->vdec_dvfs_params.mmdvfs_in_vcp) {
 			mtk_vdec_prepare_vcp_dvfs_data(ctx, vcp_dvfs_data);
-			if (vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data) != 0)
-				mtk_v4l2_err("[VDVFS][%d] stream on ipi fail", ctx->id);
+			ret = vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data);
+			if (ret != 0)
+				mtk_v4l2_err("[VDVFS][%d] stream on ipi fail, ret %d", ctx->id, ret);
 			mtk_vdec_dvfs_sync_vsi_data(ctx);
 			mtk_v4l2_debug(0, "[VDVFS][%d(%d)] start DVFS(UP): freq:%d, op:%d",
 				ctx->id, mtk_vcodec_get_state(ctx),
@@ -4196,6 +4204,7 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 	unsigned int i = 0;
 	struct mtk_video_dec_buf *srcbuf, *dstbuf;
 	unsigned long vcp_dvfs_data[1] = {0};
+	int ret;
 
 	vcodec_trace_begin("%s(%s)", __func__,
 		q->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE ? "out" : "in");
@@ -4308,8 +4317,9 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 	ctx->is_active = 0;
 	if (ctx->dev->vdec_dvfs_params.mmdvfs_in_vcp) {
 		mtk_vdec_unprepare_vcp_dvfs_data(ctx, vcp_dvfs_data);
-		if (vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data) != 0)
-			mtk_v4l2_err("[VDVFS][%d] stream off ipi fail", ctx->id);
+		ret = vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data);
+		if (ret != 0)
+			mtk_v4l2_err("[VDVFS][%d] stream off ipi fail, ret %d", ctx->id, ret);
 		mtk_vdec_dvfs_sync_vsi_data(ctx);
 		mtk_v4l2_debug(0, "[VDVFS][%d(%d)] stop DVFS (UP): freq: %d, op: %d",
 			ctx->id, mtk_vcodec_get_state(ctx), ctx->dev->vdec_dvfs_params.target_freq,

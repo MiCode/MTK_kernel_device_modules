@@ -6,6 +6,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs/vendor
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs/
 ccflags-y += -I$(srctree)/drivers/ufs/core/
+ccflags-y += -I$(srctree)/drivers/ufs/host/
 ccflags-y += -I$(srctree)/drivers/devfreq/
 ccflags-y += -I$(srctree)/kernel/
 

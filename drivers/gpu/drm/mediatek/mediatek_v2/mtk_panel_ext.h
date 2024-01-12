@@ -15,10 +15,14 @@
 #else
 #include "mtk-cmdq-ext.h"
 #endif
-
+#include <uapi/drm/mi_disp.h>
 #define RT_MAX_NUM 10
 #define ESD_CHECK_NUM 3
+#ifdef CONFIG_MI_DISP
+#define MAX_TX_CMD_NUM 24
+#else
 #define MAX_TX_CMD_NUM 20
+#endif
 #define MAX_RX_CMD_NUM 20
 #define READ_DDIC_SLOT_NUM 4
 #define MAX_DYN_CMD_NUM 20
@@ -397,6 +401,12 @@ struct dynamic_fps_params {
 	unsigned int switch_en;
 	unsigned int vact_timing_fps;
 	unsigned int data_rate;
+#ifdef CONFIG_MI_DISP_VDO_AOD
+	unsigned int cmds_counts_switch_fps;
+	unsigned int short_dfps_cmds_counts;
+	unsigned int short_dfps_cmds_start_index;
+	unsigned int long_dfps_cmds_counts;
+#endif
 	struct dfps_switch_cmd dfps_cmd_table[MAX_DYN_CMD_NUM];
 };
 
@@ -567,6 +577,19 @@ struct mtk_panel_params {
 	unsigned int prefetch_offset;
 	unsigned int real_te_duration;
 	unsigned int SilkyBrightnessDelay;
+	unsigned int prefetch_time;
+
+#ifdef CONFIG_MI_DISP
+	int err_flag_irq_gpio;
+	int err_flag_irq_flags;
+#endif
+ 
+#ifdef CONFIG_MI_DISP_FOD_SYNC
+	/*block backlight until aod disapper*/
+	int bl_sync_enable;
+	/*delay to set doze_brightness*/
+	int aod_delay_enable;
+#endif
 };
 
 struct mtk_panel_ext {
@@ -596,6 +619,7 @@ struct mtk_oddmr_panelid {
 struct mtk_panel_funcs {
 	int (*set_bl_elvss_cmdq)(void *dsi_drv, dcs_grp_write_gce cb,
 		void *handle, struct mtk_bl_ext_config *bl_ext_config);
+	int (*get_doze_brightness)(struct drm_panel *panel, u32 *doze_brightness);
 	int (*read_elvss_base_voltage)(void *dsi_drv, ddic_dsi_send_cmd send_cb,
 		dic_dsi_read_cmd read_cb, struct DISP_PANEL_BASE_VOLTAGE *base_volageg);
 	int (*set_backlight_cmdq)(void *dsi_drv, dcs_write_gce cb,
@@ -619,6 +643,28 @@ struct mtk_panel_funcs {
 	int (*mode_switch)(struct drm_panel *panel,
 		struct drm_connector *connector, unsigned int cur_mode,
 		unsigned int dst_mode, enum MTK_PANEL_MODE_SWITCH_STAGE stage);
+	int (*set_doze_brightness)(struct drm_panel *panel, int doze_brightness);
+	int (*panel_poweroff)(struct drm_panel *panel);
+	int (*panel_poweron)(struct drm_panel *panel);
+	int (*setbacklight_control)(struct drm_panel *panel, unsigned int level);
+	int (*get_wp_info)(struct drm_panel *panel, char *buf, size_t size);
+	int (*get_panel_info)(struct drm_panel *panel, char *buf);
+	int (*get_panel_factory_max_brightness)(struct drm_panel *panel, u32 *max_brightness_clone);
+ 	int (*panel_set_gir_on)(struct drm_panel *panel);
+ 	int (*panel_set_gir_off)(struct drm_panel *panel);
+ 	int (*panel_get_gir_status)(struct drm_panel *panel);
+
+#ifdef CONFIG_MI_DISP_ESD_CHECK
+	void (*esd_restore_backlight)(struct drm_panel *panel);
+	int (*esd_check_read_prepare)(struct drm_panel *panel);
+#else
+	void (*esd_restore_backlight)(struct drm_panel *panel,
+		void *dsi_drv, dcs_write_gce cb, void *handle);
+#endif
+
+	bool (*get_panel_initialized)(struct drm_panel *panel);
+	int (*get_panel_max_brightness_clone)(struct drm_panel *panel, u32 *max_brightness_clone);
+	int (*get_panel_dynamic_fps)(struct drm_panel *panel, u32 *fps);
 	int (*mode_switch_hs)(struct drm_panel *panel, struct drm_connector *connector,
 		void *dsi_drv, unsigned int cur_mode, unsigned int dst_mode,
 		enum MTK_PANEL_MODE_SWITCH_STAGE stage, dcs_write_gce_pack cb);
@@ -630,6 +676,9 @@ struct mtk_panel_funcs {
 			void *handle, unsigned int flag);
 	int (*get_virtual_heigh)(void);
 	int (*get_virtual_width)(void);
+	void (*panel_set_dc_lut_params)(struct drm_panel *panel, char *exitDClut60, char *enterDClut60, char *exitDClut120, char *enterDClut120, int count);
+	int (*led_i2c_reg_op)(char *buffer, int op, int count);
+	int (*panel_fod_lhbm_init)(struct mtk_dsi * dsi);
 	void (*get_switch_mode_delay)(enum SWITCH_MODE_DELAY **switch_mode_delay,
 		unsigned int mode_num);
 	/**
@@ -702,6 +751,20 @@ struct mtk_panel_funcs {
 	int (*cust_funcs)(struct drm_panel *panel,
 		int cmd, void *params, void *handle, void **output);
 	int (*read_panelid)(struct drm_panel *panel, struct mtk_oddmr_panelid *panelid);
+	int (*get_grayscale_info)(struct drm_panel *panel, char *buf, size_t size);
+	int (*set_gray_by_temperature)(struct drm_panel *panel, int level);
+	void (*panel_elvss_control)(struct drm_panel *panel, bool en);
+	int (*hbm_fod_control)(struct drm_panel *panel, bool en);
+	int (*normal_hbm_control)(struct drm_panel *panel, uint32_t level);
+	int (*set_lhbm_fod)(struct mtk_dsi *dsi, enum local_hbm_state);
+	int (*doze_suspend)(struct drm_panel *panel, void *dsi_drv, dcs_write_gce cb, void *handle);
+	void (*panel_set_dc)(struct drm_panel *panel, bool enable);
+	void (*panel_set_crc_srgb)(struct drm_panel *panel);
+	void (*panel_set_crc_p3)(struct drm_panel *panel);
+	void (*panel_set_crc_p3_d65)(struct drm_panel *panel);
+ 	void (*panel_set_crc_p3_flat)(struct drm_panel *panel);
+	int (*set_spr_status)(struct drm_panel *panel, int status);
+ 	void (*panel_set_crc_off)(struct drm_panel *panel);
 	int (*lcm_update_roi)(struct drm_panel *panel,
 		unsigned int x, unsigned int y,
 		unsigned int w, unsigned int h);

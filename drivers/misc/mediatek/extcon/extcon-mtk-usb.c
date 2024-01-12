@@ -20,6 +20,8 @@
 #include <linux/workqueue.h>
 
 #include "extcon-mtk-usb.h"
+#include "../../../power/supply/mtk_charger.h"
+#include "../../../power/supply/pd_cp_manager.h"
 
 #if IS_ENABLED(CONFIG_TCPC_CLASS)
 #include "tcpm.h"
@@ -30,6 +32,7 @@ static const unsigned int usb_extcon_cable[] = {
 	EXTCON_USB_HOST,
 	EXTCON_NONE,
 };
+static unsigned int global_role = 0;
 
 static void mtk_usb_extcon_update_role(struct work_struct *work)
 {
@@ -40,6 +43,7 @@ static void mtk_usb_extcon_update_role(struct work_struct *work)
 
 	cur_dr = extcon->c_role;
 	new_dr = role->d_role;
+	global_role = new_dr;
 
 	dev_info(extcon->dev, "cur_dr(%d) new_dr(%d)\n", cur_dr, new_dr);
 
@@ -99,52 +103,52 @@ static int mtk_usb_extcon_set_role(struct mtk_extcon_info *extcon,
 	return 0;
 }
 
-static bool usb_is_online(struct mtk_extcon_info *extcon)
+static void mtk_usb_extcon_psy_detector(struct work_struct *work)
 {
+	struct mtk_extcon_info *extcon = container_of(to_delayed_work(work),
+		struct mtk_extcon_info, wq_psy);
+
 	union power_supply_propval pval;
 	union power_supply_propval tval;
+	int input_suspend = 0;
 	int ret;
+
+	ret = usb_get_property(USB_PROP_INPUT_SUSPEND, &input_suspend);
+	if (ret < 0) {
+		dev_info(extcon->dev, "failed to get input_suspend\n");
+		return;
+	}
 
 	ret = power_supply_get_property(extcon->usb_psy,
 				POWER_SUPPLY_PROP_ONLINE, &pval);
 	if (ret < 0) {
 		dev_info(extcon->dev, "failed to get online prop\n");
-		return false;
+		return;
 	}
 
 	ret = power_supply_get_property(extcon->usb_psy,
 				POWER_SUPPLY_PROP_TYPE, &tval);
 	if (ret < 0) {
 		dev_info(extcon->dev, "failed to get usb type\n");
-		return false;
+		return;
 	}
 
-	dev_info(extcon->dev, "online=%d, type=%d\n", pval.intval, tval.intval);
+	dev_info(extcon->dev, "online=%d, input_suspend=%d, type=%d\n", pval.intval, input_suspend, tval.intval);
+
+	/* Workaround for PR_SWAP, Host mode should not come to this function. */
+	if (extcon->c_role == USB_ROLE_HOST || (tval.intval != POWER_SUPPLY_TYPE_USB && tval.intval != POWER_SUPPLY_TYPE_USB_CDP && pval.intval) || global_role != extcon->c_role) {
+		dev_info(extcon->dev, "Remain HOST mode or usb_type not sdp or cdp\n");
+		return;
+	}
 
 	if (pval.intval && (tval.intval == POWER_SUPPLY_TYPE_USB ||
 			tval.intval == POWER_SUPPLY_TYPE_USB_CDP))
-		return true;
+		mtk_usb_extcon_set_role(extcon, USB_ROLE_DEVICE);
+	else if (input_suspend && (tval.intval == POWER_SUPPLY_TYPE_USB ||
+			tval.intval == POWER_SUPPLY_TYPE_USB_CDP))
+		mtk_usb_extcon_set_role(extcon, USB_ROLE_DEVICE);
 	else
-		return false;
-}
-
-static void mtk_usb_extcon_psy_detector(struct work_struct *work)
-{
-	struct mtk_extcon_info *extcon = container_of(to_delayed_work(work),
-		struct mtk_extcon_info, wq_psy);
-
-	/* Workaround for PR_SWAP, IF tcpc_dev, then do not switch role. */
-	/* Since we will set USB to none when type-c plug out */
-	if (extcon->tcpc_dev) {
-		if (usb_is_online(extcon) && extcon->c_role == USB_ROLE_NONE)
-			mtk_usb_extcon_set_role(extcon, USB_ROLE_DEVICE);
-	} else {
-		if (usb_is_online(extcon))
-			mtk_usb_extcon_set_role(extcon, USB_ROLE_DEVICE);
-		else
-			mtk_usb_extcon_set_role(extcon, USB_ROLE_NONE);
-	}
-
+		mtk_usb_extcon_set_role(extcon, USB_ROLE_NONE);
 }
 
 static int mtk_usb_extcon_psy_notifier(struct notifier_block *nb,
@@ -198,15 +202,28 @@ static int mtk_usb_extcon_set_vbus(struct mtk_extcon_info *extcon,
 {
 	struct regulator *vbus = extcon->vbus;
 	struct device *dev = extcon->dev;
+	struct charger_device *cp_master;
 	int ret;
 
 	/* vbus is optional */
 	if (!vbus || extcon->vbus_on == is_on)
 		return 0;
 
+	cp_master = get_charger_by_name("cp_master");
+	if (!cp_master) {
+		dev_err(dev, "%s: failed to get cp_master\n", __func__);
+		return -1;
+	}
+
 	dev_info(dev, "vbus turn %s\n", is_on ? "on" : "off");
+	ret = usb_set_property(USB_PROP_OTG_ENABLE, is_on);
+	if (ret < 0)
+		dev_info(dev, "failed to set otg enable\n");
 
 	if (is_on) {
+		charger_dev_cp_set_mode(cp_master, SC8561_REVERSE_1_1_CONVERTER_MODE);
+		charger_dev_enable_acdrv_manual(cp_master, true);
+
 		if (extcon->vbus_vol) {
 			ret = regulator_set_voltage(vbus,
 					extcon->vbus_vol, extcon->vbus_vol);
@@ -231,6 +248,9 @@ static int mtk_usb_extcon_set_vbus(struct mtk_extcon_info *extcon,
 			return ret;
 		}
 	} else {
+		charger_dev_cp_set_mode(cp_master, SC8561_FORWARD_4_1_CHARGER_MODE);
+		charger_dev_enable_acdrv_manual(cp_master, false);
+
 		regulator_disable(vbus);
 	}
 
@@ -324,12 +344,12 @@ static int mtk_extcon_tcpc_notifier(struct notifier_block *nb,
 		dev_info(dev, "%s dr_swap, new role=%d\n",
 				__func__, noti->swap_state.new_role);
 		if (noti->swap_state.new_role == PD_ROLE_UFP &&
-				extcon->c_role != USB_ROLE_DEVICE) {
+				extcon->c_role == USB_ROLE_HOST) {
 			dev_info(dev, "switch role to device\n");
 			mtk_usb_extcon_set_role(extcon, USB_ROLE_NONE);
 			mtk_usb_extcon_set_role(extcon, USB_ROLE_DEVICE);
 		} else if (noti->swap_state.new_role == PD_ROLE_DFP &&
-				extcon->c_role != USB_ROLE_HOST) {
+				(extcon->c_role == USB_ROLE_DEVICE || extcon->c_role == USB_ROLE_NONE || global_role != extcon->c_role)) {
 			dev_info(dev, "switch role to host\n");
 			mtk_usb_extcon_set_role(extcon, USB_ROLE_NONE);
 			mtk_usb_extcon_set_role(extcon, USB_ROLE_HOST);

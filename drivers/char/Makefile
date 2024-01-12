@@ -5,3 +5,5 @@
 
 obj-$(CONFIG_HW_RANDOM)		+= hw_random/
 obj-$(CONFIG_RPMB)		+= rpmb/
+
+obj-$(CONFIG_XLOGCHAR)		+= xlogchar.o

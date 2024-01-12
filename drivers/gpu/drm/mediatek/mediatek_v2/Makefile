@@ -67,6 +67,10 @@ mediatek-drm-y := mtk_drm_drv.o \
 #ccflags-y += -DDRM_CMDQ_DISABLE
 #mediatek-drm-y += mtk_cmdq_dummy.o
 
+ifeq ($(CONFIG_MI_DISP),y)
+    include $(src)/mi_disp/Makefile
+endif
+
 ifeq ($(CONFIG_DRM_MEDIATEK_DEBUG_FS),y)
 mediatek-drm-y += mtk_drm_debugfs.o
 endif
@@ -141,3 +145,4 @@ ccflags-y += -DCCORR_SUPPORT
 
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/

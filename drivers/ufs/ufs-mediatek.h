@@ -260,6 +260,7 @@ struct ufs_mtk_host {
 	struct request_queue	*rpmb_bsg_queue;
 
 	bool mcq_set_intr;
+	bool is_mcq_intr_enabled;
 	int mcq_nr_intr;
 	struct ufs_mtk_mcq_intr_info mcq_intr_info[UFSHCD_MAX_Q_NR];
 	struct tag_ufs *atag;
@@ -331,8 +332,8 @@ enum {
 /* UFS MTK ip version value */
 enum {
 	IP_VER_NONE   = 0x0,
-	IP_VER_MT6897 = 0x01440000,
-	IP_VER_MT6989 = 0x01450000
+	IP_VER_MT6897 = 0x10440000,
+	IP_VER_MT6989 = 0x10450000
 };
 
 struct tag_bootmode {

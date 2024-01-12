@@ -462,7 +462,7 @@ static int dlpt_notify_handler(void *unused)
 		}
 		pre_ui_soc = cur_ui_soc;
 
-		if (cur_ui_soc == 1) {
+		if (0) {
 			/* Check low battery volt < level 3 throttle volt */
 			if (dlpt_check_power_off()) {
 				/* notify battery driver to power off by SOC=0 */

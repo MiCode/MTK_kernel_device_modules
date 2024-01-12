@@ -1649,8 +1649,7 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 					 &inst->eye_vrt);
 		device_property_read_u32(dev, "mediatek,eye-term",
 					 &inst->eye_term);
-		device_property_read_u32(dev, "mediatek,discth",
-					 &inst->discth);
+		device_property_read_u32(dev, "mediatek,discth", &inst->discth);
 		device_property_read_u32(dev, "mediatek,rx-sqth",
 					 &inst->rx_sqth);
 		device_property_read_u32(dev, "mediatek,rev6",

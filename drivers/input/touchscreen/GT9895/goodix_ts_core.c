@@ -2352,7 +2352,10 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	struct goodix_ts_core *core_data = NULL;
 	struct goodix_bus_interface *bus_interface;
 	int ret;
+
+#if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
 	struct device_node *node = NULL;
+#endif
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 		void **ret_disp = NULL;
@@ -2469,6 +2472,7 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	mutex_init(&irq_info_mutex);
 	ts_info("goodix_ts_core probe success");
 
+#if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
 	node = of_find_compatible_node(NULL, NULL, "mediatek,tui_common");
 	if (node) {
 		unsigned int tui_status = 0;
@@ -2486,6 +2490,7 @@ static int goodix_ts_probe(struct platform_device *pdev)
 			}
 		}
 	}
+#endif
 
 	return 0;
 

@@ -338,6 +338,8 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		typec_mux_set(rpmd->mux[idx], &state);
 		break;
 	case TCP_NOTIFY_WD0_STATE:
+		dev_info(rpmd->dev, "%s wd0_state = %d\n",
+				    __func__, noti->wd0_state.wd0);
 		if (!rpmd->en_wd0[idx])
 			break;
 		tcpm_typec_change_role_postpone(rpmd->tcpc[idx],

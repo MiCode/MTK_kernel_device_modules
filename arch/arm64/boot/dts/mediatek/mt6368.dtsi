@@ -5,6 +5,37 @@
 #include <dt-bindings/iio/mt635x-auxadc.h>
 #include <dt-bindings/spmi/spmi.h>
 
+&pio {
+	uart_gpio_enable: uart_gpio_enable@gpio24 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO24__FUNC_GPIO24>;
+			slew-rate = <1>;
+			bias-disable;
+			output-low;
+		};
+	};
+
+	uart_gpio_disable: uart_gpio_disable@gpio24 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO24__FUNC_GPIO24>;
+			slew-rate = <1>;
+			bias-disable;
+			output-high;
+		};
+	};
+};
+
+&i2c0 {
+	et7480: et7480@42 {
+		status = "ok";
+		compatible = "mediatek,et7480-audioswitch";
+		reg = <0x42>;
+		pinctrl-names = "uart_enable", "uart_disable";
+		pinctrl-0 = <&uart_gpio_enable>;
+		pinctrl-1 = <&uart_gpio_disable>;
+	};
+};
+
 &spmi {
 	second_pmic@5 {
 		compatible = "mediatek,mt6368";
@@ -40,6 +71,7 @@
 			io-channel-names = "pmic_accdet";
 			nvmem = <&mt6368_efuse>;
 			nvmem-names = "mt63xx-accdet-efuse";
+			et7480-i2c-handle = <&et7480>;
 			status = "okay";
 		};
 
@@ -205,7 +237,6 @@
 				regulator-max-microvolt = <3500000>;
 				regulator-enable-ramp-delay = <680>;
 				regulator-allowed-modes = <0 2>;
-				regulator-always-on;
 			};
 			mt6368_vfp: vfp {
 				regulator-compatible = "VFP";

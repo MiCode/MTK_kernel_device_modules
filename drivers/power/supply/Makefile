@@ -5,7 +5,7 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttl
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 
 obj-$(CONFIG_MTK_CHARGER) += mtk_charger_framework.o mtk_pd_charging.o charger_class.o adapter_class.o mtk_charger_algorithm_class.o mtk_pd_adapter.o
-mtk_charger_framework-objs := mtk_charger.o mtk_charger_intf.o mtk_basic_charger.o mtk_pulse_charger.o
+mtk_charger_framework-objs := mtk_charger.o mtk_charger_intf.o mtk_basic_charger.o mtk_pulse_charger.o pmic_voter.o step_jeita_charge.o
 mtk_pd_charging-objs := mtk_pd.o mtk_pd_hal.o
 obj-$(CONFIG_BATTERY_MT6359P) += mt6359p_battery.o
 mt6359p_battery-objs := mtk_battery_coulomb_service.o mtk_battery.o mtk_battery_algo.o mt6359p-gauge.o mtk_battery_daemon.o
@@ -36,3 +36,7 @@ mtk_pep50p-objs := mtk_pe5p.o mtk_pe5p_hal.o
 obj-$(CONFIG_CHARGER_RT9759)	+= rt9759.o
 obj-$(CONFIG_CHARGER_RT9490)	+= rt9490-charger.o
 obj-$(CONFIG_CHARGER_RT9758)	+= rt9758-charger.o
+obj-$(CONFIG_XMEXT_TI_GAUGE) += bq28z610.o
+obj-$(CONFIG_XMEXT_SC858X_CHG_PUMP) += sc858x_charger.o
+obj-$(CONFIG_XM_PD_MANAGER) += pd_cp_manager.o
+obj-$(CONFIG_XM_SINGLE_PD_MANAGER) += pd_single_cp_manager.o

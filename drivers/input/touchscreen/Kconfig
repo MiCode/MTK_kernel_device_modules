@@ -5,6 +5,9 @@
 
 if INPUT_TOUCHSCREEN
 
+#source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/goodix_9916r/Kconfig"
+#source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/xiaomi/Kconfig"
+
 config TOUCHSCREEN_MTK_TOUCH
        string "Touch IC name for Mediatek package"
        help

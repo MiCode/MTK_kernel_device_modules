@@ -19,7 +19,9 @@
 #include <linux/errno.h>
 #include <linux/slab.h>
 #include <linux/string.h>
-
+#ifdef __XIAOMI_CAMERA__
+#include <media/v4l2-ctrls.h>
+#endif
 #ifdef CONFIG_COMPAT
 #include <linux/compat.h>
 #endif
@@ -598,7 +600,8 @@ static int pt_arg_verify(int pt_low_vol, int pt_low_bat, int pt_over_cur)
 static int pt_is_low(int pt_low_vol, int pt_low_bat, int pt_over_cur)
 {
 	int is_low = 0;
-
+//__XIAOMI_CAMERA__
+/*
 	if (pt_low_vol >= pt_low_bat_level ||
 			pt_low_bat >= pt_bat_pc_level ||
 			pt_over_cur >= pt_bat_oc_level) {
@@ -606,12 +609,14 @@ static int pt_is_low(int pt_low_vol, int pt_low_bat, int pt_over_cur)
 		if (pt_strict)
 			is_low = 2;
 	}
-
+*/
 	return is_low;
 }
 
 static int pt_trigger(void)
 {
+//__XIAOMI_CAMERA__
+/*
 	struct flashlight_dev *fdev;
 
 	mutex_lock(&fl_mutex);
@@ -635,7 +640,7 @@ static int pt_trigger(void)
 		fdev->ops->flashlight_release();
 	}
 	mutex_unlock(&fl_mutex);
-
+*/
 	return 0;
 }
 
@@ -701,6 +706,8 @@ static long _flashlight_ioctl(
 	type = fdev->dev_id.type;
 	ct = fdev->dev_id.ct;
 	part = fdev->dev_id.part;
+	pr_info("flashlight_ioctl arg (%d),channel%d),type(%d),ct(%d),part(%d),cmd (%d)",
+			fl_dev_arg.arg, fl_dev_arg.channel, type, ct, part,cmd);
 
 	if (flashlight_verify_index(type, ct, part)) {
 		pr_info("Failed with error index\n");
@@ -774,7 +781,7 @@ static long _flashlight_ioctl(
 		break;
 
 	case FLASHLIGHTIOC_X_SET_DRIVER:
-		pr_debug("FLASHLIGHTIOC_X_SET_DRIVER(%d,%d,%d): %d\n",
+		pr_info("FLASHLIGHTIOC_X_SET_DRIVER(%d,%d,%d): %d\n",
 				type, ct, part, fl_arg.arg);
 		if (fdev->ops) {
 			ret = fdev->ops->flashlight_set_driver(fl_arg.arg);
@@ -791,7 +798,7 @@ static long _flashlight_ioctl(
 		break;
 
 	case FLASH_IOC_SET_SCENARIO:
-		pr_debug("FLASH_IOC_SET_SCENARIO(%d,%d,%d): %d\n",
+		pr_info("FLASH_IOC_SET_SCENARIO(%d,%d,%d): %d\n",
 				type, ct, part, fl_arg.arg);
 		if (fdev->ops) {
 			if (fdev->dev_id.decouple)
@@ -819,7 +826,7 @@ static long _flashlight_ioctl(
 		break;
 
 	case FLASH_IOC_SET_DUTY:
-		pr_debug("FLASH_IOC_SET_DUTY(%d,%d,%d): %d\n",
+		pr_info("FLASH_IOC_SET_DUTY(%d,%d,%d): %d\n",
 				type, ct, part, fl_arg.arg);
 		mutex_lock(&fl_mutex);
 		ret = fl_set_level(fdev, fl_arg.arg);
@@ -827,7 +834,7 @@ static long _flashlight_ioctl(
 		break;
 
 	case FLASH_IOC_SET_ONOFF:
-		pr_debug("FLASH_IOC_SET_ONOFF(%d,%d,%d): %d\n",
+		pr_info("FLASH_IOC_SET_ONOFF(%d,%d,%d): %d\n",
 				type, ct, part, fl_arg.arg);
 		mutex_lock(&fl_mutex);
 		ret = fl_enable(fdev, fl_arg.arg);
@@ -891,6 +898,8 @@ static int flashlight_open(struct inode *inode, struct file *file)
 		if (!fdev->ops)
 			continue;
 
+		pr_info("Open(%d,%d,%d)\n", fdev->dev_id.type,
+				fdev->dev_id.ct, fdev->dev_id.part);
 		fdev->ops->flashlight_open();
 	}
 	mutex_unlock(&fl_mutex);
@@ -907,6 +916,8 @@ static int flashlight_release(struct inode *inode, struct file *file)
 		if (!fdev->ops)
 			continue;
 
+		pr_info("Release(%d,%d,%d)\n", fdev->dev_id.type,
+				fdev->dev_id.ct, fdev->dev_id.part);
 		fdev->ops->flashlight_release();
 	}
 	mutex_unlock(&fl_mutex);
@@ -989,7 +1000,7 @@ static ssize_t flashlight_strobe_store(struct device *dev,
 		goto unlock;
 	}
 
-	pr_debug("(%d, %d, %d), (%d, %d)\n",
+	pr_info("(%d, %d, %d), (%d, %d)\n",
 			fl_arg.type, fl_arg.ct, fl_arg.part,
 			fl_arg.level, fl_arg.dur);
 
@@ -1225,6 +1236,356 @@ unlock:
 }
 static DEVICE_ATTR_RW(flashlight_charger);
 
+#ifdef __XIAOMI_CAMERA__
+static int fl_enable_xiaomi(struct flashlight_dev *fdev, int enable)
+{
+	struct flashlight_dev_arg fl_dev_arg;
+
+	if (!fdev || !fdev->ops) {
+		pr_info("Failed with no flashlight ops\n");
+		return -EINVAL;
+	}
+
+	/* consider pt status */
+#ifdef CONFIG_MTK_FLASHLIGHT_DLPT
+	kicker_pbm_by_flash(enable);
+#endif
+#ifdef CONFIG_MTK_FLASHLIGHT_PT
+	if (pt_is_low(pt_low_vol, pt_low_bat, pt_over_cur) == 2)
+		if (enable) {
+			enable = 0;
+			pr_info("Failed to enable since pt(%d,%d,%d), pt strict(%d)\n",
+					pt_low_vol, pt_low_bat,
+					pt_over_cur, pt_strict);
+		}
+#endif
+
+	if (fdev->sw_disable_status == FLASHLIGHT_SW_DISABLE_ON) {
+		pr_info("Sw disable on\n");
+		return 0;
+	}
+
+	/* ioctl */
+	fl_dev_arg.channel = fdev->dev_id.channel;
+	fl_dev_arg.arg = enable;
+	if (fdev->ops->flashlight_ioctl(XIAOMI_IOC_SET_ONOFF,
+				(unsigned long)&fl_dev_arg)) {
+		pr_info("Failed to set on/off\n");
+		return -EFAULT;
+	}
+
+	/* update device status */
+	fdev->enable = enable;
+
+	return 0;
+}
+
+
+
+static int set_flash_cur_xiaomi(struct flashlight_dev *fdev, int flash_cur, int flash_timeout)
+{
+	struct flashlight_dev_arg fl_dev_arg;
+
+	if (!fdev || !fdev->ops) {
+		pr_info("Failed with no flashlight ops\n");
+		return -EINVAL;
+	}
+
+	fl_dev_arg.channel = fdev->dev_id.channel;
+	fl_dev_arg.arg     = V4L2_FLASH_LED_MODE_FLASH;
+	if (fdev->ops->flashlight_ioctl(XIAOMI_IOC_SET_MODE,
+				(unsigned long)&fl_dev_arg)) {
+		pr_info("Failed to set flash mode\n");
+		return -EFAULT;
+	}
+
+	/* ioctl */
+	fl_dev_arg.channel = fdev->dev_id.channel;
+	fl_dev_arg.arg     = flash_timeout;
+
+	/* set timeout */
+	if (fdev->ops->flashlight_ioctl(XIAOMI_IOC_SET_HW_TIMEOUT,
+				(unsigned long)&fl_dev_arg)) {
+		pr_info("Failed to set flash timeout\n");
+		return -EFAULT;
+	}
+
+	/* set cur */
+	fl_dev_arg.arg     = flash_cur;
+	if (fdev->ops->flashlight_ioctl(XIAOMI_IOC_SET_FLASH_CUR,
+				(unsigned long)&fl_dev_arg)) {
+		pr_info("Failed to set flash cur\n");
+		return -EFAULT;
+	}
+	return 0;
+}
+
+static int set_torch_cur_xiaomi(struct flashlight_dev *fdev, int torch_cur)
+{
+	struct flashlight_dev_arg fl_dev_arg;
+
+	if (!fdev || !fdev->ops) {
+		pr_info("Failed with no flashlight ops\n");
+		return -EINVAL;
+	}
+
+	fl_dev_arg.channel = fdev->dev_id.channel;
+	fl_dev_arg.arg     = V4L2_FLASH_LED_MODE_TORCH;
+	if (fdev->ops->flashlight_ioctl(XIAOMI_IOC_SET_MODE,
+				(unsigned long)&fl_dev_arg)) {
+		pr_info("Failed to set torch mode\n");
+		return -EFAULT;
+	}
+
+	/* ioctl */
+	fl_dev_arg.channel = fdev->dev_id.channel;
+	fl_dev_arg.arg     = torch_cur;
+	if (fdev->ops->flashlight_ioctl(XIAOMI_IOC_SET_TORCH_CUR,
+				(unsigned long)&fl_dev_arg)) {
+		pr_info("Failed to set flash cur\n");
+		return -EFAULT;
+	}
+	return 0;
+}
+
+
+/* torch status sysfs */
+static ssize_t flashlight_show(
+		struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct flashlight_dev *fdev;
+	char status[FLASHLIGHT_TORCH_STATUS_BUF_SIZE];
+	char status_tmp[FLASHLIGHT_TORCH_STATUS_TMPBUF_SIZE];
+	int ret;
+
+	pr_debug("Torch status show\n");
+
+	memset(status, '\0', FLASHLIGHT_TORCH_STATUS_BUF_SIZE);
+
+	mutex_lock(&fl_mutex);
+	list_for_each_entry(fdev, &flashlight_list, node) {
+		if (!fdev->ops)
+			continue;
+
+		ret = snprintf(status_tmp,
+				FLASHLIGHT_TORCH_STATUS_TMPBUF_SIZE,
+				"%d %d %d %d\n", fdev->dev_id.type,
+				fdev->dev_id.ct, fdev->dev_id.part,
+				fdev->torch_status);
+		if (ret < 0)
+			pr_info("snprintf failed\n");
+
+		strncat(status, status_tmp,
+				FLASHLIGHT_TORCH_STATUS_TMPBUF_SIZE);
+	}
+	mutex_unlock(&fl_mutex);
+
+	return scnprintf(buf, PAGE_SIZE,
+			"[TYPE] [CT] [PART] [TORCH_STATUS]\n%s\n", status);
+}
+
+static ssize_t flashlight_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct flashlight_dev *fdev;
+	int torch_status_tmp = 0;
+	int ret;
+
+	pr_debug("Torch status store\n");
+
+	if (buf) {
+		ret = kstrtos32(buf, 10, &torch_status_tmp);
+		if (ret) {
+			pr_info("Error arguments\n");
+			goto unlock;
+		}
+	}
+
+	if (torch_status_tmp < FLASHLIGHT_TORCH_OFF ||
+			torch_status_tmp > FLASHLIGHT_TORCH_ON) {
+		pr_info("Error arguments torch status(%d)\n",
+				torch_status_tmp);
+		ret = -1;
+		goto unlock;
+	}
+
+	mutex_lock(&fl_mutex);
+	list_for_each_entry(fdev, &flashlight_list, node) {
+		if (!fdev->ops)
+			continue;
+
+	if (flashlight_verify_index(fdev->dev_id.type, fdev->dev_id.ct, fdev->dev_id.part)) {
+		pr_info("Error arguments\n");
+		ret = -1;
+		goto unlock;
+	}
+
+	pr_info("(%d, %d, %d), (%d)\n", fdev->dev_id.type, fdev->dev_id.ct, fdev->dev_id.part,
+			torch_status_tmp);
+
+	pr_info("torch status:%d\n", fdev->torch_status);
+	if (fdev->ops && (fdev->torch_status != torch_status_tmp)) {
+		if (torch_status_tmp) {
+			fdev->ops->flashlight_open();
+			fdev->ops->flashlight_set_driver(1);
+			fl_enable(fdev, 1);
+		} else {
+			fl_enable(fdev, 0);
+			fdev->ops->flashlight_set_driver(0);
+			fdev->ops->flashlight_release();
+		}
+	}
+	fdev->torch_status = torch_status_tmp;
+	}
+	mutex_unlock(&fl_mutex);
+
+
+	ret = size;
+unlock:
+	return ret;
+}
+static DEVICE_ATTR_RW(flashlight);
+
+static int flash_cur_sum = 0;
+
+static ssize_t flashbrightness_show(
+		struct device *dev, struct device_attribute *attr, char *buf)
+{
+	pr_debug("flashbrightness status show\n");
+	return scnprintf(buf, PAGE_SIZE, "flash cur [%d]\n", flash_cur_sum);
+}
+
+static ssize_t flashbrightness_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct flashlight_dev *fdev;
+	int flash_mode_timeout = 400;
+	int ret;
+
+	pr_debug("flashbrightness status store\n");
+
+	if (buf) {
+		ret = kstrtos32(buf, 10, &flash_cur_sum);
+		if (ret) {
+			pr_info("Error flash_cur_sum arguments\n");
+			goto unlock;
+		}
+	}
+
+	if (flash_cur_sum < 0 || flash_cur_sum > 3000) {
+		pr_info("Error arguments flash_cur_sum(%d)\n", flash_cur_sum);
+		flash_cur_sum = 0;
+	}
+
+	mutex_lock(&fl_mutex);
+
+	flash_cur_sum = flash_cur_sum * 1000;
+
+	list_for_each_entry(fdev, &flashlight_list, node) {
+		if (!fdev->ops)
+			pr_info(" Error arguments\n ");
+		break;
+	}
+
+	if (flashlight_verify_index(fdev->dev_id.type, fdev->dev_id.ct, fdev->dev_id.part)) {
+		pr_info("Error arguments\n");
+		ret = -1;
+		goto unlock;
+	}
+
+	pr_info("(%d, %d, %d), flash_cur_sum(%d) flash_mode_timeout(%d)\n", fdev->dev_id.type, fdev->dev_id.ct, fdev->dev_id.part,
+			flash_cur_sum, flash_mode_timeout);
+
+	if (flash_cur_sum && flash_mode_timeout) {
+		fdev->ops->flashlight_open();
+		fdev->ops->flashlight_set_driver(1);
+		set_flash_cur_xiaomi(fdev, flash_cur_sum, flash_mode_timeout);
+		fl_enable_xiaomi(fdev, 1);
+	} else {
+		fl_enable_xiaomi(fdev, 0);
+		fdev->ops->flashlight_set_driver(0);
+		fdev->ops->flashlight_release();
+	}
+
+	mutex_unlock(&fl_mutex);
+
+
+	ret = size;
+unlock:
+	return ret;
+}
+static DEVICE_ATTR_RW(flashbrightness);
+
+
+/* torchmode brightness set */
+static int torch_cur_sum = 0;
+static ssize_t torchbrightness_show(
+		struct device *dev, struct device_attribute *attr, char *buf)
+{
+	pr_debug("torchbrightness status show\n");
+	return scnprintf(buf, PAGE_SIZE, "torch cur [%d]\n", torch_cur_sum);
+}
+
+static ssize_t torchbrightness_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct flashlight_dev *fdev;
+	int ret;
+
+	pr_debug("torchbrightness status store\n");
+
+	if (buf) {
+		ret = kstrtos32(buf, 10, &torch_cur_sum);
+		if (ret) {
+			pr_info("Error arguments\n");
+			goto unlock;
+		}
+	}
+
+	if (torch_cur_sum < 0 || torch_cur_sum > 380) {
+		pr_info("Error arguments torch_cur_sum(%d)\n", torch_cur_sum);
+		torch_cur_sum = 0;
+	}
+
+	mutex_lock(&fl_mutex);
+
+	torch_cur_sum = torch_cur_sum * 1000;
+
+	list_for_each_entry(fdev, &flashlight_list, node) {
+		if (!fdev->ops)
+			pr_info(" Error arguments\n ");
+		break;
+	}
+
+	if (flashlight_verify_index(fdev->dev_id.type, fdev->dev_id.ct, fdev->dev_id.part)) {
+		pr_info("Error arguments\n");
+		ret = -1;
+		goto unlock;
+	}
+
+	pr_info("(%d, %d, %d), torch_cur_sum(%d)\n", fdev->dev_id.type, fdev->dev_id.ct, fdev->dev_id.part,
+			torch_cur_sum);
+
+	if (torch_cur_sum) {
+		fdev->ops->flashlight_open();
+		fdev->ops->flashlight_set_driver(1);
+		set_torch_cur_xiaomi(fdev, torch_cur_sum);
+		fl_enable_xiaomi(fdev, 1);
+	} else {
+		fl_enable_xiaomi(fdev, 0);
+		fdev->ops->flashlight_set_driver(0);
+		fdev->ops->flashlight_release();
+	}
+
+	mutex_unlock(&fl_mutex);
+
+
+	ret = size;
+unlock:
+	return ret;
+}
+static DEVICE_ATTR_RW(torchbrightness);
+#endif //__XIAOMI_CAMERA__
 /* torch status sysfs */
 static ssize_t flashlight_torch_show(
 		struct device *dev, struct device_attribute *attr, char *buf)
@@ -1319,7 +1680,7 @@ static ssize_t flashlight_torch_store(struct device *dev,
 		goto unlock;
 	}
 
-	pr_debug("(%d, %d, %d), (%d)\n", fl_arg.type, fl_arg.ct, fl_arg.part,
+	pr_info("(%d, %d, %d), (%d)\n", fl_arg.type, fl_arg.ct, fl_arg.part,
 			torch_status_tmp);
 
 	/* store torch status */
@@ -1757,7 +2118,7 @@ static int fl_parse_dt(struct device *dev)
 
 static int flashlight_probe(struct platform_device *dev)
 {
-	pr_debug("Probe start\n");
+	pr_info("Probe start\n");
 
 	/* allocate char device number */
 	if (alloc_chrdev_region(&flashlight_devno, 0, 1, FLASHLIGHT_DEVNAME)) {
@@ -1840,16 +2201,40 @@ static int flashlight_probe(struct platform_device *dev)
 		pr_info("Failed to create device file(torch)\n");
 		goto err_create_torch_device_file;
 	}
+#ifdef __XIAOMI_CAMERA__
+	if (device_create_file(flashlight_device,
+				&dev_attr_flashlight)) {
+		pr_info("Failed to create device file(torch)\n");
+		goto err_create_xiaomi_torch_device_file;
+	}
+	if (device_create_file(flashlight_device,
+				&dev_attr_flashbrightness)) {
+		pr_info("Failed to create device file(torch)\n");
+		goto err_create_xiaomi_torch_device_file;
+	}
+	if (device_create_file(flashlight_device,
+				&dev_attr_torchbrightness)) {
+		pr_info("Failed to create device file(torch)\n");
+		goto err_create_xiaomi_torch_device_file;
+	}
+
+#endif
 
 	fl_parse_dt(&dev->dev);
 
 	/* init flashlight */
 	fl_init();
 
-	pr_debug("Probe done\n");
+	pr_info("Probe done\n");
 
 	return 0;
 
+#ifdef __XIAOMI_CAMERA__
+err_create_xiaomi_torch_device_file:
+	device_remove_file(flashlight_device, &dev_attr_flashlight);
+	device_remove_file(flashlight_device, &dev_attr_flashbrightness);
+	device_remove_file(flashlight_device, &dev_attr_torchbrightness);
+#endif
 err_create_torch_device_file:
 	device_remove_file(flashlight_device, &dev_attr_flashlight_torch);
 err_create_sw_disable_device_file:
@@ -1882,6 +2267,11 @@ static int flashlight_remove(struct platform_device *dev)
 	fl_uninit();
 
 	/* remove device file */
+#ifdef __XIAOMI_CAMERA__
+	device_remove_file(flashlight_device, &dev_attr_flashlight);
+	device_remove_file(flashlight_device, &dev_attr_flashbrightness);
+	device_remove_file(flashlight_device, &dev_attr_torchbrightness);
+#endif
 	device_remove_file(flashlight_device, &dev_attr_flashlight_torch);
 	device_remove_file(flashlight_device, &dev_attr_flashlight_sw_disable);
 	device_remove_file(flashlight_device, &dev_attr_flashlight_fault);
@@ -1942,7 +2332,7 @@ static int __init flashlight_init(void)
 {
 	int ret;
 
-	pr_debug("Init start\n");
+	pr_info("Init start\n");
 
 #ifndef CONFIG_OF
 	ret = platform_device_register(&flashlight_platform_device);
@@ -1967,7 +2357,7 @@ static int __init flashlight_init(void)
 			&pt_oc_callback, BATTERY_OC_PRIO_FLASHLIGHT, NULL);
 #endif
 
-	pr_debug("Init done\n");
+	pr_info("Init done\n");
 
 	return 0;
 }

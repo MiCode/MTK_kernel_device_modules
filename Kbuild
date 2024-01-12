@@ -80,6 +80,8 @@ obj-y += drivers/gpu/drm/mediatek/
 
 obj-y += drivers/input/touchscreen/
 
+obj-y += drivers/input/fingerprint/
+
 obj-y += drivers/gpu/drm/panel/
 
 obj-y += drivers/gpu/mediatek/
@@ -92,12 +94,18 @@ obj-y += drivers/devfreq/
 
 obj-y += drivers/misc/mediatek/
 
+obj-y += drivers/misc/xiaomi/
+
 obj-y += sound/soc/codecs/
 
 obj-y += sound/soc/mediatek/
 
 obj-y += drivers/pci/controller/
 
+obj-y += drivers/input/misc/
+
 obj-y += arch/arm64/geniezone/
+
+obj-y += drivers/staging/process_exit/
 
 endif

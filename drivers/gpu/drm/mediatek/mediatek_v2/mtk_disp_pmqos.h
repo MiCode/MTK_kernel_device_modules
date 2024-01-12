@@ -16,6 +16,7 @@ enum DISP_QOS_BW_MODE {
 	DISP_BW_HRT_MODE,
 };
 
+#define NO_PENDING_MM (0xFFFF)
 #define NO_PENDING_HRT (0xFFFF)
 #define OVL_REQ_HRT (0x1)
 #define RDMA_REQ_HRT (0x2)
@@ -27,6 +28,7 @@ struct mtk_ddp_comp;
 
 struct mtk_drm_qos_ctx {
 	unsigned int last_hrt_req;
+	unsigned int last_mmclk_req;
 	unsigned int last_mmclk_req_idx;
 	atomic_t last_hrt_idx;
 	atomic_t hrt_cond_sig;

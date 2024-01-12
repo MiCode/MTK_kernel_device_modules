@@ -51,6 +51,7 @@
 #include "audio_task.h"
 #include "audio_controller_msg_id.h"
 #endif
+#include "usb_boost.h"
 #include "usb_offload.h"
 #include "audio_task_usb_msg_id.h"
 
@@ -66,6 +67,8 @@ struct usb_offload_buffer *buf_ctx;
 struct usb_offload_buffer *buf_seg;
 struct usb_offload_buffer *buf_ev_table;
 struct usb_offload_buffer buf_allocated[2];
+
+static bool is_vcore_hold;
 
 unsigned int usb_offload_log;
 module_param(usb_offload_log, uint, 0644);
@@ -99,6 +102,70 @@ static int xhci_mtk_ring_expansion(struct xhci_hcd *xhci,
 static int xhci_mtk_update_erst(struct usb_offload_dev *udev,
 	struct xhci_segment *first,	struct xhci_segment *last, unsigned int num_segs);
 
+static int set_interface(struct usb_device *udev,
+			     struct usb_host_interface *alts,
+			     int iface, int alt)
+{
+	return 0;
+}
+static int set_pcm_intf(struct usb_interface *intf, int iface, int alt,
+			    int direction, struct snd_usb_substream *subs)
+{
+	struct snd_usb_audio *chip = subs->stream->chip;
+	struct snd_usb_endpoint *ep = subs->data_endpoint;
+	int altset = ep->altsetting;
+	int err, vid, pid;
+
+	vid = chip->dev->descriptor.idVendor;
+	pid = chip->dev->descriptor.idProduct;
+	USB_OFFLOAD_MEM_DBG("vid:0x%x pid:0x%x\n", vid, pid);
+
+	if ((vid == 0x20b1 && pid == 0x302e) ||
+			(vid == 0x2fc6 && pid == 0xf823) ||
+			(vid == 0x2fc6 && pid == 0xf090) ||
+			(vid == 0x2fc6 && pid == 0xf826) ||
+			(vid == 0x2fc6 && pid == 0xf801) ||
+			(vid == 0x20b1 && pid == 0x302b) ||
+			(vid == 0x2972 && pid == 0x0053) ||
+			(vid == 0x20b1 && pid == 0x302d) ||
+			(vid == 0x2d87 && pid == 0xc001) ||
+			(vid == 0x2fc6 && pid == 0xf070) ||
+			(vid == 0x2fc6 && pid == 0xf822)) {
+		USB_OFFLOAD_INFO("turn on/off interface again\n");
+		err = usb_set_interface(chip->dev, ep->iface, 0);
+		if (err < 0) {
+			USB_OFFLOAD_ERR("fail to set interface 0\n");
+			return err;
+		}
+
+		if (vid == 0x2fc6 && pid == 0xf070) {
+			mdelay(20);
+		} else {
+			mdelay(10);
+		}
+
+		err = usb_set_interface(chip->dev, ep->iface, altset);
+		if (err < 0) {
+			USB_OFFLOAD_ERR("fail to set interface %d\n", altset);
+			return err;
+		}
+	}
+
+	return 0;
+}
+static int set_pcm_connection(struct usb_device *udev,
+				  enum snd_vendor_pcm_open_close onoff,
+				  int direction)
+{
+	return 0;
+}
+
+static struct snd_usb_audio_vendor_ops alsa_ops = {
+	.set_interface = set_interface,
+	.set_pcm_intf = set_pcm_intf,
+	.set_pcm_connection = set_pcm_connection,
+};
+
 static void memory_cleanup(void)
 {
 	USB_OFFLOAD_MEM_DBG("++\n");
@@ -109,6 +176,13 @@ static void memory_cleanup(void)
 	/* free event ring related resource */
 	xhci_mtk_free_erst(uodev);
 	xhci_mtk_free_event_ring(uodev);
+
+	USB_OFFLOAD_MEM_DBG("is_vcore_hold:%d\n", is_vcore_hold);
+	if (is_vcore_hold) {
+		usb_boost_vcore_control(false);
+		USB_OFFLOAD_INFO("request releasing vcore\n");
+		is_vcore_hold = false;
+	}
 
 	USB_OFFLOAD_MEM_DBG("--\n");
 }
@@ -1310,11 +1384,33 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 			return ret;
 		}
 
+		USB_OFFLOAD_MEM_DBG("is_vcore_hold:%d dir:%d speed:%d\n",
+			is_vcore_hold, uainfo->direction, subs->dev->speed);
+		if (uainfo->direction &&
+			subs->dev->speed == USB_SPEED_HIGH) {
+			if (!is_vcore_hold) {
+				USB_OFFLOAD_INFO("request holding vcore\n");
+				usb_boost_vcore_control(true);
+				is_vcore_hold = true;
+			}
+		}
+
 	} else {
 		ret = substream->ops->hw_free(substream);
 		USB_OFFLOAD_INFO("hw_free, ret: %d\n", ret);
 
 		msg.uainfo.direction = uainfo->direction;
+
+		USB_OFFLOAD_MEM_DBG("is_vcore_hold:%d dir:%d speed:%d\n",
+			is_vcore_hold, uainfo->direction, subs->dev->speed);
+		if (uainfo->direction &&
+			subs->dev->speed == USB_SPEED_HIGH) {
+			if (is_vcore_hold) {
+				usb_boost_vcore_control(false);
+				USB_OFFLOAD_INFO("request releasing vcore\n");
+				is_vcore_hold = false;
+			}
+		}
 	}
 	mutex_unlock(&uodev->dev_lock);
 
@@ -2470,6 +2566,9 @@ static int usb_offload_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	if (snd_vendor_set_ops(&alsa_ops))
+		USB_OFFLOAD_ERR("fail registering ALSA OPS\n");
+
 	uodev->dev = &pdev->dev;
 	uodev->enable_adv_lowpwr =
 		of_property_read_bool(pdev->dev.of_node, "adv-lowpower");
@@ -2491,6 +2590,7 @@ static int usb_offload_probe(struct platform_device *pdev)
 	uodev->event_ring = NULL;
 	uodev->erst = NULL;
 	uodev->num_entries_in_use = 0;
+	is_vcore_hold = false;
 
 	USB_OFFLOAD_INFO("adv_lowpwr:%d smc_suspend:%d smc_resume:%d\n",
 		uodev->adv_lowpwr, uodev->smc_suspend, uodev->smc_resume);

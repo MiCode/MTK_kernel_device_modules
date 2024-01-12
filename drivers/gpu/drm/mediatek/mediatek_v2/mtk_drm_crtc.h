@@ -31,6 +31,9 @@
 #include "mtk_drm_ddp_addon.h"
 #include "mtk_disp_pmqos.h"
 #include "slbc_ops.h"
+#ifdef CONFIG_MI_DISP
+#include "mi_disp/mi_disp_esd_check.h"
+#endif
 #include "mtk_disp_pq_helper.h"
 
 #define MAX_CRTC 4
@@ -135,7 +138,8 @@ enum DISP_VBLANK_REC_JOB_TYPE {
 #define DISP_SLOT_RDMA_FB_ID (DISP_SLOT_RDMA_FB_IDX + 0x4)
 #define DISP_SLOT_CUR_HRT_IDX (DISP_SLOT_RDMA_FB_ID + 0x4)
 #define DISP_SLOT_CUR_HRT_LEVEL (DISP_SLOT_CUR_HRT_IDX + 0x4)
-#define DISP_SLOT_CUR_OUTPUT_FENCE (DISP_SLOT_CUR_HRT_LEVEL + 0x4)
+#define DISP_SLOT_CUR_MM_LEVEL (DISP_SLOT_CUR_HRT_LEVEL + 0x4)
+#define DISP_SLOT_CUR_OUTPUT_FENCE (DISP_SLOT_CUR_MM_LEVEL + 0x4)
 #define DISP_SLOT_CUR_INTERFACE_FENCE (DISP_SLOT_CUR_OUTPUT_FENCE + 0x4)
 #define DISP_SLOT_OVL_STATUS						       \
 	((DISP_SLOT_CUR_INTERFACE_FENCE + 0x4))
@@ -472,6 +476,10 @@ enum MTK_CRTC_PROP {
 	CRTC_PROP_CAPS_BLOB_ID,
 	CRTC_PROP_AOSP_CCORR_LINEAR,
 	CRTC_PROP_PARTIAL_UPDATE_ENABLE,
+#ifdef CONFIG_MI_DISP_FOD_SYNC
+	/*MI FOD SYNC*/
+	CRTC_PROP_MI_FOD_SYNC_INFO,
+#endif
 	CRTC_PROP_BL_SYNC_GAMMA_GAIN,
 	CRTC_PROP_DYNAMIC_WCG_OFF,
 	CRTC_PROP_WCG_BY_COLOR_MODE,
@@ -588,6 +596,7 @@ enum CRTC_GCE_EVENT_TYPE {
 	EVENT_MDP_RDMA0_EOF,
 	EVENT_MDP_RDMA1_EOF,
 	EVENT_Y2R_EOF,
+	EVENT_OVLSYS_DISP_OVL0_2L_SOF,
 	EVENT_TYPE_MAX,
 };
 
@@ -1068,6 +1077,10 @@ struct mtk_drm_crtc {
 
 	bool dsi_null_pkt_postpone;
 
+ #ifdef CONFIG_MI_DISP_ESD_CHECK
+ 	struct mi_esd_ctx *mi_esd_ctx;
+ #endif
+
 	int dli_relay_1tnp;
 
 	unsigned int total_srt;
@@ -1425,8 +1438,12 @@ int mtk_vblank_config_rec_end_cal(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *cmdq_handle, enum DISP_VBLANK_REC_JOB_TYPE job_type);
 unsigned int mtk_drm_dump_vblank_config_rec(
 	struct mtk_drm_private *priv, char *stringbuf, int buf_len);
-void mtk_crtc_default_path_rst(struct drm_crtc *crtc);
-
+void mtk_crtc_cwb_addon_rst(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle);
+void mtk_crtc_wb_addon_rst(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle);
+void mtk_crtc_lye_addon_module_rst(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle);
+void mtk_crtc_addon_connector_rst(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle);
+void mtk_crtc_default_path_rst(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle);
+void mtk_crtc_rst_module(struct drm_crtc *crtc);
 
 
 #endif /* MTK_DRM_CRTC_H */

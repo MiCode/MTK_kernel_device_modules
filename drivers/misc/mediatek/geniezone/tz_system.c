@@ -45,7 +45,7 @@
 #include <tz_cross/ta_system.h>
 #include <linux/sched.h>
 #include <uapi/linux/sched/types.h>
-#if IS_ENABLED(CONFIG_TEE)
+#if IS_ENABLED(CONFIG_TEE) && (IS_ENABLED(CONFIG_TRUSTONIC_TEE_SUPPORT) || IS_ENABLED(CONFIG_MICROTRUST_TEE_SUPPORT))
 #include "tee_client_api.h"
 #endif
 
@@ -793,7 +793,7 @@ static int ree_service_threads(uint32_t type, uint32_t val_a, uint32_t val_b,
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_TEE)
+#if IS_ENABLED(CONFIG_TEE) && (IS_ENABLED(CONFIG_TRUSTONIC_TEE_SUPPORT) || IS_ENABLED(CONFIG_MICROTRUST_TEE_SUPPORT))
 /* teec weak functions are used when teec function are unavailable. */
 __weak u32 teec_initialize_context(const char *name, struct teec_context *context)
 {
@@ -883,7 +883,7 @@ TZ_RESULT _Gz_KreeServiceCall_body(KREE_SESSION_HANDLE handle, uint32_t command,
 		param[1].value.a = ret;
 		break;
 
-#if IS_ENABLED(CONFIG_TEE)
+#if IS_ENABLED(CONFIG_TEE) && (IS_ENABLED(CONFIG_TRUSTONIC_TEE_SUPPORT) || IS_ENABLED(CONFIG_MICROTRUST_TEE_SUPPORT))
 	case REE_SERVICE_CMD_TEE_INIT_CTX:
 		ret = TEEC_InitializeContext(
 			(char *)param[0].mem.buffer,

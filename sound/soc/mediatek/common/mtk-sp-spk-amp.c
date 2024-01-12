@@ -44,6 +44,7 @@
 
 static unsigned int mtk_spk_type;
 static int mtk_spk_i2s_out = MTK_SPK_I2S_3, mtk_spk_i2s_in = MTK_SPK_I2S_0;
+#if 0
 static struct mtk_spk_i2c_ctrl mtk_spk_list[MTK_SPK_TYPE_NUM] = {
 	[MTK_SPK_NOT_SMARTPA] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -113,6 +114,7 @@ static void mtk_spk_i2c_shutdown(struct i2c_client *client)
 	if (mtk_spk_list[mtk_spk_type].i2c_shutdown)
 		mtk_spk_list[mtk_spk_type].i2c_shutdown(client);
 }
+#endif
 
 int mtk_spk_get_type(void)
 {
@@ -201,6 +203,9 @@ int mtk_spk_update_info(struct snd_soc_card *card,
 		mtk_spk_i2s_in = i2s_set[1];
 	}
 
+	dev_info(&pdev->dev, "%s() mtk_spk_i2s_out:%d\n", __func__,mtk_spk_i2s_out);
+	dev_info(&pdev->dev, "%s() mtk_spk_i2s_in:%d\n", __func__,mtk_spk_i2s_in);
+
 	if (mtk_spk_i2s_out > MTK_SPK_I2S_TYPE_NUM ||
 	    mtk_spk_i2s_in > MTK_SPK_I2S_TYPE_NUM) {
 		dev_err(&pdev->dev, "%s(), get mtk spk i2s fail\n",
@@ -222,6 +227,8 @@ int mtk_spk_update_info(struct snd_soc_card *card,
 			   mtk_spk_i2s_out == MTK_SPK_I2S_3) {
 			i2s_out_dai_link_idx = i;
 			dai_link->name = MTK_SPK_NAME;
+			dai_link->codecs->name = NULL;
+			dai_link->codecs->dai_name = NULL;
 		} else if (i2s_out_dai_link_idx < 0 &&
 			   strcmp(dai_link->cpus->dai_name, "I2S5") == 0 &&
 			   mtk_spk_i2s_out == MTK_SPK_I2S_5) {
@@ -257,6 +264,8 @@ int mtk_spk_update_info(struct snd_soc_card *card,
 		     mtk_spk_i2s_in == MTK_SPK_TINYCONN_I2S_0)) {
 			i2s_in_dai_link_idx = i;
 			dai_link->name = MTK_SPK_REF_NAME;
+			dai_link->codecs->name = NULL;
+			dai_link->codecs->dai_name = NULL;
 		} else if (i2s_in_dai_link_idx < 0 &&
 			   strcmp(dai_link->cpus->dai_name, "I2S2") == 0 &&
 			   (mtk_spk_i2s_in == MTK_SPK_I2S_2 ||
@@ -364,6 +373,7 @@ int mtk_spk_recv_ipi_buf_from_dsp(int8_t *buffer,
 }
 EXPORT_SYMBOL(mtk_spk_recv_ipi_buf_from_dsp);
 
+#if 0
 static const struct i2c_device_id mtk_spk_i2c_id[] = {
 	{ "tfa9874", 0},
 	{ "speaker_amp", 0},
@@ -392,6 +402,7 @@ static struct i2c_driver mtk_spk_i2c_driver = {
 };
 
 module_i2c_driver(mtk_spk_i2c_driver);
+#endif
 
 MODULE_DESCRIPTION("Mediatek speaker amp register driver");
 MODULE_AUTHOR("Shane Chien <shane.chien@mediatek.com>");

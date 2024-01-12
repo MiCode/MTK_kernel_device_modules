@@ -90,6 +90,9 @@ module_param(mml_racing_eoc, int, 0644);
 int mml_hw_perf;
 module_param(mml_hw_perf, int, 0644);
 
+int mml_timeout_reset;
+module_param(mml_timeout_reset, int, 0644);
+
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 /* Assign bit to dump in/out buffer frame
  * bit 0: dump input
@@ -101,9 +104,9 @@ enum mml_bufdump_opt {
 };
 int mml_frame_dump;
 module_param(mml_frame_dump, int, 0644);
+
 static bool mml_timeout_dump = true;
 static DEFINE_MUTEX(mml_dump_mutex);
-
 static struct mml_frm_dump_data mml_frm_dumps[2] = {
 	{.prefix = "in", },
 	{.prefix = "out", },
@@ -587,18 +590,22 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 			cmdq_thread_dump(cfg->path[0]->clt->chan, task->pkts[0], NULL, NULL);
 	}
 
+	mml_clock_lock(cfg->mml);
 	call_hw_op(path->mmlsys, mminfra_pw_enable);
 	call_hw_op(path->mmlsys, pw_enable);
 	mml_dpc_exc_keep(cfg->mml);
+	mml_clock_unlock(cfg->mml);
 
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
 		call_dbg_op(comp, dump);
 	}
 
+	mml_clock_lock(cfg->mml);
 	call_hw_op(path->mmlsys, pw_disable);
 	call_hw_op(path->mmlsys, mminfra_pw_disable);
 	mml_dpc_exc_release(cfg->mml);
+	mml_clock_unlock(cfg->mml);
 }
 
 static s32 core_enable(struct mml_task *task, u32 pipe)
@@ -1561,9 +1568,10 @@ static void core_taskdump(struct mml_task *task, u32 pipe, int err)
 	mml_record_dump(task->config->mml);
 	mml_err("error dump %d end", cnt);
 
-	call_dbg_op(path->mmlsys, reset, task->config, pipe);
-
-	mml_err("error %d engine reset end", cnt);
+	if (mml_timeout_reset) {
+		call_dbg_op(path->mmlsys, reset, task->config, pipe);
+		mml_err("error %d engine reset end", cnt);
+	}
 	mml_cmdq_err = 0;
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)

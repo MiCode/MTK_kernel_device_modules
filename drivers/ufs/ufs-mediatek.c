@@ -5,7 +5,7 @@
  *	Stanley Chu <stanley.chu@mediatek.com>
  *	Peter Wang <peter.wang@mediatek.com>
  */
-
+#include <linux/async.h>
 #include <linux/arm-smccc.h>
 #include <linux/bitfield.h>
 #include <linux/cpumask.h>
@@ -63,6 +63,8 @@ static void _ufs_mtk_clk_scale(struct ufs_hba *hba, bool scale_up);
 #define MCQ_CFG_n(r, i) ((r) + MCQ_QCFG_SIZE * (i))
 #define QUEUE_EN_OFFSET 31
 #define QUEUE_ID_OFFSET 16
+
+extern struct ufscld_dev *cld;
 
 static const struct ufs_dev_quirk ufs_mtk_dev_fixups[] = {
 	{ .wmanufacturerid = UFS_ANY_VENDOR,
@@ -797,12 +799,13 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 	if (of_property_read_bool(np, "mediatek,ufs-rtff-mtcmos"))
 		host->caps |= UFS_MTK_CAP_RTFF_MTCMOS;
 
-	if (of_property_read_bool(np, "mediatek,ufs-mphy-debug"))
-		host->caps |= UFS_MTK_CAP_MPHY_DUMP;
-
 	if (of_property_read_bool(np, "mediatek,ufs-broken-rtc"))
 		host->caps |= UFS_MTK_CAP_MCQ_BROKEN_RTC;
 
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
+	if (of_property_read_bool(np, "mediatek,ufs-mphy-debug"))
+		host->caps |= UFS_MTK_CAP_MPHY_DUMP;
+#endif
 	/* Check if MCQ is allowed */
 	ufs_mtk_get_mcq_en(res);
 	mcq_en = !!res.a1;
@@ -819,6 +822,45 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 	else if (tag->boottype == BOOTDEV_UFS)
 		host->boot_device = true;
 
+}
+
+static void ufs_mtk_mcq_disable_irq(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	u32 irq, i;
+
+	if (!is_mcq_enabled(hba))
+		return;
+
+	if (host->mcq_nr_intr == 0)
+		return;
+
+	for (i = 0; i < host->mcq_nr_intr; i++) {
+		irq = host->mcq_intr_info[i].irq;
+		disable_irq(irq);
+	}
+	host->is_mcq_intr_enabled = false;
+}
+
+static void ufs_mtk_mcq_enable_irq(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	u32 irq, i;
+
+	if (!is_mcq_enabled(hba))
+		return;
+
+	if (host->mcq_nr_intr == 0)
+		return;
+
+	if (host->is_mcq_intr_enabled == true)
+		return;
+
+	for (i = 0; i < host->mcq_nr_intr; i++) {
+		irq = host->mcq_intr_info[i].irq;
+		enable_irq(irq);
+	}
+	host->is_mcq_intr_enabled = true;
 }
 
 /**
@@ -870,6 +912,7 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 			ufs_mtk_setup_ref_clk(hba, on);
 			phy_power_off(host->mphy);
 		}
+		ufs_mtk_mcq_disable_irq(hba);
 	} else if (on && status == POST_CHANGE) {
 		phy_power_on(host->mphy);
 		ufs_mtk_setup_ref_clk(hba, on);
@@ -877,6 +920,8 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 		if (!ufshcd_is_clkscaling_supported(hba) ||
 		    !hba->clk_scaling.is_enabled)
 			ufs_mtk_pm_qos(hba, on);
+	
+		ufs_mtk_mcq_enable_irq(hba);
 	}
 
 	return ret;
@@ -911,7 +956,7 @@ static void ufs_mtk_mcq_set_irq_affinity(struct ufs_hba *hba)
 		}
 
 		/* force migrate irq of cpu0 to cpu3 */
-		_cpu = (cpu == 0) ? 3 : cpu;
+		_cpu = (cpu == 0) ? 0 : cpu;
 		ret = irq_set_affinity(irq, cpumask_of(_cpu));
 		if (ret) {
 			dev_err(hba->dev, "set irq %d affinity to CPU %d failed\n",
@@ -1073,6 +1118,29 @@ static int ufs_mtk_install_tracepoints(struct ufs_hba *hba)
 	}
 
 	return 0;
+}
+
+/*
+ * HW version format has been changed from 01MMmmmm to 1MMMmmmm, since
+ * project MT6878. In order to perform correct version comparison,
+ * version number is changed by SW for the following projects.
+ * IP_VER_MT6897	0x01440000 to 0x10440000
+ * IP_VER_MT6989	0x01450000 to 0x10450000
+ * IP_VER_MT6991	0x01460000 to 0x10460000
+ */
+static void ufs_mtk_get_hw_ip_version(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	u32 hw_ip_ver;
+
+	hw_ip_ver = ufshcd_readl(hba, REG_UFS_MTK_IP_VER);
+
+	if ((hw_ip_ver & 0xFF000000) == 0x01000000) {
+		hw_ip_ver &= ~0xFF000000;
+		hw_ip_ver |= 0x10000000;
+	}
+
+	host->ip_ver = hw_ip_ver;
 }
 
 static void ufs_mtk_get_controller_version(struct ufs_hba *hba)
@@ -1512,7 +1580,7 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	/* Enable WriteBooster */
 	hba->caps |= UFSHCD_CAP_WB_EN;
 
-	/* enable clk scaling*/
+	/* Enable clk scaling*/
 	hba->caps |= UFSHCD_CAP_CLK_SCALING;
 	host->clk_scale_up = true; /* default is max freq */
 
@@ -1526,6 +1594,8 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	if (host->caps & UFS_MTK_CAP_DISABLE_AH8)
 		hba->caps |= UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
+
+	ufs_mtk_get_hw_ip_version(hba);
 
 	if (ufs_mtk_is_mphy_dump(hba))
 		ufs_mtk_dbg_phy_enable(hba);
@@ -1552,8 +1622,6 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	}
 
 	ufs_mtk_setup_clocks(hba, true, POST_CHANGE);
-
-	host->ip_ver = ufshcd_readl(hba, REG_UFS_MTK_IP_VER);
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 	ufs_mtk_check_bus_init(host->ip_ver);
@@ -2061,6 +2129,14 @@ rpm:
 		_ufs_mtk_clk_scale(hba, false);
 	}
 
+	/*
+	 * clk_scaling framework may not work because remove
+	 * UFSHCD_CAP_CLK_SCALING and active_reqs is wrong.
+	 * Clear clk_scaling active_reqs before unblock request.
+	 */
+	if (scale_allow)
+		hba->clk_scaling.active_reqs = 0;
+
 out:
 	ufshcd_release(hba);
 	ufs_mtk_scsi_unblock_requests(hba);
@@ -2075,6 +2151,8 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 	static bool is_forced;
 	unsigned long flags;
 	bool scale_allow = true;
+	bool scale_suspend = false;
+	bool scale_resume = false;
 
 	/* Already in desire mode */
 	if (scale_mode == mode)
@@ -2090,6 +2168,7 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 		scale_allow = false;
 
 	if (mode == CLK_SCALE_FREE_RUN) {
+		ufs_mtk_scsi_block_requests(hba);
 		if (saved_gear >= UFS_HS_G5)
 			ufs_mtk_config_pwr_mode(hba, CLK_FORCE_SCALE_UP,
 				scale_allow);
@@ -2098,20 +2177,35 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 				scale_allow);
 
 		if (scale_allow) {
+			spin_lock_irqsave(hba->host->host_lock, flags);
+			if (hba->clk_scaling.is_suspended) {
+				scale_resume = true;
+				hba->clk_scaling.is_suspended = false;
+			}
+			spin_unlock_irqrestore(hba->host->host_lock, flags);
+
+			if (scale_resume)
+				devfreq_resume_device(hba->devfreq);
 			hba->caps |= UFSHCD_CAP_CLK_SCALING;
-			devfreq_resume_device(hba->devfreq);
+			hba->clk_scaling.active_reqs = 0;
 		}
+		ufs_mtk_scsi_unblock_requests(hba);
 
 		is_forced = false;
 	} else {
 		if (!is_forced) {
 			if (scale_allow) {
-				/* TODO: Export __ufshcd_suspend_clkscaling() */
-				devfreq_suspend_device(hba->devfreq);
-				spin_lock_irqsave(hba->host->host_lock, flags);
-				hba->clk_scaling.window_start_t = 0;
-				spin_unlock_irqrestore(hba->host->host_lock, flags);
 				hba->caps &= ~UFSHCD_CAP_CLK_SCALING;
+				spin_lock_irqsave(hba->host->host_lock, flags);
+				if (!hba->clk_scaling.is_suspended) {
+					scale_suspend = true;
+					hba->clk_scaling.is_suspended = true;
+					hba->clk_scaling.window_start_t = 0;
+				}
+				spin_unlock_irqrestore(hba->host->host_lock, flags);
+
+				if (scale_suspend)
+					devfreq_suspend_device(hba->devfreq);
 			}
 
 			saved_gear = hba->pwr_info.gear_rx;
@@ -2138,7 +2232,7 @@ static int ufs_mtk_mcq_config_cqid(struct ufs_hba *hba)
 
 		/* Config CQID and re-enable SQ */
 		reg |= (1 << QUEUE_EN_OFFSET) |
-			(3 << QUEUE_ID_OFFSET);
+			(i << QUEUE_ID_OFFSET);
 		ufsmcq_writel(hba, reg, sq_attr);
 	}
 	ufs_mtk_scsi_unblock_requests(hba);
@@ -2327,9 +2421,11 @@ static int ufs_mtk_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 
 	ufs_mtk_sram_pwr_ctrl(false, res);
 
-	/* Release pm_qos if enter suspend is scale up mode */
-	if (ufshcd_is_clkscaling_supported(hba) && (host->clk_scale_up))
+	/* Release pm_qos/clk if enter suspend is scale up mode */
+	if (ufshcd_is_clkscaling_supported(hba) && (host->clk_scale_up)) {
 		ufs_mtk_pm_qos(hba, false);
+		_ufs_mtk_clk_scale(hba, false);
+	}
 
 	return 0;
 fail:
@@ -2356,6 +2452,12 @@ static int ufs_mtk_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	err = ufs_mtk_mphy_power_on(hba, true);
 	if (err)
 		goto fail;
+
+	/* Request pm_qos/clk if enter suspend is scale up mode */
+	if (ufshcd_is_clkscaling_supported(hba) && (host->clk_scale_up)) {
+		ufs_mtk_pm_qos(hba, true);
+		_ufs_mtk_clk_scale(hba, true);
+	}
 
 	if (ufshcd_is_link_hibern8(hba)) {
 		err = ufs_mtk_link_set_hpm(hba);
@@ -2485,7 +2587,9 @@ static int ufs_mtk_apply_dev_quirks(struct ufs_hba *hba)
 		if (ufs_mtk_is_tx_skew_fix(hba) &&
 			(STR_PRFX_EQUAL("MT128GBCAV2U31", dev_info->model) ||
 			STR_PRFX_EQUAL("MT256GBCAV4U31", dev_info->model) ||
-			STR_PRFX_EQUAL("MT512GBCAV8U31", dev_info->model))) {
+			STR_PRFX_EQUAL("MT512GBCAV8U31", dev_info->model) ||
+			STR_PRFX_EQUAL("MT256GBEAX4U40", dev_info->model) ||
+			STR_PRFX_EQUAL("MT512GAYAX4U40", dev_info->model))) {
 			ufshcd_dme_set(hba, UIC_ARG_MIB(PA_TACTIVATE), 8);
 		}
 	}

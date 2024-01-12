@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Misc devices
+#
+
+menu "Xiaomi Misc devices"
+endmenu

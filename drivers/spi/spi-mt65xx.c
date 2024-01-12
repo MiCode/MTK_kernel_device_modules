@@ -22,6 +22,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/time.h>
 #include <linux/timekeeping.h>
+#include "../input/fingerprint/xiaomi_fp/fp_spi.h"
 
 #define SPI_CFG0_REG                      0x0000
 #define SPI_CFG1_REG                      0x0004
@@ -1665,6 +1666,11 @@ static int mtk_spi_probe(struct platform_device *pdev)
 		goto err_put_master;
 	}
 
+	if(strncmp(dev_name(&master->dev), FP_USE_SPI, FP_USE_SPI_LENGTH) == 0) {
+		fingerprint_ms = spi_master_get_devdata(master);
+		pr_info("it is Fingerprint spi");
+	}
+
 	return 0;
 
 err_put_master:
@@ -1796,6 +1802,19 @@ void mt_spi_enable_master_clk(struct spi_device *spidev)
 	ret = clk_prepare_enable(ms->spi_clk);
 }
 EXPORT_SYMBOL(mt_spi_enable_master_clk);
+
+void spi_disable_fingerprint_clk(void)
+{
+	clk_disable_unprepare(fingerprint_ms->spi_clk);
+}
+EXPORT_SYMBOL(spi_disable_fingerprint_clk);
+
+void spi_enable_fingerprint_clk(void)
+{
+	int ret;
+	ret = clk_prepare_enable(fingerprint_ms->spi_clk);
+}
+EXPORT_SYMBOL(spi_enable_fingerprint_clk);
 
 static struct platform_driver mtk_spi_driver = {
 	.driver = {

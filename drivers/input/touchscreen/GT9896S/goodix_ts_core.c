@@ -2227,7 +2227,10 @@ static int gt9896s_ts_probe(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	void **ret = NULL;
 #endif
+
+#if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
 	struct device_node *node = NULL;
+#endif
 
 	ts_info("%s IN", __func__);
 
@@ -2325,6 +2328,7 @@ static int gt9896s_ts_probe(struct platform_device *pdev)
 	/* wakeup ext module register work */
 	complete_all(&gt9896s_modules.core_comp);
 
+#if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
 	node = of_find_compatible_node(NULL, NULL, "mediatek,tui_common");
 	if (node) {
 		unsigned int tui_status = 0;
@@ -2340,6 +2344,7 @@ static int gt9896s_ts_probe(struct platform_device *pdev)
 			}
 		}
 	}
+#endif
 
 	return 0;
 

@@ -79,7 +79,7 @@ static int scp_ultra_pcm_dev_probe(struct platform_device *pdev)
 	dev = scp_ultra->dev;
 
 	platform_set_drvdata(pdev, scp_ultra);
-	pm_runtime_enable(&pdev->dev);
+	//pm_runtime_enable(&pdev->dev);
 	ret = snd_soc_register_component(&pdev->dev,
 			&mtk_scp_ultra_pcm_platform, NULL, 0);
 	if (ret) {

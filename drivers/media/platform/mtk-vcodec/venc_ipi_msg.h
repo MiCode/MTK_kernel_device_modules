@@ -46,6 +46,7 @@ enum venc_ipi_msg_id {
 	VCU_IPIMSG_ENC_WAIT_ISR,
 	VCU_IPIMSG_ENC_CHECK_CODEC_ID,
 	VCU_IPIMSG_ENC_GET_BS_BUFFER,
+	VCU_IPIMSG_ENC_SMI_BUS_DUMP,
 
 	AP_IPIMSG_ENC_POWER_ON_DONE = AP_IPIMSG_VENC_ACK_BASE,
 	AP_IPIMSG_ENC_POWER_OFF_DONE,
@@ -54,7 +55,8 @@ enum venc_ipi_msg_id {
 	AP_IPIMSG_ENC_MEM_FREE_DONE,
 	AP_IPIMSG_ENC_WAIT_ISR_DONE,
 	AP_IPIMSG_ENC_CHECK_CODEC_ID_DONE,
-	AP_IPIMSG_ENC_GET_BS_BUFFER_DONE
+	AP_IPIMSG_ENC_GET_BS_BUFFER_DONE,
+	AP_IPIMSG_ENC_SMI_BUS_DUMP_DONE,
 };
 
 /* enum venc_get_param_type - The type of set parameter used in
@@ -481,6 +483,7 @@ struct venc_vcu_config {
 	__u32 codec_fmt;
 	__s32 target_freq;
 	__u32 target_bw_factor;
+	__u8 cpu_top_grp_aware;
 	__u32 reserved;
 	struct mtk_color_desc color_desc;
 	struct mtk_venc_multi_ref multi_ref;

@@ -19,6 +19,9 @@
 #include "inc/tcpci_typec.h"
 #include "inc/tcpci_core.h"
 #include "inc/std_tcpci_v10.h"
+#if defined(CONFIG_TARGET_PRODUCT_ARISTOTLE)
+#include "../../../hwid/hwid.h"
+#endif
 
 #define MT6375_INFO_EN	1
 #define MT6375_DBGINFO_EN	0
@@ -1519,6 +1522,7 @@ static int mt6375_floating_ground_evt_process(struct mt6375_tcpc_data *ddata)
 	if (ret < 0)
 		return ret;
 	ddata->wd0_state = (data & MT6375_MSK_WD0PULL_STS) ? true : false;
+	MT6375_INFO("%s wd0 state=%d\n", __func__, ddata->wd0_state);
 	return tcpci_notify_wd0_state(ddata->tcpc, ddata->wd0_state);
 }
 
@@ -2198,12 +2202,14 @@ static int mt6375_wd12_done_irq_handler(struct mt6375_tcpc_data *ddata)
 static int mt6375_wd0_stfall_irq_handler(struct mt6375_tcpc_data *ddata)
 {
 	/* WD0_PULL_STS from 1 to 0 in normal polling mode */
+	MT6375_INFO("%s wd0 stfall trigger\n", __func__);
 	return mt6375_floating_ground_evt_process(ddata);
 }
 
 static int mt6375_wd0_strise_irq_handler(struct mt6375_tcpc_data *ddata)
 {
 	/* WD0_PULL_STS from 0 to 1 in normal polling mode */
+	MT6375_INFO("%s wd0 strise trigger\n", __func__);
 	return mt6375_floating_ground_evt_process(ddata);
 }
 
@@ -2457,8 +2463,8 @@ static int mt6375_tcpc_init_irq(struct mt6375_tcpc_data *ddata)
 	ddata->irq = ret;
 	device_init_wakeup(ddata->dev, true);
 	ret = devm_request_threaded_irq(ddata->dev, ret, NULL,
-					mt6375_pd_evt_handler, IRQF_ONESHOT,
-					dev_name(ddata->dev), ddata);
+					mt6375_pd_evt_handler, IRQF_ONESHOT |
+					IRQF_NO_SUSPEND, dev_name(ddata->dev), ddata);
 	if (ret < 0) {
 		dev_err(ddata->dev, "failed to request irq %d\n", ddata->irq);
 		return ret;
@@ -2522,6 +2528,11 @@ static int mt6375_parse_dt(struct mt6375_tcpc_data *ddata)
 	struct device *dev = ddata->dev;
 	u32 val;
 	int i;
+#if defined(CONFIG_TARGET_PRODUCT_ARISTOTLE)
+	const char * hw_sku = get_hw_sku();
+	const char * hw_version = get_hw_version();
+	const char * hw_level = get_hw_level();
+#endif
 	const struct {
 		const char *name;
 		const char *legacy_name;
@@ -2603,6 +2614,17 @@ static int mt6375_parse_dt(struct mt6375_tcpc_data *ddata)
 				 tcpc_props_u32[i].name, tcpc_props_u32[i].legacy_name,
 				 *tcpc_props_u32[i].val_ptr);
 	}
+
+#if defined(CONFIG_TARGET_PRODUCT_ARISTOTLE)
+	dev_info(dev, "sku=%s,version=%s,level=%s \n", hw_sku, hw_version, hw_level);
+	if (!strcmp(hw_sku, "aristotle") &&
+			(!strcmp(hw_level, "P0") ||
+			!strcmp(hw_level, "P0.1") ||
+			!strcmp(hw_level, "P1"))) {
+		desc->en_floatgnd = false;
+		dev_info(dev, "donot enable wd0 in special version, wd0=%d\n", desc->en_floatgnd);
+	}
+#endif
 
 	ddata->desc = desc;
 

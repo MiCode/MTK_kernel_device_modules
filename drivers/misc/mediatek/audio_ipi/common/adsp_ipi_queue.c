@@ -21,6 +21,8 @@
 #include <linux/hrtimer.h>
 #include <linux/ktime.h>
 
+#include <uapi/linux/sched/types.h>
+
 #include <audio_log.h>
 #include <audio_assert.h>
 #include <audio_ipi_platform.h>
@@ -815,20 +817,26 @@ static int dsp_get_queue_element(
 		for (try_cnt = 0; try_cnt < k_max_try_cnt; try_cnt++) {
 			retval = wait_event_interruptible(
 					 msg_queue->queue_wq,
-					 (!dsp_check_queue_empty(msg_queue) ||
+					 /*
+					  * read msg_queue->idx_w race w/ dsp_push_msg is okay.
+					  * use data_race to bypass.
+					  */
+					 (!dsp_check_queue_empty(data_race(msg_queue)) ||
 					  !msg_queue->thread_enable));
 			if (msg_queue->thread_enable == false) {
 				pr_info("thread disable");
 				retval = -1;
 				break;
 			}
-			if (dsp_check_queue_empty(msg_queue) == false) {
+			/* use data_race to bypass. */
+			if (dsp_check_queue_empty(data_race(msg_queue)) == false) {
 				retval = 0;
 				break;
 			}
 			if (retval == 0) { /* got msg in queue */
 				pr_notice("wait ret 0, empty %d, enable %d",
-					  dsp_check_queue_empty(msg_queue),
+					  /* use data_race to bypass. */
+					  dsp_check_queue_empty(data_race(msg_queue)),
 					  msg_queue->enable);
 				break;
 			}
@@ -843,8 +851,8 @@ static int dsp_get_queue_element(
 			pr_notice("retval: %d not handle!!", retval);
 		}
 	}
-
-	if (dsp_check_queue_empty(msg_queue) == false) {
+	/* use data_race to bypass. */
+	if (dsp_check_queue_empty(data_race(msg_queue)) == false) {
 		spin_lock_irqsave(&msg_queue->queue_lock, flags);
 		retval = dsp_front_msg(msg_queue, pp_dsp_msg, p_idx_msg);
 		spin_unlock_irqrestore(&msg_queue->queue_lock, flags);
@@ -967,6 +975,7 @@ static int dsp_process_msg_thread(void *data)
 
 	unsigned long flags = 0;
 	int retval = 0;
+  
 	/* prio = 96 */
 	struct sched_param param = {.sched_priority = 3};
 

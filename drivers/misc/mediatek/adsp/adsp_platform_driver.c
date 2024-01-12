@@ -410,9 +410,7 @@ int adsp_core_common_init(struct adsp_priv *pdata)
 	pdata->mdev.minor = MISC_DYNAMIC_MINOR;
 	pdata->mdev.name = pdata->name;
 	pdata->mdev.fops = &adsp_core_file_ops;
-#if IS_ENABLED(CONFIG_MTK_AUDIODSP_DEBUG_SUPPORT)
 	pdata->mdev.groups = adsp_core_attr_groups;
-#endif
 
 	/* pre-wakelock */
 	spin_lock_init(&pdata->wakelock);

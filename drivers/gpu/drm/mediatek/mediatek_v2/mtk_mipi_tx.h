@@ -9,6 +9,7 @@
 #include <linux/phy/phy.h>
 #include <linux/clk-provider.h>
 #include "mtk_panel_ext.h"
+#include "mtk_drm_crtc.h"
 
 #define MIPITX_LANE_CON (0x000CUL)
 #define MIPITX_VOLTAGE_SEL (0x0010UL)

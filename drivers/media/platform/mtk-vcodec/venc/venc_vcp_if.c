@@ -662,6 +662,13 @@ int vcp_enc_ipi_handler(void *arg)
 			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 		}
 			break;
+		case VCU_IPIMSG_ENC_SMI_BUS_DUMP:
+		{
+			mtk_smi_dbg_hang_detect("venc timeout");
+			msg->msg_id = AP_IPIMSG_ENC_SMI_BUS_DUMP_DONE;
+			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
+		}
+			break;
 		default:
 			mtk_vcodec_err(vcu, "unknown msg id %x", msg->msg_id);
 			break;
@@ -1867,6 +1874,8 @@ static int venc_vcp_set_param(unsigned long handle,
 		set_venc_vcp_data(inst, VENC_VCP_LOG_INFO_ID, enc_prm->set_vcp_buf);
 		break;
 	case VENC_SET_PARAM_MMDVFS:
+		if (inst->vsi == NULL)
+			return -EINVAL;
 		mtk_v4l2_debug(4, "[VDVFS][VENC] VENC_SET_PARAM_MMDVFS");
 		ret = vcp_enc_set_param(inst, type, enc_prm);
 		break;

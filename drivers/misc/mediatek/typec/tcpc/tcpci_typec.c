@@ -2034,7 +2034,8 @@ int tcpc_typec_init(struct tcpc_device *tcpc, uint8_t typec_role)
 		TYPEC_INFO("KPOC, typec_init: %s\n",
 			   typec_role_name[typec_role]);
 	}
-
+	if(tcpc->tcpc_flags & TCPC_FLAGS_FLOATING_GROUND)
+		typec_role = TYPEC_ROLE_SNK;
 	tcpc->typec_role = typec_role;
 	tcpc->typec_role_new = typec_role;
 	typec_attach_new_unattached(tcpc);

@@ -44,3 +44,6 @@ config MTK_DISP_DEBUG
 	help
 	  Used to debug for display module, only needed by developers.
 	  The function sould be disabled in user load for security.
+
+source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/mediatek/mediatek_v2/mi_disp/Kconfig"
+

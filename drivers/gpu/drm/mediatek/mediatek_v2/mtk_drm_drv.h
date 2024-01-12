@@ -441,6 +441,10 @@ extern unsigned int ovl_win_size;
 extern unsigned int default_emi_eff;
 extern unsigned int emi_eff_tb[MAX_EMI_EFF_LEVEL];
 extern int aod_scp_flag;
+extern int rpo_enh_flag;
+
+extern unsigned int g_disp_aod_mode;
+
 extern int mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param,
 				 unsigned int cfg_flag);
 extern int mtkfb_set_backlight_level_AOD(unsigned int level);

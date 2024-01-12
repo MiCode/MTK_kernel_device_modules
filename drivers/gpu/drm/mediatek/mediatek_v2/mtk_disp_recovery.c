@@ -32,6 +32,7 @@
 #include "mtk_drm_mmp.h"
 #include "mtk_drm_trace.h"
 #include "mtk_dsi.h"
+#include "mi_disp/mi_dsi_panel.h"
 
 #define ESD_TRY_CNT 5
 #define ESD_CHK_TRY_CNT 5
@@ -446,6 +447,17 @@ done:
 	return ret;
 }
 
+static atomic_t panel_dead;
+int get_panel_dead_flag(void) {
+ 	return atomic_read(&panel_dead);
+}
+ EXPORT_SYMBOL(get_panel_dead_flag);
+
+void set_panel_dead_flag(int value) {
+ 	atomic_set(&panel_dead, value);
+}
+EXPORT_SYMBOL(set_panel_dead_flag);
+
 static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -455,6 +467,7 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 	struct cmdq_pkt *cmdq_handle = NULL;
 	int index = drm_crtc_index(crtc);
 
+	atomic_set(&panel_dead, 1);
 	CRTC_MMP_EVENT_START(index, esd_recovery, 0, 0);
 	if (crtc->state && !crtc->state->active) {
 		DDPMSG("%s: crtc is inactive\n", __func__);
@@ -502,6 +515,10 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 
 	CRTC_MMP_MARK(index, esd_recovery, 0, 4);
 
+#ifdef CONFIG_MI_DISP_ESD_CHECK
+	mtk_ddp_comp_io_cmd(output_comp, NULL, ESD_RESTORE_BACKLIGHT, NULL);
+#endif
+
 	mtk_crtc_hw_block_ready(crtc);
 	if (mtk_crtc_is_frame_trigger_mode(crtc)) {
 		struct cmdq_pkt *cmdq_handle;
@@ -523,6 +540,7 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 	CRTC_MMP_MARK(index, esd_recovery, 0, 5);
 
 done:
+	atomic_set(&panel_dead, 0);
 	CRTC_MMP_EVENT_END(index, esd_recovery, 0, ret);
 	mtk_drm_trace_end();
 

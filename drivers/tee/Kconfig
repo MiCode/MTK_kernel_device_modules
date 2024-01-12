@@ -7,7 +7,7 @@ menu "TEE drivers"
 config MTK_TEE_GP_SUPPORT
 	bool "Enable MTK GlobalPlatform support in TEE related modules"
 	default n
-	depends on (TRUSTONIC_TEE_SUPPORT) || (MICROTRUST_TEE_SUPPORT)
+	depends on (TRUSTONIC_TEE_SUPPORT) || (MICROTRUST_TEE_SUPPORT) || (MITEE_SUPPORT)
 	help
 	  GlobalPlatform defines common/consistent APIs and this option
 	  enables TEE related modules to use GPAPIs. (depending on
@@ -17,6 +17,7 @@ config MTK_TEE_GP_SUPPORT
 source "$(KCONFIG_EXT_PREFIX)drivers/tee/teeperf/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/tee/gud/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/tee/teei/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/tee/mitee/Kconfig"
 endmenu
 
 endif

@@ -105,6 +105,7 @@ struct mml_pq_config {
 	bool en_dre:1;
 	bool en_region_pq:1;
 	bool en_fg:1;
+	bool en_clarity:1;
 };
 
 enum mml_pq_enable_flag {
@@ -122,6 +123,7 @@ enum mml_pq_enable_flag {
 	MML_PQ_AI_SDR_TO_HDR_EN = 1 << 8,
 	MML_PQ_VIDEO_HDR_EN = 1 << 9,
 	MML_PQ_AI_REGION_EN = 1 << 10,
+	MML_PQ_CLARITY_EN = 1 << 11,
 };
 
 enum mml_pq_user_info {
@@ -156,6 +158,7 @@ struct mml_pq_param {
 	uint32_t app_hint;
 	uint32_t connector_id;
 	uint32_t current_panel_lum;
+	bool svp;
 };
 
 struct mml_color_desc {

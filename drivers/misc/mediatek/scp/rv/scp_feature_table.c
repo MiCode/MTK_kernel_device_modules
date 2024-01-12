@@ -59,5 +59,8 @@ struct scp_feature_tb feature_table[NUM_FEATURE_ID] = {
 	{
 		.feature        = RVVOICE_CALL_FEATURE_ID,
 	},
+	{
+		.feature	= ELLIPTIC_FUSION_ID,
+	},
 };
 

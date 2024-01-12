@@ -103,5 +103,11 @@ obj-$(CONFIG_USB) += usb/
 obj-$(CONFIG_MTK_WIDEVINE_DRM) += widevine_drm/
 obj-$(CONFIG_MTK_PGBOOST) += pgboost/
 obj-$(CONFIG_MTK_MBRAINK)      += mbraink/
+obj-$(CONFIG_MTK_ULTRASND_PROXIMITY) += elliptic/
 obj-$(CONFIG_MTK_IPS_HELPER) += ips/
+obj-$(CONFIG_MI_CAMLOG) += cam_log/
 
+subdir-ccflags-y += -D__XIAOMI_CAMERA__
+ifeq ($(CONFIG_BUILD_XIAOMI_CAMERA_IMAGE_NAMES),"duchamp")
+subdir-ccflags-y += -DDUCHAMP_CAM
+endif

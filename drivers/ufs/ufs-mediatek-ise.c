@@ -10,7 +10,7 @@
 #include <linux/soc/mediatek/mtk_ise_lpm.h>
 #include <linux/soc/mediatek/mtk-ise-mbox.h>
 #include <ufs/ufshcd.h>
-#include <ufshcd-priv.h>
+#include "ufshcd-priv.h"
 
 #include "ufs-mediatek-dbg.h"
 #include "ufs-mediatek-mimic.h"

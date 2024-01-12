@@ -32,6 +32,7 @@ struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx)
 		list_for_each(item, &dev->vdec_dvfs_inst) {
 			if(item == (void *) 0) {
 				mtk_v4l2_debug(0, "%s [VDVFS][VDEC] find null in item in list!\n", __func__);
+				INIT_LIST_HEAD(&dev->vdec_dvfs_inst);
 				return 0;
 			}
 			inst = list_entry(item, struct vcodec_inst, list);
@@ -43,6 +44,7 @@ struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx)
 		list_for_each(item, &dev->venc_dvfs_inst) {
 			if(item == (void *) 0) {
 				mtk_v4l2_debug(0, "%s [VDVFS][VENC] find null in item in list!\n", __func__);
+				INIT_LIST_HEAD(&dev->venc_dvfs_inst);
 				return 0;
 			}
 			inst = list_entry(item, struct vcodec_inst, list);
@@ -467,6 +469,7 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 		list_for_each(item, &dev->vdec_dvfs_inst) {
 			if(item == (void *) 0) {
 				mtk_v4l2_debug(0, "%s [VDVFS][VDEC] find null in item in list!\n", __func__);
+				INIT_LIST_HEAD(&dev->vdec_dvfs_inst);
 				return;
 			}
 			inst = list_entry(item, struct vcodec_inst, list);
@@ -515,6 +518,7 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 		list_for_each(item, &dev->venc_dvfs_inst) {
 			if(item == (void *) 0) {
 				mtk_v4l2_debug(0, "%s [VDVFS][VENC] find null in item in list!\n", __func__);
+				INIT_LIST_HEAD(&dev->venc_dvfs_inst);
 				return;
 			}
 			inst = list_entry(item, struct vcodec_inst, list);
@@ -588,4 +592,9 @@ void mtk_vcodec_alive_checker_resume(struct mtk_vcodec_dev *dev)
 	}
 #endif
 #endif
+}
+
+void mtk_vcodec_cpu_grp_aware_hint(struct mtk_vcodec_ctx *ctx, int enable)
+{
+
 }

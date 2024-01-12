@@ -179,6 +179,18 @@ config GAUGE_BQ28Z610
 	  Select Alpha gauge Platform is mt6985
 	  Say N to disable.
 
+config XMEXT_TI_GAUGE
+	tristate "xmext use bq28z601 gauge"
+	help
+	  Say yes here to enable xmext use bq28z601 gauge driver.
+	  Say no if not using xmext use bq28z601 gauge driver.
+
+config XMEXT_SC858X_CHG_PUMP
+	tristate "xmext use sc8581 charger_pump"
+	help
+	  Say yes here to enable xmext use sc8551A charger_pump driver.
+	  Say no if not using xmext use sc8551A charger_pump driver.
+
 config MTK_CHARGER_TYPE_DETECT
 	tristate "Mediatek Charger Type Detect Driver"
 	depends on TCPC_CLASS
@@ -187,3 +199,21 @@ config MTK_CHARGER_TYPE_DETECT
 	  Support enable charger type detect when receiving
 	  typec attach notify.
 	  Say N to disable.
+
+config XM_PD_MANAGER
+	tristate "pd_cp_manager contral pd adapter charging"
+	help
+	  Say yes here to enable pd_cp_manager contral pd adapter charging driver.
+	  Say no if not using pd_cp_manager contral pd adapter charging driver.
+
+config XM_SINGLE_PD_MANAGER
+	tristate "pd_cp_manager contral pd adapter charging"
+	help
+	  Say yes here to enable pd_cp_manager contral pd adapter charging driver.
+	  Say no if not using pd_cp_manager contral pd adapter charging driver.
+
+config RUST_DETECTION
+	bool "support rust detection"
+	default n
+	help
+	support rust detection.

@@ -1717,8 +1717,7 @@ static void phy_parse_property(struct mtk_tphy *tphy,
 				 &instance->eye_term);
 	device_property_read_u32(dev, "mediatek,intr",
 				 &instance->intr);
-	device_property_read_u32(dev, "mediatek,discth",
-				 &instance->discth);
+	device_property_read_u32(dev, "mediatek,discth", &instance->discth);
 	device_property_read_u32(dev, "mediatek,pre-emphasis",
 				 &instance->pre_emphasis);
 	device_property_read_u32(dev, "mediatek,rx-sqth",

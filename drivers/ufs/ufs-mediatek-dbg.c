@@ -44,6 +44,7 @@
 static bool cmd_hist_initialized;
 static bool cmd_hist_enabled;
 static spinlock_t cmd_hist_lock;
+static unsigned int max_cmd_loop_cnt;
 static unsigned int cmd_hist_cnt;
 static unsigned int cmd_hist_ptr = MAX_CMD_HIST_ENTRY_CNT - 1;
 static struct cmd_hist_struct *cmd_hist;
@@ -255,6 +256,7 @@ static void ufs_mtk_dbg_print_err_hist(char **buff, unsigned long *size,
 	bool found = false;
 	struct ufs_event_hist *e;
 	struct ufs_hba *hba = ufshba;
+	struct timespec64 dur;
 
 	if (id >= UFS_EVT_CNT)
 		return;
@@ -266,9 +268,10 @@ static void ufs_mtk_dbg_print_err_hist(char **buff, unsigned long *size,
 
 		if (e->tstamp[p] == 0)
 			continue;
+		dur = ns_to_timespec64(e->tstamp[p]);
 		SPREAD_PRINTF(buff, size, m,
-			"%s[%d] = 0x%x at %lld us\n", err_name, p,
-			e->val[p], ktime_to_us(e->tstamp[p]));
+			"%s[%d] = 0x%x at %6llu.%lu\n", err_name, p,
+			e->val[p], dur.tv_sec, dur.tv_nsec);
 		found = true;
 	}
 
@@ -470,10 +473,16 @@ static void probe_android_vh_ufs_send_tm_command(void *data, struct ufs_hba *hba
 	ptr = cmd_hist_get_entry();
 
 	cmd_hist[ptr].event = event;
+	cmd_hist[ptr].seq_no = cmd_hist_cnt;
 	cmd_hist[ptr].cmd.tm.lun = lun;
 	cmd_hist[ptr].cmd.tm.tag = tag;
 	cmd_hist[ptr].cmd.tm.task_tag = task_tag;
 	cmd_hist[ptr].cmd.tm.tm_func = tm_func;
+
+	if (cmd_hist_cnt > 4000000000) {
+		cmd_hist_cnt = 0;
+		max_cmd_loop_cnt++;
+	}
 }
 
 static void cmd_hist_add_dev_cmd(struct ufs_hba *hba,
@@ -491,6 +500,7 @@ static void cmd_hist_add_dev_cmd(struct ufs_hba *hba,
 		return;
 
 	cmd_hist[ptr].cmd.dev.tag = lrbp->task_tag;
+	cmd_hist[ptr].seq_no = cmd_hist_cnt;
 	cmd_hist[ptr].cmd.dev.opcode =
 		hba->dev_cmd.query.request.upiu_req.opcode;
 	cmd_hist[ptr].cmd.dev.idn =
@@ -499,6 +509,11 @@ static void cmd_hist_add_dev_cmd(struct ufs_hba *hba,
 		hba->dev_cmd.query.request.upiu_req.index;
 	cmd_hist[ptr].cmd.dev.selector =
 		hba->dev_cmd.query.request.upiu_req.selector;
+
+	if (cmd_hist_cnt > 4000000000) {
+		cmd_hist_cnt = 0;
+		max_cmd_loop_cnt++;
+	}
 }
 
 static void probe_android_vh_ufs_send_command(void *data, struct ufs_hba *hba,
@@ -546,6 +561,7 @@ static void probe_ufshcd_command(void *data, const char *dev_name,
 	ptr = cmd_hist_get_entry();
 
 	cmd_hist[ptr].event = event;
+	cmd_hist[ptr].seq_no = cmd_hist_cnt;
 	cmd_hist[ptr].cmd.utp.tag = tag;
 	cmd_hist[ptr].cmd.utp.transfer_len = transfer_len;
 	cmd_hist[ptr].cmd.utp.lba = lba;
@@ -556,6 +572,11 @@ static void probe_ufshcd_command(void *data, const char *dev_name,
 	/* Need patch trace_ufshcd_command() first */
 	cmd_hist[ptr].cmd.utp.crypt_en = 0;
 	cmd_hist[ptr].cmd.utp.crypt_keyslot = 0;
+
+	if (cmd_hist_cnt > 4000000000) {
+		cmd_hist_cnt = 0;
+		max_cmd_loop_cnt++;
+	}
 
 	if (event == CMD_COMPLETED) {
 		ptr_cur = ptr;
@@ -591,10 +612,16 @@ static void probe_ufshcd_uic_command(void *data, const char *dev_name,
 		event = CMD_UIC_CMPL_GENERAL;
 
 	cmd_hist[ptr].event = event;
+	cmd_hist[ptr].seq_no = cmd_hist_cnt;
 	cmd_hist[ptr].cmd.uic.cmd = cmd;
 	cmd_hist[ptr].cmd.uic.arg1 = arg1;
 	cmd_hist[ptr].cmd.uic.arg2 = arg2;
 	cmd_hist[ptr].cmd.uic.arg3 = arg3;
+
+	if (cmd_hist_cnt > 4000000000) {
+		cmd_hist_cnt = 0;
+		max_cmd_loop_cnt++;
+	}
 
 	if (event == CMD_UIC_CMPL_GENERAL) {
 		ptr_cur = ptr;
@@ -1492,7 +1519,13 @@ static void probe_ufshcd_clk_gating(void *data, const char *dev_name,
 	ptr = cmd_hist_get_entry();
 
 	cmd_hist[ptr].event = CMD_CLK_GATING;
+	cmd_hist[ptr].seq_no = cmd_hist_cnt;
 	cmd_hist[ptr].cmd.clk_gating.state = state;
+
+	if (cmd_hist_cnt > 4000000000) {
+		cmd_hist_cnt = 0;
+		max_cmd_loop_cnt++;
+	}
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 	if (state == CLKS_ON && host->mphy_base) {
@@ -1553,11 +1586,17 @@ static void probe_ufshcd_profile_clk_scaling(void *data, const char *dev_name,
 	ptr = cmd_hist_get_entry();
 
 	cmd_hist[ptr].event = CMD_CLK_SCALING;
+	cmd_hist[ptr].seq_no = cmd_hist_cnt;
 	if (!strcmp(profile_info, "up"))
 		cmd_hist[ptr].cmd.clk_scaling.state = CLKS_SCALE_UP;
 	else
 		cmd_hist[ptr].cmd.clk_scaling.state = CLKS_SCALE_DOWN;
 	cmd_hist[ptr].cmd.clk_scaling.err = err;
+
+	if (cmd_hist_cnt > 4000000000) {
+		cmd_hist_cnt = 0;
+		max_cmd_loop_cnt++;
+	}
 }
 
 static void probe_ufshcd_pm(void *data, const char *dev_name,
@@ -1573,11 +1612,17 @@ static void probe_ufshcd_pm(void *data, const char *dev_name,
 	ptr = cmd_hist_get_entry();
 
 	cmd_hist[ptr].event = CMD_PM;
+	cmd_hist[ptr].seq_no = cmd_hist_cnt;
 	cmd_hist[ptr].cmd.pm.state = state;
 	cmd_hist[ptr].cmd.pm.err = err;
 	cmd_hist[ptr].cmd.pm.time_us = time_us;
 	cmd_hist[ptr].cmd.pm.pwr_mode = pwr_mode;
 	cmd_hist[ptr].cmd.pm.link_state = link_state;
+
+	if (cmd_hist_cnt > 4000000000) {
+		cmd_hist_cnt = 0;
+		max_cmd_loop_cnt++;
+	}
 }
 
 static void probe_ufshcd_runtime_suspend(void *data, const char *dev_name,
@@ -1612,6 +1657,13 @@ static void probe_ufshcd_system_resume(void *data, const char *dev_name,
 			UFSDBG_SYSTEM_RESUME);
 }
 
+/* trace point enable condition */
+enum tp_en {
+	TP_EN_ALL,
+	TP_EN_LEGACY,
+	TP_EN_MCQ,
+};
+
 /*
  * Data structures to store tracepoints information
  */
@@ -1620,6 +1672,7 @@ struct tracepoints_table {
 	void *func;
 	struct tracepoint *tp;
 	bool init;
+	enum tp_en en;
 };
 
 static struct tracepoints_table interests[] = {
@@ -1721,7 +1774,8 @@ static void ufs_mtk_dbg_print_clk_gating_event(char **buff,
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-c(%d),%6llu.%09lu,%5d,%2d,%13s,arg1=0x%X,arg2=0x%X,arg3=0x%X\n",
+		"CLK_GATING:no=%6llu,%3d-c(%d),%6llu.%09lu,%5d,%2d,%13s,arg1=0x%X,arg2=0x%X,arg3=0x%X\n",
+		cmd_hist[ptr].seq_no,
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -1754,7 +1808,8 @@ static void ufs_mtk_dbg_print_clk_scaling_event(char **buff,
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-c(%d),%6llu.%09lu,%5d,%2d,%15s, err:%d\n",
+		"CLK_SCALING:no=%6llu,%3d-c(%d),%6llu.%09lu,%5d,%2d,%15s, err:%d\n",
+		cmd_hist[ptr].seq_no,
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -1790,7 +1845,8 @@ static void ufs_mtk_dbg_print_pm_event(char **buff,
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-c(%d),%6llu.%09lu,%5d,%2d,%3s, ret=%d, time_us=%8lu, pwr_mode=%d, link_status=%d\n",
+		"PM:no=%6llu,%3d-c(%d),%6llu.%09lu,%5d,%2d,%3s, ret=%d, time_us=%8lu, pwr_mode=%d, link_status=%d\n",
+		cmd_hist[ptr].seq_no,
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -1816,7 +1872,8 @@ static void ufs_mtk_dbg_print_device_reset_event(char **buff,
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-c(%d),%6llu.%09lu,%5d,%2d,%13s\n",
+		"DEVICE_RESETno=%6llu,%3d-c(%d),%6llu.%09lu,%5d,%2d,%13s\n",
+		cmd_hist[ptr].seq_no,
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -1833,7 +1890,8 @@ static void ufs_mtk_dbg_print_uic_event(char **buff, unsigned long *size,
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-u(%d),%6llu.%09lu,%5d,%2d,0x%2x,arg1=0x%X,arg2=0x%X,arg3=0x%X,\t%llu\n",
+		"UIC:no=%6llu,%3d-u(%d),%6llu.%09lu,%5d,%2d,0x%2x,arg1=0x%X,arg2=0x%X,arg3=0x%X,\t%llu\n",
+		cmd_hist[ptr].seq_no,
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -1856,7 +1914,8 @@ static void ufs_mtk_dbg_print_utp_event(char **buff, unsigned long *size,
 	if (cmd_hist[ptr].cmd.utp.lba == 0xFFFFFFFFFFFFFFFF)
 		cmd_hist[ptr].cmd.utp.lba = 0;
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-r(%d),%6llu.%09lu,%5d,%2d,0x%2x,t=%2d,db:0x%8x,is:0x%8x,crypt:%d,%d,lba=%10llu,len=%6d,\t%llu\n",
+		"UTP:no=%6llu,%3d-r(%d),%6llu.%09lu,%5d,%2d,0x%2x,t=%2d,db:0x%8x,is:0x%8x,crypt:%d,%d,lba=%10llu,len=%6d,\t%llu\n",
+		cmd_hist[ptr].seq_no,
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -1882,7 +1941,8 @@ static void ufs_mtk_dbg_print_dev_event(char **buff, unsigned long *size,
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-r(%d),%6llu.%09lu,%5d,%2d,%4u,t=%2d,op:%u,idn:%u,idx:%u,sel:%u\n",
+		"DEV:no=%6llu,%3d-r(%d),%6llu.%09lu,%5d,%2d,%4u,t=%2d,op:%u,idn:%u,idx:%u,sel:%u\n",
+		cmd_hist[ptr].seq_no,
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -1906,7 +1966,8 @@ static void ufs_mtk_dbg_print_tm_event(char **buff, unsigned long *size,
 	if (cmd_hist[ptr].cmd.utp.lba == 0xFFFFFFFFFFFFFFFF)
 		cmd_hist[ptr].cmd.utp.lba = 0;
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-r(%d),%6llu.%09lu,%5d,%2d,0x%2x,lun=%d,tag=%d,task_tag=%d\n",
+		"TM:no=%6llu,%3d-r(%d),%6llu.%09lu,%5d,%2d,0x%2x,lun=%d,tag=%d,task_tag=%d\n",
+		cmd_hist[ptr].seq_no,
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -1942,6 +2003,9 @@ static void ufs_mtk_dbg_print_cmd_hist(char **buff, unsigned long *size,
 
 	ptr = cmd_hist_ptr;
 
+	SPREAD_PRINTF(buff, size, m,
+		      "cmd_hist_enabled = %d ,cmd_hist_cnt=%d\n",
+		      cmd_hist_enabled, cmd_hist_cnt);
 	SPREAD_PRINTF(buff, size, m,
 		      "UFS CMD History: Latest %d of total %d entries, ptr=%d\n",
 		      latest_cnt, cnt, ptr);
@@ -2151,6 +2215,8 @@ int ufs_mtk_dbg_register(struct ufs_hba *hba)
 
 	spin_lock_init(&cmd_hist_lock);
 	ufshba = hba;
+	max_cmd_loop_cnt = 0;
+	cmd_hist_cnt = 0;
 	cmd_hist_initialized = true;
 
 	/* Install the tracepoints */

@@ -6,7 +6,7 @@
 #ifndef __MTK_DISP_VIDLE_H__
 #define __MTK_DISP_VIDLE_H__
 
-#include "mtk_dpc.h"
+#include "../dpc/mtk_dpc.h"
 
 extern void dpc_enable(bool en);
 extern void dpc_group_enable(const u16 group, bool en);

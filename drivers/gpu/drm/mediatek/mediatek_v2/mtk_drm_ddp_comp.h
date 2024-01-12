@@ -646,6 +646,7 @@ enum mtk_ddp_io_cmd {
 	PANEL_OSC_HOPPING,
 	MODE_SWITCH_INDEX,
 	SET_MMCLK_BY_DATARATE,
+	GET_MMCLK_BY_DATARATE,
 	GET_FRAME_HRT_BW_BY_DATARATE,
 	GET_FRAME_HRT_BW_BY_MODE,
 	DSI_SEND_DDIC_CMD,
@@ -671,6 +672,12 @@ enum mtk_ddp_io_cmd {
 	DSI_INIT_VFP_EARLY_STOP,
 	DSI_DISABLE_VFP_EALRY_STOP,
 	/*Msync 2.0 cmd end*/
+ #ifdef CONFIG_MI_DISP_ESD_CHECK
+ 	ESD_RESTORE_BACKLIGHT,
+ 	MI_DISP_ESD_CHECK_READ,
+ 	MI_DISP_ESD_CHECK_CMP,
+ #endif
+ 	MI_DSI_READ_DDIC_CMD,
 	DUAL_TE_INIT,
 	OVL_GET_SOURCE_BPC,
 	DSI_GET_LINE_TIME_NS,
@@ -971,10 +978,6 @@ static inline void mtk_ddp_comp_layer_config(struct mtk_ddp_comp *comp,
 {
 	if (comp && comp->funcs && comp->funcs->layer_config &&
 			!comp->blank_mode) {
-		DDPDBG("[DRM]func:%s, line:%d ==>\n",
-			__func__, __LINE__);
-		DDPDBG("comp_funcs:0x%p, layer_config:0x%p\n",
-			comp->funcs, comp->funcs->layer_config);
 
 		comp->funcs->layer_config(comp, idx, state, handle);
 	}

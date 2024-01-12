@@ -44,10 +44,6 @@
 #include <asm/cacheflush.h>
 #include <asm/kexec.h>
 
-#if IS_ENABLED(CONFIG_ANDROID_DEBUG_SYMBOLS)
-#include <linux/android_debug_symbols.h>
-#endif
-
 #include <mt-plat/aee.h>
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 #include <mt-plat/mboot_params.h>
@@ -92,6 +88,10 @@ static bool reboot_flag;
 static struct name_list *white_list;
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 static struct pt_regs saved_regs;
+#endif
+
+#ifdef CONFIG_MI_DISP_CMDQ_SWT
+static int last_hang_detect_counter = 0;
 #endif
 
 struct hang_callback {
@@ -1629,19 +1629,6 @@ static void show_task_backtrace(void)
 	}
 }
 
-#if IS_ENABLED(CONFIG_ANDROID_DEBUG_SYMBOLS)
-static void show_mem_by_ads(unsigned int filter, nodemask_t *nodemask)
-{
-	void (*show_mem_in_hang)(unsigned int flt, nodemask_t *nodmsk);
-
-	show_mem_in_hang = android_debug_symbol(ADS_SHOW_MEM);
-	if (IS_ERR(show_mem_in_hang))
-		pr_info("%s: failed to get show_mem\n", __func__);
-	else
-		show_mem_in_hang(filter, nodemask);
-}
-#endif
-
 #if IS_ENABLED(CONFIG_MAGIC_SYSRQ)
 static void show_mem_by_sysrq(void)
 {
@@ -1665,9 +1652,7 @@ static void show_status(int flag)
 #endif
 #endif
 
-#if IS_ENABLED(CONFIG_ANDROID_DEBUG_SYMBOLS)
-	show_mem_by_ads(0, NULL);
-#elif IS_ENABLED(CONFIG_MAGIC_SYSRQ)
+#if IS_ENABLED(CONFIG_MAGIC_SYSRQ)
 	show_mem_by_sysrq();
 #endif
 
@@ -1861,8 +1846,21 @@ void monitor_hang_kick(int lParam)
 		}
 		pr_info("[Hang_Detect] hang_detect enabled %d\n", hd_timeout);
 	}
+#ifdef CONFIG_MI_DISP_CMDQ_SWT
+	last_hang_detect_counter = hang_detect_counter;
+#endif
 	reset_hang_info();
 }
+
+#ifdef CONFIG_MI_DISP_CMDQ_SWT
+
+bool will_swt(void)
+{
+	return last_hang_detect_counter > 10 ? true:false;
+}
+EXPORT_SYMBOL(will_swt);
+
+#endif
 
 int hang_detect_init(void)
 {

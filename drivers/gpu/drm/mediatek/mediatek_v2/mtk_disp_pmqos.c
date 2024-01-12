@@ -363,6 +363,7 @@ int mtk_disp_hrt_cond_init(struct drm_crtc *crtc)
 	}
 	atomic_set(&mtk_crtc->qos_ctx->last_hrt_idx, 0);
 	mtk_crtc->qos_ctx->last_hrt_req = 0;
+	mtk_crtc->qos_ctx->last_mmclk_req = 0;
 	mtk_crtc->qos_ctx->last_mmclk_req_idx = 0;
 
 	if (drm_crtc_index(crtc) == 0 && mtk_drm_helper_get_opt(priv->helper_opt,

@@ -786,7 +786,8 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 			mml_err("[topology]no comp idx:%u engine:%u", i, eng);
 
 		/* assign reset bits for this path */
-		path->reset_bits |= 1LL << engine_reset_bit[eng];
+		if (engine_reset_bit[eng])
+			path->reset_bits |= 1LL << engine_reset_bit[eng];
 
 		if (eng == MML_MMLSYS) {
 			path->mmlsys = path->nodes[i].comp;

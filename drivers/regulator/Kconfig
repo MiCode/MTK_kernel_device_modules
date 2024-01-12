@@ -178,6 +178,16 @@ config REGULATOR_RT5133
 	  GPIO cannot be used to drive output high. It need to pay more
 	  attention on the usage.
 
+config REGULATOR_WL2868C
+        tristate "Fairchild WL2868C Regulator"
+        depends on I2C && (OF || COMPILE_TEST)
+        select REGMAP_I2C
+        help
+          This driver supports Fairchild (WILL Semiconductor) WL2868C
+          regulator. The regulator is a programmable power management IC
+          (PMIC), it is controlled by I2C and provides one BUCK, one BOOST
+          and four LDO outputs.
+
 config DEVICE_MODULES_REGULATOR_RT6160
 	tristate "Richtek RT6160 BuckBoost voltage regulator"
 	depends on I2C

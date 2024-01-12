@@ -46,4 +46,3 @@ config MTK_PERF_IOCTL_MAGT
 	help
 	  Support MAGT analysis performance.
           If you are not sure about this, set n.
-

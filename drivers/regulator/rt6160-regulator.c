@@ -332,12 +332,33 @@ static const struct of_device_id __maybe_unused rt6160_of_match_table[] = {
 };
 MODULE_DEVICE_TABLE(of, rt6160_of_match_table);
 
+static void rt6160_shutdown(struct i2c_client *i2c)
+{
+	int val = 0, ret = 0;
+
+	/* enable D_SLP */
+	ret = i2c_smbus_write_byte_data(i2c, 0x3F, 0x62);
+	ret = i2c_smbus_write_byte_data(i2c, 0x3D, 0x86);
+	val = i2c_smbus_read_byte_data(i2c, 0x3F);
+	if (val == 0x1) {
+		val = i2c_smbus_read_byte_data(i2c, 0x08);
+		dev_info(&i2c->dev, "%s 0x08 = 0x%02x before shutdown\n", __func__, val);
+		ret = i2c_smbus_write_byte_data(i2c, 0x08, 0x00);
+		val = i2c_smbus_read_byte_data(i2c,  0x08);
+	}
+	ret = i2c_smbus_write_byte_data(i2c, 0x3F, 0x00);
+	ret = i2c_smbus_write_byte_data(i2c, 0x3D, 0x00);
+	dev_info(&i2c->dev, "%s, 0x08 = 0x%02x after shutdown, ret = %d\n",
+		 __func__, val, ret);
+}
+
 static struct i2c_driver rt6160_driver = {
 	.driver = {
 		.name = "rt6160",
 		.of_match_table = rt6160_of_match_table,
 	},
 	.probe_new = rt6160_probe,
+	.shutdown = rt6160_shutdown,
 };
 module_i2c_driver(rt6160_driver);
 
