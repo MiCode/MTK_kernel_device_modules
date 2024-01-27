@@ -2484,7 +2484,7 @@ transparent_hugepage=never clk_ignore_unused=1";
 		compatible = "mediatek,goodix-fp";
 	};
 
-	regulator_vibrator: regulator_vibrator {
+	regulator_vibrator: regulator-vibrator {
 		compatible = "regulator-vibrator";
 		label = "vibrator";
 		min-volt = <2300000>;
