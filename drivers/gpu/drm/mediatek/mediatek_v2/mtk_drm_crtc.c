@@ -11614,7 +11614,6 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 #ifndef DRM_CMDQ_DISABLE
 	if (priv->data->mmsys_id == MMSYS_MT6985 ||
 		priv->data->mmsys_id == MMSYS_MT6989 ||
-		priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6885) {
 		/*Set EVENT_GCED_EN EVENT_GCEM_EN*/
 		writel(0x3, mtk_crtc->config_regs +
