@@ -389,8 +389,7 @@ static inline int eeprom_driver_unregister(unsigned int index)
 	return 0;
 }
 
-static int eeprom_probe(struct i2c_client *client,
-			const struct i2c_device_id *id)
+static int eeprom_probe(struct i2c_client *client)
 {
 	unsigned int index = 0;
 
