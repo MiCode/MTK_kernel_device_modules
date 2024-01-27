@@ -1002,7 +1002,6 @@ def get_overlay_modules_list():
         mgk_64_common_eng_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_userdebug_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_user_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
-        mgk_64_common_modules.append("drivers/pwm/pwm-mtk-disp.ko")
         mgk_64_common_eng_modules.append("drivers/pwm/pwm-mtk-disp.ko")
         mgk_64_common_userdebug_modules.append("drivers/pwm/pwm-mtk-disp.ko")
         mgk_64_common_user_modules.append("drivers/pwm/pwm-mtk-disp.ko")

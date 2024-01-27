@@ -38,8 +38,8 @@
 #define OVL_LAYER_NR 15L
 #else
 #define MAX_CRTC 3
-#endif
 #define OVL_LAYER_NR 12L
+#endif
 #define OVL_PHY_LAYER_NR 4L
 #define RDMA_LAYER_NR 1UL
 #define EXTERNAL_INPUT_LAYER_NR 2UL
