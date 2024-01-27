@@ -1499,6 +1499,13 @@ transparent_hugepage=never clk_ignore_unused=1";
 
 	};
 
+	battery_manager: battery-manager {
+		compatible = "mediatek,battery manager";
+		gauge1 = <&mtk_gauge>;
+		charger = <&mt6370_chg>;
+		bootmode = <&chosen>;
+	};
+
 	pwraph: pwraphal@ {
 		compatible = "mediatek,pwraph";
 		mediatek,pwrap-regmap = <&pwrap>;
