@@ -44,7 +44,7 @@
 	 __GFP_COMP)
 
 // static gfp_t order_flags[] = { HIGH_ORDER_GFP, MID_ORDER_GFP, LOW_ORDER_GFP };
-static gfp_t order_flags[] = { HIGH_ORDER_GFP, MID_ORDER_GFP };
+static gfp_t order_flags[] = { HIGH_ORDER_GFP, LOW_ORDER_GFP, LOW_ORDER_GFP };
 
 #define BASE_SEC_HEAP_SZ (PAGE_SIZE << 3)
 
