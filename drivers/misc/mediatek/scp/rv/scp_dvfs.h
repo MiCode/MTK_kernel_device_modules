@@ -26,6 +26,8 @@
 #define CALI_DIV_VAL            (512)
 #define CAL_U2_DIVIIDER         (2)
 
+#define ILDO_MIS_RATE           (50)
+
 #define REG_DEFINE_WITH_INIT(reg, offset, mask, shift, init, set_clr)	\
 	._##reg = {							\
 		.ofs = offset,						\
