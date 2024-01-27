@@ -612,7 +612,7 @@ void RingBuf_copyFromUserLinear(struct RingBuf *RingBuf1, void __user *buf,
 }
 EXPORT_SYMBOL(RingBuf_copyFromUserLinear);
 
-void ringbuf_copyto_user_linear(void __user *buf, struct RingBuf *RingBuf1,
+void ringbuf_copyto_user_linear(struct iov_iter *buf, struct RingBuf *RingBuf1,
 			  unsigned int count)
 {
 	int ret = 0;
@@ -627,9 +627,9 @@ void ringbuf_copyto_user_linear(void __user *buf, struct RingBuf *RingBuf1,
 	}
 
 	if (RingBuf1->pRead <= RingBuf1->pWrite) {
-		ret = copy_to_user(buf, RingBuf1->pRead, count);
-		if (ret)
-			AUD_LOG_D("%s copy_to_user fail line %d\n",
+		ret = copy_to_iter(RingBuf1->pRead, count, buf);
+		if (ret != count)
+			AUD_LOG_D("%s copy_to_iter fail line %d\n",
 				  __func__, __LINE__);
 		RingBuf1->pRead += count;
 		if (RingBuf1->pRead >= RingBuf1->pBufEnd)
@@ -638,22 +638,22 @@ void ringbuf_copyto_user_linear(void __user *buf, struct RingBuf *RingBuf1,
 		unsigned int r2e = RingBuf1->pBufEnd - RingBuf1->pRead;
 
 		if (count <= r2e) {
-			ret = copy_to_user(buf, RingBuf1->pRead, count);
-			if (ret)
-				AUD_LOG_D("%s copy_to_user fail line %d\n",
+			ret = copy_to_iter(RingBuf1->pRead, count, buf);
+			if (ret != count)
+				AUD_LOG_D("%s copy_to_iter fail line %d\n",
 					  __func__, __LINE__);
 			RingBuf1->pRead += count;
 			if (RingBuf1->pRead >= RingBuf1->pBufEnd)
 				RingBuf1->pRead -= RingBuf1->bufLen;
 		} else {
-			ret = copy_to_user(buf, RingBuf1->pRead, r2e);
-			if (ret)
-				AUD_LOG_D("%s copy_to_user fail line %d\n",
+			ret = copy_to_iter(RingBuf1->pRead, r2e, buf);
+			if (ret != count)
+				AUD_LOG_D("%s copy_to_iter fail line %d\n",
 					  __func__, __LINE__);
-			ret = copy_to_user(buf + r2e,
+			ret = copy_to_iter(
 					   RingBuf1->pBufBase,
-					   count - r2e);
-			if (ret)
+					   count - r2e, buf + r2e);
+			if (ret != count)
 				AUD_LOG_D("%s copy_to_user fail line %d\n",
 					  __func__, __LINE__);
 			RingBuf1->pRead = RingBuf1->pBufBase + count - r2e;

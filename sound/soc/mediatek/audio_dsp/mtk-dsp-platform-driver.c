@@ -1254,7 +1254,7 @@ static int mtk_dsp_pcm_hw_trigger(struct snd_soc_component *component,
 static int mtk_dsp_pcm_copy_dl(struct snd_pcm_substream *substream,
 			       int copy_size,
 			       struct mtk_base_dsp_mem *dsp_mem,
-			       void __user *buf)
+			       struct iov_iter *buf)
 {
 	int ret = 0, availsize = 0;
 	int ack_type;
@@ -1287,9 +1287,9 @@ static int mtk_dsp_pcm_copy_dl(struct snd_pcm_substream *substream,
 		&dsp_mem->adsp_buf.aud_buffer.buf_bridge);
 
 	/* copy user space memory */
-	ret = copy_from_user(dsp_copy_buf, buf, copy_size);
-	if (ret) {
-		pr_info("%s copy_from_user fail line %d\n", __func__, __LINE__);
+	ret = copy_from_iter(dsp_copy_buf, copy_size, buf);
+	if (ret != copy_size) {
+		pr_info("%s copy_from_iter fail line %d\n", __func__, __LINE__);
 		return -1;
 	}
 
@@ -1343,7 +1343,7 @@ static int mtk_dsp_pcm_copy_dl(struct snd_pcm_substream *substream,
 static int mtk_dsp_pcm_copy_ul(struct snd_pcm_substream *substream,
 			       int copy_size,
 			       struct mtk_base_dsp_mem *dsp_mem,
-			       void __user *buf)
+			       struct iov_iter *buf)
 {
 	int ret = 0, availsize = 0;
 	void *ipi_audio_buf; /* dsp <-> audio data struct */
@@ -1402,7 +1402,7 @@ static int mtk_dsp_pcm_copy_ul(struct snd_pcm_substream *substream,
 
 static int mtk_dsp_pcm_copy(struct snd_soc_component *component,
 		struct snd_pcm_substream *substream, int channel,
-		snd_pcm_uframes_t pos, void __user *buf,
+		snd_pcm_uframes_t pos, struct iov_iter *buf,
 		unsigned long bytes)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -1616,7 +1616,7 @@ const struct snd_soc_component_driver mtk_dsp_pcm_platform = {
 	.prepare = mtk_dsp_pcm_hw_prepare,
 	.trigger = mtk_dsp_pcm_hw_trigger,
 	.pointer = mtk_dsphw_pcm_pointer,
-	.copy_user = mtk_dsp_pcm_copy,
+	.copy = mtk_dsp_pcm_copy,
 };
 EXPORT_SYMBOL_GPL(mtk_dsp_pcm_platform);
 
