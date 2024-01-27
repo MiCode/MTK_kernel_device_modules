@@ -5340,13 +5340,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 	scp_dvfs: scp-dvfs {
 		compatible = "mediatek,scp-dvfs";
-		scp-dvfs-disable = <1>; /* 0: enable, 1: disable */
+		scp-dvfs-disable = <0>; /* 0: enable, 1: disable */
 
-		// clocks = <&vlp_cksys_clk CLK_VLP_CK_SCP_SEL>,
-		//  <&topckgen_clk CLK_TOP_TCK_26M_MX9>; /* 26M */
+		clocks = <&vlp_cksys_clk CLK_VLP_CK_SCP_SEL>,
+		 <&cksys_clk CLK_CK_TCK_26M_MX9>; /* 26M */
 
-		// clock-names = "clk_mux",
-		// "clk_pll_0";
+		clock-names = "clk_mux",
+		"clk_pll_0";
 
 		scp-core-online-mask = <0x7>;
 		vlp-support;
@@ -5381,11 +5381,11 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		fmeter-args-u2-result =
 		/* fm_id	fm_type */
 		 < 60		0>; /* OSC2_CK */
-		ildo-freq-target = <7812>; /* 7812khz*128 = 1G */
-		fmeter-args-ildo =
-		/* fm_id	fm_type */
-		 < 58		0>; /* ildo clk */
-		scp-dvfs-flag = "disable"; /* enable/disable */
+		// ildo-freq-target = <7812>; /* 7812khz*128 = 1G */
+		// fmeter-args-ildo =
+		// /* fm_id	fm_type */
+		//  < 58		0>; /* ildo_d128 clk */
+		scp-dvfs-flag = "enable"; /* enable/disable */
 	};
 
 	watchdog: watchdog@1c010000 {
