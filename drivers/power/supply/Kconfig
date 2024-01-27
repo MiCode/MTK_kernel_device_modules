@@ -182,12 +182,31 @@ config CHARGER_MT6375
 	  The device is compliant with the USB Battery Charging Specification
 	  Revision 1.2.
 
+config CHARGER_MT6379
+	tristate "MT6379 charger driver"
+	depends on MFD_MT6379_SPMI
+	help
+	  Say Y to enable support for the MT6379 charger.
+	  The driver supports controlling switching charger and OTG
+	  with high-accuracy current and voltage regulation.
+	  The device is compliant with the USB Battery Charging Specification
+	  Revision 1.2.
+
 config GAUGE_MT6375
 	tristate "MT6375 fuel gauge driver"
 	depends on MFD_MT6375
 	help
 	  Say Y to enable support for the MT6375 gauge.
 	  This adds support for battery fuel gauge in Mediatek MT6375 PMIC.
+	  The fuelgauge calculates and determines the battery state of charge
+	  according to battery open circuit voltage.
+
+config GAUGE_MT6379
+	tristate "MT6379 Fuel Gauge driver"
+	depends on MFD_MT6379_SPMI
+	help
+	  Say Y to enable support for the MT6379 gauge.
+	  This adds support for battery fuel gauge in MediaTek MT6379 PMIC.
 	  The fuelgauge calculates and determines the battery state of charge
 	  according to battery open circuit voltage.
 
@@ -208,3 +227,5 @@ config MTK_CHARGER_TYPE_DETECT
 	  Support enable charger type detect when receiving
 	  typec attach notify.
 	  Say N to disable.
+
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/ufcs/Kconfig"
