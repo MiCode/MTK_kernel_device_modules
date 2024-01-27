@@ -370,7 +370,7 @@ int ut_multi_thread_mtkSecHeap(void *from)
 		dma_heap = dma_heap_find(sec_heap_name);
 		if (!dma_heap) {
 			pr_info("heap_find fail\n");
-			goto sec_out;
+			goto sec_out1;
 		}
 		size = get_random_u64() % (upper / align) * align + 0x1000;
 		ut_dmabuf = dma_heap_buffer_alloc(dma_heap, size,
@@ -380,10 +380,12 @@ int ut_multi_thread_mtkSecHeap(void *from)
 		if (IS_ERR(ut_dmabuf)) {
 			pr_info("dma_buf allocated fail PTR_ERR = %ld\n",
 				PTR_ERR(ut_dmabuf));
-			goto sec_out;
+			goto sec_out1;
 		}
 		dma_heap_buffer_free(ut_dmabuf);
 	}
+
+sec_out1:
 
 	strcpy(sec_heap_name, "mtk_sapu_page-uncached");
 	align = 0x1000;
@@ -394,7 +396,33 @@ int ut_multi_thread_mtkSecHeap(void *from)
 		dma_heap = dma_heap_find(sec_heap_name);
 		if (!dma_heap) {
 			pr_info("heap_find fail\n");
-			goto sec_out;
+			goto sec_out2;
+		}
+		size = get_random_u64() % (upper / align) * align + 0x1000;
+		ut_dmabuf = dma_heap_buffer_alloc(dma_heap, size,
+						  O_RDWR | O_CLOEXEC,
+						  DMA_HEAP_VALID_HEAP_FLAGS);
+		dma_heap_put(dma_heap);
+		if (IS_ERR(ut_dmabuf)) {
+			pr_info("dma_buf allocated fail PTR_ERR = %ld\n",
+				PTR_ERR(ut_dmabuf));
+			goto sec_out2;
+		}
+		dma_heap_buffer_free(ut_dmabuf);
+	}
+
+sec_out2:
+
+	strscpy(sec_heap_name, "mtk_tee_page-uncached");
+	align = 0x1000;
+	loop = MAX_ALLOC;
+	upper = 0x1000000;
+
+	for (i = 0; i < loop; i++) {
+		dma_heap = dma_heap_find(sec_heap_name);
+		if (!dma_heap) {
+			pr_info("heap_find fail\n");
+			goto sec_out3;
 		}
 		//size = get_random_u64() % (upper / align) * align + 0x1000;
 		div_u64_rem( get_random_u64(), (upper / align) * align, &remainder);
@@ -406,12 +434,12 @@ int ut_multi_thread_mtkSecHeap(void *from)
 		if (IS_ERR(ut_dmabuf)) {
 			pr_info("dma_buf allocated fail PTR_ERR = %ld\n",
 				PTR_ERR(ut_dmabuf));
-			goto sec_out;
+			goto sec_out3;
 		}
 		dma_heap_buffer_free(ut_dmabuf);
 	}
 
-sec_out:
+sec_out3:
 	return 0;
 }
 
