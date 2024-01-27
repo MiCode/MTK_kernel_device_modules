@@ -8,7 +8,6 @@
 #define DEFAULT_SCHED_RAVG_WINDOW 4000000
 #define GROUP_RAVG_HIST_SIZE_MAX (5)
 #define FLT_GROUP_START_IDX 6
-#define TA_GRPID 3
 
 #define mts_to_ts(mts) ({ \
 		void *__mptr = (void *)(mts); \
@@ -49,6 +48,17 @@ enum _wp {
 	WP_MODE_3 = 3,
 	WP_MODE_4 = 4,
 	WP_MODE_NUM,
+};
+
+enum _cgrp {
+	CGRP_ROOT = 0,
+	CGRP_FG = 1,
+	CGRP_BG = 2,
+	CGRP_TA = 3,
+	CGRP_RT = 4,
+	CGRP_SYS = 5,
+	CGRP_SYSBG = 6,
+	CGRP_NUM,
 };
 
 struct grp {
@@ -101,4 +111,6 @@ int  group_set_threshold(int grp_id, int val);
 int  group_reset_threshold(int grp_id);
 int  group_get_threshold(int grp_id);
 inline bool group_get_gear_hint(struct task_struct *p);
+int group_get_cgroup_colocate(int cgrp_id);
+int group_set_cgroup_colocate(int cgrp_id, int grp_id);
 #endif /* _EAS_GROUP_H*/

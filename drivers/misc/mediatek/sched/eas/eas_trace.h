@@ -1036,6 +1036,29 @@ TRACE_EVENT(sched_task_to_grp,
 
 );
 
+TRACE_EVENT(sched_cgrp_to_fltgrp,
+
+	TP_PROTO(int cgrp_id, int grp_id, const char *caller0),
+
+	TP_ARGS(cgrp_id, grp_id, caller0),
+
+	TP_STRUCT__entry(
+		__field(int,	cgrp_id)
+		__field(int,	grp_id)
+		__string(caller0,	caller0)
+		),
+
+	TP_fast_assign(
+		__entry->cgrp_id	= cgrp_id;
+		__entry->grp_id	= grp_id;
+		__assign_str(caller0, caller0);
+		),
+
+	TP_printk("cgrp_id[%d] to flt grp[%d] caller =%s",
+		__entry->cgrp_id, __entry->grp_id, __get_str(caller0)
+		)
+);
+
 TRACE_EVENT(sched_update_history,
 
 	TP_PROTO(struct rq *rq, struct task_struct *p, u32 runtime, int samples,
