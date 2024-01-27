@@ -56,6 +56,8 @@ EXPORT_SYMBOL(get_grp_awr_marg_ctrl);
 
 static int top_grp_aware;
 static int top_grp_ctrl_refcnt;
+static int top_app_force_ctrl;
+
 #include <linux/ftrace.h>
 #include <linux/kallsyms.h>
 void set_top_grp_aware(int val, int force_ctrl)
