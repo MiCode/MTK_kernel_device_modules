@@ -207,6 +207,7 @@ struct cmdqMDPFuncStruct {
 	CmdqErrorResetCB errorReset;
 	CmdqMdpEnableCommonClock mdpEnableCommonClock;
 	CmdqMdpGetEngLarb mdpGetEngLarb;
+	CmdqMdpGetEngLarb mdpGetIspFlag;
 	CmdqMdpGetLarbDev mdpGetLarbDev;
 	CmdqMdpGetMdpDev mdpGetMdpDev;
 	CmdqMdpGetLarbCount mdpGetLarbCount;

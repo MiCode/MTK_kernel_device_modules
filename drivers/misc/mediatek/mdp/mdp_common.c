@@ -297,6 +297,8 @@ static s32 cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 	int ret;
 
 	if (!(engine_flag & cmdq_mdp_get_func()->mdpGetEngLarb())) {
+		if (engine_flag & cmdq_mdp_get_func()->mdpGetIspFlag())
+			return 0;
 		CMDQ_ERR("%s engine_flag not include MDP_ENG_LARB\n", __func__);
 		return TASK_STATE_ERROR;
 	}
@@ -2657,6 +2659,11 @@ static u64 cmdq_mdp_get_eng_larb_virtual(void)
 	return 0;
 }
 
+static u64 mdp_get_isp_flag_virtual(void)
+{
+	return 0;
+}
+
 static struct device *cmdq_mdp_get_larb_device_virtual(void)
 {
 	return mdp_ctx.larb;
@@ -3837,6 +3844,7 @@ void cmdq_mdp_virtual_function_setting(void)
 	pFunc->mdpIsMtee = mdp_check_handle_dummy;
 	pFunc->mdpIsIspImg = mdp_check_handle_dummy;
 	pFunc->mdpIsIspCamin = mdp_check_handle_dummy;
+	pFunc->mdpGetIspFlag = mdp_get_isp_flag_virtual;
 	pFunc->mdpInitialSet = cmdqMdpInitialSetting_virtual;
 
 	pFunc->rdmaGetRegOffsetSrcAddr =
