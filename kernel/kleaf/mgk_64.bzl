@@ -184,6 +184,7 @@ mgk_64_device_modules = [
     "drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_wrapper.ko",
     "drivers/gpu/mediatek/hal/mtk_gpu_hal.ko",
     "drivers/i2c/busses/i2c-mt65xx.ko",
+    "drivers/i3c/master/mtk-i3c-master-mt69xx.ko",
     "drivers/iio/adc/mt6338-auxadc.ko",
     "drivers/iio/adc/mt635x-auxadc.ko",
     "drivers/iio/adc/mt6360-adc.ko",
