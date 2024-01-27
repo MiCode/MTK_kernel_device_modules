@@ -5,11 +5,32 @@
 #include <linux/module.h>
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
-#include <linux/of.h>
-#include "common.h"
 
 MODULE_LICENSE("GPL");
 
+#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
+/**
+ * dequeue_idle_cpu - is a given CPU idle currently?
+ * this function is used in after_dequeue  the curr task
+ * does not switch to rq->idle
+ * @cpu: the processor in question.
+ *
+ * Return: 1 if the CPU is currently idle. 0 otherwise.
+ */
+int dequeue_idle_cpu(int cpu)
+{
+	struct rq *rq = cpu_rq(cpu);
+
+#if IS_ENABLED(CONFIG_SMP)
+	if (rq->ttwu_pending)
+		return 0;
+#endif
+	if (rq->nr_running == 1)
+		return 1;
+
+	return 0;
+}
+#endif
 
 #ifdef CONFIG_UCLAMP_TASK
 /**
@@ -71,24 +92,3 @@ unsigned long mtk_uclamp_rq_util_with(struct rq *rq, unsigned long util,
 	return util;
 }
 #endif /* CONFIG_UCLAMP_TASK */
-
-void parse_eas_data(struct eas_info *info)
-{
-	struct device_node *dn = NULL;
-	int ret;
-
-	dn = of_find_node_by_name(NULL, EAS_NODE_NAME);
-	if (dn) {
-		ret = of_property_read_u32(dn, EAS_PROP_CSRAM, &info->csram_base);
-		ret |= of_property_read_u32(dn, EAS_PROP_OFFS_CAP, &info->offs_cap);
-		ret |= of_property_read_u32_index(dn, EAS_PROP_OFFS_THERMAL_S, 0,
-					&info->offs_thermal_limit_s);
-		info->available = !ret;
-		pr_info("Get info: base_addr=0x%x, cap=0x%x, thermal=0x%x, avai=%d\n",
-					info->csram_base, info->offs_cap,
-					info->offs_thermal_limit_s, info->available);
-	} else {
-		pr_info("No EAS node!\n");
-		info->available = false;
-	}
-}

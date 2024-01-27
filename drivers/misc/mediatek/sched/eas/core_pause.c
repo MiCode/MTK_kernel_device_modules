@@ -238,9 +238,7 @@ int pause_cpus(struct cpumask *cpus)
 	cpumask_t requested_cpus;
 	u64 start_time = sched_clock();
 	unsigned long flags;
-	#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 	cpumask_t unpaused;
-	#endif
 
 	raw_spin_lock_irqsave(&sched_pause_lock, flags);
 	cpumask_copy(&requested_cpus, cpus);
@@ -284,9 +282,7 @@ int resume_cpus(struct cpumask *cpus)
 	cpumask_t requested_cpus;
 	unsigned long flags;
 	u64 start_time = sched_clock();
-	#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 	cpumask_t unpaused;
-	#endif
 
 	raw_spin_lock_irqsave(&sched_pause_lock, flags);
 	cpumask_copy(&requested_cpus, cpus);

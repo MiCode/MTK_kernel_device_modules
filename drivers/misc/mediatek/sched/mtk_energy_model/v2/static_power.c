@@ -25,7 +25,6 @@
 #include <linux/cpufreq.h>
 #include <linux/topology.h>
 #include <linux/types.h>
-#include <linux/bitfield.h>
 #include "energy_model.h"
 
 #define __LKG_PROCFS__ 0

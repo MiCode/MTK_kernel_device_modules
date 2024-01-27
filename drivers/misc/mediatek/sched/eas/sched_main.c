@@ -52,8 +52,6 @@ int gear_start = -1;
 int num_gear = -1;
 int reverse = -1;
 
-extern int parse_dt_topology_arm(void);
-
 static inline void sched_asym_cpucapacity_init(void)
 {
 	struct perf_domain *pd;
@@ -87,8 +85,7 @@ static void sched_task_util_hook(void *data, struct sched_entity *se)
 		sa = &se->avg;
 
 		trace_sched_task_util(p->pid,
-				sa->util_avg, sa->util_est.enqueued & ~UTIL_AVG_UNCHANGED,
-				sa->util_est.ewma);
+				sa->util_avg, sa->util_est.enqueued, sa->util_est.ewma);
 	}
 }
 
@@ -96,6 +93,8 @@ static void sched_task_uclamp_hook(void *data, struct sched_entity *se)
 {
 	if (trace_sched_task_uclamp_enabled()) {
 		struct task_struct *p;
+		struct sched_avg *sa;
+		struct util_est ue;
 		struct uclamp_se *uc_min_req, *uc_max_req;
 		unsigned long util;
 
@@ -103,7 +102,10 @@ static void sched_task_uclamp_hook(void *data, struct sched_entity *se)
 			return;
 
 		p = container_of(se, struct task_struct, se);
-		util = task_util_est(p);
+		sa = &se->avg;
+		ue = READ_ONCE(se->avg.util_est);
+		util = max(ue.ewma, ue.enqueued);
+		util = max(util, READ_ONCE(se->avg.util_avg));
 		uc_min_req = &p->uclamp_req[UCLAMP_MIN];
 		uc_max_req = &p->uclamp_req[UCLAMP_MAX];
 
@@ -119,9 +121,9 @@ static int enqueue;
 static int dequeue;
 static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct *p, int flags)
 {
+	int cpu = rq->cpu;
 	int type = *(int *)data;
 	struct sugov_rq_data *sugov_data_ptr;
-
 	irq_log_store();
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
@@ -162,7 +164,6 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 	}
 
 	if (trace_sched_queue_task_enabled()) {
-		int cpu = rq->cpu;
 		unsigned long util = READ_ONCE(rq->cfs.avg.util_avg);
 
 		util = max_t(unsigned long, util,
@@ -429,7 +430,6 @@ static long eas_ioctl_impl(struct file *filp,
 	unsigned int sync;
 	unsigned int val;
 	int grp_id;
-
 	struct cpumask mask;
 
 	struct SA_task SA_task_args = {
@@ -640,11 +640,6 @@ static long eas_ioctl_impl(struct file *filp,
 		if (!unset_gear_indices(val))
 			return -1;
 		break;
-	case EAS_SET_TASK_LS_PREFER_CPUS:
-		if (easctl_copy_from_user(&SA_task_args, (void *)arg, sizeof(struct SA_task)))
-			return -1;
-		set_task_ls_prefer_cpus(SA_task_args.pid, SA_task_args.mask);
-		break;
 	case EAS_SBB_ALL_SET:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
@@ -764,9 +759,7 @@ static long eas_ioctl(struct file *filp,
 
 static const struct proc_ops eas_Fops = {
 	.proc_ioctl = eas_ioctl,
-#if IS_ENABLED(CONFIG_COMPAT)
 	.proc_compat_ioctl = eas_ioctl,
-#endif
 	.proc_open = eas_open,
 	.proc_read = seq_read,
 	.proc_lseek = seq_lseek,
@@ -861,14 +854,6 @@ static int __init mtk_scheduler_init(void)
 	init_gear_hints();
 
 	init_updown_migration();
-
-#if !IS_ENABLED(CONFIG_ARM64)
-	ret = parse_dt_topology_arm();
-	if (ret) {
-		pr_info("parse_dt_topology fail on arm32, returned %d\n", ret);
-		return ret;
-	}
-#endif
 
 	ret = init_sched_common_sysfs();
 	if (ret)
@@ -1053,12 +1038,12 @@ static void __exit mtk_scheduler_exit(void)
 	cleanup_sched_common_sysfs();
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	exit_flt_platform();
-	group_exit();
 #endif
+	group_exit();
 	free_cpu_array();
 }
 
-late_initcall_sync(mtk_scheduler_init);
+module_init(mtk_scheduler_init);
 module_exit(mtk_scheduler_exit);
 
 MODULE_LICENSE("GPL");
