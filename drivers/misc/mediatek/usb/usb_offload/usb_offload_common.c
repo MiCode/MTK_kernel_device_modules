@@ -3100,6 +3100,10 @@ static int usb_offload_probe(struct platform_device *pdev)
 #else
 			USB_OFFLOAD_ERR("Do not register notifier. SCP not enabled\n");
 #endif
+		} else {
+			USB_OFFLOAD_ERR("Unknown dsp type: %d\n", dsp_type);
+			ret = -EINVAL;
+			goto GET_DSP_TYPE_FAIL;
 		}
 		ret = sound_usb_trace_init();
 		if (ret != 0) {
@@ -3119,6 +3123,7 @@ static int usb_offload_probe(struct platform_device *pdev)
 
 	USB_OFFLOAD_INFO("Probe Success!!!");
 	return ret;
+GET_DSP_TYPE_FAIL:
 REG_SSUSB_OFFLOAD_FAIL:
 	kfree(uodev->ssusb_offload_notify);
 INIT_OFFLOAD_NOTIFY_FAIL:
