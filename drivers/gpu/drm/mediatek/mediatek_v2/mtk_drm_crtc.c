@@ -3776,12 +3776,21 @@ _mtk_crtc_lye_addon_module_connect(
 				else
 					module = &addon_module[1];
 
-				if (addon_module[0]->type == ADDON_BETWEEN)
-					mtk_addon_connect_between(crtc, ddp_mode, *module,
-								&addon_config, cmdq_handle);
-				else if (addon_module[0]->type == ADDON_EMBED)
-					mtk_addon_connect_embed(crtc, ddp_mode, *module,
-								&addon_config, cmdq_handle);
+				if (priv->data->mmsys_id == MMSYS_MT6768) {
+					if (addon_module[0]->type == ADDON_BETWEEN)
+						mtk_addon_connect_between(crtc, ddp_mode, addon_module[0],
+									&addon_config, cmdq_handle);
+					else if (addon_module[0]->type == ADDON_EMBED)
+						mtk_addon_connect_embed(crtc, ddp_mode, addon_module[0],
+									&addon_config, cmdq_handle);
+				} else {
+					if (addon_module[0]->type == ADDON_BETWEEN)
+						mtk_addon_connect_between(crtc, ddp_mode, *module,
+									&addon_config, cmdq_handle);
+					else if (addon_module[0]->type == ADDON_EMBED)
+						mtk_addon_connect_embed(crtc, ddp_mode, *module,
+									&addon_config, cmdq_handle);
+				}
 				break;
 			}
 

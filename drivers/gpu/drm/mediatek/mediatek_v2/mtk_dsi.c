@@ -6144,8 +6144,10 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 			       comp->regs_pa + DSI_START, 0, ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DSI_START, 1, ~0);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DSI_START, 0, ~0);
+		if (priv && priv->data && priv->data->mmsys_id != MMSYS_MT6768) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+					   comp->regs_pa + DSI_START, 0, ~0);
+		}
 		break;
 	case MTK_TRIG_FLAG_EOF:
 		mtk_dsi_poll_for_idle(dsi, handle);
