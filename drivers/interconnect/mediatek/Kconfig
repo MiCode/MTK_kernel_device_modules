@@ -50,6 +50,14 @@ config INTERCONNECT_MTK_MMQOS_MT6886
 	  camera, mdp and video codec, and configure SMI settings dynamically
 	  according to the aggregated BW.
 
+config INTERCONNECT_MTK_MMQOS_MT6893
+	tristate "Mediatek MT6893 MMQoS interconnect driver"
+	depends on INTERCONNECT_MTK
+	depends on DEVICE_MODULES_MTK_SMI
+	select INTERCONNECT_MTK_MMQOS_COMMON
+	help
+	  Support MT6893 multimedia QoS.
+
 config INTERCONNECT_MTK_MMQOS_MT6897
 	tristate "Mediatek MT6897 MMQoS interconnect driver"
 	depends on INTERCONNECT_MTK
@@ -77,6 +85,14 @@ config INTERCONNECT_MTK_MMQOS_MT6985
 	select INTERCONNECT_MTK_MMQOS_COMMON
 	help
 	  Support MT6985 multimedia QoS.
+
+config INTERCONNECT_MTK_MMQOS_MT6768
+	tristate "Mediatek MT6768 MMQoS interconnect driver"
+	depends on INTERCONNECT_MTK
+	depends on DEVICE_MODULES_MTK_SMI
+	select INTERCONNECT_MTK_MMQOS_COMMON
+	help
+	  Support MT6768 multimedia QoS.
 
 config MTK_MMQOS_VCP
 	tristate "MediaTek MMQOS VCP Support"

@@ -130,14 +130,14 @@ struct md_ccif_ctrl {
 	unsigned int ccif_clk_free_run;
 };
 
-#ifdef CCCI_KMODULE_ENABLE
-
 #define ccci_write32(b, a, v)  \
 do { \
 	writel(v, (b) + (a)); \
 	mb(); /* make sure register access in order */ \
 } while (0)
 
+
+#ifdef CCCI_KMODULE_ENABLE
 
 #define ccci_write16(b, a, v)  \
 do { \

@@ -23,8 +23,11 @@
 #include "mtk_selinux_warning.h"
 #include <avc.h>
 #include <avc_ss.h>
+#ifdef MODULE
 #include <classmap.h>
-
+#else
+extern const struct security_class_mapping secclass_map[];
+#endif
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <mt-plat/aee.h>
 #endif

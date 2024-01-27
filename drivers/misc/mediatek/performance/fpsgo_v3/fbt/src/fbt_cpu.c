@@ -1379,8 +1379,14 @@ static void print_dep(const char *func,
 			(strlen(dep_str) + strlen(temp) < MAIN_LOG_SIZE))
 			strncat(dep_str, temp, strlen(temp));
 	}
+#if IS_ENABLED(CONFIG_ARM64)
 	xgf_trace("%s %s %s %d %llu ret=%d size:%d dep-list %s",
 			__func__, func, tag, pid, buffer_id, ret, size, dep_str);
+#else
+	xgf_trace("%s %s %s %d %d size:%d",
+			 __func__, func, tag, pid, buffer_id, size);
+	xgf_trace("dep-list %s", dep_str);
+#endif
 	kfree(dep_str);
 }
 
@@ -2421,6 +2427,37 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 				max_cap_b,max_cap_m, max_cap_other, max_util, max_util_b,
 				max_util_m, max_util_other, separate_aa_final, separate_release_sec_final,
 				fl->heavyidx, fl->action, light_thread, loading_policy_final);
+		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, min_cap_other, "perf_idx_other");
+		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, max_cap_other, "perf_idx_max_other");
+
+		if ((boost_LR_final && fbt_is_R_L_task(fl->pid, heaviest_pid, second_heavy_pid, thr->pid)) ||
+				(boost_affinity_final && fl->heavyidx) ||
+				(boost_affinity_final == FPSGO_BAFFINITY_B_M && fl->action == XGF_ADD_DEP_NO_LLF))
+			fbt_nice_task(fl->pid, 1, &fl->ori_nice);
+		else
+			fbt_nice_task(fl->pid, 0, &fl->ori_nice);
+
+		fbt_affinity_task(boost_affinity_final, fl->pid, fl->heavyidx,
+			light_thread,llf_task_policy_final, fl->reset_taskmask, fl->action,
+			&fl->policy, &fl->prefer_type, &fl->ori_ls, user_cpumask, FPSGO_MAX_GROUP);
+
+		fbt_change_task_policy(boost_VIP_final, fl->pid, fl->heavyidx, fl->action,
+			RT_prio1_final, RT_prio2_final, RT_prio3_final, &fl->ori_rtprio, &fl->ori_vip,
+			vip_mask_final, set_vvip_final);
+
+		fbt_set_task_ls(set_ls_final, ls_groupmask_final, fl->pid,
+			fl->heavyidx, &fl->ori_ls);
+
+		light_thread = fbt_is_light_loading(fl->loading, loading_th_final);
+
+		min_cap_other = min_cap_m * separate_pct_other_final / 100;
+		max_cap_other = max_cap_m;
+		min_cap_other = (min_cap_other > max_cap_other) ? max_cap_other : min_cap_other;
+
+		fbt_task_cap(fl->pid, min_cap, min_cap_b, min_cap_m, min_cap_other, max_cap,
+				max_cap_b,max_cap_m, max_cap_other, separate_aa_final,
+				separate_release_sec_final,fl->heavyidx,
+				fl->action, light_thread, loading_policy_final);
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, min_cap_other, "perf_idx_other");
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, max_cap_other, "perf_idx_max_other");
 
@@ -4047,6 +4084,7 @@ static int fbt_get_next_jerk(int cur_id)
 	return ret_id;
 }
 
+#if IS_ENABLED(CONFIG_ARM64)
 static int update_quota(struct fbt_boost_info *boost_info, int target_fps,
 	unsigned long long t_Q2Q_ns, unsigned long long t_enq_len_ns,
 	unsigned long long t_deq_len_ns, int target_fpks, int cooler_on,
@@ -4223,7 +4261,9 @@ static int update_quota(struct fbt_boost_info *boost_info, int target_fps,
 
 	return s32_target_time;
 }
+#endif
 
+#if IS_ENABLED(CONFIG_ARM64)
 int fbt_eva_gcc(struct fbt_boost_info *boost_info,
 		int target_fps, int fps_margin, unsigned long long t_Q2Q,
 		int blc_wt, long long t_cpu, int target_fpks,
@@ -4373,6 +4413,7 @@ done:
 
 	return ret;
 }
+#endif
 
 extern bool mtk_get_gpu_loading(unsigned int *pLoading);
 
@@ -4583,6 +4624,10 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 	int test_blc_wt_b, test_blc_wt_m, test_blc_wt;
 	unsigned long long t_fps_margin_exp_time;
 	unsigned long long rl_target_t = last_target_t_ns;
+#if !IS_ENABLED(CONFIG_ARM64)
+	unsigned long long temp_targetfps_raw;
+	unsigned long long temp_num = 1000000000000ULL;
+#endif
 
 	if (out_target_t_ns)
 		*out_target_t_ns = target_t;
@@ -4621,9 +4666,16 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 					rl_target_t = last_target_t_ns;
 			}
 			if (target_fps_margin > 0) {
+#if IS_ENABLED(CONFIG_ARM64)
 				t_fps_margin_exp_time = 1000000000000ULL /
 					(unsigned long long) ((unsigned long long) target_fpks +
 					(unsigned long long) target_fps_margin * 1000);
+#else
+				temp_targetfps_raw = (unsigned long long) ((unsigned long long) target_fpks +
+					(unsigned long long) target_fps_margin * 1000);
+				t_fps_margin_exp_time = do_div(temp_num, temp_targetfps_raw);
+#endif
+
 				if (t_fps_margin_exp_time < rl_target_t)
 					rl_target_t = t_fps_margin_exp_time;
 				if (rl_target_t > last_target_t_ns)
@@ -4683,7 +4735,9 @@ static int fbt_boost_policy(
 	int qr_t2wnt_y_p_final;
 	int blc_boost_final;
 	int expected_fps_margin_final;
+#if IS_ENABLED(CONFIG_ARM64)
 	int s32_target_time;
+#endif
 	long filtered_aa_n, filtered_aa_b, filtered_aa_m;
 	int quota_v2_diff_clamp_min_final;
 	int quota_v2_diff_clamp_max_final;
@@ -4783,6 +4837,7 @@ static int fbt_boost_policy(
 		fpsgo_systrace_c_fbt_debug(pid, buffer_id, aa_m, "aa_m");
 	}
 
+#if IS_ENABLED(CONFIG_ARM64)
 	/* update quota */
 	if (qr_enable_active && gcc_enable_active == 1) {
 		s32_target_time = update_quota(boost_info,
@@ -4823,6 +4878,7 @@ static int fbt_boost_policy(
 			}
 		}
 	}
+#endif
 
 	if (blc_boost_final) {
 		fpsgo_systrace_c_fbt(pid, buffer_id, blc_wt, "before boost");
@@ -6352,7 +6408,11 @@ static int cmp_uint(const void *a, const void *b)
 #endif  // FPSGO_DYNAMIC_WL
 #endif  // CONFIG_MTK_OPP_CAP_INFO
 
+#if !IS_ENABLED(CONFIG_ARM64)
+void fbt_update_pwr_tbl(void)
+#else
 static void fbt_update_pwr_tbl(void)
+#endif
 {
 	unsigned long long max_cap = 0ULL, min_cap = UINT_MAX;
 	int cluster = 0;
@@ -9379,7 +9439,15 @@ int __init fbt_cpu_init(void)
 
 	fbt_init_sjerk();
 
+#if IS_ENABLED(CONFIG_ARM64)
 	fbt_update_pwr_tbl();
+#endif
+
+#if FPSGO_DYNAMIC_WL
+	fbt_cpufreq_cb_cap_fp = fbt_cpufreq_cb_cap;
+#else  // FPSGO_DYNAMIC_WL
+#endif  // FPSGO_DYNAMIC_WL
+
 
 #if FPSGO_DYNAMIC_WL
 	fbt_cpufreq_cb_cap_fp = fbt_cpufreq_cb_cap;

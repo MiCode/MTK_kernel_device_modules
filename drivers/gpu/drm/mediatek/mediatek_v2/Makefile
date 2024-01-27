@@ -1,4 +1,4 @@
-subdir-ccflags-y += -Werror
+subdir-ccflags-y += -Wno-error
 
 CFLAGS_mtk_layering_rule_base.o := -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2
 
@@ -76,6 +76,9 @@ mediatek-drm-y += mtk_dp_intf.o \
 	mtk_dp_hal.o \
 	mtk_dp_debug.o
 
+#for 6382 bridge
+mediatek-drm-y += mtk_disp_bdg.o
+
 ifeq (yy, $(CONFIG_MTK_TEE_GP_SUPPORT)$(CONFIG_TRUSTONIC_TEE_SUPPORT))
 obj-y += ca/
 ccflags-y += -DDPTX_HDCP_ENABLE
@@ -97,7 +100,10 @@ obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mtk_sync.o
 
 obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mtk_panel_ext.o
 obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mtk_disp_notify.o
+
+ifneq ($(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT), y)
 obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mtk_aod_scp.o
+endif
 
 obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mtk_disp_sec.o
 
@@ -106,6 +112,10 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/			\
 	     -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mminfra/			\
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/			\
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/spi_slave_drv/          \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/bridge/ 	\
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/clkbuf/src/	\
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include/     \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs/			\
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pmic/			\
              -I$(DEVICE_MODULES_PATH)/drivers/iommu/				\
@@ -125,12 +135,16 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/ \
-             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/clkbuf/v1/inc/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/ \
              -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/ \
              -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mml \
              -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc \
 	     -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek \
+
+ifneq ($(filter y m, $(CONFIG_MTK_MDP)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdp/
+ccflags-y += -DSHARE_WROT_SRAM
+endif
 
 ccflags-$(CONFIG_MTK_CMDQ_MBOX_EXT) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox
 

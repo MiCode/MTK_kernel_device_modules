@@ -1971,7 +1971,11 @@ int fpsgo_ktf2comp_test_check_BQ_type(int *a_p_pid_arr,  int *a_c_pid_arr,
 	if (ret)
 		goto out;
 
+#if IS_ENABLED(CONFIG_ARM64)
 	FPSGO_LOGE("struct render_info size:%lu\n", sizeof(struct render_info));
+#else
+	FPSGO_LOGE("struct render_info size:%u\n", sizeof(struct render_info));
+#endif
 
 	for (i = 0; i < r_num; i++) {
 		r_iter = fpsgo_search_and_add_render_info(r_pid_arr[i], r_bufID_arr[i], 1);

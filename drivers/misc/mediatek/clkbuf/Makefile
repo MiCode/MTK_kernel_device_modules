@@ -21,7 +21,9 @@ clkbuf-y += src/clkbuf-pmif.o
 clkbuf-y += src/platform-hdlr.o
 clkbuf-y += src/clkbuf-debug.o
 #platform data files
+clkbuf-y += src/dcxo-6358.o
 clkbuf-y += src/dcxo-6685.o
 clkbuf-y += src/dcxo-6685-tb.o
+clkbuf-y += src/dcxo-6359p.o
 clkbuf-y += src/pmif-data-v1.o
 clkbuf-y += src/src-data-v1.o

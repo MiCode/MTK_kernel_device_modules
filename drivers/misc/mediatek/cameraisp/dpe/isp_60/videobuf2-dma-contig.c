@@ -46,17 +46,18 @@ struct vb2_dc_buf {
 
 static unsigned long vb2_dc_get_contiguous_size(struct sg_table *sgt)
 {
-	struct scatterlist *s;
-	dma_addr_t expected = sg_dma_address(sgt->sgl);
-	unsigned int i;
+	// struct scatterlist *s;
+	// dma_addr_t expected = sg_dma_address(sgt->sgl);
+	// unsigned int i;
 	unsigned long size = 0;
 
-	for_each_sg(sgt->sgl, s, sgt->nents, i) {
-		if (sg_dma_address(s) != expected)
-			break;
-		expected = sg_dma_address(s) + sg_dma_len(s);
-		size += sg_dma_len(s);
-	}
+		// for_each_sg(sgt->sgl, s, sgt->nents, i) {
+	 // if (sg_dma_address(s) != expected) {
+	//		break;
+	//	}
+	//	expected = sg_dma_address(s) + sg_dma_len(s);
+	//	size += sg_dma_len(s);
+	 // }
 	return size;
 }
 
@@ -64,14 +65,14 @@ static unsigned long vb2_dc_get_contiguous_size(struct sg_table *sgt)
 /*         callbacks for all buffers         */
 /*********************************************/
 
-static void *vb2_dc_cookie(void *buf_priv)
+static void *vb2_dc_cookie(struct vb2_buffer *vb, void *buf_priv)
 {
 	struct vb2_dc_buf *buf = buf_priv;
 
 	return &buf->dma_addr;
 }
 
-static void *vb2_dc_vaddr(void *buf_priv)
+static void *vb2_dc_vaddr(struct vb2_buffer *vb, void *buf_priv)
 {
 	struct vb2_dc_buf *buf = buf_priv;
 	struct iosys_map map;
@@ -125,10 +126,10 @@ void vb2_dc_put(void *buf_priv)
 {
 	struct vb2_dc_buf *buf = buf_priv;
 
-	pr_debug("kernel_dpebuf refcount before = %d\n", buf->refcount);
+	//pr_debug("kernel_dpebuf refcount before = %d\n", buf->refcount);
 	if (!refcount_dec_and_test(&buf->refcount))
 		return;
-	pr_debug("kernel_dpebuf refcount after = %d\n", buf->refcount);
+	//pr_debug("kernel_dpebuf refcount after = %d\n", buf->refcount);
 	if (buf->sgt_base) {
 		sg_free_table(buf->sgt_base);
 		kfree(buf->sgt_base);
@@ -139,9 +140,7 @@ void vb2_dc_put(void *buf_priv)
 	kfree(buf);
 }
 
-void *vb2_dc_alloc(struct device *dev, unsigned long attrs,
-			  unsigned long size, enum dma_data_direction dma_dir,
-			  gfp_t gfp_flags)
+void *vb2_dc_alloc(struct vb2_buffer *vb, struct device *dev, unsigned long size)
 {
 	struct vb2_dc_buf *buf;
 
@@ -152,10 +151,11 @@ void *vb2_dc_alloc(struct device *dev, unsigned long attrs,
 	if (!buf)
 		return ERR_PTR(-ENOMEM);
 
-	if (attrs)
-		buf->attrs = attrs;
+	buf->attrs = DMA_ATTR_WRITE_COMBINE;
 	buf->cookie = dma_alloc_attrs(dev, size, &buf->dma_addr,
-					GFP_KERNEL | gfp_flags, buf->attrs);
+					GFP_KERNEL | 0,
+					buf->attrs);
+
 	if (!buf->cookie) {
 		dev_info(dev, "dma_alloc_coherent of size %ld failed\n", size);
 		kfree(buf);
@@ -168,7 +168,7 @@ void *vb2_dc_alloc(struct device *dev, unsigned long attrs,
 	/* Prevent the device from being released while the buffer is used */
 	buf->dev = get_device(dev);
 	buf->size = size;
-	buf->dma_dir = dma_dir;
+	buf->dma_dir = DMA_FROM_DEVICE;
 
 	buf->handler.refcount = &buf->refcount;
 	buf->handler.put = vb2_dc_put;
@@ -178,7 +178,6 @@ void *vb2_dc_alloc(struct device *dev, unsigned long attrs,
 
 	return buf;
 }
-
 
 #ifdef vb2_dc_mmap_en
 static int vb2_dc_mmap(void *buf_priv, struct vm_area_struct *vma)
@@ -196,6 +195,7 @@ static int vb2_dc_mmap(void *buf_priv, struct vm_area_struct *vma)
 	 * map whole buffer
 	 */
 	vma->vm_pgoff = 0;
+
 	ret = dma_mmap_attrs(buf->dev, vma, buf->cookie,
 		buf->dma_addr, buf->size, buf->attrs);
 
@@ -217,7 +217,6 @@ static int vb2_dc_mmap(void *buf_priv, struct vm_area_struct *vma)
 	return 0;
 }
 #endif
-
 
 /*********************************************/
 /*         DMABUF ops for exporters          */
@@ -338,18 +337,15 @@ static void vb2_dc_dmabuf_ops_release(struct dma_buf *dbuf)
 	vb2_dc_put(dbuf->priv);
 }
 
-static int vb2_dc_dmabuf_ops_vmap(struct dma_buf *dbuf,
-		struct iosys_map *map)
+static int vb2_dc_dmabuf_ops_vmap(struct dma_buf *dbuf, struct iosys_map *map)
 {
 	struct vb2_dc_buf *buf = dbuf->priv;
 
-	map->vaddr = buf->vaddr;
-
-	if (iosys_map_is_null(map))
-		return -ENOMEM;
+	iosys_map_set_vaddr(map, buf->vaddr);
 
 	return 0;
 }
+
 
 static int vb2_dc_dmabuf_ops_mmap(struct dma_buf *dbuf,
 	struct vm_area_struct *vma)
@@ -363,6 +359,7 @@ static const struct dma_buf_ops vb2_dc_dmabuf_ops = {
 	.detach = vb2_dc_dmabuf_ops_detach,
 	.map_dma_buf = vb2_dc_dmabuf_ops_map,
 	.unmap_dma_buf = vb2_dc_dmabuf_ops_unmap,
+	//!.map = vb2_dc_dmabuf_ops_kmap,
 	//!.map_atomic = vb2_dc_dmabuf_ops_kmap,
 	.vmap = vb2_dc_dmabuf_ops_vmap,
 	.mmap = vb2_dc_dmabuf_ops_mmap,
@@ -391,7 +388,7 @@ static struct sg_table *vb2_dc_get_base_sgt(struct vb2_dc_buf *buf)
 	return sgt;
 }
 
-struct dma_buf *vb2_dc_get_dmabuf(void *buf_priv, unsigned long flags)
+struct dma_buf *vb2_dc_get_dmabuf(struct vb2_buffer *vb, void *buf_priv, unsigned long flags)
 {
 	struct vb2_dc_buf *buf = buf_priv;
 	struct dma_buf *dbuf;
@@ -430,11 +427,14 @@ static void vb2_dc_put_userptr(void *buf_priv)
 	struct page **pages;
 
 	if (sgt) {
-
+		/*
+		 * No need to sync to CPU, it's already synced to the CPU
+		 * since the finish() memop will have been called before this.
+		 */
 		dma_unmap_sg_attrs(buf->dev, sgt->sgl, sgt->orig_nents,
 				   buf->dma_dir, DMA_ATTR_SKIP_CPU_SYNC);
 		pages = frame_vector_pages(buf->vec);
-
+		/* sgt should exist only if vector contains pages... */
 		//BUG_ON(IS_ERR(pages));
 		WARN_ON(IS_ERR(pages));
 		for (i = 0; i < frame_vector_count(buf->vec); i++)
@@ -493,7 +493,7 @@ static void *vb2_dc_get_userptr(struct device *dev, unsigned long vaddr,
 	unsigned long contig_size;
 	unsigned long dma_align = dma_get_cache_alignment();
 
-
+	/* Only cache aligned DMA transfers are reliable */
 	if (!IS_ALIGNED(vaddr | size, dma_align)) {
 		pr_debug("user data must be aligned to %lu bytes\n", dma_align);
 		return ERR_PTR(-EINVAL);
@@ -527,7 +527,10 @@ static void *vb2_dc_get_userptr(struct device *dev, unsigned long vaddr,
 	if (ret < 0) {
 		unsigned long *nums = frame_vector_pfns(vec);
 
-
+		/*
+		 * Failed to convert to pages... Check the memory is physically
+		 * contiguous and use direct mapping
+		 */
 		for (i = 1; i < n_pages; i++)
 			if (nums[i-1] + 1 != nums[i])
 				goto fail_pfnvec;
@@ -549,7 +552,10 @@ static void *vb2_dc_get_userptr(struct device *dev, unsigned long vaddr,
 		goto fail_sgt;
 	}
 
-
+	/*
+	 * No need to sync to the device, this will happen later when the
+	 * prepare() memop is called.
+	 */
 	sgt->nents = dma_map_sg_attrs(buf->dev, sgt->sgl, sgt->orig_nents,
 				      buf->dma_dir, DMA_ATTR_SKIP_CPU_SYNC);
 	if (sgt->nents <= 0) {
@@ -623,12 +629,12 @@ int vb2_dc_map_dmabuf(void *mem_priv)
 	/* checking if dmabuf is big enough to store contiguous chunk */
 	contig_size = vb2_dc_get_contiguous_size(sgt);
 	if (contig_size < buf->size) {
-#ifdef CONFIG_MTK_IOMMU_V2
+#if IS_ENABLED(CONFIG_MTK_IOMMU_V2)
 		pr_info("contiguous chunk is too small %lu/%lu b\n",
 			contig_size, buf->size);
 #endif
 		dma_buf_unmap_attachment(buf->db_attach, sgt, buf->dma_dir);
-#ifdef CONFIG_MTK_IOMMU_V2
+#if IS_ENABLED(CONFIG_MTK_IOMMU_V2)
 		return -EFAULT;
 #endif
 	}
@@ -638,8 +644,8 @@ int vb2_dc_map_dmabuf(void *mem_priv)
 	buf->dma_sgt = sgt;
 	buf->vaddr = NULL;
 
-	pr_debug("[iommu_iova] [0x%lX]\n", buf->dma_addr);
-	pr_debug("[iommu_pa] [0x%lX]\n", iommu_pa);
+	//pr_debug("[iommu_iova] [0x%lX]\n", buf->dma_addr);
+	//pr_debug("[iommu_pa] [0x%lX]\n", iommu_pa);
 	return 0;
 }
 
@@ -681,8 +687,8 @@ void vb2_dc_detach_dmabuf(void *mem_priv)
 	kfree(buf);
 }
 
-void *vb2_dc_attach_dmabuf(struct device *dev, struct dma_buf *dbuf,
-	unsigned long size, enum dma_data_direction dma_dir)
+void *vb2_dc_attach_dmabuf(struct vb2_buffer *vb, struct device *dev, struct dma_buf *dbuf,
+			unsigned long size)
 {
 	struct vb2_dc_buf *buf;
 	struct dma_buf_attachment *dba;
@@ -706,7 +712,7 @@ void *vb2_dc_attach_dmabuf(struct device *dev, struct dma_buf *dbuf,
 		return dba;
 	}
 
-	buf->dma_dir = dma_dir;
+	buf->dma_dir = DMA_FROM_DEVICE;
 	buf->size = size;
 	buf->db_attach = dba;
 
@@ -717,7 +723,7 @@ void *vb2_dc_attach_dmabuf(struct device *dev, struct dma_buf *dbuf,
 /*       DMA CONTIG exported functions       */
 /*********************************************/
 
-const struct vb2_mem_ops vb2_dpe_dma_contig_memops = {
+const struct vb2_mem_ops vb2_dpe_dma_contig_memops_isp6 = {
 	.alloc		= vb2_dc_alloc,
 	.put		= vb2_dc_put,
 	.get_dmabuf	= vb2_dc_get_dmabuf,
@@ -734,7 +740,7 @@ const struct vb2_mem_ops vb2_dpe_dma_contig_memops = {
 	.detach_dmabuf	= vb2_dc_detach_dmabuf,
 	.num_users	= vb2_dc_num_users,
 };
-EXPORT_SYMBOL_GPL(vb2_dpe_dma_contig_memops);
+EXPORT_SYMBOL_GPL(vb2_dpe_dma_contig_memops_isp6);
 
 /**
  * vb2_dpe_dma_contig_set_max_seg_size() - configure DMA max segment size
@@ -760,19 +766,6 @@ EXPORT_SYMBOL_GPL(vb2_dpe_dma_contig_memops);
  * (either USERPTR or DMABUF). This should be done before initializing
  * videobuf2 queue.
  */
-int vb2_dpe_dma_contig_set_max_seg_size(struct device *dev, unsigned int size)
-{
-	if (!dev->dma_parms) {
-		dev->dma_parms = kzalloc(sizeof(*dev->dma_parms), GFP_KERNEL);
-		if (!dev->dma_parms)
-			return -ENOMEM;
-	}
-	if (dma_get_max_seg_size(dev) < size)
-		return dma_set_max_seg_size(dev, size);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(vb2_dpe_dma_contig_set_max_seg_size);
 
 /*
  * vb2_dpe_dma_contig_clear_max_seg_size() -
@@ -780,15 +773,15 @@ EXPORT_SYMBOL_GPL(vb2_dpe_dma_contig_set_max_seg_size);
  * @dev:	device for configuring DMA parameters
  *
  * This function releases resources allocated to configure DMA parameters
- * (see vb2_dpe_dma_contig_set_max_seg_size() function).
+ * (see vb2_dpe_dma_contig_set_max_seg_size_isp6() function).
  * It should be called from device drivers on driver remove.
  */
-void vb2_dpe_dma_contig_clear_max_seg_size(struct device *dev)
+void vb2_dpe_dma_contig_clear_max_seg_size_isp6(struct device *dev)
 {
 	kfree(dev->dma_parms);
 	dev->dma_parms = NULL;
 }
-EXPORT_SYMBOL_GPL(vb2_dpe_dma_contig_clear_max_seg_size);
+EXPORT_SYMBOL_GPL(vb2_dpe_dma_contig_clear_max_seg_size_isp6);
 
 MODULE_DESCRIPTION("DMA-contig memory handling routines for videobuf2");
 MODULE_AUTHOR("Pawel Osciak <pawel@osciak.com>");

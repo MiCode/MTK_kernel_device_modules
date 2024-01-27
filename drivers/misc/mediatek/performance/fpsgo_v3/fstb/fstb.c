@@ -2123,9 +2123,13 @@ int fpsgo_ktf2fstb_add_delete_render_info(int mode, int pid, unsigned long long 
 	default:
 		break;
 	}
-
+#if IS_ENABLED(CONFIG_ARM64)
 	mtk_fstb_dprintk_always("struct FSTB_FRAME_INFO size:%lu\n",
 			sizeof(struct FSTB_FRAME_INFO));
+#else
+	mtk_fstb_dprintk_always("struct FSTB_FRAME_INFO size:%u\n",
+			sizeof(struct FSTB_FRAME_INFO));
+#endif
 
 	mutex_unlock(&fstb_lock);
 

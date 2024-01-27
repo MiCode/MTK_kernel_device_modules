@@ -295,8 +295,8 @@ static void gpu_util_history_update(struct GpuUtilization_Ex *util_ex)
 {
 	unsigned int current_idx = g_util_hs.current_idx + 1;
 	unsigned long long max_workload =
-		util_ex->freq * util_ex->delta_time / 1000000;   // unit: cycle
-	unsigned long long max_t_gpu = util_ex->delta_time / 1000;   // unit: us
+		div_u64(util_ex->freq * util_ex->delta_time, 1000000);   // unit: cycle
+	unsigned long long max_t_gpu = div_u64(util_ex->delta_time, 1000);   // unit: us
 	unsigned int workload_mode = 0;
 
 	if (current_idx >= MAX_SLIDE_WINDOW_SIZE)
@@ -312,26 +312,26 @@ static void gpu_util_history_update(struct GpuUtilization_Ex *util_ex)
 	workload_mode = ged_get_dvfs_workload_mode();
 	if (workload_mode == WORKLOAD_3D) {
 		g_util_hs.gpu_frame_property.workload +=
-			max_workload * util_ex->util_3d / 100;
+			div_u64(max_workload * util_ex->util_3d, 100);
 		g_util_hs.gpu_frame_property.t_gpu +=
-			max_t_gpu * util_ex->util_3d / 100;
+			div_u64(max_t_gpu * util_ex->util_3d, 100);
 	} else if (workload_mode == WORKLOAD_ITER) {
 		g_util_hs.gpu_frame_property.workload +=
-			max_workload * util_ex->util_iter / 100;
+			div_u64(max_workload * util_ex->util_iter, 100);
 		g_util_hs.gpu_frame_property.t_gpu +=
-			max_t_gpu * util_ex->util_iter / 100;
+			div_u64(max_t_gpu * util_ex->util_iter, 100);
 	} else if (workload_mode == WORKLOAD_MAX_ITERMCU) {
 		unsigned int util_temp = MAX(util_ex->util_iter, util_ex->util_mcu);
 
 		g_util_hs.gpu_frame_property.workload +=
-			max_workload * util_temp / 100;
+			div_u64(max_workload * util_temp, 100);
 		g_util_hs.gpu_frame_property.t_gpu +=
-			max_t_gpu * util_temp / 100;
+			div_u64(max_t_gpu * util_temp, 100);
 	} else {   // WORKLOAD_ACTIVE or unknown mode
 		g_util_hs.gpu_frame_property.workload +=
-			max_workload * util_ex->util_active / 100;
+			div_u64(max_workload * util_ex->util_active, 100);
 		g_util_hs.gpu_frame_property.t_gpu +=
-			max_t_gpu * util_ex->util_active / 100;
+			div_u64(max_t_gpu * util_ex->util_active, 100);
 	}
 
 	g_util_hs.current_idx = current_idx;
@@ -385,7 +385,7 @@ static unsigned int gpu_util_history_query_loading(unsigned int window_size_us)
 
 		// accumulate data
 		remaining_time = window_size_us - sum_delta_time;
-		delta_time = util_ex->delta_time / 1000;
+		delta_time = div_u64(util_ex->delta_time, 1000);
 		if (delta_time > remaining_time)
 			delta_time = remaining_time;   // clip delta_time
 		sum_loading += his_loading * delta_time;
@@ -397,7 +397,7 @@ static unsigned int gpu_util_history_query_loading(unsigned int window_size_us)
 	}
 
 	if (sum_delta_time != 0)
-		window_avg_loading = sum_loading / sum_delta_time;
+		window_avg_loading = div64_u64(sum_loading, sum_delta_time);
 
 	if (window_avg_loading > 100)
 		window_avg_loading = 100;
@@ -432,7 +432,7 @@ static unsigned int gpu_util_history_query_frequency(
 
 		// accumulate data
 		remaining_time = window_size_us - sum_delta_time;
-		delta_time = util_ex->delta_time / 1000;
+		delta_time = div_u64(util_ex->delta_time, 1000);
 		if (delta_time > remaining_time)
 			delta_time = remaining_time;   // clip delta_time
 		sum_freq += his_freq * delta_time;
@@ -444,7 +444,7 @@ static unsigned int gpu_util_history_query_frequency(
 	}
 
 	if (sum_delta_time != 0)
-		window_avg_freq = sum_freq / sum_delta_time;
+		window_avg_freq = div64_u64(sum_freq, sum_delta_time);
 
 	return window_avg_freq;
 }
@@ -551,10 +551,11 @@ bool ged_dvfs_cal_gpu_utilization_ex(unsigned int *pui32Loading,
 		memcpy((void *)&g_Util_Ex, (void *)Util_Ex,
 			sizeof(struct GpuUtilization_Ex));
 
+#if defined(MTK_GPU_EB_SUPPORT)
 		if (g_ged_gpueb_support)
 			mtk_gpueb_dvfs_set_feedback_info(
 				0, g_Util_Ex, 0);
-
+#endif
 		if (pui32Loading) {
 			trace_GPU_DVFS__Loading(Util_Ex->util_active, Util_Ex->util_ta,
 				Util_Ex->util_3d, Util_Ex->util_compute, Util_Ex->util_iter,
@@ -595,35 +596,36 @@ EXPORT_SYMBOL(ged_dvfs_gpu_freq_dual_commit_fp);
 unsigned long ged_dvfs_write_sysram_last_commit_idx(void)
 {
 	/* last commit idx = stack */
+#if defined(MTK_GPU_EB_SUPPORT)
 	mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_IDX, g_ged_dvfs_commit_idx);
-
+#endif
 	return g_ged_dvfs_commit_idx;
 }
 EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_idx);
 
 unsigned long ged_dvfs_write_sysram_last_commit_idx_test(int commit_idx)
 {
-
+#if defined(MTK_GPU_EB_SUPPORT)
 	mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_IDX, commit_idx);
-
+#endif
 	return commit_idx;
 }
 EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_idx_test);
 
 unsigned long ged_dvfs_write_sysram_last_commit_top_idx(void)
 {
-
+#if defined(MTK_GPU_EB_SUPPORT)
 	mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_TOP_IDX, g_ged_dvfs_commit_top_idx);
-
+#endif
 	return g_ged_dvfs_commit_top_idx;
 }
 EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_top_idx);
 
 unsigned long ged_dvfs_write_sysram_last_commit_top_idx_test(int commit_idx)
 {
-
+#if defined(MTK_GPU_EB_SUPPORT)
 	mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_TOP_IDX, commit_idx);
-
+#endif
 	return commit_idx;
 }
 EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_top_idx_test);
@@ -653,8 +655,9 @@ EXPORT_SYMBOL(ged_dvfs_set_sysram_last_commit_dual_idx);
 unsigned long ged_dvfs_write_sysram_last_commit_stack_idx(void)
 {
 	/* last commit idx = stack */
+#if defined(MTK_GPU_EB_SUPPORT)
 	mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_IDX, g_ged_dvfs_commit_idx);
-
+#endif
 	return g_ged_dvfs_commit_idx;
 }
 EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_stack_idx);
@@ -672,9 +675,9 @@ EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_dual);
 
 unsigned long ged_dvfs_write_sysram_last_commit_stack_idx_test(int commit_idx)
 {
-
+#if defined(MTK_GPU_EB_SUPPORT)
 	mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_IDX, commit_idx);
-
+#endif
 	return commit_idx;
 }
 EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_stack_idx_test);
@@ -794,6 +797,7 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 			}
 		}
 
+#if defined(MTK_GPU_EB_SUPPORT)
 		if (ged_is_fdvfs_support()
 			&& is_fb_dvfs_triggered && is_fdvfs_enable()) {
 			memset(batch_freq, 0, sizeof(batch_freq));
@@ -805,7 +809,9 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 			trace_GPU_DVFS__Frequency(avg_freq,
 				gpufreq_get_cur_freq(TARGET_DEFAULT) / 1000,
 				gpufreq_get_cur_freq(TARGET_GPU) / 1000);
-		} else {
+		} else
+#endif /*MTK_GPU_EB_SUPPORT*/
+		{
 			trace_tracing_mark_write(5566, "gpu_freq",
 				(long long) ged_get_cur_stack_freq() / 1000);
 
@@ -934,6 +940,7 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 		}
 	}
 
+#if defined(MTK_GPU_EB_SUPPORT)
 	if (ged_is_fdvfs_support()
 		&& is_fb_dvfs_triggered && is_fdvfs_enable()) {
 		memset(batch_freq, 0, sizeof(batch_freq));
@@ -945,7 +952,9 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 		trace_GPU_DVFS__Frequency(avg_freq,
 			gpufreq_get_cur_freq(TARGET_DEFAULT) / 1000,
 			gpufreq_get_cur_freq(TARGET_GPU) / 1000);
-	} else {
+	} else
+#endif
+	{
 		trace_tracing_mark_write(5566, "gpu_freq",
 			(long long) ged_get_cur_stack_freq() / 1000);
 
@@ -1310,10 +1319,10 @@ static void set_fb_timeout(int t_gpu_target_ori, int t_gpu_target_margin)
 {
 	switch (g_frame_target_mode) {
 	case 1:
-		fb_timeout = (u64)t_gpu_target_ori * g_frame_target_time  / 10;
+		fb_timeout = div_u64((u64)t_gpu_target_ori * g_frame_target_time, 10);
 		break;
 	case 2:
-		fb_timeout = (u64)t_gpu_target_margin * g_frame_target_time / 10;
+		fb_timeout = div_u64((u64)t_gpu_target_margin * g_frame_target_time, 10);
 		break;
 	default:
 		fb_timeout = (u64)g_frame_target_time * 1000000; //ms to ns
@@ -1522,8 +1531,8 @@ decreaseEnd:
 			return tar_opp;
 
 		perf_require = PERF_SCAL * tar_freq / ged_get_sc_freq_by_virt_opp(cur_opp_id);
-		adjust_ratio = RATIO_SCAL * ged_get_top_freq_by_virt_opp(cur_opp_id - 1) /
-						ged_get_top_freq_by_virt_opp(cur_opp_id);
+               	adjust_ratio = RATIO_SCAL * ged_get_top_freq_by_virt_opp(cur_opp_id - 1) /
+                                               ged_get_top_freq_by_virt_opp(cur_opp_id);
 		perf_improve = calculate_performance(&asyncCounter, adjust_ratio);
 		if (perf_improve <= 100) {
 			GED_LOGD_IF(ASYNC_LOG_LEVEL,
@@ -1701,7 +1710,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 
 	gpu_util_history_query_frame_property(&frame_workload, &frame_t_gpu);
 	t_gpu_pipe = t_gpu;
-	t_gpu_real = (int) (frame_t_gpu / 100);   // change unit from us to 100*us
+	t_gpu_real = (int) div_u64(frame_t_gpu, 100);   // change unit from us to 100*us
 	// define t_gpu = max(t_gpu_completion, t_gpu_real) for FB policy
 	if (t_gpu_real > t_gpu)
 		t_gpu = t_gpu_real;
@@ -1820,9 +1829,11 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	trace_tracing_mark_write(5566, "t_gpu", (long long) t_gpu * 100);
 	trace_tracing_mark_write(5566, "t_gpu_target", (long long) t_gpu_target * 100);
 
+#if defined(MTK_GPU_EB_SUPPORT)
 	// Hint target frame time w/z headroom
 	if (ged_is_fdvfs_support())
 		mtk_gpueb_dvfs_set_taget_frame_time(t_gpu_target_hd, gx_fb_dvfs_margin);
+
 
 	/* select workload */
 	if (ged_is_fdvfs_support() && is_fb_dvfs_triggered && is_fdvfs_enable()
@@ -1831,6 +1842,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 		busy_cycle_cur = (g_eb_workload < ap_workload) ? g_eb_workload : ap_workload;
 	}
 	else
+#endif /*MTK_GPU_EB_SUPPORT*/
 		busy_cycle_cur = ap_workload;
 
 	busy_cycle[cur_frame_idx] = busy_cycle_cur;
@@ -2831,14 +2843,17 @@ static void ged_set_fastdvfs_mode(unsigned int u32ModeValue)
 {
 	mutex_lock(&gsDVFSLock);
 	g_fastdvfs_mode = u32ModeValue;
+#if defined(MTK_GPU_EB_SUPPORT)
 	mtk_gpueb_dvfs_set_mode(g_fastdvfs_mode);
+#endif
 	mutex_unlock(&gsDVFSLock);
 }
 
 static unsigned int ged_get_fastdvfs_mode(void)
 {
+#if defined(MTK_GPU_EB_SUPPORT)
 	mtk_gpueb_dvfs_get_mode(&g_fastdvfs_mode);
-
+#endif
 	return g_fastdvfs_mode;
 }
 

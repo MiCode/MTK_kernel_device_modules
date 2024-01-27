@@ -1370,12 +1370,12 @@ struct SENSOR_FUNCTION_STRUCT {
 
 	MUINT32 (*SensorClose)(void);
 	void (*SensorSetPlatformInfo)(unsigned int platform_id);
-// #if 1 /* isp suspend resume patch */
+#if 1 /* isp suspend resume patch */
 	enum MSDK_SCENARIO_ID_ENUM ScenarioId;
 	MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT imageWindow;
 	MSDK_SENSOR_CONFIG_STRUCT sensorConfigData;
 	enum SENSOR_STATE_ENUM sensorState;
-// #endif
+#endif
 	MUINT8  arch;
 	void   *psensor_inst; /* IMGSENSOR_SENSOR_INST */
 };

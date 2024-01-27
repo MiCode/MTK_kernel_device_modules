@@ -496,7 +496,7 @@ static unsigned int get_booting_start_id(struct ccci_modem *md)
 
 	mdlog_flag = md->mdlg_mode & 0x0000ffff;
 	booting_start_id = (((char)mdlog_flag << 8)
-				| get_boot_mode_from_dts());
+				| ccci_get_boot_mode_from_dts());
 	booting_start_id |= md->mdlg_mode & 0xffff0000;
 
 	CCCI_BOOTUP_LOG(0, FSM,
@@ -724,7 +724,11 @@ static void ccci_md_mem_inf_prepare(
 		tbl[add_num].md_view_phy = 0;
 		tbl[add_num].size = ro_rw_size;
 		tbl[add_num].ap_view_phy_lo32 = (u32)ro_rw_base;
+#if IS_ENABLED(CONFIG_ARM64)
 		tbl[add_num].ap_view_phy_hi32 = (u32)(ro_rw_base >> 32);
+#else
+		tbl[add_num].ap_view_phy_hi32 = 0;
+#endif
 		add_num++;
 	} else
 		CCCI_REPEAT_LOG(0, FSM, "%s add bank0/1 fail(%d)\n",
@@ -734,7 +738,11 @@ static void ccci_md_mem_inf_prepare(
 		tbl[add_num].md_view_phy = 0x40000000;
 		tbl[add_num].size = ncrw_size;
 		tbl[add_num].ap_view_phy_lo32 = (u32)ncrw_base;
+#if IS_ENABLED(CONFIG_ARM64)
 		tbl[add_num].ap_view_phy_hi32 = (u32)(ncrw_base >> 32);
+#else
+		tbl[add_num].ap_view_phy_hi32 = 0;
+#endif
 		add_num++;
 	} else
 		CCCI_REPEAT_LOG(0, FSM, "%s add bank4 nc fail(%d)\n",
@@ -745,7 +753,11 @@ static void ccci_md_mem_inf_prepare(
 				get_md_smem_cachable_offset();
 		tbl[add_num].size = crw_size;
 		tbl[add_num].ap_view_phy_lo32 = (u32)crw_base;
+#if IS_ENABLED(CONFIG_ARM64)
 		tbl[add_num].ap_view_phy_hi32 = (u32)(crw_base >> 32);
+#else
+		tbl[add_num].ap_view_phy_hi32 = 0;
+#endif
 		add_num++;
 	} else
 		CCCI_REPEAT_LOG(0, FSM, "%s add bank4 c fail(%d)\n",
@@ -1402,17 +1414,11 @@ static void fsm_routine_start(struct ccci_fsm_ctl *ctl,
 					CCCI_ERROR_LOG(0, FSM,
 						"invalid MD_QUERY_MSG %d\n",
 						event->length);
-#ifdef SET_EMI_STEP_BY_STAGE
-				ccci_set_mem_access_protection_second_stage();
-#endif
-				ccci_md_dump_info(DUMP_MD_BOOTUP_STATUS, NULL, 0);
 				fsm_finish_event(ctl, event);
-
 				spin_unlock_irqrestore(&ctl->event_lock, flags);
 				/* this API would alloc skb */
 				ret = ccci_md_send_runtime_data();
-				CCCI_NORMAL_LOG(0, FSM,
-					"send runtime data %d\n", ret);
+				CCCI_NORMAL_LOG(0, FSM, "send runtime data %d\n", ret);
 				spin_lock_irqsave(&ctl->event_lock, flags);
 			} else if (event->event_id == CCCI_EVENT_HS2) {
 				hs2_got = 1;
@@ -1709,13 +1715,6 @@ int ccci_fsm_init(void)
 		return -1;
 	}
 	ctl->fsm_thread = kthread_run(fsm_main_thread, ctl, "ccci_fsm");
-#ifndef CCCI_KMODULE_ENABLE
-#ifdef FEATURE_SCP_CCCI_SUPPORT
-	fsm_scp_init(&ctl->scp_ctl);
-#endif
-#else
-	CCCI_NORMAL_LOG(0, FSM, "%s oringinal position scp_init\n", __func__);
-#endif
 	fsm_poller_init(&ctl->poller_ctl);
 	fsm_ee_init(&ctl->ee_ctl);
 	fsm_monitor_init(&ctl->monitor_ctl);

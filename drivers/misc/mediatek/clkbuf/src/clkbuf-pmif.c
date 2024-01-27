@@ -580,6 +580,23 @@ static struct clkbuf_hdlr pmif_hdlr_v3 = {
 	.data = &pmif_data_v3,
 };
 
+static struct clkbuf_hdlr pmif_hdlr_lv1 = {
+	.ops = &clkbuf_ops_v1,
+	.data = &pmif_data_lv1,
+};
+
+static struct match_pmif mt6768_match_pmif = {
+	.name = "mediatek,mt6768-pwrap",
+	.hdlr = &pmif_hdlr_lv1,
+	.init = &pmif_init_v1,
+};
+static struct match_pmif mt6885_match_pmif = {
+	.name = "mediatek,mt6885-pwrap",
+	.hdlr = &pmif_hdlr_lv1,
+	.init = &pmif_init_v1,
+};
+
+
 static struct match_pmif mt6897_match_pmif = {
 	.name = "mediatek,mt6897-spmi",
 	.hdlr = &pmif_hdlr_v2,
@@ -602,6 +619,8 @@ static struct match_pmif mt6989_match_pmif = {
 };
 
 static struct match_pmif *matches_pmif[] = {
+	&mt6768_match_pmif,
+	&mt6885_match_pmif,
 	&mt6897_match_pmif,
 	&mt6985_match_pmif,
 	&mt6989_match_pmif,

@@ -34,3 +34,21 @@ config MTK_DVFSRC_MB
 	  When enable this option, it support reporting current vcore dvfs info to
 	  MB system.
 	  If unsure, say N.
+
+
+config MTK_DVFSRC_MET_MT6768
+	tristate "MTK DVFSRC MET for MT6768"
+	select MTK_DVFSRC_MET
+	help
+	  This kernel config can be used to enable MT6768 DVFSRC MET support.
+	  When enable this option, it support reporting current vcore dvfs info to
+	  MET system for performance and power tuning.
+	  If unsure, say N.
+
+
+config MTK_DVFSRC_LEGACY
+	bool "MTK DVFSRC for LEGACY CHIP"
+	help
+	  This kernel config can be used to enable LEGACY DVFSRC support.
+	  When enable this option, it support compatibility with MTK legacy chip.
+	  If unsure, say N.

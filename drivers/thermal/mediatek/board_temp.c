@@ -12,6 +12,7 @@
 #include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/thermal.h>
+#include <linux/math64.h>
 
 #define READ_TIA_REG_COUNT_MAX 3
 
@@ -157,7 +158,7 @@ static unsigned int calculate_r_ntc(unsigned long long v_in,
 	if (v_in >= pullup_v)
 		return 0;
 
-	r_ntc = (unsigned int)(v_in * pullup_r / (pullup_v - v_in));
+	r_ntc = (unsigned int)div_u64(v_in * pullup_r, (pullup_v - v_in));
 
 	return r_ntc;
 }
@@ -303,7 +304,7 @@ static int board_ntc_parse_lookup_table(struct device *dev,
 		return ret;
 	}
 
-	ntc_info->lookup_table_num = num / 2;
+	ntc_info->lookup_table_num = div_u64(num, 2);
 
 	return 0;
 }

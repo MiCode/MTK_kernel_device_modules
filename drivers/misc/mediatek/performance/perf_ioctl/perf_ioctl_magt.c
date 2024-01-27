@@ -6,7 +6,7 @@
 #define TAG "PERF_IOCTL_MAGT"
 #define cap_scale(v, s) ((v)*(s) >> SCHED_CAPACITY_SHIFT)
 
-struct proc_dir_entry *perfmgr_root;
+static struct proc_dir_entry *perfmgr_root;
 static DEFINE_MUTEX(cpu_lock);
 
 static int thermal_aware_threshold = -1;

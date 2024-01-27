@@ -427,10 +427,8 @@ static int gauge_coulomb_thread(void *arg)
 		end = ktime_get_boottime();
 		duraction = end - start;
 
-		bm_debug(
-			"%s time:%d ms\n",
-			__func__,
-			(int)(duraction / 1000000));
+		bm_debug("%s time:%d ms\n", __func__,
+			(int)(div_s64(duraction, 1000000)));
 	}
 
 	return 0;
@@ -439,6 +437,11 @@ static int gauge_coulomb_thread(void *arg)
 static irqreturn_t coulomb_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
+	if (gm->is_probe_done == false) {
+		bm_err("[%s]battery probe is not rdy:%d\n",
+			__func__, gm->is_probe_done);
+		return IRQ_HANDLED;
+	}
 
 	if (fg_interrupt_check(gm) == false)
 		return IRQ_HANDLED;

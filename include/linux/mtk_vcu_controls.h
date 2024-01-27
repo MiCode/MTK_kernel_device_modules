@@ -203,7 +203,12 @@ enum gce_event_id {
 #define VCU_GET_DISP_WDMA_Y_ADDR	_IOWR('v', 16, struct disp_iova_obj)
 #define VCU_UBE_MVA_ALLOCATION	_IOWR('v', 17, struct mem_obj)
 #define VCU_UBE_MVA_FREE	_IOWR('v', 18, struct mem_obj)
-#define VCU_GET_SEC_HANDLE	_IOWR('v', 19, struct sec_handle_obj)
+#define VCU_SECURE_HANDLE_ALLOCATION	_IOWR('v', 19, struct mem_obj)
+#define VCU_SECURE_HANDLE_FREE		_IOWR('v', 20, struct mem_obj)
+#define VCU_SECURE_BUFFER_ALLOCATION	_IOWR('v', 21, struct mem_obj)
+#define VCU_SECURE_BUFFER_FREE		_IOWR('v', 22, struct mem_obj)
+#define VCU_GET_SEC_HANDLE	_IOWR('v', 23, struct sec_handle_obj)
+
 
 
 #define COMPAT_VCU_SET_OBJECT		_IOW('v', 0, struct share_obj)
@@ -217,6 +222,10 @@ enum gce_event_id {
 #define COMPAT_VCU_SET_MMAP_TYPE	_IOW('v', 13, struct map_obj)
 #define COMPAT_VCU_UBE_MVA_ALLOCATION	_IOWR('v', 17, struct compat_mem_obj)
 #define COMPAT_VCU_UBE_MVA_FREE	_IOWR('v', 18, struct compat_mem_obj)
+#define COMPAT_VCU_SECURE_HANDLE_ALLOCATION	_IOWR('v', 19, struct mem_obj)
+#define COMPAT_VCU_SECURE_HANDLE_FREE		_IOWR('v', 20, struct mem_obj)
+#define COMPAT_VCU_SECURE_BUFFER_ALLOCATION	_IOWR('v', 21, struct mem_obj)
+#define COMPAT_VCU_SECURE_BUFFER_FREE		_IOWR('v', 22, struct mem_obj)
 
 struct compat_mem_obj {
 	uint64_t iova;

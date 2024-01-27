@@ -14,6 +14,7 @@
 #include <linux/thermal.h>
 #include <linux/types.h>
 #include "charger_cooling.h"
+#include <linux/math64.h>
 
 struct charger_cooler_info {
 	int num_state;
@@ -222,10 +223,10 @@ static ssize_t charger_table_show(struct kobject *kobj,
 				-1);
 		else if (i == CHARGER_STATE_NUM - 1)
 			len += snprintf(buf + len, PAGE_SIZE - len, "%d]\n",
-				master_charger_state_to_current_limit[i]/1000);
+				(int)div_s64(master_charger_state_to_current_limit[i], 1000));
 		else
 			len += snprintf(buf + len, PAGE_SIZE - len, "%d,",
-				master_charger_state_to_current_limit[i]/1000);
+				(int)div_s64(master_charger_state_to_current_limit[i], 1000));
 	}
 
 	return len;

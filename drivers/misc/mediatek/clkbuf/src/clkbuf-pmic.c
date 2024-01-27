@@ -4,6 +4,7 @@
  * Author: Kuan-Hsin Lee <Kuan-Hsin.Lee@mediatek.com>
  */
 #include <linux/device.h>
+#include <linux/mfd/mt6397/core.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
@@ -114,6 +115,44 @@ static int pmic_init_v1(struct clkbuf_dts *array, struct match_pmic *match)
 	return 0;
 }
 
+static int pmic_init_lv1(struct clkbuf_dts *array, struct match_pmic *match)
+{
+	struct clkbuf_hdlr *hdlr = match->hdlr;
+	struct plat_xodata *pd;
+	struct xo_dts_cmd *xo_dts_cmd = array->init_dts_cmd.xo_dts_cmd;
+	int ret = 0, i;
+	int xo_id = array->xo_id;
+	static DEFINE_MUTEX(mutex_lock);
+
+	CLKBUF_DBG("array<%lx>,%s %d, id<%d>\n", (unsigned long)array, array->xo_name,
+		   array->hw.hw_type, array->xo_id);
+
+	pd = (struct plat_xodata *)(hdlr->data);
+	pd->hw = array->hw;
+	pd->mutex_lock = mutex_lock;
+
+	/* hook hdlr to array */
+	array->hdlr = hdlr;
+
+	/*if defined dts cmd, then do dts init flow*/
+	for (i = 0; i < array->init_dts_cmd.num_xo_cmd; i++, xo_dts_cmd++) {
+		if (xo_dts_cmd->xo_cmd) {
+			if (!hdlr->ops->set_xo_cmd_hdlr) {
+				CLKBUF_DBG("Error: set_xo_cmd_hdlr is null\n");
+				break;
+			}
+			ret = hdlr->ops->set_xo_cmd_hdlr(pd, xo_dts_cmd->xo_cmd,
+							 xo_id,
+							 xo_dts_cmd->cmd_val,
+							 array->perms);
+			if (ret)
+				CLKBUF_DBG("Error code: %x\n", ret);
+		}
+	}
+
+	return 0;
+}
+
 int set_xo_desense(void *data, int xo_id, u32 des)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
@@ -134,6 +173,37 @@ int set_xo_desense(void *data, int xo_id, u32 des)
 
 	if (ret)
 		CLKBUF_DBG("set xo desense failed, Error: %d\n", ret);
+
+	return ret;
+}
+
+int set_xo_desense_lv1(void *data, int xo_id, u32 des)
+{
+	struct plat_xodata *pd = (struct plat_xodata *)data;
+	struct clkbuf_hw hw = pd->hw;
+	struct xo_buf_t xo_buf;
+	struct reg_t reg;
+	int ret = 0;
+	short no_lock = 0;
+
+	if (preempt_count() > 0 || irqs_disabled()
+		|| system_state != SYSTEM_RUNNING || oops_in_progress)
+		no_lock = 1;
+
+	if (!no_lock)
+		mutex_lock(&pd->mutex_lock);
+
+	xo_buf = (pd->xo_buf_t)[xo_id];
+	reg = xo_buf._de_sense;
+	ret = pmic_write(&hw, &reg, des);
+
+	if (!no_lock)
+		mutex_unlock(&pd->mutex_lock);
+
+	if (ret) {
+		CLKBUF_DBG("set xo desense failed\n");
+		return ret;
+	}
 
 	return ret;
 }
@@ -273,6 +343,51 @@ int set_xo_mode(void *data, int xo_id, u32 mode)
 	return ret;
 }
 
+int set_xo_mode_lv1(void *data, int xo_id, u32 mode)
+{
+	struct plat_xodata *pd = (struct plat_xodata *)data;
+	struct clkbuf_hw hw = pd->hw;
+	struct common_regs *com_regs;
+	struct xo_buf_t xo_buf;
+	struct reg_t reg;
+	int ret = 0, mode_num;
+	u32 out = 0;
+	short no_lock = 0;
+
+	if (preempt_count() > 0 || irqs_disabled()
+		|| system_state != SYSTEM_RUNNING || oops_in_progress)
+		no_lock = 1;
+
+	if (!no_lock)
+		mutex_lock(&pd->mutex_lock);
+
+	com_regs = pd->common_regs;
+	if (!com_regs)
+		return -EREG_NOT_SUPPORT;
+
+	mode_num = com_regs->mode_num;
+
+	xo_buf = (pd->xo_buf_t)[xo_id];
+	reg = xo_buf._xo_mode;
+	ret = pmic_write(&hw, &reg, (mode <= mode_num) ? mode : 0);
+
+	if (!no_lock)
+		mutex_unlock(&pd->mutex_lock);
+	/*SW MODE need to wait 400ms for output clk*/
+	if (mode == 0) {
+		get_xo_en_m(data, xo_id, &out);
+		if (out == 1)
+			udelay(400);
+	}
+
+	if (ret) {
+		CLKBUF_DBG("set xo en failed\n");
+		return ret;
+	}
+
+	return ret;
+}
+
 int set_xo_en_m(void *data, int xo_id, int onoff)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
@@ -301,6 +416,44 @@ int set_xo_en_m(void *data, int xo_id, int onoff)
 
 	if (ret)
 		CLKBUF_DBG("set xo en failed\n");
+
+	return ret;
+}
+
+int set_xo_en_m_lv1(void *data, int xo_id, int onoff)
+{
+	struct plat_xodata *pd = (struct plat_xodata *)data;
+	struct clkbuf_hw hw = pd->hw;
+	struct xo_buf_t xo_buf;
+	struct reg_t reg;
+	int ret = 0;
+	u32 out = 0;
+	short no_lock = 0;
+
+	if (preempt_count() > 0 || irqs_disabled()
+		|| system_state != SYSTEM_RUNNING || oops_in_progress)
+		no_lock = 1;
+
+	if (!no_lock)
+		mutex_lock(&pd->mutex_lock);
+
+	xo_buf = (pd->xo_buf_t)[xo_id];
+	reg = xo_buf._xo_en;
+	ret = pmic_write(&hw, &reg, (onoff == 1) ? 1 : 0);
+
+	if (!no_lock)
+		mutex_unlock(&pd->mutex_lock);
+	/*SW MODE need to wait 400ms for output clk*/
+	if (onoff == 1) {
+		get_xo_mode(data, xo_id, &out);
+		if (out == 0)
+			udelay(400);
+	}
+
+	if (ret) {
+		CLKBUF_DBG("set xo en failed\n");
+		return ret;
+	}
 
 	return ret;
 }
@@ -527,6 +680,63 @@ static int get_heater(void *data, u32 *on)
 	return ret;
 }
 
+int get_xo_auxout_lv1(void *data, int xo_id, u32 *out, char *reg_name)
+{
+	struct plat_xodata *pd = (struct plat_xodata *)data;
+	struct xo_buf_t xo_buf;
+	struct common_regs *com_regs;
+	struct clkbuf_hw hw;
+	struct reg_t reg_in, reg_out;
+	int auxout_sel, ret = 0;
+	short no_lock = 0;
+
+	if (!pd)
+		return 0;
+
+	xo_buf = (pd->xo_buf_t)[xo_id];
+	com_regs = pd->common_regs;
+	if (!com_regs)
+		return -EREG_NOT_SUPPORT;
+
+	hw = pd->hw;
+
+	reg_in = com_regs->_static_aux_sel;
+
+	if (!strcmp(reg_name, "xo_en")) {
+		reg_out = xo_buf._xo_en_auxout;
+		auxout_sel = xo_buf.xo_en_auxout_sel;
+	} else if (!strcmp(reg_name, "bblpm")) {
+		reg_out = com_regs->_bblpm_auxout;
+		auxout_sel = com_regs->bblpm_auxout_sel;
+	} else {
+		return -EREG_NOT_SUPPORT;
+	}
+
+	if (preempt_count() > 0 || irqs_disabled()
+		|| system_state != SYSTEM_RUNNING || oops_in_progress)
+		no_lock = 1;
+
+	if (!no_lock)
+		mutex_lock(&pd->mutex_lock);
+
+	ret = pmic_write(&hw, &reg_in, auxout_sel);
+	if (ret) {
+		CLKBUF_DBG("write auxout sel failed with err: %d\n", ret);
+		return ret;
+	}
+
+	ret = pmic_read(&hw, &reg_out, out);
+	if (ret) {
+		CLKBUF_DBG("read auxout sel failed with err: %d\n", ret);
+		return ret;
+	}
+
+	if (!no_lock)
+		mutex_unlock(&pd->mutex_lock);
+
+	return ret;
+}
+
 int __get_pmrcen(void *data, u32 *out)
 {
 	int ret = 0, tmp = 0;
@@ -561,6 +771,12 @@ int __get_pmrcen(void *data, u32 *out)
 	*out |= (tmp << 8);
 
 	CLKBUF_DBG("dump pmrcen = %x", *out);
+	return ret;
+}
+
+int __get_pmrcen_lv1(void *data, u32 *out)
+{
+	int ret = 0;
 	return ret;
 }
 
@@ -804,6 +1020,74 @@ WRITE_FAIL:
 	return cmd;
 }
 
+static int __get_xo_cmd_hdlr_lv1(void *data, int xo_id, char *buf, int len)
+{
+	u32 out;
+	int ret = 0;
+
+	/*****XO MODE****/
+	ret = get_xo_mode(data, xo_id, &out);
+	if (ret)
+		return len;
+	len += snprintf(buf + len, PAGE_SIZE - len, "xo_mode: <%2d> ", out);
+	/****EN_M****/
+	ret = get_xo_en_m(data, xo_id, &out);
+	if (ret)
+		return len;
+	len += snprintf(buf + len, PAGE_SIZE - len, "xo_en_m: <%2d> ", out);
+	/****AUXOUT****/
+	ret = get_xo_auxout_lv1(data, xo_id, &out, "xo_en");
+	if (ret)
+		return len;
+	len += snprintf(buf + len, PAGE_SIZE - len, "auxout: <%2d>\n", out);
+	/******DESENSE: makesure platform data reg exist*****/
+	ret = get_xo_desense(data, xo_id, &out);
+	if (ret)
+		len += snprintf(buf + len, PAGE_SIZE - len,
+				"desense: not support ");
+	else
+		len += snprintf(buf + len, PAGE_SIZE - len,
+				"desense: <0x%08x> ", out);
+
+	return len;
+}
+
+static int __set_xo_cmd_hdlr_lv1(void *data, int cmd, int xo_id, u32 input,
+				int perms)
+{
+	int ret = 0;
+
+	/*handle premission from dts*/
+	perms = perms & 0xffff;
+
+	CLKBUF_DBG("cmd: %x, perms: %x\n", cmd, perms);
+	switch (cmd & perms) {
+	case SET_XO_MODE: // = 0x0001,
+		ret = set_xo_mode_lv1(data, xo_id, input);
+		if (ret)
+			goto WRITE_FAIL;
+		break;
+
+	case SET_XO_EN_M: // = 0x0002,
+		ret = set_xo_en_m_lv1(data, xo_id, input);
+		if (ret)
+			goto WRITE_FAIL;
+		break;
+
+	case SET_XO_DESENSE: // = 0x0008,
+		ret = set_xo_desense_lv1(data, xo_id, input);
+		if (ret)
+			goto WRITE_FAIL;
+		break;
+
+	default:
+		goto WRITE_FAIL;
+	}
+	return ret;
+WRITE_FAIL:
+	return cmd & perms;
+}
+
 int __dump_pmic_debug_regs(void *data, char *buf, int len)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
@@ -852,6 +1136,54 @@ int __dump_pmic_debug_regs(void *data, char *buf, int len)
 	return len;
 }
 
+int __dump_pmic_debug_regs_lv1(void *data, char *buf, int len)
+{
+	struct plat_xodata *pd = (struct plat_xodata *)data;
+	struct clkbuf_hw hw = pd->hw;
+	struct reg_t *reg_p = NULL;
+	int ret = 0;
+	int i;
+	u32 out;
+
+	reg_p = pd->debug_regs;
+	if (!reg_p) {
+		CLKBUF_DBG("read rep_p failed\n");
+		return len;
+	}
+
+	for (i = 0; strcmp((*reg_p).name, "NULL"); i++, reg_p++) {
+		//spin lock
+		ret = pmic_read(&hw, reg_p, &out);
+		//unlock
+		if (ret) {
+			CLKBUF_DBG("read debug_regs[%d] failed\n", i);
+			break;
+		}
+
+		if (!buf)
+			CLKBUF_DBG(
+				"PMIC DBG reg: %s Addr: 0x%08x Val: 0x%08x\n",
+				(*reg_p).name, (*reg_p).ofs, out);
+		else
+			len += snprintf(
+				buf + len, PAGE_SIZE - len,
+				"PMIC DBG reg: %s Addr: 0x%08x Val: 0x%08x\n",
+				(*reg_p).name, (*reg_p).ofs, out);
+	}
+
+	/****BBLPM AUXOUT****/
+	ret = get_xo_auxout_lv1(pd, 0, &out, "bblpm");
+	if (ret)
+		return len;
+	if (!buf)
+		CLKBUF_DBG("bblpm auxout: <%2d>\n", out);
+	else
+		len += snprintf(buf + len, PAGE_SIZE - len,
+				"bblpm auxout: <%2d>\n", out);
+
+	return len;
+}
+
 static struct clkbuf_operation clkbuf_ops_v1 = {
 	.get_pmrcen = __get_pmrcen,
 	.dump_pmic_debug_regs = __dump_pmic_debug_regs,
@@ -869,6 +1201,13 @@ static struct clkbuf_operation clkbuf_ops_v2 = {
 	.get_pmic_common_hdlr = __get_pmic_common_hdlr,
 };
 
+static struct clkbuf_operation clkbuf_ops_lv1 = {
+	.get_pmrcen = __get_pmrcen_lv1,
+	.dump_pmic_debug_regs = __dump_pmic_debug_regs_lv1,
+	.get_xo_cmd_hdlr = __get_xo_cmd_hdlr_lv1,
+	.set_xo_cmd_hdlr = __set_xo_cmd_hdlr_lv1,
+};
+
 static struct clkbuf_hdlr pmic_hdlr_v1 = {
 	.ops = &clkbuf_ops_v1,
 	.data = &mt6685_data,
@@ -878,6 +1217,22 @@ static struct clkbuf_hdlr pmic_hdlr_v1 = {
 static struct clkbuf_hdlr pmic_hdlr_v2 = {
 	.ops = &clkbuf_ops_v2,
 	.data = &mt6685_tb_data,
+};
+
+static struct clkbuf_hdlr pmic_hdlr_lv1 = {
+	.ops = &clkbuf_ops_lv1,
+	.data = &mt6358_data,
+};
+
+static struct clkbuf_hdlr pmic_hdlr_lv3 = {
+	.ops = &clkbuf_ops_lv1,
+	.data = &mt6359p_data,
+};
+
+static struct match_pmic mt6358_match_pmic = {
+	.name = "mediatek,mt6358-clkbuf",
+	.hdlr = &pmic_hdlr_lv1,
+	.init = &pmic_init_lv1,
 };
 
 static struct match_pmic mt6685_match_pmic = {
@@ -892,9 +1247,17 @@ static struct match_pmic mt6685_tb_match_pmic = {
 	.init = &pmic_init_v1,
 };
 
+static struct match_pmic mt6885_match_pmic = {
+	.name = "mediatek,mt6359p-clkbuf",
+	.hdlr = &pmic_hdlr_lv3,
+	.init = &pmic_init_lv1,
+};
+
 static struct match_pmic *matches_pmic[] = {
+	&mt6358_match_pmic,
 	&mt6685_match_pmic,
 	&mt6685_tb_match_pmic,
+	&mt6885_match_pmic,
 	NULL,
 };
 
@@ -960,6 +1323,7 @@ struct clkbuf_dts *parse_pmic_dts(struct clkbuf_dts *array,
 {
 	struct device_node *pmic_node, *xo_buf;
 	struct platform_device *pmic_dev;
+	struct mt6397_chip *chip;
 	struct regmap *pmic_base;
 	unsigned int num_xo = 0;
 
@@ -975,7 +1339,23 @@ struct clkbuf_dts *parse_pmic_dts(struct clkbuf_dts *array,
 	}
 
 	pmic_dev = of_find_device_by_node(pmic_node);
+	if (!pmic_dev) {
+		CLKBUF_DBG("find pmic_dev failed, not support pmic_dev\n");
+		return NULL;
+	}
+
 	pmic_base = dev_get_regmap(pmic_dev->dev.parent, NULL);
+
+	if (!pmic_base) {
+		/* get regmap by old way, use pmic main chip */
+		chip = dev_get_drvdata(pmic_dev->dev.parent);
+		if (!chip || !chip->regmap) {
+			CLKBUF_DBG("find chip or chip->regmap failed, not support regmap\n");
+			return NULL;
+		}
+
+		pmic_base = chip->regmap;
+	}
 
 	/*start parsing pmic dcxo dts*/
 	for_each_child_of_node(pmic_node, xo_buf) {

@@ -6,10 +6,12 @@
 #include <asm/pointer_auth.h>
 #include <asm/stacktrace/common.h>
 #endif
+#include <asm/current.h>
 #include <asm/stacktrace.h>
+#include <linux/mm.h>
 #include "hang_unwind.h"
 
-
+#ifdef __aarch64__
 unsigned int hang_kernel_trace(struct task_struct *tsk,
 					unsigned long *store, unsigned int size)
 {
@@ -36,16 +38,14 @@ unsigned int hang_kernel_trace(struct task_struct *tsk,
 		fp = frame.fp;
 		if (!frame.pc)
 			continue;
-#ifdef __aarch64__
+
 		frame.pc = ptrauth_strip_kernel_insn_pac(frame.pc);
-#endif
+
 		*(++store) = frame.pc;
 		store_len += 1;
 	}
 	return store_len;
 }
-
-#ifdef __aarch64__
 
 const char *hang_arch_vma_name(struct vm_area_struct *vma)
 {
@@ -53,6 +53,12 @@ const char *hang_arch_vma_name(struct vm_area_struct *vma)
 }
 
 #else
+
+unsigned int hang_kernel_trace(struct task_struct *tsk,
+					unsigned long *store, unsigned int size)
+{
+	return 0;
+}
 
 #ifdef MODULE
 const char *hang_arch_vma_name(struct vm_area_struct *vma)

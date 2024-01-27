@@ -42,10 +42,15 @@
 	(0x358 + (idx) * 4)
 #define DISP_AAL_DRE_CRV_CAL_00                 (0x344)
 #define DISP_AAL_DRE_MAPPING_00                 (0x3b4)
+#define GKI_DISP_AAL_DRE_MAPPING_00          (0x3b0)
 #define DISP_AAL_CABC_GAINLMT_TBL(idx) \
 	(0x410 + (idx) * 4)
-
+#define GKI_DISP_AAL_CABC_GAINLMT_TBL(idx) \
+	(0x40c + (idx) * 4)
 #define DISP_AAL_DBG_CFG_MAIN                   (0x45c)
+#define MAX_DRE_FLT_NUM                         (16)
+#define DRE_FLT_NUM                             (12)
+#define GKI_DRE_FLT_NUM                      (13)
 #define DISP_AAL_DUAL_PIPE_INFO_00              (0x4d0)
 #define DISP_AAL_DUAL_PIPE_INFO_01              (0x4d4)
 #define DISP_AAL_OUTPUT_SIZE                    (0x4d8)
@@ -281,7 +286,7 @@ struct mtk_aal_feature_option {
 #define CABC_GAINLMT_NUM (11)
 struct aal_backup { /* structure for backup AAL register value */
 	unsigned int DRE_MAPPING;
-	unsigned int DRE_FLT_FORCE[DRE_FLT_NUM];
+	unsigned int DRE_FLT_FORCE[MAX_DRE_FLT_NUM];
 	unsigned int CABC_00;
 	unsigned int CABC_02;
 	unsigned int CABC_GAINLMT[CABC_GAINLMT_NUM];

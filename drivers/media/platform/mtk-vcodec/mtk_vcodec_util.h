@@ -169,6 +169,7 @@ extern int mtk_vdec_lpw_timeout;
 extern bool mtk_vdec_slc_enable;
 extern int support_svp_region;
 extern int support_wfd_region;
+extern int venc_enable_hw_break;
 
 struct VENC_SLB_CB_T {
 	atomic_t release_slbc;

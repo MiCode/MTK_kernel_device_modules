@@ -52,7 +52,7 @@
 #define MIN_GRANULE SZ_2M
 
 #define PGLIST_PA_BITS (48)
-#define PGLIST_PA_MASK ((1UL << PGLIST_PA_BITS) - 1)
+#define PGLIST_PA_MASK ((1ULL << PGLIST_PA_BITS) - 1)
 #define PGLIST_ATTR_BITS (HYP_PMM_ATTR_BITS)
 #define PGLIST_SET_ATTR(pa, attr)                                              \
 	(((uint64_t)pa & PGLIST_PA_MASK) | ((uint64_t)attr << PGLIST_PA_BITS))
@@ -144,14 +144,14 @@ static void ssmr_zone_offline(void)
 retry:
 	/* get start time */
 	start = sched_clock();
-	pr_info("%s: cma_alloc size=%llx\n", __func__, ssheap_phys_size);
+	pr_info("%s: cma_alloc size=%llx\n", __func__, (u64)ssheap_phys_size);
 
 	cma_page = cma_alloc(ssheap_dev->cma_area, ssheap_phys_size >> PAGE_SHIFT,
 			 get_order(SZ_2M), GFP_KERNEL);
 
 	/* get end time */
 	end = sched_clock();
-	pr_info("%s: duration: %llu ns (%llu ms)\n", __func__, end - start, (end - start) / 1000000);
+	pr_info("%s: duration: %llu ns (%llu ms)\n", __func__, end - start, div_u64(end - start, 1000000UL)); //(end - start) / 1000000
 
 	if (cma_page == NULL) {
 		pr_warn("%s: cma_alloc failed retry:%d\n", __func__, retry);
@@ -177,7 +177,7 @@ retry:
 	}
 
 	pr_info("%s: cma_alloc success, cma_page=%llx pa=%llx, size=%llx\n", __func__,
-		(u64)cma_page, page_to_phys(cma_page), ssheap_phys_size);
+		(u64)cma_page, (u64)page_to_phys(cma_page), (u64)ssheap_phys_size);
 	size = (uint64_t)ssheap_phys_size;
 	kaddr = page_address(cma_page);
 
@@ -208,7 +208,7 @@ static void ssmr_zone_online(void)
 		return;
 	}
 
-	pr_info("%s: free %llx cma_page=%llx\n", __func__, ssheap_phys_size, (u64)cma_page);
+	pr_info("%s: free %llx cma_page=%llx\n", __func__, (u64)ssheap_phys_size, (u64)cma_page);
 	if (hyp_pmm_disable_cma() == 0) {
 		cma_release(ssheap_dev->cma_area, cma_page, ssheap_phys_size >> PAGE_SHIFT);
 		cma_page = NULL;

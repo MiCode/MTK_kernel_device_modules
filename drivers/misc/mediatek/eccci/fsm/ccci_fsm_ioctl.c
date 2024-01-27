@@ -183,10 +183,8 @@ static int fsm_md_data_ioctl(unsigned int cmd, unsigned long arg)
 
 	switch (cmd) {
 	case CCCI_IOC_GET_MD_PROTOCOL_TYPE:
-		snprintf(buffer, sizeof(buffer), "%d",
-			md_gen);
-		snprintf((void *)ap_platform, sizeof(ap_platform), "%d",
-			md_gen);
+		snprintf(buffer, sizeof(buffer), "%d", md_gen);
+		snprintf((void *)ap_platform, sizeof(ap_platform), "%d", md_gen);
 		if (copy_to_user((void __user *)arg,
 			ap_platform, sizeof(ap_platform))) {
 			CCCI_ERROR_LOG(0, FSM,
@@ -282,16 +280,20 @@ static int fsm_md_data_ioctl(unsigned int cmd, unsigned long arg)
 				"CCCI_IOC_SIM_SWITCH: copy_from_user fail\n");
 			ret = -EFAULT;
 		} else {
+#ifdef CCCI_KMODULE_ENABLE
 			switch_sim_mode((char *)&data, sizeof(data));
 			CCCI_BOOTUP_LOG(0, FSM,
 				"CCCI_IOC_SIM_SWITCH(%x): %d\n", data, ret);
+#endif
 		}
 		break;
 	case CCCI_IOC_SIM_SWITCH_TYPE:
+#ifdef CCCI_KMODULE_ENABLE
 		data = get_sim_switch_type();
 		CCCI_BOOTUP_LOG(0, FSM,
 			"CCCI_IOC_SIM_SWITCH_TYPE: 0x%x\n", data);
 		ret = put_user(data, (unsigned int __user *)arg);
+#endif
 		break;
 	case CCCI_IOC_GET_SIM_TYPE:
 		if (per_md_data->sim_type == 0xEEEEEEEE)
@@ -439,8 +441,8 @@ static int fsm_md_data_ioctl(unsigned int cmd, unsigned long arg)
 				"CCCI_IOC_UPDATE_SIM_SLOT_CFG: copy_from_user fail\n");
 			ret = -EFAULT;
 		} else {
+#ifdef CCCI_KMODULE_ENABLE
 			int need_update;
-
 			data = get_sim_switch_type();
 			CCCI_NORMAL_LOG(0, FSM,
 				"CCCI_IOC_UPDATE_SIM_SLOT_CFG get s0:%d s1:%d s2:%d s3:%d\n",
@@ -455,6 +457,7 @@ static int fsm_md_data_ioctl(unsigned int cmd, unsigned long arg)
 			switch_sim_mode((char *)&data, sizeof(data));
 			fsm_monitor_send_message(CCCI_MD_MSG_CFG_UPDATE,
 				need_update);
+#endif
 			ret = 0;
 		}
 		break;

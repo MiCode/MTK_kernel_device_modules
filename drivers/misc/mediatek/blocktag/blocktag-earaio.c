@@ -17,7 +17,9 @@
 #include <linux/spinlock.h>
 #include <linux/poll.h>
 #include <linux/proc_fs.h>
-#include "blocktag-internal.h"
+#include <linux/miscdevice.h>
+#include <linux/seq_file.h>
+#include "mtk_blocktag.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
@@ -412,7 +414,9 @@ static int mtk_btag_eara_ioctl_open(struct inode *inode, struct file *file)
 
 static const struct proc_ops mtk_btag_eara_ioctl_fops = {
 	.proc_ioctl = mtk_btag_eara_ioctl,
+#if IS_ENABLED(CONFIG_COMPAT)
 	.proc_compat_ioctl = mtk_btag_eara_ioctl,
+#endif
 	.proc_open = mtk_btag_eara_ioctl_open,
 	.proc_read = seq_read,
 	.proc_lseek = seq_lseek,

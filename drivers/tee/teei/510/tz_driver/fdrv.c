@@ -47,9 +47,12 @@ int create_fdrv(struct teei_fdrv *fdrv)
 						__FILE__, __LINE__);
 		return -ENOMEM;
 	}
-
+#ifdef TEEI_FFA_SUPPORT
 	retVal = add_work_entry(SMC_CALL_TYPE, N_INVOKE_T_NQ, 0, 0);
-	if (retVal != 0) {
+#else
+	retVal = add_work_entry(SMC_CALL_TYPE, N_INVOKE_T_NQ, 0, 0, 0);
+#endif
+if (retVal != 0) {
 		IMSG_ERROR("TEEI: Failed to add_work_entry[%s]\n", __func__);
 		goto free_memory;
 	}
@@ -98,8 +101,11 @@ int fdrv_notify(struct teei_fdrv *fdrv)
 	init_completion(wait_completion);
 
 	teei_cpus_read_lock();
-
+#ifdef TEEI_FFA_SUPPORT
 	retVal = add_work_entry(SMC_CALL_TYPE, N_INVOKE_T_NQ, 0, 0);
+#else
+	retVal = add_work_entry(SMC_CALL_TYPE, N_INVOKE_T_NQ, 0, 0, 0);
+#endif
 	if (retVal != 0) {
 		IMSG_ERROR("TEEI: Failed to add_work_entry[%s]\n", __func__);
 		teei_cpus_read_unlock();

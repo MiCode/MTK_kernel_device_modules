@@ -31,7 +31,7 @@
 #define CONFIG_LEDS_BRIGHTNESS_CHANGED
 #include <linux/leds-mtk.h>
 #else
-#define mtk_leds_brightness_set(x, y) do { } while (0)
+#define mtk_leds_brightness_set(x, y, m, n) do { } while (0)
 #endif
 
 #define DISP_REG_CCORR_EN (0x000)
@@ -218,6 +218,9 @@ static int disp_ccorr_write_coef_reg(struct mtk_ddp_comp *comp,
 	unsigned int temp_matrix[3][3];
 	unsigned int cfg_val;
 	int i, j;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	if (lock)
 		mutex_lock(&primary_data->ccorr_global_lock);
@@ -262,10 +265,14 @@ static int disp_ccorr_write_coef_reg(struct mtk_ddp_comp *comp,
 	ccorr->offset[2] = primary_data->disp_ccorr_coef->offset[2];
 
 	// For 6885 need to left shift one bit
-	if (primary_data->disp_ccorr_caps.ccorr_bit == 12) {
-		for (i = 0; i < 3; i++)
-			for (j = 0; j < 3; j++)
-				ccorr->coef[i][j] = ccorr->coef[i][j]<<1;
+	if (priv->data->mmsys_id != MMSYS_MT6768) {
+		DDPINFO("%s: shifting ccorr for bit:%d\n",
+			__func__,  primary_data->disp_ccorr_caps.ccorr_bit);
+		if (primary_data->disp_ccorr_caps.ccorr_bit == 12) {
+			for (i = 0; i < 3; i++)
+				for (j = 0; j < 3; j++)
+					ccorr->coef[i][j] = ccorr->coef[i][j]<<1;
+		}
 	}
 
 	if (handle == NULL) {
@@ -1804,6 +1811,11 @@ static const struct mtk_disp_ccorr_data mt6779_ccorr_driver_data = {
 	.need_bypass_shadow = false,
 };
 
+static const struct mtk_disp_ccorr_data mt6768_ccorr_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = false,
+};
+
 static const struct mtk_disp_ccorr_data mt6885_ccorr_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = false,
@@ -1868,6 +1880,8 @@ static const struct mtk_disp_ccorr_data mt6989_ccorr_driver_data = {
 static const struct of_device_id mtk_disp_ccorr_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6779-disp-ccorr",
 	  .data = &mt6779_ccorr_driver_data},
+	{ .compatible = "mediatek,mt6768-disp-ccorr",
+	  .data = &mt6768_ccorr_driver_data},
 	{ .compatible = "mediatek,mt6885-disp-ccorr",
 	  .data = &mt6885_ccorr_driver_data},
 	{ .compatible = "mediatek,mt6873-disp-ccorr",

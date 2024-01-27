@@ -30,10 +30,15 @@
 #include "mtk_drm_trace.h"
 #include "mtk_disp_rdma.h"
 #include "platform/mtk_drm_platform.h"
+#include "mtk_drm_lowpower.h"
 //#include "swpm_me.h"
+#ifdef SHARE_WROT_SRAM
+#include "mdp_event_common.h"
+#endif
 
 int disp_met_set(void *data, u64 val);
 
+#define DO_DIV_ROUND_UP(n, d) DO_COMMON_DIV(((n) + (d) - 1), (d))
 #define DISP_REG_RDMA_INT_ENABLE 0x0000
 #define DISP_REG_RDMA_INT_STATUS 0x0004
 #define RDMA_TARGET_LINE_INT BIT(5)
@@ -159,8 +164,8 @@ int disp_met_set(void *data, u64 val);
 #define FIFO_CON_FLD_FIFO_PSEUDO_SIZE	REG_FLD_MSB_LSB(29, 16)
 #define FIFO_CON_FLD_FIFO_UNDERFLOW_EN	REG_FLD_MSB_LSB(31, 31)
 #define RDMA_FIFO_UNDERFLOW_EN BIT(31)
-#define RDMA_FIFO_PSEUDO_SIZE(bytes) (((bytes) / 16UL) << 16)
-#define RDMA_OUTPUT_VALID_FIFO_THRESHOLD(bytes) ((bytes) / 16)
+#define RDMA_FIFO_PSEUDO_SIZE(bytes) (DO_COMMON_DIV((bytes), 16UL) << 16)
+#define RDMA_OUTPUT_VALID_FIFO_THRESHOLD(bytes) DO_COMMON_DIV((bytes), 16)
 #define RDMA_FIFO_SIZE(module) ((module)->data->fifo_size)
 
 #define MATRIX_INT_MTX_SEL_DEFAULT 0x000000
@@ -246,6 +251,7 @@ struct mtk_disp_rdma {
 	unsigned int dummy_h;
 	struct mtk_rdma_backup_info backup_info;
 	struct mtk_rdma_cfg_info cfg_info;
+	struct clk *wrot_clk;
 };
 
 static inline struct mtk_disp_rdma *comp_to_rdma(struct mtk_ddp_comp *comp)
@@ -581,6 +587,42 @@ void mtk_rdma_cal_golden_setting(struct mtk_ddp_comp *comp,
 
 	unsigned int fill_rate = 0;	  /* 100 times */
 	unsigned long long consume_rate = 0; /* 100 times */
+	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+#ifdef SHARE_WROT_SRAM
+	/* Share MDP WROT SRAM. */
+	if (comp->id == DDP_COMPONENT_RDMA0 && can_use_wrot_sram()) {
+		unsigned int fifo_off_ultra = 0; /* 10 times */
+
+		if (height > 2340)
+			fifo_off_ultra = 400;
+		else
+			fifo_off_ultra = 500;
+
+		if (height > 2340 && if_fps == 90)
+			fifo_off_ultra = 300;
+		pre_ultra_low_us += fifo_off_ultra;
+		pre_ultra_high_us += fifo_off_ultra;
+		ultra_low_us += fifo_off_ultra;
+		ultra_high_us += fifo_off_ultra;
+
+		fifo_size = SZ_32K / 16UL;
+		gs[GS_RDMA_SRAM_SEL] = 1;
+		set_share_sram(1);
+	} else {
+		if (priv->data->mmsys_id == MMSYS_MT6768 && if_fps == 90) {
+			pre_ultra_low_us = 55;
+			pre_ultra_high_us = 65;
+			ultra_low_us = 45;
+			ultra_high_us = 55;
+			urgent_low_us = 35;
+			urgent_high_us = 44;
+		}
+		set_share_sram(0);
+		gs[GS_RDMA_SRAM_SEL] = 0;
+	}
+#else
+	gs[GS_RDMA_SRAM_SEL] = 0;
+#endif
 
 	if (if_fps == 0) {
 		DDPPR_ERR("%s invalid vrefresh %u\n",
@@ -589,7 +631,7 @@ void mtk_rdma_cal_golden_setting(struct mtk_ddp_comp *comp,
 	}
 
 	if (comp->mtk_crtc->is_dual_pipe)
-		width /= 2;
+		width = DO_COMMON_DIV(width, 2);
 
 	switch (cfg->bpc) {
 	case 8:
@@ -616,9 +658,9 @@ void mtk_rdma_cal_golden_setting(struct mtk_ddp_comp *comp,
 	else
 		fill_rate = 96 * mmsys_clk * 3 / 16; /* FIFO depth / us */
 
-	DDPINFO("%s,w:%llu,h:%llu,vrefresh:%d,bpc:%d,is_vdo:%d,is_dc:%d\n",
+	DDPMSG("%s,w:%llu,h:%llu,vrefresh:%d,bpc:%d,is_vdo:%d,is_dc:%d,sram:%d,fifo:%d\n",
 		__func__, width, height, if_fps, cfg->bpc,
-		gsc->is_vdo_mode, gsc->is_dc);
+		gsc->is_vdo_mode, gsc->is_dc, gs[GS_RDMA_SRAM_SEL], fifo_size);
 
 	consume_rate = width * height * if_fps * Bpp;
 	do_div(consume_rate, 1000);
@@ -628,9 +670,9 @@ void mtk_rdma_cal_golden_setting(struct mtk_ddp_comp *comp,
 	/* RDMA golden setting calculation */
 	/* DISP_RDMA_MEM_GMC_SETTING_0 */
 	gs[GS_RDMA_PRE_ULTRA_TH_LOW] =
-		DIV_ROUND_UP(consume_rate * (pre_ultra_low_us), FP);
+		DO_DIV_ROUND_UP(consume_rate * (pre_ultra_low_us), FP);
 	gs[GS_RDMA_PRE_ULTRA_TH_HIGH] =
-		DIV_ROUND_UP(consume_rate * (pre_ultra_high_us), FP);
+		DO_DIV_ROUND_UP(consume_rate * (pre_ultra_high_us), FP);
 	if (gsc->is_vdo_mode) {
 		gs[GS_RDMA_VALID_TH_FORCE_PRE_ULTRA] = 0;
 		gs[GS_RDMA_VDE_FORCE_PRE_ULTRA] = 1;
@@ -641,7 +683,7 @@ void mtk_rdma_cal_golden_setting(struct mtk_ddp_comp *comp,
 
 	/* DISP_RDMA_MEM_GMC_SETTING_1 */
 	gs[GS_RDMA_ULTRA_TH_LOW] =
-		DIV_ROUND_UP(consume_rate * (ultra_low_us), FP);
+		DO_DIV_ROUND_UP(consume_rate * (ultra_low_us), FP);
 	gs[GS_RDMA_ULTRA_TH_HIGH] = gs[GS_RDMA_PRE_ULTRA_TH_LOW];
 	if (gsc->is_vdo_mode)
 		gs[GS_RDMA_VALID_TH_BLOCK_ULTRA] = 0;
@@ -681,10 +723,17 @@ void mtk_rdma_cal_golden_setting(struct mtk_ddp_comp *comp,
 
 	/* DISP_RDMA_THRESHOLD_FOR_SODI */
 	gs[GS_RDMA_TH_LOW_FOR_SODI] =
-		DIV_ROUND_UP(consume_rate * (ultra_low_us + 50), FP);
-	gs[GS_RDMA_TH_HIGH_FOR_SODI] = DIV_ROUND_UP(
-		gs[GS_RDMA_FIFO_SIZE] * FP - (fill_rate - consume_rate) * 12,
-		FP);
+		DO_DIV_ROUND_UP(consume_rate * (ultra_low_us + 50), FP);
+
+	if (priv->data->mmsys_id == MMSYS_MT6768)
+		gs[GS_RDMA_TH_HIGH_FOR_SODI] = DO_DIV_ROUND_UP(
+			gs[GS_RDMA_FIFO_SIZE] * FP - (fill_rate - consume_rate) * 50,
+			FP);
+	else
+		gs[GS_RDMA_TH_HIGH_FOR_SODI] = DO_DIV_ROUND_UP(
+			gs[GS_RDMA_FIFO_SIZE] * FP - (fill_rate - consume_rate) * 12,
+			FP);
+
 	if (gs[GS_RDMA_TH_HIGH_FOR_SODI] < gs[GS_RDMA_PRE_ULTRA_TH_HIGH])
 		gs[GS_RDMA_TH_HIGH_FOR_SODI] = gs[GS_RDMA_PRE_ULTRA_TH_HIGH];
 
@@ -695,36 +744,57 @@ void mtk_rdma_cal_golden_setting(struct mtk_ddp_comp *comp,
 	gs[GS_RDMA_TH_LOW_FOR_DVFS] = gs[GS_RDMA_PRE_ULTRA_TH_LOW];
 	gs[GS_RDMA_TH_HIGH_FOR_DVFS] = gs[GS_RDMA_PRE_ULTRA_TH_LOW] + 1;
 
-	/* DISP_RDMA_SRAM_SEL */
-	gs[GS_RDMA_SRAM_SEL] = 0;
+	if (priv->data->mmsys_id == MMSYS_MT6768) {
+		/* DISP_RDMA_DVFS_SETTING_PREULTRA */
+		gs[GS_RDMA_DVFS_PRE_ULTRA_TH_LOW] =
+			DO_DIV_ROUND_UP(consume_rate * (pre_ultra_low_us + 20), FP);
+		gs[GS_RDMA_DVFS_PRE_ULTRA_TH_HIGH] =
+			DO_DIV_ROUND_UP(consume_rate * (pre_ultra_high_us + 20), FP);
 
-	/* DISP_RDMA_DVFS_SETTING_PREULTRA */
-	gs[GS_RDMA_DVFS_PRE_ULTRA_TH_LOW] =
-		DIV_ROUND_UP(consume_rate * (pre_ultra_low_us + 40), FP);
-	gs[GS_RDMA_DVFS_PRE_ULTRA_TH_HIGH] =
-		DIV_ROUND_UP(consume_rate * (pre_ultra_high_us + 40), FP);
+		/* DISP_RDMA_DVFS_SETTING_ULTRA */
+		gs[GS_RDMA_DVFS_ULTRA_TH_LOW] =
+			DO_DIV_ROUND_UP(consume_rate * (ultra_low_us + 20), FP);
+		gs[GS_RDMA_DVFS_ULTRA_TH_HIGH] = gs[GS_RDMA_DVFS_PRE_ULTRA_TH_LOW];
 
-	/* DISP_RDMA_DVFS_SETTING_ULTRA */
-	gs[GS_RDMA_DVFS_ULTRA_TH_LOW] =
-		DIV_ROUND_UP(consume_rate * (ultra_low_us + 40), FP);
-	gs[GS_RDMA_DVFS_ULTRA_TH_HIGH] = gs[GS_RDMA_DVFS_PRE_ULTRA_TH_LOW];
+		/* DISP_RDMA_LEAVE_DRS_SETTING */
+		gs[GS_RDMA_IS_DRS_STATUS_TH_LOW] =
+			DO_DIV_ROUND_UP(consume_rate * urgent_low_us, FP);
+		gs[GS_RDMA_IS_DRS_STATUS_TH_HIGH] =
+			DO_DIV_ROUND_UP(consume_rate * urgent_high_us, FP);
 
-	/* DISP_RDMA_LEAVE_DRS_SETTING */
-	gs[GS_RDMA_IS_DRS_STATUS_TH_LOW] =
-		DIV_ROUND_UP(consume_rate * (pre_ultra_low_us + 20), FP);
-	gs[GS_RDMA_IS_DRS_STATUS_TH_HIGH] =
-		DIV_ROUND_UP(consume_rate * (pre_ultra_low_us + 20), FP);
+		/* DISP_RDMA_ENTER_DRS_SETTING */
+		gs[GS_RDMA_NOT_DRS_STATUS_TH_LOW] =
+			DO_DIV_ROUND_UP(consume_rate * urgent_low_us, FP);
+		gs[GS_RDMA_NOT_DRS_STATUS_TH_HIGH] =
+			DO_DIV_ROUND_UP(consume_rate * urgent_high_us, FP);
+	} else {
+		/* DISP_RDMA_DVFS_SETTING_PREULTRA */
+		gs[GS_RDMA_DVFS_PRE_ULTRA_TH_LOW] =
+			DO_DIV_ROUND_UP(consume_rate * (pre_ultra_low_us + 40), FP);
+		gs[GS_RDMA_DVFS_PRE_ULTRA_TH_HIGH] =
+			DO_DIV_ROUND_UP(consume_rate * (pre_ultra_high_us + 40), FP);
 
-	/* DISP_RDMA_ENTER_DRS_SETTING */
-	gs[GS_RDMA_NOT_DRS_STATUS_TH_LOW] =
-		DIV_ROUND_UP(consume_rate * (ultra_high_us + 40), FP);
-	gs[GS_RDMA_NOT_DRS_STATUS_TH_HIGH] =
-		DIV_ROUND_UP(consume_rate * (ultra_high_us + 40), FP);
+		/* DISP_RDMA_DVFS_SETTING_ULTRA */
+		gs[GS_RDMA_DVFS_ULTRA_TH_LOW] =
+			DO_DIV_ROUND_UP(consume_rate * (ultra_low_us + 40), FP);
+		gs[GS_RDMA_DVFS_ULTRA_TH_HIGH] = gs[GS_RDMA_DVFS_PRE_ULTRA_TH_LOW];
 
+		/* DISP_RDMA_LEAVE_DRS_SETTING */
+		gs[GS_RDMA_IS_DRS_STATUS_TH_LOW] =
+			DO_DIV_ROUND_UP(consume_rate * (pre_ultra_low_us + 20), FP);
+		gs[GS_RDMA_IS_DRS_STATUS_TH_HIGH] =
+			DO_DIV_ROUND_UP(consume_rate * (pre_ultra_low_us + 20), FP);
+
+		/* DISP_RDMA_ENTER_DRS_SETTING */
+		gs[GS_RDMA_NOT_DRS_STATUS_TH_LOW] =
+			DO_DIV_ROUND_UP(consume_rate * (ultra_high_us + 40), FP);
+		gs[GS_RDMA_NOT_DRS_STATUS_TH_HIGH] =
+			DO_DIV_ROUND_UP(consume_rate * (ultra_high_us + 40), FP);
+	}
 	/* DISP_RDMA_MEM_GMC_SETTING_3 */
-	gs[GS_RDMA_URGENT_TH_LOW] = DIV_ROUND_UP(consume_rate *
+	gs[GS_RDMA_URGENT_TH_LOW] = DO_DIV_ROUND_UP(consume_rate *
 		urgent_low_us, FP);
-	gs[GS_RDMA_URGENT_TH_HIGH] = DIV_ROUND_UP(consume_rate *
+	gs[GS_RDMA_URGENT_TH_HIGH] = DO_DIV_ROUND_UP(consume_rate *
 		urgent_high_us, FP);
 
 	/* DISP_RDMA_GREQ_URG_NUM_SEL */
@@ -766,7 +836,12 @@ static void mtk_rdma_set_ultra_l(struct mtk_ddp_comp *comp,
 
 	/* calculate golden setting */
 	mtk_rdma_cal_golden_setting(comp, cfg, gs);
-
+#ifdef SHARE_WROT_SRAM
+	if (use_wrot_sram())
+		cmdq_pkt_clear_event(handle, CMDQ_SYNC_RESOURCE_WROT0);
+	else
+		cmdq_pkt_set_event(handle, CMDQ_SYNC_RESOURCE_WROT0);
+#endif
 	/* set golden setting */
 	val = gs[GS_RDMA_PRE_ULTRA_TH_LOW] +
 	      (gs[GS_RDMA_PRE_ULTRA_TH_HIGH] << 16) +
@@ -862,7 +937,7 @@ static void mtk_rdma_write_mem_start_addr_cmdq(struct mtk_ddp_comp *comp,
 			handle);
 
 	if (rdma->data->is_support_34bits)
-		mtk_ddp_write_relaxed(comp, (addr >> 32),
+		mtk_ddp_write_relaxed(comp, DO_SHIFT_RIGHT(addr, 32),
 			DISP_REG_RDMA_MEM_START_ADDR_MSB, handle);
 }
 
@@ -943,7 +1018,7 @@ static dma_addr_t mtk_rdma_read_mem_start_addr(struct mtk_ddp_comp *comp)
 
 	if (rdma->data->is_support_34bits) {
 		addr = readl(DISP_REG_RDMA_MEM_START_ADDR_MSB + baddr);
-		addr = (addr << 32);
+		addr = DO_SHIFT_LEFT(addr, 32);
 	}
 
 	addr += readl(DISP_REG_RDMA_MEM_START_ADDR + baddr);
@@ -1358,18 +1433,85 @@ int mtk_rdma_analysis(struct mtk_ddp_comp *comp)
 
 static void mtk_rdma_prepare(struct mtk_ddp_comp *comp)
 {
+	struct mtk_drm_private *private = NULL;
 	struct mtk_disp_rdma *rdma = comp_to_rdma(comp);
-
+#if IS_ENABLED(POLLING_RDMA_OUTPUT_LINE_ENABLE)
+	int crtc_id;
+#endif
 	mtk_ddp_comp_clk_prepare(comp);
 
 	/* Bypass shadow register and read shadow register */
 	if (rdma->data->need_bypass_shadow)
 		mtk_ddp_write_mask_cpu(comp, RDMA_BYPASS_SHADOW,
 			DISP_REG_RDMA_SHADOW_UPDATE(rdma), RDMA_BYPASS_SHADOW);
+	if (comp->mtk_crtc) {
+		private = comp->mtk_crtc->base.dev->dev_private;
+#ifdef SHARE_WROT_SRAM
+		if (mtk_drm_helper_get_opt(private->helper_opt,
+				MTK_DRM_OPT_SHARE_SRAM)) {
+			if (IS_ERR(rdma->wrot_clk)) {
+				DDPMSG("get mdp_wrot0 clk failed: %p ,\n", rdma->wrot_clk);
+			} else {
+				int ret = 0;
+
+				ret = clk_prepare_enable(rdma->wrot_clk);
+				if (ret)
+					DDPMSG("enable mdp_wrot0 clk failed!\n");
+				else
+					DDPMSG("enable mdp_wrot0 clk success!\n");
+			}
+		}
+#endif
+		/* SW workaround.
+		 * Enable polling RDMA output line isn't 0 && RDMA status is run,
+		 * before path resume.
+		 */
+#if IS_ENABLED(POLLING_RDMA_OUTPUT_LINE_ENABLE)
+		crtc_id = drm_crtc_index(&comp->mtk_crtc->base);
+		if (crtc_id == 0 &&
+			private->data->mmsys_id == MMSYS_MT6768 &&
+			mtk_dsi_is_cmd_mode(private->ddp_comp[DDP_COMPONENT_DSI0]))
+			polling_rdma_output_line_enable = 1;
+#endif
+	}
 }
 
 static void mtk_rdma_unprepare(struct mtk_ddp_comp *comp)
 {
+	struct mtk_drm_private *private = NULL;
+#if IS_ENABLED(POLLING_RDMA_OUTPUT_LINE_ENABLE)
+	int crtc_id;
+#endif
+#ifdef SHARE_WROT_SRAM
+	struct mtk_disp_rdma *rdma = comp_to_rdma(comp);
+#endif
+
+	if (comp->mtk_crtc) {
+		private = comp->mtk_crtc->base.dev->dev_private;
+
+#ifdef SHARE_WROT_SRAM
+		if (mtk_drm_helper_get_opt(private->helper_opt,
+				MTK_DRM_OPT_SHARE_SRAM)) {
+			if (IS_ERR(rdma->wrot_clk)) {
+				DDPMSG("get mdp_wrot0 clk failed: %p ,\n", rdma->wrot_clk);
+			} else {
+				clk_disable_unprepare(rdma->wrot_clk);
+				DDPMSG("disable mdp_wrot0 clk success!\n");
+			}
+		}
+#endif
+		/* SW workaround.
+		 * Disable polling RDMA output line isn't 0 && RDMA status is run,
+		 * before path stop.
+		 */
+#if IS_ENABLED(POLLING_RDMA_OUTPUT_LINE_ENABLE)
+		crtc_id = drm_crtc_index(&comp->mtk_crtc->base);
+		if (crtc_id == 0 &&
+			private->data->mmsys_id == MMSYS_MT6768 &&
+			mtk_dsi_is_cmd_mode(private->ddp_comp[DDP_COMPONENT_DSI0]))
+			polling_rdma_output_line_enable = 0;
+#endif
+	}
 	mtk_ddp_comp_clk_unprepare(comp);
 }
 
@@ -1506,7 +1648,26 @@ static int mtk_disp_rdma_bind(struct device *dev, struct device *master,
 						&priv->ddp_comp, "hrt_qos");
 		priv->ddp_comp.hrt_qos_req = of_mtk_icc_get(dev, buf);
 	}
+#ifdef SHARE_WROT_SRAM
+	if (mtk_drm_helper_get_opt(private->helper_opt,
+			MTK_DRM_OPT_SHARE_SRAM)) {
+		struct device_node *node = NULL;
 
+		node = of_find_node_by_name(NULL, "mdp_wrot0");
+		if (node == NULL) {
+			DDPMSG("[ERR]%s, unable to find node mdp_wrot0\n", __func__);
+			mtk_drm_helper_set_opt_by_name(private->helper_opt,
+						"MTK_DRM_OPT_SHARE_SRAM", 0);
+		} else {
+			priv->wrot_clk = of_clk_get(node, 0);
+			if (IS_ERR(priv->wrot_clk)) {
+				DDPMSG("get mdp_wrot0 clk failed: %p ,\n", priv->wrot_clk);
+				mtk_drm_helper_set_opt_by_name(private->helper_opt,
+						"MTK_DRM_OPT_SHARE_SRAM", 0);
+			}
+		}
+	}
+#endif
 	return 0;
 }
 
@@ -1555,7 +1716,9 @@ static int mtk_disp_rdma_probe(struct platform_device *pdev)
 
 	/* Disable and clear pending interrupts */
 	writel(0x0, priv->ddp_comp.regs + DISP_REG_RDMA_INT_STATUS);
+	dsb(sy);
 	writel(0x0, priv->ddp_comp.regs + DISP_REG_RDMA_INT_ENABLE);
+	dsb(sy);
 
 	ret = devm_request_irq(dev, irq, mtk_disp_rdma_irq_handler,
 			       IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(dev),
@@ -1599,6 +1762,23 @@ static const struct mtk_disp_rdma_data mt2701_rdma_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = false,
 	.has_greq_urg_num = true,
+};
+
+const struct mtk_disp_rdma_data mt6768_rdma_driver_data = {
+	.fifo_size = SZ_1K * 6,
+	.pre_ultra_low_us = 80,
+	.pre_ultra_high_us = 90,
+	.ultra_low_us = 60,
+	.ultra_high_us = 80,
+	.urgent_low_us = 43,
+	.urgent_high_us = 58,
+	.sodi_config = mt6768_mtk_sodi_config,
+	.shadow_update_reg = 0x00bc,
+	.support_shadow = false,
+	.need_bypass_shadow = false,
+	.has_greq_urg_num = false,
+	.is_support_34bits = false,
+	.dsi_buffer = false,
 };
 
 static const struct mtk_disp_rdma_data mt6779_rdma_driver_data = {
@@ -1775,6 +1955,8 @@ static const struct mtk_disp_rdma_data mt6855_rdma_driver_data = {
 static const struct of_device_id mtk_disp_rdma_driver_dt_match[] = {
 	{.compatible = "mediatek,mt2701-disp-rdma",
 	 .data = &mt2701_rdma_driver_data},
+	{.compatible = "mediatek,mt6768-disp-rdma",
+	 .data = &mt6768_rdma_driver_data},
 	{.compatible = "mediatek,mt6779-disp-rdma",
 	 .data = &mt6779_rdma_driver_data},
 	{.compatible = "mediatek,mt8173-disp-rdma",

@@ -20,7 +20,7 @@
 #include "cam_cal.h"
 #include "cam_cal_define.h"
 #include <linux/dma-mapping.h>
-#ifdef CONFIG_COMPAT
+#if IS_ENABLED( CONFIG_COMPAT)  
 /* 64 bit */
 #include <linux/fs.h>
 #include <linux/compat.h>

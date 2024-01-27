@@ -128,6 +128,12 @@ int __gpufreq_get_idx_by_vgpu(unsigned int volt);
 int __gpufreq_get_idx_by_pgpu(unsigned int power);
 unsigned int __gpufreq_get_lkg_pgpu(unsigned int volt, int temper);
 unsigned int __gpufreq_get_dyn_pgpu(unsigned int freq, unsigned int volt);
+const struct gpufreq_opp_info *__gpufreq_get_working_table_gpu(void);
+#if !defined(MTK_GPU_EB_SUPPORT)
+const struct gpufreq_opp_info *__gpufreq_get_signed_table_gpu(void);
+struct gpufreq_debug_opp_info __gpufreq_get_debug_opp_info_gpu(void);
+void __gpufreq_set_stress_test(unsigned int mode);
+#endif
 int __gpufreq_generic_commit_gpu(int target_oppidx, enum gpufreq_dvfs_state key);
 int __gpufreq_fix_target_oppidx_gpu(int oppidx);
 int __gpufreq_fix_custom_freq_volt_gpu(unsigned int freq, unsigned int volt);
@@ -202,8 +208,11 @@ static inline void __gpufreq_abort(const char *exception_string, ...)
 {
 	va_list args;
 	int cx = 0;
+#ifdef __aarch64__
 	char tmp_string[1024];
-
+#else
+	char tmp_string[512];
+#endif
 	va_start(args, exception_string);
 	cx = vsnprintf(tmp_string, sizeof(tmp_string), exception_string, args);
 	va_end(args);

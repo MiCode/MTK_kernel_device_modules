@@ -65,8 +65,8 @@ static int *_opp_cnt;
 static unsigned int **cpu_opp_tbl;
 static DEFINE_MUTEX(cpu_ctrl_lock);
 static struct _cpufreq freq_to_set[CLUSTER_MAX];
-struct freq_qos_request *freq_min_request;
-struct freq_qos_request *freq_max_request;
+static struct freq_qos_request *freq_min_request;
+static struct freq_qos_request *freq_max_request;
 static int enable = 1;
 static int gas_for_ta_enabled;
 static int gas_threshold_for_ta;
@@ -139,7 +139,7 @@ static int condition_get_cmd;
 static DEFINE_MUTEX(tch2pwr_lock);
 static DECLARE_WAIT_QUEUE_HEAD(pwr_queue);
 
-void send_boost_cmd(int enable)
+static void send_boost_cmd(int enable)
 {
 	static struct k_list *node;
 
@@ -1095,35 +1095,12 @@ static struct input_handler dbs_input_handler = {
 	.id_table = dbs_ids,
 };
 
-char *perfmgr_copy_from_user_for_proc(const char __user *buffer, size_t count)
-{
-	char *buf = (char *)__get_free_page(GFP_USER);
-
-	if (!buf)
-		return NULL;
-
-	if (count >= PAGE_SIZE)
-		goto out;
-
-	if (copy_from_user(buf, buffer, count))
-		goto out;
-
-	buf[count] = '\0';
-
-	return buf;
-
-out:
-	free_page((unsigned long)buf);
-
-	return NULL;
-}
-
-int cmp_uint(const void *a, const void *b)
+static int cmp_uint(const void *a, const void *b)
 {
 	return *(unsigned int *)b - *(unsigned int *)a;
 }
 
-void cpu_policy_init(void)
+static void cpu_policy_init(void)
 {
 	int cpu;
 	int num = 0, count;
@@ -1186,7 +1163,7 @@ void cpu_policy_init(void)
 	}
 }
 
-int get_cpu_opp_info(int **opp_cnt, unsigned int ***opp_tbl)
+static int get_cpu_opp_info(int **opp_cnt, unsigned int ***opp_tbl)
 {
 	int i, j;
 
@@ -1210,7 +1187,7 @@ int get_cpu_opp_info(int **opp_cnt, unsigned int ***opp_tbl)
 	return 0;
 }
 
-int get_cpu_topology(void)
+static int get_cpu_topology(void)
 {
 	if (get_cpu_opp_info(&_opp_cnt, &cpu_opp_tbl) < 0)
 		return -EFAULT;

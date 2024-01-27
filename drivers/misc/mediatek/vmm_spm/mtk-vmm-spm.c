@@ -412,7 +412,7 @@ static int vmm_spm_probe(struct platform_device *pdev)
 
 	drv_data->spm_reg = devm_ioremap(dev, res->start, resource_size(res));
 	if (!(drv_data->spm_reg)) {
-		ISP_LOGE("fail to ioremap SPM_BASE: 0x%llx", res->start);
+		ISP_LOGE("fail to ioremap SPM_BASE");
 		return -EINVAL;
 	}
 

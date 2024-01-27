@@ -30,31 +30,34 @@ obj-$(CONFIG_MTK_ECCCI_DRIVER) += ccci_fsm_scp.o
 
 endif
 
-
-
-
-
 ifeq ($(CONFIG_MTK_ECCCI_DRIVER), y)
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/inc
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/port
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/platform
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/mt6873
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/rv/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/hif/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdpm/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/memory-amms/
 
 # fsm objects
 obj-$(CONFIG_MTK_ECCCI_DRIVER) := ccci_fsm_all.o
 
-ccci_fsm_all-y := ccci_fsm.o \
+ccci_fsm_all-y := ap_md_mem.o \
+			ap_md_reg_dump.o \
+			ccci_fsm.o \
 			ccci_fsm_ioctl.o \
 			ccci_fsm_monitor.o \
 			ccci_fsm_poller.o \
 			ccci_fsm_scp_c.o \
 			ccci_fsm_ee.o \
 			ccci_fsm_sys.o \
+			md_sys1_platform.o \
+			modem_sys1.o \
 			mdee_dumper_v1.o \
 			mdee_dumper_v2.o \
 			mdee_dumper_v3.o \

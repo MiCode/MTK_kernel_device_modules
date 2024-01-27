@@ -36,6 +36,9 @@
 #include <linux/spinlock.h>
 #include <linux/proc_fs.h>
 #include <linux/delay.h>
+#if !IS_ENABLED(CONFIG_PHYS_ADDR_T_64BIT)
+#include <asm/arch_timer.h>
+#endif
 #include <asm/page.h>
 #include "gz-log.h"
 #include <linux/of.h>
@@ -47,6 +50,7 @@
 #include <linux/of_reserved_mem.h>
 #include <linux/debugfs.h>
 #include <linux/sched/clock.h>
+#include <linux/math64.h>
 
 #if ENABLE_GZ_TRACE_DUMP
 #if IS_BUILTIN(CONFIG_MTK_GZ_LOG)
@@ -128,30 +132,6 @@ static struct gz_log_context glctx = {
 	.flag = DYNAMIC,
 };
 
-#if IS_BUILTIN(CONFIG_MTK_GZ_LOG)
-static int __init gz_log_context_init(struct reserved_mem *rmem)
-{
-	unsigned long node;
-
-	if (!rmem) {
-		pr_info("[%s] ERROR: invalid reserved memory\n", __func__);
-		return -EFAULT;
-	}
-	glctx.paddr = rmem->base;
-	glctx.size = rmem->size;
-
-	node = rmem->fdt_node;
-	if (!of_get_flat_dt_prop(node, "no-map", NULL))
-		glctx.flag = STATIC_MAP;
-	else
-		glctx.flag = STATIC_NOMAP;
-
-	pr_info("[%s] rmem:%s base(0x%llx) size(0x%zx) flag(%u)\n",
-		__func__, rmem->name, glctx.paddr, glctx.size, glctx.flag);
-	return 0;
-}
-RESERVEDMEM_OF_DECLARE(gz_log, "mediatek,gz-log", gz_log_context_init);
-#else
 static void gz_log_find_mblock(void)
 {
 	struct device_node *mblock_root = NULL, *gz_node = NULL;
@@ -182,19 +162,25 @@ static void gz_log_find_mblock(void)
 	else
 		glctx.flag = STATIC_NOMAP;
 
+	/* Linux does not map highmem. Treat as STATIC_NOMAP if happened */
+	if (PageHighMem(phys_to_page(glctx.paddr)))
+		glctx.flag = STATIC_NOMAP;
+
+#if IS_ENABLED(CONFIG_PHYS_ADDR_T_64BIT)
 	pr_info("[%s] rmem:%s base(0x%llx) size(0x%zx) flag(%u)\n",
 		__func__, gz_node->name, glctx.paddr, glctx.size, glctx.flag);
-}
+#else
+	pr_info("[%s] rmem:%s base(0x%x) size(0x%zx) flag(%u)\n",
+                __func__, rmem->name, glctx.paddr, glctx.size, glctx.flag);
 #endif
+}
 
 static int gz_log_page_init(void)
 {
 	if (glctx.virt)
 		return 0;
 
-#if IS_MODULE(CONFIG_MTK_GZ_LOG)
 	gz_log_find_mblock();
-#endif
 
 	if (glctx.flag >= STATIC_MAP) {
 		if (glctx.flag == STATIC_MAP)
@@ -772,7 +758,7 @@ static int trusty_gz_send_ktime(struct platform_device *pdev)
 	current_ktime = sched_clock();
 	current_cnt = __arch_counter_get_cntvct();
 
-	diff_all = current_cnt - (13 * current_ktime)/1000;
+	diff_all = current_cnt - div_u64(13 * current_ktime, 1000);
 	diff_msb = (diff_all >> 32);
 	diff_lsb = (diff_all & U32_MAX);
 

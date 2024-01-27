@@ -29,6 +29,7 @@
 static inline long teei_secure_call(u64 function_id,
 		u64 arg0, u64 arg1, u64 arg2)
 {
+#ifdef TEEI_FFA_SUPPORT
 	struct ffa_send_direct_data data = {
 		.data0 = function_id,
 		.data1 = arg0,
@@ -47,5 +48,13 @@ static inline long teei_secure_call(u64 function_id,
 	}
 
 	return data.data0;
+#else
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(function_id, arg0, arg1, arg2,
+                    0, 0, 0, 0, &res);
+
+	return res.a0;
+#endif
 }
 #endif /* _TEEI_KERN_API_ */

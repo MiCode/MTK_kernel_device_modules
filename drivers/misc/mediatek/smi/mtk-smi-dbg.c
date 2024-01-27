@@ -19,7 +19,7 @@
 #include <linux/slab.h>
 #include <soc/mediatek/smi.h>
 #include "mtk-smi-dbg.h"
-#if IS_ENABLED(CONFIG_MTK_EMI)
+#if IS_ENABLED(CONFIG_MTK_EMI) || IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
 #include <soc/mediatek/emi.h>
 #endif
 #include "mtk_iommu.h"
@@ -1780,7 +1780,7 @@ s32 mtk_smi_dbg_hang_detect(char *user)
 		pr_notice("%s already shutdown, ignore dump\n", __func__);
 		return -EAGAIN;
 	}
-#if IS_ENABLED(CONFIG_MTK_EMI)
+#if IS_ENABLED(CONFIG_MTK_EMI) || IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
 	mtk_emidbg_dump();
 #endif
 

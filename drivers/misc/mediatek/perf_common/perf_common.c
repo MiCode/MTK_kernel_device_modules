@@ -314,6 +314,15 @@ static int __init init_perf_common(void)
 	init_perf_freq_tracker();
 #endif
 
+	/* register tracepoint of scheduler_tick */
+	ret = register_trace_android_vh_scheduler_tick(perf_common, NULL);
+	if (ret) {
+		pr_info("%s: register hooks failed, returned %d\n", TAG, ret);
+		goto out;
+	}
+	perf_common_init = 1;
+	atomic_set(&perf_in_progress, 0);
+
 	perf_tracker_info_exist = is_perf_tracker_info_exist();
 	if (perf_tracker_info_exist) {
 		U_AFFO = get_perf_tracker_info_from_dts("u-affo");
@@ -349,7 +358,7 @@ static int __init init_perf_common(void)
 			pr_info("%s: find cpuhvfs node failed\n", TAG);
 			goto get_base_failed;
 		}
-
+		
 		pdev = of_find_device_by_node(dn);
 		of_node_put(dn);
 		if (!pdev) {
@@ -372,21 +381,14 @@ static int __init init_perf_common(void)
 			goto get_base_failed;
 		}
 	}
-
-	/* register tracepoint of scheduler_tick */
-	ret = register_trace_android_vh_scheduler_tick(perf_common, NULL);
-	if (ret) {
-		pr_info("%s: register hooks failed, returned %d\n", TAG, ret);
-		goto register_failed;
-	}
-	perf_common_init = 1;
-	atomic_set(&perf_in_progress, 0);
 	return ret;
 
-register_failed:
-	unregister_trace_android_vh_scheduler_tick(perf_common, NULL);
 get_base_failed:
+#if IS_ENABLED(CONFIG_MEDIATEK_CPU_DVFS)
+	return 0;
+#endif
 	exit_cpufreq_table();
+	unregister_trace_android_vh_scheduler_tick(perf_common, NULL);
 out:
 	cleanup_perf_common_sysfs();
 	return ret;
@@ -404,7 +406,7 @@ static void __exit exit_perf_common(void)
 #endif
 }
 
-module_init(init_perf_common);
+late_initcall_sync(init_perf_common);
 module_exit(exit_perf_common);
 
 MODULE_LICENSE("GPL");

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 MediaTek Inc.
+ * Copyright (c) 2023 MediaTek Inc.
  */
 
 #include <linux/backlight.h>
@@ -114,12 +114,12 @@ static void lcm_panel_get_data(struct lcm *ctx)
 }
 #endif
 
-#if defined(CONFIG_RT5081_PMU_DSV) || defined(CONFIG_MT6370_PMU_DSV)
+#if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 static struct regulator *disp_bias_pos;
 static struct regulator *disp_bias_neg;
 
 
-static int lcm_panel_bias_regulator_init(void)
+static int lcm_panel_bias_regulator_init(struct lcm *ctx)
 {
 	static int regulator_inited;
 	int ret = 0;
@@ -131,14 +131,14 @@ static int lcm_panel_bias_regulator_init(void)
 	disp_bias_pos = regulator_get(NULL, "dsv_pos");
 	if (IS_ERR(disp_bias_pos)) { /* handle return value */
 		ret = PTR_ERR(disp_bias_pos);
-		dev_info("get dsv_pos fail, error: %d\n", ret);
+		dev_info(ctx->dev, "get dsv_pos fail, error: %d\n", ret);
 		return ret;
 	}
 
 	disp_bias_neg = regulator_get(NULL, "dsv_neg");
 	if (IS_ERR(disp_bias_neg)) { /* handle return value */
 		ret = PTR_ERR(disp_bias_neg);
-		dev_info("get dsv_neg fail, error: %d\n", ret);
+		dev_info(ctx->dev, "get dsv_neg fail, error: %d\n", ret);
 		return ret;
 	}
 
@@ -147,56 +147,56 @@ static int lcm_panel_bias_regulator_init(void)
 
 }
 
-static int lcm_panel_bias_enable(void)
+static int lcm_panel_bias_enable(struct lcm *ctx)
 {
 	int ret = 0;
 	int retval = 0;
 
-	lcm_panel_bias_regulator_init();
+	lcm_panel_bias_regulator_init(ctx);
 
 	/* set voltage with min & max*/
 	ret = regulator_set_voltage(disp_bias_pos, 5400000, 5400000);
 	if (ret < 0)
-		dev_info("set voltage disp_bias_pos fail, ret = %d\n", ret);
+		dev_info(ctx->dev, "set voltage disp_bias_pos fail, ret = %d\n", ret);
 	retval |= ret;
 
 	ret = regulator_set_voltage(disp_bias_neg, 5400000, 5400000);
 	if (ret < 0)
-		dev_info("set voltage disp_bias_neg fail, ret = %d\n", ret);
+		dev_info(ctx->dev, "set voltage disp_bias_neg fail, ret = %d\n", ret);
 	retval |= ret;
 
 	/* enable regulator */
 	ret = regulator_enable(disp_bias_pos);
 	if (ret < 0)
-		dev_info("enable regulator disp_bias_pos fail, ret = %d\n",
+		dev_info(ctx->dev, "enable regulator disp_bias_pos fail, ret = %d\n",
 			ret);
 	retval |= ret;
 
 	ret = regulator_enable(disp_bias_neg);
 	if (ret < 0)
-		dev_info("enable regulator disp_bias_neg fail, ret = %d\n",
+		dev_info(ctx->dev, "enable regulator disp_bias_neg fail, ret = %d\n",
 			ret);
 	retval |= ret;
 
 	return retval;
 }
 
-static int lcm_panel_bias_disable(void)
+static int lcm_panel_bias_disable(struct lcm *ctx)
 {
 	int ret = 0;
 	int retval = 0;
 
-	lcm_panel_bias_regulator_init();
+	lcm_panel_bias_regulator_init(ctx);
 
 	ret = regulator_disable(disp_bias_neg);
 	if (ret < 0)
-		dev_info("disable regulator disp_bias_neg fail, ret = %d\n",
+		dev_info(ctx->dev, "disable regulator disp_bias_neg fail, ret = %d\n",
 			ret);
 	retval |= ret;
 
 	ret = regulator_disable(disp_bias_pos);
 	if (ret < 0)
-		dev_info("disable regulator disp_bias_pos fail, ret = %d\n",
+		dev_info(ctx->dev, "disable regulator disp_bias_pos fail, ret = %d\n",
 			ret);
 	retval |= ret;
 
@@ -206,6 +206,7 @@ static int lcm_panel_bias_disable(void)
 
 static void lcm_panel_init(struct lcm *ctx)
 {
+	pr_info("%s+\n", __func__);
 	ctx->reset_gpio =
 		devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	if (IS_ERR(ctx->reset_gpio)) {
@@ -381,8 +382,8 @@ static int lcm_unprepare(struct drm_panel *panel)
 
 	ctx->error = 0;
 	ctx->prepared = false;
-#if defined(CONFIG_RT5081_PMU_DSV) || defined(CONFIG_MT6370_PMU_DSV)
-	lcm_panel_bias_disable();
+#if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
+	lcm_panel_bias_disable(ctx);
 #endif
 
 	return 0;
@@ -397,8 +398,8 @@ static int lcm_prepare(struct drm_panel *panel)
 	if (ctx->prepared)
 		return 0;
 
-#if defined(CONFIG_RT5081_PMU_DSV) || defined(CONFIG_MT6370_PMU_DSV)
-	lcm_panel_bias_enable();
+#if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
+	lcm_panel_bias_enable(ctx);
 #endif
 
 	lcm_panel_init(ctx);
@@ -438,50 +439,62 @@ static int lcm_enable(struct drm_panel *panel)
 
 #define VAC (2400)
 #define HAC (1080)
+#define HFP (165)
+#define HSA (22)
+#define HBP (22)
+#define VFP_60HZ (2528)
+#define VFP_90HZ (879)
+#define VFP_120HZ (54)
+#define VSA (10)
+#define VBP (10)
+
+#define CALCULATE_CLOCK(FPS, VFP) \
+			(((FPS) * (HAC + HFP + HSA + HBP) * (VAC + VFP + VSA + VBP)) / 1000)
+
 static u32 fake_heigh = 2400;
 static u32 fake_width = 1080;
 static bool need_fake_resolution;
 
 static struct drm_display_mode default_mode = {
-	.clock = 382678,
+	.clock = CALCULATE_CLOCK(60, VFP_60HZ),//382678
 	.hdisplay = HAC,
-	.hsync_start = HAC + 165,//HFP
-	.hsync_end = HAC + 165 + 22,//HSA
-	.htotal = HAC + 165 + 22 + 22,//HBP1289
-	.vdisplay = 2400,
-	.vsync_start = VAC + 2546,//VFP
-	.vsync_end = VAC + 2546 + 10,//VSA
-	.vtotal = VAC + 2546 + 10 + 10,//VBP4948
+	.hsync_start = HAC + HFP,
+	.hsync_end = HAC + HFP + HSA,
+	.htotal = HAC + HFP + HSA + HBP,//1289
+	.vdisplay = VAC,
+	.vsync_start = VAC + VFP_60HZ,
+	.vsync_end = VAC + VFP_60HZ + VSA,
+	.vtotal = VAC + VFP_60HZ + VSA + VBP,//4948
 };
 
 static struct drm_display_mode performance_mode = {
-	.clock = 382716,
+	.clock = CALCULATE_CLOCK(90, VFP_90HZ),//382716
 	.hdisplay = HAC,
-	.hsync_start = HAC + 165,//HFP
-	.hsync_end = HAC + 165 + 22,//HSA
-	.htotal = HAC + 165 + 22 + 22,//HBP
+	.hsync_start = HAC + HFP,
+	.hsync_end = HAC + HFP + HSA,
+	.htotal = HAC + HFP + HSA + HBP,//1289
 	.vdisplay = VAC,
-	.vsync_start = VAC + 892,//VFP
-	.vsync_end = VAC + 892 + 10,//VSA
-	.vtotal = VAC + 892 + 10 + 10,//VBP3299
+	.vsync_start = VAC + VFP_90HZ,
+	.vsync_end = VAC + VFP_90HZ + VSA,
+	.vtotal = VAC + VFP_90HZ + VSA + VBP,//3299
 };
 
 static struct drm_display_mode performance_mode1 = {
-	.clock = 382678,
+	.clock = CALCULATE_CLOCK(120, VFP_120HZ),//382678
 	.hdisplay = HAC,
-	.hsync_start = HAC + 165,//HFP
-	.hsync_end = HAC + 165 + 22,//HSA
-	.htotal = HAC + 165 + 22 + 22,//HBP
+	.hsync_start = HAC + HFP,
+	.hsync_end = HAC + HFP + HSA,
+	.htotal = HAC + HFP + HSA + HBP,//1289
 	.vdisplay = VAC,
-	.vsync_start = VAC + 64,//VFP
-	.vsync_end = VAC + 64 + 10,//VSA
-	.vtotal = VAC + 64 + 10 + 10,//VBP2474
+	.vsync_start = VAC + VFP_120HZ,
+	.vsync_end = VAC + VFP_120HZ + VSA,
+	.vtotal = VAC + VFP_120HZ + VSA + VBP,//2474
 };
 
 #if defined(CONFIG_MTK_PANEL_EXT)
 static struct mtk_panel_params ext_params = {
 	.pll_clk = 588,
-	.vfp_low_power = 4205,//45hz
+	.vfp_low_power = 4178,//45hz
 	.cust_esd_check = 0,
 	.esd_check_enable = 1,
 	.lcm_esd_check_table[0] = {
@@ -523,7 +536,7 @@ static struct mtk_panel_params ext_params = {
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
 		},
-	.data_rate = 1181,
+	.data_rate = 1176,
 	.dyn_fps = {
 		.switch_en = 1, .vact_timing_fps = 120,
 	},
@@ -533,20 +546,14 @@ static struct mtk_panel_params ext_params = {
 		.vfp_lp_dyn = 4178,
 		.hfp = 161,
 		.vfp = 2528,
-		.max_vfp_for_msync_dyn = 3995, /*Msync 2.0*/
 	},
 	.lfr_enable = 1,
 	.lfr_minimum_fps = 60,
-
-	/*Msync 2.0*/
-	.msync2_enable = 1,
-	.max_vfp_for_msync = 3995,//4095, //PP only supprt 0xFFF for vfp max value
-
 };
 
 static struct mtk_panel_params ext_params_90hz = {
 	.pll_clk = 588,
-	.vfp_low_power = 2546,//60hz
+	.vfp_low_power = 2528,//60hz
 	.cust_esd_check = 0,
 	.esd_check_enable = 1,
 	.lcm_esd_check_table[0] = {
@@ -589,7 +596,7 @@ static struct mtk_panel_params ext_params_90hz = {
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
 		},
-	.data_rate = 1181,
+	.data_rate = 1176,
 	.dyn_fps = {
 		.switch_en = 1, .vact_timing_fps = 120,
 	},
@@ -599,20 +606,14 @@ static struct mtk_panel_params ext_params_90hz = {
 		.vfp_lp_dyn = 2528,
 		.hfp = 161,
 		.vfp = 879,
-		.max_vfp_for_msync_dyn = 3995, /*Msync 2.0*/
 	},
 	.lfr_enable = 1,
 	.lfr_minimum_fps = 60,
-	/*Msync 2.0*/
-	.msync2_enable = 1,
-	.max_vfp_for_msync = 3995,//4095, //PP only supprt 0xFFF for vfp max value
-
-
 };
 
 static struct mtk_panel_params ext_params_120hz = {
 	.pll_clk = 588,
-	.vfp_low_power = 2546,//idle 60hz
+	.vfp_low_power = 2528,//idle 60hz
 	.cust_esd_check = 0,
 	.esd_check_enable = 1,
 	.lcm_esd_check_table[0] = {
@@ -654,7 +655,7 @@ static struct mtk_panel_params ext_params_120hz = {
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
 		},
-	.data_rate = 1181,
+	.data_rate = 1176,
 	.dyn_fps = {
 		.switch_en = 1, .vact_timing_fps = 120,
 	},
@@ -664,15 +665,9 @@ static struct mtk_panel_params ext_params_120hz = {
 		.vfp_lp_dyn = 2528,
 		.hfp = 161,
 		.vfp = 54,
-		.max_vfp_for_msync_dyn = 3995,
 	},
 	.lfr_enable = 1,
 	.lfr_minimum_fps = 60,
-	/*Msync 2.0*/
-	.msync2_enable = 1,
-	/*PP only supprt 0xFFF for vfp max value,reserve 100 lines for cfg*/
-	.max_vfp_for_msync = 3995,//4095,
-
 };
 
 static int panel_ext_reset(struct drm_panel *panel, int on)
@@ -755,7 +750,10 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 	struct mtk_panel_ext *ext = find_panel_ext(panel);
 	int ret = 0;
 	struct drm_display_mode *m = get_mode_by_id(connector, mode);
-
+	if (!m) {
+		pr_info("[error]%s:%d invalid display_mode\n", __func__, __LINE__);
+		return ret;
+	}
 	if (drm_mode_vrefresh(m) == 60)
 		ext->params = &ext_params;
 	else if (drm_mode_vrefresh(m) == 90)
@@ -912,6 +910,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	struct device_node *backlight;
 	int ret;
 
+	pr_info("%s+\n", __func__);
 	ctx = devm_kzalloc(dev, sizeof(struct lcm), GFP_KERNEL);
 	if (!ctx)
 		return -ENOMEM;
@@ -938,11 +937,18 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 
 	ctx->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
 	if (IS_ERR(ctx->reset_gpio)) {
-		dev_info(dev, "cannot get reset-gpios %ld\n",
-			PTR_ERR(ctx->reset_gpio));
+		dev_info(dev, "%s: cannot get reset-gpios %ld\n",
+			__func__, PTR_ERR(ctx->reset_gpio));
 		return PTR_ERR(ctx->reset_gpio);
 	}
 	devm_gpiod_put(dev, ctx->reset_gpio);
+
+#ifndef CONFIG_RT4831A_I2C
+#if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
+	lcm_panel_bias_enable(ctx);
+#endif
+#endif
+
 	ctx->prepared = true;
 	ctx->enabled = true;
 

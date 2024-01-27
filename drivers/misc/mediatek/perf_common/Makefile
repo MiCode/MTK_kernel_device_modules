@@ -7,6 +7,7 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs
 subdir-ccflags-y += -I$(srctree)/drivers/ufs
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_v2/inc/
 
 obj-$(CONFIG_MTK_PERF_COMMON) += mtk_perf_common.o
 mtk_perf_common-y += perf_common.o

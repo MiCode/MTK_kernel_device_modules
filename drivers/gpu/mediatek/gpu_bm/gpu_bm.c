@@ -152,7 +152,11 @@ static void setupfw_work_handler(struct work_struct *work)
 
 	qos_d.cmd = QOS_IPI_SETUP_GPU_INFO;
 	qos_d.u.gpu_info.addr = (unsigned int)setupfw_data.phyaddr;
+#if IS_ENABLED(CONFIG_ARM64)
 	qos_d.u.gpu_info.addr_hi = (unsigned int)(setupfw_data.phyaddr >> 32);
+#else
+	qos_d.u.gpu_info.addr_hi = (unsigned int)(setupfw_data.phyaddr);
+#endif /* CONFIG_ARM64 */
 	qos_d.u.gpu_info.size = (unsigned int)setupfw_data.size;
 
 #ifdef MTK_SCMI

@@ -35,7 +35,7 @@ endif
     ifeq (yes,$(strip $(BUILD_KERNEL)))
     ifeq ($(KERNEL_TARGET_ARCH), arm64)
       ifeq (,$(strip $(MTK_KERNEL_COMPRESS_FORMAT)))
-        MTK_KERNEL_COMPRESS_FORMAT := gz
+        MTK_KERNEL_COMPRESS_FORMAT := lz4
       endif
       ifeq ($(MTK_APPENDED_DTB_SUPPORT), yes)
         KERNEL_ZIMAGE_OUT := $(KERNEL_OUT)/arch/$(KERNEL_TARGET_ARCH)/boot/Image.$(MTK_KERNEL_COMPRESS_FORMAT)-dtb
@@ -44,19 +44,17 @@ endif
       endif
 
      ifneq ($(KERNEL_USE_BAZEL),yes)
-      ifdef MTK_GKI_PREBUILTS_DIR
-          KERNEL_ZIMAGE_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
-      else
-        ifdef MTK_GKI_BUILD_CONFIG
-          KERNEL_ZIMAGE_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/dist/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
-        endif
-      endif
-      TARGET_KERNEL_CONFIG := $(KERNEL_OUT)/.config
+       MTK_GKI_BUILD_CONFIG := $(REL_ACK_DIR)/build.config.gki.aarch64.vendor
+       KERNEL_ZIMAGE_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/dist/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
+       ifdef MTK_GKI_PREBUILTS_DIR
+         KERNEL_ZIMAGE_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
+       endif
+       TARGET_KERNEL_CONFIG := $(KERNEL_OUT)/.config
      else
           KERNEL_BAZEL_BUILD_OUT ?= $(TARGET_OUT_INTERMEDIATES)/KLEAF_OBJ
           KERNEL_BAZEL_DIST_OUT := $(KERNEL_BAZEL_BUILD_OUT)/dist
           KERNEL_ZIMAGE_OUT := $(KERNEL_BAZEL_DIST_OUT)/$(REL_KERNEL_DIR)/$(my_kernel_target)_kernel_aarch64.$(KERNEL_BUILD_VARIANT)/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
-	  TARGET_KERNEL_CONFIG := $(KERNEL_BAZEL_DIST_OUT)/$(REL_KERNEL_DIR)/$(my_kernel_target).$(KERNEL_BUILD_VARIANT)/.config
+          TARGET_KERNEL_CONFIG := $(KERNEL_BAZEL_DIST_OUT)/$(REL_KERNEL_DIR)/$(my_kernel_target).$(KERNEL_BUILD_VARIANT)/.config
      endif
     else
       ifeq ($(MTK_APPENDED_DTB_SUPPORT), yes)
@@ -64,6 +62,9 @@ endif
       else
         KERNEL_ZIMAGE_OUT := $(KERNEL_OUT)/arch/$(KERNEL_TARGET_ARCH)/boot/zImage
       endif
+      MTK_GKI_BUILD_CONFIG := $(REL_ACK_DIR)/build.config.mtk.arm
+      KERNEL_ZIMAGE_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/dist/zImage
+      TARGET_KERNEL_CONFIG := $(KERNEL_OUT)/.config
     endif
     endif#BUILD_KERNEL
 

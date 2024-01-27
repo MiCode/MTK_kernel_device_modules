@@ -967,7 +967,7 @@ static void set_lb_timeout(int t_gpu_target)
 		lb_timeout = (u64)g_loading_stride_size * 1000000; //ms to ns
 		break;
 	case 1:
-		lb_timeout = (u64)t_gpu_target * g_loading_stride_size / 10;
+		lb_timeout = div_u64((u64)t_gpu_target * g_loading_stride_size, 10);
 		break;
 	case 2:
 		lb_timeout = (u64)g_loading_stride_size * 1000000;
@@ -1452,9 +1452,9 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		psKPI->gpu_done_interval = psHead->last_TimeStamp2 -
 			psHead->pre_TimeStamp2;
 		psKPI->cpu_gpu_info.gpu.t_gpu_real =
-				((unsigned long long)
+				div_u64(((unsigned long long)
 				(psHead->last_TimeStamp2 - psHead->pre_TimeStamp2))
-				* psKPI->gpu_loading / 100U;
+				* psKPI->gpu_loading, 100U);
 
 		psKPI->cpu_gpu_info.gpu.limit_upper = ged_get_cur_limiter_ceil();
 		psKPI->cpu_gpu_info.gpu.limit_lower = ged_get_cur_limiter_floor();
@@ -1903,11 +1903,13 @@ void ged_kpi_gpu_3d_fence_sync_cb(struct dma_fence *sFence,
 		qos_get_frame_nr());
 #endif /* MTK_GPU_BM_2 */
 
+#if defined(MTK_GPU_EB_SUPPORT)
 	// Hint frame boundary
 	if (ged_is_fdvfs_support() &&
 		(!ged_kpi_check_if_fallback_mode() && !g_force_gpu_dvfs_fallback)
 			&& psMonitor->pid != pid_sf && psMonitor->pid != pid_sysui)
 		g_eb_workload = mtk_gpueb_dvfs_set_frame_done();
+#endif
 
 	ged_kpi_time2(psMonitor->pid, psMonitor->ullWdnd,
 		psMonitor->i32FrameID);
@@ -2448,8 +2450,10 @@ static GED_BOOL ged_kpi_find_riskyBQ_func(unsigned long ulID,
 
 		t_gpu_latest_uncompleted = psHead->t_gpu_latest_uncompleted;
 		t_gpu_target = psHead->t_gpu_target;
-		risk_completed = t_gpu_latest * 100 / t_gpu_target;
-		risk_uncompleted = t_gpu_latest_uncompleted * 100 / t_gpu_target;
+		risk_completed = t_gpu_latest * 100;
+		do_div(risk_completed, t_gpu_target);
+		risk_uncompleted = t_gpu_latest_uncompleted * 100;
+		do_div(risk_uncompleted, t_gpu_target);
 
 		//prevent less than 1%
 		if (t_gpu_latest > 0 && risk_completed == 0)
@@ -2496,9 +2500,9 @@ GED_ERROR ged_kpi_timer_based_pick_riskyBQ(struct ged_risky_bq_info *info)
 		return ret;
 
 	// t_gpu unit: ns -> us
-	info->completed_bq.t_gpu /= 1000;
+	do_div(info->completed_bq.t_gpu, 1000);
 	info->completed_bq.t_gpu_target /= 1000;
-	info->uncompleted_bq.t_gpu /= 1000;
+	do_div(info->uncompleted_bq.t_gpu, 1000);
 	info->uncompleted_bq.t_gpu_target /= 1000;
 
 	// if uncompleted gpu time is calculated by TimeStampD

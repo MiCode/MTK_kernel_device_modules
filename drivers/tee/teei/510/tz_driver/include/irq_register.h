@@ -21,8 +21,13 @@ void load_func(struct work_struct *entry);
 void work_func(struct work_struct *entry);
 void secondary_load_func(void);
 
+#ifdef TEEI_FFA_SUPPORT
 int teei_smc(unsigned long long smc_id, unsigned long long p1,
 			unsigned long long p2);
+#else
+int teei_smc(unsigned long long smc_id, unsigned long long p1,
+                        unsigned long long p2, unsigned long long p3);
+#endif
 
 void teei_add_irq_count(void);
 

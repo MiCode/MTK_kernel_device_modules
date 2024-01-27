@@ -21,6 +21,14 @@
 static bool is_registered;
 static const struct dfs_ops *mux_dfs_ops;
 
+void (*mux_qs_chk_cb)(void) = NULL;
+
+void mtk_mux_set_quick_switch_chk_cb(void (*callback)(void))
+{
+	mux_qs_chk_cb = callback;
+}
+EXPORT_SYMBOL(mtk_mux_set_quick_switch_chk_cb);
+
 static inline struct mtk_clk_mux *to_mtk_clk_mux(struct clk_hw *hw)
 {
 	return container_of(hw, struct mtk_clk_mux, hw);
@@ -353,6 +361,13 @@ static int __mtk_clk_mux_set_parent_lock(struct clk_hw *hw, u8 index, bool setcl
 				regmap_write(mux->regmap, mux->data->set_ofs,
 						index << mux->data->mux_shift);
 			}
+
+				/*
+			* Workaround for mm dvfs. Poll mm rdma reg before
+			* clkmux switching.
+			*/
+			if (mux_qs_chk_cb && (mux->data->flags & QUICK_SWITCH_CHK) == QUICK_SWITCH_CHK)
+				mux_qs_chk_cb();
 		}
 
 		if (upd)

@@ -18,7 +18,7 @@
 #include <linux/thermal.h>
 #include <linux/reset.h>
 #include <linux/types.h>
-
+#include <linux/math64.h>
 #include "thermal_hwmon.h"
 
 /* AUXADC Registers */
@@ -365,8 +365,9 @@ static int raw_to_mcelsius(struct soc_thermal *mt, int sensno, s32 raw)
 	raw &= 0xfff;
 
 	tmp = 203450520 << 3;
-	tmp /= 165 + mt->o_slope;
-	tmp /= 10000 + mt->adc_ge;
+
+	tmp = div_u64(tmp, 165 + mt->o_slope);
+	tmp = div_u64(tmp, 10000 + mt->adc_ge);
 	tmp *= raw - mt->vts[sensno] - 3350;
 	tmp >>= 3;
 

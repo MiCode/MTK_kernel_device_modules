@@ -31,6 +31,7 @@
 #include "mtk_sec_heap.h"
 #include "mtk_iommu.h"
 #include "mtk-smmu-v3.h"
+#include "iommu_pseudo.h"
 
 #define LOW_ORDER_GFP (GFP_HIGHUSER | __GFP_ZERO | __GFP_COMP)
 #define MID_ORDER_GFP (LOW_ORDER_GFP | __GFP_NOWARN)
@@ -1624,6 +1625,9 @@ static void init_buffer_info(struct dma_heap *heap,
 {
 	struct task_struct *task = current->group_leader;
 
+	// add x, result for 32bit project compile the arithmetic division
+	unsigned long long x;
+
 	INIT_LIST_HEAD(&buffer->attachments);
 	INIT_LIST_HEAD(&buffer->iova_caches);
 	mutex_init(&buffer->lock);
@@ -1633,7 +1637,16 @@ static void init_buffer_info(struct dma_heap *heap,
 	get_task_comm(buffer->tid_name, current);
 	buffer->pid = task_pid_nr(task);
 	buffer->tid = task_pid_nr(current);
-	buffer->ts = sched_clock() / 1000;
+
+	/*
+	 * use do_div to instead of "/" division
+	 *
+	 * orginal arithmetic division code as following
+	 * buffer->ts  = sched_clock() / 1000;
+	 */
+	x = sched_clock();
+	do_div(x, 1000);
+	buffer->ts = x;
 }
 
 static struct dma_buf *alloc_dmabuf(struct dma_heap *heap,
@@ -1919,6 +1932,59 @@ u64 dmabuf_to_secure_handle(const struct dma_buf *dmabuf)
 	return buffer->sec_handle;
 }
 EXPORT_SYMBOL_GPL(dmabuf_to_secure_handle);
+
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+
+int dmabuf_to_sec_id(const struct dma_buf *dmabuf, u32 *sec_hdl)
+{
+	struct mtk_sec_heap_buffer *buffer = NULL;
+	struct secure_heap_region *sec_heap = NULL;
+
+	if (!is_region_base_dmabuf(dmabuf)) {
+		pr_err("%s err, dmabuf is not region base\n", __func__);
+		return -1;
+	}
+
+	*sec_hdl = dmabuf_to_secure_handle(dmabuf);
+
+	buffer = dmabuf->priv;
+	sec_heap = sec_heap_region_get(buffer->heap);
+	if (!sec_heap) {
+		pr_err("%s, sec_heap_region_get(%s) failed!!\n", __func__,
+		       buffer->heap ? dma_heap_get_name(buffer->heap) :
+		       "null ptr");
+		return -1;
+	}
+
+	return tmem_type2sec_id(sec_heap->tmem_type);
+}
+EXPORT_SYMBOL_GPL(dmabuf_to_sec_id);
+
+int dmabuf_to_tmem_type(const struct dma_buf *dmabuf, u32 *sec_hdl)
+{
+	struct mtk_sec_heap_buffer *buffer = NULL;
+	struct secure_heap_region *sec_heap = NULL;
+
+	if (!is_region_base_dmabuf(dmabuf)) {
+		pr_err("%s err, dmabuf is not region base\n", __func__);
+		return -1;
+	}
+
+	*sec_hdl = dmabuf_to_secure_handle(dmabuf);
+
+	buffer = dmabuf->priv;
+	sec_heap = sec_heap_region_get(buffer->heap);
+	if (!sec_heap) {
+		pr_err("%s, sec_heap_region_get(%s) failed!!\n", __func__,
+		       buffer->heap ? dma_heap_get_name(buffer->heap) :
+		       "null ptr");
+		return -1;
+	}
+
+	return sec_heap->tmem_type;
+}
+EXPORT_SYMBOL_GPL(dmabuf_to_tmem_type);
+#endif
 
 static int mtk_region_heap_create(void)
 {

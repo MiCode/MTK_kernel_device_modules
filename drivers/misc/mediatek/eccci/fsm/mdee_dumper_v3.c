@@ -673,7 +673,7 @@ static void md_HS1_Fail_dump(char *ex_info, unsigned int len)
 	unsigned int ccif_sram[CCCI_EE_SIZE_CCIF_SRAM/sizeof(unsigned int)]
 	= { 0 };
 	struct ccci_modem *md = ccci_get_modem();
-
+	u32 boot_status_val = get_expected_boot_status_val();
 	ccci_md_dump_info(DUMP_MD_BOOTUP_STATUS, reg_value, 2);
 	ccci_md_dump_info(DUMP_FLAG_CCIF, ccif_sram, 0);
 
@@ -687,14 +687,12 @@ static void md_HS1_Fail_dump(char *ex_info, unsigned int len)
 			"MD Offender:DVFS\n",
 			0, reg_value[0], reg_value[1]);
 
-	} else if (((reg_value[0] == 0x5443000C) ||
+	} else if (((reg_value[0] == boot_status_val) ||
 				(reg_value[0] == 0) ||
 				(reg_value[0] >= 0x53310000 &&
 				reg_value[0] <= 0x533100FF)) &&
 				(md->hw_info->plat_val->md_gen >= 6295)) {
-		scnprintf(ex_info, len,
-			"\n[Others] MD_BOOT_UP_FAIL(HS%d)\n",
-			1);
+		scnprintf(ex_info, len, "\n[Others] MD_BOOT_UP_FAIL(HS%d)\n", 1);
 		ccci_md_dump_info(DUMP_FLAG_REG, NULL, 0);
 		msleep(10000);
 		ccci_md_dump_info(DUMP_FLAG_REG, NULL, 0);

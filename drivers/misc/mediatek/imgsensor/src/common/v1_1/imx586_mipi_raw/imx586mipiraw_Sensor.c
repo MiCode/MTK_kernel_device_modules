@@ -395,12 +395,25 @@ static struct SEAMLESS_SYS_DELAY seamless_sys_delays[] = {
 	{ MSDK_SCENARIO_ID_CUSTOM2, MSDK_SCENARIO_ID_CUSTOM4, 1 },
 };
 
+static struct IMGSENSOR_I2C_CFG *get_i2c_cfg(void)
+{
+	return &(((struct IMGSENSOR_SENSOR_INST *)
+		  (imgsensor.psensor_func->psensor_inst))->i2c_cfg);
+}
+
 static kal_uint16 read_cmos_sensor(kal_uint32 addr)
 {
 	kal_uint16 get_byte = 0;
 	char pusendcmd[2] = {(char)(addr >> 8), (char)(addr & 0xFF)};
 
-	iReadRegI2C(pusendcmd, 2, (u8 *)&get_byte, 2, imgsensor.i2c_write_id);
+	imgsensor_i2c_read(
+		get_i2c_cfg(),
+		pusendcmd,
+		2,
+		(u8 *)&get_byte,
+		2,
+		imgsensor.i2c_write_id,
+		IMGSENSOR_I2C_SPEED);
 	return ((get_byte<<8)&0xff00) | ((get_byte>>8)&0x00ff);
 }
 
@@ -411,7 +424,13 @@ static void write_cmos_sensor(kal_uint16 addr, kal_uint16 para)
 
 	/*kdSetI2CSpeed(imgsensor_info.i2c_speed);*/
 	/* Add this func to set i2c speed by each sensor */
-	iWriteRegI2C(pusendcmd, 4, imgsensor.i2c_write_id);
+	imgsensor_i2c_write(
+		get_i2c_cfg(),
+		pusendcmd,
+		4,
+		4,
+		imgsensor.i2c_write_id,
+		IMGSENSOR_I2C_SPEED);
 }
 
 static kal_uint16 read_cmos_sensor_8(kal_uint16 addr)
@@ -419,7 +438,14 @@ static kal_uint16 read_cmos_sensor_8(kal_uint16 addr)
 	kal_uint16 get_byte = 0;
 	char pusendcmd[2] = {(char)(addr >> 8), (char)(addr & 0xFF) };
 
-	iReadRegI2C(pusendcmd, 2, (u8 *)&get_byte, 1, imgsensor.i2c_write_id);
+	imgsensor_i2c_read(
+		get_i2c_cfg(),
+		pusendcmd,
+		2,
+		(u8 *)&get_byte,
+		1,
+		imgsensor.i2c_write_id,
+		IMGSENSOR_I2C_SPEED);
 	return get_byte;
 }
 
@@ -428,7 +454,13 @@ static void write_cmos_sensor_8(kal_uint16 addr, kal_uint8 para)
 	char pusendcmd[3] = {(char)(addr >> 8), (char)(addr & 0xFF),
 			(char)(para & 0xFF)};
 
-	iWriteRegI2C(pusendcmd, 3, imgsensor.i2c_write_id);
+	imgsensor_i2c_write(
+		get_i2c_cfg(),
+		pusendcmd,
+		3,
+		3,
+		imgsensor.i2c_write_id,
+		IMGSENSOR_I2C_SPEED);
 }
 
 static void imx586_get_pdaf_reg_setting(MUINT32 regNum, kal_uint16 *regDa)
@@ -934,17 +966,17 @@ static void feedback_awbgain(kal_uint32 r_gain, kal_uint32 b_gain)
 
 	r_gain_int = r_gain / 512;
 	b_gain_int = b_gain / 512;
-	// #if 0
+	#if 0
 	/*write r_gain*/
-	// write_cmos_sensor_8(0x0B90, r_gain_int);
-	// write_cmos_sensor_8(0x0B91,
-		// (((r_gain*100) / 512) - (r_gain_int * 100)) * 2);
+	write_cmos_sensor_8(0x0B90, r_gain_int);
+	write_cmos_sensor_8(0x0B91,
+		(((r_gain*100) / 512) - (r_gain_int * 100)) * 2);
 
 	/*write _gain*/
-	// write_cmos_sensor_8(0x0B92, b_gain_int);
-	// write_cmos_sensor_8(0x0B93,
-		// (((b_gain * 100) / 512) - (b_gain_int * 100)) * 2);
-	// #else
+	write_cmos_sensor_8(0x0B92, b_gain_int);
+	write_cmos_sensor_8(0x0B93,
+		(((b_gain * 100) / 512) - (b_gain_int * 100)) * 2);
+	#else
 	imx586_feedback_awbgain[1] = r_gain_int;
 	imx586_feedback_awbgain[3] = (
 		((r_gain*100) / 512) - (r_gain_int * 100)) * 2;
@@ -953,7 +985,7 @@ static void feedback_awbgain(kal_uint32 r_gain, kal_uint32 b_gain)
 		((b_gain * 100) / 512) - (b_gain_int * 100)) * 2;
 	imx586_table_write_cmos_sensor(imx586_feedback_awbgain,
 		sizeof(imx586_feedback_awbgain)/sizeof(kal_uint16));
-	// #endif
+	#endif
 }
 
 static void imx586_set_lsc_reg_setting(
@@ -1067,10 +1099,12 @@ static kal_uint16 imx586_table_write_cmos_sensor(kal_uint16 *para,
 #if MULTI_WRITE
 		if ((I2C_BUFFER_LEN - tosend) < 3
 			|| IDX == len || addr != addr_last) {
-			iBurstWriteReg_multi(puSendCmd,
+			imgsensor_i2c_write(
+						get_i2c_cfg(),
+						puSendCmd,
 						tosend,
-						imgsensor.i2c_write_id,
 						3,
+						imgsensor.i2c_write_id,
 						imgsensor_info.i2c_speed);
 			tosend = 0;
 		}
@@ -3142,12 +3176,8 @@ static void custom3_setting(void)
 		if (!imx586_is_seamless)
 			write_cmos_sensor_8(0x3621, 0x00);
 		else {
-			if (imx586_size_to_write < _I2C_BUF_SIZE - 2) {
-				imx586_i2c_data[imx586_size_to_write++] = 0x3621;
-				imx586_i2c_data[imx586_size_to_write++] = 0x0;
-			} else {
-				pr_debug("_too much i2c data for qsc register\n");
-			}
+			imx586_i2c_data[imx586_size_to_write++] = 0x3621;
+			imx586_i2c_data[imx586_size_to_write++] = 0x0;
 		}
 	}
 
@@ -3183,12 +3213,8 @@ static void custom4_setting(void)
 		if (!imx586_is_seamless)
 			write_cmos_sensor_8(0x3621, 0x00);
 		else {
-			if (imx586_size_to_write < _I2C_BUF_SIZE - 2) {
-				imx586_i2c_data[imx586_size_to_write++] = 0x3621;
-				imx586_i2c_data[imx586_size_to_write++] = 0x0;
-			} else {
-				pr_debug("_too much i2c data for qsc register\n");
-			}
+			imx586_i2c_data[imx586_size_to_write++] = 0x3621;
+			imx586_i2c_data[imx586_size_to_write++] = 0x0;
 		}
 	}
 
@@ -4596,10 +4622,10 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		spin_unlock(&imgsensor_drv_lock);
 		break;
 	case SENSOR_FEATURE_GET_CROP_INFO:
-	// #if 0
-		// pr_debug("SENSOR_FEATURE_GET_CROP_INFO scenarioId:%d\n",
-			// (UINT32)*feature_data);
-	// #endif
+	#if 0
+		pr_debug("SENSOR_FEATURE_GET_CROP_INFO scenarioId:%d\n",
+			(UINT32)*feature_data);
+	#endif
 		wininfo =
 	(struct SENSOR_WINSIZE_INFO_STRUCT *)(uintptr_t)(*(feature_data+1));
 
@@ -4804,10 +4830,10 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	case SENSOR_FEATURE_SET_HDR_SHUTTER:
 		pr_debug("SENSOR_FEATURE_SET_HDR_SHUTTER LE=%d, SE=%d\n",
 			(UINT16)*feature_data, (UINT16)*(feature_data+1));
-		// #if 0
-		// ihdr_write_shutter((UINT16)*feature_data,
-			// (UINT16)*(feature_data+1));
-		// #endif
+		#if 0
+		ihdr_write_shutter((UINT16)*feature_data,
+				   (UINT16)*(feature_data+1));
+		#endif
 		break;
 	case SENSOR_FEATURE_SET_STREAMING_SUSPEND:
 		pr_debug("SENSOR_FEATURE_SET_STREAMING_SUSPEND\n");
@@ -4907,10 +4933,10 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 break;
 
 	case SENSOR_FEATURE_GET_VC_INFO:
-	// #if 1
+	#if 1
 		pr_debug("SENSOR_FEATURE_GET_VC_INFO %d\n",
 			(UINT16)*feature_data);
-	// #endif
+	#endif
 		pvcinfo =
 		 (struct SENSOR_VC_INFO_STRUCT *)(uintptr_t)(*(feature_data+1));
 		switch (*feature_data_32) {
@@ -5038,12 +5064,12 @@ break;
 			*pScenarios = MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG;
 			*(pScenarios + 1) = MSDK_SCENARIO_ID_CUSTOM3;
 			break;
-// #if 0
-		// case MSDK_SCENARIO_ID_CUSTOM2:
-			// *pScenarios = MSDK_SCENARIO_ID_CUSTOM4;
-			// *(pScenarios + 1) = MSDK_SCENARIO_ID_CAMERA_PREVIEW;
-			// break;
-// #endif
+#if 0
+		case MSDK_SCENARIO_ID_CUSTOM2:
+			*pScenarios = MSDK_SCENARIO_ID_CUSTOM4;
+			*(pScenarios + 1) = MSDK_SCENARIO_ID_CAMERA_PREVIEW;
+			break;
+#endif
 		case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
 		case MSDK_SCENARIO_ID_VIDEO_PREVIEW:
 		case MSDK_SCENARIO_ID_SLIM_VIDEO:
@@ -5108,7 +5134,10 @@ static struct SENSOR_FUNCTION_STRUCT sensor_func = {
 UINT32 IMX586_MIPI_RAW_SensorInit(struct SENSOR_FUNCTION_STRUCT **pfFunc)
 {
 	/* To Do : Check Sensor status here */
+	sensor_func.arch = IMGSENSOR_ARCH_V2;
 	if (pfFunc != NULL)
 		*pfFunc = &sensor_func;
+	if (imgsensor.psensor_func == NULL)
+		imgsensor.psensor_func = &sensor_func;
 	return ERROR_NONE;
 } /* IMX586_MIPI_RAW_SensorInit */

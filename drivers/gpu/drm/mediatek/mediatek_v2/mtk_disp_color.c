@@ -1558,14 +1558,6 @@ int mtk_drm_ioctl_read_reg(struct drm_device *dev, void *data,
 	return mtk_drm_ioctl_hw_read_impl(crtc, data);
 }
 
-int mtk_drm_ioctl_write_reg(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-
-	return mtk_drm_ioctl_hw_write_impl(crtc, data);
-}
 
 int mtk_color_cfg_bypass(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
@@ -2640,6 +2632,15 @@ static void mtk_color_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 
 }
 
+int mtk_drm_ioctl_write_reg(struct drm_device *dev, void *data,
+		struct drm_file *file_priv)
+{
+	struct mtk_drm_private *private = dev->dev_private;
+	struct drm_crtc *crtc = private->crtc[0];
+
+	return mtk_drm_ioctl_hw_write_impl(crtc, data);
+}
+
 static void mtk_color_bypass(struct mtk_ddp_comp *comp, int bypass,
 	struct cmdq_pkt *handle)
 {
@@ -3146,6 +3147,18 @@ static const struct mtk_disp_color_data mt6779_color_driver_data = {
 	.need_bypass_shadow = false,
 };
 
+#define DISP_COLOR_START_MT6768 0x0c00
+static const struct mtk_disp_color_data mt6768_color_driver_data = {
+	.color_offset = DISP_COLOR_START_MT6768,
+	.support_color21 = true,
+	.support_color30 = true,
+	.reg_table = {0x1400F000, 0x14001000, 0x14011000,
+			        0x14012000, 0x14013000},
+	.color_window = 0x40185E57,
+	.support_shadow = false,
+	.need_bypass_shadow = false,
+};
+
 static const struct mtk_disp_color_data mt8173_color_driver_data = {
 	.color_offset = DISP_COLOR_START_MT8173,
 	.support_color21 = false,
@@ -3295,6 +3308,8 @@ static const struct of_device_id mtk_disp_color_driver_dt_match[] = {
 	 .data = &mt2701_color_driver_data},
 	{.compatible = "mediatek,mt6779-disp-color",
 	 .data = &mt6779_color_driver_data},
+	{.compatible = "mediatek,mt6768-disp-color",
+	 .data = &mt6768_color_driver_data},
 	{.compatible = "mediatek,mt6885-disp-color",
 	 .data = &mt6885_color_driver_data},
 	{.compatible = "mediatek,mt8173-disp-color",

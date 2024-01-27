@@ -71,4 +71,9 @@ int gpuppm_get_floor(void);
 unsigned int gpuppm_get_c_limiter(void);
 unsigned int gpuppm_get_f_limiter(void);
 
+#if !defined(MTK_GPU_EB_SUPPORT)
+	const struct gpuppm_limit_info *gpuppm_get_limit_table(enum gpufreq_target target);
+	struct gpufreq_debug_limit_info gpuppm_get_debug_limit_info(enum gpufreq_target target);
+#endif
+
 #endif /* __GPUPPM_H__ */

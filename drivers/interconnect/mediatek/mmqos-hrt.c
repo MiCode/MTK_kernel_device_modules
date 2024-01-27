@@ -175,7 +175,9 @@ s32 mtk_mmqos_set_hrt_bw(enum hrt_type type, u32 bw)
 	}
 	if (unlikely(!disp_report_bw) && type == HRT_DISP) {
 		disp_report_bw = true;
+#if IS_ENABLED(CONFIG_MTK_MMDVFS)
 		mtk_mmdvfs_debug_release_step0();
+#endif
 	}
 
 	return 0;

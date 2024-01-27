@@ -132,43 +132,43 @@ extern int _slbc_ach_scmi(unsigned int cmd, enum slc_ach_uid uid, int gid,
 			struct slbc_gid_data *data);
 
 #else
-__weak int slbc_suspend_resume_notify(int) {}
+__weak int slbc_suspend_resume_notify(int suspend) { return 0; }
 __weak int slbc_scmi_init(void) { return 0; }
-__weak int slbc_sspm_slb_disable(int disable) {}
-__weak int slbc_sspm_slc_disable(int disable) {}
-__weak int slbc_sspm_enable(int enable) {}
-__weak int slbc_force_scmi_cmd(unsigned int force) {}
-__weak int slbc_mic_num_cmd(unsigned int num) {}
-__weak int slbc_inner_cmd(unsigned int inner) {}
-__weak int slbc_outer_cmd(unsigned int outer) {}
-__weak int slbc_set_scmi_info(int uid, uint16_t cmd, int arg, int arg2, int arg3) {}
-__weak int slbc_get_scmi_info(int uid, uint16_t cmd, void *ptr) {}
-__weak int slbc_get_cache_user_pmu(int uid, void *ptr) {}
-__weak int slbc_get_cache_user_status(int uid, void *ptr) {}
-__weak int _slbc_request_cache_scmi(void *ptr) {}
-__weak int _slbc_release_cache_scmi(void *ptr) {}
-__weak int _slbc_buffer_status_scmi(void *ptr) {}
-__weak int _slbc_request_buffer_scmi(void *ptr) {}
-__weak int _slbc_release_buffer_scmi(void *ptr) {}
+__weak int slbc_sspm_slb_disable(int disable) { return 0; }
+__weak int slbc_sspm_slc_disable(int disable) { return 0; }
+__weak int slbc_sspm_enable(int enable) { return 0; }
+__weak int slbc_force_scmi_cmd(unsigned int force) { return 0; }
+__weak int slbc_mic_num_cmd(unsigned int num) { return 0; }
+__weak int slbc_inner_cmd(unsigned int inner) { return 0; }
+__weak int slbc_outer_cmd(unsigned int outer) { return 0; }
+__weak int slbc_set_scmi_info(int uid, uint16_t cmd, int arg, int arg2, int arg3) { return 0; }
+__weak int slbc_get_scmi_info(int uid, uint16_t cmd, void *ptr) { return 0; }
+__weak int slbc_get_cache_user_pmu(int uid, void *ptr) { return 0; }
+__weak int slbc_get_cache_user_status(int uid, void *ptr) { return 0; }
+__weak int _slbc_request_cache_scmi(void *ptr) { return 0; }
+__weak int _slbc_release_cache_scmi(void *ptr) { return 0; }
+__weak int _slbc_buffer_status_scmi(void *ptr) { return 0; }
+__weak int _slbc_request_buffer_scmi(void *ptr) { return 0; }
+__weak int _slbc_release_buffer_scmi(void *ptr) { return 0; }
 __weak void slbc_register_ipi_ops(struct slbc_ipi_ops *ops) {}
 __weak void slbc_unregister_ipi_ops(struct slbc_ipi_ops *ops) {}
-__weak int slbc_sspm_sram_update(void) {}
-__weak int slbc_table_gid_set(int gid, int quota, int pri) {}
-__weak int slbc_table_gid_release(int gid) {}
-__weak int slbc_table_gid_get(int gid) {}
-__weak int slbc_table_idt_set(int index, int arid, int idt) {}
-__weak int slbc_table_idt_release(int index) {}
-__weak int slbc_table_idt_get(int index) {}
-__weak int slbc_table_gid_axi_set(int index, int axiid, int pg) {}
-__weak int slbc_table_gid_axi_release(int index) {}
-__weak int slbc_table_gid_axi_get(int index) {}
-__weak int emi_slb_select(int argv1, int argv2, int argv3) {}
-__weak int emi_pmu_counter(int argv1, int argv2, int argv3) {}
-__weak int emi_pmu_set_ctrl(int argv1, int argv2, int argv3) {}
-__weak int emi_gid_pmu_counter(int argv1, int argv2) {}
-__weak int emi_pmu_read_counter(int idx) {}
-__weak int emi_gid_pmu_read_counter(void *ptr) {}
-__weak int emi_slc_test_result(void) {}
+__weak int slbc_sspm_sram_update(void) { return 0; }
+__weak int slbc_table_gid_set(int gid, int quota, int pri) { return 0; }
+__weak int slbc_table_gid_release(int gid) { return 0; }
+__weak int slbc_table_gid_get(int gid) { return 0; }
+__weak int slbc_table_idt_set(int index, int arid, int idt) { return 0; }
+__weak int slbc_table_idt_release(int index) { return 0; }
+__weak int slbc_table_idt_get(int index) { return 0; }
+__weak int slbc_table_gid_axi_set(int index, int axiid, int pg) { return 0; }
+__weak int slbc_table_gid_axi_release(int index) { return 0; }
+__weak int slbc_table_gid_axi_get(int index) { return 0; }
+__weak int emi_slb_select(int argv1, int argv2, int argv3) { return 0; }
+__weak int emi_pmu_counter(int argv1, int argv2, int argv3) { return 0; }
+__weak int emi_pmu_set_ctrl(int argv1, int argv2, int argv3) { return 0; }
+__weak int emi_gid_pmu_counter(int argv1, int argv2) { return 0; }
+__weak int emi_pmu_read_counter(int idx) { return 0; }
+__weak int emi_gid_pmu_read_counter(void *ptr) { return 0; }
+__weak int emi_slc_test_result(void) { return 0; }
 __weak int _slbc_ach_scmi(unsigned int cmd, enum slc_ach_uid uid, int gid,
 			struct slbc_gid_data *data)
 {

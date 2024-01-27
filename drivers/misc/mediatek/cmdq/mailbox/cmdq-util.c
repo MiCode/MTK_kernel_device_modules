@@ -21,7 +21,7 @@
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 #include <soc/mediatek/smi.h>
 #endif
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC_TODO)
 #include <linux/soc/mediatek/devapc_public.h>
 #endif
 
@@ -114,7 +114,7 @@ static DEFINE_MUTEX(cmdq_dump_mutex);
 struct cmdq_util_controller_fp controller_fp = {
 	.track_ctrl = cmdq_util_track_ctrl,
 };
-struct cmdq_util_helper_fp helper_fp = {
+static struct cmdq_util_helper_fp helper_fp = {
 	.is_feature_en = cmdq_util_is_feature_en,
 	.dump_lock = cmdq_util_dump_lock,
 	.dump_unlock = cmdq_util_dump_unlock,
@@ -164,6 +164,23 @@ void cmdq_util_set_fp(struct cmdq_util_platform_fp *cust_cmdq_platform)
 		cmdq_mbox_set_hw_id(util.cmdq_mbox[i]);
 }
 EXPORT_SYMBOL(cmdq_util_set_fp);
+
+void cmdq_util_reset_fp(struct cmdq_util_platform_fp *cust_cmdq_platform)
+{
+	s32 i;
+
+	if (!cust_cmdq_platform) {
+		cmdq_err("%s cmdq_util_platform_fp is NULL ", __func__);
+		return;
+	}
+	controller_fp.thread_ddr_module = NULL;
+	helper_fp.hw_name = NULL;
+	helper_fp.event_module_dispatch = NULL;
+	helper_fp.thread_module_dispatch = NULL;
+	for (i = 0; i < util.mbox_cnt; i++)
+		cmdq_mbox_reset_hw_id(util.cmdq_mbox[i]);
+}
+EXPORT_SYMBOL(cmdq_util_reset_fp);
 
 bool cmdq_util_check_hw_trace_work(u8 hwid)
 {
@@ -357,8 +374,8 @@ static int cmdq_util_status_print(struct seq_file *seq, void *data)
 static int cmdq_util_record_print(struct seq_file *seq, void *data)
 {
 	struct cmdq_record *rec;
-	u32 acq_time, irq_time, begin_wait, exec_time, total_time, hw_time;
-	u64 submit_sec;
+	u32 acq_time, irq_time, begin_wait, exec_time, total_time;
+	u64 submit_sec, hw_time;
 	unsigned long submit_rem, hw_time_rem;
 	s32 i, idx;
 
@@ -401,7 +418,7 @@ static int cmdq_util_record_print(struct seq_file *seq, void *data)
 			~rec->exec_begin + 1 + rec->exec_end;
 		hw_time_rem = (u32)CMDQ_TICK_TO_US(hw_time);
 
-		seq_printf(seq, "%u,%u,%u.%06lu,\n",
+		seq_printf(seq, "%u,%u,%llu.%06lu,\n",
 			rec->exec_begin, rec->exec_end, hw_time, hw_time_rem);
 	}
 
@@ -914,7 +931,7 @@ void cmdq_util_devapc_dump(void)
 }
 EXPORT_SYMBOL(cmdq_util_devapc_dump);
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC_TODO)
 static struct devapc_vio_callbacks devapc_vio_handle = {
 	.id = INFRA_SUBSYS_GCE,
 	.debug_dump = cmdq_util_devapc_dump,
@@ -1013,7 +1030,7 @@ int cmdq_util_init(void)
 	if (exists)
 		dput(dir);
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC_TODO)
 	register_devapc_vio_callback(&devapc_vio_handle);
 #endif
 

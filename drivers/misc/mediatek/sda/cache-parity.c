@@ -300,10 +300,12 @@ static irqreturn_t cache_parity_isr_v3(int irq, void *dev_id)
 	int i, idx, cpu;
 	u64 misc0, status;
 	u64 sel = 0x1;
+#if IS_ENABLED(CONFIG_ARM64)
 	static const struct midr_range cpu_list[] = {
 		MIDR_ALL_VERSIONS(MIDR_CORTEX_A510), /* KLEIN */
 		{},
 	};
+#endif
 
 	ecc_dump_debug_info();
 
@@ -361,6 +363,7 @@ static irqreturn_t cache_parity_isr_v3(int irq, void *dev_id)
 				cpu, irq, "expected cpu",
 				cache_parity.record[idx].v3.cpu);
 
+#if IS_ENABLED(CONFIG_ARM64)
 		/* Skip the error, may be caused by externel slave error
 		 * 1. When booker receives SLVERR(0x2) of AXI response,
 		 *    it will be transferred to DERR(Data Error) to DSU,
@@ -382,6 +385,7 @@ static irqreturn_t cache_parity_isr_v3(int irq, void *dev_id)
 				goto check_nr_err;
 			}
 		}
+#endif
 
 		schedule_work(&cache_parity.work);
 	}
@@ -389,7 +393,9 @@ static irqreturn_t cache_parity_isr_v3(int irq, void *dev_id)
 	ECC_LOG("Cache ECC error, %s %d, %s: 0x%016llx, %s: 0x%016llx\n",
 	       "irq", irq, "misc0_el1", misc0, "status_el1", status);
 
+#if IS_ENABLED(CONFIG_ARM64)
 check_nr_err:
+#endif
 
 	if (atomic_read(&cache_parity.nr_err) > ECC_IRQ_TRIGGER_THRESHOLD) {
 		disable_irq_nosync(irq);
@@ -750,8 +756,8 @@ static int __probe_v1(struct platform_device *pdev)
 		return -ENOMEM;
 
 	size = size >> 2;
-	ret = of_property_read_variable_u32_array(pdev->dev.of_node,
-			"irq_config", (u32 *)parity_irq_config, size, size);
+	ret = of_property_read_u32_array(pdev->dev.of_node,
+			"irq_config", (u32 *)parity_irq_config, size);
 	if (ret) {
 		dev_err(&pdev->dev, "No irq_config\n");
 		return -ENXIO;

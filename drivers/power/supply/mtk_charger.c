@@ -2195,7 +2195,7 @@ static bool mtk_chg_check_vbus(struct mtk_charger *info)
 {
 	int vchr = 0;
 
-	vchr = get_vbus(info) * 1000; /* uV */
+	vchr = get_vbus(info) * 1000;
 	if (vchr > info->data.max_charger_voltage) {
 		chr_err("%s: vbus(%d mV) > %d mV\n", __func__, vchr / 1000,
 			info->data.max_charger_voltage / 1000);
@@ -2914,7 +2914,12 @@ static void charger_status_check(struct mtk_charger *info)
 	int ret;
 	bool charging = true;
 
+#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
+	chg_psy = devm_power_supply_get_by_phandle(&info->pdev->dev,
+						       "charger");
+#else
 	chg_psy = power_supply_get_by_name("primary_chg");
+#endif
 	if (IS_ERR_OR_NULL(chg_psy)) {
 		chr_err("%s Couldn't get chg_psy\n", __func__);
 	} else {
@@ -3410,6 +3415,7 @@ static int psy_charger_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		val->intval = get_vbus(info);
 		break;
+
 	case POWER_SUPPLY_PROP_TEMP:
 		val->intval = info->chg_data[idx].junction_temp_max * 10;
 		break;
@@ -3617,7 +3623,12 @@ static void mtk_charger_external_power_changed(struct power_supply *psy)
 
 	if (IS_ERR_OR_NULL(chg_psy)) {
 		pr_notice("%s Couldn't get chg_psy\n", __func__);
+#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
+		chg_psy = devm_power_supply_get_by_phandle(&info->pdev->dev,
+						       "charger");
+#else
 		chg_psy = power_supply_get_by_name("primary_chg");
+#endif
 		info->chg_psy = chg_psy;
 	} else {
 		ret = power_supply_get_property(chg_psy,
@@ -3830,14 +3841,20 @@ static int mtk_charger_probe(struct platform_device *pdev)
 	info->psy_cfg1.num_supplicants = ARRAY_SIZE(mtk_charger_supplied_to);
 	info->psy1 = power_supply_register(&pdev->dev, &info->psy_desc1,
 			&info->psy_cfg1);
-
+#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
+	info->chg_psy = devm_power_supply_get_by_phandle(&pdev->dev,
+		"charger");
+#else
 	info->chg_psy = power_supply_get_by_name("primary_chg");
+#endif
 	if (IS_ERR_OR_NULL(info->chg_psy))
 		chr_err("%s: devm power fail to get chg_psy\n", __func__);
 
+#if !IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
 	info->bc12_psy = power_supply_get_by_name("primary_chg");
 	if (IS_ERR_OR_NULL(info->bc12_psy))
 		chr_err("%s: devm power fail to get bc12_psy\n", __func__);
+#endif
 
 	info->bat_psy = devm_power_supply_get_by_phandle(&pdev->dev,
 		"gauge");

@@ -196,6 +196,7 @@ int ut_multi_thread_mtkSecHeap(void *from)
 	u64 size;
 	u64 align;
 	u64 upper;
+	u32 remainder;
 
 	strcpy(sec_heap_name, "mtk_svp_page-uncached");
 	align = 0x1000;
@@ -232,7 +233,9 @@ int ut_multi_thread_mtkSecHeap(void *from)
 			pr_info("heap_find fail\n");
 			goto sec_out;
 		}
-		size = get_random_u64() % (upper / align) * align + 0x1000;
+		//size = get_random_u64() % (upper / align) * align + 0x1000;
+		div_u64_rem( get_random_u64(), (upper / align) * align, &remainder);
+		size = remainder + 0x1000;
 		ut_dmabuf = dma_heap_buffer_alloc(dma_heap, size,
 						  O_RDWR | O_CLOEXEC,
 						  DMA_HEAP_VALID_HEAP_FLAGS);

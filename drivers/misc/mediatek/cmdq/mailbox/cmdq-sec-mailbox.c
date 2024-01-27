@@ -178,7 +178,7 @@ static const s32 cmdq_max_task_in_secure_thread[
 static const s32 cmdq_tz_cmd_block_size[CMDQ_MAX_SECURE_THREAD_COUNT] = {
 	4 << 12, 4 << 12, 20 << 12, 4 << 12, 4 << 12};
 
-struct cmdq_sec_helper_fp helper_fp = {
+static struct cmdq_sec_helper_fp helper_fp = {
 	.sec_insert_backup_cookie_fp = cmdq_sec_insert_backup_cookie,
 	.sec_pkt_wait_complete_fp = cmdq_sec_pkt_wait_complete,
 	.sec_pkt_free_data_fp = cmdq_sec_pkt_free_data,
@@ -234,7 +234,7 @@ static inline void cmdq_mmp_init(struct cmdq_sec *cmdq)
 
 	len = snprintf(name, sizeof(name), "cmdq_sec_%hhu", cmdq->hwid);
 	if (len >= sizeof(name))
-		cmdq_log("len:%d over name size:%lu", len, sizeof(name));
+		cmdq_log("len:%d over name size:%lu", len, (unsigned long)(sizeof(name)));
 
 	cmdq->mmp.cmdq_root = mmprofile_register_event(MMP_ROOT_EVENT, "CMDQ");
 	cmdq->mmp.cmdq = mmprofile_register_event(cmdq->mmp.cmdq_root, name);
@@ -415,11 +415,10 @@ s32 cmdq_sec_insert_backup_cookie(struct cmdq_pkt *pkt)
 	if (err)
 		return err;
 
-#ifdef CMDQ_SECURE_CPR_SUPPORT
-	xpr = CMDQ_CPR_THREAD_COOKIE(thread->idx);
-#else
-	xpr = CMDQ_THR_SPR_IDX1;
-#endif
+	if (!cpr_not_support_cookie)
+		xpr = CMDQ_CPR_THREAD_COOKIE(thread->idx);
+	else
+		xpr = CMDQ_THR_SPR_IDX1;
 
 	left.reg = true;
 	left.idx = xpr;
@@ -912,10 +911,7 @@ static s32 cmdq_sec_fill_iwc_msg(struct cmdq_sec_context *context,
 	iwc_msg->command.scenario = task->scenario;
 	iwc_msg->command.priority = task->pkt->priority;
 	iwc_msg->command.engineFlag = task->engineFlag;
-#ifdef CMDQ_SECURE_MTEE_SUPPORT
-	if (data->mtee)
-		iwc_msg->command.sec_id = data->sec_id;
-#endif
+	iwc_msg->command.sec_id = data->sec_id;
 	last = list_last_entry(&task->pkt->buf, typeof(*last), list_entry);
 	list_for_each_entry(buf, &task->pkt->buf, list_entry) {
 		if (buf == last)
@@ -932,8 +928,12 @@ static s32 cmdq_sec_fill_iwc_msg(struct cmdq_sec_context *context,
 	instr = &iwc_msg->command.pVABase[iwc_msg->command.commandSize / 4 - 4];
 	if (instr[0] == 0x1 && instr[1] == 0x40000000)
 		instr[0] = 0;
-	else
+	else if (instr[-2] == 0x1 && instr[-1] == 0x40000000)
+		instr[-2] = 0;
+	else {
 		cmdq_err("find EOC failed: %#x %#x", instr[1], instr[0]);
+		return -EFAULT;
+	}
 	iwc_msg->command.waitCookie = task->waitCookie;
 	iwc_msg->command.resetExecCnt = task->resetExecCnt;
 
@@ -1372,7 +1372,6 @@ static const struct of_device_id cmdq_sec_of_ids[] = {
 
 void cmdq_sec_mbox_switch_normal(struct cmdq_client *cl)
 {
-#ifdef CMDQ_GP_SUPPORT
 	struct cmdq_sec *cmdq =
 		container_of(cl->chan->mbox, typeof(*cmdq), mbox);
 	struct cmdq_sec_thread *thread =
@@ -1385,13 +1384,12 @@ void cmdq_sec_mbox_switch_normal(struct cmdq_client *cl)
 	mutex_lock(&cmdq->exec_lock);
 	/* TODO : use other CMD_CMDQ_TL for maintenance */
 	cmdq_sec_task_submit(cmdq, NULL, CMD_CMDQ_TL_PATH_RES_RELEASE,
-		thread->idx, NULL, false);
+		thread->idx, NULL, true);
 	mutex_unlock(&cmdq->exec_lock);
 
 	cmdq_log("[OUT] %s: cl:%p cmdq:%p thrd:%p idx:%u\n",
 		__func__, cl, cmdq, thread, thread->idx);
 	cmdq_sec_mbox_disable(cl->chan);
-#endif
 }
 EXPORT_SYMBOL(cmdq_sec_mbox_switch_normal);
 
@@ -1678,7 +1676,7 @@ static int cmdq_sec_mbox_startup(struct mbox_chan *chan)
 	INIT_WORK(&thread->timeout_work, cmdq_sec_task_timeout_work);
 	len = snprintf(name, sizeof(name), "task_exec_wq_%u", thread->idx);
 	if (len >= sizeof(name))
-		cmdq_log("len:%d over name size:%lu", len, sizeof(name));
+		cmdq_log("len:%d over name size:%lu", len, (unsigned long)(sizeof(name)));
 
 	thread->task_exec_wq = create_singlethread_workqueue(name);
 	thread->occupied = true;

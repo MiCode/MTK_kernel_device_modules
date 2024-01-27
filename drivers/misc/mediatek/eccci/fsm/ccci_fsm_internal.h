@@ -172,6 +172,14 @@ enum ccci_ipi_op_id {
 
 /************ structures ************/
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
+struct ccci_ipi_msg {
+	u16 md_id;
+	u16 op_id;
+	u32 data[1];
+} __packed;
+#endif
+
 struct ccci_ipi_msg_out {
 	u16 md_id; //compatibility member
 	u16 op_id;
@@ -219,6 +227,15 @@ struct ccci_fsm_monitor {
 	wait_queue_head_t rx_wq;
 	struct ccci_skb_queue rx_skb_list;
 };
+
+struct ccci_fsm_scp {
+	enum MD_STATE old_state;
+	struct work_struct scp_md_state_sync_work;
+	void __iomem *ccif2_ap_base;
+	void __iomem *ccif2_md_base;
+	unsigned int scp_clk_free_run;
+};
+
 
 struct ccci_fsm_ctl {
 	enum MD_STATE md_state;
@@ -269,13 +286,11 @@ do { \
 	mb(); /* make sure register access in order */ \
 } while (0)
 
-
 #define ccci_write16(b, a, v)  \
 do { \
 	writew(v, (b) + (a)); \
 	mb(); /* make sure register access in order */ \
 } while (0)
-
 
 #define ccci_write8(b, a, v)  \
 do { \
@@ -324,9 +339,6 @@ extern int mdee_dumper_v3_alloc(struct ccci_fsm_ee *mdee);
 extern int mdee_dumper_v5_alloc(struct ccci_fsm_ee *mdee);
 extern int mdee_dumper_v6_alloc(struct ccci_fsm_ee *mdee);
 extern void inject_md_status_event(int event_type, char reason[]);
-#ifdef SET_EMI_STEP_BY_STAGE
-extern void ccci_set_mem_access_protection_second_stage(void);
-#endif
 extern void mdee_set_ex_start_str(struct ccci_fsm_ee *ee_ctl,
 	const unsigned int type, const char *str);
 

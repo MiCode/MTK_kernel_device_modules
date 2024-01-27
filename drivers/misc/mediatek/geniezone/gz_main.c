@@ -37,11 +37,15 @@
 #include <mtk_heap.h>
 
 #include "gz_main.h"
+#if IS_ENABLED(CONFIG_ARM_FFA_TRANSPORT)
 #include "gz_ffa.h"
 #include <linux/arm_ffa.h>
+#endif
 #include "mtee_ut/gz_ut.h"
 #include "mtee_ut/gz_shmem_ut.h"
+#if IS_ENABLED(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM)
 #include "mtee_ut/gz_chmem_ut.h"
+#endif
 #include "mtee_ut/gz_vreg_ut.h"
 #include "unittest.h"
 
@@ -132,8 +136,10 @@ static ssize_t gz_test_store(struct device *dev,
 		th = kthread_run(gz_test_shm, NULL, "test_shm");
 		break;
 	case '4':
+#if IS_ENABLED(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM)
 		KREE_DEBUG("gz_test_chm\n");
 		th = kthread_run(gz_test_chm, NULL, "test_chm");
+#endif
 		break;
 	case '5':
 		KREE_DEBUG("gz_test_vreg\n");
@@ -924,7 +930,9 @@ static TZ_RESULT DMAFd2MemHandle(int buf_fd,
 		return TZ_RESULT_ERROR_ITEM_NOT_FOUND;
 	}
 
+#if IS_ENABLED(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM)
 	secure_handle = dmabuf_to_secure_handle(dbuf);
+#endif
 	if (!secure_handle) {
 		KREE_ERR("dmabuf_to_secure_handle failed!\n");
 		*mem_handle = 0;
@@ -1160,7 +1168,9 @@ struct platform_driver gz_main_driver = {
 static int __init gz_main_init(void)
 {
 	int ret = 0;
+#if IS_ENABLED(CONFIG_ARM_FFA_TRANSPORT)
 	struct ffa_driver *get_ffa_drv;
+#endif
 
 	ret = platform_driver_register(&gz_main_driver);
 	if (ret) {
@@ -1168,6 +1178,9 @@ static int __init gz_main_init(void)
 		return ret;
 	}
 
+	msleep(1000);
+
+#if IS_ENABLED(CONFIG_ARM_FFA_TRANSPORT)
 	/* ffa driver register, init procedure won't stop when register failed */
 	get_ffa_drv = gz_get_ffa_dev();
 	if (!get_ffa_drv)
@@ -1176,6 +1189,9 @@ static int __init gz_main_init(void)
 	ret = ffa_driver_register(get_ffa_drv, THIS_MODULE, KBUILD_MODNAME);
 	if (ret)
 		KREE_ERR("%s gz_ffa_dev driver register fail, ret=%d\n", __func__, ret);
+
+	msleep(1000);
+#endif
 
 	return 0;
 }

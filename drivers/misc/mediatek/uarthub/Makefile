@@ -15,6 +15,7 @@
 # If KERNELRELEASE is defined, we've been invoked from the
 # kernel build system and can use its language.
 
+# Select the platform for ut-code build, e.g., BUILD_UT=6989. Default is n.
 BUILD_UT := n
 
 ifneq ($(KERNELRELEASE),)
@@ -41,11 +42,22 @@ endif
 ifneq ($(wildcard $(PATH_TO_UARTHUB_DRV)/common/platform/6989/mt6989.c),)
     $(MODULE_NAME)-objs += common/platform/6989/mt6989.o
     $(MODULE_NAME)-objs += common/platform/6989/mt6989_debug.o
-ifneq ($(BUILD_UT), n)
+ifeq ($(BUILD_UT), 6989)
     $(MODULE_NAME)-objs += common/platform/6989/ut/mt6989_ut_test.o
     $(MODULE_NAME)-objs += common/platform/6989/ut/mt6989_ut_test_for_ip.o
     $(MODULE_NAME)-objs += common/platform/6989/ut/mt6989_ut_dat.o
     $(MODULE_NAME)-objs += common/platform/6989/ut/ut_util.o
+endif
+endif
+
+ifneq ($(wildcard $(PATH_TO_UARTHUB_DRV)/common/platform/6991/mt6991.c),)
+    $(MODULE_NAME)-objs += common/platform/6991/mt6991.o
+    $(MODULE_NAME)-objs += common/platform/6991/mt6991_debug.o
+ifeq ($(BUILD_UT), 6991)
+    $(MODULE_NAME)-objs += common/platform/6991/ut/mt6991_ut_test.o
+    $(MODULE_NAME)-objs += common/platform/6991/ut/mt6991_ut_test_for_ip.o
+    $(MODULE_NAME)-objs += common/platform/6991/ut/mt6991_ut_dat.o
+    $(MODULE_NAME)-objs += common/platform/6991/ut/ut_util.o
 endif
 endif
 

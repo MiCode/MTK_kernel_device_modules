@@ -1101,9 +1101,9 @@ unsigned long long mtk_dpintf_get_frame_hrt_bw_base(
 	vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
 	vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
 	vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
-	bw_base = (unsigned long long)vact * hact * vrefresh * 4 / 1000;
-	bw_base = bw_base * vtotal / vact;
-	bw_base = bw_base / 1000;
+	bw_base = (unsigned long long)div_u64(vact * hact * vrefresh * 4, 1000);
+	bw_base = div_u64(bw_base * vtotal, vact);
+	bw_base = div_u64(bw_base, 1000);
 
 	if (dp_intf_bw != bw_base) {
 		dp_intf_bw = bw_base;
@@ -1130,9 +1130,9 @@ static unsigned long long mtk_dpintf_get_frame_hrt_bw_base_by_mode(
 	vtotal = mtk_crtc->avail_modes->vtotal;
 	vact = mtk_crtc->avail_modes->vdisplay;
 	vrefresh = drm_mode_vrefresh(mtk_crtc->avail_modes);
-	base_bw = (unsigned long long)vact * hact * vrefresh * 4 / 1000;
-	base_bw = base_bw * vtotal / vact;
-	base_bw = base_bw / 1000;
+	base_bw = (unsigned long long)div_u64(vact * hact * vrefresh * 4, 1000);
+	base_bw = div_u64(base_bw * vtotal, vact);
+	base_bw = div_u64(base_bw, 1000);
 	if (dp_intf_bw != base_bw) {
 		dp_intf_bw = base_bw;
 		DDPDBG("%s Frame Bw:%llu, bpp:%d\n", __func__, base_bw, bpp);

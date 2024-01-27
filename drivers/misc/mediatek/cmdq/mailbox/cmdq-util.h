@@ -27,6 +27,23 @@ enum cmdq_smc_request {
 	CMDQ_VCORE_REQ,
 };
 
+/* Compatibility with 32-bit shift operation */
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
+#define DO_SHIFT_RIGHT(x, n) ({     \
+	(n) < (8 * sizeof(u64)) ? (x) >> (n) : 0;	\
+})
+#define DO_SHIFT_LEFT(x, n) ({      \
+	(n) < (8 * sizeof(u64)) ? (x) << (n) : 0;	\
+})
+#else
+#define DO_SHIFT_RIGHT(x, n) ({     \
+	(n) < (8 * sizeof(u32)) ? (x) >> (n) : 0;	\
+})
+#define DO_SHIFT_LEFT(x, n) ({      \
+	(n) < (8 * sizeof(u32)) ? (x) << (n) : 0;	\
+})
+#endif
+
 enum {
 	CMDQ_LOG_FEAT_SECURE,
 	CMDQ_LOG_FEAT_PERF,
@@ -181,6 +198,7 @@ struct cmdq_util_platform_fp {
 };
 
 void cmdq_util_set_fp(struct cmdq_util_platform_fp *cust_cmdq_platform);
+void cmdq_util_reset_fp(struct cmdq_util_platform_fp *cust_cmdq_platform);
 bool cmdq_util_check_hw_trace_work(u8 hwid);
 const char *cmdq_util_event_module_dispatch(phys_addr_t gce_pa, const u16 event, s32 thread);
 const char *cmdq_util_thread_module_dispatch(phys_addr_t gce_pa, s32 thread);
@@ -234,6 +252,8 @@ void cmdq_util_devapc_dump(void);
 void cmdq_util_dump_fast_mtcmos(void);
 int cmdq_util_init(void);
 
+#if IS_ENABLED(CONFIG_MTK_IRQ_DBG) || IS_ENABLED(CONFIG_MTK_IRQ_DBG_LEGACY)
 extern void mt_irq_dump_status(unsigned int irq);
+#endif
 int cmdq_util_log_feature_set(void *data, u64 val);
 #endif

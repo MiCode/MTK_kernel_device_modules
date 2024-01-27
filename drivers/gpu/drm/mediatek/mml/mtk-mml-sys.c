@@ -1902,7 +1902,7 @@ static int dl_comp_init(struct device *dev, struct mml_sys *sys,
 
 	ret = snprintf(name, sizeof(name), "%s-dl-relay", comp->name);
 	if (ret >= sizeof(name)) {
-		dev_err(dev, "len:%d over name size:%lu", ret, sizeof(name));
+		dev_err(dev, "len:%d over name size:%lu", ret, (unsigned long)(sizeof(name)));
 		name[sizeof(name) - 1] = '\0';
 	}
 	ret = of_property_read_u16(node, name, &offset);
@@ -2436,11 +2436,11 @@ static s32 dbg_get(char *buf, const struct kernel_param *kp)
 
 				length += snprintf(buf + length, PAGE_SIZE - length,
 					"    - [%d] mml comp_id: %d.%d @%llx name: %s bound: %d\n",
-					i, comp->id, comp->sub_idx, comp->base_pa,
+					i, comp->id, comp->sub_idx, (unsigned long long)comp->base_pa,
 					comp->name ? comp->name : "(null)", comp->bound);
 				length += snprintf(buf + length, PAGE_SIZE - length,
 					"    -         larb_port: %d @%llx pw: %d clk: %d\n",
-					comp->larb_port, comp->larb_base,
+					comp->larb_port, (unsigned long long)comp->larb_base,
 					comp->pw_cnt, comp->clk_cnt);
 				length += snprintf(buf + length, PAGE_SIZE - length,
 					"    -     ddp comp_id: %d bound: %d\n",

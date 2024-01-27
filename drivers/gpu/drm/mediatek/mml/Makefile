@@ -11,6 +11,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
+subdir-ccflags-y += -Wno-error
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2 \
              -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc \
@@ -28,12 +29,14 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2 \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi \
              -I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3
 
-obj-$(CONFIG_MTK_MML_LEGACY) := mtk-mml-legacy.o
+obj-$(CONFIG_MTK_MML_LEGACY) := mtk-mml.o
 obj-$(CONFIG_MTK_MML) := mtk-mml.o
 
 mtk-mml-legacy-objs := mtk-mml.o
 
+ifeq ($(strip $(CONFIG_MTK_MML_DEBUG)),y)
 mtk-mml-objs += mtk-mml-monitor.o
+endif
 
 mtk-mml-objs += mtk-mml-driver.o
 mtk-mml-objs += mtk-mml-core.o

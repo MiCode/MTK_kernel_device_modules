@@ -134,6 +134,9 @@ s32 cmdq_sec_pkt_set_payload(struct cmdq_pkt *pkt, u8 idx,
 s32 cmdq_sec_pkt_write_reg(struct cmdq_pkt *pkt, u32 addr, u64 base,
 	const enum CMDQ_IWC_ADDR_METADATA_TYPE type,
 	const u32 offset, const u32 size, const u32 port);
+s32 cmdq_sec_pkt_write_reg_disp(struct cmdq_pkt *pkt, u32 addr, u64 base,
+	const enum CMDQ_IWC_ADDR_METADATA_TYPE type,
+	const u32 offset, const u32 size, const u32 port, u32 sec_id);
 s32 cmdq_sec_pkt_assign_metadata(struct cmdq_pkt *pkt,
 	u32 count, void *meta_array);
 void cmdq_sec_dump_secure_data(struct cmdq_pkt *pkt);
@@ -143,6 +146,9 @@ void cmdq_sec_err_dump(struct cmdq_pkt *pkt, struct cmdq_client *client,
 
 /* MTEE */
 void cmdq_sec_pkt_set_mtee(struct cmdq_pkt *pkt, const bool enable);
+
+/* iommu_sec_id */
+void cmdq_sec_pkt_set_secid(struct cmdq_pkt *pkt, int32_t sec_id);
 
 /* implementation in cmdq-sec-mailbox.c */
 void cmdq_sec_mbox_switch_normal(struct cmdq_client *cl);

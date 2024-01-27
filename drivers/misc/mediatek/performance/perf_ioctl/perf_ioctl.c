@@ -51,8 +51,12 @@ EXPORT_SYMBOL_GPL(fpsgo_notify_frame_hint_fp);
 void (*fpsgo_notify_buffer_quota_fp)(int pid, int quota, unsigned long long identifier);
 EXPORT_SYMBOL_GPL(fpsgo_notify_buffer_quota_fp);
 
+#if IS_ENABLED(CONFIG_ARM64)
 struct proc_dir_entry *perfmgr_root;
 EXPORT_SYMBOL(perfmgr_root);
+#else
+static struct proc_dir_entry *perfmgr_root;
+#endif
 
 static unsigned long perfctl_copy_from_user(void *pvTo,
 		const void __user *pvFrom, unsigned long ulBytes)
@@ -188,15 +192,19 @@ ret_ioctl:
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_COMPAT)
 static long xgff_boost_compat_ioctl(struct file *filp,
 		unsigned int cmd, unsigned long arg)
 {
 	return 0;
 }
+#endif
 
 static const struct proc_ops xgff_boost_Fops = {
 	.proc_ioctl = xgff_boost_ioctl,
+#if IS_ENABLED(CONFIG_COMPAT)
 	.proc_compat_ioctl = xgff_boost_compat_ioctl,
+#endif
 	.proc_open = xgff_boost_open,
 	.proc_read = seq_read,
 	.proc_lseek = seq_lseek,
@@ -341,6 +349,7 @@ static long xgff_ioctl(struct file *filp,
 	return xgff_ioctl_impl(filp, cmd, arg, NULL);
 }
 
+#if IS_ENABLED(CONFIG_COMPAT)
 static long xgff_compat_ioctl(struct file *filp,
 		unsigned int cmd, unsigned long arg)
 {
@@ -379,10 +388,13 @@ static long xgff_compat_ioctl(struct file *filp,
 unlock_and_return:
 	return ret;
 }
+#endif
 
 static const struct proc_ops xgff_Fops = {
 	.proc_ioctl = xgff_ioctl,
+#if IS_ENABLED(CONFIG_COMPAT)
 	.proc_compat_ioctl = xgff_compat_ioctl,
+#endif
 	.proc_open = xgff_open,
 	.proc_read = seq_read,
 	.proc_lseek = seq_lseek,
@@ -605,7 +617,9 @@ ret_ioctl:
 }
 
 static const struct proc_ops Fops = {
+#if IS_ENABLED(CONFIG_COMPAT)
 	.proc_compat_ioctl = device_ioctl,
+#endif
 	.proc_ioctl = device_ioctl,
 	.proc_open = device_open,
 	.proc_read = seq_read,

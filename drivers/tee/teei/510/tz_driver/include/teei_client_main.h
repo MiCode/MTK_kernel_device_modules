@@ -95,8 +95,10 @@ extern void bootprof_log_boot(char *str);
 extern void cpus_write_lock(void);
 extern void cpus_write_unlock(void);
 
+#ifdef TEEI_FFA_SUPPORT
 int soter_ffa_shm_register(unsigned long page_link, unsigned int length,
 				unsigned int offset, unsigned long *sec_id);
+#endif
 
 int teei_set_switch_pri(unsigned long policy);
 #endif /* __TEEI_CLIENT_MAIN_H__ */

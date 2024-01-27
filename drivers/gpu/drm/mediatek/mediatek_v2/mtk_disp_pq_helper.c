@@ -544,8 +544,9 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 		DDPDBG("%s, crtc index:%d, pq_type:%d, cmd:%d, use %llu us\n", __func__,
 				drm_crtc_index(crtc), pq_type, cmd, (sched_clock() - time) / 1000);
 err:
-	if (kdata != stack_kdata)
+	if (kdata != stack_kdata) {
 		kfree(kdata);
+	}
 	return ret;
 }
 

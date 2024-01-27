@@ -12,6 +12,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
+#include <linux/printk.h>
 
 /* PMIC EFUSE registers definition */
 #define EFUSE_V1_TOP_CKPDN_CON0              (0x10c)
@@ -290,7 +291,7 @@ static int mt635x_efuse_probe(struct platform_device *pdev)
 		mutex_destroy(&efuse->lock);
 		return PTR_ERR(nvmem);
 	}
-
+	pr_info("efuse probe success\n");
 	return 0;
 }
 
@@ -324,6 +325,9 @@ static const struct efuse_chip_data mt6377_efuse_data = {
 static const struct of_device_id mt635x_efuse_of_match[] = {
 	{
 		.compatible = "mediatek,mt6359p-efuse",
+		.data = &mt6359p_efuse_data
+	}, {
+		.compatible = "mediatek,mt6358-efuse",
 		.data = &mt6359p_efuse_data
 	}, {
 		.compatible = "mediatek,mt6363-efuse",

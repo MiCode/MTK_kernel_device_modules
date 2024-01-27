@@ -29,7 +29,6 @@
 #define CCCI_SMEM_OFFSET_SEQERR (0x34) /* in MD CCCI debug region */
 #define CCCI_SMEM_SIZE_DBM (160)
 #define CCCI_SMEM_SIZE_DBM_GUARD (8)
-
 #define IPC_L4C_MSG_ID_LEN   (0x40)
 
 /* feature option, always try using platform info first! */

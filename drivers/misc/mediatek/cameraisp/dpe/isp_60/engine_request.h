@@ -47,7 +47,7 @@ struct frame {
 	void *data; /* points to engine data */
 };
 
-struct eng_request {
+struct request_dpe {
 	enum REQUEST_STATE_ENUM state;
 	pid_t pid;
 	struct ring_ctrl fctl;
@@ -64,7 +64,7 @@ struct engine_ops {
 
 struct engine_requests {
 	struct ring_ctrl req_ctl;
-	struct eng_request reqs[MAX_REQUEST_SIZE_PER_ENGINE];
+	struct request_dpe reqs[MAX_REQUEST_SIZE_PER_ENGINE];
 	const struct engine_ops *ops;
 	struct completion req_handler_done;
 
@@ -73,23 +73,23 @@ struct engine_requests {
 };
 
 signed int dpe_init_ring_ctl(struct ring_ctrl *rctl);
-signed int dpe_init_request(struct eng_request *req);
+signed int dpe_init_request(struct request_dpe *req);
 signed int dpe_set_frame_data(struct frame *f, void *engine);
-signed int dpe_register_requests(struct engine_requests *eng, size_t size);
-signed int dpe_unregister_requests(struct engine_requests *eng);
-signed int dpe_request_handler(struct engine_requests *eng, spinlock_t *lock);
+signed int dpe_register_requests_isp6(struct engine_requests *eng, size_t size);
+signed int dpe_unregister_requests_isp6(struct engine_requests *eng);
+signed int dpe_request_handler_isp6(struct engine_requests *eng, spinlock_t *lock);
 
 
 /*TODO: APIs to manipulate requests  */
-int dpe_set_engine_ops(struct engine_requests *eng,
+int dpe_set_engine_ops_isp6(struct engine_requests *eng,
 	const struct engine_ops *ops);
 
-signed int dpe_enque_request(struct engine_requests *eng, unsigned int fcnt,
+signed int dpe_enque_request_isp6(struct engine_requests *eng, unsigned int fcnt,
 							void *req, pid_t pid);
-signed int dpe_deque_request(struct engine_requests *eng, unsigned int *fcnt,
+signed int dpe_deque_request_isp6(struct engine_requests *eng, unsigned int *fcnt,
 								void *req);
-int dpe_update_request(struct engine_requests *eng, pid_t *pid);
-bool dpe_request_running(struct engine_requests *eng);
+int dpe_update_request_isp6(struct engine_requests *eng, pid_t *pid);
+bool dpe_request_running_isp6(struct engine_requests *eng);
 
-signed int dpe_request_dump(struct engine_requests *eng);
+signed int dpe_request_dump_isp6(struct engine_requests *eng);
 #endif

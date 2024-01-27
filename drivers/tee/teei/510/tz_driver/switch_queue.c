@@ -54,7 +54,7 @@ static int add_entry_to_task_link(struct task_entry_struct *entry)
 	return retVal;
 }
 
-
+#ifdef TEEI_FFA_SUPPORT
 int add_work_entry(unsigned long long work_type, unsigned long long x0,
 		unsigned long long x1, unsigned long long x2)
 {
@@ -85,6 +85,41 @@ int add_work_entry(unsigned long long work_type, unsigned long long x0,
 
 	return retVal;
 }
+#else
+int add_work_entry(unsigned long long work_type, unsigned long long x0,
+                unsigned long long x1, unsigned long long x2,
+                unsigned long long x3)
+{
+        struct task_entry_struct *task_entry = NULL;
+        int retVal = 0;
+
+        task_entry = vmalloc(sizeof(struct task_entry_struct));
+        if (task_entry == NULL) {
+                IMSG_ERROR("Failed to vmalloc task_entry_struct!\n");
+                return -ENOMEM;
+        }
+
+        memset(task_entry, 0, sizeof(struct task_entry_struct));
+
+        task_entry->work_type = work_type;
+        task_entry->x0 = x0;
+        task_entry->x1 = x1;
+        task_entry->x2 = x2;
+        task_entry->x3 = x3;
+
+        INIT_LIST_HEAD(&(task_entry->c_link));
+
+        retVal = add_entry_to_task_link(task_entry);
+        if (retVal != 0) {
+                IMSG_ERROR("Failed to insert the entry to link!\n");
+                vfree(task_entry);
+                return retVal;
+        }
+
+        return retVal;
+}
+
+#endif
 
 #if IS_ENABLED(CONFIG_MICROTRUST_DYNAMIC_CORE)
 static int teei_bind_current_cpu(void)
@@ -131,7 +166,11 @@ static int handle_one_switch_task(struct task_entry_struct *entry)
 
 	switch (entry->work_type) {
 	case SMC_CALL_TYPE:
+#ifdef TEEI_FFA_SUPPORT
 		retVal = teei_smc(entry->x0, entry->x1, entry->x2);
+#else
+		retVal = teei_smc(entry->x0, entry->x1, entry->x2, entry->x3);
+#endif
 		break;
 #if !IS_ENABLED(CONFIG_MICROTRUST_DYNAMIC_CORE)
 	case SWITCH_CORE_TYPE:

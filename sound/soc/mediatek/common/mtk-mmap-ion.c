@@ -89,7 +89,7 @@ static int mtk_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 				size, vma->vm_page_prot);
 
 	dev_info(dmabuf_dev, "%s(), ret %d, %p, %lx, size %ld %ld\n",
-		__func__, ret, vaddr, vma->vm_start, size, dmabuf->size);
+		__func__, ret, vaddr, vma->vm_start, size, (unsigned long)(dmabuf->size));
 
 	return ret;
 }

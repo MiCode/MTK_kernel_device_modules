@@ -8,21 +8,26 @@
 
 #include "mtk_panel_ext.h"
 
-#define LOGGER_BUFFER_SIZE (16 * 1024)
 #define ERROR_BUFFER_COUNT 4
 #define FENCE_BUFFER_COUNT 20
 #define DEBUG_BUFFER_COUNT 30
 #define DUMP_BUFFER_COUNT 10
 #define STATUS_BUFFER_COUNT 3
 #define _DRM_P_H_
-#if defined(CONFIG_MT_ENG_BUILD) || !defined(CONFIG_MTK_GMO_RAM_OPTIMIZE)
+#if IS_ENABLED(CONFIG_MT_ENG_BUILD) || !IS_ENABLED(CONFIG_MTK_GMO_RAM_OPTIMIZE)
+#define LOGGER_BUFFER_SIZE (16 * 1024)
+#else
+#define LOGGER_BUFFER_SIZE (256)
+#endif
 #define DEBUG_BUFFER_SIZE                                                      \
 	(4096 +                                                                \
 	 (ERROR_BUFFER_COUNT + FENCE_BUFFER_COUNT + DEBUG_BUFFER_COUNT +       \
 	  DUMP_BUFFER_COUNT + STATUS_BUFFER_COUNT) *                           \
 		 LOGGER_BUFFER_SIZE)
-#else
-#define DEBUG_BUFFER_SIZE 10240
+
+#define POLLING_RDMA_OUTPUT_LINE_ENABLE
+#if IS_ENABLED(POLLING_RDMA_OUTPUT_LINE_ENABLE)
+extern void mtk_mux_set_quick_switch_chk_cb(void (*callback) (void));
 #endif
 
 extern int mtk_disp_hrt_bw_dbg(void);

@@ -7,7 +7,7 @@
 #ifndef _MTK_MMDVFS_V3_MEMORY_H_
 #define _MTK_MMDVFS_V3_MEMORY_H_
 
-#if IS_ENABLED(CONFIG_MTK_MMDVFS)
+#if IS_ENABLED(CONFIG_MTK_MMDVFS) && IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 void *mmdvfs_get_vcp_base(phys_addr_t *pa);
 bool mmdvfs_is_init_done(void);
 #else

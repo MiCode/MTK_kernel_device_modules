@@ -12,13 +12,15 @@
 #
 
 
-obj-$(CONFIG_MTK_CAMERA_ISP_DIP_SUPPORT) += dip/
+$(info "enter cameraisp makefile")
+
+obj-$(CONFIG_MTK_CAMERA_ISP_SUPPORT) += dip/
 obj-$(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT) += src/
 #obj-y += owe/
-obj-y += rsc/
-obj-$(CONFIG_MTK_CAMERA_ISP_WPE_SUPPORT) += wpe/
+obj-$(CONFIG_MTK_CAMERA_ISP_SUPPORT) += rsc/
+obj-$(CONFIG_MTK_CAMERA_ISP_SUPPORT) += wpe/
 obj-$(CONFIG_MTK_CAMERA_ISP_SUPPORT) += dpe/
 #obj-y += tsf/
-obj-$(CONFIG_MTK_CAMERA_ISP_MFB_SUPPORT) += mfb/
+obj-$(CONFIG_MTK_CAMERA_ISP_SUPPORT) += mfb/
 obj-y += fdvt/
 obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda/

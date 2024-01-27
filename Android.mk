@@ -21,9 +21,7 @@ KERNEL_MAKE_DEPENDENCIES += $(shell find vendor/mediatek/kernel_modules -name .g
 ifdef MTK_GKI_PREBUILTS_DIR
 KERNEL_MAKE_DEPENDENCIES += $(wildcard $(MTK_GKI_PREBUILTS_DIR)/*)
 endif
-ifdef MTK_GKI_BUILD_CONFIG
 KERNEL_MAKE_DEPENDENCIES += $(shell find kernel/$(REL_ACK_DIR)/ -name .git -prune -o -type f | sort)
-endif
 ifneq ($(wildcard kernel/build),)
 KERNEL_MAKE_DEPENDENCIES += $(shell find kernel/build -name .git -prune -o -type f | sort)
 endif
@@ -66,6 +64,7 @@ $(KERNEL_ZIMAGE_OUT): $(GEN_KERNEL_BUILD_CONFIG) $(KERNEL_MAKE_DEPENDENCIES) | k
 	$(hide) cd kernel && CC_WRAPPER=$(PRIVATE_CC_WRAPPER) SKIP_MRPROPER=1 BUILD_CONFIG=$(PRIVATE_KERNEL_BUILD_CONFIG) OUT_DIR=$(PRIVATE_KERNEL_OUT) DIST_DIR=$(PRIVATE_DIST_DIR) $(PRIVATE_KERNEL_BUILD_SCRIPT) && cd ..
 	$(hide) $(call fixup-kernel-cmd-file,$(KERNEL_OUT)/arch/$(KERNEL_TARGET_ARCH)/boot/compressed/.piggy.xzkern.cmd)
 else
+$(KERNEL_ZIMAGE_OUT): .KATI_IMPLICIT_OUTPUTS += $(TARGET_KERNEL_CONFIG)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_EXPORT_ENV := DEFCONFIG_OVERLAYS="$(KERNEL_DEFCONFIG_OVERLAYS)" KERNEL_VERSION=$(LINUX_KERNEL_VERSION)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG := --//build/bazel_mgk_rules:kernel_version=$(patsubst kernel-%,%,$(LINUX_KERNEL_VERSION)) --experimental_writable_outputs
 ifneq ($(filter yes no,$(COVERITY_LOCAL_SCAN)),)

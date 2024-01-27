@@ -119,10 +119,18 @@ config CHARGER_RT9758
 	  high voltage application. The maximum charge current is up to 5A.
 	  Say N to disable.
 
+config BATTERY_MT6358
+	tristate "MT6358 fuel gauge support"
+	depends on DEVICE_MODULES_MFD_MT6397
+	help
+	  Say Y to enable support for MT6358 battery driver.
+	  it measure battery current and temperature to provide
+	  battery information , It issues interrupt when trigger
+	  threshold is met.
+
 config BATTERY_MT6359P
 	tristate "MT6359P fuel gauge support"
 	depends on DEVICE_MODULES_MFD_MT6397
-	default m
 	help
 	  Say Y to enable support for MT6359P battery driver.
 	  it measure battery current and temperature to provide
@@ -140,6 +148,19 @@ config DEVICE_MODULES_CHARGER_MT6360
 	  The device supports High-Accuracy Voltage/Current Regulation,
 	  Average Input Current Regulation, Battery Temperature Sensing,
 	  Over-Temperature Protection, DPDM Detection for BC1.2.
+
+config DEVICE_MODULES_CHARGER_MT6370
+	tristate "MediaTek MT6370 Charger Driver"
+	depends on DEVICE_MODULES_MFD_MT6370
+	depends on REGULATOR
+	select LINEAR_RANGES
+	help
+	  Say Y here to enable MT6370 Charger Part.
+	  The device supports High-Accuracy Voltage/Current Regulation,
+	  Average Input Current Regulation, Battery Temperature Sensing,
+	  Over-Temperature Protection, DPDM Detection for BC1.2.
+	  This driver can also be built as a module. If so, the module
+	  will be called "mt6370-charger".
 
 config CHARGER_MT6362
 	tristate "MT6362 SPMI CHG driver"

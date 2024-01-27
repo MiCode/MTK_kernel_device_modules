@@ -171,7 +171,7 @@ int trusted_mem_api_unref(enum TRUSTED_MEM_REQ_TYPE req_mem_type, u64 sec_handle
 EXPORT_SYMBOL(trusted_mem_api_unref);
 
 bool trusted_mem_api_get_region_info(enum TRUSTED_MEM_REQ_TYPE mem_type,
-				     u64 *pa, u32 *size)
+				     phys_addr_t *pa, u32 *size)
 {
 	return tmem_core_get_region_info(get_mem_type(mem_type), pa, size);
 }
@@ -189,7 +189,7 @@ int trusted_mem_api_query_pa(enum TRUSTED_MEM_REQ_TYPE mem_type, u32 alignment,
 			size, refcount, (u32 *)handle, owner, id, 0, phy_addr);
 #elif IS_ENABLED(CONFIG_MTK_GZ_KREE)
 	return tmem_query_gz_handle_to_pa(get_mem_type(mem_type), alignment,
-			size, refcount, handle, owner, id, 0, phy_addr);
+			size, refcount, (u32 *)handle, owner, id, 0, phy_addr);
 #else
 	return TMEM_OPERATION_NOT_REGISTERED;
 #endif

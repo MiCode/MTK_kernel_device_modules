@@ -20,6 +20,16 @@
 #include "mtk_qos_share.h"
 #include "mtk_qos_common.h"
 
+#if IS_ENABLED(CONFIG_MTK_QOS_LEGACY) || IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V2)
+//add for 32bit recovery mode
+struct tag_bootmode {
+	u32 size;
+	u32 tag;
+	u32 bootmode;
+	u32 boottype;
+};
+#endif
+
 struct mtk_qos *m_qos;
 static void __iomem *qos_sram_base;
 static unsigned int qos_sram_bound;
@@ -97,6 +107,28 @@ void qos_sram_init(void __iomem *regs, unsigned int bound)
 		writel(0x0, qos_sram_base+i);
 }
 
+#if IS_ENABLED(CONFIG_MTK_QOS_LEGACY) || IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V2)
+unsigned int mtk_qos_get_boot_mode(void)
+{
+	struct device_node *qos_dev = NULL;
+	struct tag_bootmode *tag_boot = NULL;
+	unsigned int boot_mode = 0;
+
+	qos_dev = of_find_node_by_path("/chosen");
+	if (!qos_dev)
+		qos_dev = of_find_node_by_path("/chosen@0");
+	if (qos_dev) {
+		pr_info("get chosen_dev!\n");
+		tag_boot = (struct tag_bootmode *)of_get_property(qos_dev, "atag,boot", NULL);
+		if (tag_boot)
+			boot_mode = tag_boot->bootmode;
+		else
+			pr_info("qos failed to get boot mode\n");
+		}
+	pr_info("qos get boot mode = %d\n", boot_mode);
+	return boot_mode;
+}
+#endif
 
 int mtk_qos_probe(struct platform_device *pdev,
 			const struct mtk_qos_soc *soc)
@@ -130,6 +162,14 @@ int mtk_qos_probe(struct platform_device *pdev,
 		}
 	}
 
+#if IS_ENABLED(CONFIG_MTK_QOS_LEGACY) || IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V2)
+		//Not enable mtk qos in recovery mode
+	if (mtk_qos_get_boot_mode() == 2) {
+		mtk_qos_enable = 0;
+		pr_info("mtkqos, recovery mode, disable qos\n");
+	}
+#endif
+
 	qos->soc = soc;
 	qos->dev = &pdev->dev;
 
@@ -141,10 +181,11 @@ int mtk_qos_probe(struct platform_device *pdev,
 	qos->regsize = (unsigned int) resource_size(res);
 	qos_sram_init(qos->regs, qos->regsize);
 
+#if !(IS_ENABLED(CONFIG_MTK_QOS_LEGACY) || IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V2))
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	qos->regs = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(qos->regs))
-		pr_info("mtkqos: share not use sram\n");
+			return PTR_ERR(qos->regs);
 	else {
 		pr_info("mtkqos: find share sram node\n");
 		qos->regsize = (unsigned int) resource_size(res);
@@ -160,7 +201,7 @@ int mtk_qos_probe(struct platform_device *pdev,
 		qos->regsize = (unsigned int) resource_size(res);
 		qos_share_init_sram_ext(qos->regs, qos->regsize);
 	}
-
+#endif
 	if (mtk_qos_enable) {
 		m_qos = qos;
 		qos_ipi_init(qos);

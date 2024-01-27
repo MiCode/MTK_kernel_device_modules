@@ -171,9 +171,10 @@ int ged_bridge_gpu_hint_to_cpu(
 	int ret = 0;
 	set_api_sync_flag(in->hint);
 	trace_GPU_DVFS__Policy__Common__Sync_Api(in->hint);
-#ifdef CONFIG_MTK_FPSGO_V3
-	ret = fpsgo_notify_gpu_block(in->tid, in->i32BridgeFD, in->hint);
-#endif
+//k61 mark for this api <fpsgo_notify_gpu_block> is not existed after k510
+//#ifdef CONFIG_MTK_FPSGO_V3
+//	ret = fpsgo_notify_gpu_block(in->tid, in->i32BridgeFD, in->hint);
+//#endif
 	out->eError = GED_OK;
 	out->boost_flag = ret;
 	out->boost_value = ged_dvfs_boost_value();

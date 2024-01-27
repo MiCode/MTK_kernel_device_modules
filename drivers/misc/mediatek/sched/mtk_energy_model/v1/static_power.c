@@ -24,6 +24,7 @@
 #include <linux/cpufreq.h>
 #include "energy_model.h"
 
+#if IS_ENABLED(CONFIG_MTK_LEAKAGE_AWARE_TEMP)
 #define __LKG_PROCFS__ 0
 #define __LKG_DEBUG__ 0
 
@@ -276,7 +277,24 @@ int mtk_static_power_init(void)
 	ret = platform_driver_register(&mtk_static_power_driver);
 	return ret;
 }
+#else
+unsigned int mtk_get_leakage(unsigned int cpu, unsigned int opp, unsigned int temperature)
+{
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_get_leakage);
 
+int mtk_static_power_init(void)
+{
+	return 0;
+}
+#endif
+
+bool is_wl_support(void)
+{
+	return false;
+}
+EXPORT_SYMBOL_GPL(is_wl_support);
 
 MODULE_DESCRIPTION("MTK static power Platform Driver v0.1.1");
 MODULE_AUTHOR("Chienwei Chang <chiewei.chang@mediatek.com>");

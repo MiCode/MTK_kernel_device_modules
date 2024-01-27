@@ -87,9 +87,10 @@ struct shm_handle_list {
 	unsigned long addr;
 	struct list_head list;
 };
-
+#ifdef TEEI_FFA_SUPPORT
 static struct list_head g_shm_handle_link;
 static struct mutex shm_handle_mutex;
+#endif
 
 /* ARMv8.2 for CA55, CA75 etc */
 static int teei_cpu_id_arm82[] = {
@@ -282,6 +283,10 @@ void tz_free_shared_mem(void *addr, size_t size)
 
 int teei_move_cpu_context(int target_cpu_id, int original_cpu_id)
 {
+#ifndef TEEI_FFA_SUPPORT
+	teei_secure_call(N_SWITCH_CORE, teei_cpu_id[target_cpu_id],
+			teei_cpu_id[original_cpu_id], 0);
+#endif
 	return 0;
 }
 
@@ -366,9 +371,10 @@ int handle_switch_core(int cpu)
 
 	set_cpus_allowed_ptr(teei_switch_task, cpumask_of(switch_to_cpu_id));
 
-	teei_secure_call(N_SWITCH_CORE,
-			teei_cpu_id[switch_to_cpu_id], teei_cpu_id[cpu], 0);
-
+#ifndef TEEI_FFA_SUPPORT
+        teei_secure_call(N_SWITCH_CORE,
+                        teei_cpu_id[switch_to_cpu_id], teei_cpu_id[cpu], 0);
+#endif
 	current_cpu_id = switch_to_cpu_id;
 
 	IMSG_PRINTK("change cpu id from %d(0x%lx) to %d(0x%lx)\n",
@@ -392,10 +398,13 @@ static int nq_cpu_up_prep(unsigned int cpu)
 	if (cpu == TZ_PREFER_BIND_CORE) {
 		IMSG_DEBUG("cpu up : prepare for changing %d to %d\n",
 			sched_cpu, cpu);
-
+#ifdef TEEI_FFA_SUPPORT
 		retVal = add_work_entry(SWITCH_CORE_TYPE,
 				(unsigned long)sched_cpu, 0, 0);
-
+#else
+		retVal = add_work_entry(SWITCH_CORE_TYPE,
+                                (unsigned long)sched_cpu, 0, 0, 0);
+#endif
 		teei_notify_switch_fn();
 
 		down(&pm_sema);
@@ -414,8 +423,13 @@ static int nq_cpu_down_prep(unsigned int cpu)
 
 	if (cpu == sched_cpu) {
 		IMSG_PRINTK("cpu down prepare for %d.\n", cpu);
+#ifdef TEEI_FFA_SUPPORT
 		retVal = add_work_entry(SWITCH_CORE_TYPE, (unsigned long)cpu,
 						0, 0);
+#else
+		retVal = add_work_entry(SWITCH_CORE_TYPE, (unsigned long)cpu,
+                                                0, 0, 0);
+#endif
 		teei_notify_switch_fn();
 		down(&pm_sema);
 	} else if (is_prefer_core(cpu))
@@ -424,8 +438,14 @@ static int nq_cpu_down_prep(unsigned int cpu)
 			&& is_prefer_core_onlined()) {
 		IMSG_PRINTK("cpu down prepare for changing %d %d.\n",
 							sched_cpu, cpu);
+#ifdef TEEI_FFA_SUPPORT
 		retVal = add_work_entry(SWITCH_CORE_TYPE,
 				(unsigned long)sched_cpu, 0, 0);
+#else
+		retVal = add_work_entry(SWITCH_CORE_TYPE,
+                                (unsigned long)sched_cpu, 0, 0, 0);
+#endif
+
 		teei_notify_switch_fn();
 		down(&pm_sema);
 	}
@@ -438,8 +458,11 @@ static int nq_cpu_down_prep(unsigned int cpu)
 int t_os_load_image(void)
 {
 	int retVal = 0;
-
+#ifdef TEEI_FFA_SUPPORT
 	retVal = add_work_entry(SMC_CALL_TYPE, N_INVOKE_T_NQ, 0, 0);
+#else
+	retVal = add_work_entry(SMC_CALL_TYPE, N_INVOKE_T_NQ, 0, 0, 0);
+#endif
 	if (retVal != 0) {
 		IMSG_ERROR("[%s][%d] Failed to call the add_work_entry!\n",
 				__func__, __LINE__);
@@ -460,41 +483,13 @@ int t_os_load_image(void)
 	return retVal;
 }
 
-int ffa_register_shm_pool(unsigned long shm_pa, unsigned long shm_size)
-{
-	int retVal = 0;
-
-	retVal = soter_ffa_shm_register(shm_pa, shm_size, 0,
-			&soter_sec_world_id[SOTER_SEC_WORLD_ID_POOL]);
-
-	if (retVal != 0) {
-		IMSG_ERROR("[%s][%d] Failed to register memory from ff-a!\n",
-					__func__, __LINE__);
-		return retVal;
-	}
-
-	retVal = add_work_entry(SMC_CALL_TYPE, N_INIT_T_SOTER_POOL,
-			soter_sec_world_id[SOTER_SEC_WORLD_ID_POOL],
-			soter_sec_world_id[SOTER_SEC_WORLD_ID_POOL] >> 32);
-	if (retVal != 0) {
-		IMSG_ERROR("[%s][%d] TEEI: Failed to call add_work_entry!\n",
-					__func__, __LINE__);
-		return retVal;
-	}
-
-	teei_notify_switch_fn();
-
-	down(&(boot_sema));
-
-	return retVal;
-}
-
 static void boot_stage1(unsigned long vfs_addr, unsigned long tlog_addr)
 {
 	int retVal = 0;
 
 	switch_input_index = ((unsigned long)switch_input_index  + 1) % 10000;
 
+#ifdef TEEI_FFA_SUPPORT
 	retVal = soter_ffa_shm_register(tlog_addr, TZ_LOG_SIZE, 0,
 			&(soter_sec_world_id[SOTER_SEC_WORLD_ID_TLOG]));
 	if (retVal != 0) {
@@ -511,6 +506,15 @@ static void boot_stage1(unsigned long vfs_addr, unsigned long tlog_addr)
 				__func__, __LINE__, retVal);
 		return;
 	}
+#else
+	retVal = add_work_entry(SMC_CALL_TYPE, N_INIT_T_BOOT_STAGE1,
+                                        vfs_addr, tlog_addr, 0);
+	if (retVal != 0) {
+			IMSG_ERROR("[%s][%d] TEEI: Failed to call add_work_entry!\n",
+                        __func__, __LINE__);
+               return;
+    }
+#endif
 
 	teei_notify_switch_fn();
 
@@ -556,6 +560,7 @@ long teei_service_init_second(void)
 	return 0;
 }
 
+#ifdef TEEI_FFA_SUPPORT
 static int teei_bind_cpu(int cpu)
 {
 	struct cpumask mask = { CPU_BITS_NONE };
@@ -566,6 +571,7 @@ static int teei_bind_cpu(int cpu)
 
 	return 0;
 }
+#endif
 
 /**
  * @brief  init TEEI Framework
@@ -583,6 +589,9 @@ static int init_teei_framework(void)
 	long retVal = 0;
 	struct tz_log_state *s = dev_get_platdata(
 				&tz_drv_state->tz_log_pdev->dev);
+#ifndef TEEI_FFA_SUPPORT
+	phys_addr_t tz_log_buf_pa = page_to_phys(s->log_pages);
+#endif
 	boot_soter_flag = START_STATUS;
 
 	secure_wq = create_workqueue("Secure Call");
@@ -604,17 +613,22 @@ static int init_teei_framework(void)
 
 	TEEI_BOOT_FOOTPRINT("TEEI BOOT STAGE1 GOT CPU READ LOCK");
 
+#ifdef TEEI_FFA_SUPPORT
 	teei_bind_cpu(0);
-
 	boot_stage1((unsigned long)boot_vfs_addr, (unsigned long)s->log_pages);
-
-	TEEI_BOOT_FOOTPRINT("TEEI BOOT STAGE1 RETURN FROM TEE");
 
 #if !IS_ENABLED(CONFIG_MICROTRUST_DYNAMIC_CORE)
 #ifdef TEEI_SWITCH_BIG_CORE
 	teei_bind_cpu(TZ_PREFER_BIND_CORE);
 #endif
 #endif
+
+#else
+	boot_stage1((unsigned long)virt_to_phys((void *)boot_vfs_addr),
+						(unsigned long)tz_log_buf_pa);
+#endif
+
+	TEEI_BOOT_FOOTPRINT("TEEI BOOT STAGE1 RETURN FROM TEE");
 
 	teei_cpus_read_unlock();
 
@@ -718,6 +732,8 @@ int teei_get_max_freq(int cpu_index)
 }
 #endif
 
+#ifdef TEEI_FFA_SUPPORT
+#if IS_ENABLED(CONFIG_MICROTRUST_TEST_DRIVERS)
 static long teei_alloc_shm_handle(unsigned long arg)
 {
 	struct shm_handle_list *entry = NULL;
@@ -752,15 +768,15 @@ static long teei_alloc_shm_handle(unsigned long arg)
 		goto free_shm_buff;
 	}
 
-
+#ifdef TEEI_FFA_SUPPORT
 	retVal = soter_ffa_shm_register((unsigned long)virt_to_page(shm_buff),
 				ROUND_UP(size, SZ_4K), 0,
 				&handle_id);
 	if (retVal != 0) {
-		IMSG_ERROR("Failed to register shm, retVal = %ld\n", retVal);
+		IMSG_ERROR("Failed to register shm, retVal = %d\n", retVal);
 		goto free_list;
 	}
-
+#endif
 	memset(entry, 0, sizeof(struct shm_handle_list));
 
 	INIT_LIST_HEAD(&(entry->list));
@@ -788,9 +804,10 @@ del_list:
 	mutex_lock(&shm_handle_mutex);
 	list_del(&(entry->list));
 	mutex_unlock(&shm_handle_mutex);
-
+#ifdef TEEI_FFA_SUPPORT
 free_list:
 	kfree(entry);
+#endif
 
 free_shm_buff:
 	free_pages((unsigned long)shm_buff, get_order(ROUND_UP(size, SZ_4K)));
@@ -836,6 +853,9 @@ static long teei_release_shm_handle(unsigned long arg)
 		retVal = -EINVAL;
 		goto out;
 	}
+#ifdef TEEI_FFA_SUPPORT
+	soter_ffa_reclaim_buffer(handle_id);
+#endif
 
 	free_pages((unsigned long)shm_buff, get_order(ROUND_UP(size, SZ_4K)));
 
@@ -846,8 +866,8 @@ static long teei_release_shm_handle(unsigned long arg)
 out:
 	return retVal;
 }
-
-
+#endif /* CONFIG_MICROTRUST_TEST_DRIVERS */
+#endif /* TEEI_FFA_SUPPORT */
 
 static long teei_config_ioctl(struct file *file,
 				unsigned int cmd, unsigned long arg)
@@ -914,7 +934,8 @@ static long teei_config_ioctl(struct file *file,
 	case TEEI_CONFIG_IOCTL_UNLOCK:
 		complete(&boot_decryto_lock);
 		break;
-
+#ifdef TEEI_FFA_SUPPORT
+#if IS_ENABLED(CONFIG_MICROTRUST_TEST_DRIVERS)
 	case TEEI_CONFIG_IOCTL_ALLOC_HANDLE:
 		retVal = teei_alloc_shm_handle(arg);
 		if (retVal != 0) {
@@ -930,6 +951,8 @@ static long teei_config_ioctl(struct file *file,
 					retVal);
 		}
 		break;
+#endif
+#endif
 
 	default:
 			retVal = -EINVAL;
@@ -1363,10 +1386,10 @@ static int teei_client_init(void)
 	}
 
 	wake_up_process(teei_log_task);
-
+#ifdef TEEI_FFA_SUPPORT
 	mutex_init(&shm_handle_mutex);
 	INIT_LIST_HEAD(&g_shm_handle_link);
-
+#endif
 
 	IMSG_DEBUG("create the sub_thread successfully!\n");
 	ret_code = teei_vfs_init();

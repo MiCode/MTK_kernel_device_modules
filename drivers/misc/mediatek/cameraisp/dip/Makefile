@@ -41,6 +41,10 @@ obj-$(CONFIG_MTK_CAMERA_ISP_DIP_SUPPORT) += isp_6s/
 MTK_MSF_OFFSET := 1
 endif
 
+ifeq ($(CONFIG_MTK_CAMERA_DIP_ISP6S),m)
+	obj-y += $(subst ",,isp_6s)/
+endif
+
 ifeq ($(CONFIG_MACH_MT6853),y)
   obj-y += $(subst ",,isp_6s)/
   MTK_MSF_OFFSET := 1

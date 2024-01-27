@@ -2404,37 +2404,37 @@ static bool scp_ipi_table_init(struct mtk_mbox_device *scp_mboxdev, struct platf
 
 
 	/* wrapper_ipi_init */
-	if (!of_get_property(pdev->dev.of_node, "legacy_table", NULL)) {
+	if (!of_get_property(pdev->dev.of_node, "legacy-table", NULL)) {
 		pr_notice("[SCP]%s: wrapper_ipi don't exist\n", __func__);
 		return true;
 	}
 	ret = of_property_read_u32_index(pdev->dev.of_node,
-			"legacy_table", 0, &scp_ipi_legacy_id[0].out_id_0);
+			"legacy-table", 0, &scp_ipi_legacy_id[0].out_id_0);
 	if (ret) {
 		pr_notice("[SCP]%s:Cannot get out_id_0\n", __func__);
 	}
 	ret = of_property_read_u32_index(pdev->dev.of_node,
-			"legacy_table", 1, &scp_ipi_legacy_id[0].out_id_1);
+			"legacy-table", 1, &scp_ipi_legacy_id[0].out_id_1);
 	if (ret) {
 		pr_notice("[SCP]%s:Cannot get out_id_1\n", __func__);
 	}
 	ret = of_property_read_u32_index(pdev->dev.of_node,
-			"legacy_table", 2, &scp_ipi_legacy_id[0].in_id_0);
+			"legacy-table", 2, &scp_ipi_legacy_id[0].in_id_0);
 	if (ret) {
 		pr_notice("[SCP]%s:Cannot get in_id_0\n", __func__);
 	}
 	ret = of_property_read_u32_index(pdev->dev.of_node,
-			"legacy_table", 3, &scp_ipi_legacy_id[0].in_id_1);
+			"legacy-table", 3, &scp_ipi_legacy_id[0].in_id_1);
 	if (ret) {
 		pr_notice("[SCP]%s:Cannot get in_id_1\n", __func__);
 	}
 	ret = of_property_read_u32_index(pdev->dev.of_node,
-			"legacy_table", 4, &scp_ipi_legacy_id[0].out_size);
+			"legacy-table", 4, &scp_ipi_legacy_id[0].out_size);
 	if (ret) {
 		pr_notice("[%s]:Cannot get out_size\n", __func__);
 	}
 	ret = of_property_read_u32_index(pdev->dev.of_node,
-			"legacy_table", 5, &scp_ipi_legacy_id[0].in_size);
+			"legacy-table", 5, &scp_ipi_legacy_id[0].in_size);
 	if (ret) {
 		pr_notice("[SCP]%s:Cannot get in_size\n", __func__);
 	}

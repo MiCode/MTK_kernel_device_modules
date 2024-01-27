@@ -60,10 +60,13 @@ struct plat_xodata {
 	struct common_regs *common_regs;
 	struct clkbuf_hw hw;
 	spinlock_t *lock;
+	struct mutex mutex_lock;
 };
 
 extern struct plat_xodata mt6685_data;
 extern struct plat_xodata mt6685_tb_data;
 extern struct plat_xodata mt6377_data;
+extern struct plat_xodata mt6358_data;
+extern struct plat_xodata mt6359p_data;
 
 #endif /* CLKBUF_DCXO_6685P_H */

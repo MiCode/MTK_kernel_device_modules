@@ -61,7 +61,7 @@ static unsigned long create_notify_queue(unsigned long size)
 	switch_input_index = ((unsigned long)switch_input_index + 1) % 10000;
 
 	/* Call the smc_fast_call */
-
+	#ifdef TEEI_FFA_SUPPORT
 	retVal = soter_ffa_shm_register((unsigned long)virt_to_page(buff_addr),
 		       size, 0, &soter_sec_world_id[SOTER_SEC_WORLD_ID_NQ]);
 	if (retVal != 0) {
@@ -79,6 +79,16 @@ static unsigned long create_notify_queue(unsigned long size)
 		goto Destroy_buffer;
 
 	}
+#else
+	retVal = add_work_entry(SMC_CALL_TYPE, N_INIT_T_FC_BUF,
+                        virt_to_phys((void *)buff_addr), size, 0);
+	if (retVal != 0) {
+            IMSG_ERROR("[%s][%d] Failed to call the add_work_entry!\n",
+                            __func__, __LINE__);
+			goto Destroy_buffer;
+
+	}
+#endif
 
 	teei_notify_switch_fn();
 
@@ -111,6 +121,7 @@ static int init_nq_head(unsigned long buffer_addr, unsigned int type)
 	return 0;
 }
 
+#ifdef TEEI_FFA_SUPPORT
 static void teei_callback_fun(void *info)
 {
 }
@@ -132,7 +143,7 @@ static int teei_trigger_callback_irq(void)
 
 	return 0;
 }
-
+#endif
 int add_nq_entry(unsigned long long cmd_ID, unsigned long long sub_cmd_ID,
 			unsigned long long block_p, unsigned long long p0,
 			unsigned long long p1, unsigned long long p2)
@@ -168,10 +179,13 @@ int add_nq_entry(unsigned long long cmd_ID, unsigned long long sub_cmd_ID,
 
 	/* Call the rmb() to make sure setting entry before setting head */
 	rmb();
-
+#ifdef TEEI_FFA_SUPPORT
 	teei_add_irq_count();
 
 	teei_trigger_callback_irq();
+#else
+	teei_secure_call(N_ADD_TRIGGER_IRQ_COUNT, 0, 0, 0);
+#endif
 
 	mutex_unlock(&(g_nq_stat.nt_t_mutex));
 
@@ -211,11 +225,13 @@ int add_bdrv_nq_entry(unsigned long long cmd_ID, unsigned long long sub_cmd_ID,
 
 	/* Call the rmb() to make sure setting entry before setting head */
 	rmb();
-
+#ifdef TEEI_FFA_SUPPORT
 	teei_add_irq_count();
 
 	teei_trigger_callback_irq();
-
+#else
+	teei_secure_call(N_ADD_TRIGGER_IRQ_COUNT, 0, 0, 0);
+#endif
 	mutex_unlock(&(g_nq_stat.nt_t_mutex));
 
 	return 0;

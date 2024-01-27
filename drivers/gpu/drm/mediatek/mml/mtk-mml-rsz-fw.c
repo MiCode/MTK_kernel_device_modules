@@ -117,7 +117,7 @@ static void rsz_config(struct rsz_fw_in *in, struct rsz_fw_out *out,
 		max_nm = 1;
 		max_nm_prec = max_nm * prec;
 
-		coeff_step = mult_frac(max_nm_prec, m_m1_zoom, n_m1_zoom);
+		coeff_step = mult_frac_bit(max_nm_prec, m_m1_zoom, n_m1_zoom);
 
 		shift = offset >> RSZ_PREC_SHIFT;
 		coeff_index_approx_ini = (offset * prec -
@@ -132,8 +132,8 @@ static void rsz_config(struct rsz_fw_in *in, struct rsz_fw_out *out,
 		if (n_m1_zoom == m_m1_zoom) {
 			coeff_step = max_nm_prec;
 		} else {
-			coeff_step = mult_frac(max_nm_prec, n_m1_zoom, m_m1_zoom);
-			if (max_nm_prec != mult_frac(coeff_step, m_m1_zoom, n_m1_zoom))
+			coeff_step = mult_frac_bit(max_nm_prec, n_m1_zoom, m_m1_zoom);
+			if (max_nm_prec != mult_frac_bit(coeff_step, m_m1_zoom, n_m1_zoom))
 				coeff_step += 1; /* ceiling */
 		}
 
@@ -142,7 +142,7 @@ static void rsz_config(struct rsz_fw_in *in, struct rsz_fw_out *out,
 			shift = 0; /* integer offset defined in the output domain */
 			coeff_index_approx_ini = 0;
 		} else {
-			shift = ((coeff_step * offset) / max_nm_prec) >>
+			shift = (s32)(div_u64((coeff_step * offset), max_nm_prec)) >>
 				RSZ_PREC_SHIFT;
 			coeff_index_approx_ini = (coeff_step * offset -
 				(((u64)shift * max_nm_prec) <<
@@ -245,9 +245,9 @@ static void rsz_auto_align(struct rsz_fw_in *in, struct rsz_fw_out *out,
 			 * (int)((((M_m1_zoom*max_nm)/N_m1_zoom)*prec) + 0.5);
 			 */
 			cal_param->hori_luma_sub_ofst +=
-				(prec * (crop_width - 1) +
+				(s32)div_u64((prec * (crop_width - 1) +
 				(crop_subpix_w >> 5) -
-				(out->hori_step * (dst_width - 1))) / 2;
+				(out->hori_step * (dst_width - 1))), 2);
 
 			/* hardware requirement: always positive subpixel offset */
 			if (cal_param->hori_luma_sub_ofst < 0) {
@@ -272,10 +272,10 @@ static void rsz_auto_align(struct rsz_fw_in *in, struct rsz_fw_out *out,
 			} else { /* <1x */
 				cal_param->hori_luma_int_ofst += 0;
 
-				offset = (((crop_width - 1) * out->hori_step) +
+				offset = (s32)div_u64((((crop_width - 1) * out->hori_step) +
 					((crop_subpix_w * out->hori_step) >>
 					RSZ_PREC_SHIFT) - ((dst_width - 1) *
-					max_nm_prec)) / 2;
+					max_nm_prec)), 2);
 				cal_param->hori_luma_sub_ofst += offset;
 			}
 
@@ -300,9 +300,9 @@ static void rsz_auto_align(struct rsz_fw_in *in, struct rsz_fw_out *out,
 			 * (int)((((M_m1_zoom*max_nm)/N_m1_zoom)*prec) + 0.5);
 			 */
 			cal_param->vert_luma_sub_ofst +=
-				(prec * (crop_height - 1) +
+				(s32)div_u64((prec * (crop_height - 1) +
 				(crop_subpix_h >> 5) -
-				(out->vert_step * (dst_height - 1))) / 2;
+				(out->vert_step * (dst_height - 1))), 2);
 
 			/* hardware requirement: always positive subpixel offset */
 			if (cal_param->vert_luma_sub_ofst < 0) {
@@ -328,10 +328,10 @@ static void rsz_auto_align(struct rsz_fw_in *in, struct rsz_fw_out *out,
 			} else { /* <1x */
 				cal_param->vert_luma_int_ofst += 0;
 
-				offset = (((crop_height - 1) * out->vert_step) +
+				offset = (s32)div_u64((((crop_height - 1) * out->vert_step) +
 					((crop_subpix_h * out->vert_step) >>
 					RSZ_PREC_SHIFT) - ((dst_height - 1) *
-					max_nm_prec)) / 2;
+					max_nm_prec)), 2);
 				cal_param->vert_luma_sub_ofst += offset;
 			}
 
@@ -361,14 +361,14 @@ static void rsz_ofst_check(struct rsz_fw_out *out,
 	if (out->hori_algo == 0) {
 		if (cal_param->hori_luma_sub_ofst >= step_size_6tap) {
 			cal_param->hori_luma_int_ofst +=
-				cal_param->hori_luma_sub_ofst / step_size_6tap;
+				(s32)div_u64(cal_param->hori_luma_sub_ofst, step_size_6tap);
 			cal_param->hori_luma_sub_ofst =
 				cal_param->hori_luma_sub_ofst % step_size_6tap;
 		}
 	} else {
 		if (cal_param->hori_luma_sub_ofst >= step_size_acc) {
 			cal_param->hori_luma_int_ofst +=
-				cal_param->hori_luma_sub_ofst / step_size_acc;
+				(s32)div_u64(cal_param->hori_luma_sub_ofst, step_size_acc);
 			cal_param->hori_luma_sub_ofst =
 				cal_param->hori_luma_sub_ofst % step_size_acc;
 		}
@@ -377,14 +377,14 @@ static void rsz_ofst_check(struct rsz_fw_out *out,
 	if (out->vert_algo == 0) {
 		if (cal_param->vert_luma_sub_ofst >= step_size_6tap) {
 			cal_param->vert_luma_int_ofst +=
-				cal_param->vert_luma_sub_ofst / step_size_6tap;
+				(s32)div_u64(cal_param->vert_luma_sub_ofst, step_size_6tap);
 			cal_param->vert_luma_sub_ofst =
 				cal_param->vert_luma_sub_ofst % step_size_6tap;
 		}
 	} else {
 		if (cal_param->vert_luma_sub_ofst >= step_size_acc) {
 			cal_param->vert_luma_int_ofst +=
-				cal_param->vert_luma_sub_ofst / step_size_acc;
+				(s32)div_u64(cal_param->vert_luma_sub_ofst, step_size_acc);
 			cal_param->vert_luma_sub_ofst =
 				cal_param->vert_luma_sub_ofst % step_size_acc;
 		}
@@ -396,8 +396,8 @@ static void rsz_auto_coef_trunc(struct rsz_fw_in *in, struct rsz_fw_out *out,
 {
 	u32 hori_ratio, vert_ratio;
 
-	hori_ratio = ((in->out_width << RSZ_RATIO_SHIFT) - 1) / in->crop.r.width + 1;
-	vert_ratio = ((in->out_height << RSZ_RATIO_SHIFT) - 1) / in->crop.r.height + 1;
+	hori_ratio = (u32)div_u64(((in->out_width << RSZ_RATIO_SHIFT) - 1), in->crop.r.width) + 1;
+	vert_ratio = (u32)div_u64(((in->out_height << RSZ_RATIO_SHIFT) - 1), in->crop.r.height) + 1;
 	cal_param->hori_cubic_trunc_en = 0;
 	cal_param->hori_luma_cubic_trunc_bit = 0;
 	cal_param->hori_chroma_cubic_trunc_bit = 0;
@@ -466,12 +466,12 @@ static s32 rsz_ultra_res_reg(s32 in_value, s32 in_ratio,
 	if (in_ratio <= reg_ratio_thr0) {
 		out_value = in_value;
 	} else if (in_ratio <= reg_ratio_thr1) {
-		alpha = (in_ratio - reg_ratio_thr0) * (1 << ALPHA_BITS) /
-			(reg_ratio_thr1 - reg_ratio_thr0);
+		alpha = (s32)div_u64((in_ratio - reg_ratio_thr0) * (1 << ALPHA_BITS),
+			(reg_ratio_thr1 - reg_ratio_thr0));
 		out_value = alpha_blending(tar_value1, in_value, alpha, ALPHA_BITS);
 	} else if (in_ratio <= reg_ratio_thr2) {
-		alpha = (in_ratio - reg_ratio_thr1) * (1 << ALPHA_BITS) /
-			(reg_ratio_thr2 - reg_ratio_thr1);
+		alpha = (s32)div_u64((in_ratio - reg_ratio_thr1) * (1 << ALPHA_BITS),
+			(reg_ratio_thr2 - reg_ratio_thr1));
 		out_value = alpha_blending(tar_value2, tar_value1, alpha, ALPHA_BITS);
 	} else {
 		out_value = tar_value2;
@@ -490,7 +490,7 @@ static void rsz_ultra_res(struct rsz_fw_out *out,
 	if (max_step < 4096) /* scaling ratio > 8x */
 		ratio = 1 << 13; /* ratio = 8196: 8x */
 	else /* 1x < scaling ratio < 8x */
-		ratio = ((prec << RSZ_PREC_SHIFT) / max_step) >>
+		ratio = (u32)(div_u64((prec << RSZ_PREC_SHIFT), max_step)) >>
 			(RSZ_PREC_SHIFT - 10);
 
 	cal_param->tap_adapt_slope = rsz_ultra_res_reg(
@@ -571,15 +571,15 @@ void rsz_fw(struct rsz_fw_in *in, struct rsz_fw_out *out, bool en_ur)
 
 	if (out->hori_algo == SCALER_6_TAPS) {
 		out->hori_int_ofst = cal_param.hori_luma_int_ofst;
-		out->hori_sub_ofst = ((s64)cal_param.hori_luma_sub_ofst <<
-			RSZ_TILE_SUBPIXEL_BITS) / out->precision_x;
+		out->hori_sub_ofst = (u32)div_u64(((s64)cal_param.hori_luma_sub_ofst <<
+			RSZ_TILE_SUBPIXEL_BITS), out->precision_x);
 	} else { /* (1 << RSZ_TILE_SUBPIXEL_BITS) == out->precision_x */
 		s64 subpix_x;
 
 		subpix_x = ((s64)cal_param.hori_luma_int_ofst <<
 			RSZ_TILE_SUBPIXEL_BITS) + cal_param.hori_luma_sub_ofst;
-		subpix_x = ((subpix_x << RSZ_TILE_SUBPIXEL_BITS) +
-			out->hori_step - 1) / out->hori_step;
+		subpix_x = (s64)div_u64(((subpix_x << RSZ_TILE_SUBPIXEL_BITS) +
+			out->hori_step - 1), out->hori_step);
 
 		out->hori_int_ofst = subpix_x >> RSZ_TILE_SUBPIXEL_BITS;
 		out->hori_sub_ofst = subpix_x -
@@ -588,15 +588,15 @@ void rsz_fw(struct rsz_fw_in *in, struct rsz_fw_out *out, bool en_ur)
 
 	if (out->vert_algo == SCALER_6_TAPS) {
 		out->vert_int_ofst = cal_param.vert_luma_int_ofst;
-		out->vert_sub_ofst = ((s64)cal_param.vert_luma_sub_ofst <<
-			RSZ_TILE_SUBPIXEL_BITS) / out->precision_y;
+		out->vert_sub_ofst = (u32)div_u64(((s64)cal_param.vert_luma_sub_ofst <<
+			RSZ_TILE_SUBPIXEL_BITS), out->precision_y);
 	} else { /* (1 << RSZ_TILE_SUBPIXEL_BITS) == out->precision_y */
 		s64 subpix_y;
 
 		subpix_y = ((s64)cal_param.vert_luma_int_ofst <<
 			RSZ_TILE_SUBPIXEL_BITS) + cal_param.vert_luma_sub_ofst;
-		subpix_y = ((subpix_y << RSZ_TILE_SUBPIXEL_BITS) +
-			out->vert_step - 1) / out->vert_step;
+		subpix_y = (s64)div_u64(((subpix_y << RSZ_TILE_SUBPIXEL_BITS) +
+			out->vert_step - 1), out->vert_step);
 
 		out->vert_int_ofst = subpix_y >> RSZ_TILE_SUBPIXEL_BITS;
 		out->vert_sub_ofst = subpix_y -

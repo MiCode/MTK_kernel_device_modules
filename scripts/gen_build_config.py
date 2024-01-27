@@ -60,9 +60,6 @@ def main(**args):
     if not os.path.exists(gen_build_config_dir):
         os.makedirs(gen_build_config_dir)
 
-    mode_config = ''
-    if (build_mode == 'eng') or (build_mode == 'userdebug'):
-          mode_config = '%s.config' % (build_mode)
     project_defconfig = ''
     project_defconfig_name = ''
     if kernel_defconfig:
@@ -72,15 +69,25 @@ def main(**args):
     else:
           project_defconfig_name = '%s_defconfig' % (project)
     defconfig_dir = ''
+    kernel_arch = ''
     if project_defconfig_name != 'gki_defconfig':
         if os.path.exists('%s/arch/arm/configs/%s' % (abs_kernel_dir, project_defconfig_name)):
             defconfig_dir = 'arch/arm/configs'
+            kernel_arch = 'arm'
         elif os.path.exists('%s/arch/arm64/configs/%s' % (abs_kernel_dir, project_defconfig_name)):
             defconfig_dir = 'arch/arm64/configs'
+            kernel_arch = 'arm64'
         else:
             print('Error: cannot find project defconfig file under ' + abs_kernel_dir)
             sys.exit(2)
         project_defconfig = '%s/%s/%s' % (abs_kernel_dir, defconfig_dir, project_defconfig_name)
+
+    mode_config = ''
+    if (build_mode == 'eng') or (build_mode == 'userdebug'):
+        kernel_bit = ''
+        if kernel_arch == 'arm':
+            kernel_bit = '_32'
+        mode_config = '%s%s.config' % (build_mode, kernel_bit)
 
     device_modules_build_config = ''
     ext_modules = ''
@@ -113,10 +120,16 @@ def main(**args):
     file_text.append("  export SOURCE_DATE_EPOCH=0")
     file_text.append("  export GKI_SOURCE_DATE_EPOCH=0")
     file_text.append("fi")
+    if kernel_arch == 'arm':
+        file_text.append("ARCH=arm")
+        file_text.append("NDK_TRIPLE=arm-linux-androideabi31")
 
     file_text.append("\nDEFCONFIG=olddefconfig")
     all_defconfig = '${ROOT_DIR}/${KERNEL_DIR}/arch/arm64/configs/gki_defconfig'
     pre_defconfig_cmds = 'cd ${KERNEL_DIR} && make O=${OUT_DIR} gki_defconfig && cd ${ROOT_DIR}'
+    if kernel_arch == 'arm':
+        all_defconfig = ''
+        pre_defconfig_cmds = 'mkdir -p ${OUT_DIR} && touch ${OUT_DIR}/.config'
     if project_defconfig_name != 'gki_defconfig':
         kernel_defconfig_overlays_files = ''
         for name in kernel_defconfig_overlays.split():
@@ -172,16 +185,28 @@ def main(**args):
 
     file_text.append("DIST_CMDS='cp -p ${OUT_DIR}/.config ${DIST_DIR}'\n")
 
-    gen_build_config_gki_goals = '%s.gki_goals' % (gen_build_config)
-    file_handle = open(gen_build_config_gki_goals, 'w')
-    file_handle.write('MAKE_GOALS=\"PAHOLE_FLAGS=\"--btf_gen_floats\" ${MAKE_GOALS} Image.lz4 Image.gz\"')
-    file_handle.close()
-    gki_build_config_fragments = '  GKI_BUILD_CONFIG_FRAGMENTS=%s' % (gen_build_config_gki_goals)
+    gki_build_config_fragments = ''
+    if kernel_arch == 'arm64':
+        gen_build_config_gki_goals = '%s.gki_goals' % (gen_build_config)
+        file_handle = open(gen_build_config_gki_goals, 'w')
+        file_handle.write('MAKE_GOALS=\"PAHOLE_FLAGS=\"--btf_gen_floats\" ${MAKE_GOALS} Image.lz4 Image.gz\"')
+        file_handle.close()
+        gki_build_config_fragments = '  GKI_BUILD_CONFIG_FRAGMENTS=%s' % (gen_build_config_gki_goals)
 
-    file_text.append("if [ \"x${PROJECT_DEFCONFIG_NAME}\" != \"xgki_defconfig\" ]; then")
-    file_text.append("  GKI_BUILD_CONFIG=${KERNEL_DIR}/build.config.gki.aarch64.vendor")
-    file_text.append(gki_build_config_fragments)
-    file_text.append("fi")
+        file_text.append("if [ \"x${PROJECT_DEFCONFIG_NAME}\" != \"xgki_defconfig\" ]; then")
+        file_text.append("  GKI_BUILD_CONFIG=${KERNEL_DIR}/build.config.gki.aarch64.vendor")
+        file_text.append(gki_build_config_fragments)
+        file_text.append("fi")
+    else:
+        gen_build_config_arm = '%s.arm' % (gen_build_config)
+        file_handle = open(gen_build_config_arm, 'w')
+        file_handle.write('. ${KERNEL_DIR}/build.config.arm')
+        file_handle.write('\nFILES=\"${FILES} vmlinux.symvers modules.builtin modules.builtin.modinfo\"')
+        file_handle.close()
+        gki_build_config_fragments = 'GKI_BUILD_CONFIG_FRAGMENTS=${REL_GEN_BUILD_CONFIG_DIR}/build.config.arm'
+
+        file_text.append(gki_build_config_fragments)
+
     file_text.append("GKI_PATH=${ROOT_DIR}/../prebuilts/perl/linux-x86/bin:${ROOT_DIR}/build/kernel/build-tools/path/linux-x86:/usr/bin:/bin")
     file_text.append("GKI_KCONFIG_EXT_PREFIX=${KCONFIG_EXT_PREFIX}")
     file_text.append("GKI_VENDOR_DEFCONFIG=${DEFCONFIG}")

@@ -30,7 +30,7 @@ static int plat_cpu_limit;
 
 void fbt_notify_CM_limit(int reach_limit)
 {
-#if IS_ENABLED(CONFIG_MTK_CM_MGR)
+#if IS_ENABLED(CONFIG_MTK_CM_MGR) || IS_ENABLED(CONFIG_MTK_CM_MGR_LEGACY_V1)
 	cm_mgr_perf_set_status(reach_limit);
 #endif
 	fpsgo_systrace_c_fbt_debug(-100, 0, reach_limit, "notify_cm");

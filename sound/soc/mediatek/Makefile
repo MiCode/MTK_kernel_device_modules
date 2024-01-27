@@ -6,6 +6,9 @@ endif
 ifneq ($(wildcard $(srctree)/$(src)/mt6873/Makefile),)
 obj-$(CONFIG_SND_SOC_MT6873) += mt6873/
 endif
+ifneq ($(wildcard $(srctree)/$(src)/mt6885/Makefile),)
+obj-$(CONFIG_SND_SOC_MT6885) += mt6885/
+endif
 ifneq ($(wildcard $(srctree)/$(src)/mt8188/Makefile),)
 obj-$(CONFIG_SND_SOC_MT8188) += mt8188/
 endif
@@ -23,6 +26,9 @@ obj-$(CONFIG_SND_SOC_MT6897) += mt6897/
 endif
 ifneq ($(wildcard $(srctree)/$(src)/mt6989/Makefile),)
 obj-$(CONFIG_SND_SOC_MT6989) += mt6989/
+endif
+ifneq ($(wildcard $(srctree)/$(src)/mt6768/Makefile),)
+obj-$(CONFIG_SND_SOC_MT6768) += mt6768/
 endif
 # vow related code
 obj-$(CONFIG_MTK_VOW_SUPPORT) += vow/

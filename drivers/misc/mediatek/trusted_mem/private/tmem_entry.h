@@ -35,7 +35,7 @@ int tmem_core_regmgr_offline(enum TRUSTED_MEM_TYPE mem_type);
 bool tmem_core_is_device_registered(enum TRUSTED_MEM_TYPE mem_type);
 u32 tmem_core_get_min_chunk_size(enum TRUSTED_MEM_TYPE mem_type);
 u32 tmem_core_get_max_pool_size(enum TRUSTED_MEM_TYPE mem_type);
-bool tmem_core_get_region_info(enum TRUSTED_MEM_TYPE mem_type, u64 *pa,
+bool tmem_core_get_region_info(enum TRUSTED_MEM_TYPE mem_type, phys_addr_t *pa,
 			       u32 *size);
 int tmem_query_ffa_handle_to_pa(u64 ffa_handle, uint64_t *phy_addr);
 int tmem_query_gz_handle_to_pa(enum TRUSTED_MEM_TYPE mem_type, u32 alignment,

@@ -265,7 +265,7 @@ static int getc_for_read(struct file *file, char *p)
 	body = inst_p->vaddr;
 	if (inst_p->read_offset >= inst_p->debug_buf_size) {
 		pr_notice("%s read offset is invalid, :%lu\n",
-			__func__, inst_p->read_offset);
+			__func__, (unsigned long) inst_p->read_offset);
 		inst_p->read_offset = 0;
 	}
 	*p = body[inst_p->read_offset];
@@ -410,11 +410,11 @@ static int lookup_reserved_memory(void)
 
 	pr_info("%s, start: 0x%llx, size: 0x%llx\n",
 		ATF_LOG_RESERVED_MEMORY_KEY,
-		info.debug_buf_paddr, info.total_size);
+		(unsigned long long) info.debug_buf_paddr, (unsigned long long) info.total_size);
 	if ((info.debug_buf_paddr == 0) ||
 		(info.total_size == 0)) {
 		pr_notice("debug buf physical addr or size is zero:0x%llx 0x%llx\n",
-		info.debug_buf_paddr, info.total_size);
+		(unsigned long long) info.debug_buf_paddr, (unsigned long long) info.total_size);
 		return -EINVAL;
 	}
 	/* remap reserved memory as non-cacheable */

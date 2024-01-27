@@ -38,6 +38,7 @@
 #include "ccci_util_log.h"
 #include "ccci_util_lib_main.h"
 #include "ccci_util_md_mem.h"
+#include "ccci_util_lib_reserved_mem.h"
 
 /*************************************************************************
  **** Local debug option for this file only ******************************
@@ -561,7 +562,7 @@ void __weak *vmap_reserved_mem(phys_addr_t start,
 	pr_debug("[ccci/dummy] %s is not supported!\n", __func__);
 	return NULL;
 }
-
+#if IS_ENABLED(CONFIG_ARM64)
 void __iomem *ccci_map_phy_addr(phys_addr_t phy_addr, unsigned int size)
 {
 	void __iomem *map_addr = NULL;
@@ -583,6 +584,28 @@ void __iomem *ccci_map_phy_addr(phys_addr_t phy_addr, unsigned int size)
 	}
 	return map_addr;
 }
+#else
+void __iomem *ccci_map_phy_addr(phys_addr_t phy_addr, unsigned int size)
+{
+  	void __iomem *map_addr = NULL;
+  	pgprot_t prot;
+
+  	phy_addr &= PAGE_MASK;
+  	if (!pfn_valid(__phys_to_pfn(phy_addr))) {
+  		map_addr = ioremap_wc(phy_addr, size);
+		CCCI_UTIL_INF_MSG("ioremap_wc: (%lx %px %d)\n",
+  			(unsigned long)phy_addr, map_addr, size);
+  	} else {
+  		prot = pgprot_writecombine(PAGE_KERNEL);
+  		map_addr = (void __iomem *)vmap_reserved_mem(
+  			phy_addr, size, prot);
+		CCCI_UTIL_INF_MSG("vmap_reserved_mem: (%lx %px %d)\n",
+  			(unsigned long)phy_addr, map_addr, size);
+  	}
+  	return map_addr;
+}
+#endif
+
 EXPORT_SYMBOL(ccci_map_phy_addr);
 
 static void md_chk_hdr_info_parse(void)
@@ -730,13 +753,6 @@ static void verify_md_enable_setting(void)
 	}
 }
 
-
-int __weak free_reserved_memory(phys_addr_t start_phys, phys_addr_t end_phys)
-{
-	pr_debug("[ccci/dummy] %s is not supported!\n", __func__);
-	return 0;
-}
-
 static void dump_retrieve_info(void)
 {
 	int retrieve_num = 0, i;
@@ -768,7 +784,7 @@ static void dump_retrieve_info(void)
 			if (mtk_ccci_find_args_val("free_in_kernel",
 					(unsigned char *)&free_in_kernel, sizeof(int))
 					&& free_in_kernel == 1) {
-				ret = free_reserved_memory(array[0],
+				ret = free_reserved_memory_ccci(array[0],
 						array[0] + array[1]);
 				CCCI_UTIL_INF_MSG(
 				"free_reserved_memory result=%d\n",
@@ -838,7 +854,7 @@ _common_process:
 			iounmap(s_g_lk_inf_base);
 		} else {
 			vunmap(s_g_lk_inf_base);
-			ret = free_reserved_memory(s_g_tag_phy_addr,
+			ret = free_reserved_memory_ccci(s_g_tag_phy_addr,
 				s_g_tag_phy_addr + MAX_LK_INFO_SIZE);
 			CCCI_UTIL_INF_MSG(
 				"unmap && free reserved tag result=%d\n", ret);

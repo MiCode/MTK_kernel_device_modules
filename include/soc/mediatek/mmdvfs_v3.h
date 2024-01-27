@@ -89,7 +89,7 @@ enum {
 	USER_NUM
 };
 
-#if IS_ENABLED(CONFIG_MTK_MMDVFS)
+#if IS_ENABLED(CONFIG_MTK_MMDVFS) && IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 int mtk_mmdvfs_get_ipi_status(void);
 int mtk_mmdvfs_enable_vcp(const bool enable, const u8 idx);
 int mtk_mmdvfs_enable_ccu(const bool enable, const u8 idx);
@@ -131,7 +131,11 @@ static inline int mtk_mmdvfs_v3_set_force_step(const u16 pwr_idx, const s16 opp)
 static inline int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp) { return 0; }
 static inline int mtk_mmdvfs_fmeter_register_notifier(struct notifier_block *nb) { return 0; }
 
+#if IS_ENABLED(CONFIG_MTK_MMDVFS)
+void mmdvfs_set_lp_mode(bool lp_mode);
+#else
 static inline void mmdvfs_set_lp_mode(bool lp_mode) { return; }
+#endif
 static inline void mmdvfs_call_ccu_set_fp(call_ccu fp) {return; }
 static inline void mmdvfs_rc_enable_set_fp(rc_enable fp) { return; }
 

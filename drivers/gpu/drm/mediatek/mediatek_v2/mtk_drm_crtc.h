@@ -33,8 +33,13 @@
 #include "slbc_ops.h"
 #include "mtk_disp_pq_helper.h"
 
+#if IS_ENABLED(CONFIG_ARM64)
 #define MAX_CRTC 4
 #define OVL_LAYER_NR 15L
+#else
+#define MAX_CRTC 3
+#endif
+#define OVL_LAYER_NR 12L
 #define OVL_PHY_LAYER_NR 4L
 #define RDMA_LAYER_NR 1UL
 #define EXTERNAL_INPUT_LAYER_NR 2UL
@@ -554,6 +559,7 @@ enum MTK_CRTC_COLOR_FMT {
 	EXPR(CLIENT_EVENT_LOOP)                                                 \
 	EXPR(CLIENT_SUB_CFG)                                                   \
 	EXPR(CLIENT_DSI_CFG)                                                   \
+	EXPR(CLIENT_SEC_CFG)                                                   \
 	EXPR(CLIENT_PQ)                                                        \
 	EXPR(CLIENT_TYPE_MAX)
 
@@ -865,6 +871,9 @@ struct spr_type_map {
 };
 
 struct pq_common_data {
+	atomic_t pq_get_irq;
+	atomic_t pq_irq_trig_src;
+	wait_queue_head_t pq_get_irq_wq;
 	unsigned int old_persist_property[32];
 	unsigned int new_persist_property[32];
 	struct pq_tuning_pa_base tuning_pa_table[TUNING_REG_MAX];

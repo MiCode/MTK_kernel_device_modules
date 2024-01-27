@@ -5,6 +5,9 @@
 
 #include <linux/delay.h>
 #include <linux/init.h>
+#ifndef MODULE
+#include <linux/kallsyms.h>
+#endif
 #include <linux/mm.h>
 #include <linux/module.h>
 #include <linux/of_fdt.h>

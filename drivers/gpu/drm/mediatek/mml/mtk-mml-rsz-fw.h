@@ -9,6 +9,13 @@
 #include <linux/types.h>
 #include "mtk-mml-core.h"
 
+#define mult_frac_bit(x, number, bit)\
+({\
+	typeof(x) quot = (x) >> (bit);\
+	typeof(x) rem = (x) & ((1 << (bit)) - 1);\
+	quot * (number) + ((rem * (number)) >> (bit));\
+})
+
 struct rsz_fw_in {
 	u32 in_width;
 	u32 in_height;

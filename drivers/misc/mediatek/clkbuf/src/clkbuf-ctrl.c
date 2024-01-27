@@ -51,6 +51,8 @@ static int (*sub_init[])(struct clkbuf_dts *array, struct device *dev) = {
 };
 
 static const struct of_device_id clkbuf_of_match[] = {
+	{ .compatible = "mediatek,mt6768-clkbuf" },
+	{ .compatible = "mediatek,mt6885-clkbuf" },
 	{ .compatible = "mediatek,mt6897-clkbuf" },
 	{ .compatible = "mediatek,mt6985-clkbuf" },
 	{ .compatible = "mediatek,mt6989-clkbuf" },
@@ -343,3 +345,4 @@ MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("MediaTek CLKBUF CTRL Driver");
 MODULE_AUTHOR("Kuan-Hsin Lee <kuan-hsin.lee@mediatek.com>");
 MODULE_SOFTDEP("pre: mt6685-core");
+MODULE_SOFTDEP("pre: mt6397");

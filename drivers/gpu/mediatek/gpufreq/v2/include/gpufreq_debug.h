@@ -90,7 +90,11 @@
 /**************************************************
  * Function
  **************************************************/
+#if defined(MTK_GPU_EB_SUPPORT)
 void gpufreq_debug_init(unsigned int dual_buck, unsigned int gpueb_support,
 	const struct gpufreq_shared_status *shared_status);
+#else
+	void gpufreq_debug_init(unsigned int dual_buck, unsigned int gpueb_support);
+#endif
 
 #endif /* __GPUFREQ_DEBUG_H__ */

@@ -58,9 +58,11 @@ struct plat_pmifdata {
 	spinlock_t *lock;
 };
 
-extern void spmi_dump_pmif_record_reg(void);
+extern void spmi_dump_pmif_record_reg(void) __attribute__((weak));
+
 extern struct plat_pmifdata pmif_data_v1;
 extern struct plat_pmifdata pmif_data_v2;
 extern struct plat_pmifdata pmif_data_v3;
+extern struct plat_pmifdata pmif_data_lv1;
 
 #endif /* CLKBUF_DCXO_6685P_H */

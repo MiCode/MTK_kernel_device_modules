@@ -50,69 +50,44 @@ enum debug_dump_tx_rx_index {
 
 typedef void (*UARTHUB_IRQ_CB) (unsigned int err_type);
 
-#define KERNEL_UARTHUB_open                       UARTHUB_open
-#define KERNEL_UARTHUB_close                      UARTHUB_close
-
-#define KERNEL_UARTHUB_dev0_is_uarthub_ready      UARTHUB_dev0_is_uarthub_ready
-#define KERNEL_UARTHUB_get_host_wakeup_status     UARTHUB_get_host_wakeup_status
-#define KERNEL_UARTHUB_get_host_set_fw_own_status UARTHUB_get_host_set_fw_own_status
-#define KERNEL_UARTHUB_dev0_is_txrx_idle          UARTHUB_dev0_is_txrx_idle
-#define KERNEL_UARTHUB_dev0_set_tx_request        UARTHUB_dev0_set_tx_request
-#define KERNEL_UARTHUB_dev0_set_rx_request        UARTHUB_dev0_set_rx_request
-#define KERNEL_UARTHUB_dev0_set_txrx_request      UARTHUB_dev0_set_txrx_request
-#define KERNEL_UARTHUB_dev0_clear_tx_request      UARTHUB_dev0_clear_tx_request
-#define KERNEL_UARTHUB_dev0_clear_rx_request      UARTHUB_dev0_clear_rx_request
-#define KERNEL_UARTHUB_dev0_clear_txrx_request    UARTHUB_dev0_clear_txrx_request
-#define KERNEL_UARTHUB_get_uart_cmm_rx_count      UARTHUB_get_uart_cmm_rx_count
-#define KERNEL_UARTHUB_is_assert_state            UARTHUB_is_assert_state
-
-#define KERNEL_UARTHUB_irq_register_cb            UARTHUB_irq_register_cb
-#define KERNEL_UARTHUB_bypass_mode_ctrl           UARTHUB_bypass_mode_ctrl
-#define KERNEL_UARTHUB_is_bypass_mode             UARTHUB_is_bypass_mode
-#define KERNEL_UARTHUB_config_internal_baud_rate  UARTHUB_config_internal_baud_rate
-#define KERNEL_UARTHUB_config_external_baud_rate  UARTHUB_config_external_baud_rate
-#define KERNEL_UARTHUB_assert_state_ctrl          UARTHUB_assert_state_ctrl
-#define KERNEL_UARTHUB_sw_reset                   UARTHUB_sw_reset
-#define KERNEL_UARTHUB_md_adsp_fifo_ctrl          UARTHUB_md_adsp_fifo_ctrl
-#define KERNEL_UARTHUB_dump_debug_info            UARTHUB_dump_debug_info
-#define KERNEL_UARTHUB_dump_debug_info_with_tag   UARTHUB_dump_debug_info_with_tag
-#define KERNEL_UARTHUB_config_host_loopback       UARTHUB_config_host_loopback
-#define KERNEL_UARTHUB_config_cmm_loopback        UARTHUB_config_cmm_loopback
-#define KERNEL_UARTHUB_debug_dump_tx_rx_count     UARTHUB_debug_dump_tx_rx_count
-#define KERNEL_UARTHUB_reset_flow_control         UARTHUB_reset_flow_control
-
-int UARTHUB_open(void);
-int UARTHUB_close(void);
-
-int UARTHUB_dev0_is_uarthub_ready(void);
-int UARTHUB_get_host_wakeup_status(void);
-int UARTHUB_get_host_set_fw_own_status(void);
-int UARTHUB_dev0_is_txrx_idle(int rx);
-int UARTHUB_dev0_set_tx_request(void);
-int UARTHUB_dev0_set_rx_request(void);
-int UARTHUB_dev0_set_txrx_request(void);
-int UARTHUB_dev0_clear_tx_request(void);
-int UARTHUB_dev0_clear_rx_request(void);
-int UARTHUB_dev0_clear_txrx_request(void);
-int UARTHUB_get_uart_cmm_rx_count(void);
-int UARTHUB_is_assert_state(void);
-
-int UARTHUB_irq_register_cb(UARTHUB_IRQ_CB irq_callback);
-int UARTHUB_bypass_mode_ctrl(int enable);
-int UARTHUB_is_bypass_mode(void);
-int UARTHUB_config_internal_baud_rate(int dev_index, enum UARTHUB_baud_rate rate);
-int UARTHUB_config_external_baud_rate(enum UARTHUB_baud_rate rate);
-int UARTHUB_assert_state_ctrl(int assert_ctrl);
-int UARTHUB_reset_flow_control(void);
-int UARTHUB_sw_reset(void);
-int UARTHUB_md_adsp_fifo_ctrl(int enable);
-int UARTHUB_dump_debug_info(void);
-int UARTHUB_dump_debug_info_with_tag(const char *tag);
-int UARTHUB_config_host_loopback(int dev_index, int tx_to_rx, int enable);
-int UARTHUB_config_cmm_loopback(int tx_to_rx, int enable);
-int UARTHUB_debug_dump_tx_rx_count(const char *tag, enum debug_dump_tx_rx_index trigger_point);
-int UARTHUB_debug_monitor_stop(int stop);
-int UARTHUB_debug_monitor_clr(void);
+struct uarthub_drv_cbs {
+	int (*open) (void);
+	int (*close) (void);
+	int (*dev0_is_uarthub_ready) (const char *tag);
+	int (*get_host_wakeup_status) (void);
+	int (*get_host_set_fw_own_status) (void);
+	int (*dev0_is_txrx_idle) (int);
+	int (*dev0_set_tx_request) (void);
+	int (*dev0_set_rx_request) (void);
+	int (*dev0_set_txrx_request) (void);
+	int (*dev0_clear_tx_request) (void);
+	int (*dev0_clear_rx_request) (void);
+	int (*dev0_clear_txrx_request) (void);
+	int (*get_uart_cmm_rx_count) (void);
+	int (*is_assert_state) (void);
+	int (*irq_register_cb) (UARTHUB_IRQ_CB irq_callback);
+	int (*bypass_mode_ctrl) (int enable);
+	int (*is_bypass_mode) (void);
+	int (*config_internal_baud_rate) (int dev_index, int rate);
+	int (*config_external_baud_rate) (int rate);
+	int (*assert_state_ctrl) (int assert_ctrl);
+	int (*reset_flow_control) (void);
+	int (*sw_reset) (void);
+	int (*md_adsp_fifo_ctrl) (int enable);
+	int (*dump_debug_info) (void);
+	int (*dump_debug_info_with_tag) (const char *tag);
+	int (*debug_dump_tx_rx_count) (const char *tag, int trigger_point);
+	int (*get_bt_sleep_flow_hw_mech_en) (void);
+	int (*set_bt_sleep_flow_hw_mech_en) (int enable);
+	int (*get_host_awake_sta) (int dev_index);
+	int (*set_host_awake_sta) (int dev_index);
+	int (*clear_host_awake_sta) (int dev_index);
+	int (*get_host_bt_awake_sta) (int dev_index);
+	int (*get_cmm_bt_awake_sta) (void);
+	int (*get_bt_awake_sta) (void);
+};
+extern void uarthub_drv_callbacks_register(struct uarthub_drv_cbs *cb);
+extern void uarthub_drv_callbacks_unregister(void);
 
 /* FPGA test only */
 int UARTHUB_is_host_uarthub_ready_state(int dev_index);

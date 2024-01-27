@@ -4,6 +4,17 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dcm/include/
 obj-$(CONFIG_MTK_DCM_COMMON)	+= mtk_dcm.o
 
 # SoC Drivers
+ifneq ($(wildcard $(srctree)/$(src)/mt6768_dcm_internal.c),)
+obj-$(CONFIG_MTK_DCM_MT6768) += mt6768_dcm.o
+mt6768_dcm-objs := mt6768_dcm_internal.o mt6768_dcm_autogen.o
+endif
+
+ifneq ($(wildcard $(srctree)/$(src)/mt6873_dcm_internal.c),)
+obj-$(CONFIG_MTK_DCM_MT6893) += mt6873_dcm.o
+mt6873_dcm-objs := mt6873_dcm_internal.o mt6873_dcm_autogen.o
+endif
+
+
 ifneq ($(wildcard $(srctree)/$(src)/mt6985_dcm_internal.c),)
 obj-$(CONFIG_MTK_DCM_MT6985) += mt6985_dcm.o
 mt6985_dcm-objs := mt6985_dcm_internal.o mt6985_dcm_autogen.o

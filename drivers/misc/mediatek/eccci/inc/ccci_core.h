@@ -636,8 +636,7 @@ enum boot_mode_t {
 	DONGLE_BOOT = 10,
 	UNKNOWN_BOOT
 };
-
-unsigned int get_boot_mode_from_dts(void);
+unsigned int ccci_get_boot_mode_from_dts(void);
 extern int ccci_register_dev_node(const char *name, int major_id, int minor);
 #ifdef CCCI_KMODULE_ENABLE
 int ccci_init(void);

@@ -6,8 +6,9 @@
 #ifndef __CLK_CTRL_H
 #define __CLK_CTRL_H
 
-#include <linux/regmap.h>
+#include <linux/mutex.h>
 #include <linux/platform_device.h>
+#include <linux/regmap.h>
 #include "clkbuf-util.h"
 
 #define CLKBUF_STATUS_INFO_SIZE 2048

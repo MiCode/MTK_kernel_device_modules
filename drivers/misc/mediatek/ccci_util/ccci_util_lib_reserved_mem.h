@@ -7,6 +7,6 @@
 #define _CCCI_UTIL_LIB_RESERVED_MEM_H_
 void *vmap_reserved_mem(phys_addr_t start, phys_addr_t size,
 		pgprot_t prot);
-int free_reserved_memory(phys_addr_t start_phys,
+int free_reserved_memory_ccci(phys_addr_t start_phys,
 				phys_addr_t end_phys);
 #endif /* end of _CCCI_UTIL_LIB_RESERVED_MEM_H_ */

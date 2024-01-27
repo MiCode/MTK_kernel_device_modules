@@ -38,8 +38,9 @@
 #define TEEI_UNKNOWN_WORK	(0x03)
 
 static unsigned long irq_input_count;
+#ifdef TEEI_FFA_SUPPORT
 static unsigned long irq_output_count;
-
+#endif
 static int nt_sched_irq_handler(void)
 {
 	schedule();
@@ -219,11 +220,21 @@ static int nt_load_img_handler(void)
 }
 
 
-static int ut_ffa_smc_handler(int val)
+static int ut_smc_handler(int val)
 {
 	int retVal = 0;
 
+#ifndef TEEI_FFA_SUPPORT
+	int irq_id = 0;
+	/* Get the interrupt ID */
+	irq_id = teei_secure_call(N_GET_NON_IRQ_NUM, 0, 0, 0);
+#endif
+
+#ifdef TEEI_FFA_SUPPORT
 	switch (val) {
+#else
+	switch (irq_id) {
+#endif
 	case SCHED_IRQ:
 		retVal = nt_sched_irq_handler();
 		break;
@@ -254,6 +265,7 @@ void teei_add_irq_count(void)
 	irq_input_count = (irq_input_count + 1) % 10000;
 }
 
+#ifdef TEEI_FFA_SUPPORT
 static unsigned long teei_need_notify(void)
 {
 	if (irq_input_count != irq_output_count) {
@@ -295,8 +307,7 @@ int teei_smc(unsigned long long smc_id, unsigned long long p1,
 			data2 = 0;
 			continue;
 		}
-
-		retVal = ut_ffa_smc_handler((unsigned long)result);
+		retVal = ut_smc_handler((unsigned long)result);
 		if (retVal == TEEI_BACK_SW) {
 			data0 = NT_SCHED_T;
 			data1 = 0;
@@ -314,6 +325,34 @@ int teei_smc(unsigned long long smc_id, unsigned long long p1,
 done:
 	return retVal;
 }
+#else
+int teei_smc(unsigned long long smc_id, unsigned long long p1,
+                unsigned long long p2, unsigned long long p3)
+{
+        unsigned long long smc_type = 0;
+        int retVal = 0;
+
+        smc_type = teei_secure_call(smc_id, p1, p2, p3);
+        while (1) {
+                if (smc_type == SMC_CALL_INTERRUPTED_IRQ)
+                        smc_type = teei_secure_call(NT_SCHED_T, 0, 0, 0);
+                else {
+                        retVal = ut_smc_handler(smc_type);
+                        if (retVal == TEEI_BACK_SW) {
+                                smc_type = teei_secure_call(
+                                                NT_SCHED_T, 0, 0, 0);
+                                continue;
+                        } else if (retVal == TEEI_WORK_DONE)
+                                break;
+
+                        IMSG_ERROR("ut_smc_handler return %d!\n", retVal);
+                        break;
+                }
+        }
+
+        return 0;
+}
+#endif
 
 static irqreturn_t ut_drv_irq_handler(int irq, void *dev)
 {

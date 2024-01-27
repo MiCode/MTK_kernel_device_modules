@@ -1198,11 +1198,11 @@ static void mtk_oddmr_od_srt_cal(struct mtk_ddp_comp *comp, int en)
 			oddmr_priv->cfg.height, scaling_mode, od_mode, 2);
 		vrefresh = g_oddmr_current_timing.vrefresh;
 		//blanking ratio
-		do_div(srt, 1000);
+		srt = DO_COMMON_DIV(srt, 1000);
 		srt *= 125;
-		do_div(srt, 100);
+		srt = DO_COMMON_DIV(srt, 100);
 		srt = srt * vrefresh;
-		do_div(srt, 1000);
+		srt = DO_COMMON_DIV(srt, 1000);
 		oddmr_priv->qos_srt_odr = srt;
 		oddmr_priv->qos_srt_odw = srt;
 	} else {
@@ -6486,10 +6486,16 @@ static irqreturn_t mtk_oddmr_check_framedone(int irq, void *dev_id)
 				|| (odr_h != odr_h_exp && odr_h != 0)) {
 				oddmr_err |= ODDMR_OD_UDMA_R_ERR;
 				oddmr_err_trigger |= oddmr_err;
+#if IS_ENABLED(CONFIG_ARM64)
 				DDPPR_ERR("%s %s err UDMA_R(0x%x 0x%x) exp(0x%x 0x%x) TS:%08llx\n",
 					__func__, mtk_dump_comp_str(comp),
 					odr_h, odr_v, odr_h_exp, odr_v_exp,
 					arch_timer_read_counter());
+#else
+				DDPPR_ERR("%s %s err UDMA_R(0x%x 0x%x) exp(0x%x 0x%x)\n",
+					__func__, mtk_dump_comp_str(comp),
+					odr_h, odr_v, odr_h_exp, odr_v_exp);
+#endif
 			}
 		}
 		DDPIRQ("%s %s eof status:0x%x,0x%x\n", __func__, mtk_dump_comp_str(comp),
@@ -6513,14 +6519,24 @@ static irqreturn_t mtk_oddmr_check_framedone(int irq, void *dev_id)
 			if (od_enable) {
 				oddmr_err |= ODDMR_OD_UDMA_W_ERR;
 				oddmr_err_trigger |= oddmr_err;
+#if IS_ENABLED(CONFIG_ARM64)
 				DDPPR_ERR("%s %s err UDMA_W status 0x%x, TS: 0x%08llx\n", __func__,
 					mtk_dump_comp_str(comp), status, arch_timer_read_counter());
+#else
+				DDPPR_ERR("%s %s err UDMA_W status 0x%x\n", __func__,
+					mtk_dump_comp_str(comp), status);
+#endif
 			}
 		}
 	}
 	if (od_opt && oddmr_err) {
+#if IS_ENABLED(CONFIG_ARM64)
 		DDPAEE("ODDMR err 0x%x. TS: 0x%08llx\n",
 			oddmr_err, arch_timer_read_counter());
+#else
+		DDPAEE("ODDMR err 0x%x\n",
+			oddmr_err);
+#endif
 		dump_en_tmp = g_oddmr_dump_en;
 		g_oddmr_dump_en = true;
 		mtk_drm_crtc_analysis(&(comp->mtk_crtc->base));

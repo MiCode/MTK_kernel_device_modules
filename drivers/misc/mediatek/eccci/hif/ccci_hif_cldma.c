@@ -113,12 +113,12 @@ struct ccci_cldma_clk_node cldma_clk_table[CLDMA_CLOCK_COUNT] = {
 #define CCCI_LOG_LEVEL CCCI_LOG_CRITICAL_UART
 #endif
 unsigned int ccci_debug_enable = CCCI_LOG_LEVEL;
+#endif
 
 static inline struct device *ccci_md_get_dev_by_id(void)
 {
 	return &cldma_ctrl->plat_dev->dev;
 }
-#endif
 
 
 static void cldma_dump_register(struct md_cd_ctrl *md_ctrl)
@@ -2984,16 +2984,14 @@ static struct syscore_ops ccci_cldma_sysops = {
 
 static int ccci_cldma_set_plat_ops(void)
 {
-	if (cldma_ctrl->cldma_platform == 6761 ||
-		cldma_ctrl->cldma_platform == 6765) {
+	if (cldma_ctrl->plat_val.md_gen <= 6293) {
 		cldma_ctrl->cldma_plat_ops.hw_reset = &cldma_plat_hw_reset;
 		cldma_ctrl->cldma_plat_ops.set_clk_cg = &cldma_plat_set_clk_cg;
 		cldma_ctrl->cldma_plat_ops.syssuspend = &cldma_plat_suspend;
 		cldma_ctrl->cldma_plat_ops.sysresume = &cldma_plat_resume;
 
 	} else {
-		CCCI_ERROR_LOG(-1, TAG,
-			"error: platform number is invalid.\n");
+		CCCI_ERROR_LOG(-1, TAG, "error: platform number is invalid.\n");
 		return -1;
 	}
 

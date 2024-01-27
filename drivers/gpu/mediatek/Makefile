@@ -28,6 +28,8 @@ else ifeq ($(MTK_PLATFORM),mt6893)
 subdir-ccflags-y += -DCONFIG_GPU_MT6893
 else ifeq ($(MTK_PLATFORM),mt6853)
 subdir-ccflags-y += -DCONFIG_GPU_MT6853
+else ifeq ($(MTK_PLATFORM),mt6768)
+subdir-ccflags-y += -DCONFIG_GPU_MT6768
 endif
 endif
 
@@ -36,8 +38,11 @@ ifneq ($(CONFIG_MTK_GPU_SUPPORT),)
     obj-y += hal/
     obj-y += gpufreq/
     obj-y += gpu_bm/
-    obj-y += gpueb/
     obj-y += gpu_iommu/
+
+ifeq ($(CONFIG_MTK_GPU_MT6768_SUPPORT)$(CONFIG_MTK_GPU_MT6893_SUPPORT),)
+    obj-y += gpueb/
+endif
 
 ifneq ($(CONFIG_MTK_GPU_VERSION),"")
 # GPU R5P0

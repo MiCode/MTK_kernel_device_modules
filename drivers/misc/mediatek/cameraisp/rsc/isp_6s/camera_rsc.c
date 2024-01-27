@@ -32,6 +32,8 @@
 #include <linux/dma-mapping.h>
 #include <linux/dma-buf.h>
 #include <soc/mediatek/smi.h>
+#include <linux/suspend.h>
+#include <linux/rtc.h>
 
 /*#include <linux/xlog.h>		 For xlog_printk(). */
 
@@ -57,7 +59,7 @@
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 
-#include <linux/soc/mediatek/mtk-cmdq-ext.h>
+#include "linux/soc/mediatek/mtk-cmdq-ext.h"
 
 #ifdef CONFIG_MTK_IOMMU_V2
 #include <mach/mt_iommu.h>
@@ -119,12 +121,12 @@ static unsigned long __read_mostly tracing_mark_write_addr;
 #endif
 
 /*  #include "smi_common.h" */
-#undef CONFIG_COMPAT
 
 #include <linux/pm_wakeup.h>
 /* CCF */
 #if !defined(CONFIG_MTK_LEGACY) && defined(CONFIG_COMMON_CLK) /*CCF*/
 #include <linux/clk.h>
+
 struct RSC_CLK_STRUCT {
 /* TODO */
 #define SMI_CLK
@@ -453,6 +455,7 @@ static struct SV_LOG_STR gSvLog[RSC_IRQ_TYPE_AMOUNT];
 	char *ptr; \
 	char *pDes;\
 	int avaLen;\
+	int snprintf_ret = 0;\
 	unsigned int *ptr2 = &gSvLog[irq]._cnt[ppb][logT];\
 	unsigned int str_leng;\
 	unsigned int logi;\
@@ -470,8 +473,10 @@ static struct SV_LOG_STR gSvLog[RSC_IRQ_TYPE_AMOUNT];
 		&(gSvLog[irq]._str[ppb][logT][gSvLog[irq]._cnt[ppb][logT]]);   \
 	avaLen = str_leng - 1 - gSvLog[irq]._cnt[ppb][logT];\
 	if (avaLen > 1) {\
-		snprintf((char *)(pDes), avaLen, fmt,\
+		snprintf_ret = snprintf((char *)(pDes), avaLen, fmt,\
 			##__VA_ARGS__);   \
+		if (snprintf_ret < 0)\
+			LOG_ERR("snprintf encode fail!");\
 		if ('\0' != gSvLog[irq]._str[ppb][logT][str_leng - 1]) {\
 			LOG_ERR("log str over flow(%d)", irq);\
 		} \
@@ -536,7 +541,9 @@ static struct SV_LOG_STR gSvLog[RSC_IRQ_TYPE_AMOUNT];
 			ptr = pDes = (char *)\
 			&(pSrc->_str[ppb][logT][pSrc->_cnt[ppb][logT]]);\
 			ptr2 = &(pSrc->_cnt[ppb][logT]);\
-			snprintf((char *)(pDes), avaLen, fmt, ##__VA_ARGS__);  \
+			snprintf_ret = snprintf((char *)(pDes), avaLen, fmt, ##__VA_ARGS__);  \
+			if (snprintf_ret < 0)\
+				LOG_ERR("snprintf encode fail!");\
 			while (*ptr++ != '\0') {\
 				(*ptr2)++;\
 			} \
@@ -1020,7 +1027,7 @@ signed int rsc_deque_cb(struct frame *frames, void *req)
 	return 0;
 }
 
-
+#if CHECK_SERVICE_IF_0
 static bool mmu_get_dma_buffer(struct tee_mmu *mmu, int fd)
 {
 
@@ -1081,17 +1088,20 @@ void rsc_cmdq_cb_destroy(struct cmdq_cb_data data)
 	pm_qos_update_request(&rsc_pm_qos_request, 0);
 #endif
 }
+
 unsigned long FD_OFFSET_ADDR[NUM_BASEADDR];
+#endif
 signed int CmdqRSCHW(struct frame *frame)
 {
-	struct tee_mmu mmu;
-	struct tee_mmu *records = NULL;
 	struct RSC_Config *pRscConfig = NULL;
+#if CHECK_SERVICE_IF_0
+	struct tee_mmu *records = NULL;
+	struct tee_mmu mmu;
 	unsigned int hw_array[NUM_BASEADDR];
 	unsigned int fd_array[NUM_BASEADDR];
 	unsigned int offset_array[NUM_BASEADDR];
 	int i = 0;
-
+#endif
 #if CHECK_SERVICE_IF_1
 	struct cmdq_pkt *pkt;
 #if CHECK_SERVICE_IF_0
@@ -1141,6 +1151,7 @@ signed int CmdqRSCHW(struct frame *frame)
 	cmdq_pkt_write(pkt, cmdq_base, RSC_INT_CTL_HW, 0x1, ~0);
 	cmdq_pkt_write(pkt, cmdq_base, RSC_CTRL_HW, pRscConfig->RSC_CTRL, ~0);
 	cmdq_pkt_write(pkt, cmdq_base, RSC_SIZE_HW, pRscConfig->RSC_SIZE, ~0);
+#if CHECK_SERVICE_IF_0
 	if (!pRscConfig->IS_LEGACY) {
 		records = kzalloc(sizeof(struct tee_mmu) * NUM_BASEADDR
 					+ sizeof(unsigned long), GFP_KERNEL);
@@ -1183,6 +1194,7 @@ signed int CmdqRSCHW(struct frame *frame)
 			}
 		}
 	} else {
+#endif
 		cmdq_pkt_write(pkt, cmdq_base, RSC_APLI_C_BASE_ADDR_HW,
 				pRscConfig->RSC_APLI_C_BASE_ADDR, ~0);
 		cmdq_pkt_write(pkt, cmdq_base, RSC_APLI_P_BASE_ADDR_HW,
@@ -1197,8 +1209,9 @@ signed int CmdqRSCHW(struct frame *frame)
 				pRscConfig->RSC_MVO_BASE_ADDR, ~0);
 		cmdq_pkt_write(pkt, cmdq_base, RSC_BVO_BASE_ADDR_HW,
 				pRscConfig->RSC_BVO_BASE_ADDR, ~0);
+#if CHECK_SERVICE_IF_0
 	}
-
+#endif
 	cmdq_pkt_write(pkt, cmdq_base, RSC_IMGI_C_STRIDE_HW,
 			pRscConfig->RSC_IMGI_C_STRIDE, ~0);
 	cmdq_pkt_write(pkt, cmdq_base, RSC_IMGI_P_STRIDE_HW,
@@ -1269,8 +1282,9 @@ signed int CmdqRSCHW(struct frame *frame)
 	/* flush and destroy in cmdq */
 	//pkt_addr = (unsigned long *)&records[NUM_BASEADDR];
 	//*pkt_addr = (unsigned long)pkt;
-	cmdq_pkt_flush_threaded(pkt, rsc_cmdq_cb_destroy, (void *)records);
-
+	//cmdq_pkt_flush_threaded(pkt, rsc_cmdq_cb_destroy, (void *)records);
+	cmdq_pkt_flush(pkt);
+	cmdq_pkt_destroy(pkt);
 #else  // old cmdq function
 	cmdqRecCreate(CMDQ_SCENARIO_KERNEL_CONFIG_GENERAL, &handle);
 
@@ -1489,6 +1503,7 @@ static signed int RSC_DumpReg(void)
 	LOG_INF("[0x%08X %08X]\n", (unsigned int)(RSC_DCM_STAUS_HW),
 		(unsigned int)RSC_RD32(RSC_DCM_STAUS_REG));
 
+	mt_irq_dump_status(RSCInfo.IrqNum);
 
 	LOG_INF("- X.");
 	return Ret;
@@ -1505,9 +1520,9 @@ static inline void RSC_Prepare_Enable_ccf_clock(void)
 #endif
 	pm_runtime_get_sync(RSC_devs->dev);
 
-	ret = mtk_smi_larb_get(RSC_devs->larb);
-	if (ret)
-		LOG_ERR("mtk_smi_larb_get larbvdec fail %d\n", ret);
+	// ret = mtk_smi_larb_get(RSC_devs->larb);
+	// if (ret)
+	// 	LOG_ERR("mtk_smi_larb_get larbvdec fail %d\n", ret);
 
 	ret = clk_prepare_enable(rsc_clk.CG_IPESYS_LARB20);
 	if (ret)
@@ -1524,11 +1539,13 @@ static inline void RSC_Disable_Unprepare_ccf_clock(void)
 	/* close order:RSC clk>CG_SCP_SYS_ISP>CG_MM_SMI_COMMON>CG_SCP_SYS_MM0 */
 	clk_disable_unprepare(rsc_clk.CG_IPESYS_RSC);
 	clk_disable_unprepare(rsc_clk.CG_IPESYS_LARB20);
+/*
 	mtk_smi_larb_put(RSC_devs->larb);
 #ifdef SMI_CLK
 	//smi_bus_disable_unprepare(SMI_LARB20, "camera_rsc");
 	pm_runtime_put_sync(RSC_devs->dev);
 #endif
+*/
 }
 #endif
 
@@ -1736,100 +1753,6 @@ static signed int RSC_ReadReg(struct RSC_REG_IO_STRUCT *pRegIo)
 EXIT:
 	return Ret;
 }
-
-
-/*******************************************************************************
- *
- ******************************************************************************/
-static signed int RSC_WriteRegToHw(struct RSC_REG_STRUCT *pReg,
-							unsigned int Count)
-{
-	signed int Ret = 0;
-	unsigned int i;
-	bool dbgWriteReg;
-
-	spin_lock(&(RSCInfo.SpinLockRSC));
-	dbgWriteReg = RSCInfo.DebugMask & RSC_DBG_WRITE_REG;
-	spin_unlock(&(RSCInfo.SpinLockRSC));
-
-	if (dbgWriteReg)
-		LOG_DBG("- E.\n");
-
-	for (i = 0; i < Count; i++) {
-		if (dbgWriteReg) {
-			LOG_DBG("Addr(0x%lx), Val(0x%x)\n",
-				(unsigned long)(ISP_RSC_BASE + pReg[i].Addr),
-				(unsigned int) (pReg[i].Val));
-		}
-
-		if (((ISP_RSC_BASE + pReg[i].Addr) <
-						(ISP_RSC_BASE + RSC_REG_RANGE))
-			&& ((pReg[i].Addr & 0x3) == 0)) {
-			RSC_WR32(ISP_RSC_BASE + pReg[i].Addr, pReg[i].Val);
-		} else {
-			LOG_ERR("wrong address(0x%lx)\n",
-				(unsigned long)(ISP_RSC_BASE + pReg[i].Addr));
-		}
-	}
-
-	return Ret;
-}
-
-
-
-/*******************************************************************************
- *
- ******************************************************************************/
-static signed int RSC_WriteReg(struct RSC_REG_IO_STRUCT *pRegIo)
-{
-	signed int Ret = 0;
-	/*
-	 *  signed int TimeVd = 0;
-	 *  signed int TimeExpdone = 0;
-	 *  signed int TimeTasklet = 0;
-	 */
-	/* unsigned char* pData = NULL; */
-	struct RSC_REG_STRUCT *pData = NULL;
-
-	if (RSCInfo.DebugMask & RSC_DBG_WRITE_REG)
-		LOG_DBG("Data(0x%p), Count(%d)\n", (pRegIo->pData),
-							(pRegIo->Count));
-
-	pData = kmalloc((pRegIo->Count) * sizeof(struct RSC_REG_STRUCT),
-								GFP_ATOMIC);
-	if (pData == NULL) {
-		LOG_DBG(
-		"ERROR: kmalloc failed, (process, pid, tgid)=(%s, %d, %d)\n",
-				current->comm, current->pid, current->tgid);
-		Ret = -ENOMEM;
-		goto EXIT;
-	}
-	if ((pRegIo->pData == NULL) || (pRegIo->Count == 0) ||
-		(pRegIo->Count > (RSC_REG_RANGE>>2))) {
-		LOG_ERR("RSC WriteReg pData is NULL or Count:%d is larger!!",
-			pRegIo->Count);
-		Ret = -EFAULT;
-		goto EXIT;
-	}
-
-	if (copy_from_user
-	    (pData, (void __user *)(pRegIo->pData),
-			pRegIo->Count * sizeof(struct RSC_REG_STRUCT)) != 0) {
-		LOG_ERR("copy_from_user failed\n");
-		Ret = -EFAULT;
-		goto EXIT;
-	}
-
-	Ret = RSC_WriteRegToHw(pData, pRegIo->Count);
-
-EXIT:
-	if (pData != NULL) {
-		kfree(pData);
-		pData = NULL;
-	}
-	return Ret;
-}
-
 
 /*******************************************************************************
  *
@@ -2056,11 +1979,12 @@ static long RSC_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 			spin_unlock_irqrestore(
 				&(RSCInfo.SpinLockIrq[RSC_IRQ_TYPE_INT_RSC_ST]),
 									flags);
-
-			IRQ_LOG_PRINTER(RSC_IRQ_TYPE_INT_RSC_ST, currentPPB,
+			if (currentPPB < LOG_PPNUM && currentPPB > 0) {
+				IRQ_LOG_PRINTER(RSC_IRQ_TYPE_INT_RSC_ST, currentPPB,
 								_LOG_INF);
-			IRQ_LOG_PRINTER(RSC_IRQ_TYPE_INT_RSC_ST, currentPPB,
+				IRQ_LOG_PRINTER(RSC_IRQ_TYPE_INT_RSC_ST, currentPPB,
 								_LOG_ERR);
+			}
 			break;
 		}
 	case RSC_READ_REGISTER:
@@ -2075,25 +1999,12 @@ static long RSC_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 			}
 			break;
 		}
-	case RSC_WRITE_REGISTER:
-		{
-			if (copy_from_user(&RegIo, (void *)Param,
-				sizeof(struct RSC_REG_IO_STRUCT)) == 0) {
-				Ret = RSC_WriteReg(&RegIo);
-			} else {
-				LOG_ERR(
-				"RSC_WRITE_REGISTER copy_from_user failed");
-				Ret = -EFAULT;
-			}
-			break;
-		}
 	case RSC_WAIT_IRQ:
 		{
 			if (copy_from_user(&IrqInfo, (void *)Param,
 				sizeof(struct RSC_WAIT_IRQ_STRUCT)) == 0) {
 
-				if ((IrqInfo.Type >= RSC_IRQ_TYPE_AMOUNT) ||
-							(IrqInfo.Type < 0)) {
+				if (IrqInfo.Type >= RSC_IRQ_TYPE_AMOUNT) {
 					Ret = -EFAULT;
 					LOG_ERR("invalid type(%d)",
 								IrqInfo.Type);
@@ -2108,12 +2019,13 @@ static long RSC_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 						IRQ_USER_NUM_MAX);
 						IrqInfo.UserKey = 0;
 				}
-
+/*
 				LOG_INF(
 				"IRQ clear(%d), type(%d), userKey(%d), timeout(%d), status(%d)\n",
 					IrqInfo.Clear, IrqInfo.Type,
 					IrqInfo.UserKey, IrqInfo.Timeout,
 					IrqInfo.Status);
+*/
 				IrqInfo.ProcessID = pUserInfo->Pid;
 				Ret = RSC_WaitIrq(&IrqInfo);
 
@@ -2135,8 +2047,7 @@ static long RSC_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 				LOG_DBG("RSC_CLEAR_IRQ Type(%d)",
 								ClearIrq.Type);
 
-				if ((ClearIrq.Type >= RSC_IRQ_TYPE_AMOUNT) ||
-							(ClearIrq.Type < 0)) {
+				if (ClearIrq.Type >= RSC_IRQ_TYPE_AMOUNT) {
 					Ret = -EFAULT;
 					LOG_ERR("invalid type(%d)",
 								ClearIrq.Type);
@@ -2173,10 +2084,26 @@ static long RSC_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 			/* enqueNum */
 			if (copy_from_user(&enqueNum, (void *)Param,
 							sizeof(int)) == 0) {
+
+				if (g_RSC_ReqRing.WriteIdx < 0 ||
+					g_RSC_ReqRing.WriteIdx >=
+					_SUPPORT_MAX_RSC_REQUEST_RING_SIZE_) {
+					LOG_ERR("[RSC_ENQUE] WriteIdx OOB: %d",
+						g_RSC_ReqRing.WriteIdx);
+					break;
+				}
+
 				if (RSC_REQUEST_STATE_EMPTY ==
 				    g_RSC_ReqRing.RSCReq_Struct[
 							g_RSC_ReqRing.WriteIdx].
 				    State) {
+					if (enqueNum >
+						_SUPPORT_MAX_RSC_FRAME_REQUEST_ || enqueNum < 0) {
+						LOG_ERR(
+						"RSC Enque Num is bigger than enqueNum or NEG:%d\n",
+						     enqueNum);
+						break;
+					}
 					spin_lock_irqsave(
 					&(RSCInfo.SpinLockIrq[
 						RSC_IRQ_TYPE_INT_RSC_ST]),
@@ -2191,12 +2118,6 @@ static long RSC_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 					spin_unlock_irqrestore(
 					&(RSCInfo.SpinLockIrq[
 					RSC_IRQ_TYPE_INT_RSC_ST]), flags);
-					if (enqueNum >
-					_SUPPORT_MAX_RSC_FRAME_REQUEST_) {
-						LOG_ERR(
-						"RSC Enque Num is bigger than enqueNum:%d\n",
-						     enqueNum);
-					}
 					LOG_DBG(
 					"RSC_ENQNUE_NUM:%d\n", enqueNum);
 				} else {
@@ -2229,15 +2150,23 @@ static long RSC_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 				spin_lock_irqsave(
 				&(RSCInfo.SpinLockIrq[RSC_IRQ_TYPE_INT_RSC_ST]),
 						  flags);
+				if (g_RSC_ReqRing.WriteIdx < 0 ||
+				g_RSC_ReqRing.WriteIdx >= _SUPPORT_MAX_RSC_REQUEST_RING_SIZE_) {
+					LOG_ERR("[RSC_ENQUE] WriteIdx OOB: %d",
+						g_RSC_ReqRing.WriteIdx);
+					break;
+				}
 				if ((RSC_REQUEST_STATE_EMPTY ==
 				     g_RSC_ReqRing.RSCReq_Struct[
 					g_RSC_ReqRing.WriteIdx].State)
-				    && (g_RSC_ReqRing
+					&& (g_RSC_ReqRing
 					.RSCReq_Struct[g_RSC_ReqRing.WriteIdx]
 								.FrameWRIdx <
 					g_RSC_ReqRing.RSCReq_Struct[
 						g_RSC_ReqRing.WriteIdx]
-								.enqueReqNum)) {
+								.enqueReqNum)
+					&& (g_RSC_ReqRing.RSCReq_Struct[g_RSC_ReqRing.WriteIdx]
+					.FrameWRIdx) >= 0) {
 					g_RSC_ReqRing.RSCReq_Struct[
 						g_RSC_ReqRing.WriteIdx]
 					    .RscFrameStatus[g_RSC_ReqRing
@@ -2302,6 +2231,7 @@ static long RSC_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 		}
 	case RSC_ENQUE_REQ:
 		{
+			mutex_lock(&gRscMutex);
 			if (copy_from_user(&rsc_RscReq, (void *)Param,
 					sizeof(struct RSC_Request)) == 0) {
 				LOG_DBG("RSC_ENQNUE_NUM:%d, pid:%d\n",
@@ -2312,6 +2242,7 @@ static long RSC_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 					"RSC Enque Num is bigger than enqueNum:%d\n",
 						rsc_RscReq.m_ReqNum);
 					Ret = -EFAULT;
+					mutex_unlock(&gRscMutex);
 					goto EXIT;
 				}
 				if (copy_from_user
@@ -2322,10 +2253,9 @@ static long RSC_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 					LOG_ERR(
 					"copy RSCConfig from request fail!!\n");
 					Ret = -EFAULT;
+					mutex_unlock(&gRscMutex);
 					goto EXIT;
 				}
-
-				mutex_lock(&gRscMutex);
 
 				spin_lock_irqsave(
 				&(RSCInfo.SpinLockIrq[RSC_IRQ_TYPE_INT_RSC_ST]),
@@ -2351,17 +2281,22 @@ static long RSC_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 					&(RSCInfo
 					.SpinLockIrq[RSC_IRQ_TYPE_INT_RSC_ST]));
 				}
-				mutex_unlock(&gRscMutex);
+
 			} else {
 				LOG_ERR(
 				"RSC_ENQUE_REQ copy_from_user failed\n");
 				Ret = -EFAULT;
 			}
-
+			mutex_unlock(&gRscMutex);
 			break;
 		}
 	case RSC_DEQUE_NUM:
 		{
+			if (g_RSC_ReqRing.ReadIdx < 0 ||
+				g_RSC_ReqRing.ReadIdx >= _SUPPORT_MAX_RSC_REQUEST_RING_SIZE_) {
+				LOG_ERR("[RSC_DEQUE_NUM] ReadId OOB: %d", g_RSC_ReqRing.ReadIdx);
+				break;
+			}
 			if (RSC_REQUEST_STATE_FINISHED ==
 			    g_RSC_ReqRing.RSCReq_Struct[g_RSC_ReqRing.ReadIdx]
 			    .State) {
@@ -2395,13 +2330,28 @@ static long RSC_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 		{
 			spin_lock_irqsave(
 			&(RSCInfo.SpinLockIrq[RSC_IRQ_TYPE_INT_RSC_ST]), flags);
+			if (g_RSC_ReqRing.ReadIdx < 0 ||
+				g_RSC_ReqRing.ReadIdx >= _SUPPORT_MAX_RSC_REQUEST_RING_SIZE_) {
+				LOG_ERR("[RSC_DEQUE] ReadId OOB: %d", g_RSC_ReqRing.ReadIdx);
+				break;
+			}
+
+			if (g_RSC_ReqRing.RSCReq_Struct[g_RSC_ReqRing.ReadIdx].enqueReqNum < 0 ||
+				g_RSC_ReqRing.RSCReq_Struct[g_RSC_ReqRing.ReadIdx].enqueReqNum >=
+				_SUPPORT_MAX_RSC_FRAME_REQUEST_) {
+				LOG_ERR("[RSC_DEQUE] enqueReqNum OOB: %d",
+				g_RSC_ReqRing.RSCReq_Struct[g_RSC_ReqRing.ReadIdx].enqueReqNum);
+				break;
+			}
 			if ((RSC_REQUEST_STATE_FINISHED ==
 			     g_RSC_ReqRing.RSCReq_Struct[g_RSC_ReqRing.ReadIdx]
 			     .State)
 			    && (g_RSC_ReqRing.RSCReq_Struct[
 				g_RSC_ReqRing.ReadIdx].RrameRDIdx <
 				g_RSC_ReqRing.RSCReq_Struct[
-					g_RSC_ReqRing.ReadIdx].enqueReqNum)) {
+					g_RSC_ReqRing.ReadIdx].enqueReqNum)
+				&& (g_RSC_ReqRing.RSCReq_Struct[
+				g_RSC_ReqRing.ReadIdx].RrameRDIdx >= 0)) {
 				if (RSC_FRAME_STATUS_FINISHED ==
 				    g_RSC_ReqRing.RSCReq_Struct[
 							g_RSC_ReqRing.ReadIdx]
@@ -2550,97 +2500,122 @@ EXIT:
  *
  ******************************************************************************/
 static int compat_get_RSC_read_register_data(
-			struct compat_RSC_REG_IO_STRUCT __user *data32,
-					struct RSC_REG_IO_STRUCT __user *data)
+	unsigned long arg,
+	struct RSC_REG_IO_STRUCT *data)
 {
-	compat_uint_t count;
-	compat_uptr_t uptr;
-	int err;
+	long ret = -1;
+	struct compat_RSC_REG_IO_STRUCT data32;
 
-	err = get_user(uptr, &data32->pData);
-	err |= put_user(compat_ptr(uptr), &data->pData);
-	err |= get_user(count, &data32->Count);
-	err |= put_user(count, &data->Count);
-	return err;
+	ret = (long)copy_from_user(&data32, compat_ptr(arg),
+		(unsigned long)sizeof(struct compat_RSC_REG_IO_STRUCT));
+
+	if (ret != 0L) {
+		LOG_INF("Copy data from user failed!\n");
+		return ret;
+	}
+
+	data->pData = compat_ptr(data32.pData);
+	data->Count = data32.Count;
+
+	return ret;
 }
 
 static int compat_put_RSC_read_register_data(
-			struct compat_RSC_REG_IO_STRUCT __user *data32,
-					struct RSC_REG_IO_STRUCT __user *data)
+	unsigned long arg,
+	struct RSC_REG_IO_STRUCT *data)
 {
-	compat_uint_t count;
-	/*compat_uptr_t uptr;*/
-	int err = 0;
-	/* Assume data pointer is unchanged. */
-	/* err = get_user(compat_ptr(uptr), &data->pData); */
-	/* err |= put_user(uptr, &data32->pData); */
-	err |= get_user(count, &data->Count);
-	err |= put_user(count, &data32->Count);
-	return err;
+	long ret = -1;
+	struct compat_RSC_REG_IO_STRUCT data32;
+
+	data32.Count = (compat_uint_t)(data->Count);
+
+	if (copy_to_user(compat_ptr(arg), &data32,
+			sizeof(struct compat_RSC_REG_IO_STRUCT)) != 0) {
+		LOG_NOTICE("copy_to_user failed");
+		ret = -EFAULT;
+	}
+	return ret;
 }
 
 static int compat_get_RSC_enque_req_data(
-			struct compat_RSC_Request __user *data32,
-					      struct RSC_Request __user *data)
+	unsigned long arg,
+	struct RSC_Request *data)
 {
-	compat_uint_t count;
-	compat_uptr_t uptr;
-	int err = 0;
+	long ret = -1;
+	struct compat_RSC_Request data32;
 
-	err = get_user(uptr, &data32->m_pRscConfig);
-	err |= put_user(compat_ptr(uptr), &data->m_pRscConfig);
-	err |= get_user(count, &data32->m_ReqNum);
-	err |= put_user(count, &data->m_ReqNum);
-	return err;
+	ret = (long)copy_from_user(&data32, compat_ptr(arg),
+		(unsigned long)sizeof(struct compat_RSC_Request));
+
+	if (ret != 0L) {
+		LOG_INF("Copy data from user failed!\n");
+		return ret;
+	}
+
+	data->m_pRscConfig = compat_ptr(data32.m_pRscConfig);
+	data->m_ReqNum = data32.m_ReqNum;
+
+	return ret;
 }
 
 
 static int compat_put_RSC_enque_req_data(
-			struct compat_RSC_Request __user *data32,
-					      struct RSC_Request __user *data)
+	unsigned long arg,
+	struct RSC_Request *data)
 {
-	compat_uint_t count;
-	/*compat_uptr_t uptr;*/
-	int err = 0;
-	/* Assume data pointer is unchanged. */
-	/* err = get_user(compat_ptr(uptr), &data->m_pDpeConfig); */
-	/* err |= put_user(uptr, &data32->m_pDpeConfig); */
-	err |= get_user(count, &data->m_ReqNum);
-	err |= put_user(count, &data32->m_ReqNum);
-	return err;
+	long ret = -1;
+	struct compat_RSC_Request data32;
+
+	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
+
+	if (copy_to_user(compat_ptr(arg), &data32,
+			sizeof(struct compat_RSC_Request)) != 0) {
+		LOG_NOTICE("copy_to_user failed");
+		ret = -EFAULT;
+	}
+	return ret;
 }
 
 
 static int compat_get_RSC_deque_req_data(
-			struct compat_RSC_Request __user *data32,
-					      struct RSC_Request __user *data)
+	unsigned long arg,
+	struct RSC_Request *data)
 {
-	compat_uint_t count;
-	compat_uptr_t uptr;
-	int err = 0;
+	long ret = -1;
+	struct compat_RSC_Request data32;
 
-	err = get_user(uptr, &data32->m_pRscConfig);
-	err |= put_user(compat_ptr(uptr), &data->m_pRscConfig);
-	err |= get_user(count, &data32->m_ReqNum);
-	err |= put_user(count, &data->m_ReqNum);
-	return err;
+	ret = (long)copy_from_user(&data32, compat_ptr(arg),
+		(unsigned long)sizeof(struct compat_RSC_Request));
+
+	if (ret != 0L) {
+		LOG_INF("Copy data from user failed!\n");
+		return ret;
+	}
+
+	data->m_pRscConfig = compat_ptr(data32.m_pRscConfig);
+	data->m_ReqNum = data32.m_ReqNum;
+
+	return ret;
 }
 
 
 static int compat_put_RSC_deque_req_data(
-		struct compat_RSC_Request __user *data32,
-					struct RSC_Request __user *data)
+	unsigned long arg,
+	struct RSC_Request *data)
 {
-	compat_uint_t count;
-	/*compat_uptr_t uptr;*/
-	int err = 0;
-	/* Assume data pointer is unchanged. */
-	/* err = get_user(compat_ptr(uptr), &data->m_pDpeConfig); */
-	/* err |= put_user(uptr, &data32->m_pDpeConfig); */
-	err |= get_user(count, &data->m_ReqNum);
-	err |= put_user(count, &data32->m_ReqNum);
-	return err;
+	long ret = -1;
+
+	struct compat_RSC_Request data32;
+	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
+
+	if (copy_to_user(compat_ptr(arg), &data32,
+			sizeof(struct compat_RSC_Request)) != 0) {
+		LOG_NOTICE("copy_to_user failed");
+		ret = -EFAULT;
+	}
+	return ret;
 }
+
 
 static long RSC_ioctl_compat(struct file *filp, unsigned int cmd,
 							unsigned long arg)
@@ -2655,24 +2630,18 @@ static long RSC_ioctl_compat(struct file *filp, unsigned int cmd,
 	switch (cmd) {
 	case COMPAT_RSC_READ_REGISTER:
 		{
-			struct compat_RSC_REG_IO_STRUCT __user *data32;
-			struct RSC_REG_IO_STRUCT __user *data;
+			struct RSC_REG_IO_STRUCT data;
 			int err;
 
-			data32 = compat_ptr(arg);
-			data = compat_alloc_user_space(sizeof(*data));
-			if (data == NULL)
-				return -EFAULT;
-
-			err = compat_get_RSC_read_register_data(data32, data);
+			err = compat_get_RSC_read_register_data(arg, &data);
 			if (err) {
 				LOG_ERR("compat_get_read_register_data err.\n");
 				return err;
 			}
 			ret =
 			    filp->f_op->unlocked_ioctl(filp, RSC_READ_REGISTER,
-						       (unsigned long)data);
-			err = compat_put_RSC_read_register_data(data32, data);
+						       (unsigned long)&data);
+			err = compat_put_RSC_read_register_data(arg, &data);
 			if (err) {
 				LOG_ERR("compat_put_read_register_data err.\n");
 				return err;
@@ -2681,45 +2650,34 @@ static long RSC_ioctl_compat(struct file *filp, unsigned int cmd,
 		}
 	case COMPAT_RSC_WRITE_REGISTER:
 		{
-			struct compat_RSC_REG_IO_STRUCT __user *data32;
-			struct RSC_REG_IO_STRUCT __user *data;
+			struct RSC_REG_IO_STRUCT data;
 			int err;
 
-			data32 = compat_ptr(arg);
-			data = compat_alloc_user_space(sizeof(*data));
-			if (data == NULL)
-				return -EFAULT;
-
-			err = compat_get_RSC_read_register_data(data32, data);
+			err = compat_get_RSC_read_register_data(arg, &data);
 			if (err) {
 				LOG_ERR("COMPAT_RSC_WRITE_REGISTER error!!!\n");
 				return err;
 			}
 			ret =
 			    filp->f_op->unlocked_ioctl(filp, RSC_WRITE_REGISTER,
-						       (unsigned long)data);
+						       (unsigned long)&data);
+
 			return ret;
 		}
 	case COMPAT_RSC_ENQUE_REQ:
 		{
-			struct compat_RSC_Request __user *data32;
-			struct RSC_Request __user *data;
+			struct RSC_Request data;
 			int err;
 
-			data32 = compat_ptr(arg);
-			data = compat_alloc_user_space(sizeof(*data));
-			if (data == NULL)
-				return -EFAULT;
-
-			err = compat_get_RSC_enque_req_data(data32, data);
+			err = compat_get_RSC_enque_req_data(arg, &data);
 			if (err) {
 				LOG_ERR("COMPAT_RSC_ENQUE_REQ error!!!\n");
 				return err;
 			}
 			ret =
 			    filp->f_op->unlocked_ioctl(filp, RSC_ENQUE_REQ,
-						       (unsigned long)data);
-			err = compat_put_RSC_enque_req_data(data32, data);
+						       (unsigned long)&data);
+			err = compat_put_RSC_enque_req_data(arg, &data);
 			if (err) {
 				LOG_ERR("COMPAT_RSC_ENQUE_REQ error!!!\n");
 				return err;
@@ -2728,24 +2686,19 @@ static long RSC_ioctl_compat(struct file *filp, unsigned int cmd,
 		}
 	case COMPAT_RSC_DEQUE_REQ:
 		{
-			struct compat_RSC_Request __user *data32;
-			struct RSC_Request __user *data;
+			struct RSC_Request data;
+
 			int err;
 
-			data32 = compat_ptr(arg);
-			data = compat_alloc_user_space(sizeof(*data));
-			if (data == NULL)
-				return -EFAULT;
-
-			err = compat_get_RSC_deque_req_data(data32, data);
+			err = compat_get_RSC_deque_req_data(arg, &data);
 			if (err) {
 				LOG_ERR("COMPAT_RSC_DEQUE_REQ error!!!\n");
 				return err;
 			}
 			ret =
 			    filp->f_op->unlocked_ioctl(filp, RSC_DEQUE_REQ,
-						       (unsigned long)data);
-			err = compat_put_RSC_deque_req_data(data32, data);
+						       (unsigned long)&data);
+			err = compat_put_RSC_deque_req_data(arg, &data);
 			if (err) {
 				LOG_ERR("COMPAT_RSC_DEQUE_REQ error!!!\n");
 				return err;
@@ -2837,6 +2790,7 @@ static signed int RSC_open(struct inode *pInode, struct file *pFile)
 
 	/* Enable clock */
 	RSC_EnableClock(MTRUE);
+	cmdq_mbox_enable(cmdq_clt->chan);
 	g_SuspendCnt = 0;
 	LOG_INF("RSC open g_u4EnableClockCount: %d", g_u4EnableClockCount);
 
@@ -2902,7 +2856,7 @@ static signed int RSC_release(struct inode *pInode, struct file *pFile)
 	LOG_INF("Curr UsrCnt(%d), (process, pid, tgid)=(%s, %d, %d), last user",
 		RSCInfo.UserCount, current->comm, current->pid, current->tgid);
 
-
+	cmdq_mbox_disable(cmdq_clt->chan);
 	/* Disable clock. */
 	RSC_EnableClock(MFALSE);
 	LOG_DBG("RSC release g_u4EnableClockCount: %d", g_u4EnableClockCount);
@@ -3034,6 +2988,63 @@ EXIT:
 	return Ret;
 }
 
+static void RSC_add_device_link(struct platform_device *pDev)
+{
+	char mtk_larb_str[32];
+	int i = 0, mtk_larb = 0, mtk_larbs = 0, larb_num = 0;
+	unsigned int larb_id = 0;
+	struct device_node *larb_node;
+	struct device_link *link;
+	struct platform_device *larb_pdev;
+
+	mtk_larb = of_count_phandle_with_args(pDev->dev.of_node, "mediatek,larb", NULL);
+	mtk_larbs = of_count_phandle_with_args(pDev->dev.of_node, "mediatek,larbs", NULL);
+
+	if (mtk_larb > mtk_larbs) {
+		larb_num = mtk_larb;
+		strncpy(mtk_larb_str, "mediatek,larb", 14);
+	} else {
+		larb_num = mtk_larbs;
+		strncpy(mtk_larb_str, "mediatek,larbs", 15);
+	}
+
+	LOG_INF("larb_num: %d; (%d, %d)\n", larb_num, mtk_larb, mtk_larbs);
+
+	if (larb_num <= 0) {
+		LOG_INF("%s: find no larb", pDev->dev.of_node->name);
+		return;
+	}
+
+	for (i = 0; i < larb_num; i++) {
+		larb_node = of_parse_phandle(pDev->dev.of_node, mtk_larb_str, i);
+		if (!larb_node) {
+			LOG_INF("%s: [%d]: failed to get larb from %s\n",
+				pDev->dev.of_node->name, i, mtk_larb_str);
+			continue;
+		}
+		larb_pdev = of_find_device_by_node(larb_node);
+		if (WARN_ON(!larb_pdev)) {
+			of_node_put(larb_node);
+			LOG_INF("%s: failed to get larb pdev\n", pDev->dev.of_node->name);
+			continue;
+		}
+
+		if (of_property_read_u32(larb_node, "mediatek,smi-id", &larb_id))
+			LOG_INF("Error: get larb id from DTS fail!!\n");
+		else
+			LOG_INF("%s gets larb_id=%d\n",
+				pDev->dev.of_node->name, larb_id);
+
+		of_node_put(larb_node);
+
+		link = device_link_add(&pDev->dev, &larb_pdev->dev,
+				DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+		if (!link)
+			LOG_INF("%s: [%d]: unable to link smi larb %d\n",
+				pDev->dev.of_node->name, i, larb_id);
+	}
+}
+
 /*******************************************************************************
  *
  ******************************************************************************/
@@ -3111,6 +3122,7 @@ static signed int RSC_probe(struct platform_device *pDev)
 
 	/* get IRQ ID and request IRQ */
 	RSC_dev->irq = irq_of_parse_and_map(pDev->dev.of_node, 0);
+	RSCInfo.IrqNum = RSC_dev->irq;
 
 	if (RSC_dev->irq > 0) {
 		LOG_INF("- E. RSC setup irq.\n");
@@ -3257,6 +3269,7 @@ static signed int RSC_probe(struct platform_device *pDev)
 		cmdq_clt = cmdq_mbox_create(&pDev->dev, 0);
 		cmdq_event_id = cmdq_dev_get_event(&pDev->dev, "rsc_eof");
 
+		RSC_add_device_link(pDev);
 	}
 
 EXIT:
@@ -3346,17 +3359,6 @@ static signed int bPass1_On_In_Resume_TG1;
 
 static signed int RSC_suspend(struct platform_device *pDev, pm_message_t Mesg)
 {
-	/*signed int ret = 0;*/
-
-	LOG_DBG("bPass1_On_In_Resume_TG1(%d)\n", bPass1_On_In_Resume_TG1);
-	if (g_u4EnableClockCount > 0) {
-		RSC_EnableClock(MFALSE);
-		g_SuspendCnt++;
-	}
-	bPass1_On_In_Resume_TG1 = 0;
-	LOG_INF("%s:g_u4EnableClockCount(%d) g_SuspendCnt(%d).\n", __func__,
-				g_u4EnableClockCount, g_SuspendCnt);
-
 	return 0;
 }
 
@@ -3365,19 +3367,51 @@ static signed int RSC_suspend(struct platform_device *pDev, pm_message_t Mesg)
  ******************************************************************************/
 static signed int RSC_resume(struct platform_device *pDev)
 {
-	LOG_DBG("bPass1_On_In_Resume_TG1(%d).\n", bPass1_On_In_Resume_TG1);
-	if (g_SuspendCnt > 0) {
-		RSC_EnableClock(MTRUE);
-		g_SuspendCnt--;
-	}
-	LOG_INF("%s:g_u4EnableClockCount(%d) g_SuspendCnt(%d).\n", __func__,
-				g_u4EnableClockCount, g_SuspendCnt);
 	return 0;
 }
 
 /*---------------------------------------------------------------------------*/
-#ifdef CONFIG_PM
+#if IS_ENABLED(CONFIG_PM)
 /*---------------------------------------------------------------------------*/
+static int rsc_suspend_pm_event(struct notifier_block *notifier,
+			unsigned long pm_event, void *unused)
+{
+	struct timespec64 ts;
+	struct rtc_time tm;
+
+	ktime_get_ts64(&ts);
+	rtc_time64_to_tm(ts.tv_sec, &tm);
+
+	switch (pm_event) {
+	case PM_HIBERNATION_PREPARE:
+		return NOTIFY_DONE;
+	case PM_RESTORE_PREPARE:
+		return NOTIFY_DONE;
+	case PM_POST_HIBERNATION:
+		return NOTIFY_DONE;
+	case PM_SUSPEND_PREPARE: /*enter suspend*/
+		LOG_DBG("bPass1_On_In_Resume_TG1(%d)\n", bPass1_On_In_Resume_TG1);
+		if (g_u4EnableClockCount > 0) {
+			RSC_EnableClock(MFALSE);
+			g_SuspendCnt++;
+		}
+		bPass1_On_In_Resume_TG1 = 0;
+		LOG_INF("%s:g_u4EnableClockCount(%d) g_SuspendCnt(%d).\n", __func__,
+					g_u4EnableClockCount, g_SuspendCnt);
+		return NOTIFY_DONE;
+	case PM_POST_SUSPEND:    /*after resume*/
+		LOG_DBG("bPass1_On_In_Resume_TG1(%d).\n", bPass1_On_In_Resume_TG1);
+		if (g_SuspendCnt > 0) {
+			RSC_EnableClock(MTRUE);
+			g_SuspendCnt--;
+		}
+		LOG_INF("%s:g_u4EnableClockCount(%d) g_SuspendCnt(%d).\n", __func__,
+					g_u4EnableClockCount, g_SuspendCnt);
+		return NOTIFY_DONE;
+	}
+	return NOTIFY_OK;
+}
+
 int RSC_pm_suspend(struct device *device)
 {
 	struct platform_device *pdev = to_platform_device(device);
@@ -3459,12 +3493,18 @@ static struct platform_driver RSCDriver = {
 #ifdef CONFIG_OF
 		   .of_match_table = RSC_of_ids,
 #endif
-#ifdef CONFIG_PM
+#if IS_ENABLED(CONFIG_PM)
 		   .pm = &RSC_pm_ops,
 #endif
 		}
 };
 
+#if IS_ENABLED(CONFIG_PM)
+static struct notifier_block rsc_suspend_pm_notifier_func = {
+	.notifier_call = rsc_suspend_pm_event,
+	.priority = 0,
+};
+#endif
 
 static int rsc_dump_read(struct seq_file *m, void *v)
 {
@@ -3598,10 +3638,11 @@ static int rsc_reg_read(struct seq_file *m, void *v)
 	return 0;
 }
 
-
+#if CHECK_SERVICE_IF_0
 static ssize_t rsc_reg_write(struct file *file, const char __user *buffer,
 						size_t count, loff_t *data)
 {
+
 	char desc[128];
 	int len = 0;
 	/*char *pEnd;*/
@@ -3709,7 +3750,7 @@ static ssize_t rsc_reg_write(struct file *file, const char __user *buffer,
 
 	return count;
 }
-
+#endif
 static int proc_rsc_reg_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, rsc_reg_read, NULL);
@@ -3719,7 +3760,7 @@ static const struct file_operations rsc_reg_proc_fops = {
 	.owner = THIS_MODULE,
 	.open = proc_rsc_reg_open,
 	.read = seq_read,
-	.write = rsc_reg_write,
+	//.write = rsc_reg_write,
 };
 
 
@@ -3862,6 +3903,14 @@ static signed int __init RSC_Init(void)
 			   RSC_DumpCallback, RSC_ResetCallback,
 							RSC_ClockOffCallback);
 #endif
+
+#if IS_ENABLED(CONFIG_PM)
+	Ret = register_pm_notifier(&rsc_suspend_pm_notifier_func);
+	if (Ret) {
+		pr_debug("[Camera RSC] Failed to register PM notifier.\n");
+		return Ret;
+	}
+#endif
 	LOG_DBG("- X. Ret: %d.", Ret);
 	return Ret;
 }
@@ -3946,12 +3995,14 @@ static irqreturn_t ISP_Irq_RSC(signed int Irq, void *DeviceId)
 		wake_up_interruptible(&RSCInfo.WaitQueueHead);
 
 	/* dump log, use tasklet */
-	IRQ_LOG_KEEPER(
+	if (m_CurrentPPB < LOG_PPNUM && m_CurrentPPB > 0) {
+		IRQ_LOG_KEEPER(
 		RSC_IRQ_TYPE_INT_RSC_ST, m_CurrentPPB, _LOG_INF,
 		"%s:%d, reg 0x%x : 0x%x, bResulst:%d, RscHWSta:0x%x, RscIrqCnt:0x%x, WriteReqIdx:0x%x, ReadReqIdx:0x%x\n",
 		       __func__, Irq, RSC_INT_STATUS_HW, RscStatus, bResulst,
 			RscStatus, RSCInfo.IrqInfo.RscIrqCnt,
 		       RSCInfo.WriteReqIdx, RSCInfo.ReadReqIdx);
+	}
 	/* IRQ_LOG_KEEPER(RSC_IRQ_TYPE_INT_RSC_ST, m_CurrentPPB, _LOG_INF,
 	 * "RscHWSta:0x%x, RscHWSta:0x%x, DpeDveSta0:0x%x\n",
 	 * DveStatus, RscStatus, DpeDveSta0);
@@ -3972,10 +4023,11 @@ static irqreturn_t ISP_Irq_RSC(signed int Irq, void *DeviceId)
 
 static void ISP_TaskletFunc_RSC(unsigned long data)
 {
-	IRQ_LOG_PRINTER(RSC_IRQ_TYPE_INT_RSC_ST, m_CurrentPPB, _LOG_DBG);
-	IRQ_LOG_PRINTER(RSC_IRQ_TYPE_INT_RSC_ST, m_CurrentPPB, _LOG_INF);
-	IRQ_LOG_PRINTER(RSC_IRQ_TYPE_INT_RSC_ST, m_CurrentPPB, _LOG_ERR);
-
+	if (m_CurrentPPB < LOG_PPNUM && m_CurrentPPB > 0) {
+		IRQ_LOG_PRINTER(RSC_IRQ_TYPE_INT_RSC_ST, m_CurrentPPB, _LOG_DBG);
+		IRQ_LOG_PRINTER(RSC_IRQ_TYPE_INT_RSC_ST, m_CurrentPPB, _LOG_INF);
+		IRQ_LOG_PRINTER(RSC_IRQ_TYPE_INT_RSC_ST, m_CurrentPPB, _LOG_ERR);
+	}
 }
 
 static void logPrint(struct work_struct *data)

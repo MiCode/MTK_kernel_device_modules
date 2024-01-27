@@ -13,18 +13,18 @@ typedef void (*record_opp)(const u8 opp);
 
 /* For systrace */
 bool mmdvfs_systrace_enabled(void);
-int tracing_mark_write(char *fmt, ...);
+int mmdvfs_tracing_mark_write(char *fmt, ...);
 
 #define TRACE_MSG_LEN	1024
 
 #define MMDVFS_TRACE_FORCE_BEGIN_TID(tid, fmt, args...) \
-	tracing_mark_write("B|%d|" fmt "\n", tid, ##args)
+	mmdvfs_tracing_mark_write("B|%d|" fmt "\n", tid, ##args)
 
 #define MMDVFS_TRACE_FORCE_BEGIN(fmt, args...) \
 	MMDVFS_TRACE_FORCE_BEGIN_TID(current->tgid, fmt, ##args)
 
 #define MMDVFS_TRACE_FORCE_END() \
-	tracing_mark_write("E\n")
+	mmdvfs_tracing_mark_write("E\n")
 
 #define MMDVFS_SYSTRACE_BEGIN(fmt, args...) do { \
 	if (mmdvfs_systrace_enabled()) { \

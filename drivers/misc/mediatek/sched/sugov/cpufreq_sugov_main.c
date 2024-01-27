@@ -32,7 +32,9 @@
 #include <linux/sched/cpufreq.h>
 #include <linux/kthread.h>
 #include <uapi/linux/sched/types.h>
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 #include <thermal_interface.h>
+#endif
 #include <mt-plat/mtk_irq_mon.h>
 #include "sched_version_ctrl.h"
 
@@ -239,6 +241,7 @@ inline int curr_clamp(struct rq *rq, unsigned long *util)
 	return 0;
 }
 
+static bool ignore_irq_util;
 /*
  * This function computes an effective utilization for the given CPU, to be
  * used for frequency selection given the linear relation: f = u * f_max.
@@ -280,9 +283,11 @@ unsigned long mtk_cpu_util(unsigned int cpu, unsigned long util_cfs,
 	 * because of inaccuracies in how we track these -- see
 	 * update_irq_load_avg().
 	 */
-	irq = cpu_util_irq(rq);
-	if (unlikely(irq >= max))
-		return max;
+	if (likely(!ignore_irq_util)) {
+		irq = cpu_util_irq(rq);
+		if (unlikely(irq >= max))
+			return max;
+	}
 
 	/*
 	 * Because the time spend on RT/DL tasks is visible as 'lost' time to
@@ -386,8 +391,14 @@ skip_rq_uclamp:
 	 *   U' = irq + --------- * U
 	 *                 max
 	 */
-	util = scale_irq_capacity(util, irq, max);
-	util += irq;
+	if (trace_sugov_ext_util_debug_enabled())
+		trace_sugov_ext_util_debug(cpu, util_cfs, cpu_util_rt(rq), dl_util,
+				irq, util, ignore_irq_util ? 0 : scale_irq_capacity(util, irq, max),
+				cpu_bw_dl(rq));
+	if (likely(!ignore_irq_util)) {
+		util = scale_irq_capacity(util, irq, max);
+		util += irq;
+	}
 
 	/*
 	 * Bandwidth required by DEADLINE must always be granted while, for
@@ -1159,6 +1170,8 @@ static void sugov_limits(struct cpufreq_policy *policy)
 	}
 
 	sg_policy->limits_changed = true;
+	if (trace_sugov_ext_limits_changed_enabled())
+		trace_sugov_ext_limits_changed(policy->cpu, policy->cur, policy->min, policy->max);
 }
 
 struct cpufreq_governor mtk_gov = {
@@ -1169,6 +1182,45 @@ struct cpufreq_governor mtk_gov = {
 	.start			= sugov_start,
 	.stop			= sugov_stop,
 	.limits			= sugov_limits,
+};
+
+static int ignore_irq_util_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%s\n", ignore_irq_util ? "true" : "false");
+	return 0;
+}
+
+static int ignore_irq_util_open(struct inode *in, struct file *file)
+{
+	return single_open(file, ignore_irq_util_show, NULL);
+}
+
+static ssize_t ignore_irq_util_write(struct file *filp, const char *ubuf,
+	size_t count, loff_t *data)
+{
+	char buf[16] = {0};
+	int ret;
+	unsigned int input = 0;
+
+	if (!count)
+		return count;
+	if (count + 1 > 16)
+		return -ENOMEM;
+	ret = copy_from_user(buf, ubuf, count);
+	if (ret)
+		return -EFAULT;
+	buf[count] = '\0';
+	ret = kstrtouint(buf, 10, &input);
+	if (ret)
+		return -EFAULT;
+	ignore_irq_util = input > 0;
+	return count;
+}
+
+static const struct proc_ops ignore_irq_util_ops = {
+	.proc_open = ignore_irq_util_open,
+	.proc_read = seq_read,
+	.proc_write = ignore_irq_util_write
 };
 
 static int __init cpufreq_mtk_init(void)
@@ -1196,6 +1248,8 @@ static int __init cpufreq_mtk_init(void)
 	if(ret)
 		pr_info("register init_sched_ctrl failed\n");
 
+	proc_create("ignore_irq_util", 0644, dir, &ignore_irq_util_ops);
+
 	ret = init_opp_cap_info(dir);
 	if (ret)
 		return ret;
@@ -1221,7 +1275,7 @@ static void __exit cpufreq_mtk_exit(void)
 	cpufreq_unregister_governor(&mtk_gov);
 }
 
-module_init(cpufreq_mtk_init);
+late_initcall_sync(cpufreq_mtk_init);
 module_exit(cpufreq_mtk_exit);
 
 MODULE_LICENSE("GPL");

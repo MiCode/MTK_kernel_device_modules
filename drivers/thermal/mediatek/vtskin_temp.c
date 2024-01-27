@@ -13,6 +13,7 @@
 #include <linux/slab.h>
 #include <linux/thermal.h>
 #include "vtskin_temp.h"
+#include <linux/math64.h>
 
 static int vtskin_get_temp(struct thermal_zone_device *tz, int *temp)
 {
@@ -62,7 +63,7 @@ static int vtskin_get_temp(struct thermal_zone_device *tz, int *temp)
 			coef = skin_param[skin_tz->id].vtskin_ref[i].sensor_coef;
 			vtskin += tz_temp * coef;
 			if (i == skin_param[skin_tz->id].ref_num - 1)
-				*temp = (int)(vtskin / 100000000);
+				*temp = (int)div_s64(vtskin, 100000000);
 		}
 	}
 

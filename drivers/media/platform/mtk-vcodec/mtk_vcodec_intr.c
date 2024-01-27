@@ -106,6 +106,12 @@ irqreturn_t mtk_vcodec_dec_irq_handler(int irq, void *priv)
 	if (ctx == NULL)
 		return IRQ_HANDLED;
 
+	if (ctx->dec_params.svp_mode && dev->svp_mtee) {
+		mtk_v4l2_debug(4, "svp_mode %d don't handle",
+			ctx->dec_params.svp_mode);
+		return IRQ_HANDLED;
+	}
+
 	misc_index = ((core_id == MTK_VDEC_CORE) ? VDEC_MISC : VDEC_CORE1_MISC);
 	vdec_misc_addr = dev->dec_reg_base[misc_index] +
 		MTK_VDEC_IRQ_CFG_REG;
@@ -428,9 +434,16 @@ int mtk_vcodec_dec_irq_setup(struct platform_device *pdev,
 		}
 		g_dec_irq[i] = dev->dec_irq[i];
 		if ((i == MTK_VDEC_CORE) || (i == MTK_VDEC_CORE1))
-			ret = devm_request_irq(&pdev->dev, dev->dec_irq[i],
-				mtk_vcodec_dec_irq_handler, IRQF_TRIGGER_HIGH | IRQF_SHARED,
-				pdev->name, dev);
+			if (dev->svp_mtee)
+				ret = devm_request_irq(&pdev->dev, dev->dec_irq[i],
+					mtk_vcodec_dec_irq_handler,
+					IRQF_NO_THREAD | IRQF_SHARED | IRQF_PROBE_SHARED,
+					pdev->name, dev);
+			else
+				ret = devm_request_irq(&pdev->dev, dev->dec_irq[i],
+					mtk_vcodec_dec_irq_handler,
+					IRQF_TRIGGER_HIGH | IRQF_SHARED,
+					pdev->name, dev);
 		else if ((i == MTK_VDEC_LAT) || (i == MTK_VDEC_LAT1))
 			ret = devm_request_irq(&pdev->dev, dev->dec_irq[i],
 				mtk_vcodec_lat_dec_irq_handler, IRQF_TRIGGER_HIGH | IRQF_SHARED,

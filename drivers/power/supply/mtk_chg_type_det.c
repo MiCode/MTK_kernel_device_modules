@@ -286,6 +286,20 @@ static int mtk_ctd_probe(struct platform_device *pdev)
 			str = "primary_chg";
 		}
 
+#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
+	mci->bc12_psy[i] = devm_power_supply_get_by_phandle(&pdev->dev,
+							"bc12");
+#else
+	mci->bc12_psy[i] = power_supply_get_by_name("primary_chg");
+#endif
+	if (IS_ERR_OR_NULL(mci->bc12_psy)) {
+		dev_notice(&pdev->dev, "Failed to get charger psy\n");
+		return PTR_ERR(mci->bc12_psy);
+	} else if (!mci->bc12_psy) {
+		dev_notice(&pdev->dev, "Failed to get charger psy, charger psy is not ready\n");
+		return -EPROBE_DEFER;
+	}
+
 		mci->chg_dev[i] = get_charger_by_name(str);
 		if (!mci->chg_dev[i]) {
 			dev_notice(mci->dev, "Failed to get %s chg_dev\n", str);
@@ -397,7 +411,9 @@ static int __init mtk_ctd_init(void)
 {
 	return platform_driver_register(&mtk_ctd_driver);
 }
-device_initcall_sync(mtk_ctd_init);
+
+late_initcall_sync(mtk_ctd_init);
+
 
 static void __exit mtk_ctd_exit(void)
 {

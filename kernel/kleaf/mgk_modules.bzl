@@ -10,14 +10,15 @@ mgk_module_ext_outs = [
     "drivers/gpu/drm/drm_dma_helper.ko",
     "drivers/iio/buffer/industrialio-triggered-buffer.ko",
     "drivers/iio/buffer/kfifo_buf.ko",
+    "drivers/iio/adc/mt6370-adc.ko",
     "drivers/leds/leds-pwm.ko",
     "drivers/media/v4l2-core/v4l2-flash-led-class.ko",
     "drivers/perf/arm_dsu_pmu.ko",
-    "drivers/phy/mediatek/phy-mtk-mipi-dsi-drv.ko",
     "drivers/power/reset/reboot-mode.ko",
     "drivers/power/reset/syscon-reboot-mode.ko",
     "drivers/tee/tee.ko",
     "drivers/thermal/thermal-generic-adc.ko",
+    "drivers/usb/phy/phy-generic.ko",
 ]
 
 mgk_module_eng_outs = mgk_module_ext_outs + [

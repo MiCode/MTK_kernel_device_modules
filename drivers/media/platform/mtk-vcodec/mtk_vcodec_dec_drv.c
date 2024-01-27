@@ -493,12 +493,24 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 		mtk_v4l2_debug(2, "reg[%d] base=0x%lx",
 			reg_index, (unsigned long)dev->dec_reg_base[reg_index]);
 	}
+	// if VDEC_BASE and VDEC_SYS are same which will only config VDEC_SYS in dts,
+	// use VDEC_SYS as VDEC_BASE to avoid check hw active with KE in both
+	// mtk_vcodec_lat_dec_irq_handler and mtk_vcodec_dec_irq_handler
+	if (dev->dec_reg_base[VDEC_BASE] == NULL) {
+		dev->dec_reg_base[VDEC_BASE] = dev->dec_reg_base[VDEC_SYS];
+		mtk_v4l2_debug(2, "VDEC_BASE reg[%d] base=0x%lx",
+			VDEC_BASE, (unsigned long)dev->dec_reg_base[VDEC_BASE]);
+	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, "support-svp-region", &support_svp_region);
 	if (ret) {
 		mtk_v4l2_debug(0, "[VDEC] Cannot get support-svp-region, skip");
 		support_svp_region = 0;
 	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, "svp-mtee", &dev->svp_mtee);
+	if (ret)
+		mtk_v4l2_debug(0, "[VDEC] Cannot get svp-mtee, skip");
 
 	ret = mtk_vcodec_dec_irq_setup(pdev, dev);
 	if (ret)
@@ -695,6 +707,7 @@ static const struct of_device_id mtk_vcodec_match[] = {
 	{.compatible = "mediatek,mt6835-vcodec-dec",},
 	{.compatible = "mediatek,mt6897-vcodec-dec",},
 	{.compatible = "mediatek,mt6989-vcodec-dec",},
+	{.compatible = "mediatek,mt6768-vcodec-dec",},
 	{.compatible = "mediatek,vdec_gcon",},
 	{},
 };

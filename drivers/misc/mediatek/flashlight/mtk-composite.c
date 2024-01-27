@@ -49,6 +49,7 @@ fl_async_bound(struct v4l2_async_notifier *notifier,
 			container_of(notifier->v4l2_dev,
 			struct mtk_composite_v4l2_device, v4l2_dev);
 
+#if IS_ENABLED(CONFIG_MEDIA_CONTROLLER)
 	pr_info("%s v4l2 subdev entity name:%s\n", __func__,
 		subdev->entity.name);
 
@@ -57,6 +58,7 @@ fl_async_bound(struct v4l2_async_notifier *notifier,
 	INIT_LIST_HEAD(&notifier->sd->entity.links);
 	notifier->sd->entity.graph_obj.mdev = pfdev->v4l2_dev.mdev;
 	pr_info("%s %d\n", __func__, __LINE__);
+#endif
 
 	return 0;
 }
@@ -78,7 +80,7 @@ static int fl_probe_complete(struct mtk_composite_v4l2_device *pfdev)
 		if (!(sd->flags & V4L2_SUBDEV_FL_HAS_DEVNODE))
 			continue;
 
-#if defined(CONFIG_MEDIA_CONTROLLER)
+#if IS_ENABLED(CONFIG_MEDIA_CONTROLLER)
 		pr_info("%s v4l2:%s\n", __func__, sd->entity.name);
 #endif
 	}
@@ -132,7 +134,7 @@ static int mtk_composite_probe(struct platform_device *dev)
 		goto vdec_end;
 	}
 
-#if defined(CONFIG_MEDIA_CONTROLLER)
+#if IS_ENABLED(CONFIG_MEDIA_CONTROLLER)
 	pfdev->v4l2_dev.mdev = kzalloc(sizeof(struct media_device),
 		GFP_KERNEL);
 	if (!pfdev->v4l2_dev.mdev) {

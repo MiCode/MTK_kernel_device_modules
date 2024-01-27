@@ -458,7 +458,7 @@ TRACE_EVENT(sched_cpu_util,
 		__entry->nr_running = cpu_rq(cpu)->nr_running;
 		__entry->cpu_util	= mtk_sched_cpu_util(cpu);
 		__entry->cpu_max_util	= mtk_sched_max_util(p, cpu, min_cap, max_cap);
-		__entry->capacity	= capacity_of(cpu);
+		__entry->capacity	= cpu_rq(cpu)->cpu_capacity; //capacity_of(cpu);
 		__entry->capacity_orig	= capacity_orig_of(cpu);
 		__entry->idle_exit_latency	= mtk_get_idle_exit_latency(cpu, NULL);
 		__entry->online			= cpu_online(cpu);

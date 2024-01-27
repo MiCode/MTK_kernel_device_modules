@@ -6,6 +6,7 @@
 
 #include <linux/device.h>
 #include <linux/interrupt.h>
+#include <linux/mfd/mt6358/registers.h>
 #include <linux/mfd/mt6359p/registers.h>
 #include <linux/mfd/mt6377/registers.h>
 #include <linux/mfd/mt6397/core.h>
@@ -70,6 +71,14 @@ struct battery_oc_data_t {
 	struct reg_t reg_default_rfg;
 };
 
+struct battery_oc_data_t mt6358_battery_oc_data = {
+	.regmap_source = "parent_drvdata",
+	.gauge_node_name = "mtk_gauge",
+	.fg_cur_hth = {MT6358_FGADC_CUR_CON2, 0xFFFF, 1},
+	.fg_cur_lth = {MT6358_FGADC_CUR_CON1, 0xFFFF, 1},
+	.spmi_intf = false,
+	.cust_rfg = false,
+};
 struct battery_oc_data_t mt6359p_battery_oc_data = {
 	.regmap_source = "parent_drvdata",
 	.gauge_node_name = "mtk-gauge",
@@ -448,7 +457,9 @@ static int battery_oc_parse_dt(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	ret = of_property_read_u32(np, "r-fg-value", &priv->r_fg_value);
+	ret = of_property_read_u32(np, "R_FG_VALUE", &priv->r_fg_value);
+	if (ret)
+		ret = of_property_read_u32(np, "r-fg-value", &priv->r_fg_value);
 	if (ret) {
 		dev_notice(&pdev->dev, "get r-fg-value fail\n");
 		return -EINVAL;
@@ -456,12 +467,14 @@ static int battery_oc_parse_dt(struct platform_device *pdev)
 	priv->r_fg_value *= UNIT_TRANS_10;
 
 	ret = of_property_read_u32(np, "unit-multiple", &priv->unit_multiple);
-	if (ret) {
+	if (priv->ocdata->cust_rfg && ret) {
 		dev_notice(&pdev->dev, "get unit-multiple fail\n");
 		return -EINVAL;
 	}
 
-	ret = of_property_read_u32(np, "car-tune-value", &priv->car_tune_value);
+	ret = of_property_read_u32(np, "CAR_TUNE_VALUE", &priv->car_tune_value);
+	if (ret)
+		ret = of_property_read_u32(np, "car-tune-value", &priv->car_tune_value);
 	if (ret) {
 		dev_notice(&pdev->dev, "get car-tune-value fail\n");
 		return -EINVAL;
@@ -577,6 +590,10 @@ static int battery_oc_parse_dt(struct platform_device *pdev)
 	} else {
 		pmic = dev_get_drvdata(pdev->dev.parent);
 		switch (pmic->chip_id) {
+		case MT6358_CHIP_ID:
+			priv->default_rfg = MT6358_DEFAULT_RFG;
+			priv->unit_fg_cur = MT6358_UNIT_FGCURRENT;
+			break;
 		case MT6359P_CHIP_ID:
 			priv->default_rfg = MT6359P_DEFAULT_RFG;
 			priv->unit_fg_cur = MT6359P_UNIT_FGCURRENT;
@@ -774,6 +791,9 @@ static SIMPLE_DEV_PM_OPS(battery_oc_throttling_pm_ops,
 
 static const struct of_device_id battery_oc_throttling_of_match[] = {
 	{
+		.compatible = "mediatek,mt6358-battery_oc_throttling",
+		.data = &mt6358_battery_oc_data,
+	}, {
 		.compatible = "mediatek,mt6359p-battery_oc_throttling",
 		.data = &mt6359p_battery_oc_data,
 	}, {

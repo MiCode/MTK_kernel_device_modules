@@ -3,13 +3,11 @@
  * Copyright (C) 2016 MediaTek Inc.
  */
 
-#ifdef CCCI_KMODULE_ENABLE
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
-#endif
 #include <linux/clk.h> /* for clk_prepare/un* */
 
 #include "ccci_config.h"
@@ -26,13 +24,7 @@ static struct ccci_clk_node scp_clk_table[] = {
 	{ NULL, "infra-ccif2-md"},
 };
 
-struct ccci_fsm_scp {
-	enum MD_STATE old_state;
-	struct work_struct scp_md_state_sync_work;
-	void __iomem *ccif2_ap_base;
-	void __iomem *ccif2_md_base;
-	unsigned int scp_clk_free_run;
-};
+
 
 static struct ccci_fsm_scp ccci_scp_ctl;
 
@@ -49,10 +41,12 @@ static void ccci_scp_md_state_sync(enum MD_STATE old_state,
  * 0 to disable; 1 for print to ram; 2 for print to uart
  * other value to desiable all log
  */
+#ifdef CCCI_KMODULE_ENABLE
 #ifndef CCCI_LOG_LEVEL /* for platform override */
 #define CCCI_LOG_LEVEL CCCI_LOG_CRITICAL_UART
 #endif
 unsigned int ccci_debug_enable = CCCI_LOG_LEVEL;
+#endif
 
 static atomic_t scp_state = ATOMIC_INIT(SCP_CCCI_STATE_INVALID);
 static struct ccci_ipi_msg_out scp_ipi_tx_msg;
@@ -405,7 +399,6 @@ static int fsm_sim_type_handler(int data)
 }
 #endif
 
-#ifdef CCCI_KMODULE_ENABLE
 #ifdef FEATURE_SCP_CCCI_SUPPORT
 void fsm_scp_init0(void)
 {
@@ -438,6 +431,11 @@ void fsm_scp_init0(void)
 		ccci_scp_md_state_sync(INVALID, md_stat);
 }
 
+#endif
+
+
+#ifdef FEATURE_SCP_CCCI_SUPPORT
+
 static int apsync_event(struct notifier_block *this,
 	unsigned long event, void *ptr)
 {
@@ -456,10 +454,7 @@ static int apsync_event(struct notifier_block *this,
 static struct notifier_block apsync_notifier = {
 	.notifier_call = apsync_event,
 };
-#endif
-#endif
 
-#ifdef FEATURE_SCP_CCCI_SUPPORT
 static int ccif_scp_clk_init(struct device *dev)
 {
 	int idx;

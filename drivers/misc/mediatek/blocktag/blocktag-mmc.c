@@ -427,7 +427,12 @@ int mmc_mtk_biolog_init(struct mmc_host *mmc)
 	struct mmc_mtk_bio_context *ctx;
 	struct device_node *np;
 	struct device_node *boot_node = NULL;
-	struct tag_bootmode *tag = NULL;
+	struct tag_bootmode {
+		u32 size;
+		u32 tag;
+		u32 bootmode;
+		u32 boottype;
+	} *tag = NULL;
 
 	if (!mmc)
 		return -EINVAL;

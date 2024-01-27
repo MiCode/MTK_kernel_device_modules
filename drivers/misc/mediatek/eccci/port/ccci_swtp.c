@@ -196,10 +196,15 @@ static void swtp_init_delayed_work(struct work_struct *work)
 		ARRAY_SIZE(swtp_of_match) > MAX_PIN_NUM + 1 ||
 		ARRAY_SIZE(irq_name) > MAX_PIN_NUM + 1) {
 		ret = -3;
+#if IS_ENABLED(CONFIG_ARM64)
 		CCCI_LEGACY_ERR_LOG(-1, SYS,
 			"%s: invalid array count = %lu(of_match), %lu(irq_name)\n",
-			__func__, ARRAY_SIZE(swtp_of_match),
-			ARRAY_SIZE(irq_name));
+			__func__, ARRAY_SIZE(swtp_of_match), ARRAY_SIZE(irq_name));
+#else
+		CCCI_LEGACY_ERR_LOG(-1, SYS,
+			"%s: invalid array count = %u(of_match), %u(irq_name)\n",
+			__func__, ARRAY_SIZE(swtp_of_match), ARRAY_SIZE(irq_name));
+#endif
 		goto SWTP_INIT_END;
 	}
 

@@ -1471,7 +1471,7 @@
 #define		dm2g				0x123A
 #define		dm3g				0x123B
 #define		dm4g				0x123C
-#define		zero				0x123D
+#define		zero2				0x123D
 #define		com10				0x123E
 #define		cop10				0x123F
 

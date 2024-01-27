@@ -15,7 +15,7 @@ config DEVICE_MODULES_DRM_MEDIATEK
 	select DRM_PANEL
 	select MEMORY
 	select DEVICE_MODULES_MTK_SMI
-	select PHY_MTK_MIPI_DSI
+#	select PHY_MTK_MIPI_DSI
 	select VIDEOMODE_HELPERS
 	help
 	  Choose this option if you have a Mediatek SoCs.

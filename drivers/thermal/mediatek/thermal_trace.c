@@ -14,7 +14,7 @@
 #include <linux/types.h>
 #define CREATE_TRACE_POINTS
 #include "thermal_trace.h"
-
+#include <linux/math64.h>
 /*==================================================
  * trace point API export
  *==================================================
@@ -175,7 +175,7 @@ static void thermal_info_work(struct work_struct *work)
 				: (0xffffffff - stat->pre_tx_bytes
 				+ stat->cur_tx_bytes);
 			stat->cur_tput =
-				(diff / (cur_time.tv_sec - pre_time)) >> 7;
+				(div_u64(diff, (cur_time.tv_sec - pre_time))) >> 7;
 
 			pr_debug("[%s] %d:time/tx/tput=%llu/%lu/%luKb/s\n",
 				__func__, i, cur_time.tv_sec,

@@ -20,6 +20,9 @@
 
 static int (*subsys_init[])(struct pll_dts *array) = {
 	&fhctl_ap_init,
+#if IS_ENABLED(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_SSPM)
+	&fhctl_sspm_init,
+#endif
 #ifdef USE_FHCTL_MCUPM
 	&fhctl_mcupm_init,
 #endif
@@ -52,6 +55,12 @@ static bool mtk_fh_set_rate(const char *pll_name, unsigned long dds, int postdiv
 		FHDBG("!_inited\n");
 		return false;
 	}
+
+	if (!pll_name) {
+		FHDBG("pll_name is NULL");
+		return false;
+	}
+
 	for (i = 0; i < num_pll; i++, array++) {
 		if (!strcmp(pll_name, array->pll_name)) {
 			hdlr = array->hdlr;
@@ -92,7 +101,7 @@ static struct pll_dts *parse_dt(struct platform_device *pdev)
 
 	size = sizeof(*array)*num_pll;
 	array = kzalloc(size, GFP_KERNEL);
-	FHDBG("array<%lx>, num_pll<%d>, comp<%s>, sizeof(*array)=%lx, size<%ul>\n",
+	FHDBG("array<%lx>, num_pll<%d>, comp<%s>, sizeof(*array)=%zx, size<%ul>\n",
 			(unsigned long)array, num_pll,
 			match->compatible, sizeof(*array), size);
 	for_each_child_of_node(root, map) {
@@ -211,6 +220,8 @@ static void fh_plt_drv_shutdown(struct platform_device *pdev)
 }
 
 static const struct of_device_id fh_of_match[] = {
+	{ .compatible = "mediatek,mt6768-fhctl"},
+	{ .compatible = "mediatek,mt6885-fhctl"},
 	{ .compatible = "mediatek,mt6897-fhctl"},
 	{ .compatible = "mediatek,mt6985-fhctl"},
 	{ .compatible = "mediatek,mt6989-fhctl"},

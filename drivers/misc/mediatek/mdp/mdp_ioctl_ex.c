@@ -33,6 +33,10 @@
 
 #include "mdp_rdma_ex.h"
 
+#ifdef CMDQ_SECURE_PATH_SUPPORT
+#include "mtk_heap.h"
+#endif
+
 #define MDP_TASK_PAENDING_TIME_MAX	100000000
 
 #define RDMA_CPR_PREBUILT(mod, pipe, index) \
@@ -114,13 +118,13 @@ static dma_addr_t translate_read_id(u32 read_id)
 		+ slot_offset * sizeof(u32);
 }
 
-static s32 translate_engine_rdma(u32 engine)
+static u32 translate_engine_rdma(u32 engine)
 {
 	s32 rdma_idx = cmdq_mdp_get_rdma_idx(engine);
 
 	if (rdma_idx < 0) {
-		CMDQ_ERR("invalid rdma idx(%d)\n", rdma_idx);
-		return -EINVAL;
+		CMDQ_ERR("invalia rdma idx, set rdma0 as default\n");
+		rdma_idx = 0;
 	}
 	return rdma_idx;
 }
@@ -372,7 +376,7 @@ static s32 translate_meta(struct op_meta *meta,
 			reg_addr_msb = cmdq_mdp_get_hw_reg_msb(meta->engine, meta->offset);
 			if (reg_addr_msb) {
 				status = cmdq_op_write_reg_ex(
-					handle, cmd_buf, reg_addr_msb, mva >> 32, ~0);
+					handle, cmd_buf, reg_addr_msb, DO_SHIFT_RIGHT(mva, 32), ~0);
 			} else {
 				CMDQ_ERR("%s: op:%u, get reg_addr_msb fail, eng:%d, offset 0x%x\n",
 					__func__, meta->op, meta->engine, meta->offset);
@@ -425,7 +429,7 @@ static s32 translate_meta(struct op_meta *meta,
 
 			/* check platform support LSB/MSB or not */
 			if (gMdpRegMSBSupport) {
-				src_base_msb = mva >> 32;
+				src_base_msb = DO_SHIFT_RIGHT(mva, 32);
 				src_base_lsb = mva & U32_MAX;
 			} else {
 				src_base_msb = 0;
@@ -451,7 +455,7 @@ static s32 translate_meta(struct op_meta *meta,
 	case CMDQ_MOP_WRITE_RDMA:
 	{
 		u32 src_base_lsb, src_base_msb;
-		s32 rdma_idx = translate_engine_rdma(meta->engine);
+		u32 rdma_idx = translate_engine_rdma(meta->engine);
 
 		if ((rdma_idx != 0) && (rdma_idx != 1)) {
 			CMDQ_ERR("%s: op:%u, engine %d, rdma_idx %d invalid\n",
@@ -547,7 +551,7 @@ static s32 translate_meta(struct op_meta *meta,
 				&dram_addr, offset);
 			CMDQ_LOG_PQ("%s: engine:%d, rb_id:0x%x, vcp_offset:0x%x, vcp_pa:%#llx\n",
 				__func__, meta->engine, meta->readback_id,
-				vcp_offset, vcp_paStart + vcp_offset);
+				vcp_offset, (u64)(vcp_paStart + vcp_offset));
 
 			cmdq_mdp_vcp_pq_readback(handle, meta->engine,
 				vcp_offset, MAX_COUNT_IN_RB_SLOT);
@@ -618,6 +622,40 @@ static s32 translate_meta(struct op_meta *meta,
 	}
 	case CMDQ_MOP_NOP:
 		break;
+#ifdef CMDQ_SECURE_PATH_SUPPORT
+	case CMDQ_MOP_WRITE_SEC_FD:
+	{
+		struct dma_buf *buf;
+
+		/* secure fd -> secure handle */
+		buf = dma_buf_get(meta->fd);
+		if (IS_ERR(buf)) {
+			CMDQ_ERR("%s: fail to get dma_buf:%ld, meta->fd:%d\n",
+				__func__, PTR_ERR(buf), meta->fd);
+			return -EINVAL;
+		}
+		meta->sec_handle = dmabuf_to_secure_handle(buf);
+		CMDQ_MSG("CMDQ_MOP_WRITE_SEC_FD: translate fd %d to sec_handle %d\n",
+			meta->fd, meta->sec_handle);
+		dma_buf_put(buf);
+
+		reg_addr = cmdq_mdp_get_hw_reg(meta->engine, meta->offset);
+		if (!reg_addr)
+			return -EINVAL;
+		status = cmdq_op_write_reg_ex(handle, cmd_buf, reg_addr,
+					meta->sec_handle, ~0);
+
+		/* use total buffer size count in translation */
+		if (!status) {
+			/* flush to make sure count is correct */
+			cmdq_handle_flush_cmd_buf(handle, cmd_buf);
+			status = cmdq_mdp_update_sec_addr_index(handle,
+				meta->sec_handle, meta->sec_index,
+				cmdq_mdp_handle_get_instr_count(handle) - 1);
+		}
+		break;
+	}
+#endif
 	default:
 		CMDQ_ERR("invalid meta op:%u\n", meta->op);
 		status = -EINVAL;
@@ -993,6 +1031,9 @@ s32 mdp_ioctl_async_wait(unsigned long param)
 		goto done;
 	}
 
+	/* prevent ioctl release when waiting for task done */
+	cmdq_remove_handle_from_handle_active(handle);
+
 	do {
 		/* wait for task done */
 		status = cmdq_mdp_wait(handle, NULL);
@@ -1090,7 +1131,7 @@ s32 mdp_ioctl_alloc_readback_slots(void *fp, unsigned long param)
 	s32 status;
 	u32 free_slot, free_slot_group, alloc_slot_index;
 	u64 exec_cost = sched_clock(), alloc;
-	dma_addr_t vcp_iova_base;
+	dma_addr_t vcp_iova_base = 0;
 	void *vcp_va_base;
 
 	if (copy_from_user(&rb_req, (void *)param, sizeof(rb_req))) {
@@ -1220,6 +1261,11 @@ s32 mdp_ioctl_free_readback_slots(void *fp, unsigned long param)
 		mutex_lock(&rb_slot_list_mutex);
 		free_slot_group = free_slot_index >> 6;
 		free_slot = free_slot_index & 0x3f;
+		if (free_slot_group >= SLOT_GROUP_NUM) {
+			mutex_unlock(&rb_slot_list_mutex);
+			CMDQ_ERR("%s invalid group:%x\n", __func__, free_slot_group);
+			return -EINVAL;
+		}
 		if (!(alloc_slot[free_slot_group] & (1LL << free_slot))) {
 			mutex_unlock(&rb_slot_list_mutex);
 			CMDQ_ERR("%s %d not in group[%d]:%llx\n", __func__,

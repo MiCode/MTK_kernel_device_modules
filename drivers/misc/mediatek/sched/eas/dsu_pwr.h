@@ -6,6 +6,7 @@
 #ifndef _DSU_PWR_H
 #define _DSU_PWR_H
 
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 /* SWPM */
 #define L3_PERBW_PWR_A  (29/10)
 #define L3_PERBW_PWR_B  (145/100)
@@ -57,4 +58,5 @@ unsigned int mcusys_dyn_pwr(int wl_type, struct dsu_info *p,
 #endif
 unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, struct dsu_info *dsu);
+#endif
 #endif

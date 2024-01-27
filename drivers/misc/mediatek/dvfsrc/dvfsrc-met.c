@@ -272,6 +272,11 @@ static const struct dvfsrc_met_data mt6897_data = {
 	.max_emi_mon =  7,
 };
 
+static const struct dvfsrc_met_data mt6768_data = {
+	.met = &mt6768_met_config,
+	.version = 0x6768,
+};
+
 static const struct of_device_id dvfsrc_met_of_match[] = {
 #if IS_ENABLED(CONFIG_MTK_DVFSRC_MET_MT6873)
 	{
@@ -318,6 +323,12 @@ static const struct of_device_id dvfsrc_met_of_match[] = {
 		.data = &mt6897_data,
 	},
 #endif
+#if IS_ENABLED(CONFIG_MTK_DVFSRC_MET_MT6768)
+	{
+		.compatible = "mediatek,mt6768-dvfsrc",
+		.data = &mt6768_data,
+	},
+#endif
 	{
 		/* sentinel */
 	},
@@ -332,6 +343,7 @@ static int mtk_dvfsrc_met_probe(struct platform_device *pdev)
 	struct mtk_dvfsrc_met *dvfsrc;
 
 	match = of_match_node(dvfsrc_met_of_match, dev->parent->of_node);
+
 	if (!match) {
 		dev_info(dev, "invalid compatible string\n");
 		return -ENODEV;
@@ -363,21 +375,21 @@ static int mtk_dvfsrc_met_probe(struct platform_device *pdev)
 	if (IS_ERR(dvfsrc->dvfsrc_vcore_power)) {
 		dev_info(dvfsrc->dev, "get dvfsrc_vcore failed = %ld\n",
 			PTR_ERR(dvfsrc->dvfsrc_vcore_power));
-		return PTR_ERR(dvfsrc->dvfsrc_vcore_power);
+		dvfsrc->dvfsrc_vcore_power = NULL;
 	}
 
 	dvfsrc->bw_path = devm_of_icc_get(dvfsrc->dev, "icc-bw");
 	if (IS_ERR(dvfsrc->bw_path)) {
 		dev_info(dvfsrc->dev, "get icc-bw failed = %ld\n",
 			PTR_ERR(dvfsrc->bw_path));
-		return PTR_ERR(dvfsrc->bw_path);
+		dvfsrc->bw_path = NULL;
 	}
 
 	dvfsrc->hrt_path = devm_of_icc_get(dvfsrc->dev, "icc-hrt-bw");
 	if (IS_ERR(dvfsrc->hrt_path)) {
 		dev_info(dvfsrc->dev, "get icc-hrt_bw failed = %ld\n",
 			PTR_ERR(dvfsrc->hrt_path));
-		return PTR_ERR(dvfsrc->hrt_path);
+		dvfsrc->hrt_path = NULL;
 	}
 
 	dvfsrc_drv = dvfsrc;

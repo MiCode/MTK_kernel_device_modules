@@ -44,7 +44,7 @@
 #include "ufs-mediatek.h"
 #endif
 
-#if IS_ENABLED(CONFIG_MMC_MTK_PRO)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_MTK_PRO)
 #include <uapi/linux/mmc/ioctl.h>
 #include "core.h"
 #include "mmc_ops.h"
@@ -1443,7 +1443,7 @@ static enum mc_result rpmb_gp_execute_ufs(u32 cmdId)
 #endif
 #endif
 
-#if IS_ENABLED(CONFIG_MMC_MTK_PRO)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_MTK_PRO)
 /*
  * CHECK THIS!!! Copy from block.c mmc_blk_data structure.
  */
@@ -2464,7 +2464,7 @@ static int rpmb_gp_listenDci(void *arg)
 		MSG(INFO, "%s: wait notification done!! cmdId = %x\n",
 			__func__, cmdId);
 
-#if IS_ENABLED(CONFIG_MMC_MTK_PRO)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_MTK_PRO)
 		/* Received exception. */
 		if (mmc && mmc->card)
 			mc_ret = rpmb_gp_execute_emmc(cmdId);
@@ -2661,7 +2661,7 @@ static long rpmb_ioctl_ufs(struct file *pfile, unsigned int cmd, unsigned long a
 }
 #endif
 
-#if IS_ENABLED(CONFIG_MMC_MTK_PRO)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_MTK_PRO)
 long rpmb_ioctl_emmc(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct mmc_host *mmc = mtk_mmc_host[0];
@@ -2962,7 +2962,7 @@ static const struct file_operations rpmb_fops_ufs = {
 };
 #endif
 
-#if IS_ENABLED(CONFIG_MMC_MTK_PRO)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_MTK_PRO)
 static const struct file_operations rpmb_fops_emmc = {
 	.owner = THIS_MODULE,
 	.open = rpmb_open,
@@ -3040,7 +3040,7 @@ static int __init rpmb_init(void)
 		goto error;
 	}
 
-#if IS_ENABLED(CONFIG_MMC_MTK_PRO)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_MTK_PRO)
 	if (dt_get_boot_type() == BOOTDEV_SDMMC)
 		cdev_init(&rpmb_cdev, &rpmb_fops_emmc);
 	else
