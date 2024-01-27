@@ -4077,6 +4077,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&cksys_clk CLK_CK_SPI0_BCLK_SEL>,
 				<&pericfg_ao_clk CLK_PERAO_SPI0_BCLK_SPI>;
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
+			clock-source-type = "univpll";
 		};
 
 		spi1: spi1@16130000 {
@@ -4089,6 +4090,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&cksys_clk CLK_CK_SPI1_BCLK_SEL>,
 				<&pericfg_ao_clk CLK_PERAO_SPI1_BCLK_SPI>;
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
+			clock-source-type = "univpll";
 		};
 
 		spi2: spi2@16150000 {
@@ -4101,6 +4103,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&cksys_clk CLK_CK_SPI2_BCLK_SEL>,
 				<&pericfg_ao_clk CLK_PERAO_SPI2_BCLK_SPI>;
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
+			clock-source-type = "univpll";
 		};
 
 		spi3: spi3@16170000 {
@@ -4113,6 +4116,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&cksys_clk CLK_CK_SPI3_BCLK_SEL>,
 				<&pericfg_ao_clk CLK_PERAO_SPI3_BCLK_SPI>;
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
+			clock-source-type = "univpll";
 		};
 
 		spi4: spi4@16190000 {
@@ -4125,6 +4129,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&cksys_clk CLK_CK_SPI4_BCLK_SEL>,
 				<&pericfg_ao_clk CLK_PERAO_SPI4_BCLK_SPI>;
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
+			clock-source-type = "univpll";
 		};
 
 		spi5: spi5@161b0000 {
@@ -4137,6 +4142,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&cksys_clk CLK_CK_SPI5_BCLK_SEL>,
 				<&pericfg_ao_clk CLK_PERAO_SPI5_BCLK_SPI>;
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
+			clock-source-type = "univpll";
 		};
 
 		spi6: spi6@161d0000 {
@@ -4149,6 +4155,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&cksys_clk CLK_CK_SPI6_BCLK_SEL>,
 				<&pericfg_ao_clk CLK_PERAO_SPI6_BCLK_SPI>;
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
+			clock-source-type = "univpll";
 		};
 
 		spi7: spi7@161f0000 {
@@ -4161,6 +4168,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&cksys_clk CLK_CK_SPI7_BCLK_SEL>,
 				<&pericfg_ao_clk CLK_PERAO_SPI7_BCLK_SPI>;
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
+			clock-source-type = "univpll";
 		};
 
 		i2c0: i2c@13130000 {
