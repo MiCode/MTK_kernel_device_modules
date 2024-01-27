@@ -308,7 +308,6 @@ static int emi_icc_probe(struct platform_device *pdev)
 	struct icc_onecell_data *data;
 	struct icc_provider *provider;
 	struct mtk_icc_node **mnodes;
-	struct icc_node *tmp;
 	size_t num_nodes, i, j;
 	int ret;
 
@@ -340,11 +339,7 @@ static int emi_icc_probe(struct platform_device *pdev)
 	provider->data = data;
 	provider->get_bw = emi_icc_get_bw;
 
-	ret = icc_provider_add(provider);
-	if (ret) {
-		dev_err(dev, "error adding interconnect provider\n");
-		return ret;
-	}
+	icc_provider_init(provider);
 
 	for (i = 0; i < num_nodes; i++) {
 		node = icc_node_create(mnodes[i]->id);
@@ -365,30 +360,25 @@ static int emi_icc_probe(struct platform_device *pdev)
 	}
 	data->num_nodes = num_nodes;
 
+	ret = icc_provider_register(provider);
+	if (ret)
+		goto err;
+
 	platform_set_drvdata(pdev, provider);
 
 	return 0;
 err:
-	list_for_each_entry_safe(node, tmp, &provider->nodes, node_list) {
-		icc_node_del(node);
-		icc_node_destroy(node->id);
-	}
-
-	icc_provider_del(provider);
+	icc_provider_deregister(provider);
+	icc_nodes_remove(provider);
 	return ret;
 }
 
 static int emi_icc_remove(struct platform_device *pdev)
 {
 	struct icc_provider *provider = platform_get_drvdata(pdev);
-	struct icc_node *n, *tmp;
 
-	list_for_each_entry_safe(n, tmp, &provider->nodes, node_list) {
-		icc_node_del(n);
-		icc_node_destroy(n->id);
-	}
-
-	icc_provider_del(provider);
+	icc_provider_deregister(provider);
+	icc_nodes_remove(provider);
 	return 0;
 }
 
