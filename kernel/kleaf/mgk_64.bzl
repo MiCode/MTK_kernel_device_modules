@@ -524,6 +524,8 @@ mgk_64_device_modules = [
     "drivers/phy/mediatek/phy-mtk-tphy.ko",
     "drivers/phy/mediatek/phy-mtk-ufs.ko",
     "drivers/phy/mediatek/phy-mtk-xsphy.ko",
+    "drivers/phy/mediatek/phy-mtk-nxp-eusb2-repeater.ko",
+    "drivers/phy/mediatek/phy-mtk-mt6379-eusb2-repeater.ko",
     "drivers/pinctrl/mediatek/pinctrl-mt6363.ko",
     "drivers/pinctrl/mediatek/pinctrl-mt6373.ko",
     "drivers/pinctrl/mediatek/pinctrl-mt8188.ko",
