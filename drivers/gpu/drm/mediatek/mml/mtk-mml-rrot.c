@@ -140,6 +140,10 @@ do { \
 int rrot_binning = 1;
 module_param(rrot_binning, int, 0644);
 
+/* RROT stash leading time in us */
+int rrot_stash_leading = 20;
+module_param(rrot_stash_leading, int, 0644);
+
 /* Debug parameter to force config stash cmd RROT_PREFETCH_CONTROL_1 and RROT_PREFETCH_CONTROL_2
  * Set 0 for disable, any value to enable.
  * con1[31:16]	PREFETCH_LINE_CNT_0
@@ -909,10 +913,6 @@ static void rrot_reset_threshold(struct mml_comp_rrot *rrot,
 {
 	u32 i;
 
-	/* line cnt 0/1/2/3 in con1/con2 */
-	cmdq_pkt_write(pkt, NULL, base_pa + RROT_PREFETCH_CONTROL_1, 0, U32_MAX);
-	cmdq_pkt_write(pkt, NULL, base_pa + RROT_PREFETCH_CONTROL_2, 0, U32_MAX);
-
 	/* clear threshold for all plane */
 	for (i = 0; i < DMABUF_CON_CNT; i++) {
 		cmdq_pkt_write(pkt, NULL, base_pa + rrot_dmabuf[i], 0x3, U32_MAX);
@@ -965,11 +965,6 @@ static void rrot_select_threshold_hrt(struct mml_comp_rrot *rrot,
 		cmdq_pkt_write(pkt, NULL, base_pa + rrot_preultra_th[i],
 			golden_set->plane[i].preultra, U32_MAX);
 	}
-
-	cmdq_pkt_write(pkt, NULL, base_pa + RROT_PREFETCH_CONTROL_1,
-		golden_set->pfrot[rot].prefetch_ctrl1, U32_MAX);
-	cmdq_pkt_write(pkt, NULL, base_pa + RROT_PREFETCH_CONTROL_2,
-		golden_set->pfrot[rot].prefetch_ctrl2, U32_MAX);
 }
 
 static void rrot_config_slice(struct mml_comp *comp, struct mml_frame_config *cfg,
@@ -1011,13 +1006,104 @@ static void rrot_config_stash(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	const struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_info *info = &cfg->info;
+	const u32 w = info->src.width;
+	const u32 h = info->src.height;
+	const u32 fps = 1000000000 / info->act_time + 1;
+	const enum mml_orientation rot = info->dest[0].rotate;
+	u32 leading_pixels;
+
+	u32 prefetch_line_cnt[4];
+	u32 con1, con2;
+
+	leading_pixels = round_up(w * h * fps * rrot_stash_leading, 1000000) / 1000000;
+
+	if (MML_FMT_COMPRESS(task->config->info.src.format)) {
+		u32 block_w, bin_hor, bin_ver;
+		u32 leading_blocks;
+		u32 block_line;	/* format blk per block line */
+
+		leading_blocks = round_up(leading_pixels, 256) / 256;
+
+		bin_hor = cfg->bin_x + 1;
+		bin_ver = cfg->bin_y + 1;
+
+		if (MML_FMT_HYFBC(info->src.format))
+			block_w = 32;
+		else if (MML_FMT_AFBC(info->src.format)) {
+			if (MML_FMT_IS_YUV(info->src.format))
+				block_w = 16;
+			else
+				block_w = 32;
+		} else	/* unknown format still use worse case */
+			block_w = 32;
+
+		if (rot == MML_ROT_0 || rot == MML_ROT_180)
+			block_line = w / (block_w * bin_ver);
+		else if (rot == MML_ROT_90 || rot == MML_ROT_270)
+			block_line = bin_hor;
+
+		if (MML_FMT_HYFBC(info->src.format)) {
+			prefetch_line_cnt[0] = leading_blocks;
+			prefetch_line_cnt[1] = leading_blocks;
+			prefetch_line_cnt[2] = round_up(leading_blocks, block_line) / block_line;
+			prefetch_line_cnt[3] = prefetch_line_cnt[2];
+		} else if (MML_FMT_AFBC(info->src.format) && MML_FMT_IS_YUV(info->src.format)) {
+			prefetch_line_cnt[0] = leading_blocks;
+			prefetch_line_cnt[1] = 0;
+			prefetch_line_cnt[2] =
+				round_up(leading_blocks, block_line) / block_line;
+			prefetch_line_cnt[3] = 0;
+		} else { /* AFBC RGBA or other unknown format */
+			prefetch_line_cnt[0] = leading_blocks;
+			prefetch_line_cnt[1] = 0;
+			prefetch_line_cnt[2] =
+				round_up(leading_blocks, block_line) / block_line;
+			prefetch_line_cnt[3] = 0;
+		}
+	} else {
+		u32 slice_width;
+
+		if (MML_FMT_PLANE(info->src.format) == 1) {
+			slice_width = (rot == MML_ROT_0 || rot == MML_ROT_180) ? w : 32;
+			prefetch_line_cnt[0] = round_up(leading_pixels, slice_width) / slice_width;
+			prefetch_line_cnt[1] = 0;
+			prefetch_line_cnt[2] = 0;
+			prefetch_line_cnt[3] = 0;
+		} else if (MML_FMT_PLANE(info->src.format) == 2) {
+			slice_width = (rot == MML_ROT_0 || rot == MML_ROT_180) ? w : 64;
+
+			/* leading_pixels / slice */
+			prefetch_line_cnt[0] = round_up(leading_pixels, slice_width) / slice_width;
+			/* (leading_pixels / 4 * 2) / (slice / 2), thus same as [0] */
+			prefetch_line_cnt[1] = prefetch_line_cnt[0];
+			prefetch_line_cnt[2] = 0;
+			prefetch_line_cnt[3] = 0;
+
+		} else {	/* (MML_FMT_PLANE(info->src.format) > 2) */
+			slice_width = (rot == MML_ROT_0 || rot == MML_ROT_180) ? w : 64;
+
+			/* leading_pixels / slice */
+			prefetch_line_cnt[0] = round_up(leading_pixels, slice_width) / slice_width;
+			/* (leading_pixels / 4) / (slice / 2), thus [0] / 2 */
+			prefetch_line_cnt[1] = round_up(prefetch_line_cnt[0], 2) / 2;
+			prefetch_line_cnt[2] = prefetch_line_cnt[1];
+			prefetch_line_cnt[3] = 0;
+		}
+	}
 
 	if (unlikely(rrot_stash_con1))
-		cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_1,
-			rrot_stash_con1, U32_MAX);
+		con1 = rrot_stash_con1;
+	else
+		con1 = (prefetch_line_cnt[0] << 16) | prefetch_line_cnt[1];
 	if (unlikely(rrot_stash_con2))
-		cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_2,
-			rrot_stash_con2, U32_MAX);
+		con2 = rrot_stash_con2;
+	else
+		con2 = (prefetch_line_cnt[2] << 16) | prefetch_line_cnt[3];
+
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_1, con1, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_2, con2, U32_MAX);
 }
 
 static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
