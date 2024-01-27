@@ -70,6 +70,14 @@ config MTK_MDP_MT6989
 	  and aee db. Enable performance tools which add instruction
 	  inside packet and profiling.
 
+config MTK_MDP_MT6991
+	tristate "enable MDP MT6991 driver extension"
+	help
+	  This extension enable debug feature, such as mdp-status,
+	  cmdq-record, pre-dump, timeout error dump, first error buffer
+	  and aee db. Enable performance tools which add instruction
+	  inside packet and profiling.
+
 config MTK_MDP_MT6768
 	tristate "enable MDP MT6768 driver extension"
 	help
