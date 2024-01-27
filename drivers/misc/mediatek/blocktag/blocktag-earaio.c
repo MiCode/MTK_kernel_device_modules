@@ -17,9 +17,7 @@
 #include <linux/spinlock.h>
 #include <linux/poll.h>
 #include <linux/proc_fs.h>
-#include <linux/miscdevice.h>
-#include <linux/seq_file.h>
-#include "mtk_blocktag.h"
+#include "blocktag-internal.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
