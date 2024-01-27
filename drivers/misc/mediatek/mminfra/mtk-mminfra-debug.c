@@ -34,6 +34,8 @@
 #include <linux/soc/mediatek/devapc_public.h>
 #endif
 
+#include "mtk-mminfra-debug.h"
+
 #define MMINFRA_MAX_CLK_NUM	(4)
 #define MAX_SMI_COMM_NUM	(3)
 
@@ -54,6 +56,7 @@ struct mminfra_dbg {
 	u32 mm_voter_base;
 	u32 mm_mtcmos_base;
 	u32 mm_mtcmos_mask;
+	u32 vcp_gipc_in_set_base;
 	bool irq_safe;
 };
 
@@ -67,11 +70,14 @@ static struct device *dev;
 static struct mminfra_dbg *dbg;
 static u32 mminfra_bkrs;
 static u32 bkrs_reg_pa;
+static u32 mm_pwr_ver;
 static bool mminfra_ao_base;
 static bool vcp_gipc;
 static bool no_sleep_pd_cb;
 static bool skip_apsrc;
 static bool is_mminfra_shutdown;
+static bool mm_no_cg_ctrl;
+static bool mm_no_scmi;
 
 #define MMINFRA_BASE		0x1e800000
 #define MMINFRA_AO_BASE		0x1e8ff000
@@ -115,26 +121,30 @@ u32 voter_cnt[32] = {0};
 
 static bool mminfra_check_scmi_status(void)
 {
-	if (tinfo)
+	if (!mm_no_scmi) {
+		if (tinfo)
+			return true;
+
+		tinfo = get_scmi_tinysys_info();
+
+		if (IS_ERR_OR_NULL(tinfo)) {
+			pr_notice("%s: tinfo is wrong!!\n", __func__);
+			tinfo = NULL;
+			return false;
+		}
+
+		if (IS_ERR_OR_NULL(tinfo->ph)) {
+			pr_notice("%s: tinfo->ph is wrong!!\n", __func__);
+			tinfo = NULL;
+			return false;
+		}
+
+		of_property_read_u32(tinfo->sdev->dev.of_node, "scmi-mminfra", &feature_id);
+		pr_notice("%s: get scmi_smi succeed id=%d!!\n", __func__, feature_id);
 		return true;
-
-	tinfo = get_scmi_tinysys_info();
-
-	if (IS_ERR_OR_NULL(tinfo)) {
-		pr_notice("%s: tinfo is wrong!!\n", __func__);
-		tinfo = NULL;
-		return false;
 	}
-
-	if (IS_ERR_OR_NULL(tinfo->ph)) {
-		pr_notice("%s: tinfo->ph is wrong!!\n", __func__);
-		tinfo = NULL;
-		return false;
-	}
-
-	of_property_read_u32(tinfo->sdev->dev.of_node, "scmi-mminfra", &feature_id);
-	pr_notice("%s: get scmi_smi succeed id=%d!!\n", __func__, feature_id);
-	return true;
+	pr_notice("%s: not support mminfra scmi\n", __func__);
+	return false;
 }
 
 static void do_mminfra_bkrs(bool is_restore)
@@ -194,28 +204,35 @@ static void mminfra_clk_set(bool is_enable)
 
 static bool is_mminfra_power_on(void)
 {
-	if (dbg->spm_base && dbg->mm_mtcmos_mask && dbg->vlp_base) {
-		if ((readl(dbg->spm_base+0xea8) & dbg->mm_mtcmos_mask) != dbg->mm_mtcmos_mask) {
-			pr_notice("mminfra mtcmos = 0x%x, done bits=0x%x\n",
-				readl(dbg->spm_base+0xea8), readl(dbg->vlp_base+0x91c));
+	if (mm_pwr_ver <= mm_pwr_v2) {
+		if (dbg->spm_base && dbg->mm_mtcmos_mask && dbg->vlp_base) {
+			if ((readl(dbg->spm_base+0xea8) & dbg->mm_mtcmos_mask)
+				!= dbg->mm_mtcmos_mask) {
+				pr_notice("mminfra mtcmos = 0x%x, done bits=0x%x\n",
+					readl(dbg->spm_base+0xea8), readl(dbg->vlp_base+0x91c));
+			}
 		}
-	}
 
-	return (atomic_read(&clk_ref_cnt) > 0);
+		return (atomic_read(&clk_ref_cnt) > 0);
+	} else if (mm_pwr_ver == mm_pwr_v3) {
+		return (atomic_read(&clk_ref_cnt) > 0);
+	} else
+		return true;
 }
 
 static bool is_gce_cg_on(u32 hw_id)
 {
 	u32 con0_val;
 
-	if (mminfra_ao_base)
-		con0_val = readl_relaxed(dbg->mminfra_ao_base + MMINFRA_CG_CON0);
-	else
-		con0_val = readl_relaxed(dbg->mminfra_base + MMINFRA_CG_CON0);
+	if (!mm_no_cg_ctrl) {
+		if (mminfra_ao_base)
+			con0_val = readl_relaxed(dbg->mminfra_ao_base + MMINFRA_CG_CON0);
+		else
+			con0_val = readl_relaxed(dbg->mminfra_base + MMINFRA_CG_CON0);
 
-	if (con0_val & (hw_id == GCED ? GCED_CG_BIT : GCEM_CG_BIT))
-		return false;
-
+		if (con0_val & (hw_id == GCED ? GCED_CG_BIT : GCEM_CG_BIT))
+			return false;
+	}
 	return true;
 }
 
@@ -225,39 +242,41 @@ static void mminfra_cg_check(bool on)
 	u32 con0_val_gce;
 	u32 con1_val_gce;
 
-	con0_val = readl_relaxed(dbg->mminfra_base + MMINFRA_CG_CON0);
+	if (!mm_no_cg_ctrl) {
+		con0_val = readl_relaxed(dbg->mminfra_base + MMINFRA_CG_CON0);
 
-	if (mminfra_ao_base) {
-		con0_val_gce = readl_relaxed(dbg->mminfra_ao_base + MMINFRA_CG_CON0);
-		con1_val_gce = readl_relaxed(dbg->mminfra_ao_base + MMINFRA_CG_CON1);
-	} else {
-		con0_val_gce = readl_relaxed(dbg->mminfra_base + MMINFRA_CG_CON0);
-		con1_val_gce = readl_relaxed(dbg->mminfra_base + MMINFRA_CG_CON1);
-	}
-
-	if (on) {
-		/* SMI CG still off */
-		if ((con0_val & (SMI_CG_BIT)) || (con0_val_gce & GCEM_CG_BIT) ||
-			(con0_val_gce & GCED_CG_BIT) || (con1_val_gce & GCE26M_CG_BIT)) {
-			pr_notice("%s cg still off, CG_CON0:0x%x CG_CON0:0x%x CG_CON1:0x%x\n",
-						__func__, con0_val, con0_val_gce, con1_val_gce);
-			if (con0_val & (SMI_CG_BIT))
-				mtk_smi_dbg_cg_status();
-			if ((con0_val_gce & GCEM_CG_BIT) || (con0_val_gce & GCED_CG_BIT)
-				|| (con1_val_gce & GCE26M_CG_BIT))
-				cmdq_dump_usage();
+		if (mminfra_ao_base) {
+			con0_val_gce = readl_relaxed(dbg->mminfra_ao_base + MMINFRA_CG_CON0);
+			con1_val_gce = readl_relaxed(dbg->mminfra_ao_base + MMINFRA_CG_CON1);
+		} else {
+			con0_val_gce = readl_relaxed(dbg->mminfra_base + MMINFRA_CG_CON0);
+			con1_val_gce = readl_relaxed(dbg->mminfra_base + MMINFRA_CG_CON1);
 		}
-	} else {
-		/* SMI CG still on */
-		if (!(con0_val & (SMI_CG_BIT)) || !(con0_val_gce & GCEM_CG_BIT)
-			|| !(con0_val_gce & GCED_CG_BIT) || !(con1_val_gce & GCE26M_CG_BIT)) {
-			pr_notice("%s Scg still on, CG_CON0:0x%x CG_CON0:0x%x CG_CON1:0x%x\n",
-						__func__, con0_val, con0_val_gce, con1_val_gce);
-			if (!(con0_val & (SMI_CG_BIT)))
-				mtk_smi_dbg_cg_status();
-			if (!(con0_val_gce & GCEM_CG_BIT) || !(con0_val_gce & GCED_CG_BIT)
-				|| !(con1_val_gce & GCE26M_CG_BIT))
-				cmdq_dump_usage();
+
+		if (on) {
+			/* SMI CG still off */
+			if ((con0_val & (SMI_CG_BIT)) || (con0_val_gce & GCEM_CG_BIT) ||
+				(con0_val_gce & GCED_CG_BIT) || (con1_val_gce & GCE26M_CG_BIT)) {
+				pr_notice("%s cg still off, CG_CON0:0x%x CG_CON0:0x%x CG_CON1:0x%x\n",
+							__func__, con0_val, con0_val_gce, con1_val_gce);
+				if (con0_val & (SMI_CG_BIT))
+					mtk_smi_dbg_cg_status();
+				if ((con0_val_gce & GCEM_CG_BIT) || (con0_val_gce & GCED_CG_BIT)
+					|| (con1_val_gce & GCE26M_CG_BIT))
+					cmdq_dump_usage();
+			}
+		} else {
+			/* SMI CG still on */
+			if (!(con0_val & (SMI_CG_BIT)) || !(con0_val_gce & GCEM_CG_BIT)
+				|| !(con0_val_gce & GCED_CG_BIT) || !(con1_val_gce & GCE26M_CG_BIT)) {
+				pr_notice("%s Scg still on, CG_CON0:0x%x CG_CON0:0x%x CG_CON1:0x%x\n",
+							__func__, con0_val, con0_val_gce, con1_val_gce);
+				if (!(con0_val & (SMI_CG_BIT)))
+					mtk_smi_dbg_cg_status();
+				if (!(con0_val_gce & GCEM_CG_BIT) || !(con0_val_gce & GCED_CG_BIT)
+					|| !(con1_val_gce & GCE26M_CG_BIT))
+					cmdq_dump_usage();
+			}
 		}
 	}
 }
@@ -318,11 +337,14 @@ static int mtk_mminfra_pd_callback(struct notifier_block *nb,
 			}
 			mtk_mminfra_gce_sram_en();
 		}
-		if (dbg->spm_base && dbg->mm_mtcmos_mask && dbg->vlp_base) {
-			if ((readl(dbg->spm_base+0xea8) & dbg->mm_mtcmos_mask)
-				!= dbg->mm_mtcmos_mask) {
-				pr_notice("mminfra mtcmos = 0x%x, done bits=0x%x\n",
-					readl(dbg->spm_base+0xea8), readl(dbg->vlp_base+0x91c));
+		if (mm_pwr_ver <= mm_pwr_v2) {
+			if (dbg->spm_base && dbg->mm_mtcmos_mask && dbg->vlp_base) {
+				if ((readl(dbg->spm_base+0xea8) & dbg->mm_mtcmos_mask)
+					!= dbg->mm_mtcmos_mask) {
+					pr_notice("mminfra mtcmos = 0x%x, done bits=0x%x\n",
+						readl(dbg->spm_base+0xea8),
+						readl(dbg->vlp_base+0x91c));
+				}
 			}
 		}
 		if (!no_sleep_pd_cb)
@@ -550,11 +572,13 @@ int mminfra_log(const char *val, const struct kernel_param *kp)
 	pr_notice("%s: input: %s\n", __func__, val);
 	switch (test_case) {
 	case 0:
-		if (vcp_gipc) {
-			pm_runtime_get_sync(dev);
-			writel(MM_INFRA_LOG, dbg->vcp_gipc_in_set);
-			pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
-			pm_runtime_put_sync(dev);
+		if (mm_pwr_ver <= mm_pwr_v2) {
+			if (vcp_gipc) {
+				pm_runtime_get_sync(dev);
+				writel(MM_INFRA_LOG, dbg->vcp_gipc_in_set);
+				pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
+				pm_runtime_put_sync(dev);
+			}
 		}
 		break;
 	default:
@@ -715,8 +739,10 @@ static struct smi_user_pwr_ctrl mminfra_pwr_ctrl = {
 void mtk_mminfra_off_gipc(void)
 {
 	if (vcp_gipc) {
-		writel(MM_INFRA_OFF, dbg->vcp_gipc_in_set);
-		pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
+		if (dbg->vcp_gipc_in_set) {
+			writel(MM_INFRA_OFF, dbg->vcp_gipc_in_set);
+			pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
+		}
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_mminfra_off_gipc);
@@ -724,14 +750,18 @@ EXPORT_SYMBOL_GPL(mtk_mminfra_off_gipc);
 static bool aee_dump;
 static irqreturn_t mminfra_irq_handler(int irq, void *data)
 {
+	int ret;
 	//char buf[LINK_MAX + 1] = {0};
 
 	pr_notice("handle mminfra irq!\n");
 	if (!dev || !dbg || !dbg->comm_dev[0])
 		return IRQ_NONE;
 
-	if (dbg->irq_safe)
-		pm_runtime_get_sync(dev);
+	if (dbg->irq_safe) {
+		ret = pm_runtime_get_sync(dev);
+		if (ret)
+			pr_notice("%s pm_runtime_get_sync ret[%d].\n", __func__, ret);
+	}
 
 	cmdq_util_mminfra_cmd(1);
 
@@ -856,6 +886,10 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	of_property_read_u32(node, "mm-mtcmos-base", &dbg->mm_mtcmos_base);
 	of_property_read_u32(node, "mm-mtcmos-mask", &dbg->mm_mtcmos_mask);
 
+	mm_no_scmi = of_property_read_bool(node, "mm-no-scmi");
+	mm_no_cg_ctrl = of_property_read_bool(node, "mm-no-cg-ctrl");
+	of_property_read_u32(node, "mm-pwr-ver", &mm_pwr_ver);
+
 	mminfra_check_scmi_status();
 
 	dev = &pdev->dev;
@@ -885,20 +919,31 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	}
 
 	mminfra_ao_base = of_property_read_bool(node, "mminfra-ao-base");
-	if (mminfra_ao_base)
-		dbg->mminfra_ao_base = ioremap(MMINFRA_AO_BASE, 0xf18);
-
-	dbg->mminfra_base = ioremap(MMINFRA_BASE, 0x8f4);
-	dbg->gce_base = ioremap(GCE_BASE, 0x1000);
-	dbg->vcp_gipc_in_set = ioremap(VCP_GIPC_IN_SET, 0x100);
+	if (mm_pwr_ver <= mm_pwr_v2) {
+		if (mminfra_ao_base)
+			dbg->mminfra_ao_base = ioremap(MMINFRA_AO_BASE, 0xf18);
+		dbg->mminfra_base = ioremap(MMINFRA_BASE, 0x8f4);
+		dbg->gce_base = ioremap(GCE_BASE, 0x1000);
+		dbg->vcp_gipc_in_set = ioremap(VCP_GIPC_IN_SET, 0x100);
+	} else if (mm_pwr_ver <= mm_pwr_v3){
+		of_property_read_u32(node, "mmup-gipc-in-set", &dbg->vcp_gipc_in_set_base);
+		if (dbg->vcp_gipc_in_set_base)
+			dbg->vcp_gipc_in_set = ioremap(dbg->vcp_gipc_in_set_base, 0x100);
+	}
 
 	cmdq_get_mminfra_cb(is_mminfra_power_on);
 	cmdq_get_mminfra_gce_cg_cb(is_gce_cg_on);
 
-	if (vcp_gipc) {
+	if (mm_pwr_ver <= mm_pwr_v2) {
+		if (vcp_gipc) {
+			pm_runtime_irq_safe(dev);
+			dbg->irq_safe = true;
+			vcp_register_mminfra_cb_ex(vcp_mminfra_on, vcp_mminfra_off, vcp_debug_dump);
+			is_mminfra_shutdown = false;
+		}
+	} else {
 		pm_runtime_irq_safe(dev);
 		dbg->irq_safe = true;
-		vcp_register_mminfra_cb_ex(vcp_mminfra_on, vcp_mminfra_off, vcp_debug_dump);
 		is_mminfra_shutdown = false;
 	}
 
@@ -946,11 +991,13 @@ static void mminfra_debug_shutdown(struct platform_device *pdev)
 static int mminfra_pm_prepare(struct device *dev)
 {
 	pr_notice("mminfra prepare\n");
-	if (vcp_gipc) {
-		mtk_clk_mminfra_hwv_power_ctrl_optional(true, CLK_MMINFRA_PWR_VOTE_BIT_MMINFRA);
-		writel(MM_SYS_SUSPEND, dbg->vcp_gipc_in_set);
-		pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
-		mtk_clk_mminfra_hwv_power_ctrl_optional(false, CLK_MMINFRA_PWR_VOTE_BIT_MMINFRA);
+	if (mm_pwr_ver <= mm_pwr_v2) {
+		if (vcp_gipc) {
+			mtk_clk_mminfra_hwv_power_ctrl_optional(true, CLK_MMINFRA_PWR_VOTE_BIT_MMINFRA);
+			writel(MM_SYS_SUSPEND, dbg->vcp_gipc_in_set);
+			pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
+			mtk_clk_mminfra_hwv_power_ctrl_optional(false, CLK_MMINFRA_PWR_VOTE_BIT_MMINFRA);
+		}
 	}
 	return 0;
 }
@@ -958,15 +1005,18 @@ static int mminfra_pm_prepare(struct device *dev)
 static void mminfra_pm_complete(struct device *dev)
 {
 	pr_notice("mminfra complete\n");
-	if (vcp_gipc) {
-		mtk_clk_mminfra_hwv_power_ctrl_optional(true, CLK_MMINFRA_PWR_VOTE_BIT_MMINFRA);
-		pr_notice("mminfra mtcmos = 0x%x, hfrp mtcmos = 0x%x, done bits=0x%x\n",
-			readl(dbg->spm_base+0xea8), readl(dbg->spm_base+0xeac),
-			readl(dbg->vlp_base+0x91c));
-		pr_notice("mminfra dummy2 = 0x%x\n", readl(dbg->mminfra_base+0x408));
-		writel(MM_SYS_RESUME, dbg->vcp_gipc_in_set);
-		pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
-		mtk_clk_mminfra_hwv_power_ctrl_optional(false, CLK_MMINFRA_PWR_VOTE_BIT_MMINFRA);
+	if (mm_pwr_ver <= mm_pwr_v2) {
+		if (vcp_gipc) {
+			mtk_clk_mminfra_hwv_power_ctrl_optional(true, CLK_MMINFRA_PWR_VOTE_BIT_MMINFRA);
+			pr_notice("mminfra mtcmos = 0x%x, hfrp mtcmos = 0x%x, done bits=0x%x\n",
+				readl(dbg->spm_base+0xea8), readl(dbg->spm_base+0xeac),
+				readl(dbg->vlp_base+0x91c));
+			pr_notice("mminfra dummy2 = 0x%x\n", readl(dbg->mminfra_base+0x408));
+			writel(MM_SYS_RESUME, dbg->vcp_gipc_in_set);
+			pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
+			mtk_clk_mminfra_hwv_power_ctrl_optional(false,
+				CLK_MMINFRA_PWR_VOTE_BIT_MMINFRA);
+		}
 	}
 }
 

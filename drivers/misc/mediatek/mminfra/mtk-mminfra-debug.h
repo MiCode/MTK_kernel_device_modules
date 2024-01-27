@@ -8,6 +8,12 @@
 
 #if IS_ENABLED(CONFIG_MTK_MMINFRA)
 
+enum mm_power_ver {
+	mm_pwr_v1 = 1, /* 1st version */
+	mm_pwr_v2 = 2, /* mt6989 */
+	mm_pwr_v3 = 3, /* mt6991 */
+};
+
 int mtk_mminfra_dbg_hang_detect(const char *user, bool skip_pm_runtime);
 
 void mtk_mminfra_off_gipc(void);
