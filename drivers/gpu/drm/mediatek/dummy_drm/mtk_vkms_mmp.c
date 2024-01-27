@@ -368,7 +368,7 @@ void *mtk_drm_buffer_map_kernel(struct drm_framebuffer *fb, struct iosys_map *ma
 	}
 	DDPINFO("[TEST_drm]%s:%d\n", __func__, __LINE__);
 
-	ret = dma_buf_vmap(dmabuf, map);
+	ret = dma_buf_vmap_unlocked(dmabuf, map);
 	DDPINFO("[TEST_drm]%s:%d\n", __func__, __LINE__);
 	if (ret) {
 		DDPINFO("%s, [MMP]get dma_va fail,ret %d\n", __func__, ret);
@@ -389,7 +389,7 @@ int mtk_drm_buffer_unmap_kernel(struct drm_framebuffer *fb, struct iosys_map *ma
 	gem_obj = mtk_fb_get_gem_obj(fb);
 	dmabuf = gem_obj->dma_buf;
 
-	dma_buf_vunmap(dmabuf, map);
+	dma_buf_vunmap_unlocked(dmabuf, map);
 
 	return 0;
 }

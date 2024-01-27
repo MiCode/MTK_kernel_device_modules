@@ -816,7 +816,7 @@ int mtk_drm_gem_prime_handle_to_fd(struct drm_device *dev,
 
 		get_dma_buf(dma_buf);
 
-		sgt = dma_buf_map_attachment(attach, DMA_BIDIRECTIONAL);
+		sgt = dma_buf_map_attachment_unlocked(attach, DMA_BIDIRECTIONAL);
 		if (IS_ERR(sgt)) {
 			ret = PTR_ERR(sgt);
 			dma_buf_detach(dma_buf, attach);
@@ -826,7 +826,7 @@ int mtk_drm_gem_prime_handle_to_fd(struct drm_device *dev,
 		obj = dev->driver->gem_prime_import_sg_table(dev, attach, sgt);
 		if (IS_ERR(obj)) {
 			ret = PTR_ERR(obj);
-			dma_buf_unmap_attachment(attach, sgt, DMA_BIDIRECTIONAL);
+			dma_buf_unmap_attachment_unlocked(attach, sgt, DMA_BIDIRECTIONAL);
 			goto end;
 		}
 
