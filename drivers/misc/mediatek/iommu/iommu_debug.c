@@ -1797,34 +1797,48 @@ static int mtk_iommu_debug_help(struct seq_file *s)
 	iommu_dump(s, "debug: iommu main debug file, receive debug command\n");
 	iommu_dump(s, "iommu_dump: iova trace dump file\n");
 	iommu_dump(s, "iova_alloc: iova alloc list dump file\n");
-	iommu_dump(s, "iova_map: iova map list dump file\n\n");
+	iommu_dump(s, "iova_map: iova map list dump file\n");
 
-	iommu_dump(s, "iommu debug command:\n");
+	if (smmu_v3_enable) {
+		iommu_dump(s, "smmu_pgtable: smmu page table dump file\n");
+		iommu_dump(s, "smmu_wp: smmu wrapper register dump file\n");
+	}
+
+	iommu_dump(s, "\niommu debug command:\n");
 	iommu_dump(s, "echo 1 > /proc/iommu_debug/debug: iommu debug help\n");
 	iommu_dump(s, "echo 2 > /proc/iommu_debug/debug: mm translation fault test\n");
 	iommu_dump(s, "echo 3 > /proc/iommu_debug/debug: apu translation fault test\n");
 	iommu_dump(s, "echo 4 > /proc/iommu_debug/debug: peri translation fault test\n");
-	iommu_dump(s, "echo 5 > /proc/iommu_debug/debug: enable trace log\n");
-	iommu_dump(s, "echo 6 > /proc/iommu_debug/debug: disable trace log\n");
-	iommu_dump(s, "echo 7 > /proc/iommu_debug/debug: enable trace dump\n");
-	iommu_dump(s, "echo 8 > /proc/iommu_debug/debug: disable trace dump\n");
-	iommu_dump(s, "echo 9 > /proc/iommu_debug/debug: reset to default trace log & dump\n");
-	iommu_dump(s, "echo 10 > /proc/iommu_debug/debug: dump iova trace\n");
-	iommu_dump(s, "echo 11 > /proc/iommu_debug/debug: dump iova alloc list\n");
-	iommu_dump(s, "echo 12 > /proc/iommu_debug/debug: dump iova map list\n");
+	iommu_dump(s, "echo 5 > /proc/iommu_debug/debug: dump iova trace\n");
+	iommu_dump(s, "echo 6 > /proc/iommu_debug/debug: dump iova alloc list\n");
+	iommu_dump(s, "echo 7 > /proc/iommu_debug/debug: dump iova map list\n");
+	iommu_dump(s, "echo 8 > /proc/iommu_debug/debug: enable/disable trace log\n");
+	iommu_dump(s, "echo 9 > /proc/iommu_debug/debug: enable/disable trace dump\n");
+	iommu_dump(s, "echo 10 > /proc/iommu_debug/debug: enable/disable debug config\n");
 
 	return 0;
 }
 
-/* Notice: Please also update help info if debug command changes */
-static int m4u_debug_set(void *data, u64 val)
-{
-	int ret = 0;
-
-	pr_info("%s:val=%llu\n", __func__, val);
-
 #if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
-	switch (val) {
+static inline u32 get_debug_config(u64 val, u32 config_bit)
+{
+	return (val & F_BIT_SET(config_bit)) > 0 ? 1 : 0;
+}
+#endif
+
+/* Notice: Please also update help info if debug command changes */
+static int m4u_debug_set(void *data, u64 input)
+{
+#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
+	u32 index = FIELD_GET(GENMASK_ULL(4, 0), input);
+	u64 val = FIELD_GET(GENMASK_ULL(31, 5), input);
+	int ret = 0;
+	u32 i = 0;
+
+	pr_info("%s input:0x%llx, index:%u, val:%llu\n",
+		__func__, input, index, val);
+
+	switch (index) {
 	case 1:	/* show help info */
 		ret = mtk_iommu_debug_help(NULL);
 		break;
@@ -1837,54 +1851,14 @@ static int m4u_debug_set(void *data, u64 val)
 	case 4: /* peri translation fault test */
 		report_custom_iommu_fault(0, 0, 0x102, PERI_IOMMU, 0);
 		break;
-	case 5:	/* enable trace log */
-		event_mgr[IOMMU_ALLOC].dump_log = 1;
-		event_mgr[IOMMU_FREE].dump_log = 1;
-		event_mgr[IOMMU_MAP].dump_log = 1;
-		event_mgr[IOMMU_UNMAP].dump_log = 1;
-		break;
-	case 6:	/* disable trace log */
-		event_mgr[IOMMU_ALLOC].dump_log = 0;
-		event_mgr[IOMMU_FREE].dump_log = 0;
-		event_mgr[IOMMU_MAP].dump_log = 0;
-		event_mgr[IOMMU_UNMAP].dump_log = 0;
-		break;
-	case 7:	/* enable trace dump */
-		event_mgr[IOMMU_ALLOC].dump_trace = 1;
-		event_mgr[IOMMU_FREE].dump_trace = 1;
-		event_mgr[IOMMU_MAP].dump_trace = 1;
-		event_mgr[IOMMU_UNMAP].dump_trace = 1;
-		event_mgr[IOMMU_SYNC].dump_trace = 1;
-		event_mgr[IOMMU_UNSYNC].dump_trace = 1;
-		break;
-	case 8:	/* disable trace dump */
-		event_mgr[IOMMU_ALLOC].dump_trace = 0;
-		event_mgr[IOMMU_FREE].dump_trace = 0;
-		event_mgr[IOMMU_MAP].dump_trace = 0;
-		event_mgr[IOMMU_UNMAP].dump_trace = 0;
-		event_mgr[IOMMU_SYNC].dump_trace = 0;
-		event_mgr[IOMMU_UNSYNC].dump_trace = 0;
-		break;
-	case 9:	/* reset to default trace log & dump */
-		event_mgr[IOMMU_ALLOC].dump_trace = 1;
-		event_mgr[IOMMU_FREE].dump_trace = 1;
-		event_mgr[IOMMU_SYNC].dump_trace = 1;
-		event_mgr[IOMMU_UNSYNC].dump_trace = 1;
-		event_mgr[IOMMU_MAP].dump_trace = 0;
-		event_mgr[IOMMU_UNMAP].dump_trace = 0;
-		event_mgr[IOMMU_ALLOC].dump_log = 0;
-		event_mgr[IOMMU_FREE].dump_log = 0;
-		event_mgr[IOMMU_MAP].dump_log = 0;
-		event_mgr[IOMMU_UNMAP].dump_log = 0;
-		break;
-	case 10:	/* dump iova trace */
+	case 5:	/* dump iova trace */
 		mtk_iommu_trace_dump(NULL);
 		break;
-	case 11:	/* dump iova alloc list */
+	case 6:	/* dump iova alloc list */
 		mtk_iommu_iova_alloc_dump_top(NULL, NULL);
 		mtk_iommu_iova_alloc_dump(NULL, NULL);
 		break;
-	case 12:	/* dump iova map list */
+	case 7:	/* dump iova map list */
 		if (smmu_v3_enable) {
 			mtk_iommu_iova_map_dump(NULL, 0, MM_SMMU);
 			mtk_iommu_iova_map_dump(NULL, 0, APU_SMMU);
@@ -1893,24 +1867,44 @@ static int m4u_debug_set(void *data, u64 val)
 			mtk_iommu_iova_map_dump(NULL, 0, APU_TABLE);
 		}
 		break;
-#if IS_ENABLED(CONFIG_STACKTRACE)
-	case 13:	/* enable alloc iova stacktrace */
-		if (smmu_v3_enable)
-			iommu_globals.iova_stack_trace = 1;
+	case 8:	/* enable/disable trace log */
+		for (i = 0; i < IOMMU_EVENT_MAX; i++) {
+			event_mgr[i].dump_log = get_debug_config(val, i);
+			pr_info("%s event[%s].dump_log:%d\n", __func__,
+				event_mgr[i].name, event_mgr[i].dump_log);
+		}
 		break;
-	case 14:	/* disable alloc iova stacktrace */
-		if (smmu_v3_enable)
-			iommu_globals.iova_stack_trace = 0;
+	case 9:	/* enable/disable trace dump */
+		for (i = 0; i < IOMMU_EVENT_MAX; i++) {
+			event_mgr[i].dump_trace = get_debug_config(val, i);
+			pr_info("%s event[%s].dump_trace:%d\n", __func__,
+				event_mgr[i].name, event_mgr[i].dump_trace);
+		}
 		break;
-#endif
+	case 10:	/* enable/disable debug switch config */
+		iommu_globals.iova_evt_enable = get_debug_config(val, 0);
+		iommu_globals.iova_alloc_list = get_debug_config(val, 1);
+		iommu_globals.iova_map_list = get_debug_config(val, 2);
+		iommu_globals.iova_warn_aee = get_debug_config(val, 3);
+		iommu_globals.iova_stack_trace = get_debug_config(val, 4);
+
+		pr_info("%s iova evt_enable:%d, alloc:%d, map:%d, warn_aee:%d, stack_trace:%d\n",
+			__func__,
+			iommu_globals.iova_evt_enable,
+			iommu_globals.iova_alloc_list,
+			iommu_globals.iova_map_list,
+			iommu_globals.iova_warn_aee,
+			iommu_globals.iova_stack_trace);
+		break;
 	default:
-		pr_err("%s error,val=%llu\n", __func__, val);
+		pr_info("%s not support index=%u\n", __func__, index);
 		break;
 	}
-#endif
 
 	if (ret)
-		pr_info("%s failed:val=%llu, ret=%d\n", __func__, val, ret);
+		pr_info("%s failed ret:%d, input:0x%llx, index:%u, val:%llu\n",
+			__func__, ret, input, index, val);
+#endif
 
 	return 0;
 }
