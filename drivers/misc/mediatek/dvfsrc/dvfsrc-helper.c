@@ -87,26 +87,25 @@ static void dvfsrc_setup_opp_table(struct mtk_dvfsrc *dvfsrc)
 			dvfsrc->vopp_uv_tlb[i] = ares.a1;
 	}
 
+	for (i = 0; i < dvfsrc->opp_desc->num_dram_opp; i++) {
+		arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL,
+			MTK_SIP_VCOREFS_GET_DRAM_FREQ,
+			i, 0, 0, 0, 0, 0,
+			&ares);
+
+		if (!ares.a0)
+			dvfsrc->dopp_kbps_tlb[i] = ares.a1;
+	}
+
 	for (i = 0; i < dvfsrc->opp_desc->num_vcore_opp; i++)
 		dev_info(dvfsrc->dev, "dvfsrc vopp[%d] = %d\n",
 			i, dvfsrc->vopp_uv_tlb[i]);
 
 	for (i = 0; i < dvfsrc->opp_desc->num_opp; i++) {
 		opp = &dvfsrc->opp_desc->opps[i];
-		arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL,
-			MTK_SIP_VCOREFS_GET_VCORE_UV,
-			opp->vcore_opp, 0, 0, 0, 0, 0,
-			&ares);
-
-		if (!ares.a0)
-			opp->vcore_uv = ares.a1;
-
-		arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL,
-			MTK_SIP_VCOREFS_GET_DRAM_FREQ,
-			opp->dram_opp, 0, 0, 0, 0, 0,
-			&ares);
-		if (!ares.a0)
-			opp->dram_kbps = ares.a1;
+		opp->vcore_uv = dvfsrc->vopp_uv_tlb[opp->vcore_opp];
+		opp->emi_mbps = opp->emi_opp;
+		opp->dram_kbps = dvfsrc->dopp_kbps_tlb[opp->dram_opp];
 	}
 }
 
@@ -217,7 +216,7 @@ static int mtk_dvfsrc_opp_setting_v4(struct mtk_dvfsrc *dvfsrc)
 	dev_info(dvfsrc->dev, "num_dram_opp = %d\n", dvfsrc->opp_desc->num_dram_opp);
 
 	dvfsrc->opp_desc->opps = devm_kzalloc(dvfsrc->dev,
-				dvfsrc->opp_desc->num_opp * sizeof(struct dvfsrc_opp_desc),
+				dvfsrc->opp_desc->num_opp * sizeof(struct dvfsrc_opp),
 				GFP_KERNEL);
 
 	for (i = 0; i < dvfsrc->opp_desc->num_opp; i++) {
@@ -230,11 +229,15 @@ static int mtk_dvfsrc_opp_setting_v4(struct mtk_dvfsrc *dvfsrc)
 	dvfsrc->vopp_uv_tlb = devm_kzalloc(dvfsrc->dev,
 				dvfsrc->opp_desc->num_vcore_opp * sizeof(u32),
 				GFP_KERNEL);
-	if (!dvfsrc->vopp_uv_tlb)
+	dvfsrc->dopp_kbps_tlb = devm_kzalloc(dvfsrc->dev,
+				dvfsrc->opp_desc->num_dram_opp * sizeof(u32),
+				GFP_KERNEL);
+	if ((!dvfsrc->vopp_uv_tlb) || (!dvfsrc->dopp_kbps_tlb))
 		return -ENOMEM;
 
 	dvfsrc_setup_opp_table(dvfsrc);
 	dvfsrc->force_opp_idx = 0xFF;
+	dvfsrc->force_ddr_idx = 0xFF;
 
 	return 0;
 }
@@ -276,11 +279,15 @@ static int mtk_dvfsrc_opp_setting(struct mtk_dvfsrc *dvfsrc)
 	dvfsrc->vopp_uv_tlb = devm_kzalloc(dvfsrc->dev,
 				dvfsrc->opp_desc->num_vcore_opp * sizeof(u32),
 				GFP_KERNEL);
-	if (!dvfsrc->vopp_uv_tlb)
+	dvfsrc->dopp_kbps_tlb = devm_kzalloc(dvfsrc->dev,
+				dvfsrc->opp_desc->num_dram_opp * sizeof(u32),
+				GFP_KERNEL);
+	if ((!dvfsrc->vopp_uv_tlb) || (!dvfsrc->dopp_kbps_tlb))
 		return -ENOMEM;
 
 	dvfsrc_setup_opp_table(dvfsrc);
 	dvfsrc->force_opp_idx = 0xFF;
+	dvfsrc->force_ddr_idx = 0xFF;
 
 	return 0;
 }
@@ -331,10 +338,11 @@ static int dvfsrc_query_debug_info(u32 id)
 }
 
 static DEFINE_MUTEX(ddr_ceil_mutex);
+static bool dvfsrc_ddr_force_en;
 int mtk_dvfsrc_ceiling_opp(u8 user, u8 ddr_opp)
 {
 	int i;
-	u8 max_freq_opp = 0, max_freq_gear;
+	u8 max_freq_opp = 0, max_freq_gear, force_opp;
 	struct mtk_dvfsrc *dvfsrc = dvfsrc_drv;
 	const struct dvfsrc_config *config;
 
@@ -343,20 +351,33 @@ int mtk_dvfsrc_ceiling_opp(u8 user, u8 ddr_opp)
 		return -EINVAL;
 	}
 
+	force_opp = ddr_opp;
 	if (ddr_opp >= dvfsrc->opp_desc->num_dram_opp)
 		ddr_opp = 0;
 
 	mutex_lock(&ddr_ceil_mutex);
 	dvfsrc->ceil_ddr_opp[user] = ddr_opp;
-	for (i = 0; i < CEILING_ITEM_MAX; i++)
-		max_freq_opp = max_t(u8, dvfsrc->ceil_ddr_opp[user], max_freq_opp);
+	for (i = 0; i < CEILING_FORCE_MODE; i++)
+		max_freq_opp = max_t(u8, dvfsrc->ceil_ddr_opp[i], max_freq_opp);
+
+/* For force ddr opp */
+	if (user == CEILING_FORCE_MODE) {
+		dvfsrc->force_ddr_idx = force_opp;
+		if (force_opp >= dvfsrc->opp_desc->num_dram_opp)
+			dvfsrc_ddr_force_en = false;
+		else
+			dvfsrc_ddr_force_en = true;
+	}
+	if (dvfsrc_ddr_force_en)
+		max_freq_opp = force_opp;
+/* For force ddr opp End*/
 
 	max_freq_gear = dvfsrc->opp_desc->num_dram_opp - max_freq_opp - 1;
 	config = dvfsrc_drv->dvd->config;
 	if (max_freq_opp == 0)
-		config->set_ddr_ceiling(dvfsrc, 0xFF);
+		config->set_ddr_ceiling(dvfsrc, 0xFF, dvfsrc_ddr_force_en);
 	else
-		config->set_ddr_ceiling(dvfsrc, max_freq_gear);
+		config->set_ddr_ceiling(dvfsrc, max_freq_gear, dvfsrc_ddr_force_en);
 
 	mutex_unlock(&ddr_ceil_mutex);
 
@@ -387,9 +408,10 @@ static char *dvfsrc_dump_info(struct mtk_dvfsrc *dvfsrc,
 	p += snprintf(p, buff_end - p, "%-10s: %-8u Mbps\n",
 			"DDR", mtk_dramc_get_data_rate());
 #endif
-	p += snprintf(p, buff_end - p, "%-15s: %d\n",
+	p += snprintf(p, buff_end - p, "%-15s: %d, %d\n",
 			"FORCE_OPP_IDX",
-			dvfsrc->force_opp_idx);
+			dvfsrc->force_opp_idx,
+			dvfsrc->force_ddr_idx);
 	p += snprintf(p, buff_end - p, "%-15s: %d\n",
 			"CURR_DVFS_OPP",
 			mtk_dvfsrc_query_opp_info(MTK_DVFSRC_CURR_DVFS_OPP));
@@ -538,7 +560,8 @@ static void dvfsrc_debug_notifier_register(struct mtk_dvfsrc *dvfsrc)
 	register_dvfsrc_debug_notifier(&dvfsrc->debug_notifier);
 }
 
-static DEFINE_RATELIMIT_STATE(dvfsrc_ratelimit_force, 1 * HZ, 2);
+static struct ratelimit_state dvfsrc_ratelimit_force =
+	RATELIMIT_STATE_INIT_FLAGS("dvfsrc_force", HZ, 2, RATELIMIT_MSG_ON_RELEASE);
 static void dvfsrc_force_opp(struct mtk_dvfsrc *dvfsrc, u32 opp)
 {
 	if (dvfsrc->force_opp_idx != opp) {
@@ -562,6 +585,33 @@ static void mtk_dvfsrc_get_perf_bw(struct mtk_dvfsrc *dvfsrc,
 			dvfsrc_get_required_opp_peak_bw(np, i);
 	}
 }
+
+int mtk_dvfsrc_set_vcore_avs(int enable)
+{
+	struct mtk_dvfsrc *dvfsrc = dvfsrc_drv;
+	const struct dvfsrc_config *config;
+
+	if (!dvfsrc_drv)
+		return 0;
+
+	config = dvfsrc_drv->dvd->config;
+
+	switch (dvfsrc->dvd->version) {
+	case 0x6989:
+	case 0x6897:
+	case 0x6878:
+		config->set_vcore_avs(dvfsrc, enable, 3);
+	break;
+	default:
+	break;
+	}
+
+	if (!enable)
+		udelay(2000);
+
+	return 0;
+}
+EXPORT_SYMBOL(mtk_dvfsrc_set_vcore_avs);
 
 static int mtk_dvfsrc_debug_setting(struct mtk_dvfsrc *dvfsrc)
 {
@@ -1233,6 +1283,15 @@ static const struct dvfsrc_debug_data mt6989_data = {
 	.ceiling_support = true,
 };
 
+static const struct dvfsrc_debug_data mt6991_data = {
+	.version = 0x6991,
+	.config = &mt6989_dvfsrc_config,
+	.opps_desc = dvfsrc_opp_common_desc,
+	.num_opp_desc = 0,
+	.ceiling_support = true,
+	.dump_flag = DVFSRC_EMI_DUMP_FLAG,
+};
+
 static struct dvfsrc_opp dvfsrc_opp_mt6768[] = {
 	{0, 0, 0, 0},
 	{1, 0, 0, 0},
@@ -1264,6 +1323,39 @@ static const struct dvfsrc_debug_data mt6768_data = {
 	.qos = &mt6768_qos_config,
 #endif
 	.num_opp_desc = ARRAY_SIZE(dvfsrc_opp_mt6768_desc),
+};
+
+static struct dvfsrc_opp dvfsrc_opp_mt6878[] = {
+	{0, 0, 0, 0},
+	{1, 0, 0, 0},
+	{2, 0, 0, 0},
+	{3, 0, 0, 0},
+	{0, 1, 0, 0},
+	{1, 1, 0, 0},
+	{2, 1, 0, 0},
+	{3, 1, 0, 0},
+	{0, 2, 0, 0},
+	{1, 2, 0, 0},
+	{2, 2, 0, 0},
+	{3, 2, 0, 0},
+	{1, 3, 0, 0},
+	{2, 3, 0, 0},
+	{3, 3, 0, 0},
+	{2, 4, 0, 0},
+	{3, 4, 0, 0},
+	{3, 5, 0, 0},
+	{3, 6, 0, 0},
+};
+
+static struct dvfsrc_opp_desc dvfsrc_opp_mt6878_desc[] = {
+	MT_DVFSRC_OPP(4, 7, dvfsrc_opp_mt6878),
+};
+
+static const struct dvfsrc_debug_data mt6878_data = {
+	.version = 0x6878,
+	.config = &mt6897_dvfsrc_config,
+	.opps_desc = dvfsrc_opp_mt6878_desc,
+	.num_opp_desc = ARRAY_SIZE(dvfsrc_opp_mt6878_desc),
 };
 
 static const struct of_device_id dvfsrc_helper_of_match[] = {
@@ -1315,6 +1407,12 @@ static const struct of_device_id dvfsrc_helper_of_match[] = {
 	}, {
 		.compatible = "mediatek,mt6768-dvfsrc",
 		.data = &mt6768_data,
+	}, {
+		.compatible = "mediatek,mt6878-dvfsrc",
+		.data = &mt6878_data,
+	}, {
+		.compatible = "mediatek,mt6991-dvfsrc",
+		.data = &mt6991_data,
 	}, {
 		/* sentinel */
 	},
