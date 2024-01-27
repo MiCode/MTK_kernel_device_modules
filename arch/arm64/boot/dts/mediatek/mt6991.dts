@@ -5086,6 +5086,11 @@
 		compatible = "mediatek,mtk-pmsr";
 		dpmsr-count = <4>;
 	};
+
+	connfem: connfem {
+		compatible = "mediatek,connfem";
+	};
+
 };
 
 &spmi {
@@ -5223,6 +5228,7 @@
 
 #include "mediatek/mt6363.dtsi"
 #include "mediatek/mt6373.dtsi"
+#include "mediatek/cust_mt6991_connfem.dtsi"
 
 &mt6363_vbuck1 {
 	regulator-always-on;
