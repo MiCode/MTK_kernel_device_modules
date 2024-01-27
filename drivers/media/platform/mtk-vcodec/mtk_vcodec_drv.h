@@ -939,6 +939,7 @@ struct mtk_vcodec_dev {
 	struct mutex log_param_mutex;
 	struct mutex prop_param_mutex;
 	struct device *smmu_dev;
+	unsigned int iommu_domain_swtich;
 };
 
 static inline struct mtk_vcodec_ctx *fh_to_ctx(struct v4l2_fh *fh)
