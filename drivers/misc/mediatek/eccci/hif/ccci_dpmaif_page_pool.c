@@ -25,7 +25,7 @@
 #include <linux/errno.h>
 #include <linux/dma-map-ops.h>
 #ifdef RX_PAGE_POOL
-#include <net/page_pool.h>
+#include <net/page_pool/helpers.h>
 #endif
 #include "ccci_debug.h"
 #include "ccci_dpmaif_reg_com.h"
