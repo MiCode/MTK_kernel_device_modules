@@ -4444,6 +4444,7 @@ int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 	 * https://patchwork.kernel.org/patch/8335461/
 	 * https://patchwork.kernel.org/patch/7596181/
 	 */
+	snprintf(name, sizeof(name), "mtk_venc-%d-out", ctx->id);
 	src_vq->type            = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	src_vq->io_modes        = VB2_DMABUF | VB2_MMAP | VB2_USERPTR;
 	src_vq->drv_priv        = ctx;
@@ -4452,25 +4453,29 @@ int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 	venc_dma_contig_memops = vb2_dma_contig_memops;
 	venc_dma_contig_memops.attach_dmabuf = mtk_venc_dc_attach_dmabuf;
 	src_vq->mem_ops         = &venc_dma_contig_memops;
-	mtk_v4l2_debug(4, "src_vq use vb2_dma_contig_memops");
+	mtk_v4l2_debug(4, "[%s] src_vq use vb2_dma_contig_memops", name);
 	src_vq->bidirectional = 1;
 	src_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	src_vq->lock            = &ctx->q_mutex;
 	src_vq->allow_zero_bytesused = 1;
 	src_vq->dev             = ctx->dev->smmu_dev;
 
-	snprintf(name, sizeof(name), "mtk_venc-%d-out", ctx->id);
+#if IS_ENABLED(CONFIG_MTK_VCODEC_DEBUG) // only support eng & userdebug
 	ret = vb2_queue_init_name(src_vq, name);
+#else
+	ret = vb2_queue_init(src_vq);
+#endif
 	if (ret)
 		return ret;
 
+	snprintf(name, sizeof(name), "mtk_venc-%d-cap", ctx->id);
 	dst_vq->type            = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	dst_vq->io_modes        = VB2_DMABUF | VB2_MMAP | VB2_USERPTR;
 	dst_vq->drv_priv        = ctx;
 	dst_vq->buf_struct_size = sizeof(struct mtk_video_enc_buf);
 	dst_vq->ops             = &mtk_venc_vb2_ops;
 	dst_vq->mem_ops         = &venc_dma_contig_memops;
-	mtk_v4l2_debug(4, "dst_vq use venc_dma_contig_memops");
+	mtk_v4l2_debug(4, "[%s] dst_vq use venc_dma_contig_memops", name);
 	dst_vq->bidirectional = 1;
 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	dst_vq->lock            = &ctx->q_mutex;
@@ -4478,10 +4483,10 @@ int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	if (ctx->dev->enc_cnt & 1) {
 		dst_vq->dev		= vcp_get_io_device(VCP_IOMMU_VDEC_512MB1);
-		mtk_v4l2_debug(4, "use VCP_IOMMU_VDEC_512MB1 domain");
+		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_VDEC_512MB1 domain", name);
 	} else {
 		dst_vq->dev		= vcp_get_io_device(VCP_IOMMU_VENC_512MB2);
-		mtk_v4l2_debug(4, "use VCP_IOMMU_VENC_512MB2 domain");
+		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_VENC_512MB2 domain", name);
 	}
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
 	if (!dst_vq->dev)
@@ -4491,8 +4496,12 @@ int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 	dst_vq->dev		= ctx->dev->smmu_dev;
 #endif
 
-	snprintf(name, sizeof(name), "mtk_venc-%d-cap", ctx->id);
-	return vb2_queue_init_name(dst_vq, name);
+#if IS_ENABLED(CONFIG_MTK_VCODEC_DEBUG) // only support eng & userdebug
+	ret = vb2_queue_init_name(dst_vq, name);
+#else
+	ret = vb2_queue_init(dst_vq);
+#endif
+	return ret;
 }
 
 void mtk_venc_unlock(struct mtk_vcodec_ctx *ctx, u32 hw_id)

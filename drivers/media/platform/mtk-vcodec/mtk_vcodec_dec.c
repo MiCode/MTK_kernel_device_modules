@@ -5328,6 +5328,7 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 
 	mtk_v4l2_debug(4, "[%d]", ctx->id);
 
+	snprintf(name, sizeof(name), "mtk_vdec-%d-out", ctx->id);
 	src_vq->type            = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	src_vq->io_modes        = VB2_DMABUF | VB2_MMAP;
 	src_vq->drv_priv        = ctx;
@@ -5336,7 +5337,7 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 	vdec_dma_contig_memops = vb2_dma_contig_memops;
 	vdec_dma_contig_memops.attach_dmabuf = mtk_vdec_dc_attach_dmabuf;
 	src_vq->mem_ops         = &vdec_dma_contig_memops;
-	mtk_v4l2_debug(4, "src_vq use vdec_dma_contig_memops");
+	mtk_v4l2_debug(4, "[%s] src_vq use vdec_dma_contig_memops", name);
 	src_vq->bidirectional = 1;
 
 	src_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
@@ -5344,15 +5345,15 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	if (ctx->dev->dec_cnt & 1) {
 		src_vq->dev		= vcp_get_io_device(VCP_IOMMU_VENC_512MB2);
-		mtk_v4l2_debug(4, "use VCP_IOMMU_VENC_512MB2 domain");
+		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_VENC_512MB2 domain", name);
 	} else {
 		src_vq->dev		= vcp_get_io_device(VCP_IOMMU_VDEC_512MB1);
-		mtk_v4l2_debug(4, "use VCP_IOMMU_VDEC_512MB1 domain");
+		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_VDEC_512MB1 domain", name);
 	}
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
 	if (!src_vq->dev) {
 		src_vq->dev = ctx->dev->smmu_dev;
-		mtk_v4l2_debug(4, "vcp_get_io_device NULL use plat_dev domain");
+		mtk_v4l2_debug(4, "[%s] vcp_get_io_device NULL use plat_dev domain", name);
 	}
 #endif
 #else
@@ -5360,19 +5361,24 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 #endif
 	src_vq->allow_zero_bytesused = 1;
 
-	snprintf(name, sizeof(name), "mtk_vdec-%d-out", ctx->id);
+#if IS_ENABLED(CONFIG_MTK_VCODEC_DEBUG) // only support eng & userdebug
 	ret = vb2_queue_init_name(src_vq, name);
+#else
+	ret = vb2_queue_init(src_vq);
+#endif
 	if (ret) {
-		mtk_v4l2_err("Failed to initialize videobuf2 queue(output)");
+		mtk_v4l2_err("Failed to initialize videobuf2 queue(%s)", name);
 		return ret;
 	}
+
+	snprintf(name, sizeof(name), "mtk_vdec-%d-cap", ctx->id);
 	dst_vq->type            = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	dst_vq->io_modes        = VB2_DMABUF | VB2_MMAP;
 	dst_vq->drv_priv        = ctx;
 	dst_vq->buf_struct_size = sizeof(struct mtk_video_dec_buf);
 	dst_vq->ops             = &mtk_vdec_vb2_ops;
 	dst_vq->mem_ops         = &vdec_dma_contig_memops;
-	mtk_v4l2_debug(4, "dst_vq use vdec_dma_contig_memops");
+	mtk_v4l2_debug(4, "[%s] dst_vq use vdec_dma_contig_memops", name);
 	dst_vq->bidirectional = 1;
 
 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
@@ -5380,11 +5386,14 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 	dst_vq->dev             = ctx->dev->smmu_dev;
 	dst_vq->allow_zero_bytesused = 1;
 
-	snprintf(name, sizeof(name), "mtk_vdec-%d-cap", ctx->id);
+#if IS_ENABLED(CONFIG_MTK_VCODEC_DEBUG) // only support eng & userdebug
 	ret = vb2_queue_init_name(dst_vq, name);
+#else
+	ret = vb2_queue_init(dst_vq);
+#endif
 	if (ret) {
 		vb2_queue_release(src_vq);
-		mtk_v4l2_err("Failed to initialize videobuf2 queue(capture)");
+		mtk_v4l2_err("Failed to initialize videobuf2 queue(%s)", name);
 	}
 
 	return ret;
