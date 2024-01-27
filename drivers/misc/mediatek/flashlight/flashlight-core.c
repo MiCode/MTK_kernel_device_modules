@@ -1986,7 +1986,16 @@ static int flashlight_remove(struct platform_device *pdev)
 
 static void flashlight_shutdown(struct platform_device *pdev)
 {
-	fl_uninit();
+	struct flashlight_dev *fdev, *n;
+
+	mutex_lock(&fl_mutex);
+	list_for_each_entry_safe(fdev, n, &flashlight_list, node) {
+		/* clear node and free memory */
+		list_del(&fdev->node);
+		kfree(fdev);
+	}
+	mutex_unlock(&fl_mutex);
+
 }
 
 #ifdef CONFIG_OF
