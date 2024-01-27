@@ -36,7 +36,6 @@ struct vtskin_data {
 struct vtskin_temp_tz {
 	unsigned int id;
 	struct vtskin_data *skin_data;
-	struct vtskin_tz_param *skin_param;
 };
 
 extern struct vtskin_data *plat_vtskin_info;
