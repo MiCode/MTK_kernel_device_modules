@@ -55,7 +55,7 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/met_drv_v3/met_api:met_api_v3_cus",
     "//vendor/mediatek/kernel_modules/met_drv_v3/met_api:met_api_v3_int",
     "//vendor/mediatek/kernel_modules/met_drv_v3:met_drv_v3",
-    "//vendor/mediatek/kernel_modules/msync2_frd_cus/build:msync2_frd_cus",
+    #"//vendor/mediatek/kernel_modules/msync2_frd_cus/build:msync2_frd_cus",
     #"//vendor/mediatek/kernel_modules/msync2_frd_int:msync2_frd_int",
     "//vendor/mediatek/kernel_modules/mtk_input/FT3518U:ft3518u",
     "//vendor/mediatek/kernel_modules/mtk_input/GT9886:gt9886",
