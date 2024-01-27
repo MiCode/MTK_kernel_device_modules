@@ -1910,20 +1910,6 @@ static void vow_service_reset(void)
 	VOWDRV_DEBUG("-%s()\n", __func__);
 }
 
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
-static bool vow_stop_dump_wait(void)
-{
-	int timeout = 0;
-
-	while (1) {
-		msleep(VOW_WAITCHECK_INTERVAL_MS);
-		if (timeout++ >= VOW_STOP_DUMP_WAIT)
-			return false;
-	}
-	return true;
-}
-#endif  /* #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT) */
-
 static int vow_pcm_dump_notify(bool enable)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
@@ -2056,7 +2042,6 @@ static int vow_pcm_dump_set(bool enable)
 	} else if ((vowserv.dump_pcm_flag == true) && (enable == false)) {
 		vowserv.dump_pcm_flag = false;
 		vow_pcm_dump_notify(false);
-		vow_stop_dump_wait();
 		vow_service_FreeKernelDumpBuffer();
 		/* Let AP will suspend */
 		__pm_relax(vow_dump_suspend_lock);
