@@ -37,6 +37,8 @@ ifeq ($(CCCI_OBJ), m)
 ccflags-y += -DCCCI_KMODULE_ENABLE
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/udc/udc_lib_inc
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/inc/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ccmni/
 
 ifneq ($(CONFIG_DEVICE_MODULES_MEDIATEK_MT6577_AUXADC), n)
 obj-$(CCCI_OBJ) += ccci_auxadc.o
@@ -58,7 +60,6 @@ ccci_md_all-$(CCCI_OBJ) += port/port_cfg.o \
 		port/port_ctlmsg.o \
 		port/port_udc.o \
 		port/port_ipc.o \
-		port/port_net.o \
 		port/port_poller.o \
 		port/port_proxy.o \
 		port/port_rpc.o \

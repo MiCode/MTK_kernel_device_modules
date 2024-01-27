@@ -16,18 +16,6 @@
 void *ccci_hif[CCCI_HIF_NUM];
 struct ccci_hif_ops *ccci_hif_op[CCCI_HIF_NUM];
 
-int ccci_dpmaif_empty_query(int qno)
-{
-	int ret = 0;
-
-	if (ccci_hif[DPMAIF_HIF_ID] && ccci_hif_op[DPMAIF_HIF_ID]->empty_query)
-		ret |= ccci_hif_op[DPMAIF_HIF_ID]->empty_query(qno);
-	else
-		CCCI_ERROR_LOG(-1, TAG, "empty_query is null\n");
-
-	return ret;
-}
-
 void ccci_hif_set_clk_cg(unsigned int hif_flag, unsigned int on)
 {
 	if (hif_flag & (1 << CLDMA_HIF_ID)) {
@@ -442,6 +430,14 @@ void ccci_hif_md_exception(unsigned int hif_flag, unsigned char stage)
 
 }
 
+void ccmni_md_state_notify(unsigned int state)
+{
+	unsigned int ccmni_idx = 0;
+
+	for(; ccmni_idx < CCMNI_INTERFACE_NUM; ccmni_idx++)
+		ccmni_ops.md_state_callback(ccmni_idx, state);
+}
+
 int ccci_hif_state_notification(unsigned char state)
 {
 	int ret = 0;
@@ -493,6 +489,7 @@ int ccci_hif_state_notification(unsigned char state)
 	default:
 		break;
 	}
+	ccmni_md_state_notify(state);
 	return ret;
 }
 

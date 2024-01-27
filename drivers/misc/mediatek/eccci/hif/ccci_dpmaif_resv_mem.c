@@ -60,7 +60,7 @@ void ccci_dpmaif_resv_mem_init(void)
 
 	g_use_cache_mem_from_dts = 0;
 
-	if ((dpmaif_ctl->capability & DPMAIF_CAP_USE_RESV_MEM) != DPMAIF_CAP_USE_RESV_MEM)
+	if ((dpmaif_ctl->capability & MODEM_CAP_USE_RESV_MEM) != MODEM_CAP_USE_RESV_MEM)
 		return;
 
 	/* for cacheable memory  */

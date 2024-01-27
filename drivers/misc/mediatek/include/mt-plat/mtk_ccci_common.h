@@ -418,6 +418,10 @@ enum {
 	MODEM_CAP_TXBUSY_STOP = (1<<1),
 	MODEM_CAP_SGIO = (1<<2),
 	MODEM_CAP_HWTXCSUM = (1<<3),
+	MODEM_CAP_LRO = (1 << 4),
+	MODEM_CAP_2RXQ = (1 << 5),
+	MODEM_CAP_USE_RESV_MEM = (1 << 6),
+	MODEM_CAP_USE_MAX_BAT = (1 << 7),
 	/*bit16-bit31:
 	 *for modem capability only
 	 *related with ccmni driver
@@ -459,6 +463,7 @@ enum QUEUE_PRIORITY {
 	PRIORITY_0 = 0, /* lowest priority -> MD_HW_NORMAL_Q(Q0)*/
 	PRIORITY_1 = 1, /* medium priority -> MD_HW_MEDIUM_Q(Q2)*/
 	PRIORITY_2 = 2, /* highest priority-> MD_HW_HIGH_Q(Q1)*/
+	PRIORITY_NUM,
 };
 
 enum QUEUE_NUM {
@@ -466,6 +471,7 @@ enum QUEUE_NUM {
 	MD_HW_NORMAL_Q = 0,
 	MD_HW_MEDIUM_Q = 2,
 	MD_HW_IMS_Q = 3,
+	MD_HW_Q_MAX = 4,
 };
 /* ============================================================== */
 /* Image type and header defination part */

@@ -34,12 +34,12 @@
 #ifdef FEATURE_RF_CLK_BUF
 #include <mtk-clkbuf-bridge.h>
 #endif
-
 #include "ccci_core.h"
 #include "ccci_auxadc.h"
 #include "ccci_bm.h"
 #include "ccci_modem.h"
 #include "port_rpc.h"
+#include "ccmni.h"
 #define MAX_QUEUE_LENGTH 16
 
 static struct gpio_item gpio_mapping_table[] = {
@@ -604,36 +604,38 @@ static void ccci_rpc_get_gpio_adc_v2(struct ccci_rpc_gpio_adc_intput_v2 *input,
 	}
 }
 
-static int ccci_rpc_remap_queue(struct ccci_rpc_queue_mapping *remap)
+int ccci_rpc_remap_queue(struct ccci_rpc_queue_mapping *remap)
 {
-	struct port_t *port;
+	struct ccmni_ch_hwq *channel = ccmni_ops.get_ch_hwq(remap->net_if);
 
-	port = port_get_by_minor(remap->net_if + CCCI_NET_MINOR_BASE);
-
-	if (!port) {
-		CCCI_ERROR_LOG(0, RPC, "can't find ccmni for netif: %d\n",
-			remap->net_if);
+	if (channel == NULL) {
+		CCCI_ERROR_LOG(0, RPC, "invalid remap channel\n");
 		return -1;
 	}
 
-	if (remap->lhif_q == LHIF_HWQ_AP_UL_Q0) {
-		/*normal queue*/
-		port->txq_index = 0;
-		port->txq_exp_index = 0xF0 | 0x1;
-		CCCI_NORMAL_LOG(0, RPC, "remap port %s Tx to cldma%d\n",
-			port->name, port->txq_index);
-	} else if (remap->lhif_q == LHIF_HWQ_AP_UL_Q1) {
-		/*IMS queue*/
-		port->txq_index = 3;
-		port->txq_exp_index = 0xF0 | 0x3;
-		CCCI_NORMAL_LOG(0, RPC, "remap port %s Tx to cldma%d\n",
-			port->name, port->txq_index);
-	} else
-		CCCI_ERROR_LOG(0, RPC, "invalid remap for q%d\n",
-			remap->lhif_q);
+	spin_lock(channel->spinlock_channel);
+	if (channel->ioctl_or_rpc != 2) {
+		if (remap->lhif_q == LHIF_HWQ_AP_UL_Q0) {
+			/*normal queue, ioctl_or_rpc initial 0, no need to change*/
+			/*even normal queue, rps msg is sent*/
+			channel->hwqno = MD_HW_NORMAL_Q;
+			CCCI_NORMAL_LOG(0, RPC, "remap ccmni%d Tx to HW queue0\n",
+				remap->net_if);
+		} else if (remap->lhif_q == LHIF_HWQ_AP_UL_Q1) {
+			/*IMS queue*/
+			channel->hwqno = MD_HW_IMS_Q;
+			channel->ioctl_or_rpc = 1;
+			CCCI_NORMAL_LOG(0, RPC, "remap ccmni%d Tx to HW queue%d\n",
+				remap->net_if,channel->hwqno);
+		} else
+			CCCI_ERROR_LOG(0, RPC, "invalid remap for q%d\n",
+				remap->lhif_q);
+	}
 
+	spin_unlock(channel->spinlock_channel);
 	return 0;
 }
+EXPORT_SYMBOL(ccci_rpc_remap_queue);
 
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DEBUG_LOG)
 int port_rpc_ecid_print(struct rpc_ecid_info *buff)

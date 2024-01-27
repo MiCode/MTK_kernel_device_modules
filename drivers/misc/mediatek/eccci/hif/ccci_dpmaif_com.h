@@ -25,6 +25,7 @@
 #include "ccci_dpmaif_reg_com.h"
 #include "ccci_dpmaif_drv_com.h"
 #include "ccci_dpmaif_debug.h"
+#include "ccmni.h"
 
 
 #define  IPV4_VERSION           0x40
@@ -35,6 +36,7 @@
 
 
 #define DPMAIF_TRAFFIC_MONITOR_INTERVAL 10
+#define DPMAIF_TXQ_FULL_LOG_INTERVAL 500
 
 #define DPMAIF_REDUCE_RX_FLUSH
 
@@ -67,12 +69,6 @@ struct dpmaif_rx_lro_info {
 
 	unsigned int    count;
 };
-
-
-#define DPMAIF_CAP_LRO            (1 << 0)
-#define DPMAIF_CAP_2RXQ           (1 << 1)
-#define DPMAIF_CAP_USE_RESV_MEM   (1 << 2)
-#define DPMAIF_CAP_USE_MAX_BAT    (1 << 3)
 
 #define DPMAIF_RXQ_NUM            2
 #define DPMAIF_TXQ_NUM            4
@@ -433,6 +429,13 @@ struct dpmaif_tx_queue {
 #if DPMAIF_TRAFFIC_MONITOR_INTERVAL
 	unsigned int        busy_count;
 #endif
+	atomic_t            txq_ccmni_stop_counter;
+	spinlock_t          txq_stop_start_lock;
+	unsigned long       txq_ccmni_state[MD_HW_Q_MAX];
+	unsigned long       txq_start_tick[MD_HW_Q_MAX];
+	unsigned int        txq_start_cnt[MD_HW_Q_MAX];
+	unsigned long       txq_stop_tick[MD_HW_Q_MAX];
+	unsigned int        txq_stop_cnt[MD_HW_Q_MAX];
 };
 
 struct dpmaif_ctrl {
@@ -442,6 +445,7 @@ struct dpmaif_ctrl {
 
 	unsigned char             hif_id;
 	atomic_t                  wakeup_src;
+	struct wakeup_source     *wakelock;
 
 	/* for 95 dpmaif new register */
 	void __iomem              *ao_ul_base;
@@ -488,6 +492,7 @@ struct dpmaif_ctrl {
 	atomic_t                    bat_need_alloc;
 	atomic_t                    bat_paused_alloc;
 	int                         bat_alloc_running;
+	struct hrtimer              bat_alloc_done_timer;
 
 	unsigned int                dl_bat_entry_size;
 	unsigned int                dl_pit_entry_size;
@@ -542,8 +547,6 @@ extern int regmap_write(struct regmap *map,
 
 extern int regmap_read(struct regmap *map,
 		unsigned int reg, unsigned int *val);
-
-extern void ccmni_clr_flush_timer(void);
 
 extern void mt_irq_dump_status(unsigned int irq);
 

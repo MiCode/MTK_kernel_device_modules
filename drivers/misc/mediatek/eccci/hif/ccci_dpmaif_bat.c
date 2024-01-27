@@ -26,6 +26,7 @@
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
 #include <linux/syscore_ops.h>
+#include <linux/kmemleak.h>
 
 #include "ccci_dpmaif_bat.h"
 #include "ccci_dpmaif_resv_mem.h"
@@ -35,6 +36,19 @@
 #define BAT_ALLOC_PAUSE_SUCC 2
 
 #define MIN_SKB_ALLOC_CNT (1000)
+#define MIN_FRG_ALLOC_CNT (1000)
+
+//alloc fail msleep time 5ms
+#define ALLOC_FAIL_MSLEEP_TIME (5)
+
+//alloc fail retry hrtime time 3ms
+#define ALLOC_FAIL_HRTIME_TIME (3000000)
+
+//max alloc skb fail retry time 10s
+#define MAX_SKB_RETRY_TOTAL_TIME (10000000000LL)
+//max alloc frg fail retry time 10s
+#define MAX_FRG_RETRY_TOTAL_TIME (10000000000LL)
+
 
 #define TAG "bat"
 
@@ -88,6 +102,10 @@ static unsigned int g_alloc_bat_frg_flag;
 
 static atomic_t g_bat_alloc_thread_wakeup_cnt;
 
+static unsigned long long g_alloc_bat_skb_retry_time;
+static unsigned long long g_alloc_bat_frg_retry_time;
+
+
 static inline void ccci_dpmaif_skb_wakeup_thread(void)
 {
 	if (dpmaif_ctl->skb_alloc_thread &&
@@ -119,6 +137,10 @@ static inline int skb_alloc(
 
 		return LOW_MEMORY_SKB;
 	}
+
+#if IS_ENABLED(CONFIG_DEBUG_KMEMLEAK)
+	kmemleak_not_leak(*ppskb);
+#endif
 
 	(*p_base_addr) = dma_map_single(
 			dpmaif_ctl->dev, (*ppskb)->data,
@@ -416,7 +438,7 @@ static inline int alloc_bat_skb(
 	return 0;
 }
 
-static int dpmaif_alloc_bat_req(int update_bat_cnt, atomic_t *paused, unsigned int max_retry_cnt)
+static int dpmaif_alloc_bat_req(int update_bat_cnt, atomic_t *paused)
 {
 	struct dpmaif_bat_request *bat_req = dpmaif_ctl->bat_skb;
 	struct dpmaif_bat_skb *bat_skb, *next_skb;
@@ -424,7 +446,7 @@ static int dpmaif_alloc_bat_req(int update_bat_cnt, atomic_t *paused, unsigned i
 	unsigned int buf_space, buf_used, alloc_skb_threshold = g_alloc_skb_threshold;
 	int count = 0, ret = 0, request_cnt;
 	unsigned short bat_wr_idx, next_wr_idx, pre_hw_wr_idx = 0;
-	u32 pre_time = 0, total_cnt = 0, retry_cnt = 0;
+	u32 pre_time = 0, total_cnt = 0;
 
 	if (g_dpmf_ver >= 3) {
 		atomic_set(&bat_req->bat_rd_idx, ccci_drv3_dl_get_bat_ridx());
@@ -432,9 +454,6 @@ static int dpmaif_alloc_bat_req(int update_bat_cnt, atomic_t *paused, unsigned i
 			pre_hw_wr_idx = ccci_drv3_dl_get_bat_widx();
 	} else  //version 1, 2
 		atomic_set(&bat_req->bat_rd_idx, ccci_drv2_dl_get_bat_ridx());
-
-	//if (alloc_skb_threshold > g_max_bat_skb_cnt_for_md)
-	//	alloc_skb_threshold = g_max_bat_skb_cnt_for_md;
 
 	if (g_max_bat_skb_cnt_for_md == 0xFFFF)  //need alloc max skb to bat
 		alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
@@ -471,20 +490,33 @@ static int dpmaif_alloc_bat_req(int update_bat_cnt, atomic_t *paused, unsigned i
 			break;
 
 		cur_bat = (struct dpmaif_bat_base *)bat_req->bat_base + bat_wr_idx;
-		retry_cnt = 0;
 alloc_retry:
 		ret = alloc_bat_skb(bat_req->pkt_buf_sz, bat_skb, cur_bat);
 		if (unlikely(ret)) {
-			if (max_retry_cnt) {
-				retry_cnt++;
-				if (retry_cnt <= max_retry_cnt)
-					goto alloc_retry;
-				else
+			if (update_bat_cnt == 0) {  //from dpmaif start flow
+				if (total_cnt > MIN_SKB_ALLOC_CNT)
+					goto alloc_end;
+
+				if ((local_clock() - g_alloc_bat_skb_retry_time) >=
+						MAX_SKB_RETRY_TOTAL_TIME) {
 					CCCI_ERROR_LOG(0, TAG,
-						"[%s] error: alloc_bat_skb() fail. retry_cnt=%u\n",
-						__func__, retry_cnt);
+						"[%s] error: retry alloc skb timeout: (%lldms).\n",
+						__func__, MAX_SKB_RETRY_TOTAL_TIME / 1000000);
+					goto alloc_end;
+				}
+
+				msleep(ALLOC_FAIL_MSLEEP_TIME);
+				goto alloc_retry;
+
+			} else {
+				if (paused && (atomic_read(paused) != BAT_ALLOC_NO_PAUSED))
+					goto alloc_end;
+
+				hrtimer_start(&dpmaif_ctl->bat_alloc_done_timer,
+						ktime_set(0, ALLOC_FAIL_HRTIME_TIME),
+						HRTIMER_MODE_REL);
+				goto alloc_end;
 			}
-			goto alloc_end;
 		}
 
 		bat_wr_idx = next_wr_idx;
@@ -623,27 +655,46 @@ static int dpmaif_alloc_bat_frg(int update_bat_cnt, atomic_t *paused)
 
 	bat_wr_idx = atomic_read(&bat_req->bat_wr_idx);
 
-	while (((!paused) || (!atomic_read(paused)))
-			&& (count < request_cnt)) {
-		bat_page = (struct dpmaif_bat_page *)bat_req->bat_pkt_addr
-					+ bat_wr_idx;
+	while (((!paused) || (!atomic_read(paused))) && (count < request_cnt)) {
+		bat_page = (struct dpmaif_bat_page *)bat_req->bat_pkt_addr + bat_wr_idx;
 		if (bat_page->page)
 			break;
 
-		next_wr_idx = get_ringbuf_next_idx(
-				bat_req->bat_cnt, bat_wr_idx, 1);
+		next_wr_idx = get_ringbuf_next_idx(bat_req->bat_cnt, bat_wr_idx, 1);
 
-		next_page = (struct dpmaif_bat_page *)bat_req->bat_pkt_addr
-					+ next_wr_idx;
+		next_page = (struct dpmaif_bat_page *)bat_req->bat_pkt_addr + next_wr_idx;
 		if (next_page->page)
 			break;
 
-		cur_bat = (struct dpmaif_bat_base *)bat_req->bat_base
-					+ bat_wr_idx;
-
+		cur_bat = (struct dpmaif_bat_base *)bat_req->bat_base + bat_wr_idx;
+alloc_retry:
 		ret = alloc_bat_page(bat_req->pkt_buf_sz, bat_page, cur_bat);
-		if (ret)
-			goto alloc_end;
+		if (unlikely(ret)) {
+			if (update_bat_cnt == 0) {  //from dpmaif start flow
+				if (count > MIN_FRG_ALLOC_CNT)
+					goto alloc_end;
+
+				if ((local_clock() - g_alloc_bat_frg_retry_time) >=
+						MAX_FRG_RETRY_TOTAL_TIME) {
+					CCCI_ERROR_LOG(0, TAG,
+						"[%s] error: retry alloc frg timeout: (%lldms).\n",
+						__func__, MAX_FRG_RETRY_TOTAL_TIME / 1000000);
+					goto alloc_end;
+				}
+
+				msleep(ALLOC_FAIL_MSLEEP_TIME);
+				goto alloc_retry;
+
+			} else {
+				if (paused && (atomic_read(paused) != BAT_ALLOC_NO_PAUSED))
+					goto alloc_end;
+
+				hrtimer_start(&dpmaif_ctl->bat_alloc_done_timer,
+						ktime_set(0, ALLOC_FAIL_HRTIME_TIME),
+						HRTIMER_MODE_REL);
+				goto alloc_end;
+			}
+		}
 
 		bat_wr_idx = next_wr_idx;
 		count++;
@@ -792,7 +843,7 @@ static int dpmaif_rx_bat_alloc_thread(void *arg)
 			break;
 		}
 
-		ret_req = dpmaif_alloc_bat_req(1, &dpmaif_ctl->bat_paused_alloc, 0);
+		ret_req = dpmaif_alloc_bat_req(1, &dpmaif_ctl->bat_paused_alloc);
 		ret_frg = dpmaif_alloc_bat_frg(1, &dpmaif_ctl->bat_paused_alloc);
 
 		if (g_debug_flags & DEBUG_BAT_TH_WAKE) {
@@ -977,7 +1028,12 @@ void ccci_dpmaif_bat_stop(void)
 {
 	CCCI_NORMAL_LOG(0, TAG, "[%s] stop.\n", __func__);
 
+	hrtimer_cancel(&dpmaif_ctl->bat_alloc_done_timer);
+	msleep(20); /* Make sure hrtimer finish */
+
 	ccci_dpmaif_bat_paused_thread();
+
+	hrtimer_cancel(&dpmaif_ctl->bat_alloc_done_timer);
 
 	ccci_dpmaif_bat_free();
 
@@ -989,11 +1045,6 @@ void ccci_dpmaif_bat_stop(void)
 
 static void dpmaif_bat_hw_init(void)
 {
-	//if ((!dpmaif_ctl->bat_skb) || (!dpmaif_ctl->bat_frg)) {
-	//	CCCI_ERROR_LOG(0, TAG, "[%s] bat_req or bat_frag is NULL.\n", __func__);
-	//	return;
-	//}
-
 	if (g_dpmf_ver >= 3) {
 		ccci_drv3_dl_set_bat_bufsz(DPMAIF_HW_BAT_PKTBUF);
 		ccci_drv3_dl_set_bat_rsv_len(DPMAIF_HW_BAT_RSVLEN);
@@ -1056,9 +1107,12 @@ int ccci_dpmaif_bat_start(void)
 		return -1;
 	}
 
+	g_alloc_bat_skb_retry_time = local_clock();
+	g_alloc_bat_frg_retry_time = local_clock();
+
 	dpmaif_bat_hw_init();
 
-	skb_cnt = dpmaif_alloc_bat_req(0, NULL, 20);
+	skb_cnt = dpmaif_alloc_bat_req(0, NULL);
 	if (skb_cnt <= MIN_SKB_ALLOC_CNT) {
 		CCCI_ERROR_LOG(-1, TAG,
 			"[%s] dpmaif_alloc_bat_req fail: %d\n",
@@ -1068,7 +1122,7 @@ int ccci_dpmaif_bat_start(void)
 	}
 
 	frg_cnt = dpmaif_alloc_bat_frg(0, NULL);
-	if (frg_cnt <= 0) {
+	if (frg_cnt <= MIN_FRG_ALLOC_CNT) {
 		CCCI_ERROR_LOG(-1, TAG,
 			"[%s] dpmaif_alloc_bat_frg fail: %d\n",
 			__func__, frg_cnt);
@@ -1090,13 +1144,22 @@ int ccci_dpmaif_bat_start(void)
 
 	atomic_set(&dpmaif_ctl->bat_paused_alloc, BAT_ALLOC_NO_PAUSED);
 	dpmaif_bat_start_thread();
-
 	return 0;
 
 start_err:
 	atomic_set(&dpmaif_ctl->bat_paused_alloc, BAT_ALLOC_IS_PAUSED);
 
 	return ret;
+}
+
+static enum hrtimer_restart dpmaif_bat_alloc_timer_action(struct hrtimer *timer)
+{
+	if (atomic_read(&dpmaif_ctl->bat_paused_alloc) == BAT_ALLOC_NO_PAUSED) {
+		atomic_inc(&dpmaif_ctl->bat_need_alloc);
+		wake_up_all(&dpmaif_ctl->bat_alloc_wq);
+	}
+
+	return HRTIMER_NORESTART;
 }
 
 int ccci_dpmaif_bat_late_init(void)
@@ -1165,6 +1228,9 @@ int ccci_dpmaif_bat_init(struct device *dev)
 	CCCI_NORMAL_LOG(0, TAG,
 		"[%s] g_skb_tbl_cnt: %u; g_frg_tbl_cnt: %u\n",
 		__func__, g_skb_tbl_cnt, g_frg_tbl_cnt);
+
+	hrtimer_init(&dpmaif_ctl->bat_alloc_done_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	dpmaif_ctl->bat_alloc_done_timer.function = dpmaif_bat_alloc_timer_action;
 
 	return 0;
 }

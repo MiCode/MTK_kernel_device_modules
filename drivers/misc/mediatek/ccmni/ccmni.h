@@ -51,10 +51,21 @@
 #define  SIOCACKPRIO		(SIOCDEVPRIVATE + 3)
 /* push the queued packet to stack */
 #define  SIOPUSHPENDING		(SIOCDEVPRIVATE + 4)
+/* get HW queue id which is set to MD*/
+#define  SIOCGQID		(SIOCDEVPRIVATE + 12)
+/* set HW queue to MD*/
+#define  SIOCSQID		(SIOCDEVPRIVATE + 13)
+/* get networktype value which is set to MD */
+#define  SIOCGNETTYPE		(SIOCDEVPRIVATE + 14)
+/* set networktype to MD */
+#define  SIOCSNETTYPE		(SIOCDEVPRIVATE + 15)
 
+#define  CCMNI_INTERFACE_NUM    21
+#define  DPMAIF_DRIVER          (1<<2)
+#define  CLDMA_DRIVER           (1<<0)
 
 #define  CCMNI_TX_PRINT_F	(0x1 << 0)
-#define MDT_TAG_PATTERN		0x46464646
+#define  MDT_TAG_PATTERN	0x46464646
 #define  CCMNI_FLT_NUM		32
 
 /* #define CCMNI_MET_DEBUG */
@@ -64,13 +75,27 @@
 #define CCMNI_TX_MET_ID		0xF1000
 #endif
 
-
 struct ccmni_ch {
 	int		   rx;
 	int		   rx_ack;
 	int		   tx;
 	int		   tx_ack;
 	int		   dl_ack;
+};
+
+struct ccmni_ch_hwq {
+	unsigned int      hwqno;
+/* 0: default, 1: setting HW queue by rpc msg, 2: setting HW queue by ioctl */
+	unsigned int      ioctl_or_rpc;
+	spinlock_t        *spinlock_channel;
+};
+
+struct ccmni_tx_para_info {
+	struct sk_buff *skb;
+	unsigned int    ccmni_idx;
+	unsigned int    network_type;
+	unsigned int    hw_qno;
+	unsigned int    count_l;
 };
 
 enum {
@@ -101,9 +126,10 @@ struct ccmni_flt_act {
 };
 
 struct ccmni_instance {
-	int                index;
-	struct ccmni_ch    ch;
-	int                net_if_off;
+	unsigned int       index;
+	struct ccmni_ch    *ch;
+	struct ccmni_ch_hwq ch_hwq;
+	unsigned int       net_type;
 	unsigned int	   ack_prio_en;
 	atomic_t           usage;
 	/* use pointer to keep these items unique,
@@ -113,15 +139,10 @@ struct ccmni_instance {
 	struct net_device  *dev;
 	struct napi_struct *napi;
 	unsigned int       rx_seq_num;
-	unsigned int       tx_seq_num[2];
-	unsigned int       flags[2];
+	unsigned int       flags[MD_HW_Q_MAX];
 	spinlock_t         *spinlock;
 	struct ccmni_ctl_block  *ctlb;
-	unsigned long      tx_busy_cnt[2];
-	unsigned long      tx_full_tick[2];
-	unsigned long      tx_irq_tick[2];
-	unsigned int       tx_full_cnt[2];
-	unsigned int       tx_irq_cnt[2];
+	unsigned long      tx_busy_cnt[MD_HW_Q_MAX];
 	unsigned int       rx_gro_cnt;
 	unsigned int       flt_cnt;
 	struct ccmni_fwd_filter flt_tbl[CCMNI_FLT_NUM];
@@ -131,31 +152,25 @@ struct ccmni_instance {
 	unsigned long      rx_met_bytes;
 	unsigned long      tx_met_bytes;
 #endif
-	struct timespec64 flush_time;
 	void               *priv_data;
 
+	struct sk_buff_head rx_list;
+	atomic_t           is_up; /*for ccmni status*/
 	/* For queue packet before ready */
 	struct workqueue_struct *worker;
 	struct delayed_work pkt_queue_work;
 };
 
-struct ccmni_ccci_ops {
+struct ccmni_ccci_cfg {
 	int                ccmni_ver;   /* CCMNI_DRV_VER */
-	int                ccmni_num;
 	/* "ccmni" or "cc2mni" or "ccemni" */
 	unsigned char      name[16];
 	unsigned int       md_ability;
 	unsigned int       napi_poll_weigh;
-	int (*send_pkt)(int ccmni_idx, void *data, int is_ack);
-	int (*napi_poll)(int ccmni_idx,
-			struct napi_struct *napi, int weight);
-	int (*get_ccmni_ch)(int ccmni_idx, struct ccmni_ch *channel);
-	void (*ccci_net_init)(char *name);
-	int (*ccci_handle_port_list)(int status, char *name);
 };
 
 struct ccmni_ctl_block {
-	struct ccmni_ccci_ops   *ccci_ops;
+	struct ccmni_ccci_cfg   *ccci_cfg;
 	struct ccmni_instance   *ccmni_inst[32];
 	unsigned int       md_sta;
 	struct wakeup_source   *ccmni_wakelock;
@@ -166,17 +181,17 @@ struct ccmni_ctl_block {
 struct ccmni_dev_ops {
 	/* must-have */
 	int  skb_alloc_size;
-	int  (*init)(struct ccmni_ccci_ops *ccci_info);
-	int  (*rx_callback)(int ccmni_idx,
-			struct sk_buff *skb, void *priv_data);
-	void (*md_state_callback)(int ccmni_idx, enum MD_STATE state);
-	void (*queue_state_callback)(int ccmni_idx,
-			enum HIF_STATE state, int is_ack);
-	void (*exit)(void);
-	void (*dump)(int ccmni_idx, unsigned int flag);
+	int (*recv_skb)(unsigned int ccmni_idx, struct sk_buff *skb);
+	void (*md_state_callback)(unsigned int ccmni_idx, enum MD_STATE state);
+	void (*dump)(void);
 	void (*dump_rx_status)(unsigned long long *status);
-	struct ccmni_ch *(*get_ch)(int ccmni_idx);
+	struct ccmni_ch *(*get_ch)(unsigned int ccmni_idx);
+	struct ccmni_ch_hwq *(*get_ch_hwq)(unsigned int ccmni_idx);
 	int (*is_ack_skb)(struct sk_buff *skb);
+	unsigned int (*flush_queue)(unsigned int ccmni_idx);
+	int (*stop_queue)(unsigned int ccmni_idx, unsigned int que_idx);
+	int (*start_queue)(unsigned int ccmni_idx, unsigned int que_idx);
+	int (*send_skb)(struct ccmni_tx_para_info *tx_info);
 };
 
 struct md_drt_tag {
@@ -210,11 +225,6 @@ enum {
 	CCMNI_ERR_TX_INVAL = -3,
 };
 
-enum {
-	CCMNI_TXQ_NORMAL = 0,
-	CCMNI_TXQ_FAST = 1,
-	CCMNI_TXQ_NUM,
-	CCMNI_TXQ_END = CCMNI_TXQ_NUM
-};
+extern struct ccmni_dev_ops ccmni_ops;
 
 #endif /* __CCCI_CCMNI_H__ */

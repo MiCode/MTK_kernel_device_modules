@@ -113,8 +113,6 @@ struct port_t {
 	unsigned int rx_drop_cnt;
 	unsigned int tx_pkg_cnt;
 	port_skb_handler skb_handler;
-	struct sk_buff_head port_rx_list;
-	atomic_t is_up; /*for ccmni status*/
 	spinlock_t flag_lock;
 };
 /****************************************************************************/
@@ -142,8 +140,6 @@ struct port_t *port_get_by_minor(int minor);
 struct port_t *port_get_by_channel(enum CCCI_CH ch);
 int port_send_skb_to_md(struct port_t *port, struct sk_buff *skb,
 	int blocking);
-int port_net_send_skb_to_md(struct port_t *port, int is_ack,
-	struct sk_buff *skb);
 int port_send_msg_to_md(struct port_t *port, unsigned int msg,
 		unsigned int resv, int blocking);
 

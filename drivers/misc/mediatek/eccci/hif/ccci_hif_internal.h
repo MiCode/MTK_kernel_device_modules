@@ -11,6 +11,7 @@
 #include "ccci_fsm.h"
 #include "ccci_hif.h"
 #include "ccci_modem.h"
+#include "ccmni.h"
 
 #define MAX_TXQ_NUM 16
 #define MAX_RXQ_NUM 16
@@ -83,7 +84,6 @@ struct ccci_hif_ops {
 	int (*clear)(unsigned char hif_id);
 	void (*set_clk_cg)(unsigned int on);
 	void (*hw_reset)(void);
-	int (*empty_query)(int qno);
 };
 
 enum RX_COLLECT_RESULT {
