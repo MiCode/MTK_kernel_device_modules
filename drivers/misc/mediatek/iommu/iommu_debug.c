@@ -1051,7 +1051,7 @@ static void dump_wrapper_register(struct seq_file *s,
 	for (i = 0; i < smmuwp_reg_nr; i++) {
 		if (i + 4 < smmuwp_reg_nr) {
 			iommu_dump(s,
-				   "%s:0x%x=0x%x\t%s:0x%x=0x%x\t%s:0x%x=0x%x\t%s:0x%x=0x%x\t%s:0x%x=0x%x\n",
+				   "%-11s:0x%03x=0x%-8x %-11s:0x%03x=0x%-8x %-11s:0x%03x=0x%-8x %-11s:0x%03x=0x%-8x %-11s:0x%03x=0x%x\n",
 				   smmuwp_regs[i + 0].name, smmuwp_regs[i + 0].offset,
 				   readl_relaxed(wp_base + smmuwp_regs[i + 0].offset),
 				   smmuwp_regs[i + 1].name, smmuwp_regs[i + 1].offset,
@@ -1064,7 +1064,7 @@ static void dump_wrapper_register(struct seq_file *s,
 				   readl_relaxed(wp_base + smmuwp_regs[i + 4].offset));
 			i = i + 4;
 		} else {
-			iommu_dump(s, "%s:0x%x=0x%x\n",
+			iommu_dump(s, "%-11s:0x%03x=0x%x\n",
 				   smmuwp_regs[i].name, smmuwp_regs[i].offset,
 				   readl_relaxed(wp_base + smmuwp_regs[i].offset));
 		}
