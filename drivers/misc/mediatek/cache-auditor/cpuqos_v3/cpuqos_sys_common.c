@@ -41,9 +41,14 @@ static struct kobject *kobj;
 int init_cpuqos_common_sysfs(void)
 {
 	int ret = 0;
+	struct device *dev_root;
+
+	dev_root = bus_get_dev_root(&cpu_subsys);
+	if (!dev_root)
+		return -ENOMEM;
 
 	kobj = kobject_create_and_add("cpuqos",
-				&cpu_subsys.dev_root->kobj);
+				&dev_root->kobj);
 	if (!kobj) {
 		pr_info("cpuqos folder create failed\n");
 		return -ENOMEM;

@@ -1471,7 +1471,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 		larb_pdev = of_find_device_by_node(np);
 		if (!larb_pdev) {
 			larb_pdev = of_platform_device_create(
-				np, NULL, platform_bus_type.dev_root);
+				np, NULL, &pdev->dev);
 			if (!larb_pdev || !larb_pdev->dev.driver) {
 				of_node_put(np);
 				return -EPROBE_DEFER;
