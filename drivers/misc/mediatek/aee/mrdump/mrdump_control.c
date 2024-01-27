@@ -144,9 +144,6 @@ void mrdump_cblock_late_init(void)
 #if IS_ENABLED(CONFIG_KALLSYMS)
 	mrdump_cblock_kallsyms_init(&machdesc_p->kallsyms);
 #endif
-	machdesc_p->kimage_stext = (uint64_t)aee_get_text();
-	machdesc_p->kimage_etext = (uint64_t)aee_get_etext();
-	machdesc_p->kimage_stext_real = (uint64_t)aee_get_stext();
 	mrdump_cblock->machdesc_crc = crc32(0, machdesc_p,
 			sizeof(struct mrdump_machdesc));
 	pr_notice("mrdump control block 2nd stage init done.\n");
@@ -187,9 +184,6 @@ __init void mrdump_cblock_init(const struct mrdump_params *mparams)
 	machdesc_p = &mrdump_cblock->machdesc;
 	machdesc_p->nr_cpus = nr_cpu_ids;
 	machdesc_p->page_offset = (uint64_t)PAGE_OFFSET;
-#if defined(KIMAGE_VADDR)
-	machdesc_p->kimage_vaddr = KIMAGE_VADDR;
-#endif
 	machdesc_p->vmalloc_start = (uint64_t)VMALLOC_START;
 	machdesc_p->vmalloc_end = (uint64_t)VMALLOC_END;
 

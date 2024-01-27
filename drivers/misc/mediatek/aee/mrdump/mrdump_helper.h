@@ -8,12 +8,6 @@
 
 #include <asm/stacktrace.h>
 
-/* for mrdump.ko */
-extern unsigned long aee_get_stext(void);
-extern unsigned long aee_get_etext(void);
-extern unsigned long aee_get_init_begin(void);
-extern unsigned long aee_get_text(void);
-
 extern void *aee_log_buf_addr_get(void);
 
 extern struct list_head *aee_get_modules(void);
