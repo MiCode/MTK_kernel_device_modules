@@ -79,7 +79,7 @@ mgk_64_kleaf_modules = [
     #"//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps",
     "//vendor/mediatek/kernel_modules/mtkcam/scpsys/mtk-aov:mtk_aov",
     "//vendor/mediatek/kernel_modules/sched_cus:sched_cus",
-    #"//vendor/mediatek/kernel_modules/sched_int:sched_int",
+    "//vendor/mediatek/kernel_modules/sched_int:sched_int",
 ]
 
 mgk_64_kleaf_eng_modules = [
@@ -265,7 +265,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/audio_ipi/audio_ipi.ko",
     #"drivers/misc/mediatek/blocktag/blocktag.ko",
     "drivers/misc/mediatek/btif/common/btif_drv.ko",
-    #"drivers/misc/mediatek/cache-auditor/cpuqos_v3/cpuqos_v3.ko",
+    "drivers/misc/mediatek/cache-auditor/cpuqos_v3/cpuqos_v3.ko",
     "drivers/misc/mediatek/cameraisp/dpe/camera_dpe_isp70.ko",
     "drivers/misc/mediatek/cameraisp/pda/isp_71/camera_pda.ko",
     "drivers/misc/mediatek/cameraisp/src/isp_6s/camera_isp.ko",
@@ -407,9 +407,9 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/pwm/mtk-pwm.ko",
     "drivers/misc/mediatek/qos/mtk_qos.ko",
     "drivers/misc/mediatek/rps/rps_perf.ko",
-    #"drivers/misc/mediatek/sched/cpufreq_sugov_ext.ko",
-    #"drivers/misc/mediatek/sched/mtk_core_ctl.ko",
-    #"drivers/misc/mediatek/sched/scheduler.ko",
+    "drivers/misc/mediatek/sched/cpufreq_sugov_ext.ko",
+    "drivers/misc/mediatek/sched/mtk_core_ctl.ko",
+    "drivers/misc/mediatek/sched/scheduler.ko",
     "drivers/misc/mediatek/scp/rv/scp.ko",
     "drivers/misc/mediatek/sda/btm/bus_tracer_interface.ko",
     "drivers/misc/mediatek/sda/btm/v1/bus_tracer_v1.ko",
