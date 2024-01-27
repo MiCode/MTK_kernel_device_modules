@@ -22,6 +22,7 @@
 #include <linux/sched/clock.h>
 #include <linux/workqueue.h>
 #include <mt-plat/aee.h>
+#include "cputype.h"
 
 #define ECC_UE_BIT			(0x1 << 29)
 #define ECC_CE_BIT			(0x3 << 24)
@@ -303,6 +304,26 @@ static irqreturn_t cache_parity_isr_v3(int irq, void *dev_id)
 #if IS_ENABLED(CONFIG_ARM64)
 	static const struct midr_range cpu_list[] = {
 		MIDR_ALL_VERSIONS(MIDR_CORTEX_A510), /* KLEIN */
+		MIDR_ALL_VERSIONS(MIDR_CORTEX_A715), /* MAKALU */
+		MIDR_ALL_VERSIONS(MIDR_CORTEX_A720), /* HUNTER */
+		MIDR_ALL_VERSIONS(MIDR_CORTEX_CHABERTON), /* CHABERTON */
+		{},
+	};
+	/*
+	 * Error code: 0x2, 0xC, 0x12 of specific DSU type
+	 * need to be bypass. But the type of DSU can't be
+	 * directly identified. Fortunately, there is an relationship
+	 * between CPU type and DSU type. Thus CPU type can be used
+	 * to identify which type of DSU we used.
+	 */
+	static const struct midr_range bypass_list[] = {
+		MIDR_ALL_VERSIONS(MIDR_CORTEX_A510), /* KLEIN */
+		MIDR_ALL_VERSIONS(MIDR_CORTEX_A715), /* MAKALU */
+		MIDR_ALL_VERSIONS(MIDR_CORTEX_X3), /* MAKALU_ELP */
+		MIDR_ALL_VERSIONS(MIDR_CORTEX_A720), /* HUNTER */
+		MIDR_ALL_VERSIONS(MIDR_CORTEX_X4), /* HUNTER_ELP */
+		MIDR_ALL_VERSIONS(MIDR_CORTEX_CHABERTON), /* CHABERTON */
+		MIDR_ALL_VERSIONS(MIDR_CORTEX_BLACKHAWK), /* BLACKHAWK */
 		{},
 	};
 #endif
@@ -367,22 +388,30 @@ static irqreturn_t cache_parity_isr_v3(int irq, void *dev_id)
 		/* Skip the error, may be caused by externel slave error
 		 * 1. When booker receives SLVERR(0x2) of AXI response,
 		 *    it will be transferred to DERR(Data Error) to DSU,
-		 *    KLEIN Core will get ECC Error with SERR = 0xC.
+		 *    Core which is in the cpu_list will get ECC Error
+		 *    with SERR = 0xC/0x2.
 		 * 2. When booker receives SLVERR(0x3) of AXI response,
 		 *    it will be transferred to DERR(Non-data Error) to DSU,
-		 *    KLEIN Core will get ECC Error with SERR = 0x12.
+		 *    Core which is in the cpu_list will get ECC Error with
+		 *    SERR = 0x12.
 		 */
-		if (is_midr_in_range_list(read_cpuid_id(), cpu_list)) {
-
-			/* SERR[7:0]
-			 * 0xC : Data value from (non-associative) external memory
-			 * 0x12: Data value from slave
-			 */
-			if ((serr == 0xC) || (serr == 0x12)) {
-				cpu = raw_smp_processor_id();
-				ECC_LOG("Cache ECC error, cpu%d serviced irq%d\n", cpu, irq);
-				ECC_LOG("SERR[7:0] = 0x%x, bypass this error!\n", serr);
-				goto check_nr_err;
+		if (hwirq == cache_parity.arm_dsu_ecc_hwirq) {
+			if (is_midr_in_range_list(read_cpuid_id(), bypass_list)) {
+				if ((serr == 0x2) || (serr == 0xC) || (serr == 0x12)) {
+					cpu = raw_smp_processor_id();
+					ECC_LOG("Cache ECC error, cpu%d serviced irq%d\n", cpu, irq);
+					ECC_LOG("SERR[7:0] = 0x%x, bypass this error!\n", serr);
+					goto check_nr_err;
+				}
+			}
+		} else {
+			if (is_midr_in_range_list(read_cpuid_id(), cpu_list)) {
+				if ((serr == 0x2) || (serr == 0xC) || (serr == 0x12)) {
+					cpu = raw_smp_processor_id();
+					ECC_LOG("Cache ECC error, cpu%d serviced irq%d\n", cpu, irq);
+					ECC_LOG("SERR[7:0] = 0x%x, bypass this error!\n", serr);
+					goto check_nr_err;
+				}
 			}
 		}
 #endif
