@@ -403,9 +403,6 @@ static struct match mt6985_match = {
 };
 /*mt6985 end*/
 
-
-
-
 /*mt6989 begin*/
 static struct id_map map_6989[] = {
 	{"top1", 1000},
@@ -427,12 +424,31 @@ static struct match mt6989_match = {
 };
 /*mt6989 end*/
 
+/*mt6991 begin*/
+static struct id_map map_6991[] = {
+	{"top2", 1000},
+	{}
+};
+struct hdlr_data_v1 hdlr_data_6991_vcp = {
+	.reg_tr = NULL,
+	.map = map_6991,
+};
+static struct fh_hdlr vcp_hdlr_6991 = {
+	.ops = &vcp_ops_v1,
+	.data = &hdlr_data_6991_vcp,
+};
 
-
+static struct match mt6991_match = {
+	.name = "mediatek,mt6991-fhctl",
+	.hdlr = &vcp_hdlr_6991,
+	.init = &vcp_init_v1,
+};
+/*mt6991 end*/
 
 static struct match *matches[] = {
 	&mt6985_match,
 	&mt6989_match,
+	&mt6991_match,
 	NULL,
 };
 
