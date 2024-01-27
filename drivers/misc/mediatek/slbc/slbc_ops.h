@@ -128,6 +128,7 @@ enum slc_ach_uid {
 	ID_SMMU,
 	ID_MD,
 	ID_ADSP,
+	ID_AOV,
 	ID_MAX,
 };
 
