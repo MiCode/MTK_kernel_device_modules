@@ -1981,9 +1981,11 @@
 				"CH_IPIS_C_MET", /* = IPIR_C_MET on gpueb side */
 				"IPI_ID_BRISKET";
 
-			reg = <0 0x4b000000 0 0xa0000>,
+			reg =
+				<0 0x4b000000 0 0xa0000>,
 				<0 0x4b09fd00 0 0x80>,
-				<0 0x4b100000 0 0x90000>,
+				<0 0x4b140100 0 0x200>,
+				<0 0x4b120000 0 0x100>,
 				<0 0x4b09fd80 0 0x280>,
 				<0 0x4b170008 0 0x4>,  /* arbitrary addr to avoid error msg */
 				<0 0x4b170004 0 0x4>,
@@ -1991,16 +1993,18 @@
 				<0 0x4b170000 0 0x4>,
 				<0 0x4b170078 0 0x4>,
 				<0 0x4b800000 0 0x1000>;
-			reg-names = "gpueb_base",
-					"gpueb_gpr_base",
-					"gpueb_reg_base",
-					"mbox0_base",
-					"mbox0_init", /* dummy input for mtk_mbox_probe */
-					"mbox0_set",
-					"mbox0_clr",
-					"mbox0_send",
-					"mbox0_recv",
-					"mfg_rpc";
+			reg-names =
+				"gpueb_base",
+				"gpueb_gpr_base",
+				"gpueb_cfgreg_base",
+				"gpueb_intc_base",
+				"mbox0_base",
+				"mbox0_init", /* dummy input for mtk_mbox_probe */
+				"mbox0_set",
+				"mbox0_clr",
+				"mbox0_send",
+				"mbox0_recv",
+				"mfg_rpc";
 
 			interrupts = <GIC_SPI 608 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names = "mbox0";
