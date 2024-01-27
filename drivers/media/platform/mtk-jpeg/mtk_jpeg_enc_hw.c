@@ -53,10 +53,15 @@ void mtk_jpeg_enc_reset(void __iomem *base)
 	writel(0, base + JPEG_ENC_CODEC_SEL);
 }
 
-u32 mtk_jpeg_enc_get_file_size(void __iomem *base)
+u32 mtk_jpeg_enc_get_file_size(void __iomem *base, enum mtk_jpeg_support_34bits support_34bits)
 {
-	return readl(base + JPEG_ENC_DMA_ADDR0)*4 -
-	       readl(base + JPEG_ENC_DST_ADDR0);
+	if (support_34bits) {
+		return readl(base + JPEG_ENC_DMA_ADDR0)*4 -
+			readl(base + JPEG_ENC_DST_ADDR0);
+	} else {
+		return readl(base + JPEG_ENC_DMA_ADDR0) -
+			readl(base + JPEG_ENC_DST_ADDR0);
+	}
 }
 
 void mtk_jpeg_enc_start(void __iomem *base)
