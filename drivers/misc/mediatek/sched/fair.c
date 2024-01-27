@@ -623,9 +623,9 @@ void init_task_soft_affinity(void)
 
 	/* init soft affinity related value to exist tasks */
 	read_lock(&tasklist_lock);
-	do_each_thread(g, p) {
+	for_each_process_thread(g, p) {
 		__sched_fork_init(p);
-	} while_each_thread(g, p);
+	}
 	read_unlock(&tasklist_lock);
 
 	/* init soft affinity related value to newly forked tasks */

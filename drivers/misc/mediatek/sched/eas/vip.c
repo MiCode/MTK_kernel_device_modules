@@ -767,10 +767,10 @@ void vip_init(void)
 
 	/* init vip related value to exist tasks */
 	read_lock(&tasklist_lock);
-	do_each_thread(g, p) {
+	for_each_process_thread(g, p) {
 		init_vip_task_struct(p);
 		init_task_gear_hints(p);
-	} while_each_thread(g, p);
+	}
 	read_unlock(&tasklist_lock);
 
 	/* init vip related value to each rq */

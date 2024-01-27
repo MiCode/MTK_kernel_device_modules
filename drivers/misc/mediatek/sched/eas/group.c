@@ -491,9 +491,9 @@ void group_init(void)
 
 	/* for existing thread */
 	read_lock(&tasklist_lock);
-	do_each_thread(g, p) {
+	for_each_process_thread(g, p) {
 		group_init_existing_task_load(p);
-	} while_each_thread(g, p);
+	}
 	read_unlock(&tasklist_lock);
 
 	/* init for each cpu */
