@@ -1229,10 +1229,10 @@
 		interrupts-extended = <&pio 291 IRQ_TYPE_LEVEL_HIGH>,
 				<&pio 292 IRQ_TYPE_LEVEL_HIGH>,
 				<&gic GIC_SPI 412 IRQ_TYPE_LEVEL_HIGH 0>,
-				// <&gic GIC_SPI 691 IRQ_TYPE_LEVEL_HIGH 0>,
-				<&gic GIC_SPI 413 IRQ_TYPE_LEVEL_HIGH 0>;
-				// <&gic GIC_SPI 692 IRQ_TYPE_LEVEL_HIGH 0>;
-		interrupt-names = "rcs_irq","rcs_irq_p","pmif_irq","pmif_p_irq";
+				<&gic GIC_SPI 691 IRQ_TYPE_LEVEL_HIGH 0>,
+				<&gic GIC_SPI 413 IRQ_TYPE_LEVEL_HIGH 0>,
+				<&gic GIC_SPI 692 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupt-names = "rcs_irq","rcs_irq_p","pmif_irq","spmi_nack_irq","pmif_p_irq","spmi_p_nack_irq";
 		interrupt-controller;
 		#interrupt-cells = <1>;
 		irq-event-en = <0x0 0x0 0x0 0x0 0x0>;
