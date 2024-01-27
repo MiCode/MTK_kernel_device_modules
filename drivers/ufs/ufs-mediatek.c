@@ -2007,7 +2007,7 @@ static int ufs_mtk_wait_for_doorbell_clr(struct ufs_hba *hba,
 	bool timeout = false, do_last_check = false;
 	ktime_t start;
 
-	ufshcd_hold(hba, false);
+	ufshcd_hold(hba);
 	spin_lock_irqsave(hba->host->host_lock, flags);
 	/*
 	 * Wait for all the outstanding tasks/transfer requests.
@@ -2109,7 +2109,7 @@ static void ufs_mtk_config_pwr_mode(struct ufs_hba *hba, int mode,
 rpm:
 	ufshcd_rpm_get_sync(hba);
 	ufs_mtk_scsi_block_requests(hba);
-	ufshcd_hold(hba, false);
+	ufshcd_hold(hba);
 
 	if (ufs_mtk_wait_for_doorbell_clr(hba, 1000 * 1000)) { /* 1 sec */
 		dev_err(hba->dev, "%s: ufshcd_wait_for_doorbell_clr timeout!\n",

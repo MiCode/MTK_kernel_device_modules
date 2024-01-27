@@ -217,7 +217,7 @@ static void ufshid_auto_hibern8_enable(struct ufshid_dev *hid,
 		return;
 
 	pm_runtime_get_sync(hba->dev);
-	ufshcd_hold(hba, false);
+	ufshcd_hold(hba);
 	down_write(&hba->clk_scaling_lock);
 	ufsf_scsi_block_requests(hba);
 	/* wait for all the outstanding requests to finish */
@@ -276,7 +276,7 @@ static void ufshid_block_enter_suspend(struct ufshid_dev *hid)
 	hid->block_suspend = true;
 #endif
 	pm_runtime_get_sync(hba->dev);
-	ufshcd_hold(hba, false);
+	ufshcd_hold(hba);
 
 	spin_lock_irqsave(hba->host->host_lock, flags);
 	HID_DEBUG(hid,
