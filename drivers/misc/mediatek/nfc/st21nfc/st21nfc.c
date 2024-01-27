@@ -976,8 +976,7 @@ static const struct acpi_gpio_mapping acpi_st21nfc_gpios[] = {
 	{ "clkreq-gpios", &clkreq_gpios, 1 },
 };
 
-static int st21nfc_probe(struct i2c_client *client,
-			 const struct i2c_device_id *id)
+static int st21nfc_probe(struct i2c_client *client)
 {
 	int ret;
 	struct st21nfc_device *st21nfc_dev;
