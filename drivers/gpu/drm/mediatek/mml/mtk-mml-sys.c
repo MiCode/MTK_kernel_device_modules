@@ -2251,6 +2251,11 @@ struct mml_sys *mml_sys_create(struct platform_device *pdev,
 	struct mml_sys *sys;
 	int ret;
 
+	if (!mml) {
+		mml_err("no mediatek,mml provide in this sys");
+		return ERR_PTR(-EINVAL);
+	}
+
 	sys = devm_kzalloc(dev, sizeof(*sys), GFP_KERNEL);
 	if (!sys)
 		return ERR_PTR(-ENOMEM);
