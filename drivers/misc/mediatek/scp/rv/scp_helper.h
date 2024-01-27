@@ -133,6 +133,7 @@ struct scp_regs {
 	void __iomem *cfg_sec;
 	void __iomem *bus_tracker;
 	void __iomem *cfgreg_ap;
+	struct regmap *scpsys_regmap; /* infracfg_ao base */
 	int irq0;
 	int irq1;
 	unsigned int total_tcmsize;
@@ -146,6 +147,7 @@ struct scp_regs {
 	unsigned int cfgreg_ap_en;
 	unsigned int ipc_wa;
 	unsigned int read_infra_irq_sta_en;
+	unsigned int scpsys_regmap_en;
 	struct scp_bus_tracker_status tracker_status;
 };
 

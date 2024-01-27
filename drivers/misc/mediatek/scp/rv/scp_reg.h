@@ -248,12 +248,15 @@
 
 /* INFRA_IRQ (always on register) */
 #define INFRA_IRQ_STA			(scpreg.scpsys + 0x0B10)
+	#define INFRA_IRQ_STA_OFS	(0x0B10)
 #define INFRA_IRQ_SET			(scpreg.scpsys + 0x0B14)
+	#define INFRA_IRQ_SET_OFS	(0x0B14)
 	#define AP_AWAKE_LOCK		(0)
 	#define AP_AWAKE_UNLOCK		(1)
 	#define CONNSYS_AWAKE_LOCK	(2)
 	#define CONNSYS_AWAKE_UNLOCK	(3)
 #define INFRA_IRQ_CLEAR			(scpreg.scpsys + 0x0B18)
+	#define INFRA_IRQ_CLEAR_OFS	(0x0B18)
 #define SCP_SYS_INFRA_MON		(scpreg.scpsys + 0x0D50)
 
 #endif

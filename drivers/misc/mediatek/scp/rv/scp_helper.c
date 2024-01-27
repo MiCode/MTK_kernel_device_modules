@@ -33,6 +33,7 @@
 //#include <mt-plat/sync_write.h>
 //#include <mt-plat/aee.h>
 #include <linux/delay.h>
+#include <linux/mfd/syscon.h> /* need by regmap infracfg_ao_clk */
 #include "scp_feature_define.h"
 #include "scp_err_info.h"
 #include "scp_helper.h"
@@ -2601,6 +2602,7 @@ static int scp_device_probe(struct platform_device *pdev)
 	const char *scp_cfgreg_ap_en = NULL;
 	const char *scp_ipc_wa = NULL;
 	const char *scp_read_infra_irq_sta_en = NULL;
+	const char *scp_scpsys_regmap_en = NULL;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	scpreg.sram = devm_ioremap_resource(dev, res);
@@ -2793,6 +2795,17 @@ static int scp_device_probe(struct platform_device *pdev)
 		}
 	}
 
+	/* scp scpsys map from infracfg_ao_clk */
+	scpreg.scpsys_regmap_en = 0;
+	if (!of_property_read_string(pdev->dev.of_node,
+				"scp-scpsys-regmap", &scp_scpsys_regmap_en)){
+		if (!strncmp(scp_scpsys_regmap_en, "enable", strlen("enable"))) {
+			pr_notice("[SCP] scp_scpsys_regmap_en enabled\n");
+			scpreg.scpsys_regmap_en = 1;
+			pr_notice("[SCP] scpreg.scpsys_regmap_en = %d\n", scpreg.scpsys_regmap_en);
+		}
+	}
+
 	scpreg.irq0 = platform_get_irq_byname(pdev, "ipc0");
 	if (scpreg.irq0 < 0)
 		pr_notice("[SCP] get ipc0 irq failed\n");
@@ -2898,6 +2911,16 @@ static int scp_device_probe(struct platform_device *pdev)
 	ret = memorydump_size_probe(pdev);
 	if (ret)
 		return ret;
+
+	/* scp scpsys remap from infracfg_ao_clk */
+	if (scpreg.scpsys_regmap_en) {
+		scpreg.scpsys_regmap = syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
+							"scp-infracfg");
+		if (!scpreg.scpsys_regmap) {
+			pr_notice("[SCP]: get scpsys regmap failed\n");
+			return -1;
+		}
+	}
 
 	return ret;
 }
@@ -3048,10 +3071,12 @@ static int __init scp_init(void)
 		goto err_without_unregister;
 	}
 
-	ret = platform_driver_register(&mtk_scpsys_device);
-	if (ret) {
-		pr_notice("[SCP] scpsys probe fail %d\n", ret);
-		goto err;
+	if (!scpreg.scpsys_regmap_en) {
+		ret = platform_driver_register(&mtk_scpsys_device);
+		if (ret) {
+			pr_notice("[SCP] scpsys probe fail %d\n", ret);
+			goto err;
+		}
 	}
 
 	/* skip initial if dts status = "disable" */
