@@ -1959,6 +1959,11 @@ transparent_hugepage=never";
 		ctrl_intf = <1>;
 	};
 
+	emictrl {
+		compatible = "mediatek,common-emictrl";
+		mediatek,emi-reg = <&emicen>;
+	};
+
 	emimpu@10226000 {
 		compatible = "mediatek,mt6779-emimpu",
 			     "mediatek,common-emimpu";
