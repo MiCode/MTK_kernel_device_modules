@@ -8,6 +8,7 @@ config MTK_SLBC
 
 config MTK_SLBC_MT6886
 	tristate "MTK SLBC MT6886"
+	depends on MTK_SLBC
 	help
 	  This kernel config can be used to enable SLBC at mt6886. When enable
 	  this option, we will use system buffer to improve performance
@@ -16,6 +17,7 @@ config MTK_SLBC_MT6886
 
 config MTK_SLBC_MT6893
 	tristate "MTK SLBC MT6893"
+	depends on MTK_SLBC
 	help
 	  This kernel config can be used to enable SLBC at mt6893. When enable
 	  this option, we will use system buffer to improve performance
@@ -24,6 +26,7 @@ config MTK_SLBC_MT6893
 
 config MTK_SLBC_MT6895
 	tristate "MTK SLBC MT6895"
+	depends on MTK_SLBC
 	help
 	  This kernel config can be used to enable SLBC at mt6895. When enable
 	  this option, we will use system buffer to improve performance
@@ -32,6 +35,7 @@ config MTK_SLBC_MT6895
 
 config MTK_SLBC_MT6897
 	tristate "MTK SLBC MT6897"
+	depends on MTK_SLBC
 	help
 	  This kernel config can be used to enable SLBC at mt6897. When enable
 	  this option, we will use system buffer to improve performance
@@ -40,6 +44,7 @@ config MTK_SLBC_MT6897
 
 config MTK_SLBC_MT6983
 	tristate "MTK SLBC MT6983"
+	depends on MTK_SLBC
 	help
 	  This kernel config can be used to enable SLBC at mt6983. When enable
 	  this option, we will use system buffer to improve performance
@@ -48,6 +53,7 @@ config MTK_SLBC_MT6983
 
 config MTK_SLBC_MT6985
 	tristate "MTK SLBC MT6985"
+	depends on MTK_SLBC
 	help
 	  This kernel config can be used to enable SLBC at mt6985. When enable
 	  this option, we will use system buffer to improve performance
@@ -56,6 +62,7 @@ config MTK_SLBC_MT6985
 
 config MTK_SLBC_MT6989
 	tristate "MTK SLBC MT6989"
+	depends on MTK_SLBC
 	help
 	  This kernel config can be used to enable SLBC at mt6985. When enable
 	  this option, we will use system buffer to improve performance
