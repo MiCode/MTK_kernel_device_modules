@@ -252,8 +252,10 @@ static inline void eenv_init(struct energy_env *eenv,
 	struct perf_domain *pd_ptr = pd;
 	unsigned int gear_idx;
 	struct dsu_info *dsu;
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 	unsigned int dsu_opp;
 	struct dsu_state *dsu_ps;
+#endif
 
 	eenv_task_busy_time(eenv, p, prev_cpu);
 
@@ -299,6 +301,7 @@ static inline void eenv_init(struct energy_env *eenv,
 		}
 	}
 
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 	for_each_cpu(cpu, cpu_possible_mask) {
 		eenv->cpu_temp[cpu] = get_cpu_temp(cpu);
 		eenv->cpu_temp[cpu] /= 1000;
@@ -308,6 +311,7 @@ static inline void eenv_init(struct energy_env *eenv,
 				trace_sched_check_temp("cpu", cpu, eenv->cpu_temp[cpu]);
 		}
 	}
+#endif
 
 	if (eenv->wl_support) {
 		eenv->wl_type = get_em_wl();
@@ -315,14 +319,19 @@ static inline void eenv_init(struct energy_env *eenv,
 		dsu = &(eenv->dsu);
 		dsu->dsu_bw = get_pelt_dsu_bw();
 		dsu->emi_bw = get_pelt_emi_bw();
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 		dsu->temp = get_dsu_temp()/1000;
 		if (!reasonable_temp(dsu->temp)) {
 			if (trace_sched_check_temp_enabled())
 				trace_sched_check_temp("dsu", -1, dsu->temp);
 		}
+#endif
 
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 		eenv->dsu_freq_thermal = get_dsu_ceiling_freq();
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 		eenv->dsu_freq_base = mtk_get_dsu_freq();
+#endif
 		dsu_opp = dsu_get_freq_opp(eenv->dsu_freq_base);
 		dsu_ps = dsu_get_opp_ps(eenv->wl_type, dsu_opp);
 		eenv->dsu_volt_base = dsu_ps->volt;
@@ -330,6 +339,7 @@ static inline void eenv_init(struct energy_env *eenv,
 		if (trace_sched_eenv_init_enabled())
 			trace_sched_eenv_init(eenv->dsu_freq_base, eenv->dsu_volt_base,
 					eenv->dsu_freq_thermal, share_buck.gear_idx);
+#endif
 	} else
 		eenv->wl_type = 0;
 }

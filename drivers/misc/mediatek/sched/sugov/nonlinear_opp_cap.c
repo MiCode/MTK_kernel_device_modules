@@ -47,7 +47,9 @@ static int entry_count;
 static int busy_tick_boost_all;
 static int sbb_active_ratio[MAX_NR_CPUS] = {
 	[0 ... MAX_NR_CPUS - 1] = 100 };
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 static unsigned int wl_type_delay_update_tick = 2;
+#endif
 
 static int fpsgo_boosting; //0 : disable, 1 : enable
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
@@ -185,6 +187,7 @@ EXPORT_SYMBOL_GPL(get_dsu_freq_state);
 
 void set_dsu_target_freq(struct cpufreq_policy *policy)
 {
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	int i, cpu, opp, dsu_target_freq = 0;
 	unsigned int gov_cpu = policy->cpu;
 	int gearid = topology_cluster_id(gov_cpu);
@@ -227,17 +230,20 @@ skip_single_idle_cpu:
 	freq_state.dsu_target_freq = dsu_target_freq;
 	c->sb_ch = dsu_target_freq;
 	return;
+#endif
 }
 
 int wl_type_delay_ch_cnt = 1; // change counter
 static struct dsu_table dsu_tbl;
 static int nr_wl_type = 1;
 static int wl_type_curr;
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 static int wl_type_delay;
 static int wl_type_delay_cnt;
 static int last_wl_type;
 static unsigned long last_jiffies;
 static DEFINE_SPINLOCK(update_wl_tbl_lock);
+#endif
 
 int get_nr_wl_type(void)
 {
@@ -245,6 +251,7 @@ int get_nr_wl_type(void)
 }
 EXPORT_SYMBOL_GPL(get_nr_wl_type);
 
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 int get_nr_cpu_type(void)
 {
 	return mtk_mapping.nr_cpu_type;
@@ -259,7 +266,9 @@ int get_cpu_type(int type)
 		return -1;
 }
 EXPORT_SYMBOL_GPL(get_cpu_type);
+#endif
 
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 void set_wl_type_manual(int val)
 {
 	if (val >= 0 && val < nr_wl_type && is_wl_support())
@@ -268,6 +277,7 @@ void set_wl_type_manual(int val)
 		wl_type_manual = -1;
 }
 EXPORT_SYMBOL_GPL(set_wl_type_manual);
+#endif
 
 int get_wl_type_manual(void)
 {
@@ -275,6 +285,7 @@ int get_wl_type_manual(void)
 }
 EXPORT_SYMBOL_GPL(get_wl_type_manual);
 
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 void update_wl_tbl(unsigned int cpu)
 {
 	int tmp = 0;
@@ -323,12 +334,15 @@ void update_wl_tbl(unsigned int cpu)
 	}
 }
 EXPORT_SYMBOL_GPL(update_wl_tbl);
+#endif
 
 struct dsu_state *dsu_get_opp_ps(int wl_type, int opp)
 {
 	if (wl_type < 0)
 		wl_type = wl_type_curr;
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	opp = clamp_val(opp, 0, mtk_dsu_em.nr_perf_states - 1);
+#endif
 	return &dsu_tbl.tbl[wl_type][opp];
 }
 EXPORT_SYMBOL_GPL(dsu_get_opp_ps);
@@ -360,12 +374,16 @@ EXPORT_SYMBOL_GPL(get_classify_wl);
 
 int get_em_wl(void)
 {
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	return clamp_val(wl_type_delay, 0, nr_wl_type - 1);
+#endif
+	return -1;
 }
 EXPORT_SYMBOL_GPL(get_em_wl);
 
 int init_dsu(void)
 {
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	unsigned int i, t, need_alloc;
 	unsigned int min_gap = UINT_MAX;
 	int k, next_k;
@@ -424,6 +442,7 @@ int init_dsu(void)
 		}
 	}
 	mtk_update_wl_table(0, 0);
+#endif
 	return 0;
 }
 
@@ -984,8 +1003,10 @@ EXPORT_SYMBOL_GPL(pd_get_opp_leakage);
 void Adaptive_module_bypass(int fpsgo_flag)
 {
 	fpsgo_boosting = fpsgo_flag;
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	if (flt_get_fpsgo_boosting)
 		flt_get_fpsgo_boosting(!fpsgo_boosting);
+#endif
 }
 EXPORT_SYMBOL_GPL(Adaptive_module_bypass);
 
@@ -1030,6 +1051,7 @@ static void free_capacity_table(void)
 
 inline int init_util_freq_opp_mapping_table_type(int t)
 {
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	int i, j, k, nr_opp, next_k, opp;
 	unsigned int min_gap;
 	unsigned long min_cap, max_cap;
@@ -1129,10 +1151,13 @@ nomem:
 	pr_info("allocate util mapping table failed\n");
 	free_capacity_table();
 	return -ENOENT;
+#endif
+return 0;
 }
 
 static int init_util_freq_opp_mapping_table(void)
 {
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	int t, k, ret, need_alloc;
 
 	for (t = nr_wl_type - 1; t >= 0 ; t--) {
@@ -1156,6 +1181,8 @@ static int init_util_freq_opp_mapping_table(void)
 	return 0;
 nomem:
 	return -ENOENT;
+#endif
+	return 0;
 }
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
@@ -1302,7 +1329,7 @@ static int alloc_capacity_table(void)
 {
 	unsigned int cpu = 0;
 	int cur_tbl = 0;
-	int nr_caps;
+	int nr_caps = 1;
 	int i, k, need_alloc;
 	unsigned int nr_cpus;
 
@@ -1331,10 +1358,12 @@ static int alloc_capacity_table(void)
 	for_each_possible_cpu(cpu)
 		pd_count = max(pd_count, topology_cluster_id(cpu));
 	pd_count++;
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	if (is_wl_support())
 		nr_wl_type = mtk_mapping.total_type;
 	else
 		nr_wl_type = 1;
+#endif
 	pd_wl_type = kcalloc(nr_wl_type, sizeof(struct pd_capacity_info *),
 			GFP_KERNEL);
 	cpu_wt = kcalloc(pd_count, sizeof(struct cpu_weighting *), GFP_KERNEL);
@@ -1344,12 +1373,14 @@ static int alloc_capacity_table(void)
 	for (i = 0; i < nr_wl_type; i++) {
 		need_alloc = 1;
 		for (k = i - 1; k >= 0; k--) {
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 			if (mtk_mapping.cpu_to_dsu[i].cpu_type
 					== mtk_mapping.cpu_to_dsu[k].cpu_type) {
 				pd_wl_type[i] = pd_wl_type[k];
 				need_alloc = 0;
 				break;
 			}
+#endif
 		}
 
 		if (need_alloc == 0)
@@ -1367,7 +1398,9 @@ static int alloc_capacity_table(void)
 		for_each_possible_cpu(cpu)
 			if (cur_tbl == topology_cluster_id(cpu))
 				nr_cpus++;
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 		nr_caps = mtk_em_pd_ptr[cur_tbl].nr_perf_states;
+#endif
 
 #if !IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 		for (i = 0; i < nr_wl_type; i++) {
@@ -1384,6 +1417,7 @@ static int alloc_capacity_table(void)
 			pd_capacity_tbl = pd_wl_type[i];
 			pd_capacity_tbl[cur_tbl].nr_cpus = nr_cpus;
 			pd_capacity_tbl[cur_tbl].nr_caps = nr_caps;
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 			pd_capacity_tbl[cur_tbl].nr_caps_legacy =
 				mtk_em_pd_ptr_public[cur_tbl].nr_perf_states;
 			cpumask_copy(&pd_capacity_tbl[cur_tbl].cpus,
@@ -1392,6 +1426,7 @@ static int alloc_capacity_table(void)
 				mtk_em_pd_ptr_public[cur_tbl].max_freq;
 			pd_capacity_tbl[cur_tbl].freq_min =
 				mtk_em_pd_ptr_public[cur_tbl].min_freq ;
+#endif
 			pd_capacity_tbl[cur_tbl].util_opp_map = NULL;
 			pd_capacity_tbl[cur_tbl].util_opp_map_legacy = NULL;
 			pd_capacity_tbl[cur_tbl].freq_opp_map = NULL;
@@ -1558,7 +1593,7 @@ EXPORT_SYMBOL_GPL(set_gear_uclamp_max);
 
 int init_opp_cap_info(struct proc_dir_entry *dir)
 {
-	int ret, i;
+	int ret;
 
 	ret = init_sram_mapping();
 	if (ret)
@@ -1576,7 +1611,8 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	if (ret)
 		return ret;
 
-	for (i = 0; i < pd_count; i++) {
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+	for (int i = 0; i < pd_count; i++) {
 		mtk_update_wl_table(i, 0); /* set default wl type = 0 */
 		set_target_margin(i, 20);
 		set_target_margin_low(i, 20);
@@ -1594,6 +1630,7 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 
 		init_eas_dsu_ctrl();
 	}
+#endif
 
 	init_grp_dvfs();
 
@@ -1883,6 +1920,7 @@ EXPORT_SYMBOL(get_group_hint_hook);
 
 int group_aware_dvfs_util(struct cpumask *cpumask)
 {
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	unsigned long cpu_util = 0;
 	unsigned long ret_util = 0;
 	unsigned long max_ret_util = 0;
@@ -1914,6 +1952,8 @@ skip_idle:
 			trace_sugov_ext_tar(cpu, ret_util, cpu_util, umax, am);
 	}
 	return max_ret_util;
+#endif
+	return -1;
 }
 
 inline int update_cpu_active_ratio(int cpu_idx)

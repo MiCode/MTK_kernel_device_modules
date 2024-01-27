@@ -25,6 +25,7 @@
 #include <mtk_slbc_sram.h>
 #else
 #define SLC_SYSRAM_BASE         0x00113E00
+#define CPUQOS_MODE             0x9C
 static void __iomem *sram_base_addr;
 #endif
 
@@ -570,7 +571,6 @@ static void cpuqos_tracer(void)
 
 	if (!sram_base_addr) {
 		pr_info("Remap SLC SYSRAM failed\n");
-		return -EIO;
 	}
 
 	csize = ioread32(sram_base_addr + SLC_CPU_DEBUG1_R_OFS);

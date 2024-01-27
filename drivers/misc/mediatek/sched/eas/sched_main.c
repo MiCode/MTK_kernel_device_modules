@@ -297,11 +297,13 @@ void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
 	default:
 		break;
 	}
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	if (pelt_weight && pelt_sum && is_wl_support()) {
 		/* notify pelt model */
 		update_pelt_data(pelt_weight, pelt_sum);
 		pr_info("new_pelt %d pelt_w %d pelt_s %d\n", new_pelt, pelt_weight, pelt_sum);
 	}
+#endif
 }
 
 //static void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
@@ -432,7 +434,6 @@ static long eas_ioctl_impl(struct file *filp,
 
 	unsigned int sync;
 	unsigned int val;
-	int grp_id;
 	struct cpumask mask;
 
 	struct SA_task SA_task_args = {
@@ -440,6 +441,8 @@ static long eas_ioctl_impl(struct file *filp,
 		.mask = 0
 	};
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+	int grp_id;
 	struct gas_ctrl gas_ctrl_args = {
 		.val = 0,
 		.force_ctrl = 0
@@ -456,6 +459,7 @@ static long eas_ioctl_impl(struct file *filp,
 		.margin = -1,
 		.converge_thr = -1
 	};
+#endif
 
 	cpumask_clear(&mask);
 	cpumask_copy(&mask, cpu_possible_mask);
@@ -713,6 +717,7 @@ static long eas_ioctl_impl(struct file *filp,
 			return -1;
 		set_util_est_ctrl(val);
 		break;
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	case EAS_SET_GAS_CTRL:
 		if (easctl_copy_from_user(&gas_ctrl_args, (void *)arg, sizeof(struct gas_ctrl)))
 			return -1;
@@ -743,6 +748,7 @@ static long eas_ioctl_impl(struct file *filp,
 		if(reset_grp_awr_margin() == -1)
 			return -1;
 		break;
+#endif
 	default:
 		pr_debug(TAG "%s %d: unknown cmd %x\n",
 			__FILE__, __LINE__, cmd);
@@ -896,10 +902,12 @@ static int __init mtk_scheduler_init(void)
 	sched_irq_mon_init();
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	if (is_wl_support()) {
 		/* default value for pelt8 */
 		update_pelt_data(939, 12329);
 	}
+#endif
 
 #if IS_ENABLED(CONFIG_MTK_EAS)
 	mtk_freq_limit_notifier_register();
@@ -1040,8 +1048,8 @@ static void __exit mtk_scheduler_exit(void)
 	cleanup_sched_common_sysfs();
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	exit_flt_platform();
-#endif
 	group_exit();
+#endif
 	free_cpu_array();
 }
 

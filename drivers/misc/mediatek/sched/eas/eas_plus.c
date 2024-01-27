@@ -253,19 +253,21 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 	unsigned long freq, scale_cpu;
 	struct em_perf_state *ps;
 	int cpu, this_cpu, opp = -1, wl_type = 0;
-#if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
+#if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO) && IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	unsigned long pwr_eff, cap, freq_legacy, sum_cap = 0;
 	struct mtk_em_perf_state *mtk_ps;
+	unsigned int share_volt = 0, cpu_volt = 0;
+	struct dsu_info *dsu = &eenv->dsu;
+	unsigned int dsu_opp;
+	struct dsu_state *dsu_ps;
 #else
 	int i;
 #endif
 	unsigned long dyn_pwr = 0, static_pwr = 0;
 	unsigned long energy;
+#if IS_ENABLED(CONFIG_MTK_LEAKAGE_AWARE_TEMP)
 	int *cpu_temp = eenv->cpu_temp;
-	unsigned int share_volt = 0, cpu_volt = 0;
-	struct dsu_info *dsu = &eenv->dsu;
-	unsigned int dsu_opp;
-	struct dsu_state *dsu_ps;
+#endif
 
 	if (!sum_util)
 		return 0;
@@ -288,7 +290,7 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 #endif
 	freq = max(freq, per_cpu(min_freq, cpu));
 
-#if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
+#if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO) && IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	mtk_ps = pd_get_freq_ps(eenv->wl_type, cpu, freq, &opp);
 	pwr_eff = mtk_ps->pwr_eff;
 	cap = mtk_ps->capacity;
@@ -365,7 +367,7 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 	 *                  scale_cpu
 	 */
 
-#if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
+#if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO) && IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	dyn_pwr = pwr_eff * sum_util;
 
 	if (eenv->wl_support) {
@@ -455,15 +457,19 @@ void mtk_tick_entry(void *data, struct rq *rq)
 
 	struct em_perf_domain *pd;
 	unsigned int this_cpu = cpu_of(rq), gear_id;
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 	unsigned int freq_thermal;
+#endif
 	bool sbb_trigger;
 	u64 idle_time, wall_time, cpu_utilize;
 	struct sbb_cpu_data *sbb_data = per_cpu(sbb, rq->cpu);
 
 	irq_log_store();
 
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	if (is_wl_support())
 		update_wl_tbl(this_cpu);
+#endif
 
 	sbb_trigger = is_sbb_trigger(rq);
 
@@ -514,12 +520,14 @@ void mtk_tick_entry(void *data, struct rq *rq)
 		return;
 
 	gear_id = topology_cluster_id(this_cpu);
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 	irq_log_store();
 	freq_thermal = get_cpu_ceiling_freq (gear_id);
 	arch_update_thermal_pressure(to_cpumask(pd->cpus), freq_thermal);
 
 	trace_sched_frequency_limits(this_cpu, freq_thermal);
 	irq_log_store();
+#endif
 }
 
 /*
@@ -768,7 +776,7 @@ void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 	irq_log_store();
 }
 
-#if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
+#if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO) && IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 static inline
 unsigned long aligned_freq_to_legacy_freq(int cpu, unsigned long freq)
 {
