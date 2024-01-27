@@ -49,14 +49,15 @@ void ufs_mtk_btag_send_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	struct ufs_hw_queue *hq;
 	__u16 qid = 0;
 
-	if (atomic_read(&host->skip_btag) || !ufs_mtk_is_data_cmd(cmd))
+	if (!host->btag || atomic_read(&host->skip_btag) ||
+	    !ufs_mtk_is_data_cmd(cmd))
 		return;
 
 	if (is_mcq_enabled(hba)) {
 		hq = ufs_mtk_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
 		qid = hq->id;
 	}
-	mtk_btag_ufs_send_command(lrbp->task_tag, qid, cmd);
+	mtk_btag_ufs_send_command(host->btag, lrbp->task_tag, qid, cmd);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_btag_send_command);
 
@@ -67,33 +68,47 @@ void ufs_mtk_btag_compl_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	struct ufs_hw_queue *hq;
 	__u16 qid = 0;
 
-	if (atomic_read(&host->skip_btag) || !ufs_mtk_is_data_cmd(cmd))
+	if (!host->btag || atomic_read(&host->skip_btag) ||
+	    !ufs_mtk_is_data_cmd(cmd))
 		return;
 
 	if (is_mcq_enabled(hba)) {
 		hq = ufs_mtk_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
 		qid = hq->id;
 	}
-	mtk_btag_ufs_transfer_req_compl(lrbp->task_tag, qid);
+	mtk_btag_ufs_transfer_req_compl(host->btag, lrbp->task_tag, qid);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_btag_compl_command);
 
 void ufs_mtk_btag_init(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	struct mtk_blocktag *btag;
 	u32 nr_queues = hba->nr_hw_queues ? hba->nr_hw_queues : 1;
 	u32 nutrs = hba->nutrs ? hba->nutrs : 32;
-	int err;
 
-	err = mtk_btag_ufs_init(host, nr_queues, nutrs);
-	if (err)
-		dev_notice(hba->dev, "btag host init failed, %d\n", err);
+	if (host->btag) {
+		dev_notice(hba->dev, "ufs btag already exists\n");
+		return;
+	}
+
+	btag = mtk_btag_ufs_init(host, nr_queues, nutrs);
+	if (IS_ERR_OR_NULL(btag))
+		dev_notice(hba->dev, "btag host init failed, %ld\n",
+			   PTR_ERR(btag));
+
+	host->btag = btag;
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_btag_init);
 
 void ufs_mtk_btag_exit(struct ufs_hba *hba)
 {
-	mtk_btag_ufs_exit();
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	if (host->btag) {
+		mtk_btag_ufs_exit(host->btag);
+		host->btag = NULL;
+	}
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_btag_exit);
 

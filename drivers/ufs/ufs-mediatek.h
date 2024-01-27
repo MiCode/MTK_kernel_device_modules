@@ -244,6 +244,7 @@ struct ufs_mtk_host {
 	bool qos_allowed;
 	bool qos_enabled;
 	bool boot_device;
+	struct mtk_blocktag *btag;
 
 	struct completion luns_added;
 	struct delayed_work delay_eh_work;

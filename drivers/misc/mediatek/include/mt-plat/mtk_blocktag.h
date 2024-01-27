@@ -60,11 +60,13 @@ int mtk_btag_mictx_get_data(
 void mtk_btag_mictx_enable(struct mtk_btag_mictx_id *mictx_id, bool enable);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
-int mtk_btag_ufs_init(struct ufs_mtk_host *host, __u32 ufs_nr_queue,
-		      __u32 ufs_nutrs);
-int mtk_btag_ufs_exit(void);
-void mtk_btag_ufs_send_command(__u16 tid, __u16 qid, struct scsi_cmnd *cmd);
-void mtk_btag_ufs_transfer_req_compl(__u16 tid, __u16 qid);
+struct mtk_blocktag *mtk_btag_ufs_init(struct ufs_mtk_host *host,
+				       __u32 nr_queue, __u32 tag_per_queue);
+void mtk_btag_ufs_exit(struct mtk_blocktag *btag);
+void mtk_btag_ufs_send_command(struct mtk_blocktag *btag, __u16 tid, __u16 qid,
+			       struct scsi_cmnd *cmd);
+void mtk_btag_ufs_transfer_req_compl(struct mtk_blocktag *btag, __u16 tid,
+				     __u16 qid);
 #endif
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_MTK_PRO)

@@ -3202,11 +3202,11 @@ static int ufs_mtk_remove(struct platform_device *pdev)
 
 	pm_runtime_get_sync(&(pdev)->dev);
 
+	ufs_mtk_btag_exit(hba);
+
 	ufs_mtk_remove_sysfs(hba);
 
 	ufshcd_remove(hba);
-
-	ufs_mtk_btag_exit(hba);
 
 	ufs_mtk_uninstall_tracepoints();
 
