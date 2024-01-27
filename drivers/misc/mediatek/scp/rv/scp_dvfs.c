@@ -68,7 +68,6 @@
 #define PROPNAME_SCP_DVFS_CORES        "scp-cores"
 #define PROPNAME_SCP_CORE_ONLINE_MASK  "scp-core-online-mask"
 #define PROPNAME_SCP_VLP_SUPPORT       "vlp-support"
-#define PROPNAME_SCP_VLPCK_SUPPORT     "vlpck-support"
 #define PROPNAME_SCP_IPS_SUPPORT       "ips-support"
 #define PROPNAME_PMIC                  "pmic"
 #define PROPNAME_PMIC_VOW_LP_EN_GEAR   "vow-lp-en-gear"
@@ -86,19 +85,53 @@
 #define PROPNAME_SCP_CLK_CTRL          "scp-clk-ctrl"
 #define PROPNAME_SCP_CLK_HW_VER        "scp-clk-hw-ver"
 #define PROPNAME_U2_CALI_VER           "ulposc-cali-ver"
+#define PROPNAME_U2_CALI_ALG_VER       "ulposc-cali-alg-ver"
+#define PROPNAME_U2_CALI_EXT_PHASE     "ulposc-cali-ext-phase"
 #define PROPNAME_U2_CALI_NUM           "ulposc-cali-num"
 #define PROPNAME_U2_CALI_TARGET        "ulposc-cali-target"
 #define PROPNAME_U2_CALI_CONFIG        "ulposc-cali-config"
 #define CALI_CONFIG_ELEM_CNT           (3)
 #define PROPNAME_SCP_CLK_DBG_VER       "clk-dbg-ver"
-#define PROPNAME_U2_FM_SUPPORT         "ccf-fmeter-support"
-#define PROPNAME_NOT_SUPPORT_VLP_FM    "not-support-vlp-fmeter"
+/*
+ * PROPNAME_FM_ARGS_U2_CALI: use to measure u2 in calibration process
+ * PROPNAME_FM_ARGS_U2_FREQ: use to measure u2 frequency result
+ */
+#define PROPNAME_CCF_FM_SUPPORT        "ccf-fmeter-support"
+#define PROPNAME_FM_ARGS_U2_CALI       "fmeter-args-u2-cali"
+#define PROPNAME_FM_ARGS_U2_RESULT     "fmeter-args-u2-result"
+#define PROPNAME_FM_ARGS_ILDO          "fmeter-args-ildo"
+#define PROPNAME_ILDO_TARGET           "ildo-freq-target"
 #define PROPNAME_SCP_DVFS_SECURE       "secure-access"
 #define PROPNAME_SCP_DVFS_FLAG         "scp-dvfs-flag"
 
+/* fmeter data */
 #define FM_CNT2FREQ(cnt)	(cnt * 26 / CALI_DIV_VAL)
 #define FM_FREQ2CNT(freq)	(freq * CALI_DIV_VAL / 26)
+#define KHZ_TO_MHZ(freq)	(freq / 1000)
+#define MHZ_TO_KHZ(freq)	(freq * 1000)
+enum SCP_FM_CHANNE {
+	SCP_FM_CH_U2_CALI,
+	SCP_FM_CH_U2_RESULT,
+	SCP_FM_CH_ILDO,
+	SCP_FM_CH_MAX,
+};
+enum SCP_FM_DTS {
+	SCP_FM_ID,
+	SCP_FM_TYPE,
+	SCP_FM_MAX,
+};
+enum SCP_FM_TYPE {
+	FM_TYPE_VLP,
+	FM_TYPE_ABIST,
+	FM_TYPE_MAX,
+	FM_TYPE_INVALID = 0xff,
+};
+enum FMETER_TYPE scp_fm_map[FM_TYPE_MAX] = {
+	VLPCK, /* FM_TYPE_VLP */
+	ABIST, /* FM_TYPE_ABIST */
+};
 
+/* ipi data */
 unsigned int scp_ipi_ackdata0, scp_ipi_ackdata1;
 struct ipi_tx_data_t {
 	unsigned int arg1;
@@ -133,9 +166,12 @@ static struct regulator *dvfsrc_vscp_power;
 static struct regulator *reg_vcore;
 static struct regulator *reg_vsram;
 
+/* ulposc calibration data */
+static void turn_onoff_ulposc2(enum ulposc_onoff_enum on);
 const char *ulposc_ver[MAX_ULPOSC_VERSION] __initconst = {
 	[ULPOSC_VER_1] = "v1",
 	[ULPOSC_VER_2] = "v2",
+	[ULPOSC_VER_3] = "v3",
 };
 
 const char *clk_dbg_ver[MAX_CLK_DBG_VERSION] __initconst = {
@@ -163,11 +199,20 @@ struct ulposc_cali_regs cali_regs[MAX_ULPOSC_VERSION] __initdata = {
 		REG_DEFINE(con1, 0x2C4, REG_MAX_MASK, 0)
 		REG_DEFINE(con2, 0x2C8, REG_MAX_MASK, 0)
 	},
-	[ULPOSC_VER_2] = { /* Suppose VLP_CKSYS is from 0x1C013000 */
+	[ULPOSC_VER_2] = { /* Suppose VLP_CKSYS is from 0x1Cxxxxxx */
+		REG_DEFINE(con0, 0x210, REG_MAX_MASK, 0)
+		REG_DEFINE(cali_ext, 0x210, GENMASK(CAL_EXT_BITS - 1, 0), 7)
+		REG_DEFINE_WITH_INIT(cali, 0x210, GENMASK(CAL_BITS - 1, 0), 0, 0x40, 0)
+
+		REG_DEFINE(con1, 0x214, REG_MAX_MASK, 0)
+		REG_DEFINE(con2, 0x218, REG_MAX_MASK, 0)
+	},
+	[ULPOSC_VER_3] = { /* Suppose VLP_CKSYS is from 0x1Cxxxxxx */
 		REG_DEFINE(con0, 0x210, REG_MAX_MASK, 0)
 		REG_DEFINE(cali_ext, 0x210, GENMASK(CAL_EXT_BITS - 1, 0), 7)
 		REG_DEFINE_WITH_INIT(cali, 0x210, GENMASK(CAL_BITS - 1, 0), 0, 0x40, 0)
 		REG_DEFINE(con1, 0x214, REG_MAX_MASK, 0)
+		REG_DEFINE_WITH_INIT(osc2_outsel, 0x214, 0xF, 27, 8, 0)
 		REG_DEFINE(con2, 0x218, REG_MAX_MASK, 0)
 	},
 };
@@ -1490,7 +1535,7 @@ bool sync_ulposc_cali_data_to_scp(void)
 	ipi_data[0] = SCP_SYNC_ULPOSC_CALI;
 	for (i = 0; i < g_dvfs_dev.ulposc_hw.cali_nums; i++) {
 		*p = g_dvfs_dev.ulposc_hw.cali_freq[i];
-		if ((!g_dvfs_dev.vlpck_support) || g_dvfs_dev.vlpck_bypass_phase1)
+		if (!g_dvfs_dev.ulposc_hw.need_ext_cali_phase)
 			*(p + 1) = g_dvfs_dev.ulposc_hw.cali_val[i];
 		else
 			*(p + 1) = g_dvfs_dev.ulposc_hw.cali_val[i] |
@@ -1606,110 +1651,45 @@ static unsigned int __init _get_ulposc_clk_by_fmeter_wrapper(void)
 	result_freq = mt_get_fmeter_freq(g_dvfs_dev.ccf_fmeter_id, g_dvfs_dev.ccf_fmeter_type);
 	if (result_freq == 0) {
 		/* result_freq is not expected to be 0 */
-		pr_notice("[%s]: mt_get_fmeter_freq() return %d, pls check CCF configs\n",
-			__func__, result_freq);
+		pr_notice("[%s]: mt_get_fmeter_freq(%u, %u) return %d, pls check CCF configs\n",
+			__func__, g_dvfs_dev.ccf_fmeter_id, g_dvfs_dev.ccf_fmeter_type, result_freq);
 		WARN_ON(1);
 	}
-	return FM_FREQ2CNT(result_freq) / 1000;
+	return KHZ_TO_MHZ(FM_FREQ2CNT(result_freq));
 }
 
-static unsigned int __init get_ulposc_clk_by_fmeter_topck_abist(void)
+static unsigned int __init get_freq_by_fmeter_wrapper(enum SCP_FM_CHANNE fm_channel)
 {
-	unsigned int result = 0;
-	unsigned int clk26cali_0_bk = 0, clk26cali_1_bk = 0;
+	unsigned int result_freq = 0;
 
-	if (g_dvfs_dev.ccf_fmeter_support)
-		return _get_ulposc_clk_by_fmeter_wrapper();
+	if (!g_dvfs_dev.ccf_fmeter_support) {
+		pr_notice("[%s] fmeter not ready\n", __func__);
+		return 0;
+	}
 
-	/* 0. backup regsiters */
-	scp_reg_read(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_clk26cali_0, &clk26cali_0_bk);
-	scp_reg_read(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_clk26cali_1, &clk26cali_1_bk);
+	switch (fm_channel) {
+	case SCP_FM_CH_U2_CALI:
+		/* in MHz fmeter counter */
+		result_freq = mt_get_fmeter_freq(g_dvfs_dev.ccf_fmeter_id,
+						g_dvfs_dev.ccf_fmeter_type);
+		result_freq = KHZ_TO_MHZ(FM_FREQ2CNT(result_freq));
+		break;
+	case SCP_FM_CH_U2_RESULT:
+		/* in MHz fmeter counter */
+		result_freq = mt_get_fmeter_freq(g_dvfs_dev.ccf_fmeter_id_result,
+						g_dvfs_dev.ccf_fmeter_type_result);
+		result_freq = KHZ_TO_MHZ(FM_FREQ2CNT(result_freq));
+		break;
+	case SCP_FM_CH_ILDO:
+		/* in khz */
+		result_freq = mt_get_fmeter_freq(g_dvfs_dev.ccf_fmeter_id_ildo,
+						g_dvfs_dev.ccf_fmeter_type_ildo);
+		break;
+	default:
+		pr_notice("[%s] unsupported channel: %u\n", __func__, fm_channel);
+	}
 
-	/* 1. set load cnt */
-	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_load_cnt,
-		g_dvfs_dev.ulposc_hw.clkdbg_regs->_load_cnt.init_config);
-
-	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_clk_misc_cfg0,
-		g_dvfs_dev.ulposc_hw.clkdbg_regs->_clk_misc_cfg0.init_config);
-
-	/*
-	 * 2. select clock source
-	 * ULPOSC_1 (63), ULPOSC_2 (62)
-	 */
-	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_ck_sel,
-		g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_ck_sel.init_config);
-
-	/* 3. trigger fmeter and get fmeter result */
-	result = _get_freq_by_fmeter();
-
-	/* 0. restore freq meter registers */
-	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_clk26cali_0, clk26cali_0_bk);
-	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_clk26cali_1, clk26cali_1_bk);
-
-	return result;
-}
-
-static unsigned int __init get_ulposc_clk_by_fmeter_vlp(void)
-{
-	unsigned int result = 0;
-	unsigned int vlp_fqmtr_con0_bk = 0, vlp_fqmtr_con1_bk = 0;
-
-	if (g_dvfs_dev.ccf_fmeter_support)
-		return _get_ulposc_clk_by_fmeter_wrapper();
-
-	/* 0. backup regsiters */
-	scp_reg_read(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_clk26cali_0, &vlp_fqmtr_con0_bk);
-	scp_reg_read(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_clk26cali_1, &vlp_fqmtr_con1_bk);
-
-	/* 1. set load cnt */
-	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_load_cnt,
-		g_dvfs_dev.ulposc_hw.clkdbg_regs->_load_cnt.init_config);
-
-	/*
-	* 2. select clock source VLP_FQMTR_CON0[20:16] =
-	* ULPOSC_1 (0x16), ULPOSC_2 (0x17)
-	*/
-	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_ck_sel,
-		g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_ck_sel.init_config);
-
-	/*
-	* Make sure @_fmeter_rst which is used to reset fmeter keeps 1.
-	*     If it accidentally set to 0, fmeter would be reset. Maybe
-	* someone would have initialized it to 1 previously, so you do
-	* not need to set it by yourself.
-	*/
-	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_rst,
-		g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_rst.init_config);
-
-	/* 3. trigger fmeter and get fmeter result */
-	result = _get_freq_by_fmeter();
-
-	/* 0. restore freq meter registers */
-	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_clk26cali_0, vlp_fqmtr_con0_bk);
-	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_clk26cali_1, vlp_fqmtr_con1_bk);
-
-	return result;
-}
-
-static unsigned int __init get_vlp_ulposc_clk_by_fmeter(void)
-{
-	if (g_dvfs_dev.not_support_vlp_fmeter)
-		return get_ulposc_clk_by_fmeter_topck_abist();
-	return get_ulposc_clk_by_fmeter_vlp();
+	return result_freq;
 }
 
 static unsigned int __init get_ulposc_clk_by_fmeter(void)
@@ -1803,7 +1783,7 @@ static int __init ulposc_cali_process_vlp(unsigned int cali_idx,
 	target_val = FM_FREQ2CNT(g_dvfs_dev.ulposc_hw.cali_freq[cali_idx]);
 
 	/* phase1 */
-	if (!g_dvfs_dev.vlpck_bypass_phase1) {
+	if (g_dvfs_dev.ulposc_hw.need_ext_cali_phase) {
 		/* fixed in phase1 */
 		set_ulposc_cali_value(g_dvfs_dev.ulposc_hw.ulposc_regs->_cali.init_config);
 		min = CAL_MIN_VAL_EXT;
@@ -1816,7 +1796,7 @@ static int __init ulposc_cali_process_vlp(unsigned int cali_idx,
 			}
 
 			set_ulposc_cali_value_ext(mid);
-			current_val = get_vlp_ulposc_clk_by_fmeter();
+			current_val = get_freq_by_fmeter_wrapper(SCP_FM_CH_U2_CALI);
 
 			if (current_val > target_val)
 				max = mid;
@@ -1825,12 +1805,12 @@ static int __init ulposc_cali_process_vlp(unsigned int cali_idx,
 		} while (min <= max);
 
 		set_ulposc_cali_value_ext(min);
-		current_val = get_vlp_ulposc_clk_by_fmeter();
+		current_val = get_freq_by_fmeter_wrapper(SCP_FM_CH_U2_CALI);
 		diff_by_min = (current_val > target_val) ?
 			(current_val - target_val):(target_val - current_val);
 
 		set_ulposc_cali_value_ext(max);
-		current_val = get_vlp_ulposc_clk_by_fmeter();
+		current_val = get_freq_by_fmeter_wrapper(SCP_FM_CH_U2_CALI);
 		diff_by_max = (current_val > target_val) ?
 			(current_val - target_val):(target_val - current_val);
 
@@ -1849,7 +1829,7 @@ static int __init ulposc_cali_process_vlp(unsigned int cali_idx,
 		}
 
 		set_ulposc_cali_value(mid);
-		current_val = get_vlp_ulposc_clk_by_fmeter();
+		current_val = get_freq_by_fmeter_wrapper(SCP_FM_CH_U2_CALI);
 
 		if (current_val > target_val)
 			max = mid;
@@ -1858,12 +1838,12 @@ static int __init ulposc_cali_process_vlp(unsigned int cali_idx,
 	} while (min <= max);
 
 	set_ulposc_cali_value(min);
-	current_val = get_vlp_ulposc_clk_by_fmeter();
+	current_val = get_freq_by_fmeter_wrapper(SCP_FM_CH_U2_CALI);
 	diff_by_min = (current_val > target_val) ?
 		(current_val - target_val):(target_val - current_val);
 
 	set_ulposc_cali_value(max);
-	current_val = get_vlp_ulposc_clk_by_fmeter();
+	current_val = get_freq_by_fmeter_wrapper(SCP_FM_CH_U2_CALI);
 	diff_by_max = (current_val > target_val) ?
 		(current_val - target_val):(target_val - current_val);
 
@@ -1871,7 +1851,111 @@ static int __init ulposc_cali_process_vlp(unsigned int cali_idx,
 	set_ulposc_cali_value(*cali_res2);
 
 	/* Checking final calibration result */
-	current_val = get_vlp_ulposc_clk_by_fmeter();
+	current_val = get_freq_by_fmeter_wrapper(SCP_FM_CH_U2_RESULT);
+	if (!is_ulposc_cali_pass(current_val, target_val)) {
+		pr_notice("[%s]: calibration failed for: %dMHz\n",
+			__func__,
+			g_dvfs_dev.ulposc_hw.cali_freq[cali_idx]);
+		*cali_res1 = 0;
+		*cali_res2 = 0;
+		WARN_ON(1);
+		return -ESCP_DVFS_CALI_FAILED;
+	}
+
+	pr_notice("[%s]: target: %uMhz, calibrated = %uMHz\n",
+		__func__,
+		FM_CNT2FREQ(target_val),
+		FM_CNT2FREQ(current_val));
+
+	return 0;
+}
+
+static int __init ulposc_cali_process_vlp_v2(unsigned int cali_idx,
+		unsigned short *cali_res1, unsigned short *cali_res2)
+{
+	unsigned int target_val = 0, current_val = 0;
+	int min = CAL_MIN_VAL, max = CAL_MAX_VAL, mid;
+	unsigned int cur_diff = 0, max_diff = 0xffffffff;
+
+	/*
+	 * Setup the target of frequency for calibration
+	 *    Note: In ULPOSC_VER_3, the default config of U2 is divided by 2, so we
+	 *			need to divide the target_val during the calibration process.
+	 */
+	target_val = g_dvfs_dev.ulposc_hw.cali_freq[cali_idx];
+	if (g_dvfs_dev.ulposc_hw.ulposc_reg_ver == ULPOSC_VER_3)
+		target_val /= CAL_U2_DIVIIDER;
+	target_val = FM_FREQ2CNT(target_val);
+
+	/*
+	 * Phase1: linear search
+	 *    internal: [0, max]
+	 */
+	if (g_dvfs_dev.ulposc_hw.need_ext_cali_phase) {
+		if (g_dvfs_dev.ulposc_hw.ulposc_reg_ver == ULPOSC_VER_3)
+			max = g_dvfs_dev.ulposc_hw.ulposc_regs->_cali_ext.msk;
+		else
+			max = CAL_MAX_VAL_EXT;
+		/* Fix lowest cali value in phase1 */
+		set_ulposc_cali_value(g_dvfs_dev.ulposc_hw.ulposc_regs->_cali.init_config);
+		for (mid = 0; mid <= max; mid++) {
+			/* config cali_ext value */
+			set_ulposc_cali_value_ext(mid);
+			current_val = get_freq_by_fmeter_wrapper(SCP_FM_CH_U2_CALI);
+
+			/* find smallest diff */
+			cur_diff = (current_val > target_val) ?
+				(current_val - target_val):(target_val - current_val);
+			if (cur_diff < max_diff) {
+				max_diff = cur_diff;
+				*cali_res1 = mid;
+			}
+		}
+		set_ulposc_cali_value_ext(*cali_res1);
+	}
+
+	/*
+	 * Phase2: binary search
+	 *    internal: [CAL_MIN_VAL, CAL_MAX_VAL]
+	 */
+	min = CAL_MIN_VAL;
+	max = CAL_MAX_VAL;
+	do {
+		/* compute the new frequency with config 'mid' */
+		mid = min + (max - min) / 2;
+		set_ulposc_cali_value(mid);
+		current_val = get_freq_by_fmeter_wrapper(SCP_FM_CH_U2_CALI);
+
+		/* update binary search range */
+		if (current_val > target_val)
+			max = mid - 1;
+		else if (current_val < target_val)
+			min = mid + 1;
+		else {
+			min = mid;
+			break; /* quick break condition */
+		}
+	} while (min <= max);
+	if (min > CAL_MAX_VAL)
+		min = CAL_MAX_VAL;
+	*cali_res2 = min;
+	set_ulposc_cali_value(*cali_res2);
+
+	/*
+	 * Check final calibration result
+	 *     Pass Criteria: +- 2%
+	 */
+	if (g_dvfs_dev.ulposc_hw.ulposc_reg_ver == ULPOSC_VER_3) {
+		/* Since the clock is deived by 2 in ULPOSC_VER_3, we need to switch back here. */
+		pr_notice("[%s]: switch osc2 outsel\n", __func__);
+		turn_onoff_ulposc2(ULPOSC_OFF);
+		scp_reg_init(g_dvfs_dev.ulposc_hw.ulposc_regmap,
+			&g_dvfs_dev.ulposc_hw.ulposc_regs->_osc2_outsel);
+		turn_onoff_ulposc2(ULPOSC_ON);
+		/* re-compute the actual target_val */
+		target_val = FM_FREQ2CNT(g_dvfs_dev.ulposc_hw.cali_freq[cali_idx]);
+	}
+	current_val = get_freq_by_fmeter_wrapper(SCP_FM_CH_U2_RESULT);
 	if (!is_ulposc_cali_pass(current_val, target_val)) {
 		pr_notice("[%s]: calibration failed for: %dMHz\n",
 			__func__,
@@ -2043,10 +2127,21 @@ static int __init mt_scp_dvfs_do_ulposc_cali_process(void)
 
 		turn_onoff_ulposc2(ULPOSC_ON);
 
-		if (g_dvfs_dev.vlpck_support)
-			ret = ulposc_cali_process_vlp(i, &g_dvfs_dev.ulposc_hw.cali_val_ext[i], &g_dvfs_dev.ulposc_hw.cali_val[i]);
-		else
+		switch (g_dvfs_dev.ulposc_hw.cali_alg_ver) {
+		case U2_CALI_ALG_V0:
 			ret = ulposc_cali_process(i, &g_dvfs_dev.ulposc_hw.cali_val[i]);
+			break;
+		case U2_CALI_ALG_V1:
+			ret = ulposc_cali_process_vlp(i,
+				&g_dvfs_dev.ulposc_hw.cali_val_ext[i],
+				&g_dvfs_dev.ulposc_hw.cali_val[i]);
+			break;
+		case U2_CALI_ALG_V2:
+			ret = ulposc_cali_process_vlp_v2(i,
+				&g_dvfs_dev.ulposc_hw.cali_val_ext[i],
+				&g_dvfs_dev.ulposc_hw.cali_val[i]);
+			break;
+		}
 		if (ret) {
 			pr_notice("[%s]: cali %uMHz ulposc failed\n",
 				__func__, g_dvfs_dev.ulposc_hw.cali_freq[i]);
@@ -2141,7 +2236,12 @@ static int __init mt_scp_dts_get_cali_target(struct device_node *node,
 		return ret;
 	}
 
-	if (g_dvfs_dev.vlpck_support) {
+	/* Are there extended calibration bits & additional flow? */
+	cali_hw->need_ext_cali_phase = of_property_read_bool(node, PROPNAME_U2_CALI_EXT_PHASE);
+	pr_notice("[%s]: Use %d-phase cali flow\n",
+		__func__,
+		cali_hw->need_ext_cali_phase ? 2:1);
+	if (cali_hw->need_ext_cali_phase) {
 		cali_hw->cali_val_ext = kcalloc(cali_hw->cali_nums, sizeof(unsigned short),
 					GFP_KERNEL);
 		if (!cali_hw->cali_val_ext)
@@ -2202,13 +2302,27 @@ static int __init mt_scp_dts_get_cali_hw_regs(struct device_node *node,
 	}
 
 	for (i = 0; i < MAX_ULPOSC_VERSION; i++)
-		if (!strcmp(ulposc_ver[i], str))
+		if (!strcmp(ulposc_ver[i], str)) {
 			cali_hw->ulposc_regs = &cali_regs[i];
+			cali_hw->ulposc_reg_ver = i;
+		}
 
 	if (!cali_hw->ulposc_regs) {
 		pr_notice("[%s]: no ulposc cali reg found\n", __func__);
 		return -ESCP_DVFS_NO_CALI_HW_FOUND;
 	}
+
+	/* find the version of ulposc calibration algorithm */
+	ret = of_property_read_u32(node, PROPNAME_U2_CALI_ALG_VER,
+		&cali_hw->cali_alg_ver);
+	if (ret)
+		cali_hw->cali_alg_ver = U2_CALI_ALG_V0; /* as default version */
+	if (cali_hw->cali_alg_ver >= U2_CALI_ALG_MAX) {
+		pr_notice("[%s] Unknown cali algorithm: %u\n",
+				__func__, g_dvfs_dev.ulposc_hw.cali_alg_ver);
+		return -ESCP_DVFS_UNKOWN_CALI_ALGORITHM;
+	}
+	pr_notice("[%s] Use v%u cali algorithm\n", __func__, cali_hw->cali_alg_ver);
 
 	/* find clk dbg register hw version */
 	if (!g_dvfs_dev.ccf_fmeter_support) {
@@ -2482,18 +2596,15 @@ static int __init mt_scp_dts_ulposc_cali_init(struct device_node *node,
 		return 0;
 	}
 
+	/* ulposc/fmeter regmap init*/
 	ret = mt_scp_dts_init_cali_regmap(node, cali_hw);
 	if (ret)
 		return ret;
 
+	/* Get the version of scp_clk_hw & its regmap */
 	ret = mt_scp_dts_init_scp_clk_hw(node);
 	if (ret)
 		return ret;
-
-	ret = mt_scp_dts_get_cali_hw_regs(node, cali_hw);
-	if (ret)
-		return ret;
-
 	g_dvfs_dev.clk_hw->scp_clk_regmap = syscon_regmap_lookup_by_phandle(node,
 						PROPNAME_SCP_CLK_CTRL);
 	if (!g_dvfs_dev.clk_hw->scp_clk_regmap) {
@@ -2501,10 +2612,17 @@ static int __init mt_scp_dts_ulposc_cali_init(struct device_node *node,
 		return ret;
 	}
 
+	/* Get the version of hw reg & the version of algorithm */
+	ret = mt_scp_dts_get_cali_hw_regs(node, cali_hw);
+	if (ret)
+		return ret;
+
+	/* Get calibration target frequencies */
 	ret = mt_scp_dts_get_cali_target(node, cali_hw);
 	if (ret)
 		return ret;
 
+	/* Get calibration configs */
 	ret = mt_scp_dts_get_cali_hw_setting(node, cali_hw);
 	if (ret)
 		return ret;
@@ -2724,11 +2842,76 @@ REGMAP_FIND_FAILED:
 	return -ESCP_DVFS_REGMAP_INIT_FAILED;
 }
 
+static int __init mt_scp_dts_fmeter_get(struct device_node *node,
+					const char *propname,
+					int *fm_idx,
+					int *fm_type)
+{
+	unsigned int fmeter_args[SCP_FM_MAX];
+	int ret = 0;
+
+	/* get fmeter id & fmeter type from dts */
+	ret = of_property_read_u32_array(node, propname, fmeter_args, SCP_FM_MAX);
+	if (ret) {
+		pr_err("[%s] Can't read %s\n", __func__, propname);
+		goto FINISH;
+	}
+
+	/* check & save fmeter id & type */
+	if (fmeter_args[SCP_FM_TYPE] >= FM_TYPE_MAX) {
+		pr_err("[%s] %s: invalid fm id %u type %u\n",
+			__func__, propname,
+			fmeter_args[SCP_FM_ID], fmeter_args[SCP_FM_TYPE]);
+		goto FINISH;
+	}
+	*fm_idx = fmeter_args[SCP_FM_ID];
+	*fm_type = scp_fm_map[fmeter_args[SCP_FM_TYPE]];
+
+FINISH:
+	return ret;
+}
+
+static int __init mt_scp_dts_ildo_clk_chk(struct device_node *node)
+{
+	int ret = 0;
+	bool pass = false;
+	unsigned int cur_freq, target_khz, diff;
+
+	/* if PROPNAME_ILDO_TARGET is provided, we should check ildo freq */
+	ret = of_property_read_u32(node, PROPNAME_ILDO_TARGET,
+							&target_khz);
+	if (ret)
+		return 0; /* skip check if no target */
+
+	/* fmeter args for ildo frequency */
+	ret = mt_scp_dts_fmeter_get(node, PROPNAME_FM_ARGS_ILDO,
+		&g_dvfs_dev.ccf_fmeter_id_ildo,
+		&g_dvfs_dev.ccf_fmeter_type_ildo);
+	if (ret)
+		return ret;
+	pr_notice("[%s]: init ildo fmeter: id: %d, type: %d\n",
+		__func__, g_dvfs_dev.ccf_fmeter_id_ildo, g_dvfs_dev.ccf_fmeter_type_ildo);
+
+	/* check ildo frequency here */
+	cur_freq = get_freq_by_fmeter_wrapper(SCP_FM_CH_ILDO);
+	diff = (cur_freq >= target_khz) ?
+		(cur_freq - target_khz) : (target_khz - cur_freq);
+	/* pass criteria: +-20% */
+	pass = (diff * 5) < target_khz;
+	pr_notice("[%s]: check ildo freq %s, cur: %u, target: %u khz\n",
+		__func__, pass ? "pass" : "fail",
+		cur_freq, target_khz);
+	if (!pass)
+		WARN_ON(1);
+
+	return 0;
+}
+
 static int __init mt_scp_dts_init(struct platform_device *pdev)
 {
 	struct device_node *node;
 	int ret = 0;
-	bool is_scp_dvfs_disable;
+	unsigned int is_scp_dvfs_disable;
 	const char *str = NULL;
 
 	/* find device tree node of scp_dvfs */
@@ -2738,8 +2921,8 @@ static int __init mt_scp_dts_init(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	is_scp_dvfs_disable = of_property_read_bool(node, PROPNAME_SCP_DVFS_DISABLE);
-	if (is_scp_dvfs_disable) {
+	ret = of_property_read_u32(node, PROPNAME_SCP_DVFS_DISABLE, &is_scp_dvfs_disable);
+	if (ret || is_scp_dvfs_disable == 1) {
 		pr_notice("SCP DVFS is disabled, so bypass its init\n");
 		return 0;
 	}
@@ -2766,16 +2949,6 @@ static int __init mt_scp_dts_init(struct platform_device *pdev)
 				__func__);
 			g_dvfs_dev.vow_lp_en_gear = -1;
 		}
-	}
-
-	g_dvfs_dev.vlpck_support = of_property_read_bool(node, PROPNAME_SCP_VLPCK_SUPPORT);
-	if (g_dvfs_dev.vlpck_support) {
-		g_dvfs_dev.vlpck_bypass_phase1 = of_property_read_bool(node, "vlpck-bypass-phase1");
-		pr_notice("[%s]: Use %d-phase VLP_CKSYS in calibration flow\n",
-			__func__,
-			g_dvfs_dev.vlpck_bypass_phase1 ? 1:2);
-	} else {
-		g_dvfs_dev.vlpck_bypass_phase1 = false;
 	}
 
 	/* Either PROPNAME_SCP_DVFS_CORES or PROPNAME_SCP_CORE_ONLINE_MASK should be given */
@@ -2813,35 +2986,39 @@ static int __init mt_scp_dts_init(struct platform_device *pdev)
 	}
 
 	/*
-	 * 1. If "#define PROPNAME_U2_FM_SUPPORT" was set, it means common clock framework has provided API
-	 * to use fmeter. And we should use mt_get_fmeter_freq(id, type) defined in clk-fmeter.h,
-	 * instead of using get_ulposc_clk_by_fmeter*().
-	 *
-	 * 2. Only wehn mt_get_fmeter_freq havn't been provide, get_ulposc_clk_by_fmeter*() can
-	 * be used temporarily.
+	 * PROPNAME_CCF_FM_SUPPORT means mt_get_fmeter_freq(id, type)
+	 * defined in clk-fmeter.h has been provided.
 	 */
-	g_dvfs_dev.not_support_vlp_fmeter = of_property_read_bool(node,
-					PROPNAME_NOT_SUPPORT_VLP_FM);
-	g_dvfs_dev.ccf_fmeter_support = of_property_read_bool(node, PROPNAME_U2_FM_SUPPORT);
+	g_dvfs_dev.ccf_fmeter_support = of_property_read_bool(node, PROPNAME_CCF_FM_SUPPORT);
 	if (!g_dvfs_dev.ccf_fmeter_support) {
 		pr_notice("[%s]: fmeter api havn't been provided, use legacy one\n", __func__);
 	} else {
-		/* enum FMETER_TYPE */
-		if (g_dvfs_dev.vlpck_support && !g_dvfs_dev.not_support_vlp_fmeter)
-			g_dvfs_dev.ccf_fmeter_type = VLPCK;
-		else
-			g_dvfs_dev.ccf_fmeter_type = ABIST;
-
-		/* enum FMETER_ID */
-		ret = mt_get_fmeter_id(FID_ULPOSC2);
-		g_dvfs_dev.ccf_fmeter_id = ret;
-		pr_notice("[%s]: init ccf fmeter api, id: %d, type: %d\n",
-			__func__, g_dvfs_dev.ccf_fmeter_id, g_dvfs_dev.ccf_fmeter_type);
-		if (ret < 0) {
-			pr_notice("[%s]: failed to init ccf fmeter api, id: %d, type: %d\n",
-				__func__, g_dvfs_dev.ccf_fmeter_id, g_dvfs_dev.ccf_fmeter_type);
+		/* fmeter args for ulposc2 clibration process */
+		ret = mt_scp_dts_fmeter_get(node, PROPNAME_FM_ARGS_U2_CALI,
+			&g_dvfs_dev.ccf_fmeter_id,
+			&g_dvfs_dev.ccf_fmeter_type);
+		if (ret)
 			goto DTS_FAILED;
+		pr_notice("[%s]: init u2 cali fmeter: id: %d, type: %d\n",
+			__func__, g_dvfs_dev.ccf_fmeter_id, g_dvfs_dev.ccf_fmeter_type);
+
+		/* fmeter args for ulposc2 result frequency */
+		ret = mt_scp_dts_fmeter_get(node, PROPNAME_FM_ARGS_U2_RESULT,
+			&g_dvfs_dev.ccf_fmeter_id_result,
+			&g_dvfs_dev.ccf_fmeter_type_result);
+		if (ret) {
+			/* u2 frequency result could be as the same as in calibration process */
+			g_dvfs_dev.ccf_fmeter_id_result = g_dvfs_dev.ccf_fmeter_id;
+			g_dvfs_dev.ccf_fmeter_type_result = g_dvfs_dev.ccf_fmeter_type;
 		}
+		pr_notice("[%s]: init u2 result fmeter: id: %d, type: %d\n", __func__,
+			g_dvfs_dev.ccf_fmeter_id_result,
+			g_dvfs_dev.ccf_fmeter_type_result);
+
+		/* we could check ildo frequency if available */
+		ret = mt_scp_dts_ildo_clk_chk(node);
+		if (ret)
+			goto DTS_FAILED;
 	}
 
 	/* init dvfs data */
@@ -3035,4 +3212,3 @@ void scp_dvfs_exit(void)
 {
 	platform_driver_unregister(&mt_scp_dvfs_pdrv);
 }
-

@@ -24,6 +24,7 @@
 #define CAL_MAX_VAL             (0x7F)
 #define CALI_MIS_RATE           (40)
 #define CALI_DIV_VAL            (512)
+#define CAL_U2_DIVIIDER         (2)
 
 #define REG_DEFINE_WITH_INIT(reg, offset, mask, shift, init, set_clr)	\
 	._##reg = {							\
@@ -65,6 +66,7 @@ enum scp_dvfs_err_enum {
 	ESCP_DVFS_INIT_FAILED,
 	ESCP_DVFS_DBG_INVALID_CMD,
 	ESCP_DVFS_DVS_SHOULD_BE_BYPASSED,
+	ESCP_DVFS_UNKOWN_CALI_ALGORITHM,
 };
 
 /* SMC Code Command Table */
@@ -125,9 +127,17 @@ enum scp_ipi_cmd {
 	SCP_SLEEP_CMD_MAX,
 };
 
+enum u2_cali_algorithm_enum {
+	U2_CALI_ALG_V0, /* topck */
+	U2_CALI_ALG_V1, /* vlpck v1 */
+	U2_CALI_ALG_V2, /* vlpck v2 */
+	U2_CALI_ALG_MAX,
+};
+
 enum ulposc_ver_enum {
 	ULPOSC_VER_1, /* APMIXED_SYS */
 	ULPOSC_VER_2, /* VLP_CKSYS */
+	ULPOSC_VER_3, /* VLP_CKSYS */
 	MAX_ULPOSC_VERSION,
 };
 
@@ -176,6 +186,7 @@ struct ulposc_cali_regs {
 	struct reg_info _cali_ext;	/* turning factor 1, maybe unused,  */
 	struct reg_info _cali;		/* turning factor 2 */
 	struct reg_info _con1;
+	struct reg_info _osc2_outsel;
 	struct reg_info _con2;
 };
 
@@ -209,12 +220,15 @@ struct ulposc_cali_hw {
 	struct ulposc_cali_regs *ulposc_regs;
 	struct ulposc_cali_config *cali_configs;
 	struct clk_cali_regs *clkdbg_regs;
+	unsigned int ulposc_reg_ver;
 	unsigned int cali_nums;
+	unsigned int cali_alg_ver;
 	unsigned short *cali_val_ext;
 	unsigned short *cali_val;
 	unsigned short *cali_freq;
 	bool do_ulposc_cali;
 	bool cali_failed;
+	bool need_ext_cali_phase;
 };
 
 struct scp_clk_hw {
@@ -252,11 +266,12 @@ struct scp_dvfs_hw {
 	struct ulposc_cali_hw ulposc_hw;
 	struct scp_clk_hw *clk_hw;
 	bool ccf_fmeter_support; /* Has CCF provided fmeter api to use? */
-	bool not_support_vlp_fmeter;
 	int ccf_fmeter_id;
 	int ccf_fmeter_type;
-	bool vlpck_support; /* Using 2-phase calibration if vlpck_bypass_phase1 not set */
-	bool vlpck_bypass_phase1;
+	int ccf_fmeter_id_result;
+	int ccf_fmeter_type_result;
+	int ccf_fmeter_id_ildo;
+	int ccf_fmeter_type_ildo;
 	bool vlp_support; /* Moving regulator & PMIC setting into SCP side */
 	bool ips_support;
 	bool has_pll_opp;
