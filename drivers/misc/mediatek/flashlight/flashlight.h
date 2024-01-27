@@ -67,6 +67,10 @@ struct flashlight_user_arg {
 #define FLASHLIGHTIOC_X_SET_DRIVER         _IOWR(FLASHLIGHT_MAGIC, 30, int)
 #define FLASHLIGHTIOC_T_DELAY              _IOW(FLASHLIGHT_MAGIC, 35, int)
 
+#define FLASH_IOC_GET_THERMAL_MAX_STATE    _IOR(FLASHLIGHT_MAGIC, 50, int)
+#define FLASH_IOC_GET_THERMAL_CUR_STATE    _IOR(FLASHLIGHT_MAGIC, 51, int)
+#define FLASH_IOC_SET_THERMAL_CUR_STATE    _IOR(FLASHLIGHT_MAGIC, 52, int)
+
 /* ioctl protocol version 1. */
 #define FLASH_IOC_SET_TIME_OUT_TIME_MS     _IOR(FLASHLIGHT_MAGIC, 100, int)
 #define FLASH_IOC_SET_STEP                 _IOR(FLASHLIGHT_MAGIC, 105, int)

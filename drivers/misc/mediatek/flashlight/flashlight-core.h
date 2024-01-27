@@ -7,6 +7,7 @@
 #define _FLASHLIGHT_CORE_H
 
 #include <linux/list.h>
+#include <linux/thermal.h>
 #include "flashlight.h"
 
 /* protocol version */
@@ -121,6 +122,13 @@ struct flashlight_dev {
 struct flashlight_dev_arg {
 	int channel;
 	int arg;
+};
+
+#define FLASHLIGHT_COOLER_MAX_STATE 4
+struct flashlight_cooling_device {
+	unsigned long target_state;
+	unsigned long max_state;
+	struct thermal_cooling_device *cdev;
 };
 
 /* device operations */
