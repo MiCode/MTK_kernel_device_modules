@@ -12,7 +12,6 @@
 #include <linux/gpio.h>
 #include <linux/gpio/consumer.h>
 #include <../../gpio/gpiolib.h>
-#include <asm-generic/gpio.h>
 #include <linux/delay.h>
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
@@ -20,13 +19,14 @@
 
 #define PULL_DELAY 50 /* in ms */
 #define FUN_3STATE "gpio_get_value_tristate"
+#define MTK_MAX_GPIOS 512
 
 static const char *pinctrl_paris_modname = MTK_PINCTRL_DEV;
 static struct mtk_pinctrl *g_hw;
 
 static void mtk_gpio_find_mtk_pinctrl_dev(void)
 {
-	unsigned int pin = ARCH_NR_GPIOS - 1;
+	unsigned int pin = MTK_MAX_GPIOS - 1;
 	struct gpio_desc *gdesc;
 	struct mtk_pinctrl *hw;
 
@@ -503,7 +503,7 @@ static int mtk_gpio_init_procfs(void)
 	struct proc_dir_entry *proc_entry = NULL;
 	struct mtk_pinctrl *hw = NULL;
 	struct gpio_desc *gdesc;
-	unsigned int pin = ARCH_NR_GPIOS - 1;
+	unsigned int pin = MTK_MAX_GPIOS - 1;
 	kuid_t uid;
 	kgid_t gid;
 
