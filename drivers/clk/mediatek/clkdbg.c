@@ -832,7 +832,7 @@ static void *reg_from_str(const char *str)
 		unsigned long v = 0;
 
 		if (kstrtoul(str, 0, &v) == 0U) {
-			if ((0xf0000000 & v) < 0x20000000) {
+			if ((0xf0000000 & v) < 0x40000000) {
 				if (virt != NULL && v > phys
 						&& v < phys + PAGE_SIZE)
 					return virt + v - phys;
@@ -852,7 +852,7 @@ static void *reg_from_str(const char *str)
 		unsigned long long v;
 
 		if (kstrtoull(str, 0, &v) == 0) {
-			if ((0xfffffffff0000000ULL & v) < 0x20000000) {
+			if ((0xfffffffff0000000ULL & v) < 0x40000000) {
 				if (virt && v > phys && v < phys + PAGE_SIZE)
 					return virt + v - phys;
 

@@ -62,6 +62,52 @@ static void mtk_clk_mux_disable(struct clk_hw *hw)
 	regmap_update_bits(mux->regmap, mux->data->mux_ofs, mask, mask);
 }
 
+static int mtk_clk_mux_fenc_enable_setclr(struct clk_hw *hw)
+{
+	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
+	unsigned long flags = 0;
+	u32 val = 0;
+	int i = 0;
+
+	if (mux->lock)
+		spin_lock_irqsave(mux->lock, flags);
+	else
+		__acquire(mux->lock);
+
+	regmap_write(mux->regmap, mux->data->clr_ofs,
+		BIT(mux->data->gate_shift));
+
+	while (1) {
+		regmap_read(mux->regmap, mux->data->fenc_sta_mon_ofs, &val);
+
+		if ((val & BIT(mux->data->fenc_shift)) != 0)
+			break;
+
+		if (i < MTK_WAIT_FENC_DONE_CNT)
+			udelay(MTK_WAIT_FENC_DONE_US);
+		else
+			goto fenc_done_fail;
+
+		i++;
+	}
+
+	if (mux->lock)
+		spin_unlock_irqrestore(mux->lock, flags);
+	else
+		__release(mux->lock);
+
+	return 0;
+
+fenc_done_fail:
+	pr_err("%s %s wait fenc done failed(%d us)\n", __func__, clk_hw_get_name(hw), i);
+	pr_err("%x = %x, shift = %u\n", mux->data->fenc_sta_mon_ofs, val, mux->data->fenc_shift);
+	if (mux->lock)
+		spin_unlock_irqrestore(mux->lock, flags);
+	else
+		__release(mux->lock);
+	return -EBUSY;
+}
+
 static int mtk_clk_mux_enable_setclr(struct clk_hw *hw)
 {
 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
@@ -89,6 +135,19 @@ static void mtk_clk_mux_disable_setclr(struct clk_hw *hw)
 
 	regmap_write(mux->regmap, mux->data->set_ofs,
 			BIT(mux->data->gate_shift));
+}
+
+static int mtk_clk_mux_fenc_is_enabled(struct clk_hw *hw)
+{
+	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
+	u32 val = 0;
+
+	if (!is_registered)
+		return 0;
+
+	regmap_read(mux->regmap, mux->data->fenc_sta_mon_ofs, &val);
+
+	return (val & BIT(mux->data->fenc_shift)) != 0;
 }
 
 static int mtk_clk_mux_is_enabled(struct clk_hw *hw)
@@ -125,6 +184,64 @@ static int mtk_clk_hwv_mux_is_done(struct clk_hw *hw)
 	regmap_read(mux->hwv_regmap, mux->data->hwv_sta_ofs, &val);
 
 	return (val & BIT(mux->data->gate_shift)) != 0;
+}
+
+static int mtk_clk_hwv_mux_fenc_enable(struct clk_hw *hw)
+{
+	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
+	u32 val = 0, val2 = 0;
+	bool is_done = false;
+	int i = 0;
+
+	regmap_write(mux->hwv_regmap, mux->data->hwv_set_ofs,
+			BIT(mux->data->gate_shift));
+
+	while (!mtk_clk_hwv_mux_is_enabled(hw)) {
+		if (i < MTK_WAIT_HWV_PREPARE_CNT)
+			udelay(MTK_WAIT_HWV_PREPARE_US);
+		else
+			goto hwv_prepare_fail;
+		i++;
+	}
+
+	i = 0;
+
+	while (1) {
+		if (!is_done)
+			regmap_read(mux->hwv_regmap, mux->data->hwv_sta_ofs, &val);
+
+		if (((val & BIT(mux->data->gate_shift)) != 0))
+			is_done = true;
+
+		if (is_done) {
+			regmap_read(mux->regmap, mux->data->fenc_sta_mon_ofs, &val2);
+			if ((val2 & BIT(mux->data->fenc_shift)) != 0)
+				break;
+		}
+
+		if (i < MTK_WAIT_HWV_DONE_CNT)
+			udelay(MTK_WAIT_HWV_DONE_US);
+		else
+			goto hwv_done_fail;
+
+		i++;
+	}
+
+	return 0;
+
+hwv_done_fail:
+	regmap_read(mux->regmap, mux->data->fenc_sta_mon_ofs, &val);
+	regmap_read(mux->hwv_regmap, mux->data->hwv_sta_ofs, &val2);
+	pr_err("%s mux enable timeout(%x %x)\n", clk_hw_get_name(hw), val, val2);
+hwv_prepare_fail:
+	regmap_read(mux->regmap, mux->data->hwv_sta_ofs, &val);
+	pr_err("%s mux prepare timeout(%x)\n", clk_hw_get_name(hw), val);
+
+	mtk_clk_notify(mux->regmap, mux->hwv_regmap, NULL,
+			mux->data->fenc_sta_mon_ofs, (mux->data->hwv_set_ofs / MTK_HWV_ID_OFS),
+			mux->data->fenc_shift, CLK_EVT_HWV_CG_TIMEOUT);
+
+	return -EBUSY;
 }
 
 static int mtk_clk_hwv_mux_enable(struct clk_hw *hw)
@@ -361,8 +478,7 @@ static int __mtk_clk_mux_set_parent_lock(struct clk_hw *hw, u8 index, bool setcl
 				regmap_write(mux->regmap, mux->data->set_ofs,
 						index << mux->data->mux_shift);
 			}
-
-				/*
+			/*
 			* Workaround for mm dvfs. Poll mm rdma reg before
 			* clkmux switching.
 			*/
@@ -600,6 +716,24 @@ const struct clk_ops mtk_mux_gate_clr_set_upd_ops = {
 };
 EXPORT_SYMBOL_GPL(mtk_mux_gate_clr_set_upd_ops);
 
+const struct clk_ops mtk_mux_gate_fenc_clr_set_upd_ops = {
+	.enable = mtk_clk_mux_fenc_enable_setclr,
+	.disable = mtk_clk_mux_disable_setclr,
+	.is_enabled = mtk_clk_mux_fenc_is_enabled,
+	.get_parent = mtk_clk_mux_get_parent,
+	.set_parent = mtk_clk_mux_set_parent_setclr_upd_lock,
+};
+EXPORT_SYMBOL_GPL(mtk_mux_gate_fenc_clr_set_upd_ops);
+
+const struct clk_ops mtk_hwv_mux_fenc_ops = {
+	.enable = mtk_clk_hwv_mux_fenc_enable,
+	.disable = mtk_clk_hwv_mux_disable,
+	.is_enabled = mtk_clk_mux_fenc_is_enabled,
+	.get_parent = mtk_clk_mux_get_parent,
+	.set_parent = mtk_clk_mux_set_parent_setclr_upd_lock,
+};
+EXPORT_SYMBOL_GPL(mtk_hwv_mux_fenc_ops);
+
 const struct clk_ops mtk_hwv_mux_ops = {
 	.enable = mtk_clk_hwv_mux_enable,
 	.disable = mtk_clk_hwv_mux_disable,
@@ -616,6 +750,16 @@ const struct clk_ops mtk_hwv_dfs_mux_dummy_ops = {
 	.determine_rate = mtk_clk_mux_determine_rate,
 };
 EXPORT_SYMBOL_GPL(mtk_hwv_dfs_mux_dummy_ops);
+
+const struct clk_ops mtk_hwv_dfs_mux_fenc_ops = {
+	.enable = mtk_clk_hwv_mux_fenc_enable,
+	.disable = mtk_clk_hwv_mux_disable,
+	.is_enabled = mtk_clk_mux_is_enabled,
+	.get_parent = mtk_clk_mux_get_parent,
+	.set_parent = mtk_clk_hwv_mux_set_parent,
+	.determine_rate = mtk_clk_mux_determine_rate,
+};
+EXPORT_SYMBOL_GPL(mtk_hwv_dfs_mux_fenc_ops);
 
 const struct clk_ops mtk_hwv_dfs_mux_ops = {
 	.enable = mtk_clk_hwv_mux_enable,
