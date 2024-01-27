@@ -130,15 +130,6 @@
 #define AXSLC_SPECULATIVE		F_BIT_SET(7)
 #define AXSLC_SET			(AXSLC_CACHE | AXSLC_ALLOCATE | AXSLC_SPECULATIVE)
 #define SLC_SB_ONLY_EN			F_BIT_SET(1)
-/*
- * TCU_DVM_EN_REQ: Set 1 for connecting to DVM
- * TCU_DVM_EN_ACK: Poll 1 to wait for ACK connected to DVM
- */
-#define SMMUWP_TCU_CTL4			(0x210)
-#define TCU_DVM_EN_REQ			F_BIT_SET(0)
-#define TCU_DVM_EN_ACK			F_BIT_SET(1)
-
-#define SMMUWP_POLL_DVM_TIMEOUT_US	(1000) /* 1ms */
 
 /* SMMU TCU latency meters control registers
  * TCU_MON_ID: The monitoring AXI ID if needed, default monitor all
