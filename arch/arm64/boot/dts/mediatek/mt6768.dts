@@ -20,6 +20,7 @@
 #include <dt-bindings/power/mt6768-power.h>
 #include <dt-bindings/interconnect/mtk,mt6873-emi.h>
 #include <dt-bindings/interconnect/mtk,mmqos.h>
+#include <dt-bindings/power/mtk-charger.h>
 
 / {
 	model = "MT6768";
@@ -4985,8 +4986,11 @@ transparent_hugepage=never";
 
 	mtk_ctd: mtk_ctd {
 		compatible = "mediatek,mtk_ctd";
-		bc12 = <&mt6370_chg>;
-		bc12_sel = <0>;
+		nr-port = <1>;
+		chg-name-port0 = "primary_chg";
+		bc12-sel-port0 = <MTK_CTD_BY_SUBPMIC>;
+		bc12-psy-port0 = <&mt6370_chg>;
+
 	};
 
 	pd_adapter: pd_adapter {
