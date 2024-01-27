@@ -10,8 +10,6 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x0>;
 		clocks =
-			<&cksys_clk CLK_CK_MFG_REF_SEL>,
-			<&cksys_clk CLK_CK_MFG_EB_SEL>,
 			<&cksys_clk CLK_CK_UART_SEL>,
 			<&cksys_clk CLK_CK_SPI0_BCLK_SEL>,
 			<&cksys_clk CLK_CK_SPI1_BCLK_SEL>,
@@ -114,10 +112,7 @@
 			<&vlp_cksys_clk CLK_VLP_CK_AUDIO_H_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_AUD_ENGEN1_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_AUD_ENGEN2_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_AUD_INTBUS_SEL>,
-			<&mfgpll_pll_ctrl_clk CLK_MFG_AO_MFGPLL>,
-			<&mfgpll_sc0_pll_ctrl_clk CLK_MFGSC0_AO_MFGPLL_SC0>,
-			<&mfgpll_sc1_pll_ctrl_clk CLK_MFGSC1_AO_MFGPLL_SC1>;
+			<&vlp_cksys_clk CLK_VLP_CK_AUD_INTBUS_SEL>;
 	};
 	bring-up-disp@1 {
 		compatible = "mediatek,clk-bring-up";
