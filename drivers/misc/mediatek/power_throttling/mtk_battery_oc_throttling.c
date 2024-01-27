@@ -4,6 +4,7 @@
  * Author: Samuel Hsieh <samuel.hsieh@mediatek.com>
  */
 
+#include <linux/bitfield.h>
 #include <linux/device.h>
 #include <linux/interrupt.h>
 #include <linux/mfd/mt6358/registers.h>
@@ -22,10 +23,21 @@
 
 #include "mtk_battery_oc_throttling.h"
 
-#define MT6375_FGADC_CUR_CON1	0x2E9
-#define MT6375_FGADC_CUR_CON2	0x2EB
-#define MT6375_FGADC_ANA_ELR4	0x263
-#define FG_GAINERR_SEL_MASK	GENMASK(1, 0)
+#define MT6375_FGADC_CUR_CON1		0x2E9
+#define MT6375_FGADC_CUR_CON2		0x2EB
+#define MT6375_FGADC_ANA_ELR4		0x263
+
+#define MT6379_RG_CORE_CTRL0		0x001
+#define MT6379_MASK_CELL_COUNT		BIT(7)
+#define MT6379_BAT1_FGADC_CUR_CON1	0x7E9
+#define MT6379_BAT1_FGADC_CUR_CON2	0x7EB
+#define MT6379_BAT1_FGADC_ANA_ELR4	0x763
+
+#define MT6379_BAT2_FGADC_CUR_CON1	0xAE9
+#define MT6379_BAT2_FGADC_CUR_CON2	0xAEB
+#define MT6379_BAT2_FGADC_ANA_ELR4	0xA63
+
+#define FG_GAINERR_SEL_MASK		GENMASK(1, 0)
 
 /* Customize the setting in dts node */
 #define DEF_BAT_OC_THD_H	6800
@@ -51,6 +63,8 @@
 #define	MT6377_DEFAULT_RFG		(50)
 #define	MT6377_UNIT_FGCURRENT		(610352)
 
+#define	MT6379_UNIT_FGCURRENT		(915527)
+
 #define MTK_BATOC_DIR_NAME		"mtk_batoc_throttling"
 #define DEFAULT_BUF_LEN			512
 #define PMIC_SPMI_SWCID			(0xB)
@@ -64,10 +78,12 @@ struct reg_t {
 struct battery_oc_data_t {
 	const char *regmap_source;
 	const char *gauge_node_name;
+	const char *batoc_dir_name;
 	struct reg_t fg_cur_hth;
 	struct reg_t fg_cur_lth;
 	bool spmi_intf;
 	bool cust_rfg;
+	int unit_fg_current;
 	struct reg_t reg_default_rfg;
 };
 
@@ -95,6 +111,7 @@ struct battery_oc_data_t mt6375_battery_oc_data = {
 	.fg_cur_lth = {MT6375_FGADC_CUR_CON1, 0xFFFF, 2},
 	.spmi_intf = false,
 	.cust_rfg = true,
+	.unit_fg_current = MT6375_UNIT_FGCURRENT,
 	.reg_default_rfg = {MT6375_FGADC_ANA_ELR4, FG_GAINERR_SEL_MASK, 1},
 };
 
@@ -106,6 +123,30 @@ struct battery_oc_data_t mt6377_battery_oc_data = {
 	.spmi_intf = true,
 	.cust_rfg = false,
 };
+
+struct battery_oc_data_t mt6379_bat1_battery_oc_data = {
+	.regmap_source = "dev_get_regmap",
+	.gauge_node_name = "mtk-gauge",
+	.fg_cur_hth = {MT6379_BAT1_FGADC_CUR_CON2, 0xFFFF, 2},
+	.fg_cur_lth = {MT6379_BAT1_FGADC_CUR_CON1, 0xFFFF, 2},
+	.spmi_intf = false,
+	.cust_rfg = true,
+	.unit_fg_current = MT6379_UNIT_FGCURRENT,
+	.reg_default_rfg = {MT6379_BAT1_FGADC_ANA_ELR4, FG_GAINERR_SEL_MASK, 1},
+};
+
+struct battery_oc_data_t mt6379_bat2_battery_oc_data = {
+	.regmap_source = "dev_get_regmap",
+	.gauge_node_name = "mtk-gauge2",
+	.batoc_dir_name = "mtk_batoc_throttling2",
+	.fg_cur_hth = {MT6379_BAT2_FGADC_CUR_CON2, 0xFFFF, 2},
+	.fg_cur_lth = {MT6379_BAT2_FGADC_CUR_CON1, 0xFFFF, 2},
+	.spmi_intf = false,
+	.cust_rfg = true,
+	.unit_fg_current = MT6379_UNIT_FGCURRENT,
+	.reg_default_rfg = {MT6379_BAT2_FGADC_ANA_ELR4, FG_GAINERR_SEL_MASK, 1},
+};
+
 
 struct battery_oc_priv {
 	struct device *dev;
@@ -457,9 +498,7 @@ static int battery_oc_parse_dt(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	ret = of_property_read_u32(np, "R_FG_VALUE", &priv->r_fg_value);
-	if (ret)
-		ret = of_property_read_u32(np, "r-fg-value", &priv->r_fg_value);
+	ret = of_property_read_u32(np, "r-fg-value", &priv->r_fg_value);
 	if (ret) {
 		dev_notice(&pdev->dev, "get r-fg-value fail\n");
 		return -EINVAL;
@@ -472,9 +511,7 @@ static int battery_oc_parse_dt(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	ret = of_property_read_u32(np, "CAR_TUNE_VALUE", &priv->car_tune_value);
-	if (ret)
-		ret = of_property_read_u32(np, "car-tune-value", &priv->car_tune_value);
+	ret = of_property_read_u32(np, "car-tune-value", &priv->car_tune_value);
 	if (ret) {
 		dev_notice(&pdev->dev, "get car-tune-value fail\n");
 		return -EINVAL;
@@ -490,8 +527,8 @@ static int battery_oc_parse_dt(struct platform_device *pdev)
 	np = of_find_node_by_name(pdev->dev.parent->of_node,
 				  "mtk_battery_oc_throttling");
 	if (!np)
-		np = of_find_node_by_name(pdev->dev.parent->of_node,
-					  "mtk-battery-oc-throttling");
+		np = of_find_node_by_name(pdev->dev.parent->of_node, "mtk-battery-oc-throttling2");
+
 	if (!np) {
 		dev_notice(&pdev->dev, "get mtk battery oc node fail\n");
 		return -EINVAL;
@@ -570,7 +607,10 @@ static int battery_oc_parse_dt(struct platform_device *pdev)
 			priv->default_rfg = priv->r_fg_value;
 		else
 			priv->default_rfg = r_fg_val[regval];
-		priv->unit_fg_cur = MT6375_UNIT_FGCURRENT * priv->unit_multiple;
+
+		priv->unit_fg_cur = priv->ocdata->unit_fg_current ?
+				    priv->ocdata->unit_fg_current : MT6375_UNIT_FGCURRENT;
+		priv->unit_fg_cur *= priv->unit_multiple;
 	} else if (priv->ocdata->spmi_intf) {
 		ret = regmap_read(priv->regmap, PMIC_SPMI_SWCID, &regval);
 		if (ret) {
@@ -622,11 +662,13 @@ static int battery_oc_throttling_create_proc(struct battery_oc_priv *priv)
 		ENTRY_DESC(battery_oc_protect_level)
 	};
 	struct proc_dir_entry *root_entry, *entry;
+	const char *dir_name = priv->ocdata->batoc_dir_name;
 	int i;
 
-	root_entry = proc_mkdir(MTK_BATOC_DIR_NAME, NULL);
+	dir_name = dir_name ? dir_name : MTK_BATOC_DIR_NAME;
+	root_entry = proc_mkdir(dir_name, NULL);
 	if (!root_entry) {
-		dev_err(priv->dev, "Unable to craete proc dir\n");
+		dev_err(priv->dev, "Unable to craete proc dir: %s\n", dir_name);
 		return -ENODEV;
 	}
 
@@ -640,8 +682,29 @@ static int battery_oc_throttling_create_proc(struct battery_oc_priv *priv)
 	return 0;
 
 create_proc_fail:
-	remove_proc_subtree(MTK_BATOC_DIR_NAME, NULL);
+	remove_proc_subtree(dir_name, NULL);
 	return -ENODEV;
+}
+
+static int mt6379_check_bat_cell_count(struct battery_oc_priv *priv)
+{
+	unsigned int val, cell_count;
+	int ret;
+
+	if (!strstr(dev_name(priv->dev), "mt6379") ||
+	    !strstr(dev_name(priv->dev), "battery-oc-throttling2"))
+		return 0;
+
+	ret = regmap_read(priv->regmap, MT6379_RG_CORE_CTRL0, &val);
+	if (ret)
+		return dev_err_probe(priv->dev, ret, "Failed to read CORE_CTRL0\n");
+
+	cell_count = FIELD_GET(MT6379_MASK_CELL_COUNT, val);
+	if (cell_count != 1)
+		return dev_err_probe(priv->dev, -ENODEV, "%s, HW not support! (cell_cound:%d)\n",
+				     __func__, cell_count);
+
+	return 0;
 }
 
 static int battery_oc_throttling_probe(struct platform_device *pdev)
@@ -662,6 +725,10 @@ static int battery_oc_throttling_probe(struct platform_device *pdev)
 		priv->regmap = chip->regmap;
 	} else
 		priv->regmap = dev_get_regmap(pdev->dev.parent, NULL);
+
+	ret = mt6379_check_bat_cell_count(priv);
+	if (ret)
+		return ret;
 
 	/* set Maximum threshold to avoid irq being triggered at init */
 	__regmap_update_bits(priv->regmap, &priv->ocdata->fg_cur_hth, 0x7FFF);
@@ -802,6 +869,12 @@ static const struct of_device_id battery_oc_throttling_of_match[] = {
 	}, {
 		.compatible = "mediatek,mt6377-battery_oc_throttling",
 		.data = &mt6377_battery_oc_data,
+	}, {
+		.compatible = "mediatek,mt6379-battery-oc-throttling-1",
+		.data = &mt6379_bat1_battery_oc_data,
+	}, {
+		.compatible = "mediatek,mt6379-battery-oc-throttling-2",
+		.data = &mt6379_bat2_battery_oc_data,
 	}, {
 		/* sentinel */
 	}
