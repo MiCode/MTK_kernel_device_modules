@@ -156,7 +156,6 @@ static const struct mtk_emi_compatible mt6877_compat = {
 
 #define EMI_CHN_CONC_SCRM_EN 7
 
-#define MTK_EMI_DRAM_OFFSET 0x40000000
 #define MTK_EMI_HASH 0x7
 #define MTK_EMI_DISPATCH 0x0
 
@@ -244,8 +243,6 @@ static inline void prepare_a2d_v1(struct emi_cen *cen)
 	emi_conh = readl(emi_cen_base + emi_a2d_con_offset[2]);
 	emi_conh_2nd = readl(emi_cen_base + emi_a2d_con_offset[3]);
 	emi_conk = readl(emi_cen_base + emi_a2d_con_offset[4]);
-
-	cen->offset = MTK_EMI_DRAM_OFFSET;
 
 	s6s->magics[0] = emi_conf & mask_4b;
 	s6s->magics[1] = (emi_conf >> 4) & mask_4b;
@@ -642,7 +639,6 @@ static inline void prepare_a2d_v2(struct emi_cen *cen)
 		return;
 
 	s6s = &cen->a2d_s6s.v2;
-	cen->offset = MTK_EMI_DRAM_OFFSET;
 
 	if (emi_a2d_info_support) {
 		emi_cona = emi_a2d_emi_cen[0];
@@ -1188,11 +1184,14 @@ static int emicen_probe(struct platform_device *pdev)
 	struct device_node *emicen_node = pdev->dev.of_node;
 	struct device_node *emichn_node =
 		of_parse_phandle(emicen_node, "mediatek,emi-reg", 0);
+	struct device_node *memory_node;
+	struct property *prop;
 	struct emi_cen *cen;
 	struct mtk_emi_compatible *dev_comp;
 	unsigned int i;
 	unsigned int size;
-	int ret;
+	unsigned int *dram_offset;
+	int ret, len;
 
 	dev_info(&pdev->dev, "driver probed\n");
 
@@ -1207,6 +1206,34 @@ static int emicen_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	cen->ver = (unsigned int)dev_comp->ver;
+
+	memory_node = of_find_node_by_type(NULL, "memory");
+	if (!memory_node) {
+		dev_err(&pdev->dev, "No memory node\n");
+		return -ENXIO;
+	}
+
+	prop = of_find_property(memory_node, "reg", &len);
+	if (!prop) {
+		dev_err(&pdev->dev, "No reg from memory node\n");
+		return -ENXIO;
+	}
+
+	dram_offset = devm_kzalloc(&pdev->dev, len, GFP_KERNEL);
+	if (!dram_offset)
+		return -ENOMEM;
+
+	ret = of_property_read_u32_array(memory_node,
+		"reg", dram_offset, len / sizeof(unsigned int));
+	if (ret) {
+		dev_err(&pdev->dev, "Could not read reg property\n");
+		return -ENXIO;
+	}
+
+	cen->offset = (unsigned long)dram_offset[1];
+	devm_kfree(&pdev->dev, dram_offset);
+
+	dev_info(&pdev->dev, "cen->offset 0x%lx\n", cen->offset);
 
 	ret = of_property_read_u32(emicen_node,
 		"ch_cnt", &(cen->ch_cnt));
