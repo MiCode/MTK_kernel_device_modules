@@ -15265,11 +15265,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 	regulator-always-on;
 };
 
-/* remove after bring-up */
-&mt6363_vsram_mdfe {
-	regulator-always-on;
-};
-
 &mt6363_vcn15 {
 	regulator-always-on;
 };
@@ -15317,10 +15312,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 &mt6373_vbuck8 {
 	/delete-property/ regulator-always-on;
 };
-
-//&mt6373_vbuck9 {
-//	/delete-property/ regulator-always-on;
-//};
 
 &mt6373_vbuck4_ufs {
 	regulator-min-microvolt = <0>;
