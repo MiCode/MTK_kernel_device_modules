@@ -4285,18 +4285,22 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			/* as mmlsys */
 			comp-ids = <MML0_MMLSYS>,
 				<MML0_DMA0_SEL>, <MML0_DLI0_SEL>,
+				<MML0_PQ_AAL0_SEL>, <MML0_C3D0_SEL>,
 				<MML0_WROT0_SEL>, <MML0_DLO2>;
 			comp-types = <MML_CT_SYS>,
+				<MML_CT_PATH>, <MML_CT_PATH>,
 				<MML_CT_PATH>, <MML_CT_PATH>,
 				<MML_CT_PATH>, <MML_CT_DL_OUT>;
 			comp-names = "mmlsys",
 				"dma0_sel", "dli0_sel",
+				"pq_aal0_sel", "c3d0_sel",
 				"wrot0_sel", "dlo2";
 			/* as sys component */
 			mux-pins = /bits/ 16 <
 				3 MML0_DMA0_SEL MML0_DLI0_SEL MML_MUX_SLIN MML_DLI0_SEL_IN
 				2 MML0_DLI0_SEL MML0_FG0      MML_MUX_MOUT MML_RDMA0_MOUT_EN
 				2 MML0_FG0      MML0_HDR0     MML_MUX_SLIN MML_HDR0_SEL_IN
+				2 MML0_HDR0     MML0_C3D0_SEL MML_MUX_MOUT MML_HDR_MOUT_EN
 				4 MML0_HDR0     MML0_AAL0     MML_MUX_MOUT MML_HDR_MOUT_EN
 				2 MML0_COLOR0   MML0_WROT0_SEL MML_MUX_SLIN MML_WROT0_SEL_IN
 				2 MML0_WROT0_SEL MML0_WROT0    MML_MUX_SOUT MML_DLO0_SOUT_SEL
@@ -4307,13 +4311,19 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				2 MML0_DMA0_SEL MML0_WROT0    MML_MUX_MOUT MML_BYP0_MOUT_EN
 				2 MML0_RROT0    MML0_DLO2     MML_MUX_SOUT MML_MERGE_SOUT_SEL
 				0 MML0_HDR0     MML0_AAL0     MML_MUX_SLIN MML_AAL0_SEL_IN
-				0 MML0_AAL0     MML0_C3D0     MML_MUX_SOUT MML_AAL0_SOUT_SEL
-				0 MML0_AAL0     MML0_C3D0     MML_MUX_SLIN MML_C3D0_SEL_IN
+				2 MML0_C3D0     MML0_AAL0     MML_MUX_SLIN MML_AAL0_SEL_IN
+				0 MML0_AAL0     MML0_PQ_AAL0_SEL MML_MUX_SLIN MML_PQ_AAL0_SEL_IN
+				0 MML0_AAL0     MML0_C3D0_SEL MML_MUX_SOUT MML_AAL0_SOUT_SEL
+				1 MML0_AAL0     MML0_PQ_AAL0_SEL MML_MUX_SOUT MML_AAL0_SOUT_SEL
+				2 MML0_PQ_AAL0_SEL MML0_RSZ0     MML_MUX_MOUT MML_AAL0_MOUT_EN
+				0 MML0_AAL0     MML0_C3D0_SEL MML_MUX_SLIN MML_C3D0_SEL_IN
+				1 MML0_HDR0     MML0_C3D0_SEL MML_MUX_SLIN MML_C3D0_SEL_IN
+				0 MML0_C3D0     MML0_AAL0     MML_MUX_SOUT MML_C3D0_SOUT_SEL
 				4 MML0_C3D0     MML0_RSZ0     MML_MUX_SOUT MML_C3D0_SOUT_SEL
-				1 MML0_BIRSZ0   MML0_TDSHP0   MML_MUX_SLIN MML_TDSHP0_SEL_IN
 				1 MML0_RSZ0     MML0_TDSHP0   MML_MUX_SLIN MML_TDSHP0_SEL_IN
 				3 MML0_COLOR0   MML0_WROT0_SEL MML_MUX_MOUT MML_COLOR0_MOUT_EN
 				3 MML0_C3D0     MML0_RSZ0     MML_MUX_SLIN MML_RSZ0_SEL_IN
+				4 MML0_PQ_AAL0_SEL MML0_RSZ0     MML_MUX_SLIN MML_RSZ0_SEL_IN
 				1 MML0_DMA0_SEL MML0_RSZ2     MML_MUX_SLIN MML_RSZ2_SEL_IN
 				0 MML0_RDMA0    MML0_DMA0_SEL MML_MUX_SLIN MML_DMA0_SEL_IN
 				1 MML0_RDMA0    MML0_DMA0_SEL MML_MUX_SOUT MML_RDMA0_SOUT_SEL
@@ -4323,6 +4333,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				>;
 			/* !!Above code generate by topology parser (tpparser.py)!! */
 
+			/* as stand alone mmlsys */
+			mmlsys-config-supply = <&mmlsys1_config>;
+			mediatek,mml = <&mmlsys1_config>;
 			gce-supply = <&gce>;
 
 			dbg-reg-names =
@@ -4412,17 +4425,20 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			/* as dl component */
 			dlo2-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY2_SIZE>;
 
-#if 0
-			clocks = <&mdpsys0_config_clk CLK_MDP0_APB_BUS>,
-				<&mdpsys0_config_clk CLK_MDP0_MDP_DLO_ASYNC2>,
-				<&mmdvfs_mux MMDVFS_USER_MML>,
-				<&mdpsys0_config_clk CLK_MDP0_F26M_SLOW>;
-			clock-names = "apb_bus", "dlo2", "mmdvfs_clk", "mmlsys_26m_clk";
-			mediatek,larb = <&smi_larb2 MTK_M4U_TO_PORT(SMMU_L2_P17_MDP_FAKE_ENG0)>;
-			mmlsys-clock-names = "apb_bus";
-			power-domains = <&scpsys MT6991_POWER_DOMAIN_MM_INFRA>;
+			mtk,smmu-shared = <&mm_smmu_disp>;
+			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+
+			clocks = <&mdpsys_config_clk CLK_MDP_APB_BUS_MML>,
+				<&mdpsys_config_clk CLK_MDP_APB_DB_MML>,
+				<&mdpsys_config_clk CLK_MDP_MDP_DLO_ASYNC2_MML>;
+			clock-names = "apb_bus", "apb_db", "dlo2";
+			mmlsys-clock-names = "apb_bus", "apb_db";
 			dlo2-clock-names = "dlo2";
-#endif
+			mediatek,larb = <&smi_larb2 MTK_M4U_TO_PORT(SMMU_L2_P17_MDP_FAKE_ENG0)>;
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>;
+			/* dvfs */
+			operating-points-v2 = <&opp_table_disp>;
+			mmqos-supply = <&mmqos>;
 		};
 
 		mml0_mutex0: mml0-mutex0@3e020000 {
@@ -4454,11 +4470,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			/* !!Above code generate by topology parser (tpparser.py)!! */
 
 			mutex-ids = <MML0_RDMA0 0 MML0_RROT0 1>;
-
-#if 0
-			clocks = <&mdpsys0_config_clk CLK_MDP0_MDP_MUTEX0>;
+			clocks = <&mdpsys_config_clk CLK_MDP_MDP_MUTEX0_MML>;
 			clock-names = "mutex0";
-#endif
 		};
 
 		mml0_rdma0: mml0-rdma0@3e050000 {
@@ -4466,10 +4479,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e050000 0 0x1000>;
 			comp-ids = <MML0_RDMA0>;
 			comp-names = "mml0_rdma0";
-
-#if 0
+			clocks = <&mdpsys_config_clk CLK_MDP_MDP_RDMA0_MML>;
+			clock-names = "rdma0";
 			mediatek,larb = <&smi_larb2 MTK_M4U_TO_PORT(SMMU_L2_P4_MDP_RDMA0)>;
-#endif
+			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L2_P4_MDP_RDMA0)
+				&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "mml_dma";
+			mmqos-supply = <&mmqos>;
 		};
 
 		mml0_rdma2: mml0-rdma2@3e070000 {
@@ -4477,9 +4493,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e070000 0 0x1000>;
 			comp-ids = <MML0_RDMA2>;
 			comp-names = "mml0_rdma2";
-#if 0
+			clocks = <&mdpsys_config_clk CLK_MDP_MDP_RDMA2_MML>;
+			clock-names = "rdma2";
 			mediatek,larb = <&smi_larb2 MTK_M4U_TO_PORT(SMMU_L2_P0_MDP_RDMA2)>;
-#endif
+			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L2_P0_MDP_RDMA2)
+				&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "mml_dma";
+			mmqos-supply = <&mmqos>;
 		};
 
 		mml0_birsz0: mml0-birsz0@3e080000 {
@@ -4487,6 +4507,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e080000 0 0x1000>;
 			comp-ids = <MML0_BIRSZ0>;
 			comp-names = "mml0_birsz0";
+			clocks = <&mdpsys_config_clk CLK_MDP_MDP_BIRSZ0_MML>;
+			clock-names = "birsz0";
 		};
 
 		mml0_hdr0: mml0-hdr0@3e090000 {
@@ -4494,6 +4516,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e090000 0 0x1000>;
 			comp-ids = <MML0_HDR0>;
 			comp-names = "mml0_hdr0";
+			clocks = <&mdpsys_config_clk CLK_MDP_MDP_HDR0_MML>;
+			clock-names = "hdr0";
 		};
 
 		mml0_aal0: mml0-aal0@3e0a0000 {
@@ -4501,6 +4525,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e0a0000 0 0x1000>;
 			comp-ids = <MML0_AAL0>;
 			comp-names = "mml0_aal0";
+			clocks = <&mdpsys_config_clk CLK_MDP_MDP_AAL0_MML>;
+			clock-names = "hdr0";
 		};
 
 		mml0_rsz0: mml0-rsz0@3e0b0000 {
@@ -4508,6 +4534,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e0b0000 0 0x1000>;
 			comp-ids = <MML0_RSZ0>;
 			comp-names = "mml0_rsz0";
+			clocks = <&mdpsys_config_clk CLK_MDP_MDP_RSZ0_MML>;
+			clock-names = "rsz0";
 		};
 
 		mml0_rsz2: mml0-rsz2@3e0c0000 {
@@ -4515,6 +4543,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e0c0000 0 0x1000>;
 			comp-ids = <MML0_RSZ2>;
 			comp-names = "mml0_rsz2";
+			clocks = <&mdpsys_config_clk CLK_MDP_MDP_RSZ2_MML>;
+			clock-names = "rsz2";
 		};
 
 		mml0_tdshp0: mml0-tdshp0@3e0d0000 {
@@ -4522,6 +4552,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e0d0000 0 0x1000>;
 			comp-ids = <MML0_TDSHP0>;
 			comp-names = "mml0_tdshp0";
+			clocks = <&mdpsys_config_clk CLK_MDP_MDP_TDSHP0_MML>;
+			clock-names = "tdshp0";
 		};
 
 		mml0_color0: mml0-color0@3e0e0000 {
@@ -4529,6 +4561,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e0e0000 0 0x1000>;
 			comp-ids = <MML0_COLOR0>;
 			comp-names = "mml0_color0";
+			clocks = <&mdpsys_config_clk CLK_MDP_MDP_COLOR0_MML>;
+			clock-names = "color0";
 		};
 
 		mml0_wrot0: mml0-wrot0@3e0f0000 {
@@ -4540,19 +4574,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			event-bufa = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUFA>;
 			event-bufb = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUFB>;
 			event-buf-next = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUF_NEXT>;
-#if 0
-			mtk,smmu-shared = <&mm_smmu_disp>;
-			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
-
-			clocks = <&mdpsys0_config_clk SMMU_L2_P5_MDP_WROT0>;
+			clocks = <&mdpsys_config_clk CLK_MDP_MDP_WROT0_MML>;
 			clock-names = "wrot0";
 			mediatek,larb = <&smi_larb2 MTK_M4U_TO_PORT(SMMU_L2_P5_MDP_WROT0)>;
-			interconnects =
-				<&mmqos MASTER_LARB_PORT(SMMU_L2_P5_MDP_WROT0)
-					&mmqos SLAVE_COMMON(1)>,
+			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L2_P5_MDP_WROT0)
+				&mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "mml_dma";
 			mmqos-supply = <&mmqos>;
-#endif
 		};
 
 		mml0_wrot2: mml0-wrot2@3e110000 {
@@ -4560,20 +4588,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e110000 0 0x1000>;
 			comp-ids = <MML0_WROT2>;
 			comp-names = "mml0_wrot2";
-
-#if 0
-			mtk,smmu-shared = <&mm_smmu_disp>;
-			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
-
-			clocks = <&mdpsys0_config_clk SMMU_L2_P1_MDP_WROT2>;
-			clock-names = "wrot0";
+			clocks = <&mdpsys_config_clk CLK_MDP_MDP_WROT2_MML>;
+			clock-names = "wrot2";
 			mediatek,larb = <&smi_larb2 MTK_M4U_TO_PORT(SMMU_L2_P1_MDP_WROT2)>;
-			interconnects =
-				<&mmqos MASTER_LARB_PORT(SMMU_L2_P1_MDP_WROT2)
-					&mmqos SLAVE_COMMON(1)>,
+			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L2_P1_MDP_WROT2)
+				&mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "mml_dma";
 			mmqos-supply = <&mmqos>;
-#endif
 		};
 
 		mml0_rrot0: mml0-rrot0@3e120000 {
@@ -4583,21 +4604,16 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			comp-names = "mml0_rrot0";
 			pipe = /bits/ 8 <1>;
 
-#if 0
-			mtk,smmu-shared = <&mm_smmu_disp>;
-			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
-
-			clocks = <&mdpsys0_config_clk CLK_MDP0_MDP_RROT0>;
+			clocks = <&mdpsys_config_clk CLK_MDP_MDP_RROT0_MML>;
 			clock-names = "rrot0";
 			mediatek,larb = <&smi_larb2 MTK_M4U_TO_PORT(SMMU_L2_P6_MDP_RROT0)>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L2_P6_MDP_RROT0)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 6))
+				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(49, 6))
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 			mmqos-supply = <&mmqos>;
-#endif
 		};
 
 		mml0_c3d0: mml0-c3d0@3e140000 {
@@ -4605,6 +4621,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e140000 0 0x1000>;
 			comp-ids = <MML0_C3D0>;
 			comp-names = "mml0_c3d0";
+			clocks = <&mdpsys_config_clk CLK_MDP_MDP_C3D0_MML>;
+			clock-names = "c3d0";
 		};
 
 		mml0_fg0: mml0-fg0@3e150000 {
@@ -4612,10 +4630,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e150000 0 0x1000>;
 			comp-ids = <MML0_FG0>;
 			comp-names = "mml0_fg0";
-
-#if 0
+			clocks = <&mdpsys_config_clk CLK_MDP_MDP_FG0_MML>;
+			clock-names = "fg0";
 			mediatek,larb = <&smi_larb2 MTK_M4U_TO_PORT(SMMU_L2_P7_MDP_FG0)>;
-#endif
 		};
 
 		mmlsys1_config: mmlsys1-config@3e400000 {
@@ -4627,18 +4644,18 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			comp-ids = <MML1_MMLSYS>,
 				<MML1_DLI2>, <MML1_DMA0_SEL>,
 				<MML1_DLI0_SEL>, <MML1_PQ_AAL0_SEL>,
-				<MML1_WROT0_SEL>, <MML1_DLOUT0_SEL>,
-				<MML1_DLO5>;
+				<MML1_C3D0_SEL>, <MML1_WROT0_SEL>,
+				<MML1_DLOUT0_SEL>, <MML1_DLO5>;
 			comp-types = <MML_CT_SYS>,
 				<MML_CT_DL_IN>, <MML_CT_PATH>,
 				<MML_CT_PATH>, <MML_CT_PATH>,
 				<MML_CT_PATH>, <MML_CT_PATH>,
-				<MML_CT_DL_OUT>;
+				<MML_CT_PATH>, <MML_CT_DL_OUT>;
 			comp-names = "mmlsys",
 				"dli2", "dma0_sel",
 				"dli0_sel", "pq_aal0_sel",
-				"wrot0_sel", "dlout0_sel",
-				"dlo5";
+				"c3d0_sel", "wrot0_sel",
+				"dlout0_sel", "dlo5";
 			/* as sys component */
 			mux-pins = /bits/ 16 <
 				3 MML1_DMA0_SEL MML1_DLI0_SEL MML_MUX_SLIN MML_DLI0_SEL_IN
@@ -4647,6 +4664,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				4 MML1_DLI0_SEL MML1_RSZ0     MML_MUX_MOUT MML_RDMA0_MOUT_EN
 				1 MML1_RSZ0     MML1_HDR0     MML_MUX_SLIN MML_HDR0_SEL_IN
 				2 MML1_FG0      MML1_HDR0     MML_MUX_SLIN MML_HDR0_SEL_IN
+				2 MML1_HDR0     MML1_C3D0_SEL MML_MUX_MOUT MML_HDR_MOUT_EN
 				4 MML1_HDR0     MML1_AAL0     MML_MUX_MOUT MML_HDR_MOUT_EN
 				0 MML1_RSZ0     MML1_WROT0_SEL MML_MUX_SLIN MML_WROT0_SEL_IN
 				1 MML1_DLI0_SEL MML1_WROT0_SEL MML_MUX_SLIN MML_WROT0_SEL_IN
@@ -4662,18 +4680,24 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				0 MML1_RROT0    MML1_DMA0_SEL MML_MUX_SOUT MML_MERGE_SOUT_SEL
 				1 MML1_RROT0    MML1_MERGE0   MML_MUX_SOUT MML_MERGE_SOUT_SEL
 				0 MML1_HDR0     MML1_AAL0     MML_MUX_SLIN MML_AAL0_SEL_IN
+				2 MML1_C3D0     MML1_AAL0     MML_MUX_SLIN MML_AAL0_SEL_IN
 				0 MML1_AAL0     MML1_PQ_AAL0_SEL MML_MUX_SLIN MML_PQ_AAL0_SEL_IN
-				0 MML1_AAL0     MML1_C3D0     MML_MUX_SOUT MML_AAL0_SOUT_SEL
+				1 MML1_C3D0     MML1_PQ_AAL0_SEL MML_MUX_SLIN MML_PQ_AAL0_SEL_IN
+				0 MML1_AAL0     MML1_C3D0_SEL MML_MUX_SOUT MML_AAL0_SOUT_SEL
 				1 MML1_AAL0     MML1_PQ_AAL0_SEL MML_MUX_SOUT MML_AAL0_SOUT_SEL
 				1 MML1_PQ_AAL0_SEL MML1_TDSHP0   MML_MUX_MOUT MML_AAL0_MOUT_EN
-				0 MML1_AAL0     MML1_C3D0     MML_MUX_SLIN MML_C3D0_SEL_IN
+				2 MML1_PQ_AAL0_SEL MML1_RSZ0     MML_MUX_MOUT MML_AAL0_MOUT_EN
+				0 MML1_AAL0     MML1_C3D0_SEL MML_MUX_SLIN MML_C3D0_SEL_IN
+				1 MML1_HDR0     MML1_C3D0_SEL MML_MUX_SLIN MML_C3D0_SEL_IN
+				0 MML1_C3D0     MML1_AAL0     MML_MUX_SOUT MML_C3D0_SOUT_SEL
+				1 MML1_C3D0     MML1_PQ_AAL0_SEL MML_MUX_SOUT MML_C3D0_SOUT_SEL
 				4 MML1_C3D0     MML1_RSZ0     MML_MUX_SOUT MML_C3D0_SOUT_SEL
 				0 MML1_PQ_AAL0_SEL MML1_TDSHP0   MML_MUX_SLIN MML_TDSHP0_SEL_IN
-				1 MML1_BIRSZ0   MML1_TDSHP0   MML_MUX_SLIN MML_TDSHP0_SEL_IN
 				1 MML1_RSZ0     MML1_TDSHP0   MML_MUX_SLIN MML_TDSHP0_SEL_IN
 				3 MML1_COLOR0   MML1_WROT0_SEL MML_MUX_MOUT MML_COLOR0_MOUT_EN
 				2 MML1_DLI0_SEL MML1_RSZ0     MML_MUX_SLIN MML_RSZ0_SEL_IN
 				3 MML1_C3D0     MML1_RSZ0     MML_MUX_SLIN MML_RSZ0_SEL_IN
+				4 MML1_PQ_AAL0_SEL MML1_RSZ0     MML_MUX_SLIN MML_RSZ0_SEL_IN
 				1 MML1_DMA0_SEL MML1_RSZ2     MML_MUX_SLIN MML_RSZ2_SEL_IN
 				0 MML1_RDMA0    MML1_DMA0_SEL MML_MUX_SLIN MML_DMA0_SEL_IN
 				1 MML1_RROT0    MML1_DMA0_SEL MML_MUX_SLIN MML_DMA0_SEL_IN
@@ -4696,6 +4720,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&gce 18 400 CMDQ_THR_PRIO_1>,
 				<&gce 19 500 CMDQ_THR_PRIO_1>;
 			gce-supply = <&gce>;
+
+			/* sys register offset */
+			ready-sel = /bits/ 16 <MML_IN_LINE_READY_SEL>;
 
 			/* as mmlsys component */
 			dbg-reg-names =
@@ -4793,26 +4820,22 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			dli2-dl-relay = /bits/ 16 <MML_DL_IN_RELAY2_SIZE>;
 			dlo5-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY5_SIZE>;
 
-#if 0
-			clocks = <&mdpsys1_config_clk CLK_MDP1_APB_BUS>,
-				<&mdpsys1_config_clk CLK_MDP1_MDP_DLI_ASYNC2>,
-				<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC5>,
-				<&mmdvfs_mux MMDVFS_USER_MML>,
-				<&mdpsys1_config_clk CLK_MDP1_F26M_SLOW>;
-			clock-names = "apb_bus", "dli2", "dlo5", "mmdvfs_clk", "mmlsys_26m_clk";
-			mmlsys-clock-names = "apb_bus";
+			mtk,smmu-shared = <&mm_smmu_disp>;
+			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+
+			clocks = <&mdpsys1_config_clk CLK_MDP1_APB_BUS_MML>,
+				<&mdpsys1_config_clk CLK_MDP1_APB_DB_MML>,
+				<&mdpsys1_config_clk CLK_MDP1_MDP_DLI_ASYNC2_MML>,
+				<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC5_MML>;
+			clock-names = "apb_bus", "apb_db", "dli2", "dlo5";
+			mmlsys-clock-names = "apb_bus", "apb_db";
 			dli2-clock-names = "dli2";
 			dlo5-clock-names = "dlo5";
-			power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>;
 			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P17_MDP_FAKE_ENG0)>;
-
 			/* dvfs */
-			mmqos-supply = <&mmqos>;
 			operating-points-v2 = <&opp_table_disp>;
-			/* dpc */
-			event-dpc-prete = /bits/ 16 <CMDQ_EVENT_DPC_DT34_DONE>;
-			dpc-base = <0x1c000000>;
-#endif
+			mmqos-supply = <&mmqos>;
 		};
 
 		mml1_mutex0: mml1-mutex0@3e420000 {
@@ -4847,11 +4870,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			/* !!Above code generate by topology parser (tpparser.py)!! */
 
 			mutex-ids = <MML1_RDMA0 0 MML1_RROT0 1>;
-
-#if 0
-			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_MUTEX0>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_MUTEX0_MML>;
 			clock-names = "mutex0";
-#endif
 		};
 
 		mml1_rdma0: mml1-rdma0@3e450000 {
@@ -4860,21 +4880,16 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			comp-ids = <MML1_RDMA0>;
 			comp-names = "mml1_rdma0";
 
-#if 0
-			mtk,smmu-shared = <&mm_smmu_disp>;
-			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
-
-			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_RDMA0>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_RDMA0_MML>;
 			clock-names = "rdma0";
-			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P0_MDP_RDMA0)>;
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P4_MDP_RDMA0)>;
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(SMMU_L3_P0_MDP_RDMA0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L3_P4_MDP_RDMA0)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 0))
+				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 4))
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 			mmqos-supply = <&mmqos>;
-#endif
 		};
 
 		mml1_rdma2: mml1-rdma2@3e470000 {
@@ -4883,11 +4898,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			comp-ids = <MML1_RDMA2>;
 			comp-names = "mml1_rdma2";
 
-#if 0
-			mtk,smmu-shared = <&mm_smmu_disp>;
-			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
-
-			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_RDMA2>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_RDMA2_MML>;
 			clock-names = "rdma2";
 			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P0_MDP_RDMA2)>;
 			interconnects =
@@ -4897,8 +4908,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 			mmqos-supply = <&mmqos>;
-#endif
-
 		};
 
 		mml1_birsz0: mml1-birsz0@3e480000 {
@@ -4906,6 +4915,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e480000 0 0x1000>;
 			comp-ids = <MML1_BIRSZ0>;
 			comp-names = "mml1_birsz0";
+
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_BIRSZ0_MML>;
+			clock-names = "birsz0";
 		};
 
 		mml1_hdr0: mml1-hdr0@3e490000 {
@@ -4913,6 +4925,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e490000 0 0x1000>;
 			comp-ids = <MML1_HDR0>;
 			comp-names = "mml1_hdr0";
+
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_HDR0_MML>;
+			clock-names = "hdr0";
 		};
 
 		mml1_aal0: mml1-aal0@3e4a0000 {
@@ -4920,6 +4935,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e4a0000 0 0x1000>;
 			comp-ids = <MML1_AAL0>;
 			comp-names = "mml1_aal0";
+
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_AAL0_MML>;
+			clock-names = "aal0";
 		};
 
 		mml1_rsz0: mml1-rsz0@3e4b0000 {
@@ -4927,6 +4945,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e4b0000 0 0x1000>;
 			comp-ids = <MML1_RSZ0>;
 			comp-names = "mml1_rsz0";
+
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_RSZ0_MML>;
+			clock-names = "rsz0";
 		};
 
 		mml1_rsz2: mml1-rsz2@3e4c0000 {
@@ -4934,6 +4955,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e4c0000 0 0x1000>;
 			comp-ids = <MML1_RSZ2>;
 			comp-names = "mml1_rsz2";
+
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_RSZ2_MML>;
+			clock-names = "rsz2";
 		};
 
 		mml1_tdshp0: mml1-tdshp0@3e4d0000 {
@@ -4941,6 +4965,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e4d0000 0 0x1000>;
 			comp-ids = <MML1_TDSHP0>;
 			comp-names = "mml1_tdshp0";
+
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_TDSHP0_MML>;
+			clock-names = "tdshp0";
 		};
 
 		mml1_color0: mml1-color0@3e4e0000 {
@@ -4948,6 +4975,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e4e0000 0 0x1000>;
 			comp-ids = <MML1_COLOR0>;
 			comp-names = "mml1_color0";
+
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_COLOR0_MML>;
+			clock-names = "color0";
 		};
 
 		mml1_wrot0: mml1-wrot0@3e4f0000 {
@@ -4959,21 +4989,17 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			event-bufa = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUFA>;
 			event-bufb = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUFB>;
 			event-buf-next = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUF_NEXT>;
-#if 0
-			mtk,smmu-shared = <&mm_smmu_disp>;
-			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
 
-			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_WROT0>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_WROT0_MML>;
 			clock-names = "wrot0";
-			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P1_MDP_WROT0)>;
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P5_MDP_WROT0)>;
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(SMMU_L3_P1_MDP_WROT0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L3_P5_MDP_WROT0)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 1))
+				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 5))
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 			mmqos-supply = <&mmqos>;
-#endif
 		};
 
 		mml1_wrot2: mml1-wrot2@3e510000 {
@@ -4982,19 +5008,16 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			comp-ids = <MML1_WROT2>;
 			comp-names = "mml1_wrot2";
 
-#if 0
-			mtk,smmu-shared = <&mm_smmu_disp>;
-			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
-
-			clocks = <&mdpsys1_config_clk SMMU_L3_P1_MDP_WROT2>;
-			clock-names = "wrot0";
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_WROT2_MML>;
+			clock-names = "wrot2";
 			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P1_MDP_WROT2)>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L3_P1_MDP_WROT2)
-				&mmqos SLAVE_COMMON(1)>,
-			interconnect-names = "mml_dma";
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 1))
+					&mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "mml_dma", "mml_dma_dpc";
 			mmqos-supply = <&mmqos>;
-#endif
 		};
 
 		mml1_rrot0: mml1-rrot0@3e520000 {
@@ -5004,21 +5027,16 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			comp-names = "mml1_rrot0";
 			pipe = /bits/ 8 <0>;
 
-#if 0
-			mtk,smmu-shared = <&mm_smmu_disp>;
-			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
-
-			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_RROT0>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_RROT0_MML>;
 			clock-names = "rrot0";
-			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P2_MDP_RROT0)>;
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P6_MDP_RROT0)>;
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(SMMU_L3_P2_MDP_RROT0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L3_P6_MDP_RROT0)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 2))
+				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 6))
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 			mmqos-supply = <&mmqos>;
-#endif
 		};
 
 		mml1_merge0: mml1-merge0@3e530000 {
@@ -5026,6 +5044,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e530000 0 0x1000>;
 			comp-ids = <MML1_MERGE0>;
 			comp-names = "mml1_merge0";
+
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_MERGE0_MML>;
+			clock-names = "merge0";
 		};
 
 		mml1_c3d0: mml1-c3d0@3e540000 {
@@ -5033,6 +5054,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e540000 0 0x1000>;
 			comp-ids = <MML1_C3D0>;
 			comp-names = "mml1_c3d0";
+
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_C3D0_MML>;
+			clock-names = "c3d0";
 		};
 
 		mml1_fg0: mml1-fg0@3e550000 {
@@ -5040,9 +5064,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3e550000 0 0x1000>;
 			comp-ids = <MML1_FG0>;
 			comp-names = "mml1_fg0";
-#if 0
+
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_FG0_MML>;
+			clock-names = "fg0";
 			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P7_MDP_FG0)>;
-#endif
 		};
 
 		consys: consys@40000000 {
