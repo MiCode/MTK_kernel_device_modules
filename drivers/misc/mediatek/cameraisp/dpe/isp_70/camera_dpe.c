@@ -1277,7 +1277,7 @@ static bool dpe_get_dma_buffer(struct tee_mmu *mmu, int fd)
 	if (IS_ERR(mmu->attach))
 		goto err_attach;
 
-	mmu->sgt = dma_buf_map_attachment(mmu->attach,
+	mmu->sgt = dma_buf_map_attachment_unlocked(mmu->attach,
 	DMA_BIDIRECTIONAL);
 
 	//  LOG_INF("mmu->sgt = %x\n", mmu->sgt);
@@ -2122,7 +2122,7 @@ void mmu_release(struct tee_mmu *mmu, int fd_cnt)
 	//LOG_INF("mmu_release fd_cnt = %d\n", fd_cnt);
 	if (mmu->dma_buf) {
 		//LOG_INF("put mmu->dma_buf = %x\n", mmu->dma_buf);
-		dma_buf_unmap_attachment(mmu->attach, mmu->sgt, DMA_BIDIRECTIONAL);
+		dma_buf_unmap_attachment_unlocked(mmu->attach, mmu->sgt, DMA_BIDIRECTIONAL);
 		dma_buf_detach(mmu->dma_buf, mmu->attach);
 		dma_buf_put(mmu->dma_buf);
 		//LOG_INF("put end\n");

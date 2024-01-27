@@ -848,7 +848,7 @@ static int mfb_get_dma_buf(struct gki_buf *gbf, int fd)
 	if (IS_ERR(gbf->attach))
 		goto err_attach;
 
-	gbf->sgt = dma_buf_map_attachment(gbf->attach, DMA_BIDIRECTIONAL);
+	gbf->sgt = dma_buf_map_attachment_unlocked(gbf->attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR(gbf->sgt))
 		goto err_map;
 	LOG_DBG("QQ get_dma: dma_buf=%p, attach=%p, sgt=%p", gbf->dma_buf, gbf->attach, gbf->sgt);
@@ -865,7 +865,7 @@ err_attach:
 static void mfb_put_dma_buf(struct gki_buf *gbf)
 {
 	LOG_DBG("QX put_dma: dma_buf=%p, attach=%p, sgt=%p", gbf->dma_buf, gbf->attach, gbf->sgt);
-	dma_buf_unmap_attachment(gbf->attach, gbf->sgt, DMA_BIDIRECTIONAL);
+	dma_buf_unmap_attachment_unlocked(gbf->attach, gbf->sgt, DMA_BIDIRECTIONAL);
 	dma_buf_detach(gbf->dma_buf, gbf->attach);
 	dma_buf_put(gbf->dma_buf);
 }

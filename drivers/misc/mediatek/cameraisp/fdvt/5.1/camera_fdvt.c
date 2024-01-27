@@ -1048,7 +1048,7 @@ unsigned long long fdvt_get_sec_iova(struct dma_buf *my_dma_buf,
 		return 0;
 	}
 	bufinfo->attach = attach;
-	sgt = dma_buf_map_attachment(attach, DMA_BIDIRECTIONAL);
+	sgt = dma_buf_map_attachment_unlocked(attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR(sgt)) {
 		log_err("map failed, detach and return\n");
 		dma_buf_detach(my_dma_buf, attach);
@@ -1065,7 +1065,7 @@ void *aie_get_va(struct dma_buf *my_dma_buf, struct imem_buf_info *bufinfo)
 	void *buf_ptr = NULL;
 	int ret = 0;
 
-	ret = dma_buf_vmap(my_dma_buf, &bufinfo->map);
+	ret = dma_buf_vmap_unlocked(my_dma_buf, &bufinfo->map);
 	if (ret) {
 		log_err("%s, map kernel va failed\n", __func__);
 		return NULL;
@@ -1109,7 +1109,7 @@ static void fdvt_free_iova(struct imem_buf_info *bufinfo)
 {
 	if (bufinfo->iova) {
 		/*free iova*/
-		dma_buf_unmap_attachment(bufinfo->attach, bufinfo->sgt, DMA_BIDIRECTIONAL);
+		dma_buf_unmap_attachment_unlocked(bufinfo->attach, bufinfo->sgt, DMA_BIDIRECTIONAL);
 		dma_buf_detach(bufinfo->dmabuf, bufinfo->attach);
 		bufinfo->iova = 0;
 	}
@@ -1118,7 +1118,7 @@ static void fdvt_free_iova(struct imem_buf_info *bufinfo)
 static void aie_free_va(struct imem_buf_info *bufinfo)
 {
 	if (bufinfo->va) {
-		dma_buf_vunmap(bufinfo->dmabuf, &bufinfo->map);
+		dma_buf_vunmap_unlocked(bufinfo->dmabuf, &bufinfo->map);
 		bufinfo->va = NULL;
 	}
 }
