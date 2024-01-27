@@ -1965,7 +1965,9 @@ static int gpufreq_validate_target(unsigned int *target)
  ***********************************************************************************/
 static void gpufreq_dump_infra_status_no_lock(char *log_buf, int *log_len, int log_size)
 {
+#if defined(MTK_GPU_EB_SUPPORT)
 	gpueb_dump_status(log_buf, log_len, log_size);
+#endif
 	gpufreq_dump_dvfs_status(log_buf, log_len, log_size);
 	gpufreq_dump_power_tracker_status();
 
