@@ -284,7 +284,7 @@ int teei_vfs_init(void)
 	if (result < 0)
 		return result;
 
-	driver_class = class_create(THIS_MODULE, "tz_vfs");
+	driver_class = class_create("tz_vfs");
 
 	if (IS_ERR(driver_class)) {
 		result = -ENOMEM;

@@ -4149,7 +4149,7 @@ static signed int FDVT_probe(struct platform_device *pDev)
 #endif
 
 		/* Create class register */
-		pFDVTClass = class_create(THIS_MODULE, "FDVTdrv");
+		pFDVTClass = class_create("FDVTdrv");
 		if (IS_ERR(pFDVTClass)) {
 			Ret = PTR_ERR(pFDVTClass);
 			log_err("Unable to create class, err = %d", Ret);

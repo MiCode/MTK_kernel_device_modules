@@ -497,7 +497,7 @@ static inline MINT32 seninf_reg_char_dev(struct SENINF *pseninf)
 	}
 
 	/* Create class register */
-	pseninf->pclass = class_create(THIS_MODULE, SENINF_DEV_NAME);
+	pseninf->pclass = class_create(SENINF_DEV_NAME);
 	if (IS_ERR(pseninf->pclass)) {
 		ret = PTR_ERR(pseninf->pclass);
 		PK_PR_ERR("Unable to create class, err = %d\n", ret);

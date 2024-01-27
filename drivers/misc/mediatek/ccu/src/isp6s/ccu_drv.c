@@ -1605,7 +1605,7 @@ if ((strcmp("ccu", g_ccu_device->dev->of_node->name) == 0)) {
 		}
 
 		/* Create class register */
-		ccu_class = class_create(THIS_MODULE, "ccudrv");
+		ccu_class = class_create("ccudrv");
 		if (IS_ERR(ccu_class)) {
 			ret = PTR_ERR(ccu_class);
 			LOG_ERR("Unable to create class, err = %d\n", ret);

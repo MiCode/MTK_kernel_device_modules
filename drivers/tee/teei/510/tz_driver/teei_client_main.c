@@ -1029,7 +1029,7 @@ static int teei_config_init(void)
 		return retVal;
 	}
 
-	config_driver_class = class_create(THIS_MODULE, TEEI_CONFIG_DEV);
+	config_driver_class = class_create(TEEI_CONFIG_DEV);
 	if (IS_ERR(config_driver_class)) {
 		retVal = -ENOMEM;
 		IMSG_ERROR("class_create failed %x\n", retVal);
@@ -1248,7 +1248,7 @@ static int teei_client_init(void)
 		goto del_pdev;
 	}
 
-	driver_class = class_create(THIS_MODULE, TEEI_CLIENT_DEV);
+	driver_class = class_create(TEEI_CLIENT_DEV);
 	if (IS_ERR(driver_class)) {
 		ret_code = -ENOMEM;
 		IMSG_ERROR("class_create failed %x\n", ret_code);

@@ -309,7 +309,7 @@ static int conn_dbg_dev_init(void)
 		goto err1;
 	}
 
-	pConnDbgClass = class_create(THIS_MODULE, CONN_DBG_DEVICE_NAME);
+	pConnDbgClass = class_create(CONN_DBG_DEVICE_NAME);
 	if (IS_ERR(pConnDbgClass)) {
 		pr_info("class create fail, error code(%ld)\n", PTR_ERR(pConnDbgClass));
 		goto err2;

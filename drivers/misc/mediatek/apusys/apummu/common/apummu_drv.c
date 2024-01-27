@@ -240,7 +240,7 @@ static int apummu_create_node(struct platform_device *pdev)
 	}
 
 	/* Create class register */
-	apummu_class = class_create(THIS_MODULE, APUSYS_DRV_NAME);
+	apummu_class = class_create(APUSYS_DRV_NAME);
 	if (IS_ERR(apummu_class)) {
 		ret = PTR_ERR(apummu_class);
 		AMMU_LOG_ERR("Unable to create class, err = %d\n", ret);

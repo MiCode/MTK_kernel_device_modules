@@ -2789,8 +2789,7 @@ static int mtk_vcu_probe(struct platform_device *pdev)
 		goto err_add;
 	}
 
-	vcu_mtkdev[vcuid]->vcu_class = class_create(THIS_MODULE,
-						    vcu_mtkdev[vcuid]->vcuname);
+	vcu_mtkdev[vcuid]->vcu_class = class_create(vcu_mtkdev[vcuid]->vcuname);
 	if (IS_ERR_OR_NULL(vcu_mtkdev[vcuid]->vcu_class) == true) {
 		ret = (int)PTR_ERR(vcu_mtkdev[vcuid]->vcu_class);
 		dev_info(dev, "[VCU] class create fail (ret=%d)", ret);

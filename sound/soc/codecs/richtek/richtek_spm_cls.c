@@ -583,7 +583,7 @@ static int __init richtek_spm_init(void)
 {
 	int i = 0, ret = 0;
 
-	richtek_spm_class = class_create(THIS_MODULE, "richtek_spm");
+	richtek_spm_class = class_create("richtek_spm");
 	if (IS_ERR(richtek_spm_class))
 		return PTR_ERR(richtek_spm_class);
 	richtek_spm_class->pm = &richtek_spm_class_pm_ops;

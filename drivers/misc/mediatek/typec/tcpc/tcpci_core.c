@@ -809,7 +809,7 @@ static int __init tcpc_class_init(void)
 
 	pr_info("%s (%s)\n", __func__, TCPC_CORE_VERSION);
 
-	tcpc_class = class_create(THIS_MODULE, "tcpc");
+	tcpc_class = class_create("tcpc");
 	if (IS_ERR(tcpc_class)) {
 		pr_info("Unable to create tcpc class; errno = %ld\n",
 		       PTR_ERR(tcpc_class));

@@ -559,7 +559,7 @@ int ccci_util_broadcast_init(void)
 	spin_lock_init(&s_event_update_lock);
 	spin_lock_init(&s_md1_user_lock_cnt_lock);
 	spin_lock_init(&s_md3_user_lock_cnt_lock);
-	s_ccci_bd_class = class_create(THIS_MODULE, "ccci_md_sta");
+	s_ccci_bd_class = class_create("ccci_md_sta");
 	s_md1_user_request_lock_cnt = 0;
 	s_md3_user_request_lock_cnt = 0;
 

@@ -521,7 +521,7 @@ static inline int Register_AF_CharDrv(void)
 		return -EAGAIN;
 	}
 
-	actuator_class = class_create(THIS_MODULE, AF_DRIVER_CLASS_NAME);
+	actuator_class = class_create(AF_DRIVER_CLASS_NAME);
 	if (IS_ERR(actuator_class)) {
 		int ret = PTR_ERR(actuator_class);
 

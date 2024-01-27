@@ -6178,7 +6178,7 @@ static int ISP_probe(struct platform_device *pDev)
 		}
 
 		/* Create class register */
-		pIspClass = class_create(THIS_MODULE, "ispdrv");
+		pIspClass = class_create("ispdrv");
 		if (IS_ERR(pIspClass)) {
 			Ret = PTR_ERR(pIspClass);
 			LOG_NOTICE("Unable to create class, err = %d\n", Ret);

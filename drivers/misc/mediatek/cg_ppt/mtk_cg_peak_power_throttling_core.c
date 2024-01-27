@@ -627,7 +627,7 @@ static const struct attribute_group sysfs_group = {
 
 static int sysfs_device_init(void)
 {
-	sysfs_class = class_create(THIS_MODULE, DRIVER_NAME);
+	sysfs_class = class_create(DRIVER_NAME);
 	if (IS_ERR(sysfs_class)) {
 		pr_info("[CG PPT] Failed to create device class\n");
 		return PTR_ERR(sysfs_class);

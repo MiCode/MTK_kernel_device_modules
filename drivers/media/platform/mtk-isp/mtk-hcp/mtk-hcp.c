@@ -1876,7 +1876,7 @@ static int mtk_hcp_probe(struct platform_device *pdev)
 		goto err_add;
 	}
 
-	hcp_dev->hcp_class = class_create(THIS_MODULE, "mtk_hcp_driver");
+	hcp_dev->hcp_class = class_create("mtk_hcp_driver");
 	if (IS_ERR(hcp_dev->hcp_class) == true) {
 		ret = (int)PTR_ERR(hcp_dev->hcp_class);
 		dev_info(&pdev->dev, "class create fail  err= %d", ret);

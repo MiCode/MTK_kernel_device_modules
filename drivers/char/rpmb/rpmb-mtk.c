@@ -3059,7 +3059,7 @@ static int __init rpmb_init(void)
 	}
 
 #ifdef __RPMB_IOCTL_SUPPORT
-	mtk_rpmb_class = class_create(THIS_MODULE, RPMB_NAME);
+	mtk_rpmb_class = class_create(RPMB_NAME);
 
 	if (IS_ERR(mtk_rpmb_class)) {
 		MSG(ERR, "%s, init class_create failed!\n", __func__);

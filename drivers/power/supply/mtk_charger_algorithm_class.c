@@ -310,7 +310,7 @@ static void __exit charger_algorithm_class_exit(void)
 static int __init charger_algorithm_class_init(void)
 {
 	charger_algorithm_class =
-		class_create(THIS_MODULE, "Charger Algorithm");
+		class_create("Charger Algorithm");
 	if (IS_ERR(charger_algorithm_class)) {
 		pr_notice("Unable to create charger algorithm class; errno = %ld\n",
 			PTR_ERR(charger_algorithm_class));

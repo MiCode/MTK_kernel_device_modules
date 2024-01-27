@@ -1274,7 +1274,7 @@ static int dw9781d_probe(struct i2c_client *client)
 	g_dw9781d = dw9781d;
 
 	/* create class */
-	ois_class = class_create(THIS_MODULE, DW9781D_NAME);
+	ois_class = class_create(DW9781D_NAME);
 	if (IS_ERR(ois_class)) {
 		pr_info("Failed to create class (%d)\n",
 				(int)PTR_ERR(ois_class));

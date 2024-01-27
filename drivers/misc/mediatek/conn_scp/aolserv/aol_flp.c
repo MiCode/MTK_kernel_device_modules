@@ -622,7 +622,7 @@ int aol_flp_init(void)
 		goto err_out;
 	}
 
-	g_aol_flp_devobj->cls = class_create(THIS_MODULE, "aol_flp");
+	g_aol_flp_devobj->cls = class_create("aol_flp");
 	if (IS_ERR(g_aol_flp_devobj->cls)) {
 		pr_info("Unable to create class, err = %d\n", (int)PTR_ERR(g_aol_flp_devobj->cls));
 		goto err_out;

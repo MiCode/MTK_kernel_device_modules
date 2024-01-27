@@ -271,7 +271,7 @@ int conap_scp_test_init(void)
 		goto err1;
 	}
 
-	p_conap_class = class_create(THIS_MODULE, CONAP_DEVICE_NAME);
+	p_conap_class = class_create(CONAP_DEVICE_NAME);
 	if (IS_ERR(p_conap_class)) {
 		pr_info("class create fail, error code(%ld)\n",
 						PTR_ERR(p_conap_class));

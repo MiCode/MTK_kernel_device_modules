@@ -1430,7 +1430,7 @@ int teei_tee_init(void)
 {
 	int rc;
 
-	tee_class = class_create(THIS_MODULE, "isee_tee");
+	tee_class = class_create("isee_tee");
 	if (IS_ERR(tee_class)) {
 		IMSG_ERROR("couldn't create class\n");
 		return PTR_ERR(tee_class);

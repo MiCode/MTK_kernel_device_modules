@@ -4276,7 +4276,7 @@ static signed int MFB_probe(struct platform_device *pDev)
 		MFB_dev->larb = &pdev->dev;
 
 		/* Create class register */
-		pMFBClass = class_create(THIS_MODULE, "MFBdrv");
+		pMFBClass = class_create("MFBdrv");
 		if (IS_ERR(pMFBClass)) {
 			Ret = PTR_ERR(pMFBClass);
 			LOG_ERR("Unable to create class, err = %d", Ret);

@@ -311,7 +311,7 @@ static const struct attribute_group *extdev_io_attr_groups[] = {
 static int __init extdev_io_class_init(void)
 {
 	pr_info("%s\n", __func__);
-	extdev_io_class = class_create(THIS_MODULE, "extdev_io");
+	extdev_io_class = class_create("extdev_io");
 	if (IS_ERR(extdev_io_class)) {
 		pr_err("Unable to create extdev_io class(%ld)\n", PTR_ERR(extdev_io_class));
 		return PTR_ERR(extdev_io_class);

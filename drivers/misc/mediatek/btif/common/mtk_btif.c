@@ -520,7 +520,7 @@ static int btif_chrdev_init(void)
 	}
 	BTIF_INFO_FUNC("add btif dev to kernel succeed\n");
 
-	p_btif_class = class_create(THIS_MODULE, p_btif_dev_name);
+	p_btif_class = class_create(p_btif_dev_name);
 	if (IS_ERR(p_btif_class)) {
 		BTIF_ERR_FUNC("error happened when doing class_create\n");
 		unregister_chrdev_region(btif_dev, 1);

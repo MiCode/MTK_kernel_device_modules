@@ -7172,7 +7172,7 @@ static signed int DIP_probe(struct platform_device *pDev)
 		}
 
 		/* Create class register */
-		pIspClass = class_create(THIS_MODULE, "dipdrv");
+		pIspClass = class_create("dipdrv");
 		if (IS_ERR(pIspClass)) {
 			Ret = PTR_ERR(pIspClass);
 			LOG_ERR("Unable to create class, err = %d\n", Ret);

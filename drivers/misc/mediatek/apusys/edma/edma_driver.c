@@ -334,7 +334,7 @@ static int edma_probe(struct platform_device *pdev)
 	if (edma_reg_chardev(edma_device) == 0) {
 		/* Create class register */
 
-		edma_class = class_create(THIS_MODULE, EDMA_DEV_NAME);
+		edma_class = class_create(EDMA_DEV_NAME);
 		if (IS_ERR(edma_class)) {
 			ret = PTR_ERR(edma_class);
 			dev_notice(dev, "Unable to create class, err = %d\n",

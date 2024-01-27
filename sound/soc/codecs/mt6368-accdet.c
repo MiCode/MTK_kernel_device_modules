@@ -3183,7 +3183,7 @@ static int accdet_probe(struct platform_device *pdev)
 	/* create class in sysfs, "sys/class/", so udev in userspace can create
 	 * device node, when device_create is called
 	 */
-	accdet->accdet_class = class_create(THIS_MODULE, ACCDET_DEVNAME);
+	accdet->accdet_class = class_create(ACCDET_DEVNAME);
 	if (!accdet->accdet_class) {
 		dev_dbg(&pdev->dev,
 			"Error: Create class failed (%d)\n", ret);

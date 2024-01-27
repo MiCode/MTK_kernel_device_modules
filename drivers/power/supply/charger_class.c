@@ -960,7 +960,7 @@ static void __exit charger_class_exit(void)
 
 static int __init charger_class_init(void)
 {
-	charger_class = class_create(THIS_MODULE, "switching_charger");
+	charger_class = class_create("switching_charger");
 	if (IS_ERR(charger_class)) {
 		pr_notice("Unable to create charger class; errno = %ld\n",
 			PTR_ERR(charger_class));

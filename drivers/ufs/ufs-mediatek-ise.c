@@ -352,7 +352,7 @@ int ufs_mtk_ise_rpmb_probe(struct ufs_hba *hba)
 		goto unregister;
 	}
 
-	ise_rpmb_class = class_create(THIS_MODULE, ISE_RPMB_NAME);
+	ise_rpmb_class = class_create(ISE_RPMB_NAME);
 
 	if (IS_ERR(ise_rpmb_class)) {
 		pr_err( "%s, init class_create failed!", __func__);

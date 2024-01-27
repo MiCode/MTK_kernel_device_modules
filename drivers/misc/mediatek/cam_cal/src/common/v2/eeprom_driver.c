@@ -352,7 +352,7 @@ static inline int eeprom_driver_register(struct i2c_client *client,
 	}
 
 	memcpy(pinst->class_name, class_drv_name, DEV_NAME_STR_LEN_MAX);
-	pinst->pclass = class_create(THIS_MODULE, pinst->class_name);
+	pinst->pclass = class_create(pinst->class_name);
 	if (IS_ERR(pinst->pclass)) {
 		ret = PTR_ERR(pinst->pclass);
 

@@ -233,7 +233,7 @@ static int __init tlc_tui_init(void)
 		return err;
 	}
 
-	tui_class = class_create(THIS_MODULE, "tui_cls");
+	tui_class = class_create("tui_cls");
 
 	dev_tlc_tui = device_create(tui_class, NULL, devno, NULL, TUI_DEV_NAME);
 

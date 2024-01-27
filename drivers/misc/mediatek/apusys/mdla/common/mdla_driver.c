@@ -192,7 +192,7 @@ int mdla_drv_create_device_node(struct device *dev)
 		goto out;
 
 	/* 2. Create a class structure. It's used in calls to device_create() */
-	mdlactl_class = class_create(THIS_MODULE, MDLA_CLASS_NAME);
+	mdlactl_class = class_create(MDLA_CLASS_NAME);
 	if (IS_ERR(mdlactl_class)) {
 		dev_info(dev, "Failed to register device class\n");
 		ret = PTR_ERR(mdlactl_class);

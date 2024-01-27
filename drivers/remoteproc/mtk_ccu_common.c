@@ -222,7 +222,7 @@ int mtk_ccu_reg_chardev(struct mtk_ccu *ccu)
 		goto ERR;
 	}
 
-	ccu->ccu_class = class_create(THIS_MODULE, "ccurprocdrv");
+	ccu->ccu_class = class_create("ccurprocdrv");
 	if (IS_ERR(ccu->ccu_class)) {
 		ret = PTR_ERR(ccu->ccu_class);
 		dev_err(dev, "Unable to create class, err = %d\n", ret);

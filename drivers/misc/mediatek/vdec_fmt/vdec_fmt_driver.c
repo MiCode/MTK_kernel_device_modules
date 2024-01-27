@@ -1094,8 +1094,7 @@ static int vdec_fmt_probe(struct platform_device *pdev)
 		goto err_add;
 	}
 
-	fmt->fmt_class = class_create(THIS_MODULE,
-							fmt->fmtname);
+	fmt->fmt_class = class_create(fmt->fmtname);
 	if (IS_ERR_OR_NULL(fmt->fmt_class) == true) {
 		ret = (int)PTR_ERR(fmt->fmt_class);
 		fmt_err("class create fail (ret=%d)", ret);
