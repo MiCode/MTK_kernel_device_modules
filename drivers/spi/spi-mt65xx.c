@@ -141,8 +141,6 @@ struct mtk_spi_compatible {
 	/* some IC registers is new version */
 	bool ipm_design;
 	bool support_quad;
-	/* some IC no need unprepare SPI clk */
-	bool no_need_unprepare;
 	/* some IC need change cs by SW */
 	bool sw_cs;
 	/* some IC enhance patcket length to 4GB*/
@@ -155,6 +153,7 @@ struct mtk_spi {
 	int pad_num;
 	u32 *pad_sel;
 	struct clk *parent_clk, *sel_clk, *spi_clk;
+	bool no_need_unprepare;
 	struct spi_transfer *cur_transfer;
 	u32 xfer_len;
 	u32 num_xfered;
@@ -189,7 +188,6 @@ static const struct mtk_spi_compatible mt6989_compat = {
 	.dma_ext = true,
 	.ipm_design = true,
 	.support_quad = true,
-	.no_need_unprepare = false,
 	.sw_cs = true,
 	.enhance_packet_len = true,
 };
@@ -202,7 +200,6 @@ static const struct mtk_spi_compatible mt6985_compat = {
 	.dma_ext = true,
 	.ipm_design = true,
 	.support_quad = true,
-	.no_need_unprepare = false,
 	.sw_cs = true,
 };
 
@@ -214,7 +211,6 @@ static const struct mtk_spi_compatible mt6983_compat = {
 	.dma_ext = true,
 	.ipm_design = true,
 	.support_quad = true,
-	.no_need_unprepare = false,
 };
 
 static const struct mtk_spi_compatible mt6765_compat = {
@@ -223,7 +219,6 @@ static const struct mtk_spi_compatible mt6765_compat = {
 	.must_tx = true,
 	.enhance_timing = true,
 	.dma_ext = true,
-	.no_need_unprepare = true,
 };
 
 static const struct mtk_spi_compatible mt7622_compat = {
@@ -249,7 +244,6 @@ static const struct mtk_spi_compatible mt6893_compat = {
 	.must_tx = true,
 	.enhance_timing = true,
 	.dma_ext = true,
-	.no_need_unprepare = true,
 };
 
 /*
@@ -1471,6 +1465,7 @@ static int mtk_spi_probe(struct platform_device *pdev)
 	struct mtk_spi *mdata;
 	const struct of_device_id *of_id;
 	int i, irq, ret, addr_bits;
+	const char *clk_type = NULL;
 
 	master = spi_alloc_master(&pdev->dev, sizeof(*mdata));
 	if (!master) {
@@ -1501,6 +1496,7 @@ static int mtk_spi_probe(struct platform_device *pdev)
 	}
 
 	mdata->dev_comp = of_id->data;
+	mdata->dev = &pdev->dev;
 
 	if (mdata->dev_comp->enhance_timing)
 		master->mode_bits |= SPI_CS_HIGH;
@@ -1510,7 +1506,6 @@ static int mtk_spi_probe(struct platform_device *pdev)
 		master->flags |= SPI_CONTROLLER_MUST_TX;
 
 	if (mdata->dev_comp->ipm_design) {
-		mdata->dev = &pdev->dev;
 		master->mem_ops = &mtk_spi_mem_ops;
 		init_completion(&mdata->spimem_done);
 		master->mode_bits |= SPI_LOOP;
@@ -1610,6 +1605,15 @@ static int mtk_spi_probe(struct platform_device *pdev)
 
 	mdata->spi_clk_hz = clk_get_rate(mdata->spi_clk);
 
+	ret = of_property_read_string_index(pdev->dev.of_node, "clock-source-type",
+				0, &clk_type);
+	if ((!ret) && (!strncmp(clk_type, "mainpll", strlen("mainpll"))))
+		mdata->no_need_unprepare = true;
+	else {
+		mdata->no_need_unprepare = false;
+		dev_info(&pdev->dev, "SPI probe, 'mainpll' not exist, set univpll as default!\n");
+	}
+
 	if (mdata->dev_comp->need_pad_sel) {
 		if (mdata->pad_num != master->num_chipselect) {
 			dev_err(&pdev->dev,
@@ -1651,7 +1655,7 @@ static int mtk_spi_probe(struct platform_device *pdev)
 	pm_runtime_use_autosuspend(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 
-	if (mdata->dev_comp->no_need_unprepare) {
+	if (mdata->no_need_unprepare) {
 		ret = clk_prepare(mdata->spi_clk);
 		if (ret < 0) {
 			dev_err(&pdev->dev, "failed to prepare spi_clk (%d)\n", ret);
@@ -1690,7 +1694,7 @@ static int mtk_spi_runtime_suspend(struct device *dev)
 	struct spi_master *master = dev_get_drvdata(dev);
 	struct mtk_spi *mdata = spi_controller_get_devdata(master);
 
-	if (mdata->dev_comp->no_need_unprepare)
+	if (mdata->no_need_unprepare)
 		clk_disable(mdata->spi_clk);
 	else
 		clk_disable_unprepare(mdata->spi_clk);
@@ -1710,7 +1714,7 @@ static int mtk_spi_runtime_resume(struct device *dev)
 		dev_info(dev, "set auto_suspend delay = %dmS!\n", mdata->auto_suspend_delay);
 	}
 
-	if (mdata->dev_comp->no_need_unprepare)
+	if (mdata->no_need_unprepare)
 		ret = clk_enable(mdata->spi_clk);
 	else
 		ret = clk_prepare_enable(mdata->spi_clk);
