@@ -3007,11 +3007,6 @@ static int __init scp_init(void)
 	int ret = 0;
 	int i = 0;
 	scp_ipi_resume_dbg = false;
-#if SCP_BOOT_TIME_OUT_MONITOR
-	scp_ready_timer[SCP_A_ID].tid = SCP_A_TIMER;
-	timer_setup(&(scp_ready_timer[SCP_A_ID].tl), scp_wait_ready_timeout, 0);
-	scp_timeout_times = 0;
-#endif
 	/* scp platform initialise */
 	pr_debug("[SCP2] %s begins\n", __func__);
 
@@ -3049,6 +3044,12 @@ static int __init scp_init(void)
 		pr_notice("[SCP] scp disabled!!\n");
 		goto err;
 	}
+
+#if SCP_BOOT_TIME_OUT_MONITOR
+	scp_ready_timer[SCP_A_ID].tid = SCP_A_TIMER;
+	timer_setup(&(scp_ready_timer[SCP_A_ID].tl), scp_wait_ready_timeout, 0);
+	scp_timeout_times = 0;
+#endif
 	sap_init();
 	/* scp platform initialise */
 	scp_region_info_init();
@@ -3149,7 +3150,7 @@ err_without_unregister:
 		scp_pll_ctrl_set(PLL_DISABLE, CLK_26M);
 	}
 		scp_dvfs_exit();
-	return -1;
+	return 0;
 }
 
 /*
