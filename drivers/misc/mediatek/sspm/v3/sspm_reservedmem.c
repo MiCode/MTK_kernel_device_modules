@@ -36,7 +36,7 @@
 
 
 #define SSPM_MEM_RESERVED_KEY "mediatek,reserve-memory-sspm_share"
-
+#define SSPM_MEM_TBL_UNIT 2
 
 static phys_addr_t sspm_mem_base_phys;
 static phys_addr_t sspm_mem_base_virt;
@@ -113,6 +113,8 @@ int sspm_reserve_memory_init(void)
 {
 	unsigned int id;
 	phys_addr_t accumlate_memory_size;
+	int ret;
+	unsigned int sspm_mem_num, m_idx, m_size;
 
 	if (NUMS_MEM_ID == 0)
 		return 0;
@@ -121,6 +123,48 @@ int sspm_reserve_memory_init(void)
 
 	if (!sspm_mem_base_phys)
 		return -1;
+
+	/* Get reserved memory table from dts */
+	ret = of_property_count_u32_elems(sspm_pdev->dev.of_node,
+					"sspm-mem-tbl");
+
+	if (ret <= 0 ) {
+		pr_info("[SSPM] sspm-mem-tbl is not defined, skip read\n");
+		ret = 0;
+		/* ret = 0, skip read reserved mem tbl from dts */
+	}
+	sspm_mem_num = ret / SSPM_MEM_TBL_UNIT;
+
+	for (id = 0; id < sspm_mem_num; id ++) {
+		ret = of_property_read_u32_index(sspm_pdev->dev.of_node,
+				"sspm-mem-tbl",
+				id * SSPM_MEM_TBL_UNIT,
+				&m_idx);
+		if (ret) {
+			pr_err("[SSPM] cannot get memory index(%d)\n", id);
+			return -1;
+		}
+
+		if (m_idx >= NUMS_MEM_ID) {
+			pr_err("[SSPM] unexpected index: %d\n", m_idx);
+			return -1;
+		}
+
+		ret = of_property_read_u32_index(sspm_pdev->dev.of_node,
+				"sspm-mem-tbl",
+				(id * SSPM_MEM_TBL_UNIT) + 1,
+				&m_size);
+		if (ret) {
+			pr_err("[SSPM] cannot get memory size index(%d)\n", id);
+			return -1;
+		}
+
+		sspm_reserve_mblock[m_idx].num = m_idx;
+		sspm_reserve_mblock[m_idx].size = m_size;
+#ifdef DEBUG
+		pr_info("[SSPM] reserved: <%d  0x%x>\n", m_idx, m_size);
+#endif
+	}
 
     /* Phy memory */
 	accumlate_memory_size = 0;
