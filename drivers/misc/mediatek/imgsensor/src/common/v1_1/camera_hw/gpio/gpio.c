@@ -3,6 +3,7 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
+#include <linux/pinctrl/consumer.h>
 #include "gpio.h"
 #include "platform_common.h"
 
