@@ -610,8 +610,12 @@ static void scp_vcore_request(unsigned int clk_opp)
 	/* SCP vcore request to SPM */
 	if (g_dvfs_dev.secure_access_scp)
 		scp_set_scp2spm_vol(g_dvfs_dev.opp[idx].spm_opp);
-	else
+	else {
+		/* LEGACY - For projects that do not support SMC SCP2SPM_VOL_SET
+		 * New projects should use the scp_set_scp2spm_vol() instead.
+		 */
 		writel(g_dvfs_dev.opp[idx].spm_opp, SCP_SCP2SPM_VOL_LV);
+	}
 }
 
 void scp_init_vcore_request(void)
@@ -1943,6 +1947,15 @@ static int __init ulposc_cali_process(unsigned int cali_idx,
 	return 0;
 }
 
+static int smc_ulposc2_cali_done(void)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(MTK_SIP_SCP_DVFS_CONTROL, ULPOSC2_CALI_DONE,
+		0, 0, 0, 0, 0, 0, &res);
+	return res.a0;
+}
+
 static int smc_turn_on_ulposc2(void)
 {
 	struct arm_smccc_res res;
@@ -1966,9 +1979,11 @@ static void turn_onoff_ulposc2(enum ulposc_onoff_enum on)
 	if (on) {
 		/* turn on ulposc */
 		if (g_dvfs_dev.secure_access_scp) {
-			// In case we can't directly access g_dvfs_dev.clk_hw->scp_clk_regmap
 			smc_turn_on_ulposc2();
 		} else {
+			/* LEGACY - For projects that do not support SMC ULPOSC2_TURN_ON.
+			 * New projects should use the smc_turn_on_ulposc2() instead.
+			 */
 			scp_reg_update(g_dvfs_dev.clk_hw->scp_clk_regmap,
 				&g_dvfs_dev.clk_hw->_clk_high_en, on);
 			scp_reg_update(g_dvfs_dev.clk_hw->scp_clk_regmap,
@@ -1983,9 +1998,11 @@ static void turn_onoff_ulposc2(enum ulposc_onoff_enum on)
 	} else {
 		/* turn off ulposc */
 		if (g_dvfs_dev.secure_access_scp) {
-			// In case we can't directly access g_dvfs_dev.clk_hw->scp_clk_regmap
 			smc_turn_off_ulposc2();
 		} else {
+			/* LEGACY - For projects that do not support SMC ULPOSC2_TURN_OFF.
+			 * New projects should use the smc_turn_off_ulposc2() instead.
+			 */
 			scp_reg_update(g_dvfs_dev.clk_hw->scp_clk_regmap,
 				&g_dvfs_dev.clk_hw->_ulposc2_cg, on);
 			udelay(50);
@@ -2039,7 +2056,9 @@ static int __init mt_scp_dvfs_do_ulposc_cali_process(void)
 		}
 	}
 
+	/* Turn off ULPOSC2 & mark as calibration done */
 	turn_onoff_ulposc2(ULPOSC_OFF);
+	smc_ulposc2_cali_done();
 
 	pr_notice("[%s]: ulposc calibration all done\n", __func__);
 
