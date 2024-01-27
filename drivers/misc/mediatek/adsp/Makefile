@@ -8,6 +8,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/aed
 
 # target object
 obj-${CONFIG_MTK_AUDIODSP_SUPPORT} += adsp.o
@@ -29,3 +30,4 @@ adsp-objs += adsp_excep.o
 adsp-objs += adsp_qos.o
 adsp-objs += adsp_bus_monitor.o
 adsp-objs += adsp_ipic.o
+adsp-objs += adsp_dbg_dump.o
