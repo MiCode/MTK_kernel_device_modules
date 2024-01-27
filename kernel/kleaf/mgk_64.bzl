@@ -504,6 +504,8 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/usb/usb20/musb_hdrc.ko",
     "drivers/misc/mediatek/vcp/rv/vcp.ko",
     "drivers/misc/mediatek/vcp/rv/vcp_status.ko",
+    "drivers/misc/mediatek/vcp/rv_v2/vcp_v2.ko",
+    "drivers/misc/mediatek/vcp/rv_v2/vcp_status_v2.ko",
     "drivers/misc/mediatek/vdec_fmt/vdec-fmt.ko",
     "drivers/misc/mediatek/vmm/mtk-vmm-notifier.ko",
     "drivers/misc/mediatek/vmm_spm/mtk-vmm-spm.ko",
