@@ -448,6 +448,11 @@
 		#clock-cells = <1>;
 	};
 
+	usbcfg_ao_clk: syscon@16790000 {
+		compatible = "mediatek,mt6991-usbcfg-ao", "syscon";
+		reg = <0 0x16790000 0 0x100>;
+	};
+
 	ufscfg_ao_sec_clk: syscon@16890000 {
 		compatible = "mediatek,mt6991-ufscfg_ao_sec", "syscon";
 		reg = <0 0x16890000 0 0x1000>;
@@ -4554,9 +4559,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		ssusb: usb0@16701000 {
 			compatible = "mediatek,mtu3";
 			reg = <0 0x16701000 0 0x2e00>,
-				<0 0x16703e00 0 0x0100>,
-				<0 0x16790000 0 0x4>;
-			reg-names = "mac", "ippc", "clkgate";
+				<0 0x16703e00 0 0x0100>;
+			reg-names = "mac", "ippc";
 			vusb33-supply = <&mt6373_vusb>;
 			interrupts = <GIC_SPI 599 IRQ_TYPE_LEVEL_HIGH 0>;
 			phy-cells = <1>;
@@ -4566,7 +4570,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&vlp_cksys_clk CLK_VLP_CK_USB_XHCI_SEL>,
 				<&cksys_clk CLK_CK_USB_FMCNT_P1_SEL>;
 			clock-names = "sys_ck", "host_ck", "frmcnt_ck";
-			power-domains = <&scpsys MT6991_POWER_DOMAIN_SSUSB_P0>;
+			power-domains = <&scpsys MT6991_POWER_DOMAIN_SSUSB_P0>,
+					<&scpsys MT6991_POWER_DOMAIN_SSUSB_DP_PHY_P0>;
+			power-domain-names = "u2", "u3";
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
@@ -4577,7 +4583,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,usb3-drd;
 			mediatek,noise-still-tr;
 			mediatek,gen1-txdeemph;
-			mediatek,hwrscs-vers = <1>;
+			mediatek,hwrscs-vers = <2>;
+			mediatek,clkgate = <&usbcfg_ao_clk 0x13>;
 			mediatek,eusb2-cm-l1 = <0x474>;
 			usb-role-switch;
 			cdp-block;
