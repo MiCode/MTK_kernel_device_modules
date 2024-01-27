@@ -11,6 +11,7 @@ enum _flt_mode {
 	FLT_MODE_1 = 1,
 	FLT_MODE_2 = 2,
 	FLT_MODE_3 = 3,
+	FLT_MODE_4 = 4,
 	FLT_MODE_NUM,
 };
 

@@ -55,12 +55,15 @@
 
 #undef FLT_MODE_SEL
 #define FLT_MODE_SEL FLT_MODE2_EN
+#undef FLT_VER
+#define FLT_VER	BIT(1)
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 int (*grp_cal_tra)(int x, unsigned int y);
 EXPORT_SYMBOL(grp_cal_tra);
 #endif
 static int FLT_FN(nid) = FLT_GP_NID;
+static int FLT_FN(grp_wt) = FLT_GP_WT;
 
 static int FLT_FN(is_valid)(void)
 {
@@ -92,8 +95,10 @@ static int FLT_FN(set_mode)(u32 mode)
 {
 	int res = 0;
 
-	flt_update_data(mode, AP_FLT_CTL);
-
+	if (mode == FLT_MODE_SEL)
+		flt_update_data(FLT_VER, AP_FLT_CTL);
+	else
+		flt_update_data(0, AP_FLT_CTL);
 	return res;
 }
 
@@ -367,8 +372,24 @@ static int FLT_FN(res_init)(void)
 		flt_sched_set_cpu_policy_eas(cpu, DEFAULT_WS, CPU_DEFAULT_WP, CPU_DEFAULT_WC);
 	for (i = 0; i < GROUP_ID_RECORD_MAX; i++)
 		flt_sched_set_group_policy_eas(i, DEFAULT_WS, GRP_DEFAULT_WP, GRP_DEFAULT_WC);
-	flt_update_data(FLT_MODE_SEL, AP_FLT_CTL);
+	flt_update_data(FLT_VER, AP_FLT_CTL);
 	return 0;
+}
+
+static int FLT_FN(get_grp_weight)(void)
+{
+	return FLT_FN(grp_wt);
+}
+
+static int FLT_FN(get_grp_thr_weight)(void)
+{
+	int wt = 0;
+	struct cpumask *gear_cpus;
+
+	gear_cpus = get_gear_cpumask(0);
+	wt = cpumask_weight(gear_cpus);
+
+	return wt;
 }
 
 const struct flt_class FLT_FN(api_hooks) = {
@@ -393,6 +414,8 @@ const struct flt_class FLT_FN(api_hooks) = {
 	.flt_setnid_eas_api = FLT_FN(setnid),
 	.flt_getnid_eas_api = FLT_FN(getnid),
 	.flt_res_init_api = FLT_FN(res_init),
+	.flt_get_grp_weight_api = FLT_FN(get_grp_weight),
+	.flt_get_grp_thr_weight_api = FLT_FN(get_grp_thr_weight),
 };
 
 void FLT_FN(register_api_hooks)(void) {

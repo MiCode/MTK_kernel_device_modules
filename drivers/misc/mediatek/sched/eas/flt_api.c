@@ -350,6 +350,39 @@ int flt_setnid(u32 mode)
 }
 EXPORT_SYMBOL(flt_setnid);
 
+int flt_get_grp_weight(void)
+{
+	if (unlikely(flt_get_mode() == FLT_MODE_0))
+		return -1;
+	else if (flt_class_mode && flt_class_mode->flt_get_grp_weight_api)
+		return flt_class_mode->flt_get_grp_weight_api();
+	else
+		return -1;
+}
+EXPORT_SYMBOL(flt_get_grp_weight);
+
+int flt_set_grp_weight(int set)
+{
+	if (unlikely(flt_get_mode() == FLT_MODE_0))
+		return -1;
+	else if (flt_class_mode && flt_class_mode->flt_set_grp_weight_api)
+		return flt_class_mode->flt_set_grp_weight_api(set);
+	else
+		return -1;
+}
+EXPORT_SYMBOL(flt_set_grp_weight);
+
+int flt_get_grp_thr_weight(void)
+{
+	if (unlikely(flt_get_mode() == FLT_MODE_0))
+		return -1;
+	else if (flt_class_mode && flt_class_mode->flt_get_grp_thr_weight_api)
+		return flt_class_mode->flt_get_grp_thr_weight_api();
+	else
+		return -1;
+}
+EXPORT_SYMBOL(flt_get_grp_thr_weight);
+
 int flt_res_init(void)
 {
 	if (unlikely(flt_get_mode() == FLT_MODE_0))
