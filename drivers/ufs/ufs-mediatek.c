@@ -1533,6 +1533,13 @@ static void ufs_mtk_rq_dwork_fn(struct work_struct *dwork)
 }
 #endif
 
+static bool ufs_host_mcq_support(struct ufs_hba *hba)
+{
+	u32 cap = ufshcd_readl(hba, REG_CONTROLLER_CAPABILITIES);
+
+	return FIELD_GET(MASK_MCQ_SUPPORT, cap);
+}
+
 /**
  * ufs_mtk_init - find other essential mmio bases
  * @hba: host controller instance
@@ -1663,7 +1670,8 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	host->rq_workq = create_singlethread_workqueue("ufs_mtk_rq_wq");
 #endif
 
-	ufs_mtk_btag_init(hba);
+	if (host->caps & UFS_MTK_CAP_DISABLE_MCQ || !ufs_host_mcq_support(hba))
+		ufs_mtk_btag_init(hba);
 
 	ufs_mtk_dbg_register(hba);
 
@@ -3035,6 +3043,8 @@ static int ufs_mtk_config_mcq(struct ufs_hba *hba, bool irq)
 
 static int ufs_mtk_config_esi(struct ufs_hba *hba)
 {
+	ufs_mtk_btag_init(hba);
+
 	return ufs_mtk_config_mcq(hba, true);
 }
 
