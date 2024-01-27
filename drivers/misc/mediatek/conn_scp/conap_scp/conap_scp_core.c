@@ -3,6 +3,7 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
+#include <linux/completion.h>
 #include <linux/errno.h>
 #include <linux/kthread.h>
 #include <linux/of.h>
@@ -139,6 +140,36 @@ struct conn_drv_state {
 };
 static uint8_t g_conn_drv_state;
 
+/* DRV_TYPE_CONN user cb */
+static void conn_scp_msg_notify_cb(unsigned int msg_id, unsigned int *buf, unsigned int size);
+static void conn_scp_state_notify_cb(int state);
+
+struct conap_scp_drv_cb g_conn_scp_drv_cb = {
+	.conap_scp_msg_notify_cb = conn_scp_msg_notify_cb,
+	.conap_scp_state_notify_cb = conn_scp_state_notify_cb
+};
+
+/* DRV_TYPE_CONN msg_id definition */
+enum conn_drv_msg_id {
+	DRV_CONN_MSG_SUBSYS_CTRL	= 0,
+	DRV_CONN_MSG_DFD_EN			= 1,
+	DRV_CONN_MSG_DFD_CLR_BUF	= 2,
+};
+struct completion g_dfd_comp;
+
+
+
+/* DRV_TYPE_CONN user cb */
+void conn_scp_msg_notify_cb(unsigned int msg_id, unsigned int *buf, unsigned int size)
+{
+	pr_info("[%s] msg_id=[%d]", __func__, msg_id);
+	if (msg_id == 0)
+		complete(&g_dfd_comp);
+}
+
+void conn_scp_state_notify_cb(int state)
+{
+}
 
 static int _send_msg(enum conap_scp_drv_type drv_type, uint16_t msg_id,
 				uint8_t *msg_buf, uint32_t msg_sz)
@@ -310,6 +341,12 @@ static int opfunc_scp_state_change(struct msg_op_data *op)
 	/* make sure intf is init done */
 	msleep(100);
 
+	/* register DRV_TYPE_CONN */
+	ret = conap_scp_register_drv(DRV_TYPE_CONN, &g_conn_scp_drv_cb);
+	if (ret)
+		pr_info("conap init drv_type_conn fail");
+
+
 	pr_info("[%s] drv state=[%d]", __func__, g_conn_drv_state);
 	if (g_conn_drv_state > 0) {
 		struct conn_drv_state state;
@@ -319,7 +356,7 @@ static int opfunc_scp_state_change(struct msg_op_data *op)
 				state.drv_type = i;
 				state.drv_en = 1;
 				pr_info("[%s] type=[%d] en", __func__, i);
-				ret = _send_msg(DRV_TYPE_CONN, 0,
+				ret = _send_msg(DRV_TYPE_CONN, DRV_CONN_MSG_SUBSYS_CTRL,
 							(unsigned char *)&state, sizeof(state));
 				if (ret)
 					pr_notice("[%s] send msg fail ret=[%d]", __func__, ret);
@@ -538,28 +575,28 @@ int conn_state_event_handler(struct notifier_block *this,
 	if (event == conn_wifi_on) {
 		state.drv_type = CONN_DRV_WIFI;
 		state.drv_en = 1;
-		ret = conap_scp_send_message(DRV_TYPE_CONN, 0,
+		ret = conap_scp_send_message(DRV_TYPE_CONN, DRV_CONN_MSG_SUBSYS_CTRL,
 						(unsigned char *)&state, sizeof(state));
 		if (ret == 0)
 			g_conn_drv_state |= (0x1 << CONN_DRV_WIFI);
 	} else if (event == conn_bt_on) {
 		state.drv_type = CONN_DRV_BT;
 		state.drv_en = 1;
-		ret = conap_scp_send_message(DRV_TYPE_CONN, 0,
+		ret = conap_scp_send_message(DRV_TYPE_CONN, DRV_CONN_MSG_SUBSYS_CTRL,
 						(unsigned char *)&state, sizeof(state));
 		if (ret == 0)
 			g_conn_drv_state |= (0x1 << CONN_DRV_BT);
 	} else if (event == conn_wifi_off) {
 		state.drv_type = CONN_DRV_WIFI;
 		state.drv_en = 0;
-		ret = conap_scp_send_message(DRV_TYPE_CONN, 0,
+		ret = conap_scp_send_message(DRV_TYPE_CONN, DRV_CONN_MSG_SUBSYS_CTRL,
 						(unsigned char *)&state, sizeof(state));
 		if (ret == 0)
 			g_conn_drv_state &= ~(0x1 << CONN_DRV_WIFI);
 	} else if (event == conn_bt_off) {
 		state.drv_type = CONN_DRV_BT;
 		state.drv_en = 0;
-		ret = conap_scp_send_message(DRV_TYPE_CONN, 0,
+		ret = conap_scp_send_message(DRV_TYPE_CONN, DRV_CONN_MSG_SUBSYS_CTRL,
 						(unsigned char *)&state, sizeof(state));
 		if (ret == 0)
 			g_conn_drv_state &= ~(0x1 << CONN_DRV_BT);
@@ -694,20 +731,57 @@ struct conn_debug_cmd {
 	uint32_t param;
 };
 
-void conap_scp_cmd_handler(int drv_type, int cmd, int param)
+int conap_scp_dfd_cmd_handler(uint8_t drv_type, uint32_t param0, uint32_t param1)
 {
 	int ret;
 	struct conn_debug_cmd debug_cmd;
+	int wait_ret = -1;
+
+	init_completion(&g_dfd_comp);
 
 	debug_cmd.drv = drv_type;
-	debug_cmd.cmd = cmd;
-	debug_cmd.param = param;
+	debug_cmd.cmd = param0;
+	debug_cmd.param = param1;
 
-	ret = conap_scp_send_message(DRV_TYPE_CONN, 1,
+	ret = conap_scp_send_message(DRV_TYPE_CONN, DRV_CONN_MSG_DFD_EN,
 					(unsigned char *)&debug_cmd, sizeof(debug_cmd));
 	if (ret)
 		pr_notice("[%s] send msg fail [%d]", __func__, ret);
 
+	/* wait until scp response */
+	wait_ret = wait_for_completion_timeout(&g_dfd_comp,
+				msecs_to_jiffies(5000)); // 5 sec
+	if (wait_ret == 0) /* timeout */
+		return -1;
+
+	return ret;
+}
+
+int conap_scp_dfd_clr_buf_handler(void)
+{
+	int ret;
+	struct conn_debug_cmd debug_cmd;
+
+	debug_cmd.drv = 0;
+	debug_cmd.cmd = 0;
+	debug_cmd.param = 0;
+
+	ret = conap_scp_send_message(DRV_TYPE_CONN, DRV_CONN_MSG_DFD_CLR_BUF,
+					(unsigned char *)&debug_cmd, sizeof(debug_cmd));
+	if (ret)
+		pr_notice("[%s] send msg fail [%d]", __func__, ret);
+
+	return ret;
+}
+
+
+int conap_scp_dfd_get_value_info(phys_addr_t *addr, uint32_t *size)
+{
+	if (addr)
+		*addr = connsys_scp_get_dfd_value_addr();
+	if (size)
+		*size = connsys_scp_get_dfd_value_size();
+	return 0;
 }
 
 /*********************************************************************/
@@ -731,6 +805,7 @@ int conap_scp_init(void)
 {
 	int ret, i;
 	struct conap_scp_ipi_cb ipi_cb;
+	struct conap_dfd_handler handler;
 
 	memset(&g_core_ctx, 0, sizeof(struct conap_scp_core_ctx));
 
@@ -769,7 +844,12 @@ int conap_scp_init(void)
 	}
 
 	connectivity_register_state_notifier(&g_conn_state_notifier);
-	connectivity_register_cmd_handler(conap_scp_cmd_handler);
+
+	/* DFD handler callback */
+	handler.cmd_hdlr = conap_scp_dfd_cmd_handler;
+	handler.clr_buf_hdlr = conap_scp_dfd_clr_buf_handler;
+	handler.get_dfd_value_info = conap_scp_dfd_get_value_info;
+	connectivity_register_dfd_handler(&handler);
 
 	pr_info("[%s] DONE", __func__);
 	return 0;
@@ -777,7 +857,8 @@ int conap_scp_init(void)
 
 int conap_scp_deinit(void)
 {
-	connectivity_unregister_cmd_handler();
+	//connectivity_unregister_cmd_handler();
+	connectivity_unregister_dfd_handler();
 	connectivity_unregister_state_notifier(&g_conn_state_notifier);
 	conap_scp_ipi_deinit();
 	msg_thread_deinit(&g_core_ctx.tx_msg_thread);

@@ -7,6 +7,8 @@
 #include <linux/uaccess.h>
 #include <linux/proc_fs.h>
 #include "aoltest_core.h"
+#include "conap_scp.h"
+#include "conap_platform_data.h"
 
 #define CONN_SCP_DBG_PROCNAME "driver/connscp_dbg"
 
@@ -19,13 +21,155 @@ static ssize_t conn_scp_dbg_write(struct file *filp, const char __user *buffer, 
 /* action functions */
 typedef int(*CONN_SCP_DBG_FUNC) (unsigned int par1, unsigned int par2, unsigned int par3);
 static int msd_ctrl(unsigned int par1, unsigned int par2, unsigned int par3);
+static int dfd_dump_trg_ctrl(unsigned int par1, unsigned int par2, unsigned int par3);
+static int dfd_clr_buf(unsigned int par1, unsigned int par2, unsigned int par3);
+static int dfd_emi_dump(unsigned int par1, unsigned int par2, unsigned int par3);
+static int dfd_value_buf_info(unsigned int par1, unsigned int par2, unsigned int par3);
 
 static const CONN_SCP_DBG_FUNC g_conn_scp_dbg_func[] = {
 	[0x0] = msd_ctrl,
+	[0x1] = dfd_dump_trg_ctrl,
+	[0x2] = dfd_clr_buf,
+	[0x3] = dfd_emi_dump,
+	[0x4] = dfd_value_buf_info,
 };
 
 static struct mutex g_dump_lock;
 
+static int dfd_dump_trg_ctrl(unsigned int par1, unsigned int par2, unsigned int par3)
+{
+	conap_scp_dfd_cmd_handler(par2, 0, 0);
+	return 0;
+}
+
+struct region_header {
+    uint32_t offset;
+    uint32_t size;
+};
+
+struct dfd_cmd_header {
+    uint32_t conninfra_version;
+    struct region_header conninfra_hdr;
+    uint32_t wifi_version;
+    struct region_header wifi_hdr;
+    uint32_t bt_version;
+    struct region_header bt_hdr;
+};
+
+struct dfd_value_header {
+    struct region_header conninfra_hdr;
+    struct region_header wifi_hdr;
+    struct region_header bt_hdr;
+};
+
+struct dfd_header {
+    uint32_t version;
+    struct dfd_cmd_header cmd_hdr;
+    struct dfd_value_header val_hdr;
+};
+
+
+static void dfd_emi_dump_value_buf(phys_addr_t addr, uint32_t count)
+{
+	void __iomem *vir_addr = NULL;
+	uint32_t *val_ptr;
+	uint32_t i;
+
+	pr_info("[%s] addr[%llx] size=[%d]", __func__, addr, count);
+
+	vir_addr = ioremap(addr, count);
+	if (!vir_addr) {
+		pr_err("ioremap fail");
+		return;
+	}
+
+	pr_info("[%s] vir addr[%p]", __func__, vir_addr);
+
+	val_ptr = (uint32_t *)vir_addr;
+
+	for (i = 0; i < count/4; i += 8) {
+		pr_info("[%s] [%p] [%08x][%08x][%08x][%08x] [%08x][%08x][%08x][%08x]", __func__,
+					val_ptr,
+					*(val_ptr), *(val_ptr+1), *(val_ptr+2), *(val_ptr+3),
+					*(val_ptr+4), *(val_ptr+5), *(val_ptr+6), *(val_ptr+7));
+		val_ptr += 8;
+	}
+
+	iounmap(vir_addr);
+}
+
+static int dfd_emi_dump(unsigned int par1, unsigned int par2, unsigned int par3)
+{
+	void __iomem *vir_addr = NULL;
+	int size;
+	struct dfd_header hdr;
+
+
+	/* parameter par2: */
+	/*   0: dfd dump header file */
+	/*   1: conninfra value buffer content */
+	/*   2: wifi value buffer content */
+	/*   3: bt value buffer content */
+
+	phys_addr_t cmd_addr = connsys_scp_get_dfd_cmd_addr();
+	uint32_t cmd_size = connsys_scp_get_dfd_cmd_size();
+	size = sizeof(hdr);
+
+	pr_info("[%s] cmd addr=[%llx] size=[%x]", __func__, cmd_addr, cmd_size);
+
+	vir_addr = ioremap(cmd_addr, size);
+	if (!vir_addr) {
+		pr_err("ioremap fail");
+		//vfree(buf);
+		return -1;
+	}
+	memcpy_fromio(&hdr, vir_addr, size);
+	iounmap(vir_addr);
+
+	if (par2 == 0) {
+		pr_info("[%s] cmd c=[%x][%x][%x] w=[%x][%x][%x] b=[%x][%x][%x]", __func__,
+			hdr.cmd_hdr.conninfra_version,
+			hdr.cmd_hdr.conninfra_hdr.offset, hdr.cmd_hdr.conninfra_hdr.size,
+			hdr.cmd_hdr.wifi_version,
+			hdr.cmd_hdr.wifi_hdr.offset, hdr.cmd_hdr.wifi_hdr.size,
+			hdr.cmd_hdr.bt_version,
+			hdr.cmd_hdr.bt_hdr.offset, hdr.cmd_hdr.bt_hdr.size);
+
+		pr_info("[%s] value c=[%x][%x] w=[%x][%x] b=[%x][%x]", __func__,
+			hdr.val_hdr.conninfra_hdr.offset, hdr.val_hdr.conninfra_hdr.size,
+			hdr.val_hdr.wifi_hdr.offset, hdr.val_hdr.wifi_hdr.size,
+			hdr.val_hdr.bt_hdr.offset, hdr.val_hdr.bt_hdr.size);
+
+		return 0;
+	} else if (par2 == 1) {
+		dfd_emi_dump_value_buf(cmd_addr + hdr.val_hdr.conninfra_hdr.offset,
+					hdr.val_hdr.conninfra_hdr.size);
+	} else if (par2 == 2) {
+		dfd_emi_dump_value_buf(cmd_addr + hdr.val_hdr.wifi_hdr.offset,
+					hdr.val_hdr.wifi_hdr.size);
+	} else if (par2 == 3) {
+		dfd_emi_dump_value_buf(cmd_addr + hdr.val_hdr.bt_hdr.offset,
+					hdr.val_hdr.bt_hdr.size);
+	}
+
+	return 0;
+}
+
+static int dfd_value_buf_info(unsigned int par1, unsigned int par2, unsigned int par3)
+{
+	phys_addr_t addr;
+	uint32_t size;
+
+	conap_scp_dfd_get_value_info(&addr, &size);
+
+	pr_info("[%s] value buffer addr=[%llx] size=[%x]", __func__, addr, size);
+	return 0;
+}
+
+static int dfd_clr_buf(unsigned int par1, unsigned int par2, unsigned int par3)
+{
+	return conap_scp_dfd_clr_buf_handler();
+}
 
 int msd_ctrl(unsigned int par1, unsigned int par2, unsigned int par3)
 {

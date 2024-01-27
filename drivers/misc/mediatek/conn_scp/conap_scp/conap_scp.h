@@ -70,5 +70,8 @@ int conap_scp_send_message(enum conap_scp_drv_type type,
  */
 int conap_scp_is_drv_ready(enum conap_scp_drv_type type);
 
+int conap_scp_dfd_cmd_handler(uint8_t drv_type, uint32_t param0, uint32_t param1);
+int conap_scp_dfd_clr_buf_handler(void);
+int conap_scp_dfd_get_value_info(phys_addr_t *addr, uint32_t *size);
 
 #endif

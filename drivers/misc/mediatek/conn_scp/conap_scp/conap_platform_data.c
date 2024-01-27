@@ -42,6 +42,8 @@ struct conap_scp_shm_config g_adp_shm_mt6886 = {
 
 struct conap_scp_shm_config g_adp_shm;
 struct conap_scp_batching_config g_adp_batching;
+struct conap_dfd_config g_adp_dfd_cmd;
+struct conap_dfd_config g_adp_dfd_value;
 
 uint32_t connsys_scp_shm_get_addr(void)
 {
@@ -68,6 +70,27 @@ uint32_t connsys_scp_shm_get_batching_size(void)
 	return g_adp_batching.buff_size;
 }
 
+
+phys_addr_t connsys_scp_get_dfd_cmd_addr(void)
+{
+	return g_adp_dfd_cmd.addr;
+}
+
+uint32_t connsys_scp_get_dfd_cmd_size(void)
+{
+	return g_adp_dfd_cmd.size;
+}
+
+phys_addr_t connsys_scp_get_dfd_value_addr(void)
+{
+	return g_adp_dfd_value.addr;
+}
+
+uint32_t connsys_scp_get_dfd_value_size(void)
+{
+	return g_adp_dfd_value.size;
+}
+
 int connsys_scp_plt_data_init(struct platform_device *pdev)
 {
 	int ret;
@@ -76,6 +99,8 @@ int connsys_scp_plt_data_init(struct platform_device *pdev)
 	u32 ipi_mbox_size = 0;
 	u32 batching_buf_sz = 0;
 	u64 value64 = 0, batching_buf_addr = 0;
+	u32 dfd_cmd_sz = 0, dfd_value_sz = 0;
+	u64 dfd_cmd_addr = 0, dfd_value_addr = 0;
 
 	node = pdev->dev.of_node;
 
@@ -99,15 +124,52 @@ int connsys_scp_plt_data_init(struct platform_device *pdev)
 	else
 		batching_buf_addr = value64;
 
-	pr_info("[%s] ipi_mbox_size=[%x] batching=[%x][%llx]", __func__,
-			ipi_mbox_size, batching_buf_sz, batching_buf_addr);
+	/* dfd cmd addr */
+	ret = of_property_read_u64(node, "dfd-cmd-addr", &value64);
+	if (ret < 0)
+		pr_notice("[%s] prop dfd-value-addr fail %d", __func__, ret);
+	else
+		dfd_cmd_addr = value64;
+
+	/* dfd value size */
+	ret = of_property_read_u32(node, "dfd-cmd-size", &value);
+	if (ret < 0)
+		pr_notice("[%s] prop dfd-value-size fail %d", __func__, ret);
+	else
+		dfd_cmd_sz = value;
+
+	/* dfd value addr */
+	ret = of_property_read_u64(node, "dfd-value-addr", &value64);
+	if (ret < 0)
+		pr_notice("[%s] prop dfd-value-addr fail %d", __func__, ret);
+	else
+		dfd_value_addr = value64;
+
+	/* dfd value size */
+	ret = of_property_read_u32(node, "dfd-value-size", &value);
+	if (ret < 0)
+		pr_notice("[%s] prop dfd-value-size fail %d", __func__, ret);
+	else
+		dfd_value_sz = value;
+
+	pr_info("[%s] ipi_mbox_size=[%x] batching=[%x][%llx] dfd=[%llx][%x]", __func__,
+			ipi_mbox_size, batching_buf_sz, batching_buf_addr,
+			dfd_value_addr, dfd_value_sz);
 
 	memset(&g_adp_shm, 0, sizeof(g_adp_shm));
 	memset(&g_adp_batching, 0, sizeof(g_adp_batching));
+	memset(&g_adp_dfd_cmd, 0, sizeof(g_adp_dfd_cmd));
+	memset(&g_adp_dfd_value, 0, sizeof(g_adp_dfd_value));
 
 	g_adp_shm.conap_scp_ipi_mbox_size = ipi_mbox_size;
 	g_adp_batching.buff_offset = batching_buf_addr;
 	g_adp_batching.buff_size = batching_buf_sz;
+
+	g_adp_dfd_cmd.addr = dfd_cmd_addr;
+	g_adp_dfd_cmd.size = dfd_cmd_sz;
+
+	g_adp_dfd_value.addr = dfd_value_addr;
+	g_adp_dfd_value.size = dfd_value_sz;
 
 	return 0;
 }
