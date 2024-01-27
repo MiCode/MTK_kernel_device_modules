@@ -208,7 +208,7 @@ void connectivity_unregister_state_notifier(struct notifier_block *nb);
 void connectivity_export_conap_scp_state_change(enum conn_event_type type);
 
 /* HIF debug */
-void connectivity_register_cmd_handler(void (*cmd_hdlr)(int drv_type, int cmd, int param));
+void connectivity_register_cmd_handler(int (*cmd_hdlr)(uint8_t drv_type, uint32_t cmd, uint32_t param));
 void connectivity_unregister_cmd_handler(void);
 
 enum conn_hif_dbg_drv_type {
@@ -222,6 +222,24 @@ enum conn_hif_dbg_cmd {
 };
 void connectivity_export_conap_scp_trigger_cmd(enum conn_hif_dbg_drv_type drv_type,
 						enum conn_hif_dbg_cmd cmd, int param);
+
+/* ++ DFD support ++ */
+struct conap_dfd_handler {
+	int (*cmd_hdlr) (uint8_t drv_type, uint32_t cmd, uint32_t param);
+	int (*clr_buf_hdlr) (void);
+	int (*get_dfd_value_info) (phys_addr_t *addr, uint32_t *size);
+};
+void connectivity_register_dfd_handler(struct conap_dfd_handler *hdlr);
+void connectivity_unregister_dfd_handler(void);
+#define CONAP_SCP_DFD_DRV_WF	0x1
+#define CONAP_SCP_DFD_DRV_BT	0x2
+
+int connectivity_export_conap_scp_trigger_dfd_cmd(uint8_t drv_type,
+					uint32_t reserved_param0, uint32_t reserved_param1);
+
+int connectivity_export_conap_scp_clr_dfd_buffer(void);
+int connectivity_export_conap_get_dfd_value_info(phys_addr_t *addr, uint32_t *size);
+/* -- DFD support -- */
 
 #ifdef CPU_BOOST
 void connectivity_export_mt_ppm_sysboost_freq(enum ppm_sysboost_user user,

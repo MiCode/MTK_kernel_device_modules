@@ -124,10 +124,10 @@ void connectivity_export_conap_scp_state_change(enum conn_event_type type)
 }
 EXPORT_SYMBOL(connectivity_export_conap_scp_state_change);
 
-/* */
-static void (*g_conap_scp_cmd_handler)(int drv_type, int cmd, int param);
+/* DFD support */
+static int (*g_conap_scp_cmd_handler)(uint8_t drv_type, uint32_t cmd, uint32_t param);
 
-void connectivity_register_cmd_handler(void (*cmd_hdlr)(int drv_type, int cmd, int param))
+void connectivity_register_cmd_handler(int (*cmd_hdlr)(uint8_t drv_type, uint32_t cmd, uint32_t param))
 {
 	g_conap_scp_cmd_handler = cmd_hdlr;
 }
@@ -142,11 +142,55 @@ EXPORT_SYMBOL(connectivity_unregister_cmd_handler);
 void connectivity_export_conap_scp_trigger_cmd(enum conn_hif_dbg_drv_type drv_type,
 						enum conn_hif_dbg_cmd cmd, int param)
 {
+#if 0
 	if (g_conap_scp_cmd_handler)
 		(*g_conap_scp_cmd_handler)(drv_type, cmd, param);
+#endif
 }
 EXPORT_SYMBOL(connectivity_export_conap_scp_trigger_cmd);
 
+
+/* ++ DFD support ++ */
+struct conap_dfd_handler g_conap_scp_dfd_handler;
+void connectivity_register_dfd_handler(struct conap_dfd_handler *hdlr)
+{
+	if (hdlr == NULL)
+		return;
+	memcpy(&g_conap_scp_dfd_handler, hdlr, sizeof(struct conap_dfd_handler));
+}
+EXPORT_SYMBOL(connectivity_register_dfd_handler);
+
+void connectivity_unregister_dfd_handler(void)
+{
+	memcpy(&g_conap_scp_dfd_handler, 0, sizeof(struct conap_dfd_handler));
+}
+EXPORT_SYMBOL(connectivity_unregister_dfd_handler);
+
+int connectivity_export_conap_scp_trigger_dfd_cmd(uint8_t drv_type,
+					uint32_t reserved_param0, uint32_t reserved_param1)
+{
+	if (g_conap_scp_dfd_handler.cmd_hdlr)
+		return (*g_conap_scp_dfd_handler.cmd_hdlr)(drv_type, reserved_param0, reserved_param1);
+	return 0;
+}
+EXPORT_SYMBOL(connectivity_export_conap_scp_trigger_dfd_cmd);
+
+int connectivity_export_conap_scp_clr_dfd_buffer(void)
+{
+	if (g_conap_scp_dfd_handler.clr_buf_hdlr)
+		return (*g_conap_scp_dfd_handler.clr_buf_hdlr)();
+	return 0;
+}
+EXPORT_SYMBOL(connectivity_export_conap_scp_clr_dfd_buffer);
+
+int connectivity_export_conap_get_dfd_value_info(phys_addr_t *addr, uint32_t *size)
+{
+	if (g_conap_scp_dfd_handler.clr_buf_hdlr)
+		return (*g_conap_scp_dfd_handler.clr_buf_hdlr)();
+	return 0;
+}
+EXPORT_SYMBOL(connectivity_export_conap_get_dfd_value_info);
+/* -- DFD support -- */
 
 void connectivity_register_state_notifier(struct notifier_block *nb)
 {
