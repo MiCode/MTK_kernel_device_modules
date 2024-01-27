@@ -20,7 +20,7 @@
 
 struct mtk_composite_async_subdev {
 	struct v4l2_subdev *sd;
-	struct v4l2_async_subdev asd;
+	struct v4l2_async_connection asd;
 };
 
 
@@ -34,7 +34,7 @@ struct mtk_composite_v4l2_device {
 	u32 revision;
 
 	struct v4l2_subdev **sd;
-	struct v4l2_async_subdev *asd[MISC_MAX_SUBDEVS];
+	struct v4l2_async_connection *asd[MISC_MAX_SUBDEVS];
 	struct v4l2_subdev *subdevs[MISC_MAX_SUBDEVS];
 };
 
