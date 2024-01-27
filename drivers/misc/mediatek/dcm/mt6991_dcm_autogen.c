@@ -538,8 +538,8 @@ void dcm_mcusys_par_wrap_mcu_chi_mon_dcm(int on)
 	}
 }
 
-#define MCUSYS_PAR_WRAP_MCU_GIC_SPI_DCM_REG0_MASK ((0x3U << 0))
-#define MCUSYS_PAR_WRAP_MCU_GIC_SPI_DCM_REG0_ON ((0x3U << 0))
+#define MCUSYS_PAR_WRAP_MCU_GIC_SPI_DCM_REG0_MASK ((0x1U << 0))
+#define MCUSYS_PAR_WRAP_MCU_GIC_SPI_DCM_REG0_ON ((0x1U << 0))
 #define MCUSYS_PAR_WRAP_MCU_GIC_SPI_DCM_REG0_OFF ((0x0U << 0))
 
 bool dcm_mcusys_par_wrap_mcu_gic_spi_dcm_is_on(void)
