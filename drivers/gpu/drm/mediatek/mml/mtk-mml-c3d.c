@@ -474,7 +474,7 @@ static void c3d_debug_dump(struct mml_comp *comp)
 		value[5], value[6], value[7]);
 	mml_err("C3D_CHKSUM %#010x C3D_SIZE %#010x C3D_DUMMY_REG %#010x C3D_ATPG %#010x",
 		value[8], value[9], value[10], value[11]);
-	mml_err(" C3D_SHADOW_CTRL %#010x C3D_SRAM_CFG %#010x C3D_SRAM_STATUS %#010x",
+	mml_err("C3D_SHADOW_CTRL %#010x C3D_SRAM_CFG %#010x C3D_SRAM_STATUS %#010x",
 		value[12], value[13], value[14]);
 	mml_err("C3D_SRAM_RW_IF_0 %#010x C3D_SRAM_RW_IF_1 %#010x C3D_SRAM_RW_IF_2 %#010x",
 		value[15], value[16], value[17]);
