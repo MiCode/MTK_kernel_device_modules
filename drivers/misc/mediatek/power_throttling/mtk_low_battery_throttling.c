@@ -16,8 +16,12 @@
 #include "pmic_lbat_service.h"
 #include "pmic_lvsys_notify.h"
 
+#define CREATE_TRACE_POINTS
+#include "mtk_low_battery_throttling_trace.h"
+
 #define LBCB_MAX_NUM 16
-#define THD_VOLTS_LENGTH 20
+#define TEMP_MAX_STAGE_NUM 6
+#define THD_VOLTS_LENGTH 30
 #define POWER_INT0_VOLT 3400
 #define POWER_INT1_VOLT 3250
 #define POWER_INT2_VOLT 3100
@@ -27,6 +31,8 @@
 #define MAX_INT 0x7FFFFFFF
 #define MIN_LBAT_VOLT 2000
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define VOLT_L_STR "thd-volts-l"
+#define VOLT_H_STR "thd-volts-h"
 
 struct lbat_intr_tbl {
 	unsigned int volt_thd;
@@ -47,16 +53,20 @@ struct low_bat_thl_priv {
 	int lbat_thl_intr_level;
 	int lvsys_thl_intr_level;
 	int low_bat_thl_stop;
+	int low_bat_thd_modify;
 	unsigned int lvsys_thd_volt_l;
 	unsigned int lvsys_thd_volt_h;
 	unsigned int ppb_mode;
-	struct lbat_user *lbat_pt;
 	struct work_struct temp_work;
 	struct power_supply *psy;
 	int *temp_thd;
 	int temp_max_stage;
 	int temp_cur_stage;
-	struct lbat_thd_tbl lbat_thd_info[LOW_BATTERY_TEMP_NUM];
+	int temp_reg_stage;
+	unsigned int lbat_intr_num;
+	int lbat_level[INTR_MAX_NUM];
+	struct lbat_user *lbat_pt[INTR_MAX_NUM];
+	struct lbat_thd_tbl lbat_thd_info[INTR_MAX_NUM][TEMP_MAX_STAGE_NUM];
 };
 
 struct low_battery_callback_table {
@@ -111,8 +121,8 @@ static int rearrange_volt(struct lbat_intr_tbl *intr_info, unsigned int *volt_l,
 	}
 	for (i = 0; i < idx_t; i++) {
 		pr_info("[%s] intr_info[%d] = (%d, trig l[%d %d] h[%d %d])\n",
-				__func__, i, intr_info[i].volt_thd, intr_info[i].lt_en,
-				intr_info[i].lt_lv, intr_info[i].ht_en, intr_info[i].ht_lv);
+			__func__, i, intr_info[i].volt_thd, intr_info[i].lt_en,
+			intr_info[i].lt_lv, intr_info[i].ht_en, intr_info[i].ht_lv);
 	}
 	return idx_t;
 }
@@ -154,6 +164,9 @@ int register_low_battery_notify(low_battery_callback lb_cb,
 		return -EINVAL;
 	}
 
+	if (!lb_cb)
+		return -EINVAL;
+
 	if (lbcb_tb[prio_val].lbcb != 0)
 		pr_info("[%s] Notice: LBCB has been registered\n", __func__);
 
@@ -188,6 +201,8 @@ void exec_throttle(unsigned int level)
 		return;
 	}
 
+	trace_low_battery_throttling_level(low_bat_thl_data->low_bat_thl_level);
+
 	low_bat_thl_data->low_bat_thl_level = level;
 	for (i = 0; i < ARRAY_SIZE(lbcb_tb); i++) {
 		if (i == LOW_BATTERY_PRIO_UFS && lbcb_tb[i].data == 0) {
@@ -204,9 +219,10 @@ void exec_throttle(unsigned int level)
 
 static unsigned int decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned int input)
 {
-	struct lbat_thd_tbl *thd_info;
+	struct lbat_thd_tbl *thd_info[INTR_MAX_NUM];
 	unsigned int low_thd_volts[LOW_BATTERY_LEVEL_NUM] = {MIN_LBAT_VOLT+40, MIN_LBAT_VOLT+30,
 		MIN_LBAT_VOLT+20, MIN_LBAT_VOLT+10};
+	int temp_cur_stage = 0;
 
 	pr_info("%s: user=%d, input=%d\n", __func__, user, input);
 	if (!low_bat_thl_data) {
@@ -215,8 +231,17 @@ static unsigned int decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned
 	}
 
 	mutex_lock(&exe_thr_lock);
-	if (user == LBAT_INTR) {
-		low_bat_thl_data->lbat_thl_intr_level = input;
+	if (user == LBAT_INTR_1 || user == LBAT_INTR_2) {
+		if (user == LBAT_INTR_1)
+			low_bat_thl_data->lbat_level[INTR_1] = input;
+		else if (user == LBAT_INTR_2)
+			low_bat_thl_data->lbat_level[INTR_2] = input;
+
+		if (low_bat_thl_data->lbat_level[INTR_2] > low_bat_thl_data->lbat_level[INTR_1])
+			low_bat_thl_data->lbat_thl_intr_level = low_bat_thl_data->lbat_level[INTR_2];
+		else
+			low_bat_thl_data->lbat_thl_intr_level = low_bat_thl_data->lbat_level[INTR_1];
+
 		if (low_bat_thl_data->low_bat_thl_stop > 0 || low_bat_thl_data->ppb_mode > 0) {
 			pr_info("[%s] throttle not apply, low_bat_thl_stop=%d, ppb_mode=%d\n",
 			__func__, low_bat_thl_data->low_bat_thl_stop,
@@ -226,6 +251,7 @@ static unsigned int decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned
 						low_bat_thl_data->lvsys_thl_intr_level);
 			exec_throttle(input);
 		}
+		mutex_unlock(&exe_thr_lock);
 	} else if (user == LVSYS_INTR) {
 		low_bat_thl_data->lvsys_thl_intr_level = input;
 		if (low_bat_thl_data->low_bat_thl_stop > 0 || low_bat_thl_data->ppb_mode > 0) {
@@ -237,37 +263,61 @@ static unsigned int decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned
 						low_bat_thl_data->lvsys_thl_intr_level);
 			exec_throttle(input);
 		}
+		mutex_unlock(&exe_thr_lock);
 	} else if (user == PPB) {
 		low_bat_thl_data->ppb_mode = input;
 		if (low_bat_thl_data->low_bat_thl_stop > 0) {
 			pr_info("[%s] ppb not apply, low_bat_thl_stop=%d\n", __func__,
 				low_bat_thl_data->low_bat_thl_stop);
+			mutex_unlock(&exe_thr_lock);
 		} else if (low_bat_thl_data->ppb_mode > 0) {
 			low_bat_thl_data->lbat_thl_intr_level = 0;
 			exec_throttle(0);
-			lbat_user_modify_thd_ext_locked(low_bat_thl_data->lbat_pt,
+			mutex_unlock(&exe_thr_lock);
+			lbat_user_modify_thd_ext_locked(low_bat_thl_data->lbat_pt[INTR_1],
 				&low_thd_volts[0], LOW_BATTERY_LEVEL_NUM);
+#ifdef LBAT2_ENABLE
+			if (low_bat_thl_data->lbat_intr_num == 2) {
+				dual_lbat_user_modify_thd_ext_locked(
+					low_bat_thl_data->lbat_pt[INTR_2], &low_thd_volts[0],
+					LOW_BATTERY_LEVEL_NUM);
+			}
+#endif
 			dump_thd_volts_ext(&low_thd_volts[0], LOW_BATTERY_LEVEL_NUM);
 		} else {
 			input = MAX(low_bat_thl_data->lbat_thl_intr_level,
 						low_bat_thl_data->lvsys_thl_intr_level);
 			exec_throttle(input);
-			thd_info =
-				&low_bat_thl_data->lbat_thd_info[low_bat_thl_data->temp_cur_stage];
-			lbat_user_modify_thd_ext_locked(low_bat_thl_data->lbat_pt,
-				thd_info->thd_volts, thd_info->thd_volts_size);
-			dump_thd_volts_ext(thd_info->thd_volts, thd_info->thd_volts_size);
+
+			temp_cur_stage = low_bat_thl_data->temp_cur_stage;
+			thd_info[INTR_1] = &low_bat_thl_data->lbat_thd_info[INTR_1][temp_cur_stage];
+			thd_info[INTR_2] = &low_bat_thl_data->lbat_thd_info[INTR_2][temp_cur_stage];
+			low_bat_thl_data->temp_reg_stage = temp_cur_stage;
+			mutex_unlock(&exe_thr_lock);
+			lbat_user_modify_thd_ext_locked(low_bat_thl_data->lbat_pt[INTR_1],
+				thd_info[INTR_1]->thd_volts, thd_info[INTR_1]->thd_volts_size);
+			dump_thd_volts_ext(thd_info[INTR_1]->thd_volts, thd_info[INTR_1]->thd_volts_size);
+#ifdef LBAT2_ENABLE
+			if (low_bat_thl_data->lbat_intr_num == 2) {
+				dual_lbat_user_modify_thd_ext_locked(
+					low_bat_thl_data->lbat_pt[INTR_2], thd_info[INTR_2]->thd_volts,
+					thd_info[INTR_2]->thd_volts_size);
+				dump_thd_volts_ext(thd_info[INTR_2]->thd_volts, thd_info[INTR_2]->thd_volts_size);
+			}
+#endif
 		}
 	} else if (user == UT) {
 		low_bat_thl_data->low_bat_thl_stop = 1;
 		exec_throttle(input);
+		mutex_unlock(&exe_thr_lock);
+	} else {
+		mutex_unlock(&exe_thr_lock);
 	}
-	mutex_unlock(&exe_thr_lock);
-
 	return 0;
 }
 
-static unsigned int thd_to_level(unsigned int thd, enum LOW_BATTERY_TEMP_TAG temp_id)
+static unsigned int thd_to_level(unsigned int thd, unsigned int temp_stage,
+	enum LOW_BATTERY_USER_TAG intr_type)
 {
 	unsigned int i, level = 0;
 	struct lbat_intr_tbl *info;
@@ -276,7 +326,14 @@ static unsigned int thd_to_level(unsigned int thd, enum LOW_BATTERY_TEMP_TAG tem
 	if (!low_bat_thl_data)
 		return 0;
 
-	thd_info = &low_bat_thl_data->lbat_thd_info[temp_id];
+	if (intr_type == LBAT_INTR_1)
+		thd_info = &low_bat_thl_data->lbat_thd_info[INTR_1][temp_stage];
+	else if (intr_type == LBAT_INTR_2)
+		thd_info = &low_bat_thl_data->lbat_thd_info[INTR_2][temp_stage];
+	else {
+		pr_notice("[%s] wrong intr_type=%d\n", __func__, intr_type);
+		return -1;
+	}
 
 	for (i = 0; i < thd_info->thd_volts_size; i++) {
 		info = &thd_info->lbat_intr_info[i];
@@ -294,30 +351,39 @@ static unsigned int thd_to_level(unsigned int thd, enum LOW_BATTERY_TEMP_TAG tem
 		return -1;
 	}
 
-	pr_info("[%s] temp_id=%d thd=%d cl=%d pl=%d, ht[%d %d] lt[%d %d] new_l=%d\n",
-		__func__, temp_id, thd, low_bat_thl_data->low_bat_thl_level, i,
-		info->ht_en, info->ht_lv, info->lt_en, info->lt_lv, level);
-
 	return level;
 }
 
 void exec_low_battery_callback(unsigned int thd)
 {
 	unsigned int level = 0;
-	struct lbat_thd_tbl *thd_info;
 
 	if (!low_bat_thl_data) {
 		pr_info("[%s] low_bat_thl_data not allocate\n", __func__);
 		return;
 	}
 
-	thd_info = &low_bat_thl_data->lbat_thd_info[low_bat_thl_data->temp_cur_stage];
-
-	level = thd_to_level(thd, low_bat_thl_data->temp_cur_stage);
+	level = thd_to_level(thd, low_bat_thl_data->temp_reg_stage, LBAT_INTR_1);
 	if (level == -1)
 		return;
 
-	decide_and_throttle(LBAT_INTR, level);
+	decide_and_throttle(LBAT_INTR_1, level);
+}
+
+void exec_dual_low_battery_callback(unsigned int thd)
+{
+	unsigned int level = 0;
+
+	if (!low_bat_thl_data) {
+		pr_info("[%s] low_bat_thl_data not allocate\n", __func__);
+		return;
+	}
+
+	level = thd_to_level(thd, low_bat_thl_data->temp_reg_stage, LBAT_INTR_2);
+	if (level == -1)
+		return;
+
+	decide_and_throttle(LBAT_INTR_2, level);
 }
 
 int lbat_set_ppb_mode(unsigned int mode)
@@ -426,6 +492,95 @@ static ssize_t low_battery_protect_level_store(struct device *dev,
 
 static DEVICE_ATTR_RW(low_battery_protect_level);
 
+/*****************************************************************************
+ * low battery modify threshold
+ ******************************************************************************/
+static ssize_t low_battery_modify_threshold_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct lbat_thd_tbl *thd_info;
+	int len = 0, ret = 0, i;
+
+	len += snprintf(buf + len, PAGE_SIZE, "modify enable: %d\n",
+		low_bat_thl_data->low_bat_thd_modify);
+	if (ret < 0)
+		pr_info("snprintf failed\n");
+
+	for (i = 0; i < INTR_MAX_NUM; i++) {
+		thd_info = &low_bat_thl_data->lbat_thd_info[i][0];
+		len += snprintf(buf + len, PAGE_SIZE - len, "volts intr%d: %d %d %d %d\n",
+			i + 1, thd_info->thd_volts[LOW_BATTERY_LEVEL_0],
+			thd_info->thd_volts[LOW_BATTERY_LEVEL_1],
+			thd_info->thd_volts[LOW_BATTERY_LEVEL_2],
+			thd_info->thd_volts[LOW_BATTERY_LEVEL_3]);
+	}
+
+	return len;
+}
+
+static ssize_t low_battery_modify_threshold_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	int volt_t_size = 0, j = 0;
+	unsigned int thd_0, thd_1, thd_2, thd_3;
+	unsigned int volt_l[LOW_BATTERY_LEVEL_NUM-1], volt_h[LOW_BATTERY_LEVEL_NUM-1];
+	int intr_no;
+	struct lbat_thd_tbl *thd_info;
+
+	if (sscanf(buf, "%u %u %u %u %u\n", &intr_no, &thd_0, &thd_1, &thd_2, &thd_3) != 5) {
+		dev_info(dev, "parameter number not correct\n");
+		return -EINVAL;
+	}
+
+	if (thd_0 <= 0 || thd_1 <= 0 || thd_2 <= 0 || thd_3 <= 0 || intr_no < 1 || intr_no > INTR_MAX_NUM) {
+		dev_info(dev, "invalid input\n");
+		return -EINVAL;
+	}
+
+	volt_l[0] = thd_1;
+	volt_l[1] = thd_2;
+	volt_l[2] = thd_3;
+	volt_h[0] = thd_0;
+	volt_h[1] = thd_1;
+	volt_h[2] = thd_2;
+
+	thd_info = &low_bat_thl_data->lbat_thd_info[intr_no-1][0];
+	volt_t_size = rearrange_volt(thd_info->lbat_intr_info, &volt_l[0], &volt_h[0],
+			LOW_BATTERY_LEVEL_NUM - 1);
+
+	if (volt_t_size <= 0) {
+		dev_notice(dev, "[%s] Failed to rearrange_volt\n", __func__);
+		return -ENODATA;
+	}
+
+	thd_info->thd_volts_size = volt_t_size;
+	for (j = 0; j < volt_t_size; j++)
+		thd_info->thd_volts[j] = thd_info->lbat_intr_info[j].volt_thd;
+
+	dump_thd_volts(dev, thd_info->thd_volts, thd_info->thd_volts_size);
+
+	if (intr_no == 2 && low_bat_thl_data->lbat_intr_num == 2) {
+#ifdef LBAT2_ENABLE
+		dual_lbat_user_modify_thd_ext_locked(low_bat_thl_data->lbat_pt[intr_no-1],
+			thd_info->thd_volts, thd_info->thd_volts_size);
+#endif
+	} else if (intr_no == 1) {
+		lbat_user_modify_thd_ext_locked(low_bat_thl_data->lbat_pt[intr_no-1],
+			thd_info->thd_volts, thd_info->thd_volts_size);
+	}
+
+	low_bat_thl_data->low_bat_thd_modify = 1;
+	low_bat_thl_data->temp_cur_stage = 0;
+	low_bat_thl_data->temp_reg_stage = 0;
+	dev_notice(dev, "modify_enable: %d, temp_cur_stage = %d\n",
+				low_bat_thl_data->low_bat_thd_modify,
+				low_bat_thl_data->temp_cur_stage);
+
+	return size;
+}
+static DEVICE_ATTR_RW(low_battery_modify_threshold);
+
 static int lbat_psy_event(struct notifier_block *nb, unsigned long event, void *v)
 {
 	if (!low_bat_thl_data)
@@ -476,6 +631,9 @@ static void temp_handler(struct work_struct *work)
 		return;
 
 	temp = val.intval / 10;
+#ifdef LBAT2_ENABLE
+	temp = val.intval; // because of battery bug, remove me if battery driver fix
+#endif
 	temp_stage = low_bat_thl_data->temp_cur_stage;
 
 	do {
@@ -503,19 +661,35 @@ static void temp_handler(struct work_struct *work)
 
 	if (temp_stage <= low_bat_thl_data->temp_max_stage &&
 		temp_stage != low_bat_thl_data->temp_cur_stage) {
-		if (low_bat_thl_data->ppb_mode == 0) {
-			thd_info = &low_bat_thl_data->lbat_thd_info[temp_stage];
-			lbat_user_modify_thd_ext_locked(low_bat_thl_data->lbat_pt,
+		if (low_bat_thl_data->ppb_mode == 0 && !low_bat_thl_data->low_bat_thd_modify) {
+			thd_info = &low_bat_thl_data->lbat_thd_info[INTR_1][temp_stage];
+			low_bat_thl_data->temp_reg_stage = temp_stage;
+			lbat_user_modify_thd_ext_locked(low_bat_thl_data->lbat_pt[INTR_1],
 				thd_info->thd_volts, thd_info->thd_volts_size);
 			dump_thd_volts_ext(thd_info->thd_volts, thd_info->thd_volts_size);
+#ifdef LBAT2_ENABLE
+			if (low_bat_thl_data->lbat_intr_num == 2) {
+				thd_info = &low_bat_thl_data->lbat_thd_info[INTR_2][temp_stage];
+				dual_lbat_user_modify_thd_ext_locked(
+					low_bat_thl_data->lbat_pt[INTR_2], thd_info->thd_volts,
+					thd_info->thd_volts_size);
+				dump_thd_volts_ext(thd_info->thd_volts, thd_info->thd_volts_size);
+			}
+#endif
 		}
 		low_bat_thl_data->temp_cur_stage = temp_stage;
 	}
+		pr_info("temp=%d, last_temp=%d temp_stage=%d, reg_stage=%d, cur_stage=%d\n",
+			temp, last_temp, temp_stage, low_bat_thl_data->temp_reg_stage,
+			low_bat_thl_data->temp_cur_stage);
 }
 
 static int lvsys_notifier_call(struct notifier_block *this,
 				unsigned long event, void *ptr)
 {
+	if (!low_bat_thl_data)
+		return NOTIFY_DONE;
+
 	event = event & ~(1 << 15);
 
 	if (event == low_bat_thl_data->lvsys_thd_volt_l)
@@ -532,23 +706,59 @@ static struct notifier_block lvsys_notifier = {
 	.notifier_call = lvsys_notifier_call,
 };
 
-static int lbat_default_setting(struct platform_device *pdev, struct low_bat_thl_priv *priv)
+static int fill_thd_info(struct platform_device *pdev, struct low_bat_thl_priv *priv, u32 *volt_thd,
+	int intr_no)
 {
-	struct lbat_thd_tbl *thd_info = &priv->lbat_thd_info[0];
+	int i, j, max_thr_lv, volt_t_size, ret;
+	unsigned int volt_l[LOW_BATTERY_LEVEL_NUM-1], volt_h[LOW_BATTERY_LEVEL_NUM-1];
+	struct lbat_thd_tbl *thd_info;
 
-	dev_notice(&pdev->dev, "[%s] use lbat default setting\n", __func__);
-	priv->temp_max_stage = 0;
-	thd_info->thd_volts_size = LOW_BATTERY_LEVEL_NUM;
-	thd_info->thd_volts = devm_kmalloc_array(&pdev->dev, thd_info->thd_volts_size, sizeof(u32),
-		GFP_KERNEL);
+	if (intr_no < 0 || intr_no >= INTR_MAX_NUM) {
+		dev_notice(&pdev->dev, "[%s] invalid intr_no %d\n", __func__, intr_no);
+		return -EINVAL;
+	}
 
-	if (!thd_info->thd_volts)
-		return -ENOMEM;
+	max_thr_lv = LOW_BATTERY_LEVEL_NUM - 1;
 
-	thd_info->thd_volts[0] = POWER_INT0_VOLT;
-	thd_info->thd_volts[1] = POWER_INT1_VOLT;
-	thd_info->thd_volts[2] = POWER_INT2_VOLT;
-	thd_info->thd_volts[3] = POWER_INT3_VOLT;
+	for (i = 0; i <= priv->temp_max_stage; i++) {
+		for (j = 0; j < max_thr_lv; j++) {
+			volt_l[j] = volt_thd[i * max_thr_lv + j];
+			volt_h[j] = volt_thd[max_thr_lv * (priv->temp_max_stage + 1) +
+				i * max_thr_lv + j];
+		}
+
+		ret = check_duplicate(volt_l);
+		ret |= check_duplicate(volt_h);
+
+		if (ret < 0) {
+			dev_notice(&pdev->dev, "[%s] check duplicate error, %d\n", __func__, ret);
+			return -EINVAL;
+		}
+
+		thd_info = &priv->lbat_thd_info[intr_no][i];
+		thd_info->thd_volts_size = max_thr_lv * 2;
+		thd_info->lbat_intr_info = devm_kmalloc_array(&pdev->dev, thd_info->thd_volts_size,
+			sizeof(struct lbat_thd_tbl), GFP_KERNEL);
+		volt_t_size = rearrange_volt(thd_info->lbat_intr_info, &volt_l[0], &volt_h[0],
+			max_thr_lv);
+
+		if (volt_t_size <= 0) {
+			dev_notice(&pdev->dev, "[%s] Failed to rearrange_volt\n", __func__);
+			return -ENODATA;
+		}
+
+		thd_info->thd_volts_size = volt_t_size;
+		thd_info->thd_volts = devm_kmalloc_array(&pdev->dev, thd_info->thd_volts_size,
+			sizeof(u32), GFP_KERNEL);
+
+		if (!thd_info->thd_volts)
+			return -ENOMEM;
+
+		for (j = 0; j < volt_t_size; j++)
+			thd_info->thd_volts[j] = thd_info->lbat_intr_info[j].volt_thd;
+
+		dump_thd_volts(&pdev->dev, thd_info->thd_volts, thd_info->thd_volts_size);
+	}
 
 	return 0;
 }
@@ -556,14 +766,11 @@ static int lbat_default_setting(struct platform_device *pdev, struct low_bat_thl
 static int low_battery_thd_setting(struct platform_device *pdev, struct low_bat_thl_priv *priv)
 {
 	struct device_node *np = pdev->dev.of_node;
-	char thd_volts_l[THD_VOLTS_LENGTH] = "thd-volts-l";
-	char thd_volts_h[THD_VOLTS_LENGTH] = "thd-volts-h";
-	unsigned int volt_l[LOW_BATTERY_LEVEL_NUM-1], volt_h[LOW_BATTERY_LEVEL_NUM-1];
-	int ret = 0, bat_type = 0;
-	int num, i, j, max_thr_lv, volt_t_size;
+	char thd_volts_l[THD_VOLTS_LENGTH], thd_volts_h[THD_VOLTS_LENGTH];
+	int ret = 0, bat_type = 0, intr_num = 0;
+	int num, i, volt_size;
 	u32 *volt_thd;
 	struct device_node *gauge_np = pdev->dev.parent->of_node;
-	struct lbat_thd_tbl *thd_info;
 
 	ret = of_property_read_u32(np, "temperature-max-stage", &priv->temp_max_stage);
 	num = of_property_count_u32_elems(np, "temperature-stage-threshold");
@@ -590,107 +797,132 @@ static int low_battery_thd_setting(struct platform_device *pdev, struct low_bat_
 		pr_notice("[%s] get mtk-gauge node fail\n", __func__);
 	else {
 		ret = of_property_read_u32(gauge_np, "bat_type", &bat_type);
-		if (ret)
-			dev_notice(&pdev->dev, "[%s] get bat_type fail\n", __func__);
-
-		if (bat_type == 1) {
-			strncpy(thd_volts_l, "thd-volts-l-2s", THD_VOLTS_LENGTH);
-			strncpy(thd_volts_h, "thd-volts-h-2s", THD_VOLTS_LENGTH);
+		if (ret || bat_type < 0 || bat_type >= 10) {
+			bat_type = 0;
+			dev_notice(&pdev->dev, "[%s] get bat_type fail, ret=%d bat_type=%d\n",
+				__func__, ret, bat_type);
 		}
 	}
-	dev_notice(&pdev->dev, "[%s] bat_type = %d\n", __func__, bat_type);
 
-	num = of_property_count_elems_of_size(np, thd_volts_l, sizeof(u32));
-	if (num != (LOW_BATTERY_LEVEL_NUM -1) * (priv->temp_max_stage + 1)) {
-		dev_notice(&pdev->dev, "[%s] wrong thd-volts-l size %d\n", __func__, num);
-		goto default_setting;
-	}
-
-	num = of_property_count_elems_of_size(np, thd_volts_h, sizeof(u32));
-	if (num != (LOW_BATTERY_LEVEL_NUM - 1) * (priv->temp_max_stage + 1)) {
-		dev_notice(&pdev->dev, "[%s] wrong thd-volts-h size %d\n", __func__, num);
-		goto default_setting;
-	}
-
-	volt_thd = devm_kmalloc_array(&pdev->dev, num * 2, sizeof(u32), GFP_KERNEL);
+	volt_size = (LOW_BATTERY_LEVEL_NUM - 1) * (priv->temp_max_stage + 1);
+	volt_thd = devm_kmalloc_array(&pdev->dev, volt_size * 2, sizeof(u32), GFP_KERNEL);
 	if (!volt_thd)
 		return -ENOMEM;
 
-	of_property_read_u32_array(np, thd_volts_l, &volt_thd[0], num);
-	of_property_read_u32_array(np, thd_volts_h, &volt_thd[num], num);
+	for (i = 1; i <= INTR_MAX_NUM; i++) {
+		ret = snprintf(thd_volts_l, THD_VOLTS_LENGTH, "bat%d-intr%d-%s", bat_type,
+			i, VOLT_L_STR);
+		if (ret < 0)
+			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 
-	for (i = 0; i <= priv->temp_max_stage; i++) {
-		max_thr_lv = LOW_BATTERY_LEVEL_NUM - 1;
-		for (j = 0; j < max_thr_lv; j++) {
-			volt_l[j] = volt_thd[i * max_thr_lv + j];
-			volt_h[j] = volt_thd[num + i * max_thr_lv + j];
+		num = of_property_count_elems_of_size(np, thd_volts_l, sizeof(u32));
+		if (num > 0)
+			intr_num++;
+		else
+			break;
+	}
+
+	if (intr_num > 0 && intr_num <= INTR_MAX_NUM) {
+		for (i = 0; i < intr_num; i++) {
+			ret = snprintf(thd_volts_l, THD_VOLTS_LENGTH, "bat%d-intr%d-%s",
+				bat_type, i + 1, VOLT_L_STR);
+			ret |= snprintf(thd_volts_h, THD_VOLTS_LENGTH, "bat%d-intr%d-%s", bat_type,
+				i + 1, VOLT_H_STR);
+			if (ret < 0)
+				pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+
+			if (of_property_read_u32_array(np, thd_volts_l, &volt_thd[0], volt_size)
+				|| of_property_read_u32_array(np, thd_volts_h,
+				&volt_thd[volt_size], volt_size)) {
+				pr_info("%s:%d: read volts error %s %s\n", __func__, __LINE__,
+					thd_volts_l, thd_volts_h);
+				return -EINVAL;
+			}
+
+			ret = fill_thd_info(pdev, priv, volt_thd, i);
+			if (ret) {
+				pr_info("%s:%d: fill_thd_info error %d\n", __func__, __LINE__, ret);
+				return ret;
+			}
+			priv->lbat_intr_num++;
+		}
+	} else {
+		if (bat_type > 0) {
+			ret = snprintf(thd_volts_l, THD_VOLTS_LENGTH, "%s-%ds", VOLT_L_STR,
+				bat_type + 1);
+			ret |= snprintf(thd_volts_h, THD_VOLTS_LENGTH, "%s-%ds", VOLT_H_STR,
+				bat_type + 1);
+			if (ret < 0)
+				pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+		} else {
+			ret = snprintf(thd_volts_l, THD_VOLTS_LENGTH, "%s", VOLT_L_STR);
+			ret |= snprintf(thd_volts_h, THD_VOLTS_LENGTH, "%s", VOLT_H_STR);
+			if (ret < 0)
+				pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 		}
 
-		ret |= check_duplicate(volt_l);
-		ret |= check_duplicate(volt_h);
-
-		if (ret < 0) {
-			dev_notice(&pdev->dev, "[%s] check duplicate error, %d\n", __func__, ret);
+		if (of_property_read_u32_array(np, thd_volts_l, &volt_thd[0], volt_size)
+			|| of_property_read_u32_array(np, thd_volts_h,  &volt_thd[volt_size],
+			volt_size)) {
+			pr_info("%s:%d: read volts error %s %s\n", __func__, __LINE__,
+				thd_volts_l, thd_volts_h);
 			return -EINVAL;
 		}
 
-		thd_info = &priv->lbat_thd_info[i];
-		thd_info->thd_volts_size = max_thr_lv * 2;
-		thd_info->lbat_intr_info = devm_kmalloc_array(&pdev->dev, thd_info->thd_volts_size,
-			sizeof(struct lbat_thd_tbl), GFP_KERNEL);
-		volt_t_size = rearrange_volt(thd_info->lbat_intr_info, &volt_l[0], &volt_h[0],
-			max_thr_lv);
-
-		if (volt_t_size <= 0) {
-			dev_notice(&pdev->dev, "[%s] Failed to rearrange_volt\n", __func__);
-			return -ENODATA;
+		ret = fill_thd_info(pdev, priv, volt_thd, 0);
+		if (ret) {
+			pr_info("%s:%d: fill_thd_info error %d\n", __func__, __LINE__, ret);
+			return ret;
 		}
-
-		thd_info->thd_volts_size = volt_t_size;
-		thd_info->thd_volts = devm_kmalloc_array(&pdev->dev, thd_info->thd_volts_size,
-			sizeof(u32), GFP_KERNEL);
-
-		if (!thd_info->thd_volts)
-			return -ENOMEM;
-
-		for (j = 0; j < volt_t_size; j++)
-			thd_info->thd_volts[j] = thd_info->lbat_intr_info[j].volt_thd;
-
-		dump_thd_volts(&pdev->dev, thd_info->thd_volts, thd_info->thd_volts_size);
+		priv->lbat_intr_num++;
 	}
 
-	return 0;
-
-default_setting:
-	lbat_default_setting(pdev, priv);
 	return 0;
 }
 
 static int low_battery_register_setting(struct platform_device *pdev,
-		struct low_bat_thl_priv *priv,
-		enum LOW_BATTERY_TEMP_TAG temp_tag)
+		struct low_bat_thl_priv *priv, enum LOW_BATTERY_INTR_TAG intr_type,
+		unsigned int temp_stage)
 {
 	int ret;
-	struct lbat_thd_tbl *thd_info = &priv->lbat_thd_info[temp_tag];
+	struct lbat_thd_tbl *thd_info;
+	struct lbat_user *lbat_p;
 
-	priv->lbat_pt = lbat_user_register_ext("power throttling", thd_info->thd_volts,
-						thd_info->thd_volts_size, exec_low_battery_callback);
+	if (intr_type == INTR_1 && temp_stage <= priv->temp_max_stage) {
+		thd_info = &priv->lbat_thd_info[INTR_1][temp_stage];
+		priv->lbat_pt[INTR_1] = lbat_user_register_ext("power throttling", thd_info->thd_volts,
+		thd_info->thd_volts_size, exec_low_battery_callback);
+		lbat_p = priv->lbat_pt[INTR_1];
+	} else if (intr_type == INTR_2  && temp_stage <= priv->temp_max_stage) {
+#ifdef LBAT2_ENABLE
+		thd_info = &priv->lbat_thd_info[INTR_2][temp_stage];
+		priv->lbat_pt[INTR_2] = dual_lbat_user_register_ext("power throttling",
+			thd_info->thd_volts, thd_info->thd_volts_size, exec_dual_low_battery_callback);
+		lbat_p = priv->lbat_pt[INTR_2];
+#endif
+	} else {
+		dev_notice(&pdev->dev, "[%s] invalid intr_type=%d temp_stage=%d\n", __func__,
+		intr_type, temp_stage);
+		return -1;
+	}
 
-	if (IS_ERR(priv->lbat_pt)) {
-		ret = PTR_ERR(priv->lbat_pt);
+	if (IS_ERR(lbat_p)) {
+		ret = PTR_ERR(lbat_p);
 		if (ret != -EPROBE_DEFER) {
 			dev_notice(&pdev->dev, "[%s] error ret=%d\n", __func__, ret);
 		}
 		return ret;
 	}
-	dev_notice(&pdev->dev, "[%s] register type = %d done\n", __func__, temp_tag);
+
+	dev_notice(&pdev->dev, "[%s] register intr_type=%d temp_stage=%d done\n", __func__,
+		intr_type, temp_stage);
 
 	return 0;
 }
 
 static int low_battery_throttling_probe(struct platform_device *pdev)
 {
-	int ret;
+	int ret, i;
 	int lvsys_thd_enable, vbat_thd_enable;
 	struct low_bat_thl_priv *priv;
 	struct device_node *np = pdev->dev.of_node;
@@ -723,11 +955,13 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 			return ret;
 		}
 
-		ret = low_battery_register_setting(pdev, priv, LOW_BATTERY_TEMP_NORMAL);
-		if (ret) {
-			pr_info("[%s] low_battery_register_setting failed, ret=%d\n",
-				__func__, ret);
-			return ret;
+		for (i = 0; i < priv->lbat_intr_num; i++) {
+			ret = low_battery_register_setting(pdev, priv, i, 0);
+			if (ret) {
+				pr_info("[%s] low_battery_register failed, intr_no=%d ret=%d\n",
+					__func__, i, ret);
+				return ret;
+			}
 		}
 
 		if (priv->temp_max_stage > 0) {
@@ -770,6 +1004,8 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 		&dev_attr_low_battery_protect_stop);
 	ret |= device_create_file(&(pdev->dev),
 		&dev_attr_low_battery_protect_level);
+	ret |= device_create_file(&(pdev->dev),
+		&dev_attr_low_battery_modify_threshold);
 	if (ret) {
 		dev_notice(&pdev->dev, "create file error ret=%d\n", ret);
 		return ret;
