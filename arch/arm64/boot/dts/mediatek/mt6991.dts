@@ -981,6 +981,13 @@
 		clock-frequency = <13000000>;
 	};
 
+	hwrng: hwrng {
+		compatible = "arm,sec-rng";
+		methods = "smc";
+		method-fid = /bits/ 16 <0x26a>;
+		quality = /bits/ 16 <900>;
+	};
+
 	cpuhvfs: cpuhvfs@c2c2310 {
 		compatible = "mediatek,cpufreq-hybrid";
 		reg = <0 0x0c2c2310 0 0xc00>,
