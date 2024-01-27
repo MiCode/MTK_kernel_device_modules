@@ -36,7 +36,7 @@
 /*=============================================================*/
 static kuid_t uid = KUIDT_INIT(0);
 static kgid_t gid = KGIDT_INIT(1000);
-static DEFINE_SEMAPHORE(sem_mutex);
+static DEFINE_SEMAPHORE(sem_mutex, 1);
 static int isTimerCancelled;
 
 static int wmt_tm_debug_log;
@@ -144,6 +144,7 @@ static unsigned int g_trip_temp[COOLER_NUM] = { 125000, 115000, 105000, 85000,
  *	{10 * ONE_MBITS_PER_SEC, 5 * ONE_MBITS_PER_SEC, 1 * ONE_MBITS_PER_SEC};
  */
 static int g_thermal_trip[COOLER_NUM] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static struct thermal_trip trips[10];
 /* - Cooler info - */
 
 static struct wmt_tm_t g_wmt_tm;
@@ -708,22 +709,6 @@ struct thermal_zone_device *thz_dev, enum thermal_device_mode mode)
 
 	return 0;
 
-}
-
-static int wmt_thz_get_trip_type(
-struct thermal_zone_device *thz_dev, int trip, enum thermal_trip_type *type)
-{
-	wmt_tm_dprintk("[mtktspa_get_trip_type] %d\n", trip);
-	*type = g_thermal_trip[trip];
-	return 0;
-}
-
-static int wmt_thz_get_trip_temp(
-struct thermal_zone_device *thz_dev, int trip, int *pv)
-{
-	wmt_tm_dprintk("[mtktspa_get_trip_temp] %d\n", trip);
-	*pv = g_trip_temp[trip];
-	return 0;
 }
 
 static int wmt_thz_get_crit_temp(
@@ -1468,8 +1453,6 @@ static struct thermal_zone_device_ops wmt_thz_dev_ops = {
 	.unbind = wmt_thz_unbind,
 	.get_temp = wmt_thz_get_temp,
 	.change_mode = wmt_thz_change_mode,
-	.get_trip_type = wmt_thz_get_trip_type,
-	.get_trip_temp = wmt_thz_get_trip_temp,
 	.get_crit_temp = wmt_thz_get_crit_temp,
 };
 
@@ -1522,7 +1505,7 @@ static int wmt_tm_thz_cl_register(void)
 
 	/* trips */
 	p_linux_if->thz_dev =
-		mtk_thermal_zone_device_register("mtktswmt", g_num_trip, NULL,
+		mtk_thermal_zone_device_register("mtktswmt", trips, g_num_trip, NULL,
 						&wmt_thz_dev_ops, 0, 0, 0,
 						p_linux_if->interval);
 
@@ -1736,10 +1719,14 @@ struct file *filp, const char __user *buf, size_t count, loff_t *data)
 
 		/* thermal_zone_device_update(p_linux_if->thz_dev); */
 
+		for (i = 0; i < g_num_trip; i++) {
+			trips[i].temperature = g_trip_temp[i];
+			trips[i].type = g_thermal_trip[i];
+		}
 		/* register */
 		wmt_tm_dprintk("[%s] mtktswmt register thermal\n", __func__);
 		p_linux_if->thz_dev =
-			mtk_thermal_zone_device_register("mtktswmt",
+			mtk_thermal_zone_device_register("mtktswmt", trips,
 						g_num_trip, NULL,
 						&wmt_thz_dev_ops, 0, 0, 0,
 						p_linux_if->interval);
@@ -1914,6 +1901,7 @@ static int wmt_tm_thz_cl_unregister(void)
 int  wmt_tm_init(void)
 {
 	int err = 0;
+	int i = 0;
 
 	wmt_tm_printk("[%s] start -->\n", __func__);
 
@@ -1928,6 +1916,10 @@ int  wmt_tm_init(void)
 	wmt_stats_timer.expires = jiffies + 1 * HZ;
 	add_timer(&wmt_stats_timer);
 
+	for (i = 0; i < g_num_trip; i++) {
+		trips[i].temperature = g_trip_temp[i];
+		trips[i].type = g_thermal_trip[i];
+	}
 
 	err = wmt_tm_thz_cl_register();
 	if (err)

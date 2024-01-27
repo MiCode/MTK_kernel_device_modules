@@ -31,7 +31,7 @@ struct thermal_cooling_device_ops_extra {
 
 extern
 struct thermal_zone_device *mtk_thermal_zone_device_register_wrapper
-(char *type, int trips, void *devdata,
+(char *type, struct thermal_trip *trips, int num_trip, void *devdata,
 const struct thermal_zone_device_ops *ops,
 int tc1, int tc2, int passive_delay, int polling_delay);
 

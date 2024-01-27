@@ -29,7 +29,7 @@
 
 static kuid_t uid = KUIDT_INIT(0);
 static kgid_t gid = KGIDT_INIT(1000);
-static DEFINE_SEMAPHORE(sem_mutex);
+static DEFINE_SEMAPHORE(sem_mutex, 1);
 
 #if TZBATT_SET_INIT_CFG == 1
 static unsigned int interval = TZBATT_INITCFG_INTERVAL;
@@ -57,6 +57,7 @@ static struct thermal_cooling_device *cl_dev_sysrst;
 static int mtktsbattery_debug_log;
 static int kernelmode;
 static int g_THERMAL_TRIP[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static struct thermal_trip trips[10];
 
 #if TZBATT_SET_INIT_CFG == 1
 static int num_trip = TZBATT_INITCFG_NUM_TRIPS;
@@ -305,20 +306,6 @@ struct thermal_zone_device *thermal, enum thermal_device_mode mode)
 	return 0;
 }
 
-static int mtktsbattery_get_trip_type(
-struct thermal_zone_device *thermal, int trip, enum thermal_trip_type *type)
-{
-	*type = g_THERMAL_TRIP[trip];
-	return 0;
-}
-
-static int mtktsbattery_get_trip_temp(
-struct thermal_zone_device *thermal, int trip, int *temp)
-{
-	*temp = trip_temp[trip];
-	return 0;
-}
-
 static int mtktsbattery_get_crit_temp(struct thermal_zone_device *thermal,
 				      int *temperature)
 {
@@ -332,8 +319,6 @@ static struct thermal_zone_device_ops mtktsbattery_dev_ops = {
 	.unbind = mtktsbattery_unbind,
 	.get_temp = mtktsbattery_get_temp,
 	.change_mode = mtktsbattery_change_mode,
-	.get_trip_type = mtktsbattery_get_trip_type,
-	.get_trip_temp = mtktsbattery_get_trip_temp,
 	.get_crit_temp = mtktsbattery_get_crit_temp,
 };
 
@@ -611,6 +596,11 @@ struct file *file, const char __user *buffer, size_t count, loff_t *data)
 		mtktsbattery_dprintk(
 			"[%s] mtktsbattery_register_thermal\n", __func__);
 
+		for (i = 0; i < num_trip; i++) {
+			trips[i].temperature = trip_temp[i];
+			trips[i].type = g_THERMAL_TRIP[i];
+		}
+
 		mtktsbattery_register_thermal();
 		up(&sem_mutex);
 
@@ -643,7 +633,9 @@ static int mtktsbattery_register_thermal(void)
 	mtktsbattery_dprintk("[%s]\n", __func__);
 
 	/* trips : trip 0~1 */
-	thz_dev = mtk_thermal_zone_device_register("mtktsbattery", num_trip,
+	thz_dev = mtk_thermal_zone_device_register("mtktsbattery",
+						trips,
+						num_trip,
 						NULL, &mtktsbattery_dev_ops,
 						0, 0, 0, interval * 1000);
 
@@ -684,6 +676,7 @@ static const struct proc_ops mtkts_battery_fops = {
 int mtktsbattery_init(void)
 {
 	int err = 0;
+	int i = 0;
 	struct proc_dir_entry *entry = NULL;
 	struct proc_dir_entry *mtktsbattery_dir = NULL;
 
@@ -692,6 +685,11 @@ int mtktsbattery_init(void)
 	err = mtktsbattery_register_cooler();
 	if (err)
 		return err;
+
+	for (i = 0; i < num_trip; i++) {
+		trips[i].temperature = trip_temp[i];
+		trips[i].type = g_THERMAL_TRIP[i];
+	}
 
 	err = mtktsbattery_register_thermal();
 	if (err)

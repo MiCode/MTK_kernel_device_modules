@@ -33,6 +33,7 @@ struct thz_data {
 	char thz_name[20];
 	int trip_temp[10];
 	int trip_type[10];	/*ACTIVE, PASSIVE, HOT, and Critical*/
+	struct thermal_trip trips[10];
 	char bind[10][20];
 	int num_trip;
 	unsigned int interval;	/* mseconds, 0 : no auto polling */
@@ -196,26 +197,6 @@ struct thermal_zone_device *thermal, enum thermal_device_mode mode)
 	return 0;
 }
 
-static int tsallts_get_trip_type(struct thermal_zone_device *thermal, int trip,
-		enum thermal_trip_type *type)
-{
-	int index;
-
-	index = tsallts_get_index(thermal);
-	*type = g_tsData[index].trip_type[trip];
-	return 0;
-}
-
-static int tsallts_get_trip_temp(
-struct thermal_zone_device *thermal, int trip, int *temp)
-{
-	int index;
-
-	index = tsallts_get_index(thermal);
-	*temp = g_tsData[index].trip_temp[trip];
-	return 0;
-}
-
 static int tsallts_get_crit_temp(
 struct thermal_zone_device *thermal, int *temperature)
 {
@@ -269,8 +250,6 @@ static struct thermal_zone_device_ops tsallts_dev_ops = {
 	.unbind = tsallts_unbind,
 	.get_temp = tsallts_get_temp,
 	.change_mode = tsallts_change_mode,
-	.get_trip_type = tsallts_get_trip_type,
-	.get_trip_temp = tsallts_get_trip_temp,
 	.get_crit_temp = tsallts_get_crit_temp,
 };
 
@@ -375,6 +354,10 @@ struct file *file, const char __user *buffer, size_t count,	\
 						pTempD->t_type[i];	\
 			g_tsData[(num - 1)].trip_temp[i] =	\
 						pTempD->trip[i];	\
+			g_tsData[(num - 1)].trips[i].type =	\
+						pTempD->t_type[i];	\
+			g_tsData[(num - 1)].trips[i].temperature =	\
+						pTempD->trip[i];	\
 		}	\
 \
 		for (i = 0; i < 10; i++) {	\
@@ -417,6 +400,7 @@ struct file *file, const char __user *buffer, size_t count,	\
 			g_tsData[(num - 1)].thz_dev =	\
 				mtk_thermal_zone_device_register(	\
 					g_tsData[(num - 1)].thz_name,\
+					g_tsData[(num - 1)].trips,	\
 					g_tsData[(num - 1)].num_trip,	\
 					NULL, &tsallts_dev_ops, 0,	\
 				0, 0, g_tsData[(num - 1)].interval);	\
@@ -707,6 +691,8 @@ int tsallts_init(void)
 		g_tsData[i].num_trip = 1;
 		g_tsData[i].trip_type[0] =  0;
 		g_tsData[i].trip_temp[0] = 150000;
+		g_tsData[i].trips[0].type =  0;
+		g_tsData[i].trips[0].temperature = 150000;
 		sprintf(g_tsData[i].bind[0], "clnothing%d", (i + 1));
 
 		if (tztsAll_enable_switch == 1) {
@@ -730,6 +716,7 @@ static void tsX_register(int index)
 	if (g_tsData[index].thz_dev == NULL) {
 		g_tsData[index].thz_dev = mtk_thermal_zone_device_register(
 			g_tsData[index].thz_name,
+			g_tsData[index].trips,
 			g_tsData[index].num_trip,
 			NULL, &tsallts_dev_ops, 0,
 			0, 0, g_tsData[index].interval);

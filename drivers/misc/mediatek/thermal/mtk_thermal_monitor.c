@@ -104,6 +104,8 @@ struct mtk_thermal_tz_data {
 	 *-275000 is a special number to turn off Tfake
 	 */
 	struct mutex ma_lock;	/* protect moving avg. vars... */
+	struct thermal_trip *trips;
+	int num_trip;
 };
 
 struct proc_dir_entry *mtk_thermal_get_proc_drv_therm_dir_entry(void);
@@ -1356,62 +1358,6 @@ static int mtk_thermal_wrapper_change_mode
 }
 
 /*
- * .get_trip_type wrapper: get the type of certain trip point.
- */
-static int mtk_thermal_wrapper_get_trip_type
-(struct thermal_zone_device *thermal, int trip, enum thermal_trip_type *type)
-{
-	int ret = 0;
-	struct thermal_zone_device_ops *ops;
-
-	ops = getClientZoneOps(thermal);
-
-	if (!ops) {
-		THRML_ERROR_LOG("[.get_trip_type] tz: %s unregistered.\n",
-								thermal->type);
-		return 1;
-	}
-
-	if (ops->get_trip_type)
-		ret = ops->get_trip_type(thermal, trip, type);
-
-	THRML_LOG("[.get_trip_type] tz: %s trip: %d type: %d\n",
-						thermal->type, trip, *type);
-
-	return ret;
-}
-
-/*
- * .get_trip_temp wrapper:get the temperature above which the certain trip point
- *  will be fired.
- */
-static int mtk_thermal_wrapper_get_trip_temp
-(struct thermal_zone_device *thermal, int trip, int *temperature)
-{
-	int ret = 0;
-	struct thermal_zone_device_ops *ops;
-
-	ops = getClientZoneOps(thermal);
-
-	if (!ops) {
-		THRML_ERROR_LOG("[.get_trip_temp] tz: %s unregistered.\n",
-								thermal->type);
-		return 1;
-	}
-
-	if (ops->get_trip_temp)
-		ret = ops->get_trip_temp(thermal, trip, temperature);
-
-	THRML_LOG("[.get_trip_temp] tz: %s trip: %d temp: %d\n",
-					thermal->type, trip, (int)*temperature);
-
-	THRML_STORAGE_LOG(THRML_LOGGER_MSG_TRIP_POINT, get_trip_temp,
-					thermal->type, trip, *temperature);
-
-	return ret;
-}
-
-/*
  * .get_crit_temp wrapper:
  */
 static int mtk_thermal_wrapper_get_crit_temp
@@ -1436,27 +1382,25 @@ static int mtk_thermal_wrapper_get_crit_temp
 
 	return ret;
 }
-/*
-static int mtk_thermal_wrapper_notify(
-struct thermal_zone_device *thermal, int trip, enum thermal_trip_type type)
+
+static int mtk_thermal_get_trip_temp(struct thermal_zone_device *tz, int trip_id, int temp)
 {
-	int ret = 0;
-	struct thermal_zone_device_ops *ops;
+	struct mtk_thermal_tz_data *tzdata = NULL;
 
-	ops = getClientZoneOps(thermal);
-
-	if (!ops) {
-		THRML_ERROR_LOG("[.notify] tz: %s unregistered.\n",
-							thermal->type);
-		return 1;
+	if ((tz == NULL) || (tz->devdata == NULL)) {
+		WARN_ON_ONCE(1);
+		return -1;
 	}
 
-	if (ops->notify)
-		ret = ops->notify(thermal, trip, type);
+	tzdata = tz->devdata;
 
-	return ret;
+	if (trip_id < tzdata->num_trip  && tzdata->trips != NULL) {
+		temp = tzdata->trips[trip_id].temperature;
+		return 0;
+	} else {
+		return -1;
+	}
 }
-*/
 
 
 /* *************************************** */
@@ -1469,18 +1413,14 @@ static struct thermal_zone_device_ops mtk_thermal_wrapper_dev_ops = {
 	.unbind = mtk_thermal_wrapper_unbind,
 	.get_temp = mtk_thermal_wrapper_get_temp,
 	.change_mode = mtk_thermal_wrapper_change_mode,
-	.get_trip_type = mtk_thermal_wrapper_get_trip_type,
-	.get_trip_temp = mtk_thermal_wrapper_get_trip_temp,
 	.get_crit_temp = mtk_thermal_wrapper_get_crit_temp,
-//	.notify = mtk_thermal_wrapper_notify,
 };
 
 /*mtk thermal zone register function */
 struct thermal_zone_device *mtk_thermal_zone_device_register_wrapper(
-char *type, int trips, void *devdata,
+char *type, struct thermal_trip *trips, int num_trip, void *devdata,
 const struct thermal_zone_device_ops *ops,
-int tc1, int tc2, int passive_delay_jiffies, int polling_delay_jiffies)
-{
+int tc1, int tc2, int passive_delay_jiffies, int polling_delay_jiffies){
 
 	struct thermal_zone_device *tz = NULL;
 	struct mtk_thermal_tz_data *tzdata = NULL;
@@ -1488,7 +1428,7 @@ int tc1, int tc2, int passive_delay_jiffies, int polling_delay_jiffies)
 	int	ret;
 
 	THRML_LOG("%s tz: %s trips: %d passive_delay_jiffies: %d polling_delay_jiffies: %d\n",
-			__func__, type, trips, passive_delay_jiffies, polling_delay_jiffies);
+			__func__, type, num_trip, passive_delay_jiffies, polling_delay_jiffies);
 
 	if (strcmp(SYSINFO_ATTACH_DEV_NAME, type) == 0)
 		g_SysinfoAttachOps = (struct thermal_zone_device_ops *)ops;
@@ -1510,10 +1450,13 @@ int tc1, int tc2, int passive_delay_jiffies, int polling_delay_jiffies)
 	tzdata->ma_lens[0] = 1;
 	tzdata->msma_ht[0] = MSMA_MAX_HT;
 #endif
+	tzdata->trips = trips;
+	tzdata->num_trip = num_trip;
 	mutex_unlock(&tzdata->ma_lock);
 
-	tz = thermal_zone_device_register(type,
-			trips,	/* /< total number of trip points */
+	tz = thermal_zone_device_register_with_trips(type,
+			trips,
+			num_trip, /* /< total number of trip points */
 			0,	/* /< mask */
 			/* (void*)ops,     ///< invoker's ops pass to devdata */
 			(void *)tzdata,
@@ -1767,7 +1710,6 @@ static int mtk_cooling_wrapper_set_cur_state
 	if (state == 0) {
 		int last_temp = 0;
 		int trip_temp = 0;
-		struct thermal_zone_device_ops *tz_ops;
 
 		if ((mcdata->exit_threshold > 0) && (mcdata->tz != NULL)) {
 			/* if exit point is set and if this cooler
@@ -1787,32 +1729,22 @@ static int mtk_cooling_wrapper_set_cur_state
 				THRML_LOG("[.set_cur_state] last_temp:%d\n",
 					last_temp);
 
-				tz_ops = getClientZoneOps(mcdata->tz);
-				if (tz_ops == NULL) {
-					THRML_ERROR_LOG(
-					"[.set_cur_state]tz_ops null\n");
-
-					mutex_unlock(&MTM_COOLER_LOCK);
-					return -1;
-				}
-
 				if (!ops) {
 					THRML_ERROR_LOG(
 					"[.set_cur_state]E tz unregistered.\n");
 					/* WARN_ON_ONCE(1); */
 					trip_temp = 120000;
 				} else {
-					if (tz_ops->get_trip_temp) {
-						tz_ops->get_trip_temp(
-							mcdata->tz, mcdata->trip
-							, &trip_temp);
+					ret = mtk_thermal_get_trip_temp(mcdata->tz, mcdata->trip, trip_temp);
 
+					if (!ret) {
 						THRML_LOG(
 							"[.set_cur_state] trip_temp:%ld\n",
 							(long)trip_temp);
-
 					} else {
+						mutex_unlock(&MTM_COOLER_LOCK);
 						WARN_ON_ONCE(1);
+						return ret;
 					}
 				}
 

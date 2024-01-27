@@ -62,6 +62,7 @@ struct thz_data {
 	char thz_name[20];
 	int trip_temp[10];
 	int trip_type[10];	/*ACTIVE, PASSIVE, HOT, and Critical*/
+	struct thermal_trip trips[10];
 	char bind[10][20];
 	int num_trip;
 	unsigned int interval;	/* mseconds, 0 : no auto polling */
@@ -415,26 +416,6 @@ struct thermal_zone_device *thermal, enum thermal_device_mode mode)
 	return 0;
 }
 
-static int mtk_imgs_get_trip_type(struct thermal_zone_device *thermal, int trip,
-		enum thermal_trip_type *type)
-{
-	int index;
-
-	index = mtk_imgs_get_index(thermal);
-	*type = g_tsData[index].trip_type[trip];
-	return 0;
-}
-
-static int mtk_imgs_get_trip_temp(
-struct thermal_zone_device *thermal, int trip, int *temp)
-{
-	int index;
-
-	index = mtk_imgs_get_index(thermal);
-	*temp = g_tsData[index].trip_temp[trip];
-	return 0;
-}
-
 static int mtk_imgs_get_crit_temp(
 struct thermal_zone_device *thermal, int *temperature)
 {
@@ -490,8 +471,6 @@ static struct thermal_zone_device_ops mtk_imgs_dev_ops = {
 	.unbind = mtk_imgs_unbind,
 	.get_temp = mtk_imgs_get_temp,
 	.change_mode = mtk_imgs_change_mode,
-	.get_trip_type = mtk_imgs_get_trip_type,
-	.get_trip_temp = mtk_imgs_get_trip_temp,
 	.get_crit_temp = mtk_imgs_get_crit_temp,
 };
 
@@ -598,6 +577,8 @@ struct file *file, const char __user *buffer, size_t count,	\
 		for (i = 0; i < g_tsData[num].num_trip; i++) {	\
 			g_tsData[num].trip_type[i] = pTempD->t_type[i];	\
 			g_tsData[num].trip_temp[i] = pTempD->trip[i];	\
+			g_tsData[num].trips[i].type = pTempD->t_type[i];	\
+			g_tsData[num].trips[i].temperature = pTempD->trip[i];	\
 		}	\
 \
 		for (i = 0; i < 10; i++) {	\
@@ -639,7 +620,7 @@ struct file *file, const char __user *buffer, size_t count,	\
 		if (g_tsData[num].thz_dev == NULL) {	\
 			g_tsData[num].thz_dev =	\
 			mtk_thermal_zone_device_register(	\
-				g_tsData[num].thz_name,\
+				g_tsData[num].thz_name, g_tsData[num].trips,	\
 				g_tsData[num].num_trip, NULL,	\
 				&mtk_imgs_dev_ops, 0,\
 				0, 0, g_tsData[num].interval);	\
@@ -813,6 +794,8 @@ int mtk_imgs_init(void)
 		for (j = 0; j < 10; j++) {
 			g_tsData[i].trip_temp[j] = 0;
 			g_tsData[i].trip_type[j] = 0;
+			g_tsData[i].trips[j].temperature = 0;
+			g_tsData[i].trips[j].type = 0;
 			g_tsData[i].bind[j][0] = '\0';
 		}
 		g_tsData[i].num_trip = 0;
@@ -836,6 +819,7 @@ int mtk_imgs_init(void)
 		/* Assign a default thermal policy */
 		g_tsData[i].num_trip = 1;
 		g_tsData[i].trip_temp[0] = 130000;
+		g_tsData[i].trips[0].temperature = 130000;
 		sprintf(g_tsData[i].bind[0], "tzimgs%d-sysrst", i);
 		g_tsData[i].interval = 1000;
 	}
@@ -867,7 +851,7 @@ int mtk_imgs_init(void)
 	/* Register thermal zones */
 	for (i = 0; i < g_img_max; i++) {
 		g_tsData[i].thz_dev = mtk_thermal_zone_device_register(
-						g_tsData[i].thz_name,
+						g_tsData[i].thz_name, g_tsData[i].trips,
 						g_tsData[i].num_trip, NULL,
 						&mtk_imgs_dev_ops, 0, 0, 0,
 						g_tsData[i].interval);
