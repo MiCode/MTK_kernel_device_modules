@@ -33,7 +33,7 @@ static void set_ro_on_bdev(dev_t dev)
 		return;
 	}
 	bdev->bd_read_only= true;
-	blkdev_put(bdev, FMODE_READ);
+	blkdev_put(bdev, NULL);
 	pr_info("[mtk-mmc-wp]set wp %pg\n", bdev);
 
 }
@@ -75,7 +75,7 @@ static void set_ro_on_parts(dev_t devt, struct wp_info *info)
 	}
 	rcu_read_unlock();
 
-	blkdev_put(bdev, FMODE_READ);
+	blkdev_put(bdev, NULL);
 }
 
 #define MAX_RETRIES			100
@@ -108,7 +108,7 @@ retry:
 		if (strcmp(pdev_name, name)) {
 			if(bdev && bdev->bd_disk)
 				minor += bdev->bd_disk->minors;
-			blkdev_put(bdev, FMODE_READ);
+			blkdev_put(bdev, NULL);
 			retries = 0;
 			bdev = NULL;
 			goto retry;
@@ -118,7 +118,7 @@ retry:
 		if (perdev_minors && bdev && bdev->bd_disk)
 			*perdev_minors = bdev->bd_disk->minors;
 
-		blkdev_put(bdev, FMODE_READ);
+		blkdev_put(bdev, NULL);
 		break;
 	} while (minor < NUM_WHOLE_BDEVS * bdev->bd_disk->minors);
 

@@ -527,6 +527,7 @@ mgk_64_device_modules = [
     "drivers/mmc/host/mtk-mmc-dbg.ko",
     "drivers/mmc/host/mtk-mmc.ko",
     "drivers/mmc/host/mtk-sd.ko",
+    "drivers/mmc/host/mtk-mmc-wp.ko",
     "drivers/nvmem/nvmem-mt6338-efuse.ko",
     "drivers/nvmem/nvmem-mt635x-efuse.ko",
     "drivers/nvmem/nvmem-mt6681-efuse.ko",
