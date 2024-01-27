@@ -272,6 +272,7 @@ static void get_free_buffers(struct mtk_vcodec_ctx *ctx,
 		pResult);
 }
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 void mtk_venc_trigger_vcp_halt(struct venc_inst *inst)
 {
 	unsigned long timeout = 0;
@@ -289,6 +290,7 @@ void mtk_venc_trigger_vcp_halt(struct venc_inst *inst)
 		}
 	}
 }
+#endif
 
 int isVencAfbc10BFormat(enum venc_yuv_fmt format)
 {
@@ -455,8 +457,10 @@ void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx)
 					venc_dump_data_section(pbuf, dump_size);
 				}
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 				if (rResult.flags & VENC_FLAG_ENCODE_HWBREAK_TIMEOUT)
 					mtk_venc_trigger_vcp_halt(inst);
+#endif
 			}
 		}
 
