@@ -135,7 +135,11 @@ static void set_memory_region_attrs(enum MTEE_MCHUNKS_ID mchunk_id,
 		break;
 
 	case MTEE_MCHUNKS_PROT:
-		ffa_args->nattrs = VM_HA_NUM;
+		if(is_pkvm_enabled())
+			ffa_args->nattrs = 1;
+		else
+			ffa_args->nattrs = VM_HA_NUM;
+
 		if (show_attr)
 			pr_info("%s: mchunk_id = MTEE_MCHUNKS_PROT\n", __func__);
 		break;

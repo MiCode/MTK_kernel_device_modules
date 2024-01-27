@@ -96,7 +96,9 @@ int mtee_set_mchunks_region(u64 pa, u32 size, int remote_region_type)
 {
 	struct trusted_driver_cmd_params cmd_params = {0};
 
+#if IS_ENABLED(CONFIG_MTK_GZ_KREE)
 	cmd_params.cmd = TZCMD_MEM_CONFIG_CHUNKMEM_INFO_ION;
+#endif
 	cmd_params.param0 = pa;
 	cmd_params.param1 = size;
 	cmd_params.param2 = remote_region_type;
