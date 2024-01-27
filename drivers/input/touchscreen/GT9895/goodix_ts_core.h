@@ -77,6 +77,14 @@
 #define PINCTRL_STATE_INT_SUSPEND		"gt9896s_int_suspend"
 #define PINCTRL_STATE_RST_SUSPEND		"gt9896s_reset_suspend"
 
+#define GOODIX_TZ
+
+#ifdef GOODIX_TZ
+#define GOODIX_DEFAULT_TEMPERATURE_DIFFERENCE 10000
+#define GOODIX_DEFAULT_TEMPERATURE_THRESHOLD 0
+#define TS_DEFAULT_THERMAL_ZONE "ap_ntc"
+#endif
+
 enum GOODIX_GESTURE_TYP {
 	GESTURE_SINGLE_TAP = (1 << 0),
 	GESTURE_DOUBLE_TAP = (1 << 1),
@@ -287,6 +295,15 @@ struct goodix_module {
 	struct goodix_ts_core *core_data;
 };
 
+#ifdef GOODIX_TZ
+struct goodix_ts_bdata_tz {
+	struct thermal_zone_device *tz_dev; /* thermal zone device */
+	int temperature_difference;
+	int temperature_threshold; /*must be of 'int' type*/
+	bool tz_enable;
+	char tz_name[GOODIX_MAX_STR_LABLE_LEN]; /* thermal zone name */
+};
+#endif
 /*
  * struct goodix_ts_board_data -  board data
  * @avdd_name: name of analoy regulator
@@ -319,6 +336,9 @@ struct goodix_ts_board_data {
 	bool sleep_enable;
 	char fw_name[GOODIX_MAX_STR_LABLE_LEN];
 	char cfg_bin_name[GOODIX_MAX_STR_LABLE_LEN];
+#ifdef GOODIX_TZ
+	struct goodix_ts_bdata_tz ts_bdata_tz;
+#endif
 };
 
 enum goodix_fw_update_mode {
@@ -715,9 +735,8 @@ int goodix_ts_gpio_suspend(struct goodix_ts_core *core_data);
 int goodix_ts_gpio_resume(struct goodix_ts_core *core_data);
 #endif
 
-extern void register_tpd_tui_request(int (*enter_func)(void), int (*exit_func)(void));
-
 #if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
+extern void register_tpd_tui_request(int (*enter_func)(void), int (*exit_func)(void));
 extern atomic_t gt9895_tui_flag;
 extern struct goodix_ts_core *ts_core_gt9895_tui;
 extern void mt_spi_enable_master_clk(struct spi_device *spidev);
