@@ -64,7 +64,7 @@ int get_ptim_i(struct mtk_battery *gm)
 
 	if (psy != NULL)
 		power_supply_get_property(psy,
-				POWER_SUPPLY_PROP_CURRENT_NOW, &val);
+				POWER_SUPPLY_PROP_CURRENT_MAX, &val);
 
 	return val.intval;
 }
