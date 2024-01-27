@@ -302,7 +302,7 @@ vpu_map_sg_to_iova_v2(
 	vpu_mem_debug("%s: %s: len: %zx, iova: %llx\n",
 		__func__, vd->name, len, (u64)iova);
 
-	size = iommu_map_sg(domain, iova, sg, nents, prot);
+	size = iommu_map_sg(domain, iova, sg, nents, prot, GFP_KERNEL);
 
 	if (size == 0) {
 		dev_info(dev,

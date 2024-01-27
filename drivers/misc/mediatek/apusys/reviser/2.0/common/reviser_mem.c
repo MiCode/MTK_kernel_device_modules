@@ -120,7 +120,7 @@ static dma_addr_t __reviser_get_iova(
 	boundary_mask = (dma_addr_t) rdv->plat.boundary << 32;
 	iova |= boundary_mask;
 
-	iova_size = iommu_map_sg(domain, iova, sg, nents, prot);
+	iova_size = iommu_map_sg(domain, iova, sg, nents, prot, GFP_KERNEL);
 
 	if (iova_size == 0) {
 		LOG_ERR("iommu_map_sg: len: %zx, iova: %llx, failed\n",
