@@ -2790,6 +2790,31 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		dbg-version = <2>;
 	};
 
+	mminfra_debug: mminfra-debug@30070000 {
+		compatible = "mediatek,mminfra-debug";
+		reg = <0 0x30070000 0 0x104>;
+		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>;
+		interrupts = <GIC_SPI 479 IRQ_TYPE_LEVEL_HIGH 0>;
+		mminfra-bkrs = <0>;
+		init-clk-on;
+		//mminfra-gals-sel = <5 9 10 14 15 16 17 18 19 28>;
+		//bkrs-reg = <0x1e800250>;
+		//vlp-base = <0x1c000000>;
+		//spm-base = <0x1c001000>;
+		//mm-voter-base = <0x1ec45130>;
+		//mm-mtcmos-base = <0x1c001ea8>;
+		//mm-mtcmos-mask = <0xc0000000>;
+		//mminfra-ao-base;
+		mmup-gipc-in-set = <0x31bd0028>;
+		mediatek,vcp-supply = <&vcp>;
+		vcp-gipc;
+		no-sleep-pd-cb;
+		skip-apsrc;
+		mm-no-scmi;
+		mm-no-cg-ctrl;
+		mm-pwr-ver = <3>;
+	};
+
 	soc {
 				compatible = "simple-bus";
 				#address-cells = <2>;
