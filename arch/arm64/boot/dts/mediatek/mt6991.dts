@@ -4882,6 +4882,39 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			token-gpr-set4 = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_4>;
 		};
 
+		mminfra-imax {
+			compatible = "mediatek,mminfra-imax";
+			reg = <0 0x32800000 0 0x1000>, /* dispsys */
+				<0 0x32c00000 0 0x1000>, /* dispsys1 */
+				<0 0x3e000000 0 0x1000>, /* mdpsys */
+				<0 0x3e400000 0 0x1000>, /* mdpsys1 */
+				<0 0x32a60000 0 0x1000>, /* disp_larb_0 */
+				<0 0x32a70000 0 0x1000>, /* disp_larb_1 */
+				<0 0x32e60000 0 0x1000>, /* disp_larb_2 */
+				<0 0x32e70000 0 0x1000>, /* disp_larb_3 */
+				<0 0x3e030000 0 0x1000>, /* mdp_larb_0 */
+				<0 0x3e430000 0 0x1000>; /* mdp_larb_1 */
+			disp-larb0-fake-port = <12>;
+			disp-larb1-fake-port = <15>;
+			disp-larb2-fake-port = <12>;
+			disp-larb3-fake-port = <15>;
+			mdp-larb0-fake-port = <17>;
+			mdp-larb1-fake-port = <17>;
+
+			mm-sram-base = <0x0f000000>;
+
+			reg-names = "dispsys",
+				"dispsys1",
+				"mdpsys",
+				"mdpsys1",
+				"disp_larb_0",
+				"disp_larb_1",
+				"disp_larb_2",
+				"disp_larb_3",
+				"mdp_larb_0",
+				"mdp_larb_1";
+		};
+
 		mmlsys0_config: mmlsys0-config@3e000000 {
 			compatible = "mediatek,mt6991-mmlsys0";
 			reg = <0 0x3e000000 0 0x1000>;
