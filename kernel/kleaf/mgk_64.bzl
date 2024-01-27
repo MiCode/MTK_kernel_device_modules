@@ -1,13 +1,17 @@
-load("//kernel_device_modules-6.1:kernel/kleaf/mgk_modules.bzl",
+load("//kernel_device_modules-mainline:kernel/kleaf/mgk_modules.bzl",
      "mgk_module_outs",
      "mgk_module_eng_outs",
      "mgk_module_userdebug_outs",
      "mgk_module_user_outs"
 )
 
-mgk_64_aging_k61_defconfig = "mgk_64_k61_defconfig"
+load("@mgk_info//:dict.bzl",
+    "DEFCONFIG_OVERLAYS",
+)
 
-mgk_64_aging_k61_kleaf_modules = [
+mgk_64_defconfig = "mgk_64_kmainline_defconfig"
+
+mgk_64_kleaf_modules = [
     # keep sorted
     "//vendor/mediatek/kernel_modules/connectivity/bt/linux_v2:btmtk_uart_unify",
     "//vendor/mediatek/kernel_modules/connectivity/bt/mt66xx:btif",
@@ -34,6 +38,7 @@ mgk_64_aging_k61_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6985_6639:wlan_drv_gen4m_6985_6639",
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6989_6639:wlan_drv_gen4m_6989_6639",
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6989_6639_dppm:wlan_drv_gen4m_6989_6639_dppm",
+    "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6989_6639_offload:wlan_drv_gen4m_6989_6639_offload",
     "//vendor/mediatek/kernel_modules/cpufreq_cus:cpu_freq",
     "//vendor/mediatek/kernel_modules/cpufreq_int:cpu_hwtest",
     "//vendor/mediatek/kernel_modules/fpsgo_cus:fpsgo_cus",
@@ -69,30 +74,30 @@ mgk_64_aging_k61_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/sched_int:sched_int",
 ]
 
-mgk_64_aging_k61_kleaf_eng_modules = [
+mgk_64_kleaf_eng_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase",
     "//vendor/mediatek/tests/ktf/kernel:ktf",
 ]
 
-mgk_64_aging_k61_kleaf_userdebug_modules = [
+mgk_64_kleaf_userdebug_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase",
     "//vendor/mediatek/tests/ktf/kernel:ktf",
 ]
 
-mgk_64_aging_k61_kleaf_user_modules = [
+mgk_64_kleaf_user_modules = [
 ]
 
 
-mgk_64_aging_k61_module_outs = [
+mgk_64_module_outs = [
 ]
 
-mgk_64_aging_k61_common_modules = mgk_module_outs + mgk_64_aging_k61_module_outs
-mgk_64_aging_k61_common_eng_modules = mgk_module_outs + mgk_module_eng_outs + mgk_64_aging_k61_module_outs
-mgk_64_aging_k61_common_userdebug_modules = mgk_module_outs + mgk_module_userdebug_outs + mgk_64_aging_k61_module_outs
-mgk_64_aging_k61_common_user_modules = mgk_module_outs + mgk_module_user_outs + mgk_64_aging_k61_module_outs
+mgk_64_common_modules = mgk_module_outs + mgk_64_module_outs
+mgk_64_common_eng_modules = mgk_module_outs + mgk_module_eng_outs + mgk_64_module_outs
+mgk_64_common_userdebug_modules = mgk_module_outs + mgk_module_userdebug_outs + mgk_64_module_outs
+mgk_64_common_user_modules = mgk_module_outs + mgk_module_user_outs + mgk_64_module_outs
 
 
-mgk_64_aging_k61_device_modules = [
+mgk_64_device_modules = [
     # keep sorted
     "drivers/char/hw_random/sec-rng.ko",
     "drivers/char/rpmb/rpmb.ko",
@@ -104,9 +109,11 @@ mgk_64_aging_k61_device_modules = [
     "drivers/clocksource/timer-mediatek.ko",
     "drivers/cpufreq/mediatek-cpufreq-hw.ko",
     "drivers/devfreq/mtk-dvfsrc-devfreq.ko",
-    "drivers/dma-buf/heaps/mtk_heap_debug.ko",
+    "drivers/dma-buf/heaps/deferred-free-helper.ko",
+    #"drivers/dma-buf/heaps/mtk_heap_debug.ko",
     "drivers/dma-buf/heaps/mtk_heap_refill.ko",
     "drivers/dma-buf/heaps/mtk_sec_heap.ko",
+    "drivers/dma-buf/heaps/page_pool.ko",
     "drivers/dma-buf/heaps/system_heap.ko",
     "drivers/dma/mediatek/mtk-cqdma.ko",
     "drivers/dma/mediatek/mtk-uart-apdma.ko",
@@ -591,7 +598,7 @@ mgk_64_aging_k61_device_modules = [
     "sound/soc/mediatek/vow/mtk-scp-vow.ko",
 ]
 
-mgk_64_aging_k61_platform_device_modules = {
+mgk_64_platform_device_modules = {
     # keep sorted
     "drivers/clk/mediatek/clk-chk-mt6886.ko": "mt6886",
     "drivers/clk/mediatek/clk-chk-mt6897.ko": "mt6897",
@@ -768,7 +775,7 @@ mgk_64_aging_k61_platform_device_modules = {
 }
 
 
-mgk_64_aging_k61_device_eng_modules = [
+mgk_64_device_eng_modules = [
     "arch/arm64/geniezone/gzvm.ko",
     "drivers/misc/mediatek/cpufreq_v1/cpuhvfs.ko",
     "drivers/misc/mediatek/locking/locking_aee.ko",
@@ -776,23 +783,65 @@ mgk_64_aging_k61_device_eng_modules = [
     "drivers/misc/mediatek/selinux_warning/mtk_selinux_aee_warning.ko",
 ]
 
-mgk_64_aging_k61_platform_device_eng_modules = {
+mgk_64_platform_device_eng_modules = {
 }
 
 
-mgk_64_aging_k61_device_userdebug_modules = [
+mgk_64_device_userdebug_modules = [
     "arch/arm64/geniezone/gzvm.ko",
     "drivers/misc/mediatek/cpufreq_v1/cpuhvfs.ko",
     "drivers/misc/mediatek/mtprof/irq_monitor.ko",
     "drivers/misc/mediatek/selinux_warning/mtk_selinux_aee_warning.ko",
 ]
 
-mgk_64_aging_k61_platform_device_userdebug_modules = {
+mgk_64_platform_device_userdebug_modules = {
 }
 
 
-mgk_64_aging_k61_device_user_modules = [
+mgk_64_device_user_modules = [
 ]
 
-mgk_64_aging_k61_platform_device_user_modules = {
+mgk_64_platform_device_user_modules = {
 }
+
+
+def get_overlay_modules_list():
+    if "fpga.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/fpsgo_cus:fpsgo_cus")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/fpsgo_int:fpsgo_int")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_secure_v3:met_drv_secure_v3")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api:met_api_v3_cus")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api:met_api_v3_int")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3:met_drv_v3")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/msync2_frd_cus/build:msync2_frd_cus")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/msync2_frd_int:msync2_frd_int")
+        mgk_64_kleaf_eng_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase")
+        mgk_64_kleaf_userdebug_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/performance/fpsgo_v3/mtk_fpsgo.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/performance/frs/frs.ko")
+
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/met_drv_secure_v3:met_drv_secure_v3_default")
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/met_drv_v3:met_drv_v3_default")
+        mgk_64_kleaf_eng_modules.append("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase_fpga")
+        mgk_64_kleaf_userdebug_modules.append("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase_fpga")
+
+    if "wifionly.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_device_modules.remove("drivers/misc/mediatek/ccci_util/ccci_util_lib.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/ccmni/ccmni.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/ccci_auxadc.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/ccci_md_all.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/fsm/ccci_fsm_scp.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_ccif.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_cldma.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_dpmaif.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/mddp/mddp.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/power_throttling/mtk_md_power_throttling.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_atc.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_ets.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_modem.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
+
+        mgk_64_device_modules.append("drivers/misc/mediatek/pmic_tia/pmic_tia.ko")
+
+get_overlay_modules_list()
