@@ -134,7 +134,7 @@ extern int _slbc_ach_scmi(unsigned int cmd, enum slc_ach_uid uid, int gid,
 extern int _slbc_sspm_shared_dram_scmi(unsigned int phys_addr, unsigned int mem_size);
 
 #else
-__weak int slbc_suspend_resume_notify(int) { return 0; }
+__weak int slbc_suspend_resume_notify(int suspend) { return 0; }
 __weak int slbc_scmi_init(void) { return 0; }
 __weak int slbc_sspm_slb_disable(int disable) { return 0; }
 __weak int slbc_sspm_slc_disable(int disable) { return 0; }
