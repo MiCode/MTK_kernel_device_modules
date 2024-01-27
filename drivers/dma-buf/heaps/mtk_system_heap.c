@@ -1512,8 +1512,14 @@ static int mtk_system_heap_create(void)
 
 	// smmu support 4K/2M/1G granule
 	smmu_v3_enable = smmu_v3_enabled();
-	if (smmu_v3_enable)
+	if (smmu_v3_enable) {
+#if IS_ENABLED(CONFIG_ARM64_16K_PAGES)
+		orders[0] = 11;
+		orders[1] = 7;
+#else
 		orders[0] = 9;
+#endif
+	}
 
 	mtk_dmabuf_page_pool_init_shrinker();
 	mtk_deferred_freelist_init();
