@@ -10770,9 +10770,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 	/delete-property/ regulator-always-on;
 };
 
-&mt6373_vbuck9 {
-	/delete-property/ regulator-always-on;
-};
+//&mt6373_vbuck9 {
+//	/delete-property/ regulator-always-on;
+//};
 
 &mt6373_vbuck4_ufs {
 	regulator-min-microvolt = <0>;
