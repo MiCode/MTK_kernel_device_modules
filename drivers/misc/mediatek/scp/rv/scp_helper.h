@@ -111,6 +111,11 @@ enum SCP_PM_NOTIFY {
 	PM_AP_RESUME = 1,
 };
 
+enum SCP_DUMP_TYPE {
+	SKIP_DUMP = 0,
+	DO_DUMP = 1,
+};
+
 struct scp_bus_tracker_status {
 	u32 dbg_con;
 	u32 dbg_r[32];
@@ -292,13 +297,13 @@ enum MTK_TINYSYS_SCP_KERNEL_OP {
 };
 
 #if SCP_RESERVED_MEM && IS_ENABLED(CONFIG_OF_RESERVED_MEM)
-static inline unsigned long scp_do_dump(void)
+static inline unsigned long scp_do_dump(enum SCP_DUMP_TYPE type)
 {
 	struct arm_smccc_res res;
 
 	arm_smccc_smc(MTK_SIP_TINYSYS_SCP_CONTROL,
 			MTK_TINYSYS_SCP_KERNEL_OP_DUMP_START,
-			0, 0, 0, 0, 0, 0, &res);
+			type, 0, 0, 0, 0, 0, &res);
 	return res.a0;
 }
 
