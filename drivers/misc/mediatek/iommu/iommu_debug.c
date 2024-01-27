@@ -32,7 +32,10 @@
 #include "../../../iommu/arm/arm-smmu-v3/arm-smmu-v3.h"
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE) && !IOMMU_BRING_UP
-#include <aee.h>
+#include <mt-plat/aee.h>
+#endif
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+#include <mt-plat/mrdump.h>
 #endif
 
 #define ERROR_LARB_PORT_ID		0xFFFF
@@ -142,14 +145,28 @@ static struct mtk_m4u_data *m4u_data;
 static bool smmu_v3_enable;
 
 /**********iommu trace**********/
-#define IOMMU_EVENT_COUNT_MAX	(8000)
+#define IOMMU_EVENT_COUNT_MAX		(8000)
 
-#define iommu_dump(file, fmt, args...) \
-	do {\
-		if (file)\
-			seq_printf(file, fmt, ##args);\
-		else\
-			pr_info(fmt, ##args);\
+mtk_iommu_dump_callback_t iommu_mrdump_proc;
+#define IOMMU_MRDUMP_TAG		((void *)0x1)
+
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+#define MAX_STRING_SIZE			(256)
+#define MAX_IOMMU_MRDUMP_SIZE		(512*1024)
+static char *iommu_mrdump_buffer;
+static int iommu_mrdump_size;
+#endif
+
+#define iommu_dump(file, fmt, args...)				\
+	do {							\
+		if (file == IOMMU_MRDUMP_TAG) {			\
+			if (iommu_mrdump_proc != NULL)		\
+				iommu_mrdump_proc(fmt, ##args);	\
+		}						\
+		else if (file)					\
+			seq_printf(file, fmt, ##args);		\
+		else						\
+			pr_info(fmt, ##args);			\
 	} while (0)
 
 struct iommu_event_mgr_t {
@@ -2117,6 +2134,48 @@ void mtk_iommu_pm_trace(int event, int iommu_id, int pd_sta,
 }
 EXPORT_SYMBOL_GPL(mtk_iommu_pm_trace);
 
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+static int mtk_iommu_mrdump_show(struct seq_file *s, void *unused)
+{
+	mtk_iommu_trace_dump(s);
+	mtk_iommu_iova_alloc_dump(s, NULL);
+	return 0;
+}
+
+static void mtk_iommu_mrdump(const char *fmt, ...)
+{
+	unsigned long len;
+	va_list ap;
+
+	if (!iommu_mrdump_buffer)
+		return;
+
+	if ((iommu_mrdump_size + MAX_STRING_SIZE) >= (unsigned long)MAX_IOMMU_MRDUMP_SIZE)
+		return;
+
+	va_start(ap, fmt);
+	len = vscnprintf(&iommu_mrdump_buffer[iommu_mrdump_size],
+			 MAX_STRING_SIZE, fmt, ap);
+	va_end(ap);
+	iommu_mrdump_size += len;
+}
+
+void get_iommu_mrdump_buffer(unsigned long *vaddr, unsigned long *size)
+{
+	if (!iommu_mrdump_buffer) {
+		pr_info("%s iommu_mrdump_buffer is NULL\n", __func__);
+		return;
+	}
+
+	iommu_mrdump_size = 0;
+	memset(iommu_mrdump_buffer, 0, MAX_IOMMU_MRDUMP_SIZE);
+
+	mtk_iommu_mrdump_show(IOMMU_MRDUMP_TAG, NULL);
+	*vaddr = (unsigned long)iommu_mrdump_buffer;
+	*size = iommu_mrdump_size;
+}
+#endif
+
 static int m4u_debug_init(struct mtk_m4u_data *data)
 {
 	struct proc_dir_entry *debug_file;
@@ -2177,6 +2236,14 @@ static int m4u_debug_init(struct mtk_m4u_data *data)
 
 	spin_lock_init(&count_list.lock);
 	INIT_LIST_HEAD(&count_list.head);
+
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+	iommu_mrdump_buffer = kzalloc(MAX_IOMMU_MRDUMP_SIZE, GFP_KERNEL);
+	if (iommu_mrdump_buffer) {
+		iommu_mrdump_proc = mtk_iommu_mrdump;
+		mrdump_set_extra_dump(AEE_EXTRA_FILE_IOMMU, get_iommu_mrdump_buffer);
+	}
+#endif
 
 	return 0;
 }

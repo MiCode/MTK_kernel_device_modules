@@ -56,6 +56,8 @@ enum iommu_event_type {
 typedef int (*mtk_iommu_fault_callback_t)(int port,
 	dma_addr_t mva, void *cb_data);
 
+typedef void (*mtk_iommu_dump_callback_t)(const char *fmt, ...);
+
 void report_custom_iommu_fault(
 	u64 fault_iova, u64 fault_pa, u32 fault_id,
 	enum mtk_iommu_type type, int id);
