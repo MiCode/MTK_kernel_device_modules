@@ -4,6 +4,8 @@
  * Author: Stanley Chu <stanley.chu@mediatek.com>
  */
 
+#include <linux/arm-smccc.h>
+#include <linux/arm_ffa.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/io.h>
