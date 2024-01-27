@@ -234,7 +234,7 @@ static void swtp_init_delayed_work(struct work_struct *work)
 			swtp_data.gpiopin[i] =
 				of_get_named_gpio(node, "deb-gpios", 0);
 #endif
-			gpio_set_debounce(swtp_data.gpiopin[i],
+			gpiod_set_debounce(gpio_to_desc(swtp_data.gpiopin[i]),
 				swtp_data.setdebounce[i]);
 			swtp_data.eint_type[i] = ints1[1];
 			swtp_data.irq[i] = irq_of_parse_and_map(node, 0);
