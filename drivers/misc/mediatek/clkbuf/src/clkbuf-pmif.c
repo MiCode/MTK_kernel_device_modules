@@ -589,7 +589,9 @@ static struct match_pmif mt6768_match_pmif = {
 	.name = "mediatek,mt6768-pwrap",
 	.hdlr = &pmif_hdlr_lv1,
 	.init = &pmif_init_v1,
+	.parse_dts = &pmif_parse_dts_v1,
 };
+
 static struct match_pmif mt6885_match_pmif = {
 	.name = "mediatek,mt6885-pwrap",
 	.hdlr = &pmif_hdlr_lv1,
