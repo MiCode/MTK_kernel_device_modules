@@ -719,8 +719,7 @@ err_node_put:
 	return -EINVAL;
 }
 
-static int lm3643_i2c_probe(
-		struct i2c_client *client, const struct i2c_device_id *id)
+static int lm3643_i2c_probe(struct i2c_client *client)
 {
 	struct lm3643_chip_data *chip;
 	int err;
