@@ -11180,6 +11180,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		compatible = "mediatek,mm-smmu-test-ktf1";
 		dma-mmap-reg = <0x32800000 0x1000>;
 		mtk,smmu-shared = <&mm_smmu_disp>;
+		mediatek,larbs-port = <SMMU_L0_P12_DISP_FAKE0>;
 	};
 
 	smmu-test-ktf6 {
