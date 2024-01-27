@@ -23,7 +23,6 @@
 			<&cksys_clk CLK_CK_SPI7_BCLK_SEL>,
 			<&cksys_clk CLK_CK_MSDC30_1_SEL>,
 			<&cksys_clk CLK_CK_MSDC30_2_SEL>,
-			<&cksys_clk CLK_CK_DISP_PWM_SEL>,
 			<&cksys_clk CLK_CK_USB_TOP_1P_SEL>,
 			<&cksys_clk CLK_CK_USB_XHCI_1P_SEL>,
 			<&cksys_clk CLK_CK_USB_FMCNT_P1_SEL>,
