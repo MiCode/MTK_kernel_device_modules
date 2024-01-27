@@ -2457,7 +2457,7 @@ static void mtk_smmu_register_hang_detect(struct mtk_smmu_data *data)
 #endif
 }
 
-static const struct mtk_smmu_ops mtk_smmu_dbg_ops = {
+static const struct mtk_smmu_ops mtk_smmu_ops = {
 	.get_smmu_data		= mkt_get_smmu_data,
 	.get_cd_ptr		= arm_smmu_get_cd_ptr,
 	.get_step_ptr		= arm_smmu_get_step_for_sid,
@@ -2640,8 +2640,10 @@ static struct arm_smmu_device *mtk_smmu_create(struct arm_smmu_device *smmu,
 
 	mtk_smmu_datas[data->plat_data->smmu_type] = data;
 
+	mtk_smmu_set_ops(&mtk_smmu_ops);
+
 #ifdef MTK_SMMU_DEBUG
-	mtk_smmu_set_ops(&mtk_smmu_dbg_ops);
+	mtk_smmu_set_debug_ops(&mtk_smmu_ops);
 #endif
 
 	return &data->smmu;
