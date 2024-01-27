@@ -44,7 +44,6 @@
 #include <linux/arm-smccc.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <mt-plat/mtk_blocktag.h>
-#include <mt-plat/mtk_irq_mon.h>
 
 #define PAD_DS_TUNE_DLY_SEL       (0x1 << 0)	/* RW */
 /* EMMC50_PAD_DS_TUNE mask */
@@ -421,13 +420,13 @@ static const struct mtk_mmc_compatible mt6991_compat = {
 	.busy_check = true,
 	.stop_clk_set = {
 		.enable = 1,
-		.stop_cnt = 3,
-		.pop_cnt = 8,
+		.stop_cnt = 1,
+		.pop_cnt = 2,
 	},
 	.enhance_rx = true,
 	.support_64g = true,
 	.need_gate_cg = false,
-	.new_tx_ver = MSDC_NEW_TX_V1,
+	.new_tx_ver = MSDC_NEW_TX_V2,
 	.new_rx_ver = MSDC_NEW_RX_V1,
 	.infra_check = {
 		.enable = false,
@@ -494,17 +493,14 @@ static void msdc_reset_hw(struct msdc_host *host)
 {
 	u32 val;
 
-	irq_log_store();
 	sdr_set_bits(host->base + MSDC_CFG, MSDC_CFG_RST);
 	readl_poll_timeout(host->base + MSDC_CFG, val, !(val & MSDC_CFG_RST), 0, 0);
-	irq_log_store();
 	sdr_set_bits(host->base + MSDC_FIFOCS, MSDC_FIFOCS_CLR);
 	readl_poll_timeout(host->base + MSDC_FIFOCS, val,
 			   !(val & MSDC_FIFOCS_CLR), 0, 0);
 
 	val = readl(host->base + MSDC_INT);
 	writel(val, host->base + MSDC_INT);
-	irq_log_store();
 }
 
 struct tracepoints_table {
@@ -714,6 +710,44 @@ static int msdc_ungate_clock(struct msdc_host *host)
 				  (val & MSDC_CFG_CKSTB), 1, 20000);
 }
 
+static void msdc_new_tx_rx_setting_v2(struct msdc_host *host,
+	unsigned char timing)
+{
+	switch (timing) {
+	case MMC_TIMING_LEGACY:
+	case MMC_TIMING_MMC_HS:
+	case MMC_TIMING_SD_HS:
+	case MMC_TIMING_UHS_SDR12:
+	case MMC_TIMING_UHS_SDR25:
+	case MMC_TIMING_UHS_DDR50:
+	case MMC_TIMING_MMC_DDR52:
+		sdr_set_bits(host->top_base + LOOP_TEST_CONTROL,
+			     TEST_LOOP_DSCLK_MUX_SEL);
+		sdr_set_bits(host->top_base + LOOP_TEST_CONTROL,
+			     TEST_LOOP_LATCH_MUX_SEL);
+		sdr_clr_bits(host->top_base + LOOP_TEST_CONTROL,
+			     LOOP_EN_SEL_CLK);
+		sdr_clr_bits(host->top_base + LOOP_TEST_CONTROL,
+			     TEST_HS400_CMD_LOOP_MUX_SEL);
+		break;
+	case MMC_TIMING_UHS_SDR50:
+	case MMC_TIMING_UHS_SDR104:
+	case MMC_TIMING_MMC_HS200:
+	case MMC_TIMING_MMC_HS400:
+		sdr_set_bits(host->top_base + LOOP_TEST_CONTROL,
+			     TEST_LOOP_DSCLK_MUX_SEL);
+		sdr_set_bits(host->top_base + LOOP_TEST_CONTROL,
+			     TEST_LOOP_LATCH_MUX_SEL);
+		sdr_set_bits(host->top_base + LOOP_TEST_CONTROL,
+			     LOOP_EN_SEL_CLK);
+		sdr_clr_bits(host->top_base + LOOP_TEST_CONTROL,
+			     TEST_HS400_CMD_LOOP_MUX_SEL);
+		break;
+	default:
+		break;
+	}
+}
+
 static void msdc_new_tx_rx_setting_v1(struct msdc_host *host,
 	unsigned char timing)
 {
@@ -766,6 +800,9 @@ static void msdc_new_tx_rx_setting(struct msdc_host *host, unsigned char timing)
 	switch (host->dev_comp->new_tx_ver) {
 	case MSDC_NEW_TX_V1:
 		msdc_new_tx_rx_setting_v1(host, timing);
+		break;
+	case MSDC_NEW_TX_V2:
+		msdc_new_tx_rx_setting_v2(host, timing);
 		break;
 	default:
 		break;
@@ -1017,7 +1054,6 @@ static void msdc_start_data(struct msdc_host *host, struct mmc_request *mrq,
 {
 	bool read;
 
-	irq_log_store();
 	WARN_ON(host->data);
 	host->data = data;
 	read = data->flags & MMC_DATA_READ;
@@ -1029,7 +1065,6 @@ static void msdc_start_data(struct msdc_host *host, struct mmc_request *mrq,
 	dev_dbg(host->dev, "DMA start\n");
 	dev_dbg(host->dev, "%s: cmd=%d DMA data: %d blocks; read=%d\n",
 			__func__, cmd->opcode, data->blocks, read);
-	irq_log_store();
 }
 
 static int msdc_auto_cmd_done(struct msdc_host *host, int events,
@@ -1099,7 +1134,6 @@ static void msdc_request_done(struct msdc_host *host, struct mmc_request *mrq)
 {
 	unsigned long flags;
 
-	irq_log_store();
 
 	/*
 	 * No need check the return value of cancel_delayed_work, as only ONE
@@ -1124,7 +1158,6 @@ static void msdc_request_done(struct msdc_host *host, struct mmc_request *mrq)
 	if (host->dev_comp->recheck_sdio_irq)
 		msdc_recheck_sdio_irq(host);
 
-	irq_log_store();
 }
 
 /* returns true if command is fully handled; returns false otherwise */
@@ -1226,7 +1259,6 @@ static inline bool msdc_cmd_is_ready(struct msdc_host *host,
 	u32 val;
 	int ret;
 
-	irq_log_store();
 	/* The max busy time we can endure is 20ms */
 	ret = readl_poll_timeout_atomic(host->base + SDC_STS, val,
 					!(val & SDC_STS_CMDBUSY), 1, 20000);
@@ -1235,7 +1267,6 @@ static inline bool msdc_cmd_is_ready(struct msdc_host *host,
 		msdc_cmd_done(host, MSDC_INT_CMDTMO, mrq, cmd);
 		return false;
 	}
-	irq_log_store();
 
 	if (mmc_resp_type(cmd) == MMC_RSP_R1B || cmd->data) {
 		/* R1B or with data, should check SDCBUSY */
@@ -1246,7 +1277,6 @@ static inline bool msdc_cmd_is_ready(struct msdc_host *host,
 			msdc_cmd_done(host, MSDC_INT_CMDTMO, mrq, cmd);
 			return false;
 		}
-		irq_log_store();
 	}
 	return true;
 }
@@ -1259,7 +1289,6 @@ static void msdc_start_command(struct msdc_host *host,
 
 	WARN_ON(host->cmd);
 	host->cmd = cmd;
-	irq_log_store();
 	mod_delayed_work(system_wq, &host->req_timeout, DAT_TIMEOUT);
 	if (!msdc_cmd_is_ready(host, mrq, cmd))
 		return;
@@ -1279,7 +1308,6 @@ static void msdc_start_command(struct msdc_host *host,
 
 	writel(cmd->arg, host->base + SDC_ARG);
 	writel(rawcmd, host->base + SDC_CMD);
-	irq_log_store();
 }
 
 static void msdc_cmd_next(struct msdc_host *host,
@@ -1358,13 +1386,11 @@ static void msdc_post_req(struct mmc_host *mmc, struct mmc_request *mrq,
 
 static void msdc_data_xfer_next(struct msdc_host *host, struct mmc_request *mrq)
 {
-	irq_log_store();
 	if (mmc_op_multi(mrq->cmd->opcode) && mrq->stop && !mrq->stop->error &&
 	    !mrq->sbc)
 		msdc_start_command(host, mrq, mrq->stop);
 	else
 		msdc_request_done(host, mrq);
-	irq_log_store();
 }
 
 static bool msdc_data_xfer_done(struct msdc_host *host, u32 events,
@@ -1396,14 +1422,12 @@ static bool msdc_data_xfer_done(struct msdc_host *host, u32 events,
 		sdr_set_field(host->base + MSDC_DMA_CTRL, MSDC_DMA_CTRL_STOP,
 				1);
 
-		irq_log_store();
 		ret = readl_poll_timeout_atomic(host->base + MSDC_DMA_CTRL, val,
 						!(val & MSDC_DMA_CTRL_STOP), 1, 20000);
 		if (ret) {
 			dev_info(host->dev, "DMA stop timed out\n");
 			return false;
 		}
-		irq_log_store();
 
 		sdr_clr_bits(host->base + MSDC_INTEN, data_ints_mask);
 		dev_dbg(host->dev, "DMA stop\n");
