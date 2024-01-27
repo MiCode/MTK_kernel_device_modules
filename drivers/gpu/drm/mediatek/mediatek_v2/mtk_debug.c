@@ -88,7 +88,7 @@ static struct proc_dir_entry *mtkfb_debug_procfs;
 #endif
 static struct drm_device *drm_dev;
 
-bool g_mobile_log;
+bool g_mobile_log = 1;
 EXPORT_SYMBOL(g_mobile_log);
 bool g_fence_log;
 bool g_detail_log;
@@ -103,7 +103,7 @@ bool g_vidle_apsrc_debug;
 EXPORT_SYMBOL(g_vidle_apsrc_debug);
 bool g_profile_log;
 
-bool g_irq_log;
+bool g_irq_log = 1;
 unsigned int mipi_volt;
 unsigned int disp_met_en;
 unsigned int disp_met_condition;
