@@ -4618,6 +4618,18 @@ static const struct mtk_crtc_path_data mt6768_mtk_third_path_data = {
 	.addon_data = mt6768_addon_ext,
 };
 
+static const enum mtk_ddp_comp_id mt6768_mtk_ddp_ext[] = {
+	DDP_COMPONENT_OVL0_2L,
+	DDP_COMPONENT_RDMA0,
+};
+
+static const struct mtk_crtc_path_data mt6768_mtk_ext_path_data = {
+	.path[DDP_MAJOR][0] = mt6768_mtk_ddp_ext,
+	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6768_mtk_ddp_ext),
+	.path_req_hrt[DDP_MAJOR][0] = true,
+	.addon_data = mt6768_addon_ext,
+};
+
 static const struct mtk_crtc_path_data mt6885_mtk_main_path_data = {
 	.path[DDP_MAJOR][0] = mt6885_mtk_ddp_main,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6885_mtk_ddp_main),
@@ -5527,7 +5539,7 @@ static const struct mtk_mmsys_driver_data mt6779_mmsys_driver_data = {
 
 const struct mtk_mmsys_driver_data mt6768_mmsys_driver_data = {
 	.main_path_data = &mt6768_mtk_main_path_data,
-	.ext_path_data = &mt6768_mtk_third_path_data,
+	.ext_path_data = &mt6768_mtk_ext_path_data,
 	.third_path_data = &mt6768_mtk_third_path_data,
 	.fake_eng_data = &mt6768_fake_eng_data,
 	.mmsys_id = MMSYS_MT6768,
@@ -8006,6 +8018,8 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 				  DRM_UNLOCKED),
 	DRM_IOCTL_DEF_DRV(MTK_HWVSYNC_ON, mtk_drm_hwvsync_on_ioctl,
 				  DRM_UNLOCKED),
+	DRM_IOCTL_DEF_DRV(MTK_SEC_HND_TO_GEM_HND, mtk_drm_sec_hnd_to_gem_hnd,
+			DRM_UNLOCKED | DRM_AUTH | DRM_RENDER_ALLOW),
 };
 
 static const struct file_operations mtk_drm_fops = {

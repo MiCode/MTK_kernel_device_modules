@@ -24,7 +24,6 @@
 #include "mtk_drm_fb.h"
 
 #define RETRY_SEC_CMDQ_FLUSH 3
-#define SECURE_CMDQ_ENABLE
 
 struct mtk_disp_sec_config {
 	struct cmdq_client *disp_sec_client;
@@ -279,13 +278,11 @@ int mtk_disp_mtee_domain_enable(struct cmdq_pkt *handle, struct mtk_ddp_comp *co
 	int port = 0, ret = 0, sec_id = 0;
 
 	DDPINFO("%s+\n", __func__);
-#if IS_ENABLED(SECURE_CMDQ_ENABLE)
 	if (!comp) {
 		cmdq_sec_pkt_write_reg_disp(handle, regs_addr, lye_addr,
 					CMDQ_IWC_H_2_MVA, offset, size, port, sec_id);
 		return true;
 	}
-#endif
 	sec_id = mtk_fb_get_sec_id(comp->fb);
 	ret = of_property_read_u32_index(comp->dev->of_node,
 				"iommus", 1, &port);
@@ -296,10 +293,8 @@ int mtk_disp_mtee_domain_enable(struct cmdq_pkt *handle, struct mtk_ddp_comp *co
 	}
 	port &= (unsigned int)GET_M4U_PORT;
 	DDPINFO("%s, %d, port = %d, sec_id = %d\n", __func__, __LINE__, port, sec_id);
-#if IS_ENABLED(SECURE_CMDQ_ENABLE)
 	cmdq_sec_pkt_write_reg_disp(handle, regs_addr, lye_addr,
 				CMDQ_IWC_H_2_MVA, offset, size, port, sec_id);
-#endif
 	return true;
 }
 
@@ -350,9 +345,19 @@ int mtk_disp_mtee_cmdq_secure_start(int value, struct cmdq_pkt *cmdq_handle,
 {
 	u64 sec_disp_port, sec_disp_dapc;
 	u32 sec_disp_scn;
+	struct mtk_drm_private *priv = NULL;
+
+	if (comp)
+		priv = comp->mtk_crtc->base.dev->dev_private;
+	else
+		DDPINFO("%s, priv is null\n", __func__);
 
 	if (crtc_id == 0) {
-		sec_disp_port = 0;
+		/*TODO need to adapt new chip with sec_disp_port = 0*/
+		if (priv && priv->data->mmsys_id == MMSYS_MT6768)
+			sec_disp_port = 1LL << CMDQ_SEC_DISP_OVL0;
+		else
+			sec_disp_port = 0;
 		sec_disp_dapc = 0;
 		if (value == DISP_SEC_START)
 			sec_disp_scn = CMDQ_SEC_PRIMARY_DISP;
@@ -360,7 +365,10 @@ int mtk_disp_mtee_cmdq_secure_start(int value, struct cmdq_pkt *cmdq_handle,
 			sec_disp_scn = CMDQ_SEC_DISP_PRIMARY_DISABLE_SECURE_PATH;
 	} else {
 		sec_disp_port = (crtc_id == 1) ? 0 :
-				mtk_crtc_secure_port_lookup(comp);
+			mtk_crtc_secure_port_lookup(comp);
+		if (priv && priv->data->mmsys_id == MMSYS_MT6768)
+			sec_disp_port |= (crtc_id == 1) ? 0 : (1LL << CMDQ_SEC_DISP_2L_OVL0);
+
 		sec_disp_dapc = (crtc_id == 1) ? 0 :
 				mtk_crtc_secure_dapc_lookup(comp);
 		if (value == DISP_SEC_START)
@@ -372,9 +380,7 @@ int mtk_disp_mtee_cmdq_secure_start(int value, struct cmdq_pkt *cmdq_handle,
 	cmdq_sec_pkt_set_data(cmdq_handle, sec_disp_dapc,
 			sec_disp_port, sec_disp_scn,
 			CMDQ_METAEX_NONE);
-#if IS_ENABLED(SECURE_CMDQ_ENABLE)
 	cmdq_sec_pkt_set_secid(cmdq_handle, 1);
-#endif
 	cmdq_sec_pkt_set_mtee(cmdq_handle, mtk_disp_is_svp_on_mtee());
 
 	return true;
@@ -391,7 +397,7 @@ static int mtk_disp_mtee_gem_fd_to_sec_hdl(int fd, struct mtk_drm_gem_obj *mtk_g
 		DDPMSG("%s dma_buf_get fail\n", __func__);
 		return false;
 	}
-#if IS_ENABLED(SECURE_CMDQ_ENABLE)
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
 	if (mtk_disp_is_svp_on_mtee())
 		sec_id = dmabuf_to_sec_id(dma_buf, &sec_handle);
 	else

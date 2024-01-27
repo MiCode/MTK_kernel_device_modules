@@ -90,7 +90,8 @@ struct mtk_drm_gem_obj *mtk_drm_fb_gem_insert(struct drm_device *dev,
 void mtk_drm_fb_gem_release(struct drm_device *dev);
 int mtk_drm_ioctl_mml_gem_submit(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv);
-
+int mtk_drm_sec_hnd_to_gem_hnd(struct drm_device *dev, void *data,
+		struct drm_file *file_priv);
 void print_mml_frame_buffer(struct mml_frame_buffer frame_buf);
 void print_mml_frame_info(struct mml_frame_info info);
 void print_mml_submit(struct mml_submit *args);
