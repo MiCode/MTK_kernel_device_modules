@@ -429,7 +429,7 @@ static const struct mtk_mmc_compatible mt6991_compat = {
 	.new_tx_ver = MSDC_NEW_TX_V2,
 	.new_rx_ver = MSDC_NEW_RX_V1,
 	.infra_check = {
-		.enable = false,
+		.enable = true,
 		.infra_ack_bit = BIT(14),
 		.infra_ack_paddr = 0x1c004104,
 	},
@@ -3591,7 +3591,6 @@ static int msdc_drv_probe(struct platform_device *pdev)
 		mmc->max_seg_size = BDMA_DESC_BUFLEN_EXT;
 	else
 		mmc->max_seg_size = BDMA_DESC_BUFLEN;
-	mmc->max_blk_size = 2048;
 	mmc->max_req_size = 512 * 1024;
 	mmc->max_blk_count = mmc->max_req_size / 512;
 	if (host->dev_comp->support_64g)
