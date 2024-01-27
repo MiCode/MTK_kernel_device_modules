@@ -46,6 +46,8 @@
 #define SMMU_HYP_EN			BIT(8)
 #define SMMU_DIS_CPU_PARTID		BIT(9)
 #define SMMU_HANG_DETECT		BIT(10)
+#define SMMU_EXTRA_DCM_EN		BIT(11)
+#define SMMU_DIS_CPU_TBU_PARTID		BIT(12)
 
 #define SMMU_IRQ_COUNT_MAX		(5)
 #define SMMU_IRQ_DISABLE_TIME		(10) /* 10s */
@@ -427,7 +429,6 @@ static bool mtk_delay_hw_init(struct arm_smmu_device *smmu)
 static int smmu_init_wpcfg(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
-	const struct mtk_smmu_plat_data *plat_data = data->plat_data;
 	void __iomem *wp_base;
 	u32 regval;
 	int ret;
@@ -440,9 +441,22 @@ static int smmu_init_wpcfg(struct arm_smmu_device *smmu)
 	smmu_write_field(wp_base, SMMUWP_GLB_CTL0, CTL0_DCM_EN, CTL0_DCM_EN);
 	smmu_write_field(wp_base, SMMUWP_GLB_CTL0, CTL0_CFG_TAB_DCM_EN,
 			 CTL0_CFG_TAB_DCM_EN);
+
+	if (MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_EXTRA_DCM_EN))
+		smmu_write_field(wp_base, SMMUWP_GLB_CTL0,
+				 CTL0_TCU2SLC_DCM_EN | CTL0_APB_DCM_EN |
+				 CTL0_DVM_DCM_EN,
+				 CTL0_TCU2SLC_DCM_EN | CTL0_APB_DCM_EN |
+				 CTL0_DVM_DCM_EN);
+
 	if (MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_DIS_CPU_PARTID))
 		smmu_write_field(wp_base, SMMUWP_GLB_CTL0, CTL0_CPU_PARTID_DIS,
 				 CTL0_CPU_PARTID_DIS);
+
+	if (MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_DIS_CPU_TBU_PARTID))
+		smmu_write_field(wp_base, SMMUWP_GLB_CTL0,
+				 CTL0_CPU_TBU_PARTID_DIS,
+				 CTL0_CPU_TBU_PARTID_DIS);
 
 	/* Used for MM_SMMMU read command overtaking */
 	if (data->plat_data->smmu_type == MM_SMMU)
@@ -453,12 +467,6 @@ static int smmu_init_wpcfg(struct arm_smmu_device *smmu)
 		/* Set SOC_SMMU TBU0 to use in-ordering */
 		smmu_write_field(wp_base, SMMUWP_TBU0_MOGH0, MOGH_EN | MOGH_RW,
 				 MOGH_EN | MOGH_RW);
-
-	if (data->smmu_trans_type == SMMU_TRANS_WP_BYPASS) {
-		dev_info(smmu->dev, "[%s] smmu:%s, smmuwp bypasss\n",
-			 __func__, get_smmu_name(plat_data->smmu_type));
-		smmu_write_field(wp_base, SMMUWP_GLB_CTL3, CTL3_BP_SMMU, CTL3_BP_SMMU);
-	}
 
 	/* Connect DVM */
 	smmu_write_field(wp_base, SMMUWP_TCU_CTL4, TCU_DVM_EN_REQ, TCU_DVM_EN_REQ);
@@ -486,26 +494,21 @@ static int smmu_init_wpcfg(struct arm_smmu_device *smmu)
 	}
 
 	dev_info(smmu->dev,
-		 "[%s] ret:%d, GLB_CTL0(0x%llx)=0x%x, GLB_CTL3(0x%llx)=0x%x\n",
+		 "[%s] ret:%d, GLB_CTL0(0x%llx)=0x%x\n",
 		 __func__, ret,
 		 (unsigned long long)wp_base + SMMUWP_GLB_CTL0,
-		 smmu_read_reg(wp_base, SMMUWP_GLB_CTL0),
-		 (unsigned long long)wp_base + SMMUWP_GLB_CTL3,
-		 smmu_read_reg(wp_base, SMMUWP_GLB_CTL3));
+		 smmu_read_reg(wp_base, SMMUWP_GLB_CTL0));
 
 	return ret;
 }
 
 static int smmu_deinit_wpcfg(struct arm_smmu_device *smmu)
 {
-	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	void __iomem *wp_base = smmu->wp_base;
 	int ret = 0;
 	u32 regval;
 
 	smmuwp_clear_tf(smmu);
-	if (data->smmu_trans_type == SMMU_TRANS_WP_BYPASS)
-		smmu_write_field(wp_base, SMMUWP_GLB_CTL3, CTL3_BP_SMMU, 0);
 
 	/* Disconnect DVM */
 	smmu_write_field(wp_base, SMMUWP_TCU_CTL4, TCU_DVM_EN_REQ, 0);
@@ -2389,7 +2392,6 @@ static int mtk_smmu_config_translation(struct mtk_smmu_data *data)
 	case SMMU_TRANS_S2:
 	case SMMU_TRANS_MIX:
 	case SMMU_TRANS_BYPASS:
-	case SMMU_TRANS_WP_BYPASS:
 		data->smmu_trans_type = trans;
 		ret = 0;
 		break;
@@ -2596,10 +2598,10 @@ static unsigned int smmuwp_consume_intr(struct arm_smmu_device *smmu,
 	void __iomem *wp_base = smmu->wp_base;
 	unsigned int pend_cnt = 0;
 
-	pend_cnt = smmu_read_reg(wp_base, SMMUWP_IRQ_NS_CNTx(__ffs(irq_bit)));
-	smmu_write_field(wp_base, SMMUWP_IRQ_NS_ACK_CNT, IRQ_NS_ACK_CNT_MSK,
+	pend_cnt = smmu_read_reg(wp_base, SMMUWP_IRQ_CNTx(__ffs(irq_bit)));
+	smmu_write_field(wp_base, SMMUWP_IRQ_ACK_CNT, IRQ_ACK_CNT_MSK,
 			 pend_cnt);
-	smmu_write_reg(wp_base, SMMUWP_IRQ_NS_ACK, irq_bit);
+	smmu_write_reg(wp_base, SMMUWP_IRQ_ACK, irq_bit);
 
 	return pend_cnt;
 }
@@ -2620,26 +2622,26 @@ static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu)
 	unsigned int irq_sta = 0, pend_cnt = 0, i = 0;
 	void __iomem *wp_base = smmu->wp_base;
 
-	irq_sta = smmu_read_reg(wp_base, SMMUWP_IRQ_NS_STA);
+	irq_sta = smmu_read_reg(wp_base, SMMUWP_IRQ_STA);
 
 	if (irq_sta > 0) {
 		pr_info("%s smmu:%s irq_sta(0x%x)=0x%x\n",
 			__func__, get_smmu_name(data->plat_data->smmu_type),
-			SMMUWP_IRQ_NS_STA, irq_sta);
+			SMMUWP_IRQ_STA, irq_sta);
 	}
 
-	if (irq_sta & STA_NS_TCU_GLB_INTR) {
-		pend_cnt = smmuwp_consume_intr(smmu, STA_NS_TCU_GLB_INTR);
+	if (irq_sta & STA_TCU_GLB_INTR) {
+		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_GLB_INTR);
 		pr_info("Non-secure TCU global interrupt detected %d\n", pend_cnt);
 	}
 
-	if (irq_sta & STA_NS_TCU_CMD_SYNC_INTR) {
-		pend_cnt = smmuwp_consume_intr(smmu, STA_NS_TCU_CMD_SYNC_INTR);
+	if (irq_sta & STA_TCU_CMD_SYNC_INTR) {
+		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_CMD_SYNC_INTR);
 		pr_info("Non-secure TCU CMD_SYNC interrupt detected %d\n", pend_cnt);
 	}
 
-	if (irq_sta & STA_NS_TCU_EVTQ_INTR) {
-		pend_cnt = smmuwp_consume_intr(smmu, STA_NS_TCU_EVTQ_INTR);
+	if (irq_sta & STA_TCU_EVTQ_INTR) {
+		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_EVTQ_INTR);
 		pr_info("Non-secure TCU event queue interrupt detected %d\n",
 			pend_cnt);
 	}
@@ -3358,7 +3360,7 @@ int mtk_smmu_tf_detect(enum mtk_smmu_type type,
 	if (!sid_valid)
 		return -EINVAL;
 
-	irq_sta = smmu_read_reg(smmu->wp_base, SMMUWP_IRQ_NS_STA);
+	irq_sta = smmu_read_reg(smmu->wp_base, SMMUWP_IRQ_STA);
 	if (irq_sta > 0) {
 		ret = smmuwp_tf_detect(smmu, sid, tbu, axids, num_axids, param);
 		dev_info(smmu->dev,
