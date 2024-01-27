@@ -9,7 +9,7 @@
 #define CLKBUF_DBG(fmt, args...)                                               \
 	pr_notice("[CLKBUF], <%s(), %d> " fmt, __func__, __LINE__, ##args)
 #define CLKBUF_ERR(fmt, args...)                                               \
-	pr_info("[CLKBUG], <%s(), %d> " fmt, __func__, __LINE__, ##args)
+	pr_err("[CLKBUG], <%s(), %d> " fmt, __func__, __LINE__, ##args)
 
 struct reg_t {
 	char *name;
