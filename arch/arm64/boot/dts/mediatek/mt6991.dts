@@ -5434,6 +5434,12 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		vib-supply = <&mt6373_vibr>;
 	};
 
+
+	monitorhang: monitorhang {
+		/* compatible = "mediatek,monitorhang"; */
+		enabled = <0>;
+	};
+
 	systimer: systimer@1c400000 {
 		compatible = "mediatek,mt6991-timer",
 				"mediatek,mt6765-timer";
