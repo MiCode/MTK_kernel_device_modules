@@ -429,7 +429,8 @@ static void probe_selinux_audited(void *ignore, struct selinux_audit_data *sad,
 {
 	bool aee = false;
 
-	if (!sad || !sad->denied/* || !enforcing_enabled()*/)
+	/* Also skip checking if in permissive mode. " permissive=%u", sad->result ? 0 : 1 */
+	if (!sad || !sad->denied || !sad->result)
 		return;
 	if (!scontext)
 		return;
