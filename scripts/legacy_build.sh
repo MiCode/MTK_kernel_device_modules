@@ -468,6 +468,9 @@ export ROOT_DIR=.
 source "${ROOT_DIR}/build/build_utils.sh"
 source "${ROOT_DIR}/build/_setup_env.sh"
 
+export LD_LIBRARY_PATH="${ROOT_DIR}/prebuilts/kernel-build-tools/linux-x86/lib64"
+export GKI_LD_LIBRARY_PATH=${LD_LIBRARY_PATH}
+
 (
     [[ "$KLEAF_SUPPRESS_BUILD_SH_DEPRECATION_WARNING" == "1" ]] && exit 0 || true
     echo     "Inferring equivalent Bazel command..."
