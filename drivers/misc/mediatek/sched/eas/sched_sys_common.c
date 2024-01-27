@@ -43,15 +43,17 @@ static struct attribute_group sched_ctl_attr_group = {
 static struct kobject *kobj;
 int init_sched_common_sysfs(void)
 {
+	struct device *dev_root = bus_get_dev_root(&cpu_subsys);
 	int ret = 0;
 
-	kobj = kobject_create_and_add("sched_ctl",
-				&cpu_subsys.dev_root->kobj);
-	if (!kobj) {
-		pr_info("sched_ctl folder create failed\n");
-		return -ENOMEM;
+	if (dev_root) {
+		kobj = kobject_create_and_add("sched_ctl", &dev_root->kobj);
+		if (!kobj) {
+			pr_info("sched_ctl folder create failed\n");
+			return -ENOMEM;
+		}
+		put_device(dev_root);
 	}
-
 	ret = sysfs_create_group(kobj, &sched_ctl_attr_group);
 	if (ret)
 		goto error;

@@ -13,6 +13,7 @@
 #include <sched/autogroup.h>
 #include <linux/sched/clock.h>
 #include <linux/energy_model.h>
+#include <linux/of_platform.h>
 #include "common.h"
 #include "cpufreq.h"
 #include "sugov_trace.h"
