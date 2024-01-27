@@ -37,7 +37,7 @@ unsigned int hang_kernel_trace(struct task_struct *tsk,
 		if (!frame.pc)
 			continue;
 #ifdef __aarch64__
-		frame.pc = ptrauth_strip_insn_pac(frame.pc);
+		frame.pc = ptrauth_strip_kernel_insn_pac(frame.pc);
 #endif
 		*(++store) = frame.pc;
 		store_len += 1;
