@@ -123,6 +123,9 @@
 
 #define SMMU_PMCG_EVCNTR_RDONLY         BIT(0)
 
+#define SMMU_TXU_EVENT_START		0x80
+#define SMMU_TXU_EVENT_END		0xe7
+
 static const char *PMU_SMMU_PROP_NAME = "mtk,smmu";
 static int cpuhp_state_num;
 
@@ -148,6 +151,7 @@ struct smmu_pmu {
 	struct arm_smmu_device *smmu;
 	enum mtk_smmu_type smmu_type;
 	bool take_power;
+	u32 txu_id;
 };
 
 #define to_smmu_pmu(p) (container_of(p, struct smmu_pmu, pmu))
@@ -598,7 +602,7 @@ static ssize_t smmu_pmu_event_show(struct device *dev,
 #define SMMU_EVENT_ATTR(name, config)			\
 	PMU_EVENT_ATTR_ID(name, smmu_pmu_event_show, config)
 
-static struct attribute *smmu_pmu_events[] = {
+static struct attribute *smmu_tcu_pmu_events[] = {
 	SMMU_EVENT_ATTR(cycles, 0),
 	SMMU_EVENT_ATTR(transaction, 1),
 	SMMU_EVENT_ATTR(tlb_miss, 2),
@@ -607,6 +611,66 @@ static struct attribute *smmu_pmu_events[] = {
 	SMMU_EVENT_ATTR(config_struct_access, 5),
 	SMMU_EVENT_ATTR(pcie_ats_trans_rq, 6),
 	SMMU_EVENT_ATTR(pcie_ats_trans_passed, 7),
+
+	/* enhanced tcu event */
+	SMMU_EVENT_ATTR(s1_l0_walk_cache, 0x80),
+	SMMU_EVENT_ATTR(s1_l0_walk_cache_miss, 0x81),
+	SMMU_EVENT_ATTR(s1_l1_walk_cache, 0x82),
+	SMMU_EVENT_ATTR(s1_l1_walk_cache_miss, 0x83),
+	SMMU_EVENT_ATTR(s1_l2_walk_cache, 0x84),
+	SMMU_EVENT_ATTR(s1_l2_walk_cache_miss, 0x85),
+	SMMU_EVENT_ATTR(s1_l3_walk_cache, 0x86),
+	SMMU_EVENT_ATTR(s1_l3_walk_cache_miss, 0x87),
+	SMMU_EVENT_ATTR(s2_l0_walk_cache, 0x88),
+	SMMU_EVENT_ATTR(s2_l0_walk_cache_miss, 0x89),
+	SMMU_EVENT_ATTR(s2_l1_walk_cache, 0x8a),
+	SMMU_EVENT_ATTR(s2_l1_walk_cache_miss, 0x8b),
+	SMMU_EVENT_ATTR(s2_l2_walk_cache, 0x8c),
+	SMMU_EVENT_ATTR(s2_l2_walk_cache_miss, 0x8d),
+	SMMU_EVENT_ATTR(s2_l3_walk_cache, 0x8e),
+	SMMU_EVENT_ATTR(s2_l3_walk_cache_miss, 0x8f),
+	SMMU_EVENT_ATTR(walk_cache_read, 0x90),
+	SMMU_EVENT_ATTR(bufferd_translation, 0x91),
+	SMMU_EVENT_ATTR(config_cache_lookup, 0x92),
+	SMMU_EVENT_ATTR(config_cache_read, 0x93),
+	SMMU_EVENT_ATTR(config_cache_looup_miss, 0x94),
+	SMMU_EVENT_ATTR(speculative_trans, 0xa0),
+	NULL
+};
+
+static struct attribute *smmu_tbu_pmu_events[] = {
+	SMMU_EVENT_ATTR(cycles, 0),
+	SMMU_EVENT_ATTR(transaction, 1),
+	SMMU_EVENT_ATTR(tlb_miss, 2),
+	SMMU_EVENT_ATTR(pcie_ats_trans_passed, 7),
+
+	/* enhanced tbu event */
+	SMMU_EVENT_ATTR(main_tlb_lookup, 0x80),
+	SMMU_EVENT_ATTR(main_tlb_miss, 0x81),
+	SMMU_EVENT_ATTR(main_tlb_read, 0x82),
+	SMMU_EVENT_ATTR(micro_tlb_lookup, 0x83),
+	SMMU_EVENT_ATTR(micro_tlb_miss, 0x84),
+	SMMU_EVENT_ATTR(slots_full, 0x85),
+	SMMU_EVENT_ATTR(out_of_trans_tokens, 0x86),
+	SMMU_EVENT_ATTR(write_data_buffer_full, 0x87),
+	SMMU_EVENT_ATTR(dcmo_downgrade, 0x8b),
+	SMMU_EVENT_ATTR(stash_fail, 0x8c),
+	SMMU_EVENT_ATTR(lti_port_slots_full_0, 0xd0),
+	SMMU_EVENT_ATTR(lti_port_slots_full_1, 0xd1),
+	SMMU_EVENT_ATTR(lti_port_slots_full_2, 0xd2),
+	SMMU_EVENT_ATTR(lti_port_slots_full_3, 0xd3),
+	SMMU_EVENT_ATTR(lti_port_slots_full_4, 0xd4),
+	SMMU_EVENT_ATTR(lti_port_slots_full_5, 0xd5),
+	SMMU_EVENT_ATTR(lti_port_slots_full_6, 0xd6),
+	SMMU_EVENT_ATTR(lti_port_slots_full_7, 0xd7),
+	SMMU_EVENT_ATTR(lti_port_out_of_trans_token_0, 0xe0),
+	SMMU_EVENT_ATTR(lti_port_out_of_trans_token_1, 0xe1),
+	SMMU_EVENT_ATTR(lti_port_out_of_trans_token_2, 0xe2),
+	SMMU_EVENT_ATTR(lti_port_out_of_trans_token_3, 0xe3),
+	SMMU_EVENT_ATTR(lti_port_out_of_trans_token_4, 0xe4),
+	SMMU_EVENT_ATTR(lti_port_out_of_trans_token_5, 0xe5),
+	SMMU_EVENT_ATTR(lti_port_out_of_trans_token_6, 0xe6),
+	SMMU_EVENT_ATTR(lti_port_out_of_trans_token_7, 0xe7),
 	NULL
 };
 
@@ -618,15 +682,21 @@ static umode_t smmu_pmu_event_is_visible(struct kobject *kobj,
 	pmu_attr = container_of(attr, struct perf_pmu_events_attr, attr.attr);
 
 	/* Set all evnets visible, cannot query because smmu is powered off */
-	if (pmu_attr->id >= SMMU_PMCG_MAX_COUNTERS)
+	if (pmu_attr->id >= SMMU_TXU_EVENT_END)
 		return 0;
 
 	return attr->mode;
 }
 
-static const struct attribute_group smmu_pmu_events_group = {
+static const struct attribute_group smmu_tcu_pmu_events_group = {
 	.name = "events",
-	.attrs = smmu_pmu_events,
+	.attrs = smmu_tcu_pmu_events,
+	.is_visible = smmu_pmu_event_is_visible,
+};
+
+static const struct attribute_group smmu_tbu_pmu_events_group = {
+	.name = "events",
+	.attrs = smmu_tbu_pmu_events,
 	.is_visible = smmu_pmu_event_is_visible,
 };
 
@@ -683,9 +753,17 @@ static const struct attribute_group smmu_pmu_format_group = {
 	.attrs = smmu_pmu_formats,
 };
 
-static const struct attribute_group *smmu_pmu_attr_grps[] = {
+static const struct attribute_group *smmu_tcu_pmu_attr_grps[] = {
 	&smmu_pmu_cpumask_group,
-	&smmu_pmu_events_group,
+	&smmu_tcu_pmu_events_group,
+	&smmu_pmu_format_group,
+	&smmu_pmu_identifier_group,
+	NULL
+};
+
+static const struct attribute_group *smmu_tbu_pmu_attr_grps[] = {
+	&smmu_pmu_cpumask_group,
+	&smmu_tbu_pmu_events_group,
 	&smmu_pmu_format_group,
 	&smmu_pmu_identifier_group,
 	NULL
@@ -938,6 +1016,7 @@ static int smmu_pmu_probe(struct platform_device *pdev)
 	struct arm_smmu_device *smmu;
 	struct device_node *smmu_node;
 	struct mtk_smmu_data *data;
+	struct resource *smmu_res_0;
 
 	smmu_pmu = devm_kzalloc(dev, sizeof(*smmu_pmu), GFP_KERNEL);
 	if (!smmu_pmu)
@@ -957,7 +1036,7 @@ static int smmu_pmu_probe(struct platform_device *pdev)
 		.start		= smmu_pmu_event_start,
 		.stop		= smmu_pmu_event_stop,
 		.read		= smmu_pmu_event_read,
-		.attr_groups	= smmu_pmu_attr_grps,
+		.attr_groups	= smmu_tcu_pmu_attr_grps,
 		.capabilities	= PERF_PMU_CAP_NO_EXCLUDE,
 	};
 
@@ -996,6 +1075,17 @@ static int smmu_pmu_probe(struct platform_device *pdev)
 			 "reloc_base error for %s",
 			 smmu_pmu->pmu.name);
 		smmu_pmu->reloc_base = smmu_pmu->reg_base;
+	}
+
+	/* Update pmu event attr group */
+	smmu_res_0 = platform_get_resource(smmudev, IORESOURCE_MEM, 0);
+	if (res_0 && smmu_res_0 && (res_0->start - smmu_res_0->start > 0x40000)) {
+		smmu_pmu->pmu.attr_groups = smmu_tbu_pmu_attr_grps;
+		/* get tbu id */
+		smmu_pmu->txu_id =
+			(res_0->start - smmu_res_0->start - 0x40000) / 0x20000 + 1;
+	} else {
+		smmu_pmu->txu_id = 0;
 	}
 
 	spin_lock_init(&smmu_pmu->pmu_lock);
