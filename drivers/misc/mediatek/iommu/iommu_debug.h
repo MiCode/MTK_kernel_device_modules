@@ -53,10 +53,10 @@ enum iommu_event_type {
 	IOMMU_EVENT_MAX
 };
 
+typedef void (*mtk_iommu_dump_callback_t)(const char *fmt, ...);
+
 typedef int (*mtk_iommu_fault_callback_t)(int port,
 	dma_addr_t mva, void *cb_data);
-
-typedef void (*mtk_iommu_dump_callback_t)(const char *fmt, ...);
 
 void report_custom_iommu_fault(
 	u64 fault_iova, u64 fault_pa, u32 fault_id,
@@ -74,9 +74,9 @@ int mtk_iommu_register_fault_callback(int port,
 int mtk_iommu_unregister_fault_callback(int port, bool is_vpu);
 void mtk_iova_map(u64 tab_id, u64 iova, size_t size);
 void mtk_iova_unmap(u64 tab_id, u64 iova, size_t size);
-void mtk_iova_map_dump(u64 iova, u64 tab_id);
-void mtk_iova_dump(u64 iova, u64 tab_id);
-void mtk_iova_trace_dump(u64 iova);
+int mtk_iova_map_dump(u64 iova, u64 tab_id);
+int mtk_iova_dump(u64 iova, u64 tab_id);
+int mtk_iova_trace_dump(u64 iova);
 void mtk_iommu_tlb_sync_trace(u64 iova, size_t size, int iommu_ids);
 void mtk_iommu_pm_trace(int event, int iommu_id, int pd_sta,
 	unsigned long flags, struct device *dev);

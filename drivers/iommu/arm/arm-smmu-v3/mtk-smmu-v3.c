@@ -60,6 +60,8 @@
 #define SMMU_FAULT_RS_INTERVAL		DEFAULT_RATELIMIT_INTERVAL
 #define SMMU_FAULT_RS_BURST		(1)
 
+#define SMMU_DETECT_TF_OPT_SKIP_IRQ	BIT(0)
+
 /* hyp-pmm smmu related SMC call */
 #define HYP_PMM_SMMU_CONTROL		(0XBB00FFAE)
 
@@ -2134,8 +2136,7 @@ static int mtk_smmu_report_device_fault(struct arm_smmu_device *smmu, u64 *evt,
 	}
 
 	master = arm_smmu_find_master(smmu, sid);
-	if (master)
-		fault_pa = smmu_iova_to_phys(master, fault_iova);
+	fault_pa = smmu_iova_to_phys(master, fault_iova);
 
 	if (fault_param)
 		fault_param->fault_pa = fault_pa;
@@ -3118,16 +3119,18 @@ void mtk_smmu_reg_dump(enum mtk_smmu_type type,
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_reg_dump);
 
-int mtk_smmu_tf_detect(enum mtk_smmu_type type,
-		       struct device *master_dev,
-		       u32 sid, u32 tbu,
-		       u32 *axids, u32 num_axids,
-		       struct mtk_smmu_fault_param *param)
+int smmu_tf_detect(enum mtk_smmu_type type,
+		   struct device *master_dev,
+		   u32 sid, u32 tbu,
+		   u32 *axids, u32 num_axids,
+		   u32 options,
+		   struct mtk_smmu_fault_param *param)
 {
 	struct arm_smmu_device *smmu;
 	struct mtk_smmu_data *data;
 	unsigned int irq_sta = 0;
 	bool sid_valid;
+	u32 skip_irq;
 	u64 sid_max;
 	int ret = 0;
 
@@ -3145,16 +3148,30 @@ int mtk_smmu_tf_detect(enum mtk_smmu_type type,
 	if (!sid_valid)
 		return -EINVAL;
 
-	irq_sta = smmu_read_reg(smmu->wp_base, SMMUWP_IRQ_STA);
-	if (irq_sta > 0) {
+	skip_irq = (options & SMMU_DETECT_TF_OPT_SKIP_IRQ);
+	if (!skip_irq)
+		irq_sta = smmu_read_reg(smmu->wp_base, SMMUWP_IRQ_STA);
+
+	if (skip_irq || irq_sta > 0) {
 		ret = smmuwp_tf_detect(smmu, sid, tbu, axids, num_axids, param);
 		dev_info(smmu->dev,
-			 "[%s] smmu:%s dev:%s sid:0x%x tbu:%d irq_sta:0x%x ret:%d\n",
+			 "[%s] smmu:%s dev:%s sid:0x%x tbu:%d opt:0x%x irq_sta:0x%x ret:%d\n",
 			 __func__, get_smmu_name(type), dev_name(master_dev),
-			 sid, tbu, irq_sta, ret);
+			 sid, tbu, options, irq_sta, ret);
 	}
 
 	return ret;
+}
+
+int mtk_smmu_tf_detect(enum mtk_smmu_type type,
+		       struct device *master_dev,
+		       u32 sid, u32 tbu,
+		       u32 *axids, u32 num_axids,
+		       struct mtk_smmu_fault_param *param)
+{
+	return smmu_tf_detect(type, master_dev, sid, tbu,
+			      axids, num_axids,
+			      0, param);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_tf_detect);
 
