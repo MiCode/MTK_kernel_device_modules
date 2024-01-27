@@ -4435,6 +4435,7 @@ transparent_hugepage=never";
 					&mmqos SLAVE_COMMON(0)>;
 		interconnect-names = "path_jpegenc_bsdma";
 		interconnect-num = <1>;
+		support-34bits = <0>;/*mt6835(fake34bits feature) value is 2;*/
 	};
 
 	mbist@17040000 {
