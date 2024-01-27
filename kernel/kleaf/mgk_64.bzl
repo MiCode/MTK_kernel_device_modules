@@ -190,6 +190,7 @@ mgk_64_device_modules = [
     "drivers/iio/adc/mt6360-adc.ko",
     "drivers/iio/adc/mt6370-adc.ko",
     "drivers/iio/adc/mt6375-adc.ko",
+    "drivers/iio/adc/mt6379-adc.ko",
     "drivers/iio/adc/mt6375-auxadc.ko",
     "drivers/iio/adc/mt6577_auxadc.ko",
     "drivers/iio/adc/mt6681-auxadc.ko",
