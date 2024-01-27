@@ -15,6 +15,10 @@
 
 #include "imgsensor_hw.h"
 
+char * const imgsensor_prj_names[] = {
+	"k69v1_64_basic_ref"
+};
+
 enum IMGSENSOR_RETURN imgsensor_hw_release_all(struct IMGSENSOR_HW *phw)
 {
 	int i;
@@ -32,8 +36,20 @@ enum IMGSENSOR_RETURN imgsensor_hw_init(struct IMGSENSOR_HW *phw)
 	struct IMGSENSOR_HW_CUSTOM_POWER_INFO *ppwr_info;
 	int i, j;
 	char str_prop_name[LENGTH_FOR_SNPRINTF];
+	const char *prj_name;
+	unsigned int custlen = 0;
 	struct device_node *of_node
 		= of_find_compatible_node(NULL, NULL, "mediatek,camera_hw");
+
+	memset(str_prop_name, 0, sizeof(str_prop_name));
+	snprintf(str_prop_name, sizeof(str_prop_name),
+			"mtk-custom-project");
+
+	if (of_property_read_string(
+			of_node, str_prop_name,
+			&prj_name) == 0) {
+		custlen = strlen(prj_name);
+	}
 
 	for (i = 0; i < IMGSENSOR_HW_ID_MAX_NUM; i++) {
 		if (hw_open[i] != NULL)
@@ -46,7 +62,13 @@ enum IMGSENSOR_RETURN imgsensor_hw_init(struct IMGSENSOR_HW *phw)
 	for (i = 0; i < IMGSENSOR_SENSOR_IDX_MAX_NUM; i++) {
 		psensor_pwr = &phw->sensor_pwr[i];
 
-		pcust_pwr_cfg = imgsensor_custom_config;
+		if (custlen != 0 && strncmp(prj_name, imgsensor_prj_names[0], custlen)
+			== 0) {
+			pcust_pwr_cfg = imgsensor_mt6768_config_alpha;
+		} else {
+			pcust_pwr_cfg = imgsensor_custom_config;
+		}
+
 		while (pcust_pwr_cfg->sensor_idx != i &&
 		       pcust_pwr_cfg->sensor_idx != IMGSENSOR_SENSOR_IDX_NONE)
 			pcust_pwr_cfg++;

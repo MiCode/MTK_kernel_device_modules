@@ -140,6 +140,7 @@ struct IMGSENSOR_HW_DEVICE {
 };
 
 extern struct IMGSENSOR_HW_CFG       imgsensor_custom_config[];
+extern struct IMGSENSOR_HW_CFG       imgsensor_mt6768_config_alpha[];
 extern struct IMGSENSOR_HW_POWER_SEQ platform_power_sequence[];
 extern struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[];
 extern enum IMGSENSOR_RETURN
