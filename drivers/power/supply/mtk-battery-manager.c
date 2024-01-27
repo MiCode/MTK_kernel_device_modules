@@ -1549,20 +1549,23 @@ void mtk_bm_handler(struct mtk_battery *gm,
 	//pr_err("[%s]id:%d =>cmd:%d subcmd:%d %d hash %d\n", __func__,
 	//	gm->id, reply_msg->cmd, reply_msg->subcmd, reply_msg->subcmd_para1, reply_msg->hash);
 
+	bm = gm->bm;
 	if (bm == NULL)
 		bm = get_mtk_battery_manager();
 
-	if (bm->gm1 == gm) {
-		reply_msg->instance_id = gm->id;
-		mtk_bm_send_to_user(bm, bm->fgd_pid,
-			seq, reply_msg);
-	} else if (bm->gm2 == gm) {
-		reply_msg->instance_id = gm->id;
-		mtk_bm_send_to_user(bm, bm->fgd_pid,
-			seq, reply_msg);
-	} else {
-		pr_err("[%s]gm is incorrect !n", __func__);
-	}
+	if (bm != NULL) {
+		if (bm->gm1 == gm) {
+			reply_msg->instance_id = gm->id;
+			mtk_bm_send_to_user(bm, bm->fgd_pid,
+				seq, reply_msg);
+		} else if (bm->gm2 == gm) {
+			reply_msg->instance_id = gm->id;
+			mtk_bm_send_to_user(bm, bm->fgd_pid,
+				seq, reply_msg);
+		} else
+			pr_err("[%s]gm is incorrect !n", __func__);
+	} else
+		pr_err("[%s]bm is incorrect !n", __func__);
 }
 
 static void fg_cmd_check(struct afw_header *msg)
@@ -1813,9 +1816,9 @@ static int mtk_bm_probe(struct platform_device *pdev)
 		gauge = (struct mtk_gauge *)power_supply_get_drvdata(psy);
 		if (gauge != NULL) {
 			bm->gm1 = gauge->gm;
-			bm->gm1->netlink_send = mtk_bm_handler;
 			bm->gm1->id = 0;
 			bm->gm1->bm = bm;
+			bm->gm1->netlink_send = mtk_bm_handler;
 		} else
 			pr_err("[%s]gauge1 is not rdy\n", __func__);
 	}
@@ -1828,9 +1831,9 @@ static int mtk_bm_probe(struct platform_device *pdev)
 		gauge = (struct mtk_gauge *)power_supply_get_drvdata(psy);
 		if (gauge != NULL) {
 			bm->gm2 = gauge->gm;
-			bm->gm2->netlink_send = mtk_bm_handler;
 			bm->gm2->id = 1;
 			bm->gm2->bm = bm;
+			bm->gm2->netlink_send = mtk_bm_handler;
 		} else
 			pr_err("[%s]gauge2 is not rdy\n", __func__);
 	}
