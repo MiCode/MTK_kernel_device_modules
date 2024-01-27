@@ -2194,7 +2194,7 @@ static irqreturn_t ex_eint_handler(int irq, void *data)
 			irq_set_irq_type(accdet->gpioirq, IRQ_TYPE_LEVEL_HIGH);
 		else
 			irq_set_irq_type(accdet->gpioirq, IRQ_TYPE_LEVEL_LOW);
-		gpio_set_debounce(accdet->gpiopin, accdet->gpio_hp_deb);
+		gpiod_set_debounce(gpio_to_desc(accdet->gpiopin), accdet->gpio_hp_deb);
 
 		accdet->cur_eint_state = EINT_PLUG_OUT;
 	} else {
@@ -2206,7 +2206,7 @@ static irqreturn_t ex_eint_handler(int irq, void *data)
 		else
 			irq_set_irq_type(accdet->gpioirq, IRQ_TYPE_LEVEL_HIGH);
 
-		gpio_set_debounce(accdet->gpiopin,
+		gpiod_set_debounce(gpio_to_desc(accdet->gpiopin),
 				accdet_dts.plugout_deb * 1000);
 
 		accdet->cur_eint_state = EINT_PLUG_IN;
@@ -2258,7 +2258,7 @@ static inline int ext_eint_setup(struct platform_device *platform_device)
 	if (ret < 0)
 		return ret;
 
-	gpio_set_debounce(accdet->gpiopin, accdet->gpio_hp_deb);
+	gpiod_set_debounce(gpio_to_desc(accdet->gpiopin), accdet->gpio_hp_deb);
 
 	accdet->gpioirq = irq_of_parse_and_map(node, 0);
 	ret = of_property_read_u32_array(node, "interrupts", ints,
