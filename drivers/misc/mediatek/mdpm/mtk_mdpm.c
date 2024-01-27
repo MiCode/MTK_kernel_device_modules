@@ -827,7 +827,6 @@ static int mdpm_probe(struct platform_device *pdev)
 }
 
 enum mdpm_platform {
-	MT6768_MDPM_DATA,
 	MT6873_MDPM_DATA,
 	MT6893_MDPM_DATA,
 	MT6983_MDPM_DATA,
@@ -837,13 +836,6 @@ enum mdpm_platform {
 	MT6985_MDPM_DATA,
 	MT6897_MDPM_DATA,
 	MT6989_MDPM_DATA
-};
-
-static struct mdpm_data mt6768_mdpm_data = {
-	.platform = MT6768_MDPM_DATA,
-	.scenario_power_t = mt6768_mdpm_scen,
-	.tx_power_t = mt6768_mdpm_tx_pwr,
-	.prority_t = (void *)&mt6768_scen_priority
 };
 
 static struct mdpm_data mt6873_mdpm_data = {
@@ -910,10 +902,6 @@ static struct mdpm_data mt6989_mdpm_data = {
 };
 
 static const struct of_device_id mdpm_of_match[] = {
-	{
-		.compatible = "mediatek,mt6768-mdpm",
-		.data = (void *)&mt6768_mdpm_data,
-	},
 	{
 		.compatible = "mediatek,mt6873-mdpm",
 		.data = (void *)&mt6873_mdpm_data,
