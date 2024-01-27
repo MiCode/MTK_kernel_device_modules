@@ -14,6 +14,12 @@
 #include "../../../iommu/mtk_iommu.h"
 #include "../../../iommu/arm/arm-smmu-v3/mtk-smmu-v3.h"
 
+/*
+ * For IOMMU EP/bring up phase, you must be enable "IOMMU_BRING_UP".
+ * If you need to do some special config, you can also use this macro.
+ */
+#define IOMMU_BRING_UP	(0)
+
 #define DEFINE_PROC_ATTRIBUTE(__fops, __get, __set, __fmt)		  \
 static int __fops ## _open(struct inode *inode, struct file *file)	  \
 {									  \

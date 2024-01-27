@@ -711,6 +711,12 @@ static int smmu_mpam_mon_probe(struct platform_device *pdev)
 	}
 
 	smmu = platform_get_drvdata(smmudev);
+	if (!smmu) {
+		dev_err(dev, "Can't find smmu data\n");
+		of_node_put(smmu_node);
+		return -EINVAL;
+	}
+
 	data = to_mtk_smmu_data(smmu);
 	plat_data = data->plat_data;
 	txu_cnt = SMMU_TBU_CNT(plat_data->smmu_type) + 1;

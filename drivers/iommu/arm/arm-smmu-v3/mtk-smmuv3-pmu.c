@@ -975,6 +975,12 @@ static int smmu_pmu_probe(struct platform_device *pdev)
 	}
 
 	smmu = platform_get_drvdata(smmudev);
+	if (!smmu) {
+		dev_err(dev, "Can't find smmu data\n");
+		of_node_put(smmu_node);
+		return -EINVAL;
+	}
+
 	data = to_mtk_smmu_data(smmu);
 	plat_data = data->plat_data;
 	smmu_pmu->smmu = smmu;
