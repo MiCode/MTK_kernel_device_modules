@@ -31,7 +31,7 @@
  * GPUFREQ Log Setting
  **************************************************/
 #define GPUFREQ_LOGE(fmt, args...) \
-	pr_err(GPUFERQ_TAG"[ERROR]@%s: "fmt"\n", __func__, ##args)
+	pr_info(GPUFERQ_TAG"[ERROR]@%s: "fmt"\n", __func__, ##args)
 #define GPUFREQ_LOGW(fmt, args...) \
 	pr_debug(GPUFERQ_TAG"[WARN]@%s: "fmt"\n", __func__, ##args)
 #define GPUFREQ_LOGI(fmt, args...) \
