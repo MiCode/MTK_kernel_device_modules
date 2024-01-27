@@ -175,7 +175,7 @@ static void cam_mem_mmu_put_dma_buffer(struct ION_BUFFER *mmu)
 		if (unlikely((IS_SECURE_TZMP1(g_platform_id)) && mmu->need_sec_handle)) {
 			dma_buf_put(mmu->dmaBuf);
 		} else {
-			dma_buf_unmap_attachment(mmu->attach, mmu->sgt,
+			dma_buf_unmap_attachment_unlocked(mmu->attach, mmu->sgt,
 				DMA_BIDIRECTIONAL);
 			dma_buf_detach(mmu->dmaBuf, mmu->attach);
 			dma_buf_put(mmu->dmaBuf);
@@ -413,7 +413,7 @@ static bool cam_mem_mmu_get_dma_buffer(
 	mmu->attach->dma_map_attrs |= DMA_ATTR_SKIP_CPU_SYNC;
 
 	/* buffer and iova map */
-	mmu->sgt = dma_buf_map_attachment(mmu->attach, DMA_BIDIRECTIONAL);
+	mmu->sgt = dma_buf_map_attachment_unlocked(mmu->attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR(mmu->sgt)) {
 		LOG_NOTICE("dma_buf_map_attachment failed! memID(%d) size(0x%zx)\n",
 			IonNode->memID, buf->size);
