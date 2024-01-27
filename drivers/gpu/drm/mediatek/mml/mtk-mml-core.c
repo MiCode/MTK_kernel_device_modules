@@ -463,6 +463,9 @@ static s32 command_make(struct mml_task *task, u32 pipe)
 			/* first tile must wait eof before trigger */
 			path->mutex->config_ops->mutex(path->mutex, task,
 						       &ccfg[path->mutex_idx]);
+			if (path->mutex2)
+				path->mutex2->config_ops->mutex(path->mutex2, task,
+								&ccfg[path->mutex2_idx]);
 			tile_wait = tile_idx;
 			/* last tile needs wait again */
 			if (tile == tile_cnt - 1) {
@@ -475,6 +478,9 @@ static s32 command_make(struct mml_task *task, u32 pipe)
 		} else {
 			path->mutex->config_ops->mutex(path->mutex, task,
 						       &ccfg[path->mutex_idx]);
+			if (path->mutex2)
+				path->mutex2->config_ops->mutex(path->mutex2, task,
+								&ccfg[path->mutex2_idx]);
 			for (i = 0; i < path->node_cnt; i++) {
 				comp = path->nodes[i].comp;
 				call_cfg_op(comp, wait, task, &ccfg[i],

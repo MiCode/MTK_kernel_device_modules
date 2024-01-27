@@ -1884,8 +1884,13 @@ static s32 dli_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 			    struct tile_func_block *func,
 			    union mml_tile_data *data)
 {
-	struct mml_frame_data *src = &task->config->info.src;
-	struct mml_frame_dest *dest = &task->config->info.dest[0];
+	const struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_data *src = &cfg->info.src;
+	const struct mml_frame_dest *dest = &cfg->info.dest[0];
+
+	/* DLI use as mml-tile rrot dual input, skip tile calc */
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK && comp->sysid == mml_sys_tile)
+		return 0;
 
 	func->type = TILE_TYPE_RDMA;
 	/* height align wrot out cause height value config in inlinerot height */
@@ -1901,8 +1906,8 @@ static const struct mml_comp_tile_ops dli_tile_ops = {
 	.prepare = dli_tile_prepare,
 };
 
-static void dlo_config_left(struct mml_frame_config *cfg,
-			    struct mml_frame_dest *dest,
+static void dlo_config_left(const struct mml_frame_config *cfg,
+			    const struct mml_frame_dest *dest,
 			    struct dlo_tile_data *data)
 {
 	data->enable_x_crop = true;
@@ -1921,8 +1926,8 @@ static void dlo_config_left(struct mml_frame_config *cfg,
 			dest->compose.width, dest->compose.height);
 }
 
-static void dlo_config_right(struct mml_frame_config *cfg,
-			     struct mml_frame_dest *dest,
+static void dlo_config_right(const struct mml_frame_config *cfg,
+			     const struct mml_frame_dest *dest,
 			     struct dlo_tile_data *data)
 {
 	data->enable_x_crop = true;
@@ -1947,8 +1952,12 @@ static s32 dlo_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 			    struct tile_func_block *func,
 			    union mml_tile_data *data)
 {
-	struct mml_frame_config *cfg = task->config;
-	struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	const struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+
+	/* DLO use as mml-tile rrot dual input, skip tile calc */
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK && comp->sysid == mml_sys_tile)
+		return 0;
 
 	if (cfg->dual) {
 		if (ccfg->pipe == 0)
