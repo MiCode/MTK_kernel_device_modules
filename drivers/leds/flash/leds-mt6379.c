@@ -18,6 +18,10 @@
 #include <linux/regmap.h>
 #include <media/v4l2-flash-led-class.h>
 
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT)
+#include "flashlight-core.h"
+#endif
+
 struct mt6379_data;
 
 enum mt6379_fled_idx {
@@ -61,6 +65,9 @@ struct mt6379_flash {
 	struct v4l2_flash *v4l2;
 	enum mt6379_fled_idx idx;
 	void *driver_data;
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT)
+	struct flashlight_device_id dev_id;
+#endif
 };
 
 struct mt6379_data {
@@ -102,6 +109,14 @@ static int mt6379_torch_set_brightness(struct led_classdev *led_cdev,
 		if (data->torch_enabled)
 			enable |= MT6379_FL_TORCH_MASK;
 	} else {
+#ifdef CONFIG_MTK_FLASHLIGHT_PT
+		if (flashlight_pt_is_low()) {
+			dev_info(led_cdev->dev, "pt is low\n");
+			mutex_unlock(&data->lock);
+			return 0;
+		}
+#endif
+
 		ret = regmap_write(regmap, MT6379_REG_ITORCH(mtflash->idx),
 				   brightness - 1);
 		if (ret)
@@ -186,6 +201,14 @@ static int mt6379_flash_set_strobe(struct led_classdev_flash *flash, bool state)
 			min_wait_us = MT6379_STRBOFF_MIN_WAIT_US;
 	}
 
+#ifdef CONFIG_MTK_FLASHLIGHT_PT
+	if (flashlight_pt_is_low()) {
+		dev_info(flash->led_cdev.dev, "pt is low\n");
+		mutex_unlock(&data->lock);
+		return 0;
+	}
+#endif
+
 	ret = regmap_update_bits(regmap, MT6379_REG_FLED_EN, mask, enable);
 	if (ret) {
 		dev_err(flash->led_cdev.dev, "Failed to set FLED_EN\n");
@@ -267,6 +290,180 @@ static const struct led_flash_ops mt6379_flash_ops = {
 	.timeout_set		= mt6379_flash_set_timeout,
 	.fault_get		= mt6379_flash_get_fault,
 };
+
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT)
+static struct led_classdev_flash *mt6379_flash_class[MT6379_FLASH_MAX_LED];
+static DEFINE_MUTEX(mt6379_mutex);
+/* define usage count */
+static int fd_use_count;
+
+#define MT6379_VIN (3.6)
+
+static int mt6379_set_scenario(int scenario)
+{
+	struct mt6379_flash *mtflash = container_of(
+					mt6379_flash_class[MT6379_FLASH_LED1],
+					struct mt6379_flash,
+					flash);
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_DLPT)
+	if (scenario & FLASHLIGHT_SCENARIO_CAMERA_MASK) {
+		flashlight_kicker_pbm_by_device_id(&mtflash->dev_id,
+			MT6379_ISTRB_MAXUA / 1000 * MT6379_VIN);
+	} else {
+		flashlight_kicker_pbm_by_device_id(&mtflash->dev_id,
+			MT6379_ITOR_MAXUA / 1000 * MT6379_VIN * 2);
+	}
+#endif
+
+	return 0;
+}
+
+static int mt6379_open(void)
+{
+	struct mt6379_flash *mtflash = container_of(
+					mt6379_flash_class[MT6379_FLASH_LED1],
+					struct mt6379_flash,
+					flash);
+	mutex_lock(&mt6379_mutex);
+	fd_use_count++;
+
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_DLPT)
+	flashlight_kicker_pbm_by_device_id(&mtflash->dev_id,
+				MT6379_ITOR_MAXUA / 1000 * MT6379_VIN * 2);
+	mdelay(1);
+#endif
+
+	mutex_unlock(&mt6379_mutex);
+
+	return 0;
+}
+
+static int mt6379_release(void)
+{
+	struct mt6379_flash *mtflash = container_of(
+					mt6379_flash_class[MT6379_FLASH_LED1],
+					struct mt6379_flash,
+					flash);
+
+	mutex_lock(&mt6379_mutex);
+	fd_use_count--;
+
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_DLPT)
+	flashlight_kicker_pbm_by_device_id(&mtflash->dev_id, 0);
+#endif
+
+	mutex_unlock(&mt6379_mutex);
+
+	return 0;
+}
+
+static int mt6379_ioctl(unsigned int cmd, unsigned long arg)
+{
+	struct flashlight_dev_arg *fl_arg;
+	int channel;
+	struct led_classdev_flash *flcdev;
+	struct led_classdev *lcdev;
+
+	fl_arg = (struct flashlight_dev_arg *)arg;
+	channel = fl_arg->channel;
+
+	if (channel >= MT6379_FLASH_MAX_LED || channel < 0)
+		return -EINVAL;
+
+	flcdev = mt6379_flash_class[channel];
+	if (flcdev == NULL)
+		return -EINVAL;
+
+	lcdev = &flcdev->led_cdev;
+	if (lcdev == NULL)
+		return -EINVAL;
+
+	switch (cmd) {
+	case FLASH_IOC_SET_ONOFF:
+		mt6379_torch_set_brightness(lcdev, (int)fl_arg->arg);
+		break;
+	case FLASH_IOC_SET_SCENARIO:
+		mt6379_set_scenario(fl_arg->arg);
+		break;
+
+	default:
+		dev_info(lcdev->dev, "No such command and arg(%d): (%d, %d)\n",
+				channel, _IOC_NR(cmd), (int)fl_arg->arg);
+		return -ENOTTY;
+	}
+
+	return 0;
+}
+
+static ssize_t mt6379_strobe_store(struct flashlight_arg arg)
+{
+	struct led_classdev_flash *flcdev;
+	struct led_classdev *lcdev;
+
+	if (arg.channel < 0 || arg.channel >= MT6379_FLASH_MAX_LED)
+		return -EINVAL;
+
+	flcdev = mt6379_flash_class[arg.channel];
+	lcdev = &flcdev->led_cdev;
+	mt6379_torch_set_brightness(lcdev, LED_ON);
+	msleep(arg.dur);
+	mt6379_torch_set_brightness(lcdev, LED_OFF);
+	return 0;
+}
+
+static int mt6379_set_driver(int set)
+{
+	return 0;
+}
+
+static struct flashlight_operations mt6379_ops = {
+	mt6379_open,
+	mt6379_release,
+	mt6379_ioctl,
+	mt6379_strobe_store,
+	mt6379_set_driver
+};
+
+
+static int mt6379_init_proprietary_properties(struct fwnode_handle *fwnode,
+					struct mt6379_flash *mtflash)
+{
+	struct led_classdev_flash *flash = &mtflash->flash;
+	struct led_classdev *lcdev = &flash->led_cdev;
+	int ret;
+
+	ret = fwnode_property_read_u32(fwnode,
+			"reg", &mtflash->dev_id.channel);
+	if (ret)
+		return ret;
+
+	ret = fwnode_property_read_u32(fwnode,
+			"type", &mtflash->dev_id.type);
+	if (ret)
+		return ret;
+
+	ret = fwnode_property_read_u32(fwnode,
+			"ct", &mtflash->dev_id.ct);
+	if (ret)
+		return ret;
+
+	ret = fwnode_property_read_u32(fwnode,
+			"part", &mtflash->dev_id.part);
+	if (ret)
+		return ret;
+
+	strscpy(mtflash->dev_id.name, lcdev->dev->kobj.name,
+		sizeof(mtflash->dev_id.name));
+
+	mtflash->dev_id.decouple = 0;
+	mt6379_flash_class[mtflash->dev_id.channel] = &mtflash->flash;
+
+	if (flashlight_dev_register_by_device_id(&mtflash->dev_id, &mt6379_ops))
+		return -EFAULT;
+
+	return 0;
+}
+#endif
 
 #if IS_ENABLED(CONFIG_V4L2_FLASH_LED_CLASS)
 static int mt6379_flash_set_external_strobe(struct v4l2_flash *v4l2_flash,
@@ -515,6 +712,12 @@ static int mt6379_flash_probe(struct platform_device *pdev)
 			fwnode_handle_put(child);
 			return dev_err_probe(dev, ret, "Failed to add release action\n");
 		}
+
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT)
+		ret = mt6379_init_proprietary_properties(child, mtflash);
+		if (ret)
+			return ret;
+#endif
 
 		data->flash_used |= BIT(mtflash->idx);
 		count++;
