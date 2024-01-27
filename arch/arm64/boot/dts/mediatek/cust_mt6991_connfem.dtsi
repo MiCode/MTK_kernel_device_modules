@@ -705,6 +705,11 @@
 			mapping = <18 0x17 0>,	/* Antsel 18 <-> SP3T_4_V1 (0x17) */
 				  <19 0x18 0>;	/* Antsel 19 <-> SP3T_4_V2 (0x18) */
 		};
+
+		spdt_laa_ctrl: spdt-laa-ctrl {
+			mapping = <22 0x0e 0>,	/* Antsel 22 <-> SPDT_9 (0x0E) */
+				  <23 0x0f 0>;	/* Antsel 23 <-> SPDT_10 (0x0F) */
+		};
 	};
 };
 /* Connsys FEM End */
