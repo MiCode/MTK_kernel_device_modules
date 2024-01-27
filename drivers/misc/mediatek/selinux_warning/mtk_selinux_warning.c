@@ -438,7 +438,7 @@ static void probe_selinux_audited(void *ignore, struct selinux_audit_data *sad,
 {
 	bool aee = false;
 
-	if (!sad || !sad->denied || !enforcing_enabled(sad->state))
+	if (!sad || !sad->denied/* || !enforcing_enabled()*/)
 		return;
 	if (!scontext)
 		return;
