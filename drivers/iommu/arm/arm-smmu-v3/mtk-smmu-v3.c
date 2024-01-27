@@ -2542,6 +2542,34 @@ static const struct mtk_smmu_plat_data mt6989_data_gpu = {
 	.flags			= SMMU_DELAY_HW_INIT | SMMU_HYP_EN | SMMU_DIS_CPU_PARTID,
 };
 
+static const struct mtk_smmu_plat_data mt6991_data_mm = {
+	.smmu_plat		= SMMU_MT6991,
+	.smmu_type		= MM_SMMU,
+	.flags			= SMMU_DELAY_HW_INIT | /* SMMU_SEC_EN | SMMU_HYP_EN | */
+				  SMMU_EXTRA_DCM_EN | SMMU_HANG_DETECT | SMMU_CLK_AO_EN,
+};
+
+static const struct mtk_smmu_plat_data mt6991_data_apu = {
+	.smmu_plat		= SMMU_MT6991,
+	.smmu_type		= APU_SMMU,
+	.flags			= SMMU_DELAY_HW_INIT | /*SMMU_SEC_EN | SMMU_HYP_EN | */
+				  SMMU_EXTRA_DCM_EN | SMMU_SKIP_SHUTDOWN | SMMU_CLK_AO_EN,
+};
+
+static const struct mtk_smmu_plat_data mt6991_data_soc = {
+	.smmu_plat		= SMMU_MT6991,
+	.smmu_type		= SOC_SMMU,
+	.flags			= SMMU_CLK_AO_EN | /* SMMU_SEC_EN | SMMU_HYP_EN */
+				  SMMU_EXTRA_DCM_EN,
+};
+
+static const struct mtk_smmu_plat_data mt6991_data_gpu = {
+	.smmu_plat		= SMMU_MT6991,
+	.smmu_type		= GPU_SMMU,
+	.flags			= SMMU_DELAY_HW_INIT | SMMU_EXTRA_DCM_EN | /* SMMU_HYP_EN | */
+				  SMMU_DIS_CPU_PARTID | SMMU_DIS_CPU_TBU_PARTID | SMMU_CLK_AO_EN,
+};
+
 static const struct mtk_smmu_plat_data *of_device_get_plat_data(struct device *dev)
 {
 	const struct device_node *np = dev->of_node;
@@ -2554,6 +2582,14 @@ static const struct mtk_smmu_plat_data *of_device_get_plat_data(struct device *d
 		return &mt6989_data_soc;
 	else if (of_device_is_compatible(np, "mediatek,mt6989-gpu-smmu"))
 		return &mt6989_data_gpu;
+	else if (of_device_is_compatible(np, "mediatek,mt6991-mm-smmu"))
+		return &mt6991_data_mm;
+	else if (of_device_is_compatible(np, "mediatek,mt6991-apu-smmu"))
+		return &mt6991_data_apu;
+	else if (of_device_is_compatible(np, "mediatek,mt6991-soc-smmu"))
+		return &mt6991_data_soc;
+	else if (of_device_is_compatible(np, "mediatek,mt6991-gpu-smmu"))
+		return &mt6991_data_gpu;
 
 	return NULL;
 }
