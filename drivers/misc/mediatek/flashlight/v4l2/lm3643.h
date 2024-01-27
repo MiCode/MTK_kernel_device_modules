@@ -42,13 +42,9 @@ struct lm3643_flash {
 #if IS_ENABLED(CONFIG_MTK_FLASHLIGHT)
 	struct flashlight_device_id flash_dev_id[LM3643_LED_MAX];
 #endif
-	struct thermal_cooling_device *cdev;
 	int need_cooler;
-	unsigned long max_state;
-	unsigned long target_state;
 	unsigned long target_current[LM3643_LED_MAX];
 	unsigned long ori_current[LM3643_LED_MAX];
-	unsigned int cur_mA[LM3643_LED_MAX];
 	unsigned int torch_power;
 	unsigned int camera_power;
 };
