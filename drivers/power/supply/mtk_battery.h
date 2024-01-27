@@ -18,6 +18,8 @@
 #include <linux/ktime.h>
 #include <linux/ctype.h>
 #include "mtk_gauge.h"
+#include "mtk_battery_daemon.h"
+
 
 
 #define NETLINK_FGD 26
@@ -25,6 +27,8 @@
 #define UNIT_TRANS_100	100
 #define UNIT_TRANS_1000	1000
 #define UNIT_TRANS_60	60
+#define MAX_R_TABLE		100
+#define ACTIVE_R_TABLE	21
 #define MAX_TABLE		10
 #define MAX_CHARGE_RDC 5
 
@@ -45,46 +49,62 @@
 
 #define BMLOG_DEFAULT_LEVEL BMLOG_DEBUG_LEVEL
 
-#define bm_err(fmt, args...)   \
+#define bm_err(gm, fmt, args...)   \
 do {\
-	if (bat_get_debug_level() >= BMLOG_ERROR_LEVEL) {\
-		pr_notice(fmt, ##args); \
-	} \
+	if (gm != NULL && gm->log_level >= BMLOG_ERROR_LEVEL) {	\
+		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
+	} else {	\
+		pr_notice(fmt, ##args);	\
+	}	\
 } while (0)
 
-#define bm_warn(fmt, args...)   \
+#define bm_warn(gm, fmt, args...)   \
 do {\
-	if (bat_get_debug_level() >= BMLOG_WARNING_LEVEL) {\
-		pr_notice(fmt, ##args); \
-	}								   \
+	if (gm != NULL && gm->log_level >= BMLOG_WARNING_LEVEL) {	\
+		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
+	} else {	\
+		pr_notice(fmt, ##args);	\
+	}	\
 } while (0)
 
-#define bm_notice(fmt, args...)   \
+#define bm_notice(gm, fmt, args...)   \
 do {\
-	if (bat_get_debug_level() >= BMLOG_NOTICE_LEVEL) {\
-		pr_notice(fmt, ##args); \
-	}								   \
+	if (gm != NULL && gm->log_level >= BMLOG_NOTICE_LEVEL) {	\
+		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
+	} else {	\
+		pr_notice(fmt, ##args);	\
+	}	\
 } while (0)
 
-#define bm_info(fmt, args...)   \
+#define bm_info(gm, fmt, args...)   \
 do {\
-	if (bat_get_debug_level() >= BMLOG_INFO_LEVEL) {\
-		pr_notice(fmt, ##args); \
-	}								   \
+	if (gm != NULL && gm->log_level >= BMLOG_INFO_LEVEL) {	\
+		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
+	} else {	\
+		pr_notice(fmt, ##args);	\
+	}	\
 } while (0)
 
-#define bm_debug(fmt, args...)   \
+#define bm_debug(gm, fmt, args...)   \
 do {\
-	if (bat_get_debug_level() >= BMLOG_DEBUG_LEVEL) {\
-		pr_notice(fmt, ##args); \
-	}								   \
+	if (gm != NULL && gm->log_level >= BMLOG_DEBUG_LEVEL) {	\
+		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
+	} else {	\
+		pr_notice(fmt, ##args);	\
+	}	\
 } while (0)
 
-#define bm_trace(fmt, args...)\
+#define bm_trace(gm, fmt, args...)\
 do {\
-	if (bat_get_debug_level() >= BMLOG_TRACE_LEVEL) {\
-		pr_notice(fmt, ##args);\
-	}						\
+	if (gm != NULL && gm->log_level >= BMLOG_TRACE_LEVEL) {	\
+		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
+	} else {	\
+		pr_notice(fmt, ##args);	\
+	}	\
+} while (0)
+
+#define bm_annotation(gm, fmt, args...)\
+do {\
 } while (0)
 
 #define BAT_SYSFS_FIELD_RW(_name, _prop)	\
@@ -108,6 +128,12 @@ do {\
 	.prop	= _prop,	\
 	.set	= _name##_set,						\
 }
+enum manager_cmd {
+	MANAGER_WAKE_UP_ALGO,
+	MANAGER_NOTIFY_CHR_FULL,
+	MANAGER_SW_BAT_CYCLE_ACCU,
+	MANAGER_DYNAMIC_CV,
+};
 
 enum battery_property {
 	BAT_PROP_TEMPERATURE,
@@ -121,6 +147,7 @@ enum battery_property {
 	BAT_PROP_INIT_DONE,
 	BAT_PROP_FG_RESET,
 	BAT_PROP_LOG_LEVEL,
+	BAT_PROP_WAKEUP_FG_ALGO,
 };
 
 enum property_control_data {
@@ -177,8 +204,16 @@ struct VersionControl {
 	int custom_table_len;
 };
 
+#define AFW_SERVICE_ID	0x10000000
+#define FG_SERVICE_ID	0x00000000
+
+enum afw_sys_cmds{
+	AFW_CMD_SET_PID = AFW_SERVICE_ID,
+	AFW_CMD_PRINT_LOG,
+};
+
 enum fg_daemon_cmds {
-	FG_DAEMON_CMD_PRINT_LOG,
+	FG_DAEMON_CMD_PRINT_LOG = FG_SERVICE_ID,
 	FG_DAEMON_CMD_SET_DAEMON_PID,
 	FG_DAEMON_CMD_GET_CUSTOM_SETTING,
 	FG_DAEMON_CMD_GET_CUSTOM_TABLE,
@@ -298,6 +333,7 @@ enum fg_daemon_cmds {
 	FG_DAEMON_CMD_COMMUNICATION_INT,
 	FG_DAEMON_CMD_SET_BATTERY_CAPACITY,
 	FG_DAEMON_CMD_GET_BH_DATA,
+	FG_DAEMON_CMD_SEND_DAEMON_DATA,
 
 	FG_DAEMON_CMD_FROM_USER_NUMBER
 
@@ -334,6 +370,7 @@ enum {
 	UISOC_ONE_PERCENT,
 	LOW_BAT_VOLT,
 	DLPT_SHUTDOWN,
+	SHUTDOWN_1_TIME,
 	SHUTDOWN_FACTOR_MAX
 };
 
@@ -355,6 +392,15 @@ enum gauge_event {
 	GAUGE_EVT_MAX
 };
 
+
+enum bm_psy_prop {
+	CURRENT_NOW,
+	CURRENT_AVG,
+	VOLTAGE_NOW,
+	TEMP,
+	QMAX,
+	QMAX_DESIGN,
+};
 
 enum charge_sel {
 	CHARGE_NORMAL,
@@ -381,6 +427,11 @@ struct fuelgauge_profile_struct {
 	struct fuelgauge_charger_struct charge_r;
 };
 
+struct fuel_gauge_r_ratio_table {
+	int battery_r_ratio_ma;
+	int battery_r_ratio;
+};
+
 struct fuel_gauge_table {
 	int temperature;
 	int q_max;
@@ -391,10 +442,14 @@ struct fuel_gauge_table {
 	int pon_iboot;
 	int qmax_sys_vol;
 	int shutdown_hl_zcv;
+	int r_ratio_active_table;
+	int charging_r_ratio_active_table;
 
 	int size;
 	struct fuelgauge_charge_pseudo100_s r_pseudo100;
 	struct fuelgauge_profile_struct fg_profile[100];
+	struct fuel_gauge_r_ratio_table fg_r_profile[MAX_R_TABLE];
+	struct fuel_gauge_r_ratio_table fg_charging_r_profile[MAX_R_TABLE];
 };
 
 struct fuel_gauge_table_cust_temperture_table {
@@ -407,6 +462,12 @@ struct fuel_gauge_table_cust_temperture_table {
 struct fuel_gauge_table_custom_data {
 	/* cust_battery_meter_table.h */
 	int active_table_number;
+	int enable_r_ratio;
+	int max_ratio_temp;
+	int min_ratio_temp;
+	int enable_charging_ratio;
+	int max_charging_ratio_temp;
+	int min_charging_ratio_temp;
 	struct fuel_gauge_table fg_profile[MAX_TABLE];
 
 	int temperature_tb0;
@@ -709,6 +770,7 @@ struct mtk_coulomb_service {
 	int fgclog_level;
 	int pre_coulomb;
 	bool init;
+	char name[20];
 };
 
 struct battery_temperature_table {
@@ -747,6 +809,7 @@ enum Fg_interrupt_flags {
 	FG_INTR_BAT_INT1_CHECK = 0x1000000,
 	FG_INTR_KERNEL_CMD = 0x2000000,
 	FG_INTR_BAT_INT2_CHECK = 0x4000000,
+	FG_INTR_BAT_PLUGIN = 0x8000000,
 };
 
 struct mtk_battery_algo {
@@ -853,6 +916,7 @@ enum irq_handler_flag {
 	ZCV_FLAG,
 	NAFG_FLAG,
 	BAT_PLUG_FLAG,
+	BAT_PLUGIN_FLAG,
 	NUMBER_IRQ_HANDLER,
 };
 
@@ -872,6 +936,7 @@ struct irq_controller {
 #define AVGVBAT_ARRAY_SIZE 30
 #define INIT_VOLTAGE 3450
 #define BATTERY_SHUTDOWN_TEMPERATURE 60
+#define DISABLE_POWER_PATH_VOLTAGE 2800
 
 struct shutdown_condition {
 	bool is_overheat;
@@ -881,6 +946,7 @@ struct shutdown_condition {
 	bool is_dlpt_shutdown;
 };
 
+/*
 struct shutdown_controller {
 	struct alarm kthread_fgtimer;
 	bool timeout;
@@ -897,6 +963,45 @@ struct shutdown_controller {
 	int vbat_lt;
 	int vbat_lt_lv1;
 	int shutdown_cond_flag;
+};
+*/
+enum battery_sdc_type {
+	BATTERY_MANAGER,
+	BATTERY_MAIN,
+	BATTERY_SLAVE,
+	BATTERY_SDC_MAX,
+};
+
+struct battery_shutdown_unit {
+	enum battery_sdc_type type;
+	struct mtk_battery *gm;
+
+	int vbat_lt;
+	int vbat_lt_lv1;
+	int shutdown_cond_flag;
+	bool lowbatteryshutdown;
+	struct shutdown_condition shutdown_status;
+	ktime_t pre_time[SHUTDOWN_FACTOR_MAX];
+	int batdata[AVGVBAT_ARRAY_SIZE];
+	int batidx;
+	int avgvbat;
+	int ui_zero_time_flag;
+	int down_to_low_bat;
+};
+
+#define MAX_SDC 2
+
+struct shutdown_controller {
+	struct alarm kthread_fgtimer[BATTERY_SDC_MAX];
+	int timeout;
+	wait_queue_head_t  wait_que;
+	struct mutex lock;
+	ktime_t endtime[BATTERY_SDC_MAX];
+	struct wakeup_source *sdc_wakelock;
+	spinlock_t slock;
+
+	struct battery_shutdown_unit bmsdu;
+	struct battery_shutdown_unit bat[MAX_SDC];
 };
 
 struct BAT_EC_Struct {
@@ -941,6 +1046,33 @@ struct zcv_filter {
 	struct zcv_log log[ZCV_LOG_LEN];
 };
 
+struct fgd_cmd_daemon_data {
+	int uisoc;
+	int fg_c_soc;
+	int fg_v_soc;
+	int soc;
+
+	int fg_c_d0_soc;
+	int car_c;
+	int fg_v_d0_soc;
+	int car_v;
+
+	int qmxa_t_0ma;
+	int quse;
+	int tmp;
+	int vbat;
+	int iavg;
+
+	int aging_factor;
+	int loading_factor1;
+	int loading_factor2;
+
+	int g_zcv_data;
+	int g_zcv_data_soc;
+	int g_zcv_data_mah;
+	int tmp_show_ag;
+	int tmp_bh_ag;
+};
 
 struct ag_center_data_st {
 	int data[43];
@@ -954,16 +1086,22 @@ struct mtk_battery {
 	struct hrtimer fg_hrtimer;
 	struct mutex ops_lock;
 	struct mutex fg_update_lock;
+	int id;
+	int type;
 
 	struct property_control prop_control;
-	struct battery_data bs_data;
+
+	int battery_temp;
 	struct mtk_coulomb_service cs;
 	struct mtk_gauge *gauge;
-	struct sock *mtk_battery_sk;
+	struct mtk_battery_manager *bm;
 
 	struct mtk_battery_algo algo;
 
-	u_int fgd_pid;
+	struct mtk_battery_sysfs_field_info *battery_sysfs;
+
+	int fg_vbat_l_thr;
+	int fg_vbat_h_thr;
 
 	/*for irq thread*/
 	struct irq_controller irq_ctrl;
@@ -989,7 +1127,6 @@ struct mtk_battery {
 	bool cmd_disable_nafg;
 
 	/*battery plug in out*/
-	int chr_type;
 	bool disable_plug_int;
 
 	/*battery full*/
@@ -1038,7 +1175,6 @@ struct mtk_battery {
 
 	/* charge full interrupt */
 	struct timespec64 chr_full_handler_time;
-	bool b_EOC;
 
 	/* battery temperature interrupt */
 	int bat_tmp_int_gap;
@@ -1087,9 +1223,6 @@ struct mtk_battery {
 	int bat_cycle_car;
 	int bat_cycle_ncar;
 
-	/* power misc */
-	struct shutdown_controller sdc;
-
 	/*sw average current*/
 	ktime_t sw_iavg_time;
 	int sw_iavg_car;
@@ -1097,6 +1230,7 @@ struct mtk_battery {
 	int sw_iavg_ht;
 	int sw_iavg_lt;
 	int sw_iavg_gap;
+	int iavg_th[MAX_TABLE];
 
 	/*sw low battery interrupt*/
 	struct lbat_user *lowbat_service;
@@ -1144,14 +1278,83 @@ struct mtk_battery {
 	struct battery_temperature_table rbat;
 	struct fg_temp *tmp_table;
 
+	int pre_bat_temperature_volt_temp;
+	int pre_bat_temperature_volt;
+	int pre_fg_current_temp;
+	int pre_fg_current_state;
+	int pre_fg_r_value;
+	int pre_bat_temperature_val2;
+
 	void (*shutdown)(struct mtk_battery *gm);
 	int (*suspend)(struct mtk_battery *gm, pm_message_t state);
 	int (*resume)(struct mtk_battery *gm);
 
+	void (*netlink_handler)(struct mtk_battery *gm, void *nl_data, struct afw_header *ret_msg);
+	void (*netlink_send)(struct mtk_battery *gm, int seq, struct afw_header *reply_msg);
 	int log_level;
+
+	/* for manager */
+	int (*manager_send)(struct mtk_battery *gm, enum manager_cmd cmd, int val);
+
+	/*daemon data*/
+	struct fgd_cmd_daemon_data daemon_data;
+	int daemon_version;
+
 	/* low bat bound */
 	int bat_voltage_low_bound;
 	int low_tmp_bat_voltage_low_bound;
+
+	/* for bat_plug_out*/
+	int bat_plug_out;
+
+	/* for low v avgbat threshold*/
+	int avgvbat_array_size;
+
+	/* for BatteryNotify*/
+	unsigned int notify_code;
+};
+
+struct mtk_battery_manager {
+	struct device *dev;
+	wait_queue_head_t  wait_que;
+	unsigned int bm_update_flag;
+	int log_level;
+
+	struct hrtimer bm_hrtimer;
+
+	spinlock_t slock;
+	struct timespec64 endtime;
+	struct alarm bm_alarmtimer;
+	struct wakeup_source *bm_wakelock;
+	bool is_suspend;
+	struct notifier_block pm_notifier;
+
+	struct mtk_battery *gm1;
+	struct mtk_battery *gm2;
+	int gm_no;
+
+	int force_ui_zero;
+	int uisoc;
+	int ibat;
+	int vbat;
+
+	/* EOC */
+	bool b_EOC;
+	/* plug in out */
+	int chr_type;
+
+	//netlink
+	struct sock *mtk_bm_sk;
+	u_int fgd_pid;
+
+	struct battery_data bs_data;
+
+	/* power misc */
+	struct shutdown_controller sdc;
+
+	/* bootmode */
+	u32 bootmode;
+	u32 boottype;
 };
 
 struct mtk_battery_sysfs_field_info {
@@ -1162,6 +1365,8 @@ struct mtk_battery_sysfs_field_info {
 	int (*get)(struct mtk_battery *gm,
 		struct mtk_battery_sysfs_field_info *attr, int *val);
 };
+
+extern struct mtk_battery *gmb;
 
 /* coulomb service */
 extern void gauge_coulomb_service_init(struct mtk_battery *gm);
@@ -1187,30 +1392,30 @@ extern int force_get_tbat(struct mtk_battery *gm, bool update);
 extern int force_get_tbat_internal(struct mtk_battery *gm);
 extern int wakeup_fg_algo_cmd(struct mtk_battery *gm,
 	unsigned int flow_state, int cmd, int para1);
+extern int get_iavg_gap(struct mtk_battery *gm);
 extern int wakeup_fg_algo(struct mtk_battery *gm, unsigned int flow_state);
 
-extern int gauge_get_int_property(enum gauge_property gp);
-extern int gauge_get_property(enum gauge_property gp,
+extern int gauge_get_int_property(struct mtk_battery *gm, enum gauge_property gp);
+extern int gauge_get_property(struct mtk_battery *gm, enum gauge_property gp,
 			    int *val);
 extern int gauge_get_property_control(struct mtk_battery *gm,
 	enum gauge_property gp, int *val, int mode);
-extern int gauge_set_property(enum gauge_property gp,
+extern int gauge_set_property(struct mtk_battery *gm, enum gauge_property gp,
 			    int val);
-extern void gp_number_to_name(char *gp_name, unsigned int gp_no);
-extern void reg_type_to_name(char *reg_type_name, unsigned int regmap_type);
+extern void gp_number_to_name(struct mtk_battery *gm, char *gp_name, unsigned int gp_no);
+extern void reg_type_to_name(struct mtk_battery *gm, char *reg_type_name, unsigned int regmap_type);
 extern int battery_init(struct platform_device *pdev);
 extern int battery_psy_init(struct platform_device *pdev);
 extern struct mtk_battery *get_mtk_battery(void);
-extern int battery_get_property(enum battery_property bp, int *val);
-extern int battery_get_int_property(enum battery_property bp);
-extern int battery_set_property(enum battery_property bp, int val);
-extern void battery_update(struct mtk_battery *gm);
+extern int battery_get_property(struct mtk_battery *gm, enum battery_property bp, int *val);
+extern int battery_get_int_property(struct mtk_battery *gm, enum battery_property bp);
+extern int battery_set_property(struct mtk_battery *gm, enum battery_property bp, int val);
 extern bool fg_interrupt_check(struct mtk_battery *gm);
 extern void fg_nafg_monitor(struct mtk_battery *gm);
 extern bool is_algo_active(struct mtk_battery *gm);
 extern int disable_shutdown_cond(struct mtk_battery *gm, int shutdown_cond);
 extern int set_shutdown_cond(struct mtk_battery *gm, int shutdown_cond);
-extern bool is_kernel_power_off_charging(void);
+extern bool is_kernel_power_off_charging(struct mtk_battery *gm);
 extern void set_shutdown_vbat_lt(struct mtk_battery *gm,
 	int vbat_lt, int vbat_lt_lv1);
 extern void fg_sw_bat_cycle_accu(struct mtk_battery *gm);
@@ -1218,10 +1423,15 @@ extern void notify_fg_chr_full(struct mtk_battery *gm);
 extern int fgauge_get_profile_id(struct mtk_battery *gm);
 extern void disable_fg(struct mtk_battery *gm);
 extern int get_shutdown_cond(struct mtk_battery *gm);
+extern void battery_update(struct mtk_battery_manager *bm);
+extern int set_bm_shutdown_cond(struct mtk_battery_manager *bm, int shutdown_cond);
+#ifdef POWER_MISC_OFF
 extern int get_shutdown_cond_flag(struct mtk_battery *gm);
 extern void set_shutdown_cond_flag(struct mtk_battery *gm, int val);
-extern bool set_charge_power_sel(enum charge_sel select);
-extern int dump_pseudo100(int select);
+#endif
+extern bool set_charge_power_sel(struct mtk_battery *gm, enum charge_sel select);
+extern int dump_pseudo100(struct mtk_battery *gm, enum charge_sel select);
+
 /*mtk_battery.c end */
 
 /* mtk_battery_algo.c */
@@ -1232,6 +1442,304 @@ extern void fg_bat_temp_int_internal(struct mtk_battery *gm);
 extern void disable_all_irq(struct mtk_battery *gm);
 
 /*mtk_battery_daemon.c*/
+extern int gauge_get_pmic_vbus(void);
 extern void wake_up_bat_irq_controller(struct irq_controller *irq_ctrl, int flags);
 /*mtk_battery_daemon.c end*/
+
+/* */
+extern void wake_up_power_misc(struct shutdown_controller *sdc);
+/* */
+
+
+/* mtk daemon related */
+extern int mtk_battery_daemon_init(struct platform_device *pdev);
+extern void mtk_irq_thread_init(struct mtk_battery *gm);
+//extern int wakeup_fg_daemon(struct mtk_battery *gm, unsigned int flow_state, int cmd, int para1);
+
+/* customize */
+#define DIFFERENCE_FULLOCV_ITH	200	/* mA */
+#define MTK_CHR_EXIST			1
+#define KEEP_100_PERCENT		1
+
+/* Rsense setting */
+/* UNIT_MULTIPLE/CURR_MEASURE_20A MT6375 only */
+#define R_FG_VALUE				5	/* mOhm */
+#define UNIT_MULTIPLE			2
+#define CURR_MEASURE_20A	1
+
+#define EMBEDDED_SEL			0
+#define PMIC_SHUTDOWN_CURRENT	20	/* 0.01 mA */
+#define FG_METER_RESISTANCE		100
+#define CAR_TUNE_VALUE			100 /*1.00 */
+#define NO_BAT_TEMP_COMPENSATE	0
+#define NO_PROP_TIMEOUT_CONTROL 0
+/* NO_BAT_TEMP_COMPENSATE 1 = don't need bat_temper compensate, */
+/* but fg_meter_resistance still use for SWOCV */
+
+/* enable that soc = 0 , shutdown */
+#define SHUTDOWN_GAUGE0			1
+
+/* enable that uisoc = 1 and wait xmins then shutdown */
+#define SHUTDOWN_GAUGE1_XMINS	1
+/* define Xmins to shutdown*/
+#define SHUTDOWN_1_TIME			5
+
+#define SHUTDOWN_GAUGE1_VBAT_EN	0
+#define SHUTDOWN_GAUGE1_VBAT	34000
+
+#define SHUTDOWN_GAUGE0_VOLTAGE	34000
+
+#define POWERON_SYSTEM_IBOOT	500	/* mA */
+
+/*
+ * LOW_TEMP_MODE = 0
+ *	disable LOW_TEMP_MODE
+ * LOW_TEMP_MODE = 1
+ *	if battery temperautre < LOW_TEMP_MODE_TEMP
+ *	when bootup , force C mode
+ * LOW_TEMP_MODE = 2
+ *	if battery temperautre < LOW_TEMP_MODE_TEMP
+ *	force C mode
+ */
+#define LOW_TEMP_MODE			0
+#define LOW_TEMP_MODE_TEMP		0
+
+#define D0_SEL					0	/* not implement */
+#define AGING_SEL				0	/* not implement */
+#define DLPT_UI_REMAP_EN		0
+
+/* ADC resistor  */
+#define R_BAT_SENSE				4
+#define R_I_SENSE				4
+#define R_CHARGER_1				330
+#define R_CHARGER_2				39
+
+#define QMAX_SEL				1
+#define IBOOT_SEL				0
+#define SHUTDOWN_SYSTEM_IBOOT	15000	/* 0.1mA */
+#define PMIC_MIN_VOL			33500
+
+/*ui_soc related */
+#define DIFFERENCE_FULL_CV		1000 /*0.01%*/
+#define PSEUDO1_EN				1
+#define PSEUDO100_EN			1
+#define PSEUDO100_EN_DIS		0
+
+#define DIFF_SOC_SETTING				50	/* 0.01% */
+#define DIFF_BAT_TEMP_SETTING			1
+#define DIFF_BAT_TEMP_SETTING_C			10
+#define DISCHARGE_TRACKING_TIME			10
+#define CHARGE_TRACKING_TIME			60
+#define DIFFERENCE_FULLOCV_VTH			1000/* 0.1mV */
+#define CHARGE_PSEUDO_FULL_LEVEL		8000
+#define FULL_TRACKING_BAT_INT2_MULTIPLY 6
+
+/* pre tracking */
+#define FG_PRE_TRACKING_EN	1
+#define VBAT2_DET_TIME		5
+#define VBAT2_DET_COUNTER	6
+#define VBAT2_DET_VOLTAGE1	30500
+#define VBAT2_DET_VOLTAGE2	28000
+#define VBAT2_DET_VOLTAGE3	31000
+
+/* PCB setting */
+#define CALI_CAR_TUNE_AVG_NUM	60
+
+/* Dynamic CV */
+#define DYNAMIC_CV_FACTOR      100     /* mV */
+#define CHARGER_IEOC           150     /* mA */
+
+/* Aging Compensation 1*/
+#define AGING_FACTOR_MIN			90
+#define AGING_FACTOR_DIFF			10
+#define DIFFERENCE_VOLTAGE_UPDATE	50
+#define AGING_ONE_EN				1
+#define AGING1_UPDATE_SOC			30
+#define AGING1_LOAD_SOC				70
+#define AGING4_UPDATE_SOC			40
+#define AGING4_LOAD_SOC				70
+#define AGING5_UPDATE_SOC			30
+#define AGING5_LOAD_SOC				70
+#define AGING6_UPDATE_SOC			30
+#define AGING6_LOAD_SOC				70
+#define AGING_TEMP_DIFF				10
+#define AGING_TEMP_LOW_LIMIT			15
+#define AGING_TEMP_HIGH_LIMIT			50
+#define AGING_100_EN				1
+
+/* Aging Compensation 2*/
+#define AGING_TWO_EN				1
+
+/* Aging Compensation 3*/
+#define AGING_THIRD_EN				1
+
+#define AGING_4_EN				0
+#define AGING_5_EN				0
+#define AGING_6_EN				0
+
+/* threshold */
+#define HWOCV_SWOCV_DIFF			300
+#define HWOCV_SWOCV_DIFF_LT			1500
+#define HWOCV_SWOCV_DIFF_LT_TEMP	5
+#define HWOCV_OLDOCV_DIFF			400
+#define HWOCV_OLDOCV_DIFF_CHR		800
+#define SWOCV_OLDOCV_DIFF			300
+#define SWOCV_OLDOCV_DIFF_CHR		800
+#define VBAT_OLDOCV_DIFF			1000
+#define SWOCV_OLDOCV_DIFF_EMB		1000	/* 100mV */
+
+#define VIR_OLDOCV_DIFF_EMB			10000	/* 1000mV */
+#define VIR_OLDOCV_DIFF_EMB_LT		10000	/* 1000mV */
+#define VIR_OLDOCV_DIFF_EMB_TMP		5
+
+#define TNEW_TOLD_PON_DIFF			5
+#define TNEW_TOLD_PON_DIFF2			15
+#define PMIC_SHUTDOWN_TIME			30
+#define BAT_PLUG_OUT_TIME			32
+#define EXT_HWOCV_SWOCV				300
+#define EXT_HWOCV_SWOCV_LT			1500
+#define EXT_HWOCV_SWOCV_LT_TEMP		5
+
+/* fgc & fgv threshold */
+#define DIFFERENCE_FGC_FGV_TH1		300
+#define DIFFERENCE_FGC_FGV_TH2		500
+#define DIFFERENCE_FGC_FGV_TH3		300
+#define DIFFERENCE_FGC_FGV_TH_SOC1	7000
+#define DIFFERENCE_FGC_FGV_TH_SOC2	3000
+#define NAFG_TIME_SETTING			10
+#define NAFG_RATIO					100
+#define NAFG_RATIO_EN				0
+#define NAFG_RATIO_TMP_THR			1
+#define NAFG_RESISTANCE				1500
+
+#define PMIC_SHUTDOWN_SW_EN			1
+/* 0: mix, 1:Coulomb, 2:voltage */
+#define FORCE_VC_MODE				0
+
+#define LOADING_1_EN				0
+#define LOADING_2_EN				2
+#define DIFF_IAVG_TH				3000
+
+/* ZCV INTR */
+#define ZCV_SUSPEND_TIME			7
+#define SLEEP_CURRENT_AVG			200 /*0.1mA*/
+#define ZCV_COM_VOL_LIMIT 50	/* 50mv */
+#define ZCV_CAR_GAP_PERCENTAGE		5
+
+/* Additional battery table */
+#define ADDITIONAL_BATTERY_TABLE_EN 1
+
+#define DC_RATIO_SEL				5
+/* if set 0, dcr_start will not be 1*/
+#define DC_R_CNT					1000
+
+#define BAT_PAR_I					4000
+#define PSEUDO1_SEL					2
+
+#define FG_TRACKING_CURRENT				40000
+#define FG_TRACKING_CURRENT_IBOOT_EN	0
+#define UI_FAST_TRACKING_EN				0
+#define UI_FAST_TRACKING_GAP			300
+#define KEEP_100_PERCENT_MINSOC			9000
+
+
+#define SHUTDOWN_CONDITION_LOW_BAT_VOLT
+#define LOW_TEMP_DISABLE_LOW_BAT_SHUTDOWN	1
+#define LOW_TEMP_THRESHOLD					5
+
+#define BATTERY_TMP_TO_DISABLE_GM30				-50
+#define BATTERY_TMP_TO_DISABLE_NAFG				-35
+#define DEFAULT_BATTERY_TMP_WHEN_DISABLE_NAFG	25
+#define BATTERY_TMP_TO_ENABLE_NAFG				-20
+/* #define GM30_DISABLE_NAFG */
+
+#define POWER_ON_CAR_CHR		5
+#define POWER_ON_CAR_NOCHR		-35
+
+#define SHUTDOWN_CAR_RATIO		1
+
+
+/* different temp using different gauge 0% */
+#define MULTI_TEMP_GAUGE0		1
+
+#define OVER_DISCHARGE_LEVEL	-1500
+
+#define UISOC_UPDATE_TYPE		0
+/*
+ *	uisoc_update_type:
+ *	0: only ui_soc interrupt update ui_soc
+ *	1: coulomb/nafg will update ui_soc if delta car > ht/lt_gap /2
+ *	2: coulomb/nafg will update ui_soc
+ */
+
+/* using current to limit uisoc in 100% case*/
+/* UI_FULL_LIMIT_ITH0 3000 means 300ma */
+#define UI_FULL_LIMIT_EN	0
+#define UI_FULL_LIMIT_SOC0	9900
+#define UI_FULL_LIMIT_ITH0	2200
+
+#define UI_FULL_LIMIT_SOC1	9900
+#define UI_FULL_LIMIT_ITH1	2200
+
+#define UI_FULL_LIMIT_SOC2	9900
+#define UI_FULL_LIMIT_ITH2	2200
+
+#define UI_FULL_LIMIT_SOC3	9900
+#define UI_FULL_LIMIT_ITH3	2200
+
+#define UI_FULL_LIMIT_SOC4	9900
+#define UI_FULL_LIMIT_ITH4	2200
+
+#define UI_FULL_LIMIT_TIME	99999
+
+
+#define UI_FULL_LIMIT_FC_SOC0	9900
+#define UI_FULL_LIMIT_FC_ITH0	3000
+
+#define UI_FULL_LIMIT_FC_SOC1	9900
+#define UI_FULL_LIMIT_FC_ITH1	3100
+
+#define UI_FULL_LIMIT_FC_SOC2	9900
+#define UI_FULL_LIMIT_FC_ITH2	3200
+
+#define UI_FULL_LIMIT_FC_SOC3	9900
+#define UI_FULL_LIMIT_FC_ITH3	3300
+
+#define UI_FULL_LIMIT_FC_SOC4	9900
+#define UI_FULL_LIMIT_FC_ITH4	3400
+
+/* using voltage to limit uisoc in 1% case */
+/* UI_LOW_LIMIT_VTH0=36000 means 3.6v */
+#define UI_LOW_LIMIT_EN		0
+#define UI_LOW_LIMIT_SOC0	200
+#define UI_LOW_LIMIT_VTH0	34500
+#define UI_LOW_LIMIT_SOC1	200
+#define UI_LOW_LIMIT_VTH1	34500
+#define UI_LOW_LIMIT_SOC2	200
+#define UI_LOW_LIMIT_VTH2	34500
+#define UI_LOW_LIMIT_SOC3	200
+#define UI_LOW_LIMIT_VTH3	34500
+#define UI_LOW_LIMIT_SOC4	200
+#define UI_LOW_LIMIT_VTH4	34500
+#define UI_LOW_LIMIT_TIME	99999
+
+#define MOVING_BATTEMP_EN	1
+#define MOVING_BATTEMP_THR	20
+
+/* Qmax for battery  */
+#define Q_MAX_L_CURRENT		0
+#define Q_MAX_H_CURRENT		10000
+
+/* multiple battery profile compile options */
+/*#define MTK_GET_BATTERY_ID_BY_AUXADC*/
+
+
+/* if ACTIVE_TABLE == 0 && MULTI_BATTERY == 0
+ * load g_FG_PSEUDO100_Tx from dtsi
+ */
+#define MULTI_BATTERY			0
+#define BATTERY_ID_CHANNEL_NUM	1
+#define BATTERY_PROFILE_ID		0
+#define TOTAL_BATTERY_NUMBER	4
+
 #endif /* __MTK_BATTERY_INTF_H__ */

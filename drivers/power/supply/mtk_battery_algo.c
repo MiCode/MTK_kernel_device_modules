@@ -14,9 +14,9 @@ int set_kernel_soc(struct mtk_battery *gm, int _soc)
 	return 0;
 }
 
-void set_fg_bat_tmp_c_gap(int tmp)
+void set_fg_bat_tmp_c_gap(struct mtk_battery *gm, int tmp)
 {
-	/*battery_set_property(BAT_PROP_UISOC, tmp);*/
+	battery_set_property(gm, BAT_PROP_UISOC, tmp);
 }
 
 void set_fg_time(struct mtk_battery *gm, int _time)
@@ -24,16 +24,12 @@ void set_fg_time(struct mtk_battery *gm, int _time)
 	struct timespec64 tmp_time_now, end_time;
 	ktime_t ktime, time_now;
 
-	if (_time != 0 && _time > 0) {
-		time_now = ktime_get_boottime();
-		tmp_time_now = ktime_to_timespec64(time_now);
-		end_time.tv_sec = tmp_time_now.tv_sec + _time;
+	time_now = ktime_get_boottime();
+	tmp_time_now = ktime_to_timespec64(time_now);
+	end_time.tv_sec = tmp_time_now.tv_sec + _time;
 
-		ktime = ktime_set(end_time.tv_sec, end_time.tv_nsec);
-		alarm_start(&gm->tracking_timer, ktime);
-	} else {
-		alarm_cancel(&gm->tracking_timer);
-	}
+	ktime = ktime_set(end_time.tv_sec, end_time.tv_nsec);
+	alarm_start(&gm->tracking_timer, ktime);
 }
 
 int get_d0_c_soc_cust(struct mtk_battery *gm, int value)
@@ -48,15 +44,15 @@ int get_uisoc_cust(struct mtk_battery *gm, int value)
 	return value;
 }
 
-int get_ptimrac(void)
+int get_ptimrac(struct mtk_battery *gm)
 {
-	return gauge_get_int_property(
+	return gauge_get_int_property(gm,
 				GAUGE_PROP_PTIM_RESIST);
 }
 
-int get_ptim_vbat(void)
+int get_ptim_vbat(struct mtk_battery *gm)
 {
-	return gauge_get_int_property(GAUGE_PROP_PTIM_BATTERY_VOLTAGE) * 10;
+	return gauge_get_int_property(gm, GAUGE_PROP_PTIM_BATTERY_VOLTAGE) * 10;
 }
 
 int get_ptim_i(struct mtk_battery *gm)
@@ -73,9 +69,9 @@ int get_ptim_i(struct mtk_battery *gm)
 	return val.intval;
 }
 
-void get_hw_info(void)
+void get_hw_info(struct mtk_battery *gm)
 {
-	gauge_set_property(GAUGE_PROP_HW_INFO, 0);
+	gauge_set_property(gm, GAUGE_PROP_HW_INFO, 0);
 }
 
 int get_charger_exist(void)
@@ -107,11 +103,13 @@ int get_charger_status(struct mtk_battery *gm)
 {
 	int charger_status = 0;
 
+#ifdef WY_FIX
 	if (gm->bs_data.bat_status ==
 				POWER_SUPPLY_STATUS_NOT_CHARGING)
 		charger_status = -1;
 	else
 		charger_status = 0;
+#endif
 
 	return charger_status;
 }
@@ -124,7 +122,7 @@ int get_imix_r(void)
 
 int fg_adc_reset(struct mtk_battery *gm)
 {
-	battery_set_property(BAT_PROP_FG_RESET, 0);
+	battery_set_property(gm, BAT_PROP_FG_RESET, 0);
 	return 0;
 }
 
@@ -158,7 +156,7 @@ struct fuelgauge_profile_struct *fg_get_profile(
 	if (ptable->temperature_tb1 == temperature)
 		return &ptable->fg_profile_temperature_1[0];
 
-	bm_debug("[%s]: no table for %d\n",
+	bm_debug(gm, "[%s]: no table for %d\n",
 		__func__,
 		temperature);
 
@@ -176,7 +174,7 @@ int fg_check_temperature_order(struct mtk_battery *gm,
 	*is_descending = 0;
 	/* is ascending*/
 
-	bm_debug("act:%d table: %d %d %d %d %d %d %d %d %d %d\n",
+	bm_debug(gm, "act:%d table: %d %d %d %d %d %d %d %d %d %d\n",
 		ptable->active_table_number,
 		ptable->fg_profile[0].temperature,
 		ptable->fg_profile[1].temperature,
@@ -206,12 +204,12 @@ int fg_check_temperature_order(struct mtk_battery *gm,
 		*is_descending = 1;
 	}
 
-	bm_debug("active_table_no is %d, %d %d\n",
+	bm_debug(gm, "active_table_no is %d, %d %d\n",
 		ptable->active_table_number,
 		*is_ascending,
 		*is_descending);
 	for (i = 0; i < ptable->active_table_number; i++) {
-		bm_debug("table[%d]:%d\n",
+		bm_debug(gm, "table[%d]:%d\n",
 			i,
 			ptable->fg_profile[i].temperature);
 	}
@@ -245,12 +243,12 @@ void fgr_construct_battery_profile(struct mtk_battery *gm, int table_idx)
 	temp_profile_p = fg_get_profile(gm, table_idx);
 
 	if (temp_profile_p == NULL) {
-		bm_debug("[FGADC] fg_get_profile : create table fail !\n");
+		bm_debug(gm, "[FGADC] fg_get_profile : create table fail !\n");
 		return;
 	}
 
 	if (fg_check_temperature_order(gm, &is_ascending, &is_descending)) {
-		bm_err("[FGADC] fg_check_temperature_order : t0~t3 setting error !\n");
+		bm_err(gm, "[FGADC] fg_check_temperature_order : t0~t3 setting error !\n");
 		return;
 	}
 
@@ -359,12 +357,12 @@ void fgr_construct_battery_profile(struct mtk_battery *gm, int table_idx)
 			high_pseudo100,
 			temperature);
 
-		bm_debug("[Profile_Table]pseudo1_en:[%d] lowT %d %d %d lowPs1 %d highPs1 %d batterypseudo1_h [%d]\n",
+		bm_debug(gm, "[Profile_Table]pseudo1_en:[%d] lowT %d %d %d lowPs1 %d highPs1 %d batterypseudo1_h [%d]\n",
 			pdata->pseudo1_en, low_temp,
 			high_temp, temperature,
 			low_pseudo1, high_pseudo1,
 			algo->batterypseudo1_h);
-		bm_debug("[Profile_Table]pseudo100_en:[%d] %d lowT %d %d %d low100 %d %d [%d]\n",
+		bm_debug(gm, "[Profile_Table]pseudo100_en:[%d] %d lowT %d %d %d low100 %d %d [%d]\n",
 			pdata->pseudo100_en, pdata->pseudo100_en_dis,
 			low_temp, high_temp, temperature,
 			low_pseudo100, high_pseudo100,
@@ -383,12 +381,12 @@ void fgr_construct_battery_profile(struct mtk_battery *gm, int table_idx)
 			high_temp, UNIT_TRANS_10 * high_qmax_h,
 			temperature);
 
-		bm_debug("[Profile_Table]lowT %d %d %d lowQ %d %d qmax_t_0ma_h [%d]\n",
+		bm_debug(gm, "[Profile_Table]lowT %d %d %d lowQ %d %d qmax_t_0ma_h [%d]\n",
 			low_temp, high_temp, temperature,
 			UNIT_TRANS_10 * low_qmax,
 			UNIT_TRANS_10 * high_qmax,
 			algo->qmax_t_0ma_h);
-		bm_debug("[Profile_Table]lowT %d %d %d lowQh %d %d qmax_t_Nma_h [%d]\n",
+		bm_debug(gm, "[Profile_Table]lowT %d %d %d lowQh %d %d qmax_t_Nma_h [%d]\n",
 			low_temp, high_temp, temperature,
 			UNIT_TRANS_10 * low_qmax_h,
 			UNIT_TRANS_10 * high_qmax_h,
@@ -399,7 +397,7 @@ void fgr_construct_battery_profile(struct mtk_battery *gm, int table_idx)
 			high_temp, UNIT_TRANS_10 * high_shutdown_zcv,
 			temperature);
 
-		bm_debug("[Profile_Table]lowT %d %d %d LowShutZCV %d HighShutZCV %d shutdown_hl_zcv [%d]\n",
+		bm_debug(gm, "[Profile_Table]lowT %d %d %d LowShutZCV %d HighShutZCV %d shutdown_hl_zcv [%d]\n",
 			low_temp, high_temp, temperature,
 			UNIT_TRANS_10 * low_shutdown_zcv,
 			UNIT_TRANS_10 * high_shutdown_zcv,
@@ -419,22 +417,22 @@ void fgr_construct_battery_profile(struct mtk_battery *gm, int table_idx)
 			high_temp, UNIT_TRANS_10 * high_qmax_h,
 			temperature);
 
-		bm_debug("[Profile_Table]lowT %d %d %d lowQ %d %d qmax_t_0ma_h [%d]\n",
+		bm_debug(gm, "[Profile_Table]lowT %d %d %d lowQ %d %d qmax_t_0ma_h [%d]\n",
 			low_temp, high_temp, temperature,
 			UNIT_TRANS_10 * low_qmax,
 			UNIT_TRANS_10 * high_qmax,
 			algo->qmax_t_0ma_h_tb1);
-		bm_debug("[Profile_Table]lowT %d %d %d lowQh %d %d qmax_t_Nma_h [%d]\n",
+		bm_debug(gm, "[Profile_Table]lowT %d %d %d lowQh %d %d qmax_t_Nma_h [%d]\n",
 			low_temp, high_temp, temperature,
 			UNIT_TRANS_10 * low_qmax_h,
 			UNIT_TRANS_10 * high_qmax_h,
 			algo->qmax_t_Nma_h_tb1);
 	}
 
-	bm_debug("[Profile_Table]T_table %d T_table_c %d %d %d is_ascend %d %d\n",
+	bm_debug(gm, "[Profile_Table]T_table %d T_table_c %d %d %d is_ascend %d %d\n",
 		algo->T_table, algo->T_table_c, pdata->pseudo1_en,
 		pdata->pseudo100_en, is_ascending, is_descending);
-	bm_debug("[Profile_Table]Pseudo1_h %d %d, Qmax_T_0mA_H %d,%d qmax_t_0ma_h_tb1 %d %d\n",
+	bm_debug(gm, "[Profile_Table]Pseudo1_h %d %d, Qmax_T_0mA_H %d,%d qmax_t_0ma_h_tb1 %d %d\n",
 		algo->batterypseudo1_h,
 		algo->batterypseudo100,
 		algo->qmax_t_0ma_h,
@@ -452,7 +450,7 @@ void fgr_construct_table_by_temp(
 	algo = &gm->algo;
 	fg_temp = force_get_tbat(gm, true);
 	if (fg_temp != algo->last_temp || update == true) {
-		bm_err("[%s] tempture from(%d)to(%d) Tb:%d",
+		bm_err(gm, "[%s] tempture from(%d)to(%d) Tb:%d",
 			__func__,
 			algo->last_temp, fg_temp, table_idx);
 		algo->last_temp = fg_temp;
@@ -487,7 +485,7 @@ void fg_construct_battery_profile_by_qmax(struct mtk_battery *gm,
 			profile_p[i].mah * 10000 / algo->qmax_t_0ma_tb1;
 	}
 
-	bm_debug("[%s] qmax:%d qmax_t_0ma:%d\n",
+	bm_debug(gm, "[%s] qmax:%d qmax_t_0ma:%d\n",
 		__func__,
 		qmax, algo->qmax_t_0ma);
 }
@@ -526,14 +524,14 @@ void fg_construct_battery_profile_by_vboot(struct mtk_battery *gm,
 		}
 
 		if (algo->qmax_t_0ma < 3000) {
-			bm_err("[ERR][%s]index %d idx:%d _vboot:%d %d qmax_t_0ma:[%d => 3000]\n",
+			bm_err(gm, "[ERR][%s]index %d idx:%d _vboot:%d %d qmax_t_0ma:[%d => 3000]\n",
 				__func__,
 				table_index, j,
 				_vboot, profile_p[j].voltage, algo->qmax_t_0ma);
 		}
 
 		if (algo->qmax_t_0ma > 50000) {
-			bm_err("[ERR][%s]index %d idx:%d _vboot:%d %d qmax_t_0ma:[%d => 50000]\n",
+			bm_err(gm, "[ERR][%s]index %d idx:%d _vboot:%d %d qmax_t_0ma:[%d => 50000]\n",
 				__func__,
 				table_index, j,
 				_vboot, profile_p[j].voltage, algo->qmax_t_0ma);
@@ -559,7 +557,7 @@ void fg_construct_battery_profile_by_vboot(struct mtk_battery *gm,
 		}
 
 		if (algo->qmax_t_0ma_tb1 < 3000) {
-			bm_err("[ERR][%s]index %d idx:%d _vboot:%d %d qmax_t_0ma_tb1:[%d => 3000]\n",
+			bm_err(gm, "[ERR][%s]index %d idx:%d _vboot:%d %d qmax_t_0ma_tb1:[%d => 3000]\n",
 				__func__,
 				table_index, j,
 				_vboot, profile_p[j].voltage,
@@ -567,7 +565,7 @@ void fg_construct_battery_profile_by_vboot(struct mtk_battery *gm,
 		}
 
 		if (algo->qmax_t_0ma_tb1 > 50000) {
-			bm_err("[ERR][%s]index %d idx:%d _vboot:%d %d qmax_t_0ma_tb1:[%d => 50000]\n",
+			bm_err(gm, "[ERR][%s]index %d idx:%d _vboot:%d %d qmax_t_0ma_tb1:[%d => 50000]\n",
 				__func__,
 				table_index, j,
 				_vboot, profile_p[j].voltage,
@@ -580,12 +578,12 @@ void fg_construct_battery_profile_by_vboot(struct mtk_battery *gm,
 	}
 
 	if (table_index == ptable->temperature_tb1) {
-		bm_debug("[%s]index %d idx:%d _vboot:%d %d qmax_t_0ma_tb1:%d\n",
+		bm_debug(gm, "[%s]index %d idx:%d _vboot:%d %d qmax_t_0ma_tb1:%d\n",
 			__func__,
 			table_index, j, _vboot,
 			profile_p[j].voltage, algo->qmax_t_0ma_tb1);
 	} else {
-		bm_debug("[%s]index %d idx:%d _vboot:%d %d qmax_t_0ma:%d\n",
+		bm_debug(gm, "[%s]index %d idx:%d _vboot:%d %d qmax_t_0ma:%d\n",
 			__func__,
 			table_index, j, _vboot,
 			profile_p[j].voltage, algo->qmax_t_0ma);
@@ -610,13 +608,13 @@ static int fg_compensate_battery_voltage_from_low(
 
 	profile_p = fg_get_profile(gm, tablei);
 	if (profile_p == NULL) {
-		bm_err("[ERR][%s] fail ,profile_p=null!\n",
+		bm_err(gm, "[ERR][%s] fail ,profile_p=null!\n",
 			__func__);
 		return 0;
 	}
 	size = fg_get_saddles(gm);
 
-	bm_debug("[%s]size:%d oriv=%d I:%d\n",
+	bm_debug(gm, "[%s]size:%d oriv=%d I:%d\n",
 		__func__,
 		size, oriv, curr);
 
@@ -624,7 +622,7 @@ static int fg_compensate_battery_voltage_from_low(
 		high = size-1;
 		if (high >= 1) {
 			if (profile_p[high-1].percentage < 10000) {
-				bm_debug("[%s]find high=%d,[%d][%d]\n",
+				bm_debug(gm, "[%s]find high=%d,[%d][%d]\n",
 					__func__,
 					high, profile_p[high].percentage,
 					profile_p[high-1].percentage);
@@ -646,14 +644,14 @@ static int fg_compensate_battery_voltage_from_low(
 			if (fg_volt_withIR > oriv) {
 				hit_h_percent = profile_p[high].percentage;
 				hit_l_percent = profile_p[high-1].percentage;
-				bm_err("[%s]h_percent=[%d,%d],high=%d,fg_volt_withIR=%d > oriv=%d\n",
+				bm_err(gm, "[%s]h_percent=[%d,%d],high=%d,fg_volt_withIR=%d > oriv=%d\n",
 					__func__,
 					hit_h_percent, hit_l_percent,
 					high, fg_volt_withIR, oriv);
 				break;
 			}
 		} else {
-			bm_err("[ERR][%s] can't find available voltage!!!\n",
+			bm_err(gm, "[ERR][%s] can't find available voltage!!!\n",
 			__func__);
 			fg_volt = profile_p[0].voltage;
 		}
@@ -682,7 +680,7 @@ static int fg_compensate_battery_voltage_from_low(
 		fg_volt_withIR = fg_volt + ret_compensate_value;
 
 		if (fg_volt_withIR > oriv) {
-			bm_err("[%s]fg_volt=%d,%d,IR=%d,orig_v:%d,+IR=%d,percent=%d,\n",
+			bm_err(gm, "[%s]fg_volt=%d,%d,IR=%d,orig_v:%d,+IR=%d,percent=%d,\n",
 				__func__,
 				fg_volt, high,
 				ret_compensate_value, oriv,
@@ -691,7 +689,7 @@ static int fg_compensate_battery_voltage_from_low(
 		}
 	}
 
-	bm_err("[ERR][%s] should not reach here!!!!!!\n",
+	bm_err(gm, "[ERR][%s] should not reach here!!!!!!\n",
 		__func__);
 	return fg_volt;
 }
@@ -699,7 +697,7 @@ static int fg_compensate_battery_voltage_from_low(
 void fgr_construct_vboot(struct mtk_battery *gm, int table_idx)
 {
 	int iboot = 0;
-	int rac = get_ptimrac();
+	int rac = get_ptimrac(gm);
 	int ptim_vbat;
 	int ptim_i;
 	int vboot_t = 0;
@@ -712,10 +710,10 @@ void fgr_construct_vboot(struct mtk_battery *gm, int table_idx)
 	ptable = &gm->fg_table_cust_data;
 	pdata = &gm->fg_cust_data;
 	ptim_i = get_ptim_i(gm);
-	ptim_vbat = gauge_get_int_property(GAUGE_PROP_PTIM_BATTERY_VOLTAGE)
+	ptim_vbat = gauge_get_int_property(gm, GAUGE_PROP_PTIM_BATTERY_VOLTAGE)
 		* 10;
 
-	bm_debug("[%s] idx %d T_NEW %d T_table %d T_table_c %d qmax_sel %d\n",
+	bm_debug(gm, "[%s] idx %d T_NEW %d T_table %d T_table_c %d qmax_sel %d\n",
 		__func__,
 		table_idx, curr_temp,
 		algo->T_table, algo->T_table_c,
@@ -757,7 +755,7 @@ void fgr_construct_vboot(struct mtk_battery *gm, int table_idx)
 			fg_construct_battery_profile_by_vboot(gm,
 				algo->vboot_c, table_idx);
 		}
-		bm_debug("[%s]idx %d T_NEW %d T_table %d T_table_c %d qmax_sel %d vboot_t=[%d:%d:%d] %d %d rac %d\n",
+		bm_debug(gm, "[%s]idx %d T_NEW %d T_table %d T_table_c %d qmax_sel %d vboot_t=[%d:%d:%d] %d %d rac %d\n",
 			__func__,
 			table_idx, curr_temp,
 			algo->T_table, algo->T_table_c,
@@ -772,13 +770,13 @@ void fgr_construct_vboot(struct mtk_battery *gm, int table_idx)
 	if (algo->qmax_t_aging == 9999999 || algo->aging_factor > 10000)
 		algo->aging_factor = 10000;
 
-	bm_debug("[%s] qmax_sel=%d iboot_sel=%d iboot:%d vbat:%d i:%d vboot:%d %d %d\n",
+	bm_debug(gm, "[%s] qmax_sel=%d iboot_sel=%d iboot:%d vbat:%d i:%d vboot:%d %d %d\n",
 		__func__,
 		pdata->qmax_sel, pdata->iboot_sel, iboot,
 		ptim_vbat, ptim_i, algo->vboot, algo->vboot_c, vboot_t);
 
 	if (pdata->qmax_sel == 0) {
-		bm_debug("[%s][by_qmax]qmax_sel %d qmax %d vboot %d %d pmic_min_vol %d iboot %d r %d\n",
+		bm_debug(gm, "[%s][by_qmax]qmax_sel %d qmax %d vboot %d %d pmic_min_vol %d iboot %d r %d\n",
 			__func__,
 			pdata->qmax_sel, algo->qmax_t_0ma_h,
 			algo->vboot, algo->vboot_c,
@@ -786,7 +784,7 @@ void fgr_construct_vboot(struct mtk_battery *gm, int table_idx)
 			iboot, rac);
 	}
 	if (pdata->qmax_sel == 1) {
-		bm_debug("[%s][by_vboot]qmax_sel %d vboot_t %d vboot %d %d pmic_min_vol %d iboot %d rac %d\n",
+		bm_debug(gm, "[%s][by_vboot]qmax_sel %d vboot_t %d vboot %d %d pmic_min_vol %d iboot %d rac %d\n",
 			__func__,
 			pdata->qmax_sel, vboot_t, algo->vboot,
 			algo->vboot_c,
@@ -802,11 +800,11 @@ void fgr_dump_table(struct mtk_battery *gm, int idx)
 
 	profile_p = fg_get_profile(gm, idx);
 
-	bm_err("[%s]table idx:%d (i,mah,voltage,resistance,percentage)\n",
+	bm_err(gm, "[%s]table idx:%d (i,mah,voltage,resistance,percentage)\n",
 		__func__,
 		idx);
 	for (i = 0; i < fg_get_saddles(gm); i = i + 5) {
-		bm_err("(%2d,%5d,%5d,%5d,%3d)(%2d,%5d,%5d,%5d,%3d)(%2d,%5d,%5d,%5d,%3d)(%2d,%5d,%5d,%5d,%3d)(%2d,%5d,%5d,%5d,%3d)\n",
+		bm_err(gm, "(%2d,%5d,%5d,%5d,%3d)(%2d,%5d,%5d,%5d,%3d)(%2d,%5d,%5d,%5d,%3d)(%2d,%5d,%5d,%5d,%3d)(%2d,%5d,%5d,%5d,%3d)\n",
 		i, profile_p[i].mah, profile_p[i].voltage,
 		profile_p[i].resistance, profile_p[i].percentage,
 		i+1, profile_p[i+1].mah, profile_p[i+1].voltage,
@@ -852,7 +850,7 @@ void fgr_update_quse(struct mtk_battery *gm, int caller)
 	}
 
 	if (caller == 1) {
-		bm_debug("[%s]aging_sel %d qmax_t_0ma_tb1 %d quse_tb1 [%d] aging[%d]\n",
+		bm_debug(gm, "[%s]aging_sel %d qmax_t_0ma_tb1 %d quse_tb1 [%d] aging[%d]\n",
 			__func__,
 			pdata->aging_sel, algo->qmax_t_0ma_tb1,
 			algo->quse_tb1, algo->aging_factor);
@@ -867,7 +865,7 @@ void fgr_update_uisoc_threshold(struct mtk_battery *gm)
 
 	algo = &gm->algo;
 
-	algo->car = gauge_get_int_property(GAUGE_PROP_COULOMB);
+	algo->car = gauge_get_int_property(gm, GAUGE_PROP_COULOMB);
 	fgr_update_quse(gm, 1);
 
 	/* calculate ui ht gap */
@@ -897,7 +895,7 @@ void fgr_update_uisoc_threshold(struct mtk_battery *gm)
 	if (algo->lt_gap < CAR_MIN_GAP)
 		algo->lt_gap = CAR_MIN_GAP;
 
-	bm_debug("[%s]car:%d quse_tb1[%d %d] gap[%d %d][%d]\n",
+	bm_debug(gm, "[%s]car:%d quse_tb1[%d %d] gap[%d %d][%d]\n",
 		__func__,
 		algo->car, algo->quse_tb1,
 		algo->soc, algo->ht_gap,
@@ -910,8 +908,8 @@ void fgr_update_uisoc_ht(struct mtk_battery *gm)
 
 	algo = &gm->algo;
 	fgr_update_uisoc_threshold(gm);
-	battery_set_property(BAT_PROP_UISOC_HT_INT_GAP, algo->ht_gap);
-	bm_debug("[%s] update ht_en:%d ht_gap:%d\n",
+	battery_set_property(gm, BAT_PROP_UISOC_HT_INT_GAP, algo->ht_gap);
+	bm_debug(gm, "[%s] update ht_en:%d ht_gap:%d\n",
 		__func__,
 		algo->uisoc_ht_en, algo->ht_gap);
 
@@ -923,8 +921,8 @@ void fgr_update_uisoc_lt(struct mtk_battery *gm)
 
 	algo = &gm->algo;
 	fgr_update_uisoc_threshold(gm);
-	battery_set_property(BAT_PROP_UISOC_LT_INT_GAP, algo->lt_gap);
-	bm_debug("[%s] update lt_en:%d lt_gap:%d\n",
+	battery_set_property(gm, BAT_PROP_UISOC_LT_INT_GAP, algo->lt_gap);
+	bm_debug(gm, "[%s] update lt_en:%d lt_gap:%d\n",
 		__func__,
 		algo->uisoc_lt_en, algo->lt_gap);
 }
@@ -935,8 +933,8 @@ void fg_enable_uisoc_ht(struct mtk_battery *gm, int en)
 
 	algo = &gm->algo;
 	algo->uisoc_ht_en = en;
-	battery_set_property(BAT_PROP_ENABLE_UISOC_HT_INT, en);
-	bm_debug("[%s] ht_en:%d ht_gap:%d\n",
+	battery_set_property(gm, BAT_PROP_ENABLE_UISOC_HT_INT, en);
+	bm_debug(gm, "[%s] ht_en:%d ht_gap:%d\n",
 		__func__,
 		algo->uisoc_ht_en, algo->ht_gap);
 }
@@ -947,8 +945,8 @@ void fg_enable_uisoc_lt(struct mtk_battery *gm, int en)
 
 	algo = &gm->algo;
 	algo->uisoc_lt_en = en;
-	battery_set_property(BAT_PROP_ENABLE_UISOC_LT_INT, en);
-	bm_debug("[%s] lt_en:%d lt_gap:%d\n",
+	battery_set_property(gm, BAT_PROP_ENABLE_UISOC_LT_INT, en);
+	bm_debug(gm, "[%s] lt_en:%d lt_gap:%d\n",
 		__func__, algo->uisoc_lt_en, algo->lt_gap);
 }
 
@@ -967,7 +965,7 @@ int SOC_to_OCV_c(struct mtk_battery *gm, int _soc)
 	pdata = &gm->fg_cust_data;
 	profile_p = fg_get_profile(gm, ptable->temperature_tb1);
 	if (profile_p == NULL) {
-		bm_err("[%s] fgauge get c table: fail !\n",
+		bm_err(gm, "[%s] fgauge get c table: fail !\n",
 			__func__);
 		return 0;
 	}
@@ -995,7 +993,7 @@ int SOC_to_OCV_c(struct mtk_battery *gm, int _soc)
 			profile_p[high].voltage,
 			_dod);
 	}
-	bm_debug("[%s]soc:%d dod:%d! voltage:%d highidx:%d\n",
+	bm_debug(gm, "[%s]soc:%d dod:%d! voltage:%d highidx:%d\n",
 		__func__,
 		_soc, _dod, ret_vol, high);
 
@@ -1016,7 +1014,7 @@ int DOD_to_OCV_c(struct mtk_battery *gm, int _dod)
 	pdata = &gm->fg_cust_data;
 	profile_p = fg_get_profile(gm, ptable->temperature_tb1);
 	if (profile_p == NULL) {
-		bm_err("[%s] fgauge get c table fail !\n",
+		bm_err(gm, "[%s] fgauge get c table fail !\n",
 			__func__);
 		return 0;
 	}
@@ -1044,7 +1042,7 @@ int DOD_to_OCV_c(struct mtk_battery *gm, int _dod)
 			profile_p[high].voltage,
 			_dod);
 	}
-	bm_debug("[%s]DOD_to_OCV: dod:%d vol:%d highidx:%d\n",
+	bm_debug(gm, "[%s]DOD_to_OCV: dod:%d vol:%d highidx:%d\n",
 		__func__,
 		_dod, ret_vol, high);
 
@@ -1067,7 +1065,7 @@ int OCV_to_SOC_c(struct mtk_battery *gm, int _ocv)
 
 	profile_p = fg_get_profile(gm, ptable->temperature_tb1);
 	if (profile_p == NULL) {
-		bm_err("[%s]can't get c table: fail\n",
+		bm_err(gm, "[%s]can't get c table: fail\n",
 			__func__);
 		return 0;
 	}
@@ -1099,7 +1097,7 @@ int OCV_to_SOC_c(struct mtk_battery *gm, int _ocv)
 
 		ret_vol = 10000 - ret_vol;
 	}
-	bm_debug("[%s]voltage:%d dod:%d highidx:%d\n",
+	bm_debug(gm, "[%s]voltage:%d dod:%d highidx:%d\n",
 		__func__,
 		_ocv, ret_vol, high);
 
@@ -1121,7 +1119,7 @@ int OCV_to_DOD_c(struct mtk_battery *gm, int _ocv)
 
 	profile_p = fg_get_profile(gm, ptable->temperature_tb1);
 	if (profile_p == NULL) {
-		bm_err("[%s] fgauge can't get c table: fail\n",
+		bm_err(gm, "[%s] fgauge can't get c table: fail\n",
 			__func__);
 		return 0;
 	}
@@ -1150,7 +1148,7 @@ int OCV_to_DOD_c(struct mtk_battery *gm, int _ocv)
 			_ocv);
 	}
 
-	bm_debug("[%s]voltage:%d dod:%d highidx:%d\n",
+	bm_debug(gm, "[%s]voltage:%d dod:%d highidx:%d\n",
 		__func__,
 		_ocv, ret_vol, high);
 
@@ -1187,13 +1185,13 @@ void fgr_update_c_dod(struct mtk_battery *gm)
 	ptable = &gm->fg_table_cust_data;
 	pdata = &gm->fg_cust_data;
 
-	algo->car = gauge_get_int_property(GAUGE_PROP_COULOMB);
+	algo->car = gauge_get_int_property(gm, GAUGE_PROP_COULOMB);
 	fgr_update_quse(gm, 1);
 	Set_fg_c_d0_by_ocv(gm, algo->fg_c_d0_ocv);
 	algo->fg_c_dod = algo->fg_c_d0_dod - algo->car * 10000 / algo->quse_tb1;
 	algo->fg_c_soc = 10000 - algo->fg_c_dod;
 
-	bm_debug("[%s] fg_c_dod %d fg_c_d0_dod %d car %d quse_tb1 %d fg_c_soc %d\n",
+	bm_debug(gm, "[%s] fg_c_dod %d fg_c_d0_dod %d car %d quse_tb1 %d fg_c_soc %d\n",
 		__func__,
 		algo->fg_c_dod, algo->fg_c_d0_dod,
 		algo->car, algo->quse_tb1,
@@ -1202,9 +1200,9 @@ void fgr_update_c_dod(struct mtk_battery *gm)
 
 void fgr_dod_init(struct mtk_battery *gm)
 {
-	int init_swocv = get_ptim_vbat();
-	int con0_soc = gauge_get_int_property(GAUGE_PROP_CON0_SOC);
-	int con0_uisoc = gauge_get_int_property(GAUGE_PROP_RTC_UI_SOC);
+	int init_swocv = get_ptim_vbat(gm);
+	int con0_soc = gauge_get_int_property(gm, GAUGE_PROP_CON0_SOC);
+	int con0_uisoc = gauge_get_int_property(gm, GAUGE_PROP_RTC_UI_SOC);
 
 	struct mtk_battery_algo *algo;
 	struct fuel_gauge_table_custom_data *ptable;
@@ -1215,7 +1213,7 @@ void fgr_dod_init(struct mtk_battery *gm)
 	pdata = &gm->fg_cust_data;
 
 	algo->rtc_ui_soc = UNIT_TRANS_100 * con0_uisoc;
-	init_swocv = gauge_get_int_property(GAUGE_PROP_PTIM_BATTERY_VOLTAGE)
+	init_swocv = gauge_get_int_property(gm, GAUGE_PROP_PTIM_BATTERY_VOLTAGE)
 		* 10;
 
 	if (algo->rtc_ui_soc == 0 || con0_soc == 0) {
@@ -1223,14 +1221,14 @@ void fgr_dod_init(struct mtk_battery *gm)
 		algo->fg_c_d0_soc = algo->rtc_ui_soc;
 
 		if (algo->rtc_ui_soc < 0) {
-			bm_err("[%s]rtcui<0,set to 0,rtc_ui_soc:%d fg_c_d0_soc:%d\n",
+			bm_err(gm, "[%s]rtcui<0,set to 0,rtc_ui_soc:%d fg_c_d0_soc:%d\n",
 				__func__,
 				algo->rtc_ui_soc, algo->fg_c_d0_soc);
 			algo->rtc_ui_soc = 0;
 		}
 
 		algo->ui_d0_soc = algo->rtc_ui_soc;
-		bm_err("[%s]rtcui=0 case,init_swocv=%d,OCV_to_SOC_c=%d ui:[%d %d] con0_soc=[%d %d]\n",
+		bm_err(gm, "[%s]rtcui=0 case,init_swocv=%d,OCV_to_SOC_c=%d ui:[%d %d] con0_soc=[%d %d]\n",
 			__func__,
 			init_swocv, algo->fg_c_d0_soc,
 			algo->ui_d0_soc, algo->rtc_ui_soc,
@@ -1256,7 +1254,7 @@ void fgr_dod_init(struct mtk_battery *gm)
 	algo->ui_soc = algo->ui_d0_soc;
 	fgr_set_soc_by_vc_mode(gm);
 
-	bm_err("[%s]fg_c_d0[%d %d %d] d0_sel[%d] c_soc[%d %d] ui[%d %d] soc[%d] con0[ui %d %d]\n",
+	bm_err(gm, "[%s]fg_c_d0[%d %d %d] d0_sel[%d] c_soc[%d %d] ui[%d %d] soc[%d] con0[ui %d %d]\n",
 		__func__,
 		algo->fg_c_d0_soc, algo->fg_c_d0_ocv,
 		algo->fg_c_d0_dod, pdata->d0_sel,
@@ -1282,9 +1280,9 @@ void fgr_dlpt_sd_handler(struct mtk_battery *gm)
 	gm->ui_soc = 0;
 	gm->algo.low_tracking_enable = 0;
 	set_fg_time(gm, 0);
-	battery_set_property(BAT_PROP_ENABLE_UISOC_HT_INT, 0);
-	battery_set_property(BAT_PROP_ENABLE_UISOC_LT_INT, 0);
-	battery_set_property(BAT_PROP_UISOC, gm->algo.ui_soc);
+	battery_set_property(gm, BAT_PROP_ENABLE_UISOC_HT_INT, 0);
+	battery_set_property(gm, BAT_PROP_ENABLE_UISOC_LT_INT, 0);
+	battery_set_property(gm, BAT_PROP_UISOC, gm->algo.ui_soc);
 	fgr_imix_error_calibration(gm);
 }
 
@@ -1391,13 +1389,13 @@ void fgr_int_end_flow(struct mtk_battery *gm, unsigned int intr_no)
 		break;
 	default:
 		sprintf(intr_name, "FG_INTR_UNKNOWN");
-		bm_err("[Intr_Number_to_Name] unknown intr %d\n",
+		bm_err(gm, "[Intr_Number_to_Name] unknown intr %d\n",
 			intr_no);
 		break;
 	}
 
-	algo->car = gauge_get_int_property(GAUGE_PROP_COULOMB);
-	get_hw_info();
+	algo->car = gauge_get_int_property(gm, GAUGE_PROP_COULOMB);
+	get_hw_info(gm);
 
 	if (gm->disableGM30)
 		vbat = 4000;
@@ -1408,19 +1406,19 @@ void fgr_int_end_flow(struct mtk_battery *gm, unsigned int intr_no)
 	curr_temp = force_get_tbat(gm, true);
 
 	set_kernel_soc(gm, algo->soc);
-	battery_set_property(BAT_PROP_UISOC, algo->ui_soc);
-	gauge_set_property(GAUGE_PROP_RTC_UI_SOC,
+	battery_set_property(gm, BAT_PROP_UISOC, algo->ui_soc);
+	gauge_set_property(gm, GAUGE_PROP_RTC_UI_SOC,
 		(algo->ui_soc + 50) / 100);
 
 	if (algo->soc <= 100)
-		gauge_set_property(GAUGE_PROP_CON0_SOC, 100);
+		gauge_set_property(gm, GAUGE_PROP_CON0_SOC, 100);
 	else if (algo->soc >= 10000)
-		gauge_set_property(GAUGE_PROP_CON0_SOC, 10000);
+		gauge_set_property(gm, GAUGE_PROP_CON0_SOC, 10000);
 	else
-		gauge_set_property(GAUGE_PROP_CON0_SOC, algo->soc);
+		gauge_set_property(gm, GAUGE_PROP_CON0_SOC, algo->soc);
 
 	fgr_error_calibration2(gm, intr_no);
-	bm_debug("[%s][%s]soc:%d, c_soc:%d ui_soc:%d VBAT %d T:[%d C:%d] car:%d\n",
+	bm_debug(gm, "[%s][%s]soc:%d, c_soc:%d ui_soc:%d VBAT %d T:[%d C:%d] car:%d\n",
 		__func__,
 		intr_name, algo->soc, algo->fg_c_soc,
 		algo->ui_soc, vbat, curr_temp,
@@ -1443,7 +1441,7 @@ void fgr_temp_c_int_handler(struct mtk_battery *gm)
 
 	fgr_set_soc_by_vc_mode(gm);
 	algo->fg_bat_tmp_c_gap = 1;
-	set_fg_bat_tmp_c_gap(algo->fg_bat_tmp_c_gap);
+	set_fg_bat_tmp_c_gap(gm, algo->fg_bat_tmp_c_gap);
 }
 
 void fgr_update_fg_bat_int1_threshold(struct mtk_battery *gm)
@@ -1460,7 +1458,7 @@ void fgr_update_fg_bat_int1_threshold(struct mtk_battery *gm)
 	if (algo->fg_bat_int1_gap < CAR_MIN_GAP)
 		algo->fg_bat_int1_gap = CAR_MIN_GAP;
 
-	bm_debug("[%s] quse_tb1:%d gap:%d diff_soc_setting:%d MIN:%d\n",
+	bm_debug(gm, "[%s] quse_tb1:%d gap:%d diff_soc_setting:%d MIN:%d\n",
 		__func__,
 		algo->quse_tb1, algo->fg_bat_int1_gap,
 		pdata->diff_soc_setting, CAR_MIN_GAP);
@@ -1473,11 +1471,11 @@ void fgr_bat_int1_handler(struct mtk_battery *gm)
 	algo = &gm->algo;
 	fgr_update_c_dod(gm);
 	fgr_update_fg_bat_int1_threshold(gm);
-	battery_set_property(BAT_PROP_COULOMB_INT_GAP,
+	battery_set_property(gm, BAT_PROP_COULOMB_INT_GAP,
 		algo->fg_bat_int1_gap);
 	fgr_set_soc_by_vc_mode(gm);
 
-	bm_debug("[%s]soc %d\n",
+	bm_debug(gm, "[%s]soc %d\n",
 		__func__, algo->soc);
 }
 
@@ -1495,13 +1493,13 @@ void fgr_bat_int2_h_handler(struct mtk_battery *gm)
 	ptable = &gm->fg_table_cust_data;
 	pdata = &gm->fg_cust_data;
 
-	_car = gauge_get_int_property(GAUGE_PROP_COULOMB);
+	_car = gauge_get_int_property(gm, GAUGE_PROP_COULOMB);
 	delta_car_bat0 = abs(algo->prev_car_bat0 - _car);
 
 	fgr_update_uisoc_threshold(gm);
 	ui_gap_ht = delta_car_bat0 * UNIT_TRANS_100 / algo->ht_gap;
 
-	bm_debug("[%s][IN]ui_soc %d, ht_gap:[%d %d], _car[%d %d %d]\n",
+	bm_debug(gm, "[%s][IN]ui_soc %d, ht_gap:[%d %d], _car[%d %d %d]\n",
 		__func__,
 		algo->ui_soc, algo->ht_gap, ui_gap_ht,
 		_car, algo->prev_car_bat0, delta_car_bat0);
@@ -1527,7 +1525,7 @@ void fgr_bat_int2_h_handler(struct mtk_battery *gm)
 	fgr_update_uisoc_ht(gm);
 	fgr_update_uisoc_lt(gm);
 
-	bm_debug("[%s][OUT]ui_soc %d, ui_gap_ht:%d, _car[%d %d %d]\n",
+	bm_debug(gm, "[%s][OUT]ui_soc %d, ui_gap_ht:%d, _car[%d %d %d]\n",
 		__func__, algo->ui_soc, ui_gap_ht,
 		_car, algo->prev_car_bat0, delta_car_bat0);
 }
@@ -1545,7 +1543,7 @@ void fgr_bat_int2_l_handler(struct mtk_battery *gm)
 	algo = &gm->algo;
 	ptable = &gm->fg_table_cust_data;
 	pdata = &gm->fg_cust_data;
-	_car = gauge_get_int_property(GAUGE_PROP_COULOMB);
+	_car = gauge_get_int_property(gm, GAUGE_PROP_COULOMB);
 	delta_car_bat0 = abs(algo->prev_car_bat0 - _car);
 	fgr_update_uisoc_threshold(gm);
 
@@ -1555,7 +1553,7 @@ void fgr_bat_int2_l_handler(struct mtk_battery *gm)
 	} else
 		ui_gap_lt = delta_car_bat0 * UNIT_TRANS_100 / algo->lt_gap;
 
-	bm_debug("[%s][IN]ui_soc %d, lt_gap[%d %d] _car[%d %d %d]\n",
+	bm_debug(gm, "[%s][IN]ui_soc %d, lt_gap[%d %d] _car[%d %d %d]\n",
 		__func__,
 		algo->ui_soc, algo->lt_gap,
 		ui_gap_lt, _car,
@@ -1565,7 +1563,7 @@ void fgr_bat_int2_l_handler(struct mtk_battery *gm)
 		ui_gap_lt = 100;
 
 	if (ui_gap_lt < 0) {
-		bm_debug("[FG_ERR][%s] ui_gap_lt %d should not less than 0\n",
+		bm_debug(gm, "[FG_ERR][%s] ui_gap_lt %d should not less than 0\n",
 			__func__,
 			ui_gap_lt);
 		ui_gap_lt = 0;
@@ -1595,14 +1593,14 @@ void fgr_bat_int2_l_handler(struct mtk_battery *gm)
 	fgr_update_uisoc_ht(gm);
 	fgr_update_uisoc_lt(gm);
 
-	bm_debug("[%s][OUT]ui_soc %d, ui_gap_lt:%d, _car[%d %d %d]\n",
+	bm_debug(gm, "[%s][OUT]ui_soc %d, ui_gap_lt:%d, _car[%d %d %d]\n",
 		__func__, algo->ui_soc, ui_gap_lt,
 		_car, algo->prev_car_bat0, delta_car_bat0);
 }
 
 void fgr_bat_int2_handler(struct mtk_battery *gm, int source)
 {
-	int _car = gauge_get_int_property(GAUGE_PROP_COULOMB);
+	int _car = gauge_get_int_property(gm, GAUGE_PROP_COULOMB);
 	struct mtk_battery_algo *algo;
 	struct fuel_gauge_table_custom_data *ptable;
 	struct fuel_gauge_custom_data *pdata;
@@ -1611,7 +1609,7 @@ void fgr_bat_int2_handler(struct mtk_battery *gm, int source)
 	ptable = &gm->fg_table_cust_data;
 	pdata = &gm->fg_cust_data;
 
-	bm_debug("[%s]car:%d pre_car:%d ht:%d lt:%d u_type:%d source:%d\n",
+	bm_debug(gm, "[%s]car:%d pre_car:%d ht:%d lt:%d u_type:%d source:%d\n",
 		__func__, _car, algo->prev_car_bat0,
 		algo->ht_gap, algo->lt_gap, pdata->uisoc_update_type, source);
 	if (_car > algo->prev_car_bat0)
@@ -1632,7 +1630,7 @@ void fgr_time_handler(struct mtk_battery *gm)
 	ptable = &gm->fg_table_cust_data;
 	pdata = &gm->fg_cust_data;
 
-	bm_debug("[%s][IN] chr:%d, low_tracking:%d ui_soc:%d\n",
+	bm_debug(gm, "[%s][IN] chr:%d, low_tracking:%d ui_soc:%d\n",
 		__func__, is_charger_exist,
 		algo->low_tracking_enable, algo->ui_soc);
 
@@ -1647,10 +1645,7 @@ void fgr_time_handler(struct mtk_battery *gm)
 				algo->low_tracking_enable = 0;
 			}
 		}
-	}
-	if (algo->low_tracking_enable)
-		set_fg_time(gm, gm->fg_cust_data.discharge_tracking_time);
-	else
+	} else
 		set_fg_time(gm, 0);
 }
 
@@ -1661,12 +1656,12 @@ void fgr_vbat2_h_int_handler(struct mtk_battery *gm)
 
 	algo = &gm->algo;
 	pdata = &gm->fg_cust_data;
-	gauge_set_property(GAUGE_PROP_EN_HIGH_VBAT_INTERRUPT, false);
+	gauge_set_property(gm, GAUGE_PROP_EN_HIGH_VBAT_INTERRUPT, false);
 	algo->fg_vbat2_lt = pdata->vbat2_det_voltage1;
-	gauge_set_property(GAUGE_PROP_VBAT_LT_INTR_THRESHOLD,
+	gauge_set_property(gm, GAUGE_PROP_VBAT_LT_INTR_THRESHOLD,
 		algo->fg_vbat2_lt);
-	gauge_set_property(GAUGE_PROP_EN_LOW_VBAT_INTERRUPT, true);
-	bm_debug("[%s]fg_vbat2_lt=%d %d\n",
+	gauge_set_property(gm, GAUGE_PROP_EN_LOW_VBAT_INTERRUPT, true);
+	bm_debug(gm, "[%s]fg_vbat2_lt=%d %d\n",
 		__func__,
 		algo->fg_vbat2_lt, algo->fg_vbat2_ht);
 }
@@ -1685,14 +1680,14 @@ void fgr_vbat2_l_int_handler(struct mtk_battery *gm)
 		set_shutdown_cond(gm, LOW_BAT_VOLT);
 		algo->fg_vbat2_lt = pdata->vbat2_det_voltage2;
 		algo->fg_vbat2_ht = pdata->vbat2_det_voltage3;
-		gauge_set_property(GAUGE_PROP_VBAT_LT_INTR_THRESHOLD,
+		gauge_set_property(gm, GAUGE_PROP_VBAT_LT_INTR_THRESHOLD,
 			algo->fg_vbat2_lt);
-		gauge_set_property(GAUGE_PROP_VBAT_HT_INTR_THRESHOLD,
+		gauge_set_property(gm, GAUGE_PROP_VBAT_HT_INTR_THRESHOLD,
 			algo->fg_vbat2_ht);
-		gauge_set_property(GAUGE_PROP_EN_LOW_VBAT_INTERRUPT, true);
-		gauge_set_property(GAUGE_PROP_EN_HIGH_VBAT_INTERRUPT, true);
+		gauge_set_property(gm, GAUGE_PROP_EN_LOW_VBAT_INTERRUPT, true);
+		gauge_set_property(gm, GAUGE_PROP_EN_HIGH_VBAT_INTERRUPT, true);
 	}
-	bm_debug("[%s]fg_vbat2_lt=%d %d,[%d %d %d]\n",
+	bm_debug(gm, "[%s]fg_vbat2_lt=%d %d,[%d %d %d]\n",
 		__func__,
 		algo->fg_vbat2_lt, algo->fg_vbat2_ht,
 		pdata->vbat2_det_voltage1,
@@ -1752,7 +1747,7 @@ void do_fg_algo(struct mtk_battery *gm, unsigned int intr_num)
 		fgr_int_end_flow(gm, FG_INTR_VBAT2_L);
 		break;
 	}
-	bm_debug("[%s] intr_num=0x%x\n", __func__, intr_num);
+	bm_debug(gm, "[%s] intr_num=0x%x\n", __func__, intr_num);
 }
 
 void fgr_set_int1(struct mtk_battery *gm)
@@ -1760,7 +1755,7 @@ void fgr_set_int1(struct mtk_battery *gm)
 	struct mtk_battery_algo *algo;
 	struct fuel_gauge_table_custom_data *ptable;
 	struct fuel_gauge_custom_data *pdata;
-	int car_now = gauge_get_int_property(GAUGE_PROP_COULOMB);
+	int car_now = gauge_get_int_property(gm, GAUGE_PROP_COULOMB);
 
 	algo = &gm->algo;
 	ptable = &gm->fg_table_cust_data;
@@ -1768,9 +1763,9 @@ void fgr_set_int1(struct mtk_battery *gm)
 	fgr_update_quse(gm, 1);
 	/* set c gap */
 	fgr_update_fg_bat_int1_threshold(gm);
-	battery_set_property(BAT_PROP_COULOMB_INT_GAP,
+	battery_set_property(gm, BAT_PROP_COULOMB_INT_GAP,
 		algo->fg_bat_int1_gap);
-	bm_debug("[%s]set cgap :fg_bat_int1_gap %d to kernel done\n",
+	bm_debug(gm, "[%s]set cgap :fg_bat_int1_gap %d to kernel done\n",
 		__func__,
 		algo->fg_bat_int1_gap);
 
@@ -1779,33 +1774,33 @@ void fgr_set_int1(struct mtk_battery *gm)
 	fgr_update_uisoc_ht(gm);
 	fgr_update_uisoc_lt(gm);
 
-	battery_set_property(BAT_PROP_ENABLE_UISOC_HT_INT, 1);
-	battery_set_property(BAT_PROP_ENABLE_UISOC_LT_INT, 1);
+	battery_set_property(gm, BAT_PROP_ENABLE_UISOC_HT_INT, 1);
+	battery_set_property(gm, BAT_PROP_ENABLE_UISOC_LT_INT, 1);
 
 	/*set bat tempture  */
 	algo->fg_bat_tmp_c_gap = 1;
-	set_fg_bat_tmp_c_gap(algo->fg_bat_tmp_c_gap);
-	bm_debug("[%s]fg_bat_tmp_c_gap %d\n",
+	set_fg_bat_tmp_c_gap(gm, algo->fg_bat_tmp_c_gap);
+	bm_debug(gm, "[%s]fg_bat_tmp_c_gap %d\n",
 		__func__, algo->fg_bat_tmp_c_gap);
 
 	algo->fg_vbat2_lt = pdata->vbat2_det_voltage1;
-	gauge_set_property(GAUGE_PROP_VBAT_LT_INTR_THRESHOLD,
+	gauge_set_property(gm, GAUGE_PROP_VBAT_LT_INTR_THRESHOLD,
 		algo->fg_vbat2_lt);
-	gauge_set_property(GAUGE_PROP_EN_LOW_VBAT_INTERRUPT, true);
+	gauge_set_property(gm, GAUGE_PROP_EN_LOW_VBAT_INTERRUPT, true);
 
 	set_kernel_soc(gm, algo->soc);
-	battery_set_property(BAT_PROP_UISOC, algo->ui_soc);
-	gauge_set_property(GAUGE_PROP_RTC_UI_SOC,
+	battery_set_property(gm, BAT_PROP_UISOC, algo->ui_soc);
+	gauge_set_property(gm, GAUGE_PROP_RTC_UI_SOC,
 		(algo->ui_soc + 50) / 100);
 
 	if (algo->soc <= 100)
-		gauge_set_property(GAUGE_PROP_CON0_SOC, 100);
+		gauge_set_property(gm, GAUGE_PROP_CON0_SOC, 100);
 	else if (algo->soc >= 12000)
-		gauge_set_property(GAUGE_PROP_CON0_SOC, 10000);
+		gauge_set_property(gm, GAUGE_PROP_CON0_SOC, 10000);
 	else
-		gauge_set_property(GAUGE_PROP_CON0_SOC, algo->soc);
+		gauge_set_property(gm, GAUGE_PROP_CON0_SOC, algo->soc);
 
-	bm_debug("[%s] done\n", __func__);
+	bm_debug(gm, "[%s] init set int1 done\n", __func__);
 }
 
 void battery_algo_init(struct mtk_battery *gm)
@@ -1821,7 +1816,7 @@ void battery_algo_init(struct mtk_battery *gm)
 	algo->DC_ratio = 100;
 	gauge_get_property_control(gm, GAUGE_PROP_BATTERY_EXIST,
 		&is_bat_exist, 0);
-	bm_err("MTK Battery algo init bat_exist:%d\n",
+	bm_err(gm, "MTK Battery algo init bat_exist:%d\n",
 		is_bat_exist);
 
 	if (is_bat_exist) {
@@ -1832,10 +1827,10 @@ void battery_algo_init(struct mtk_battery *gm)
 		fgr_dump_table(gm, ptable->temperature_tb1);
 		fgr_dod_init(gm);
 		fgr_set_int1(gm);
-		battery_set_property(BAT_PROP_INIT_DONE, 1);
-		gauge_set_property(GAUGE_PROP_IS_NVRAM_FAIL_MODE, 1);
+		battery_set_property(gm, BAT_PROP_INIT_DONE, 1);
+		gauge_set_property(gm, GAUGE_PROP_IS_NVRAM_FAIL_MODE, 1);
 	}
-	bm_err("[battery_recovery] is_evb:%d is_bat_exist %d\n",
+	bm_err(gm, "[battery_recovery] is_evb:%d is_bat_exist %d\n",
 		 gm->disableGM30, is_bat_exist);
 }
 

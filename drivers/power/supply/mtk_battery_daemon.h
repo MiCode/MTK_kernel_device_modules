@@ -4,40 +4,39 @@
  * Author Wy Chuang<wy.chuang@mediatek.com>
  */
 
-#define MAX_NL_LEN_SND	4096
-#define MAX_NL_LEN_RCV	9200
-#define FGD_NL_LEN			sizeof(struct fgd_nl_msg_t)
-#define FGD_NL_HDR_LEN		(FGD_NL_LEN - FGD_NL_MSG_MAX_LEN)
-#define FGD_NL_MAGIC		2015060303
-#define FGD_NL_MSG_MAX_LEN	9200
-#define LOG_BUF_MAX			(MAX_NL_LEN_SND - FGD_NL_HDR_LEN - 1)
+#ifndef __MTK_DAEMON_H__
+#define __MTK_DAEMON_H__
 
-struct fgd_nl_msg_t {
-	unsigned int nl_cmd;
-	unsigned int fgd_cmd;
-	unsigned int fgd_cmd_hash;
-	unsigned int fgd_subcmd;
-	unsigned int fgd_subcmd_para1;
-	unsigned int fgd_data_len;
-	unsigned int fgd_ret_data_len;
+#define MAX_MSG_LEN_SND		4096
+#define MAX_MSG_LEN_RCV		9200
+#define AFW_MSG_HEADER_LEN	(sizeof(struct afw_header) - AFW_MSG_MAX_LEN)
+#define AFW_MAGIC		2015060303
+#define AFW_MSG_MAX_LEN		9200
+#define LOG_BUF_MAX		(MAX_MSG_LEN_SND - AFW_MSG_HEADER_LEN - 1)
+#define INSTANCE_MAX		5
+
+struct afw_header {
+	unsigned char instance_id;
+	unsigned char datatype;
+	unsigned int cmd;
+	unsigned int hash;
+	unsigned int subcmd;
+	unsigned int subcmd_para1;
+	unsigned int data_len;
+	unsigned int ret_data_len;
 	unsigned int identity;
-	char fgd_data[FGD_NL_MSG_MAX_LEN];
+	char data[AFW_MSG_MAX_LEN];
 };
 
 extern int mtk_battery_daemon_init(struct platform_device *pdev);
-extern int wakeup_fg_daemon(unsigned int flow_state, int cmd, int para1);
+extern int wakeup_fg_daemon(struct mtk_battery *gm, unsigned int flow_state, int cmd, int para1);
 
-extern void mtk_battery_netlink_handler(struct sk_buff *skb);
 
-static int sw_vbat_h_irq_handler(struct mtk_battery *gm);
-static int sw_vbat_l_irq_handler(struct mtk_battery *gm);
-static int nafg_irq_handler(struct mtk_battery *gm);
 void sw_check_bat_plugout(struct mtk_battery *gm);
 void fg_sw_bat_cycle_accu(struct mtk_battery *gm);
 
 #define DATA_SIZE 2048
-struct fgd_cmd_param_t_4 {
-	//unsigned int type;
+struct afw_data_param {
 	unsigned int total_size;
 	unsigned int size;
 	unsigned int idx;
@@ -49,3 +48,4 @@ struct fgd_cmd_param_t_8 {
 	int data[128];
 };
 
+#endif
