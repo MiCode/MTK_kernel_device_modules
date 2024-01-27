@@ -18,6 +18,7 @@
   * Code Stability support added by MediaTek, April, 2022
   *
   */
+#include <linux/pinctrl/consumer.h>
 #include <linux/version.h>
 #include <linux/fs.h>
 #include <linux/proc_fs.h>
