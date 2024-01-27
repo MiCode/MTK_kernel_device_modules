@@ -136,9 +136,11 @@ struct GED_KPI_HEAD {
 	unsigned long long last_TimeStamp2;   // recent GPU done timestamp
 	unsigned long long last_TimeStampS;   // recent acquire timestamp
 	unsigned long long last_TimeStampH;   // recent HWVSYNC timestamp
+	unsigned long long last_TimeStampP;   // recent prefence timestamp
 	unsigned long long pre_TimeStamp2;   // previous GPU done timestamp
 	unsigned long long last_TimeStampD_soc_timer;   // recent dequeue soc timer
 	unsigned long long last_TimeStamp1_soc_timer;   // recent queue soc timer
+	unsigned long long last_TimeStampP_soc_timer;   // recent prefence soc timer
 	long long t_cpu_remained;
 	long long t_gpu_remained;
 	long long t_cpu_latest;
@@ -1907,8 +1909,10 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 			pre_fence_delay = psTimeStamp->ullTimeStamp - psKPI->ullTimeStamp1;
 			psKPI->ulMask |= GED_TIMESTAMP_TYPE_P;
 			psKPI->ullTimeStampP = psTimeStamp->ullTimeStamp;
+			psHead->last_TimeStampP = psKPI->ullTimeStampP;
 			/* show prefence time */
 			trace_tracing_mark_write(5566, "t_pre_fence_delay", pre_fence_delay);
+			ged_kpi_update_soc_timer(psHead, GED_TIMESTAMP_TYPE_P);
 		} else {
 			GED_LOGD("[Exception] TYPE_P: psKPI NULL, frameID: %lu",
 				psTimeStamp->i32FrameID);
@@ -2519,9 +2523,20 @@ void ged_kpi_update_sysram_uncompleted_tgpu(struct ged_sysram_info *info)
 		if (psHead) {
 			if (psHead->i32Gpu_uncompleted_queue > 0) {
 				unsigned long long ullTimeStampTemp;
+
+				// Default GPU completion start time is queue
 				ullTimeStampTemp = psHead->last_TimeStamp1;
-				soc_timer = psHead->last_TimeStamp1_soc_timer;
 				cur_type = GED_TIMESTAMP_TYPE_1;
+				soc_timer = psHead->last_TimeStamp1_soc_timer;
+
+				// release fence is signaled after queue
+				if (g_ged_pre_fence_chk == 1 &&
+					psHead->last_TimeStampP > psHead->last_TimeStamp1) {
+					ullTimeStampTemp = psHead->last_TimeStampP;
+					cur_type = GED_TIMESTAMP_TYPE_P;
+					soc_timer = psHead->last_TimeStampP_soc_timer;
+				}
+
 				t_gpu_uncomplete = current_timestamp - ullTimeStampTemp;
 			} else {
 				t_gpu_uncomplete = 0 ;

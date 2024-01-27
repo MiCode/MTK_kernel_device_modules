@@ -517,6 +517,10 @@ static ssize_t eb_dvfs_policy_show(struct kobject *kobj,
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"8 : EB policy + met debug\n");
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"16 : async commit order stress test\n");
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"32 : async commit extreme stress test\n");
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"================================================\n");
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"dts (%d), eb_policy_mode(%d),\n",
@@ -537,8 +541,6 @@ static ssize_t eb_dvfs_policy_store(struct kobject *kobj,
 			if (kstrtouint(acBuffer, 0, &u32Value) == 0) {
 				if (u32Value > 0) {
 					eb_policy_dts_flag = 1;
-					mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GED_MIN_OPPIDX,
-							ged_get_min_oppidx());
 					mtk_set_fastdvfs_mode(u32Value);
 				} else {
 					eb_policy_dts_flag = 0;
