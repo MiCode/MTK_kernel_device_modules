@@ -8,6 +8,7 @@
 #ifndef __MDDP_IPC_H
 #define __MDDP_IPC_H
 
+#include "mddp_usage.h"
 #include "mddp_wifi_def.h"
 
 //------------------------------------------------------------------------------
@@ -99,11 +100,30 @@ struct mdfpm_ctrl_msg_t {
 	uint8_t	                        buf[MDFPM_TTY_BUF_SZ];
 } __packed;
 
+struct check_feature_req {
+	uint16_t        major_version;
+	uint16_t        minor_version;
+	uint32_t        wifi_feature;
+};
+
+struct mddp_f_set_ct_timeout_req_t {
+	uint32_t                udp_ct_timeout;
+	uint32_t                tcp_ct_timeout;
+	uint8_t                 rsv[4];
+};
+
 struct mddp_md_msg_t {
 	struct list_head                list;
 	uint32_t                        msg_id;
 	uint32_t                        data_len;
-	uint8_t                         data[0];
+	struct_group(data,
+		struct check_feature_req ap_info;
+		struct mddp_u_warning_and_data_limit_t wlimit;
+		struct mddp_u_data_limit_t limit;
+		struct mddpw_txd_t txd;
+		struct mddpw_drv_notify_info_t wifi_notify;
+		struct mddp_f_set_ct_timeout_req_t ct_req;
+	);
 };
 
 struct mddp_ipc_rx_msg_entry_t {

@@ -205,7 +205,7 @@ int32_t mddp_ipc_send_md(
 	ctrl_msg.buf_len = msg->data_len;
 
 	if (msg->data_len > 0)
-		memcpy(ctrl_msg.buf, msg->data, msg->data_len);
+		memcpy(ctrl_msg.buf, &msg->data, msg->data_len);
 
 	ret = mtk_ccci_send_data(mddp_ipc_tty_port_s, (char *)&ctrl_msg,
 			MDFPM_CTRL_MSG_HEADER_SZ + msg->data_len);

@@ -262,7 +262,7 @@ struct mddp_f_tag_packet_t {
 struct mddp_f_e_tag_common_t {
 	u_int8_t    type;
 	u_int8_t    len;
-	u_int8_t    value[0];
+	u_int8_t    value[];
 } __packed;
 
 /*

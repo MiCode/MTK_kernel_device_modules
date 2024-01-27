@@ -25,12 +25,6 @@ struct feature_set {
 	uint32_t bm; // bit map
 };
 
-struct check_feature_req {
-	uint16_t        major_version;
-	uint16_t        minor_version;
-	uint32_t        wifi_feature;
-};
-
 struct check_feature_rsp {
 	uint16_t        major_version;
 	uint16_t        minor_version;
@@ -85,7 +79,7 @@ void mddp_check_feature(void)
 		.wifi_feature = 0
 	};
 
-	md_msg = kzalloc(sizeof(struct mddp_md_msg_t) + sizeof(struct check_feature_req),
+	md_msg = kzalloc(sizeof(struct mddp_md_msg_t),
 			GFP_ATOMIC);
 	if (unlikely(!md_msg)) {
 		MDDP_F_LOG(MDDP_LL_NOTICE,
@@ -97,7 +91,7 @@ void mddp_check_feature(void)
 	md_msg->data_len = sizeof(struct check_feature_req);
 	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);
 	app->abnormal_flags |= MDDP_ABNORMAL_CHECK_FEATURE_ABSENT;
-	memcpy(md_msg->data, &ap_info, md_msg->data_len);
+	memcpy(&md_msg->data, &ap_info, md_msg->data_len);
 	mddp_ipc_send_md(app, md_msg, MDFPM_USER_ID_MDFPM);
 }
 
