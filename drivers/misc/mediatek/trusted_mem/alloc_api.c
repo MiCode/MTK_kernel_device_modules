@@ -267,8 +267,7 @@ int trusted_mem_page_based_free(enum TRUSTED_MEM_REQ_TYPE req_mem_type, u64 hand
 	if (!is_ffa_enabled() || (handle == 0))
 		return 0;
 
-	if (is_tee_mmap_by_page_enabled() &&
-		((mem_type == TRUSTED_MEM_SVP_PAGE) || (mem_type == TRUSTED_MEM_WFD_PAGE)))
+	if (is_tee_mmap_by_page_enabled() && (mem_type == TRUSTED_MEM_TEE_PAGE))
 		return tmem_ffa_page_free(MTEE_MCHUNKS_SVP, handle);
 
 	if ((mem_type == TRUSTED_MEM_PROT_PAGE) || (mem_type == TRUSTED_MEM_SAPU_PAGE))
