@@ -346,6 +346,12 @@ struct ssusb_mtk {
 	/* dp switch */
 	struct regmap *dp_switch;
 	u32 dp_switch_oft;
+	/* usb power domain */
+	struct device *genpd_u2;
+	struct device *genpd_u3;
+	struct device_link *genpd_dl_u2;
+	struct device_link *genpd_dl_u3;
+	bool use_multi_genpd;
 };
 
 /**
