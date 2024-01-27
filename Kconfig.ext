@@ -66,6 +66,8 @@ source "$(KCONFIG_EXT_PREFIX)drivers/interconnect/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/i2c/busses/Kconfig"
 
+source "$(KCONFIG_EXT_PREFIX)drivers/i3c/master/Kconfig"
+
 source "$(KCONFIG_EXT_PREFIX)drivers/pwm/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/spi/Kconfig"
