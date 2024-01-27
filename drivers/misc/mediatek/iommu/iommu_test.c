@@ -724,9 +724,9 @@ static void dmabuf_map_iova(enum DMABUF_HEAP heap, int buf_id, int attach_id)
 		return;
 	}
 
-	table = dma_buf_map_attachment(attach, DMA_BIDIRECTIONAL);
+	table = dma_buf_map_attachment_unlocked(attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR(table)) {
-		pr_info("%s, dma_buf_map_attachment failed!!, heap:%s\n",
+		pr_info("%s, dma_buf_map_attachment_unlocked failed!!, heap:%s\n",
 			__func__, heap_obj[heap].name);
 		return;
 	}
@@ -765,7 +765,7 @@ static void dmabuf_unmap_iova(enum DMABUF_HEAP heap, int buf_id, int attach_id)
 		(unsigned long)map_obj, buf_id, attach_id, (unsigned long)map_obj->attach,
 		&map_obj->dma_address);
 
-	dma_buf_unmap_attachment(map_obj->attach, map_obj->table, DMA_BIDIRECTIONAL);
+	dma_buf_unmap_attachment_unlocked(map_obj->attach, map_obj->table, DMA_BIDIRECTIONAL);
 	dma_buf_detach(info_obj->dmabuf, map_obj->attach);
 
 	del_dmabuf_map(map_obj);
@@ -1334,9 +1334,9 @@ static int dmabuf_test(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	table = dma_buf_map_attachment(attach, DMA_BIDIRECTIONAL);
+	table = dma_buf_map_attachment_unlocked(attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR(attach)) {
-		pr_info("%s, dma_buf_map_attachment failed!!, heap:%s\n",
+		pr_info("%s, dma_buf_map_attachment_unlocked failed!!, heap:%s\n",
 			__func__, dma_heap_get_name(heap));
 		return -EINVAL;
 	}
@@ -1344,7 +1344,7 @@ static int dmabuf_test(struct platform_device *pdev)
 		__func__, size, dma_heap_get_name(heap),
 		(unsigned long)sg_dma_address(table->sgl));
 
-	dma_buf_unmap_attachment(attach, table, DMA_BIDIRECTIONAL);
+	dma_buf_unmap_attachment_unlocked(attach, table, DMA_BIDIRECTIONAL);
 	dma_buf_detach(dmabuf, attach);
 
 	dma_heap_buffer_free(dmabuf);
