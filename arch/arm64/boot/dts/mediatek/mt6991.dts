@@ -2994,9 +2994,9 @@
 				};
 			};
 		};
-		remoteproc_ccd: remoteproc-ccd {
+		remoteproc_ccd: remoteproc-ccd@3a001000 {
 			compatible = "mediatek,ccd";
-			iommus = <&mm_smmu 0x0>;
+			reg =	<0 0x3a001000 0 0x10>;
 			mtk,smmu-shared = <&mm_smmu_cam>;
 			msg-dev {
 				mtk,rpmsg-name = "mtk_ccd_msgdev";
@@ -3011,7 +3011,6 @@
 				<0 0x3a0a0000 0 0x800>;
 			reg-names = "base", "adlwr", "adlrd", "qof_base";
 			mediatek,ccd = <&remoteproc_ccd>;
-			iommus = <&mm_smmu 0x1>;
 			mtk,smmu-shared = <&mm_smmu_cam>;
 			//power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>;
 			interrupts =	<GIC_SPI 519 IRQ_TYPE_LEVEL_HIGH 0>, // adlrd_ipui_rdone
