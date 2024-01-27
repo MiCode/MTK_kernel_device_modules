@@ -91,6 +91,7 @@ unsigned int dsu_dyn_pwr(int wl_type, struct dsu_info *p, unsigned int p_dsu_bw)
 
 }
 
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 unsigned int dsu_lkg_pwr(int wl_type, struct dsu_info *p)
 {
 	int temperature;
@@ -113,6 +114,7 @@ unsigned int dsu_lkg_pwr(int wl_type, struct dsu_info *p)
 	return (temperature * (temperature * coef_a - coef_b) + coef_c)/10000 *
 	   1000;/* uw */
 }
+#endif
 
 #ifdef SEPA_DSU_EMI
 unsigned int mcusys_dyn_pwr(int wl_type, struct dsu_info *p,
@@ -162,7 +164,11 @@ unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
 	/*SWPM in uw */
 	dsu_pwr[DSU_PWR_TAL] = 0;
 	dsu_pwr[DSU_DYN_PWR] = dsu_dyn_pwr(wl_type, dsu, p_dsu_bw);
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 	dsu_pwr[DSU_LKG_PWR] = dsu_lkg_pwr(wl_type, dsu);
+#else
+	dsu_pwr[DSU_LKG_PWR] = 0;
+#endif
 #ifdef SEPA_DSU_EMI
 	dsu_pwr[MCU_DYN_PWR] = mcusys_dyn_pwr(wl_type, dsu, p_emi_bw);
 #else
@@ -172,10 +178,17 @@ unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
 		dsu_pwr[DSU_PWR_TAL] += dsu_pwr[i];
 
 	if (trace_dsu_pwr_cal_enabled()) {
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 		trace_dsu_pwr_cal(dst_cpu, task_util, total_util, dsu->dsu_bw,
 				dsu->emi_bw, dsu->temp, dsu->dsu_freq, dsu->dsu_volt,
 				dsu_pwr[DSU_DYN_PWR], dsu_pwr[DSU_LKG_PWR],
 				dsu_pwr[MCU_DYN_PWR], dsu_pwr[DSU_PWR_TAL]);
+#else
+		trace_dsu_pwr_cal(dst_cpu, task_util, total_util, dsu->dsu_bw,
+				dsu->emi_bw, 0, dsu->dsu_freq, dsu->dsu_volt,
+				dsu_pwr[DSU_DYN_PWR], dsu_pwr[DSU_LKG_PWR],
+				dsu_pwr[MCU_DYN_PWR], dsu_pwr[DSU_PWR_TAL]);
+#endif
 	}
 
 	return dsu_pwr[DSU_PWR_TAL];

@@ -39,7 +39,9 @@ enum dsu_pwr_detail {
 struct dsu_info {
 	unsigned int dsu_bw;
 	unsigned int emi_bw;
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 	int temp;
+#endif
 	unsigned int dsu_freq;
 	unsigned int dsu_volt;
 };
@@ -50,7 +52,9 @@ unsigned int predict_emi_bw(int wl_type, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, unsigned int emi_bw);
 unsigned int dsu_dyn_pwr(int wl_type, struct dsu_info *p,
 		unsigned int p_dsu_bw);
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 unsigned int dsu_lkg_pwr(int wl_type, struct dsu_info *p);
+#endif
 #ifdef SEPA_DSU_EMI
 unsigned int mcusys_dyn_pwr(int wl_type, struct dsu_info *p,
 		unsigned int p_emi_bw);
