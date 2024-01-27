@@ -760,6 +760,15 @@
 		};
 	};
 
+	mtk_leds: mtk-leds {
+		backlight {
+			label = "lcd-backlight";
+			max-brightness = <2047>;
+			min-brightness = <4>;
+			max-hw-brightness = <2047>;
+		};
+	};
+
 	gpio_keys: gpio-keys {
 		compatible = "gpio-keys";
 		status = "okay";
