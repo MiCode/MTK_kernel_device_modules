@@ -76,6 +76,8 @@ enum slbc_uid {
 	UID_BIF,
 	UID_MM_VENC_SL,
 	UID_SENSOR,
+	UID_MM_VENC_FHD,
+	UID_MM_VENC_8K,
 	UID_MAX,
 };
 
@@ -129,6 +131,12 @@ enum slc_ach_uid {
 	ID_MD,
 	ID_ADSP,
 	ID_AOV,
+	ID_IMG,
+	ID_CAM,
+	ID_MAE,
+	ID_DMR,
+	ID_OD,
+	ID_DBI,
 	ID_MAX,
 };
 
