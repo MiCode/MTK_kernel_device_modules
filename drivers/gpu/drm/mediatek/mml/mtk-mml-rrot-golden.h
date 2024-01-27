@@ -897,11 +897,638 @@ static const struct golden_setting th_hyfbc_mt6989[] = {
 	},
 };
 
+/* end of mt6989
+ * !!Above code generate by golden parser (goldenparser.py)!!
+ */
 
 
-/* !!Above code generate by golden parser (goldenparser.py)!! */
+/* !!Following code generate by golden parser (goldenparser.py)!!
+ * begin of mt6991 racing mode golden settings
+ */
 
+/* pre-ultra, ultra and urgent settings */
+#define MT6991_3PLANE_4K_URGENT_0		(86 << 16 | 69)
+#define MT6991_3PLANE_4K_ULTRA_0		(121 << 16 | 104)
+#define MT6991_3PLANE_4K_PREULTRA_0		(155 << 16 | 138)
+#define MT6991_3PLANE_4K_URGENT_1		(22 << 16 | 17)
+#define MT6991_3PLANE_4K_ULTRA_1		(30 << 16 | 26)
+#define MT6991_3PLANE_4K_PREULTRA_1		(39 << 16 | 35)
+#define MT6991_3PLANE_4K_URGENT_2		(22 << 16 | 17)
+#define MT6991_3PLANE_4K_ULTRA_2		(30 << 16 | 26)
+#define MT6991_3PLANE_4K_PREULTRA_2		(39 << 16 | 35)
+#define MT6991_3PLANE_4K_URGENT_3		0
+#define MT6991_3PLANE_4K_ULTRA_3		0
+#define MT6991_3PLANE_4K_PREULTRA_3		0
+#define MT6991_2PLANE_4K_URGENT_0		(86 << 16 | 69)
+#define MT6991_2PLANE_4K_ULTRA_0		(121 << 16 | 104)
+#define MT6991_2PLANE_4K_PREULTRA_0		(155 << 16 | 138)
+#define MT6991_2PLANE_4K_URGENT_1		(43 << 16 | 35)
+#define MT6991_2PLANE_4K_ULTRA_1		(60 << 16 | 52)
+#define MT6991_2PLANE_4K_PREULTRA_1		(78 << 16 | 69)
+#define MT6991_2PLANE_4K_URGENT_2		0
+#define MT6991_2PLANE_4K_ULTRA_2		0
+#define MT6991_2PLANE_4K_PREULTRA_2		0
+#define MT6991_2PLANE_4K_URGENT_3		0
+#define MT6991_2PLANE_4K_ULTRA_3		0
+#define MT6991_2PLANE_4K_PREULTRA_3		0
+#define MT6991_RGB_4K_URGENT_0			(259 << 16 | 207)
+#define MT6991_RGB_4K_ULTRA_0			(363 << 16 | 311)
+#define MT6991_RGB_4K_PREULTRA_0		(466 << 16 | 414)
+#define MT6991_RGB_4K_URGENT_1			0
+#define MT6991_RGB_4K_ULTRA_1			0
+#define MT6991_RGB_4K_PREULTRA_1		0
+#define MT6991_RGB_4K_URGENT_2			0
+#define MT6991_RGB_4K_ULTRA_2			0
+#define MT6991_RGB_4K_PREULTRA_2		0
+#define MT6991_RGB_4K_URGENT_3			0
+#define MT6991_RGB_4K_ULTRA_3			0
+#define MT6991_RGB_4K_PREULTRA_3		0
+#define MT6991_ARGB_4K_URGENT_0			(345 << 16 | 276)
+#define MT6991_ARGB_4K_ULTRA_0			(483 << 16 | 414)
+#define MT6991_ARGB_4K_PREULTRA_0		(621 << 16 | 552)
+#define MT6991_ARGB_4K_URGENT_1			0
+#define MT6991_ARGB_4K_ULTRA_1			0
+#define MT6991_ARGB_4K_PREULTRA_1		0
+#define MT6991_ARGB_4K_URGENT_2			0
+#define MT6991_ARGB_4K_ULTRA_2			0
+#define MT6991_ARGB_4K_PREULTRA_2		0
+#define MT6991_ARGB_4K_URGENT_3			0
+#define MT6991_ARGB_4K_ULTRA_3			0
+#define MT6991_ARGB_4K_PREULTRA_3		0
+#define MT6991_AFBC_4K_URGENT_0			(345 << 16 | 276)
+#define MT6991_AFBC_4K_ULTRA_0			(483 << 16 | 414)
+#define MT6991_AFBC_4K_PREULTRA_0		(621 << 16 | 552)
+#define MT6991_AFBC_4K_URGENT_1			0
+#define MT6991_AFBC_4K_ULTRA_1			0
+#define MT6991_AFBC_4K_PREULTRA_1		0
+#define MT6991_AFBC_4K_URGENT_2			(3 << 16 | 2)
+#define MT6991_AFBC_4K_ULTRA_2			(4 << 16 | 3)
+#define MT6991_AFBC_4K_PREULTRA_2		(5 << 16 | 4)
+#define MT6991_AFBC_4K_URGENT_3			0
+#define MT6991_AFBC_4K_ULTRA_3			0
+#define MT6991_AFBC_4K_PREULTRA_3		0
+#define MT6991_HYFBC_4K_URGENT_0		(86 << 16 | 69)
+#define MT6991_HYFBC_4K_ULTRA_0			(121 << 16 | 104)
+#define MT6991_HYFBC_4K_PREULTRA_0		(155 << 16 | 138)
+#define MT6991_HYFBC_4K_URGENT_1		(43 << 16 | 35)
+#define MT6991_HYFBC_4K_ULTRA_1			(60 << 16 | 52)
+#define MT6991_HYFBC_4K_PREULTRA_1		(78 << 16 | 69)
+#define MT6991_HYFBC_4K_URGENT_2		(3 << 16 | 2)
+#define MT6991_HYFBC_4K_ULTRA_2			(3 << 16 | 2)
+#define MT6991_HYFBC_4K_PREULTRA_2		(3 << 16 | 2)
+#define MT6991_HYFBC_4K_URGENT_3		(1 << 16)
+#define MT6991_HYFBC_4K_ULTRA_3			(2 << 16 | 1)
+#define MT6991_HYFBC_4K_PREULTRA_3		(3 << 16 | 2)
+#define MT6991_3PLANE_2K_URGENT_0		(38 << 16 | 31)
+#define MT6991_3PLANE_2K_ULTRA_0		(54 << 16 | 46)
+#define MT6991_3PLANE_2K_PREULTRA_0		(69 << 16 | 61)
+#define MT6991_3PLANE_2K_URGENT_1		(10 << 16 | 8)
+#define MT6991_3PLANE_2K_ULTRA_1		(13 << 16 | 12)
+#define MT6991_3PLANE_2K_PREULTRA_1		(17 << 16 | 15)
+#define MT6991_3PLANE_2K_URGENT_2		(10 << 16 | 8)
+#define MT6991_3PLANE_2K_ULTRA_2		(13 << 16 | 12)
+#define MT6991_3PLANE_2K_PREULTRA_2		(17 << 16 | 15)
+#define MT6991_3PLANE_2K_URGENT_3		0
+#define MT6991_3PLANE_2K_ULTRA_3		0
+#define MT6991_3PLANE_2K_PREULTRA_3		0
+#define MT6991_2PLANE_2K_URGENT_0		(38 << 16 | 31)
+#define MT6991_2PLANE_2K_ULTRA_0		(54 << 16 | 46)
+#define MT6991_2PLANE_2K_PREULTRA_0		(69 << 16 | 61)
+#define MT6991_2PLANE_2K_URGENT_1		(19 << 16 | 15)
+#define MT6991_2PLANE_2K_ULTRA_1		(27 << 16 | 23)
+#define MT6991_2PLANE_2K_PREULTRA_1		(35 << 16 | 31)
+#define MT6991_2PLANE_2K_URGENT_2		0
+#define MT6991_2PLANE_2K_ULTRA_2		0
+#define MT6991_2PLANE_2K_PREULTRA_2		0
+#define MT6991_2PLANE_2K_URGENT_3		0
+#define MT6991_2PLANE_2K_ULTRA_3		0
+#define MT6991_2PLANE_2K_PREULTRA_3		0
+#define MT6991_RGB_2K_URGENT_0			(115 << 16 | 92)
+#define MT6991_RGB_2K_ULTRA_0			(161 << 16 | 138)
+#define MT6991_RGB_2K_PREULTRA_0		(207 << 16 | 184)
+#define MT6991_RGB_2K_URGENT_1			0
+#define MT6991_RGB_2K_ULTRA_1			0
+#define MT6991_RGB_2K_PREULTRA_1		0
+#define MT6991_RGB_2K_URGENT_2			0
+#define MT6991_RGB_2K_ULTRA_2			0
+#define MT6991_RGB_2K_PREULTRA_2		0
+#define MT6991_RGB_2K_URGENT_3			0
+#define MT6991_RGB_2K_ULTRA_3			0
+#define MT6991_RGB_2K_PREULTRA_3		0
+#define MT6991_ARGB_2K_URGENT_0			(153 << 16 | 123)
+#define MT6991_ARGB_2K_ULTRA_0			(215 << 16 | 184)
+#define MT6991_ARGB_2K_PREULTRA_0		(276 << 16 | 246)
+#define MT6991_ARGB_2K_URGENT_1			0
+#define MT6991_ARGB_2K_ULTRA_1			0
+#define MT6991_ARGB_2K_PREULTRA_1		0
+#define MT6991_ARGB_2K_URGENT_2			0
+#define MT6991_ARGB_2K_ULTRA_2			0
+#define MT6991_ARGB_2K_PREULTRA_2		0
+#define MT6991_ARGB_2K_URGENT_3			0
+#define MT6991_ARGB_2K_ULTRA_3			0
+#define MT6991_ARGB_2K_PREULTRA_3		0
+#define MT6991_AFBC_2K_URGENT_0			(153 << 16 | 123)
+#define MT6991_AFBC_2K_ULTRA_0			(215 << 16 | 184)
+#define MT6991_AFBC_2K_PREULTRA_0		(276 << 16 | 246)
+#define MT6991_AFBC_2K_URGENT_1			0
+#define MT6991_AFBC_2K_ULTRA_1			0
+#define MT6991_AFBC_2K_PREULTRA_1		0
+#define MT6991_AFBC_2K_URGENT_2			(1 << 16)
+#define MT6991_AFBC_2K_ULTRA_2			(1 << 16)
+#define MT6991_AFBC_2K_PREULTRA_2		(2 << 16 | 1)
+#define MT6991_AFBC_2K_URGENT_3			0
+#define MT6991_AFBC_2K_ULTRA_3			0
+#define MT6991_AFBC_2K_PREULTRA_3		0
+#define MT6991_HYFBC_2K_URGENT_0		(38 << 16 | 31)
+#define MT6991_HYFBC_2K_ULTRA_0			(54 << 16 | 46)
+#define MT6991_HYFBC_2K_PREULTRA_0		(69 << 16 | 61)
+#define MT6991_HYFBC_2K_URGENT_1		(19 << 16 | 15)
+#define MT6991_HYFBC_2K_ULTRA_1			(27 << 16 | 23)
+#define MT6991_HYFBC_2K_PREULTRA_1		(35 << 16 | 31)
+#define MT6991_HYFBC_2K_URGENT_2		(1 << 16)
+#define MT6991_HYFBC_2K_ULTRA_2			(2 << 16 | 1)
+#define MT6991_HYFBC_2K_PREULTRA_2		(3 << 16 | 2)
+#define MT6991_HYFBC_2K_URGENT_3		(1 << 16)
+#define MT6991_HYFBC_2K_ULTRA_3			(2 << 16 | 1)
+#define MT6991_HYFBC_2K_PREULTRA_3		(3 << 16 | 2)
+#define MT6991_3PLANE_FHD_URGENT_0		(22 << 16 | 17)
+#define MT6991_3PLANE_FHD_ULTRA_0		(30 << 16 | 26)
+#define MT6991_3PLANE_FHD_PREULTRA_0		(39 << 16 | 35)
+#define MT6991_3PLANE_FHD_URGENT_1		(6 << 16 | 4)
+#define MT6991_3PLANE_FHD_ULTRA_1		(9 << 16 | 6)
+#define MT6991_3PLANE_FHD_PREULTRA_1		(11 << 16 | 9)
+#define MT6991_3PLANE_FHD_URGENT_2		(6 << 16 | 4)
+#define MT6991_3PLANE_FHD_ULTRA_2		(9 << 16 | 6)
+#define MT6991_3PLANE_FHD_PREULTRA_2		(11 << 16 | 9)
+#define MT6991_3PLANE_FHD_URGENT_3		0
+#define MT6991_3PLANE_FHD_ULTRA_3		0
+#define MT6991_3PLANE_FHD_PREULTRA_3		0
+#define MT6991_2PLANE_FHD_URGENT_0		(22 << 16 | 17)
+#define MT6991_2PLANE_FHD_ULTRA_0		(30 << 16 | 26)
+#define MT6991_2PLANE_FHD_PREULTRA_0		(39 << 16 | 35)
+#define MT6991_2PLANE_FHD_URGENT_1		(11 << 16 | 9)
+#define MT6991_2PLANE_FHD_ULTRA_1		(15 << 16 | 13)
+#define MT6991_2PLANE_FHD_PREULTRA_1		(19 << 16 | 17)
+#define MT6991_2PLANE_FHD_URGENT_2		0
+#define MT6991_2PLANE_FHD_ULTRA_2		0
+#define MT6991_2PLANE_FHD_PREULTRA_2		0
+#define MT6991_2PLANE_FHD_URGENT_3		0
+#define MT6991_2PLANE_FHD_ULTRA_3		0
+#define MT6991_2PLANE_FHD_PREULTRA_3		0
+#define MT6991_RGB_FHD_URGENT_0			(65 << 16 | 52)
+#define MT6991_RGB_FHD_ULTRA_0			(91 << 16 | 78)
+#define MT6991_RGB_FHD_PREULTRA_0		(117 << 16 | 104)
+#define MT6991_RGB_FHD_URGENT_1			0
+#define MT6991_RGB_FHD_ULTRA_1			0
+#define MT6991_RGB_FHD_PREULTRA_1		0
+#define MT6991_RGB_FHD_URGENT_2			0
+#define MT6991_RGB_FHD_ULTRA_2			0
+#define MT6991_RGB_FHD_PREULTRA_2		0
+#define MT6991_RGB_FHD_URGENT_3			0
+#define MT6991_RGB_FHD_ULTRA_3			0
+#define MT6991_RGB_FHD_PREULTRA_3		0
+#define MT6991_ARGB_FHD_URGENT_0		(86 << 16 | 69)
+#define MT6991_ARGB_FHD_ULTRA_0			(121 << 16 | 104)
+#define MT6991_ARGB_FHD_PREULTRA_0		(155 << 16 | 138)
+#define MT6991_ARGB_FHD_URGENT_1		0
+#define MT6991_ARGB_FHD_ULTRA_1			0
+#define MT6991_ARGB_FHD_PREULTRA_1		0
+#define MT6991_ARGB_FHD_URGENT_2		0
+#define MT6991_ARGB_FHD_ULTRA_2			0
+#define MT6991_ARGB_FHD_PREULTRA_2		0
+#define MT6991_ARGB_FHD_URGENT_3		0
+#define MT6991_ARGB_FHD_ULTRA_3			0
+#define MT6991_ARGB_FHD_PREULTRA_3		0
+#define MT6991_AFBC_FHD_URGENT_0		(86 << 16 | 69)
+#define MT6991_AFBC_FHD_ULTRA_0			(121 << 16 | 104)
+#define MT6991_AFBC_FHD_PREULTRA_0		(155 << 16 | 138)
+#define MT6991_AFBC_FHD_URGENT_1		0
+#define MT6991_AFBC_FHD_ULTRA_1			0
+#define MT6991_AFBC_FHD_PREULTRA_1		0
+#define MT6991_AFBC_FHD_URGENT_2		(1 << 16)
+#define MT6991_AFBC_FHD_ULTRA_2			(1 << 16)
+#define MT6991_AFBC_FHD_PREULTRA_2		(2 << 16 | 1)
+#define MT6991_AFBC_FHD_URGENT_3		0
+#define MT6991_AFBC_FHD_ULTRA_3			0
+#define MT6991_AFBC_FHD_PREULTRA_3		0
+#define MT6991_HYFBC_FHD_URGENT_0		(22 << 16 | 17)
+#define MT6991_HYFBC_FHD_ULTRA_0		(30 << 16 | 26)
+#define MT6991_HYFBC_FHD_PREULTRA_0		(39 << 16 | 35)
+#define MT6991_HYFBC_FHD_URGENT_1		(11 << 16 | 9)
+#define MT6991_HYFBC_FHD_ULTRA_1		(15 << 16 | 13)
+#define MT6991_HYFBC_FHD_PREULTRA_1		(19 << 16 | 17)
+#define MT6991_HYFBC_FHD_URGENT_2		(1 << 16)
+#define MT6991_HYFBC_FHD_ULTRA_2		(2 << 16 | 1)
+#define MT6991_HYFBC_FHD_PREULTRA_2		(3 << 16 | 2)
+#define MT6991_HYFBC_FHD_URGENT_3		(1 << 16)
+#define MT6991_HYFBC_FHD_ULTRA_3		(2 << 16 | 1)
+#define MT6991_HYFBC_FHD_PREULTRA_3		(3 << 16 | 2)
 
-/* end of mt6989 */
+static const struct golden_setting th_argb_mt6991[] = {
+	{
+		.pixel = GOLDEN_PIXEL_FHD,
+		.plane = {
+			{
+				.preultra	= MT6991_ARGB_FHD_PREULTRA_0,
+				.ultra		= MT6991_ARGB_FHD_ULTRA_0,
+				.urgent		= MT6991_ARGB_FHD_URGENT_0,
+			}, {
+				.preultra	= MT6991_ARGB_FHD_PREULTRA_1,
+				.ultra		= MT6991_ARGB_FHD_ULTRA_1,
+				.urgent		= MT6991_ARGB_FHD_URGENT_1,
+			}, {
+				.preultra	= MT6991_ARGB_FHD_PREULTRA_2,
+				.ultra		= MT6991_ARGB_FHD_ULTRA_2,
+				.urgent		= MT6991_ARGB_FHD_URGENT_2,
+			}, {
+				.preultra	= MT6991_ARGB_FHD_PREULTRA_3,
+				.ultra		= MT6991_ARGB_FHD_ULTRA_3,
+				.urgent		= MT6991_ARGB_FHD_URGENT_3,
+			},
+		},
+	}, {
+		.pixel = GOLDEN_PIXEL_2K,
+		.plane = {
+			{
+				.preultra	= MT6991_ARGB_2K_PREULTRA_0,
+				.ultra		= MT6991_ARGB_2K_ULTRA_0,
+				.urgent		= MT6991_ARGB_2K_URGENT_0,
+			}, {
+				.preultra	= MT6991_ARGB_2K_PREULTRA_1,
+				.ultra		= MT6991_ARGB_2K_ULTRA_1,
+				.urgent		= MT6991_ARGB_2K_URGENT_1,
+			}, {
+				.preultra	= MT6991_ARGB_2K_PREULTRA_2,
+				.ultra		= MT6991_ARGB_2K_ULTRA_2,
+				.urgent		= MT6991_ARGB_2K_URGENT_2,
+			}, {
+				.preultra	= MT6991_ARGB_2K_PREULTRA_3,
+				.ultra		= MT6991_ARGB_2K_ULTRA_3,
+				.urgent		= MT6991_ARGB_2K_URGENT_3,
+			},
+		},
+	}, {
+		.pixel = GOLDEN_PIXEL_4K,
+		.plane = {
+			{
+				.preultra	= MT6991_ARGB_4K_PREULTRA_0,
+				.ultra		= MT6991_ARGB_4K_ULTRA_0,
+				.urgent		= MT6991_ARGB_4K_URGENT_0,
+			}, {
+				.preultra	= MT6991_ARGB_4K_PREULTRA_1,
+				.ultra		= MT6991_ARGB_4K_ULTRA_1,
+				.urgent		= MT6991_ARGB_4K_URGENT_1,
+			}, {
+				.preultra	= MT6991_ARGB_4K_PREULTRA_2,
+				.ultra		= MT6991_ARGB_4K_ULTRA_2,
+				.urgent		= MT6991_ARGB_4K_URGENT_2,
+			}, {
+				.preultra	= MT6991_ARGB_4K_PREULTRA_3,
+				.ultra		= MT6991_ARGB_4K_ULTRA_3,
+				.urgent		= MT6991_ARGB_4K_URGENT_3,
+			},
+		},
+	},
+};
+
+static const struct golden_setting th_rgb_mt6991[] = {
+	{
+		.pixel = GOLDEN_PIXEL_FHD,
+		.plane = {
+			{
+				.preultra	= MT6991_RGB_FHD_PREULTRA_0,
+				.ultra		= MT6991_RGB_FHD_ULTRA_0,
+				.urgent		= MT6991_RGB_FHD_URGENT_0,
+			}, {
+				.preultra	= MT6991_RGB_FHD_PREULTRA_1,
+				.ultra		= MT6991_RGB_FHD_ULTRA_1,
+				.urgent		= MT6991_RGB_FHD_URGENT_1,
+			}, {
+				.preultra	= MT6991_RGB_FHD_PREULTRA_2,
+				.ultra		= MT6991_RGB_FHD_ULTRA_2,
+				.urgent		= MT6991_RGB_FHD_URGENT_2,
+			}, {
+				.preultra	= MT6991_RGB_FHD_PREULTRA_3,
+				.ultra		= MT6991_RGB_FHD_ULTRA_3,
+				.urgent		= MT6991_RGB_FHD_URGENT_3,
+			},
+		},
+	}, {
+		.pixel = GOLDEN_PIXEL_2K,
+		.plane = {
+			{
+				.preultra	= MT6991_RGB_2K_PREULTRA_0,
+				.ultra		= MT6991_RGB_2K_ULTRA_0,
+				.urgent		= MT6991_RGB_2K_URGENT_0,
+			}, {
+				.preultra	= MT6991_RGB_2K_PREULTRA_1,
+				.ultra		= MT6991_RGB_2K_ULTRA_1,
+				.urgent		= MT6991_RGB_2K_URGENT_1,
+			}, {
+				.preultra	= MT6991_RGB_2K_PREULTRA_2,
+				.ultra		= MT6991_RGB_2K_ULTRA_2,
+				.urgent		= MT6991_RGB_2K_URGENT_2,
+			}, {
+				.preultra	= MT6991_RGB_2K_PREULTRA_3,
+				.ultra		= MT6991_RGB_2K_ULTRA_3,
+				.urgent		= MT6991_RGB_2K_URGENT_3,
+			},
+		},
+	}, {
+		.pixel = GOLDEN_PIXEL_4K,
+		.plane = {
+			{
+				.preultra	= MT6991_RGB_4K_PREULTRA_0,
+				.ultra		= MT6991_RGB_4K_ULTRA_0,
+				.urgent		= MT6991_RGB_4K_URGENT_0,
+			}, {
+				.preultra	= MT6991_RGB_4K_PREULTRA_1,
+				.ultra		= MT6991_RGB_4K_ULTRA_1,
+				.urgent		= MT6991_RGB_4K_URGENT_1,
+			}, {
+				.preultra	= MT6991_RGB_4K_PREULTRA_2,
+				.ultra		= MT6991_RGB_4K_ULTRA_2,
+				.urgent		= MT6991_RGB_4K_URGENT_2,
+			}, {
+				.preultra	= MT6991_RGB_4K_PREULTRA_3,
+				.ultra		= MT6991_RGB_4K_ULTRA_3,
+				.urgent		= MT6991_RGB_4K_URGENT_3,
+			},
+		},
+	},
+};
+
+static const struct golden_setting th_yuv420_mt6991[] = {
+	{
+		.pixel = GOLDEN_PIXEL_FHD,
+		.plane = {
+			{
+				.preultra	= MT6991_2PLANE_FHD_PREULTRA_0,
+				.ultra		= MT6991_2PLANE_FHD_ULTRA_0,
+				.urgent		= MT6991_2PLANE_FHD_URGENT_0,
+			}, {
+				.preultra	= MT6991_2PLANE_FHD_PREULTRA_1,
+				.ultra		= MT6991_2PLANE_FHD_ULTRA_1,
+				.urgent		= MT6991_2PLANE_FHD_URGENT_1,
+			}, {
+				.preultra	= MT6991_2PLANE_FHD_PREULTRA_2,
+				.ultra		= MT6991_2PLANE_FHD_ULTRA_2,
+				.urgent		= MT6991_2PLANE_FHD_URGENT_2,
+			}, {
+				.preultra	= MT6991_2PLANE_FHD_PREULTRA_3,
+				.ultra		= MT6991_2PLANE_FHD_ULTRA_3,
+				.urgent		= MT6991_2PLANE_FHD_URGENT_3,
+			},
+		},
+	}, {
+		.pixel = GOLDEN_PIXEL_2K,
+		.plane = {
+			{
+				.preultra	= MT6991_2PLANE_2K_PREULTRA_0,
+				.ultra		= MT6991_2PLANE_2K_ULTRA_0,
+				.urgent		= MT6991_2PLANE_2K_URGENT_0,
+			}, {
+				.preultra	= MT6991_2PLANE_2K_PREULTRA_1,
+				.ultra		= MT6991_2PLANE_2K_ULTRA_1,
+				.urgent		= MT6991_2PLANE_2K_URGENT_1,
+			}, {
+				.preultra	= MT6991_2PLANE_2K_PREULTRA_2,
+				.ultra		= MT6991_2PLANE_2K_ULTRA_2,
+				.urgent		= MT6991_2PLANE_2K_URGENT_2,
+			}, {
+				.preultra	= MT6991_2PLANE_2K_PREULTRA_3,
+				.ultra		= MT6991_2PLANE_2K_ULTRA_3,
+				.urgent		= MT6991_2PLANE_2K_URGENT_3,
+			},
+		},
+	}, {
+		.pixel = GOLDEN_PIXEL_4K,
+		.plane = {
+			{
+				.preultra	= MT6991_2PLANE_4K_PREULTRA_0,
+				.ultra		= MT6991_2PLANE_4K_ULTRA_0,
+				.urgent		= MT6991_2PLANE_4K_URGENT_0,
+			}, {
+				.preultra	= MT6991_2PLANE_4K_PREULTRA_1,
+				.ultra		= MT6991_2PLANE_4K_ULTRA_1,
+				.urgent		= MT6991_2PLANE_4K_URGENT_1,
+			}, {
+				.preultra	= MT6991_2PLANE_4K_PREULTRA_2,
+				.ultra		= MT6991_2PLANE_4K_ULTRA_2,
+				.urgent		= MT6991_2PLANE_4K_URGENT_2,
+			}, {
+				.preultra	= MT6991_2PLANE_4K_PREULTRA_3,
+				.ultra		= MT6991_2PLANE_4K_ULTRA_3,
+				.urgent		= MT6991_2PLANE_4K_URGENT_3,
+			},
+		},
+	},
+};
+
+static const struct golden_setting th_yv12_mt6991[] = {
+	{
+		.pixel = GOLDEN_PIXEL_FHD,
+		.plane = {
+			{
+				.preultra	= MT6991_3PLANE_FHD_PREULTRA_0,
+				.ultra		= MT6991_3PLANE_FHD_ULTRA_0,
+				.urgent		= MT6991_3PLANE_FHD_URGENT_0,
+			}, {
+				.preultra	= MT6991_3PLANE_FHD_PREULTRA_1,
+				.ultra		= MT6991_3PLANE_FHD_ULTRA_1,
+				.urgent		= MT6991_3PLANE_FHD_URGENT_1,
+			}, {
+				.preultra	= MT6991_3PLANE_FHD_PREULTRA_2,
+				.ultra		= MT6991_3PLANE_FHD_ULTRA_2,
+				.urgent		= MT6991_3PLANE_FHD_URGENT_2,
+			}, {
+				.preultra	= MT6991_3PLANE_FHD_PREULTRA_3,
+				.ultra		= MT6991_3PLANE_FHD_ULTRA_3,
+				.urgent		= MT6991_3PLANE_FHD_URGENT_3,
+			},
+		},
+	}, {
+		.pixel = GOLDEN_PIXEL_2K,
+		.plane = {
+			{
+				.preultra	= MT6991_3PLANE_2K_PREULTRA_0,
+				.ultra		= MT6991_3PLANE_2K_ULTRA_0,
+				.urgent		= MT6991_3PLANE_2K_URGENT_0,
+			}, {
+				.preultra	= MT6991_3PLANE_2K_PREULTRA_1,
+				.ultra		= MT6991_3PLANE_2K_ULTRA_1,
+				.urgent		= MT6991_3PLANE_2K_URGENT_1,
+			}, {
+				.preultra	= MT6991_3PLANE_2K_PREULTRA_2,
+				.ultra		= MT6991_3PLANE_2K_ULTRA_2,
+				.urgent		= MT6991_3PLANE_2K_URGENT_2,
+			}, {
+				.preultra	= MT6991_3PLANE_2K_PREULTRA_3,
+				.ultra		= MT6991_3PLANE_2K_ULTRA_3,
+				.urgent		= MT6991_3PLANE_2K_URGENT_3,
+			},
+		},
+	}, {
+		.pixel = GOLDEN_PIXEL_4K,
+		.plane = {
+			{
+				.preultra	= MT6991_3PLANE_4K_PREULTRA_0,
+				.ultra		= MT6991_3PLANE_4K_ULTRA_0,
+				.urgent		= MT6991_3PLANE_4K_URGENT_0,
+			}, {
+				.preultra	= MT6991_3PLANE_4K_PREULTRA_1,
+				.ultra		= MT6991_3PLANE_4K_ULTRA_1,
+				.urgent		= MT6991_3PLANE_4K_URGENT_1,
+			}, {
+				.preultra	= MT6991_3PLANE_4K_PREULTRA_2,
+				.ultra		= MT6991_3PLANE_4K_ULTRA_2,
+				.urgent		= MT6991_3PLANE_4K_URGENT_2,
+			}, {
+				.preultra	= MT6991_3PLANE_4K_PREULTRA_3,
+				.ultra		= MT6991_3PLANE_4K_ULTRA_3,
+				.urgent		= MT6991_3PLANE_4K_URGENT_3,
+			},
+		},
+	},
+};
+
+static const struct golden_setting th_afbc_mt6991[] = {
+	{
+		.pixel = GOLDEN_PIXEL_FHD,
+		.plane = {
+			{
+				.preultra	= MT6991_AFBC_FHD_PREULTRA_0,
+				.ultra		= MT6991_AFBC_FHD_ULTRA_0,
+				.urgent		= MT6991_AFBC_FHD_URGENT_0,
+			}, {
+				.preultra	= MT6991_AFBC_FHD_PREULTRA_1,
+				.ultra		= MT6991_AFBC_FHD_ULTRA_1,
+				.urgent		= MT6991_AFBC_FHD_URGENT_1,
+			}, {
+				.preultra	= MT6991_AFBC_FHD_PREULTRA_2,
+				.ultra		= MT6991_AFBC_FHD_ULTRA_2,
+				.urgent		= MT6991_AFBC_FHD_URGENT_2,
+			}, {
+				.preultra	= MT6991_AFBC_FHD_PREULTRA_3,
+				.ultra		= MT6991_AFBC_FHD_ULTRA_3,
+				.urgent		= MT6991_AFBC_FHD_URGENT_3,
+			},
+		},
+	}, {
+		.pixel = GOLDEN_PIXEL_2K,
+		.plane = {
+			{
+				.preultra	= MT6991_AFBC_2K_PREULTRA_0,
+				.ultra		= MT6991_AFBC_2K_ULTRA_0,
+				.urgent		= MT6991_AFBC_2K_URGENT_0,
+			}, {
+				.preultra	= MT6991_AFBC_2K_PREULTRA_1,
+				.ultra		= MT6991_AFBC_2K_ULTRA_1,
+				.urgent		= MT6991_AFBC_2K_URGENT_1,
+			}, {
+				.preultra	= MT6991_AFBC_2K_PREULTRA_2,
+				.ultra		= MT6991_AFBC_2K_ULTRA_2,
+				.urgent		= MT6991_AFBC_2K_URGENT_2,
+			}, {
+				.preultra	= MT6991_AFBC_2K_PREULTRA_3,
+				.ultra		= MT6991_AFBC_2K_ULTRA_3,
+				.urgent		= MT6991_AFBC_2K_URGENT_3,
+			},
+		},
+	}, {
+		.pixel = GOLDEN_PIXEL_4K,
+		.plane = {
+			{
+				.preultra	= MT6991_AFBC_4K_PREULTRA_0,
+				.ultra		= MT6991_AFBC_4K_ULTRA_0,
+				.urgent		= MT6991_AFBC_4K_URGENT_0,
+			}, {
+				.preultra	= MT6991_AFBC_4K_PREULTRA_1,
+				.ultra		= MT6991_AFBC_4K_ULTRA_1,
+				.urgent		= MT6991_AFBC_4K_URGENT_1,
+			}, {
+				.preultra	= MT6991_AFBC_4K_PREULTRA_2,
+				.ultra		= MT6991_AFBC_4K_ULTRA_2,
+				.urgent		= MT6991_AFBC_4K_URGENT_2,
+			}, {
+				.preultra	= MT6991_AFBC_4K_PREULTRA_3,
+				.ultra		= MT6991_AFBC_4K_ULTRA_3,
+				.urgent		= MT6991_AFBC_4K_URGENT_3,
+			},
+		},
+	},
+};
+
+static const struct golden_setting th_hyfbc_mt6991[] = {
+	{
+		.pixel = GOLDEN_PIXEL_FHD,
+		.plane = {
+			{
+				.preultra	= MT6991_HYFBC_FHD_PREULTRA_0,
+				.ultra		= MT6991_HYFBC_FHD_ULTRA_0,
+				.urgent		= MT6991_HYFBC_FHD_URGENT_0,
+			}, {
+				.preultra	= MT6991_HYFBC_FHD_PREULTRA_1,
+				.ultra		= MT6991_HYFBC_FHD_ULTRA_1,
+				.urgent		= MT6991_HYFBC_FHD_URGENT_1,
+			}, {
+				.preultra	= MT6991_HYFBC_FHD_PREULTRA_2,
+				.ultra		= MT6991_HYFBC_FHD_ULTRA_2,
+				.urgent		= MT6991_HYFBC_FHD_URGENT_2,
+			}, {
+				.preultra	= MT6991_HYFBC_FHD_PREULTRA_3,
+				.ultra		= MT6991_HYFBC_FHD_ULTRA_3,
+				.urgent		= MT6991_HYFBC_FHD_URGENT_3,
+			},
+		},
+	}, {
+		.pixel = GOLDEN_PIXEL_2K,
+		.plane = {
+			{
+				.preultra	= MT6991_HYFBC_2K_PREULTRA_0,
+				.ultra		= MT6991_HYFBC_2K_ULTRA_0,
+				.urgent		= MT6991_HYFBC_2K_URGENT_0,
+			}, {
+				.preultra	= MT6991_HYFBC_2K_PREULTRA_1,
+				.ultra		= MT6991_HYFBC_2K_ULTRA_1,
+				.urgent		= MT6991_HYFBC_2K_URGENT_1,
+			}, {
+				.preultra	= MT6991_HYFBC_2K_PREULTRA_2,
+				.ultra		= MT6991_HYFBC_2K_ULTRA_2,
+				.urgent		= MT6991_HYFBC_2K_URGENT_2,
+			}, {
+				.preultra	= MT6991_HYFBC_2K_PREULTRA_3,
+				.ultra		= MT6991_HYFBC_2K_ULTRA_3,
+				.urgent		= MT6991_HYFBC_2K_URGENT_3,
+			},
+		},
+	}, {
+		.pixel = GOLDEN_PIXEL_4K,
+		.plane = {
+			{
+				.preultra	= MT6991_HYFBC_4K_PREULTRA_0,
+				.ultra		= MT6991_HYFBC_4K_ULTRA_0,
+				.urgent		= MT6991_HYFBC_4K_URGENT_0,
+			}, {
+				.preultra	= MT6991_HYFBC_4K_PREULTRA_1,
+				.ultra		= MT6991_HYFBC_4K_ULTRA_1,
+				.urgent		= MT6991_HYFBC_4K_URGENT_1,
+			}, {
+				.preultra	= MT6991_HYFBC_4K_PREULTRA_2,
+				.ultra		= MT6991_HYFBC_4K_ULTRA_2,
+				.urgent		= MT6991_HYFBC_4K_URGENT_2,
+			}, {
+				.preultra	= MT6991_HYFBC_4K_PREULTRA_3,
+				.ultra		= MT6991_HYFBC_4K_ULTRA_3,
+				.urgent		= MT6991_HYFBC_4K_URGENT_3,
+			},
+		},
+	},
+};
+
+/* end of mt6991
+ * !!Above code generate by golden parser (goldenparser.py)!!
+ */
+
 
 #endif	/* __MTK_MML_RROT_GOLDEN_H__ */
