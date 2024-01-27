@@ -1011,12 +1011,13 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi-mpu-test.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi-mpu-test-v2.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi-slb.ko")
-        mgk_64_device_modules.append("drivers/memory/mediatek/emicen.ko")
-        mgk_64_device_modules.append("drivers/memory/mediatek/emiisu.ko")
-        mgk_64_device_modules.append("drivers/memory/mediatek/emimpu.ko")
-
         mgk_64_device_modules.remove("drivers/memory/mediatek/smpu.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/smpu-hook-v1.ko")
+        mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v1/emicen.ko")
+        mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v1/emiisu.ko")
+        mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v1/emimpu.ko")
+        mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v1/emictrl.ko")
+        mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi-dummy.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/adsp/adsp.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/adsp/v1/adsp-v1.ko")

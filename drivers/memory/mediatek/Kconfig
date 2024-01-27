@@ -10,15 +10,6 @@ config HAVE_MTK_MC
 
 if HAVE_MTK_MC
 
-config MTK_EMI_LEGACY
-	tristate "MediaTek External Memory Interface Legacy driver"
-	depends on HAVE_MTK_MC
-	help
-	  This selects the MediaTek(R) EMI driver.
-	  Provide the API for MPU registration, EMI MPU violation handling,
-	  the API for EMI information, the BWL golden setting,
-	  and the sysfs for EMI ISU control.
-
 config MTK_EMI
 	tristate "MediaTek External Memory Interface driver"
 	depends on HAVE_MTK_MC
@@ -46,5 +37,33 @@ config MTK_DRAMC
 	  Provide the API for DRAMC low power scenario, and the interface
 	  for reporting DRAM information, e.g. DRAM mode register (MR) for
 	  DRAM vendor ID, temperature, and density.
+
+config MTK_EMI_LEGACY
+	tristate "MediaTek External Memory Interface Legacy driver"
+	depends on HAVE_MTK_MC
+	help
+	  This selects the MediaTek(R) EMI driver.
+	  Provide the API for MPU registration, EMI MPU violation handling,
+	  the API for EMI information, the BWL golden setting,
+	  and the sysfs for EMI ISU control.
+
+config MTK_EMI_LEGACY_VERSION
+	int "MediaTek External Memory Interface Legacy driver version"
+	depends on HAVE_MTK_MC
+	depends on MTK_EMI_LEGACY
+	default 0
+	help
+	  This selects the MediaTek(R) EMI driver.
+	  Provide the version control for MTK_EMI_LEGACY.
+
+config MTK_EMI_BWL_VERSION
+	int "MTK_EMI_BWL_VERSION"
+	depends on HAVE_MTK_MC
+	depends on MTK_EMI_LEGACY
+	default 0
+	help
+	  This selects the MediaTek(R) EMI driver.
+	  Provide version for emi bwl implementation in kernel,
+	  0 means not support by default.
 
 endif
