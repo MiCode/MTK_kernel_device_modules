@@ -1,0 +1,306 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2021 MediaTek Inc.
+*/
+
+&i2c5 {
+status = "okay";
+	clock-frequency = <3400000>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+    subpmic_mtk: mt6360@34 {
+		#interrupt-cells = <2>;
+		status = "ok";
+		compatible = "mediatek,mt6360_pmu";
+		reg = <0x34>;
+		wakeup-source;
+		interrupt-controller;
+		interrupt-parent = <&pio>;
+		interrupts = <24 IRQ_TYPE_EDGE_FALLING>;
+		interrupt-names = "IRQB";
+		mt6360_chg: chg {
+			compatible = "mediatek,mt6360_chg";
+			vinovp = <14500000>;
+			io-channels = <&mt6360_adc 0>, <&mt6360_adc 1>,
+				      <&mt6360_adc 3>, <&mt6360_adc 4>,
+				      <&mt6360_adc 5>, <&mt6360_adc 6>,
+				      <&mt6360_adc 8>, <&mt6360_adc 10>;
+			io-channel-names = "USBID", "VBUSDIV5", "VSYS", "VBAT",
+					   "IBUS", "IBAT", "TEMP_JC", "TS";
+			chg_name = "primary_chg";
+			ichg = <2000000>;		/* uA */
+			aicr = <500000>;		/* uA */
+			mivr = <4400000>;		/* uV */
+			cv = <4350000>;			/* uA */
+			ieoc = <150000>;		/* uA */
+			safety_timer = <12>;		/* hour */
+			ircmp_resistor = <25000>;	/* uohm */
+			ircmp_vclamp = <32000>;		/* uV */
+			en_te = <1>;
+			en_wdt = <1>;
+			aicc_once = <1>;
+			post_aicc = <1>;
+			batoc_notify = <0>;
+			charger = <&mt6360_chg>;
+			phys = <&u2port0 PHY_TYPE_USB2>;
+			phy-names = "usb2-phy";
+			usb = <&ssusb>;
+			bc12_ref = <&mtk_ctd>;
+			otg_vbus: usb-otg-vbus {
+				regulator-compatible = "usb-otg-vbus";
+				regulator-name = "usb-otg-vbus";
+				regulator-min-microvolt = <4425000>;
+				regulator-max-microvolt = <5825000>;
+				regulator-min-microamp = <500000>;
+				regulator-max-microamp = <3000000>;
+			};
+		};
+		mt6360_adc: adc {
+			compatible = "mediatek,mt6360_adc";
+			#io-channel-cells = <1>;
+		};
+		mt6360_led: led {
+			compatible = "mediatek,mt6360_led";
+			rgbon_sync = <1>;
+			iled  {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				led@0 {
+					reg = <0>;
+					label = "isink1";
+				};
+				led@1 {
+					reg = <1>;
+					label = "isink2";
+				};
+				led@2 {
+					reg = <2>;
+					label = "isink3";
+				};
+				led@3 {
+					reg = <3>;
+					label = "isink4";
+				};
+			};
+			fled {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				flash@0 {
+					reg = <0>;
+					label = "mt6360_flash_ch1";
+					led-max-microamp = <400000>;
+					flash-max-microamp = <1500000>;
+					flash-max-timeout = <1248000>;
+					type = <0>;
+					ct = <0>;
+					part = <0>;
+					port@0 {
+						fl_core_0: endpoint {
+							remote-endpoint = <&flashlight_0>;
+						};
+					};
+				};
+				flash@1 {
+					reg = <1>;
+					label = "mt6360_flash_ch2";
+					led-max-microamp = <400000>;
+					flash-max-microamp = <1500000>;
+					flash-max-timeout = <1248000>;
+					type = <0>;
+					ct = <1>;
+					part = <0>;
+					port@1 {
+						fl_core_1: endpoint {
+							remote-endpoint = <&flashlight_1>;
+						};
+					};
+				};
+			};
+		};
+		mt6360_pmic: pmic {
+			compatible = "mediatek,mt6360_pmic";
+			mt6360_mdla_buck_reg: buck1 {
+				regulator-compatible = "BUCK1";
+				regulator-name = "mt6360,buck1";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1300000>;
+				regulator-allowed-modes = <0 2 3>;
+				regulator-always-on;
+			};
+			buck2 {
+				regulator-compatible = "BUCK2";
+				regulator-name = "mt6360,buck2";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1300000>;
+				regulator-allowed-modes = <0 2 3>;
+				regulator-always-on;
+			};
+			ldo6 {
+				regulator-compatible = "LDO6";
+				regulator-name = "mt6360,ldo6";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2100000>;
+				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
+			};
+			ldo7 {
+				regulator-compatible = "LDO7";
+				regulator-name = "mt6360,ldo7";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2100000>;
+				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
+			};
+		};
+		ldo {
+			compatible = "mediatek,mt6360_ldo";
+			mt_pmic_vfp_ldo_reg: ldo1 {
+				regulator-compatible = "LDO1";
+				regulator-name = "mt6360,ldo1";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3600000>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt_pmic_vtp_ldo_reg: ldo2 {
+				regulator-compatible = "LDO2";
+				regulator-name = "vtp";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3600000>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt_pmic_vmc_ldo_reg: ldo3 {
+				regulator-compatible = "LDO3";
+				regulator-name = "mt6360,ldo3";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3600000>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt_pmic_vmch_ldo_reg: ldo5 {
+				regulator-compatible = "LDO5";
+				regulator-name = "mt6360,ldo5";
+				regulator-min-microvolt = <2700000>;
+				regulator-max-microvolt = <3600000>;
+				regulator-allowed-modes = <0 2>;
+			};
+		};
+	};
+	mt6360_typec: tcpc@4e {
+		compatible = "mediatek,mt6360_typec";
+		reg = <0x4e>;
+		mt-dual,supported_modes = <0>; /* 0: dfp/ufp, 1: dfp, 2: ufp */
+		mt-tcpc,name = "type_c_port0"; /* tcpc_device's name */
+		/* 0: SNK Only, 1: SRC Only, 2: DRP, 3: Try.SRC, 4: Try.SNK */
+		mt-tcpc,role_def = <4>;
+		mt-tcpc,rp_level = <1>; /* 0: Default, 1: 1.5, 2: 3.0 */
+		/* 0: Never, 1: Always, 2: EMarkOnly, 3: StartOnly */
+		mt-tcpc,vconn_supply  = <1>;
+		mt6360pd,intr-gpio = <&pio 25 0x0>;
+		mt6360pd,intr-gpio-num = <25>;
+		mt6360pd,pcb-gpio = <&pio 19 0x0>;
+		mt6360pd,pcb-gpio-num = <19>;
+		interrupt-parent = <&subpmic_mtk>;
+		interrupts = <64 0>;
+		interrupt-names = "usbid_evt";
+		charger = <&mt6360_chg>;
+		bootmode = <&chosen>;
+		switch = <&typec_mux_switch>;
+		pd-data {
+			pd,vid = <0x29cf>;
+			pd,pid = <0x6360>;
+			pd,source-cap-ext =
+				<0x636029cf 0x00000000 0x00000000
+				 0x00000000 0x00000000 0x07000000>;
+			pd,mfrs = "RichtekTCPC";
+
+			/*
+			 *	VSAFE5V = 0, MAX_POWER = 1, CUSTOM = 2,
+			 *	MAX_POWER_LV = 0x21, MAX_POWER_LVIC = 0x31
+			 *	MAX_POWER_HV = 0x41, MAX_POWER_HVIC = 0x51
+			 */
+			pd,charging_policy= <0x31>;
+
+			pd,source-pdo-size = <1>;
+			/* 5V, 1500 mA */
+			pd,source-pdo-data = <0x00019096>;
+			pd,sink-pdo-size = <1>;
+			pd,sink-pdo-data = <0x000190c8>;
+
+			/*
+			 * No DP, host + device
+			 *	pd,id-vdo-size = <6>;
+			 *	pd,id-vdo-data = <0xd14029cf 0x0 0x63600000
+						 0x41800000 0x0 0x21800000>;
+			 * With DP
+			 *	pd,id-vdo-size = <6>;
+			 *	pd,id-vdo-data = <0xd54029cf 0x0 0x63600000
+						 0x41800000 0x0 0x21800000>;
+			 */
+
+			pd,id-vdo-size = <6>;
+			pd,id-vdo-data = <0xd14029cf 0x0 0x63600000
+					  0x41800000 0x0 0x21800000>;
+
+			bat,nr = <1>;
+			bat-info0 {
+				bat,vid = <0x29cf>;
+				bat,pid = <0x6360>;
+				bat,mfrs = "bat1";
+				bat,design_cap = <3000>;
+			};
+		};
+		dpm_caps {
+			local_dr_power;
+			local_dr_data;
+			// local_ext_power;
+			local_usb_comm;
+			// local_usb_suspend;
+			// local_high_cap;
+			// local_give_back;
+			local_no_suspend;
+			local_vconn_supply;
+
+			// attempt_discover_cable_dfp;
+			attempt_enter_dp_mode;
+			attempt_discover_cable;
+			attempt_discover_id;
+
+			/* 0: disable, 1: prefer_snk, 2: prefer_src */
+			pr_check = <0>;
+			// pr_reject_as_source;
+			// pr_reject_as_sink;
+			// pr_check_gp_source;
+			// pr_check_gp_sink;
+
+			/* 0: disable, 1: prefer_ufp, 2: prefer_dfp */
+			dr_check = <0>;
+			// dr_reject_as_dfp;
+			// dr_reject_as_ufp;
+		};
+		displayport {
+			/* connection type = "both", "ufp_d", "dfp_d" */
+			1st_connection = "dfp_d";
+			2nd_connection = "dfp_d";
+			signal,dp_v13;
+			//signal,dp_gen2;
+			//usbr20_not_used;
+			typec,receptacle;
+			ufp_d {
+				//pin_assignment,mode_a;
+				//pin_assignment,mode_b;
+				//pin_assignment,mode_c;
+				//pin_assignment,mode_d;
+				//pin_assignment,mode_e;
+			};
+			dfp_d {
+				/* Only support mode C & D */
+				//pin_assignment,mode_a;
+				//pin_assignment,mode_b;
+				pin_assignment,mode_c;
+				pin_assignment,mode_d;
+				pin_assignment,mode_e;
+				//pin_assignment,mode_f;
+			};
+		};
+	};
+};
