@@ -93,9 +93,11 @@ void ufs_mtk_btag_init(struct ufs_hba *hba)
 	}
 
 	btag = mtk_btag_ufs_init(host, nr_queues, nutrs);
-	if (IS_ERR_OR_NULL(btag))
+	if (IS_ERR_OR_NULL(btag)) {
 		dev_notice(hba->dev, "btag host init failed, %ld\n",
 			   PTR_ERR(btag));
+		return;
+	}
 
 	host->btag = btag;
 }
