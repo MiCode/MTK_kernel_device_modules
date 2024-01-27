@@ -1834,8 +1834,7 @@ static int rt9759_check_devinfo(struct i2c_client *client, u8 *chip_rev,
 	return 0;
 }
 
-static int rt9759_i2c_probe(struct i2c_client *client,
-			    const struct i2c_device_id *id)
+static int rt9759_i2c_probe(struct i2c_client *client)
 {
 	int ret;
 	struct rt9759_chip *chip;
