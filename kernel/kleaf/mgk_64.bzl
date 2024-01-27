@@ -328,7 +328,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/mddp/mddp.ko",
     "drivers/misc/mediatek/mdp/cmdq_helper_inf.ko",
     "drivers/misc/mediatek/mdpm/mtk_mdpm.ko",
-    "drivers/misc/mediatek/mkp/mkp.ko",
+    #"drivers/misc/mediatek/mkp/mkp.ko",
     "drivers/misc/mediatek/mmdebug/mtk-mmdebug-vcp.ko",
     "drivers/misc/mediatek/mmdvfs/mtk-mmdvfs-ccu.ko",
     "drivers/misc/mediatek/mmdvfs/mtk-mmdvfs-debug.ko",
