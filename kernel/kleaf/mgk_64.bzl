@@ -542,7 +542,6 @@ mgk_64_device_modules = [
     "drivers/phy/mediatek/phy-mtk-mt6379-eusb2-repeater.ko",
     "drivers/pinctrl/mediatek/pinctrl-mt6363.ko",
     "drivers/pinctrl/mediatek/pinctrl-mt6373.ko",
-    "drivers/pinctrl/mediatek/pinctrl-mt8188.ko",
     "drivers/pinctrl/mediatek/pinctrl-mtk-common-v2_debug.ko",
     "drivers/pinctrl/mediatek/pinctrl-mtk-v2.ko",
     "drivers/power/supply/adapter_class.ko",
