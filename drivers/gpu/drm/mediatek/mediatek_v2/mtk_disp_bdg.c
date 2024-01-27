@@ -5420,8 +5420,8 @@ int bdg_common_init(enum DISP_BDG_ENUM module,
 
 	/* open 26m clk */
 	if (priv->data->mmsys_id == MMSYS_MT6768) {
-		clkbuf_xo_ctrl("SET_XO_MODE", 6, 0);
-		clkbuf_xo_ctrl("SET_XO_EN_M", 6, 1);
+		clkbuf_xo_ctrl("SET_XO_MODE", 2, 0);
+		clkbuf_xo_ctrl("SET_XO_EN_M", 2, 1);
 	} else
 		clk_buf_disp_ctrl(true, dsi);
 	bdg_tx_pull_6382_reset_pin(dsi);
@@ -5559,8 +5559,8 @@ int bdg_common_deinit(enum DISP_BDG_ENUM module, void *cmdq, struct mtk_dsi *dsi
 	set_LDO_off(cmdq);
 	need_6382_init = 1;
 	if (priv->data->mmsys_id == MMSYS_MT6768) {
-		clkbuf_xo_ctrl("SET_XO_EN_M", 6, 0);
-		clkbuf_xo_ctrl("SET_XO_MODE", 6, 0);
+		clkbuf_xo_ctrl("SET_XO_EN_M", 2, 0);
+		clkbuf_xo_ctrl("SET_XO_MODE", 2, 0);
 	} else
 		clk_buf_disp_ctrl(false, dsi);
 	return ret;
