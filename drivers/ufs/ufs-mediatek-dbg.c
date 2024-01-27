@@ -6,6 +6,7 @@
  */
 #include <linux/atomic.h>
 #include <linux/device.h>
+#include <linux/of_address.h>
 #include <linux/platform_device.h>
 #include <linux/module.h>
 #include <linux/proc_fs.h>
@@ -1483,10 +1484,24 @@ EXPORT_SYMBOL_GPL(ufs_mtk_dbg_phy_dump_work);
 void ufs_mtk_dbg_phy_enable(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	struct device_node *np;
+	struct resource res;
 
-	host->mphy_base = ioremap(0x112a0000, 0x10000);
+	np = of_find_compatible_node(NULL, NULL, "mediatek,mt8183-ufsphy");
+	if (!np)
+		goto out;
+
+	if (of_address_to_resource(np, 0, &res))
+		goto out;
+
+	host->mphy_base = ioremap(res.start, 0x10000);
 	INIT_DELAYED_WORK(&host->phy_dmp_work, ufs_mtk_dbg_phy_dump_work);
 	host->phy_dmp_workq = create_singlethread_workqueue("ufs_mtk_phy_dmp_wq");
+
+	return;
+out:
+	pr_err("%s: Unable to parse mphy base, disable mphy dump.\n", __func__);
+	hba->caps &= ~UFS_MTK_CAP_MPHY_DUMP;
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_dbg_phy_enable);
 #endif
