@@ -13988,6 +13988,95 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				};
 			};
 		};
+		vtskin-max {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&vtskin 0>;
+			trips {
+				vtskin_max_crit: vtskin-max-crit {
+					temperature = <118400>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
+		vtskin1 {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&vtskin 1>;
+			trips {
+				vtskin1_crit: vtskin1-crit {
+					temperature = <118400>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
+		vtskin2 {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&vtskin 2>;
+			trips {
+				vtskin2_crit: vtskin2-crit {
+					temperature = <118400>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
+		vtskin3 {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&vtskin 3>;
+			trips {
+				vtskin3_crit: vtskin3-crit {
+					temperature = <118400>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
+		vtskin4 {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&vtskin 4>;
+			trips {
+				vtskin4_crit: vtskin4-crit {
+					temperature = <118400>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
+		vtskin5 {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&vtskin 5>;
+			trips {
+				vtskin5_crit: vtskin5-crit {
+					temperature = <118400>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
+		vtskin6 {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&vtskin 6>;
+			trips {
+				vtskin6_crit: vtskin6-crit {
+					temperature = <118400>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
+	};
+
+	vtskin: vtskin {
+		compatible = "mediatek,mt6991-virtual-tskin";
+		#thermal-sensor-cells = <1>;
 	};
 };
 
