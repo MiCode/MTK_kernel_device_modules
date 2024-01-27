@@ -196,9 +196,9 @@ static ssize_t dvfsrc_opp_table_show(struct device *dev,
 		j = dvfsrc->opp_desc->num_opp - (i + 1);
 		if (dvfsrc->dvd->dump_flag & DVFSRC_EMI_DUMP_FLAG) {
 			p += snprintf(p, buff_end - p,
-				"[OPP%d]: %-4u mv %-5u Mbps [%u]\n",
+				"[%-3u]:%-6u, %-5u Mbps [%u]\n",
 				i,
-				(dvfsrc->opp_desc->opps[j].vcore_uv / 1000),
+				(dvfsrc->opp_desc->opps[j].vcore_uv),
 				(dvfsrc->opp_desc->opps[j].dram_kbps / 1000),
 				dvfsrc->opp_desc->opps[j].emi_mbps);
 		} else {
