@@ -415,7 +415,7 @@ static struct i2c_driver dw9800w_i2c_driver = {
 		.name = DW9800W_NAME,
 		.of_match_table = dw9800w_of_table,
 	},
-	.probe_new  = dw9800w_probe,
+	.probe  = dw9800w_probe,
 	.remove = dw9800w_remove,
 	.id_table = dw9800w_id_table,
 };

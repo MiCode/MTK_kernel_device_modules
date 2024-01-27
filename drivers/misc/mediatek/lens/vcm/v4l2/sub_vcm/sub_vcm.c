@@ -599,7 +599,7 @@ static struct i2c_driver sub_vcm_i2c_driver = {
 		.name = SUB_VCM_NAME,
 		.of_match_table = sub_vcm_of_table,
 	},
-	.probe_new  = sub_vcm_probe,
+	.probe  = sub_vcm_probe,
 	.remove = sub_vcm_remove,
 	.id_table = sub_vcm_id_table,
 };

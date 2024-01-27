@@ -722,7 +722,7 @@ static struct i2c_driver rt9758_charger_driver = {
 		.name = "rt9758-charger",
 		.of_match_table = rt9758_charger_of_match_table,
 	},
-	.probe_new = rt9758_charger_probe,
+	.probe = rt9758_charger_probe,
 	.remove = rt9758_charger_remove,
 };
 module_i2c_driver(rt9758_charger_driver);

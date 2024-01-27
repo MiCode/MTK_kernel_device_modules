@@ -1380,7 +1380,7 @@ static struct i2c_driver dw9781d_i2c_driver = {
 		.pm = &dw9781d_pm_ops,
 		.of_match_table = dw9781d_of_table,
 	},
-	.probe_new  = dw9781d_probe,
+	.probe  = dw9781d_probe,
 	.remove = dw9781d_remove,
 	.id_table = dw9781d_id_table,
 };

@@ -394,7 +394,7 @@ static struct i2c_driver gt9764_i2c_driver = {
 		.name = GT9764_NAME,
 		.of_match_table = gt9764_of_table,
 	},
-	.probe_new  = gt9764_probe,
+	.probe  = gt9764_probe,
 	.remove = gt9764_remove,
 	.id_table = gt9764_id_table,
 };

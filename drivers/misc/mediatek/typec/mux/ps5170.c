@@ -651,7 +651,7 @@ static struct i2c_driver ps5170_driver = {
 		.pm = &ps5170_pm_ops,
 		.of_match_table = ps5170_of_match,
 	},
-	.probe_new = ps5170_probe,
+	.probe = ps5170_probe,
 	.remove	= ps5170_remove,
 	.id_table = ps5170_table,
 };

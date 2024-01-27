@@ -418,7 +418,7 @@ static struct i2c_driver vl53l0_i2c_driver = {
 		.pm = &vl53l0_pm_ops,
 		.of_match_table = vl53l0_of_table,
 	},
-	.probe_new  = vl53l0_probe,
+	.probe  = vl53l0_probe,
 	.remove = vl53l0_remove,
 	.id_table = vl53l0_id_table,
 };

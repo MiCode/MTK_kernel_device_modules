@@ -511,7 +511,7 @@ static struct i2c_driver dw9800v_i2c_driver = {
 		.pm = &dw9800v_pm_ops,
 		.of_match_table = dw9800v_of_table,
 	},
-	.probe_new  = dw9800v_probe,
+	.probe  = dw9800v_probe,
 	.remove = dw9800v_remove,
 	.id_table = dw9800v_id_table,
 };

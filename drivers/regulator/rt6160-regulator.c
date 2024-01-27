@@ -337,7 +337,7 @@ static struct i2c_driver rt6160_driver = {
 		.name = "rt6160",
 		.of_match_table = rt6160_of_match_table,
 	},
-	.probe_new = rt6160_probe,
+	.probe = rt6160_probe,
 };
 module_i2c_driver(rt6160_driver);
 
