@@ -67,6 +67,9 @@ struct mt6379_flash {
 	void *driver_data;
 #if IS_ENABLED(CONFIG_MTK_FLASHLIGHT)
 	struct flashlight_device_id dev_id;
+	int need_cooler;
+	unsigned long target_current;
+	unsigned long ori_current;
 #endif
 };
 
@@ -90,6 +93,7 @@ static int mt6379_torch_set_brightness(struct led_classdev *led_cdev,
 	struct mt6379_data *data = mtflash->driver_data;
 	struct regmap *regmap = data->regmap;
 	unsigned int mask, enable = 0;
+	unsigned int cur;
 	int ret;
 
 	mutex_lock(&data->lock);
@@ -114,6 +118,18 @@ static int mt6379_torch_set_brightness(struct led_classdev *led_cdev,
 			dev_info(led_cdev->dev, "pt is low\n");
 			mutex_unlock(&data->lock);
 			return 0;
+		}
+
+		cur = (brightness - 1) * MT6379_ITOR_STEPUA + MT6379_ITOR_MINUA;
+		if (mtflash->need_cooler == 0) {
+			mtflash->ori_current = cur;
+		} else {
+			if (cur > mtflash->target_current) {
+				cur = mtflash->target_current - MT6379_ITOR_MINUA;
+				brightness = cur / MT6379_ITOR_STEPUA;
+				brightness++;
+				pr_info("thermal limit current:%d\n", cur);
+			}
 		}
 #endif
 
@@ -141,6 +157,13 @@ static int mt6379_flash_set_brightness(struct led_classdev_flash *flash,
 	struct led_flash_setting *s = &flash->brightness;
 	unsigned int selector;
 
+#ifdef CONFIG_MTK_FLASHLIGHT_PT
+	if (mtflash->need_cooler == 1 &&
+			brightness > mtflash->target_current) {
+		brightness = mtflash->target_current;
+		pr_info("thermal limit current:%u\n", brightness);
+	}
+#endif
 	selector = (brightness - s->min) / s->step;
 	return regmap_write(data->regmap, MT6379_REG_ISTRB(mtflash->idx),
 			    selector);
@@ -299,6 +322,14 @@ static int fd_use_count;
 
 #define MT6379_VIN (3.6)
 
+#if !IS_ENABLED(CONFIG_MTK_FLASHLIGHT)
+#define FLASHLIGHT_COOLER_MAX_STATE 4
+#endif
+
+static int flash_state_to_current_limit[FLASHLIGHT_COOLER_MAX_STATE] = {
+	150000, 100000, 50000, 25000
+};
+
 static int mt6379_set_scenario(int scenario)
 {
 	struct mt6379_flash *mtflash = container_of(
@@ -357,6 +388,58 @@ static int mt6379_release(void)
 	return 0;
 }
 
+static int mt6379_cooling_set_cur_state(int channel, unsigned long state)
+{
+	struct mt6379_flash *mtflash;
+	struct mt6379_data *data;
+	struct led_classdev_flash *flcdev;
+	struct led_classdev *lcdev;
+	enum led_brightness brt;
+
+	/* Request state should be less than max_state */
+	if (state > FLASHLIGHT_COOLER_MAX_STATE)
+		return -EINVAL;
+
+	if (channel < 0 || channel >= MT6379_FLASH_MAX_LED) {
+		pr_info("channel error\n");
+		return -EINVAL;
+	}
+
+	flcdev = mt6379_flash_class[channel];
+	if (flcdev == NULL)
+		return -EINVAL;
+
+	lcdev = &flcdev->led_cdev;
+	if (lcdev == NULL)
+		return -EINVAL;
+
+	mtflash = container_of(	mt6379_flash_class[channel],
+				struct mt6379_flash, flash);
+	data = mtflash->driver_data;
+	pr_info("set thermal current:%lu torch_enabled:%u\n",
+		 state, data->torch_enabled);
+
+	if (state == 0) {
+		mtflash->need_cooler = 0;
+		mtflash->target_current = MT6379_ISTRB_MAXUA;
+		if (data->torch_enabled & BIT(mtflash->idx)) {
+			brt = MT6379_ITOR_MAXUA;
+			brt /= (u32) MT6379_ITOR_STEPUA;
+			mt6379_torch_set_brightness(lcdev, brt);
+		}
+	} else {
+		mtflash->need_cooler = 1;
+		brt = flash_state_to_current_limit[state - 1];
+		mtflash->target_current = brt;
+		if (data->torch_enabled & BIT(mtflash->idx)) {
+			brt /= (u32) MT6379_ITOR_STEPUA;
+			mt6379_torch_set_brightness(lcdev, brt);
+		}
+	}
+
+	return 0;
+}
+
 static int mt6379_ioctl(unsigned int cmd, unsigned long arg)
 {
 	struct flashlight_dev_arg *fl_arg;
@@ -385,7 +468,9 @@ static int mt6379_ioctl(unsigned int cmd, unsigned long arg)
 	case FLASH_IOC_SET_SCENARIO:
 		mt6379_set_scenario(fl_arg->arg);
 		break;
-
+	case FLASH_IOC_SET_THERMAL_CUR_STATE:
+		mt6379_cooling_set_cur_state(channel, fl_arg->arg);
+		break;
 	default:
 		dev_info(lcdev->dev, "No such command and arg(%d): (%d, %d)\n",
 				channel, _IOC_NR(cmd), (int)fl_arg->arg);
