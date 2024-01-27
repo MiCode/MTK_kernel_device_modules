@@ -8528,7 +8528,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 	scp_dvfs: scp-dvfs {
 		compatible = "mediatek,scp-dvfs";
-		scp-dvfs-disable = <0>; /* 0: enable, 1: disable */
+		scp-dvfs-disable = <1>; /* 0: enable, 1: disable */
 
 		clocks = <&vlp_cksys_clk CLK_VLP_CK_SCP_SEL>,
 		 <&cksys_clk CLK_CK_TCK_26M_MX9>; /* 26M */
