@@ -75,7 +75,7 @@ int pe4_get_debug_level(void)
 	return pe4_dbg_level;
 }
 
-void mtk_pe45_reset(struct chg_alg_device *alg)
+void mtk_pe45_reset(struct chg_alg_device *alg, int exit_mode)
 {
 	struct mtk_pe45 *pe45;
 
@@ -83,7 +83,7 @@ void mtk_pe45_reset(struct chg_alg_device *alg)
 
 	if (pe45->state == PE4_RUN || pe45->state == PE4_INIT ||
 	    pe45->state == PE4_TUNING || pe45->state == PE4_POSTCC) {
-		pe4_hal_set_adapter_cap_end(alg, 5000, 2000);
+		pe4_hal_set_adapter_cap_end(alg, 5000, 2000, exit_mode);
 
 		pe4_hal_set_mivr(alg, CHG1, pe45->min_charger_voltage);
 		pe4_hal_enable_vbus_ovp(alg, true);
@@ -124,7 +124,7 @@ static int _pe4_init_algo(struct chg_alg_device *alg)
 		pe4_err("%s:init hw fail\n", __func__);
 	} else
 		pe4->state = PE4_HW_READY;
-	mtk_pe45_reset(alg);
+	mtk_pe45_reset(alg, 0);
 
 	if (alg->config == DUAL_CHARGERS_IN_PARALLEL) {
 		pe4_err("%s does not support DUAL_CHARGERS_IN_PARALLEL\n",
@@ -201,7 +201,7 @@ static int _pe4_is_algo_ready(struct chg_alg_device *alg)
 	case PE4_INIT:
 	case PE4_HW_READY:
 		uisoc = pe4_hal_get_uisoc(alg);
-		ret = pe4_hal_is_pd_adapter_ready(alg);
+		ret = pe4_hal_is_adapter_ready(alg);
 		ret_value = ret;
 		if (ret == ALG_READY) {
 			tmp = pe4_hal_get_battery_temperature(alg);
@@ -799,7 +799,7 @@ int mtk_pe45_get_init_watt(struct chg_alg_device *alg)
 
 void mtk_pe45_end(struct chg_alg_device *alg, int type)
 {
-	mtk_pe45_reset(alg);
+	mtk_pe45_reset(alg, 1);
 	pe4_dbg("%s: retry:%d\n", __func__, type);
 }
 
@@ -1434,7 +1434,7 @@ err:
 	return 0;
 }
 
-static int pe4_sc_set_charger(struct chg_alg_device *alg)
+static int pe45p_sc_set_charger(struct chg_alg_device *alg)
 {
 	struct mtk_pe45 *pe4;
 	int ichg1_min = -1, aicr1_min = -1;
@@ -1667,14 +1667,14 @@ static void _pe4_set_current(struct chg_alg_device *alg)
 			//goto out;
 		}
 	} else {
-		if (pe4_sc_set_charger(alg) != 0) {
+		if (pe45p_sc_set_charger(alg) != 0) {
 			ret_value = ALG_DONE;
 			//goto out;
 		}
 	}
 }
 
-static int _pe4_start_algo(struct chg_alg_device *alg)
+static int _pe45p_start_algo(struct chg_alg_device *alg)
 {
 	int ret = 0, ret_value = 0;
 	struct mtk_pe45 *pe4;
@@ -1704,7 +1704,7 @@ static int _pe4_start_algo(struct chg_alg_device *alg)
 			break;
 		case PE4_HW_READY:
 			uisoc = pe4_hal_get_uisoc(alg);
-			ret = pe4_hal_is_pd_adapter_ready(alg);
+			ret = pe4_hal_is_adapter_ready(alg);
 			ret_value = ret;
 			if (ret == ALG_READY) {
 				tmp = pe4_hal_get_battery_temperature(alg);
@@ -2158,25 +2158,27 @@ int _pe4_set_setting(struct chg_alg_device *alg_dev,
 
 	pe4 = dev_get_drvdata(&alg_dev->dev);
 
-	pe4_dbg("%s cv:%d icl:%d,%d cc:%d,%d, 6pin_en:%d\n",
+	pe4_dbg("%s cv:%d icl:%d,%d cc:%d,%d, 6pin:%d, ta_pri:%d\n",
 		__func__,
 		setting->cv,
 		setting->input_current_limit1,
 		setting->input_current_limit2,
 		setting->charging_current_limit1,
 		setting->charging_current_limit2,
-		setting->vbat_mon_en);
+		setting->vbat_mon_en,
+		setting->adapter_priority);
 
 	mutex_lock(&pe4->access_lock);
 	__pm_stay_awake(pe4->suspend_lock);
 	pe4->cv = setting->cv;
 	pe4->pe4_6pin_en = setting->vbat_mon_en;
+	pe4->adapter_priority = setting->adapter_priority;
 	pe4->input_current_limit1 = setting->input_current_limit1;
 	pe4->input_current_limit2 = setting->input_current_limit2;
 	pe4->charging_current_limit1 = setting->charging_current_limit1;
 	pe4->charging_current_limit2 = setting->charging_current_limit2;
 
-	pe4_dbg("%s cv:%d icl1:%d:%d icl2:%d:%d icl:%d:%d cc:%d:%d, pe4_6pin_en:%d\n",
+	pe4_dbg("%s cv:%d icl1:%d:%d icl2:%d:%d icl:%d:%d cc:%d:%d, 6pin_en:%d, ta_pri:%d\n",
 		__func__,
 		setting->cv,
 		pe4->input_current1,
@@ -2187,7 +2189,8 @@ int _pe4_set_setting(struct chg_alg_device *alg_dev,
 		pe4->pe4_input_current_limit_setting,
 		pe4->charger_current1,
 		pe4->charger_current2,
-		pe4->pe4_6pin_en);
+		pe4->pe4_6pin_en,
+		pe4->adapter_priority);
 
 	__pm_relax(pe4->suspend_lock);
 	mutex_unlock(&pe4->access_lock);
@@ -2221,7 +2224,7 @@ int _pe4_set_prop(struct chg_alg_device *alg,
 static struct chg_alg_ops pe4_alg_ops = {
 	.init_algo = _pe4_init_algo,
 	.is_algo_ready = _pe4_is_algo_ready,
-	.start_algo = _pe4_start_algo,
+	.start_algo = _pe45p_start_algo,
 	.is_algo_running = _pe4_is_algo_running,
 	.stop_algo = _pe4_stop_algo,
 	.notifier_call = _pe4_notifier_call,
@@ -2247,10 +2250,10 @@ static int mtk_pe45_probe(struct platform_device *pdev)
 		wakeup_source_register(NULL, "PE4.5 suspend wakelock");
 
 	mtk_pe4_parse_dt(pe4, &pdev->dev);
-	pe4->bat_psy = devm_power_supply_get_by_phandle(&pdev->dev, "gauge");
+	pe4->bat1_psy = devm_power_supply_get_by_phandle(&pdev->dev, "gauge");
 
-	if (IS_ERR_OR_NULL(pe4->bat_psy))
-		pe4_err("%s: devm power fail to get pe4->bat_psy\n", __func__);
+	if (IS_ERR_OR_NULL(pe4->bat1_psy))
+		pe4_err("%s: devm power fail to get pe4->bat1_psy\n", __func__);
 
 	pe4->alg = chg_alg_device_register("pe45", &pdev->dev,
 					pe4, &pe4_alg_ops, NULL);

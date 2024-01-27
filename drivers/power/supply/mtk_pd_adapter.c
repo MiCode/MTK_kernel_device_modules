@@ -31,22 +31,6 @@ struct mtk_pd_adapter_info {
 	struct adapter_device *adapter;
 };
 
-static enum adapter_event pd_connect_tbl[] = {
-	MTK_PD_CONNECT_NONE,
-	MTK_PD_CONNECT_TYPEC_ONLY_SNK,
-	MTK_PD_CONNECT_TYPEC_ONLY_SNK,
-	MTK_PD_CONNECT_NONE,
-	MTK_PD_CONNECT_PE_READY_SNK,
-	MTK_PD_CONNECT_NONE,
-	MTK_PD_CONNECT_PE_READY_SNK_PD30,
-	MTK_PD_CONNECT_NONE,
-	MTK_PD_CONNECT_PE_READY_SNK_APDO,
-	MTK_PD_CONNECT_HARD_RESET,
-	MTK_PD_CONNECT_SOFT_RESET,
-	MTK_PD_CONNECT_TYPEC_ONLY_SNK,
-	MTK_PD_CONNECT_TYPEC_ONLY_SNK,
-};
-
 struct apdo_pps_range {
 	u32 prog_mv;
 	u32 min_mv;
@@ -76,11 +60,70 @@ static inline int to_mtk_adapter_ret(int tcpm_ret)
 	}
 }
 
+enum mtk_pd_connect_type {
+	MTK_PD_CONNECT_NONE,
+	MTK_PD_CONNECT_HARD_RESET,
+	MTK_PD_CONNECT_SOFT_RESET,
+	MTK_PD_CONNECT_PE_READY_SNK,
+	MTK_PD_CONNECT_PE_READY_SNK_PD30,
+	MTK_PD_CONNECT_PE_READY_SNK_APDO,
+	MTK_PD_CONNECT_TYPEC_ONLY_SNK,
+};
+
+static enum mtk_pd_connect_type pd_connect_tbl[] = {
+	MTK_PD_CONNECT_NONE,
+	MTK_PD_CONNECT_TYPEC_ONLY_SNK,
+	MTK_PD_CONNECT_TYPEC_ONLY_SNK,
+	MTK_PD_CONNECT_NONE,
+	MTK_PD_CONNECT_PE_READY_SNK,
+	MTK_PD_CONNECT_NONE,
+	MTK_PD_CONNECT_PE_READY_SNK_PD30,
+	MTK_PD_CONNECT_NONE,
+	MTK_PD_CONNECT_PE_READY_SNK_APDO,
+	MTK_PD_CONNECT_HARD_RESET,
+	MTK_PD_CONNECT_SOFT_RESET,
+	MTK_PD_CONNECT_TYPEC_ONLY_SNK,
+	MTK_PD_CONNECT_TYPEC_ONLY_SNK,
+};
+
+static int pd_type_to_adapter_event(int pd_type)
+{
+	switch (pd_type) {
+	case MTK_PD_CONNECT_TYPEC_ONLY_SNK:
+		return TA_DETECT_FAIL;
+	case MTK_PD_CONNECT_PE_READY_SNK:
+	case MTK_PD_CONNECT_PE_READY_SNK_PD30:
+	case MTK_PD_CONNECT_PE_READY_SNK_APDO:
+		return TA_ATTACH;
+	case MTK_PD_CONNECT_HARD_RESET:
+		return TA_HARD_RESET;
+	case MTK_PD_CONNECT_SOFT_RESET:
+		return TA_SOFT_RESET;
+	default:
+		return TA_DETACH;
+	}
+}
+
+static int pd_type_to_cap_type(int pd_type)
+{
+	switch (pd_type) {
+	case MTK_PD_CONNECT_PE_READY_SNK:
+	case MTK_PD_CONNECT_PE_READY_SNK_PD30:
+		return MTK_PD;
+	case MTK_PD_CONNECT_PE_READY_SNK_APDO:
+		return MTK_PD_APDO;
+	default:
+		break;
+	}
+	return MTK_CAP_TYPE_UNKNOWN;
+}
+
 static void find_active_idx_and_notification(struct mtk_pd_adapter_info *info,
 					     int report_idx)
 {
 	int i = 0, active_idx = 0, pre_active_idx = info->active_idx;
 	struct adapter_device *adapter = info->adapter;
+	unsigned long evt = pd_type_to_adapter_event(info->pd_type[active_idx]);
 
 	/* lower index has higher priority */
 	for (i = 0; i < info->nr_port; i++) {
@@ -101,13 +144,9 @@ static void find_active_idx_and_notification(struct mtk_pd_adapter_info *info,
 			srcu_notifier_call_chain(&adapter->evt_nh,
 						 MTK_PD_CONNECT_NONE,
 						 &pre_active_idx);
-		srcu_notifier_call_chain(&adapter->evt_nh,
-					 info->pd_type[active_idx],
-					 &active_idx);
+		srcu_notifier_call_chain(&adapter->evt_nh, evt, &active_idx);
 	} else if (report_idx == active_idx) {
-		srcu_notifier_call_chain(&adapter->evt_nh,
-					 info->pd_type[active_idx],
-					 &active_idx);
+		srcu_notifier_call_chain(&adapter->evt_nh, evt, &active_idx);
 	}
 
 	info->active_idx = active_idx;
@@ -174,10 +213,10 @@ static int pd_get_property(struct adapter_device *dev,
 			   enum adapter_property pro)
 {
 	struct mtk_pd_adapter_info *info = adapter_dev_get_drvdata(dev);
-	int ret = -EINVAL;
+	int ret;
 
 	if (info == NULL)
-		return ret;
+		return -EINVAL;
 
 	switch (pro) {
 	case TYPEC_RP_LEVEL:
@@ -186,13 +225,13 @@ static int pd_get_property(struct adapter_device *dev,
 				info->tcpc[info->active_idx]);
 		mutex_unlock(&info->idx_lock);
 		break;
-	case PD_TYPE:
+	case CAP_TYPE:
 		mutex_lock(&info->idx_lock);
-		ret = info->pd_type[info->active_idx];
+		ret = pd_type_to_cap_type(info->pd_type[info->active_idx]);
 		mutex_unlock(&info->idx_lock);
 		break;
 	default:
-		break;
+		return -EINVAL;
 	}
 
 	return ret;

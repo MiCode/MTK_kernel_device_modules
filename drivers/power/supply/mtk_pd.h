@@ -156,7 +156,7 @@ struct mtk_pd {
 };
 
 extern int pd_hal_init_hardware(struct chg_alg_device *alg);
-extern int pd_hal_is_pd_adapter_ready(struct chg_alg_device *alg);
+extern int pd_hal_is_adapter_ready(struct chg_alg_device *alg);
 extern int pd_hal_get_adapter_cap(struct chg_alg_device *alg,
 	struct pd_power_cap *cap);
 extern int pd_hal_get_vbus(struct chg_alg_device *alg);

@@ -558,6 +558,7 @@ mgk_64_device_modules = [
     "drivers/power/supply/ufcs/ufcs_class.ko",
     "drivers/power/supply/ufcs/ufcs_mt6379.ko",
     "drivers/power/supply/mtk_ufcs_adapter.ko",
+    "drivers/power/supply/mtk_2p_charger.ko",
     "drivers/power/supply/mtk_charger_algorithm_class.ko",
     "drivers/power/supply/mtk_charger_framework.ko",
     "drivers/power/supply/mtk_chg_type_det.ko",

@@ -51,6 +51,12 @@ struct charger_data;
 #define V_CHARGER_MAX 6500000 /* 6.5 V */
 #define V_CHARGER_MIN 4600000 /* 4.6 V */
 #define VBUS_OVP_VOLTAGE 15000000 /* 15V */
+/* dual battery */
+#define V_CS_BATTERY_CV 4350 /* mV */
+#define AC_CS_NORMAL_CC 2000 /* mV */
+#define AC_CS_FAST_CC 2000 /* mV */
+#define CS_CC_MIN 100 /* mA */
+#define V_BATT_EXTRA_DIFF 300 /* 265 mV */
 
 #define USB_CHARGER_CURRENT_SUSPEND		0 /* def CONFIG_USB_IF */
 #define USB_CHARGER_CURRENT_UNCONFIGURED	70000 /* 70mA */
@@ -94,6 +100,38 @@ enum bat_temp_state_enum {
 	BAT_TEMP_LOW = 0,
 	BAT_TEMP_NORMAL,
 	BAT_TEMP_HIGH
+};
+
+enum DUAL_CHG_STAT {
+	BOTH_EOC,
+	STILL_CHG,
+};
+
+enum ADC_SOURCE {
+	NULL_HANDLE,
+	FROM_CHG_IC,
+	FROM_CS_ADC,
+};
+
+enum TA_STATE {
+	TA_INIT_FAIL,
+	TA_CHECKING,
+	TA_NOT_SUPPORT,
+	TA_NOT_READY,
+	TA_READY,
+	TA_PD_PPS_READY,
+};
+
+enum adapter_protocol_state {
+	FIRST_HANDSHAKE,
+	RUN_ON_PD,
+	RUN_ON_UFCS,
+};
+
+enum TA_CAP_STATE {
+	APDO_TA,
+	WO_APDO_TA,
+	STD_TA,
 };
 
 enum chg_dev_notifier_events {
@@ -145,6 +183,11 @@ enum sw_jeita_state_enum {
 	TEMP_T2_TO_T3,
 	TEMP_T3_TO_T4,
 	TEMP_ABOVE_T4
+};
+
+struct info_notifier_block {
+	struct notifier_block nb;
+	struct mtk_charger *info;
 };
 
 struct sw_jeita_data {
@@ -256,6 +299,11 @@ struct mtk_charger {
 	struct notifier_block hvdvchg2_nb;
 	struct charger_device *bkbstchg_dev;
 	struct notifier_block bkbstchg_nb;
+	struct charger_device *cschg1_dev;
+	struct notifier_block cschg1_nb;
+	struct charger_device *cschg2_dev;
+	struct notifier_block cschg2_nb;
+
 
 	struct charger_data chg_data[CHGS_SETTING_MAX];
 	struct chg_limit_setting setting;
@@ -288,18 +336,27 @@ struct mtk_charger {
 	struct power_supply  *chg_psy;
 	struct power_supply  *bc12_psy;
 	struct power_supply  *bat_psy;
+	struct power_supply  *bat2_psy;
+	struct power_supply  *bat_manager_psy;
+	struct adapter_device *select_adapter;
 	struct adapter_device *pd_adapter;
-	struct notifier_block pd_nb;
+	struct adapter_device *adapter_dev[MAX_TA_IDX];
+	struct notifier_block *nb_addr;
+	struct info_notifier_block ta_nb[MAX_TA_IDX];
+	struct adapter_device *ufcs_adapter;
 	struct mutex pd_lock;
-	int pd_type;
-	bool pd_reset;
+	struct mutex ufcs_lock;
+	struct mutex ta_lock;
 
 	u32 bootmode;
 	u32 boottype;
 
+	int ta_status[MAX_TA_IDX];
+	int select_adapter_idx;
 	int chr_type;
 	int usb_type;
 	int usb_state;
+	int adapter_priority;
 
 	struct mutex cable_out_lock;
 	int cable_out_cnt;
@@ -343,6 +400,7 @@ struct mtk_charger {
 	bool atm_enabled;
 
 	const char *algorithm_name;
+	const char *curr_select_name;
 	struct mtk_charger_algorithm algo;
 
 	/* dtsi custom data */
@@ -392,7 +450,16 @@ struct mtk_charger {
 	/* diasable meta current limit for testing */
 	unsigned int enable_meta_current_limit;
 
+	/* set current selector parallel mode */
+	int cs_heatlim;
+	unsigned int cs_para_mode;
+	int cs_gpio_index;
+	bool cs_hw_disable;
+	int dual_chg_stat;
+	int cs_cc_now;
+	int comp_resist;
 	struct smartcharging sc;
+	bool cs_with_gauge;
 
 	/*daemon related*/
 	struct sock *daemo_nl_sk;
@@ -401,6 +468,7 @@ struct mtk_charger {
 
 	/*charger IC charging status*/
 	bool is_charging;
+	bool is_cs_chg_done;
 
 	ktime_t uevent_time_check;
 
@@ -412,6 +480,11 @@ struct mtk_charger {
 	/* enable boot volt*/
 	bool enable_boot_volt;
 	bool reset_boot_volt_times;
+
+	/* adapter switch control */
+	int protocol_state;
+	int ta_capability;
+	int wait_times;
 };
 
 static inline int mtk_chg_alg_notify_call(struct mtk_charger *info,
@@ -438,6 +511,9 @@ extern int get_uisoc(struct mtk_charger *info);
 extern int get_battery_voltage(struct mtk_charger *info);
 extern int get_battery_temperature(struct mtk_charger *info);
 extern int get_battery_current(struct mtk_charger *info);
+extern int get_cs_side_battery_current(struct mtk_charger *info, int *ibat);
+extern int get_cs_side_battery_voltage(struct mtk_charger *info, int *vbat);
+extern int get_chg_output_vbat(struct mtk_charger *info, int *vbat);
 extern int get_vbus(struct mtk_charger *info);
 extern int get_ibat(struct mtk_charger *info);
 extern int get_ibus(struct mtk_charger *info);
@@ -455,7 +531,10 @@ extern int get_charger_input_current(struct mtk_charger *info,
 extern int get_charger_zcv(struct mtk_charger *info,
 	struct charger_device *chg);
 extern void _wake_up_charger(struct mtk_charger *info);
-
+extern int mtk_adapter_switch_control(struct mtk_charger *info);
+extern int mtk_selected_adapter_ready(struct mtk_charger *info);
+extern int mtk_adapter_protocol_init(struct mtk_charger *info);
+extern void mtk_check_ta_status(struct mtk_charger *info);
 /* functions for other */
 extern int mtk_chg_enable_vbus_ovp(bool enable);
 

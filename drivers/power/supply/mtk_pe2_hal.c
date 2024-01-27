@@ -134,7 +134,7 @@ int pe2_hal_get_uisoc(struct chg_alg_device *alg)
 
 	if (bat_psy == NULL || IS_ERR(bat_psy)) {
 		pr_notice("%s retry to get pe2->bat_psy\n", __func__);
-		bat_psy = devm_power_supply_get_by_phandle(&pe2->pdev->dev, "gauge");
+		bat_psy = power_supply_get_by_name("battery");
 		pe2->bat_psy = bat_psy;
 	}
 

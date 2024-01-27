@@ -164,7 +164,7 @@ static int _pd_is_algo_ready(struct chg_alg_device *alg)
 		ret_value = ALG_INIT_FAIL;
 		break;
 	case PD_HW_READY:
-		ret_value = pd_hal_is_pd_adapter_ready(alg);
+		ret_value = pd_hal_is_adapter_ready(alg);
 		if (ret_value == ALG_READY) {
 			uisoc = pd_hal_get_uisoc(alg);
 			if (pd->input_current_limit1 != -1 ||
@@ -207,7 +207,7 @@ void __mtk_pdc_init_table(struct chg_alg_device *alg)
 	pd->cap.nr = 0;
 	pd->cap.selected_cap_idx = -1;
 
-	if (pd_hal_is_pd_adapter_ready(alg) == ALG_READY)
+	if (pd_hal_is_adapter_ready(alg) == ALG_READY)
 		pd_hal_get_adapter_cap(alg, &pd->cap);
 	else
 		pd_err("mtk_is_pdc_ready is fail\n");
@@ -937,7 +937,7 @@ static int _pd_start_algo(struct chg_alg_device *alg)
 			ret_value = ALG_INIT_FAIL;
 			break;
 		case PD_HW_READY:
-			ret_value = pd_hal_is_pd_adapter_ready(alg);
+			ret_value = pd_hal_is_adapter_ready(alg);
 			if (ret_value == ALG_TA_NOT_SUPPORT)
 				pd->state = PD_TA_NOT_SUPPORT;
 			else if (ret_value == ALG_READY) {

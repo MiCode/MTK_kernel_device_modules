@@ -89,6 +89,27 @@ config CHARGER_RT9759
 	  for Mediatek Pump Express 5.0.
 	  It depends on config MTK_CHARGER
 
+config CURRENT_SELECTOR_MAX17332
+        tristate "Charger Driver for Richtek MAX17332 Charger IC"
+        default n
+        depends on MTK_CHARGER
+        help
+          Say Yes to enable Maxim  driver.
+	  It is mainly used as charger
+          for current selector.
+          It depends on config MTK_CHARGER
+
+config CURRENT_SELECTOR_MTK_2P_CHARGER
+    tristate "MTK_2P_CHARGER driver"
+	default n
+        depends on MTK_CHARGER
+        help
+	  If you say yes here you will get support for the MTK_2P_CHARGER.
+	  It is mainly used as charger
+	  for current selector.
+	  This driver can give support for MTK_2P_CHARGER Interface.
+
+
 config CHARGER_MT6985_ALPHA_SUPPORT
 	tristate "Specify Alpha Charger Platform is mt6985"
 	help
@@ -182,6 +203,7 @@ config CHARGER_MT6375
 	  The device is compliant with the USB Battery Charging Specification
 	  Revision 1.2.
 
+
 config CHARGER_MT6379
 	tristate "MT6379 charger driver"
 	depends on MFD_MT6379_SPMI
@@ -196,8 +218,8 @@ config GAUGE_MT6375
 	tristate "MT6375 fuel gauge driver"
 	depends on MFD_MT6375
 	help
-	  Say Y to enable support for the MT6375 gauge.
-	  This adds support for battery fuel gauge in Mediatek MT6375 PMIC.
+	  Say Y to enable support for the MT6375/MT6379 gauge.
+	  This adds support for battery fuel gauge in Mediatek MT6375/MT6379 PMIC.
 	  The fuelgauge calculates and determines the battery state of charge
 	  according to battery open circuit voltage.
 

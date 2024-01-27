@@ -46,6 +46,7 @@ struct pe50_hal {
 	const char **support_ta;
 	int support_ta_cnt;
 	struct power_supply *bat_psy;
+	struct power_supply *bat_manager_psy;
 };
 
 static inline int to_chgtyp(enum chg_idx idx)
@@ -418,20 +419,24 @@ int pe50_hal_reset_vbusovp_alarm(struct chg_alg_device *alg,
 static int pe50_get_tbat(struct pe50_hal *hal)
 {
 	int ret = 27;
-	union power_supply_propval val = {0,};
+	union power_supply_propval prop;
+	struct power_supply *bat_manager_psy = NULL;
 
-	if (IS_ERR_OR_NULL(hal->bat_psy))
-		goto out;
-
-	ret = power_supply_get_property(hal->bat_psy, POWER_SUPPLY_PROP_TEMP,
-					&val);
-	if (ret < 0) {
-		PE50_ERR("get tbat fail(%d)\n", ret);
-		ret = 27;
-		goto out;
+	bat_manager_psy = hal->bat_manager_psy;
+	if (IS_ERR_OR_NULL(bat_manager_psy)) {
+		pr_notice("%s retry to get pe5->bat_manager_psy\n", __func__);
+		bat_manager_psy = power_supply_get_by_name("battery");
+		hal->bat_manager_psy = bat_manager_psy;
 	}
-	ret = val.intval / 10;
-out:
+
+	if (IS_ERR_OR_NULL(bat_manager_psy)) {
+		pr_notice("%s Couldn't get bat_manager_psy\n", __func__);
+		ret = 27;
+	} else {
+		ret = power_supply_get_property(bat_manager_psy,
+			POWER_SUPPLY_PROP_TEMP, &prop);
+		ret = prop.intval / 10;
+	}
 	PE50_DBG("%d\n", ret);
 	return ret;
 }
@@ -508,11 +513,12 @@ out:
 	return ret;
 }
 
-int pe50_hal_is_pd_adapter_ready(struct chg_alg_device *alg)
+int pe50_hal_is_adapter_ready(struct chg_alg_device *alg)
 {
 	struct pe50_hal *hal;
-	int type = 0;
-	int i;
+	struct power_supply *chg_psy = NULL;
+	struct mtk_charger *info = NULL;
+
 
 	if (alg == NULL) {
 		pr_notice("%s: alg is null\n", __func__);
@@ -520,22 +526,19 @@ int pe50_hal_is_pd_adapter_ready(struct chg_alg_device *alg)
 	}
 
 	hal = chg_alg_dev_get_drv_hal_data(alg);
-	for (i = 0; i < hal->support_ta_cnt; i++) {
-		if (!hal->adapters[i])
-			continue;
-		type = adapter_dev_get_property(hal->adapters[i], PD_TYPE);
-		if (type < 0)
-			continue;
+	if (chg_psy == NULL || IS_ERR(chg_psy))
+		pr_notice("%s Couldn't get chg_psy\n", __func__);
+	else {
+		info = (struct mtk_charger *)power_supply_get_drvdata(chg_psy);
+		if (info->select_adapter) {
+			pr_notice("%s ta_cap:%d\n", __func__, info->ta_capability);
+			hal->adapter = info->select_adapter;
+			if (info->ta_capability == APDO_TA)
+				return ALG_READY;
+			else
+				return ALG_TA_NOT_SUPPORT;
+		}
 	}
-
-	pr_notice("%s type:%d\n", __func__, type);
-
-	if (type == MTK_PD_CONNECT_PE_READY_SNK_APDO)
-		return ALG_READY;
-	else if (type == MTK_PD_CONNECT_TYPEC_ONLY_SNK ||
-			 type == MTK_PD_CONNECT_PE_READY_SNK ||
-			 type == MTK_PD_CONNECT_PE_READY_SNK_PD30)
-		return ALG_TA_NOT_SUPPORT;
 	return ALG_TA_CHECKING;
 }
 

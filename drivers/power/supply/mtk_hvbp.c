@@ -3434,7 +3434,7 @@ static int hvbp_is_algo_ready(struct chg_alg_device *alg)
 	}
 
 	if (!hvbp_is_ta_rdy(info)) {
-		ret = hvbp_hal_is_pd_adapter_ready(alg);
+		ret = hvbp_hal_is_adapter_ready(alg);
 		if (!data->ta_ready)
 			ret = ALG_TA_NOT_SUPPORT;
 		goto out;

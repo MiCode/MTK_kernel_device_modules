@@ -85,8 +85,10 @@ static bool is_typec_adapter(struct mtk_charger *info)
 {
 	int rp;
 
-	rp = adapter_dev_get_property(info->pd_adapter, TYPEC_RP_LEVEL);
-	if (info->pd_type == MTK_PD_CONNECT_TYPEC_ONLY_SNK &&
+	if (info->select_adapter_idx != PD || !info->select_adapter)
+		return false;
+	rp = adapter_dev_get_property(info->select_adapter, TYPEC_RP_LEVEL);
+	if (info->ta_status[info->select_adapter_idx] != TA_HARD_RESET &&
 			rp != 500 &&
 			info->chr_type != POWER_SUPPLY_TYPE_USB &&
 			info->chr_type != POWER_SUPPLY_TYPE_USB_CDP)
@@ -112,8 +114,9 @@ static bool support_fast_charging(struct mtk_charger *info)
 
 		chg_alg_set_current_limit(alg, &info->setting);
 		state = chg_alg_is_algo_ready(alg);
-		chr_debug("%s %s ret:%s\n", __func__, dev_name(&alg->dev),
-			chg_alg_state_to_str(state));
+		chr_debug("%s %s ret:%s, prtocol_state:%d\n",
+			__func__, dev_name(&alg->dev),
+			chg_alg_state_to_str(state), info->protocol_state);
 
 		if (state == ALG_READY || state == ALG_RUNNING) {
 			ret = true;
@@ -226,11 +229,12 @@ static bool select_charging_current_limit(struct mtk_charger *info,
 					info->data.max_dmivr_charger_current;
 		}
 		if (is_typec_adapter(info)) {
-			if (adapter_dev_get_property(info->pd_adapter, TYPEC_RP_LEVEL)
+			if (adapter_dev_get_property(info->adapter_dev[PD]
+			, TYPEC_RP_LEVEL)
 				== 3000) {
 				pdata->input_current_limit = 3000000;
 				pdata->charging_current_limit = 3000000;
-			} else if (adapter_dev_get_property(info->pd_adapter,
+			} else if (adapter_dev_get_property(info->adapter_dev[PD],
 				TYPEC_RP_LEVEL) == 1500) {
 				pdata->input_current_limit = 1500000;
 				pdata->charging_current_limit = 2000000;
@@ -241,8 +245,8 @@ static bool select_charging_current_limit(struct mtk_charger *info,
 			}
 
 			chr_err("type-C:%d current:%d\n",
-				info->pd_type,
-				adapter_dev_get_property(info->pd_adapter,
+				info->ta_status[PD],
+				adapter_dev_get_property(info->adapter_dev[PD],
 					TYPEC_RP_LEVEL));
 		}
 	}
@@ -352,7 +356,7 @@ done:
 		info->sc.pre_ibat,
 		info->sc.sc_ibat,
 		info->sc.solution,
-		info->chr_type, info->pd_type,
+		info->chr_type, info->ta_status[info->select_adapter_idx],
 		info->usb_unlimited,
 		IS_ENABLED(CONFIG_USBIF_COMPLIANCE), info->usb_state,
 		pdata->input_current_limit_by_aicl, info->atm_enabled,
@@ -368,25 +372,94 @@ static int do_algorithm(struct mtk_charger *info)
 	struct chg_alg_notify notify;
 	bool is_basic = true;
 	bool chg_done = false;
+	bool cs_chg_done = false;
 	int i;
 	int ret, ret2, ret3;
 	int val = 0;
 	int lst_rnd_alg_idx = info->lst_rnd_alg_idx;
+	int vbat = 0, vbat_cs = 0, ibat_cs = 0;
+	int cs_ir_cmp = 0;
 
 	pdata = &info->chg_data[CHG1_SETTING];
 	charger_dev_is_charging_done(info->chg1_dev, &chg_done);
 	is_basic = select_charging_current_limit(info, &info->setting);
 
+	if (info->cschg1_dev && info->cs_with_gauge
+		&& !info->cs_hw_disable) {
+		cs_dev_is_charging_done(info->cschg1_dev, &cs_chg_done);
+		if (info->is_cs_chg_done != cs_chg_done) {
+			if (cs_chg_done) {
+				cs_dev_do_event(info->cschg1_dev, EVENT_FULL, 0);
+				chr_err("%s cs side battery full\n", __func__);
+			} else {
+				cs_dev_do_event(info->cschg1_dev, EVENT_RECHARGE, 0);
+				chr_err("%s cs battery recharge\n", __func__);
+			}
+		}
 	if (info->is_chg_done != chg_done) {
 		if (chg_done) {
 			charger_dev_do_event(info->chg1_dev, EVENT_FULL, 0);
 			info->polling_interval = CHARGING_FULL_INTERVAL;
+				chr_err("%s main side battery full\n", __func__);
+			} else {
+				charger_dev_do_event(info->chg1_dev, EVENT_RECHARGE, 0);
+				info->polling_interval = CHARGING_INTERVAL;
+				chr_err("%s main side battery recharge\n", __func__);
+			}
+		}
+		if (cs_chg_done && chg_done) {
+			info->dual_chg_stat = BOTH_EOC;
+			chr_err("%s: close curr selc\n", __func__);
+			charger_cs_status_control(info->cschg1_dev, 0);
+			info->cs_hw_disable = true;
+			chr_err("%s: dual_chg_stat = %d\n", __func__, info->dual_chg_stat);
+		} else {
+			info->dual_chg_stat = STILL_CHG;
+			chr_err("%s: dual_chg_stat = %d\n", __func__, info->dual_chg_stat);
+		}
+	} else if (info->is_chg_done != chg_done) {
+		if (chg_done) {
+			// add check cs voltage
+			charger_dev_do_event(info->chg1_dev, EVENT_FULL, 0);
+			info->polling_interval = CHARGING_FULL_INTERVAL;
+			charger_cs_enable_lowpower(info->cschg1_dev, 1);
 			chr_err("%s battery full\n", __func__);
 		} else {
 			charger_dev_do_event(info->chg1_dev, EVENT_RECHARGE, 0);
 			info->polling_interval = CHARGING_INTERVAL;
+			charger_cs_enable_lowpower(info->cschg1_dev, 0);
 			chr_err("%s battery recharge\n", __func__);
 		}
+	}
+
+	/* CS */
+	if (info->cschg1_dev && !info->cs_hw_disable) {
+		ret = charger_dev_set_constant_voltage(info->cschg1_dev, V_CS_BATTERY_CV);
+		if (ret < 0)
+			chr_err("%s: failed to set cs1 cv to: %d mV.\n", __func__, V_CS_BATTERY_CV);
+		/* get battery info */
+		vbat = get_battery_voltage(info);
+		get_cs_side_battery_voltage(info, &vbat_cs);
+		ret = get_cs_side_battery_current(info, &ibat_cs);
+
+		if (ret == FROM_CS_ADC) // sc adc
+			cs_ir_cmp = 25 * ibat_cs;	// 25mohm is sc side's measurement resistance.
+		else if (ret == FROM_CHG_IC) // chg ic
+			cs_ir_cmp = 0 * ibat_cs;
+		if (vbat_cs - vbat > V_BATT_EXTRA_DIFF) {
+			if (vbat_cs >= V_CS_BATTERY_CV + cs_ir_cmp) {
+				if (ibat_cs > CS_CC_MIN && info->cs_cc_now - 100 > CS_CC_MIN) {
+					info->cs_cc_now -= 100;
+					charger_dev_set_charging_current(info->cschg1_dev, info->cs_cc_now);
+				}
+			}
+			chr_err("cs_ir_cmp:%d, cs_cc_now:%d\n", cs_ir_cmp, info->cs_cc_now);
+		} else
+			info->cs_cc_now = AC_CS_NORMAL_CC;
+		chr_err("cs_ir_cmp:%d, cs_cc_now:%d\n", cs_ir_cmp, info->cs_cc_now);
+		charger_dev_dump_registers(info->cschg1_dev);
+		// charger_cs_parallel_mode_setting(info->cschg1_dev, info->cs_para_mode);
+		ret = cs_dev_check_cs_temp(info->cschg1_dev);
 	}
 
 	chr_err("%s is_basic:%d\n", __func__, is_basic);
@@ -433,9 +506,9 @@ static int do_algorithm(struct mtk_charger *info)
 			chg_alg_set_current_limit(alg, &info->setting);
 			ret = chg_alg_is_algo_ready(alg);
 
-			chr_err("%s %s ret:%s\n", __func__,
+			chr_err("%s %s ret:%s, %d\n", __func__,
 				dev_name(&alg->dev),
-				chg_alg_state_to_str(ret));
+				chg_alg_state_to_str(ret), ret);
 
 			if (ret == ALG_INIT_FAIL || ret == ALG_TA_NOT_SUPPORT) {
 				/* try next algorithm */
@@ -465,6 +538,12 @@ static int do_algorithm(struct mtk_charger *info)
 						chg_alg_stop_algo(info->alg[lst_rnd_alg_idx]);
 				}
 				chg_alg_start_algo(alg);
+				chr_err("%s: %d, %d.\n", __func__, ret, info->cs_hw_disable);
+				if (ret == ALG_RUNNING && info->cschg1_dev && !info->cs_hw_disable) {
+					ret = charger_dev_set_charging_current(info->cschg1_dev, info->cs_cc_now);
+					if (ret < 0)
+						chr_err("%s: failed to set cs1 cc to: 1500mA.\n", __func__);
+				}
 				info->lst_rnd_alg_idx = i;
 				break;
 			} else {
@@ -500,6 +579,12 @@ static int do_algorithm(struct mtk_charger *info)
 			pdata->charging_current_limit);
 		info->lst_rnd_alg_idx = -1;
 
+		/* CS */
+		if (info->cschg1_dev && !info->cs_hw_disable) {
+			ret = charger_dev_set_charging_current(info->cschg1_dev, info->cs_cc_now);
+			if (ret < 0)
+				chr_err("%s: failed to set cs1 cc to: %d mA.\n", __func__, info->cs_cc_now);
+		}
 		chr_debug("%s:old_cv=%d,cv=%d, vbat_mon_en=%d\n",
 			__func__,
 			info->old_cv,
@@ -590,6 +675,7 @@ static int charger_dev_event(struct notifier_block *nb, unsigned long event,
 	struct mtk_charger *info =
 			container_of(nb, struct mtk_charger, chg1_nb);
 	struct chgdev_notify *data = v;
+	int ret = 0, vbat_min = 0, vbat_max = 0, vbat_cs = 0;
 	int i;
 
 	chr_err("%s %lu\n", __func__, event);
@@ -606,6 +692,23 @@ static int charger_dev_event(struct notifier_block *nb, unsigned long event,
 
 		break;
 	case CHARGER_DEV_NOTIFY_RECHG:
+		if (info->cschg1_dev && info->dual_chg_stat == BOTH_EOC) {	// mt6375_2p version not in mt6379_2p
+			ret = charger_dev_get_adc(info->chg1_dev,
+				ADC_CHANNEL_VBAT, &vbat_min, &vbat_max);
+			if (ret < 0)
+				chr_err("%s: failed to get vbat, recharge mode\n", __func__);
+			else {
+				vbat_min = vbat_min / 1000;
+				ret = charger_dev_get_vbat(info->cschg1_dev, &vbat_cs);
+				if ( abs( vbat_min - vbat_cs ) <= V_BATT_EXTRA_DIFF
+				&& info->cs_hw_disable) {
+					chr_err("%s: opening cs\n", __func__);
+					charger_cs_status_control(info->cschg1_dev, 1);
+					info->cs_hw_disable = false;
+					info->dual_chg_stat = STILL_CHG;
+				}
+			}
+		}
 		pr_info("%s: recharge\n", __func__);
 		break;
 	case CHARGER_DEV_NOTIFY_SAFETY_TIMEOUT:
