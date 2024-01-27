@@ -5029,12 +5029,12 @@ static int mtk_disp_ovl_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	mtk_ddp_comp_pm_enable(&priv->ddp_comp);
+	//mtk_ddp_comp_pm_enable(&priv->ddp_comp);
 
 	ret = component_add(dev, &mtk_disp_ovl_component_ops);
 	if (ret != 0) {
 		dev_err(dev, "Failed to add component: %d\n", ret);
-		mtk_ddp_comp_pm_disable(&priv->ddp_comp);
+		//mtk_ddp_comp_pm_disable(&priv->ddp_comp);
 	}
 
 	DDPINFO("%s-\n", __func__);
@@ -5043,10 +5043,10 @@ static int mtk_disp_ovl_probe(struct platform_device *pdev)
 
 static int mtk_disp_ovl_remove(struct platform_device *pdev)
 {
-	struct mtk_disp_ovl *priv = dev_get_drvdata(&pdev->dev);
+	//struct mtk_disp_ovl *priv = dev_get_drvdata(&pdev->dev);
 
 	component_del(&pdev->dev, &mtk_disp_ovl_component_ops);
-	mtk_ddp_comp_pm_disable(&priv->ddp_comp);
+	//mtk_ddp_comp_pm_disable(&priv->ddp_comp);
 
 	return 0;
 }
