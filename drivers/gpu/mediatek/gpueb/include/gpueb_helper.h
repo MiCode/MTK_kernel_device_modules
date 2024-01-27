@@ -6,14 +6,19 @@
 #ifndef __GPUEB_HELPER_H__
 #define __GPUEB_HELPER_H__
 
-#define GPUEB_TAG   "[GPU/EB] "
-#define gpueb_pr_info(fmt, args...) \
-	pr_info(GPUEB_TAG"@%s: "fmt"\n", __func__, ##args)
-#define gpueb_pr_debug(fmt, args...) \
-	pr_info(GPUEB_TAG"@%s: "fmt"\n", __func__, ##args)
-#define gpueb_pr_logbuf(buf, len, size, fmt, args...) \
+#define GPUEB_TAG   "[GPU/EB]"
+#define GHPM_TAG    "[GPU/GHPM]"
+
+#define gpueb_pr_err(tag, fmt, args...) \
+	pr_err(tag"[%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
+#define gpueb_pr_info(tag, fmt, args...) \
+	pr_info(tag"[%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
+#define gpueb_pr_debug(tag, fmt, args...) \
+	pr_info(tag"[%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
+
+#define gpueb_pr_logbuf(tag, buf, len, size, fmt, args...) \
 	{ \
-		pr_info(GPUEB_TAG"@%s: "fmt"\n", __func__, ##args); \
+		pr_info(tag"@%s: "fmt"\n", __func__, ##args); \
 		if (buf && len) \
 			*len += snprintf(buf + *len, size - *len, fmt"\n", ##args); \
 	}

@@ -7,11 +7,11 @@
 #define __GPUEB_IPI_H__
 
 // Common implementation
-#define IPI_TIMEOUT_MS     10000U
+#define IPI_TIMEOUT_MS         10000U
 /* GPUEB side set CFG_AP_EB_IPI_TEST=yes to do IPI test */
-#define IPI_TEST           0
+#define IPI_TEST               0
 
-#define GPUEB_MBOXDEV_NAME "gpueb_mboxdev"
+#define GPUEB_MBOXDEV_NAME     "gpueb_mboxdev"
 
 extern struct mtk_mbox_device   gpueb_mboxdev;
 extern struct mtk_ipi_device    gpueb_ipidev;
@@ -27,6 +27,7 @@ int gpueb_get_send_PIN_offset_by_name(char *send_PIN_name);
 int gpueb_get_send_PIN_ID_by_name(char *send_PIN_name);
 int gpueb_get_recv_PIN_ID_by_name(char *recv_PIN_name);
 void *get_gpueb_ipidev(void);
+int get_gpueb_slot_size(void);
 
 #if IPI_TEST
 int gpueb_ipi_test_init(void);

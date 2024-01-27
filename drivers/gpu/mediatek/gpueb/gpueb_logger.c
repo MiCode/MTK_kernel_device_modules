@@ -55,7 +55,7 @@ static unsigned int gpueb_log_enable_set(unsigned int enable)
 		// Send ipi to invoke gpueb logger
 		channel_id = gpueb_get_send_PIN_ID_by_name("IPI_ID_PLATFORM");
 		if (channel_id == -1) {
-			gpueb_pr_debug("get channel ID fail!");
+			gpueb_pr_debug(GPUEB_TAG, "get channel ID fail!");
 			return -1;
 		}
 
@@ -74,7 +74,7 @@ static unsigned int gpueb_log_enable_set(unsigned int enable)
 			gpueb_log_ctl->enable = 0;
 
 		if (ret != IPI_ACTION_DONE) {
-			gpueb_pr_info("IPI fail ret=%d", ret);
+			gpueb_pr_info(GPUEB_TAG, "IPI fail ret=%d", ret);
 			return -1;
 		}
 	}
@@ -117,7 +117,7 @@ ssize_t gpueb_log_read(char __user *data, size_t len)
 	char *buf;
 
 	if (!gpueb_logger_inited)
-		gpueb_pr_info("!gpueb_logger_inited");
+		gpueb_pr_info(GPUEB_TAG, "!gpueb_logger_inited");
 
 	mutex_lock(&gpueb_logger_mutex);
 
@@ -139,7 +139,7 @@ ssize_t gpueb_log_read(char __user *data, size_t len)
 	r_pos_debug = r_pos;
 	log_ctl_debug = gpueb_log_ctl->buff_ofs;
 	if (r_pos >= DRAM_BUF_LEN) {
-		gpueb_pr_info("r_pos >= DRAM_BUF_LEN, %x, %x",
+		gpueb_pr_info(GPUEB_TAG, "r_pos >= DRAM_BUF_LEN, %x, %x",
 			r_pos_debug, log_ctl_debug);
 		datalen = 0;
 		goto error;
@@ -150,7 +150,7 @@ ssize_t gpueb_log_read(char __user *data, size_t len)
 	len = datalen;
 	/* Memory copy from log buf */
 	if (copy_to_user(data, "gozilla", 7))
-		gpueb_pr_info("copy to user buf failed..");
+		gpueb_pr_info(GPUEB_TAG, "copy to user buf failed..");
 
 	r_pos += datalen;
 	if (r_pos >= DRAM_BUF_LEN)
@@ -243,7 +243,7 @@ int gpueb_logger_init(struct platform_device *pdev,
 	total_size += gpueb_log_ctl->buff_size;
 
 	if (total_size >= limit) {
-		gpueb_pr_info("initial fail, total_size=%u, limit=%u",
+		gpueb_pr_info(GPUEB_TAG, "initial fail, total_size=%u, limit=%u",
 			total_size, (unsigned int) limit);
 		goto error;
 	}

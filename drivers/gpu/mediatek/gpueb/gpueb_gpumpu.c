@@ -42,7 +42,7 @@ int gpueb_gpumpu_init(struct platform_device *pdev)
 	/* register IPI channel */
 	channel_id = gpueb_get_send_PIN_ID_by_name("IPI_ID_GPUMPU");
 	if (channel_id == -1) {
-		gpueb_pr_info("get channel ID fail!");
+		gpueb_pr_info(GPUEB_TAG, "get channel ID fail!");
 		return -1;
 	}
 	ret = mtk_ipi_register(&gpueb_ipidev,
@@ -51,7 +51,7 @@ int gpueb_gpumpu_init(struct platform_device *pdev)
 			NULL,
 			(void *)&gpumpu_ack_data);
 	if (ret != IPI_ACTION_DONE) {
-		gpueb_pr_info("ipi register fail!");
+		gpueb_pr_info(GPUEB_TAG, "ipi register fail!");
 		return ret;
 	}
 
@@ -60,7 +60,7 @@ int gpueb_gpumpu_init(struct platform_device *pdev)
 	gpumpu_send_data.u.mpu_table.phys_base =
 			(u64)gpueb_get_reserve_mem_phys_by_name("MEM_ID_MPU");
 	gpumpu_send_data.u.mpu_table.size = (u64)gpueb_get_reserve_mem_size_by_name("MEM_ID_MPU");
-	gpueb_pr_debug("cmd=%u, phys_base=%#llx, size=%#llx, sizeof(struct gpumpu_ipi_send_data)=%lu",
+	gpueb_pr_debug(GPUEB_TAG, "cmd=%u, phys_base=%#llx, size=%#llx, sizeof(struct gpumpu_ipi_send_data)=%lu",
 			gpumpu_send_data.cmd,
 			gpumpu_send_data.u.mpu_table.phys_base,
 			gpumpu_send_data.u.mpu_table.size,
@@ -75,7 +75,7 @@ int gpueb_gpumpu_init(struct platform_device *pdev)
 		GPUMPU_IPI_SEND_DATA_LEN,
 		IPI_TIMEOUT_MS);
 	if (ret != IPI_ACTION_DONE) {
-		gpueb_pr_info("IPI fail ret=%d", ret);
+		gpueb_pr_info(GPUEB_TAG, "IPI fail ret=%d", ret);
 		return ret;
 	}
 
