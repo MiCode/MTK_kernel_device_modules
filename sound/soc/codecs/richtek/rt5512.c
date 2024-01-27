@@ -1084,8 +1084,7 @@ static inline int rt5512_component_register(struct rt5512_chip *chip)
 					       ARRAY_SIZE(rt5512_codec_dai));
 }
 
-int rt5512_i2c_probe(struct i2c_client *client,
-			    const struct i2c_device_id *id)
+int rt5512_i2c_probe(struct i2c_client *client)
 {
 	struct rt5512_chip *chip = NULL;
 	int ret = 0;
