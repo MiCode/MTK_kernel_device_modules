@@ -28,6 +28,8 @@
 			<&cksys_clk CLK_CK_I2C_EAST_SEL>,
 			<&cksys_clk CLK_CK_I2C_WEST_SEL>,
 			<&cksys_clk CLK_CK_I2C_NORTH_SEL>,
+			<&cksys_clk CLK_CK_AES_UFSFDE_SEL>,
+			<&cksys_clk CLK_CK_SEL>,
 			<&cksys_clk CLK_CK_AUD_1_SEL>,
 			<&cksys_clk CLK_CK_AUD_2_SEL>,
 			<&cksys_clk CLK_CK_ADSP_SEL>,
@@ -931,6 +933,19 @@
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW>,
 			<&camsys_mraw_clk CLK_CAM_MR_PDA0_PDA>,
 			<&camsys_mraw_clk CLK_CAM_MR_PDA1_PDA>;
+	};
+	bring-up-ufs@21 {
+		compatible = "mediatek,clk-bring-up";
+		reg = <0x21>;
+		clocks =
+			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_TX_SYM_UFS>,
+			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM0_UFS>,
+			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM1_UFS>,
+			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SYS_UFS>,
+			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SAP_UFS>,
+			<&ufscfg_ao_clk CLK_UFSAO_PHY_SAP_UFS>,
+			<&ufscfg_ao_clk CLK_UFSAO_UFSHCI_UFS_UFS>,
+			<&ufscfg_ao_clk CLK_UFSAO_UFSHCI_AES_UFS>;
 	};
 	bring-up-pcie@22 {
 		compatible = "mediatek,clk-bring-up";
