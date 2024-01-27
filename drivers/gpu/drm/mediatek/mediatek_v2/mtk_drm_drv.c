@@ -7833,11 +7833,8 @@ static struct drm_driver mtk_drm_driver = {
 
 	.dumb_create = mtk_drm_gem_dumb_create,
 	.dumb_map_offset = mtk_drm_gem_dumb_map_offset,
-	.prime_handle_to_fd = drm_gem_prime_handle_to_fd,
-	.prime_fd_to_handle = drm_gem_prime_fd_to_handle,
 	.gem_prime_import = mtk_gem_prime_import,
 	.gem_prime_import_sg_table = mtk_gem_prime_import_sg_table,
-	.gem_prime_mmap = mtk_drm_gem_mmap_buf,
 	.ioctls = mtk_ioctls,
 	.num_ioctls = ARRAY_SIZE(mtk_ioctls),
 	.fops = &mtk_drm_fops,
