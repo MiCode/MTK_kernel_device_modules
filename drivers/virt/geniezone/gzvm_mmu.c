@@ -133,7 +133,7 @@ static int pin_one_page(unsigned long hva, struct page **page)
 	unsigned int flags = FOLL_HWPOISON | FOLL_LONGTERM | FOLL_WRITE;
 
 	mmap_read_lock(mm);
-	pin_user_pages(hva, 1, flags, page, NULL);
+	pin_user_pages(hva, 1, flags, page);
 	mmap_read_unlock(mm);
 
 	return 0;
