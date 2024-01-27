@@ -455,9 +455,9 @@ void clear_hash(uint32_t session_id, uint32_t hash_id)
 		hash_pool[session_id]->rp_num[hash_id] = 0;
 		hash_pool[session_id]->hash_list[hash_id] = 0;
 
-		dma_buf_unmap_attachment(hash_pool[session_id]->attach[hash_id],
-								hash_pool[session_id]->sgt[hash_id],
-								DMA_BIDIRECTIONAL);
+		dma_buf_unmap_attachment_unlocked(hash_pool[session_id]->attach[hash_id],
+						hash_pool[session_id]->sgt[hash_id],
+						DMA_BIDIRECTIONAL);
 
 		dma_buf_detach(hash_pool[session_id]->hash_dma_buf[hash_id],
 						hash_pool[session_id]->attach[hash_id]);
@@ -594,8 +594,8 @@ int update_hash_pool(void *session,
 	}
 
 	hash_pool[session_id]->sgt[hash_id] =
-		dma_buf_map_attachment(hash_pool[session_id]->attach[hash_id],
-		DMA_BIDIRECTIONAL);
+		dma_buf_map_attachment_unlocked(hash_pool[session_id]->attach[hash_id],
+						DMA_BIDIRECTIONAL);
 
 	if (IS_ERR(hash_pool[session_id]->sgt[hash_id])) {
 		pr_info("[MVPU][Sec] map failed, detach and return\n");
@@ -616,7 +616,8 @@ int update_hash_pool(void *session,
 	}
 
 	// get *kva
-	ret_dma_buf_vmap = dma_buf_vmap(hash_pool[session_id]->hash_dma_buf[hash_id], &sys_map);
+	ret_dma_buf_vmap = dma_buf_vmap_unlocked(hash_pool[session_id]->hash_dma_buf[hash_id],
+						&sys_map);
 	p_buf = sys_map.vaddr;
 	//hash_pool[session_id]->hash_base_kva[hash_id] = (uint64_t *)p_buf;
 
@@ -749,7 +750,7 @@ int update_hash_pool(void *session,
 	dma_buf_end_cpu_access(hash_pool[session_id]->hash_dma_buf[hash_id], DMA_TO_DEVICE);
 
 	if (p_buf)
-		dma_buf_vunmap(hash_pool[session_id]->hash_dma_buf[hash_id], p_buf);
+		dma_buf_vunmap_unlocked(hash_pool[session_id]->hash_dma_buf[hash_id], p_buf);
 
 	mdw_trace_end();
 	return 0;
@@ -1135,7 +1136,8 @@ int replace_mem(uint32_t session_id,
 	if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG)
 		pr_info("[MVPU][Sec] %s\n", __func__);
 
-	ret_dma_buf_vmap = dma_buf_vmap(hash_pool[session_id]->hash_dma_buf[hash_id], &sys_map);
+	ret_dma_buf_vmap = dma_buf_vmap_unlocked(hash_pool[session_id]->hash_dma_buf[hash_id],
+						&sys_map);
 	buf_ptr_base = sys_map.vaddr;
 
 	if ((ret_dma_buf_vmap != 0) || (!buf_ptr_base)) {
@@ -1227,7 +1229,7 @@ int replace_mem(uint32_t session_id,
 	dma_buf_end_cpu_access(hash_pool[session_id]->hash_dma_buf[hash_id], DMA_TO_DEVICE);
 
 	if (buf_ptr_base)
-		dma_buf_vunmap(hash_pool[session_id]->hash_dma_buf[hash_id], buf_ptr_base);
+		dma_buf_vunmap_unlocked(hash_pool[session_id]->hash_dma_buf[hash_id], buf_ptr_base);
 
 	mdw_trace_end();
 	return ret;
@@ -1298,7 +1300,8 @@ int replace_kerarg(void *session,
 	if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG)
 		pr_info("[MVPU][Sec] %s\n", __func__);
 
-	ret_dma_buf_vmap = dma_buf_vmap(hash_pool[session_id]->hash_dma_buf[hash_id], &sys_map);
+	ret_dma_buf_vmap = dma_buf_vmap_unlocked(hash_pool[session_id]->hash_dma_buf[hash_id],
+						&sys_map);
 	pool_ptr_base = sys_map.vaddr;
 
 	if ((ret_dma_buf_vmap != 0) || (!pool_ptr_base)) {
@@ -1387,7 +1390,8 @@ int replace_kerarg(void *session,
 	dma_buf_end_cpu_access(hash_pool[session_id]->hash_dma_buf[hash_id], DMA_TO_DEVICE);
 
 	if (pool_ptr_base)
-		dma_buf_vunmap(hash_pool[session_id]->hash_dma_buf[hash_id], pool_ptr_base);
+		dma_buf_vunmap_unlocked(hash_pool[session_id]->hash_dma_buf[hash_id],
+				pool_ptr_base);
 
 	return ret;
 }
