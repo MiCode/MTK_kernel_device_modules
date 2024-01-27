@@ -16,7 +16,7 @@
 #include <trace/events/sched.h>
 #include <trace/events/task.h>
 #include <trace/hooks/sched.h>
-#include <trace/hooks/hung_task.h>
+//#include <trace/hooks/hung_task.h>
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include "common.h"
@@ -198,8 +198,8 @@ struct set_affinity_pending {
 	struct cpu_stop_work	stop_work;
 	struct migration_arg	arg;
 };
-
-static void mtk_check_d_tasks(void *data, struct task_struct *p,
+//static void mtk_check_d_tasks(void *data, struct task_struct *p,
+void mtk_check_d_tasks(void *data, struct task_struct *p,
 				unsigned long t, bool *need_check)
 {
 	unsigned long pending_stime = 0;
@@ -272,8 +272,8 @@ void mtk_setscheduler_uclamp(void *data, struct task_struct *tsk,
 		trace_sched_set_uclamp(tsk->pid,
 		task_cpu(tsk), task_on_rq_queued(tsk), clamp_id, value);
 }
-
-static void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
+//static void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
+void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
 				      unsigned int new_pelt, int *ret)
 {
 	int pelt_weight = 0, pelt_sum = 0;
@@ -304,7 +304,8 @@ static void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
 	}
 }
 
-static void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
+//static void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
+void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 {
 	struct mtk_em_perf_state *ps = NULL;
 	struct cfs_rq *cfs_rq = cfs_rq_of(se);
@@ -360,7 +361,9 @@ static void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 static void sched_irq_mon_init(void)
 {
-	mtk_register_irq_log_store(__irq_log_store);
+	return;
+	// 8205591: [ALPS08534549] sched: irq too long log | https://gerrit.mediatek.inc/c/quark/kernel-mainline/+/8205591
+	//mtk_register_irq_log_store(__irq_log_store);
 }
 #endif
 
@@ -917,8 +920,8 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register android_rvh_can_migrate_task failed\n");
 
-	ret = register_trace_android_rvh_find_energy_efficient_cpu(
-			mtk_find_energy_efficient_cpu, NULL);
+	//ret = register_trace_android_rvh_find_energy_efficient_cpu(
+	//		mtk_find_energy_efficient_cpu, NULL);
 	if (ret)
 		pr_info("register android_rvh_find_energy_efficient_cpu failed\n");
 
@@ -929,20 +932,20 @@ static int __init mtk_scheduler_init(void)
 		pr_info("register trace_android_rvh_cpu_overutilized failed\n");
 
 
-	ret = register_trace_android_rvh_tick_entry(
-			mtk_tick_entry, NULL);
+	//ret = register_trace_android_rvh_tick_entry(
+	//		mtk_tick_entry, NULL);
 	if (ret)
 		pr_info("register android_rvh_tick_entry failed\n");
 
 
-	ret = register_trace_android_vh_set_wake_flags(
-			mtk_set_wake_flags, NULL);
+	//ret = register_trace_android_vh_set_wake_flags(
+	//		mtk_set_wake_flags, NULL);
 	if (ret)
 		pr_info("register android_vh_set_wake_flags failed\n");
 
 
-	ret = register_trace_android_rvh_update_cpu_capacity(
-			mtk_update_cpu_capacity, NULL);
+	//ret = register_trace_android_rvh_update_cpu_capacity(
+	//		mtk_update_cpu_capacity, NULL);
 	if (ret)
 		pr_info("register android_rvh_update_cpu_capacity failed\n");
 
@@ -950,7 +953,7 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register mtk_pelt_rt_tp hooks failed, returned %d\n", ret);
 
-	ret = register_trace_android_rvh_schedule(mtk_sched_switch, NULL);
+	//ret = register_trace_android_rvh_schedule(mtk_sched_switch, NULL);
 	if (ret)
 		pr_info("register mtk_sched_switch hooks failed, returned %d\n", ret);
 
@@ -983,7 +986,7 @@ static int __init mtk_scheduler_init(void)
 		pr_info("register android_rvh_after_enqueue_task failed, returned %d\n", ret);
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_BIG_TASK_ROTATE)
-	ret = register_trace_android_rvh_new_task_stats(rotat_task_stats, NULL);
+	//ret = register_trace_android_rvh_new_task_stats(rotat_task_stats, NULL);
 	if (ret)
 		pr_info("register android_rvh_new_task_stats failed, returned %d\n", ret);
 
@@ -1000,7 +1003,7 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register find_lowest_rq hooks failed, returned %d\n", ret);
 
-	ret = register_trace_android_vh_sched_pelt_multiplier(mtk_sched_pelt_multiplier, NULL);
+	//ret = register_trace_android_vh_sched_pelt_multiplier(mtk_sched_pelt_multiplier, NULL);
 	if (ret)
 		pr_info("register mtk_sched_pelt_multiplier hooks failed, returned %d\n", ret);
 
@@ -1008,13 +1011,13 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register dump_throttled_rt_tasks hooks failed, returned %d\n", ret);
 
-	ret = register_trace_android_rvh_post_init_entity_util_avg(
-		mtk_post_init_entity_util_avg, NULL);
+	//ret = register_trace_android_rvh_post_init_entity_util_avg(
+	//	mtk_post_init_entity_util_avg, NULL);
 	if (ret)
 		pr_info("register mtk_post_init_entity_util_avg hooks failed, returned %d\n", ret);
 
 #if IS_ENABLED(CONFIG_DETECT_HUNG_TASK)
-	ret = register_trace_android_vh_check_uninterrupt_tasks(mtk_check_d_tasks, NULL);
+	//ret = register_trace_android_vh_check_uninterrupt_tasks(mtk_check_d_tasks, NULL);
 	if (ret)
 		pr_info("register mtk_check_d_tasks hooks failed, returned %d\n", ret);
 #endif

@@ -695,7 +695,8 @@ void init_task_gear_hints(struct task_struct *p)
 	ghts->reverse    = 0;
 }
 
-static void vip_new_tasks(void *unused, struct task_struct *new)
+//static void vip_new_tasks(void *unused, struct task_struct *new)
+void vip_new_tasks(void *unused, struct task_struct *new)
 {
 	init_vip_task_struct(new);
 	init_task_gear_hints(new);
@@ -731,7 +732,7 @@ void register_vip_hooks(void)
 {
 	int ret = 0;
 
-	ret = register_trace_android_rvh_wake_up_new_task(vip_new_tasks, NULL);
+	//ret = register_trace_android_rvh_wake_up_new_task(vip_new_tasks, NULL);
 	if (ret)
 		pr_info("register wake_up_new_task hooks failed, returned %d\n", ret);
 

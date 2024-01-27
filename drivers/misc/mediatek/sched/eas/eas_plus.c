@@ -720,13 +720,13 @@ void check_for_migration(struct task_struct *p)
 
 void hook_scheduler_tick(void *data, struct rq *rq)
 {
-
+	/* need upstream, add vendor data
 	struct root_domain *rd = rq->rd;
 
 	rcu_read_lock();
 	rd->android_vendor_data1[0] = system_has_many_heavy_task();
 	rcu_read_unlock();
-
+	*/
 	if (rq->curr->policy == SCHED_NORMAL)
 		check_for_migration(rq->curr);
 }
@@ -756,7 +756,11 @@ void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 	sugov_data_ptr2 = &per_cpu(rq_data, this_cpu)->sugov_data;
 	if (READ_ONCE(sugov_data_ptr->enq_update_dsu_freq) == true
 			|| READ_ONCE(sugov_data_ptr2->enq_dvfs) == true) {
-		cpufreq_update_util(rq, 0);
+		/* need upstream, EXPORT symbols
+		 * 2542493:ANDROID: android: Export symbols for invoking cpufreq_update_util()
+		 * | https://android-review.googlesource.com/c/kernel/common/+/2542493
+		 * cpufreq_update_util(rq, 0);
+		 */
 		WRITE_ONCE(sugov_data_ptr2->enq_dvfs, false);
 	}
 	WRITE_ONCE(sugov_data_ptr->enq_ing, false);
@@ -800,7 +804,12 @@ unsigned long calc_pwr_eff(int wl_type, int cpu, unsigned long task_util)
 #if IS_ENABLED(CONFIG_MTK_EAS)
 void mtk_pelt_rt_tp(void *data, struct rq *rq)
 {
-	cpufreq_update_util(rq, 0);
+	/* need upstream, EXPORT symbols
+	 * 2542493: ANDROID: android: Export symbols for invoking cpufreq_update_util()
+	 * | https://android-review.googlesource.com/c/kernel/common/+/2542493
+	 * cpufreq_update_util(rq, 0);
+	 */
+	return;
 }
 
 void mtk_sched_switch(void *data, unsigned int sched_mode, struct task_struct *prev,
