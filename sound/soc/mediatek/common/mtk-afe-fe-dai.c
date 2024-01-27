@@ -1214,6 +1214,23 @@ int mtk_memif_set_pbuf_size(struct mtk_base_afe *afe,
 }
 EXPORT_SYMBOL_GPL(mtk_memif_set_pbuf_size);
 
+int mtk_memif_set_min_max_len(struct mtk_base_afe *afe, int id, int min_l, int max_l)
+{
+	const struct mtk_base_memif_data *memif_data = afe->memif[id].data;
+
+	if (memif_data->minlen_mask == 0 || memif_data->maxlen_mask == 0)
+		return 0;
+
+	mtk_regmap_update_bits(afe->regmap, memif_data->minlen_reg,
+			       memif_data->minlen_mask,
+			       min_l, memif_data->minlen_shift);
+	mtk_regmap_update_bits(afe->regmap, memif_data->maxlen_reg,
+			       memif_data->maxlen_mask,
+			       max_l, memif_data->maxlen_shift);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_memif_set_min_max_len);
+
 MODULE_DESCRIPTION("Mediatek simple fe dai operator");
 MODULE_AUTHOR("Garlic Tseng <garlic.tseng@mediatek.com>");
 MODULE_LICENSE("GPL v2");
