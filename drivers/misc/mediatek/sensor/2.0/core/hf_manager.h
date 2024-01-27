@@ -173,5 +173,7 @@ int hf_client_poll_sensor_timeout(struct hf_client *client,
 		MAX_SCHEDULE_TIMEOUT)
 int hf_client_custom_cmd(struct hf_client *client,
 		uint8_t sensor_type, struct custom_cmd *cust_cmd);
+int hf_client_debug(struct hf_client *client, uint8_t sensor_type,
+		uint8_t *debug_buffer, unsigned int debug_len);
 
 #endif
