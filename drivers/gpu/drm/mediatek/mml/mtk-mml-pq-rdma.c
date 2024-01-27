@@ -86,6 +86,7 @@
 #define RDMA_CHKS_SROV			0x348
 #define RDMA_CHKS_VUPI			0x350
 #define RDMA_CHKS_VUPO			0x358
+#define RDMA_DUMMY_REG			0x35c
 #define RDMA_DEBUG_CON			0x380
 #define RDMA_MON_STA_0			0x400
 #define RDMA_MON_STA_1			0x408
@@ -396,6 +397,7 @@ enum rdma_golden_fmt {
 struct rdma_data {
 	u32 tile_width;
 	bool write_sec_reg;
+	bool tile_reset;
 
 	/* threshold golden setting for racing mode */
 	struct rdma_golden golden[GOLDEN_FMT_TOTAL];
@@ -439,6 +441,7 @@ static const struct rdma_data mt6989_pq_rdma_data = {
 
 static const struct rdma_data mt6991_pq_rdma_data = {
 	.tile_width = 516,
+	.tile_reset = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
 			.cnt = ARRAY_SIZE(th_argb_mt6983),
@@ -921,6 +924,18 @@ static s32 rdma_wait(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
+static void rdma_reset(struct mml_comp *comp, struct mml_task *task, struct mml_comp_config *ccfg)
+{
+	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+
+	if (!rdma->data->tile_reset)
+		return;
+
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DUMMY_REG, 0, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DUMMY_REG, 0, U32_MAX);
+}
+
 static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
@@ -980,6 +995,7 @@ static const struct mml_comp_config_ops rdma_cfg_ops = {
 	.frame = rdma_config_frame,
 	.tile = rdma_config_tile,
 	.wait = rdma_wait,
+	.reset = rdma_reset,
 	.post = rdma_post,
 	.reframe = rdma_reconfig_frame,
 };
