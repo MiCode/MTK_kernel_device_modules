@@ -238,8 +238,9 @@ static int mtk_get_pname(char *scontext, char *buf)
 	if (!t2)
 		return 0;
 
-	diff = t2 - t1;
-	if (diff >= AEE_FILTER_LEN)
+	/* Add one for NUL-terminator. */
+	diff = t2 - t1 + 1;
+	if (diff > AEE_FILTER_LEN)
 		return 0;
 
 	strscpy(buf, t1, diff);
