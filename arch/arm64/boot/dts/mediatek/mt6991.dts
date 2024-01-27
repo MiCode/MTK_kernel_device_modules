@@ -2426,6 +2426,13 @@
 						0x0 0xfffff000 0x3 0x00001000>;
 					mtk,smmu-mode = "dma";
 				};
+				mm_iommu_group_1: mm-iommu-group-hfrp {
+					label = "mm_hfrp";
+					#address-cells = <2>;
+					#size-cells = <2>;
+					mtk,iommu-dma-range = <0x1 0x40000000 0x0 0x80000000>;
+					mtk,smmu-mode = "dma";
+				};
 			};
 		};
 
@@ -5244,8 +5251,8 @@
 	mm_smmu_hfrp: mm-smmu-hfrp {
 		//compatible = "mediatek,smmu-share-group";
 		label = "mm_smmu_hfrp";
-		mtk,iommu-dma-range = <0x1 0x40000000 0x0 0x80000000>;
 		iommus = <&mm_smmu 160>;
+		mtk,iommu-group = <&mm_iommu_group_1>;
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_hfrp_protected: mm-smmu-hfrp-protected {
@@ -5291,7 +5298,44 @@
 		dma-mask-bit = <35>;
 		smmu-supply = <&mm_smmu>;
 	};
-
+	mm_smmu_acp_cam: mm-smmu-acp-cam {
+		//compatible = "mediatek,smmu-share-group";
+		label = "mm_smmu_acp_cam";
+		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
+		iommus = <&mm_smmu 219>;
+		mtk,iommu-group = <&mm_iommu_group_0>;
+		dma-mask-bit = <35>;
+		smmu-supply = <&mm_smmu>;
+		dma-coherent;
+	};
+	mm_smmu_acp_disp: mm-smmu-acp-disp {
+		//compatible = "mediatek,smmu-share-group";
+		label = "mm_smmu_acp_disp";
+		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
+		iommus = <&mm_smmu 221>;
+		mtk,iommu-group = <&mm_iommu_group_0>;
+		dma-mask-bit = <35>;
+		smmu-supply = <&mm_smmu>;
+		dma-coherent;
+	};
+	mm_smmu_acp_hfrp: mm-smmu-acp-hfrp {
+		//compatible = "mediatek,smmu-share-group";
+		label = "mm_smmu_acp_hfrp";
+		iommus = <&mm_smmu 222>;
+		mtk,iommu-group = <&mm_iommu_group_1>;
+		smmu-supply = <&mm_smmu>;
+		dma-coherent;
+	};
+	mm_smmu_acp_codec: mm-smmu-acp-codec {
+		//compatible = "mediatek,smmu-share-group";
+		label = "mm_smmu_acp_codec";
+		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
+		iommus = <&mm_smmu 223>;
+		mtk,iommu-group = <&mm_iommu_group_0>;
+		dma-mask-bit = <35>;
+		smmu-supply = <&mm_smmu>;
+		dma-coherent;
+	};
 	apu_top_3: apu-top-3@19020000 {
 		compatible = "mt6991,apu_top_3";
 		reg = <0 0x19020000 0 0x1000>,          // apu_rcx
