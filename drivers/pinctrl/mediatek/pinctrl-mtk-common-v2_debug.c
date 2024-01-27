@@ -19,19 +19,19 @@
 
 #define PULL_DELAY 50 /* in ms */
 #define FUN_3STATE "gpio_get_value_tristate"
-#define MTK_MAX_GPIOS 512
 
 static const char *pinctrl_paris_modname = MTK_PINCTRL_DEV;
 static struct mtk_pinctrl *g_hw;
 
 static void mtk_gpio_find_mtk_pinctrl_dev(void)
 {
-	unsigned int pin = MTK_MAX_GPIOS - 1;
+	unsigned int pin = GPIO_DYNAMIC_BASE;
 	struct gpio_desc *gdesc;
 	struct mtk_pinctrl *hw;
 
 	do {
 		gdesc = gpio_to_desc(pin);
+
 		if (gdesc
 		 && !strncmp(pinctrl_paris_modname,
 				gdesc->gdev->chip->label,
@@ -46,11 +46,11 @@ static void mtk_gpio_find_mtk_pinctrl_dev(void)
 				}
 			}
 		}
+
 		if (gdesc)
-			pin = gdesc->gdev->chip->base - 1;
-		if (pin == 0 || !gdesc)
-			break;
-	} while (1);
+			pin += gdesc->gdev->chip->ngpio;
+
+	} while (gdesc);
 
 	pr_notice("[pinctrl]cannot find %s gpiochip\n", pinctrl_paris_modname);
 }
@@ -502,7 +502,7 @@ static int mtk_gpio_init_procfs(void)
 	struct proc_dir_entry *proc_entry = NULL;
 	struct mtk_pinctrl *hw = NULL;
 	struct gpio_desc *gdesc;
-	unsigned int pin = MTK_MAX_GPIOS - 1;
+	unsigned int pin = GPIO_DYNAMIC_BASE;
 	kuid_t uid;
 	kgid_t gid;
 
@@ -517,10 +517,8 @@ static int mtk_gpio_init_procfs(void)
 
 	do {
 		gdesc = gpio_to_desc(pin);
-		if (!gdesc)
-			break;
 
-		if (!strncmp(pinctrl_paris_modname,
+		if (gdesc && !strncmp(pinctrl_paris_modname,
 				gdesc->gdev->chip->label,
 				strlen(pinctrl_paris_modname))) {
 			hw = gpiochip_get_data(gdesc->gdev->chip);
@@ -546,8 +544,10 @@ static int mtk_gpio_init_procfs(void)
 				proc_set_user(proc_entry, uid, gid);
 		}
 
-		pin = gdesc->gdev->chip->base - 1;
-	} while (pin > 0);
+		if (gdesc)
+			pin += gdesc->gdev->chip->ngpio;
+
+	} while (gdesc);
 
 	return 0;
 }
