@@ -24,14 +24,14 @@ struct log_rb {
 	TZ_VOLATILE(uint32_t alloc);
 	TZ_VOLATILE(uint32_t put);
 	TZ_NON_VOLATILE(uint32_t sz);
-	TZ_VOLATILE(char data[0]);
+	TZ_VOLATILE(char data[]);
 } __packed;
 
 struct boot_log_rb {
 	uint32_t get;
 	uint32_t put;
 	uint32_t sz;
-	char data[0];
+	char data[];
 } __packed;
 
 struct tz_log_state {

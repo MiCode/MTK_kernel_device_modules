@@ -49,7 +49,7 @@ struct ex_fatal_v3 {
 	u32	error_lr;
 	u32	error_address;
 	u32	error_cause;
-	char	filename[0];
+	char	filename[];
 } __packed;
 
 union ex_main_content {

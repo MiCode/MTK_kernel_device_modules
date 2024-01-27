@@ -301,7 +301,7 @@ struct ccci_runtime_feature {
 	struct ccci_feature_support support_info;
 	u8 reserved[2];
 	u32 data_len;
-	u8 data[0];
+	u8 data[];
 };
 
 struct ccci_runtime_boot_info {

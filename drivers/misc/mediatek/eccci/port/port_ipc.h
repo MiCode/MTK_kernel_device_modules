@@ -47,7 +47,7 @@ struct peer_buff {
 	u8 pb_resvered;
 	u16 free_header_space;
 	u16 free_tail_space;
-	u8 data[0];
+	u8 data[];
 } __packed;
 
 struct ipc_ilm {

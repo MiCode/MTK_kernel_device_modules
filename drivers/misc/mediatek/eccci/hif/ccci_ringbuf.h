@@ -21,7 +21,7 @@ struct ccci_ringbuf {
 		unsigned int write;
 		unsigned int length;
 	} rx_control, tx_control;
-	unsigned char buffer[0];
+	unsigned char buffer[];
 };
 #define CCCI_RINGBUF_CTL_LEN (8+sizeof(struct ccci_ringbuf)+8)
 

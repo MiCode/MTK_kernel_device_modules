@@ -24,7 +24,7 @@ struct local_para {
 	unsigned char ref_count;
 	unsigned char _stub; /* MD complier will align ref_count to 16bit */
 	unsigned short msg_len;
-	unsigned char data[0];
+	unsigned char data[];
 } __packed;
 
 struct peer_buff {
@@ -33,7 +33,7 @@ struct peer_buff {
 	unsigned char pb_resvered;
 	unsigned short free_header_space;
 	unsigned short free_tail_space;
-	unsigned char data[0];
+	unsigned char data[];
 } __packed;
 
 struct ipc_ilm {
