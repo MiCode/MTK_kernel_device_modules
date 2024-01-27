@@ -16,6 +16,8 @@
 #include "ufshpb.h"
 #endif
 
+atomic_t btag_init_done;
+
 static bool ufs_mtk_is_data_cmd(struct scsi_cmnd *cmd)
 {
 	char cmd_op = cmd->cmnd[0];
@@ -49,13 +51,15 @@ void ufs_mtk_btag_send_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	struct ufs_hw_queue *hq;
 	__u16 qid = 0;
 
-	if (!atomic_read(&host->skip_btag) && ufs_mtk_is_data_cmd(cmd)) {
-		if (is_mcq_enabled(hba)) {
-			hq = ufs_mtk_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
-			qid = hq->id;
-		}
-		mtk_btag_ufs_send_command(lrbp->task_tag, qid, cmd);
+	if (!atomic_read(&btag_init_done) || atomic_read(&host->skip_btag) ||
+			!ufs_mtk_is_data_cmd(cmd))
+		return;
+
+	if (is_mcq_enabled(hba)) {
+		hq = ufs_mtk_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
+		qid = hq->id;
 	}
+	mtk_btag_ufs_send_command(lrbp->task_tag, qid, cmd);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_btag_send_command);
 
@@ -66,13 +70,15 @@ void ufs_mtk_btag_compl_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	struct ufs_hw_queue *hq;
 	__u16 qid = 0;
 
-	if (!atomic_read(&host->skip_btag) && ufs_mtk_is_data_cmd(cmd)) {
-		if (is_mcq_enabled(hba)) {
-			hq = ufs_mtk_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
-			qid = hq->id;
-		}
-		mtk_btag_ufs_transfer_req_compl(lrbp->task_tag, qid);
+	if (!atomic_read(&btag_init_done) || atomic_read(&host->skip_btag) ||
+			!ufs_mtk_is_data_cmd(cmd))
+		return;
+
+	if (is_mcq_enabled(hba)) {
+		hq = ufs_mtk_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
+		qid = hq->id;
 	}
+	mtk_btag_ufs_transfer_req_compl(lrbp->task_tag, qid);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_btag_compl_command);
 
@@ -87,18 +93,21 @@ static void ufs_mtk_blocktag_add(void *data, async_cookie_t cookie)
 		return;
 	}
 
-	mtk_btag_ufs_init(host, hba->nr_hw_queues, hba->nutrs);
+	if (!mtk_btag_ufs_init(host, hba->nr_hw_queues, hba->nutrs))
+		atomic_set(&btag_init_done, 1);
 }
 
 void ufs_mtk_btag_init(struct ufs_hba *hba)
 {
+	atomic_set(&btag_init_done, 0);
 	async_schedule(ufs_mtk_blocktag_add, hba);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_btag_init);
 
 void ufs_mtk_btag_exit(struct ufs_hba *hba)
 {
-	mtk_btag_ufs_exit();
+	if (atomic_read(&btag_init_done))
+		mtk_btag_ufs_exit();
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_btag_exit);
 
