@@ -20,11 +20,14 @@
 #include <linux/module.h>
 #include <linux/uaccess.h>
 
+#if defined(MTK_GPU_EB_SUPPORT)
 #include <ged_notify_sw_vsync.h>
 #include <gpueb_ipi.h>
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
+#endif
 
 #include "ged_eb.h"
+
 #include "ged_base.h"
 #include "ged_dvfs.h"
 #include "ged_kpi.h"
@@ -40,6 +43,7 @@
 #include <ged_gpufreq_v1.h>
 #endif /* CONFIG_MTK_GPUFREQ_V2 */
 
+#if defined(MTK_GPU_EB_SUPPORT)
 static void __iomem *mtk_gpueb_dvfs_sysram_base_addr;
 
 struct fdvfs_ipi_rcv_data fdvfs_ipi_rcv_msg;
@@ -53,6 +57,7 @@ int g_is_fulltrace_enable;
 
 int g_is_stability_enable;
 static unsigned int eb_policy_mode;
+#endif
 
 bool need_to_refresh_mode = true;
 static struct hrtimer g_HT_fdvfs_debug;
@@ -73,6 +78,7 @@ struct ged_last_timer {
 
 static struct ged_last_timer g_ged_last_timer;
 
+#if defined(MTK_GPU_EB_SUPPORT)
 #define FDVFS_IPI_ATTR "ipi_dev:%p, ch:%d, DATA_LEN: %d, TIMEOUT: %d(ms)"
 
 static struct workqueue_struct *g_psEBWorkQueue;
@@ -83,7 +89,6 @@ struct GED_EB_EVENT eb_notify[MAX_EB_NOTIFY_CNT];
 int eb_notify_index;
 
 static struct work_struct sg_notify_ged_ready_work;
-
 
 static void ged_eb_work_cb(struct work_struct *psWork)
 {
@@ -618,7 +623,6 @@ unsigned int is_fdvfs_enable(void)
 	return eb_policy_mode;
 }
 
-
 unsigned int mtk_gpueb_dvfs_get_cur_freq(void)
 {
 	int ret = 0;
@@ -1115,8 +1119,6 @@ void ged_fastdvfs_systrace(void)
 */
 }
 
-
-
 enum hrtimer_restart ged_fdvfs_debug_cb(struct hrtimer *timer)
 {
 	if (g_is_fulltrace_enable == 1) {
@@ -1127,7 +1129,6 @@ enum hrtimer_restart ged_fdvfs_debug_cb(struct hrtimer *timer)
 
 	return HRTIMER_NORESTART;
 }
-
 
 static void __iomem *_gpu_fastdvfs_of_ioremap(const char *node_name)
 {
@@ -1262,4 +1263,181 @@ void fastdvfs_proc_exit(void)
 {
 	remove_proc_entry("fastdvfs_proc", NULL);
 }
+#else
+void mtk_gpueb_dvfs_commit(unsigned long ulNewFreqID,
+		GED_DVFS_COMMIT_TYPE eCommitType, int *pbCommited)
+{
+	//Do nothing
+}
+EXPORT_SYMBOL(mtk_gpueb_dvfs_commit);
 
+void mtk_gpueb_dvfs_dcs_commit(unsigned int platform_freq_idx,
+		GED_DVFS_COMMIT_TYPE eCommitType,
+		unsigned int virtual_freq_in_MHz)
+{
+	//Do nothing
+}
+EXPORT_SYMBOL(mtk_gpueb_dvfs_dcs_commit);
+
+int mtk_gpueb_dvfs_set_frame_done(void)
+{
+	//Do nothing
+	return 0;
+}
+EXPORT_SYMBOL(mtk_gpueb_dvfs_set_frame_done);
+
+unsigned int mtk_gpueb_dvfs_set_frame_base_dvfs(unsigned int enable)
+{
+	//Do nothing
+	return 0;
+}
+EXPORT_SYMBOL(mtk_gpueb_dvfs_set_frame_base_dvfs);
+
+int mtk_gpueb_dvfs_set_taget_frame_time(unsigned int target_frame_time,
+	unsigned int target_margin)
+{
+	//Do nothing
+	return 0;
+}
+EXPORT_SYMBOL(mtk_gpueb_dvfs_set_taget_frame_time);
+
+unsigned int mtk_gpueb_set_fallback_mode(int fallback_status)
+{
+	//Do nothing
+	return 0;
+}
+EXPORT_SYMBOL(mtk_gpueb_set_fallback_mode);
+
+unsigned int mtk_gpueb_set_stability_mode(int stability_status)
+{
+	//Do nothing
+	return 0;
+}
+EXPORT_SYMBOL(mtk_gpueb_set_stability_mode);
+
+void mtk_gpueb_dvfs_get_desire_freq(unsigned long *ui32NewFreqID)
+{
+	//Do nothing
+}
+EXPORT_SYMBOL(mtk_gpueb_dvfs_get_desire_freq);
+
+void mtk_gpueb_dvfs_get_desire_freq_dual(unsigned long *stackNewFreqID,
+	unsigned long *topNewFreqID)
+{
+	//Do nothing
+}
+EXPORT_SYMBOL(mtk_gpueb_dvfs_get_desire_freq_dual);
+
+unsigned int mtk_gpueb_dvfs_set_mode(unsigned int action)
+{
+	//Do nothing
+	return 0;
+}
+EXPORT_SYMBOL(mtk_gpueb_dvfs_set_mode);
+
+unsigned int mtk_gpueb_dvfs_get_mode(unsigned int *pAction)
+{
+	//Do nothing
+	return 0;
+}
+EXPORT_SYMBOL(mtk_gpueb_dvfs_get_mode);
+
+int mtk_gpueb_power_modle_cmd(unsigned int enable)
+{
+	//Do nothing
+	return 0;
+}
+EXPORT_SYMBOL(mtk_gpueb_power_modle_cmd);
+
+int mtk_set_ged_ready(int ged_ready_flag)
+{
+	//Do nothing
+	return 0;
+}
+
+void mtk_gpueb_set_power_state(enum ged_gpu_power_state power_state)
+{
+	//Do nothing
+}
+EXPORT_SYMBOL(mtk_gpueb_set_power_state);
+
+unsigned int is_fdvfs_enable(void)
+{
+	//Do nothing
+	return 0;
+}
+
+unsigned int mtk_gpueb_dvfs_get_cur_freq(void)
+{
+	//Do nothing
+	return 0xFFFF;
+}
+EXPORT_SYMBOL(mtk_gpueb_dvfs_get_cur_freq);
+
+unsigned int mtk_gpueb_dvfs_get_frame_loading(void)
+{
+	//Do nothing
+	return 0xFFFF;
+}
+EXPORT_SYMBOL(mtk_gpueb_dvfs_get_frame_loading);
+
+int mtk_gpueb_sysram_batch_read(int max_read_count,
+	char *batch_string, int batch_str_size)
+{
+	//Do nothing
+	return -1;
+}
+EXPORT_SYMBOL(mtk_gpueb_sysram_batch_read);
+
+int mtk_gpueb_sysram_read(int offset)
+{
+	//Do nothing
+	return -1;
+}
+EXPORT_SYMBOL(mtk_gpueb_sysram_read);
+
+int mtk_gpueb_sysram_write(int offset, int val)
+{
+	//Do nothing
+	return -1;
+}
+EXPORT_SYMBOL(mtk_gpueb_sysram_write);
+
+u64 mtk_gpueb_read_soc_timer(void)
+{
+	//Do nothing
+	return 0;
+}
+
+void mtk_gpueb_record_soc_timer(u64 soc_timer)
+{
+	//Do nothing
+}
+
+int ged_eb_dvfs_task(enum ged_eb_dvfs_task_index index, int value)
+{
+	//Do nothing
+	return GED_ERROR_FAIL;
+}
+
+void fdvfs_init(void)
+{
+	//Do nothing
+}
+
+void fdvfs_exit(void)
+{
+	//Do nothing
+}
+
+int fastdvfs_proc_init(void)
+{
+	//Do nothing
+	return 0;
+}
+
+void fastdvfs_proc_exit(void)
+{
+	//Do nothing
+}
+#endif
