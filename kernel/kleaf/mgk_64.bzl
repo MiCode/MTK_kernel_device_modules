@@ -1095,7 +1095,7 @@ def get_overlay_modules_list():
 
         mgk_64_device_modules.append("drivers/misc/mediatek/spm/plat_k68/MTK_INTERNAL_SPM.ko")
 
-        #mgk_64_device_modules.append("drivers/misc/mediatek/thermal/thermal_monitor.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/thermal/thermal_monitor.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/sspm/v3/sspm_v3.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/sspm/v1/sspm_v1.ko")
