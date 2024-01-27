@@ -946,18 +946,18 @@ static void update_all_tc_hw_reboot_point(struct lvts_data *lvts_data,
 }
 
 static int soc_temp_lvts_set_trip_temp(struct thermal_zone_device *tz,
-		int trip, int temp)
+		int trip_id, int temp)
 {
 	struct soc_temp_tz *lvts_tz = (struct soc_temp_tz *)tz->devdata;
 	struct lvts_data *lvts_data = lvts_tz->lvts_data;
-	const struct thermal_trip *trip_points;
+	struct thermal_trip trip;
 	int ret;
 
-	trip_points = of_thermal_get_trip_points(lvts_data->tz_dev);
-	if (!trip_points)
-		return -EINVAL;
+	ret = thermal_zone_get_trip(lvts_data->tz_dev, trip_id, &trip);
+	if (ret)
+		return ret;
 
-	if (trip_points[trip].type != THERMAL_TRIP_CRITICAL || lvts_tz->id != 0)
+	if (trip.type != THERMAL_TRIP_CRITICAL || lvts_tz->id != 0)
 		return 0;
 
 	update_all_tc_hw_reboot_point(lvts_data, temp);
