@@ -111,6 +111,7 @@ obj-$(CONFIG_USB) += usb/
 obj-$(CONFIG_MTK_WIDEVINE_DRM) += widevine_drm/
 obj-$(CONFIG_MTK_PGBOOST) += pgboost/
 obj-$(CONFIG_MTK_MBRAINK)      += mbraink/
+obj-$(CONFIG_MTK_I3C_I2C_WRAP) += i3c_i2c_wrap/
 obj-$(CONFIG_MTK_IPS_HELPER) += ips/
 obj-$(CONFIG_MEDIATEK_MCDI) += mcdi/
 obj-$(CONFIG_MTK_CPUHOTPLUG) += cpuhotplug/

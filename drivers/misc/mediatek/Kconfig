@@ -247,6 +247,7 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/sensor/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/gate_ic/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/usb/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mbraink/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/i3c_i2c_wrap/Kconfig"
 endmenu # Other Peripheral
 
 menu "Performance"
