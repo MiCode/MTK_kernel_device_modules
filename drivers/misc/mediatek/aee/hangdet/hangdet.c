@@ -60,7 +60,8 @@ extern struct irq_desc **ipi_desc_get(void);
 /*************************************************************************
  * Feature configure region
  *************************************************************************/
-#define WK_MAX_MSG_SIZE (256)
+#define WK_MAX_MSG_SIZE (1024)
+#define MAX_CPUNR 16
 #define SOFT_KICK_RANGE     (100*1000) // 100ms
 
 #define WDT_MODE		0x0
@@ -98,14 +99,18 @@ extern struct irq_desc **ipi_desc_get(void);
 
 #define RGU_GET_S2IDLE	0x12
 
+#if IS_ENABLED(CONFIG_SMP)
+static char tmr_buf[MAX_CPUNR][WK_MAX_MSG_SIZE];
+#endif
+
 static int start_kicker(void);
 static int kwdt_thread(void *arg);
 static int g_kicker_init;
 static DEFINE_SPINLOCK(lock);
-struct task_struct *wk_tsk[16] = { 0 };	/* max cpu 16 */
-static unsigned int wk_tsk_bind[16] = { 0 };	/* max cpu 16 */
-static unsigned long long wk_tsk_bind_time[16] = { 0 };	/* max cpu 16 */
-static unsigned long long wk_tsk_kick_time[16] = { 0 };	/* max cpu 16 */
+struct task_struct *wk_tsk[MAX_CPUNR] = { 0 };	/* max cpu 16 */
+static unsigned int wk_tsk_bind[MAX_CPUNR] = { 0 };	/* max cpu 16 */
+static unsigned long long wk_tsk_bind_time[MAX_CPUNR] = { 0 };	/* max cpu 16 */
+static unsigned long long wk_tsk_kick_time[MAX_CPUNR] = { 0 };	/* max cpu 16 */
 static char wk_tsk_buf[128] = { 0 };
 static unsigned long kick_bit;
 static int g_kinterval = -1;
@@ -114,8 +119,8 @@ static struct workqueue_struct *wdk_workqueue;
 static unsigned int lasthpg_act;
 static unsigned int lasthpg_cpu;
 static unsigned long long lasthpg_t;
-static unsigned long long wk_lasthpg_t[16] = { 0 };	/* max cpu 16 */
-static unsigned int cpuid_t[16] = { 0 };	/* max cpu 16 */
+static unsigned long long wk_lasthpg_t[MAX_CPUNR] = { 0 };	/* max cpu 16 */
+static unsigned int cpuid_t[MAX_CPUNR] = { 0 };	/* max cpu 16 */
 static unsigned long long lastsuspend_t;
 static unsigned long long lastresume_t;
 static unsigned long long lastsuspend_syst;
@@ -432,10 +437,12 @@ static const int irq_to_ipi_type(int irq)
 
 #define MAX_HWT_IRQ_FILE_SIZE SZ_128K
 #define MAX_HWT_IRQ_BUF_SIZE (MAX_HWT_IRQ_FILE_SIZE / 2)
+#define CHK_HWT_IRQ 0
 static char *hwt_irq_info;
-static char *cur_buf;
 static char *irq_buf_a;
 static char *irq_buf_b;
+#if CHK_HWT_IRQ
+static char *cur_buf;
 static int write_irq_buf_index;
 
 static void log_hwt_irq_info(char *addr, const char *fmt, ...)
@@ -580,6 +587,7 @@ static void save_irq_info(void)
 	write_irq_buf_index = 0;
 	show_irq_info(cur_buf);
 }
+#endif
 
 static void show_irq_count(void)
 {
@@ -653,9 +661,22 @@ static void kwdt_dump_func(void)
 	struct task_struct *g, *t;
 	int i = 0;
 
+#if IS_ENABLED(CONFIG_SMP)
+	for (i = 0; i < CPU_NR; i++)
+		pr_info("%s", tmr_buf[i]);
+#endif
+
 	for_each_process_thread(g, t) {
 		if (!strcmp(t->comm, "watchdogd")) {
 			pr_info("watchdogd on CPU %d\n", task_thread_info(t)->cpu);
+			sched_show_task(t);
+			break;
+		}
+	}
+
+	for_each_process_thread(g, t) {
+		if (!strncmp(t->comm, "wdtk-", 5)) {
+			pr_info("%s on CPU %d\n", t->comm, task_thread_info(t)->cpu);
 			sched_show_task(t);
 			break;
 		}
@@ -677,7 +698,9 @@ static void kwdt_dump_func(void)
 		p_mt_aee_dump_irq_info();
 #endif
 	show_irq_count();
+#if CHK_HWT_IRQ
 	save_irq_info();
+#endif
 	sysrq_sched_debug_show_at_AEE();
 
 	if (toprgu_base)
@@ -735,8 +758,7 @@ static void aee_dump_timer_func(struct timer_list *t)
 }
 
 #if IS_ENABLED(CONFIG_SMP)
-static char tmr_buf[8][WK_MAX_MSG_SIZE];
-static struct __call_single_data wdt_csd[8];
+static struct __call_single_data wdt_csd[MAX_CPUNR];
 
 #if !IS_ENABLED(CONFIG_ARM64)
 static u32 arch_timer_reg_read_tval(void)
@@ -760,7 +782,7 @@ static void wdt_dump_cntcv(void *arg)
 	}
 #if IS_ENABLED(CONFIG_ARM64)
 	ret = snprintf(tmr_buf[smp_processor_id()], WK_MAX_MSG_SIZE,
-		"%s CPU:%d CNTCV_CTL:%llx CNTCV_TVAL:%llx CNTVCT:%llx SYST_CNTCR:%x SYST_DISTL:%x SYST_CNTCV:%llx\n",
+		"%s CPU:%d CNTCV_CTL:%llx CNTCV_TVAL:%llx CNTVCT:%llx SYST_CNTCR:%x SYST_DISTL:%x SYST_CNTCV:%llx sc:%lld\n",
 		__func__,
 		smp_processor_id(),
 		read_sysreg(cntv_ctl_el0),
@@ -768,10 +790,11 @@ static void wdt_dump_cntcv(void *arg)
 		read_sysreg(cntvct_el0),
 		systimer_base ? ioread32(systimer_base + SYST_CNTCR) : 0,
 		systimer_base ? ioread32(systimer_base + SYST_DISTL) : 0,
-		systimer_base ? cnt : 0);
+		systimer_base ? cnt : 0,
+		sched_clock());
 #else
 	ret = snprintf(tmr_buf[smp_processor_id()], WK_MAX_MSG_SIZE,
-		"%s CPU:%d CNTCV_CTL:%x CNTCV_TVAL:%x CNTVCT:%llx SYST_CNTCR:%x SYST_DISTL:%x SYST_CNTCV:%llx\n",
+		"%s CPU:%d CNTCV_CTL:%x CNTCV_TVAL:%x CNTVCT:%llx SYST_CNTCR:%x SYST_DISTL:%x SYST_CNTCV:%llx sc:%lld\n",
 		__func__,
 		smp_processor_id(),
 		arch_timer_reg_read_cp15(ARCH_TIMER_VIRT_ACCESS, ARCH_TIMER_REG_CTRL),
@@ -779,7 +802,8 @@ static void wdt_dump_cntcv(void *arg)
 		__arch_counter_get_cntvct(),
 		systimer_base ? ioread32(systimer_base + SYST_CNTCR) : 0,
 		systimer_base ? ioread32(systimer_base + SYST_DISTL) : 0,
-		systimer_base ? cnt : 0);
+		systimer_base ? cnt : 0,
+		sched_clock());
 #endif
 
 	if (ret < 0) {
@@ -857,11 +881,13 @@ static void kwdt_process_kick(int local_bit, int cpu,
 #if IS_ENABLED(CONFIG_SMP)
 	if ((((~(local_bit - 1)) & local_bit) == local_bit) && j++ > 3) {
 		int cpu = 0;
-		int smp_ret[8] = {255};
+		int smp_ret[MAX_CPUNR] = {255};
 
-
-		for (cpu = 0; get_check_bit() & (1 << cpu); cpu++)
-			smp_ret[cpu] = smp_call_function_single_async(cpu, &wdt_csd[cpu]);
+		for (cpu = 0; cpu < CPU_NR; cpu++) {
+			smp_ret[cpu] = 255;
+			if (get_check_bit() & (1 << cpu))
+				smp_ret[cpu] = smp_call_function_single_async(cpu, &wdt_csd[cpu]);
+		}
 
 		snprintf(smp_histroy, 60, "s_cpu %d - %d %d %d %d %d %d %d %d\n",
 			smp_processor_id(), smp_ret[0], smp_ret[1], smp_ret[2], smp_ret[3],
@@ -893,7 +919,9 @@ static void kwdt_process_kick(int local_bit, int cpu,
 		dump_timeout = 0;
 		local_bit = 0;
 		kwdt_time_sync();
+#if CHK_HWT_IRQ
 		save_irq_info();
+#endif
 		if (toprgu_base)
 			iowrite32(WDT_RST_RELOAD, toprgu_base + WDT_RST);
 	}
