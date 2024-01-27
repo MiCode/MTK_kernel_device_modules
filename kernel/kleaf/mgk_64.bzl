@@ -158,6 +158,7 @@ mgk_64_device_modules = [
     "drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-144hz.ko",
     "drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-60hz.ko",
     "drivers/gpu/drm/panel/panel-alpha-nt37706-vdo-120hz.ko",
+    "drivers/gpu/drm/panel/panel-boe-jd9365da-vdo.ko",
     "drivers/gpu/drm/panel/panel-hx-nt37701-dphy-cmd.ko",
     "drivers/gpu/drm/panel/panel-hx-nt37701-dphy-cmd-120hz.ko",
     "drivers/gpu/drm/panel/panel-l12a-42-02-0a-dsc-cmd.ko",
