@@ -48,6 +48,7 @@
 #define SMMU_HANG_DETECT		BIT(10)
 #define SMMU_EXTRA_DCM_EN		BIT(11)
 #define SMMU_DIS_CPU_TBU_PARTID		BIT(12)
+#define SMMU_DIS_TCU_CH			BIT(13)
 
 #define SMMU_IRQ_COUNT_MAX		(5)
 #define SMMU_IRQ_DISABLE_TIME		(10) /* 10s */
@@ -928,6 +929,27 @@ static int mtk_smmu_hw_sec_init(struct arm_smmu_device *smmu)
 	return 0;
 }
 
+static void mtk_smmu_device_reset(struct arm_smmu_device *smmu)
+{
+	struct mtk_smmu_data *data;
+
+	if (!smmu)
+		return;
+
+	data = to_mtk_smmu_data(smmu);
+	/* Setup CR1 memory type for TCU non-coherent */
+	if (MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_DIS_TCU_CH) &&
+	    !(smmu->features & ARM_SMMU_FEAT_COHERENCY)) {
+		smmu_write_field(smmu->base, ARM_SMMU_CR1,
+				 CR1_TABLE_OC | CR1_TABLE_IC |
+				 CR1_QUEUE_OC | CR1_QUEUE_IC,
+				 FIELD_PREP(CR1_TABLE_OC, CR1_CACHE_NC) |
+				 FIELD_PREP(CR1_TABLE_IC, CR1_CACHE_NC) |
+				 FIELD_PREP(CR1_QUEUE_OC, CR1_CACHE_NC) |
+				 FIELD_PREP(CR1_QUEUE_IC, CR1_CACHE_NC));
+	}
+}
+
 static int mtk_smmu_power_get(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
@@ -1445,6 +1467,16 @@ static void mtk_smmu_setup_features(struct arm_smmu_master *master,
 	if ((smmu->features & ARM_SMMU_FEAT_TCU_PF) && !master->ats_enabled) {
 		val = FIELD_PREP(STRTAB_STE_1_TCU_PF, data->tcu_prefetch);
 		dst[1] |= cpu_to_le64(val);
+	}
+
+	/* Setup STE memory type for TCU non-coherent */
+	if (MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_DIS_TCU_CH) &&
+	    !(smmu->features & ARM_SMMU_FEAT_COHERENCY)) {
+		val = le64_to_cpu(dst[1]);
+		val &= ~(STRTAB_STE_1_S1CIR | STRTAB_STE_1_S1COR);
+		val |= FIELD_PREP(STRTAB_STE_1_S1CIR, STRTAB_STE_1_S1C_CACHE_NC) |
+		       FIELD_PREP(STRTAB_STE_1_S1COR, STRTAB_STE_1_S1C_CACHE_NC);
+		dst[1] = cpu_to_le64(val);
 	}
 }
 
@@ -2306,6 +2338,7 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 	.smmu_hw_init = mtk_smmu_hw_init,
 	.smmu_hw_deinit = mtk_smmu_hw_deinit,
 	.smmu_hw_sec_init = mtk_smmu_hw_sec_init,
+	.smmu_device_reset = mtk_smmu_device_reset,
 	.smmu_power_get = mtk_smmu_power_get,
 	.smmu_power_put = mtk_smmu_power_put,
 	.smmu_runtime_suspend = mtk_smmu_runtime_suspend,
@@ -2593,28 +2626,31 @@ static const struct mtk_smmu_plat_data mt6991_data_mm = {
 	.smmu_plat		= SMMU_MT6991,
 	.smmu_type		= MM_SMMU,
 	.flags			= SMMU_DELAY_HW_INIT | SMMU_SEC_EN | /* SMMU_HYP_EN | */
-				  SMMU_EXTRA_DCM_EN | SMMU_HANG_DETECT | SMMU_CLK_AO_EN,
+				  SMMU_EXTRA_DCM_EN | SMMU_HANG_DETECT | SMMU_CLK_AO_EN |
+				  SMMU_DIS_TCU_CH,
 };
 
 static const struct mtk_smmu_plat_data mt6991_data_apu = {
 	.smmu_plat		= SMMU_MT6991,
 	.smmu_type		= APU_SMMU,
 	.flags			= SMMU_DELAY_HW_INIT | SMMU_SEC_EN | /* SMMU_HYP_EN | */
-				  SMMU_EXTRA_DCM_EN | SMMU_SKIP_SHUTDOWN | SMMU_CLK_AO_EN,
+				  SMMU_EXTRA_DCM_EN | SMMU_SKIP_SHUTDOWN | SMMU_CLK_AO_EN |
+				  SMMU_DIS_TCU_CH,
 };
 
 static const struct mtk_smmu_plat_data mt6991_data_soc = {
 	.smmu_plat		= SMMU_MT6991,
 	.smmu_type		= SOC_SMMU,
 	.flags			= SMMU_CLK_AO_EN | /* SMMU_SEC_EN | SMMU_HYP_EN */
-				  SMMU_EXTRA_DCM_EN,
+				  SMMU_EXTRA_DCM_EN | SMMU_DIS_TCU_CH,
 };
 
 static const struct mtk_smmu_plat_data mt6991_data_gpu = {
 	.smmu_plat		= SMMU_MT6991,
 	.smmu_type		= GPU_SMMU,
 	.flags			= SMMU_DELAY_HW_INIT | SMMU_EXTRA_DCM_EN | /* SMMU_HYP_EN | */
-				  SMMU_DIS_CPU_PARTID | SMMU_DIS_CPU_TBU_PARTID | SMMU_CLK_AO_EN,
+				  SMMU_DIS_CPU_PARTID | SMMU_DIS_CPU_TBU_PARTID | SMMU_CLK_AO_EN |
+				  SMMU_DIS_TCU_CH,
 };
 
 static const struct mtk_smmu_plat_data *of_device_get_plat_data(struct device *dev)
