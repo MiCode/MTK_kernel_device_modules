@@ -179,8 +179,10 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcupm/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/
+ifneq ($(strip $(CONFIG_MTK_TINYSYS_VCP_SUPPORT)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include/
+endif
 
 ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_V1)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v1/
@@ -254,11 +256,13 @@ endif
 endif
 
 ifneq ($(wildcard $(srctree)/$(src)/clk-mt6989.c),)
+ifneq ($(strip $(CONFIG_MTK_TINYSYS_VCP_SUPPORT)),)
 obj-$(CONFIG_COMMON_CLK_MT6989) += clk-chk-mt6989.o
 clk-chk-mt6989-$(CONFIG_COMMON_CLK_MT6989) += clkchk-mt6989.o
-obj-$(CONFIG_COMMON_CLK_MT6989) += clk-fmeter-mt6989.o
 obj-$(CONFIG_COMMON_CLK_MT6989) += pd-chk-mt6989.o
 pd-chk-mt6989-$(CONFIG_COMMON_CLK_MT6989) += mtk-pd-chk-mt6989.o
+endif
+obj-$(CONFIG_COMMON_CLK_MT6989) += clk-fmeter-mt6989.o
 ifeq ($(CONFIG_DEBUG_FS), y)
 obj-$(CONFIG_COMMON_CLK_MT6989) += clk-dbg-mt6989.o
 clk-dbg-mt6989-$(CONFIG_COMMON_CLK_MT6989) += clkdbg-mt6989.o
