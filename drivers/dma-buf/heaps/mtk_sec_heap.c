@@ -1120,53 +1120,6 @@ static int mtk_sec_heap_dma_buf_get_flags(struct dma_buf *dmabuf,
 	return 0;
 }
 
-static int mtk_sec_heap_begin_cpu_access(struct dma_buf *dmabuf,
-					 enum dma_data_direction direction)
-{
-	struct mtk_sec_heap_buffer *buffer = dmabuf->priv;
-	struct dma_heap_attachment *a;
-
-	mutex_lock(&buffer->lock);
-
-	if (buffer->vmap_cnt)
-		invalidate_kernel_vmap_range(buffer->vaddr, buffer->len);
-
-	if (!buffer->uncached) {
-		list_for_each_entry(a, &buffer->attachments, list) {
-			if (!a->mapped)
-				continue;
-			dma_sync_sgtable_for_cpu(a->dev, a->table, direction);
-		}
-	}
-	mutex_unlock(&buffer->lock);
-
-	return 0;
-}
-
-static int mtk_sec_heap_end_cpu_access(struct dma_buf *dmabuf,
-				       enum dma_data_direction direction)
-{
-	struct mtk_sec_heap_buffer *buffer = dmabuf->priv;
-	struct dma_heap_attachment *a;
-
-	mutex_lock(&buffer->lock);
-
-	if (buffer->vmap_cnt)
-		flush_kernel_vmap_range(buffer->vaddr, buffer->len);
-
-	if (!buffer->uncached) {
-		list_for_each_entry(a, &buffer->attachments, list) {
-			if (!a->mapped)
-				continue;
-			dma_sync_sgtable_for_device(a->dev, a->table,
-						    direction);
-		}
-	}
-	mutex_unlock(&buffer->lock);
-
-	return 0;
-}
-
 static const struct dma_buf_ops sec_buf_region_ops = {
 	/* one attachment can only map once */
 	.cache_sgt_mapping = 1,
@@ -1185,8 +1138,6 @@ static const struct dma_buf_ops sec_buf_page_ops = {
 	.detach = mtk_sec_heap_detach,
 	.map_dma_buf = mtk_sec_heap_page_map_dma_buf,
 	.unmap_dma_buf = mtk_sec_heap_unmap_dma_buf,
-	.begin_cpu_access = mtk_sec_heap_begin_cpu_access,
-	.end_cpu_access = mtk_sec_heap_end_cpu_access,
 	.release = tmem_page_free,
 	.get_flags = mtk_sec_heap_dma_buf_get_flags,
 };
