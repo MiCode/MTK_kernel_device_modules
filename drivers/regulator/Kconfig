@@ -153,7 +153,7 @@ config REGULATOR_MTK_VMM_ISP71
 	  of Mediatek. It allows for voting on regulator state
 	  between multiple users.
 
-config REGULATOR_RT4803
+config DEVICE_MODULES_REGULATOR_RT4803
 	tristate "Richtek RT4803 boost regualtor"
 	depends on I2C
 	select REGMAP_I2C
