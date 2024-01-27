@@ -121,6 +121,7 @@ enum scp_ipi_cmd {
 	SCP_SLEEP_BLOCK_BY_HARD1_BUSY_CNT,
 	SCP_SLEEP_START_RES_PROF,
 	SCP_SLEEP_STOP_RES_PROF,
+	SCP_SLEEP_IPS_GET,
 	SCP_SLEEP_CMD_MAX,
 };
 
@@ -257,6 +258,7 @@ struct scp_dvfs_hw {
 	bool vlpck_support; /* Using 2-phase calibration if vlpck_bypass_phase1 not set */
 	bool vlpck_bypass_phase1;
 	bool vlp_support; /* Moving regulator & PMIC setting into SCP side */
+	bool ips_support;
 	bool has_pll_opp;
 	bool pmic_sshub_en;
 	bool sleep_init_done;
