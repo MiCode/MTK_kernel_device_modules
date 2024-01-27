@@ -30,8 +30,8 @@ include $(IMGSENSOR_DRIVER_PATH)/common/$(COMMON_VERSION)/n3d_fsync/Makefile
 # for adding sensor driver
 define add_subdrv
 $(eval subdrv-rpath = $1)
-$(info path: $(src)/$1/Makefile)
-$(eval include $(src)/$1/Makefile)
+$(info path: $(srctree)/$(src)/$1/Makefile)
+$(eval include $(srctree)/$(src)/$1/Makefile)
 endef
 
 define FILTER_DRV
