@@ -4,6 +4,8 @@
  */
 
 #include <asm/compiler.h>
+#include <linux/arm-smccc.h>
+#include <linux/arm_ffa.h>
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/of.h>
