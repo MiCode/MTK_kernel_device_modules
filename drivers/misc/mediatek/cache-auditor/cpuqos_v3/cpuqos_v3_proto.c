@@ -31,8 +31,6 @@ static void __iomem *sram_base_addr;
 
 static void __iomem *l3ctl_sram_base_addr;
 #define RESOURCE_USAGE_OFS	0xC
-
-static void __iomem *cpuqos_cus_base_addr;
 #define CUS_INT_STA 0xCC
 #define PER_GRP 0x4
 #define GRP_NUM 6
@@ -599,7 +597,7 @@ int set_cache_ctl_user_group(int bitmask, int group)
 
 	if (group > 0 && group <= 6 && bitmask <= MAX_BITMASK) {
 		offset = (group - 1) * PER_GRP;
-		iowrite32(bitmask, cpuqos_cus_base_addr + CUS_INT_STA + offset);
+		iowrite32(bitmask, l3ctl_sram_base_addr + CUS_INT_STA + offset);
 		ret = 0;
 	} else
 		pr_info("cpuqos: set bitmask=%d to group=%d cache setting is failed.\n",
@@ -857,7 +855,7 @@ static int platform_cpuqos_v3_probe(struct platform_device *pdev)
 {
 	int ret = 0, retval = 0;
 	struct platform_device *pdev_temp;
-	struct resource *sram_res = NULL, *ccl_res = NULL;
+	struct resource *sram_res = NULL;
 	int i;
 
 	node = pdev->dev.of_node;
@@ -889,15 +887,6 @@ static int platform_cpuqos_v3_probe(struct platform_device *pdev)
 				resource_size(sram_res));
 	} else {
 		pr_info("%s can't get cpuqos_v3 resource\n", __func__);
-	}
-
-	ccl_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 1);
-
-	if (ccl_res) {
-		cpuqos_cus_base_addr = ioremap(ccl_res->start,
-				resource_size(ccl_res));
-	} else {
-		pr_info("%s can't get cpuqos_v3 ccl resource\n", __func__);
 	}
 
 	/* Initial cache setting */
