@@ -14,6 +14,13 @@ enum mm_power_ver {
 	mm_pwr_v3 = 3, /* mt6991 */
 };
 
+enum mm_power {
+	MM_0 = 0,
+	MM_1,
+	MM_AO,
+	MM_PWR_NR,
+};
+
 int mtk_mminfra_dbg_hang_detect(const char *user, bool skip_pm_runtime);
 
 void mtk_mminfra_off_gipc(void);
