@@ -341,11 +341,11 @@ static int ammu_mem_map_create(struct device *dev, struct apummu_mem *m)
 	}
 
 	/* map device va */
-	map->sgt = dma_buf_map_attachment(map->attach,
+	map->sgt = dma_buf_map_attachment_unlocked(map->attach,
 		DMA_BIDIRECTIONAL);
 	if (IS_ERR(map->sgt)) {
 		ret = PTR_ERR(map->sgt);
-		AMMU_LOG_ERR("dma_buf_map_attachment failed: %d\n", ret);
+		AMMU_LOG_ERR("dma_buf_map_attachment_unlocked failed: %d\n", ret);
 		goto detach_dbuf;
 	}
 
@@ -370,7 +370,7 @@ static int ammu_mem_map_create(struct device *dev, struct apummu_mem *m)
 	goto out;
 
 unmap_dbuf:
-	dma_buf_unmap_attachment(map->attach,
+	dma_buf_unmap_attachment_unlocked(map->attach,
 		map->sgt, DMA_BIDIRECTIONAL);
 detach_dbuf:
 	dma_buf_detach(m->dbuf, map->attach);
@@ -389,7 +389,7 @@ static int ammu_mem_unmap(struct apummu_mem *m)
 	struct ammu_mem_map *map = m->map;
 
 	/* unmap device va */
-	dma_buf_unmap_attachment(map->attach,
+	dma_buf_unmap_attachment_unlocked(map->attach,
 		map->sgt, DMA_BIDIRECTIONAL);
 	dma_buf_detach(m->dbuf, map->attach);
 	m->iova = 0;
