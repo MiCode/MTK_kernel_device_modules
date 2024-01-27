@@ -5480,6 +5480,108 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		#endif
 		};
 
+	dvs: dvs@3a770000 {
+		compatible = "mediatek,dvs";
+		reg = <0 0x3a770000 0 0x1000>,
+			<0 0x3a000000 0 0x1000>,
+			<0 0x3a7a0000 0 0x1000>;
+		dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+		#if 0
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
+		#endif
+		//mediatek-larb-supply = <&smi_larb19>;
+		mtk,smmu-shared = <&mm_smmu_cam>;
+		mboxes = <&gce_m 21 1000 CMDQ_THR_PRIO_1>;
+		dvsdoneasyncshot = <CMDQ_EVENT_CAM_DPE_DVS_CMQ_EVENT>;
+		#if 0
+		clocks = <&topckgen_clk CLK_TOP_DPE_SEL>,
+		<&camsys_main_clk CLK_CAM_MAIN_CAM>,
+		<&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW>,
+		<&camsys_main_clk CLK_CAM_MAIN_CAM_DPE>,
+		<&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19>,
+		<&camsys_ipe_clk CLK_CAMSYS_IPE_DPE>,
+		<&camsys_ipe_clk CLK_CAMSYS_IPE_FUS>,
+		<&camsys_ipe_clk CLK_CAMSYS_IPE_DHZE>,
+		<&camsys_ipe_clk CLK_CAMSYS_IPE_GALS>;
+		clock-names = "CLK_TOP_DPE_SEL",
+		"CLK_CAM_MAIN_CON_0",
+		"CLK_CAM_MRAW_CON_0",
+		"CLK_CAM_DPE_CON_0",
+		"IPE_LARB19",
+		"CLK_CAMSYS_DPE",
+		"CLK_CAMSYS_FUS",
+		"CLK_CAMSYS_DHZE",
+		"CLK_CAMSYS_GALS";
+		#endif
+	};
+
+	dvp: dvp@3a770800 {
+		compatible = "mediatek,dvp";
+		reg = <0 0x3a770800 0 0x1000>;
+		dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+		#if 0
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
+		#endif
+		//mediatek-larb-supply = <&smi_larb19>;
+		mtk,smmu-shared = <&mm_smmu_cam>;
+		mboxes = <&gce_m 21 1000 CMDQ_THR_PRIO_1>;
+		dvpdoneasyncshot = <CMDQ_EVENT_CAM_DPE_DVP_CMQ_EVENT>;
+		#if 0
+		clocks = <&topckgen_clk CLK_TOP_DPE_SEL>,
+		<&camsys_main_clk CLK_CAM_MAIN_CAM>,
+		<&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW>,
+		<&camsys_main_clk CLK_CAM_MAIN_CAM_DPE>,
+		<&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19>,
+		<&camsys_ipe_clk CLK_CAMSYS_IPE_DPE>,
+		<&camsys_ipe_clk CLK_CAMSYS_IPE_FUS>,
+		<&camsys_ipe_clk CLK_CAMSYS_IPE_DHZE>,
+		<&camsys_ipe_clk CLK_CAMSYS_IPE_GALS>;
+		clock-names = "CLK_TOP_DPE_SEL",
+		"CLK_CAM_MAIN_CON_0",
+		"CLK_CAM_MRAW_CON_0",
+		"CLK_CAM_DPE_CON_0",
+		"IPE_LARB19",
+		"CLK_CAMSYS_DPE",
+		"CLK_CAMSYS_FUS",
+		"CLK_CAMSYS_DHZE",
+		"CLK_CAMSYS_GALS";
+		#endif
+	};
+
+	dvgf: dvgf@3a770c00 {
+		compatible = "mediatek,dvgf";
+		reg = <0 0x3a770c00 0 0x1000>;
+		#size-cells = <2>;
+		dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+		#if 0
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
+		#endif
+		//mediatek-larb-supply = <&smi_larb19>;
+		mtk,smmu-shared = <&mm_smmu_cam>;
+		mboxes = <&gce_m 21 1000 CMDQ_THR_PRIO_1>;
+		dvgfdoneasyncshot = <CMDQ_EVENT_CAM_DPE_DVFG_CMQ_EVENT>;
+		#if 0
+		clocks = <&topckgen_clk CLK_TOP_DPE_SEL>,
+		<&camsys_main_clk CLK_CAM_MAIN_CAM>,
+		<&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW>,
+		<&camsys_main_clk CLK_CAM_MAIN_CAM_DPE>,
+		<&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19>,
+		<&camsys_ipe_clk CLK_CAMSYS_IPE_DPE>,
+		<&camsys_ipe_clk CLK_CAMSYS_IPE_FUS>,
+		<&camsys_ipe_clk CLK_CAMSYS_IPE_DHZE>,
+		<&camsys_ipe_clk CLK_CAMSYS_IPE_GALS>;
+		clock-names = "CLK_TOP_DPE_SEL",
+		"CLK_CAM_MAIN_CON_0",
+		"CLK_CAM_MRAW_CON_0",
+		"CLK_CAM_DPE_CON_0",
+		"IPE_LARB19",
+		"CLK_CAMSYS_DPE",
+		"CLK_CAMSYS_FUS",
+		"CLK_CAMSYS_DHZE",
+		"CLK_CAMSYS_GALS";
+		#endif
+	};
+
 	scp_clk_ctrl: scp-clk-ctrl@1cf21000 {
 		compatible = "mediatek,scp-clk-ctrl", "syscon";
 		reg = <0 0x1cf21000 0 0x1000>;
