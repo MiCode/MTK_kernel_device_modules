@@ -247,6 +247,7 @@
 #define R_CORE1_CACHE_RAM		(scpreg.l1cctrl + 0x20000)
 
 /* INFRA_IRQ (always on register) */
+#define INFRA_IRQ_STA			(scpreg.scpsys + 0x0B10)
 #define INFRA_IRQ_SET			(scpreg.scpsys + 0x0B14)
 	#define AP_AWAKE_LOCK		(0)
 	#define AP_AWAKE_UNLOCK		(1)

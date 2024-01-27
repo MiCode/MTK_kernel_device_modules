@@ -98,7 +98,11 @@ int scp_awake_lock(void *_scp_id)
 		}
 #endif  // SCP_RECOVERY_SUPPORT
 
-		tmp = readl(INFRA_IRQ_SET);
+		if(scpreg.read_infra_irq_sta_en)
+			tmp = readl(INFRA_IRQ_STA);
+		else
+			tmp = readl(INFRA_IRQ_SET);
+
 		if ((tmp & 0xA0) != 0xA0) {
 			pr_notice("%s: INFRA_IRQ_SET %x\n", __func__, tmp);
 			break;
@@ -209,7 +213,11 @@ int scp_awake_unlock(void *_scp_id)
 			break;
 		}
 #endif  // SCP_RECOVERY_SUPPORT
-		tmp = readl(INFRA_IRQ_SET);
+		if(scpreg.read_infra_irq_sta_en)
+			tmp = readl(INFRA_IRQ_STA);
+		else
+			tmp = readl(INFRA_IRQ_SET);
+
 		if ((tmp & 0xA0) != 0xA0) {
 			pr_notice("%s: INFRA7_IRQ_SET %x\n", __func__, tmp);
 			break;
