@@ -83,7 +83,7 @@ static int subpmic_dbg_probe(struct platform_device *pdev)
 	mdi->extdev_desc.io_write = subpmic_dbg_io_write;
 	mdi->extdev = devm_extdev_io_device_register(pdev->dev.parent, &mdi->extdev_desc);
 	if (IS_ERR(mdi->extdev)) {
-		dev_info(&pdev->dev, "%s: failed to register extdev_io device\n", __func__);
+		dev_err(&pdev->dev, "%s failed to register extdev_io device\n", __func__);
 		return PTR_ERR(mdi->extdev);
 	}
 
@@ -125,10 +125,16 @@ static const struct subpmic_data rt6160_data = {
 	.name = "RT6160",
 };
 
+static const struct subpmic_data mt6379_data = {
+	.bus = "SPMI",
+	.name = "MT6379",
+};
+
 static const struct of_device_id __maybe_unused subpmic_dbg_of_id[] = {
 	{ .compatible = "mediatek,mt6360-dbg", .data = &mt6360_data},
 	{ .compatible = "mediatek,mt6375-dbg", .data = &mt6375_data},
 	{ .compatible = "richtek,rt6160-dbg", .data = &rt6160_data},
+	{ .compatible = "mediatek,mt6379-dbg", .data = &mt6379_data},
 	{ }
 };
 MODULE_DEVICE_TABLE(of, subpmic_dbg_of_id);
@@ -137,6 +143,7 @@ static const struct platform_device_id subpmic_dbg_id[] = {
 	{ "mt6360_dbg", (kernel_ulong_t)&mt6360_data},
 	{ "mt6375_dbg", (kernel_ulong_t)&mt6375_data},
 	{ "rt6160_dbg", (kernel_ulong_t)&rt6160_data},
+	{ "mt6379_dbg", (kernel_ulong_t)&mt6379_data},
 	{ }
 };
 MODULE_DEVICE_TABLE(platform, subpmic_dbg_id);
