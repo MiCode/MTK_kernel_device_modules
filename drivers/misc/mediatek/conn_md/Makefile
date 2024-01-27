@@ -17,6 +17,8 @@
 ifneq ($(KERNELRELEASE),)
 
     ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/
+    ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/inc/
+    ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/port/
     ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dual_ccci/
 
     ccflags-y += -I$(srctree)/$(src)/include/
