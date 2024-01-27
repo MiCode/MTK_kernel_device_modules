@@ -133,13 +133,10 @@ bool enq_force_update_freq(struct sugov_policy *sg_policy)
 {
 	struct cpufreq_policy *policy = sg_policy->policy;
 	struct sugov_rq_data *sugov_data_ptr;
-	struct rq *rq;
 
 	if (!freq_state.is_eas_dsu_support || !freq_state.is_eas_dsu_ctrl)
 		return false;
-	rq = cpu_rq(policy->cpu);
-	sugov_data_ptr =
-		&((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
+	sugov_data_ptr = &per_cpu(rq_data, policy->cpu)->sugov_data;
 	if (!READ_ONCE(sugov_data_ptr->enq_update_dsu_freq))
 		return false;
 	WRITE_ONCE(sugov_data_ptr->enq_update_dsu_freq, false);
@@ -204,11 +201,9 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 		cpu = cpumask_first(&pd_info->cpus);
 		if (pd_info->nr_cpus == 1 && gov_pd_info->nr_caps != 1) {
 			if (available_idle_cpu(cpu)) {
-				struct rq *rq = cpu_rq(cpu);
 				struct sugov_rq_data *sugov_data_ptr;
 
-				sugov_data_ptr =
-					&((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
+				sugov_data_ptr = &per_cpu(rq_data, cpu)->sugov_data;
 				if (READ_ONCE(sugov_data_ptr->enq_ing) == 0) {
 					freq_state.dsu_freq_vote[i] = 0;
 					WRITE_ONCE(sugov_data_ptr->enq_update_dsu_freq, true);
@@ -1898,8 +1893,7 @@ int group_aware_dvfs_util(struct cpumask *cpumask)
 
 	for_each_cpu(cpu, cpumask) {
 		rq = cpu_rq(cpu);
-		sugov_data_ptr =
-			&((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
+		sugov_data_ptr = &per_cpu(rq_data, cpu)->sugov_data;
 		if ((READ_ONCE(sugov_data_ptr->enq_ing) == 0) && available_idle_cpu(cpu))
 			goto skip_idle;
 

@@ -255,4 +255,5 @@ extern void set_grp_high_freq(int cluster_id, bool set);
 extern unsigned long get_turn_point_freq(int gearid);
 DECLARE_PER_CPU(unsigned int, gear_id);
 DECLARE_PER_CPU(struct sbb_cpu_data *, sbb);
+DECLARE_PER_CPU(struct mtk_rq *, rq_data);
 #endif /* __CPUFREQ_H__ */

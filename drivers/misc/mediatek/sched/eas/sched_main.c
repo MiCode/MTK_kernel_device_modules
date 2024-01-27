@@ -136,7 +136,7 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 	if (type == enqueue) {
 		struct uclamp_se *uc_min_req, *uc_max_req;
 
-		sugov_data_ptr = &((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
+		sugov_data_ptr = &per_cpu(rq_data, rq->cpu)->sugov_data;
 		WRITE_ONCE(sugov_data_ptr->enq_ing, true);
 
 		uc_min_req = &p->uclamp_req[UCLAMP_MIN];
@@ -154,10 +154,8 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 
 			if (uclamp_diff) {
 				int this_cpu = smp_processor_id();
-				struct rq *this_rq = cpu_rq(this_cpu);
 
-				sugov_data_ptr =
-					&((struct mtk_rq *) this_rq->android_vendor_data1)->sugov_data;
+				sugov_data_ptr = &per_cpu(rq_data, this_cpu)->sugov_data;
 				WRITE_ONCE(sugov_data_ptr->enq_dvfs, true);
 			}
 		}
@@ -846,7 +844,6 @@ static int __init mtk_scheduler_init(void)
 	/* compile time checks for vendor data size */
 	MTK_VENDOR_DATA_SIZE_TEST(struct mtk_task, struct task_struct);
 	MTK_VENDOR_DATA_SIZE_TEST(struct mtk_tg, struct task_group);
-	MTK_VENDOR_DATA_SIZE_TEST(struct mtk_rq, struct rq);
 
 	/* build cpu_array for hints-based gear search*/
 	init_cpu_array();
