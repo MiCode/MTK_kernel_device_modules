@@ -30,6 +30,7 @@
 #include <linux/ipv6.h>
 #include <net/ipv6.h>
 #include <net/sch_generic.h>
+#include <net/sock.h>
 #include <linux/skbuff.h>
 #include <linux/module.h>
 #include <linux/timer.h>
@@ -39,6 +40,7 @@
 #include <linux/debugfs.h>
 #include <linux/preempt.h>
 #include <linux/stacktrace.h>
+#include <linux/sysctl.h>
 #include "ccmni.h"
 #include "ccci_debug.h"
 #include "rps_perf.h"
@@ -80,19 +82,11 @@ static struct ctl_table tcp_pacing_table[] = {
 	},
 	{}
 };
-static struct ctl_table tcp_pacing_sysctl_root[] = {
-	{
-		.procname	= "net",
-		.mode		= 0555,
-		.child		= tcp_pacing_table,
-	},
-	{}
-};
 
 static struct ctl_table_header *sysctl_header;
 static int register_tcp_pacing_sysctl(void)
 {
-	sysctl_header = register_sysctl_table(tcp_pacing_sysctl_root);
+	sysctl_header = register_sysctl("net", tcp_pacing_table);
 	if (sysctl_header == NULL) {
 		pr_info("CCCI:CCMNI:register tcp_pacing failed\n");
 		return -1;
