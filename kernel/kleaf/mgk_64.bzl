@@ -423,6 +423,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/sda/btm/v1/bus_tracer_v1.ko",
     "drivers/misc/mediatek/sda/bus-parity.ko",
     "drivers/misc/mediatek/sda/cache-parity.ko",
+	"drivers/misc/mediatek/sda/gic-ram-parity.ko",
     "drivers/misc/mediatek/sda/dbg_error_flag.ko",
     "drivers/misc/mediatek/sda/dbgtop-drm.ko",
     "drivers/misc/mediatek/sda/irq-dbg.ko",
