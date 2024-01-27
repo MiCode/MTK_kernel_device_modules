@@ -29,7 +29,7 @@ static int mtk_set_brightness(struct led_classdev *led_cdev,
 
 struct mt_leds_desp_info {
 	int lens;
-	struct led_desp *leds[0];
+	struct led_desp *leds[];
 };
 
 static DEFINE_MUTEX(leds_mutex);
