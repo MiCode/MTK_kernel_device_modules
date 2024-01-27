@@ -14,6 +14,7 @@
 #include <linux/proc_fs.h>
 #include <linux/icmpv6.h>
 #include <linux/of.h>
+#include <linux/sched/clock.h>
 #include <net/ip.h>
 #include <net/ipv6.h>
 #include <net/ndisc.h>
