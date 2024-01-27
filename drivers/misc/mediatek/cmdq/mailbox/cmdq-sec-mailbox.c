@@ -178,7 +178,7 @@ static const s32 cmdq_max_task_in_secure_thread[
 static const s32 cmdq_tz_cmd_block_size[CMDQ_MAX_SECURE_THREAD_COUNT] = {
 	4 << 12, 4 << 12, 20 << 12, 4 << 12, 4 << 12};
 
-static struct cmdq_sec_helper_fp helper_fp = {
+struct cmdq_sec_helper_fp helper_fp = {
 	.sec_insert_backup_cookie_fp = cmdq_sec_insert_backup_cookie,
 	.sec_pkt_wait_complete_fp = cmdq_sec_pkt_wait_complete,
 	.sec_pkt_free_data_fp = cmdq_sec_pkt_free_data,
@@ -234,7 +234,7 @@ static inline void cmdq_mmp_init(struct cmdq_sec *cmdq)
 
 	len = snprintf(name, sizeof(name), "cmdq_sec_%hhu", cmdq->hwid);
 	if (len >= sizeof(name))
-		cmdq_log("len:%d over name size:%lu", len, (unsigned long)(sizeof(name)));
+		cmdq_log("len:%d over name size:%lu", len, sizeof(name));
 
 	cmdq->mmp.cmdq_root = mmprofile_register_event(MMP_ROOT_EVENT, "CMDQ");
 	cmdq->mmp.cmdq = mmprofile_register_event(cmdq->mmp.cmdq_root, name);
@@ -911,7 +911,10 @@ static s32 cmdq_sec_fill_iwc_msg(struct cmdq_sec_context *context,
 	iwc_msg->command.scenario = task->scenario;
 	iwc_msg->command.priority = task->pkt->priority;
 	iwc_msg->command.engineFlag = task->engineFlag;
-	iwc_msg->command.sec_id = data->sec_id;
+#ifdef CMDQ_SECURE_MTEE_SUPPORT
+	if (data->mtee)
+		iwc_msg->command.sec_id = data->sec_id;
+#endif
 	last = list_last_entry(&task->pkt->buf, typeof(*last), list_entry);
 	list_for_each_entry(buf, &task->pkt->buf, list_entry) {
 		if (buf == last)
@@ -1372,6 +1375,7 @@ static const struct of_device_id cmdq_sec_of_ids[] = {
 
 void cmdq_sec_mbox_switch_normal(struct cmdq_client *cl)
 {
+#ifdef CMDQ_GP_SUPPORT
 	struct cmdq_sec *cmdq =
 		container_of(cl->chan->mbox, typeof(*cmdq), mbox);
 	struct cmdq_sec_thread *thread =
@@ -1384,12 +1388,13 @@ void cmdq_sec_mbox_switch_normal(struct cmdq_client *cl)
 	mutex_lock(&cmdq->exec_lock);
 	/* TODO : use other CMD_CMDQ_TL for maintenance */
 	cmdq_sec_task_submit(cmdq, NULL, CMD_CMDQ_TL_PATH_RES_RELEASE,
-		thread->idx, NULL, true);
+		thread->idx, NULL, false);
 	mutex_unlock(&cmdq->exec_lock);
 
 	cmdq_log("[OUT] %s: cl:%p cmdq:%p thrd:%p idx:%u\n",
 		__func__, cl, cmdq, thread, thread->idx);
 	cmdq_sec_mbox_disable(cl->chan);
+#endif
 }
 EXPORT_SYMBOL(cmdq_sec_mbox_switch_normal);
 
@@ -1676,7 +1681,7 @@ static int cmdq_sec_mbox_startup(struct mbox_chan *chan)
 	INIT_WORK(&thread->timeout_work, cmdq_sec_task_timeout_work);
 	len = snprintf(name, sizeof(name), "task_exec_wq_%u", thread->idx);
 	if (len >= sizeof(name))
-		cmdq_log("len:%d over name size:%lu", len, (unsigned long)(sizeof(name)));
+		cmdq_log("len:%d over name size:%lu", len, sizeof(name));
 
 	thread->task_exec_wq = create_singlethread_workqueue(name);
 	thread->occupied = true;

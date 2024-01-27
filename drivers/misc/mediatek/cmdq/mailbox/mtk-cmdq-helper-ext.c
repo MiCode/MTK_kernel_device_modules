@@ -53,12 +53,14 @@ struct cmdq_sec_helper_fp *cmdq_sec_helper;
 #define CMDQ_EOC_IRQ_DIS	(0)
 #define CMDQ_EOC_CMD		((u64)((CMDQ_CODE_EOC << CMDQ_OP_CODE_SHIFT)) \
 				<<32)
-#define CMDQ_EOC_MASK		GENMASK_ULL(63, 1)
+#define CMDQ_EOC_MASK		GENMASK(63, 1)
 #define CMDQ_MBOX_BUF_LIMIT	16 /* default limit count */
 #define CMDQ_HW_MAX			2
 
 /* sleep for 312 tick, which around 12us */
 #define CMDQ_POLL_TICK			312
+/* sleep for 8 bit, which around 9.85us */
+#define CMDQ_POLL_SLEEP			0x8
 
 #define CMDQ_GET_ADDR_H(addr)		(sizeof(addr) > 32 ? (addr >> 32) : 0)
 #define CMDQ_GET_ARG_B(arg)		(((arg) & GENMASK(31, 16)) >> 16)
@@ -881,6 +883,7 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 		return ERR_PTR(-ENODEV);
 	}
 
+	cmdq_pkt_set_spr3_timer(pkt);
 	cmdq_set_buffer_size(cl, true);
 
 	/* try dma pool if available */
@@ -1375,7 +1378,7 @@ s32 cmdq_pkt_append_command(struct cmdq_pkt *pkt, u16 arg_c, u16 arg_b,
 
 		cmdq_util_err(
 			"%s: pkt:%p avail:%lu va:%p iova:%pa pa:%pa alloc_time:%llu va:%p inst:%#llx",
-			__func__, pkt, (unsigned long)pkt->avail_buf_size, buf->va_base,
+			__func__, pkt, pkt->avail_buf_size, buf->va_base,
 			&buf->iova_base, &buf->pa_base, buf->alloc_time,
 			va, *((u64 *)va));
 
@@ -2103,6 +2106,34 @@ s32 cmdq_pkt_poll(struct cmdq_pkt *pkt, struct cmdq_base *clt_base,
 }
 EXPORT_SYMBOL(cmdq_pkt_poll);
 
+s32 cmdq_pkt_poll_sleep(struct cmdq_pkt *pkt, u32 value,
+	u32 addr, u32 mask)
+{
+	s32 err;
+	u8 use_mask = 0;
+	const u16 reg_idx = CMDQ_THR_SPR_IDX1;
+
+	if (mask != 0xffffffff) {
+		err = cmdq_pkt_append_command(pkt, CMDQ_GET_ARG_C(~mask),
+			CMDQ_GET_ARG_B(~mask), 0, 0, 0, 0, 0, CMDQ_CODE_MASK);
+		if (err != 0)
+			return err;
+		use_mask = 1;
+	}
+
+	cmdq_pkt_assign_command(pkt, reg_idx, (dma_addr_t)addr | CMDQ_ADDR_LOW_BIT);
+
+	err = cmdq_pkt_append_command(pkt, CMDQ_GET_ARG_C(value),
+		CMDQ_GET_ARG_B(value), reg_idx, CMDQ_POLL_SLEEP,
+		0, 0, 1, CMDQ_CODE_POLL_SLEEP);
+	if (err != 0)
+		cmdq_err("%s fail append command poll_sleep err:%d",
+			__func__, err);
+
+	return err;
+}
+EXPORT_SYMBOL(cmdq_pkt_poll_sleep);
+
 int cmdq_pkt_timer_en(struct cmdq_pkt *pkt)
 {
 	struct cmdq_client *cl = pkt->cl;
@@ -2127,14 +2158,25 @@ EXPORT_SYMBOL(cmdq_pkt_sleep);
 s32 cmdq_pkt_sleep_reuse(struct cmdq_pkt *pkt, u32 tick, u16 reg_gpr,
 	struct cmdq_reuse *sleep_jump_to_end)
 {
-	const u32 tpr_en = 1 << reg_gpr;
-	const u16 event = (u16)CMDQ_EVENT_GPR_TIMER + reg_gpr;
 	struct cmdq_client *cl = (struct cmdq_client *)pkt->cl;
 	struct cmdq_operand lop, rop;
 	const u32 timeout_en = (cl ? cmdq_mbox_get_base_pa(cl->chan) :
 		cmdq_dev_get_base_pa(pkt->dev)) + CMDQ_TPR_TIMEOUT_EN;
+	bool spr3_timer = pkt->support_spr3_timer;
+	u32 tpr_en;
+	u16 event;
 	u32 end_addr_mark;
 	u64 *inst;
+
+	if (spr3_timer) {
+		s32 thread_id = cmdq_mbox_chan_id(cl->chan);
+
+		tpr_en = 1 << thread_id;
+		event = (u16)CMDQ_EVENT_SPR_TIMER + (u16)thread_id;
+	} else {
+		tpr_en = 1 << reg_gpr;
+		event = (u16)CMDQ_EVENT_GPR_TIMER + reg_gpr;
+	}
 
 	pkt->write_addr_high = 0;
 	/* set target gpr value to max to avoid event trigger
@@ -2144,8 +2186,12 @@ s32 cmdq_pkt_sleep_reuse(struct cmdq_pkt *pkt, u32 tick, u16 reg_gpr,
 	lop.idx = CMDQ_TPR_ID;
 	rop.reg = false;
 	rop.value = 1;
-	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_SUBTRACT,
-		CMDQ_GPR_CNT_ID + reg_gpr, &lop, &rop);
+	if (spr3_timer)
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_SUBTRACT,
+			CMDQ_THR_SPR_IDX3, &lop, &rop);
+	else
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_SUBTRACT,
+			CMDQ_GPR_CNT_ID + reg_gpr, &lop, &rop);
 
 	lop.reg = true;
 	lop.idx = CMDQ_CPR_TPR_MASK;
@@ -2162,16 +2208,24 @@ s32 cmdq_pkt_sleep_reuse(struct cmdq_pkt *pkt, u32 tick, u16 reg_gpr,
 		lop.idx = CMDQ_TPR_ID;
 		rop.reg = false;
 		rop.value = tick;
-		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD,
-			CMDQ_GPR_CNT_ID + reg_gpr, &lop, &rop);
+		if (spr3_timer)
+			cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD,
+				CMDQ_THR_SPR_IDX3, &lop, &rop);
+		else
+			cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD,
+				CMDQ_GPR_CNT_ID + reg_gpr, &lop, &rop);
 	} else {
 		cmdq_pkt_assign_command(pkt, CMDQ_SPR_FOR_TEMP, tick);
 		lop.reg = true;
 		lop.idx = CMDQ_TPR_ID;
 		rop.reg = true;
 		rop.value = CMDQ_SPR_FOR_TEMP;
-		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD,
-			CMDQ_GPR_CNT_ID + reg_gpr, &lop, &rop);
+		if (spr3_timer)
+			cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD,
+				CMDQ_THR_SPR_IDX3, &lop, &rop);
+		else
+			cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD,
+				CMDQ_GPR_CNT_ID + reg_gpr, &lop, &rop);
 	}
 
 	cmdq_pkt_assign_command(pkt, CMDQ_SPR_FOR_TEMP, 0);
@@ -2184,13 +2238,19 @@ s32 cmdq_pkt_sleep_reuse(struct cmdq_pkt *pkt, u32 tick, u16 reg_gpr,
 	lop.reg = true;
 	lop.idx = CMDQ_TPR_ID;
 	rop.reg = true;
-	rop.idx = CMDQ_GPR_CNT_ID + reg_gpr;
+	if (spr3_timer)
+		rop.idx = CMDQ_THR_SPR_IDX3;
+	else
+		rop.idx = CMDQ_GPR_CNT_ID + reg_gpr;
 	cmdq_pkt_cond_jump_abs(pkt, CMDQ_SPR_FOR_TEMP, &lop, &rop,
 		CMDQ_GREATER_THAN_AND_EQUAL);
 
 	cmdq_pkt_assign_command(pkt, CMDQ_CPR_SLP_GPR_MAX, 0xFFFFFF00);
 	lop.reg = true;
-	lop.idx = CMDQ_GPR_CNT_ID + reg_gpr;
+	if (spr3_timer)
+		lop.idx = CMDQ_THR_SPR_IDX3;
+	else
+		lop.idx = CMDQ_GPR_CNT_ID + reg_gpr;
 	rop.reg = true;
 	rop.idx = CMDQ_CPR_SLP_GPR_MAX;
 	cmdq_pkt_cond_jump_abs(pkt, CMDQ_SPR_FOR_TEMP, &lop, &rop,
@@ -2221,12 +2281,17 @@ s32 cmdq_pkt_poll_timeout_reuse(struct cmdq_pkt *pkt, u32 value, u8 subsys,
 	const u16 reg_tmp = CMDQ_SPR_FOR_TEMP;
 	const u16 reg_val = CMDQ_THR_SPR_IDX1;
 	const u16 reg_poll = CMDQ_THR_SPR_IDX2;
-	const u16 reg_counter = CMDQ_THR_SPR_IDX3;
+	bool spr3_timer = pkt->support_spr3_timer;
+	u16 reg_counter;
 	u32 begin_mark, end_addr_mark, shift_pa;
 	dma_addr_t cmd_pa;
 	struct cmdq_operand lop, rop;
 	struct cmdq_instruction *inst;
 
+	if (spr3_timer)
+		reg_counter = CMDQ_GPR_CNT_ID + reg_gpr;
+	else
+		reg_counter = CMDQ_THR_SPR_IDX3;
 	pkt->write_addr_high = 0;
 	/* assign compare value as compare target later */
 	cmdq_pkt_assign_command(pkt, reg_val, value);
@@ -2841,7 +2906,7 @@ static void cmdq_print_wait_summary(void *chan, dma_addr_t pc,
 			" GPR R%u:%#x", gprid, val);
 		if (len >= ARRAY_SIZE(text_gpr))
 			cmdq_log("len:%d over text_gpr size:%lu",
-				len, (unsigned long)(ARRAY_SIZE(text_gpr)));
+				len, ARRAY_SIZE(text_gpr));
 	} else if (inst->arg_a >= CMDQ_TOKEN_TZMP_ISP_WAIT &&
 		inst->arg_a <= CMDQ_TOKEN_TZMP_AIE_SET) {
 		const u16 mod = (inst->arg_a - CMDQ_TOKEN_TZMP_ISP_WAIT) / 2;
@@ -2897,7 +2962,9 @@ void cmdq_pkt_err_dump_cb(struct cmdq_cb_data data)
 	s32 thread_id = cmdq_mbox_chan_id(client->chan);
 	enum cmdq_aee_type aee;
 	u32 hwid = cmdq_util_get_hw_id(gce_pa);
+#ifdef CMDQ_SECURE_SUPPORT
 	u32 i;
+#endif
 
 	/* assign error during dump cb */
 	item->err = data.err;
@@ -3679,6 +3746,7 @@ void cmdq_buf_cmd_parse(u64 *buf, u32 cmd_nr, dma_addr_t buf_pa,
 				&cmdq_inst[i]);
 			break;
 		case CMDQ_CODE_POLL:
+		case CMDQ_CODE_POLL_SLEEP:
 			cmdq_buf_print_poll(text, txt_sz, (u32)buf_pa,
 				&cmdq_inst[i]);
 			break;

@@ -106,18 +106,18 @@ enum {CMDQ_PREBUILT_MDP, CMDQ_PREBUILT_MML, CMDQ_PREBUILT_VFMT,
 #define CMDQ_TICK_TO_US(_t)		(do_div(_t, 26))
 
 extern int gce_shift_bit;
-extern int gce_mminfra;
+extern unsigned long long gce_mminfra;
 extern bool gce_in_vcp;
 extern bool cpr_not_support_cookie;
 extern bool skip_poll_sleep;
 extern bool append_by_event;
+extern bool cmdq_tfa_read_dbg;
 extern bool hw_trace_built_in[2];
 extern int cmdq_dump_buf_size;
 extern int error_irq_bug_on;
 
 #define CMDQ_REG_SHIFT_ADDR(addr) (((addr) + gce_mminfra) >> gce_shift_bit)
 #define CMDQ_REG_REVERT_ADDR(addr) (((addr) << gce_shift_bit) - gce_mminfra)
-
 
 
 /* GCE provide 32/64 bit General Purpose Register (GPR)
@@ -201,6 +201,8 @@ enum gce_event {
 
 	/* GPR timer token, 994 to 1009 (for gpr r0 to r15) */
 	CMDQ_EVENT_GPR_TIMER = 994,
+	/* SPR timer token, 992 to 1023 (for spr3 per thread) */
+	CMDQ_EVENT_SPR_TIMER = 992,
 };
 
 struct cmdq_pkt;
@@ -493,6 +495,9 @@ s32 cmdq_pkt_poll_addr(struct cmdq_pkt *pkt, u32 value, u32 addr, u32 mask,
 
 s32 cmdq_pkt_poll_reg(struct cmdq_pkt *pkt, u32 value, u8 subsys,
 	u16 offset, u32 mask);
+
+s32 cmdq_pkt_poll_sleep(struct cmdq_pkt *pkt, u32 value,
+	u32 addr, u32 mask);
 
 /**
  * cmdq_pkt_poll() - append polling command with mask to the CMDQ packet
