@@ -53,7 +53,7 @@ struct hf_manager_event {
 	uint8_t padding[1];
 	union {
 		int32_t word[16];
-		int8_t byte[0];
+		int8_t byte[64];
 	};
 } __packed __aligned(4);
 
@@ -73,7 +73,7 @@ struct custom_cmd {
 	union {
 		int32_t data[15];
 		int32_t word[15];
-		int8_t byte[0];
+		int8_t byte[60];
 	};
 } __packed __aligned(4);
 
