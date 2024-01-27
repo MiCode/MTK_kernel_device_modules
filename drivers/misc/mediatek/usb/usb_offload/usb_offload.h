@@ -122,9 +122,9 @@ struct ssusb_offload {
 struct mem_info_xhci {
 	bool adv_lowpwr;
 	unsigned int sram_version;
-	unsigned int xhci_dram_addr;
+	unsigned long long xhci_dram_addr;
 	unsigned int xhci_dram_size;
-	unsigned int xhci_sram_addr;
+	unsigned long long xhci_sram_addr;
 	unsigned int xhci_sram_size;
 	unsigned long long ev_ring;
 	unsigned long long erst_table;
@@ -302,6 +302,6 @@ extern int mtk_offload_alloc_mem(struct usb_offload_buffer *buf, unsigned int si
 extern int mtk_offload_free_mem(struct usb_offload_buffer *buf);
 extern bool mtk_offload_is_advlowpwr(struct usb_offload_dev *udev);
 extern int mtk_offload_get_rsv_mem_info(enum usb_offload_mem_id mem_id,
-	unsigned int *phys, unsigned int *size);
+	unsigned long long *phys, unsigned int *size);
 extern bool is_sram(enum usb_offload_mem_id id);
 #endif /* __USB_OFFLOAD_H__ */
