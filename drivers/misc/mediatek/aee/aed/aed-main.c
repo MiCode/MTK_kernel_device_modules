@@ -1564,7 +1564,7 @@ done:
  * aed process daemon and other command line may access me
  * concurrently
  */
-DEFINE_SEMAPHORE(aed_dal_sem);
+DEFINE_SEMAPHORE(aed_dal_sem,1);
 static long aed_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;

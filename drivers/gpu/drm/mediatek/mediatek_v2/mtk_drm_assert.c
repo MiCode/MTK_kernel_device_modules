@@ -7,6 +7,7 @@
 #include <linux/dma-buf.h>
 #include <linux/dma-mapping.h>
 #include <linux/kmemleak.h>
+#include <linux/semaphore.h>
 #include <uapi/drm/mediatek_drm.h>
 #include "mtk_drm_crtc.h"
 #include "mtk_drm_ddp_comp.h"
@@ -29,7 +30,7 @@
 
 #define MTK_FB_ALIGNMENT 32
 
-static DEFINE_SEMAPHORE(dal_sem);
+static DEFINE_SEMAPHORE(dal_sem,1);
 
 static inline int DAL_LOCK(void)
 {
