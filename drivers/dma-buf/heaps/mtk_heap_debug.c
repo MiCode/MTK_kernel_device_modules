@@ -302,6 +302,19 @@ static void mtk_dmabuf_dump_for_hang(void)
 
 #endif
 
+#if (!IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG))
+int is_dma_buf_file(struct file *file)
+{
+	return 0;
+}
+
+int dma_buf_get_each(int (*callback)(const struct dma_buf *dmabuf,
+		     void *private), void *private)
+{
+	return -1;
+}
+#endif
+
 static inline struct dump_fd_data *
 fd_const_to_dump_fd_data(const struct fd_const *d)
 {
