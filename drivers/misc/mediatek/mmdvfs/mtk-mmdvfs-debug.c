@@ -16,6 +16,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/sched/clock.h>
 #include <linux/soc/mediatek/mtk_mmdvfs.h>
+#include <linux/workqueue.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include <mt-plat/mrdump.h>
 
@@ -24,6 +25,7 @@
 
 #include "mtk-mmdvfs-v3-memory.h"
 #include "mtk-mmdvfs-ftrace.h"
+#include "clk-mtk.h"
 
 #define MMDVFS_DBG_VER1	BIT(0)
 #define MMDVFS_DBG_VER3	BIT(1)
@@ -76,7 +78,10 @@ struct mmdvfs_debug {
 	u32 *clk_ofs;
 	u32 clk_base_pa;
 	void __iomem *clk_base;
-	struct notifier_block nb;
+	struct notifier_block smi_dbg_nb;
+	struct notifier_block fmeter_nb;
+	struct work_struct	work;
+	struct workqueue_struct *workq;
 
 	/* user & power id mapping*/
 	u8 user_pwr[USER_NUM];
@@ -116,7 +121,7 @@ static int mmdvfs_debug_set_force_step(const char *val,
 	}
 
 	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3)
-		mtk_mmdvfs_v3_set_force_step(idx, opp);
+		mtk_mmdvfs_v3_set_force_step(idx, opp, true);
 
 	return 0;
 }
@@ -147,7 +152,7 @@ static int mmdvfs_debug_set_vote_step(const char *val,
 	}
 
 	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3)
-		mtk_mmdvfs_v3_set_vote_step(idx, opp);
+		mtk_mmdvfs_v3_set_vote_step(idx, opp, true);
 
 	return 0;
 }
@@ -240,6 +245,9 @@ void mmdvfs_debug_status_dump(struct seq_file *file)
 	mmdvfs_debug_dump_line(file, "user latest request opp\n");
 	for (i = 0; i < USER_NUM; i++)
 		mmdvfs_debug_dump_line(file, "user: %u opp: %u\n", i, readl(MEM_VOTE_OPP_USR(i)));
+
+	mmdvfs_debug_dump_line(file, "clkmux:%#x clkmux_done:%#x\n",
+		readl(MEM_CLKMUX_ENABLE), readl(MEM_CLKMUX_ENABLE_DONE));
 
 	/* MMDVFS_DBG_VER3.5 */
 	mmdvfs_debug_dump_line(file, "VER3.5: mux controlled by vcp:\n");
@@ -384,31 +392,31 @@ static int mmdvfs_v3_debug_thread(void *data)
 	}
 
 	if (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VCORE))
-		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VCORE, g_mmdvfs->force_step0);
+		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VCORE, g_mmdvfs->force_step0, false);
 
 	if (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VMM))
-		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VMM, g_mmdvfs->force_step0);
+		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VMM, g_mmdvfs->force_step0, false);
 
 	if (!g_mmdvfs->release_step0)
 		goto init_done;
 
 	if (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VCORE))
-		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VCORE, -1);
+		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VCORE, -1, false);
 
 	if (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VMM))
-		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VMM, -1);
+		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VMM, -1, false);
 
 	if (g_mmdvfs->vote_step != 0xff)
 		for (i = 0; i < PWR_MMDVFS_NUM; i++) {
 			mtk_mmdvfs_v3_set_vote_step(
-				g_mmdvfs->vote_step >> 4 & 0xf, g_mmdvfs->vote_step & 0xf);
+				g_mmdvfs->vote_step >> 4 & 0xf, g_mmdvfs->vote_step & 0xf, false);
 			g_mmdvfs->vote_step = g_mmdvfs->vote_step >> 8;
 		}
 
 	if (g_mmdvfs->force_step != 0xff)
 		for (i = 0; i < PWR_MMDVFS_NUM; i++) {
 			mtk_mmdvfs_v3_set_force_step(
-				g_mmdvfs->force_step >> 4 & 0xf, g_mmdvfs->force_step & 0xf);
+				g_mmdvfs->force_step >> 4 & 0xf, g_mmdvfs->force_step & 0xf, false);
 			g_mmdvfs->force_step = g_mmdvfs->force_step >> 8;
 		}
 
@@ -574,23 +582,35 @@ static struct kernel_param_ops mmdvfs_debug_set_ftrace_ops = {
 module_param_cb(ftrace, &mmdvfs_debug_set_ftrace_ops, NULL, 0644);
 MODULE_PARM_DESC(ftrace, "mmdvfs ftrace log");
 
-static int mmdvfs_debug_smi_cb(struct notifier_block *nb, unsigned long action, void *data)
+static void mmdvfs_debug_work(struct work_struct *work)
 {
-	int i;
-
-/* TODO: Use non-sleep API or thread
-	if (g_mmdvfs->reg_vcore)
+	if (!IS_ERR_OR_NULL(g_mmdvfs->reg_vcore))
 		MMDVFS_DBG("vcore enabled:%d voltage:%d", regulator_is_enabled(g_mmdvfs->reg_vcore),
 			regulator_get_voltage(g_mmdvfs->reg_vcore));
 
-	if (g_mmdvfs->reg_vmm)
+	if (!IS_ERR_OR_NULL(g_mmdvfs->reg_vmm))
 		MMDVFS_DBG("vmm enabled:%d voltage:%d", regulator_is_enabled(g_mmdvfs->reg_vmm),
 			regulator_get_voltage(g_mmdvfs->reg_vmm));
-*/
-	for (i = 0; i < g_mmdvfs->fmeter_count; i++)
+}
+
+static int mmdvfs_debug_smi_cb(struct notifier_block *nb, unsigned long action, void *data)
+{
+	int i;
+	unsigned int val;
+
+	if (!work_pending(&g_mmdvfs->work))
+		queue_work(g_mmdvfs->workq, &g_mmdvfs->work);
+	else
+		MMDVFS_DBG("mmdvfs_debug_work fail");
+
+	for (i = 0; i < g_mmdvfs->fmeter_count; i++) {
+		val = mt_get_fmeter_freq(g_mmdvfs->fmeter_id[i], g_mmdvfs->fmeter_type[i]);
 		MMDVFS_DBG("i:%d id:%hu type:%hu freq:%u",
-			i, g_mmdvfs->fmeter_id[i], g_mmdvfs->fmeter_type[i],
-			mt_get_fmeter_freq(g_mmdvfs->fmeter_id[i], g_mmdvfs->fmeter_type[i]));
+			i, g_mmdvfs->fmeter_id[i], g_mmdvfs->fmeter_type[i], val);
+		if (g_mmdvfs->fmeter_id[i] == 2 && g_mmdvfs->fmeter_type[i] == 4 &&
+			val && (val > 2596000 || val < 2396000))
+			mtk_clk_notify(NULL, NULL, NULL, 0, 0, 1, CLK_EVT_CHECK_APMIXED_STAT);
+	}
 
 	for (i = 0; i < g_mmdvfs->clk_count; i++)
 		MMDVFS_DBG("[%#010x] = %#010x", g_mmdvfs->clk_base_pa + g_mmdvfs->clk_ofs[i],
@@ -801,9 +821,10 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	else
 		g_mmdvfs->reg_vmm = reg;
 
-	g_mmdvfs->nb.notifier_call = mmdvfs_debug_smi_cb;
-	mtk_smi_dbg_register_notifier(&g_mmdvfs->nb);
-	mtk_mmdvfs_fmeter_register_notifier(&g_mmdvfs->nb);
+	g_mmdvfs->smi_dbg_nb.notifier_call = mmdvfs_debug_smi_cb;
+	mtk_smi_dbg_register_notifier(&g_mmdvfs->smi_dbg_nb);
+	g_mmdvfs->fmeter_nb.notifier_call = mmdvfs_debug_smi_cb;
+	mtk_mmdvfs_fmeter_register_notifier(&g_mmdvfs->fmeter_nb);
 
 	g_mmdvfs->vote_step = 0xff;
 	of_property_read_u32(g_mmdvfs->dev->of_node, "vote-step", &g_mmdvfs->vote_step);
@@ -818,6 +839,8 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3)
 		kthr = kthread_run(mmdvfs_v3_debug_thread, NULL, "mmdvfs-dbg-vcp");
 
+	g_mmdvfs->workq = create_singlethread_workqueue("mmdvfs_debug_workq");
+	INIT_WORK(&g_mmdvfs->work, mmdvfs_debug_work);
 	return 0;
 }
 
