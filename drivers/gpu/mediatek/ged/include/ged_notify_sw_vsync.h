@@ -60,6 +60,7 @@ enum gpu_dvfs_policy_state ged_get_prev_policy_state(void);
 void ged_set_policy_state(enum gpu_dvfs_policy_state state);
 void ged_set_prev_policy_state(enum gpu_dvfs_policy_state state);
 unsigned long long ged_get_power_on_timestamp(void);
+void ged_eb_dvfs_trace_dump(void);
 
 #if defined(CONFIG_GPU_MT8167) || defined(CONFIG_GPU_MT8173) ||\
 defined(CONFIG_GPU_MT6739) || defined(CONFIG_GPU_MT6761) ||\

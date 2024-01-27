@@ -16,7 +16,7 @@ MTK_TOP = $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/
 GPU_TOP = $(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/
 VIDEOX_TOP = $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/video/$(MTK_PLATFORM)/videox
 
-subdir-ccflags-y += -Werror
+subdir-ccflags-y += -Wno-error
 
 ccflags-y += \
         -Wno-unused-variable \
@@ -30,9 +30,6 @@ ccflags-y += -DMTK_GED_KPI
 ccflags-y += -DMET_USER_EVENT_SUPPORT -DMTK_GPU_DVFS
 ccflags-y += -DGED_DVFS_DEBUG_BUF
 ccflags-y += -DMTK_GPU_BM_2
-ifeq ($(CONFIG_MTK_GPU_MT6768_SUPPORT)$(CONFIG_MTK_GPU_MT6893_SUPPORT),)
-ccflags-y += -DMTK_GPU_EB_SUPPORT
-endif
 ccflags-y += -DCONFIG_MTK_GPU_FW_IDLE
 ccflags-y += -DCONFIG_MTK_GPU_APO_SUPPORT
 ccflags-y += -DMTK_GPU_SLC_POLICY
@@ -76,8 +73,7 @@ ccflags-y += \
 		-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/ \
 		-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v2 \
 		-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos/ \
-		-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpu_bm/ \
-		-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include
+		-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpu_bm/
 
 ifeq ($(CONFIG_DEBUG_FS),y)
 ccflags-y += -DGED_DEBUG_FS
@@ -92,11 +88,6 @@ ged-y += \
 else
 ged-y += \
 	src/ged_gpufreq_v1.o
-endif
-
-ifeq ($(CONFIG_MTK_GPU_MT6768_SUPPORT)$(CONFIG_MTK_GPU_MT6893_SUPPORT),)
-ged-y += \
-	src/ged_eb.o
 endif
 
 ged-y += \

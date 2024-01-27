@@ -251,6 +251,46 @@ static ssize_t ged_kpi_show(struct kobject *kobj, struct kobj_attribute *attr,
 
 static KOBJ_ATTR_RO(ged_kpi);
 #endif /* MTK_GED_KPI */
+//-------------------------------------------------------------------------
+extern unsigned int early_force_fallback_enable;
+static ssize_t early_force_fallback_policy_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+
+	int pos = 0;
+
+	if (early_force_fallback_enable)
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+			"early_force_fallback_policy is enabled\n");
+	else
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+			"early_force_fallback_policy is disabled\n");
+
+	return pos;
+}
+static ssize_t early_force_fallback_policy_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
+				if (i32Value > 0 && i32Value < 256)
+					early_force_fallback_enable = 1;
+				else
+					early_force_fallback_enable = 0;
+			}
+		}
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(early_force_fallback_policy);
+
 //-----------------------------------------------------------------------------
 static ssize_t dvfs_margin_value_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -455,28 +495,37 @@ static KOBJ_ATTR_RW(dvfs_workload_mode);
 
 //-----------------------------------------------------------------------------
 
-static ssize_t reduce_mips_dvfs_show(struct kobject *kobj,
+static ssize_t eb_dvfs_policy_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
-	unsigned int reduce_mips_support;
 	unsigned int eb_policy_mode;
 	int pos = 0;
 	int length;
 
-	reduce_mips_support = is_fdvfs_enable();
-	eb_policy_mode = ged_dvfs_get_recude_mips_policy_state();
-
-	length = scnprintf(buf + pos, PAGE_SIZE - pos,
-				"dvfs recude-mips, eb_policy(%d), dts support(%d)\n",
-			eb_policy_mode, reduce_mips_support);
-
-	pos += length;
+	eb_policy_mode = is_fdvfs_enable();
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"function mask\n");
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"0 : disable\n");
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"1 : commit stress test\n");
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"2 : EB policy\n");
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"4 : EB policy + ftrace debug\n");
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"8 : EB policy + met debug\n");
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"================================================\n");
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"dts (%d), eb_policy_mode(%d),\n",
+			eb_policy_dts_flag, eb_policy_mode);
 
 	return pos;
 }
 
-static ssize_t reduce_mips_dvfs_store(struct kobject *kobj,
+static ssize_t eb_dvfs_policy_store(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		const char *buf, size_t count)
 {
@@ -486,15 +535,22 @@ static ssize_t reduce_mips_dvfs_store(struct kobject *kobj,
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtouint(acBuffer, 0, &u32Value) == 0) {
-				if (mips_support_flag)
+				if (u32Value > 0) {
+					eb_policy_dts_flag = 1;
+					mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GED_MIN_OPPIDX,
+							ged_get_min_oppidx());
 					mtk_set_fastdvfs_mode(u32Value);
+				} else {
+					eb_policy_dts_flag = 0;
+					mtk_set_fastdvfs_mode(POLICY_DISABLE);
+				}
 			}
 		}
 	}
 
 	return count;
 }
-static KOBJ_ATTR_RW(reduce_mips_dvfs);
+static KOBJ_ATTR_RW(eb_dvfs_policy);
 
 //-----------------------------------------------------------------------------
 
@@ -718,6 +774,61 @@ static ssize_t force_loading_base_store(struct kobject *kobj,
 	return count;
 }
 static KOBJ_ATTR_RW(force_loading_base);
+
+static ssize_t gpu_fps_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+
+	int pos = 0;
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,"%d\n", dump_gpu_fps_table());
+
+	return pos;
+}
+static ssize_t gpu_fps_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	unsigned int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				update_gpu_fps_table(i32Value);
+		}
+	}
+	return count;
+}
+static KOBJ_ATTR_RW(gpu_fps);
+
+static ssize_t ignore_fpsgo_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%d\n", ignore_fpsgo_enable);
+}
+
+static ssize_t ignore_fpsgo_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
+				if (i32Value > 0 && i32Value < 256)
+					ignore_fpsgo_enable = 1;
+				else
+					ignore_fpsgo_enable = 0;
+			}
+		}
+	}
+	return count;
+}
+static KOBJ_ATTR_RW(ignore_fpsgo);
 
 //-----------------------------------------------------------------------------
 #ifdef GED_DCS_POLICY
@@ -1019,22 +1130,22 @@ static KOBJ_ATTR_RW(fw_idle);
 #endif /* MTK_GPU_FW_IDLE */
 
 #if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
-static ssize_t apo_threshold_us_show(struct kobject *kobj,
+static ssize_t apo_thr_us_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
-	unsigned long long apo_threshold_us = 0;
+	unsigned long long apo_thr_us = 0;
 	int pos = 0;
 
-	apo_threshold_us = ged_get_apo_threshold_us();
+	apo_thr_us = ged_get_apo_thr_ns()/1000;
 
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"[APO-Threshold]: %llu us\n", apo_threshold_us);
+				"[APO_Thr]: %llu us\n", apo_thr_us);
 
 	return pos;
 }
 
-static ssize_t apo_threshold_us_store(struct kobject *kobj,
+static ssize_t apo_thr_us_store(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		const char *buf, size_t count)
 {
@@ -1042,14 +1153,16 @@ static ssize_t apo_threshold_us_store(struct kobject *kobj,
 	u32 i32Value = 0;
 
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
-		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf))
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
-				ged_set_apo_threshold_us((unsigned long long)i32Value);
+				if (i32Value > 0)
+					ged_set_apo_thr_ns((unsigned long long)i32Value*1000);
+		}
 	}
 
 	return count;
 }
-static KOBJ_ATTR_RW(apo_threshold_us);
+static KOBJ_ATTR_RW(apo_thr_us);
 
 static ssize_t apo_wakeup_us_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -1058,10 +1171,10 @@ static ssize_t apo_wakeup_us_show(struct kobject *kobj,
 	unsigned long long apo_wakeup_us = 0;
 	int pos = 0;
 
-	apo_wakeup_us = ged_get_apo_wakeup_us();
+	apo_wakeup_us = ged_get_apo_wakeup_ns()/1000;
 
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"[APO-Wakeup]: %llu us\n", apo_wakeup_us);
+				"[APO_Wakeup]: %llu us\n", apo_wakeup_us);
 
 	return pos;
 }
@@ -1074,31 +1187,33 @@ static ssize_t apo_wakeup_us_store(struct kobject *kobj,
 	u32 i32Value = 0;
 
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
-		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf))
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
-				ged_set_apo_wakeup_us((unsigned long long)i32Value);
+				if (i32Value > 0)
+					ged_set_apo_wakeup_ns((unsigned long long)i32Value*1000);
+		}
 	}
 
 	return count;
 }
 static KOBJ_ATTR_RW(apo_wakeup_us);
 
-static ssize_t apo_lp_threshold_us_show(struct kobject *kobj,
+static ssize_t apo_lp_thr_us_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
-	unsigned long long apo_lp_threshold_us = 0;
+	unsigned long long apo_lp_thr_us = 0;
 	int pos = 0;
 
-	apo_lp_threshold_us = ged_get_apo_lp_threshold_us();
+	apo_lp_thr_us = ged_get_apo_lp_thr_ns()/1000;
 
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"[APO-LP-Threshold]: %llu us\n", apo_lp_threshold_us);
+				"[APO_LP_Thr]: %llu us\n", apo_lp_thr_us);
 
 	return pos;
 }
 
-static ssize_t apo_lp_threshold_us_store(struct kobject *kobj,
+static ssize_t apo_lp_thr_us_store(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		const char *buf, size_t count)
 {
@@ -1108,12 +1223,12 @@ static ssize_t apo_lp_threshold_us_store(struct kobject *kobj,
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf))
 			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
-				ged_set_apo_lp_threshold_us((unsigned long long)i32Value);
+				ged_set_apo_lp_thr_ns((unsigned long long)i32Value*1000);
 	}
 
 	return count;
 }
-static KOBJ_ATTR_RW(apo_lp_threshold_us);
+static KOBJ_ATTR_RW(apo_lp_thr_us);
 
 static ssize_t apo_force_hint_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -1125,7 +1240,7 @@ static ssize_t apo_force_hint_show(struct kobject *kobj,
 	apo_force_hint = ged_get_apo_force_hint();
 
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"[APO-Force-Hint]: %d\n", apo_force_hint);
+				"[APO_Force_Hint]: %d\n", apo_force_hint);
 
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"[Help]:\n0: APO_NORMAL_HINT, 1: APO_LP_HINT, Others: No Operation (APO_INVALID_HINT)\n");
@@ -1150,15 +1265,88 @@ static ssize_t apo_force_hint_store(struct kobject *kobj,
 }
 static KOBJ_ATTR_RW(apo_force_hint);
 
+static ssize_t apo_autosuspend_delay_ms_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	unsigned int apo_autosuspend_delay_ms = 0;
+	int pos = 0;
+
+	apo_autosuspend_delay_ms = ged_get_apo_autosuspend_delay_ms();
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[APO_Autosuspend_Delay]: %llu us\n", apo_autosuspend_delay_ms);
+
+	return pos;
+}
+
+static ssize_t apo_autosuspend_delay_ms_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	u32 i32Value = 0;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
+				if (i32Value > 0) {
+					ged_set_apo_autosuspend_delay_ms((unsigned int)i32Value);
+					ged_set_apo_autosuspend_delay_ctrl(1);
+				} else
+					ged_set_apo_autosuspend_delay_ctrl(0);
+			}
+		}
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(apo_autosuspend_delay_ms);
+
+static ssize_t apo_autosuspend_delay_target_ref_count_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int apo_autosuspend_delay_target_ref_count = 0;
+	int pos = 0;
+
+	apo_autosuspend_delay_target_ref_count = ged_get_apo_autosuspend_delay_target_ref_count();
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[APO_Autosuspend_Delay_Target_Ref_Count]: %d\n",
+				apo_autosuspend_delay_target_ref_count);
+
+	return pos;
+}
+
+static ssize_t apo_autosuspend_delay_target_ref_count_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	u32 i32Value = 0;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				ged_set_apo_autosuspend_delay_target_ref_count((int)i32Value);
+		}
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(apo_autosuspend_delay_target_ref_count);
+
 static ssize_t apo_status_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
 	bool bGPUAPO;
 	bool bGPUPredictAPO;
-	long long ns_gpu_off_duration;
-	long long ns_gpu_predict_off_duration;
+	unsigned long long ns_gpu_off_duration;
+	unsigned long long ns_gpu_predict_off_duration;
 	int apo_hint;
+	int apo_autosuspend_delay_ref_count;
 	int pos = 0;
 
 	bGPUAPO = ged_gpu_apo_notify();
@@ -1166,17 +1354,22 @@ static ssize_t apo_status_show(struct kobject *kobj,
 	ns_gpu_off_duration = ged_get_power_duration();
 	ns_gpu_predict_off_duration = ged_get_predict_power_duration();
 	apo_hint = ged_get_apo_hint();
+	apo_autosuspend_delay_ref_count = ged_get_apo_autosuspend_delay_ref_count();
 
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"[APO]: %d, [Predict-APO]: %d\n", bGPUAPO, bGPUPredictAPO);
+				"[APO]: %d, [Predict_APO]: %d\n", bGPUAPO, bGPUPredictAPO);
 
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"[Dur]: %lld, [Predict-Dur]: %lld\n",
+				"[Dur]: %lld, [Predict_Dur]: %lld\n",
 				ns_gpu_off_duration, ns_gpu_predict_off_duration);
 
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"[APO-Hint]: %d\n",
+				"[APO_Hint]: %d\n",
 				apo_hint);
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[Autosuspend_Delay_Ref_Count]: %d\n",
+				apo_autosuspend_delay_ref_count);
 
 	return pos;
 }
@@ -1401,21 +1594,20 @@ static ssize_t dvfs_async_ratio_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
-	int async_ratio_support, force_stack_opp, force_top_opp;
-	unsigned int log_level;
 	int pos = 0;
-	int length;
 
-	async_ratio_support = ged_dvfs_get_async_ratio_support();
-	force_stack_opp = ged_dvfs_get_stack_oppidx();
-	force_top_opp = ged_dvfs_get_top_oppidx();
-	log_level = ged_dvfs_get_async_log_level();
-
-	length = scnprintf(buf + pos, PAGE_SIZE - pos,
-				"dvfs_async test, force stack opp(%d), force top opp(%d), enable log(%d), enable async(%d)\n",
-			force_stack_opp, force_top_opp, log_level, async_ratio_support);
-
-	pos += length;
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[dvfs_async]: force stack opp(%d), force top opp(%d)\n",
+				ged_dvfs_get_stack_oppidx(), ged_dvfs_get_top_oppidx());
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[dvfs_async]: enable log(%d), enable async(%d)\n",
+				ged_dvfs_get_async_log_level(), ged_dvfs_get_async_ratio_support());
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[dvfs_async]: perf model ver(%d)\n",
+				ged_dvfs_get_async_perf_model());
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[dvfs_lb_async]: enable LB async(%d), perf_diff_th(%d)\n",
+				ged_dvfs_get_lb_async_ratio_support(), ged_dvfs_get_lb_async_perf_diff());
 
 	return pos;
 }
@@ -1425,25 +1617,32 @@ static ssize_t dvfs_async_ratio_store(struct kobject *kobj,
 		const char *buf, size_t count)
 {
 	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
-	int i32Value, FORCE_TOP_OPP;
-	unsigned int log_level;
+	int i32Value;
+	int SUB_MASK = (0x1 << 6) - 1; // 0011 1111 (63)
+	int CLEAR_FORCE_OPP_MASK = 0x1 << 6; // 64
+	int FORCE_TOP_OPP_MASK = 0x1 << 7; // 128
+	int ENABLE_ASYNC_RATIO_MASK = 0x1 << 8; // 256
+	int ASYNC_LOG_LEVEL_MASK = 0x1 << 9; // 512
+	int ASYNC_PERF_MODEL_MASK = 0x1 << 10; // 1024
+	int ENABLE_LB_ASYNC_RATIO_MASK = 0x1 << 11; // 2048
 
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
-				if (i32Value & (0x1 << 9)) {
-					log_level = i32Value & 0xF;
-					ged_dvfs_set_async_log_level(log_level);
-				} else if (i32Value & (0x1 << 7)) {
-					if (i32Value & 0x1)
-						ged_dvfs_enable_async_ratio(1);
-					else
-						ged_dvfs_enable_async_ratio(0);
-				} else if (i32Value & (0x1 << 8)) {
-					FORCE_TOP_OPP = i32Value & ((0x1 << 6) - 1);
-					ged_dvfs_force_top_oppidx(FORCE_TOP_OPP);
+				if (i32Value & FORCE_TOP_OPP_MASK) {
+					ged_dvfs_force_top_oppidx(i32Value & SUB_MASK);
+				} else if (i32Value & ENABLE_ASYNC_RATIO_MASK) {
+					ged_dvfs_enable_async_ratio(i32Value & 0x1);
+				} else if (i32Value & ASYNC_LOG_LEVEL_MASK) {
+					ged_dvfs_set_async_log_level(i32Value & 0xF);
+				} else if (i32Value & ASYNC_PERF_MODEL_MASK) {
+					ged_dvfs_set_async_perf_model(i32Value & 0xF);
+				} else if (i32Value & ENABLE_LB_ASYNC_RATIO_MASK) {
+					ged_dvfs_enable_lb_async_ratio(i32Value & 0x1);
+					if (i32Value & SUB_MASK)
+						ged_dvfs_set_lb_async_perf_diff(i32Value & SUB_MASK);
 				} else {
-					if (i32Value & (0x1 << 6)) {
+					if (i32Value & CLEAR_FORCE_OPP_MASK) {
 						ged_dvfs_force_top_oppidx(0);
 						ged_dvfs_force_stack_oppidx(0);
 					} else {
@@ -1591,7 +1790,7 @@ static ssize_t gpu_slc_policy_show(struct kobject *kobj,
 					"Final HitRate:		%d\n", slc_stat->hit_rate_r);
 		if(slc_stat->isoverflow == 1)
 			pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-					"(bw overflow)\n");
+					"(bw overflow)\n", slc_stat->hit_rate_r);
 	} else {
 		pos = scnprintf(buf + pos, PAGE_SIZE - pos,
 					"GPU SLC sysFS not supports\n");
@@ -1724,13 +1923,25 @@ GED_ERROR ged_hal_init(void)
 	if (fb_register_client(&ged_fb_notifier))
 		GED_LOGE("Register fb_notifier fail!\n");
 
-	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_reduce_mips_dvfs);
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_eb_dvfs_policy);
 	if (unlikely(err != GED_OK))
-		GED_LOGE("Failed to create reduce_mips_dvfs entry!\n");
+		GED_LOGE("Failed to create eb_dvfs_policy entry!\n");
 
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_force_loading_base);
 	if (unlikely(err != GED_OK))
 		GED_LOGE("Failed to create force_loading_base entry!\n");
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_early_force_fallback_policy);
+	if (unlikely(err != GED_OK))
+		GED_LOGE("Failed to create early_force_fallback_policy entry!\n");
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_gpu_fps);
+	if (unlikely(err != GED_OK))
+		GED_LOGE("Failed to create gpu_fps entry!\n");
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_ignore_fpsgo);
+	if (unlikely(err != GED_OK))
+		GED_LOGE("Failed to create ignore_fpsgo entry!\n");
 
 #ifdef GED_DCS_POLICY
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dcs_mode);
@@ -1769,9 +1980,9 @@ GED_ERROR ged_hal_init(void)
 #endif /* MTK_GPU_FW_IDLE */
 
 #if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
-	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_threshold_us);
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_thr_us);
 	if (unlikely(err != GED_OK)) {
-		GED_LOGE("Failed to create apo_threshold_us entry!\n");
+		GED_LOGE("Failed to create apo_thr_us entry!\n");
 		goto ERROR;
 	}
 
@@ -1781,15 +1992,27 @@ GED_ERROR ged_hal_init(void)
 		goto ERROR;
 	}
 
-	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_lp_threshold_us);
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_lp_thr_us);
 	if (unlikely(err != GED_OK)) {
-		GED_LOGE("Failed to create apo_lp_threshold_us entry!\n");
+		GED_LOGE("Failed to create apo_lp_thr_us entry!\n");
 		goto ERROR;
 	}
 
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_force_hint);
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE("Failed to create apo_force_hint entry!\n");
+		goto ERROR;
+	}
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_autosuspend_delay_target_ref_count);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create apo_autosuspend_delay_target_ref_count entry!\n");
+		goto ERROR;
+	}
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_autosuspend_delay_ms);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create apo_autosuspend_delay_ms entry!\n");
 		goto ERROR;
 	}
 
@@ -1896,7 +2119,7 @@ ERROR:
 //-----------------------------------------------------------------------------
 void ged_hal_exit(void)
 {
-	ged_sysfs_remove_file(hal_kobj, &kobj_attr_reduce_mips_dvfs);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_eb_dvfs_policy);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dvfs_loading_mode);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dvfs_workload_mode);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_timer_base_dvfs_margin);
@@ -1922,7 +2145,10 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dvfs_async_ratio);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_ged_log_level);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_force_loading_base);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_early_force_fallback_policy);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_ged_fallback_tuning);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_gpu_fps);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_ignore_fpsgo);
 #ifdef GED_DCS_POLICY
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_mode);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_stress);
@@ -1935,10 +2161,12 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_fw_idle);
 #endif /* MTK_GPU_FW_IDLE */
 #if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
-	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_threshold_us);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_thr_us);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_wakeup_us);
-	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_lp_threshold_us);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_lp_thr_us);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_force_hint);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_autosuspend_delay_target_ref_count);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_autosuspend_delay_ms);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_status);
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 #if defined(MTK_GPU_SLC_POLICY)

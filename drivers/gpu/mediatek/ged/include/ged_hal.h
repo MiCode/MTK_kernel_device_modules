@@ -16,4 +16,5 @@ GED_ERROR ged_hal_init(void);
 
 void ged_hal_exit(void);
 
+extern unsigned int ignore_fpsgo_enable;
 #endif

@@ -20,13 +20,14 @@
 #include <linux/module.h>
 #include <linux/uaccess.h>
 
-
+#include <ged_notify_sw_vsync.h>
 #include <gpueb_ipi.h>
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
 
 #include "ged_eb.h"
 #include "ged_base.h"
 #include "ged_dvfs.h"
+#include "ged_kpi.h"
 #include "ged_global.h"
 #include "ged_log.h"
 #include "ged_tracepoint.h"
@@ -52,7 +53,7 @@ int g_is_fulltrace_enable;
 
 int g_is_stability_enable;
 unsigned int fastdvfs_mode;
-unsigned int stabiliy_test_mode;
+unsigned int eb_policy_mode;
 
 bool need_to_refresh_mode = true;
 static struct hrtimer g_HT_fdvfs_debug;
@@ -64,7 +65,16 @@ static struct hrtimer g_HT_fdvfs_debug;
 static DEFINE_SPINLOCK(counter_info_lock);
 static int mfg_is_power_on;
 
-#define FDVFS_IPI_ATTR "ipi_dev:%p, ch:%d, DATA_LEN: %lu, TIMEOUT: %d(ms)"
+struct ged_last_timer {
+	atomic_t last_soc_timer_hi;
+	atomic_t last_soc_timer_lo;
+	atomic_t last_ged_timer_hi;
+	atomic_t last_ged_timer_lo;
+};
+
+static struct ged_last_timer g_ged_last_timer;
+
+#define FDVFS_IPI_ATTR "ipi_dev:%p, ch:%d, DATA_LEN: %d, TIMEOUT: %d(ms)"
 
 static struct workqueue_struct *g_psEBWorkQueue;
 static struct mutex gsEBLock;
@@ -82,6 +92,7 @@ static void ged_eb_work_cb(struct work_struct *psWork)
 		GED_CONTAINER_OF(psWork, struct GED_EB_EVENT, sWork);
 
 	/* debug info */
+	/*
 	unsigned long eb_cur_loading;
 	unsigned long eb_cur_virtual_freq;
 	unsigned long eb_cur_oppidx;
@@ -89,35 +100,72 @@ static void ged_eb_work_cb(struct work_struct *psWork)
 	unsigned int loading_low;
 	unsigned int eb_margin;
 	unsigned int eb_policy_state;
-
+	*/
 	switch (psEBEvent->cmd) {
 	case GPUFDVFS_IPI_EVENT_CLK_CHANGE:
 		GPUFDVFS_LOGD("%s@%d top clock:%d(KHz)\n",
-			__func__, __LINE__, psEBEvent->freq_new);
+				__func__, __LINE__, psEBEvent->freq_new);
 		mtk_notify_gpu_freq_change(0, psEBEvent->freq_new);
-	break;
+		break;
 	case GPUFDVFS_IPI_EVENT_DEBUG_MODE_ON:
-		eb_cur_loading = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_CUR_LOADING);
-		eb_cur_virtual_freq = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_CUR_VIRTUAL_FREQ);
-		eb_cur_oppidx = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_CUR_OPPIDX);
-		loading_high = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_MARGIN_HIGH);
-		loading_low = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_MARGIN_LOW);
-		eb_margin = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_MARGIN);
-		eb_policy_state = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_CUR_POLICY_STATE);
+		//eb_cur_loading = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_CUR_LOADING);
+		//eb_cur_virtual_freq = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_CUR_VIRTUAL_FREQ);
+		//eb_cur_oppidx = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_CUR_OPPIDX);
+		//loading_high = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_MARGIN_HIGH);
+		//loading_low = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_MARGIN_LOW);
+		//eb_margin = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_MARGIN);
+		//eb_policy_state = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_CUR_POLICY_STATE);
 
-		trace_tracing_mark_write(5566, "eb_loading", eb_cur_loading);
-		trace_tracing_mark_write(5566, "eb_virtual_freq", eb_cur_virtual_freq);
-		trace_tracing_mark_write(5566, "eb_cur_oppidx", eb_cur_oppidx);
-		trace_tracing_mark_write(5566, "eb_loading_high", loading_high);
-		trace_tracing_mark_write(5566, "eb_loading_low", loading_low);
-		trace_tracing_mark_write(5566, "eb_margin", eb_margin);
-		trace_tracing_mark_write(5566, "eb_policy_state", eb_policy_state);
-	break;
+		//trace_tracing_mark_write(5566, "eb_loading", eb_cur_loading);
+		//trace_tracing_mark_write(5566, "eb_virtual_freq", eb_cur_virtual_freq);
+		//trace_tracing_mark_write(5566, "eb_cur_oppidx", eb_cur_oppidx);
+		//trace_tracing_mark_write(5566, "eb_loading_high", loading_high);
+		//trace_tracing_mark_write(5566, "eb_loading_low", loading_low);
+		//trace_tracing_mark_write(5566, "eb_margin", eb_margin);
+		//trace_tracing_mark_write(5566, "eb_policy_state", eb_policy_state);
+		break;
 	default:
 		GPUFDVFS_LOGI("(%d), cmd: %d wrong!!!\n", __LINE__, psEBEvent->cmd);
-	break;
+		break;
 	}
 	psEBEvent->bUsed = false;
+}
+
+static void ged_eb_sysram_debug_data_write(void)
+{
+	int dbg_data[GPUEB_SYSRAM_DVFS_DEBUG_COUNT] = {0};
+	int i, dbg_cnt;
+	u32 head = 0;
+	u32 tail =
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_GPU_EB_DEBUG_WRITE_POINTER);
+
+	if (tail >= GPUEB_SYSRAM_DVFS_DEBUG_COUNT)
+		head = tail - GPUEB_SYSRAM_DVFS_DEBUG_COUNT;
+	else
+		head = GPUEB_SYSRAM_DVFS_DEBUG_BUF_SIZE -
+			(GPUEB_SYSRAM_DVFS_DEBUG_COUNT -tail);
+
+	for (dbg_cnt = 0; dbg_cnt < EB_MAX_COUNT; dbg_cnt++) {
+		int tmp_head = head;
+
+		for (i = 0; i < GPUEB_SYSRAM_DVFS_DEBUG_COUNT; i++) {
+			int cur_read_p = tmp_head * sizeof(u32);
+
+			if (tmp_head != tail) {
+				dbg_data[i] =
+					mtk_gpueb_sysram_read(gpueb_dbg_data[dbg_cnt].sysram_base + cur_read_p);
+					tmp_head++;
+				if (tmp_head >= GPUEB_SYSRAM_DVFS_DEBUG_BUF_SIZE)
+					tmp_head = 0;
+			} else {
+				dbg_data[i] = 0;
+			}
+
+		}
+		trace_GPU_EB_DVFS__Policy__RINBUFFER(gpueb_dbg_data[dbg_cnt].name, dbg_data);
+		mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GPU_EB_DEBUG_READ_POINTER, tmp_head);
+	}
+
 }
 
 /*
@@ -133,10 +181,27 @@ static int fast_dvfs_eb_event_handler(unsigned int id, void *prdata, void *data,
 	struct GED_EB_EVENT *psEBEvent =
 		&(eb_notify[((eb_notify_index++) % MAX_EB_NOTIFY_CNT)]);
 
+	unsigned int cmd = 0, dbg_data_len = 0;
+	struct fastdvfs_event_data *event_data = NULL;
+
 	if (eb_notify_index >= MAX_EB_NOTIFY_CNT)
 		eb_notify_index = 0;
 
 	if (data != NULL && psEBEvent && psEBEvent->bUsed == false) {
+		event_data = (struct fastdvfs_event_data *) data;
+		cmd = event_data->cmd;
+		if (cmd == GPUFDVFS_IPI_EVENT_DEBUG_DATA) {
+			dbg_data_len = event_data->u.set_para.arg[0];
+			if (dbg_data_len == 5566) {
+				ged_eb_dvfs_trace_dump();
+				ged_set_backup_timer_timeout(ged_get_fallback_time());
+				ged_cancel_backup_timer();
+			} else {
+				ged_eb_sysram_debug_data_write();
+			}
+			return 0;
+		}
+
 		psEBEvent->freq_new = ((struct fastdvfs_event_data *)data)->u.set_para.arg[0];
 
 		/* irq cmd type (from gpueb) */
@@ -269,12 +334,14 @@ void mtk_gpueb_dvfs_commit(unsigned long ulNewFreqID,
 
 	if (ulNewFreqID != ulPreFreqID) {
 #ifdef FDVFS_REDUCE_IPI
+/*
 		mtk_gpueb_sysram_write(SYSRAM_GPU_COMMIT_PLATFORM_FREQ_IDX,
 			ulNewFreqID);
 		mtk_gpueb_sysram_write(SYSRAM_GPU_COMMIT_TYPE,
 			eCommitType);
 		mtk_gpueb_sysram_write(SYSRAM_GPU_COMMIT_VIRTUAL_FREQ,
 			0);
+*/
 #else
 		ipi_data.u.set_para.arg[0] = ulNewFreqID;
 		ipi_data.u.set_para.arg[1] = eCommitType;
@@ -309,12 +376,14 @@ void mtk_gpueb_dvfs_dcs_commit(unsigned int platform_freq_idx,
 	if (platform_freq_idx != pre_platform_freq_idx ||
 		virtual_freq_in_MHz != pre_virtual_freq_in_MHz) {
 #ifdef FDVFS_REDUCE_IPI
+/*
 		mtk_gpueb_sysram_write(SYSRAM_GPU_COMMIT_PLATFORM_FREQ_IDX,
 			platform_freq_idx);
 		mtk_gpueb_sysram_write(SYSRAM_GPU_COMMIT_TYPE,
 			eCommitType);
 		mtk_gpueb_sysram_write(SYSRAM_GPU_COMMIT_VIRTUAL_FREQ,
 			virtual_freq_in_MHz);
+*/
 #else
 		ipi_data.u.set_para.arg[0] = platform_freq_idx;
 		ipi_data.u.set_para.arg[1] = eCommitType;
@@ -342,6 +411,7 @@ int mtk_gpueb_dvfs_set_frame_done(void)
 }
 EXPORT_SYMBOL(mtk_gpueb_dvfs_set_frame_done);
 
+/*
 unsigned int mtk_gpueb_dvfs_set_feedback_info(int frag_done_interval_in_ns,
 	struct GpuUtilization_Ex util_ex, unsigned int curr_fps)
 {
@@ -383,7 +453,7 @@ unsigned int mtk_gpueb_dvfs_set_feedback_info(int frag_done_interval_in_ns,
 	return (ret > 0) ? ret:0xFFFFFFFF;
 }
 EXPORT_SYMBOL(mtk_gpueb_dvfs_set_feedback_info);
-
+*/
 
 unsigned int mtk_gpueb_dvfs_set_frame_base_dvfs(unsigned int enable)
 {
@@ -416,10 +486,12 @@ int mtk_gpueb_dvfs_set_taget_frame_time(unsigned int target_frame_time,
 	if (target_frame_time != pre_target_frame_time ||
 			target_margin != pre_target_margin) {
 #ifdef FDVFS_REDUCE_IPI
+/*
 		mtk_gpueb_sysram_write(SYSRAM_GPU_SET_TARGET_FRAME_TIME,
 			target_frame_time);
 		mtk_gpueb_sysram_write(SYSRAM_GPU_SET_TARGET_MARGIN,
 			target_margin);
+*/
 #else
 		ipi_data.u.set_para.arg[0] = target_frame_time;
 		ipi_data.u.set_para.arg[1] = target_margin;
@@ -493,25 +565,23 @@ unsigned int mtk_gpueb_dvfs_set_mode(unsigned int action)
 
 	ipi_data.u.set_para.arg[0] = action;
 
-	fastdvfs_mode = action;
-	stabiliy_test_mode = action;
+	eb_policy_mode = action;
 
-	if (fastdvfs_mode > 0)
-		g_fallback_mode = 3;
+	/* mpdify fallback interval timer */
+	if (eb_policy_mode)
+		g_fallback_mode = ALIGN_FAST_DVFS;
 	else
-		g_fallback_mode = 0;
+		g_fallback_mode = ALIGN_INTERVAL;
 
-	if (fastdvfs_mode == 0 && g_is_fastdvfs_enable != 0)
-		ret = ged_to_fdvfs_command(GPUFDVFS_IPI_SET_MODE, &ipi_data);
+	/* modify loading base interval timer */
+	if (eb_policy_mode)
+		ged_kpi_set_loading_mode(LB_TIMEOUT_TYPE_REDUCE_MIPS,
+					GED_DEFAULT_SLIDE_STRIDE_SIZE);
+	else
+		ged_kpi_set_loading_mode(0,
+					GED_DEFAULT_SLIDE_STRIDE_SIZE);
 
-	if (mips_support_flag == 1) {
-		if (stabiliy_test_mode == 1)
-			mtk_gpueb_set_stability_mode(1);
-		else if (stabiliy_test_mode == 0)
-			mtk_gpueb_set_stability_mode(0);
-		else if (stabiliy_test_mode == 2)
-			mtk_gpueb_set_stability_mode(2);
-	}
+	mtk_gpueb_set_stability_mode(eb_policy_mode);
 
 	return ret;
 }
@@ -559,13 +629,7 @@ EXPORT_SYMBOL(mtk_gpueb_set_power_state);
 
 unsigned int is_fdvfs_enable(void)
 {
-	fastdvfs_mode = mips_support_flag;
-
-	/* set g_fallback_mode flag */
-	if (fastdvfs_mode)
-		g_fallback_mode = 3;
-
-	return fastdvfs_mode & 0x1;
+	return eb_policy_mode;
 }
 
 
@@ -612,8 +676,8 @@ int mtk_gpueb_sysram_batch_read(int max_read_count,
 		avg_freq = 0;
 		for (index_freq = 0 ; index_freq < max_read_count &&
 			curr_str_len <= batch_str_size; index_freq++) {
-			read_freq = (__raw_readl(mtk_gpueb_dvfs_sysram_base_addr +
-				SYSRAM_GPU_CURR_FREQ + (index_freq<<2)));
+			//read_freq = (__raw_readl(mtk_gpueb_dvfs_sysram_base_addr +
+				//SYSRAM_GPU_CURR_FREQ + (index_freq<<2)));
 
 			frequency1 = ((read_freq>>16)&0xffff);
 			if (frequency1 > 0) {
@@ -637,8 +701,8 @@ int mtk_gpueb_sysram_batch_read(int max_read_count,
 					// Reset the rest data
 					for (; index_freq < max_read_count; index_freq++)
 						/* Reset the rest unread data */
-						__raw_writel(0, mtk_gpueb_dvfs_sysram_base_addr +
-							SYSRAM_GPU_CURR_FREQ + (index_freq<<2));
+						//__raw_writel(0, mtk_gpueb_dvfs_sysram_base_addr +
+							//SYSRAM_GPU_CURR_FREQ + (index_freq<<2));
 					break;
 				}
 			} else {
@@ -648,8 +712,8 @@ int mtk_gpueb_sysram_batch_read(int max_read_count,
 				// Reset the rest data
 				for (; index_freq < max_read_count; index_freq++)
 					/* Reset the rest unread data */
-					__raw_writel(0, mtk_gpueb_dvfs_sysram_base_addr +
-						SYSRAM_GPU_CURR_FREQ + (index_freq<<2));
+					//__raw_writel(0, mtk_gpueb_dvfs_sysram_base_addr +
+						//SYSRAM_GPU_CURR_FREQ + (index_freq<<2));
 
 				break;
 			}
@@ -658,8 +722,8 @@ int mtk_gpueb_sysram_batch_read(int max_read_count,
 				read_freq, frequency1, frequency2);
 
 			/* Reset the read data */
-			__raw_writel(0, mtk_gpueb_dvfs_sysram_base_addr +
-			SYSRAM_GPU_CURR_FREQ + (index_freq<<2));
+			//__raw_writel(0, mtk_gpueb_dvfs_sysram_base_addr +
+			//SYSRAM_GPU_CURR_FREQ + (index_freq<<2));
 		}
 
 		if (value_cnt > 0)
@@ -713,6 +777,193 @@ int mtk_gpueb_sysram_write(int offset, int val)
 }
 EXPORT_SYMBOL(mtk_gpueb_sysram_write);
 
+u64 mtk_gpueb_read_soc_timer(void)
+{
+	u64 soc_timer = (u32)atomic_read(&g_ged_last_timer.last_soc_timer_lo);
+	u32 soc_timer_hi = (u32)atomic_read(&g_ged_last_timer.last_soc_timer_hi);
+	u64 ged_timer = (u32)atomic_read(&g_ged_last_timer.last_ged_timer_lo);
+	u32 ged_timer_hi = (u32)atomic_read(&g_ged_last_timer.last_ged_timer_hi);
+
+	soc_timer |= (((u64)soc_timer_hi) << 32);
+	ged_timer |= (((u64)ged_timer_hi) << 32);
+
+	//mtk_get_system_timer(&soc_timer);
+	if (soc_timer != 0 && ged_timer != 0) {
+		// use cpu time to calculate soc timer if gpu off
+		u64 cur_ged_timer = ged_get_time();
+		u64 timer_dur = 0;
+
+		if (cur_ged_timer > ged_timer) {
+			timer_dur = cur_ged_timer - ged_timer;
+			timer_dur = (timer_dur * 13) / 1000;
+		} else {
+			timer_dur = 0;
+		}
+
+		soc_timer = soc_timer + timer_dur;
+		//trace_tracing_mark_write(5566, "soc_timer_gpu_off", soc_timer);
+	}
+
+	return soc_timer;
+}
+
+void mtk_gpueb_record_soc_timer(u64 soc_timer)
+{
+	if (soc_timer != 0 && is_fdvfs_enable()) {
+		u64 ged_timer = ged_get_time();
+		u32 ged_timer_hi = (u32)(ged_timer >> 32);
+		u32 ged_timer_lo = (u32)(ged_timer & 0xFFFFFFFF);
+		u32 soc_timer_hi = (u32)(soc_timer >> 32);
+		u32 soc_timer_lo = (u32)(soc_timer & 0xFFFFFFFF);
+
+		atomic_set(&g_ged_last_timer.last_soc_timer_hi, soc_timer_hi);
+		atomic_set(&g_ged_last_timer.last_soc_timer_lo, soc_timer_lo);
+		atomic_set(&g_ged_last_timer.last_ged_timer_hi, ged_timer_hi);
+		atomic_set(&g_ged_last_timer.last_ged_timer_lo, ged_timer_lo);
+		//trace_tracing_mark_write(5566, "soc_timer_update", soc_timer);
+	}
+}
+
+static void ged_eb_dvfs_udpate_gpu_time(void)
+{
+	struct ged_risky_bq_info info_kpi;
+	struct ged_sysram_info info_sysram;
+	GED_ERROR ret_bq_state;
+	int t_gpu_complete_eb = 0;
+	int t_gpu_uncomplete_eb = 0;
+	int t_gpu_target_eb_uncomplete = 0;
+	int t_gpu_target_eb_complete = 0;
+	unsigned int gpu_completed_counteb = 0;
+
+	// get tgpu uncompleted time in loading-based
+	ged_kpi_update_sysram_uncompleted_tgpu(&info_sysram);
+	info_sysram.last_tgpu_uncompleted /= 1000;
+	info_sysram.last_tgpu_uncompleted_target /= 1000;
+
+	u64 soc_timer_eb = 0;
+	u32 soc_timer_eb_hi = 0;
+
+	// get frame info in loading-based
+	ret_bq_state = ged_kpi_eb_dvfs_get_time(&info_kpi);
+
+	// update frame info in loading-based
+	if (ret_bq_state == GED_OK) {
+		t_gpu_complete_eb = (int) info_kpi.completed_bq.t_gpu;
+		t_gpu_uncomplete_eb = (int) info_kpi.uncompleted_bq.t_gpu;
+		t_gpu_target_eb_complete = info_kpi.completed_bq.t_gpu_target;
+		t_gpu_target_eb_uncomplete = info_kpi.uncompleted_bq.t_gpu_target;
+		gpu_completed_counteb = info_kpi.total_gpu_completed_count;
+	} else {
+		//no complete time when bq_state is not ready
+		t_gpu_complete_eb = 0;
+		t_gpu_uncomplete_eb = (int) info_kpi.uncompleted_bq.t_gpu;
+		t_gpu_target_eb_complete = 0;
+		t_gpu_target_eb_uncomplete = info_kpi.uncompleted_bq.t_gpu_target;
+		gpu_completed_counteb = 0;
+	}
+	/* update info in sysram */
+	mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_BQ_STATE, ret_bq_state);
+	mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_COMPLETE_TIME, t_gpu_complete_eb);
+	mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_COMPLETE_TARGET_TIME, t_gpu_target_eb_complete);
+	mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_COMPLETE_COUNT, gpu_completed_counteb);
+	mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_TIME, info_sysram.last_tgpu_uncompleted);
+	mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_TARGET_TIME, info_sysram.last_tgpu_uncompleted_target);
+	mtk_gpueb_sysram_write(SYSRAM_GPU_EB_UNCOMPLETE_COUNT, info_sysram.uncompleted_count);
+	if (info_sysram.uncompleted_count > 0) {
+		mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_SOC_TIMER_HI,
+				(u32)(info_sysram.last_uncomplete_soc_timer >> 32));
+		mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_SOC_TIMER_LO,
+				(u32)(info_sysram.last_uncomplete_soc_timer & 0xFFFFFFFF));
+		trace_tracing_mark_write(5566, "lb_soc_timer_update", SOC_DONE);
+
+	} else {
+		mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_SOC_TIMER_HI, 0);
+		mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_SOC_TIMER_LO, 0);
+		trace_tracing_mark_write(5566, "lb_soc_timer_update", SOC_RESET);
+	}
+
+}
+
+static void ged_eb_dvfs_udpate_gpu_uncomplete_time(void)
+{
+	struct ged_sysram_info info_sysram;
+	int t_gpu_uncomplete_eb = 0;
+	int t_gpu_target_eb_uncomplete = 0;
+	unsigned int gpu_completed_counteb = 0;
+
+	// get tgpu uncompleted time in loading-based
+	ged_kpi_update_sysram_uncompleted_tgpu(&info_sysram);
+
+
+	info_sysram.last_tgpu_uncompleted /= 1000;
+	info_sysram.last_tgpu_uncompleted_target /= 1000;
+
+	/* update info in sysram */
+	mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_TIME, info_sysram.last_tgpu_uncompleted);
+	mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_TARGET_TIME, info_sysram.last_tgpu_uncompleted_target);
+	mtk_gpueb_sysram_write(SYSRAM_GPU_EB_UNCOMPLETE_COUNT, info_sysram.uncompleted_count);
+
+}
+
+int ged_eb_dvfs_task(enum ged_eb_dvfs_task_index index, int value)
+{
+	u64 soc_timer = 0;
+
+	if (is_fdvfs_enable()) {
+		switch (index) {
+		case EB_UPDATE_UNCOMPLETE_COUNT:
+			if (ged_get_policy_state() == POLICY_STATE_FB)
+				mtk_gpueb_sysram_write(SYSRAM_GPU_EB_UNCOMPLETE_COUNT, value);
+			break;
+		case EB_UPDATE_POLICY_STATE:
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_DESIRE_POLICY_STATE, value);
+			break;
+		case EB_COMMIT_DCS:
+			/* In GPU Job Boundary, ged will check & commit gpueb desire oppidx */
+			if (ged_get_policy_state() != POLICY_STATE_FB)
+				ged_kpi_fastdvfs_update_dcs();
+			break;
+		case EB_UPDATE_GPU_TIME_INFO:
+			ged_eb_dvfs_udpate_gpu_time();
+			break;
+		case EB_UPDATE_UNCOMPLETE_GPU_TIME:
+			if (ged_get_policy_state() == POLICY_STATE_LB)
+				ged_eb_dvfs_udpate_gpu_uncomplete_time();
+			break;
+		case EB_UPDATE_FB_TARGET_TIME:
+			mtk_gpueb_sysram_write(SYSRAM_GPU_FB_TARGET_HD, value);
+			update_fb_timer_set_count();
+			soc_timer = mtk_gpueb_read_soc_timer();
+			mtk_gpueb_sysram_write(SYSRAM_GPU_FB_TARGET_SOC_TIMER_HI,
+					(u32)(soc_timer >> 32));
+			mtk_gpueb_sysram_write(SYSRAM_GPU_FB_TARGET_SOC_TIMER_LO,
+					(u32)(soc_timer & 0xFFFFFFFF));
+			trace_tracing_mark_write(5566, "fb_soc_timer_update", SOC_FB);
+			if (ged_get_policy_state() == POLICY_STATE_FB) {
+				mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_SOC_TIMER_HI,
+						(u32)(soc_timer >> 32));
+				mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_SOC_TIMER_LO,
+						(u32)(soc_timer & 0xFFFFFFFF));
+			}
+			break;
+		case EB_SET_FTRACE:
+			if (value == 1) {
+				mtk_set_fastdvfs_mode(POLICY_MODE | POLICY_DEBUG_FTRACE);
+				ged_set_backup_timer_timeout(ged_get_fallback_time());
+				ged_cancel_backup_timer();
+			} else if (value == 0) {
+				mtk_set_fastdvfs_mode(POLICY_MODE);
+			}
+			break;
+		default:
+			GPUFDVFS_LOGI("(%d), no cmd: %d\n", __LINE__, index);
+			break;
+		}
+	}
+	return GED_OK;
+}
+
+
 static int fastdvfs_proc_show(struct seq_file *m, void *v)
 {
 	char show_string[256];
@@ -729,6 +980,7 @@ static int fastdvfs_proc_show(struct seq_file *m, void *v)
 	seq_puts(m, show_string);
 
 	if (g_is_fulltrace_enable == 1) {
+/*
 		seq_puts(m, "\n#### Frequency ####\n");
 
 		scnprintf(show_string, 256, "Current gpu freq       : %d\n",
@@ -738,10 +990,6 @@ static int fastdvfs_proc_show(struct seq_file *m, void *v)
 		scnprintf(show_string, 256, "Predicted gpu freq     : %d\n",
 			mtk_gpueb_sysram_read(SYSRAM_GPU_PRED_FREQ));
 		seq_puts(m, show_string);
-
-		//scnprintf(show_string, 256, "Current gpu 3D loading : %d\n",
-		//  mtk_gpueb_sysram_read(SYSRAM_GPU_FRAGMENT_LOADING));
-		//seq_puts(m, show_string);
 
 		seq_puts(m, "\n#### Workload ####\n");
 		scnprintf(show_string, 256, "Predicted workload     : %d\n",
@@ -765,10 +1013,6 @@ static int fastdvfs_proc_show(struct seq_file *m, void *v)
 			mtk_gpueb_sysram_read(SYSRAM_GPU_TARGET_TIME));
 		seq_puts(m, show_string);
 
-		//scnprintf(show_string, 256, "Elapsed time         : %d\n",
-		//  mtk_gpueb_sysram_read(SYSRAM_GPU_ELAPSED_TIME));
-		//seq_puts(m, show_string);
-
 		scnprintf(show_string, 256, "Left time              : %d\n",
 			mtk_gpueb_sysram_read(SYSRAM_GPU_LEFT_TIME));
 		seq_puts(m, show_string);
@@ -782,6 +1026,7 @@ static int fastdvfs_proc_show(struct seq_file *m, void *v)
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_FRAME_DONE_INTERVAL));
 		seq_puts(m, show_string);
 		seq_puts(m, "\n\n\n");
+*/
 	}
 
 	return 0;
@@ -854,6 +1099,7 @@ static const struct proc_ops fastdvfs_proc_fops = {
 
 void ged_fastdvfs_systrace(void)
 {
+/*
 	DVFS_trace_counter("(FDVFS)Curr GPU freq",
 		(long long)mtk_gpueb_sysram_read(SYSRAM_GPU_CURR_FREQ));
 	DVFS_trace_counter("(FDVFS)Pred WL",
@@ -890,7 +1136,7 @@ void ged_fastdvfs_systrace(void)
 		(long long)mtk_gpueb_sysram_read(SYSRAM_GPU_COMMIT_PROFILE));
 	DVFS_trace_counter("(FDVFS)DCS",
 		(long long)mtk_gpueb_sysram_read(SYSRAM_GPU_DCS));
-
+*/
 }
 
 
@@ -995,7 +1241,7 @@ void fdvfs_init(void)
 		}
 	}
 
-	GPUFDVFS_LOGI("succeed to register channel: (%d)(%d), ipi_size: %lu\n",
+	GPUFDVFS_LOGI("succeed to register channel: (%d)(%d), ipi_size: %u\n",
 		g_fast_dvfs_ipi_channel,
 		g_fdvfs_event_ipi_channel,
 		FDVFS_IPI_DATA_LEN);

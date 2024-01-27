@@ -61,6 +61,7 @@ struct GED_BRIDGE_PACKAGE_32 {
 #define GED_BRIDGE_COMMAND_HINT_FORCE_MDP     14
 #define GED_BRIDGE_COMMAND_QUERY_DVFS_FREQ_PRED   15
 #define GED_BRIDGE_COMMAND_QUERY_GPU_DVFS_INFO    16
+#define GED_BRIDGE_COMMAND_HINT_FRAME_INFO    17
 
 #define GED_BRIDGE_COMMAND_GE_ALLOC           100
 #define GED_BRIDGE_COMMAND_GE_GET             101
@@ -107,6 +108,8 @@ struct GED_BRIDGE_PACKAGE_32 {
 	GED_IOWR(GED_BRIDGE_COMMAND_QUERY_DVFS_FREQ_PRED)
 #define GED_BRIDGE_IO_QUERY_GPU_DVFS_INFO \
 	GED_IOWR(GED_BRIDGE_COMMAND_QUERY_GPU_DVFS_INFO)
+#define GED_BRIDGE_IO_HINT_FRAME_INFO \
+	GED_IOWR(GED_BRIDGE_COMMAND_HINT_FRAME_INFO)
 
 #define GED_BRIDGE_IO_GE_ALLOC \
 	GED_IOWR(GED_BRIDGE_COMMAND_GE_ALLOC)
@@ -398,6 +401,20 @@ struct GED_BRIDGE_OUT_QUERY_GPU_DVFS_INFO {
 	int gpu_time;
 };
 
+/******************************************************************************
+ *  HINT FRAME_INFO
+ ******************************************************************************/
+struct GED_BRIDGE_IN_HINT_FRAME_INFO {
+	int64_t BBQ_id;
+	int32_t target_fps;
+	int32_t target_fps_margin;
+	int32_t enable;
+};
+
+struct GED_BRIDGE_OUT_HINT_FRAME_INFO {
+	GED_ERROR eError;
+};
+
 /*****************************************************************************
  *  GE - gralloc_extra functions
  *****************************************************************************/
@@ -405,7 +422,7 @@ struct GED_BRIDGE_OUT_QUERY_GPU_DVFS_INFO {
 /* Bridge in structure for GE_ALLOC */
 struct GED_BRIDGE_IN_GE_ALLOC {
 	int region_num;
-	uint32_t region_sizes[];
+	uint32_t region_sizes[0];
 };
 
 /* Bridge out structure for GE_ALLOC */
@@ -428,7 +445,7 @@ struct GED_BRIDGE_IN_GE_GET {
 /* Bridge out structure for GE_GET */
 struct GED_BRIDGE_OUT_GE_GET {
 	GED_ERROR eError;
-	uint32_t data[];
+	uint32_t data[0];
 };
 
 /* Bridge in structure for GE_SET */
@@ -440,7 +457,7 @@ struct GED_BRIDGE_IN_GE_SET {
 	 */
 	int uint32_offset;
 	int uint32_size;
-	uint32_t data[];
+	uint32_t data[0];
 };
 
 /* Bridge out structure for GE_SET */

@@ -169,15 +169,18 @@ int ged_bridge_gpu_hint_to_cpu(
 		struct GED_BRIDGE_OUT_GPU_HINT_TO_CPU *out)
 {
 	int ret = 0;
-	set_api_sync_flag(in->hint);
 	trace_GPU_DVFS__Policy__Common__Sync_Api(in->hint);
-//k61 mark for this api <fpsgo_notify_gpu_block> is not existed after k510
-//#ifdef CONFIG_MTK_FPSGO_V3
-//	ret = fpsgo_notify_gpu_block(in->tid, in->i32BridgeFD, in->hint);
-//#endif
+#ifdef CONFIG_MTK_FPSGO_V3
+	ret = fpsgo_notify_gpu_block(in->tid, in->i32BridgeFD, in->hint);
+#endif
 	out->eError = GED_OK;
 	out->boost_flag = ret;
-	out->boost_value = ged_dvfs_boost_value();
+	if (in->hint <= 1)
+		out->boost_value = ged_dvfs_boost_value();
+	else
+		out->boost_value = -1;
+
+	set_api_sync_flag(in->hint);
 
 	return 0;
 }
@@ -243,6 +246,19 @@ int ged_bridge_query_gpu_dvfs_info(
 	}
 	QueryGPUDVFSInfoOut->eError = ged_kpi_query_gpu_dvfs_info(
 		QueryGPUDVFSInfoOut);
+
+	return 0;
+}
+
+//-----------------------------------------------------------------------------
+int ged_bridge_hint_frame_info(
+	struct GED_BRIDGE_IN_HINT_FRAME_INFO *HintFrameInfoIn,
+	struct GED_BRIDGE_OUT_HINT_FRAME_INFO *HintFrameInfoOut)
+{
+	if (HintFrameInfoIn->enable != 0 && HintFrameInfoIn->BBQ_id && HintFrameInfoIn->target_fps)
+		ged_kpi_set_target_FPS_margin(HintFrameInfoIn->BBQ_id, HintFrameInfoIn->target_fps,
+			HintFrameInfoIn->target_fps_margin, -1, 0);
+	HintFrameInfoOut->eError = ged_kpi_hint_frame_info(HintFrameInfoOut);
 
 	return 0;
 }

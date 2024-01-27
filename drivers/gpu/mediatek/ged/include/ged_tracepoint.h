@@ -53,9 +53,9 @@ TRACE_EVENT(GPU_DVFS__Frequency,
 TRACE_EVENT(GPU_DVFS__Loading,
 
 	TP_PROTO(unsigned int active, unsigned int tiler, unsigned int frag,
-		unsigned int comp, unsigned int iter, unsigned int mcu),
+		unsigned int comp, unsigned int iter, unsigned int mcu , unsigned int iter_u_mcu),
 
-	TP_ARGS(active, tiler, frag, comp, iter, mcu),
+	TP_ARGS(active, tiler, frag, comp, iter, mcu ,iter_u_mcu),
 
 	TP_STRUCT__entry(
 		__field(unsigned int, active)
@@ -64,6 +64,7 @@ TRACE_EVENT(GPU_DVFS__Loading,
 		__field(unsigned int, comp)
 		__field(unsigned int, iter)
 		__field(unsigned int, mcu)
+		__field(unsigned int, iter_u_mcu)
 	),
 
 	TP_fast_assign(
@@ -73,11 +74,12 @@ TRACE_EVENT(GPU_DVFS__Loading,
 		__entry->comp = comp;
 		__entry->iter = iter;
 		__entry->mcu = mcu;
+		__entry->iter_u_mcu = iter_u_mcu
 	),
 
-	TP_printk("active=%u, tiler=%u, frag=%u, comp=%u, iter=%u, mcu=%u",
+	TP_printk("active=%u, tiler=%u, frag=%u, comp=%u, iter=%u, mcu=%u, iter_u_mcu=%u",
 		__entry->active, __entry->tiler, __entry->frag, __entry->comp,
-		__entry->iter, __entry->mcu)
+		__entry->iter, __entry->mcu , __entry->iter_u_mcu)
 );
 
 TRACE_EVENT(GPU_DVFS__Policy__Common,
@@ -140,6 +142,30 @@ TRACE_EVENT(GPU_DVFS__Policy__Common__Commit_Reason__TID,
 	),
 
 	TP_printk("%d_%d=%d", __entry->pid, __entry->bqid, __entry->count)
+);
+
+TRACE_EVENT(GPU_DVFS__Policy__Common__Check_Target,
+
+	TP_PROTO(int pid, int bqid, int fps, int use),
+
+	TP_ARGS(pid, bqid, fps, use),
+
+	TP_STRUCT__entry(
+		__field(int, pid)
+		__field(int, bqid)
+		__field(int, fps)
+		__field(int, use)
+	),
+
+	TP_fast_assign(
+		__entry->pid = pid;
+		__entry->bqid = bqid;
+		__entry->fps = fps;
+		__entry->use = use;
+	),
+
+	TP_printk("gpu_fps=%d, pid=%d, q=%d, use=%d",
+		__entry->fps, __entry->pid, __entry->bqid, __entry->use)
 );
 
 TRACE_EVENT(GPU_DVFS__Policy__Common__Sync_Api,
@@ -394,23 +420,26 @@ TRACE_EVENT(GPU_DVFS__Policy__Loading_based__Opp,
 
 TRACE_EVENT(GPU_DVFS__Policy__Loading_based__Loading,
 
-	TP_PROTO(unsigned int cur, unsigned int mode, unsigned int fb_adj),
+	TP_PROTO(unsigned int cur, unsigned int mode, unsigned int fb_adj, unsigned int win_size),
 
-	TP_ARGS(cur, mode, fb_adj),
+	TP_ARGS(cur, mode, fb_adj, win_size),
 
 	TP_STRUCT__entry(
 		__field(unsigned int, cur)
 		__field(unsigned int, mode)
 		__field(unsigned int, fb_adj)
+		__field(unsigned int, win_size)
 	),
 
 	TP_fast_assign(
 		__entry->cur = cur;
 		__entry->mode = mode;
 		__entry->fb_adj = fb_adj;
+		__entry->win_size = win_size;
 	),
 
-	TP_printk("cur=%u, mode=%u, fb_adj=%u", __entry->cur, __entry->mode, __entry->fb_adj)
+	TP_printk("cur=%u, mode=%u, fb_adj=%u, win_size=%u", __entry->cur, __entry->mode,
+			__entry->fb_adj, __entry->win_size)
 );
 
 TRACE_EVENT(GPU_DVFS__Policy__Loading_based__Bound,
@@ -536,24 +565,81 @@ TRACE_EVENT(GPU_DVFS__Policy__Loading_based__Fallback_Tuning,
 		__entry->uncomplete_type, __entry->uncomplete_flag, __entry->lb_last_opp)
 );
 
+TRACE_EVENT(GPU_DVFS__Policy__Loading_based__Async_Ratio__MCU_index,
+
+	TP_PROTO(unsigned int max_is_mcu, unsigned int avg_mcu, unsigned int max_mcu,
+			unsigned int avg_mcu_th, unsigned int max_mcu_th),
+
+	TP_ARGS(max_is_mcu, avg_mcu, max_mcu, avg_mcu_th, max_mcu_th),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, max_is_mcu)
+		__field(unsigned int, avg_mcu)
+		__field(unsigned int, max_mcu)
+		__field(unsigned int, avg_mcu_th)
+		__field(unsigned int, max_mcu_th)
+	),
+
+	TP_fast_assign(
+		__entry->max_is_mcu = max_is_mcu;
+		__entry->avg_mcu = avg_mcu;
+		__entry->max_mcu = max_mcu;
+		__entry->avg_mcu_th = avg_mcu_th;
+		__entry->max_mcu_th = max_mcu_th;
+	),
+
+	TP_printk("max_is_mcu=%u, avg_mcu=%u, max_mcu=%u, avg_mcu_th=%u, max_mcu_th=%u",
+		__entry->max_is_mcu, __entry->avg_mcu,
+		__entry->max_mcu, __entry->avg_mcu_th, __entry->max_mcu_th)
+);
+
+TRACE_EVENT(GPU_DVFS__Policy__Loading_based__Async_Ratio__Policy,
+
+	TP_PROTO(unsigned int apply_lb_async, unsigned int perf_improve, unsigned int adjust_ratio,
+			unsigned int opp_diff),
+
+	TP_ARGS(apply_lb_async, perf_improve, adjust_ratio, opp_diff),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, apply_lb_async)
+		__field(unsigned int, perf_improve)
+		__field(unsigned int, adjust_ratio)
+		__field(unsigned int, opp_diff)
+	),
+
+	TP_fast_assign(
+		__entry->apply_lb_async = apply_lb_async;
+		__entry->perf_improve = perf_improve;
+		__entry->adjust_ratio = adjust_ratio;
+		__entry->opp_diff = opp_diff;
+	),
+
+	TP_printk("apply_lb_async=%u, perf_improve=%u, adjust_ratio=%u, opp_diff=%u",
+		__entry->apply_lb_async, __entry->perf_improve,
+		__entry->adjust_ratio, __entry->opp_diff)
+);
+
 /* DCS tracepoints */
 TRACE_EVENT(GPU_DVFS__Policy__DCS,
 
-	TP_PROTO(int max_core, int current_core),
+	TP_PROTO(int max_core, int current_core, unsigned int fix_core),
 
-	TP_ARGS(max_core, current_core),
+	TP_ARGS(max_core, current_core, fix_core),
 
 	TP_STRUCT__entry(
 		__field(int, max_core)
 		__field(int, current_core)
+		__field(int, fix_core)
 	),
 
 	TP_fast_assign(
 		__entry->max_core = max_core;
 		__entry->current_core = current_core;
+		__entry->fix_core = fix_core;
 	),
 
-	TP_printk("max_core=%d, current_core=%d", __entry->max_core, __entry->current_core)
+	TP_printk("max_core=%d, current_core=%d fix_core=%u",
+	__entry->max_core, __entry->current_core, __entry->fix_core)
 );
 
 TRACE_EVENT(GPU_DVFS__Policy__DCS__Detail,
@@ -573,11 +659,314 @@ TRACE_EVENT(GPU_DVFS__Policy__DCS__Detail,
 	TP_printk("core_mask=%u", __entry->core_mask)
 );
 
+TRACE_EVENT(GED_EB_POLICY,
+	TP_PROTO(const char *name, const int *arg),
+	TP_ARGS(name, arg),
+	TP_STRUCT__entry(
+		__string(name, name)
+		__array(u32, arg, 8)
+	),
+	TP_fast_assign(
+		__assign_str(name, name);
+		memcpy(__entry->arg, arg, sizeof(__entry->arg));
+	),
+	TP_printk("%s={%d, %d, %d, %d, %d, %d, %d, %d}", __get_str(name),
+				__entry->arg[0],
+				__entry->arg[1],
+				__entry->arg[2],
+				__entry->arg[3],
+				__entry->arg[4],
+				__entry->arg[5],
+				__entry->arg[6],
+				__entry->arg[7])
+);
+
+TRACE_EVENT(GPU_EB_DVFS__Frequency,
+	TP_PROTO(unsigned int virtual_stack, unsigned int real_stack, unsigned int real_top,
+		unsigned int diff),
+	TP_ARGS(virtual_stack, real_stack, real_top, diff),
+	TP_STRUCT__entry(
+		__field(unsigned int, virtual_stack)
+		__field(unsigned int, real_stack)
+		__field(unsigned int, real_top)
+		__field(unsigned int, diff)
+	),
+	TP_fast_assign(
+		__entry->virtual_stack = virtual_stack;
+		__entry->real_stack = real_stack;
+		__entry->real_top = real_top;
+		__entry->diff = diff;
+	),
+	TP_printk("virtual_stack=%u, real_stack=%u, real_top=%u, diff=%u",
+		__entry->virtual_stack, __entry->real_stack, __entry->real_top, __entry->diff)
+);
+
+TRACE_EVENT(GPU_EB_DVFS__Loading,
+
+	TP_PROTO(unsigned int active, unsigned int tiler, unsigned int frag,
+		unsigned int comp, unsigned int iter, unsigned int mcu, unsigned int iter_u_mcu,
+		unsigned int diff),
+
+	TP_ARGS(active, tiler, frag, comp, iter, mcu ,iter_u_mcu, diff),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, active)
+		__field(unsigned int, tiler)
+		__field(unsigned int, frag)
+		__field(unsigned int, comp)
+		__field(unsigned int, iter)
+		__field(unsigned int, mcu)
+		__field(unsigned int, iter_u_mcu)
+		__field(unsigned int, diff)
+	),
+
+	TP_fast_assign(
+		__entry->active = active;
+		__entry->tiler = tiler;
+		__entry->frag = frag;
+		__entry->comp = comp;
+		__entry->iter = iter;
+		__entry->mcu = mcu;
+		__entry->iter_u_mcu = iter_u_mcu;
+		__entry->diff = diff;
+	),
+
+	TP_printk("active=%u, tiler=%u, frag=%u, comp=%u, iter=%u, mcu=%u, iter_u_mcu=%u, diff=%u",
+		__entry->active, __entry->tiler, __entry->frag, __entry->comp,
+		__entry->iter, __entry->mcu , __entry->iter_u_mcu, __entry->diff)
+);
+
+TRACE_EVENT(GPU_EB_DVFS__Policy__Common,
+
+	TP_PROTO(unsigned int commit_type, unsigned int policy_state,
+		unsigned int diff),
+
+	TP_ARGS(commit_type, policy_state, diff),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, commit_type)
+		__field(unsigned int, policy_state)
+		__field(unsigned int, diff)
+	),
+
+	TP_fast_assign(
+		__entry->commit_type = commit_type;
+		__entry->policy_state = policy_state;
+		__entry->diff = diff;
+	),
+
+	TP_printk("eb_commit_type=%u, policy_state=%u, diff=%u",
+		__entry->commit_type, __entry->policy_state, __entry->diff)
+);
+
+TRACE_EVENT(GPU_EB_DVFS__Policy__Common__Sync_Api,
+
+	TP_PROTO(int hint),
+
+	TP_ARGS(hint),
+
+	TP_STRUCT__entry(
+		__field(int, hint)
+	),
+
+	TP_fast_assign(
+		__entry->hint = hint;
+	),
+
+	TP_printk("hint=%d", __entry->hint)
+);
+
+/* frame-based policy tracepoints */
+TRACE_EVENT(GPU_EB_DVFS__Policy__Frame_based__monitor,
+
+	TP_PROTO(int cur, int target, unsigned int diff),
+
+	TP_ARGS(cur, target, diff),
+
+	TP_STRUCT__entry(
+		__field(int, cur)
+		__field(int, target)
+		__field(unsigned int, diff)
+	),
+
+	TP_fast_assign(
+		__entry->cur = cur;
+		__entry->target = target;
+		__entry->diff = diff;
+	),
+
+	TP_printk("fb_t_gpu=%d, fb_target=%d, diff=%u",
+		__entry->cur, __entry->target, __entry->diff)
+);
+
+
+/* loading-based policy tracepoints */
+TRACE_EVENT(GPU_EB_DVFS__Policy__Loading_based__Opp,
+
+	TP_PROTO(int target, unsigned int diff),
+
+	TP_ARGS(target, diff),
+
+	TP_STRUCT__entry(
+		__field(int, target)
+		__field(unsigned int, diff)
+	),
+
+	TP_fast_assign(
+		__entry->target = target;
+		__entry->diff = diff;
+	),
+
+	TP_printk("target_opp=%d, diff=%u", __entry->target, __entry->diff)
+);
+
+TRACE_EVENT(GPU_EB_DVFS__Policy__Loading_based__Loading,
+
+	TP_PROTO(unsigned int cur, unsigned int diff),
+
+	TP_ARGS(cur, diff),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, cur)
+		__field(unsigned int, diff)
+	),
+
+	TP_fast_assign(
+		__entry->cur = cur;
+		__entry->diff = diff;
+	),
+
+	TP_printk("cur_use_loading=%u, diff=%u", __entry->cur, __entry->diff)
+);
+
+TRACE_EVENT(GPU_EB_DVFS__Policy__Loading_based__Bound,
+
+	TP_PROTO(int ultra_high, int high, int low, int ultra_low, unsigned int diff),
+
+	TP_ARGS(ultra_high, high, low, ultra_low, diff),
+
+	TP_STRUCT__entry(
+		__field(int, ultra_high)
+		__field(int, high)
+		__field(int, low)
+		__field(int, ultra_low)
+		__field(unsigned int, diff)
+	),
+
+	TP_fast_assign(
+		__entry->ultra_high = ultra_high;
+		__entry->high = high;
+		__entry->low = low;
+		__entry->ultra_low = ultra_low;
+		__entry->diff = diff;
+	),
+
+	TP_printk("ultra_high=%d, high=%d, low=%d, ultra_low=%d, diff=%u",
+		__entry->ultra_high, __entry->high, __entry->low, __entry->ultra_low, __entry->diff)
+);
+
+TRACE_EVENT(GPU_EB_DVFS__Policy__Loading_based__GPU_Time,
+
+	TP_PROTO(int cur, int target, int target_hd, int complete, int uncomplete, unsigned int diff),
+
+	TP_ARGS(cur, target, target_hd, complete, uncomplete, diff),
+
+	TP_STRUCT__entry(
+		__field(int, cur)
+		__field(int, target)
+		__field(int, target_hd)
+		__field(int, complete)
+		__field(int, uncomplete)
+		__field(unsigned int, diff)
+	),
+
+	TP_fast_assign(
+		__entry->cur = cur;
+		__entry->target = target;
+		__entry->target_hd = target_hd;
+		__entry->complete = complete;
+		__entry->uncomplete = uncomplete;
+		__entry->diff = diff;
+	),
+
+	TP_printk("lb_t_gpu=%d, lb_target=%d, lb_target_hd=%d, lb_complete=%d, lb_uncomplete=%d, diff=%u",
+		__entry->cur, __entry->target, __entry->target_hd, __entry->complete,
+		__entry->uncomplete, __entry->diff)
+
+);
+
+TRACE_EVENT(GPU_EB_DVFS__Policy__Loading_based__Margin,
+
+	TP_PROTO(int ceil, int cur, int floor, unsigned int diff),
+
+	TP_ARGS(ceil, cur, floor, diff),
+
+	TP_STRUCT__entry(
+		__field(int, ceil)
+		__field(int, cur)
+		__field(int, floor)
+		__field(unsigned int, diff)
+	),
+
+	TP_fast_assign(
+		__entry->ceil = ceil;
+		__entry->cur = cur;
+		__entry->floor = floor;
+		__entry->diff = diff;
+
+	),
+
+	TP_printk("margin_ceil=%d, margin_cur=%d, margin_floor=%d, diff=%u",
+			__entry->ceil, __entry->cur, __entry->floor, __entry->diff)
+);
+
+TRACE_EVENT(GPU_EB_DVFS__Policy__DEBUG,
+
+	TP_PROTO(unsigned int count, unsigned int diff),
+
+	TP_ARGS(count, diff),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, count)
+		__field(unsigned int, diff)
+	),
+
+	TP_fast_assign(
+		__entry->count = count;
+		__entry->diff = diff;
+
+	),
+
+	TP_printk("debug_count=%u, diff==%u", __entry->count, __entry->diff)
+);
+
+TRACE_EVENT(GPU_EB_DVFS__Policy__RINBUFFER,
+	TP_PROTO(const char *name, const int *arg),
+	TP_ARGS(name, arg),
+	TP_STRUCT__entry(
+		__string(name, name)
+		__array(u32, arg, 8)
+	),
+	TP_fast_assign(
+		__assign_str(name, name);
+		memcpy(__entry->arg, arg, sizeof(__entry->arg));
+	),
+	TP_printk("%s={%d, %d, %d, %d, %d, %d, %d, %d}", __get_str(name),
+				__entry->arg[0],
+				__entry->arg[1],
+				__entry->arg[2],
+				__entry->arg[3],
+				__entry->arg[4],
+				__entry->arg[5],
+				__entry->arg[6],
+				__entry->arg[7])
+);
+
 #endif /* _TRACE_GED_H */
 
 
 /* This part must be outside protection */
 #undef TRACE_INCLUDE_PATH
-#define TRACE_INCLUDE_PATH .
+#define TRACE_INCLUDE_PATH ../../drivers/gpu/mediatek/ged/include
 #define TRACE_INCLUDE_FILE ged_tracepoint
 #include <trace/define_trace.h>
