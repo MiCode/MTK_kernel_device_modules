@@ -590,7 +590,7 @@ static void mtk_aie_hw_disconnect(struct mtk_aie_dev *fd)
 		cmdq_mbox_disable(fd->fdvt_clt->chan);
 		//mtk_aie_mmdvfs_set(fd, 0, 0);
 		if (fd->map_count == 1) { //have qbuf + map memory
-			dma_buf_vunmap(fd->dmabuf, &fd->map);
+			dma_buf_vunmap_unlocked(fd->dmabuf, &fd->map);
 			dma_buf_end_cpu_access(fd->dmabuf, DMA_BIDIRECTIONAL);
 			dma_buf_put(fd->dmabuf);
 			fd->map_count--;
@@ -979,7 +979,7 @@ int mtk_aie_vidioc_qbuf(struct file *file, void *priv,
 				goto ERROR_PUTBUF;
 			}
 
-			ret = (u64)dma_buf_vmap(fd->dmabuf, &fd->map);
+			ret = (u64)dma_buf_vmap_unlocked(fd->dmabuf, &fd->map);
 			if (ret) {
 				dev_info(fd->dev, "%s, map kernel va failed\n", __func__);
 				ret = -ENOMEM;
