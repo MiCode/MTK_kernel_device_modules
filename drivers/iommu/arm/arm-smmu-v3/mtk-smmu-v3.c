@@ -2692,8 +2692,7 @@ static const struct mtk_smmu_plat_data mt6991_data_apu = {
 	.smmu_plat		= SMMU_MT6991,
 	.smmu_type		= APU_SMMU,
 	.flags			= SMMU_DELAY_HW_INIT | SMMU_SEC_EN | /* SMMU_HYP_EN | */
-				  SMMU_EXTRA_DCM_EN | SMMU_SKIP_SHUTDOWN | SMMU_CLK_AO_EN |
-				  SMMU_DIS_TCU_CH,
+				  SMMU_EXTRA_DCM_EN | SMMU_SKIP_SHUTDOWN | SMMU_DIS_TCU_CH,
 };
 
 static const struct mtk_smmu_plat_data mt6991_data_soc = {
