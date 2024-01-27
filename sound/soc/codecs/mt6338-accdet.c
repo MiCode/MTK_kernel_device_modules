@@ -16,6 +16,7 @@
 #include <linux/timer.h>
 #include <linux/delay.h>
 #include <linux/module.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/iio/consumer.h>
 #include <linux/nvmem-consumer.h>
