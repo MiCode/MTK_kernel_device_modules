@@ -831,6 +831,12 @@ err:
 	return -ENOENT;
 }
 
+struct mtk_em_perf_domain *mtk_get_em_public_table(void)
+{
+	return mtk_em_pd_ptr_public;
+}
+EXPORT_SYMBOL_GPL(mtk_get_em_public_table);
+
 inline unsigned int mtk_get_leakage(unsigned int cpu, unsigned int idx, unsigned int degree)
 {
 	int a, b, c, power, cluster;
