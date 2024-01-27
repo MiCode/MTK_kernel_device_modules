@@ -841,7 +841,6 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/slbc/slbc_mt6983.ko": "mt6983",
     "drivers/misc/mediatek/slbc/slbc_mt6985.ko": "mt6985",
     "drivers/misc/mediatek/slbc/slbc_mt6989.ko": "mt6989",
-    "drivers/misc/mediatek/slbc/slbc_mt6991.ko": "mt6991",
     "drivers/pinctrl/mediatek/pinctrl-mt6886.ko": "mt6886",
     "drivers/pinctrl/mediatek/pinctrl-mt6897.ko": "mt6897",
     "drivers/pinctrl/mediatek/pinctrl-mt6983.ko": "mt6983",
