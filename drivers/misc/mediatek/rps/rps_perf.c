@@ -23,6 +23,7 @@
  *
  ****************************************************************************/
 #include <linux/netdevice.h>
+#include <net/netdev_rx_queue.h>
 #include <linux/ip.h>
 #include <linux/tcp.h>
 #include <linux/ipv6.h>
