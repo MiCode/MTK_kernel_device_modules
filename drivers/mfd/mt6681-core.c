@@ -178,8 +178,7 @@ void mt6681_InitSetting(struct mt6681_pmic_info *mpi)
 
 static const unsigned short mt6681_slave_addr = MT6681_PMIC_SLAVEID;
 
-static int mt6681_pmic_probe(struct i2c_client *client,
-			    const struct i2c_device_id *id)
+static int mt6681_pmic_probe(struct i2c_client *client)
 {
 	struct mt6681_pmic_info *mpi;
 	struct regmap_config *regmap_config = &mt6681_regmap_config;
