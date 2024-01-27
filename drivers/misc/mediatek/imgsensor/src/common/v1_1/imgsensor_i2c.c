@@ -114,8 +114,7 @@ static const struct thermal_zone_device_ops imgsensor_tz_ops = {
 	.get_temp = imgsensor_get_temp,
 };
 
-static int imgsensor_i2c_probe_0(struct i2c_client *client,
-				const struct i2c_device_id *id)
+static int imgsensor_i2c_probe_0(struct i2c_client *client)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_0].pi2c_client = client;
 	devm_thermal_of_zone_register(&client->dev, 0,
@@ -123,8 +122,7 @@ static int imgsensor_i2c_probe_0(struct i2c_client *client,
 	return 0;
 }
 
-static int imgsensor_i2c_probe_1(struct i2c_client *client,
-				const struct i2c_device_id *id)
+static int imgsensor_i2c_probe_1(struct i2c_client *client)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_1].pi2c_client = client;
 	devm_thermal_of_zone_register(&client->dev, 0,
@@ -132,8 +130,7 @@ static int imgsensor_i2c_probe_1(struct i2c_client *client,
 	return 0;
 }
 
-static int imgsensor_i2c_probe_2(struct i2c_client *client,
-				const struct i2c_device_id *id)
+static int imgsensor_i2c_probe_2(struct i2c_client *client)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_2].pi2c_client = client;
 	devm_thermal_of_zone_register(&client->dev, 0,
@@ -142,8 +139,7 @@ static int imgsensor_i2c_probe_2(struct i2c_client *client,
 }
 
 #ifdef IMGSENSOR_I2C_DRV_NAME_3
-static int imgsensor_i2c_probe_3(struct i2c_client *client,
-				const struct i2c_device_id *id)
+static int imgsensor_i2c_probe_3(struct i2c_client *client)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_3].pi2c_client = client;
 	devm_thermal_of_zone_register(&client->dev, 0,
@@ -153,8 +149,7 @@ static int imgsensor_i2c_probe_3(struct i2c_client *client,
 #endif
 
 #ifdef IMGSENSOR_I2C_DRV_NAME_4
-static int imgsensor_i2c_probe_4(struct i2c_client *client,
-				const struct i2c_device_id *id)
+static int imgsensor_i2c_probe_4(struct i2c_client *client)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_4].pi2c_client = client;
 	devm_thermal_of_zone_register(&client->dev, 0,
@@ -164,8 +159,7 @@ static int imgsensor_i2c_probe_4(struct i2c_client *client,
 #endif
 
 #ifdef IMGSENSOR_I2C_DRV_NAME_5
-static int imgsensor_i2c_probe_5(struct i2c_client *client,
-				const struct i2c_device_id *id)
+static int imgsensor_i2c_probe_5(struct i2c_client *client)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_5].pi2c_client = client;
 	devm_thermal_of_zone_register(&client->dev, 0,
@@ -175,8 +169,7 @@ static int imgsensor_i2c_probe_5(struct i2c_client *client,
 #endif
 
 #ifdef IMGSENSOR_I2C_DRV_NAME_6
-static int imgsensor_i2c_probe_6(struct i2c_client *client,
-				const struct i2c_device_id *id)
+static int imgsensor_i2c_probe_6(struct i2c_client *client)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_6].pi2c_client = client;
 	devm_thermal_of_zone_register(&client->dev, 0,
@@ -186,8 +179,7 @@ static int imgsensor_i2c_probe_6(struct i2c_client *client,
 #endif
 
 #ifdef IMGSENSOR_I2C_DRV_NAME_7
-static int imgsensor_i2c_probe_7(struct i2c_client *client,
-				const struct i2c_device_id *id)
+static int imgsensor_i2c_probe_7(struct i2c_client *client)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_7].pi2c_client = client;
 	devm_thermal_of_zone_register(&client->dev, 0,
