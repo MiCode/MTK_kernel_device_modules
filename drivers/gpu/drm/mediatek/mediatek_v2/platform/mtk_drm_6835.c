@@ -259,7 +259,7 @@ static const unsigned int mt6835_mutex_sof[DDP_MUTEX_SOF_MAX] = {
 const struct mtk_disp_ddp_data mt6835_ddp_driver_data = {
 	.mutex_mod = mt6835_mutex_mod,
 	.mutex_sof = mt6835_mutex_sof,
-	.mutex_mod_reg = MT6835_DISP_MUTEX0_MOD0,
+	.mutex_mod_reg = {MT6835_DISP_MUTEX0_MOD0,},
 	.mutex_sof_reg = MT6835_DISP_MUTEX0_SOF,
 };
 
@@ -957,7 +957,7 @@ void mutex_dump_analysis_mt6835(struct mtk_disp_mutex *mutex)
 
 		n = 0;
 		if (readl_relaxed(ddp->regs +
-				  DISP_REG_MUTEX_MOD(ddp->data, i)) == 0)
+				  DISP_REG_MUTEX_MOD(0, ddp->data, i)) == 0)
 			continue;
 
 		val = readl_relaxed(ddp->regs +
@@ -972,7 +972,7 @@ void mutex_dump_analysis_mt6835(struct mtk_disp_mutex *mutex)
 			      REG_FLD_VAL_GET(SOF_FLD_MUTEX0_SOF_WAIT, val));
 
 		mod0 = readl_relaxed(ddp->regs +
-			DISP_REG_MUTEX_MOD(ddp->data, i));
+			DISP_REG_MUTEX_MOD(0, ddp->data, i));
 		for (j = 0; j < 32; j++) {
 			if ((mod0 & (1 << j))) {
 				n += snprintf(mutex_module + n, LEN - n, "%s,",
@@ -981,7 +981,7 @@ void mutex_dump_analysis_mt6835(struct mtk_disp_mutex *mutex)
 		}
 
 		mod1 = readl_relaxed(ddp->regs +
-			DISP_REG_MUTEX_MOD(ddp->data, i));
+			DISP_REG_MUTEX_MOD(0, ddp->data, i));
 		for (j = 0; j < 32; j++) {
 			if ((mod1 & (1 << j))) {
 				n += snprintf(mutex_module + n, LEN - n, "%s,",

@@ -41,6 +41,7 @@ struct mtk_drm_gem_obj {
 };
 
 #define to_mtk_gem_obj(x) container_of(x, struct mtk_drm_gem_obj, base)
+#define ROUNDUP(a, b) (((a) + ((b)-1)) & ~((b)-1))
 
 void mtk_drm_gem_free_object(struct drm_gem_object *gem);
 struct mtk_drm_gem_obj *mtk_drm_gem_create(struct drm_device *dev, size_t size,

@@ -1947,7 +1947,8 @@ int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state)
 	else
 		comp = ddp_ctx[mtk_crtc->ddp_mode].ddp_comp[0][0];
 	global_lye_num = plane_state->comp_state.lye_id;
-	if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL) {
+	if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL ||
+		mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA) {
 		if (plane_state->comp_state.comp_id != comp->id)
 			global_lye_num += mtk_ovl_layer_num(comp);
 	}

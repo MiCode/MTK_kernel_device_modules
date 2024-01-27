@@ -153,10 +153,19 @@ unsigned int ovl_win_size;
 #define ALIGN_TO_32(x) ALIGN_TO(x, 32)
 
 #define DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL 0x308
+#define DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL_MT6991 0x408
+
 #define DISP_REG_CONFIG_MMSYS_BYPASS_MUX_SHADOW 0xc30
+#define DISP_REG_CONFIG_MMSYS1_BYPASS_MUX_SHADOW_MT6991 0xcf8
+
 #define DISP_REG_CONFIG_OVLSYS_GCE_EVENT_SEL 0x308
+#define DISP_REG_CONFIG_OVLSYS_GCE_EVENT_SEL_MT6991 0x408
+
 #define DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW 0xf00
+#define DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW_MT6991 0xca0
 #define DISP_REG_CONFIG_OVLSYS_CB_BYPASS_MUX_SHADOW 0xf0c
+#define DISP_REG_CONFIG_OVLSYS_CB_BYPASS_MUX_SHADOW_MT6991 0xcac
+
 
 #define DISP_MUTEX0_EN 0xA0
 #define DISP_MUTEX0_CTL 0xAc
@@ -171,6 +180,15 @@ unsigned int ovl_win_size;
 #define MT6989_DISPSYS1_DLI_RELAY_1TNP 0x260
 #define MT6989_DISPSYS1_DLI_NUM 5
 #define MT6989_DLI_RELAY_1TNP REG_FLD_MSB_LSB(31, 30)
+
+/* MT6991 DLI_Relay setting*/
+#define MT6991_DISPSYS_DLI_RELAY_1TNP 0x200
+#define MT6991_DISPSYS_DLI_NUM 16
+#define MT6991_DISPSYS_DLO_RELAY_1TNP 0x264
+#define MT6991_DISPSYS_DLO_NUM 9
+#define MT6991_DISPSYS1_DLI_RELAY_1TNP 0x200
+#define MT6991_DISPSYS1_DLI_NUM 13
+#define MT6991_DLI_RELAY_1TNP REG_FLD_MSB_LSB(31, 30)
 
 /* OVL Bandwidth monitor */
 #define DISP_REG_OVL_LX_BURST_ACC(n) (0x940UL + 0x4 * (n))
@@ -386,6 +404,25 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 			}
 		}
 		break;
+	case MMSYS_MT6991:
+			DDPDUMP("== DISP pipe-0 OVLSYS_CONFIG REGS:0x%pa ==\n",
+						&mtk_crtc->ovlsys0_regs_pa);
+			ovlsys_config_dump_reg_mt6991(mtk_crtc->ovlsys0_regs);
+			if (mtk_crtc->ovlsys1_regs) {
+				DDPDUMP("== DISP pipe-1 OVLSYS_CONFIG REGS:0x%pa ==\n",
+					&mtk_crtc->ovlsys1_regs_pa);
+				ovlsys_config_dump_reg_mt6991(mtk_crtc->ovlsys1_regs);
+			}
+
+			DDPDUMP("== DISP pipe-0 MMSYS_CONFIG REGS:0x%pa ==\n",
+						&mtk_crtc->config_regs_pa);
+			mmsys_config_dump_reg_mt6991(mtk_crtc->config_regs);
+			if (mtk_crtc->side_config_regs) {
+				DDPDUMP("== DISP pipe-1 MMSYS_CONFIG REGS:0x%pa ==\n",
+					&mtk_crtc->side_config_regs_pa);
+				mmsys_config_dump_reg_mt6991(mtk_crtc->side_config_regs);
+			}
+			break;
 	case MMSYS_MT6897:
 		DDPDUMP("== DISP pipe-0 OVLSYS_CONFIG REGS:0x%pa ==\n",
 					&mtk_crtc->ovlsys0_regs_pa);
@@ -438,6 +475,7 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (comp && ((mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL) ||
+			(mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA) ||
 			(mtk_ddp_comp_get_type(comp->id) == MTK_DSI)))
 			mtk_dump_reg(comp);
 	}
@@ -538,6 +576,29 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 
 		mutex_dump_reg_mt6989(mtk_crtc->mutex[0]);
 		mutex_ovlsys_dump_reg_mt6989(mtk_crtc->mutex[0]);
+		break;
+	case MMSYS_MT6991:
+		DDPDUMP("== DISP pipe-0 OVLSYS_CONFIG REGS:0x%pa ==\n",
+					&mtk_crtc->ovlsys0_regs_pa);
+		ovlsys_config_dump_reg_mt6991(mtk_crtc->ovlsys0_regs);
+		if (mtk_crtc->ovlsys1_regs) {
+			DDPDUMP("== DISP pipe-1 OVLSYS_CONFIG REGS:0x%pa ==\n",
+				&mtk_crtc->ovlsys1_regs_pa);
+			ovlsys_config_dump_reg_mt6991(mtk_crtc->ovlsys1_regs);
+		}
+
+		DDPDUMP("== DISP pipe-0 MMSYS_CONFIG REGS:0x%pa ==\n",
+					&mtk_crtc->config_regs_pa);
+		mmsys_config_dump_reg_mt6991(mtk_crtc->config_regs);
+		if (mtk_crtc->side_config_regs) {
+			DDPDUMP("== DISP pipe-1 MMSYS_CONFIG REGS:0x%pa ==\n",
+				&mtk_crtc->side_config_regs_pa);
+			mmsys_config_dump_reg_mt6991(mtk_crtc->side_config_regs);
+		}
+
+		mutex_dump_reg_mt6991(mtk_crtc->mutex[0]);
+		mutex_ovlsys_dump_reg_mt6991(mtk_crtc->mutex[0]);
+
 		break;
 	case MMSYS_MT6897:
 		DDPDUMP("== DISP pipe-0 OVLSYS_CONFIG REGS:0x%pa ==\n",
@@ -822,6 +883,33 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 
 		/* MT6989 only dump OVL module and topsys in mini analysis */
 		goto done_return;
+	case MMSYS_MT6991:
+			DDPDUMP("== DUMP OVLSYS pipe-0 ANALYSIS:0x%pa ==\n",
+				&mtk_crtc->ovlsys0_regs_pa);
+			ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys0_regs);
+			if (mtk_crtc->ovlsys1_regs) {
+				DDPDUMP("== DUMP OVLSYS pipe-1 ANALYSIS:0x%pa ==\n",
+					&mtk_crtc->ovlsys1_regs_pa);
+				ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys1_regs);
+			}
+
+			DDPDUMP("== DUMP DISP pipe-0 ANALYSIS:0x%pa ==\n",
+				&mtk_crtc->config_regs_pa);
+			mmsys_config_dump_analysis_mt6991(mtk_crtc->config_regs, 0);
+			if (mtk_crtc->side_config_regs) {
+				DDPDUMP("== DUMP DISP pipe-1 ANALYSIS:0x%pa ==\n",
+					&mtk_crtc->side_config_regs_pa);
+				mmsys_config_dump_analysis_mt6991(mtk_crtc->side_config_regs, 1);
+			}
+			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+				if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA)
+					mtk_dump_analysis(comp);
+			}
+
+			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+
+			/* MT6991 only dump EXDMA module and topsys in mini analysis */
+			goto done_return;
 	case MMSYS_MT6897:
 		DDPDUMP("== DUMP OVLSYS pipe-0 ANALYSIS:0x%pa ==\n",
 			&mtk_crtc->ovlsys0_regs_pa);
@@ -883,6 +971,7 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (comp && ((mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL) ||
+			(mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA) ||
 			(mtk_ddp_comp_get_type(comp->id) == MTK_DSI)))
 			mtk_dump_analysis(comp);
 	}
@@ -1001,6 +1090,35 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 
 		mutex_dump_analysis_mt6989(mtk_crtc->mutex[0]);
 		mutex_ovlsys_dump_analysis_mt6989(mtk_crtc->mutex[0]);
+		if (mtk_crtc->is_dual_pipe) {
+			DDPDUMP("anlysis dual pipe\n");
+			for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
+				mtk_dump_analysis(comp);
+				mtk_dump_reg(comp);
+			}
+		}
+		break;
+	case MMSYS_MT6991:
+		DDPDUMP("== DUMP OVLSYS pipe-0 ANALYSIS:0x%pa ==\n",
+			&mtk_crtc->ovlsys0_regs_pa);
+		ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys0_regs);
+		if (mtk_crtc->ovlsys1_regs) {
+			DDPDUMP("== DUMP OVLSYS pipe-1 ANALYSIS:0x%pa ==\n",
+				&mtk_crtc->ovlsys1_regs_pa);
+			ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys1_regs);
+		}
+
+		DDPDUMP("== DUMP DISP pipe-0 ANALYSIS:0x%pa ==\n",
+			&mtk_crtc->config_regs_pa);
+		mmsys_config_dump_analysis_mt6991(mtk_crtc->config_regs, 0);
+		if (mtk_crtc->side_config_regs) {
+			DDPDUMP("== DUMP DISP pipe-1 ANALYSIS:0x%pa ==\n",
+				&mtk_crtc->side_config_regs_pa);
+			mmsys_config_dump_analysis_mt6991(mtk_crtc->side_config_regs, 1);
+		}
+
+		mutex_dump_analysis_mt6991(mtk_crtc->mutex[0]);
+		mutex_ovlsys_dump_analysis_mt6991(mtk_crtc->mutex[0]);
 		if (mtk_crtc->is_dual_pipe) {
 			DDPDUMP("anlysis dual pipe\n");
 			for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
@@ -1995,6 +2113,8 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 			mtk_dump_analysis(comp);
 	}
+	mtk_crtc_gce_event_config(crtc);
+	mtk_crtc_vdisp_ao_config(crtc);
 
 	/* send LCM CMD */
 	is_frame_mode = mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base);
@@ -2228,7 +2348,7 @@ bool mtk_crtc_is_dual_pipe(struct drm_crtc *crtc)
 	}
 
 	if (drm_crtc_index(crtc) == 1) {
-		if (priv->data->mmsys_id == MMSYS_MT6989)
+		if (priv->data->mmsys_id == MMSYS_MT6989 || priv->data->mmsys_id == MMSYS_MT6991)
 			return false;
 		if ((crtc->state->adjusted_mode.hdisplay == 1920*2) ||
 			(drm_mode_vrefresh(&crtc->state->adjusted_mode) == 120) ||
@@ -7675,8 +7795,9 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 			mtk_dprec_snapshot();
 			if (priv->data->mmsys_id == MMSYS_MT6985 ||
 				priv->data->mmsys_id == MMSYS_MT6989 ||
-				priv->data->mmsys_id == MMSYS_MT6885) {
-				DDPAEE("ovl status error. TS: 0x%08x\n", ovl_status);
+				priv->data->mmsys_id == MMSYS_MT6885 ||
+				priv->data->mmsys_id == MMSYS_MT6991) {
+				DDPINFO("ovl status error. TS: 0x%08x\n", ovl_status);
 				mtk_drm_crtc_mini_analysis(crtc);
 				mtk_drm_crtc_mini_dump(crtc);
 				//cmdq_dump_pkt(cb_data->cmdq_handle, 0, true);
@@ -8743,6 +8864,8 @@ static void cmdq_pkt_reset_ovl(struct cmdq_pkt *cmdq_handle,
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		type = mtk_ddp_comp_get_type(comp->id);
 		if (type != MTK_DISP_OVL)
+			continue;
+		if (type != MTK_OVL_EXDMA)
 			continue;
 		cmdq_pkt_reset_ovl_by_crtc(cmdq_handle, comp, mtk_crtc, index);
 		if (index < OVL_RT_LOG_NR - 1)
@@ -10058,6 +10181,34 @@ static void _mtk_crtc_1tnp_setting(struct mtk_drm_crtc *mtk_crtc)
 			val = (val & ~mask) | (value & mask);
 			writel(val, setting_addr);
 		}
+	} else if (priv->data->mmsys_id == MMSYS_MT6991) {
+		SET_VAL_MASK(value, mask,
+			mtk_crtc->dli_relay_1tnp, MT6991_DLI_RELAY_1TNP);
+
+		base_addr = mtk_crtc->config_regs + MT6991_DISPSYS_DLI_RELAY_1TNP;
+		for (i = 0; i < MT6991_DISPSYS_DLI_NUM; i++) {
+			setting_addr = base_addr + (i * 0x4);
+			val = readl(setting_addr);
+			val = (val & ~mask) | (value & mask);
+			writel(val, setting_addr);
+		}
+
+		base_addr = mtk_crtc->config_regs + MT6991_DISPSYS_DLO_RELAY_1TNP;
+		for (i = 0; i < MT6991_DISPSYS_DLO_NUM; i++) {
+			setting_addr = base_addr + (i * 0x4);
+			val = readl(setting_addr);
+			val = (val & ~mask) | (value & mask);
+			writel(val, setting_addr);
+		}
+
+		base_addr = mtk_crtc->side_config_regs + MT6991_DISPSYS1_DLI_RELAY_1TNP;
+		for (i = 0; i < MT6991_DISPSYS1_DLI_NUM; i++) {
+			setting_addr = base_addr + (i * 0x4);
+			val = readl(setting_addr);
+			val = (val & ~mask) | (value & mask);
+			writel(val, setting_addr);
+		}
+
 	}
 }
 
@@ -10231,6 +10382,25 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 					DISP_REG_CONFIG_OVLSYS_GCE_EVENT_SEL);
 
 		_mtk_crtc_1tnp_setting(mtk_crtc);
+	} else if (priv->data->mmsys_id == MMSYS_MT6991) {
+		/*Set EVENT_GCED_EN EVENT_GCEM_EN*/
+		writel(0x3, mtk_crtc->config_regs +
+				DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL_MT6991);
+
+		if (mtk_crtc->side_config_regs)
+			writel(0x3, mtk_crtc->side_config_regs +
+					DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL_MT6991);
+
+		/*Set EVENT_GCED_EN EVENT_GCEM_EN <OVLSYS>*/
+		writel(0x3, mtk_crtc->ovlsys0_regs +
+				DISP_REG_CONFIG_OVLSYS_GCE_EVENT_SEL_MT6991);
+
+		if (mtk_crtc->ovlsys1_regs)
+			writel(0x3, mtk_crtc->ovlsys1_regs +
+					DISP_REG_CONFIG_OVLSYS_GCE_EVENT_SEL_MT6991);
+
+		_mtk_crtc_1tnp_setting(mtk_crtc);
+
 	}
 #endif
 
@@ -10303,7 +10473,8 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 				    MTK_DRM_OPT_USE_PQ))
 			mtk_ddp_comp_bypass(comp, 1, cmdq_handle);
 
-		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL) {
+		if ((mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL) ||
+			(mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA)) {
 			cfg.source_bpc = mtk_ddp_comp_io_cmd(comp, NULL,
 				OVL_GET_SOURCE_BPC, NULL);
 			scaling_cfg.source_bpc = cfg.source_bpc;
@@ -10897,6 +11068,9 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
 		/* 1. power on mtcmos & init apsrc*/
 		mtk_drm_top_clk_prepare_enable(crtc->dev);
+
+	mtk_crtc_gce_event_config(crtc);
+	mtk_crtc_vdisp_ao_config(crtc);
 
 	/*
 	 * for case display does not have multiple display mode,
@@ -11652,6 +11826,45 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 			writel(0x1fe0000, mtk_crtc->ovlsys1_regs +
 					DISP_REG_CONFIG_OVLSYS_CB_BYPASS_MUX_SHADOW);
 		}
+	} else if (priv->data->mmsys_id == MMSYS_MT6991) {
+		/*Set EVENT_GCED_EN EVENT_GCEM_EN*/
+		writel(0x3, mtk_crtc->config_regs +
+				DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL_MT6991);
+
+		/*Set BYPASS_MUX_SHADOW*/
+		writel(0x000f0001, mtk_crtc->config_regs +
+				DISP_REG_CONFIG_MMSYS_BYPASS_MUX_SHADOW);
+
+		if (mtk_crtc->side_config_regs) {
+			writel(0x3, mtk_crtc->side_config_regs +
+					DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL_MT6991);
+
+			/*Set BYPASS_MUX_SHADOW*/
+			writel(0x000f0001, mtk_crtc->side_config_regs +
+					DISP_REG_CONFIG_MMSYS1_BYPASS_MUX_SHADOW_MT6991);
+		}
+
+		/*Set EVENT_GCED_EN EVENT_GCEM_EN <OVLSYS>*/
+		writel(0x3, mtk_crtc->ovlsys0_regs +
+				DISP_REG_CONFIG_OVLSYS_GCE_EVENT_SEL_MT6991);
+
+		/*Set BYPASS_MUX_SHADOW*/
+		writel(0x1, mtk_crtc->ovlsys0_regs +
+				DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW_MT6991);
+		writel(0x1fe0000, mtk_crtc->ovlsys0_regs +
+				DISP_REG_CONFIG_OVLSYS_CB_BYPASS_MUX_SHADOW_MT6991);
+
+		if (mtk_crtc->ovlsys1_regs) {
+			writel(0x3, mtk_crtc->ovlsys1_regs +
+					DISP_REG_CONFIG_OVLSYS_GCE_EVENT_SEL_MT6991);
+
+			/*Set BYPASS_MUX_SHADOW*/
+			writel(0x1, mtk_crtc->ovlsys1_regs +
+					DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW_MT6991);
+			writel(0x1fe0000, mtk_crtc->ovlsys1_regs +
+					DISP_REG_CONFIG_OVLSYS_CB_BYPASS_MUX_SHADOW_MT6991);
+		}
+
 	} else if (priv->data->mmsys_id == MMSYS_MT6983 ||
 		priv->data->mmsys_id == MMSYS_MT6897 ||
 		priv->data->mmsys_id == MMSYS_MT6879 ||
@@ -11758,7 +11971,8 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle, DSI_SET_TARGET_LINE, &cfg);
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
 			MTK_IO_CMD_RDMA_GOLDEN_SETTING, &cfg);
-		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL)
+		if ((mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL) ||
+			(mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA))
 			cfg.source_bpc = mtk_ddp_comp_io_cmd(comp, cmdq_handle,
 				OVL_GET_SOURCE_BPC, NULL);
 		/* update SRT BW */
@@ -11864,6 +12078,10 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 				priv->data->sodi_config(crtc->dev, comp->id, NULL, &en);
 		}
 	}
+
+	mtk_crtc_gce_event_config(crtc);
+	mtk_crtc_vdisp_ao_config(crtc);
+
 	/*need enable hrt_bw for pan display, be aware should update BW after SRT BW */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
 		mtk_drm_pan_disp_set_hrt_bw(crtc, __func__);
@@ -12079,6 +12297,13 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	int index = drm_crtc_index(crtc);
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
+
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_BRING_UP) {
+		DDPMSG("%s force return for bringup\n", __func__);
+		/* release wakelock */
+		mtk_drm_crtc_wk_lock(crtc, 0, __func__, __LINE__);
+		return;
+	}
 
 	//Temp workaround for MT6855 suspend/resume issue
 	switch (priv->data->mmsys_id) {
@@ -15542,8 +15767,11 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 			comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL1_2L);
 			if (IS_ERR_OR_NULL(comp)) {
 				comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL0);
-				if (IS_ERR_OR_NULL(comp))
+				if (IS_ERR_OR_NULL(comp)) {
 					comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL1);
+					if (IS_ERR_OR_NULL(comp))
+						comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL_EXDMA2);
+				}
 			}
 		}
 		if (IS_ERR_OR_NULL(comp))
@@ -16850,6 +17078,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 
 	if (priv->data->mmsys_id == MMSYS_MT6985 ||
 		priv->data->mmsys_id == MMSYS_MT6989 ||
+		priv->data->mmsys_id == MMSYS_MT6991 ||
 		priv->data->mmsys_id == MMSYS_MT6897) {
 		mtk_crtc->ovlsys0_regs = priv->ovlsys0_regs;
 		mtk_crtc->ovlsys0_regs_pa = priv->ovlsys0_regs_pa;
@@ -16858,7 +17087,8 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		mtk_crtc->ovlsys1_regs_pa = priv->ovlsys1_regs_pa;
 	}
 
-	if (priv->data->mmsys_id == MMSYS_MT6989)
+	if (priv->data->mmsys_id == MMSYS_MT6989 ||
+		priv->data->mmsys_id == MMSYS_MT6991)
 		mtk_crtc->dli_relay_1tnp = 1; // 0 = 1t1p, 1 = 1t2p, 2 = 1t4p
 
 	for (i = 0; i < DDP_MODE_NR; i++) {
@@ -20219,4 +20449,20 @@ void mtk_crtc_default_path_rst(struct drm_crtc *crtc)
 			DDPMSG("%s, failed of async flush, %d\n", __func__, ret);
 		}
 	}
+}
+
+void mtk_crtc_gce_event_config(struct drm_crtc *crtc)
+{
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+
+	if (priv->data->gce_event_config)
+		priv->data->gce_event_config(crtc->dev);
+}
+
+void mtk_crtc_vdisp_ao_config(struct drm_crtc *crtc)
+{
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+
+	if (priv->data->vdisp_ao_irq_config)
+		priv->data->vdisp_ao_irq_config(crtc->dev);
 }

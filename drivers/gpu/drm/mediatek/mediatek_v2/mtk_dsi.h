@@ -65,6 +65,27 @@ struct mtk_dsi_driver_data {
 		struct mtk_drm_crtc *mtk_crtc, unsigned int en);
 	const unsigned int bubble_rate;
 	const enum DSI_N_Version n_verion;
+	const u32 reg_phy_base;
+	const u32 reg_20_ofs;
+	const u32 reg_30_ofs;
+	const u32 reg_40_ofs;
+	const u32 reg_100_ofs;
+	const u32 dsi_size_con;
+	const u32 dsi_vfp_early_stop;
+	const u32 dsi_lfr_con;
+	const u32 dsi_cmdq_size;
+	const u32 dsi_type1_hs;
+	const u32 dsi_hstx_ckl_wc;
+	const u32 dsi_mem_conti;
+	const u32 dsi_time_con;
+	const u32 dsi_reserved;
+	const u32 dsi_state_dbg6;
+	const u32 dsi_dbg_sel;
+	const u32 dsi_shadow_dbg;
+	const u32 dsi_scramble_con;
+	const u32 dsi_target_nl;
+	const u32 dsi_buf_con_base;
+	const u32 dsi_phy_syncon;
 };
 
 struct mtk_dsi {
