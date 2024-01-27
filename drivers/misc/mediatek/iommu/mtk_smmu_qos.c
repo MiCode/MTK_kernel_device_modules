@@ -23,7 +23,7 @@
 
 #include "arm-smmu-v3.h"
 #include "mtk-smmu-v3.h"
-#include "smmu_secure.h"
+#include "mtk-iommu-util.h"
 
 #define US_TO_NS(usec)			((usec) * 1000)
 #define SMMU_PMU_MAX_COUNTERS		64
@@ -1135,7 +1135,7 @@ static int smmu_qos_debug_set_ftrace(const char *val,
 			if (!need_poll[i])
 				continue;
 
-			ret = (i == SOC_SMMU ? 0 : mtk_smmu_pm_get(i));
+			ret = mtk_smmu_rpm_get(i);
 			if (ret) {
 				pr_info("%s, smmu:%d get power fail\n",
 					__func__, i);
@@ -1171,11 +1171,10 @@ static int smmu_qos_debug_set_ftrace(const char *val,
 			destroy_pmu_perf_event(i);
 			stop_smmu_lmu(i);
 			destroy_mpam_perf_event(i);
-			if (i != SOC_SMMU) {
-				mtk_smmu_pm_put(i);
-				pr_info("%s, smmu:%d put power ok\n",
-					__func__, i);
-			}
+
+			mtk_smmu_rpm_put(i);
+			pr_info("%s, smmu:%d put power ok\n",
+				__func__, i);
 			power_state[i] = false;
 		}
 		ftrace_ena = false;

@@ -44,7 +44,7 @@
 
 #include "arm-smmu-v3.h"
 #include "mtk-smmu-v3.h"
-#include "smmu_secure.h"
+#include "mtk-iommu-util.h"
 
 #define SMMU_MPAM_MAX_COUNTERS		4
 
@@ -416,8 +416,7 @@ static int smmu_mpam_get_event_idx(struct smmu_mpam_mon *smmu_mpam_mon,
 	}
 
 	if (idx == 0) {
-		err = smmu_mpam_mon->smmu_type == SOC_SMMU ? 0 :
-		      mtk_smmu_pm_get(smmu_mpam_mon->smmu_type);
+		err = mtk_smmu_rpm_get(smmu_mpam_mon->smmu_type);
 		if (err) {
 			raw_spin_unlock_irqrestore(&smmu_mpam_mon->counter_lock,
 						   flags);
@@ -487,9 +486,8 @@ static void smmu_mpam_event_del(struct perf_event *event, int flags)
 	clear_bit(idx, mpam_mon->used_counters);
 
 	cur_idx = find_first_bit(mpam_mon->used_counters, num_ctrs);
-	if (cur_idx == num_ctrs && mpam_mon->smmu_type != SOC_SMMU &&
-	    mpam_mon->take_power) {
-		err = mtk_smmu_pm_put(mpam_mon->smmu_type);
+	if (cur_idx == num_ctrs && mpam_mon->take_power) {
+		err = mtk_smmu_rpm_put(mpam_mon->smmu_type);
 		if (err)
 			pr_info("%s, pm put fail, smmu:%d, err:%d\n",
 				__func__, mpam_mon->smmu_type, err);
