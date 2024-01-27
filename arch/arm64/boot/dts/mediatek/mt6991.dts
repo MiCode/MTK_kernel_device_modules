@@ -786,6 +786,12 @@
 
 	};
 
+	nfc:nfc {
+	};
+
+	subpmic_pmu_eint: subpmic-pmu-eint {
+	};
+
 	odm: odm {
 		compatible = "simple-bus";
 		/* reserved for overlay by odm */
@@ -1760,6 +1766,17 @@
 			mediatek,ufs-disable-ah8;
 
 			bootmode = <&chosen>;
+		};
+
+		mrdump_ext_rst:mrdump_ext_rst {
+			compatible = "mediatek, mrdump_ext_rst-eint";
+			mode = "IRQ";
+			status = "okay";
+		};
+
+		dsi_te: dsi-te {
+			compatible = "mediatek, dsi_te-eint";
+			status = "disabled";
 		};
 
 		gce: gce@300c0000 {
@@ -4494,6 +4511,19 @@
 			mode-meta = <BOOT_META>;
 			mode-rpmbpk = <BOOT_RPMBPK>;
 		};
+	};
+
+	smart_pa: smart-pa {
+	};
+
+	gpio_usage_mapping:gpio {
+		compatible = "mediatek,gpio_usage_mapping";
+	};
+
+	md1_sim1_hot_plug_eint:MD1-SIM1-HOT-PLUG-EINT {
+	};
+
+	md1_sim2_hot_plug_eint:MD1-SIM2-HOT-PLUG-EINT {
 	};
 
 	keypad: kp@1c012000 {
