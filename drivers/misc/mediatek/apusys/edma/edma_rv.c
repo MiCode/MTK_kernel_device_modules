@@ -16,9 +16,26 @@
 #define dbg_printf(fmt, args...)	pr_info("[edma][dbg][%s] " fmt, __func__, ##args)
 #define err_printf(fmt, args...)	pr_info("[edma][err][%s] " fmt, __func__, ##args)
 
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#include <mt-plat/aee.h>
+#define edma_exception(key, format, args...)			\
+do {								\
+	pr_info(format, ##args);				\
+	aee_kernel_exception("EDMA",				\
+		"\nCRDISPATCH_KEY:" key "\n" format, ##args);	\
+} while (0)
+#else
+#define edma_exception(key, format, args...)			\
+	pr_info(format, ##args)
+#endif
+
 enum {
-	EDMA_IPI_NONE = 0,
-	EDMA_IPI_LOGLV,
+	/* tx */
+	EDMA_TX_IPI_NONE = 0,
+	EDMA_TX_IPI_LOGLV,
+	/* rx */
+	EDMA_RX_IPI_NONE = 0,
+	EDMA_RX_IPI_UP_MSG,
 };
 
 struct apusys_core_info;
@@ -39,51 +56,65 @@ struct edma_rpmsg_device {
 };
 
 static struct mutex edma_ipi_mtx;
-static struct edma_rpmsg_device edma_rpm_dev;
+static struct edma_rpmsg_device edma_tx_rpm_dev;
+static struct edma_rpmsg_device edma_rx_rpm_dev;
 
 static struct kobject *edma_kobj;
 static u32 loglv;
 
 
+static void val_update(int type, u32 val)
+{
+	switch (type) {
+	case EDMA_TX_IPI_LOGLV:
+		loglv = val;
+		break;
+	default:
+		/* do nothing */
+		break;
+	}
+}
+
 static int edma_ipi_send(int type, u32 val)
 {
-	struct edma_ipi_data ipi_data;
+	static struct edma_ipi_data ipi_data;
 	int ret;
 
-	if (!edma_rpm_dev.ept)
+	if (!edma_tx_rpm_dev.ept)
 		return 0;
+
+	mutex_lock(&edma_ipi_mtx);
 
 	/* init */
 	ipi_data.type = type;
 	ipi_data.data = val;
 
-	mutex_lock(&edma_ipi_mtx);
-
 	/* power on */
-	ret = rpmsg_sendto(edma_rpm_dev.ept, NULL, 1, 0);
+	ret = rpmsg_sendto(edma_tx_rpm_dev.ept, NULL, 1, 0);
 	if (ret && ret != -EOPNOTSUPP) {
 		err_printf("rpmsg_sendto(power on) fail: %d\n", ret);
 		goto exit;
 	}
 
-	ret = rpmsg_send(edma_rpm_dev.ept, &ipi_data, sizeof(ipi_data));
+	ret = rpmsg_send(edma_tx_rpm_dev.ept, &ipi_data, sizeof(ipi_data));
 	if (ret) {
 		int res;
 
 		err_printf("rpmsg_send fail: %d\n", ret);
 		/* power off */
-		res = rpmsg_sendto(edma_rpm_dev.ept, NULL, 0, 1);
+		res = rpmsg_sendto(edma_tx_rpm_dev.ept, NULL, 0, 1);
 		if (res && res != -EOPNOTSUPP)
 			err_printf("rpmsg_sendto(power off) fail: %d\n", res);
 		goto exit;
 	}
 
-	ret = wait_for_completion_timeout(&edma_rpm_dev.ack,
+	ret = wait_for_completion_timeout(&edma_tx_rpm_dev.ack,
 				msecs_to_jiffies(100));
 	if (ret == 0) {
 		dbg_printf("wait for completion timeout\n");
 		ret = -EBUSY;
 	} else {
+		val_update(type, val);
 		ret = 0;
 	}
 exit:
@@ -92,76 +123,147 @@ exit:
 	return ret;
 }
 
-static int edma_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
+static int edma_tx_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
 		int len, void *priv, u32 src)
 {
 	int ret;
 
 	/* power off */
-	ret = rpmsg_sendto(edma_rpm_dev.ept, NULL, 0, 1);
+	ret = rpmsg_sendto(edma_tx_rpm_dev.ept, NULL, 0, 1);
 	if (ret && ret != -EOPNOTSUPP)
 		err_printf("rpmsg_sendto(power off) fail: %d\n", ret);
 
-	complete(&edma_rpm_dev.ack);
+	complete(&edma_tx_rpm_dev.ack);
 
 	return 0;
 }
 
-static int edma_rpmsg_probe(struct rpmsg_device *rpdev)
+static int edma_tx_rpmsg_probe(struct rpmsg_device *rpdev)
 {
 	struct device *dev = &rpdev->dev;
 
 	dev_info(dev, "%s: name=%s, src=%d\n", __func__,
 		rpdev->id.name, rpdev->src);
 
-	edma_rpm_dev.ept = rpdev->ept;
-	edma_rpm_dev.rpdev = rpdev;
+	edma_tx_rpm_dev.ept = rpdev->ept;
+	edma_tx_rpm_dev.rpdev = rpdev;
 
 	return 0;
 }
 
-static void edma_rpmsg_remove(struct rpmsg_device *rpdev)
+static void edma_tx_rpmsg_remove(struct rpmsg_device *rpdev)
 {
 }
 
-static const struct of_device_id edma_rpmsg_of_match[] = {
+static const struct of_device_id edma_tx_rpmsg_of_match[] = {
 	{.compatible = "mediatek,apu-edma-rpmsg"},
 	{}
 };
 
-static struct rpmsg_driver edma_rpmsg_drv = {
+static struct rpmsg_driver edma_tx_rpmsg_drv = {
 	.drv = {
 		.name = "apu-edma-rpmsg",
 		.owner = THIS_MODULE,
-		.of_match_table = edma_rpmsg_of_match,
+		.of_match_table = edma_tx_rpmsg_of_match,
 	},
-	.probe = edma_rpmsg_probe,
-	.callback = edma_rpmsg_cb,
-	.remove = edma_rpmsg_remove,
+	.probe = edma_tx_rpmsg_probe,
+	.callback = edma_tx_rpmsg_cb,
+	.remove = edma_tx_rpmsg_remove,
+};
+
+static void edma_ipi_up_msg(u32 data)
+{
+	edma_exception("APUSYS_EDMA", "EDMA exec fail: %d\n", data);
+}
+
+static int edma_rx_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
+		int len, void *priv, u32 src)
+{
+	struct edma_ipi_data *d = (struct edma_ipi_data *)data;
+	static u32 val;
+
+	/* init */
+	val = d->data;
+
+	switch (d->type) {
+	case EDMA_RX_IPI_UP_MSG:
+		edma_ipi_up_msg(d->data);
+		break;
+	default:
+		err_printf("unexptected type: %d\n", d->type);
+		break;
+	}
+
+	rpmsg_send(edma_rx_rpm_dev.ept, &val, sizeof(val));
+
+	return 0;
+}
+
+static int edma_rx_rpmsg_probe(struct rpmsg_device *rpdev)
+{
+	struct device *dev = &rpdev->dev;
+
+	dev_info(dev, "%s: name=%s, src=%d\n", __func__,
+		rpdev->id.name, rpdev->src);
+
+	edma_rx_rpm_dev.ept = rpdev->ept;
+	edma_rx_rpm_dev.rpdev = rpdev;
+
+	return 0;
+}
+
+static void edma_rx_rpmsg_remove(struct rpmsg_device *rpdev)
+{
+}
+
+static const struct of_device_id edma_rx_rpmsg_of_match[] = {
+	{.compatible = "mediatek,edma-rx-rpmsg"},
+	{}
+};
+
+static struct rpmsg_driver edma_rx_rpmsg_drv = {
+	.drv = {
+		.name = "edma-rx-rpmsg",
+		.owner = THIS_MODULE,
+		.of_match_table = edma_rx_rpmsg_of_match,
+	},
+	.probe = edma_rx_rpmsg_probe,
+	.callback = edma_rx_rpmsg_cb,
+	.remove = edma_rx_rpmsg_remove,
 };
 
 static int edma_ipi_init(void)
 {
 	int ret;
 
-	init_completion(&edma_rpm_dev.ack);
+	init_completion(&edma_tx_rpm_dev.ack);
+	init_completion(&edma_rx_rpm_dev.ack);
 	mutex_init(&edma_ipi_mtx);
 
-	ret = register_rpmsg_driver(&edma_rpmsg_drv);
+	ret = register_rpmsg_driver(&edma_tx_rpmsg_drv);
 	if (ret) {
-		err_printf("register_rpmsg_driver fail: %d\n", ret);
+		err_printf("register_rpmsg_driver tx fail: %d\n", ret);
 		goto exit;
+	}
+
+	ret = register_rpmsg_driver(&edma_rx_rpmsg_drv);
+	if (ret) {
+		err_printf("register_rpmsg_driver rx fail: %d\n", ret);
+		goto untx;
 	}
 
 	return 0;
 
+untx:
+	unregister_rpmsg_driver(&edma_tx_rpmsg_drv);
 exit:
 	return ret;
 }
 
 static void edma_ipi_deinit(void)
 {
-	unregister_rpmsg_driver(&edma_rpmsg_drv);
+	unregister_rpmsg_driver(&edma_rx_rpmsg_drv);
+	unregister_rpmsg_driver(&edma_tx_rpmsg_drv);
 	mutex_destroy(&edma_ipi_mtx);
 }
 
@@ -179,8 +281,7 @@ static ssize_t loglv_store(struct kobject *kobj, struct kobj_attribute *attr,
 	if (kstrtouint(buf, 10, &val))
 		return -EINVAL;
 
-	loglv = val;
-	edma_ipi_send(EDMA_IPI_LOGLV, loglv);
+	edma_ipi_send(EDMA_TX_IPI_LOGLV, val);
 
 	return size;
 }
