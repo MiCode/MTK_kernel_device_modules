@@ -2057,6 +2057,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		reg = <0 0x38070000 0 0x1000>;
 		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,common-id = <15>;
+		master-ostd-bits = <7>;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VEN0>;
 		clocks = <&venc_gcon_clk CLK_VEN1_CKE0_LARB_SMI>,
 			<&venc_gcon_clk CLK_VEN1_CKE1_VENC_SMI>;
@@ -2071,6 +2072,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		reg = <0 0x38870000 0 0x1000>;
 		mediatek,smi-supply = <&smi_mdp_common 0>;
 		mediatek,common-id = <16>;
+		master-ostd-bits = <7>;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VEN1>;
 		clocks = <&venc_gcon_core1_clk CLK_VEN2_CKE0_LARB_SMI>,
 			<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC_SMI>;
@@ -2086,6 +2088,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		reg = <0 0x38880000 0 0x1000>;
 		mediatek,smi-supply = <&smi_sysram_common 0>;
 		mediatek,common-id = <17>;
+		master-ostd-bits = <7>;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VEN1>;
 		clocks = <&venc_gcon_core1_clk CLK_VEN2_CKE0_LARB_SMI>,
 			<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC_SMI>;
@@ -2100,6 +2103,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		reg = <0 0x38c70000 0 0x1000>;
 		mediatek,smi-supply = <&smi_mdp_venc_sub_comm1 0>;
 		mediatek,common-id = <18>;
+		master-ostd-bits = <7>;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VEN2>;
 		clocks = <&venc_gcon_core2_clk CLK_VEN_C2_CKE0_LARB_SMI>,
 			<&venc_gcon_core2_clk CLK_VEN_C2_CKE1_VENC_SMI>;
