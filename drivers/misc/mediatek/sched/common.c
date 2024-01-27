@@ -5,7 +5,7 @@
 #include <linux/module.h>
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
-
+#include "common.h"
 MODULE_LICENSE("GPL");
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
@@ -92,3 +92,16 @@ unsigned long mtk_uclamp_rq_util_with(struct rq *rq, unsigned long util,
 	return util;
 }
 #endif /* CONFIG_UCLAMP_TASK */
+unsigned long cpu_util_cfs(int cpu)
+{
+	struct cfs_rq *cfs_rq;
+	unsigned int util;
+
+	cfs_rq = &cpu_rq(cpu)->cfs;
+	util = READ_ONCE(cfs_rq->avg.util_avg);
+
+	if (sched_feat(UTIL_EST) && is_util_est_enable())
+		util = max(util, READ_ONCE(cfs_rq->avg.util_est.enqueued));
+
+	return min_t(unsigned long, util, capacity_orig_of(cpu));
+}

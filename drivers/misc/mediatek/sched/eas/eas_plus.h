@@ -115,7 +115,6 @@ struct rt_energy_aware_output {
 unsigned long capacity_of(int cpu);
 #endif
 
-extern unsigned long cpu_util(int cpu);
 extern int task_fits_capacity(struct task_struct *p, long capacity, unsigned int margin);
 extern struct perf_domain *find_pd(struct perf_domain *pd, int cpu);
 
