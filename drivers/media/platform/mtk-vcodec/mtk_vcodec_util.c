@@ -34,12 +34,11 @@ char mtk_venc_tmp_log[LOG_PROPERTY_SIZE];
 char mtk_vdec_tmp_prop[LOG_PROPERTY_SIZE];
 char mtk_venc_tmp_prop[LOG_PROPERTY_SIZE];
 
-
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 static int group_list[VCODEC_MAX_GROUP_SIZE];
 static unsigned int group_list_size;
 static spinlock_t group_lock;
-
-
+#endif
 
 
 void mtk_vcodec_check_alive(struct timer_list *t)
@@ -63,14 +62,14 @@ void mtk_vcodec_check_alive(struct timer_list *t)
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_check_alive);
 
-void mtk_vcodec_alive_checker_init(struct mtk_vcodec_ctx *ctx, bool is_first)
+static void mtk_vcodec_alive_checker_init(struct mtk_vcodec_ctx *ctx)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 #ifdef VDEC_CHECK_ALIVE
 	struct mtk_vcodec_dev *dev = ctx->dev;
 
 	/* Only support vdec check alive now */
-	if (mtk_vcodec_is_vcp(MTK_INST_DECODER) && is_first && ctx->type == MTK_INST_DECODER) {
+	if (mtk_vcodec_is_vcp(MTK_INST_DECODER) && ctx->type == MTK_INST_DECODER) {
 		if (!dev->vdec_dvfs_params.has_timer) {
 			mtk_v4l2_debug(0, "[%d][VDVFS][VDEC] init vdec alive checker...", ctx->id);
 			timer_setup(&dev->vdec_dvfs_params.vdec_active_checker,
@@ -85,15 +84,15 @@ void mtk_vcodec_alive_checker_init(struct mtk_vcodec_ctx *ctx, bool is_first)
 #endif
 }
 
-void mtk_vcodec_alive_checker_deinit(struct mtk_vcodec_ctx *ctx, bool is_last)
+static void mtk_vcodec_alive_checker_deinit(struct mtk_vcodec_ctx *ctx, bool is_last)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 #ifdef VDEC_CHECK_ALIVE
 	struct mtk_vcodec_dev *dev = ctx->dev;
 
 	/* Only support vdec check alive now */
-	if (mtk_vcodec_is_vcp(MTK_INST_DECODER) && is_last && ctx->type == MTK_INST_DECODER) {
-		if (dev->vdec_dvfs_params.has_timer) {
+	if (mtk_vcodec_is_vcp(MTK_INST_DECODER) && ctx->type == MTK_INST_DECODER) {
+		if (dev->vdec_dvfs_params.has_timer && is_last) {
 			del_timer_sync(&dev->vdec_dvfs_params.vdec_active_checker);
 			flush_workqueue(dev->check_alive_workqueue);
 			dev->vdec_dvfs_params.has_timer = 0;
@@ -159,6 +158,10 @@ EXPORT_SYMBOL_GPL(mtk_vdec_lpw_limit);
 /* For vcp vdec low power mode force setting timer default timeout (ms) */
 int mtk_vdec_lpw_timeout = MTK_VDEC_WAIT_GROUP_MS;
 EXPORT_SYMBOL_GPL(mtk_vdec_lpw_timeout);
+
+/* For vdec low power mode (group decode) dynamic low latency enable*/
+bool mtk_vdec_enable_dynll = true;
+EXPORT_SYMBOL_GPL(mtk_vdec_enable_dynll);
 
 /* For vdec slc switch on/off */
 bool mtk_vdec_slc_enable = true;
@@ -284,12 +287,8 @@ int mtk_vcodec_set_state(struct mtk_vcodec_ctx *ctx, int target)
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_set_state);
 
-/* default on, disable on legacy platform by config dts */
-int venc_enable_hw_break = 1;
-EXPORT_SYMBOL_GPL(venc_enable_hw_break);
-
 /* VCODEC FTRACE */
-#if VCODEC_TRACE
+#if IS_ENABLED(CONFIG_MTK_VCODEC_DEBUG)
 void vcodec_trace(const char *fmt, ...)
 {
 	char buf[256] = {0};
@@ -437,14 +436,12 @@ EXPORT_SYMBOL_GPL(mtk_vcodec_get_curr_ctx);
 
 void mtk_vcodec_add_ctx_list(struct mtk_vcodec_ctx *ctx)
 {
-	bool is_first_ctx = false;
-
 	if (ctx != NULL) {
 		mutex_lock(&ctx->dev->ctx_mutex);
-		is_first_ctx = list_empty(&ctx->dev->ctx_list);
 		list_add(&ctx->list, &ctx->dev->ctx_list);
 		mtk_vcodec_dump_ctx_list(ctx->dev, 4);
-		mtk_vcodec_alive_checker_init(ctx, is_first_ctx);
+		if (ctx != ctx->dev_ctx)
+			mtk_vcodec_alive_checker_init(ctx);
 		mutex_unlock(&ctx->dev->ctx_mutex);
 	}
 }
@@ -454,13 +451,26 @@ void mtk_vcodec_del_ctx_list(struct mtk_vcodec_ctx *ctx)
 {
 	if (ctx != NULL) {
 		mutex_lock(&ctx->dev->ctx_mutex);
+		mutex_lock(&ctx->ipi_use_lock);
 		mtk_vcodec_dump_ctx_list(ctx->dev, 4);
 		list_del_init(&ctx->list);
-		mtk_vcodec_alive_checker_deinit(ctx, list_empty(&ctx->dev->ctx_list));
+		if (ctx != ctx->dev_ctx)
+			mtk_vcodec_alive_checker_deinit(ctx, mtk_vcodec_ctx_list_empty(ctx->dev));
+		mutex_unlock(&ctx->ipi_use_lock);
 		mutex_unlock(&ctx->dev->ctx_mutex);
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_del_ctx_list);
+
+bool mtk_vcodec_ctx_list_empty(struct mtk_vcodec_dev *dev)
+{
+	// ctx_list is empty or only have dev_ctx
+	if (list_empty(&dev->ctx_list) || (dev->ctx_list.next == &dev->dev_ctx.list))
+		return true;
+
+	return false;
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_ctx_list_empty);
 
 void mtk_vcodec_dump_ctx_list(struct mtk_vcodec_dev *dev, unsigned int debug_level)
 {
@@ -658,6 +668,7 @@ int mtk_dma_sync_sg_range(const struct sg_table *sgt,
 	struct sg_table *sgt_tmp;
 	struct scatterlist *s_sgl, *d_sgl;
 	unsigned int contig_size = 0;
+	unsigned int sgl_len = 0;
 	int ret, i;
 
 	if (sgt == NULL || dev == NULL) {
@@ -683,22 +694,24 @@ int mtk_dma_sync_sg_range(const struct sg_table *sgt,
 	d_sgl = sgt_tmp->sgl;
 
 	for_each_sg(sgt->sgl, s_sgl, sgt->orig_nents, i) {
-		mtk_v4l2_debug(4, "%d contig_size %d bytesused %d.\n",
-			i, contig_size, size);
-		if (contig_size >= size)
-			break;
 		memcpy(d_sgl, s_sgl, sizeof(*s_sgl));
 		contig_size += s_sgl->length;
-		d_sgl = sg_next(d_sgl);
 		sgt_tmp->nents++;
+		mtk_v4l2_debug(4, "%d contig_size %d bytesused %d.\n",
+			i, contig_size, size);
+		if (contig_size >= size) {
+			sgl_len = PAGE_ALIGN(s_sgl->length - (contig_size - size));
+			mtk_v4l2_debug(4, "trunc len from %u to %u.\n", s_sgl->length, sgl_len);
+			sg_set_page(d_sgl, sg_page(s_sgl), sgl_len, s_sgl->offset);
+			break;
+		}
+		d_sgl = sg_next(d_sgl);
 	}
 	if (direction == DMA_TO_DEVICE) {
 		dma_sync_sg_for_device(dev, sgt_tmp->sgl, sgt_tmp->nents, direction);
 	} else if (direction == DMA_FROM_DEVICE) {
 		dma_sync_sg_for_cpu(dev, sgt_tmp->sgl, sgt_tmp->nents, direction);
 	} else {
-		sg_free_table(sgt_tmp);
-		kfree(sgt_tmp);
 		mtk_v4l2_debug(0, "direction %d not correct\n", direction);
 		return -1;
 	}
@@ -721,7 +734,7 @@ void v4l_fill_mtk_fmtdesc(struct v4l2_fmtdesc *fmt)
 	}
 
 	switch (fmt->pixelformat) {
-	case V4L2_PIX_FMT_H265:
+	case V4L2_PIX_FMT_HEVC:
 	    descr = "H.265"; break;
 	case V4L2_PIX_FMT_HEIF:
 	    descr = "HEIF"; break;
@@ -806,6 +819,7 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 {
 	struct dma_heap *dma_heap;
 	struct dma_buf *dbuf;
+	dma_addr_t dma_addr;
 	__u32 alloc_len;
 	int ret = 0;
 	void *ret_ptr = NULL;
@@ -817,9 +831,9 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	}
 	alloc_len = mem->len;
 
-	mem->iova = 0;
+	mem->iova = mem->va = mem->pa = 0;
 	if (dev == NULL) {
-		mtk_v4l2_err("dev null when type %u\n", mem->type);
+		mtk_v4l2_err("dev null when type %u", mem->type);
 		return -EPERM;
 	}
 	if (mem->len > CODEC_ALLOCATE_MAX_BUFFER_SIZE || mem->len == 0U) {
@@ -844,12 +858,12 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 		else
 			dma_heap = dma_heap_find("mtk_wfd_page-uncached");
 	} else {
-		mtk_v4l2_err("wrong type %u\n", mem->type);
+		mtk_v4l2_err("wrong type %u", mem->type);
 		return -EPERM;
 	}
 
 	if (!dma_heap) {
-		mtk_v4l2_err("heap find fail\n");
+		mtk_v4l2_err("heap find fail");
 		return -EPERM;
 	}
 
@@ -861,7 +875,7 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	dbuf = dma_heap_buffer_alloc(dma_heap, alloc_len,
 		O_RDWR | O_CLOEXEC, DMA_HEAP_VALID_HEAP_FLAGS);
 	if (IS_ERR_OR_NULL(dbuf)) {
-		mtk_v4l2_err("buffer alloc fail\n");
+		mtk_v4l2_err("buffer alloc fail");
 		ret_ptr = (void *)dbuf;
 		goto alloc_mem_err;
 	}
@@ -873,35 +887,38 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 
 	*attach = dma_buf_attach(dbuf, dev);
 	if (IS_ERR_OR_NULL(*attach)) {
-		mtk_v4l2_err("attach fail, return\n");
+		mtk_v4l2_err("attach fail, return");
 		ret_ptr = (void *)*attach;
 		goto alloc_mem_err_attach_fail;
 	}
-	*sgt = dma_buf_map_attachment(*attach, DMA_BIDIRECTIONAL);
+	*sgt = dma_buf_map_attachment_unlocked(*attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR_OR_NULL(*sgt)) {
-		mtk_v4l2_err("map failed, detach and return\n");
+		mtk_v4l2_err("map failed, detach and return");
 		ret_ptr = (void *)*sgt;
 		goto alloc_mem_err_map_fail;
 	}
-	mem->va = (__u64)dbuf;
-	mem->pa = (__u64)sg_dma_address((*sgt)->sgl);
-	mem->iova = (__u64)mem->pa;
 
-	if (mem->va == (__u64)NULL || mem->pa == (__u64)NULL) {
-		mtk_v4l2_err("alloc failed, va 0x%llx pa 0x%llx iova 0x%llx len %d type %u\n",
-		mem->va, mem->pa, mem->iova, mem->len, mem->type);
+	dma_addr = sg_dma_address((*sgt)->sgl);
+	if (dbuf == NULL || dma_addr == 0) {
+		mtk_v4l2_err("alloc failed, va 0x%llx pa 0x%llx iova 0x%llx len %d type %u",
+			(__u64)dbuf, (__u64)dma_addr, (__u64)dma_addr, mem->len, mem->type);
 		ret = -EPERM;
 		goto alloc_mem_err_after_map_done;
 	}
-
-	mtk_v4l2_debug(8, "va 0x%llx pa 0x%llx iova 0x%llx len %d type %u\n",
+	mem->va = (__u64)dbuf;
+	mem->pa = (__u64)dma_addr;
+	mem->iova = mem->pa;
+	mtk_v4l2_debug(8, "va 0x%llx pa 0x%llx iova 0x%llx len %d type %u",
 		mem->va, mem->pa, mem->iova, mem->len, mem->type);
+
 	return 0;
 
 alloc_mem_err_after_map_done:
-	dma_buf_unmap_attachment(*attach, *sgt, DMA_BIDIRECTIONAL);
+	dma_buf_unmap_attachment_unlocked(*attach, *sgt, DMA_BIDIRECTIONAL);
+	*sgt = NULL;
 alloc_mem_err_map_fail:
 	dma_buf_detach(dbuf, *attach);
+	*attach = NULL;
 alloc_mem_err_attach_fail:
 	dma_heap_buffer_free(dbuf);
 alloc_mem_err:
@@ -916,7 +933,8 @@ EXPORT_SYMBOL_GPL(mtk_vcodec_alloc_mem);
 int mtk_vcodec_free_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	struct dma_buf_attachment *attach, struct sg_table *sgt)
 {
-	if (mem == NULL || dev == NULL || attach == NULL || sgt == NULL) {
+	if (mem == NULL || IS_ERR_OR_NULL((void *)mem->va) ||
+	    dev == NULL || IS_ERR_OR_NULL(attach) || IS_ERR_OR_NULL(sgt)) {
 		mtk_v4l2_err("Invalid arguments, mem=0x%lx, dev=0x%lx, attach=0x%lx, sgt=0x%lx",
 			(unsigned long)mem, (unsigned long)dev, (unsigned long)attach, (unsigned long)sgt);
 		return -EINVAL;
@@ -929,7 +947,7 @@ int mtk_vcodec_free_mem(struct vcodec_mem_obj *mem, struct device *dev,
 		mem->type == MEM_TYPE_FOR_SEC_HW ||
 		mem->type == MEM_TYPE_FOR_SEC_UBE_HW ||
 		mem->type == MEM_TYPE_FOR_SEC_WFD_HW) {
-		dma_buf_unmap_attachment(attach, sgt, DMA_BIDIRECTIONAL);
+		dma_buf_unmap_attachment_unlocked(attach, sgt, DMA_BIDIRECTIONAL);
 		dma_buf_detach((struct dma_buf *)mem->va, attach);
 		dma_heap_buffer_free((struct dma_buf *)mem->va);
 	} else {
@@ -1024,7 +1042,7 @@ void mtk_vcodec_vp_mode_buf_prepare(struct mtk_vcodec_dev *dev)
 		/* mapping va */
 		memset(&map, 0, sizeof(struct iosys_map));
 		dmabuf = (struct dma_buf *)src_buf->mem.va;
-		ret = dma_buf_vmap(dmabuf, &map);
+		ret = dma_buf_vmap_unlocked(dmabuf, &map);
 		va = ret ? NULL : map.vaddr;
 		if (va == NULL) {
 			mtk_v4l2_err("vp mode buf %d dma vmap failed", i);
@@ -1036,7 +1054,7 @@ void mtk_vcodec_vp_mode_buf_prepare(struct mtk_vcodec_dev *dev)
 			memcpy((va + j), pattern, 192);
 		dma_sync_sg_for_device(io_dev, src_buf->sgt->sgl,
 			src_buf->sgt->nents, DMA_TO_DEVICE);
-		dma_buf_vunmap(dmabuf, &map);
+		dma_buf_vunmap_unlocked(dmabuf, &map);
 	}
 	dev->vp_mode_used_cnt = 1;
 	mutex_unlock(&dev->vp_mode_buf_mutex);
@@ -1045,7 +1063,7 @@ void mtk_vcodec_vp_mode_buf_prepare(struct mtk_vcodec_dev *dev)
 err_out:
 	for (i = 0; i < 2; i++) {
 		src_buf = &dev->vp_mode_buf[i];
-		if (!IS_ERR_OR_NULL(src_buf->attach))
+		if (!IS_ERR_OR_NULL(ERR_PTR((long)src_buf->mem.va)))
 			mtk_vcodec_free_mem(&src_buf->mem, io_dev, src_buf->attach, src_buf->sgt);
 		memset(src_buf, 0, sizeof(struct vdec_vp_mode_buf));
 	}
@@ -1077,7 +1095,7 @@ void mtk_vcodec_vp_mode_buf_unprepare(struct mtk_vcodec_dev *dev)
 	io_dev = dev->smmu_dev;
 	for (i = 0; i < 2; i++) {
 		src_buf = &dev->vp_mode_buf[i];
-		if (!IS_ERR_OR_NULL(src_buf->attach))
+		if (!IS_ERR_OR_NULL(ERR_PTR((long)src_buf->mem.va)))
 			mtk_vcodec_free_mem(&src_buf->mem, io_dev, src_buf->attach, src_buf->sgt);
 		memset(src_buf, 0, sizeof(struct vdec_vp_mode_buf));
 	}
@@ -1137,7 +1155,7 @@ static void mtk_vcodec_sync_log(struct mtk_vcodec_dev *dev,
 			mtk_v4l2_debug(8, "remove deprecated key: %s, value: %s\n",
 				pram->param_key, pram->param_val);
 			list_del_init(&pram->list);
-			vfree(pram);
+			kfree(pram);
 		}
 	}
 	mutex_unlock(plist_mutex);
@@ -1238,12 +1256,12 @@ void mtk_vcodec_set_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 
 	mtk_v4l2_debug(0, "val: %s, log_index: %d", val, log_index);
 
-	argv = vzalloc(MAX_SUPPORTED_LOG_PARAMS_COUNT * 2 * LOG_PARAM_INFO_SIZE);
+	argv = kzalloc(MAX_SUPPORTED_LOG_PARAMS_COUNT * 2 * LOG_PARAM_INFO_SIZE, GFP_KERNEL);
 	if (!argv)
 		return;
-	log = vzalloc(LOG_PROPERTY_SIZE);
+	log = kzalloc(LOG_PROPERTY_SIZE, GFP_KERNEL);
 	if (!log) {
-		vfree(argv);
+		kfree(argv);
 		return;
 	}
 
@@ -1284,16 +1302,16 @@ void mtk_vcodec_set_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 			} else { // vcu path
 				if (ctx == NULL) {
 					mtk_v4l2_err("ctx is null, cannot set log to vpud");
-					vfree(argv);
-					vfree(log);
+					kfree(argv);
+					kfree(log);
 					return;
 				}
 				if (log_index != MTK_VCODEC_LOG_INDEX_LOG) {
 					mtk_v4l2_err(
 						"invalid index: %d, only support set log on vcu path",
 						log_index);
-					vfree(argv);
-					vfree(log);
+					kfree(argv);
+					kfree(log);
 					return;
 				}
 				memset(vcu_log, 0x00, sizeof(vcu_log));
@@ -1308,8 +1326,8 @@ void mtk_vcodec_set_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 	if (mtk_vcodec_is_vcp(MTK_INST_DECODER) || mtk_vcodec_is_vcp(MTK_INST_ENCODER))
 		mtk_vcodec_build_log_string(dev, log_index);
 
-	vfree(argv);
-	vfree(log);
+	kfree(argv);
+	kfree(log);
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_set_log);
 
@@ -1385,6 +1403,7 @@ void mtk_vcodec_get_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_get_log);
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 static void mtk_vcodec_add_list(struct task_struct *task)
 {
 	struct task_struct *task_child;
@@ -1392,9 +1411,7 @@ static void mtk_vcodec_add_list(struct task_struct *task)
 
 	for_each_thread(task, task_child) {
 		if (task_child != NULL) {
-			#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 			ret = set_task_to_group(task_child->pid, GROUP_ID_1);
-			#endif
 			if (ret == -1)
 				mtk_v4l2_err("put tid %d fail", task_child->pid);
 			else {
@@ -1407,7 +1424,6 @@ static void mtk_vcodec_add_list(struct task_struct *task)
 		}
 	}
 	//pr_info("update size group_list_size %d\n", group_list_size);
-
 }
 
 static void mtk_vcodec_make_group_list(void)
@@ -1426,34 +1442,34 @@ static void mtk_vcodec_make_group_list(void)
 	}
 	rcu_read_unlock();
 }
+#endif
 
 void mtk_vcodec_config_group_list(void)
 {
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	int i = 0;
 
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	if (unlikely(group_get_mode() == GP_MODE_0))
 		return;
-#endif
 
 	spin_lock(&group_lock);
 	if (group_list_size != 0) {
 		//pr_info("clean group_list_size %d\n", group_list_size);
 		for (i = 0; i < group_list_size; i++) {
-			#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 			set_task_to_group( group_list[i], -1);
-			#endif
 			group_list[i] = 0;
 		}
 		group_list_size = 0;
 	}
 	mtk_vcodec_make_group_list();
 	spin_unlock(&group_lock);
+#endif
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_config_group_list);
 
 void mtk_vcodec_init_group_list_lock(void)
 {
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	static int init_flag;
 
 	if (init_flag == 0) {
@@ -1461,7 +1477,7 @@ void mtk_vcodec_init_group_list_lock(void)
 		spin_lock_init(&group_lock);
 		group_list_size = 0;
 	}
-
+#endif
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_init_group_list_lock);
 

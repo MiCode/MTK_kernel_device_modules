@@ -43,6 +43,44 @@ static const struct vdec_common_if *get_data_path_ptr(void)
 #endif
 }
 
+int vdec_if_dev_ctx_init(struct mtk_vcodec_dev *dev)
+{
+	struct mtk_vcodec_ctx *ctx = &dev->dev_ctx;
+	struct vdec_inst *inst = NULL;
+
+	inst = kzalloc(sizeof(struct vdec_inst), GFP_KERNEL);
+	if (inst == NULL)
+		return -ENOMEM;
+	inst->ctx = ctx;
+	inst->vcu.ctx = ctx;
+	inst->vcu.id = IPI_VDEC_COMMON;
+	init_waitqueue_head(&inst->vcu.wq);
+
+	ctx->drv_handle = (unsigned long)(inst);
+	ctx->dec_if = get_data_path_ptr();
+
+	ctx->dev = dev;
+	ctx->dev_ctx = ctx;
+	ctx->type = MTK_INST_DECODER;
+	spin_lock_init(&ctx->state_lock);
+	mtk_vcodec_set_state(ctx, MTK_STATE_FREE);
+
+	mtk_vcodec_add_ctx_list(ctx);
+	mtk_v4l2_debug(0, "[%d] init drv_handle = 0x%lx", ctx->id, ctx->drv_handle);
+
+	return 0;
+}
+
+void vdec_if_dev_ctx_deinit(struct mtk_vcodec_dev *dev)
+{
+	struct mtk_vcodec_ctx *ctx = &dev->dev_ctx;
+	struct vdec_inst *inst = (struct vdec_inst *)ctx->drv_handle;
+
+	ctx->drv_handle = 0;
+	mtk_vcodec_del_ctx_list(ctx);
+	kfree(inst);
+}
+
 int vdec_if_init(struct mtk_vcodec_ctx *ctx, unsigned int fourcc)
 {
 	int ret = 0;
@@ -53,7 +91,7 @@ int vdec_if_init(struct mtk_vcodec_ctx *ctx, unsigned int fourcc)
 
 	switch (fourcc) {
 	case V4L2_PIX_FMT_H264:
-	case V4L2_PIX_FMT_H265:
+	case V4L2_PIX_FMT_HEVC:
 	case V4L2_PIX_FMT_HEIF:
 	case V4L2_PIX_FMT_MPEG1:
 	case V4L2_PIX_FMT_MPEG2:
@@ -127,36 +165,22 @@ int vdec_if_decode(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_mem *bs,
 int vdec_if_get_param(struct mtk_vcodec_ctx *ctx, enum vdec_get_param_type type,
 					  void *out)
 {
-	struct vdec_inst *inst = NULL;
 	int ret = 0;
-	int drv_handle_exist = 1;
+	bool is_query_cap = (type == GET_PARAM_VDEC_CAP_SUPPORTED_FORMATS ||
+			     type == GET_PARAM_VDEC_CAP_FRAME_SIZES);
 
 	vcodec_trace_begin_func();
 
-	if (!ctx->drv_handle) {
-		inst = kzalloc(sizeof(struct vdec_inst), GFP_KERNEL);
-		if (inst == NULL)
-			return -ENOMEM;
-		inst->ctx = ctx;
-		inst->vcu.ctx = ctx;
-		ctx->drv_handle = (unsigned long)(inst);
+	if (is_query_cap && ctx->dev_ctx != NULL) {
+		ctx = ctx->dev_ctx;
 		ctx->dec_if = get_data_path_ptr();
-		mtk_vcodec_add_ctx_list(ctx);
-		drv_handle_exist = 0;
+		mtk_v4l2_debug(0, "type %d drv_handle = 0x%lx", type, ctx->drv_handle);
 	}
 
-	if (ctx->dec_if != NULL)
+	if (ctx->dec_if && ctx->drv_handle)
 		ret = ctx->dec_if->get_param(ctx->drv_handle, type, out);
 	else
 		ret = -EINVAL;
-
-	if (!drv_handle_exist) {
-		inst->vcu.abort = 1;
-		mtk_vcodec_del_ctx_list(ctx);
-		kfree(inst);
-		ctx->drv_handle = 0;
-		ctx->dec_if = NULL;
-	}
 
 	vcodec_trace_end();
 	return ret;
@@ -165,35 +189,23 @@ int vdec_if_get_param(struct mtk_vcodec_ctx *ctx, enum vdec_get_param_type type,
 int vdec_if_set_param(struct mtk_vcodec_ctx *ctx, enum vdec_set_param_type type,
 					  void *in)
 {
-	struct vdec_inst *inst = NULL;
 	int ret = 0;
-	int drv_handle_exist = 1;
+	bool is_set_prop = (type == SET_PARAM_VDEC_PROPERTY ||
+			    type == SET_PARAM_VDEC_VCP_LOG_INFO ||
+			    type == SET_PARAM_VDEC_VCU_VPUD_LOG);
 
 	vcodec_trace_begin_func();
 
-	if (!ctx->drv_handle) {
-		inst = kzalloc(sizeof(struct vdec_inst), GFP_KERNEL);
-		if (inst == NULL)
-			return -ENOMEM;
-		inst->ctx = ctx;
-		inst->vcu.ctx = ctx;
-		ctx->drv_handle = (unsigned long)(inst);
+	if (is_set_prop && ctx->dev_ctx != NULL) {
+		ctx = ctx->dev_ctx;
 		ctx->dec_if = get_data_path_ptr();
-		mtk_vcodec_add_ctx_list(ctx);
-		drv_handle_exist = 0;
+		mtk_v4l2_debug(0, "type %d drv_handle = 0x%lx", type, ctx->drv_handle);
 	}
 
-	if (ctx->dec_if != NULL)
+	if (ctx->dec_if && ctx->drv_handle)
 		ret = ctx->dec_if->set_param(ctx->drv_handle, type, in);
 	else
 		ret = -EINVAL;
-
-	if (!drv_handle_exist) {
-		mtk_vcodec_del_ctx_list(ctx);
-		kfree(inst);
-		ctx->drv_handle = 0;
-		ctx->dec_if = NULL;
-	}
 
 	vcodec_trace_end();
 	return ret;

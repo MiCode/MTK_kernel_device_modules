@@ -419,7 +419,7 @@ static void cmdq_vcp_is_ready(void)
 	int i = 0;
 
 	/* wait mmup ready */
-	while (!is_vcp_ready_ex(VCP_A_ID)) {
+	while (!is_vcp_ready_ex(GCE_FEATURE_ID)) {
 		cmdq_log("[VCP] wait ready");
 		i += 5;
 		msleep_interruptible(5);

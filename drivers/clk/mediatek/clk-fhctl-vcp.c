@@ -103,7 +103,7 @@ static void ipi_get_data(unsigned int cmd)
 	ipi_data.cmd = cmd;
 
 	/* 3 sec for debug */
-	ret = mtk_ipi_send_compl(vcp_get_ipidev(), IPI_OUT_C_FHCTL_DEBUG, //PIN_OUT_R_SIZE_FHCTL
+	ret = mtk_ipi_send_compl(vcp_get_ipidev(HWCCF_FEATURE_ID), IPI_OUT_C_FHCTL_DEBUG, //PIN_OUT_R_SIZE_FHCTL
 			IPI_SEND_POLLING, &ipi_data,
 			FHCTL_D_LEN, 3000);
 	FHDBG("ret<%d>, ack_data<%x>\n",
@@ -157,7 +157,7 @@ static int vcp_hopping_v1(void *priv_data, char *domain_name, unsigned int fh_id
 	/* make sure tr_id_local is set before send ipi */
 	mb();
 
-	ret = mtk_ipi_send_compl(vcp_get_ipidev(), IPI_OUT_C_FHCTL_DEBUG,
+	ret = mtk_ipi_send_compl(vcp_get_ipidev(HWCCF_FEATURE_ID), IPI_OUT_C_FHCTL_DEBUG,
 			IPI_SEND_POLLING, &ipi_data,
 			FHCTL_D_LEN, FHCTL_IPI_TIMEOUT_MS);
 
@@ -251,7 +251,7 @@ static int vcp_ssc_enable_v1(void *priv_data,
 					sizeof(struct freqhopping_ioctl));
 
 	ipi_data.cmd = FH_DCTL_CMD_SSC_ENABLE;
-	ret = mtk_ipi_send_compl(vcp_get_ipidev(), IPI_OUT_C_FHCTL_DEBUG,
+	ret = mtk_ipi_send_compl(vcp_get_ipidev(HWCCF_FEATURE_ID), IPI_OUT_C_FHCTL_DEBUG,
 			IPI_SEND_POLLING, &ipi_data,
 			FHCTL_D_LEN, IPI_TIMEOUT_LONG_MS);
 	FHDBG("ret<%d>\n", ret);
@@ -285,7 +285,7 @@ static int vcp_ssc_disable_v1(void *priv_data,
 					sizeof(struct freqhopping_ioctl));
 
 	ipi_data.cmd = FH_DCTL_CMD_SSC_DISABLE;
-	ret = mtk_ipi_send_compl(vcp_get_ipidev(), IPI_OUT_C_FHCTL_DEBUG,
+	ret = mtk_ipi_send_compl(vcp_get_ipidev(HWCCF_FEATURE_ID), IPI_OUT_C_FHCTL_DEBUG,
 			IPI_SEND_POLLING, &ipi_data,
 			FHCTL_D_LEN, IPI_TIMEOUT_LONG_MS);
 	FHDBG("ret<%d>\n", ret);
@@ -317,7 +317,7 @@ static int vcp_init_v1(struct pll_dts *array, struct match *match)
 		}
 		FHDBG("[vcp] ipi_get IPI_OUT_C_FHCTL_DEBUG: %d\n", IPI_OUT_C_FHCTL_DEBUG);
 
-		ret = mtk_ipi_register(vcp_get_ipidev(), IPI_OUT_C_FHCTL_DEBUG, NULL,
+		ret = mtk_ipi_register(vcp_get_ipidev(HWCCF_FEATURE_ID), IPI_OUT_C_FHCTL_DEBUG, NULL,
 				NULL, (void *)&ack_data);
 		if (ret) {
 			FHDBG("[vcp] ipi_register fail, ret %d\n", ret);

@@ -859,7 +859,7 @@ static void mtk_vdec_dump_addr_reg(
 		mtk_v4l2_err("[CORE][MV] 0x%x(%d) = 0x%lx",
 			0x20C, 0x20C/4, value);
 		switch (fourcc) {
-		case V4L2_PIX_FMT_H265:
+		case V4L2_PIX_FMT_HEVC:
 			start = 0;
 			end = 32;
 			break;

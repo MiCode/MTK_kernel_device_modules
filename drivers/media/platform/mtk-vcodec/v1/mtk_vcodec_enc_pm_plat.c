@@ -21,17 +21,17 @@
 #include <linux/pm_opp.h>
 #include <linux/regulator/consumer.h>
 #include "vcodec_dvfs.h"
-#define STD_VENC_FREQ 250000000
 #endif
 
 #if ENC_EMI_BW
 //#include <linux/interconnect-provider.h>
 #include "mtk-interconnect.h"
 #include "vcodec_bw.h"
+#define STD_VENC_FREQ 250000000
 #endif
 
 //#define VENC_PRINT_DTS_INFO
-
+#if ENC_EMI_BW
 static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 {
 	const int tp_item_num = 4;
@@ -263,6 +263,7 @@ static void mtk_enc_tput_deinit(struct mtk_vcodec_dev *dev)
 		dev->venc_port_bw = 0;
 	}
 }
+#endif
 
 void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 {
@@ -319,7 +320,7 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 
 void mtk_unprepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 {
-#if ENC_DVFS
+#if ENC_EMI_BW
 	mtk_enc_tput_deinit(dev);
 #endif
 }
@@ -373,6 +374,7 @@ void mtk_unprepare_venc_emi_bw(struct mtk_vcodec_dev *dev)
 
 void set_venc_opp(struct mtk_vcodec_dev *dev, u32 freq)
 {
+#if ENC_DVFS
 	struct dev_pm_opp *opp = 0;
 	int volt = 0;
 	int ret = 0;
@@ -399,6 +401,7 @@ void set_venc_opp(struct mtk_vcodec_dev *dev, u32 freq)
 			mtk_v4l2_debug(8, "[VENC] freq %u, voltage %d", freq, volt);
 		}
 	}
+#endif
 }
 
 void mtk_venc_dvfs_reset_vsi_data(struct mtk_vcodec_dev *dev)
@@ -441,6 +444,7 @@ void mtk_venc_dvfs_end_inst(struct mtk_vcodec_ctx *ctx)
 
 void mtk_venc_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 {
+#if ENC_EMI_BW
 	int i;
 	struct mtk_vcodec_dev *dev = 0;
 	u64 target_bw = 0;
@@ -465,10 +469,12 @@ void mtk_venc_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 					dev->venc_port_bw[i].port_type);
 		}
 	}
+#endif
 }
 
 void mtk_venc_pmqos_end_inst(struct mtk_vcodec_ctx *ctx)
 {
+#if ENC_EMI_BW
 	int i;
 	struct mtk_vcodec_dev *dev = 0;
 	u64 target_bw = 0;
@@ -496,6 +502,7 @@ void mtk_venc_pmqos_end_inst(struct mtk_vcodec_ctx *ctx)
 					dev->venc_port_bw[i].port_type);
 		}
 	}
+#endif
 }
 
 void mtk_venc_pmqos_lock_unlock(struct mtk_vcodec_dev *dev, bool is_lock)

@@ -150,6 +150,7 @@ struct vcp_regs {
 };
 
 struct vcp_ipi_profile {
+	u8 type;
 	unsigned int ipi_time_h;
 	unsigned int ipi_time_l;
 };
@@ -239,6 +240,7 @@ extern void vcp_A_irq_init(void);
 extern void wait_vcp_ready_to_reboot(void);
 
 /* vcp helper */
+unsigned int is_vcp_ready_by_coreid(enum vcp_core_id id);
 extern void vcp_schedule_work(struct vcp_work_struct *vcp_ws);
 extern void vcp_schedule_logger_work(struct vcp_work_struct *vcp_ws);
 

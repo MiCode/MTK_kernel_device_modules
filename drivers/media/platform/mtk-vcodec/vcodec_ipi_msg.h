@@ -19,6 +19,7 @@
 #define VCU_IPIMSG_VDEC_ACK_BASE 0xB000
 #define VCU_IPIMSG_VDEC_SEND_BASE 0xC000
 #define AP_IPIMSG_VDEC_ACK_BASE 0xD000
+#define VCU_IPIMSG_VDEC_SEND_ASYNC_BASE 0xE000
 
 #define AP_IPIMSG_VENC_SEND_BASE 0x1000
 #define VCU_IPIMSG_VENC_ACK_BASE 0x2000
@@ -37,8 +38,8 @@ enum mtk_venc_hw_id {
 
 enum mtk_vdec_hw_id {
 	MTK_VDEC_CORE = 0,
-	MTK_VDEC_LAT = 1,
-	MTK_VDEC_CORE1 = 2,
+	MTK_VDEC_CORE1 = 1,
+	MTK_VDEC_LAT = 2,
 	MTK_VDEC_LAT1 = 3,
 	MTK_VDEC_HW_NUM = 4,
 	MTK_VDEC_LINE_COUNT = 4,
@@ -56,6 +57,15 @@ enum mtk_frame_type {
 	MTK_FRAME_I = 1,
 	MTK_FRAME_P = 2,
 	MTK_FRAME_B = 3,
+};
+
+enum mtk_bandwidth_type {
+	MTK_AV1_COMPRESS = 0,
+	MTK_AV1_NO_COMPRESS = 1,
+	MTK_HEVC_COMPRESS = 2,
+	MTK_HEVC_NO_COMPRESS = 3,
+	MTK_VSD = 4,
+	MTK_BW_COUNT = 5,
 };
 
 enum v4l2_vdec_trick_mode {
@@ -102,6 +112,15 @@ enum mtk_dec_dtsi_m4u_port_idx {
 enum mtk_venc_smi_dump_mode {
 	MTK_VENC_POWERCTL_IN_KERNEL = 0,
 	MTK_VENC_POWERCTL_IN_VCP = 1
+};
+
+// smaller value means higher priority
+enum vdec_priority {
+	VDEC_PRIORITY_REAL_TIME = 0,
+	VDEC_PRIORITY_NON_REAL_TIME1,
+	VDEC_PRIORITY_NON_REAL_TIME2,
+	VDEC_PRIORITY_NON_REAL_TIME3,
+	VDEC_PRIORITY_NUM,
 };
 
 /**
@@ -158,7 +177,7 @@ struct mtk_color_desc {
 	__u32	min_display_mastering_luminance;
 	__u32	max_content_light_level;
 	__u32	max_pic_light_level;
-	__u32	is_hdr;
+	__u32	hdr_type;
 	__u32	full_range;
 	__u32	reserved;
 };
@@ -186,6 +205,57 @@ struct v4l2_vdec_hdr10_info {
 struct v4l2_vdec_hdr10plus_data {
 	__u64 addr; // user pointer
 	__u32 size;
+};
+
+struct vdec_resource_info {
+	__u32 usage; /* unit is 1/1000 */
+	bool hw_used[MTK_VDEC_HW_NUM]; /* index MTK_VDEC_LAT is not used for now */
+	bool gce;
+	enum vdec_priority priority;
+};
+
+struct vdec_max_buf_info {
+	/* set by user*/
+	__u32 pixelformat;
+	__u32 max_width;
+	__u32 max_height;
+	/* report by vdec*/
+	__u32 max_internal_buf_size;
+	__u32 max_dpb_count;
+	__u32 max_frame_buf_size;
+};
+
+struct vdec_fmt_modifier {
+	union {
+		struct {
+			__u8 tile:1;
+			__u8 raster:1;
+			__u8 compress:1;
+			__u8 jump:1;
+			__u8 vsd_mode:3; /* enum fmt_modifier_vsd */
+			__u8 vsd_ce_mode:1;
+			__u8 is_vsd_buf_layout:1;
+			__u8 is_10bit:1;
+			__u8 compress_engine:2; /* 0 : no compress, 1 : ufo, 2 : mfc */
+			__u8 color_space_num:2; /* luma, chroma */
+			__u8 size_multiplier:3; /* mpeg2 new deblocking mode would double fb size*/
+			__u8 luma_target;  /* temp : 87 */
+			__u8 chroma_target; /* temp : 66 */
+		};
+		/* TODO: Reserve several bits in MSB for version control */
+		__u64 padding;
+	};
+};
+
+struct vdec_bandwidth_info {
+	/* unit is 1/1000 */
+	/*[0] : av1 compress, [1] : av1 no compress */
+	/*[2] : hevc compress, [3] : hevc no compress */
+	/*[4] : vsd*/
+	__u32 bandwidth_per_pixel[MTK_BW_COUNT];
+	bool compress;
+	bool vsd;
+	struct vdec_fmt_modifier modifier;
 };
 
 struct mtk_venc_multi_ref {
@@ -264,21 +334,17 @@ struct inputqueue_dynamic_info {
 enum mtk_dec_param {
 	MTK_DEC_PARAM_NONE = 0,
 	MTK_DEC_PARAM_DECODE_MODE = (1 << 0),
-	MTK_DEC_PARAM_FRAME_SIZE = (1 << 1),
-	MTK_DEC_PARAM_FIXED_MAX_FRAME_SIZE = (1 << 2),
-	MTK_DEC_PARAM_CRC_PATH = (1 << 3),
-	MTK_DEC_PARAM_GOLDEN_PATH = (1 << 4),
-	MTK_DEC_PARAM_WAIT_KEY_FRAME = (1 << 5),
-	MTK_DEC_PARAM_NAL_SIZE_LENGTH = (1 << 6),
-	MTK_DEC_PARAM_OPERATING_RATE = (1 << 7),
-	MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE = (1 << 8)
+	MTK_DEC_PARAM_FIXED_MAX_FRAME_SIZE = (1 << 1),
+	MTK_DEC_PARAM_CRC_PATH = (1 << 2),
+	MTK_DEC_PARAM_GOLDEN_PATH = (1 << 3),
+	MTK_DEC_PARAM_WAIT_KEY_FRAME = (1 << 4),
+	MTK_DEC_PARAM_OPERATING_RATE = (1 << 5),
+	MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE = (1 << 6)
 };
 
 struct mtk_dec_params {
 	__u32	dec_param_change;
 	__u32	decode_mode;
-	__u32	frame_size_width;
-	__u32	frame_size_height;
 	__u32	fixed_max_frame_size_width;
 	__u32	fixed_max_frame_size_height;
 	__u32	fixed_max_frame_buffer_mode;
@@ -291,7 +357,6 @@ struct mtk_dec_params {
 		__u64	golden_path_64;
 	};
 	__u32	wait_key_frame;
-	__u32	nal_size_length;
 	__u32	svp_mode;
 	__u32	operating_rate;
 	__u32	decode_error_handle_mode;
@@ -353,7 +418,6 @@ struct vdec_dec_info {
 	__u32 index;
 	__u32 error_map;
 	__u64 timestamp;
-	__u32 queued_frame_buf_count;
 };
 
 #define HDR10_PLUS_MAX_SIZE              (128)

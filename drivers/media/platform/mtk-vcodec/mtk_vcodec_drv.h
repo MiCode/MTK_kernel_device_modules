@@ -20,13 +20,16 @@
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
 #include <media/videobuf2-core.h>
+#include <media/videobuf2-v4l2.h>
+#include <media/videobuf2-memops.h>
+#include <media/videobuf2-dma-contig.h>
+
 #include "mtk_vcodec_util.h"
 #include "vcodec_ipi_msg.h"
 #include "mtk_vcodec_pm.h"
 #include "mtk_vcodec_dec_pm_plat.h"
 #include "vcodec_dvfs.h"
 #include "vcodec_bw.h"
-#include "mtk_dma_contig.h"
 #include "slbc_ops.h"
 #include "mtk-v4l2-vcodec.h"
 #include "mtk_vcodec_dec_slc.h"
@@ -162,7 +165,9 @@ enum mtk_encode_param {
 	MTK_ENCODE_PARAM_SLICE_CNT = (1 << 27),
 	MTK_ENCODE_PARAM_VISUAL_QUALITY = (1 << 28),
 	MTK_ENCODE_PARAM_INIT_QP = (1 << 29),
-	MTK_ENCODE_PARAM_FRAMEQP_RANGE = (1 << 30)
+	MTK_ENCODE_PARAM_FRAMEQP_RANGE = (1 << 30),
+	MTK_ENCODE_PARAM_CHROMAQP = (1 << 31),
+	MTK_ENCODE_PARAM_MBRC_TKSPD = (1 << 32),
 };
 
 /*
@@ -257,6 +262,30 @@ enum vdec_slc_version {
 	VDEC_SLC_NOT_SUPPORT = 0,
 	VDEC_SLC_V1 = 1,
 	VDEC_SLC_VER_MAX,
+};
+
+/* struct vb2_dc_buf need sync with drivers\media\common\videobuf2\videobuf2-dma-contig.c */
+struct vb2_dc_buf {
+	struct device			*dev;
+	void				*vaddr;
+	unsigned long			size;
+	void				*cookie;
+	dma_addr_t			dma_addr;
+	unsigned long			attrs;
+	enum dma_data_direction		dma_dir;
+	struct sg_table			*dma_sgt;
+	struct frame_vector		*vec;
+
+	/* MMAP related */
+	struct vb2_vmarea_handler	handler;
+	refcount_t			refcount;
+	struct sg_table			*sgt_base;
+
+	/* DMABUF related */
+	struct dma_buf_attachment	*db_attach;
+
+	struct vb2_buffer		*vb;
+	bool				non_coherent_mem;
 };
 
 /**
@@ -360,9 +389,9 @@ struct mtk_enc_params {
 	unsigned int    max_ltr_num;
 	unsigned int    slice_header_spacing;
 	struct mtk_venc_vui_info vui_info; //data from userspace
-	int             qpvbr_enable;
-	int             qpvbr_qpthreshold;
-	int             qpvbr_qpbrratio;
+	int             qpvbr_upper_enable;
+	int             qpvbr_qp_upper_threshold;
+	int             qpvbr_qp_max_brratio;
 	int             cb_qp_offset;
 	int             cr_qp_offset;
 	int             mbrc_tk_spd;
@@ -452,9 +481,9 @@ struct venc_enc_param {
 	struct mtk_venc_multi_ref *multi_ref;
 	struct mtk_venc_vui_info *vui_info;
 	char *log;
-	int qpvbr_enable;
-	int qpvbr_qpthreshold;
-	int qpvbr_qpbrratio;
+	int qpvbr_upper_enable;
+	int qpvbr_qp_upper_threshold;
+	int qpvbr_qp_max_brratio;
 	int cb_qp_offset;
 	int cr_qp_offset;
 	int mbrc_tk_spd;
@@ -584,6 +613,7 @@ struct vdec_check_alive_work_struct {
 struct mtk_vcodec_ctx {
 	enum mtk_instance_type type;
 	struct mtk_vcodec_dev *dev;
+	struct mtk_vcodec_ctx *dev_ctx; // = &dev->dev_ctx
 	struct list_head list;
 
 	struct v4l2_fh fh;
@@ -602,6 +632,7 @@ struct mtk_vcodec_ctx {
 	const struct vdec_common_if *dec_if;
 	const struct venc_common_if *enc_if;
 	unsigned long drv_handle;
+	struct mutex ipi_use_lock; // lock for ipi_recv is using ctx
 	uintptr_t bs_list[VB2_MAX_FRAME+1];
 	uintptr_t fb_list[VB2_MAX_FRAME+1];
 
@@ -642,6 +673,7 @@ struct mtk_vcodec_ctx {
 	spinlock_t lpw_lock;
 	bool low_pw_mode;
 	bool in_group;
+	bool prev_no_input;
 	bool dynamic_low_latency;
 	enum vdec_low_power_state lpw_state;
 	unsigned int lpw_dec_start_cnt;	// count for low power mode to decode after start streaming
@@ -702,6 +734,11 @@ struct mtk_vcodec_ctx {
 	bool resched;
 	struct mutex resched_lock;
 	unsigned char is_active;
+
+	/* for max buf info query*/
+	unsigned int max_buf_pixelformat;
+	unsigned int max_buf_width;
+	unsigned int max_buf_height;
 };
 
 /*
@@ -775,6 +812,7 @@ struct mtk_vcodec_dev {
 	struct list_head ctx_list;
 	struct notifier_block vcp_notify;
 	spinlock_t irqlock;
+	struct mtk_vcodec_ctx dev_ctx; // for query cap & set property
 	struct mtk_vcodec_ctx *curr_dec_ctx[MTK_VDEC_HW_NUM];
 	struct mtk_vcodec_ctx *curr_enc_ctx[MTK_VENC_HW_NUM];
 	void __iomem *dec_reg_base[NUM_MAX_VDEC_REG_BASE];
@@ -802,6 +840,7 @@ struct mtk_vcodec_dev {
 	struct mutex dev_mutex;
 	struct mutex ipi_mutex;
 	struct mutex ipi_mutex_res;
+	struct mutex cap_mutex;
 	struct mtk_vcodec_msgq mq;
 
 	int dec_irq[MTK_VDEC_IRQ_NUM];
@@ -818,7 +857,6 @@ struct mtk_vcodec_dev {
 
 	struct mtk_vcodec_pm pm;
 	struct notifier_block pm_notifier;
-	int backup_ctx_id;
 	bool is_codec_suspending;
 	bool codec_stop_done;
 
@@ -901,9 +939,6 @@ struct mtk_vcodec_dev {
 	struct mutex log_param_mutex;
 	struct mutex prop_param_mutex;
 	struct device *smmu_dev;
-	enum venc_lock enc_hw_locked[MTK_VENC_HW_NUM];
-
-	unsigned int svp_mtee;
 };
 
 static inline struct mtk_vcodec_ctx *fh_to_ctx(struct v4l2_fh *fh)

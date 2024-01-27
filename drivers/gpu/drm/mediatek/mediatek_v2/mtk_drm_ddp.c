@@ -34,9 +34,6 @@
 #ifdef CONFIG_MTK_SMI_EXT
 #include "smi_public.h"
 #endif
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-#include "vcp_status.h"
-#endif
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 #include "mtk-afe-external.h"
 #endif
@@ -23073,12 +23070,6 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 					wake_up(&mtk_crtc0->spr_switch_wait_queue);
 				}
 			}
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-			if (m_id == 0) {
-				//hint vcp display SOF
-				vcp_cmd_ex(VCP_SET_DISP_SYNC, "disp");
-			}
-#endif
 			if ((m_id == 0 || m_id == 3) && ddp->data->wakeup_pf_wq)
 				mtk_wakeup_pf_wq(m_id);
 

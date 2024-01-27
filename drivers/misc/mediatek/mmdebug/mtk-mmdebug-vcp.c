@@ -116,7 +116,7 @@ static int mmdebug_vcp_init_thread(void *data)
 	}
 
 	retry = 0;
-	while (!is_vcp_ready_ex(VCP_A_ID)) {
+	while (!is_vcp_ready_ex(MMDEBUG_FEATURE_ID)) {
 		if (++retry > VCP_SYNC_TIMEOUT_MS) {
 			MMDEBUG_ERR("VCP_A_ID:%d not ready", VCP_A_ID);
 			return -ETIMEDOUT;
@@ -125,7 +125,7 @@ static int mmdebug_vcp_init_thread(void *data)
 	}
 
 	retry = 0;
-	while (!(vcp_ipi_dev = vcp_get_ipidev())) {
+	while (!(vcp_ipi_dev = vcp_get_ipidev(MMDEBUG_FEATURE_ID))) {
 		if (++retry > 100) {
 			MMDEBUG_ERR("cannot get vcp ipidev");
 			return -ETIMEDOUT;

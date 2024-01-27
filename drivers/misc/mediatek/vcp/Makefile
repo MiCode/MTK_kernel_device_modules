@@ -11,5 +11,5 @@
 # GNU General Public License for more details.
 #
 
-obj-y += rv/
-
+obj-$(CONFIG_MTK_TINYSYS_VCP_SUPPORT) += rv/
+obj-$(CONFIG_MTK_TINYSYS_VCP_V2_SUPPORT) += rv_v2/

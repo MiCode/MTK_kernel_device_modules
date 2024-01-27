@@ -28,10 +28,9 @@
 
 
 //#define VDEC_PRINT_DTS_INFO
-
+#if DEC_EMI_BW
 static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 {
-#if DEC_DVFS
 	const int op_item_num = 9;
 	const int tp_item_num = 4;
 	const int bw_item_num = 3;
@@ -263,14 +262,13 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 			dev->vdec_larb_bw[i].larb_base_bw);
 	}
 #endif
-#endif
+
 	return true;
 
 }
 
 static void mtk_dec_tput_deinit(struct mtk_vcodec_dev *dev)
 {
-#if DEC_DVFS
 	if (dev->vdec_dflt_op_rate) {
 		vfree(dev->vdec_dflt_op_rate);
 		dev->vdec_dflt_op_rate = 0;
@@ -285,8 +283,8 @@ static void mtk_dec_tput_deinit(struct mtk_vcodec_dev *dev)
 		vfree(dev->vdec_larb_bw);
 		dev->vdec_larb_bw = 0;
 	}
-#endif
 }
+#endif
 
 
 void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
@@ -349,14 +347,16 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 		i++;
 		dev_pm_opp_put(opp);
 	}
-#endif
 	mtk_dec_tput_init(dev);
+#endif
 }
 
 void mtk_unprepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 {
+#if DEC_EMI_BW
 	/* Set to lowest clock before leaving */
 	mtk_dec_tput_deinit(dev);
+#endif
 }
 
 void mtk_prepare_vdec_emi_bw(struct mtk_vcodec_dev *dev)
@@ -403,6 +403,7 @@ void mtk_unprepare_vdec_emi_bw(struct mtk_vcodec_dev *dev)
 
 void set_vdec_opp(struct mtk_vcodec_dev *dev, u32 freq)
 {
+#if DEC_DVFS
 	struct dev_pm_opp *opp = 0;
 	int volt = 0;
 	int ret = 0;
@@ -429,6 +430,7 @@ void set_vdec_opp(struct mtk_vcodec_dev *dev, u32 freq)
 			mtk_v4l2_debug(8, "[VDEC] freq %u, voltage %d", freq, volt);
 		}
 	}
+#endif
 }
 
 void mtk_vdec_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)

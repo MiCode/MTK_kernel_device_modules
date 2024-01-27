@@ -27,9 +27,12 @@
 #include "mtk_vcodec_util.h"
 #include "mtk_vcu.h"
 #include "mtk_vcodec_dec_slc.h"
+#include "vdec_drv_if.h"
 /* SMMU related header file */
 #include "mtk-smmu-v3.h"
-
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+#include "vcp_status.h"
+#endif
 
 module_param(mtk_v4l2_dbg_level, int, 0644);
 module_param(mtk_vdec_lpw_level, int, 0644);
@@ -41,6 +44,7 @@ char mtk_vdec_property_prev[LOG_PROPERTY_SIZE];
 char mtk_vdec_vcp_log_prev[LOG_PROPERTY_SIZE];
 module_param(mtk_vdec_lpw_limit, int, 0644);
 module_param(mtk_vdec_lpw_timeout, int, 0644);
+module_param(mtk_vdec_enable_dynll, bool, 0644);
 module_param(mtk_vdec_slc_enable, bool, 0644);
 
 static struct mtk_vcodec_dev *dev_ptr;
@@ -96,7 +100,7 @@ static int fops_vcodec_open(struct file *file)
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	if (mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
-		ret = vcp_register_feature(VDEC_FEATURE_ID);
+		ret = vcp_register_feature_ex(VDEC_FEATURE_ID);
 		if (ret) {
 			mtk_v4l2_err("Failed to vcp_register_feature");
 			kfree(ctx);
@@ -106,7 +110,9 @@ static int fops_vcodec_open(struct file *file)
 			vcodec_trace_end();
 			return -EPERM;
 		}
+#if DEC_DVFS
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_VDEC);
+#endif
 	}
 #endif
 
@@ -121,12 +127,14 @@ static int fops_vcodec_open(struct file *file)
 	v4l2_fh_add(&ctx->fh);
 	INIT_LIST_HEAD(&ctx->list);
 	ctx->dev = dev;
+	ctx->dev_ctx = &dev->dev_ctx;
 	for (i = 0; i < MTK_VDEC_HW_NUM; i++)
 		init_waitqueue_head(&ctx->queue[i]);
 	mutex_init(&ctx->buf_lock);
 	mutex_init(&ctx->worker_lock);
 	mutex_init(&ctx->hw_status);
 	mutex_init(&ctx->q_mutex);
+	mutex_init(&ctx->ipi_use_lock);
 	mutex_init(&ctx->detect_ts_param.lock);
 	mutex_init(&ctx->gen_buf_list_lock);
 #if ENABLE_META_BUF
@@ -286,13 +294,15 @@ static int fops_vcodec_release(struct file *file)
 	mutex_unlock(&dev->dev_mutex);
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	if (mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
-		ret = vcp_deregister_feature(VDEC_FEATURE_ID);
+		ret = vcp_deregister_feature_ex(VDEC_FEATURE_ID);
 		if (ret) {
 			mtk_v4l2_err("Failed to vcp_deregister_feature");
 			vcodec_trace_end();
 			return -EPERM;
 		}
+#if DEC_DVFS
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_VDEC);
+#endif
 	}
 #endif
 
@@ -493,24 +503,12 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 		mtk_v4l2_debug(2, "reg[%d] base=0x%lx",
 			reg_index, (unsigned long)dev->dec_reg_base[reg_index]);
 	}
-	// if VDEC_BASE and VDEC_SYS are same which will only config VDEC_SYS in dts,
-	// use VDEC_SYS as VDEC_BASE to avoid check hw active with KE in both
-	// mtk_vcodec_lat_dec_irq_handler and mtk_vcodec_dec_irq_handler
-	if (dev->dec_reg_base[VDEC_BASE] == NULL) {
-		dev->dec_reg_base[VDEC_BASE] = dev->dec_reg_base[VDEC_SYS];
-		mtk_v4l2_debug(2, "VDEC_BASE reg[%d] base=0x%lx",
-			VDEC_BASE, (unsigned long)dev->dec_reg_base[VDEC_BASE]);
-	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, "support-svp-region", &support_svp_region);
 	if (ret) {
 		mtk_v4l2_debug(0, "[VDEC] Cannot get support-svp-region, skip");
 		support_svp_region = 0;
 	}
-
-	ret = of_property_read_u32(pdev->dev.of_node, "svp-mtee", &dev->svp_mtee);
-	if (ret)
-		mtk_v4l2_debug(0, "[VDEC] Cannot get svp-mtee, skip");
 
 	ret = mtk_vcodec_dec_irq_setup(pdev, dev);
 	if (ret)
@@ -529,6 +527,7 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	mutex_init(&dev->ipi_mutex);
 	mutex_init(&dev->ipi_mutex_res);
 	mutex_init(&dev->dec_dvfs_mutex);
+	mutex_init(&dev->cap_mutex);
 	spin_lock_init(&dev->irqlock);
 
 	SNPRINTF(dev->v4l2_dev.name, sizeof(dev->v4l2_dev.name), "%s",
@@ -648,7 +647,6 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	dev->pm_notifier.notifier_call = mtk_vcodec_dec_suspend_notifier;
 	register_pm_notifier(&dev->pm_notifier);
 	dev->is_codec_suspending = 0;
-	dev->backup_ctx_id = -1;
 	dev->dec_cnt = 0;
 
 	ret = of_property_read_u32(pdev->dev.of_node, "mediatek,slc", &dev->dec_slc_ver);
@@ -668,6 +666,12 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	vdec_vcp_probe(dev);
 #endif
+
+	ret = vdec_if_dev_ctx_init(dev);
+	if (ret) {
+		mtk_v4l2_err("Failed to init dev ctx (ret %d)", ret);
+		goto err_dec_reg;
+	}
 
 	INIT_LIST_HEAD(&dev->log_param_list);
 	INIT_LIST_HEAD(&dev->prop_param_list);
@@ -707,7 +711,7 @@ static const struct of_device_id mtk_vcodec_match[] = {
 	{.compatible = "mediatek,mt6835-vcodec-dec",},
 	{.compatible = "mediatek,mt6897-vcodec-dec",},
 	{.compatible = "mediatek,mt6989-vcodec-dec",},
-	{.compatible = "mediatek,mt6768-vcodec-dec",},
+	{.compatible = "mediatek,mt6991-vcodec-dec",},
 	{.compatible = "mediatek,vdec_gcon",},
 	{},
 };
@@ -717,6 +721,8 @@ MODULE_DEVICE_TABLE(of, mtk_vcodec_match);
 static int mtk_vcodec_dec_remove(struct platform_device *pdev)
 {
 	struct mtk_vcodec_dev *dev = platform_get_drvdata(pdev);
+
+	vdec_if_dev_ctx_deinit(dev);
 
 	flush_workqueue(dev->vdec_buf_wq);
 	destroy_workqueue(dev->vdec_buf_wq);

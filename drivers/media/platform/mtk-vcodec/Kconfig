@@ -16,3 +16,10 @@ config VIDEO_MEDIATEK_VCODEC_V2
 	  Set Y to select this feature for specific platform-V2.
 	  If unsure, set N to disable.
 
+config MTK_VCODEC_DEBUG
+	bool "Video Vcodec Debug support"
+	help
+	  This is a debug interface for Video Codec
+	  Set Y to enable this feature.
+	  Set N to disable this feature.
+	  If unsure, Set N to disable it.

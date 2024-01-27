@@ -131,6 +131,8 @@ enum venc_set_param_type {
 	VENC_SET_PARAM_VISUAL_QUALITY,
 	VENC_SET_PARAM_INIT_QP,
 	VENC_SET_PARAM_FRAME_QP_RANGE,
+	VENC_SET_PARAM_ADJUST_CHROMQA_QP,
+	VENC_SET_PARAM_MBRC_TKSPD,
 };
 
 #define VENC_MSG_AP_SEND_PREFIX	\
@@ -247,7 +249,6 @@ struct venc_ap_ipi_msg_enc {
 	__u32 data_offset[3];
 	__u8 fb_num_planes;
 	__u8 bs_mode;
-	__u32 sec_mem_handle;
 	__u16 reserved1;
 	__u32 reserved2;
 };
@@ -279,6 +280,15 @@ enum venc_ipi_msg_status {
  */
 struct venc_ap_ipi_msg_common {
 	VENC_MSG_AP_SEND_PREFIX;
+};
+
+/**
+ * struct venc_ap_ipi_msg_common - AP to VCU cmd common structure for instance independent
+ * @msg_id:     message id (AP_IPIMSG_ENC_XXX)
+ * @venc_inst:  AP encoder instance (struct venc_vp8_inst/venc_h264_inst *)
+ */
+struct venc_ap_ipi_msg_indp {
+	VENC_MSG_PREFIX;
 };
 
 /**
@@ -463,7 +473,6 @@ struct venc_vcu_config {
 	__u32 p_qp;
 	__u32 b_qp;
 	__u32 svp_mode;
-	__u32 svp_is_hal_secure_handle;
 	__u32 tsvc;
 	__u32 max_qp;
 	__u32 min_qp;
@@ -493,9 +502,9 @@ struct venc_vcu_config {
 	struct mtk_color_desc color_desc;
 	struct mtk_venc_multi_ref multi_ref;
 	struct mtk_venc_vui_info vui_info;
-	__s32 qpvbr_enable;
-	__s32 qpvbr_qpthreshold;
-	__s32 qpvbr_qpbrratio;
+	__s32 qpvbr_upper_enable;
+	__s32 qpvbr_qp_upper_threshold;
+	__s32 qpvbr_qp_max_brratio;
 	__s32 cb_qp_offset;
 	__s32 cr_qp_offset;
 	__s32 mbrc_tk_spd;
