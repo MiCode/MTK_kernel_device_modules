@@ -481,7 +481,7 @@ mgk_64_device_modules = [
     "drivers/nvmem/nvmem-mt635x-efuse.ko",
     "drivers/nvmem/nvmem-mt6681-efuse.ko",
     "drivers/nvmem/nvmem_mtk-devinfo.ko",
-    #"drivers/pci/controller/pcie-mediatek-gen3.ko",
+    "drivers/pci/controller/pcie-mediatek-gen3.ko",
     "drivers/phy/mediatek/phy-mtk-fpgaphy.ko",
     "drivers/phy/mediatek/phy-mtk-pcie.ko",
     "drivers/phy/mediatek/phy-mtk-tphy.ko",
