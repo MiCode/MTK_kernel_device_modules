@@ -14,6 +14,14 @@ config MTK_GPU_VERSION
 	  It has three parts
 	  1.vendor name 2.GPU architecture name 3. driver version
 
+config MTK_GPU_LEGACY
+	bool "Specify Mediatek GPU Legacy Project"
+	help
+	  Set Y to select this config for legacy GPU project,
+	  and set N to disable.
+	  It is additional config to separate platforms.
+	  All legacy GPU project should define this.
+
 config MTK_GPU_COMMON_DVFS_SUPPORT
 	bool "Support GPU VSync-Based DVFS Policy"
 	default n
@@ -75,6 +83,15 @@ config MTK_GPUFREQ_V2
 	  Support for gpufreq version 2.
 	  CONFIG_MTK_GPUFREQ_V2 defines
 	  if the gpufreq driver should go to version 2
+
+config MTK_GPU_MT6768_SUPPORT
+	tristate "Specify Mediatek GPU Platform is mt6768"
+	depends on MTK_GPU_SUPPORT
+	help
+	  Select MediaTek GPU Platform is mt6768.
+	  Set Y or M to select this feature for specific platform-mt6768,
+	  and set N to disable.
+	  It is additional config to separate platforms.
 
 config MTK_GPU_MT6855_SUPPORT
 	tristate "Specify Mediatek GPU Platform is mt6855"
@@ -157,12 +174,12 @@ config MTK_GPU_MT6989_SUPPORT
 	  and set N to disable.
 	  It is additional config to separate platforms.
 
-config MTK_GPU_MT6768_SUPPORT
-	tristate "Specify Mediatek GPU Platform is mt6768"
+config MTK_GPU_MT6991_SUPPORT
+	tristate "Specify Mediatek GPU Platform is mt6991"
 	depends on MTK_GPU_SUPPORT
 	help
-	  Select MediaTek GPU Platform is mt6768.
-	  Set Y or M to select this feature for specific platform-mt6768,
+	  Select MediaTek GPU Platform is mt6991.
+	  Set Y or M to select this feature for specific platform-mt6991,
 	  and set N to disable.
 	  It is additional config to separate platforms.
 

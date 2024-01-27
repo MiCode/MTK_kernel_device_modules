@@ -3,8 +3,8 @@
  * Copyright (C) 2021 MediaTek Inc.
  */
 
-#ifndef __GPUFREQ_COMMON_H__
-#define __GPUFREQ_COMMON_H__
+#ifndef __GPUFREQ_COMMON_LEGACY_H__
+#define __GPUFREQ_COMMON_LEGACY_H__
 
 #include <linux/bits.h>
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
@@ -128,6 +128,10 @@ int __gpufreq_get_idx_by_vgpu(unsigned int volt);
 int __gpufreq_get_idx_by_pgpu(unsigned int power);
 unsigned int __gpufreq_get_lkg_pgpu(unsigned int volt, int temper);
 unsigned int __gpufreq_get_dyn_pgpu(unsigned int freq, unsigned int volt);
+const struct gpufreq_opp_info *__gpufreq_get_working_table_gpu(void);
+const struct gpufreq_opp_info *__gpufreq_get_signed_table_gpu(void);
+struct gpufreq_debug_opp_info __gpufreq_get_debug_opp_info_gpu(void);
+void __gpufreq_set_stress_test(unsigned int mode);
 int __gpufreq_generic_commit_gpu(int target_oppidx, enum gpufreq_dvfs_state key);
 int __gpufreq_fix_target_oppidx_gpu(int oppidx);
 int __gpufreq_fix_custom_freq_volt_gpu(unsigned int freq, unsigned int volt);
@@ -214,4 +218,4 @@ static inline void __gpufreq_abort(const char *exception_string, ...)
 	BUG_ON(1);
 }
 
-#endif /* __GPUFREQ_COMMON_H__ */
+#endif /* __GPUFREQ_COMMON_LEGACY_H__ */

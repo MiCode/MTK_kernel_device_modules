@@ -9,7 +9,7 @@
 #include "mtk_battery_oc_throttling.h"
 #include "mtk_low_battery_throttling.h"
 #include "mtk_bp_thl.h"
-#include "../../../gpu/mediatek/gpufreq/v2/include/gpufreq_v2.h"
+#include "mtk_gpufreq.h"
 
 #define CREATE_TRACE_POINTS
 #include "mtk_low_battery_throttling_trace.h"

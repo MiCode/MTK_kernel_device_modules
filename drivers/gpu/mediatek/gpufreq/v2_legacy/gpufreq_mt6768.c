@@ -28,10 +28,10 @@
 #include <linux/pm_domain.h>
 #include <linux/random.h>
 
-#include <gpufreq_v2.h>
-#include <gpufreq_debug.h>
-#include <gpuppm.h>
-#include <gpufreq_common.h>
+#include <gpufreq_v2_legacy.h>
+#include <gpufreq_debug_legacy.h>
+#include <gpuppm_legacy.h>
+#include <gpufreq_common_legacy.h>
 #include <gpufreq_mt6768.h>
 #include <mtk_gpu_utility.h>
 
@@ -1137,7 +1137,7 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 		}
 
 		__gpufreq_footprint_power_step(0x0B);
-		
+
 		__gpufreq_kick_pbm(0);
 	}
 

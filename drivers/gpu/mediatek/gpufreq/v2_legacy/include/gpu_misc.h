@@ -9,8 +9,6 @@
 /**************************************************
  * External Function
  **************************************************/
-void gpufreq_hardstop_dump_slog(void);
-
 /* PTPOD for legacy chip*/
 extern unsigned int mt_gpufreq_update_volt(unsigned int pmic_volt[], unsigned int array_size);
 extern void mt_gpufreq_enable_by_ptpod(void);

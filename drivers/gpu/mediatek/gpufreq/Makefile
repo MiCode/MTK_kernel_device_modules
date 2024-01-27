@@ -11,8 +11,14 @@
 # GNU General Public License for more details.
 #
 
-ifeq ($(CONFIG_MTK_GPUFREQ_V2), y)
+ifeq ($(CONFIG_MTK_GPUFREQ_V2),y)
+ifeq ($(CONFIG_MTK_GPU_LEGACY),y)
+	obj-y += v2_legacy/
+else
 	obj-y += v2/
+endif
 else
 	obj-y += v1/
 endif
+
+$(info [MTK GPU] CONFIG_MTK_GPU_LEGACY = $(CONFIG_MTK_GPU_LEGACY))

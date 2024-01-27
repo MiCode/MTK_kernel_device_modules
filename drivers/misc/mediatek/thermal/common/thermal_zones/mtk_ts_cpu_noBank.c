@@ -23,7 +23,7 @@
 #include "mach/mtk_thermal.h"
 #include "mtk_thermal_timer.h"
 #include <mtk_ts_setting.h>
-#include "gpu_misc.h"
+#include "mtk_gpufreq.h"
 
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <mt-plat/mboot_params.h>

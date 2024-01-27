@@ -3,8 +3,8 @@
  * Copyright (C) 2021 MediaTek Inc.
  */
 
-#ifndef __GPUFREQ_V2_H__
-#define __GPUFREQ_V2_H__
+#ifndef __GPUFREQ_V2_LEGACY_H__
+#define __GPUFREQ_V2_LEGACY_H__
 
 #include <linux/bits.h>
 #include <uapi/asm-generic/errno-base.h>
@@ -25,6 +25,7 @@
 #define GPUFREQ_MAX_REG_NUM             (70)
 #define GPUFREQ_MAX_GPM3_NUM            (20)
 #define GPUFREQ_DUMP_INFRA_SIZE         (8192)
+#define GPUFREQ_TODO                    (0)
 
 /**************************************************
  * GPUFREQ Log Setting
@@ -41,6 +42,7 @@
 		if (buf && len) \
 			*len += snprintf(buf + *len, size - *len, fmt"\n", ##args); \
 	}
+
 
 #if GPUFREQ_DEBUG_ENABLE
 	#define GPUFREQ_LOGD(fmt, args...) \
@@ -81,16 +83,15 @@ enum gpufreq_posdiv {
 };
 
 enum gpufreq_dvfs_state {
-	DVFS_FREE          = 0,      /* 0000 0000 0000 */
-	DVFS_DISABLE       = BIT(0), /* 0000 0000 0001 */
-	DVFS_POWEROFF      = BIT(1), /* 0000 0000 0010 */
-	DVFS_FIX_OPP       = BIT(2), /* 0000 0000 0100 */
-	DVFS_FIX_FREQ_VOLT = BIT(3), /* 0000 0000 1000 */
-	DVFS_AGING_KEEP    = BIT(4), /* 0000 0001 0000 */
-	DVFS_SLEEP         = BIT(5), /* 0000 0010 0000 */
-	DVFS_MSSV_TEST     = BIT(6), /* 0000 0100 0000 */
-	DVFS_VMETER_CALI   = BIT(7), /* 0000 1000 0000 */
-	DVFS_PRE_SLEEP     = BIT(8), /* 0001 0000 0000 */
+	DVFS_FREE          = 0,      /* 0000 0000 */
+	DVFS_DISABLE       = BIT(0), /* 0000 0001 */
+	DVFS_POWEROFF      = BIT(1), /* 0000 0010 */
+	DVFS_FIX_OPP       = BIT(2), /* 0000 0100 */
+	DVFS_FIX_FREQ_VOLT = BIT(3), /* 0000 1000 */
+	DVFS_AGING_KEEP    = BIT(4), /* 0001 0000 */
+	DVFS_SLEEP         = BIT(5), /* 0010 0000 */
+	DVFS_MSSV_TEST     = BIT(6), /* 0100 0000 */
+	DVFS_VMETER_CALI   = BIT(7), /* 1000 0000 */
 };
 
 enum gpufreq_target {
@@ -153,20 +154,18 @@ enum gpuppm_reserved_idx {
 };
 
 enum gpuppm_limiter {
-	LIMIT_SEGMENT      = 0,
-	LIMIT_DEBUG        = 1,
-	LIMIT_GPM3         = 2,
-	LIMIT_PEAK_POWER   = 3,
-	LIMIT_THERMAL_AP   = 4,
-	LIMIT_THERMAL_EB   = 5,
-	LIMIT_SRAMRC       = 6,
-	LIMIT_BATT_OC      = 7,
-	LIMIT_BATT_PERCENT = 8,
-	LIMIT_LOW_BATT     = 9,
-	LIMIT_PBM          = 10,
-	LIMIT_APIBOOST     = 11,
-	LIMIT_FPSGO        = 12,
-	LIMIT_NUM          = 13,
+	LIMIT_SEGMENT = 0,
+	LIMIT_DEBUG = 1,
+	LIMIT_THERMAL_AP,
+	LIMIT_THERMAL_EB,
+	LIMIT_SRAMRC,
+	LIMIT_BATT_OC,
+	LIMIT_BATT_PERCENT,
+	LIMIT_LOW_BATT,
+	LIMIT_PBM,
+	LIMIT_APIBOOST,
+	LIMIT_FPSGO,
+	LIMIT_NUM,
 };
 
 enum gpuppm_limit_type {
@@ -199,10 +198,8 @@ enum gpufreq_gpm3_prot_mode {
 };
 
 enum gpufreq_brcast_mode {
-	BRCAST_DISABLE       = 0, /* default */
-	BRCAST_SW_REFILLED   = 1,
-	BRCAST_WITH_AUTO_DMA = 2,
-	BRCAST_SW_ONLY_ACK   = 3, /* SW refill and only check ACK */
+	BRCAST_SW_REFILLED   = 0, /* default */
+	BRCAST_WITH_AUTO_DMA = 1,
 };
 
 enum gpufreq_brisket_mode {
@@ -293,6 +290,49 @@ struct gpufreq_gpm3_info {
 struct gpufreq_reg_info {
 	unsigned int addr;
 	unsigned int val;
+};
+
+struct gpufreq_debug_status {
+	int opp_num;
+	int signed_opp_num;
+	int fixed_oppidx;
+	unsigned int fixed_freq;
+	unsigned int fixed_volt;
+};
+
+struct gpufreq_debug_opp_info {
+	int cur_oppidx;
+	unsigned int cur_freq;
+	unsigned int cur_volt;
+	unsigned int cur_vsram;
+	unsigned int fmeter_freq;
+	unsigned int con1_freq;
+	unsigned int regulator_volt;
+	unsigned int regulator_vsram;
+	int buck_count;
+	int mtcmos_count;
+	int cg_count;
+	int power_count;
+	unsigned int segment_id;
+	int opp_num;
+	int signed_opp_num;
+	unsigned int dvfs_state;
+	unsigned int shader_present;
+	unsigned int aging_enable;
+	unsigned int avs_enable;
+	unsigned int gpm_enable;
+	unsigned int sb_version;
+	unsigned int ptp_version;
+	unsigned int temp_compensate;
+};
+
+struct gpufreq_debug_limit_info {
+	int ceiling;
+	unsigned int c_limiter;
+	unsigned int c_priority;
+	int floor;
+	unsigned int f_limiter;
+	unsigned int f_priority;
 };
 
 struct gpufreq_ptp3_shared_status {
@@ -427,6 +467,8 @@ struct gpufreq_shared_status {
 	struct gpufreq_gpm3_info gpm3_table[GPUFREQ_MAX_GPM3_NUM];
 	struct gpufreq_ptp3_shared_status ptp3_status;
 	struct gpu_ptp3_info ptp3_info;
+	struct gpufreq_debug_opp_info opp_info;
+	struct gpufreq_debug_limit_info limit_info;
 };
 
 /**************************************************
@@ -469,6 +511,8 @@ struct gpufreq_platform_fp {
 	int (*get_idx_by_fgpu)(unsigned int freq);
 	unsigned int (*get_lkg_pgpu)(unsigned int volt, int temper);
 	unsigned int (*get_dyn_pgpu)(unsigned int freq, unsigned int volt);
+	const struct gpufreq_opp_info *(*get_working_table_gpu)(void);
+	int (*generic_commit_gpu)(int target_oppidx, enum gpufreq_dvfs_state key);
 	int (*fix_target_oppidx_gpu)(int oppidx);
 	int (*fix_custom_freq_volt_gpu)(unsigned int freq, unsigned int volt);
 	/* STACK */
@@ -486,8 +530,17 @@ struct gpufreq_platform_fp {
 	int (*get_idx_by_fstack)(unsigned int freq);
 	unsigned int (*get_lkg_pstack)(unsigned int volt, int temper);
 	unsigned int (*get_dyn_pstack)(unsigned int freq, unsigned int volt);
+	const struct gpufreq_opp_info *(*get_working_table_stack)(void);
+	int (*generic_commit_stack)(int target_oppidx, enum gpufreq_dvfs_state key);
 	int (*fix_target_oppidx_stack)(int oppidx);
 	int (*fix_custom_freq_volt_stack)(unsigned int freq, unsigned int volt);
+	int (*get_idx_by_pgpu)(unsigned int power);
+	void (*update_power_table)(void);
+	struct gpufreq_debug_opp_info (*get_debug_opp_info_gpu)(void);
+	struct gpufreq_debug_opp_info (*get_debug_opp_info_stack)(void);
+	const struct gpufreq_opp_info *(*get_signed_table_stack)(void);
+	const struct gpufreq_opp_info *(*get_signed_table_gpu)(void);
+	void (*set_stress_test)(unsigned int mode);
 };
 
 struct gpuppm_platform_fp {
@@ -502,6 +555,8 @@ struct gpuppm_platform_fp {
 	unsigned int (*get_c_limiter)(void);
 	unsigned int (*get_f_limiter)(void);
 	void (*set_shared_status)(struct gpufreq_shared_status *shared_status);
+	const struct gpuppm_limit_info *(*get_limit_table)(enum gpufreq_target target);
+	struct gpufreq_debug_limit_info (*get_debug_limit_info)(enum gpufreq_target target);
 };
 
 /**************************************************
@@ -550,6 +605,8 @@ unsigned int gpufreq_get_dynamic_power(enum gpufreq_target target,
 	unsigned int freq, unsigned int volt);
 int gpufreq_set_limit(enum gpufreq_target target,
 	enum gpuppm_limiter limiter, int ceiling_info, int floor_info);
+int gpufreq_set_limit_by_power(enum gpufreq_target target,
+	enum gpuppm_limiter limiter, int ceiling_info, int floor_info);
 int gpufreq_get_cur_limit_idx(enum gpufreq_target target,enum gpuppm_limit_type limit);
 unsigned int gpufreq_get_cur_limiter(enum gpufreq_target target, enum gpuppm_limit_type limit);
 int gpufreq_power_control(enum gpufreq_power_state power);
@@ -577,4 +634,11 @@ int gpufreq_fix_dual_custom_freq_volt(unsigned int fgpu, unsigned int vgpu,
 int gpufreq_set_mfgsys_config(enum gpufreq_config_target target, enum gpufreq_config_value val);
 int gpufreq_mssv_commit(unsigned int target, unsigned int val);
 
-#endif /* __GPUFREQ_V2_H__ */
+struct gpufreq_debug_opp_info gpufreq_get_debug_opp_info(enum gpufreq_target target);
+struct gpufreq_debug_limit_info gpufreq_get_debug_limit_info(enum gpufreq_target target);
+const struct gpuppm_limit_info *gpufreq_get_limit_table(enum gpufreq_target target);
+const struct gpufreq_opp_info *gpufreq_get_signed_table(enum gpufreq_target target);
+int gpufreq_set_test_mode(unsigned int mode);
+int gpufreq_set_stress_test(unsigned int mode);
+
+#endif /* __GPUFREQ_V2_LEGACY_H__ */
