@@ -858,7 +858,8 @@ static int mtk_smmu_power_get(u32 smmu_type)
 
 	if (smmu_ops && smmu_ops->get_smmu_data) {
 		data = smmu_ops->get_smmu_data(smmu_type);
-		if (data != NULL && smmu_ops->smmu_power_get)
+		if (data != NULL && data->hw_init_flag == 1 &&
+		    smmu_ops->smmu_power_get)
 			return smmu_ops->smmu_power_get(&data->smmu);
 	}
 
