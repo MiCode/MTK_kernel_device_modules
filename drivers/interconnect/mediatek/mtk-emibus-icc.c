@@ -10,7 +10,7 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/soc/mediatek/mtk_dvfsrc.h>
-#include <dt-bindings/interconnect/mtk,mt6989-emibus.h>
+#include <dt-bindings/interconnect/mtk,emibus.h>
 
 #if IS_ENABLED(CONFIG_MTK_DVFSRC)
 #include "internal.h"
