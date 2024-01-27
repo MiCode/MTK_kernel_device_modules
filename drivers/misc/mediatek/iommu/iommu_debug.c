@@ -255,30 +255,13 @@ struct iova_map_list {
 
 static struct iova_map_list map_list = {.init_flag = ATOMIC_INIT(0)};
 
-#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 static void mtk_iommu_iova_trace(int event, dma_addr_t iova, size_t size,
 				 u64 tab_id, struct device *dev);
-#endif
 static void mtk_iommu_iova_alloc_dump_top(struct seq_file *s,
 					  struct device *dev);
 static void mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev);
 static void mtk_iommu_iova_map_dump(struct seq_file *s, u64 iova, u64 tab_id);
 static void mtk_iommu_iova_dump(struct seq_file *s, u64 iova, u64 tab_id);
-
-static void mtk_iommu_system_time(u64 *high, u32 *low)
-{
-	u64 temp;
-
-	temp = sched_clock();
-	do_div(temp, 1000);
-	*low = do_div(temp, 1000000);
-	*high = temp;
-}
-#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
-static u64 to_system_time(u64 high, u32 low)
-{
-	return (high * 1000000 + low) * 1000;
-}
 
 static inline void mtk_iova_count_inc(void)
 {
@@ -337,6 +320,22 @@ static void mtk_iova_count_check(struct device *dev, dma_addr_t iova, size_t siz
 	}
 }
 
+static void mtk_iommu_system_time(u64 *high, u32 *low)
+{
+	u64 temp;
+
+	temp = sched_clock();
+	do_div(temp, 1000);
+	*low = do_div(temp, 1000000);
+	*high = temp;
+}
+
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
+static u64 to_system_time(u64 high, u32 low)
+{
+	return (high * 1000000 + low) * 1000;
+}
+
 static void mtk_iova_map_latency_check(u64 tab_id, u64 iova, size_t size,
 				       u64 end_time_high, u64 end_time_low)
 {
@@ -387,6 +386,7 @@ static void mtk_iova_map_latency_check(u64 tab_id, u64 iova, size_t size,
 	}
 }
 #endif
+
 void mtk_iova_map(u64 tab_id, u64 iova, size_t size)
 {
 	u32 id = (iova >> 32);
@@ -425,11 +425,7 @@ void mtk_iova_map(u64 tab_id, u64 iova, size_t size)
 #endif
 
 iova_trace:
-#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	mtk_iommu_iova_trace(IOMMU_MAP, iova, size, tab_id, NULL);
-#else
-	return;
-#endif
 }
 EXPORT_SYMBOL_GPL(mtk_iova_map);
 
@@ -480,11 +476,7 @@ void mtk_iova_unmap(u64 tab_id, u64 iova, size_t size)
 #endif
 
 iova_trace:
-#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	mtk_iommu_iova_trace(IOMMU_UNMAP, iova, size, tab_id, NULL);
-#else
-	return;
-#endif
 }
 EXPORT_SYMBOL_GPL(mtk_iova_unmap);
 
@@ -2129,11 +2121,12 @@ static void mtk_iommu_trace_rec_write(int event,
 
 	spin_unlock_irqrestore(&iommu_globals.lock, flags);
 }
-#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
+
 static void mtk_iommu_iova_trace(int event,
 	dma_addr_t iova, size_t size,
 	u64 tab_id, struct device *dev)
 {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	u32 id = (iova >> 32);
 
 	if (id >= MTK_IOVA_SPACE_NUM) {
@@ -2142,8 +2135,8 @@ static void mtk_iommu_iova_trace(int event,
 	}
 
 	mtk_iommu_trace_rec_write(event, (unsigned long) iova, size, tab_id, dev);
-}
 #endif
+}
 
 void mtk_iommu_tlb_sync_trace(u64 iova, size_t size, int iommu_ids)
 {
@@ -2684,12 +2677,8 @@ static void mtk_iova_dbg_alloc(struct device *dev,
 	spin_unlock(&iova_list.lock);
 
 iova_trace:
-#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	mtk_iommu_iova_trace(IOMMU_ALLOC, iova, size, tab_id, dev);
 	mtk_iova_count_check(dev, iova, size);
-#else
-	return;
-#endif
 }
 
 static void mtk_iova_dbg_free(
@@ -2744,11 +2733,7 @@ static void mtk_iova_dbg_free(
 			__func__, iova, size, i);
 
 iova_trace:
-#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	mtk_iommu_iova_trace(IOMMU_FREE, iova, size, tab_id, dev);
-#else
-	return;
-#endif
 }
 
 /* all code inside alloc_iova_hook can't be scheduled! */
