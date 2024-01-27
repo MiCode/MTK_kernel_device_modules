@@ -101,6 +101,7 @@ struct iova_cache_data {
 	bool			 mapped[MTK_M4U_DOM_NR_MAX];
 	struct list_head	 iova_caches;
 	u64			 tab_id;
+	bool			 coherent;
 };
 
 struct mtk_dma_heap_config {

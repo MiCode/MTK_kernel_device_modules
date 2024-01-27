@@ -10,6 +10,7 @@
 
 #include <linux/dma-buf.h>
 #include <linux/dma-mapping.h>
+#include <linux/dma-map-ops.h>
 #include <linux/dma-heap.h>
 #include <linux/err.h>
 #include <linux/highmem.h>
@@ -67,13 +68,14 @@ struct system_heap_buffer {
 };
 
 static bool smmu_v3_enable;
-
-static struct iova_cache_data *get_iova_cache(struct system_heap_buffer *buffer, u64 tab_id)
+static struct iova_cache_data *get_iova_cache(struct system_heap_buffer *buffer,
+					      u64 tab_id, bool coherent)
 {
 	struct iova_cache_data *cache_data;
 
 	list_for_each_entry(cache_data, &buffer->iova_caches, iova_caches) {
-		if (cache_data->tab_id == tab_id)
+		if ((cache_data->tab_id == tab_id) &&
+		    (cache_data->coherent == coherent))
 			return cache_data;
 	}
 	return NULL;
@@ -195,6 +197,7 @@ static int fill_buffer_info(struct system_heap_buffer *buffer,
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(a->dev);
 	struct sg_table *new_table = NULL;
 	struct iova_cache_data *cache_data;
+	bool coherent = dev_is_dma_coherent(a->dev);
 	int ret = 0;
 
 	/*
@@ -210,7 +213,7 @@ static int fill_buffer_info(struct system_heap_buffer *buffer,
 	if (smmu_v3_enable && !fwspec)
 		return 0;
 
-	cache_data = get_iova_cache(buffer, tab_id);
+	cache_data = get_iova_cache(buffer, tab_id, coherent);
 	if (cache_data != NULL && cache_data->mapped[dom_id]) {
 		struct device *dev = cache_data->dev_info[dom_id].dev;
 
@@ -243,6 +246,7 @@ static int fill_buffer_info(struct system_heap_buffer *buffer,
 			return -ENOMEM;
 		}
 		cache_data->tab_id = tab_id;
+		cache_data->coherent = coherent;
 		list_add(&cache_data->iova_caches, &buffer->iova_caches);
 	}
 
@@ -318,6 +322,7 @@ static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attac
 	u64 tab_id = 0;
 	struct system_heap_buffer *buffer = attachment->dmabuf->priv;
 	int larb_id, port_id;
+	bool coherent = dev_is_dma_coherent(attachment->dev);
 
 	if (a->uncached)
 		attr |= DMA_ATTR_SKIP_CPU_SYNC;
@@ -327,12 +332,12 @@ static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attac
 	if (fwspec && !smmu_v3_enable) {
 		dom_id = MTK_M4U_TO_DOM(fwspec->ids[0]);
 		tab_id = MTK_M4U_TO_TAB(fwspec->ids[0]);
-		cache_data = get_iova_cache(buffer, tab_id);
+		cache_data = get_iova_cache(buffer, tab_id, coherent);
 		larb_id = MTK_M4U_TO_LARB(fwspec->ids[0]);
 		port_id = MTK_M4U_TO_PORT(fwspec->ids[0]);
 	} else if (fwspec && smmu_v3_enable) {
 		tab_id = get_smmu_tab_id(attachment->dev);
-		cache_data = get_iova_cache(buffer, tab_id);
+		cache_data = get_iova_cache(buffer, tab_id, coherent);
 		dom_id = 0;
 		larb_id = 0;
 		port_id = 0;
