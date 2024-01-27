@@ -617,18 +617,21 @@ static void vcp_debug_dump(void)
 	mminfra_gals_dump();
 }
 
-int mtk_mminfra_dbg_hang_detect(const char *user)
+int mtk_mminfra_dbg_hang_detect(const char *user, bool skip_pm_runtime)
 {
 	s32 offset, len = 0, ret, i;
 	u32 val;
 	char buf[LINK_MAX + 1] = {0};
 
-	pr_info("%s: check caller:%s\n", __func__, user);
+	pr_info("%s: check caller:%s, skip_pm_runtime:%d\n", __func__, user, skip_pm_runtime);
 	for (i = 0; i < MAX_SMI_COMM_NUM; i++) {
 		if (!dev || !dbg || !dbg->comm_dev[i])
 			return -ENODEV;
 
-		ret = pm_runtime_get_if_in_use(dbg->comm_dev[i]);
+		if (skip_pm_runtime)
+			ret = 1;
+		else
+			ret = pm_runtime_get_if_in_use(dbg->comm_dev[i]);
 		if (ret <= 0) {
 			dev_info(dev, " MMinfra may off, comm_nr(%d), %d\n", i, ret);
 			continue;
@@ -664,18 +667,50 @@ int mtk_mminfra_dbg_hang_detect(const char *user)
 		if (!skip_apsrc)
 			pr_notice("%s: gce apsrc: %#x=%#x\n", __func__, GCE_BASE + GCE_GCTL_VALUE,
 					readl(dbg->gce_base + GCE_GCTL_VALUE));
-		pm_runtime_put(dbg->comm_dev[i]);
+
+		if (!skip_pm_runtime)
+			pm_runtime_put(dbg->comm_dev[i]);
+
 		return 0;
 	}
 	return 0;
 }
 
 static int mminfra_smi_dbg_cb(struct notifier_block *nb,
-		unsigned long value, void *v)
+		unsigned long value, void *data)
 {
-	mtk_mminfra_dbg_hang_detect("smi_dbg");
+	if (strncmp((char *) data, "FORCE_DUMP", strlen("FORCE_DUMP")) == 0)
+		mtk_mminfra_dbg_hang_detect("smi_dbg", true);
+	else
+		mtk_mminfra_dbg_hang_detect("smi_dbg", false);
+
 	return 0;
 }
+
+static int mminfra_get_for_smi_dbg(void *v)
+{
+	int ret;
+
+	/* force on mminfra power for smi dbg dump */
+	ret = pm_runtime_get_sync(dev);
+
+	/* return 1 if power on, others for failure */
+	return ret ? ret : 1;
+}
+
+static int mminfra_put_for_smi_dbg(void *v)
+{
+	pm_runtime_put_sync(dev);
+
+	return 0;
+}
+
+static struct smi_user_pwr_ctrl mminfra_pwr_ctrl = {
+	.name = "mminfra",
+	.smi_user_id = MTK_SMI_MMINFRA,
+	.smi_user_get_if_in_use = mminfra_get_for_smi_dbg,
+	.smi_user_put = mminfra_put_for_smi_dbg,
+};
 
 void mtk_mminfra_off_gipc(void)
 {
@@ -706,9 +741,10 @@ static irqreturn_t mminfra_irq_handler(int irq, void *data)
 #endif
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
-		mtk_smi_dbg_hang_detect("mminfra irq");
 		if (dbg->irq_safe)
 			mtk_smi_dbg_dump_for_mminfra();
+		else
+			mtk_smi_dbg_hang_detect("mminfra irq");
 #endif
 		aee_dump = true;
 	}
@@ -787,6 +823,8 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	}
 	dbg->nb.notifier_call = mminfra_smi_dbg_cb;
 	mtk_smi_dbg_register_notifier(&dbg->nb);
+
+	mtk_smi_dbg_register_pwr_ctrl_cb(&mminfra_pwr_ctrl);
 
 	node = pdev->dev.of_node;
 	of_property_read_u32(node, "mminfra-bkrs", &mminfra_bkrs);

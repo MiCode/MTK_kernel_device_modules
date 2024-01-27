@@ -23,6 +23,8 @@ enum hrt_type {
 	HRT_DISP_BY_LARB,
 	SRT_VDEC,
 	SRT_VENC,
+	SRT_MDP,
+	SRT_MML,
 };
 
 enum {

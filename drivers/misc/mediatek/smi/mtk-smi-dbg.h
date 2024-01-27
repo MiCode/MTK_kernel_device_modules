@@ -24,10 +24,31 @@ struct smi_disp_ops {
 	int (*disp_put)(void);
 };
 
+enum smi_pwr_ctrl_action {
+	ACTION_GET_IF_IN_USE,
+	ACTION_PUT_IF_IN_USE,
+	ACTION_FORCE_ALL_ON,
+	ACTION_FORCE_ALL_PUT,
+};
+
+struct smi_user_pwr_ctrl {
+	const char *name;
+	u32 smi_user_id;
+	void *data;
+	int (*smi_user_get_if_in_use)(void *v);
+	int (*smi_user_get)(void *v);
+	int (*smi_user_put)(void *v);
+	struct list_head list;
+};
+
+enum SMI_DBG_VER {
+	SMI_DBG_VER_1 = 1,
+	SMI_DBG_VER_2,
+};
+
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 
 int mtk_smi_set_disp_ops(const struct smi_disp_ops *ops);
-void mtk_smi_dbg_dump_for_mminfra(void);
 int mtk_smi_dbg_register_notifier(struct notifier_block *nb);
 int mtk_smi_dbg_unregister_notifier(struct notifier_block *nb);
 int mtk_smi_dbg_register_force_on_notifier(struct notifier_block *nb);
@@ -36,15 +57,14 @@ s32 smi_monitor_start(struct device *dev, u32 common_id, u32 commonlarb_id[MAX_M
 			u32 flag[MAX_MON_REQ], enum smi_mon_id mon_id);
 s32 smi_monitor_stop(struct device *dev, u32 common_id,
 			u32 *bw, enum smi_mon_id mon_id);
+
+int mtk_smi_dbg_register_pwr_ctrl_cb(struct smi_user_pwr_ctrl *cb);
+int mtk_smi_dbg_unregister_pwr_ctrl_cb(struct smi_user_pwr_ctrl *cb);
 #else
 
 static inline int mtk_smi_set_disp_ops(const struct smi_disp_ops *ops)
 {
 	return 0;
-}
-
-static inline void mtk_smi_dbg_dump_for_mminfra(void);
-{
 }
 
 static inline int mtk_smi_dbg_register_notifier(struct notifier_block *nb)
@@ -79,6 +99,15 @@ static inline s32 smi_monitor_stop(struct device *dev, u32 common_id,
 	return 0;
 }
 
+static inline int mtk_smi_dbg_register_pwr_ctrl_cb(struct smi_user_pwr_ctrl *cb)
+{
+	return 0;
+}
+
+static inline int mtk_smi_dbg_unregister_pwr_ctrl_cb(struct smi_user_pwr_ctrl *cb)
+{
+	return 0;
+}
 #endif /* CONFIG_DEVICE_MODULES_MTK_SMI */
 
 #endif /* __MTK_SMI_DEBUG_H */
