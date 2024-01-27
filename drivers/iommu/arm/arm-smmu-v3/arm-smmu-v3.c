@@ -2181,7 +2181,10 @@ static void arm_smmu_domain_free(struct iommu_domain *domain)
 	struct arm_smmu_domain *smmu_domain = to_smmu_domain(domain);
 	struct arm_smmu_device *smmu = smmu_domain->smmu;
 
-	free_io_pgtable_ops(smmu_domain->pgtbl_ops);
+	if (smmu->impl && smmu->impl->free_io_pgtable_ops)
+		smmu->impl->free_io_pgtable_ops(smmu_domain->pgtbl_ops);
+	else
+		free_io_pgtable_ops(smmu_domain->pgtbl_ops);
 
 	/* Free the CD and ASID, if we allocated them */
 	if (smmu_domain->stage == ARM_SMMU_DOMAIN_S1) {
@@ -2362,7 +2365,11 @@ static int arm_smmu_domain_finalise(struct iommu_domain *domain,
 		 __func__, smmu_domain->stage, ias, smmu->ias, oas, smmu->oas, fmt,
 		 (smmu->features & ARM_SMMU_FEAT_COHERENCY));
 
-	pgtbl_ops = alloc_io_pgtable_ops(fmt, &pgtbl_cfg, smmu_domain);
+	if (smmu->impl && smmu->impl->alloc_io_pgtable_ops)
+		pgtbl_ops = smmu->impl->alloc_io_pgtable_ops(fmt, &pgtbl_cfg,
+							     smmu_domain);
+	else
+		pgtbl_ops = alloc_io_pgtable_ops(fmt, &pgtbl_cfg, smmu_domain);
 	if (!pgtbl_ops)
 		return -ENOMEM;
 
@@ -2376,7 +2383,10 @@ static int arm_smmu_domain_finalise(struct iommu_domain *domain,
 
 	ret = finalise_stage_fn(smmu_domain, master, &pgtbl_cfg);
 	if (ret < 0) {
-		free_io_pgtable_ops(pgtbl_ops);
+		if (smmu->impl && smmu->impl->free_io_pgtable_ops)
+			smmu->impl->free_io_pgtable_ops(pgtbl_ops);
+		else
+			free_io_pgtable_ops(pgtbl_ops);
 		return ret;
 	}
 
@@ -3923,11 +3933,11 @@ static int arm_smmu_device_hw_probe(struct arm_smmu_device *smmu)
 
 	/* Page sizes */
 	if (reg & IDR5_GRAN64K)
-		smmu->pgsize_bitmap |= SZ_64K | SZ_512M;
+		smmu->pgsize_bitmap |= SZ_64K | SZ_2M | SZ_512M;
 	if (reg & IDR5_GRAN16K)
-		smmu->pgsize_bitmap |= SZ_16K | SZ_32M;
+		smmu->pgsize_bitmap |= SZ_16K | SZ_2M | SZ_32M;
 	if (reg & IDR5_GRAN4K)
-		smmu->pgsize_bitmap |= SZ_4K | SZ_2M | SZ_1G;
+		smmu->pgsize_bitmap |= SZ_4K | SZ_64K | SZ_2M | SZ_1G;
 
 	/* Input address size */
 	if (FIELD_GET(IDR5_VAX, reg) == IDR5_VAX_52_BIT)

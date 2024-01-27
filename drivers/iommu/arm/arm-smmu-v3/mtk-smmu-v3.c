@@ -2332,6 +2332,60 @@ static bool mtk_smmu_skip_sync_timeout(struct arm_smmu_device *smmu)
 	return ret;
 }
 
+struct io_pgtable_ops *mtk_alloc_io_pgtable_ops(enum io_pgtable_fmt fmt,
+			struct io_pgtable_cfg *cfg,
+			void *cookie)
+{
+	struct arm_smmu_domain *smmu_domain = cookie;
+	const struct io_pgtable_init_fns *fns;
+	struct io_pgtable *iop;
+
+	if (smmu_domain->stage == ARM_SMMU_DOMAIN_S1)
+		fmt = ARM_64_LPAE_S1_CONTIG;
+
+	if (fmt < IO_PGTABLE_NUM_FMTS)
+		return alloc_io_pgtable_ops(fmt, cfg, cookie);
+	else if (fmt == ARM_64_LPAE_S1_CONTIG)
+		fns = &mtk_io_pgtable_arm_64_lpae_s1_contig_fns;
+	else {
+		pr_err("alloc io-pgtable fmt error: %u\n", fmt);
+		return NULL;
+	}
+
+	iop = fns->alloc(cfg, cookie);
+	if (!iop)
+		return NULL;
+
+	iop->fmt	= fmt;
+	iop->cookie	= cookie;
+	iop->cfg	= *cfg;
+
+	return &iop->ops;
+}
+
+void mtk_free_io_pgtable_ops(struct io_pgtable_ops *ops)
+{
+	struct io_pgtable_init_fns *fns;
+	struct io_pgtable *iop;
+
+	if (!ops)
+		return;
+
+	iop = io_pgtable_ops_to_pgtable(ops);
+
+	if (iop->fmt < IO_PGTABLE_NUM_FMTS)
+		return free_io_pgtable_ops(ops);
+	else if (iop->fmt == ARM_64_LPAE_S1_CONTIG)
+		fns = &mtk_io_pgtable_arm_64_lpae_s1_contig_fns;
+	else {
+		pr_err("free io-pgtable fmt error: %u\n", iop->fmt);
+		return;
+	}
+
+	io_pgtable_tlb_flush_all(iop);
+	fns->free(iop);
+}
+
 static const struct arm_smmu_impl mtk_smmu_impl = {
 	.device_group = mtk_smmu_device_group,
 	.delay_hw_init = mtk_delay_hw_init,
@@ -2359,6 +2413,8 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 	.fault_dump = mtk_smmu_fault_dump,
 	.skip_shutdown = mtk_smmu_skip_shutdown,
 	.skip_sync_timeout = mtk_smmu_skip_sync_timeout,
+	.alloc_io_pgtable_ops = mtk_alloc_io_pgtable_ops,
+	.free_io_pgtable_ops = mtk_free_io_pgtable_ops,
 };
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
