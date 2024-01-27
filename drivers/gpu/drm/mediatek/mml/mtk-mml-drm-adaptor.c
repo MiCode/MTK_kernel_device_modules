@@ -217,6 +217,7 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *dctx,
 	}
 
 	mml_mmp2(query_mode, MMPROFILE_FLAG_PULSE, info->mode, mode, 0, reason);
+	mml_msg("query mode %u result mode %u reason %u", info->mode, mode, reason);
 	return mode;
 
 not_support:
