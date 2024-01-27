@@ -39,6 +39,7 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/upower/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/spm/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/power_gs_v1/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/thermal/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/smi/Kconfig"
 
 config MTK_PLAT_POWER_MT6768
 	tristate "Platform power specified macro"
