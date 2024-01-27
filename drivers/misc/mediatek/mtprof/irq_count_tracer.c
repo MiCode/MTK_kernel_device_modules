@@ -29,6 +29,7 @@
 #include <linux/seq_buf.h>
 #include <linux/slab.h>
 #include <mt-plat/aee.h>
+#include <mt-plat/mtk_irq_mon.h>
 
 #include "internal.h"
 
@@ -153,12 +154,14 @@ struct irq_count_stat {
 };
 
 static struct irq_count_stat irq_count_stat;
+static DEFINE_SPINLOCK(aee_callback_lock);
 
 /* per irq */
 struct irq_mon_desc {
 	unsigned int irq;
 	unsigned int __percpu (*count)[2];
 	u64 __percpu *time;
+	aee_callback_t fn;
 };
 
 static DEFINE_XARRAY(imdesc_xa);
@@ -227,6 +230,52 @@ static int irq_time_proc_show(struct seq_file *m, void *v)
 		seq_putc(m, '\n');
 	}
 	return 0;
+}
+
+int irq_mon_aee_callback_register(unsigned int irq, aee_callback_t fn)
+{
+	struct irq_mon_desc *desc = irq_mon_desc_lookup(irq);
+	unsigned long flags;
+
+	desc = desc ?: irq_mon_desc_alloc(irq);
+	if (!desc)
+		return -ENOMEM;
+
+	spin_lock_irqsave(&aee_callback_lock, flags);
+	rcu_assign_pointer(desc->fn, fn);
+	spin_unlock_irqrestore(&aee_callback_lock, flags);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(irq_mon_aee_callback_register);
+
+void irq_mon_aee_callback_unregister(unsigned int irq)
+{
+	struct irq_mon_desc *desc = irq_mon_desc_lookup(irq);
+	unsigned long flags;
+
+	if (!desc)
+		return;
+
+	spin_lock_irqsave(&aee_callback_lock, flags);
+	rcu_assign_pointer(desc->fn, NULL);
+	spin_unlock_irqrestore(&aee_callback_lock, flags);
+	synchronize_rcu();
+}
+EXPORT_SYMBOL_GPL(irq_mon_aee_callback_unregister);
+
+void irq_mon_aee_callback(unsigned int irq, enum irq_mon_aee_type type)
+{
+	struct irq_mon_desc *desc = irq_mon_desc_lookup(irq);
+	aee_callback_t fn;
+
+	if (!desc)
+		return;
+
+	rcu_read_lock();
+	fn = rcu_dereference(desc->fn);
+	if (fn)
+		fn(desc->irq, type);
+	rcu_read_unlock();
 }
 
 static void update_irq_count(void)
@@ -470,11 +519,14 @@ static void irq_count_core(void)
 			seq_buf_printf(&buf_mod, " +%lu in %llums", count, t_diff_ms);
 
 			irq_mon_msg(out, aee_msg);
-			if (out & TO_AEE)
+			if (out & TO_AEE) {
+				irq_mon_aee_callback(imdesc->irq,
+						     IRQ_MON_AEE_TYPE_BURST_IRQ);
 				aee_kernel_warning_api(__FILE__, __LINE__,
 						       DB_OPT_DUMMY_DUMP
 						       | DB_OPT_FTRACE,
 						       module, aee_msg);
+			}
 		}
 	}
 	rcu_read_unlock();
