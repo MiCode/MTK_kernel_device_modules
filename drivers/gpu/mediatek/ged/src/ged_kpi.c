@@ -1747,15 +1747,6 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 			g_force_disable_dcs = false;
 		}
 
-		// also disable dcs if api boost happened before
-		if (ged_get_api_sync_ts()) {
-			// Reset timestamp if it has been a long time since the last API boost
-			if (ged_get_time() / 1000000 - ged_get_api_sync_ts() > API_SYNC_TIMEOUT_MS)
-				ged_reset_api_sync_ts();
-			else
-				g_force_disable_dcs = true;
-		}
-
 		ged_eb_dvfs_task(EB_UPDATE_PRESERVE, g_force_disable_dcs);
 
 		/* gpu info to KPI TAG */
