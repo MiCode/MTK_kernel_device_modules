@@ -441,7 +441,7 @@ static int auxadc_get_imp_ibat(struct mt635x_auxadc_device *adc_dev)
 	if (!psy)
 		return 0;
 
-	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CURRENT_NOW,
+	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CURRENT_MAX,
 					&prop);
 	if (!ret)
 		return prop.intval;
