@@ -8,6 +8,7 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/io.h>
+#include <linux/of.h>
 
 #include "mtk_dcm_common.h"
 #include <mtk_dcm.h>
@@ -15,6 +16,7 @@
 DEFINE_MUTEX(dcm_lock);
 static short dcm_debug;
 static short dcm_initiated;
+struct tag_chipid *chip_id;
 struct DCM *common_dcm_array;
 struct DCM_OPS *common_dcm_ops;
 unsigned int common_init_dcm_type_by_k;
@@ -327,6 +329,36 @@ bool is_dcm_initialized(void)
 	return ret;
 }
 EXPORT_SYMBOL(is_dcm_initialized);
+
+int mtk_dcm_get_chipid(void)
+{
+	struct device_node *node;
+	int len;
+
+	/* chip-id already found */
+	if (!chip_id) {
+		node = of_find_node_by_path("/chosen");
+		if (!node)
+			node = of_find_node_by_path("/chosen@0");
+
+		if (node) {
+			chip_id = (struct tag_chipid *)of_get_property(node,
+									"atag,chipid",
+									&len);
+			if (!chip_id) {
+				dcm_pr_notice("could not found atag,chipid in chosen\n");
+				return -ENODEV;
+			}
+		} else {
+			dcm_pr_notice("chosen node not found in device tree\n");
+			return -ENODEV;
+		}
+		dcm_pr_notice("current sw version: %u\n", chip_id->sw_ver);
+	}
+
+	return chip_id->sw_ver;
+}
+EXPORT_SYMBOL(mtk_dcm_get_chipid);
 
 void mt_dcm_force_disable(void)
 {

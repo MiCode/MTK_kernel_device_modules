@@ -75,4 +75,13 @@ struct DCM {
 	char *name;
 };
 
+/* For E1/E2/... chip discrimination */
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
 #endif /* #ifndef __MTK_DCM_COMMON_H__ */

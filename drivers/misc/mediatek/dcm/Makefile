@@ -34,3 +34,8 @@ ifneq ($(wildcard $(srctree)/$(src)/mt6989_dcm_internal.c),)
 obj-$(CONFIG_MTK_DCM_MT6989) += mt6989_dcm.o
 mt6989_dcm-objs := mt6989_dcm_internal.o mt6989_dcm_autogen.o
 endif
+
+ifneq ($(wildcard $(srctree)/$(src)/mt6991_dcm_internal.c),)
+obj-$(CONFIG_MTK_DCM_MT6991) += mt6991_dcm.o
+mt6991_dcm-objs := mt6991_dcm_internal.o mt6991_dcm_autogen.o
+endif

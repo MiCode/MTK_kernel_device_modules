@@ -13,5 +13,6 @@ bool is_dcm_initialized(void);
 void mt_dcm_force_disable(void);
 void mt_dcm_restore(void);
 void dcm_dump_state(int type);
+int mtk_dcm_get_chipid(void);
 
 #endif /* #ifndef __MTK_DCM_H__ */
