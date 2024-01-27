@@ -1616,7 +1616,7 @@ static int mtk_smmu_irq_handler(int irq, void *dev)
 {
 	struct arm_smmu_device *smmu = dev;
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
-	u32 gerror, gerrorn, active;
+	u32 gerror, gerrorn, active, irq_sta;
 #if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 	struct smmuv3_pmu_device *pmu_device;
 	unsigned long flags;
@@ -1624,13 +1624,16 @@ static int mtk_smmu_irq_handler(int irq, void *dev)
 
 	gerror = readl_relaxed(smmu->base + ARM_SMMU_GERROR);
 	gerrorn = readl_relaxed(smmu->base + ARM_SMMU_GERRORN);
+	irq_sta = smmu_read_reg(smmu->wp_base, SMMUWP_IRQ_STA);
 
 	active = gerror ^ gerrorn;
 	if (!(active & GERROR_ERR_MASK)) {
-		/* try to secure interrupt process which maybe trigger by secure */
-		if (mtk_smmu_sec_irq_process(irq, dev) == IRQ_HANDLED) {
-			mtk_smmu_irq_record(data);
-			return IRQ_HANDLED;
+		if (irq_sta == 0) {
+			/* try to secure interrupt process which maybe trigger by secure */
+			if (mtk_smmu_sec_irq_process(irq, dev) == IRQ_HANDLED) {
+				mtk_smmu_irq_record(data);
+				return IRQ_HANDLED;
+			}
 		}
 	} else {
 		dev_info(smmu->dev,
@@ -3149,9 +3152,7 @@ int smmu_tf_detect(enum mtk_smmu_type type,
 		return -EINVAL;
 
 	skip_irq = (options & SMMU_DETECT_TF_OPT_SKIP_IRQ);
-	if (!skip_irq)
-		irq_sta = smmu_read_reg(smmu->wp_base, SMMUWP_IRQ_STA);
-
+	irq_sta = smmu_read_reg(smmu->wp_base, SMMUWP_IRQ_STA);
 	if (skip_irq || irq_sta > 0) {
 		ret = smmuwp_tf_detect(smmu, sid, tbu, axids, num_axids, param);
 		dev_info(smmu->dev,
