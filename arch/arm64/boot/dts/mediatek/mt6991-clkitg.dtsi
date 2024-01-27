@@ -34,7 +34,6 @@
 			<&cksys_clk CLK_CK_AUD_2_SEL>,
 			<&cksys_clk CLK_CK_ADSP_SEL>,
 			<&cksys_clk CLK_CK_ADSP_UARTHUB_BCLK_SEL>,
-			<&cksys_clk CLK_CK_DPMAIF_MAIN_SEL>,
 			<&cksys_clk CLK_CK_IPSEAST_SEL>,
 			<&cksys_clk CLK_CK_TL_SEL>,
 			<&cksys_clk CLK_CK_TL_P1_SEL>,
@@ -903,13 +902,6 @@
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_D_CON_1_CAMSV>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_E_CON_1_CAMSV>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_CON_1_CAMSV>;
-	};
-	bring-up-ccci@1e {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x1e>;
-		clocks =
-			<&apifrbus_ao_mem_reg_clk CLK_IFR_MEM_DPMAIF_MAIN_CCCI>,
-			<&apifrbus_ao_mem_reg_clk CLK_IFR_MEM_DPMAIF_26M_CCCI>;
 	};
 	bring-up-jpgenc@1f {
 		compatible = "mediatek,clk-bring-up";
