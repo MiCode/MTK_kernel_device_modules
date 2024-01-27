@@ -8,12 +8,42 @@
  * Copyright (C) 2011 Google, Inc.
  */
 
-#include <linux/freezer.h>
+#include "page_pool.h"
+
 #include <linux/list.h>
-#include <linux/slab.h>
+#include <linux/shrinker.h>
+#include <linux/spinlock.h>
 #include <linux/swap.h>
 #include <linux/sched/signal.h>
-#include "page_pool.h"
+
+/* page types we track in the pool */
+enum {
+	POOL_LOWPAGE,      /* Clean lowmem pages */
+	POOL_HIGHPAGE,     /* Clean highmem pages */
+
+	POOL_TYPE_SIZE,
+};
+
+/**
+ * struct dmabuf_page_pool - pagepool struct
+ * @count[]:		array of number of pages of that type in the pool
+ * @items[]:		array of list of pages of the specific type
+ * @lock:		lock protecting this struct and especially the count
+ *			item list
+ * @gfp_mask:		gfp_mask to use from alloc
+ * @order:		order of pages in the pool
+ * @list:		list node for list of pools
+ *
+ * Allows you to keep a pool of pre allocated pages to use
+ */
+struct dmabuf_page_pool {
+	int count[POOL_TYPE_SIZE];
+	struct list_head items[POOL_TYPE_SIZE];
+	spinlock_t lock;
+	gfp_t gfp_mask;
+	unsigned int order;
+	struct list_head list;
+};
 
 static LIST_HEAD(pool_list);
 static DEFINE_MUTEX(pool_list_lock);
@@ -41,28 +71,30 @@ static void dmabuf_page_pool_add(struct dmabuf_page_pool *pool, struct page *pag
 	else
 		index = POOL_LOWPAGE;
 
-	mutex_lock(&pool->mutex);
+	spin_lock(&pool->lock);
 	list_add_tail(&page->lru, &pool->items[index]);
 	pool->count[index]++;
+	spin_unlock(&pool->lock);
 	mod_node_page_state(page_pgdat(page), NR_KERNEL_MISC_RECLAIMABLE,
 			    1 << pool->order);
-	mutex_unlock(&pool->mutex);
 }
 
 static struct page *dmabuf_page_pool_remove(struct dmabuf_page_pool *pool, int index)
 {
 	struct page *page;
 
-	mutex_lock(&pool->mutex);
+	spin_lock(&pool->lock);
 	page = list_first_entry_or_null(&pool->items[index], struct page, lru);
 	if (page) {
 		pool->count[index]--;
 		list_del(&page->lru);
+		spin_unlock(&pool->lock);
 		mod_node_page_state(page_pgdat(page), NR_KERNEL_MISC_RECLAIMABLE,
 				    -(1 << pool->order));
+		goto out;
 	}
-	mutex_unlock(&pool->mutex);
-
+	spin_unlock(&pool->lock);
+out:
 	return page;
 }
 
@@ -125,7 +157,7 @@ struct dmabuf_page_pool *dmabuf_page_pool_create(gfp_t gfp_mask, unsigned int or
 	}
 	pool->gfp_mask = gfp_mask | __GFP_COMP;
 	pool->order = order;
-	mutex_init(&pool->mutex);
+	spin_lock_init(&pool->lock);
 
 	mutex_lock(&pool_list_lock);
 	list_add(&pool->list, &pool_list);
@@ -154,6 +186,21 @@ void dmabuf_page_pool_destroy(struct dmabuf_page_pool *pool)
 	kfree(pool);
 }
 EXPORT_SYMBOL_GPL(dmabuf_page_pool_destroy);
+
+unsigned long dmabuf_page_pool_get_size(struct dmabuf_page_pool *pool)
+{
+       int i;
+       unsigned long num_pages = 0;
+
+       spin_lock(&pool->lock);
+       for (i = 0; i < POOL_TYPE_SIZE; ++i)
+               num_pages += pool->count[i];
+       spin_unlock(&pool->lock);
+       num_pages <<= pool->order; /* pool order is immutable */
+
+       return num_pages * PAGE_SIZE;
+}
+EXPORT_SYMBOL_GPL(dmabuf_page_pool_get_size);
 
 static int dmabuf_page_pool_do_shrink(struct dmabuf_page_pool *pool, gfp_t gfp_mask,
 				      int nr_to_scan)
@@ -241,7 +288,7 @@ struct shrinker pool_shrinker = {
 
 static int dmabuf_page_pool_init_shrinker(void)
 {
-	return register_shrinker(&pool_shrinker,"dmabuf-page-pool");
+	return register_shrinker(&pool_shrinker, "dmabuf-page-pool-shrinker");
 }
 module_init(dmabuf_page_pool_init_shrinker);
 MODULE_LICENSE("GPL v2");
