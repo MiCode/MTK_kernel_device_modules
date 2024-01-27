@@ -937,6 +937,9 @@ static ssize_t clkscale_control_show(struct device *dev,
 	size += sprintf(buf + size, "0: free run\n");
 	size += sprintf(buf + size, "1: scale down\n");
 	size += sprintf(buf + size, "2: scale up\n");
+	size += sprintf(buf + size, "3: scale down and frobid change\n");
+	size += sprintf(buf + size, "4: scale up and frobid change\n");
+	size += sprintf(buf + size, "5: allow change and free run\n");
 
 	return size;
 }
