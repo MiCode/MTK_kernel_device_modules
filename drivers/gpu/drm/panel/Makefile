@@ -43,7 +43,7 @@ obj-$(CONFIG_DRM_PANEL_TD4320_FHDP_AUO_VDO_RT5081) += panel-td4320-fhdp-dsi-vdo-
 obj-$(CONFIG_DRM_PANEL_SC_NT36672C_VDO_90HZ_6382) += panel-sc-nt36672c-vdo-90hz-6382.o
 obj-$(CONFIG_DRM_PANEL_NT36672C_FHDP_DSI_VDO_DSC_TXD_BOE) += panel-aw37501-i2c.o
 obj-$(CONFIG_DRM_PANEL_NT36672C_FHDP_DSI_VDO_DSC_TXD_BOE) += panel-nt36672c-fhdp-dsi-vdo-dsc-txd-boe.o
-
+obj-$(CONFIG_DRM_PANEL_BOE_JD9365DA_VDO) += panel-boe-jd9365da-vdo.o
 ifneq ($(wildcard $(srctree)/$(src)/k6985v1_64),)
 obj-$(CONFIG_DRM_TD2204_WQHD_AMB678ZY01_S6E3HC3_CMD) += k6985v1_64/td2204-wqhd-amb678zy01-s6e3hc3-cmd.o
 endif
