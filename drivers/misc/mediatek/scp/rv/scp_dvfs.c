@@ -123,7 +123,6 @@ static bool g_scp_dvfs_flow_enable = true; /* 1: RUN DVFS FLOW, others: NO DVFS 
  */
 #define NO_SCP_DEBUG_OPP	(-1)
 static int current_scp_debug_opp = NO_SCP_DEBUG_OPP;
-static bool g_scp_sleep_state_log_enable; /* print sleep? */
 static struct wakeup_source *scp_dvfs_lock;
 
 /* Devive specific settings initialized from dts */
@@ -338,6 +337,7 @@ static int scp_reg_update(struct regmap *regmap, struct reg_info *reg, u32 val)
 {
 	u32 mask;
 	int ret = 0;
+	bool need_scp_wakelock = false;
 
 	if (!reg->msk) {
 		pr_notice("[%s]: reg not support\n", __func__);
@@ -346,6 +346,11 @@ static int scp_reg_update(struct regmap *regmap, struct reg_info *reg, u32 val)
 	mask = reg->msk << reg->bit;
 	val = (val & reg->msk) << reg->bit;
 
+	/* Keep SCP active to read */
+	need_scp_wakelock = g_dvfs_dev.clk_hw->scp_clk_regmap == regmap;
+	if (need_scp_wakelock)
+		scp_awake_lock((void *)SCP_A_ID);
+
 	if (reg->setclr) {
 		ret = regmap_write(regmap, reg->ofs + 4, mask);
 		ret = regmap_write(regmap, reg->ofs + 2, val);
@@ -353,21 +358,34 @@ static int scp_reg_update(struct regmap *regmap, struct reg_info *reg, u32 val)
 		ret = regmap_update_bits(regmap, reg->ofs, mask, val);
 	}
 
+	if (need_scp_wakelock)
+		scp_awake_unlock((void *)SCP_A_ID);
+
 	return ret;
 }
 
 static int scp_reg_read(struct regmap *regmap, struct reg_info *reg, u32 *val)
 {
 	int ret = 0;
+	bool need_scp_wakelock = false;
 
 	if (!reg->msk) {
 		pr_notice("[%s]: reg not support\n", __func__);
 		return -ESCP_REG_NOT_SUPPORTED;
 	}
 
+	/* Keep SCP active to read */
+	need_scp_wakelock = g_dvfs_dev.clk_hw->scp_clk_regmap == regmap;
+	if (need_scp_wakelock)
+		scp_awake_lock((void *)SCP_A_ID);
+
 	ret = regmap_read(regmap, reg->ofs, val);
 	if (!ret)
 		*val = (*val >> reg->bit) & reg->msk;
+
+	if (need_scp_wakelock)
+		scp_awake_unlock((void *)SCP_A_ID);
+
 	return ret;
 }
 
@@ -676,6 +694,7 @@ static int scp_request_freq_vcore(void)
 				pr_notice("set freq fail, current(%d) != expect(%d)\n",
 					scp_current_freq, scp_expected_freq);
 				scp_resource_req(SCP_REQ_RELEASE);
+				scp_awake_unlock((void *)SCP_A_ID);
 				__pm_relax(scp_dvfs_lock);
 				WARN_ON(1);
 				return -ESCP_DVFS_IPI_FAILED;
@@ -683,7 +702,7 @@ static int scp_request_freq_vcore(void)
 
 			/* read scp_current_freq again */
 			spin_lock_irqsave(&scp_awake_spinlock, spin_flags);
-			scp_current_freq = readl(CURRENT_FREQ_REG);
+			scp_current_freq = readl(CURRENT_FREQ_REG); /* Keep SCP active to read */
 			spin_unlock_irqrestore(&scp_awake_spinlock, spin_flags);
 
 		} while (scp_current_freq != scp_expected_freq);
@@ -715,7 +734,6 @@ static int scp_request_freq_vlp(void)
 	struct ipi_request_freq_data ipi_data;
 	int timeout = 50;
 	int ret = 0;
-	unsigned long spin_flags;
 	int opp_idx;
 
 	if (!g_scp_dvfs_flow_enable) {
@@ -782,14 +800,11 @@ static int scp_request_freq_vlp(void)
 
 		/* if ipi send fail 50(=timeout) times */
 		if (timeout <= 0) {
-			/* to check scp_current_freq */
-			spin_lock_irqsave(&scp_awake_spinlock, spin_flags);
-			scp_current_freq = readl(CURRENT_FREQ_REG);
-			spin_unlock_irqrestore(&scp_awake_spinlock, spin_flags);
-			pr_notice("failed to set freq SCP(%d) SAP(%d), current=%d\n",
-				scp_expected_freq, sap_expected_freq, scp_current_freq);
+			pr_notice("IPI failed to set freq SCP(%d) SAP(%d)\n",
+				scp_expected_freq, sap_expected_freq);
 			if (g_dvfs_dev.has_pll_opp)
 				scp_resource_req(SCP_REQ_RELEASE);
+			scp_awake_unlock((void *)SCP_A_ID);
 			__pm_relax(scp_dvfs_lock);
 			WARN_ON(1);
 			return -ESCP_DVFS_IPI_FAILED;
@@ -943,37 +958,6 @@ int scp_pll_ctrl_set(unsigned int pll_ctrl_flag, unsigned int pll_sel)
 	return ret;
 }
 
-void mt_scp_dvfs_state_dump(void)
-{
-	unsigned int scp_state, slp_pwr_ctrl, power_status;
-	char *scp_status = 0;
-
-	if (!g_scp_sleep_state_log_enable)
-		return;
-
-	scp_state = readl(SCP_A_SLEEP_DEBUG_REG);
-	scp_status = ((scp_state & IN_DEBUG_IDLE) == IN_DEBUG_IDLE) ? "idle mode"
-			: ((scp_state & ENTERING_SLEEP) == ENTERING_SLEEP) ?
-				"enter sleep"
-			: ((scp_state & IN_SLEEP) == IN_SLEEP) ?
-				"sleep mode"
-			: ((scp_state & ENTERING_ACTIVE) == ENTERING_ACTIVE) ?
-				"enter active"
-			: ((scp_state & IN_ACTIVE) == IN_ACTIVE) ?
-				"active mode" : "none of state";
-
-	if (g_dvfs_dev.vlp_support) {
-		slp_pwr_ctrl = readl(SCP_SLP_PWR_CTRL);
-		power_status = readl(SCP_POWER_STATUS);
-		pr_info("scp status: %s, cpu-off config: %s, power status: %s\n",
-			scp_status,
-			((slp_pwr_ctrl & R_CPU_OFF) == R_CPU_OFF) ? "enable" : "disable",
-			((power_status & POW_ON) == POW_ON) ? "on" : "off");
-	} else {
-		pr_info("scp status: %s\n", scp_status);
-	}
-}
-
 #ifdef CONFIG_PROC_FS
 /*
  * PROC
@@ -984,31 +968,9 @@ void mt_scp_dvfs_state_dump(void)
  *****************************/
 static int mt_scp_dvfs_state_proc_show(struct seq_file *m, void *v)
 {
-	unsigned int scp_state, slp_pwr_ctrl, power_status;
-
-	g_scp_sleep_state_log_enable = !g_scp_sleep_state_log_enable;
-
-	scp_state = readl(SCP_A_SLEEP_DEBUG_REG);
-	seq_printf(m, "scp status: %s\n",
-		((scp_state & IN_DEBUG_IDLE) == IN_DEBUG_IDLE) ? "idle mode"
-		: ((scp_state & ENTERING_SLEEP) == ENTERING_SLEEP) ?
-			"enter sleep"
-		: ((scp_state & IN_SLEEP) == IN_SLEEP) ?
-			"sleep mode"
-		: ((scp_state & ENTERING_ACTIVE) == ENTERING_ACTIVE) ?
-			"enter active"
-		: ((scp_state & IN_ACTIVE) == IN_ACTIVE) ?
-			"active mode" : "none of state");
 	seq_printf(m, "current debug scp core: %d\n",
 		g_dvfs_dev.cur_dbg_core);
 
-	if (g_dvfs_dev.vlp_support) {
-		slp_pwr_ctrl = readl(SCP_SLP_PWR_CTRL);
-		power_status = readl(SCP_POWER_STATUS);
-		seq_printf(m, "cpu-off config: %s, power status: %s\n",
-			((slp_pwr_ctrl & R_CPU_OFF) == R_CPU_OFF) ? "enable" : "disable",
-			((power_status & POW_ON) == POW_ON) ? "on" : "off");
-	}
 	return 0;
 }
 
@@ -1254,17 +1216,18 @@ static ssize_t mt_scp_dvfs_sleep_proc_write(
  *****************************/
 static int mt_scp_dvfs_ctrl_proc_show(struct seq_file *m, void *v)
 {
-	unsigned long spin_flags;
-	unsigned int scp_expected_freq_reg;
+	unsigned int scp_current_freq_reg, scp_expected_freq_reg;
 	int i;
 
-	spin_lock_irqsave(&scp_awake_spinlock, spin_flags);
-	scp_current_freq = readl(CURRENT_FREQ_REG);
+	/* Keep SCP active to read */
+	scp_awake_lock((void *)SCP_A_ID);
+	scp_current_freq_reg = readl(CURRENT_FREQ_REG);
 	scp_expected_freq_reg = readl(EXPECTED_FREQ_REG);
-	spin_unlock_irqrestore(&scp_awake_spinlock, spin_flags);
+	scp_awake_unlock((void *)SCP_A_ID);
+
 	seq_printf(m, "SCP DVFS: %s\n", g_scp_dvfs_flow_enable? "ON": "OFF");
 	seq_printf(m, "SCP frequency: cur=%dMHz, expect=%dMHz, kernel=%dMHz\n",
-				scp_current_freq, scp_expected_freq_reg, scp_expected_freq);
+				scp_current_freq_reg, scp_expected_freq_reg, scp_expected_freq);
 
 	for (i = 0; i < NUM_FEATURE_ID; i++)
 		seq_printf(m, "feature=%d, freq=%d, enable=%d\n",
@@ -2395,13 +2358,11 @@ static int scp_pm_event(struct notifier_block *notifier,
 	case PM_POST_HIBERNATION:
 		return NOTIFY_DONE;
 	case PM_SUSPEND_PREPARE:
-		mt_scp_dvfs_state_dump();
 		mt_scp_dump_sleep_count();
 		if (scpreg.low_pwr_dbg)
 			mt_scp_start_res_prof();
 		return NOTIFY_DONE;
 	case PM_POST_SUSPEND:
-		mt_scp_dvfs_state_dump();
 		mt_scp_dump_sleep_count();
 		if (scpreg.low_pwr_dbg)
 			mt_scp_stop_res_prof();
