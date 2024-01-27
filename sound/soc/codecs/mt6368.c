@@ -2073,7 +2073,8 @@ static int mt_vow_aud_lpw_event(struct snd_soc_dapm_widget *w,
 					   0x3 << RG_AUDRADC1STSTAGEIDDTEST_SFT);
 		} else {
 			/* handset single mic (R)*/
-			if (priv->vow_single_mic_select == MIC_INDEX_THIRD) {
+			if (priv->vow_single_mic_select == MIC_INDEX_REF ||
+			    priv->vow_single_mic_select == MIC_INDEX_THIRD) {
 				regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON8,
 						   0x0039, 0x0039);
 				regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON8,
@@ -2082,20 +2083,20 @@ static int mt_vow_aud_lpw_event(struct snd_soc_dapm_widget *w,
 				regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON9,
 						   RG_AUDRADC1STSTAGEIDDTEST_MASK_SFT,
 						   0x3 << RG_AUDRADC1STSTAGEIDDTEST_SFT);
-				/* handset single mic (L) or headset mic mode*/
-				} else if (priv->vow_single_mic_select == MIC_INDEX_MAIN ||
-					   priv->vow_single_mic_select == MIC_INDEX_HEADSET) {
-					regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON6,
-							   0x0039, 0x0039);
-					regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON6,
-							   RG_AUDADC1STSTAGELPEN_MASK_SFT,
-							   0x0 << RG_AUDADC1STSTAGELPEN_SFT);
-					regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON7,
-							   RG_AUDADC1STSTAGEIDDTEST_MASK_SFT,
-							   0x3 << RG_AUDADC1STSTAGEIDDTEST_SFT);
-				} else
-					dev_info(priv->dev, "%s(), unsupport mic index %d.\n",
-						 __func__, priv->vow_single_mic_select);
+			/* handset single mic (L) or headset mic mode*/
+			} else if (priv->vow_single_mic_select == MIC_INDEX_MAIN ||
+				   priv->vow_single_mic_select == MIC_INDEX_HEADSET) {
+				regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON6,
+						   0x0039, 0x0039);
+				regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON6,
+						   RG_AUDADC1STSTAGELPEN_MASK_SFT,
+						   0x0 << RG_AUDADC1STSTAGELPEN_SFT);
+				regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON7,
+						   RG_AUDADC1STSTAGEIDDTEST_MASK_SFT,
+						   0x3 << RG_AUDADC1STSTAGEIDDTEST_SFT);
+			} else
+				dev_info(priv->dev, "%s(), unsupport mic index %d.\n",
+					 __func__, priv->vow_single_mic_select);
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
@@ -2133,7 +2134,8 @@ static int mt_vow_aud_lpw_event(struct snd_soc_dapm_widget *w,
 					   0x0039, 0x0000);
 		} else {
 			/* handset mic R or L */
-			if (priv->vow_single_mic_select == MIC_INDEX_THIRD) {
+			if (priv->vow_single_mic_select == MIC_INDEX_REF  ||
+			    priv->vow_single_mic_select == MIC_INDEX_THIRD) {
 				regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON9,
 						   RG_AUDRADC1STSTAGEIDDTEST_MASK_SFT,
 						   0x0 << RG_AUDRADC1STSTAGEIDDTEST_SFT);
@@ -2209,156 +2211,6 @@ static int mt_vow_pll_event(struct snd_soc_dapm_widget *w,
 		regmap_write(priv->regmap, MT6368_VOWPLL_ANA_CON4, 0x1);
 		/* PLL VCOBAND */
 		regmap_write(priv->regmap, MT6368_VOWPLL_ANA_CON5, 0x23);
-		break;
-	default:
-		break;
-	}
-	return 0;
-}
-
-static void vow_periodic_on_off_set(struct mt6368_priv *priv)
-{
-	/* VOW32K_CK power on */
-	/* VOW13M_CK power on */
-	regmap_update_bits(priv->regmap,
-			   MT6368_AUD_TOP_CKPDN_CON1,
-			   RG_VOW32K_CK_PDN_MASK_SFT,
-			   0x0);
-	/* Pre On */
-#ifndef SKIP_VOW
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG2,
-		     priv->vow_periodic_param.pga_on);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG3,
-		     priv->vow_periodic_param.precg_on);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG4,
-		     priv->vow_periodic_param.adc_on);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG7,
-		     priv->vow_periodic_param.micbias0_on);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG8,
-		     priv->vow_periodic_param.micbias1_on);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG9,
-		     priv->vow_periodic_param.dcxo_on);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG10,
-		     priv->vow_periodic_param.audglb_on);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG11,
-		     priv->vow_periodic_param.vow_on);
-	/* Delay Off */
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG13,
-		     priv->vow_periodic_param.pga_off);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG14,
-		     priv->vow_periodic_param.precg_off);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG15,
-		     priv->vow_periodic_param.adc_off);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG18,
-		     priv->vow_periodic_param.micbias0_off);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG19,
-		     priv->vow_periodic_param.micbias1_off);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG20,
-		     priv->vow_periodic_param.dcxo_off);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG21,
-		     priv->vow_periodic_param.audglb_off);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG22,
-		     priv->vow_periodic_param.vow_off);
-
-	if (priv->vow_channel == 2) {
-		/* Pre On */
-		regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG24,
-			     priv->vow_periodic_param.pga_on);
-		regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG25,
-			     priv->vow_periodic_param.precg_on);
-		regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG26,
-			     priv->vow_periodic_param.adc_on);
-		regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG29,
-			     priv->vow_periodic_param.micbias1_on);
-		regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG30,
-			     priv->vow_periodic_param.vow_on);
-		/* Delay Off */
-		regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG32,
-			     priv->vow_periodic_param.pga_off);
-		regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG33,
-			     priv->vow_periodic_param.precg_off);
-		regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG34,
-			     priv->vow_periodic_param.adc_off);
-		regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG37,
-			     priv->vow_periodic_param.micbias1_off);
-		regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG38,
-			     priv->vow_periodic_param.vow_off);
-	}
-	/* vow periodic enable */
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG0, 0x999A);
-#endif
-}
-
-static void vow_periodic_on_off_reset(struct mt6368_priv *priv)
-{
-	/* VOW32K_CK power down */
-	regmap_update_bits(priv->regmap,
-			   MT6368_AUD_TOP_CKPDN_CON1,
-			   RG_VOW32K_CK_PDN_MASK_SFT,
-			   0x1 << RG_VOW32K_CK_PDN_SFT);
-
-#ifndef SKIP_VOW
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG0, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG1, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG2, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG3, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG4, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG5, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG6, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG7, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG8, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG9, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG10, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG11, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG12, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG13, 0x8000);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG14, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG15, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG16, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG17, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG18, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG19, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG20, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG21, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG22, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG23, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG24, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG25, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG26, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG27, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG28, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG29, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG30, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG31, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG32, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG33, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG34, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG35, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG36, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG37, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG38, 0x0);
-	regmap_write(priv->regmap, MT6368_AFE_VOW_PERIODIC_CFG39, 0x0);
-#endif
-}
-
-static int mt_vow_periodic_cfg_event(struct snd_soc_dapm_widget *w,
-				     struct snd_kcontrol *kcontrol,
-				     int event)
-{
-	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
-	struct mt6368_priv *priv = snd_soc_component_get_drvdata(cmpnt);
-
-	dev_dbg(priv->dev, "%s(), event 0x%x\n", __func__, event);
-	switch (event) {
-	case SND_SOC_DAPM_PRE_PMU:
-		/* Periodic On/Off */
-		if (priv->reg_afe_vow_periodic == 0)
-			vow_periodic_on_off_reset(priv);
-		else
-			vow_periodic_on_off_set(priv);
-		break;
-	case SND_SOC_DAPM_POST_PMD:
-		vow_periodic_on_off_reset(priv);
 		break;
 	default:
 		break;
@@ -3468,10 +3320,6 @@ static const struct snd_soc_dapm_widget mt6368_dapm_widgets[] = {
 			      SND_SOC_NOPM, 0, 0,
 			      mt_vow_digital_cfg_event,
 			      SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
-	SND_SOC_DAPM_SUPPLY_S("VOW_PERIODIC_CFG", SUPPLY_SEQ_VOW_PERIODIC_CFG,
-			      SND_SOC_NOPM, 0, 0,
-			      mt_vow_periodic_cfg_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 	/* Digital Clock */
 	SND_SOC_DAPM_SUPPLY_S("AUDIO_TOP_AFE_CTL", SUPPLY_SEQ_AUD_TOP_LAST,
 			      MT6368_AUDIO_TOP_CON0,
@@ -3860,22 +3708,6 @@ static int mt_vow_amic_connect(struct snd_soc_dapm_widget *source,
 		return 0;
 }
 
-static int mt_vow_amic_dcc_connect(struct snd_soc_dapm_widget *source,
-				   struct snd_soc_dapm_widget *sink)
-{
-
-	struct snd_soc_dapm_widget *w = sink;
-	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
-	struct mt6368_priv *priv = snd_soc_component_get_drvdata(cmpnt);
-
-	if (IS_DCC_BASE(priv->mux_select[MUX_MIC_TYPE_0]) ||
-	    IS_DCC_BASE(priv->mux_select[MUX_MIC_TYPE_1]) ||
-	    IS_DCC_BASE(priv->mux_select[MUX_MIC_TYPE_2]))
-		return 1;
-	else
-		return 0;
-}
-
 static int mt_dcc_clk_connect(struct snd_soc_dapm_widget *source,
 			      struct snd_soc_dapm_widget *sink)
 {
@@ -4122,7 +3954,6 @@ static const struct snd_soc_dapm_route mt6368_dapm_routes[] = {
 	{"VOW TX", NULL, "VOW_CLK"},
 	{"VOW TX", NULL, "VOW_SOURCE_CLK"},
 	{"VOW TX", NULL, "VOW_DIG_CFG"},
-	{"VOW TX", NULL, "VOW_PERIODIC_CFG", mt_vow_amic_dcc_connect},
 	{"VOW_UL_SRC_MUX", "AMIC", "VOW_AMIC0_MUX"},
 	{"VOW_UL_SRC_MUX", "AMIC", "VOW_AMIC1_MUX"},
 	{"VOW_UL_SRC_MUX", "DMIC", "DMIC0_MUX"},
@@ -5474,12 +5305,8 @@ static void *get_vow_coeff_by_name(struct mt6368_priv *priv,
 		return &(priv->reg_afe_vow_vad_cfg4);
 	else if (strcmp(name, "Audio VOWCFG5 Data") == 0)
 		return &(priv->reg_afe_vow_vad_cfg5);
-	else if (strcmp(name, "Audio_VOW_Periodic") == 0)
-		return &(priv->reg_afe_vow_periodic);
 	else if (strcmp(name, "Audio_Vow_SINGLE_MIC_Select") == 0)
 		return &(priv->vow_single_mic_select);
-	else if (strcmp(name, "Audio_VOW_Periodic_Param") == 0)
-		return (void *) &(priv->vow_periodic_param);
 	else
 		return NULL;
 }
@@ -5523,35 +5350,6 @@ static int audio_vow_cfg_set(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int audio_vow_periodic_parm_set(struct snd_kcontrol *kcontrol,
-				       const unsigned int __user *data,
-				       unsigned int size)
-{
-	int ret = 0;
-	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
-	struct mt6368_priv *priv = snd_soc_component_get_drvdata(cmpnt);
-	struct mt6368_vow_periodic_on_off_data *vow_param_cfg;
-
-	dev_info(priv->dev, "%s(), size = %d\n", __func__, size);
-	if (size > sizeof(struct mt6368_vow_periodic_on_off_data))
-		return -EINVAL;
-	vow_param_cfg = (struct mt6368_vow_periodic_on_off_data *)
-			get_vow_coeff_by_name(priv, kcontrol->id.name);
-	if (!vow_param_cfg) {
-		dev_err(priv->dev, "%s(), vow_param_cfg == NULL\n", __func__);
-		return -EINVAL;
-	}
-	if (copy_from_user(vow_param_cfg, data,
-			   sizeof(struct mt6368_vow_periodic_on_off_data))) {
-		dev_info(priv->dev, "%s(),Fail copy to user Ptr:%p,r_sz:%zu\n",
-			 __func__,
-			 data,
-			 sizeof(struct mt6368_vow_periodic_on_off_data));
-		ret = -EFAULT;
-	}
-	return ret;
-}
-
 static const struct snd_kcontrol_new mt6368_snd_vow_controls[] = {
 	SOC_SINGLE_EXT("Audio VOWCFG0 Data",
 		       SND_SOC_NOPM, 0, 0x80000, 0,
@@ -5571,15 +5369,9 @@ static const struct snd_kcontrol_new mt6368_snd_vow_controls[] = {
 	SOC_SINGLE_EXT("Audio VOWCFG5 Data",
 		       SND_SOC_NOPM, 0, 0x80000, 0,
 		       audio_vow_cfg_get, audio_vow_cfg_set),
-	SOC_SINGLE_EXT("Audio_VOW_Periodic",
-		       SND_SOC_NOPM, 0, 0x80000, 0,
-		       audio_vow_cfg_get, audio_vow_cfg_set),
 	SOC_SINGLE_EXT("Audio_Vow_SINGLE_MIC_Select",
 		       SND_SOC_NOPM, 0, 0x80000, 0,
 		       audio_vow_cfg_get, audio_vow_cfg_set),
-	SND_SOC_BYTES_TLV("Audio_VOW_Periodic_Param",
-			  sizeof(struct mt6368_vow_periodic_on_off_data),
-			  NULL, audio_vow_periodic_parm_set),
 };
 
 /* misc control */
