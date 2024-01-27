@@ -346,6 +346,9 @@ struct ssusb_mtk {
 	/* dp switch */
 	struct regmap *dp_switch;
 	u32 dp_switch_oft;
+	/* clkgate */
+	struct regmap *clkgate;
+	u32 clkgate_oft;
 	/* usb power domain */
 	struct device *genpd_u2;
 	struct device *genpd_u3;
@@ -516,6 +519,7 @@ int ssusb_check_clocks(struct ssusb_mtk *ssusb, u32 ex_clks);
 void ssusb_set_force_vbus(struct ssusb_mtk *ssusb, bool vbus_on);
 int ssusb_phy_power_on(struct ssusb_mtk *ssusb);
 void ssusb_phy_power_off(struct ssusb_mtk *ssusb);
+void ssusb_reset(struct ssusb_mtk *ssusb);
 void ssusb_phy_set_mode(struct ssusb_mtk *ssusb, enum phy_mode mode);
 void ssusb_phy_dp_pullup(struct ssusb_mtk *ssusb);
 int ssusb_clks_enable(struct ssusb_mtk *ssusb);

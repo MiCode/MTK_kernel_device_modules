@@ -106,6 +106,10 @@ static void switch_port_to_on(struct ssusb_mtk *ssusb, enum phy_mode mode)
 	pm_runtime_get(ssusb->dev);
 
 	ssusb_clks_enable(ssusb);
+
+	/* reset USB MAC/PHY */
+	ssusb_reset(ssusb);
+
 	ssusb_vsvoter_set(ssusb);
 	ssusb_phy_power_on(ssusb);
 	ssusb_phy_set_mode(ssusb, mode);

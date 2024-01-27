@@ -41,6 +41,7 @@ enum ssusb_smc_request {
 
 enum ssusb_hwrscs_vers {
 	SSUSB_HWRECS_V1 = 1,
+	SSUSB_HWRECS_V2 = 2,
 };
 
 static struct ssusb_offload *usb_offload;
@@ -108,14 +109,94 @@ static void ssusb_hwrscs_req(struct ssusb_mtk *ssusb,
 			smc_req, 0, 0, 0, 0, 0, 0, &res);
 }
 
+static void ssusb_hwrscs_req_v2(struct ssusb_mtk *ssusb,
+	enum mtu3_power_state state)
+{
+	struct arm_smccc_res res;
+	void __iomem *ibase = ssusb->ippc_base;
+	u32 spm_ctrl, value;
+	u32 smc_req = -1;
+	int ret;
+
+
+	dev_info(ssusb->dev, "%s state = %d\n", __func__, state);
+
+	/* unlock usb hw req bit */
+	if (ssusb->clkgate) {
+		regmap_update_bits(ssusb->clkgate, REQ_GATE0, 0xF, 0xF);
+		regmap_update_bits(ssusb->clkgate, REQ_GATE1, 0xF, 0xF);
+		regmap_update_bits(ssusb->clkgate, REQ_GATE2, 0xF, 0xF);
+		regmap_update_bits(ssusb->clkgate, REQ_GATE3, 0xF, 0xF);
+		regmap_update_bits(ssusb->clkgate, REQ_GATE4, 0xF, 0xF);
+		regmap_update_bits(ssusb->clkgate, REQ_GATE5, 0xF, 0xF);
+		regmap_update_bits(ssusb->clkgate, REQ_GATE6, 0xF, 0xF);
+		regmap_update_bits(ssusb->clkgate, REQ_GATE7, 0xF, 0xF);
+	}
+
+	spm_ctrl = mtu3_readl(ibase, U3D_SSUSB_SPM_CTRL);
+
+	/* Clear FORCE HW Request which is default on since MT6989 */
+	spm_ctrl &= ~SSUSB_SPM_FORCE_HW_REQ_MSK;
+
+	switch (state) {
+	case MTU3_STATE_POWER_OFF:
+		spm_ctrl &= ~SSUSB_SPM_REQ_MSK;
+		break;
+	case MTU3_STATE_POWER_ON:
+		spm_ctrl |= SSUSB_SPM_REQ_MSK;
+		break;
+	case MTU3_STATE_OFFLOAD:
+		spm_ctrl &= ~SSUSB_SPM_REQ_MSK;
+		spm_ctrl |= (SSUSB_SPM_SRCCLKENA | SSUSB_SPM_INFRE_REQ
+				| SSUSB_SPM_VRF18_REQ);
+		break;
+	case MTU3_STATE_RESUME:
+		spm_ctrl |= SSUSB_SPM_REQ_MSK;
+		smc_req = SSUSB_SMC_HWRECS_RESUME;
+		break;
+	case MTU3_STATE_SUSPEND:
+		spm_ctrl &= ~SSUSB_SPM_REQ_MSK;
+		smc_req = SSUSB_SMC_HWRECS_SUSPEND;
+		break;
+	default:
+		return;
+	}
+
+	/* write spm_ctrl */
+	mtu3_writel(ibase, U3D_SSUSB_SPM_CTRL_V2, spm_ctrl);
+
+	ret = readl_poll_timeout_atomic(ibase + U3D_SSUSB_SPM_CTRL_ACK_V2,
+		value, (spm_ctrl == (value & SSUSB_SPM_REQ_MSK)), 100, 20000);
+	if (ret)
+		dev_info(ssusb->dev, "%s timeout, spm_ctrl=0x%x, value=0x%x\n",
+			__func__, spm_ctrl, value);
+
+	/* wait 2ms */
+	mdelay(2);
+
+	/* send smc request */
+	if (smc_req != -1)
+		arm_smccc_smc(MTK_SIP_KERNEL_USB_CONTROL,
+			smc_req, 0, 0, 0, 0, 0, 0, &res);
+}
+
 void ssusb_set_power_state(struct ssusb_mtk *ssusb,
 	enum mtu3_power_state state)
 {
 	if (ssusb->plat_type == PLAT_FPGA || !ssusb->clk_mgr)
 		return;
 
-	if (ssusb->hwrscs_vers == SSUSB_HWRECS_V1)
+	switch (ssusb->hwrscs_vers) {
+	case SSUSB_HWRECS_V1:
 		ssusb_hwrscs_req(ssusb, state);
+		break;
+	case SSUSB_HWRECS_V2:
+		ssusb_hwrscs_req_v2(ssusb, state);
+		break;
+	default:
+		return;
+	}
+
 }
 
 void ssusb_set_txdeemph(struct ssusb_mtk *ssusb)
@@ -289,6 +370,37 @@ static int ssusb_dp_switch_of_property_parse(struct ssusb_mtk *ssusb,
 			ssusb->dp_switch_oft);
 
 	return PTR_ERR_OR_ZERO(ssusb->dp_switch);
+}
+
+static int ssusb_clkgate_of_property_parse(struct ssusb_mtk *ssusb,
+				struct device_node *dn)
+{
+	struct of_phandle_args args;
+	struct platform_device *pdev;
+	int ret;
+
+	/* clkgate is optional */
+	if (!of_property_read_bool(dn, "mediatek,clkgate"))
+		return 0;
+
+	ret = of_parse_phandle_with_fixed_args(dn,
+		"mediatek,clkgate", 1, 0, &args);
+
+	if (ret)
+		return ret;
+
+	pdev = of_find_device_by_node(args.np);
+	if (!pdev)
+		return -ENODEV;
+
+	ssusb->clkgate = device_node_to_regmap(args.np);
+
+	if (!ssusb->clkgate)
+		return -ENODEV;
+
+	ssusb->clkgate_oft = args.args[0];
+
+	return PTR_ERR_OR_ZERO(ssusb->clkgate);
 }
 
 static int ssusb_offload_get_mode(void)
@@ -466,6 +578,22 @@ static int ssusb_phy_exit(struct ssusb_mtk *ssusb)
 		phy_exit(ssusb->phys[i]);
 
 	return 0;
+}
+
+void ssusb_reset(struct ssusb_mtk *ssusb)
+{
+
+	if (IS_ERR_OR_NULL(ssusb->clkgate))
+		return;
+
+	/* gating USB clk */
+	regmap_update_bits(ssusb->clkgate, U3D_CLKGATE, ssusb->clkgate_oft, ssusb->clkgate_oft);
+
+	mdelay(1);
+
+	/* un-gating USB clk */
+	regmap_update_bits(ssusb->clkgate, U3D_CLKGATE, ssusb->clkgate_oft, 0x0);
+
 }
 
 int ssusb_phy_power_on(struct ssusb_mtk *ssusb)
@@ -692,6 +820,10 @@ get_phy:
 		if (of_property_read_bool(node, "mediatek,hw-req-ctrl"))
 			ssusb->hwrscs_vers = SSUSB_HWRECS_V1;
 	}
+
+	ret = ssusb_clkgate_of_property_parse(ssusb, node);
+	if (ret)
+		dev_info(dev, "failed to parse clkgate");
 
 	ret = ssusb_vsvoter_of_property_parse(ssusb, node);
 	if (ret)
@@ -933,6 +1065,9 @@ static int mtu3_probe(struct platform_device *pdev)
 	}
 
 	INIT_WORK(&ssusb->dp_work, ssusb_dp_pullup_work);
+
+	/* reset USB MAC/PHY */
+	ssusb_reset(ssusb);
 
 	device_enable_async_suspend(dev);
 	pm_runtime_mark_last_busy(dev);
