@@ -505,4 +505,3 @@ bool pd_process_event_tcp(struct pd_port *pd_port, struct pd_event *pd_event)
 	pd_notify_tcp_event_1st_result(pd_port, ret);
 	return ret == TCP_DPM_RET_SENT;
 }
-

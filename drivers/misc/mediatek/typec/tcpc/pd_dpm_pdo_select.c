@@ -71,10 +71,6 @@ void dpm_extract_pdo_info(uint32_t pdo, struct dpm_pdo_info_t *info)
 	}
 }
 
-#ifndef MIN
-#define MIN(a, b)	((a < b) ? (a) : (b))
-#endif
-
 static inline int dpm_calc_src_cap_power_uw(
 	struct dpm_pdo_info_t *source, struct dpm_pdo_info_t *sink)
 {
@@ -234,7 +230,8 @@ typedef bool (*dpm_select_pdo_fun)(
 	struct dpm_select_info_t *select_info,
 	struct dpm_pdo_info_t *sink, struct dpm_pdo_info_t *source);
 
-bool dpm_find_match_req_info(struct dpm_rdo_info_t *req_info,
+bool dpm_find_match_req_info(struct pd_port *pd_port,
+		struct dpm_rdo_info_t *req_info,
 		struct dpm_pdo_info_t *sink, int cnt, uint32_t *src_pdos,
 		int max_uw, uint32_t policy)
 {
@@ -299,6 +296,8 @@ bool dpm_find_match_req_info(struct dpm_rdo_info_t *req_info,
 			req_info->vmax = sink->vmax;
 		}
 #endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
+
+		pd_port->last_sink_pdo_info = *sink;
 
 		return true;
 	}

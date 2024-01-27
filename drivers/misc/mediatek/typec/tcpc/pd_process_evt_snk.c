@@ -101,11 +101,6 @@ static inline bool pd_process_ctrl_msg(
 			PE_TRANSIT_STATE(pd_port, PE_SNK_READY);
 			return true;
 
-#if CONFIG_USB_PD_VBUS_DETECTION_DURING_PR_SWAP
-		case PE_PRS_SRC_SNK_WAIT_SOURCE_ON:
-		case PE_PRS_SNK_SRC_TRANSITION_TO_OFF:
-			return false;
-#endif /* CONFIG_USB_PD_VBUS_DETECTION_DURING_PR_SWAP */
 		default:
 			break;
 		}
@@ -438,7 +433,7 @@ static inline bool pd_process_timer_msg(
 
 #if CONFIG_USB_PD_DFP_READY_DISCOVER_ID
 	case PD_TIMER_DISCOVER_ID:
-		vdm_put_dpm_discover_cable_event(pd_port);
+		vdm_put_dpm_discover_cable_id_event(pd_port);
 		break;
 #endif	/* CONFIG_USB_PD_DFP_READY_DISCOVER_ID */
 #if CONFIG_USB_PD_REV30
@@ -447,7 +442,6 @@ static inline bool pd_process_timer_msg(
 			PE_SNK_CHUNK_RECEIVED, PE_SNK_SEND_NOT_SUPPORTED);
 #if CONFIG_USB_PD_REV30_COLLISION_AVOID
 #if CONFIG_USB_PD_REV30_SNK_FLOW_DELAY_STARTUP
-		fallthrough;
 	case PD_TIMER_SNK_FLOW_DELAY:
 		if (pe_data->pd_traffic_control == PD_SINK_TX_START) {
 			if (typec_get_cc_res() == TYPEC_CC_VOLT_SNK_3_0)

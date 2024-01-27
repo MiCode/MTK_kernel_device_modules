@@ -6,8 +6,6 @@
 #include <linux/sched/clock.h>
 
 #include "inc/tcpci_typec.h"
-#include <asm/div64.h>
-
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 #include "inc/tcpci_event.h"
 #endif /* CONFIG_USB_POWER_DELIVERY */
@@ -124,7 +122,6 @@ static int tcpci_alert_power_status_changed(struct tcpc_device *tcpc)
 static int tcpci_alert_tx_success(struct tcpc_device *tcpc)
 {
 	uint8_t tx_state = PD_TX_STATE_GOOD_CRC;
-	uint64_t temp = 0;
 	struct pd_event evt = {
 		.event_type = PD_EVT_CTRL_MSG,
 		.msg = PD_CTRL_GOOD_CRC,
@@ -134,10 +131,8 @@ static int tcpci_alert_tx_success(struct tcpc_device *tcpc)
 	mutex_lock(&tcpc->access_lock);
 #if PD_DYNAMIC_SENDER_RESPONSE
 	tcpc->t[1] = local_clock();
-	temp = tcpc->t[1] - tcpc->t[0];
-	do_div(temp, NSEC_PER_USEC);
-	tcpc->tx_time_diff = temp;
-	pd_dbg_info("%s, diff = %d\n", __func__, tcpc->tx_time_diff);
+	tcpc->tx_time_diff = (tcpc->t[1] - tcpc->t[0]) / NSEC_PER_USEC;
+	pd_dbg_info("%s, diff = %llu\n", __func__, tcpc->tx_time_diff);
 #endif /* PD_DYNAMIC_SENDER_RESPONSE */
 	tx_state = tcpc->pd_transmit_state;
 	tcpc->pd_transmit_state = PD_TX_STATE_GOOD_CRC;
@@ -148,7 +143,6 @@ static int tcpci_alert_tx_success(struct tcpc_device *tcpc)
 	else
 		pd_put_event(tcpc, &evt, false);
 
-	pd_dbg_info("DBG: %s\n", __func__);
 	return 0;
 }
 
@@ -271,23 +265,19 @@ static int tcpci_alert_fault(struct tcpc_device *tcpc)
 	return 0;
 }
 
-#if CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG
 int tcpci_alert_wakeup(struct tcpc_device *tcpc)
 {
-	if (tcpc->tcpc_flags & TCPC_FLAGS_LPM_WAKEUP_WATCHDOG) {
-		TCPC_INFO("Wakeup\n");
-		if (tcpc->typec_lpm) {
-			if (tcpc->ops->set_low_power_mode)
-				tcpc->ops->set_low_power_mode(tcpc, false,
-							      TYPEC_CC_OPEN);
-			tcpc_enable_lpm_timer(tcpc, true);
-		}
+	TCPC_INFO("Wakeup\n");
+	if (tcpc->typec_lpm) {
+		if (tcpc->ops->set_low_power_mode)
+			tcpc->ops->set_low_power_mode(tcpc, false,
+						      TYPEC_CC_OPEN);
+		tcpc_enable_lpm_timer(tcpc, true);
 	}
 
 	return 0;
 }
 EXPORT_SYMBOL(tcpci_alert_wakeup);
-#endif /* CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG */
 
 struct tcpci_alert_handler {
 	uint32_t bit_mask;
@@ -316,9 +306,7 @@ static const struct tcpci_alert_handler tcpci_alert_handlers[] = {
 	DECL_TCPCI_ALERT_HANDLER(0, tcpci_alert_cc_changed),
 	DECL_TCPCI_ALERT_HANDLER(1, tcpci_alert_power_status_changed),
 
-#if CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG
 	DECL_TCPCI_ALERT_HANDLER(16, tcpci_alert_wakeup),
-#endif /* CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG */
 };
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
@@ -403,8 +391,9 @@ int tcpci_alert(struct tcpc_device *tcpc)
 		}
 	}
 
-	/* unmask alert */
-	rv = tcpci_set_alert_mask(tcpc, alert_mask);
+	/* unmask alert when not receiving PD HardReset */
+	if (!(alert_status & BIT(3)))
+		rv = tcpci_set_alert_mask(tcpc, alert_mask);
 
 	if (tcpc->tcpc_flags & TCPC_FLAGS_ALERT_V10)
 		return rv;
@@ -428,12 +417,8 @@ static inline int tcpci_set_wake_lock(struct tcpc_device *tcpc, bool pd_lock)
 			TCPC_DBG("wake_lock=1\n");
 			__pm_wakeup_event(tcpc->attach_wake_lock,
 					  CONFIG_TCPC_ATTACH_WAKE_LOCK_TOUT);
-			if (tcpc->typec_watchdog)
-				tcpci_set_intrst(tcpc, true);
 		} else {
 			TCPC_DBG("wake_lock=0\n");
-			if (tcpc->typec_watchdog)
-				tcpci_set_intrst(tcpc, false);
 			__pm_relax(tcpc->attach_wake_lock);
 		}
 		return 1;
@@ -455,7 +440,7 @@ static int tcpci_set_wake_lock_pd(struct tcpc_device *tcpc, bool pd_lock)
 		wake_lock_pd--;
 
 	if (wake_lock_pd == 0)
-		__pm_wakeup_event(tcpc->detach_wake_lock, 5000);
+		__pm_wakeup_event(tcpc->detach_wake_lock, 1000);
 
 	tcpci_set_wake_lock(tcpc, wake_lock_pd);
 	tcpc->wake_lock_pd = wake_lock_pd;
@@ -468,7 +453,7 @@ static int tcpci_set_wake_lock_pd(struct tcpc_device *tcpc, bool pd_lock)
 	return 0;
 }
 
-static inline int tcpci_report_usb_port_attached(struct tcpc_device *tcpc)
+int tcpci_report_usb_port_attached(struct tcpc_device *tcpc)
 {
 	TCPC_INFO("usb_port_attached\n");
 
@@ -488,7 +473,7 @@ static inline int tcpci_report_usb_port_attached(struct tcpc_device *tcpc)
 	return 0;
 }
 
-static inline int tcpci_report_usb_port_detached(struct tcpc_device *tcpc)
+int tcpci_report_usb_port_detached(struct tcpc_device *tcpc)
 {
 	TCPC_INFO("usb_port_detached\n");
 
@@ -514,10 +499,11 @@ int tcpci_report_usb_port_changed(struct tcpc_device *tcpc)
 {
 	tcpci_notify_typec_state(tcpc);
 
-	if (tcpc->typec_attach_old == TYPEC_UNATTACHED)
-		tcpci_report_usb_port_attached(tcpc);
-	else if (tcpc->typec_attach_new == TYPEC_UNATTACHED)
+	if (tcpc->typec_attach_new == TYPEC_UNATTACHED ||
+	    tcpc->typec_attach_new == TYPEC_PROTECTION)
 		tcpci_report_usb_port_detached(tcpc);
+	else if (tcpc->typec_attach_old == TYPEC_UNATTACHED)
+		tcpci_report_usb_port_attached(tcpc);
 	else
 		TCPC_DBG2("TCPC Attach Again\n");
 

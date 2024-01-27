@@ -77,7 +77,8 @@ int tcpm_shutdown(struct tcpc_device *tcpc)
 
 	if (tcpc->ops->deinit)
 		tcpc->ops->deinit(tcpc);
-	tcpci_unlock_typec(tcpc);
+	/* Not to unlock for preventing further actions */
+	/* tcpci_unlock_typec(tcpc); */
 
 	return 0;
 }
@@ -137,6 +138,22 @@ int tcpm_inquire_vbus_level(struct tcpc_device *tcpc, bool from_ic)
 	return rv;
 }
 EXPORT_SYMBOL(tcpm_inquire_vbus_level);
+
+int tcpm_inquire_cc_high(struct tcpc_device *tcpc)
+{
+	int rv = TCPM_ERROR_UNKNOWN;
+
+	tcpci_lock_typec(tcpc);
+	if (!tcpc->cc_hidet_en)
+		goto out;
+	if (tcpc->ops->get_cc_hi)
+		rv = tcpc->ops->get_cc_hi(tcpc);
+out:
+	tcpci_unlock_typec(tcpc);
+
+	return rv;
+}
+EXPORT_SYMBOL(tcpm_inquire_cc_high);
 
 bool tcpm_inquire_cc_polarity(struct tcpc_device *tcpc)
 {
@@ -212,25 +229,6 @@ int tcpm_typec_set_rp_level(struct tcpc_device *tcpc, uint8_t level)
 	return ret;
 }
 EXPORT_SYMBOL(tcpm_typec_set_rp_level);
-
-int tcpm_typec_set_custom_hv(struct tcpc_device *tcpc, bool en)
-{
-#if CONFIG_TYPEC_CAP_CUSTOM_HV
-	int ret = tcpm_check_typec_attached(tcpc);
-
-	if (ret != TCPM_SUCCESS)
-		return ret;
-
-	tcpci_lock_typec(tcpc);
-	tcpc->typec_during_custom_hv = en;
-	tcpci_unlock_typec(tcpc);
-
-	return ret;
-#else
-	return TCPM_ERROR_NO_SUPPORT;
-#endif	/* CONFIG_TYPEC_CAP_CUSTOM_HV */
-}
-EXPORT_SYMBOL(tcpm_typec_set_custom_hv);
 
 int tcpm_typec_role_swap(struct tcpc_device *tcpc)
 {
@@ -365,7 +363,7 @@ uint32_t tcpm_inquire_cable_current(struct tcpc_device *tcpc)
 	uint32_t ret = 0;
 
 	mutex_lock(&pd_port->pd_lock);
-	if (pd_port->pe_data.power_cable_present)
+	if (pd_port->pe_data.cable_discovered_state)
 		ret = pd_get_cable_current_limit(pd_port);
 	mutex_unlock(&pd_port->pd_lock);
 
@@ -439,7 +437,7 @@ int tcpm_inquire_cable_inform(struct tcpc_device *tcpc, uint32_t *vdos)
 		return TCPM_ERROR_PARAMETER;
 
 	mutex_lock(&pd_port->pd_lock);
-	if (pd_port->pe_data.power_cable_present) {
+	if (pd_port->pe_data.cable_discovered_state) {
 		memcpy(vdos, pd_port->pe_data.cable_vdos,
 			sizeof(uint32_t) * VDO_MAX_NR);
 	} else
@@ -512,7 +510,6 @@ EXPORT_SYMBOL(tcpm_inquire_pd_partner_svids);
 int tcpm_inquire_pd_partner_modes(
 	struct tcpc_device *tcpc, uint16_t svid, struct tcpm_mode_list *list)
 {
-#if CONFIG_USB_PD_ALT_MODE
 	int ret = TCPM_SUCCESS;
 	struct svdm_svid_data *svid_data = NULL;
 	struct pd_port *pd_port = &tcpc->pd_port;
@@ -536,9 +533,6 @@ int tcpm_inquire_pd_partner_modes(
 	mutex_unlock(&pd_port->pd_lock);
 
 	return ret;
-#else
-	return TCPM_ERROR_NO_SUPPORT;
-#endif	/* CONFIG_USB_PD_KEEP_SVIDS */
 }
 EXPORT_SYMBOL(tcpm_inquire_pd_partner_modes);
 
@@ -751,12 +745,15 @@ EXPORT_SYMBOL(tcpm_inquire_usb_comm);
 #define TCPM_BK_PR_SWAP_TOUT		2500
 #define TCPM_BK_HARD_RESET_TOUT	3500
 
+static int tcpm_put_tcp_dpm_event(
+	struct tcpc_device *tcpc, struct tcp_dpm_event *event);
+
 static int tcpm_put_tcp_dpm_event_bk(
 	struct tcpc_device *tcpc, struct tcp_dpm_event *event,
 	uint32_t tout_ms, uint8_t *data, uint8_t size);
 #endif	/* CONFIG_USB_PD_BLOCK_TCPM */
 
-int tcpm_put_tcp_dpm_event_cb(struct tcpc_device *tcpc,
+static inline int tcpm_put_tcp_dpm_event_cb(struct tcpc_device *tcpc,
 	struct tcp_dpm_event *event,
 	const struct tcp_dpm_event_cb_data *cb_data)
 {
@@ -892,12 +889,13 @@ int tcpm_dpm_pd_request(struct tcpc_device *tcpc,
 EXPORT_SYMBOL(tcpm_dpm_pd_request);
 
 int tcpm_dpm_pd_request_ex(struct tcpc_device *tcpc,
-	uint8_t pos, uint32_t max, uint32_t oper,
+	uint8_t pos, int vmin, uint32_t max, uint32_t oper,
 	const struct tcp_dpm_event_cb_data *cb_data)
 {
 	struct tcp_dpm_event tcp_event = {
 		.event_id = TCP_DPM_EVT_REQUEST_EX,
 		.tcp_dpm_data.pd_req_ex.pos = pos,
+		.tcp_dpm_data.pd_req_ex.vmin = vmin,
 		.tcp_dpm_data.pd_req_ex.max = max,
 		.tcp_dpm_data.pd_req_ex.oper = oper,
 	};
@@ -1175,17 +1173,17 @@ int tcpm_dpm_pd_cable_soft_reset(struct tcpc_device *tcpc,
 }
 EXPORT_SYMBOL(tcpm_dpm_pd_cable_soft_reset);
 
-int tcpm_dpm_vdm_discover_cable(struct tcpc_device *tcpc,
+int tcpm_dpm_vdm_discover_cable_id(struct tcpc_device *tcpc,
 	const struct tcp_dpm_event_cb_data *cb_data)
 {
 	struct tcp_dpm_event tcp_event = {
-		.event_id = TCP_DPM_EVT_DISCOVER_CABLE,
+		.event_id = TCP_DPM_EVT_DISCOVER_CABLE_ID,
 	};
 
 	return tcpm_put_tcp_dpm_event_cbk1(
 		tcpc, &tcp_event, cb_data, TCPM_BK_PD_CMD_TOUT);
 }
-EXPORT_SYMBOL(tcpm_dpm_vdm_discover_cable);
+EXPORT_SYMBOL(tcpm_dpm_vdm_discover_cable_id);
 
 int tcpm_dpm_vdm_discover_id(struct tcpc_device *tcpc,
 	const struct tcp_dpm_event_cb_data *cb_data)
@@ -1199,7 +1197,7 @@ int tcpm_dpm_vdm_discover_id(struct tcpc_device *tcpc,
 }
 EXPORT_SYMBOL(tcpm_dpm_vdm_discover_id);
 
-int tcpm_dpm_vdm_discover_svid(struct tcpc_device *tcpc,
+int tcpm_dpm_vdm_discover_svids(struct tcpc_device *tcpc,
 	const struct tcp_dpm_event_cb_data *cb_data)
 {
 	struct tcp_dpm_event tcp_event = {
@@ -1209,9 +1207,9 @@ int tcpm_dpm_vdm_discover_svid(struct tcpc_device *tcpc,
 	return tcpm_put_tcp_dpm_event_cbk1(
 		tcpc, &tcp_event, cb_data, TCPM_BK_PD_CMD_TOUT);
 }
-EXPORT_SYMBOL(tcpm_dpm_vdm_discover_svid);
+EXPORT_SYMBOL(tcpm_dpm_vdm_discover_svids);
 
-int tcpm_dpm_vdm_discover_mode(struct tcpc_device *tcpc,
+int tcpm_dpm_vdm_discover_modes(struct tcpc_device *tcpc,
 	uint16_t svid, const struct tcp_dpm_event_cb_data *cb_data)
 {
 	struct tcp_dpm_event tcp_event = {
@@ -1222,7 +1220,7 @@ int tcpm_dpm_vdm_discover_mode(struct tcpc_device *tcpc,
 	return tcpm_put_tcp_dpm_event_cbk1(
 		tcpc, &tcp_event, cb_data, TCPM_BK_PD_CMD_TOUT);
 }
-EXPORT_SYMBOL(tcpm_dpm_vdm_discover_mode);
+EXPORT_SYMBOL(tcpm_dpm_vdm_discover_modes);
 
 int tcpm_dpm_vdm_enter_mode(struct tcpc_device *tcpc,
 	uint16_t svid, uint8_t ops,
@@ -1269,8 +1267,6 @@ int tcpm_dpm_vdm_attention(struct tcpc_device *tcpc,
 }
 EXPORT_SYMBOL(tcpm_dpm_vdm_attention);
 
-#if CONFIG_USB_PD_ALT_MODE
-
 int tcpm_inquire_dp_ufp_u_state(struct tcpc_device *tcpc, uint8_t *state)
 {
 	int ret;
@@ -1305,8 +1301,6 @@ int tcpm_dpm_dp_attention(struct tcpc_device *tcpc,
 		tcpc, &tcp_event, cb_data, TCPM_BK_PD_CMD_TOUT);
 }
 EXPORT_SYMBOL(tcpm_dpm_dp_attention);
-
-#if CONFIG_USB_PD_ALT_MODE_DFP
 
 int tcpm_inquire_dp_dfp_u_state(struct tcpc_device *tcpc, uint8_t *state)
 {
@@ -1358,9 +1352,6 @@ int tcpm_dpm_dp_config(struct tcpc_device *tcpc,
 }
 EXPORT_SYMBOL(tcpm_dpm_dp_config);
 
-#endif	/* CONFIG_USB_PD_ALT_MODE_DFP */
-#endif	/* CONFIG_USB_PD_ALT_MODE */
-
 #if CONFIG_USB_PD_CUSTOM_VDM
 
 int tcpm_dpm_send_custom_vdm(
@@ -1402,7 +1393,7 @@ EXPORT_SYMBOL(tcpm_dpm_send_custom_vdm);
 #endif	/* CONFIG_USB_PD_CUSTOM_VDM */
 
 #if CONFIG_USB_PD_TCPM_CB_2ND
-void tcpm_replace_curr_tcp_event(
+static void tcpm_replace_curr_tcp_event(
 	struct pd_port *pd_port, struct tcp_dpm_event *event)
 {
 	int reason = TCP_DPM_RET_DENIED_UNKNOWN;
@@ -1423,10 +1414,9 @@ void tcpm_replace_curr_tcp_event(
 	memcpy(&pd_port->tcp_event, event, sizeof(struct tcp_dpm_event));
 	mutex_unlock(&pd_port->pd_lock);
 }
-EXPORT_SYMBOL(tcpm_replace_curr_tcp_event);
 #endif	/* CONFIG_USB_PD_TCPM_CB_2ND */
 
-int tcpm_put_tcp_dpm_event(
+static int tcpm_put_tcp_dpm_event(
 	struct tcpc_device *tcpc, struct tcp_dpm_event *event)
 {
 	int ret;
@@ -1457,7 +1447,6 @@ int tcpm_put_tcp_dpm_event(
 
 	return TCPM_SUCCESS;
 }
-EXPORT_SYMBOL(tcpm_put_tcp_dpm_event);
 
 int tcpm_notify_vbus_stable(struct tcpc_device *tcpc)
 {
@@ -1621,7 +1610,7 @@ int tcpm_set_apdo_charging_policy(struct tcpc_device *tcpc,
 		return TCPM_ERROR_PARAMETER;
 
 	mutex_lock(&pd_port->pd_lock);
-	if (pd_port->pd_connect_state != PD_CONNECT_PE_READY_SNK_APDO) {
+	if (!pd_is_source_support_apdo(pd_port)) {
 		mutex_unlock(&pd_port->pd_lock);
 		return TCPM_ERROR_INVALID_POLICY;
 	}
@@ -1750,7 +1739,12 @@ static int tcpm_update_bsdo(
 	return TCPM_SUCCESS;
 }
 
-#if CONFIG_USB_PD_REV30_BAT_INFO
+static inline int tcpm_update_bat_status_wh_no_mutex(struct tcpc_device *tcpc,
+	enum pd_battery_reference ref, uint8_t status, uint16_t wh)
+{
+	return tcpm_update_bsdo(&tcpc->pd_port, ref, 0, wh, status);
+}
+
 int tcpm_update_bat_status_wh(struct tcpc_device *tcpc,
 	enum pd_battery_reference ref, uint8_t status, uint16_t wh)
 {
@@ -1769,12 +1763,11 @@ int tcpm_update_bat_status_wh(struct tcpc_device *tcpc,
 }
 EXPORT_SYMBOL(tcpm_update_bat_status_wh);
 
-int tcpm_update_bat_status_wh_no_mutex(struct tcpc_device *tcpc,
-	enum pd_battery_reference ref, uint8_t status, uint16_t wh)
+static inline int tcpm_update_bat_status_soc_no_mutex(struct tcpc_device *tcpc,
+	enum pd_battery_reference ref, uint8_t status, uint16_t soc)
 {
-	return tcpm_update_bsdo(&tcpc->pd_port, ref, 0, wh, status);
+	return tcpm_update_bsdo(&tcpc->pd_port, ref, soc, 0, status);
 }
-EXPORT_SYMBOL(tcpm_update_bat_status_wh_no_mutex);
 
 int tcpm_update_bat_status_soc(struct tcpc_device *tcpc,
 	enum pd_battery_reference ref, uint8_t status, uint16_t soc)
@@ -1794,13 +1787,18 @@ int tcpm_update_bat_status_soc(struct tcpc_device *tcpc,
 }
 EXPORT_SYMBOL(tcpm_update_bat_status_soc);
 
-int tcpm_update_bat_status_soc_no_mutex(struct tcpc_device *tcpc,
-	enum pd_battery_reference ref, uint8_t status, uint16_t soc)
+static inline int tcpm_update_bat_last_full_no_mutex(struct tcpc_device *tcpc,
+	enum pd_battery_reference ref, uint16_t wh)
 {
-	return tcpm_update_bsdo(&tcpc->pd_port, ref, soc, 0, status);
+	struct pd_battery_info *battery_info;
+
+	battery_info = pd_get_battery_info(&tcpc->pd_port, ref);
+	if (battery_info == NULL)
+		return TCPM_ERROR_PARAMETER;
+
+	battery_info->bat_cap.bat_last_full_cap = wh;
+	return TCPM_SUCCESS;
 }
-EXPORT_SYMBOL(tcpm_update_bat_status_soc_no_mutex);
-#endif
 
 int tcpm_update_bat_last_full(struct tcpc_device *tcpc,
 	enum pd_battery_reference ref, uint16_t wh)
@@ -1814,20 +1812,6 @@ int tcpm_update_bat_last_full(struct tcpc_device *tcpc,
 	return ret;
 }
 EXPORT_SYMBOL(tcpm_update_bat_last_full);
-
-int tcpm_update_bat_last_full_no_mutex(struct tcpc_device *tcpc,
-	enum pd_battery_reference ref, uint16_t wh)
-{
-	struct pd_battery_info *battery_info;
-
-	battery_info = pd_get_battery_info(&tcpc->pd_port, ref);
-	if (battery_info == NULL)
-		return TCPM_ERROR_PARAMETER;
-
-	battery_info->bat_cap.bat_last_full_cap = wh;
-	return TCPM_SUCCESS;
-}
-EXPORT_SYMBOL(tcpm_update_bat_last_full_no_mutex);
 
 #endif	/* CONFIG_USB_PD_REV30_BAT_INFO */
 
@@ -2073,7 +2057,8 @@ static inline int __tcpm_dpm_wait_bk_event(
 	return ret;
 }
 
-int tcpm_dpm_wait_bk_event(struct pd_port *pd_port, uint32_t tout_ms)
+static inline int tcpm_dpm_wait_bk_event(
+	struct pd_port *pd_port, uint32_t tout_ms)
 {
 	int ret = __tcpm_dpm_wait_bk_event(pd_port, tout_ms);
 #if TCPM_DBG_ENABLE
@@ -2085,7 +2070,6 @@ int tcpm_dpm_wait_bk_event(struct pd_port *pd_port, uint32_t tout_ms)
 
 	return ret;
 }
-EXPORT_SYMBOL(tcpm_dpm_wait_bk_event);
 
 #if CONFIG_MTK_HANDLE_PPS_TIMEOUT
 static void mtk_handle_tcp_event_result(

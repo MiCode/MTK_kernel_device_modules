@@ -25,7 +25,7 @@
 #endif /* CONFIG_USB_POWER_DELIVERY */
 #include "inc/rt-regmap.h"
 
-#define TCPC_CORE_VERSION		"2.0.22_MTK"
+#define TCPC_CORE_VERSION		"2.0.27_MTK"
 
 static ssize_t tcpc_show_property(struct device *dev,
 				  struct device_attribute *attr, char *buf);
@@ -55,6 +55,8 @@ static struct device_attribute tcpc_device_attributes[] = {
 	TCPC_DEVICE_ATTR(timer, 0664),
 	TCPC_DEVICE_ATTR(caps_info, 0444),
 	TCPC_DEVICE_ATTR(pe_ready, 0444),
+	TCPC_DEVICE_ATTR(vbus_level, 0444),
+	TCPC_DEVICE_ATTR(cc_high, 0444),
 };
 
 enum {
@@ -65,6 +67,8 @@ enum {
 	TCPC_DESC_TIMER,
 	TCPC_DESC_CAP_INFO,
 	TCPC_DESC_PE_READY,
+	TCPC_TCPM_VBUS_LEVEL,
+	TCPC_TCPM_CC_HIGH,
 };
 
 static struct attribute *__tcpc_attrs[ARRAY_SIZE(tcpc_device_attributes) + 1];
@@ -186,7 +190,7 @@ static ssize_t tcpc_show_property(struct device *dev,
 				"1: pr_swap", "2: dr_swap", "3: vconn_swap",
 				"4: soft reset", "5: hard reset",
 				"6: get_src_cap", "7: get_sink_cap",
-				"8: discover_id", "9: discover_cable");
+				"8: discover_id", "9: discover_cable_id");
 		if (ret < 0)
 			dev_dbg(dev, "%s: ret=%d\n", __func__, ret);
 		break;
@@ -227,6 +231,16 @@ static ssize_t tcpc_show_property(struct device *dev,
 		}
 		break;
 #endif
+	case TCPC_TCPM_VBUS_LEVEL:
+		ret = snprintf(buf, 256, "%d\n", tcpm_inquire_vbus_level(tcpc, true));
+		if (ret < 0)
+			return ret;
+		break;
+	case TCPC_TCPM_CC_HIGH:
+		ret = snprintf(buf, 256, "%d\n", tcpm_inquire_cc_high(tcpc));
+		if (ret < 0)
+			return ret;
+		break;
 	default:
 		break;
 	}
@@ -331,7 +345,7 @@ static ssize_t tcpc_store_property(struct device *dev,
 			tcpm_dpm_vdm_discover_id(tcpc, NULL);
 			break;
 		case 9:
-			tcpm_dpm_vdm_discover_cable(tcpc, NULL);
+			tcpm_dpm_vdm_discover_cable_id(tcpc, NULL);
 			break;
 		default:
 			break;
@@ -414,6 +428,7 @@ struct tcpc_device *tcpc_device_register(struct device *parent,
 	tcpc->typec_remote_rp_level = TYPEC_CC_VOLT_SNK_DFT;
 	tcpc->typec_polarity = false;
 	tcpc->bootmode = bootmode;
+	tcpc->cc_hi = INT_MAX;
 
 #if CONFIG_TCPC_VCONN_SUPPLY_MODE
 	tcpc->tcpc_vconn_supply = tcpc_desc->vconn_supply;
@@ -490,7 +505,7 @@ static void bat_update_work_func(struct work_struct *work)
 	ret = power_supply_get_property(
 			tcpc->bat_psy, POWER_SUPPLY_PROP_CAPACITY, &value);
 	if (ret == 0) {
-		TCPC_INFO("%s battery update soc = %d\n",
+		TCPC_DBG("%s battery update soc = %d\n",
 					__func__, value.intval);
 		tcpc->bat_soc = value.intval;
 	} else
@@ -500,13 +515,16 @@ static void bat_update_work_func(struct work_struct *work)
 		POWER_SUPPLY_PROP_STATUS, &value);
 	if (ret == 0) {
 		if (value.intval == POWER_SUPPLY_STATUS_CHARGING) {
-			TCPC_INFO("%s Battery Charging\n", __func__);
+			TCPC_INFO("%s Battery Charging, soc = %d\n",
+				  __func__, tcpc->bat_soc);
 			tcpc->charging_status = BSDO_BAT_INFO_CHARGING;
 		} else if (value.intval == POWER_SUPPLY_STATUS_DISCHARGING) {
-			TCPC_INFO("%s Battery Discharging\n", __func__);
+			TCPC_INFO("%s Battery Discharging, soc = %d\n",
+				  __func__, tcpc->bat_soc);
 			tcpc->charging_status = BSDO_BAT_INFO_DISCHARGING;
 		} else {
-			TCPC_INFO("%s Battery Idle\n", __func__);
+			TCPC_INFO("%s Battery Idle, soc = %d\n",
+				  __func__, tcpc->bat_soc);
 			tcpc->charging_status = BSDO_BAT_INFO_IDLE;
 		}
 	}
@@ -862,6 +880,35 @@ MODULE_VERSION(TCPC_CORE_VERSION);
 MODULE_LICENSE("GPL");
 
 /* Release Version
+ * 2.0.27_MTK
+ * (1) Do not discharge VBUS when Attached.SNK
+ * (2) Bump the PD revision/version to R3.1 V1.6
+ * (3) Revise WD, FOD and CTD flows
+ * (4) Fix coverity issues
+ * (5) Revise CC high status
+ * (6) Fix PD compliance failures of Ellisys and MQP
+ *
+ * 2.0.26_MTK
+ * (1) Fix coverity issues
+ * (2) PD DP Alt Mode V2.1
+ * (3) Revise WD
+ * (4) Decrease tDRP to 51.2ms and dcSRC.DRP to 30%
+ * (5) Remove old code
+ *
+ * 2.0.25_MTK
+ * (1) Fix COMMON.CHECK.PD.9#1 of MQP
+ * (2) Revise PR_Swap flow
+ * (3) Revise WD for Titan's multi-port accessory
+ *
+ * 2.0.24_MTK
+ * (1) Revise PR_Swap flow
+ * (2) Add a dts option of attempt-discover-id-dfp;
+ *
+ * 2.0.23_MTK
+ * (1) Revise Request flow
+ * (2) Revise WD, FOD and OTP flows
+ * (3) Add a tcpm function for inquiring CC high status
+ *
  * 2.0.22_MTK
  * (1) Revise Vconn
  * (2) Notify in PD mode when receiving the first PD message

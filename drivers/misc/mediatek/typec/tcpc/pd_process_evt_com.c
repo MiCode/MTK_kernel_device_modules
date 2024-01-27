@@ -17,7 +17,7 @@
 static inline bool pd_evaluate_reject_dr_swap(struct pd_port *pd_port)
 {
 	if (pd_port->dpm_caps & DPM_CAP_LOCAL_DR_DATA) {
-		if (pd_port->power_role == PD_ROLE_DFP)
+		if (pd_port->data_role == PD_ROLE_DFP)
 			return pd_port->dpm_caps &
 				DPM_CAP_DR_SWAP_REJECT_AS_UFP;
 		return pd_port->dpm_caps & DPM_CAP_DR_SWAP_REJECT_AS_DFP;
@@ -30,6 +30,11 @@ static inline bool pd_evaluate_reject_dr_swap(struct pd_port *pd_port)
 #if CONFIG_USB_PD_PR_SWAP
 static inline bool pd_evaluate_reject_pr_swap(struct pd_port *pd_port)
 {
+	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
+
+	if (tcpc->bootmode == 8 || tcpc->bootmode == 9)
+		return true;
+
 	if (pd_port->dpm_caps & DPM_CAP_LOCAL_DR_POWER) {
 		if (pd_port->power_role == PD_ROLE_SOURCE)
 			return pd_port->dpm_caps &

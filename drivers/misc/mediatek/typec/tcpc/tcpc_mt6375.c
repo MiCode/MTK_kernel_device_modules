@@ -20,11 +20,12 @@
 #include "inc/tcpci_core.h"
 #include "inc/std_tcpci_v10.h"
 
-#define MT6375_INFO_EN	1
-#define MT6375_DBGINFO_EN	0
-#define MT6375_WD1_EN	1
-#define MT6375_WD2_EN	1
-#define CC_SHORT_DEBOUNCE 100
+#define MT6375_INFO_EN		1
+#define MT6375_DBGINFO_EN	CONFIG_WD_DURING_PLUGGED_IN
+#define MT6375_WD1_EN		1
+#define MT6375_WD2_EN		1
+#define CC_SHORT_DEBOUNCE	100
+#define MT6375_FOD_SRC_EN	0
 
 #define MT6375_INFO(fmt, ...) \
 	do { \
@@ -113,9 +114,6 @@
 #define MT6375_REG_WD2MISCSET	(0x28)
 #define MT6375_REG_WD2VOLCMP	(0x29)
 
-/* PMU */
-#define MT6375_REG_DPDM_CTRL1	(0x153)
-
 /* Mask & Shift */
 /* MT6375_REG_PHYCTRL8: 0x89 */
 #define MT6375_MSK_PRLRSTB	BIT(1)
@@ -171,6 +169,7 @@
 	(MT6375_MSK_FOD_DONE | MT6375_MSK_FOD_OV | MT6375_MSK_FOD_LR | \
 	 MT6375_MSK_FOD_HR | MT6375_MSK_FOD_DISCHGF)
 /* MT6375_REG_MTINT5: 0x9C */
+#define MT6375_SFT_HIDET_CC1	(4)
 #define MT6375_MSK_HIDET_CC1	BIT(4)
 #define MT6375_MSK_HIDET_CC2	BIT(5)
 #define MT6375_MSK_HIDET_CC	(MT6375_MSK_HIDET_CC1 | MT6375_MSK_HIDET_CC2)
@@ -215,9 +214,12 @@
 #define MT6375_MSK_CMPEN_VBUS_TO_CC \
 	(MT6375_MSK_CMPEN_VBUS_TO_CC1 | MT6375_MSK_CMPEN_VBUS_TO_CC2)
 /* MT6375_REG_TYPECOTPCTRL: 0xCD */
+#define MT6375_MSK_TYPECOTP_HWEN	BIT(0)
 #define MT6375_MSK_TYPECOTP_FWEN	BIT(2)
 /* MT6375_REG_FODCTRL: 0xCF */
 #define MT6375_MSK_FOD_SRC_EN	BIT(3)
+#define MT6375_MSK_FOD_SNK_EN	BIT(6)
+#define MT6375_MSK_FOD_FW_EN	BIT(7)
 /* MT6375_REG_WD12MODECTRL: 0xD0 */
 #define MT6375_MSK_WD12MODE_EN	BIT(4)
 #define MT6375_MSK_WD12PROT	BIT(6)
@@ -241,8 +243,8 @@
 #define MT6375_MSK_WDLDO_SEL	GENMASK(7, 6)
 #define MT6375_SFT_WDLDO_SEL	(6)
 /* RT2 MT6375_REG_WDSET3: 0x21 */
-#define MT6375_MASK_WD_TDET	GENMASK(2, 0)
-#define MT6375_SHFT_WD_TDET	(0)
+#define MT6375_MSK_WD_TDET	GENMASK(2, 0)
+#define MT6375_SFT_WD_TDET	(0)
 /* RT2 MT6375_REG_WD1MISCSET: 0x22 */
 #define MT6375_MSK_WDIPULL_SEL	GENMASK(6, 4)
 #define MT6375_SFT_WDIPULL_SEL	(4)
@@ -251,12 +253,6 @@
 /* RT2 MT6375_REG_WD1VOLCMP: 0x23 */
 #define MT6375_MSK_WD12_VOLCOML	GENMASK(3, 0)
 #define MT6375_SFT_WD12_VOLCOML	(0)
-/* PMU MT6375_REG_DPDM_CTRL1: 0x153 */
-#define MT6375_MSK_DMDET_EN	BIT(0)
-#define MT6375_MSK_DPDET_EN	BIT(1)
-#define MT6375_MSK_DPDMDET_EN \
-	(MT6375_MSK_DPDET_EN | MT6375_MSK_DMDET_EN)
-#define MT6375_MSK_MANUAL_MODE	BIT(7)
 
 #define MT6375_MSK_WD0_TSLEEP	GENMASK(5, 4)
 #define MT6375_SFT_WD0_TSLEEP	(4)
@@ -271,9 +267,6 @@ struct mt6375_tcpc_data {
 	struct iio_channel *adc_iio;
 	int irq;
 	u16 did;
-	u16 curr_irq_mask;
-	bool wd0_state;
-	bool wd0_enable;
 	bool vsc_status;
 	u8 short_cc;
 	u8 wd0_tsleep;
@@ -282,17 +275,12 @@ struct mt6375_tcpc_data {
 	atomic_t wd_protect_rty;
 	bool wd_polling;
 	struct tcpc_device *tcpc_port1;
+#if !CONFIG_WD_DURING_PLUGGED_IN
 	struct delayed_work wd_polling_dwork;
+#endif	/* !CONFIG_WD_DURING_PLUGGED_IN */
 	struct delayed_work wd12_strise_irq_dwork;
+	struct delayed_work fod_polling_dwork;
 
-	bool handle_init_ctd;
-	enum tcpc_cable_type init_cable_type;
-
-	bool handle_init_fod;
-	enum tcpc_fod_status init_fod;
-
-	struct alarm hidet_debtimer;
-	struct delayed_work hidet_dwork;
 	struct delayed_work cc_short_dwork;
 };
 
@@ -408,12 +396,8 @@ static const u8 mt6375_wd_polling_path[MT6375_WD_CHAN_NUM] = {
 };
 
 static const u8 mt6375_wd_protection_path[MT6375_WD_CHAN_NUM] = {
-	MT6375_MSK_WDSBU1_EN | MT6375_MSK_WDSBU2_EN |
-	MT6375_MSK_WDCC1_EN | MT6375_MSK_WDCC2_EN |
-	MT6375_MSK_WDDP_EN | MT6375_MSK_WDDM_EN,
-	MT6375_MSK_WDSBU1_EN | MT6375_MSK_WDSBU2_EN |
-	MT6375_MSK_WDCC1_EN | MT6375_MSK_WDCC2_EN |
-	MT6375_MSK_WDDP_EN | MT6375_MSK_WDDM_EN,
+	MT6375_MSK_WDSBU1_EN | MT6375_MSK_WDSBU2_EN,
+	MT6375_MSK_WDSBU1_EN | MT6375_MSK_WDSBU2_EN,
 };
 
 static const u8 mt6375_wd_miscctrl_reg[MT6375_WD_CHAN_NUM] = {
@@ -579,32 +563,32 @@ static int mt6375_init_ext_mask(struct mt6375_tcpc_data *ddata)
 static int mt6375_init_vend_mask(struct mt6375_tcpc_data *ddata)
 {
 	u8 mask[MT6375_VEND_INT_NUM] = {0};
+	struct tcpc_device *tcpc = ddata->tcpc;
 
-	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_LPM_WAKEUP_WATCHDOG)
-		mask[MT6375_VEND_INT1] |= MT6375_MSK_WAKEUP;
-	mask[MT6375_VEND_INT1] |= MT6375_MSK_VBUS80;
+	mask[MT6375_VEND_INT1] |= MT6375_MSK_WAKEUP |
+				  MT6375_MSK_VBUS80;
 
-	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_TYPEC_OTP)
+	if (tcpc->tcpc_flags & TCPC_FLAGS_TYPEC_OTP)
 		mask[MT6375_VEND_INT1] |= MT6375_MSK_TYPECOTP;
 
 	mask[MT6375_VEND_INT2] |= MT6375_MSK_VCON_FAULT;
 
-	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_CABLE_TYPE_DETECTION)
+	if (tcpc->tcpc_flags & TCPC_FLAGS_CABLE_TYPE_DETECTION)
 		mask[MT6375_VEND_INT3] |= MT6375_MSK_CTD;
 
-	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_VBUS_SHORT_CC)
+	if (tcpc->tcpc_flags & TCPC_FLAGS_VBUS_SHORT_CC)
 		mask[MT6375_VEND_INT3] |= MT6375_MSK_VBUS_TO_CC;
 
-	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_FOREIGN_OBJECT_DETECTION)
+	if (tcpc->tcpc_flags & TCPC_FLAGS_FOREIGN_OBJECT_DETECTION)
 		mask[MT6375_VEND_INT4] |= MT6375_MSK_FOD_DONE |
 					  MT6375_MSK_FOD_OV |
 					  MT6375_MSK_FOD_DISCHGF;
 
-	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_WATER_DETECTION)
+	if (tcpc->tcpc_flags & TCPC_FLAGS_WATER_DETECTION)
 		mask[MT6375_VEND_INT7] |= MT6375_MSK_WD12_STRISE |
 					  MT6375_MSK_WD12_DONE;
 
-	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_FLOATING_GROUND)
+	if (tcpc->tcpc_flags & TCPC_FLAGS_FLOATING_GROUND)
 		mask[MT6375_VEND_INT7] |= MT6375_MSK_WD0_STFALL |
 					  MT6375_MSK_WD0_STRISE;
 
@@ -631,18 +615,7 @@ static int mt6375_init_alert_mask(struct mt6375_tcpc_data *ddata)
 
 	mask |= TCPC_REG_ALERT_FAULT;
 	ret = mt6375_write16(ddata, TCPC_V10_REG_ALERT_MASK, mask);
-	ddata->curr_irq_mask = mask;
-	if (ret < 0)
-		return ret;
-	return 0;
-}
-
-static int __mt6375_set_cc(struct mt6375_tcpc_data *ddata, int rp_lvl,
-			   int pull1, int pull2)
-{
-	return mt6375_write8(ddata, TCPC_V10_REG_ROLE_CTRL,
-			     TCPC_V10_REG_ROLE_CTRL_RES_SET(0, rp_lvl, pull1,
-			     pull2));
+	return (ret < 0) ? ret : 0;
 }
 
 static int mt6375_enable_force_discharge(struct mt6375_tcpc_data *ddata,
@@ -654,13 +627,12 @@ static int mt6375_enable_force_discharge(struct mt6375_tcpc_data *ddata,
 
 static int mt6375_enable_vsafe0v_detect(struct mt6375_tcpc_data *ddata, bool en)
 {
-	MT6375_DBGINFO("%s: en = %d\n", __func__, en);
+	MT6375_DBGINFO("en = %d\n", en);
 	return (en ? mt6375_set_bits : mt6375_clr_bits)
 		(ddata, MT6375_REG_MTMASK1, MT6375_MSK_VBUS80);
 }
 
-static int __maybe_unused mt6375_enable_rpdet_auto(
-					struct mt6375_tcpc_data *ddata, bool en)
+static int mt6375_enable_rpdet_auto(struct mt6375_tcpc_data *ddata, bool en)
 {
 	return (en ? mt6375_set_bits : mt6375_clr_bits)
 		(ddata, MT6375_REG_SHIELDCTRL1, MT6375_MSK_RPDET_AUTO);
@@ -691,7 +663,7 @@ static int mt6375_enable_typec_otp_fwen(struct tcpc_device *tcpc, bool en)
 {
 	struct mt6375_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
 
-	MT6375_DBGINFO("%s: en=%d\n", __func__, en);
+	MT6375_DBGINFO("en = %d\n", en);
 	return (en ? mt6375_set_bits : mt6375_clr_bits)
 		(ddata, MT6375_REG_TYPECOTPCTRL, MT6375_MSK_TYPECOTP_FWEN);
 }
@@ -702,7 +674,7 @@ static int mt6375_enable_vbus_short_cc(struct tcpc_device *tcpc, bool cc1, bool 
 	int ret = 0;
 	u8 val = 0;
 
-	MT6375_DBGINFO("%s cc1: %d, cc2: %d\n", __func__, cc1, cc2);
+	MT6375_DBGINFO("cc1:%d, cc2:%d\n", cc1, cc2);
 	mt6375_update_bits(ddata, MT6375_REG_MTINT3, 0xc0, 0xc0);
 
 	val = (cc1 ? MT6375_MSK_CMPEN_VBUS_TO_CC1 : 0) |
@@ -728,19 +700,6 @@ static int mt6375_set_force_discharge(struct tcpc_device *tcpc, bool en, int mv)
 #endif	/* CONFIG_TCPC_FORCE_DISCHARGE_IC */
 #endif	/* CONFIG_TYPEC_CAP_FORCE_DISCHARGE */
 
-static int mt6375_hidet_is_plugout(struct mt6375_tcpc_data *ddata, bool *out)
-{
-	int ret;
-	u8 data;
-
-	ret = mt6375_read8(ddata, MT6375_REG_MTST5, &data);
-	if (ret < 0)
-		return ret;
-	data &= MT6375_MSK_HIDET_CC;
-	*out = (data == MT6375_MSK_HIDET_CC) ? true : false;
-	return 0;
-}
-
 static void mt6375_cc_short_dwork_handler(struct work_struct *work)
 {
 	struct delayed_work *dwork = to_delayed_work(work);
@@ -765,61 +724,26 @@ static void mt6375_cc_short_dwork_handler(struct work_struct *work)
 	}
 }
 
-static void mt6375_enable_hidet_debtimer(struct mt6375_tcpc_data *ddata,
-					 bool en)
+static int __mt6375_get_cc_hi(struct mt6375_tcpc_data *ddata)
 {
-	if (en)
-		alarm_start_relative(&ddata->hidet_debtimer,
-				     ktime_set(0, 100000000));
-	else
-		alarm_cancel(&ddata->hidet_debtimer);
-}
+	int ret = 0;
+	u8 data = 0;
 
-static void mt6375_hidet_dwork_handler(struct work_struct *work)
-{
-	int ret;
-	bool plugout;
-	struct delayed_work *dwork = to_delayed_work(work);
-	struct mt6375_tcpc_data *ddata = container_of(dwork,
-						      struct mt6375_tcpc_data,
-						      hidet_dwork);
-
-	tcpci_lock_typec(ddata->tcpc);
-	ret = mt6375_hidet_is_plugout(ddata, &plugout);
+	ret = mt6375_read8(ddata, MT6375_REG_MTST5, &data);
 	if (ret < 0)
-		goto out;
-	if (!plugout)
-		goto out;
-	MT6375_DBGINFO("plug out confirmed\n");
-	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_FOREIGN_OBJECT_DETECTION)
-		tcpc_typec_handle_fod(ddata->tcpc, TCPC_FOD_NONE);
-	tcpci_notify_plug_out(ddata->tcpc);
-out:
-	tcpci_unlock_typec(ddata->tcpc);
-}
-
-static enum alarmtimer_restart
-mt6375_hidet_debtimer_handler(struct alarm *alarm, ktime_t now)
-{
-	struct mt6375_tcpc_data *ddata = container_of(alarm,
-						      struct mt6375_tcpc_data,
-						      hidet_debtimer);
-
-	pm_wakeup_event(ddata->dev, 1000);
-	schedule_delayed_work(&ddata->hidet_dwork, 0);
-	return ALARMTIMER_NORESTART;
+		return ret;
+	return ((data ^ MT6375_MSK_HIDET_CC) & MT6375_MSK_HIDET_CC)
+		>> MT6375_SFT_HIDET_CC1;
 }
 
 static int mt6375_hidet_cc_evt_process(struct mt6375_tcpc_data *ddata)
 {
-	int ret;
-	bool plugout;
+	int ret = 0;
 
-	ret = mt6375_hidet_is_plugout(ddata, &plugout);
+	ret = __mt6375_get_cc_hi(ddata);
 	if (ret < 0)
 		return ret;
-	mt6375_enable_hidet_debtimer(ddata, plugout);
-	return 0;
+	return tcpc_typec_handle_cc_hi(ddata->tcpc, ret);
 }
 
 static int mt6375_get_fod_status(struct mt6375_tcpc_data *ddata,
@@ -842,38 +766,40 @@ static int mt6375_get_fod_status(struct mt6375_tcpc_data *ddata,
 		*fod = TCPC_FOD_DISCHG_FAIL;
 	else if (data & MT6375_MSK_FOD_OV)
 		*fod = TCPC_FOD_OV;
-	else if (data & MT6375_MSK_FOD_DONE)
-		*fod = TCPC_FOD_NORMAL;
 	else
 		*fod = TCPC_FOD_NONE;
 	return 0;
 }
 
+static void mt6375_fod_polling_dwork_handler(struct work_struct *work)
+{
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct mt6375_tcpc_data *ddata = container_of(dwork,
+						      struct mt6375_tcpc_data,
+						      fod_polling_dwork);
+
+	MT6375_DBGINFO("Set FOD_FW_EN\n");
+	tcpci_lock_typec(ddata->tcpc);
+	mt6375_set_bits(ddata, MT6375_REG_FODCTRL, MT6375_MSK_FOD_FW_EN);
+	tcpci_unlock_typec(ddata->tcpc);
+}
+
 static int mt6375_fod_evt_process(struct mt6375_tcpc_data *ddata)
 {
-	int ret;
-	enum tcpc_fod_status fod;
+	int ret = 0;
+	enum tcpc_fod_status fod = TCPC_FOD_NONE;
+	struct tcpc_device *tcpc = ddata->tcpc;
 
-	/* Init fod is not handled yet */
-	if (ddata->handle_init_fod)
-		return 0;
 	ret = mt6375_get_fod_status(ddata, &fod);
 	if (ret < 0)
 		return ret;
-	if (tcpc_typec_ignore_fod(ddata->tcpc)) {
-		MT6375_DBGINFO("ignore fod %d\n", fod);
-		return 0;
-	}
-	tcpc_typec_handle_fod(ddata->tcpc, fod);
-
-#if CONFIG_CABLE_TYPE_DETECTION
-	/* In case ctd irq comes after fod */
-	if ((ddata->tcpc->tcpc_flags & TCPC_FLAGS_CABLE_TYPE_DETECTION) &&
-	    (ddata->tcpc->typec_fod == TCPC_FOD_LR &&
-	    ddata->tcpc->typec_cable_type == TCPC_CABLE_TYPE_NONE))
-		tcpc_typec_handle_ctd(ddata->tcpc, TCPC_CABLE_TYPE_C2C);
-#endif
-	return 0;
+	ret = mt6375_clr_bits(ddata, MT6375_REG_FODCTRL, MT6375_MSK_FOD_FW_EN);
+	if (ret < 0)
+		return ret;
+	if (fod == TCPC_FOD_LR)
+		mod_delayed_work(system_freezable_wq, &ddata->fod_polling_dwork,
+				 msecs_to_jiffies(5000));
+	return tcpc_typec_handle_fod(tcpc, fod);
 }
 
 #if CONFIG_CABLE_TYPE_DETECTION
@@ -895,28 +821,6 @@ static int mt6375_get_cable_type(struct mt6375_tcpc_data *ddata,
 	return 0;
 }
 #endif /* CONFIG_CABLE_TYPE_DETECTION */
-
-static int mt6375_init_fod_ctd(struct mt6375_tcpc_data *ddata)
-{
-	int ret = 0;
-
-#if CONFIG_CABLE_TYPE_DETECTION
-	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_CABLE_TYPE_DETECTION) {
-		ddata->tcpc->typec_cable_type = TCPC_CABLE_TYPE_NONE;
-		ddata->handle_init_ctd = true;
-		ret = mt6375_get_cable_type(ddata, &ddata->init_cable_type);
-		if (ret < 0)
-			return ret;
-	}
-#endif
-
-	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_FOREIGN_OBJECT_DETECTION) {
-		ddata->tcpc->typec_fod = TCPC_FOD_NONE;
-		ddata->handle_init_fod = true;
-		ret = mt6375_get_fod_status(ddata, &ddata->init_fod);
-	}
-	return ret;
-}
 
 static int mt6375_set_wd_ldo(struct mt6375_tcpc_data *ddata,
 			     enum mt6375_wd_ldo ldo)
@@ -1212,7 +1116,12 @@ static int mt6375_is_water_detected(struct mt6375_tcpc_data *ddata,
 		}
 		MT6375_DBGINFO("chan%d pull high %dmV(lb %d, ub %d)\n", chan,
 			       wd_adc, lb, ub);
-		if (wd_adc >= lb && wd_adc <= ub) {
+		if ((wd_adc >= lb && wd_adc <= ub)
+#if CONFIG_WD_DURING_PLUGGED_IN
+		    || (wd_adc > CONFIG_WD_SBU_PH_TITAN_LBOUND &&
+			wd_adc < CONFIG_WD_SBU_PH_TITAN_UBOUND)
+#endif	/* CONFIG_WD_DURING_PLUGGED_IN */
+		   ) {
 			*wd = false;
 			goto out;
 		}
@@ -1259,9 +1168,9 @@ static int mt6375_enable_wd_polling(struct mt6375_tcpc_data *ddata, bool en)
 	if (en) {
 		ret = mt6375_update_bits_rt2(ddata,
 					     MT6375_REG_WDSET3,
-					     MT6375_MASK_WD_TDET,
+					     MT6375_MSK_WD_TDET,
 					     MT6375_WD_TDET_10MS <<
-						MT6375_SHFT_WD_TDET);
+						MT6375_SFT_WD_TDET);
 		if (ret < 0)
 			return ret;
 		for (i = 0; i < MT6375_WD_CHAN_NUM; i++) {
@@ -1283,13 +1192,13 @@ static int mt6375_enable_wd_protection(struct mt6375_tcpc_data *ddata, bool en)
 {
 	int i, ret;
 
-	MT6375_DBGINFO("%s: en = %d\n", __func__, en);
+	MT6375_DBGINFO("en = %d\n", en);
 	if (en) {
 		ret = mt6375_update_bits_rt2(ddata,
 					     MT6375_REG_WDSET3,
-					     MT6375_MASK_WD_TDET,
+					     MT6375_MSK_WD_TDET,
 					     MT6375_WD_TDET_1MS <<
-						MT6375_SHFT_WD_TDET);
+						MT6375_SFT_WD_TDET);
 		if (ret < 0)
 			return ret;
 		for (i = 0; i < MT6375_WD_CHAN_NUM; i++) {
@@ -1298,16 +1207,12 @@ static int mt6375_enable_wd_protection(struct mt6375_tcpc_data *ddata, bool en)
 			mt6375_set_wd_protection_parameter(ddata, i);
 		}
 	}
-	/* set DPDM manual mode and DPDM_DET_EN = 1 */
-	ret = regmap_update_bits(ddata->rmap, MT6375_REG_DPDM_CTRL1,
-		MT6375_MSK_MANUAL_MODE | MT6375_MSK_DPDMDET_EN, en ? 0xff : 0);
-	if (ret < 0)
-		return ret;
 	return mt6375_write8(ddata, MT6375_REG_WD12MODECTRL,
 			     en ?
 			     MT6375_MSK_WD12MODE_EN | MT6375_MSK_WD12PROT : 0);
 }
 
+#if !CONFIG_WD_DURING_PLUGGED_IN
 static void mt6375_wd_polling_dwork_handler(struct work_struct *work)
 {
 	int i;
@@ -1326,8 +1231,7 @@ static void mt6375_wd_polling_dwork_handler(struct work_struct *work)
 		tcpci_unlock_typec(tcpcs[i]);
 		if (ret) {
 			if (i != 0)
-				queue_delayed_work(system_freezable_wq,
-						   &ddata->wd_polling_dwork,
+				queue_delayed_work(system_freezable_wq, dwork,
 						   msecs_to_jiffies(10000));
 			return;
 		}
@@ -1337,6 +1241,7 @@ static void mt6375_wd_polling_dwork_handler(struct work_struct *work)
 	mt6375_enable_wd_polling(ddata, true);
 	tcpci_unlock_typec(ddata->tcpc);
 }
+#endif	/* !CONFIG_WD_DURING_PLUGGED_IN */
 
 static int mt6375_wd_polling_evt_process(struct mt6375_tcpc_data *ddata)
 {
@@ -1349,6 +1254,7 @@ static int mt6375_wd_polling_evt_process(struct mt6375_tcpc_data *ddata)
 	if (!ddata->wd_polling)
 		return 0;
 	mt6375_enable_wd_polling(ddata, false);
+#if !CONFIG_WD_DURING_PLUGGED_IN
 	tcpci_unlock_typec(ddata->tcpc);
 	for (i = 0; i < array_size; i++) {
 		tcpci_lock_typec(tcpcs[i]);
@@ -1364,6 +1270,7 @@ static int mt6375_wd_polling_evt_process(struct mt6375_tcpc_data *ddata)
 		}
 	}
 	tcpci_lock_typec(ddata->tcpc);
+#endif	/* !CONFIG_WD_DURING_PLUGGED_IN */
 	for (i = 0; i < MT6375_WD_CHAN_NUM; i++) {
 		if (!mt6375_wd_chan_en[i])
 			continue;
@@ -1376,10 +1283,9 @@ static int mt6375_wd_polling_evt_process(struct mt6375_tcpc_data *ddata)
 		polling = false;
 		break;
 	}
-	if (polling)
+	if (polling ||
+	    tcpc_typec_handle_wd(tcpcs, array_size, true) == -EAGAIN)
 		mt6375_enable_wd_polling(ddata, true);
-	else
-		tcpc_typec_handle_wd(tcpcs, array_size, true);
 	return 0;
 }
 
@@ -1400,16 +1306,14 @@ static int mt6375_wd_protection_evt_process(struct mt6375_tcpc_data *ddata)
 		ret = mt6375_is_water_detected(ddata, i, &error[1]);
 		if (ret < 0)
 			goto out;
-		MT6375_DBGINFO("%s: err1:%d, err2:%d\n",
-			       __func__, error[0], error[1]);
+		MT6375_DBGINFO("err1:%d, err2:%d\n", error[0], error[1]);
 		if (!error[0] && !error[1])
 			continue;
 out:
 		protection = true;
 		break;
 	}
-	MT6375_DBGINFO("%s: retry cnt = %d\n", __func__,
-		       atomic_read(&ddata->wd_protect_rty));
+	MT6375_DBGINFO("retry cnt = %d\n", atomic_read(&ddata->wd_protect_rty));
 	if (!protection && atomic_dec_and_test(&ddata->wd_protect_rty)) {
 		tcpc_typec_handle_wd(tcpcs, array_size, false);
 		atomic_set(&ddata->wd_protect_rty,
@@ -1419,40 +1323,10 @@ out:
 	return 0;
 }
 
-static int mt6375_set_cc_toggling(struct mt6375_tcpc_data *ddata, int rp_lvl)
-{
-	int ret;
-	u8 data = TCPC_V10_REG_ROLE_CTRL_RES_SET(1, rp_lvl, TYPEC_CC_RD,
-						 TYPEC_CC_RD);
-
-	MT6375_DBGINFO("Toggle: %s\n", __func__);
-	ret = mt6375_write8(ddata, TCPC_V10_REG_ROLE_CTRL, data);
-	if (ret < 0)
-		return ret;
-	/* Set Low Power LDO to 2V */
-	ret = mt6375_write8(ddata, MT6375_REG_LPWRCTRL3, 0xD8);
-	if (ret < 0)
-		return ret;
-#if CONFIG_TCPC_LOW_POWER_MODE
-	tcpci_set_low_power_mode(ddata->tcpc, true);
-#else
-	ret = mt6375_enable_vsafe0v_detect(ddata, false);
-	if (ret < 0)
-		return ret;
-#endif /* CONFIG_TCPC_LOW_POWER_MODE */
-	udelay(30);
-	ret = mt6375_write8(ddata, TCPC_V10_REG_COMMAND,
-			    TCPM_CMD_LOOK_CONNECTION);
-	if (ret < 0)
-		return ret;
-
-	return 0;
-}
-
 static int mt6375_vbus_to_cc1_irq_handler(struct mt6375_tcpc_data *ddata)
 {
 	ddata->short_cc = 0;
-	mod_delayed_work(system_wq, &ddata->cc_short_dwork,
+	mod_delayed_work(system_freezable_wq, &ddata->cc_short_dwork,
 			 msecs_to_jiffies(CC_SHORT_DEBOUNCE));
 	return 0;
 }
@@ -1460,7 +1334,7 @@ static int mt6375_vbus_to_cc1_irq_handler(struct mt6375_tcpc_data *ddata)
 static int mt6375_vbus_to_cc2_irq_handler(struct mt6375_tcpc_data *ddata)
 {
 	ddata->short_cc = 1;
-	mod_delayed_work(system_wq, &ddata->cc_short_dwork,
+	mod_delayed_work(system_freezable_wq, &ddata->cc_short_dwork,
 			 msecs_to_jiffies(CC_SHORT_DEBOUNCE));
 	return 0;
 }
@@ -1484,7 +1358,7 @@ static int mt6375_enable_floating_ground(struct mt6375_tcpc_data *ddata,
 	int ret = 0;
 	u8 value = 0;
 
-	MT6375_DBGINFO("%s: en:%d\n", __func__, en);
+	MT6375_DBGINFO("en = %d\n", en);
 	if (en) {
 		/* set wd0 detect time */
 		value |= (ddata->wd0_tsleep << MT6375_SFT_WD0_TSLEEP);
@@ -1518,8 +1392,8 @@ static int mt6375_floating_ground_evt_process(struct mt6375_tcpc_data *ddata)
 	ret = mt6375_read8(ddata, MT6375_REG_WD0SET, &data);
 	if (ret < 0)
 		return ret;
-	ddata->wd0_state = (data & MT6375_MSK_WD0PULL_STS) ? true : false;
-	return tcpci_notify_wd0_state(ddata->tcpc, ddata->wd0_state);
+	return tcpci_notify_wd0_state(ddata->tcpc,
+				      !!(data & MT6375_MSK_WD0PULL_STS));
 }
 
 /*
@@ -1527,6 +1401,19 @@ static int mt6375_floating_ground_evt_process(struct mt6375_tcpc_data *ddata)
  * TCPC ops
  * ==================================================================
  */
+
+static int mt6375_init_mask(struct tcpc_device *tcpc)
+{
+	struct mt6375_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
+
+	mt6375_init_alert_mask(ddata);
+	mt6375_init_power_status_mask(ddata);
+	mt6375_init_fault_mask(ddata);
+	mt6375_init_ext_mask(ddata);
+	mt6375_init_vend_mask(ddata);
+
+	return 0;
+}
 
 static int mt6375_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 {
@@ -1549,9 +1436,9 @@ static int mt6375_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 
 	/*
 	 * DRP Toggle Cycle : 51.2 + 6.4*val ms
-	 * DRP Duty Ctrl : dcSRC / 1024
+	 * DRP Duty Ctrl : (dcSRC + 1) / 1024
 	 */
-	mt6375_write8(ddata, MT6375_REG_TCPCCTRL2, 4);
+	mt6375_write8(ddata, MT6375_REG_TCPCCTRL2, 0);
 	mt6375_write16(ddata, MT6375_REG_TCPCCTRL3, TCPC_NORMAL_RP_DUTY);
 
 	/*
@@ -1579,15 +1466,8 @@ static int mt6375_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 	/* Set HILOCCFILTER 250us */
 	mt6375_write8(ddata, MT6375_REG_HILOCTRL9, 0x0A);
 
-	/*
-	 * Enable RD Connect auto detection and
-	 * Enable CC open 40ms when PMIC SYSUV
-	 */
-	mt6375_set_bits(ddata, MT6375_REG_SHIELDCTRL1,
-			MT6375_MSK_RDDET_AUTO | MT6375_MSK_OPEN40MS_EN);
-
-	/* Enable FOD trigger control by CC attached as SRC */
-	mt6375_set_bits(ddata, MT6375_REG_FODCTRL, MT6375_MSK_FOD_SRC_EN);
+	/* Enable CC open 40ms when PMIC SYSUV */
+	mt6375_set_bits(ddata, MT6375_REG_SHIELDCTRL1, MT6375_MSK_OPEN40MS_EN);
 
 	/*
 	 * Enable Alert.CCStatus assertion
@@ -1596,13 +1476,7 @@ static int mt6375_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 	mt6375_set_bits(ddata, TCPC_V10_REG_TCPC_CTRL,
 			TCPC_V10_REG_TCPC_CTRL_EN_LOOK4CONNECTION_ALERT);
 
-	tcpci_init_alert_mask(tcpc);
-
-	if (tcpc->tcpc_flags & TCPC_FLAGS_WATCHDOG_EN) {
-		/* Set watchdog timer = 3.2s and enable */
-		mt6375_write8(ddata, MT6375_REG_WATCHDOGCTRL, 0x07);
-		tcpci_set_watchdog(tcpc, true);
-	}
+	mt6375_init_mask(tcpc);
 
 	/* Enable auto dischg timer for IQ about 12mA consumption */
 	mt6375_set_bits(ddata, MT6375_REG_WATCHDOGCTRL,
@@ -1627,39 +1501,9 @@ static int mt6375_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 		mt6375_enable_wd_polling(ddata, true);
 	}
 
-	return 0;
-}
+	if (tcpc->tcpc_flags & TCPC_FLAGS_FLOATING_GROUND)
+		mt6375_enable_floating_ground(ddata, true);
 
-static int mt6375_init_mask(struct tcpc_device *tcpc)
-{
-	struct mt6375_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
-
-	mt6375_init_alert_mask(ddata);
-	mt6375_init_power_status_mask(ddata);
-	mt6375_init_fault_mask(ddata);
-	mt6375_init_ext_mask(ddata);
-	mt6375_init_vend_mask(ddata);
-
-	/* Init fod must be handled after init alert mask */
-	if ((ddata->tcpc->tcpc_flags & TCPC_FLAGS_FOREIGN_OBJECT_DETECTION) &&
-		ddata->handle_init_fod) {
-		ddata->handle_init_fod = false;
-		tcpc_typec_handle_fod(tcpc, ddata->init_fod);
-	}
-
-#if CONFIG_CABLE_TYPE_DETECTION
-	/* Init cable type must be done after fod */
-	if ((ddata->tcpc->tcpc_flags & TCPC_FLAGS_CABLE_TYPE_DETECTION) &&
-	    (ddata->handle_init_ctd)) {
-		/*
-		 * wait 3ms for exit low power mode and
-		 * TCPC filter debounce
-		 */
-		mdelay(3);
-		ddata->handle_init_ctd = false;
-		tcpc_typec_handle_ctd(tcpc, ddata->init_cable_type);
-	}
-#endif
 	return 0;
 }
 
@@ -1689,17 +1533,20 @@ static int mt6375_set_alert_mask(struct tcpc_device *tcpc, u32 mask)
 {
 	struct mt6375_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
 
-	MT6375_DBGINFO("%s: mask = 0x%04x\n", __func__, mask);
-	ddata->curr_irq_mask = mask;
+	MT6375_DBGINFO("mask = 0x%04x\n", mask);
 	return mt6375_write16(ddata, TCPC_V10_REG_ALERT_MASK, mask);
 }
 
 static int mt6375_get_alert_mask(struct tcpc_device *tcpc, u32 *mask)
 {
+	int ret = 0;
+	u16 data = 0;
 	struct mt6375_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
 
-	*mask = ddata->curr_irq_mask;
-	MT6375_DBGINFO("%s: mask = 0x%04x\n", __func__, *mask);
+	ret = mt6375_read16(ddata, TCPC_V10_REG_ALERT_MASK, &data);
+	if (ret < 0)
+		return ret;
+	*mask = data;
 	return 0;
 }
 
@@ -1765,6 +1612,14 @@ static int mt6375_get_cc(struct tcpc_device *tcpc, int *cc1, int *cc2)
 		return ret;
 
 	if (status & TCPC_V10_REG_CC_STATUS_DRP_TOGGLING) {
+		if (!(role_ctrl & TCPC_V10_REG_ROLE_CTRL_DRP)) {
+			/* Toggle reg0x1A[6] DRP = 1 and = 0 */
+			mt6375_write8(ddata, TCPC_V10_REG_ROLE_CTRL,
+				      role_ctrl | TCPC_V10_REG_ROLE_CTRL_DRP);
+			mt6375_write8(ddata, TCPC_V10_REG_ROLE_CTRL, role_ctrl);
+			return -EAGAIN;
+		}
+
 		*cc1 = TYPEC_CC_DRP_TOGGLING;
 		*cc2 = TYPEC_CC_DRP_TOGGLING;
 		return 0;
@@ -1798,25 +1653,27 @@ static int mt6375_get_cc(struct tcpc_device *tcpc, int *cc1, int *cc2)
 
 static int mt6375_set_cc(struct tcpc_device *tcpc, int pull)
 {
-	int ret;
+	int ret = 0;
+	u8 data = 0;
 	int rp_lvl = TYPEC_CC_PULL_GET_RP_LVL(pull), pull1, pull2;
 	struct mt6375_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
-	bool __maybe_unused en = false;
 
-	MT6375_INFO("%s %d\n", __func__, pull);
+	MT6375_INFO("%d\n", pull);
 	pull = TYPEC_CC_PULL_GET_RES(pull);
-
-	/* enable wd0 once when set cc */
-	if (!ddata->wd0_enable && tcpm_inquire_floating_ground(tcpc)) {
-		ret = mt6375_enable_floating_ground(ddata, true);
-		if (ret < 0)
-			dev_err(ddata->dev, "enable wd0 failed\n");
-		else
-			ddata->wd0_enable = true;
-	}
-
 	if (pull == TYPEC_CC_DRP) {
-		ret = mt6375_set_cc_toggling(ddata, rp_lvl);
+		data = TCPC_V10_REG_ROLE_CTRL_RES_SET(1, rp_lvl, TYPEC_CC_RD,
+						      TYPEC_CC_RD);
+		ret = mt6375_write8(ddata, TCPC_V10_REG_ROLE_CTRL, data);
+		if (ret < 0)
+			return ret;
+		mt6375_enable_vsafe0v_detect(ddata, false);
+		/*
+		 * Before set LOOK_CONNECTION, at least 30us needed after
+		 * setting TCPC_V10_REG_ROLE_CTRL
+		 */
+		udelay(30);
+		ret = mt6375_write8(ddata, TCPC_V10_REG_COMMAND,
+				    TCPM_CMD_LOOK_CONNECTION);
 	} else {
 		pull2 = pull1 = pull;
 
@@ -1826,8 +1683,8 @@ static int mt6375_set_cc(struct tcpc_device *tcpc, int pull)
 			else
 				pull2 = TYPEC_CC_RD;
 		}
-
-		ret = __mt6375_set_cc(ddata, rp_lvl, pull1, pull2);
+		data = TCPC_V10_REG_ROLE_CTRL_RES_SET(0, rp_lvl, pull1, pull2);
+		ret = mt6375_write8(ddata, TCPC_V10_REG_ROLE_CTRL, data);
 	}
 	return ret;
 }
@@ -1839,14 +1696,6 @@ static int mt6375_set_polarity(struct tcpc_device *tcpc, int polarity)
 	return (polarity ? mt6375_set_bits : mt6375_clr_bits)
 		(ddata, TCPC_V10_REG_TCPC_CTRL,
 		 TCPC_V10_REG_TCPC_CTRL_PLUG_ORIENT);
-}
-
-static int mt6375_set_low_rp_duty(struct tcpc_device *tcpc, bool low_rp)
-{
-	struct mt6375_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
-	u16 duty = low_rp ? TCPC_LOW_RP_DUTY : TCPC_NORMAL_RP_DUTY;
-
-	return mt6375_write16(ddata, MT6375_REG_TCPCCTRL3, duty);
 }
 
 static int mt6375_set_vconn(struct tcpc_device *tcpc, int en)
@@ -1900,14 +1749,6 @@ static int mt6375_tcpc_deinit(struct tcpc_device *tcpc)
 	return 0;
 }
 
-static int mt6375_set_watchdog(struct tcpc_device *tcpc, bool en)
-{
-	struct mt6375_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
-
-	return (en ? mt6375_set_bits : mt6375_clr_bits)
-		(ddata, TCPC_V10_REG_TCPC_CTRL, TCPC_V10_REG_TCPC_CTRL_EN_WDT);
-}
-
 static int mt6375_is_vsafe0v(struct tcpc_device *tcpc)
 {
 	int ret;
@@ -1920,19 +1761,6 @@ static int mt6375_is_vsafe0v(struct tcpc_device *tcpc)
 	return (data & MT6375_MSK_VBUS80) ? 1 : 0;
 }
 
-#if CONFIG_TCPC_LOW_POWER_MODE
-static int mt6375_is_low_power_mode(struct tcpc_device *tcpc)
-{
-	int ret;
-	u8 data;
-	struct mt6375_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
-
-	ret = mt6375_read8(ddata, MT6375_REG_SYSCTRL2, &data);
-	if (ret < 0)
-		return ret;
-	return (data & MT6375_MSK_LPWR_EN) != 0;
-}
-
 static int mt6375_set_low_power_mode(struct tcpc_device *tcpc, bool en,
 				     int pull)
 {
@@ -1941,15 +1769,31 @@ static int mt6375_set_low_power_mode(struct tcpc_device *tcpc, bool en,
 	struct mt6375_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
 
 	if (tcpc->tcpc_flags & TCPC_FLAGS_WATER_DETECTION) {
+#if CONFIG_WD_DURING_PLUGGED_IN
+		if (en)
+			ret = mt6375_enable_wd_polling(ddata, en);
+#else
 		ret = mt6375_enable_wd_polling(ddata, en);
+#endif	/* CONFIG_WD_DURING_PLUGGED_IN */
 		if (ret < 0)
 			return ret;
 	}
+
+	if (tcpc->tcpc_flags & TCPC_FLAGS_TYPEC_OTP) {
+		ret = mt6375_enable_typec_otp_fwen(tcpc, !en &&
+				tcpc_typec_is_act_as_sink_role(tcpc));
+		if (ret < 0)
+			return ret;
+	}
+
 	ret = mt6375_enable_vsafe0v_detect(ddata, !en);
 	if (ret < 0)
 		return ret;
 	if (en) {
-		tcpci_set_otp_fwen(tcpc, false);
+		/* Set Low Power LDO to 2V */
+		ret = mt6375_write8(ddata, MT6375_REG_LPWRCTRL3, 0xD8);
+		if (ret < 0)
+			return ret;
 		data = MT6375_MSK_LPWR_EN;
 #if CONFIG_TYPEC_CAP_NORP_SRC
 		data |= MT6375_MSK_VBUSDET_EN;
@@ -1959,7 +1803,6 @@ static int mt6375_set_low_power_mode(struct tcpc_device *tcpc, bool en,
 	}
 	return mt6375_write8(ddata, MT6375_REG_SYSCTRL2, data);
 }
-#endif	/* CONFIG_TCPC_LOW_POWER_MODE */
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 static int mt6375_set_msg_header(struct tcpc_device *tcpc, u8 power_role,
@@ -2004,9 +1847,9 @@ static int mt6375_get_message(struct tcpc_device *tcpc, u32 *payload,
 	*frame_type = buf[1];
 	*msg_head = le16_to_cpu(*(u16 *)&buf[2]);
 
-	MT6375_INFO("Count is %d\n", cnt);
-	MT6375_INFO("FrameType is %d\n", *frame_type);
-	MT6375_INFO("MessageType is %d\n", PD_HEADER_TYPE(*msg_head));
+	MT6375_DBGINFO("Count is %d\n", cnt);
+	MT6375_DBGINFO("FrameType is %d\n", *frame_type);
+	MT6375_DBGINFO("MessageType is %d\n", PD_HEADER_TYPE(*msg_head));
 
 	/* TCPC 1.0 ==> no need to subtract the size of msg_head */
 	if (cnt > 3) {
@@ -2030,7 +1873,7 @@ static int mt6375_transmit(struct tcpc_device *tcpc,
 	struct mt6375_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
 	long long t1 = 0, t2 = 0;
 
-	MT6375_INFO("%s ++\n", __func__);
+	MT6375_INFO("++\n");
 	t1 = local_clock();
 	if (type < TCPC_TX_HARD_RESET) {
 		data_cnt = sizeof(u32) * PD_HEADER_CNT(header);
@@ -2051,8 +1894,7 @@ static int mt6375_transmit(struct tcpc_device *tcpc,
 			     TCPC_V10_REG_TRANSMIT_SET(tcpc->pd_retry_count,
 			     type));
 	t2 = local_clock();
-	MT6375_INFO("%s -- delta = %lluus\n",
-			__func__, (t2 - t1) / NSEC_PER_USEC);
+	MT6375_INFO("-- delta = %lluus\n", (t2 - t1) / NSEC_PER_USEC);
 
 #if PD_DYNAMIC_SENDER_RESPONSE
 	tcpc->t[0] = local_clock();
@@ -2108,18 +1950,24 @@ static int mt6375_set_cc_hidet(struct tcpc_device *tcpc, bool en)
 	return ret;
 }
 
-static int mt6375_set_water_protection(struct tcpc_device *tcpc, bool en)
+static int mt6375_get_cc_hi(struct tcpc_device *tcpc)
 {
 	struct mt6375_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
 
-	return mt6375_enable_wd_protection(ddata, en);
+	return __mt6375_get_cc_hi(ddata);
 }
 
-static int mt6375_set_floating_ground(struct tcpc_device *tcpc, bool en)
+static int mt6375_set_water_protection(struct tcpc_device *tcpc, bool en)
 {
+	int ret = 0;
 	struct mt6375_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
 
-	return mt6375_enable_floating_ground(ddata, en);
+	ret = mt6375_enable_wd_protection(ddata, en);
+#if CONFIG_WD_DURING_PLUGGED_IN
+	if (!en && ret >= 0)
+		ret = mt6375_enable_wd_polling(ddata, true);
+#endif	/* CONFIG_WD_DURING_PLUGGED_IN */
+	return ret;
 }
 
 /*
@@ -2128,12 +1976,10 @@ static int mt6375_set_floating_ground(struct tcpc_device *tcpc, bool en)
  * ==================================================================
  */
 
-#if CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG
 static int mt6375_wakeup_irq_handler(struct mt6375_tcpc_data *ddata)
 {
 	return tcpci_alert_wakeup(ddata->tcpc);
 }
-#endif /* CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG */
 
 static int mt6375_vsafe0v_irq_handler(struct mt6375_tcpc_data *ddata)
 {
@@ -2150,16 +1996,12 @@ static int mt6375_typec_otp_irq_handler(struct mt6375_tcpc_data *ddata)
 {
 	int ret;
 	u8 data;
-	bool otp;
 
 	ret = mt6375_read8(ddata, MT6375_REG_MTST1, &data);
 	if (ret < 0)
 		return ret;
-	otp = (data & MT6375_MSK_TYPECOTP) ? true : false;
-	if (otp)
-		mt6375_enable_typec_otp_fwen(ddata->tcpc, true);
-	tcpc_typec_handle_otp(ddata->tcpc, otp);
-	return 0;
+	return tcpc_typec_handle_otp(ddata->tcpc,
+				     !!(data & MT6375_MSK_TYPECOTP));
 }
 
 static void mt6375_wd12_strise_irq_dwork_handler(struct work_struct *work)
@@ -2169,7 +2011,7 @@ static void mt6375_wd12_strise_irq_dwork_handler(struct work_struct *work)
 						      struct mt6375_tcpc_data,
 						      wd12_strise_irq_dwork);
 
-	MT6375_DBGINFO("%s ++\n", __func__);
+	MT6375_DBGINFO("++\n");
 	tcpci_lock_typec(ddata->tcpc);
 	mt6375_wd_polling_evt_process(ddata);
 	/* unmask */
@@ -2180,18 +2022,16 @@ static void mt6375_wd12_strise_irq_dwork_handler(struct work_struct *work)
 static int mt6375_wd12_strise_irq_handler(struct mt6375_tcpc_data *ddata)
 {
 	/* Pull or discharge status from 0 to 1 in normal polling mode */
-	MT6375_DBGINFO("%s ++\n", __func__);
 	/* mask */
 	mt6375_clr_bits(ddata, MT6375_REG_MTMASK7, MT6375_MSK_WD12_STRISE);
 	queue_delayed_work(system_freezable_wq, &ddata->wd12_strise_irq_dwork,
-			   msecs_to_jiffies(100));
+			   msecs_to_jiffies(900));
 	return 0;
 }
 
 static int mt6375_wd12_done_irq_handler(struct mt6375_tcpc_data *ddata)
 {
 	/* Oneshot or protect mode done */
-	MT6375_DBGINFO("%s ++\n", __func__);
 	return mt6375_wd_protection_evt_process(ddata);
 }
 
@@ -2219,38 +2059,34 @@ static int mt6375_hidet_cc2_irq_handler(struct mt6375_tcpc_data *ddata)
 
 static int mt6375_fod_done_irq_handler(struct mt6375_tcpc_data *ddata)
 {
-	MT6375_DBGINFO("DBG: %s\n", __func__);
 	mt6375_fod_evt_process(ddata);
 	return 0;
 }
 
 static int mt6375_fod_ov_irq_handler(struct mt6375_tcpc_data *ddata)
 {
-	MT6375_DBGINFO("DBG: %s\n", __func__);
 	mt6375_fod_evt_process(ddata);
 	return 0;
 }
 
 static int mt6375_fod_dischgf_irq_handler(struct mt6375_tcpc_data *ddata)
 {
-	MT6375_DBGINFO("DBG: %s\n", __func__);
 	mt6375_fod_evt_process(ddata);
 	return 0;
 }
 
 static int mt6375_ctd_irq_handler(struct mt6375_tcpc_data *ddata)
 {
+	int ret = 0;
 #if CONFIG_CABLE_TYPE_DETECTION
-	int ret;
-	enum tcpc_cable_type cable_type;
+	enum tcpc_cable_type cable_type = TCPC_CABLE_TYPE_NONE;
 
 	ret = mt6375_get_cable_type(ddata, &cable_type);
 	if (ret < 0)
 		return ret;
-
-	tcpc_typec_handle_ctd(ddata->tcpc, cable_type);
+	ret = tcpc_typec_handle_ctd(ddata->tcpc, cable_type);
 #endif
-	return 0;
+	return ret;
 }
 
 struct irq_mapping_tbl {
@@ -2263,9 +2099,7 @@ struct irq_mapping_tbl {
 	{ .num = _num, .name = #_name, .hdlr = mt6375_##_name##_irq_handler }
 
 static struct irq_mapping_tbl mt6375_vend_irq_mapping_tbl[] = {
-#if CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG
 	MT6375_IRQ_MAPPING(0, wakeup),
-#endif /* CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG */
 
 	MT6375_IRQ_MAPPING(1, vsafe0v),
 
@@ -2307,7 +2141,7 @@ static int mt6375_alert_vendor_defined_handler(struct tcpc_device *tcpc)
 		return ret;
 
 	for (i = 0; i < MT6375_VEND_INT_NUM; i++) {
-		if (!alert[i])
+		if (!(alert[i] & mask[i]))
 			continue;
 		MT6375_DBGINFO("vend_alert[%d]=alert,mask(0x%02X,0x%02X)\n",
 			       i + 1, alert[i], mask[i]);
@@ -2336,7 +2170,7 @@ static int mt6375_set_auto_dischg_discnt(struct tcpc_device *tcpc, bool en)
 	struct mt6375_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
 	int ret = 0;
 
-	MT6375_INFO("%s en=%d\n", __func__, en);
+	MT6375_INFO("en = %d\n", en);
 	if (en) {
 		ret |= mt6375_update_bits(ddata, TCPC_V10_REG_POWER_CTRL,
 					  TCPC_V10_REG_VBUS_MONITOR, 0);
@@ -2359,7 +2193,7 @@ static int mt6375_get_vbus_voltage(struct tcpc_device *tcpc, u32 *vbus)
 		return ret;
 	/* TODO: Please re-write it */
 	*vbus = (data & 0x3FF) * 25;
-	MT6375_DBGINFO("%s 0x%04x, %dmV\n", __func__, data, *vbus);
+	MT6375_DBGINFO("0x%04x, %dmV\n", data, *vbus);
 	return 0;
 }
 
@@ -2376,20 +2210,15 @@ static struct tcpc_ops mt6375_tcpc_ops = {
 	.get_cc = mt6375_get_cc,
 	.set_cc = mt6375_set_cc,
 	.set_polarity = mt6375_set_polarity,
-	.set_low_rp_duty = mt6375_set_low_rp_duty,
 	.set_vconn = mt6375_set_vconn,
 	.deinit = mt6375_tcpc_deinit,
-	.set_watchdog = mt6375_set_watchdog,
 	.alert_vendor_defined_handler = mt6375_alert_vendor_defined_handler,
 	.set_auto_dischg_discnt = mt6375_set_auto_dischg_discnt,
 	.get_vbus_voltage = mt6375_get_vbus_voltage,
 
 	.is_vsafe0v = mt6375_is_vsafe0v,
 
-#if CONFIG_TCPC_LOW_POWER_MODE
-	.is_low_power_mode = mt6375_is_low_power_mode,
 	.set_low_power_mode = mt6375_set_low_power_mode,
-#endif	/* CONFIG_TCPC_LOW_POWER_MODE */
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	.set_msg_header = mt6375_set_msg_header,
@@ -2406,11 +2235,10 @@ static struct tcpc_ops mt6375_tcpc_ops = {
 #endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
 
 	.set_cc_hidet = mt6375_set_cc_hidet,
+	.get_cc_hi = mt6375_get_cc_hi,
 
 	.set_water_protection = mt6375_set_water_protection,
 
-	.set_floating_ground = mt6375_set_floating_ground,
-	.set_otp_fwen = mt6375_enable_typec_otp_fwen,
 	.set_vbus_short_cc_en = mt6375_enable_vbus_short_cc,
 
 #if CONFIG_TYPEC_CAP_FORCE_DISCHARGE
@@ -2446,7 +2274,6 @@ static int mt6375_tcpc_init_irq(struct mt6375_tcpc_data *ddata)
 	mt6375_bulk_write(ddata, MT6375_REG_MTINT1, mt6375_vend_alert_clearall,
 			  ARRAY_SIZE(mt6375_vend_alert_clearall));
 	mt6375_write16(ddata, TCPC_V10_REG_ALERT_MASK, 0);
-	ddata->curr_irq_mask = 0;
 	mt6375_write16(ddata, TCPC_V10_REG_ALERT, 0x8FFF);
 
 	ret = platform_get_irq_byname(to_platform_device(ddata->dev), "pd_evt");
@@ -2470,45 +2297,42 @@ static int mt6375_tcpc_init_irq(struct mt6375_tcpc_data *ddata)
 static int mt6375_register_tcpcdev(struct mt6375_tcpc_data *ddata)
 {
 	struct tcpc_desc *desc = ddata->desc;
+	struct tcpc_device *tcpc = NULL;
 
-	ddata->tcpc = tcpc_device_register(ddata->dev, desc,
-					  &mt6375_tcpc_ops, ddata);
-	if (IS_ERR_OR_NULL(ddata->tcpc))
+	tcpc = tcpc_device_register(ddata->dev, desc, &mt6375_tcpc_ops, ddata);
+	if (IS_ERR_OR_NULL(tcpc))
 		return -EINVAL;
+	ddata->tcpc = tcpc;
 
 #if CONFIG_USB_PD_DISABLE_PE
-	ddata->tcpc->disable_pe = device_property_read_bool(ddata->dev,
-							    "tcpc,disable_pe");
+	tcpc->disable_pe = device_property_read_bool(ddata->dev,
+						     "tcpc,disable_pe");
 #endif	/* CONFIG_USB_PD_DISABLE_PE */
 
 	/* Init tcpc_flags */
 #if CONFIG_USB_PD_RETRY_CRC_DISCARD
-	ddata->tcpc->tcpc_flags |= TCPC_FLAGS_RETRY_CRC_DISCARD;
+	tcpc->tcpc_flags |= TCPC_FLAGS_RETRY_CRC_DISCARD;
 #endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
-#if CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG
-	ddata->tcpc->tcpc_flags |= TCPC_FLAGS_LPM_WAKEUP_WATCHDOG;
-#endif	/* CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG */
 #if CONFIG_USB_PD_REV30
-	ddata->tcpc->tcpc_flags |= TCPC_FLAGS_PD_REV30;
+	tcpc->tcpc_flags |= TCPC_FLAGS_PD_REV30;
 #endif	/* CONFIG_USB_PD_REV30 */
-	ddata->tcpc->tcpc_flags |= TCPC_FLAGS_WATCHDOG_EN;
 
 	if (desc->en_wd)
-		ddata->tcpc->tcpc_flags |= TCPC_FLAGS_WATER_DETECTION;
+		tcpc->tcpc_flags |= TCPC_FLAGS_WATER_DETECTION;
 	if (desc->en_wd_dual_port)
-		ddata->tcpc->tcpc_flags |= TCPC_FLAGS_WD_DUAL_PORT;
+		tcpc->tcpc_flags |= TCPC_FLAGS_WD_DUAL_PORT;
 	if (desc->en_ctd)
-		ddata->tcpc->tcpc_flags |= TCPC_FLAGS_CABLE_TYPE_DETECTION;
+		tcpc->tcpc_flags |= TCPC_FLAGS_CABLE_TYPE_DETECTION;
 	if (desc->en_fod)
-		ddata->tcpc->tcpc_flags |= TCPC_FLAGS_FOREIGN_OBJECT_DETECTION;
+		tcpc->tcpc_flags |= TCPC_FLAGS_FOREIGN_OBJECT_DETECTION;
 	if (desc->en_typec_otp)
-		ddata->tcpc->tcpc_flags |= TCPC_FLAGS_TYPEC_OTP;
+		tcpc->tcpc_flags |= TCPC_FLAGS_TYPEC_OTP;
 	if (desc->en_floatgnd)
-		ddata->tcpc->tcpc_flags |= TCPC_FLAGS_FLOATING_GROUND;
+		tcpc->tcpc_flags |= TCPC_FLAGS_FLOATING_GROUND;
 	if (desc->en_vbus_short_cc)
-		ddata->tcpc->tcpc_flags |= TCPC_FLAGS_VBUS_SHORT_CC;
+		tcpc->tcpc_flags |= TCPC_FLAGS_VBUS_SHORT_CC;
 
-	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_PD_REV30)
+	if (tcpc->tcpc_flags & TCPC_FLAGS_PD_REV30)
 		dev_info(ddata->dev, "%s PD REV30\n", __func__);
 	else
 		dev_info(ddata->dev, "%s PD REV20\n", __func__);
@@ -2624,8 +2448,8 @@ static int mt6375_parse_dt(struct mt6375_tcpc_data *ddata)
 			dev_notice(dev, "wd0_tdet = %d\n", val);
 			ddata->wd0_tdet = val;
 		}
-
 	}
+
 	return 0;
 }
 
@@ -2700,15 +2524,15 @@ static int mt6375_tcpc_probe(struct platform_device *pdev)
 	}
 
 	atomic_set(&ddata->wd_protect_rty, CONFIG_WD_PROTECT_RETRY_COUNT);
+#if !CONFIG_WD_DURING_PLUGGED_IN
 	INIT_DELAYED_WORK(&ddata->wd_polling_dwork,
 			  mt6375_wd_polling_dwork_handler);
+#endif	/* !CONFIG_WD_DURING_PLUGGED_IN */
 	INIT_DELAYED_WORK(&ddata->wd12_strise_irq_dwork,
 			  mt6375_wd12_strise_irq_dwork_handler);
-	INIT_DELAYED_WORK(&ddata->hidet_dwork, mt6375_hidet_dwork_handler);
 	INIT_DELAYED_WORK(&ddata->cc_short_dwork, mt6375_cc_short_dwork_handler);
-	alarm_init(&ddata->hidet_debtimer, ALARM_REALTIME,
-		   mt6375_hidet_debtimer_handler);
-
+	INIT_DELAYED_WORK(&ddata->fod_polling_dwork,
+			  mt6375_fod_polling_dwork_handler);
 	ddata->adc_iio = devm_iio_channel_get_all(ddata->dev);
 	if (IS_ERR(ddata->adc_iio)) {
 		ret = PTR_ERR(ddata->adc_iio);
@@ -2722,24 +2546,46 @@ static int mt6375_tcpc_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	/* Must init before sw reset */
-	ret = mt6375_init_fod_ctd(ddata);
-	if (ret < 0) {
-		dev_err(ddata->dev, "failed to init fod ctd(%d)\n", ret);
-		goto err;
-	}
-
 	ret = mt6375_sw_reset(ddata);
 	if (ret < 0) {
 		dev_err(ddata->dev, "failed to reset sw(%d)\n", ret);
 		goto err;
 	}
 
-	/* disable fod */
-	if (!ddata->desc->en_fod) {
-		ret = mt6375_update_bits(ddata, 0xcf, 0x40, 0x00);
+	if (ddata->desc->en_fod) {
+#if MT6375_FOD_SRC_EN
+		/* Enable RD Connect auto detection */
+		ret = mt6375_set_bits(ddata, MT6375_REG_SHIELDCTRL1,
+				      MT6375_MSK_RDDET_AUTO);
 		if (ret < 0) {
-			dev_err(ddata->dev, "failed to disable fod\n");
+			dev_notice(ddata->dev, "failed to enable rddet auto\n");
+			goto err;
+		}
+		/* Enable FOD trigger control by CC attached as SRC */
+		ret = mt6375_set_bits(ddata, MT6375_REG_FODCTRL,
+				      MT6375_MSK_FOD_SRC_EN);
+		if (ret < 0) {
+			dev_notice(ddata->dev, "failed to enable fod src en\n");
+			goto err;
+		}
+#endif	/* MT6375_FOD_SRC_EN */
+	} else {
+		/* disable fod */
+		ret = mt6375_clr_bits(ddata, MT6375_REG_FODCTRL,
+				      MT6375_MSK_FOD_SNK_EN);
+		if (ret < 0) {
+			dev_notice(ddata->dev,
+				   "failed to disable fod snk en\n");
+			goto err;
+		}
+	}
+
+	/* disable otp */
+	if (!ddata->desc->en_typec_otp) {
+		ret = mt6375_clr_bits(ddata, MT6375_REG_TYPECOTPCTRL,
+				      MT6375_MSK_TYPECOTP_HWEN);
+		if (ret < 0) {
+			dev_notice(ddata->dev, "failed to disable otp\n");
 			goto err;
 		}
 	}
@@ -2762,10 +2608,11 @@ static void mt6375_shutdown(struct platform_device *pdev)
 	struct mt6375_tcpc_data *ddata = platform_get_drvdata(pdev);
 
 	disable_irq(ddata->irq);
-	alarm_cancel(&ddata->hidet_debtimer);
-	cancel_delayed_work_sync(&ddata->hidet_dwork);
+	cancel_delayed_work_sync(&ddata->cc_short_dwork);
 	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_WATER_DETECTION) {
+#if !CONFIG_WD_DURING_PLUGGED_IN
 		cancel_delayed_work_sync(&ddata->wd_polling_dwork);
+#endif	/* !CONFIG_WD_DURING_PLUGGED_IN */
 		cancel_delayed_work_sync(&ddata->wd12_strise_irq_dwork);
 	}
 
@@ -2775,12 +2622,13 @@ static void mt6375_shutdown(struct platform_device *pdev)
 static int tcpc_mt6375_prepare(struct device *dev)
 {
 	struct mt6375_tcpc_data *ddata = dev_get_drvdata(dev);
+	struct tcpc_device *tcpc = ddata->tcpc;
 
 	dev_info(dev, "%s: suspend_pending: %d, pending_event: %d\n", __func__,
-		 atomic_read(&ddata->tcpc->suspend_pending),
-		 atomic_read(&ddata->tcpc->pending_event));
-	if (atomic_read(&ddata->tcpc->suspend_pending) > 0 ||
-	    atomic_read(&ddata->tcpc->pending_event) > 0)
+		 atomic_read(&tcpc->suspend_pending),
+		 atomic_read(&tcpc->pending_event));
+	if (atomic_read(&tcpc->suspend_pending) > 0 ||
+	    atomic_read(&tcpc->pending_event) > 0)
 		return -EBUSY;
 	return 0;
 }
