@@ -26,6 +26,7 @@
 #include <linux/sched.h>
 #include <linux/sched/clock.h>
 #include <linux/seq_file.h>
+#include <linux/seq_buf.h>
 #include <linux/slab.h>
 #include <mt-plat/aee.h>
 
@@ -73,11 +74,10 @@ const void *irq_to_handler(int irq)
 }
 
 #if !IS_ENABLED(CONFIG_ARM64)
-const int irq_to_ipi_type(int irq)
+const int desc_to_ipi_type(struct irq_desc *desc)
 {
 	int temp_irq = 0;
 	int num = 0;
-	struct irq_desc *desc = irq_to_desc(irq);
 	struct irq_desc *temp_desc;
 
 	for_each_irq_desc(temp_irq, temp_desc) {
@@ -93,10 +93,9 @@ const int irq_to_ipi_type(int irq)
 	return -1;
 }
 #else
-const int irq_to_ipi_type(int irq)
+const int desc_to_ipi_type(struct irq_desc *desc)
 {
 	struct irq_desc **ipi_desc = ipi_desc_get();
-	struct irq_desc *desc = irq_to_desc(irq);
 	int nr_ipi = nr_ipi_get();
 	int i = 0;
 
@@ -106,6 +105,13 @@ const int irq_to_ipi_type(int irq)
 	return -1;
 }
 #endif
+
+const int irq_to_ipi_type(unsigned int irq)
+{
+	struct irq_desc *desc = irq_to_desc(irq);
+
+	return desc_to_ipi_type(desc);
+}
 
 /*
  * return true: not in debounce (will do aee) and update time if update is true
@@ -139,38 +145,24 @@ bool irq_mon_aee_debounce_check(bool update)
 	return ret;
 }
 
-//#ifdef MODULE
-// workaround for kstat_irqs_cpu
-static unsigned int irq_mon_irqs_cpu(unsigned int irq, int cpu)
-{
-	struct irq_desc *desc = irq_to_desc(irq);
-
-	return desc && desc->kstat_irqs ?
-			*per_cpu_ptr(desc->kstat_irqs, cpu) : 0;
-}
-//#else
-//GKI is generally compiled in a module,temporarily remove the
-//external interface
-//#define irq_mon_irqs_cpu(irq, cpu) kstat_irqs_cpu(irq, cpu)
-//#endif
-
-/* per cpu */
 struct irq_count_stat {
-	int enabled;
+	unsigned int index;
 	unsigned long long t_start;
 	unsigned long long t_end;
+	unsigned long long t_diff;
 };
 
-static struct irq_count_stat __percpu *irq_count_data;
-static struct hrtimer __percpu *irq_count_tracer_hrtimer;
+static struct irq_count_stat irq_count_stat;
 
 /* per irq */
 struct irq_mon_desc {
-	unsigned int __percpu *count;
+	unsigned int irq;
+	unsigned int __percpu (*count)[2];
 	u64 __percpu *time;
 };
 
 static DEFINE_XARRAY(imdesc_xa);
+#define IMDESC_IRQ(imdesc, cpu, i) ((*per_cpu_ptr((imdesc)->count, cpu))[i])
 
 static struct irq_mon_desc *irq_mon_desc_lookup(unsigned int irq)
 {
@@ -185,12 +177,13 @@ static struct irq_mon_desc *irq_mon_desc_alloc(unsigned int irq)
 	desc = kzalloc(sizeof(*desc), GFP_ATOMIC);
 	if (!desc)
 		goto out;
-	desc->count = alloc_percpu_gfp(unsigned int, GFP_ATOMIC);
+	desc->count = alloc_percpu_gfp((*desc->count), GFP_ATOMIC);
 	if (!desc->count)
 		goto out_free_desc;
 	desc->time = alloc_percpu_gfp((*desc->time), GFP_ATOMIC);
 	if (!desc->time)
 		goto out_free_count;
+	desc->irq = irq;
 	/*
 	 * This entry might be stored by concurrent irq_mon_desc_alloc()
 	 * Use xa_insert() to prevent override the entry.
@@ -236,69 +229,125 @@ static int irq_time_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
-static unsigned int irq_count_irqs_cpu(int irq, int cpu)
+static void update_irq_count(void)
 {
-	struct irq_mon_desc *desc;
+	unsigned int irq;
+	int cpu;
+	struct irq_desc *desc;
+	struct irq_mon_desc *imdesc;
+	struct irq_count_stat *stat = &irq_count_stat;
+	unsigned long flags;
+	XA_STATE(xas, &imdesc_xa, 0);
 
-	desc = irq_mon_desc_lookup(irq);
-	return (desc && desc->count) ? *per_cpu_ptr(desc->count, cpu) : 0;
+	/* Step 1: pre-allocate irq_mon_desc */
+	rcu_read_lock();
+	for_each_irq_nr(irq) {
+		imdesc = irq_mon_desc_lookup(irq);
+		if (imdesc)
+			continue;
+
+		desc = irq_to_desc(irq);
+		if (!desc || !desc->kstat_irqs)
+			continue;
+
+		for_each_online_cpu(cpu) {
+			if (data_race(*per_cpu_ptr(desc->kstat_irqs, cpu))) {
+				irq_mon_desc_alloc(irq);
+				break;
+			}
+		}
+	}
+	rcu_read_unlock();
+
+	/*
+	 * Step 2: Take a snapshot of IRQ counts.
+	 * To reduce the duration of critical section, do not check irq count
+	 * or allocate memory here.
+	 */
+	stat->index = !stat->index;
+	stat->t_start = stat->t_end;
+	xas_lock_irqsave(&xas, flags);
+	/*
+	 * Get the timestamp when holding lock to reduce noise.
+	 * The timestamp is not protected by xa_lock.
+	 */
+	stat->t_end = sched_clock();
+	xas_for_each(&xas, imdesc, ULONG_MAX) {
+		if (xas_retry(&xas, imdesc))
+			continue;
+		desc = irq_to_desc(imdesc->irq);
+		if (!desc || !desc->kstat_irqs)
+			continue;
+
+		for_each_online_cpu(cpu)
+			IMDESC_IRQ(imdesc, cpu, stat->index) =
+				data_race(*per_cpu_ptr(desc->kstat_irqs, cpu));
+	}
+	xas_unlock_irqrestore(&xas, flags);
+	stat->t_diff = stat->t_end - stat->t_start;
 }
 
-static void irq_count_save_irqs_cpu(int irq, unsigned int irqs, int cpu)
+static void show_one_imdesc(unsigned int output, struct irq_mon_desc *imdesc,
+			    int cpu, unsigned int index)
 {
-	struct irq_mon_desc *desc;
+	unsigned int count, prev_count;
+	char msg[MAX_MSG_LEN];
+	struct seq_buf buf;
+	struct irq_desc *desc;
+	unsigned long flags;
 
-	desc = irq_mon_desc_lookup(irq);
-	if (!desc)
-		desc = irq_mon_desc_alloc(irq);
+	count = IMDESC_IRQ(imdesc, cpu, index);
+	prev_count = IMDESC_IRQ(imdesc, cpu, !index);
 
-	if (desc)
-		*per_cpu_ptr(desc->count, cpu) = irqs;
+	if (count - prev_count == 0)
+		return;
+	seq_buf_init(&buf, msg, sizeof(msg));
+	seq_buf_printf(&buf, "%5u:%10u %10u %10u ", imdesc->irq,
+		       prev_count, count, count - prev_count);
+	desc = irq_to_desc(imdesc->irq);
+	if (!desc) {
+		irq_mon_msg(output, "%s{irq_desc not exist!}", msg);
+		return;
+	}
+	raw_spin_lock_irqsave(&desc->lock, flags);
+	if (desc->action && desc->action->name) {
+		seq_buf_printf(&buf, "%s", desc->action->name);
+		if (!strcmp(desc->action->name, "IPI"))
+			seq_buf_printf(&buf, "%d", desc_to_ipi_type(desc));
+	} else {
+		seq_buf_printf(&buf, "%s", "NULL");
+	}
+	raw_spin_unlock_irqrestore(&desc->lock, flags);
+	irq_mon_msg(output, "%s", msg);
 }
 
 static void __show_irq_count_info(unsigned int output)
 {
+	struct irq_count_stat *stat = &irq_count_stat;
+	XA_STATE(xas, &imdesc_xa, 0);
 	int cpu;
+	struct irq_mon_desc *imdesc;
+
+	/* update the irq count if irq_count_task starved for more than 1s */
+	if (sched_clock() - stat->t_end > 2 * NSEC_PER_SEC)
+		update_irq_count();
 
 	irq_mon_msg(output, "===== IRQ Status =====");
+	irq_mon_msg(output, "from %lld.%06lu to %lld.%06lu, %lld ms",
+		    sec_high(stat->t_start), sec_low(stat->t_start),
+		    sec_high(stat->t_end), sec_low(stat->t_end),
+		    msec_high(stat->t_diff));
 
+	rcu_read_lock();
 	for_each_possible_cpu(cpu) {
-		struct irq_count_stat *irq_cnt;
-		int irq;
-		unsigned long long now, prev;
-
-		now = sched_clock();
-
-		irq_cnt = per_cpu_ptr(irq_count_data, cpu);
-		prev = irq_cnt->t_end;
-
-		irq_mon_msg(output, "CPU: %d", cpu);
-		irq_mon_msg(output, "from %lld.%06lu to %lld.%06lu, %lld ms",
-			    sec_high(prev), sec_low(prev),
-			    sec_high(now), sec_low(now),
-			    msec_high(now - prev));
-
-		for_each_irq_nr(irq) {
-			unsigned int count, prev_count;
-			const char *irq_name;
-
-			count = irq_mon_irqs_cpu(irq, cpu);
-			if (!count)
-				continue;
-			prev_count = irq_count_irqs_cpu(irq, cpu);
-
-			irq_name = irq_to_name(irq);
-			if (irq_name && !strcmp(irq_name, "IPI"))
-				irq_mon_msg(output, "    %d:%s%d +%d(%d)",
-					    irq, irq_name, irq_to_ipi_type(irq),
-					    count - prev_count, count);
-			else
-				irq_mon_msg(output, "    %d:%s +%d(%d)",
-					    irq, irq_name ? irq_name : "NULL",
-					    count - prev_count, count);
-		}
+		irq_mon_msg(output, "CPU%d", cpu);
+		irq_mon_msg(output, "# IRQ ORIG-COUNT  NEW-COUNT  INCREASED IRQ-NAME");
+		xas_set(&xas, 0);
+		xas_for_each(&xas, imdesc, ULONG_MAX)
+			show_one_imdesc(output, imdesc, cpu, stat->index);
 		irq_mon_msg(output, "");
 	}
+	rcu_read_unlock();
 }
 
 void show_irq_count_info(unsigned int output)
@@ -307,173 +356,164 @@ void show_irq_count_info(unsigned int output)
 		__show_irq_count_info(output);
 }
 
-enum hrtimer_restart irq_count_tracer_hrtimer_fn(struct hrtimer *hrtimer)
+/* caller must holding desc->lock */
+static unsigned int check_burst_irq(unsigned long count, struct irq_desc *desc)
 {
-	struct irq_count_stat *irq_cnt = this_cpu_ptr(irq_count_data);
-	int cpu = smp_processor_id();
-	int irq, irq_num, i, skip;
-	unsigned int count;
-	unsigned long long t_avg, t_diff, t_diff_ms;
-	char aee_msg[MAX_MSG_LEN];
-	int list_num = ARRAY_SIZE(irq_count_plist);
+	u64 t_avg = irq_count_stat.t_diff;
+	unsigned int i, ret = 0;
 
-	if (!irq_count_tracer)
-		return HRTIMER_NORESTART;
+	if (!desc->action || !desc->action->name || !desc->action->handler)
+		return ret;
 
-	hrtimer_forward_now(hrtimer, ms_to_ktime(1000));
-	/* skip checking if more than one work is blocked in queue */
-	if (sched_clock() - irq_cnt->t_end < 500000000ULL)
-		return HRTIMER_RESTART;
+	do_div(t_avg, count);
+	if (t_avg > irq_period_th1_ns)
+		return ret;
 
-	irq_cnt->t_start = irq_cnt->t_end;
-	irq_cnt->t_end = sched_clock();
-	t_diff = irq_cnt->t_end - irq_cnt->t_start;
+	/* Print a log if anyone exceeds the threshold. */
+	ret = TO_BOTH;
 
-	for_each_irq_nr(irq) {
-		const char *tmp_irq_name = NULL;
-		char irq_name[64];
-		char irq_handler_addr[20];
-		char irq_handler_name[64];
-		const void *irq_handler = NULL;
-
-		irq_num = irq_mon_irqs_cpu(irq, cpu);
-		count = irq_num - irq_count_irqs_cpu(irq, cpu);
-
-		/* The irq is not triggered in this period */
-		if (count == 0)
-			continue;
-
-		irq_count_save_irqs_cpu(irq, irq_num, cpu);
-		/* The irq count is decreased */
-		if (unlikely(count > UINT_MAX / 2))
-			continue;
-
-		t_avg = t_diff;
-		t_diff_ms = t_diff;
-		do_div(t_avg, count);
-		do_div(t_diff_ms, 1000000);
-
-		if (t_avg > irq_period_th1_ns)
-			continue;
-
-		tmp_irq_name = irq_to_name(irq);
-		if (!tmp_irq_name)
-			continue;
-
-		for (i = 0, skip = 0; i < list_num && !skip; i++) {
-			if (!strcmp(tmp_irq_name, irq_count_plist[i].name))
-				if (t_avg > irq_count_plist[i].period)
-					skip = 1;
-		}
-
-		if (skip)
-			continue;
-
-		if (!strcmp(tmp_irq_name, "IPI")) {
-			scnprintf(irq_name, sizeof(irq_name), "%s%d",
-				  tmp_irq_name, irq_to_ipi_type(irq));
-			skip = 1;
-		} else {
-			scnprintf(irq_name, sizeof(irq_name), "%s", tmp_irq_name);
-		}
-
-		irq_handler = irq_to_handler(irq);
-		scnprintf(irq_handler_addr, sizeof(irq_handler_addr), "%px", irq_handler);
-		scnprintf(irq_handler_name, sizeof(irq_handler_name), "%pS", irq_handler);
-
-		scnprintf(aee_msg, sizeof(aee_msg),
-			  "irq: %d [<%s>]%s, %s count +%d in %lld ms, from %lld.%06lu to %lld.%06lu on CPU:%d",
-			  irq, irq_handler_addr, irq_handler_name, irq_name,
-			  count, t_diff_ms,
-			  sec_high(irq_cnt->t_start), sec_low(irq_cnt->t_start),
-			  sec_high(irq_cnt->t_end), sec_low(irq_cnt->t_end),
-			  raw_smp_processor_id());
-
-		if (irq_period_th2_ns && t_avg < irq_period_th2_ns &&
-		    irq_count_aee_limit && !skip)
-			/* aee threshold and aee limit meet */
-			if (!irq_mon_aee_debounce_check(true)) {
-				/* in debounce period, to FTRACE only */
-				irq_mon_msg(TO_FTRACE, aee_msg);
-			} else {
-				char module[100];
-				/* do aee and kernel log */
-				irq_mon_msg(TO_BOTH, aee_msg);
-				scnprintf(module, sizeof(module),
-					  "BURST IRQ:%d, %s %s +%d in %lldms",
-					  irq, irq_handler_name, irq_name,
-					  count, t_diff_ms);
-				aee_kernel_warning_api(__FILE__, __LINE__,
-						       DB_OPT_DUMMY_DUMP | DB_OPT_FTRACE,
-						       module, aee_msg);
-			}
-		else
-			/* no aee, just logging (to FTRACE) */
-			irq_mon_msg(TO_FTRACE, aee_msg);
+	for (i = 0; i < ARRAY_SIZE(irq_count_plist); i++) {
+		if (!strcmp(desc->action->name, irq_count_plist[i].name))
+			if (t_avg > irq_count_plist[i].period)
+				return ret;
 	}
 
-	return HRTIMER_RESTART;
+	/* skip AEE for IPI */
+	if (!strcmp(desc->action->name, "IPI"))
+		return ret;
+
+	if (irq_period_th2_ns && t_avg < irq_period_th2_ns &&
+	    irq_count_aee_limit &&
+	    irq_mon_aee_debounce_check(true))
+		ret |= TO_AEE;
+	return ret;
 }
 
-static void irq_count_tracer_start(int cpu)
+static void irq_count_core(void)
 {
-	struct hrtimer *hrtimer = this_cpu_ptr(irq_count_tracer_hrtimer);
+	XA_STATE(xas, &imdesc_xa, 0);
+	struct irq_count_stat *stat = &irq_count_stat;
+	unsigned long long t_diff_ms;
+	struct irq_desc *desc;
+	struct irq_mon_desc *imdesc;
+	int cpu;
 
-	hrtimer_init(hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL_HARD);
-	hrtimer->function = irq_count_tracer_hrtimer_fn;
-	hrtimer_start(hrtimer, ms_to_ktime(1000), HRTIMER_MODE_REL_PINNED_HARD);
+	if (!irq_count_tracer)
+		return;
+
+	update_irq_count();
+
+	/* check irq counts */
+	t_diff_ms = stat->t_diff;
+	do_div(t_diff_ms, NSEC_PER_MSEC);
+
+	xas_set(&xas, 0);
+	rcu_read_lock();
+	xas_for_each(&xas, imdesc, ULONG_MAX) {
+		struct seq_buf buf_msg, buf_mod;
+		unsigned long count, flags;
+		char aee_msg[MAX_MSG_LEN] = {};
+		char module[100] = {};
+		unsigned int out;
+
+		if (xas_retry(&xas, imdesc))
+			continue;
+		/* Skip the first time of checking. */
+		if (!xas_get_mark(&xas, XA_MARK_0)) {
+			xas_set_mark(&xas, XA_MARK_0);
+			continue;
+		}
+		for_each_online_cpu(cpu) {
+			count = IMDESC_IRQ(imdesc, cpu, stat->index) -
+				IMDESC_IRQ(imdesc, cpu, !stat->index);
+			/* The irq is not triggered in this period */
+			if (count == 0)
+				continue;
+
+			/* The irq count is decreased */
+			if (unlikely(count > UINT_MAX / 2))
+				continue;
+
+			desc = irq_to_desc(imdesc->irq);
+			if (!desc)
+				continue;
+
+			raw_spin_lock_irqsave(&desc->lock, flags);
+			out = check_burst_irq(count, desc);
+			if (!out) {
+				raw_spin_unlock_irqrestore(&desc->lock, flags);
+				continue;
+			}
+			seq_buf_init(&buf_msg, aee_msg, sizeof(aee_msg));
+			seq_buf_init(&buf_mod, module, sizeof(module));
+			seq_buf_printf(&buf_msg, "irq: %u [<%px>]%ps, %s",
+				       imdesc->irq, (void *)desc->action->handler,
+				       (void *)desc->action->handler,
+				       desc->action->name);
+			seq_buf_printf(&buf_mod, "BURST IRQ:%u, %ps %s",
+				       imdesc->irq, desc->action->handler,
+				       desc->action->name);
+
+			if (!strcmp(desc->action->name, "IPI")) {
+				int ipi_type = desc_to_ipi_type(desc);
+
+				seq_buf_printf(&buf_msg, "%d", ipi_type);
+				seq_buf_printf(&buf_mod, "%d", ipi_type);
+			}
+			raw_spin_unlock_irqrestore(&desc->lock, flags);
+
+			seq_buf_printf(&buf_msg, " count +%lu in %lld ms, from %lld.%06lu to %lld.%06lu on CPU:%d",
+				       count, t_diff_ms,
+				       sec_high(stat->t_start), sec_low(stat->t_start),
+				       sec_high(stat->t_end), sec_low(stat->t_end),
+				       cpu);
+			seq_buf_printf(&buf_mod, " +%lu in %llums", count, t_diff_ms);
+
+			irq_mon_msg(out, aee_msg);
+			if (out & TO_AEE)
+				aee_kernel_warning_api(__FILE__, __LINE__,
+						       DB_OPT_DUMMY_DUMP
+						       | DB_OPT_FTRACE,
+						       module, aee_msg);
+		}
+	}
+	rcu_read_unlock();
 }
 
-static int irq_count_tracer_start_fn(void *ignore)
+static int irq_count_kthread(void *unused)
 {
-	int cpu = smp_processor_id();
-
-	per_cpu_ptr(irq_count_data, cpu)->enabled = 1;
-	barrier();
-	irq_count_tracer_start(cpu);
+	while (!kthread_should_stop()) {
+		irq_count_core();
+		msleep(1000);
+	}
+	pr_debug("%s stopped\n", __func__);
 	return 0;
 }
 
-static void irq_count_tracer_work(struct work_struct *work)
+static struct task_struct *irq_count_task;
+
+static int start_irq_count_task(void)
 {
-	int cpu, done;
+	struct task_struct *t;
 
-	do {
-		done = 1;
-		for_each_possible_cpu(cpu) {
-			if (per_cpu_ptr(irq_count_data, cpu)->enabled)
-				continue;
+	t = kthread_run(irq_count_kthread, NULL, "%s", "irqcountmonitor");
+	if (IS_ERR(t))
+		return PTR_ERR(t);
 
-			if (cpu_online(cpu))
-				smp_call_on_cpu(cpu, irq_count_tracer_start_fn, NULL, false);
-			else
-				done = 0;
-		}
-		if (!done)
-			msleep(500);
-	} while (!done);
+	irq_count_task = t;
+	return 0;
 }
 
 extern bool b_count_tracer_default_enabled;
-static DECLARE_WORK(tracer_work, irq_count_tracer_work);
 int irq_count_tracer_init(void)
 {
-	irq_count_data = alloc_percpu(struct irq_count_stat);
-	if (!irq_count_data) {
-		pr_info("Failed to alloc irq_count_data\n");
-		return -ENOMEM;
-	}
-
-	irq_count_tracer_hrtimer = alloc_percpu(struct hrtimer);
-	if (!irq_count_tracer_hrtimer) {
-		free_percpu(irq_count_data);
-		pr_info("Failed to alloc irq_count_tracer_hrtimer\n");
-		return -ENOMEM;
-	}
-
+	/*
+	 * At this stage, no one else will modify the irq_count_tracer, so it
+	 * is unnecessary to hold a lock here.
+	 */
 	if (b_count_tracer_default_enabled) {
 		irq_count_tracer = 1;
-		schedule_work(&tracer_work);
+		return start_irq_count_task();
 	}
 	return 0;
 }
@@ -483,8 +523,8 @@ void irq_count_tracer_exit(void)
 	struct irq_mon_desc *desc;
 	unsigned long index;
 
-	free_percpu(irq_count_data);
-	free_percpu(irq_count_tracer_hrtimer);
+	if (irq_count_task)
+		kthread_stop(irq_count_task);
 	xa_for_each(&imdesc_xa, index, desc) {
 		free_percpu(desc->count);
 		kfree(desc);
@@ -492,28 +532,19 @@ void irq_count_tracer_exit(void)
 	xa_destroy(&imdesc_xa);
 }
 
-/* Must holding lock*/
+/* Caller must holding lock */
 void irq_count_tracer_set(bool val)
 {
-	int cpu;
-
 	if (irq_count_tracer == val)
 		return;
 
-	if (val) {
-		/* restart irq_count_tracer */
-		irq_count_tracer = 1;
-		schedule_work(&tracer_work);
+	irq_count_tracer = val;
+	if (irq_count_tracer) {
+		if (start_irq_count_task())
+			irq_count_tracer = false;
 	} else {
-		flush_work(&tracer_work);
-		irq_count_tracer = 0;
-		for_each_possible_cpu(cpu) {
-			struct hrtimer *hrtimer =
-				per_cpu_ptr(irq_count_tracer_hrtimer, cpu);
-
-			per_cpu_ptr(irq_count_data, cpu)->enabled = 0;
-			hrtimer_cancel(hrtimer);
-		}
+		kthread_stop(irq_count_task);
+		irq_count_task = NULL;
 	}
 }
 

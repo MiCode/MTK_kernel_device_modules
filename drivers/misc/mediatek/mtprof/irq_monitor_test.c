@@ -152,6 +152,11 @@ void irq_mon_test_smp_func(void)
 	smp_call_function(irq_mon_delay, 0, 0);
 }
 
+extern void show_irq_count_info(unsigned int output);
+void irq_mon_test_show_irq_count(void)
+{
+	show_irq_count_info(TO_BOTH);
+}
 struct irq_mon_test_func {
 	char name[32];
 	void (*func)(void);
@@ -166,6 +171,7 @@ struct irq_mon_test_func irq_mon_test_list[] = {
 	{"hrtimer_dur", irq_mon_test_HRTIMER},
 	{"preempt_count", irq_mon_test_PREEMPT_COUNT},
 	{"smp_func_dur", irq_mon_test_smp_func},
+	{"show_irq_count", irq_mon_test_show_irq_count},
 };
 
 static ssize_t
