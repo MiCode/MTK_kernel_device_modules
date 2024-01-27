@@ -13,7 +13,7 @@
 #include <trace/events/task.h>
 #include <linux/platform_device.h>
 #include <linux/of_platform.h>
-#include <trace/hooks/fpsimd.h>
+/*#include <trace/hooks/fpsimd.h>*/
 #include <trace/hooks/cgroup.h>
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
