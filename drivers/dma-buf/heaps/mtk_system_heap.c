@@ -71,6 +71,7 @@ struct system_heap_buffer {
 };
 
 static bool smmu_v3_enable;
+static const struct dma_map_ops *smmu_dma_ops;
 static struct iova_cache_data *get_iova_cache(struct system_heap_buffer *buffer,
 					      u64 tab_id, bool coherent)
 {
@@ -263,6 +264,24 @@ static int fill_buffer_info(struct system_heap_buffer *buffer,
 	return 0;
 }
 
+static void mtk_query_smmu_dma_ops(struct device *dev)
+{
+	if (likely(!smmu_v3_enable || smmu_dma_ops))
+		return;
+
+	if (dev && get_smmu_device(dev) && dev->dma_ops)
+		smmu_dma_ops = dev->dma_ops;
+}
+
+static bool is_cache_sync_dev(struct device *dev)
+{
+	if (dev && !dev_is_dma_coherent(dev) &&
+	    (!dev->dma_ops || (dev->dma_ops == smmu_dma_ops)))
+		return true;
+
+	return false;
+}
+
 static int system_heap_attach(struct dma_buf *dmabuf,
 			      struct dma_buf_attachment *attachment)
 {
@@ -281,6 +300,7 @@ static int system_heap_attach(struct dma_buf *dmabuf,
 	}
 
 	dmabuf_name_check(dmabuf, attachment->dev);
+	mtk_query_smmu_dma_ops(attachment->dev);
 
 	a->table = table;
 	a->dev = attachment->dev;
@@ -443,6 +463,7 @@ static int system_heap_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
 {
 	struct system_heap_buffer *buffer = dmabuf->priv;
 	struct dma_heap_attachment *a;
+	bool synced = false;
 
 	mutex_lock(&buffer->lock);
 
@@ -453,7 +474,13 @@ static int system_heap_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
 		list_for_each_entry(a, &buffer->attachments, list) {
 			if (!a->mapped)
 				continue;
+
+			if (synced && is_cache_sync_dev(a->dev))
+				continue;
+
 			dma_sync_sgtable_for_cpu(a->dev, a->table, direction);
+			if (!synced)
+				synced = is_cache_sync_dev(a->dev);
 		}
 	}
 	mutex_unlock(&buffer->lock);
@@ -466,6 +493,7 @@ static int system_heap_dma_buf_end_cpu_access(struct dma_buf *dmabuf,
 {
 	struct system_heap_buffer *buffer = dmabuf->priv;
 	struct dma_heap_attachment *a;
+	bool synced = false;
 
 	mutex_lock(&buffer->lock);
 
@@ -476,7 +504,13 @@ static int system_heap_dma_buf_end_cpu_access(struct dma_buf *dmabuf,
 		list_for_each_entry(a, &buffer->attachments, list) {
 			if (!a->mapped)
 				continue;
+
+			if (synced && is_cache_sync_dev(a->dev))
+				continue;
+
 			dma_sync_sgtable_for_device(a->dev, a->table, direction);
+			if (!synced)
+				synced = is_cache_sync_dev(a->dev);
 		}
 	}
 	mutex_unlock(&buffer->lock);
@@ -867,6 +901,7 @@ static int mtk_mm_heap_dma_buf_begin_cpu_access_partial(struct dma_buf *dmabuf,
 	struct system_heap_buffer *buffer = dmabuf->priv;
 	struct dma_heap_attachment *a;
 	struct sg_table *sgt_tmp;
+	bool synced = false;
 	int ret;
 
 	mutex_lock(&buffer->lock);
@@ -888,6 +923,9 @@ static int mtk_mm_heap_dma_buf_begin_cpu_access_partial(struct dma_buf *dmabuf,
 			if (!a->mapped)
 				continue;
 
+			if (synced && is_cache_sync_dev(a->dev))
+				continue;
+
 			sgt_tmp = dup_sg_table_by_range(a->table, offset, len);
 			if (IS_ERR(sgt_tmp)) {
 				pr_err("%s: dup sg_table failed!\n", __func__);
@@ -897,6 +935,8 @@ static int mtk_mm_heap_dma_buf_begin_cpu_access_partial(struct dma_buf *dmabuf,
 
 			dma_sync_sg_for_cpu(a->dev, sgt_tmp->sgl,
 					    sgt_tmp->nents, direction);
+			if (!synced)
+				synced = is_cache_sync_dev(a->dev);
 
 			sg_free_table(sgt_tmp);
 			kfree(sgt_tmp);
@@ -915,6 +955,7 @@ static int mtk_mm_heap_dma_buf_end_cpu_access_partial(struct dma_buf *dmabuf,
 	struct system_heap_buffer *buffer = dmabuf->priv;
 	struct dma_heap_attachment *a;
 	struct sg_table *sgt_tmp;
+	bool synced = false;
 	int ret;
 
 	mutex_lock(&buffer->lock);
@@ -935,6 +976,9 @@ static int mtk_mm_heap_dma_buf_end_cpu_access_partial(struct dma_buf *dmabuf,
 			if (!a->mapped)
 				continue;
 
+			if (synced && is_cache_sync_dev(a->dev))
+				continue;
+
 			sgt_tmp = dup_sg_table_by_range(a->table, offset, len);
 			if (IS_ERR(sgt_tmp)) {
 				pr_err("%s: dup sg_table failed!\n", __func__);
@@ -944,6 +988,8 @@ static int mtk_mm_heap_dma_buf_end_cpu_access_partial(struct dma_buf *dmabuf,
 
 			dma_sync_sg_for_device(a->dev, sgt_tmp->sgl,
 					       sgt_tmp->nents, direction);
+			if (!synced)
+				synced = is_cache_sync_dev(a->dev);
 
 			sg_free_table(sgt_tmp);
 			kfree(sgt_tmp);
