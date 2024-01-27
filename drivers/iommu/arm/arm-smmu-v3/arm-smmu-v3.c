@@ -4310,7 +4310,7 @@ out_runtime_put:
 	return ret;
 }
 
-static int arm_smmu_device_remove(struct platform_device *pdev)
+static void arm_smmu_device_remove(struct platform_device *pdev)
 {
 	struct arm_smmu_device *smmu = platform_get_drvdata(pdev);
 	int ret = 0;
@@ -4321,7 +4321,7 @@ static int arm_smmu_device_remove(struct platform_device *pdev)
 	ret = arm_smmu_rpm_get(smmu);
 	if (ret) {
 		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
-		return ret;
+		return;
 	}
 
 	arm_smmu_device_disable(smmu);
@@ -4331,8 +4331,6 @@ static int arm_smmu_device_remove(struct platform_device *pdev)
 		smmu->impl->smmu_hw_deinit(smmu);
 
 	arm_smmu_rpm_put(smmu);
-
-	return 0;
 }
 
 static void arm_smmu_device_shutdown(struct platform_device *pdev)
@@ -4392,7 +4390,7 @@ static struct platform_driver arm_smmu_driver = {
 		.suppress_bind_attrs	= true,
 	},
 	.probe	= arm_smmu_device_probe,
-	.remove	= arm_smmu_device_remove,
+	.remove_new = arm_smmu_device_remove,
 	.shutdown = arm_smmu_device_shutdown,
 };
 module_driver(arm_smmu_driver, platform_driver_register,
