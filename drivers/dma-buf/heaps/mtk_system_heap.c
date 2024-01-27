@@ -32,8 +32,9 @@
 #include "mtk_page_pool.h"
 #include "mtk-smmu-v3.h"
 
-#define MAP_FAILED_DUMP_RS_INTERVAL      (2 * HZ)
-#define MAP_FAILED_DUMP_RS_BURST         (1)
+#define MAP_FAILED_DUMP_RS_INTERVAL	(2 * HZ)
+#define MAP_FAILED_DUMP_RS_BURST	(1)
+#define RUN_TIMEOUT_TO_LOG		(100000000ULL)
 
 atomic64_t dma_heap_normal_total = ATOMIC64_INIT(0);
 EXPORT_SYMBOL(dma_heap_normal_total);
@@ -288,17 +289,26 @@ static int system_heap_attach(struct dma_buf *dmabuf,
 	struct system_heap_buffer *buffer = dmabuf->priv;
 	struct dma_heap_attachment *a;
 	struct sg_table *table;
+	u64 tm1, tm2, tm_mid;
 
+	tm1 = sched_clock();
+	DMABUF_TRACE_BEGIN("%s(%lu,%u)", __func__, buffer->len, buffer->sg_table.nents);
 	a = kzalloc(sizeof(*a), GFP_KERNEL);
-	if (!a)
-		return -ENOMEM;
-
-	table = dup_sg_table(&buffer->sg_table);
-	if (IS_ERR(table)) {
-		kfree(a);
+	if (!a) {
+		DMABUF_TRACE_END();
 		return -ENOMEM;
 	}
 
+	DMABUF_TRACE_BEGIN("dup_sg_table");
+	table = dup_sg_table(&buffer->sg_table);
+	DMABUF_TRACE_END();
+	if (IS_ERR(table)) {
+		kfree(a);
+		DMABUF_TRACE_END();
+		return -ENOMEM;
+	}
+
+	tm_mid = sched_clock();
 	dmabuf_name_check(dmabuf, attachment->dev);
 	mtk_query_smmu_dma_ops(attachment->dev);
 
@@ -313,6 +323,13 @@ static int system_heap_attach(struct dma_buf *dmabuf,
 	list_add(&a->list, &buffer->attachments);
 	mutex_unlock(&buffer->lock);
 
+	tm2 = sched_clock();
+	if (tm2 - tm1 > RUN_TIMEOUT_TO_LOG)
+		pr_info("dmabuf-time-attach:%llums,%llums,size:%lu,nent:%u\n",
+			(tm2 - tm1)/1000000, (tm_mid - tm1)/1000000,
+			buffer->len, buffer->sg_table.nents);
+
+	DMABUF_TRACE_END();
 	return 0;
 }
 
@@ -340,6 +357,7 @@ static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attac
 	struct sg_table *table = a->table;
 	int attr = attachment->dma_map_attrs;
 	struct iova_cache_data *cache_data;
+	u64 tm1, tm2, tm_mid;
 	int ret;
 
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(attachment->dev);
@@ -352,6 +370,9 @@ static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attac
 	if (a->uncached)
 		attr |= DMA_ATTR_SKIP_CPU_SYNC;
 
+	tm1 = sched_clock();
+	DMABUF_TRACE_BEGIN("%s(%lu,%u)", __func__, buffer->len, buffer->sg_table.nents);
+	dmabuf_log_map(attachment->dmabuf);
 	mutex_lock(&buffer->map_lock);
 
 	if (fwspec && !smmu_v3_enable) {
@@ -374,14 +395,23 @@ static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attac
 		ret = copy_sg_table(cache_data->mapped_table[dom_id], table);
 
 		mutex_unlock(&buffer->map_lock);
-		if (ret)
+		tm_mid = sched_clock();
+		if (ret) {
+			DMABUF_TRACE_END();
 			return ERR_PTR(-EINVAL);
+		}
 
 		a->mapped = true;
 
 		if (!(attr & DMA_ATTR_SKIP_CPU_SYNC))
 			dma_sync_sgtable_for_device(attachment->dev, table, direction);
 
+		tm2 = sched_clock();
+		if (tm2 - tm1 > RUN_TIMEOUT_TO_LOG)
+			pr_info("dmabuf-time-map cache:%llums,%llums,size:%lu,nent:%u\n",
+				(tm2 - tm1)/1000000, (tm2 - tm_mid)/1000000,
+				buffer->len, buffer->sg_table.nents);
+		DMABUF_TRACE_END();
 		return table;
 	}
 
@@ -391,6 +421,7 @@ static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attac
 			__func__, tab_id, dom_id, dev_name(attachment->dev));
 		mutex_unlock(&buffer->map_lock);
 
+		DMABUF_TRACE_END("%s(fail)", __func__);
 		if (!__ratelimit(&dump_rs))
 			return ERR_PTR(-ENOMEM);
 
@@ -400,15 +431,25 @@ static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attac
 		return ERR_PTR(-ENOMEM);
 	}
 
+	tm_mid = sched_clock();
+	DMABUF_TRACE_BEGIN("fill_buffer_info");
 	ret = fill_buffer_info(buffer, table,
 			       attachment, direction, tab_id, dom_id);
+	DMABUF_TRACE_END();
 	if (ret) {
 		mutex_unlock(&buffer->map_lock);
+		DMABUF_TRACE_END();
 		return ERR_PTR(ret);
 	}
 	mutex_unlock(&buffer->map_lock);
 	a->mapped = true;
 
+	tm2 = sched_clock();
+	if (tm2 - tm1 > RUN_TIMEOUT_TO_LOG)
+		pr_info("dmabuf-time-map:%llums,%llums,size:%lu,nent:%u\n",
+			(tm2 - tm1)/1000000, (tm2 - tm_mid)/1000000,
+			buffer->len, buffer->sg_table.nents);
+	DMABUF_TRACE_END();
 	return table;
 }
 
@@ -484,6 +525,7 @@ static int system_heap_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
 		}
 	}
 	mutex_unlock(&buffer->lock);
+	dmabuf_log_begin_cpu(dmabuf);
 
 	return 0;
 }
@@ -514,6 +556,7 @@ static int system_heap_dma_buf_end_cpu_access(struct dma_buf *dmabuf,
 		}
 	}
 	mutex_unlock(&buffer->lock);
+	dmabuf_log_end_cpu(dmabuf);
 
 	return 0;
 }
@@ -544,8 +587,10 @@ static int system_heap_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 
 		ret = remap_pfn_range(vma, addr, page_to_pfn(page), PAGE_SIZE,
 				      vma->vm_page_prot);
-		if (ret)
+		if (ret) {
+			pr_info("%s-%d error: %d\n", __func__, __LINE__, ret);
 			return ret;
+		}
 		addr += PAGE_SIZE;
 		if (addr >= vma->vm_end)
 			return 0;
@@ -589,12 +634,15 @@ static int mtk_mm_heap_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 		len = min(len, remainder);
 		ret = remap_pfn_range(vma, addr, page_to_pfn(page), len,
 				      vma->vm_page_prot);
-		if (ret)
+		if (ret) {
+			pr_info("%s-%d error: %d\n", __func__, __LINE__, ret);
 			return ret;
+		}
 		addr += len;
 		if (addr >= vma->vm_end)
-			return 0;
+			break;
 	}
+	dmabuf_log_mmap(dmabuf);
 
 	return 0;
 }
@@ -751,7 +799,6 @@ static void system_heap_buf_free(struct mtk_deferred_freelist_item *item,
 	if (page_pools) {
 		struct mtk_dmabuf_page_pool *pool = page_pools[0];
 
-		dmabuf_log_pool_size(buffer->heap);
 		if (pool->refill_kthread && !pool->recycling &&
 		    pool->need_recycle && pool->need_recycle(pool))
 			wake_up_process(pool->refill_kthread);
@@ -944,6 +991,7 @@ static int mtk_mm_heap_dma_buf_begin_cpu_access_partial(struct dma_buf *dmabuf,
 	}
 
 	mutex_unlock(&buffer->lock);
+	dmabuf_log_begin_cpu_partial(dmabuf, len);
 
 	return 0;
 }
@@ -997,6 +1045,7 @@ static int mtk_mm_heap_dma_buf_end_cpu_access_partial(struct dma_buf *dmabuf,
 	}
 
 	mutex_unlock(&buffer->lock);
+	dmabuf_log_end_cpu_partial(dmabuf, len);
 
 	return 0;
 }
@@ -1103,8 +1152,10 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 	struct task_struct *task = current->group_leader;
 	struct mtk_dmabuf_page_pool **page_pools;
 	struct mtk_heap_priv_info *heap_priv = dma_heap_get_drvdata(heap);
-	u64 tm1, tm2;
+	u64 tm1, tm2, tm_mid;
 
+	tm1 = sched_clock();
+	DMABUF_TRACE_BEGIN("%s(%s,%lu)", __func__, dma_heap_get_name(heap), len);
 	page_pools = heap_priv ? heap_priv->page_pools : NULL;
 
 	/*
@@ -1120,12 +1171,15 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 	if (DO_DMA_BUFFER_COMMON_DIV(len, PAGE_SIZE) > totalram_pages()) {
 		pr_info("%s error: len %ld is more than %ld\n",
 			__func__, len, totalram_pages() * PAGE_SIZE);
+		DMABUF_TRACE_END();
 		return ERR_PTR(-ENOMEM);
 	}
 
 	buffer = kzalloc(sizeof(*buffer), GFP_KERNEL);
-	if (!buffer)
+	if (!buffer) {
+		DMABUF_TRACE_END();
 		return ERR_PTR(-ENOMEM);
+	}
 
 	INIT_LIST_HEAD(&buffer->attachments);
 	INIT_LIST_HEAD(&buffer->iova_caches);
@@ -1136,7 +1190,6 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 
 	INIT_LIST_HEAD(&pages);
 	i = 0;
-	tm1 = sched_clock();
 	while (size_remaining > 0) {
 		/*
 		 * Avoid trying to allocate memory if the process
@@ -1164,15 +1217,12 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 		max_order = compound_order(page);
 		i++;
 	}
-	tm2 = sched_clock();
-	dmabuf_log_allocate(heap, tm2 - tm1, i, len>>PAGE_SHIFT, 0);
-	if (page_pools)
-		dmabuf_log_pool_size(heap);
 
 	table = &buffer->sg_table;
 	if (sg_alloc_table(table, i, GFP_KERNEL))
 		goto free_buffer;
 
+	tm_mid = sched_clock();
 	sg = table->sgl;
 	list_for_each_entry_safe(page, tmp_page, &pages, lru) {
 		sg_set_page(sg, page, page_size(page), 0);
@@ -1207,7 +1257,9 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 	exp_info.size = buffer->len;
 	exp_info.flags = fd_flags;
 	exp_info.priv = buffer;
+	DMABUF_TRACE_BEGIN("dma_buf_export");
 	dmabuf = dma_buf_export(&exp_info);
+	DMABUF_TRACE_END();
 	if (IS_ERR(dmabuf)) {
 		ret = PTR_ERR(dmabuf);
 		goto free_pages;
@@ -1226,6 +1278,15 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 
 	atomic64_add(dmabuf->size, &dma_heap_normal_total);
 
+	tm2 = sched_clock();
+	dmabuf_log_allocate(heap, tm2 - tm1, i, len);
+	if (tm2 - tm1 > RUN_TIMEOUT_TO_LOG)
+		pr_info("dmabuf-time-alloc %llums,%llums,size:%lu,nent:%u,heap:%s,pool:%lu\n",
+			(tm2 - tm1)/1000000, (tm_mid - tm1)/1000000,
+			buffer->len, buffer->sg_table.nents,
+			dma_heap_get_name(heap), mtk_dmabuf_page_pool_size(heap)>>10);
+
+	DMABUF_TRACE_END("%s(nents:%d)", __func__, i);
 	return dmabuf;
 
 free_pages:
@@ -1240,6 +1301,8 @@ free_buffer:
 		__free_pages(page, compound_order(page));
 	kfree(buffer);
 
+	pr_info("%s, %d return error:%d\n", __func__, __LINE__, ret);
+	DMABUF_TRACE_END();
 	return ERR_PTR(ret);
 }
 

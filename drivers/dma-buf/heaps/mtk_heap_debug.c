@@ -2103,7 +2103,6 @@ static const struct proc_ops heap_stat_pid_proc_fops = {
 	.proc_release = single_release,
 };
 
-#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 static const struct proc_ops heap_monitor_proc_fops = {
 	.proc_open = heap_monitor_proc_open,
 	.proc_read = seq_read,
@@ -2111,7 +2110,6 @@ static const struct proc_ops heap_monitor_proc_fops = {
 	.proc_lseek = seq_lseek,
 	.proc_release = single_release,
 };
-#endif
 
 static int dma_buf_init_dma_heaps_procfs(void)
 {
@@ -2208,9 +2206,8 @@ static int dma_buf_init_procfs(void)
 	}
 	pr_info("create debug file for stats\n");
 
-#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 	dma_heaps_monitor = proc_create_data("monitor",
-					    S_IFREG | 0664,
+					    S_IFREG | 0640,
 					    dma_heap_proc_root,
 					    &heap_monitor_proc_fops,
 					    NULL);
@@ -2221,7 +2218,6 @@ static int dma_buf_init_procfs(void)
 	}
 	pr_info("create debug file for monitor\n");
 	heap_monitor_init();
-#endif
 
 	dma_heaps_stat_pid = proc_create_data("rss_pid",
 					      S_IFREG | 0660,
@@ -2345,10 +2341,7 @@ static void __exit mtk_dma_heap_debug_exit(void)
 
 #endif
 	dmabuf_rbtree_dump_by_domain = NULL;
-
-#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 	heap_monitor_exit();
-#endif
 
 	kfree(egl_pid_map);
 	dma_buf_uninit_procfs();

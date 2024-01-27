@@ -151,9 +151,7 @@ static void mtk_pool_recycle_page(struct mtk_dmabuf_page_pool **pools)
 		tm2 = sched_clock();
 
 		if (page_count > 0)
-			dmabuf_log_recycle(pools[i]->heap_tag, tm2-tm1,
-				pools[i]->order, page_count,
-				mtk_dmabuf_page_pool_total(pools[i], true));
+			dmabuf_log_recycle(pools[i], tm2-tm1, page_count);
 	}
 }
 
@@ -209,6 +207,7 @@ static int mtk_pool_refill_order_high(struct mtk_dmabuf_page_pool *pool)
 		gfp_refill = pool->gfp_mask;
 
 	tm1 = sched_clock();
+	DMABUF_TRACE_LOW_BEGIN("%s(%d)", __func__, pool->order);
 	while (!mtk_pool_above_refill_high(pool) && may_refill) {
 		page = mtk_pool_alloc_pages(gfp_refill, pool->order);
 		if (!page) {
@@ -226,9 +225,8 @@ static int mtk_pool_refill_order_high(struct mtk_dmabuf_page_pool *pool)
 	if (!may_refill)
 		ret = -1;
 
-	dmabuf_log_refill(pool->heap_tag, tm2-tm1, ret, pool->order,
-			  refill_page_cnt,
-			  mtk_dmabuf_page_pool_total(pool, true));
+	dmabuf_log_refill(pool, tm2-tm1, ret, refill_page_cnt);
+	DMABUF_TRACE_LOW_END("%s(%u)", __func__, refill_page_cnt);
 
 	return ret;
 }
@@ -286,9 +284,7 @@ static int mtk_pool_refill_order0(struct mtk_dmabuf_page_pool *pool, bool normal
 	if (!may_refill)
 		ret = -1;
 
-	dmabuf_log_refill(pool->heap_tag, tm2-tm1, ret, pool->order,
-			  refill_page_cnt,
-			  mtk_dmabuf_page_pool_total(pool, true));
+	dmabuf_log_refill(pool, tm2-tm1, ret, refill_page_cnt);
 
 	return ret;
 }
