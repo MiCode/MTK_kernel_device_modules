@@ -52,6 +52,23 @@ int scmi_tinysys_common_get(const struct scmi_protocol_handle *ph, u32 feature_i
 }
 EXPORT_SYMBOL(scmi_tinysys_common_get);
 
+int scmi_tinysys_slbc_ctrl(const struct scmi_protocol_handle *ph,
+	u32 cmd, u32 slbc_resv1, u32 slbc_resv2, u32 slbc_resv3, u32 slbc_resv4,
+	struct scmi_tinysys_slbc_ctrl_status *rvalue)
+{
+	int ret;
+
+	ret = tinysys_ops->slbc_ctrl(ph, cmd, slbc_resv1, slbc_resv2, slbc_resv3, slbc_resv4, rvalue);
+
+	if (ret)
+		pr_notice("[scmi][tinysys_slbc_ctrl] ret:%d cmd:%u slbc_resv1:%u slbc_resv2:%u slbc_resv3:%u slbc_resv4:%u slbc_ret:%u slbc_resv1:%u, slbc_resv2:%u, s;bc_resv3:%u, slbc_resv4:%u\n",
+			ret, cmd, slbc_resv1, slbc_resv2, slbc_resv3, slbc_resv4,
+			rvalue->ret, rvalue->slbc_resv1, rvalue->slbc_resv2, rvalue->slbc_resv3, rvalue->slbc_resv4);
+
+	return ret;
+}
+EXPORT_SYMBOL(scmi_tinysys_slbc_ctrl);
+
 int scmi_tinysys_notifier_fn(struct notifier_block *nb,
 			unsigned long action, void *data)
 {

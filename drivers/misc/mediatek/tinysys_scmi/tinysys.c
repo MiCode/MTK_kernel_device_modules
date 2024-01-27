@@ -19,6 +19,7 @@ enum scmi_tinysys_protocol_cmd {
 	TINYSYS_COMMON_SET = 0x3,
 	TINYSYS_COMMON_GET = 0x4,
 	TINYSYS_POWER_STATE_NOTIFY = 0x5,
+	TINYSYS_SLBC_CTRL = 0x6,
 };
 
 struct scmi_tinysys_common_set_state {
@@ -48,6 +49,15 @@ struct scmi_tinysys_notifier_payld {
 	__le32 p2;
 	__le32 p3;
 	__le32 p4;
+};
+
+struct scmi_tinysys_slbc_ctrl_state {
+	__le32 reserv;
+	__le32 cmd;
+	__le32 slbc_resv1;
+	__le32 slbc_resv2;
+	__le32 slbc_resv3;
+	__le32 slbc_resv4;
 };
 
 struct scmi_tinysys_info {
@@ -96,6 +106,33 @@ static int scmi_tinysys_common_get(const struct scmi_protocol_handle *ph,
 	gt = t->tx.buf;
 	gt->p0 = cpu_to_le32(p0);
 	gt->p1 = cpu_to_le32(p1);
+
+	ret = ph->xops->do_xfer(ph, t);
+	if (!ret)
+		memcpy((void *)rvalue, (t->rx.buf), sizeof(*rvalue));
+
+	ph->xops->xfer_put(ph, t);
+	return ret;
+}
+
+static int scmi_tinysys_slbc_ctrl(const struct scmi_protocol_handle *ph,
+	u32 cmd, u32 slbc_resv1, u32 slbc_resv2, u32 slbc_resv3, u32 slbc_resv4,
+	struct scmi_tinysys_slbc_ctrl_status *rvalue)
+{
+	int ret;
+	struct scmi_xfer *t;
+	struct scmi_tinysys_slbc_ctrl_state *st;
+
+	ret = ph->xops->xfer_get_init(ph, TINYSYS_SLBC_CTRL, sizeof(*st), sizeof(*rvalue), &t);
+	if (ret)
+		return ret;
+
+	st = t->tx.buf;
+	st->cmd = cpu_to_le32(cmd);
+	st->slbc_resv1 = cpu_to_le32(slbc_resv1);
+	st->slbc_resv2 = cpu_to_le32(slbc_resv2);
+	st->slbc_resv3 = cpu_to_le32(slbc_resv3);
+	st->slbc_resv4 = cpu_to_le32(slbc_resv4);
 
 	ret = ph->xops->do_xfer(ph, t);
 	if (!ret)
@@ -206,6 +243,7 @@ static const struct scmi_event tinysys_events[] = {
 static const struct scmi_tinysys_proto_ops tinysys_proto_ops = {
 		.common_set = scmi_tinysys_common_set,
 		.common_get = scmi_tinysys_common_get,
+		.slbc_ctrl = scmi_tinysys_slbc_ctrl,
 };
 
 static const struct scmi_event_ops tinysys_event_ops = {

@@ -30,6 +30,10 @@ int scmi_tinysys_common_get(const struct scmi_protocol_handle *ph, u32 feature_i
 
 int scmi_tinysys_event_notify(u32 feature_id, u32 notify_enable);
 
+int scmi_tinysys_slbc_ctrl(const struct scmi_protocol_handle *ph,
+	u32 cmd, u32 slbc_resv1, u32 slbc_resv2, u32 slbc_resv3, u32 slbc_resv4,
+	struct scmi_tinysys_slbc_ctrl_status *rvalue);
+
 typedef void (*f_handler_t)(u32 feature_id, scmi_tinysys_report *report);
 
 void scmi_tinysys_register_event_notifier(u32 feature_id, f_handler_t hand);

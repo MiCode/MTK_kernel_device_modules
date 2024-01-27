@@ -20,15 +20,26 @@ struct scmi_tinysys_status {
 	u32 r3;
 };
 
+struct scmi_tinysys_slbc_ctrl_status {
+	u32 ret;
+	u32 slbc_resv1;
+	u32 slbc_resv2;
+	u32 slbc_resv3;
+	u32 slbc_resv4;
+};
+
 /**
  * struct scmi_tinysys_ops - represents the various operations provided
  *	by MTK Tinysys Protocol
  */
 struct scmi_tinysys_proto_ops {
-	int (*common_set)(const struct scmi_protocol_handle *ph,\
+	int (*common_set)(const struct scmi_protocol_handle *ph,
 		u32 p0, u32 p1, u32 p2, u32 p3, u32 p4, u32 p5);
-	int (*common_get)(const struct scmi_protocol_handle *ph, \
+	int (*common_get)(const struct scmi_protocol_handle *ph,
 		u32 p0, u32 p1, struct scmi_tinysys_status *rvalue);
+	int (*slbc_ctrl)(const struct scmi_protocol_handle *ph,
+		u32 cmd, u32 slbc_resv1, u32 slbc_resv2, u32 slbc_resv3, u32 slbc_resv4,
+		struct scmi_tinysys_slbc_ctrl_status *rvalue);
 };
 
 enum scmi_mtk_protocol {
