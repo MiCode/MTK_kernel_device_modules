@@ -239,7 +239,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/apusys/sapu/sapu.ko",
     "drivers/misc/mediatek/atf/atf_logger.ko",
     "drivers/misc/mediatek/audio_ipi/audio_ipi.ko",
-    "drivers/misc/mediatek/blocktag/blocktag.ko",
+    #"drivers/misc/mediatek/blocktag/blocktag.ko",
     "drivers/misc/mediatek/btif/common/btif_drv.ko",
     #"drivers/misc/mediatek/cache-auditor/cpuqos_v3/cpuqos_v3.ko",
     "drivers/misc/mediatek/cameraisp/dpe/camera_dpe_isp70.ko",
