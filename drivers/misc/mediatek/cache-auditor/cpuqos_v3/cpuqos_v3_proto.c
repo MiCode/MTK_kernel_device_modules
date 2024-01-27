@@ -597,7 +597,7 @@ int set_cache_ctl_user_group(int bitmask, int group)
 
 	if (group > 0 && group <= 6 && bitmask <= MAX_BITMASK) {
 		offset = (group - 1) * PER_GRP;
-		iowrite32(bitmask, l3ctl_sram_base_addr + CUS_INT_STA + offset);
+		iowrite8(bitmask, l3ctl_sram_base_addr + CUS_INT_STA + offset);
 		ret = 0;
 	} else
 		pr_info("cpuqos: set bitmask=%d to group=%d cache setting is failed.\n",
