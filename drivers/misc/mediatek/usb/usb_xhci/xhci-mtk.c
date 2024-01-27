@@ -28,7 +28,7 @@
 #include <sound/core.h>
 #include <sound/asound.h>
 
-///#include <trace/hooks/audio_usboffload.h>
+#include <trace/hooks/audio_usboffload.h>
 
 #include "usbaudio.h"
 #include "card.h"
@@ -37,6 +37,7 @@
 
 #include "xhci.h"
 #include "xhci-mtk.h"
+#include "quirks.h"
 
 /* ip_pw_ctrl0 register */
 #define CTRL0_IP_SW_RST	BIT(0)
@@ -835,6 +836,7 @@ static int xhci_mtk_probe(struct platform_device *pdev)
 	}
 
 	device_init_wakeup(dev, true);
+	dma_set_max_seg_size(dev, UINT_MAX);
 
 	xhci = hcd_to_xhci(hcd);
 	xhci->main_hcd = hcd;
@@ -897,12 +899,12 @@ static int xhci_mtk_probe(struct platform_device *pdev)
 		dev_info(dev, "wakeup irq %d\n", wakeup_irq);
 	}
 
-	//WARN_ON(register_trace_android_vh_audio_usb_offload_synctype(usb_offload_synctype, NULL));
-
 	device_enable_async_suspend(dev);
 	pm_runtime_mark_last_busy(dev);
 	pm_runtime_put_autosuspend(dev);
 	pm_runtime_forbid(dev);
+
+	xhci_mtk_trace_init(dev);
 
 	return 0;
 
@@ -963,9 +965,12 @@ static int xhci_mtk_remove(struct platform_device *pdev)
 
 	xhci_mtk_procfs_exit(mtk);
 
+
 	pm_runtime_disable(dev);
 	pm_runtime_put_noidle(dev);
 	pm_runtime_set_suspended(dev);
+
+	xhci_mtk_trace_deinit(dev);
 
 	return 0;
 }
@@ -1087,6 +1092,22 @@ static const struct dev_pm_ops xhci_mtk_pm_ops = {
 
 #define DEV_PM_OPS (IS_ENABLED(CONFIG_PM) ? &xhci_mtk_pm_ops : NULL)
 
+static const struct of_device_id mtk_xhci_p2_of_match[] = {
+	{ .compatible = "mediatek,mtk-xhci-p2"},
+	{ },
+};
+MODULE_DEVICE_TABLE(of, mtk_xhci_p2_of_match);
+
+static struct platform_driver mtk_xhci_p2_driver = {
+	.probe	= xhci_mtk_probe,
+	.remove	= xhci_mtk_remove,
+	.driver	= {
+		.name = "xhci-mtk-p2",
+		.pm = DEV_PM_OPS,
+		.of_match_table = mtk_xhci_p2_of_match,
+	},
+};
+
 static const struct of_device_id mtk_xhci_p1_of_match[] = {
 	{ .compatible = "mediatek,mtk-xhci-p1"},
 	{ },
@@ -1126,6 +1147,9 @@ static int __init xhci_mtk_init(void)
 	int ret;
 
 	xhci_init_driver_(&xhci_mtk_hc_driver, &xhci_mtk_overrides);
+	ret = platform_driver_register(&mtk_xhci_p2_driver);
+	if (ret < 0)
+		return ret;
 	ret = platform_driver_register(&mtk_xhci_p1_driver);
 	if (ret < 0)
 		return ret;
@@ -1135,6 +1159,7 @@ module_init(xhci_mtk_init);
 
 static void __exit xhci_mtk_exit(void)
 {
+	platform_driver_unregister(&mtk_xhci_p2_driver);
 	platform_driver_unregister(&mtk_xhci_p1_driver);
 	platform_driver_unregister(&mtk_xhci_driver);
 }
