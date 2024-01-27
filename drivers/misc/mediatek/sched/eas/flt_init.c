@@ -28,6 +28,7 @@
 #include "flt_utility.h"
 #include "flt_cal.h"
 #include <sugov/cpufreq.h>
+#include <linux/of_platform.h>
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 #include "mtk_energy_model/v2/energy_model.h"
 #else
@@ -63,6 +64,7 @@
 #define ECG	0x1
 #define IBS	0x15070a
 #define TSH	0x2481c6
+#define MSH	0x12481c6
 #define LFP	0x1f
 #define KOL	0x1dc
 #define AMI	0x3ff
@@ -90,7 +92,7 @@ void  flt_set_mode(u32 mode)
 {
 	flt_mode = mode;
 	if (is_flt_io_enable)
-		flt_update_data(mode, AP_FLT_CTL);
+		flt_set_mode_io(mode);
 }
 EXPORT_SYMBOL(flt_set_mode);
 
@@ -426,7 +428,7 @@ int flt_init_ekg(void)
 	return 0;
 }
 
-void flt_mi(int ctp)
+void flt_mi(int ctp, u32 flt_mode)
 {
 	int i = 0, offset = KOL + ((ctp * LFP) << 2);
 
@@ -446,7 +448,10 @@ void flt_mi(int ctp)
 	iowrite32(IBS, flt_xrg + offset);
 	FLT_LOGI("mi xrg 0x%x offset %d\n", ioread32(flt_xrg + offset), offset);
 	offset += 4;
-	iowrite32(TSH, flt_xrg + offset);
+	if (flt_mode == FLT_MODE_2)
+		iowrite32(TSH, flt_xrg + offset);
+	else if (flt_mode == FLT_MODE_3)
+		iowrite32(MSH, flt_xrg + offset);
 	FLT_LOGI("mi xrg 0x%x offset %d\n", ioread32(flt_xrg + offset), offset);
 }
 
@@ -454,13 +459,14 @@ int flt_init_res(void)
 {
 	int wl = 0, nr_wl = 0, ctp = 0, nr_cpu, ret;
 	bool BKV[GKEL] = {false};
+	u32 flt_mode = flt_get_mode();
 
 	flt_cal_init();
 	nr_wl = get_nr_wl_type();
 	nr_cpu = get_nr_cpu_type();
-	if (unlikely(flt_get_mode() == FLT_MODE_0))
+	if (unlikely(flt_mode == FLT_MODE_0))
 		return -1;
-	else if (unlikely(flt_get_mode() == FLT_MODE_2)) {
+	else if (likely(flt_mode == FLT_MODE_2) || likely(flt_mode == FLT_MODE_3)) {
 		for (wl = 0; wl < nr_wl; ++wl) {
 			ctp = get_cpu_type(wl);
 			FLT_LOGI("nr_cpu %d wl %d get_cpu_type %d\n", nr_cpu, wl, ctp);
@@ -473,9 +479,12 @@ int flt_init_res(void)
 		if (ret)
 			return ret;
 		for (ctp = 0; ctp < GKEL && ctp < nr_cpu; ctp++)
-			flt_mi(ctp);
-		flt_mode2_register_api_hooks();
-		flt_mode2_init_res();
+			flt_mi(ctp, flt_mode);
+		if (flt_mode == FLT_MODE_2)
+			flt_register_api_hooks_mode2();
+		else if (flt_mode == FLT_MODE_3)
+			flt_register_api_hooks_mode3();
+		flt_res_init();
 	}
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)

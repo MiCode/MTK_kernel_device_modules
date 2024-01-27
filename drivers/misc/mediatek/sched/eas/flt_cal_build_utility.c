@@ -25,11 +25,14 @@
 #include "group.h"
 #include "flt_cal.h"
 #include "flt_api.h"
-#include "flt_utility.h"
 #include "eas_trace.h"
 #include "grp_awr.h"
 #include <sugov/cpufreq.h>
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 #include "mtk_energy_model/v2/energy_model.h"
+#else
+#include "mtk_energy_model/v1/energy_model.h"
+#endif
 
 /* src code */
 #include "flt_cal.c"

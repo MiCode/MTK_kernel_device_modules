@@ -26,45 +26,43 @@
 #include "flt_init.h"
 #include "flt_api.h"
 #include "group.h"
-#include "flt_utility.h"
+#include "flt_utility_api.h"
 #include "flt_cal.h"
 #include "eas_trace.h"
+
+#define CPU_NUM		8
+#define RESERVED_LEN	96
+#define WP_LEN		16
+#define WC_LEN		16
+#define WC_MASK	0xffff
+#define CPU_S		(0)
+#define GP_NIDS		(CPU_S + (PER_ENTRY * CPU_NUM))
+#define GP_NIDWP	(GP_NIDS + (PER_ENTRY))
+#define CPU_R		(GP_NIDWP + (PER_ENTRY * GROUP_ID_RECORD_MAX))
+#define GP_R		(CPU_R + (PER_ENTRY * CPU_NUM))
+#define GP_H		(GP_R + (PER_ENTRY * GROUP_ID_RECORD_MAX))
+#define FLT_VALID	(GP_H + (PER_ENTRY * GROUP_ID_RECORD_MAX))
+#define GP_RWP		(FLT_VALID + PER_ENTRY)
+#define AP_CPU_SETTING_ADDR (GP_RWP + (PER_ENTRY * GROUP_ID_RECORD_MAX) + RESERVED_LEN)
+#define AP_GP_SETTING_STA_ADDR (AP_CPU_SETTING_ADDR + (PER_ENTRY * CPU_NUM))
+#define AP_FLT_CTL (AP_GP_SETTING_STA_ADDR + (PER_ENTRY * GROUP_ID_RECORD_MAX))
+#define AP_WS_CTL (AP_FLT_CTL + PER_ENTRY)
+
+#define FLT_MODE2_EN 2
+#define DEFAULT_WS 4
+#define CPU_DEFAULT_WC GROUP_RAVG_HIST_SIZE_MAX
+#define CPU_DEFAULT_WP WP_MODE_4
+
+#undef FLT_MODE_SEL
+#define FLT_MODE_SEL FLT_MODE2_EN
+
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 int (*grp_cal_tra)(int x, unsigned int y);
 EXPORT_SYMBOL(grp_cal_tra);
 #endif
-static u32 flt_nid = FLT_GP_NID;
+static int FLT_FN(nid) = FLT_GP_NID;
 
-void flt_update_data(unsigned int data, unsigned int offset)
-{
-	void __iomem *flt_adr;
-	unsigned long long len;
-
-	if (!IS_ALIGNED(offset, PER_ENTRY))
-		return;
-	len = get_flt_xrg_size();
-	flt_adr = get_flt_xrg();
-	if (flt_adr && offset <= len)
-		iowrite32(data, flt_adr + offset);
-}
-
-unsigned int flt_get_data(unsigned int offset)
-{
-	void __iomem *flt_adr;
-	unsigned int res = 0;
-	unsigned long long len;
-
-	if (!IS_ALIGNED(offset, PER_ENTRY))
-		return res;
-	len = get_flt_xrg_size();
-	flt_adr = get_flt_xrg();
-	if (flt_adr && offset <= len)
-		res = ioread32(flt_adr + offset);
-
-	return res;
-}
-
-static int flt_is_valid(void)
+static int FLT_FN(is_valid)(void)
 {
 	int res = 0;
 
@@ -72,7 +70,7 @@ static int flt_is_valid(void)
 	return res;
 }
 
-static int flt_get_window_size_mode2(void)
+static int FLT_FN(get_window_size)(void)
 {
 	int res = 0;
 
@@ -81,7 +79,7 @@ static int flt_get_window_size_mode2(void)
 	return res;
 }
 
-static int flt_set_window_size_mode2(int ws)
+static int FLT_FN(set_window_size)(int ws)
 {
 	int res = 0;
 
@@ -90,7 +88,25 @@ static int flt_set_window_size_mode2(int ws)
 	return res;
 }
 
-static int flt_sched_set_group_policy_eas_mode2(int grp_id, int ws, int wp, int wc)
+static int FLT_FN(set_mode)(u32 mode)
+{
+	int res = 0;
+
+	flt_update_data(mode, AP_FLT_CTL);
+
+	return res;
+}
+
+static int FLT_FN(get_mode)(void)
+{
+	int res = 0;
+
+	res = flt_get_data(AP_FLT_CTL);
+
+	return res;
+}
+
+static int FLT_FN(sched_set_group_policy_eas)(int grp_id, int ws, int wp, int wc)
 {
 	int res = 0;
 	unsigned int offset, update_data;
@@ -106,7 +122,7 @@ static int flt_sched_set_group_policy_eas_mode2(int grp_id, int ws, int wp, int 
 	return res;
 }
 
-static int flt_sched_get_group_policy_eas_mode2(int grp_id, int *ws, int *wp, int *wc)
+static int FLT_FN(sched_get_group_policy_eas)(int grp_id, int *ws, int *wp, int *wc)
 {
 	int res = 0;
 	unsigned int offset, update_data;
@@ -122,7 +138,7 @@ static int flt_sched_get_group_policy_eas_mode2(int grp_id, int *ws, int *wp, in
 	return res;
 }
 
-static int flt_sched_set_cpu_policy_eas_mode2(int cpu, int ws, int wp, int wc)
+static int FLT_FN(sched_set_cpu_policy_eas)(int cpu, int ws, int wp, int wc)
 {
 	int res = 0;
 	unsigned int offset, update_data;
@@ -136,7 +152,7 @@ static int flt_sched_set_cpu_policy_eas_mode2(int cpu, int ws, int wp, int wc)
 	return res;
 }
 
-static int flt_sched_get_cpu_policy_eas_mode2(int cpu, int *ws, int *wp, int *wc)
+static int FLT_FN(sched_get_cpu_policy_eas)(int cpu, int *ws, int *wp, int *wc)
 {
 	int res = 0;
 	unsigned int offset, update_data;
@@ -152,15 +168,15 @@ static int flt_sched_get_cpu_policy_eas_mode2(int cpu, int *ws, int *wp, int *wc
 	return res;
 }
 
-static int flt_get_sum_group_mode2(int grp_id)
+static int FLT_FN(get_sum_group)(int grp_id)
 {
 	int res = 0;
 	unsigned int offset;
 
-	if (grp_id >= GROUP_ID_RECORD_MAX || grp_id < 0 || flt_is_valid() != 1)
+	if (grp_id >= GROUP_ID_RECORD_MAX || grp_id < 0 || FLT_FN(is_valid)() != 1)
 		return -1;
 	offset = grp_id * PER_ENTRY;
-	if (flt_nid == FLT_GP_NID)
+	if (FLT_FN(nid) == FLT_GP_NID)
 		res = flt_get_data(GP_NIDWP + offset);
 	else
 		res = flt_get_data(GP_RWP + offset);
@@ -168,11 +184,11 @@ static int flt_get_sum_group_mode2(int grp_id)
 	return res;
 }
 
-static int flt_get_total_group_mode2(void)
+static int FLT_FN(get_total_group)(void)
 {
 	int res = 0;
 
-	if (flt_is_valid() != 1)
+	if (FLT_FN(is_valid)() != 1)
 		goto out;
 
 	res = flt_get_data(GP_NIDS);
@@ -180,12 +196,12 @@ out:
 	return res;
 }
 
-static int flt_get_grp_hint_mode2(int grp_id)
+static int FLT_FN(get_grp_hint)(int grp_id)
 {
 	int res = 0;
 	unsigned int offset;
 
-	if (grp_id >= GROUP_ID_RECORD_MAX || grp_id < 0 || flt_is_valid() != 1)
+	if (grp_id >= GROUP_ID_RECORD_MAX || grp_id < 0 || FLT_FN(is_valid)() != 1)
 		return -1;
 	offset = grp_id * PER_ENTRY;
 	res = flt_get_data(GP_H + offset);
@@ -193,12 +209,12 @@ static int flt_get_grp_hint_mode2(int grp_id)
 	return res;
 }
 
-static int flt_get_cpu_r_mode2(int cpu)
+static int FLT_FN(get_cpu_r)(int cpu)
 {
 	int res = 0;
 	unsigned int offset;
 
-	if (!cpumask_test_cpu(cpu, cpu_possible_mask) || flt_is_valid() != 1)
+	if (!cpumask_test_cpu(cpu, cpu_possible_mask) || FLT_FN(is_valid)() != 1)
 		return -1;
 
 	offset = cpu * PER_ENTRY;
@@ -206,12 +222,12 @@ static int flt_get_cpu_r_mode2(int cpu)
 	return res;
 }
 
-static int flt_get_grp_r_mode2(int grp_id)
+static int FLT_FN(get_grp_r)(int grp_id)
 {
 	int res = 0;
 	unsigned int offset;
 
-	if (grp_id >= GROUP_ID_RECORD_MAX || grp_id < 0 || flt_is_valid() != 1)
+	if (grp_id >= GROUP_ID_RECORD_MAX || grp_id < 0 || FLT_FN(is_valid)() != 1)
 		return -1;
 	offset = grp_id * PER_ENTRY;
 	res = flt_get_data(GP_R + offset);
@@ -219,7 +235,7 @@ static int flt_get_grp_r_mode2(int grp_id)
 	return res;
 }
 
-int flt_sched_get_gear_sum_group_eas_mode2(int gear_id, int group_id)
+int FLT_FN(sched_get_gear_sum_group_eas)(int gear_id, int group_id)
 {
 	unsigned int nr_gear, gear_idx;
 	int pelt_util = 0, res = 0;
@@ -246,7 +262,7 @@ int flt_sched_get_gear_sum_group_eas_mode2(int gear_id, int group_id)
 	return res;
 }
 
-static int flt_get_cpu_by_wp_mode2(int cpu)
+static int FLT_FN(get_cpu_by_wp)(int cpu)
 {
 	struct rq *rq;
 	struct flt_rq *fsrq;
@@ -262,7 +278,7 @@ static int flt_get_cpu_by_wp_mode2(int cpu)
 	return cpu_dmand_util;
 }
 
-static int flt_sched_get_cpu_group_eas_mode2(int cpu_idx, int group_id)
+static int FLT_FN(sched_get_cpu_group_eas)(int cpu_idx, int group_id)
 {
 	int res = 0, flt_util = 0;
 	struct flt_rq *fsrq;
@@ -273,10 +289,10 @@ static int flt_sched_get_cpu_group_eas_mode2(int cpu_idx, int group_id)
 		!cpumask_test_cpu(cpu_idx, cpu_possible_mask))
 		return -1;
 
-	flt_util = flt_get_sum_group_mode2(group_id);
+	flt_util = FLT_FN(get_sum_group)(group_id);
 
 	fsrq = &per_cpu(flt_rq, cpu_idx);
-	if (flt_nid == FLT_GP_NID)
+	if (FLT_FN(nid) == FLT_GP_NID)
 		util_ratio = READ_ONCE(fsrq->group_util_ratio[group_id]);
 	else
 		util_ratio = READ_ONCE(fsrq->group_raw_util_ratio[group_id]);
@@ -289,7 +305,7 @@ static int flt_sched_get_cpu_group_eas_mode2(int cpu_idx, int group_id)
 	return res;
 }
 
-static int flt_get_o_util_mode2(int cpu)
+static int FLT_FN(get_o_util)(int cpu)
 {
 	int cpu_r = 0, grp_idx = 0, res, flt_util = 0;
 	struct rq *rq;
@@ -311,7 +327,7 @@ static int flt_get_o_util_mode2(int cpu)
 		total += grp_r[grp_idx];
 		if (trace_sched_flt_get_o_util_enabled())
 			trace_sched_flt_get_o_util(cpu, cpu_r, grp_idx, util_ratio[grp_idx],
-										flt_util, grp_r[grp_idx], total);
+						flt_util, grp_r[grp_idx], total);
 	}
 	res = cpu_r - total;
 	res = clamp_t(int, res, 0, cpu_cap_ceiling(cpu));
@@ -319,36 +335,30 @@ static int flt_get_o_util_mode2(int cpu)
 	return res;
 }
 
-static void flt_ctl_mode2(int set)
+static int FLT_FN(set_grp_dvfs_ctrl)(int set)
 {
 	/* control grp dvfs reference signal*/
 	if (set)
-		set_grp_dvfs_ctrl(FLT_MODE2_EN);
+		set_grp_dvfs_ctrl(FLT_MODE_SEL);
 	else
 		set_grp_dvfs_ctrl(0);
+	return 0;
 }
 
-void flt_mode2_register_api_hooks(void)
+static int FLT_FN(setnid)(u32 mode)
 {
-	flt_get_ws_api = flt_get_window_size_mode2;
-	flt_set_ws_api = flt_set_window_size_mode2;
-	flt_sched_set_group_policy_eas_api = flt_sched_set_group_policy_eas_mode2;
-	flt_sched_get_group_policy_eas_api = flt_sched_get_group_policy_eas_mode2;
-	flt_sched_set_cpu_policy_eas_api = flt_sched_set_cpu_policy_eas_mode2;
-	flt_sched_get_cpu_policy_eas_api = flt_sched_get_cpu_policy_eas_mode2;
-	flt_get_sum_group_api = flt_get_sum_group_mode2;
-	flt_sched_get_gear_sum_group_eas_api = flt_sched_get_gear_sum_group_eas_mode2;
-	flt_get_cpu_by_wp_api = flt_get_cpu_by_wp_mode2;
-	flt_sched_get_cpu_group_eas_api = flt_sched_get_cpu_group_eas_mode2;
-	flt_get_grp_h_eas_api = flt_get_grp_hint_mode2;
-	flt_get_cpu_r_api = flt_get_cpu_r_mode2;
-	flt_get_cpu_o_eas_api = flt_get_o_util_mode2;
-	flt_get_total_gp_api = flt_get_total_group_mode2;
-	flt_get_grp_r_eas_api = flt_get_grp_r_mode2;
-	flt_ctl_api = flt_ctl_mode2;
+	if (mode >= FLT_GP_NUM)
+		return -1;
+	FLT_FN(nid) = mode;
+	return 0;
 }
 
-void flt_mode2_init_res(void)
+static u32 FLT_FN(getnid)(void)
+{
+	return FLT_FN(nid);
+}
+
+static int FLT_FN(res_init)(void)
 {
 	int cpu, i;
 
@@ -357,20 +367,34 @@ void flt_mode2_init_res(void)
 		flt_sched_set_cpu_policy_eas(cpu, DEFAULT_WS, CPU_DEFAULT_WP, CPU_DEFAULT_WC);
 	for (i = 0; i < GROUP_ID_RECORD_MAX; i++)
 		flt_sched_set_group_policy_eas(i, DEFAULT_WS, GRP_DEFAULT_WP, GRP_DEFAULT_WC);
-	flt_update_data(FLT_MODE2_EN, AP_FLT_CTL);
-}
-
-int flt_setnid(u32 mode)
-{
-	if (mode >= FLT_GP_NUM)
-		return -1;
-	flt_nid = mode;
+	flt_update_data(FLT_MODE_SEL, AP_FLT_CTL);
 	return 0;
 }
-EXPORT_SYMBOL(flt_setnid);
 
-u32 flt_getnid(void)
-{
-	return flt_nid;
+const struct flt_class FLT_FN(api_hooks) = {
+	.flt_get_ws_api = FLT_FN(get_window_size),
+	.flt_set_ws_api = FLT_FN(set_window_size),
+	.flt_get_mode_api = FLT_FN(get_mode),
+	.flt_set_mode_api = FLT_FN(set_mode),
+	.flt_sched_set_group_policy_eas_api = FLT_FN(sched_set_group_policy_eas),
+	.flt_sched_get_group_policy_eas_api = FLT_FN(sched_get_group_policy_eas),
+	.flt_sched_set_cpu_policy_eas_api = FLT_FN(sched_set_cpu_policy_eas),
+	.flt_sched_get_cpu_policy_eas_api = FLT_FN(sched_get_cpu_policy_eas),
+	.flt_get_sum_group_api = FLT_FN(get_sum_group),
+	.flt_sched_get_gear_sum_group_eas_api = FLT_FN(sched_get_gear_sum_group_eas),
+	.flt_get_cpu_by_wp_api = FLT_FN(get_cpu_by_wp),
+	.flt_sched_get_cpu_group_eas_api = FLT_FN(sched_get_cpu_group_eas),
+	.flt_get_grp_h_eas_api = FLT_FN(get_grp_hint),
+	.flt_get_cpu_r_api = FLT_FN(get_cpu_r),
+	.flt_get_cpu_o_eas_api = FLT_FN(get_o_util),
+	.flt_get_total_gp_api = FLT_FN(get_total_group),
+	.flt_get_grp_r_eas_api = FLT_FN(get_grp_r),
+	.flt_set_grp_dvfs_ctrl_api = FLT_FN(set_grp_dvfs_ctrl),
+	.flt_setnid_eas_api = FLT_FN(setnid),
+	.flt_getnid_eas_api = FLT_FN(getnid),
+	.flt_res_init_api = FLT_FN(res_init),
+};
+
+void FLT_FN(register_api_hooks)(void) {
+	flt_class_mode = &FLT_FN(api_hooks);
 }
-EXPORT_SYMBOL(flt_getnid);
