@@ -152,7 +152,7 @@ struct vcp_regs {
 };
 
 struct vcp_ipi_profile {
-	u8 type;
+	unsigned int type;
 	unsigned int ipi_time_h;
 	unsigned int ipi_time_l;
 };

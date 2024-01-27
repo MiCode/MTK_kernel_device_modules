@@ -13,7 +13,7 @@
 /* core0 system */
 /* definition of slot size for send PINs */
 #define PIN_OUT_C_SIZE_SLEEP_0           2
-#define PIN_OUT_SIZE_TEST_0              2
+#define PIN_OUT_SIZE_TEST_0              3
 #define PIN_OUT_SIZE_LOGGER_CTRL_0       6
 #define PIN_OUT_SIZE_VCPCTL_0            2
 
@@ -26,7 +26,7 @@
 /* core1 system */
 /* definition of slot size for send PINs */
 #define PIN_OUT_C_SIZE_SLEEP_1           2
-#define PIN_OUT_SIZE_TEST_1              2
+#define PIN_OUT_SIZE_TEST_1              3
 #define PIN_OUT_SIZE_LOGGER_CTRL_1       6
 #define PIN_OUT_SIZE_VCPCTL_1            2
 
