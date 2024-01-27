@@ -758,7 +758,7 @@
 
 	lastbus: lastbus {
 		compatible = "mediatek,lastbus";
-		enabled = <0>;
+		enabled = <1>;
 		sw-version = <1>;
 		timeout-ms = <200>;
 		timeout-type = <0>;
@@ -789,14 +789,6 @@
 				bus-freq-mhz = <26>;
 			};
 			monitor4 {
-				monitor-name = "debug_ctrl_ao_INFRA_AO";
-				base = <0x10023000>;
-				num-ports = <54>;
-				bus-status-offset = <0x1c>;
-				bus-status-num = <7>;
-				bus-freq-mhz = <26>;
-			};
-			monitor5 {
 				monitor-name = "debug_ctrl_ao_APINFRA_DRAMC_AO";
 				base = <0x102f1000>;
 				num-ports = <11>;
@@ -804,7 +796,7 @@
 				bus-status-num = <2>;
 				bus-freq-mhz = <26>;
 			};
-			monitor6 {
+			monitor5 {
 				monitor-name = "debug_ctrl_ao_APINFRA_EMI_AO";
 				base = <0x10611000>;
 				num-ports = <15>;
@@ -812,7 +804,7 @@
 				bus-status-num = <2>;
 				bus-freq-mhz = <26>;
 			};
-			monitor7 {
+			monitor6 {
 				monitor-name = "debug_ctrl_ao_APINFRA_BIG4_AO";
 				base = <0x10691000>;
 				num-ports = <13>;
@@ -820,7 +812,7 @@
 				bus-status-num = <2>;
 				bus-freq-mhz = <26>;
 			};
-			monitor8 {
+			monitor7 {
 				monitor-name = "debug_ctrl_ao_APINFRA_IO_INTF_AO";
 				base = <0x14011000>;
 				num-ports = <33>;
@@ -828,7 +820,7 @@
 				bus-status-num = <4>;
 				bus-freq-mhz = <26>;
 			};
-			monitor9 {
+			monitor8 {
 				monitor-name = "debug_ctrl_ao_APINFRA_MEM_INTF_AO";
 				base = <0x14031000>;
 				num-ports = <42>;
@@ -836,7 +828,7 @@
 				bus-status-num = <5>;
 				bus-freq-mhz = <26>;
 			};
-			monitor10 {
+			monitor9 {
 				monitor-name = "debug_ctrl_ao_APINFRA_INT_AO";
 				base = <0x14051000>;
 				num-ports = <7>;
@@ -844,7 +836,7 @@
 				bus-status-num = <2>;
 				bus-freq-mhz = <26>;
 			};
-			monitor11 {
+			monitor10 {
 				monitor-name = "debug_ctrl_ao_APINFRA_MMU_AO";
 				base = <0x14071000>;
 				num-ports = <8>;
@@ -852,7 +844,7 @@
 				bus-status-num = <3>;
 				bus-freq-mhz = <26>;
 			};
-			monitor12 {
+			monitor11 {
 				monitor-name = "debug_ctrl_ao_APINFRA_SLB_AO";
 				base = <0x14091000>;
 				num-ports = <8>;
@@ -860,7 +852,7 @@
 				bus-status-num = <2>;
 				bus-freq-mhz = <26>;
 			};
-			monitor13 {
+			monitor12 {
 				monitor-name = "debug_ctrl_ao_APINFRA_MEM_AO";
 				base = <0x14116000>;
 				num-ports = <26>;
@@ -868,7 +860,7 @@
 				bus-status-num = <4>;
 				bus-freq-mhz = <26>;
 			};
-			monitor14 {
+			monitor13 {
 				monitor-name = "debug_ctrl_ao_APINFRA_MEM_CTRL_AO";
 				base = <0x14125000>;
 				num-ports = <2>;
@@ -876,7 +868,7 @@
 				bus-status-num = <2>;
 				bus-freq-mhz = <26>;
 			};
-			monitor15 {
+			monitor14 {
 				monitor-name = "debug_ctrl_ao_APINFRA_SSR_AO";
 				base = <0x180f1000>;
 				num-ports = <5>;
@@ -884,7 +876,7 @@
 				bus-status-num = <2>;
 				bus-freq-mhz = <26>;
 			};
-			monitor16 {
+			monitor15 {
 				monitor-name = "debug_ctrl_ao_NEMI_AO";
 				base = <0x10416000>;
 				num-ports = <18>;
@@ -892,7 +884,7 @@
 				bus-status-num = <4>;
 				bus-freq-mhz = <800>;
 			};
-			monitor17 {
+			monitor16 {
 				monitor-name = "debug_ctrl_ao_SEMI_AO";
 				base = <0x10516000>;
 				num-ports = <18>;
@@ -900,7 +892,7 @@
 				bus-status-num = <4>;
 				bus-freq-mhz = <800>;
 			};
-			monitor18 {
+			monitor17 {
 				monitor-name = "debug_ctrl_ao_EMI_INFRA_AO";
 				base = <0x10644000>;
 				num-ports = <70>;
@@ -908,15 +900,15 @@
 				bus-status-num = <12>;
 				bus-freq-mhz = <800>;
 			};
-			monitor19 {
+			monitor18 {
 				monitor-name = "debug_ctrl_ao_PERI_PAR_AO";
-				base = <0x000>;
-				num-ports = <1>;
-				bus-status-offset = <0xc>;
-				bus-status-num = <3>;
-				bus-freq-mhz = <156>;
+				base = <0x16680000>;
+				num-ports = <27>;
+				bus-status-offset = <0x18>;
+				bus-status-num = <6>;
+				bus-freq-mhz = <78>;
 			};
-			monitor20 {
+			monitor19 {
 				monitor-name = "debug_ctrl_ao_VLP_AO";
 				base = <0x1c031000>;
 				num-ports = <17>;
