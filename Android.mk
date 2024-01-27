@@ -66,9 +66,14 @@ $(KERNEL_ZIMAGE_OUT): $(GEN_KERNEL_BUILD_CONFIG) $(KERNEL_MAKE_DEPENDENCIES) | k
 else
 $(KERNEL_ZIMAGE_OUT): .KATI_IMPLICIT_OUTPUTS += $(TARGET_KERNEL_CONFIG)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_EXPORT_ENV := DEFCONFIG_OVERLAYS="$(KERNEL_DEFCONFIG_OVERLAYS)" KERNEL_VERSION=$(LINUX_KERNEL_VERSION)
-$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG := --//build/bazel_mgk_rules:kernel_version=$(patsubst kernel-%,%,$(LINUX_KERNEL_VERSION)) --experimental_writable_outputs
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG := --//build/bazel_mgk_rules:kernel_version=$(patsubst kernel-%,%,$(LINUX_KERNEL_VERSION)) --experimental_writable_outputs $(if $(KERNEL_PAGE_SIZE),--page_size=$(KERNEL_PAGE_SIZE))
 ifneq ($(filter yes no,$(COVERITY_LOCAL_SCAN)),)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG += --config=local
+else
+ifneq (,$(wildcard kernel/$(REL_ACK_DIR)/.git))
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG += --config=stamp --repo_manifest=$(abspath $(KERNEL_DIR)/fake_manifest.xml)
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_EXPORT_ENV += SOURCE_DATE_EPOCH=0
+endif
 endif
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_OUT := $(KERNEL_BAZEL_BUILD_OUT)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_DIST_OUT := $(KERNEL_BAZEL_DIST_OUT)
