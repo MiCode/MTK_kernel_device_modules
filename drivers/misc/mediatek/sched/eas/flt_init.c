@@ -67,6 +67,7 @@
 #define MSH	0x12481c6
 #define LFP	0x1f
 #define KOL	0x1dc
+#define ROE	0x3fc
 #define AMI	0x3ff
 
 unsigned int EKV[GKEL][RT] = {0};
@@ -431,11 +432,23 @@ static int flt_init_ekg(void)
 
 static void flt_mi(int ctp, u32 flt_mode)
 {
-	int i = 0, offset = KOL + ((ctp * LFP) << 2);
+	int i = 0, offset = 0;
 
 	/* sanity check */
 	if (ctp < 0 || ctp >= GKEL)
 		return;
+
+	switch (flt_mode) {
+	case FLT_MODE_2:
+	case FLT_MODE_3:
+		offset = KOL + ((ctp * LFP) << 2);
+		break;
+	case FLT_MODE_4:
+		offset = ROE + ((ctp * LFP) << 2);
+		break;
+	default:
+		return;
+	}
 
 	for (i = 0 ; i < RT; ++i) {
 		iowrite32(EKV[ctp][i], flt_xrg + offset);
