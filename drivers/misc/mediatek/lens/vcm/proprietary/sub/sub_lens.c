@@ -559,8 +559,7 @@ static inline void Unregister_AF_CharDrv(void)
 
 /* //////////////////////////////////////////////////////////////////// */
 
-static int AF_i2c_probe(struct i2c_client *client,
-			const struct i2c_device_id *id);
+static int AF_i2c_probe(struct i2c_client *client);
 static void AF_i2c_remove(struct i2c_client *client);
 static const struct i2c_device_id AF_i2c_id[] = {{AF_DRVNAME, 0}, {} };
 
@@ -588,8 +587,7 @@ static void AF_i2c_remove(struct i2c_client *client)
 }
 
 /* Kirby: add new-style driver {*/
-static int AF_i2c_probe(struct i2c_client *client,
-			const struct i2c_device_id *id)
+static int AF_i2c_probe(struct i2c_client *client)
 {
 	int i4RetValue = 0;
 
