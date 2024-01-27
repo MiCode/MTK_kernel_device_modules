@@ -192,7 +192,7 @@ static struct stCAM_CAL_CMD_INFO_STRUCT *EEPROM_get_cmd_info_ex
  * EEPROM_HW_i2c_probe
  **************************************************/
 static int EEPROM_HW_i2c_probe
-	(struct i2c_client *client, const struct i2c_device_id *id)
+	(struct i2c_client *client)
 {
 	/* get sensor i2c client */
 	spin_lock(&g_spinLock);
@@ -224,7 +224,7 @@ static void EEPROM_HW_i2c_remove(struct i2c_client *client)
  * EEPROM_HW_i2c_probe2
  ***********************************************/
 static int EEPROM_HW_i2c_probe2
-	(struct i2c_client *client, const struct i2c_device_id *id)
+	(struct i2c_client *client)
 {
 	/* get sensor i2c client */
 	spin_lock(&g_spinLock);
@@ -254,7 +254,7 @@ static void EEPROM_HW_i2c_remove2(struct i2c_client *client)
  * EEPROM_HW_i2c_probe3
  ********************************************************/
 static int EEPROM_HW_i2c_probe3
-	(struct i2c_client *client, const struct i2c_device_id *id)
+	(struct i2c_client *client)
 {
 	/* get sensor i2c client */
 	spin_lock(&g_spinLock);
