@@ -1265,7 +1265,10 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 		ged_get_cur_limiter_ceil());
 	trace_tracing_mark_write(5566, "limitter_floor",
 		ged_get_cur_limiter_floor());
-	trace_tracing_mark_write(5566, "commit_type", eCommitType);
+	if (eCommitType != GED_DVFS_EB_DESIRE_COMMIT)
+		trace_tracing_mark_write(5566, "commit_type", eCommitType);
+	else
+		trace_tracing_mark_write(5566, "eb_update_dcs", stackNewFreqID);
 	if (dcs_get_adjust_support() % 2 != 0)
 		trace_tracing_mark_write(5566, "preserve", g_force_disable_dcs);
 

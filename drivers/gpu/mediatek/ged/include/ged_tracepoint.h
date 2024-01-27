@@ -897,6 +897,26 @@ TRACE_EVENT(GPU_DVFS__Policy__Loading_based__EB_Margin,
 	TP_printk("ceil=%d cur=%d floor=%d diff=%u", __entry->ceil, __entry->cur, __entry->floor, __entry->diff)
 );
 
+TRACE_EVENT(GPU_DVFS__Policy__EB_PRESERVE,
+
+	TP_PROTO(unsigned int preserve, unsigned int diff),
+
+	TP_ARGS(preserve, diff),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, preserve)
+		__field(unsigned int, diff)
+	),
+
+	TP_fast_assign(
+		__entry->preserve = preserve;
+		__entry->diff = diff;
+
+	),
+
+	TP_printk("preserve=%u diff=%u", __entry->preserve, __entry->diff)
+);
+
 TRACE_EVENT(GPU_DVFS__Policy__EB_DEBUG,
 
 	TP_PROTO(unsigned int count, unsigned int diff),

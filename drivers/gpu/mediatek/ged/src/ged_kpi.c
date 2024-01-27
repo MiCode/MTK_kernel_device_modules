@@ -96,6 +96,7 @@
 #define GPU_FPS_DEFAULT_MARGIN 110
 #define GPU_FPS_DEFAULT_START  1
 #define GPU_FPS_DEFAULT_END    3
+#define GPU_SOC_TIMER_SUPPORT  1
 
 unsigned int g_gpu_fps_enable = 1;
 unsigned int g_gpu_fps_margin = GPU_FPS_DEFAULT_MARGIN;
@@ -155,6 +156,7 @@ struct GED_KPI_HEAD {
 	spinlock_t sListLock;
 	int i32QedBuffer_length;
 	int i32Gpu_uncompleted;
+	int i32Gpu_uncompleted_queue;		//calculate uncomplete count from queue
 	unsigned int gpu_completed_count;
 	int i32DebugQedBuffer_length;
 	int isSF;
@@ -372,7 +374,8 @@ static struct ged_head_record g_ged_head_record;
 struct ged_eb_dvfs_last_record {
 	u64 ulID;
 	u64 last_uncomplete_soc_timer;
-	unsigned int last_uncomplete_type;
+	u64 last_uncomplete_target;
+	u32 last_uncomplete_type;
 };
 static struct ged_eb_dvfs_last_record g_ged_eb_uncomplete_info;
 
@@ -1057,9 +1060,10 @@ static GED_BOOL ged_kpi_update_TargetTimeAndTargetFps(
 	if (ignore_fpsgo_enable) {
 		psHead->target_fps_margin = GED_KPI_DEFAULT_FPS_MARGIN;
 		if (psHead->t_gpu_target == 0)
-			psHead->t_gpu_target = g_target_fps_default;
-	} else
+			psHead->t_gpu_target = g_gpu_target_default;
+	} else {
 		psHead->t_gpu_target = psHead->t_cpu_target;
+	}
 
 	psHead->frc_client = client;
 	ret = GED_TRUE;
@@ -1328,41 +1332,48 @@ static void ged_kpi_update_soc_timer(struct GED_KPI_HEAD *psHead, unsigned int u
 	u64 soc_timer = 0;
 
 	if (is_fdvfs_enable()) {
+		int timer_change = 0;
+		int un_count = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_UNCOMPLETE_COUNT);
+		int head_t_gpu_target = psHead->t_gpu_target / 1000;
+
 		soc_timer = mtk_gpueb_read_soc_timer();
-		if (ulMask == GED_TIMESTAMP_TYPE_D) {
-			int un_count = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_UNCOMPLETE_COUNT);
+		psHead->last_TimeStamp1_soc_timer = soc_timer;
+		/* update uncomplete time if no any uncomplete */
+		if (g_ged_eb_uncomplete_info.last_uncomplete_type == 0 &&
+			g_ged_eb_uncomplete_info.ulID == 0 &&
+			psHead->i32Gpu_uncompleted_queue == 1) {
+			timer_change = 1;
+		} else if (g_ged_eb_uncomplete_info.ulID != psHead->ullWnd &&
+			       g_ged_eb_uncomplete_info.ulID != 0) {
+			unsigned long long info_soc_overdue =
+					g_ged_eb_uncomplete_info.last_uncomplete_soc_timer;
+			unsigned long long psHead_soc_overdue = soc_timer;
+			/* compare overdue timer to check uncomplete soc timer*/
+			info_soc_overdue +=
+					(g_ged_eb_uncomplete_info.last_uncomplete_target / 1000) * 13;
+			psHead_soc_overdue += head_t_gpu_target * 13;
+			if (psHead_soc_overdue < info_soc_overdue)
+				timer_change = 1;
+		}
 
-			psHead->last_TimeStampD_soc_timer = soc_timer;
-			/* update uncomplete time if no any uncomplete */
-			if (g_ged_eb_uncomplete_info.last_uncomplete_type == 0 &&
-				g_ged_eb_uncomplete_info.ulID == 0 &&
-				psHead->i32Gpu_uncompleted == 1) {
-				g_ged_eb_uncomplete_info.last_uncomplete_type = GED_TIMESTAMP_TYPE_D;
-				g_ged_eb_uncomplete_info.last_uncomplete_soc_timer = soc_timer;
-				mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_SOC_TIMER_HI,
-								(u32)(soc_timer >> 32));
-				mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_SOC_TIMER_LO,
-								(u32)(soc_timer & 0xFFFFFFFF));
+		if (ged_get_policy_state() == POLICY_STATE_LB) {
+			un_count ++;
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_UNCOMPLETE_COUNT, un_count);
+		}
 
-				trace_tracing_mark_write(5566, "lb_soc_timer_update", SOC_DEQUEUE);
-			}
-			if (ged_get_policy_state() == POLICY_STATE_LB) {
-				un_count ++;
-				mtk_gpueb_sysram_write(SYSRAM_GPU_EB_UNCOMPLETE_COUNT, un_count);
-			}
-		} else if (ulMask == GED_TIMESTAMP_TYPE_1) {
-			psHead->last_TimeStamp1_soc_timer = soc_timer;
-			/* update uncomplete time if the last uncomplete dequeue is over */
-			if (g_ged_eb_uncomplete_info.last_uncomplete_type == GED_TIMESTAMP_TYPE_D &&
-				g_ged_eb_uncomplete_info.ulID == psHead->ullWnd) {
-				g_ged_eb_uncomplete_info.last_uncomplete_type = GED_TIMESTAMP_TYPE_1;
-				g_ged_eb_uncomplete_info.last_uncomplete_soc_timer = soc_timer;
-				mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_SOC_TIMER_HI,
-									(u32)(soc_timer >> 32));
-				mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_SOC_TIMER_LO,
-									(u32)(soc_timer & 0xFFFFFFFF));
-				trace_tracing_mark_write(5566, "lb_soc_timer_update", SOC_QUEUE);
-			}
+		if (timer_change == 1) {
+			trace_tracing_mark_write(5566, "lb_soc_timer_update", SOC_QUEUE);
+			g_ged_eb_uncomplete_info.last_uncomplete_type = ulMask;
+			g_ged_eb_uncomplete_info.last_uncomplete_soc_timer = soc_timer;
+			g_ged_eb_uncomplete_info.last_uncomplete_target = psHead->t_gpu_target;
+			g_ged_eb_uncomplete_info.ulID = psHead->ullWnd ;
+			mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_SOC_TIMER_HI,
+							(u32)(soc_timer >> 32));
+			mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_SOC_TIMER_LO,
+							(u32)(soc_timer & 0xFFFFFFFF));
+			mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_TARGET_TIME,
+							head_t_gpu_target);
+			mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_TIME, 0);
 		}
 	}
 }
@@ -1504,8 +1515,6 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		psHead->i32Count += 1;
 		psHead->i32Gpu_uncompleted++;
 		psHead->last_TimeStampD = psKPI->ullTimeStampD;
-		ged_eb_dvfs_task(EB_UPDATE_UNCOMPLETE_COUNT, psHead->i32Gpu_uncompleted);
-		ged_kpi_update_soc_timer(psHead, GED_TIMESTAMP_TYPE_D);
 		psKPI->i32Gpu_uncompleted = psHead->i32Gpu_uncompleted;
 
 		/*check if LB or FB*/
@@ -1565,6 +1574,8 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		psKPI->t_gpu_target = psHead->t_gpu_target;
 		psKPI->target_fps_margin = psHead->target_fps_margin;
 		psHead->i32DebugQedBuffer_length += 1;
+		psHead->i32Gpu_uncompleted_queue++;
+		ged_eb_dvfs_task(EB_UPDATE_UNCOMPLETE_COUNT, psHead->i32Gpu_uncompleted_queue);
 		psKPI->i32DebugQedBuffer_length = psHead->i32DebugQedBuffer_length;
 		/* recording cpu time per frame & boost CPU if needed */
 		ullTimeStampTemp = psHead->last_TimeStamp1;
@@ -1743,6 +1754,8 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 				g_force_disable_dcs = true;
 		}
 
+		ged_eb_dvfs_task(EB_UPDATE_PRESERVE, g_force_disable_dcs);
+
 		/* gpu info to KPI TAG */
 		psKPI->t_gpu = psHead->t_gpu_latest;
 		psKPI->gpu_freq = ged_get_cur_freq() / 1000;
@@ -1752,7 +1765,8 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		psHead->pre_TimeStamp2 = psHead->last_TimeStamp2;
 		psHead->last_TimeStamp2 = psTimeStamp->ullTimeStamp;
 		psHead->i32Gpu_uncompleted--;
-		ged_eb_dvfs_task(EB_UPDATE_UNCOMPLETE_COUNT, psHead->i32Gpu_uncompleted);
+		psHead->i32Gpu_uncompleted_queue--;
+		ged_eb_dvfs_task(EB_UPDATE_UNCOMPLETE_COUNT, psHead->i32Gpu_uncompleted_queue);
 		psHead->gpu_completed_count++;
 		psKPI->gpu_loading = psTimeStamp->i32GPUloading;
 
@@ -2503,19 +2517,11 @@ void ged_kpi_update_sysram_uncompleted_tgpu(struct ged_sysram_info *info)
 		psHead = (struct GED_KPI_HEAD *)ged_hashtable_find(gs_hashtable
 						, (unsigned long)g_ged_head_record.ulID[i]);
 		if (psHead) {
-			if (psHead->i32Gpu_uncompleted > 0) {
+			if (psHead->i32Gpu_uncompleted_queue > 0) {
 				unsigned long long ullTimeStampTemp;
-				/* if BBQ has 2 uncomplete, previous queue is still not finish yet*/
-				if (psHead->last_TimeStamp1 < psHead->last_TimeStampD &&
-					psHead->i32Gpu_uncompleted == 1) {
-					ullTimeStampTemp = psHead->last_TimeStampD;
-					soc_timer = psHead->last_TimeStampD_soc_timer;
-					cur_type = GED_TIMESTAMP_TYPE_D;
-				} else {
-					ullTimeStampTemp = psHead->last_TimeStamp1;
-					soc_timer = psHead->last_TimeStamp1_soc_timer;
-					cur_type = GED_TIMESTAMP_TYPE_1;
-				}
+				ullTimeStampTemp = psHead->last_TimeStamp1;
+				soc_timer = psHead->last_TimeStamp1_soc_timer;
+				cur_type = GED_TIMESTAMP_TYPE_1;
 				t_gpu_uncomplete = current_timestamp - ullTimeStampTemp;
 			} else {
 				t_gpu_uncomplete = 0 ;
@@ -2523,24 +2529,54 @@ void ged_kpi_update_sysram_uncompleted_tgpu(struct ged_sysram_info *info)
 
 			psHead->t_gpu_latest_uncompleted = t_gpu_uncomplete;
 
-			if (info->last_tgpu_uncompleted <=  psHead->t_gpu_latest_uncompleted) {
-				info->last_tgpu_uncompleted = psHead->t_gpu_latest_uncompleted;
-				info->last_tgpu_uncompleted_target = psHead->t_gpu_target;
-				info->last_uncomplete_soc_timer = soc_timer;
-				g_ged_eb_uncomplete_info.last_uncomplete_type = cur_type;
-				g_ged_eb_uncomplete_info.last_uncomplete_soc_timer = soc_timer;
-				g_ged_eb_uncomplete_info.ulID = psHead->ullWnd;
+			if (GPU_SOC_TIMER_SUPPORT) {
+				unsigned long long info_soc_overdue = info->last_uncomplete_soc_timer;
+				unsigned long long psHead_soc_overdue = soc_timer;
+				/* compare overdue timer to check uncomplete */
+				if (info->last_tgpu_uncompleted_target == 0) {
+					info->last_tgpu_uncompleted = psHead->t_gpu_latest_uncompleted;
+					info->last_tgpu_uncompleted_target = psHead->t_gpu_target;
+					info->last_uncomplete_soc_timer = soc_timer;
+					g_ged_eb_uncomplete_info.last_uncomplete_type = cur_type;
+					g_ged_eb_uncomplete_info.last_uncomplete_soc_timer = soc_timer;
+					g_ged_eb_uncomplete_info.ulID = psHead->ullWnd;
+					g_ged_eb_uncomplete_info.last_uncomplete_target =
+						psHead->t_gpu_target;
+				} else {
+					info_soc_overdue += (info->last_tgpu_uncompleted_target / 1000) * 13;
+					psHead_soc_overdue += (psHead->t_gpu_target / 1000) * 13;
+					if (psHead_soc_overdue < info_soc_overdue) {
+						info->last_tgpu_uncompleted = psHead->t_gpu_latest_uncompleted;
+						info->last_tgpu_uncompleted_target = psHead->t_gpu_target;
+						info->last_uncomplete_soc_timer = soc_timer;
+						g_ged_eb_uncomplete_info.last_uncomplete_type = cur_type;
+						g_ged_eb_uncomplete_info.last_uncomplete_soc_timer = soc_timer;
+						g_ged_eb_uncomplete_info.ulID = psHead->ullWnd;
+						g_ged_eb_uncomplete_info.last_uncomplete_target =
+							psHead->t_gpu_target;
+					}
+				}
+			} else {
+				if (info->last_tgpu_uncompleted <=  psHead->t_gpu_latest_uncompleted) {
+					info->last_tgpu_uncompleted = psHead->t_gpu_latest_uncompleted;
+					info->last_tgpu_uncompleted_target = psHead->t_gpu_target;
+					info->last_uncomplete_soc_timer = soc_timer;
+					g_ged_eb_uncomplete_info.last_uncomplete_type = cur_type;
+					g_ged_eb_uncomplete_info.last_uncomplete_soc_timer = soc_timer;
+					g_ged_eb_uncomplete_info.ulID = psHead->ullWnd;
+					g_ged_eb_uncomplete_info.last_uncomplete_target =
+							psHead->t_gpu_target;
+
+				}
 			}
 
-			info->uncompleted_count += psHead->i32Gpu_uncompleted;
+			info->uncompleted_count += psHead->i32Gpu_uncompleted_queue;
 		}
 	}
 
 
 	if (info->uncompleted_count == 0) {
-		g_ged_eb_uncomplete_info.last_uncomplete_type = 0;
-		g_ged_eb_uncomplete_info.last_uncomplete_soc_timer = 0;
-		g_ged_eb_uncomplete_info.ulID = 0;
+		memset(&g_ged_eb_uncomplete_info, 0, sizeof(struct ged_eb_dvfs_last_record));
 	}
 
 	spin_unlock_irqrestore(&gs_hashtableLock, ulIRQFlags);
