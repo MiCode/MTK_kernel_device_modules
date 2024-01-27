@@ -1254,11 +1254,11 @@ static inline void pt_info_dump(struct seq_file *s,
 				u64 pgcount)
 {
 	iommu_dump(s,
-		   "ptep:%pa pte:0x%llx ~ 0x%llx iova:0x%llx ~ 0x%llx -> pa:0x%llx ~ 0x%llx count:%llu\n",
+		   "ptep:%pa pte:0x%llx ~ 0x%llx iova:0x%llx ~ 0x%llx -> pa:0x%llx ~ 0x%llx pgsize:0x%llx count:%llu\n",
 		   &ptep, pte_s, pte_e, iova_s, (iova_e + pgsize -1),
 		   iopte_to_paddr(pte_s, data),
 		   (iopte_to_paddr(pte_e, data) + pgsize -1),
-		   pgcount);
+		   pgsize, pgcount);
 }
 
 static void __ptdump(struct seq_file *s, arm_lpae_iopte *ptep, int lvl, u64 va,
@@ -1289,8 +1289,8 @@ static void __ptdump(struct seq_file *s, arm_lpae_iopte *ptep, int lvl, u64 va,
 
 		if (iopte_leaf(pte, lvl, data->iop.fmt)) {
 #ifdef SMMU_PTDUMP_RAW
-			iommu_dump(s, "ptep:%pa pte_raw:0x%llx iova:0x%llx -> pa:0x%llx\n",
-				   &ptep, pte, tmp_va, iopte_to_paddr(pte, data));
+			iommu_dump(s, "ptep:%pa pte_raw:0x%llx iova:0x%llx -> pa:0x%llx pgsize:0x%llx\n",
+				   &ptep, pte, tmp_va, iopte_to_paddr(pte, data), pgsize);
 #endif
 			if (pte_s == 0) {
 				pte_s = pte;

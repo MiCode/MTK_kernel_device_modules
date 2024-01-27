@@ -750,22 +750,6 @@ int mtk_smmu_tf_detect(enum mtk_smmu_type type,
 		       u32 sid, u32 tbu,
 		       u32 *axids, u32 num_axids,
 		       struct mtk_smmu_fault_param *param);
-
-int mtk_smmu_start_transaction_counter(struct device *dev);
-void mtk_smmu_end_transaction_counter(struct device *dev,
-				      unsigned long *tcu_tot,
-				      unsigned long *tbu_tot);
-int mtk_smmu_start_latency_monitor(struct device *dev,
-				   int mon_axiid,
-				   int lat_spec);
-void mtk_smmu_end_latency_monitor(struct device *dev,
-				  unsigned int *maxlat_axiid,
-				  unsigned long *tcu_rlat_tots,
-				  unsigned long *tbu_lat_tots,
-				  unsigned long *oos_trans_tot);
-void mtk_smmu_dump_outstanding_monitor(struct device *dev);
-void mtk_smmu_dump_io_interface_signals(struct device *dev);
-void mtk_smmu_dump_dcm_en(struct device *dev);
 int mtk_smmu_register_pmu_device(struct smmuv3_pmu_device *pmu_device);
 void mtk_smmu_unregister_pmu_device(struct smmuv3_pmu_device *pmu_device);
 #else
@@ -782,44 +766,6 @@ static inline int mtk_smmu_tf_detect(enum mtk_smmu_type type,
 				     struct mtk_smmu_fault_param *param)
 {
 	return 0;
-}
-
-static inline int mtk_smmu_start_transaction_counter(struct device *dev)
-{
-	return 0;
-}
-
-static inline void mtk_smmu_end_transaction_counter(struct device *dev,
-						    unsigned long *tcu_tot,
-						    unsigned long *tbu_tot)
-{
-}
-
-static inline int mtk_smmu_start_latency_monitor(struct device *dev,
-						 int mon_axiid,
-						 int lat_spec)
-{
-	return 0;
-}
-
-static inline void mtk_smmu_end_latency_monitor(struct device *dev,
-						unsigned int *maxlat_axiid,
-						unsigned long *tcu_rlat_tots,
-						unsigned long *tbu_lat_tots,
-						unsigned long *oos_trans_tot)
-{
-}
-
-static inline void mtk_smmu_dump_outstanding_monitor(struct device *dev)
-{
-}
-
-static inline void mtk_smmu_dump_io_interface_signals(struct device *dev)
-{
-}
-
-static inline void mtk_smmu_dump_dcm_en(struct device *dev)
-{
 }
 
 static inline int mtk_smmu_register_pmu_device(struct smmuv3_pmu_device *pmu_device)
