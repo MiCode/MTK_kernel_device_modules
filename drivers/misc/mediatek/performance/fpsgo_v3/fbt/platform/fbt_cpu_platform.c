@@ -28,14 +28,6 @@ static int plat_sbe_rescue_enable;
 static int plat_ux_scroll_policy_type;
 static int plat_cpu_limit;
 
-void fbt_notify_CM_limit(int reach_limit)
-{
-#if IS_ENABLED(CONFIG_MTK_CM_MGR) || IS_ENABLED(CONFIG_MTK_CM_MGR_LEGACY_V1)
-	cm_mgr_perf_set_status(reach_limit);
-#endif
-	fpsgo_systrace_c_fbt_debug(-100, 0, reach_limit, "notify_cm");
-}
-
 static int generate_cpu_mask(void);
 static int generate_sbe_rescue_enable(void);
 static int generate_ux_scroll_policy_type(void);
@@ -115,16 +107,6 @@ void exit_fbt_platform(void)
 	platform_driver_unregister(&mtk_platform_fpsgo_driver);
 }
 
-void fbt_boost_dram(int boost)
-{
-	if (boost)
-		icc_set_bw(bw_path, 0, peak_bw);
-	else
-		icc_set_bw(bw_path, 0, 0);
-
-	fpsgo_systrace_c_fbt_debug(-100, 0, boost, "dram_boost");
-}
-
 void fbt_set_boost_value(unsigned int base_blc)
 {
 	base_blc = clamp(base_blc, 1U, 100U);
@@ -136,9 +118,6 @@ void fbt_clear_boost_value(void)
 {
 	fpsgo_sentcmd(FPSGO_SET_BOOST_TA, -1, -1);
 	fpsgo_systrace_c_fbt_debug(-100, 0, 0, "TA_cap");
-
-	fbt_notify_CM_limit(0);
-	fbt_boost_dram(0);
 }
 
 void fbt_set_per_task_cap(int pid, unsigned int min_blc,
@@ -278,9 +257,10 @@ static int generate_ux_scroll_policy_type(void)
 
 int fbt_check_ls(int pid)
 {
-	struct task_struct *tsk;
 	int ls = 0;
 
+#if IS_ENABLED(CONFIG_MTK_SCHEDULER)
+	struct task_struct *tsk;
 	rcu_read_lock();
 	tsk = find_task_by_vpid(pid);
 	if (!tsk)
@@ -291,6 +271,8 @@ int fbt_check_ls(int pid)
 
 EXIT:
 	rcu_read_unlock();
+#endif
+
 	return ls;
 }
 
@@ -364,10 +346,12 @@ int fbt_set_soft_affinity(int pid, int set, unsigned int prefer_type)
 		goto out;
 	}
 
+#if IS_ENABLED(CONFIG_MTK_SCHEDULER)
 	if (set)
 		set_task_ls_prefer_cpus(pid, mask_int[prefer_type]);
 	else
 		unset_task_ls_prefer_cpus(pid);
+#endif
 
 out:
 	if (ret != 0) {

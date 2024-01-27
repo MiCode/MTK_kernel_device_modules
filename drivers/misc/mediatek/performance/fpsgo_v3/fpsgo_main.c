@@ -32,7 +32,6 @@
 #include "xgf.h"
 #include "mtk_drm_arr.h"
 #include "powerhal_cpu_ctrl.h"
-#include "gbe_common.h"
 #include "fbt_cpu_ux.h"
 
 #define CREATE_TRACE_POINTS
@@ -137,8 +136,6 @@ int powerhal_tid;
 #if !IS_ENABLED(CONFIG_ARM64)
 int cap_ready;
 #endif
-
-void (*rsu_cpufreq_notifier_fp)(int cluster_id, unsigned long freq);
 
 /* TODO: event register & dispatch */
 int fpsgo_is_enable(void)
@@ -531,6 +528,12 @@ struct task_struct *fpsgo_get_kfpsgo(void)
 	return kfpsgo_tsk ? kfpsgo_tsk : NULL;
 }
 
+int fpsgo_get_kfpsgo_tid(void)
+{
+	return kfpsgo_tsk ? kfpsgo_tsk->pid : 0;
+}
+EXPORT_SYMBOL(fpsgo_get_kfpsgo_tid);
+
 static int kfpsgo(void *arg)
 {
 	struct sched_attr attr = {};
@@ -840,11 +843,8 @@ int fpsgo_wait_fstb_active(void)
 	return fpsgo_ctrl2fstb_wait_fstb_active();
 }
 
-void fpsgo_get_pid(int cmd, int *pid, int op, int value1, int value2)
+void fpsgo_get_pid(int cmd, int *pid, int value1, int value2)
 {
-	int local_tgid = 0;
-	int local_rtid = 0;
-	int local_blc = 0;
 	unsigned long long cur_ts;
 
 	if (!pid)
@@ -856,9 +856,7 @@ void fpsgo_get_pid(int cmd, int *pid, int op, int value1, int value2)
 		break;
 	case CAMERA_APK:
 	case CAMERA_SERVER:
-	case CAMERA_HWUI:
-		op ? fpsgo_ctrl2base_wait_cam(cmd, pid) :
-			fpsgo_ctrl2base_get_cam_pid(cmd, pid);
+		fpsgo_ctrl2base_get_cam_pid(cmd, pid);
 		break;
 	case CAMERA_DO_FRAME:
 		cur_ts = fpsgo_get_time();
@@ -867,11 +865,6 @@ void fpsgo_get_pid(int cmd, int *pid, int op, int value1, int value2)
 	case CAMERA_APP_MIN_FPS:
 		cur_ts = fpsgo_get_time();
 		fpsgo_ctrl2comp_set_app_meta_fps(value1, value2, cur_ts);
-		break;
-	case CAMERA_PERF_IDX:
-		local_tgid = value1;
-		fpsgo_ctrl2base_get_cam_perf(local_tgid, &local_rtid, &local_blc);
-		*pid = local_blc;
 		break;
 	default:
 		FPSGO_LOGE("[FPSGO_CTRL] wrong cmd:%d\n", cmd);
@@ -1213,45 +1206,42 @@ void fpsgo_force_switch_enable(int enable)
 	fpsgo_switch_enable(enable?1:0);
 }
 
-/* FSTB control */
-int fpsgo_is_fstb_enable(void)
+static void fpsgo_notify_cpufreq_cap(int first_cpu_id, int last_cpu_id)
 {
-	return is_fstb_enable();
-}
+	int cpu, cluster = 0;
+	int max_capacity = 0, tmp_capacity = 0;
+	struct cpufreq_policy *policy = NULL;
 
-int fpsgo_switch_fstb(int enable)
-{
-	return fpsgo_ctrl2fstb_switch_fstb(enable);
-}
+	for_each_possible_cpu(cpu) {
+		policy = cpufreq_cpu_get(cpu);
+		if (!policy)
+			break;
+		cpu = cpumask_first(policy->related_cpus);
+		if (cpu == first_cpu_id) {
+			cpufreq_cpu_put(policy);
+			break;
+		}
+		cpu = cpumask_last(policy->related_cpus);
+		cluster++;
+		cpufreq_cpu_put(policy);
+	}
 
-int fpsgo_fstb_process_fps_range(char *proc_name,
-	int nr_level, struct fps_level *level)
-{
-	return switch_process_fps_range(proc_name, nr_level, level);
-}
+	for (cpu = first_cpu_id; cpu <= last_cpu_id; cpu++) {
+#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
+		tmp_capacity = get_curr_cap(cpu);
+#endif
+		if (tmp_capacity > max_capacity)
+			max_capacity = tmp_capacity;
+	}
 
-int fpsgo_fstb_thread_fps_range(pid_t pid,
-	int nr_level, struct fps_level *level)
-{
-	return switch_thread_fps_range(pid, nr_level, level);
+	if (max_capacity > 0)
+		fpsgo_ctrl2fbt_cpufreq_cb_cap(cluster, max_capacity);
 }
 
 #if FPSGO_DYNAMIC_WL
-
-void fpsgo_notify_cpufreq_cap(int cid, int cap)
-{
-	FPSGO_LOGI("[FPSGO_CTRL] cid %d, cpufreq %d\n", cid, cap);
-
-	if (!fpsgo_enable)
-		return;
-
-	fpsgo_ctrl2fbt_cpufreq_cb_cap(cid, cap);
-}
-
 static void fpsgo_cpu_frequency_cap_tracer(void *ignore, struct cpufreq_policy *policy)
 {
-	unsigned int cpu_id = 0, cpu = 0, cluster = 0, capacity;
-	struct cpufreq_policy *cpus_policy = NULL;
+	int first_cpu_id = 0, last_cpu_id = 0;
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	u64 ts[2];
@@ -1259,31 +1249,14 @@ static void fpsgo_cpu_frequency_cap_tracer(void *ignore, struct cpufreq_policy *
 	ts[0] = sched_clock();
 #endif
 
-	if (!policy)
-		return;
+	if (!fpsgo_enable || !policy)
+		goto out;
 
-	cpu_id = cpumask_first(policy->related_cpus);
+	first_cpu_id = cpumask_first(policy->related_cpus);
+	last_cpu_id = cpumask_last(policy->related_cpus);
+	fpsgo_notify_cpufreq_cap(first_cpu_id, last_cpu_id);
 
-	for_each_possible_cpu(cpu) {
-		cpus_policy = cpufreq_cpu_get(cpu);
-		if (!cpus_policy)
-			break;
-		cpu = cpumask_first(cpus_policy->related_cpus);
-		if (cpu == cpu_id)
-			break;
-		cpu = cpumask_last(cpus_policy->related_cpus);
-		cluster++;
-		cpufreq_cpu_put(cpus_policy);
-	}
-
-	capacity = get_curr_cap(cpu);
-
-	if (capacity)
-		fpsgo_notify_cpufreq_cap(cluster, capacity);
-	else
-		FPSGO_LOGE("[%s] cluster:%d, cpu:%d, freq:%d\n", __func__,
-			cluster, cpu_id, capacity);
-
+out:
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	ts[1] = sched_clock();
 
@@ -1303,8 +1276,7 @@ void register_fpsgo_android_cpufreq_transition_hook(void)
 		pr_info("register android_rvh_cpufreq_transition hooks failed, returned %d\n", ret);
 }
 
-#else  // FPSGO_DYNAMIC_WL
-
+#else
 struct tracepoints_table {
 	const char *name;
 	void *func;
@@ -1312,22 +1284,9 @@ struct tracepoints_table {
 	bool registered;
 };
 
-void fpsgo_notify_cpufreq(int cid, unsigned long freq)
-{
-	FPSGO_LOGI("[FPSGO_CTRL] cid %d, cpufreq %lu\n", cid, freq);
-
-	if (rsu_cpufreq_notifier_fp)
-		rsu_cpufreq_notifier_fp(cid, freq);
-
-	if (!fpsgo_enable)
-		return;
-
-	fpsgo_ctrl2fbt_cpufreq_cb_exp(cid, freq);
-}
-
 static void fpsgo_cpu_frequency_tracer(void *ignore, unsigned int frequency, unsigned int cpu_id)
 {
-	int cpu = 0, cluster = 0;
+	int first_cpu_id, last_cpu_id;
 	struct cpufreq_policy *policy = NULL;
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
@@ -1336,6 +1295,9 @@ static void fpsgo_cpu_frequency_tracer(void *ignore, unsigned int frequency, uns
 	ts[0] = sched_clock();
 #endif
 
+	if (!fpsgo_enable)
+		return;
+
 	policy = cpufreq_cpu_get(cpu_id);
 	if (!policy)
 		return;
@@ -1343,24 +1305,11 @@ static void fpsgo_cpu_frequency_tracer(void *ignore, unsigned int frequency, uns
 		cpufreq_cpu_put(policy);
 		return;
 	}
+
+	first_cpu_id = cpumask_first(policy->related_cpus);
+	last_cpu_id = cpumask_last(policy->related_cpus);
 	cpufreq_cpu_put(policy);
-
-	for_each_possible_cpu(cpu) {
-		policy = cpufreq_cpu_get(cpu);
-		if (!policy)
-			break;
-		cpu = cpumask_first(policy->related_cpus);
-		if (cpu == cpu_id)
-			break;
-		cpu = cpumask_last(policy->related_cpus);
-		cluster++;
-		cpufreq_cpu_put(policy);
-	}
-
-	if (policy) {
-		fpsgo_notify_cpufreq(cluster, frequency);
-		cpufreq_cpu_put(policy);
-	}
+	fpsgo_notify_cpufreq_cap(first_cpu_id, last_cpu_id);
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	ts[1] = sched_clock();
@@ -1370,7 +1319,6 @@ static void fpsgo_cpu_frequency_tracer(void *ignore, unsigned int frequency, uns
 			__func__, ts[1] - ts[0], ts[0], ts[1]);
 	}
 #endif
-
 }
 
 struct tracepoints_table fpsgo_tracepoints[] = {
@@ -1414,7 +1362,7 @@ void register_fpsgo_cpufreq_transition_hook(void)
 		if (fpsgo_tracepoints[i].tp == NULL) {
 			FPSGO_LOGE("FPSGO Error, %s not found\n", fpsgo_tracepoints[i].name);
 			tracepoint_cleanup();
-			return -1;
+			return;
 		}
 	}
 	ret = tracepoint_probe_register(fpsgo_tracepoints[0].tp, fpsgo_tracepoints[0].func,  NULL);
@@ -1424,9 +1372,7 @@ void register_fpsgo_cpufreq_transition_hook(void)
 	}
 	fpsgo_tracepoints[0].registered = true;
 }
-
 #endif  // FPSGO_DYNAMIC_WL
-
 
 static void __exit fpsgo_exit(void)
 {
@@ -1442,18 +1388,13 @@ static void __exit fpsgo_exit(void)
 	mtk_fstb_exit();
 	fpsgo_composer_exit();
 	fpsgo_sysfs_exit();
-
-	exit_gbe_common();
 }
 
 static int __init fpsgo_init(void)
 {
-	
 #if !IS_ENABLED(CONFIG_ARM64)
 	cap_ready = 0;
 #endif
-
-	FPSGO_LOGI("[FPSGO_CTRL] init\n");
 
 	fpsgo_cpu_policy_init();
 
@@ -1478,8 +1419,6 @@ static int __init fpsgo_init(void)
 	mtk_fstb_init();
 	fpsgo_composer_init();
 	fbt_cpu_init();
-
-	init_gbe_common();
 
 	if (fpsgo_arch_nr_clusters() > 0)
 		fpsgo_switch_enable(1);

@@ -3,7 +3,6 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
-#include "fpsgo_base.h"
 #include <asm/page.h>
 #include <linux/module.h>
 #include <linux/version.h>
@@ -18,12 +17,12 @@
 #include <linux/sched/cputime.h>
 #include <linux/cpufreq.h>
 #include "sugov/cpufreq.h"
-#include <linux/kobject.h>
 #include <linux/device.h>
 #include <linux/miscdevice.h>
 #include <linux/uaccess.h>
 #include <linux/wait.h>
 
+#include "fpsgo_base.h"
 #include "mt-plat/fpsgo_common.h"
 #include "fpsgo_usedext.h"
 #include "fpsgo_sysfs.h"
@@ -51,31 +50,20 @@
 #endif
 #include "fpsgo_trace_event.h"
 
-#define event_trace(ip, fmt, args...) \
-do { \
-	__trace_printk_check_format(fmt, ##args);     \
-	{	\
-	static const char *trace_printk_fmt     \
-	__section(__trace_printk_fmt) =  \
-	__builtin_constant_p(fmt) ? fmt : NULL;   \
-	__trace_bprintk(ip, trace_printk_fmt, ##args);    \
-	}	\
-} while (0)
-
 static int total_fps_control_pid_info_num;
 static int fpsgo_get_acquire_hint_enable;
-static int cond_get_cam_apk_pid;
-static int cond_get_cam_ser_pid;
 static int global_cam_apk_pid;
 static int global_kfps_mask = 0xFFF;
 static int total_render_info_num;
 static int total_linger_num;
 static int total_BQ_id_num;
+static int total_connect_api_info_num;
 static int total_sbe_spid_loading_num;
 
 static struct kobject *base_kobj;
 static struct rb_root render_pid_tree;
 static struct rb_root BQ_id_list;
+static struct rb_root connect_api_tree;
 static struct rb_root linger_tree;
 static struct rb_root hwui_info_tree;
 static struct rb_root sbe_info_tree;
@@ -91,12 +79,6 @@ void (*fpsgo_rl_delete_render_info_fp)(int pid, unsigned long long bufID);
 EXPORT_SYMBOL(fpsgo_rl_delete_render_info_fp);
 
 static DEFINE_MUTEX(fpsgo_render_lock);
-static DEFINE_MUTEX(fpsgo2cam_apk_lock);
-static DEFINE_MUTEX(fpsgo2cam_ser_lock);
-static DECLARE_WAIT_QUEUE_HEAD(cam_apk_pid_queue);
-static DECLARE_WAIT_QUEUE_HEAD(cam_ser_pid_queue);
-static LIST_HEAD(cam_apk_pid_list);
-static LIST_HEAD(cam_ser_pid_list);
 
 long long fpsgo_task_sched_runtime(struct task_struct *p)
 {
@@ -186,7 +168,6 @@ int fpsgo_arch_nr_clusters(void)
 	}
 
 	return num;
-
 }
 
 int fpsgo_arch_nr_get_opp_cpu(int cpu)
@@ -216,18 +197,6 @@ out:
 	return nr_opp;
 }
 
-int fpsgo_arch_nr_get_cap_cpu(int cpu, int opp)
-{
-	unsigned long cap;
-
-	if (opp < fpsgo_arch_nr_get_opp_cpu(cpu))
-		cap = pd_get_opp_capacity_legacy(cpu, opp);
-	else
-		cap = pd_get_opp_capacity_legacy(cpu, 0);
-
-	return (unsigned int) cap;
-}
-
 int fpsgo_arch_nr_max_opp_cpu(void)
 {
 	int num_opp = 0, max_opp = 0;
@@ -254,49 +223,6 @@ int fpsgo_arch_nr_max_opp_cpu(void)
 out:
 	kfree(curr_policy);
 	return max_opp;
-}
-
-int fpsgo_arch_nr_freq_cpu(void)
-{
-	int  cpu, max_opp = 0;
-
-	for_each_possible_cpu(cpu) {
-		int opp = pd_get_cpu_opp(cpu);
-
-		if (opp > max_opp)
-			max_opp = opp;
-	}
-
-	return max_opp;
-}
-
-unsigned int fpsgo_cpufreq_get_freq_by_idx(
-	int cpu, unsigned int opp)
-{
-	struct cpufreq_policy *curr_policy = NULL;
-	struct cpufreq_frequency_table *pos, *table;
-	int idx;
-	int ret = 0;
-	unsigned int max_freq = 0;
-
-	curr_policy = kzalloc(sizeof(struct cpufreq_policy), GFP_KERNEL);
-	if (!curr_policy)
-		return 0;
-
-	ret = cpufreq_get_policy(curr_policy, cpu);
-	if (ret == 0) {
-		table = curr_policy->freq_table;
-		cpufreq_for_each_valid_entry_idx(pos, table, idx) {
-			max_freq = max(pos->frequency, max_freq);
-			if (idx == opp) {
-				kfree(curr_policy);
-				return pos->frequency;
-			}
-		}
-	}
-
-	kfree(curr_policy);
-	return max_freq;
 }
 
 struct k_list {
@@ -344,40 +270,6 @@ void fpsgo_ctrl2base_get_pwr_cmd(int *cmd, int *value1, int *value2)
 	if (list_empty(&head))
 		condition_get_cmd = 0;
 	mutex_unlock(&fpsgo2pwr_lock);
-}
-
-static void fpsgo2cam_sentcmd(int cmd, int pid)
-{
-	struct cam_cmd_node *node = NULL;
-
-	switch (cmd) {
-	case CAMERA_APK:
-		mutex_lock(&fpsgo2cam_apk_lock);
-		node = kmalloc(sizeof(struct cam_cmd_node), GFP_KERNEL);
-		if (!node)
-			goto apk_out;
-		node->target_pid = pid;
-		list_add_tail(&node->queue_list, &cam_apk_pid_list);
-		cond_get_cam_apk_pid = 1;
-apk_out:
-		mutex_unlock(&fpsgo2cam_apk_lock);
-		wake_up_interruptible(&cam_apk_pid_queue);
-		break;
-	case CAMERA_SERVER:
-		mutex_lock(&fpsgo2cam_ser_lock);
-		node = kmalloc(sizeof(struct cam_cmd_node), GFP_KERNEL);
-		if (!node)
-			goto ser_out;
-		node->target_pid = pid;
-		list_add_tail(&node->queue_list, &cam_ser_pid_list);
-		cond_get_cam_ser_pid = 1;
-ser_out:
-		mutex_unlock(&fpsgo2cam_ser_lock);
-		wake_up_interruptible(&cam_ser_pid_queue);
-		break;
-	default:
-		break;
-	}
 }
 
 static void fpsgo_get_cam_pid(int cmd, int *pid)
@@ -430,143 +322,14 @@ static void fpsgo_get_cam_pid(int cmd, int *pid)
 	}
 }
 
-static void fpsgo_check_consumer_is_hwui(int *pid)
-{
-	int i;
-	int ret = 0;
-	int *r_hwui_arr = NULL;
-	int r_hwui_num = 0;
-	struct render_info *r_iter = NULL;
-	struct acquire_info *a_iter = NULL;
-	struct rb_node *rbn = NULL;
-
-	if (!pid)
-		return;
-
-	*pid = 0;
-
-	r_hwui_arr = kcalloc(5, sizeof(int), GFP_KERNEL);
-	if (!r_hwui_arr)
-		return;
-
-	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
-		r_iter = rb_entry(rbn, struct render_info, render_key_node);
-		fpsgo_thread_lock(&r_iter->thr_mlock);
-		if (r_iter->hwui == RENDER_INFO_HWUI_TYPE &&
-			r_hwui_num < 5) {
-			r_hwui_arr[r_hwui_num] = r_iter->pid;
-			r_hwui_num++;
-		}
-		fpsgo_thread_unlock(&r_iter->thr_mlock);
-	}
-
-	if (!r_hwui_num) {
-		kfree(r_hwui_arr);
-		fpsgo_main_trace("[base] %s no hwui", __func__);
-		return;
-	}
-
-	for (rbn = rb_first(&acquire_info_tree); rbn; rbn = rb_next(rbn)) {
-		a_iter = rb_entry(rbn, struct acquire_info, entry);
-		if (a_iter->api == NATIVE_WINDOW_API_CAMERA) {
-			ret = -1;
-			for (i = 0; i < r_hwui_num; i++) {
-				if (a_iter->c_tid == r_hwui_arr[i]) {
-					ret = a_iter->c_tid;
-					break;
-				}
-			}
-			if (ret > 0)
-				break;
-		}
-	}
-
-	*pid = ret;
-
-	kfree(r_hwui_arr);
-}
-
 void fpsgo_ctrl2base_get_cam_pid(int cmd, int *pid)
 {
 	if (!pid)
 		return;
 
 	fpsgo_render_tree_lock(__func__);
-	if (cmd == CAMERA_HWUI)
-		fpsgo_check_consumer_is_hwui(pid);
-	else
-		fpsgo_get_cam_pid(cmd, pid);
+	fpsgo_get_cam_pid(cmd, pid);
 	fpsgo_render_tree_unlock(__func__);
-}
-
-void fpsgo_ctrl2base_get_cam_perf(int tgid, int *rtid, int *blc)
-{
-	struct render_info *r_iter = NULL;
-	struct rb_node *rbn = NULL;
-
-	if (!rtid || !blc)
-		return;
-
-	*rtid = 0;
-	*blc = 0;
-	fpsgo_render_tree_lock(__func__);
-	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
-		r_iter = rb_entry(rbn, struct render_info, render_key_node);
-		fpsgo_thread_lock(&r_iter->thr_mlock);
-		if (r_iter->tgid == tgid &&
-			r_iter->bq_type == ACQUIRE_CAMERA_TYPE &&
-			r_iter->frame_type == NON_VSYNC_ALIGNED_TYPE) {
-			*rtid = r_iter->pid;
-			*blc = r_iter->p_blc ? r_iter->p_blc->blc : 0;
-			fpsgo_thread_unlock(&r_iter->thr_mlock);
-			break;
-		}
-		fpsgo_thread_unlock(&r_iter->thr_mlock);
-	}
-	fpsgo_render_tree_unlock(__func__);
-}
-
-void fpsgo_ctrl2base_wait_cam(int cmd, int *pid)
-{
-	struct cam_cmd_node *node = NULL;
-
-	switch (cmd) {
-	case CAMERA_APK:
-		wait_event_interruptible(cam_apk_pid_queue, cond_get_cam_apk_pid);
-		mutex_lock(&fpsgo2cam_apk_lock);
-		if (!list_empty(&cam_apk_pid_list)) {
-			node = list_first_entry(&cam_apk_pid_list,
-				struct cam_cmd_node, queue_list);
-			*pid = node->target_pid;
-			list_del(&node->queue_list);
-			kfree(node);
-		}
-		if (list_empty(&cam_apk_pid_list))
-			cond_get_cam_apk_pid = 0;
-		mutex_unlock(&fpsgo2cam_apk_lock);
-		break;
-	case CAMERA_SERVER:
-		wait_event_interruptible(cam_ser_pid_queue, cond_get_cam_ser_pid);
-		mutex_lock(&fpsgo2cam_ser_lock);
-		if (!list_empty(&cam_ser_pid_list)) {
-			node = list_first_entry(&cam_ser_pid_list,
-				struct cam_cmd_node, queue_list);
-			*pid = node->target_pid;
-			list_del(&node->queue_list);
-			kfree(node);
-		}
-		if (list_empty(&cam_ser_pid_list))
-			cond_get_cam_ser_pid = 0;
-		mutex_unlock(&fpsgo2cam_ser_lock);
-		break;
-	case CAMERA_HWUI:
-		fpsgo_render_tree_lock(__func__);
-		fpsgo_check_consumer_is_hwui(pid);
-		fpsgo_render_tree_unlock(__func__);
-		break;
-	default:
-		break;
-	}
 }
 
 void fpsgo_ctrl2base_notify_cam_close(void)
@@ -579,11 +342,6 @@ void fpsgo_ctrl2base_notify_cam_close(void)
 int fpsgo_get_acquire_hint_is_enable(void)
 {
 	return fpsgo_get_acquire_hint_enable;
-}
-
-static int fpsgo_update_tracemark(void)
-{
-	return 1;
 }
 
 static int fpsgo_systrace_enabled(int type)
@@ -651,9 +409,6 @@ void __fpsgo_systrace_c(int type, pid_t pid, unsigned long long bufID,
 	if (!fpsgo_systrace_enabled(type))
 		return;
 
-	if (unlikely(!fpsgo_update_tracemark()))
-		return;
-
 	memset(log, ' ', sizeof(log));
 	va_start(args, fmt);
 	len = vsnprintf(log, sizeof(log), fmt, args);
@@ -688,9 +443,6 @@ void __fpsgo_systrace_b(int type, pid_t tgid, const char *fmt, ...)
 	if (!fpsgo_systrace_enabled(type))
 		return;
 
-	if (unlikely(!fpsgo_update_tracemark()))
-		return;
-
 	memset(log, ' ', sizeof(log));
 	va_start(args, fmt);
 	len = vsnprintf(log, sizeof(log), fmt, args);
@@ -717,9 +469,6 @@ void __fpsgo_systrace_e(int type)
 	int len;
 
 	if (!fpsgo_systrace_enabled(type))
-		return;
-
-	if (unlikely(!fpsgo_update_tracemark()))
 		return;
 
 	len = snprintf(buf2, sizeof(buf2), "E\n");
@@ -857,47 +606,6 @@ static int fpsgo_fbt_delete_rl_render(int pid, unsigned long long buf_id)
 		// mtk_base_dprintk_always("%s is NULL\n", __func__);
 	}
 	return ret;
-}
-
-void fpsgo_traverse_linger(unsigned long long cur_ts)
-{
-	struct rb_node *n;
-	struct render_info *pos;
-	unsigned long long expire_ts;
-
-	fpsgo_lockprove(__func__);
-
-	if (cur_ts < TRAVERSE_PERIOD)
-		return;
-
-	expire_ts = cur_ts - TRAVERSE_PERIOD;
-
-	n = rb_first(&linger_tree);
-	while (n) {
-		int tofree = 0;
-
-		pos = rb_entry(n, struct render_info, linger_node);
-		FPSGO_LOGI("-%d(%p)(%llu),", pos->pid, pos, pos->linger_ts);
-
-		fpsgo_thread_lock(&pos->thr_mlock);
-
-		if (pos->linger_ts && pos->linger_ts < expire_ts) {
-			FPSGO_LOGI("timeout %d(%p)(%llu),",
-				pos->pid, pos, pos->linger_ts);
-			fpsgo_base2fbt_cancel_jerk(pos);
-			fpsgo_del_linger(pos);
-			tofree = 1;
-			n = rb_first(&linger_tree);
-		} else
-			n = rb_next(n);
-
-		fpsgo_thread_unlock(&pos->thr_mlock);
-
-		if (tofree) {
-			fpsgo_fbt_delete_rl_render(pos->pid, pos->buffer_id);
-			vfree(pos);
-		}
-	}
 }
 
 int fpsgo_base_is_finished(struct render_info *thr)
@@ -1162,6 +870,7 @@ void fpsgo_delete_render_info(int pid,
 		data->linger = 1;
 		fpsgo_add_linger(data);
 	}
+	fpsgo_fbt_delete_rl_render(pid, buffer_id);
 	fpsgo_thread_unlock(&data->thr_mlock);
 
 	fpsgo_delete_hwui_info(data->pid);
@@ -1171,10 +880,8 @@ void fpsgo_delete_render_info(int pid,
 	if (check_max_blc)
 		fpsgo_base2fbt_check_max_blc();
 
-	if (delete == 1) {
-		fpsgo_fbt_delete_rl_render(pid, buffer_id);
+	if (delete == 1)
 		vfree(data);
-	}
 }
 
 struct hwui_info *fpsgo_search_and_add_hwui_info(int pid, int force)
@@ -1604,8 +1311,10 @@ struct fps_control_pid_info *fpsgo_search_and_add_fps_control_pid(int pid, int f
 			p = &(*p)->rb_left;
 		else if (pid > tmp->pid)
 			p = &(*p)->rb_right;
-		else
+		else {
+			tmp->ts = fpsgo_get_time();
 			return tmp;
+		}
 	}
 
 	if (!force)
@@ -1701,6 +1410,43 @@ static void fpsgo_check_BQid_status(void)
 			total_BQ_id_num--;
 			rbn = rb_first(&BQ_id_list);
 		}
+	}
+}
+
+static void fpsgo_clear_connect_api_render_list(
+	struct connect_api_info *connect_api)
+{
+	struct render_info *pos, *next;
+
+	fpsgo_lockprove(__func__);
+
+	list_for_each_entry_safe(pos, next,
+		&connect_api->render_list, bufferid_list) {
+		fpsgo_delete_render_info(pos->pid,
+			pos->buffer_id, pos->identifier);
+	}
+}
+
+static void fpsgo_check_connect_api_info_status(void)
+{
+	struct rb_node *n;
+	struct connect_api_info *iter;
+	struct task_struct *tsk;
+
+	n = rb_first(&connect_api_tree);
+	while (n) {
+		iter = rb_entry(n, struct connect_api_info, rb_node);
+		rcu_read_lock();
+		tsk = find_task_by_vpid(iter->tgid);
+		rcu_read_unlock();
+		if (!tsk) {
+			fpsgo_clear_connect_api_render_list(iter);
+			rb_erase(&iter->rb_node, &connect_api_tree);
+			n = rb_first(&connect_api_tree);
+			kfree(iter);
+			total_connect_api_info_num--;
+		} else
+			n = rb_next(n);
 	}
 }
 
@@ -1854,7 +1600,7 @@ int fpsgo_check_all_tree_empty(void)
 	BQ_id_empty_flag = RB_EMPTY_ROOT(&BQ_id_list);
 	linger_empty_flag = RB_EMPTY_ROOT(&linger_tree);
 	hwui_empty_flag = RB_EMPTY_ROOT(&hwui_info_tree);
-	api_empty_flag = fpsgo_base2comp_check_connect_api_tree_empty();
+	api_empty_flag = RB_EMPTY_ROOT(&connect_api_tree);
 
 	if (render_info_empty_flag && BQ_id_empty_flag &&
 		linger_empty_flag && hwui_empty_flag && api_empty_flag)
@@ -1920,17 +1666,15 @@ int fpsgo_check_thread_status(void)
 				iter->linger = 1;
 				fpsgo_add_linger(iter);
 			}
-
+			fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
 			fpsgo_thread_unlock(&iter->thr_mlock);
 
 			fpsgo_delete_hwui_info(iter->pid);
 			fpsgo_delete_sbe_info(iter->pid);
 			switch_thread_max_fps(iter->pid, 0);
 
-			if (delete == 1) {
-				fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
+			if (delete == 1)
 				vfree(iter);
-			}
 
 		} else {
 			if (iter->frame_type != BY_PASS_TYPE)
@@ -1951,8 +1695,10 @@ int fpsgo_check_thread_status(void)
 			fpsgo_thread_unlock(&iter->thr_mlock);
 		}
 	}
+	rb_tree_empty = RB_EMPTY_ROOT(&render_pid_tree);
 
 	fpsgo_check_BQid_status();
+	fpsgo_check_connect_api_info_status();
 	fpsgo_check_acquire_info_status();
 	fpsgo_check_adpf_render_status();
 	fpsgo_check_sbe_spid_loading_status();
@@ -1961,14 +1707,8 @@ int fpsgo_check_thread_status(void)
 
 	fpsgo_render_tree_unlock(__func__);
 
-	fpsgo_base2comp_check_connect_api();
-
 	if (check_max_blc)
 		fpsgo_base2fbt_check_max_blc();
-
-	fpsgo_render_tree_lock(__func__);
-	rb_tree_empty = RB_EMPTY_ROOT(&render_pid_tree);
-	fpsgo_render_tree_unlock(__func__);
 
 	if (rb_tree_empty)
 		fpsgo_base2fbt_no_one_render();
@@ -2009,17 +1749,15 @@ void fpsgo_clear(void)
 			iter->linger = 1;
 			fpsgo_add_linger(iter);
 		}
-
+		fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
 		fpsgo_thread_unlock(&iter->thr_mlock);
 
 		fpsgo_delete_hwui_info(iter->pid);
 		fpsgo_delete_sbe_info(iter->pid);
 		switch_thread_max_fps(iter->pid, 0);
 
-		if (delete == 1) {
-			fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
+		if (delete == 1)
 			vfree(iter);
-		}
 	}
 
 #if FPSGO_MW
@@ -2146,9 +1884,6 @@ static struct BQ_id *fpsgo_get_BQid_by_key(struct fbt_render_key key,
 	rb_insert_color(&pos->entry, &BQ_id_list);
 	total_BQ_id_num++;
 
-	FPSGO_LOGI("add BQid key1 %d, key2 %llu, pid %d, id 0x%llx\n",
-		   key.key1, key.key2, pid, identifier);
-
 	if (total_BQ_id_num > FPSGO_MAX_BQ_ID_SIZE)
 		fpsgo_delete_oldest_BQ_id();
 
@@ -2233,6 +1968,95 @@ int fpsgo_get_BQid_pair(int pid, int tgid, long long identifier,
 	return 0;
 }
 
+static void fpsgo_delete_oldest_connect_api_info(void)
+{
+	unsigned long long min_ts = ULLONG_MAX;
+	struct connect_api_info *iter = NULL, *min_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	for (rbn = rb_first(&connect_api_tree); rbn; rbn = rb_next(rbn)) {
+		iter = rb_entry(rbn, struct connect_api_info, rb_node);
+		if (iter->ts < min_ts) {
+			min_ts = iter->ts;
+			min_iter = iter;
+		}
+	}
+
+	if (min_iter) {
+		fpsgo_clear_connect_api_render_list(min_iter);
+		rb_erase(&min_iter->rb_node, &connect_api_tree);
+		kfree(min_iter);
+		total_connect_api_info_num--;
+	}
+}
+
+struct connect_api_info *fpsgo_search_and_add_connect_api_info(int pid,
+	unsigned long long buffer_id, int force)
+{
+	int local_tgid = 0;
+	struct rb_node **p = &connect_api_tree.rb_node;
+	struct rb_node *parent = NULL;
+	struct connect_api_info *tmp = NULL;
+	struct fbt_render_key local_key;
+
+	fpsgo_lockprove(__func__);
+
+	local_tgid = fpsgo_get_tgid(pid);
+	local_key.key1 = local_tgid;
+	local_key.key2 = buffer_id;
+	while (*p) {
+		parent = *p;
+		tmp = rb_entry(parent, struct connect_api_info, rb_node);
+
+		if (render_key_compare(local_key, tmp->key) < 0)
+			p = &(*p)->rb_left;
+		else if (render_key_compare(local_key, tmp->key) > 0)
+			p = &(*p)->rb_right;
+		else {
+			tmp->ts = fpsgo_get_time();
+			return tmp;
+		}
+	}
+
+	if (!force)
+		return NULL;
+
+	tmp = kzalloc(sizeof(struct connect_api_info), GFP_KERNEL);
+	if (!tmp)
+		return NULL;
+
+	tmp->pid = pid;
+	tmp->tgid = local_tgid;
+	tmp->buffer_id = buffer_id;
+	tmp->api = WINDOW_DISCONNECT;
+	tmp->ts = fpsgo_get_time();
+	tmp->key.key1 = local_tgid;
+	tmp->key.key2 = buffer_id;
+	INIT_LIST_HEAD(&(tmp->render_list));
+
+	rb_link_node(&tmp->rb_node, parent, p);
+	rb_insert_color(&tmp->rb_node, &connect_api_tree);
+	total_connect_api_info_num++;
+
+	if (total_connect_api_info_num >= FPSGO_MAX_CONNECT_API_INFO_SIZE)
+		fpsgo_delete_oldest_connect_api_info();
+
+	return tmp;
+}
+
+void fpsgo_delete_connect_api_info(int pid, unsigned long long buffer_id)
+{
+	struct connect_api_info *iter = NULL;
+
+	iter = fpsgo_search_and_add_connect_api_info(pid, buffer_id, 0);
+	if (iter) {
+		fpsgo_clear_connect_api_render_list(iter);
+		rb_erase(&iter->rb_node, &connect_api_tree);
+		kfree(iter);
+		total_connect_api_info_num--;
+	}
+}
+
 int fpsgo_get_acquire_queue_pair_by_self(int tid, unsigned long long buffer_id)
 {
 	int ret = ACQUIRE_OTHER_TYPE;
@@ -2275,55 +2099,6 @@ out:
 	return ret;
 }
 
-int fpsgo_check_cam_do_frame(void)
-{
-	int ret = 1;
-	int local_cam_rtid = 0;
-	int local_qfps_arr_num = 0;
-	int local_tfps_arr_num = 0;
-	int *local_qfps_arr = NULL;
-	int *local_tfps_arr = NULL;
-	struct render_info *r_iter = NULL;
-	struct rb_node *rbn = NULL;
-
-	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
-		r_iter = rb_entry(rbn, struct render_info, render_key_node);
-		if (r_iter->api == NATIVE_WINDOW_API_CAMERA) {
-			local_cam_rtid = r_iter->pid;
-			break;
-		}
-	}
-
-	if (!local_cam_rtid) {
-		ret = 0;
-		fpsgo_main_trace("[base] %s no cam_rtid", __func__);
-		goto out;
-	}
-
-	local_qfps_arr = kcalloc(1, sizeof(int), GFP_KERNEL);
-	if (!local_qfps_arr)
-		goto out;
-
-	local_tfps_arr = kcalloc(1, sizeof(int), GFP_KERNEL);
-	if (!local_tfps_arr)
-		goto out;
-
-	fpsgo_other2fstb_get_fps(local_cam_rtid, 0,
-		local_qfps_arr, &local_qfps_arr_num, 1,
-		local_tfps_arr, &local_tfps_arr_num, 1);
-
-	if (!local_qfps_arr[0]) {
-		ret = 0;
-		fpsgo_main_trace("[base] %s cam_rtid:%d queue_fps:%d",
-			__func__, local_cam_rtid, local_qfps_arr[0]);
-	}
-
-out:
-	kfree(local_qfps_arr);
-	kfree(local_tfps_arr);
-	return ret;
-}
-
 int fpsgo_check_all_render_blc(int render_tid, unsigned long long buffer_id)
 {
 	int ret = 1;
@@ -2333,8 +2108,6 @@ int fpsgo_check_all_render_blc(int render_tid, unsigned long long buffer_id)
 	struct rb_node *rbn = NULL;
 
 	tgid = fpsgo_get_tgid(render_tid);
-	if (tgid < 0)
-		return ret;
 
 	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
 		r_iter = rb_entry(rbn, struct render_info, render_key_node);
@@ -2412,22 +2185,10 @@ struct acquire_info *fpsgo_search_acquire_info(int tid, unsigned long long buffe
 struct acquire_info *fpsgo_add_acquire_info(int p_pid, int c_pid, int c_tid,
 	int api, unsigned long long buffer_id, unsigned long long ts)
 {
-	int local_tgid;
 	struct rb_node **p = &acquire_info_tree.rb_node;
 	struct rb_node *parent = NULL;
 	struct acquire_info *iter = NULL;
 	struct fbt_render_key local_key = {.key1 = c_tid, .key2 = buffer_id};
-
-	if (api == NATIVE_WINDOW_API_CAMERA) {
-		if (wq_has_sleeper(&cam_apk_pid_queue)) {
-			fpsgo_get_cam_pid(CAMERA_APK, &local_tgid);
-			fpsgo2cam_sentcmd(CAMERA_APK, local_tgid);
-		}
-		if (wq_has_sleeper(&cam_ser_pid_queue)) {
-			fpsgo_get_cam_pid(CAMERA_SERVER, &local_tgid);
-			fpsgo2cam_sentcmd(CAMERA_SERVER, local_tgid);
-		}
-	}
 
 	while (*p) {
 		parent = *p;
@@ -2849,7 +2610,6 @@ static ssize_t render_info_show(struct kobject *kobj,
 	struct rb_node *n;
 	struct render_info *iter;
 	struct hwui_info *h_info;
-	struct task_struct *tsk;
 	char *temp = NULL;
 	int pos = 0;
 	int length = 0;
@@ -2859,7 +2619,7 @@ static ssize_t render_info_show(struct kobject *kobj,
 		goto out;
 
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-			"\n  PID  NAME  TGID  TYPE  API  BufferID");
+			"\n  PID  TGID  TYPE  API  BufferID");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 			"    FRAME_L    ENQ_L    ENQ_S    ENQ_E");
@@ -2869,34 +2629,26 @@ static ssize_t render_info_show(struct kobject *kobj,
 	pos += length;
 
 	fpsgo_render_tree_lock(__func__);
-	rcu_read_lock();
 
 	for (n = rb_first(&render_pid_tree); n != NULL; n = rb_next(n)) {
 		iter = rb_entry(n, struct render_info, render_key_node);
-		tsk = find_task_by_vpid(iter->tgid);
-		if (tsk) {
-			get_task_struct(tsk);
 
-			length = scnprintf(temp + pos,
-					FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-					"%5d %4s %4d %4d %4d 0x%llx",
-				iter->pid, tsk->comm,
-				iter->tgid, iter->frame_type,
-				iter->api, iter->buffer_id);
-			pos += length;
-			length = scnprintf(temp + pos,
-					FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-					"  %4llu %4llu %4llu %4llu %4llu %4llu %d\n",
-				iter->enqueue_length,
-				iter->t_enqueue_start, iter->t_enqueue_end,
-				iter->dequeue_length, iter->t_dequeue_start,
-				iter->t_dequeue_end, iter->hwui);
-			pos += length;
-			put_task_struct(tsk);
-		}
+		length = scnprintf(temp + pos,
+				FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+				"%5d %4d %4d %4d 0x%llx",
+			iter->pid, iter->tgid,
+			iter->frame_type, iter->api,
+			iter->buffer_id);
+		pos += length;
+		length = scnprintf(temp + pos,
+				FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+				"  %4llu %4llu %4llu %4llu %4llu %4llu %d\n",
+			iter->enqueue_length,
+			iter->t_enqueue_start, iter->t_enqueue_end,
+			iter->dequeue_length, iter->t_dequeue_start,
+			iter->t_dequeue_end, iter->hwui);
+		pos += length;
 	}
-
-	rcu_read_unlock();
 
 	for (n = rb_first(&linger_tree); n != NULL; n = rb_next(n)) {
 		iter = rb_entry(n, struct render_info, linger_node);
@@ -2933,7 +2685,6 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 {
 	struct rb_node *n;
 	struct render_info *iter;
-	struct task_struct *tsk;
 	struct fpsgo_boost_attr attr_item;
 	char *temp = NULL;
 	int pos = 0;
@@ -2944,7 +2695,7 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 		goto out;
 
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-		"\nNEW PID: PID, NAME, TGID\n");
+		"\nNEW PID: PID, TGID\n");
 	pos += length;
 
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
@@ -3002,7 +2753,6 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 	pos += length;
 
 	fpsgo_render_tree_lock(__func__);
-	rcu_read_lock();
 
 	for (n = rb_first(&render_pid_tree); n != NULL; n = rb_next(n)) {
 		iter = rb_entry(n, struct render_info, render_key_node);
@@ -3010,143 +2760,135 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 			continue;
 
 		attr_item = iter->attr;
-		tsk = find_task_by_vpid(iter->tgid);
-		if (tsk) {
-			get_task_struct(tsk);
 
-			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-				"\nNEW PID: %5d, %4s, %4d\n",
-				iter->pid, tsk->comm,
-				iter->tgid);
-			pos += length;
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+			"\nNEW PID: %5d, %4d\n",
+			iter->pid, iter->tgid);
+		pos += length;
 
-			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-				" %4d, %4d, %4d\n",
-				attr_item.llf_task_policy_by_pid, attr_item.loading_th_by_pid,
-				attr_item.light_loading_policy_by_pid);
-			pos += length;
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+			" %4d, %4d, %4d\n",
+			attr_item.llf_task_policy_by_pid, attr_item.loading_th_by_pid,
+			attr_item.light_loading_policy_by_pid);
+		pos += length;
 
-			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d\n",
-				attr_item.rescue_second_enable_by_pid,
-				attr_item.rescue_second_time_by_pid,
-				attr_item.rescue_second_group_by_pid);
-			pos += length;
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d\n",
+			attr_item.rescue_second_enable_by_pid,
+			attr_item.rescue_second_time_by_pid,
+			attr_item.rescue_second_group_by_pid);
+		pos += length;
 
-			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d\n",
-				attr_item.group_by_lr_by_pid,
-				attr_item.heavy_group_num_by_pid,
-				attr_item.second_group_num_by_pid);
-			pos += length;
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d\n",
+			attr_item.group_by_lr_by_pid,
+			attr_item.heavy_group_num_by_pid,
+			attr_item.second_group_num_by_pid);
+		pos += length;
 
-			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d\n",
-				attr_item.filter_frame_enable_by_pid,
-				attr_item.filter_frame_window_size_by_pid,
-				attr_item.filter_frame_kmin_by_pid);
-			pos += length;
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d\n",
+			attr_item.filter_frame_enable_by_pid,
+			attr_item.filter_frame_window_size_by_pid,
+			attr_item.filter_frame_kmin_by_pid);
+		pos += length;
 
-			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d\n",
-				attr_item.boost_affinity_by_pid,
-				attr_item.cpumask_heavy_by_pid,
-				attr_item.cpumask_second_by_pid,
-				attr_item.cpumask_others_by_pid,
-				attr_item.boost_lr_by_pid);
-			pos += length;
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d\n",
+			attr_item.boost_affinity_by_pid,
+			attr_item.cpumask_heavy_by_pid,
+			attr_item.cpumask_second_by_pid,
+			attr_item.cpumask_others_by_pid,
+			attr_item.boost_lr_by_pid);
+		pos += length;
 
-			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d, %4d\n",
-				attr_item.separate_aa_by_pid,
-				attr_item.separate_release_sec_by_pid,
-				attr_item.separate_pct_b_by_pid,
-				attr_item.separate_pct_m_by_pid,
-				attr_item.separate_pct_other_by_pid,
-				attr_item.blc_boost_by_pid);
-			pos += length;
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d, %4d\n",
+			attr_item.separate_aa_by_pid,
+			attr_item.separate_release_sec_by_pid,
+			attr_item.separate_pct_b_by_pid,
+			attr_item.separate_pct_m_by_pid,
+			attr_item.separate_pct_other_by_pid,
+			attr_item.blc_boost_by_pid);
+		pos += length;
 
-			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d\n",
-				attr_item.limit_uclamp_by_pid,
-				attr_item.limit_ruclamp_by_pid,
-				attr_item.limit_uclamp_m_by_pid,
-				attr_item.limit_ruclamp_m_by_pid);
-			pos += length;
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d\n",
+			attr_item.limit_uclamp_by_pid,
+			attr_item.limit_ruclamp_by_pid,
+			attr_item.limit_uclamp_m_by_pid,
+			attr_item.limit_ruclamp_m_by_pid);
+		pos += length;
 
-			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d\n",
-				attr_item.limit_cfreq2cap_by_pid,
-				attr_item.limit_rfreq2cap_by_pid,
-				attr_item.limit_cfreq2cap_m_by_pid,
-				attr_item.limit_rfreq2cap_m_by_pid);
-			pos += length;
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d\n",
+			attr_item.limit_cfreq2cap_by_pid,
+			attr_item.limit_rfreq2cap_by_pid,
+			attr_item.limit_cfreq2cap_m_by_pid,
+			attr_item.limit_rfreq2cap_m_by_pid);
+		pos += length;
 
-			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d\n",
-				attr_item.rescue_enable_by_pid,
-				attr_item.qr_enable_by_pid,
-				attr_item.qr_t2wnt_x_by_pid,
-				attr_item.qr_t2wnt_y_p_by_pid,
-				attr_item.qr_t2wnt_y_n_by_pid);
-			pos += length;
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d\n",
+			attr_item.rescue_enable_by_pid,
+			attr_item.qr_enable_by_pid,
+			attr_item.qr_t2wnt_x_by_pid,
+			attr_item.qr_t2wnt_y_p_by_pid,
+			attr_item.qr_t2wnt_y_n_by_pid);
+		pos += length;
 
-			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d\n",
-				attr_item.gcc_enable_by_pid,
-				attr_item.gcc_fps_margin_by_pid,
-				attr_item.gcc_up_sec_pct_by_pid,
-				attr_item.gcc_up_step_by_pid,
-				attr_item.gcc_reserved_up_quota_pct_by_pid);
-			pos += length;
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d\n",
+			attr_item.gcc_enable_by_pid,
+			attr_item.gcc_fps_margin_by_pid,
+			attr_item.gcc_up_sec_pct_by_pid,
+			attr_item.gcc_up_step_by_pid,
+			attr_item.gcc_reserved_up_quota_pct_by_pid);
+		pos += length;
 
-			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d\n",
-				attr_item.gcc_down_sec_pct_by_pid,
-				attr_item.gcc_down_step_by_pid,
-				attr_item.gcc_reserved_down_quota_pct_by_pid);
-			pos += length;
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d\n",
+			attr_item.gcc_down_sec_pct_by_pid,
+			attr_item.gcc_down_step_by_pid,
+			attr_item.gcc_reserved_down_quota_pct_by_pid);
+		pos += length;
 
-			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d\n",
-				attr_item.gcc_enq_bound_thrs_by_pid,
-				attr_item.gcc_enq_bound_quota_by_pid,
-				attr_item.gcc_deq_bound_thrs_by_pid,
-				attr_item.gcc_deq_bound_quota_by_pid);
-			pos += length;
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d\n",
+			attr_item.gcc_enq_bound_thrs_by_pid,
+			attr_item.gcc_enq_bound_quota_by_pid,
+			attr_item.gcc_deq_bound_thrs_by_pid,
+			attr_item.gcc_deq_bound_quota_by_pid);
+		pos += length;
 
-			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d %4d %4d,\n",
-				attr_item.check_buffer_quota_by_pid,
-				attr_item.expected_fps_margin_by_pid,
-				attr_item.quota_v2_diff_clamp_min_by_pid,
-				attr_item.quota_v2_diff_clamp_max_by_pid);
-			pos += length;
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d %4d %4d\n",
+			attr_item.check_buffer_quota_by_pid,
+			attr_item.expected_fps_margin_by_pid,
+			attr_item.quota_v2_diff_clamp_min_by_pid,
+			attr_item.quota_v2_diff_clamp_max_by_pid);
+		pos += length;
 
-			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d, %4d, %4d, %4d\n",
-				attr_item.boost_vip_by_pid,
-				attr_item.rt_prio1_by_pid,
-				attr_item.rt_prio2_by_pid,
-				attr_item.rt_prio3_by_pid,
-				attr_item.vip_mask_by_pid,
-				attr_item.set_ls_by_pid,
-				attr_item.ls_groupmask_by_pid,
-				attr_item.set_vvip_by_pid);
-			pos += length;
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d, %4d, %4d, %4d\n",
+			attr_item.boost_vip_by_pid,
+			attr_item.rt_prio1_by_pid,
+			attr_item.rt_prio2_by_pid,
+			attr_item.rt_prio3_by_pid,
+			attr_item.vip_mask_by_pid,
+			attr_item.set_ls_by_pid,
+			attr_item.ls_groupmask_by_pid,
+			attr_item.set_vvip_by_pid);
+		pos += length;
 
-			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d\n",
-				attr_item.aa_b_minus_idle_t_by_pid);
-			pos += length;
-
-			put_task_struct(tsk);
-		}
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d\n",
+			attr_item.aa_b_minus_idle_t_by_pid);
+		pos += length;
 	}
 
-	rcu_read_unlock();
 	fpsgo_render_tree_unlock(__func__);
 
 	length = scnprintf(buf, PAGE_SIZE, "%s", temp);
@@ -3444,7 +3186,7 @@ static ssize_t BQid_show(struct kobject *kobj,
 		pos = rb_entry(n, struct BQ_id, entry);
 		length = scnprintf(temp + posi,
 				FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
-				"pid %d, tgid %d, key1 %d, key2 %llu, buffer_id %llu, queue_SF %d\n",
+				"pid %d, tgid %d, key1 %d, key2 0x%llx, buffer_id 0x%llx, queue_SF %d\n",
 				pos->pid, fpsgo_get_tgid(pos->pid),
 				pos->key.key1, pos->key.key2, pos->buffer_id, pos->queue_SF);
 		posi += length;
@@ -3461,6 +3203,88 @@ out:
 }
 
 static KOBJ_ATTR_RO(BQid);
+
+static ssize_t connect_api_info_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	struct rb_node *n;
+	struct connect_api_info *iter;
+	struct render_info *pos, *next;
+	char *temp = NULL;
+	int posi = 0;
+	int length = 0;
+
+	temp = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!temp)
+		goto out;
+
+	fpsgo_render_tree_lock(__func__);
+
+	length = scnprintf(temp + posi, FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
+		"total_connect_api_info_num: %d\n", total_connect_api_info_num);
+	posi += length;
+
+	length = scnprintf(temp + posi, FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
+			"=================================\n");
+	posi += length;
+
+	for (n = rb_first(&connect_api_tree); n != NULL; n = rb_next(n)) {
+		iter = rb_entry(n, struct connect_api_info, rb_node);
+
+		length = scnprintf(temp + posi,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
+			"PID  TGID    BufferID    API\n");
+		posi += length;
+		length = scnprintf(temp + posi,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
+			"%5d %5d 0x%4llx %5d\n",
+			iter->pid, iter->tgid,
+			iter->buffer_id, iter->api);
+		posi += length;
+
+		length = scnprintf(temp + posi,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
+			"******render list******\n");
+		posi += length;
+
+		list_for_each_entry_safe(pos, next,
+				&iter->render_list, bufferid_list) {
+			fpsgo_thread_lock(&pos->thr_mlock);
+
+			length = scnprintf(temp + posi,
+					FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
+					"  PID  TGID	 identifier	 BufferID	API    TYPE\n");
+			posi += length;
+			length = scnprintf(temp + posi,
+					FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
+					"%5d %5d 0x%4llx 0x%4llx %5d %5d\n",
+					pos->pid, pos->tgid, pos->identifier, pos->buffer_id,
+					pos->api, pos->frame_type);
+			posi += length;
+
+			fpsgo_thread_unlock(&pos->thr_mlock);
+		}
+
+		length = scnprintf(temp + posi,
+				FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
+				"***********************\n");
+		posi += length;
+		length = scnprintf(temp + posi,
+				FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
+				"=================================\n");
+		posi += length;
+	}
+
+	fpsgo_render_tree_unlock(__func__);
+
+	length = scnprintf(buf, PAGE_SIZE, "%s", temp);
+
+out:
+	kfree(temp);
+	return length;
+}
+
+static KOBJ_ATTR_RO(connect_api_info);
 
 static ssize_t acquire_info_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -3501,8 +3325,8 @@ static KOBJ_ATTR_RO(acquire_info);
 static ssize_t fpsgo_get_acquire_hint_enable_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE, "%d\n",
-		fpsgo_get_acquire_hint_enable);
+	return scnprintf(buf, PAGE_SIZE, "fpsgo_get_acquire_hint_enable:%d cam_apk_pid:%d\n",
+		fpsgo_get_acquire_hint_enable, global_cam_apk_pid);
 }
 
 static ssize_t fpsgo_get_acquire_hint_enable_store(struct kobject *kobj,
@@ -3730,10 +3554,226 @@ out:
 
 static KOBJ_ATTR_RW(kfps_cpu_mask);
 
+void fpsgo_ktf2base_add_delete_structure(int tgid, int pid,
+	unsigned long long bufID, int fps, int op, int cmd)
+{
+	struct render_info *r_iter = NULL;
+	struct BQ_id *bq_iter = NULL;
+	struct connect_api_info *api_iter = NULL;
+
+	fpsgo_render_tree_lock(__func__);
+
+	switch (cmd) {
+	case FSTB_RENDER:
+		fpsgo_ktf2fstb_add_delete_render_info(!!op, pid, bufID, fps, fps);
+		break;
+	case XGF_RENDER:
+		fpsgo_ktf2xgf_add_delete_render_info(!!op, pid, bufID);
+		break;
+	case FBT_RENDER_INFO:
+		if (op)
+			fpsgo_delete_render_info(pid, bufID, bufID);
+		else {
+			r_iter = fpsgo_search_and_add_render_info(pid, bufID, 1);
+			if (r_iter) {
+				fpsgo_thread_lock(&r_iter->thr_mlock);
+				r_iter->buffer_id = bufID;
+				r_iter->frame_type = NON_VSYNC_ALIGNED_TYPE;
+				r_iter->running_time = div_u64(NSEC_PER_SEC, fps);
+				if (!r_iter->p_blc)
+					fpsgo_base2fbt_node_init(r_iter);
+				if (!r_iter->dep_arr) {
+					r_iter->dep_arr =
+						fpsgo_alloc_atomic(MAX_DEP_NUM * sizeof(struct fpsgo_loading));
+					r_iter->dep_valid_size = r_iter->dep_arr ?
+							MAX_DEP_NUM : 0;
+				}
+				fpsgo_thread_unlock(&r_iter->thr_mlock);
+			}
+		}
+		break;
+	case BQ_ID:
+		bq_iter = fpsgo_find_BQ_id(pid, tgid, bufID,
+			op ? ACTION_FIND_DEL : ACTION_FIND_ADD);
+		if (!op && bq_iter) {
+			bq_iter->buffer_id = bufID;
+			bq_iter->queue_SF = 1;
+		}
+		break;
+	case CONNECT_API_INFO:
+		if (op)
+			fpsgo_delete_connect_api_info(pid, bufID);
+		else {
+			api_iter = fpsgo_search_and_add_connect_api_info(pid, bufID, 1);
+			if (api_iter)
+				api_iter->api = NATIVE_WINDOW_API_EGL;
+		}
+		break;
+	case ACQUIRE_INFO:
+		if (op)
+			fpsgo_delete_acquire_info(2, 0, 0);
+		else
+			fpsgo_add_acquire_info(tgid, tgid, pid,
+				NATIVE_WINDOW_API_EGL, bufID, fpsgo_get_time());
+		break;
+	case HWUI_INFO:
+		op ? fpsgo_delete_hwui_info(pid) :
+			fpsgo_search_and_add_hwui_info(pid, 1);
+		break;
+	case SBE_INFO:
+		op ? fpsgo_delete_sbe_info(pid) :
+			fpsgo_search_and_add_sbe_info(pid, 1);
+		break;
+	case FPSGO_CONTROL_INFO:
+		op ? fpsgo_delete_fpsgo_control_pid(pid) :
+			fpsgo_search_and_add_fps_control_pid(pid, 1);
+		break;
+	case FPSGO_ATTR_BY_PID:
+		op ? delete_attr_by_pid(pid) : fpsgo_find_attr_by_pid(pid, 1);
+		break;
+	case FPSGO_ATTR_BY_TID:
+		op ? delete_attr_by_tid(pid) : fpsgo_find_attr_by_tid(pid, 1);
+		break;
+	default:
+		break;
+	}
+
+	fpsgo_render_tree_unlock(__func__);
+}
+EXPORT_SYMBOL(fpsgo_ktf2base_add_delete_structure);
+
+void fpsgo_ktf_test_read_node(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf,
+	ssize_t (*target_func)(struct kobject *, struct kobj_attribute *, char *))
+{
+	int ret = 0;
+
+	ret = target_func(kobj, attr, buf);
+	memset(buf, '\0' , FPSGO_SYSFS_MAX_BUFF_SIZE * sizeof(char));
+}
+
+void fpsgo_ktf_test_write_node(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf,
+	ssize_t (*target_func)(struct kobject *, struct kobj_attribute *, const char *, size_t))
+{
+	char *acBuffer = NULL;
+	int ret = 0;
+
+	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!acBuffer)
+		goto out;
+
+	if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf))
+		ret = target_func(kobj, attr, acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE - 1);
+
+out:
+	kfree(acBuffer);
+}
+
+void fpsgo_ktf2base_fuzz_test_node(char *input_data, int op, int cmd)
+{
+	struct kobject *kobj = NULL;
+	struct kobj_attribute *attr = NULL;
+	char *buf = NULL;
+
+	kobj = kzalloc(sizeof(struct kobject), GFP_KERNEL);
+	if (!kobj)
+		goto out;
+
+	attr = kzalloc(sizeof(struct kobj_attribute), GFP_KERNEL);
+	if (!attr)
+		goto out;
+
+	buf = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!buf)
+		goto out;
+
+	if (input_data && op)
+		scnprintf(buf, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", input_data);
+
+	switch (cmd) {
+	case FPSGO_GENERAL_ENABLE:
+		if (op)
+			fpsgo_ktf_test_write_node(kobj, attr, buf, fpsgo_enable_store);
+		else
+			fpsgo_ktf_test_read_node(kobj, attr, buf, fpsgo_enable_show);
+		break;
+	case FPSGO_FORCE_ONOFF:
+		if (op)
+			fpsgo_ktf_test_write_node(kobj, attr, buf, force_onoff_store);
+		else
+			fpsgo_ktf_test_read_node(kobj, attr, buf, force_onoff_show);
+		break;
+	case RENDER_INFO_SHOW:
+		if (!op)
+			fpsgo_ktf_test_read_node(kobj, attr, buf, render_info_show);
+		break;
+	case BQID_SHOW:
+		if (!op)
+			fpsgo_ktf_test_read_node(kobj, attr, buf, BQid_show);
+		break;
+	case CONNECT_API_INFO_SHOW:
+		if (!op)
+			fpsgo_ktf_test_read_node(kobj, attr, buf, connect_api_info_show);
+		break;
+	case ACQUIRE_INFO_SHOW:
+		if (!op)
+			fpsgo_ktf_test_read_node(kobj, attr, buf, acquire_info_show);
+		break;
+	case RENDER_TYPE_SHOW:
+		if (!op)
+			fpsgo_ktf_test_read_node(kobj, attr, buf, render_type_show);
+		break;
+	case RENDER_LOADING_SHOW:
+		if (!op)
+			fpsgo_ktf_test_read_node(kobj, attr, buf, render_loading_show);
+		break;
+	case RENDER_INFO_PARAMS_SHOW:
+		if (!op)
+			fpsgo_ktf_test_read_node(kobj, attr, buf, render_info_params_show);
+		break;
+	case RENDER_ATTR_PARAMS_SHOW:
+		if (!op)
+			fpsgo_ktf_test_read_node(kobj, attr, buf, render_attr_params_show);
+		break;
+	case RENDER_ATTR_PARAMS_TID_SHOW:
+		if (!op)
+			fpsgo_ktf_test_read_node(kobj, attr, buf, render_attr_params_tid_show);
+		break;
+	case FPSGO_GET_ACQUIRE_HINT_ENABLE:
+		if (op)
+			fpsgo_ktf_test_write_node(kobj, attr, buf, fpsgo_get_acquire_hint_enable_store);
+		else
+			fpsgo_ktf_test_read_node(kobj, attr, buf, fpsgo_get_acquire_hint_enable_show);
+		break;
+	case KFPS_CPU_MASK:
+		if (op)
+			fpsgo_ktf_test_write_node(kobj, attr, buf, kfps_cpu_mask_store);
+		else
+			fpsgo_ktf_test_read_node(kobj, attr, buf, kfps_cpu_mask_show);
+		break;
+	case PERFSERV_TA:
+		if (op)
+			fpsgo_ktf_test_write_node(kobj, attr, buf, perfserv_ta_store);
+		else
+			fpsgo_ktf_test_read_node(kobj, attr, buf, perfserv_ta_show);
+		break;
+	default:
+		break;
+	}
+
+out:
+	kfree(buf);
+	kfree(attr);
+	kfree(kobj);
+}
+EXPORT_SYMBOL(fpsgo_ktf2base_fuzz_test_node);
+
 int init_fpsgo_common(void)
 {
 	render_pid_tree = RB_ROOT;
 	BQ_id_list = RB_ROOT;
+	connect_api_tree = RB_ROOT;
 	linger_tree = RB_ROOT;
 	hwui_info_tree = RB_ROOT;
 	sbe_info_tree = RB_ROOT;
@@ -3748,6 +3788,7 @@ int init_fpsgo_common(void)
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_force_onoff);
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_render_info);
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_BQid);
+		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_connect_api_info);
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_acquire_info);
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_fpsgo_get_acquire_hint_enable);
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_perfserv_ta);
@@ -3760,8 +3801,6 @@ int init_fpsgo_common(void)
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_kfps_cpu_mask);
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_render_type);
 	}
-
-	fpsgo_update_tracemark();
 
 	return 0;
 }

@@ -30,8 +30,7 @@ extern void (*fpsgo_notify_acquire_fp)(int c_pid, int p_pid,
 	int connectedAPI, unsigned long long buffer_id);
 extern void (*fpsgo_notify_buffer_quota_fp)(int pid, int quota,
 		unsigned long long identifier);
-extern void (*fpsgo_get_pid_fp)(int cmd, int *pid, int op,
-	int value1, int value2);
+extern void (*fpsgo_get_pid_fp)(int cmd, int *pid, int value1, int value2);
 extern int (*fpsgo_notify_sbe_policy_fp)(int pid,  char *name,
 	unsigned long mask, int start, char *specific_name, int num);
 
@@ -39,8 +38,6 @@ extern int (*magt2fpsgo_notify_target_fps_fp)(int *pid_arr, int *tid_arr,
 	int *tfps_arr, int num);
 extern int (*magt2fpsgo_notify_dep_list_fp)(int pid, int *dep_task_arr,
 	int dep_task_num);
-
-extern void (*ged_vsync_notifier_fp)(void);
 
 int fpsgo_is_force_enable(void);
 void fpsgo_force_switch_enable(int enable);
@@ -61,13 +58,5 @@ extern int (*xgff_frame_startend_fp)(unsigned int startend,
 extern void (*xgff_frame_getdeplist_maxsize_fp)
 		(unsigned int *pdeplistsize);
 extern void (*xgff_frame_min_cap_fp)(unsigned int min_cap);
-
-extern int (*xgff_boost_startend_fp)(unsigned int startend,
-		int group_id,
-		int *dep_list,
-		int dep_list_num,
-		int prefer_cluster,
-		unsigned long long target_time,
-		int *param);
 
 #endif

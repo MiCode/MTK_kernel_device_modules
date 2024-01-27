@@ -15,7 +15,6 @@ extern int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 #if defined(CONFIG_MTK_FPSGO) || defined(CONFIG_MTK_FPSGO_V3)
 void fpsgo_ctrl2fbt_dfrc_fps(int fps_limit);
 
-#if FPSGO_DYNAMIC_WL
 void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap);
 void fbt_cpufreq_cb_cap(int cid, int cap, unsigned long long *freq_lastest_ts,
 	unsigned long long *freq_prev_cb_ts, unsigned int *freq_lastest_obv,
@@ -23,9 +22,6 @@ void fbt_cpufreq_cb_cap(int cid, int cap, unsigned long long *freq_lastest_ts,
 	unsigned int *freq_lastest_idx, unsigned long long *freq_last_cb_ts,
 	unsigned int *freq_clus_obv, unsigned int *freq_clus_iso, unsigned int *freq_last_obv,
 	unsigned long long fake_time_ns);
-#else  // FPSGO_DYNAMIC_WL
-void fpsgo_ctrl2fbt_cpufreq_cb_exp(int cid, unsigned long freq);
-#endif  // FPSGO_DYNAMIC_WL
 void fpsgo_ctrl2fbt_vsync(unsigned long long ts);
 int fpsgo_ctrl2fbt_switch_uclamp(int enable);
 void fpsgo_comp2fbt_frame_start(struct render_info *thr,
@@ -44,7 +40,6 @@ void fpsgo_base2fbt_only_bypass(void);
 void fpsgo_base2fbt_set_min_cap(struct render_info *thr, int min_cap,
 					int min_cap_b, int min_cap_m);
 void fpsgo_base2fbt_clear_llf_policy(struct render_info *thr);
-void fpsgo_base2fbt_cancel_jerk(struct render_info *thr);
 int fpsgo_base2fbt_is_finished(struct render_info *thr);
 void fpsgo_base2fbt_stop_boost(struct render_info *thr);
 void eara2fbt_set_2nd_t2wnt(int pid, unsigned long long buffer_id,
@@ -88,11 +83,6 @@ void fbt_set_ceiling(struct cpu_ctrl_data *pld,
 	int pid, unsigned long long buffer_id);
 void fbt_set_hard_limit_locked(int input,
 	struct cpu_ctrl_data *pld);
-struct fbt_thread_blc *fbt_xgff_list_blc_add(int pid,
-	unsigned long long buffer_id);
-void fbt_xgff_list_blc_del(struct fbt_thread_blc *p_blc);
-void fbt_xgff_blc_set(struct fbt_thread_blc *p_blc, int blc_wt,
-	int dep_num, int *dep_arr);
 int fbt_xgff_dep_thread_notify(int pid, int op);
 
 void fbt_set_render_boost_attr(struct render_info *thr);
@@ -144,8 +134,6 @@ void fbt_get_setting_info(struct fbt_setting_info *sinfo);
 
 #else
 static inline void fpsgo_ctrl2fbt_dfrc_fps(int fps_limit) { }
-static inline void fpsgo_ctrl2fbt_cpufreq_cb_exp(int cid,
-		unsigned long freq) { }
 static inline void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap) { }
 static inline void fbt_cpufreq_cb_cap(int cid, int cap, unsigned long long *freq_lastest_ts,
 	unsigned long long *freq_prev_cb_ts, unsigned int *freq_lastest_obv,
@@ -177,7 +165,6 @@ static inline int fbt_switch_ceiling(int en) { return 0; }
 static inline void fpsgo_base2fbt_set_min_cap(struct render_info *thr,
 				int min_cap) { }
 static inline void fpsgo_base2fbt_clear_llf_policy(struct render_info *thr) { }
-static inline void fpsgo_base2fbt_cancel_jerk(struct render_info *thr) { }
 static inline int fpsgo_base2fbt_is_finished(struct render_info *thr) { return 0; }
 static inline void fpsgo_base2fbt_stop_boost(struct render_info *thr) { }
 static inline void eara2fbt_set_2nd_t2wnt(int pid, unsigned long long buffer_id,

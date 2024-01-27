@@ -7,14 +7,6 @@
 
 #include <linux/rbtree.h>
 
-#define FPSGO_MAX_CONNECT_API_INFO_SIZE 200
-
-enum FPSGO_COM_ERROR {
-	FPSGO_COM_IS_RENDER,
-	FPSGO_COM_TASK_NOT_EXIST,
-	FPSGO_COM_IS_SF,
-};
-
 enum FPSGO_SBE_MASK {
 	FPSGO_CONTROL,
 	FPSGO_MAX_TARGET_FPS,
@@ -26,15 +18,19 @@ enum FPSGO_SBE_MASK {
 	FPSGO_RUNNING_QUERY,
 };
 
-struct connect_api_info {
-	struct rb_node rb_node;
-	struct list_head render_list;
-	int pid;
-	int tgid;
-	unsigned long long buffer_id;
-	unsigned long long buffer_key;
-	int api;
-	unsigned long long ts;
+enum FPSGO_COM_KERNEL_NODE {
+	BYPASS_NON_SF_GLOBAL,
+	BYPASS_NON_SF_BY_PID,
+	CONTROL_API_MASK_GLOBAL,
+	CONTROL_API_MASK_BY_PID,
+	CONTROL_HWUI_GLOBAL,
+	CONTROL_HWUI_BY_PID,
+	SET_UI_CTRL,
+	FPSGO_CONTROL_GLOBAL,
+	FPSGO_CONTROL_BY_PID,
+	FPS_ALIGN_MARGIN,
+	FPSGO_COM_POLICY_CMD,
+	IS_FPSGO_BOOSTING,
 };
 
 struct fpsgo_com_policy_cmd {
@@ -42,20 +38,6 @@ struct fpsgo_com_policy_cmd {
 	int bypass_non_SF_by_pid;
 	int control_api_mask_by_pid;
 	int control_hwui_by_pid;
-	int app_cam_fps_align_margin;
-	int app_cam_time_align_ratio;
-	int app_cam_meta_min_fps;
-	unsigned long long ts;
-	struct rb_node rb_node;
-};
-
-struct fpsgo_com_policy_cmd {
-	int tgid;
-	int bypass_non_SF_by_pid;
-	int control_api_mask_by_pid;
-	int control_hwui_by_pid;
-	int app_cam_fps_align_margin;
-	int app_cam_time_align_ratio;
 	int app_cam_meta_min_fps;
 	unsigned long long ts;
 	struct rb_node rb_node;
@@ -106,10 +88,7 @@ void fpsgo_ctrl2comp_acquire(int p_pid, int c_pid, int c_tid,
 void fpsgo_ctrl2comp_set_app_meta_fps(int tgid, int fps, unsigned long long ts);
 int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 	int start, char *specific_name, int num);
-void fpsgo_base2comp_check_connect_api(void);
-int fpsgo_base2comp_check_connect_api_tree_empty(void);
 int switch_ui_ctrl(int pid, int set_ctrl);
-void fpsgo_set_fpsgo_is_boosting(int is_boosting);
 int fpsgo_get_fpsgo_is_boosting(void);
 int register_get_fpsgo_is_boosting(fpsgo_notify_is_boost_cb func_cb);
 int unregister_get_fpsgo_is_boosting(fpsgo_notify_is_boost_cb func_cb);

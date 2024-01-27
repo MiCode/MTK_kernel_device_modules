@@ -12,7 +12,6 @@
 
 #define XGF_DEFAULT_EMA_DIVIDEND 5
 #define SP_ALLOW_NAME "UnityMain"
-#define SP_ALLOW_NAME2 "Thread-"
 #define SP_PASS_PROC_NAME_CHECK "*"
 #define XGF_DEFAULT_DEP_FRAMES 10
 #define XGF_DEP_FRAMES_MIN 2
@@ -42,10 +41,30 @@ enum XGF_EVENT {
 	HRTIMER_EXIT
 };  // need align fpsgo.ko
 
-enum XGF_BUFFER_TYPE {
+enum TRACE_EVENT_BUFFER_TYPE {
 	XGF_BUFFER,
 	FSTB_BUFFER
-}; // need to align ktf
+};
+
+enum FPSGO_XGF_KERNEL_NODE {
+	XGF_DEPLIST,
+	XGF_RUNTIME,
+	XGF_SPID_LIST,
+	XGF_POLICY_CMD,
+	XGF_CFG_SPID,
+	XGF_DEP_FRAMES,
+	XGF_EXTRA_SUB,
+	XGF_FORCE_NO_EXTRA_SUB,
+	XGF_EMA_DIVIDEND,
+	XGF_SPID_CK_PERIOD,
+	XGF_EMA2_ENABLE_GLOBAL,
+	XGF_EMA2_ENABLE_BY_PID,
+	XGF_FILTER_DEP_TASK_ENABLE_GLOBAL,
+	XGF_FILTER_DEP_TASK_ENABLE_BY_PID,
+	XGF_FORCE_SET_PERF_MIN,
+	SET_CAM_HAL_PID,
+	SET_CAM_SERVER_PID,
+};
 
 struct fpsgo_trace_event {
 	int event;
@@ -146,7 +165,6 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 	unsigned long long t_enqueue_start, unsigned long long t_enqueue_end,
 	int skip);
 int fpsgo_comp2xgf_do_recycle(void);
-int fpsgo_comp2xgf_get_dep_list_num(int pid, unsigned long long bufID);
 int fpsgo_comp2xgf_get_dep_list(int pid, int count,
 	int *arr, unsigned long long bufID);
 int fpsgo_other2xgf_set_dep_list(int tgid, int *rtid_arr,
