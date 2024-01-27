@@ -292,7 +292,6 @@ extern void ged_get_gpu_utli_ex(struct GpuUtilization_Ex *util_ex);
 extern unsigned int g_gpufreq_v2;
 
 extern void (*mtk_set_fastdvfs_mode_fp)(unsigned int u32Mode);
-extern unsigned int (*mtk_get_fastdvfs_mode_fp)(void);
 extern unsigned int g_eb_workload;
 extern unsigned int eb_policy_dts_flag;
 

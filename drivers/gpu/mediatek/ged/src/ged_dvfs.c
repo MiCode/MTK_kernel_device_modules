@@ -909,7 +909,7 @@ void ged_dvfs_set_sysram_last_commit_dual_idx(int top_idx, int stack_idx)
 	int compose_idx = stack_idx & 0xFF;
 	int tmp_top = (top_idx & 0xFF) << 8;
 
-	if (g_async_virtual_table_support == 0 && (stack_idx != top_idx))
+	if (!g_enable_lb_async && (stack_idx != top_idx))
 		GED_LOGE(" %s: opp index different top:%d, stack:%d ",
 			__func__, top_idx, stack_idx);
 
@@ -2801,7 +2801,6 @@ static bool ged_dvfs_policy(
 
 			if (fb_tmp_timer > timeout_val) {
 				ged_set_policy_state(POLICY_STATE_FB);
-				ged_eb_dvfs_task(EB_UPDATE_POLICY_STATE, GED_DVFS_FRAME_BASE_COMMIT);
 				ged_set_backup_timer_timeout(fb_tmp_timer);
 				g_CommitType = MTK_GPU_DVFS_TYPE_SKIPFALLBACK;
 			}
@@ -3245,16 +3244,8 @@ void ged_get_gpu_utli_ex(struct GpuUtilization_Ex *util_ex)
 static void ged_set_fastdvfs_mode(unsigned int u32ModeValue)
 {
 	mutex_lock(&gsDVFSLock);
-	g_fastdvfs_mode = u32ModeValue;
-	mtk_gpueb_dvfs_set_mode(g_fastdvfs_mode);
+	mtk_gpueb_dvfs_set_mode(u32ModeValue);
 	mutex_unlock(&gsDVFSLock);
-}
-
-static unsigned int ged_get_fastdvfs_mode(void)
-{
-	mtk_gpueb_dvfs_get_mode(&g_fastdvfs_mode);
-
-	return g_fastdvfs_mode;
 }
 
 /* Need spinlocked */
@@ -3703,7 +3694,6 @@ GED_ERROR ged_dvfs_system_init(void)
 	mtk_get_dvfs_workload_mode_fp = ged_get_dvfs_workload_mode;
 
 	mtk_set_fastdvfs_mode_fp = ged_set_fastdvfs_mode;
-	mtk_get_fastdvfs_mode_fp = ged_get_fastdvfs_mode;
 	ged_kpi_fastdvfs_update_dcs_fp = ged_fastdvfs_update_dcs;
 
 	ged_get_last_commit_idx_fp = ged_dvfs_get_last_commit_idx;

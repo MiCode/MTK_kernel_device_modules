@@ -139,7 +139,6 @@ static const struct proc_ops ged_proc_fops = {
 unsigned int g_ged_gpueb_support;
 unsigned int g_ged_fdvfs_support;
 unsigned int g_ged_gpu_freq_notify_support;
-unsigned int g_fastdvfs_mode;
 unsigned int g_fastdvfs_margin;
 #define GED_TARGET_UNLIMITED_FPS 240
 unsigned int vGed_Tmp;
@@ -586,13 +585,9 @@ GED_ERROR check_eb_config(void)
 			GED_LOGE("fail to read gpu-freq-notify-support (%d)", ret_temp);
 	}
 
-	if (g_ged_gpueb_support && g_ged_fdvfs_support)
-		g_fastdvfs_mode = 1;
-
 	GED_LOGI("%s. gpueb_support: %d, fdvfs_support: %d, gpu_freq_notify_support: %d",
 		__func__, g_ged_gpueb_support, g_ged_fdvfs_support,
 		g_ged_gpu_freq_notify_support);
-	GED_LOGI("fastdvfs_mode: %d", g_fastdvfs_mode);
 
 	return ret;
 }
@@ -714,7 +709,6 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 	g_ged_gpueb_support = 0;
 	g_ged_fdvfs_support = 0;
 	g_ged_gpu_freq_notify_support = 0;
-	g_fastdvfs_mode		= 0;
 	g_fastdvfs_margin   = 0;
 	g_ged_pre_fence_chk = 0;
 
