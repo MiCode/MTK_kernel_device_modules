@@ -413,7 +413,7 @@ sec_out1:
 
 sec_out2:
 
-	strscpy(sec_heap_name, "mtk_tee_page-uncached");
+	strscpy(sec_heap_name, "mtk_tee_page-uncached", sizeof(sec_heap_name));
 	align = 0x1000;
 	loop = MAX_ALLOC;
 	upper = 0x1000000;
