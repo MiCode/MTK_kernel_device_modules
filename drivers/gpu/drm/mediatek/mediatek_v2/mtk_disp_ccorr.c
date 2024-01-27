@@ -1646,14 +1646,19 @@ static int mtk_update_ccorr_base(struct mtk_ddp_comp *comp)
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 	int i, j;
 
-	if (primary_data->disp_ccorr_caps.ccorr_bit == 12)
-		return 0;
-
-	primary_data->ccorr_offset_base = 2048;
-	primary_data->ccorr_max_negative = primary_data->ccorr_offset_base*(-2);
-	primary_data->ccorr_max_positive = (primary_data->ccorr_offset_base*2)-1;
-	primary_data->ccorr_fullbit_mask = 0x1fff;
-	primary_data->ccorr_offset_mask = 13;
+	if (primary_data->disp_ccorr_caps.ccorr_bit == 12) {
+		primary_data->ccorr_offset_base = 1024;
+		primary_data->ccorr_max_negative = -2048;
+		primary_data->ccorr_max_positive = 2047;
+		primary_data->ccorr_fullbit_mask = 0x0fff;
+		primary_data->ccorr_offset_mask = 14;
+	} else {
+		primary_data->ccorr_offset_base = 2048;
+		primary_data->ccorr_max_negative = -4096;
+		primary_data->ccorr_max_positive = 4095;
+		primary_data->ccorr_fullbit_mask = 0x1fff;
+		primary_data->ccorr_offset_mask = 13;
+	}
 
 	for (i = 0; i < 3; i++)
 		for (j = 0; j < 3; j++) {
