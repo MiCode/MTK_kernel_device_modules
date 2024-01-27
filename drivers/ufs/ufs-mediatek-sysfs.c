@@ -16,6 +16,7 @@
 #include "ufs-mediatek.h"
 #include "ufs-mediatek-dbg.h"
 
+#if 0
 /**
  * ufs_mtk_query_ioctl - perform user read queries
  * @hba: per-adapter instance
@@ -265,7 +266,7 @@ ufs_mtk_ioctl(struct scsi_device *dev, unsigned int cmd, void __user *buffer)
 
 	return err;
 }
-
+#endif
 static ssize_t downdifferential_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -485,14 +486,14 @@ struct attribute_group ufs_mtk_sysfs_irq_group = {
 void ufs_mtk_init_ioctl(struct ufs_hba *hba)
 {
 	/* Provide SCSI host ioctl API */
-	hba->host->hostt->ioctl = (int (*)(struct scsi_device *,
+	/*hba->host->hostt->ioctl = (int (*)(struct scsi_device *,
 				   unsigned int,
 				   void __user *))ufs_mtk_ioctl;
 #ifdef CONFIG_COMPAT
 	hba->host->hostt->compat_ioctl = (int (*)(struct scsi_device *,
 					  unsigned int,
 					  void __user *))ufs_mtk_ioctl;
-#endif
+#endif*/
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_init_ioctl);
 

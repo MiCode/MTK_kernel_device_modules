@@ -31,7 +31,7 @@ static inline int ufshcd_mcq_wait_idle(struct ufs_hba *hba, u64 wait_timeout_us)
 	int ret = 0;
 	unsigned long flags;
 	struct ufs_hw_queue *hwq;
-	u32 sq_head_slot;
+	//u32 sq_head_slot;
 	ktime_t start;
 	int sq_poll_cnt = 0;
 	int cq_poll_cnt = 0;
@@ -43,7 +43,7 @@ static inline int ufshcd_mcq_wait_idle(struct ufs_hba *hba, u64 wait_timeout_us)
 		hwq = &hba->uhq[qid];
 
 		/* wait sq empty */
-		sq_head_slot = ufshcd_mcq_get_sq_head_slot(hwq);
+		/*sq_head_slot = ufshcd_mcq_get_sq_head_slot(hwq);
 
 		while (sq_head_slot != hwq->sq_tail_slot) {
 			dev_dbg(hba->dev, "qid=%d, sq_head_slot=%d, sq_tail_slot=%d, ready=%d",
@@ -56,7 +56,7 @@ static inline int ufshcd_mcq_wait_idle(struct ufs_hba *hba, u64 wait_timeout_us)
 			dev_dbg(hba->dev, "SQ poll");
 			mdelay(WAIT_POLL_INTV_MS);
 			sq_head_slot = ufshcd_mcq_get_sq_head_slot(hwq);
-		}
+		}*/
 
 		/* wait cq empty */
 		spin_lock_irqsave(&hwq->cq_lock, flags);
