@@ -203,7 +203,7 @@ int dcs_set_core_mask(unsigned int core_mask, unsigned int core_num)
 	trace_GPU_DVFS__Policy__DCS__Detail(core_mask);
 	/* TODO: set return error */
 	if (ret) {
-		GED_LOGE("Failed to set core_mask: 0x%llX, core_num: %u", core_mask, core_num);
+		GED_LOGE("Failed to set core_mask: 0x%X, core_num: %u", core_mask, core_num);
 		goto done_unlock;
 	}
 

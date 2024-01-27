@@ -64,7 +64,7 @@ static GED_ERROR gpu_slc_sysram_init(void)
 
 	GED_LOGI("[GPU_SLC]%s sysram phys_addr: 0x%llx, virt_addr: 0x%llx, size: %x",
 		__func__, g_counter_pa, g_counter_va, g_counter_size);
-	GED_LOGI("[GPU_SLC]%s slc sysram usage from 0x%llx ~ 0x%llx size: %x",
+	GED_LOGI("[GPU_SLC]%s slc sysram usage from 0x%llx ~ 0x%llx size: %llu",
 		__func__, res.start, res.end, resource_size(&res));
 
 	return GED_OK;
@@ -101,7 +101,7 @@ GED_ERROR ged_gpu_slc_init(void)
 		g_slc_stat->hit_rate_r = 0;
 		g_slc_stat->isoverflow = 0;
 		GED_LOGI("[GPU_SLC] %s get slc stat successfully.",  __func__);
-		GED_LOGI("[GPU_SLC] mode: %d, ptr: %x, addr: %x\n", g_slc_stat->mode, &g_slc_stat->mode, &g_slc_stat);
+		GED_LOGI("[GPU_SLC] mode: %d, ptr: %p, addr: %p\n", g_slc_stat->mode, (void *)&g_slc_stat->mode, (void *)&g_slc_stat);
 	} else {
 		GED_LOGE("[GPU_SLC]%s null slc stat", __func__);
 	}

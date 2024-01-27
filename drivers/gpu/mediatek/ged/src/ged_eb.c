@@ -64,7 +64,7 @@ static struct hrtimer g_HT_fdvfs_debug;
 static DEFINE_SPINLOCK(counter_info_lock);
 static int mfg_is_power_on;
 
-#define FDVFS_IPI_ATTR "ipi_dev:%p, ch:%d, DATA_LEN: %d, TIMEOUT: %d(ms)"
+#define FDVFS_IPI_ATTR "ipi_dev:%p, ch:%d, DATA_LEN: %lu, TIMEOUT: %d(ms)"
 
 static struct workqueue_struct *g_psEBWorkQueue;
 static struct mutex gsEBLock;
@@ -995,7 +995,7 @@ void fdvfs_init(void)
 		}
 	}
 
-	GPUFDVFS_LOGI("succeed to register channel: (%d)(%d), ipi_size: %u\n",
+	GPUFDVFS_LOGI("succeed to register channel: (%d)(%d), ipi_size: %lu\n",
 		g_fast_dvfs_ipi_channel,
 		g_fdvfs_event_ipi_channel,
 		FDVFS_IPI_DATA_LEN);

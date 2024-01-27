@@ -826,11 +826,12 @@ static ssize_t dcs_stress_store(struct kobject *kobj,
 
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
 				if (i32Value <= 0)
 					dcs_set_dcs_stress(0);
 				else
 					dcs_set_dcs_stress(i32Value);
+			}
 		}
 	}
 
@@ -855,11 +856,12 @@ static ssize_t dcs_adjust_support_store(struct kobject *kobj,
 
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
 				if (i32Value <= 0)
 					dcs_set_adjust_support(0);
 				else
 					dcs_set_adjust_support(i32Value);
+			}
 		}
 	}
 
@@ -883,11 +885,12 @@ static ssize_t dcs_adjust_ratio_th_store(struct kobject *kobj,
 
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
 				if (i32Value <= 0)
 					dcs_set_adjust_ratio_th(0);
 				else
 					dcs_set_adjust_ratio_th(i32Value);
+			}
 		}
 	}
 
@@ -911,11 +914,12 @@ static ssize_t dcs_adjust_fr_cnt_store(struct kobject *kobj,
 
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
 				if (i32Value <= 0)
 					dcs_set_adjust_fr_cnt(0);
 				else
 					dcs_set_adjust_fr_cnt(i32Value);
+			}
 		}
 	}
 
@@ -939,11 +943,12 @@ static ssize_t dcs_adjust_non_dcs_th_store(struct kobject *kobj,
 
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
 				if (i32Value <= 0)
 					dcs_set_adjust_non_dcs_th(0);
 				else
 					dcs_set_adjust_non_dcs_th(i32Value);
+			}
 		}
 	}
 
@@ -1586,7 +1591,7 @@ static ssize_t gpu_slc_policy_show(struct kobject *kobj,
 					"Final HitRate:		%d\n", slc_stat->hit_rate_r);
 		if(slc_stat->isoverflow == 1)
 			pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-					"(bw overflow)\n", slc_stat->hit_rate_r);
+					"(bw overflow)\n");
 	} else {
 		pos = scnprintf(buf + pos, PAGE_SIZE - pos,
 					"GPU SLC sysFS not supports\n");
