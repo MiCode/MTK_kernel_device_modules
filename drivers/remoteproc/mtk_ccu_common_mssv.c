@@ -13,6 +13,10 @@
 
 #include "mtk_ccu_common.h"
 
+#define MTK_CCU_TAG "[ccu_rproc]"
+#define LOG_ERR(format, args...) \
+	pr_err(MTK_CCU_TAG "[%s] " format, __func__, ##args)
+
 static inline unsigned int mtk_ccu_mstojiffies(unsigned int Ms)
 {
 	return ((Ms * HZ + 512) >> 10);
@@ -56,6 +60,61 @@ struct mtk_ccu_mem_info *mtk_ccu_get_meminfo(struct mtk_ccu *ccu,
 	else
 		return &ccu->buffer_handle[type].meminfo;
 }
+
+int rproc_bootx(struct rproc *rproc, unsigned int uid)
+{
+	struct mtk_ccu *ccu;
+	int ret;
+
+	if (!rproc) {
+		LOG_ERR("rproc is NULL");
+		return -EINVAL;
+	}
+
+	ccu = (struct mtk_ccu *)rproc->priv;
+	if (!ccu) {
+		LOG_ERR("ccu is NULL");
+		return -EINVAL;
+	}
+
+	if (uid < RPROC_UID_MAX)
+		atomic_inc(&ccu->bootcnt[uid][0]);
+
+	ret = rproc_boot(rproc);
+
+	if ((ret) && (uid < RPROC_UID_MAX))
+		atomic_inc(&ccu->bootcnt[uid][1]);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(rproc_bootx);
+
+int rproc_shutdownx(struct rproc *rproc, unsigned int uid)
+{
+	struct mtk_ccu *ccu;
+	int ret;
+
+	if (!rproc) {
+		LOG_ERR("rproc is NULL");
+		return -EINVAL;
+	}
+
+	ccu = (struct mtk_ccu *)rproc->priv;
+	if (!ccu) {
+		LOG_ERR("ccu is NULL");
+		return -EINVAL;
+	}
+
+	if (uid < RPROC_UID_MAX)
+		atomic_dec(&ccu->bootcnt[uid][0]);
+
+	ret = rproc_shutdown(rproc);
+	if ((ret) && (uid < RPROC_UID_MAX))
+		atomic_inc(&ccu->bootcnt[uid][2]);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(rproc_shutdownx);
 
 MODULE_DESCRIPTION("MTK CCU Rproc Driver");
 MODULE_LICENSE("GPL");

@@ -135,4 +135,21 @@ void *mtk_ccu_da_to_va(struct rproc *rproc, u64 da, size_t lens, bool *is_iomem)
  */
 int mtk_ccu_rproc_get_inforeg(struct platform_device *pdev,
 	uint32_t regno, uint32_t *data);
+
+/*---------------------------------------------------------------------------*/
+/*  remoteproc add-on FUNCTIONS                                              */
+/*---------------------------------------------------------------------------*/
+#define RPROC_UID_FS  0
+#define RPROC_UID_SC  1
+#define RPROC_UID_CAM 2
+#define RPROC_UID_SENIF 3
+#define RPROC_UID_IMG 4
+#define RPROC_UID_IMG_CMDQ 5
+#define RPROC_UID_MMDVFS 6
+#define RPROC_UID_GCE 7
+#define RPROC_UID_MAX 8
+
+int rproc_bootx(struct rproc *rproc, unsigned int uid);
+int rproc_shutdownx(struct rproc *rproc, unsigned int uid);
+
 #endif /*__RPOC_MTK_CCU_H */
