@@ -96,74 +96,88 @@ struct rsz_data {
 	u32 tile_width;
 	u8 rsz_dbg;
 	u8 px_per_tick;
-	bool aal_crop;
+	bool aal_crop_disable;
 	bool wrot_pending;
+	bool alpha_rsz_crop;
 };
 
 static const struct rsz_data mt6893_rsz_data = {
 	.tile_width = 544,
-	.aal_crop = true,
 };
 
 static const struct rsz_data mt6983_rsz_data = {
 	.tile_width = 1636,
-	.aal_crop = true,
 };
 
 static const struct rsz_data mt6879_rsz_data = {
 	.tile_width = 1360,
-	.aal_crop = true,
 };
 
 static const struct rsz_data mt6895_rsz0_data = {
 	.tile_width = 1300,
-	.aal_crop = true,
 };
 
 static const struct rsz_data mt6895_rsz1_data = {
 	.tile_width = 836,
-	.aal_crop = true,
 };
 
 static const struct rsz_data mt6895_rsz_data = {
 	.tile_width = 520,
-	.aal_crop = true,
 };
 
 static const struct rsz_data mt6985_rsz_data = {
 	.tile_width = 1674,
-	/* .aal_crop = false, */
+	.aal_crop_disable = true,
 };
 
 static const struct rsz_data mt6985_rsz2_data = {
 	.tile_width = 544,
-	/* .aal_crop = false, */
+	.aal_crop_disable = true,
 };
 
 static const struct rsz_data mt6897_rsz_data = {
 	.tile_width = 1674,
-	.aal_crop = true,
 };
 
 static const struct rsz_data mt6897_rsz2_data = {
 	.tile_width = 544,
-	.aal_crop = true,
 };
 
 static const struct rsz_data mt6989_rsz_data = {
 	.tile_width = 3348,
 	.rsz_dbg = RSZ_DBG_MT6989,
 	.px_per_tick = 2,
-	.aal_crop = true,
 	.wrot_pending = true,
+	.alpha_rsz_crop = true,
 };
 
 static const struct rsz_data mt6989_rsz2_data = {
 	.tile_width = 544,
 	.rsz_dbg = RSZ_DBG_MT6989,
 	.px_per_tick = 2,
-	.aal_crop = true,
 	.wrot_pending = true,
+	.alpha_rsz_crop = true,
+};
+
+static const struct rsz_data mt6878_rsz_data = {
+	.tile_width = 544,
+};
+
+
+static const struct rsz_data mt6991_mmlt_rsz_data = {
+	.tile_width = 576,
+	.rsz_dbg = RSZ_DBG_MT6989,
+	.px_per_tick = 2,
+	.wrot_pending = true,
+	.alpha_rsz_crop = true,
+};
+
+static const struct rsz_data mt6991_mmlf_rsz_data = {
+	.tile_width = 3872,
+	.rsz_dbg = RSZ_DBG_MT6989,
+	.px_per_tick = 4,
+	.wrot_pending = true,
+	.alpha_rsz_crop = true,
 };
 
 struct mml_comp_rsz {
@@ -199,7 +213,7 @@ static bool rsz_can_relay(const struct mml_frame_config *cfg,
 	const u32 srcw = cfg->frame_in.width;
 	const u32 srch = cfg->frame_in.height;
 
-	if (!rsz->data->aal_crop && dest->pq_config.en_dre)
+	if (rsz->data->aal_crop_disable && dest->pq_config.en_dre)
 		return false;
 	if (cfg->info.dest_cnt > 1)
 		return false;
@@ -245,13 +259,8 @@ static s32 rsz_prepare(struct mml_comp *comp, struct mml_task *task,
 			fw_in.out_width = frame_out->width;
 			fw_in.out_height = frame_out->height;
 			fw_in.crop = *crop;
-
-			if (MML_FMT_10BIT(src->format) ||
-			    MML_FMT_10BIT(dest->data.format))
-				fw_in.power_saving = false;
-			else
-				fw_in.power_saving = true;
-
+			fw_in.power_saving = !MML_FMT_10BIT(src->format) &&
+				!MML_FMT_10BIT(dest->data.format);
 			fw_in.use121filter = rsz_frm->use121filter;
 
 			mml_msg("rsz fw in %u %u crop %u.%u %u.%u %u.%u %u.%u out %u %u",
@@ -261,7 +270,6 @@ static s32 rsz_prepare(struct mml_comp *comp, struct mml_task *task,
 				crop->r.width, crop->w_sub_px,
 				crop->r.height, crop->h_sub_px,
 				fw_in.out_width, fw_in.out_height);
-
 			rsz_fw(&fw_in, &rsz_frm->fw_out, dest->pq_config.en_ur);
 		} else {
 			mml_pq_msg("%s pipe_id[%d] engine_id[%d]", __func__,
@@ -363,7 +371,7 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 		}
 	}
 	data->rsz.max_width = rsz->data->tile_width;
-	data->rsz.crop_aal_tile_loss = !rsz->data->aal_crop && dest->pq_config.en_dre;
+	data->rsz.crop_aal_tile_loss = rsz->data->aal_crop_disable && dest->pq_config.en_dre;
 	/* RSZ support crop capability */
 	func->type = TILE_TYPE_CROP_EN;
 	func->init_func = tile_prz_init;
@@ -374,12 +382,15 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	func->enable_flag = !rsz_frm->relay_mode;
 
 	if ((cfg->info.dest_cnt == 1 ||
-	     !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop,
-	     sizeof(struct mml_crop))) &&
+	    !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop,
+		    sizeof(struct mml_crop))) &&
 	    (crop->r.width != frame_in->width || crop->r.height != frame_in->height)) {
 		func->full_size_x_in = cfg->frame_tile_sz.width;
 		func->full_size_y_in = cfg->frame_tile_sz.height;
 		data->rsz.crop.r.left -= crop->r.left;
+		if (rsz->data->alpha_rsz_crop && cfg->info.alpha &&
+		    cfg->info.mode != MML_MODE_DIRECT_LINK)
+			data->rsz.crop.r.left += crop->r.left & 1;
 		data->rsz.crop.r.top -= crop->r.top;
 	} else {
 		func->full_size_x_in = frame_in->width;
@@ -412,11 +423,12 @@ static const struct mml_comp_tile_ops rsz_tile_ops = {
 	.prepare = rsz_tile_prepare,
 };
 
-static void rsz_init(struct cmdq_pkt *pkt, const phys_addr_t base_pa)
+static void rsz_init(struct cmdq_pkt *pkt, const phys_addr_t base_pa, bool shadow)
 {
 	cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ENABLE, 0x1, U32_MAX);
 	/* Enable shadow */
-	cmdq_pkt_write(pkt, NULL, base_pa + RSZ_SHADOW_CTRL, 0x2, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + RSZ_SHADOW_CTRL,
+		(shadow ? 0 : 1) | 0x2, U32_MAX);
 }
 
 static void rsz_relay(struct cmdq_pkt *pkt, const phys_addr_t base_pa)
@@ -428,7 +440,7 @@ static void rsz_relay(struct cmdq_pkt *pkt, const phys_addr_t base_pa)
 static s32 rsz_config_init(struct mml_comp *comp, struct mml_task *task,
 			   struct mml_comp_config *ccfg)
 {
-	rsz_init(task->pkts[ccfg->pipe], comp->base_pa);
+	rsz_init(task->pkts[ccfg->pipe], comp->base_pa, task->config->shadow);
 	return 0;
 }
 
@@ -544,7 +556,10 @@ static s32 rsz_config_tile(struct mml_comp *comp, struct mml_task *task,
 
 	mml_msg("%s idx[%d]", __func__, idx);
 
-	/* Odd coordinate, should pad 1 column */
+	/* YUV444 to YUV422 downsampler
+	 * 0: odd coordinate, should pad 1 column
+	 * 1: even coordinate, no padding required
+	 */
 	drs_padding_dis = tile->in.xe & 0x1;
 	drs_lclip_en = rsz_frm->use121filter && tile->in.xs;
 	/* YUV422 to YUV444 upsampler */
@@ -834,9 +849,7 @@ static int probe(struct platform_device *pdev)
 
 	dbg_probed_components[dbg_probed_count++] = priv;
 
-	ret = component_add(dev, &mml_comp_ops);
-	if (ret)
-		dev_err(dev, "Failed to add component: %d\n", ret);
+	ret = mml_comp_add(priv->comp.id, dev, &mml_comp_ops);
 
 	return ret;
 }
@@ -903,6 +916,22 @@ const struct of_device_id mml_rsz_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6989-mml_rsz2",
+		.data = &mt6989_rsz2_data,
+	},
+	{
+		.compatible = "mediatek,mt6878-mml_rsz",
+		.data = &mt6878_rsz_data,
+	},
+	{
+		.compatible = "mediatek,mt6991-mml0_rsz",
+		.data = &mt6991_mmlt_rsz_data,
+	},
+	{
+		.compatible = "mediatek,mt6991-mml1_rsz",
+		.data = &mt6991_mmlf_rsz_data,
+	},
+	{
+		.compatible = "mediatek,mt6991-mml_rsz2",
 		.data = &mt6989_rsz2_data,
 	},
 	{},

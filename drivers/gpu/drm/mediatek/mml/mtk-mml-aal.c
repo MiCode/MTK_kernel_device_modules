@@ -256,6 +256,7 @@ struct aal_data {
 	u16 cpr[MML_PIPE_CNT];
 	const u16 *reg_table;
 	bool crop;
+	bool alpha_pq_r2y;
 	u8 rb_mode;
 	bool is_linear;
 	u8 curve_ready_bit;
@@ -265,13 +266,11 @@ static const struct aal_data mt6893_aal_data = {
 	.min_tile_width = 50,
 	.tile_width = 560,
 	.min_hist_width = 128,
-	.vcp_readback = false,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
-	.is_linear = false,
 	.curve_ready_bit = 16,
 };
 
@@ -279,13 +278,11 @@ static const struct aal_data mt6983_aal_data = {
 	.min_tile_width = 50,
 	.tile_width = 1652,
 	.min_hist_width = 128,
-	.vcp_readback = false,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
-	.is_linear = false,
 	.curve_ready_bit = 16,
 };
 
@@ -293,13 +290,11 @@ static const struct aal_data mt6879_aal_data = {
 	.min_tile_width = 50,
 	.tile_width = 1376,
 	.min_hist_width = 128,
-	.vcp_readback = false,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
-	.is_linear = false,
 	.curve_ready_bit = 16,
 };
 
@@ -313,7 +308,6 @@ static const struct aal_data mt6895_aal0_data = {
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
-	.is_linear = false,
 	.curve_ready_bit = 16,
 };
 
@@ -327,7 +321,6 @@ static const struct aal_data mt6895_aal1_data = {
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
-	.is_linear = false,
 	.curve_ready_bit = 16,
 };
 
@@ -335,11 +328,9 @@ static const struct aal_data mt6985_aal_data = {
 	.min_tile_width = 50,
 	.tile_width = 1690,
 	.min_hist_width = 128,
-	.vcp_readback = false,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6985,
-	.crop = false,
 	.rb_mode = RB_EOF_MODE,
 	.is_linear = true,
 	.curve_ready_bit = 16,
@@ -349,13 +340,11 @@ static const struct aal_data mt6886_aal_data = {
 	.min_tile_width = 50,
 	.tile_width = 1300,
 	.min_hist_width = 128,
-	.vcp_readback = false,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
-	.is_linear = false,
 	.curve_ready_bit = 16,
 };
 
@@ -363,13 +352,11 @@ static const struct aal_data mt6897_aal_data = {
 	.min_tile_width = 50,
 	.tile_width = 1690,
 	.min_hist_width = 128,
-	.vcp_readback = false,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6897,
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
-	.is_linear = false,
 	.curve_ready_bit = 18,
 };
 
@@ -377,14 +364,44 @@ static const struct aal_data mt6989_aal_data = {
 	.min_tile_width = 50,
 	.tile_width = 3380,
 	.min_hist_width = 128,
-	.vcp_readback = false,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6897,
-	.crop = false,
+	.alpha_pq_r2y = true,
 	.rb_mode = RB_EOF_MODE,
-	.is_linear = false,
 	.curve_ready_bit = 18,
+};
+
+static const struct aal_data mt6878_aal_data = {
+	.min_tile_width = 50,
+	.tile_width = 560,
+	.min_hist_width = 128,
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
+	.reg_table = aal_reg_table_mt6983,
+	.crop = true,
+	.rb_mode = RB_EOF_MODE,
+	.curve_ready_bit = 16,
+};
+
+static const struct aal_data mt6991_mmlt_aal_data = {
+	.min_tile_width = 50,
+	.tile_width = 560,
+	.min_hist_width = 128,
+	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
+	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
+	.reg_table = aal_reg_table_mt6897,
+	.rb_mode = RB_EOF_MODE,
+};
+
+static const struct aal_data mt6991_mmlf_aal_data = {
+	.min_tile_width = 50,
+	.tile_width = 3872,
+	.min_hist_width = 128,
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
+	.reg_table = aal_reg_table_mt6897,
+	.rb_mode = RB_EOF_MODE,
 };
 
 struct mml_comp_aal {
@@ -552,13 +569,15 @@ static u32 aal_get_label_count(struct mml_comp *comp, struct mml_task *task,
 	return AAL_LABEL_TOTAL;
 }
 
-static void aal_init(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_addr_t base_pa)
+static void aal_init(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_addr_t base_pa,
+	bool shadow)
 {
 	struct mml_comp_aal *aal = comp_to_aal(comp);
 
 	cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_EN], 0x1, U32_MAX);
 	/* Enable shadow */
-	cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_SHADOW_CTRL], 0x2, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_SHADOW_CTRL],
+		(shadow ? 0 : 1) | 0x2, U32_MAX);
 }
 
 static void aal_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_addr_t base_pa,
@@ -575,7 +594,7 @@ static void aal_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_ad
 static s32 aal_config_init(struct mml_comp *comp, struct mml_task *task,
 			   struct mml_comp_config *ccfg)
 {
-	aal_init(comp, task->pkts[ccfg->pipe], comp->base_pa);
+	aal_init(comp, task->pkts[ccfg->pipe], comp->base_pa, task->config->shadow);
 	return 0;
 }
 
@@ -1043,6 +1062,44 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 		__func__, tile_config_param->dre_blk_width,
 		tile_config_param->dre_blk_height);
 exit:
+	mml_msg("%s alpha_pq_r2y:%d alpha:%d format:0x%08x mode:%d pq:%d dre:%d",
+		__func__, aal->data->alpha_pq_r2y, cfg->info.alpha,
+		dest->data.format, mode, dest->pq_config.en, dest->pq_config.en_dre);
+	/* Enable alpha r2y when resize but not RROT */
+	if (aal->data->alpha_pq_r2y && cfg->alpharsz && dest->data.format == MML_FMT_YUVA8888 &&
+	    mode != MML_MODE_DIRECT_LINK) {
+		u32 r2y_00, r2y_01, r2y_02, r2y_03, r2y_04, r2y_05;
+
+		/* 31-31 r2y_en,   24-16 r2y_post_add_1_s, 8-0 r2y_post_add_0_s */
+		r2y_00 = (1 << 31) | (128 << 16) | (0 << 0);
+		/* 26-16 r2y_c00_s,  8-0 r2y_post_add_2_s */
+		r2y_01 = (306 << 16) | (128 << 0);
+		/* 26-16 r2y_c02_s, 10-0 r2y_c01_s */
+		r2y_02 = (117 << 16) | (601 << 0);
+		/* 26-16 r2y_c11_s, 10-0 r2y_c10_s */
+		r2y_03 = (1701 << 16) | (1872 << 0);
+		/* 26-16 r2y_c20_s, 10-0 r2y_c12_s */
+		r2y_04 = (523 << 16) | (523 << 0);
+		/* 26-16 r2y_c22_s, 10-0 r2y_c21_s */
+		r2y_05 = (1963 << 16) | (1610 << 0);
+
+		/* relay_mode(bit 0) = 0, AAL_HIST_EN(bit 2) = 0, alpha_en(bit 8) = 1 */
+		cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_CFG], 0x102, 0x107);
+		/* dre_map_bypass(bit 4) = 1 */
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x3b4, 0x18, U32_MAX);
+		/* bilateral_flt_en(bit 1) = 0 */
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x53c, 0x0, 0x2);
+		/* y2r_en(bit 31) = 0 */
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x4bc, 0x1800000, U32_MAX);
+
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x4d4, r2y_00, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x4d8, r2y_01, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x4dc, r2y_02, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x4e0, r2y_03, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x4e4, r2y_04, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x4e8, r2y_05, U32_MAX);
+	}
+
 	mml_pq_trace_ex_end();
 	return ret;
 }
@@ -1265,8 +1322,9 @@ static s32 aal_config_tile(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_WIN_Y_MAIN],
 		(win_y_end << 16) | win_y_start, U32_MAX);
 
-	cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_BILATERAL_STATUS_CTRL],
-		(hist_last_tile << 2) | (hist_first_tile << 1) | 1, U32_MAX);
+	if (aal->data->reg_table[AAL_BILATERAL_STATUS_CTRL] != REG_NOT_SUPPORT)
+		cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_BILATERAL_STATUS_CTRL],
+			(hist_last_tile << 2) | (hist_first_tile << 1) | 1, U32_MAX);
 
 exit:
 	mml_pq_trace_ex_end();
@@ -1320,7 +1378,7 @@ static void aal_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 
 	mml_assign(pkt, idx_out, (u32)pa,
 		reuse, cache, &aal_frm->labels[AAL_POLLGPR_0]);
-	mml_assign(pkt, idx_out + 1, (u32)(DO_SHIFT_RIGHT(pa, 32)),
+	mml_assign(pkt, idx_out + 1, (u32)(pa >> 32),
 		reuse, cache, &aal_frm->labels[AAL_POLLGPR_1]);
 
 
@@ -1396,17 +1454,19 @@ static void aal_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
 	}
 
-	for (i = 0; i < AAL_CLARITY_STATUS_NUM; i++) {
-		cmdq_pkt_read_addr(pkt,
-			base_pa + aal->data->reg_table[AAL_BILATERAL_STATUS_00] + i * 4,
-			idx_val);
-		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
+	if (aal->data->reg_table[AAL_BILATERAL_STATUS_00] != REG_NOT_SUPPORT) {
+		for (i = 0; i < AAL_CLARITY_STATUS_NUM; i++) {
+			cmdq_pkt_read_addr(pkt,
+				base_pa + aal->data->reg_table[AAL_BILATERAL_STATUS_00] + i * 4,
+				idx_val);
+			cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
 
-		lop.reg = true;
-		lop.idx = idx_out;
-		rop.reg = false;
-		rop.value = 4;
-		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+			lop.reg = true;
+			lop.idx = idx_out;
+			rop.reg = false;
+			rop.value = 4;
+			cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+		}
 	}
 
 	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%llx] pkt[%p]",
@@ -1626,7 +1686,7 @@ static s32 aal_config_repost(struct mml_comp *comp, struct mml_task *task,
 		mml_update(reuse, aal_frm->labels[AAL_POLLGPR_0],
 			(u32)task->pq_task->aal_hist[pipe]->pa);
 		mml_update(reuse, aal_frm->labels[AAL_POLLGPR_1],
-			(u32)(DO_SHIFT_RIGHT(task->pq_task->aal_hist[pipe]->pa, 32)));
+			(u32)(task->pq_task->aal_hist[pipe]->pa >> 32));
 
 		begin_pa = cmdq_pkt_get_pa_by_offset(pkt, aal_frm->begin_offset);
 		condi_inst = (u32 *)cmdq_pkt_get_va_by_offset(pkt, aal_frm->condi_offset);
@@ -2116,7 +2176,18 @@ s32 aal_clk_enable(struct mml_comp *comp)
 	return 0;
 }
 
+static void aal_init_frame_done_event(struct mml_comp *comp, u32 event)
+{
+	struct mml_comp_aal *aal = comp_to_aal(comp);
+
+	if (!aal->event_eof)
+		aal->event_eof = event;
+}
+
 static const struct mml_comp_hw_ops aal_hw_ops = {
+	.init_frame_done_event = &aal_init_frame_done_event,
+	.pw_enable = &mml_comp_pw_enable,
+	.pw_disable = &mml_comp_pw_disable,
 	.clk_enable = &aal_clk_enable,
 	.clk_disable = &mml_comp_clk_disable,
 	.qos_clear = &mml_comp_qos_clear,
@@ -2385,18 +2456,19 @@ static void clarity_hist_work(struct work_struct *work_item)
 	cmdq_pkt_assign_command(pkt, idx_out, (u32)pa);
 	cmdq_pkt_assign_command(pkt, idx_out + 1, (u32)(pa >> 32));
 
+	if (aal->data->reg_table[AAL_BILATERAL_STATUS_00] != REG_NOT_SUPPORT) {
+		for (i = 0; i < AAL_CLARITY_STATUS_NUM; i++) {
+			cmdq_pkt_read_addr(pkt,
+				base_pa + aal->data->reg_table[AAL_BILATERAL_STATUS_00] + i * 4,
+				idx_val);
+			cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
 
-	for (i = 0; i < AAL_CLARITY_STATUS_NUM; i++) {
-		cmdq_pkt_read_addr(pkt,
-			base_pa + aal->data->reg_table[AAL_BILATERAL_STATUS_00] + i * 4,
-			idx_val);
-		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
-
-		lop.reg = true;
-		lop.idx = idx_out;
-		rop.reg = false;
-		rop.value = 4;
-		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+			lop.reg = true;
+			lop.idx = idx_out;
+			rop.reg = false;
+			rop.value = 4;
+			cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+		}
 	}
 
 	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%llx] pkt[%p]",
@@ -2520,9 +2592,7 @@ static int probe(struct platform_device *pdev)
 
 	dbg_probed_components[dbg_probed_count++] = priv;
 
-	ret = component_add(dev, &mml_comp_ops);
-	if (ret)
-		dev_err(dev, "Failed to add component: %d\n", ret);
+	ret = mml_comp_add(priv->comp.id, dev, &mml_comp_ops);
 
 	return ret;
 }
@@ -2570,6 +2640,19 @@ const struct of_device_id mml_aal_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6989-mml_aal",
 		.data = &mt6989_aal_data
+	},
+	{
+		.compatible = "mediatek,mt6878-mml_aal",
+		.data = &mt6878_aal_data
+	},
+	{
+		.compatible = "mediatek,mt6991-mml0_aal",
+		.data = &mt6991_mmlt_aal_data
+	},
+	{
+		.compatible = "mediatek,mt6991-mml1_aal",
+		.data = &mt6991_mmlf_aal_data
+
 	},
 	{},
 };

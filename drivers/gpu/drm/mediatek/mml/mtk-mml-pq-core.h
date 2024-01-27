@@ -23,6 +23,7 @@
 #define AAL_HIST_NUM (768)
 #define AAL_DUAL_INFO_NUM (16)
 #define AAL_CLARITY_STATUS_NUM (7)
+#define C3D_LUT_NUM (729) // 9*9*9
 
 #define CMDQ_GPR_UPDATE	(2)
 
@@ -47,51 +48,12 @@
 #define FG_BUF_SIZE (39024)
 #define FG_BUF_NUM (4)
 
-/* Compatible with 32bit division and mold operation */
-#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
-#define DO_COMMMON_MOD(x, base) ((x) % (base))
-#else
-#define DO_COMMMON_MOD(x, base) ({                  \
-	uint32_t result = 0;                        \
-	if (sizeof(x) < sizeof(uint64_t))           \
-		result = ((x) % (base));            \
-	else {                                      \
-		uint64_t __x = (x);                 \
-		result = do_div(__x, (base));       \
-	}                                           \
-	result;                                     \
-})
-#endif
-
-/* Compatibility with 32-bit shift operation */
-#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
-#define DO_SHIFT_RIGHT(x, n) ({     \
-	(n) < (8 * sizeof(u64)) ? (x) >> (n) : 0;	\
-})
-#define DO_SHIFT_LEFT(x, n) ({      \
-	(n) < (8 * sizeof(u64)) ? (x) << (n) : 0;	\
-})
-#else
-#define DO_SHIFT_RIGHT(x, n) ({     \
-	(n) < (8 * sizeof(u32)) ? (x) >> (n) : 0;	\
-})
-#define DO_SHIFT_LEFT(x, n) ({      \
-	(n) < (8 * sizeof(u32)) ? (x) << (n) : 0;	\
-})
-#endif
-
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define DB_OPT_MML_PQ	(DB_OPT_DEFAULT | DB_OPT_PROC_CMDQ_INFO | \
 		DB_OPT_MMPROFILE_BUFFER | DB_OPT_FTRACE | DB_OPT_DUMP_DISPLAY)
 
 #define MML_PQ_LINK_MAX (127)
-#define mml_pq_aee(fmt, args...) \
-do { \
-	if (mml_log_rec) \
-		mml_save_log_record("[mml_pq][aee]" fmt "\n", ##args); \
-	else \
-		pr_notice("[mml_pq][aee]" fmt "\n", ##args); \
-} while (0)
+#define mml_pq_aee(fmt, args...) _mml_log("[mml_pq][aee]" fmt, ##args)
 
 #define mml_pq_util_aee(module, fmt, args...) \
 	do { \
@@ -100,9 +62,8 @@ do { \
 		if (len >= LINK_MAX) \
 			pr_debug("%s %d len:%d over max:%d\n", \
 				__func__, __LINE__, len, MML_PQ_LINK_MAX); \
-			mml_pq_aee(fmt, ##args); \
-			aee_kernel_warning_api(__FILE__, __LINE__, \
-				DB_OPT_MML_PQ, tag, fmt, ##args); \
+		mml_pq_aee(fmt, ##args); \
+		_aee_api(DB_OPT_MML_PQ, tag, fmt, ##args); \
 	} while (0)
 #endif
 
@@ -110,76 +71,47 @@ extern int mml_pq_ir_log;
 
 #define mml_pq_ir_log(fmt, args...) \
 do { \
-	if (mml_pq_ir_log) { \
-		if (mml_log_rec) \
-			mml_save_log_record("[flow]" fmt "\n", ##args); \
-		else \
-			pr_notice("[flow]" fmt "\n", ##args); \
-	} \
+	if (mml_pq_ir_log) \
+		_mml_log("[pq]" fmt, ##args); \
 } while (0)
 
 extern int mml_pq_msg;
 
 #define mml_pq_msg(fmt, args...) \
 do { \
-	if (mml_pq_msg) { \
-		if (mml_log_rec) \
-			mml_save_log_record("[flow]" fmt "\n", ##args); \
-		else \
-			pr_notice("[flow]" fmt "\n", ##args); \
-	} \
+	if (mml_pq_msg) \
+		_mml_log("[pq]" fmt, ##args); \
 } while (0)
 
-#define mml_pq_log(fmt, args...) \
-do { \
-	if (mml_log_rec) \
-		mml_save_log_record("[flow]" fmt "\n", ##args); \
-	else \
-		pr_notice("[flow]" fmt "\n", ##args); \
-} while (0)
+#define mml_pq_log(fmt, args...) _mml_log("[pq]" fmt, ##args)
 
 #define mml_pq_err(fmt, args...) \
 do { \
-	if (mml_log_rec) \
-		mml_save_log_record("[flow][err]" fmt "\n", ##args); \
-	else \
-		pr_notice("[flow][err]" fmt "\n", ##args); \
+	_mml_log("[pq][err]" fmt, ##args); \
 } while (0)
 
 extern int mml_pq_dump;
 
 #define mml_pq_dump(fmt, args...) \
 do { \
-	if (mml_pq_dump) { \
-		if (mml_log_rec) \
-			mml_save_log_record("[param_dump]" fmt "\n", ##args); \
-		else \
-			pr_notice("[param_dump]" fmt "\n", ##args); \
-	} \
+	if (mml_pq_dump) \
+		_mml_log("[pq][param_dump]" fmt, ##args); \
 } while (0)
 
 extern int mml_pq_rb_msg;
 
 #define mml_pq_rb_msg(fmt, args...) \
 do { \
-	if (mml_pq_rb_msg) { \
-		if (mml_log_rec) \
-			mml_save_log_record("[rb_flow]" fmt "\n", ##args); \
-		else \
-			pr_notice("[rb_flow]" fmt "\n", ##args); \
-	} \
+	if (mml_pq_rb_msg) \
+		_mml_log("[pq][rb_flow]" fmt, ##args); \
 } while (0)
 
 extern int mml_pq_set_msg;
 
 #define mml_pq_set_msg(fmt, args...) \
 do { \
-	if (mml_pq_set_msg) { \
-		if (mml_log_rec) \
-			mml_save_log_record("[set_dump]" fmt "\n", ##args); \
-		else \
-			pr_notice("[set_dump]" fmt "\n", ##args); \
-	} \
+	if (mml_pq_set_msg) \
+		_mml_log("[pq][set_dump]" fmt, ##args); \
 } while (0)
 
 /* mml pq ftrace */
@@ -205,6 +137,7 @@ enum mml_pq_debug_mode {
 	MML_PQ_STABILITY_TEST = 1 << 2,
 	MML_PQ_HIST_CHECK = 1 << 3,
 	MML_PQ_CURVE_CHECK = 1 << 4,
+	MML_PQ_TIMEOUT_TEST = 1 << 5,
 };
 
 enum mml_pq_vcp_engine {
@@ -270,7 +203,7 @@ struct mml_pq_sub_task {
 	void *result;
 	atomic_t result_ref;
 	struct mml_pq_readback_data readback_data;
-	struct mml_pq_frame_data frame_data;
+	struct mml_pq_frame_data *frame_data;
 	struct wait_queue_head wq;
 	struct list_head mbox_list;
 	bool job_cancelled;

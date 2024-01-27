@@ -25,10 +25,7 @@
 #define mrg_msg(fmt, args...) \
 do { \
 	if (mtk_mml_msg || mml_rrot_msg) { \
-		if (mml_log_rec) \
-			mml_save_log_record(fmt "\n", ##args); \
-		else \
-			pr_notice("[mml]" fmt "\n", ##args); \
+		_mml_log("[merge]" fmt, ##args); \
 	} \
 } while (0)
 
@@ -143,7 +140,7 @@ static s32 merge_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_ENABLE, 0x1, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_SHADOW_CTRL,
-		((cfg->shadow ? 0 : BIT(1)) << 1) | 0x1, U32_MAX);
+		(cfg->shadow ? 0 : BIT(1)) | 0x1, U32_MAX);
 
 	if (cfg->rrot_dual) {
 		/* bit[7:0] 8'd24:  CFG_2PI_2PI_2PO_0PO_MERGE */
@@ -340,11 +337,9 @@ static int probe(struct platform_device *pdev)
 
 	dbg_probed_components[dbg_probed_count++] = priv;
 
-	ret = component_add(dev, &mml_comp_ops);
-	if (ret)
-		dev_err(dev, "Failed to add component: %d\n", ret);
+	ret = mml_comp_add(priv->comp.id, dev, &mml_comp_ops);
 
-	return 0;
+	return ret;
 }
 
 static int remove(struct platform_device *pdev)
@@ -356,6 +351,10 @@ static int remove(struct platform_device *pdev)
 const struct of_device_id mml_merge_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6989-mml_merge",
+		.data = &mt6989_merge_data,
+	},
+	{
+		.compatible = "mediatek,mt6991-mml1_merge",
 		.data = &mt6989_merge_data,
 	},
 	{},

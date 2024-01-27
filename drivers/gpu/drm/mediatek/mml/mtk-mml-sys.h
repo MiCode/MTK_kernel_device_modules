@@ -11,7 +11,8 @@
 #include <linux/component.h>
 
 u16 mml_sys_get_reg_ready_sel(struct mml_comp *comp);
-struct mml_sys *mml_sys_create(struct platform_device *pdev,
+
+struct mml_sys *mml_sys_create(struct platform_device *pdev, void *mml,
 	const struct component_ops *comp_ops);
 void mml_sys_destroy(struct platform_device *pdev, struct mml_sys *sys,
 	const struct component_ops *comp_ops);

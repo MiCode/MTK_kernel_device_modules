@@ -34,65 +34,206 @@
 #endif
 
 /* WROT register offset */
-#define VIDO_CTRL			0x000
-#define VIDO_DMA_PERF			0x004
-#define VIDO_MAIN_BUF_SIZE		0x008
-#define VIDO_SOFT_RST			0x010
-#define VIDO_SOFT_RST_STAT		0x014
-#define VIDO_INT_EN			0x018
-#define VIDO_INT			0x01c
-#define VIDO_CROP_OFST			0x020
-#define VIDO_TAR_SIZE			0x024
-#define VIDO_FRAME_SIZE			0x028
-#define VIDO_OFST_ADDR			0x02c
-#define VIDO_STRIDE			0x030
-#define VIDO_BKGD			0x034
-#define VIDO_OFST_ADDR_C		0x038
-#define VIDO_STRIDE_C			0x03c
-#define VIDO_ISSUE_REQ_TH		0x040
-#define VIDO_GROUP_REQ_TH		0x044
-#define VIDO_CTRL_2			0x048
-#define VIDO_IN_LINE_ROT		0x050
-#define VIDO_DITHER			0x054
-#define VIDO_DITHER_CON			0x058
-#define VIDO_OFST_ADDR_V		0x068
-#define VIDO_STRIDE_V			0x06c
-#define VIDO_EOL_SEL			0x070
-#define VIDO_DMA_PREULTRA		0x074
-#define VIDO_IN_SIZE			0x078
-#define VIDO_ROT_EN			0x07c
-#define VIDO_FIFO_TEST			0x080
-#define VIDO_MAT_CTRL			0x084
-#define VIDO_CG_NEW_CTRL		0x088
-#define VIDO_SHADOW_CTRL		0x08c
-#define VIDO_DEBUG			0x0d0
-#define VIDO_ARB_SW_CTL			0x0d4
-#define VIDO_PVRIC			0x0d8
-#define VIDO_SCAN_10BIT			0x0dc
-#define VIDO_PENDING_ZERO		0x0e0
-#define VIDO_PVRIC_SETTING		0x0e4
-#define VIDO_CRC_CTRL			0x0e8
-#define VIDO_CRC_VALUE			0x0ec
-#define VIDO_COMPRESSION_VALUE		0x0f0
-#define VIDO_BASE_ADDR			0xf00
-#define VIDO_BASE_ADDR_C		0xf04
-#define VIDO_BASE_ADDR_V		0xf08
-#define VIDO_PVRIC_FMT			0xf0c
-#define VIDO_FBC_FBDC_CR_CH0123_VAL0	0xf10
-#define VIDO_FBC_FBDC_CR_CH0123_VAL1	0xf14
-#define VIDO_FBC_FBDC_CR_Y_VAL0		0xf18
-#define VIDO_FBC_FBDC_CR_UV_VAL0	0xf1c
-#define VIDO_FBC_FBDC_CR_Y_VAL1		0xf20
-#define VIDO_FBC_FBDC_CR_UV_VAL1	0xf24
-#define VIDO_AFBC_VERSION		0xf28
-#define VIDO_AFBC_YUVTRANS		0xf2c
-#define VIDO_BUS_CTRL			0xf30
-#define VIDO_BASE_ADDR_HIGH		0xf34
-#define VIDO_BASE_ADDR_HIGH_C		0xf38
-#define VIDO_BASE_ADDR_HIGH_V		0xf3c
-#define VIDO_OFST_ADDR_HIGH		0xf40
-#define VIDO_OFST_ADDR_HIGH_C		0xf44
-#define VIDO_OFST_ADDR_HIGH_V		0xf48
+enum wrot_register {
+	VIDO_CTRL,
+	VIDO_DMA_PERF,
+	VIDO_MAIN_BUF_SIZE,
+	VIDO_SOFT_RST,
+	VIDO_SOFT_RST_STAT,
+	VIDO_INT_EN,
+	VIDO_INT,
+	VIDO_CROP_OFST,
+	VIDO_TAR_SIZE,
+	VIDO_FRAME_SIZE,
+	VIDO_OFST_ADDR,
+	VIDO_STRIDE,
+	VIDO_BKGD,
+	VIDO_OFST_ADDR_C,
+	VIDO_STRIDE_C,
+	VIDO_CTRL_2,
+	VIDO_IN_LINE_ROT,
+	VIDO_DITHER,
+	VIDO_DITHER_CON,
+	VIDO_OFST_ADDR_V,
+	VIDO_STRIDE_V,
+	VIDO_RSV_1,
+	VIDO_DMA_PREULTRA,
+	VIDO_IN_SIZE,
+	VIDO_ROT_EN,
+	VIDO_FIFO_TEST,
+	VIDO_MAT_CTRL,
+	VIDO_SHADOW_CTRL,
+	VIDO_DEBUG,
+	VIDO_PVRIC,
+	VIDO_SCAN_10BIT,
+	VIDO_PENDING_ZERO,
+	VIDO_CRC_CTRL,
+	VIDO_CRC_VALUE,
+	VIDO_BASE_ADDR,
+	VIDO_BASE_ADDR_C,
+	VIDO_BASE_ADDR_V,
+	VIDO_PVRIC_FMT,
+	VIDO_AFBC_YUVTRANS,
+	VIDO_BASE_ADDR_HIGH,
+	VIDO_BASE_ADDR_HIGH_C,
+	VIDO_BASE_ADDR_HIGH_V,
+	VIDO_OFST_ADDR_HIGH,
+	VIDO_OFST_ADDR_HIGH_C,
+	VIDO_OFST_ADDR_HIGH_V,
+
+	/* mt6991 */
+	VIDO_DDREN_REQ,
+	VIDO_SLC_SIDEBAND,
+	VIDO_SECURITY_DISABLE,
+	VIDO_INT_UP_EN,
+	VIDO_INT_UP,
+	VIDO_COMPRESION_VALUE,
+	VIDO_DUMMY_NORMAL,
+	VIDO_DUMMY_SECURE,
+	VIDO_CSC_COEFFICIENT_1,
+	VIDO_CSC_COEFFICIENT_2,
+	VIDO_CSC_COEFFICIENT_3,
+	VIDO_CSC_COEFFICIENT_4,
+	VIDO_CSC_COEFFICIENT_5,
+	VIDO_CSC_COEFFICIENT_6,
+	VIDO_CSC_COEFFICIENT_7,
+	VIDO_STASH_CMD_INTF,
+	VIDO_STASH_CMD_FUNC_1,
+	VIDO_STASH_OFST_ADDR,
+	VIDO_STASH_OFST_ADDR_HIGH,
+	VIDO_STASH_OFST_ADDR_C,
+	VIDO_STASH_OFST_ADDR_HIGH_C,
+	VIDO_STASH_OFST_ADDR_V,
+	VIDO_STASH_OFST_ADDR_HIGH_V,
+	VIDO_STASH_SW_ADDR,
+	VIDO_STASH_SW_ADDR_HIGH,
+	VIDO_STASH_SW_WORK,
+	VIDO_STASH_DELAY_CNT,
+	wrot_register_total,
+};
+
+static const u16 wrot_mt6989[] = {
+	[VIDO_CTRL			] = 0x000,
+	[VIDO_DMA_PERF			] = 0x004,
+	[VIDO_MAIN_BUF_SIZE		] = 0x008,
+	[VIDO_SOFT_RST			] = 0x010,
+	[VIDO_SOFT_RST_STAT		] = 0x014,
+	[VIDO_INT_EN			] = 0x018,
+	[VIDO_INT			] = 0x01c,
+	[VIDO_CROP_OFST			] = 0x020,
+	[VIDO_TAR_SIZE			] = 0x024,
+	[VIDO_FRAME_SIZE		] = 0x028,
+	[VIDO_OFST_ADDR			] = 0x02c,
+	[VIDO_STRIDE			] = 0x030,
+	[VIDO_BKGD			] = 0x034,
+	[VIDO_OFST_ADDR_C		] = 0x038,
+	[VIDO_STRIDE_C			] = 0x03c,
+	[VIDO_CTRL_2			] = 0x048,
+	[VIDO_IN_LINE_ROT		] = 0x050,
+	[VIDO_DITHER			] = 0x054,
+	[VIDO_DITHER_CON		] = 0x058,
+	[VIDO_OFST_ADDR_V		] = 0x068,
+	[VIDO_STRIDE_V			] = 0x06c,
+	[VIDO_RSV_1			] = 0x070,
+	[VIDO_DMA_PREULTRA		] = 0x074,
+	[VIDO_IN_SIZE			] = 0x078,
+	[VIDO_ROT_EN			] = 0x07c,
+	[VIDO_FIFO_TEST			] = 0x080,
+	[VIDO_MAT_CTRL			] = 0x084,
+	[VIDO_SHADOW_CTRL		] = 0x08c,
+	[VIDO_DEBUG			] = 0x0d0,
+	[VIDO_PVRIC			] = 0x0d8,
+	[VIDO_SCAN_10BIT		] = 0x0dc,
+	[VIDO_PENDING_ZERO		] = 0x0e0,
+	[VIDO_CRC_CTRL			] = 0x0e8,
+	[VIDO_CRC_VALUE			] = 0x0ec,
+	[VIDO_BASE_ADDR			] = 0xf00,
+	[VIDO_BASE_ADDR_C		] = 0xf04,
+	[VIDO_BASE_ADDR_V		] = 0xf08,
+	[VIDO_PVRIC_FMT			] = 0xf0c,
+	[VIDO_AFBC_YUVTRANS		] = 0xf2c,
+	[VIDO_BASE_ADDR_HIGH		] = 0xf34,
+	[VIDO_BASE_ADDR_HIGH_C		] = 0xf38,
+	[VIDO_BASE_ADDR_HIGH_V		] = 0xf3c,
+	[VIDO_OFST_ADDR_HIGH		] = 0xf40,
+	[VIDO_OFST_ADDR_HIGH_C		] = 0xf44,
+	[VIDO_OFST_ADDR_HIGH_V		] = 0xf48,
+};
+
+u16 wrot_mt6991[] = {
+	[VIDO_CTRL			] = 0x000,
+	[VIDO_DMA_PERF			] = 0x004,
+	[VIDO_MAIN_BUF_SIZE		] = 0x008,
+	[VIDO_SOFT_RST			] = 0x010,
+	[VIDO_SOFT_RST_STAT		] = 0x014,
+	[VIDO_INT_EN			] = 0x018,
+	[VIDO_INT			] = 0x01c,
+	[VIDO_CROP_OFST			] = 0x020,
+	[VIDO_TAR_SIZE			] = 0x024,
+	[VIDO_FRAME_SIZE		] = 0x028,
+	[VIDO_DDREN_REQ			] = 0x02c,
+	[VIDO_STRIDE			] = 0x030,
+	[VIDO_BKGD			] = 0x034,
+	[VIDO_SLC_SIDEBAND		] = 0x038,
+	[VIDO_STRIDE_C			] = 0x03c,
+	[VIDO_CTRL_2			] = 0x048,
+	[VIDO_IN_LINE_ROT		] = 0x050,
+	[VIDO_DITHER			] = 0x054,
+	[VIDO_DITHER_CON		] = 0x058,
+	[VIDO_SECURITY_DISABLE		] = 0x05c,
+	[VIDO_INT_UP_EN			] = 0x060,
+	[VIDO_INT_UP			] = 0x064,
+	[VIDO_STRIDE_V			] = 0x06c,
+	[VIDO_RSV_1			] = 0x070,
+	[VIDO_DMA_PREULTRA		] = 0x074,
+	[VIDO_IN_SIZE			] = 0x078,
+	[VIDO_ROT_EN			] = 0x07c,
+	[VIDO_FIFO_TEST			] = 0x080,
+	[VIDO_MAT_CTRL			] = 0x084,
+	[VIDO_SHADOW_CTRL		] = 0x08c,
+	[VIDO_DEBUG			] = 0x0d0,
+	[VIDO_PVRIC			] = 0x0d8,
+	[VIDO_SCAN_10BIT		] = 0x0dc,
+	[VIDO_PENDING_ZERO		] = 0x0e0,
+	[VIDO_CRC_CTRL			] = 0x0e8,
+	[VIDO_CRC_VALUE			] = 0x0ec,
+	[VIDO_COMPRESION_VALUE		] = 0x0f0,
+	[VIDO_DUMMY_NORMAL		] = 0x0f4,
+	[VIDO_DUMMY_SECURE		] = 0x0f8,
+	[VIDO_OFST_ADDR			] = 0x100,
+	[VIDO_OFST_ADDR_HIGH		] = 0x104,
+	[VIDO_OFST_ADDR_C		] = 0x108,
+	[VIDO_OFST_ADDR_HIGH_C		] = 0x10c,
+	[VIDO_OFST_ADDR_V		] = 0x110,
+	[VIDO_OFST_ADDR_HIGH_V		] = 0x114,
+	[VIDO_BASE_ADDR			] = 0x118,
+	[VIDO_BASE_ADDR_HIGH		] = 0x11c,
+	[VIDO_BASE_ADDR_C		] = 0x120,
+	[VIDO_BASE_ADDR_HIGH_C		] = 0x124,
+	[VIDO_BASE_ADDR_V		] = 0x128,
+	[VIDO_BASE_ADDR_HIGH_V		] = 0x12c,
+	[VIDO_CSC_COEFFICIENT_1		] = 0x138,
+	[VIDO_CSC_COEFFICIENT_2		] = 0x13c,
+	[VIDO_CSC_COEFFICIENT_3		] = 0x140,
+	[VIDO_CSC_COEFFICIENT_4		] = 0x144,
+	[VIDO_CSC_COEFFICIENT_5		] = 0x148,
+	[VIDO_CSC_COEFFICIENT_6		] = 0x14c,
+	[VIDO_CSC_COEFFICIENT_7		] = 0x150,
+	[VIDO_PVRIC_FMT			] = 0xf0c,
+	[VIDO_AFBC_YUVTRANS		] = 0xf2c,
+	[VIDO_STASH_CMD_INTF		] = 0xf4c,
+	[VIDO_STASH_CMD_FUNC_1		] = 0xf50,
+	[VIDO_STASH_OFST_ADDR		] = 0xf54,
+	[VIDO_STASH_OFST_ADDR_HIGH	] = 0xf58,
+	[VIDO_STASH_OFST_ADDR_C		] = 0xf5c,
+	[VIDO_STASH_OFST_ADDR_HIGH_C	] = 0xf60,
+	[VIDO_STASH_OFST_ADDR_V		] = 0xf64,
+	[VIDO_STASH_OFST_ADDR_HIGH_V	] = 0xf68,
+	[VIDO_STASH_SW_ADDR		] = 0xf6c,
+	[VIDO_STASH_SW_ADDR_HIGH	] = 0xf70,
+	[VIDO_STASH_SW_WORK		] = 0xf74,
+	[VIDO_STASH_DELAY_CNT		] = 0xf78,
+};
 
 #define WROT_MIN_BUF_LINE_NUM		16
 
@@ -198,6 +339,7 @@ static void wrot_update_addr(struct mml_task_reuse *reuse,
 }
 
 struct wrot_data {
+	const u16 *reg;
 	u32 fifo;
 	u32 tile_width;
 	u32 sram_size;
@@ -208,6 +350,7 @@ struct wrot_data {
 };
 
 static const struct wrot_data mt6983_wrot_data = {
+	.reg = wrot_mt6989,
 	.fifo = 256,
 	.tile_width = 512,
 	.sram_size = 512 * 1024,
@@ -215,6 +358,7 @@ static const struct wrot_data mt6983_wrot_data = {
 };
 
 static const struct wrot_data mt6985_wrot_data = {
+	.reg = wrot_mt6989,
 	.fifo = 256,
 	.tile_width = 512,
 	.sram_size = 512 * 1024,
@@ -223,6 +367,7 @@ static const struct wrot_data mt6985_wrot_data = {
 };
 
 static const struct wrot_data mt6989_wrot_data = {
+	.reg = wrot_mt6989,
 	.fifo = 256,
 	.tile_width = 512,
 	.sram_size = 512 * 1024,
@@ -232,10 +377,28 @@ static const struct wrot_data mt6989_wrot_data = {
 	/* .rb_swap = 2 */
 };
 
+static const struct wrot_data mt6878_wrot_data = {
+	.reg = wrot_mt6989,
+	.fifo = 256,
+	.tile_width = 512,
+	.sram_size = 512 * 1024,
+};
+
+static const struct wrot_data mt6991_wrot_data = {
+	.reg = wrot_mt6991,
+	.fifo = 256,
+	.tile_width = 512,
+	.sram_size = 512 * 1024,
+	.read_mode = MML_PQ_SOF_MODE,
+	.px_per_tick = 2,
+	.yuv_pending = true,
+};
+
 struct mml_comp_wrot {
 	struct mtk_ddp_comp ddp_comp;
 	struct mml_comp comp;
 	const struct wrot_data *data;
+	const u16 *reg;
 	bool ddp_bound;
 
 	u16 event_eof;		/* wrot frame done */
@@ -533,6 +696,27 @@ static void wrot_config_pipe1(struct mml_frame_config *cfg,
 	}
 }
 
+static void wrot_config_smi(struct mml_comp_wrot *wrot,
+	struct mml_frame_config *cfg, struct cmdq_pkt *pkt)
+{
+	const enum mml_mode mode = cfg->info.mode;
+	u32 mask = GENMASK(19, 16) | (0x1 << 3);
+	u32 value;
+
+	if (!wrot->smi_larb_con)
+		return;
+
+	/* config smi addr to emi (iova) or sram, and bw throttling */
+	if (mode == MML_MODE_RACING)
+		value = 0xf << 16;
+	else if (mode == MML_MODE_MML_DECOUPLE)
+		value = 0x1 << 3;
+	else
+		value = 0;
+
+	cmdq_pkt_write(pkt, NULL, wrot->smi_larb_con, value, mask);
+}
+
 static s32 wrot_prepare(struct mml_comp *comp, struct mml_task *task,
 			struct mml_comp_config *ccfg)
 {
@@ -636,7 +820,7 @@ static s32 wrot_buf_map(struct mml_comp *comp, struct mml_task *task,
 	mml_trace_ex_begin("%s", __func__);
 
 	if (cfg->info.mode == MML_MODE_RACING) {
-	} else {
+	} else if (!dest_buf->dma[0].iova) {
 
 		mml_mmp(buf_map, MMPROFILE_FLAG_START,
 			((u64)task->job.jobid << 16) | comp->id, 0);
@@ -727,7 +911,7 @@ static s32 wrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	data->wrot.dest_fmt = dest->data.format;
 	data->wrot.rotate = wrot_frm->rotate;
 	data->wrot.flip = wrot_frm->flip;
-	data->wrot.alpharot = cfg->alpharot;
+	data->wrot.alpha = cfg->alpharot || cfg->alpharsz;
 	data->wrot.racing = cfg->info.mode == MML_MODE_RACING;
 	data->wrot.racing_h = max(mml_racing_h, MML_WROT_RACING_MAX);
 
@@ -813,6 +997,8 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 	case MML_FMT_VYUY:
 	case MML_FMT_YUYV:
 	case MML_FMT_YVYU:
+	case MML_FMT_YUVA8888:
+	case MML_FMT_AYUV8888:
 	/* HW_SUPPORT_10BIT_PATH */
 	case MML_FMT_YUVA1010102:
 		/* YUV422/444, 1 plane */
@@ -999,7 +1185,7 @@ static void wrot_calc_hw_buf_setting(const struct mml_comp_wrot *wrot,
 	} else if (dest_fmt == MML_FMT_GREY) {
 		wrot_frm->fifo_max_sz = wrot->data->tile_width * 64;
 		wrot_frm->max_line_cnt = 64;
-	} else if (cfg->alpharot) {
+	} else if (cfg->alpharot || cfg->alpharsz) {
 		wrot_frm->fifo_max_sz = wrot->data->tile_width * 16;
 		wrot_frm->max_line_cnt = 16;
 	} else {
@@ -1008,7 +1194,8 @@ static void wrot_calc_hw_buf_setting(const struct mml_comp_wrot *wrot,
 	}
 }
 
-static void wrot_config_addr(const struct mml_frame_dest *dest,
+static void wrot_config_addr(const struct mml_comp_wrot *wrot,
+			     const struct mml_frame_dest *dest,
 			     const u32 dest_fmt,
 			     const phys_addr_t base_pa,
 			     struct wrot_frame_data *wrot_frm,
@@ -1037,10 +1224,10 @@ static void wrot_config_addr(const struct mml_frame_dest *dest,
 			frame_size = ((((wrot_frm->out_w + 31) >>
 					 5) << 5) << 16) +
 					 ((block_x << 5) << 0);
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_FRAME_SIZE,
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_FRAME_SIZE],
 			       frame_size, U32_MAX);
 
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_AFBC_YUVTRANS,
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_AFBC_YUVTRANS],
 			       MML_FMT_IS_RGB(dest_fmt), 0x1);
 	} else {
 		mml_msg("%s base %#llx+%u %#llx+%u %#llx+%u",
@@ -1057,16 +1244,16 @@ static void wrot_config_addr(const struct mml_frame_dest *dest,
 	if (!mml_slt) {
 		/* Write frame base address */
 		wrot_write_addr(pkt,
-				base_pa + VIDO_BASE_ADDR,
-				base_pa + VIDO_BASE_ADDR_HIGH, addr,
+				base_pa + wrot->reg[VIDO_BASE_ADDR],
+				base_pa + wrot->reg[VIDO_BASE_ADDR_HIGH], addr,
 				reuse, cache, &wrot_frm->labels[WROT_LABEL_ADDR]);
 		wrot_write_addr(pkt,
-				base_pa + VIDO_BASE_ADDR_C,
-				base_pa + VIDO_BASE_ADDR_HIGH_C, addr_c,
+				base_pa + wrot->reg[VIDO_BASE_ADDR_C],
+				base_pa + wrot->reg[VIDO_BASE_ADDR_HIGH_C], addr_c,
 				reuse, cache, &wrot_frm->labels[WROT_LABEL_ADDR_C]);
 		wrot_write_addr(pkt,
-				base_pa + VIDO_BASE_ADDR_V,
-				base_pa + VIDO_BASE_ADDR_HIGH_V, addr_v,
+				base_pa + wrot->reg[VIDO_BASE_ADDR_V],
+				base_pa + wrot->reg[VIDO_BASE_ADDR_HIGH_V], addr_v,
 				reuse, cache, &wrot_frm->labels[WROT_LABEL_ADDR_V]);
 	}
 }
@@ -1076,9 +1263,13 @@ static void wrot_config_ready(struct mml_comp_wrot *wrot,
 	bool enable)
 {
 	const struct mml_topology_path *path = cfg->path[pipe];
-	phys_addr_t sel = path->mmlsys->base_pa +
-		mml_sys_get_reg_ready_sel(path->mmlsys);
+	phys_addr_t sel;
 	u32 shift, mask;
+	u32 sel_off = mml_sys_get_reg_ready_sel(path->mmlsys);
+
+	if (!sel_off)
+		return;
+	sel = path->mmlsys->base_pa + sel_off;
 
 	if (wrot->idx == 0)
 		shift = 0;
@@ -1127,10 +1318,11 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	const u32 preultra_en = 1;	/* always enable wrot pre-ultra */
 	const u32 crop_en = 1;		/* always enable crop */
 	const u32 hw_fmt = MML_FMT_HW_FORMAT(dest_fmt);
+	const u32 bkgden = mml_wrot_bkgd_en ? 1 : 0;
 
 	u32 out_swap = MML_FMT_SWAP(dest_fmt);
 	u32 uv_xsel, uv_ysel;
-	u32 preultra;
+	u32 preultra, alpha;
 	u32 scan_10bit = 0, bit_num = 0, pending_zero = 0, pvric = 0;
 
 #ifdef MML_FPGA
@@ -1188,13 +1380,15 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	/* Enable engine */
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_ROT_EN, 0x01, 0x00000001);
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_ROT_EN], 0x01, 0x00000001);
 
 	if (mml_wrot_crc)
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_CRC_CTRL, mml_wrot_crc, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CRC_CTRL],
+			mml_wrot_crc, U32_MAX);
 
 	/* Enable shadow */
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_SHADOW_CTRL, 0x1, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_SHADOW_CTRL],
+		(cfg->shadow ? 0 : BIT(1)) | 0x1, U32_MAX);
 
 	if (h_subsample) {	/* YUV422/420 out */
 		wrot_frm->filt_v = MML_FMT_V_SUBSAMPLE(src_fmt) ||
@@ -1222,6 +1416,9 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		swap(wrot_frm->plane_offset[1], wrot_frm->plane_offset[2]);
 	}
 
+	if (!mml_slt)
+		wrot_config_smi(wrot, cfg, pkt);
+
 	if (task->config->info.mode == MML_MODE_RACING) {
 		u64 sram_addr;
 
@@ -1232,26 +1429,21 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 			wrot_frm->plane_offset);
 		sram_addr = wrot->sram_pa + wrot_frm->plane_offset[0];
 
-		/* config smi addr to emi (iova) or sram */
-		if (!mml_slt)
-			cmdq_pkt_write(pkt, NULL, wrot->smi_larb_con,
-				GENMASK(19, 16), GENMASK(19, 16));
-
 		/* config ready signal from disp0 or disp1 */
 		wrot_config_ready(wrot, cfg, ccfg->pipe, pkt, true);
 
 		/* inline rotate case always write to sram pa */
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_BASE_ADDR,
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_BASE_ADDR],
 			sram_addr, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_BASE_ADDR_HIGH,
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_BASE_ADDR_HIGH],
 			sram_addr >> 32, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_BASE_ADDR_C,
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_BASE_ADDR_C],
 			sram_addr, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_BASE_ADDR_HIGH_C,
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_BASE_ADDR_HIGH_C],
 			sram_addr >> 32, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_BASE_ADDR_V,
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_BASE_ADDR_V],
 			sram_addr, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_BASE_ADDR_HIGH_V,
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_BASE_ADDR_HIGH_V],
 			sram_addr >> 32, U32_MAX);
 
 		cmdq_pkt_write(pkt, NULL,
@@ -1273,37 +1465,33 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 			wrot_frm->hor_sh_uv, wrot_frm->ver_sh_uv,
 			wrot_frm->plane_offset);
 
-		if (wrot->smi_larb_con && !mml_slt) {
-			/* always reset larb con to va mode to avoid last frame fail */
-			cmdq_pkt_write(pkt, NULL, wrot->smi_larb_con, 0, GENMASK(19, 16));
-		}
-
 		/* normal dram case config wrot iova with reuse */
-		wrot_config_addr(dest, dest_fmt, base_pa,
+		wrot_config_addr(wrot, dest, dest_fmt, base_pa,
 				 wrot_frm, pkt, reuse, cache);
 		/* always turn off ready to wrot */
 		wrot_config_ready(wrot, cfg, ccfg->pipe, pkt, false);
 
 		/* and clear inlinerot enable since last frame maybe racing mode */
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_IN_LINE_ROT, 0, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_IN_LINE_ROT], 0, U32_MAX);
 	}
 
 	/* Write frame related registers */
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_CTRL,
+	alpha = (cfg->alpharot || cfg->alpharsz);
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CTRL],
 		       (uv_ysel		<< 30) +
 		       (uv_xsel		<< 28) +
 		       (flip		<< 24) +
 		       (wrot_frm->rotate << 20) +
-		       (cfg->alpharot	<< 16) + /* alpha rot */
+		       (alpha		<< 16) + /* alpha */
 		       (preultra_en	<< 14) + /* pre-ultra */
 		       (crop_en		<< 12) +
 		       (out_swap	<<  8) +
-		       (hw_fmt		<<  0), 0xf131510f);
-
+		       (bkgden		<<  5) +
+		       (hw_fmt		<<  0), 0xf131512f);
 
 	if (unlikely(mml_wrot_bkgd_en)) {
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_CTRL, BIT(5), BIT(5));
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_BKGD, mml_wrot_bkgd, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CTRL], BIT(5), BIT(5));
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_BKGD], mml_wrot_bkgd, U32_MAX);
 	}
 
 	if (MML_FMT_10BIT_LOOSE(dest_fmt)) {
@@ -1325,16 +1513,16 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		scan_10bit = 0;
 		pending_zero = BIT(26);
 	}
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_SCAN_10BIT, scan_10bit, U32_MAX);
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_PENDING_ZERO, pending_zero, U32_MAX);
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_CTRL_2, bit_num, 0x00000007);
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_SCAN_10BIT], scan_10bit, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_PENDING_ZERO], pending_zero, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CTRL_2], bit_num, 0x00000007);
 
 	if (MML_FMT_AFBC(dest_fmt)) {
 		pvric |= BIT(0);
 		if (MML_FMT_10BIT(dest_fmt))
 			pvric |= BIT(1);
 	}
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_PVRIC, pvric, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_PVRIC], pvric, U32_MAX);
 
 	/* set ESL */
 	if (plane == 3 || plane == 2 || hw_fmt == 7)	/* 3-plane, 2-plane, Y8 */
@@ -1347,38 +1535,38 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		preultra = (176 << 12) + (136 << 0);
 	else
 		preultra = 0;
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_DMA_PREULTRA, preultra,
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_DMA_PREULTRA], preultra,
 		       U32_MAX);
 
 	/* Write frame Y stride */
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_STRIDE, wrot_frm->y_stride,
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_STRIDE], wrot_frm->y_stride,
 		       U32_MAX);
 	/* Write frame UV stride */
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_STRIDE_C, wrot_frm->uv_stride,
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_STRIDE_C], wrot_frm->uv_stride,
 		       U32_MAX);
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_STRIDE_V, wrot_frm->uv_stride,
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_STRIDE_V], wrot_frm->uv_stride,
 		       U32_MAX);
 
 	/* Write matrix control */
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_MAT_CTRL,
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_MAT_CTRL],
 		       (wrot_frm->mat_sel << 4) +
 		       (wrot_frm->mat_en << 0), U32_MAX);
 
 	/* Set the fixed ALPHA as 0xff */
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_DITHER, 0xff000000, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_DITHER], 0xff000000, U32_MAX);
 
-	/* Set VIDO_EOL_SEL */
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_EOL_SEL, 0x80000000, 0x80000000);
+	/* Set VIDO_RSV_1 */
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_RSV_1], 0x80000000, 0x80000000);
 
 	/* Set VIDO_FIFO_TEST */
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_FIFO_TEST, wrot->data->fifo, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_FIFO_TEST], wrot->data->fifo, U32_MAX);
 
 	/* turn off WROT dma dcm */
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_ROT_EN,
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_ROT_EN],
 		       (0x1 << 23) + (0x1 << 20), 0x00900000);
 
 	/* Enable dither */
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_DITHER_CON, wrot_frm->dither_con, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_DITHER_CON], wrot_frm->dither_con, U32_MAX);
 
 	return 0;
 }
@@ -1830,22 +2018,22 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 
 	if (cfg->info.mode == MML_MODE_RACING) {
 		/* enable inline rotate and config buffer 0 or 1 */
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_IN_LINE_ROT,
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_IN_LINE_ROT],
 			(wrot_frm->wdone[idx].sram << 1) | 0x1, U32_MAX);
 	}
 
 	/* Write Y pixel offset */
 	wrot_write_ofst(pkt,
-			base_pa + VIDO_OFST_ADDR,
-			base_pa + VIDO_OFST_ADDR_HIGH, ofst.y);
+			base_pa + wrot->reg[VIDO_OFST_ADDR],
+			base_pa + wrot->reg[VIDO_OFST_ADDR_HIGH], ofst.y);
 	/* Write U pixel offset */
 	wrot_write_ofst(pkt,
-			base_pa + VIDO_OFST_ADDR_C,
-			base_pa + VIDO_OFST_ADDR_HIGH_C, ofst.c);
+			base_pa + wrot->reg[VIDO_OFST_ADDR_C],
+			base_pa + wrot->reg[VIDO_OFST_ADDR_HIGH_C], ofst.c);
 	/* Write V pixel offset */
 	wrot_write_ofst(pkt,
-			base_pa + VIDO_OFST_ADDR_V,
-			base_pa + VIDO_OFST_ADDR_HIGH_V, ofst.v);
+			base_pa + wrot->reg[VIDO_OFST_ADDR_V],
+			base_pa + wrot->reg[VIDO_OFST_ADDR_HIGH_V], ofst.v);
 
 	/* Write source size and target size */
 	wrot_in_xsize = in_xe - in_xs + 1;
@@ -1853,15 +2041,15 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	wrot_tar_xsize = out_xe - out_xs + 1;
 	wrot_tar_ysize = out_ye - out_ys + 1;
 
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_IN_SIZE,
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_IN_SIZE],
 		       (wrot_in_ysize << 16) + (wrot_in_xsize <<  0),
 		       U32_MAX);
 
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_TAR_SIZE,
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_TAR_SIZE],
 		       (wrot_tar_ysize << 16) + (wrot_tar_xsize <<  0),
 		       U32_MAX);
 
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_CROP_OFST,
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CROP_OFST],
 		       (wrot_crop_ofst_y << 16) + (wrot_crop_ofst_x <<  0),
 		       U32_MAX);
 
@@ -1874,7 +2062,8 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 			pending_zero |= BIT(0);
 		if (wrot_frm->pending_y && !is_change_hy(wrot_frm->rotate, wrot_frm->flip))
 			pending_zero |= BIT(1);
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_PENDING_ZERO, pending_zero, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_PENDING_ZERO],
+			pending_zero, U32_MAX);
 	}
 
 	/* round up target footprint size for internal buffer and output */
@@ -1909,7 +2098,7 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 		buf_line_num = setting.main_buf_line_num;
 	}
 
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_MAIN_BUF_SIZE,
+	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_MAIN_BUF_SIZE],
 		       (setting.main_blk_width << 16) |
 		       (buf_line_num << 8) |
 		       (wrot_frm->filt_v << 4), U32_MAX);
@@ -1917,7 +2106,7 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	/* Set wrot interrupt bit for debug,
 	 * this bit will clear to 0 after wrot done.
 	 *
-	 * cmdq_pkt_write(pkt, NULL, base_pa + VIDO_INT, 0x1, U32_MAX);
+	 * cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_INT], 0x1, U32_MAX);
 	 */
 
 	/* qos accumulate tile pixel */
@@ -1945,12 +2134,12 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 		/* Set wrot interrupt status bit for judge if interrupt works,
 		 * this bit will clear to 0 after wrot done.
 		 */
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_INT, 0x1, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_INT], 0x1, U32_MAX);
 
 		/* Enable Frame Done IRQ in IR Mode*/
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_INT_EN, 0x1, VIDO_INT_EN_MASK);
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_INT_EN], 0x1, VIDO_INT_EN_MASK);
 	} else
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_INT_EN, 0x0, VIDO_INT_EN_MASK);
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_INT_EN], 0x0, VIDO_INT_EN_MASK);
 
 	mml_msg("%s min block width: %u min buf line num: %u",
 		__func__, setting.main_blk_width, setting.main_buf_line_num);
@@ -2084,13 +2273,14 @@ static void wrot_backup_crc(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
 
 	if (likely(!mml_wrot_crc))
 		return;
 
 	wrot_frm->crc_inst_offset = mml_backup_crc(task, ccfg,
-		comp->base_pa + VIDO_CRC_VALUE, &task->wrot_crc_idx[ccfg->pipe]);
+		comp->base_pa + wrot->reg[VIDO_CRC_VALUE], &task->wrot_crc_idx[ccfg->pipe]);
 	if (!wrot_frm->crc_inst_offset) {
 		mml_err("%s fail to backup CRC", __func__);
 		mml_wrot_crc = 0;
@@ -2130,15 +2320,6 @@ static s32 wrot_post(struct mml_comp *comp, struct mml_task *task,
 		__func__, task, ccfg->pipe, wrot_frm->datasize, cache->line_bubble,
 		cache->max_size.width, cache->max_size.height, cache->max_pixel,
 		wrot_frm->wdone_cnt);
-
-	if (task->config->info.mode == MML_MODE_RACING) {
-		struct mml_comp_wrot *wrot = comp_to_wrot(comp);
-
-		/* clear path sel back to dram */
-		if (!mml_slt)
-			cmdq_pkt_write(task->pkts[ccfg->pipe], NULL, wrot->smi_larb_con,
-				0, GENMASK(19, 16));
-	}
 
 	wrot_backup_crc(comp, task, ccfg);
 
@@ -2214,6 +2395,14 @@ static const struct mml_comp_config_ops wrot_cfg_ops = {
 	.post = wrot_post,
 	.reframe = wrot_reconfig_frame,
 };
+
+static void wrot_init_frame_done_event(struct mml_comp *comp, u32 event)
+{
+	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
+
+	if (!wrot->event_eof)
+		wrot->event_eof = event;
+}
 
 u32 wrot_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg)
 {
@@ -2292,6 +2481,7 @@ static s32 mml_wrot_comp_clk_disable(struct mml_comp *comp,
 }
 
 static const struct mml_comp_hw_ops wrot_hw_ops = {
+	.init_frame_done_event = &wrot_init_frame_done_event,
 	.clk_enable = &mml_wrot_comp_clk_enable,
 	.clk_disable = &mml_wrot_comp_clk_disable,
 	.qos_datasize_get = &wrot_datasize_get,
@@ -2315,6 +2505,7 @@ static const char *wrot_state(u32 state)
 
 static void wrot_debug_dump(struct mml_comp *comp)
 {
+	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 	void __iomem *base = comp->base;
 	u32 value[36];
 	u32 debug[33];
@@ -2323,59 +2514,60 @@ static void wrot_debug_dump(struct mml_comp *comp)
 	u32 i;
 
 	mml_err("wrot component %u dump:", comp->id);
-	value[0] = readl(base + VIDO_CTRL);
-	value[1] = readl(base + VIDO_IN_SIZE);
-	value[2] = readl(base + VIDO_TAR_SIZE);
-	mml_err("shadow status VIDO_CTRL %#010x VIDO_IN_SIZE %#010x VIDO_TAR_SIZE %#010x",
+	value[0] = readl(base + wrot->reg[VIDO_CTRL]);
+	value[1] = readl(base + wrot->reg[VIDO_IN_SIZE]);
+	value[2] = readl(base + wrot->reg[VIDO_TAR_SIZE]);
+
+	mml_err("shadow VIDO_CTRL %#010x VIDO_IN_SIZE %#010x VIDO_TAR_SIZE %#010x",
 		value[0], value[1], value[2]);
 
 	/* Enable shadow read working */
-	shadow_ctrl = readl(base + VIDO_SHADOW_CTRL);
+	shadow_ctrl = readl(base + wrot->reg[VIDO_SHADOW_CTRL]);
 	shadow_ctrl |= 0x4;
-	writel(shadow_ctrl, base + VIDO_SHADOW_CTRL);
+	writel(shadow_ctrl, base + wrot->reg[VIDO_SHADOW_CTRL]);
 
-	value[0] = readl(base + VIDO_CTRL);
-	value[1] = readl(base + VIDO_DMA_PERF);
-	value[2] = readl(base + VIDO_MAIN_BUF_SIZE);
-	value[3] = readl(base + VIDO_SOFT_RST);
-	value[4] = readl(base + VIDO_SOFT_RST_STAT);
-	value[5] = readl(base + VIDO_INT);
-	value[6] = readl(base + VIDO_IN_SIZE);
-	value[7] = readl(base + VIDO_CROP_OFST);
-	value[8] = readl(base + VIDO_TAR_SIZE);
-	value[9] = readl(base + VIDO_FRAME_SIZE);
-	value[10] = readl(base + VIDO_OFST_ADDR_HIGH);
-	value[11] = readl(base + VIDO_OFST_ADDR);
-	value[12] = readl(base + VIDO_OFST_ADDR_HIGH_C);
-	value[13] = readl(base + VIDO_OFST_ADDR_C);
-	value[14] = readl(base + VIDO_OFST_ADDR_HIGH_V);
-	value[15] = readl(base + VIDO_OFST_ADDR_V);
-	value[16] = readl(base + VIDO_STRIDE);
-	value[17] = readl(base + VIDO_STRIDE_C);
-	value[18] = readl(base + VIDO_STRIDE_V);
-	value[19] = readl(base + VIDO_CTRL_2);
-	value[20] = readl(base + VIDO_IN_LINE_ROT);
-	value[21] = readl(base + VIDO_EOL_SEL);
-	value[22] = readl(base + VIDO_ROT_EN);
-	value[23] = readl(base + VIDO_SHADOW_CTRL);
-	value[24] = readl(base + VIDO_PVRIC);
-	value[25] = readl(base + VIDO_SCAN_10BIT);
-	value[26] = readl(base + VIDO_PENDING_ZERO);
-	value[27] = readl(base + VIDO_BASE_ADDR_HIGH);
-	value[28] = readl(base + VIDO_BASE_ADDR);
-	value[29] = readl(base + VIDO_BASE_ADDR_HIGH_C);
-	value[30] = readl(base + VIDO_BASE_ADDR_C);
-	value[31] = readl(base + VIDO_BASE_ADDR_HIGH_V);
-	value[32] = readl(base + VIDO_BASE_ADDR_V);
-	value[33] = readl(base + VIDO_CRC_CTRL);
-	value[34] = readl(base + VIDO_CRC_VALUE);
-	value[35] = readl(base + VIDO_MAT_CTRL);
+	value[0] = readl(base + wrot->reg[VIDO_CTRL]);
+	value[1] = readl(base + wrot->reg[VIDO_DMA_PERF]);
+	value[2] = readl(base + wrot->reg[VIDO_MAIN_BUF_SIZE]);
+	value[3] = readl(base + wrot->reg[VIDO_SOFT_RST]);
+	value[4] = readl(base + wrot->reg[VIDO_SOFT_RST_STAT]);
+	value[5] = readl(base + wrot->reg[VIDO_INT]);
+	value[6] = readl(base + wrot->reg[VIDO_IN_SIZE]);
+	value[7] = readl(base + wrot->reg[VIDO_CROP_OFST]);
+	value[8] = readl(base + wrot->reg[VIDO_TAR_SIZE]);
+	value[9] = readl(base + wrot->reg[VIDO_FRAME_SIZE]);
+	value[10] = readl(base + wrot->reg[VIDO_OFST_ADDR_HIGH]);
+	value[11] = readl(base + wrot->reg[VIDO_OFST_ADDR]);
+	value[12] = readl(base + wrot->reg[VIDO_OFST_ADDR_HIGH_C]);
+	value[13] = readl(base + wrot->reg[VIDO_OFST_ADDR_C]);
+	value[14] = readl(base + wrot->reg[VIDO_OFST_ADDR_HIGH_V]);
+	value[15] = readl(base + wrot->reg[VIDO_OFST_ADDR_V]);
+	value[16] = readl(base + wrot->reg[VIDO_STRIDE]);
+	value[17] = readl(base + wrot->reg[VIDO_STRIDE_C]);
+	value[18] = readl(base + wrot->reg[VIDO_STRIDE_V]);
+	value[19] = readl(base + wrot->reg[VIDO_CTRL_2]);
+	value[20] = readl(base + wrot->reg[VIDO_IN_LINE_ROT]);
+	value[21] = readl(base + wrot->reg[VIDO_RSV_1]);
+	value[22] = readl(base + wrot->reg[VIDO_ROT_EN]);
+	value[23] = readl(base + wrot->reg[VIDO_SHADOW_CTRL]);
+	value[24] = readl(base + wrot->reg[VIDO_PVRIC]);
+	value[25] = readl(base + wrot->reg[VIDO_SCAN_10BIT]);
+	value[26] = readl(base + wrot->reg[VIDO_PENDING_ZERO]);
+	value[27] = readl(base + wrot->reg[VIDO_BASE_ADDR_HIGH]);
+	value[28] = readl(base + wrot->reg[VIDO_BASE_ADDR]);
+	value[29] = readl(base + wrot->reg[VIDO_BASE_ADDR_HIGH_C]);
+	value[30] = readl(base + wrot->reg[VIDO_BASE_ADDR_C]);
+	value[31] = readl(base + wrot->reg[VIDO_BASE_ADDR_HIGH_V]);
+	value[32] = readl(base + wrot->reg[VIDO_BASE_ADDR_V]);
+	value[33] = readl(base + wrot->reg[VIDO_CRC_CTRL]);
+	value[34] = readl(base + wrot->reg[VIDO_CRC_VALUE]);
+	value[35] = readl(base + wrot->reg[VIDO_MAT_CTRL]);
 
 	/* debug id from 0x0100 ~ 0x2100, count 33 which is debug array size */
 	for (i = 0; i < ARRAY_SIZE(debug); i++) {
 		dbg_id += 0x100;
-		writel(dbg_id, base + VIDO_INT_EN);
-		debug[i] = readl(base + VIDO_DEBUG);
+		writel(dbg_id, base + wrot->reg[VIDO_INT_EN]);
+		debug[i] = readl(base + wrot->reg[VIDO_DEBUG]);
 	}
 
 	mml_err("VIDO_CTRL %#010x VIDO_DMA_PERF %#010x VIDO_MAIN_BUF_SIZE %#010x",
@@ -2396,7 +2588,7 @@ static void wrot_debug_dump(struct mml_comp *comp)
 		value[14], value[15]);
 	mml_err("VIDO_STRIDE %#010x C %#010x V %#010x",
 		value[16], value[17], value[18]);
-	mml_err("VIDO_CTRL_2 %#010x VIDO_IN_LINE_ROT %#010x VIDO_EOL_SEL %#010x",
+	mml_err("VIDO_CTRL_2 %#010x VIDO_IN_LINE_ROT %#010x VIDO_RSV_1 %#010x",
 		value[19], value[20], value[21]);
 	mml_err("VIDO_ROT_EN %#010x VIDO_SHADOW_CTRL %#010x",
 		value[22], value[23]);
@@ -2523,8 +2715,8 @@ static irqreturn_t mml_wrot_irq_handler(int irq, void *dev_id)
 	irqreturn_t ret = IRQ_NONE;
 	u8 out_idx = wrot->out_idx;
 
-	if (wrot_reg_read(comp, VIDO_INT, 0, (0x1))) {
-		writel(1, comp->base + VIDO_INT);
+	if (wrot_reg_read(comp, wrot->reg[VIDO_INT], 0, (0x1))) {
+		writel(1, comp->base + wrot->reg[VIDO_INT]);
 		if (dest_cnt == MML_MAX_OUTPUTS && out_idx == MML_MAX_OUTPUTS - 1) {
 			queue_work(priv->wrot_ai_callback_wq, &priv->wrot_ai_callback_task);
 			return IRQ_HANDLED;
@@ -2546,6 +2738,7 @@ static int probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, priv);
 	priv->data = of_device_get_match_data(dev);
+	priv->reg = priv->data->reg;
 
 	if (smmu_v3_enabled()) {
 		/* shared smmu device, setup 34bit in dts */
@@ -2621,9 +2814,7 @@ static int probe(struct platform_device *pdev)
 
 	dbg_probed_components[dbg_probed_count++] = priv;
 
-	ret = component_add(dev, &mml_comp_ops);
-	if (ret)
-		dev_err(dev, "Failed to add component: %d\n", ret);
+	ret = mml_comp_add(priv->comp.id, dev, &mml_comp_ops);
 
 	mml_log("wrot%d (%u) smi larb con %pa event eof %hu sync %hu/%hu/%hu",
 		priv->idx, priv->comp.id, &priv->smi_larb_con,
@@ -2676,6 +2867,18 @@ const struct of_device_id mml_wrot_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6989-mml_wrot",
 		.data = &mt6989_wrot_data,
+	},
+	{
+		.compatible = "mediatek,mt6878-mml_wrot",
+		.data = &mt6878_wrot_data
+	},
+	{
+		.compatible = "mediatek,mt6991-mml0_wrot",
+		.data = &mt6991_wrot_data,
+	},
+	{
+		.compatible = "mediatek,mt6991-mml1_wrot",
+		.data = &mt6991_wrot_data,
 	},
 	{},
 };

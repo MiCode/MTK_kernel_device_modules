@@ -93,8 +93,10 @@
 
 #define RROT_DITHER_CON			0x2a0
 #define RROT_CHKS_EXTR			0x300
+#define RROT_CHKS_ROTO			0x318
 #define RROT_DEBUG_CON			0x380
 #define RROT_MON_STA_0			0x400
+#define RROT_DISPLAY_RACING_EN		0x630
 #define RROT_SRC_BASE_0			0xf00
 #define RROT_SRC_BASE_1			0xf08
 #define RROT_SRC_BASE_2			0xf10
@@ -129,12 +131,10 @@ module_param(rrot_dbg_con, int, 0644);
 
 #define rrot_msg(fmt, args...) \
 do { \
-	if (mtk_mml_msg || mml_rrot_msg) { \
-		if (mml_log_rec) \
-			mml_save_log_record(fmt "\n", ##args); \
-		else \
-			pr_notice("[mml]" fmt "\n", ##args); \
-	} \
+	if (mml_rrot_msg) \
+		_mml_log("[rrot]" fmt, ##args); \
+	else \
+		mml_msg("[rrot]" fmt, ##args); \
 } while (0)
 
 int rrot_binning = 1;
@@ -207,13 +207,45 @@ static const u16 rrot_preultra_th[] = {
 
 struct rrot_data {
 	u32 tile_width;
+	bool alpha_pq_r2y;
 
 	/* threshold golden setting for racing mode */
 	struct rrot_golden golden[GOLDEN_FMT_TOTAL];
 };
 
 static const struct rrot_data mt6989_rrot_data = {
-	.tile_width = 4096,
+	.tile_width = 4096,	/* 2048+2048 */
+	.alpha_pq_r2y = true,
+	.golden = {
+		[GOLDEN_FMT_ARGB] = {
+			.cnt = ARRAY_SIZE(th_argb_mt6989),
+			.settings = th_argb_mt6989,
+		},
+		[GOLDEN_FMT_RGB] = {
+			.cnt = ARRAY_SIZE(th_rgb_mt6989),
+			.settings = th_rgb_mt6989,
+		},
+		[GOLDEN_FMT_YUV420] = {
+			.cnt = ARRAY_SIZE(th_yuv420_mt6989),
+			.settings = th_yuv420_mt6989,
+		},
+		[GOLDEN_FMT_YV12] = {
+			.cnt = ARRAY_SIZE(th_yv12_mt6989),
+			.settings = th_yv12_mt6989,
+		},
+		[GOLDEN_FMT_HYFBC] = {
+			.cnt = ARRAY_SIZE(th_hyfbc_mt6989),
+			.settings = th_hyfbc_mt6989,
+		},
+		[GOLDEN_FMT_AFBC] = {
+			.cnt = ARRAY_SIZE(th_afbc_mt6989),
+			.settings = th_afbc_mt6989,
+		},
+	},
+};
+
+static const struct rrot_data mt6991_rrot_data = {
+	.tile_width = 4096,	/* 2048+2048 */
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
 			.cnt = ARRAY_SIZE(th_argb_mt6989),
@@ -410,9 +442,9 @@ static void calc_binning_rot(struct mml_frame_config *cfg, struct mml_comp_confi
 	}
 
 	if ((cfg->info.dest_cnt == 1 ||
-	     !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop,
-		     sizeof(struct mml_crop))) &&
-	     (dest->crop.r.width != src->width || dest->crop.r.height != src->height)) {
+	    !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop,
+		    sizeof(struct mml_crop))) &&
+	    (dest->crop.r.width != src->width || dest->crop.r.height != src->height)) {
 		crop = &cfg->frame_in_crop[0];
 		/* calculate tile full size from rrot out to rsz in, with roundup sub pixel */
 		cfg->frame_tile_sz.width =
@@ -552,7 +584,8 @@ s32 rrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	func->full_size_y_out = cfg->frame_tile_sz.height;
 
 	if (cfg->info.dest_cnt == 1 ||
-	     !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop, sizeof(struct mml_crop))) {
+	    !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop,
+		    sizeof(struct mml_crop))) {
 		data->rdma.crop.left = cfg->frame_in_crop[0].r.left;
 		data->rdma.crop.top = cfg->frame_in_crop[0].r.top;
 		data->rdma.crop.width = cfg->frame_tile_sz.width;
@@ -572,7 +605,6 @@ s32 rrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 		func->full_size_x_in, func->full_size_y_in,
 		func->full_size_x_out, func->full_size_y_out,
 		rrot_frm->crop_off_l, rrot_frm->crop_off_t);
-
 	return 0;
 }
 
@@ -717,6 +749,8 @@ static void rrot_color_fmt(struct mml_frame_config *cfg,
 		rrot_frm->hor_shift_uv = 1;
 		rrot_frm->ver_shift_uv = 1;
 		break;
+	case MML_FMT_YUVA8888:
+	case MML_FMT_AYUV8888:
 	case MML_FMT_YUVA1010102:
 	case MML_FMT_UYV1010102:
 		rrot_frm->bits_per_pixel_y = 32;
@@ -782,8 +816,8 @@ static void calc_hyfbc(struct mml_file_buf *src_buf, struct mml_frame_data *src,
 		       u64 *c_header_addr, u64 *c_data_addr)
 {
 	u64 buf_addr = src_buf->dma[0].iova;
-	u32 width = ((src->width + 63) >> 6) << 6;
-	u32 height = ((src->height + 63) >> 6) << 6;
+	u32 width = round_up(src->width, 64);
+	u32 height = round_up(src->height, 64);
 	u32 y_data_sz = width * height;
 	u32 c_data_sz;
 	u32 y_header_sz;
@@ -797,15 +831,18 @@ static void calc_hyfbc(struct mml_file_buf *src_buf, struct mml_frame_data *src,
 	y_header_sz = (width * height + 63) >> 6;
 	c_header_sz = ((width * height >> 1) + 63) >> 6;
 
-	*y_data_addr = (((buf_addr + y_header_sz + 4095) >> 12) << 12);
+	*y_data_addr = round_up(buf_addr + y_header_sz, 4096);
 	*y_header_addr = *y_data_addr - y_header_sz;	/* should be 64 aligned */
-	*c_data_addr = ((*y_data_addr + y_data_sz + c_header_sz + 4095) >> 12) << 12;
-	*c_header_addr = ((*c_data_addr - c_header_sz) >> 6) << 6;
+	*c_data_addr = round_up(*y_data_addr + y_data_sz + c_header_sz, 4096);
+	*c_header_addr = round_down(*c_data_addr - c_header_sz, 64);
 
 	total_sz = (u32)(*c_data_addr + c_data_sz - buf_addr);
 	if (src_buf->size[0] != total_sz)
 		mml_log("[rrot]warn %s hyfbc buf size %u calc size %u",
 			__func__, src_buf->size[0], total_sz);
+
+	mml_msg("[rrot]hyfbc Y head %#llx data %#llx C head %#llx data %#llx",
+		*y_header_addr, *y_data_addr, *c_header_addr, *c_data_addr);
 }
 
 static void calc_ufo(struct mml_file_buf *src_buf, struct mml_frame_data *src,
@@ -990,10 +1027,10 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	struct mml_frame_config *cfg = task->config;
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 	struct mml_file_buf *src_buf = &task->buf.src;
-	struct mml_frame_data *src = &task->config->info.src;
+	struct mml_frame_data *src = &cfg->info.src;
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
-	struct mml_frame_dest *dest = &task->config->info.dest[0];
-	struct mml_frame_size *frame_in = &task->config->frame_in;
+	struct mml_frame_dest *dest = &cfg->info.dest[0];
+	struct mml_frame_size *frame_in = &cfg->frame_in;
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 
@@ -1028,14 +1065,15 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	/* before everything start, make sure ddr enable */
 	if (ccfg->pipe == 0)
-		task->config->task_ops->ddren(task, pkt, true);
+		cfg->task_ops->ddren(task, pkt, true);
 
 	/* Enable engine */
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_EN, 0x1, 0x00000001);
-
 	/* Enable or disable shadow */
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_SHADOW_CTRL,
-		((cfg->shadow ? 0 : BIT(1)) << 1) | 0x1, U32_MAX);
+		(cfg->shadow ? 0 : BIT(1)) | 0x1, U32_MAX);
+	/* disable racing dram */
+	cmdq_pkt_write(pkt, NULL, base_pa + RROT_DISPLAY_RACING_EN, 0, U32_MAX);
 
 	if (mml_rdma_crc) {
 		if (MML_FMT_COMPRESS(src->format))
@@ -1055,21 +1093,6 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	rrot_color_fmt(cfg, rrot_frm);
 	rrot_config_slice(comp, cfg, src, dest, rrot_frm, pkt);
-
-	if (MML_FMT_V_SUBSAMPLE(src->format) &&
-	    !MML_FMT_V_SUBSAMPLE(dst_fmt) &&
-	    !MML_FMT_BLOCK(src->format))
-		/* 420 to 422 interpolation solution */
-		filter_mode = 2;
-	else
-		/* config.enrrotCrop ? 3 : 2 */
-		/* RSZ uses YUV422, rrot could use V filter unless cropping */
-		filter_mode = 3;
-
-	if (cfg->alpharot)
-		rrot_frm->color_tran = 0;
-	else if (MML_FMT_10BIT(src->format))
-		rrot_frm->color_tran = 1;
 
 	/* Enable dither on output, not input */
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_DITHER_CON, 0x0, U32_MAX);
@@ -1115,9 +1138,38 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_GMCIF_CON, gmcif_con, U32_MAX);
 	rrot_frm->gmcif_con = gmcif_con;
 
-	if (MML_FMT_IS_RGB(src->format) && cfg->info.dest[0].pq_config.en_hdr &&
-	    cfg->info.dest_cnt == 1)
+	if (cfg->alpharot)
 		rrot_frm->color_tran = 0;
+	else if (MML_FMT_10BIT(src->format))
+		rrot_frm->color_tran = 1;
+
+	mml_msg("%s alpha_pq_r2y:%d alpha:%d src:0x%08x dst:0x%08x hdr:%d mode:%d",
+		__func__, rrot->data->alpha_pq_r2y, cfg->info.alpha,
+		src->format, dst_fmt, cfg->info.dest[0].pq_config.en_hdr, cfg->info.mode);
+	if (MML_FMT_IS_RGB(src->format) && cfg->info.dest[0].pq_config.en_hdr &&
+	    cfg->info.dest_cnt == 1) {
+		rrot_frm->color_tran = 0;
+	} else if (rrot->data->alpha_pq_r2y && cfg->alpharsz && dst_fmt == MML_FMT_YUVA8888) {
+		/* Fix alpha r2y to full BT601 when resize */
+		rrot_frm->color_tran = 1;
+		rrot_frm->matrix_sel = 0;
+	}
+
+	cmdq_pkt_write(pkt, NULL, base_pa + RROT_TRANSFORM_0,
+		   (rrot_frm->matrix_sel << 23) +
+		   (rrot_frm->color_tran << 16),
+		   U32_MAX);
+
+	if (MML_FMT_V_SUBSAMPLE(src->format) &&
+	    !MML_FMT_V_SUBSAMPLE(dst_fmt) &&
+	    !MML_FMT_BLOCK(src->format) &&
+	    !MML_FMT_HYFBC(src->format))
+		/* 420 to 422 interpolation solution */
+		filter_mode = 2;
+	else
+		/* config.enRROTCrop ? 3 : 2 */
+		/* RSZ uses YUV422, RROT could use V filter unless cropping */
+		filter_mode = 3;
 
 	if (MML_FMT_10BIT_LOOSE(src->format))
 		loose = 1;
@@ -1135,7 +1187,7 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		(bit_number << 18) +
 		(rrot_frm->blk_tile << 23) +
 		(0 << 24) +	/* RING_BUF_READ */
-		(cfg->alpharot << 25),
+		((cfg->alpharot || cfg->alpharsz) << 25),
 		U32_MAX);
 
 	if (rrot_frm->blk_10bit)
@@ -1307,11 +1359,6 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_SF_BKGD_SIZE_IN_BYTE,
 		   src->uv_stride, U32_MAX);
 
-	cmdq_pkt_write(pkt, NULL, base_pa + RROT_TRANSFORM_0,
-		   (rrot_frm->matrix_sel << 23) +
-		   (rrot_frm->color_tran << 16),
-		   U32_MAX);
-
 	return 0;
 }
 
@@ -1345,7 +1392,8 @@ static void rrot_config_right(struct mml_tile_engine *tile)
 
 static void rrot_config_top(struct mml_tile_engine *tile)
 {
-	u32 in_ye = tile->in.ys + (tile->in.ye - tile->in.ys + 1) / 2 - 1;
+	u32 in_h = round_up(tile->in.ye - tile->in.ys + 1, 2);
+	u32 in_ye = tile->in.ys + in_h / 2 - 1;
 	u32 out_h = round_up(tile->out.ye - tile->out.ys + 1, 2);
 
 	tile->out.ye = tile->out.ys + out_h / 2 - 1;
@@ -1360,11 +1408,12 @@ static void rrot_config_top(struct mml_tile_engine *tile)
 
 static void rrot_config_bottom(struct mml_tile_engine *tile)
 {
+	u32 in_top_h = round_up(tile->in.ye - tile->in.ys + 1, 2);
 	u32 out_top = tile->in.ys & 0x1;
-	u32 in_ys = tile->in.ys + (tile->in.ye - tile->in.ys + 1) / 2;
-	u32 out_h = round_up(tile->out.ye - tile->out.ys + 1, 2);
+	u32 in_ys = tile->in.ys + in_top_h / 2;
+	u32 out_top_h = round_up(tile->out.ye - tile->out.ys + 1, 2);
 
-	tile->out.ys = tile->out.ys + out_h / 2;
+	tile->out.ys = tile->out.ys + out_top_h / 2;
 	tile->luma.y = 0;
 	tile->in.ys = round_up(in_ys, 16);
 	tile->out.ys += tile->in.ys - in_ys;
@@ -1821,9 +1870,6 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 static s32 rrot_wait(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg, u32 idx)
 {
-	if (unlikely(mml_wrot_bkgd_en))
-		return 0;
-
 	/* wait rdma frame done */
 	cmdq_pkt_wfe(task->pkts[ccfg->pipe], comp_to_rrot(comp)->event_eof);
 	return 0;
@@ -1989,6 +2035,16 @@ static const struct mml_comp_config_ops rrot_cfg_ops = {
 	.reframe = rrot_reconfig_frame,
 };
 
+static void rrot_init_frame_done_event(struct mml_comp *comp, u32 event)
+{
+	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
+
+	mml_log("%s frame done event %u", __func__, event);
+
+	if (!rrot->event_eof)
+		rrot->event_eof = event;
+}
+
 static u32 rrot_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg)
 {
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
@@ -2026,6 +2082,7 @@ static void rrot_task_done(struct mml_comp *comp, struct mml_task *task,
 }
 
 static const struct mml_comp_hw_ops rrot_hw_ops = {
+	.init_frame_done_event = &rrot_init_frame_done_event,
 	.clk_enable = &mml_comp_clk_enable,
 	.clk_disable = &mml_comp_clk_disable,
 	.qos_datasize_get = &rrot_datasize_get,
@@ -2077,6 +2134,7 @@ static void rrot_debug_dump(struct mml_comp *comp)
 	shadow_ctrl = readl(base + RROT_SHADOW_CTRL);
 	shadow_ctrl |= 0x4;
 	writel(shadow_ctrl, base + RROT_SHADOW_CTRL);
+	shadow_ctrl = readl(base + RROT_SHADOW_CTRL);
 
 	value[0] = readl(base + RROT_EN);
 	value[1] = readl(base + RROT_RESET);
@@ -2088,8 +2146,8 @@ static void rrot_debug_dump(struct mml_comp *comp)
 	value[7] = readl(base + RROT_AUTO_SLICE_0);
 	value[8] = readl(base + RROT_AUTO_SLICE_1);
 
-	mml_err("RROT_EN %#010x RROT_RESET %#010x RROT_CON %#010x RROT_BINNING %#010x",
-		value[0], value[1], value[2], value[3]);
+	mml_err("RROT_EN %#010x SHADOW %#010x RROT_RESET %#010x RROT_CON %#010x RROT_BINNING %#010x",
+		value[0], shadow_ctrl, value[1], value[2], value[3]);
 	mml_err("RROT_PREFETCH_CONTROL 0 %#010x 1 %#010x 2 %#010x",
 		value[4], value[5], value[6]);
 	mml_err("RROT_AUTO_SLICE_0 %#010x RROT_AUTO_SLICE_1 %#010x",
@@ -2160,9 +2218,10 @@ static void rrot_debug_dump(struct mml_comp *comp)
 
 	if (mml_rdma_crc) {
 		value[31] = readl(base + RROT_CHKS_EXTR);
-		value[32] = readl(base + RROT_DEBUG_CON);
-		mml_err("RROT_CHKS_EXTR %#010x RROT_DEBUG_CON %#010x",
-			value[31], value[32]);
+		value[32] = readl(base + RROT_CHKS_ROTO);
+		value[33] = readl(base + RROT_DEBUG_CON);
+		mml_err("RROT_CHKS_EXTR %#010x RROT_CHKS_ROTO %#010x RROT_DEBUG_CON %#010x",
+			value[31], value[32], value[33]);
 	}
 
 	/* mon sta from 0 ~ 37 */
@@ -2285,15 +2344,13 @@ static int probe(struct platform_device *pdev)
 
 	dbg_probed_components[dbg_probed_count++] = priv;
 
-	ret = component_add(dev, &mml_comp_ops);
-	if (ret)
-		dev_err(dev, "Failed to add component: %d\n", ret);
+	ret = mml_comp_add(priv->comp.id, dev, &mml_comp_ops);
 
 	mml_log("rrot%d (%s %u) pipe %d eof %u",
 		priv->pipe, priv->comp.name ? priv->comp.name : "",
 		priv->comp.id, priv->pipe, priv->event_eof);
 
-	return 0;
+	return ret;
 }
 
 static int remove(struct platform_device *pdev)
@@ -2306,6 +2363,10 @@ const struct of_device_id mml_rrot_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6989-mml_rrot",
 		.data = &mt6989_rrot_data,
+	},
+	{
+		.compatible = "mediatek,mt6991-mml_rrot",
+		.data = &mt6991_rrot_data,
 	},
 	{},
 };

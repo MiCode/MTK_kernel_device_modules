@@ -775,6 +775,7 @@ mgk_64_platform_device_modules = {
     "drivers/clk/mediatek/pd-chk-mt6983.ko": "mt6983",
     "drivers/clk/mediatek/pd-chk-mt6985.ko": "mt6985",
     "drivers/clk/mediatek/pd-chk-mt6989.ko": "mt6989",
+    "drivers/gpu/drm/mediatek/mml/mtk-mml-mt6878.ko": "mt6878",
     "drivers/gpu/drm/mediatek/mml/mtk-mml-mt6886.ko": "mt6886",
     "drivers/gpu/drm/mediatek/mml/mtk-mml-mt6897.ko": "mt6897",
     "drivers/gpu/drm/mediatek/mml/mtk-mml-mt6983.ko": "mt6983",
@@ -1184,6 +1185,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6768-pg.ko":"mt6768"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/pd-chk-mt6768.ko":"mt6768"})
 
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6878.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6886.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6897.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6983.ko")

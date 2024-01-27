@@ -439,6 +439,7 @@ struct rdma_data {
 	u32 tile_width;
 	u32 sram_size;
 	u8 rb_swap;	/* version for rb channel swap behavior */
+	bool alpha_rsz_crop;
 	bool write_sec_reg;
 	bool tile_reset;
 
@@ -604,6 +605,101 @@ static const struct rdma_data mt6989_rdma_data = {
 	.tile_width = 3520,
 	.sram_size = 512 * 1024,	/* 1MB sram divid to 512K + 512K */
 	.rb_swap = 1,
+	.alpha_rsz_crop = true,
+	.tile_reset = true,
+	.golden = {
+		[GOLDEN_FMT_ARGB] = {
+			.cnt = ARRAY_SIZE(th_argb_mt6985),
+			.settings = th_argb_mt6985,
+		},
+		[GOLDEN_FMT_RGB] = {
+			.cnt = ARRAY_SIZE(th_rgb_mt6985),
+			.settings = th_rgb_mt6985,
+		},
+		[GOLDEN_FMT_YUV420] = {
+			.cnt = ARRAY_SIZE(th_yuv420_mt6985),
+			.settings = th_yuv420_mt6985,
+		},
+		[GOLDEN_FMT_YV12] = {
+			.cnt = ARRAY_SIZE(th_yv12_mt6985),
+			.settings = th_yv12_mt6985,
+		},
+		[GOLDEN_FMT_HYFBC] = {
+			.cnt = ARRAY_SIZE(th_hyfbc_mt6985),
+			.settings = th_hyfbc_mt6985,
+		},
+		[GOLDEN_FMT_AFBC] = {
+			.cnt = ARRAY_SIZE(th_afbc_mt6985),
+			.settings = th_afbc_mt6985,
+		},
+	},
+};
+
+static const struct rdma_data mt6878_rdma_data = {
+	.tile_width = 640,
+	.rb_swap = 2,
+	.golden = {
+		[GOLDEN_FMT_ARGB] = {
+			.cnt = ARRAY_SIZE(th_argb_mt6985),
+			.settings = th_argb_mt6985,
+		},
+		[GOLDEN_FMT_RGB] = {
+			.cnt = ARRAY_SIZE(th_rgb_mt6985),
+			.settings = th_rgb_mt6985,
+		},
+		[GOLDEN_FMT_YUV420] = {
+			.cnt = ARRAY_SIZE(th_yuv420_mt6985),
+			.settings = th_yuv420_mt6985,
+		},
+		[GOLDEN_FMT_YV12] = {
+			.cnt = ARRAY_SIZE(th_yv12_mt6985),
+			.settings = th_yv12_mt6985,
+		},
+		[GOLDEN_FMT_HYFBC] = {
+			.cnt = ARRAY_SIZE(th_hyfbc_mt6985),
+			.settings = th_hyfbc_mt6985,
+		},
+		[GOLDEN_FMT_AFBC] = {
+			.cnt = ARRAY_SIZE(th_afbc_mt6985),
+			.settings = th_afbc_mt6985,
+		},
+	},
+};
+
+static const struct rdma_data mt6991_mmlt_rdma_data = {
+	.tile_width = 640,
+	.tile_reset = true,
+	.golden = {
+		[GOLDEN_FMT_ARGB] = {
+			.cnt = ARRAY_SIZE(th_argb_mt6985),
+			.settings = th_argb_mt6985,
+		},
+		[GOLDEN_FMT_RGB] = {
+			.cnt = ARRAY_SIZE(th_rgb_mt6985),
+			.settings = th_rgb_mt6985,
+		},
+		[GOLDEN_FMT_YUV420] = {
+			.cnt = ARRAY_SIZE(th_yuv420_mt6985),
+			.settings = th_yuv420_mt6985,
+		},
+		[GOLDEN_FMT_YV12] = {
+			.cnt = ARRAY_SIZE(th_yv12_mt6985),
+			.settings = th_yv12_mt6985,
+		},
+		[GOLDEN_FMT_HYFBC] = {
+			.cnt = ARRAY_SIZE(th_hyfbc_mt6985),
+			.settings = th_hyfbc_mt6985,
+		},
+		[GOLDEN_FMT_AFBC] = {
+			.cnt = ARRAY_SIZE(th_afbc_mt6985),
+			.settings = th_afbc_mt6985,
+		},
+	},
+};
+
+static const struct rdma_data mt6991_mmlf_rdma_data = {
+	.tile_width = 3872,
+	.sram_size = 512 * 1024,	/* 1MB sram divid to 512K + 512K */
 	.tile_reset = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
@@ -682,18 +778,56 @@ struct rdma_frame_data {
 	u16 labels[RDMA_LABEL_TOTAL];
 };
 
-#define rdma_frm_data(i)	((struct rdma_frame_data *)(i->data))
+static inline struct rdma_frame_data *rdma_frm_data(struct mml_comp_config *ccfg)
+{
+	return ccfg->data;
+}
 
 static inline struct mml_comp_rdma *comp_to_rdma(struct mml_comp *comp)
 {
 	return container_of(comp, struct mml_comp_rdma, comp);
 }
 
-static s32 rdma_config_read(struct mml_comp *comp, struct mml_task *task,
-			    struct mml_comp_config *ccfg)
+static s32 rdma_prepare(struct mml_comp *comp, struct mml_task *task,
+			struct mml_comp_config *ccfg)
 {
+	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
+	struct mml_frame_config *cfg = task->config;
+
 	ccfg->data = kzalloc(sizeof(struct rdma_frame_data), GFP_KERNEL);
+	if (!ccfg->data)
+		return -ENOMEM;
+
+	/* align crop size and set to frame config */
+	if (rdma->data->alpha_rsz_crop && cfg->info.alpha) {
+		if (cfg->info.dest_cnt == 1 ||
+		    !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop,
+			    sizeof(struct mml_crop))) {
+			u32 in_crop_w = cfg->frame_tile_sz.width;
+
+			in_crop_w += cfg->info.dest[0].crop.r.left & 1;
+			cfg->frame_tile_sz.width = round_up(in_crop_w, 2);
+		}
+	}
 	return 0;
+}
+
+static void rdma_config_smi(struct mml_comp_rdma *rdma,
+	struct mml_frame_config *cfg, struct cmdq_pkt *pkt)
+{
+	const enum mml_mode mode = cfg->info.mode;
+	u32 mask = GENMASK(19, 16) | (0x1 << 3);
+	u32 value;
+
+	/* config smi addr to emi (iova) or sram, and bw throttling */
+	if (mode == MML_MODE_SRAM_READ || mode == MML_MODE_APUDC)
+		value = 0xf << 16;
+	else if (mode == MML_MODE_MML_DECOUPLE)
+		value = 0x1 << 3;
+	else
+		value = 0;
+
+	cmdq_pkt_write(pkt, NULL, rdma->smi_larb_con, value, mask);
 }
 
 static s32 rdma_buf_map(struct mml_comp *comp, struct mml_task *task,
@@ -706,7 +840,8 @@ static s32 rdma_buf_map(struct mml_comp *comp, struct mml_task *task,
 	mml_trace_ex_begin("%s", __func__);
 
 	if (cfg->info.mode != MML_MODE_APUDC &&
-		unlikely(task->config->info.mode != MML_MODE_SRAM_READ)) {
+		unlikely(task->config->info.mode != MML_MODE_SRAM_READ) &&
+		!task->buf.src.dma[0].iova) {
 		mml_mmp(buf_map, MMPROFILE_FLAG_START,
 			((u64)task->job.jobid << 16) | comp->id, 0);
 
@@ -720,15 +855,14 @@ static s32 rdma_buf_map(struct mml_comp *comp, struct mml_task *task,
 			((u64)task->job.jobid << 16) | comp->id,
 			(unsigned long)task->buf.src.dma[0].iova);
 
-		mml_msg("%s comp %u iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
-			__func__, comp->id,
+		mml_msg("%s comp %u dma %p iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
+			__func__, comp->id, task->buf.src.dma[0].dmabuf,
 			task->buf.src.dma[0].iova,
 			task->buf.src.size[0],
 			task->buf.src.dma[1].iova,
 			task->buf.src.size[1],
 			task->buf.src.dma[2].iova,
 			task->buf.src.size[2]);
-
 	}
 
 	mml_trace_ex_end();
@@ -815,11 +949,17 @@ static s32 rdma_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	func->full_size_y_out = cfg->frame_tile_sz.height;
 
 	if (cfg->info.dest_cnt == 1 ||
-	     !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop, sizeof(struct mml_crop))) {
+	    !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop,
+		    sizeof(struct mml_crop))) {
 		struct mml_frame_dest *dest = &cfg->info.dest[0];
 		struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
 
 		data->rdma.crop = dest->crop.r;
+		if (rdma->data->alpha_rsz_crop && cfg->info.alpha) {
+			data->rdma.crop.left &= ~1;
+			data->rdma.crop.width = cfg->frame_tile_sz.width;
+			data->rdma.align_x = 2;
+		}
 		rdma_frm->crop_off_l = data->rdma.crop.left;
 		rdma_frm->crop_off_t = data->rdma.crop.top;
 	} else {
@@ -973,6 +1113,8 @@ static void rdma_color_fmt(struct mml_frame_config *cfg,
 		rdma_frm->hor_shift_uv = 1;
 		rdma_frm->ver_shift_uv = 1;
 		break;
+	case MML_FMT_YUVA8888:
+	case MML_FMT_AYUV8888:
 	case MML_FMT_YUVA1010102:
 	case MML_FMT_UYV1010102:
 		rdma_frm->bits_per_pixel_y = 32;
@@ -1116,6 +1258,9 @@ static void calc_hyfbc(struct mml_file_buf *src_buf, struct mml_frame_data *src,
 	if (src_buf->size[0] != total_sz)
 		mml_log("[rdma]warn %s hyfbc buf size %u calc size %u",
 			__func__, src_buf->size[0], total_sz);
+
+	mml_msg("[rdma]hyfbc Y head %#llx data %#llx C head %#llx data %#llx",
+		*y_header_addr, *y_data_addr, *c_header_addr, *c_data_addr);
 }
 
 static void calc_ufo(struct mml_file_buf *src_buf, struct mml_frame_data *src,
@@ -1306,13 +1451,14 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	/* before everything start, make sure ddr enable */
 	if (ccfg->pipe == 0)
-		task->config->task_ops->ddren(task, pkt, true);
+		cfg->task_ops->ddren(task, pkt, true);
 
 	if (!write_sec) {
 		/* Enable engine */
 		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_EN, 0x1, 0x00000001);
 		/* Enable shadow */
-		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_SHADOW_CTRL, 0x1, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_SHADOW_CTRL,
+			(cfg->shadow ? 0 : BIT(1)) | 0x1, U32_MAX);
 	}
 
 	if (mml_rdma_crc) {
@@ -1322,24 +1468,13 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		else
 			cmdq_pkt_write(pkt, NULL, base_pa + RDMA_DEBUG_CON,
 				0x1, U32_MAX);
+	} else if (MML_FMT_COMPRESS(src->format)) {
+		/* debug for compress to dump crc */
+		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_DEBUG_CON,
+			(mml_rdma_dbg << 13) + 0x1, U32_MAX);
 	}
 
 	rdma_color_fmt(cfg, rdma_frm);
-
-	if (MML_FMT_V_SUBSAMPLE(src->format) &&
-	    !MML_FMT_V_SUBSAMPLE(dst_fmt) &&
-	    !MML_FMT_BLOCK(src->format))
-		/* 420 to 422 interpolation solution */
-		filter_mode = 2;
-	else
-		/* config.enRDMACrop ? 3 : 2 */
-		/* RSZ uses YUV422, RDMA could use V filter unless cropping */
-		filter_mode = 3;
-
-	if (cfg->alpharot)
-		rdma_frm->color_tran = 0;
-	else if (MML_FMT_10BIT(src->format))
-		rdma_frm->color_tran = 1;
 
 	/* Enable dither on output, not input */
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_DITHER_CON, 0x0, write_sec);
@@ -1383,9 +1518,29 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		   gmcif_con, write_sec);
 	rdma_frm->gmcif_con = gmcif_con;
 
+	if (cfg->alpharot)
+		rdma_frm->color_tran = 0;
+	else if (MML_FMT_10BIT(src->format))
+		rdma_frm->color_tran = 1;
+
 	if (MML_FMT_IS_RGB(src->format) && cfg->info.dest[0].pq_config.en_hdr &&
 	    cfg->info.dest_cnt == 1)
 		rdma_frm->color_tran = 0;
+
+	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_TRANSFORM_0,
+		   (rdma_frm->matrix_sel << 23) +
+		   (rdma_frm->color_tran << 16),
+		   write_sec);
+
+	if (MML_FMT_V_SUBSAMPLE(src->format) &&
+	    !MML_FMT_V_SUBSAMPLE(dst_fmt) &&
+	    !MML_FMT_BLOCK(src->format))
+		/* 420 to 422 interpolation solution */
+		filter_mode = 2;
+	else
+		/* config.enRDMACrop ? 3 : 2 */
+		/* RSZ uses YUV422, RDMA could use V filter unless cropping */
+		filter_mode = 3;
 
 	if (MML_FMT_10BIT_LOOSE(src->format))
 		loose = 1;
@@ -1393,7 +1548,6 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		bit_number = 1;
 
 	in_swap = rdma_frm->swap;
-
 	if (MML_FMT_AFBC(dst_fmt) && MML_FMT_10BIT(dst_fmt)) {
 		if (rdma->data->rb_swap == 1) {
 			if (cfg->alpharot) {
@@ -1425,7 +1579,7 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		   (bit_number << 18) +
 		   (rdma_frm->blk_tile << 23) +
 		   (0 << 24) +	/* RING_BUF_READ */
-		   (cfg->alpharot << 25),
+		   ((cfg->alpharot || cfg->alpharsz) << 25),
 		   write_sec);
 
 	if (rdma_frm->blk_10bit)
@@ -1532,6 +1686,9 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		   (simple_mode << 4),
 		   write_sec);
 
+	if (!mml_slt)
+		rdma_config_smi(rdma, cfg, pkt);
+
 	/* Write frame base address */
 	if (cfg->info.mode == MML_MODE_APUDC) {
 		u32 stride = mml_color_get_min_y_stride(src->format, src->width);
@@ -1540,9 +1697,6 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		iova[0] = rdma->sram_pa;
 		iova[1] = rdma->sram_pa + tile_size;
 		iova[2] = 0;
-
-		cmdq_pkt_write(pkt, NULL, rdma->smi_larb_con,
-			GENMASK(19, 16), GENMASK(19, 16));
 
 		/* select rdma read toggle signal send to apu, instead of disp */
 		if (rdma->apudc_sel)
@@ -1554,9 +1708,6 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		iova[0] = rdma->sram_pa + src->plane_offset[0];
 		iova[1] = rdma->sram_pa + src->plane_offset[1];
 		iova[2] = rdma->sram_pa + src->plane_offset[2];
-
-		cmdq_pkt_write(pkt, NULL, rdma->smi_larb_con,
-			GENMASK(19, 16), GENMASK(19, 16));
 
 		mml_msg("%s sram %#011llx", __func__, iova[0]);
 
@@ -1637,11 +1788,6 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		   src->y_stride, write_sec);
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_SF_BKGD_SIZE_IN_BYTE,
 		   src->uv_stride, write_sec);
-
-	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_TRANSFORM_0,
-		   (rdma_frm->matrix_sel << 23) +
-		   (rdma_frm->color_tran << 16),
-		   write_sec);
 
 	return 0;
 }
@@ -1912,9 +2058,6 @@ static s32 rdma_config_tile(struct mml_comp *comp, struct mml_task *task,
 static s32 rdma_wait(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg, u32 idx)
 {
-	if (unlikely(mml_wrot_bkgd_en))
-		return 0;
-
 	/* wait rdma frame done */
 	cmdq_pkt_wfe(task->pkts[ccfg->pipe], comp_to_rdma(comp)->event_eof);
 	return 0;
@@ -1944,6 +2087,10 @@ force_reset:
 		else
 			cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DEBUG_CON,
 				0x1, U32_MAX);
+	} else if (MML_FMT_COMPRESS(src->format)) {
+		/* debug for compress to dump crc */
+		cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DEBUG_CON,
+			(mml_rdma_dbg << 13) + 0x1, U32_MAX);
 	} else {
 		/* keep disable */
 		cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DEBUG_CON, 0x0, U32_MAX);
@@ -2006,10 +2153,6 @@ static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 	/* for sram test rollback smi config */
 	if (cfg->info.mode == MML_MODE_APUDC ||
 		unlikely(cfg->info.mode == MML_MODE_SRAM_READ)) {
-		struct mml_comp_rdma *rdma = comp_to_rdma(comp);
-
-		cmdq_pkt_write(task->pkts[ccfg->pipe], NULL, rdma->smi_larb_con,
-			0, GENMASK(19, 16));
 
 		/* disable handshaking for safe */
 		cmdq_pkt_write(task->pkts[ccfg->pipe], NULL,
@@ -2114,7 +2257,7 @@ static s32 rdma_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 }
 
 static const struct mml_comp_config_ops rdma_cfg_ops = {
-	.prepare = rdma_config_read,
+	.prepare = rdma_prepare,
 	.buf_map = rdma_buf_map,
 	.buf_prepare = rdma_buf_prepare,
 	.buf_unprepare = rdma_buf_unprepare,
@@ -2161,7 +2304,16 @@ static void rdma_task_done(struct mml_comp *comp, struct mml_task *task,
 	rdma_store_crc(comp, task, ccfg);
 }
 
+static void rdma_init_frame_done_event(struct mml_comp *comp, u32 event)
+{
+	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
+
+	if (!rdma->event_eof)
+		rdma->event_eof = event;
+}
+
 static const struct mml_comp_hw_ops rdma_hw_ops = {
+	.init_frame_done_event = &rdma_init_frame_done_event,
 	.clk_enable = &mml_comp_clk_enable,
 	.clk_disable = &mml_comp_clk_disable,
 	.qos_datasize_get = &rdma_datasize_get,
@@ -2301,6 +2453,12 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	}
 
 	if (mml_rdma_crc) {
+		value[31] = readl(base + RDMA_CHKS_EXTR);
+		value[32] = readl(base + RDMA_DEBUG_CON);
+		mml_err("RDMA_CHKS_EXTR %#010x RDMA_DEBUG_CON %#010x",
+			value[31], value[32]);
+	} else if (comp_con & BIT(12)) {
+		/* debug for compress to dump crc */
 		value[31] = readl(base + RDMA_CHKS_EXTR);
 		value[32] = readl(base + RDMA_DEBUG_CON);
 		mml_err("RDMA_CHKS_EXTR %#010x RDMA_DEBUG_CON %#010x",
@@ -2462,9 +2620,7 @@ static int probe(struct platform_device *pdev)
 
 	dbg_probed_components[dbg_probed_count++] = priv;
 
-	ret = component_add(dev, &mml_comp_ops);
-	if (ret)
-		dev_err(dev, "Failed to add component: %d\n", ret);
+	ret = mml_comp_add(priv->comp.id, dev, &mml_comp_ops);
 
 	return ret;
 }
@@ -2511,6 +2667,18 @@ const struct of_device_id mml_rdma_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6989-mml_rdma",
 		.data = &mt6989_rdma_data,
+	},
+	{
+		.compatible = "mediatek,mt6878-mml_rdma",
+		.data = &mt6878_rdma_data,
+	},
+	{
+		.compatible = "mediatek,mt6991-mml0_rdma",
+		.data = &mt6991_mmlt_rdma_data,
+	},
+	{
+		.compatible = "mediatek,mt6991-mml1_rdma",
+		.data = &mt6991_mmlf_rdma_data,
 	},
 	{},
 };

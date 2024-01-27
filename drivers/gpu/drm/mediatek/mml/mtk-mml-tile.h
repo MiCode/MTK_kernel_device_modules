@@ -19,6 +19,7 @@ struct rdma_tile_data {
 	u32 blk_shift_h;
 	struct mml_rect crop;
 	u32 max_width;
+	u8 align_x;
 	u16 read_rotate;
 };
 
@@ -53,7 +54,7 @@ struct wrot_tile_data {
 	enum mml_color dest_fmt;
 	u32 rotate;
 	bool flip;
-	bool alpharot;
+	bool alpha;
 	bool racing;
 	u8 racing_h;
 	bool enable_x_crop;

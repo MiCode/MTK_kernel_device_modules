@@ -90,7 +90,7 @@ static void birsz_first_6_taps(s32 out_start,
 	if (start <= (s64)3 * precision) {
 		*in_start = 0;
 	} else {
-		start = div_s64(start, precision) - 3;
+		start = start / precision - 3;
 		if (!(start & 0x1))
 			*in_start = (s32)start;
 		else /* must be even */
@@ -102,7 +102,7 @@ static void birsz_first_6_taps(s32 out_start,
 	if (end > (s64)in_max * precision) {
 		*in_end = in_max;
 	} else {
-		end = div_s64(end, precision);
+		end = end / precision;
 		if (end & 0x1)
 			*in_end = (s32)end;
 		else /* must be odd */
@@ -129,7 +129,7 @@ static void birsz_second_6_taps(s32 in_start,
 	offset = (s64)back_out_start * coeff +
 		(s64)crop * precision + crop_frac - (s64)in_start * precision;
 
-	*luma = (s32)(div_s64(offset, precision));
+	*luma = (s32)(offset / precision);
 	*luma_frac = (s32)(offset - *luma * precision);
 
 	if (*luma_frac < 0) {
@@ -272,18 +272,19 @@ static s32 birsz_prepare(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
-static void birsz_init(struct cmdq_pkt *pkt, const phys_addr_t base_pa)
+static void birsz_init(struct cmdq_pkt *pkt, const phys_addr_t base_pa, bool shadow)
 {
 	cmdq_pkt_write(pkt, NULL, base_pa + BIRSZ_EN, 0x1, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, base_pa + BIRSZ_CFG, 0x2, U32_MAX);
 	/* Enable shadow */
-	cmdq_pkt_write(pkt, NULL, base_pa + BIRSZ_SHADOW_CTRL, 0x2, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + BIRSZ_SHADOW_CTRL,
+		(shadow ? 0 : 1) | 0x2, U32_MAX);
 }
 
 static s32 birsz_config_init(struct mml_comp *comp, struct mml_task *task,
 			   struct mml_comp_config *ccfg)
 {
-	birsz_init(task->pkts[ccfg->pipe], comp->base_pa);
+	birsz_init(task->pkts[ccfg->pipe], comp->base_pa, task->config->shadow);
 	return 0;
 }
 
@@ -517,9 +518,7 @@ static int probe(struct platform_device *pdev)
 
 	dbg_probed_components[dbg_probed_count++] = priv;
 
-	ret = component_add(dev, &mml_comp_ops);
-	if (ret)
-		dev_err(dev, "Failed to add component: %d\n", ret);
+	ret = mml_comp_add(priv->comp.id, dev, &mml_comp_ops);
 
 	return ret;
 }
@@ -542,6 +541,14 @@ const struct of_device_id mml_pq_birsz_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6989-mml_birsz",
+		.data = &mt6985_birsz_data,
+	},
+	{
+		.compatible = "mediatek,mt6991-mml0_birsz",
+		.data = &mt6985_birsz_data,
+	},
+	{
+		.compatible = "mediatek,mt6991-mml1_birsz",
 		.data = &mt6985_birsz_data,
 	},
 	{},

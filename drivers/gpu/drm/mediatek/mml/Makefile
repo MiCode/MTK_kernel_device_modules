@@ -11,7 +11,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
-subdir-ccflags-y += -Wno-error
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2 \
              -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc \
@@ -34,14 +33,13 @@ obj-$(CONFIG_MTK_MML) := mtk-mml.o
 
 mtk-mml-legacy-objs := mtk-mml.o
 
-ifeq ($(strip $(CONFIG_MTK_MML_DEBUG)),y)
 mtk-mml-objs += mtk-mml-monitor.o
-endif
 
 mtk-mml-objs += mtk-mml-driver.o
 mtk-mml-objs += mtk-mml-core.o
 mtk-mml-objs += mtk-mml-tile.o
 mtk-mml-objs += mtk-mml-pq-core.o
+mtk-mml-objs += mtk-mml-adaptor.o
 mtk-mml-objs += mtk-mml-drm-adaptor.o
 mtk-mml-objs += mtk-mml-dle-adaptor.o
 mtk-mml-objs += mtk-mml-buf.o
@@ -102,6 +100,11 @@ endif
 ifneq ($(wildcard $(srctree)/$(src)/mtk-mml-tp-mt6989.c),)
 obj-$(CONFIG_MTK_MML) += mtk-mml-mt6989.o
 mtk-mml-mt6989-objs := mtk-mml-tp-mt6989.o
+endif
+
+ifneq ($(wildcard $(srctree)/$(src)/mtk-mml-tp-mt6878.c),)
+obj-$(CONFIG_MTK_MML) += mtk-mml-mt6878.o
+mtk-mml-mt6878-objs := mtk-mml-tp-mt6878.o
 endif
 
 # for unit test
