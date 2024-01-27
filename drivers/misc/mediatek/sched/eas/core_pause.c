@@ -406,27 +406,17 @@ void hook_rvh_set_cpus_allowed_by_task(void __always_unused *data,
 
 	if (cpu_paused(*dest_cpu)) {
 		cpumask_andnot(&avail_cpus, cpu_valid_mask, cpu_pause_mask);
-
 		best_cpu = cpumask_any_and_distribute(&avail_cpus, new_mask);
 
-		if (best_cpu >= nr_cpu_ids) {
-			/* If p is a kthread, ignore pause mask. */
-			if (p->flags & PF_KTHREAD)
-				cpumask_and(&avail_cpus, cpu_valid_mask, new_mask);
-			else
-				cpumask_andnot(&avail_cpus, cpu_valid_mask, cpu_pause_mask);
+		if (best_cpu < nr_cpu_ids)
+			*dest_cpu = best_cpu;
 
-
-			*dest_cpu = cpumask_any_and_distribute(&avail_cpus, cpu_valid_mask);
-
-
+		if (trace_sched_set_cpus_allowed_enabled()) {
 			cpumask_copy(&valid_mask, cpu_valid_mask);
 			cpumask_copy(&new, new_mask);
-
 			trace_sched_set_cpus_allowed(p, dest_cpu, &new, &valid_mask,
-							cpu_pause_mask);
-		} else
-			*dest_cpu = best_cpu;
+						cpu_pause_mask);
+		}
 
 	}
 }
