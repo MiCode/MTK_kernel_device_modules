@@ -46,8 +46,13 @@
 // static gfp_t order_flags[] = { HIGH_ORDER_GFP, MID_ORDER_GFP, LOW_ORDER_GFP };
 static gfp_t order_flags[] = { HIGH_ORDER_GFP, MID_ORDER_GFP };
 
-// int orders[3] = { 9, 4, 0 };
-int orders[2] = { 9, 4 };
+#define BASE_SEC_HEAP_SZ (PAGE_SIZE << 3)
+
+/*
+ * 4KB page granule: 64KB, 16KB, 4KB
+ * 16KB page granule: 256KB, 64KB, 16KB
+ */
+int orders[3] = { 4, 2, 0};
 #define NUM_ORDERS ARRAY_SIZE(orders)
 struct dmabuf_page_pool *pools[NUM_ORDERS];
 
@@ -1454,7 +1459,7 @@ static int page_base_alloc_v2(struct secure_heap_page *sec_heap,
 	struct page *page, *tmp_page, *pmm_page;
 	int i = 0, smc_ret = 0;
 
-	size_remaining = ROUNDUP(req_sz, SZ_64K);
+	size_remaining = ROUNDUP(req_sz, BASE_SEC_HEAP_SZ);
 	pr_debug("%s: req_sz=%#lx, size_remaining=%#lx\n", __func__, req_sz,
 		 size_remaining);
 	// allocage pages by dma-poll
