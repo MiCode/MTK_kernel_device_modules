@@ -123,6 +123,7 @@
 
 #define XSP_U2PHYA_RESERVE1	((SSUSB_SIFSLV_U2PHY_COM) + 0x044)
 #define P2A2R1_RG_PLL_POSDIV    GENMASK(2, 0)
+#define P2A2R1_RG_PLL_REFCLK_SEL        BIT(5)
 
 #define XSP_U2PHYDCR1		((SSUSB_SIFSLV_U2PHY_COM) + 0x064)
 #define P2C_RG_USB20_SW_PLLMODE	GENMASK(19, 18)
@@ -342,6 +343,10 @@ struct xsphy_instance {
 	int tx_lctxcp1;
 	bool u3_rx_fix;
 	bool u3_gen2_hqa;
+	/* refclk source */
+	bool refclk_sel;
+	/* HWPLL mode setting */
+	bool hwpll_mode;
 	struct proc_dir_entry *phy_root;
 	struct work_struct procfs_work;
 };
@@ -1372,6 +1377,9 @@ static void u2_phy_lpm_pll_set(struct mtk_xsphy *xsphy,
 	void __iomem *pbase = inst->port_base;
 	u32 index = inst->index;
 
+	if (inst->hwpll_mode)
+		return;
+
 	if (!inst->lpm_quirk)
 		return;
 
@@ -1421,6 +1429,12 @@ static void u2_phy_instance_power_on(struct mtk_xsphy *xsphy,
 	void __iomem *pbase = inst->port_base;
 	u32 index = inst->index;
 
+	if (inst->refclk_sel) {
+		mtk_phy_set_bits(pbase + XSP_U2PHYA_RESERVE1,
+					P2A2R1_RG_PLL_REFCLK_SEL);
+		udelay(250);
+	}
+
 	mtk_phy_set_bits(pbase + XSP_U2PHYDTM0, P2D_FORCE_SUSPENDM);
 
 	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0, P2D_RG_SUSPENDM);
@@ -1443,6 +1457,9 @@ static void u2_phy_instance_power_on(struct mtk_xsphy *xsphy,
 
 	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0,
 			   (P2D_RG_XCVRSEL | P2D_RG_DATAIN | P2D_DTM0_PART_MASK));
+
+	if (inst->hwpll_mode)
+		mtk_phy_clear_bits(pbase + XSP_U2PHYDCR1, P2C_RG_USB20_SW_PLLMODE);
 
 	mtk_phy_clear_bits(pbase + XSP_USBPHYACR6, P2A6_RG_BC11_SW_EN);
 
@@ -1714,6 +1731,8 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 		if (!device_property_read_u32_array(dev, "mediatek,lpm-parameter",
 			inst->lpm_para, PHY_PLL_PARA_CNT))
 			inst->lpm_quirk = true;
+		inst->hwpll_mode = device_property_read_bool(dev, "mediatek,hwpll-mode");
+		inst->refclk_sel = device_property_read_bool(dev, "mediatek,refclk-sel");
 		dev_dbg(dev, "intr:%d, term_cal %d, src:%d, vrt:%d, term:%d\n",
 			inst->efuse_intr, inst->efuse_term_cal, inst->eye_src,
 			inst->eye_vrt, inst->eye_term);
@@ -1723,6 +1742,8 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 		dev_dbg(dev, "discth:%d, rx_sqth:%d, rev6:%d, rev6_host:%d\n",
 			inst->discth, inst->rx_sqth, inst->rev6,
 			inst->rev6_host);
+		dev_dbg(dev, "hwpll-mode:%d, refclk-sel:%d",
+				inst->hwpll_mode, inst->refclk_sel);
 		break;
 	case PHY_TYPE_USB3:
 		if (device_property_read_u32(dev, "mediatek,efuse-intr",
