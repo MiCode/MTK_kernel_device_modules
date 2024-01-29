@@ -11,6 +11,8 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/mt6681-regulator.h>
 #include <linux/regulator/of_regulator.h>
+#include <linux/i2c.h>
+#include <linux/mfd/mt6681.h>
 
 #define MT6681_REGULATOR_MODE_NORMAL	0
 #define MT6681_REGULATOR_MODE_LP	2
@@ -33,6 +35,7 @@ struct mt6681_regulator_info {
 	int oc_irq_enable_delay_ms;
 	struct delayed_work oc_work;
 	struct regulator_desc desc;
+	struct i2c_client *i2c_client;
 	u32 lp_mode_reg;
 	u32 lp_mode_mask;
 	u32 modeset_reg;
@@ -40,6 +43,8 @@ struct mt6681_regulator_info {
 	u32 vocal_reg;
 	u32 vocal_mask;
 };
+
+static struct mt6681_regulator_info *info;
 
 #define MT6681_LDO(_name, _volt_table, _enable_reg, en_bit,	\
 		   _vsel_reg, _vsel_mask, _vocal_reg,		\
@@ -74,7 +79,6 @@ static const unsigned int ldo_volt_table[] = {
 
 static unsigned int mt6681_regulator_get_mode(struct regulator_dev *rdev)
 {
-	struct mt6681_regulator_info *info = rdev_get_drvdata(rdev);
 	unsigned int val = 0;
 	int ret;
 
@@ -103,10 +107,11 @@ static unsigned int mt6681_regulator_get_mode(struct regulator_dev *rdev)
 static int mt6681_regulator_set_mode(struct regulator_dev *rdev,
 				     unsigned int mode)
 {
-	struct mt6681_regulator_info *info = rdev_get_drvdata(rdev);
 	int ret = 0;
 	int curr_mode;
+	struct i2c_adapter *adap = info->i2c_client->adapter;
 
+	scp_wake_request(adap);
 	curr_mode = mt6681_regulator_get_mode(rdev);
 	switch (mode) {
 	case REGULATOR_MODE_NORMAL:
@@ -123,14 +128,133 @@ static int mt6681_regulator_set_mode(struct regulator_dev *rdev,
 					 info->lp_mode_mask);
 		break;
 	default:
+		scp_wake_release(adap);
 		return -EINVAL;
 	}
+	scp_wake_release(adap);
 
 	if (ret) {
 		dev_info(&rdev->dev,
 			 "Failed to set mt6681 mode(%d): %d\n", mode, ret);
 	}
 	return ret;
+}
+
+int mt6681_regulator_enable_regmap(struct regulator_dev *rdev)
+{
+	unsigned int val;
+	int ret;
+	struct i2c_adapter *adap = info->i2c_client->adapter;
+
+	scp_wake_request(adap);
+
+	if (rdev->desc->enable_is_inverted) {
+		val = rdev->desc->disable_val;
+	} else {
+		val = rdev->desc->enable_val;
+		if (!val)
+			val = rdev->desc->enable_mask;
+	}
+	ret =  regmap_update_bits(rdev->regmap, rdev->desc->enable_reg,
+				  rdev->desc->enable_mask, val);
+	scp_wake_release(adap);
+
+	return ret;
+}
+
+int mt6681_regulator_disable_regmap(struct regulator_dev *rdev)
+{
+	unsigned int val;
+	int ret;
+	struct i2c_adapter *adap = info->i2c_client->adapter;
+
+	scp_wake_request(adap);
+
+	if (rdev->desc->enable_is_inverted) {
+		val = rdev->desc->enable_val;
+		if (!val)
+			val = rdev->desc->enable_mask;
+	} else {
+		val = rdev->desc->disable_val;
+	}
+
+	ret = regmap_update_bits(rdev->regmap, rdev->desc->enable_reg,
+				  rdev->desc->enable_mask, val);
+	scp_wake_release(adap);
+
+	return ret;
+}
+
+int mt6681_regulator_is_enabled_regmap(struct regulator_dev *rdev)
+{
+	unsigned int val;
+	int ret;
+	struct i2c_adapter *adap = info->i2c_client->adapter;
+
+	scp_wake_request(adap);
+
+	ret = regmap_read(rdev->regmap, rdev->desc->enable_reg, &val);
+	if (ret != 0) {
+		scp_wake_release(adap);
+		return ret;
+	}
+	scp_wake_release(adap);
+	val &= rdev->desc->enable_mask;
+
+	if (rdev->desc->enable_is_inverted) {
+		if (rdev->desc->enable_val)
+			return val != rdev->desc->enable_val;
+		return val == 0;
+	}
+	if (rdev->desc->enable_val)
+		return val == rdev->desc->enable_val;
+	return val != 0;
+}
+
+int mt6681_regulator_set_voltage_sel_regmap(struct regulator_dev *rdev, unsigned int sel)
+{
+	int ret;
+	struct i2c_adapter *adap = info->i2c_client->adapter;
+
+	scp_wake_request(adap);
+
+	sel <<= ffs(rdev->desc->vsel_mask) - 1;
+
+	ret = regmap_update_bits(rdev->regmap, rdev->desc->vsel_reg,
+				  rdev->desc->vsel_mask, sel);
+	if (ret) {
+		scp_wake_release(adap);
+		return ret;
+	}
+
+	if (rdev->desc->apply_bit)
+		ret = regmap_update_bits(rdev->regmap, rdev->desc->apply_reg,
+					 rdev->desc->apply_bit,
+					 rdev->desc->apply_bit);
+
+	scp_wake_release(adap);
+	return ret;
+}
+
+int mt6681_regulator_get_voltage_sel_regmap(struct regulator_dev *rdev)
+{
+	unsigned int val;
+	int ret;
+	struct i2c_adapter *adap = info->i2c_client->adapter;
+
+	scp_wake_request(adap);
+
+	ret = regmap_read(rdev->regmap, rdev->desc->vsel_reg, &val);
+	if (ret != 0) {
+		scp_wake_release(adap);
+		return ret;
+	}
+
+	scp_wake_release(adap);
+	val &= rdev->desc->vsel_mask;
+	val >>= ffs(rdev->desc->vsel_mask) - 1;
+
+	return val;
 }
 
 static inline unsigned int mt6681_map_mode(unsigned int mode)
@@ -148,12 +272,12 @@ static inline unsigned int mt6681_map_mode(unsigned int mode)
 static const struct regulator_ops mt6681_volt_table_ops = {
 	.list_voltage = regulator_list_voltage_table,
 	.map_voltage = regulator_map_voltage_iterate,
-	.set_voltage_sel = regulator_set_voltage_sel_regmap,
-	.get_voltage_sel = regulator_get_voltage_sel_regmap,
+	.set_voltage_sel = mt6681_regulator_set_voltage_sel_regmap,
+	.get_voltage_sel = mt6681_regulator_get_voltage_sel_regmap,
 	.set_voltage_time_sel = regulator_set_voltage_time_sel,
-	.enable = regulator_enable_regmap,
-	.disable = regulator_disable_regmap,
-	.is_enabled = regulator_is_enabled_regmap,
+	.enable = mt6681_regulator_enable_regmap,
+	.disable = mt6681_regulator_disable_regmap,
+	.is_enabled = mt6681_regulator_is_enabled_regmap,
 	.set_mode = mt6681_regulator_set_mode,
 	.get_mode = mt6681_regulator_get_mode,
 };
@@ -173,17 +297,12 @@ static struct mt6681_regulator_info mt6681_regulators[] = {
 
 static void mt6681_oc_irq_enable_work(struct work_struct *work)
 {
-	struct delayed_work *dwork = to_delayed_work(work);
-	struct mt6681_regulator_info *info
-		= container_of(dwork, struct mt6681_regulator_info, oc_work);
-
 	enable_irq(info->irq);
 }
 
 static irqreturn_t mt6681_oc_irq(int irq, void *data)
 {
 	struct regulator_dev *rdev = (struct regulator_dev *)data;
-	struct mt6681_regulator_info *info = rdev_get_drvdata(rdev);
 
 	disable_irq_nosync(info->irq);
 	if (!regulator_is_enabled_regmap(rdev))
@@ -201,7 +320,6 @@ static int mt6681_of_parse_cb(struct device_node *np,
 			      struct regulator_config *config)
 {
 	int ret;
-	struct mt6681_regulator_info *info = config->driver_data;
 
 	if (info->irq > 0) {
 		ret = of_property_read_u32(np, "mediatek,oc-irq-enable-delay-ms",
@@ -216,7 +334,7 @@ static int mt6681_regulator_probe(struct platform_device *pdev)
 {
 	struct regulator_config config = {};
 	struct regulator_dev *rdev;
-	struct mt6681_regulator_info *info;
+	struct mt6681_pmic_info *mpi = NULL;
 	int i, ret;
 
 	dev_info(&pdev->dev, "%s(), dev name %s\n", __func__,
@@ -226,6 +344,13 @@ static int mt6681_regulator_probe(struct platform_device *pdev)
 	config.regmap = dev_get_regmap(pdev->dev.parent, NULL);
 	for (i = 0; i < MT6681_MAX_REGULATOR; i++) {
 		info = &mt6681_regulators[i];
+		/* get i2c client for scp_request/release */
+		mpi = dev_get_drvdata(pdev->dev.parent);
+		if (!mpi) {
+			dev_info(&pdev->dev, "Faled to get parent driver data\n");
+			return -ENODEV;
+		}
+		info->i2c_client = mpi->i2c;
 		info->irq = platform_get_irq_byname_optional(pdev, info->desc.name);
 		info->oc_irq_enable_delay_ms = DEFAULT_DELAY_MS;
 		config.driver_data = info;
@@ -252,7 +377,6 @@ static int mt6681_regulator_probe(struct platform_device *pdev)
 			continue;
 		}
 	}
-
 	return 0;
 }
 
