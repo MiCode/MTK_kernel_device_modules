@@ -78,6 +78,7 @@ struct scp_domain_data {
 	const char *name;
 	const char *hwv_comp;
 	u32 sta_mask;
+	u32 vcp_mask;
 	int ctl_offs;
 	u32 hwv_done_ofs;
 	u32 hwv_ofs;
