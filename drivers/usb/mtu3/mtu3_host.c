@@ -214,6 +214,14 @@ int ssusb_host_enable(struct ssusb_mtk *ssusb)
 	/* update txdeemph */
 	ssusb_set_txdeemph(ssusb);
 
+	if (ssusb->eusb2_cm_l1) {
+		value = mtu3_readl(ssusb->mac_base, U3D_USB20_LPM_TIMING_PARAM);
+		value &= ~(LPM_L1_RESIDENCY_MSK);
+		value |= LPM_L1_RESIDENCY(ssusb->eusb2_cm_l1);
+		mtu3_writel(ssusb->mac_base, U3D_USB20_LPM_TIMING_PARAM, value);
+		dev_info(ssusb->dev, "U3D_USB20_LPM_TIMING_PARAM - value:0x%x\n", value);
+	}
+
 	return ret;
 }
 

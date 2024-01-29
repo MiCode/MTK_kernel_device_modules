@@ -356,6 +356,7 @@ struct ssusb_mtk {
 	struct device_link *genpd_dl_u2;
 	struct device_link *genpd_dl_u3;
 	bool use_multi_genpd;
+	u32 eusb2_cm_l1;
 };
 
 /**
