@@ -916,11 +916,15 @@ static ssize_t set_debuglv(struct file *flip,
 						   const char __user *buffer,
 						   size_t count, loff_t *f_pos)
 {
-	char tmp[16] = {0};
+	char *tmp;
 	int ret;
 	unsigned int input = 0;
 
 	if (count + 1 >= 16)
+		return -ENOMEM;
+
+	tmp = kzalloc(count + 1, GFP_KERNEL);
+	if (!tmp)
 		return -ENOMEM;
 
 	ret = copy_from_user(tmp, buffer, count);
@@ -951,7 +955,7 @@ static ssize_t set_debuglv(struct file *flip,
 	if (ret)
 		HWLOGR_ERR("Failed for hw_logger log level send.\n");
 out:
-
+	kfree(tmp);
 	return count;
 }
 
@@ -1050,11 +1054,15 @@ static ssize_t set_debugAttr(struct file *flip,
 							const char __user *buffer,
 							size_t count, loff_t *f_pos)
 {
-	char tmp[16] = {0};
+	char *tmp;
 	int ret;
 	unsigned int input = 0;
 
 	if (count + 1 >= 16)
+		return -ENOMEM;
+
+	tmp = kzalloc(count + 1, GFP_KERNEL);
+	if (!tmp)
 		return -ENOMEM;
 
 	ret = copy_from_user(tmp, buffer, count);
@@ -1073,7 +1081,7 @@ static ssize_t set_debugAttr(struct file *flip,
 	if (input <= DBG_LOG_DEBUG)
 		g_hw_logger_log_lv = input;
 out:
-
+	kfree(tmp);
 	return count;
 }
 
@@ -1598,11 +1606,15 @@ static int aov_tcm_log_sqopen(struct inode *inode, struct file *file)
 static ssize_t aov_tcm_seq_write(struct file *file,
 		const char __user *buffer, size_t count, loff_t *pos)
 {
-	char tmp[16] = {0};
+	char *tmp;
 	int ret;
 	unsigned int input = 0;
 
 	if (count + 1 >= 16)
+		return -ENOMEM;
+
+	tmp = kzalloc(count + 1, GFP_KERNEL);
+	if (!tmp)
 		return -ENOMEM;
 
 	ret = copy_from_user(tmp, buffer, count);
@@ -1630,6 +1642,7 @@ static ssize_t aov_tcm_seq_write(struct file *file,
 		}
 	}
 out:
+	kfree(tmp);
 	return count;
 }
 
