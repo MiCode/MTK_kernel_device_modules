@@ -191,7 +191,8 @@ static struct irq_mon_desc *irq_mon_desc_alloc(unsigned int irq)
 	 * This entry might be stored by concurrent irq_mon_desc_alloc()
 	 * Use xa_insert() to prevent override the entry.
 	 */
-	err = xa_insert(&imdesc_xa, irq, desc, GFP_ATOMIC);
+	scoped_guard(irq)
+		err = xa_insert(&imdesc_xa, irq, desc, GFP_ATOMIC);
 	if (!err)
 		goto out;
 
