@@ -72,6 +72,16 @@
 		mediatek,larbs-mae = <&smi_larb12>;
 		mae = <&mae>;
 		scp-dvfs-supply = <&scp_dvfs>;
+		ulposc-support;
+		vlp-base = <0x1c016000>;
+		ulposc-cali-register = <0x2c0 0x2c4 0x2c8>;
+		ulposc-cali-config = <0x0d233340 0x10000800 0x0000484a>;
+		ulposc-cali-result = <0x0 0x42000800 0x0000484a>;
+		ulposc-cali-config-num = <3>;
+		ulposc-cali-target = <260>;
+		ulposc-result-target = <26>;
+		ulposc-cali-fmeter-id = <50>;
+		ulposc-result-fmeter-id = <63>;
 	};
 
 	cache-parity {
