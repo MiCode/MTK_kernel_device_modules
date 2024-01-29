@@ -18,4 +18,7 @@ struct mt6681_pmic_info {
 	struct mutex io_lock;
 };
 
+extern int scp_wake_request(struct i2c_adapter *);
+extern int scp_wake_release(struct i2c_adapter *);
+
 #endif /* __MT6681_H__ */
