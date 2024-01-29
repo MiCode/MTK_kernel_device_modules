@@ -1561,6 +1561,7 @@ static const struct snd_kcontrol_new mtk_i2sout0_ch1_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("DL7_CH1", AFE_CONN108_1, I_DL7_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL8_CH1", AFE_CONN108_1, I_DL8_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH1", AFE_CONN108_1, I_DL_24CH_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL23_CH1", AFE_CONN108_2, I_DL23_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH1", AFE_CONN108_2, I_DL24_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_GAIN0_OUT_CH1", AFE_CONN108_0,
 				    I_GAIN0_OUT_CH1, 1, 0),
@@ -1589,6 +1590,7 @@ static const struct snd_kcontrol_new mtk_i2sout0_ch2_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("DL7_CH2", AFE_CONN109_1, I_DL7_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL8_CH2", AFE_CONN109_1, I_DL8_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH2", AFE_CONN109_1, I_DL_24CH_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL23_CH2", AFE_CONN109_2, I_DL23_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN109_2, I_DL24_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_GAIN0_OUT_CH2", AFE_CONN109_0,
 				    I_GAIN0_OUT_CH2, 1, 0),
@@ -2607,6 +2609,8 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT0_CH2", "DL7_CH2", "DL7"},
 	{"I2SOUT0_CH1", "DL8_CH1", "DL8"},
 	{"I2SOUT0_CH2", "DL8_CH2", "DL8"},
+	{"I2SOUT0_CH1", "DL23_CH1", "DL23"},
+	{"I2SOUT0_CH2", "DL23_CH2", "DL23"},
 	{"I2SOUT0_CH1", "DL_24CH_CH1", "DL_24CH"},
 	{"I2SOUT0_CH2", "DL_24CH_CH2", "DL_24CH"},
 
@@ -3214,10 +3218,11 @@ static int mtk_dai_etdm_hw_params(struct snd_pcm_substream *substream,
 	if ((channels % 2) != 0)
 		dev_info(afe->dev, "%s(), channels(%d) not even\n", __func__, channels);
 
-	if (is_etdm_in_pad_top(id))
+	if (is_etdm_in_pad_top(id)) {
 		pad_top = 0x3;
-	else
+	} else {
 		pad_top = 0x5;
+	}
 
 	switch (id) {
 	case DAI_I2SIN0:
@@ -3537,10 +3542,11 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 	else
 		AUDIO_AEE("i2s_priv == NULL");
 
-	if (is_etdm_in_pad_top(id))
+	if (is_etdm_in_pad_top(id)) {
 		pad_top = 0x3;
-	else
+	} else {
 		pad_top = 0x5;
+	}
 
 	switch (id) {
 	case DAI_FMI2S_MASTER:

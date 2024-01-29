@@ -52,6 +52,7 @@ static const char *aud_clks[CLK_NUM] = {
 	[CLK_VLP_MUX_AUD_ENG1] = "vlp_mux_aud_eng1",
 	[CLK_VLP_MUX_AUD_ENG2] = "vlp_mux_aud_eng2",
 	[CLK_VLP_MUX_AUDIO_H] = "vlp_mux_audio_h",
+	[CLK_VLP_CLK26M] = "vlp_clk26m_clk",
 	[CLK_CK_MAINPLL_D4_D4] = "ck_mainpll_d4_d4",
 	[CLK_CK_MUX_AUD_1] = "ck_mux_aud_1",
 	[CLK_CK_APLL1_CK] = "ck_apll1_ck",
@@ -68,8 +69,10 @@ static const char *aud_clks[CLK_NUM] = {
 	[CLK_CK_APLL12_DIV_FMI2S] = "ck_apll12_div_fmi2s",
 	[CLK_CK_APLL12_DIV_TDMOUT_M] = "ck_apll12_div_tdmout_m",
 	[CLK_CK_APLL12_DIV_TDMOUT_B] = "ck_apll12_div_tdmout_b",
+	[CLK_CK_ADSP_SEL] = "ck_adsp_sel",
 	[CLK_CLK26M] = "ck_clk26m_clk",
 };
+
 int mt6991_set_audio_int_bus_parent(struct mtk_base_afe *afe,
 				    int clk_id)
 {
@@ -157,11 +160,11 @@ static int apll1_mux_setting(struct mtk_base_afe *afe, bool enable)
 		mt6991_set_audio_h_parent(afe, CLK_CK_APLL1_CK);
 	} else {
 		ret = clk_set_parent(afe_priv->clk[CLK_VLP_MUX_AUD_ENG1],
-				     afe_priv->clk[CLK_CLK26M]);
+				     afe_priv->clk[CLK_VLP_CLK26M]);
 		if (ret) {
 			dev_info(afe->dev, "%s clk_set_parent %s-%s fail %d\n",
 				__func__, aud_clks[CLK_VLP_MUX_AUD_ENG1],
-				aud_clks[CLK_CLK26M], ret);
+				aud_clks[CLK_VLP_CLK26M], ret);
 			goto EXIT;
 		}
 		clk_disable_unprepare(afe_priv->clk[CLK_VLP_MUX_AUD_ENG1]);
@@ -176,7 +179,7 @@ static int apll1_mux_setting(struct mtk_base_afe *afe, bool enable)
 		}
 		clk_disable_unprepare(afe_priv->clk[CLK_CK_MUX_AUD_1]);
 
-		mt6991_set_audio_h_parent(afe, CLK_CLK26M);
+		mt6991_set_audio_h_parent(afe, CLK_VLP_CLK26M);
 		clk_disable_unprepare(afe_priv->clk[CLK_VLP_MUX_AUDIO_H]);
 	}
 
@@ -230,11 +233,11 @@ static int apll2_mux_setting(struct mtk_base_afe *afe, bool enable)
 		mt6991_set_audio_h_parent(afe, CLK_CK_APLL2_CK);
 	} else {
 		ret = clk_set_parent(afe_priv->clk[CLK_VLP_MUX_AUD_ENG2],
-				     afe_priv->clk[CLK_CLK26M]);
+				     afe_priv->clk[CLK_VLP_CLK26M]);
 		if (ret) {
 			dev_info(afe->dev, "%s clk_set_parent %s-%s fail %d\n",
 				__func__, aud_clks[CLK_VLP_MUX_AUD_ENG2],
-				aud_clks[CLK_CLK26M], ret);
+				aud_clks[CLK_VLP_CLK26M], ret);
 			goto EXIT;
 		}
 		clk_disable_unprepare(afe_priv->clk[CLK_VLP_MUX_AUD_ENG2]);
@@ -249,7 +252,7 @@ static int apll2_mux_setting(struct mtk_base_afe *afe, bool enable)
 		}
 		clk_disable_unprepare(afe_priv->clk[CLK_CK_MUX_AUD_2]);
 
-		mt6991_set_audio_h_parent(afe, CLK_CLK26M);
+		mt6991_set_audio_h_parent(afe, CLK_VLP_CLK26M);
 		clk_disable_unprepare(afe_priv->clk[CLK_VLP_MUX_AUDIO_H]);
 	}
 EXIT:
@@ -302,7 +305,7 @@ int mt6991_afe_disable_apll(struct mtk_base_afe *afe)
 
 	clk_disable_unprepare(afe_priv->clk[CLK_CK_MUX_AUD_1]);
 	clk_disable_unprepare(afe_priv->clk[CLK_CK_MUX_AUD_2]);
-	mt6991_set_audio_h_parent(afe, CLK_CLK26M);
+	mt6991_set_audio_h_parent(afe, CLK_VLP_CLK26M);
 	clk_disable_unprepare(afe_priv->clk[CLK_VLP_MUX_AUDIO_H]);
 
 	return 0;
@@ -336,6 +339,29 @@ int mt6991_afe_enable_clock(struct mtk_base_afe *afe)
 #if !defined(SKIP_SMCC_SB)
 	struct arm_smccc_res res;
 #endif
+	ret = clk_prepare_enable(afe_priv->clk[CLK_CK_ADSP_SEL]);
+	if (ret) {
+		dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
+			__func__, aud_clks[CLK_CK_ADSP_SEL], ret);
+		goto CLK_CK_ADSP_SEL_ERR;
+	}
+
+	ret = clk_prepare_enable(afe_priv->clk[CLK_VLP_MUX_AUDIOINTBUS]);
+	if (ret) {
+		dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
+			__func__, aud_clks[CLK_VLP_MUX_AUDIOINTBUS], ret);
+		goto CLK_MUX_AUDIO_INTBUS_ERR;
+	}
+	ret = mt6991_set_audio_int_bus_parent(afe, CLK_VLP_CLK26M);
+
+	ret = clk_prepare_enable(afe_priv->clk[CLK_VLP_MUX_AUDIO_H]);
+	if (ret) {
+		dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
+				__func__, aud_clks[CLK_VLP_MUX_AUDIO_H], ret);
+		goto CLK_AUDIO_H_ERR;
+	}
+	mt6991_set_audio_h_parent(afe, CLK_VLP_CLK26M);
+
 	/* IPM2.0: USE HOPPING & 26M */
 	ret = clk_prepare_enable(afe_priv->clk[CLK_HOPPING]);
 	if (ret) {
@@ -350,16 +376,6 @@ int mt6991_afe_enable_clock(struct mtk_base_afe *afe)
 		goto CLK_AFE_ERR;
 	}
 
-	/* IPM2.0: Remove CLK_MUX_AUDIO */
-
-	ret = clk_prepare_enable(afe_priv->clk[CLK_VLP_MUX_AUDIOINTBUS]);
-	if (ret) {
-		dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
-			 __func__, aud_clks[CLK_VLP_MUX_AUDIOINTBUS], ret);
-		goto CLK_MUX_AUDIO_INTBUS_ERR;
-	}
-	ret = mt6991_set_audio_int_bus_parent(afe, CLK_CLK26M);
-
 #if !defined(SKIP_SMCC_SB)
 	/* use arm_smccc_smc to notify SPM */
 	arm_smccc_smc(MTK_SIP_AUDIO_CONTROL,
@@ -372,9 +388,12 @@ CLK_AFE_ERR:
 	/* IPM2.0: Use HOPPING & 26M */
 	clk_disable_unprepare(afe_priv->clk[CLK_HOPPING]);
 	clk_disable_unprepare(afe_priv->clk[CLK_F26M]);
+CLK_AUDIO_H_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_VLP_MUX_AUDIO_H]);
 CLK_MUX_AUDIO_INTBUS_ERR:
 	clk_disable_unprepare(afe_priv->clk[CLK_VLP_MUX_AUDIOINTBUS]);
-
+CLK_CK_ADSP_SEL_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_CK_ADSP_SEL]);
 	return ret;
 }
 
@@ -384,12 +403,14 @@ void mt6991_afe_disable_clock(struct mtk_base_afe *afe)
 
 	dev_dbg(afe->dev, "%s() successfully start\n", __func__);
 
-	mt6991_set_audio_int_bus_parent(afe, CLK_CLK26M);
-	clk_disable_unprepare(afe_priv->clk[CLK_VLP_MUX_AUDIOINTBUS]);
 	/* IPM2.0: Use HOPPING & 26M */
 	clk_disable_unprepare(afe_priv->clk[CLK_HOPPING]);
 	clk_disable_unprepare(afe_priv->clk[CLK_F26M]);
-
+	mt6991_set_audio_h_parent(afe, CLK_VLP_CLK26M);
+	clk_disable_unprepare(afe_priv->clk[CLK_VLP_MUX_AUDIO_H]);
+	mt6991_set_audio_int_bus_parent(afe, CLK_VLP_CLK26M);
+	clk_disable_unprepare(afe_priv->clk[CLK_VLP_MUX_AUDIOINTBUS]);
+	clk_disable_unprepare(afe_priv->clk[CLK_CK_ADSP_SEL]);
 }
 
 int mt6991_afe_dram_request(struct device *dev)
@@ -611,6 +632,7 @@ struct mt6991_mck_div {
 	int div_clk_id;
 };
 
+
 static const struct mt6991_mck_div mck_div[MT6991_MCK_NUM] = {
 	[MT6991_I2SIN0_MCK] = {
 		.m_sel_id = CLK_CK_I2SIN0_M_SEL,
@@ -735,8 +757,8 @@ int mt6991_init_clock(struct mtk_base_afe *afe)
 	for (i = 0; i < CLK_NUM; i++) {
 		if (aud_clks[i] == NULL) {
 			dev_info(afe->dev, "%s(), clk id %d not define!!!\n",
-			 __func__, i);
-#ifndef SKIP_SB
+				 __func__, i);
+#ifndef SKIP_SB_CLK
 			AUDIO_AEE("clk not define");
 #endif
 		}
@@ -768,6 +790,7 @@ int mt6991_init_clock(struct mtk_base_afe *afe)
 		afe_priv->cksys_ck  = NULL;
 		// return PTR_ERR(afe_priv->cksys_ck);
 	}
+
 	mt6991_afe_apll_init(afe);
 	mt6991_afe_disable_apll(afe);
 	// mt6991 is not in PERI, don't need enable peri ao clk

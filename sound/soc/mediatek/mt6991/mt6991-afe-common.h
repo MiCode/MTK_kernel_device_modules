@@ -22,9 +22,11 @@
 #include <mt-plat/aee.h>
 #endif
 
-#define SKIP_SB
+// #define SKIP_SB
 /* define SKIP_SB to skip all feature */
 #ifdef SKIP_SB
+#define SKIP_SB_GPIO
+#define SKIP_SB_CLK
 #define SKIP_SB_DSP
 #define SKIP_SB_BTCVSD
 #define SKIP_SB_OFFLOAD
@@ -37,6 +39,13 @@
 #define SKIP_ACCDET
 #else
 /* delete define below if your feature don't want to skip */
+#define SKIP_SB_DSP
+#define SKIP_SB_BTCVSD
+#define SKIP_SB_OFFLOAD
+#define SKIP_SB_VOW
+#define SKIP_SB_ULTRA
+#define SKIP_SB_USB_OFFLOAD
+#define SKIP_ACCDET
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE) && !defined(IS_FPGA_EARLY_PORTING)
@@ -153,7 +162,7 @@ enum {
 	MT6991_DAI_MISO_ONLY,
 };
 
-#define MT6991_DAI_I2S_MAX_NUM 11 //depends each platform's max i2s num
+#define MT6991_DAI_I2S_MAX_NUM 13 //depends each platform's max i2s num
 #define MT6991_RECORD_MEMIF MT6991_MEMIF_VUL9
 #define MT6991_ECHO_REF_MEMIF MT6991_MEMIF_VUL8
 #define MT6991_PRIMARY_MEMIF MT6991_MEMIF_DL0
@@ -636,8 +645,11 @@ struct mt6991_afe_private {
 	int mtkaif_dmic;
 	int mtkaif_dmic_ch34;
 	int mtkaif_adda6_only;
+	/* support ap_dmic */
+	int ap_dmic;
 	unsigned int audio_r_miso1_enable;
 	unsigned int miso_only;
+
 	/* add for vs1 voter */
 	/* adda dl/ul is on */
 	bool is_adda_dl_on;

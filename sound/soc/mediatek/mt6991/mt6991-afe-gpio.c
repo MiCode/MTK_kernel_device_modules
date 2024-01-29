@@ -26,18 +26,24 @@ static struct audio_gpio_attr aud_gpios[MT6991_AFE_GPIO_GPIO_NUM] = {
 	[MT6991_AFE_GPIO_DAT_MISO1_ON] = {"aud-dat-miso1-on", false, NULL},
 	[MT6991_AFE_GPIO_DAT_MOSI_OFF] = {"aud-dat-mosi-off", false, NULL},
 	[MT6991_AFE_GPIO_DAT_MOSI_ON] = {"aud-dat-mosi-on", false, NULL},
+	[MT6991_AFE_GPIO_I2SOUT0_OFF] = {"aud-gpio-i2sout0-off", false, NULL},
+	[MT6991_AFE_GPIO_I2SOUT0_ON] = {"aud-gpio-i2sout0-on", false, NULL},
+	[MT6991_AFE_GPIO_I2SIN0_OFF] = {"aud-gpio-i2sin0-off", false, NULL},
+	[MT6991_AFE_GPIO_I2SIN0_ON] = {"aud-gpio-i2sin0-on", false, NULL},
 	[MT6991_AFE_GPIO_I2SOUT4_OFF] = {"aud-gpio-i2sout4-off", false, NULL},
 	[MT6991_AFE_GPIO_I2SOUT4_ON] = {"aud-gpio-i2sout4-on", false, NULL},
 	[MT6991_AFE_GPIO_I2SIN4_OFF] = {"aud-gpio-i2sin4-off", false, NULL},
 	[MT6991_AFE_GPIO_I2SIN4_ON] = {"aud-gpio-i2sin4-on", false, NULL},
-	[MT6991_AFE_GPIO_I2SOUT6_OFF] = {"aud-gpio-i2sout6-off", false, NULL},
-	[MT6991_AFE_GPIO_I2SOUT6_ON] = {"aud-gpio-i2sout6-on", false, NULL},
-	[MT6991_AFE_GPIO_I2SIN6_OFF] = {"aud-gpio-i2sin6-off", false, NULL},
-	[MT6991_AFE_GPIO_I2SIN6_ON] = {"aud-gpio-i2sin6-on", false, NULL},
+#ifndef SKIP_SB_VOW
 	[MT6991_AFE_GPIO_VOW_SCP_DMIC_DAT_OFF] = {"vow-scp-dmic-dat-off", false, NULL},
 	[MT6991_AFE_GPIO_VOW_SCP_DMIC_DAT_ON] = {"vow-scp-dmic-dat-on", false, NULL},
 	[MT6991_AFE_GPIO_VOW_SCP_DMIC_CLK_OFF] = {"vow-scp-dmic-clk-off", false, NULL},
 	[MT6991_AFE_GPIO_VOW_SCP_DMIC_CLK_ON] = {"vow-scp-dmic-clk-on", false, NULL},
+#endif
+	[MT6991_AFE_GPIO_AP_DMIC_OFF] = {"aud-gpio-ap-dmic-off", false, NULL},
+	[MT6991_AFE_GPIO_AP_DMIC_ON] = {"aud-gpio-ap-dmic-on", false, NULL},
+	// [MT6991_AFE_GPIO_AP_DMIC1_OFF] = {"aud-gpio-ap-dmic1-off", false, NULL},
+	// [MT6991_AFE_GPIO_AP_DMIC1_ON] = {"aud-gpio-ap-dmic1-on", false, NULL},
 	[MT6991_AFE_GPIO_DAT_MOSI_CH34_OFF] = {"aud-dat-mosi-ch34-off", false, NULL},
 	[MT6991_AFE_GPIO_DAT_MOSI_CH34_ON] = {"aud-dat-mosi-ch34-on", false, NULL},
 	[MT6991_AFE_GPIO_DAT_MISO_ONLY_OFF] = {"aud-dat-miso-only-off", false, NULL},
@@ -63,7 +69,7 @@ int mt6991_afe_gpio_init(struct mtk_base_afe *afe)
 		if (aud_gpios[i].name == NULL) {
 			dev_info(afe->dev, "%s(), gpio id %d not define!!!\n",
 			 __func__, i);
-#ifndef SKIP_SB
+#ifndef SKIP_SB_GPIO
 			AUDIO_AEE("gpio not define");
 #endif
 		}
@@ -219,6 +225,13 @@ int mt6991_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 		break;
 	case MT6991_DAI_I2S_IN0:
 	case MT6991_DAI_I2S_OUT0:
+		if (enable) {
+			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_I2SIN0_ON);
+			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_I2SOUT0_ON);
+		} else {
+			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_I2SIN0_OFF);
+			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_I2SOUT0_OFF);
+		}
 		break;
 	case MT6991_DAI_I2S_IN1:
 	case MT6991_DAI_I2S_OUT1:
@@ -234,21 +247,12 @@ int mt6991_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 		}
 		break;
 	case MT6991_DAI_I2S_IN6:
-		if (enable)
-			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_I2SIN6_ON);
-		else
-			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_I2SIN6_OFF);
-		break;
 	case MT6991_DAI_I2S_OUT6:
-		if (enable) {
-			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_I2SIN6_ON);
-			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_I2SOUT6_ON);
-		} else
-			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_I2SOUT6_OFF);
 		break;
 	case MT6991_DAI_VOW:
 		break;
 	case MT6991_DAI_VOW_SCP_DMIC:
+#ifndef SKIP_SB_VOW
 		if (enable) {
 			mt6991_afe_gpio_select(afe,
 					       MT6991_AFE_GPIO_VOW_SCP_DMIC_CLK_ON);
@@ -260,6 +264,7 @@ int mt6991_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 			mt6991_afe_gpio_select(afe,
 					       MT6991_AFE_GPIO_VOW_SCP_DMIC_DAT_OFF);
 		}
+#endif
 		break;
 	case MT6991_DAI_MTKAIF:
 		if (enable) {
@@ -275,6 +280,19 @@ int mt6991_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_DAT_MISO_ONLY_ON);
 		else
 			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_DAT_MISO_ONLY_OFF);
+		break;
+	case MT6991_DAI_AP_DMIC:
+		if (enable)
+			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_AP_DMIC_ON);
+		else
+			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_AP_DMIC_OFF);
+		break;
+	case MT6991_DAI_AP_DMIC_CH34:
+		dev_info(afe->dev, "%s(), DMIC1 is not enable, need GPIO number\n", __func__);
+		// if (enable)
+		//	mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_AP_DMIC1_ON);
+		// else
+		//	mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_AP_DMIC1_OFF);
 		break;
 	default:
 		mutex_unlock(&gpio_request_mutex);

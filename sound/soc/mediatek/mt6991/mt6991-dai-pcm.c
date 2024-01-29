@@ -137,10 +137,6 @@ static const struct snd_kcontrol_new mtk_pcm_0_playback_ch2_mix[] = {
 };
 
 static const struct snd_kcontrol_new mtk_pcm_0_playback_ch4_mix[] = {
-	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN1_CH1", AFE_CONN099_4,
-				    I_I2SIN1_CH1, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN1_CH2", AFE_CONN099_4,
-				    I_I2SIN1_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL0_CH1", AFE_CONN099_1,
 				    I_DL0_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN0_CH1", AFE_CONN099_4,

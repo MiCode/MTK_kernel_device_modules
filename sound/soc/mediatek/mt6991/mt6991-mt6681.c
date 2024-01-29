@@ -107,6 +107,9 @@ static int mt6991_compress_info_get(struct snd_kcontrol *kcontrol,
 	struct snd_device *snd_dev;
 	struct snd_compr *compr;
 	int ret = 0, i = 0;
+	bool found_type = false;
+	bool found_name = false;
+	bool found_dir = false;
 
 	snd_card = card->snd_card;
 
@@ -114,8 +117,10 @@ static int mt6991_compress_info_get(struct snd_kcontrol *kcontrol,
 
 	list_for_each_entry(snd_dev, &snd_card->devices, list) {
 		if ((unsigned int)snd_dev->type == (unsigned int)SNDRV_DEV_COMPRESS) {
+			found_type = true;
 			compr = snd_dev->device_data;
 			if (compr->device == compr_info.device) {
+				found_dir = true;
 				pr_debug("%s() compr->direction %s\n",
 					 __func__,
 					 (compr->direction) ? "Capture" : "Playback");
@@ -123,10 +128,14 @@ static int mt6991_compress_info_get(struct snd_kcontrol *kcontrol,
 			}
 			for_each_card_prelinks(card, i, dai_link) {
 				if (i == compr_info.device) {
-					pr_debug("device = %d, dai_link->name: %s\n",
-						 i, dai_link->stream_name);
-					strscpy(compr_info.id, dai_link->stream_name,
-						sizeof(compr_info.id));
+					if (dai_link->stream_name != NULL) {
+						found_name = true;
+						pr_debug("device = %d, dai_link->name: %s\n",
+							 i, dai_link->stream_name);
+						strscpy(compr_info.id, dai_link->stream_name,
+							sizeof(compr_info.id));
+					} else
+						pr_info("compress_info_get fail\n");
 					break;
 				}
 			}
@@ -135,6 +144,11 @@ static int mt6991_compress_info_get(struct snd_kcontrol *kcontrol,
 	}
 	if (copy_to_user(data, &compr_info, sizeof(struct mt6991_compress_info))) {
 		pr_info("%s(), copy_to_user fail", __func__);
+		ret = -EFAULT;
+	}
+	if (found_type == false || found_name == false || found_dir == false) {
+		pr_info("%s(), Not found! type %d, name %d or dir %d",
+			__func__, found_type, found_name, found_dir);
 		ret = -EFAULT;
 	}
 	return ret;
@@ -226,17 +240,9 @@ static int mt6991_mt6681_mtkaif_calibration(struct snd_soc_pcm_runtime *rtd)
 	int counter;
 	int mtkaif_calib_ok;
 
-	if (!afe_priv->cksys_ck) {
-		dev_warn(afe->dev, "%s cksys_ck regmap is null ptr\n", __func__);
-		return 0;
-	}
-
 	dev_info(afe->dev, "%s(), start miso_only = %d\n", __func__, afe_priv->miso_only);
 
 	pm_runtime_get_sync(afe->dev);
-
-	/* enable test on */
-	regmap_update_bits(afe->regmap, AUD_TOP_CFG_VLP_RG, 0x1, 0x1);
 
 	miso0_need_calib = mt6991_afe_gpio_is_prepared(MT6991_AFE_GPIO_DAT_MISO0_ON);
 	miso1_need_calib = mt6991_afe_gpio_is_prepared(MT6991_AFE_GPIO_DAT_MISO1_ON);
@@ -257,8 +263,8 @@ static int mt6991_mt6681_mtkaif_calibration(struct snd_soc_pcm_runtime *rtd)
 	regmap_update_bits(afe->regmap, AFE_AUD_PAD_TOP_CFG0, 0xff, 0xb9);
 
 	/* set test type to synchronizer pulse */
-	regmap_update_bits(afe_priv->cksys_ck,
-			   CKSYS_AUD_TOP_CFG, 0xffff, 0x4);
+	regmap_update_bits(afe->regmap,
+			   AUD_TOP_CFG_VLP_RG, 0xffff, 0x4);
 
 	mtkaif_calib_ok = true;
 	afe_priv->mtkaif_calibration_num_phase = 42;	/* mt6359: 0 ~ 42 */
@@ -280,8 +286,7 @@ static int mt6991_mt6681_mtkaif_calibration(struct snd_soc_pcm_runtime *rtd)
 
 		if (afe_priv->miso_only)
 			mt6681_mtkaif_loopback(codec_component, true);
-		regmap_update_bits(afe_priv->cksys_ck,
-				   CKSYS_AUD_TOP_CFG, 0x1, 0x1);
+		regmap_update_bits(afe->regmap, AUD_TOP_CFG_VLP_RG, 0x1, 0x1);
 
 		if (afe_priv->miso_only)
 			/* enable mosi_clk */
@@ -353,8 +358,7 @@ static int mt6991_mt6681_mtkaif_calibration(struct snd_soc_pcm_runtime *rtd)
 			afe_priv->mtkaif_phase_cycle[2] = prev_cycle_3;
 		}
 
-		regmap_update_bits(afe_priv->cksys_ck,
-				   CKSYS_AUD_TOP_CFG, 0x1, 0x0);
+		regmap_update_bits(afe->regmap, AUD_TOP_CFG_VLP_RG, 0x1, 0x0);
 		if (afe_priv->miso_only)
 			mt6681_mtkaif_loopback(codec_component, false);
 	}
