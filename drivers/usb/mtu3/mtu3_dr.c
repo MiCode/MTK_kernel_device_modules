@@ -480,8 +480,9 @@ static int ssusb_role_sw_set(struct usb_role_switch *sw, enum usb_role role)
 static enum usb_role ssusb_role_sw_get(struct usb_role_switch *sw)
 {
 	struct ssusb_mtk *ssusb = usb_role_switch_get_drvdata(sw);
+	struct otg_switch_mtk *otg_sx = &ssusb->otg_switch;
 
-	return ssusb->is_host ? USB_ROLE_HOST : USB_ROLE_DEVICE;
+	return otg_sx->current_role;
 }
 
 static int ssusb_role_sw_register(struct otg_switch_mtk *otg_sx)
@@ -494,16 +495,23 @@ static int ssusb_role_sw_register(struct otg_switch_mtk *otg_sx)
 	if (!otg_sx->role_sw_used)
 		return 0;
 
-	mode = usb_get_role_switch_default_mode(dev);
-	if (mode == USB_DR_MODE_PERIPHERAL)
-		otg_sx->default_role = USB_ROLE_DEVICE;
-	else
-		otg_sx->default_role = USB_ROLE_HOST;
-
 	if (ssusb->clk_mgr) {
 		/* workaround, prevent usage count issue */
 		pm_runtime_get(ssusb->dev);
 		otg_sx->default_role = USB_ROLE_NONE;
+	}
+
+	mode = usb_get_role_switch_default_mode(dev);
+	switch (mode) {
+	case USB_DR_MODE_PERIPHERAL:
+		otg_sx->default_role = USB_ROLE_DEVICE;
+		break;
+	case USB_DR_MODE_HOST:
+		otg_sx->default_role = USB_ROLE_HOST;
+		break;
+	default:
+		otg_sx->default_role = USB_ROLE_NONE;
+		break;
 	}
 
 	role_sx_desc.set = ssusb_role_sw_set;
