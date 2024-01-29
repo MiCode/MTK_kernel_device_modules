@@ -504,4 +504,13 @@
 	mt63xx_debug {
 			compatible = "mediatek,mt63xx-debug";
 	};
+
+	mtk_chrdet: mtk_chrdet {
+		compatible = "mediatek,mtk-chr-det";
+		io-channels = <&pmic_auxadc AUXADC_VCDT>;
+		io-channel-names = "pmic_vbus";
+		bootmode = <&chosen>;
+		bc12 = <&sgm41516d>;
+		vcdt_int_active;
+	};
 };/* End of main_pmic */
