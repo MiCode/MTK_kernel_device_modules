@@ -180,6 +180,7 @@
 			xo-id = <5>;
 		};
 		XO-EXT {
+			perms = <0x3ffff>;
 			xo-id = <6>;
 		};
 	};
