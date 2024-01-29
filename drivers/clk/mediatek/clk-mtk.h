@@ -18,7 +18,7 @@
 /* hw voter timeout configures */
 #define MTK_WAIT_HWV_PREPARE_CNT	100000
 #define MTK_WAIT_HWV_PREPARE_US		1
-#define MTK_WAIT_HWV_DONE_CNT		300000
+#define MTK_WAIT_HWV_DONE_CNT		5000000
 #define MTK_WAIT_HWV_DONE_US		1
 #define MTK_WAIT_HWV_STA_CNT		100
 #define MTK_HWV_ID_OFS			(0x8)
@@ -277,6 +277,7 @@ struct mtk_pll_data {
 	uint32_t hwv_done_ofs;
 	uint32_t hwv_set_sta_ofs;
 	uint32_t hwv_clr_sta_ofs;
+	uint32_t fenc_sta_ofs;
 	int hwv_shift;
 	uint32_t pd_reg;
 	uint32_t tuner_reg;
@@ -298,6 +299,7 @@ struct mtk_pll_data {
 	uint8_t pll_en_bit;
 	uint8_t en_setclr_bit;
 	uint8_t rstb_setclr_bit;
+	uint8_t fenc_sta_bit;
 };
 
 struct mtk_clk_user {

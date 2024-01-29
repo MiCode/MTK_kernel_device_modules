@@ -96,8 +96,9 @@ struct clkchk_ops {
 	void (*check_hwv_irq_sta)(void);
 	void (*check_mm_hwv_irq_sta)(void);
 	const char * const *(*get_bypass_pll_name)(void);
-	void (*dev_pm_resume)(void);
 	void (*check_apmixed_sta)(bool bug_on);
+	void (*dev_pm_resume)(void);
+	void (*external_dump)(void);
 };
 
 int pwr_hw_is_on(enum PWR_STA_TYPE type, s32 val);
@@ -113,3 +114,5 @@ void clkchk_hwv_irq_init(struct platform_device *pdev);
 extern bool pdchk_get_bug_on_stat(void);
 extern void pdchk_dump_trace_evt(void);
 extern const struct dev_pm_ops clk_chk_dev_pm_ops;
+extern void clkchk_external_dump(void);
+

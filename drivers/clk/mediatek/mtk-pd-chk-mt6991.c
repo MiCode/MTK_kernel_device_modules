@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2023 MediaTek Inc.
+ * Copyright (c) 2024 MediaTek Inc.
  * Author: Chong-ming Wei <chong-ming.wei@mediatek.com>
  */
 
@@ -15,7 +15,6 @@
 #include "clkchk-mt6991.h"
 #include "clk-fmeter.h"
 #include "clk-mt6991-fmeter.h"
-
 #define TAG				"[pdchk] "
 #define BUG_ON_CHK_ENABLE		0
 #define EVT_LEN				40
@@ -23,6 +22,8 @@
 #define PWR_STA_SHIFT			8
 #define HWV_INT_MTCMOS_TRIGGER		0x0018
 #define HWV_IRQ_STATUS			0x0500
+
+#include "vcp_status.h"
 
 static DEFINE_SPINLOCK(pwr_trace_lock);
 static unsigned int pwr_event[EVT_LEN];
@@ -763,6 +764,7 @@ struct pd_check_swcg mdpsys_config_swcgs[] = {
 	SWCG("mdp_vpp_rsz1"),
 	SWCG("mdp_mdp_dlo_async5"),
 	SWCG("mdp_img0"),
+	SWCG("mdp_f26m"),
 	SWCG("mdp_img_dl_relay0"),
 	SWCG("mdp_img_dl_relay1"),
 	SWCG(NULL),
@@ -805,6 +807,7 @@ struct pd_check_swcg mdpsys1_config_swcgs[] = {
 	SWCG("mdp1_vpp_rsz1"),
 	SWCG("mdp1_mdp_dlo_async5"),
 	SWCG("mdp1_img0"),
+	SWCG("mdp1_f26m"),
 	SWCG("mdp1_img_dl_relay0"),
 	SWCG("mdp1_img_dl_relay1"),
 	SWCG(NULL),
@@ -845,7 +848,7 @@ struct subsys_cgs_check mtk_subsys_check[] = {
 	{MT6991_CHK_PD_ISP_WPE_LITE, MT6991_CHK_PD_ISP_MAIN, wpe3_dip1_swcgs, wpe3_dip1},
 	{MT6991_CHK_PD_ISP_TRAW, MT6991_CHK_PD_ISP_MAIN, traw_dip1_swcgs, traw_dip1},
 	{MT6991_CHK_PD_ISP_TRAW, MT6991_CHK_PD_ISP_MAIN, traw_cap_dip1_swcgs, traw_cap_dip1},
-	{MT6991_CHK_PD_ISP_MAIN, MT6991_CHK_PD_ISP_VCORE, img_vcore_d1a_swcgs, img_v},
+	{MT6991_CHK_PD_ISP_VCORE, MT6991_CHK_PD_MM_INFRA1, img_vcore_d1a_swcgs, img_v},
 	{MT6991_CHK_PD_VDE0, MT6991_CHK_PD_VDE_VCORE0, vdec_soc_gcon_base_swcgs, vde1},
 	{MT6991_CHK_PD_VDE1, MT6991_CHK_PD_VDE_VCORE0, vdec_gcon_base_swcgs, vde2},
 	{MT6991_CHK_PD_VEN0, MT6991_CHK_PD_MM_INFRA1, venc_gcon_swcgs, ven1},
@@ -864,7 +867,7 @@ struct subsys_cgs_check mtk_subsys_check[] = {
 	{MT6991_CHK_PD_CAM_RMSC, MT6991_CHK_PD_CAM_RAWC, camsys_rmsc_swcgs, camsys_rmsc},
 	{MT6991_CHK_PD_CAM_RAWC, MT6991_CHK_PD_CAM_MAIN, camsys_yuvc_swcgs, cam_yc},
 	{MT6991_CHK_PD_CAM_CCU, MT6991_CHK_PD_CAM_VCORE, ccu_main_swcgs, ccu},
-	{MT6991_CHK_PD_CAM_MAIN, MT6991_CHK_PD_CAM_VCORE, cam_vcore_r1a_swcgs, cam_v},
+	{MT6991_CHK_PD_CAM_VCORE, MT6991_CHK_PD_MM_INFRA1, cam_vcore_r1a_swcgs, cam_v},
 	{MT6991_CHK_PD_MML0, MT6991_CHK_PD_DISP_VCORE, mdpsys_config_swcgs, mdp},
 	{MT6991_CHK_PD_MML1, MT6991_CHK_PD_DISP_VCORE, mdpsys1_config_swcgs, mdp1},
 	{MT6991_CHK_PD_DISP_VCORE, MT6991_CHK_PD_MM_INFRA1, disp_vdisp_ao_config_swcgs, mm_v},
@@ -918,8 +921,6 @@ unsigned int pd_list[] = {
 	MT6991_CHK_PD_ADSP_AO,
 	MT6991_CHK_PD_MM_PROC,
 	MT6991_CHK_PD_SSRSYS,
-	MT6991_CHK_PD_SPU_ISE,
-	MT6991_CHK_PD_SPU_HWROT,
 	MT6991_CHK_PD_ISP_TRAW,
 	MT6991_CHK_PD_ISP_DIP,
 	MT6991_CHK_PD_ISP_MAIN,
@@ -989,28 +990,59 @@ static enum chk_sys_id debug_dump_id[] = {
 	mfg_ao,
 	mfgsc0_ao,
 	mfgsc1_ao,
-	cci,
-	cpu_ll,
-	cpu_bl,
-	cpu_b,
-	ptp,
-	hwv,
-	hwv_ext,
+	mm_vcore_pm,
+	isp_main_pm,
+	isp_dip_pm,
+	isp_traw_pm,
+	isp_wpe_eis_pm,
+	isp_wpe_tnr_pm,
+	isp_wpe_lite_pm,
+	disp0_pm,
+	disp1_pm,
+	ovl0_pm,
+	ovl1_pm,
+	mml1_pm,
+	mml0_pm,
+	edptx_pm,
+	dptx_pm,
+	vdec0_pm,
+	vdec1_pm,
+	venc1_pm,
+	venc2_pm,
+	cam_rawa_pm,
+	cam_rawb_pm,
+	cam_rawc_pm,
+	cam_rmsa_pm,
+	cam_rmsb_pm,
+	cam_rmsc_pm,
+	cam_mraw_pm,
+	cam_main_pm,
+	cam_ccu_pm,
+	mminfra_hwvote,
+	irq_step_debug,
 	chk_sys_num,
 };
 
 static void debug_dump(unsigned int id, unsigned int pwr_sta)
 {
+	const struct fmeter_clk *fclks;
 	int i, parent_id = PD_NULL;
 
 	if (id >= MT6991_CHK_PD_NUM)
 		return;
 
-	release_mt6991_hwv_secure();
+	fclks = mt_get_fmeter_clks();
 
 	set_subsys_reg_dump_mt6991(debug_dump_id);
 
 	get_subsys_reg_dump_mt6991();
+
+	/* vcp no need to vote mminfra */
+	if (pwr_sta) {
+		vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "scpsys_hwv_on");
+	} else {
+		vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "scpsys_hwv_off");
+	}
 
 	for (i = 0; i < ARRAY_SIZE(mtk_subsys_check); i++) {
 		if (mtk_subsys_check[i].pd_id == id) {
@@ -1030,6 +1062,13 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 
 	dump_power_event();
 
+	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
+		if (fclks->type != VLPCK && fclks->type != SUBSYS)
+			pr_notice("[%s] %d khz\n", fclks->name,
+				mt_get_fmeter_freq(fclks->id, fclks->type));
+	}
+
+	mdelay(5000);
 	BUG_ON(1);
 }
 
@@ -1071,8 +1110,6 @@ static struct pd_sta pd_pwr_sta[] = {
 	{MT6991_CHK_PD_ADSP_AO, spm, 0x0E5C, GENMASK(31, 30)},
 	{MT6991_CHK_PD_MM_PROC, spm, 0x0E60, GENMASK(31, 30)},
 	{MT6991_CHK_PD_SSRSYS, spm, 0x0E84, GENMASK(31, 30)},
-	{MT6991_CHK_PD_SPU_ISE, spm, 0x0E88, GENMASK(31, 30)},
-	{MT6991_CHK_PD_SPU_HWROT, spm, 0x0E8C, GENMASK(31, 30)},
 	{MT6991_CHK_PD_ISP_TRAW, mmpc, 0x0000, GENMASK(31, 30)},
 	{MT6991_CHK_PD_ISP_DIP, mmpc, 0x0004, GENMASK(31, 30)},
 	{MT6991_CHK_PD_ISP_MAIN, mmpc, 0x0008, GENMASK(31, 30)},
@@ -1120,7 +1157,7 @@ static u32 get_pd_pwr_status(int pd_id)
 	u32 val;
 	int i;
 
-	if (pd_id == PD_NULL || pd_id > ARRAY_SIZE(pd_pwr_sta))
+	if (pd_id == PD_NULL || pd_id > MT6991_CHK_PD_NUM)
 		return 0;
 
 	for (i = 0; i < ARRAY_SIZE(pd_pwr_sta); i++) {
@@ -1137,11 +1174,17 @@ static u32 get_pd_pwr_status(int pd_id)
 }
 
 static int off_mtcmos_id[] = {
-	MT6991_CHK_PD_SSUSB_DP_PHY_P0,
-	MT6991_CHK_PD_SSUSB_P0,
 	MT6991_CHK_PD_SSUSB_P1,
 	MT6991_CHK_PD_SSUSB_P23,
 	MT6991_CHK_PD_SSUSB_PHY_P2,
+	PD_NULL,
+};
+
+static int notice_mtcmos_id[] = {
+	MT6991_CHK_PD_MD1,
+	MT6991_CHK_PD_CONN,
+	MT6991_CHK_PD_SSUSB_DP_PHY_P0,
+	MT6991_CHK_PD_SSUSB_P0,
 	MT6991_CHK_PD_PEXTP_MAC0,
 	MT6991_CHK_PD_PEXTP_MAC1,
 	MT6991_CHK_PD_PEXTP_MAC2,
@@ -1154,8 +1197,6 @@ static int off_mtcmos_id[] = {
 	MT6991_CHK_PD_ADSP_AO,
 	MT6991_CHK_PD_MM_PROC,
 	MT6991_CHK_PD_SSRSYS,
-	MT6991_CHK_PD_SPU_ISE,
-	MT6991_CHK_PD_SPU_HWROT,
 	MT6991_CHK_PD_ISP_TRAW,
 	MT6991_CHK_PD_ISP_DIP,
 	MT6991_CHK_PD_ISP_MAIN,
@@ -1196,12 +1237,6 @@ static int off_mtcmos_id[] = {
 	MT6991_CHK_PD_DSI_PHY0,
 	MT6991_CHK_PD_DSI_PHY1,
 	MT6991_CHK_PD_DSI_PHY2,
-	PD_NULL,
-};
-
-static int notice_mtcmos_id[] = {
-	MT6991_CHK_PD_MD1,
-	MT6991_CHK_PD_CONN,
 	PD_NULL,
 };
 
@@ -1258,6 +1293,14 @@ static void check_hwv_irq_sta(void)
 		debug_dump(MT6991_CHK_PD_NUM, 0);
 }
 
+static const char *get_pd_name(int idx)
+{
+	if (idx < MT6991_CHK_PD_NUM)
+		return mt6991_chk_pd_name[idx];
+
+	return NULL;
+}
+
 /*
  * init functions
  */
@@ -1277,6 +1320,7 @@ static struct pdchk_ops pdchk_mt6991_ops = {
 	.dump_power_event = dump_power_event,
 	.is_suspend_retry_stop = pdchk_is_suspend_retry_stop,
 	.check_hwv_irq_sta = check_hwv_irq_sta,
+	.get_pd_name = get_pd_name,
 };
 
 static int pd_chk_mt6991_probe(struct platform_device *pdev)

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2023 MediaTek Inc.
+ * Copyright (c) 2024 MediaTek Inc.
  * Author: Chong-ming Wei <chong-ming.wei@mediatek.com>
  */
 
@@ -614,7 +614,7 @@ static const struct mtk_gate_regs cam_m2_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_ops_hwv,				\
 		.dma_ops = &mtk_clk_gate_ops_setclr,			\
-		.flags = CLK_USE_HW_VOTER | CLK_EN_MM_INFRA_PWR,	\
+		.flags = CLK_USE_HW_VOTER,	\
 	}
 
 #define GATE_CAM_M1(_id, _name, _parent, _shift) {	\
@@ -657,7 +657,7 @@ static const struct mtk_gate_regs cam_m2_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_ops_hwv_inv,				\
 		.dma_ops = &mtk_clk_gate_ops_no_setclr_inv,			\
-		.flags = CLK_USE_HW_VOTER | CLK_EN_MM_INFRA_PWR,	\
+		.flags = CLK_USE_HW_VOTER,	\
 	}
 
 static const struct mtk_gate cam_m_clks[] = {
@@ -747,7 +747,7 @@ static const struct mtk_gate cam_m_clks[] = {
 	GATE_CAM_M0_V(CLK_CAM_MAIN_ADLWR_CAMRAWC, "cam_m_adlwr_camrawc",
 		"cam_m_adlwr"/* parent */),
 	GATE_HWV_CAM_M0(CLK_CAM_MAIN_UISP, "cam_m_uisp",
-			"ck2_cam_ck"/* parent */, 14),
+		"ck2_cam_ck"/* parent */, 14),
 	GATE_CAM_M0_V(CLK_CAM_MAIN_UISP_UISP, "cam_m_uisp_uisp",
 		"cam_m_uisp"/* parent */),
 	GATE_CAM_M0(CLK_CAM_MAIN_FAKE_ENG, "cam_m_fake_eng",
@@ -934,11 +934,16 @@ static const struct mtk_gate cam_v_clks[] = {
 	GATE_CAM_V0_V(CLK_CAM_V_MM0_SUBCOMM_CAMRAW, "cam_v_mm0_subcomm_camraw",
 		"CAM_V_MM0_SUBCOMM"/* parent */),
 	/* CAM_V1 */
-	GATE_CAM_V1(CLK_VCORE, "vcore", "ck2_mminfra_ck"/* parent */, 0),
-	GATE_CAM_V1_V(CLK_VCORE_CAMRAW, "vcore_camraw", "vcore"/* parent */),
-	GATE_CAM_V1(CLK__26M, "_26m", "ck_f26m_ck"/* parent */, 1),
-	GATE_CAM_V1_V(CLK__26M_CAMRAW, "_26m_camraw", "_26m"/* parent */),
-	GATE_CAM_V1_V(CLK__26M_SMI, "_26m_smi", "_26m"/* parent */),
+	GATE_CAM_V1(CLK_VCORE, "vcore",
+		"ck2_mminfra_ck"/* parent */, 0),
+	GATE_CAM_V1_V(CLK_VCORE_CAMRAW, "vcore_camraw",
+		"vcore"/* parent */),
+	GATE_CAM_V1(CLK__26M, "_26m",
+		"ck_f26m_ck"/* parent */, 1),
+	GATE_CAM_V1_V(CLK__26M_CAMRAW, "_26m_camraw",
+		"_26m"/* parent */),
+	GATE_CAM_V1_V(CLK__26M_SMI, "_26m_smi",
+		"_26m"/* parent */),
 };
 
 static const struct mtk_clk_desc cam_v_mcd = {
@@ -983,7 +988,7 @@ static const struct mtk_gate_regs ccu_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_ops_hwv,				\
 		.dma_ops = &mtk_clk_gate_ops_setclr,			\
-		.flags = CLK_USE_HW_VOTER | CLK_EN_MM_INFRA_PWR,	\
+		.flags = CLK_USE_HW_VOTER,	\
 	}
 
 static const struct mtk_gate ccu_clks[] = {

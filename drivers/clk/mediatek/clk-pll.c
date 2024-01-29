@@ -75,10 +75,12 @@ struct mtk_clk_pll {
 	void __iomem	*rstb_addr;
 	void __iomem	*rstb_set_addr;
 	void __iomem	*rstb_clr_addr;
+	void __iomem	*fenc_addr;
 	const struct mtk_pll_data *data;
 	struct regmap	*hwv_regmap;
 	unsigned int	en_msk;
 	unsigned int	rstb_msk;
+	unsigned int	fenc_msk;
 	unsigned int	flags;
 	unsigned int	onoff_cnt;
 };
@@ -119,7 +121,7 @@ static int mtk_pll_fenc_is_prepared(struct clk_hw *hw)
 	if (!is_registered)
 		return 0;
 
-	return  pll->onoff_cnt != 0;
+	return  (((readl(pll->fenc_addr) & pll->fenc_msk) != 0) || (pll->onoff_cnt != 0));
 }
 
 static int mtk_pll_setclr_is_prepared(struct clk_hw *hw)
@@ -383,7 +385,6 @@ static int mtk_pll_fenc_prepare(struct clk_hw *hw)
 	pll->onoff_cnt = 1;
 
 	return 0;
-
 }
 
 static void mtk_pll_fenc_unprepare(struct clk_hw *hw)
@@ -1309,6 +1310,8 @@ static struct clk *mtk_clk_register_pll(const struct mtk_pll_data *data,
 		pll->hwv_regmap = hw_voter_regmap;
 	if (data->flags & CLK_FENC_ENABLE) {
 		init.ops = &mtk_pll_fenc_ops;
+		pll->fenc_addr = base + data->fenc_sta_ofs;
+		pll->fenc_msk = BIT(data->fenc_sta_bit);
 	} else if (hw_voter_regmap && (data->flags & CLK_USE_HW_VOTER)) {
 		if (data->pll_setclr) {
 			if (data->flags & CLK_NO_RES)
