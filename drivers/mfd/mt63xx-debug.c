@@ -83,7 +83,7 @@ static int mt63xx_debug_probe(struct platform_device *pdev)
 	drvdata->regmap = chip->regmap;
 	platform_set_drvdata(pdev, drvdata);
 
-	regmap_write(chip->regmap, 0x910, 0xF);
+	//regmap_write(chip->regmap, 0x910, 0xF);
 	/* Create sysfs entry */
 	ret = device_create_file(&pdev->dev, &dev_attr_pmic_access);
 	if (ret < 0)
