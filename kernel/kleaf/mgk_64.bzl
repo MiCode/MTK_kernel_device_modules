@@ -1375,6 +1375,8 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6761.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6761-pg.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/pd-chk-mt6761.ko":"mt6761"})
+        mgk_64_device_modules.remove("drivers/char/rpmb/rpmb.ko")
+        mgk_64_device_modules.remove("drivers/char/rpmb/rpmb-mtk.ko")
 
     if "mt6768_overlay_ref.config" in DEFCONFIG_OVERLAYS:
         mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/fusb304.ko")
