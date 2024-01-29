@@ -21,9 +21,11 @@ struct mtk_extcon_info {
 	struct notifier_block tcpc_nb;
 #endif
 	bool bypss_typec_sink;
-	/* id gpio */
+	/* id/vbus gpio */
 	struct gpio_desc *id_gpiod;
+	struct gpio_desc *vbus_gpiod;
 	int id_irq;
+	int vbus_irq;
 	struct delayed_work wq_detcable;
 	unsigned int vbus_limit_cur;
 	bool vbus_cur_inlimit;
@@ -46,3 +48,7 @@ enum {
 	DUAL_PROP_PR_SNK,
 	DUAL_PROP_PR_NONE,
 };
+
+#define USB_GPIO_DEB_US	(2000)
+#define USB_GPIO_IRQ_FLAG   \
+	(IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT)
