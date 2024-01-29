@@ -60,6 +60,14 @@ config MTK_PLAT_POWER_6893
 	  If the macro is enabled, compile the mt6893 related code.
 	  If unsure, say N.
 
+config MTK_PLAT_POWER_MT6761
+	tristate "Platform power specified macro"
+	help
+	  This macro is used to distinguish the platform dependent parts
+	  from those power related features.
+	  If the macro is enabled, compile the mt6761 related code.
+	  If unsure, say N.
+
 config MTK_CPU_MSSV
 	bool "MTK CPU MSSV SUPPORT"
 	help
