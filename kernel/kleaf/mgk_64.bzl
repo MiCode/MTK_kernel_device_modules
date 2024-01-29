@@ -1001,6 +1001,27 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_modem.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
 
+    if "mt6877_overlay.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_device_modules.remove("drivers/memory/mediatek/emi.ko")
+        mgk_64_device_modules.remove("drivers/memory/mediatek/emi-fake-eng.ko")
+        mgk_64_device_modules.remove("drivers/memory/mediatek/emi-mpu.ko")
+        mgk_64_device_modules.remove("drivers/memory/mediatek/emi-mpu-test.ko")
+        mgk_64_device_modules.remove("drivers/memory/mediatek/emi-mpu-test-v2.ko")
+        mgk_64_device_modules.remove("drivers/memory/mediatek/emi-slb.ko")
+        mgk_64_device_modules.remove("drivers/memory/mediatek/smpu.ko")
+        mgk_64_device_modules.remove("drivers/memory/mediatek/slc-parity.ko")
+        mgk_64_device_modules.remove("drivers/memory/mediatek/smpu-hook-v1.ko")
+        mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi.ko")
+        mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-mpu.ko")
+        mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-mpu-test.ko")
+        mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi-dummy.ko")
+        mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-mpu-hook-v1.ko")
+        mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-slb.ko")
+        mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-mpu-test-v2.ko")
+        mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-fake-eng.ko")
+        mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-mpu-v2.ko")
+
+
     if "mt6768_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpu:gpu_mt6768")
