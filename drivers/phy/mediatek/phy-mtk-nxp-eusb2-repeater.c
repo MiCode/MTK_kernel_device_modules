@@ -21,6 +21,20 @@
 
 /* NXP eUSB2 control registers */
 
+/* LINK CONTROL 1 */
+#define LINK_CONTROL_1			0x02
+
+#define OPERATIONAL_MODE		GENMASK(2,0)
+
+#define ROLE_CONTROL			GENMASK(5,4)
+#define ROLE_CONTROL_SHIFT		4
+#define ROLE_FORCE_DUAL			0x0
+#define ROLE_FORCE_HOST			0x1
+#define ROLE_FORCE_DEVICE		0x2
+
+#define SPEED_CONTROL			GENMASK(7,6)
+#define SPEED_CONTROL_SHIFT		6
+
 /* EUSB2 RX CONTROL */
 #define EUSB2RXCONTROL			0x04
 
@@ -401,16 +415,27 @@ static int eusb2_repeater_power_off(struct phy *phy)
 static int eusb2_repeater_set_mode(struct phy *phy,
 				   enum phy_mode mode, int submode)
 {
-	/* struct eusb2_repeater *rptr = phy_get_drvdata(phy); */
+	struct eusb2_repeater *rptr = phy_get_drvdata(phy);
+	u8 val;
+
+	dev_info(rptr->dev, "%s %d\n", __func__, mode);
+
+	val = i2c_smbus_read_byte_data(rptr->i2c, LINK_CONTROL_1);
+	val &= ~ROLE_CONTROL;
 
 	switch (mode) {
 	case PHY_MODE_USB_HOST:
+		val |= ROLE_FORCE_HOST << ROLE_CONTROL_SHIFT;
 		break;
 	case PHY_MODE_USB_DEVICE:
+		val |= ROLE_FORCE_DEVICE << ROLE_CONTROL_SHIFT;
 		break;
 	default:
-		return -EINVAL;
+		val |= ROLE_FORCE_DUAL << ROLE_CONTROL_SHIFT;
+		break;
 	}
+
+	i2c_smbus_write_byte_data(rptr->i2c, LINK_CONTROL_1, val);
 
 	return 0;
 }
