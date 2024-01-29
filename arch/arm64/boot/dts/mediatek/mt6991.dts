@@ -4394,7 +4394,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			scp-wake-en = <1>;
 			vlpcfg-base = <0x1c001000>;
 			vlp-scp-sleep = <0x92c 0x1 0x4>;
-			vlp-scp-sleep-stat = <0x934 0xf0000>;
+			vlp-scp-sleep-stat = <0x934 0xf0000 0x1f00>;
+			mediatek,wake-scp-check-en;
+			mediatek,use-l2-slp-stat;
 		};
 
 				eth0: ethernet@16570000 {
