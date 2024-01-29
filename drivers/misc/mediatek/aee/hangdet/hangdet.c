@@ -438,7 +438,7 @@ static const int irq_to_ipi_type(int irq)
 
 #define MAX_HWT_IRQ_FILE_SIZE SZ_128K
 #define MAX_HWT_IRQ_BUF_SIZE (MAX_HWT_IRQ_FILE_SIZE / 2)
-#define CHK_HWT_IRQ 0
+#define CHK_HWT_IRQ 1
 static char *hwt_irq_info;
 static char *irq_buf_a;
 static char *irq_buf_b;
