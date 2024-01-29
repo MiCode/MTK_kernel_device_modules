@@ -2534,7 +2534,7 @@
 	ufshci:ufshci@11270000 {
 		compatible = "mediatek,mt8183-ufshci";
 		reg = <0 0x11270000 0 0x2300>;
-		interrupts = <GIC_SPI 137 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 137 IRQ_TYPE_LEVEL_HIGH 0>;
 
 		clocks =
 			<&infracfg_ao_clk CLK_IFRAO_UFS>,
@@ -2549,16 +2549,16 @@
 						<0 0>;
 
 		/* vcc-supply = <&mt_pmic_vemc_ldo_reg>; */
-		vcc-fixed-regulator;
 
 		resets = <&infracfg_rst 0>, <&infracfg_rst 1>,
 				 <&infracfg_rst 2>;
 		reset-names = "hci_rst", "unipro_rst", "crypto_rst";
 
-		/* Reference clock control mode */
-		/* SW mode: 0, Half-HW mode: 1, HW mode: 2 */
-		mediatek,refclk_ctrl = <2>;
+		bootmode = <&chosen>;
 
+		mediatek,ufs-disable-mcq;
+		mediatek,ufs-disable-ah8;
+		mediatek,ufs-support-va09;
 		mediatek,ufs-qos;
 	};
 
