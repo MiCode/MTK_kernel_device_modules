@@ -18,6 +18,9 @@ scpsys-dummy-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-dummy.o
 ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6768.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6768.o mtk-scpsys-bringup.o
 endif
+ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6761.c),)
+obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6761.o mtk-scpsys-bringup.o
+endif
 ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6886.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6886.o mtk-scpsys-bringup.o
 endif
