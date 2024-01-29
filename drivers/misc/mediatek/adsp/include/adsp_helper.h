@@ -8,6 +8,8 @@
 
 #include <linux/notifier.h>
 
+//#define CFG_FPGA
+
 /* reset recovery feature kernel option*/
 #define CFG_RECOVERY_SUPPORT
 

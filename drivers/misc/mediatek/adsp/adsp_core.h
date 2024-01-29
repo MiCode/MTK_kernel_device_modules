@@ -22,6 +22,13 @@ enum ADSP_CORE_STATE {
 	ADSP_SUSPENDING  = 4,
 };
 
+enum ADSP_PD {
+	ADSP_TOP = 0,
+	ADSP_INFRA,
+	ADSP_AO,
+	ADSP_PD_NUM,
+};
+
 enum adsp_smc_ops {
 	MTK_ADSP_KERNEL_OP_INIT = 0,
 	MTK_ADSP_KERNEL_OP_ENTER_LP,
@@ -49,6 +56,7 @@ struct adsp_priv *_get_adsp_core(void *ptr, int id);
 void set_adsp_state(struct adsp_priv *pdata, int state);
 int get_adsp_state(struct adsp_priv *pdata);
 bool is_adsp_system_running(void);
+bool has_system_l2sram(void);
 
 void switch_adsp_power(bool on);
 int adsp_reset(void);
@@ -68,6 +76,7 @@ int adsp_copy_from_sharedmem(struct adsp_priv *pdata, int id, void *dst, int cou
 
 void adsp_extern_notify_chain(enum ADSP_NOTIFY_EVENT event);
 void adsp_pow_clk_dump(void);
+void adsp_slp_prot_set(bool en, enum ADSP_PD domain);
 
 /* wakelock */
 int adsp_awake_lock(u32 cid);

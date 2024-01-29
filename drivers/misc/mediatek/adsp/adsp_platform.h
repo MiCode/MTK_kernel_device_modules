@@ -7,6 +7,7 @@
 #define __ADSP_PLATFORM_H__
 
 struct adspsys_priv;
+struct adsp_priv;
 
 enum adsp_sharedmem_id {
 	ADSP_SHAREDMEM_BOOTUP_MARK = 0,
@@ -36,6 +37,8 @@ void adsp_mt_disable_wdt(u32 cid);
 void adsp_mt_toggle_semaphore(u32 bit);
 u32 adsp_mt_get_semaphore(u32 bit);
 bool check_hifi_status(u32 mask);
+u32 read_adsp_sys_status(u32 cid);
+u32 get_adsp_sys_status(struct adsp_priv *pdata);
 bool is_adsp_axibus_idle(u32 *backup);
 bool is_infrabus_timeout(void);
 

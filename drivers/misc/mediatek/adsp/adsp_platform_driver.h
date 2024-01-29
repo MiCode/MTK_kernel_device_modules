@@ -9,6 +9,7 @@
 #include <linux/miscdevice.h>   /* needed by miscdevice* */
 #include <linux/workqueue.h>
 #include <linux/interrupt.h>
+#include <linux/kfifo.h>
 #include "adsp_platform.h"
 #include "adsp_clk.h"
 #include "adsp_helper.h"
@@ -60,10 +61,12 @@ struct adsp_priv {
 	void __iomem *itcm;
 	void __iomem *dtcm;
 	void __iomem *sysram;
+	void __iomem *l2sram;
 	size_t itcm_size;
 	size_t dtcm_size;
 	size_t sysram_size;
 	phys_addr_t sysram_phys;
+	size_t l2sram_size;
 
 	const struct sharedmem_info *mapping_table;
 
@@ -77,7 +80,7 @@ struct adsp_priv {
 	struct log_ctrl_s *log_ctrl;
 
 	struct device *dev;
-	struct dentry *debugfs;
+	struct kfifo tracefifo;
 	struct miscdevice mdev;
 	struct workqueue_struct *wq;
 	struct completion done;
@@ -92,6 +95,7 @@ struct adsp_priv {
 struct adspsys_priv {
 	u32 num_cores;
 	u32 slp_prot_ctrl;
+	u32 system_l2sram;
 
 	/* address & size */
 	void __iomem *cfg;
@@ -120,6 +124,7 @@ struct adsp_c2c_share_dram_info_t {
 extern const struct file_operations adspsys_file_ops;
 extern struct attribute_group adsp_excep_attr_group;
 extern const struct file_operations adsp_debug_ops;
+extern const struct file_operations adsp_trace_ops;
 extern const struct file_operations adsp_core_file_ops;
 extern struct attribute_group adsp_default_attr_group;
 

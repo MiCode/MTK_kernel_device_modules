@@ -7,6 +7,7 @@
 #include <linux/device.h>
 #include <linux/sysfs.h>
 #include <linux/debugfs.h>
+#include <linux/poll.h>
 #include <linux/uaccess.h>
 #include <linux/soc/mediatek/mtk-mbox.h>
 #include "adsp_reserved_mem.h"
@@ -228,6 +229,154 @@ const struct file_operations adsp_debug_ops = {
 	.open = simple_open,
 	.read = adsp_debug_read,
 	.write = adsp_debug_write,
+};
+
+/* ---------------------------- trace fs ----------------------------------- */
+#define ADSP_TRACE_SIZE   (256 * 1024) /* bottom of debug memory, Must align firmware */
+
+static void adsp_trace_update_w_ptr(int id, void *buf, unsigned int len)
+{
+	struct adsp_priv *pdata = NULL;
+	u32 *data = (u32 *)buf;
+	unsigned int cid, size, flag;
+
+	if (!buf)
+		return;
+
+	cid = data[0];
+	size = data[1];
+	flag = data[2];
+
+	pdata = get_adsp_core_by_id(cid);
+	if (!pdata)
+		return;
+
+	pdata->tracefifo.kfifo.in += size;
+
+	if (flag) { /* TRACE_GOING = 1 */
+		/* drop data if it don't have space for next update */
+		/* TODO: LOCK reader */
+		if (kfifo_avail(&pdata->tracefifo) < size) {
+			pdata->tracefifo.kfifo.out += size;
+			pr_debug("%s(), drop data size:%u, len:%d, avail:%d", __func__, size,
+				 kfifo_len(&pdata->tracefifo),
+				 kfifo_avail(&pdata->tracefifo));
+		}
+	}
+
+	pr_debug("%s(), return size:+%d, len:%d, avail:%d", __func__, size,
+		 kfifo_len(&pdata->tracefifo),
+		 kfifo_avail(&pdata->tracefifo));
+
+	/* wakeup if trace_poll */
+	wake_up_interruptible(&adspsys->waitq);
+}
+
+static unsigned int adsp_trace_poll(struct file *filp, poll_table *wait)
+{
+	struct adsp_priv *pdata = filp->private_data;
+
+	if (!(filp->f_mode & FMODE_READ))
+		return POLLERR;
+
+	poll_wait(filp, &adspsys->waitq, wait);
+
+	if (!kfifo_is_empty(&pdata->tracefifo))
+		return POLLIN | POLLRDNORM;
+
+	return 0;
+}
+
+static int adsp_trace_open(struct inode *inode, struct file *file)
+{
+	struct adsp_priv *pdata = inode->i_private;
+	char *buffer = NULL;
+	size_t size;
+	unsigned int memid;
+
+	if (!inode->i_private)
+		return -ENODEV;
+
+	file->private_data = inode->i_private;
+
+	if (!kfifo_initialized(&pdata->tracefifo)) {
+		/* trace kfifo initialize, use bottom of debug memory */
+		if (pdata->id == ADSP_A_ID)
+			memid = ADSP_A_DEBUG_DUMP_MEM_ID;
+		else
+			memid = ADSP_B_DEBUG_DUMP_MEM_ID;
+
+		buffer = adsp_get_reserve_mem_virt(memid);
+		size = adsp_get_reserve_mem_size(memid);
+
+		if (!buffer || size < ADSP_TRACE_SIZE)
+			return -ENOMEM;
+
+		buffer += size - ADSP_TRACE_SIZE;
+		kfifo_init(&pdata->tracefifo, buffer, ADSP_TRACE_SIZE);
+
+		adsp_ipi_registration(ADSP_IPI_TRAX_DONE,
+				      adsp_trace_update_w_ptr, "trace_update_w");
+
+		pr_debug("%s(), init done %d, %p, %zu", __func__,
+			 kfifo_initialized(&pdata->tracefifo), buffer, size);
+	}
+
+	return nonseekable_open(inode, file);
+}
+
+static ssize_t adsp_trace_read(struct file *filp, char __user *buf,
+			       size_t count, loff_t *pos)
+{
+	struct adsp_priv *pdata = filp->private_data;
+	unsigned int copied;
+	int ret;
+
+	/* TODO: LOCK reader */
+	ret = kfifo_to_user(&pdata->tracefifo, buf, count, &copied);
+
+	pr_debug("%s(), ret %d, copied %u", __func__, ret, copied);
+	return ret ? ret : copied;
+}
+
+static ssize_t adsp_trace_write(struct file *filp, const char __user *buffer,
+				size_t count, loff_t *ppos)
+{
+	char buf[64];
+	unsigned int enable = 0, n = 0;
+	struct adsp_priv *pdata = filp->private_data;
+
+	if (copy_from_user(buf, buffer, min(count, sizeof(buf))))
+		return -EFAULT;
+
+	if (kstrtouint(buf, 0, &enable) != 0)
+		return -EINVAL;
+
+	if (enable) {
+		kfifo_reset(&pdata->tracefifo);
+		n = snprintf(buf, sizeof(buf), "trace_start");
+	} else {
+		n = snprintf(buf, sizeof(buf), "trace_stop");
+	}
+
+	pr_info("%s(), send '%s' to adsp kfifo:%d/%d", __func__, buf,
+		kfifo_avail(&pdata->tracefifo),
+		kfifo_size(&pdata->tracefifo));
+
+	if (_adsp_register_feature(pdata->id, SYSTEM_FEATURE_ID, 0) == 0) {
+		adsp_push_message(ADSP_IPI_ADSP_TIMER, buf, sizeof(buf), 0, pdata->id);
+		_adsp_deregister_feature(pdata->id, SYSTEM_FEATURE_ID, 0);
+	}
+
+	return count;
+}
+
+const struct file_operations adsp_trace_ops = {
+	.open = adsp_trace_open,
+	.read = adsp_trace_read,
+	.write = adsp_trace_write,
+	.poll = adsp_trace_poll,
+	.llseek = noop_llseek,
 };
 
 /* ------------------------------ misc device ----------------------------- */

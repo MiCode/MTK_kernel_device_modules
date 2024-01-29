@@ -8,6 +8,7 @@
 #include <linux/io.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/pm_domain.h>
 #include "adsp_mbox.h"
 #include "adsp_platform.h"
 #include "adsp_platform_driver.h"
@@ -114,6 +115,7 @@ static const struct of_device_id adspsys_of_ids[] = {
 	{ .compatible = "mediatek,mt6886-adspsys", .data = &mt6879_adspsys_desc},
 	{ .compatible = "mediatek,mt6897-adspsys", .data = &mt6983_adspsys_desc},
 	{ .compatible = "mediatek,mt6989-adspsys", .data = &mt6983_adspsys_desc},
+	{ .compatible = "mediatek,mt6991-adspsys", .data = &mt6983_adspsys_desc},
 	{}
 };
 
@@ -130,12 +132,19 @@ static const struct of_device_id adsp_core_of_ids[] = {
 	{ .compatible = "mediatek,mt6897-adsp_core_1", .data = &mt6983_adsp_c1_desc},
 	{ .compatible = "mediatek,mt6989-adsp_core_0", .data = &mt6983_adsp_c0_desc},
 	{ .compatible = "mediatek,mt6989-adsp_core_1", .data = &mt6983_adsp_c1_desc},
+	{ .compatible = "mediatek,mt6991-adsp_core_0", .data = &mt6983_adsp_c0_desc},
+	{ .compatible = "mediatek,mt6991-adsp_core_1", .data = &mt6983_adsp_c1_desc},
 	{}
 };
 
 static const struct of_device_id adsp_qos_scene_of_ids[] = {
 	{ .compatible = "mediatek,mt6897-audio-dsp-hrt-bw"},
 	{ .compatible = "mediatek,mt6989-audio-dsp-hrt-bw"},
+	{},
+};
+
+static const struct of_device_id adsp_slp_prot_of_ids[] = {
+	{ .compatible = "mediatek,mt6991-adsp-slp-prot"},
 	{},
 };
 
@@ -197,6 +206,11 @@ static int adspsys_drv_probe(struct platform_device *pdev)
 	}
 
 	of_property_read_u32(dev->of_node, "core-num", &adspsys->num_cores);
+
+	ret = of_property_read_u32(dev->of_node, "system-l2sram",
+				   &adspsys->system_l2sram);
+	if (ret)
+		pr_info("%s, system l2sram not support %d\n", __func__, adspsys->system_l2sram);
 
 	ret = adsp_clk_probe(pdev, &adspsys->clk_ops);
 	if (ret) {
@@ -290,6 +304,14 @@ static int adsp_core_drv_probe(struct platform_device *pdev)
 	pdata->irq[ADSP_IRQ_AUDIO_ID].seq = platform_get_irq(pdev, 2);
 	pdata->irq[ADSP_IRQ_AUDIO_ID].clear_irq = adsp_mt_clr_auidoirq;
 
+	/* get l2sram resource from platform_device */
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+	if (res) {
+		pdata->l2sram = devm_ioremap_resource(dev, res);
+		pdata->l2sram_size = resource_size(res);
+	} else
+		pr_info("%s, l2sram not support\n", __func__);
+
 	of_property_read_u64_array(dev->of_node, "system", system_info, 2);
 	pdata->sysram_phys = (phys_addr_t)system_info[0];
 	pdata->sysram_size = (size_t)system_info[1];
@@ -347,6 +369,49 @@ static int adsp_qos_scene_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int adsp_pd_event(struct notifier_block *nb,
+				  unsigned long flags , void *data)
+{
+	switch (flags) {
+	case GENPD_NOTIFY_ON:
+		adsp_slp_prot_set(false, ADSP_INFRA);
+		break;
+	case GENPD_NOTIFY_PRE_OFF:
+		adsp_slp_prot_set(true, ADSP_INFRA);
+		break;
+	default:
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block adsp_pd_notifier_block = {
+	.notifier_call = adsp_pd_event,
+	.priority = 0,
+};
+
+static int adsp_slp_prot_probe(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	int ret = 0;
+
+	pm_runtime_enable(&pdev->dev);
+	if (!pm_runtime_enabled(&pdev->dev))
+		pr_info("%s(), pm_runtime_enable fail, %d\n", __func__, ret);
+
+	ret = dev_pm_genpd_add_notifier(dev, &adsp_pd_notifier_block);
+	if (ret)
+		pr_info("%s() register pd notifier fail %d", __func__, ret);
+
+	return ret;
+}
+
+static int adsp_slp_prot_remove(struct platform_device *pdev)
+{
+	return 0;
+}
+
 static struct platform_driver adspsys_driver = {
 	.probe = adspsys_drv_probe,
 	.remove = adspsys_drv_remove,
@@ -395,11 +460,24 @@ static struct platform_driver adsp_qos_scene_driver = {
 	},
 };
 
+static struct platform_driver adsp_slp_prot_driver = {
+	.probe = adsp_slp_prot_probe,
+	.remove = adsp_slp_prot_remove,
+	.driver = {
+		.name = "adsp-slp-prot",
+		.owner = THIS_MODULE,
+#if IS_ENABLED(CONFIG_OF)
+		.of_match_table = adsp_slp_prot_of_ids,
+#endif
+	},
+};
+
 static struct platform_driver * const drivers[] = {
 	&adspsys_driver,
 	&adsp_core0_driver,
 	&adsp_core1_driver,
 	&adsp_qos_scene_driver,
+	&adsp_slp_prot_driver,
 };
 
 int notify_adsp_semaphore_event(struct notifier_block *nb,

@@ -58,9 +58,7 @@ static bool is_adsp_core_suspend(struct adsp_priv *pdata)
 	if (unlikely(!pdata))
 		return false;
 
-	adsp_copy_from_sharedmem(pdata,
-				 ADSP_SHAREDMEM_SYS_STATUS,
-				 &status, sizeof(status));
+	status = get_adsp_sys_status(pdata);
 
 	if (pdata->id == ADSP_A_ID) {
 		is_bus_idle = is_adsp_axibus_idle(&adsp_pending_cnt);
@@ -80,9 +78,7 @@ static void show_adsp_core_suspend(struct adsp_priv *pdata)
 	if (unlikely(!pdata))
 		return;
 
-	adsp_copy_from_sharedmem(pdata,
-				 ADSP_SHAREDMEM_SYS_STATUS,
-				 &status, sizeof(status));
+	status = get_adsp_sys_status(pdata);
 
 	if (pdata->id == ADSP_A_ID)
 		pr_info("%s(), IS_WFI(%d), IS_BUS_IDLE(%d), PENDING(0x%x), STATUS(%d)", __func__,
@@ -399,11 +395,13 @@ int adsp_core_common_init(struct adsp_priv *pdata)
 {
 	int ret = 0;
 #if IS_ENABLED(CONFIG_DEBUG_FS)
-	char name[10] = {0};
+	char name[11] = {0};
 
-	ret = snprintf(name, 10, "audiodsp%d", pdata->id);
-	pdata->debugfs = debugfs_create_file(name, S_IFREG | 0644, NULL,
-					     pdata, &adsp_debug_ops);
+	ret = snprintf(name, 11, "audiodsp%d", pdata->id);
+	debugfs_create_file(name, S_IFREG | 0644, NULL, pdata, &adsp_debug_ops);
+
+	ret = snprintf(name, 11, "adsptrace%d", pdata->id);
+	debugfs_create_file(name, S_IFREG | 0644, NULL, pdata, &adsp_trace_ops);
 #endif
 
 	/* wdt irq */
