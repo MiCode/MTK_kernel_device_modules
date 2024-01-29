@@ -16,7 +16,10 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/include/
 
 #subdir-ccflags-y += -Wno-error
 
+ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
 obj-m += gpueb.o
+endif
+
 gpueb-y += \
     gpueb_init.o \
     gpueb_ipi.o \
