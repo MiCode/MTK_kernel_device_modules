@@ -104,6 +104,7 @@ void mtk_emidbg_dump(void);
 
 /* mtk emimpu api */
 #if IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
+int emimpu_ap_region_init(void);
 int mtk_emimpu_init_region(
 	struct emimpu_region_t *rg_info, unsigned int rg_num);
 int mtk_emimpu_set_addr(struct emimpu_region_t *rg_info,
