@@ -203,7 +203,7 @@
 				<0x23 0x03>,	/* TxMH 5G - WIFI_TX_LF_G3 */
 				<0x24 0x06>,	/* TxHE 5G - WIFI_TX_LF_G4 */
 				<0x25 0x01>,	/* TxH 5G - WIFI_TX_LF_G5 */
-				<0x30 0x0f>,	/* TxL 6G - WIFI_TX_HF_G0 */
+				<0x30 0x07>,	/* TxL 6G - WIFI_TX_HF_G0 */
 				<0x31 0x0c>,	/* TxML 6G - WIFI_TX_HF_G1 */
 				<0x32 0x0d>,	/* TxM 6G - WIFI_TX_HF_G2 */
 				<0x33 0x0b>,	/* TxMH 6G - WIFI_TX_HF_G3 */
