@@ -4125,7 +4125,7 @@ static void check_is_mml_layer(const int disp_idx,
 	}
 	if ((down_scale_cnt > 1) && !(mtk_crtc->is_mml_dl
 		|| mtk_crtc->is_mml || l_rule_info->bk_mml_dl_lye)) {
-		u32 cnt = __builtin_popcount(mml_ovl_layers);
+		u32 cnt = hweight32(mml_ovl_layers);
 		enum MTK_LAYERING_CAPS dc_cap = MTK_MML_DISP_DECOUPLE_LAYER;
 
 		while (cnt--) {
