@@ -238,6 +238,12 @@ int mtu3_device_enable(struct mtu3 *mtu)
 				SSUSB_U2_UTMI_DATABUS_16_8);
 	}
 
+	if (!mtu->ssusb->utmi_8bit) {
+		mtu3_setbits(ibase, U3D_SSUSB_SYS_CK_CTRL, SSUSB_U2_UTMI_DATABUS_16_8);
+		dev_info(mtu->dev, "U3D_SSUSB_SYS_CK_CTRL - value:0x%x\n",
+			mtu3_readl(ibase, U3D_SSUSB_SYS_CK_CTRL));
+	}
+
 	return ssusb_check_clocks(mtu->ssusb, check_clk);
 }
 

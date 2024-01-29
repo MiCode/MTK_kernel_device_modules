@@ -878,6 +878,8 @@ get_phy:
 
 	of_property_read_u32(node, "mediatek,eusb2-cm-l1", &ssusb->eusb2_cm_l1);
 
+	ssusb->utmi_8bit = of_property_read_bool(node, "mediatek,utmi-8bit");
+
 	otg_sx->vbus = devm_regulator_get(dev, "vbus");
 	if (IS_ERR(otg_sx->vbus)) {
 		dev_err(dev, "failed to get vbus\n");
