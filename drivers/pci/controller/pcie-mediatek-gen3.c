@@ -61,6 +61,7 @@
 #define PCIE_HWMODE_EN			BIT(0)
 #define PEXTP_REQ_CTRL			0x7C
 #define PCIE_26M_REQ_FORCE_ON		BIT(0)
+#define RG_PCIE26M_BYPASS		BIT(4)
 #define PEXTP_SLPPROT_RDY		0x264
 /* PCIe0/1 is bit2/3, PCIe2 is bit4/5 */
 #define PEXTP_MAC_SLP_READY(port)	BIT(2 + (port/2) * 2)
@@ -168,6 +169,8 @@
 
 #define PCIE_MSI_SET_ADDR_HI_BASE	0xc80
 #define PCIE_MSI_SET_ADDR_HI_OFFSET	0x04
+
+#define PHY_ERR_DEBUG_LANE0		0xD40
 
 #define PCIE_MSI_GRP2_SET_OFFSET	0xDC0
 #define PCIE_MSI_GRPX_PER_SET_OFFSET	4
@@ -1270,11 +1273,21 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 		}
 	}
 
-	/* deassert MAC reset before phy_init, Because 6991 short reach
-	 * update pipe setting need Mac reset deassert.
+	/* PHY init update short reach setting requires pipe clock,
+	 * and pipe clock depends on mac resource ready, so power on MAC first
 	 */
-	reset_control_deassert(port->phy_reset);
 	reset_control_deassert(port->mac_reset);
+	/* MAC power on and enable transaction layer clocks */
+	pm_runtime_enable(dev);
+	pm_runtime_get_sync(dev);
+
+	err = clk_bulk_prepare_enable(port->num_clks, port->clks);
+	if (err) {
+		dev_info(dev, "failed to enable clocks\n");
+		goto err_clk_init;
+	}
+
+	reset_control_deassert(port->phy_reset);
 
 	/* PHY power on and enable pipe clock */
 	err = phy_init(port->phy);
@@ -1289,27 +1302,17 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 		goto err_phy_on;
 	}
 
-	/* MAC power on and enable transaction layer clocks */
-	pm_runtime_enable(dev);
-	pm_runtime_get_sync(dev);
-
-	err = clk_bulk_prepare_enable(port->num_clks, port->clks);
-	if (err) {
-		dev_err(dev, "failed to enable clocks\n");
-		goto err_clk_init;
-	}
-
 	return 0;
 
-err_clk_init:
-	pm_runtime_put_sync(dev);
-	pm_runtime_disable(dev);
-	reset_control_assert(port->mac_reset);
-	phy_power_off(port->phy);
 err_phy_on:
 	phy_exit(port->phy);
 err_phy_init:
 	reset_control_assert(port->phy_reset);
+	clk_bulk_disable_unprepare(port->num_clks, port->clks);
+err_clk_init:
+	pm_runtime_put_sync(dev);
+	pm_runtime_disable(dev);
+	reset_control_assert(port->mac_reset);
 
 	return err;
 }
@@ -1567,6 +1570,7 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x80, 0x81, 0x82, 0x87));
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x3, 0x3, 0x3, 0x3));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x00, 0x01, 0x07, 0x16));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x51, 0x52, 0x54, 0x55));
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x4, 0x4, 0x4, 0x4));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0xc9, 0xca, 0xcb, 0xcd));
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x5, 0x5, 0x5, 0x5));
@@ -1575,9 +1579,10 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0xc, 0xc, 0xc, 0xc));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x45, 0x47, 0x48, 0x49));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x4a, 0x4b, 0x4c, 0x4d));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x46, 0x51, 0x52, 0x0));
 	}
 
-	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x\n",
+	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, phy err=%#x\n",
 		port->port_num,
 		readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 		readl_relaxed(port->base + PCIE_LINK_STATUS_REG),
@@ -1592,7 +1597,8 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 			      PCIE_MSI_SET_STATUS_OFFSET),
 		readl_relaxed(port->base + PCIE_AXI0_ERR_ADDR_L),
 		readl_relaxed(port->base + PCIE_AXI0_ERR_INFO),
-		readl_relaxed(port->base + PCIE_RES_STATUS));
+		readl_relaxed(port->base + PCIE_RES_STATUS),
+		readl_relaxed(port->base + PHY_ERR_DEBUG_LANE0));
 
 	/* Clear AXI info after dump */
 	writel_relaxed(PCIE_ERR_STS_CLEAR, port->base + PCIE_AXI0_ERR_INFO);
@@ -1757,6 +1763,8 @@ u32 mtk_pcie_dump_link_info(int port)
 			    PCIE_MSI_SET_OFFSET + PCIE_MSI_SET_STATUS_OFFSET);
 	if (val & DRIVER_OWN_IRQ_STATUS)
 		ret_val |= BIT(9);
+
+	dev_info(pcie_port->dev, "dump info return = %#x\n", ret_val);
 
 	return ret_val;
 }
@@ -2431,6 +2439,13 @@ static int mtk_pcie_pre_init_6991(struct mtk_pcie_port *port)
 	}
 
 	writel_relaxed(val, port->pextpcfg + PEXTP_CLOCK_CON);
+
+	/* port 1 and 2 bypass PMRC signal */
+	if (port->port_num == 1 || port->port_num == 2) {
+		val = readl_relaxed(port->pextpcfg + PEXTP_REQ_CTRL);
+		val |= RG_PCIE26M_BYPASS;
+		writel_relaxed(val, port->pextpcfg + PEXTP_REQ_CTRL);
+	}
 
 	return 0;
 }
