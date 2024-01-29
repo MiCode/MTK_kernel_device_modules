@@ -1345,7 +1345,7 @@ static void mtk_xsphy_procfs_init_worker(struct work_struct *data)
 	}
 
 	if (!xsphy->root) {
-		xsphy->root = proc_mkdir(dev->of_node->name, usb_root);
+		xsphy->root = proc_mkdir(dev->parent->of_node->name, usb_root);
 		if (!xsphy->root) {
 			dev_info(xsphy->dev, "failed to create xphy root\n");
 			return;
