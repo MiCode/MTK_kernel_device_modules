@@ -280,6 +280,25 @@ clk-dbg-mt6989-$(CONFIG_COMMON_CLK_MT6989) += clkdbg-mt6989.o
 endif
 endif
 
+ifneq ($(wildcard $(srctree)/$(src)/clk-mt6761.c),)
+obj-$(CONFIG_COMMON_CLK_MT6761) += clk-mt6761.o
+obj-$(CONFIG_COMMON_CLK_MT6761_AUDIOSYS) += clk-mt6761-audio.o
+obj-$(CONFIG_COMMON_CLK_MT6761_CAMSYS) += clk-mt6761-cam.o
+obj-$(CONFIG_COMMON_CLK_MT6761_MIPI0ASYS) += clk-mt6761-mipi0a.o
+obj-$(CONFIG_COMMON_CLK_MT6761_MMSYS) += clk-mt6761-mm.o
+obj-$(CONFIG_COMMON_CLK_MT6761_VCODECSYS) += clk-mt6761-vcodec.o
+obj-$(CONFIG_COMMON_CLK_MT6761) += clk-mt6761-pg.o
+obj-$(CONFIG_COMMON_CLK_MT6761) += clkchk-mt6761.o
+#obj-$(CONFIG_COMMON_CLK_MT6761) += mt6761_clkmgr.o
+obj-$(CONFIG_COMMON_CLK_MT6761) += pd-chk-mt6761.o
+pd-chk-mt6761-$(CONFIG_COMMON_CLK_MT6761) += mtk-pd-chk-mt6761.o
+obj-$(CONFIG_COMMON_CLK_MT6761) += clk-fmeter-mt6761.o
+ifeq ($(CONFIG_DEBUG_FS), y)
+obj-$(CONFIG_COMMON_CLK_MT6761) += clkdbg-mt6761.o
+clk-dbg-mt6761-$(CONFIG_COMMON_CLK_MT6761) += clkdbg-mt6761.o
+endif
+endif
+
 ifneq ($(wildcard $(srctree)/$(src)/clk-mt6768.c),)
 obj-$(CONFIG_COMMON_CLK_MT6768) += clk-mt6768.o
 obj-$(CONFIG_COMMON_CLK_MT6768) += clk-mt6768-pg.o
