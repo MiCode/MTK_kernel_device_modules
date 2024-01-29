@@ -20,6 +20,7 @@
 #include <linux/pm.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
+#include <linux/sched/clock.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
@@ -1216,26 +1217,25 @@ static bool msdc_cmd_done(struct msdc_host *host, int events,
 		if (events & MSDC_INT_RSPCRCERR) {
 			cmd->error = -EILSEQ;
 			host->error |= REQ_CMD_EIO;
+			bitmap_set(host->err_bag.err_bitmap,0,1);
+			host->err_bag.cmd_opcode = cmd->opcode;
+			host->err_bag.cmd_arg = cmd->arg;
+			host->err_bag.cmd_rsp = rsp[0];
 		} else if (events & MSDC_INT_CMDTMO) {
 			cmd->error = -ETIMEDOUT;
 			host->error |= REQ_CMD_TMO;
+			bitmap_set(host->err_bag.err_bitmap,1,1);
+			host->err_bag.cmd_opcode = cmd->opcode;
+			host->err_bag.cmd_arg = cmd->arg;
+			host->err_bag.cmd_rsp = rsp[0];
 		}
 	} else {
 		host->need_tune = false;
 		host->retune_times = 0;
 	}
 
-	if (cmd->error) {
+	if (cmd->error)
 		host->need_tune = true;
-		if (cmd->opcode != MMC_SEND_TUNING_BLOCK &&
-			cmd->opcode != MMC_SEND_TUNING_BLOCK_HS200) {
-			dev_info(host->dev,
-				"%s: cmd=%d arg=0x%X; rsp 0x%X; cmd_error=%d; "
-				"host_error=0x%X\n",
-				__func__, cmd->opcode, cmd->arg, rsp[0],
-				cmd->error, host->error);
-		}
-	}
 
 	if (cmd->opcode == MMC_CMDQ_TASK_MGMT) {
 		/* if resp is incorrect for cmd48, return a error to reset MMC device */
@@ -1443,17 +1443,18 @@ static bool msdc_data_xfer_done(struct msdc_host *host, u32 events,
 			host->error |= REQ_DAT_ERR;
 			data->bytes_xfered = 0;
 
-			if (events & MSDC_INT_DATTMO)
+			if (events & MSDC_INT_DATTMO) {
 				data->error = -ETIMEDOUT;
-			else if (events & MSDC_INT_DATCRCERR)
+				bitmap_set(host->err_bag.err_bitmap,3,1);
+				host->err_bag.cmd_opcode = mrq->cmd->opcode;
+				host->err_bag.blocks = data->blocks;
+				host->err_bag.bytes_xfered = data->bytes_xfered;
+			} else if (events & MSDC_INT_DATCRCERR) {
 				data->error = -EILSEQ;
-
-			if (mrq->cmd->opcode != MMC_SEND_TUNING_BLOCK &&
-				mrq->cmd->opcode != MMC_SEND_TUNING_BLOCK_HS200) {
-				dev_info(host->dev, "%s: cmd=%d; blocks=%d; "
-					"data_error=%d; xfer_size=%d; host_error=0x%X\n",
-					__func__, mrq->cmd->opcode, data->blocks,
-					(int)data->error, data->bytes_xfered, host->error);
+				bitmap_set(host->err_bag.err_bitmap,2,1);
+				host->err_bag.cmd_opcode = mrq->cmd->opcode;
+				host->err_bag.blocks = data->blocks;
+				host->err_bag.bytes_xfered = data->bytes_xfered;
 			}
 
 		}
@@ -1614,10 +1615,60 @@ static irqreturn_t msdc_cmdq_irq(struct msdc_host *host, u32 intsts)
 	return cqhci_irq(mmc, 0, cmd_err, dat_err);
 }
 
+static irqreturn_t msdc_thread_irq(int irq, void *dev_id)
+{
+	struct msdc_host *host = (struct msdc_host *) dev_id;
+	unsigned int ret = 0, i = 0;
+	int len = 0;
+	unsigned long flags;
+	struct err_info_bag dump_bag;
+
+	if (atomic_read(&host->err_dropped) >= 128) {
+		dev_info(host->dev, "Err kfifo has been full for a time and too much log dropped\n");
+		atomic_set(&host->err_dropped, 0);
+	}
+
+	spin_lock_irqsave(&host->err_info_lock, flags);
+	if (!kfifo_is_empty(&host->err_info_bag_ring))
+		len = kfifo_len(&host->err_info_bag_ring);
+	spin_unlock_irqrestore(&host->err_info_lock, flags);
+
+	for (i = 0; i < len; i++) {
+		spin_lock_irqsave(&host->err_info_lock, flags);
+		if (len != 0)
+			ret = kfifo_out(&host->err_info_bag_ring, &dump_bag, 1);
+		spin_unlock_irqrestore(&host->err_info_lock, flags);
+		if (dump_bag.err_bitmap[0] & (ERR_CMD_CRC | ERR_CMD_TMO)) {
+			if (dump_bag.err_bitmap[0] & ERR_CMD_CRC)
+				dev_info(host->dev, "At time:%lld cmd_crc happen cmd=%d arg=0x%X; rsp 0x%X;\n",
+					dump_bag.irq_timestamp, dump_bag.cmd_opcode, dump_bag.cmd_arg,
+					dump_bag.cmd_rsp);
+			if (dump_bag.err_bitmap[0] & ERR_CMD_TMO)
+				dev_info(host->dev, "At time:%lld cmd_tmo happen cmd=%d arg=0x%X; rsp 0x%X;\n",
+					dump_bag.irq_timestamp, dump_bag.cmd_opcode, dump_bag.cmd_arg,
+					dump_bag.cmd_rsp);
+		}
+		if (dump_bag.err_bitmap[0] & (ERR_DAT_CRC | ERR_DAT_TMO)) {
+			if (dump_bag.err_bitmap[0] & ERR_DAT_CRC)
+				dev_info(host->dev, "At time:%lld dat_crc happen cmd=%d; blocks=%d; xfer_size=%d;\n",
+					dump_bag.irq_timestamp, dump_bag.cmd_opcode, dump_bag.blocks,
+					dump_bag.bytes_xfered);
+			if (dump_bag.err_bitmap[0] & ERR_DAT_TMO)
+				dev_info(host->dev, "At time:%lld dat_tmo happen cmd=%d; blocks=%d; xfer_size=%d;\n",
+					dump_bag.irq_timestamp, dump_bag.cmd_opcode, dump_bag.blocks,
+					dump_bag.bytes_xfered);
+		}
+	}
+
+	return IRQ_HANDLED;
+}
+
+
 static irqreturn_t msdc_irq(int irq, void *dev_id)
 {
 	struct msdc_host *host = (struct msdc_host *) dev_id;
 	struct mmc_host *mmc = mmc_from_priv(host);
+	unsigned long flags;
 
 	while (true) {
 		struct mmc_request *mrq;
@@ -1674,6 +1725,18 @@ static irqreturn_t msdc_irq(int irq, void *dev_id)
 			msdc_data_xfer_done(host, events, mrq, data);
 	}
 
+	if (!bitmap_empty(host->err_bag.err_bitmap, ERR_BIT_SIZE)) {
+		host->err_bag.irq_timestamp = sched_clock();
+
+		spin_lock_irqsave(&host->err_info_lock, flags);
+		if (kfifo_is_full(&host->err_info_bag_ring) && kfifo_out(&host->err_info_bag_ring, &host->err_bag, 1))
+			atomic_inc(&host->err_dropped);
+		kfifo_in(&host->err_info_bag_ring, &host->err_bag, 1);
+		spin_unlock_irqrestore(&host->err_info_lock, flags);
+
+		bitmap_zero(host->err_bag.err_bitmap, ERR_BIT_SIZE);
+		return IRQ_WAKE_THREAD;
+	}
 	return IRQ_HANDLED;
 }
 
@@ -3647,8 +3710,10 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	spin_lock_init(&host->log_lock);
 #endif
 
-	ret = devm_request_irq(&pdev->dev, host->irq, msdc_irq,
-			       IRQF_TRIGGER_NONE, pdev->name, host);
+	spin_lock_init(&host->err_info_lock);
+	ret = devm_request_threaded_irq(&pdev->dev, host->irq, msdc_irq, msdc_thread_irq,
+					IRQF_TRIGGER_NONE, pdev->name, host);
+
 	if (ret)
 		goto release;
 
