@@ -893,7 +893,8 @@ mgk_64_platform_device_modules = {
     "drivers/soc/mediatek/mtk-scpsys-mt6983.ko": "mt6983",
     "drivers/soc/mediatek/mtk-scpsys-mt6985.ko": "mt6985",
     "drivers/soc/mediatek/mtk-scpsys-mt6989.ko": "mt6989",
-    "drivers/soc/mediatek/mtk-scpsys-mt6991.ko": "mt6991",
+    "drivers/soc/mediatek/mtk-scpsys-mt6991-spm.ko": "mt6991",
+    "drivers/soc/mediatek/mtk-scpsys-mt6991-mmpc.ko": "mt6991",
     "drivers/misc/mediatek/vmm_spm/mtk-vmm-spm-mt6989.ko": "mt6989",
     "sound/soc/mediatek/mt6886/mt6886-mt6368.ko": "mt6886",
     "sound/soc/mediatek/mt6886/snd-soc-mt6886-afe.ko": "mt6886",
@@ -1265,6 +1266,8 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6768.ko":"mt6768"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6768-pg.ko":"mt6768"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/pd-chk-mt6768.ko":"mt6768"})
+        mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6991.ko")
+        mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6991.ko")
 
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6878.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6886.ko")
