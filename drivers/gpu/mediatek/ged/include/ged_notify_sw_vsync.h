@@ -41,9 +41,9 @@ enum gpu_fallback_mode {
 	ALIGN_FAST_DVFS,
 };
 
-#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 enum gpu_apo_support {
 	APO_NORMAL_SUPPORT = 1,
+	APO_2_0_NORMAL_SUPPORT,
 	APO_NORMAL_AND_LP_SUPPORT,
 	APO_INVALID_SUPPORT,
 };
@@ -53,7 +53,6 @@ enum gpu_apo_hint {
 	APO_LP_HINT,
 	APO_INVALID_HINT,
 };
-#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 
 enum gpu_dvfs_policy_state ged_get_policy_state(void);
 enum gpu_dvfs_policy_state ged_get_prev_policy_state(void);

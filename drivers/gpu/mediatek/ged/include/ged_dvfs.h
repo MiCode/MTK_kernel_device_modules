@@ -169,12 +169,12 @@ enum ged_gpu_power_state {
 	GED_POWER_ON,
 };
 void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state);
+void ged_gpu_autosuspend_timeout_notify(int autosuspend_timeout_ms);
 
 //#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 unsigned int ged_gpu_apo_support(void);
 unsigned long long ged_get_apo_thr_ns(void);
 void ged_set_apo_thr_ns(unsigned long long apo_thr_ns);
-unsigned long long ged_get_apo_wakeup_us(void);
 unsigned long long ged_get_apo_wakeup_ns(void);
 void ged_set_apo_wakeup_ns(unsigned long long apo_wakeup_ns);
 unsigned long long ged_get_apo_lp_thr_ns(void);
@@ -182,6 +182,7 @@ void ged_set_apo_lp_thr_ns(unsigned long long apo_lp_thr_ns);
 int ged_get_apo_hint(void);
 int ged_get_apo_force_hint(void);
 void ged_set_apo_force_hint(int apo_force_hint);
+void ged_set_apo_status(int apo_status);
 
 void ged_check_gpu_frame_time(void);
 void ged_get_active_time(void);
@@ -207,8 +208,13 @@ int ged_get_apo_autosuspend_delay_ref_count(void);
 void ged_set_apo_autosuspend_delay_ctrl(int ctrl);
 int ged_get_apo_autosuspend_delay_target_ref_count(void);
 void ged_set_apo_autosuspend_delay_target_ref_count(int apo_autosuspend_delay_target_ref_count);
+void ged_set_apo_autosuspend_delay_ms_ref_idletime_nolock(long long idle_time);
+void ged_set_apo_autosuspend_delay_ms_ref_idletime(long long idle_time);
 void ged_set_apo_autosuspend_delay_ms(unsigned int apo_autosuspend_delay_ms);
 //#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
+// for autosuspend_stress
+int ged_get_autosuspend_stress(void);
+void ged_set_autosuspend_stress(int enable);
 
 GED_ERROR ged_dvfs_system_init(void);
 void ged_dvfs_system_exit(void);

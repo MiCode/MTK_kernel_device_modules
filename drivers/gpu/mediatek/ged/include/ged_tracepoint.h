@@ -33,6 +33,143 @@ TRACE_EVENT(tracing_mark_write,
 	TP_printk("C|%d|%s|%lld", __entry->pid, __get_str(name), __entry->value)
 );
 
+/* APO tracepoints */
+TRACE_EVENT(GPU_Power__Policy__APO,
+
+	TP_PROTO(bool APO),
+
+	TP_ARGS(APO),
+
+	TP_STRUCT__entry(
+		__field(bool, APO)
+	),
+
+	TP_fast_assign(
+		__entry->APO = APO;
+	),
+
+	TP_printk("APO=%u", __entry->APO)
+);
+
+TRACE_EVENT(GPU_Power__Policy__APO__L2_OffOn,
+
+	TP_PROTO(bool gpu_off_duration),
+
+	TP_ARGS(gpu_off_duration),
+
+	TP_STRUCT__entry(
+		__field(bool, gpu_off_duration)
+	),
+
+	TP_fast_assign(
+		__entry->gpu_off_duration = gpu_off_duration;
+	),
+
+	TP_printk("gpu_off_duration=%u", __entry->gpu_off_duration)
+);
+
+TRACE_EVENT(GPU_Power__Policy__APO__IdleActive,
+
+	TP_PROTO(bool gpu_predict_off_duration),
+
+	TP_ARGS(gpu_predict_off_duration),
+
+	TP_STRUCT__entry(
+		__field(bool, gpu_predict_off_duration)
+	),
+
+	TP_fast_assign(
+		__entry->gpu_predict_off_duration = gpu_predict_off_duration;
+	),
+
+	TP_printk("gpu_predict_off_duration=%u", __entry->gpu_predict_off_duration)
+);
+
+TRACE_EVENT(GPU_Power__Policy__APO__Predicted_Idle_Time,
+
+	TP_PROTO(unsigned int gpu_predicted_idle_time),
+
+	TP_ARGS(gpu_predicted_idle_time),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, gpu_predicted_idle_time)
+	),
+
+	TP_fast_assign(
+		__entry->gpu_predicted_idle_time = gpu_predicted_idle_time;
+	),
+
+	TP_printk("gpu_predicted_idle_time=%u", __entry->gpu_predicted_idle_time)
+);
+
+TRACE_EVENT(GPU_Power__Policy__APO__AST,
+
+	TP_PROTO(unsigned int gpu_ast),
+
+	TP_ARGS(gpu_ast),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, gpu_ast)
+	),
+
+	TP_fast_assign(
+		__entry->gpu_ast = gpu_ast;
+	),
+
+	TP_printk("gpu_ast=%u", __entry->gpu_ast)
+);
+
+TRACE_EVENT(GPU_Power__Policy__APO_cond_1,
+
+	TP_PROTO(bool apo_cond_1),
+
+	TP_ARGS(apo_cond_1),
+
+	TP_STRUCT__entry(
+		__field(bool, apo_cond_1)
+	),
+
+	TP_fast_assign(
+		__entry->apo_cond_1 = apo_cond_1;
+	),
+
+	TP_printk("apo_cond_1=%u", __entry->apo_cond_1)
+);
+
+TRACE_EVENT(GPU_Power__Policy__APO_cond_2,
+
+	TP_PROTO(bool apo_cond_2),
+
+	TP_ARGS(apo_cond_2),
+
+	TP_STRUCT__entry(
+		__field(bool, apo_cond_2)
+	),
+
+	TP_fast_assign(
+		__entry->apo_cond_2 = apo_cond_2;
+	),
+
+	TP_printk("apo_cond_2=%u", __entry->apo_cond_2)
+);
+
+TRACE_EVENT(GPU_Power__Policy__APO_irregular,
+
+	TP_PROTO(bool apo_irregular),
+
+	TP_ARGS(apo_irregular),
+
+	TP_STRUCT__entry(
+		__field(bool, apo_irregular)
+	),
+
+	TP_fast_assign(
+		__entry->apo_irregular = apo_irregular;
+	),
+
+	TP_printk("apo_irregular=%u", __entry->apo_irregular)
+);
+
 TRACE_EVENT(GPU_DVFS__Frequency,
 	TP_PROTO(unsigned int virtual_stack, unsigned int real_stack, unsigned int real_top),
 	TP_ARGS(virtual_stack, real_stack, real_top),
