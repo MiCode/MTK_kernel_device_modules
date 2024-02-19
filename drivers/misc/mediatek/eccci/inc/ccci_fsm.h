@@ -22,7 +22,7 @@ enum MD_STATE_FOR_USER ccci_fsm_get_md_state_for_user(void);
 extern void mdee_set_ex_time_str(unsigned int type, char *str);
 
 int ccci_fsm_increase_devapc_dump_counter(void);
-
+void ccci_remove_spm_resource(void);
 u8 ccci_md_get_support_microsecond_version(void);
 
 #endif /* __CCCI_FSM_H__ */
