@@ -3,15 +3,25 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 
-#ifndef MT6991_UT_TEST_H
-#define MT6991_UT_TEST_H
+#ifndef MT6991_TEST_API_H
+#define MT6991_TEST_API_H
 
 #include "common_def_id.h"
 #include "../inc/INTFHUB_c_header.h"
 #include "../inc/platform_def_id.h"
-#include "mt6991_ut_dat.h"
+#include "test_dat.h"
 
-/* UT Test API */
+extern unsigned char verify_inband_esc_sta;
+
+#define DBGM_MODE_PKT_INFO		0
+#define DBGM_MODE_CHECK_DATA	1
+#define DBGM_MODE_CRC_RESULT	2
+
+#define __PACKET_INFO(typ, esc, byte) ((((typ) | ((esc)<<1)) << 27) | (byte))
+#define PKT_INFO_TYP_AP		0x10
+#define PKT_INFO_TYP_MD		0x8
+#define PKT_INFO_TYP_ADSP	0x4
+
 int uarthub_is_ut_testing_mt6991(void);
 int uarthub_is_host_uarthub_ready_state_mt6991(int dev_index);
 int uarthub_get_host_irq_sta_mt6991(int dev_index);
@@ -52,16 +62,19 @@ int uarthub_verify_internal_loopback_mt6991(
 int uarthub_ut_loopback_send_and_recv(
 	int tx_dev_id, const unsigned char *pCmd, int szCmd,
 	int rx_dev_id, const unsigned char *pEvt, int szEvt);
+int uarthub_inband_irq_handle_mt6991(void);
 
-/* UT Test API for IP level test */
-int uarthub_ut_ip_help_info_mt6991(void);
-int uarthub_ut_ip_timeout_init_fsm_ctrl_mt6991(void);
-int uarthub_ut_ip_clear_rx_data_irq_mt6991(void);
-int uarthub_ut_ip_host_tx_packet_loopback_mt6991(void);
-int uarthub_ut_ip_verify_debug_monitor_packet_info_mode_mt6991(void);
-int uarthub_ut_ip_verify_debug_monitor_check_data_mode_mt6991(void);
-int uarthub_ut_ip_verify_debug_monitor_crc_result_mode_mt6991(void);
-int uarthub_verify_cmm_loopback_sta_mt6991(void);
-int uarthub_verify_cmm_trx_connsys_sta_mt6991(int rx_delay_ms);
+static inline int __uh_test_debug_dump(int sspm, int intfhub, int uartip, int dbgm)
+{
+	if (sspm)
+		uarthub_dump_sspm_log_mt6991(__func__);
+	if (intfhub)
+		uarthub_dump_intfhub_debug_info_mt6991(__func__);
+	if (uartip)
+		uarthub_dump_uartip_debug_info_mt6991(__func__, NULL);
+	if (dbgm)
+		uarthub_dump_debug_monitor_mt6991(__func__);
+	return 0;
+}
 
-#endif /* MT6991_UT_TEST_H */
+#endif /* MT6991_TEST_API_H */

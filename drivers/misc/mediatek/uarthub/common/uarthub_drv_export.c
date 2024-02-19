@@ -53,6 +53,8 @@ struct uarthub_drv_cbs uarthub_drv_export_cbs = {
 	.dump_debug_info = uarthub_export_dump_debug_info,
 	.dump_debug_info_with_tag = uarthub_export_dump_debug_info_with_tag,
 	.debug_dump_tx_rx_count = uarthub_core_debug_dump_tx_rx_count,
+	.inband_irq_register_cb = uarthub_core_inband_irq_register_cb,
+	.debug_bus_status_info = uarthub_core_debug_bus_status_info,
 	.get_bt_sleep_flow_hw_mech_en = uarthub_core_get_bt_sleep_flow_hw_mech_en,
 	.set_bt_sleep_flow_hw_mech_en = uarthub_core_set_bt_sleep_flow_hw_mech_en,
 	.get_host_awake_sta = uarthub_core_get_host_awake_sta,
@@ -60,7 +62,12 @@ struct uarthub_drv_cbs uarthub_drv_export_cbs = {
 	.clear_host_awake_sta = uarthub_core_clear_host_awake_sta,
 	.get_host_bt_awake_sta = uarthub_core_get_host_bt_awake_sta,
 	.get_cmm_bt_awake_sta = uarthub_core_get_cmm_bt_awake_sta,
-	.get_bt_awake_sta = uarthub_core_get_bt_awake_sta
+	.get_bt_awake_sta = uarthub_core_get_bt_awake_sta,
+	.inband_set_esc_sta = uarthub_core_inband_set_esc_sta,
+	.inband_trigger_ctrl = uarthub_core_inband_trigger_ctrl,
+	.inband_is_tx_complete = uarthub_core_inband_is_tx_complete,
+	.inband_enable_ctrl = uarthub_core_inband_enable_ctrl,
+	.inband_is_support = uarthub_core_inband_is_support
 };
 
 /* FPGA test only */
@@ -129,66 +136,6 @@ int UARTHUB_reset_fifo_trx(void)
 	return uarthub_core_reset_fifo_trx();
 }
 EXPORT_SYMBOL(UARTHUB_reset_fifo_trx);
-
-int UARTHUB_config_inband_esc_char(int esc_char)
-{
-	return uarthub_core_config_inband_esc_char(esc_char);
-}
-EXPORT_SYMBOL(UARTHUB_config_inband_esc_char);
-
-int UARTHUB_config_inband_esc_sta(int esc_sta)
-{
-	return uarthub_core_config_inband_esc_sta(esc_sta);
-}
-EXPORT_SYMBOL(UARTHUB_config_inband_esc_sta);
-
-int UARTHUB_config_inband_enable_ctrl(int enable)
-{
-	return uarthub_core_config_inband_enable_ctrl(enable);
-}
-EXPORT_SYMBOL(UARTHUB_config_inband_enable_ctrl);
-
-int UARTHUB_config_inband_irq_enable_ctrl(int enable)
-{
-	return uarthub_core_config_inband_irq_enable_ctrl(enable);
-}
-EXPORT_SYMBOL(UARTHUB_config_inband_irq_enable_ctrl);
-
-int UARTHUB_config_inband_trigger(void)
-{
-	return uarthub_core_config_inband_trigger();
-}
-EXPORT_SYMBOL(UARTHUB_config_inband_trigger);
-
-int UARTHUB_is_inband_tx_complete(void)
-{
-	return uarthub_core_is_inband_tx_complete();
-}
-EXPORT_SYMBOL(UARTHUB_is_inband_tx_complete);
-
-int UARTHUB_get_inband_irq_sta(void)
-{
-	return uarthub_core_get_inband_irq_sta();
-}
-EXPORT_SYMBOL(UARTHUB_get_inband_irq_sta);
-
-int UARTHUB_clear_inband_irq(void)
-{
-	return uarthub_core_clear_inband_irq();
-}
-EXPORT_SYMBOL(UARTHUB_clear_inband_irq);
-
-int UARTHUB_get_received_inband_sta(void)
-{
-	return uarthub_core_get_received_inband_sta();
-}
-EXPORT_SYMBOL(UARTHUB_get_received_inband_sta);
-
-int UARTHUB_clear_received_inband_sta(void)
-{
-	return uarthub_core_clear_received_inband_sta();
-}
-EXPORT_SYMBOL(UARTHUB_clear_received_inband_sta);
 
 int UARTHUB_uartip_write_data_to_tx_buf(int dev_index, int tx_data)
 {

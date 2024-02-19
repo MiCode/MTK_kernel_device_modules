@@ -4,7 +4,7 @@
  */
 #include <linux/stdarg.h>
 #include <linux/kernel.h>
-#include "ut_util.h"
+#include "test_util.h"
 
 int g_uh_ut_verbose = 1;
 

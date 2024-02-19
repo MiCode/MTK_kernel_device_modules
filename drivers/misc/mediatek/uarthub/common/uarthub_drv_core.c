@@ -20,7 +20,6 @@
 #include <linux/clk.h>
 #include <linux/regmap.h>
 #include <linux/sched/clock.h>
-
 /*device tree mode*/
 #if IS_ENABLED(CONFIG_OF)
 #include <linux/of.h>
@@ -39,14 +38,17 @@ struct uarthub_core_ops_struct *g_plat_ic_core_ops;
 struct uarthub_debug_ops_struct *g_plat_ic_debug_ops;
 struct uarthub_ut_test_ops_struct *g_plat_ic_ut_test_ops;
 
+static atomic_t g_uarthub_probe_called = ATOMIC_INIT(0);
 struct platform_device *g_uarthub_pdev;
 UARTHUB_CORE_IRQ_CB g_core_irq_callback;
+UARTHUB_CORE_INBAND_IRQ_CB g_core_inband_irq_callback;
 int g_uarthub_disable;
 static atomic_t g_uarthub_open = ATOMIC_INIT(0);
 int g_is_ut_testing;
 int g_uarthub_enable_dump_debug = 1;
 static struct notifier_block uarthub_fb_notifier;
 struct workqueue_struct *uarthub_workqueue;
+struct workqueue_struct *uarthub_inband_irq_workqueue;
 static int g_last_err_type = -1;
 static struct timespec64 tv_now_assert, tv_end_assert;
 
@@ -71,6 +73,7 @@ static irqreturn_t uarthub_irq_isr(int irq, void *arg);
 static void trigger_uarthub_error_worker_handler(struct work_struct *work);
 static void debug_info_worker_handler(struct work_struct *work);
 static void debug_clk_info_work_worker_handler(struct work_struct *work);
+static void uarthub_inband_irq_worker_handler(struct work_struct *work);
 static int uarthub_fb_notifier_callback(struct notifier_block *nb, unsigned long value, void *v);
 
 #if IS_ENABLED(CONFIG_OF)
@@ -112,6 +115,7 @@ struct platform_driver mtk_uarthub_dev_drv = {
 struct assert_ctrl uarthub_assert_ctrl;
 struct debug_info_ctrl uarthub_debug_info_ctrl;
 struct debug_info_ctrl uarthub_debug_clk_info_ctrl;
+struct inband_irq_ctrl uarthub_inband_irq_ctrl;
 
 static int mtk_uarthub_probe(struct platform_device *pdev)
 {
@@ -139,6 +143,7 @@ static int mtk_uarthub_probe(struct platform_device *pdev)
 		}
 	}
 
+	atomic_set(&g_uarthub_probe_called, 1);
 	return 0;
 }
 
@@ -152,6 +157,7 @@ static int mtk_uarthub_remove(struct platform_device *pdev)
 	if (g_uarthub_pdev)
 		g_uarthub_pdev = NULL;
 
+	atomic_set(&g_uarthub_probe_called, 0);
 	return 0;
 }
 
@@ -209,16 +215,21 @@ struct uarthub_ops_struct *uarthub_core_get_platform_ic_ops(struct platform_devi
 
 static int uarthub_core_init(void)
 {
-	int ret = -1;
+	int ret = -1, retry = 0;
 
 #if UARTHUB_INFO_LOG
 	pr_info("[%s] g_uarthub_disable=[%d]\n", __func__, g_uarthub_disable);
 #endif
 
 	ret = platform_driver_probe(&mtk_uarthub_dev_drv, mtk_uarthub_probe);
-	if (ret) {
+	if (ret)
 		pr_notice("[%s] Uarthub driver registered failed(%d)\n", __func__, ret);
-		goto ERROR;
+	else {
+		while (atomic_read(&g_uarthub_probe_called) == 0 && retry < 100) {
+			msleep(50);
+			retry++;
+			pr_info("[%s] g_uarthub_probe_called = 0, retry = %d\n", __func__, retry);
+		}
 	}
 
 	if (!g_uarthub_pdev) {
@@ -252,6 +263,14 @@ static int uarthub_core_init(void)
 	INIT_WORK(&uarthub_debug_info_ctrl.debug_info_work, debug_info_worker_handler);
 	INIT_WORK(&uarthub_debug_clk_info_ctrl.debug_info_work, debug_clk_info_work_worker_handler);
 
+	uarthub_inband_irq_workqueue = create_singlethread_workqueue("uarthub_inband_irq_wq");
+	if (!uarthub_inband_irq_workqueue) {
+		pr_notice("[%s] inband irq workqueue create failed\n", __func__);
+		goto ERROR;
+	}
+
+	INIT_WORK(&uarthub_inband_irq_ctrl.inband_irq_work, uarthub_inband_irq_worker_handler);
+
 	uarthub_fb_notifier.notifier_call = uarthub_fb_notifier_callback;
 	ret = mtk_disp_notifier_register("uarthub_driver", &uarthub_fb_notifier);
 	if (ret)
@@ -265,7 +284,7 @@ static int uarthub_core_init(void)
 	}
 
 	if (g_is_ut_testing == 1)
-		uarthub_core_sync_uarthub_irq_sta(0);
+		uarthub_core_sync_uarthub_irq_sta(0, -1);
 
 	mutex_init(&g_lock_dump_log);
 	mutex_init(&g_clear_trx_req_lock);
@@ -342,7 +361,11 @@ static int uarthub_fb_notifier_callback(struct notifier_block *nb, unsigned long
 static irqreturn_t uarthub_irq_isr(int irq, void *arg)
 {
 	int err_type = -1;
-	unsigned long err_ts;
+	unsigned long irq_ts;
+	int is_inband_irq_trg = 0;
+	unsigned char esc_sta = 0x0;
+
+	irq_ts = sched_clock();
 
 	if (uarthub_core_is_apb_bus_clk_enable() == 0)
 		return IRQ_HANDLED;
@@ -352,22 +375,36 @@ static irqreturn_t uarthub_irq_isr(int irq, void *arg)
 		  g_plat_ic_core_ops->uarthub_plat_irq_clear_ctrl == NULL)
 		return IRQ_HANDLED;
 
-	/* mask dev0 irq */
-	g_plat_ic_core_ops->uarthub_plat_irq_mask_ctrl(1);
-
-	if (uarthub_core_handle_ut_test_irq() == 1)
-		return IRQ_HANDLED;
+	if (g_plat_ic_core_ops->uarthub_plat_inband_irq_get_sta &&
+			g_plat_ic_core_ops->uarthub_plat_inband_irq_mask_ctrl &&
+			g_plat_ic_core_ops->uarthub_plat_inband_irq_clear_ctrl &&
+			g_plat_ic_core_ops->uarthub_plat_inband_get_esc_sta)
+		is_inband_irq_trg = g_plat_ic_core_ops->uarthub_plat_inband_irq_get_sta();
 
 	err_type = uarthub_core_check_irq_err_type();
-	err_ts = sched_clock();
-	if (err_type > 0) {
-		uarthub_core_set_trigger_uarthub_error_worker(err_type, err_ts);
-	} else {
-		/* clear irq */
-		g_plat_ic_core_ops->uarthub_plat_irq_clear_ctrl(BIT_0xFFFF_FFFF);
-		/* unmask irq */
-		g_plat_ic_core_ops->uarthub_plat_irq_mask_ctrl(0);
+
+	/* mask dev0 irq */
+	if (err_type > 0)
+		g_plat_ic_core_ops->uarthub_plat_irq_mask_ctrl(1);
+
+	/* mask & clear inband irq */
+	if (is_inband_irq_trg == 1) {
+		g_plat_ic_core_ops->uarthub_plat_inband_irq_mask_ctrl(1);
+		g_plat_ic_core_ops->uarthub_plat_inband_irq_clear_ctrl();
 	}
+
+	if (uarthub_core_handle_ut_test_irq(is_inband_irq_trg, &esc_sta) == 1) {
+		if (is_inband_irq_trg == 1 && esc_sta == 0x20)
+			uarthub_core_set_trigger_uarthub_inband_irq_worker(esc_sta, irq_ts);
+		return IRQ_HANDLED;
+	}
+
+	if (err_type > 0)
+		uarthub_core_set_trigger_uarthub_error_worker(err_type, irq_ts);
+
+	if (is_inband_irq_trg == 1)
+		uarthub_core_set_trigger_uarthub_inband_irq_worker(
+			g_plat_ic_core_ops->uarthub_plat_inband_get_esc_sta(), irq_ts);
 
 	return IRQ_HANDLED;
 }
@@ -1100,6 +1137,15 @@ int uarthub_core_irq_register_cb(UARTHUB_CORE_IRQ_CB irq_callback)
 	return 0;
 }
 
+int uarthub_core_inband_irq_register_cb(UARTHUB_CORE_INBAND_IRQ_CB inband_irq_callback)
+{
+	if (g_uarthub_disable == 1)
+		return 0;
+
+	g_core_inband_irq_callback = inband_irq_callback;
+	return 0;
+}
+
 int uarthub_core_is_univpll_on(void)
 {
 	if (g_uarthub_disable == 1)
@@ -1344,6 +1390,34 @@ int uarthub_core_config_external_baud_rate(int rate_index)
 		rate_index);
 }
 
+void uarthub_core_set_trigger_uarthub_inband_irq_worker(unsigned char esc_sta, unsigned long inband_irq_ts)
+{
+	uarthub_inband_irq_ctrl.esc_sta = esc_sta;
+	uarthub_inband_irq_ctrl.inband_irq_ts = inband_irq_ts;
+	queue_work(uarthub_inband_irq_workqueue, &uarthub_inband_irq_ctrl.inband_irq_work);
+}
+
+static void uarthub_inband_irq_worker_handler(struct work_struct *work)
+{
+	struct inband_irq_ctrl *queue = container_of(work, struct inband_irq_ctrl, inband_irq_work);
+	unsigned char esc_sta = (unsigned char) queue->esc_sta;
+	unsigned long inband_irq_ts = (unsigned long) queue->inband_irq_ts;
+	unsigned long rem_nsec;
+
+	rem_nsec = do_div(inband_irq_ts, 1000000000);
+	pr_info("[%s] inband_esc_sta=[0x%x] inband_irq_time=[%5lu.%06lu]\n",
+		__func__, esc_sta, inband_irq_ts, (rem_nsec/1000));
+
+	uarthub_core_debug_bus_status_info("HUB_DBG_BUS");
+
+	g_plat_ic_core_ops->uarthub_plat_inband_irq_mask_ctrl(0);
+
+	if (g_core_inband_irq_callback)
+		(*g_core_inband_irq_callback)(esc_sta);
+	else
+		pr_info("[%s] hub_inband_irq_cb=[NULL]\n", __func__);
+}
+
 void uarthub_core_set_trigger_uarthub_error_worker(int err_type, unsigned long err_ts)
 {
 	uarthub_assert_ctrl.err_type = err_type;
@@ -1400,15 +1474,9 @@ static void trigger_uarthub_error_worker_handler(struct work_struct *work)
 		for (id = 0; id < irq_err_type_max; id++) {
 			if (((err_type >> id) & 0x1) == 0x1) {
 				err_index++;
-				if (g_core_irq_callback == NULL) {
-					pr_info("[%s] %d-%d, err_id=[%d], reason=[%s], hub_irq_cb=[NULL]\n",
-						__func__, err_total, err_index,
-						id, UARTHUB_irq_err_type_str[id]);
-				} else {
-					pr_info("[%s] %d-%d, err_id=[%d], reason=[%s], hub_irq_cb=[%p]\n",
-						__func__, err_total, err_index, id,
-						UARTHUB_irq_err_type_str[id], g_core_irq_callback);
-				}
+				pr_info("[%s] %d-%d, err_id=[%d], reason=[%s]\n",
+					__func__, err_total, err_index, id,
+					UARTHUB_irq_err_type_str[id]);
 			}
 		}
 	}
@@ -1452,6 +1520,8 @@ static void trigger_uarthub_error_worker_handler(struct work_struct *work)
 
 	if (g_core_irq_callback)
 		(*g_core_irq_callback)(err_type);
+	else
+		pr_info("[%s] hub_irq_cb=[NULL]\n", __func__);
 }
 
 int uarthub_core_assert_state_ctrl(int assert_ctrl)

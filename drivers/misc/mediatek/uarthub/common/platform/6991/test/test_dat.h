@@ -3,8 +3,8 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 
-#ifndef _MT6991_UT_DAT_H_
-#define _MT6991_UT_DAT_H_
+#ifndef _UT_DAT_H_
+#define _UT_DAT_H_
 
 #define _RESULT_MSG(s) ((s)? "FAIL" : "PASS")
 
@@ -73,4 +73,4 @@ extern const unsigned char *pEvts_01[ITEM_CNT_01];
 extern const int szEvts_01[ITEM_CNT_01];
 extern const int rx_dev_ids_01[ITEM_CNT_01];
 
-#endif //_MT6991_UT_DAT_H_
+#endif //_UT_DAT_H_

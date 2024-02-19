@@ -89,19 +89,19 @@
 #define PERI_UART_WAKEUP_UART_GPHUB_SEL_SHIFT     4
 
 #define APMIXEDSYS_BASE_ADDR                      0x10000800
-#define UNIVPLL_PLLEN_ALL                         0x80
-#define UNIVPLL_PLLEN_ALL_UNIVPLL_EN_MERG_MASK    (0x1 << 1)
-#define UNIVPLL_PLLEN_ALL_UNIVPLL_EN_MERG_SHIFT   1
+#define FENC_STATUS_CON0                          0x3c
+#define RG_UNIVPLL_FENC_STATUS_MASK               (0x1 << 6)
+#define RG_UNIVPLL_FENC_STATUS_SHIFT              6
 
 #define TOPCKGEN_BASE_ADDR                        0x10000000
 #define CLK_CFG_6                                 0x70
 #define CLK_CFG_6_SET                             0x74
 #define CLK_CFG_6_CLR                             0x78
-#define CLK_CFG_6_UART_SEL_MASK                   (0x3 << 24)
-#define CLK_CFG_6_UART_SEL_SHIFT                  24
 #define CLK_CFG_6_UART_SEL_26M                    (0x0 << 24)
 #define CLK_CFG_6_UART_SEL_104M                   (0x2 << 24)
 #define CLK_CFG_6_UART_SEL_208M                   (0x3 << 24)
+#define CLK_CFG_6_UART_SEL_MASK                   (0x3 << 24)
+#define CLK_CFG_6_UART_SEL_SHIFT                  24
 #define CLK_CFG_UPDATE                            0x4
 #define CLK_CFG_UPDATE_UART_CK_UPDATE_MASK        (0x1 << 27)
 #define CLK_CFG_16                                0x110
@@ -114,6 +114,16 @@
 #define CLK_CFG_16_UARTHUB_BCLK_SEL_SHIFT         24
 #define CLK_CFG_UPDATE2                           0xC
 #define CLK_CFG_UPDATE2_UARTHUB_BCLK_UPDATE_MASK  (0x1 << 5)
+#define CLK_CFG_13                                0xE0
+#define CLK_CFG_13_SET                            0xE4
+#define CLK_CFG_13_CLR                            0xE8
+#define CLK_CFG_13_ADSP_UARTHUB_BCLK_SEL_26M      (0x0 << 24)
+#define CLK_CFG_13_ADSP_UARTHUB_BCLK_SEL_104M     (0x1 << 24)
+#define CLK_CFG_13_ADSP_UARTHUB_BCLK_SEL_208M     (0x2 << 24)
+#define CLK_CFG_13_ADSP_UARTHUB_BCLK_SEL_MASK     (0x3 << 24)
+#define CLK_CFG_13_ADSP_UARTHUB_BCLK_SEL_SHIFT    24
+#define CLK_CFG_UPDATE1                           0x8
+#define CLK_CFG_UPDATE1_ADSP_UARTHUB_BCLK_UPDATE_MASK (0x1 << 24)
 #define CLK_CFG_16_PDN_UARTHUB_BCLK_MASK          (0x1 << 31)
 #define CLK_CFG_16_PDN_UARTHUB_BCLK_SHIFT         31
 
@@ -130,12 +140,10 @@
 #define SPM_REQ_STA_15_UARTHUB_REQ_MASK           (0xF << 0)
 #define SPM_REQ_STA_15_UARTHUB_REQ_SHIFT          0
 
-/* todo: need to check define from Claude */
 #define MD32PCM_SCU_CTRL0                         0x100
 #define MD32PCM_SCU_CTRL0_SC_MD26M_CK_OFF_MASK    (0x1 << 5)
 #define MD32PCM_SCU_CTRL0_SC_MD26M_CK_OFF_SHIFT   5
 
-/* todo: need to check define from Claude */
 #define MD32PCM_SCU_CTRL1                         0x104
 #define MD32PCM_SCU_CTRL1_SPM_HUB_INTL_ACK_MASK   (0x17 << 17)
 #define MD32PCM_SCU_CTRL1_SPM_HUB_INTL_ACK_SHIFT  17

@@ -9,8 +9,8 @@
 #include "uarthub_drv_core.h"
 #include "../inc/mt6991.h"
 #include "../inc/mt6991_debug.h"
-#include "mt6991_ut_test.h"
-#include "ut_util.h"
+#include "mt6991_test_api.h"
+#include "test_util.h"
 
 struct uarthub_ut_test_ops_struct mt6991_plat_ut_test_data = {
 	.uarthub_plat_is_ut_testing = uarthub_is_ut_testing_mt6991,
@@ -33,6 +33,7 @@ struct uarthub_ut_test_ops_struct mt6991_plat_ut_test_data = {
 	.uarthub_plat_is_uartip_throw_xoff = uarthub_is_uartip_throw_xoff_mt6991,
 	.uarthub_plat_config_uartip_rx_fifo_trig_thr =
 		uarthub_config_uartip_rx_fifo_trig_thr_mt6991,
+	.uarthub_plat_inband_irq_handle = uarthub_inband_irq_handle_mt6991,
 };
 
 
@@ -1068,5 +1069,12 @@ int uarthub_clear_all_ut_irq_sta_mt6991(void)
 	g_dev0_inband_irq_sta = 0;
 	uarthub_mask_host_irq_mt6991(0, BIT_0xFFFF_FFFF, 0);
 
+	return 0;
+}
+
+int uarthub_inband_irq_handle_mt6991(void)
+{
+	verify_inband_esc_sta = uarthub_inband_get_esc_sta_mt6991();
+	pr_info("[%s] verify_inband_esc_sta=[0x%x]\n", __func__, verify_inband_esc_sta);
 	return 0;
 }

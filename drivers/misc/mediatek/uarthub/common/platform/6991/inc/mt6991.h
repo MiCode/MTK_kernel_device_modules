@@ -14,9 +14,12 @@
 #define SSPM_DRIVER_EN                 1
 #define UNIVPLL_CTRL_EN                1
 #define MD_CHANNEL_EN                  1
+#define UARTHUB_WAKEUP_DEBUG_EN        0
+#define SUPPORT_HWCCF                  0
 
 #include "INTFHUB_c_header.h"
 #include "UARTHUB_UART0_c_header.h"
+#include "UARTHUB_WAKEUP_c_header.h"
 #include "common_def_id.h"
 #include "platform_def_id.h"
 
@@ -100,25 +103,43 @@ int uarthub_get_spm_sys_timer_mt6991(uint32_t *hi, uint32_t *lo);
 int uarthub_get_uart_mux_info_mt6991(void);
 int uarthub_get_uarthub_mux_info_mt6991(void);
 
+int uarthub_inband_enable_ctrl_mt6991(int enable);
+int uarthub_inband_irq_mask_ctrl_mt6991(int mask);
+int uarthub_inband_irq_clear_ctrl_mt6991(void);
+int uarthub_inband_irq_get_sta_mt6991(void);
+unsigned char uarthub_inband_get_esc_sta_mt6991(void);
+int uarthub_inband_clear_esc_sta_mt6991(void);
+int uarthub_inband_set_esc_char_mt6991(unsigned char esc_char);
+int uarthub_inband_set_esc_sta_mt6991(unsigned char esc_sta);
+int uarthub_inband_is_tx_complete_mt6991(void);
+int uarthub_inband_trigger_ctrl_mt6991(void);
+int uarthub_inband_trigger_with_esc_sta_mt6991(unsigned char esc_sta);
+int uarthub_get_bt_on_count_mt6991(void);
+int uarthub_bt_on_count_inc_mt6991(void);
+
 /* debug API */
 int uarthub_get_intfhub_base_addr_mt6991(void);
 int uarthub_get_uartip_base_addr_mt6991(int dev_index);
 int uarthub_dump_uartip_debug_info_mt6991(
 	const char *tag, struct mutex *uartip_lock);
 int uarthub_dump_intfhub_debug_info_mt6991(const char *tag);
+#if UARTHUB_WAKEUP_DEBUG_EN
+int uarthub_dump_sspm_wakeup_debug_info_mt6991(const char *tag);
+int uarthub_sspm_wakeup_enable_mt6991(void);
+#endif
 int uarthub_dump_debug_monitor_mt6991(const char *tag);
 int uarthub_debug_monitor_ctrl_mt6991(int enable, int mode, int ctrl);
 int uarthub_debug_monitor_stop_mt6991(int stop);
 int uarthub_debug_monitor_clr_mt6991(void);
+int uarthub_dump_inband_irq_debug_mt6991(const char *tag);
 int uarthub_dump_debug_tx_rx_count_mt6991(const char *tag, int trigger_point);
 int uarthub_dump_debug_clk_info_mt6991(const char *tag);
 int uarthub_dump_debug_byte_cnt_info_mt6991(const char *tag);
 int uarthub_dump_debug_apdma_uart_info_mt6991(const char *tag);
+int uarthub_dump_debug_bus_status_info_mt6991(const char *tag);
 int uarthub_dump_sspm_log_mt6991(const char *tag);
 int uarthub_trigger_fpga_testing_mt6991(int type);
-int uarthub_trigger_dvt_testing_mt6991(int type);
-#if UARTHUB_SUPPORT_DVT
-int uarthub_verify_combo_connect_sta_mt6991(int type, int rx_delay_ms);
-#endif
+int uarthub_trigger_dvt_ut_testing_mt6991(int type);
+int uarthub_trigger_dvt_it_testing_mt6991(int type);
 
 #endif /* MT6991_H */
