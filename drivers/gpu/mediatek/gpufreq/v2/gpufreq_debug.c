@@ -203,12 +203,13 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		ptp3_status.brisket_cpmeter_mode ? "On" : "Off",
 		ptp3_status.brisket_ctt_mode ? "On" : "Off");
 	seq_printf(m,
-		"%-16s InFreq: %d/%d, OutFreq: %d/%d, CC: %d/%d, FC: %d/%d\n",
+		"%-16s InFreq: %d/%d, OutFreq: %d/%d, CC: %d/%d, FC: %d/%d, Mode: %s\n",
 		"[PTP3 Config]",
 		g_shared_status->ptp3_info.infreq0, g_shared_status->ptp3_info.infreq1,
 		g_shared_status->ptp3_info.outfreq0, g_shared_status->ptp3_info.outfreq1,
 		g_shared_status->ptp3_info.hw_cc, g_shared_status->ptp3_info.sw_cc,
-		g_shared_status->ptp3_info.hw_fc, g_shared_status->ptp3_info.sw_fc);
+		g_shared_status->ptp3_info.hw_fc, g_shared_status->ptp3_info.sw_fc,
+		ptp3_status.brisket_safe_margin ? "Safe" : "Normal");
 
 	mutex_unlock(&gpufreq_debug_lock);
 
@@ -283,7 +284,7 @@ static int gpu_signed_opp_table_proc_show(struct seq_file *m, void *v)
 
 	mutex_lock(&gpufreq_debug_lock);
 
-	if (g_shared_status->test_mode) {
+	if (g_shared_status->test_mode == TEST_PRIVILEGE) {
 		opp_num = g_shared_status->signed_opp_num_gpu;
 		opp_table = g_shared_status->signed_table_gpu;
 	} else {
@@ -318,7 +319,7 @@ static int stack_signed_opp_table_proc_show(struct seq_file *m, void *v)
 
 	mutex_lock(&gpufreq_debug_lock);
 
-	if (g_shared_status->test_mode) {
+	if (g_shared_status->test_mode == TEST_PRIVILEGE) {
 		opp_num = g_shared_status->signed_opp_num_stack;
 		opp_table = g_shared_status->signed_table_stack;
 	} else {
@@ -732,7 +733,8 @@ static int mfgsys_config_proc_show(struct seq_file *m, void *v)
 		g_shared_status->stress_test == STRESS_RANDOM ? "Random" :
 		g_shared_status->stress_test == STRESS_TRAVERSE ? "Traverse" :
 		g_shared_status->stress_test == STRESS_MAX_MIN ? "Max_Min" : "Disable",
-		g_shared_status->test_mode ? "On" : "Off");
+		g_shared_status->test_mode == TEST_PRIVILEGE ? "Privilege" :
+		g_shared_status->test_mode == TEST_ADVANCED ? "Advanced" : "Normal");
 
 	seq_puts(m, "\n[##*] [TOP Vaging] [##*] [TOP Vavs] [##*] [STK Vaging] [##*] [STK Vavs]\n");
 	for (i = 0; i < adj_num; i++) {
@@ -884,6 +886,8 @@ static ssize_t mfgsys_config_proc_write(struct file *file,
 				val = FEAT_ENABLE;
 			else if (sysfs_streq(input_val, "disable"))
 				val = FEAT_DISABLE;
+			else if (sysfs_streq(input_val, "safe"))
+				val = PTP3_SAFE_MARGIN;
 		}
 
 		/* set to mfgsys if valid */
