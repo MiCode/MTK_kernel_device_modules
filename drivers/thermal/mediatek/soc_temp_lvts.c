@@ -169,7 +169,10 @@ static int __used lvts_read_all_tc_temperature(struct lvts_data *lvts_data, bool
 
 			s_index = tc[i].sensor_map[j];
 
-			msr_raw = lvts_read_tc_msr_raw(LVTSMSR0_0 + base + 0x4 * j);
+			if (lvts_data->is_tsfdc_n3e_ver)
+				msr_raw = lvts_read_tc_msr_raw(LVTSATP0_0 + base + 0x4 * j);
+			else
+				msr_raw = lvts_read_tc_msr_raw(LVTSMSR0_0 + base + 0x4 * j);
 
 			if (msr_raw == 0)
 				current_temp = THERMAL_TEMP_INVALID;
@@ -210,7 +213,10 @@ static int lvts_read_tc_temperature(struct lvts_data *lvts_data, unsigned int tz
 			if (s_index != tc[i].sensor_map[j])
 				continue;
 
-			msr_raw = lvts_read_tc_msr_raw(LVTSMSR0_0 + base + 0x4 * j);
+			if (lvts_data->is_tsfdc_n3e_ver)
+				msr_raw = lvts_read_tc_msr_raw(LVTSATP0_0 + base + 0x4 * j);
+			else
+				msr_raw = lvts_read_tc_msr_raw(LVTSMSR0_0 + base + 0x4 * j);
 
 			if (msr_raw == 0)
 				current_temp = THERMAL_TEMP_INVALID;
@@ -1376,12 +1382,14 @@ static irqreturn_t irq_handler(int irq, void *dev_id)
 		for (i = 0; i < lvts_data->num_tc; i++) {
 			base = GET_BASE_ADDR(i);
 			if (readl(LVTSMONINTSTS_0 + base) & THERMAL_PROTECTION_STAGE_3) {
-				disable_all_sensing_points(lvts_data);
+				if (!lvts_data->dump_wo_pause)
+					disable_all_sensing_points(lvts_data);
 				break;
 			}
 		}
 	} else {
-		disable_all_sensing_points(lvts_data);
+		if (!lvts_data->dump_wo_pause)
+			disable_all_sensing_points(lvts_data);
 	}
 	for (i = 0; i < lvts_data->num_domain; i++) {
 		base = lvts_data->domain[i].base;
@@ -6287,6 +6295,388 @@ static struct lvts_data mt6886_lvts_data = {
 };
 
 /*==================================================
+ * LVTS MT6991
+ *==================================================
+ */
+enum mt6991_lvts_domain {
+	MT6991_AP_DOMAIN,
+	MT6991_MCU_DOMAIN,
+	MT6991_APU_DOMAIN,
+	MT6991_GPU_DOMAIN,
+	MT6991_NUM_DOMAIN
+};
+
+enum mt6991_lvts_sensor_enum {
+	MT6991_TS1_0,
+	MT6991_TS1_1,
+	MT6991_TS1_2,
+	MT6991_TS1_3,
+	MT6991_TS2_0,
+	MT6991_TS2_1,
+	MT6991_TS2_2,
+	MT6991_TS2_3,
+	MT6991_TS3_0,
+	MT6991_TS3_1,
+	MT6991_TS3_2,//10
+	MT6991_TS3_3,
+	MT6991_TS4_0,
+	MT6991_TS4_1,
+	MT6991_TS4_2,
+	MT6991_TS4_3,
+	MT6991_TS5_0,
+	MT6991_TS5_1,
+	MT6991_TS5_2,
+	MT6991_TS5_3,
+	MT6991_TS7_0,//20
+	MT6991_TS7_1,
+	MT6991_TS11_0,
+	MT6991_TS11_1,
+	MT6991_TS11_2,
+	MT6991_TS11_3,//25
+	MT6991_TS12_0,
+	MT6991_TS12_1,
+	MT6991_TS12_2,
+	MT6991_TS12_3,
+	MT6991_NUM_TS,
+};
+
+
+enum mt6991_lvts_controller_enum {
+	MT6991_LVTS_MCU_CTRL0,
+	MT6991_LVTS_MCU_CTRL1,
+	MT6991_LVTS_MCU_CTRL2,
+	MT6991_LVTS_MCU_CTRL3,
+	MT6991_LVTS_AP_CTRL0,
+	MT6991_LVTS_AP_CTRL1,
+	MT6991_LVTS_APU_CTRL0,
+	MT6991_LVTS_GPU_CTRL0,
+	MT6991_LVTS_CTRL_NUM
+};
+
+static void mt6991_efuse_to_cal_data(struct lvts_data *lvts_data)
+{
+	struct sensor_cal_data *cal_data = &lvts_data->cal_data;
+	struct tc_settings *tc = lvts_data->tc;
+	int i = 0;
+
+	cal_data->cali_mode = GET_CAL_DATA_BIT(0, 31);
+	cal_data->golden_temp_ht = GET_CAL_DATA_BITMASK(0, 15, 8);
+	cal_data->golden_temp = GET_CAL_DATA_BITMASK(0, 7, 0);
+
+	for (i = 0; i < lvts_data->num_tc; i++)
+		tc[i].coeff.golden_temp = cal_data->golden_temp;
+
+	if (cal_data->cali_mode == 1) {
+		for (i = 0; i < lvts_data->num_tc; i++) {
+			if (tc[i].coeff.cali_mode == CALI_HT)
+				tc[i].coeff.golden_temp = cal_data->golden_temp_ht;
+		}
+	}
+
+	cal_data->count_r[MT6991_TS1_0] =  GET_CAL_DATA_BITMASK(1, 31, 16);
+	cal_data->count_r[MT6991_TS1_1] =  GET_CAL_DATA_BITMASK(1, 15, 0);
+	cal_data->count_r[MT6991_TS1_2] =  GET_CAL_DATA_BITMASK(2, 31, 16);
+	cal_data->count_r[MT6991_TS1_3] =  GET_CAL_DATA_BITMASK(2, 15, 0);
+
+	cal_data->count_r[MT6991_TS2_0] =  GET_CAL_DATA_BITMASK(3, 31, 16);
+	cal_data->count_r[MT6991_TS2_1] =  GET_CAL_DATA_BITMASK(3, 15, 0);
+	cal_data->count_r[MT6991_TS2_2] =  GET_CAL_DATA_BITMASK(4, 31, 16);
+	cal_data->count_r[MT6991_TS2_3] =  GET_CAL_DATA_BITMASK(4, 15, 0);
+
+	cal_data->count_r[MT6991_TS3_0] =  GET_CAL_DATA_BITMASK(5, 31, 16);
+	cal_data->count_r[MT6991_TS3_1] =  GET_CAL_DATA_BITMASK(5, 15, 0);
+	cal_data->count_r[MT6991_TS3_2] =  GET_CAL_DATA_BITMASK(6, 31, 16);
+	cal_data->count_r[MT6991_TS3_3] =  GET_CAL_DATA_BITMASK(6, 15, 0);
+
+	cal_data->count_r[MT6991_TS4_0] =  GET_CAL_DATA_BITMASK(7, 31, 16);
+	cal_data->count_r[MT6991_TS4_1] =  GET_CAL_DATA_BITMASK(7, 15, 0);
+	cal_data->count_r[MT6991_TS4_2] =  GET_CAL_DATA_BITMASK(8, 31, 16);
+	cal_data->count_r[MT6991_TS4_3] =  GET_CAL_DATA_BITMASK(8, 15, 0);
+
+	cal_data->count_r[MT6991_TS5_0] =  GET_CAL_DATA_BITMASK(9, 31, 16);
+	cal_data->count_r[MT6991_TS5_1] =  GET_CAL_DATA_BITMASK(9, 15, 0);
+	cal_data->count_r[MT6991_TS5_2] =  GET_CAL_DATA_BITMASK(10, 31, 16);
+	cal_data->count_r[MT6991_TS5_3] =  GET_CAL_DATA_BITMASK(10, 15, 0);
+
+	cal_data->count_r[MT6991_TS7_0]  =  GET_CAL_DATA_BITMASK(11, 31, 16);
+	cal_data->count_r[MT6991_TS7_1]  =  GET_CAL_DATA_BITMASK(11, 15, 0);
+	cal_data->count_r[MT6991_TS11_0] =  GET_CAL_DATA_BITMASK(12, 31, 16);
+	cal_data->count_r[MT6991_TS11_1] =  GET_CAL_DATA_BITMASK(12, 15, 0);
+
+	cal_data->count_r[MT6991_TS11_2] =  GET_CAL_DATA_BITMASK(13, 31, 16);
+	cal_data->count_r[MT6991_TS11_3] =  GET_CAL_DATA_BITMASK(13, 15, 0);
+	cal_data->count_r[MT6991_TS12_0] =  GET_CAL_DATA_BITMASK(14, 31, 16);
+	cal_data->count_r[MT6991_TS12_1] =  GET_CAL_DATA_BITMASK(14, 15, 0);
+
+	cal_data->count_r[MT6991_TS12_2] =  GET_CAL_DATA_BITMASK(15, 31, 16);
+	cal_data->count_r[MT6991_TS12_3] =  GET_CAL_DATA_BITMASK(15, 15, 0);
+
+	cal_data->count_rc[MT6991_LVTS_MCU_CTRL0] =  GET_CAL_DATA_BITMASK(16, 23, 0);
+	cal_data->count_rc[MT6991_LVTS_MCU_CTRL1] =  GET_CAL_DATA_BITMASK(17, 23, 0);
+	cal_data->count_rc[MT6991_LVTS_MCU_CTRL2] =  GET_CAL_DATA_BITMASK(18, 23, 0);
+	cal_data->count_rc[MT6991_LVTS_MCU_CTRL3] =  GET_CAL_DATA_BITMASK(19, 23, 0);
+
+	cal_data->count_rc[MT6991_LVTS_APU_CTRL0] =  GET_CAL_DATA_BITMASK(20, 23, 0);
+	cal_data->count_rc[MT6991_LVTS_GPU_CTRL0] =  GET_CAL_DATA_BITMASK(21, 23, 0);
+
+	cal_data->count_rc[MT6991_LVTS_AP_CTRL0] =  GET_CAL_DATA_BITMASK(22, 23, 0);
+	cal_data->count_rc[MT6991_LVTS_AP_CTRL1] =  GET_CAL_DATA_BITMASK(23, 23, 0);
+
+	if (!lvts_data->op_cali_support) {
+		cal_data->op_cali[MT6991_LVTS_MCU_CTRL0] =  GET_CAL_DATA_BITMASK(16, 29, 24);
+		cal_data->op_cali[MT6991_LVTS_MCU_CTRL1] =  GET_CAL_DATA_BITMASK(17, 29, 24);
+		cal_data->op_cali[MT6991_LVTS_MCU_CTRL2] =  GET_CAL_DATA_BITMASK(18, 29, 24);
+		cal_data->op_cali[MT6991_LVTS_MCU_CTRL3] =  GET_CAL_DATA_BITMASK(19, 29, 24);
+
+		cal_data->op_cali[MT6991_LVTS_APU_CTRL0] =  GET_CAL_DATA_BITMASK(20, 29, 24);
+		cal_data->op_cali[MT6991_LVTS_GPU_CTRL0] =  GET_CAL_DATA_BITMASK(21, 29, 24);
+
+		cal_data->op_cali[MT6991_LVTS_AP_CTRL0] =  GET_CAL_DATA_BITMASK(22, 29, 24);
+		cal_data->op_cali[MT6991_LVTS_AP_CTRL1] =  GET_CAL_DATA_BITMASK(23, 29, 24);
+	}
+}
+
+static void mt6991_check_cal_data(struct lvts_data *lvts_data)
+{
+	struct device *dev = lvts_data->dev;
+	struct sensor_cal_data *cal_data = &lvts_data->cal_data;
+	struct tc_settings *tc = lvts_data->tc;
+	int i;
+
+	cal_data->use_fake_efuse = 1;
+
+	if ((cal_data->golden_temp != 0) || (cal_data->golden_temp_ht != 0)) {
+		cal_data->use_fake_efuse = 0;
+	} else {
+		for (i = 0; i < lvts_data->num_sensor; i++) {
+			if (cal_data->count_r[i] != 0) {
+				cal_data->use_fake_efuse = 0;
+				break;
+			}
+		}
+		if (cal_data->use_fake_efuse == 1) {
+			for (i = 0; i < lvts_data->num_tc; i++) {
+				if (cal_data->count_rc[i] != 0) {
+					cal_data->use_fake_efuse = 0;
+					break;
+				}
+			}
+		}
+	}
+
+	if (cal_data->use_fake_efuse) {
+		/* It means all efuse data are equal to 0 */
+		dev_info(dev,
+			"[lvts_cal] This sample is not calibrated, fake !!\n");
+		for (i = 0; i < lvts_data->num_sensor; i++)
+			cal_data->count_r[i] = cal_data->default_count_r;
+
+
+		for (i = 0; i < lvts_data->num_tc; i++)
+			cal_data->count_rc[i] = cal_data->default_count_rc;
+
+		if (!lvts_data->op_cali_support)
+			for (i = 0; i < lvts_data->num_tc; i++)
+				cal_data->op_cali[i] = 0;
+
+		for (i = 0; i < lvts_data->num_tc; i++) {
+			if (tc[i].coeff.cali_mode == CALI_HT &&
+				cal_data->cali_mode == 1)
+				tc[i].coeff.golden_temp = cal_data->default_golden_temp_ht;
+			else
+				tc[i].coeff.golden_temp = cal_data->default_golden_temp;
+		}
+	}
+}
+
+#define COF_A_T_SLP_GLD_6991 358830
+#define COF_A_COUNT_R_GLD_6991 34389
+#define COF_A_CONST_OFS_6991 0
+#define COF_A_OFS_6991 (COF_A_T_SLP_GLD_6991 - COF_A_CONST_OFS_6991)
+
+static void mt6991_update_coef_data(struct lvts_data *lvts_data)
+{
+	struct sensor_cal_data *cal_data = &lvts_data->cal_data;
+	struct tc_settings *tc = lvts_data->tc;
+	unsigned int i, j, s_index;
+
+	for (i = 0; i < lvts_data->num_tc; i++) {
+		for  (j = 0; j < tc[i].num_sensor; j++) {
+			if (tc[i].sensor_on_off[j] != SEN_ON)
+				continue;
+
+			s_index = tc[i].sensor_map[j];
+
+			tc[i].coeff.a[j] = COF_A_OFS_6991 + (COF_A_CONST_OFS_6991 *
+					cal_data->count_r[s_index] / COF_A_COUNT_R_GLD_6991);
+
+			dev_info(lvts_data->dev, "%s tc[%d].coeff.a[%d]=%d\n", __func__,
+				i, j, tc[i].coeff.a[j]);
+		}
+	}
+}
+
+static struct tc_settings mt6991_tc_settings[] = {
+	[MT6991_LVTS_MCU_CTRL0] = {
+		.domain_index = MT6991_MCU_DOMAIN,
+		.addr_offset = 0x0,
+		.num_sensor = 4,
+		.sensor_map = {MT6991_TS1_0, MT6991_TS1_1, MT6991_TS1_2, MT6991_TS1_3},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 10, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 110900,
+		.irq_bit = BIT(1),
+		.coeff = {
+			.cali_mode = CALI_HT,
+		},
+	},
+	[MT6991_LVTS_MCU_CTRL1] = {
+		.domain_index = MT6991_MCU_DOMAIN,
+		.addr_offset = 0x100,
+		.num_sensor = 4,
+		.sensor_map = {MT6991_TS2_0, MT6991_TS2_1, MT6991_TS2_2, MT6991_TS2_3},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 1440, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 118800,
+		.irq_bit = BIT(2),
+		.coeff = {
+			.cali_mode = CALI_HT,
+		},
+	},
+	[MT6991_LVTS_MCU_CTRL2] = {
+		.domain_index = MT6991_MCU_DOMAIN,
+		.addr_offset = 0x200,
+		.num_sensor = 4,
+		.sensor_map = {MT6991_TS3_0, MT6991_TS3_1, MT6991_TS3_2, MT6991_TS3_3},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 1440, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 118800,
+		.irq_bit = BIT(3),
+		.coeff = {
+			.cali_mode = CALI_NT,
+		},
+	},
+	[MT6991_LVTS_MCU_CTRL3] = {
+		.domain_index = MT6991_MCU_DOMAIN,
+		.addr_offset = 0x300,
+		.num_sensor = 4,
+		.sensor_map = {MT6991_TS4_0, MT6991_TS4_1, MT6991_TS4_2, MT6991_TS4_3},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 1440, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 118800,
+		.irq_bit = BIT(4),
+		.coeff = {
+			.cali_mode = CALI_NT,
+		},
+	},
+	[MT6991_LVTS_AP_CTRL0] = {
+		.domain_index = MT6991_AP_DOMAIN,
+		.addr_offset = 0x0,
+		.num_sensor = 4,
+		.sensor_map = {MT6991_TS11_0, MT6991_TS11_1, MT6991_TS11_2, MT6991_TS11_3},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 327670, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 118800,
+		.irq_bit = BIT(1),
+		.coeff = {
+			.cali_mode = CALI_NT,
+		},
+	},
+	[MT6991_LVTS_AP_CTRL1] = {
+		.domain_index = MT6991_AP_DOMAIN,
+		.addr_offset = 0x100,
+		.num_sensor = 4,
+		.sensor_map = {MT6991_TS12_0, MT6991_TS12_1, MT6991_TS12_2, MT6991_TS12_3},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 327670, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 118800,
+		.irq_bit = BIT(2),
+		.coeff = {
+			.cali_mode = CALI_NT,
+		},
+	},
+	[MT6991_LVTS_APU_CTRL0] = {
+		.domain_index = MT6991_APU_DOMAIN,
+		.addr_offset = 0x0,
+		.num_sensor = 4,
+		.sensor_map = {MT6991_TS5_0, MT6991_TS5_1, MT6991_TS5_2, MT6991_TS5_3},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 1950, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 118800,
+		.irq_bit = BIT(1),
+		.coeff = {
+			.cali_mode = CALI_NT,
+		},
+	},
+	[MT6991_LVTS_GPU_CTRL0] = {
+		.domain_index = MT6991_GPU_DOMAIN,
+		.addr_offset = 0x0,
+		.num_sensor = 2,
+		.sensor_map = {MT6991_TS7_0, MT6991_TS7_1},
+		.sensor_on_off = {SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 1230, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 118800,
+		.irq_bit = BIT(1),
+		.coeff = {
+			.cali_mode = CALI_NT,
+		},
+	},
+};
+
+static struct lvts_data mt6991_lvts_data = {
+	.num_domain = MT6991_NUM_DOMAIN,
+	.num_tc = MT6991_LVTS_CTRL_NUM,
+	.tc = mt6991_tc_settings,
+	.num_sensor = MT6991_NUM_TS,
+	.ops = {
+		.device_identification = device_identification_v2,
+		.efuse_to_cal_data = mt6991_efuse_to_cal_data,
+		.device_enable_and_init = device_enable_and_init_v6,
+		.device_enable_auto_rck = device_enable_auto_rck_v4,
+		.device_read_count_rc_n = device_read_count_rc_n_v6,
+		.set_cal_data = set_calibration_data_v4,
+		.init_controller = init_controller_v5,
+		.lvts_temp_to_raw = lvts_temp_to_raw_v2,
+		.lvts_raw_to_temp = lvts_raw_to_temp_v1,
+		.check_cal_data = mt6991_check_cal_data,
+		.update_coef_data = mt6991_update_coef_data,
+	},
+	.feature_bitmap = FEATURE_DEVICE_AUTO_RCK,
+	.num_efuse_addr = 24,
+	.num_efuse_block = 4,
+	.cal_data = {
+		.default_golden_temp = 60,
+		.default_golden_temp_ht = 170,
+		.default_count_r = 14437,
+		.default_count_rc = 14778,
+	},
+	.init_done = false,
+	.enable_dump_log = 0,
+	.clock_gate_no_need = true,
+	.reset_no_need = true,
+	.spm_lvts = true,
+	.op_cali_support = true,
+	.is_tsfdc_n3e_ver = true,
+	.dump_wo_pause = true,
+};
+
+/*==================================================
  * Support chips
  *==================================================
  */
@@ -6347,6 +6737,10 @@ static const struct of_device_id lvts_of_match[] = {
 	{
 		.compatible = "mediatek,mt6989-lvts",
 		.data = (void *)&mt6989_lvts_data,
+	},
+	{
+		.compatible = "mediatek,mt6991-lvts",
+		.data = (void *)&mt6991_lvts_data,
 	},
 	{
 	},

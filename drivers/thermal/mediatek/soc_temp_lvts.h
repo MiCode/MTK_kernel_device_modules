@@ -180,6 +180,7 @@ struct sensor_cal_data {
 	unsigned int *count_rc;
 	unsigned int *count_rc_now;
 	unsigned int *efuse_data;
+	unsigned int *op_cali;
 
 	unsigned int default_golden_temp;
 	unsigned int default_golden_temp_ht;
@@ -241,6 +242,9 @@ struct lvts_data {
 	bool reset_no_need;
 	bool spm_lvts;
 	int enable_runtime_log;
+	bool op_cali_support;
+	bool is_tsfdc_n3e_ver;
+	bool dump_wo_pause;
 };
 
 struct soc_temp_tz {
@@ -383,6 +387,11 @@ struct lvts_id {
 #define LVTSEDATA03_0	0x060
 #define LVTSATPTGT_0    0x064
 #define LVTSGSLOPE_0    0x068
+#define LVTSMSROFT_0	0x06C
+#define LVTSATP0_0		0x070
+#define LVTSATP1_0		0x074
+#define LVTSATP2_0		0x078
+#define LVTSATP3_0		0x07C
 #define LVTSOVSP0_0     0x080
 #define LVTSOVSP1_0     0x084
 #define LVTSOVSP2_0     0x088
