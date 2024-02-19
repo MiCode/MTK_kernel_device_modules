@@ -18010,6 +18010,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 #include "mediatek/mt6363.dtsi"
 #include "mediatek/mt6373.dtsi"
 #include "mediatek/mt6991-clkitg.dtsi"
+#include "mediatek/mt6991-coresight.dtsi"
 #include "mediatek/mt6991-disable-unused.dtsi"
 #include "mediatek/cust_mt6991_connfem.dtsi"
 #include "mediatek/cust_mt6991_msdc.dtsi"
