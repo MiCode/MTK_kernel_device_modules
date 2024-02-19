@@ -683,7 +683,7 @@ int port_dev_mmap(struct file *fp, struct vm_area_struct *vma)
 	wifi_smem = ccci_md_get_smem_by_user_id(SMEM_USER_MD_WIFI_PROXY);
 	if (wifi_smem == NULL)
 		return -EFAULT;
-	wifi_smem->size &= ~(PAGE_SIZE - 1);
+	wifi_smem->size = (wifi_smem->size + PAGE_SIZE - 1) & (~(PAGE_SIZE - 1));
 	CCCI_NORMAL_LOG(0, CHAR,
 			"remap wifi smem addr:0x%llx len:%d  map-len:%lu\n",
 			(unsigned long long)wifi_smem->base_ap_view_phy,

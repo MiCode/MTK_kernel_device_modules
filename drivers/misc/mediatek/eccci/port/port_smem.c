@@ -623,6 +623,7 @@ static int smem_dev_mmap(struct file *fp, struct vm_area_struct *vma)
 	struct ccci_smem_port *smem_port =
 		(struct ccci_smem_port *)port->private_data;
 	int ret;
+	unsigned int align_size;
 	unsigned long pfn, len;
 	struct ccci_smem_region *ccb_ctl =
 		ccci_md_get_smem_by_user_id(SMEM_USER_RAW_CCB_CTRL);
@@ -646,13 +647,12 @@ static int smem_dev_mmap(struct file *fp, struct vm_area_struct *vma)
 			return -EINVAL;
 		}
 		len = vma->vm_end - vma->vm_start;
-		if (len > ccb_ctl->size) {
+		align_size = (ccb_ctl->size + PAGE_SIZE - 1) & (~(PAGE_SIZE - 1));
+		if (len > align_size) {
 			CCCI_ERROR_LOG(0, CHAR,
-				"invalid mm size request from %s\n",
-				port->name);
+				"invalid mm size request from %s\n", port->name);
 			return -EINVAL;
 		}
-
 		pfn = ccb_ctl->base_ap_view_phy;
 		pfn >>= PAGE_SHIFT;
 		/* ensure that memory does not get swapped to disk */
@@ -689,13 +689,12 @@ static int smem_dev_mmap(struct file *fp, struct vm_area_struct *vma)
 			return -EINVAL;
 		}
 		len = vma->vm_end - vma->vm_start;
-		if (len > smem_port->length) {
+		align_size = (smem_port->length + PAGE_SIZE - 1) & (~(PAGE_SIZE - 1));
+		if (len > align_size) {
 			CCCI_ERROR_LOG(0, CHAR,
-				"invalid mm size request from %s\n",
-				port->name);
+				"invalid mm size request from %s\n", port->name);
 			return -EINVAL;
 		}
-
 		pfn = smem_port->addr_phy;
 		pfn >>= PAGE_SHIFT;
 		/* ensure that memory does not get swapped to disk */

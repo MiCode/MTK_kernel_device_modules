@@ -1501,7 +1501,7 @@ static int port_rpc_dev_mmap(struct file *fp, struct vm_area_struct *vma)
 	if (amms_smem->size != BANK4_DRDI_SMEM_SIZE)
 		CCCI_ERROR_LOG(0, RPC, "%s:%d:SMEM_USER_MD_DRDI size invalid(0x%x)\n",
 			__func__, __LINE__, amms_smem->size);
-	amms_smem->size &= ~(PAGE_SIZE - 1);
+	amms_smem->size = (amms_smem->size + PAGE_SIZE - 1)&(~(PAGE_SIZE - 1));
 	CCCI_NORMAL_LOG(0, RPC,
 			"remap drdi smem addr:0x%llx len:%d  map-len:%lx\n",
 			(unsigned long long)amms_smem->base_ap_view_phy,
