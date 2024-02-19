@@ -738,6 +738,36 @@ out:
 	return ret;
 }
 
+static int mdw_mem_ioctl_alloc_fb(struct mdw_fpriv *mpriv,
+	union mdw_mem_args *args)
+{
+	struct mdw_mem_in *in = (struct mdw_mem_in *)args;
+	int ret = 0;
+
+	if (!in->alloc_fb.total_vlm_size) {
+		mdw_drv_warn("invalid size(%u)\n", in->alloc_fb.total_vlm_size);
+		return -EINVAL;
+	}
+
+	mutex_lock(&mpriv->mtx);
+
+	mdw_mem_debug("size(%u) num_subcmds(%u)\n",
+		in->alloc_fb.total_vlm_size, in->alloc_fb.num_subcmds);
+	mdw_trace_begin("apummu:alloc dram fb|size:%u",
+		in->alloc_fb.total_vlm_size);
+	ret = apummu_DRAM_FB_alloc((uint64_t)mpriv, in->alloc_fb.total_vlm_size,
+		in->alloc_fb.num_subcmds);
+	mdw_trace_end();
+
+	if (ret)
+		mdw_drv_err("apummu: alloc fb size(%u) fail(%d) num_subcmds(%u)\n",
+			in->alloc_fb.total_vlm_size, ret,
+			in->alloc_fb.num_subcmds);
+
+	mutex_unlock(&mpriv->mtx);
+	return ret;
+}
+
 static int mdw_mem_ioctl_map(struct mdw_fpriv *mpriv,
 	union mdw_mem_args *args)
 {
@@ -860,6 +890,10 @@ int mdw_mem_ioctl(struct mdw_fpriv *mpriv, void *data)
 
 	case MDW_MEM_IOCTL_UNMAP:
 		ret = mdw_mem_ioctl_unmap(mpriv, args);
+		break;
+
+	case MDW_MEM_IOCTL_ALLOC_FB:
+		ret = mdw_mem_ioctl_alloc_fb(mpriv, args);
 		break;
 
 	case MDW_MEM_IOCTL_FREE:
