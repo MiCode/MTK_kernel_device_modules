@@ -27,7 +27,7 @@ enum AMMU_BUF_TYPE {
 };
 
 struct ammu_stable_info {
-	uint32_t EXT_SLB_addr;		// SLB addr for EXT
+	uint32_t EXT_SLB_addr;       // SLB addr for EXT
 
 	/*
 	 * Issue: there's only 5 page arraies, so we cannot use 4 page arraies for 0-16G
@@ -51,10 +51,12 @@ struct apummu_session_tbl {
 
 	uint32_t DRAM_1_4G_mask_cnter[32];
 	uint32_t DRAM_4_16G_mask_cnter[32];
+	uint32_t subcmd_num_for_DRAM_FB;
 
 	struct list_head list;
 };
 
+int ammu_DRAM_FB_alloc(uint64_t session, uint32_t vlm_size, uint32_t subcmd_num);
 int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session,
 			uint64_t iova, uint32_t buf_size, uint64_t *eva);
 int apummu_eva_decode(uint64_t eva, uint64_t *iova, enum AMMU_BUF_TYPE type);

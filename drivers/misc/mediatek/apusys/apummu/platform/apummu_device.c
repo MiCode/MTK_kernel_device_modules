@@ -11,18 +11,34 @@
 #include "apummu_device.h"
 
 static struct apummu_plat mt6897_drv = {
-	.slb_wait_time			= 0,
-	.is_general_SLB_support	= true,
+	.slb_wait_time                   = 0,
+	.is_general_SLB_support          = true,
+	.alloc_DRAM_FB_in_session_create = true,
 };
 
 static struct apummu_plat mt6989_drv = {
+	.slb_wait_time                   = 0,
+	.is_general_SLB_support          = true,
+	.alloc_DRAM_FB_in_session_create = true,
+};
+
+static struct apummu_plat mt6878_drv = {
 	.slb_wait_time			= 0,
-	.is_general_SLB_support	= true,
+	.is_general_SLB_support	= false,
+	.alloc_DRAM_FB_in_session_create = true,
+};
+
+static struct apummu_plat mt6991_drv = {
+	.slb_wait_time                   = 0,
+	.is_general_SLB_support          = false,
+	.alloc_DRAM_FB_in_session_create = false,
 };
 
 static const struct of_device_id apummu_of_match[] = {
 	{ .compatible = "mediatek,rv-apummu",        .data = &mt6897_drv },
 	{ .compatible = "mediatek,rv-apummu-mt6989", .data = &mt6989_drv },
+	{ .compatible = "mediatek,rv-apummu-mt6878", .data = &mt6878_drv },
+	{ .compatible = "mediatek,rv-apummu-mt6991", .data = &mt6991_drv },
 	{ /* end of list */ },
 };
 

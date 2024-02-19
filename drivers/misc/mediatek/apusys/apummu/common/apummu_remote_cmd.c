@@ -268,12 +268,13 @@ out:
 	return ret;
 }
 
-int apummu_remote_mem_add_pool(void *drvinfo)
+int apummu_remote_mem_add_pool(void *drvinfo, uint32_t type,
+	uint64_t in_addr, uint32_t size, uint32_t start_idx)
 {
 	struct apummu_dev_info *adv = NULL;
 	struct apummu_msg req, reply;
 	int ret = 0, widx = 0;
-	uint32_t mem_op = 0, in_addr = 0, size = 0, type = 0;
+	uint32_t mem_op = 0;
 
 	if (drvinfo == NULL) {
 		AMMU_LOG_ERR("invalid argument\n");
@@ -295,14 +296,11 @@ int apummu_remote_mem_add_pool(void *drvinfo)
 
 	mem_op = APUMMU_MEM_ADD_POOL;
 
-	type = APUMMU_MEM_TYPE_GENERAL_S;
-	in_addr = (uint32_t) adv->rsc.genernal_SLB.iova;
-	size = adv->rsc.genernal_SLB.size;
-
-	AMMU_RPMSG_write(&mem_op, req.data, sizeof(mem_op), widx);
-	AMMU_RPMSG_write(&type, req.data, sizeof(type), widx);
-	AMMU_RPMSG_write(&in_addr, req.data, sizeof(in_addr), widx);
-	AMMU_RPMSG_write(&size, req.data, sizeof(size), widx);
+	AMMU_RPMSG_write(&mem_op,    req.data, sizeof(mem_op),    widx);
+	AMMU_RPMSG_write(&type,      req.data, sizeof(type),      widx);
+	AMMU_RPMSG_write(&in_addr,   req.data, sizeof(in_addr),   widx);
+	AMMU_RPMSG_write(&size,      req.data, sizeof(size),      widx);
+	AMMU_RPMSG_write(&start_idx, req.data, sizeof(start_idx), widx);
 
 	ret = apummu_remote_send_cmd_sync(drvinfo, (void *) &req, (void *) &reply, 0);
 	if (ret) {
