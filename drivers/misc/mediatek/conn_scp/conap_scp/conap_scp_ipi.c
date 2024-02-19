@@ -155,7 +155,7 @@ int ipi_recv_cb(unsigned int id, void *prdata, void *data, unsigned int len)
 static int conap_scp_ipi_send(void *data, uint32_t len)
 {
 #ifdef MTK_CONAP_IPI_SUPPORT
-	unsigned int retry_time = 500;
+	unsigned int retry_time = 5;
 	unsigned int retry_cnt = 0;
 	int ipi_result = -1;
 
@@ -168,7 +168,7 @@ static int conap_scp_ipi_send(void *data, uint32_t len)
 							0);
 		if (ipi_result == IPI_ACTION_DONE)
 			break;
-		udelay(1000);
+		msleep(20);
 	}
 	if (ipi_result != 0) {
 		pr_err("[ipi_send_data] send fail [%d]", ipi_result);
