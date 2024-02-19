@@ -9063,7 +9063,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<&gce_m 26 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 					<&gce_m 27 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 					<&gce_m 30 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
-					<&gce_m 31 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+					<&gce_m 31 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
+					/* qos thread */
+					<&gce_m 6 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 					/* secure thread */
 					//<&gce_m_sec 10 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
 					//<&gce_m_sec 12 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
@@ -9970,27 +9972,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"TRAW_DIP1_TRAW",
 				"TRAW_DIP1_GALS",
 				"TRAW_CAP_DIP1_TRAW_CAP";
+			hwqos-sync-token =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_QOS_LOCK>;
+			mmqos-supply = <&mmqos>;
 		#if 0
 			operating-points-v2 = <&opp_table_img>;
 			mediatek,imgsys-dvfs-pix-mode = <4>;
-			mediatek,imgsys-qos-sc-motr = <2>;
-			mediatek,imgsys-qos-sc-nums = <2>;
-			mediatek,imgsys-qos-sc-id = <19 20>;
 			mediatek,imgsys-qof-ver = <1>;
-			interconnects =
-				<&mmqos SLAVE_LARB(28)
-					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos SLAVE_LARB(22)
-					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos SLAVE_LARB(9)
-					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos SLAVE_LARB(15)
-					&mmqos SLAVE_COMMON(1)>;
-			interconnect-names =
-				"l10_common_r_0",
-				"l22_common_w_0",
-				"l9_common_r_1",
-				"l15_common_w_1";
 		#endif
 		};
 
