@@ -3794,6 +3794,8 @@ static int msdc_drv_probe(struct platform_device *pdev)
 
 	if (ret)
 		goto end;
+	bitmap_zero(host->err_bag.err_bitmap, ERR_BIT_SIZE);
+	INIT_KFIFO(host->err_info_bag_ring);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_DEBUG)
 	ret = mmc_dbg_register(mmc);
