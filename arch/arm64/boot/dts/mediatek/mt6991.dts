@@ -8089,14 +8089,12 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&cksys_gp2_clk CLK_CK2_CAMTM>,
 				<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 				<&cam_vcore_r1a_clk CLK_VCORE_CAMRAW>,
-				<&cam_vcore_r1a_clk CLK__26M_CAMRAW>,
 				<&cam_vcore_r1a_clk CLK_2MM0_SUBCOMMON_DCM_DIS_CAMRAW>,
 				<&cam_vcore_r1a_clk CLK_CAM_V_MM0_SUBCOMM_CAMRAW>;
 			clock-names = "topckgen_top_cam_sel",
 				"topckgen_top_camtm_sel",
 				"vlpckgen_vlp_camtg_sel",
 				"camsys_vcore",
-				"camsys_v_26m",
 				"camsys_v_dcm_dis",
 				"camsys_v_mm0_subcomm";
 		};
