@@ -14,6 +14,8 @@
 #else
 #define NO_OPTIMIZE
 #endif
+#else
+#define NO_OPTIMIZE
 #endif
 
 struct fh_operation {
