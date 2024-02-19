@@ -42,7 +42,8 @@ struct lpm_spm_wake_status {
 	u32 debug_flag1;	/* PCM_WDT_LATCH_SPARE_1 */
 	u32 debug_flag2;	/* Common scen fp */
 	u32 common_cnt0;	/* Common scen cnt0 */
-	u32 common_cnt1;	/* Common scen cnt1d */
+	u32 common_cnt1;	/* Common scen cnt1 */
+	u32 common_cnt2;	/* Common scen cnt2 */
 	u32 debug_spare5;	/* PCM_WDT_LATCH_SPARE_5 */
 	u32 debug_spare6;	/* PCM_WDT_LATCH_SPARE_6 */
 	u32 b_sw_flag0;		/* SPM_SW_RSV_7 */

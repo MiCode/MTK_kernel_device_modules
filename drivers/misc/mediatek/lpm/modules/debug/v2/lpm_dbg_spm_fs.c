@@ -99,6 +99,17 @@ struct spm_node spm_suspend = {
 	},
 };
 
+struct spm_node spm_common_sodi = {
+	.name = "common_sodi_ctrl",
+	.mode = 0644,
+	.pwr_ctrl_str = NULL,
+	.op = {
+		.fs_read = generic_spm_read,
+		.fs_write = generic_spm_write,
+		.priv = (void *)&spm_common_sodi,
+	},
+};
+
 /**************************************
  * xxx_ctrl_show Function
  **************************************/
@@ -163,6 +174,8 @@ generic_spm_read(char *ToUserBuf, size_t sz, void *priv)
 
 	if (priv == &spm_idle)
 		id = MT_SPM_DBG_SMC_UID_IDLE_PWR_CTRL;
+	else if (priv == &spm_common_sodi)
+		id = MT_SPM_DBG_SMC_UID_COMMON_SODI_PWR_CTRL;
 	return show_pwr_ctrl(id, ToUserBuf, sz, priv);
 }
 
@@ -175,6 +188,8 @@ generic_spm_write(char *FromUserBuf, size_t sz, void *priv)
 
 	if (priv == &spm_idle)
 		id = MT_SPM_DBG_SMC_UID_IDLE_PWR_CTRL;
+	else if (priv == &spm_common_sodi)
+		id = MT_SPM_DBG_SMC_UID_COMMON_SODI_PWR_CTRL;
 
 	return store_pwr_ctrl(id, FromUserBuf, sz, priv);
 }
@@ -568,6 +583,8 @@ int lpm_spm_fs_init(char **str, unsigned int cnt)
 	spm_idle.pwr_ctrl_cnt= cnt;
 	spm_suspend.pwr_ctrl_str = str;
 	spm_suspend.pwr_ctrl_cnt= cnt;
+	spm_common_sodi.pwr_ctrl_str = str;
+	spm_common_sodi.pwr_ctrl_cnt= cnt;
 
 	mtk_spm_sysfs_root_entry_create();
 	mtk_spm_sysfs_entry_node_add("spm_resource_req", 0444
@@ -600,6 +617,12 @@ int lpm_spm_fs_init(char **str, unsigned int cnt)
 						 &spm_idle.op,
 						 &spm_root.handle,
 						 &spm_idle.handle);
+
+		mtk_lp_sysfs_entry_func_node_add(spm_common_sodi.name,
+						 spm_common_sodi.mode,
+						 &spm_common_sodi.op,
+						 &spm_root.handle,
+						 &spm_common_sodi.handle);
 	}
 
 	return r;
