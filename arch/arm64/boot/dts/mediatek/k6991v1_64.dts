@@ -351,13 +351,12 @@ bootargs_ext = "";
 &connfem {
 	sku {
 		hw-names =
-			"qm42655_qm45655",	/* [0] SKU1 with QM42655/QM45655 */
-			"sky55208_sky55714",	/* [1] SKU1 with SKY55208/SKY55714 */
-			"ipa_qm45655",		/* [2] SKU2 with QM45655 */
-			"ipa_sky55714";		/* [3] SKU2 with SKY55714 */
+			"qm42655_qm45655",	/* [0] QM42655/QM45655, 2G+2A+1A, BT AntSwap */
+			"qm42655_qm45655_2g2a",	/* [1] QM42655/QM45655, 2G+2A */
+			"sky55208_sky55714";	/* [2] SKY55208/SKY55714, 2G+2A+1A, BT AntSwap */
 
 		/***************************************************************
-		 * [HW][0] SKU1: 2A+1A, BT AntSwap, QM42655/QM45655
+		 * [HW][0] QM42655/QM45655, 2G+2A+1A, BT AntSwap
 		 **************************************************************/
 		hw-0 {
 			using-fems =
@@ -366,19 +365,19 @@ bootargs_ext = "";
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku1_g_wf0_bt0_qm42655>,
-				<&sku1_g_wf1_bt1_qm42655>,
-				<&sku1_a_wf0_qm45655>,
-				<&sku1_a_wf1_qm45655>,
-				<&sku1_a_wf2_bt0_qm45655>;
+				<&g_wf0_bt0_qm42655>,
+				<&g_wf1_bt1_qm42655>,
+				<&a_wf0_qm45655>,
+				<&a_wf1_qm45655>,
+				<&a_wf2_bt0_qm45655>;
 
 			layout-spdt =
-				<&sku1_spdt_a2_filter>,
-				<&sku1_spdt_bt_antswap>;
+				<&spdt_a2_filter>,
+				<&spdt_g_bt1_antswap>;
 
 			common {
 				flags {
-					fe-ant-cnt = [82];
+					fe-ant-cnt = [96];
 					fe-conn-dpdt-sp3t = [80];
 					fe-conn-spdt = [98];
 					fe-bt-wf-usage = [98];
@@ -400,30 +399,68 @@ bootargs_ext = "";
 			};
 		};
 
-
 		/***************************************************************
-		 * [HW][1] SKU1: 2A+1A, BT AntSwap, SKY55208/SKY55714
+		 * [HW][1] QM42655/QM45655, 2G+2A
 		 **************************************************************/
 		hw-1 {
+			using-fems =
+				<&qm42655>,
+				<&qm45655>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&g_wf0_bt0_qm42655>,
+				<&g_wf1_bt1_qm42655>,
+				<&a_wf0_qm45655>,
+				<&a_wf1_qm45655>;
+
+			common {
+				flags {
+					fe-ant-cnt = [85];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [80];
+					fe-bt-wf-usage = [80];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&qm42655_rxl>,
+					<&qm45655_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [24]; /* 0x24: G-band RxL */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][2] SKY55208/SKY55714, 2G+2A+1A, BT AntSwap
+		 **************************************************************/
+		hw-2 {
 			using-fems =
 				<&sky55208>,
 				<&sky55714>;
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku1_g_wf0_bt0_sky55208>,
-				<&sku1_g_wf1_bt1_sky55208>,
-				<&sku1_a_wf0_sky55714>,
-				<&sku1_a_wf1_sky55714>,
-				<&sku1_a_wf2_bt0_sky55714>;
+				<&g_wf0_bt0_sky55208>,
+				<&g_wf1_bt1_sky55208>,
+				<&a_wf0_sky55714>,
+				<&a_wf1_sky55714>,
+				<&a_wf2_bt0_sky55714>;
 
 			layout-spdt =
-				<&sku1_spdt_a2_filter>,
-				<&sku1_spdt_bt_antswap>;
+				<&spdt_a2_filter>,
+				<&spdt_g_bt1_antswap>;
 
 			common {
 				flags {
-					fe-ant-cnt = [82];
+					fe-ant-cnt = [96];
 					fe-conn-dpdt-sp3t = [80];
 					fe-conn-spdt = [98];
 					fe-bt-wf-usage = [98];
@@ -441,85 +478,6 @@ bootargs_ext = "";
 				flags {
 					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
 					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
-				};
-			};
-		};
-
-
-		/***************************************************************
-		 * [HW][2] SKU2: 2G iPA 1A+1A + EMLSR, QM45655
-		 **************************************************************/
-		hw-2 {
-			using-fems = <&qm45655>;
-
-			layout-flag = <0x00000000>;
-			layout =
-				<&sku2_a_wf0_qm45655>,
-				<&sku2_a_wf12_emlsr_bt0_qm45655>;
-
-			layout-spdt =
-				<&sku2_spdt_a1_a2_tx>,
-				<&sku2_spdt_a1_a2_rx>,
-				<&sku2_sp3t_g0_ipa>,
-				<&sku2_sp3t_g1_ipa>;
-
-			common {
-				flags {
-					fe-ant-cnt = [81];
-					fe-conn-dpdt-sp3t = [e0];
-					fe-conn-spdt = [83];
-					fe-bt-wf-usage = [88];
-					fe-conn-spdt-2 = [80];
-				};
-			};
-
-			wifi {
-				using-states = <&qm45655_rxl>;
-			};
-
-			bt {
-				flags {
-					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
-					rx-mode = [10]; /* 0x10: HBBT RxH */
-				};
-			};
-		};
-
-		/***************************************************************
-		 * [HW][3] SKU2: 2G iPA 1A+1A + EMLSR, SKY55714
-		 **************************************************************/
-		hw-3 {
-			using-fems = <&sky55714>;
-
-			layout-flag = <0x00000000>;
-			layout =
-				<&sku2_a_wf0_sky55714>,
-				<&sku2_a_wf12_emlsr_bt0_sky55714>;
-
-			layout-spdt =
-				<&sku2_spdt_a1_a2_tx>,
-				<&sku2_spdt_a1_a2_rx>,
-				<&sku2_sp3t_g0_ipa>,
-				<&sku2_sp3t_g1_ipa>;
-
-			common {
-				flags {
-					fe-ant-cnt = [81];
-					fe-conn-dpdt-sp3t = [e0];
-					fe-conn-spdt = [83];
-					fe-bt-wf-usage = [88];
-					fe-conn-spdt-2 = [80];
-				};
-			};
-
-			wifi {
-				using-states = <&sky55714_rxl>;
-			};
-
-			bt {
-				flags {
-					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
-					rx-mode = [10]; /* 0x10: HBBT RxH */
 				};
 			};
 		};
