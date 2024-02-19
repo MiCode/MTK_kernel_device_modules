@@ -23,6 +23,7 @@ struct mml_drm_ctx;
 struct mml_drm_param;
 struct mml_dle_ctx;
 struct mml_dle_param;
+struct mml_m2m_ctx;
 struct mml_topology_cache;
 struct mml_task;
 struct mml_comp_config;
@@ -301,6 +302,8 @@ struct mml_dle_ctx *mml_dev_get_dle_ctx(struct mml_dev *mml,
 	void (*ctx_setup)(struct mml_dle_ctx *ctx, struct mml_dle_param *dl));
 void mml_dev_put_dle_ctx(struct mml_dev *mml,
 	void (*ctx_release)(struct mml_dle_ctx *ctx));
+struct mml_m2m_ctx *mml_dev_create_m2m_ctx(struct mml_dev *mml,
+	struct mml_m2m_ctx *(*ctx_create)(struct mml_dev *mml));
 
 /*
  * mml_topology_get_cache - Get topology cache struct store in mml.
