@@ -128,8 +128,10 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 	if (kstrtou32_from_user(userbuf, count, 10, v))
 		return -EFAULT;
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	if (!tinfo)
 		return -EFAULT;
+#endif
 
 	if ((void *)v == (void *)&cfg.enable) {
 		if (cfg.enable == true) {
@@ -168,6 +170,7 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 
 			/* pass the signum */
 			for (i = 0; i < cfg.dpmsr_count; i++) {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 				pmsr_scmi_data.uid = 0x0;
 				pmsr_scmi_data.action = PMSR_TOOL_ACT_SIGNUM;
 				pmsr_scmi_data.param1 = i;
@@ -178,9 +181,11 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 					0);
 				if (ret)
 					cfg.err |= pmsr_scmi_data.action;
+#endif
 			}
 			/* pass the seltype */
 			for (i = 0; i < cfg.dpmsr_count; i++) {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 				pmsr_scmi_data.uid = 0x0;
 				pmsr_scmi_data.action = PMSR_TOOL_ACT_SELTYPE;
 				pmsr_scmi_data.param1 = i;
@@ -191,9 +196,11 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 					0);
 				if (ret)
 					cfg.err |= pmsr_scmi_data.action;
+#endif
 			}
 			/* pass the montype */
 			for (i = 0; i < cfg.dpmsr_count; i++) {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 				pmsr_scmi_data.uid = 0x0;
 				pmsr_scmi_data.action = PMSR_TOOL_ACT_MONTYPE;
 				pmsr_scmi_data.param1 = i;
@@ -204,9 +211,11 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 					0);
 				if (ret)
 					cfg.err |= pmsr_scmi_data.action;
+#endif
 			}
 			/* pass the en */
 			for (i = 0; i < cfg.dpmsr_count; i++) {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 				pmsr_scmi_data.uid = 0x0;
 				pmsr_scmi_data.action = PMSR_TOOL_ACT_EN;
 				pmsr_scmi_data.param1 = i;
@@ -217,6 +226,7 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 					0);
 				if (ret)
 					cfg.err |= pmsr_scmi_data.action;
+#endif
 			}
 			/* pass the enable command */
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
