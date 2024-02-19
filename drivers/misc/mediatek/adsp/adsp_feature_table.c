@@ -50,6 +50,7 @@ static struct adsp_feature_tb feature_table[ADSP_NUM_FEATURE_ID] = {
 	[VOICE_CALL_SUB_FEATURE_ID]   = {.name = "voice_call_sub"},
 	[BLE_CALL_DL_FEATURE_ID]      = {.name = "blecalldl"},
 	[BLE_CALL_UL_FEATURE_ID]      = {.name = "blecallul"},
+	[PCIE_FEATURE_ID]             = {.name = "pcie"},
 };
 
 int adsp_get_feature_index(const char *str)
