@@ -687,6 +687,7 @@ static void mtk_dsi_dphy_timconfig_v2(struct mtk_dsi *dsi, void *handle)
 	} else {
 		switch (priv->data->mmsys_id) {
 		case MMSYS_MT6768:
+		case MMSYS_MT6761:
 			ui = 1000 / dsi->data_rate + 1;
 			cycle_time = 8000 / dsi->data_rate + 1;
 
@@ -772,6 +773,7 @@ CONFIG_REG:
 	if (!is_bdg_supported()) {
 		switch (priv->data->mmsys_id) {
 		case MMSYS_MT6768:
+		case MMSYS_MT6761:
 			break;
 		default:
 			//N4/5 must add this constraint, N6 is option, so we use the same
@@ -918,6 +920,7 @@ static void mtk_dsi_dphy_timconfig_v1(struct mtk_dsi *dsi, void *handle)
 	} else {
 		switch (priv->data->mmsys_id) {
 		case MMSYS_MT6768:
+		case MMSYS_MT6761:
 			ui = 1000 / dsi->data_rate + 1;
 			cycle_time = 8000 / dsi->data_rate + 1;
 
@@ -1017,6 +1020,7 @@ CONFIG_REG:
 	if (!is_bdg_supported()) {
 		switch (priv->data->mmsys_id) {
 		case MMSYS_MT6768:
+		case MMSYS_MT6761:
 			break;
 		default:
 			//N4/5/6/7/8/9/10/11 must add this constraint, N6 is option, so we use the same
@@ -2069,7 +2073,8 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 				ps_wc = width * 30 / 8;
 			} else
 				SET_VAL_MASK(value, mask, 0, RG_DSI_DCS_30BIT_FORMAT);
-			if (priv && priv->data->mmsys_id == MMSYS_MT6768)
+			if (priv && (priv->data->mmsys_id == MMSYS_MT6768 ||
+						priv->data->mmsys_id == MMSYS_MT6761))
 				SET_VAL_MASK(value, mask, ps_wc * line_back_to_LP, DSI_PS_WC);
 			else
 				SET_VAL_MASK(value, mask, ps_wc, DSI_PS_WC);
@@ -6224,7 +6229,8 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 			       comp->regs_pa + DSI_START, 0, ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DSI_START, 1, ~0);
-		if (priv && priv->data && priv->data->mmsys_id != MMSYS_MT6768) {
+		if (priv && priv->data && (priv->data->mmsys_id != MMSYS_MT6768 &&
+								priv->data->mmsys_id != MMSYS_MT6761)) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
 					   comp->regs_pa + DSI_START, 0, ~0);
 		}
@@ -11884,6 +11890,25 @@ static const struct mtk_dsi_driver_data mt6779_dsi_driver_data = {
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V1,
 };
 
+const struct mtk_dsi_driver_data mt6761_dsi_driver_data = {
+	.reg_cmdq0_ofs = 0x200,
+	.reg_cmdq1_ofs = 0x204,
+	.reg_vm_cmd_con_ofs = 0x130,
+	.reg_vm_cmd_data0_ofs = 0x134,
+	.reg_vm_cmd_data10_ofs = 0x180,
+	.reg_vm_cmd_data20_ofs = 0x1a0,
+	.reg_vm_cmd_data30_ofs = 0x1b0,
+	.poll_for_idle = mtk_dsi_poll_for_idle,
+	.irq_handler = mtk_dsi_irq_status,
+	.esd_eint_compat = "mediatek, DSI_TE-eint",
+	.support_shadow = false,
+	.need_bypass_shadow = false,
+	.need_wait_fifo = true,
+	.dsi_buffer = false,
+	.max_vfp = 0,
+	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V1,
+};
+
 const struct mtk_dsi_driver_data mt6768_dsi_driver_data = {
 	.reg_cmdq0_ofs = 0x200,
 	.reg_cmdq1_ofs = 0x204,
@@ -12256,6 +12281,7 @@ static const struct mtk_dsi_driver_data mt2701_dsi_driver_data = {
 static const struct of_device_id mtk_dsi_of_match[] = {
 	{.compatible = "mediatek,mt2701-dsi", .data = &mt2701_dsi_driver_data},
 	{.compatible = "mediatek,mt6779-dsi", .data = &mt6779_dsi_driver_data},
+	{.compatible = "mediatek,mt6761-dsi", .data = &mt6761_dsi_driver_data},
 	{.compatible = "mediatek,mt6768-dsi", .data = &mt6768_dsi_driver_data},
 	{.compatible = "mediatek,mt8173-dsi", .data = &mt8173_dsi_driver_data},
 	{.compatible = "mediatek,mt6885-dsi", .data = &mt6885_dsi_driver_data},

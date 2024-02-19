@@ -40,6 +40,7 @@ obj-$(CONFIG_DRM_PANEL_BOE_TS127QFMLL1DKP0) += panel-boe-ts127qfmll1dkp0.o
 obj-$(CONFIG_DRM_PANEL_HX83112B_AUO_CMD_RT5081) += panel-hx83112b-auo-cmd-60hz-rt5081.o
 obj-$(CONFIG_DRM_PANEL_HX83112B_AUO_VDO_RT5081) += panel-hx83112b-auo-vdo-60hz-rt5081.o
 obj-$(CONFIG_DRM_PANEL_TD4320_FHDP_AUO_VDO_RT5081) += panel-td4320-fhdp-dsi-vdo-auo-rt5081.o
+obj-$(CONFIG_DRM_PANEL_NT35521_HD_VDO_TRULY_RT5081) += panel-nt35521_hd_dsi_vdo_truly_rt5081.o
 obj-$(CONFIG_DRM_PANEL_SC_NT36672C_VDO_90HZ_6382) += panel-sc-nt36672c-vdo-90hz-6382.o
 obj-$(CONFIG_DRM_PANEL_NT36672C_FHDP_DSI_VDO_DSC_TXD_BOE) += panel-aw37501-i2c.o
 obj-$(CONFIG_DRM_PANEL_NT36672C_FHDP_DSI_VDO_DSC_TXD_BOE) += panel-nt36672c-fhdp-dsi-vdo-dsc-txd-boe.o
