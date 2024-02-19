@@ -2035,7 +2035,7 @@ void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
 }
 
 unsigned int util_scale = 1280;
-unsigned int sysctl_sched_capacity_margin_dvfs = 20;
+int sysctl_sched_capacity_margin_dvfs = 20;
 unsigned int turn_point_util[MAX_NR_CPUS];
 unsigned int target_margin[MAX_NR_CPUS];
 unsigned int target_margin_low[MAX_NR_CPUS];
@@ -2044,7 +2044,7 @@ unsigned int target_margin_low[MAX_NR_CPUS];
  */
 int set_sched_capacity_margin_dvfs(int capacity_margin)
 {
-	if (capacity_margin < 0 || capacity_margin > 95)
+	if (capacity_margin < -2000 || capacity_margin > 95)
 		return -1;
 
 	sysctl_sched_capacity_margin_dvfs = capacity_margin;
@@ -2054,7 +2054,7 @@ int set_sched_capacity_margin_dvfs(int capacity_margin)
 }
 EXPORT_SYMBOL_GPL(set_sched_capacity_margin_dvfs);
 
-unsigned int get_sched_capacity_margin_dvfs(void)
+int get_sched_capacity_margin_dvfs(void)
 {
 
 	return sysctl_sched_capacity_margin_dvfs;
@@ -2069,7 +2069,7 @@ int set_target_margin(int cpu, int margin)
 	if (cpu < 0 || cpu > MAX_NR_CPUS)
 		return -1;
 
-	if (margin < 0 || margin > 95)
+	if (margin < -2000 || margin > 95)
 		return -1;
 
 	policy = cpufreq_cpu_get(cpu);
@@ -2092,7 +2092,7 @@ int set_target_margin_low(int cpu, int margin)
 	if (cpu < 0 || cpu > MAX_NR_CPUS)
 		return -1;
 
-	if (margin < 0 || margin > 95)
+	if (margin < -2000 || margin > 95)
 		return -1;
 
 	policy = cpufreq_cpu_get(cpu);
@@ -2107,15 +2107,15 @@ int set_target_margin_low(int cpu, int margin)
 }
 EXPORT_SYMBOL_GPL(set_target_margin_low);
 
-unsigned int get_target_margin(int cpu)
+int get_target_margin(int cpu)
 {
-	return (100 - (SCHED_CAPACITY_SCALE * 100)/target_margin[cpu]);
+	return (100 - (SCHED_CAPACITY_SCALE * 100) / target_margin[cpu]);
 }
 EXPORT_SYMBOL_GPL(get_target_margin);
 
-unsigned int get_target_margin_low(int cpu)
+int get_target_margin_low(int cpu)
 {
-	return (100 - (SCHED_CAPACITY_SCALE * 100)/target_margin_low[cpu]);
+	return (100 - (SCHED_CAPACITY_SCALE * 100) / target_margin_low[cpu]);
 }
 EXPORT_SYMBOL_GPL(get_target_margin_low);
 
