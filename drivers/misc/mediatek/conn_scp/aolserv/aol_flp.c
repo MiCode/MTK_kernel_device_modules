@@ -267,8 +267,8 @@ static void aol_flp_report_location_handler(struct work_struct *work)
 		batching_size = connsys_scp_shm_get_batching_size();
 
 		if (batching_phy_addr == 0 || batching_size == 0) {
-			pr_notice("[%s] batching addr/size invalid [%llx][%u]", __func__,
-						batching_phy_addr, batching_size);
+			pr_notice("[%s] batching addr/size invalid [%p][%u]", __func__,
+						(void *)(unsigned long)batching_phy_addr, batching_size);
 
 			aol_flp_report_location_ack();
 			return;
@@ -285,8 +285,8 @@ static void aol_flp_report_location_handler(struct work_struct *work)
 
 		if (g_flp_report_ctx.loc_size > 0) {
 			count = (g_flp_report_ctx.loc_size / sizeof(struct conn_flp_location));
-			pr_info("[%s] batching addr/size [%llx][%u] locsz=[%d] count=[%d]",
-						__func__, batching_phy_addr, batching_size,
+			pr_info("[%s] batching addr/size [%p][%u] locsz=[%d] count=[%d]",
+						__func__, (void *)(unsigned long)batching_phy_addr, batching_size,
 						g_flp_report_ctx.loc_size, count);
 
 			batching_buffer = vmalloc(g_flp_report_ctx.loc_size);
