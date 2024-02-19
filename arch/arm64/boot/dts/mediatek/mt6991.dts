@@ -79,6 +79,7 @@
 		mediatek,larbs-mae = <&smi_larb12>;
 		mae = <&mae>;
 		scp-dvfs-supply = <&scp_dvfs>;
+		mae-supply = <&mae>;
 		ulposc-support;
 		vlp-base = <0x1c016000>;
 		ulposc-cali-register = <0x2c0 0x2c4 0x2c8>;
@@ -11042,45 +11043,39 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mboxes = <&gce_m 20 0 CMDQ_THR_PRIO_1>;
 			// mboxes = <&gce_m 20 0 CMDQ_THR_PRIO_1>,
 			//		<&gce_m_sec 11 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
-			// mediatek,larb = <&smi_larb12>;
-			// mediatek,aov = <&aov>;
+			mediatek,larb = <&smi_larb12>;
+			mediatek,aov = <&aov>;
 			fdvt-frame-done = <CMDQ_EVENT_IMG_IMGSYS_IPE_FDVT0_DONE>;
 			// sw-sync-token-tzmp-aie-wait = <CMDQ_SYNC_TOKEN_TZMP_AIE_WAIT>;
 			// sw-sync-token-tzmp-aie-set = <CMDQ_SYNC_TOKEN_TZMP_AIE_SET>;
 
 			mtk,smmu-shared = <&mm_smmu_cam>;
 
-#if 0
-			power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_MAIN>;
-			clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1>,
-				<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0>,
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_MAIN>;
+			clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP>,
 				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN>,
-				<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP>,
-				<&imgsys_main_clk CLK_IMG_IPE>,
-				<&imgsys_main_clk CLK_IMG_SUB_COMMON2>,
-				<&imgsys_main_clk CLK_IMG_SUB_COMMON3>,
-				<&imgsys_main_clk CLK_IMG_GALS_RX_IPE0>,
-				<&imgsys_main_clk CLK_IMG_GALS_TX_IPE0>,
-				<&imgsys_main_clk CLK_IMG_GALS_RX_IPE1>,
-				<&imgsys_main_clk CLK_IMG_GALS_TX_IPE1>,
-				<&imgsys_main_clk CLK_IMG_GALS>,
-				<&imgsys_main_clk CLK_IMG_FDVT>,
-				<&imgsys_main_clk CLK_IMG_LARB12>;
-			clock-names = "VCORE_SUB1",
-				"VCORE_SUB0",
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_CAMERA_P2>,
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1_CAMERA_P2>,
+				<&imgsys_main_clk CLK_IMG_FDVT_CAMERA_P2>,
+				<&imgsys_main_clk CLK_IMG_LARB12_CAMERA_P2>,
+				<&imgsys_main_clk CLK_IMG_IPE_CAMERA_P2>,
+				<&imgsys_main_clk CLK_IMG_SUB_COMMON2_CAMERA_P2>,
+				<&imgsys_main_clk CLK_IMG_SUB_COMMON3_CAMERA_P2>,
+				<&imgsys_main_clk CLK_IMG_GALS_TRX_IPE0_CAMERA_P2>,
+				<&imgsys_main_clk CLK_IMG_GALS_TRX_IPE1_CAMERA_P2>,
+				<&imgsys_main_clk CLK_IMG_GALS_CAMERA_P2>;
+			clock-names = "VCORE_GALS_DISP",
 				"VCORE_MAIN",
-				"VCORE_GALS_DISP",
-				"IPE",
-				"SUB_COMMON2",
-				"SUB_COMMON3",
-				"GALS_RX_IPE0",
-				"GALS_TX_IPE0",
-				"GALS_RX_IPE1",
-				"GALS_TX_IPE1",
-				"GALS",
-				"FDVT",
-				"LARB12";
-#endif
+				"VCORE_SUB0_CAMERA_P2",
+				"VCORE_SUB1_CAMERA_P2",
+				"FDVT_CAMERA_P2",
+				"LARB12_CAMERA_P2",
+				"IPE_CAMERA_P2",
+				"SUB_COMMON2_CAMERA_P2",
+				"SUB_COMMON3_CAMERA_P2",
+				"GALS_TRX_IPE0_CAMERA_P2",
+				"GALS_TRX_IPE1_CAMERA_P2",
+				"GALS_CAMERA_P2";
 		};
 
 		mtk-mae-plat@34319000 {
