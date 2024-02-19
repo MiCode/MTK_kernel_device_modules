@@ -52,6 +52,10 @@ int venc_if_dev_ctx_init(struct mtk_vcodec_dev *dev)
 	inst = kzalloc(sizeof(struct venc_inst), GFP_KERNEL);
 	if (inst == NULL)
 		return -ENOMEM;
+	dev->id_counter++;
+	if (dev->id_counter == 0)
+		dev->id_counter++;
+	ctx->id = dev->id_counter;
 	inst->ctx = ctx;
 	inst->vcu_inst.ctx = ctx;
 	inst->vcu_inst.id = IPI_VENC_COMMON;

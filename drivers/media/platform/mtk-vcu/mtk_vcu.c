@@ -2088,7 +2088,8 @@ static int mtk_vcu_open(struct inode *inode, struct file *file)
 		vcuid = 2;
 	else if (strcmp(current->comm, "mdpd") == 0)
 		vcuid = 1;
-	else if (strcmp(current->comm, "vpud") == 0) {
+	else if (strcmp(current->comm, "vpud") == 0 || strcmp(current->comm, "v3avpud") == 0
+			|| strcmp(current->comm, "v3avpud-64b") == 0) {
 		mutex_lock(&vpud_task_mutex);
 		if (vcud_task &&
 			(current->tgid != vcud_task->tgid ||
