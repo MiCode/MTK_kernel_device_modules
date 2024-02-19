@@ -334,11 +334,17 @@ static void __apu_coredump_work_func(struct mtk_apu *apu)
 		apusys_rv_exception_aee_warn(
 			apusys_assert_module_name[apu->conf_buf->ramdump_module]);
 
-		if ((apu->platdata->flags & F_EXCEPTION_KE) && !apu->disable_ke) {
+		if ((apu->platdata->flags & F_EXCEPTION_KE) && !apu->disable_ke &&
+			(ktime_get() / 1000000) > BOOT_BYPASS_APU_KE_MS) {
 			dev_info(dev, "%s: wait aee_kernel_exception to generate db\n", __func__);
-			msleep(30 * 1000);
+			msleep(APU_KE_DELAY_MS);
 			panic("APUSYS_RV exception: %s\n",
 				apusys_assert_module_name[apu->conf_buf->ramdump_module]);
+		} else {
+			dev_info(dev, "%s: bypass KE due to %s%s%s\n", __func__,
+				(apu->platdata->flags & F_EXCEPTION_KE) ? "":"F_EXCEPTION_KE not enabled",
+				!apu->disable_ke ? "":"disabled by cmd",
+				((ktime_get() / 1000000) > BOOT_BYPASS_APU_KE_MS) ? "":"bootup");
 		}
 
 		apu->bypass_aee = true;
@@ -515,10 +521,16 @@ static void __apu_coredump_work_func(struct mtk_apu *apu)
 
 	apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
 
-	if ((apu->platdata->flags & F_EXCEPTION_KE) && !apu->disable_ke) {
+	if ((apu->platdata->flags & F_EXCEPTION_KE) && !apu->disable_ke &&
+		(ktime_get() / 1000000) > BOOT_BYPASS_APU_KE_MS) {
 		dev_info(dev, "%s: wait aee_kernel_exception to generate db\n", __func__);
-		msleep(30 * 1000);
+		msleep(APU_KE_DELAY_MS);
 		panic("APUSYS_RV timeout: APUSYS_RV\n");
+	} else {
+		dev_info(dev, "%s: bypass KE due to %s%s%s\n", __func__,
+			(apu->platdata->flags & F_EXCEPTION_KE) ? "":"F_EXCEPTION_KE not enabled",
+			!apu->disable_ke ? "":"disabled by cmd",
+			((ktime_get() / 1000000) > BOOT_BYPASS_APU_KE_MS) ? "":"bootup");
 	}
 
 	apu->bypass_aee = true;
