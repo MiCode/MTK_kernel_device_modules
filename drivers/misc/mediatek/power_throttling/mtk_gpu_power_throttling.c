@@ -125,8 +125,8 @@ static void gpu_limit_default_setting(struct device *dev, enum gpu_pt_type type)
 	else
 		gpu_pt_data->max_lv = 1;
 
-	gpu_pt_data->freq_limit = devm_kmalloc_array(dev, gpu_pt_data->max_lv,
-							sizeof(u32), GFP_KERNEL);
+	gpu_pt_data->freq_limit = kcalloc(gpu_pt_data->max_lv, sizeof(u32), GFP_KERNEL);
+
 	for (i = 0; i < gpu_pt_data->max_lv; i ++)
 		gpu_pt_data->freq_limit[i] = GPU_LIMIT_FREQ;
 }
@@ -150,8 +150,7 @@ static int mtk_gpu_power_throttling_probe(struct platform_device *pdev)
 		}
 
 		gpu_pt_data->max_lv = num;
-		gpu_pt_data->freq_limit = devm_kmalloc_array(&pdev->dev, gpu_pt_data->max_lv,
-							sizeof(u32), GFP_KERNEL);
+		gpu_pt_data->freq_limit = kcalloc(gpu_pt_data->max_lv, sizeof(u32), GFP_KERNEL);
 		if (!gpu_pt_data->freq_limit)
 			return -ENOMEM;
 
