@@ -98,10 +98,8 @@ static void mml_m2m_process_done(struct mml_m2m_ctx *mctx, enum vb2_buffer_state
 	struct vb2_v4l2_buffer *src_vbuf, *dst_vbuf;
 	struct mml_v4l2_dev *v4l2_dev = mml_get_v4l2_dev(mctx->ctx.mml);
 
-	src_vbuf = (struct vb2_v4l2_buffer *)
-			v4l2_m2m_src_buf_remove(mctx->m2m_ctx);
-	dst_vbuf = (struct vb2_v4l2_buffer *)
-			v4l2_m2m_dst_buf_remove(mctx->m2m_ctx);
+	src_vbuf = v4l2_m2m_src_buf_remove(mctx->m2m_ctx);
+	dst_vbuf = v4l2_m2m_dst_buf_remove(mctx->m2m_ctx);
 	src_vbuf->sequence = mctx->frame_count[MML_M2M_FRAME_SRC]++;
 	dst_vbuf->sequence = mctx->frame_count[MML_M2M_FRAME_DST]++;
 	v4l2_m2m_buf_copy_metadata(src_vbuf, dst_vbuf, true);
@@ -221,12 +219,21 @@ static struct mml_frame_dest *ctx_get_submit_dest(struct mml_m2m_ctx *ctx, int i
 }
 
 static struct mml_frame_data *ctx_get_submit_frame(struct mml_m2m_ctx *ctx,
-						  enum v4l2_buf_type type)
+						   enum v4l2_buf_type type)
 {
 	if (V4L2_TYPE_IS_OUTPUT(type))
 		return &ctx->submit.info.src;
 	else
 		return &ctx->submit.info.dest[0].data;
+}
+
+static struct mml_buffer *ctx_get_submit_buffer(struct mml_m2m_ctx *ctx,
+						enum v4l2_buf_type type)
+{
+	if (V4L2_TYPE_IS_OUTPUT(type))
+		return &ctx->submit.buffer.src;
+	else
+		return &ctx->submit.buffer.dest[0];
 }
 
 static void get_fmt_str(char *fmt, size_t sz, enum mml_color f)
@@ -383,22 +390,20 @@ static struct vb2_v4l2_buffer *mml_m2m_buf_remove(struct mml_m2m_ctx *ctx,
 						  unsigned int type)
 {
 	if (V4L2_TYPE_IS_OUTPUT(type))
-		return (struct vb2_v4l2_buffer *)
-			v4l2_m2m_src_buf_remove(ctx->m2m_ctx);
+		return v4l2_m2m_src_buf_remove(ctx->m2m_ctx);
 	else
-		return (struct vb2_v4l2_buffer *)
-			v4l2_m2m_dst_buf_remove(ctx->m2m_ctx);
+		return v4l2_m2m_dst_buf_remove(ctx->m2m_ctx);
 }
 
 static void mml_m2m_stop_streaming(struct vb2_queue *q)
 {
 	struct mml_m2m_ctx *ctx = vb2_get_drv_priv(q);
-	struct vb2_v4l2_buffer *vb;
+	struct vb2_v4l2_buffer *vbuf;
 
-	vb = mml_m2m_buf_remove(ctx, q->type);
-	while (vb) {
-		v4l2_m2m_buf_done(vb, VB2_BUF_STATE_ERROR);
-		vb = mml_m2m_buf_remove(ctx, q->type);
+	vbuf = mml_m2m_buf_remove(ctx, q->type);
+	while (vbuf) {
+		v4l2_m2m_buf_done(vbuf, VB2_BUF_STATE_ERROR);
+		vbuf = mml_m2m_buf_remove(ctx, q->type);
 	}
 }
 
@@ -433,10 +438,10 @@ static int mml_m2m_buf_prepare(struct vb2_buffer *vb)
 {
 	struct mml_m2m_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
 	struct v4l2_pix_format_mplane *pix_mp;
-	struct vb2_v4l2_buffer *v4l2_buf = to_vb2_v4l2_buffer(vb);
+	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
 	u32 i;
 
-	v4l2_buf->field = V4L2_FIELD_NONE;
+	vbuf->field = V4L2_FIELD_NONE;
 
 	if (V4L2_TYPE_IS_CAPTURE(vb->type)) {
 		pix_mp = &ctx_get_frame(ctx, vb->type)->format.fmt.pix_mp;
@@ -450,20 +455,18 @@ static int mml_m2m_buf_prepare(struct vb2_buffer *vb)
 
 static int mml_m2m_buf_out_validate(struct vb2_buffer *vb)
 {
-	struct vb2_v4l2_buffer *v4l2_buf = to_vb2_v4l2_buffer(vb);
+	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
 
-	v4l2_buf->field = V4L2_FIELD_NONE;
-
+	vbuf->field = V4L2_FIELD_NONE;
 	return 0;
 }
 
 static void mml_m2m_buf_queue(struct vb2_buffer *vb)
 {
 	struct mml_m2m_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
-	struct vb2_v4l2_buffer *v4l2_buf = to_vb2_v4l2_buffer(vb);
+	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
 
-	v4l2_buf->field = V4L2_FIELD_NONE;
-
+	vbuf->field = V4L2_FIELD_NONE;
 	v4l2_m2m_buf_queue(ctx->m2m_ctx, to_vb2_v4l2_buffer(vb));
 }
 
@@ -656,12 +659,10 @@ static void m2m_bound_align_image(u32 *w, u32 *h,
 	v4l2_apply_frmsize_constraints(w, h, s);
 }
 
-enum mml_ycbcr_profile mml_m2m_map_ycbcr_prof_mplane(struct v4l2_format *f,
-						 u32 mml_color)
+static enum mml_ycbcr_profile m2m_map_ycbcr_prof_mplane(
+	const struct v4l2_pix_format_mplane *pix_mp, enum mml_color color)
 {
-	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
-
-	if (MML_FMT_IS_RGB(mml_color))
+	if (MML_FMT_IS_RGB(color))
 		return MML_YCBCR_PROFILE_FULL_BT601;
 
 	switch (pix_mp->colorspace) {
@@ -903,12 +904,109 @@ static int mml_m2m_g_fmt_mplane(struct file *file, void *fh,
 	return 0;
 }
 
+/* Stride that is accepted by MML HW */
+static u32 mml_fmt_get_stride(const struct mml_m2m_format *fmt,
+			      u32 bytesperline, u32 plane)
+{
+	enum mml_color c = fmt->mml_color;
+	u32 stride;
+
+	stride = (bytesperline * MML_FMT_BITS_PER_PIXEL(c)) / fmt->row_depth[0];
+	if (plane == 0)
+		return stride;
+	if (plane < MML_FMT_PLANE(c)) {
+		if (MML_FMT_BLOCK(c))
+			stride = stride / 2;
+		return stride;
+	}
+	return 0;
+}
+
+/* Stride that is accepted by MML HW of format with contiguous planes */
+static u32 mml_fmt_get_stride_contig(const struct mml_m2m_format *fmt,
+				     u32 pix_stride, u32 plane)
+{
+	enum mml_color c = fmt->mml_color;
+	u32 stride = pix_stride;
+
+	if (plane == 0)
+		return stride;
+	if (plane < MML_FMT_PLANE(c)) {
+		stride = stride >> MML_FMT_H_SUBSAMPLE(c);
+		if (MML_FMT_UV_COPLANE(c) && !MML_FMT_BLOCK(c))
+			stride = stride * 2;
+		return stride;
+	}
+	return 0;
+}
+
+/* Plane size that is accepted by MML HW */
+static u32 mml_fmt_get_plane_size(const struct mml_m2m_format *fmt,
+				  u32 stride, u32 height, u32 plane)
+{
+	enum mml_color c = fmt->mml_color;
+	u32 bytesperline;
+
+	bytesperline = (stride * fmt->row_depth[0]) / MML_FMT_BITS_PER_PIXEL(c);
+	if (plane == 0)
+		return bytesperline * height;
+	if (plane < MML_FMT_PLANE(c)) {
+		height = height >> MML_FMT_V_SUBSAMPLE(c);
+		if (MML_FMT_BLOCK(c))
+			bytesperline = bytesperline * 2;
+		return bytesperline * height;
+	}
+	return 0;
+}
+
+static void m2m_set_format(struct mml_frame_data *data, struct mml_buffer *buf,
+	const struct v4l2_pix_format_mplane *pix_mp,
+	const struct mml_m2m_format *fmt)
+{
+	u32 i, stride;
+
+	data->width = pix_mp->width;
+	data->height = pix_mp->height;
+	data->format = fmt->mml_color;
+	data->plane_cnt = fmt->num_planes;
+	data->profile = m2m_map_ycbcr_prof_mplane(pix_mp, fmt->mml_color);
+	/* FIXME: v4l2 to mml enum mapping */
+	data->color.gamut = pix_mp->colorspace;
+	data->color.ycbcr_enc = pix_mp->ycbcr_enc;
+	data->color.color_range = pix_mp->quantization;
+	data->color.gamma = pix_mp->xfer_func;
+
+	buf->cnt = MML_FMT_PLANE(fmt->mml_color);
+	for (i = 0; i < pix_mp->num_planes; i++) {
+		stride = mml_fmt_get_stride(fmt,
+			pix_mp->plane_fmt[i].bytesperline, i);
+		if (i == 0)
+			data->y_stride = stride;
+		else if (i == 1)
+			data->uv_stride = stride;
+		buf->size[i] = mml_fmt_get_plane_size(fmt,
+			stride, pix_mp->height, i);
+		data->plane_offset[i] = 0;
+	}
+	for (; i < buf->cnt; i++) {
+		stride = mml_fmt_get_stride_contig(fmt,
+			data->y_stride, i);
+		if (i == 1)
+			data->uv_stride = stride;
+		buf->size[i] = mml_fmt_get_plane_size(fmt,
+			stride, pix_mp->height, i);
+		data->plane_offset[i] = data->plane_offset[i-1] +
+					buf->size[i-1];
+	}
+}
+
 static int mml_m2m_s_fmt_mplane(struct file *file, void *fh,
 				struct v4l2_format *f)
 {
 	struct mml_m2m_ctx *ctx = fh_to_ctx(fh);
 	struct mml_m2m_frame *frame = ctx_get_frame(ctx, f->type);
 	struct mml_frame_data *mml_frame = ctx_get_submit_frame(ctx, f->type);
+	struct mml_buffer *mml_buf = ctx_get_submit_buffer(ctx, f->type);
 	struct v4l2_pix_format_mplane *pix_mp;
 	const struct mml_m2m_format *fmt;
 	struct vb2_queue *vq;
@@ -926,15 +1024,7 @@ static int mml_m2m_s_fmt_mplane(struct file *file, void *fh,
 	frame->mml_fmt = fmt;
 
 	pix_mp = &f->fmt.pix_mp;
-	mml_frame->width = pix_mp->width;
-	mml_frame->height = pix_mp->height;
-	mml_frame->format = fmt->mml_color;
-	mml_frame->plane_cnt = fmt->num_planes;
-	mml_frame->profile = mml_m2m_map_ycbcr_prof_mplane(f, fmt->mml_color);
-	mml_frame->color.gamut = pix_mp->colorspace;
-	mml_frame->color.ycbcr_enc = pix_mp->ycbcr_enc;
-	mml_frame->color.color_range = pix_mp->quantization;
-	mml_frame->color.gamma = pix_mp->xfer_func;
+	m2m_set_format(mml_frame, mml_buf, pix_mp, fmt);
 
 	dest = ctx_get_submit_dest(ctx, 0);
 	if (V4L2_TYPE_IS_OUTPUT(f->type)) {
@@ -1293,17 +1383,6 @@ static int m2m_set_orientation(struct mml_frame_dest *dest,
 	return 0;
 }
 
-static void m2m_set_stride(struct mml_frame_info *info)
-{
-	struct mml_frame_data *src = &info->src;
-	struct mml_frame_data *dst = &info->dest[0].data;
-
-	src->y_stride = mml_color_get_min_y_stride(src->format, src->width);
-	src->uv_stride = mml_color_get_min_uv_stride(src->format, src->width);
-	dst->y_stride = mml_color_get_min_y_stride(dst->format, dst->width);
-	dst->uv_stride = mml_color_get_min_uv_stride(dst->format, dst->width);
-}
-
 static s32 m2m_set_submit(struct mml_m2m_ctx *mctx, struct mml_submit *submit)
 {
 	int ret;
@@ -1317,58 +1396,31 @@ static s32 m2m_set_submit(struct mml_m2m_ctx *mctx, struct mml_submit *submit)
 	submit->info.dest_cnt = 1;
 	submit->info.mode = MML_MODE_MML_DECOUPLE2;
 
-	m2m_set_stride(&submit->info);
-
 	submit->buffer.dest_cnt = 1;
-
 	submit->pq_param[0] = &mctx->pq_submit.pq_param;
 	return 0;
 }
 
-static s32 m2m_frame_buf_to_task_buf(struct mml_task_buffer *tbuf,
-				struct vb2_v4l2_buffer *src_vb,
-				struct vb2_v4l2_buffer *dst_vb)
+static s32 m2m_frame_buf_to_task_buf(struct mml_file_buf *fbuf,
+	struct mml_buffer *user_buf, struct vb2_v4l2_buffer *vbuf,
+	const char *name)
 {
+	struct vb2_buffer *vb = &vbuf->vb2_buf;
+	void *dbufs[MML_MAX_PLANES];
+	u8 i;
 	s32 ret = 0;
-	u32 i = 0;
-	int32_t fd[MML_MAX_PLANES];
 
-	fd[0] = src_vb->planes[0].m.fd;
-	ret = mml_buf_get_fd(&tbuf->src, fd, 1, "mml_m2m_rdma");
-	if (ret) {
-		mml_err("%s mml_buf_get_fd src failed", __func__);
-		return -EFAULT;
-	}
-	tbuf->src.cnt = 1;
-	tbuf->src.size[0] = src_vb->planes[0].length;
-	mml_log("%s fd:%d, src buf size %x", __func__, fd[0], tbuf->src.size[0]);
+	for (i = 0; i < vb->num_planes; i++)
+		dbufs[i] = vb->planes[i].dbuf;
+		/* fbuf->dma[i].iova = vb2_dma_contig_plane_dma_addr(vb, i); use vb2 addr */
+	mml_buf_get(fbuf, dbufs, vb->num_planes, name);
 
-	fd[0] = dst_vb->planes[0].m.fd;
-	ret = mml_buf_get_fd(&tbuf->dest[0], fd, 1, "mml_m2m_wrot");
-	if (ret) {
-		mml_err("%s mml_buf_get_fd dest failed", __func__);
-		return -EFAULT;
-	}
-	tbuf->dest[0].cnt = 1;
-	tbuf->dest[0].size[0] = dst_vb->planes[0].length;
-	mml_log("%s fd:%d, dst buf size %x", __func__, fd[0], tbuf->dest[0].size[0]);
-	tbuf->dest_cnt = 1;
-
-	if (!(src_vb->flags & V4L2_BUF_FLAG_NO_CACHE_CLEAN))
-		tbuf->src.flush = 1;
-
-	if (!(src_vb->flags & V4L2_BUF_FLAG_NO_CACHE_INVALIDATE))
-		tbuf->src.invalid = 1;
-
-	if (!(dst_vb->flags & V4L2_BUF_FLAG_NO_CACHE_CLEAN)) {
-		for (i = 0; i < tbuf->dest_cnt; i++)
-			tbuf->dest[i].flush = 1;
-	}
-
-	if (!(dst_vb->flags & V4L2_BUF_FLAG_NO_CACHE_INVALIDATE)) {
-		for (i = 0; i < tbuf->dest_cnt; i++)
-			tbuf->dest[i].invalid = 1;
-	}
+	/* also copy size for later use */
+	for (i = 0; i < user_buf->cnt; i++)
+		fbuf->size[i] = user_buf->size[i];
+	fbuf->cnt = user_buf->cnt;
+	fbuf->flush = !(vbuf->flags & V4L2_BUF_FLAG_NO_CACHE_CLEAN);
+	fbuf->invalid = !(vbuf->flags & V4L2_BUF_FLAG_NO_CACHE_INVALIDATE);
 
 	return ret;
 }
@@ -1382,7 +1434,8 @@ static void mml_m2m_device_run(void *priv)
 	struct mml_task *task = NULL;
 	s32 result;
 	u32 i;
-	struct vb2_v4l2_buffer *src_vb, *dst_vb;
+	struct vb2_v4l2_buffer *src_vbuf, *dst_vbuf;
+	enum vb2_buffer_state vb_state = VB2_BUF_STATE_ERROR;
 
 	mml_trace_begin("%s", __func__);
 
@@ -1474,16 +1527,28 @@ static void mml_m2m_device_run(void *priv)
 	/* copy per-frame info */
 	task->ctx = ctx;
 
-	src_vb = v4l2_m2m_next_src_buf(mctx->m2m_ctx);
-	dst_vb = v4l2_m2m_next_dst_buf(mctx->m2m_ctx);
-	if (!src_vb || !dst_vb) {
+	src_vbuf = v4l2_m2m_next_src_buf(mctx->m2m_ctx);
+	dst_vbuf = v4l2_m2m_next_dst_buf(mctx->m2m_ctx);
+	if (!src_vbuf || !dst_vbuf) {
 		mml_err("[m2m]%s get next buf fail src %p dst %p", __func__,
-			src_vb, dst_vb);
+			src_vbuf, dst_vbuf);
 		goto err_buf_exit;
 	}
-	result = m2m_frame_buf_to_task_buf(&task->buf, src_vb, dst_vb);
-	if (result < 0) {
-		mml_err("[m2m]%s get dma buf fail", __func__);
+
+	result = m2m_frame_buf_to_task_buf(&task->buf.src,
+		&submit->buffer.src, src_vbuf,
+		"mml_m2m_rdma");
+	if (result) {
+		mml_err("[m2m]%s get src dma buf fail", __func__);
+		goto err_buf_exit;
+	}
+
+	task->buf.dest_cnt = submit->buffer.dest_cnt;
+	result = m2m_frame_buf_to_task_buf(&task->buf.dest[0],
+		&submit->buffer.dest[0], dst_vbuf,
+		"mml_m2m_wrot");
+	if (result) {
+		mml_err("[m2m]%s get dest dma buf fail", __func__);
 		goto err_buf_exit;
 	}
 
@@ -1536,7 +1601,7 @@ err_buf_exit:
 		if (is_init_state)
 			cfg->cfg_ops->put(cfg);
 	}
-	return;
+	mml_m2m_process_done(mctx, vb_state);
 }
 
 static const struct v4l2_m2m_ops mml_m2m_ops = {
