@@ -319,6 +319,10 @@ config MTK_PPM_V3
           If unsure, say N
 endmenu # PPM
 
+menu "MultiMedia, Display, Camera related configs"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/videocodec/Kconfig"
+endmenu # MultiMedia, Display, Camera related configs
+
 menu "Memory"
 
 config EXTREME_LOW_RAM
