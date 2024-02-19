@@ -26,6 +26,9 @@ struct gen_pool;
 #include "audio_task.h"
 #include "mtk-dsp-common.h"
 #include "adsp_helper.h"
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+#include "slbc_ops.h"
+#endif
 
 #define MAX_PAYLOAD_SIZE (32) /* 32bytes */
 
@@ -121,6 +124,9 @@ struct mtk_adsp_task_attr {
 	unsigned int task_property;
 	unsigned int kernel_dynamic_config;
 	struct mtk_adsp_task_latency task_latency;
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+	struct slbc_gid_data slbc_gid_adsp_data;
+#endif
 };
 
 #endif

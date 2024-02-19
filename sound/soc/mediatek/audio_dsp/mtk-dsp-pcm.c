@@ -15,6 +15,11 @@
 #include "mtk-dsp-common.h"
 #include "mtk-dsp-mem-control.h"
 
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+#include "slbc_ops.h"
+#define SND_DSP_SLC_DTS_SIZE (9)
+#endif
+
 #define SND_DSP_DTS_SIZE (4)
 #define MTK_PCM_RATES (SNDRV_PCM_RATE_8000_48000 |\
 		       SNDRV_PCM_RATE_88200 |\
@@ -78,6 +83,9 @@ static char *dsp_task_dsp_name[AUDIO_TASK_DAI_NUM] = {
 static int dsp_pcm_taskattr_init(struct platform_device *pdev)
 {
 	struct mtk_adsp_task_attr task_attr;
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+	struct slbc_gid_data slbc_data_tmp = {0};
+#endif
 	struct mtk_base_dsp *dsp = platform_get_drvdata(pdev);
 	int ret = 0;
 	int dsp_id = 0;
@@ -143,6 +151,22 @@ static int dsp_pcm_taskattr_init(struct platform_device *pdev)
 			task_attr.kernel_dynamic_config = 0;
 		set_task_attr(AUDIO_TASK_PLAYBACK_ID, ADSP_TASK_ATTR_KERNEL_LATENCY_SUPPORT,
 			      task_attr.kernel_dynamic_config);
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+		ret = of_property_read_u32_array(pdev->dev.of_node,
+						 "adsp-slc",
+						 (unsigned int *)&slbc_data_tmp,
+						 SND_DSP_SLC_DTS_SIZE);
+		if (ret != 0)
+			pr_info("%s adsp-slc read error\n", __func__);
+		for (dsp_id = 0; dsp_id < AUDIO_TASK_DAI_NUM; dsp_id++) {
+			if (dsp_id == AUDIO_TASK_VOIP_ID || dsp_id == AUDIO_TASK_OFFLOAD_ID ||
+			    dsp_id == AUDIO_TASK_DEEPBUFFER_ID) {
+				set_task_attr(dsp_id, ADSP_TASK_ATTR_ADSP_SLC_SIGN, slbc_data_tmp.sign);
+				set_task_attr(dsp_id, ADSP_TASK_ATTR_ADSP_SLC_DMASIZE, slbc_data_tmp.dma_size);
+				set_task_attr(dsp_id, ADSP_TASK_ATTR_ADSP_SLC_BW, slbc_data_tmp.bw);
+			}
+		}
+#endif
 	}
 	return 0;
 }

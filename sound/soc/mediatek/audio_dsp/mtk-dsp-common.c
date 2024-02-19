@@ -25,9 +25,16 @@
 //#define DEBUG_VERBOSE
 
 #include "mtk-sp-spk-amp.h"
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+#include "slbc_ops.h"
+#endif
 
 static int adsp_standby_flag;
 static struct wait_queue_head waitq;
+
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+static int slc_counter;
+#endif
 
 /* don't use this directly if not necessary */
 static struct mtk_base_dsp *local_base_dsp;
@@ -95,6 +102,21 @@ static int dsp_task_scence[AUDIO_TASK_DAI_NUM] = {
 	[AUDIO_TASK_CALLUL_ID]      = TASK_SCENE_PHONE_CALL,
 };
 
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+static int adsp_gid = -1;
+static struct slbc_gid_data slbc_gid_adsp_data = {
+	.sign = 0x0,
+	.buffer_fd = 0,
+	.producer = 0,
+	.consumer = 0,
+	.height = 0,    //unit: pixel
+	.width = 0,     //unit: pixel
+	.dma_size = 0,  //unit: MB
+	.bw = 0,       //unit: MBps
+	.fps = 0,       //unit: frames per sec
+};
+#endif
+
 int audio_set_dsp_afe(struct mtk_base_afe *afe)
 {
 	local_dsp_afe = afe;
@@ -126,6 +148,71 @@ void *get_dsp_base(void)
 	return local_base_dsp;
 }
 EXPORT_SYMBOL(get_dsp_base);
+
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+void set_slc_counter(int cnt)
+{
+	if (cnt)
+		slc_counter++;
+	else
+		slc_counter--;
+}
+EXPORT_SYMBOL(set_slc_counter);
+
+int get_slc_counter(void)
+{
+	pr_debug("%s slc_counter = %d", __func__, slc_counter);
+	return slc_counter;
+}
+EXPORT_SYMBOL(get_slc_counter);
+
+int request_slc(int id)
+{
+	const char *task_name = get_str_by_dsp_dai_id(id);
+	int ret_slc = 0;
+
+	slbc_gid_adsp_data.sign = get_dsp_task_attr(id, ADSP_TASK_ATTR_ADSP_SLC_SIGN);
+	slbc_gid_adsp_data.dma_size = get_dsp_task_attr(id, ADSP_TASK_ATTR_ADSP_SLC_DMASIZE);
+	slbc_gid_adsp_data.bw = get_dsp_task_attr(id, ADSP_TASK_ATTR_ADSP_SLC_BW);
+
+	ret_slc = slbc_gid_request(ID_ADSP, &adsp_gid, &slbc_gid_adsp_data);
+	if (ret_slc) {
+		pr_warn("%s(), %s SLC request failed = %d\n",
+			__func__, task_name, ret_slc);
+		return -1;
+	}
+	ret_slc = slbc_validate(ID_ADSP, adsp_gid);
+	if (ret_slc) {
+		pr_warn("%s(), %s SLC validate failed = %d\n",
+			__func__, task_name, ret_slc);
+		return -1;
+	}
+	pr_info("%s() %s SLC allocate GOOD, adsp_gid = %d, dma_size = %d, bw = %d\n",
+		__func__, task_name, adsp_gid, slbc_gid_adsp_data.dma_size, slbc_gid_adsp_data.bw);
+	return 0;
+}
+EXPORT_SYMBOL(request_slc);
+
+int release_slc(int id)
+{
+	const char *task_name = get_str_by_dsp_dai_id(id);
+	int ret_slc = 0;
+
+	ret_slc = slbc_invalidate(ID_ADSP, adsp_gid);
+	if (ret_slc) {
+		pr_warn("%s(), %s SLC invalidate failed\n", __func__, task_name);
+		return -1;
+	}
+	ret_slc = slbc_gid_release(ID_ADSP, adsp_gid);
+	if (ret_slc) {
+		pr_warn("%s(), %s SLC release failed\n", __func__, task_name);
+		return -1;
+	}
+	pr_info("%s() %s SLC release GOOD\n", __func__, task_name);
+	return 0;
+}
+EXPORT_SYMBOL(release_slc);
+#endif
 
 static void *ipi_recv_private;
 void *get_ipi_recv_private(void)
