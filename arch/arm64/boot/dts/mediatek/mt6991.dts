@@ -6029,7 +6029,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&gce 18 400 CMDQ_THR_PRIO_1>,
 				<&gce 19 500 CMDQ_THR_PRIO_1>;
 			gce-supply = <&gce>;
-			v4l2-enable;
 
 			/* sys register offset */
 			ready-sel = /bits/ 16 <MML_IN_LINE_READY_SEL>;
