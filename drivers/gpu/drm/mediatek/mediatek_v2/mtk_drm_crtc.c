@@ -465,6 +465,7 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 	case MMSYS_MT6833:
 	case MMSYS_MT6879:
 	case MMSYS_MT6855:
+	case MMSYS_MT6877:
 		mmsys_config_dump_reg_mt6879(mtk_crtc->config_regs);
 		break;
 	default:
@@ -644,6 +645,7 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 	case MMSYS_MT6879:
 	case MMSYS_MT6855:
 	case MMSYS_MT6835:
+	case MMSYS_MT6877:
 		mmsys_config_dump_reg_mt6879(mtk_crtc->config_regs);
 		mutex_dump_reg_mt6879(mtk_crtc->mutex[0]);
 		break;
@@ -962,6 +964,7 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 	case MMSYS_MT6833:
 	case MMSYS_MT6879:
 	case MMSYS_MT6855:
+	case MMSYS_MT6877:
 		break;
 	default:
 		DDPPR_ERR("%s mtk drm not support mmsys id %d\n",
@@ -1190,6 +1193,10 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 	case MMSYS_MT6833:
 		mmsys_config_dump_analysis_mt6833(mtk_crtc->config_regs);
 		mutex_dump_analysis_mt6833(mtk_crtc->mutex[0]);
+		break;
+	case MMSYS_MT6877:
+		mmsys_config_dump_analysis_mt6877(mtk_crtc->config_regs);
+		mutex_dump_analysis_mt6877(mtk_crtc->mutex[0]);
 		break;
 	case MMSYS_MT6879:
 		mmsys_config_dump_analysis_mt6879(mtk_crtc->config_regs);
