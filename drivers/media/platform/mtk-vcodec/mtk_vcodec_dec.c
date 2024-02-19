@@ -1604,7 +1604,7 @@ void mtk_vdec_error_handle(struct mtk_vcodec_ctx *ctx, char *debug_str)
 		atomic_read(&dev->dec_hw_active[MTK_VDEC_CORE]));
 
 	mutex_lock(&dev->dec_dvfs_mutex);
-	mtk_vcodec_cpu_grp_aware_hint(ctx, false);
+	mtk_vcodec_cpu_adaptive_ctrl(ctx, false);
 	mutex_unlock(&dev->dec_dvfs_mutex);
 
 	if (ctx == ctx->dev_ctx)
@@ -3763,7 +3763,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 		retrigger_ctx_work->ctx = ctx;
 		retrigger_ctx_work->dev = ctx->dev;
 		queue_work(ctx->dev->check_alive_workqueue, &retrigger_ctx_work->work);
-		mtk_v4l2_debug(0, "%s [VDVFS] retrigger ctx work: %d", __func__, ctx->id);
+		mtk_v4l2_debug(4, "%s [VDVFS] retrigger ctx work: %d", __func__, ctx->id);
 		ctx->is_active = 1;
 	}
 #endif
@@ -4360,7 +4360,7 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 		if (ret != 0)
 			mtk_v4l2_err("[VDVFS][%d] stream off ipi fail, ret %d", ctx->id, ret);
 		mtk_vdec_dvfs_sync_vsi_data(ctx);
-		mtk_v4l2_debug(0, "[VDVFS][%d(%d)] stop DVFS (UP): freq: %d, op: %d",
+		mtk_v4l2_debug(0, "[VDVFS][%d(%d)] stop DVFS (UP): freq:%d, op:%d",
 			ctx->id, mtk_vcodec_get_state(ctx), ctx->dev->vdec_dvfs_params.target_freq,
 			ctx->dec_params.operating_rate);
 	} else {
@@ -4731,6 +4731,9 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_VDEC_DETECT_TIMESTAMP:
 		ctx->detect_ts_param.enable_detect_ts = ctrl->val;
 		break;
+	case V4L2_CID_MPEG_MTK_CALLING_PID:
+		ctx->cpu_caller_pid = ctrl->val;
+		break;
 	case V4L2_CID_VDEC_TRICK_MODE:
 	case V4L2_CID_VDEC_NO_REORDER:
 	case V4L2_CID_VDEC_HDR10_INFO:
@@ -5059,6 +5062,18 @@ int mtk_vcodec_dec_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.name = "VDEC detect timestamp mode";
 	cfg.min = 0;
 	cfg.max = 1;
+	cfg.step = 1;
+	cfg.def = 0;
+	cfg.ops = ops;
+	mtk_vcodec_dec_custom_ctrls_check(handler, &cfg, NULL);
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MPEG_MTK_CALLING_PID;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video Caller Proccess ID";
+	cfg.min = 0;
+	cfg.max = 0x7fffffff;
 	cfg.step = 1;
 	cfg.def = 0;
 	cfg.ops = ops;

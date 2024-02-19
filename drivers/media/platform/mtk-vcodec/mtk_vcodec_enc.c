@@ -983,6 +983,9 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		sizeof(struct mtk_venc_frame_qp_range));
 		ctx->param_change |= MTK_ENCODE_PARAM_FRAMEQP_RANGE;
 		break;
+	case V4L2_CID_MPEG_MTK_CALLING_PID:
+		ctx->cpu_caller_pid = ctrl->val;
+		break;
 	default:
 		mtk_v4l2_debug(4, "ctrl-id=%d not support!", ctrl->id);
 		ret = -EINVAL;
@@ -1653,7 +1656,7 @@ static void mtk_venc_error_handle(struct mtk_vcodec_ctx *ctx)
 {
 	mtk_vcodec_set_state(ctx, MTK_STATE_ABORT);
 	mutex_lock(&ctx->dev->enc_dvfs_mutex);
-	mtk_vcodec_cpu_grp_aware_hint(ctx, false);
+	mtk_vcodec_cpu_adaptive_ctrl(ctx, false);
 	mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 	mtk_venc_queue_error_event(ctx);
 }
@@ -2946,6 +2949,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		mtk_venc_dvfs_begin_inst(ctx);
 		mtk_venc_pmqos_begin_inst(ctx);
 		mtk_venc_pmqos_monitor_reset(ctx->dev);
+		mtk_venc_init_boost(ctx);
 		mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 	}
 
@@ -3261,7 +3265,8 @@ static int mtk_venc_param_change(struct mtk_vcodec_ctx *ctx)
 			ctx->id, mtk_buf->vb.vb2_buf.index, mtk_buf->enc_params.operationrate,
 			mtk_buf->enc_params.operationrate_adaptive);
 		ret |= venc_if_set_param(ctx, VENC_SET_PARAM_OPERATION_RATE, &enc_prm);
-		mtk_venc_dvfs_sync_vsi_data(ctx);
+		if (ctx->dev->venc_reg == 0 && ctx->dev->venc_mmdvfs_clk == 0)
+			mtk_venc_dvfs_sync_vsi_data(ctx);
 	}
 
 	if (!ret && mtk_buf->param_change & MTK_ENCODE_PARAM_BITRATE_MODE) {
@@ -4328,6 +4333,18 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.step = 1;
 	cfg.def = 0;
 	cfg.dims[0] = 2;
+	cfg.ops = ops;
+	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MPEG_MTK_CALLING_PID;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video Caller Proccess ID";
+	cfg.min = 0;
+	cfg.max = 0x7fffffff;
+	cfg.step = 1;
+	cfg.def = 0;
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 

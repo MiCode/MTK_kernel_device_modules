@@ -35,8 +35,8 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 	const int tp_item_num = 4;
 	const int bw_item_num = 3;
 	struct platform_device *pdev;
-	int i, j, larb_cnt, ret;
-	u32 nmin = 0, nmax = 0, cnt = 0;
+	int i, j, larb_cnt, ret, cnt = 0;
+	u32 nmin = 0, nmax = 0;
 
 	pdev = dev->plat_dev;
 	larb_cnt = 0;
@@ -80,16 +80,17 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 
 	mtk_v4l2_debug(8, "[VDEC] max-op-rate table elements %u, %d per line",
 			cnt, op_item_num);
-	if (!dev->vdec_op_rate_cnt) {
-		mtk_v4l2_debug(0, "[VDEC] max-op-rate-table not exist");
-		return false;
+
+	if (dev->vdec_op_rate_cnt > 0 && dev->vdec_op_rate_cnt < VDEC_VENC_MAX) {
+		dev->vdec_dflt_op_rate = vzalloc(sizeof(struct vcodec_op_rate) * dev->vdec_op_rate_cnt);
+		mtk_v4l2_debug(8, "[VDEC] vzalloc %zu x %d res %p",
+				sizeof(struct vcodec_op_rate), dev->vdec_op_rate_cnt,
+				dev->vdec_dflt_op_rate);
+	} else {
+		mtk_v4l2_debug(0, "[VDEC] max-op-rate-table not exist or config wrong %d", dev->vdec_op_rate_cnt);
+		dev->vdec_op_rate_cnt = 0;
+		dev->vdec_dflt_op_rate = NULL;
 	}
-
-	dev->vdec_dflt_op_rate = vzalloc(sizeof(struct vcodec_op_rate) * dev->vdec_op_rate_cnt);
-
-	mtk_v4l2_debug(8, "[VDEC] vzalloc %zu x %d res %p",
-			sizeof(struct vcodec_op_rate), dev->vdec_op_rate_cnt,
-			dev->vdec_dflt_op_rate);
 
 	if (dev->vdec_dflt_op_rate) {
 		for (i = 0; i < dev->vdec_op_rate_cnt; i++) {
@@ -132,7 +133,7 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 
 	mtk_v4l2_debug(8, "[VDEC] tput table elements %u, %d per line",
 			cnt, tp_item_num);
-	if (dev->vdec_tput_cnt > 0) {
+	if (dev->vdec_tput_cnt > 0 && dev->vdec_tput_cnt < VDEC_VENC_MAX) {
 		dev->vdec_tput = vzalloc(sizeof(struct vcodec_perf) * dev->vdec_tput_cnt);
 		mtk_v4l2_debug(8, "[VDEC] vzalloc %zu x %d res %p",
 			sizeof(struct vcodec_perf), dev->vdec_tput_cnt, dev->vdec_tput);
@@ -309,11 +310,13 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 		mtk_v4l2_debug(0, "[VDEC] no need vdec-mmdvfs-in-adaptive");
 	dev->vdec_dvfs_params.mmdvfs_in_adaptive = vdec_req;
 
-	ret = of_property_read_s32(pdev->dev.of_node, "vdec-cpu-grp-aware", &flag);
+	ret = of_property_read_s32(pdev->dev.of_node, "vdec-cpu-hint-mode", &flag);
 	if (ret) {
-		mtk_v4l2_debug(0, "[VDEC] no need vdec-cpu-gpr-aware");
-		dev->vdec_dvfs_params.cpu_top_grp_aware = -1;
-	}
+		mtk_v4l2_debug(0, "[VDEC] no need vdec-cpu-hint-mode");
+		dev->cpu_hint_mode = (1 << MTK_CPU_UNSUPPORT);
+	} else
+		dev->cpu_hint_mode = flag;
+
 
 
 	ret = dev_pm_opp_of_add_table(&dev->plat_dev->dev);
@@ -441,11 +444,14 @@ void mtk_vdec_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT) || inst == (void *) 0)
 		return;
 
+	if (IS_ERR_OR_NULL(inst) || IS_ERR_OR_NULL(inst->vsi)) {
+		mtk_v4l2_err("[VDVFS][%d] inst/vsi is err or null", ctx->id);
+		return;
+	}
+
 	dev->vdec_dvfs_params.target_freq = inst->vsi->target_freq;
 	ctx->dec_params.operating_rate = inst->vsi->op_rate;
-	mtk_vcodec_cpu_grp_aware_hint(ctx, inst->vsi->cpu_top_grp_aware);
-	inst->vsi->cpu_top_grp_aware = 0;
-
+	mtk_vcodec_cpu_adaptive_ctrl(ctx, inst->vsi->cpu_hint);
 	return;
 }
 
@@ -759,7 +765,7 @@ bool mtk_vdec_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 {
 	unsigned int cur_in_timestamp, time_diff, threshold = 20;
 	unsigned int prev_op, cur_op, tmp_op;/* monitored op in the prev interval */
-	bool need_update = false;
+	bool update_op = false;
 
 	if (buf_type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE ||
 		!ctx->dev->vdec_dvfs_params.mmdvfs_in_adaptive)
@@ -790,10 +796,10 @@ bool mtk_vdec_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 
 		tmp_op = MAX(ctx->last_monitor_op, prev_op);
 
-		need_update = mtk_dvfs_check_op_diff(prev_op, ctx->last_monitor_op, threshold, 1) &&
+		update_op = mtk_dvfs_check_op_diff(prev_op, ctx->last_monitor_op, threshold, 1) &&
 			mtk_dvfs_check_op_diff(cur_op, tmp_op, threshold, -1);
 
-		if (need_update) {
+		if (update_op) {
 			ctx->op_rate_adaptive = tmp_op;
 			mtk_v4l2_debug(0, "[VDVFS][VDEC][ADAPTIVE][%d] update adaptive op %d -> %d",
 				ctx->id, cur_op, ctx->op_rate_adaptive);
