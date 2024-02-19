@@ -3266,6 +3266,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 
 		inten = REG_FLD_VAL(INTEN_FLD_FME_UND_INTEN, 1) |
 				REG_FLD_VAL(INTEN_FLD_FME_CPL_INTEN, 1);
+		inten = 0; /* remove me after irq handling done */
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_OVL_INTSTA, 0,
 			       ~0);

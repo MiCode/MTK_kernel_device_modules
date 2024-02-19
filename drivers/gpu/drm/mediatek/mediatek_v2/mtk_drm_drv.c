@@ -6377,7 +6377,6 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 			pm_runtime_get_sync(priv->ovlsys_dev);
 		if (priv->side_ovlsys_dev)
 			pm_runtime_get_sync(priv->side_ovlsys_dev);
-
 		break;
 	case DISP_PM_PUT:
 		if (priv->side_ovlsys_dev)
@@ -8619,8 +8618,6 @@ static int mtk_drm_bind(struct device *dev)
 #ifdef DRM_OVL_SELF_PATTERN
 	mtk_drm_disp_test_init(drm);
 	mtk_drm_disp_test_show(test_crtc, 1);
-#else
-	mtk_drm_assert_init(drm);
 #endif
 	DDPINFO("%s-\n", __func__);
 
