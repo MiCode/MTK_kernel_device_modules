@@ -3266,12 +3266,12 @@ static int mtk_vcu_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = of_property_read_u32(dev->of_node, "mediatek,dec_gce_th_num",
+	ret = of_property_read_u32(dev->of_node, "mediatek,dec-gce-th-num",
 					  &vcu->gce_th_num[VCU_VDEC]);
 	if (ret != 0 || vcu->gce_th_num[VCU_VDEC] > GCE_THNUM_MAX)
 		vcu->gce_th_num[VCU_VDEC] = 1;
 
-	ret = of_property_read_u32(dev->of_node, "mediatek,enc_gce_th_num",
+	ret = of_property_read_u32(dev->of_node, "mediatek,enc-gce-th-num",
 					  &vcu->gce_th_num[VCU_VENC]);
 	if (ret != 0 || vcu->gce_th_num[VCU_VENC] > GCE_THNUM_MAX)
 		vcu->gce_th_num[VCU_VENC] = 1;
@@ -3294,14 +3294,14 @@ static int mtk_vcu_probe(struct platform_device *pdev)
 		vcu->clt_venc_sec[0] =
 			cmdq_mbox_create(dev, vcu->gce_th_num[VCU_VDEC] + vcu->gce_th_num[VCU_VENC]);
 
-	ret = of_property_read_u16(pdev->dev.of_node, "gce_norm_token",
+	ret = of_property_read_u16(pdev->dev.of_node, "gce-norm-token",
 		&vcu->cmdq_venc_norm_token);
 	pr_debug("[VCU] get cmdq normal token %d", vcu->cmdq_venc_norm_token);
 
 	if (ret < 0)
 		dev_info(dev, "[VCU] get cmdq normal token fail (ret=%d)", ret);
 
-	ret = of_property_read_u16(pdev->dev.of_node, "gce_sec_token",
+	ret = of_property_read_u16(pdev->dev.of_node, "gce-sec-token",
 		&vcu->cmdq_venc_sec_token);
 	pr_debug("[VCU] get cmdq secure token %d", vcu->cmdq_venc_sec_token);
 
