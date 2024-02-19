@@ -14,6 +14,9 @@
 #include <linux/jiffies.h>
 #include <mtk_heap.h>
 
+#include "mtk_heap.h"
+#include "iommu_pseudo.h"
+
 #include "mtk_vcodec_drv.h"
 #include "mtk_vcodec_dec.h"
 #include "mtk_vcodec_intr.h"
@@ -51,6 +54,55 @@ static unsigned int default_cap_fmt_idx;
 #define NUM_SUPPORTED_FRAMESIZE ARRAY_SIZE(mtk_vdec_framesizes)
 #define NUM_FORMATS ARRAY_SIZE(mtk_vdec_formats)
 static struct vb2_mem_ops vdec_dma_contig_memops;
+
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+static struct vb2_mem_ops vdec_sec_dma_contig_memops;
+
+static int mtk_vdec_sec_dc_map_dmabuf(void *mem_priv)
+{
+	struct vb2_dc_buf *buf = mem_priv;
+
+	if (WARN_ON(!buf->db_attach)) {
+		mtk_v4l2_err("trying to pin a non attached buffer\n");
+		return -EINVAL;
+	}
+
+	if (WARN_ON(buf->dma_addr)) {
+		mtk_v4l2_err("dmabuf buffer is already pinned\n");
+		return 0;
+	}
+
+	buf->dma_addr = dmabuf_to_secure_handle(buf->db_attach->dmabuf);
+	buf->dma_sgt = NULL;
+	buf->vaddr = NULL;
+
+	return 0;
+}
+
+static void mtk_vdec_sec_dc_unmap_dmabuf(void *mem_priv)
+{
+	struct vb2_dc_buf *buf = mem_priv;
+
+	if (WARN_ON(!buf->db_attach)) {
+		mtk_v4l2_err("trying to unpin a not attached buffer\n");
+		return;
+	}
+
+	if (WARN_ON(!buf->dma_addr)) {
+		mtk_v4l2_err("dmabuf buffer is already unpinned\n");
+		return;
+	}
+
+	if (buf->vaddr) {
+		mtk_v4l2_err("dmabuf buffer vaddr not null\n");
+		dma_buf_vunmap(buf->db_attach->dmabuf, buf->vaddr);
+		buf->vaddr = NULL;
+	}
+
+	buf->dma_addr = 0;
+	buf->dma_sgt = NULL;
+}
+#endif
 
 static bool mtk_vdec_is_vcu(void)
 {
@@ -3556,6 +3608,14 @@ static int vb2ops_vdec_queue_setup(struct vb2_queue *vq,
 	mtk_v4l2_debug(1, "[%d] type = %d, get %d plane(s), %d buffer(s) of size 0x%x 0x%x (sizeimage 0x%x 0x%x)",
 		ctx->id, vq->type, *nplanes, *nbuffers, sizes[0], sizes[1], q_data->sizeimage[0], q_data->sizeimage[1]);
 
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+	if (ctx->dec_params.svp_mode && is_disable_map_sec() && mtk_vdec_is_vcu()) {
+		vq->mem_ops = &vdec_sec_dma_contig_memops;
+		mtk_v4l2_debug(1, "[%d] hook mem_ops.map_dmabuf for queue type %d",
+			ctx->id, vq->type);
+	}
+#endif
+
 	return 0;
 }
 
@@ -5334,10 +5394,19 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 	src_vq->drv_priv        = ctx;
 	src_vq->buf_struct_size = sizeof(struct mtk_video_dec_buf);
 	src_vq->ops             = &mtk_vdec_vb2_ops;
-	vdec_dma_contig_memops = vb2_dma_contig_memops;
+	vdec_dma_contig_memops  = vb2_dma_contig_memops;
 	vdec_dma_contig_memops.attach_dmabuf = mtk_vdec_dc_attach_dmabuf;
-	src_vq->mem_ops         = &vdec_dma_contig_memops;
+	src_vq->mem_ops	        = &vdec_dma_contig_memops;
 	mtk_v4l2_debug(4, "[%s] src_vq use vdec_dma_contig_memops", name);
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+	if (ctx->dec_params.svp_mode && is_disable_map_sec() && mtk_vdec_is_vcu()) {
+		vdec_sec_dma_contig_memops = vdec_dma_contig_memops;
+		vdec_sec_dma_contig_memops.map_dmabuf   = mtk_vdec_sec_dc_map_dmabuf;
+		vdec_sec_dma_contig_memops.unmap_dmabuf = mtk_vdec_sec_dc_unmap_dmabuf;
+		src_vq->mem_ops = &vdec_sec_dma_contig_memops;
+		mtk_v4l2_debug(4, "src_vq use vdec_sec_dma_contig_memops");
+	}
+#endif
 	src_vq->bidirectional = 1;
 
 	src_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
@@ -5382,6 +5451,12 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 	dst_vq->ops             = &mtk_vdec_vb2_ops;
 	dst_vq->mem_ops         = &vdec_dma_contig_memops;
 	mtk_v4l2_debug(4, "[%s] dst_vq use vdec_dma_contig_memops", name);
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+	if (ctx->dec_params.svp_mode && is_disable_map_sec() && mtk_vdec_is_vcu()) {
+		dst_vq->mem_ops = &vdec_sec_dma_contig_memops;
+		mtk_v4l2_debug(4, "dst_vq use vdec_sec_dma_contig_memops");
+	}
+#endif
 	dst_vq->bidirectional = 1;
 
 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;

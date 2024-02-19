@@ -17,8 +17,8 @@
 #include "mtk_vcodec_enc_pm.h"
 #include "mtk_vcodec_intr.h"
 #include "mtk_vcu.h"
-
-
+#include "mtk_heap.h"
+#include "iommu_pseudo.h"
 
 static unsigned int venc_h265_get_profile(struct venc_inst *inst,
 	unsigned int profile)
@@ -247,6 +247,8 @@ static int venc_init(struct mtk_vcodec_ctx *ctx, unsigned long *handle)
 	cb.enc_pmqos_gce_begin = venc_encode_pmqos_gce_begin;
 	cb.enc_pmqos_gce_end = venc_encode_pmqos_gce_end;
 	cb.gce_timeout_dump = mtk_vcodec_gce_timeout_dump;
+	cb.enc_lock = venc_lock;
+	cb.enc_unlock = venc_unlock;
 	VCU_FPTR(vcu_set_v4l2_callback)(inst->vcu_inst.dev, &cb);
 
 	mtk_vcodec_debug_leave(inst);
@@ -478,6 +480,12 @@ static int venc_set_param(unsigned long handle,
 		inst->vsi->config.p_qp = enc_prm->p_qp;
 		inst->vsi->config.b_qp = enc_prm->b_qp;
 		inst->vsi->config.svp_mode = enc_prm->svp_mode;
+		if (inst->vsi->config.svp_mode)
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+			inst->vsi->config.svp_is_hal_secure_handle = is_disable_map_sec();
+#else
+			inst->vsi->config.svp_is_hal_secure_handle = false;
+#endif
 		inst->vsi->config.highquality = enc_prm->highquality;
 		inst->vsi->config.max_qp = enc_prm->max_qp;
 		inst->vsi->config.min_qp = enc_prm->min_qp;

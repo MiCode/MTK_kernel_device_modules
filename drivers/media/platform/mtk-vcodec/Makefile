@@ -75,5 +75,6 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/eas
 ccflags-y += -I$(DEVICE_MODULES_PATH)/include/soc/mediatek
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/
 
 #endif
