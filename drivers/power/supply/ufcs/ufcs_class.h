@@ -178,28 +178,6 @@ struct ufcs_dev {
 
 extern struct class *ufcs_class;
 
-#if IS_ENABLED(CONFIG_UFCS_CLASS)
-extern void ufcs_tx_complete(struct ufcs_port *port, enum ufcs_transmit_status status);
-extern void ufcs_rx_receive(struct ufcs_port *port, const struct ufcs_message *msg);
-extern void ufcs_attach_change(struct ufcs_port *port, bool dcp_attached);
-extern void ufcs_hard_reset(struct ufcs_port *port);
-extern void ufcs_hand_shake_state(struct ufcs_port *port, bool success);
-#else
-static inline void ufcs_tx_complete(struct ufcs_port *port, enum ufcs_transmit_status status) {}
-static inline void ufcs_rx_receive(struct ufcs_port *port, const struct ufcs_message *msg) {}
-static inline void ufcs_attach_change(struct ufcs_port *port, bool dcp_attached) {}
-static inline void ufcs_hard_reset(struct ufcs_port *port) {}
-static inline void ufcs_hand_shake_state(struct ufcs_port *port, bool success) {}
-#endif
-
-/* User DPM request API */
-extern int ufcs_port_dpm_reaction(struct ufcs_port *port, enum ufcs_dpm_request request,
-				  union ufcs_dpm_input *input, union ufcs_dpm_output *output);
-
-extern struct ufcs_port *ufcs_register_port(struct device *dev, struct ufcs_dev *ufcs);
-extern void ufcs_unregister_port(struct ufcs_port *port);
-extern struct ufcs_port *devm_ufcs_register_port(struct device *dev, struct ufcs_dev *ufcs);
-
 enum ufcs_notify {
 	UFCS_NOTIFY_ATTACH_NONE = 0,
 	UFCS_NOTIFY_ATTACH_FAIL,
@@ -207,13 +185,28 @@ enum ufcs_notify {
 };
 
 #if IS_ENABLED(CONFIG_UFCS_CLASS)
+extern void ufcs_tx_complete(struct ufcs_port *port, enum ufcs_transmit_status status);
+extern void ufcs_rx_receive(struct ufcs_port *port, const struct ufcs_message *msg);
+extern void ufcs_attach_change(struct ufcs_port *port, bool dcp_attached);
+extern void ufcs_hard_reset(struct ufcs_port *port);
+extern void ufcs_hand_shake_state(struct ufcs_port *port, bool success);
+/* User DPM request API */
 extern struct ufcs_port *ufcs_port_get_by_name(const char *name);
 extern void ufcs_port_put(struct ufcs_port *port);
 extern int register_ufcs_dev_notifier(struct ufcs_port *port, struct notifier_block *nb);
 extern int unregister_ufcs_dev_notifier(struct ufcs_port *port, struct notifier_block *nb);
 extern int ufcs_port_dpm_reaction(struct ufcs_port *port, enum ufcs_dpm_request request,
 			   union ufcs_dpm_input *input, union ufcs_dpm_output *output);
+extern struct ufcs_port *ufcs_register_port(struct device *dev, struct ufcs_dev *ufcs);
+extern void ufcs_unregister_port(struct ufcs_port *port);
+extern struct ufcs_port *devm_ufcs_register_port(struct device *dev, struct ufcs_dev *ufcs);
 #else
+static inline void ufcs_tx_complete(struct ufcs_port *port, enum ufcs_transmit_status status) {}
+static inline void ufcs_rx_receive(struct ufcs_port *port, const struct ufcs_message *msg) {}
+static inline void ufcs_attach_change(struct ufcs_port *port, bool dcp_attached) {}
+static inline void ufcs_hard_reset(struct ufcs_port *port) {}
+static inline void ufcs_hand_shake_state(struct ufcs_port *port, bool success) {}
+/* User DPM request API */
 static inline void ufcs_port_put(struct ufcs_port *port) {}
 static inline struct ufcs_port *ufcs_port_get_by_name(const char *name) { return ERR_PTR(-EINVAL); }
 static inline int register_ufcs_dev_notifier(struct ufcs_port *port,
@@ -222,14 +215,24 @@ static inline int unregister_ufcs_dev_notifier(struct ufcs_port *port,
 	struct notifier_block *nb) { return -EOPNOTSUPP; }
 static inline int ufcs_port_dpm_reaction(struct ufcs_port *port, enum ufcs_dpm_request request,
 	union ufcs_dpm_input *input, union ufcs_dpm_output *output) { return -EOPNOTSUPP; };
+static inline  struct ufcs_port *ufcs_register_port(struct device *dev, struct ufcs_dev *ufcs)
+{
+	return ERR_PTR(-EINVAL);
+}
+static inline void ufcs_unregister_port(struct ufcs_port *port) {}
+static inline struct ufcs_port *devm_ufcs_register_port(struct device *dev, struct ufcs_dev *ufcs)
+{
+	return ERR_PTR(-EINVAL);
+}
 #endif
-#ifdef CONFIG_OF
+
+#if IS_ENABLED (CONFIG_OF) && IS_ENABLED(CONFIG_UFCS_CLASS)
 extern struct ufcs_port *ufcs_port_get_by_phandle(struct device_node *np, const char *property);
 extern struct ufcs_port *devm_ufcs_port_get_by_phandle(struct device *dev, const char *property);
-#else /* !CONFIG_OF */
+#else /* !IS_ENABLED (CONFIG_OF) || !IS_ENABLED(CONFIG_UFCS_CLASS) */
 static inline struct ufcs_port *ufcs_port_get_by_phandle(struct device_node *np,
 	const char *property) { return ERR_PTR(-EINVAL); }
-static inline struct ufcs_port *demv_ufcs_port_get_by_phandle(struct device *dev,
+static inline struct ufcs_port *devm_ufcs_port_get_by_phandle(struct device *dev,
 	const char *property) { return ERR_PTR(-EINVAL); }
 #endif
 

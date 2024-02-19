@@ -2,6 +2,7 @@
 
 config UFCS_CLASS
 	tristate "Universal Fast Charging class"
+	depends on MTK_CHARGER
 	select CRYPTO
 	select CRYPTO_SHA256
 	help
