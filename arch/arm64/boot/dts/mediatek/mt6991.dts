@@ -11464,6 +11464,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		mtk,smmu-shared = <&mm_smmu_svp_disp>;
 	};
 
+	mtee_svp: mtee-svp {
+		compatible = "medaitek,svp";
+	};
+
+	drm_wv: drm-wv {
+		compatible = "mediatek,drm_wv";
+		status = "okay";
+	};
+
 	/* smmu test devices */
 	smmu-test-ktf1 {
 		compatible = "mediatek,soc-smmu-test-ktf1";
