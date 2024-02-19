@@ -59,6 +59,7 @@ static int total_linger_num;
 static int total_BQ_id_num;
 static int total_connect_api_info_num;
 static int total_sbe_spid_loading_num;
+static int total_jank_detection_info_num;
 
 static struct kobject *base_kobj;
 static struct rb_root render_pid_tree;
@@ -74,6 +75,7 @@ static struct rb_root acquire_info_tree;
 static struct rb_root fpsgo_attr_by_pid_tree;
 static struct rb_root fpsgo_attr_by_tid_tree;
 #endif
+static struct rb_root jank_detection_info_tree;
 
 void (*fpsgo_rl_delete_render_info_fp)(int pid, unsigned long long bufID);
 EXPORT_SYMBOL(fpsgo_rl_delete_render_info_fp);
@@ -861,6 +863,23 @@ struct render_info *fpsgo_search_and_add_render_info(int pid,
 	total_render_info_num++;
 
 	return iter_thr;
+}
+
+struct render_info *fpsgo_get_render_info_by_bufID(int pid,
+	unsigned long long buffer_id)
+{
+	struct render_info *iter = NULL, *target = NULL;
+	struct rb_node *rbn = NULL;
+
+	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
+		iter = rb_entry(rbn, struct render_info, render_key_node);
+		if (iter->pid == pid && iter->buffer_id == buffer_id) {
+			target = iter;
+			break;
+		}
+	}
+
+	return target;
 }
 
 void fpsgo_delete_render_info(int pid,
@@ -2595,6 +2614,71 @@ int fpsgo_check_fbt_jerk_work_addr_invalid(struct work_struct *target_work)
 
 out:
 	return ret;
+}
+
+struct jank_detection_info *fpsgo_get_jank_detection_info(int pid, int create)
+{
+	struct rb_node **p = &jank_detection_info_tree.rb_node;
+	struct rb_node *parent = NULL;
+	struct jank_detection_info *iter = NULL;
+
+	while (*p) {
+		parent = *p;
+		iter = rb_entry(parent, struct jank_detection_info, rb_node);
+
+		if (pid < iter->pid)
+			p = &(*p)->rb_left;
+		else if (pid > iter->pid)
+			p = &(*p)->rb_right;
+		else
+			return iter;
+	}
+
+	if (!create ||
+		total_jank_detection_info_num >= FPSGO_MAX_JANK_DETECTION_INFO_SIZE)
+		return NULL;
+
+	iter = kzalloc(sizeof(struct jank_detection_info), GFP_KERNEL);
+	if (!iter)
+		return NULL;
+
+	iter->pid = pid;
+	iter->rm_count = 0;
+
+	rb_link_node(&iter->rb_node, parent, p);
+	rb_insert_color(&iter->rb_node, &jank_detection_info_tree);
+	total_jank_detection_info_num++;
+
+	return iter;
+}
+
+void fpsgo_delete_jank_detection_info(struct jank_detection_info *iter)
+{
+	if (!iter)
+		return;
+
+	rb_erase(&iter->rb_node, &jank_detection_info_tree);
+	kfree(iter);
+	total_jank_detection_info_num--;
+}
+
+void fpsgo_check_jank_detection_info_status(void)
+{
+	struct jank_detection_info *iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	rbn = rb_first(&jank_detection_info_tree);
+	while (rbn) {
+		iter = rb_entry(rbn, struct jank_detection_info, rb_node);
+		iter->rm_count++;
+		if (iter->rm_count < FPSGO_MAX_JANK_DETECTION_BOOST_CNT)
+			rbn = rb_next(rbn);
+		else {
+			fpsgo_base2fbt_jank_thread_deboost(iter->pid);
+			fpsgo_delete_jank_detection_info(iter);
+			rbn = rb_first(&jank_detection_info_tree);
+		}
+	}
 }
 
 static ssize_t fpsgo_enable_show(struct kobject *kobj,

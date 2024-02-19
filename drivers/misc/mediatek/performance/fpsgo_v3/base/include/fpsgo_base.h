@@ -34,6 +34,8 @@
 #define FPSGO_MAX_BQ_ID_SIZE 400
 #define FPSGO_MAX_CONNECT_API_INFO_SIZE 400
 #define FPSGO_MAX_SBE_SPID_LOADING_SIZE 10
+#define FPSGO_MAX_JANK_DETECTION_INFO_SIZE 5
+#define FPSGO_MAX_JANK_DETECTION_BOOST_CNT 2
 
 enum {
 	FPSGO_SET_UNKNOWN = -1,
@@ -482,6 +484,18 @@ struct sbe_spid_loading {
 	struct rb_node rb_node;
 };
 
+struct jank_detection_info {
+	int pid;
+	int rm_count;
+	struct rb_node rb_node;
+};
+
+struct jank_detection_hint {
+	int jank;
+	int pid;
+	struct work_struct sWork;
+};
+
 struct fps_control_pid_info {
 	int pid;
 	struct rb_node entry;
@@ -583,6 +597,11 @@ int fpsgo_delete_sbe_spid_loading(int tgid);
 int fpsgo_update_sbe_spid_loading(int *cur_pid_arr, int cur_pid_num, int tgid);
 int fpsgo_ctrl2base_query_sbe_spid_loading(void);
 int fpsgo_check_fbt_jerk_work_addr_invalid(struct work_struct *target_work);
+struct jank_detection_info *fpsgo_get_jank_detection_info(int pid, int create);
+void fpsgo_delete_jank_detection_info(struct jank_detection_info *iter);
+void fpsgo_check_jank_detection_info_status(void);
+struct render_info *fpsgo_get_render_info_by_bufID(int pid,
+	unsigned long long buffer_id);
 
 void fpsgo_ktf_test_read_node(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf,

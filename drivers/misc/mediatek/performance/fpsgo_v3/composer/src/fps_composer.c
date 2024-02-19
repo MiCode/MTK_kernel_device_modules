@@ -48,6 +48,7 @@ static int recycle_active = 1;
 static int fps_align_margin = 5;
 static int total_fpsgo_com_policy_cmd_num;
 static int fpsgo_is_boosting;
+static int jank_detection_is_ready;
 static unsigned long long last_update_sbe_dep_ts;
 
 static void fpsgo_com_notify_to_do_recycle(struct work_struct *work);
@@ -59,6 +60,12 @@ static DEFINE_MUTEX(fpsgo_boost_lock);
 static DEFINE_MUTEX(adpf_hint_lock);
 
 static fpsgo_notify_is_boost_cb notify_fpsgo_boost_cb_list[MAX_FPSGO_CB_NUM];
+
+typedef void (*heavy_fp)(int jank, int pid);
+int (*fpsgo2jank_detection_register_callback_fp)(heavy_fp cb);
+EXPORT_SYMBOL(fpsgo2jank_detection_register_callback_fp);
+int (*fpsgo2jank_detection_unregister_callback_fp)(heavy_fp cb);
+EXPORT_SYMBOL(fpsgo2jank_detection_unregister_callback_fp);
 
 static enum hrtimer_restart prepare_do_recycle(struct hrtimer *timer)
 {
@@ -157,7 +164,6 @@ int fpsgo_com2other_notify_fpsgo_is_boosting(int boost)
 	return ret;
 }
 
-
 void fpsgo_com_notify_fpsgo_is_boost(int enable)
 {
 	mutex_lock(&fpsgo_boost_cb_lock);
@@ -179,6 +185,43 @@ void fpsgo_com_notify_fpsgo_is_boost(int enable)
 	}
 	mutex_unlock(&fpsgo_boost_lock);
 	mutex_unlock(&fpsgo_boost_cb_lock);
+}
+
+static void fpsgo_com_do_jank_detection_hint(struct work_struct *psWork)
+{
+	int local_jank;
+	int local_pid;
+	struct jank_detection_hint *hint = NULL;
+
+	hint = container_of(psWork, struct jank_detection_hint, sWork);
+	local_jank = hint->jank;
+	local_pid = hint->pid;
+
+	fpsgo_render_tree_lock(__func__);
+	fpsgo_systrace_c_fbt(local_pid, 0, local_jank, "jank_detection_hint");
+	fpsgo_comp2fbt_jank_thread_boost(local_jank, local_pid);
+	fpsgo_render_tree_unlock(__func__);
+
+	kfree(hint);
+}
+
+static void fpsgo_com_receive_jank_detection(int jank, int pid)
+{
+	struct jank_detection_hint *hint = NULL;
+
+	fpsgo_systrace_c_fbt(pid, 0, jank, "jank_detection_hint_ori");
+
+	hint = kmalloc(sizeof(struct jank_detection_hint), GFP_ATOMIC);
+	if (!hint)
+		return;
+
+	hint->jank = jank;
+	hint->pid = pid;
+
+	if (composer_wq) {
+		INIT_WORK(&hint->sWork, fpsgo_com_do_jank_detection_hint);
+		queue_work(composer_wq, &hint->sWork);
+	}
 }
 
 static void fpsgo_com_delete_policy_cmd(struct fpsgo_com_policy_cmd *iter)
@@ -565,6 +608,13 @@ exit:
 		}
 	}
 	mutex_unlock(&recycle_lock);
+
+	if (!jank_detection_is_ready &&
+		fpsgo2jank_detection_register_callback_fp) {
+		fpsgo2jank_detection_register_callback_fp(fpsgo_com_receive_jank_detection);
+		jank_detection_is_ready = 1;
+		FPSGO_LOGE("fpsgo2jank_detection_register_callback_fp finish\n");
+	}
 }
 
 void fpsgo_ctrl2comp_enqueue_end(int pid,
@@ -629,6 +679,7 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 		if (running_time != 0)
 			f_render->running_time = running_time;
 
+		fpsgo_check_jank_detection_info_status();
 		fpsgo_comp2fbt_frame_start(f_render,
 				enqueue_end_time);
 		fpsgo_comp2fstb_queue_time_update(pid,
