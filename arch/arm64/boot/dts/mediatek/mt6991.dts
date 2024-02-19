@@ -7733,8 +7733,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"seninf-dev2-irq",
 				"seninf-dev3-irq";
 
-			mtk-iomem-ver = "mt6991";
-
 			/* for clock scaling bind vcore */
 			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			/*
@@ -7753,11 +7751,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			cdphy-dvfs-step2 = <8000 7280>, <9000 9000>, <416>, <650000 650000>;
 			cdphy-dvfs-step3 = <8000 8000>, <9000 9000>, <499>, <725000 725000>;
 
-			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MAIN>,
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_VCORE>,
+					<&hfrpsys MT6991_POWER_DOMAIN_CAM_MAIN>,
 					<&hfrpsys MT6991_POWER_DOMAIN_CSI_BS_RX>,
 					<&hfrpsys MT6991_POWER_DOMAIN_CSI_LS_RX>;
 
-			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_SENINF_CAM_SENINF>,
+			clocks = <&cam_vcore_r1a_clk CLK_VCORE>,
+				<&cam_vcore_r1a_clk CLK_2MM0_SUBCOMMON_DCM_DIS_CAMRAW>,
+				<&cam_vcore_r1a_clk CLK_CAM_V_MM0_SUBCOMM_CAMRAW>,
+				<&cam_main_r1a_clk CLK_CAM_MAIN_SENINF_CAM_SENINF>,
 				<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_CAM_SENINF>,
 				<&cam_main_r1a_clk CLK_CAM_MAIN_CAMTG_CAM_SENINF>,
 				//<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_ASG_CAM_SENINF>,
@@ -7773,7 +7775,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&cksys_gp2_clk CLK_CK2_MAINPLL2_D6>,
 				<&cksys_gp2_clk CLK_CK2_UNIVPLL2_D6>,
 				<&cksys_gp2_clk CLK_CK2_UNIVPLL2_D5>;
-			clock-names = "clk_cam_seninf",
+			clock-names = "clk_cam_vcore_cg0",
+				"clk_cam_vcore_cg2",
+				"clk_cam_vcore_cg3",
+				"clk_cam_seninf",
 				"clk_cam_cam",
 				"clk_cam_camtg",
 				//"clk_cam_asg",
