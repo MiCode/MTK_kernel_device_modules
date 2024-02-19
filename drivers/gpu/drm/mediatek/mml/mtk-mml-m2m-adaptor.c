@@ -485,14 +485,14 @@ static const struct vb2_ops mml_m2m_qops = {
 
 static const struct mml_m2m_limit mml_m2m_def_limit = {
 	.out_limit = {
-		.wmin	= 16,
-		.hmin	= 16,
+		.wmin	= 32, /* min of HW limitation and all format steps */
+		.hmin	= 32, /* min of HW limitation and all format steps */
 		.wmax	= 65504,
 		.hmax	= 65504,
 	},
 	.cap_limit = {
-		.wmin	= 4,
-		.hmin	= 4,
+		.wmin	= 32,
+		.hmin	= 32,
 		.wmax	= 65504,
 		.hmax	= 65504,
 	},
@@ -598,7 +598,7 @@ static int m2m_try_crop(struct mml_m2m_ctx *ctx, struct v4l2_rect *r,
 	const struct v4l2_selection *s, struct mml_m2m_frame *frame)
 {
 	s32 left, top, right, bottom;
-	u32 framew, frameh, walign, halign;
+	u32 framew, frameh, walign = 0, halign = 0;
 	int ret;
 
 	mml_msg("%s target:%d, set:(%d,%d) %ux%u", __func__,
@@ -611,10 +611,7 @@ static int m2m_try_crop(struct mml_m2m_ctx *ctx, struct v4l2_rect *r,
 	framew = frame->format.fmt.pix_mp.width;
 	frameh = frame->format.fmt.pix_mp.height;
 
-	if (m2m_target_is_crop(s->target)) {
-		walign = 1;
-		halign = 1;
-	} else {
+	if (m2m_target_is_compose(s->target)) {
 		walign = frame->mml_fmt->walign;
 		halign = frame->mml_fmt->halign;
 	}
@@ -643,22 +640,6 @@ static int m2m_try_crop(struct mml_m2m_ctx *ctx, struct v4l2_rect *r,
 	mml_msg("%s crop:(%d,%d) %ux%u", __func__,
 		r->left, r->top, r->width, r->height);
 	return 0;
-}
-
-static void m2m_bound_align_image(u32 *w, u32 *h,
-				  struct v4l2_frmsize_stepwise *s, u32 salign)
-{
-	unsigned int org_w, org_h;
-
-	org_w = *w;
-	org_h = *h;
-	v4l_bound_align_image(w, s->min_width, s->max_width, s->step_width,
-			      h, s->min_height, s->max_height, s->step_height,
-			      salign);
-
-	s->min_width = org_w;
-	s->min_height = org_h;
-	v4l2_apply_frmsize_constraints(w, h, s);
 }
 
 static enum mml_ycbcr_profile m2m_map_ycbcr_prof_mplane(
@@ -692,8 +673,7 @@ static const struct mml_m2m_format *m2m_try_fmt_mplane(struct v4l2_format *f,
 	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
 	const struct mml_m2m_format *fmt;
 	const struct mml_m2m_pix_limit *pix_limit;
-	struct v4l2_frmsize_stepwise s;
-	u32 org_w, org_h;
+	u32 org_w, org_h, wmin, hmin;
 	unsigned int i;
 
 	fmt = m2m_find_fmt(pix_mp->pixelformat, f->type);
@@ -721,16 +701,17 @@ static const struct mml_m2m_format *m2m_try_fmt_mplane(struct v4l2_format *f,
 
 	pix_limit = V4L2_TYPE_IS_OUTPUT(f->type) ? &param->limit->out_limit :
 						&param->limit->cap_limit;
-	s.min_width = pix_limit->wmin;
-	s.max_width = pix_limit->wmax;
-	s.step_width = fmt->walign;
-	s.min_height = pix_limit->hmin;
-	s.max_height = pix_limit->hmax;
-	s.step_height = fmt->halign;
 	org_w = pix_mp->width;
 	org_h = pix_mp->height;
 
-	m2m_bound_align_image(&pix_mp->width, &pix_mp->height, &s, fmt->salign);
+	/* v4l_bound_align_image rounds value to nearest aligned value at first.
+	 * While we want to round always up, use clamped value as min.
+	 */
+	wmin = clamp(pix_mp->width, pix_limit->wmin, pix_limit->wmax);
+	hmin = clamp(pix_mp->height, pix_limit->hmin, pix_limit->hmax);
+	v4l_bound_align_image(&pix_mp->width, wmin, pix_limit->wmax, fmt->walign,
+			      &pix_mp->height, hmin, pix_limit->hmax, fmt->halign,
+			      fmt->salign);
 	if (org_w != pix_mp->width || org_h != pix_mp->height)
 		mml_log("[m2m]%s size change: %ux%u to %ux%u", __func__,
 			org_w, org_h, pix_mp->width, pix_mp->height);
@@ -751,7 +732,7 @@ static const struct mml_m2m_format *m2m_try_fmt_mplane(struct v4l2_format *f,
 
 		min_si = (bpl * pix_mp->height * fmt->depth[i]) /
 			 fmt->row_depth[i];
-		max_si = (bpl * s.max_height * fmt->depth[i]) /
+		max_si = (bpl * pix_limit->hmax * fmt->depth[i]) /
 			 fmt->row_depth[i];
 
 		si = clamp(si, min_si, max_si);
@@ -813,16 +794,59 @@ static const struct v4l2_ctrl_ops mml_m2m_ctrl_ops = {
 	.s_ctrl = mml_m2m_s_ctrl,
 };
 
-static int mml_m2m_ctrl_type_op_validate(const struct v4l2_ctrl *ctrl, union v4l2_ctrl_ptr ptr)
+static bool mml_m2m_ctrl_type_op_equal(const struct v4l2_ctrl *ctrl,
+	union v4l2_ctrl_ptr ptr1, union v4l2_ctrl_ptr ptr2)
 {
-	/* TODO: check validation of pq param */
+	return !memcmp(ptr1.p_const, ptr2.p_const,
+		ctrl->elems * ctrl->elem_size);
+}
+
+static void mml_m2m_ctrl_type_op_init(const struct v4l2_ctrl *ctrl,
+	u32 from_idx, union v4l2_ctrl_ptr ptr)
+{
+	unsigned int i;
+	u32 tot_elems = ctrl->elems;
+
+	if (from_idx >= tot_elems)
+		return;
+
+	for (i = from_idx; i < tot_elems; i++) {
+		void *p = ptr.p + i * ctrl->elem_size;
+
+		if (ctrl->p_def.p_const)
+			memcpy(p, ctrl->p_def.p_const, ctrl->elem_size);
+		else
+			memset(p, 0, ctrl->elem_size);
+	}
+}
+
+static void mml_m2m_ctrl_type_op_log(const struct v4l2_ctrl *ctrl)
+{
+	pr_cont("MML_M2M_PQPARAM");
+}
+
+static int mml_m2m_ctrl_type_op_validate(const struct v4l2_ctrl *ctrl,
+	union v4l2_ctrl_ptr ptr)
+{
+	unsigned int i;
+
+	for (i = 0; i < ctrl->new_elems; i++) {
+		struct v4l2_pq_submit *pq_submit = ptr.p + i * ctrl->elem_size;
+		u32 pqen = 0;
+
+		memcpy(&pqen, &pq_submit->pq_config,
+			min(sizeof(pq_submit->pq_config), sizeof(pqen)));
+		if ((pqen && !pq_submit->pq_param.enable) ||
+		    (!pqen && pq_submit->pq_param.enable))
+			return -EINVAL;
+	}
 	return 0;
 }
 
 static const struct v4l2_ctrl_type_ops mml_m2m_type_ops = {
-	.equal = v4l2_ctrl_type_op_equal,
-	.init = v4l2_ctrl_type_op_init,
-	.log = v4l2_ctrl_type_op_log,
+	.equal = mml_m2m_ctrl_type_op_equal,
+	.init = mml_m2m_ctrl_type_op_init,
+	.log = mml_m2m_ctrl_type_op_log,
 	.validate = mml_m2m_ctrl_type_op_validate,
 };
 
