@@ -84,6 +84,7 @@
 #define I3C_SHAPE_T_PARITY            BIT(2)
 #define I3C_SHAPE_T_STALL             BIT(1)
 #define I3C_SHAPE_T_FILL              BIT(0)
+#define I3C_SHAPE_HDR_EXIT            BIT(0)
 
 #define I3C_DBGCRL_PRE_COUNT          (0x8 << 8)
 #define I3C_DBGCRL_BUS_ERR            BIT(2)
@@ -232,11 +233,19 @@ enum DMA_REGS_OFFSET {
 
 struct mtk_i3c_compatible {
 	const u16 *regs;
+	bool hdr_exit_support;
 	unsigned char max_dma_support;
 };
 
 static const struct mtk_i3c_compatible mt6989_compat = {
 	.regs = mt_i3c_regs_v2,
+	.hdr_exit_support = false,
+	.max_dma_support = 36,
+};
+
+static const struct mtk_i3c_compatible mt6991_compat = {
+	.regs = mt_i3c_regs_v2,
+	.hdr_exit_support = true,
 	.max_dma_support = 36,
 };
 
@@ -351,6 +360,7 @@ struct mtk_i3c_master {
 	u32 sda_gpio_id;
 	bool fifo_use_pulling;
 	bool priv_xfer_wo7e;
+	bool no_hdr_exit;
 	struct mtk_i3c_speed_reg i2c_speed;
 	struct mtk_i3c_speed_reg b_ccc_speed;
 	struct mtk_i3c_speed_reg with7e_speed;
@@ -1419,11 +1429,11 @@ static int mtk_i3c_set_speed(struct mtk_i3c_master *i3c,
 			l_cal_para.force_h_time = i3c->ls_force_h_time_ns;
 			h_cal_para.src_clk = parent_clk / clk_div;
 			l_cal_para.src_clk = parent_clk / clk_div;
-			h_ext_time = (parent_clk / clk_div) * 5 /
+			h_ext_time = (parent_clk / clk_div) * 20 /
 				(target_speed / I2C_MAX_STANDARD_MODE_FREQ * 1000000);
 			if (h_ext_time > I3C_MAX_HS_EXT_TIME)
 				continue;
-			l_ext_time = (parent_clk / clk_div) * 5 /
+			l_ext_time = (parent_clk / clk_div) * 20 /
 				(head_speed / I2C_MAX_STANDARD_MODE_FREQ * 1000000);
 			if (l_ext_time > I3C_MAX_LS_EXT_TIME)
 				continue;
@@ -1469,7 +1479,7 @@ static int mtk_i3c_set_speed(struct mtk_i3c_master *i3c,
 		} else {
 			l_cal_para.max_step = I3C_MAX_LS_STEP_CNT_DIV;
 			l_cal_para.src_clk = parent_clk;
-			l_ext_time = (parent_clk / clk_div) * 5 /
+			l_ext_time = (parent_clk / clk_div) * 20 /
 				(target_speed / I2C_MAX_STANDARD_MODE_FREQ * 1000000);
 			if (l_ext_time > I3C_MAX_LS_EXT_TIME)
 				continue;
@@ -1498,6 +1508,32 @@ static int mtk_i3c_set_speed(struct mtk_i3c_master *i3c,
 			cal_reg->ltiming_reg = ((l_cal_para.l_sample_cnt - 1) << 6) |
 				(l_cal_para.l_step_cnt - 1);
 			cal_reg->ext_conf_reg = (l_ext_time << 8) | (1 << 0);
+			if (target_speed > I3C_BUS_I2C_FM_PLUS_SCL_RATE) {
+				h_cal_para.max_step = I3C_MAX_HS_STEP_CNT_DIV;
+				h_cal_para.force_h_time = i3c->hs_force_h_time_ns;
+				h_cal_para.src_clk = parent_clk / clk_div;
+				h_ext_time = (parent_clk / clk_div) * 20 /
+					(target_speed / I2C_MAX_STANDARD_MODE_FREQ * 1000000);
+				if (h_ext_time > I3C_MAX_HS_EXT_TIME)
+					continue;
+				h_cal_para.best_mul = (parent_clk + clk_div * target_speed - 1) /
+					(clk_div * target_speed);
+				h_cal_para.exp_duty = I3C_HS_DUTY;
+				h_cal_para.exp_duty_diff = I3C_DUTY_DIFF_TENTHS;
+				if (h_cal_para.force_h_time)
+					ret = mtk_i3c_calculate_force_h_time(i3c, &h_cal_para);
+				else
+					ret = mtk_i3c_calculate_speed(i3c, &h_cal_para);
+				if (ret < 0)
+					continue;
+
+				cal_reg->high_speed_reg |= (I3C_HS_SPEED |
+					((h_cal_para.h_sample_cnt - 1) << 12) |
+					((h_cal_para.h_step_cnt - 1) << 8));
+				cal_reg->ltiming_reg |= (((h_cal_para.l_sample_cnt - 1) << 12) |
+					((h_cal_para.l_step_cnt - 1) << 9));
+				cal_reg->ext_conf_reg |= (h_ext_time << 1);
+			}
 			goto clk_div_exit;
 		}
 	}
@@ -1668,7 +1704,10 @@ static int mtk_i3c_start_enable(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer 
 			}
 		}
 		mtk_i3c_writel(i3c, traffic_reg, OFFSET_TRAFFIC);
-		mtk_i3c_writel(i3c, shape_reg, OFFSET_SHAPE);
+		if ((i3c->dev_comp->hdr_exit_support == false) || (i3c->no_hdr_exit == true))
+			mtk_i3c_writel(i3c, shape_reg, OFFSET_SHAPE);
+		else
+			mtk_i3c_writel(i3c, shape_reg | I3C_SHAPE_HDR_EXIT, OFFSET_SHAPE);
 	} else {
 		mtk_i3c_writel(i3c, 0, OFFSET_TRAFFIC);
 		mtk_i3c_writel(i3c, 0, OFFSET_SHAPE);
@@ -1836,6 +1875,11 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 		xfer->dma_en = true;
 	else
 		xfer->dma_en = false;
+	if ((xfer->tx_len == MTK_I3C_FIFO_SIZE) &&
+		((xfer->mode == MTK_I3C_SDR_MODE) || (xfer->mode == MTK_I3C_CCC_MODE))) {
+		dev_dbg(i3c->dev, "[%s] sdr,ccc tx 16 byte force use dma!\n", __func__);
+		xfer->dma_en = true;
+	}
 
 	ret = mtk_i3c_clock_enable(i3c);
 	if (ret) {
@@ -2590,6 +2634,9 @@ static int mtk_i3c_parse_dt(struct device_node *np, struct mtk_i3c_master *i3c)
 
 	i3c->priv_xfer_wo7e = of_property_read_bool(np, "mediatek,priv-xfer-without7e");
 	i3c->fifo_use_pulling = of_property_read_bool(np, "mediatek,fifo-use-pulling");
+	i3c->no_hdr_exit = of_property_read_bool(np, "mediatek,no-hdr-exit");
+	dev_info(i3c->dev, "[%s] priv_xfer_wo7e=%d,fifo_use_pulling=%d,no_hdr_exit=%d\n",
+		__func__, i3c->priv_xfer_wo7e, i3c->fifo_use_pulling, i3c->no_hdr_exit);
 
 	return 0;
 }
@@ -2751,6 +2798,7 @@ static const struct dev_pm_ops mtk_i3c_pm = {
 
 static const struct of_device_id mtk_i3c_of_match[] = {
 	{ .compatible = "mediatek,mt6989-i3c", .data = &mt6989_compat },
+	{ .compatible = "mediatek,mt6991-i3c", .data = &mt6991_compat },
 	{},
 };
 
