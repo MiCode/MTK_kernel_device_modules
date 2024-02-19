@@ -10626,6 +10626,108 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"l26_stg_m1_3";
 #endif
 		};
+
+		pda: pda@3a750000 {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible = "mediatek,camera-pda";
+			reg = <0 0x3a750000 0 0x1000>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			interrupts = <GIC_SPI 512 IRQ_TYPE_LEVEL_HIGH 0>;
+			mediatek,pda2 = <&pda2>;
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MRAW>;
+			clocks = <&camsys_mraw_clk CLK_CAM_MR_PDA0_PDA>,
+				<&camsys_mraw_clk CLK_CAM_MR_PDA1_PDA>,
+				<&camsys_mraw_clk CLK_CAM_MR_LARBX_PDAF>,
+				<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
+				<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
+				<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>;
+			clock-names = "camsys_mraw_pda0",
+					"camsys_mraw_pda1",
+					"mraw_larbx",
+					"cam_main_cam2mm0_gals_cg_con",
+					"cam_main_cam2mm1_gals_cg_con",
+					"cam_main_cam_cg_con";
+			mtk,smmu-shared = <&mm_smmu_cam>;
+			mediatek,larbs = <&smi_larb25>;
+			mediatek,smmu-dma-axid =
+					<SMMU_L25_P4_SMIR0>,
+					<SMMU_L25_P5_SMIR1>,
+					<SMMU_L25_P6_SMIR2>,
+					<SMMU_L25_P7_SMIR3>,
+					<SMMU_L25_P8_SMIR4>,
+					<SMMU_L25_P9_SMIW>;
+#if 0
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L25_P4_SMIR0)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L25_P5_SMIR1)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L25_P6_SMIR2)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L25_P7_SMIR3)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L25_P8_SMIR4)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L25_P9_SMIW)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P4_SMIR0)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P5_SMIR1)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P6_SMIR2)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P7_SMIR3)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P8_SMIR4)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P9_SMIW)
+						&mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "l25_pdai_a0",
+						"l25_pdai_a1",
+						"l25_pdai_a2",
+						"l25_pdai_a3",
+						"l25_pdai_a4",
+						"l25_pdao_a",
+						"l26_pdai_b0",
+						"l26_pdai_b1",
+						"l26_pdai_b2",
+						"l26_pdai_b3",
+						"l26_pdai_b4",
+						"l26_pdao_b";
+#endif
+		};
+
+		pda2: pda2@3a760000 {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible = "mediatek,camera-pda2";
+			reg = <0 0x3a760000 0 0x1000>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			interrupts = <GIC_SPI 513 IRQ_TYPE_LEVEL_HIGH 0>;
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MRAW>;
+			clocks = <&camsys_mraw_clk CLK_CAM_MR_PDA0_PDA>,
+				<&camsys_mraw_clk CLK_CAM_MR_PDA1_PDA>,
+				<&camsys_mraw_clk CLK_CAM_MR_LARBX_PDAF>,
+				<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
+				<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
+				<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>;
+			clock-names = "camsys_mraw_pda0",
+					"camsys_mraw_pda1",
+					"mraw_larbx",
+					"cam_main_cam2mm0_gals_cg_con",
+					"cam_main_cam2mm1_gals_cg_con",
+					"cam_main_cam_cg_con";
+			mtk,smmu-shared = <&mm_smmu_cam>;
+			mediatek,larbs = <&smi_larb26>;
+			mediatek,smmu-dma-axid =
+					<SMMU_L26_P4_SMIR0>,
+					<SMMU_L26_P5_SMIR1>,
+					<SMMU_L26_P6_SMIR2>,
+					<SMMU_L26_P7_SMIR3>,
+					<SMMU_L26_P8_SMIR4>,
+					<SMMU_L26_P9_SMIW>;
+		};
 	};
 
 	mml-test {
