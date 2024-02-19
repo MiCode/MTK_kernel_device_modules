@@ -75,7 +75,8 @@ ccflags-y += \
 		-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/ \
 		-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v2 \
 		-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos/ \
-		-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpu_bm/
+		-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpu_bm/ \
+		-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include
 
 ifeq ($(CONFIG_DEBUG_FS),y)
 ccflags-y += -DGED_DEBUG_FS

@@ -1132,6 +1132,6 @@ TRACE_EVENT(GPU_DVFS__Policy__EB_RINBUFFER,
 
 /* This part must be outside protection */
 #undef TRACE_INCLUDE_PATH
-#define TRACE_INCLUDE_PATH ../../drivers/gpu/mediatek/ged/include
+#define TRACE_INCLUDE_PATH .
 #define TRACE_INCLUDE_FILE ged_tracepoint
 #include <trace/define_trace.h>
