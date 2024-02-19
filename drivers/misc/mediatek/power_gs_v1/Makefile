@@ -29,4 +29,14 @@ mtk_power_gs_v1-y += plat_k68/mtk_power_gs_compare.o
 mtk_power_gs_v1-y += plat_k68/mtk_power_gs_dump_pmic.o
 endif
 
+ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6761)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/power_gs_v1/plat_k61/
+mtk_power_gs_v1-y += plat_k61/mtk_power_gs_6357_array.o
+mtk_power_gs_v1-y += plat_k61/mtk_cg_array.o
+mtk_power_gs_v1-y += plat_k61/mtk_dcm_array.o
+mtk_power_gs_v1-y += plat_k61/mtk_power_gs_sp.o
+mtk_power_gs_v1-y += plat_k61/mtk_power_gs_compare.o
+mtk_power_gs_v1-y += plat_k61/mtk_power_gs_dump_pmic.o
+endif
+
 
