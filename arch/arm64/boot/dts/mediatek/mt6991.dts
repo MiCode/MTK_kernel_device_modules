@@ -14463,6 +14463,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<0 1 2 3>,
 					<0 1 2 3>,
 					<0 1 2 3>;
+		bootmode = <&chosen>;
+		gauge = <&mtk_gauge>;
 	};
 
 	cpu_power_throttling: cpu-power-throttling {
@@ -18525,4 +18527,3 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 &hypervisor {
 	status = "okay";
 };
-
