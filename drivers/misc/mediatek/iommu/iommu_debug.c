@@ -3016,6 +3016,11 @@ static char *mt6991_smmu_soc_port_name(u32 type, int id, int tf_id)
 	}
 }
 
+static const struct mtk_m4u_plat_data mt6761_data = {
+	.port_list[MM_IOMMU] = iommu_port_mt6761,
+	.port_nr[MM_IOMMU]   = ARRAY_SIZE(iommu_port_mt6761),
+};
+
 static const struct mtk_m4u_plat_data mt6768_data = {
 	.port_list[MM_IOMMU] = iommu_port_mt6768,
 	.port_nr[MM_IOMMU]   = ARRAY_SIZE(iommu_port_mt6768),
