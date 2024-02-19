@@ -34,7 +34,7 @@ char mtk_venc_tmp_log[LOG_PROPERTY_SIZE];
 char mtk_vdec_tmp_prop[LOG_PROPERTY_SIZE];
 char mtk_venc_tmp_prop[LOG_PROPERTY_SIZE];
 
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#if 0//IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 static int group_list[VCODEC_MAX_GROUP_SIZE];
 static unsigned int group_list_size;
 static spinlock_t group_lock;
@@ -1365,7 +1365,7 @@ void mtk_vcodec_get_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_get_log);
 
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#if 0//IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 static void mtk_vcodec_add_list(struct task_struct *task)
 {
 	struct task_struct *task_child;
@@ -1408,7 +1408,7 @@ static void mtk_vcodec_make_group_list(void)
 
 void mtk_vcodec_config_group_list(void)
 {
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#if 0//IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	int i = 0;
 
 	if (unlikely(group_get_mode() == GP_MODE_0))
@@ -1431,7 +1431,7 @@ EXPORT_SYMBOL_GPL(mtk_vcodec_config_group_list);
 
 void mtk_vcodec_init_group_list_lock(void)
 {
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#if 0//IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	static int init_flag;
 
 	if (init_flag == 0) {

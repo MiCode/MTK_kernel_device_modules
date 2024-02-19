@@ -738,7 +738,7 @@ void mtk_vcodec_cpu_grp_aware_hint(struct mtk_vcodec_ctx *ctx, int enable)
 	if (enable) {
 		if(cur_dvfs_param->cpu_top_grp_aware == 0) {
 			cur_dvfs_param->cpu_top_grp_aware = 1;
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#if 0//IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 			set_top_grp_aware(1, 0);
 			set_grp_awr_min_opp_margin(0, 0, 2048);
 			set_grp_awr_thr(0, 0, 800000);
@@ -751,7 +751,7 @@ void mtk_vcodec_cpu_grp_aware_hint(struct mtk_vcodec_ctx *ctx, int enable)
 	} else {
 		if(cur_dvfs_param->cpu_top_grp_aware == 1) {
 			cur_dvfs_param->cpu_top_grp_aware = 0;
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#if 0//IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 			set_top_grp_aware(0, 0);
 #endif
 			mtk_v4l2_debug(0, "%s [VDVFS][%s][%d] disable CPU top grp aware!\n",
