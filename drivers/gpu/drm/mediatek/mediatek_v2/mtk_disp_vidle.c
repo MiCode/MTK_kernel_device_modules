@@ -324,6 +324,9 @@ void mtk_vidle_dvfs_bw_set(const u32 bw_in_mb)
 }
 void mtk_vidle_config_ff(bool en)
 {
+	if (!disp_dpc_driver.dpc_config)
+		return;
+
 	if (en && !mtk_disp_vidle_flag.vidle_en)
 		return;
 
