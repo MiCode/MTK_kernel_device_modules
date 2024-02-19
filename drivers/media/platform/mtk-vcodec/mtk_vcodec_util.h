@@ -372,7 +372,7 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	struct dma_buf_attachment **attach, struct sg_table **sgt, enum mtk_instance_type fmt);
 int mtk_vcodec_free_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	struct dma_buf_attachment *attach, struct sg_table *sgt);
-void mtk_vcodec_vp_mode_buf_prepare(struct mtk_vcodec_dev *dev);
+int mtk_vcodec_vp_mode_buf_prepare(struct mtk_vcodec_dev *dev, int bitdepth);
 void mtk_vcodec_vp_mode_buf_unprepare(struct mtk_vcodec_dev *dev);
 #endif
 

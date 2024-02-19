@@ -78,6 +78,7 @@ enum vdec_ipi_msg_id {
 	VCU_IPIMSG_DEC_MEM_FREE,
 	VCU_IPIMSG_DEC_WAITISR,
 	VCU_IPIMSG_DEC_CHECK_CODEC_ID,
+	VCU_IPIMSG_DEC_GET_KERNEL_PARAM,
 	/** only support in vcu **/
 	VCU_IPIMSG_DEC_GET_FRAME_BUFFER,
 	VCU_IPIMSG_DEC_SLICE_DONE_ISR,
@@ -91,6 +92,7 @@ enum vdec_ipi_msg_id {
 	AP_IPIMSG_DEC_MEM_FREE_DONE,
 	AP_IPIMSG_DEC_WAITISR_DONE,
 	AP_IPIMSG_DEC_CHECK_CODEC_ID_DONE,
+	AP_IPIMSG_DEC_GET_KERNEL_PARAM_DONE,
 
 	VCU_ASYNCIPIMSG_DEC_PUT_FRAME_BUFFER = VCU_IPIMSG_VDEC_SEND_ASYNC_BASE,
 };
@@ -201,6 +203,11 @@ enum vdec_set_param_type {
 	SET_PARAM_VDEC_VCU_VPUD_LOG,
 	SET_PARAM_VDEC_IN_GROUP,
 	SET_PARAM_MAX = 0xFFFFFFFF
+};
+
+enum vdec_get_kernel_param_type {
+	GET_KPARAM_VP_MODE_BUF,
+	GET_KPARAM_MAX = 0xFFFFFFFF
 };
 
 #define VDEC_MSG_AP_SEND_PREFIX	\
@@ -430,6 +437,13 @@ struct ring_fb_list {
 	__u32 reserved;
 };
 
+struct vdec_vp_mode_buf_info {
+	__u8 enable_smmu;
+	__u8 alloc_src_buf[2];
+	__u8 reserved; // 32 bit align padding for cross compiler safe
+	__u64 src_buf[2][3]; // [0] for 8 bit, [1] for 10 bit, [3] = {y dat, c dat, len}
+};
+
 /**
  * struct vdec_vsi - shared memory for decode information exchange
  *                        between VCU and Host.
@@ -455,8 +469,6 @@ struct vdec_vsi {
 	struct mtk_color_desc color_desc;
 	struct v4l2_rect crop;
 	struct v4l2_fract time_per_frame;
-	struct mtk_video_fmt video_formats[MTK_MAX_DEC_CODECS_SUPPORT];
-	struct mtk_codec_framesizes vdec_framesizes[MTK_MAX_DEC_CODECS_SUPPORT];
 	__u32 aspect_ratio;
 	__u32 fix_buffers;
 	__u32 interlacing;
@@ -480,17 +492,21 @@ struct vdec_vsi {
 	__u8 hdr10_info_valid;
 	__u8 trick_mode;
 	__u8 flush_type;
-	/* mmdvfs param from up */
 	__u32 ctx_id;
+	/* mmdvfs param from up */
 	__s32 op_rate;
 	__s32 op_rate_adaptive;
 	__s32 priority;
 	__u32 codec_fmt;
 	__s32 target_freq;
 	__u32 is_active;
-	__u64 vp_mode_src_buf[2];
 	struct vdec_resource_info res_info;
 	struct vdec_bandwidth_info bandwidth_info;
+};
+
+struct vdec_common_vsi {
+	struct mtk_tf_info tf_info;
+	struct vdec_vp_mode_buf_info vp_mode_info;
 };
 
 #endif

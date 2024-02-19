@@ -911,7 +911,7 @@ int mtk_vcodec_free_mem(struct vcodec_mem_obj *mem, struct device *dev,
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_free_mem);
 
-unsigned char hyfbc_10bit_black_pattern_y[192] = {
+static unsigned char hyfbc_10bit_black_pattern_y[192] = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
@@ -926,7 +926,7 @@ unsigned char hyfbc_10bit_black_pattern_y[192] = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
-unsigned char hyfbc_10bit_black_pattern_c[192] = {
+static unsigned char hyfbc_10bit_black_pattern_c[192] = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
@@ -941,7 +941,7 @@ unsigned char hyfbc_10bit_black_pattern_c[192] = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
-void mtk_vcodec_vp_mode_buf_prepare(struct mtk_vcodec_dev *dev)
+int mtk_vcodec_vp_mode_buf_prepare(struct mtk_vcodec_dev *dev, int bitdepth)
 {
 	unsigned int j = 0;
 	int i = 0;
@@ -952,40 +952,59 @@ void mtk_vcodec_vp_mode_buf_prepare(struct mtk_vcodec_dev *dev)
 	struct device *io_dev = NULL;
 	int ret;
 	unsigned char *pattern;
+	unsigned int pattern_len, copy_times;
+	unsigned char short_pattern[4];
+	int idx = (bitdepth == 8) ? 0 : 1;
 
-	if (dev == NULL) {
-		mtk_v4l2_err("Invalid argument");
-		return;
+	if (dev == NULL || (bitdepth != 8 && bitdepth != 10)) {
+		mtk_v4l2_err("Invalid argument dev 0x%lx, bitdepth %d", (unsigned long)dev, bitdepth);
+		return -1;
 	}
+	io_dev = dev->smmu_dev;
 
 	mutex_lock(&dev->vp_mode_buf_mutex);
-	if (dev->vp_mode_used_cnt > 0) {
-		dev->vp_mode_used_cnt++;
-		mtk_v4l2_debug(4, "vp mode y buf iova: 0x%llx, c buf iova: 0x%llx, used_cnt %d",
-			dev->vp_mode_buf[0].mem.iova, dev->vp_mode_buf[1].mem.iova,
-			dev->vp_mode_used_cnt);
-		mutex_unlock(&dev->vp_mode_buf_mutex);
-		return;
-	}
-
-	io_dev = dev->smmu_dev;
-	for (i = 0; i < 2; i++) {
+	for (i = 0; i < 3; i++) {
 		switch (i) {
-		case 0:
-			pattern = hyfbc_10bit_black_pattern_y;
+		case 0: // y data
+			if (bitdepth == 10) {
+				pattern = hyfbc_10bit_black_pattern_y;
+				pattern_len = (unsigned int)sizeof(hyfbc_10bit_black_pattern_y);
+			} else {
+				memcpy(short_pattern, "\x10\x10\x10\x10", sizeof(short_pattern));
+				pattern = short_pattern;
+				pattern_len = (unsigned int)sizeof(short_pattern);
+			}
 			break;
-		case 1:
-			pattern = hyfbc_10bit_black_pattern_c;
+		case 1: // c data
+			if (bitdepth == 10) {
+				pattern = hyfbc_10bit_black_pattern_c;
+				pattern_len = (unsigned int)sizeof(hyfbc_10bit_black_pattern_c);
+			} else {
+				memcpy(short_pattern, "\x80\x80\x80\x80", sizeof(short_pattern));
+				pattern = short_pattern;
+				pattern_len = (unsigned int)sizeof(short_pattern);
+			}
+			break;
+		case 2: // hyfbc len
+			if (bitdepth == 10) {
+				memcpy(short_pattern, "\xcf\x27\xcf\x27", sizeof(short_pattern));
+				pattern = short_pattern;
+				pattern_len = (unsigned int)sizeof(short_pattern);
+			} else {
+				memcpy(short_pattern, "\xbf\x1f\xbf\x1f", sizeof(short_pattern));
+				pattern = short_pattern;
+				pattern_len = (unsigned int)sizeof(short_pattern);
+			}
 			break;
 		}
 
-		src_buf = &dev->vp_mode_buf[i];
+		src_buf = &dev->vp_mode_buf[idx][i];
 		src_buf->mem.len = 192 * 16 * 1024 + 16;
 		src_buf->mem.type = MEM_TYPE_FOR_HW;
 
 		ret = mtk_vcodec_alloc_mem(&src_buf->mem, io_dev, &src_buf->attach, &src_buf->sgt, MTK_INST_DECODER);
 		if (ret) {
-			mtk_v4l2_err("vp mode buf %d alloc failed", i);
+			mtk_v4l2_err("vp mode src_buf[%d][%d] alloc failed", idx, i);
 			goto err_out;
 		}
 
@@ -995,37 +1014,38 @@ void mtk_vcodec_vp_mode_buf_prepare(struct mtk_vcodec_dev *dev)
 		ret = dma_buf_vmap_unlocked(dmabuf, &map);
 		va = ret ? NULL : map.vaddr;
 		if (va == NULL) {
-			mtk_v4l2_err("vp mode buf %d dma vmap failed", i);
+			mtk_v4l2_err("vp mode src_buf[%d][%d] dma vmap failed", idx, i);
 			goto err_out;
 		}
 
 		/* fill working buffer */
-		for (j = 0; j < src_buf->mem.len; j += 192)
-			memcpy((va + j), pattern, 192);
+		copy_times = src_buf->mem.len / pattern_len;
+		for (j = 0; j < copy_times; j++)
+			memcpy((va + j * pattern_len), pattern, pattern_len);
 		dma_sync_sg_for_device(io_dev, src_buf->sgt->sgl,
 			src_buf->sgt->nents, DMA_TO_DEVICE);
 		dma_buf_vunmap_unlocked(dmabuf, &map);
 	}
-	dev->vp_mode_used_cnt = 1;
 	mutex_unlock(&dev->vp_mode_buf_mutex);
-	return;
+
+	return 0;
 
 err_out:
-	for (i = 0; i < 2; i++) {
-		src_buf = &dev->vp_mode_buf[i];
+	for (i = 0; i < 3; i++) {
+		src_buf = &dev->vp_mode_buf[idx][i];
 		if (!IS_ERR_OR_NULL(ERR_PTR((long)src_buf->mem.va)))
 			mtk_vcodec_free_mem(&src_buf->mem, io_dev, src_buf->attach, src_buf->sgt);
 		memset(src_buf, 0, sizeof(struct vdec_vp_mode_buf));
 	}
 	mutex_unlock(&dev->vp_mode_buf_mutex);
+	return -1;
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_vp_mode_buf_prepare);
 
 void mtk_vcodec_vp_mode_buf_unprepare(struct mtk_vcodec_dev *dev)
 {
 	struct vdec_vp_mode_buf *src_buf;
-	struct device *io_dev;
-	int i = 0;
+	int i, j;
 
 	if (dev == NULL) {
 		mtk_v4l2_err("Invalid argument");
@@ -1033,24 +1053,16 @@ void mtk_vcodec_vp_mode_buf_unprepare(struct mtk_vcodec_dev *dev)
 	}
 
 	mutex_lock(&dev->vp_mode_buf_mutex);
-	if (dev->vp_mode_used_cnt > 1) {
-		dev->vp_mode_used_cnt--;
-		mtk_v4l2_debug(4, "vp mode buf remaining used_cnt %d", dev->vp_mode_used_cnt);
-		mutex_unlock(&dev->vp_mode_buf_mutex);
-		return;
-	}
-
-	mtk_v4l2_debug(2, "vp mode buf free y 0x%llx, c 0x%llx",
-		dev->vp_mode_buf[0].mem.iova, dev->vp_mode_buf[1].mem.iova);
-	io_dev = dev->smmu_dev;
 	for (i = 0; i < 2; i++) {
-		src_buf = &dev->vp_mode_buf[i];
-		if (!IS_ERR_OR_NULL(ERR_PTR((long)src_buf->mem.va)))
-			mtk_vcodec_free_mem(&src_buf->mem, io_dev, src_buf->attach, src_buf->sgt);
-		memset(src_buf, 0, sizeof(struct vdec_vp_mode_buf));
+		mtk_v4l2_debug(2, "vp mode src_buf[%d] free y 0x%llx, c 0x%llx, len 0x%llx", i,
+		    dev->vp_mode_buf[i][0].mem.iova, dev->vp_mode_buf[i][1].mem.iova, dev->vp_mode_buf[i][2].mem.iova);
+		for (j = 0; j < 3; j++) {
+			src_buf = &dev->vp_mode_buf[i][j];
+			if (!IS_ERR_OR_NULL(ERR_PTR((long)src_buf->mem.va)))
+				mtk_vcodec_free_mem(&src_buf->mem, dev->smmu_dev, src_buf->attach, src_buf->sgt);
+			memset(src_buf, 0, sizeof(struct vdec_vp_mode_buf));
+		}
 	}
-
-	dev->vp_mode_used_cnt = 0;
 	mutex_unlock(&dev->vp_mode_buf_mutex);
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_vp_mode_buf_unprepare);
