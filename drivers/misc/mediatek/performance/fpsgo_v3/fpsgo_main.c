@@ -157,7 +157,6 @@ static void fpsgo_notifier_wq_cb_vsync(unsigned long long ts)
 	if (!fpsgo_is_enable())
 		return;
 
-	fpsgo_ctrl2fstb_vsync(ts);
 	fpsgo_ctrl2fbt_vsync(ts);
 }
 
@@ -195,7 +194,6 @@ static void fpsgo_notifier_wq_cb_dfrc_fps(int dfrc_fps)
 {
 	FPSGO_LOGI("[FPSGO_CB] dfrc_fps %d\n", dfrc_fps);
 
-	fpsgo_ctrl2fstb_dfrc_fps(dfrc_fps);
 	fpsgo_ctrl2fbt_dfrc_fps(dfrc_fps);
 }
 
@@ -521,11 +519,6 @@ static void fpsgo_notifier_wq_cb(void)
 	}
 	fpsgo_free(vpPush, sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
 
-}
-
-struct task_struct *fpsgo_get_kfpsgo(void)
-{
-	return kfpsgo_tsk ? kfpsgo_tsk : NULL;
 }
 
 int fpsgo_get_kfpsgo_tid(void)
@@ -865,6 +858,14 @@ void fpsgo_get_pid(int cmd, int *pid, int value1, int value2)
 	case CAMERA_APP_MIN_FPS:
 		cur_ts = fpsgo_get_time();
 		fpsgo_ctrl2comp_set_app_meta_fps(value1, value2, cur_ts);
+		break;
+	case CAMERA_APP_SELF_CTRL:
+		cur_ts = fpsgo_get_time();
+		*pid = (int)fpsgo_ctrl2base_get_app_self_ctrl_time(value1, cur_ts);
+		break;
+	case CAMERA_FPSGO_CONTROL:
+		value2 ? fpsgo_search_and_add_fps_control_pid(value1, 1) :
+				fpsgo_delete_fpsgo_control_pid(value1);
 		break;
 	default:
 		FPSGO_LOGE("[FPSGO_CTRL] wrong cmd:%d\n", cmd);

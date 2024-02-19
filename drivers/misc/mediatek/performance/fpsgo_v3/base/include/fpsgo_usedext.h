@@ -45,7 +45,7 @@ void fpsgo_force_switch_enable(int enable);
 int fpsgo_perfserv_ta_value(void);
 void fpsgo_set_perfserv_ta(int value);
 
-struct task_struct *fpsgo_get_kfpsgo(void);
+int fpsgo_get_kfpsgo_tid(void);
 
 extern int (*xgff_frame_startend_fp)(unsigned int startend,
 		unsigned int tid,

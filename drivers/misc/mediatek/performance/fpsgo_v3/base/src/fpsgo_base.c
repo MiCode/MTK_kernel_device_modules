@@ -339,6 +339,34 @@ void fpsgo_ctrl2base_notify_cam_close(void)
 	fpsgo_render_tree_unlock(__func__);
 }
 
+unsigned long long fpsgo_ctrl2base_get_app_self_ctrl_time(int tgid, unsigned long long ts)
+{
+	int local_pid = 0;
+	unsigned long long local_buffer_id = 0;
+	unsigned long long avg = 0;
+	struct render_info *iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	fpsgo_render_tree_lock(__func__);
+	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
+		iter = rb_entry(rbn, struct render_info, render_key_node);
+		if (iter->bq_type == ACQUIRE_CAMERA_TYPE) {
+			local_pid = iter->pid;
+			local_buffer_id = iter->buffer_id;
+		}
+	}
+	fpsgo_render_tree_unlock(__func__);
+
+	if (local_pid > 0 && local_buffer_id > 0) {
+		avg = fpsgo_other2fstb_get_app_self_ctrl_time(local_pid,
+			local_buffer_id, ts);
+		fpsgo_main_trace("[base][%d][0x%llx] | app_self_ctrl_time:%llu",
+			local_pid, local_buffer_id, avg);
+	}
+
+	return avg;
+}
+
 int fpsgo_get_acquire_hint_is_enable(void)
 {
 	return fpsgo_get_acquire_hint_enable;
@@ -871,6 +899,8 @@ void fpsgo_delete_render_info(int pid,
 		fpsgo_add_linger(data);
 	}
 	fpsgo_fbt_delete_rl_render(pid, buffer_id);
+	fpsgo_fstb2other_info_update(data->pid,
+		data->buffer_id, FPSGO_DELETE, 0, 0, 0, 0);
 	fpsgo_thread_unlock(&data->thr_mlock);
 
 	fpsgo_delete_hwui_info(data->pid);
@@ -1667,6 +1697,8 @@ int fpsgo_check_thread_status(void)
 				fpsgo_add_linger(iter);
 			}
 			fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
+			fpsgo_fstb2other_info_update(iter->pid,
+				iter->buffer_id, FPSGO_DELETE, 0, 0, 0, 0);
 			fpsgo_thread_unlock(&iter->thr_mlock);
 
 			fpsgo_delete_hwui_info(iter->pid);
@@ -1750,6 +1782,8 @@ void fpsgo_clear(void)
 			fpsgo_add_linger(iter);
 		}
 		fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
+		fpsgo_fstb2other_info_update(iter->pid,
+			iter->buffer_id, FPSGO_DELETE, 0, 0, 0, 0);
 		fpsgo_thread_unlock(&iter->thr_mlock);
 
 		fpsgo_delete_hwui_info(iter->pid);
@@ -3514,8 +3548,8 @@ static ssize_t kfps_cpu_mask_store(struct kobject *kobj,
 	char *acBuffer = NULL;
 	int arg = -1;
 	int cpu;
+	int pid;
 	struct cpumask local_mask;
-	struct task_struct *tsk = NULL;
 
 	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
 	if (!acBuffer)
@@ -3538,11 +3572,11 @@ static ssize_t kfps_cpu_mask_store(struct kobject *kobj,
 	FPSGO_LOGE("%s mask:%d %*pbl\n", __func__,
 		global_kfps_mask, cpumask_pr_args(&local_mask));
 
-	tsk = fpsgo_get_kfpsgo();
-	if (!tsk)
+	pid = fpsgo_get_kfpsgo_tid();
+	if (pid <= 0)
 		goto out;
 
-	if (fpsgo_sched_setaffinity(tsk->pid, &local_mask))
+	if (fpsgo_sched_setaffinity(pid, &local_mask))
 		FPSGO_LOGE("%s setaffinity fail\n", __func__);
 	else
 		FPSGO_LOGE("%s setaffinity success\n", __func__);

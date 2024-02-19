@@ -327,7 +327,7 @@ int fpsgo_com_check_frame_type(int pid, int tgid, int queue_SF, int api,
 	if (!fpsgo_control && !fpsgo_control_pid)
 		return BY_PASS_TYPE;
 
-	if (pid == tgid)
+	if (pid == tgid && pid != fpsgo_get_kfpsgo_tid())
 		return BY_PASS_TYPE;
 
 	return NON_VSYNC_ALIGNED_TYPE;
@@ -662,6 +662,11 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 	default:
 		break;
 	}
+
+	fpsgo_fstb2other_info_update(f_render->pid, f_render->buffer_id,
+		FPSGO_PERF_IDX, 0, 0, f_render->boost_info.last_blc,
+		f_render->sbe_control_flag);
+
 exit:
 	fpsgo_thread_unlock(&f_render->thr_mlock);
 	fpsgo_render_tree_unlock(__func__);
@@ -765,6 +770,7 @@ void fpsgo_ctrl2comp_dequeue_end(int pid,
 	default:
 		break;
 	}
+
 exit:
 	fpsgo_thread_unlock(&f_render->thr_mlock);
 	fpsgo_render_tree_unlock(__func__);
@@ -912,6 +918,9 @@ void fpsgo_ctrl2comp_hint_frame_end(int pid,
 	if (ux_frame_cnt == 1)
 		fpsgo_frame_start(f_render, frame_end_time, identifier);
 	fpsgo_systrace_c_fbt(pid, identifier, ux_frame_cnt, "[ux]ux_frame_cnt");
+
+	fpsgo_fstb2other_info_update(f_render->pid, f_render->buffer_id, FPSGO_PERF_IDX,
+		0, 0, f_render->boost_info.last_blc, 1);
 
 	fpsgo_thread_unlock(&f_render->thr_mlock);
 	fpsgo_render_tree_unlock(__func__);
