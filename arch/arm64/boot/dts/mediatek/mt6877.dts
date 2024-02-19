@@ -763,6 +763,14 @@
 		reg = <0 0x0011bb00 0 0x100>;
 	};
 
+	clkchk {
+		compatible = "mediatek,mt6877-clkchk";
+	};
+
+	pdchk {
+		compatible = "mediatek,mt6877-pdchk";
+	};
+
 	clocks {
 		clk32k: clk32k {
 			compatible = "fixed-clock";
@@ -945,6 +953,56 @@
 
 	scpsys: power-controller@10006000 {
 		compatible = "mediatek,mt6877-scpsys", "syscon";
+		reg = <0 0x10006000 0 0x1000>;	/* spm */
+		#power-domain-cells = <1>;
+		clocks = <&topckgen_clk CLK_TOP_DISP0_SEL>,
+					<&topckgen_clk CLK_TOP_MDP0_SEL>,
+					<&topckgen_clk CLK_TOP_IMG1_SEL>,
+					<&topckgen_clk CLK_TOP_IPE_SEL>,
+					<&topckgen_clk CLK_TOP_VENC_SEL>,
+					<&topckgen_clk CLK_TOP_VDEC_SEL>,
+					<&topckgen_clk CLK_TOP_CAM_SEL>,
+					<&topckgen_clk CLK_TOP_AUD_INTBUS_SEL>,
+					<&topckgen_clk CLK_TOP_ADSP_SEL>,
+					<&mmsys_config_clk CLK_MM_SMI_COMMON>,
+					<&mmsys_config_clk CLK_MM_SMI_INFRA>,
+					<&mmsys_config_clk CLK_MM_SMI_IOMMU>,
+					<&mmsys_config_clk CLK_MM_SMI_GALS>,
+					<&mdpsys_config_clk CLK_MDP_SMI0>,
+					<&imgsys1_clk CLK_IMGSYS1_LARB9>,
+					<&imgsys1_clk CLK_IMGSYS1_GALS>,
+					<&imgsys1_clk CLK_IMGSYS2_LARB9>,
+					<&imgsys1_clk CLK_IMGSYS2_LARB10>,
+					<&imgsys1_clk CLK_IMGSYS2_GALS>,
+					<&ipesys_clk CLK_IPE_LARB19>,
+					<&ipesys_clk CLK_IPE_LARB20>,
+					<&ipesys_clk CLK_IPE_SMI_SUBCOM>,
+					<&ipesys_clk CLK_IPE_GALS>,
+					<&venc_gcon_clk CLK_VEN1_CKE1_VENC>,
+					<&vdec_gcon_clk CLK_VDE2_VDEC_CKEN>,
+					<&camsys_main_clk CLK_CAM_M_LARB13>,
+					<&camsys_main_clk CLK_CAM_M_LARB14>,
+					<&camsys_main_clk CLK_CAM_M_CCU_GALS>,
+					<&camsys_main_clk CLK_CAM_M_CAM2MM_GALS>,
+					<&camsys_main_clk CLK_CAM_RA_LARBX>,
+					<&camsys_main_clk CLK_CAM_RB_LARBX>,
+					<&infracfg_ao_clk CLK_IFRAO_AUDIO_26M_BCLK>,
+					<&infracfg_ao_clk CLK_IFRAO_AUDIO>;
+
+		clock-names = "disp","mdp", "img", "ipe", "venc", "vdec", "cam", "aud", "adsp",
+						"disp_0", "disp_1", "disp_2", "disp_3", "mdp_0",
+						"img0_0", "img0_1", "img1_0", "img1_1", "img1_2",
+						"ipe_0", "ipe_1", "ipe_2", "ipe_3",
+						"venc_0",
+						"vdec_0",
+						"cam_0", "cam_1", "cam_2", "cam_3", "cam_rawa_0", "cam_rawb_0",
+						"aud_0", "aud_1";
+
+		infracfg = <&infracfg_ao>;
+	};
+
+	scpsys_clk: scpsysclk@10006000 {
+		compatible = "mediatek,mt6877-scpsys-clk", "syscon";
 		reg = <0 0x10006000 0 0x1000>,	/* spm */
 			<0 0x10001000 0 0x1000>,	/* infracfg_ao */
 			<0 0x1020e000 0 0x1000>,	/* infracfg */
@@ -1750,7 +1808,7 @@
 		interrupts = <GIC_SPI 110 IRQ_TYPE_EDGE_RISING 0>,	/*MDWDT*/
 			     <GIC_SPI 238 IRQ_TYPE_LEVEL_HIGH 0>,	/*CCIF0 238*/
 			     <GIC_SPI 239 IRQ_TYPE_LEVEL_HIGH 0>;	/*CCIF0 239*/
-		clocks = <&scpsys SCP_SYS_MD>;
+		clocks = <&scpsys_clk SCP_SYS_MD>;
 		clock-names = "scp-sys-md1-main";
 		ccci-infracfg = <&infracfg_ao_clk>;
 	};
