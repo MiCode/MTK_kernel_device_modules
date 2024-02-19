@@ -179,6 +179,10 @@ unsigned int ged_get_whitebox_power_test_case_clear(void);
 void ged_set_whitebox_power_state_store(int first, int second);
 extern int stat_mcu_store[][30];
 
+//#if IS_ENABLED(CONFIG_MALI_MTK_GPU_IDLE_STRESS_TEST)
+unsigned int ged_gpu_power_stress_test_enable(void);
+//endif /* CONFIG_MALI_MTK_GPU_IDLE_STRESS_TEST */
+
 //#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 unsigned int ged_gpu_apo_support(void);
 unsigned long long ged_get_apo_thr_ns(void);

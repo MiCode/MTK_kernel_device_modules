@@ -72,6 +72,9 @@ extern unsigned int g_fallback_window_size;
 extern unsigned int g_fallback_frequency_adjust;
 extern unsigned int g_frame_target_mode;
 extern unsigned int g_frame_target_time;
+#if IS_ENABLED(CONFIG_MTK_GPU_POWER_ON_OFF_TEST)
+extern unsigned int g_ged_power_stress_test_support;
+#endif /* MTK_GPU_POWER_ON_OFF_TEST */
 #if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 extern unsigned int g_ged_apo_support;
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */

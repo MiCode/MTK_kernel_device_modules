@@ -32,6 +32,7 @@ ccflags-y += -DGED_DVFS_DEBUG_BUF
 ccflags-y += -DMTK_GPU_BM_2
 ccflags-y += -DCONFIG_MTK_GPU_FW_IDLE
 ccflags-y += -DCONFIG_MTK_GPU_APO_SUPPORT
+ccflags-y += -DCONFIG_MTK_GPU_POWER_ON_OFF_TEST
 ccflags-y += -DMTK_GPU_SLC_POLICY
 ifndef CONFIG_MTK_GPU_MT6768_SUPPORT
 ccflags-y += -DMTK_GPU_EB_SUPPORT
