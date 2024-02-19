@@ -133,6 +133,7 @@ obj-$(CONFIG_COMMON_CLK_MT6991_MMSYS) += clk-mt6991-mmsys.o
 obj-$(CONFIG_COMMON_CLK_MT6991_PERI) += clk-mt6991-peri.o
 obj-$(CONFIG_COMMON_CLK_MT6991_MDPSYS) += clk-mt6991-mdpsys.o
 obj-$(CONFIG_COMMON_CLK_MT6991_VCODEC) += clk-mt6991-vcodec.o
+obj-$(CONFIG_COMMON_CLK_MT6991_IVI) += clk-mt6991-ivi.o
 endif
 obj-$(CONFIG_DEVICE_MODULES_COMMON_CLK_MT8192) += clk-mt8192.o clk-bringup.o
 obj-$(CONFIG_COMMON_CLK_MT8192_APU0) += clk-mt8192-apu0.o
