@@ -13,6 +13,7 @@
 #define MIGR_IDLE_PULL_MISFIT_RUNNING   2
 #define MIGR_TICK_PULL_MISFIT_RUNNING   3
 #define MIGR_IDLE_PULL_VIP_RUNNABLE     4
+#define MIGR_SWITCH_PUSH_VIP            5
 
 DECLARE_PER_CPU(unsigned long, max_freq_scale);
 DECLARE_PER_CPU(unsigned long, min_freq);
