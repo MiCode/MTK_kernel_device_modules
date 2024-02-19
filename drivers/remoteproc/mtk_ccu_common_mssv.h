@@ -40,6 +40,8 @@
 #define CCU_VER_ISP71	71
 #define CCU_VER_ISP7S	72
 #define CCU_VER_ISP7SP	73
+#define CCU_VER_ISP7SPL	74
+#define CCU_VER_ISP8    80
 
 #define MTK_CCU_CLK_PWR_NUM 20
 #define MTK_CCU_CLK_NAME_LEN 32
@@ -135,8 +137,8 @@ struct mtk_ccu_mailbox {
 struct ap2ccu_ipc {
 	uint32_t write_cnt;
 	uint32_t read_cnt;
+	uint32_t ack;
 	struct mtk_ccu_msg msg;
-	bool ack;
 };
 
 struct mtk_ccu {
@@ -156,8 +158,13 @@ struct mtk_ccu {
 	uint32_t ccu_sram_size;
 	uint32_t ccu_sram_offset;
 	uint32_t ccu_sram_con_offset;
+	uint32_t ccu_resource_offset;
+	uint32_t ccu_resource_bits;
 	uint32_t ccu_cores;
+	uint32_t ccu_exch_pa;
 	void __iomem *ccu_base;
+	void __iomem *ccu_exch_base;
+	void __iomem *ccu_spare_base;
 	void __iomem *bin_base;
 	void __iomem *dmem_base;
 	void __iomem *pmem_base;
@@ -168,6 +175,7 @@ struct mtk_ccu {
 	void __iomem *pmem1_base;
 	void __iomem *ddrmem1_base;
 	void __iomem *spm_base;
+	void __iomem *mmpc_base;
 	unsigned int irq_num;
 	unsigned int irq1_num;
 	struct icc_path *path_ccug;
@@ -193,6 +201,7 @@ struct mtk_ccu {
 	bool poweron;
 	bool disirq;
 	bool bWaitCond;
+	bool compact_ipc;
 	int g_LogBufIdx;
 	int log_level;
 	int log_taglevel;
