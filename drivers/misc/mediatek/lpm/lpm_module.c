@@ -297,6 +297,7 @@ static int lpm_cpuidle_prepare(struct cpuidle_driver *drv, int index)
 	unsigned int model_flags = 0;
 	unsigned long flags;
 	const int cpuid = smp_processor_id();
+	struct cpuidle_state *target_state = &drv->states[index];
 
 	if (index < 0)
 		return -1;
@@ -313,7 +314,8 @@ static int lpm_cpuidle_prepare(struct cpuidle_driver *drv, int index)
 	nb_data.model = lpm;
 	nb_data.issuer = lpm_system.issuer;
 
-	ct_idle_exit();
+	if (!(target_state->flags & CPUIDLE_FLAG_RCU_IDLE))
+		ct_cpuidle_exit();
 
 	spin_lock_irqsave(&lpm_mod_locker, flags);
 
@@ -332,7 +334,8 @@ static int lpm_cpuidle_prepare(struct cpuidle_driver *drv, int index)
 
 	lpm_pm_notify(LPM_NB_PREPARE, &nb_data);
 
-	ct_idle_enter();
+	if (!(target_state->flags & CPUIDLE_FLAG_RCU_IDLE))
+		ct_cpuidle_enter();
 
 	return 0;
 }
@@ -345,6 +348,7 @@ static void lpm_cpuidle_resume(struct cpuidle_driver *drv, int index, int ret)
 	unsigned int model_flags = 0;
 	unsigned long flags;
 	const int cpuid = smp_processor_id();
+	struct cpuidle_state *target_state = &drv->states[index];
 
 	if (index < 0)
 		return;
@@ -362,7 +366,8 @@ static void lpm_cpuidle_resume(struct cpuidle_driver *drv, int index, int ret)
 
 	model_flags = (lpm) ? lpm->flag : 0;
 
-	ct_idle_exit();
+	if (!(target_state->flags & CPUIDLE_FLAG_RCU_IDLE))
+		ct_cpuidle_exit();
 
 	lpm_pm_notify(LPM_NB_RESUME, &nb_data);
 
@@ -379,7 +384,8 @@ static void lpm_cpuidle_resume(struct cpuidle_driver *drv, int index, int ret)
 
 	spin_unlock_irqrestore(&lpm_mod_locker, flags);
 
-	ct_idle_enter();
+	if (!(target_state->flags & CPUIDLE_FLAG_RCU_IDLE))
+		ct_cpuidle_enter();
 }
 
 static int lpm_state_enter(int type, struct cpuidle_device *dev,
