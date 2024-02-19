@@ -11300,6 +11300,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				ceil-ddr-support;
 			};
 		};
+
 	scp: scp@1c800000 {
 		compatible = "mediatek,scp";
 		status = "okay";
@@ -11376,7 +11377,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				 <GIC_SPI 436 IRQ_TYPE_LEVEL_HIGH 0>,
 				 <GIC_SPI 684 IRQ_TYPE_LEVEL_HIGH 0>,
 				 <GIC_SPI 685 IRQ_TYPE_LEVEL_HIGH 0>,
-				 <GIC_SPI 685 IRQ_TYPE_LEVEL_HIGH 0>,
+				 <GIC_SPI 686 IRQ_TYPE_LEVEL_HIGH 0>,
 				 <GIC_SPI 687 IRQ_TYPE_LEVEL_HIGH 0>,
 				 <GIC_SPI 688 IRQ_TYPE_LEVEL_HIGH 0>;
 
@@ -11417,6 +11418,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		<26 3  9>,/* IPI_OUT_AUDIO_ULTRA_SND_0 */
 		<35 3  2>,/* IPI_OUT_C_SCP_HWVOTER_DEBUG */
 		<45 3  1>,/* IPI_OUT_SCP_PM_NOTIFY_0 */
+		<47 3  2>,/* IPI_PIN_HOST_SCP_CHRE */
+		<48 3  2>,/* IPI_PIN_SCP_HOST_CHRE */
 		<39 4  4>,/* IPI_OUT_AOV_SCP */
 		<43 4  4>;/* IPI_OUT_NPU_SCP */
 
@@ -11446,6 +11449,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		<28 3  5 0 0 0 0>,/* IPI_IN_AUDIO_ULTRA_SND_0 */
 		<27 3  2 0 0 0 0>,/* IPI_IN_AUDIO_ULTRA_SND_ACK_0 */
 		<35 3  4 1 0 0 0>,/* IPI_OUT_C_SCP_HWVOTER_DEBUG */
+		<47 3  2 1 0 0 0>,/* IPI_PIN_HOST_SCP_CHRE ack slot */
+		<48 3  2 0 0 0 1>,/* IPI_PIN_SCP_HOST_CHRE msg slot */
 		<40 4  4 0 0 0 0>,/* IPI_IN_SCP_AOV */
 		<44 4  4 0 0 0 0>;/* IPI_IN_SCP_NPU */
 
@@ -11473,9 +11478,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				  <13 200 0>;	/* ultrasound */
 
 		scp-dram-region = "enable";   /* enable scp dram region manage */
-		scp-protect = "disable";   /* enable scp protections */
+		scp-protect = "enable";   /* enable scp protections */
 		secure-dump = "enable";   /* enable dump via secure world*/
-		secure-dump-size = <0x608000>;
+		secure-dump-size = <0x628000>;
 		scp-pm-notify = "disable";
 		scp-thermal-wq = "disable";
 		scp-low-pwr-dbg = "disable";
@@ -11488,24 +11493,27 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 		/* feature ID, size, alignment */
 		scp-mem-tbl = <0 0x0 0x0>, /* secure dump, its size is in secure-dump-size */
-				  <1 0xca700 0x0>, /* vow */
-				  <2 0x100000 0x0>, /* sensor main*/
-				  <3 0x180000 0x0>, /* logger */
-				  <4 0x19000 0x0>, /* audio */
-				  <5 0xa000 0x0>, /* vow bargein */
-				  <7 0x1a000 0x0>, /* ultrasound*/
-				  <8 0x10000 0x0>, /* sensor supper*/
-				  <9 0x1000 0x0>, /* sensor list */
-				  <10 0x2000 0x0>, /* sensor debug */
-				  <11 0x100 0x0>, /* sensor custom writer */
-				  <12 0x100 0x0>, /* sensor custom reader */
-				  <13 0x780000 0x0>; /* aov */
+			<1 0xca700 0x0>, /* vow */
+			<2 0x100000 0x0>, /* sensor main*/
+			<3 0x180000 0x0>, /* logger */
+			<4 0x19000 0x0>, /* audio */
+			<5 0xa000 0x0>, /* vow bargein */
+			<7 0x1a000 0x0>, /* ultrasound*/
+			<8 0x10000 0x0>, /* sensor supper*/
+			<9 0x1000 0x0>, /* sensor list */
+			<10 0x2000 0x0>, /* sensor debug */
+			<11 0x100 0x0>, /* sensor custom writer */
+			<12 0x100 0x0>, /* sensor custom reader */
+			<13 0x780000 0x0>, /* aov */
+			<17 0x8000 0x0>, /* scp chre from */
+			<18 0x8000 0x0>, /* scp chre to */
+			<19 0x200 0x0>;  /* low power debug */
 
 		memorydump = <0x360000>, /* l2tcm, sync with ,<reg> tcm, scp-sram-size*/
-				 <0x0c4000>, /* l1c */
-				 <0x003c00>, /* regdump */
-				 <0x000400>, /* trace buffer */
-				 <0x200000>; /* dram */
+			<0x0c4000>, /* l1c */
+			<0x003c00>, /* regdump */
+			<0x000400>, /* trace buffer */
+			<0x200000>; /* dram */
 #if 0
 		scp-resource-dump = "disable";   /* enable dump scp related resource */
 		/* regulator */
@@ -11523,6 +11531,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 		scp-infracfg = <&infracfg_ao_clk>;
 	};
+
 
 	scp_clk_ctrl_vlp: scp-clk-ctrl-vlp@1c00192c {
 		compatible = "mediatek,scp-clk-ctrl-vlp", "syscon";
