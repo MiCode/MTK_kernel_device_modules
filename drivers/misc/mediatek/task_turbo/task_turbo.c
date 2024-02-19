@@ -395,7 +395,7 @@ static void probe_android_vh_alter_futex_plist_add(void *ignore, struct plist_no
 	bool prev_turbo = 1;
 	bool this_turbo;
 
-	if (!sub_feat_enable(SUB_FEAT_LOCK) &&
+	if (!sub_feat_enable(SUB_FEAT_LOCK) ||
 	    !is_turbo_task(current)) {
 		*already_on_hb = false;
 		return;
@@ -903,9 +903,10 @@ done:
 
 static void binder_stop_turbo_inherit(struct task_struct *p)
 {
-	if (is_inherit_turbo(p, BINDER_INHERIT))
+	if (is_inherit_turbo(p, BINDER_INHERIT)) {
 		stop_turbo_inherit(p, BINDER_INHERIT);
-	trace_turbo_inherit_end(p);
+		trace_turbo_inherit_end(p);
+	}
 }
 
 static bool is_inherit_turbo(struct task_struct *task, int type)
