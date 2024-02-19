@@ -727,8 +727,9 @@ static void update_history(struct rq *rq, struct task_struct *p,
 	avg = div64_u64(util_avg_sum, sched_ravg_hist_size);
 	fts->util_sum = 0;
 done:
-	trace_sched_update_history(rq, p, runtime, samples,
-				event, fsrq, fts, update_history_event);
+	if (trace_sched_update_history_enabled())
+		trace_sched_update_history(rq, p, runtime, samples,
+					event, fsrq, fts, update_history_event);
 }
 
 static u64 add_to_task_demand(struct rq *rq, struct task_struct *p, u64 delta, enum win_event event)

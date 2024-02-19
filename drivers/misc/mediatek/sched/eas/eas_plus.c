@@ -92,7 +92,8 @@ void mtk_find_busiest_group(void *data, struct sched_group *busiest,
 
 	if (cpu_paused(dst_cpu)) {
 		*out_balance = 1;
-		trace_sched_find_busiest_group(src_cpu, dst_cpu, *out_balance, CORE_PAUSE_OUT);
+		if (trace_sched_find_busiest_group_enabled())
+			trace_sched_find_busiest_group(src_cpu, dst_cpu, *out_balance, CORE_PAUSE_OUT);
 		return;
 	}
 
@@ -125,7 +126,8 @@ void mtk_find_busiest_group(void *data, struct sched_group *busiest,
 			fbg_reason |= IB_OVERUTILIZATION;
 		}
 
-		trace_sched_find_busiest_group(src_cpu, dst_cpu, *out_balance, fbg_reason);
+		if (trace_sched_find_busiest_group_enabled())
+			trace_sched_find_busiest_group(src_cpu, dst_cpu, *out_balance, fbg_reason);
 	}
 }
 
@@ -161,7 +163,8 @@ void mtk_cpu_overutilized(void *data, int cpu, int *overutilized)
 
 
 	*overutilized = !fits_capacity(sum_util, sum_cap, get_adaptive_margin(cpu));
-	trace_sched_cpu_overutilized(cpu, perf_domain_span(pd), sum_util, sum_cap, *overutilized);
+	if (trace_sched_cpu_overutilized_enabled())
+		trace_sched_cpu_overutilized(cpu, perf_domain_span(pd), sum_util, sum_cap, *overutilized);
 
 	rcu_read_unlock();
 }
@@ -577,7 +580,8 @@ void set_newly_idle_balance_interval_us(unsigned int interval_us)
 {
 	new_idle_balance_interval_ns = interval_us * 1000;
 
-	trace_sched_newly_idle_balance_interval(interval_us);
+	if (trace_sched_newly_idle_balance_interval_enabled())
+		trace_sched_newly_idle_balance_interval(interval_us);
 }
 EXPORT_SYMBOL_GPL(set_newly_idle_balance_interval_us);
 
@@ -591,7 +595,8 @@ void set_get_thermal_headroom_interval_tick(unsigned int tick)
 {
 	thermal_headroom_interval_tick = tick;
 
-	trace_sched_headroom_interval_tick(tick);
+	if (trace_sched_headroom_interval_tick_enabled())
+		trace_sched_headroom_interval_tick(tick);
 }
 EXPORT_SYMBOL_GPL(set_get_thermal_headroom_interval_tick);
 

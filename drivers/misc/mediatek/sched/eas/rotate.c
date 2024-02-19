@@ -87,10 +87,11 @@ static void task_rotate_work_func(struct work_struct *work)
 	irq_log_store();
 
 	if (ret == 0) {
-		trace_sched_big_task_rotation(wr->src_cpu, wr->dst_cpu,
-						wr->src_task->pid,
-						wr->dst_task->pid,
-						true);
+		if (trace_sched_big_task_rotation_enabled())
+			trace_sched_big_task_rotation(wr->src_cpu, wr->dst_cpu,
+							wr->src_task->pid,
+							wr->dst_task->pid,
+							true);
 	}
 
 	irq_log_store();
@@ -351,9 +352,10 @@ void task_check_for_rotation(struct rq *src_rq)
 	if (force) {
 		queue_work_on(src_cpu, system_highpri_wq, &wr->w);
 		irq_log_store();
-		trace_sched_big_task_rotation(wr->src_cpu, wr->dst_cpu,
-					wr->src_task->pid, wr->dst_task->pid,
-					false);
+		if (trace_sched_big_task_rotation_enabled())
+			trace_sched_big_task_rotation(wr->src_cpu, wr->dst_cpu,
+						wr->src_task->pid, wr->dst_task->pid,
+						false);
 	}
 	irq_log_store();
 }
