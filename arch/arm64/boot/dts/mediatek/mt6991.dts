@@ -6948,7 +6948,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 		dispsys_config: dispsys-config@32000000 {
 			compatible = "mediatek,mt6991-disp";
-	//		mediatek,mml = <&mmlsys_config>;
+			mediatek,mml = <&mmlsys1_config>;
 	//		interrupts = <GIC_SPI 440 IRQ_TYPE_LEVEL_HIGH 0>;
 			dispsys-num = <2>;
 			ovlsys-num = <2>;
@@ -7268,7 +7268,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<0>, /*MTK_DRM_OPT_RDMA_UNDERFLOW_AEE*/
 				<0>, /*MTK_DRM_OPT_DSI_UNDERRUN_AEE*/
 				<0>, /*MTK_DRM_OPT_ODDMR_UNDERRUN_AEE*/
-				<0>, /*MTK_DRM_OPT_HRT*/
+				<1>, /*MTK_DRM_OPT_HRT*/
 				<0>, /*MTK_DRM_OPT_HRT_MODE*/
 				<0>, /*MTK_DRM_OPT_DELAYED_TRIGGER*/
 				<0>, /*MTK_DRM_OPT_OVL_EXT_LAYER*/
@@ -7293,9 +7293,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<0>, /*MTK_DRM_OPT_DYN_MIPI_CHANGE*/
 				<0>, /*MTK_DRM_OPT_PRIM_DUAL_PIPE*/
 				<0>, /*MTK_DRM_OPT_MSYNC2_0*/
-				<0>, /*MTK_DRM_OPT_MML_PRIMARY*/
-				<0>, /*MTK_DRM_OPT_MML_SUPPORT_CMD_MODE*/
-				<0>, /*MTK_DRM_OPT_MML_PQ*/
+				<1>, /*MTK_DRM_OPT_MML_PRIMARY*/
+				<1>, /*MTK_DRM_OPT_MML_SUPPORT_CMD_MODE*/
+				<1>, /*MTK_DRM_OPT_MML_PQ*/
 				<0>, /*MTK_DRM_OPT_MML_IR*/
 				<0>, /*MTK_DRM_OPT_DUAL_TE*/
 				<0>, /*MTK_DRM_OPT_RES_SWITCH*/
@@ -7329,7 +7329,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			compatible = "mediatek,disp_mutex0",
 						"mediatek,mt6991-disp-mutex";
 //			power-domains = <&scpsys MT6985_POWER_DOMAIN_DIS1_SHUTDOWN>;
-//			mediatek,mml = <&mmlsys_config>;
+			mediatek,mml = <&mmlsys1_config>;
 			dispsys-num = <2>;
 			ovlsys-num = <1>;
 			reg = <0 0x32020000 0 0x1000>,
