@@ -860,7 +860,7 @@ static int mdw_cmd_run(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 	struct mdw_device *mdev = mpriv->mdev;
 	struct dma_fence *f = &c->fence->base_fence;
 	struct mdw_cmd_history_tbl *ch_tbl = NULL;
-	int ret = 0;
+	int ret = 0, power_ret = 0;
 	uint64_t poll_timeout = MDW_POLL_TIMEOUT;
 
 	mdw_cmd_show(c, mdw_cmd_debug);
@@ -883,6 +883,15 @@ static int mdw_cmd_run(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 			}
 		}
 		dma_fence_put(f);
+		/* power off */
+		atomic_dec(&mdev->cmd_running);
+		c->end_ts = sched_clock();
+		mdw_flw_debug("power off by user dtime(%u)\n", c->power_dtime);
+		power_ret = mdev->dev_funcs->dtime_handle(c);
+		if (power_ret && power_ret != -EOPNOTSUPP)
+			mdw_drv_err("rpmsg_sendto(power) fail(%d)\n", power_ret);
+		/*  put power budget */
+		mdev->dev_funcs->pb_put(c->power_plcy);
 	} else {
 		mdw_flw_debug("s(0x%llx) cmd(0x%llx) run\n",
 			(uint64_t)c->mpriv, c->kid);
