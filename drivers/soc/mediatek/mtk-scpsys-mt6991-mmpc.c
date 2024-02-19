@@ -892,10 +892,10 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_comp = "mm-hw-ccf-regmap",
 		.hwv_set_ofs = 0x0210,
 		.hwv_clr_ofs = 0x0214,
-		.hwv_done_ofs = 0x142C,
-		.hwv_en_ofs = 0x1420,
-		.hwv_set_sta_ofs = 0x1474,
-		.hwv_clr_sta_ofs = 0x1478,
+		.hwv_done_ofs = 0x140C,
+		.hwv_en_ofs = 0x1400,
+		.hwv_set_sta_ofs = 0x1464,
+		.hwv_clr_sta_ofs = 0x1468,
 		.hwv_shift = 1,
 		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_IRQ_SAVE | default_cap,
 	},
@@ -915,10 +915,10 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_comp = "mm-hw-ccf-regmap",
 		.hwv_set_ofs = 0x0210,
 		.hwv_clr_ofs = 0x0214,
-		.hwv_done_ofs = 0x142C,
-		.hwv_en_ofs = 0x1420,
-		.hwv_set_sta_ofs = 0x1474,
-		.hwv_clr_sta_ofs = 0x1478,
+		.hwv_done_ofs = 0x140C,
+		.hwv_en_ofs = 0x1400,
+		.hwv_set_sta_ofs = 0x1464,
+		.hwv_clr_sta_ofs = 0x1468,
 		.hwv_shift = 3,
 		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_IRQ_SAVE | default_cap,
 	},
@@ -1017,8 +1017,6 @@ static const struct scp_subdomain scp_subdomain_mt6991_mmpc[] = {
 	{MT6991_POWER_DOMAIN_DISP_VCORE, MT6991_POWER_DOMAIN_DISP_DPTX_DORMANT},
 	{MT6991_POWER_DOMAIN_DISP_VCORE, MT6991_POWER_DOMAIN_MML0_SHUTDOWN},
 	{MT6991_POWER_DOMAIN_DISP_VCORE, MT6991_POWER_DOMAIN_MML1_SHUTDOWN},
-	{MT6991_POWER_DOMAIN_MM_INFRA_AO, MT6991_POWER_DOMAIN_MM_INFRA0},
-	{MT6991_POWER_DOMAIN_MM_INFRA0, MT6991_POWER_DOMAIN_MM_INFRA1},
 };
 
 static const struct scp_soc_data mt6991_mmpc_data = {
@@ -1089,6 +1087,16 @@ static int mt6991_scpsys_mmpc_probe(struct platform_device *pdev)
 	if (ret && IS_ENABLED(CONFIG_PM)) {
 		dev_err(&pdev->dev, "Failed to add subdomain: %d\n",
 			ret);
+		return ret;
+	}
+	ret = pm_genpd_add_subdomain(mmup_pd, pd_data->domains[MT6991_POWER_DOMAIN_MM_INFRA0]);
+	if (ret && IS_ENABLED(CONFIG_PM)) {
+		dev_err(&pdev->dev, "Failed to add subdomain: %d\n", ret);
+		return ret;
+	}
+	ret = pm_genpd_add_subdomain(mmup_pd, pd_data->domains[MT6991_POWER_DOMAIN_MM_INFRA1]);
+	if (ret && IS_ENABLED(CONFIG_PM)) {
+		dev_err(&pdev->dev, "Failed to add subdomain: %d\n", ret);
 		return ret;
 	}
 	ret = pm_genpd_add_subdomain(mmup_pd, pd_data->domains[MT6991_POWER_DOMAIN_CSI_BS_RX]);
