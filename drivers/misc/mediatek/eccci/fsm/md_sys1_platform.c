@@ -525,8 +525,7 @@ static void md1_pmic_setting_on(void)
 			}
 		} else {
 			/* VMODEM+NR+FE->2ms->VSRAM_MD */
-			if (strcmp(md_reg_table[idx].reg_name,
-				"md_vsram") == 0)
+			if (strcmp(md_reg_table[idx].reg_name, "md-vsram") == 0)
 				udelay(2000);
 			ret = regulator_set_voltage(md_reg_table[idx].reg_ref,
 				md_reg_table[idx].reg_vol0,
@@ -557,6 +556,164 @@ static void md1_pmic_setting_on(void)
 	CCCI_BOOTUP_LOG(-1, TAG, "[POWER ON]%s end\n", __func__);
 	CCCI_NORMAL_LOG(-1, TAG, "[POWER ON]%s end\n", __func__);
 
+}
+
+static void md1_dpsw_pmic_setting_on(void)
+{
+	int ret, idx;
+
+	CCCI_NORMAL_LOG(-1, TAG, "[POWER ON]%s start\n", __func__);
+
+	for (idx = 0; idx < ARRAY_SIZE(md_reg_table); idx++) {
+		if (IS_ERR(md_reg_table[idx].reg_ref)) {
+			ret = PTR_ERR(md_reg_table[idx].reg_ref);
+			if (ret != -ENODEV) {
+				CCCI_ERROR_LOG(-1, TAG, "%s:get regulator(%s) fail, ret = %d\n",
+					__func__, md_reg_table[idx].reg_name, ret);
+				CCCI_NORMAL_LOG(-1, TAG, "bypass pmic_%s set\n", md_reg_table[idx].reg_name);
+				continue;
+			}
+		} else {
+			/* seting Vdigrf to 0.7 */
+			if (strcmp(md_reg_table[idx].reg_name, "md-vdigrf") == 0) {
+				ret = regulator_set_voltage(md_reg_table[idx].reg_ref, 700000, 700000);
+				if (ret)
+					CCCI_ERROR_LOG(-1, TAG, "md-vdigrf set fail\n");
+				else {
+					CCCI_NORMAL_LOG(-1, TAG,
+						"[POWER ON]pmic get %s=%d uV\n",
+						md_reg_table[idx].reg_name,
+						regulator_get_voltage(md_reg_table[idx].reg_ref));
+				}
+			}
+
+		}
+	}
+}
+
+static void md1_dpsw_pmic_setting_off(void)
+{
+	int ret, idx;
+	int r_value = 0;
+	struct regulator *Vmodem_reg_ref = NULL;
+
+	if (!(md_cd_plat_val_ptr.power_flow_config & (1 << MD_DPSW_SETTING))) {
+		CCCI_NORMAL_LOG(0, TAG,
+			"[POWER OFF] bypass %s step\n", __func__);
+		return;
+	}
+	CCCI_NORMAL_LOG(-1, TAG, "[POWER OFF]%s start\n", __func__);
+
+	for (idx = 0; idx < ARRAY_SIZE(md_reg_table); idx++) {
+		if (IS_ERR(md_reg_table[idx].reg_ref) || (md_reg_table[idx].reg_ref == NULL)) {
+			ret = PTR_ERR(md_reg_table[idx].reg_ref);
+			if (ret != -ENODEV) {
+				CCCI_ERROR_LOG(-1, TAG, "%s:get regulator(%s) fail, ret = %d\n",
+					__func__, md_reg_table[idx].reg_name, ret);
+				CCCI_BOOTUP_LOG(-1, TAG, "bypass pmic_%s set\n", md_reg_table[idx].reg_name);
+				continue;
+			}
+		} else {
+			/* get Vsram value */
+			if (strcmp(md_reg_table[idx].reg_name, "md-vsram") == 0) {
+				r_value = regulator_get_voltage(md_reg_table[idx].reg_ref);
+				CCCI_NORMAL_LOG(-1, TAG,
+					"[POWER OFF]pmic get_voltage %s=%d uV\n",
+					md_reg_table[idx].reg_name, r_value);
+			/* get Vmodem value */
+			} else if (strcmp(md_reg_table[idx].reg_name, "md-vmodem") == 0) {
+				Vmodem_reg_ref = md_reg_table[idx].reg_ref;
+				CCCI_NORMAL_LOG(-1, TAG,
+					"[POWER OFF]pmic get_voltage %s=%d uV\n",
+					md_reg_table[idx].reg_name,
+					regulator_get_voltage(md_reg_table[idx].reg_ref));
+			}
+		}
+	}
+
+	if (r_value && (Vmodem_reg_ref != NULL)) {
+		/* set Vmodem same as Vsram */
+		ret = regulator_set_voltage(Vmodem_reg_ref, r_value, 750000);
+		if (ret)
+			CCCI_ERROR_LOG(-1, TAG, "set Vsram value to Vmodem fail\n");
+		ret = regulator_sync_voltage(Vmodem_reg_ref);
+		if (ret)
+			CCCI_ERROR_LOG(-1, TAG, "Vmodem sync fail\n");
+	} else if (Vmodem_reg_ref != NULL) {
+		/* set Vmodem to 0.75V */
+		ret = regulator_set_voltage(Vmodem_reg_ref, 750000, 750000);
+		if (ret)
+			CCCI_ERROR_LOG(-1, TAG, "pmic set Vmodem 0.75v fail\n");
+		ret = regulator_sync_voltage(Vmodem_reg_ref);
+		if (ret)
+			CCCI_ERROR_LOG(-1, TAG, "Vmodem sync fail\n");
+	}
+
+}
+
+static int md_cd_dpsw_setting(struct ccci_modem *md)
+{
+	int ret, idx;
+	void __iomem *reg = NULL;
+
+	if (!(md_cd_plat_val_ptr.power_flow_config & (1 << MD_DPSW_SETTING))) {
+		CCCI_BOOTUP_LOG(0, TAG,
+			"[POWER ON] bypass %s step\n", __func__);
+		CCCI_ERROR_LOG(0, TAG,
+			"[POWER ON] bypass %s step\n", __func__);
+		return 0;
+	}
+
+	reg = ioremap_wc(0x21AC0000, 0x4000);
+	if (!reg) {
+		CCCI_ERROR_LOG(0, TAG, "%s, ioremap_wc fail\n", __func__);
+		return -1;
+	}
+
+	/* seting DPSW reg */
+	CCCI_NORMAL_LOG(0, TAG, "[POWER ON] get MD_DVFS_DPSW_CTRL_INTF_RW=0x%x\n",
+		ccci_read32(reg, 0xA00));
+	ccci_write32(reg, 0xA00, 0X0);
+	ccci_write32(reg, 0x300C, 0X01);
+	ccci_write32(reg, 0x300C, 0X0);
+	ccci_write32(reg, 0xA20, 0X0);
+	ccci_write32(reg, 0x302C, 0X341);
+	ccci_write32(reg, 0xA04, 0X01);
+
+	/* seting Vmodem to 0.8V */
+	for (idx = 0; idx < ARRAY_SIZE(md_reg_table); idx++) {
+		if (IS_ERR(md_reg_table[idx].reg_ref)) {
+			ret = PTR_ERR(md_reg_table[idx].reg_ref);
+			if (ret != -ENODEV) {
+				CCCI_ERROR_LOG(-1, TAG,
+					"%s:get regulator(%s) fail, ret = %d\n",
+					__func__, md_reg_table[idx].reg_name, ret);
+				CCCI_BOOTUP_LOG(-1, TAG, "bypass pmic_%s set\n",
+					md_reg_table[idx].reg_name);
+				continue;
+			}
+		} else {
+			/* seting Vmodem pmic to 0.8 */
+			if (strcmp(md_reg_table[idx].reg_name, "md-vmodem") == 0) {
+				ret = regulator_set_voltage(md_reg_table[idx].reg_ref, 800000, 800000);
+				if (ret)
+					CCCI_ERROR_LOG(-1, TAG, "pmic_%s set fail\n",
+						md_reg_table[idx].reg_name);
+				ret = regulator_sync_voltage(md_reg_table[idx].reg_ref);
+				if (ret)
+					CCCI_ERROR_LOG(-1, TAG, "pmic_%s sync fail\n", md_reg_table[idx].reg_name);
+				else
+					CCCI_BOOTUP_LOG(-1, TAG, "[POWER ON]pmic get_voltage %s=%d uV\n",
+						md_reg_table[idx].reg_name,
+						regulator_get_voltage(md_reg_table[idx].reg_ref));
+				udelay(38);
+			}
+		}
+	}
+	CCCI_NORMAL_LOG(0, TAG, "[POWER ON] after set vmoden 0.8V, MD_DVFS_DPSW_CTRL_INTF_RW=0x%x\n",
+		ccci_read32(reg, 0xA00));
+	iounmap(reg);
+	return 0;
 }
 
 static void flight_mode_set_by_atf(struct ccci_modem *md,
@@ -809,6 +966,8 @@ static int md_cd_power_off(struct ccci_modem *md, unsigned int timeout)
 		if (ret)
 			return ret;
 	}
+
+	md1_dpsw_pmic_setting_off();
 
 	/* 1. power off MD MTCMOS */
 	CCCI_BOOTUP_LOG(0, TAG,
@@ -1596,8 +1755,11 @@ static int md_cd_power_on(struct ccci_modem *md)
 	int ret = 0;
 	void __iomem *md_rgu_base;
 
-	/* step 1: PMIC setting */
-	md1_pmic_setting_on();
+	/* step 1: PMIC setting,if setting DPSW bypass this step */
+	if (!(md_cd_plat_val_ptr.power_flow_config & (1 << MD_DPSW_SETTING)))
+		md1_pmic_setting_on();
+	else
+		md1_dpsw_pmic_setting_on();
 
 	/* modem topclkgen on setting */
 	ret = md_cd_topclkgen_on(md);
@@ -1635,7 +1797,7 @@ static int md_cd_power_on(struct ccci_modem *md)
 			return ret;
 	}
 
-	/* steip 3: power on MD_INFRA and MODEM_TOP */
+	/* step 3: power on MD_INFRA and MODEM_TOP */
 	flight_mode_set_by_atf(md, false);
 	CCCI_BOOTUP_LOG(0, TAG,
 		"[POWER ON] MD MTCMOS ON start\n");
@@ -1650,6 +1812,9 @@ static int md_cd_power_on(struct ccci_modem *md)
 		"[POWER ON] MD MTCMOS ON end: ret = %d\n", ret);
 	CCCI_NORMAL_LOG(0, TAG,
 		"[POWER ON] MD MTCMOS ON end: ret = %d\n", ret);
+
+	/* step 4: md DPSW set */
+	md_cd_dpsw_setting(md);
 
 #if IS_ENABLED(CONFIG_MTK_PBM)
 	kicker_pbm_by_md(KR_MD1, true);

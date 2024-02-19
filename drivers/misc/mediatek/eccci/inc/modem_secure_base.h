@@ -42,6 +42,7 @@ enum MD_POWER_CONFIG_ID {
 	MD_CHECK_DONE,
 	MD_BOOT_STATUS,
 	MD_LK_BOOT_PLAT = 8,
+	MD_LK_SET_DPSW = 9,
 };
 
 #endif				/* __MODEM_SECURE_BASE_H__ */
