@@ -1665,9 +1665,6 @@ static void show_status(int flag)
 	if (Hang_first_done)	{ /* the last dump */
 		/* debug_locks = 1; */
 		debug_show_all_locks();
-#ifndef MODULE
-		show_free_areas(0, NULL);
-#endif
 		run_callback();
 
 	}
