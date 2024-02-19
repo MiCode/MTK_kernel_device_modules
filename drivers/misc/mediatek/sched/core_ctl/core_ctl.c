@@ -2136,7 +2136,9 @@ static long core_ioctl(struct file *filp,
 
 static const struct proc_ops core_ctl_Fops = {
 	.proc_ioctl = core_ioctl,
+#if IS_ENABLED(CONFIG_COMPAT)
 	.proc_compat_ioctl = core_ioctl,
+#endif
 	.proc_open = core_ctl_open,
 	.proc_read = seq_read,
 	.proc_lseek = seq_lseek,

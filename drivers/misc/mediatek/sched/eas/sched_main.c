@@ -778,7 +778,9 @@ static long eas_ioctl(struct file *filp,
 
 static const struct proc_ops eas_Fops = {
 	.proc_ioctl = eas_ioctl,
+#if IS_ENABLED(CONFIG_COMPAT)
 	.proc_compat_ioctl = eas_ioctl,
+#endif
 	.proc_open = eas_open,
 	.proc_read = seq_read,
 	.proc_lseek = seq_lseek,

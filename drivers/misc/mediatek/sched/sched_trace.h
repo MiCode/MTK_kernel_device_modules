@@ -358,7 +358,11 @@ TRACE_EVENT(sched_select_task_rq,
 
 	TP_fast_assign(
 		__entry->pid        = tsk->pid;
+#if IS_ENABLED(CONFIG_ARM64)
 		__entry->compat_thread = is_compat_thread(task_thread_info(tsk));
+#else
+		__entry->compat_thread = 0;
+#endif
 		__entry->in_irq     = in_irq;
 		__entry->policy     = policy;
 		__entry->backup_reason     = backup_reason;
