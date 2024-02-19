@@ -7629,7 +7629,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			iommu-groups {
 				apu_iommu_group_0: apu-iommu-group-code {
 					label = "apu_code";
-					mtk,iommu-dma-range = <0x0 0x40000000 0x0 0xc0000000>;
+					mtk,iommu-dma-range = <
+						0x0 0x40000000 0x0 0xc000000
+						0x0 0x50000000 0x0 0xb0000000>;
 					mtk,smmu-mode = "dma";
 				};
 				apu_iommu_group_1: apu-iommu-group-data {
@@ -12520,6 +12522,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		dma-coherent;
 	};
 
+	apusys-apummu {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "mediatek,rv-apummu-mt6991";
+		// dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
+		mtk,iommu-group = <&apu_iommu_group_1>;
+		iommus = <&apu_smmu 0xd>;
+	};
+
 	mtk_apu_mem_code: mtk-apu-mem-code {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -13146,15 +13157,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 		md-soc-throttle-l = <20>;
 		md-soc-throttle-h = <25>;
-	};
-
-	apusys-apummu {
-		#address-cells = <2>;
-		#size-cells = <2>;
-		compatible = "mediatek,rv-apummu-mt6991";
-		// dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
-		mtk,iommu-group = <&apu_iommu_group_0>;
-		iommus = <&apu_smmu 0xd>;
 	};
 
 	battery_manager: battery-manager {
