@@ -1399,6 +1399,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpc_mt6370.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpc_mt6375.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpc_rt1711h.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpc_mt6379.ko")
 
         mgk_64_device_modules.remove("drivers/power/supply/mt6360_charger.ko")
         mgk_64_device_modules.remove("drivers/power/supply/mt6360_pmu_chg.ko")
@@ -1414,6 +1415,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/power/supply/mtk_pep50.ko")
         mgk_64_device_modules.remove("drivers/power/supply/mtk_pep50p.ko")
         mgk_64_device_modules.remove("drivers/power/supply/rt9759.ko")
+        mgk_64_device_modules.remove("drivers/power/supply/mtk_2p_charger.ko")
 
         mgk_64_device_modules.append("drivers/power/supply/sgm41516d.ko")
         mgk_64_device_modules.append("drivers/power/supply/mtk_chg_det.ko")
