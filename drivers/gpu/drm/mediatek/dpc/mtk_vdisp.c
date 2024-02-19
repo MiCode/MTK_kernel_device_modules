@@ -290,7 +290,7 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	if (res) {
 		priv->spm_base = devm_ioremap(dev, res->start, resource_size(res));
 		if (!priv->spm_base) {
-			VDISPERR("fail to ioremap SPM_BASE: 0x%llx", res->start);
+			VDISPERR("fail to ioremap SPM_BASE: 0x%pa", &res->start);
 			return -EINVAL;
 		}
 	}
@@ -299,7 +299,7 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	if (res) {
 		priv->vlp_base = devm_ioremap(dev, res->start, resource_size(res));
 		if (!priv->vlp_base) {
-			VDISPERR("fail to ioremap VLP_BASE: 0x%llx", res->start);
+			VDISPERR("fail to ioremap VLP_BASE: 0x%pa", &res->start);
 			return -EINVAL;
 		}
 		g_vlp_base = priv->vlp_base;
