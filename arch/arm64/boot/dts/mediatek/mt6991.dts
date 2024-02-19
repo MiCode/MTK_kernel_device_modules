@@ -10541,6 +10541,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		adsp-slc = <0x51ca11ca 0x0 0x0 0x0 0x0 0x0 0x2 0x32 0x0>;
 	};
 
+	mt-soc-offload-common {
+		compatible = "mediatek,mt-soc-offload-common";
+	};
+
 	afe: mt6991-afe-pcm@1a110000 {
 		compatible = "mediatek,mt6991-sound";
 		reg = <0 0x1a110000 0 0x9000>;
