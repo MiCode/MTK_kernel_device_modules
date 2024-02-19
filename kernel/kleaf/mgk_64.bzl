@@ -847,6 +847,7 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6991.ko": "mt6991",
     "drivers/soc/mediatek/mtk-scpsys-mt6768.ko": "mt6768",
     "drivers/soc/mediatek/mtk-scpsys-mt6761.ko": "mt6761",
+    "drivers/soc/mediatek/mtk-scpsys-mt6877.ko": "mt6877",
     "drivers/misc/mediatek/cm_mgr/mtk_cm_mgr_mt6886.ko": "mt6886",
     "drivers/misc/mediatek/cm_mgr/mtk_cm_mgr_mt6897.ko": "mt6897",
     "drivers/misc/mediatek/cm_mgr/mtk_cm_mgr_mt6983.ko": "mt6983",
@@ -1033,7 +1034,25 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-mpu-test-v2.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-fake-eng.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-mpu-v2.ko")
-
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clkchk-mt6877.ko":"mt6877"})
+        #mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clkdbg-mt6877.ko":"mt6877"})
+        #mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-fmeter-mt6877.ko":"mt6877"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6877.ko":"mt6877"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6877-apu.ko":"mt6877"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6877-audsys.ko":"mt6877"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6877-cam.ko":"mt6877"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6877-img.ko":"mt6877"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6877-i2c.ko":"mt6877"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6877-ipe.ko":"mt6877"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6877-mdp.ko":"mt6877"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6877-mfgcfg.ko":"mt6877"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6877-mm.ko":"mt6877"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6877-msdc.ko":"mt6877"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6877-scp_par.ko":"mt6877"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6877-vde.ko":"mt6877"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6877-ven.ko":"mt6877"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6877-pg.ko":"mt6877"})
+        #mgk_64_platform_device_modules.update({"drivers/clk/mediatek/pd-chk-mt6877.ko":"mt6877"})
 
     if "mt6768_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
