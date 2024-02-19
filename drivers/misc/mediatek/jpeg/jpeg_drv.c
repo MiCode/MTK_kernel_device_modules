@@ -1086,21 +1086,21 @@ static int jpeg_probe(struct platform_device *pdev)
 	larbnode = of_parse_phandle(node, "mediatek,larbs", 0);
 	if (!larbnode) {
 		JPEG_LOG(0, "fail to get larbnode %d", node_index);
-		return -1;
-	}
-	larbdev = of_find_device_by_node(larbnode);
-	if (WARN_ON(!larbdev)) {
-		of_node_put(larbnode);
-		JPEG_LOG(0, "fail to get larbdev %d", node_index);
-		return -1;
-	}
-	gJpegqDev.jpegLarb[node_index] = &larbdev->dev;
-	JPEG_LOG(0, "get larb from node %d", node_index);
+	} else {
+		larbdev = of_find_device_by_node(larbnode);
+		if (WARN_ON(!larbdev)) {
+			of_node_put(larbnode);
+			JPEG_LOG(0, "fail to get larbdev %d", node_index);
+			return -1;
+		}
+		gJpegqDev.jpegLarb[node_index] = &larbdev->dev;
+		JPEG_LOG(0, "get larb from node %d", node_index);
 
-	if (!device_link_add(gJpegqDev.pDev[node_index], gJpegqDev.jpegLarb[node_index],
-		DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
-		JPEG_LOG(0, "larb device link fail");
-		return -1;
+		if (!device_link_add(gJpegqDev.pDev[node_index], gJpegqDev.jpegLarb[node_index],
+			DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
+			JPEG_LOG(0, "larb device link fail");
+			return -1;
+		}
 	}
 
 	if (!smmu_v3_enabled()) {
