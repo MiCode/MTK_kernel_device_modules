@@ -1284,10 +1284,9 @@ static void probe_android_vh_cgroup_set_task(void *ignore, int ret, struct task_
 	}
 }
 
-static void probe_android_vh_syscall_prctl_finished(void *ignore, int option, struct task_struct *p)
+static void probe_android_rvh_set_task_comm(void *ignore, struct task_struct *p, bool exec)
 {
-	if (option == PR_SET_NAME)
-		sys_set_turbo_task(p);
+	sys_set_turbo_task(p);
 }
 
 static inline void fillin_cluster(struct cluster_info *cinfo,
@@ -1617,8 +1616,8 @@ static int __init init_task_turbo(void)
 		goto failed;
 	}
 
-	ret = register_trace_android_vh_syscall_prctl_finished(
-			probe_android_vh_syscall_prctl_finished, NULL);
+	ret = register_trace_android_rvh_set_task_comm(
+			probe_android_rvh_set_task_comm, NULL);
 	if (ret) {
 		ret_erri_line = __LINE__;
 		goto failed;
