@@ -30,6 +30,7 @@ struct vip_task_struct {
 	bool			vvip;
 	bool			faster_compute_eng;
 	int				priority_based_prio;
+	unsigned int	throttle_time;
 };
 
 struct soft_affinity_task {

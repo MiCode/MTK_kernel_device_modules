@@ -335,7 +335,9 @@ EXPORT_SYMBOL_GPL(task_is_vip);
 
 static inline unsigned int vip_task_limit(struct task_struct *p)
 {
-	return VIP_TIME_LIMIT;
+	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+
+	return vts->throttle_time;
 }
 
 void check_vip_num(struct rq *rq)
@@ -569,6 +571,24 @@ bool is_VIP_latency_sensitive(struct task_struct *p)
 	return false;
 }
 
+void set_task_vvip_and_throttle(int pid, unsigned int throttle_time)
+{
+	struct task_struct *p;
+	struct vip_task_struct *vts;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (p) {
+		get_task_struct(p);
+		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts->vvip = true;
+		vts->throttle_time = min(throttle_time * 1000000, VIP_TIME_LIMIT_MAX);
+		put_task_struct(p);
+	}
+	rcu_read_unlock();
+}
+EXPORT_SYMBOL_GPL(set_task_vvip_and_throttle);
+
 void set_task_vvip(int pid)
 {
 	struct task_struct *p;
@@ -597,6 +617,7 @@ void unset_task_vvip(int pid)
 		get_task_struct(p);
 		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
 		vts->vvip = false;
+		vts->throttle_time = VIP_TIME_LIMIT_DEFAULT;
 
 		put_task_struct(p);
 	}
@@ -605,6 +626,25 @@ void unset_task_vvip(int pid)
 EXPORT_SYMBOL_GPL(unset_task_vvip);
 
 /* priority based VIP interface */
+void set_task_priority_based_vip_and_throttle(int pid, int prio, unsigned int throttle_time)
+{
+	struct task_struct *p;
+	struct vip_task_struct *vts;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	prio = clamp(prio, MIN_PRIORITY_BASED_VIP, MAX_PRIORITY_BASED_VIP);
+	if (p) {
+		get_task_struct(p);
+		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts->priority_based_prio = prio;
+		vts->throttle_time = min(throttle_time * 1000000, VIP_TIME_LIMIT_MAX);
+		put_task_struct(p);
+	}
+	rcu_read_unlock();
+}
+EXPORT_SYMBOL_GPL(set_task_priority_based_vip_and_throttle);
+
 void set_task_priority_based_vip(int pid, int prio)
 {
 	struct task_struct *p;
@@ -634,6 +674,7 @@ void unset_task_priority_based_vip(int pid)
 		get_task_struct(p);
 		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
 		vts->priority_based_prio = NOT_VIP;
+		vts->throttle_time = VIP_TIME_LIMIT_DEFAULT;
 		put_task_struct(p);
 	}
 	rcu_read_unlock();
@@ -642,6 +683,24 @@ EXPORT_SYMBOL_GPL(unset_task_priority_based_vip);
 /* priority based VIP interface */
 
 /* basic vip interace */
+void set_task_basic_vip_and_throttle(int pid, unsigned int throttle_time)
+{
+	struct task_struct *p;
+	struct vip_task_struct *vts;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (p) {
+		get_task_struct(p);
+		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts->basic_vip = true;
+		vts->throttle_time = min(throttle_time * 1000000, VIP_TIME_LIMIT_MAX);
+		put_task_struct(p);
+	}
+	rcu_read_unlock();
+}
+EXPORT_SYMBOL_GPL(set_task_basic_vip_and_throttle);
+
 void set_task_basic_vip(int pid)
 {
 	struct task_struct *p;
@@ -670,6 +729,7 @@ void unset_task_basic_vip(int pid)
 		get_task_struct(p);
 		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
 		vts->basic_vip = false;
+		vts->throttle_time = VIP_TIME_LIMIT_DEFAULT;
 		put_task_struct(p);
 	}
 	rcu_read_unlock();
@@ -979,6 +1039,7 @@ void init_vip_task_struct(struct task_struct *p)
 	vts->vvip = false;
 	vts->faster_compute_eng = false;
 	vts->priority_based_prio = NOT_VIP;
+	vts->throttle_time = VIP_TIME_LIMIT_DEFAULT;
 }
 
 void init_task_gear_hints(struct task_struct *p)
