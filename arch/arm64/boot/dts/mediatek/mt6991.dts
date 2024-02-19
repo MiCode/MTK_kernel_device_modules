@@ -8116,7 +8116,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<GIC_SPI 520 IRQ_TYPE_LEVEL_HIGH 0>, // adlrd
 					<GIC_SPI 526 IRQ_TYPE_LEVEL_HIGH 0>; // qof
 			interrupt-names = "adlrd_rdone", "adlrd", "qoftop";
-			//operating-points-v2 = <&opp_table_cam>;
+			operating-points-v2 = <&opp_table_cam>;
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAMTG_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_ADLRD_CAMRAWA>,
