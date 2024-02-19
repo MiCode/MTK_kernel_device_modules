@@ -27,6 +27,7 @@ enum {
 	TYPE_NOTIFY_CM,
 	TYPE_STRESS_EN,
 	TYPE_STRESS_TIME,
+	TYPE_STATE_EN,
 
 	NF_TYPE_CONTROL_MAX
 };
@@ -39,12 +40,14 @@ struct MTK_CPUIDLE_NODE notify_cm;
 struct MTK_CPUIDLE_NODE stress_enable;
 struct MTK_CPUIDLE_NODE stress_time;
 struct MTK_CPUIDLE_NODE stress_timer;
+struct MTK_CPUIDLE_NODE state_enable;
 
 static const char *node_stress_name[NF_TYPE_CONTROL_MAX] = {
 	[TYPE_ARMPLL_MODE]	= "armpll_mode",
 	[TYPE_BUCK_MODE]	= "buck_mode",
 	[TYPE_STRESS_EN]	= "stress",
 	[TYPE_STRESS_TIME]	= "stress_time",
+	[TYPE_STATE_EN]		= "state_enable",
 };
 
 static const char *node_stress_param[NF_TYPE_CONTROL_MAX] = {
@@ -52,6 +55,7 @@ static const char *node_stress_param[NF_TYPE_CONTROL_MAX] = {
 	[TYPE_BUCK_MODE]	= "[mode]",
 	[TYPE_STRESS_EN]	= "[0|1]",
 	[TYPE_STRESS_TIME]	= "[us]",
+	[TYPE_STATE_EN]		= "[0|1]",
 };
 
 static ssize_t lpm_cpuidle_control_read(char *ToUserBuf,
@@ -128,6 +132,12 @@ static ssize_t lpm_cpuidle_control_read(char *ToUserBuf,
 			mtk_cpuidle_get_stress_time());
 		break;
 
+	case TYPE_STATE_EN:
+		mtk_dbg_cpuidle_log("CPU idle state control : %s\n",
+			mtk_cpuidle_get_state_en() ?
+			"Enable" : "Disable");
+		break;
+
 	default:
 		mtk_dbg_cpuidle_log("unknown command\n");
 		break;
@@ -201,6 +211,10 @@ static ssize_t lpm_cpuidle_control_write(char *FromUserBuf,
 		mtk_cpuidle_set_stress_time(parm);
 		break;
 
+	case TYPE_STATE_EN:
+		mtk_cpuidle_set_state_en(parm);
+		break;
+
 	default:
 		pr_info("unknown command\n");
 		break;
@@ -254,4 +268,12 @@ void lpm_cpuidle_control_init(void)
 					&stress_time.op,
 					&lpm_entry_cpuidle_control,
 					&stress_time.handle);
+
+	LPM_CPUIDLE_CONTROL_NODE_INIT(state_enable, "state_enable",
+				    TYPE_STATE_EN);
+	mtk_cpuidle_sysfs_sub_entry_node_add(state_enable.name,
+					MTK_CPUIDLE_SYS_FS_MODE,
+					&state_enable.op,
+					&lpm_entry_cpuidle_control,
+					&state_enable.handle);
 }

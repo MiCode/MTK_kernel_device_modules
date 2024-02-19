@@ -30,6 +30,7 @@ static struct task_struct *stress_tsk[NR_CPUS];
 /* mtk cpu idle configuration */
 struct mtk_cpuidle_control {
 	bool stress_en;
+	bool state_en;
 };
 
 static struct mtk_cpuidle_control mtk_cpuidle_ctrl;
@@ -82,6 +83,19 @@ void mtk_cpuidle_set_stress_test(bool en)
 bool mtk_cpuidle_get_stress_status(void)
 {
 	return mtk_cpuidle_ctrl.stress_en;
+}
+
+void mtk_cpuidle_set_state_en(bool en)
+{
+	if (en)
+		mtk_cpuidle_ctrl.state_en = true;
+	else
+		mtk_cpuidle_ctrl.state_en = false;
+}
+
+bool mtk_cpuidle_get_state_en(void)
+{
+	return mtk_cpuidle_ctrl.state_en;
 }
 
 void mtk_cpuidle_set_stress_time(unsigned int val)
@@ -190,6 +204,7 @@ long mtk_cpuidle_state_enabled(void)
 int mtk_cpuidle_status_init(void)
 {
 	mtk_cpuidle_ctrl.stress_en = false;
+	mtk_cpuidle_ctrl.state_en = false;
 
 	return 0;
 }
