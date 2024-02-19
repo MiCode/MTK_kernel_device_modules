@@ -2735,7 +2735,7 @@ static void smmuwp_clear_tf(struct arm_smmu_device *smmu)
 static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
-	unsigned int irq_sta = 0, pend_cnt = 0, i = 0;
+	unsigned int irq_sta = 0, pend_cnt = 0, i = 0, tbu_cnt = 0;
 	void __iomem *wp_base = smmu->wp_base;
 
 	irq_sta = smmu_read_reg(wp_base, SMMUWP_IRQ_STA);
@@ -2793,21 +2793,24 @@ static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu)
 			 irq_sta, pend_cnt);
 	}
 
-	for (i = 0; i < SMMU_TBU_CNT(data->plat_data->smmu_type); i++) {
+	tbu_cnt = SMMU_TBU_CNT(data->plat_data->smmu_type);
+	for (i = 0; i < tbu_cnt; i++) {
 		if (irq_sta & STA_TBUx_RAS_CRI(i)) {
 			pend_cnt = smmuwp_consume_intr(smmu, STA_TBUx_RAS_CRI(i));
 			dev_info(smmu->dev, "IRQ_STA:0x%x, TBU%d RAS CRI detected %d\n",
 				 irq_sta, i, pend_cnt);
 		}
 
-		if (irq_sta & STA_TBUx_RAS_ERI(i)) {
-			pend_cnt = smmuwp_consume_intr(smmu, STA_TBUx_RAS_ERI(i));
+		if (irq_sta & STA_TBUx_RAS_ERI(tbu_cnt, i)) {
+			pend_cnt = smmuwp_consume_intr(smmu, STA_TBUx_RAS_ERI(
+						       tbu_cnt, i));
 			dev_info(smmu->dev, "IRQ_STA:0x%x, TBU%d RAS ERI detected %d\n",
 				 irq_sta, i, pend_cnt);
 		}
 
-		if (irq_sta & STA_TBUx_RAS_FHI(i)) {
-			pend_cnt = smmuwp_consume_intr(smmu, STA_TBUx_RAS_FHI(i));
+		if (irq_sta & STA_TBUx_RAS_FHI(tbu_cnt, i)) {
+			pend_cnt = smmuwp_consume_intr(smmu, STA_TBUx_RAS_FHI(
+						       tbu_cnt, i));
 			dev_info(smmu->dev, "IRQ_STA:0x%x, TBU%d RAS FHI detected %d\n",
 				 irq_sta, i, pend_cnt);
 		}
