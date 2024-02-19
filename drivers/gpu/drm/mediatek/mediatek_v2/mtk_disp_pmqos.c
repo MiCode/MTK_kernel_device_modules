@@ -324,7 +324,7 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	struct mtk_ddp_comp *comp;
 	unsigned int tmp, total = 0, tmp1 = 0, bw_base  = 0;
 	unsigned int crtc_idx = drm_crtc_index(crtc);
-	int i, j, ret = 0, ovl_num = 0;
+	int i, ret = 0, ovl_num = 0;
 
 	tmp = bw;
 
@@ -338,24 +338,7 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 		priv->data->mmsys_id == MMSYS_MT6761 ||
 		priv->data->mmsys_id == MMSYS_MT6765) {
 		DDPMSG("%s: no need to set module hrt bw for legacy!\n", __func__);
-	} else {
-		for (i = 0; i < DDP_PATH_NR; i++) {
-			if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
-				continue;
-			if (!(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
-				continue;
-			for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
-				ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
-							&tmp);
-			}
-			if (!mtk_crtc->is_dual_pipe)
-				continue;
-			for_each_comp_in_dual_pipe(comp, mtk_crtc, j, i)
-				ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
-						&tmp);
-		}
 	}
-
 	if (ret == RDMA_REQ_HRT)
 		tmp = mtk_drm_primary_frame_bw(crtc);
 	else if (ret == MDP_RDMA_REQ_HRT)
@@ -425,6 +408,64 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	return ret;
 }
 
+int mtk_disp_set_per_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
+{
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct mtk_ddp_comp *comp;
+	unsigned int total = 0xFFFFFFFF, tmp1 = 0, bw_base  = 0;
+	unsigned int crtc_idx = drm_crtc_index(crtc);
+	int i, j, ret = 0;
+
+	if (mtk_crtc == NULL)
+		return 0;
+
+	if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
+		return 0;
+
+	if (!mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_HRT_BY_LARB))
+		return 0;
+
+	bw_base = mtk_drm_primary_frame_bw(crtc);
+	for (i = 0; i < DDP_PATH_NR; i++) {
+		if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
+			continue;
+		if (!(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
+			continue;
+		for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
+			ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
+						   &bw_base);
+		}
+		if (!mtk_crtc->is_dual_pipe)
+			continue;
+		for_each_comp_in_dual_pipe(comp, mtk_crtc, j, i)
+			ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
+					&bw_base);
+	}
+
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+
+	if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DSI) {
+		if (total > 0) {
+			if (priv->data->mmsys_id == MMSYS_MT6989) {
+				if (bw != 7000)
+					tmp1 = mtk_disp_larb_hrt_bw_MT6989(mtk_crtc, total, bw_base);
+				else
+					tmp1 = bw;
+			}
+		}
+
+		mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(tmp1));
+
+		mtk_vidle_dvfs_bw_set(tmp1);
+		DDPINFO("%s, CRTC%d larb bw=%u bw_base=%d\n",
+			__func__, crtc_idx, tmp1, bw_base);
+	}
+
+	return 0;
+}
+
 void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 {
 	struct mtk_drm_crtc *mtk_crtc;
@@ -466,6 +507,7 @@ void mtk_disp_mmqos_bw_repaint(struct mtk_drm_private *priv)
 		for (k = 0; k < DDP_PATH_NR; k++) {
 			is_hrt = (mtk_crtc->ddp_mode < DDP_MODE_NR) ?
 				mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[k] : false;
+			tmp = mtk_drm_primary_frame_bw(crtc);
 			for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, k) {
 				//report SRT BW
 				ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW,
