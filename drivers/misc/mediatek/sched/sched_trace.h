@@ -286,9 +286,9 @@ TRACE_EVENT(sched_find_best_candidates,
 TRACE_EVENT(sched_target_max_spare_cpu,
 
 	TP_PROTO(const char *type, int best_cpu, int new_cpu, int replace,
-		int is_vip, int num_vip, int min_num_vip, long spare_cap, long target_max_spare_cap),
+		long spare_cap, long target_max_spare_cap),
 
-	TP_ARGS(type, best_cpu, new_cpu, replace, is_vip, num_vip, min_num_vip,
+	TP_ARGS(type, best_cpu, new_cpu, replace,
 		spare_cap, target_max_spare_cap),
 
 	TP_STRUCT__entry(
@@ -296,9 +296,6 @@ TRACE_EVENT(sched_target_max_spare_cpu,
 		__field(int, best_cpu)
 		__field(int, new_cpu)
 		__field(int, replace)
-		__field(int, is_vip)
-		__field(int, num_vip)
-		__field(int, min_num_vip)
 		__field(long, spare_cap)
 		__field(long, target_max_spare_cap)
 		),
@@ -308,21 +305,15 @@ TRACE_EVENT(sched_target_max_spare_cpu,
 		__entry->best_cpu        = best_cpu;
 		__entry->new_cpu        = new_cpu;
 		__entry->replace        = replace;
-		__entry->is_vip        = is_vip;
-		__entry->num_vip        = num_vip;
-		__entry->min_num_vip        = min_num_vip;
 		__entry->spare_cap        = spare_cap;
 		__entry->target_max_spare_cap        = target_max_spare_cap;
 		),
 
-	TP_printk("type=%s best_cpu=%d new_cpu=%d replace=%d is_vip=%d num_vip=%d min_num_vip=%d spare_cap=%ld target_max_spare_cap=%ld",
+	TP_printk("type=%s best_cpu=%d new_cpu=%d replace=%d spare_cap=%ld target_max_spare_cap=%ld",
 		__get_str(type),
 		__entry->best_cpu,
 		__entry->new_cpu,
 		__entry->replace,
-		__entry->is_vip,
-		__entry->num_vip,
-		__entry->min_num_vip,
 		__entry->spare_cap,
 		__entry->target_max_spare_cap)
 );
