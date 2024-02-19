@@ -123,8 +123,8 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <742>;
-			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-						//&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_l &mcusysoff_l
+						&system_vcore &s2idle>;
 		};
 
 		cpu1: cpu@1 {
@@ -133,8 +133,8 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <742>;
-			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-						//&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_l &mcusysoff_l
+						&system_vcore &s2idle>;
 		};
 
 		cpu2: cpu@2 {
@@ -143,8 +143,8 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <742>;
-			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-						//&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_l &mcusysoff_l
+						&system_vcore &s2idle>;
 		};
 
 		cpu3: cpu@3 {
@@ -153,8 +153,8 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <742>;
-			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-						//&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_l &mcusysoff_l
+						&system_vcore &s2idle>;
 		};
 
 		cpu4: cpu@100 {
@@ -163,8 +163,8 @@
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <1022>;
-			//cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
-						//&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_m &mcusysoff_m
+						&system_vcore &s2idle>;
 		};
 
 		cpu5: cpu@101 {
@@ -173,8 +173,8 @@
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <1022>;
-			//cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
-						//&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_m &mcusysoff_m
+						&system_vcore &s2idle>;
 		};
 
 		cpu6: cpu@102 {
@@ -183,8 +183,8 @@
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <1022>;
-			//cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
-						//&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_m &mcusysoff_m
+						&system_vcore &s2idle>;
 		};
 
 		cpu7: cpu@200 {
@@ -193,8 +193,8 @@
 			performance-domains = <&performance 2>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <1024>;
-			//cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
-						//&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_b &mcusysoff_b
+						&system_vcore &s2idle>;
 		};
 
 		cpu-map {
@@ -240,7 +240,7 @@
 				local-timer-stop;
 				entry-latency-us = <97>;
 				exit-latency-us = <252>;
-				min-residency-us = <6710>;
+				min-residency-us = <8160>;
 			};
 			cpuoff_m: cpuoff-m {
 				compatible = "arm,idle-state";
@@ -248,7 +248,7 @@
 				local-timer-stop;
 				entry-latency-us = <53>;
 				exit-latency-us = <143>;
-				min-residency-us = <2120>;
+				min-residency-us = <3860>;
 			};
 			cpuoff_b: cpuoff-b {
 				compatible = "arm,idle-state";
@@ -256,7 +256,7 @@
 				local-timer-stop;
 				entry-latency-us = <40>;
 				exit-latency-us = <107>;
-				min-residency-us = <2580>;
+				min-residency-us = <3180>;
 			};
 			clusteroff_l: clusteroff-l {
 				compatible = "arm,idle-state";
@@ -264,7 +264,7 @@
 				local-timer-stop;
 				entry-latency-us = <109>;
 				exit-latency-us = <325>;
-				min-residency-us = <6710>;
+				min-residency-us = <8160>;
 			};
 			clusteroff_m: clusteroff-m {
 				compatible = "arm,idle-state";
@@ -272,7 +272,7 @@
 				local-timer-stop;
 				entry-latency-us = <59>;
 				exit-latency-us = <188>;
-				min-residency-us = <2120>;
+				min-residency-us = <3860>;
 			};
 			clusteroff_b: clusteroff-b {
 				compatible = "arm,idle-state";
@@ -280,7 +280,7 @@
 				local-timer-stop;
 				entry-latency-us = <43>;
 				exit-latency-us = <138>;
-				min-residency-us = <2580>;
+				min-residency-us = <4120>;
 			};
 			mcusysoff_l: mcusysoff-l {
 				compatible = "arm,idle-state";
@@ -288,7 +288,7 @@
 				local-timer-stop;
 				entry-latency-us = <1357>;
 				exit-latency-us = <835>;
-				min-residency-us = <6710>;
+				min-residency-us = <8160>;
 			};
 			mcusysoff_m: mcusysoff-m {
 				compatible = "arm,idle-state";
@@ -296,7 +296,7 @@
 				local-timer-stop;
 				entry-latency-us = <1202>;
 				exit-latency-us = <679>;
-				min-residency-us = <2120>;
+				min-residency-us = <3860>;
 			};
 			mcusysoff_b: mcusysoff-b {
 				compatible = "arm,idle-state";
@@ -304,7 +304,7 @@
 				local-timer-stop;
 				entry-latency-us = <1143>;
 				exit-latency-us = <611>;
-				min-residency-us = <2580>;
+				min-residency-us = <4570>;
 			};
 			system_vcore: system-vcore {
 				compatible = "arm,idle-state";
@@ -2127,7 +2127,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			rc_syspll: rc-syspll {
 				rc-name = "syspll";
 				id = <0x00000002>;
-				value = <0>;
+				value = <1>;
 				cond-info = <1>;
 			};
 			rc_bus26m: rc-bus26m {
