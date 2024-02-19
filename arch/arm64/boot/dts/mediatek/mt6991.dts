@@ -4396,9 +4396,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		};
 
 		spi0: spi0@16110000 {
-			compatible = "mediatek,mt6989-spi";
+			compatible = "mediatek,mt6991-spi";
 			mediatek,pad-select = <0>;
-			mediatek,tickdly = <2>, <0>;
+			mediatek,tickdly = <23>, <0>;
 			reg = <0 0x16110000 0 0x100>;
 			interrupts = <GIC_SPI 303 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&cksys_clk CLK_CK_UNIVPLL_D6_D2>,
@@ -4409,9 +4409,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		};
 
 		spi1: spi1@16130000 {
-			compatible = "mediatek,mt6989-spi";
+			compatible = "mediatek,mt6991-spi";
 			mediatek,pad-select = <0>;
-			mediatek,tickdly = <2>, <0>;
+			mediatek,tickdly = <23>, <0>;
 			reg = <0 0x16130000 0 0x100>;
 			interrupts = <GIC_SPI 304 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&cksys_clk CLK_CK_UNIVPLL_D6_D2>,
@@ -4422,9 +4422,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		};
 
 		spi2: spi2@16150000 {
-			compatible = "mediatek,mt6989-spi";
+			compatible = "mediatek,mt6991-spi";
 			mediatek,pad-select = <0>;
-			mediatek,tickdly = <2>, <2>;
+			mediatek,tickdly = <23>, <23>;
 			reg = <0 0x16150000 0 0x100>;
 			interrupts = <GIC_SPI 305 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&cksys_clk CLK_CK_UNIVPLL_D6_D2>,
@@ -4435,9 +4435,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		};
 
 		spi3: spi3@16170000 {
-			compatible = "mediatek,mt6989-spi";
+			compatible = "mediatek,mt6991-spi";
 			mediatek,pad-select = <0>;
-			mediatek,tickdly = <3>, <3>;
+			mediatek,tickdly = <23>, <23>;
 			reg = <0 0x16170000 0 0x100>;
 			interrupts = <GIC_SPI 306 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&cksys_clk CLK_CK_UNIVPLL_D6_D2>,
@@ -4448,9 +4448,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		};
 
 		spi4: spi4@16190000 {
-			compatible = "mediatek,mt6989-spi";
+			compatible = "mediatek,mt6991-spi";
 			mediatek,pad-select = <0>;
-			mediatek,tickdly = <2>, <3>;
+			mediatek,tickdly = <23>, <23>;
 			reg = <0 0x16190000 0 0x100>;
 			interrupts = <GIC_SPI 307 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&cksys_clk CLK_CK_UNIVPLL_D6_D2>,
@@ -4461,9 +4461,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		};
 
 		spi5: spi5@161b0000 {
-			compatible = "mediatek,mt6989-spi";
+			compatible = "mediatek,mt6991-spi";
 			mediatek,pad-select = <0>;
-			mediatek,tickdly = <2>, <0>;
+			mediatek,tickdly = <23>, <0>;
 			reg = <0 0x161b0000 0 0x100>;
 			interrupts = <GIC_SPI 308 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&cksys_clk CLK_CK_UNIVPLL_D6_D2>,
@@ -4474,9 +4474,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		};
 
 		spi6: spi6@161d0000 {
-			compatible = "mediatek,mt6989-spi";
+			compatible = "mediatek,mt6991-spi";
 			mediatek,pad-select = <1>;
-			mediatek,tickdly = <2>, <2>;
+			mediatek,tickdly = <23>, <23>;
 			reg = <0 0x161d0000 0 0x100>;
 			interrupts = <GIC_SPI 309 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&cksys_clk CLK_CK_UNIVPLL_D6_D2>,
@@ -4487,9 +4487,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		};
 
 		spi7: spi7@161f0000 {
-			compatible = "mediatek,mt6989-spi";
+			compatible = "mediatek,mt6991-spi";
 			mediatek,pad-select = <0>;
-			mediatek,tickdly = <2>, <2>;
+			mediatek,tickdly = <23>, <23>;
 			reg = <0 0x161f0000 0 0x100>;
 			interrupts = <GIC_SPI 310 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&cksys_clk CLK_CK_UNIVPLL_D6_D2>,
