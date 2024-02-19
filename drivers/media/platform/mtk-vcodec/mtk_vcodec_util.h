@@ -11,6 +11,7 @@
 #include <aee.h>
 #include <linux/types.h>
 #include <linux/dma-direction.h>
+#include <linux/math64.h>
 #include <linux/mtk_vcu_controls.h>
 #include "vcodec_ipi_msg.h"
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
@@ -35,8 +36,8 @@
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 #define ABS(x) (((x) >= 0) ? (x) : -(x))
-#define NS_TO_MS(X) ((X) / 1000000)
-#define NS_MOD_MS(X) ((X) % 1000000)
+#define NS_TO_MS(X) (div_u64(X, 1000000))
+#define NS_MOD_MS(X) (do_div(X, 1000000))
 #define MS_TO_NS(X) ((X) * 1000000)
 #define isENCODE_PERFORMANCE_USAGE(w, h, fr, opr) \
 		((((w) >= 3840 && (h) >= 2160 && (fr) >= 30) || \

@@ -452,9 +452,9 @@ void mtk_venc_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 	dev = ctx->dev;
 
 	for (i = 0; i < dev->venc_port_cnt; i++) {
-		target_bw = (u64)dev->venc_port_bw[i].port_base_bw *
-			dev->venc_dvfs_params.target_freq /
-			dev->venc_dvfs_params.min_freq;
+		target_bw = div_u64((u64)dev->venc_port_bw[i].port_base_bw *
+			dev->venc_dvfs_params.target_freq,
+			dev->venc_dvfs_params.min_freq);
 
 		if (dev->venc_port_bw[i].port_type < VCODEC_PORT_LARB_SUM) {
 			mtk_icc_set_bw_not_update(dev->venc_qos_req[i],
@@ -482,9 +482,9 @@ void mtk_venc_pmqos_end_inst(struct mtk_vcodec_ctx *ctx)
 	dev = ctx->dev;
 
 	for (i = 0; i < dev->venc_port_cnt; i++) {
-		target_bw = (u64)dev->venc_port_bw[i].port_base_bw *
-			dev->venc_dvfs_params.target_freq /
-			dev->venc_dvfs_params.min_freq;
+		target_bw = div_u64((u64)dev->venc_port_bw[i].port_base_bw *
+			dev->venc_dvfs_params.target_freq,
+			dev->venc_dvfs_params.min_freq);
 
 		if (list_empty(&dev->venc_dvfs_inst)) /* no more instances */
 			target_bw = 0;
