@@ -564,18 +564,6 @@ int mtk_icc_set_bw(struct icc_path *path, u32 avg_bw, u32 peak_bw)
 		if (log_level & 1 << log_v2_dbg)
 			pr_notice("[mmqos][set] node:%s num:%d avg_bw:%d peak_bw:%d\n",
 						node->name, (int)path->num_nodes, avg_bw, peak_bw);
-#ifdef ENABLE_INTERCONNECT_V1
-		MMQOS_ICC_SYSTRACE_BEGIN("[v1] %s %s aggregate\n", __func__, node->name);
-		/* aggregate requests for this node */
-		aggregate_requests(node);
-		MMQOS_ICC_SYSTRACE_END(); //v1 aggr
-		if ((node->avg_bw != node->v2_avg_bw) || (node->peak_bw != node->v2_peak_bw)) {
-			pr_notice("[new][mmqos][set][old_rule] result avg_bw:%d peak_bw:%d\n",
-					 node->avg_bw, node->peak_bw);
-			pr_notice("[new][mmqos][set][new_rule] result avg_bw:%d peak_bw:%d\n",
-					node->v2_avg_bw, node->v2_peak_bw);
-		}
-#endif
 
 #ifdef ENABLE_INTERCONNECT_V2
 		node->avg_bw = node->v2_avg_bw;

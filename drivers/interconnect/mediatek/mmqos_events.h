@@ -94,6 +94,28 @@ TRACE_EVENT(mmqos__larb_port_ostdl,
 		(int)__entry->ostdl
 	)
 );
+TRACE_EVENT(mmqos__comm_port_ostdl,
+	TP_PROTO(const char *r_w_type, const char *dev_name, int comm, int ostdl),
+	TP_ARGS(r_w_type, dev_name, comm, ostdl),
+	TP_STRUCT__entry(
+		__string(r_w_type, r_w_type)
+		__string(dev_name, dev_name)
+		__field(int, comm)
+		__field(int, ostdl)
+	),
+	TP_fast_assign(
+		__assign_str(r_w_type, r_w_type);
+		__assign_str(dev_name, dev_name);
+		__entry->comm = comm;
+		__entry->ostdl = ostdl;
+	),
+	TP_printk("%s_comm%d_%s_ostdl=%d",
+		__get_str(dev_name),
+		(int)__entry->comm,
+		__get_str(r_w_type),
+		(int)__entry->ostdl
+	)
+);
 TRACE_EVENT(mmqos__larb_avg_bw,
 	TP_PROTO(const char *r_w_type, const char *dev_name, int bw,
 			int comm, int chn),
