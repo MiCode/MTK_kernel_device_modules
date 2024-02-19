@@ -1289,6 +1289,16 @@
 			"wl_tbl_base";
 	};
 
+	dpt_info: dpt-info@c2be120 {
+		compatible = "mediatek,dpt-info";
+		reg = <0 0xc2be120 0 0x5dc>;
+	};
+
+	collab_type_0: collab-type-0-info@c2cc6d4 {
+		compatible = "mediatek,dpt-info";
+		reg = <0 0xc2cc6d4 0 0x8>;
+	};
+
 	flt: flt@c2c0100 {
 		compatible = "mediatek,flt";
 		reg = <0 0xc2c0100 0 0x5f0>;
