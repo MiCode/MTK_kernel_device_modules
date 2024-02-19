@@ -183,7 +183,7 @@ static void smpu_violation_callback(struct work_struct *work)
 	int by_pass_aid[3] = { 240, 241, 243 };
 	int by_pass_region[10] = { 22, 28, 39, 41, 44, 45, 57, 59, 61, 62 };
 	int i, j, by_pass_flag = 0;
-	char md_str[MTK_SMPU_MAX_CMD_LEN + 5] = { '\0' };
+	unsigned int prefetch_mask = 0x200000; //e00/e80's b[21] = 1 -> prefetch
 
 	ssmpu = global_ssmpu;
 	nsmpu = global_nsmpu;
@@ -203,16 +203,10 @@ static void smpu_violation_callback(struct work_struct *work)
 
 	pr_info("%s: %s", __func__, mpu->vio_msg);
 
-	if (mpu->md_handler) {
-		strncpy(md_str, "smpu", 5);
-		strncat(md_str, mpu->vio_msg,
-			sizeof(md_str) - strlen(md_str) - 1);
-		mpu->md_handler(md_str);
-	}
 	/* check vio region addr */
 	if ((nsmpu && nsmpu->is_vio) || (ssmpu && ssmpu->is_vio)) {
 		if (mpu->dump_reg[7].value != 0) {
-			/*type(0sa 1ea) region aid_shift*/
+			/*type(0 start_addr, 1 end_addr) region aid_shift*/
 			arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIMPU_READ,
 				      0, mpu->dump_reg[7].value, 0, 0, 0, 0,
 				      &smc_res);
@@ -245,16 +239,21 @@ static void smpu_violation_callback(struct work_struct *work)
 			if (by_pass_flag > 0)
 				break;
 		}
-
-		if (by_pass_flag > 0 && // by pass WCE, this will be temp patch
+		//add prefetch mask
+		if ((mpu->dump_reg[0].value & prefetch_mask) ||
+		    (mpu->dump_reg[9].value & prefetch_mask) ||
+			(mpu->is_prefetch == true)){
+			pr_info("%s:Prefetch without KERNEL_API!!\n", __func__);
+		} else if (by_pass_flag > 0 && // by pass WCE, this will be temp patch
 		    of_property_count_elems_of_size(smpu_node, "bypass-wce",
 						    sizeof(char))) {
 			pr_info("%s:AID == 0x%x && region = 0x%x without KERNEL_API!!\n",
 				__func__, mpu->dump_reg[5].value,
 				mpu->dump_reg[7].value);
 		} else if (!mpu->is_bypass) // by pass GPU write vio
-			aee_kernel_exception("SMPU", mpu->vio_msg); // for smpu_vio case
-	}else
+			aee_kernel_exception("SMPU",
+					     mpu->vio_msg); // for smpu_vio case
+	} else
 		aee_kernel_exception("SMPU", mpu->vio_msg); // for KP case
 
 	if (nsmpu)
@@ -341,6 +340,7 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 
 		if (msg_len < MTK_SMPU_MAX_CMD_LEN) {
 			prefetch = mtk_clear_smpu_log(vio_type % 2);
+			mpu->is_prefetch = prefetch == 1 ? true : false;
 			msg_len += scnprintf(mpu->vio_msg + msg_len,
 					     MTK_SMPU_MAX_CMD_LEN - msg_len,
 					     "\ncpu-prefetch:%d", prefetch);
@@ -378,6 +378,61 @@ static const struct of_device_id smpu_of_ids[] = {
 	{}
 };
 MODULE_DEVICE_TABLE(of, smpu_of_ids);
+
+/* As SLC b mode enable CPU will write clean evict, which may trigger SMPU violation.
+ * and those data may cached in CPU L3 cache through CPU prefetch.
+ */
+static void smpu_clean_cpu_write_vio(struct smpu *mpu)
+{
+	int sec_cpu_aid = 240;
+	int ns_cpu_aid = 241;
+	int hyp_cpu_aid = 243;
+	bool slc_enable  = mpu->slc_b_mode;
+	int i;
+	void __iomem *mpu_base = mpu->mpu_base;
+	struct smpu_reg_info_t *dump_reg = mpu->dump_reg;
+	ssize_t msg_len = 0;
+
+	/* smpu check violation */
+	if (slc_enable) {
+		/* read SMPU/KP vio reg */
+		for (i = 0; i < mpu->dump_cnt; i++)
+			dump_reg[i].value = readl(mpu_base + dump_reg[i].offset);
+		if (msg_len < MTK_SMPU_MAX_CMD_LEN) {
+			msg_len += scnprintf(mpu->vio_msg + msg_len,
+					     MTK_SMPU_MAX_CMD_LEN - msg_len,
+					     "\n[SMPU]%s\n", mpu->name);
+		}
+		for (i = 0; i < mpu->dump_cnt; i++) {
+			if (msg_len < MTK_SMPU_MAX_CMD_LEN)
+				msg_len += scnprintf(
+					mpu->vio_msg + msg_len,
+					MTK_SMPU_MAX_CMD_LEN - msg_len,
+					"[%x]%x;", dump_reg[i].offset,
+					dump_reg[i].value);
+		}
+
+		/* check whether cpu type master lead this smpu violation */
+		if ((mpu == global_ssmpu) || (mpu == global_nsmpu)) {
+			/* check smpu write violation aid reg */
+			if ((mpu->dump_reg[5].value == sec_cpu_aid) ||
+			    (mpu->dump_reg[5].value == ns_cpu_aid) ||
+			    (mpu->dump_reg[5].value == hyp_cpu_aid)) {
+				pr_info("%s: %s", __func__, mpu->vio_msg);
+				clear_violation(mpu);
+			}
+		} else {
+			/* check kp write violation aid reg */
+			if ((MTK_SMPU_KP_AID(mpu->dump_reg[1].value) == sec_cpu_aid) ||
+			    (MTK_SMPU_KP_AID(mpu->dump_reg[1].value) == ns_cpu_aid) ||
+			    (MTK_SMPU_KP_AID(mpu->dump_reg[1].value) == hyp_cpu_aid)) {
+				pr_info("%s: %s", __func__, mpu->vio_msg);
+				clear_violation(mpu);
+			}
+		}
+		pr_info("%s: WCE dump finish!!\n",__func__);
+	}
+}
 
 static int smpu_probe(struct platform_device *pdev)
 {
@@ -503,7 +558,7 @@ static int smpu_probe(struct platform_device *pdev)
 	mpu->mask_cnt = size / sizeof(struct smpu_reg_info_t);
 	size >>= 2;
 	ret = of_property_read_u32_array(smpu_node, "mask",
-			(unsigned int *)(mpu->mask_reg), size);
+					 (unsigned int *)(mpu->mask_reg), size);
 	if (ret) {
 		pr_info("No mask reg\n");
 		return -ENXIO;
@@ -629,11 +684,17 @@ static int smpu_probe(struct platform_device *pdev)
 	if (!strcmp(mpu->name, "nkp"))
 		global_nkp = mpu;
 
+	if (of_property_read_bool(smpu_node, "mediatek,slc-b-mode"))
+		mpu->slc_b_mode = true;
+
+	smpu_clean_cpu_write_vio(mpu);
+
 	mpu->irq = irq_of_parse_and_map(smpu_node, 0);
 	if (mpu->irq == 0) {
 		dev_err(&pdev->dev, "Failed to get irq resource\n");
 		return -ENXIO;
 	}
+
 	ret = request_irq(mpu->irq, (irq_handler_t)smpu_violation,
 			  IRQF_TRIGGER_NONE, "smpu", mpu);
 	if (ret) {
