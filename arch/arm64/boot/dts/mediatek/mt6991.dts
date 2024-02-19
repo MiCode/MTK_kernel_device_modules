@@ -13430,7 +13430,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		compatible = "mediatek,bt";
 		sleep-en = <1>;
 		hub-en = <1>;
-		baudrate = <12000000>;
+		baudrate = <24000000>;
 		flavor-bin = "1";
 		bk-rs-en = <1>;
 		uart-irq-en = <1>;
