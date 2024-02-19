@@ -926,6 +926,9 @@ int mtk_data_get(int *data)
 }
 EXPORT_SYMBOL_GPL(mtk_data_get);
 
+void (*mtk_sched_test_hook)(int *data);
+EXPORT_SYMBOL(mtk_sched_test_hook);
+
 int (*mtk_opp2freq_hook)(int cpu, int opp, int quant, int wl);
 EXPORT_SYMBOL(mtk_opp2freq_hook);
 int pd_opp2freq(int cpu, int opp, int quant, int wl)

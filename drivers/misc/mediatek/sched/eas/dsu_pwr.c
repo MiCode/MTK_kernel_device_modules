@@ -196,7 +196,7 @@ unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
 
 unsigned long (*mtk_get_dsu_pwr_hook)(int wl_type, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, struct dsu_info *dsu, unsigned int extern_volt,
-		int dsu_pwr_enable, int PERCORE_L3_BW, void __iomem *base);
+		int dsu_pwr_enable, int PERCORE_L3_BW, void __iomem *base, int *data);
 EXPORT_SYMBOL(mtk_get_dsu_pwr_hook);
 #ifdef DSU_PWR_HOOK
 unsigned long get_dsu_pwr_(int wl_type, int dst_cpu, unsigned long task_util,
@@ -204,9 +204,18 @@ unsigned long get_dsu_pwr_(int wl_type, int dst_cpu, unsigned long task_util,
 		bool dsu_pwr_enable)
 {
 	if (mtk_get_dsu_pwr_hook) {
-		return mtk_get_dsu_pwr_hook(wl_type, dst_cpu, task_util,
+		unsigned long ret;
+		int data[6];
+
+		ret = mtk_get_dsu_pwr_hook(wl_type, dst_cpu, task_util,
 			total_util, dsu, extern_volt, dsu_pwr_enable,
-			PERCORE_L3_BW, get_clkg_sram_base_addr());
+			PERCORE_L3_BW, get_clkg_sram_base_addr(), &data[0]);
+		if (trace_dsu_pwr_cal_enabled()) {
+			trace_dsu_pwr_cal(dst_cpu, task_util, total_util, data[0],
+					data[1], dsu, extern_volt,
+					data[2], data[3], data[4], data[5]);
+		}
+		return ret;
 	}
 	return 0;
 }
