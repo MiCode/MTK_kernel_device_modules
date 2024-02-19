@@ -5115,7 +5115,8 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	mtk_crtc->qos_ctx->last_hrt_req = bw;
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_BY_LARB) &&
-		priv->data->mmsys_id == MMSYS_MT6989) {
+		(priv->data->mmsys_id == MMSYS_MT6989 ||
+		priv->data->mmsys_id == MMSYS_MT6991)) {
 
 		larb_bw = mtk_disp_get_larb_hrt_bw(mtk_crtc);
 
@@ -7167,14 +7168,16 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv =
 			mtk_crtc->base.dev->dev_private;
 	struct mtk_ddp_comp *comp;
-	unsigned int cur_hrt_bw, cur_larb_hrt_bw, hrt_idx, crtc_idx;
+	unsigned int cur_hrt_bw, cur_larb_hrt_bw, hrt_idx, crtc_idx, flag = DISP_BW_UPDATE_PENDING;
 	int i, j;
 
 	crtc_idx = drm_crtc_index(crtc);
 	if (crtc_idx < MAX_CRTC && priv->usage[crtc_idx] == DISP_ENABLE) {
 		for_each_comp_in_target_ddp_mode_bound(comp, mtk_crtc,
-				i, j, ddp_mode, 0)
+				i, j, ddp_mode, 0) {
 			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
+			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
+		}
 	}
 
 	if (priv->power_state == false)
@@ -7203,8 +7206,9 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 				NO_PENDING_HRT;
 	}
 
-	if (mtk_drm_helper_get_opt(priv->helper_opt,
-		MTK_DRM_OPT_HRT_BY_LARB) && priv->data->mmsys_id == MMSYS_MT6989) {
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_BY_LARB) &&
+			(priv->data->mmsys_id == MMSYS_MT6989 ||
+			priv->data->mmsys_id == MMSYS_MT6991)) {
 
 		cur_larb_hrt_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 			DISP_SLOT_CUR_LARB_HRT);
@@ -11006,6 +11010,7 @@ void mtk_crtc_stop(struct mtk_drm_crtc *mtk_crtc, bool need_wait)
 	int i, j;
 	bool async = false;
 	unsigned int crtc_id = drm_crtc_index(&mtk_crtc->base);
+	unsigned int flag = DISP_BW_UPDATE_PENDING;
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct drm_device *dev = crtc->dev;
 	struct mtk_drm_private *priv = dev->dev_private;
@@ -11082,10 +11087,6 @@ skip:
 
 	/* 3. Reset QOS BW after CRTC stop */
 	mtk_crtc->total_srt = 0;	/* reset before PMQOS_UPDATE_BW sum all srt bw */
-	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
-		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
-			PMQOS_UPDATE_BW, NULL);
-	mtk_vidle_srt_bw_set(mtk_crtc->total_srt);
 
 	/* 3.1 stop the last mml pkt */
 	if (kref_read(&mtk_crtc->mml_ir_sram.ref)) {
@@ -11105,8 +11106,11 @@ skip:
 	}
 
 	/* 4. Set QOS BW to 0 */
-	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
+		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
+	}
+	mtk_vidle_srt_bw_set(mtk_crtc->total_srt);
 
 	/* 5. Set HRT BW to 0 */
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
@@ -14075,6 +14079,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		comp->qos_bw_other = 0;
 		comp->fbdc_bw = 0;
 		comp->hrt_bw = 0;
+		comp->hrt_bw_other = 0;
 	}
 	if (!mtk_crtc->is_dual_pipe)
 		goto end;
@@ -14084,6 +14089,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		comp->qos_bw_other = 0;
 		comp->fbdc_bw = 0;
 		comp->hrt_bw = 0;
+		comp->hrt_bw_other = 0;
 	}
 
 end:
