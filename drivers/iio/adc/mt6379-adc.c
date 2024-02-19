@@ -6,6 +6,7 @@
  */
 
 #include <dt-bindings/iio/adc/mediatek,mt6379_adc.h>
+#include <linux/bitfield.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -22,11 +23,13 @@
 #include <linux/iio/trigger_consumer.h>
 
 /* MT6379 */
-#define MT6379_REG_ADC_CFG1		0x14E
-#define MT6379_REG_ADC_CFG2		0x14F
-#define MT6379_REG_ADC_READCH		0x155
-#define MT6379_MASK_ADC_READCH		GENMASK(4, 0)
-#define MT6379_REG_ADC_RPTH		0x156
+#define MT6379_REG_ADC_CONFG1		0x14E
+#define MT6379_MASK_VBAT_MON_EN		BIT(5)
+#define MT6379_MASK_VBAT_MON2_EN	BIT(4)
+#define MT6379_REG_ADC_CONFG2		0x14F
+#define MT6379_REG_ADC_REPORT_CH	0x155
+#define MT6379_MASK_ADC_REPORT_CH	GENMASK(4, 0)
+#define MT6379_REG_ADC_REPORT_H		0x156
 
 #define MT6379_ZCVEN_MASK		BIT(6)
 #define MT6379_ONESHOT_MASK		GENMASK(4, 0)
@@ -69,9 +72,10 @@ struct mt6379_priv {
 
 static int mt6379_adc_read_channel(struct mt6379_priv *priv, int chan, int *val)
 {
+	int ret, retry_cnt = 1;
 	unsigned int regval;
 	__be16 be_val;
-	int ret;
+	u32 mask;
 
 	mutex_lock(&priv->lock);
 	pm_stay_awake(priv->dev);
@@ -79,6 +83,15 @@ static int mt6379_adc_read_channel(struct mt6379_priv *priv, int chan, int *val)
 	switch (chan) {
 	case MT6379_ADC_VBATMON:
 	case MT6379_ADC_VBATMON2:
+		mask = chan == MT6379_ADC_VBATMON ?
+		       MT6379_MASK_VBAT_MON_EN : MT6379_MASK_VBAT_MON2_EN;
+		ret = regmap_write_bits(priv->regmap, MT6379_REG_ADC_CONFG1, mask, mask);
+		if (ret)
+			dev_info(priv->dev, "%s, Failed to enable vbat_mon/vbat_mon2\n", __func__);
+
+		usleep_range(10000, 12000);
+		retry_cnt = 50;
+
 		goto bypass_oneshot;
 	case MT6379_ADC_ZCV:
 		*val = priv->zcv;
@@ -88,35 +101,60 @@ static int mt6379_adc_read_channel(struct mt6379_priv *priv, int chan, int *val)
 		break;
 	}
 
-	ret = regmap_write(priv->regmap, MT6379_REG_ADC_CFG2, chan << MT6379_ONESHOT_SHIFT);
+	ret = regmap_write(priv->regmap, MT6379_REG_ADC_CONFG2, chan << MT6379_ONESHOT_SHIFT);
 	if (ret)
 		goto adc_unlock;
 
 	usleep_range(ADC_CONV_TIME_US, ADC_CONV_TIME_US * 3 / 2);
 
-	ret = regmap_read_poll_timeout(priv->regmap, MT6379_REG_ADC_CFG2, regval,
+	ret = regmap_read_poll_timeout(priv->regmap, MT6379_REG_ADC_CONFG2, regval,
 				       !(regval & MT6379_ONESHOT_MASK), ADC_POLL_TIME_US,
 				       ADC_POLL_TIMEOUT_US);
 	if (ret)
 		goto adc_unlock;
 
 bypass_oneshot:
-	/* select read report channel */
-	ret = regmap_write_bits(priv->regmap, MT6379_REG_ADC_READCH,
-				MT6379_MASK_ADC_READCH, chan);
-	if (ret) {
-		dev_err(priv->dev, "%s: Failed to select ADC report channel\n",
-			__func__);
-		return ret;
+	while (retry_cnt--) {
+		/* select read report channel */
+		ret = regmap_write_bits(priv->regmap, MT6379_REG_ADC_REPORT_CH,
+					MT6379_MASK_ADC_REPORT_CH, chan);
+		if (ret) {
+			dev_info(priv->dev, "%s: Failed to select ADC report channel\n", __func__);
+			return ret;
+		}
+
+		usleep_range(1000, 1200);
+		ret = regmap_raw_read(priv->regmap, MT6379_REG_ADC_REPORT_H,
+				      &be_val, sizeof(be_val));
+		if (ret) {
+			dev_info(priv->dev, "%s, Failed to read ADC_REPORT\n", __func__);
+			return ret;
+		}
+
+		*val = be16_to_cpu(be_val);
+
+		if (chan == MT6379_ADC_VBATMON || chan == MT6379_ADC_VBATMON2) {
+			if (*val == 0) {
+				usleep_range(2000, 10000);
+				continue;
+			} else
+				break;
+		}
 	}
 
-	mdelay(1);
+	if (chan == MT6379_ADC_VBATMON || chan == MT6379_ADC_VBATMON2) {
+		ret = regmap_write_bits(priv->regmap, MT6379_REG_ADC_CONFG1, mask, 0);
+		if (ret)
+			dev_info(priv->dev, "%s, Failed to disable vbatmon/vbatmon2\n", __func__);
 
-	ret = regmap_raw_read(priv->regmap, MT6379_REG_ADC_RPTH, &be_val, sizeof(be_val));
-	if (ret)
-		return ret;
+		if (retry_cnt <= 0)
+			dev_info(priv->dev, "%s, Read vbat_mon/vbat_mon2 TIMEOUT!!\n", __func__);
+		else if (retry_cnt <= 30 && retry_cnt > 0)
+			dev_info(priv->dev,
+				 "%s, Read vbat_mon/vbat_mon2 too long...remain retry cnt:%d\n",
+				 __func__, retry_cnt);
+	}
 
-	*val = be16_to_cpu(be_val);
 	ret = IIO_VAL_INT;
 
 adc_unlock:
@@ -259,12 +297,12 @@ static inline int mt6379_adc_reset(struct mt6379_priv *priv)
 	__be16 be_val;
 	int ret;
 
-	ret = regmap_write_bits(priv->regmap, MT6379_REG_ADC_CFG1,
+	ret = regmap_write_bits(priv->regmap, MT6379_REG_ADC_CONFG1,
 				MT6379_ZCVEN_MASK, MT6379_ZCVEN_MASK);
 	if (ret)
 		dev_err(priv->dev, "%s, Failed to enable ZCV channel\n", __func__);
 
-	ret = regmap_raw_read(priv->regmap, MT6379_REG_ADC_RPTH, &be_val, sizeof(be_val));
+	ret = regmap_raw_read(priv->regmap, MT6379_REG_ADC_REPORT_H, &be_val, sizeof(be_val));
 	if (ret)
 		dev_err(priv->dev, "%s, Failed to read ZCV val\n", __func__);
 
@@ -272,7 +310,7 @@ static inline int mt6379_adc_reset(struct mt6379_priv *priv)
 	dev_info(priv->dev, "%s, zcv = %d mV (boot voltage with plug-in)\n", __func__, priv->zcv);
 
 	/* Disable ZCV */
-	return regmap_update_bits(priv->regmap, MT6379_REG_ADC_CFG1, MT6379_ZCVEN_MASK, 0);
+	return regmap_update_bits(priv->regmap, MT6379_REG_ADC_CONFG1, MT6379_ZCVEN_MASK, 0);
 }
 
 static int mt6379_adc_probe(struct platform_device *pdev)
