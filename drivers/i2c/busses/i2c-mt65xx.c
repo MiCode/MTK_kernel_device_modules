@@ -548,6 +548,38 @@ static const struct mtk_i2c_compatible mt6768_compat = {
 	.fifo_size = 8,
 	.need_add_hhs_div = 1,
 };
+
+static const struct mtk_i2c_compatible mt6761_compat = {
+	.regs = mt_i2c_regs_v2,
+	.pmic_i2c = 0,
+	.dcm = 0,
+	.auto_restart = 1,
+	.aux_len_reg = 1,
+	.timing_adjust = 1,
+	.dma_sync = 1,
+	.ltiming_adjust = 1,
+	.dma_ver = 0,
+	.apdma_sync = 1,
+	.max_dma_support = 36,
+	.fifo_size = 8,
+};
+
+static const struct mtk_i2c_compatible mt6877_compat = {
+	.regs = mt_i2c_regs_v2,
+	.pmic_i2c = 0,
+	.dcm = 0,
+	.auto_restart = 1,
+	.aux_len_reg = 1,
+	.timing_adjust = 1,
+	.dma_sync = 1,
+	.ltiming_adjust = 1,
+	.dma_ver = 1,
+	.apdma_sync = 1,
+	.max_dma_support = 36,
+	.fifo_size = 8,
+	.slave_addr_ver = 1,
+};
+
 static const struct mtk_i2c_compatible mt6873_compat = {
 	.regs = mt_i2c_regs_v2,
 	.pmic_i2c = 0,
@@ -642,6 +674,8 @@ static const struct of_device_id mtk_i2c_of_match[] = {
 	{ .compatible = "mediatek,mt6897-i2c", .data = &mt6897_compat },
 	{ .compatible = "mediatek,mt6989-i2c", .data = &mt6989_compat },
 	{ .compatible = "mediatek,mt6768-i2c", .data = &mt6768_compat },
+	{ .compatible = "mediatek,mt6761-i2c", .data = &mt6761_compat },
+	{ .compatible = "mediatek,mt6877-i2c", .data = &mt6877_compat },
 	{}
 };
 MODULE_DEVICE_TABLE(of, mtk_i2c_of_match);
