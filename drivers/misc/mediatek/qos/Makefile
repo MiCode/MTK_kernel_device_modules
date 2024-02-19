@@ -2,6 +2,10 @@ ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_V1)),)
 	ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v1/
 endif
 
+ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_V0)),)
+	ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v0/
+endif
+
 ifeq ($(CONFIG_MTK_TINYSYS_SSPM_V2),y)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v2
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/mt6873
