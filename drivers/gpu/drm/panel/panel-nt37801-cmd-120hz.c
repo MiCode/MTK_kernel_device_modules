@@ -1032,6 +1032,7 @@ static struct mtk_panel_params ext_params_90hz = {
 	.mode_switch_cmdq = MODE_SWITCH_CMDQ_ENABLE,
 	.real_te_duration = 11111,
 	.mode_switch_delay = 2,
+	.merge_trig_offset = 510,
 };
 
 static struct mtk_panel_params ext_params_60hz = {
