@@ -1318,6 +1318,8 @@
 		interrupts = <GIC_SPI 417 IRQ_TYPE_LEVEL_HIGH 0>,
 			     <GIC_SPI 418 IRQ_TYPE_LEVEL_HIGH 0>;
 		#mbox-cells = <1>;
+		/* notify spm clr */
+		secure-sspm-md2spm-clr = <1>;
 	};
 
 	mcupm: mcupm@c240000 {
