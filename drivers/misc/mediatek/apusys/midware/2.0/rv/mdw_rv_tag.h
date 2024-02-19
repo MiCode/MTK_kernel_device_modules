@@ -7,7 +7,7 @@
 #define __MTK_APU_MDW_APTAG_H__
 
 #include "mdw_rv.h"
-#define MDW_TAGS_CNT (3000)
+#define MDW_TAGS_CNT (6000)
 
 enum mdw_cmd_status {
 	MDW_CMD_ENQUE,
@@ -39,8 +39,9 @@ struct mdw_rv_tag {
 			uint32_t status;
 			uint64_t rvid;
 			uint64_t inf_id;
-			uint32_t sc_type;
 			uint32_t sc_idx;
+			uint32_t sc_type;
+			uint64_t vsid;
 			uint32_t ipstart_ts;
 			uint32_t ipend_ts;
 			uint32_t was_preempted;
@@ -71,7 +72,7 @@ int mdw_rv_tag_init(void);
 void mdw_rv_tag_deinit(void);
 void mdw_rv_tag_show(struct seq_file *s);
 void mdw_cmd_trace(struct mdw_cmd *c, uint32_t status);
-void mdw_subcmd_trace(struct mdw_cmd *c, uint32_t sc_idx,
+void mdw_subcmd_trace(struct mdw_cmd *c, uint32_t sc_idx, uint64_t vsid,
 		uint32_t history_iptime, uint64_t sync_info, uint32_t status);
 void mdw_cmd_deque_trace(struct mdw_cmd *c, uint32_t status);
 #else
@@ -89,7 +90,7 @@ static inline void mdw_rv_tag_show(struct seq_file *s)
 void mdw_cmd_trace(struct mdw_cmd *c, uint32_t status)
 {
 }
-void mdw_subcmd_trace(struct mdw_cmd *c, uint32_t sc_idx,
+void mdw_subcmd_trace(struct mdw_cmd *c, uint32_t sc_idx, uint64_t vsid,
 		uint32_t history_iptime, uint64_t sync_info, uint32_t status);
 {
 }

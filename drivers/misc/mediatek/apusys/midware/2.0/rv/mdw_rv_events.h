@@ -17,7 +17,7 @@
 
 #define MDW_TAG_SUBCMD_PRINT \
 	"%u,rvid=0x%llx,inf_id=0x%llx,"\
-	"%u,type=%u,ipstart_ts=0x%x,ipend_ts=0x%x,"\
+	"%llu,vsid=%llu,ipstart_ts=0x%x,ipend_ts=0x%x,"\
 	"was_preempted=0x%x,executed_core_bmp=0x%x,"\
 	"tcm_usage=0x%x,history_iptime=%u,sync_info=0x%llx"\
 
@@ -95,8 +95,8 @@ TRACE_EVENT(mdw_rv_subcmd,
 	TP_PROTO(uint32_t status,
 		uint64_t rvid,
 		uint64_t inf_id,
-		uint32_t sc_type,
-		uint32_t sc_idx,
+		uint64_t sc_info,
+		uint64_t vsid,
 		uint32_t ipstart_ts,
 		uint32_t ipend_ts,
 		uint32_t was_preempted,
@@ -105,7 +105,7 @@ TRACE_EVENT(mdw_rv_subcmd,
 		uint32_t history_iptime,
 		uint64_t sync_info
 		),
-	TP_ARGS(status, rvid, inf_id, sc_type, sc_idx,
+	TP_ARGS(status, rvid, inf_id, sc_info, vsid,
 		ipstart_ts, ipend_ts,
 		was_preempted, executed_core_bmp,
 		tcm_usage, history_iptime, sync_info
@@ -114,8 +114,8 @@ TRACE_EVENT(mdw_rv_subcmd,
 		__field(uint32_t, status)
 		__field(uint64_t, rvid)
 		__field(uint64_t, inf_id)
-		__field(uint32_t, sc_type)
-		__field(uint32_t, sc_idx)
+		__field(uint64_t, sc_info)
+		__field(uint64_t, vsid)
 		__field(uint32_t, ipstart_ts)
 		__field(uint32_t, ipend_ts)
 		__field(uint32_t, was_preempted)
@@ -128,8 +128,8 @@ TRACE_EVENT(mdw_rv_subcmd,
 		__entry->status = status;
 		__entry->rvid = rvid;
 		__entry->inf_id = inf_id;
-		__entry->sc_type= sc_type;
-		__entry->sc_idx= sc_idx;
+		__entry->sc_info= sc_info;
+		__entry->vsid= vsid;
 		__entry->ipstart_ts = ipstart_ts;
 		__entry->ipend_ts = ipend_ts;
 		__entry->was_preempted = was_preempted;
@@ -143,8 +143,8 @@ TRACE_EVENT(mdw_rv_subcmd,
 		__entry->status,
 		__entry->rvid,
 		__entry->inf_id,
-		__entry->sc_type,
-		__entry->sc_idx,
+		__entry->sc_info,
+		__entry->vsid,
 		__entry->ipstart_ts,
 		__entry->ipend_ts,
 		__entry->was_preempted,
