@@ -15,6 +15,10 @@
 #include <linux/spinlock.h>
 #include "mtk_battery_oc_throttling.h"
 #include "mtk_low_battery_throttling.h"
+#include <linux/soc/mediatek/mtk_tinysys_ipi.h>
+#ifdef PPB_IPI_READY
+#include <include/gpueb_ipi.h>
+#endif
 
 #define CREATE_TRACE_POINTS
 #include "mtk_peak_power_budget_trace.h"
@@ -24,17 +28,25 @@
 #define MAX_POWER_DRAM 4000
 #define MAX_POWER_DISPLAY 2000
 #define SOC_ERROR 3000
+#define BAT_CIRCUIT_DEFAULT_RDC 55
 #define BAT_PATH_DEFAULT_RDC 100
 #define BAT_PATH_DEFAULT_RAC 50
 
-#define NORMAL_BOOT_ID 0
+#define PPB_IPI_TIMEOUT_MS    3000U
+#define PPB_IPI_DATA_LEN (sizeof(struct ppb_ipi_data) / sizeof(int))
+
 
 static bool mt_ppb_debug;
 static spinlock_t ppb_lock;
 void __iomem *ppb_sram_base;
+void __iomem *hpt_ctrl_base;
 struct fg_cus_data fg_data;
 struct power_budget_t pb;
 static struct notifier_block ppb_nb;
+#ifdef PPB_IPI_READY
+static int channel_id;
+static unsigned int ack_data;
+#endif
 
 struct ppb_ctrl ppb_ctrl = {
 	.ppb_stop = 0,
@@ -51,8 +63,13 @@ struct ppb ppb = {
 	.loading_apu = 0,
 	.loading_dram = MAX_POWER_DRAM,
 	.vsys_budget = 0,
+	.hpt_vsys_budget = 0,
 	.cg_budget_thd = 0,
 	.cg_budget_cnt = 0,
+};
+
+struct hpt hpt_data = {
+	.vsys_budget = 0,
 };
 
 struct ppb ppb_manual = {
@@ -63,32 +80,58 @@ struct ppb ppb_manual = {
 	.loading_apu = 0,
 	.loading_dram = 0,
 	.vsys_budget = 0,
+	.hpt_vsys_budget = 0,
 	.cg_budget_thd = 0,
 	.cg_budget_cnt = 0,
-};
-
-struct tag_bootmode {
-	u32 size;
-	u32 tag;
-	u32 bootmode;
-	u32 boottype;
 };
 
 static int ppb_read_sram(int offset)
 {
 	void __iomem *addr = ppb_sram_base + offset * 4;
 
+	if (!ppb_sram_base) {
+		pr_info("ppb_sram_base error %p\n", ppb_sram_base);
+		return 0;
+	}
+
 	return readl(addr);
 }
 
 static void ppb_write_sram(unsigned int val, int offset)
 {
+	if (!ppb_sram_base) {
+		pr_info("ppb_sram_base error %p\n", ppb_sram_base);
+		return;
+	}
+
 	writel(val, (void __iomem *)(ppb_sram_base + offset * 4));
+}
+
+static int hpt_ctrl_read(int offset)
+{
+	void __iomem *addr = hpt_ctrl_base + offset * 4;
+
+	if (!hpt_ctrl_base) {
+		pr_info("hpt_ctrl_base error %p\n", hpt_ctrl_base);
+		return 0;
+	}
+
+	return readl(addr);
+}
+
+static void hpt_ctrl_write(unsigned int val, int offset)
+{
+	if (!hpt_ctrl_base) {
+		pr_info("hpt_ctrl_base error %p\n", hpt_ctrl_base);
+		return;
+	}
+
+	writel(val, (void __iomem *)(hpt_ctrl_base + offset * 4));
 }
 
 static void ppb_allocate_budget_manager(void)
 {
-	int vsys_budget = 0, remain_budget = 0;
+	int ppb_vsys_budget = 0, remain_budget = 0, hpt_vsys_budget = 0;
 	int flash, audio, camera, display, apu, dram;
 
 	if (ppb_ctrl.manual_mode == 1) {
@@ -98,10 +141,11 @@ static void ppb_allocate_budget_manager(void)
 		display = ppb_manual.loading_display;
 		apu = ppb_manual.loading_apu;
 		dram = ppb_manual.loading_dram;
-		vsys_budget = ppb_manual.vsys_budget;
-		remain_budget = vsys_budget - (flash + audio + camera + display + dram);
+		ppb_vsys_budget = ppb_manual.vsys_budget;
+		remain_budget = ppb_vsys_budget - (flash + audio + camera + display + dram);
 		remain_budget = (remain_budget > 0) ? remain_budget : 0;
 		ppb_manual.remain_budget = remain_budget;
+		hpt_vsys_budget = ppb_manual.hpt_vsys_budget;
 	} else {
 		flash = ppb.loading_flash;
 		audio = ppb.loading_audio;
@@ -109,10 +153,11 @@ static void ppb_allocate_budget_manager(void)
 		display = ppb.loading_display;
 		apu = ppb.loading_apu;
 		dram = ppb.loading_dram;
-		vsys_budget = ppb.vsys_budget;
-		remain_budget = vsys_budget - (flash + audio + camera + display + dram);
+		ppb_vsys_budget = ppb.vsys_budget;
+		remain_budget = ppb_vsys_budget - (flash + audio + camera + display + dram);
 		remain_budget = (remain_budget > 0) ? remain_budget : 0;
 		ppb.remain_budget = remain_budget;
+		hpt_vsys_budget = hpt_data.vsys_budget;
 	}
 
 	ppb_write_sram(remain_budget, PPB_VSYS_PWR);
@@ -123,12 +168,53 @@ static void ppb_allocate_budget_manager(void)
 	ppb_write_sram(display, PPB_DISPLAY_PWR);
 	ppb_write_sram(dram, PPB_DRAM_PWR);
 	ppb_write_sram(0, PPB_APU_PWR_ACK);
+	ppb_write_sram(hpt_vsys_budget, HPT_VSYS_PWR);
 
 	if (mt_ppb_debug)
-		pr_info("(S_BGT/R_BGT)=%u,%u (FLASH/AUD/CAM/DISP/APU/DRAM)=%u,%u,%u,%u,%u,%u\n",
-			vsys_budget, remain_budget, flash, audio, camera, display, apu, dram);
+		pr_info("(P_BGT/S_BGT/R_BGT)=%u,%u,%u (FLASH/AUD/CAM/DISP/APU/DRAM)=%u,%u,%u,%u,%u,%u\n",
+			hpt_vsys_budget, ppb_vsys_budget, remain_budget, flash, audio, camera, display, apu, dram);
 	trace_peak_power_budget(&ppb);
 }
+
+#ifdef PPB_IPI_READY
+static int ppb_gpueb_ipi_init(void)
+{
+	static bool ipi_init;
+	int ret;
+
+	if (!ipi_init) {
+		channel_id = gpueb_get_send_PIN_ID_by_name("IPI_ID_PPB");
+		if (channel_id == -1) {
+			pr_info("get gpueb channel IPI_ID_PPB fail\n");
+			return -1;
+		}
+		ret = mtk_ipi_register(get_gpueb_ipidev(), channel_id, NULL, NULL,
+			(void *)&ack_data);
+		if (ret) {
+			pr_info("ipi_register fail, ret %d\n", ret);
+			return -1;
+		}
+		ipi_init = true;
+	}
+
+	return 0;
+}
+
+static int notify_gpueb(void)
+{
+	struct ppb_ipi_data ipi_data;
+	int ret;
+
+	if (ppb_gpueb_ipi_init())
+		return -1;
+
+	ipi_data.cmd = 0;
+	ret = mtk_ipi_send_compl_to_gpueb(channel_id, IPI_SEND_WAIT, &ipi_data,
+			PPB_IPI_DATA_LEN, PPB_IPI_TIMEOUT_MS);
+
+	return ret;
+}
+#endif
 
 static bool ppb_func_enable_check(void)
 {
@@ -288,14 +374,14 @@ static int interpolation(int i1, int b1, int i2, int b2, int i)
 	return ret;
 }
 
-static int soc_to_ocv(int soc, unsigned int table_idx)
+static int soc_to_ocv(int soc, unsigned int table_idx, unsigned int error)
 {
 	struct fg_info_t *info_p = &fg_data.fg_info[table_idx];
 	struct ocv_table_t *table_p;
 	int dod, ret, i;
 	int high_dod, low_dod, high_volt, low_volt;
 
-	dod = 10000 - soc + SOC_ERROR;
+	dod = 10000 - soc + error;
 	if (dod > 10000)
 		dod = 10000;
 	else if (dod < 0)
@@ -323,13 +409,48 @@ static int soc_to_ocv(int soc, unsigned int table_idx)
 	return ret;
 }
 
+static int soc_to_rdc(int soc, unsigned int table_idx)
+{
+	struct fg_info_t *info_p = &fg_data.fg_info[table_idx];
+	struct ocv_table_t *table_p;
+	int dod, ret, i;
+	int high_dod, low_dod, high_rdc, low_rdc;
+
+	dod = 10000 - soc;
+	if (dod > 10000)
+		dod = 10000;
+	else if (dod < 0)
+		dod = 0;
+
+	for (i = 0; i < info_p->ocv_table_size; i++) {
+		table_p = &info_p->ocv_table[i];
+		if (table_p->dod >= dod)
+			break;
+	}
+
+	if (i == 0) {
+		ret = info_p->ocv_table[0].rdc;
+	} else if (i >= info_p->ocv_table_size) {
+		i = info_p->ocv_table_size - 1;
+		ret = info_p->ocv_table[i].rdc;
+	} else {
+		high_dod = info_p->ocv_table[i-1].dod;
+		low_dod = info_p->ocv_table[i].dod;
+		high_rdc = info_p->ocv_table[i-1].rdc;
+		low_rdc = info_p->ocv_table[i].rdc;
+		ret = interpolation(high_dod, high_rdc, low_dod, low_rdc, dod);
+	}
+
+	return ret;
+}
+
 void dump_ocv_table(unsigned int idx)
 {
 	int i, j, offset, cnt = 5;
 	char str[256];
 
 	if (mt_ppb_debug) {
-		pr_info("table[%d] temp=%d qmax=%d table_size=%d [idx, mah, vol, soc]\n", idx,
+		pr_info("table[%d] temp=%d qmax=%d table_size=%d [idx, mah, vol, soc, rdc]\n", idx,
 			fg_data.fg_info[idx].temp, fg_data.fg_info[idx].qmax,
 			fg_data.fg_info[idx].ocv_table_size);
 
@@ -340,10 +461,12 @@ void dump_ocv_table(unsigned int idx)
 				if (i*cnt+j >= fg_data.fg_info[idx].ocv_table_size)
 					break;
 
-				offset += snprintf(str + offset, 256 - offset, "(%3d %5d %5d %5d) ",
+				offset += snprintf(str + offset, 256 - offset,
+					"(%3d %5d %5d %5d %5d) ",
 					i*cnt+j, fg_data.fg_info[idx].ocv_table[i*cnt+j].mah,
 					fg_data.fg_info[idx].ocv_table[i*cnt+j].voltage,
-					fg_data.fg_info[idx].ocv_table[i*cnt+j].dod);
+					fg_data.fg_info[idx].ocv_table[i*cnt+j].dod,
+					fg_data.fg_info[idx].ocv_table[i*cnt+j].rdc);
 			}
 			pr_info("%s\n", str);
 		}
@@ -412,6 +535,7 @@ void update_ocv_table(int temp, int qmax)
 		c_table_p = &c_info_p->ocv_table[i];
 
 		c_table_p->mah = interpolation(ht, h_table_p->mah, lt, l_table_p->mah, temp);
+		c_table_p->rdc = interpolation(ht, h_table_p->rdc, lt, l_table_p->rdc, temp);
 		c_table_p->voltage = interpolation(ht, h_table_p->voltage, lt, l_table_p->voltage,
 			temp);
 		if (qmax != 0) {
@@ -488,15 +612,20 @@ static void bat_handler(struct work_struct *work)
 	union power_supply_propval val;
 	static int last_soc = MAX_VALUE, last_temp = MAX_VALUE;
 	unsigned int temp_stage;
-	int ret = 0, soc, temp, sys_power, volt, qmax;
+	int ret = 0, soc, temp, ppb_sys_power, volt, qmax;
 	bool loop;
 
 	if (!pb.psy)
 		return;
 
 	psy_mtk = power_supply_get_by_name("mtk-gauge");
-	if (!psy_mtk)
-		return;
+	if (!psy_mtk || IS_ERR(psy_mtk)) {
+		psy_mtk = devm_power_supply_get_by_phandle(pb.dev, "gauge");
+		if (!psy_mtk || IS_ERR(psy_mtk)) {
+			pr_info("psy_mtk can't get from mtk-gauge and phandle %p\n", psy_mtk);
+			return;
+		}
+	}
 
 	ret = power_supply_get_property(psy_mtk, POWER_SUPPLY_PROP_ENERGY_NOW, &val);
 	if (ret)
@@ -544,16 +673,27 @@ static void bat_handler(struct work_struct *work)
 	}
 
 	if (temp != last_temp || soc != last_soc) {
-		volt = soc_to_ocv(soc * 100, 0);
-		pb.ocv = volt / 10;
-		sys_power = get_sys_power_budget(pb.ocv, pb.cur_rdc, pb.cur_rac, pb.ocp, pb.uvlo);
+		volt = soc_to_ocv(soc * 100, 0, SOC_ERROR);
+		pb.ppb_ocv = volt / 10;
+		ppb_sys_power = get_sys_power_budget(pb.ppb_ocv, pb.cur_rdc, pb.cur_rac, pb.ocp, pb.uvlo);
 		last_temp = temp;
 		last_soc = soc;
-		kicker_ppb_request_power(KR_BUDGET, sys_power);
+		volt = soc_to_ocv(soc * 100, 0, 0);
+		if (pb.version >= 2)
+			pb.cur_rdc = soc_to_rdc(soc * 100, 0) / 10 + pb.circuit_rdc + pb.aging_rdc;
+
+		pb.hpt_ocv = volt / 10;
+		pb.hpt_sys_power = get_sys_power_budget(pb.hpt_ocv, pb.cur_rdc, pb.cur_rac, pb.ocp, pb.uvlo);
+		hpt_data.vsys_budget = pb.hpt_sys_power;
+		kicker_ppb_request_power(KR_BUDGET, ppb_sys_power);
+#ifdef PPB_IPI_READY
+		notify_gpueb();
+#endif
 		if (mt_ppb_debug)
-			pr_info("%s: power=%d ocv=%d soc=%d Rdc,Rac=%d,%d temp,stage=%d,%d\n",
-				__func__, sys_power, pb.ocv, soc, pb.cur_rdc, pb.cur_rac, temp,
-				pb.temp_cur_stage);
+			pr_info("%s: ppb[p=%d v=%d] hpt[p=%d v=%d] soc=%d C,A_R=%d,%d T[Rdc,Rac]=%d,%d temp,s=%d,%d\n",
+				__func__, ppb_sys_power, pb.ppb_ocv, hpt_data.vsys_budget,
+				pb.hpt_ocv, soc, pb.circuit_rdc, pb.aging_rdc, pb.cur_rdc,
+				pb.cur_rac, temp, pb.temp_cur_stage);
 	}
 }
 
@@ -635,7 +775,7 @@ static int read_mtk_gauge_dts(struct platform_device *pdev)
 			}
 		}
 
-		num = 3;
+		num = sizeof(struct ocv_table_t) / sizeof(unsigned int);
 		ret = snprintf(str, STR_SIZE, "battery%d-profile-t%d-col", fg_data.bat_type, i);
 		if (ret < 0) {
 			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
@@ -658,6 +798,7 @@ static int read_mtk_gauge_dts(struct platform_device *pdev)
 			table_p = &info_p->ocv_table[j];
 			read_dts_val_by_idx(np, str, j*num, &table_p->mah, 1);
 			read_dts_val_by_idx(np, str, j*num+1, &table_p->voltage, 1);
+			read_dts_val_by_idx(np, str, j*num+2, &table_p->rdc, 1);
 			if (info_p->ocv_table[j].dod == 0 && info_p->qmax > 0)
 				info_p->ocv_table[j].dod = info_p->ocv_table[j].mah * 1000 /
 					info_p->qmax;
@@ -727,7 +868,7 @@ static int read_mtk_ppb_bat_dts(struct platform_device *pdev, struct device_node
 			}
 		}
 
-		num = 3;
+		num = sizeof(struct ocv_table_t) / sizeof(unsigned int);
 #ifdef DYNAMIC_ALLOC_PB_INFO
 		info_p->ocv_table = devm_kmalloc_array(&pdev->dev, info_p->ocv_table_size,
 			sizeof(struct ocv_table_t), GFP_KERNEL);
@@ -745,6 +886,7 @@ static int read_mtk_ppb_bat_dts(struct platform_device *pdev, struct device_node
 			read_dts_val_by_idx(np, str, j*num, &table_p->mah, 1);
 			read_dts_val_by_idx(np, str, j*num+1, &table_p->voltage, 1);
 			read_dts_val_by_idx(np, str, j*num+2, &table_p->dod, 1);
+			read_dts_val_by_idx(np, str, j*num+3, &table_p->rdc, 1);
 			if (info_p->ocv_table[j].dod == 0 && info_p->qmax > 0)
 				info_p->ocv_table[j].dod = info_p->ocv_table[j].mah * 1000 /
 					info_p->qmax;
@@ -776,6 +918,9 @@ static int read_power_budget_dts(struct platform_device *pdev)
 		return -ENODATA;
 	}
 
+	if (read_dts_val(np, "ppb-version", &pb.version, 1))
+		pb.version = 1;
+
 	read_dts_val(np, "max-temperature-stage", &num, 1);
 	if (num > 4 || num < 0)
 		num = 0;
@@ -785,15 +930,23 @@ static int read_power_budget_dts(struct platform_device *pdev)
 
 	pb.temp_max_stage = num;
 
-	for (i = 0; i <= pb.temp_max_stage; i++) {
-		ret = snprintf(str, STR_SIZE, "battery%d-path-rdc-t%d", fg_data.bat_type, i);
-		if (ret < 0) {
-			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
-			break;
+	if (pb.version >= 2) {
+		if (read_dts_val(np, "battery-circult-rdc", &pb.circuit_rdc, 1))
+			pb.circuit_rdc = BAT_CIRCUIT_DEFAULT_RDC;
+	} else {
+		for (i = 0; i <= pb.temp_max_stage; i++) {
+			ret = snprintf(str, STR_SIZE, "battery%d-path-rdc-t%d", fg_data.bat_type,
+				i);
+			if (ret < 0) {
+				pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+				break;
+			}
+			if (read_dts_val(np, str, &pb.rdc[i], 1))
+				pb.rdc[i] = BAT_PATH_DEFAULT_RDC;
 		}
-		if (read_dts_val(np, str, &pb.rdc[i], 1))
-			pb.rdc[i] = BAT_PATH_DEFAULT_RDC;
+	}
 
+	for (i = 0; i <= pb.temp_max_stage; i++) {
 		ret = snprintf(str, STR_SIZE, "battery%d-path-rac-t%d", fg_data.bat_type, i);
 		if (ret < 0) {
 			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
@@ -950,7 +1103,7 @@ static ssize_t mt_ppb_manual_mode_proc_write
 {
 	char desc[64], cmd[21];
 	unsigned int len = 0;
-	int vsys_budget, manual_mode = 0;
+	int vsys_budget, hpt_vsys_budget, manual_mode = 0;
 	int loading_flash, loading_audio, loading_camera;
 	int loading_display, loading_apu, loading_dram;
 
@@ -959,9 +1112,9 @@ static ssize_t mt_ppb_manual_mode_proc_write
 		return 0;
 	desc[len] = '\0';
 
-	if (sscanf(desc, "%20s %d %d %d %d %d %d %d %d", cmd, &manual_mode, &vsys_budget,
-		&loading_flash, &loading_audio, &loading_camera, &loading_display,
-		&loading_apu, &loading_dram) != 9) {
+	if (sscanf(desc, "%20s %d %d %d %d %d %d %d %d %d", cmd, &manual_mode, &hpt_vsys_budget,
+		&vsys_budget, &loading_flash, &loading_audio, &loading_camera, &loading_display,
+		&loading_apu, &loading_dram) != 10) {
 		pr_notice("parameter number not correct\n");
 		return -EPERM;
 	}
@@ -972,6 +1125,7 @@ static ssize_t mt_ppb_manual_mode_proc_write
 	if (manual_mode == 1) {
 		ppb_ctrl.manual_mode = manual_mode;
 		ppb_manual.vsys_budget = vsys_budget;
+		ppb_manual.hpt_vsys_budget = hpt_vsys_budget;
 		ppb_manual.loading_flash = loading_flash;
 		ppb_manual.loading_audio = loading_audio;
 		ppb_manual.loading_camera = loading_camera;
@@ -1049,13 +1203,10 @@ static ssize_t mt_peak_power_mode_proc_write
 	if (strncmp(cmd, "mode", 4))
 		return -EINVAL;
 
-	if (mode == 0 || mode == 1 || mode == 2) {
-		ppb_ctrl.ppb_mode = mode;
-		ppb_write_sram(mode, PPB_MODE);
-		lbat_set_ppb_mode(mode);
-		bat_oc_set_ppb_mode(mode);
-	} else
-		pr_notice("ppb mode should be 0 or 1 or 2\n");
+	ppb_ctrl.ppb_mode = mode;
+	ppb_write_sram(mode, PPB_MODE);
+	lbat_set_ppb_mode(mode);
+	bat_oc_set_ppb_mode(mode);
 
 	return count;
 }
@@ -1199,6 +1350,165 @@ static ssize_t mt_ppb_cg_budget_cnt_proc_write
 	return count;
 }
 
+static int mt_hpt_debug_proc_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "(SF_EN/VSYS_BUDGET/DELAY)=%u,%u,%u\n",
+		ppb_read_sram(HPT_SF_ENABLE),
+		ppb_read_sram(HPT_VSYS_PWR),
+		ppb_read_sram(HPT_DELAY_TIME));
+
+	seq_printf(m, "(CPUB_SF_L1:L2/CPUM_SF_L1:L2/GPU_SF_L1:L2)=%u:%u/%u:%u/%u:%u\n",
+		ppb_read_sram(HPT_CPU_B_SF_L1),
+		ppb_read_sram(HPT_CPU_B_SF_L2),
+		ppb_read_sram(HPT_CPU_M_SF_L1),
+		ppb_read_sram(HPT_CPU_M_SF_L2),
+		ppb_read_sram(HPT_GPU_SF_L1),
+		ppb_read_sram(HPT_GPU_SF_L2));
+
+	//TODO: list mode12 C/G status by PPB and SF status
+
+	return 0;
+}
+
+static int mt_hpt_dump_proc_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%u, %u\n",
+		ppb_read_sram(HPT_SF_ENABLE),
+		ppb_read_sram(HPT_VSYS_PWR));
+
+	//TODO: list mode12 C/G status by PPB and SF status
+
+	return 0;
+}
+
+static int mt_hpt_ctrl_proc_show(struct seq_file *m, void *v)
+{
+	unsigned int reg = 0;
+
+	reg = hpt_ctrl_read(HPT_CTRL);
+	seq_printf(m, "0x%x\n", reg);
+	return 0;
+}
+
+static ssize_t mt_hpt_ctrl_proc_write
+(struct file *file, const char __user *buffer, size_t count, loff_t *data)
+{
+	char desc[64], cmd[21];
+	unsigned int len = 0, val = 0;
+
+	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
+	if (copy_from_user(desc, buffer, len))
+		return 0;
+	desc[len] = '\0';
+
+	if (sscanf(desc, "%20s %d", cmd, &val) != 2) {
+		pr_notice("parameter number not correct\n");
+		return -EPERM;
+	}
+
+	if (strncmp(cmd, "ctrl", 4))
+		return -EINVAL;
+
+	if (val <= 7) {
+		hpt_ctrl_write(val, HPT_CTRL_SET);
+		val = ~val & 0x7;
+		hpt_ctrl_write(val, HPT_CTRL_CLR);
+	} else
+		pr_notice("hpt ctrl should be 0 ~ 7\n");
+
+	return count;
+}
+
+static int mt_hpt_sf_setting_proc_show(struct seq_file *m, void *v)
+{
+	unsigned int cpub_lv1, cpub_lv2, cpum_lv1, cpum_lv2, gpu_lv1, gpu_lv2, enable, delay;
+
+	enable = ppb_read_sram(HPT_SF_ENABLE);
+	cpub_lv1 = ppb_read_sram(HPT_CPU_B_SF_L1);
+	cpub_lv2 = ppb_read_sram(HPT_CPU_B_SF_L2);
+	cpum_lv1 = ppb_read_sram(HPT_CPU_M_SF_L1);
+	cpum_lv2 = ppb_read_sram(HPT_CPU_M_SF_L2);
+	gpu_lv1 = ppb_read_sram(HPT_GPU_SF_L1);
+	gpu_lv2 = ppb_read_sram(HPT_GPU_SF_L2);
+	delay = ppb_read_sram(HPT_DELAY_TIME);
+	seq_printf(m, "%u, %u, %u, %u, %u, %u, %u, %u\n", enable, cpub_lv1, cpub_lv2,
+		cpum_lv1, cpum_lv2, gpu_lv1, gpu_lv2, delay);
+	return 0;
+}
+
+static ssize_t mt_hpt_sf_setting_proc_write
+(struct file *file, const char __user *buffer, size_t count, loff_t *data)
+{
+	char desc[64], cmd[21];
+	unsigned int len = 0, val = 0;
+
+	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
+	if (copy_from_user(desc, buffer, len))
+		return 0;
+	desc[len] = '\0';
+
+	if (sscanf(desc, "%20s %u", cmd, &val) != 2) {
+		pr_notice("parameter number not correct\n");
+		return -EPERM;
+	}
+
+	if (!strncmp(cmd, "ENABLE", 8)) {
+		if (val < 0 || val > 1) {
+			pr_notice("invalid input %s %d\n", cmd, val);
+			return -EINVAL;
+		}
+		ppb_write_sram(val, HPT_SF_ENABLE);
+	} else if (!strncmp(cmd, "CPUB_LV1", 8)) {
+		if (val < 1 || val > 8) {
+			pr_notice("invalid input %s %d\n", cmd, val);
+			return -EINVAL;
+		}
+		ppb_write_sram(val, HPT_CPU_B_SF_L1);
+	} else if (!strncmp(cmd, "CPUB_LV2", 8)) {
+		if (val < 1 || val > 8) {
+			pr_notice("invalid input %s %d\n", cmd, val);
+			return -EINVAL;
+		}
+		ppb_write_sram(val, HPT_CPU_B_SF_L2);
+	} else if (!strncmp(cmd, "CPUM_LV1", 8)) {
+		if (val < 1 || val > 8) {
+			pr_notice("invalid input %s %d\n", cmd, val);
+			return -EINVAL;
+		}
+		ppb_write_sram(val, HPT_CPU_M_SF_L1);
+	} else if (!strncmp(cmd, "CPUM_LV2", 8)) {
+		if (val < 1 || val > 8) {
+			pr_notice("invalid input %s %d\n", cmd, val);
+			return -EINVAL;
+		}
+		ppb_write_sram(val, HPT_CPU_M_SF_L2);
+	} else if (!strncmp(cmd, "GPU_LV1", 7)) {
+		if (val < 1 || val > 8) {
+			pr_notice("invalid input %s %d\n", cmd, val);
+			return -EINVAL;
+		}
+		ppb_write_sram(val, HPT_GPU_SF_L1);
+	} else if (!strncmp(cmd, "GPU_LV2", 7)) {
+		if (val < 1 || val > 8) {
+			pr_notice("invalid input %s %d\n", cmd, val);
+			return -EINVAL;
+		}
+		ppb_write_sram(val, HPT_GPU_SF_L2);
+	} else if (!strncmp(cmd, "delay", 8)) {
+		if (val > 1000) {
+			pr_notice("invalid input %s %d\n", cmd, val);
+			return -EINVAL;
+		}
+		ppb_write_sram(val, HPT_DELAY_TIME);
+	} else {
+		pr_notice("invalid input %s %d\n", cmd, val);
+		return -EINVAL;
+	}
+
+	return count;
+}
+
+
 #define PROC_FOPS_RW(name)						\
 static int mt_ ## name ## _proc_open(struct inode *inode, struct file *file)\
 {									\
@@ -1235,7 +1545,10 @@ PROC_FOPS_RW(ppb_cg_min_power);
 PROC_FOPS_RW(ppb_camera_power);
 PROC_FOPS_RW(ppb_cg_budget_thd);
 PROC_FOPS_RW(ppb_cg_budget_cnt);
-
+PROC_FOPS_RO(hpt_debug);
+PROC_FOPS_RO(hpt_dump);
+PROC_FOPS_RW(hpt_ctrl);
+PROC_FOPS_RW(hpt_sf_setting);
 
 static int mt_ppb_create_procfs(void)
 {
@@ -1258,6 +1571,10 @@ static int mt_ppb_create_procfs(void)
 		PROC_ENTRY(ppb_camera_power),
 		PROC_ENTRY(ppb_cg_budget_thd),
 		PROC_ENTRY(ppb_cg_budget_cnt),
+		PROC_ENTRY(hpt_debug),
+		PROC_ENTRY(hpt_dump),
+		PROC_ENTRY(hpt_ctrl),
+		PROC_ENTRY(hpt_sf_setting),
 	};
 
 	dir = proc_mkdir("ppb", NULL);
@@ -1307,6 +1624,7 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 	struct device_node *np;
 	struct tag_bootmode *tag;
 
+	pb.dev = &pdev->dev;
 	np = of_find_compatible_node(NULL, NULL, "mediatek,peak_power_budget");
 	if (!np) {
 		dev_notice(&pdev->dev, "get peak_power_budget node fail\n");
@@ -1320,7 +1638,21 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 
 	ppb_sram_base = addr;
 
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "hpt_ctrl");
+	addr = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(addr))
+		pr_info("%s:%d hpt_ctrl get addr error 0x%p\n", __func__, __LINE__, addr);
+	else
+		hpt_ctrl_base = addr;
+
 	spin_lock_init(&ppb_lock);
+
+	if (hpt_ctrl_base)
+		hpt_ctrl_write(0x7, HPT_CTRL_SET);
+	if (ppb_sram_base) {
+		ppb_write_sram(1, HPT_SF_ENABLE);
+		ppb_write_sram(100, HPT_DELAY_TIME);
+	}
 
 	mt_ppb_create_procfs();
 
