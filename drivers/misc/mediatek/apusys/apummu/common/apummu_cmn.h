@@ -80,6 +80,8 @@ static inline int ammu_log_level_check(int log_level)
 
 #else
 #define apusys_ammu_exception(reason)
+#define apusys_hse_exception(reason)
+#define apusys_cbfc_exception(reason)
 #endif /* end of IS_ENABLED(CONFIG_MTK_AEE_FEATURE) */
 
 

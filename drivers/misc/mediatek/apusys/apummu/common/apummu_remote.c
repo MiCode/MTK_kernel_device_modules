@@ -75,7 +75,7 @@ int apummu_remote_send_cmd_sync(void *drvinfo, void *request, void *reply, uint3
 	int retry = 0;
 	bool find = false;
 	uint32_t *ptr;
-	uint32_t cnt = 150, i = 0;
+	uint32_t cnt = 100, i = 0;
 
 	if (drvinfo == NULL) {
 		AMMU_LOG_ERR("invalid argument\n");

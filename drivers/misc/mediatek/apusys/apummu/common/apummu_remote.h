@@ -7,7 +7,7 @@
 #ifndef __APUSYS_APUMMU_REMOTE_H__
 #define __APUSYS_APUMMU_REMOTE_H__
 
-#define APUMMU_REMOTE_TIMEOUT	(11000)
+#define APUMMU_REMOTE_TIMEOUT	(40000) // RV ipi_send timeout after 30 sec
 
 struct apummu_remote_info {
 	bool init;
