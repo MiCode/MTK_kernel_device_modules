@@ -86,11 +86,12 @@ static ssize_t show_sched_target_margin(struct kobject *kobj,
 {
 	unsigned int len = 0;
 	unsigned int max_len = 4096;
-	int pd_count = 3, i;
+	int i;
 
-	for (i = 0; i < pd_count; i++)
+	for (i = 0; i < CONFIG_MAX_NR_CPUS; i++)
 		len += snprintf(buf+len, max_len-len,
-			"C%d=%d low:C%d=%d ", i, get_target_margin(i), i, get_target_margin_low(i));
+			"high:cpu%d=%d low:cpu%d=%d\n", i, get_target_margin(i),
+				i, get_target_margin_low(i));
 	len += snprintf(buf + len, max_len-len, "\n");
 	return len;
 }
@@ -101,11 +102,11 @@ static ssize_t show_sched_turn_point_freq(struct kobject *kobj,
 {
 	unsigned int len = 0;
 	unsigned int max_len = 4096;
-	int pd_count = 3, i;
+	int i;
 
-	for (i = 0; i < pd_count; i++)
+	for (i = 0; i < CONFIG_MAX_NR_CPUS; i++)
 		len += snprintf(buf+len, max_len-len,
-			"C%d=%lu ", i, get_turn_point_freq(i));
+			"cpu%d=%lu\n", i, get_turn_point_freq(i));
 	len += snprintf(buf + len, max_len-len, "\n");
 	return len;
 }
@@ -125,24 +126,24 @@ const char __user *buf, size_t cnt)
 ssize_t store_sched_target_margin(struct kobject *kobj, struct kobj_attribute *attr,
 const char __user *buf, size_t cnt)
 {
-	int cluster;
+	int cpu;
 	int value;
 
-	if (sscanf(buf, "%d %d", &cluster, &value) != 2)
+	if (sscanf(buf, "%d %d", &cpu, &value) != 2)
 		return -EINVAL;
-	set_target_margin(cluster, value);
+	set_target_margin(cpu, value);
 	return cnt;
 }
 
 ssize_t store_sched_target_margin_low(struct kobject *kobj, struct kobj_attribute *attr,
 const char __user *buf, size_t cnt)
 {
-	int cluster;
+	int cpu;
 	int value;
 
-	if (sscanf(buf, "%d %d", &cluster, &value) != 2)
+	if (sscanf(buf, "%d %d", &cpu, &value) != 2)
 		return -EINVAL;
-	set_target_margin_low(cluster, value);
+	set_target_margin_low(cpu, value);
 	return cnt;
 }
 

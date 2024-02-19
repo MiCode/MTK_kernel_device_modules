@@ -434,6 +434,7 @@ static long eas_ioctl_impl(struct file *filp,
 
 	unsigned int sync;
 	unsigned int val;
+	int i;
 	struct cpumask mask;
 
 	struct SA_task SA_task_args = {
@@ -700,17 +701,26 @@ static long eas_ioctl_impl(struct file *filp,
 	case EAS_TARGET_MARGIN_C0:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
-		set_target_margin(0, val);
+		for(i = 0; i < MAX_NR_CPUS; i++) {
+			if(topology_cluster_id(i) == 0)
+				set_target_margin(i, val);
+		}
 		break;
 	case EAS_TARGET_MARGIN_C1:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
-		set_target_margin(1, val);
+		for(i = 0; i < MAX_NR_CPUS; i++) {
+			if(topology_cluster_id(i) == 1)
+				set_target_margin(i, val);
+		}
 		break;
 	case EAS_TARGET_MARGIN_C2:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
-		set_target_margin(2, val);
+		for(i = 0; i < MAX_NR_CPUS; i++) {
+			if(topology_cluster_id(i) == 2)
+				set_target_margin(i, val);
+		}
 		break;
 	case EAS_UTIL_EST_CONTROL:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
