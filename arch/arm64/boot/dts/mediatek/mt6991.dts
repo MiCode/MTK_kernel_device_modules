@@ -4741,8 +4741,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			dram-md32-wdt-event-ch-c-mask = <0x20>;
 			dram-md32-wdt-event-ch-d-mask = <0x40>;
 			ap-tracker-timeout-mask = <0x100>;
-			slow-infra-tracker-timeout-mask = <0x200>;
-			fast-infra-tracker-timeout-mask = <0x400>;
+			infra-tracker-timeout-mask = <0x200>;
+			infra-tracker-lowspeed-timeout-mask = <0x400>;
 			apu-smmu-irq-mask = <0x800>;
 			mfg-to-soc-dfd-event-mask = <0x1000>;
 			mminfra-smmu-irq-mask = <0x2000>;
