@@ -114,6 +114,8 @@ static uint32_t latency_turbo = SUB_FEAT_LOCK | SUB_FEAT_BINDER |
 static uint32_t launch_turbo =  SUB_FEAT_LOCK | SUB_FEAT_BINDER |
 				SUB_FEAT_SCHED | SUB_FEAT_FLAVOR_BIGCORE;
 static DEFINE_SPINLOCK(TURBO_SPIN_LOCK);
+static DEFINE_SPINLOCK(check_lock);
+static DEFINE_MUTEX(cpu_lock);
 static pid_t turbo_pid[TURBO_PID_COUNT] = {0};
 static unsigned int task_turbo_feats;
 
@@ -154,6 +156,81 @@ static void init_turbo_attr(struct task_struct *p);
 static unsigned long cpu_util_next(int cpu, struct task_struct *p, int dst_cpu);
 static inline unsigned long task_util(struct task_struct *p);
 static inline unsigned long _task_util_est(struct task_struct *p);
+static int cpu_loading_thres = 95;
+static int tt_vip_enable = 1;
+static bool ta_vip_status;
+static struct cpu_info ci;
+static u64 checked_timestamp;
+static int max_cpus;
+static struct cpu_time *cur_wall_time, *cur_idle_time,
+						*prev_wall_time, *prev_idle_time;
+static void tt_vip_handler(struct work_struct *work);
+static DECLARE_WORK(tt_vip, tt_vip_handler);
+
+static int get_cpu_loading(struct cpu_info *_ci)
+{
+	int i, cpu_loading = 0;
+	u64 wall_time = 0, idle_time = 0;
+
+	mutex_lock(&cpu_lock);
+	if (ZERO_OR_NULL_PTR(cur_wall_time)) {
+		mutex_unlock(&cpu_lock);
+		return -ENOMEM;
+	}
+	for (i = 0; i < max_cpus; i++)
+		_ci->cpu_loading[i] = 0;
+	for_each_possible_cpu(i) {
+		if (i >= max_cpus)
+			break;
+		cpu_loading = 0;
+		wall_time = 0;
+		idle_time = 0;
+		prev_wall_time[i].time = cur_wall_time[i].time;
+		prev_idle_time[i].time = cur_idle_time[i].time;
+		/*idle time include iowait time*/
+		cur_idle_time[i].time = get_cpu_idle_time(i,
+				&cur_wall_time[i].time, 1);
+		if (cpu_active(i)) {
+			wall_time = cur_wall_time[i].time - prev_wall_time[i].time;
+			idle_time = cur_idle_time[i].time - prev_idle_time[i].time;
+		}
+		if (wall_time > 0 && wall_time > idle_time)
+			cpu_loading = div_u64((100 * (wall_time - idle_time)),
+			wall_time);
+		_ci->cpu_loading[i] = cpu_loading;
+	}
+	mutex_unlock(&cpu_lock);
+	return 0;
+}
+
+static void tt_vip_handler(struct work_struct *work)
+{
+	int ret = 0, i = 0, avg_cpu_loading = 0;
+
+	// get cpu_loading from magt
+	ret = get_cpu_loading(&ci);
+
+	if (ret < 0)
+		return;
+
+	for (i = 0; i < max_cpus; i++)
+		avg_cpu_loading += ci.cpu_loading[i];
+	avg_cpu_loading /= max_cpus;
+
+	if ((avg_cpu_loading >= cpu_loading_thres && ta_vip_status) ||
+		(avg_cpu_loading < cpu_loading_thres && !ta_vip_status)) {
+		goto out;
+	} else if (avg_cpu_loading >= cpu_loading_thres) {
+		set_top_app_vip(120);
+		ta_vip_status = true;
+	} else {
+		unset_top_app_vip();
+		ta_vip_status = false;
+	}
+out:
+	trace_turbo_vip(avg_cpu_loading, cpu_loading_thres, ta_vip_status);
+}
+module_param(cpu_loading_thres, int, 0644);
 
 static void probe_android_rvh_prepare_prio_fork(void *ignore, struct task_struct *p)
 {
@@ -1320,6 +1397,81 @@ static void sys_set_turbo_task(struct task_struct *p)
 	add_turbo_list(p);
 }
 
+int init_cpu_time(void)
+{
+	int i;
+
+	mutex_lock(&cpu_lock);
+	max_cpus = num_possible_cpus();
+
+	ci.cpu_loading = kmalloc_array(max_cpus, sizeof(int), GFP_KERNEL);
+
+	cur_wall_time = kcalloc(max_cpus, sizeof(struct cpu_time), GFP_KERNEL);
+	if (ZERO_OR_NULL_PTR(cur_wall_time))
+		goto err_cur_wall_time;
+
+	cur_idle_time = kcalloc(max_cpus, sizeof(struct cpu_time), GFP_KERNEL);
+	if (ZERO_OR_NULL_PTR(cur_idle_time))
+		goto err_cur_idle_time;
+
+	prev_wall_time = kcalloc(max_cpus, sizeof(struct cpu_time), GFP_KERNEL);
+	if (ZERO_OR_NULL_PTR(prev_wall_time))
+		goto err_prev_wall_time;
+
+	prev_idle_time = kcalloc(max_cpus, sizeof(struct cpu_time), GFP_KERNEL);
+	if (ZERO_OR_NULL_PTR(prev_idle_time))
+		goto err_prev_idle_time;
+
+	for_each_possible_cpu(i) {
+		prev_wall_time[i].time = cur_wall_time[i].time = 0;
+		prev_idle_time[i].time = cur_idle_time[i].time = 0;
+	}
+	mutex_unlock(&cpu_lock);
+	return 0;
+
+err_prev_idle_time:
+	kfree(prev_wall_time);
+err_prev_wall_time:
+	kfree(cur_idle_time);
+err_cur_idle_time:
+	kfree(cur_wall_time);
+err_cur_wall_time:
+	pr_debug(TAG "%s failed to alloc cpu time", __func__);
+	mutex_unlock(&cpu_lock);
+	return -ENOMEM;
+}
+
+static inline bool tt_vip_do_check(u64 wallclock)
+{
+	bool do_check = false;
+	unsigned long flags;
+
+	/* check interval */
+	spin_lock_irqsave(&check_lock, flags);
+	if ((s64)(wallclock - checked_timestamp)
+			>= (s64)(1000 * NSEC_PER_MSEC)) {
+		checked_timestamp = wallclock;
+		do_check = true;
+	}
+	spin_unlock_irqrestore(&check_lock, flags);
+
+	return do_check;
+}
+
+static void tt_tick(void *data, struct rq *rq)
+{
+	u64 wallclock;
+
+	if (tt_vip_enable > 0) {
+		wallclock = ktime_get_ns();
+		if (!tt_vip_do_check(wallclock))
+			return;
+
+		queue_work(system_highpri_wq, &tt_vip);
+	}
+}
+module_param(tt_vip_enable, int, 0644);
+
 static int __init init_task_turbo(void)
 {
 	int ret, ret_erri_line;
@@ -1438,11 +1590,29 @@ static int __init init_task_turbo(void)
 
 	init_hmp_domains();
 
+	/* register tracepoint of scheduler_tick */
+	ret = register_trace_android_vh_scheduler_tick(tt_tick, NULL);
+	if (ret) {
+		pr_info("%s: register hooks failed, returned %d\n", TAG, ret);
+		goto register_failed;
+	}
+
+	ret = init_cpu_time();
+	if (ret) {
+		pr_info("%s: init cpu time failed, returned %d\n", TAG, ret);
+		goto register_failed;
+	}
+
 failed:
 	if (ret)
 		pr_err("register hooks failed, ret %d line %d\n", ret, ret_erri_line);
 
 	return ret;
+
+register_failed:
+	unregister_trace_android_vh_scheduler_tick(tt_tick, NULL);
+	return ret;
+
 }
 static void  __exit exit_task_turbo(void)
 {
