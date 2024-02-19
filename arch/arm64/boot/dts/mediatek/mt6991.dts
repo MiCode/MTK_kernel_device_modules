@@ -2222,6 +2222,88 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		interrupts = <GIC_SPI 797 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
+	wla: wla@10461000 {
+		compatible = "mediatek,wla";
+		reg = <0 0x10461000 0 0x1000>, <0 0x10561000 0 0x1000>;
+		wla-enable = <1>;
+		init-setting-ver = "bypass_mode";
+		group-hw-max = <0x8>;
+		group-ctrl = <&group_0 &group_1 &group_2>;
+		monitor-hw-ch-max = <16>;
+		monitor-hw-sta-max = <3>;
+		monitor-channel = <&ch_0 &ch_1 &ch_2>,
+						<&ch_3 &ch_4 &ch_5 &ch_6>;
+		monitor-status = <&sta_1 &sta_2 &sta_3>;
+		group-ctrl-list {
+			group_0: group-0 {
+				master-sel = <0x0 0x4100>;
+				debounce = <0xd>;
+				strategy = <0x1>;
+				ignore-urgent = <0x1>;
+			};
+			group_1: group-1 {
+				master-sel = <0xfffffffe 0xffffbe07>;
+				debounce = <0xd>;
+				strategy = <0x7>;
+				ignore-urgent = <0x0>;
+			};
+			group_2: group-2 {
+				master-sel = <0xfffffffe 0xffffff07>;
+				debounce = <0xd>;
+				strategy = <0x0>;
+				ignore-urgent = <0x0>;
+			};
+		};
+		monitor-channel-list {
+			ch_0: ch-0 {
+				sig-sel = <0>;
+				bit-sel = <26>;
+				trig-type = <3>;
+			};
+			ch_1: ch-1 {
+				sig-sel = <3>;
+				bit-sel = <16>;
+				trig-type = <2>;
+			};
+			ch_2: ch-2 {
+				sig-sel = <3>;
+				bit-sel = <17>;
+				trig-type = <2>;
+			};
+			ch_3: ch-3 {
+				sig-sel = <3>;
+				bit-sel = <12>;
+				trig-type = <3>;
+			};
+			ch_4: ch-4 {
+				sig-sel = <3>;
+				bit-sel = <13>;
+				trig-type = <3>;
+			};
+			ch_5: ch-5 {
+				sig-sel = <3>;
+				bit-sel = <4>;
+				trig-type = <2>;
+			};
+			ch_6: ch-6 {
+				sig-sel = <3>;
+				bit-sel = <5>;
+				trig-type = <2>;
+			};
+		};
+		monitor-status-list {
+			sta_1: sta-1 {
+				mux = <0x5>;
+			};
+			sta_2: sta-2 {
+				mux = <0x4>;
+			};
+			sta_3: sta-3 {
+				mux = <0x2>;
+			};
+		};
+	};
+
 	mtk_lpm: mtk-lpm {
 		compatible = "mediatek,mtk-lpm";
 		#address-cells = <2>;
