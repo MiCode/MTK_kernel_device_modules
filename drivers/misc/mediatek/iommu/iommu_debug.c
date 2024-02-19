@@ -330,7 +330,7 @@ static void mtk_iova_count_check(struct device *dev, dma_addr_t iova, size_t siz
 
 	pr_info("%s, dev:%s, iova:[0x%llx %d 0x%llx 0x%zx] count:%llu\n",
 		__func__, (dev ? dev_name(dev) : "NULL"),
-		tab_id, dom_id, iova, size, iova_list.count);
+		tab_id, dom_id, (unsigned long long)iova, size, iova_list.count);
 
 	if (iommu_globals.iova_warn_aee == 1) {
 		mtk_iommu_iova_alloc_dump_top(NULL, NULL);
@@ -2718,11 +2718,11 @@ static void mtk_iova_dbg_free(
 	if ((end_t - start_t) > FIND_IOVA_TIMEOUT_NS)
 		pr_info_ratelimited("%s, dev:%s, find iova:[0x%llx 0x%llx 0x%zx] %d time:%llu\n",
 				    __func__, (dev ? dev_name(dev) : "NULL"),
-				    tab_id, iova, size, i, (end_t - start_t));
+				    tab_id, (unsigned long long)iova, size, i, (end_t - start_t));
 
 	if (dev == NULL)
 		pr_info("%s warnning, iova:[0x%llx 0x%zx] not find in %d\n",
-			__func__, iova, size, i);
+			__func__, (unsigned long long)iova, size, i);
 
 iova_trace:
 	mtk_iommu_iova_trace(IOMMU_FREE, iova, size, tab_id, dev);
