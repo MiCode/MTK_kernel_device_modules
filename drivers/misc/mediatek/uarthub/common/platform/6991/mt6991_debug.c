@@ -5,6 +5,8 @@
 #include <linux/kernel.h>
 #include <linux/regmap.h>
 
+#include "clk-mt6991-fmeter.h"
+#include "clk-fmeter.h"
 #include "uarthub_drv_core.h"
 #include "uarthub_drv_export.h"
 #include "common_def_id.h"
@@ -16,7 +18,6 @@
 #include "test/it/it_tc.h"
 #endif
 
-static int uarthub_read_dbg_monitor(int *sel, int *tx_monitor, int *rx_monitor);
 #if !(UARTHUB_SUPPORT_FPGA)
 static int uarthub_get_peri_uart_pad_mode_mt6991(void);
 static int uarthub_get_gpio_trx_info_mt6991(struct uarthub_gpio_trx_info *info);
@@ -25,13 +26,6 @@ static int uarthub_get_gpio_trx_info_mt6991(struct uarthub_gpio_trx_info *info);
 static int uarthub_dump_debug_monitor_packet_info_mode_mt6991(const char *tag);
 static int uarthub_dump_debug_monitor_check_data_mode_mt6991(const char *tag);
 static int uarthub_dump_debug_monitor_crc_result_mode_mt6991(const char *tag);
-
-static int uarthub_record_check_data_mode_sta_to_buffer(
-	unsigned char *dmp_info_buf, int len,
-	int debug_monitor_sel,
-	int *tx_monitor, int *rx_monitor,
-	int tx_monitor_pointer, int rx_monitor_pointer,
-	int check_data_mode_sel);
 
 static int uarthub_record_intfhub_fsm_sta_to_buffer(
 	unsigned char *dmp_info_buf, int len, int fsm_dbg_sta);
@@ -457,6 +451,12 @@ int uarthub_dump_intfhub_debug_info_mt6991(const char *tag)
 		if (ret > 0)
 			len += ret;
 	}
+
+	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",UART/HUB_CLK=[%d/%d]",
+		mt_get_fmeter_freq(FM_UARTHUB_B_CK, CKGEN),
+		mt_get_fmeter_freq(FM_UART_CK, CKGEN));
+	if (ret > 0)
+		len += ret;
 
 	val = DBG_CTRL_GET_intfhub_dbg_sel(DBG_CTRL_ADDR);
 	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
@@ -1015,7 +1015,7 @@ int uarthub_dump_debug_tx_rx_count_mt6991(const char *tag, int trigger_point)
 
 		len = uarthub_record_check_data_mode_sta_to_buffer(
 			dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
-			tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel);
+			tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, NULL);
 
 		len = uarthub_record_intfhub_fsm_sta_to_buffer(
 			dmp_info_buf, len, fsm_dbg_sta);
@@ -1137,7 +1137,7 @@ int uarthub_dump_debug_tx_rx_count_mt6991(const char *tag, int trigger_point)
 
 		len = uarthub_record_check_data_mode_sta_to_buffer(
 			dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
-			tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel);
+			tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, NULL);
 
 		len = uarthub_record_intfhub_fsm_sta_to_buffer(
 			dmp_info_buf, len, fsm_dbg_sta);
@@ -1261,6 +1261,12 @@ int uarthub_dump_debug_clk_info_mt6991(const char *tag)
 			len += ret;
 	}
 
+	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",UART/HUB_CLK=[%d/%d]",
+		mt_get_fmeter_freq(FM_UARTHUB_B_CK, CKGEN),
+		mt_get_fmeter_freq(FM_UART_CK, CKGEN));
+	if (ret > 0)
+		len += ret;
+
 	val = uarthub_get_spm_sys_timer_mt6991(&timer_h, &timer_l);
 	if (val == 1) {
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
@@ -1308,7 +1314,7 @@ int uarthub_dump_debug_clk_info_mt6991(const char *tag)
 
 		len = uarthub_record_check_data_mode_sta_to_buffer(
 			dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
-			tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel);
+			tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, NULL);
 	}
 
 	fsm_dbg_sta = UARTHUB_REG_READ(DBG_STATE_ADDR);
@@ -1415,6 +1421,12 @@ int uarthub_dump_debug_byte_cnt_info_mt6991(const char *tag)
 			len += ret;
 	}
 
+	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",UART/HUB_CLK=[%d/%d]",
+		mt_get_fmeter_freq(FM_UARTHUB_B_CK, CKGEN),
+		mt_get_fmeter_freq(FM_UART_CK, CKGEN));
+	if (ret > 0)
+		len += ret;
+
 	val = uarthub_get_spm_sys_timer_mt6991(&timer_h, &timer_l);
 	if (val == 1) {
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
@@ -1455,7 +1467,7 @@ int uarthub_dump_debug_byte_cnt_info_mt6991(const char *tag)
 
 		len = uarthub_record_check_data_mode_sta_to_buffer(
 			dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
-			tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel);
+			tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, NULL);
 	}
 
 	fsm_dbg_sta = UARTHUB_REG_READ(DBG_STATE_ADDR);
@@ -1600,7 +1612,7 @@ int uarthub_dump_debug_bus_status_info_mt6991(const char *tag)
 
 		len = uarthub_record_check_data_mode_sta_to_buffer(
 			dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
-			tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel);
+			tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, NULL);
 	}
 
 	fsm_dbg_sta = UARTHUB_REG_READ(DBG_STATE_ADDR);
@@ -1803,14 +1815,22 @@ int uarthub_record_check_data_mode_sta_to_buffer(
 	int debug_monitor_sel,
 	int *tx_monitor, int *rx_monitor,
 	int tx_monitor_pointer, int rx_monitor_pointer,
-	int check_data_mode_sel)
+	int check_data_mode_sel, const char *tag)
 {
 	int ret = 0;
+	char sel_result_buf[16];
+	int sel_result_len = 0;
+
+	sel_result_len = 0;
+	ret = snprintf(sel_result_buf + sel_result_len, 16 - sel_result_len, "(%d)", check_data_mode_sel);
+	if (ret > 0)
+		sel_result_len += ret;
 
 	if (debug_monitor_sel == 0x1) {
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			",CHK_DATA_MON[0:15](%d)=[R(%d):%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X,T(%d):%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X]",
-			check_data_mode_sel,
+			",%s%s=[R(%d):%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X,T(%d):%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X]",
+			((tag == NULL) ? "CHK_DATA_MON[0:15]" : tag),
+			((tag == NULL) ? sel_result_buf : ""),
 			rx_monitor_pointer,
 			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(rx_monitor[0]),
 			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(rx_monitor[1]),

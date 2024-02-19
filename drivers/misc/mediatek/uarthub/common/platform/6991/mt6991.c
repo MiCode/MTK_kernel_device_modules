@@ -798,8 +798,6 @@ int uarthub_sspm_wakeup_enable_mt6991(void)
 
 int uarthub_uarthub_init_mt6991(struct platform_device *pdev)
 {
-	uarthub_set_bt_sleep_flow_hw_mech_en_mt6991(0);
-
 	/* default assert mode enable */
 	/* assert mode enable --> BT off or assert state*/
 	uarthub_assert_state_ctrl_mt6991(1);
@@ -2016,38 +2014,198 @@ int uarthub_get_host_awake_sta_mt6991(int dev_index)
 	return state;
 }
 
-int uarthub_set_host_awake_sta_mt6991(int dev_index)
+int uarthub_host_awake_sta_ctrl_mt6991(int dev_index, int set, const char *tag)
 {
+#define DUMP_HOST_AWAKE_STA_DEBUG_INFO 1
+
+#if DUMP_HOST_AWAKE_STA_DEBUG_INFO
+	int dev_host_awake_sta[2] = {0};
+	int dev_host_awake_sent_sta[2] = {0};
+	int cmm_bt_awake_sta[2] = {0};
+	int feedback_host_awake_tx_done[2] = {0};
+	int dev0_sta[2] = {0};
+	int dev1_sta[2] = {0};
+	int dev2_sta[2] = {0};
+	int retry = 0;
+	int sent_sta = 0;
+	unsigned char result[128];
+	int len = 0;
+	int ret = 0;
+	int check_irq = 0;
+	unsigned char dmp_info_buf[DBG_LOG_LEN];
+	int debug_monitor_sel = 0;
+	int tx_monitor[4] = { 0 };
+	int rx_monitor[4] = { 0 };
+	int tx_monitor_pointer = 0, rx_monitor_pointer = 0;
+	int check_data_mode_sel = 0;
+	struct uarthub_uartip_debug_info debug1 = {0};
+	struct uarthub_uartip_debug_info debug2 = {0};
+	struct uarthub_uartip_debug_info debug3 = {0};
+	struct uarthub_uartip_debug_info debug4 = {0};
+	struct uarthub_uartip_debug_info debug5 = {0};
+	struct uarthub_uartip_debug_info debug6 = {0};
+	struct uarthub_uartip_debug_info debug7 = {0};
+	struct uarthub_uartip_debug_info debug8 = {0};
+#endif
+
 	if (dev_index < 0 || dev_index >= UARTHUB_MAX_NUM_DEV_HOST) {
-		pr_notice("[%s] not support dev_index(%d)\n", __func__, dev_index);
+		pr_notice("[%s] not support dev_index(%d)\n",
+			((tag == NULL) ? __func__ : tag), dev_index);
 		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
 	}
 
-	if (dev_index == 0)
-		DEV0_STA_SET_SET_dev0_host_awake_set(DEV0_STA_SET_ADDR, 0x1);
-	else if (dev_index == 1)
-		DEV1_STA_SET_SET_dev1_host_awake_set(DEV1_STA_SET_ADDR, 0x1);
-	else if (dev_index == 2)
-		DEV2_STA_SET_SET_dev2_host_awake_set(DEV2_STA_SET_ADDR, 0x1);
+#if DUMP_HOST_AWAKE_STA_DEBUG_INFO
+	IRQ_CLR_SET_feedback_host_awake_tx_done_clr(IRQ_CLR_ADDR, 0x1);
+	dev_host_awake_sta[0] = uarthub_get_host_awake_sta_mt6991(dev_index);
+	dev_host_awake_sent_sta[0] = STA0_GET_dev_host_awake_sta(STA0_ADDR);
+	sent_sta = ((dev_host_awake_sent_sta[0] & (0x1 << dev_index)) >> dev_index);
+	if (sent_sta == set)
+		check_irq = 1;
+	cmm_bt_awake_sta[0] = uarthub_get_cmm_bt_awake_sta_mt6991();
+	feedback_host_awake_tx_done[0] = IRQ_STA_GET_feedback_host_awake_tx_done(IRQ_STA_ADDR);
+	dev0_sta[0] = UARTHUB_REG_READ(DEV0_STA_ADDR);
+	dev1_sta[0] = UARTHUB_REG_READ(DEV1_STA_ADDR);
+	dev2_sta[0] = UARTHUB_REG_READ(DEV2_STA_ADDR);
+
+	UARTHUB_DEBUG_READ_DEBUG_REG(dev0, uartip, uartip_id_ap);
+	UARTHUB_DEBUG_READ_DEBUG_REG(dev1, uartip, uartip_id_md);
+	UARTHUB_DEBUG_READ_DEBUG_REG(dev2, uartip, uartip_id_adsp);
+	UARTHUB_DEBUG_READ_DEBUG_REG(cmm, uartip, uartip_id_cmm);
+	if (apuart_base_map_mt6991[3] != NULL)
+		UARTHUB_DEBUG_READ_DEBUG_REG(ap, apuart, 3);
+
+	if ((uarthub_read_dbg_monitor(&debug_monitor_sel, tx_monitor, rx_monitor) == 0) &&
+			(debug_monitor_sel == 0x1)) {
+		tx_monitor_pointer = DEBUG_MODE_CRTL_GET_check_data_mode_tx_monitor_pointer(
+			DEBUG_MODE_CRTL_ADDR);
+		rx_monitor_pointer = DEBUG_MODE_CRTL_GET_check_data_mode_rx_monitor_pointer(
+			DEBUG_MODE_CRTL_ADDR);
+		check_data_mode_sel = DEBUG_MODE_CRTL_GET_check_data_mode_select(
+			DEBUG_MODE_CRTL_ADDR);
+	}
+#endif
+
+	if (set == 1) {
+		if (dev_index == 0)
+			DEV0_STA_SET_SET_dev0_host_awake_set(DEV0_STA_SET_ADDR, 0x1);
+		else if (dev_index == 1)
+			DEV1_STA_SET_SET_dev1_host_awake_set(DEV1_STA_SET_ADDR, 0x1);
+		else if (dev_index == 2)
+			DEV2_STA_SET_SET_dev2_host_awake_set(DEV2_STA_SET_ADDR, 0x1);
+	} else {
+		if (dev_index == 0)
+			DEV0_STA_CLR_SET_dev0_host_awake_clr(DEV0_STA_CLR_ADDR, 0x1);
+		else if (dev_index == 1)
+			DEV1_STA_CLR_SET_dev1_host_awake_clr(DEV1_STA_CLR_ADDR, 0x1);
+		else if (dev_index == 2)
+			DEV2_STA_CLR_SET_dev2_host_awake_clr(DEV2_STA_CLR_ADDR, 0x1);
+	}
+
+#if DUMP_HOST_AWAKE_STA_DEBUG_INFO
+	cmm_bt_awake_sta[1] = uarthub_get_cmm_bt_awake_sta_mt6991();
+	dev_host_awake_sta[1] = uarthub_get_host_awake_sta_mt6991(dev_index);
+	feedback_host_awake_tx_done[1] = IRQ_STA_GET_feedback_host_awake_tx_done(IRQ_STA_ADDR);
+
+	/* should trigger UARTHUB HW sendt host awake sta to FW */
+	if (cmm_bt_awake_sta[0] == 1 && dev_host_awake_sta[0] != set) {
+		retry = 20;
+		udelay(11);
+		while (retry-- > 0) {
+			if (check_irq == 1)
+				feedback_host_awake_tx_done[1] = IRQ_STA_GET_feedback_host_awake_tx_done(IRQ_STA_ADDR);
+			dev_host_awake_sent_sta[1] = STA0_GET_dev_host_awake_sta(STA0_ADDR);
+			sent_sta = ((dev_host_awake_sent_sta[1] & (0x1 << dev_index)) >> dev_index);
+			if (((check_irq == 0) || (feedback_host_awake_tx_done[1] == 1)) && (sent_sta == set)) {
+				len = 0;
+				ret = snprintf(result + len, 128 - len,
+					"%s_%d", "PASS", retry);
+				if (ret > 0)
+					len += ret;
+				break;
+			}
+			usleep_range(50, 60);
+		}
+
+		if (((check_irq == 1) && (feedback_host_awake_tx_done[1] == 0)) || (sent_sta != set)) {
+			len = 0;
+			ret = snprintf(result + len, 128 - len,
+				"%s_%d", "FAIL", retry);
+			if (ret > 0)
+				len += ret;
+		}
+	} else {
+		feedback_host_awake_tx_done[1] = IRQ_STA_GET_feedback_host_awake_tx_done(IRQ_STA_ADDR);
+		dev_host_awake_sent_sta[1] = STA0_GET_dev_host_awake_sta(STA0_ADDR);
+
+		len = 0;
+		ret = snprintf(result + len, 128 - len,
+			"%s", "CANCEL");
+		if (ret > 0)
+			len += ret;
+	}
+
+	dev0_sta[1] = UARTHUB_REG_READ(DEV0_STA_ADDR);
+	dev1_sta[1] = UARTHUB_REG_READ(DEV1_STA_ADDR);
+	dev2_sta[1] = UARTHUB_REG_READ(DEV2_STA_ADDR);
+
+	len = 0;
+	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
+		"[%s][%s][%d] hostAwk=[%d/%d],hostAwkSend=[0x%x/0x%x],cmmbtAwk=[%d/%d],irqTXdone(%d)=[%d/%d],IDEVx_STA=[0x%x/0x%x-0x%x/0x%x-0x%x/0x%x]",
+		((tag == NULL) ? __func__ : tag), result, dev_index, dev_host_awake_sta[0], dev_host_awake_sta[1],
+		dev_host_awake_sent_sta[0], dev_host_awake_sent_sta[1],
+		cmm_bt_awake_sta[0], cmm_bt_awake_sta[1], check_irq,
+		feedback_host_awake_tx_done[0], feedback_host_awake_tx_done[1],
+		dev0_sta[0], dev0_sta[1],
+		dev1_sta[0], dev1_sta[1],
+		dev2_sta[0], dev2_sta[1]);
+	if (ret > 0)
+		len += ret;
+
+	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug5, 0xF0, 4, debug6, 0x3, 4, ",bcnt_B=[R:%d-%d-%d-%d-%d");
+	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug2, 0xF0, 4, debug3, 0x3, 4, ",T:%d-%d-%d-%d-%d]");
+
+	UARTHUB_DEBUG_READ_DEBUG_REG(dev0, uartip, uartip_id_ap);
+	UARTHUB_DEBUG_READ_DEBUG_REG(dev1, uartip, uartip_id_md);
+	UARTHUB_DEBUG_READ_DEBUG_REG(dev2, uartip, uartip_id_adsp);
+	UARTHUB_DEBUG_READ_DEBUG_REG(cmm, uartip, uartip_id_cmm);
+	if (apuart_base_map_mt6991[3] != NULL)
+		UARTHUB_DEBUG_READ_DEBUG_REG(ap, apuart, 3);
+
+	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug5, 0xF0, 4, debug6, 0x3, 4, ",E=[R:%d-%d-%d-%d-%d");
+	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug2, 0xF0, 4, debug3, 0x3, 4, ",T:%d-%d-%d-%d-%d]");
+
+	len = uarthub_record_check_data_mode_sta_to_buffer(
+		dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
+		tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, "dataMon_B");
+
+	if ((uarthub_read_dbg_monitor(&debug_monitor_sel, tx_monitor, rx_monitor) == 0) &&
+			(debug_monitor_sel == 0x1)) {
+		tx_monitor_pointer = DEBUG_MODE_CRTL_GET_check_data_mode_tx_monitor_pointer(
+			DEBUG_MODE_CRTL_ADDR);
+		rx_monitor_pointer = DEBUG_MODE_CRTL_GET_check_data_mode_rx_monitor_pointer(
+			DEBUG_MODE_CRTL_ADDR);
+		check_data_mode_sel = DEBUG_MODE_CRTL_GET_check_data_mode_select(
+			DEBUG_MODE_CRTL_ADDR);
+
+		len = uarthub_record_check_data_mode_sta_to_buffer(
+			dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
+			tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, "E");
+	}
+
+	pr_info("%s\n", dmp_info_buf);
+#endif
 
 	return 0;
 }
 
+int uarthub_set_host_awake_sta_mt6991(int dev_index)
+{
+	return uarthub_host_awake_sta_ctrl_mt6991(dev_index, 1, "SET_HOST_AWK");
+}
+
 int uarthub_clear_host_awake_sta_mt6991(int dev_index)
 {
-	if (dev_index < 0 || dev_index >= UARTHUB_MAX_NUM_DEV_HOST) {
-		pr_notice("[%s] not support dev_index(%d)\n", __func__, dev_index);
-		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
-	}
-
-	if (dev_index == 0)
-		DEV0_STA_CLR_SET_dev0_host_awake_clr(DEV0_STA_CLR_ADDR, 0x1);
-	else if (dev_index == 1)
-		DEV1_STA_CLR_SET_dev1_host_awake_clr(DEV1_STA_CLR_ADDR, 0x1);
-	else if (dev_index == 2)
-		DEV2_STA_CLR_SET_dev2_host_awake_clr(DEV2_STA_CLR_ADDR, 0x1);
-
-	return 0;
+	return uarthub_host_awake_sta_ctrl_mt6991(dev_index, 0, "CLR_HOST_AWK");
 }
 
 int uarthub_get_host_bt_awake_sta_mt6991(int dev_index)
