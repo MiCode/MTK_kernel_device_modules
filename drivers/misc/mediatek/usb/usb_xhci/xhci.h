@@ -36,6 +36,10 @@
 /* Section 5.3.3 - MaxPorts */
 #define MAX_HC_PORTS		127
 
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
+struct snd_usb_audio;
+#endif
+
 /*
  * xHCI register interface.
  * This corresponds to the eXtensible Host Controller Interface (xHCI)
@@ -2310,7 +2314,10 @@ struct xhci_vendor_ops {
 				    int type, gfp_t flags);
 	void (*free_container_ctx)(struct xhci_hcd *xhci, struct xhci_container_ctx *ctx);
 	bool (*is_streaming)(struct xhci_hcd *xhci);
-
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
+	void (*offload_connect)(struct usb_interface *intf, struct snd_usb_audio *chip);
+	void (*offload_disconnect)(struct usb_interface *intf);
+#endif
 	ANDROID_KABI_RESERVE(1);
 	ANDROID_KABI_RESERVE(2);
 	ANDROID_KABI_RESERVE(3);

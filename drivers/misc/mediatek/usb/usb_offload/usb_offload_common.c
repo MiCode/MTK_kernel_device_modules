@@ -30,8 +30,7 @@
 #include <sound/asound.h>
 #include <linux/iommu.h>
 #include <linux/dma-mapping.h>
-#include <adsp_helper.h>
-#include <trace/hooks/audio_usboffload.h>
+/* #include <trace/hooks/audio_usboffload.h> */
 #include "clk-mtk.h"
 
 #if IS_ENABLED(CONFIG_SND_USB_AUDIO)
@@ -180,30 +179,6 @@ static int xhci_mtk_update_erst(struct usb_offload_dev *udev,
 	struct xhci_segment *first,	struct xhci_segment *last, unsigned int num_segs);
 static int xhci_mtk_realloc_transfer_ring(struct snd_usb_substream *subs);
 static void fake_sram_pwr_ctrl(bool power);
-
-static int set_interface(struct usb_device *udev,
-			     struct usb_host_interface *alts,
-			     int iface, int alt)
-{
-	return 0;
-}
-static int set_pcm_intf(struct usb_interface *intf, int iface, int alt,
-			    int direction, struct snd_usb_substream *subs)
-{
-	return 0;
-}
-static int set_pcm_connection(struct usb_device *udev,
-				  enum snd_vendor_pcm_open_close onoff,
-				  int direction)
-{
-	return 0;
-}
-
-static struct snd_usb_audio_vendor_ops alsa_ops = {
-	.set_interface = set_interface,
-	.set_pcm_intf = set_pcm_intf,
-	.set_pcm_connection = set_pcm_connection,
-};
 
 static void memory_cleanup(void)
 {
@@ -415,7 +390,8 @@ err:
 	return subs;
 }
 
-static void sound_usb_connect(void *data, struct usb_interface *intf, struct snd_usb_audio *chip)
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
+static void sound_usb_connect(struct usb_interface *intf, struct snd_usb_audio *chip)
 {
 	struct device_node *node_xhci_host;
 	struct platform_device *pdev_xhci_host = NULL;
@@ -458,7 +434,7 @@ static void sound_usb_connect(void *data, struct usb_interface *intf, struct snd
 	}
 }
 
-static void sound_usb_disconnect(void *data, struct usb_interface *intf)
+static void sound_usb_disconnect(struct usb_interface *intf)
 {
 	struct snd_usb_audio *chip = usb_get_intfdata(intf);
 	unsigned int card_num;
@@ -487,14 +463,15 @@ static void sound_usb_disconnect(void *data, struct usb_interface *intf)
 		if (chip->index >= 0)
 			usb_chip[chip->index] = NULL;
 }
+#endif
 
 static int sound_usb_trace_init(void)
 {
 	int ret = 0;
 
-	WARN_ON(register_trace_android_vh_audio_usb_offload_connect(sound_usb_connect, NULL));
-	WARN_ON(register_trace_android_rvh_audio_usb_offload_disconnect(
-		sound_usb_disconnect, NULL));
+	/* WARN_ON(register_trace_android_vh_audio_usb_offload_connect(sound_usb_connect, NULL)); */
+	/* WARN_ON(register_trace_android_rvh_audio_usb_offload_disconnect( */
+	/*	sound_usb_disconnect, NULL)); */
 
 	return ret;
 }
@@ -719,6 +696,7 @@ int send_disconnect_ipi_msg_to_adsp(void)
 	return send_result;
 }
 
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
 static void uaudio_disconnect_cb(struct snd_usb_audio *chip)
 {
 	int ret;
@@ -764,6 +742,7 @@ done:
 
 	USB_OFFLOAD_INFO("done\n");
 }
+#endif
 
 static void uaudio_dev_release(struct kref *kref)
 {
@@ -3002,6 +2981,10 @@ static struct xhci_vendor_ops xhci_mtk_vendor_ops = {
 	.alloc_transfer_ring = xhci_mtk_alloc_transfer_ring,
 	.free_transfer_ring = xhci_mtk_free_transfer_ring,
 	.is_streaming = xhci_mtk_is_streaming,
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
+	.offload_connect = sound_usb_connect,
+	.offload_disconnect = sound_usb_disconnect,
+#endif
 };
 
 int xhci_mtk_ssusb_offload_get_mode(struct device *dev)
@@ -3033,9 +3016,6 @@ static int usb_offload_probe(struct platform_device *pdev)
 		USB_OFFLOAD_ERR("Fail to allocate usb_offload_dev\n");
 		return -ENOMEM;
 	}
-
-	if (snd_vendor_set_ops(&alsa_ops))
-		USB_OFFLOAD_ERR("fail registering ALSA OPS\n");
 
 	uodev->dev = &pdev->dev;
 	uodev->enable_adv_lowpwr =
