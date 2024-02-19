@@ -340,27 +340,40 @@ static void dpc_dt_set(u16 dt, u32 us)
 	writel(value, dpc_base + DISP_REG_DPC_DTx_COUNTER(dt));
 }
 
-static void dpc2_dt_en(u8 idx, bool en, bool set_sw_trig)
+static void dpc2_dt_en(u16 idx, bool en, bool set_sw_trig)
 {
 	u32 val;
 	u32 addr;
+	u16 bit;
 
 	if (g_priv->mmsys_id == MMSYS_MT6989 || g_priv->mmsys_id == MMSYS_MT6878) {
-		if (idx < 32)
+		if (idx < 32) {
 			addr = DISP_REG_DPC_DISP_DT_EN;
-		else
+			bit = idx;
+		} else {
 			addr = DISP_REG_DPC_MML_DT_EN;
+			bit = idx - 32;
+		}
 	} else if (g_priv->mmsys_id == MMSYS_MT6991) {
-		if (idx < 32)
+		if (idx < 32) {
 			addr = DISP_REG_DPC_DISP_DT_EN;
-		else if (idx < 57)
+			bit = idx;
+		} else if (idx < 57) {
 			addr = DISP_REG_DPC_MML_DT_EN;
-		else if (idx < 66)
+			bit = idx - 32;
+		} else if (idx < 66) {
 			addr = DISP_REG_DPC2_DISP_DT_EN;
-		else if (idx < 75)
+			bit = idx - 57;
+		} else if (idx < 75) {
 			addr = DISP_REG_DPC2_MML_DT_EN;
-		else
+			bit = idx - 66;
+		} else if (idx < 78){
 			addr = DISP_REG_DPC2_DISP_DT_EN;
+			bit = idx - 66;
+		} else {
+			DPCERR("idx(%u) over then dt count", idx);
+			return;
+		}
 	} else {
 		DPCERR("not support platform");
 		return;
@@ -368,9 +381,9 @@ static void dpc2_dt_en(u8 idx, bool en, bool set_sw_trig)
 
 	val = readl(dpc_base + addr);
 	if (en)
-		val |= BIT(idx);
+		val |= BIT(bit);
 	else
-		val &= ~BIT(idx);
+		val &= ~BIT(bit);
 	writel(val, dpc_base + addr);
 
 	if (set_sw_trig) {
@@ -381,9 +394,9 @@ static void dpc2_dt_en(u8 idx, bool en, bool set_sw_trig)
 
 		val = readl(dpc_base + addr);
 		if (en)
-			val |= BIT(idx);
+			val |= BIT(bit);
 		else
-			val &= ~BIT(idx);
+			val &= ~BIT(bit);
 		writel(val, dpc_base + addr);
 	}
 }
@@ -487,7 +500,7 @@ if (0) {
 
 static void dpc_enable(const u8 en)
 {
-	int i = 0;
+	u16 i = 0;
 
 	if (dpc_pm_ctrl(true))
 		return;
