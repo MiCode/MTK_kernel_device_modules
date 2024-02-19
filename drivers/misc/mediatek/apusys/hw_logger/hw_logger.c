@@ -264,6 +264,10 @@ static int hw_logger_buf_alloc(struct device *dev)
 	HWLOGR_INFO("local_log_buf = 0x%llx\n", (unsigned long long)local_log_buf);
 	HWLOGR_INFO("hw_log_buf = 0x%llx, hw_log_buf_addr = 0x%llx\n",
 		(unsigned long long)hw_log_buf, hw_log_buf_addr);
+
+	HWLOGR_INFO("hw_log_buf PA = 0x%llx, local_log_buf PA= 0x%llx\n",
+			(unsigned long long)__pa_nodebug(hw_log_buf), __pa_nodebug(local_log_buf));
+
 	HWLOGR_INFO("aov_hw_log_buf = 0x%llx, aov_hw_log_buf_addr = 0x%llx\n",
 		(unsigned long long)aov_hw_log_buf, aov_hw_log_buf_addr);
 
@@ -328,10 +332,17 @@ static int ioread32_atf(uint8_t op_num, void **addr, uint32_t **ret_val)
 		res.a0, res.a1, res.a2, res.a3);
 
 	if (res.a0 != 0) {
-		HWLOGR_ERR("arm_smccc_smc reg_dump error ret: 0x%lx", res.a0);
-		HWLOGR_ERR("arm_smccc_smc reg_dump op: 0x%08x\n", op);
-		HWLOGR_ERR("arm_smccc_smc reg_dump a0 a1 a2 a3 / 0x%lx 0x%lx 0x%lx 0x%lx\n",
-					res.a0, res.a1, res.a2, res.a3);
+		if (res.a0 == -16) {
+			HWLOGR_DBG("arm_smccc_smc reg_dump acquire rcx sema timeout (rcx off)\n");
+			HWLOGR_DBG("arm_smccc_smc reg_dump op: 0x%08x\n", op);
+			HWLOGR_DBG("arm_smccc_smc reg_dump a0 a1 a2 a3 / 0x%lx 0x%lx 0x%lx 0x%lx\n",
+						res.a0, res.a1, res.a2, res.a3);
+		} else {
+			HWLOGR_ERR("arm_smccc_smc reg_dump error ret: 0x%lx\n", res.a0);
+			HWLOGR_ERR("arm_smccc_smc reg_dump op: 0x%08x\n", op);
+			HWLOGR_ERR("arm_smccc_smc reg_dump a0 a1 a2 a3 / 0x%lx 0x%lx 0x%lx 0x%lx\n",
+						res.a0, res.a1, res.a2, res.a3);
+		}
 		return res.a0;
 	}
 
@@ -708,10 +719,13 @@ static int apu_logtop_copy_buf(void)
 		lock_fail = false;
 	}
 
+	pwr_status = GET_MASK_BITS(APU_RPC_PWR_STATUS);
+	HWLOGR_DBG("APU_RPC_PWR_STATUS : 0x%x\n", pwr_status);
+
 	ret = get_r_w_ptr(&r_ptr, &w_ptr);
 
-	if (ret != 0) {
-		HWLOGR_ERR("skip copy buf, get_r_w_ptr() fail, ret = %d\n", ret);
+	if (ret != 0 && pwr_status != 0) {
+		HWLOGR_ERR("skip copy buf, power on but get_r_w_ptr() fail, ret = %d\n", ret);
 		goto out;
 	}
 
@@ -722,9 +736,6 @@ static int apu_logtop_copy_buf(void)
 
 	if (enable_interrupt) {
 		/* uP power done, get r/w_ptr from mbox */
-		pwr_status = GET_MASK_BITS(APU_RPC_PWR_STATUS);
-		HWLOGR_DBG("APU_RPC_PWR_STATUS : 0x%x\n", pwr_status);
-
 		if (pwr_status == 0 || r_ptr == 0 || w_ptr == 0) {
 			r_ofs = ioread32(LOG_R_OFS_MBOX);
 			w_ofs = ioread32(LOG_W_OFS_MBOX);
@@ -854,7 +865,12 @@ static irqreturn_t apu_logtop_irq_handler(int irq, void *priv)
 
 	apu_logtop_copy_buf();
 
-	w1c32_atf(APU_LOGTOP_CON_FLAG_ADDR, &ctrl_flag);
+	if (access_rcx_in_atf) {
+		w1c32_atf(APU_LOGTOP_CON_FLAG_ADDR, &ctrl_flag);
+	} else {
+		ctrl_flag = ioread32(APU_LOGTOP_CON_FLAG_ADDR);
+		iowrite32(ctrl_flag, APU_LOGTOP_CON_FLAG_ADDR);
+	}
 
 	HWLOGR_DBG("w1c apu_logtop_irq_handler = 0x%x\n",
 		(ctrl_flag & APU_LOGTOP_CON_FLAG_MASK) >> APU_LOGTOP_CON_FLAG_SHIFT);

@@ -142,6 +142,11 @@ static const struct {
 		.direction = IPI_APU_INITIATE,
 		.ack = IPI_WITH_ACK,
 	},
+	[APU_IPI_APUMMU_RX] = { // 24
+		.name = "apu-apummu-rx",
+		.direction = IPI_APU_INITIATE,
+		.ack = IPI_WITH_ACK,
+	},
 };
 
 
