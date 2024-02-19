@@ -413,6 +413,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/pmsr/pmsr.ko",
     "drivers/misc/mediatek/pmsr/twam/spmtwam.ko",
     "drivers/misc/mediatek/pmsr/v2/pmsr_v2.ko",
+    "drivers/misc/mediatek/pmsr/v3/pmsr_v3.ko",
     "drivers/misc/mediatek/power_throttling/mtk_battery_oc_throttling.ko",
     "drivers/misc/mediatek/power_throttling/mtk_bp_thl.ko",
     "drivers/misc/mediatek/power_throttling/mtk_cpu_power_throttling.ko",
@@ -1164,6 +1165,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/pmsr/pmsr.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/pmsr/twam/spmtwam.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/pmsr/v2/pmsr_v2.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/pmsr/v3/pmsr_v3.ko")
 
         mgk_64_device_modules.remove("drivers/soc/mediatek/devapc/device-apc-common.ko")
 
