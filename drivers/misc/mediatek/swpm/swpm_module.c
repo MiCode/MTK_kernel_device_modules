@@ -22,6 +22,14 @@
 #include <mtk_qos_ipi.h>
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+#include <linux/scmi_protocol.h>
+#include <tinysys-scmi.h>
+#if IS_ENABLED(CONFIG_MTK_PMSR)
+#include "apmcupm_scmi_v2.h"
+#endif
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
 #include <sspm_reservedmem.h>
 #include <sspm_reservedmem_define.h>
@@ -61,6 +69,36 @@ static struct swpm_manager swpm_m = {
 };
 
 static struct atomic_notifier_head swpm_notifier_list;
+
+static struct scmi_tinysys_info_st *tinfo;
+static int scmi_apmcupm_id;
+/***************************************************************************
+ *  Static functions
+ ***************************************************************************/
+static int swpm_scmi_init(void)
+{
+	unsigned int ret = 0;
+
+	/* for AP to SSPM */
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	tinfo = get_scmi_tinysys_info();
+
+	if (!tinfo) {
+		pr_info("get scmi info fail\n");
+		return ret;
+	}
+
+	ret = of_property_read_u32(tinfo->sdev->dev.of_node, "scmi-apmcupm",
+			&scmi_apmcupm_id);
+	if (ret) {
+		pr_info("get scmi-apmcupm fail, ret %d\n", ret);
+		ret = -1;
+		return ret;
+	}
+#endif
+	return ret;
+}
+
 /***************************************************************************
  *  API
  ***************************************************************************/
@@ -267,6 +305,90 @@ unsigned int swpm_set_and_get_cmd(unsigned int args_0,
 }
 EXPORT_SYMBOL(swpm_set_and_get_cmd);
 
+unsigned int swpm_set_cmd_v2(unsigned int uuid, unsigned int act,
+		unsigned int in1, unsigned int in2, unsigned int in3, unsigned int in4)
+{
+	unsigned int ret = 0;
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && IS_ENABLED(CONFIG_MTK_PMSR)
+	unsigned int user_info = 0;
+
+	if ((uuid >= APMCU_SCMI_UUID_SWPM_NUM) || (act >= SWPM_SCMI_ACT_NUM))
+		return 1;
+#endif
+
+	swpm_lock(&swpm_mutex);
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && IS_ENABLED(CONFIG_MTK_PMSR)
+	user_info = (APMCU_SET_UID(APMCU_SCMI_UID_SWPM) |
+			APMCU_SET_UUID(uuid) |
+			APMCU_SET_ACT(act) |
+			APMCU_SET_MG);
+	ret = scmi_tinysys_common_set(tinfo->ph, scmi_apmcupm_id,
+					user_info, in1, in2, in3, in4);
+#endif
+	swpm_unlock(&swpm_mutex);
+
+	return ret;
+}
+EXPORT_SYMBOL(swpm_set_cmd_v2);
+
+unsigned int swpm_get_cmd_v2(unsigned int uuid, unsigned int act,
+		unsigned int *out1, unsigned int *out2, unsigned int *out3)
+{
+	unsigned int ret = 0;
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && IS_ENABLED(CONFIG_MTK_PMSR)
+	unsigned int user_info = 0;
+	struct scmi_tinysys_status rvalue = {0};
+
+	if ((uuid >= APMCU_SCMI_UUID_SWPM_NUM) || (act >= SWPM_SCMI_ACT_NUM))
+		return 1;
+#endif
+	swpm_lock(&swpm_mutex);
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && IS_ENABLED(CONFIG_MTK_PMSR)
+	user_info = (APMCU_SET_UID(APMCU_SCMI_UID_SWPM) |
+			APMCU_SET_UUID(uuid) |
+			APMCU_SET_ACT(act) |
+			APMCU_SET_MG);
+	ret = scmi_tinysys_common_get(tinfo->ph, scmi_apmcupm_id,
+					user_info, &rvalue);
+	if (out1) {
+		*out1 = rvalue.r1;
+		pr_info("[swpm] %s (r1= %u)\n", __func__, rvalue.r1);
+	}
+	if (out2) {
+		*out2 = rvalue.r2;
+		pr_info("[swpm] %s (r2= %u)\n", __func__, rvalue.r2);
+	}
+	if (out3) {
+		*out3 = rvalue.r3;
+		pr_info("[swpm] %s (r3= %u)\n", __func__, rvalue.r3);
+	}
+#endif
+	swpm_unlock(&swpm_mutex);
+	return ret;
+}
+EXPORT_SYMBOL(swpm_get_cmd_v2);
+
+unsigned int swpm_set_and_get_cmd_v2(unsigned int uuid, unsigned int act,
+		unsigned int in1, unsigned int in2, unsigned int in3, unsigned int in4,
+		unsigned int *out1, unsigned int *out2, unsigned int *out3)
+{
+	unsigned int ret = 0;
+
+	ret = swpm_set_cmd_v2(uuid, act, in1, in2, in3, in4);
+	if (ret) {
+		pr_info("[swpm] %s failed(%d)\n", __func__, ret);
+		return ret;
+	}
+	ret = swpm_get_cmd_v2(uuid, act, out1, out2, out3);
+	if (ret)
+		pr_info("[swpm] %s failed(%d)\n", __func__, ret);
+
+	return ret;
+}
+EXPORT_SYMBOL(swpm_set_and_get_cmd_v2);
+
 int swpm_register_event_notifier(struct notifier_block *nb)
 {
 	int err;
@@ -293,6 +415,8 @@ static int __init swpm_init(void)
 	int ret = 0;
 
 	swpm_common_wq = create_workqueue("swpm_common_wq");
+
+	swpm_scmi_init();
 
 	ATOMIC_INIT_NOTIFIER_HEAD(&swpm_notifier_list);
 

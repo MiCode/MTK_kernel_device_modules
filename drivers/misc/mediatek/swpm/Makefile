@@ -12,6 +12,11 @@ ifeq ($(CONFIG_MTK_QOS_FRAMEWORK),m)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos
 endif
 
+ifneq ($(CONFIG_MTK_TINYSYS_SCMI),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pmsr/v3/
+endif
+
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y += -I$(SWPM_BUILD_FOLDER)/inc/
 

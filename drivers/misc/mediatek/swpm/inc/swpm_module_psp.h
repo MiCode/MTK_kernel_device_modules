@@ -11,6 +11,36 @@
 
 #define MAX_IP_NAME_LENGTH (16)
 
+
+enum SWPM_PSP_MAIN_RES {
+	SWPM_PSP_MAIN_RES_DDREN,
+	SWPM_PSP_MAIN_RES_APSRC,
+	SWPM_PSP_MAIN_RES_EMI,
+	SWPM_PSP_MAIN_RES_MAINPLL,
+	SWPM_PSP_MAIN_RES_INFRA,
+	SWPM_PSP_MAIN_RES_26M,
+	SWPM_PSP_MAIN_RES_PMIC,
+	SWPM_PSP_MAIN_RES_VCORE,
+	SWPM_PSP_MAIN_RES_PWR_OFF,
+	SWPM_PSP_MAIN_RES_PWR_ACT,
+	SWPM_PSP_MAIN_RES_SYS_STA,
+	SWPM_MAIN_RES_NUM,
+};
+
+
+enum SWPM_PSP_SEL_SIG {
+	SWPM_PSP_SEL_SIG_VCORE_MD,
+	SWPM_PSP_SEL_SIG_VCORE_CONN,
+	SWPM_PSP_SEL_SIG_VCORE_SCP,
+	SWPM_PSP_SEL_SIG_VCORE_ADSP,
+	SWPM_PSP_SEL_SIG_VCORE_PCIE0,
+	SWPM_PSP_SEL_SIG_VCORE_PCIE1,
+	SWPM_PSP_SEL_SIG_VCORE_MMPROC,
+	SWPM_PSP_SEL_SIG_VCORE_UARTHUB,
+	SWPM_PSP_SEL_SIG_NUM,
+	SWPM_PSP_SEL_SIG_UNUSE,
+};
+
 /* swpm power service pack interface types */
 enum swpm_num_type {
 	DDR_DATA_IP,
@@ -105,6 +135,12 @@ struct swpm_internal_ops {
 		(struct res_sig_stats *stats);
 	int32_t (*const num_get)
 		(enum swpm_num_type type);
+	int32_t (*const res_group_info_get)
+		(uint32_t grp, uint32_t *out1,
+		 uint32_t *out2, uint32_t *out3);
+	int32_t (*const res_group_id_get)
+		(uint32_t ip1, uint32_t ip2, uint32_t ip3,
+		 uint32_t *out1, uint32_t *out2, uint32_t *out3);
 };
 
 extern int32_t sync_latest_data(void);
@@ -126,6 +162,10 @@ extern int32_t get_vcore_vol_duration(int32_t vol_num,
 extern int32_t get_xpu_ip_num(void);
 extern int32_t get_xpu_ip_stats(int32_t ip_num, void *stats);
 extern int32_t get_res_sig_stats(struct res_sig_stats *stats);
+extern int32_t get_res_group_info(uint32_t grp,
+		uint32_t *out1, uint32_t *out2, uint32_t *out3);
+extern int32_t get_res_group_id(uint32_t ip1, uint32_t ip2, uint32_t ip3,
+		uint32_t *out1, uint32_t *out2, uint32_t *out3);
 extern int mtk_register_swpm_ops(struct swpm_internal_ops *ops);
 
 #endif /* __SWPM_MODULE_PSP_H__ */
