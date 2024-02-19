@@ -497,11 +497,21 @@ int DAL_Printf(const char *fmt, ...)
 {
 	va_list args;
 	u32 i;
+	struct mtk_drm_private *priv = NULL;
 
 	if (!mfc_handle)
 		return -1;
 	if (!fmt)
 		return -1;
+
+	priv = dal_crtc->dev->dev_private;
+	if (IS_ERR_OR_NULL(priv)) {
+		DDPINFO("%s: can't find priv\n", __func__);
+		goto err_DAL_Print;
+	} else {
+		if (priv->data->mmsys_id == MMSYS_MT6991)
+			goto err_DAL_Print;
+	}
 
 	DAL_LOCK();
 
@@ -524,7 +534,7 @@ int DAL_Printf(const char *fmt, ...)
 #endif
 
 	DAL_UNLOCK();
-
+err_DAL_Print:
 	return 0;
 }
 EXPORT_SYMBOL(DAL_Printf);
