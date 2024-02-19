@@ -609,7 +609,7 @@ void  group_update_threshold_util(int wl)
 	gear_cpus = get_gear_cpumask(0);
 	cpu = cpumask_first(gear_cpus);
 	weight = flt_get_grp_thr_weight();
-	cap = pd_opp2cap(cpu, 0, false, wl, NULL, true, "group_update_threshold_util");
+	cap = pd_opp2cap(cpu, 0, false, wl, NULL, false, "group_update_threshold_util");
 
 	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx)
 		grp_threshold_util[grp_idx] =
