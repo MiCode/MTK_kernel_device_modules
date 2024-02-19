@@ -242,17 +242,6 @@ void register_dlpt_notify(dlpt_callback dlpt_cb,
 }
 EXPORT_SYMBOL(register_dlpt_notify);
 
-static void exec_dlpt_callback(int dlpt_val)
-{
-	int i = 0;
-
-	for (i = 0; i < ARRAY_SIZE(dlptcb_tb); i++) {
-		if (dlptcb_tb[i].dlptcb)
-			dlptcb_tb[i].dlptcb(dlpt_val);
-	}
-	pr_debug("[%s] dlpt imix_val=%d\n", __func__, dlpt_val);
-}
-
 static int dlpt_get_rgs_chrdet(void)
 {
 	int ret = 0;
@@ -268,35 +257,6 @@ static int dlpt_get_rgs_chrdet(void)
 
 	return ret;
 }
-
-static int dlpt_check_power_off(void)
-{
-	int ret = 0;
-	static int dlpt_power_off_cnt;
-	enum LOW_BATTERY_LEVEL_TAG dlpt_power_off_lv = LOW_BATTERY_LEVEL_3;
-
-	if (dlpt.lbat_level == dlpt_power_off_lv && dlpt.tag->bootmode != 8) {
-		if (dlpt_power_off_cnt == 0)
-			ret = 0; /* 1st time get VBAT < 3.1V, record it */
-		else
-			ret = 1; /* 2nd time get VBAT < 3.1V */
-		dlpt_power_off_cnt++;
-		pr_info("[%s] %d ret:%d\n", __func__, dlpt_power_off_cnt, ret);
-	} else
-		dlpt_power_off_cnt = 0;
-
-	/* TODO: do we need to get system_transition_mutex */
-	if (dlpt_power_off_cnt >= 4)
-		kernel_restart("DLPT reboot system");
-	return ret;
-}
-
-#if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
-static void dlpt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
-{
-	dlpt.lbat_level = level;
-}
-#endif
 
 static struct power_supply *get_mtk_gauge_psy(void)
 {
@@ -317,24 +277,6 @@ static struct power_supply *get_mtk_gauge_psy(void)
 	if (!ret && prop.intval == 0)
 		return psy; /* gauge enabled */
 	return NULL;
-}
-
-static void dlpt_set_shutdown_condition(void)
-{
-	struct power_supply *psy;
-	union power_supply_propval prop;
-	int ret;
-
-	psy = get_mtk_gauge_psy();
-	/* gauge disabled */
-	if (!psy)
-		return;
-
-	prop.intval = 1;
-	ret = power_supply_set_property(psy, POWER_SUPPLY_PROP_ENERGY_EMPTY,
-					&prop);
-	if (ret)
-		pr_info("%s fail\n", __func__);
 }
 
 static void dlpt_update_imix(int imix)
@@ -474,22 +416,12 @@ static int dlpt_notify_handler(void *unused)
 			if (dlpt.imix > IMAX_MAX_VALUE)
 				dlpt.imix = IMAX_MAX_VALUE;
 			dlpt_update_imix(dlpt.imix);
-			exec_dlpt_callback(dlpt.imix);
 
 			pr_info("[DLPT_final] %d,%d,%d,%d\n"
 				, dlpt.imix, pre_ui_soc
 				, cur_ui_soc, IMAX_MAX_VALUE);
 		}
 		pre_ui_soc = cur_ui_soc;
-
-		if (cur_ui_soc == 1) {
-			/* Check low battery volt < level 3 throttle volt */
-			if (dlpt_check_power_off()) {
-				/* notify battery driver to power off by SOC=0 */
-				dlpt_set_shutdown_condition();
-				pr_info("[DLPT] notify battery SOC=0 to power off.\n");
-			}
-		}
 bypass:
 		dlpt.notify_flag = false;
 		mutex_unlock(&dlpt.notify_lock);
@@ -525,11 +457,6 @@ static void dlpt_notify_init(void)
 					 "dlpt_notify_thread");
 	if (IS_ERR(dlpt.notify_thread))
 		pr_notice("Failed to create dlpt_notify_thread\n");
-
-#if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
-	register_low_battery_notify(&dlpt_low_battery_cb,
-				    LOW_BATTERY_PRIO_DLPT, NULL);
-#endif
 }
 
 static int linear_range_get_selector(const struct linear_range *r,

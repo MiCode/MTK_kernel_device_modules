@@ -47,6 +47,22 @@ enum LOW_BATTERY_INTR_TAG {
 	INTR_MAX_NUM
 };
 
+/* boot type definitions */
+enum boot_mode_t {
+	NORMAL_BOOT = 0,
+	META_BOOT = 1,
+	RECOVERY_BOOT = 2,
+	SW_REBOOT = 3,
+	FACTORY_BOOT = 4,
+	ADVMETA_BOOT = 5,
+	ATE_FACTORY_BOOT = 6,
+	ALARM_BOOT = 7,
+	KERNEL_POWER_OFF_CHARGING_BOOT = 8,
+	LOW_POWER_OFF_CHARGING_BOOT = 9,
+	DONGLE_BOOT = 10,
+	UNKNOWN_BOOT
+};
+
 typedef void (*low_battery_callback)(enum LOW_BATTERY_LEVEL_TAG tag, void *data);
 
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)

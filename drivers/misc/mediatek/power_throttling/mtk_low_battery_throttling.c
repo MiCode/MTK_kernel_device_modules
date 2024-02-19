@@ -11,7 +11,7 @@
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/slab.h>
-
+#include <linux/reboot.h>
 #include "mtk_low_battery_throttling.h"
 #include "pmic_lbat_service.h"
 #include "pmic_lvsys_notify.h"
@@ -51,7 +51,20 @@ struct lbat_thd_tbl {
 	struct lbat_intr_tbl *lbat_intr_info;
 };
 
+struct tag_bootmode {
+	u32 size;
+	u32 tag;
+	u32 bootmode;
+	u32 boottype;
+};
+
 struct low_bat_thl_priv {
+	struct tag_bootmode *tag;
+	bool notify_flag;
+	struct wait_queue_head notify_waiter;
+	struct timer_list notify_timer;
+	struct task_struct *notify_thread;
+	struct device *dev;
 	int low_bat_thl_level;
 	int lbat_thl_intr_level;
 	int lvsys_thl_intr_level;
@@ -83,6 +96,7 @@ struct low_battery_callback_table {
 };
 
 static struct notifier_block lbat_nb;
+static struct notifier_block bp_nb;
 static struct low_bat_thl_priv *low_bat_thl_data;
 static struct low_battery_callback_table lbcb_tb[LBCB_MAX_NUM] = { {0}, {0} };
 static DEFINE_MUTEX(exe_thr_lock);
@@ -270,10 +284,12 @@ static void __used apply_aging_factor(unsigned int aging_factor, enum LOW_BATTER
 	thd_info = &low_bat_thl_data->lbat_thd_info[INTR_1][low_bat_thl_data->temp_cur_stage];
 	lbat_user_modify_thd_ext_locked(low_bat_thl_data->lbat_pt[INTR_1], thd_info->thd_volts,
 			thd_info->thd_volts_size);
+	dump_thd_volts_ext(thd_info->thd_volts, thd_info->thd_volts_size);
 #ifdef LBAT2_ENABLE
 	thd_info = &low_bat_thl_data->lbat_thd_info[low_bat_thl_data->temp_cur_stage];
 	dual_lbat_user_modify_thd_ext_locked(low_bat_thl_data->lbat_pt[INTR_2], thd_info->thd_volts,
 			thd_info->thd_volts_size);
+	dump_thd_volts_ext(thd_info->thd_volts, thd_info->thd_volts_size);
 #endif
 }
 
@@ -623,7 +639,7 @@ static ssize_t low_battery_modify_threshold_show(struct device *dev,
 	len += snprintf(buf + len, PAGE_SIZE, "modify enable: %d\n",
 		low_bat_thl_data->low_bat_thd_modify);
 
-	for (i = 0; i < INTR_MAX_NUM; i++) {
+	for (i = 0; i < low_bat_thl_data->lbat_intr_num; i++) {
 		thd_info = &low_bat_thl_data->lbat_thd_info[i][0];
 		len += snprintf(buf + len, PAGE_SIZE - len, "volts intr%d: %d %d %d %d\n",
 			i + 1, thd_info->thd_volts[LOW_BATTERY_LEVEL_0],
@@ -705,7 +721,18 @@ static DEVICE_ATTR_RW(low_battery_modify_threshold);
 static ssize_t low_battery_aging_factor_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "aging factor: %d\n", low_bat_thl_data->aging_factor);
+	int len = 0, i = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE, "aging factor: %d\n",
+		low_bat_thl_data->aging_factor);
+	len += snprintf(buf + len, PAGE_SIZE, "aging factor volts: ");
+	for(i = 0; i < LOW_BATTERY_INIT_NUM; i++) {
+		len += snprintf(buf + len, PAGE_SIZE, "%dmV ",
+		low_bat_thl_data->aging_factor_volts[i]);
+	}
+	len += snprintf(buf + len, PAGE_SIZE, "\n");
+
+	return len;
 }
 
 static ssize_t low_battery_aging_factor_store(struct device *dev,
@@ -753,6 +780,154 @@ static int check_duplicate(unsigned int *volt_thd)
 		}
 	}
 	return 0;
+}
+
+static int pt_check_power_off(void)
+{
+	int ret = 0, pt_power_off_lv = LOW_BATTERY_LEVEL_3;
+	static int pt_power_off_cnt;
+	struct lbat_thd_tbl *thd_info;
+
+	thd_info = &low_bat_thl_data->lbat_thd_info[INTR_1][low_bat_thl_data->temp_reg_stage];
+	pt_power_off_lv = thd_info->lbat_intr_info[thd_info->thd_volts_size - 1].lt_lv;
+#ifdef LBAT2_ENABLE
+	if (low_bat_thl_data->lbat_intr_num == 2) {
+		thd_info =
+			&low_bat_thl_data->lbat_thd_info[INTR_2][low_bat_thl_data->temp_reg_stage];
+		lbat2_level = thd_info->lbat_intr_info[thd_info->thd_volts_size - 1].lt_lv;
+		pt_power_off_lv = MAX(pt_power_off_lv, lbat2_level)
+	}
+#endif
+	if (!low_bat_thl_data->tag)
+		return 0;
+
+	if (low_bat_thl_data->low_bat_thl_level == pt_power_off_lv &&
+		low_bat_thl_data->tag->bootmode != KERNEL_POWER_OFF_CHARGING_BOOT) {
+		if (pt_power_off_cnt == 0)
+			ret = 0;
+		else
+			ret = 1;
+		pt_power_off_cnt++;
+		pr_info("[%s] %d ret:%d\n", __func__, pt_power_off_cnt, ret);
+	} else
+		pt_power_off_cnt = 0;
+
+	if (pt_power_off_cnt >= 4)
+		kernel_restart("PT reboot system");
+	return ret;
+}
+
+static void pt_set_shutdown_condition(void)
+{
+	static struct power_supply *bat_psy;
+	union power_supply_propval prop;
+	int ret;
+
+	bat_psy = power_supply_get_by_name("mtk-gauge");
+	if (!bat_psy || IS_ERR(bat_psy)) {
+		bat_psy = devm_power_supply_get_by_phandle(low_bat_thl_data->dev, "gauge");
+		if (!bat_psy || IS_ERR(bat_psy)) {
+			pr_info("%s psy is not rdy\n", __func__);
+			return;
+		}
+
+	}
+
+	ret = power_supply_get_property(bat_psy, POWER_SUPPLY_PROP_PRESENT,
+					&prop);
+	if (!ret && prop.intval == 0) {
+		/* gauge enabled */
+		prop.intval = 1;
+		ret = power_supply_set_property(bat_psy, POWER_SUPPLY_PROP_ENERGY_EMPTY,
+						&prop);
+		if (ret)
+			pr_info("%s fail\n", __func__);
+	}
+}
+
+static int pt_notify_handler(void *unused)
+{
+	do {
+		wait_event_interruptible(low_bat_thl_data->notify_waiter,
+			(low_bat_thl_data->notify_flag == true));
+
+		if (pt_check_power_off()) {
+			/* notify battery driver to power off by SOC=0 */
+			pt_set_shutdown_condition();
+			pr_info("[PT] notify battery SOC=0 to power off.\n");
+		}
+		low_bat_thl_data->notify_flag = false;
+		mod_timer(&low_bat_thl_data->notify_timer, jiffies + HZ * 20);
+	} while (!kthread_should_stop());
+	return 0;
+}
+
+static void pt_timer_func(struct timer_list *t)
+{
+	low_bat_thl_data->notify_flag = true;
+	wake_up_interruptible(&low_bat_thl_data->notify_waiter);
+}
+
+int pt_psy_event(struct notifier_block *nb, unsigned long event, void *v)
+{
+	int ret = 0, soc = 2;
+	struct power_supply *psy = v;
+	union power_supply_propval val;
+
+	if (!low_bat_thl_data) {
+		pr_info("[%s] low_bat_thl_data not init\n", __func__);
+		return NOTIFY_DONE;
+	}
+
+	if (strcmp(psy->desc->name, "battery") != 0)
+		return NOTIFY_DONE;
+	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CAPACITY, &val);
+	if (ret)
+		return NOTIFY_DONE;
+	soc = val.intval;
+
+	if (soc <= 1 && soc >= 0) {
+		low_bat_thl_data->notify_flag = true;
+		wake_up_interruptible(&low_bat_thl_data->notify_waiter);
+	} else {
+		low_bat_thl_data->notify_flag = false;
+		del_timer_sync(&low_bat_thl_data->notify_timer);
+	}
+
+	return NOTIFY_DONE;
+}
+
+static void pt_notify_init(struct platform_device *pdev)
+{
+	int ret = 0;
+	struct device_node *np = pdev->dev.of_node;
+
+	np = of_parse_phandle(pdev->dev.of_node, "bootmode", 0);
+	if (!np)
+		dev_notice(&pdev->dev, "get bootmode fail\n");
+	else {
+		low_bat_thl_data->tag =
+			(struct tag_bootmode *)of_get_property(np, "atag,boot", NULL);
+		if (!low_bat_thl_data->tag)
+			dev_notice(&pdev->dev, "failed to get atag,boot\n");
+		else
+			dev_notice(&pdev->dev, "bootmode:0x%x\n", low_bat_thl_data->tag->bootmode);
+	}
+
+	timer_setup(&low_bat_thl_data->notify_timer, pt_timer_func, TIMER_DEFERRABLE);
+	low_bat_thl_data->notify_thread = kthread_run(pt_notify_handler, 0,
+					 "pt_notify_thread");
+	if (IS_ERR(low_bat_thl_data->notify_thread)) {
+		pr_notice("Failed to create notify_thread\n");
+		return;
+	}
+	init_waitqueue_head(&low_bat_thl_data->notify_waiter);
+	bp_nb.notifier_call = pt_psy_event;
+	ret = power_supply_reg_notifier(&bp_nb);
+	if (ret) {
+		pr_notice("power_supply_reg_notifier fail\n");
+		return;
+	}
 }
 
 static void temp_handler(struct work_struct *work)
@@ -1292,7 +1467,9 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	priv->dev = &pdev->dev;
 	low_bat_thl_data = priv;
+	pt_notify_init(pdev);
 	return 0;
 }
 
