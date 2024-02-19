@@ -173,6 +173,15 @@ struct mml_dev {
 
 	struct device *mmu_dev; /* for dmabuf to iova */
 	struct device *mmu_dev_sec; /* for secure dmabuf to secure iova */
+
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	struct mutex frm_dump_mutex;
+	struct mml_frm_dump_data frm_dumps[mml_max_sys][mml_frm_dump_count];
+	/* bits enable using enum mml_frm_dump_buf */
+	u16 frm_dump_buf[mml_max_sys];
+	enum mml_sys_id frm_dump_opt_sysid;
+	enum mml_frm_dump_buf frm_dump_opt_bufid;
+#endif
 };
 
 int mml_comp_add(u32 id, struct device *dev, const struct component_ops *ops)
@@ -1772,6 +1781,124 @@ u32 mml_backup_crc_get(struct mml_task *task, struct mml_comp_config *ccfg, u32 
 #endif
 }
 
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+void mml_dump_reset(struct mml_dev *mml, enum mml_sys_id sysid)
+{
+	mutex_lock(&mml->frm_dump_mutex);
+	mml->frm_dump_buf[sysid] = 0;
+	mutex_unlock(&mml->frm_dump_mutex);
+}
+
+void mml_dump_enable(struct mml_dev *mml, enum mml_sys_id sysid,
+	enum mml_frm_dump_buf bufid, bool enable, bool always)
+{
+	u32 mask = BIT(bufid);
+
+	if (always)
+		mask = mask << mml_frm_dump_src0_always;
+
+	mutex_lock(&mml->frm_dump_mutex);
+
+	if (enable)
+		mml->frm_dump_buf[sysid] = mml->frm_dump_buf[sysid] | mask;
+	else
+		mml->frm_dump_buf[sysid] = mml->frm_dump_buf[sysid] & ~mask;
+
+	mutex_unlock(&mml->frm_dump_mutex);
+}
+
+void mml_dump_set_option(struct mml_dev *mml, enum mml_sys_id sysid, enum mml_frm_dump_buf bufid,
+	enum mml_frm_dump_opt opt)
+{
+	mutex_lock(&mml->frm_dump_mutex);
+	mml->frm_dumps[sysid][bufid].dump_option = opt;
+	mml->frm_dump_opt_sysid = sysid;
+	mml->frm_dump_opt_bufid = bufid;
+	mutex_unlock(&mml->frm_dump_mutex);
+}
+
+struct mml_frm_dump_data *mml_dump_read_data_lock(struct mml_dev *mml)
+{
+	mutex_lock(&mml->frm_dump_mutex);
+	return &mml->frm_dumps[mml->frm_dump_opt_sysid][mml->frm_dump_opt_bufid];
+}
+
+void mml_dump_read_data_unlock(struct mml_dev *mml)
+{
+	mutex_unlock(&mml->frm_dump_mutex);
+}
+
+void mml_dump_input(struct mml_dev *mml, enum mml_sys_id sysid, struct mml_task *task, bool force)
+{
+	const struct mml_frame_config *cfg = task->config;
+	struct mml_frm_dump_data *frm_data;
+	u16 mask_once = 0;
+	u64 cost = sched_clock();
+
+	mutex_lock(&mml->frm_dump_mutex);
+
+	if ((mml->frm_dump_buf[sysid] & BIT(mml_frm_dump_src0)) ||
+		(mml->frm_dump_buf[sysid] & BIT(mml_frm_dump_src0_always)) ||
+		force) {
+		mml_buf_invalid(&task->buf.src);
+		frm_data = &mml->frm_dumps[sysid][mml_frm_dump_src0];
+		mml_core_dump_buf(task, &cfg->info.src, &task->buf.src, frm_data);
+		mask_once |= BIT(mml_frm_dump_src0);
+	}
+
+	if (cfg->info.seg_map.format &&
+		((mml->frm_dump_buf[sysid] & BIT(mml_frm_dump_src1)) ||
+		(mml->frm_dump_buf[sysid] & BIT(mml_frm_dump_src1_always)) ||
+		force)) {
+		mml_buf_invalid(&task->buf.seg_map);
+		frm_data = &mml->frm_dumps[sysid][mml_frm_dump_src1];
+		mml_core_dump_buf(task, &cfg->info.seg_map, &task->buf.seg_map, frm_data);
+		mask_once |= BIT(mml_frm_dump_src1);
+	}
+
+	if (mask_once)
+		mml->frm_dump_buf[sysid] &= ~mask_once;
+	mutex_unlock(&mml->frm_dump_mutex);
+	if (mask_once) {
+		cost = sched_clock() - cost;
+		mml_log("[dump]input frame %#x cost %lluus", mask_once, (u64)div_u64(cost, 1000));
+	}
+}
+
+void mml_dump_output(struct mml_dev *mml, enum mml_sys_id sysid, struct mml_task *task)
+{
+	const struct mml_frame_config *cfg = task->config;
+	struct mml_frm_dump_data *frm_data;
+	u16 mask_once = 0;
+	u64 cost = sched_clock();
+
+	mutex_lock(&mml->frm_dump_mutex);
+
+	if ((mml->frm_dump_buf[sysid] & BIT(mml_frm_dump_dest0)) ||
+		(mml->frm_dump_buf[sysid] & BIT(mml_frm_dump_dest0_always))) {
+		frm_data = &mml->frm_dumps[sysid][mml_frm_dump_dest0];
+		mml_core_dump_buf(task, &cfg->info.dest[0].data, &task->buf.dest[0], frm_data);
+		mask_once |= BIT(mml_frm_dump_dest0);
+	}
+
+	if (cfg->info.dest_cnt == 2 &&
+		((mml->frm_dump_buf[sysid] & BIT(mml_frm_dump_dest1)) ||
+		(mml->frm_dump_buf[sysid] & BIT(mml_frm_dump_dest1_always)))) {
+		frm_data = &mml->frm_dumps[sysid][mml_frm_dump_dest1];
+		mml_core_dump_buf(task, &cfg->info.dest[1].data, &task->buf.dest[1], frm_data);
+		mask_once |= BIT(mml_frm_dump_dest1);
+	}
+
+	if (mask_once)
+		mml->frm_dump_buf[sysid] &= ~mask_once;
+	mutex_unlock(&mml->frm_dump_mutex);
+	if (mask_once) {
+		cost = sched_clock() - cost;
+		mml_log("[dump]output frame %#x cost %lluus", mask_once, (u64)div_u64(cost, 1000));
+	}
+}
+#endif
+
 static int sys_bind(struct device *dev, struct device *master, void *data)
 {
 	struct mml_dev *mml = dev_get_drvdata(dev);
@@ -1925,6 +2052,18 @@ static int mml_probe(struct platform_device *pdev)
 			__func__, (int)PTR_ERR(mml->dpc.mmlsys_26m_clk));
 		mml->dpc.mmlsys_26m_clk = NULL;
 	}
+
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	mutex_init(&mml->frm_dump_mutex);
+	mml->frm_dumps[mml_sys_frame][mml_frm_dump_src0].prefix = "in";
+	mml->frm_dumps[mml_sys_frame][mml_frm_dump_src1].prefix = "in1";
+	mml->frm_dumps[mml_sys_frame][mml_frm_dump_dest0].prefix = "out";
+	mml->frm_dumps[mml_sys_frame][mml_frm_dump_dest1].prefix = "out1";
+	mml->frm_dumps[mml_sys_tile][mml_frm_dump_src0].prefix = "in";
+	mml->frm_dumps[mml_sys_tile][mml_frm_dump_src1].prefix = "in1";
+	mml->frm_dumps[mml_sys_tile][mml_frm_dump_dest0].prefix = "out";
+	mml->frm_dumps[mml_sys_tile][mml_frm_dump_dest1].prefix = "out1";
+#endif
 
 	mml_log("%s success end", __func__);
 	return 0;

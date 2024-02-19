@@ -62,6 +62,8 @@ struct mml_test_case {
 	uint8_t mmlid;
 };
 
+static struct mml_test *main_test;
+
 /* kernel level test case struct */
 struct mml_ut {
 	/* [out] config next ut */
@@ -291,6 +293,18 @@ struct test_case_op {
 	void (*config)(void);
 	void (*run)(struct mml_test *test, struct mml_ut *cur);
 };
+
+void *mml_test_get_mml(struct platform_device *pdev)
+{
+	struct platform_device *mml_master_pdev = mml_get_plat_device(pdev);
+
+	if (!mml_master_pdev) {
+		mml_err("[test]missing sys to mml driver reference");
+		return NULL;
+	}
+
+	return platform_get_drvdata(mml_master_pdev);
+}
 
 static void check_fence(int32_t fd, const char *func)
 {
@@ -1847,18 +1861,23 @@ static void mml_test_fill_frame_rgba1010102(u8 *va, u32 width, u32 height)
 
 static s32 mml_test_fill_frame_dumpout(void *frame_buf, u32 size)
 {
-	struct mml_frm_dump_data *frm = mml_core_get_frame_out();
+	void *mml = mml_test_get_mml(main_test->pdev);
+	struct mml_frm_dump_data *frm = mml_dump_read_data_lock(mml);
+	bool ret = true;
 
 	if (!frm->size) {
-		mml_log("[test]%s frame out data to use", __func__);
-		return false;
+		mml_log("[test]%s no frame dump data to use", __func__);
+		ret = false;
+		goto done;
 	}
 
 	mml_log("[test]use frame %s size %u(%u)", frm->name, frm->size, size);
 	size = min_t(u32, frm->size, size);
 
 	memcpy(frame_buf, frm->frame, size);
-	return true;
+done:
+	mml_dump_read_data_unlock(mml);
+	return ret;
 }
 
 static struct dma_buf *mml_test_create_buf(struct dma_heap *heap, u32 size)
@@ -2008,8 +2027,6 @@ static int mml_test_create_dest(struct dma_heap *heap, struct mml_ut *cur_case,
 	return 0;
 }
 
-static struct mml_test *main_test;
-
 static void mml_test_krun(u32 case_num)
 {
 	struct mml_buffer src_buf = {0}, dest_buf = {0};
@@ -2121,61 +2138,95 @@ static const struct file_operations mml_inst_dump_fops = {
 	.release = single_release,
 };
 
-static int mml_test_frame_in(struct seq_file *seq, void *data)
+static int frame_dump_open(struct inode *inode, struct file *file)
 {
-	struct mml_frm_dump_data *frm = mml_core_get_frame_in();
-
-	if (!frm->size) {
-		mml_log("[test]%s no data to dump", __func__);
-		return 0;
-	}
-
-	mml_log("[test]%s dump frame %s size %u", __func__, frm->name, frm->size);
-	seq_write(seq, frm->frame, frm->size);
-
+	file->private_data = mml_test_get_mml(main_test->pdev);
 	return 0;
 }
 
-static int mml_test_frame_in_open(struct inode *inode, struct file *file)
+static ssize_t frame_dump_write(struct file *file, const char __user *ubuf, size_t count,
+				loff_t *pos)
 {
-	return single_open(file, mml_test_frame_in, inode->i_private);
-}
+	void *mml = file->private_data;
+	char cmd_buffer[512];
+	char *tok, *buf = cmd_buffer;
+	u32 len;
+	enum mml_sys_id sysid = mml_sys_frame;
+	enum mml_frm_dump_buf bufid = mml_frm_dump_src0;
+	bool always = false;
 
-static const struct file_operations mml_frame_in_fops = {
-	.owner = THIS_MODULE,
-	.open = mml_test_frame_in_open,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
-};
-
-static int mml_test_frame_out(struct seq_file *seq, void *data)
-{
-	struct mml_frm_dump_data *frm = mml_core_get_frame_out();
-
-	if (!frm->size) {
-		mml_log("[test]%s no data to dump", __func__);
-		return 0;
+	if (!mml) {
+		mml_err("[dump]%s no mml instance", __func__);
+		goto done;
 	}
 
-	mml_log("[test]%s dump frame %s size %u", __func__, frm->name, frm->size);
-	seq_write(seq, frm->frame, frm->size);
+	len = min_t(u32, count, ARRAY_SIZE(cmd_buffer) - 1);
+	if (copy_from_user(cmd_buffer, ubuf, len))
+		goto done;
+	cmd_buffer[len] = 0;
+	mml_msg("[dump]command:%s", cmd_buffer);
 
-	return 0;
+	while ((tok = strsep(&buf, " "))) {
+		if (strncmp(tok, "reset", 5) == 0)
+			mml_dump_reset(mml, sysid);
+		else if (strncmp(tok, "mml0", 4) == 0)
+			sysid = mml_sys_tile;
+		else if (strncmp(tok, "mml1", 4) == 0)
+			sysid = mml_sys_frame;
+		else if (strncmp(tok, "src0", 4) == 0)
+			bufid = mml_frm_dump_src0;
+		else if (strncmp(tok, "src1", 4) == 0)
+			bufid = mml_frm_dump_src1;
+		else if (strncmp(tok, "dest0", 5) == 0)
+			bufid = mml_frm_dump_dest0;
+		else if (strncmp(tok, "dest1", 5) == 0)
+			bufid = mml_frm_dump_dest1;
+		else if (strncmp(tok, "always", 6) == 0)
+			always = true;
+		else if (strncmp(tok, "enable", 6) == 0)
+			mml_dump_enable(mml, sysid, bufid, true, always);
+		else if (strncmp(tok, "disable", 7) == 0)
+			mml_dump_enable(mml, sysid, bufid, false, always);
+		else if (strncmp(tok, "name", 4) == 0)
+			mml_dump_set_option(mml, sysid, bufid, mml_frm_dump_name);
+		else if (strncmp(tok, "frame", 5) == 0)
+			mml_dump_set_option(mml, sysid, bufid, mml_frm_dump_frame);
+	}
+
+done:
+	return count;
 }
 
-static int mml_test_frame_out_open(struct inode *inode, struct file *file)
+static ssize_t frame_dump_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
 {
-	return single_open(file, mml_test_frame_out, inode->i_private);
+	void *mml = file->private_data;
+	struct mml_frm_dump_data *frm = mml_dump_read_data_lock(mml);
+	ssize_t len = 0;
+
+	if (frm->dump_option == mml_frm_dump_frame) {
+		len = simple_read_from_buffer(buf, count, pos, frm->frame, frm->size);
+		if (!len)
+			mml_log("[dump]dump frame data to user:%s", frm->name);
+	}
+
+	if (frm->dump_option == mml_frm_dump_name) {
+		len = simple_read_from_buffer(buf, count, pos, frm->name, strlen(frm->name));
+		if (!len)
+			mml_log("[dump]dump frame name to user:%s", frm->name);
+	}
+
+	mml_dump_read_data_unlock(mml);
+
+	return len;
 }
 
-static const struct file_operations mml_frame_out_fops = {
+static const struct file_operations mml_frame_fops = {
 	.owner = THIS_MODULE,
-	.open = mml_test_frame_out_open,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
+	.open = frame_dump_open,
+	.write = frame_dump_write,
+	.read = frame_dump_read,
 };
+
 
 /* Following code implement mml dump service node */
 int mml_dump_srv;
@@ -2480,16 +2531,16 @@ static void process_ut_cmd(const char *cmd, u32 mmlid)
 			continue;
 
 		memcpy(temp, cmd, min_t(u32, 9, (u32)strlen(cmd)));
-		mml_log("%s checking %s", __func__, temp);
+		mml_msg("[ut]%s checking %s", __func__, temp);
 
 		if (strlen(cmd) > param_len && strncmp(cmd + param_len, ":0x", 3) == 0) {
 			snprintf(scan_buf, ARRAY_SIZE(scan_buf) - 1, "%s:%%i", ut_params[i]);
 			ret = sscanf(cmd, scan_buf, &val);
-			mml_log("scan %s %#010x idx %u ret %d", scan_buf, val, i, ret);
+			mml_msg("[ut]scan %s %#010x idx %u ret %d", scan_buf, val, i, ret);
 		} else {
 			snprintf(scan_buf, ARRAY_SIZE(scan_buf) - 1, "%s:%%u", ut_params[i]);
 			ret = sscanf(cmd, scan_buf, &val);
-			mml_log("scan %s %u idx %u ret %d", scan_buf, val, i, ret);
+			mml_msg("[ut]scan %s %u idx %u ret %d", scan_buf, val, i, ret);
 		}
 
 		if (ret != 1)
@@ -2506,9 +2557,9 @@ static int ut_test_set(const char *val, const struct kernel_param *kp)
 	u32 mmlid = 1;
 
 	memcpy(cmd_buffer, val, min_t(u32, strlen(val), ARRAY_SIZE(cmd_buffer) - 1));
-	mml_msg("mml ut set:%s", cmd_buffer);
+	mml_msg("[ut]mml ut set:%s", cmd_buffer);
 	if (strlen(val) >= ARRAY_SIZE(cmd_buffer))
-		mml_err("%s command size %zu out of buffer size %u",
+		mml_err("[ut]%s command size %zu out of buffer size %u",
 			__func__, strlen(val), (u32)ARRAY_SIZE(cmd_buffer));
 
 	/* check mml id first */
@@ -2779,16 +2830,10 @@ static int probe(struct platform_device *pdev)
 			PTR_ERR(test->fs_inst));
 
 	test->fs_frame_in = debugfs_create_file(
-		"mml-frame-dump-in", 0444, dir, test, &mml_frame_in_fops);
+		"mml-frame-dump", 0444, dir, test, &mml_frame_fops);
 	if (IS_ERR(test->fs_frame_in))
-		mml_err("[test]debugfs_create_file mml-frame-dump-in failed:%ld",
+		mml_err("[test]debugfs_create_file mml-frame-dump failed:%ld",
 			PTR_ERR(test->fs_frame_in));
-
-	test->fs_frame_out = debugfs_create_file(
-		"mml-frame-dump-out", 0444, dir, test, &mml_frame_out_fops);
-	if (IS_ERR(test->fs_frame_out))
-		mml_err("[test]debugfs_create_file mml-frame-dump-out failed:%ld",
-			PTR_ERR(test->fs_frame_out));
 
 	test->fs_dump = debugfs_create_file(
 		"mml-dumpsrv", 0444, dir, test, &dumpsrv_fops);
