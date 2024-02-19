@@ -9351,6 +9351,59 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			//vdec-cpu-grp-aware = <1>;
 		};
 
+		jpgenc@38030000 {
+			compatible = "mediatek,mtk-jpgenc";
+			mediatek,platform = "platform:mt6991";
+			reg = <0 0x38030000 0 0x10000>;
+			interrupts = <GIC_SPI 488 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&venc_gcon_clk CLK_VEN1_CKE2_JPGENC_JPGENC>,
+				 <&mmdvfs_mux MMDVFS_USER_JPEGENC>;
+			clock-names = "jpgenc", "mmdvfs_clk";
+			power-domains = <&hfrpsys  MT6991_POWER_DOMAIN_VEN0>;
+			mtk,smmu-shared = <&mm_smmu_hfrp>;
+			mediatek,larb = <&smi_larb7>;
+			operating-points-v2 = <&opp_table_venc>;
+			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L7_P7_JPGENC_YRD)
+							&mmqos SLAVE_COMMON(0)>,
+						<&mmqos MASTER_LARB_PORT(SMMU_L7_P8_JPGENC_CRD)
+							&mmqos SLAVE_COMMON(0)>,
+						<&mmqos MASTER_LARB_PORT(SMMU_L7_P9_JPGENC_QT)
+							&mmqos SLAVE_COMMON(0)>,
+						<&mmqos MASTER_LARB_PORT(SMMU_L7_P16_JPGENC_BS)
+							&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "path_jpegenc_y_rdma",
+					"path_jpegenc_c_rmda",
+					"path_jpegenc_q_table",
+					"path_jpegenc_bsdma";
+		};
+
+		jpgenc@38830000 {
+			compatible = "mediatek,mtk-jpgenc_c0_c1";
+			mediatek,platform = "platform:mt6991";
+			reg = <0 0x38830000 0 0x10000>;
+			interrupts = <GIC_SPI 493 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&venc_gcon_clk CLK_VEN1_CKE2_JPGENC>,
+				     <&venc_gcon_core1_clk  CLK_VEN2_CKE2_JPGENC_JPGENC>,
+					 <&mmdvfs_mux MMDVFS_USER_JPEGENC>;
+			clock-names = "jpgenc", "jpgenc_c1", "mmdvfs_clk";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VEN1>;
+			mtk,smmu-shared = <&mm_smmu_hfrp>;
+			mediatek,larb = <&smi_larb7 &smi_larb8>;
+			operating-points-v2 = <&opp_table_venc>;
+			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L8_P7_JPGENC_YRD)
+							&mmqos SLAVE_COMMON(1)>,
+						<&mmqos MASTER_LARB_PORT(SMMU_L8_P8_JPGENC_CRD)
+							&mmqos SLAVE_COMMON(1)>,
+						<&mmqos MASTER_LARB_PORT(SMMU_L8_P9_JPGENC_QT)
+							&mmqos SLAVE_COMMON(1)>,
+						<&mmqos MASTER_LARB_PORT(SMMU_L8_P16_JPGENC_BS)
+							&mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "path_jpegenc_y_rdma",
+					"path_jpegenc_c_rmda",
+					"path_jpegenc_q_table",
+					"path_jpegenc_bsdma";
+		};
+
 		venc@38000000 {
 			compatible = "mediatek,mt6991-vcodec-enc";
 			mediatek,platform = "platform:mt6991";
