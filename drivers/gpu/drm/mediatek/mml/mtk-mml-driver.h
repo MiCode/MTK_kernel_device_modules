@@ -305,6 +305,8 @@ void mml_dev_put_dle_ctx(struct mml_dev *mml,
 struct mml_m2m_ctx *mml_dev_create_m2m_ctx(struct mml_dev *mml,
 	struct mml_m2m_ctx *(*ctx_create)(struct mml_dev *mml));
 
+struct mml_v4l2_dev *mml_get_v4l2_dev(struct mml_dev *mml);
+
 /*
  * mml_topology_get_cache - Get topology cache struct store in mml.
  *

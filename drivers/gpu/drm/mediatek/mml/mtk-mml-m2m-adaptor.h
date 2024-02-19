@@ -9,9 +9,6 @@
 
 #include <linux/device.h>
 
-#define MML_M2M_MODULE_NAME	"mtk-mml-m2m"
-#define MML_M2M_DEVICE_NAME	"MediaTek MML M2M"
-
 struct mml_v4l2_dev;
 
 struct mml_v4l2_dev *mml_v4l2_dev_create(struct device *dev);

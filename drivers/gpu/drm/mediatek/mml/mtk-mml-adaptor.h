@@ -37,19 +37,29 @@ void frame_config_queue_destroy(struct mml_frame_config *cfg);
 void frame_config_init(struct mml_frame_config *cfg,
 	struct mml_ctx *ctx,
 	struct mml_submit *submit);
+struct mml_frame_config *frame_config_create(
+	struct mml_ctx *ctx,
+	struct mml_submit *submit);
+/* common config operations */
 void frame_config_get(struct mml_frame_config *cfg);
 void frame_config_put(struct mml_frame_config *cfg);
+void frame_config_free(struct mml_frame_config *cfg);
 
 struct mml_task *task_get_idle(struct mml_frame_config *cfg);
 void task_move_to_destroy(struct kref *kref);
 void task_move_to_running(struct mml_task *task);
 void task_move_to_idle(struct mml_task *task);
+/* common task operations */
+void task_queue(struct mml_task *task, u32 pipe);
 void task_submit_done(struct mml_task *task);
+s32 task_dup(struct mml_task *task, u32 pipe);
+struct mml_tile_cache *task_get_tile_cache(struct mml_task *task, u32 pipe);
+void ctx_kt_setsched(struct mml_ctx *ctx);
+
 void task_state_dec(struct mml_frame_config *cfg, struct mml_task *task,
 	const char *api);
 void dump_pq_en(u32 idx, struct mml_pq_param *pq_param,
 	struct mml_pq_config *pq_config);
-s32 task_dup(struct mml_task *task, u32 pipe);
 
 s32 frame_buf_to_task_buf(struct mml_file_buf *fbuf,
 			  struct mml_buffer *user_buf,

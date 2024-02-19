@@ -519,10 +519,11 @@ static s32 command_reuse(struct mml_task *task, u32 pipe)
 	return 0;
 }
 
-static void get_fmt_str(char *fmt, size_t sz, const struct mml_frame_data *data)
+static void get_fmt_str(char *fmt, size_t sz, enum mml_color f)
 {
-	enum mml_color f = data->format;
-	int ret = snprintf(fmt, sz, "%u%s%s%s%s%s%s%s%s",
+	int ret;
+
+	ret = snprintf(fmt, sz, "%u%s%s%s%s%s%s%s%s",
 		MML_FMT_HW_FORMAT(f),
 		MML_FMT_SWAP(f) ? "s" : "",
 		MML_FMT_ALPHA(f) && MML_FMT_IS_YUV(f) ? "y" : "",
@@ -535,7 +536,6 @@ static void get_fmt_str(char *fmt, size_t sz, const struct mml_frame_data *data)
 		MML_FMT_10BIT_JUMP(f) ? "j" : "",
 		MML_FMT_AFBC(f) ? "c" :
 		MML_FMT_HYFBC(f) ? "h" : "");
-
 	if (ret < 0)
 		fmt[0] = '\0';
 }
@@ -545,14 +545,13 @@ static void get_frame_str(char *frame, size_t sz, const struct mml_frame_data *d
 	char fmt[24];
 	int ret;
 
-	get_fmt_str(fmt, sizeof(fmt), data);
+	get_fmt_str(fmt, sizeof(fmt), data->format);
 	ret = snprintf(frame, sz, "(%u, %u)[%u %u] %#010x C%s P%hu%s",
 		data->width, data->height, data->y_stride,
 		MML_FMT_AFBC(data->format) ? data->vert_stride : data->uv_stride,
 		data->format, fmt,
 		data->profile,
 		data->secure ? " sec" : "");
-
 	if (ret < 0)
 		frame[0] = '\0';
 }
@@ -1283,7 +1282,7 @@ void mml_core_dump_buf(struct mml_task *task, const struct mml_frame_data *data,
 	int ret;
 
 	/* support only out0 for now, maybe support multi out later */
-	get_fmt_str(fmt, sizeof(fmt), data);
+	get_fmt_str(fmt, sizeof(fmt), data->format);
 	ret = snprintf(frm->name, sizeof(frm->name), "mml_%llu_%u_%s_f%s_%u_%u_%u.bin",
 		stamp, task->job.jobid, frm->prefix, fmt,
 		data->width, data->height, data->y_stride);
@@ -1384,7 +1383,7 @@ static void core_taskdone_kt_work(struct kthread_work *work)
 		char fmt[24];
 		struct mml_frame_data *data = &task->config->info.dest[0].data;
 
-		get_fmt_str(fmt, sizeof(fmt), data);
+		get_fmt_str(fmt, sizeof(fmt), data->format);
 		mml_dump_buf(task, data,
 			data->width + task->config->info.dest[0].compose.left,
 			data->height + task->config->info.dest[0].compose.top,
@@ -1791,7 +1790,7 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 		char fmt[24];
 		struct mml_frame_data *data = &task->config->info.src;
 
-		get_fmt_str(fmt, sizeof(fmt), data);
+		get_fmt_str(fmt, sizeof(fmt), data->format);
 		mml_dump_buf(task, data, data->width, data->height, "src", fmt,
 			&task->buf.src, MMLDUMPT_SRC,
 			mml_dump_srv_opt & DUMPOPT_SRC_ASYNC);

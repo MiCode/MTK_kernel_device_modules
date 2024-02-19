@@ -132,7 +132,7 @@ void frame_config_destroy(struct mml_frame_config *cfg)
 	cfg->cfg_ops->put(cfg);
 }
 
-static void frame_config_free(struct kref *kref)
+static void frame_config_release(struct kref *kref)
 {
 	struct mml_frame_config *cfg = container_of(kref,
 		struct mml_frame_config, ref);
@@ -175,6 +175,18 @@ void frame_config_init(struct mml_frame_config *cfg,
 	memcpy(cfg->dl_out, submit->dl_out, sizeof(cfg->dl_out));
 	INIT_WORK(&cfg->work_destroy, frame_config_destroy_work);
 	kref_init(&cfg->ref);
+}
+
+struct mml_frame_config *frame_config_create(
+	struct mml_ctx *ctx,
+	struct mml_submit *submit)
+{
+	struct mml_frame_config *cfg = kzalloc(sizeof(*cfg), GFP_KERNEL);
+
+	if (!cfg)
+		return ERR_PTR(-ENOMEM);
+	frame_config_init(cfg, ctx, submit);
+	return cfg;
 }
 
 s32 frame_buf_to_task_buf(struct mml_file_buf *fbuf,
@@ -270,6 +282,11 @@ void task_move_to_idle(struct mml_task *task)
 			task->config->run_task_cnt,
 			task->config->done_task_cnt);
 	}
+}
+
+void task_queue(struct mml_task *task, u32 pipe)
+{
+	queue_work(task->ctx->wq_config[pipe], &task->work_config[pipe]);
 }
 
 void task_submit_done(struct mml_task *task)
@@ -372,7 +389,8 @@ void frame_calc_plane_offset(struct mml_frame_data *data,
 			data->plane_offset[i] = 0;
 			continue;
 		}
-		data->plane_offset[i] = data->plane_offset[i-1] + buf->size[i-1];
+		data->plane_offset[i] = data->plane_offset[i-1] +
+					buf->size[i-1];
 	}
 }
 
@@ -382,9 +400,9 @@ s32 task_dup(struct mml_task *task, u32 pipe)
 	struct mml_ctx *ctx = task->ctx;
 	struct mml_task *src;
 
-	if (!cfg->nocmd &&		/* drm */
+	if (!cfg->nocmd &&		/* drm, m2m */
 	    unlikely(task->pkts[pipe])) {
-		mml_err("[drm]%s task %p pipe %u already has pkt before dup",
+		mml_err("[adpt]%s task %p pipe %u already has pkt before dup",
 			__func__, task, pipe);
 		return -EINVAL;
 	}
@@ -404,7 +422,7 @@ s32 task_dup(struct mml_task *task, u32 pipe)
 	if (src) {
 		if (cfg->nocmd)		/* dle */
 			goto dup_pq;
-		if (src->pkts[pipe])	/* drm */
+		if (src->pkts[pipe])	/* drm, m2m */
 			goto dup_command;
 	}
 
@@ -412,9 +430,9 @@ s32 task_dup(struct mml_task *task, u32 pipe)
 	list_for_each_entry(src, &cfg->tasks, entry) {
 		if (cfg->nocmd)		/* dle */
 			goto dup_pq;
-		if (!src->pkts[0] ||	/* drm */
+		if (!src->pkts[0] ||	/* drm, m2m */
 		    (src->config->dual && !src->pkts[1])) {
-			mml_err("[drm]%s error running task %p not able to copy",
+			mml_err("[adpt]%s error running task %p not able to copy",
 				__func__, src);
 			continue;
 		}
@@ -431,9 +449,9 @@ s32 task_dup(struct mml_task *task, u32 pipe)
 
 		if (cfg->nocmd)		/* dle */
 			goto dup_pq;
-		if (!src->pkts[0] ||	/* drm */
+		if (!src->pkts[0] ||	/* drm, m2m */
 		    (src->config->dual && !src->pkts[1])) {
-			mml_err("[drm]%s error await task %p not able to copy",
+			mml_err("[adpt]%s error await task %p not able to copy",
 				__func__, src);
 			continue;
 		}
@@ -447,7 +465,7 @@ s32 task_dup(struct mml_task *task, u32 pipe)
 	return -EBUSY;
 
 dup_command:
-	/* drm */
+	/* drm, m2m */
 	task->pkts[pipe] = cmdq_pkt_create(cfg->path[pipe]->clt);
 	cmdq_pkt_copy(task->pkts[pipe], src->pkts[pipe]);
 	task->pkts[pipe]->user_data = (void *)task;
@@ -461,13 +479,32 @@ dup_command:
 		cmdq_reuse_refresh(task->pkts[pipe], task->reuse[pipe].labels,
 			task->reuse[pipe].label_idx);
 	} else {
-		mml_err("[drm]copy reuse labels fail");
+		mml_err("[adpt]copy reuse labels fail");
 	}
 dup_pq:
 	/* dle TODO: copy pq_task results */
 	/* mml_pq_dup_task(task->pq_task, src->pq_task) */
 	mutex_unlock(&ctx->config_mutex);
 	return 0;
+}
+
+struct mml_tile_cache *task_get_tile_cache(struct mml_task *task, u32 pipe)
+{
+	return &task->ctx->tile_cache[pipe];
+}
+
+void ctx_kt_setsched(struct mml_ctx *ctx)
+{
+	struct sched_param kt_param = { .sched_priority = MAX_RT_PRIO - 1 };
+	int ret;
+
+	if (ctx->kt_priority)
+		return;
+
+	ret = sched_setscheduler(ctx->kt_done->task, SCHED_FIFO, &kt_param);
+	mml_log("[adpt]%s set kt done priority %d ret %d",
+		__func__, kt_param.sched_priority, ret);
+	ctx->kt_priority = true;
 }
 
 void frame_config_get(struct mml_frame_config *cfg)
@@ -477,7 +514,12 @@ void frame_config_get(struct mml_frame_config *cfg)
 
 void frame_config_put(struct mml_frame_config *cfg)
 {
-	kref_put(&cfg->ref, frame_config_free);
+	kref_put(&cfg->ref, frame_config_release);
+}
+
+void frame_config_free(struct mml_frame_config *cfg)
+{
+	kfree(cfg);
 }
 
 int mml_ctx_init(struct mml_ctx *ctx, struct mml_dev *mml,
