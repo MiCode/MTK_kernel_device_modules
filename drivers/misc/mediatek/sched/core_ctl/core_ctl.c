@@ -404,6 +404,30 @@ static int test_set_val(struct cluster_data *cluster, unsigned int val)
 	return 0;
 }
 
+static inline int core_ctl_pause_cpu(unsigned int cpu)
+{
+	int ret = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&core_ctl_pause_lock, flags);
+	ret = sched_pause_cpu(cpu);
+	spin_unlock_irqrestore(&core_ctl_pause_lock, flags);
+
+	return ret;
+}
+
+static inline int core_ctl_resume_cpu(unsigned int cpu)
+{
+	int ret = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&core_ctl_pause_lock, flags);
+	ret = sched_resume_cpu(cpu);
+	spin_unlock_irqrestore(&core_ctl_pause_lock, flags);
+
+	return ret;
+}
+
 static void set_min_cpus(struct cluster_data *cluster, unsigned int val)
 {
 	unsigned long flags;
@@ -719,19 +743,17 @@ int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause)
 	c = &per_cpu(cpu_state, cpu);
 	cluster = c->cluster;
 
-	spin_lock_irqsave(&core_ctl_pause_lock, flags);
-
-	if (is_pause)
-		ret = sched_pause_cpu(cpu);
+	if(is_pause)
+		ret = core_ctl_pause_cpu(cpu);
 	else
-		ret = sched_resume_cpu(cpu);
+		ret = core_ctl_resume_cpu(cpu);
 
 	/* error occurs */
 	if (ret)
-		goto unlock;
+		goto print_out;
 
 	/* Update cpu state */
-	spin_lock(&core_ctl_state_lock);
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	c->force_paused = is_pause;
 	/* Handle conflict with original policy */
 	if (c->paused_by_cc) {
@@ -739,37 +761,35 @@ int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause)
 		cluster->nr_paused_cpus--;
 	}
 	cluster->active_cpus = get_active_cpu_count(cluster);
-	spin_unlock(&core_ctl_state_lock);
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	core_ctl_call_notifier(cpu, is_pause);
 
-unlock:
-	spin_unlock_irqrestore(&core_ctl_pause_lock, flags);
-
+print_out:
 	if (is_pause){
 		if (ret < 0){
-			pr_info("[Core Pause] Pause request ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
+			pr_info("[Core Force Pause] Pause request ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
 				ret, cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
 				cpu_active_mask->bits[0]);
 		} else if (ret){
-			pr_info("[Core Pause] Already Pause: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
+			pr_info("[Core Force Pause] Already Pause: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
 				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
 				cpu_active_mask->bits[0]);
 		} else {
-			pr_info("[Core Pause] Pause success: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
+			pr_info("[Core Force Pause] Pause success: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
 				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
 				cpu_active_mask->bits[0]);
 		}
 	} else {
 		if (ret < 0){
-			pr_info("[Core Pause] Resume request ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
+			pr_info("[Core Force Pause] Resume request ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
 				ret, cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
 				cpu_active_mask->bits[0]);
 		} else if (ret){
-			pr_info("[Core Pause] Already Resume: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
+			pr_info("[Core Force Pause] Already Resume: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
 				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
 				cpu_active_mask->bits[0]);
 		} else {
-			pr_info("[Core Pause] Resume success: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
+			pr_info("[Core Force Pause] Resume success: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
 				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
 				cpu_active_mask->bits[0]);
 		}
@@ -1470,7 +1490,7 @@ again:
 
 		spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 		core_ctl_debug("%s: Trying to pause CPU%u\n", TAG, c->cpu);
-		ret = sched_pause_cpu(c->cpu);
+		ret = core_ctl_pause_cpu(cpu);
 		if (ret < 0){
 			core_ctl_debug("%s Unable to pause CPU%u err=%d\n", TAG, c->cpu, ret);
 		} else if (!ret) {
@@ -1557,7 +1577,7 @@ again:
 		spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 
 		core_ctl_debug("%s: Trying to resume CPU%u\n", TAG, c->cpu);
-		ret = sched_resume_cpu(c->cpu);
+		ret = core_ctl_resume_cpu(cpu);
 		if (ret < 0){
 			core_ctl_debug("%s Unable to resume CPU%u err=%d\n", TAG, c->cpu, ret);
 		} else if (!ret) {
@@ -1593,7 +1613,6 @@ again:
 static void __ref do_core_ctl(struct cluster_data *cluster)
 {
 	unsigned int need;
-	unsigned long flags;
 	struct cpumask cpu_pause_res;
 	struct cpumask cpu_resume_res;
 	bool pause_resume = 0;
@@ -1608,7 +1627,6 @@ static void __ref do_core_ctl(struct cluster_data *cluster)
 
 		/* Avoid hotplug change online mask */
 		cpu_hotplug_disable();
-		spin_lock_irqsave(&core_ctl_pause_lock, flags);
 		if (cluster->active_cpus > need){
 			cpu_pause_res = try_to_pause(cluster, need);
 			pause_resume = 0;
@@ -1616,7 +1634,6 @@ static void __ref do_core_ctl(struct cluster_data *cluster)
 			cpu_resume_res = try_to_resume(cluster, need);
 			pause_resume = 1;
 		}
-		spin_unlock_irqrestore(&core_ctl_pause_lock, flags);
 
 		if (!pause_resume){
 			if (!cpumask_empty(&cpu_pause_res)){
