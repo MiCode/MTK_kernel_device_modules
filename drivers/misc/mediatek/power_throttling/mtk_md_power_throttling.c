@@ -125,7 +125,7 @@ static void md_pt_over_current_cb(enum BATTERY_OC_LEVEL_TAG level, void *data)
 	}
 }
 #endif
-static void md_limit_default_setting(struct device *dev, enum md_pt_type type)
+static void __used md_limit_default_setting(struct device *dev, enum md_pt_type type)
 {
 	struct device_node *np = dev->of_node;
 	int i, max_lv, ret;
@@ -155,7 +155,7 @@ static void md_limit_default_setting(struct device *dev, enum md_pt_type type)
 	for (i = 1; i < pt_info_p->max_lv; i++)
 		memcpy(&pt_info_p->reduce_tx[i], &pt_info_p->reduce_tx[0], sizeof(u32));
 }
-static int parse_md_limit_table(struct device *dev)
+static int __used parse_md_limit_table(struct device *dev)
 {
 	struct device_node *np = dev->of_node;
 	int i, j, num, ret;

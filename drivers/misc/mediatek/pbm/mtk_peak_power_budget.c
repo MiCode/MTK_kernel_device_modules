@@ -85,7 +85,7 @@ struct ppb ppb_manual = {
 	.cg_budget_cnt = 0,
 };
 
-static int ppb_read_sram(int offset)
+static int __used ppb_read_sram(int offset)
 {
 	void __iomem *addr = ppb_sram_base + offset * 4;
 
@@ -97,7 +97,7 @@ static int ppb_read_sram(int offset)
 	return readl(addr);
 }
 
-static void ppb_write_sram(unsigned int val, int offset)
+static void __used ppb_write_sram(unsigned int val, int offset)
 {
 	if (!ppb_sram_base) {
 		pr_info("ppb_sram_base error %p\n", ppb_sram_base);
@@ -107,7 +107,7 @@ static void ppb_write_sram(unsigned int val, int offset)
 	writel(val, (void __iomem *)(ppb_sram_base + offset * 4));
 }
 
-static int hpt_ctrl_read(int offset)
+static int __used hpt_ctrl_read(int offset)
 {
 	void __iomem *addr = hpt_ctrl_base + offset * 4;
 
@@ -119,7 +119,7 @@ static int hpt_ctrl_read(int offset)
 	return readl(addr);
 }
 
-static void hpt_ctrl_write(unsigned int val, int offset)
+static void __used hpt_ctrl_write(unsigned int val, int offset)
 {
 	if (!hpt_ctrl_base) {
 		pr_info("hpt_ctrl_base error %p\n", hpt_ctrl_base);
@@ -177,7 +177,7 @@ static void ppb_allocate_budget_manager(void)
 }
 
 #ifdef PPB_IPI_READY
-static int ppb_gpueb_ipi_init(void)
+static int __used ppb_gpueb_ipi_init(void)
 {
 	static bool ipi_init;
 	int ret;
@@ -200,7 +200,7 @@ static int ppb_gpueb_ipi_init(void)
 	return 0;
 }
 
-static int notify_gpueb(void)
+static int __used notify_gpueb(void)
 {
 	struct ppb_ipi_data ipi_data;
 	int ret;
@@ -224,7 +224,7 @@ static bool ppb_func_enable_check(void)
 	return true;
 }
 
-static bool ppb_update_table_info(enum ppb_kicker kicker, struct ppb *req_ppb)
+static bool __used ppb_update_table_info(enum ppb_kicker kicker, struct ppb *req_ppb)
 {
 	bool is_update = false;
 
@@ -335,7 +335,7 @@ void kicker_ppb_request_power(enum ppb_kicker kicker, unsigned int power)
 EXPORT_SYMBOL(kicker_ppb_request_power);
 
 
-static int read_dts_val(const struct device_node *np, const char *name, int *param, int unit)
+static int __used read_dts_val(const struct device_node *np, const char *name, int *param, int unit)
 {
 	static unsigned int val;
 
@@ -348,7 +348,7 @@ static int read_dts_val(const struct device_node *np, const char *name, int *par
 	return 0;
 }
 
-static int read_dts_val_by_idx(const struct device_node *np, const char *name, int idx, int *param,
+static int __used read_dts_val_by_idx(const struct device_node *np, const char *name, int idx, int *param,
 	int unit)
 {
 	unsigned int val = 0;
@@ -363,7 +363,7 @@ static int read_dts_val_by_idx(const struct device_node *np, const char *name, i
 	return 0;
 }
 
-static int interpolation(int i1, int b1, int i2, int b2, int i)
+static int __used interpolation(int i1, int b1, int i2, int b2, int i)
 {
 	int ret;
 
@@ -374,7 +374,7 @@ static int interpolation(int i1, int b1, int i2, int b2, int i)
 	return ret;
 }
 
-static int soc_to_ocv(int soc, unsigned int table_idx, unsigned int error)
+static int __used soc_to_ocv(int soc, unsigned int table_idx, unsigned int error)
 {
 	struct fg_info_t *info_p = &fg_data.fg_info[table_idx];
 	struct ocv_table_t *table_p;
@@ -409,7 +409,7 @@ static int soc_to_ocv(int soc, unsigned int table_idx, unsigned int error)
 	return ret;
 }
 
-static int soc_to_rdc(int soc, unsigned int table_idx)
+static int __used soc_to_rdc(int soc, unsigned int table_idx)
 {
 	struct fg_info_t *info_p = &fg_data.fg_info[table_idx];
 	struct ocv_table_t *table_p;
@@ -549,7 +549,7 @@ out:
 	dump_ocv_table(0);
 }
 
-static int cal_imax(int vbat, int uvlo, int ocp, int rdc, int rac)
+static int __used cal_imax(int vbat, int uvlo, int ocp, int rdc, int rac)
 {
 	int ret;
 
@@ -561,7 +561,7 @@ static int cal_imax(int vbat, int uvlo, int ocp, int rdc, int rac)
 	return ret;
 }
 
-static int cal_uvlo(int vbat, int uvlo, int ocp, int rdc, int rac)
+static int __used cal_uvlo(int vbat, int uvlo, int ocp, int rdc, int rac)
 {
 	int ret;
 
@@ -573,7 +573,7 @@ static int cal_uvlo(int vbat, int uvlo, int ocp, int rdc, int rac)
 	return ret;
 }
 
-static int cal_max_bat_power(int vbat, int uvlo, int ocp, int rdc, int rac, int i)
+static int __used cal_max_bat_power(int vbat, int uvlo, int ocp, int rdc, int rac, int i)
 {
 	int ret;
 
@@ -585,7 +585,7 @@ static int cal_max_bat_power(int vbat, int uvlo, int ocp, int rdc, int rac, int 
 	return ret;
 }
 
-static int cal_max_sys_power(int bat_pwr, int imax, int rdc, int rac)
+static int __used cal_max_sys_power(int bat_pwr, int imax, int rdc, int rac)
 {
 	int ret;
 
@@ -594,7 +594,7 @@ static int cal_max_sys_power(int bat_pwr, int imax, int rdc, int rac)
 	return ret;
 }
 
-static int get_sys_power_budget(int ocv, int rdc, int rac, int ocp, int uvlo)
+static int __used get_sys_power_budget(int ocv, int rdc, int rac, int ocp, int uvlo)
 {
 	int imax, uv, bat_pwr, sys_pwr;
 
@@ -710,7 +710,7 @@ int ppb_psy_event(struct notifier_block *nb, unsigned long event, void *v)
 	return NOTIFY_DONE;
 }
 
-static int read_mtk_gauge_dts(struct platform_device *pdev)
+static int __used read_mtk_gauge_dts(struct platform_device *pdev)
 {
 	int i, j, ret, num;
 	struct ocv_table_t *table_p;
@@ -808,7 +808,7 @@ static int read_mtk_gauge_dts(struct platform_device *pdev)
 	return 0;
 }
 
-static int read_mtk_ppb_bat_dts(struct platform_device *pdev, struct device_node *np)
+static int __used read_mtk_ppb_bat_dts(struct platform_device *pdev, struct device_node *np)
 {
 	int i, j, ret, num;
 	struct ocv_table_t *table_p;
@@ -896,7 +896,7 @@ static int read_mtk_ppb_bat_dts(struct platform_device *pdev, struct device_node
 	return 0;
 }
 
-static int read_power_budget_dts(struct platform_device *pdev)
+static int __used read_power_budget_dts(struct platform_device *pdev)
 {
 	int i, ret;
 	int num, offset = 0;
@@ -1593,7 +1593,7 @@ static int mt_ppb_create_procfs(void)
 	return 0;
 }
 
-static void get_md_dbm_info(void)
+static void __used get_md_dbm_info(void)
 {
 	int ret;
 	u64 of_find;
