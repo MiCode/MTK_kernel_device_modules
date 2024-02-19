@@ -170,6 +170,7 @@ TRACE_EVENT(GPU_Power__Policy__APO_irregular,
 	TP_printk("apo_irregular=%u", __entry->apo_irregular)
 );
 
+
 TRACE_EVENT(GPU_DVFS__Frequency,
 	TP_PROTO(unsigned int virtual_stack, unsigned int real_stack, unsigned int real_top),
 	TP_ARGS(virtual_stack, real_stack, real_top),
@@ -605,9 +606,9 @@ TRACE_EVENT(GPU_DVFS__Policy__Loading_based__Bound,
 
 TRACE_EVENT(GPU_DVFS__Policy__Loading_based__GPU_Time,
 
-	TP_PROTO(int cur, int target, int target_hd, int complete, int uncomplete),
+	TP_PROTO(int cur, int target, int target_hd, int complete, int uncomplete, int pid ,int q),
 
-	TP_ARGS(cur, target, target_hd, complete, uncomplete),
+	TP_ARGS(cur, target, target_hd, complete, uncomplete, pid, q),
 
 	TP_STRUCT__entry(
 		__field(int, cur)
@@ -615,6 +616,8 @@ TRACE_EVENT(GPU_DVFS__Policy__Loading_based__GPU_Time,
 		__field(int, target_hd)
 		__field(int, complete)
 		__field(int, uncomplete)
+		__field(int, pid)
+		__field(int, q)
 	),
 
 	TP_fast_assign(
@@ -623,11 +626,13 @@ TRACE_EVENT(GPU_DVFS__Policy__Loading_based__GPU_Time,
 		__entry->target_hd = target_hd;
 		__entry->complete = complete;
 		__entry->uncomplete = uncomplete;
+		__entry->pid = pid;
+		__entry->q = q;
 	),
 
-	TP_printk("cur=%d, target=%d, target_hd=%d, complete=%d, uncomplete=%d",
+	TP_printk("cur=%d, target=%d, target_hd=%d, complete=%d, uncomplete=%d, pid=%d, q=%d",
 		__entry->cur, __entry->target, __entry->target_hd, __entry->complete,
-		__entry->uncomplete)
+		__entry->uncomplete, __entry->pid, __entry->q)
 );
 
 TRACE_EVENT(GPU_DVFS__Policy__Loading_based__Margin,
@@ -937,21 +942,23 @@ TRACE_EVENT(GPU_DVFS__Policy__Loading_based__EB_Opp,
 
 TRACE_EVENT(GPU_DVFS__Policy__Loading_based__EB_Loading,
 
-	TP_PROTO(unsigned int cur, unsigned int diff),
+	TP_PROTO(unsigned int cur, unsigned int delta_time, unsigned int diff),
 
-	TP_ARGS(cur, diff),
+	TP_ARGS(cur, delta_time, diff),
 
 	TP_STRUCT__entry(
 		__field(unsigned int, cur)
+		__field(unsigned int, delta_time)
 		__field(unsigned int, diff)
 	),
 
 	TP_fast_assign(
 		__entry->cur = cur;
+		__entry->delta_time = delta_time;
 		__entry->diff = diff;
 	),
 
-	TP_printk("cur=%u diff=%u", __entry->cur, __entry->diff)
+	TP_printk("cur=%u delta_time=%u diff=%u", __entry->cur, __entry->delta_time, __entry->diff)
 );
 
 TRACE_EVENT(GPU_DVFS__Policy__Loading_based__EB_Bound,

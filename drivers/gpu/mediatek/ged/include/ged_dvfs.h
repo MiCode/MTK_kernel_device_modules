@@ -177,11 +177,10 @@ unsigned int ged_get_whitebox_power_test_case(void);
 unsigned int ged_get_whitebox_power_test_support(void);
 unsigned int ged_get_whitebox_power_test_case_clear(void);
 void ged_set_whitebox_power_state_store(int first, int second);
-extern int stat_mcu_store[][30];
 
-//#if IS_ENABLED(CONFIG_MALI_MTK_GPU_IDLE_STRESS_TEST)
+//#if IS_ENABLED(CONFIG_MTK_GPU_POWER_ON_OFF_TEST)
 unsigned int ged_gpu_power_stress_test_enable(void);
-//endif /* CONFIG_MALI_MTK_GPU_IDLE_STRESS_TEST */
+//endif /* MTK_GPU_POWER_ON_OFF_TEST */
 
 //#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 unsigned int ged_gpu_apo_support(void);
@@ -310,6 +309,8 @@ extern void ged_get_gpu_utli_ex(struct GpuUtilization_Ex *util_ex);
 extern unsigned int g_gpufreq_v2;
 
 extern void (*mtk_set_fastdvfs_mode_fp)(unsigned int u32Mode);
+extern void (*mtk_get_fastdvfs_mode_fp)(void *ipi_data);
+
 extern unsigned int g_eb_workload;
 extern unsigned int eb_policy_dts_flag;
 

@@ -17,7 +17,7 @@
 #include <mt-plat/mtk_gpu_utility.h>
 #if defined(CONFIG_MTK_GPUFREQ_V2)
 #include <ged_gpufreq_v2.h>
-#include <mtk_gpufreq.h>
+#include <gpufreq_v2.h>
 #endif
 #include "ged_base.h"
 #include "ged_hal.h"
@@ -33,7 +33,6 @@
 #if defined(MTK_GPU_SLC_POLICY)
 #include "ged_gpu_slc.h"
 #endif /* MTK_GPU_SLC_POLICY */
-
 
 static struct kobject *hal_kobj;
 
@@ -502,29 +501,79 @@ static ssize_t eb_dvfs_policy_show(struct kobject *kobj,
 	unsigned int eb_policy_mode;
 	int pos = 0;
 	int length;
+	bool ret = true;
+	struct fdvfs_ipi_data *ipi_data;
+
+	ipi_data = (struct fdvfs_ipi_data *)ged_alloc_atomic(
+		sizeof(struct fdvfs_ipi_data));
+
+	memset(ipi_data, 0, sizeof(struct fdvfs_ipi_data));
 
 	eb_policy_mode = is_fdvfs_enable();
+	if (eb_policy_dts_flag > 0 && eb_policy_mode > 0)
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos, "EB DVFS enable,\n");
+	else
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos, "EB DVFS disable,\n");
+
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"function mask\n");
-	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"0 : disable\n");
-	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"1 : commit stress test\n");
-	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"2 : EB policy\n");
-	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"4 : EB policy + ftrace debug\n");
-	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"8 : EB policy + met debug\n");
-	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"16 : async commit order stress test\n");
-	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"32 : async commit extreme stress test\n");
-	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"================================================\n");
-	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"dts (%d), eb_policy_mode(%d),\n",
+				"dts (%d), eb_policy_mode(%d),\n\n",
 			eb_policy_dts_flag, eb_policy_mode);
+
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"================EB Parameter=====================\n");
+
+	/* 0:eb_flag, 1:dcs, 2:async, 3:real min opp, 4:virtual min opp*/
+	ipi_data->cmd = GPUFDVFS_IPI_GET_MODE;
+	ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+
+	if (ret) {
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"eb_flag : %u\n",ipi_data->u.set_para.arg[0]);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"DCS : %u\n",ipi_data->u.set_para.arg[1]);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"async : %u\n",ipi_data->u.set_para.arg[2]);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"real min opp : %u\n",ipi_data->u.set_para.arg[3]);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"virtual min opp : %u\n",ipi_data->u.set_para.arg[4]);
+	}
+
+	/* 0:avg loading, 1:uhigh bound, 2:ulow bound, 3:high bound, 4:low bound*/
+	ipi_data->cmd = GPUFDVFS_IPI_GET_BOUND;
+	ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+
+	if (ret) {
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"avg loading : %u\n",ipi_data->u.set_para.arg[0]);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"ultra high : %u\n",ipi_data->u.set_para.arg[1]);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"high : %u\n",ipi_data->u.set_para.arg[3]);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"ultra low : %u\n",ipi_data->u.set_para.arg[2]);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"low : %u\n",ipi_data->u.set_para.arg[4]);
+	}
+
+	/* 0:cur margin, 1:margin ceil, 2:margin floor, 3:preserve, 4:debug count*/
+	ipi_data->cmd = GPUFDVFS_IPI_GET_MARGIM;
+	ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+
+	if (ret) {
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"cur margin : %u\n",ipi_data->u.set_para.arg[0]);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"margin ceil : %u\n",ipi_data->u.set_para.arg[1]);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"margin floor : %u\n",ipi_data->u.set_para.arg[2]);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"preserve : %u\n",ipi_data->u.set_para.arg[3]);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"debug count : %u\n",ipi_data->u.set_para.arg[4]);
+	}
+
 
 	return pos;
 }
@@ -805,14 +854,14 @@ static ssize_t gpu_fps_store(struct kobject *kobj,
 }
 static KOBJ_ATTR_RW(gpu_fps);
 
-static ssize_t ignore_fpsgo_show(struct kobject *kobj,
+static ssize_t default_fps_margin_support_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
 	return scnprintf(buf, PAGE_SIZE, "%d\n", ignore_fpsgo_enable);
 }
 
-static ssize_t ignore_fpsgo_store(struct kobject *kobj,
+static ssize_t default_fps_margin_support_store(struct kobject *kobj,
 		struct kobj_attribute *attr, const char *buf, size_t count)
 {
 	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
@@ -830,7 +879,7 @@ static ssize_t ignore_fpsgo_store(struct kobject *kobj,
 	}
 	return count;
 }
-static KOBJ_ATTR_RW(ignore_fpsgo);
+static KOBJ_ATTR_RW(default_fps_margin_support);
 
 //-----------------------------------------------------------------------------
 #ifdef GED_DCS_POLICY
@@ -858,7 +907,7 @@ static ssize_t dcs_mode_show(struct kobject *kobj,
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 					"Available max core num: %d\n",	dcs_get_max_core_num());
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-					"DCS stress enable: %d (0:disable 1:enable 2:enable with log)\n",
+					"T enable: %d (0:disable 1:enable 2:enable with log)\n",
 					dcs_get_dcs_stress());
 	} else {
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
@@ -957,7 +1006,11 @@ static ssize_t dcs_adjust_support_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE, "%d\n", dcs_get_adjust_support());
+	return scnprintf(buf, PAGE_SIZE, "en:%d, Mm:%d, fr:%d, nondcs:%d\n",
+						  dcs_get_adjust_support(),
+						  dcs_get_adjust_ratio_th(),
+						  dcs_get_adjust_fr_cnt(),
+						  dcs_get_adjust_non_dcs_th());
 }
 
 static ssize_t dcs_adjust_support_store(struct kobject *kobj,
@@ -981,35 +1034,6 @@ static ssize_t dcs_adjust_support_store(struct kobject *kobj,
 	return count;
 }
 static KOBJ_ATTR_RW(dcs_adjust_support);
-
-static ssize_t dcs_adjust_ratio_th_show(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		char *buf)
-{
-	return scnprintf(buf, PAGE_SIZE, "%d\n", dcs_get_adjust_ratio_th());
-}
-
-static ssize_t dcs_adjust_ratio_th_store(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		const char *buf, size_t count)
-{
-	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
-	int i32Value;
-
-	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
-		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
-				if (i32Value <= 0)
-					dcs_set_adjust_ratio_th(0);
-				else
-					dcs_set_adjust_ratio_th(i32Value);
-			}
-		}
-	}
-
-	return count;
-}
-static KOBJ_ATTR_RW(dcs_adjust_ratio_th);
 
 static ssize_t dcs_adjust_fr_cnt_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -1039,37 +1063,6 @@ static ssize_t dcs_adjust_fr_cnt_store(struct kobject *kobj,
 	return count;
 }
 static KOBJ_ATTR_RW(dcs_adjust_fr_cnt);
-
-static ssize_t dcs_adjust_non_dcs_th_show(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		char *buf)
-{
-	return scnprintf(buf, PAGE_SIZE, "%d\n", dcs_get_adjust_non_dcs_th());
-}
-
-static ssize_t dcs_adjust_non_dcs_th_store(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		const char *buf, size_t count)
-{
-	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
-	int i32Value;
-
-	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
-		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
-				if (i32Value <= 0)
-					dcs_set_adjust_non_dcs_th(0);
-				else
-					dcs_set_adjust_non_dcs_th(i32Value);
-			}
-		}
-	}
-
-	return count;
-}
-static KOBJ_ATTR_RW(dcs_adjust_non_dcs_th);
-
-
 
 #endif /* GED_DCS_POLICY */
 //-----------------------------------------------------------------------------
@@ -1131,40 +1124,6 @@ static ssize_t fw_idle_store(struct kobject *kobj,
 static KOBJ_ATTR_RW(fw_idle);
 #endif /* MTK_GPU_FW_IDLE */
 
-#if IS_ENABLED(CONFIG_MTK_GPU_POWER_ON_OFF_TEST)
-unsigned int g_ged_power_stress_test_support;
-
-static ssize_t gpu_power_on_off_test_show(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		char *buf)
-{
-	int pos = 0;
-
-	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"gpu_power_on_off_test support: %d\n", g_ged_power_stress_test_support);
-
-	return pos;
-}
-
-static ssize_t gpu_power_on_off_test_store(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		const char *buf, size_t count)
-{
-	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
-	u32 i32Value = 0;
-
-	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
-		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf))
-			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
-				g_ged_power_stress_test_support = i32Value;
-	}
-
-	return count;
-}
-
-static KOBJ_ATTR_RW(gpu_power_on_off_test);
-#endif /* MTK_GPU_POWER_ON_OFF_TEST */
-
 static ssize_t whitebox_power_support_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -1179,6 +1138,7 @@ static ssize_t whitebox_power_support_show(struct kobject *kobj,
 
 	return pos;
 }
+
 
 static ssize_t whitebox_power_support_store(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -1197,6 +1157,7 @@ static ssize_t whitebox_power_support_store(struct kobject *kobj,
 	return count;
 }
 static KOBJ_ATTR_RW(whitebox_power_support);
+
 
 static ssize_t whitebox_power_force_state_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -1238,6 +1199,38 @@ static ssize_t whitebox_power_force_state_store(struct kobject *kobj,
 }
 static KOBJ_ATTR_RW(whitebox_power_force_state);
 
+#if IS_ENABLED(CONFIG_MTK_GPU_POWER_ON_OFF_TEST)
+unsigned int g_ged_power_stress_test_support;
+
+static ssize_t gpu_power_on_off_test_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	int pos = 0;
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+			"gpu_power_on_off_test support: %d\n", g_ged_power_stress_test_support);
+
+	return pos;
+}
+
+static ssize_t gpu_power_on_off_test_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	u32 i32Value = 0;
+
+	if (count > 0 && count < GED_SYSFS_MAX_BUFF_SIZE) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf))
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				g_ged_power_stress_test_support = i32Value;
+	}
+
+	return count;
+}
+
+static KOBJ_ATTR_RW(gpu_power_on_off_test);
+#endif /* MTK_GPU_POWER_ON_OFF_TEST */
+
 #if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 static ssize_t apo_thr_us_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -1261,7 +1254,7 @@ static ssize_t apo_thr_us_store(struct kobject *kobj,
 	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
 	u32 i32Value = 0;
 
-	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+	if (count > 0 && count < GED_SYSFS_MAX_BUFF_SIZE) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
 				if (i32Value > 0)
@@ -2096,9 +2089,9 @@ GED_ERROR ged_hal_init(void)
 	if (unlikely(err != GED_OK))
 		GED_LOGE("Failed to create gpu_fps entry!\n");
 
-	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_ignore_fpsgo);
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_default_fps_margin_support);
 	if (unlikely(err != GED_OK))
-		GED_LOGE("Failed to create ignore_fpsgo entry!\n");
+		GED_LOGE("Failed to create default_fps_margin_support entry!\n");
 
 #ifdef GED_DCS_POLICY
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dcs_mode);
@@ -2115,16 +2108,9 @@ GED_ERROR ged_hal_init(void)
 	if (unlikely(err != GED_OK))
 		GED_LOGE("Failed to create dcs_adjust_support entry!\n");
 
-	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dcs_adjust_ratio_th);
-	if (unlikely(err != GED_OK))
-		GED_LOGE("Failed to create dcs_adjust_ratio_th entry!\n");
-
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dcs_adjust_fr_cnt);
 	if (unlikely(err != GED_OK))
 		GED_LOGE("Failed to create dcs_adjust_fr_cnt entry!\n");
-	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dcs_adjust_non_dcs_th);
-	if (unlikely(err != GED_OK))
-		GED_LOGE("Failed to create dcs_adjust_non_dcs_th entry!\n");
 
 #endif /* GED_DCS_POLICY */
 
@@ -2142,7 +2128,6 @@ GED_ERROR ged_hal_init(void)
 		GED_LOGE("Failed to create gpu_power_on_off_test entry!\n");
 		goto ERROR;
 	}
-	g_ged_power_stress_test_support = 0;
 #endif /* MTK_GPU_POWER_ON_OFF_TEST */
 
 #if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
@@ -2330,14 +2315,12 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_early_force_fallback_policy);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_ged_fallback_tuning);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_gpu_fps);
-	ged_sysfs_remove_file(hal_kobj, &kobj_attr_ignore_fpsgo);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_default_fps_margin_support);
 #ifdef GED_DCS_POLICY
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_mode);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_stress);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_adjust_support);
-	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_adjust_ratio_th);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_adjust_fr_cnt);
-	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_adjust_non_dcs_th);
 #endif
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_fw_idle);

@@ -23,6 +23,7 @@
 
 #if defined(CONFIG_MTK_GPUFREQ_V2)
 #include <ged_gpufreq_v2.h>
+#include <gpufreq_v2.h>
 #else
 #include <ged_gpufreq_v1.h>
 #endif /* CONFIG_MTK_GPUFREQ_V2 */
@@ -88,6 +89,11 @@
 /* for dcs reference frame count */
 #define t_gpu_w_store_count 100
 
+#define GED_FPSGO_UX_BQ_ID 5566
+#define SHADER_CORE_NUM 2
+
+static int g_max_core_num;
+
 #define REFRESH_DIFF           0 // deprecated for limited diff fps with refresh rate
 #define HIGH_REFRESH           0 // deprecated for limited with high refresh rate
 #define GPU_FPS_START_MASK     0x000000FF
@@ -102,7 +108,7 @@ unsigned int g_gpu_fps_enable = 1;
 unsigned int g_gpu_fps_margin = GPU_FPS_DEFAULT_MARGIN;
 unsigned int g_gpu_fps_start_level = GPU_FPS_DEFAULT_START;
 unsigned int g_gpu_fps_end_level = GPU_FPS_DEFAULT_END;
-unsigned int ignore_fpsgo_enable = 1;
+unsigned int ignore_fpsgo_enable;
 
 enum ged_gpu_fps_level {
 	GED_FPS_LEVEL_0,
@@ -176,6 +182,9 @@ struct GED_KPI_HEAD {
 	unsigned int frame_count;
 	int t_gpu_fps;
 	int t_use_gpu_fps;
+	int t_last_gpu_fps;
+	int candidate_fps;
+	int candidate_fps_cnt;
 
 	int t_cpu_target;
 	int t_gpu_target;
@@ -301,13 +310,12 @@ struct GED_KPI_MEOW_DVFS_FREQ_PRED {
 static struct GED_KPI_MEOW_DVFS_FREQ_PRED *g_psGIFT;
 static unsigned int fb_timer_set_count;
 
+
 int g_target_fps = GED_KPI_MAX_FPS;
 int g_target_fps_default = GED_KPI_MAX_FPS;
 int g_gpu_target_default = 16666666;
-
-static int g_latest_fps;
-static unsigned long g_latest_fps_bq;
-static int g_latest_fps_pid;
+bool g_set_panel_refresh_rate;
+bool g_invalid_fps;
 
 #define GED_KPI_TOTAL_ITEMS 32
 #define GED_KPI_UID(pid, wnd) (pid | ((unsigned long)wnd))
@@ -372,7 +380,6 @@ struct ged_head_record {
 
 static struct ged_head_record g_ged_head_record;
 
-
 struct ged_eb_dvfs_last_record {
 	u64 ulID;
 	u64 last_uncomplete_soc_timer;
@@ -394,6 +401,8 @@ module_param(is_GED_KPI_enabled, uint, 0644);
  */
 struct GED_KPI_HEAD *main_head;
 struct GED_KPI_HEAD *prev_main_head;
+struct GED_KPI_HEAD *last_ux_head;
+static bool g_is_ux_fps_set;
 static int is_loading_based;
 static bool g_is_multiproducer;
 unsigned int force_loading_based_enable;
@@ -562,6 +571,13 @@ static inline void check_refresh_diff(struct GED_KPI_HEAD *psHead)
 			return;
 		}
 
+		if (g_invalid_fps) {
+			trace_GPU_DVFS__Policy__Common__Check_Target(psHead->pid,
+				(int)(psHead->ullWnd % 0xF), psHead->t_gpu_fps, 6);
+			g_invalid_fps = false;
+			return;
+		}
+
 		update_target_by_gpu(psHead, GED_FPS_LEVEL_0, g_gpu_fps_start_level);
 		for (int i = g_gpu_fps_start_level; i < g_gpu_fps_end_level; i++)
 			update_target_by_gpu(psHead, i, i + 1);
@@ -642,8 +658,20 @@ static inline void update_by_internal_fps(struct GED_KPI_HEAD *psHead, struct GE
 	if (!psHead || !psKPI)
 		return;
 
-	psHead->ullElapsed_time_per_sec += psKPI->ullTimeStampS - psHead->ullPreTimeStampS;
-	psHead->frame_count++;
+	static unsigned int fps_margin;
+	unsigned long long ullTimeStampS_diff;
+
+	ullTimeStampS_diff = psKPI->ullTimeStampS - psHead->ullPreTimeStampS;
+
+	if (g_set_panel_refresh_rate) {
+		psHead->ullElapsed_time_per_sec = 0;
+		psHead->frame_count = 0;
+		g_set_panel_refresh_rate = false;
+	} else {
+		psHead->ullElapsed_time_per_sec += ullTimeStampS_diff;
+		psHead->frame_count++;
+	}
+
 	psHead->ullPreTimeStampS = psKPI->ullTimeStampS;
 
 	if (psHead->ullElapsed_time_per_sec >= GED_KPI_SEC_DIVIDER &&
@@ -654,6 +682,33 @@ static inline void update_by_internal_fps(struct GED_KPI_HEAD *psHead, struct GE
 		fps *= GED_KPI_SEC_DIVIDER;
 		do_div(fps, psHead->ullElapsed_time_per_sec);
 		psHead->t_gpu_fps = fps;
+
+		for (int i = 0; i < GED_FPS_CONFIG_NUM; i++) {
+			if (g_target_fps_default == g_ged_gpu_fps[i].fps) {
+				fps_margin = g_ged_gpu_fps[i-1].fps_margin;
+				break;
+			}
+		}
+
+		if (psHead->t_gpu_fps < fps_margin && psHead->t_gpu_fps < psHead->t_last_gpu_fps) {
+			g_invalid_fps = true;
+			if (psHead->t_gpu_fps != psHead->candidate_fps ) {
+				psHead->candidate_fps = psHead->t_gpu_fps;
+				psHead->candidate_fps_cnt = 1;
+			} else
+				psHead->candidate_fps_cnt++;
+			if (psHead->candidate_fps_cnt == 3) {
+				g_invalid_fps = false;
+				psHead->candidate_fps_cnt = 0;
+			}
+		}
+
+		if (g_invalid_fps != true) {
+			psHead->t_last_gpu_fps = psHead->t_gpu_fps;
+			psHead->candidate_fps_cnt = 0;
+		}
+
+
 		psHead->frame_count = 0;
 		psHead->ullElapsed_time_per_sec = 0;
 		check_refresh_diff(psHead);
@@ -1062,7 +1117,7 @@ static GED_BOOL ged_kpi_update_TargetTimeAndTargetFps(
 	if (ignore_fpsgo_enable) {
 		psHead->target_fps_margin = GED_KPI_DEFAULT_FPS_MARGIN;
 		if (psHead->t_gpu_target == 0)
-			psHead->t_gpu_target = g_gpu_target_default;
+			psHead->t_gpu_target = (int)((int)GED_KPI_SEC_DIVIDER/g_target_fps_default);
 	} else {
 		psHead->t_gpu_target = psHead->t_cpu_target;
 	}
@@ -1093,25 +1148,6 @@ static GED_BOOL ged_kpi_update_default_target_fps_fcn(unsigned long ulID,
 					-1,
 					GED_KPI_DEFAULT_FPS_MARGIN, 0, 0,
 					GED_KPI_FRC_DEFAULT_MODE, -1);
-	}
-
-	return GED_TRUE;
-}
-
-static GED_BOOL ged_kpi_update_same_pid_target_fps_fcn(unsigned long ulID,
-	void *pvoid, void *pvParam)
-{
-	struct GED_KPI_HEAD *psHead = (struct GED_KPI_HEAD *) pvoid;
-
-	if (psHead && g_latest_fps_pid) {
-		if (ulID != g_latest_fps_bq && psHead->pid == g_latest_fps_pid)
-			ged_kpi_update_TargetTimeAndTargetFps(
-				psHead,
-				g_latest_fps&0x000000ff,
-				(g_latest_fps&0x00000700) >> 8,
-				(g_latest_fps&0xfffff100) >> 11,
-				0,
-				GED_KPI_FRC_DEFAULT_MODE, -1);
 	}
 
 	return GED_TRUE;
@@ -1226,7 +1262,6 @@ static void set_lb_timeout(int t_gpu_target)
 		lb_timeout = (u64)g_loading_stride_size * 1000000;
 		break;
 	}
-
 }
 
 void ged_kpi_set_loading_mode(unsigned int mode, unsigned int stride_size)
@@ -1577,7 +1612,6 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		psKPI->target_fps_margin = psHead->target_fps_margin;
 		psHead->i32DebugQedBuffer_length += 1;
 		psHead->i32Gpu_uncompleted_queue++;
-		ged_eb_dvfs_task(EB_UPDATE_UNCOMPLETE_COUNT, psHead->i32Gpu_uncompleted_queue);
 		psKPI->i32DebugQedBuffer_length = psHead->i32DebugQedBuffer_length;
 		/* recording cpu time per frame & boost CPU if needed */
 		ullTimeStampTemp = psHead->last_TimeStamp1;
@@ -1619,7 +1653,7 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 			psTimeStamp->ullTimeStamp,
 			psHead);
 
-		ged_eb_dvfs_task(EB_UPDATE_FB_TARGET_TIME, fb_timeout / 1000);
+		ged_eb_dvfs_task(EB_UPDATE_UNCOMPLETE_COUNT, psHead->i32Gpu_uncompleted_queue);
 		ged_kpi_update_soc_timer(psHead, GED_TIMESTAMP_TYPE_1);
 
 		break;
@@ -1741,11 +1775,20 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 			psHead->t_gpu_w_latest_index++;
 			if (psHead->t_gpu_w_latest_index >= fr_cnt)
 				psHead->t_gpu_w_latest_index = 0;
-		}else {
+		} else {
 			psHead->for_dcs_valid_cnt = 0;
 			psHead->non_dcs_cnt = 0;
 			g_force_disable_dcs = false;
 		}
+
+		//also disable dcs if api boost happened before
+		//if (ged_get_api_sync_ts()) {
+		//	Reset timestamp if it has been a long time since the last API boost
+		//		if (ged_get_time() / 1000000 - ged_get_api_sync_ts() > API_SYNC_TIMEOUT_MS)
+		//			ged_reset_api_sync_ts();
+		//		else
+		//			g_force_disable_dcs = true;
+		//}
 
 		ged_eb_dvfs_task(EB_UPDATE_PRESERVE, g_force_disable_dcs);
 
@@ -1759,7 +1802,7 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		psHead->last_TimeStamp2 = psTimeStamp->ullTimeStamp;
 		psHead->i32Gpu_uncompleted--;
 		psHead->i32Gpu_uncompleted_queue--;
-		ged_eb_dvfs_task(EB_UPDATE_UNCOMPLETE_COUNT, psHead->i32Gpu_uncompleted_queue);
+		//ged_eb_dvfs_task(EB_UPDATE_UNCOMPLETE_COUNT, psHead->i32Gpu_uncompleted_queue);
 		psHead->gpu_completed_count++;
 		psKPI->gpu_loading = psTimeStamp->i32GPUloading;
 
@@ -1822,9 +1865,10 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 				t_gpu = -1;   // t_gpu isn't accurate, so hint -1
 			}
 		}
-		ged_eb_dvfs_task(EB_UPDATE_GPU_TIME_INFO, 0);
+
 		gpu_freq_pre = ged_kpi_gpu_dvfs(t_gpu, t_gpu_target,
 			target_fps_margin, force_fallback);
+		ged_eb_dvfs_task(EB_UPDATE_GPU_TIME_INFO, 0);
 
 		mutex_unlock(&gsPolicyLock);
 		psKPI->cpu_gpu_info.gpu.gpu_freq_target = gpu_freq_pre;
@@ -1969,6 +2013,21 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 			ged_hashtable_find(gs_hashtable, (unsigned long)ulID);
 
 		if (!psHead) {
+			/* Set target fps for UX BQ */
+			int target_fps = target_FPS & 0x000000ff;
+
+			if (ulID == GED_FPSGO_UX_BQ_ID && main_head &&
+				g_max_core_num == SHADER_CORE_NUM) {
+				//Remember UX BQ to avoid target fps affected by other BQ.
+				if (target_fps > 85 && target_fps <= 120) {
+					last_ux_head = main_head;
+					g_is_ux_fps_set = 1;
+				} else {
+					last_ux_head = NULL;
+					g_is_ux_fps_set = 0;
+				}
+			}
+
 			GED_LOGD("@%s: no such renderer for BQ_ID: %llu", __func__, ulID);
 			break;
 		}
@@ -1986,16 +2045,6 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		trace_tracing_mark_write(5566, "target_fps_fpsgo",
 			(target_FPS&0x000000ff));
 
-		// update all other BQ with same pid
-		if (ulID != g_latest_fps_bq || target_FPS != g_latest_fps) {
-			g_latest_fps_bq = ulID;
-			g_latest_fps = target_FPS;
-			g_latest_fps_pid = psHead->pid;
-
-			ged_hashtable_iterator(gs_hashtable,
-				ged_kpi_update_same_pid_target_fps_fcn, NULL);
-		}
-
 		break;
 
 	case GED_SET_PANEL_REFRESH_RATE:
@@ -2005,6 +2054,7 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 			if (g_target_fps_default != target_FPS) {   // panel refresh rate change
 				g_target_fps_default = target_FPS;
 				g_gpu_target_default = (int)((int)GED_KPI_SEC_DIVIDER/g_target_fps_default);
+				g_set_panel_refresh_rate = true;
 				ged_hashtable_iterator(gs_hashtable,
 					ged_kpi_update_default_target_fps_fcn, NULL);
 			}
@@ -2083,9 +2133,11 @@ static GED_ERROR ged_kpi_push_timestamp(
 		case GED_TIMESTAMP_TYPE_1:
 			atomic_inc_return(&event_QedBuffer_cnt);
 			atomic_inc_return(&event_3d_fence_cnt);
+			ged_eb_dvfs_task(EB_UPDATE_FB_TARGET_TIME, fb_timeout / 1000);
 			break;
 		case GED_TIMESTAMP_TYPE_2:
 			atomic_dec_return(&event_3d_fence_cnt);
+			ged_eb_dvfs_task(EB_UPDATE_FB_TARGET_TIME_DONE, fb_timeout / 1000);
 			break;
 		case GED_TIMESTAMP_TYPE_P:
 			break;
@@ -2539,7 +2591,9 @@ void ged_kpi_update_sysram_uncompleted_tgpu(struct ged_sysram_info *info)
 				unsigned long long info_soc_overdue = info->last_uncomplete_soc_timer;
 				unsigned long long psHead_soc_overdue = soc_timer;
 				/* compare overdue timer to check uncomplete */
-				if (info->last_tgpu_uncompleted_target == 0) {
+				/* info is no data at first time */
+				if (info->last_tgpu_uncompleted_target == 0 &&
+					psHead->t_gpu_latest_uncompleted > 0) {
 					info->last_tgpu_uncompleted = psHead->t_gpu_latest_uncompleted;
 					info->last_tgpu_uncompleted_target = psHead->t_gpu_target;
 					info->last_uncomplete_soc_timer = soc_timer;
@@ -2548,7 +2602,7 @@ void ged_kpi_update_sysram_uncompleted_tgpu(struct ged_sysram_info *info)
 					g_ged_eb_uncomplete_info.ulID = psHead->ullWnd;
 					g_ged_eb_uncomplete_info.last_uncomplete_target =
 						psHead->t_gpu_target;
-				} else {
+				} else if (psHead->t_gpu_latest_uncompleted > 0){
 					info_soc_overdue += (info->last_tgpu_uncompleted_target / 1000) * 13;
 					psHead_soc_overdue += (psHead->t_gpu_target / 1000) * 13;
 					if (psHead_soc_overdue < info_soc_overdue) {
@@ -2644,6 +2698,7 @@ GED_ERROR ged_kpi_system_init(void)
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	drm_register_fps_chg_callback(ged_dfrc_fps_limit_cb);
 #endif
+	g_max_core_num = gpufreq_get_core_num();
 
 	dvfs_prefence_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_prefence");
 	if (unlikely(!dvfs_prefence_node))
@@ -2832,12 +2887,14 @@ static GED_BOOL ged_kpi_find_riskyBQ_func(unsigned long ulID,
 			info->completed_bq.t_gpu_target = t_gpu_target;
 			info->completed_bq.risk = risk_completed;
 			info->completed_bq.ullWnd = psHead->ullWnd;
+			info->completed_bq.pid = psHead->pid;
 		}
 		if (risk_uncompleted > info->uncompleted_bq.risk) {
 			info->uncompleted_bq.t_gpu = t_gpu_latest_uncompleted;
 			info->uncompleted_bq.t_gpu_target = t_gpu_target;
 			info->uncompleted_bq.risk = risk_uncompleted;
 			info->uncompleted_bq.ullWnd = psHead->ullWnd;
+			info->uncompleted_bq.pid = psHead->pid;
 			if (psHead->uncomplete_source == GED_TIMESTAMP_TYPE_D)
 				info->uncompleted_bq.useTimeStampD = true;
 			else
