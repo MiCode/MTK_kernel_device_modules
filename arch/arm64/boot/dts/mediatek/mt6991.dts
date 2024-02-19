@@ -15133,8 +15133,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			uvlo-level = <2400>;
 			vbb-uvlo-level = <2500>;
 			io-channels = <&mt6379_auxadc_1 MT6379_AUXADC_IMP>,
-				<&mt6379_auxadc_1 MT6379_AUXADC_IMIX_R>,
-				<&mt6379_auxadc_1 MT6379_AUXADC_BATSNS>;
+				      <&mt6379_auxadc_1 MT6379_AUXADC_IMIX_R>,
+				      <&mt6379_auxadc_1 MT6379_AUXADC_BATSNS>;
 			io-channel-names = "pmic_ptim",
 					"pmic_imix_r",
 					"pmic_batadc";
@@ -15330,7 +15330,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			phy-names = "usb2-phy";
 			usb = <&ssusb>;
 			//usb-killer-detect;
-			//pmic-uvlo = <&mt6363_dynamic_loading_throttling>;
+			pmic-uvlo = <&mt6363_dynamic_loading_throttling>;
 			otg-supply = <&mt6379_otg_vbus>;
 			mt6379_otg_vbus: usb-otg-vbus-regulator {
 				regulator-name = "mt6379-usb-otg-vbus";
@@ -15690,6 +15690,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		};
 
 		mt6379_lbat_service_2: lbat-service-2 {
+			status = "disabled";
 			compatible = "mediatek,mt6379-lbat-service-2";
 			interrupts-extended = <&mt6379_auxadc_2 RG_INT_STATUS_BAT_H>,
 					      <&mt6379_auxadc_2 RG_INT_STATUS_BAT_L>;
