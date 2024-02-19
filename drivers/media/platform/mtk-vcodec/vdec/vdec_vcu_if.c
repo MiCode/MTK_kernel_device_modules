@@ -405,7 +405,7 @@ int vcu_dec_ipi_handler(void *data, unsigned int len, void *priv)
 			struct dma_fence *fence;
 			struct dma_resv_iter cursor;
 
-			dma_resv_iter_begin(&cursor, dbuf->resv, false);
+			dma_resv_iter_begin(&cursor, dbuf->resv, DMA_RESV_USAGE_KERNEL);
 			dma_resv_for_each_fence_unlocked(&cursor, fence) {
 				mtk_vcodec_fence_signal(fence, pfb->slice_done_count);
 				pfb->slice_done_count++;
