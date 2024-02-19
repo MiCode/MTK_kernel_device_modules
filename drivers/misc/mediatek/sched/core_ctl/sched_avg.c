@@ -129,12 +129,11 @@ EXPORT_SYMBOL(get_cpu_util_pct);
  * sched_update_nr_prod
  * @cpu: The core id of the nr running driver.
  * @nr: Updated nr running value for cpu.
- * @inc: Whether we are increasing or decreasing the count
  * @return: N/A
  *
  * Update average with latest nr_running value for CPU
  */
-void sched_update_nr_prod(int cpu, unsigned long nr_running, int inc)
+void sched_update_nr_prod(int cpu, unsigned long nr_running)
 {
 	s64 diff;
 	u64 curr_time;
@@ -160,11 +159,6 @@ void sched_update_nr_prod(int cpu, unsigned long nr_running, int inc)
 	cpu_over_thres = &per_cpu(cpu_over_thres_state, cpu);
 	cpu_over_thres->nr_running_diff = nr_running - cpu_over_thres->nr_over_dn_thres;
 	spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
-}
-
-void sched_update_nr_running_cb(void *data, struct rq *rq, int count)
-{
-	sched_update_nr_prod(cpu_of(rq), rq->nr_running, count);
 }
 
 static inline unsigned long task_util(struct task_struct *p)
@@ -722,6 +716,7 @@ void inc_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p,
 	}
 #endif
 	sched_update_nr_over_thres_prod(p, cpu_of(rq), 1);
+	sched_update_nr_prod(cpu_of(rq), rq->nr_running);
 }
 
 void dec_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p, int flags)
@@ -738,6 +733,7 @@ void dec_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p,
 	}
 #endif
 	sched_update_nr_over_thres_prod(p, cpu_of(rq), -1);
+	sched_update_nr_prod(cpu_of(rq), rq->nr_running);
 }
 
 /*
@@ -957,18 +953,10 @@ int init_sched_avg(void)
 		goto failed_deprobe_enqueue_task_fair;
 	}
 
-
 	ret = register_trace_pelt_se_tp(pelt_se_tp, NULL);
 	if (ret) {
 		ret_error_line = __LINE__;
 		goto failed_deprobe_dequeue_task_fair;
-	}
-
-	ret = register_trace_sched_update_nr_running_tp(
-			sched_update_nr_running_cb, NULL);
-	if (ret) {
-		ret_error_line = __LINE__;
-		goto failed_deprobe_pelt_se_tp;
 	}
 
 	/*
@@ -979,8 +967,6 @@ int init_sched_avg(void)
 	pr_info("%s: init finish! ", TAG);
 	return 0;
 
-failed_deprobe_pelt_se_tp:
-	unregister_trace_pelt_se_tp(pelt_se_tp, NULL);
 failed_deprobe_dequeue_task_fair:
 failed_deprobe_enqueue_task_fair:
 	/* restrict vendor hook can't unregister */
@@ -994,5 +980,4 @@ failed:
 void exit_sched_avg(void)
 {
 	unregister_trace_pelt_se_tp(pelt_se_tp, NULL);
-	unregister_trace_sched_update_nr_running_tp(sched_update_nr_running_cb, NULL);
 }
