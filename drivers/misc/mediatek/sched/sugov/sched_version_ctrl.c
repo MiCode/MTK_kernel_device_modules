@@ -70,6 +70,17 @@ int init_sched_ctrl(void)
 		vip_enable = true;
 		post_init_util_ctl = true;
 		break;
+	case EAS_6_5:
+		am_support = 1;
+		grp_dvfs_support_mode = 1;
+		// TODO
+		gear_hints_enable = true;
+		updown_migration_enable = true;
+		skip_hiIRQ_enable = true;
+		rt_aggre_preempt_enable = false;
+		vip_enable = true;
+		post_init_util_ctl = true;
+		break;
 	default:
 		am_support = 0;
 		grp_dvfs_support_mode = 0;
