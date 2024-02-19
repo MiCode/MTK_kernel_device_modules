@@ -108,8 +108,7 @@
 			    8250.nr_uarts=4 \
 			    androidboot.hardware=mt6991 \
 			    vmalloc=400M swiotlb=noforce cma=64M \
-			    firmware_class.path=/vendor/firmware \
-			    maxcpus=7";
+			    firmware_class.path=/vendor/firmware";
 			    mkp_panic="on";
 		kaslr-seed = <0 0>;
 	};
