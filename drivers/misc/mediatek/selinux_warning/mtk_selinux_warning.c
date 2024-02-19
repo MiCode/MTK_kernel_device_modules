@@ -314,12 +314,13 @@ void mtk_audit_hook(char *data)
 static void trigger_debugger(void)
 {
 	/*
-	 * delay after signal sent
-	 * block current thread
-	 * let other thread to handle stack
+	 * Add a short delay to ensure that the debugger can capture the
+	 * correct stack trace. We should avoid a lengthy delay here, as the
+	 * avc denied issue may occur frequently within a short timeframe,
+	 * exacerbating the problem.
 	 */
 	send_sig(35, current, 0);
-	mdelay(1000);
+	msleep_interruptible(100);
 }
 
 /* reference avc_audit_pre_callback */
@@ -375,9 +376,9 @@ static void selinux_aee(struct selinux_audit_data *sad, char *scontext,
 		 "[%s][WARNING]\nCR_DISPATCH_PROCESSNAME:%s\n",
 		 MOD, pname);
 
+	trigger_debugger();
 	aee_kernel_warning_api(__FILE__, __LINE__,
 			       DB_OPT_DEFAULT, printbuf, data);
-	trigger_debugger();
 }
 
 static bool scontext_filter(char *scontext)
