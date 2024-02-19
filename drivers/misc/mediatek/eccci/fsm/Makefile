@@ -32,6 +32,7 @@ endif
 
 ifeq ($(CONFIG_MTK_ECCCI_DRIVER), y)
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ccmni/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/inc
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/port
