@@ -3051,6 +3051,14 @@ static void clear_layer(struct drm_mtk_layering_info *disp_info,
 	}
 }
 
+static enum MTK_LAYERING_CAPS query_transition_mode(bool mml_decouple2)
+{
+	if (mml_decouple2)
+		return MTK_MML_DISP_DECOUPLE2_LAYER;
+	else
+		return MTK_MML_DISP_MDP_LAYER;
+}
+
 static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 				  int layer_map, int disp_idx,
 				  struct mtk_drm_lyeblob_ids *lyeblob_ids,
@@ -3068,6 +3076,8 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 	bool exclusive_chance = false;
 	u32 rpo_comp = 0, mml_comp = 0;
 	unsigned int *comp_id_list = NULL, comp_id_nr;
+	struct drm_crtc *crtc = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_drm_private *priv = drm_dev->dev_private;
 
 	if (get_layering_opt(LYE_OPT_SPHRT))
@@ -3077,6 +3087,10 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 		DDPPR_ERR("%s[%d]:idx:%d\n", __func__, __LINE__, idx);
 		return 0;
 	}
+	drm_for_each_crtc(crtc, drm_dev)
+		if (drm_crtc_index(crtc) == disp_idx)
+			break;
+	mtk_crtc = to_mtk_crtc(crtc);
 
 	for (i = 0; i < disp_info->layer_num[idx]; i++) {
 		layer_info = &disp_info->input_config[idx][i];
@@ -3995,7 +4009,8 @@ static void resizing_rule(struct drm_device *dev,
 }
 
 static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc *crtc,
-					struct mml_frame_info *mml_info, const u32 line_time_ns)
+					struct mml_frame_info *mml_info, const u32 line_time_ns,
+					enum mml_mode query_mode)
 {
 	enum mml_mode mode = MML_MODE_UNKNOWN;
 	enum MTK_LAYERING_CAPS ret = MTK_MML_DISP_NOT_SUPPORT;
@@ -4039,12 +4054,22 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 		}
 	}
 
-	if (!mtk_crtc->mml_ir_enable)
+	if (!mtk_crtc->mml_ir_enable) {
 		mml_info->mode = MML_MODE_MML_DECOUPLE;
+		DDPDBG("%s,%d, mode:%d\n", __func__, __LINE__, mml_info->mode);
+	}
+
+	if (mtk_crtc->mml_decouple2) {
+		mml_info->mode = query_mode;
+		DDPDBG("%s,%d, mode:%d\n", __func__, __LINE__, mml_info->mode);
+	}
+
 
 	if (mtk_crtc_is_frame_trigger_mode(crtc) && (!mtk_crtc->mml_cmd_ir) &&
-		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_SUPPORT_CMD_MODE))
+		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_SUPPORT_CMD_MODE)) {
 		mml_info->mode = MML_MODE_MML_DECOUPLE;
+		DDPDBG("%s, mode:%d\n", __func__, mml_info->mode);
+	}
 
 	mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
 	if (mml_ctx != NULL) {
@@ -4070,6 +4095,9 @@ mode_mapping:
 	case MML_MODE_MDP_DECOUPLE:
 		ret = MTK_MML_DISP_MDP_LAYER;
 		break;
+	case MML_MODE_MML_DECOUPLE2:
+		ret = MTK_MML_DISP_DECOUPLE2_LAYER;
+		break;
 	case MML_MODE_UNKNOWN:
 	default:
 		ret = MTK_MML_DISP_NOT_SUPPORT;
@@ -4094,6 +4122,8 @@ static void check_is_mml_layer(const int disp_idx,
 	u32 ns = 0;
 	u32 mml_ovl_layers = 0;
 	u8 down_scale_cnt = 0;
+	enum mml_mode query_mode = MML_MODE_UNKNOWN;
+	int bk_mml_dl_idx = disp_info->layer_num[disp_idx];
 
 	if (!dev || !disp_info)
 		return;
@@ -4134,7 +4164,7 @@ static void check_is_mml_layer(const int disp_idx,
 			c = &disp_info->input_config[disp_idx][i];
 			c->layer_caps |= dc_cap;
 			DDPINFO("MML down scale layer(%d) caps(%u)\n", i, dc_cap);
-			dc_cap = MTK_MML_DISP_MDP_LAYER;
+			dc_cap = query_transition_mode(mtk_crtc->mml_decouple2);
 		}
 		return;
 	}
@@ -4169,7 +4199,14 @@ static void check_is_mml_layer(const int disp_idx,
 			mutex_unlock(&priv->commit.lock);
 		}
 
-		c->layer_caps |= query_MML(dev, crtc, mml_info, ns);
+		if (mtk_crtc->mml_decouple2) {
+			if (mml_capacity & MTK_MML_DISP_DIRECT_LINK_LAYER)
+				query_mode = MML_MODE_UNKNOWN;
+			else
+				query_mode = MML_MODE_MML_DECOUPLE2;
+		}
+
+		c->layer_caps |= query_MML(dev, crtc, mml_info, ns, query_mode);
 
 		if (MML_FMT_IS_YUV(disp_info->mml_cfg[disp_idx][i].src.format))
 			c->layer_caps |= MTK_DISP_SRC_YUV_LAYER;
@@ -4184,33 +4221,57 @@ static void check_is_mml_layer(const int disp_idx,
 			}
 		}
 
-		/* If more than 1 MML layer, support only IR+GPU, DC+MDP */
-		if (mtk_has_layer_cap(c, DISP_MML_CAPS_MASK)) {
-			if (mml_capacity & c->layer_caps) {
-				if (mtk_has_layer_cap(c, MTK_MML_DISP_DIRECT_DECOUPLE_LAYER |
-							 MTK_MML_DISP_DIRECT_LINK_LAYER)) {
-					mml_capacity = 0;
+		if (!mtk_crtc->mml_decouple2) {
+			/* If more than 1 MML layer, support only IR+GPU, DC+MDP */
+			if (mtk_has_layer_cap(c, DISP_MML_CAPS_MASK)) {
+				if (mml_capacity & c->layer_caps) {
+					if (mtk_has_layer_cap(c, MTK_MML_DISP_DIRECT_DECOUPLE_LAYER |
+								 MTK_MML_DISP_DIRECT_LINK_LAYER)) {
+						mml_capacity = 0;
+					} else {
+						mml_capacity &= ~(MTK_MML_DISP_DIRECT_DECOUPLE_LAYER |
+								  MTK_MML_DISP_DIRECT_LINK_LAYER);
+						mml_capacity &= ~(DISP_MML_CAPS_MASK & c->layer_caps);
+					}
 				} else {
-					mml_capacity &= ~(MTK_MML_DISP_DIRECT_DECOUPLE_LAYER |
-							  MTK_MML_DISP_DIRECT_LINK_LAYER);
-					mml_capacity &= ~(DISP_MML_CAPS_MASK & c->layer_caps);
+					DDPINFO("%s capacity exhausted %x -> %x\n", __func__,
+						c->layer_caps & DISP_MML_CAPS_MASK, mml_capacity);
+					c->layer_caps &= ~DISP_MML_CAPS_MASK;
+					c->layer_caps |=
+					    (mml_capacity ? mml_capacity : MTK_MML_DISP_NOT_SUPPORT);
 				}
-			} else {
-				DDPINFO("%s capacity exhausted %x -> %x\n", __func__,
-					c->layer_caps & DISP_MML_CAPS_MASK, mml_capacity);
-				c->layer_caps &= ~DISP_MML_CAPS_MASK;
-				c->layer_caps |=
-				    (mml_capacity ? mml_capacity : MTK_MML_DISP_NOT_SUPPORT);
+			}
+		} else {
+			// dl dc2 / dc dc2 dc2
+			if (mtk_has_layer_cap(c, DISP_MML_CAPS_MASK)) {
+				if (mml_capacity & c->layer_caps) {
+					if (mtk_has_layer_cap(c, MTK_MML_DISP_DIRECT_LINK_LAYER))
+						bk_mml_dl_idx = i;
+					else if (mtk_has_layer_cap(c, MTK_MML_DISP_DECOUPLE2_LAYER) &&
+						!(mml_capacity & MTK_MML_DISP_DIRECT_LINK_LAYER) &&
+						!(mml_capacity & MTK_MML_DISP_DECOUPLE2_LAYER) &&
+						(bk_mml_dl_idx < disp_info->layer_num[disp_idx])) {
+						disp_info->input_config[disp_idx][bk_mml_dl_idx].layer_caps =
+							MTK_MML_DISP_DECOUPLE_LAYER;
+						mml_capacity = 0;
+						DDPMSG("%s, L%d:DL->DC\n", __func__, bk_mml_dl_idx);
+					}
+
+					mml_capacity &= ~(c->layer_caps);
+					DDPDBG("%s, %d, mml_capacity:0x%x\n", __func__, __LINE__, mml_capacity);
+				} else
+					c->layer_caps = MTK_MML_DISP_NOT_SUPPORT;
 			}
 		}
+
 		if ((MTK_MML_DISP_DECOUPLE_LAYER & c->layer_caps) &&
 		    (kref_read(&mtk_crtc->mml_ir_sram.ref) ||
 		     (mtk_crtc->mml_link_state == MML_IR_IDLE) ||
 		     mtk_crtc->is_mml_dl || l_rule_info->bk_mml_dl_lye)) {
 			c->layer_caps &= ~MTK_MML_DISP_DECOUPLE_LAYER;
-			c->layer_caps |= MTK_MML_DISP_MDP_LAYER;
+			c->layer_caps |= query_transition_mode(mtk_crtc->mml_decouple2);
 			disp_info->disp_caps[disp_idx] |= MTK_NEED_REPAINT;
-			DDPINFO("Use MDP for %s-DC transition\n",
+			DDPINFO("Use 0x%x for %s-DC transition\n", c->layer_caps,
 				mtk_crtc->is_mml_dl ? "DL" : "IR");
 			DRM_MMP_MARK(layering, 0x331, __LINE__);
 		}
