@@ -1002,7 +1002,7 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register mtk_pelt_rt_tp hooks failed, returned %d\n", ret);
 
-	//ret = register_trace_android_rvh_schedule(mtk_sched_switch, NULL);
+	ret = register_trace_android_rvh_schedule(mtk_sched_switch, NULL);
 	if (ret)
 		pr_info("register mtk_sched_switch hooks failed, returned %d\n", ret);
 
