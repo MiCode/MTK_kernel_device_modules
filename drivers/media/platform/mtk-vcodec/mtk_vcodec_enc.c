@@ -1997,9 +1997,9 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 			if (!ctx->enc_params.svp_mode) {
 				if (!(buf->flags & V4L2_BUF_FLAG_NO_CACHE_CLEAN) &&
-				    vcp_get_io_device(VCP_IOMMU_ACP_VENC)) {
-					vq->dev = vcp_get_io_device(VCP_IOMMU_ACP_VENC);
-					mtk_v4l2_debug(4, "[%d] src_vq use VCP_IOMMU_ACP_VENC domain %p",
+				    vcp_get_io_device(VCP_IOMMU_ACP_CODEC)) {
+					vq->dev = vcp_get_io_device(VCP_IOMMU_ACP_CODEC);
+					mtk_v4l2_debug(4, "[%d] src_vq use VCP_IOMMU_ACP_CODEC domain %p",
 						ctx->id, vq->dev);
 				} else if (vq->dev != ctx->dev->smmu_dev) {
 					vq->dev = ctx->dev->smmu_dev;
