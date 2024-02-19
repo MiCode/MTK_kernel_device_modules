@@ -159,8 +159,12 @@ struct cpumask find_min_num_vip_cpus(struct perf_domain *pd, struct task_struct 
 		vip_candidate = find_min_num_vip_cpus_slow(vip_prio, &allowed_cpu_mask_for_slow);
 
 backup:
-	if (!cpumask_weight(&vip_candidate))
-		cpumask_copy(&vip_candidate, cpu_possible_mask);
+	if (!cpumask_weight(&vip_candidate)) {
+		/* no cpu selected above, use available CPUs */
+		cpumask_andnot(&vip_candidate, p->cpus_ptr, cpu_pause_mask);
+		cpumask_and(&vip_candidate, &vip_candidate, cpu_active_mask);
+		cpumask_copy(allowed_cpu_mask, &vip_candidate);
+	}
 
 out:
 	if (trace_sched_find_min_num_vip_cpus_enabled()) {
