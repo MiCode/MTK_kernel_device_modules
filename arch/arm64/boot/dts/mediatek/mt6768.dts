@@ -5524,7 +5524,6 @@ transparent_hugepage=never";
 #include "mediatek/cust_mt6768_msdc.dtsi"
 #include "mediatek/bat_setting/mt6768_battery_prop.dtsi"
 #include "mediatek/mt6370.dtsi"
-#include "mediatek/sgm41516d.dtsi"
 #include "mediatek/trusty.dtsi"
 
 &mt6370_backlight {
