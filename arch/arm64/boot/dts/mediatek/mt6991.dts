@@ -9839,6 +9839,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<0 0x34080000 0 0x10000>,	/* 23 IMGSYS_ME_MMG */
 					<0 0x34780000 0 0x00100>;	/* 24 IMGSYS_VCORE */
 			mediatek,hcp = <&hcp>;
+			#if 0
 			mediatek,larbs = <&smi_larb15>,
 					<&smi_larb9>,
 					<&smi_larb39>,
@@ -9849,6 +9850,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<&smi_larb10>,
 					<&smi_larb22>,
 					<&smi_larb23>;
+			#endif
 			mediatek,imgsys-cmdq = <&imgsys_cmdq>;
 			mediatek,imgsys-ddr-en = <4>;
 			mtk,smmu-shared = <&mm_smmu_cam>;
@@ -10652,6 +10654,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				sw-sync-token-camsys-pool-10 =
 					/bits/ 16 <CMDQ_SYNC_TOKEN_CAMSYS_POOL_10>;
 #endif
+			#if 0
 			clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP_CAMERA_P2>,
 				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
 				<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_CAMERA_P2>,
@@ -10787,7 +10790,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			hwqos-sync-token =
 					/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_QOS_LOCK>;
 			mmqos-supply = <&mmqos>;
-		#if 0
 			operating-points-v2 = <&opp_table_img>;
 			mediatek,imgsys-dvfs-pix-mode = <4>;
 			mediatek,imgsys-qof-ver = <1>;
