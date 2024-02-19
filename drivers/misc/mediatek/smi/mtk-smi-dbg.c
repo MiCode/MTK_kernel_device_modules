@@ -392,6 +392,7 @@ struct mtk_smi_dbg_node {
 	u8	port_stat[SMI_LARB_OSTD_MON_PORT_NR];
 	atomic_t	mon_ref_cnt[MAX_MON_REQ];
 	atomic_t	is_on;
+	bool	skip_tcms_check;
 	int	user[SMI_LARB_USER_NR];
 	int	user_nr;
 	struct mtk_smi_dbg_init_setting init_setting;
@@ -1133,6 +1134,9 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 		if (dbg_version == SMI_DBG_VER_2)
 			smi_dbg_init_v2(&smi->larb[id]);
 
+		if (of_property_read_bool(node, "skip-tcms-check"))
+			smi->larb[id].skip_tcms_check = true;
+
 		ret = mtk_smi_dbg_parse(pdev, smi->larb, true, id);
 		if (ret)
 			return ret;
@@ -1153,6 +1157,9 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 
 		if (dbg_version == SMI_DBG_VER_2)
 			smi_dbg_init_v2(&smi->comm[id]);
+
+		if (of_property_read_bool(node, "skip-tcms-check"))
+			smi->comm[id].skip_tcms_check = true;
 
 		if (of_property_read_u32(node, "master-ostd-bits", &ostd_bits))
 			ostd_bits = 0;
@@ -1721,7 +1728,7 @@ static int smi_ut_chk_dummy(void)
 	int i, dummy_val, ret = 0;
 
 	for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
-		if (!smi->larb[i].dev)
+		if (!smi->larb[i].dev || smi->larb[i].skip_tcms_check)
 			continue;
 		dummy_val = readl(smi->larb[i].va + SMI_LARB_SW_FLAG);
 		if (dummy_val != SMI_DUMMY_VAL) {
@@ -1731,7 +1738,7 @@ static int smi_ut_chk_dummy(void)
 		}
 	}
 	for (i = 0; i < ARRAY_SIZE(smi->comm); i++) {
-		if (!smi->comm[i].dev)
+		if (!smi->comm[i].dev || smi->comm[i].skip_tcms_check)
 			continue;
 		dummy_val = readl(smi->comm[i].va + SMI_DUMMY);
 		if (dummy_val != SMI_DUMMY_VAL) {
