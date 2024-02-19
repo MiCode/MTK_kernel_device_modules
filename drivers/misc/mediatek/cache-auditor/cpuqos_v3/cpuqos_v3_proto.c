@@ -979,8 +979,57 @@ static ssize_t set_l3m_query_pid(struct kobject *kobj,
 	return cnt;
 }
 
+#define GROUP_PART_OFS	0xCC
+static ssize_t show_group_partition(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	unsigned int len = 0;
+	unsigned int max_len = 4096;
+	int i;
+	unsigned int temp;
+	unsigned int gid, bitmap;
+
+	len += snprintf(buf+len, max_len-len,
+			"Group partition :\n");
+	len += snprintf(buf+len, max_len-len,
+			"GID\tbitmap\n");
+
+	for (i = 0;i<6;i++) {
+		temp = ioread32(l3ctl_sram_base_addr + GROUP_PART_OFS + i*4);
+		gid = i+1;
+		bitmap = temp & 0xFF;
+		len += snprintf(buf+len, max_len-len,
+				"%x\t%x\n", gid, bitmap);
+	}
+
+	return len;
+}
+
+static ssize_t set_group_partition(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *ubuf,
+		size_t cnt)
+{
+	int ret = 0;
+	unsigned int gid, bitmap;
+
+	ret = sscanf(ubuf, "%u,%u", &gid, &bitmap);
+	if (ret != 2) {
+		pr_info("Format error\n");
+		return cnt;
+	}
+
+	set_cache_ctl_user_group(bitmap, gid);
+
+	return cnt;
+}
+
 struct kobj_attribute show_L3m_status_attr =
 __ATTR(l3m_status_info, 0600, show_l3m_status, set_l3m_query_pid);
+
+struct kobj_attribute show_group_partition_attr =
+__ATTR(group_partition, 0600, show_group_partition, set_group_partition);
 
 static struct platform_driver mtk_platform_cpuqos_v3_driver = {
 	.probe = platform_cpuqos_v3_probe,
