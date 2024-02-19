@@ -160,8 +160,7 @@ static void flt_kh(unsigned int XHR[], int SS, int LA, unsigned int KK[], int ct
 
 static void flt_fei(int wl, int ctp)
 {
-	struct mtk_em_perf_state *ps = NULL;
-	int opp = -1, cpu, i = 0, GG = 0, KY = 0, GK = 0, j = 0, pol = 0, HA = 0;
+	int cpu, i = 0, GG = 0, KY = 0, GK = 0, j = 0, pol = 0, HA = 0;
 	struct cpumask *gear_cpus;
 	unsigned int nr_gear, gear_idx, MF, MU, LF, LU, TT;
 	unsigned int XHR[TLO] = {0};
@@ -341,12 +340,10 @@ static void flt_fei(int wl, int ctp)
 	for (gear_idx = 0; gear_idx < nr_gear; gear_idx++) {
 		gear_cpus = get_gear_cpumask(gear_idx);
 		cpu = cpumask_first(gear_cpus);
-		ps = pd_get_opp_ps(wl, cpu, 0, false);
-		MF = ps->freq;
-		MU = ps->capacity;
-		ps = pd_get_opp_ps(wl, cpu, 0xffff, false);
-		LF = ps->freq;
-		LU = ps->capacity;
+		MF = pd_opp2freq(cpu, 0, false, wl);
+		MU = pd_opp2cap(cpu, 0, false, wl);
+		LF = pd_opp2freq(cpu, 0xffff, false, wl);
+		LU = pd_opp2cap(cpu, 0xffff, false, wl);
 		MU = clamp_t(unsigned int, MU, 0, AMI);
 		if (gear_idx == 2) {
 			KY = 0;
@@ -367,8 +364,7 @@ static void flt_fei(int wl, int ctp)
 			} else if (TT <= LF) {
 				XU[i] = LU;
 			} else {
-				ps = pd_get_freq_ps(wl, cpu, TT, &opp);
-				XU[i] = ps->capacity;
+				XU[i] = pd_freq2util(cpu, TT, false, wl);
 			}
 			FLT_LOGI("wl %d XF[%d] XU[i]%d", wl, XF[i], XU[i]);
 		}

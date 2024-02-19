@@ -32,9 +32,13 @@ struct sbb_cpu_data {
 
 #if !IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 struct mtk_em_perf_state {
+	/* Performance state setting */
 	unsigned int freq;
+	unsigned int volt;
 	unsigned int capacity;
+	unsigned int dyn_pwr;
 	unsigned int pwr_eff;
+	unsigned int dsu_freq;
 };
 #endif
 
@@ -63,7 +67,6 @@ struct pd_capacity_info {
 	 */
 	struct mtk_em_perf_state *table;
 	struct mtk_em_perf_state *table_legacy;
-	struct cpumask cpus;
 
 	// for util mapping in O(1)
 	int nr_util_opp_map;
@@ -154,29 +157,38 @@ extern int get_cpu_type(int type);
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
 int init_opp_cap_info(struct proc_dir_entry *dir);
 void clear_opp_cap_info(void);
+
+extern int pd_opp2freq(int cpu, int opp, int quant, int wl);
+extern int pd_opp2cap(int cpu, int opp, int quant, int wl);
+extern int pd_opp2pwr_eff(int cpu, int opp, int quant, int wl);
+extern int pd_opp2dyn_pwr(int cpu, int opp, int quant, int wl);
+extern int pd_opp2volt(int cpu, int opp, int quant, int wl);
+extern int pd_util2opp(int cpu, int util, int quant, int wl);
+extern int pd_freq2opp(int cpu, int freq, int quant, int wl);
+extern int pd_freq2util(unsigned int cpu, int freq, bool quant, int wl);
+extern int pd_util2freq(unsigned int cpu, int freq, bool quant, int wl);
+extern int pd_cpu_opp2dsu_freq(int cpu, int opp, int quant, int wl);
+extern int pd_get_dsu_freq(void);
+unsigned long pd_cpu_freq2dsu_freq(unsigned int cpu, int freq, bool quant, int wl);
 extern unsigned long pd_X2Y(int cpu, unsigned long input, enum sugov_type in_type,
 		enum sugov_type out_type, bool quant);
+
 extern unsigned long pd_get_opp_capacity(unsigned int cpu, int opp);
 extern unsigned long pd_get_opp_capacity_legacy(unsigned int cpu, int opp);
 extern unsigned long pd_get_opp_freq(unsigned int cpu, int opp);
 extern unsigned long pd_get_opp_freq_legacy(unsigned int cpu, int opp);
-extern struct mtk_em_perf_state *pd_get_freq_ps(int wl_type, unsigned int cpu, unsigned long freq,
-		int *opp);
+
 extern unsigned long pd_get_freq_util(unsigned int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_opp(unsigned int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_pwr_eff(unsigned int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_opp_legacy(unsigned int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_opp_legacy_type(int wl_type, unsigned int cpu, unsigned long freq);
-extern struct mtk_em_perf_state *pd_get_util_ps(int wl_type, unsigned int cpu,
-							unsigned long util, int *opp);
-extern struct mtk_em_perf_state *pd_get_util_ps_legacy(int wl_type, unsigned int cpu,
-							unsigned long util, int *opp);
+
 extern unsigned long pd_get_util_freq(unsigned int cpu, unsigned long util);
 extern unsigned long pd_get_util_pwr_eff(unsigned int cpu, unsigned long util);
 extern unsigned long pd_get_util_opp(unsigned int cpu, unsigned long util);
 extern unsigned long pd_get_util_opp_legacy(unsigned int cpu, unsigned long util);
-extern struct mtk_em_perf_state *pd_get_opp_ps(int wl_type, unsigned int cpu, int opp, bool quant);
-extern unsigned long pd_get_opp_pwr_eff(unsigned int cpu, int opp);
+
 extern unsigned int pd_get_cpu_opp(unsigned int cpu);
 extern unsigned int pd_get_opp_leakage(unsigned int cpu, unsigned int opp,
 	unsigned int temperature);
@@ -256,4 +268,6 @@ extern unsigned long get_turn_point_freq(int gearid);
 DECLARE_PER_CPU(unsigned int, gear_id);
 DECLARE_PER_CPU(struct sbb_cpu_data *, sbb);
 DECLARE_PER_CPU(struct mtk_rq *, rq_data);
+
+__weak extern unsigned int mtk_get_dsu_freq(void) { return 0; }
 #endif /* __CPUFREQ_H__ */

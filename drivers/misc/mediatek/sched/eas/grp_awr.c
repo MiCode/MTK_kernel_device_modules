@@ -130,7 +130,6 @@ EXPORT_SYMBOL(get_top_grp_aware_refcnt);
 void set_grp_awr_thr(int gear_id, int group_id, int freq)
 {
 	unsigned int cpu_idx;
-	struct mtk_em_perf_state *ps;
 	int opp;
 
 	if (grp_awr_init_finished == false || gear_id == -1)
@@ -139,13 +138,12 @@ void set_grp_awr_thr(int gear_id, int group_id, int freq)
 		if (map_cpu_ger[cpu_idx] == gear_id) {
 			if (freq == -1) {
 				converge_thr_cap[cpu_idx][group_id] = (cap_max[cpu_idx] * 64) / 100;
-				pd_get_util_ps_legacy(0, cpu_idx,
-							converge_thr_cap[cpu_idx][group_id], &opp);
+				opp = pd_util2opp(cpu_idx,
+						converge_thr_cap[cpu_idx][group_id], true, 0);
 			} else
 				opp = pd_get_freq_opp_legacy_type(0, cpu_idx, freq);
-			ps = pd_get_opp_ps(0, cpu_idx, opp, true);
-			converge_thr_cap[cpu_idx][group_id] = ps->capacity;
-			converge_thr_freq[cpu_idx][group_id] = ps->freq;
+			converge_thr_cap[cpu_idx][group_id] = pd_opp2cap(cpu_idx, opp, true, 0);
+			converge_thr_freq[cpu_idx][group_id] = pd_opp2freq(cpu_idx, opp, true, 0);
 		}
 }
 EXPORT_SYMBOL(set_grp_awr_thr);
@@ -429,7 +427,6 @@ EXPORT_SYMBOL(set_group_active_ratio_cap);
 int grp_awr_init(void)
 {
 	unsigned int cpu_idx, grp_idx;
-	struct mtk_em_perf_state *ps;
 
 	pr_info("group aware init\n");
 	/* per cpu per group data*/
@@ -487,10 +484,8 @@ int grp_awr_init(void)
 		pcpu_pgrp_tar_u_grp_m[cpu_idx] =
 			kcalloc(GROUP_ID_RECORD_MAX, sizeof(int), GFP_KERNEL);
 
-		ps = pd_get_opp_ps(0, cpu_idx, 0, true);
-		cap_max[cpu_idx] = ps->capacity;
-		ps = pd_get_opp_ps(0, cpu_idx, INT_MAX, true);
-		cap_min[cpu_idx] = ps->capacity;
+		cap_max[cpu_idx] = pd_opp2cap(cpu_idx, 0, true, 0);
+		cap_min[cpu_idx] = pd_opp2cap(cpu_idx, INT_MAX, true, 0);
 		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++)
 			userdefined_pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] = -1;
 	}

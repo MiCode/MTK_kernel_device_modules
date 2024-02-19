@@ -604,16 +604,16 @@ void  group_update_threshold_util(int wl)
 {
 	int weight = 0, cpu, grp_idx;
 	struct cpumask *gear_cpus;
-	struct mtk_em_perf_state *ps = NULL;
+	int cap;
 
 	gear_cpus = get_gear_cpumask(0);
 	cpu = cpumask_first(gear_cpus);
 	weight = flt_get_grp_thr_weight();
-	ps = pd_get_opp_ps(wl, cpu, 0, false);
+	cap = pd_opp2cap(cpu, 0, false, wl);
 
 	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx)
 		grp_threshold_util[grp_idx] =
-		((ps->capacity * weight) * grp_threshold[grp_idx]) / 100;
+		((cap * weight) * grp_threshold[grp_idx]) / 100;
 }
 
 int  group_get_threshold_util(int grp_id)

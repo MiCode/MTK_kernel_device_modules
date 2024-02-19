@@ -309,7 +309,6 @@ void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
 //static void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 {
-	struct mtk_em_perf_state *ps = NULL;
 	struct cfs_rq *cfs_rq = cfs_rq_of(se);
 	struct sched_avg *sa = &se->avg;
 	int cpu = cpu_of(rq_of(cfs_rq));
@@ -318,6 +317,7 @@ void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 	struct task_struct *p = NULL;
 	struct cgroup_subsys_state *css = NULL;
 	bool post_init_util_ctl = sched_post_init_util_enable_get();
+	int freq;
 
 	if (!post_init_util_ctl)
 		return;
@@ -343,8 +343,8 @@ void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 	}
 
 	/*other hack...*/
-	ps = pd_get_opp_ps(0, cpu, 0, false);
-	desired_cpufreq = (ps->freq >> 2) + (ps->freq >> 3);
+	freq = pd_opp2freq(cpu, 0, false, 0);
+	desired_cpufreq = (freq >> 2) + (freq >> 3);
 	desired_cpu_scale = pd_get_freq_util(cpu, desired_cpufreq);
 	desired_util_avg = (desired_cpu_scale * 819) >> 10;
 
@@ -354,7 +354,7 @@ void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 		sa->util_avg = desired_util_avg;
 		if (trace_sched_post_init_entity_util_avg_enabled()) {
 			trace_sched_post_init_entity_util_avg(p, ori, sa->util_avg,
-				se->load.weight, ps->freq, desired_cpufreq, cpu);
+				se->load.weight, freq, desired_cpufreq, cpu);
 		}
 		sa->runnable_avg = sa->util_avg;
 	}
