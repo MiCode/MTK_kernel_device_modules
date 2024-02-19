@@ -1013,6 +1013,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
 
     if "mt6877_overlay.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_platform_device_modules.update({"drivers/pinctrl/mediatek/pinctrl-mt6877.ko":"mt6877"})
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi-fake-eng.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi-mpu.ko")
@@ -1373,6 +1374,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6989.ko")
     if "mt6761_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_platform_device_modules.update({"drivers/regulator/mt6357-regulator.ko":"mt6761"})
+        mgk_64_platform_device_modules.update({"drivers/pinctrl/mediatek/pinctrl-mt6761.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clkchk-mt6761.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6761-audio.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6761-cam.ko":"mt6761"})
