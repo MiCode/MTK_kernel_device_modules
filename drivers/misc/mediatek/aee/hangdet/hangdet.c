@@ -52,16 +52,14 @@ void sysrq_sched_debug_show_at_AEE(void);
 extern void mt_irq_dump_status(unsigned int irq);
 #endif
 
-#if !IS_ENABLED(CONFIG_ARM64)
-extern int nr_ipi_get(void);
-extern struct irq_desc **ipi_desc_get(void);
-#define __pa_nodebug(x)		__virt_to_phys_nodebug((unsigned long)(x))
-#endif
-
 /*************************************************************************
  * Feature configure region
  *************************************************************************/
+#if !IS_ENABLED(CONFIG_ARM64)
+#define WK_MAX_MSG_SIZE (450)
+#else
 #define WK_MAX_MSG_SIZE (1024)
+#endif
 #define MAX_CPUNR 16
 #define SOFT_KICK_RANGE     (100741) // 100741us, use magic num to check wdtk in which hrtimer
 
@@ -898,7 +896,15 @@ static void kwdt_process_kick(int local_bit, int cpu,
 #endif
 
 	wk_tsk_kick_time[cpu] = sched_clock();
-
+#if !IS_ENABLED(CONFIG_ARM64)
+	snprintf(msg_buf, WK_MAX_MSG_SIZE,
+	 "[wdk-c] cpu=%d o_k=%d lbit=0x%x cbit=0x%x,%x,%d,%d,%lld,%x,%llu,%llu,%llu,%llu,[%lld,%ld] %d %lx\n",
+	 cpu, original_kicker, local_bit, get_check_bit(),
+	 (local_bit ^ get_check_bit()) & get_check_bit(), lasthpg_cpu,
+	 lasthpg_act, lasthpg_t, atomic_read(&plug_mask), div_u64(lastsuspend_t, 1000000),
+	 div_u64(lastsuspend_syst, 1000000), div_u64(lastresume_t, 1000000),
+	 div_u64(lastresume_syst, 1000000), wk_tsk_kick_time[cpu], curInterval, r_counter, s_s2idle);
+#else
 	snprintf(msg_buf, WK_MAX_MSG_SIZE,
 	 "[wdk-c] cpu=%d o_k=%d lbit=0x%x cbit=0x%x,%x,%d,%d,%lld,%x,%llu,%llu,%llu,%llu,[%lld,%ld] %d %lx %s\n",
 	 cpu, original_kicker, local_bit, get_check_bit(),
@@ -907,7 +913,7 @@ static void kwdt_process_kick(int local_bit, int cpu,
 	 div_u64(lastsuspend_syst, 1000000), div_u64(lastresume_t, 1000000),
 	 div_u64(lastresume_syst, 1000000), wk_tsk_kick_time[cpu], curInterval, r_counter, s_s2idle,
 	 smp_histroy);
-
+#endif
 	if ((local_bit & (get_check_bit() & s_s2idle)) == (get_check_bit() & s_s2idle)) {
 		all_k_timer_t = sched_clock();
 		if (timer_pending(&aee_dump_timer))
