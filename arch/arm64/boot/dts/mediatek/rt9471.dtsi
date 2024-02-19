@@ -58,7 +58,7 @@
 			en_qon_rst;
 			/* auto_aicr; */
 			bootmode = <&chosen>;
-otg_vbus: usb-otg-vbus	{
+otg_vbus2: usb-otg-vbus	{
 				regulator-compatible = "usb-otg-vbus";
 				regulator-name = "usb-otg-vbus";
 				regulator-min-microvolt = <4850000>;
