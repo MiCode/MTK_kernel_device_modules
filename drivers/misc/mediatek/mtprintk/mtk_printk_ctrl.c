@@ -66,21 +66,27 @@ void update_uartlog_status(bool new_value, int value)
 	}
 
 	if (printk_ctrl_disable == 1) {
+		console_list_lock();
 		for_each_console(bcon) {
 			pr_info("console name: %s, status 0x%x.\n", bcon->name, bcon->flags);
 			if (!strncmp(bcon->name, "ttyS", 4)) {
-				bcon->flags &= ~CON_ENABLED;
+				WRITE_ONCE(bcon->flags, READ_ONCE(bcon->flags) & ~CON_ENABLED);
+				console_list_unlock();
 				return;
 			}
 		}
+		console_list_unlock();
 	} else {
+		console_list_lock();
 		for_each_console(bcon) {
 			pr_info("console name: %s. status 0x%x.\n", bcon->name, bcon->flags);
 			if (!strncmp(bcon->name, "ttyS", 4)) {
-				bcon->flags |= CON_ENABLED;
+				WRITE_ONCE(bcon->flags, READ_ONCE(bcon->flags) | CON_ENABLED);
+				console_list_unlock();
 				return;
 			}
 		}
+		console_list_unlock();
 	}
 }
 EXPORT_SYMBOL_GPL(update_uartlog_status);
