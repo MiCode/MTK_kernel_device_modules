@@ -1399,6 +1399,12 @@
 		pmic-reg = <0x1696>;
 	};
 
+	/* Trustonic Mobicore SW IRQ number 171 = 32 + 139 */
+	mobicore: mobicore {
+		compatible = "trustonic,mobicore";
+		interrupts = <GIC_SPI 139 IRQ_TYPE_EDGE_RISING 0>;
+	};
+
 	spmi: spmi@1c01a000 {
 		compatible = "mediatek,mt6991-spmi";
 		reg = <0 0x1c01a000 0 0x0008ff>,
