@@ -594,8 +594,8 @@ static void mtk_ovl_blender_unprepare(struct mtk_ddp_comp *comp)
 static int mtk_ovl_blender_first_layer_mt6991(struct mtk_ddp_comp *comp)
 {
 	if (comp->id == DDP_COMPONENT_OVL0_BLENDER1 ||
-		comp->id == DDP_COMPONENT_OVL1_BLENDER6 ||
-		comp->id == DDP_COMPONENT_OVL1_BLENDER8)
+		comp->id == DDP_COMPONENT_OVL1_BLENDER5 ||
+		comp->id == DDP_COMPONENT_OVL1_BLENDER7)
 		return 1;
 	else
 		return 0;

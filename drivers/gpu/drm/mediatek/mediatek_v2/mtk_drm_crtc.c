@@ -274,6 +274,7 @@ void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 	resource_size_t config_regs_pa;
 	enum mtk_ddp_comp_id next_blender = DDP_COMPONENT_OVL0_BLENDER0;
 	struct mtk_ddp_comp *blender_comp;
+	int crtc_id = drm_crtc_index(&mtk_crtc->base);
 
 	/* exdma to blender */
 	if (mtk_ddp_comp_get_type(comp->id) != MTK_OVL_EXDMA) {
@@ -283,7 +284,10 @@ void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 
 	if (priv->data->mmsys_id == MMSYS_MT6991) {
 
-		next_blender = DDP_COMPONENT_OVL0_BLENDER1 + plane_index;
+		if (crtc_id == 0)
+			next_blender = DDP_COMPONENT_OVL0_BLENDER1 + plane_index;
+		else if (crtc_id == 2)
+			next_blender = DDP_COMPONENT_OVL1_BLENDER5 + plane_index;
 
 		value = mtk_ddp_exdma_mout_MT6991(comp->id, next_blender, &addr);
 		if (comp->id < DDP_COMPONENT_OVL1_EXDMA0)
@@ -449,22 +453,38 @@ void mtk_drm_crtc_exdma_path_setting_reset(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_disp_mutex *mutex = NULL;
 	struct mtk_ddp *ddp = NULL;
 	resource_size_t ovl0_mutex_regs_pa = 0;
+	resource_size_t ovl1_mutex_regs_pa = 0;
 	unsigned int addr_begin, addr_end, offset, i = 0;
+	int crtc_id = drm_crtc_index(&mtk_crtc->base);
 
 	mutex = mtk_crtc->mutex[0];
 	ddp = container_of(mutex, struct mtk_ddp, mutex[mutex->id]);
 
-	if (ddp->ovlsys0_regs)
-		ovl0_mutex_regs_pa = ddp->ovlsys0_regs_pa;
-	//clear exdma and blender mutex bit
-	/**
-	 * cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
-	 *				ovl0_mutex_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
-	 *				0, 0xfffff);
-	 */
-	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
-				ovl0_mutex_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
-				0, 0x3ff);
+	if (crtc_id == 0) {
+		if (ddp->ovlsys0_regs)
+			ovl0_mutex_regs_pa = ddp->ovlsys0_regs_pa;
+		//clear exdma and blender mutex bit
+		/**
+		 * cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+		 *				ovl0_mutex_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
+		 *				0, 0xfffff);
+		 */
+		if (mtk_crtc->crtc_blank)
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+					ovl0_mutex_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
+					0, 0x3ff & ~(mtk_crtc->tui_ovl_stat.mutex_bit));
+		else
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+					ovl0_mutex_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
+					0, 0x3ff);
+	} else if (crtc_id == 2) {
+		if (ddp->ovlsys1_regs)
+			ovl1_mutex_regs_pa = ddp->ovlsys1_regs_pa;
+
+		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+					ovl1_mutex_regs_pa  + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
+					0, 0xc0);
+	}
 
 	/**
 	 * mtk_ddp_exdma_mout_reset_MT6991(MTK_OVL_BLENDER, &offset, &addr_begin,
@@ -476,11 +496,20 @@ void mtk_drm_crtc_exdma_path_setting_reset(struct mtk_drm_crtc *mtk_crtc,
 	 */
 
 	mtk_ddp_exdma_mout_reset_MT6991(MTK_OVL_EXDMA, &offset, &addr_begin,
-		&addr_end);
+		&addr_end, crtc_id);
 
-		for (i = addr_begin; i <= addr_end; i = i + offset)
-			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
-						mtk_crtc->ovlsys0_regs_pa + i, 0, ~0);
+		for (i = addr_begin; i <= addr_end; i = i + offset) {
+			if (crtc_id == 0) {
+				if (mtk_crtc->crtc_blank)
+					if (i == mtk_crtc->tui_ovl_stat.cb_reg)
+						continue;
+				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+							mtk_crtc->ovlsys0_regs_pa + i, 0, ~0);
+			} else if (crtc_id == 2) {
+				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+							mtk_crtc->ovlsys1_regs_pa + i, 0, ~0);
+			}
+		}
 }
 
 static int mtk_drm_wait_blank(struct mtk_drm_crtc *mtk_crtc,
@@ -17655,6 +17684,11 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_PARTIAL_UPDATE))
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PARTIAL_UPDATE;
+		} else {
+			if (priv->data->mmsys_id == MMSYS_MT6991) {
+				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
+				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_MML;
+			}
 		}
 		mtk_crtc->crtc_caps.ovl_csc_bit_number = 18;
 	}
@@ -19552,6 +19586,46 @@ done:
 	return 0;
 }
 
+void mtk_crtc_tui_ovl_status(struct drm_crtc *crtc)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
+		/* EXDMA5 */
+		mtk_crtc->tui_ovl_stat.aid_setting = 0xB50;
+		mtk_crtc->tui_ovl_stat.cb_reg = 0xE80;
+		mtk_crtc->tui_ovl_stat.mutex_bit = BIT(5);
+	}
+}
+
+void mtk_crtc_axuser_control(struct drm_crtc *crtc, int tui_control)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct cmdq_pkt *cmdq_handle;
+	resource_size_t config_regs_pa;
+	unsigned int addr;
+
+
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
+		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
+					mtk_crtc->gce_obj.client[CLIENT_CFG]);
+		addr = mtk_crtc->tui_ovl_stat.aid_setting;
+		config_regs_pa = mtk_crtc->ovlsys0_regs_pa;
+
+		if (tui_control)
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+					config_regs_pa + addr, 0x4, ~0);
+		else
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+					config_regs_pa + addr, 0, ~0);
+
+		cmdq_pkt_flush(cmdq_handle);
+		cmdq_pkt_destroy(cmdq_handle);
+	}
+}
+
 int mtk_crtc_enter_tui(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -19605,6 +19679,11 @@ int mtk_crtc_enter_tui(struct drm_crtc *crtc)
 
 		if (mtk_crtc->is_dual_pipe)
 			priv->ddp_comp[DDP_COMPONENT_OVL5_2L]->blank_mode = true;
+		break;
+	case MMSYS_MT6991:
+		priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA5]->blank_mode = true;
+		mtk_crtc_axuser_control(crtc, true);
+		mtk_crtc_tui_ovl_status(crtc);
 		break;
 	default:
 		priv->ddp_comp[DDP_COMPONENT_OVL0]->blank_mode = true;
@@ -19678,6 +19757,10 @@ int mtk_crtc_exit_tui(struct drm_crtc *crtc)
 
 		if (mtk_crtc->is_dual_pipe)
 			priv->ddp_comp[DDP_COMPONENT_OVL5_2L]->blank_mode = false;
+		break;
+	case MMSYS_MT6991:
+		priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA5]->blank_mode = false;
+		mtk_crtc_axuser_control(crtc, false);
 		break;
 	default:
 		priv->ddp_comp[DDP_COMPONENT_OVL0]->blank_mode = false;
