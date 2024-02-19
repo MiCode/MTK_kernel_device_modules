@@ -212,6 +212,7 @@ struct mml_ut_config {
 	u32 flip;
 	u32 alpha;
 	u32 pq;
+	u32 videomode;
 	u32 in1_fmt;
 	u32 in1_w;
 	u32 in1_h;
@@ -260,6 +261,7 @@ const char *ut_params[] = {
 	"flip",
 	"alpha",
 	"pq",
+	"videomode",
 	"in1_fmt",
 	"in1_w",
 	"in1_h",
@@ -524,8 +526,9 @@ static void case_general_submit_ut(struct mml_test *test,
 		task.info.dest[0].pq_config.en_region_pq =
 			(utcfg->pq & MML_PQ_AI_SCENE_PQ_EN) ? 1 : 0;
 		if (task.info.dest[0].pq_config.en_hdr)
-			pq_param->src_hdr_video_mode = MML_PQ_HDR10;
-		mml_log("[test] %s open PQ %#010x", __func__, utcfg->pq);
+			pq_param->src_hdr_video_mode = utcfg->videomode;
+		mml_log("[test] %s open PQ %#010x video_mode:%d", __func__,
+			utcfg->pq, utcfg->videomode);
 	}
 
 	task.info.alpha = utcfg->alpha;
