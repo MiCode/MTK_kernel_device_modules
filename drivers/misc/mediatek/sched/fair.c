@@ -256,6 +256,7 @@ static inline void eenv_init(struct energy_env *eenv,
 	unsigned int dsu_opp;
 	struct dsu_state *dsu_ps;
 #endif
+	bool in_irq = in_interrupt();
 
 	eenv_task_busy_time(eenv, p, prev_cpu);
 
@@ -299,6 +300,10 @@ static inline void eenv_init(struct energy_env *eenv,
 			eenv_pd_busy_time(gear_idx, eenv, cpus, p);
 			eenv->total_util += eenv->pds_busy_time[gear_idx];
 		}
+	}
+
+	if (unlikely(in_irq)) {
+		return;
 	}
 
 #if IS_ENABLED(CONFIG_MTK_LEAKAGE_AWARE_TEMP)
@@ -2037,16 +2042,15 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 	eenv.min_cap = min_cap;
 	eenv.max_cap = max_cap;
-	if (!in_irq) {
-		eenv_task_busy_time(&eenv, p, prev_cpu);
 
-		eenv_init(&eenv, p, prev_cpu, pd);
+	eenv_task_busy_time(&eenv, p, prev_cpu);
 
-		if (!eenv.task_busy_time) {
-			select_reason = LB_ZERO_EENV_UTIL;
-			rcu_read_unlock();
-			goto fail;
-		}
+	eenv_init(&eenv, p, prev_cpu, pd);
+
+	if (!eenv.task_busy_time) {
+		select_reason = LB_ZERO_EENV_UTIL;
+		rcu_read_unlock();
+		goto fail;
 	}
 
 	init_val_s(&eenv);
@@ -2082,14 +2086,18 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	for_each_cpu(cpu, candidates) {
 		unsigned long cur_delta, base_energy;
 		int gear_idx;
-		unsigned int uint_cpu = cpu;
 		struct perf_domain *target_pd = rcu_dereference(pd);
 
 		/* Evaluate the energy impact of using this CPU. */
 		if (unlikely(in_irq)) {
 			int wl_type = get_em_wl();
+			unsigned long max_util;
 
-			cur_delta = calc_pwr_eff(wl_type, cpu, cpu_utils[uint_cpu], eenv.val_s);
+			gear_idx = eenv.gear_idx = topology_cluster_id(cpu);
+			cpus = get_gear_cpumask(gear_idx);
+			max_util = eenv_pd_max_util(gear_idx, &eenv, cpus, p, cpu);
+
+			cur_delta = calc_pwr_eff(wl_type, cpu, max_util, eenv.val_s);
 			base_energy = 0;
 		} else {
 			target_pd = find_pd(target_pd, cpu);
