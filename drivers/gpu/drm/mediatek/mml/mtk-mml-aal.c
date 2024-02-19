@@ -977,6 +977,10 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_trace_ex_begin("%s %d", __func__, mode);
 	mml_pq_msg("%s engine_id[%d] en_dre[%d]", __func__, comp->id, dest->pq_config.en_dre);
 
+	/* clear event */
+	if (aal->event_eof)
+		cmdq_pkt_clear_event(pkt, aal->event_eof);
+
 	if (aal_frm->relay_mode) {
 		/* relay mode */
 		aal_relay(comp, pkt, base_pa, alpha | 0x1);

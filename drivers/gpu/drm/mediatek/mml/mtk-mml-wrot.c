@@ -1325,10 +1325,8 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	u32 preultra, alpha;
 	u32 scan_10bit = 0, bit_num = 0, pending_zero = 0, pvric = 0;
 
-#ifdef MML_FPGA
-	/* clear event in fpga, to avoid cmdq init issue */
+	/* clear event */
 	cmdq_pkt_clear_event(pkt, wrot->event_eof);
-#endif
 
 	wrot_color_fmt(cfg, wrot_frm);
 

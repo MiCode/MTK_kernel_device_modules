@@ -244,6 +244,8 @@ extern dma_addr_t rdma_crc_pa[MML_PIPE_CNT];
 #define MML_NEXTSPR_NEXT	BIT(0)
 #define MML_NEXTSPR_DUAL	BIT(1)
 
+/* mode decision */
+#define mml_isdc(mode)		(mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2)
 
 struct mml_topology_cache;
 struct mml_ctx;
@@ -538,6 +540,7 @@ struct mml_frame_config {
 	bool err:1;
 	bool dpc:1;
 	bool rrot_dual:1;
+	bool merge2p:1;
 
 	/* tile */
 	struct mml_frame_tile *frame_tile[MML_PIPE_CNT];

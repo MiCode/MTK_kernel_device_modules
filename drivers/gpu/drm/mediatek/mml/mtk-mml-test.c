@@ -223,6 +223,7 @@ struct mml_ut_config {
 	u32 racing_ut;
 	u32 extension;
 	u32 dump;
+	u32 context;
 
 	/* following items not exist in ut_params */
 	atomic_t protect;
@@ -272,6 +273,7 @@ const char *ut_params[] = {
 	"racing_ut",
 	"extension",
 	"dump",
+	"context",
 };
 
 static u64 apu_ut_handle;
@@ -435,7 +437,7 @@ static void case_general_submit_ut(struct mml_test *test,
 	void (*setup)(struct mml_submit *task, struct mml_ut *cur))
 {
 	struct platform_device *mml_pdev;
-	struct mml_drm_ctx *ctx;
+	struct mml_drm_ctx *ctx = NULL;
 	struct mml_job job = {};
 	struct mml_pq_param *pq_param;
 	struct mml_submit task = {.job = &job};
@@ -461,11 +463,16 @@ static void case_general_submit_ut(struct mml_test *test,
 		return;
 	}
 
-	ctx = mml_drm_get_context(mml_pdev, &disp);
-	if (IS_ERR_OR_NULL(ctx)) {
-		kfree(pq_param);
-		mml_err("[test]get mml context failed %pe", ctx);
-		return;
+	if (utcfg->context)
+		ctx = main_test->drm_ctx;
+
+	if (!ctx) {
+		ctx = mml_drm_get_context(mml_pdev, &disp);
+		if (IS_ERR_OR_NULL(ctx)) {
+			kfree(pq_param);
+			mml_err("[test]get mml context failed %pe", ctx);
+			return;
+		}
 	}
 
 	/* srouce info and buffer */
@@ -592,16 +599,21 @@ static void case_general_submit_ut(struct mml_test *test,
 	}
 
 	kfree(fences);
-	for (i = 0; i < 1000 && !mml_drm_ctx_idle(ctx); i++) {
+	for (i = 0; i < 20 && !mml_drm_ctx_idle(ctx); i++) {
 		mml_log("[test]wait for ctx idle...");
-		msleep_interruptible(5);	/* make sure mml stops */
+		msleep_interruptible(500);	/* make sure mml stops */
 	}
 
 err_done:
-	if (mml_drm_ctx_idle(ctx))
-		mml_drm_put_context(ctx);
-	else
-		mml_err("[test]fail to put ctx");
+	if (utcfg->context) {
+		/* keep this context */
+		main_test->drm_ctx = ctx;
+	} else {
+		if (mml_drm_ctx_idle(ctx))
+			mml_drm_put_context(ctx);
+		else
+			mml_err("[test]fail to put ctx");
+	}
 	kfree(pq_param);
 err:
 	mml_log("[test]%s end", __func__);

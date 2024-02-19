@@ -704,6 +704,9 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	mml_msg("use config %p rdma %p", cfg, rdma);
 
+	/* clear event */
+	cmdq_pkt_clear_event(pkt, rdma->event_eof);
+
 	if (!write_sec) {
 		/* Enable engine */
 		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_EN, 0x1, 0x00000001);

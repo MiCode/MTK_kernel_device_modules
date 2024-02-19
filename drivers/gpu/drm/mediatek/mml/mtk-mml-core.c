@@ -1534,7 +1534,7 @@ static void core_taskdone_cb(struct cmdq_cb_data data)
 		return;
 	}
 
-	mml_trace_begin_tid(MML_TID_IRQ, "mml_taskdone_cb_pipe%u", pipe);
+	mml_trace_begin("mml_taskdone_cb_pipe%u", pipe);
 
 	if (data.err)
 		mml_mmp(irq_stop, MMPROFILE_FLAG_PULSE, task->job.jobid,
