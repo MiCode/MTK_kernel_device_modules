@@ -93,6 +93,23 @@ enum {
 	UFS_MPHY_STAGE_NUM
 };
 
+enum {
+	IDX_NOPOUT = 0,
+	IDX_NOPIN,
+	IDX_CMD,
+	IDX_RESP,
+	IDX_DATAOUT,
+	IDX_DATAIN,
+	IDX_TMREQ,
+	IDX_TMRESP,
+	IDX_RTT,
+	IDX_QUERYREQ,
+	IDX_QUERYRESP,
+	IDX_REJECT,
+	IDX_AH8E,
+	IDX_AH8X
+};
+
 struct tm_cmd_struct {
 	u8 lun;
 	u8 tag;
@@ -164,6 +181,11 @@ struct cmd_hist_struct {
 	} cmd;
 };
 
+struct mon_struct {
+	u32 offset;
+	char name[16];
+};
+
 int ufs_mtk_dbg_tp_register(void);
 void ufs_mtk_dbg_tp_unregister(void);
 int ufs_mtk_dbg_register(struct ufs_hba *hba);
@@ -200,6 +222,9 @@ void ufs_mtk_dbg_phy_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
 void ufs_mtk_dbg_phy_dump(struct ufs_hba *hba);
 void ufs_mtk_dbg_phy_dump_work(struct work_struct *work);
 void ufs_mtk_dbg_phy_trace(struct ufs_hba *hba, u8 stage);
+void ufs_mtk_mon_dump(struct ufs_hba *hba);
+void ufs_mtk_ahb_dump(struct ufs_hba *hba);
+void ufs_mtk_axi_dump(struct ufs_hba *hba);
 extern void ufs_mtk_check_bus_init(u32 ip_ver);
 extern void ufs_mtk_check_bus_status(struct ufs_hba *hba);
 #else
@@ -208,6 +233,9 @@ extern void ufs_mtk_check_bus_status(struct ufs_hba *hba);
 #define ufs_mtk_dbg_phy_dump(...)
 #define ufs_mtk_dbg_phy_dump_work(...)
 #define ufs_mtk_dbg_phy_trace(...)
+#define ufs_mtk_mon_dump(...)
+#define ufs_mtk_ahb_dump(...)
+#define ufs_mtk_axi_dump(...)
 #define ufs_mtk_check_bus_init(...)
 #define ufs_mtk_check_bus_status(...)
 #endif
