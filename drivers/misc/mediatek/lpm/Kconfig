@@ -91,6 +91,16 @@ config MTK_LPM_MT6989
 	  Set Y to select this feature for specific platform-mt6989.
 	  If unsure, set N to disable.
 
+config MTK_LPM_MT6991
+	tristate "Specify Mediatek LPM Platform is MT6991"
+	depends on MTK_LOW_POWER_MODULE
+	select MTK_LPM_DBG_COMMON
+	help
+	  Select MediaTek Low Power Module Platform is MT6991
+	  for power management.
+	  Set Y to select this feature for specific platform-mt6991.
+	  If unsure, set N to disable.
+
 config MTK_CPU_IDLE_GOV
 	tristate "Meditaek cpuidle governor support"
 	help
