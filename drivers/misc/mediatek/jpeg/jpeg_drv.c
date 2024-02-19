@@ -26,6 +26,7 @@
 
 #include "jpeg_drv.h"
 #include "jpeg_drv_reg.h"
+#include "mtk-interconnect.h"
 #include "mtk-smmu-v3.h"
 
 #define JPEG_DEVNAME "mtk_jpeg"
@@ -355,6 +356,51 @@ void jpeg_drv_hybrid_dec_end_dvfs(unsigned int id)
 	}
 }
 
+static void jpeg_drv_prepare_bw_request(unsigned int node_id)
+{
+	JPEG_LOG(1, "bw requset prepare");
+
+	if (node_id == 0) {
+		gJpegqDev.jpeg_path_wdma[0] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
+							     "path_jpegdec0_wdma");
+		gJpegqDev.jpeg_path_bsdma[0] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
+							      "path_jpegdec0_bsdma");
+		gJpegqDev.jpeg_path_huff_offset[0] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
+								    "path_jpegdec0_huff_offset");
+		gJpegqDev.jpeg_path_wdma[1] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
+							     "path_jpegdec1_wdma");
+		gJpegqDev.jpeg_path_bsdma[1] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
+							      "path_jpegdec1_bsdma");
+		gJpegqDev.jpeg_path_huff_offset[1] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
+								    "path_jpegdec1_huff_offset");
+	} else {
+		gJpegqDev.jpeg_path_wdma[2] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
+							     "path_jpegdec2_wdma");
+		gJpegqDev.jpeg_path_bsdma[2] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
+							      "path_jpegdec2_bsdma");
+		gJpegqDev.jpeg_path_huff_offset[2] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
+								    "path_jpegdec2_huff_offset");
+	}
+}
+
+static void jpeg_drv_update_bw_request(unsigned int id)
+{
+	JPEG_LOG(1, "update bw request id: %d", id);
+
+	mtk_icc_set_bw(gJpegqDev.jpeg_path_wdma[id], MBps_to_icc(960), 0);
+	mtk_icc_set_bw(gJpegqDev.jpeg_path_bsdma[id], MBps_to_icc(576), 0);
+	mtk_icc_set_bw(gJpegqDev.jpeg_path_huff_offset[id], MBps_to_icc(40), 0);
+}
+
+static void jpeg_drv_end_bw_request(unsigned int id)
+{
+	JPEG_LOG(1, "end bw request id: %d", id);
+
+	mtk_icc_set_bw(gJpegqDev.jpeg_path_wdma[id], 0, 0);
+	mtk_icc_set_bw(gJpegqDev.jpeg_path_bsdma[id], 0, 0);
+	mtk_icc_set_bw(gJpegqDev.jpeg_path_huff_offset[id], 0, 0);
+}
+
 void jpeg_drv_hybrid_dec_power_on(int id)
 {
 	int ret;
@@ -393,11 +439,15 @@ void jpeg_drv_hybrid_dec_power_on(int id)
 	} else
 		jpeg_drv_hybrid_dec_start_dvfs(0);
 
+	jpeg_drv_update_bw_request(id);
+
 	JPEG_LOG(1, "JPEG Hybrid Decoder Power On %d", id);
 }
 
 void jpeg_drv_hybrid_dec_power_off(int id)
 {
+	jpeg_drv_end_bw_request(id);
+
 	if (id == 2) {
 		jpeg_drv_hybrid_dec_end_dvfs(1);
 		clk_disable_unprepare(gJpegqDev.jpegClk.clk_venc_jpgDec_c2);
@@ -1123,6 +1173,7 @@ static int jpeg_probe(struct platform_device *pdev)
 	pm_runtime_enable(&pdev->dev);
 
 	jpeg_drv_hybrid_dec_prepare_dvfs(node_index);
+	jpeg_drv_prepare_bw_request(node_index);
 
 	if (atomic_read(&nodeCount) == 1) {
 		gJpegqDev.pm_notifier.notifier_call = jpeg_drv_hybrid_dec_suspend_notifier;
