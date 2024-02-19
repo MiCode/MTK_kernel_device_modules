@@ -23,6 +23,7 @@
 #include <dt-bindings/soc/mediatek,boot-mode.h>
 #include <dt-bindings/spmi/spmi.h>
 #include <dt-bindings/interconnect/mtk,emi.h>
+#include <dt-bindings/memory/mt6991-larb-port.h>
 #include <dt-bindings/mml/mml-mt6991.h>
 #include <dt-bindings/memory/mtk-smi-user.h>
 #include <dt-bindings/memory/mt6991-larb-port.h>
@@ -7818,6 +7819,220 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mtk,smmu = <&gpu_smmu>;
 		};
 
+		vdec@36000000 {
+			compatible = "mediatek,mt6991-vcodec-dec";
+			mediatek,platform = "platform:mt6991";
+			mediatek,ipm = <2>;
+			//mediatek,slc = <1>;
+			reg = <0 0x36000000 0 0x1000>,	/* VDEC_BASE */
+				<0 0x3602f000 0 0x1000>,	/* VDEC_SYS */
+				<0 0x36020000 0 0x1000>,	/* VDEC_VLD */
+				<0 0x36021000 0 0x1000>,	/* VDEC_MC */
+				<0 0x36023000 0 0x1000>,	/* VDEC_MV */
+				<0 0x36025000 0 0x4000>,	/* VDEC_MISC */
+				<0 0x36010000 0 0x1000>,	/* VDEC_LAT_MISC */
+				<0 0x36011000 0 0x400>,		/* VDEC_LAT_VLD */
+				<0 0x3600f000 0 0x1000>,	/* VDEC_SOC_GCON */
+				<0 0x36004000 0 0x1000>,	/* VDEC_RACING_CTRL */
+				<0 0x36012000 0 0x1000>,	/* VDEC_LAT_AVC_VLD */
+				<0 0x36022000 0 0x1000>,	/* VDEC_AVC_VLD */
+				<0 0x36015800 0 0x1000>;	/* VDEC_AV1_VLD */
+			reg-names = "VDEC_BASE",
+				"VDEC_SYS",
+				"VDEC_VLD",
+				"VDEC_MC",
+				"VDEC_MV",
+				"VDEC_MISC",
+				"VDEC_LAT_MISC",
+				"VDEC_LAT_VLD",
+				"VDEC_SOC_GCON",
+				"VDEC_RACING_CTRL",
+				"VDEC_LAT_AVC_VLD",
+				"VDEC_AVC_VLD",
+				"VDEC_AV1_VLD";
+			mtk,smmu-shared = <&mm_smmu_codec>;
+			//mediatek,larbs = <&smi_larb4 &smi_larb5>;
+			interrupts = <GIC_SPI 673 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 676 IRQ_TYPE_LEVEL_HIGH 0>;
+
+			power-domains = <&scpsys MT6991_POWER_DOMAIN_VDE0>,
+				<&scpsys MT6991_POWER_DOMAIN_VDE1>;
+			//mediatek,vcu = <&vcu>;
+			clocks = <&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_CKEN>,
+					<&vdec_soc_gcon_base_clk CLK_VDE1_LAT_CKEN>,
+					<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN>;
+			clock-names = "SOC_MT_CG_SOC",
+					"LAT_MT_CG_VDEC1",
+					"CORE_MT_CG_VDEC0";
+			mediatek,clock-parents = <4 3>;
+			m4u-ports =
+				<SMMU_L4_P0_VDEC_MC_C>,
+				<SMMU_L4_P1_VDEC_UFO>,
+				<SMMU_L4_P2_VDEC_PP>,
+				<SMMU_L4_P3_VDEC_UFO_C>,
+				<SMMU_L4_P4_VDEC_TILE>,
+				<SMMU_L4_P5_VDEC_VLD>,
+				<SMMU_L4_P6_VDEC_VLD2>,
+				<SMMU_L4_P7_VDEC_AVC_MV>,
+				<SMMU_L5_P0_VDEC_LAT0_VLD>,
+				<SMMU_L5_P1_VDEC_LAT0_VLD2>,
+				<SMMU_L5_P2_VDEC_MC>,
+				<SMMU_L5_P3_VDEC_UFO_ENC>,
+				<SMMU_L5_P4_VDEC_LAT0_WDMA>,
+				<SMMU_L5_P5_VDEC_LAT0_AVC_MV>,
+				<SMMU_L5_P6_VDEC_LAT0_TILE>,
+				<SMMU_L6_P1_VDEC_UFO_ENC_C>,
+				<SMMU_L49_MMUP>;
+			m4u-port-names =
+				"M4U_PORT_VDEC_MC",
+				"M4U_PORT_VDEC_UFO",
+				"M4U_PORT_VDEC_PP",
+				"M4U_PORT_VDEC_UFO_ENC",
+				"M4U_PORT_VDEC_TILE",
+				"M4U_PORT_VDEC_VLD",
+				"M4U_PORT_VDEC_VLD2",
+				"M4U_PORT_VDEC_AVC_MV",
+				"M4U_PORT_VDEC_LAT0_VLD",
+				"M4U_PORT_VDEC_LAT0_VLD2",
+				"M4U_PORT_VDEC_LAT0_MC",
+				"M4U_PORT_VDEC_LAT0_UFO_ENC",
+				"M4U_PORT_VDEC_LAT0_WDMA",
+				"M4U_PORT_VDEC_LAT0_AVC_MV",
+				"M4U_PORT_VDEC_LAT0_TILE",
+				"M4U_PORT_VDEC_LAT0_UFO_ENC_C",
+				"M4U_PORT_VDEC_VIDEO_UP_NOR";
+			vdec-mmdvfs-in-vcp = <1>;
+			vdec-mmdvfs-in-adaptive = <1>;
+			//vdec-cpu-grp-aware = <1>;
+		};
+
+		venc@38000000 {
+			compatible = "mediatek,mt6991-vcodec-enc";
+			mediatek,platform = "platform:mt6991";
+			mediatek,ipm = <2>;
+			reg = <0 0x38020000 0 0x6000>,
+				<0 0x38820000 0 0x6000>,
+				<0 0x38c20000 0 0x6000>;
+			reg-names = "VENC_SYS",
+				"VENC_C1_SYS",
+				"VENC_C2_SYS";
+			mtk,smmu-shared = <&mm_smmu_codec>;
+			//mediatek,larbs = <&smi_larb7 &smi_larb8 &smi_larb24>;
+			interrupts = <GIC_SPI 487 IRQ_TYPE_LEVEL_HIGH 0>,
+					<GIC_SPI 492 IRQ_TYPE_LEVEL_HIGH 0>,
+					<GIC_SPI 497 IRQ_TYPE_LEVEL_HIGH 0>;
+			power-domains = <&scpsys  MT6991_POWER_DOMAIN_VEN0>,
+							<&scpsys MT6991_POWER_DOMAIN_VEN1>,
+							<&scpsys MT6991_POWER_DOMAIN_VEN2>;
+			//mediatek,vcu = <&vcu>;
+			clocks = <&venc_gcon_clk CLK_VEN1_CKE1_VENC>,
+				<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC>,
+				<&venc_gcon_core2_clk CLK_VEN_C2_CKE1_VENC>;
+			clock-names = "MT_CG_VENC0",
+				"MT_CG_VENC1",
+				"MT_CG_VENC2";
+			venc-mmdvfs-in-vcp = <1>;
+			venc-mmdvfs-in-adaptive = <1>;
+			//venc-slb-cpu-used-perf = <62208000>;
+			//venc-cpu-grp-aware = <1>;
+			port-arg-num = <3>;
+			port-def = <0 SMMU_L7_P0_RCPU 0>,
+				<0 SMMU_L7_P1_REC_FRM 0>,
+				<0 SMMU_L7_P2_BS 0>,
+				<0 SMMU_L7_P3_SVCOMV 0>,
+				<0 SMMU_L7_P4_RDCOMV 0>,
+				<0 SMMU_L7_P5_NBM_R 1>,
+				<0 SMMU_L7_P6_NBM_R_LITE 1>,
+				<0 SMMU_L7_P7_JPGENC_YRD 0>,
+				<0 SMMU_L7_P8_JPGENC_CRD 0>,
+				<0 SMMU_L7_P9_JPGENC_QT 0>,
+				<0 SMMU_L7_P10_FCS_SUB_W 0>,
+				<0 SMMU_L7_P11_FCS_NBM_R 1>,
+				<0 SMMU_L7_P12_WPP_BS 0>,
+				<0 SMMU_L7_P13_WPP_RDMA 2>,
+				<0 SMMU_L7_P14_DB_SYSRAM_W 1>,
+				<0 SMMU_L7_P15_DB_SYSRAM_R 1>,
+				<0 SMMU_L7_P16_JPGENC_BS 0>,
+				<0 SMMU_L7_P17_JPGDEC_W 0>,
+				<0 SMMU_L7_P18_JPGDEC_BS 0>,
+				<0 SMMU_L7_P19_NBM_W 1>,
+				<0 SMMU_L7_P20_NBM_W_LITE 1>,
+				<0 SMMU_L7_P21_CUR_LUMA 0>,
+				<0 SMMU_L7_P22_CUR_CHROMA 0>,
+				<0 SMMU_L7_P23_REF_LUMA 0>,
+				<0 SMMU_L7_P24_REF_CHROMA 0>,
+				<0 SMMU_L7_P25_FCS_SUB_R 0>,
+				<0 SMMU_L7_P26_FCS_NBM_W 1>,
+				<0 SMMU_L7_P27_JPGDEC_W_1 0>,
+				<0 SMMU_L7_P28_JPGDEC_BS_1 0>,
+				<0 SMMU_L7_P29_JPGDEC_HUF_1 0>,
+				<0 SMMU_L7_P30_JPGDEC_HUF 0>,
+				<0 SMMU_L7_P31_EC_SYSRAM 1>,
+				<1 SMMU_L8_P0_RCPU 0>,
+				<1 SMMU_L8_P1_REC_FRM 0>,
+				<1 SMMU_L8_P2_BS 0>,
+				<1 SMMU_L8_P3_SVCOMV 0>,
+				<1 SMMU_L8_P4_RDCOMV 0>,
+				<1 SMMU_L8_P5_NBM_R 1>,
+				<1 SMMU_L8_P6_NBM_R_LITE 1>,
+				<1 SMMU_L8_P7_JPGENC_YRD 0>,
+				<1 SMMU_L8_P8_JPGENC_CRD 0>,
+				<1 SMMU_L8_P9_JPGENC_QT 0>,
+				<1 SMMU_L8_P10_FCS_SUB_W 0>,
+				<1 SMMU_L8_P11_FCS_NBM_R 1>,
+				<1 SMMU_L8_P12_WPP_BS 0>,
+				<1 SMMU_L8_P13_WPP_RDMA 2>,
+				<1 SMMU_L8_P14_DB_SYSRAM_W 1>,
+				<1 SMMU_L8_P15_DB_SYSRAM_R 1>,
+				<1 SMMU_L8_P16_JPGENC_BS 0>,
+				<1 SMMU_L8_P17_JPGDEC_W 0>,
+				<1 SMMU_L8_P18_JPGDEC_BS 0>,
+				<1 SMMU_L8_P19_NBM_W 1>,
+				<1 SMMU_L8_P20_NBM_W_LITE 1>,
+				<1 SMMU_L8_P21_CUR_LUMA 0>,
+				<1 SMMU_L8_P22_CUR_CHROMA 0>,
+				<1 SMMU_L8_P23_REF_LUMA 0>,
+				<1 SMMU_L8_P24_REF_CHROMA 0>,
+				<1 SMMU_L8_P25_FCS_SUB_R 0>,
+				<1 SMMU_L8_P26_FCS_NBM_W 1>,
+				<1 SMMU_L8_P27_JPGDEC_W_1 0>,
+				<1 SMMU_L8_P28_JPGDEC_BS_1 0>,
+				<1 SMMU_L8_P29_JPGDEC_HUF_1 0>,
+				<1 SMMU_L8_P30_JPGDEC_HUF 0>,
+				<1 SMMU_L8_P31_EC_SYSRAM 1>,
+				<2 SMMU_L41_P0_ADAB_FORMATTER_R 0>,
+				<2 SMMU_L41_P1_REC_FRM 0>,
+				<2 SMMU_L41_P2_ADAB_FORMATTER_W 0>,
+				<2 SMMU_L41_P3_ADAB_CUR_LUMA_R 0>,
+				<2 SMMU_L41_P4_ADAB_REF_LUMA_R 0>,
+				<2 SMMU_L41_P5_NBM_R 1>,
+				<2 SMMU_L41_P6_NBM_R_LITE 1>,
+				<2 SMMU_L41_P7_JPGENC_YRD 0>,
+				<2 SMMU_L41_P8_JPGENC_CRD 0>,
+				<2 SMMU_L41_P9_JPGENC_QT 0>,
+				<2 SMMU_L41_P10_FCS_SUB_W 0>,
+				<2 SMMU_L41_P11_FCS_NBM_R 1>,
+				<2 SMMU_L41_P12_WPP_BS 0>,
+				<2 SMMU_L41_P13_WPP_RDMA 2>,
+				<2 SMMU_L41_P14_DB_SYSRAM_W 1>,
+				<2 SMMU_L41_P15_DB_SYSRAM_R 1>,
+				<2 SMMU_L41_P16_JPGENC_BS 0>,
+				<2 SMMU_L41_P17_JPGDEC_W 0>,
+				<2 SMMU_L41_P18_JPGDEC_BS 0>,
+				<2 SMMU_L41_P19_NBM_W 1>,
+				<2 SMMU_L41_P20_NBM_W_LITE 1>,
+				<2 SMMU_L41_P21_CUR_LUMA 0>,
+				<2 SMMU_L41_P22_CUR_CHROMA 0>,
+				<2 SMMU_L41_P23_REF_LUMA 0>,
+				<2 SMMU_L41_P24_REF_CHROMA 0>,
+				<2 SMMU_L41_P25_FCS_SUB_R 0>,
+				<2 SMMU_L41_P26_FCS_NBM_W 1>,
+				<2 SMMU_L41_P27_JPGDEC_W_1 0>,
+				<2 SMMU_L41_P28_JPGDEC_BS_1 0>,
+				<2 SMMU_L41_P29_JPGDEC_HUF_1 0>,
+				<2 SMMU_L41_P30_JPGDEC_HUF 0>,
+				<2 SMMU_L41_P31_EC_SYSRAM 1>;
+		};
 		seninf_top: seninf-top@3a300000 {
 			compatible = "mediatek,seninf-core";
 			#address-cells = <2>;
@@ -12215,7 +12430,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_codec: mm-smmu-codec {
-		//compatible = "mediatek,smmu-share-group";
+		compatible = "mediatek,smmu-share-group";
 		label = "mm_smmu_codec";
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 176>;
