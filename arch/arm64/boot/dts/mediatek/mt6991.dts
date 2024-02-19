@@ -8106,8 +8106,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg =	<0 0x3a000000 0 0x1000>,
 				<0 0x3a430000 0 0x1000>,
 				<0 0x3a440000 0 0x1000>,
-				<0 0x3a0a0000 0 0x800>;
-			reg-names = "base", "adlwr", "adlrd", "qof_base";
+				<0 0x3a0a0000 0 0x800>,
+				<0 0x3a00d000 0 0x950>;
+			reg-names = "base", "adlwr", "adlrd", "qof_base", "bwr_base";
 			mediatek,ccd = <&remoteproc_ccd>;
 			mediatek,camisp-vcore = <&camisp_vcore>;
 			mtk,smmu-shared = <&mm_smmu_cam>;
@@ -8189,6 +8190,47 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<SMMU_L16_P14_GMPO_R1>,
 					<SMMU_L16_P15_DRZB2NCO_R1>,
 					<SMMU_L16_P16_AWBO_R1>;
+			interconnects =
+					<&mmqos MASTER_LARB_PORT(SMMU_L16_P0_CQI_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L16_P1_CQI_R5)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L16_P2_RAWI_R2)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L16_P3_RAWI_R3)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L16_P4_RAWI_R4)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L16_P5_RAWI_R5)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L16_P6_BPCI_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L16_P7_BPCI_R3)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L16_P8_GRMGI_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L16_P9_LSCI_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L16_P10_IMGO_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L16_P11_IMGO_R2)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L16_P12_DRZB2NO_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L16_P13_DRZB2NBO_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L16_P14_GMPO_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L16_P15_DRZB2NCO_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L16_P16_AWBO_R1)
+						&mmqos SLAVE_COMMON(0)>;
+			interconnect-names =
+					"cqi_r1", "cqi_r5", "rawi_r2", "rawi_r3",
+					"rawi_r4", "rawi_r5", "bpci_r1", "bpci_r3",
+					"grmgi_r1", "lsci_r1", "imgo_r1", "imgo_r2",
+					"drzb2no_r1", "drzb2nbo_r1", "gmpo_r1", "drzb2nco_r1",
+					"awbo_r1";
 		};
 
 		cam-rms-a@3a840000 {
@@ -8229,6 +8271,22 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<SMMU_L17_P3_DRZH2NO_R1>,
 					<SMMU_L17_P4_YUVO_R4>,
 					<SMMU_L17_P5_DRZH1NO_R1>;
+			interconnects =
+					<&mmqos MASTER_LARB_PORT(SMMU_L17_P0_YUVO_R1)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L17_P1_YUVO_R3)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L17_P2_YUVO_R2)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L17_P3_DRZH2NO_R1)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L17_P4_YUVO_R4)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L17_P5_DRZH1NO_R1)
+						&mmqos SLAVE_COMMON(1)>;
+			interconnect-names =
+					"yuvo_r1", "yuvo_r3", "yuvo_r2",
+					"drzh2no_r1", "yuvo_r4", "drzh1no_r1";
 		};
 
 		cam-raw-b@3a900000 {
@@ -8272,6 +8330,47 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<SMMU_L43_P14_GMPO_R1>,
 					<SMMU_L43_P15_DRZB2NCO_R1>,
 					<SMMU_L43_P16_AWBO_R1>;
+			interconnects =
+					<&mmqos MASTER_LARB_PORT(SMMU_L43_P0_CQI_R1)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L43_P1_CQI_R5)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L43_P2_RAWI_R2)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L43_P3_RAWI_R3)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L43_P4_RAWI_R4)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L43_P5_RAWI_R5)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L43_P6_BPCI_R1)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L43_P7_BPCI_R3)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L43_P8_GRMGI_R1)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L43_P9_LSCI_R1)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L43_P10_IMGO_R1)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L43_P11_IMGO_R2)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L43_P12_DRZB2NO_R1)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L43_P13_DRZB2NBO_R1)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L43_P14_GMPO_R1)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L43_P15_DRZB2NCO_R1)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L43_P16_AWBO_R1)
+						&mmqos SLAVE_COMMON(1)>;
+			interconnect-names =
+					"cqi_r1", "cqi_r5", "rawi_r2", "rawi_r3",
+					"rawi_r4", "rawi_r5", "bpci_r1", "bpci_r3",
+					"grmgi_r1", "lsci_r1", "imgo_r1", "imgo_r2",
+					"drzb2no_r1", "drzb2nbo_r1", "gmpo_r1", "drzb2nco_r1",
+					"awbo_r1";
 		};
 
 		cam-rms-b@3a940000 {
@@ -8312,6 +8411,22 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<SMMU_L45_P3_DRZH2NO_R1>,
 					<SMMU_L45_P4_YUVO_R4>,
 					<SMMU_L45_P5_DRZH1NO_R1>;
+			interconnects =
+					<&mmqos MASTER_LARB_PORT(SMMU_L45_P0_YUVO_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L45_P1_YUVO_R3)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L45_P2_YUVO_R2)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L45_P3_DRZH2NO_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L45_P4_YUVO_R4)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L45_P5_DRZH1NO_R1)
+						&mmqos SLAVE_COMMON(0)>;
+			interconnect-names =
+					"yuvo_r1", "yuvo_r3", "yuvo_r2",
+					"drzh2no_r1", "yuvo_r4", "drzh1no_r1";
 		};
 
 		cam-raw-c@3aa00000 {
@@ -8355,6 +8470,47 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<SMMU_L44_P14_GMPO_R1>,
 					<SMMU_L44_P15_DRZB2NCO_R1>,
 					<SMMU_L44_P16_AWBO_R1>;
+			interconnects =
+					<&mmqos MASTER_LARB_PORT(SMMU_L44_P0_CQI_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L44_P1_CQI_R5)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L44_P2_RAWI_R2)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L44_P3_RAWI_R3)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L44_P4_RAWI_R4)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L44_P5_RAWI_R5)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L44_P6_BPCI_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L44_P7_BPCI_R3)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L44_P8_GRMGI_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L44_P9_LSCI_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L44_P10_IMGO_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L44_P11_IMGO_R2)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L44_P12_DRZB2NO_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L44_P13_DRZB2NBO_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L44_P14_GMPO_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L44_P15_DRZB2NCO_R1)
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L44_P16_AWBO_R1)
+						&mmqos SLAVE_COMMON(0)>;
+			interconnect-names =
+					"cqi_r1", "cqi_r5", "rawi_r2", "rawi_r3",
+					"rawi_r4", "rawi_r5", "bpci_r1", "bpci_r3",
+					"grmgi_r1", "lsci_r1", "imgo_r1", "imgo_r2",
+					"drzb2no_r1", "drzb2nbo_r1", "gmpo_r1", "drzb2nco_r1",
+					"awbo_r1";
 		};
 
 		cam-rms-c@3aa40000 {
@@ -8395,6 +8551,22 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<SMMU_L46_P3_DRZH2NO_R1>,
 					<SMMU_L46_P4_YUVO_R4>,
 					<SMMU_L46_P5_DRZH1NO_R1>;
+			interconnects =
+					<&mmqos MASTER_LARB_PORT(SMMU_L46_P0_YUVO_R1)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L46_P1_YUVO_R3)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L46_P2_YUVO_R2)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L46_P3_DRZH2NO_R1)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L46_P4_YUVO_R4)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L46_P5_DRZH1NO_R1)
+						&mmqos SLAVE_COMMON(1)>;
+			interconnect-names =
+					"yuvo_r1", "yuvo_r3", "yuvo_r2",
+					"drzh2no_r1", "yuvo_r4", "drzh1no_r1";
 		};
 
 		camsv1@3a500000 {
