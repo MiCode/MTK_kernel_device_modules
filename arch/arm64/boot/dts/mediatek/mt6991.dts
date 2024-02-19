@@ -1274,6 +1274,13 @@
 		};
 	};
 
+    cpuqos_v3: cpuqos-v3@c2cc850 {
+		compatible = "mediatek,cpuqos-v3";
+		reg = <0 0x0c2cc850 0 0x400>;
+		enable = <1>;
+		ram-base = <2>;
+	};
+
 	sspm: sspm@1c300000 {
 		compatible = "mediatek,sspm";
 		reg = <0 0x1c300000 0 0x40000>,
