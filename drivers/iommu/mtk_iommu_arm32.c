@@ -1244,25 +1244,6 @@ static irqreturn_t mtk_iommu_isr(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-int dev_is_normal_region(struct device *dev)
-{
-	struct mtk_iommu_data *data;
-	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
-	int domid;
-
-	if (!fwspec) {
-		pr_err("%s err, dev(%s) is not iommu-dev\n", __func__, dev_name(dev));
-		return 0;
-	}
-
-	data = dev_iommu_priv_get(dev);
-	domid = MTK_M4U_TO_DOM(fwspec->ids[0]);
-
-	pr_info("%s, domid:%d -- %u\n", __func__, domid, data->plat_data->normal_dom);
-	return domid == data->plat_data->normal_dom;
-}
-EXPORT_SYMBOL_GPL(dev_is_normal_region);
-
 static int mtk_iommu_get_domain_id(struct device *dev,
 				   const struct mtk_iommu_plat_data *plat_data)
 {
@@ -1648,34 +1629,9 @@ out_unlock:
 	return ret;
 }
 
-static void mtk_iommu_detach_device(struct iommu_domain *domain,
-				    struct device *dev)
-{
-	struct mtk_iommu_data *data = dev_iommu_priv_get(dev);
-
-#ifndef CONFIG_ARM64
-	/* To avoid calling __iommu_detach_device() in arm_iommu_detach_device()
-	 * repeatedly.
-	 */
-	/*
-	 * if (!dev->archdata.dma_ops_setup)
-	 * return;
-	 * dev->archdata.dma_ops_setup = false;
-	 * arm_iommu_detach_device(dev);
-	 */
-	kfree(dev->dma_parms);
-	dev->dma_parms = NULL;
-#else
-	if (!data) {
-		pr_info("%s fail get iommu data\n", __func__);
-		return;
-	}
-#endif
-	mtk_iommu_config(data, dev, false, 0);
-}
-
 static int mtk_iommu_map(struct iommu_domain *domain, unsigned long iova,
-			 phys_addr_t paddr, size_t size, int prot, gfp_t gfp)
+			 phys_addr_t paddr, size_t pgsize, size_t pgcount,
+			 int prot, gfp_t gfp, size_t *mapped)
 {
 	struct mtk_iommu_domain *dom = to_mtk_domain(domain);
 	int ret;
@@ -1686,7 +1642,7 @@ static int mtk_iommu_map(struct iommu_domain *domain, unsigned long iova,
 		paddr |= BIT_ULL(32);
 
 	/* Synchronize with the tlb_lock */
-	ret = dom->iop->map(dom->iop, iova, paddr, size, prot, gfp);
+	ret = dom->iop->map_pages(dom->iop, iova, paddr, pgsize, pgcount, prot, gfp, mapped);
 
 	/*
 	 * Retry if atomic alloc memory fail, most wait 4ms at atomic or 64ms
@@ -1696,14 +1652,14 @@ static int mtk_iommu_map(struct iommu_domain *domain, unsigned long iova,
 		pr_info("%s, retry map alloc memory %d\n", __func__,
 			retry_count + 1);
 		if (irqs_disabled() || in_interrupt()) {
-			ret = dom->iop->map(dom->iop, iova, paddr, size, prot,
-					    gfp);
+			ret = dom->iop->map_pages(dom->iop, iova, paddr, pgsize, pgcount, prot,
+						  gfp, mapped);
 		} else {
 			/* if not in atomic ctx, wait memory reclaim. */
 			gfp_t ignore_atomic = (gfp & ~GFP_ATOMIC) | GFP_KERNEL;
 
-			ret = dom->iop->map(dom->iop, iova, paddr, size, prot,
-					    ignore_atomic);
+			ret = dom->iop->map_pages(dom->iop, iova, paddr, pgsize, pgcount, prot,
+						  ignore_atomic, mapped);
 		}
 		if (ret == -ENOMEM) {
 			retry_count++;
@@ -1718,18 +1674,18 @@ static int mtk_iommu_map(struct iommu_domain *domain, unsigned long iova,
 }
 
 static size_t mtk_iommu_unmap(struct iommu_domain *domain,
-			      unsigned long iova, size_t size,
+			      unsigned long iova, size_t pgsize, size_t pgcount,
 			      struct iommu_iotlb_gather *gather)
 {
 	struct mtk_iommu_domain *dom = to_mtk_domain(domain);
-	unsigned long end = iova + size - 1;
+	unsigned long end = iova + pgsize - 1;
 	size_t ret;
 
 	if (gather->start > iova)
 		gather->start = iova;
 	if (gather->end < end)
 		gather->end = end;
-	ret = dom->iop->unmap(dom->iop, iova, size, gather);
+	ret = dom->iop->unmap_pages(dom->iop, iova, pgsize, pgcount, gather);
 	return ret;
 }
 
@@ -2167,16 +2123,13 @@ static const struct iommu_ops mtk_iommu_ops = {
 	.default_domain_ops = &(const struct iommu_domain_ops) {
 		.free		= mtk_iommu_domain_free,
 		.attach_dev	= mtk_iommu_attach_device,
-		.detach_dev	= mtk_iommu_detach_device,
-		.map		= mtk_iommu_map,
-		.unmap		= mtk_iommu_unmap,
+		.map_pages	= mtk_iommu_map,
+		.unmap_pages	= mtk_iommu_unmap,
 		.flush_iotlb_all = mtk_iommu_flush_iotlb_all,
 		.iotlb_sync	= mtk_iommu_iotlb_sync,
 		.iotlb_sync_map	= mtk_iommu_sync_map,
 		.iova_to_phys	= mtk_iommu_iova_to_phys,
 	}
-
-	
 };
 
 static int mtk_iommu_hw_init(const struct mtk_iommu_data *data)
