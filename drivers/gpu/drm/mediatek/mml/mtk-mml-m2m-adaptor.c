@@ -88,6 +88,7 @@ struct mml_m2m_ctx {
 		struct v4l2_ctrl *vflip;
 		struct v4l2_ctrl *rotate;
 		struct v4l2_ctrl *pq;
+		struct v4l2_ctrl *secure;
 	} ctrls;
 	struct v4l2_m2m_ctx *m2m_ctx;
 	u32 frame_count[MML_M2M_FRAME_MAX];
@@ -766,6 +767,8 @@ static int m2m_param_init(struct mml_m2m_param *param)
 static int mml_m2m_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct mml_m2m_ctx *ctx = container_of(ctrl->handler, struct mml_m2m_ctx, ctrl_handler);
+	struct device *mmu_dev;
+	struct vb2_queue *src_vq, *dst_vq;
 
 	switch (ctrl->id) {
 	case V4L2_CID_HFLIP:
@@ -783,6 +786,15 @@ static int mml_m2m_s_ctrl(struct v4l2_ctrl *ctrl)
 	case MML_M2M_CID_PQPARAM:
 		ctx->pq_submit = *(struct v4l2_pq_submit *)ctrl->p_new.p;
 		mml_msg("[m2m]%s set pq_submit: %u", __func__, ctx->pq_submit.id);
+		break;
+	case MML_M2M_CID_SECURE:
+		ctx->param.secure = ctrl->val;
+		mmu_dev = mml_get_mmu_dev(ctx->ctx.mml, ctrl->val);
+		src_vq = v4l2_m2m_get_vq(ctx->m2m_ctx, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+		src_vq->dev = mmu_dev;
+		dst_vq = v4l2_m2m_get_vq(ctx->m2m_ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
+		dst_vq->dev = mmu_dev;
+		mml_msg("[m2m]%s set secure: %d", __func__, ctx->param.secure);
 		break;
 	default:
 		mml_err("[m2m]%s not supported s_ctrl ctrl->id: %u", __func__, ctrl->id);
@@ -864,7 +876,22 @@ static int m2m_ctrls_create(struct mml_m2m_ctx *ctx)
 	ctx->ctrls.rotate = v4l2_ctrl_new_std(&ctx->ctrl_handler,
 					      &mml_m2m_ctrl_ops,
 					      V4L2_CID_ROTATE, 0, 270, 90, 0);
+
 	/* set customer config to handler */
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = MML_M2M_CID_SECURE;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER,
+	cfg.flags = V4L2_CTRL_FLAG_EXECUTE_ON_WRITE,
+	cfg.name = "set secure";
+	cfg.step = 1;
+	cfg.def = 0;
+	cfg.min = 0;
+	cfg.max = 1;
+	cfg.ops = &mml_m2m_ctrl_ops;
+	ctx->ctrls.secure = v4l2_ctrl_new_custom(&ctx->ctrl_handler, &cfg, NULL);
+	mml_msg("[m2m] set ctrl MML_M2M_CID_SECURE:%x ctrl type:%x, elem_size:%u",
+		MML_M2M_CID_SECURE, cfg.type, cfg.elem_size);
+
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.id = MML_M2M_CID_PQPARAM;
 	cfg.type = V4L2_CTRL_COMPOUND_TYPES | 0x0300;
@@ -1418,7 +1445,10 @@ static s32 m2m_set_submit(struct mml_m2m_ctx *mctx, struct mml_submit *submit)
 	if (ret < 0)
 		return ret;
 
+	submit->info.src.secure = mctx->param.secure;
+
 	submit->info.dest[0].pq_config = mctx->pq_submit.pq_config;
+	submit->info.dest[0].data.secure = mctx->param.secure;
 	submit->info.dest_cnt = 1;
 	submit->info.mode = MML_MODE_MML_DECOUPLE2;
 
@@ -1429,11 +1459,11 @@ static s32 m2m_set_submit(struct mml_m2m_ctx *mctx, struct mml_submit *submit)
 
 static s32 m2m_frame_buf_to_task_buf(struct mml_ctx *ctx,
 	struct mml_file_buf *fbuf, struct mml_buffer *user_buf,
-	struct vb2_v4l2_buffer *vbuf, const char *name)
+	struct vb2_v4l2_buffer *vbuf, const char *name, bool secure)
 {
 	struct vb2_buffer *vb = &vbuf->vb2_buf;
 	void *dbufs[MML_MAX_PLANES];
-	struct device *mmu_dev = mml_get_mmu_dev(ctx->mml, 0); /* not secure */
+	struct device *mmu_dev = mml_get_mmu_dev(ctx->mml, secure);
 	u8 i;
 	s32 ret = 0;
 
@@ -1597,7 +1627,7 @@ static void mml_m2m_device_run(void *priv)
 
 	result = m2m_frame_buf_to_task_buf(ctx, &task->buf.src,
 		&submit->buffer.src, src_vbuf,
-		"mml_m2m_rdma");
+		"mml_m2m_rdma", mctx->param.secure);
 	if (result) {
 		mml_err("[m2m]%s get src dma buf fail", __func__);
 		goto err_buf_exit;
@@ -1606,7 +1636,7 @@ static void mml_m2m_device_run(void *priv)
 	task->buf.dest_cnt = submit->buffer.dest_cnt;
 	result = m2m_frame_buf_to_task_buf(ctx, &task->buf.dest[0],
 		&submit->buffer.dest[0], dst_vbuf,
-		"mml_m2m_wrot");
+		"mml_m2m_wrot", mctx->param.secure);
 	if (result) {
 		mml_err("[m2m]%s get dest dma buf fail", __func__);
 		goto err_buf_exit;

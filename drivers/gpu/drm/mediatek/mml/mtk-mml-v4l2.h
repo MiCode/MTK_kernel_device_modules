@@ -18,6 +18,7 @@
 
 enum {
 	MML_M2M_CID_PQPARAM = V4L2_CID_MTK_MML_BASE,
+	MML_M2M_CID_SECURE,
 };
 
 struct v4l2_pq_submit {
