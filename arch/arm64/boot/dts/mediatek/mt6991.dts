@@ -10836,6 +10836,12 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		compatible = "mediatek,mt-soc-offload-common";
 	};
 
+	speech_usip_mem: speech-usip-mem {
+		compatible = "mediatek,speech-usip-mem";
+		adsp-phone-call-enh-enable = <0x0>;
+		adsp-ble-phone-call-enable = <0x1>;
+	};
+
 	afe: mt6991-afe-pcm@1a110000 {
 		compatible = "mediatek,mt6991-sound";
 		reg = <0 0x1a110000 0 0x9000>;
