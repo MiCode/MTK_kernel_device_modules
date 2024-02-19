@@ -895,6 +895,7 @@ mgk_64_platform_device_modules = {
     "drivers/soc/mediatek/devapc/device-apc-mt6983.ko": "mt6983",
     "drivers/soc/mediatek/devapc/device-apc-mt6985.ko": "mt6985",
     "drivers/soc/mediatek/devapc/device-apc-mt6989.ko": "mt6989",
+    "drivers/soc/mediatek/devapc/device-apc-mt6991.ko": "mt6991",
     "drivers/soc/mediatek/mtk-pm-domains.ko": "mt8188",
     "drivers/soc/mediatek/mtk-scpsys-mt6886.ko": "mt6886",
     "drivers/soc/mediatek/mtk-scpsys-mt6897.ko": "mt6897",
@@ -1393,6 +1394,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6983.ko")
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6985.ko")
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6989.ko")
+        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6991.ko")
     if "mt6761_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_platform_device_modules.update({"drivers/regulator/mt6357-regulator.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/pinctrl/mediatek/pinctrl-mt6761.ko":"mt6761"})
