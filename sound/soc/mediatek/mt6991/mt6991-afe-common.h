@@ -43,7 +43,6 @@
 #define SKIP_SB_VOW
 #define SKIP_SB_ULTRA
 #define SKIP_SB_USB_OFFLOAD
-#define SKIP_ACCDET
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE) && !defined(IS_FPGA_EARLY_PORTING)
