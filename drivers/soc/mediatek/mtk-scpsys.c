@@ -1063,7 +1063,6 @@ static int mtk_check_vcp_is_ready(struct scp_domain *scpd)
 	u32 val = 0;
 
 	regmap_read(scpd->hwv_regmap, scpd->data->hwv_done_ofs, &val);
-	pr_notice("mminfra done: %x\n", val);
 	if ((val & scpd->data->vcp_mask) == scpd->data->vcp_mask)
 		return 1;
 
