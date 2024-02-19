@@ -160,35 +160,35 @@ void clear_opp_cap_info(void);
 
 extern int get_eas_hook(void);
 extern int pd_opp2freq(int cpu, int opp, int quant, int wl);
-extern int pd_opp2cap(int cpu, int opp, int quant, int wl);
-extern int pd_opp2pwr_eff(int cpu, int opp, int quant, int wl);
-extern int pd_opp2dyn_pwr(int cpu, int opp, int quant, int wl);
+extern int pd_opp2cap(int cpu, int opp, int quant, int wl, int *val_s, int r_o, char *caller);
+extern int pd_opp2pwr_eff(int cpu, int opp, int quant, int wl, int *val_s, int r_o, char *caller);
+extern int pd_opp2dyn_pwr(int cpu, int opp, int quant, int wl, int *val_s, int r_o, char *caller);
 extern int pd_opp2volt(int cpu, int opp, int quant, int wl);
-extern int pd_util2opp(int cpu, int util, int quant, int wl);
+extern int pd_util2opp(int cpu, int util, int quant, int wl, int *val_s, int r_o, char *caller);
 extern int pd_freq2opp(int cpu, int freq, int quant, int wl);
 extern int pd_cpu_volt2opp(int cpu, int volt, int quant, int wl);
-extern int pd_freq2util(unsigned int cpu, int freq, bool quant, int wl);
+extern int pd_freq2util(unsigned int cpu, int freq, bool quant, int wl, int *val_s, int r_o);
 extern int pd_util2freq(unsigned int cpu, int util, bool quant, int wl);
 extern int pd_cpu_opp2dsu_freq(int cpu, int opp, int quant, int wl);
 extern int pd_dsu_volt2opp(int volt);
 extern int pd_get_dsu_freq(void);
 unsigned long pd_cpu_freq2dsu_freq(unsigned int cpu, int freq, bool quant, int wl);
 extern unsigned long pd_X2Y(int cpu, unsigned long input, enum sugov_type in_type,
-		enum sugov_type out_type, bool quant);
+		enum sugov_type out_type, bool quant, char *caller);
 
 extern unsigned long pd_get_opp_capacity(unsigned int cpu, int opp);
 extern unsigned long pd_get_opp_capacity_legacy(unsigned int cpu, int opp);
 extern unsigned long pd_get_opp_freq(unsigned int cpu, int opp);
 extern unsigned long pd_get_opp_freq_legacy(unsigned int cpu, int opp);
 
-extern unsigned long pd_get_freq_util(unsigned int cpu, unsigned long freq);
+extern unsigned long pd_get_freq_util(unsigned int cpu, unsigned long freq, int *val_s, int r_o, char *caller);
 extern unsigned long pd_get_freq_opp(unsigned int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_pwr_eff(unsigned int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_opp_legacy(unsigned int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_opp_legacy_type(int wl_type, unsigned int cpu, unsigned long freq);
 
 extern unsigned long pd_get_util_freq(unsigned int cpu, unsigned long util);
-extern unsigned long pd_get_util_pwr_eff(unsigned int cpu, unsigned long util);
+extern unsigned long pd_get_util_pwr_eff(unsigned int cpu, unsigned long util, char *caller);
 extern unsigned long pd_get_util_opp(unsigned int cpu, unsigned long util);
 extern unsigned long pd_get_util_opp_legacy(unsigned int cpu, unsigned long util);
 
@@ -279,4 +279,25 @@ __weak extern unsigned int mtk_get_leakage(unsigned int cpu, unsigned int idx,
 }
 __weak extern unsigned int mtk_get_dsu_freq(void) { return 0; }
 __weak int em_ver(void) { return 2; }
+
+/* DPT */
+struct curr_collab_state_struct {
+	int state;
+	int (*ret_function)(void);
+};
+
+extern void *get_dpt_base_info(void);
+extern struct curr_collab_state_struct *get_curr_collab_state(void);
+extern void update_curr_collab_state(void);
+extern struct curr_collab_state_struct *curr_collab_state;
+extern int nr_collab_type;
+extern int get_nr_collab_type(void);
+extern void set_collab_state_manual(int type, int state);
+extern void (*change_dpt_support_driver_hook) (int turn_on);
+extern int (*is_dpt_support_driver_hook) (void);
+extern void (*set_v_driver_hook)(int v);
+#define for_each_collab_type(collab_type) for (collab_type = 0; collab_type < nr_collab_type; collab_type++)
+int collab_type_0_ret_function(void);
+/* End of DPT */
+
 #endif /* __CPUFREQ_H__ */

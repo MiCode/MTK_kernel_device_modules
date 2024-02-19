@@ -336,6 +336,220 @@ TRACE_EVENT(sugov_ext_turn_point_margin,
 		__entry->target_margin,
 		__entry->target_margin_low)
 );
+
+TRACE_EVENT(collab_type_0_ret_function,
+
+	TP_PROTO(unsigned int val, unsigned int val1, unsigned int val2),
+
+	TP_ARGS(val, val1, val2),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, val)
+		__field(unsigned int, val1)
+		__field(unsigned int, val2)
+	),
+	TP_fast_assign(
+		__entry->val = val;
+		__entry->val1 = val1;
+		__entry->val2 = val2;
+	),
+	TP_printk(
+		"val=%d val1=%d val2=%d",
+		__entry->val,
+		__entry->val1,
+		__entry->val2)
+);
+
+TRACE_EVENT(sched_pd_opp2cap,
+	TP_PROTO(int cpu, int opp, int quant, int wl,
+		int val_1, int val_2, int val_r, int val_s, int val_m, bool r_o, char *caller),
+
+	TP_ARGS(cpu, opp, quant, wl, val_1, val_2, val_r, val_s, val_m, r_o, caller),
+
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(int, opp)
+		__field(int, quant)
+		__field(int, wl)
+		__field(int, val_1)
+		__field(int, val_2)
+		__field(int, val_r)
+		__field(int, val_s)
+		__field(int, val_m)
+		__field(int, r_o)
+		__string(caller, caller)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->opp = opp;
+		__entry->quant = quant;
+		__entry->wl = wl;
+		__entry->val_1 = val_1;
+		__entry->val_2 = val_2;
+		__entry->val_r = val_r;
+		__entry->val_s = val_s;
+		__entry->val_m = val_m;
+		__entry->r_o = r_o;
+		__assign_str(caller, caller)
+	),
+	TP_printk(
+		"cpu=%d opp=%d quant=%d wl=%d val_1=%d val_2=%d val_r=%d val_s=%d val_m=%d r_o=%d caller=%s",
+		__entry->cpu,
+		__entry->opp,
+		__entry->quant,
+		__entry->wl,
+		__entry->val_1,
+		__entry->val_2,
+		__entry->val_r,
+		__entry->val_s,
+		__entry->val_m,
+		__entry->r_o,
+		__get_str(caller))
+);
+
+TRACE_EVENT(sched_pd_opp2pwr_eff,
+	TP_PROTO(int cpu, int opp, int quant, int wl,
+		int val_1, int val_2, int val_3, int val_r1, int val_r2, int val_s, bool r_o, char *caller),
+
+	TP_ARGS(cpu, opp, quant, wl, val_1, val_2, val_3, val_r1, val_r2, val_s, r_o, caller),
+
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(int, opp)
+		__field(int, quant)
+		__field(int, wl)
+		__field(int, val_1)
+		__field(int, val_2)
+		__field(int, val_3)
+		__field(int, val_r1)
+		__field(int, val_r2)
+		__field(int, val_s)
+		__field(int, r_o)
+		__string(caller, caller)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->opp = opp;
+		__entry->quant = quant;
+		__entry->wl = wl;
+		__entry->val_1 = val_1;
+		__entry->val_2 = val_2;
+		__entry->val_3 = val_3;
+		__entry->val_r1 = val_r1;
+		__entry->val_r2 = val_r2;
+		__entry->val_s = val_s;
+		__entry->r_o = r_o;
+		__assign_str(caller, caller)
+	),
+	TP_printk(
+		"cpu=%d opp=%d quant=%d wl=%d val_1=%d val_2=%d val_3=%d val_r1=%d val_r2=%d val_s=%d r_o=%d caller=%s",
+		__entry->cpu,
+		__entry->opp,
+		__entry->quant,
+		__entry->wl,
+		__entry->val_1,
+		__entry->val_2,
+		__entry->val_3,
+		__entry->val_r1,
+		__entry->val_r2,
+		__entry->val_s,
+		__entry->r_o,
+		__get_str(caller))
+);
+
+TRACE_EVENT(sched_pd_opp2dyn_pwr,
+	TP_PROTO(int cpu, int opp, int quant, int wl,
+		int val_1, int val_r, int val_s, int val_m, bool r_o, char *caller),
+
+	TP_ARGS(cpu, opp, quant, wl, val_1, val_r, val_s, val_m, r_o, caller),
+
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(int, opp)
+		__field(int, quant)
+		__field(int, wl)
+		__field(int, val_1)
+		__field(int, val_r)
+		__field(int, val_s)
+		__field(int, val_m)
+		__field(int, r_o)
+		__string(caller, caller)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->opp = opp;
+		__entry->quant = quant;
+		__entry->wl = wl;
+		__entry->val_1 = val_1;
+		__entry->val_r = val_r;
+		__entry->val_s = val_s;
+		__entry->val_m = val_m;
+		__entry->r_o = r_o;
+		__assign_str(caller, caller)
+	),
+	TP_printk(
+		"cpu=%d opp=%d quant=%d wl=%d val_1=%d val_r=%d val_s=%d val_m=%d r_o=%d caller=%s",
+		__entry->cpu,
+		__entry->opp,
+		__entry->quant,
+		__entry->wl,
+		__entry->val_1,
+		__entry->val_r,
+		__entry->val_s,
+		__entry->val_m,
+		__entry->r_o,
+		__get_str(caller))
+);
+
+TRACE_EVENT(sched_pd_util2opp,
+	TP_PROTO(int cpu, int quant, int wl,
+		int val_1, int val_2, int val_3, int val_4, int val_r, int val_s, int val_m, bool r_o, char *caller),
+
+	TP_ARGS(cpu, quant, wl, val_1, val_2, val_3, val_4, val_r, val_s, val_m, r_o, caller),
+
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(int, quant)
+		__field(int, wl)
+		__field(int, val_1)
+		__field(int, val_2)
+		__field(int, val_3)
+		__field(int, val_4)
+		__field(int, val_r)
+		__field(int, val_s)
+		__field(int, val_m)
+		__field(int, r_o)
+		__string(caller, caller)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->quant = quant;
+		__entry->wl = wl;
+		__entry->val_1 = val_1;
+		__entry->val_2 = val_2;
+		__entry->val_3 = val_3;
+		__entry->val_4 = val_4;
+		__entry->val_r = val_r;
+		__entry->val_s = val_s;
+		__entry->val_m = val_m;
+		__entry->r_o = r_o;
+		__assign_str(caller, caller)
+	),
+	TP_printk(
+		"cpu=%d quant=%d wl=%d val_1=%d val_2=%d val_3=%d val_4=%d val_r=%d val_s=%d val_m=%d r_o=%d caller=%s",
+		__entry->cpu,
+		__entry->quant,
+		__entry->wl,
+		__entry->val_1,
+		__entry->val_2,
+		__entry->val_3,
+		__entry->val_4,
+		__entry->val_r,
+		__entry->val_s,
+		__entry->val_m,
+		__entry->r_o,
+		__get_str(caller))
+);
 #endif /* _TRACE_SCHEDULER_H */
 
 #undef TRACE_INCLUDE_PATH

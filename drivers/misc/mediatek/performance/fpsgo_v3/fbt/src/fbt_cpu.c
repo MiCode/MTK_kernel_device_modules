@@ -549,11 +549,11 @@ int fbt_cluster_X2Y(int cluster, unsigned long input, enum sugov_type in_type,
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 	if (in_type == OPP) {
 		if ((int)input < num_opp)
-			output = pd_X2Y(cpu, input, in_type, out_type, true);
+			output = pd_X2Y(cpu, input, in_type, out_type, true, "fbt_cluster_X2Y");
 		else
-			output = pd_X2Y(cpu, num_opp - 1, in_type, out_type, true);
+			output = pd_X2Y(cpu, num_opp - 1, in_type, out_type, true, "fbt_cluster_X2Y");
 	} else {
-		output = pd_X2Y(cpu, input, in_type, out_type, true);
+		output = pd_X2Y(cpu, input, in_type, out_type, true, "fbt_cluster_X2Y");
 	}
 #endif
 

@@ -304,8 +304,8 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO) && IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	opp = pd_freq2opp(cpu, freq, false, eenv->wl_type);
-	pwr_eff = pd_opp2pwr_eff(cpu, opp, false, eenv->wl_type);
-	cap = pd_opp2cap(cpu, opp, false, eenv->wl_type);
+	pwr_eff = pd_opp2pwr_eff(cpu, opp, false, eenv->wl_type, eenv->val_s, false, "mtk_em_cpu_energy");
+	cap = pd_opp2cap(cpu, opp, false, eenv->wl_type, eenv->val_s, false, "mtk_em_cpu_energy");
 	pd_freq = pd_opp2freq(cpu, opp, false, eenv->wl_type);
 	pd_volt = pd_opp2volt(cpu, opp, false, eenv->wl_type);
 	pd_dsu_freq = pd_cpu_opp2dsu_freq(cpu, opp, false, eenv->wl_type);
@@ -488,6 +488,8 @@ void mtk_tick_entry(void *data, struct rq *rq)
 	if (is_wl_support())
 		update_wl_tbl(this_cpu);
 #endif
+
+	update_curr_collab_state();
 
 	sbb_trigger = is_sbb_trigger(rq);
 
@@ -813,7 +815,7 @@ unsigned long aligned_freq_to_legacy_freq(int cpu, unsigned long freq)
 }
 
 __always_inline
-unsigned long calc_pwr_eff(int wl_type, int cpu, unsigned long cpu_util)
+unsigned long calc_pwr_eff(int wl_type, int cpu, unsigned long cpu_util, int *val_s)
 {
 	int opp;
 	unsigned long static_pwr_eff, pwr_eff;
@@ -821,9 +823,9 @@ unsigned long calc_pwr_eff(int wl_type, int cpu, unsigned long cpu_util)
 	int cap;
 	int pd_pwr_eff;
 
-	opp = pd_util2opp(cpu, util, false, wl_type);
-	cap = pd_opp2cap(cpu, opp, false, wl_type);
-	pd_pwr_eff = pd_opp2pwr_eff(cpu, opp, false, wl_type);
+	opp = pd_util2opp(cpu, util, false, wl_type, val_s, false, "calc_pwr_eff");
+	cap = pd_opp2cap(cpu, opp, false, wl_type, val_s, false, "calc_pwr_eff");
+	pd_pwr_eff = pd_opp2pwr_eff(cpu, opp, false, wl_type, val_s, false, "calc_pwr_eff");
 
 	static_pwr_eff = pd_get_opp_leakage(cpu, opp, get_cpu_temp(cpu)/1000) / cap;
 	pwr_eff = pd_pwr_eff + static_pwr_eff;
@@ -836,7 +838,7 @@ unsigned long calc_pwr_eff(int wl_type, int cpu, unsigned long cpu_util)
 }
 #else
 __always_inline
-unsigned long calc_pwr_eff(int wl_type, int cpu, unsigned long task_util)
+unsigned long calc_pwr_eff(int wl_type, int cpu, unsigned long task_util, int *val_s)
 {
 	return 0;
 }

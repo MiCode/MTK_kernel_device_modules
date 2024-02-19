@@ -92,6 +92,8 @@ struct energy_env {
 	unsigned int dsu_freq_new;
 	unsigned int dsu_volt_base;
 	unsigned int dsu_volt_new;
+
+	int val_s[10];
 };
 
 struct rt_energy_aware_output {
@@ -253,13 +255,14 @@ extern void get_most_powerful_pd_and_util_Th(void);
 #define EAS_RESET_GAS_MARG_THR		_IOW('g', 57,  int)
 
 
+extern void update_curr_collab_state(void);
 #if IS_ENABLED(CONFIG_MTK_NEWIDLE_BALANCE)
 extern void mtk_sched_newidle_balance(void *data, struct rq *this_rq,
 		struct rq_flags *rf, int *pulled_task, int *done);
 #endif
 
 extern unsigned long calc_pwr(int cpu, unsigned long task_util);
-extern unsigned long calc_pwr_eff(int wl_type, int cpu, unsigned long cpu_util);
+extern unsigned long calc_pwr_eff(int wl_type, int cpu, unsigned long cpu_util, int *val_s);
 #endif
 
 extern int migrate_running_task(int this_cpu, struct task_struct *p, struct rq *target,
