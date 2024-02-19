@@ -4719,7 +4719,7 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 					return -EINVAL;
 				}
 				src_vq->dev = vcp_get_io_device(VCP_IOMMU_SEC);
-				mtk_v4l2_debug(4, "use VCP_IOMMU_SEC domain");
+				mtk_v4l2_debug(4, "[%d] src_vq use VCP_IOMMU_SEC domain %p", ctx->id, src_vq->dev);
 			}
 
 		}
@@ -5400,7 +5400,6 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 	vdec_dma_contig_memops.attach_dmabuf = mtk_vdec_dc_attach_dmabuf;
 	src_vq->mem_ops	        = &vdec_dma_contig_memops;
 	mtk_v4l2_debug(4, "[%s] src_vq use vdec_dma_contig_memops", name);
-
 #if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
 	// svp_mode will be raised in mtk_vdec_s_ctrl which will be later than mtk_vcodec_dec_queue_init
 	// init vdec_sec_dma_contig_memops without checking svp_mode value to avoid could not init sec
@@ -5416,29 +5415,29 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 		mtk_v4l2_debug(4, "src_vq use vdec_sec_dma_contig_memops");
 	}
 #endif
-	src_vq->bidirectional = 1;
+	src_vq->bidirectional   = 1;
 
 	src_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	src_vq->lock            = &ctx->q_mutex;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	if (!ctx->dec_params.svp_mode && vcp_get_io_device(VCP_IOMMU_ACP_VDEC) != NULL) {
-		src_vq->dev = vcp_get_io_device(VCP_IOMMU_ACP_VDEC);
+		src_vq->dev     = vcp_get_io_device(VCP_IOMMU_ACP_VDEC);
 		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_ACP_VDEC domain %p", name, src_vq->dev);
 	} else if (ctx->dev->iommu_domain_swtich && (ctx->dev->dec_cnt & 1)) {
-		src_vq->dev = vcp_get_io_device(VCP_IOMMU_VENC);
+		src_vq->dev     = vcp_get_io_device(VCP_IOMMU_VENC);
 		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_VENC domain %p", name, src_vq->dev);
 	} else {
-		src_vq->dev = vcp_get_io_device(VCP_IOMMU_VDEC);
+		src_vq->dev     = vcp_get_io_device(VCP_IOMMU_VDEC);
 		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_VDEC domain %p", name, src_vq->dev);
 	}
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
 	if (!src_vq->dev) {
-		src_vq->dev = ctx->dev->smmu_dev;
+		src_vq->dev     = ctx->dev->smmu_dev;
 		mtk_v4l2_debug(4, "[%s] vcp_get_io_device NULL use smmu_dev domain %p", name, src_vq->dev);
 	}
 #endif
 #else
-	src_vq->dev = ctx->dev->smmu_dev;
+	src_vq->dev             = ctx->dev->smmu_dev;
 #endif
 	src_vq->allow_zero_bytesused = 1;
 
@@ -5466,7 +5465,7 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 		mtk_v4l2_debug(4, "dst_vq use vdec_sec_dma_contig_memops");
 	}
 #endif
-	dst_vq->bidirectional = 1;
+	dst_vq->bidirectional   = 1;
 
 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	dst_vq->lock            = &ctx->q_mutex;

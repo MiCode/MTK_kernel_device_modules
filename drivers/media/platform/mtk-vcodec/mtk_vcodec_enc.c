@@ -579,7 +579,7 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 					return -EINVAL;
 				}
 				dst_vq->dev = vcp_get_io_device(VCP_IOMMU_SEC);
-				mtk_v4l2_debug(4, "use VCP_IOMMU_SEC domain");
+				mtk_v4l2_debug(4, "[%d] dst_vq use VCP_IOMMU_SEC domain %p", ctx->id, dst_vq->dev);
 			}
 
 		}
@@ -1993,6 +1993,18 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 	mtkbuf = container_of(vb2_v4l2, struct mtk_video_enc_buf, vb);
 
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
+		if (!ctx->has_first_input) {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+			if (!(buf->flags & V4L2_BUF_FLAG_NO_CACHE_CLEAN) && vcp_get_io_device(VCP_IOMMU_ACP_VENC)) {
+				vq->dev = vcp_get_io_device(VCP_IOMMU_ACP_VENC);
+				mtk_v4l2_debug(4, "[%d] src_vq use VCP_IOMMU_ACP_VENC domain %p", ctx->id, vq->dev);
+			} else if (vq->dev != ctx->dev->smmu_dev) {
+				vq->dev = ctx->dev->smmu_dev;
+				mtk_v4l2_debug(4, "[%d] src_vq use smmu_dev domain %p", ctx->id, vq->dev);
+			}
+#endif
+			ctx->has_first_input = true;
+		}
 		if (buf->m.planes[0].bytesused == 0) {
 			mtkbuf->lastframe = EOS;
 			mtk_v4l2_debug(1, "[%d] index=%d Eos FB(%d,%d) vb=%p pts=%llu",
@@ -3046,6 +3058,8 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 			mtk_venc_pmqos_monitor_reset(ctx->dev);
 			mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 		}
+
+		ctx->has_first_input = false;
 	}
 
 	if ((q->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE &&
@@ -4539,7 +4553,7 @@ int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 		mtk_v4l2_debug(4, "src_vq use venc_sec_dma_contig_memops");
 	}
 #endif
-	src_vq->bidirectional = 1;
+	src_vq->bidirectional   = 1;
 	src_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	src_vq->lock            = &ctx->q_mutex;
 	src_vq->allow_zero_bytesused = 1;
@@ -4567,27 +4581,27 @@ int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 		mtk_v4l2_debug(4, "dst_vq use venc_sec_dma_contig_memops");
 	}
 #endif
-	dst_vq->bidirectional = 1;
+	dst_vq->bidirectional   = 1;
 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	dst_vq->lock            = &ctx->q_mutex;
 	dst_vq->allow_zero_bytesused = 1;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	if (!ctx->enc_params.svp_mode && vcp_get_io_device(VCP_IOMMU_ACP_VENC) != NULL) {
-		dst_vq->dev = vcp_get_io_device(VCP_IOMMU_ACP_VENC);
+		dst_vq->dev     = vcp_get_io_device(VCP_IOMMU_ACP_VENC);
 		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_ACP_VENC domain %p", name, dst_vq->dev);
 	} else if (ctx->dev->iommu_domain_swtich && (ctx->dev->enc_cnt & 1)) {
-		dst_vq->dev = vcp_get_io_device(VCP_IOMMU_VDEC);
+		dst_vq->dev     = vcp_get_io_device(VCP_IOMMU_VDEC);
 		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_VDEC domain %p", name, dst_vq->dev);
 	} else {
-		dst_vq->dev = vcp_get_io_device(VCP_IOMMU_VENC);
+		dst_vq->dev     = vcp_get_io_device(VCP_IOMMU_VENC);
 		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_VENC domain %p", name, dst_vq->dev);
 	}
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
 	if (!dst_vq->dev)
-		dst_vq->dev = ctx->dev->smmu_dev;
+		dst_vq->dev     = ctx->dev->smmu_dev;
 #endif
 #else
-	dst_vq->dev = ctx->dev->smmu_dev;
+	dst_vq->dev             = ctx->dev->smmu_dev;
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_VCODEC_DEBUG) // only support eng & userdebug
