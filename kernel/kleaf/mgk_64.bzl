@@ -1488,6 +1488,7 @@ def get_overlay_modules_list():
     if "mt6893_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpu:gpu_mt6893")
+        mgk_64_platform_device_modules.update({"drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_mt6893.ko":"mt6893"})
         mgk_64_platform_device_modules.update({"drivers/pinctrl/mediatek/pinctrl-mt6885.ko":"mt6893"})
 
 get_overlay_modules_list()
