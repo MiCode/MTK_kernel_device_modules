@@ -38,10 +38,12 @@
 
 enum mtk_tinysys_sspm_kernel_op {
 	MTK_TINYSYS_SSPM_KERNEL_OP_MBOX_CLEAR = 0,
+	MTK_TINYSYS_SSPM_KERNEL_OP_MD2SPM_IPC_CLEAR = 1,
 	MTK_TINYSYS_SSPM_KERNEL_OP_NUM,
 };
 
 static unsigned int secure_mbox_clr_support;
+static unsigned int secure_sspm_md2spm_clr_support;
 
 #define INTR_SET_OFS	0x0
 #define INTR_CLR_OFS	0x4
@@ -80,6 +82,18 @@ static inline uint64_t sspm_do_mbox_clear(unsigned int mbox_irq)
 	return res.a0;
 }
 
+/* Clear SSPM2SPM_IPC */
+static inline uint64_t sspm_do_md2spm_clear(void)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(MTK_SIP_TINYSYS_SSPM_CONTROL,
+			MTK_TINYSYS_SSPM_KERNEL_OP_MD2SPM_IPC_CLEAR,
+			0, 0, 0, 0, 0, 0, &res);
+
+	return res.a0;
+}
+
 static irqreturn_t tinysys_mbox_rx_interrupt(int irq, void *p)
 {
 	struct mbox_chan *chan = p;
@@ -108,7 +122,12 @@ static irqreturn_t tinysys_mbox_rx_interrupt(int irq, void *p)
 	else
 		writel_relaxed(1, mlink->rx_reg + INTR_CLR_OFS);
 
+	/* free channel */
 	mbox_chan_received_data(chan, (void *)&val);
+
+	/* Clear SSPM2SPM_IPC */
+	if (secure_sspm_md2spm_clr_support)
+		sspm_do_md2spm_clear();
 
 	return IRQ_HANDLED;
 }
@@ -158,8 +177,10 @@ static int tinysys_mbox_startup(struct mbox_chan *chan)
 	struct mhu_link *mlink = chan->con_priv;
 	int ret;
 
-	ret = request_irq(mlink->irq, tinysys_mbox_rx_interrupt,
-			  IRQF_NO_SUSPEND | IRQF_TRIGGER_NONE, "mtk_tinysys_mbox", chan);
+	ret = request_threaded_irq(mlink->irq, NULL,
+			  tinysys_mbox_rx_interrupt,
+			  IRQF_NO_SUSPEND | IRQF_TRIGGER_NONE | IRQF_ONESHOT,
+			  "mtk_tinysys_mbox", chan);
 	if (ret) {
 		dev_notice(chan->mbox->dev,
 			"Unable to acquire IRQ %d\n", mlink->irq);
@@ -251,6 +272,17 @@ static int tinysys_mbox_probe(struct platform_device *pdev)
 			secure_mbox_clr_support);
 	} else {
 		pr_notice("[scmi] secure-sspm-mbox-clr not support\n");
+	}
+
+	/* notify spm */
+	secure_ret = of_property_read_u32(pdev->dev.of_node,
+		"secure-sspm-md2spm-clr", &secure_sspm_md2spm_clr_support);
+
+	if ((!secure_ret) && secure_sspm_md2spm_clr_support) {
+		pr_notice("[scmi] secure-sspm-md2spm-clr support, secure_sspm_md2spm_clr_support: %d\n",
+			secure_sspm_md2spm_clr_support);
+	} else {
+		pr_notice("[scmi] secure-sspm_md2spm-clr not support\n");
 	}
 
 	plat_data = (struct tinysys_mbox_plat *)of_device_get_match_data(dev);
