@@ -17,7 +17,6 @@
 			<&cksys_clk CLK_CK_I2C_NORTH_SEL>,
 			<&cksys_clk CLK_CK_ADSP_SEL>,
 			<&cksys_clk CLK_CK_ADSP_UARTHUB_BCLK_SEL>,
-			<&cksys_clk CLK_CK_IPSEAST_SEL>,
 			<&cksys_clk CLK_CK_TL_SEL>,
 			<&cksys_clk CLK_CK_TL_P1_SEL>,
 			<&cksys_clk CLK_CK_TL_P2_SEL>,
