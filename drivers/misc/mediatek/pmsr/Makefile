@@ -7,3 +7,4 @@ endif
 obj-$(CONFIG_MTK_PMSR) += pmsr.o
 obj-$(CONFIG_MTK_PMSR) += twam/
 obj-$(CONFIG_MTK_PMSR) += v2/
+obj-$(CONFIG_MTK_PMSR) += v3/
