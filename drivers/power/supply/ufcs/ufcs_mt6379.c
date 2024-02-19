@@ -188,6 +188,31 @@ static int mt6379_ufcs_config_tx_hiz(struct ufcs_dev *ufcs, bool enable)
 	return regmap_update_bits(data->regmap, MT6379_REG_UFCS_CTRL2, MT6379_DMHZ_MASK, val);
 }
 
+static int mt6379_recover_rx_buffer(struct mt6379_data *udata, int last_ret)
+{
+	int ret;
+
+	/* Recover to write SRAM data */
+	ret = regmap_update_bits(udata->regmap, MT6379_REG_SRAM_CONTROL,
+				 MT6379_SRAM_DATA_UPDATE_MASK, 0);
+	if (ret) {
+		dev_info(udata->dev, "%s, Failed to recover UFCS SRAM control(ret:%d)\n",
+			 __func__, ret);
+		last_ret = ret;
+	}
+
+	/* Clear buffer and wait next msg */
+	ret = regmap_update_bits(udata->regmap, MT6379_REG_UFCS_CTRL2,
+				 MT6379_UFCS_RX_DATA_NO_READ, 0);
+	if (ret) {
+		dev_info(udata->dev, "%s, Failed to clear UFCS RX data buffer(ret:%d)\n",
+			 __func__, ret);
+		last_ret = ret;
+	}
+
+	return last_ret ? last_ret : 0;
+}
+
 static int mt6379_get_message(struct mt6379_data *udata, struct ufcs_message *msg)
 {
 	int i, ret;
@@ -197,45 +222,51 @@ static int mt6379_get_message(struct mt6379_data *udata, struct ufcs_message *ms
 	/* Switch to read SRAM data */
 	ret = regmap_update_bits(udata->regmap, MT6379_REG_SRAM_CONTROL,
 				 MT6379_SRAM_DATA_UPDATE_MASK, 0xFF);
-	if (ret)
+	if (ret) {
+		dev_info(udata->dev, "%s, Failed to switch UFCS SRAM control function(ret:%d)\n",
+			 __func__, ret);
 		return ret;
+	}
 
 	ret = regmap_write(udata->regmap, MT6379_REG_UFCS_RX_LENGTH, 0);
 	if (ret) {
 		dev_err(udata->dev, "Failed to write rx length\n");
-		return ret;
+		return mt6379_recover_rx_buffer(udata, ret);
 	}
+
 	ret = regmap_read(udata->regmap, MT6379_REG_UFCS_RX_LENGTH, &lens);
 	if (ret) {
 		dev_err(udata->dev, "Failed to read rx length\n");
-		return ret;
+		return mt6379_recover_rx_buffer(udata, ret);
 	}
+
 	if (lens > UFCS_MAX_RXBUFF_SIZE) {
 		dev_err(udata->dev, "lens(%d) out of range\n", lens);
-		return -EINVAL;
+		return mt6379_recover_rx_buffer(udata, -EINVAL);
 	}
 
 	for (i = 0; i < lens; i++) {
 		ret = regmap_write(udata->regmap, MT6379_REG_UFCS_RX_BUFFER0 + i, 0);
-		if (ret)
-			return ret;
+		if (ret) {
+			dev_info(udata->dev, "%s, Failed to write 0 to rx_buf[%d] (ret:%d)\n",
+				 __func__, i, ret);
+			return mt6379_recover_rx_buffer(udata, ret);
+		}
+
 		ret = regmap_read(udata->regmap, MT6379_REG_UFCS_RX_BUFFER0 + i, &rdata);
-		if (ret)
-			return ret;
+		if (ret) {
+			dev_info(udata->dev, "%s, Failed to read rx_buf[%d] (ret:%d)\n",
+				 __func__, i, ret);
+			return mt6379_recover_rx_buffer(udata, ret);
+		}
+
 		*(buf + i) = rdata;
 		dev_dbg(udata->dev, "%s: buf[%d]:0x%x\n", __func__, i, rdata);
 	}
+
 	memcpy(msg, buf, lens);
 
-	/* Recover to write SRAM data */
-	ret = regmap_update_bits(udata->regmap, MT6379_REG_SRAM_CONTROL,
-				 MT6379_SRAM_DATA_UPDATE_MASK, 0);
-	if (ret)
-		return ret;
-
-	/* Clear buffer and wait next msg */
-	return regmap_update_bits(udata->regmap, MT6379_REG_UFCS_CTRL2,
-				  MT6379_UFCS_RX_DATA_NO_READ, 0);
+	return mt6379_recover_rx_buffer(udata, ret);
 }
 
 static irqreturn_t mt6379_ufcs_evt_handler(int irq, void *data)
@@ -316,6 +347,7 @@ static int mt6379_ufcs_probe(struct platform_device *pdev)
 	struct mt6379_data *data;
 	int ret, irq;
 
+	dev_info(dev, "%s, ++\n", __func__);
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;

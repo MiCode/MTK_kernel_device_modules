@@ -285,6 +285,8 @@ struct mt6375_priv {
 static struct class *bat_cali_class;
 static int bat_cali_major;
 static dev_t bat_cali_devno;
+static int latch_timeout_cnt;
+static int latch_i2c_retry_cnt;
 
 static void gauge_irq_lock(struct irq_data *data)
 {
@@ -384,18 +386,12 @@ static int mt6375_gauge_dump_registers(struct mt6375_priv *priv)
 			return ret;
 		}
 
-		if (i % 4 == 0) {
-			offset += scnprintf(buf + offset, buf_size - offset,
-					    "%s: %s(0x%X) = 0x%02X, ", __func__,
-					    regs[i].name, regs[i].reg, val);
-		} else {
-			offset += scnprintf(buf + offset, buf_size - offset,
-					    "%s(0x%X) = 0x%02X, ", regs[i].name,
-					    regs[i].reg, val);
-		}
+		if (i % 4 == 0)
+			offset += scnprintf(buf + offset, buf_size - offset, "%s%s, ",
+					    i != 0 ? "\n" : "", __func__);
 
-		if (i % 4 == 0 && i != 0)
-			offset += scnprintf(buf + offset, buf_size - offset, "\n");
+		offset += scnprintf(buf + offset, buf_size - offset,
+				    "%s(0x%X) = 0x%02X, ", regs[i].name, regs[i].reg, val);
 	}
 
 	dev_err(priv->dev, "%s\n", buf);
@@ -617,18 +613,33 @@ static int mv_to_reg_12_temp_value(struct mtk_gauge *gauge, signed int _reg)
 
 static int pre_gauge_update(struct mtk_gauge *gauge)
 {
-	int i, ret = 0, max_retry_cnt = 5;
+	int i, ret = 0, max_retry_cnt = 3;
 	u32 rdata = 0;
 
 	if (gauge->gm->disableGM30)
 		return 0;
 
+	ret = regmap_read(gauge->regmap, RG_FGADC_CON3, &rdata);
+	if (ret < 0) {
+		pr_notice("%s: failed to check latch and release bit(%d)\n",
+			  __func__, ret);
+		return ret;
+	}
+	if (rdata & (FG_SW_READ_PRE_MASK|FG_SW_CLEAR_MASK)) {
+		pr_notice("%s: previous latch error, try to release again, BM[0x70] = 0x%02x\n",
+			  __func__, rdata);
+		return -EINVAL;
+	}
+
 	ret = regmap_update_bits(gauge->regmap, RG_FGADC_CON3,
-				 FG_SW_READ_PRE_MASK, FG_SW_READ_PRE_MASK);
+				 FG_SW_READ_PRE_MASK | FG_SW_CLEAR_MASK,
+				 FG_SW_READ_PRE_MASK);
 	if (ret) {
 		pr_notice("%s: failed to set pre read(%d)\n", __func__, ret);
 		return ret;
 	}
+	udelay(100);
+
 	for (i = 0; i < max_retry_cnt; i++) {
 		ret = regmap_read(gauge->regmap, RG_FGADC_CON2, &rdata);
 		if (ret) {
@@ -637,7 +648,7 @@ static int pre_gauge_update(struct mtk_gauge *gauge)
 		}
 		if (rdata & FG_LATCHDATA_ST_MASK)
 			break;
-		mdelay(1);
+		udelay(50);
 	}
 	if (i == max_retry_cnt) {
 		pr_notice("[%s] timeout! last BM[0x6F]=0x%x\n", __func__, rdata);
@@ -671,35 +682,35 @@ void disable_all_irq(struct mtk_battery *gm)
 
 static void post_gauge_update(struct mtk_gauge *gauge)
 {
-	unsigned int regval;
-	int m = 0, ret = 0;
+	u32 rdata = 0;
+	int i, ret, max_retry_cnt = 3;
 
 	ret = regmap_update_bits(gauge->regmap, RG_FGADC_CON3,
 				 FG_SW_CLEAR_MASK | FG_SW_READ_PRE_MASK,
 				 FG_SW_CLEAR_MASK);
 	if (ret) {
-		pr_notice("%s error, ret = %d\n", __func__, ret);
+		pr_notice("%s: failed to set release bit(%d)\n", __func__, ret);
 		return;
 	}
-	do {
-		m++;
-		if (m > 1000) {
-			bm_err(gauge->gm, "%s, gauge_update_polling timeout 2!\r\n", __func__);
+	udelay(100);
+
+	for (i = 0; i < max_retry_cnt; i++) {
+		ret = regmap_read(gauge->regmap, RG_FGADC_CON2, &rdata);
+		if (ret) {
+			pr_notice("%s: failed to read release stat(%d)\n", __func__, ret);
 			break;
 		}
-		ret = regmap_read(gauge->regmap, RG_FGADC_CON2, &regval);
-		if (ret) {
-			pr_notice("%s error, ret = %d\n", __func__, ret);
-			return;
-		}
-	} while (regval & FG_LATCHDATA_ST_MASK);
+		if (!(rdata & FG_LATCHDATA_ST_MASK))
+			break;
+		udelay(50);
+	}
+	if (i == max_retry_cnt)
+		pr_notice("%s: read release stat timeout\n", __func__);
 
 	ret = regmap_update_bits(gauge->regmap, RG_FGADC_CON3,
 				 FG_SW_CLEAR_MASK, 0);
-	if (ret) {
-		pr_notice("%s error, ret = %d\n", __func__, ret);
-		return;
-	}
+	if (ret)
+		pr_notice("%s: failed to clr release bit(%d)\n", __func__, ret);
 }
 
 static int mv_to_reg_12_value(struct mtk_gauge *gauge,
@@ -743,8 +754,7 @@ static int reg_to_current(struct mtk_gauge *gauge,
 #endif
 	retval = (unsigned int) temp_value;
 
-	bm_trace(gauge->gm,
-		 "[%s] regval:0x%x, uvalue16:0x%x, dvalue:0x%x, temp_value:0x%x, retval:0x%x, is_chargig:%d\n",
+	bm_trace(gauge->gm, "[%s]regval:0x%x,uvalue16:0x%x,dvalue:0x%x,temp_value:0x%x,retval:0x%x,is_charging:%d\n",
 		 __func__, regval, uvalue16, dvalue, (int)temp_value,
 		 retval, is_charging);
 
@@ -990,16 +1000,14 @@ static unsigned int instant_current_for_car_tune(struct mtk_gauge *gauge)
 
 	ret = regmap_raw_read(gauge->regmap, RG_FGADC_CUR_CON0, &reg_value,
 			      sizeof(reg_value));
-	if (ret) {
+	if (ret)
 		pr_notice("%s error, ret = %d\n", __func__, ret);
-		return ret;
-	}
 
 	post_gauge_update(gauge);
 
 	bm_err(gauge->gm, "%s, reg_value=0x%04x\n", __func__, reg_value);
 
-	return reg_value;
+	return ret < 0 ? ret : reg_value;
 }
 
 static int calculate_car_tune(struct mtk_gauge *gauge)
@@ -1153,14 +1161,7 @@ static int instant_current(struct mtk_gauge *gauge, int *val,
 	r_fg_value = gauge->hw_status.r_fg_value;
 	car_tune_value = gauge->gm->fg_cust_data.car_tune_value;
 
-	ret = pre_gauge_update(gauge);
-	if (ret == MT6375_LATCH_TIMEOUT)
-		latch_timeout = true;
-#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-	else if (ret == -ETIMEDOUT)
-		aee_kernel_warning("I2C", "\nCRDISPATCH_KEY:I2C\ni2c timeout when pre_gauge_update");
-#endif
-
+	pr_info("%s: cic_idx:%d\n", __func__, cic_idx);
 	switch (cic_idx) {
 	case MT6375_GAUGE_CIC1:
 		dist_reg = RG_FGADC_CUR_CON0;
@@ -1169,15 +1170,22 @@ static int instant_current(struct mtk_gauge *gauge, int *val,
 		dist_reg = RG_FGADC_CUR_CON3;
 		break;
 	default:
-		post_gauge_update(gauge);
 		return -EINVAL;
 	}
 
-	ret = regmap_raw_read(gauge->regmap, dist_reg, &reg_value, sizeof(reg_value));
-	if (ret) {
-		pr_notice("%s error, ret = %d\n", __func__, ret);
-		return ret;
+	ret = pre_gauge_update(gauge);
+	if (ret == MT6375_LATCH_TIMEOUT)
+		latch_timeout = true;
+	else if (ret == -ETIMEDOUT) {
+		aee_kernel_warning("I2C", "\nCRDISPATCH_KEY:I2C\ni2c timeout when pre_gauge_update");
+		pr_notice("%s: latch i2c timeout, retry_cnt:%d\n", __func__, ++latch_i2c_retry_cnt);
+		post_gauge_update(gauge);
+		pre_gauge_update(gauge);
 	}
+
+	ret = regmap_raw_read(gauge->regmap, dist_reg, &reg_value, sizeof(reg_value));
+	if (ret)
+		pr_notice("%s: failed to read cic(%d)\n", __func__, ret);
 
 	post_gauge_update(gauge);
 
@@ -1194,8 +1202,9 @@ static int instant_current(struct mtk_gauge *gauge, int *val,
 	*val = dvalue;
 
 	if (latch_timeout) {
-		pr_notice("[%s] read cic1 with external 32k failed\n", __func__);
-		aee_kernel_warning("BATTERY", "read cic1 failed");
+		latch_timeout_cnt++;
+		pr_notice("[%s] read cic1 with external 32k failed, latch_timeout_cnt:%d\n",
+			  __func__, latch_timeout_cnt);
 
 		ret = iio_read_channel_attribute(gauge->chan_ptim_bat_voltage,
 						 &vbat_p, &ibat_p, IIO_CHAN_INFO_PROCESSED);
@@ -1593,10 +1602,8 @@ static int coulomb_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_inf
 
 	ret = regmap_raw_read(gauge->regmap, RG_FGADC_CAR_CON0, &temp_car,
 			      sizeof(temp_car));
-	if (ret) {
+	if (ret)
 		pr_notice("%s error, ret = %d\n", __func__, ret);
-		return ret;
-	}
 
 	post_gauge_update(gauge);
 
@@ -1662,7 +1669,7 @@ static int coulomb_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_inf
 
 	*val = dvalue_CAR;
 
-	return 0;
+	return ret;
 }
 
 static int average_current_get(struct mtk_gauge *gauge_dev, struct mtk_gauge_sysfs_field_info *attr,
@@ -1686,18 +1693,18 @@ static int average_current_get(struct mtk_gauge *gauge_dev, struct mtk_gauge_sys
 	pre_gauge_update(gauge_dev);
 
 	ret = regmap_read(gauge_dev->regmap, RG_FGADC_IAVG_CON1, &iavg_vld);
-	if (ret) {
-		pr_notice("%s error, ret = %d\n", __func__, ret);
-		return ret;
-	}
+	if (ret)
+		pr_notice("%s: failed to get iavg_vld(%d)\n", __func__, ret);
 	iavg_vld = iavg_vld & FG_IAVG_VLD_MASK;
+
+	post_gauge_update(gauge_dev);
 
 	if (iavg_vld) {
 		ret = regmap_raw_read(gauge_dev->regmap, RG_FGADC_IAVG_CON2,
 				      &fg_iavg_reg_27_16,
 				      sizeof(fg_iavg_reg_27_16));
 		if (ret) {
-			pr_notice("%s error, ret = %d\n", __func__, ret);
+			pr_notice("%s: failed to read iavg_27_16(%d)\n", __func__, ret);
 			return ret;
 		}
 		fg_iavg_reg_27_16 &= FG_IAVG_27_16_MASK;
@@ -1706,7 +1713,7 @@ static int average_current_get(struct mtk_gauge *gauge_dev, struct mtk_gauge_sys
 				      &fg_iavg_reg_15_00,
 				      sizeof(fg_iavg_reg_15_00));
 		if (ret) {
-			pr_notice("%s error, ret = %d\n", __func__, ret);
+			pr_notice("%s: failed to read iavg_15_00(%d)\n", __func__, ret);
 			return ret;
 		}
 		fg_iavg_reg_15_00 &= FG_IAVG_15_00_MASK;
@@ -1766,7 +1773,7 @@ static int average_current_get(struct mtk_gauge *gauge_dev, struct mtk_gauge_sys
 		ret = instant_current(gauge_dev, &gauge_dev->fg_hw_info.current_1,
 				      MT6375_GAUGE_CIC1);
 		if (ret) {
-			pr_notice("%s error, ret = %d\n", __func__, ret);
+			pr_notice("%s: failed to get cic1(%d)\n", __func__, ret);
 			return ret;
 		}
 		gauge_dev->fg_hw_info.current_avg = gauge_dev->fg_hw_info.current_1;
@@ -1779,7 +1786,6 @@ static int average_current_get(struct mtk_gauge *gauge_dev, struct mtk_gauge_sys
 			gauge_dev->fg_hw_info.current_1);
 	}
 
-	post_gauge_update(gauge_dev);
 	*data = gauge_dev->fg_hw_info.current_avg;
 
 	gauge_dev->fg_hw_info.current_avg_valid = iavg_vld;
@@ -2640,10 +2646,9 @@ static int boot_zcv_get(struct mtk_gauge *gauge_dev, struct mtk_gauge_sysfs_fiel
 		__func__, _prev_hw_ocv, _sw_ocv, now_thr);
 	bm_err(gm, "[%s] _hw_ocv %d _hw_ocv_src %d _prev_hw_ocv %d _prev_hw_ocv_src %d _flag_unreliable %d\n",
 		__func__, _hw_ocv, _hw_ocv_src, _prev_hw_ocv, _prev_hw_ocv_src, _flag_unreliable);
-	bm_err(gm, "[%s] _hw_ocv_75_pon_rdy %d _hw_ocv_75_pon %d ",
-	       __func__, _hw_ocv_75_pon_rdy, _hw_ocv_75_pon);
-	bm_err(gm, "_hw_ocv_75_plugin %d _hw_ocv_chgin %d _sw_ocv %d now_temp %d now_thr %d\n",
-	       _hw_ocv_75_plugin, _hw_ocv_chgin, _sw_ocv, now_temp, now_thr);
+	bm_err(gm, "[%s] _hw_ocv_75_pon_rdy %d _hw_ocv_75_pon %d _hw_ocv_75_plugin %d _hw_ocv_chgin %d _sw_ocv %d now_temp %d now_thr %d\n",
+		__func__, _hw_ocv_75_pon_rdy, _hw_ocv_75_pon,
+		_hw_ocv_75_plugin, _hw_ocv_chgin, _sw_ocv, now_temp, now_thr);
 	bm_err(gm, "[%s] _hw_ocv_75_before_chgin %d\n", __func__, _hw_ocv_75_before_chgin);
 
 	return 0;
@@ -2965,7 +2970,7 @@ static int __maybe_unused battery_voltage_cali(struct mtk_gauge *gauge,
 			bm_err(gauge->gm, "%s: failed to get auxadc_vbat(%d)\n", __func__, ret);
 			return ret;
 		}
-		dev_info(priv->dev, "%s: chg_vbat:%d, auxadc_vbat:%d\n",
+		dev_info(priv->dev, "%s: chg_vbat(vbat_mon):%d, auxadc_vbat:%d\n",
 			 __func__, chg_vbat, auxadc_vbat);
 		chg_vbat_min = min(chg_vbat_min, chg_vbat);
 		chg_vbat_max = max(chg_vbat_max, chg_vbat);
@@ -3210,6 +3215,9 @@ static int battery_exist_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_fie
 		}
 	}
 
+	/* print debug for latch timeout in 10s battery routine */
+	pr_info("%s: latch_tout_cnt:%d, latch_i2c_retry_cnt:%d\n", __func__,
+		latch_timeout_cnt, latch_i2c_retry_cnt);
 	return 0;
 }
 

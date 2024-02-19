@@ -8,6 +8,7 @@
  * Author: ChiYuan Huang <cy_huang@richtek.com>
  */
 
+#include <asm/unaligned.h>
 #include <crypto/hash.h>
 #include <linux/atomic.h>
 #include <linux/bitfield.h>
@@ -151,6 +152,8 @@ enum ufcs_state {
 	GENERATE_ENUM(SNK_END_CABLE_DETECT_RECV),
 	GENERATE_ENUM(SNK_GET_SINK_INFO_RECV),
 	GENERATE_ENUM(SNK_GET_DEVICE_INFO_RECV),
+	GENERATE_ENUM(SNK_GET_ERROR_INFO_RECV),
+	GENERATE_ENUM(SNK_TEST_REQUEST_RECV),
 
 	GENERATE_ENUM(SOFT_RESET),
 	GENERATE_ENUM(SNK_SOFT_RESET),
@@ -189,6 +192,8 @@ static const char * const ufcs_states[] = {
 	GENERATE_STRING(SNK_END_CABLE_DETECT_RECV),
 	GENERATE_STRING(SNK_GET_SINK_INFO_RECV),
 	GENERATE_STRING(SNK_GET_DEVICE_INFO_RECV),
+	GENERATE_STRING(SNK_GET_ERROR_INFO_RECV),
+	GENERATE_STRING(SNK_TEST_REQUEST_RECV),
 
 	GENERATE_STRING(SOFT_RESET),
 	GENERATE_STRING(SNK_SOFT_RESET),
@@ -215,6 +220,7 @@ struct ufcs_port {
 	enum ufcs_state prev_state;
 	enum ufcs_state state;
 	enum ufcs_state delayed_state;
+	enum ufcs_state test_state;
 	ktime_t delayed_runtime;
 	unsigned long delayed_ms;
 
@@ -233,14 +239,13 @@ struct ufcs_port {
 	unsigned int message_id;
 	unsigned int rx_msgid;
 	bool ignore_hard_reset;
-	bool first_negotiation_done;
 	bool attached;
 	bool registered;
 	atomic_t use_cnt;
 
 	u64 src_caps[MAX_SRC_CAP_CNT];
 	unsigned int src_cap_cnt;
-	u64 emark_info;
+	u8 emark_info[MAX_EMARK_BYTE_CNT];
 	enum ufcs_emark_state emark_state;
 	u32 req_current_limit;
 	u32 req_supply_voltage;
@@ -560,13 +565,35 @@ static void ufcs_handle_ctrl_event(struct ufcs_port *port, const struct ufcs_ctr
 
 	ufcs_log(port, "UFCS handle ctrl command: %d", ctrl->command);
 
-	if (ctrl->command == UFCS_CTRL_PING)
-		return;
-
 	switch (ctrl->command) {
+	case UFCS_CTRL_PING:
+		return;
+	case UFCS_CTRL_ACCEPT:
+		if (port->state == SNK_START_CABLE_DETECT) {
+			next_state = SNK_GET_CABLE_INFO;
+			port->ignore_hard_reset = true;
+		} else if (port->state == SNK_CONFIG_WATCHDOG) {
+			if (port->state == port->test_state) {
+				port->test_state = INVALID_STATE;
+
+				next_state = SNK_READY;
+			} else
+				next_state = SNK_GET_OUTPUT_CAPABILITIES;
+		} else if (port->state == SNK_NEGOTIATE_CAPABILITIES)
+			next_state = SNK_TRANSITION_SINK;
+		else if (port->state == SNK_SEND_VERIFY_REQUEST)
+			next_state = SNK_WAIT_VERIFY_RESPONSE;
+		break;
+	case UFCS_CTRL_SOFT_RESET:
+		next_state = SOFT_RESET;
+		break;
 	case UFCS_CTRL_POWER_READY:
-		if (port->state == SNK_TRANSITION_SINK)
+		if (port->state == SNK_TRANSITION_SINK) {
+			if (port->test_state == SNK_NEGOTIATE_CAPABILITIES)
+				port->test_state = INVALID_STATE;
+
 			next_state = SNK_READY;
+		}
 
 		if (port->state != SOFT_RESET_SEND && port->dpm_request == UFCS_DPM_POWER_REQUEST) {
 			port->_req_supply_voltage = port->req_supply_voltage;
@@ -574,20 +601,6 @@ static void ufcs_handle_ctrl_event(struct ufcs_port *port, const struct ufcs_ctr
 			port->output.power_request_ready = true;
 			ufcs_put_dpm_reaction_result(port, 0);
 		}
-		break;
-	case UFCS_CTRL_SOFT_RESET:
-		next_state = SOFT_RESET;
-		break;
-	case UFCS_CTRL_ACCEPT:
-		if (port->state == SNK_START_CABLE_DETECT) {
-			next_state = SNK_GET_CABLE_INFO;
-			port->ignore_hard_reset = true;
-		} else if (port->state == SNK_CONFIG_WATCHDOG)
-			next_state = SNK_GET_OUTPUT_CAPABILITIES;
-		else if (port->state == SNK_NEGOTIATE_CAPABILITIES)
-			next_state = SNK_TRANSITION_SINK;
-		else if (port->state == SNK_SEND_VERIFY_REQUEST)
-			next_state = SNK_WAIT_VERIFY_RESPONSE;
 		break;
 	case UFCS_CTRL_GET_SINK_INFO:
 		if (port->state != SNK_READY) {
@@ -604,6 +617,14 @@ static void ufcs_handle_ctrl_event(struct ufcs_port *port, const struct ufcs_ctr
 		}
 
 		next_state = SNK_GET_DEVICE_INFO_RECV;
+		break;
+	case UFCS_CTRL_GET_ERROR_INFO:
+		if (port->state != SNK_READY) {
+			ufcs_send_refuse(port, UFCS_MSG_CTRL, ctrl->command, UFCS_REFUSE_BUSY);
+			return;
+		}
+
+		next_state = SNK_GET_ERROR_INFO_RECV;
 		break;
 	case UFCS_CTRL_DETECT_CABLE_INFO:
 		if (port->state != SNK_READY) {
@@ -640,7 +661,8 @@ static void ufcs_handle_ctrl_event(struct ufcs_port *port, const struct ufcs_ctr
 			port->state == SNK_READY ? UFCS_REFUSE_UNSUPPORTED : UFCS_REFUSE_BUSY);
 		return;
 	default:
-		break;
+		ufcs_send_refuse(port, UFCS_MSG_CTRL, ctrl->command, UFCS_REFUSE_UNRECOGNIZED);
+		return;
 	}
 
 	ufcs_set_state(port, next_state, 0);
@@ -649,18 +671,20 @@ static void ufcs_handle_ctrl_event(struct ufcs_port *port, const struct ufcs_ctr
 static void ufcs_handle_data_event(struct ufcs_port *port, const struct ufcs_data_payload *data)
 {
 	enum ufcs_state next_state = SOFT_RESET_SEND;
-	__be64 tmp64;
+	u64 tmp64;
+	u16 tmp16;
 	int i;
 
 	ufcs_log(port, "UFCS handle data command: %d", data->command);
 
-	if (data->command == UFCS_DATA_VERIFY_REQUEST || data->command == UFCS_DATA_TEST_REQUEST) {
-		ufcs_send_refuse(port, UFCS_MSG_DATA, data->command, UFCS_REFUSE_UNSUPPORTED);
-		return;
-	}
-
 	switch (data->command) {
 	case UFCS_DATA_OUTPUT_CAPABILITIES:
+		if (data->datalen < 8 || data->datalen > 56 || data->datalen % 8 != 0) {
+			ufcs_send_refuse(port, UFCS_MSG_DATA, data->command,
+					 UFCS_REFUSE_UNRECOGNIZED);
+			return;
+		}
+
 		/* Copy caps into port data */
 		port->src_cap_cnt = min_t(u32, data->datalen / sizeof(__be64), MAX_SRC_CAP_CNT);
 		for (i = 0; i < port->src_cap_cnt; i++)
@@ -668,30 +692,56 @@ static void ufcs_handle_data_event(struct ufcs_port *port, const struct ufcs_dat
 
 		ufcs_log_source_caps(port);
 
-		if (port->state == SNK_GET_OUTPUT_CAPABILITIES)
+		if (port->state == SNK_GET_OUTPUT_CAPABILITIES) {
+			if (port->state == port->test_state)
+				port->test_state = INVALID_STATE;
+
 			next_state = SNK_READY;
+		}
+
 		break;
 	case UFCS_DATA_CABLE_INFO:
+		if (data->datalen != MAX_EMARK_BYTE_CNT) {
+			ufcs_send_refuse(port, UFCS_MSG_DATA, data->command,
+					 UFCS_REFUSE_UNRECOGNIZED);
+			return;
+		}
+
 		/* Copy emark info into port data */
-		port->emark_info = be64_to_cpu(data->payload64[0]);
+		memcpy(port->emark_info, data->payload, MAX_EMARK_BYTE_CNT);
 		port->emark_state = UFCS_EMARK_EXIST;
 
-		ufcs_log(port, "CABLE: %umOhm, max %uV, %uA",
-			 (u32)FIELD_GET(GENMASK(31, 16), port->emark_info),
-			 (u32)FIELD_GET(GENMASK(15, 8), port->emark_info),
-			 (u32)FIELD_GET(GENMASK(7, 0), port->emark_info));
+		ufcs_log(port, "CABLE: vid1 %04x, vid2 %04x, %umOhm, max %umV, %umA",
+			 get_unaligned_be16(port->emark_info),
+			 get_unaligned_be16(port->emark_info + 2),
+			 get_unaligned_be16(port->emark_info + 4),
+			 (u32)get_unaligned_be16(port->emark_info + 6) * 10,
+			 (u32)get_unaligned_be16(port->emark_info + 8) * 10);
 
-		if (port->state == SNK_GET_CABLE_INFO)
-			next_state = SNK_END_CABLE_DETECT;
+		if (port->state == SNK_GET_CABLE_INFO) {
+			if (port->state == port->test_state) {
+				port->test_state = INVALID_STATE;
+				next_state = SNK_READY;
+			} else
+				next_state = SNK_END_CABLE_DETECT;
+		}
 
 		if (next_state != SOFT_RESET_SEND &&
 		    port->dpm_request == UFCS_DPM_CABLE_INFO) {
-			port->output.milliohm = FIELD_PREP(GENMASK(31, 16), port->emark_info);
-			port->output.volt = FIELD_PREP(GENMASK(15, 8), port->emark_info);
-			port->output.amp = FIELD_PREP(GENMASK(7, 0), port->emark_info);
+			port->output.cbl_vid1 = get_unaligned_be16(port->emark_info);
+			port->output.cbl_vid2 = get_unaligned_be16(port->emark_info + 2);
+			port->output.cbl_mOhm = get_unaligned_be16(port->emark_info + 4);
+			port->output.cbl_mVolt = (u32)get_unaligned_be16(port->emark_info + 6) * 10;
+			port->output.cbl_mAmp = (u32)get_unaligned_be16(port->emark_info + 8) * 10;
 		}
 		break;
 	case UFCS_DATA_DEVICE_INFO:
+		if (data->datalen != sizeof(__be64)) {
+			ufcs_send_refuse(port, UFCS_MSG_DATA, data->command,
+					 UFCS_REFUSE_UNRECOGNIZED);
+			return;
+		}
+
 		tmp64 = be64_to_cpu(data->payload64[0]);
 
 		ufcs_log(port, "SRC Ver 0x%llx", tmp64);
@@ -707,10 +757,20 @@ static void ufcs_handle_data_event(struct ufcs_port *port, const struct ufcs_dat
 		}
 		break;
 	case UFCS_DATA_SOURCE_INFO:
+		if (data->datalen != sizeof(__be64)) {
+			ufcs_send_refuse(port, UFCS_MSG_DATA, data->command,
+					 UFCS_REFUSE_UNRECOGNIZED);
+			return;
+		}
+
 		tmp64 = be64_to_cpu(data->payload64[0]);
 
-		if (port->state == SNK_GET_SOURCE_INFO)
+		if (port->state == SNK_GET_SOURCE_INFO) {
+			if (port->state == port->test_state)
+				port->test_state = INVALID_STATE;
+
 			next_state = SNK_READY;
+		}
 
 		if (next_state != SOFT_RESET_SEND && port->dpm_request == UFCS_DPM_SRC_INFO) {
 			port->output.device_temp = FIELD_GET(GENMASK(47, 40), tmp64) - 50;
@@ -721,6 +781,12 @@ static void ufcs_handle_data_event(struct ufcs_port *port, const struct ufcs_dat
 		}
 		break;
 	case UFCS_DATA_ERROR_INFO:
+		if (data->datalen != sizeof(__be32)) {
+			ufcs_send_refuse(port, UFCS_MSG_DATA, data->command,
+					 UFCS_REFUSE_UNRECOGNIZED);
+			return;
+		}
+
 		if (port->state == SNK_GET_ERROR_INFO)
 			next_state = SNK_READY;
 
@@ -730,14 +796,23 @@ static void ufcs_handle_data_event(struct ufcs_port *port, const struct ufcs_dat
 		}
 		break;
 	case UFCS_DATA_REFUSE:
+		if (data->datalen != sizeof(__be32)) {
+			ufcs_send_refuse(port, UFCS_MSG_DATA, data->command,
+					 UFCS_REFUSE_UNRECOGNIZED);
+			return;
+		}
+
 		if (port->state == SNK_GET_OUTPUT_CAPABILITIES ||
 		    port->state == SNK_NEGOTIATE_CAPABILITIES ||
 		    port->state == SNK_SEND_VERIFY_REQUEST ||
 		    port->state == SNK_GET_DEVICE_INFO ||
 		    port->state == SNK_GET_SOURCE_INFO ||
-		    port->state == SNK_GET_ERROR_INFO)
+		    port->state == SNK_GET_ERROR_INFO) {
+			if (port->state == port->test_state)
+				port->test_state = INVALID_STATE;
+
 			next_state = SNK_READY;
-		else if (port->state == SNK_START_CABLE_DETECT) {
+		} else if (port->state == SNK_START_CABLE_DETECT) {
 			ufcs_log(port, "Not expected refuse for cable detect flow");
 			next_state = SNK_CONFIG_WATCHDOG;
 		}
@@ -745,7 +820,23 @@ static void ufcs_handle_data_event(struct ufcs_port *port, const struct ufcs_dat
 		if (port->state != SOFT_RESET_SEND && port->dpm_request != UFCS_DPM_NONE)
 			ufcs_put_refuse_dpm_reaction_result(port, data->payload[3]);
 		break;
+	case UFCS_DATA_VERIFY_REQUEST:
+		if (data->datalen != 16) {
+			ufcs_send_refuse(port, UFCS_MSG_DATA, data->command,
+					 UFCS_REFUSE_UNRECOGNIZED);
+			return;
+		}
+
+		ufcs_send_refuse(port, UFCS_MSG_DATA, data->command,
+			port->state == SNK_READY ? UFCS_REFUSE_UNSUPPORTED : UFCS_REFUSE_BUSY);
+		return;
 	case UFCS_DATA_VERIFY_RESPONSE:
+		if (data->datalen != 48) {
+			ufcs_send_refuse(port, UFCS_MSG_DATA, data->command,
+					 UFCS_REFUSE_UNRECOGNIZED);
+			return;
+		}
+
 		if (port->state == SNK_WAIT_VERIFY_RESPONSE)
 			next_state = SNK_READY;
 
@@ -756,11 +847,82 @@ static void ufcs_handle_data_event(struct ufcs_port *port, const struct ufcs_dat
 		}
 		break;
 	case UFCS_DATA_POWER_CHANGE:
+		if (data->datalen < 3 || data->datalen > 21 || data->datalen % 3 != 0) {
+			ufcs_send_refuse(port, UFCS_MSG_DATA, data->command,
+					 UFCS_REFUSE_UNRECOGNIZED);
+			return;
+		}
+
 		if (port->state == SNK_READY)
 			next_state = SNK_GET_OUTPUT_CAPABILITIES;
 		break;
-	default:
+	case UFCS_DATA_TEST_REQUEST:
+		if (data->datalen != 2) {
+			ufcs_send_refuse(port, UFCS_MSG_DATA, data->command,
+					 UFCS_REFUSE_UNRECOGNIZED);
+			return;
+		}
+
+		tmp16 = be16_to_cpu(data->payload16);
+		if (tmp16 & BIT(15)) {
+			if (port->test_state != INVALID_STATE) {
+				ufcs_send_refuse(port, UFCS_MSG_DATA, data->command,
+						 UFCS_REFUSE_BUSY);
+				return;
+			}
+
+			if ((tmp16 & GENMASK(13, 0)) == GENMASK(13, 0))
+				return;
+
+			switch (FIELD_GET(GENMASK(10, 8), tmp16)) {
+			case UFCS_MSG_CTRL:
+				switch (FIELD_GET(GENMASK(7, 0), tmp16)) {
+				case UFCS_CTRL_GET_OUTPUT_CAPABILITIES:
+					port->test_state = SNK_GET_OUTPUT_CAPABILITIES;
+					break;
+				case UFCS_CTRL_GET_SOURCE_INFO:
+					port->test_state = SNK_GET_SOURCE_INFO;
+					break;
+				case UFCS_CTRL_GET_CABLE_INFO:
+					port->test_state = SNK_GET_CABLE_INFO;
+					break;
+				default:
+					ufcs_send_refuse(port, UFCS_MSG_DATA, data->command,
+							 UFCS_REFUSE_UNSUPPORTED);
+					return;
+				}
+				break;
+			case UFCS_MSG_DATA:
+				switch (FIELD_GET(GENMASK(7, 0), tmp16)) {
+				case UFCS_DATA_REQUEST:
+					port->test_state = SNK_NEGOTIATE_CAPABILITIES;
+					break;
+				case UFCS_DATA_CONFIG_WATCHDOG:
+					port->test_state = SNK_CONFIG_WATCHDOG;
+					break;
+				default:
+					ufcs_send_refuse(port, UFCS_MSG_DATA, data->command,
+							 UFCS_REFUSE_UNSUPPORTED);
+					return;
+				}
+				break;
+			default:
+				ufcs_send_refuse(port, UFCS_MSG_DATA, data->command,
+						 UFCS_REFUSE_UNSUPPORTED);
+				return;
+			}
+
+			next_state = SNK_TEST_REQUEST_RECV;
+
+		} else {
+			port->test_state = INVALID_STATE;
+			next_state = SNK_READY;
+		}
+
 		break;
+	default:
+		ufcs_send_refuse(port, UFCS_MSG_DATA, data->command, UFCS_REFUSE_UNRECOGNIZED);
+		return;
 	}
 
 	ufcs_set_state(port, next_state, 0);
@@ -798,8 +960,7 @@ static void ufcs_rx_event_handler(struct kthread_work *work)
 			ufcs_handle_vdm_event(port, &msg->vdm);
 			break;
 		default:
-			/* Invalid msg type */
-			ufcs_set_state(port, SOFT_RESET_SEND, 0);
+			/* Invalid msg type, send refuse command with error  0x01 */
 			break;
 		}
 	}
@@ -924,9 +1085,11 @@ static void _ufcs_dpm_event_handler(struct ufcs_port *port)
 		break;
 	case UFCS_DPM_CABLE_INFO:
 		if (port->emark_state == UFCS_EMARK_EXIST) {
-			port->output.milliohm = FIELD_PREP(GENMASK(31, 16), port->emark_info);
-			port->output.volt = FIELD_PREP(GENMASK(15, 8), port->emark_info);
-			port->output.amp = FIELD_PREP(GENMASK(7, 0), port->emark_info);
+			port->output.cbl_vid1 = get_unaligned_be16(port->emark_info);
+			port->output.cbl_vid2 = get_unaligned_be16(port->emark_info + 2);
+			port->output.cbl_mOhm = get_unaligned_be16(port->emark_info + 4);
+			port->output.cbl_mVolt = (u32)get_unaligned_be16(port->emark_info + 6) * 10;
+			port->output.cbl_mAmp = (u32)get_unaligned_be16(port->emark_info + 8) * 10;
 			ufcs_put_dpm_reaction_result(port, 0);
 		} else if (port->emark_state == UFCS_EMARK_NOT_EXIST)
 			ufcs_put_dpm_reaction_result(port, -ENODEV);
@@ -1290,12 +1453,12 @@ static void ufcs_reset_port(struct ufcs_port *port)
 	port->req_current_limit = port->_req_current_limit = 2000;
 	memset64(port->src_caps, 0, MAX_SRC_CAP_CNT);
 	port->src_cap_cnt = 0;
-	port->emark_info = 0;
+	memset(port->emark_info, 0, MAX_EMARK_BYTE_CNT);
 	port->emark_state = UFCS_EMARK_NONE;
 	port->message_id = 0;
 	port->rx_msgid = -1;
 	port->ignore_hard_reset = false;
-	port->first_negotiation_done = false;
+	port->test_state = INVALID_STATE;
 	port->attached = false;
 }
 
@@ -1387,10 +1550,11 @@ static int ufcs_send_refuse(struct ufcs_port *port, u32 type, u32 cmd, u32 reaso
 
 static int ufcs_send_cable_info(struct ufcs_port *port)
 {
-	__be64 cbl_packet = cpu_to_be64(port->emark_info);
+	u8 cbl_packet[MAX_EMARK_BYTE_CNT];
 
-	return ufcs_send_data_message(port, UFCS_SRC, UFCS_DATA_CABLE_INFO, sizeof(cbl_packet),
-				      &cbl_packet);
+	memcpy(cbl_packet, port->emark_info, MAX_EMARK_BYTE_CNT);
+	return ufcs_send_data_message(port, UFCS_SRC, UFCS_DATA_CABLE_INFO, MAX_EMARK_BYTE_CNT,
+				      cbl_packet);
 }
 
 static int ufcs_send_sink_info(struct ufcs_port *port)
@@ -1415,6 +1579,14 @@ static int ufcs_send_device_info(struct ufcs_port *port)
 
 	return ufcs_send_data_message(port, UFCS_SRC, UFCS_DATA_DEVICE_INFO, sizeof(devi_packet),
 				      &devi_packet);
+}
+
+static int ufcs_send_error_info(struct ufcs_port *port)
+{
+	__be32 erri_packet = cpu_to_be32(0);
+
+	return ufcs_send_data_message(port, UFCS_SRC, UFCS_DATA_ERROR_INFO, sizeof(erri_packet),
+				      &erri_packet);
 }
 
 static int ufcs_send_verify_request(struct ufcs_port *port)
@@ -1473,7 +1645,6 @@ static void run_state_machine(struct ufcs_port *port)
 		ufcs_set_state_cond(port, HARD_RESET_SEND, UFCS_T_POWER_SUPPLY);
 		break;
 	case SNK_READY:
-		port->first_negotiation_done = true;
 		break;
 	case SNK_START_CABLE_DETECT:
 		ufcs_send_ctrl_message(port, UFCS_SRC, UFCS_CTRL_START_CABLE_DETECT);
@@ -1540,15 +1711,24 @@ static void run_state_machine(struct ufcs_port *port)
 		break;
 	case SNK_GET_SINK_INFO_RECV:
 		/* Directly send sink info */
-		ufcs_send_sink_info(port);
+		ret = ufcs_send_sink_info(port);
 
-		ufcs_set_state(port, SNK_READY, 0);
+		ufcs_set_state(port, ret ? SOFT_RESET_SEND : SNK_READY, 0);
 		break;
 	case SNK_GET_DEVICE_INFO_RECV:
 		/* Send device FW version */
-		ufcs_send_device_info(port);
+		ret = ufcs_send_device_info(port);
 
-		ufcs_set_state(port, SNK_READY, 0);
+		ufcs_set_state(port, ret ? SOFT_RESET_SEND : SNK_READY, 0);
+		break;
+	case SNK_GET_ERROR_INFO_RECV:
+		/* Send device error info */
+		ret = ufcs_send_error_info(port);
+
+		ufcs_set_state(port, ret ? SOFT_RESET_SEND : SNK_READY, 0);
+		break;
+	case SNK_TEST_REQUEST_RECV:
+		ufcs_set_state(port, port->test_state, 0);
 		break;
 	case SOFT_RESET:
 		/* Receive soft reset from port partner */
@@ -1562,6 +1742,7 @@ static void run_state_machine(struct ufcs_port *port)
 		port->message_id = 0;
 		port->rx_msgid = -1;
 		port->ignore_hard_reset = false;
+		port->test_state = INVALID_STATE;
 
 		if (port->dpm_request != UFCS_DPM_NONE)
 			ufcs_put_dpm_reaction_result(port, -EINVAL);
@@ -1570,10 +1751,8 @@ static void run_state_machine(struct ufcs_port *port)
 		break;
 	case SOFT_RESET_SEND:
 		ret = ufcs_send_ctrl_message(port, UFCS_SRC, UFCS_CTRL_SOFT_RESET);
-		if (ret)
-			ufcs_set_state(port, HARD_RESET_SEND, 0);
-		else
-			ufcs_set_state(port, SNK_SOFT_RESET, 0);
+
+		ufcs_set_state(port, ret ? HARD_RESET_SEND : SNK_SOFT_RESET, 0);
 		break;
 	case HARD_RESET:
 		ufcs_set_state(port, PORT_RESET, 0);
@@ -1591,6 +1770,8 @@ static void run_state_machine(struct ufcs_port *port)
 		switch (port->dpm_request) {
 		case UFCS_DPM_EXIT_UFCS_MODE:
 			ufcs_put_dpm_reaction_result(port, 0);
+			break;
+		case UFCS_DPM_NONE:
 			break;
 		default:
 			ufcs_put_dpm_reaction_result(port, -EINVAL);
@@ -1952,8 +2133,9 @@ static ssize_t ufcs_test_store(struct device *dev, struct device_attribute *attr
 		ufcs_log(port, "verify pass:%d", output.verify_request_pass);
 		break;
 	case UFCS_DPM_CABLE_INFO:
-		ufcs_log(port, "[cable info] %d mohm %d volt %d amp",
-			 output.milliohm, output.volt, output.amp);
+		ufcs_log(port, "[cable info] vid1 0x%04x vid2 0x%04x %d mOhm %d mV %d mA",
+			 output.cbl_vid1, output.cbl_vid2, output.cbl_mOhm, output.cbl_mVolt,
+			 output.cbl_mAmp);
 		break;
 	case UFCS_DPM_SRC_DEVICE_INFO:
 		ufcs_log(port, "[device info] hw_ver:0x%02x sw_ver:0x%02x",
