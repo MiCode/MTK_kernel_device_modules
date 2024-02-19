@@ -35,7 +35,7 @@
 #define MB_HOST_IRQ_STATUS_0_OFFSET		(0x0100)
 #define MB_HOST_IRQ_STATUS_1_OFFSET		(0x0110)
 
-#define MAILBOX_RETRY	1000000000
+#define MAILBOX_RETRY	10000000  /* 10s in us */
 
 static inline uint32_t mailbox_pack_request_header(const mailbox_request_t *request)
 {

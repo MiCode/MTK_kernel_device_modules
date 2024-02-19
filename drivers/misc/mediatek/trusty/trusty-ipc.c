@@ -12,6 +12,7 @@
 #include <linux/poll.h>
 #include <linux/idr.h>
 #include <linux/completion.h>
+#include <linux/dma-buf.h>
 #include <linux/sched.h>
 #include <linux/compat.h>
 #include <linux/uio.h>
@@ -22,13 +23,17 @@
 #include <linux/virtio_ids.h>
 #include <linux/virtio_config.h>
 
+#include <linux/trusty/smcall.h>
 #include <linux/trusty/trusty.h>
 #include <linux/trusty/trusty_ipc.h>
 #include <linux/trusty/trusty_shm.h>
 
+#include <uapi/linux/trusty/ipc.h>
+
 #define MAX_DEVICES			4
 
 #define REPLY_TIMEOUT			5000
+#define REPLY_RETRY_TIMEOUT		1000
 #define TXBUF_TIMEOUT			15000
 #define TIPC_TIMEOUT			100
 
@@ -50,6 +55,11 @@
 					     compat_uptr_t)
 #endif
 
+#define MAX_ELF_SZ			51200
+
+#define format_log(p, s, fmt, args...) \
+	(p += scnprintf(p, sizeof(s) - strlen(s), fmt, ##args))
+
 struct tipc_virtio_dev;
 
 struct tipc_dev_config {
@@ -64,7 +74,7 @@ struct tipc_msg_hdr {
 	u32 reserved;
 	u16 len;
 	u16 flags;
-	u8 data[];
+	u8 data[0];
 } __packed;
 
 enum tipc_ctrl_msg_types {
@@ -78,7 +88,7 @@ enum tipc_ctrl_msg_types {
 struct tipc_ctrl_msg {
 	u32 type;
 	u32 body_len;
-	u8  body[];
+	u8  body[0];
 } __packed;
 
 struct tipc_conn_req_body {
@@ -148,6 +158,10 @@ struct tipc_chan {
 	char srv_name[MAX_SRV_NAME_LEN];
 };
 
+struct apploader_load_app_req {
+	uint64_t package_size;
+} __packed;
+
 static struct class *tipc_class;
 static unsigned int tipc_major;
 
@@ -157,6 +171,10 @@ static DEFINE_IDR(tipc_devices);
 static DEFINE_MUTEX(tipc_devices_lock);
 
 static bool ise_disable;
+
+static phys_addr_t elf_paddr;
+static size_t elf_size;
+static void *shm_vaddr;
 
 static int _match_any(int id, void *p, void *data)
 {
@@ -702,9 +720,22 @@ struct tipc_dn_chan {
 static int dn_wait_for_reply(struct tipc_dn_chan *dn, int timeout)
 {
 	int ret;
+	int max_retry;
 
-	ret = wait_for_completion_interruptible_timeout(&dn->reply_comp,
-					msecs_to_jiffies(timeout));
+	if (timeout < 0)
+		return -EINVAL;
+
+	max_retry = timeout / REPLY_RETRY_TIMEOUT;
+	while (max_retry > 0) {
+		/* -ERESTARTSYS if interrupted, 0 if timedout, positive if completed */
+		ret = wait_for_completion_interruptible_timeout(&dn->reply_comp,
+					msecs_to_jiffies(REPLY_RETRY_TIMEOUT));
+		if (ret != 0)
+			break;
+		ise_check_vqs_call();
+		max_retry--;
+	}
+
 	if (ret < 0)
 		return ret;
 
@@ -938,6 +969,159 @@ static int dn_connect_ioctl(struct tipc_dn_chan *dn, char __user *usr_name)
 	return dn_wait_for_reply(dn, REPLY_TIMEOUT);
 }
 
+static int trusty_elf_init(struct device *dev)
+{
+	return ise_fast_call32(dev->parent, SMC_FC_ELF_PA_INFO,
+			(u32)elf_paddr,
+			(u32)(elf_paddr >> 32),
+			(u32)elf_size);
+}
+
+static ssize_t txbuf_write_iter(struct tipc_msg_buf *txbuf,
+				struct iov_iter *iter)
+{
+	size_t len;
+	/* message length */
+	len = iov_iter_count(iter);
+
+	/* check available space */
+	if (len > mb_avail_space(txbuf))
+		return -EMSGSIZE;
+
+	/* copy in message data */
+	if (copy_from_iter(mb_put_data(txbuf, len), len, iter) != len)
+		return -EFAULT;
+
+	return len;
+}
+
+static long filp_send_ioctl(struct file *filp,
+			const struct tipc_send_msg_req __user *arg)
+{
+	struct tipc_send_msg_req req;
+	struct iovec fast_iovs[UIO_FASTIOV];
+	struct iovec *iov = fast_iovs;
+	struct iov_iter iter;
+	struct trusty_shdm *shm = NULL;
+	struct tipc_dn_chan *dn = filp->private_data;
+	struct tipc_virtio_dev *vds = dn->chan->vds;
+	struct device *dev = &vds->vdev->dev;
+	struct tipc_msg_buf *txbuf = NULL;
+	struct dma_buf *dmabuf = NULL;
+	struct iosys_map map;
+	phys_addr_t shm_paddr;
+	// void *shm_vaddr = NULL;
+	__u64 *va;
+	ssize_t data_len = 0;
+	long timeout = TXBUF_TIMEOUT;
+	long ret = 0;
+
+	if (copy_from_user(&req, arg, sizeof(req)))
+		return -EFAULT;
+
+	if (req.shm_cnt > U16_MAX)
+		return -E2BIG;
+
+	dev_dbg(dev, "%s: req.shm_cnt 0x%llx\n", __func__, req.shm_cnt);
+
+	shm = kmalloc_array(req.shm_cnt, sizeof(*shm), GFP_KERNEL);
+	if (!shm)
+		return -ENOMEM;
+
+	if (copy_from_user(shm, u64_to_user_ptr(req.shm),
+			   req.shm_cnt * sizeof(struct trusty_shdm))) {
+		ret = -EFAULT;
+		goto load_shm_args_failed;
+	}
+	dev_dbg(dev, "%s: shm->size 0x%llx\n", __func__, shm->size);
+
+	dmabuf = dma_buf_get(shm->fd);
+	if (IS_ERR_OR_NULL(dmabuf)) {
+		dev_err(dev, "%s: dma_buf_get failed: %ld\n", __func__, PTR_ERR(dmabuf));
+		ret = -EFAULT;
+		goto dma_buf_get_failed;
+	}
+
+	memset(&map, 0, sizeof(struct iosys_map));
+	if (dma_buf_vmap(dmabuf, &map)) {
+		dev_err(dev, "%s: dma_buf_vmap failed\n", __func__);
+		ret = -ENOMEM;
+		goto dma_buf_vmap_failed;
+	}
+	va = (__u64 *)map.vaddr;
+	dev_dbg(dev, "%s: *va 0x%llx\n", __func__, *va);
+
+	// shm_vaddr = trusty_shm_alloc((size_t)shm->size, GFP_KERNEL | __GFP_ZERO);
+	if (shm_vaddr == NULL) {
+		shm_vaddr = trusty_shm_alloc(MAX_ELF_SZ, GFP_KERNEL | __GFP_ZERO);
+		if (!shm_vaddr) {
+			ret = -ENOMEM;
+			goto trusty_shm_alloc_failed;
+		}
+	}
+	memset(shm_vaddr, 0, MAX_ELF_SZ);
+	memcpy(shm_vaddr, map.vaddr, (size_t)shm->size);
+	shm_paddr = trusty_shm_virt_to_phys(shm_vaddr);
+	dev_dbg(dev, "%s: shm_paddr 0x%llx\n", __func__, shm_paddr);
+	elf_paddr = shm_paddr;
+	elf_size = shm->size;
+
+	ret = trusty_elf_init(dev);
+	if (ret < 0)
+		goto trusty_elf_init_failed;
+
+	ret = import_iovec(READ, u64_to_user_ptr(req.iov), req.iov_cnt,
+			   ARRAY_SIZE(fast_iovs), &iov, &iter);
+	if (ret < 0) {
+		dev_err(dev, "Failed to import iovec\n");
+		goto iov_import_failed;
+	}
+
+	if (filp->f_flags & O_NONBLOCK)
+		timeout = 0;
+
+	txbuf = ise_chan_get_txbuf_timeout(dn->chan, timeout);
+	if (IS_ERR(txbuf)) {
+		dev_err(dev, "Failed to get txbuffer\n");
+		ret = PTR_ERR(txbuf);
+		goto get_txbuf_failed;
+	}
+
+	data_len = txbuf_write_iter(txbuf, &iter);
+	if (data_len < 0) {
+		ret = data_len;
+		goto txbuf_write_failed;
+	}
+
+	ret = ise_chan_queue_msg(dn->chan, txbuf);
+	if (ret)
+		goto queue_failed;
+
+	ret = data_len;
+	dev_dbg(dev, "%s: ret 0x%lx\n", __func__, ret);
+
+common_cleanup:
+	kfree(iov);
+iov_import_failed:
+trusty_elf_init_failed:
+	// trusty_shm_free(shm_vaddr, (size_t)shm->size);
+trusty_shm_alloc_failed:
+	dma_buf_vunmap(dmabuf, &map);
+dma_buf_vmap_failed:
+	if (!IS_ERR_OR_NULL(dmabuf))
+		dma_buf_put(dmabuf);
+dma_buf_get_failed:
+load_shm_args_failed:
+	kfree(shm);
+	return ret;
+
+queue_failed:
+txbuf_write_failed:
+	ise_chan_put_txbuf(dn->chan, txbuf);
+get_txbuf_failed:
+	goto common_cleanup;
+}
+
 static long tipc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	int ret;
@@ -955,6 +1139,8 @@ static long tipc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case TIPC_IOC_CONNECT:
 		ret = dn_connect_ioctl(dn, (char __user *)arg);
 		break;
+	case TIPC_IOC_SEND_MSG:
+		return filp_send_ioctl(filp, (const struct tipc_send_msg_req __user *)arg);
 	default:
 		pr_warn("%s: Unhandled ioctl cmd: 0x%x\n",
 			__func__, cmd);
@@ -1715,6 +1901,8 @@ static ssize_t ise_write(struct file *file, const char __user *buffer,
 			ise_disable = true;
 		else
 			ise_disable = false;
+
+		pr_info("%s: exit, ise_disable %d\n", __func__, ise_disable);
 		return count;
 	} else {
 		return -EINVAL;
@@ -1723,8 +1911,23 @@ static ssize_t ise_write(struct file *file, const char __user *buffer,
 	return count;
 }
 
+static ssize_t ise_read(struct file *file, char __user *buffer,
+	size_t count, loff_t *ppos)
+{
+	char msg_buf[1024] = {0};
+	char *p = msg_buf;
+	int len;
+
+	format_log(p, msg_buf, "%d", !ise_disable);
+	len = p - msg_buf;
+	pr_info("%s: ise_disable %d\n", __func__, ise_disable);
+
+	return simple_read_from_buffer(buffer, count, ppos, msg_buf, len);
+}
+
 static const struct proc_ops ise_fops = {
 	.proc_write = ise_write,
+	.proc_read = ise_read,
 };
 
 static int __init tipc_init(void)
@@ -1782,4 +1985,5 @@ module_exit(tipc_exit);
 
 MODULE_DEVICE_TABLE(tipc, tipc_virtio_id_table);
 MODULE_DESCRIPTION("Trusty IPC driver");
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL v2");

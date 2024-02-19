@@ -43,6 +43,7 @@ struct notifier_block;
 enum {
 	TRUSTY_CALL_PREPARE,
 	TRUSTY_CALL_RETURNED,
+	TRUSTY_CALL_CHECK_VQS,
 };
 int ise_call_notifier_register(struct device *dev,
 				  struct notifier_block *n);
@@ -84,6 +85,7 @@ void ise_dequeue_nop(struct device *dev, struct trusty_nop *nop);
 
 void trusty_notifier_call(void);
 void ise_notifier_call(void);
+void ise_check_vqs_call(void);
 
 u32 is_trusty_real_driver(void);
 
