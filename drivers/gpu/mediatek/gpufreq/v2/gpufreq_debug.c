@@ -191,6 +191,12 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		ptp3_status.delsel_mode == HW_DELSEL ? "HW" : "SW",
 		ptp3_status.hbvc_preoc_mode ? "On" : "Off");
 	seq_printf(m,
+		"%-16s SES_TOP: %s, SES_ST: %s, SES_Scheduler: %s\n",
+		"[PTP3 Config]",
+		ptp3_status.ses_top_mode ? "On" : "Off",
+		ptp3_status.ses_stack_mode ? "On" : "Off",
+		ptp3_status.ses_scheduler_mode ? "On" : "Off");
+	seq_printf(m,
 		"%-16s FLL: %s, ATMC: %s, Vmeter: %s, Tmeter: %s, CPmeter: %s, CTT: %s\n",
 		"[PTP3 Config]",
 		ptp3_status.brisket_fll_mode ? "On" : "Off",

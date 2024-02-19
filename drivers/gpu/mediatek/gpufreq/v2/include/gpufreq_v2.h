@@ -81,17 +81,18 @@ enum gpufreq_posdiv {
 };
 
 enum gpufreq_dvfs_state {
-	DVFS_FREE          = 0,      /* 0000 0000 0000 */
-	DVFS_DISABLE       = BIT(0), /* 0000 0000 0001 */
-	DVFS_POWEROFF      = BIT(1), /* 0000 0000 0010 */
-	DVFS_FIX_OPP       = BIT(2), /* 0000 0000 0100 */
-	DVFS_FIX_FREQ_VOLT = BIT(3), /* 0000 0000 1000 */
-	DVFS_AGING_KEEP    = BIT(4), /* 0000 0001 0000 */
-	DVFS_SLEEP         = BIT(5), /* 0000 0010 0000 */
-	DVFS_MSSV_TEST     = BIT(6), /* 0000 0100 0000 */
-	DVFS_VMETER_CALI   = BIT(7), /* 0000 1000 0000 */
-	DVFS_PRE_SLEEP     = BIT(8), /* 0001 0000 0000 */
-	DVFS_PTP3_DEBUG    = BIT(9), /* 0010 0000 0000 */
+	DVFS_FREE          = 0,       /* 0000 0000 0000 */
+	DVFS_DISABLE       = BIT(0),  /* 0000 0000 0001 */
+	DVFS_POWEROFF      = BIT(1),  /* 0000 0000 0010 */
+	DVFS_FIX_OPP       = BIT(2),  /* 0000 0000 0100 */
+	DVFS_FIX_FREQ_VOLT = BIT(3),  /* 0000 0000 1000 */
+	DVFS_AGING_KEEP    = BIT(4),  /* 0000 0001 0000 */
+	DVFS_SLEEP         = BIT(5),  /* 0000 0010 0000 */
+	DVFS_MSSV_TEST     = BIT(6),  /* 0000 0100 0000 */
+	DVFS_VMETER_CALI   = BIT(7),  /* 0000 1000 0000 */
+	DVFS_PRE_SLEEP     = BIT(8),  /* 0001 0000 0000 */
+	DVFS_PTP3_DEBUG    = BIT(9),  /* 0010 0000 0000 */
+	DVFS_SES_CALI      = BIT(10), /* 0100 0000 0000 */
 };
 
 enum gpufreq_target {
@@ -326,6 +327,12 @@ struct gpufreq_ptp3_shared_status {
 	unsigned int brisket_safe_margin;
 	unsigned int auto_dma_refill_top_brisket;
 	unsigned int auto_dma_refill_top_gpm;
+	unsigned int ses_top_support;
+	unsigned int ses_top_mode;
+	unsigned int ses_stack_support;
+	unsigned int ses_stack_mode;
+	unsigned int ses_scheduler_support;
+	unsigned int ses_scheduler_mode;
 };
 
 struct gpu_ptp3_info {
