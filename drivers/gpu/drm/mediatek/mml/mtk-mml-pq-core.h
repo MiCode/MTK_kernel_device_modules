@@ -435,11 +435,12 @@ void mml_pq_aal_flag_check(bool dual, u8 out_idx);
  *
  * Return:	if value < 0, means PQ update failed should debug
  */
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 int mml_pq_ir_aal_readback(struct mml_pq_task *pq_task,
 			 struct mml_pq_frame_data frame_data,
 			 u8 pipe, u32 *phist, u32 mml_jobid,
 			 bool dual);
-
+#endif
 
 /*
  * mml_pq_dc_aal_readback - noify from MML core through MML PQ driver
@@ -495,10 +496,12 @@ bool mml_pq_hdr_hist_reading(struct mml_pq_task *pq_task, u8 out_idx, u8 pipe);
  *
  * Return:	if value < 0, means PQ update failed should debug
  */
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 int mml_pq_ir_hdr_readback(struct mml_pq_task *pq_task,
 			 struct mml_pq_frame_data frame_data,
 			 u8 pipe, u32 *phist, u32 mml_jobid,
 			 bool dual);
+#endif
 
 /*
  * mml_pq_hdr_readback - noify from MML core through MML PQ driver
@@ -525,8 +528,10 @@ int mml_pq_dc_hdr_readback(struct mml_task *task, u8 pipe, u32 *phist);
  * Return:	if value < 0, means PQ update failed should debug
  */
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 int mml_pq_ir_wrot_callback(struct mml_pq_task *pq_task, struct mml_pq_frame_data frame_data,
 			u32 mml_jobid, bool dual);
+#endif
 
 /*
  * mml_pq_wrot_callback - noify from MML core through MML PQ driver
@@ -595,11 +600,12 @@ int mml_pq_dc_readback(struct mml_task *task, u8 pipe, u32 *phist);
  *
  * Return:	if value < 0, means PQ update failed should debug
  */
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 int mml_pq_ir_dc_readback(struct mml_pq_task *pq_task,
 			 struct mml_pq_frame_data frame_data,
 			 u8 pipe, u32 *phist, u32 mml_jobid,
 			 u32 arr_idx, bool dual);
-
+#endif
 
 /*
  * mml_pq_clarity_readback - noify from MML core through MML PQ driver
@@ -630,10 +636,11 @@ int mml_pq_clarity_readback(struct mml_task *task, u8 pipe, u32 *phist, u32 arr_
  *
  * Return:	if value < 0, means PQ update failed should debug
  */
-
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 int mml_pq_ir_clarity_readback(struct mml_pq_task *pq_task, struct mml_pq_frame_data frame_data,
 			u8 pipe, u32 *phist, u32 mml_jobid, u32 size, u32 arr_idx,
 			bool dual);
+#endif
 /*
  * mml_pq_reset_hist_status - reset pq histogram use status
  *

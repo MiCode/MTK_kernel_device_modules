@@ -26,7 +26,7 @@ void backward_6_taps(s32 out_start,
 	if (start <= (s64)3 * precision) {
 		*in_start = 0;
 	} else {
-		start = start / precision - 3;
+		start = div_s64(start, precision) - 3;
 		if (!(start & 0x1) || in_align == 1)
 			*in_start = (s32)start;
 		else /* must be even */
@@ -38,7 +38,7 @@ void backward_6_taps(s32 out_start,
 	if (end > (s64)in_max * precision) {
 		*in_end = in_max;
 	} else {
-		end = end / precision;
+		end = div_s64(end, precision);
 		if (end & 0x1 || in_align == 1)
 			*in_end = (s32)end;
 		else /* must be odd */
@@ -75,7 +75,7 @@ void forward_6_taps(s32 in_start,
 	} else {
 		s64 end = (s64)(in_end - 2 - 2) * precision -
 			(s64)crop * precision - crop_frac;
-		s32 tmp = (s32)(end / coeff);
+		s32 tmp = (s32)div_s64(end, coeff);
 
 		if ((s64)tmp * coeff == end) /* ceiling in forward */
 			tmp = tmp - 1;
@@ -92,7 +92,7 @@ void forward_6_taps(s32 in_start,
 	offset = (s64)*out_start * coeff + (s64)crop * precision + crop_frac -
 		(s64)in_start * precision;
 
-	*luma = (s32)(offset / precision);
+	*luma = (s32)div_s64(offset, precision);
 	*luma_frac = (s32)(offset - *luma * precision);
 
 	if (*luma_frac < 0) {
@@ -139,7 +139,7 @@ void backward_src_acc(s32 out_start,
 	if (start <= 0) {
 		*in_start = 0;
 	} else {
-		tmp = start / (2 * coeff);
+		tmp = div_s64(start, (2 * coeff));
 		if (!(tmp & 0x1) || in_align == 1)
 			*in_start = (s32)tmp;
 		else /* must be even */
@@ -151,7 +151,7 @@ void backward_src_acc(s32 out_start,
 	if (end >= (s64)in_max * 2 * coeff) {
 		*in_end = in_max;
 	} else {
-		tmp = end / (2 * coeff);
+		tmp = div_s64(end, (2 * coeff));
 		if (tmp * 2 * coeff == end) /* ceiling in backward */
 			tmp = tmp - 1;
 
@@ -196,7 +196,7 @@ void forward_src_acc(s32 in_start,
 	} else {
 		s64 end = (s64)in_end * coeff + ((u32)coeff >> 1) -
 			(s64)crop * coeff - crop_frac;
-		s32 tmp = (s32)((end * 2 - precision) / (2 * precision));
+		s32 tmp = (s32)div_s64((end * 2 - precision), (2 * precision));
 
 		if (tmp & 0x1 || out_align == 1)
 			*out_end = tmp;
@@ -210,7 +210,7 @@ void forward_src_acc(s32 in_start,
 	offset = (s64)*out_start * precision + (s64)crop * coeff + crop_frac -
 		(s64)in_start * coeff;
 
-	*luma = (s32)(offset / precision);
+	*luma = (s32)div_s64(offset, precision);
 	*luma_frac = (s32)(offset - *luma * precision);
 	*chroma = *luma;
 	*chroma_frac = *luma_frac;
@@ -251,7 +251,7 @@ void backward_cub_acc(s32 out_start,
 	if (start <= 0) {
 		*in_start = 0;
 	} else {
-		tmp = start / coeff;
+		tmp = div_s64(start, coeff);
 		if (!(tmp & 0x1) || in_align == 1)
 			*in_start = (s32)tmp;
 		else /* must be even */
@@ -263,7 +263,7 @@ void backward_cub_acc(s32 out_start,
 	if (end >= (s64)in_max * coeff) {
 		*in_end = in_max;
 	} else {
-		tmp = end / coeff;
+		tmp = div_s64(end, coeff);
 		if (tmp * coeff == end) /* ceiling in backward */
 			tmp = tmp - 1;
 
@@ -308,7 +308,7 @@ void forward_cub_acc(s32 in_start,
 	} else {
 		s64 end = (s64)in_end * coeff -
 			(s64)crop * coeff - crop_frac;
-		s32 tmp = (s32)(end / precision - 2);
+		s32 tmp = (s32)(div_s64(end, precision) - 2);
 
 		if (tmp & 0x1 || out_align == 1)
 			*out_end = tmp;
@@ -322,7 +322,7 @@ void forward_cub_acc(s32 in_start,
 	offset = (s64)*out_start * precision + (s64)crop * coeff + crop_frac -
 		(s64)in_start * coeff;
 
-	*luma = (s32)(offset / precision);
+	*luma = (s32)div_s64(offset, precision);
 	*luma_frac = (s32)(offset - *luma * precision);
 	*chroma = *luma;
 	*chroma_frac = *luma_frac;

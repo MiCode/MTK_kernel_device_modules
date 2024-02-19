@@ -737,7 +737,7 @@ static void tdshp_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 	/* readback to this pa */
 	mml_assign(pkt, idx_out, (u32)pa,
 		reuse, cache, &tdshp_frm->labels[TDSHP_POLLGPR_0]);
-	mml_assign(pkt, idx_out + 1, (u32)(pa >> 32),
+	mml_assign(pkt, idx_out + 1, (u32)DO_SHIFT_RIGHT(pa, 32),
 		reuse, cache, &tdshp_frm->labels[TDSHP_POLLGPR_1]);
 
 	/* read contour histogram status */
@@ -877,7 +877,7 @@ static s32 tdshp_config_repost(struct mml_comp *comp, struct mml_task *task,
 		mml_update(reuse, tdshp_frm->labels[TDSHP_POLLGPR_0],
 			(u32)task->pq_task->tdshp_hist[pipe]->pa);
 		mml_update(reuse, tdshp_frm->labels[TDSHP_POLLGPR_1],
-			(u32)(task->pq_task->tdshp_hist[pipe]->pa >> 32));
+			(u32)DO_SHIFT_RIGHT(task->pq_task->tdshp_hist[pipe]->pa, 32));
 	}
 
 put_comp_config:
@@ -917,10 +917,10 @@ static void tdshp_task_done_readback(struct mml_comp *comp, struct mml_task *tas
 		!dest->pq_config.en_dc) || !task->pq_task->tdshp_hist[pipe])
 		goto exit;
 
-	mml_pq_rb_msg("%s job_id[%d] id[%d] pipe[%d] en_dc[%d] va[%p] pa[%llx] offset[%d]",
+	mml_pq_rb_msg("%s job_id[%d] id[%d] pipe[%d] en_dc[%d] va[%p] pa[%pad] offset[%d]",
 		__func__, task->job.jobid, comp->id, ccfg->pipe,
 		dest->pq_config.en_dc, task->pq_task->tdshp_hist[pipe]->va,
-		task->pq_task->tdshp_hist[pipe]->pa,
+		&task->pq_task->tdshp_hist[pipe]->pa,
 		task->pq_task->tdshp_hist[pipe]->va_offset);
 
 
@@ -1191,6 +1191,7 @@ static void tdshp_histdone_cb(struct cmdq_cb_data data)
 		tdshp->tdshp_hist[pipe]->va[28],
 		tdshp->tdshp_hist[pipe]->va[29]);
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 	if (tdshp->dc_readback)
 		mml_pq_ir_dc_readback(tdshp->pq_task, tdshp->frame_data,
 			tdshp->pipe, &(tdshp->tdshp_hist[pipe]->va[0]),
@@ -1201,6 +1202,7 @@ static void tdshp_histdone_cb(struct cmdq_cb_data data)
 			tdshp->pipe, &(tdshp->tdshp_hist[pipe]->va[TDSHP_CONTOUR_HIST_NUM]),
 			tdshp->jobid, TDSHP_CLARITY_STATUS_NUM, TDSHP_CLARITY_HIST_START,
 			tdshp->dual);
+#endif
 
 	if (tdshp->data->rb_mode == RB_EOF_MODE) {
 		mml_clock_lock(tdshp->mml);
@@ -1296,7 +1298,7 @@ static void tdshp_hist_work(struct work_struct *work_item)
 
 	/* readback to this pa */
 	cmdq_pkt_assign_command(pkt, idx_out, (u32)pa);
-	cmdq_pkt_assign_command(pkt, idx_out + 1, (u32)(pa >> 32));
+	cmdq_pkt_assign_command(pkt, idx_out + 1, (u32)DO_SHIFT_RIGHT(pa, 32));
 
 	/* read contour histogram status */
 	for (i = 0; i < TDSHP_CONTOUR_HIST_NUM; i++) {
@@ -1326,15 +1328,15 @@ static void tdshp_hist_work(struct work_struct *work_item)
 		}
 	}
 
-	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%llx] pkt[%p]",
+	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%pad] pkt[%p]",
 		__func__, tdshp->jobid, comp->id, tdshp->tdshp_hist[pipe]->va,
-		tdshp->tdshp_hist[pipe]->pa, pkt);
+		&tdshp->tdshp_hist[pipe]->pa, pkt);
 
 	tdshp->hist_cmd_done = true;
 
-	mml_pq_rb_msg("%s end engine_id[%d] va[%p] pa[%llx] pkt[%p]",
+	mml_pq_rb_msg("%s end engine_id[%d] va[%p] pa[%pad] pkt[%p]",
 		__func__, comp->id, tdshp->tdshp_hist[pipe]->va,
-		tdshp->tdshp_hist[pipe]->pa, pkt);
+		&tdshp->tdshp_hist[pipe]->pa, pkt);
 
 	pkt->user_data = tdshp;
 	pkt->err_cb.cb = tdshp_err_dump_cb;

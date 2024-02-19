@@ -20,7 +20,11 @@
 #include "mtk-mml-mmp.h"
 #include "mtk-mml-dpc.h"
 
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 #define MML_TRACE_MSG_LEN 1024
+#else
+#define MML_TRACE_MSG_LEN 896
+#endif
 #define CREATE_TRACE_POINTS
 #include "mtk-mml-trace.h"
 
@@ -1440,7 +1444,7 @@ static void core_taskdone(struct work_struct *work)
 		if (perf) {
 			hw_time = perf[1] > perf[0] ?
 				perf[1] - perf[0] : ~perf[0] + 1 + perf[1];
-			CMDQ_TICK_TO_US(hw_time);
+			CMDQ_TICK_TO_US((unsigned long long)hw_time);
 		}
 	}
 	mml_mmp(exec, MMPROFILE_FLAG_END, task->job.jobid, hw_time);

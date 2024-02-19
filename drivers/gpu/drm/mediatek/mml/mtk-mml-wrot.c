@@ -2699,11 +2699,13 @@ static bool wrot_reg_read(struct mml_comp *comp, u32 addr, u32 value, u32 mask)
 
 static void wrot_callback_work(struct work_struct *work_item)
 {
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 	struct mml_comp_wrot *wrot = NULL;
 
 	wrot = container_of(work_item, struct mml_comp_wrot, wrot_ai_callback_task);
 	mml_pq_ir_wrot_callback(wrot->pq_task, wrot->frame_data,
 		wrot->jobid, wrot->dual);
+#endif
 }
 
 static irqreturn_t mml_wrot_irq_handler(int irq, void *dev_id)
@@ -2932,8 +2934,8 @@ static s32 dbg_get(char *buf, const struct kernel_param *kp)
 				comp->id, comp->sub_idx, &comp->base_pa,
 				comp->name ? comp->name : "(null)", comp->bound);
 			length += snprintf(buf + length, PAGE_SIZE - length,
-				"  -         larb_port: %d @%llx pw: %d clk: %d\n",
-				comp->larb_port, comp->larb_base,
+				"  -         larb_port: %d @%pa pw: %d clk: %d\n",
+				comp->larb_port, &comp->larb_base,
 				comp->pw_cnt, comp->clk_cnt);
 			length += snprintf(buf + length, PAGE_SIZE - length,
 				"  -     ddp comp_id: %d bound: %d\n",

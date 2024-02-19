@@ -465,8 +465,8 @@ void mml_pq_get_vcp_buf_offset(struct mml_task *task, u32 engine,
 	}
 	mutex_unlock(&rb_buf_pool_mutex);
 
-	mml_pq_rb_msg("%s all end job_id[%d] engine[%d] hist_va[%p] hist_pa[%llx]",
-		__func__, task->job.jobid, engine, hist->va, hist->pa);
+	mml_pq_rb_msg("%s all end job_id[%d] engine[%d] hist_va[%p] hist_pa[%pad]",
+		__func__, task->job.jobid, engine, hist->va, &hist->pa);
 }
 
 void mml_pq_put_vcp_buf_offset(struct mml_task *task, u32 engine,
@@ -527,8 +527,8 @@ void mml_pq_get_readback_buffer(struct mml_task *task, u8 pipe,
 		temp_buffer->va = (u32 *)cmdq_mbox_buf_alloc(clt, &temp_buffer->pa);
 		mutex_unlock(&task->pq_task->buffer_mutex);
 	}
-	mml_pq_rb_msg("%s job_id[%d] va[%p] pa[%llx] buffer_num[%d]", __func__,
-		task->job.jobid, temp_buffer->va, temp_buffer->pa, buffer_num);
+	mml_pq_rb_msg("%s job_id[%d] va[%p] pa[%pad] buffer_num[%d]", __func__,
+		task->job.jobid, temp_buffer->va, &temp_buffer->pa, buffer_num);
 }
 
 void mml_pq_put_readback_buffer(struct mml_task *task, u8 pipe,
@@ -539,8 +539,8 @@ void mml_pq_put_readback_buffer(struct mml_task *task, u8 pipe,
 		return;
 	}
 
-	mml_pq_rb_msg("%s all end job_id[%d] hist_va[%p] hist_pa[%llx]",
-		__func__, task->job.jobid, (*hist)->va, (*hist)->pa);
+	mml_pq_rb_msg("%s all end job_id[%d] hist_va[%p] hist_pa[%pad]",
+		__func__, task->job.jobid, (*hist)->va, &(*hist)->pa);
 	mutex_lock(&rb_buf_list_mutex);
 	list_add_tail(&((*hist)->buffer_list), &rb_buf_list);
 	mutex_unlock(&rb_buf_list_mutex);
@@ -571,8 +571,8 @@ void get_dma_buffer(struct mml_task *task, u8 pipe,
 	if (temp_buffer) {
 		*buf = temp_buffer;
 		list_del(&temp_buffer->buffer_list);
-		mml_pq_msg("%s get buffer from list jobid[%d] va[%p] pa[%llx]",
-			__func__, task->job.jobid, temp_buffer->va, temp_buffer->pa);
+		mml_pq_msg("%s get buffer from list jobid[%d] va[%p] pa[%pad]",
+			__func__, task->job.jobid, temp_buffer->va, &temp_buffer->pa);
 	} else {
 		temp_buffer = kzalloc(sizeof(struct mml_pq_dma_buffer), GFP_KERNEL);
 
@@ -603,8 +603,8 @@ void get_dma_buffer(struct mml_task *task, u8 pipe,
 		}
 	}
 
-	mml_pq_msg("%s job_id[%d] va[%p] pa[%llx] dma_buf_num[%d] size[%u]",
-		__func__, task->job.jobid, temp_buffer->va, temp_buffer->pa,
+	mml_pq_msg("%s job_id[%d] va[%p] pa[%pad] dma_buf_num[%d] size[%u]",
+		__func__, task->job.jobid, temp_buffer->va, &temp_buffer->pa,
 		dma_buf_num, size);
 }
 
@@ -618,8 +618,8 @@ void put_dma_buffer(struct mml_task *task, u8 pipe,
 		return;
 	}
 
-	mml_pq_msg("%s end job_id[%d] buf_va[%p] buf_pa[%llx] size[%u]",
-		__func__, task->job.jobid, (*buf)->va, (*buf)->pa, size);
+	mml_pq_msg("%s end job_id[%d] buf_va[%p] buf_pa[%pad] size[%u]",
+		__func__, task->job.jobid, (*buf)->va, &(*buf)->pa, size);
 
 	if (size == FG_BUF_SCALING_SIZE)
 		list_lock = &fg_buf_scaling_mutex;
@@ -917,6 +917,7 @@ static int set_sub_task(struct mml_task *task,
 	return 0;
 }
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 static int set_readback_sub_task(struct mml_pq_task *pq_task,
 			struct mml_pq_sub_task *sub_task,
 			struct mml_pq_chan *chan,
@@ -994,7 +995,7 @@ static int set_readback_sub_task(struct mml_pq_task *pq_task,
 		sub_task->first_job);
 	return 0;
 }
-
+#endif
 
 static int get_sub_task_result(struct mml_pq_task *pq_task,
 			       struct mml_pq_sub_task *sub_task, u32 timeout_ms,
@@ -1274,6 +1275,7 @@ void mml_pq_aal_flag_check(bool dual, u8 out_idx)
 	mutex_unlock(&dev_data[out_idx]->aal_hist_mutex);
 }
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 int mml_pq_ir_aal_readback(struct mml_pq_task *pq_task, struct mml_pq_frame_data frame_data,
 			u8 pipe, u32 *phist, u32 mml_jobid,
 			bool dual)
@@ -1310,6 +1312,7 @@ int mml_pq_ir_aal_readback(struct mml_pq_task *pq_task, struct mml_pq_frame_data
 
 	return ret;
 }
+#endif
 
 int mml_pq_dc_aal_readback(struct mml_task *task, u8 pipe, u32 *phist)
 {
@@ -1414,6 +1417,7 @@ void mml_pq_hdr_flag_check(bool dual, u8 out_idx)
 	mutex_unlock(&dev_data[out_idx]->hdr_hist_mutex);
 }
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 int mml_pq_ir_hdr_readback(struct mml_pq_task *pq_task, struct mml_pq_frame_data frame_data,
 			u8 pipe, u32 *phist, u32 mml_jobid,
 			bool dual)
@@ -1440,6 +1444,7 @@ int mml_pq_ir_hdr_readback(struct mml_pq_task *pq_task, struct mml_pq_frame_data
 	mml_pq_trace_ex_end();
 	return ret;
 }
+#endif
 
 int mml_pq_dc_hdr_readback(struct mml_task *task, u8 pipe, u32 *phist)
 {
@@ -1559,6 +1564,7 @@ int mml_pq_clarity_readback(struct mml_task *task, u8 pipe, u32 *phist, u32 arr_
 	return ret;
 }
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 int mml_pq_ir_clarity_readback(struct mml_pq_task *pq_task, struct mml_pq_frame_data frame_data,
 			u8 pipe, u32 *phist, u32 mml_jobid, u32 size, u32 arr_idx,
 			bool dual)
@@ -1577,7 +1583,7 @@ int mml_pq_ir_clarity_readback(struct mml_pq_task *pq_task, struct mml_pq_frame_
 	mml_pq_msg("%s end pipe[%d]", __func__, pipe);
 	return ret;
 }
-
+#endif
 
 int mml_pq_dc_readback(struct mml_task *task, u8 pipe, u32 *phist)
 {
@@ -1600,6 +1606,7 @@ int mml_pq_dc_readback(struct mml_task *task, u8 pipe, u32 *phist)
 	return ret;
 }
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 int mml_pq_ir_dc_readback(struct mml_pq_task *pq_task, struct mml_pq_frame_data frame_data,
 			u8 pipe, u32 *phist, u32 mml_jobid, u32 arr_idx,
 			bool dual)
@@ -1624,7 +1631,9 @@ int mml_pq_ir_dc_readback(struct mml_pq_task *pq_task, struct mml_pq_frame_data 
 	mml_pq_trace_ex_end();
 	return ret;
 }
+#endif
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 int mml_pq_ir_wrot_callback(struct mml_pq_task *pq_task, struct mml_pq_frame_data frame_data,
 			    u32 mml_jobid, bool dual)
 {
@@ -1643,6 +1652,7 @@ int mml_pq_ir_wrot_callback(struct mml_pq_task *pq_task, struct mml_pq_frame_dat
 		frame_data, dual, mml_jobid, true);
 	return ret;
 }
+#endif
 
 int mml_pq_wrot_callback(struct mml_task *task)
 {
@@ -2927,7 +2937,7 @@ static long mml_pq_ioctl(struct file *file, unsigned int cmd,
 {
 	mml_pq_msg("%s called %#x", __func__, cmd);
 	mml_pq_msg("%s tile_init=%#lx comp_config=%#lx",
-		__func__, MML_PQ_IOC_TILE_INIT, MML_PQ_IOC_COMP_CONFIG);
+		__func__, (unsigned long)MML_PQ_IOC_TILE_INIT, (unsigned long)MML_PQ_IOC_COMP_CONFIG);
 	switch (cmd) {
 	case MML_PQ_IOC_TILE_INIT:
 		return mml_pq_tile_init_ioctl(arg);
@@ -2956,7 +2966,7 @@ static long mml_pq_compat_ioctl(struct file *file, unsigned int cmd,
 {
 	mml_pq_msg("%s called %#x", __func__, cmd);
 	mml_pq_msg("%s tile_init=%#lx comp_config=%#lx",
-		__func__, MML_PQ_IOC_TILE_INIT, MML_PQ_IOC_COMP_CONFIG);
+		__func__, (unsigned long)MML_PQ_IOC_TILE_INIT, (unsigned long)MML_PQ_IOC_COMP_CONFIG);
 	return -EFAULT;
 }
 

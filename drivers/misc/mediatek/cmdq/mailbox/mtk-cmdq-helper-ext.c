@@ -53,7 +53,11 @@ struct cmdq_sec_helper_fp *cmdq_sec_helper;
 #define CMDQ_EOC_IRQ_DIS	(0)
 #define CMDQ_EOC_CMD		((u64)((CMDQ_CODE_EOC << CMDQ_OP_CODE_SHIFT)) \
 				<<32)
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 #define CMDQ_EOC_MASK		GENMASK(63, 1)
+#else
+#define CMDQ_EOC_MASK		GENMASK(31, 1)
+#endif
 #define CMDQ_MBOX_BUF_LIMIT	16 /* default limit count */
 #define CMDQ_HW_MAX			2
 
@@ -755,7 +759,7 @@ void *cmdq_mbox_buf_alloc(struct cmdq_client *cl, dma_addr_t *pa_out)
 		thread = (struct cmdq_thread *)cl->chan->con_priv;
 		tf_high_addr = cmdq_get_tf_high_addr(cl->chan);
 		if(tf_high_addr &&CMDQ_GET_ADDR_HIGH(pa) == tf_high_addr)
-			cmdq_err("hwid:%d thrd_id:%d iova:%llx", hwid, thread->idx, pa);
+			cmdq_err("hwid:%d thrd_id:%d iova:%pad", hwid, thread->idx, &pa);
 	}
 #endif
 	return va;
@@ -918,14 +922,14 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 			if(tf_high_addr &&
 				CMDQ_GET_ADDR_HIGH(CMDQ_BUF_ADDR(buf)) == tf_high_addr) {
 				cmdq_err("hwid:%d thrd_id:%d iova:%llx",
-					hwid, thread->idx, CMDQ_BUF_ADDR(buf));
+					hwid, thread->idx, (unsigned long long)CMDQ_BUF_ADDR(buf));
 			}
 		}
 	} else {
 		tf_high_addr = cmdq_get_tf_high_addr_by_dev(pkt->dev);
 		if(tf_high_addr &&
 			CMDQ_GET_ADDR_HIGH(CMDQ_BUF_ADDR(buf)) == tf_high_addr) {
-			cmdq_err("no client iova:%llx", CMDQ_BUF_ADDR(buf));
+			cmdq_err("no client iova:%llx", (unsigned long long)CMDQ_BUF_ADDR(buf));
 			dump_stack();
 		}
 	}
@@ -1378,7 +1382,7 @@ s32 cmdq_pkt_append_command(struct cmdq_pkt *pkt, u16 arg_c, u16 arg_b,
 
 		cmdq_util_err(
 			"%s: pkt:%p avail:%lu va:%p iova:%pa pa:%pa alloc_time:%llu va:%p inst:%#llx",
-			__func__, pkt, pkt->avail_buf_size, buf->va_base,
+			__func__, pkt, (unsigned long)pkt->avail_buf_size, buf->va_base,
 			&buf->iova_base, &buf->pa_base, buf->alloc_time,
 			va, *((u64 *)va));
 
@@ -2823,8 +2827,8 @@ static void cmdq_pkt_err_irq_dump(struct cmdq_pkt *pkt)
 	} else {
 		/* no inst available */
 		cmdq_util_aee_ex(CMDQ_AEE_EXCEPTION, mod,
-			"%s(%s) instruction not available pc:%#llx thread:%d",
-			mod, cmdq_util_helper->hw_name(client->chan), pc, thread_id);
+			"%s(%s) instruction not available pc:%pad thread:%d",
+			mod, cmdq_util_helper->hw_name(client->chan), &pc, thread_id);
 	}
 
 	cmdq_util_helper->error_disable((u8)hwid);
@@ -2906,7 +2910,7 @@ static void cmdq_print_wait_summary(void *chan, dma_addr_t pc,
 			" GPR R%u:%#x", gprid, val);
 		if (len >= ARRAY_SIZE(text_gpr))
 			cmdq_log("len:%d over text_gpr size:%lu",
-				len, ARRAY_SIZE(text_gpr));
+				len, (unsigned long)ARRAY_SIZE(text_gpr));
 	} else if (inst->arg_a >= CMDQ_TOKEN_TZMP_ISP_WAIT &&
 		inst->arg_a <= CMDQ_TOKEN_TZMP_AIE_SET) {
 		const u16 mod = (inst->arg_a - CMDQ_TOKEN_TZMP_ISP_WAIT) / 2;
