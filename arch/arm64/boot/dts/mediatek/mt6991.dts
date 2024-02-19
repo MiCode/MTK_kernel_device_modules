@@ -6712,8 +6712,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<0 0x102f3000 0 0x1000>, /* apinfra_dramc pd */
 				<0 0x10613000 0 0x1000>, /* apinfra_emi pd */
 				<0 0x180f3000 0 0x1000>, /* apinfra_ssr pd */
-				<0 0x14130000 0 0x1000>, /* apinfra_mem_intf pd */
-				<0 0x14131000 0 0x1000>, /* apinfra_mem_intf pd */
+				<0 0x14130000 0 0x1000>, /* apinfra_mem pd */
+				<0 0x14131000 0 0x1000>, /* apinfra_mem_ctrl pd */
 				<0 0x140c0000 0 0x1000>, /* apinfra_mem_intf pd */
 				<0 0x142f4000 0 0x1000>, /* apinfra_int pd */
 				<0 0x14800000 0 0x1000>, /* apinfra_mmu pd */
@@ -6726,16 +6726,40 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<0 0x4b890000 0 0x1000>, /* gpu pd */
 				<0 0x4b8b0000 0 0x1000>, /* gpu1 pd */
 				<0 0x101c4000 0 0x1000>, /* apinfra_io ao */
+				<0 0x101c0000 0 0x1000>, /* apinfra_io_ctrl ao */
+				<0 0x14000000 0 0x1000>, /* apinfra_io_intf ao */
+				<0 0x10680000 0 0x1000>, /* apinfra_big4 ao */
+				<0 0x102e0000 0 0x1000>, /* apinfra_dramc ao */
+				<0 0x10600000 0 0x1000>, /* apinfra_emi ao */
+				<0 0x180e0000 0 0x1000>, /* apinfra_ssr ao */
+				<0 0x141f0000 0 0x1000>, /* apinfra_mem ao */
+				<0 0x141f4000 0 0x1000>, /* apinfra_mem_ctrl ao */
+				<0 0x14020000 0 0x1000>, /* apinfra_mem_intf ao */
+				<0 0x14040000 0 0x1000>, /* apinfra_int ao */
+				<0 0x14060000 0 0x1000>, /* apinfra_mmu ao */
+				<0 0x14080000 0 0x1000>, /* apinfra_slb ao */
 				<0 0x16660000 0 0x1000>, /* peri ao */
 				<0 0x1c550000 0 0x1000>, /* vlp ao */
 				<0 0x1a340000 0 0x1000>, /* adsp ao */
 				<0 0x30050000 0 0x1000>, /* mminfra ao */
 				<0 0x31ad0000 0 0x1000>, /* mmup ao */
 				<0 0x4b880000 0 0x1000>, /* gpu ao */
-				<0 0x1020e000 0 0x1000>, /* infracfg */
+				<0 0x14411000 0 0x1000>, /* infracfg */
 				<0 0x10033000 0 0x1000>, /* swp */
 				<0 0x0010c000 0 0x1000>; /* sramrom */
-			interrupts = <GIC_SPI 800 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra irq */
+			interrupts = <GIC_SPI 867 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_io irq */
+				<GIC_SPI 868 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_io_ctrl irq */
+				<GIC_SPI 865 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_io_intf irq */
+				<GIC_SPI 863 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_big4 irq */
+				<GIC_SPI 870 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_dramc irq */
+				<GIC_SPI 869 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_emi irq */
+				<GIC_SPI 866 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_ssr irq */
+				<GIC_SPI 835 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_mem irq */
+				<GIC_SPI 836 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_mem_ctrl irq */
+				<GIC_SPI 837 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_mem_intf irq */
+				<GIC_SPI 864 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_int irq */
+				<GIC_SPI 834 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_mmu irq */
+				<GIC_SPI 833 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_slb irq */
 				<GIC_SPI 265 IRQ_TYPE_EDGE_RISING 0>, /* peri irq */
 				<GIC_SPI 694 IRQ_TYPE_LEVEL_HIGH 0>, /* vlp irq */
 				<GIC_SPI 715 IRQ_TYPE_LEVEL_HIGH 0>, /* adsp irq */
