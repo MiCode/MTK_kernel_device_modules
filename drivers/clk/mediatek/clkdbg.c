@@ -1131,16 +1131,6 @@ out:
 	return pds;
 }
 
-static struct generic_pm_domain *__pd_dbg_lookup(int pg_idx)
-{
-	struct generic_pm_domain **pds = get_all_genpd();
-
-	if (!pds)
-		return NULL;
-
-	return pds[pg_idx];
-}
-
 static struct platform_device *pdev_from_name(const char *name)
 {
 	struct generic_pm_domain **pds = get_all_genpd();
@@ -1181,9 +1171,16 @@ static struct device *dev_from_name(const char *name)
 		list_for_each_entry(pdd, &pd->dev_list, list_node) {
 			struct device *dev = pdd->dev;
 			const char *dev_n = dev_name(dev);
+			struct platform_device *pdev = to_platform_device(dev);
 
-			if (!dev_n)
+			if (!dev_n) {
+				if (pdev && pdev->name) {
+					if (strcmp(name, pdev->name) == 0)
+						return &pdev->dev;
+				}
+
 				continue;
+			}
 
 			pr_notice("%s\n", dev_n);
 			if (strcmp(name, dev_n) == 0)
@@ -1368,9 +1365,11 @@ static void dump_genpd_state(struct genpd_state *pdst, struct seq_file *s)
 			struct platform_device *pdev = to_platform_device(dev);
 
 			if (devst->dev_name)
-				seq_printf(s, "\t%c (%-80s %3d, %10s)\n",
+				seq_printf(s, "\t%c (%-80s %3d, %3d, %3d, %10s)\n",
 					devst->active ? '+' : '-',
 					devst->dev_name != NULL ? devst->dev_name : "NULL",
+					pm_runtime_is_irq_safe(dev),
+					genpd_is_irq_safe(pd),
 					atomic_read(&dev->power.usage_count),
 					devst->disable_depth ? "unsupport" :
 					devst->runtime_error ? "error" :
@@ -1378,9 +1377,11 @@ static void dump_genpd_state(struct genpd_state *pdst, struct seq_file *s)
 					  devst->runtime_status >= 0) ?
 					prm_status_name[devst->runtime_status] : "UFO");
 			else
-				seq_printf(s, "\t%c (%-19s %3d, %10s)\n",
+				seq_printf(s, "\t%c (%-19s %3d, %3d, %3d, %10s)\n",
 					devst->active ? '+' : '-',
 					pdev->name ? pdev->name : "NULL",
+					pm_runtime_is_irq_safe(dev),
+					genpd_is_irq_safe(pd),
 					atomic_read(&dev->power.usage_count),
 					devst->disable_depth ? "unsupport" :
 					devst->runtime_error ? "error" :
@@ -2171,7 +2172,7 @@ static void seq_print_reg(const struct regname *rn, void *data)
 	bool is_clk_enable = true;
 	bool is_pwr_on = true;
 #if CLKDBG_PM_DOMAIN
-	struct generic_pm_domain *pd;
+	//struct generic_pm_domain *pd;
 	int pg = rn->base->pg;
 #endif
 
@@ -2180,8 +2181,7 @@ static void seq_print_reg(const struct regname *rn, void *data)
 
 #if CLKDBG_PM_DOMAIN
 	if (pg != PD_NULL) {
-		pd = __pd_dbg_lookup(pg);
-		if (pd && pd->status)
+		if (!pdchk_pd_is_on(pg))
 			is_pwr_on = false;
 	}
 #endif

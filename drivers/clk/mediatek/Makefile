@@ -343,6 +343,7 @@ ifneq ($(wildcard $(srctree)/$(src)/clk-mt6991.c),)
 ifneq ($(strip $(CONFIG_MTK_TINYSYS_VCP_SUPPORT)),)
 obj-$(CONFIG_COMMON_CLK_MT6991) += clk-chk-mt6991.o
 clk-chk-mt6991-$(CONFIG_COMMON_CLK_MT6991) += clkchk-mt6991.o
+obj-$(CONFIG_COMMON_CLK_MT6991) += clk-fmeter-mt6991.o
 obj-$(CONFIG_COMMON_CLK_MT6991) += pd-chk-mt6991.o
 pd-chk-mt6991-$(CONFIG_COMMON_CLK_MT6991) += mtk-pd-chk-mt6991.o
 endif

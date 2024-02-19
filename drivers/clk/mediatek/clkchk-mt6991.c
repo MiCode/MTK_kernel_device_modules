@@ -2867,22 +2867,22 @@ static const char * const off_pll_names[] = {
 	"mfgpll",
 	"mfgpll-sc0",
 	"mfgpll-sc1",
-	NULL
-};
-
-static const char * const notice_pll_names[] = {
-	"adsppll",
-	"vlp-apll1",
-	"vlp-apll2",
 	"univpll",
 	"msdcpll",
-	"mainpll2",
 	"univpll2",
 	"mmpll2",
 	"imgpll",
 	"tvdpll1",
 	"tvdpll2",
 	"tvdpll3",
+	NULL
+};
+
+static const char * const notice_pll_names[] = {
+	"mainpll2",
+	"adsppll",
+	"vlp-apll1",
+	"vlp-apll2",
 	NULL
 };
 
@@ -3031,8 +3031,26 @@ static void dump_bus_reg(struct regmap *regmap, u32 ofs)
 	BUG_ON(1);
 }
 
+static enum chk_sys_id pll_dump_id[] = {
+	ck,
+	ck2,
+	vlp_ck,
+	apmixed,
+	apmixed2,
+	chk_sys_num,
+};
+
 static void dump_pll_reg(bool bug_on)
 {
+	set_subsys_reg_dump_mt6991(pll_dump_id);
+	get_subsys_reg_dump_mt6991();
+
+	if (bug_on) {
+		/* sspm need some time to run isr */
+		mdelay(1000);
+
+		BUG_ON(1);
+	}
 }
 
 static void check_hwv_irq_sta(void)
