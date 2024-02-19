@@ -315,6 +315,7 @@ bool prio_is_vip(int vip_prio, int type)
 
 	return (vip_prio != NOT_VIP);
 }
+EXPORT_SYMBOL_GPL(prio_is_vip);
 
 bool task_is_vip(struct task_struct *p, int type)
 {
@@ -772,6 +773,7 @@ out:
 	}
 	return vip_prio;
 }
+EXPORT_SYMBOL_GPL(get_vip_task_prio);
 
 void vip_enqueue_task(struct rq *rq, struct task_struct *p)
 {
