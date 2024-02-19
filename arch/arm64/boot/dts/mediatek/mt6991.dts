@@ -5480,8 +5480,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 			clocks = <&mdpsys_config_clk CLK_MDP_APB_BUS_MML>,
 				<&mdpsys_config_clk CLK_MDP_APB_DB_MML>,
-				<&mdpsys_config_clk CLK_MDP_MDP_DLO_ASYNC2_MML>;
-			clock-names = "apb_bus", "apb_db", "dlo2";
+				<&mdpsys_config_clk CLK_MDP_MDP_DLO_ASYNC2_MML>,
+				<&mdpsys_config_clk CLK_MDP_F26M_MML>;
+			clock-names = "apb_bus", "apb_db", "dlo2", "mmlsys_26m_clk";
 			mmlsys-clock-names = "apb_bus", "apb_db";
 			dlo2-clock-names = "dlo2";
 			mediatek,larb = <&smi_larb2 MTK_M4U_TO_PORT(SMMU_L2_P17_MDP_FAKE_ENG0)>;
@@ -5576,7 +5577,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			comp-ids = <MML0_AAL0>;
 			comp-names = "mml0_aal0";
 			clocks = <&mdpsys_config_clk CLK_MDP_MDP_AAL0_MML>;
-			clock-names = "hdr0";
+			clock-names = "aal0";
 		};
 
 		mml0_rsz0: mml0-rsz0@3e0b0000 {
@@ -5876,8 +5877,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			clocks = <&mdpsys1_config_clk CLK_MDP1_APB_BUS_MML>,
 				<&mdpsys1_config_clk CLK_MDP1_APB_DB_MML>,
 				<&mdpsys1_config_clk CLK_MDP1_MDP_DLI_ASYNC2_MML>,
-				<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC5_MML>;
-			clock-names = "apb_bus", "apb_db", "dli2", "dlo5";
+				<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC5_MML>,
+				<&mdpsys1_config_clk CLK_MDP1_F26M_MML>;
+			clock-names = "apb_bus", "apb_db", "dli2", "dlo5", "mmlsys_26m_clk";
 			mmlsys-clock-names = "apb_bus", "apb_db";
 			dli2-clock-names = "dli2";
 			dlo5-clock-names = "dlo5";
