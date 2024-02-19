@@ -1892,6 +1892,7 @@ static struct regname rn[] = {
 	/* VENC_GCON register */
 	REGNAME(ven1, 0x0, VENCSYS_CG),
 	REGNAME(ven1, 0x10, VENCSYS_RESOURCE_FLAT),
+	REGNAME(ven1, 0x158, VENC_PPC_RDY),
 	/* VENC_GCON_CORE1 register */
 	REGNAME(ven2, 0x0, VENCSYS_CG),
 	REGNAME(ven2, 0x10, VENCSYS_RESOURCE_FLAT),
@@ -2772,6 +2773,7 @@ static enum chk_sys_id devapc_dump_id[] = {
 	mfg_ao,
 	mfgsc0_ao,
 	mfgsc1_ao,
+	ven1,
 	mm_vcore_pm,
 	isp_main_pm,
 	isp_dip_pm,
@@ -2887,7 +2889,7 @@ static const char * const notice_pll_names[] = {
 };
 
 static const char * const bypass_pll_name[] = {
-
+	"univpll",
 	NULL
 };
 
@@ -3075,6 +3077,7 @@ static enum chk_sys_id extern_dump_id[] = {
 	apmixed2,
 	vlp_ck,
 	mmpc,
+	ven1,
 	mm_vcore_pm,
 	isp_main_pm,
 	isp_dip_pm,
