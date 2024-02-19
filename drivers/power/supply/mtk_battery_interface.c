@@ -6,6 +6,7 @@
 
 #include <linux/cdev.h>		/* cdev */
 #include <linux/err.h>	/* IS_ERR, PTR_ERR */
+#include <linux/iio/consumer.h>	/* iio_device */
 #include <linux/init.h>		/* For init/exit macros */
 #include <linux/interrupt.h>
 #include <linux/irq.h>
@@ -140,6 +141,47 @@ int gauge_get_property_control(struct mtk_battery *gm, enum gauge_property gp,
 		}
 	}
 	return ret;
+}
+
+int get_charger_vbat(struct mtk_battery_manager *bm)
+{
+	struct power_supply *psy;
+	union power_supply_propval val;
+	int ret;
+
+	psy = power_supply_get_by_name("mtk-master-charger");
+	if (psy) {
+		ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CHARGE_NOW, &val);
+		if (ret >= 0)
+			ret = val.intval / 1000;
+		else
+			pr_err("[%s] get POWER_SUPPLY_PROP_CHARGE_NOW fail\n", __func__);
+
+		power_supply_put(psy);
+	} else {
+		pr_err("[%s] get charger power supply fail\n", __func__);
+		ret = 4000;
+	}
+
+	return ret;
+}
+
+int bm_get_vsys(struct mtk_battery_manager *bm)
+{
+	int ret, val = 0;
+
+	if (!IS_ERR(bm->chan_vsys)) {
+		ret = iio_read_channel_processed(bm->chan_vsys, &val);
+		if (ret < 0) {
+			pr_err("[%s]read fail,ret=%d use chg_vbat\n", __func__, ret);
+			val = get_charger_vbat(bm);
+		}
+	} else {
+		pr_err("[%s]chan error use chg_vbat\n", __func__);
+		val = get_charger_vbat(bm);
+	}
+
+	return val;
 }
 
 int gauge_set_property(struct mtk_battery *gm, enum gauge_property gp,
@@ -303,16 +345,24 @@ int get_shutdown_cond(struct mtk_battery *gm)
 		ret |= 1;
 	if (sdu->lowbatteryshutdown)
 		ret |= 1;
-	if (gm->bm->gm_no == 2 && gm->bm->sdc.bmsdu.lowbatteryshutdown)
-		ret |= 1;
-	if (gm->bm->gm_no == 2 && gm->bm->sdc.bmsdu.shutdown_status.is_soc_zero_percent)
-		ret |= 1;
-	pr_debug("%s gm_no:%d ret:%d %d %d %d %d %d vbat:%d\n",
+
+	if (gm->bm->gm_no == 2) {
+		if (gm->bm->sdc.bmsdu.lowbatteryshutdown)
+			ret |= 1;
+		if (gm->bm->sdc.bmsdu.shutdown_status.is_soc_zero_percent)
+			ret |= 1;
+		if (gm->bm->sdc.bmsdu.shutdown_status.is_uisoc_one_percent)
+			ret |= 1;
+	}
+
+	pr_debug("%s gm_no:%d ret:%d %d %d %d %d %d %d vbat:%d\n",
 		__func__, gm->bm->gm_no,
 	ret, sdu->shutdown_status.is_soc_zero_percent,
 	sdu->shutdown_status.is_uisoc_one_percent,
 	sdu->lowbatteryshutdown, gm->bm->sdc.bmsdu.lowbatteryshutdown,
-	gm->bm->sdc.bmsdu.shutdown_status.is_soc_zero_percent, vbat);
+	gm->bm->sdc.bmsdu.shutdown_status.is_soc_zero_percent,
+	gm->bm->sdc.bmsdu.shutdown_status.is_uisoc_one_percent,
+	vbat);
 
 	return ret;
 }
@@ -355,6 +405,10 @@ int set_bm_shutdown_cond(struct mtk_battery_manager *bm, int shutdown_cond)
 			if (now_is_kpoc != 1) {
 				if (now_is_charging != 1) {
 					bmsdu->shutdown_status.is_soc_zero_percent = true;
+					battery_set_property(bm->gm1,
+							BAT_PROP_WAKEUP_FG_ALGO, FG_INTR_SHUTDOWN);
+					battery_set_property(bm->gm2,
+							BAT_PROP_WAKEUP_FG_ALGO, FG_INTR_SHUTDOWN);
 					pr_err("[%s]soc_zero_percent shutdown\n",
 						__func__);
 				}
@@ -369,6 +423,10 @@ int set_bm_shutdown_cond(struct mtk_battery_manager *bm, int shutdown_cond)
 			if (now_is_kpoc != 1) {
 				if (now_is_charging != 1) {
 					bmsdu->shutdown_status.is_uisoc_one_percent = true;
+					battery_set_property(bm->gm1,
+							BAT_PROP_WAKEUP_FG_ALGO, FG_INTR_SHUTDOWN);
+					battery_set_property(bm->gm2,
+							BAT_PROP_WAKEUP_FG_ALGO, FG_INTR_SHUTDOWN);
 					pr_err("[%s]uisoc 1 percent shutdown\n",
 						__func__);
 				}
@@ -420,6 +478,23 @@ int set_bm_shutdown_cond(struct mtk_battery_manager *bm, int shutdown_cond)
 	}
 
 	return 0;
+}
+
+void set_shutdown_cond_flag(struct mtk_battery *gm, int val)
+{
+	struct battery_shutdown_unit *sdu = &gm->bm->sdc.bat[gm->id];
+	struct battery_shutdown_unit *bmsdu = &gm->bm->sdc.bmsdu;
+
+	sdu->shutdown_cond_flag = val;
+	if (gm->bm->gm_no == 2)
+		bmsdu->shutdown_cond_flag = val;
+}
+
+int get_shutdown_cond_flag(struct mtk_battery *gm)
+{
+	struct battery_shutdown_unit *sdu = &gm->bm->sdc.bat[gm->id];
+
+	return sdu->shutdown_cond_flag;
 }
 
 int set_shutdown_cond(struct mtk_battery *gm, int shutdown_cond)
@@ -493,11 +568,15 @@ int set_shutdown_cond(struct mtk_battery *gm, int shutdown_cond)
 						ktime_get_boottime();
 					pr_err("[%s]soc_zero_percent shutdown\n",
 						__func__);
-					battery_set_property(gm,
-						BAT_PROP_WAKEUP_FG_ALGO, FG_INTR_SHUTDOWN);
+
+					if (is_single == true)
+						battery_set_property(gm,
+							BAT_PROP_WAKEUP_FG_ALGO, FG_INTR_SHUTDOWN);
 				}
 			}
 			mutex_unlock(&sdc->lock);
+			if (is_single == false)
+				set_bm_shutdown_cond(gm->bm, SOC_ZERO_PERCENT);
 		}
 		break;
 	case UISOC_ONE_PERCENT:
@@ -576,6 +655,8 @@ int set_shutdown_cond(struct mtk_battery *gm, int shutdown_cond)
 /* ============================================================ */
 void battery_update(struct mtk_battery_manager *bm)
 {
+	ktime_t now, duraction;
+	struct timespec64 tmp_duraction;
 	struct battery_data *bat_data;
 	struct power_supply *bat_psy;
 	struct mtk_battery *gm1;
@@ -583,6 +664,8 @@ void battery_update(struct mtk_battery_manager *bm)
 	struct fgd_cmd_daemon_data *d1;
 	struct fgd_cmd_daemon_data *d2;
 	static int first;
+	struct battery_shutdown_unit *sdu = &bm->sdc.bmsdu;
+
 	int vbat1 = 0, vbat2 = 0, real_uisoc = 0, real_quse = 0;
 
 	if (bm == NULL) {
@@ -619,6 +702,23 @@ void battery_update(struct mtk_battery_manager *bm)
 		real_uisoc = real_uisoc / real_quse;
 		bm->uisoc = real_uisoc;
 
+		now = ktime_get_boottime();
+		if (bm->uisoc == 1) {
+			if (sdu->pre_time[SHUTDOWN_1_TIME] == 0)
+				sdu->pre_time[SHUTDOWN_1_TIME] = now;
+
+			duraction =
+				ktime_sub(
+				now, sdu->pre_time[SHUTDOWN_1_TIME]);
+
+			tmp_duraction = ktime_to_timespec64(duraction);
+			if (bm->gm1->fg_cust_data.shutdown_gauge1_xmins == true &&
+				tmp_duraction.tv_sec >= 60 * bm->gm1->fg_cust_data.shutdown_1_time) {
+				pr_err("force uisoc zero percent\n");
+				set_bm_shutdown_cond(bm, UISOC_ONE_PERCENT);
+			}
+		}
+
 		if (bm->gm1->disableGM30 || bm->gm2->disableGM30) {
 			bat_data->bat_batt_vol = 4000;
 			bm->uisoc = 50;
@@ -628,8 +728,6 @@ void battery_update(struct mtk_battery_manager *bm)
 			gauge_get_property_control(bm->gm2, GAUGE_PROP_BATTERY_VOLTAGE,
 				&vbat2, 0);
 			bat_data->bat_batt_vol = (vbat1 + vbat2) / 2;
-			if (bm->force_ui_zero)
-				bm->uisoc = 0;
 		}
 
 		if(((bm->gm1->init_flag ^ bm->gm1->bat_plug_out) &&

@@ -1309,6 +1309,8 @@ struct mtk_battery_manager {
 	unsigned int bm_update_flag;
 	int log_level;
 
+	struct iio_channel *chan_vsys;
+
 	struct hrtimer bm_hrtimer;
 
 	spinlock_t slock;
@@ -1344,6 +1346,11 @@ struct mtk_battery_manager {
 	/* bootmode */
 	u32 bootmode;
 	u32 boottype;
+
+	/* vsys bound*/
+	int disable_quick_shutdown;
+	int vsys_det_voltage1;
+	int vsys_det_voltage2;
 };
 
 struct mtk_battery_sysfs_field_info {
@@ -1391,6 +1398,7 @@ extern int gauge_get_property_control(struct mtk_battery *gm,
 	enum gauge_property gp, int *val, int mode);
 extern int gauge_set_property(struct mtk_battery *gm, enum gauge_property gp,
 			    int val);
+
 extern void gp_number_to_name(struct mtk_battery *gm, char *gp_name, unsigned int gp_no);
 extern void reg_type_to_name(struct mtk_battery *gm, char *reg_type_name, unsigned int regmap_type);
 extern int battery_init(struct platform_device *pdev);
@@ -1414,13 +1422,13 @@ extern void disable_fg(struct mtk_battery *gm);
 extern int get_shutdown_cond(struct mtk_battery *gm);
 extern void battery_update(struct mtk_battery_manager *bm);
 extern int set_bm_shutdown_cond(struct mtk_battery_manager *bm, int shutdown_cond);
-#ifdef POWER_MISC_OFF
 extern int get_shutdown_cond_flag(struct mtk_battery *gm);
 extern void set_shutdown_cond_flag(struct mtk_battery *gm, int val);
-#endif
 extern bool set_charge_power_sel(struct mtk_battery *gm, enum charge_sel select);
 extern int dump_pseudo100(struct mtk_battery *gm, enum charge_sel select);
 
+extern int bm_get_vsys(struct mtk_battery_manager *bm);
+extern int get_charger_vbat(struct mtk_battery_manager *bm);
 /*mtk_battery.c end */
 
 /* mtk_battery_algo.c */
@@ -1527,9 +1535,11 @@ extern void mtk_irq_thread_init(struct mtk_battery *gm);
 #define FG_PRE_TRACKING_EN	1
 #define VBAT2_DET_TIME		5
 #define VBAT2_DET_COUNTER	6
-#define VBAT2_DET_VOLTAGE1	30500
-#define VBAT2_DET_VOLTAGE2	28000
-#define VBAT2_DET_VOLTAGE3	31000
+#define VBAT2_DET_VOLTAGE1	34000
+#define VBAT2_DET_VOLTAGE2	30500
+#define VBAT2_DET_VOLTAGE3	35000
+#define VSYS_DET_VOLTAGE1	3100
+#define VSYS_DET_VOLTAGE2	3000
 
 /* PCB setting */
 #define CALI_CAR_TUNE_AVG_NUM	60
