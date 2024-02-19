@@ -848,17 +848,32 @@ static irqreturn_t mminfra_irq_handler(int irq, void *data)
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 static bool mminfra_devapc_power_cb(void)
 {
-	if (dbg->irq_safe) {
-		pdchk_debug_dump();
-		pr_info("mminfra mtcmos = 0x%x\n", readl(dbg->spm_base+0xea8));
-		pr_info("cg_con0 = 0x%x, ao_cg_con0 = 0x%x, ao_cg_con1 = 0x%x\n",
-			readl(dbg->mminfra_base + MMINFRA_CG_CON0),
-			readl(dbg->mminfra_ao_base + MMINFRA_CG_CON0),
-			readl(dbg->mminfra_ao_base + MMINFRA_CG_CON1));
-		pr_info("%s set mminfra pwr on\n", __func__);
-		if (!is_mminfra_shutdown)
-			vcp_mminfra_on();
-		return true;
+	int ret;
+
+	if (mm_pwr_ver <= mm_pwr_v2) {
+		if (dbg->irq_safe) {
+			pdchk_debug_dump();
+			pr_info("mminfra mtcmos = 0x%x\n", readl(dbg->spm_base+0xea8));
+			pr_info("cg_con0 = 0x%x, ao_cg_con0 = 0x%x, ao_cg_con1 = 0x%x\n",
+				readl(dbg->mminfra_base + MMINFRA_CG_CON0),
+				readl(dbg->mminfra_ao_base + MMINFRA_CG_CON0),
+				readl(dbg->mminfra_ao_base + MMINFRA_CG_CON1));
+			pr_info("%s set mminfra pwr on\n", __func__);
+			if (!is_mminfra_shutdown)
+				vcp_mminfra_on();
+			return true;
+		}
+	} else if (mm_pwr_ver == mm_pwr_v3) {
+		if (dbg->irq_safe) {
+			pr_info("%s set mminfra pwr on, is_mminfra_shutdown = %d\n",
+				__func__, is_mminfra_shutdown);
+			if (!is_mminfra_shutdown) {
+				ret = pm_runtime_get_sync(dev);
+				if (ret)
+					pr_notice("%s: ret=%d\n", __func__, ret);
+				return true;
+			}
+		}
 	}
 	return is_mminfra_power_on();
 }
