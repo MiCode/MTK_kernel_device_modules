@@ -53,8 +53,6 @@
 do {\
 	if (gm != NULL && gm->log_level >= BMLOG_ERROR_LEVEL) {	\
 		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
-	} else {	\
-		pr_notice(fmt, ##args);	\
 	}	\
 } while (0)
 
@@ -62,8 +60,6 @@ do {\
 do {\
 	if (gm != NULL && gm->log_level >= BMLOG_WARNING_LEVEL) {	\
 		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
-	} else {	\
-		pr_notice(fmt, ##args);	\
 	}	\
 } while (0)
 
@@ -71,8 +67,6 @@ do {\
 do {\
 	if (gm != NULL && gm->log_level >= BMLOG_NOTICE_LEVEL) {	\
 		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
-	} else {	\
-		pr_notice(fmt, ##args);	\
 	}	\
 } while (0)
 
@@ -80,8 +74,6 @@ do {\
 do {\
 	if (gm != NULL && gm->log_level >= BMLOG_INFO_LEVEL) {	\
 		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
-	} else {	\
-		pr_notice(fmt, ##args);	\
 	}	\
 } while (0)
 
@@ -89,8 +81,6 @@ do {\
 do {\
 	if (gm != NULL && gm->log_level >= BMLOG_DEBUG_LEVEL) {	\
 		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
-	} else {	\
-		pr_notice(fmt, ##args);	\
 	}	\
 } while (0)
 
@@ -98,8 +88,6 @@ do {\
 do {\
 	if (gm != NULL && gm->log_level >= BMLOG_TRACE_LEVEL) {	\
 		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
-	} else {	\
-		pr_notice(fmt, ##args);	\
 	}	\
 } while (0)
 
@@ -380,6 +368,7 @@ enum gauge_event {
 	EVT_INT_BAT_CYCLE,
 	EVT_INT_IAVG,
 	EVT_INT_BAT_PLUGOUT,
+	EVT_INT_BAT_PLUGIN,
 	EVT_INT_NAFG,
 	EVT_INT_BAT_INT1_HT,
 	EVT_INT_BAT_INT1_LT,

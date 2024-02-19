@@ -122,26 +122,26 @@ void disable_gauge_irq(struct mtk_gauge *gauge,
 		disable_irq_nosync(gauge->irq_no[irq]);
 }
 
+//Only return gauge1 for old platform
 struct mtk_battery *get_mtk_battery(void)
 {
-	static struct mtk_gauge *gauge;
+	static struct mtk_battery_manager *bm;
 	struct power_supply *psy;
 
-	if (gauge == NULL) {
-		psy = power_supply_get_by_name("mtk-gauge");
+	if (bm == NULL) {
+		psy = power_supply_get_by_name("battery");
 		if (psy == NULL) {
-			//bm_err(gm, "[%s]psy is not rdy\n", __func__);
+			pr_debug("[%s] psy is not rdy\n", __func__);
 			return NULL;
 		}
-
-		gauge = (struct mtk_gauge *)power_supply_get_drvdata(psy);
-		if (gauge == NULL) {
-			//bm_err(gm, "[%s]mtk_gauge is not rdy\n", __func__);
+		bm = (struct mtk_battery_manager *)power_supply_get_drvdata(psy);
+		if (bm == NULL) {
+			pr_debug("[%s] mtk_battery_manager is not rdy\n", __func__);
 			return NULL;
 		}
 	}
 
-	return gauge->gm;
+	return bm->gm1;
 }
 
 int bat_get_debug_level(void)
@@ -762,14 +762,6 @@ int force_get_tbat_internal(struct mtk_battery *gm)
 			bat_temperature_volt,
 			vol_cali);
 	}
-
-	pr_notice("[%s] %d,%d,%d,%d,%d,%d r:%d %d %d\n",
-		__func__,
-		bat_temperature_volt_temp, bat_temperature_volt,
-		fg_current_state, fg_current_temp,
-		fg_r_value, bat_temperature_val,
-		fg_meter_res_value, fg_r_value,
-		gm->no_bat_temp_compensate);
 
 	bm_notice(gm, "[%s] %d,%d,%d,%d,%d,%d r:%d %d %d\n",
 		__func__,
@@ -2916,6 +2908,7 @@ static void fg_drv_update_hw_status(struct mtk_battery *gm)
 			gp_number_to_name(gm, gp_name, i);
 			bm_err(gm, "[%s_Error] %s, fail_counter: %d\n",
 				reg_type_name, gp_name, prop_control->i2c_fail_counter[i]);
+			prop_control->i2c_fail_counter[i] = 0;
 		}
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
