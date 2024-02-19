@@ -21,6 +21,7 @@
 #include <linux/printk.h>
 #include <linux/workqueue.h>
 #include <mt-plat/aee.h>
+#include <linux/regmap.h>
 
 /* GICT related reg offset for error record 1 */
 #define GICT_ERR1STATUS	(0x50)
@@ -54,6 +55,13 @@ struct err_record {
 	struct reg_offset reg_offset;
 };
 
+struct power_domain {
+	struct regmap *map;
+	unsigned int reg;
+	/*unit: uV*/
+	unsigned int vol;
+};
+
 struct gic_ram_parity {
 	struct work_struct work;
 
@@ -65,6 +73,7 @@ struct gic_ram_parity {
 	/* recorded parity errors */
 	atomic_t nr_err;
 	struct err_record *record;
+	struct power_domain power_domain;
 };
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define ECC_LOG(fmt, ...) \
@@ -125,11 +134,12 @@ static void gic_ram_parity_irq_work(struct work_struct *w)
 	if (n > PAGE_SIZE)
 		goto call_aee;
 
-	n += scnprintf(buf + n, PAGE_SIZE - n, "%s:%s, %s:0x%016llx, %s:0x%016llx, %s:%llu",
+	n += scnprintf(buf + n, PAGE_SIZE - n, "%s:%s, %s:0x%016llx, %s:0x%016llx, %s:%llu, %s:%d",
 			"error type", gic_ram_parity.record[UE].error_type,
 			"status", gic_ram_parity.record[UE].status,
 			"misc0", gic_ram_parity.record[UE].misc0,
-			"INTID", ((gic_ram_parity.record[UE].misc0) & id_mask) + 32);
+			"INTID", ((gic_ram_parity.record[UE].misc0) & id_mask) + 32,
+			"vcore sram voltage", gic_ram_parity.power_domain.vol);
 
 	if (n > PAGE_SIZE)
 		goto call_aee;
@@ -151,7 +161,7 @@ static irqreturn_t gic_ram_parity_isr(int irq, void *dev_id)
 	struct reg_offset *offset;
 	void __iomem *base;
 	u64 misc0, status;
-	unsigned int i;
+	unsigned int i, val;
 
 	atomic_inc(&gic_ram_parity.nr_err);
 
@@ -180,6 +190,12 @@ static irqreturn_t gic_ram_parity_isr(int irq, void *dev_id)
 	gic_ram_parity.record[i].status = status;
 	gic_ram_parity.record[i].misc0 = misc0;
 
+	/* read voltage */
+	regmap_read(gic_ram_parity.power_domain.map,
+			gic_ram_parity.power_domain.reg,
+			&val);
+	gic_ram_parity.power_domain.vol = val*6250;
+
 	if (gic_ram_parity.record[UE].irq == irq)
 		schedule_work(&gic_ram_parity.work);
 
@@ -194,6 +210,7 @@ static irqreturn_t gic_ram_parity_isr(int irq, void *dev_id)
 			"error type", gic_ram_parity.record[i].error_type,
 			"misc0", misc0, "status", status, "INTID",
 			(misc0 & id_mask) + 32);
+	ECC_LOG("%s: %d(uV)\n", "vcore_sram voltage", gic_ram_parity.power_domain.vol);
 
 	/* disable irq to avoid burst kernel log and DB */
 	disable_irq_nosync(irq);
@@ -239,6 +256,7 @@ static int gic_ram_parity_probe(struct platform_device *pdev)
 	size_t size;
 	int i, irq;
 	struct device_node *node;
+	struct platform_device *pmic_pdev = NULL;
 
 	dev_info(&pdev->dev, "driver probed\n");
 
@@ -291,6 +309,30 @@ static int gic_ram_parity_probe(struct platform_device *pdev)
 					"failed to request irq for irq %d\n", irq);
 			return -ENXIO;
 		}
+	}
+
+	/* init struct power_domain for get voltage later */
+	node = of_find_node_by_name(NULL, "pmic");
+	if (!node) {
+		dev_err(&pdev->dev, "pmic node not found\n");
+		return -ENODEV;
+	}
+
+	pmic_pdev = of_find_device_by_node(node->child);
+	if (!pmic_pdev) {
+		dev_err(&pdev->dev, "pmic child device not found\n");
+		return -ENODEV;
+	}
+
+	gic_ram_parity.power_domain.map = dev_get_regmap(pmic_pdev->dev.parent, NULL);
+	if (!gic_ram_parity.power_domain.map)
+		return -ENODEV;
+
+	ret = of_property_read_u32(pdev->dev.of_node,
+			"pmic-reg", &gic_ram_parity.power_domain.reg);
+	if (ret) {
+		dev_err(&pdev->dev, "no pmic-reg");
+		return -ENXIO;
 	}
 
 	return ret;
