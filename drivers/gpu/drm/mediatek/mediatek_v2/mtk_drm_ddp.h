@@ -300,6 +300,11 @@ void mtk_ddp_insert_dsc_ext_MT6989(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle);
 void mtk_ddp_remove_dsc_ext_MT6989(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle);
+void mtk_ddp_insert_dsc_prim_MT6991(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle);
+void mtk_ddp_remove_dsc_prim_MT6991(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle);
+
 void mtk_ddp_insert_dsc_ext_MT6985(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle);
 void mtk_ddp_remove_dsc_ext_MT6985(struct mtk_drm_crtc *mtk_crtc,
