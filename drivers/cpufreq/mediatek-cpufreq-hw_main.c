@@ -35,6 +35,8 @@
 #define CHECK_VAL			0X55AA55AA
 #define MAX_CONTROL_GROUPS		8
 #define MAX_PERF_DOMAINS		3
+#define PER_CORE_OFF			0x1380
+#define PER_CORE_SIZE			0x32
 
 enum {
 	REG_FREQ_LUT_TABLE,
@@ -70,6 +72,7 @@ static bool freq_scaling_disabled = true;
 static bool fdvfs_enabled;
 static bool per_core_enabled;
 static void __iomem *qos_base;
+static void __iomem *pre_core_base;
 static int control_group_num;
 static int cpu_control_group_map[MAX_CONTROL_GROUPS];
 static int control_group_master[MAX_CONTROL_GROUPS];
@@ -163,7 +166,10 @@ static unsigned int mtk_cpufreq_hw_get(unsigned int cpu)
 	c = mtk_freq_domain_map[cpu];
 	nr_opp = c->nr_opp;
 
-	index = readl_relaxed(c->reg_bases[REG_FREQ_PERF_STATE]);
+	if (per_core_enabled)
+		index = readl_relaxed(pre_core_base + 0x4 * cpu);
+	else
+		index = readl_relaxed(c->reg_bases[REG_FREQ_PERF_STATE]);
 
 	if (index <= LUT_MAX_ENTRIES - 1) {
 		index = min(index, LUT_MAX_ENTRIES - 1);
@@ -608,6 +614,14 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 	}
 	fdvfs_enabled = check_fdvfs_support() == 1 ? true : false;
 	per_core_enabled = check_per_core_enabled();
+
+	if (per_core_enabled) {
+		pre_core_base = ioremap(csram_res->start + PER_CORE_OFF, PER_CORE_SIZE);
+		if (!pre_core_base) {
+			pr_notice("failed to map pre_core_base @ %s\n", __func__);
+			return -ENOMEM;
+		}
+	}
 
 	qos_node = of_find_node_by_name(NULL, "cpuqos-v3");
 	if (!qos_node) {
