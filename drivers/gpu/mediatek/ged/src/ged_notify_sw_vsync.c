@@ -120,6 +120,10 @@ static int g_apo_autosuspend_delay_ctrl;
 static int g_apo_autosuspend_delay_target_ref_count;
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 
+static int g_whitebox_support_flag;
+static int mcu_replace;
+int stat_mcu_store[30][30]={0};
+
 static int g_autosuspend_stress;
 
 int (*ged_sw_vsync_event_fp)(bool bMode) = NULL;
@@ -736,6 +740,52 @@ enum hrtimer_restart ged_sw_vsync_check_cb(struct hrtimer *timer)
 	}
 	return HRTIMER_NORESTART;
 }
+
+unsigned int ged_gpu_whitebox_power_test_support(int support_flag)
+{
+	g_whitebox_support_flag = support_flag;
+
+	return g_whitebox_support_flag;
+}
+EXPORT_SYMBOL(ged_gpu_whitebox_power_test_support);
+
+unsigned int ged_gpu_whitebox_power_test_case(int replace)
+{
+	mcu_replace = replace;
+
+	return mcu_replace;
+}
+EXPORT_SYMBOL(ged_gpu_whitebox_power_test_case);
+
+unsigned int ged_get_whitebox_power_test_support(void)
+{
+	return g_whitebox_support_flag;
+}
+EXPORT_SYMBOL(ged_get_whitebox_power_test_support);
+
+
+unsigned int ged_get_whitebox_power_test_case(void)
+{
+	return mcu_replace;
+}
+EXPORT_SYMBOL(ged_get_whitebox_power_test_case);
+
+
+unsigned int ged_get_whitebox_power_test_case_clear(void)
+{
+	mcu_replace = 0;
+
+	return mcu_replace;
+}
+EXPORT_SYMBOL(ged_get_whitebox_power_test_case_clear);
+
+
+void ged_set_whitebox_power_state_store(int first, int second)
+{
+	if (first >= 0 && second >= 0)
+		stat_mcu_store[first][second]++;
+}
+EXPORT_SYMBOL(ged_set_whitebox_power_state_store);
 
 #if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 unsigned int ged_gpu_apo_support(void)

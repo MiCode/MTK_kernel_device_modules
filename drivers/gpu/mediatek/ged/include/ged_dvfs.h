@@ -171,6 +171,14 @@ enum ged_gpu_power_state {
 void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state);
 void ged_gpu_autosuspend_timeout_notify(int autosuspend_timeout_ms);
 
+unsigned int ged_gpu_whitebox_power_test_case(int replace);
+unsigned int ged_gpu_whitebox_power_test_support(int support_flag);
+unsigned int ged_get_whitebox_power_test_case(void);
+unsigned int ged_get_whitebox_power_test_support(void);
+unsigned int ged_get_whitebox_power_test_case_clear(void);
+void ged_set_whitebox_power_state_store(int first, int second);
+extern int stat_mcu_store[][30];
+
 //#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 unsigned int ged_gpu_apo_support(void);
 unsigned long long ged_get_apo_thr_ns(void);
