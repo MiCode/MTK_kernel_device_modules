@@ -6465,7 +6465,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		};
 
 		tracker: tracker@14780000 {
-			compatible = "mediatek,tracker-disable";
+			compatible = "mediatek,tracker";
 			reg = <0 0x14780000 0 0x20000>;
 			timer-sep = <1>;
 			no-w-valid-chk = <1>;
@@ -6474,29 +6474,29 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					sys-name = "AP";
 					sys-base = <0x14780000>;
 					entry-num = <64>;
-					interrupts = <GIC_SPI 381 IRQ_TYPE_LEVEL_HIGH 0>;
+					interrupts = <GIC_SPI 383 IRQ_TYPE_LEVEL_HIGH 0>;
 					irq-name = "ap_tracker_irq";
 				};
 				tracker2 {
-					sys-name = "INFRA_FAST";
+					sys-name = "INFRA";
 					sys-base = <0x147a0000>;
 					entry-num = <32>;
 					interrupts = <GIC_SPI 382 IRQ_TYPE_LEVEL_HIGH 0>;
-					irq-name = "infra_fast_tracker_irq";
+					irq-name = "infra_tracker_irq";
 				};
 				tracker3 {
-					sys-name = "INFRA_SLOW";
-					sys-base = <0x147c0000>;
-					entry-num = <32>;
-					interrupts = <GIC_SPI 383 IRQ_TYPE_LEVEL_HIGH 0>;
-					irq-name = "infra_slow_tracker_irq";
-				};
-				tracker4 {
 					sys-name = "VLP";
 					sys-base = <0x1c4e0000>;
 					entry-num = <4>;
 					interrupts = <GIC_SPI 693 IRQ_TYPE_LEVEL_HIGH 0>;
 					irq-name = "vlp_tracker_irq";
+				};
+				tracker4 {
+					sys-name = "INFRA_LOWSPEED";
+					sys-base = <0x147c0000>;
+					entry-num = <32>;
+					interrupts = <GIC_SPI 381 IRQ_TYPE_LEVEL_HIGH 0>;
+					irq-name = "infra_tracker_lowspeed_irq";
 				};
 			};
 		};
