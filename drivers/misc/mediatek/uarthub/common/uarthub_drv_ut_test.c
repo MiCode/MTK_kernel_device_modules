@@ -760,7 +760,8 @@ int uarthub_core_sync_uarthub_irq_sta(int delay_us, int inband_irq_sta)
 	int err_type = 0;
 	int err_index = 0;
 	int err_total = 0;
-	unsigned long err_ts, rem_nsec;
+	uint64_t err_ts;
+	uint32_t rem_nsec;
 
 	if (!g_plat_ic_ut_test_ops) {
 		pr_notice("[%s] g_plat_ic_ut_test_ops is NULL\n", __func__);
@@ -784,7 +785,7 @@ int uarthub_core_sync_uarthub_irq_sta(int delay_us, int inband_irq_sta)
 	rem_nsec = do_div(err_ts, 1000000000);
 
 	pr_info("[%s] err_type=[0x%x] err_time=[%5lu.%06lu]\n",
-		__func__, err_type, err_ts, (rem_nsec/1000));
+		__func__, err_type, (unsigned long)err_ts, (unsigned long)(rem_nsec/1000));
 	err_total = 0;
 	for (id = 0; id < irq_err_type_max; id++) {
 		if (((err_type >> id) & 0x1) == 0x1)
