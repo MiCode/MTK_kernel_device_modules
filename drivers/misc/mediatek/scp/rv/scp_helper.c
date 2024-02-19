@@ -1153,6 +1153,14 @@ DEVICE_ATTR_RO(scp_reset_counts);
 
 void scp_wdt_reset(int cpu_id)
 {
+	int scp_awake_flag = 0;
+
+	/* Need to awawke scp avoid peri off */
+	if (scp_awake_lock((void *)SCP_A_ID) == -1) {
+		scp_awake_flag = -1;
+		pr_notice("[SCP] %s: awake scp fail\n", __func__);
+	}
+
 #if SCP_RESERVED_MEM && IS_ENABLED(CONFIG_OF_RESERVED_MEM)
 	if (scpreg.secure_dump) {
 		switch (cpu_id) {
@@ -1182,6 +1190,11 @@ void scp_wdt_reset(int cpu_id)
 	if (sap_enabled() && cpu_id == sap_get_core_id())
 		sap_wdt_reset();
 
+	}
+
+	if(scp_awake_flag == 0) {
+		if (scp_awake_unlock((void *)SCP_A_ID) == -1)
+			pr_notice("[SCP] %s: awake unlock fail\n", __func__);
 	}
 }
 EXPORT_SYMBOL(scp_wdt_reset);
