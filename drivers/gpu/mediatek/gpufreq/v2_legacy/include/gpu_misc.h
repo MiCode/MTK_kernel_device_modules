@@ -26,5 +26,5 @@ extern unsigned int mt_gpufreq_get_seg_max_opp_index(void);
 extern unsigned int mt_gpufreq_get_dvfs_table_num(void);
 extern unsigned int mt_gpufreq_get_power_table_num(void);
 extern void mt_gpufreq_set_gpu_wrap_fp(int (*gpu_wrap_fp)(void));
-
+extern void kicker_pbm_by_gpu(bool status, unsigned int loading, int voltage);
 #endif /* __GPU_MISC_H__ */
