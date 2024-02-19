@@ -12173,7 +12173,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		compatible = "mediatek,extcon-usb";
 		vbus-supply = <&mt6379_otg_vbus>;
 		vbus-voltage = <5000000>;
-		vbus-current = <1800000>;
+		vbus-current = <1700000>;
 		charger = <&mt6379_chg>;
 		tcpc = "type_c_port0";
 		mediatek,bypss-typec-sink = <1>;
