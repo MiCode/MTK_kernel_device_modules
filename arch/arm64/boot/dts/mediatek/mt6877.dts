@@ -31,7 +31,7 @@
 		bootargs = "console=tty0 console=ttyS0,921600n1 root=/dev/ram \
 			vmalloc=400M slub_debug=OFZPU swiotlb=noforce \
 			initcall_debug=1 pelt=8 \
-			earlycon=uart8250,mmio32,0x11002000 \
+			8250.nr_uarts=2 \
 			firmware_class.path=/vendor/firmware \
 			page_owner=on loop.max_part=7";
 			kaslr-seed = <0 0>;
@@ -1448,7 +1448,6 @@
 			"mediatek,toprgu",
 			"syscon", "simple-mfd";
 		reg = <0 0x10007000 0 0x1000>;
-		interrupts = <GIC_SPI 109 IRQ_TYPE_LEVEL_HIGH 0>;
 		mediatek,rg_dfd_timeout = <0x1ffff>;
 		#reset-cells = <1>;
 		reboot-mode {
@@ -1810,7 +1809,7 @@
 	};
 
 	apdma: dma-controller@10220e00 {
-		compatible = "mediatek,mt6577-uart-dma";
+		compatible = "mediatek,mt6779-uart-dma";
 		reg = <0 0x10220e00 0 0x80>,
 		      <0 0x10220e80 0 0x80>,
 		      <0 0x10220f00 0 0x80>,
@@ -1822,7 +1821,6 @@
 		clocks = <&infracfg_ao_clk CLK_IFRAO_APDMA>;
 		clock-names = "apdma";
 		#dma-cells = <1>;
-		dma-bits = <34>;
 		dma-requests = <4>;
 	};
 
