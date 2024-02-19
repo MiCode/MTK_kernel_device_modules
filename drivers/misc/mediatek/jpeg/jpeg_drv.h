@@ -33,6 +33,24 @@ struct JpegClk {
 	struct clk *clk_venc_jpgDec_c2;
 };
 
+enum JPEG_DEC_STATE {
+	JPEG_DEC_OPEN,
+	JPEG_DEC_POWER_ON,
+	JPEG_DEC_DECODE,
+	JPEG_DEC_WAITING,
+	JPEG_DEC_DECODE_DONE,
+	JPEG_DEC_POWER_OFF,
+};
+
+#define JPEG_IS_POWER_ON(state) ((state) >= JPEG_DEC_POWER_ON && (state) < JPEG_DEC_POWER_OFF)
+#define JPEG_HAS_TRIGGER_DEC(state) ((state) >= JPEG_DEC_DECODE)
+
+struct JpegPrivData {
+	enum JPEG_DEC_STATE state;
+	struct mutex state_lock;
+	int hw_id;
+};
+
 struct JpegDeviceStruct {
 	struct device *pDev[JPEG_LARB_COUNT];
 	struct device *smmu_dev[JPEG_LARB_COUNT];
@@ -46,7 +64,6 @@ struct JpegDeviceStruct {
 	struct clk *jpeg_dvfs[JPEG_LARB_COUNT];
 	struct notifier_block pm_notifier;
 	bool is_suspending;
-	bool is_dec_started[HW_CORE_NUMBER];
 };
 
 const long jpeg_dev_get_hybrid_decoder_base_VA(int id);
