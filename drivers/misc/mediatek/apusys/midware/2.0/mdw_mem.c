@@ -329,6 +329,7 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 	struct scatterlist *sg = NULL;
 	int ret = 0, i = 0;
 	uint64_t eva = 0;
+	bool is_apummu = false;
 
 	mutex_lock(&m->mtx);
 	get_dma_buf(m->dbuf);
@@ -419,6 +420,7 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 
 	if (ret) {
 		mdw_drv_err("apummu iova2eva fail s(0x%llx)\n", (uint64_t)m->mpriv);
+		is_apummu = true;
 		ret = -EINVAL;
 		goto unmap_dbuf;
 	}
@@ -454,8 +456,9 @@ free_map:
 	kfree(map);
 out:
 	if (ret) {
-		mdw_exception("%s:map dva fail, type(%u) size(%u)\n",
-			current->comm, m->type, m->size);
+		if (is_apummu == false)
+			mdw_exception("%s:map dva fail, type(%u) size(%u)\n",
+				current->comm, m->type, m->size);
 		dma_buf_put(m->dbuf);
 	}
 	mutex_unlock(&m->mtx);
