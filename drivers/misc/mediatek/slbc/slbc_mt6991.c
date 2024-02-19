@@ -1046,7 +1046,7 @@ static int slbc_check_uid_gid(enum slc_ach_uid uid, int gid)
 			ret = -EINVAL;
 		break;
 	case ID_CAM:
-		if (!(gid == GID_CAM))
+		if (gid != GID_CAM)
 			ret = -EINVAL;
 		break;
 	case ID_AOV:
@@ -1117,6 +1117,9 @@ static void slbc_get_gid_by_req(enum slc_ach_uid uid, int *gid)
 		break;
 	case ID_MAE:
 		*gid = GID_MAE;
+		break;
+	case ID_CAM:
+		*gid = GID_CAM;
 		break;
 #ifdef SLBC_IMG_WA
 	case ID_IMG:
