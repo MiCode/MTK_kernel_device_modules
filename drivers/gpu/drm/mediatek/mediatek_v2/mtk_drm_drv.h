@@ -85,6 +85,8 @@ struct mtk_mmsys_driver_data {
 	void (*gce_event_config)(struct drm_device *drm);
 	void (*vdisp_ao_irq_config)(struct drm_device *drm);
 	enum PF_TS_TYPE pf_ts_type;
+	bool respective_ostdl;
+	bool ovl_exdma_rule;
 };
 
 struct mtk_drm_lyeblob_ids {

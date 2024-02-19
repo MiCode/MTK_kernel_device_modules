@@ -597,7 +597,8 @@ static int mtk_mdp_rdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 				MTK_DRM_OPT_MMQOS_SUPPORT))
 			break;
 
-		__mtk_disp_set_module_hrt(comp->hrt_qos_req, bw_val);
+		__mtk_disp_set_module_hrt(comp->hrt_qos_req, bw_val,
+			priv->data->respective_ostdl);
 		ret = MDP_RDMA_REQ_HRT;
 	}
 		break;

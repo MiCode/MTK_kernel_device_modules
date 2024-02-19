@@ -5754,6 +5754,7 @@ static const struct mtk_mmsys_driver_data mt6989_mmsys_driver_data = {
 	.bypass_infra_ddr_control = true,
 	.disable_merge_irq = mtk_ddp_disable_merge_irq,
 	.pf_ts_type = IRQ_CMDQ_CB,
+	.respective_ostdl = true,
 };
 static const struct mtk_mmsys_driver_data mt6991_mmsys_driver_data = {
 	.main_path_data = &mt6991_mtk_main_path_data,
@@ -5776,6 +5777,8 @@ static const struct mtk_mmsys_driver_data mt6991_mmsys_driver_data = {
 	.gce_event_config = mtk_gce_event_config_MT6991,
 	.vdisp_ao_irq_config = mtk_vdisp_ao_irq_config_MT6991,
 	.pf_ts_type = IRQ_CMDQ_CB,
+	.respective_ostdl = true,
+	.ovl_exdma_rule = true,
 };
 
 static const struct mtk_mmsys_driver_data mt6897_mmsys_driver_data = {
