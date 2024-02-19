@@ -26,17 +26,17 @@ struct gpu_pt_priv {
 static struct gpu_pt_priv gpu_pt_info[POWER_THROTTLING_TYPE_MAX] = {
 	[LBAT_POWER_THROTTLING] = {
 		.max_lv_name = "lbat-max-level",
-		.limit_name = "lbat-limit-freq",
+		.limit_name = "lbat-limit-freq-lv",
 		.max_lv = LOW_BATTERY_LEVEL_NUM - 1,
 	},
 	[OC_POWER_THROTTLING] = {
 		.max_lv_name = "oc-max-level",
-		.limit_name = "oc-limit-freq",
+		.limit_name = "oc-limit-freq-lv",
 		.max_lv = BATTERY_OC_LEVEL_NUM - 1,
 	},
 	[SOC_POWER_THROTTLING] = {
 		.max_lv_name = "soc-max-level",
-		.limit_name = "soc-limit-freq",
+		.limit_name = "soc-limit-freq-lv",
 		.max_lv = BATTERY_PERCENT_LEVEL_NUM - 1,
 	}
 };
@@ -96,15 +96,15 @@ static void gpu_pt_battery_percent_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
 static void dump_gpu_setting(struct platform_device *pdev, enum gpu_pt_type type)
 {
 	struct gpu_pt_priv *gpu_pt_data;
-	int i = 0, j = 0, r = 0;
+	int i = 0, r = 0;
 	char str[128];
 	size_t len;
 
 	gpu_pt_data = &gpu_pt_info[type];
 	len = sizeof(str) - 1;
 
-	for (j = 0; j < gpu_pt_data->max_lv; j ++) {
-		r += snprintf(str + r, len - r, "%d freq ", gpu_pt_data->freq_limit[j]);
+	for (i = 0; i < gpu_pt_data->max_lv; i ++) {
+		r += snprintf(str + r, len - r, "%d freq ", gpu_pt_data->freq_limit[i]);
 		if (r >= len)
 			return;
 	}
@@ -116,10 +116,10 @@ static void gpu_limit_default_setting(struct device *dev, enum gpu_pt_type type)
 	struct gpu_pt_priv *gpu_pt_data;
 	int i = 0;
 
-	gpu_pt_data = &gpu_pt_info[i];
+	gpu_pt_data = &gpu_pt_info[type];
 
 	if (type == LBAT_POWER_THROTTLING)
-		gpu_pt_data->max_lv = 3;
+		gpu_pt_data->max_lv = LOW_BATTERY_LEVEL_NUM - 1;
 	else if (type == OC_POWER_THROTTLING)
 		gpu_pt_data->max_lv = 2;
 	else
@@ -135,7 +135,8 @@ static int mtk_gpu_power_throttling_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
 	struct gpu_pt_priv *gpu_pt_data;
-	int i, ret = 0, num = 0;
+	int i, j, ret = 0, num = 0;
+	char buf[32];
 
 	for (i = 0; i < POWER_THROTTLING_TYPE_MAX; i++) {
 		gpu_pt_data = &gpu_pt_info[i];
@@ -154,14 +155,24 @@ static int mtk_gpu_power_throttling_probe(struct platform_device *pdev)
 		if (!gpu_pt_data->freq_limit)
 			return -ENOMEM;
 
-		ret = of_property_read_u32_array(np, gpu_pt_data->limit_name,
-						gpu_pt_data->freq_limit,
-						gpu_pt_data->max_lv);
-		if (ret) {
+		ret = 0;
+		for (j = 0; j < gpu_pt_data->max_lv; j++) {
+			memset(buf, 0, sizeof(buf));
+			ret = snprintf(buf, sizeof(buf), "%s%d", gpu_pt_data->limit_name, j+1);
+			if (ret < 0)
+				pr_notice("can't merge %s %d\n", gpu_pt_data->limit_name, j+1);
+
+			ret |= of_property_read_u32(np, buf, &gpu_pt_data->freq_limit[j]);
+			if (ret < 0)
+				pr_notice("%s: get lbat gpu limit fail %d\n", __func__, ret);
+		}
+
+		if (ret < 0) {
 			kfree(gpu_pt_data->freq_limit);
 			gpu_limit_default_setting(&pdev->dev, i);
+		} else {
+			dump_gpu_setting(pdev, i);
 		}
-		dump_gpu_setting(pdev, i);
 	}
 
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
