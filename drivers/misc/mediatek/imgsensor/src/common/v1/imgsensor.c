@@ -1267,6 +1267,8 @@ static inline int check_length_of_para(
 	case SENSOR_FEATURE_SET_STREAMING_RESUME:
 	case SENSOR_FEATURE_GET_PERIOD:
 	case SENSOR_FEATURE_GET_PIXEL_CLOCK_FREQ:
+	case SENSOR_FEATURE_GET_PERIOD_BY_SCENARIO:
+	case SENSOR_FEATURE_GET_PIXEL_CLOCK_FREQ_BY_SCENARIO:
 	{
 		if (length != 8)
 			ret = -EFAULT;
@@ -1517,6 +1519,10 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 	case SENSOR_FEATURE_SET_STREAMING_SUSPEND:
 	case SENSOR_FEATURE_SET_STREAMING_RESUME:
 	case SENSOR_FEATURE_SET_SENSOR_SYNC_MODE:
+	case SENSOR_FEATURE_SEAMLESS_SWITCH:
+	case SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS:
+	case SENSOR_FEATURE_GET_PERIOD_BY_SCENARIO:
+	case SENSOR_FEATURE_GET_PIXEL_CLOCK_FREQ_BY_SCENARIO:
 		if (copy_from_user(
 		    (void *)pFeaturePara,
 		    (void *) pFeatureCtrl->pFeaturePara,
@@ -1635,6 +1641,8 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 	case SENSOR_FEATURE_GET_SENSOR_N3D_STREAM_TO_VSYNC_TIME:
 	case SENSOR_FEATURE_GET_PERIOD:
 	case SENSOR_FEATURE_GET_PIXEL_CLOCK_FREQ:
+	case SENSOR_FEATURE_GET_PERIOD_BY_SCENARIO:
+	case SENSOR_FEATURE_GET_PIXEL_CLOCK_FREQ_BY_SCENARIO:
 	case SENSOR_FEATURE_GET_AE_EFFECTIVE_FRAME_FOR_LE:
 	case SENSOR_FEATURE_GET_AE_FRAME_MODE_FOR_LE:
 	case SENSOR_FEATURE_GET_SENSOR_SYNC_MODE_CAPACITY:
@@ -2239,7 +2247,50 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 			kfree(pData);
 		}
 		break;
+	case SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS:
+	case SENSOR_FEATURE_SEAMLESS_SWITCH:
+		{
+#define _DATA_SIZE 64
+			char *p_data = NULL;
+			unsigned long long *pFeaturePara_64 =
+				(unsigned long long *)pFeaturePara;
+			usr_ptr =
+				(void *)(uintptr_t) (*(pFeaturePara_64 + 1));
+			if (FeatureParaLen < 3 * sizeof(unsigned long long)) {
+				PK_DBG("FeatureParaLen is too small %d\n", FeatureParaLen);
+				kfree(pFeaturePara);
+				return -EINVAL;
+			}
+			p_data = kmalloc(
+				sizeof(char) * _DATA_SIZE, GFP_KERNEL);
+			if (p_data == NULL) {
+				kfree(pFeaturePara);
+				PK_DBG(" ioctl allocate mem failed\n");
+				return -ENOMEM;
+			}
+			if (copy_from_user((void *)p_data,
+				(void __user *)usr_ptr, _DATA_SIZE)) {
+				kfree(pFeaturePara);
+				kfree(p_data);
+				PK_DBG("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS [CAMERA_HW]ERROR: copy_from_user fail\n");
+				return -ENOMEM;
+			}
+			if (pFeaturePara_64 != NULL)
+				*(pFeaturePara_64 + 1) = (uintptr_t) p_data;
 
+			ret = imgsensor_sensor_feature_control(psensor,
+					pFeatureCtrl->FeatureId,
+					(unsigned char *)pFeaturePara,
+					(unsigned int *)&FeatureParaLen);
+
+			if (copy_to_user((void __user *)usr_ptr,
+					 (void *)p_data, _DATA_SIZE)) {
+				PK_DBG("[CAMERA_HW]ERROR: copy_to_user fail\n");
+			}
+			kfree(p_data);
+			*(pFeaturePara_64 + 1) = (uintptr_t) usr_ptr;
+		}
+		break;
 	default:
 		ret = imgsensor_sensor_feature_control(
 		    psensor,
@@ -2308,6 +2359,8 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 	case SENSOR_FEATURE_GET_RESOLUTION:
 	case SENSOR_FEATURE_GET_PERIOD:
 	case SENSOR_FEATURE_GET_PIXEL_CLOCK_FREQ:
+	case SENSOR_FEATURE_GET_PERIOD_BY_SCENARIO:
+	case SENSOR_FEATURE_GET_PIXEL_CLOCK_FREQ_BY_SCENARIO:
 	case SENSOR_FEATURE_GET_REGISTER:
 	case SENSOR_FEATURE_GET_REGISTER_DEFAULT:
 	case SENSOR_FEATURE_GET_CONFIG_PARA:
@@ -2355,6 +2408,8 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 	case SENSOR_FEATURE_GET_AE_FRAME_MODE_FOR_LE:
 	case SENSOR_FEATURE_GET_SENSOR_SYNC_MODE_CAPACITY:
 	case SENSOR_FEATURE_GET_SENSOR_SYNC_MODE:
+	case SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS:
+	case SENSOR_FEATURE_SEAMLESS_SWITCH:
 		if (copy_to_user(
 		    (void __user *) pFeatureCtrl->pFeaturePara,
 		    (void *)pFeaturePara,
@@ -2941,30 +2996,7 @@ CAMERA_HW_Ioctl_EXIT:
 	return i4RetValue;
 }
 
-static int imgsensor_open(struct inode *a_pstInode, struct file *a_pstFile)
-{
-	mutex_lock(&imgsensor_mutex);
-
-#ifdef IMGSENSOR_USE_RPM
-	// pr_info("%s %s 0x%x\n", __func__, "pm_runtime_get_sync", pgimgsensor->dev);
-	pm_runtime_get_sync(pgimgsensor->dev);
-#endif
-
-	if (atomic_read(&pgimgsensor->imgsensor_open_cnt) == 0)
-		imgsensor_clk_enable_all(&pgimgsensor->clk);
-
-	atomic_inc(&pgimgsensor->imgsensor_open_cnt);
-	pr_info(
-	    "%s %d\n",
-	    __func__,
-	    atomic_read(&pgimgsensor->imgsensor_open_cnt));
-
-	mutex_unlock(&imgsensor_mutex);
-
-	return 0;
-}
-
-static int imgsensor_release(struct inode *a_pstInode, struct file *a_pstFile)
+static int do_imgsensor_suspend(void)
 {
 	enum IMGSENSOR_SENSOR_IDX i = IMGSENSOR_SENSOR_IDX_MIN_NUM;
 
@@ -2980,17 +3012,79 @@ static int imgsensor_release(struct inode *a_pstInode, struct file *a_pstFile)
 		}
 
 		imgsensor_hw_release_all(&pgimgsensor->hw);
+#ifdef SENINF_USE_WAKE_LOCK
+		pr_info(
+			"%s target_put wake lock %d\n",
+			__func__,
+			atomic_read(&pgimgsensor->imgsensor_open_cnt));
+		seninf_wake_lock_put(&pgimgsensor->clk);
+#endif
 	}
+
 	pr_info(
 	    "%s %d\n",
 	    __func__,
 	    atomic_read(&pgimgsensor->imgsensor_open_cnt));
 
 	mutex_unlock(&imgsensor_mutex);
-#ifdef IMGSENSOR_USE_RPM
-	pm_runtime_put_sync(pgimgsensor->dev);
-#endif
+	return 0;
+}
 
+static int do_imgsensor_resume(void)
+{
+	mutex_lock(&imgsensor_mutex);
+
+	if (atomic_read(&pgimgsensor->imgsensor_open_cnt) == 0) {
+#ifdef SENINF_USE_WAKE_LOCK
+		pr_info(
+			"%s target_get wake lock %d\n",
+			__func__,
+			atomic_read(&pgimgsensor->imgsensor_open_cnt));
+		seninf_wake_lock_get(&pgimgsensor->clk);
+#endif
+		imgsensor_clk_enable_all(&pgimgsensor->clk);
+	}
+
+	atomic_inc(&pgimgsensor->imgsensor_open_cnt);
+	pr_info(
+	    "%s %d\n",
+	    __func__,
+	    atomic_read(&pgimgsensor->imgsensor_open_cnt));
+
+	mutex_unlock(&imgsensor_mutex);
+	return 0;
+}
+
+static int imgsensor_open(struct inode *a_pstInode, struct file *a_pstFile)
+{
+	int ret = 0;
+
+#ifdef IMGSENSOR_USE_RPM
+	ret = pm_runtime_get_sync(pgimgsensor->dev);
+	if (ret < 0) {
+		pm_runtime_put_sync(pgimgsensor->dev);
+		pr_info("%s fail\n", __func__);
+		return ret;
+	}
+#else
+	do_imgsensor_resume();
+#endif
+	return 0;
+}
+
+static int imgsensor_release(struct inode *a_pstInode, struct file *a_pstFile)
+{
+	int ret = 0;
+
+#ifdef IMGSENSOR_USE_RPM
+	ret = pm_runtime_put_sync(pgimgsensor->dev);
+	if (ret < 0) {
+		pr_info("%s fail\n", __func__);
+		return ret;
+	}
+#else
+	do_imgsensor_suspend();
+#endif
 	return 0;
 }
 
@@ -3127,6 +3221,9 @@ static int imgsensor_remove(struct platform_device *pdev)
 	imgsensor_i2c_delete();
 	imgsensor_driver_unregister();
 
+#ifdef SENINF_USE_WAKE_LOCK
+	imgsensor_clk_exit(&pgimgsensor->clk);
+#endif
 	return 0;
 }
 
@@ -3144,6 +3241,28 @@ static int imgsensor_resume(struct platform_device *pdev)
  * platform driver
  */
 
+int imgsensor_runtime_suspend(struct device *pDev)
+{
+	pr_info("[%s] +\n", __func__);
+	do_imgsensor_suspend();
+	pr_info("[%s] -\n", __func__);
+
+	return 0;
+}
+
+int imgsensor_runtime_resume(struct device *pDev)
+{
+	pr_info("[%s] +\n", __func__);
+	do_imgsensor_resume();
+	pr_info("[%s] -\n", __func__);
+
+	return 0;
+}
+
+static const struct dev_pm_ops pm_ops = {
+	SET_RUNTIME_PM_OPS(imgsensor_runtime_suspend, imgsensor_runtime_resume, NULL)
+};
+
 #if IS_ENABLED(CONFIG_OF)
 static const struct of_device_id gimgsensor_of_device_id[] = {
 	{ .compatible = "mediatek,camera_hw", },
@@ -3159,6 +3278,7 @@ static struct platform_driver gimgsensor_platform_driver = {
 	.driver     = {
 		.name   = "image_sensor",
 		.owner  = THIS_MODULE,
+		.pm  = &pm_ops,
 #if IS_ENABLED(CONFIG_OF)
 		.of_match_table = gimgsensor_of_device_id,
 #endif
