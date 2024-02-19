@@ -49,7 +49,6 @@ static irqreturn_t mt6379_irq_threaded_handler(int irq, void *d)
 	int i, j, ret;
 	long long t1 = 0, t2 = 0;
 
-	dev_info(dev, "%s:++\n", __func__);
 	t1 = local_clock();
 	ret = regmap_read(regmap, MT6379_REG_IRQ_IND, &ind_val);
 	if (ret)
@@ -128,7 +127,6 @@ static irqreturn_t mt6379_irq_handler(int irq, void *d)
 	unsigned int virq;
 	int i;
 
-	dev_info(data->dev, "%s:++\n", __func__);
 	for (i = 0; i < ARRAY_SIZE(hardirqs); i++) {
 		virq = irq_find_mapping(data->irq_domain, hardirqs[i]);
 		generic_handle_irq(virq);
@@ -320,14 +318,7 @@ static ssize_t test_mode_entered_store(struct device *dev,
 	data->test_mode_entered = enter_state;
 	return count;
 }
-
 static const DEVICE_ATTR_RW(test_mode_entered);
-
-/* mt6379 RCS Config */
-static const struct reg_sequence mt6379_spmi_setting[] = {
-	REG_SEQ0(0x26, 0x91),
-	REG_SEQ0(0x27, 0x03),
-};
 
 int mt6379_device_init(struct mt6379_data *data)
 {
@@ -342,13 +333,6 @@ int mt6379_device_init(struct mt6379_data *data)
 
 	if ((vid & MT6379_VENID_MASK) != MT6379_VENDOR_ID)
 		return dev_err_probe(dev, -ENODEV, "VID not matched 0x%02x\n", vid);
-
-	data->test_mode_entered = true;
-	ret = regmap_register_patch(regmap, mt6379_spmi_setting,
-				    ARRAY_SIZE(mt6379_spmi_setting));
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to init registers\n");
-	data->test_mode_entered = false;
 
 	dev_set_drvdata(dev, data);
 
