@@ -403,7 +403,8 @@
 #define OV16A10_SENSOR_ID                       0x561641
 #define GC02M1B_SENSOR_ID                       0x02e0
 #define GC08A3_SENSOR_ID                        0x08a3
-
+#define MAX96712MIPI_SENSOR_ID  0x52
+#define MAX96712ISXMIPI_SENSOR_ID  0x54
 /* CAMERA DRIVER NAME */
 #define CAMERA_HW_DEVNAME                       "kd_camera_hw"
 /* SENSOR DEVICE DRIVER NAME */
@@ -656,6 +657,8 @@
 #define SENSOR_DRVNAME_IMX355_MIPI_RAW          "imx355_mipi_raw"
 #define SENSOR_DRVNAME_OV13B10_MIPI_RAW         "ov13b10_mipi_raw"
 #define SENSOR_DRVNAME_OV02B10_MIPI_RAW         "ov02b10_mipi_raw"
+#define SENSOR_DRVNAME_MAX96712_MIPI_YUV        "max96712_mipi_yuv"
+#define SENSOR_DRVNAME_MAX96712ISX_MIPI_YUV        "max96712isx_mipi_yuv"
 
 /************************************
  * I3C SENSOR PID (TOTAL 48-BITS)
