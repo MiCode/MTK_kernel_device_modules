@@ -82,6 +82,14 @@ ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/3.0/
 SRC += 3.0/platform/mt6989_pwr_func.o
 endif
 
+ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/3.0/platform/mt6991_aputop.c),)
+subdir-ccflags-y += -DMT6991_PLAT_DATA
+SRC += 3.0/platform/mt6991_aputop.o
+endif
+ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/3.0/platform/mt6991_pwr_func.c),)
+SRC += 3.0/platform/mt6991_pwr_func.o
+endif
+
 SRC += apu_top_entry.o
 
 ifneq (,$(findstring aging,$(PROJECT_DTB_NAMES)))

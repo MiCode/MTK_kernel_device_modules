@@ -24,8 +24,17 @@
 #define APU_PBM_DRV_UT	(0)
 #define LOCAL_DBG	(0)
 
-#define APU_MBOX_BASE	(0x190E2000)
-#define APU_PBM_MONITOR	(apu_mbox + 0x400)
+/*
+ * FIXME:
+ * Dut to mbox addr is different between mt6989 and mt6991, so we can not
+ * support this function by common driver (need to expand platform code)
+ */
+#define UPDATE_APU_MBOX	(0)
+
+#if UPDATE_APU_MBOX
+#define APU_MBOX_BASE	(0x4c2b0000)
+#define APU_PBM_MONITOR	(apu_mbox + APU_PBM_MONITOR_REG)
+#endif
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define apu_pbm_aee_warn(module, reason) \
@@ -72,7 +81,9 @@ static spinlock_t apu_pbm_lock;
 static int max_budget;
 static int prev_max_budget;
 static int apu_pbm_func_sel;
+#if UPDATE_APU_MBOX
 static void *apu_mbox;
+#endif
 
 static int set_apu_pbm_func_param(const char *buf,
 		const struct kernel_param *kp)
@@ -131,11 +142,13 @@ static int soc_pbm_request(int budget)
 	nanosec_rem = do_div(t, 1000000000);
 	curr_us = (uint32_t)(nanosec_rem / 1000);
 
+#if UPDATE_APU_MBOX
 	iowrite32(curr_us, APU_PBM_MONITOR);
-
 	pr_debug("%s apu_pbm_monitor:%d(mW) curr_us:%u\n",
 			__func__, budget, ioread32(APU_PBM_MONITOR));
-
+#else
+	pr_debug("%s apu_pbm_monitor:%d(mW)\n", __func__, budget);
+#endif
 	return 0;
 }
 
@@ -304,12 +317,14 @@ int apu_pbm_drv_init(struct apusys_core_info *info)
 
 	spin_lock_init(&apu_pbm_lock);
 
-	apu_mbox = ioremap(APU_MBOX_BASE, 0x4FF);
+#if UPDATE_APU_MBOX
+	apu_mbox = ioremap(APU_MBOX_BASE, 0x100FF);
 
 	if (IS_ERR((void const *)apu_mbox)) {
 		pr_notice("%s remap apu mbox failed\n", __func__);
 		return -ENOMEM;
 	}
+#endif
 
 	for (mode = 0 ; mode < PBM_MODE_MAX ; mode++) {
 		timer_setup(
@@ -339,8 +354,9 @@ void apu_pbm_drv_exit(void)
 			del_timer(&apu_pbm_param_arr[mode].off_timer);
 	}
 
+#if UPDATE_APU_MBOX
 	if (apu_mbox != NULL)
 		iounmap(apu_mbox);
-
+#endif
 	pr_notice("%s --\n", __func__);
 }

@@ -197,6 +197,9 @@ const struct apupwr_plat_data mt6886_plat_data;
 #ifndef MT8188_PLAT_DATA
 const struct apupwr_plat_data mt8188_plat_data;
 #endif
+#ifndef MT6991_PLAT_DATA
+const struct apupwr_plat_data mt6991_plat_data;
+#endif
 
 static const struct of_device_id of_match_apu_top[] = {
 	{ .compatible = "mt6983,apu_top_3", .data = &mt6983_plat_data},
@@ -207,6 +210,7 @@ static const struct of_device_id of_match_apu_top[] = {
 	{ .compatible = "mt6886,apu_top_3", .data = &mt6886_plat_data},
 	{ .compatible = "mt8188,apu_top_3", .data = &mt8188_plat_data},
 	{ .compatible = "mt6989,apu_top_3", .data = &mt6989_plat_data},
+	{ .compatible = "mt6991,apu_top_3", .data = &mt6991_plat_data},
 	{ /* end of list */},
 };
 
@@ -255,6 +259,8 @@ static int set_aputop_func_param(const char *buf,
 		aputop.param1, aputop.param2,
 		aputop.param3, aputop.param4);
 
+	aputop_func_sel = aputop.func_id;
+
 	ret = pwr_data->plat_aputop_func(this_pdev, aputop.func_id, &aputop);
 
 	mutex_unlock(&aputop_func_mtx);
@@ -266,7 +272,14 @@ static int get_aputop_func_param(char *buf, const struct kernel_param *kp)
 	if (check_pwr_data())
 		return -ENODEV;
 
-	return snprintf(buf, 64, "aputop_func_sel:%d\n", aputop_func_sel);
+	if (pwr_data->plat_aputop_func_return_val)
+		return snprintf(buf, 64,
+			"aputop_func_sel:%d, aputop_func_return_val:0x%08x\n",
+			aputop_func_sel,
+			pwr_data->plat_aputop_func_return_val(aputop_func_sel));
+	else
+		return snprintf(buf, 64, "aputop_func_sel:%d\n",
+			aputop_func_sel);
 }
 
 static struct kernel_param_ops aputop_func_ops = {
