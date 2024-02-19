@@ -470,7 +470,9 @@ static void irq_count_core(void)
 			continue;
 		/* Skip the first time of checking. */
 		if (!xas_get_mark(&xas, XA_MARK_0)) {
+			xas_lock_irqsave(&xas, flags);
 			xas_set_mark(&xas, XA_MARK_0);
+			xas_unlock_irqrestore(&xas, flags);
 			continue;
 		}
 		for_each_online_cpu(cpu) {
