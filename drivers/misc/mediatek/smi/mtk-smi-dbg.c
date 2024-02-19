@@ -548,27 +548,27 @@ static int mtk_smi_put(struct mtk_smi_dbg_node *node)
 static void mtk_smi_dbg_print(struct mtk_smi_dbg *smi, const bool larb,
 				const bool rsi, const u32 id, bool skip_pm_runtime)
 {
-	struct mtk_smi_dbg_node	node = rsi ? smi->rsi[id] : (larb ? smi->larb[id] : smi->comm[id]);
+	struct mtk_smi_dbg_node	*node = rsi ? &smi->rsi[id] : (larb ? &smi->larb[id] : &smi->comm[id]);
 	const char		*name = rsi ? "rsi" : (larb ? "LARB" : "COMM");
-	const u32		regs_nr = node.regs_nr;
+	const u32		regs_nr = node->regs_nr;
 
 	char	buf[LINE_MAX_LEN + 1] = {0};
 	u32	val, comm_id = 0;
 	s32	i, len, ret = 0;
 	bool	dump_with = false;
 
-	if (!node.dev || !node.va)
+	if (!node->dev || !node->va)
 		return;
 
 	if (!skip_pm_runtime) {
 		if (!rsi) {
-			ret = mtk_smi_get_if_in_use(&node);
+			ret = mtk_smi_get_if_in_use(node);
 			if (ret)
-				dev_info(node.dev, "===== %s%u rpm:%d =====\n"
+				dev_info(node->dev, "===== %s%u rpm:%d =====\n"
 					, name, id, ret);
 		}
 		if (ret <= 0 || rsi) {
-			if (of_property_read_u32(node.dev->of_node,
+			if (of_property_read_u32(node->dev->of_node,
 				"mediatek,dump-with-comm", &comm_id))
 				return;
 			if (mtk_smi_get_if_in_use(&smi->comm[comm_id]) <= 0)
@@ -576,52 +576,52 @@ static void mtk_smi_dbg_print(struct mtk_smi_dbg *smi, const bool larb,
 
 			dump_with = true;
 			if (rsi)
-				dev_info(node.dev, "===== %s%u =====\n", name, id);
+				dev_info(node->dev, "===== %s%u =====\n", name, id);
 			else
-				dev_info(node.dev, "===== %s%u rpm:%d =====\n"
+				dev_info(node->dev, "===== %s%u rpm:%d =====\n"
 					, name, id, ret);
 		}
 	} else {
-		dev_info(node.dev, "===== %s%u rpm:skip =====\n"
+		dev_info(node->dev, "===== %s%u rpm:skip =====\n"
 			, name, id);
 	}
 
 	for (i = 0, len = 0; i < regs_nr; i++) {
 
-		val = readl_relaxed(node.va + node.regs[i]);
+		val = readl_relaxed(node->va + node->regs[i]);
 		if (!val)
 			continue;
 
 		ret = snprintf(buf + len, LINE_MAX_LEN - len, " %#x=%#x,",
-			node.regs[i], val);
+			node->regs[i], val);
 		if (ret < 0 || ret >= LINE_MAX_LEN - len) {
 			ret = snprintf(buf + len, LINE_MAX_LEN - len, "%c", '\0');
 			if (ret < 0)
-				dev_notice(node.dev, "smi dbg print error:%d\n", ret);
+				dev_notice(node->dev, "smi dbg print error:%d\n", ret);
 
-			dev_info(node.dev, "%s\n", buf);
+			dev_info(node->dev, "%s\n", buf);
 
 			len = 0;
 			memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
 			ret = snprintf(buf + len, LINE_MAX_LEN - len, " %#x=%#x,",
-				node.regs[i], val);
+				node->regs[i], val);
 			if (ret < 0)
-				dev_notice(node.dev, "smi dbg print error:%d\n", ret);
+				dev_notice(node->dev, "smi dbg print error:%d\n", ret);
 		}
 		len += ret;
 	}
 	ret = snprintf(buf + len, LINE_MAX_LEN - len, "%c", '\0');
 	if (ret < 0)
-		dev_notice(node.dev, "smi dbg print error:%d\n", ret);
+		dev_notice(node->dev, "smi dbg print error:%d\n", ret);
 
-	dev_info(node.dev, "%s\n", buf);
+	dev_info(node->dev, "%s\n", buf);
 
 	if (!skip_pm_runtime) {
 		if (dump_with) {
 			mtk_smi_put(&smi->comm[comm_id]);
 			return;
 		}
-		mtk_smi_put(&node);
+		mtk_smi_put(node);
 	}
 }
 
