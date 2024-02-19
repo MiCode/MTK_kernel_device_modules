@@ -1,0 +1,141 @@
+// SPDX-License-Identifier: GPL-2.0
+/* Copyright (c) 2023 MediaTek Inc. */
+#include <dt-bindings/clock/mt6991-clk.h>
+
+&seninf_top {
+		seninf_csi_port_2: seninf-csi-port-2 {
+			compatible = "mediatek,seninf";
+			csi-port = "2";
+
+			// nvmem-cells = <&csi_efuse2>;
+			nvmem-cell-names = "rg_csi";
+
+			port {
+				seninf_csi_port_2_in: endpoint {
+					remote-endpoint = <&sensor1_out>;
+				};
+			};
+		};
+		seninf_csi_port_4: seninf-csi-port-4 {
+			compatible = "mediatek,seninf";
+			csi-port = "4";
+
+			// nvmem-cells = <&csi_efuse4>;
+			nvmem-cell-names = "rg_csi";
+
+			port {
+				seninf_csi_port_4_in: endpoint {
+					remote-endpoint = <&sensor0_out>;
+				};
+			};
+		};
+};
+
+/* CAMERA GPIO fixed to regulator */
+&odm {
+	gpio46_regulator: gpio-46 {
+		compatible = "regulator-fixed";
+		regulator-name = "gpio46_regulator";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		gpio = <&pio 46 0x0>;
+		enable-active-high;
+		status = "okay";
+	};
+	gpio47_regulator: gpio-47 {
+		compatible = "regulator-fixed";
+		regulator-name = "gpio47_regulator";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		gpio = <&pio 47 0x0>;
+		enable-active-high;
+		status = "okay";
+	};
+};
+
+/* CAMERA GPIO standardization */
+&pio {
+	camera_pins_default: camdefault {
+	};
+};
+/* CAMERA GPIO end */
+
+
+&i2c2 {
+	status = "okay";
+	clock-frequency = <1000000>;
+};
+
+&i2c4 {
+	status = "okay";
+	clock-frequency = <1000000>;
+};
+
+&i2c7 {
+	status = "okay";
+	clock-frequency = <1000000>;
+
+	sensor1: sensor1@52 {
+		compatible = "mediatek,imgsensor";
+		sensor-names = "max96712_mipi_yuv";
+		reg = <0x52>;
+
+		#thermal-sensor-cells = <0>;
+		pdn-supply = <&gpio47_regulator>;
+
+		clocks = <&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D32>,
+			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D16>,
+			<&vlp_cksys_clk CLK_CK_F26M_CK_D2>,
+			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D10>,
+			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D8>,
+			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D8>,
+			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>;
+		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+
+		status = "okay";
+
+		port {
+			sensor1_out: endpoint {
+				remote-endpoint = <&seninf_csi_port_2_in>;
+			};
+		};
+	};
+};
+
+&i2c8 {
+	status = "okay";
+	clock-frequency = <1000000>;
+
+	sensor0: sensor0@52 {
+		compatible = "mediatek,imgsensor";
+		sensor-names = "max96712isx_mipi_yuv";
+		reg = <0x52>;
+
+		#thermal-sensor-cells = <0>;
+		pdn-supply = <&gpio46_regulator>;
+
+		clocks = <&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D32>,
+			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D16>,
+			<&vlp_cksys_clk CLK_CK_F26M_CK_D2>,
+			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D10>,
+			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D8>,
+			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D8>,
+			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>;
+		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+
+		status = "okay";
+
+		port {
+			sensor0_out: endpoint {
+				remote-endpoint = <&seninf_csi_port_4_in>;
+			};
+		};
+	};
+};
+
+&i2c9 {
+	status = "okay";
+	clock-frequency = <1000000>;
+};
