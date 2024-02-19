@@ -86,6 +86,10 @@ void mtk_find_busiest_group(void *data, struct sched_group *busiest,
 	int src_cpu = -1;
 	int dst_cpu = dst_rq->cpu;
 
+
+	if (!get_eas_hook())
+		return;
+
 	if (cpu_paused(dst_cpu)) {
 		*out_balance = 1;
 		trace_sched_find_busiest_group(src_cpu, dst_cpu, *out_balance, CORE_PAUSE_OUT);
@@ -131,6 +135,9 @@ void mtk_cpu_overutilized(void *data, int cpu, int *overutilized)
 	struct rq *rq = cpu_rq(cpu);
 	unsigned long sum_util = 0, sum_cap = 0;
 	int i = 0;
+
+	if (!get_eas_hook())
+		return;
 
 	rcu_read_lock();
 	pd = rcu_dereference(rq->rd->pd);
@@ -469,6 +476,9 @@ void mtk_tick_entry(void *data, struct rq *rq)
 	u64 idle_time, wall_time, cpu_utilize;
 	struct sbb_cpu_data *sbb_data = per_cpu(sbb, rq->cpu);
 
+	if (!get_eas_hook())
+		return;
+
 	irq_log_store();
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
@@ -553,6 +563,9 @@ EXPORT_SYMBOL_GPL(get_wake_sync);
 
 void mtk_set_wake_flags(void *data, int *wake_flags, unsigned int *mode)
 {
+	if (!get_eas_hook())
+		return;
+
 	if (!sched_sync_hint_enable)
 		*wake_flags &= ~WF_SYNC;
 }
@@ -733,6 +746,9 @@ void check_for_migration(struct task_struct *p)
 
 void hook_scheduler_tick(void *data, struct rq *rq)
 {
+	if (!get_eas_hook())
+		return;
+
 	/* need upstream, add vendor data
 	struct root_domain *rd = rq->rd;
 
@@ -750,6 +766,9 @@ void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 	int this_cpu = smp_processor_id();
 	struct sugov_rq_data *sugov_data_ptr;
 	struct sugov_rq_data *sugov_data_ptr2;
+
+	if (!get_eas_hook())
+		return;
 
 	irq_log_store();
 
@@ -821,17 +840,18 @@ unsigned long calc_pwr_eff(int wl_type, int cpu, unsigned long task_util)
 #if IS_ENABLED(CONFIG_MTK_EAS)
 void mtk_pelt_rt_tp(void *data, struct rq *rq)
 {
-	/* need upstream, EXPORT symbols
-	 * 2542493: ANDROID: android: Export symbols for invoking cpufreq_update_util()
-	 * | https://android-review.googlesource.com/c/kernel/common/+/2542493
-	 * cpufreq_update_util(rq, 0);
-	 */
-	return;
+	if (!get_eas_hook())
+		return;
+
+	//cpufreq_update_util(rq, 0);
 }
 
 void mtk_sched_switch(void *data, unsigned int sched_mode, struct task_struct *prev,
 		struct task_struct *next, struct rq *rq)
 {
+	if (!get_eas_hook())
+		return;
+
 	if (next->pid == 0)
 		per_cpu(sbb, rq->cpu)->active = 0;
 

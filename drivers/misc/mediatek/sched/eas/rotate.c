@@ -377,6 +377,9 @@ void rotat_task_stats(void __always_unused *data,
 {
 	struct rot_task_struct *rts = &((struct mtk_task *)p->android_vendor_data1)->rot_task;
 
+	if (!get_eas_hook())
+		return;
+
 	WRITE_ONCE(rts->ktime_ns, ktime_get_raw_ns());
 }
 
@@ -384,6 +387,9 @@ void rotat_task_newtask(void __always_unused *data,
 				struct task_struct *p, unsigned long clone_flags)
 {
 	struct rot_task_struct *rts = &((struct mtk_task *)p->android_vendor_data1)->rot_task;
+
+	if (!get_eas_hook())
+		return;
 
 	WRITE_ONCE(rts->ktime_ns, 0);
 }

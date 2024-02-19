@@ -975,6 +975,9 @@ void mtk_can_migrate_task(void *data, struct task_struct *p,
 	bool latency_sensitive;
 	struct cpumask eff_mask;
 
+	if (!get_eas_hook())
+		return;
+
 	if (READ_ONCE(cpu_rq(task_cpu(p))->rd->overutilized)) {
 		*can_migrate = 1;
 		return;
@@ -1975,6 +1978,9 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	unsigned int num_vvip = 0, min_num_vvip_in_cpu = UINT_MAX;
 #endif
 
+	if (!get_eas_hook())
+		return;
+
 	cpumask_clear(&allowed_cpu_mask);
 
 	irq_log_store();
@@ -2512,6 +2518,9 @@ void mtk_sched_newidle_balance(void *data, struct rq *this_rq, struct rq_flags *
 	bool latency_sensitive = false;
 	struct cpumask effective_softmask;
 	bool had_pull_vvip = false;
+
+	if (!get_eas_hook())
+		return;
 
 	if (cpu_paused(this_cpu)) {
 		*done = 1;

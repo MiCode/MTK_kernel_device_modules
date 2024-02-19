@@ -158,6 +158,7 @@ extern int get_cpu_type(int type);
 int init_opp_cap_info(struct proc_dir_entry *dir);
 void clear_opp_cap_info(void);
 
+extern int get_eas_hook(void);
 extern int pd_opp2freq(int cpu, int opp, int quant, int wl);
 extern int pd_opp2cap(int cpu, int opp, int quant, int wl);
 extern int pd_opp2pwr_eff(int cpu, int opp, int quant, int wl);
@@ -269,5 +270,11 @@ DECLARE_PER_CPU(unsigned int, gear_id);
 DECLARE_PER_CPU(struct sbb_cpu_data *, sbb);
 DECLARE_PER_CPU(struct mtk_rq *, rq_data);
 
+__weak extern unsigned int mtk_get_leakage(unsigned int cpu, unsigned int idx,
+	unsigned int degree)
+{
+	return 0;
+}
 __weak extern unsigned int mtk_get_dsu_freq(void) { return 0; }
+__weak int em_ver(void) { return 2; }
 #endif /* __CPUFREQ_H__ */

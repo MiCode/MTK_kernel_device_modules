@@ -76,6 +76,9 @@ static inline void sched_asym_cpucapacity_init(void)
 
 static void sched_task_util_hook(void *data, struct sched_entity *se)
 {
+	if (!get_eas_hook())
+		return;
+
 	if (trace_sched_task_util_enabled()) {
 		struct task_struct *p;
 		struct sched_avg *sa;
@@ -93,6 +96,9 @@ static void sched_task_util_hook(void *data, struct sched_entity *se)
 
 static void sched_task_uclamp_hook(void *data, struct sched_entity *se)
 {
+	if (!get_eas_hook())
+		return;
+
 	if (trace_sched_task_uclamp_enabled()) {
 		struct task_struct *p;
 		struct sched_avg *sa;
@@ -126,6 +132,10 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 	int cpu = rq->cpu;
 	int type = *(int *)data;
 	struct sugov_rq_data *sugov_data_ptr;
+
+	if (!get_eas_hook())
+		return;
+
 	irq_log_store();
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
@@ -268,6 +278,9 @@ void mtk_check_d_tasks(void *data, struct task_struct *p,
 void mtk_setscheduler_uclamp(void *data, struct task_struct *tsk,
 	int clamp_id, unsigned int value)
 {
+	if (!get_eas_hook())
+		return;
+
 	if (trace_sched_set_uclamp_enabled())
 		trace_sched_set_uclamp(tsk->pid,
 		task_cpu(tsk), task_on_rq_queued(tsk), clamp_id, value);
@@ -319,7 +332,7 @@ void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 	bool post_init_util_ctl = sched_post_init_util_enable_get();
 	int freq;
 
-	if (!post_init_util_ctl)
+	if (!post_init_util_ctl || !get_eas_hook())
 		return;
 
 	if (likely(entity_is_task(se)))
