@@ -1856,9 +1856,28 @@ long *get_mtk_em_api_data(void)
 }
 EXPORT_SYMBOL(get_mtk_em_api_data);
 
+/* show em_ver */
+static int em_ver_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "em_ver = %d\n", em_ver());
+	return 0;
+}
+
+static int em_ver_open(struct inode *in, struct file *file)
+{
+	return single_open(file, em_ver_show, NULL);
+}
+
+static const struct proc_ops em_ver_ops = {
+	.proc_open = em_ver_open,
+	.proc_read = seq_read,
+};
+
 int init_opp_cap_info(struct proc_dir_entry *dir)
 {
 	int ret;
+
+	proc_create("mtk_scheduler/em_ver", 0644, NULL, &em_ver_ops);
 
 	ret = init_sram_mapping();
 	if (ret)
