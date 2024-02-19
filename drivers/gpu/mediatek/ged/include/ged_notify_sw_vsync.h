@@ -7,10 +7,14 @@
 #define __GED_NOTIFY_SW_VSYNC_H__
 
 #include "ged_type.h"
+#include "ged_dvfs.h"
 
 extern unsigned int gpu_block;
 extern unsigned int gpu_idle;
 extern unsigned int gpu_av_loading;
+
+static atomic_t trigger_pm_callback_state = ATOMIC_INIT(0);
+
 
 GED_ERROR ged_notify_sw_vsync(GED_VSYNC_TYPE eType,
 	struct GED_DVFS_UM_QUERY_PACK *psQueryData);
@@ -60,6 +64,8 @@ void ged_set_policy_state(enum gpu_dvfs_policy_state state);
 void ged_set_prev_policy_state(enum gpu_dvfs_policy_state state);
 unsigned long long ged_get_power_on_timestamp(void);
 void ged_eb_dvfs_trace_dump(void);
+int check_pm_callback_state(enum ged_gpu_power_state power_state);
+void dump_pm_callback_kbase_info(void);
 
 #if defined(CONFIG_GPU_MT8167) || defined(CONFIG_GPU_MT8173) ||\
 defined(CONFIG_GPU_MT6739) || defined(CONFIG_GPU_MT6761) ||\
