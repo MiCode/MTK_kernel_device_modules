@@ -12375,7 +12375,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<0 0x19040000 0 0x1000>,        // apu_rcx_dla
 			<0 0x190a0000 0 0x11000>,       // apu_are
 			<0 0x190e0000 0 0x4000>,        // apu_vcore
-			<0 0x4c2b0000 0 0x10000>,        // apu_md32_mbox
+			<0 0x4c2b0000 0 0x20000>,        // apu_md32_mbox
 			<0 0x190f0000 0 0x1000>,        // apu_rpc
 			<0 0x190f1000 0 0x1000>,        // apu_pcu
 			<0 0x190f2000 0 0x1000>,        // apu_ao_ctl
@@ -16389,6 +16389,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 /delete-node/ &mt6363_vbuck4_sshub;
 /delete-node/ &mt6373_vmch_eint_low;
 /delete-node/ &mt6373_vmch;
+/delete-node/ &mt6373_vbuck2;
 
 &md_auxadc {
 	io-channels = <&pmic_adc (ADC_PURES_OPEN_MASK | AUXADC_VIN1)>;
