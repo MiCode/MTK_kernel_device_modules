@@ -514,7 +514,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/usb/usb_boost/usb_boost.ko",
     "drivers/misc/mediatek/usb/usb_boost/musb_boost.ko",
     "drivers/misc/mediatek/usb/usb_meta/usb_meta.ko",
-    #"drivers/misc/mediatek/usb/usb_offload/usb_offload.ko",
+    "drivers/misc/mediatek/usb/usb_offload/usb_offload.ko",
     "drivers/misc/mediatek/usb/usb_rndis/mtk_u_ether.ko",
     "drivers/misc/mediatek/usb/usb_rndis/mtk_usb_f_rndis.ko",
     "drivers/misc/mediatek/usb/usb_xhci/xhci-mtk-hcd-v2.ko",
@@ -1223,7 +1223,7 @@ def get_overlay_modules_list():
 
         mgk_64_device_modules.append("drivers/misc/mediatek/upower/Upower.ko")
 
-        #mgk_64_device_modules.remove("drivers/misc/mediatek/usb/usb_offload/usb_offload.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/usb/usb_offload/usb_offload.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp_status.ko")
