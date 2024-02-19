@@ -620,12 +620,12 @@ static int check_codec_id(struct vdec_vcu_ipi_ack *msg, unsigned int fmt, unsign
 	if (codec_id == 0) {
 		pr_info("[error] vdec unsupported fourcc\n");
 		ret = -1;
-	} else if (msg->codec_id == codec_id && msg->status == svp) {
-		pr_info("%s ipi id %d svp %d is correct\n", __func__, msg->codec_id, msg->status);
+	} else if (msg->id == codec_id && msg->status == svp) {
+		pr_info("%s ipi id %d svp %d is correct\n", __func__, msg->id, msg->status);
 		ret = 0;
 	} else {
 		mtk_v4l2_debug(2, "[Info] ipi id %d svp %d is incorrect\n",
-			msg->codec_id, msg->status);
+			msg->id, msg->status);
 		ret = -1;
 	}
 	return ret;
@@ -790,8 +790,7 @@ return_vdec_ipi_ack:
 			case VCU_IPIMSG_DEC_PUT_FRAME_BUFFER:
 				inst->put_frame_async = false;
 				vcodec_trace_begin("vdec_ipi(PUT_FRAME_BUFFER)");
-				mtk_vdec_put_fb(vcu->ctx, PUT_BUFFER_CALLBACK,
-					msg->no_need_put != 0);
+				mtk_vdec_put_fb(vcu->ctx, PUT_BUFFER_CALLBACK, msg->data != 0);
 				msg->msg_id = AP_IPIMSG_DEC_PUT_FRAME_BUFFER_DONE;
 				vdec_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 				vcodec_trace_end();
@@ -803,7 +802,7 @@ return_vdec_ipi_ack:
 					&inst->vsi->list_disp, &inst->list_disp_fb, &inst->list_disp_fb_lock);
 				vdec_get_fb_list(inst,
 					&inst->vsi->list_free, &inst->list_free_fb, &inst->list_free_fb_lock);
-				mtk_vdec_put_fb(vcu->ctx, PUT_BUFFER_CALLBACK, msg->no_need_put != 0);
+				mtk_vdec_put_fb(vcu->ctx, PUT_BUFFER_CALLBACK, msg->data != 0);
 				// async one way ipi, no need ack
 				vcodec_trace_end();
 				break;
@@ -825,14 +824,14 @@ return_vdec_ipi_ack:
 				break;
 			// TODO: need remove HW locks /power & ISR ipis
 			case VCU_IPIMSG_DEC_LOCK_LAT:
-				get_dvfs_data(vcu->ctx->dev, msg->no_need_put);
+				get_dvfs_data(vcu->ctx->dev, msg->data);
 				vdec_decode_prepare(vcu->ctx, MTK_VDEC_LAT);
 				atomic_set(&dev->dec_hw_active[MTK_VDEC_LAT], 1);
 				msg->msg_id = AP_IPIMSG_DEC_LOCK_LAT_DONE;
 				vdec_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 				break;
 			case VCU_IPIMSG_DEC_UNLOCK_LAT:
-				get_dvfs_data(vcu->ctx->dev, msg->no_need_put);
+				get_dvfs_data(vcu->ctx->dev, msg->data);
 				atomic_set(&dev->dec_hw_active[MTK_VDEC_LAT], 0);
 				vdec_decode_unprepare(vcu->ctx, MTK_VDEC_LAT);
 				msg->msg_id = AP_IPIMSG_DEC_UNLOCK_LAT_DONE;
@@ -843,7 +842,7 @@ return_vdec_ipi_ack:
 					mtk_vcodec_dec_pw_on(&vcu->ctx->dev->pm);
 					dev->dec_ao_pw_cnt++;
 				} else {
-					get_dvfs_data(vcu->ctx->dev, msg->no_need_put);
+					get_dvfs_data(vcu->ctx->dev, msg->data);
 					vdec_decode_prepare(vcu->ctx, MTK_VDEC_CORE);
 					atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 1);
 				}
@@ -855,7 +854,7 @@ return_vdec_ipi_ack:
 					dev->dec_ao_pw_cnt--;
 					mtk_vcodec_dec_pw_off(&vcu->ctx->dev->pm);
 				} else {
-					get_dvfs_data(vcu->ctx->dev, msg->no_need_put);
+					get_dvfs_data(vcu->ctx->dev, msg->data);
 					atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 0);
 					vdec_decode_unprepare(vcu->ctx, MTK_VDEC_CORE);
 				}

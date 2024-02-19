@@ -133,12 +133,12 @@ static int check_codec_id(struct vdec_vcu_ipi_ack *msg, unsigned int fmt, unsign
 	if (codec_id == 0) {
 		pr_info("[error] vdec unsupported fourcc\n");
 		ret = -1;
-	} else if (msg->codec_id == codec_id && msg->status == svp) {
-		pr_info("%s ipi id %d svp %d is correct\n", __func__, msg->codec_id, msg->status);
+	} else if (msg->id == codec_id && msg->status == svp) {
+		pr_info("%s ipi id %d svp %d is correct\n", __func__, msg->id, msg->status);
 		ret = 0;
 	} else {
 		mtk_v4l2_debug(2, "[Info] ipi id %d svp %d is incorrect\n",
-			msg->codec_id, msg->status);
+			msg->id, msg->status);
 		ret = -1;
 	}
 
@@ -396,7 +396,7 @@ int vcu_dec_ipi_handler(void *data, unsigned int len, void *priv)
 			ret = 1;
 			break;
 		case VCU_IPIMSG_DEC_PUT_FRAME_BUFFER:
-			mtk_vdec_put_fb(vcu->ctx, PUT_BUFFER_CALLBACK, msg->no_need_put != 0);
+			mtk_vdec_put_fb(vcu->ctx, PUT_BUFFER_CALLBACK, msg->data != 0);
 			ret = 1;
 			break;
 		case VCU_IPIMSG_DEC_SLICE_DONE_ISR: {

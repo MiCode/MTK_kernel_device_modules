@@ -38,8 +38,8 @@ enum mtk_venc_hw_id {
 
 enum mtk_vdec_hw_id {
 	MTK_VDEC_CORE = 0,
-	MTK_VDEC_CORE1 = 1,
-	MTK_VDEC_LAT = 2,
+	MTK_VDEC_LAT = 1,
+	MTK_VDEC_CORE1 = 2,
 	MTK_VDEC_LAT1 = 3,
 	MTK_VDEC_HW_NUM = 4,
 	MTK_VDEC_LINE_COUNT = 4,
