@@ -1171,6 +1171,10 @@ void vip_push_runnable(struct rq *src_rq)
 
 	/* de-queue from curr rq */
 	update_rq_clock(src_rq);
+
+	if (!cpu_online(new_cpu) || cpu_paused(new_cpu))
+		goto unlock;
+
 	deactivate_task(src_rq, task_to_pushed, DEQUEUE_NOCLOCK);
 	set_task_cpu(task_to_pushed, new_cpu);
 
