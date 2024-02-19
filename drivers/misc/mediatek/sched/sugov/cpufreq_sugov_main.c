@@ -516,7 +516,8 @@ static void sugov_iowait_boost(struct sugov_cpu *sg_cpu, u64 time,
  * This mechanism is designed to boost high frequently IO waiting tasks, while
  * being more conservative on tasks which does sporadic IO operations.
  */
-static void sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time)
+static void sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
+								unsigned long max_cap)
 {
 	unsigned long boost;
 
@@ -545,7 +546,7 @@ static void sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time)
 	 * sg_cpu->util is already in capacity scale; convert iowait_boost
 	 * into the same scale so we can compare.
 	 */
-	boost = (sg_cpu->iowait_boost * sg_cpu->max) >> SCHED_CAPACITY_SHIFT;
+	boost = (sg_cpu->iowait_boost * max_cap) >> SCHED_CAPACITY_SHIFT;
 	boost = uclamp_rq_util_with(cpu_rq(sg_cpu->cpu), boost, NULL);
 	if (sg_cpu->util < boost)
 		sg_cpu->util = boost;
@@ -618,10 +619,11 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	struct sugov_cpu *sg_cpu = container_of(hook, struct sugov_cpu, update_util);
 	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
 	struct rq *rq;
-	unsigned long umin, umax;
+	unsigned long umin, umax, max_cap;
 	unsigned int next_f;
 	int this_cpu = smp_processor_id();
 	struct sugov_rq_data *sugov_data_ptr;
+	max_cap = arch_scale_cpu_capacity(sg_cpu->cpu);
 
 	raw_spin_lock(&sg_policy->update_lock);
 
@@ -641,7 +643,7 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	/* Critical Task aware thermal throttling, notify thermal */
 	mtk_set_cpu_min_opp_single(sg_cpu);
 	sugov_get_util(sg_cpu);
-	sugov_iowait_apply(sg_cpu, time);
+	sugov_iowait_apply(sg_cpu, time, max_cap);
 	if (trace_sugov_ext_util_enabled()) {
 		rq = cpu_rq(sg_cpu->cpu);
 
@@ -682,19 +684,19 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 	struct rq *rq;
 	struct sugov_rq_data *sugov_data_ptr;
 	unsigned long umin, umax;
-	unsigned long util = 0, max = 1;
-	unsigned int j, max_cpu = 0;
+	unsigned long util = 0, max_cap;
+	unsigned int j;
 	int idle = 0;
 	bool _ignore_idle_ctrl = ignore_idle_ctrl;
 
+	max_cap = arch_scale_cpu_capacity(sg_cpu->cpu);
+
 	for_each_cpu(j, policy->cpus) {
 		struct sugov_cpu *j_sg_cpu = &per_cpu(sugov_cpu, j);
-		unsigned long j_util, j_max;
 
 		sugov_get_util(j_sg_cpu);
-		sugov_iowait_apply(j_sg_cpu, time);
-		j_util = j_sg_cpu->util;
-		j_max = j_sg_cpu->max;
+		sugov_iowait_apply(j_sg_cpu, time, max_cap);
+
 		if (_ignore_idle_ctrl) {
 			sugov_data_ptr = &per_cpu(rq_data, j)->sugov_data;
 			idle = (available_idle_cpu(j)
@@ -708,17 +710,13 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 			if (gu_ctrl)
 				umax = min_t(unsigned long,
 					umax, get_cpu_gear_uclamp_max(j));
-			trace_sugov_ext_util(j, idle ? 0 : j_util, umin, umax);
+			trace_sugov_ext_util(j, idle ? 0 : j_sg_cpu->util, umin, umax);
 		}
 		if (idle)
 			continue;
-		if (j_util * max >= j_max * util) {
-			util = j_util;
-			max = j_max;
-			max_cpu = j;
-		}
+		util = max(j_sg_cpu->util, util);
 	}
-	return get_next_freq(sg_policy, util, max);
+	return get_next_freq(sg_policy, util, max_cap);
 }
 
 static void
