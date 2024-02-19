@@ -39,4 +39,7 @@ struct core_ctl_notif_data {
 #define CORE_CTL_ENABLE_POLICY                  _IOW('g', 8, struct _CORE_CTL_PACKAGE)
 #define CORE_CTL_SET_CPU_BUSY_THRES             _IOW('g', 9, struct _CORE_CTL_PACKAGE)
 
+extern void core_ctl_notifier_register(struct notifier_block *n);
+extern void core_ctl_notifier_unregister(struct notifier_block *n);
+
 #endif /* _CORE_CTL_H */
