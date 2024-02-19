@@ -700,6 +700,24 @@ inline int mtk_freq2opp(int cpu, int freq, int quant, int wl)
 	}
 }
 
+inline int mtk_cpu_volt2opp_linear(int cpu, int volt, int quant, int wl)
+{
+	int cluster_id = topology_cluster_id(cpu);
+	int nr_opp;
+	int i;
+	struct pd_capacity_info *pd_info;
+
+	pd_info = &pd_wl_type[wl][cluster_id];
+	if (quant)
+		nr_opp = pd_info->nr_caps_legacy;
+	else
+		nr_opp = pd_info->nr_caps;
+	for (i = 0; i < nr_opp; i++)
+		if (volt >= mtk_opp2volt(cpu, i, quant, wl))
+			return i;
+	return nr_opp - 1;
+}
+
 inline int mtk_dsu_weighting(int cpu, int wl)
 {
 	int i;
@@ -961,6 +979,20 @@ int pd_freq2opp(int cpu, int freq, int quant, int wl)
 	return mtk_freq2opp(cpu, freq, quant, get_eas_wl(wl));
 }
 EXPORT_SYMBOL_GPL(pd_freq2opp);
+
+int (*mtk_cpu_volt2opp_hook)(int cpu, int volt, int quant, int wl);
+EXPORT_SYMBOL(mtk_cpu_volt2opp_hook);
+int pd_cpu_volt2opp(int cpu, int volt, int quant, int wl)
+{
+	if (em_ver() == 3) {
+		if (mtk_cpu_volt2opp_hook)
+			return mtk_cpu_volt2opp_hook(cpu, volt, quant, get_eas_wl(wl));
+		else
+			return 1;
+	}
+	return mtk_cpu_volt2opp_linear(cpu, volt, quant, get_eas_wl(wl));
+}
+EXPORT_SYMBOL_GPL(pd_cpu_volt2opp);
 
 int (*mtk_dsu_weighting_hook)(int wl, int cpu);
 EXPORT_SYMBOL(mtk_dsu_weighting_hook);
