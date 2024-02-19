@@ -78,6 +78,7 @@ mcDrvModule-ffa-y := \
 ccflags-y += -DNDEBUG
 ccflags-y += -Wno-declaration-after-statement
 ccflags-y += $(KBUILD_CFLAGS_TRUSTONIC)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/
 
 ccflags-$(CONFIG_TRUSTONIC_TEE_DEBUG) += -DDEBUG
 

@@ -13,7 +13,6 @@
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
-#include <linux/arm_ffa.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/scatterlist.h>
@@ -21,6 +20,7 @@
 #include <linux/time.h>
 #include <linux/proc_fs.h>
 
+#include "ffa_v11/arm_ffa.h"
 #include "public/mtee_regions.h"
 #include "private/tmem_error.h"
 #include "private/tmem_utils.h"
