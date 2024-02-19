@@ -567,6 +567,32 @@ static void mtk_dsi_post_cmd(struct mtk_dsi *dsi,
 }
 
 #define NS_TO_CYCLE1(n, c)	((DO_COMMON_DIV((n), (c))) + (((n) % (c)) ? 1 : 0))
+int mtk_drm_dummy_cmd_on_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *file_priv)
+{
+	struct mtk_drm_private *private = dev->dev_private;
+	struct drm_crtc *crtc = private->crtc[0];
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_ddp_comp *output_comp = NULL;
+	struct mtk_dsi *dsi = NULL;
+	unsigned int dummy_cmd_on = *(unsigned int *)data;
+
+	if (crtc->state && !(crtc->state->active)) {
+		DDPMSG("%s: crtc is inactive  -- skip\n", __func__);
+		return -EINVAL;
+	}
+
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (unlikely(!output_comp)) {
+		DDPPR_ERR("%s: invalid output comp\n", __func__);
+		return -EINVAL;
+	}
+	dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
+
+	dsi->dummy_cmd_en = dummy_cmd_on;
+
+	return 0;
+}
 
 static void mtk_dsi_dphy_timconfig_v2(struct mtk_dsi *dsi, void *handle)
 {
@@ -1623,7 +1649,8 @@ void mtk_dsi_config_null_packet(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	if (dsi->ext && dsi->ext->params &&
 		dsi->ext->params->lp_perline_en == 0 &&
 		mtk_dsi_is_cmd_mode(&dsi->ddp_comp) &&
-		dsi->ext->params->cmd_null_pkt_en) {
+		dsi->ext->params->cmd_null_pkt_en &&
+		dsi->dummy_cmd_en) {
 		// hs mode
 		null_packet_len = dsi->ext->params->cmd_null_pkt_len;
 		if (handle == NULL) {
@@ -9174,7 +9201,7 @@ unsigned int mtk_dsi_get_line_time(struct mtk_drm_crtc *mtk_crtc,
 				(CEILING(1 + ps_wc + 2, 2) / 2)),
 				dsi->lanes) + hs_trail + 1 + da_hs_exit + 1;
 		} else {
-			if (dsi->ext->params->cmd_null_pkt_en) {
+			if (dsi->ext->params->cmd_null_pkt_en && dsi->dummy_cmd_en) {
 				/* Keep HS + Dummy cycle */
 				line_time = ((dsi->lanes * 3) + 3 + 3 +
 					(CEILING(1 + ps_wc + 2, 2) / 2));
@@ -9216,7 +9243,7 @@ unsigned int mtk_dsi_get_line_time(struct mtk_drm_crtc *mtk_crtc,
 				DIV_ROUND_UP((5 + ps_wc + 6), dsi->lanes) +
 				hs_trail + 1 + da_hs_exit + 1;
 		} else {
-			if (dsi->ext->params->cmd_null_pkt_en) {
+			if (dsi->ext->params->cmd_null_pkt_en && dsi->dummy_cmd_en) {
 			/* Keep HS + Dummy cycle */
 				line_time = DIV_ROUND_UP((4 + null_packet_len + 2 +
 					5 + ps_wc + 2), dsi->lanes);
@@ -9547,7 +9574,7 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 								dsi->lanes) +
 						hs_trail + 1 + da_hs_exit + 1;
 				} else {
-					if (dsi->ext->params->cmd_null_pkt_en) {
+					if (dsi->ext->params->cmd_null_pkt_en && dsi->dummy_cmd_en) {
 						/* Keep HS + Dummy cycle */
 						line_time = ((dsi->lanes * 3) + 3 + 3 +
 								(CEILING(1 + ps_wc + 2, 2) / 2));
@@ -9594,7 +9621,7 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 						DIV_ROUND_UP((5 + ps_wc + 6), dsi->lanes) +
 						hs_trail + 1 + da_hs_exit + 1;
 				} else {
-					if (dsi->ext->params->cmd_null_pkt_en) {
+					if (dsi->ext->params->cmd_null_pkt_en && dsi->dummy_cmd_en) {
 						/* Keep HS + Dummy cycle */
 						line_time = DIV_ROUND_UP((4 + null_packet_len + 2
 								+ 5 + ps_wc + 2), dsi->lanes);
@@ -12283,8 +12310,10 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 				ret = -EPROBE_DEFER;
 				goto error;
 			}
-			if (dsi->panel)
+			if (dsi->panel) {
 				dsi->ext = find_panel_ext(dsi->panel);
+				dsi->dummy_cmd_en = dsi->ext->params->cmd_null_pkt_en;
+			}
 			if (dsi->slave_dsi) {
 				dsi->slave_dsi->ext = dsi->ext;
 				dsi->slave_dsi->panel = dsi->panel;

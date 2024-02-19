@@ -165,6 +165,7 @@ struct mtk_dsi {
 	unsigned int skip_vblank;
 	unsigned int force_resync_after_idle;
 	unsigned int mode_switch_delay;
+	unsigned int dummy_cmd_en;
 };
 
 enum dsi_porch_type;
@@ -188,4 +189,7 @@ unsigned int _dsi_get_pcw(unsigned long data_rate,
 int mtk_dsi_porch_setting(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			  enum dsi_porch_type type, unsigned int value);
 void mtk_dsi_porch_config(struct mtk_dsi *dsi, struct cmdq_pkt *handle);
+int mtk_drm_dummy_cmd_on_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *file_priv);
+
 #endif

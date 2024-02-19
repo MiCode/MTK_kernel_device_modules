@@ -454,6 +454,7 @@ struct DISP_AAL_TRIG_STATE {
 #define DRM_MTK_CRTC_FENCE_REL           0x14
 #define DRM_MTK_GET_MODE_EXT_INFO 0x15
 #define DRM_MTK_HWVSYNC_ON 0x16
+#define DRM_MTK_DUMMY_CMD_ON 0x17
 
 /* PQ */
 #define DRM_MTK_SET_12BIT_GAMMALUT	0x1D
@@ -1895,6 +1896,9 @@ struct mtk_spr_type_fence {
 
 #define DRM_IOCTL_MTK_ESD_STAT_CHK    DRM_IOWR(DRM_COMMAND_BASE + \
 			DRM_MTK_ESD_STAT_CHK, unsigned int)
+
+#define DRM_IOCTL_MTK_DUMMY_CMD_ON DRM_IOWR(DRM_COMMAND_BASE + \
+			DRM_MTK_DUMMY_CMD_ON, unsigned int)
 
 /* AAL IOCTL */
 #define AAL_HIST_BIN            33	/* [0..32] */
