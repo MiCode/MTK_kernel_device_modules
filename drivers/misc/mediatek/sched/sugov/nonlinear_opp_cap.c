@@ -2159,10 +2159,10 @@ void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq, struc
 		sg_policy->cached_raw_freq = *next_freq;
 	}
 
-	if (trace_sugov_ext_turn_point_margin_enabled() && turn_point_util[gearid]) {
+	if (trace_sugov_ext_turn_point_margin_enabled() && turn_point_util[cpu]) {
 		orig_util = (orig_util * util_scale) >> SCHED_CAPACITY_SHIFT;
-		trace_sugov_ext_turn_point_margin(topology_cluster_id(cpu), orig_util, util,
-			turn_point_util[gearid], target_margin[gearid]);
+		trace_sugov_ext_turn_point_margin(cpu, orig_util, util,
+			turn_point_util[cpu], target_margin[cpu], target_margin_low[cpu]);
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_map_util_freq);
