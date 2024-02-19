@@ -122,7 +122,7 @@
 			reg = <0x0000>;
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <742>;
+			capacity-dmips-mhz = <744>;
 			cpu-idle-states = <&cpuoff_l &mcusysoff_l
 						&system_vcore &s2idle>;
 		};
@@ -132,7 +132,7 @@
 			reg = <0x0100>;
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <742>;
+			capacity-dmips-mhz = <744>;
 			cpu-idle-states = <&cpuoff_l &mcusysoff_l
 						&system_vcore &s2idle>;
 		};
@@ -142,7 +142,7 @@
 			reg = <0x0200>;
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <742>;
+			capacity-dmips-mhz = <744>;
 			cpu-idle-states = <&cpuoff_l &mcusysoff_l
 						&system_vcore &s2idle>;
 		};
@@ -152,7 +152,7 @@
 			reg = <0x0300>;
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <742>;
+			capacity-dmips-mhz = <744>;
 			cpu-idle-states = <&cpuoff_l &mcusysoff_l
 						&system_vcore &s2idle>;
 		};
@@ -162,7 +162,7 @@
 			reg = <0x0400>;
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <1022>;
+			capacity-dmips-mhz = <1024>;
 			cpu-idle-states = <&cpuoff_m &mcusysoff_m
 						&system_vcore &s2idle>;
 		};
@@ -172,7 +172,7 @@
 			reg = <0x0500>;
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <1022>;
+			capacity-dmips-mhz = <1024>;
 			cpu-idle-states = <&cpuoff_m &mcusysoff_m
 						&system_vcore &s2idle>;
 		};
@@ -182,7 +182,7 @@
 			reg = <0x0600>;
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <1022>;
+			capacity-dmips-mhz = <1024>;
 			cpu-idle-states = <&cpuoff_m &mcusysoff_m
 						&system_vcore &s2idle>;
 		};
@@ -192,7 +192,7 @@
 			reg = <0x0700>;
 			performance-domains = <&performance 2>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <1024>;
+			capacity-dmips-mhz = <971>;
 			cpu-idle-states = <&cpuoff_b &mcusysoff_b
 						&system_vcore &s2idle>;
 		};
