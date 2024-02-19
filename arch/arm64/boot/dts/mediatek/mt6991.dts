@@ -2384,6 +2384,26 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		 ise-lpm-freerun = <0>;
 	};
 
+	ise_trusty: ise-trusty {
+		#size-cells = <0x02>;
+		#address-cells = <0x02>;
+		ranges;
+		compatible = "android,ise-trusty-smc-v1";
+		mediatek,real-drv = <0>;
+
+		ise-log {
+			compatible = "android,ise-trusty-log-v1";
+		};
+
+		ise-virtio@10001000 {
+			compatible = "android,ise-trusty-virtio-v1";
+			reg = <0 0x10001000 0 0x1000>;
+			interrupts = <GIC_SPI 929 IRQ_TYPE_LEVEL_HIGH 0>;
+			apmcu-offset = <0x000>;
+			apmcu-ack = <0x10000>;
+		};
+	};
+
 	disp_ssc0_smi_2x1_sub_comm: disp-ssc0-smi-2x1-sub-comm@30a30000 {
 		compatible = "mediatek,mt6991-smi-common",
 		"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
@@ -4234,6 +4254,12 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			support-hub = <0xc0>;  /*bit 0~7 to ch 0~7*/
 			#dma-cells = <1>;
 			wakeup-irq-support = <1>;
+		};
+
+		ise_mbox: ise-mbox@18021000 {
+			compatible = "mediatek,ise-mbox";
+			reg = <0 0x18021000 0 0x1000>;
+			mediatek,real-drv = <0>;
 		};
 
 		uart0: serial@16000000 {
