@@ -91,6 +91,7 @@ aliases {
 			required-opps = <&dvfsrc_freq_opp0>,
 					<&dvfsrc_freq_opp1>,
 					<&dvfsrc_freq_opp2>;
+			pre-define-bw = <0xffffffff>, <0>, <0>, <0>;
 
 			/* define threads, see mt6765-gce.h */
 			mediatek,mailbox-gce = <&gce_mbox>;
@@ -188,7 +189,8 @@ aliases {
 				"MTK_DRM_OPT_DUAL_TE",
 				"MTK_DRM_OPT_VIRTUAL_DISP",
 				"MTK_DRM_OPT_RES_SWITCH",
-				"MTK_DRM_OPT_SHARE_SRAM";
+				"MTK_DRM_OPT_SHARE_SRAM",
+				"MTK_DRM_OPT_SPHRT";
 
 			helper-value = <0>, /*MTK_DRM_OPT_STAGE*/
 				<1>, /*MTK_DRM_OPT_USE_CMDQ*/
@@ -239,7 +241,8 @@ aliases {
 				<0>, /*MTK_DRM_OPT_DUAL_TE*/
 				<0>, /*MTK_DRM_OPT_VIRTUAL_DISP*/
 				<0>, /*MTK_DRM_OPT_RES_SWITCH*/
-				<1>; /*MTK_DRM_OPT_SHARE_SRAM*/
+				<0>, /*MTK_DRM_OPT_SHARE_SRAM*/
+				<1>; /*MTK_DRM_OPT_SPHRT*/
 		};
 
 		disp_mutex0: disp_mutex0@14001000 {
