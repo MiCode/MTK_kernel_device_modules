@@ -11,14 +11,6 @@
 		reg = <0x0>;
 		clocks =
 			<&cksys_clk CLK_CK_UART_SEL>,
-			<&cksys_clk CLK_CK_SPI0_BCLK_SEL>,
-			<&cksys_clk CLK_CK_SPI1_BCLK_SEL>,
-			<&cksys_clk CLK_CK_SPI2_BCLK_SEL>,
-			<&cksys_clk CLK_CK_SPI3_BCLK_SEL>,
-			<&cksys_clk CLK_CK_SPI4_BCLK_SEL>,
-			<&cksys_clk CLK_CK_SPI5_BCLK_SEL>,
-			<&cksys_clk CLK_CK_SPI6_BCLK_SEL>,
-			<&cksys_clk CLK_CK_SPI7_BCLK_SEL>,
 			<&cksys_clk CLK_CK_USB_TOP_1P_SEL>,
 			<&cksys_clk CLK_CK_USB_XHCI_1P_SEL>,
 			<&cksys_clk CLK_CK_USB_FMCNT_P1_SEL>,
@@ -553,19 +545,6 @@
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_FUS_CAMERA_P2>,
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_DHZE_CAMERA_P2>,
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_GALS_CAMERA_P2>;
-	};
-	bring-up-spi@10 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x10>;
-		clocks =
-			<&pericfg_ao_clk CLK_PERAO_SPI0_BCLK_SPI>,
-			<&pericfg_ao_clk CLK_PERAO_SPI1_BCLK_SPI>,
-			<&pericfg_ao_clk CLK_PERAO_SPI2_BCLK_SPI>,
-			<&pericfg_ao_clk CLK_PERAO_SPI3_BCLK_SPI>,
-			<&pericfg_ao_clk CLK_PERAO_SPI4_BCLK_SPI>,
-			<&pericfg_ao_clk CLK_PERAO_SPI5_BCLK_SPI>,
-			<&pericfg_ao_clk CLK_PERAO_SPI6_BCLK_SPI>,
-			<&pericfg_ao_clk CLK_PERAO_SPI7_BCLK_SPI>;
 	};
 	bring-up-cambwr@11 {
 		compatible = "mediatek,clk-bring-up";
