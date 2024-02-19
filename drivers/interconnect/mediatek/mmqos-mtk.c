@@ -1756,8 +1756,10 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	struct device_node *np;
 	struct platform_device *comm_pdev, *larb_pdev;
 	struct proc_dir_entry *dir, *proc, *last_proc;
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && IS_ENABLED(CONFIG_ARM64)
 	phys_addr_t pa = 0ULL;
 	unsigned long va;
+#endif
 
 	mmqos = devm_kzalloc(&pdev->dev, sizeof(*mmqos), GFP_KERNEL);
 	if (!mmqos)
@@ -1773,6 +1775,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	if (!last_rec)
 		return -ENOMEM;
 
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && IS_ENABLED(CONFIG_ARM64)
 	va = (unsigned long) last_rec;
 	pa = __pa_nodebug(va);
 	if (va && pa) {
@@ -1780,6 +1783,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 		if (ret)
 			MMQOS_DBG("failed:%d va:%#lx pa:%pa", ret, va, &pa);
 	}
+#endif
 
 	chn_bw_rec = devm_kzalloc(&pdev->dev,
 		sizeof(*chn_bw_rec), GFP_KERNEL);
