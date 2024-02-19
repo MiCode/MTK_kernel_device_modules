@@ -41,7 +41,6 @@
 /* delete define below if your feature don't want to skip */
 #define SKIP_SB_BTCVSD
 #define SKIP_SB_VOW
-#define SKIP_SB_USB_OFFLOAD
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE) && !defined(IS_FPGA_EARLY_PORTING)
