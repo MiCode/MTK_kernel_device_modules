@@ -6446,7 +6446,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			gpr-id = <6>;
 			gmpu-table-size = <0x0>;
 			protected-reserve-size = <0x200000>;
-#if 0
+			disable-init-gpu-iommu = <0>;
+			gpufreq-supply = <&gpufreq>;
 			gpu-iommu {
 				compatible = "mediatek,gpu-iommu";
 				iommus = <&gpu_smmu 0x01>; /* SID=1 */
@@ -6457,7 +6458,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				iommus = <&gpu_smmu 0x02>; /* SID=2 */
 				mtk,smmu-dma-mode = "disable";
 			};
-#endif
 		};
 
 		mali: mali@48000000 {
