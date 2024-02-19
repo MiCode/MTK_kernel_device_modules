@@ -11,11 +11,11 @@ extern bool vip_enable;
 #define VIP_TIME_SLICE     3000000U
 #define VIP_TIME_LIMIT     (4 * VIP_TIME_SLICE)
 
-// #define WORKER_VIP         0
-// #define VVIP               1
-// #define NUM_VIP_PRIO       2
 enum {
 	WORKER_VIP,
+	MIN_PRIORITY_BASED_VIP,
+	RESERVED_PB_VIP,
+	MAX_PRIORITY_BASED_VIP,
 	VVIP,
 	NUM_VIP_PRIO
 };

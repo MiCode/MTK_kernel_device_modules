@@ -326,8 +326,12 @@ bool task_is_vip(struct task_struct *p, int type)
 	if (type == VVIP)
 		return (vts->vip_prio == VVIP);
 
+	if (type == MAX_PRIORITY_BASED_VIP)
+		return ((vts->vip_prio <= MAX_PRIORITY_BASED_VIP) && (vts->vip_prio >= MIN_PRIORITY_BASED_VIP));
+
 	return (vts->vip_prio != NOT_VIP);
 }
+EXPORT_SYMBOL_GPL(task_is_vip);
 
 static inline unsigned int vip_task_limit(struct task_struct *p)
 {
@@ -600,12 +604,42 @@ void unset_task_vvip(int pid)
 }
 EXPORT_SYMBOL_GPL(unset_task_vvip);
 
-int is_VVIP(struct task_struct *p)
+/* priority based VIP interface */
+void set_task_priority_based_vip(int pid, int prio)
 {
-	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+	struct task_struct *p;
+	struct vip_task_struct *vts;
 
-	return vts->vvip;
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	prio = clamp(prio, MIN_PRIORITY_BASED_VIP, MAX_PRIORITY_BASED_VIP);
+	if (p) {
+		get_task_struct(p);
+		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts->priority_based_prio = prio;
+		put_task_struct(p);
+	}
+	rcu_read_unlock();
 }
+EXPORT_SYMBOL_GPL(set_task_priority_based_vip);
+
+void unset_task_priority_based_vip(int pid)
+{
+	struct task_struct *p;
+	struct vip_task_struct *vts;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (p) {
+		get_task_struct(p);
+		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts->priority_based_prio = NOT_VIP;
+		put_task_struct(p);
+	}
+	rcu_read_unlock();
+}
+EXPORT_SYMBOL_GPL(unset_task_priority_based_vip);
+/* priority based VIP interface */
 
 /* basic vip interace */
 void set_task_basic_vip(int pid)
@@ -636,7 +670,6 @@ void unset_task_basic_vip(int pid)
 		get_task_struct(p);
 		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
 		vts->basic_vip = false;
-
 		put_task_struct(p);
 	}
 	rcu_read_unlock();
@@ -644,34 +677,38 @@ void unset_task_basic_vip(int pid)
 EXPORT_SYMBOL_GPL(unset_task_basic_vip);
 /* end of basic vip interface */
 
-bool is_VIP_basic(struct task_struct *p)
-{
-	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
-
-	return vts->basic_vip;
-}
-
+#define is_VIP_basic(vts) (vts->basic_vip)
+#define is_VVIP(vts) (vts->vvip)
+#define is_priority_based_vip(vts) ((vts->priority_based_prio <= MAX_PRIORITY_BASED_VIP) &&	\
+	(vts->priority_based_prio >= MIN_PRIORITY_BASED_VIP))
 inline int get_vip_task_prio(struct task_struct *p)
 {
 	int vip_prio = NOT_VIP;
+	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
 
 	if (rt_task(p))
 		return NOT_VIP;
 
-	/* prio = 1 */
-	if (is_VVIP(p)) {
+	/* prio = 4 */
+	if (is_VVIP(vts)) {
 		vip_prio = VVIP;
 		goto out;
 	}
 
+	/* prio = 1~3*/
+	if (is_priority_based_vip(vts)) {
+		vip_prio = vts->priority_based_prio;
+		goto out;
+	}
+
 	/* prio = 0 */
-	if (is_VIP_task_group(p) || is_VIP_latency_sensitive(p) || is_VIP_basic(p))
+	if (is_VIP_task_group(p) || is_VIP_latency_sensitive(p) || is_VIP_basic(vts))
 		vip_prio = WORKER_VIP;
 
 out:
 	if (trace_sched_get_vip_task_prio_enabled()) {
 		trace_sched_get_vip_task_prio(p, vip_prio, is_task_latency_sensitive(p),
-			ls_vip_threshold, get_group_threshold(p), is_VIP_basic(p));
+			ls_vip_threshold, get_group_threshold(p), is_VIP_basic(vts));
 	}
 	return vip_prio;
 }
@@ -941,6 +978,7 @@ void init_vip_task_struct(struct task_struct *p)
 	vts->basic_vip = false;
 	vts->vvip = false;
 	vts->faster_compute_eng = false;
+	vts->priority_based_prio = NOT_VIP;
 }
 
 void init_task_gear_hints(struct task_struct *p)
