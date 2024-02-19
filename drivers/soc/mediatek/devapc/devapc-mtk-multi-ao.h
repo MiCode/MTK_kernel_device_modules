@@ -17,8 +17,8 @@
 #define DEAD			0xdeadbeaf
 #define RANDOM_OFFSET		0x88
 #define PFX			"[DEVAPC]: "
-#define SLAVE_TYPE_NUM_MAX	9
-#define IRQ_TYPE_NUM_MAX	7
+#define SLAVE_TYPE_NUM_MAX	20
+#define IRQ_TYPE_NUM_MAX	19
 #define IRQ_TYPE_NUM_DEFAULT	1
 #define VIO_ADDR_HIGH_MASK	0xFFFFFFFF
 
@@ -91,6 +91,17 @@ enum devapc_vio_type {
 	DEVAPC_VIO_MAX,
 };
 
+enum devapc_get_type {
+	DEVAPC_GET_INFRA = 0,
+	DEVAPC_GET_PERI,
+	DEVAPC_GET_VLP,
+	DEVAPC_GET_ADSP,
+	DEVAPC_GET_MMINFRA,
+	DEVAPC_GET_MMUP,
+	DEVAPC_GET_GPU,
+	DEVAPC_GET_NUM,
+};
+
 #ifdef CONFIG_DEVAPC_SWP_SUPPORT
 enum DEVAPC_SWP_REG_OFFSET {
 	DEVAPC_SWP_CON_OFFSET = 0x0,
@@ -124,9 +135,10 @@ struct mtk_device_info {
 };
 
 struct mtk_device_num {
-	int slave_type;
+	int devapc_type;
 	uint32_t vio_slave_num;
 	int irq_type;
+	int perm_get_type;
 };
 
 struct mtk_devapc_vio_info {
