@@ -318,6 +318,9 @@ bool task_is_vip(struct task_struct *p, int type)
 {
 	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
 
+	if (rt_task(p))
+		return false;
+
 	if (type == VVIP)
 		return (vts->vip_prio == VVIP);
 
@@ -648,6 +651,9 @@ bool is_VIP_basic(struct task_struct *p)
 inline int get_vip_task_prio(struct task_struct *p)
 {
 	int vip_prio = NOT_VIP;
+
+	if (rt_task(p))
+		return NOT_VIP;
 
 	/* prio = 1 */
 	if (is_VVIP(p)) {
