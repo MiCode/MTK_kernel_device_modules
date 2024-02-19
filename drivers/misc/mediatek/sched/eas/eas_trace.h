@@ -759,6 +759,29 @@ TRACE_EVENT(sched_find_imbalanced_vvip_gear,
 		  __entry->cpu, __entry->num_vvip_in_gear)
 );
 
+TRACE_EVENT(sched_find_min_num_vip_cpus,
+	TP_PROTO(bool failed, int pid, struct cpumask *vip_candidate, u64 num_vip_in_cpu_bit),
+
+	TP_ARGS(failed, pid, vip_candidate, num_vip_in_cpu_bit),
+
+	TP_STRUCT__entry(
+		__field(bool, failed)
+		__field(int, pid)
+		__field(long, vip_candidate)
+		__field(u64, num_vip_in_cpu_bit)
+	),
+
+	TP_fast_assign(
+		__entry->failed					= failed;
+		__entry->pid					= pid;
+		__entry->vip_candidate          = cpumask_bits(vip_candidate)[0];
+		__entry->num_vip_in_cpu_bit     = num_vip_in_cpu_bit
+	),
+
+	TP_printk("failed=%d pid=%d vip_candidate=0x%lx num_vip_in_cpu_bit=0x%lx",
+		  __entry->failed, __entry->pid, __entry->vip_candidate, __entry->num_vip_in_cpu_bit)
+);
+
 TRACE_EVENT(sched_get_vip_task_prio,
 	TP_PROTO(struct task_struct *p, int vip_prio, bool is_ls, unsigned int ls_vip_threshold,
 			unsigned int group_threshold, bool is_basic_vip),

@@ -39,6 +39,7 @@ DECLARE_PER_CPU(unsigned long, min_freq);
 #define LB_BACKUP_RECENT_USED_CPU (0x484)
 #define LB_BACKUP_AFFINE_IDLE_FIT (0x488)
 #define LB_BACKUP_VVIP (0x490)
+#define LB_BACKUP_VIP_IN_MASK (0x491)
 #define LB_RT_FAIL         (0x1000)
 #define LB_RT_FAIL_PD      (0x1001)
 #define LB_RT_FAIL_CPU     (0x1002)
