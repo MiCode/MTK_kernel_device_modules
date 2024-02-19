@@ -3,6 +3,7 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 
+#include <linux/clk.h>
 #include <linux/device.h>
 #include <linux/io.h>
 #include <linux/iopoll.h>
@@ -45,6 +46,15 @@
 #define POLL_DELAY_US 10
 #define TIMEOUT_300MS 300000
 
+#define HW_CCF_AP_VOTER_BIT			(0)
+#define HW_CCF_XPU0_BACKUP1_SET		(0x230)
+#define HW_CCF_XPU0_BACKUP1_CLR		(0x234)
+#define HW_CCF_BACKUP1_ENABLE       (0x1430)
+#define HW_CCF_BACKUP1_STATUS       (0x1434)
+#define HW_CCF_BACKUP1_DONE			(0x143C)
+#define HW_CCF_BACKUP1_SET_STATUS	(0x1484)
+#define HW_CCF_BACKUP1_CLR_STATUS	(0x1488)
+
 /* This id is only for disp internal use */
 enum disp_pd_id {
 	DISP_PD_DISP_VCORE,
@@ -54,6 +64,7 @@ enum disp_pd_id {
 	DISP_PD_OVL0,
 	DISP_PD_MML1,
 	DISP_PD_MML0,
+	DISP_PD_EDP,
 	DISP_PD_DPTX,
 	DISP_PD_NUM,
 };
@@ -61,14 +72,45 @@ enum disp_pd_id {
 struct mtk_vdisp {
 	void __iomem *spm_base;
 	void __iomem *vlp_base;
+	void __iomem *mmpc_bus_prot_gp1;
+	void __iomem *vdisp_ao_merge_irq;
+	void __iomem *vdisp_ao_cg_con;
+	void __iomem *hwccf_base;
 	struct notifier_block rgu_nb;
 	struct notifier_block pd_nb;
 	enum disp_pd_id pd_id;
+	int clk_num;
+	struct clk **clks;
 };
 static struct device *g_dev[DISP_PD_NUM];
 static void __iomem *g_vlp_base;
+static atomic_t g_mtcmos_cnt = ATOMIC_INIT(0);
+static DEFINE_MUTEX(g_mtcmos_cnt_lock);
 
 static bool vcp_warmboot_support;
+
+
+static s32 mtk_vdisp_get_power_cnt(void)
+{
+	s32 ret;
+
+	mutex_lock(&g_mtcmos_cnt_lock);
+	ret = atomic_read(&g_mtcmos_cnt);
+	mutex_unlock(&g_mtcmos_cnt_lock);
+
+	return ret;
+}
+
+static s32 mtk_vdisp_poll_power_cnt(s32 val)
+{
+	s32 ret, tmp;
+
+	ret = readx_poll_timeout(mtk_vdisp_get_power_cnt, , tmp, tmp == val, 100, TIMEOUT_300MS);
+	if (ret < 0)
+		VDISPERR("poll power cnt timeout");
+
+	return ret;
+}
 
 static int regulator_event_notifier(struct notifier_block *nb,
 				    unsigned long event, void *data)
@@ -155,10 +197,42 @@ static void mtk_vdisp_vlp_disp_vote(u32 user, bool set)
 	} while (1);
 }
 
+static void vdisp_hwccf_ctrl(struct mtk_vdisp *priv, bool enable)
+{
+	u32 hwccf_done = HW_CCF_BACKUP1_DONE;
+	u32 ctrl_reg = (enable) ? HW_CCF_XPU0_BACKUP1_SET : HW_CCF_XPU0_BACKUP1_CLR;
+	u32 hwccf_ctrl_status = (enable) ? HW_CCF_BACKUP1_SET_STATUS : HW_CCF_BACKUP1_CLR_STATUS;
+
+	if (IS_ERR_OR_NULL(priv->hwccf_base))
+		return;
+
+	while((readl_relaxed(priv->hwccf_base + hwccf_done) & BIT(HW_CCF_AP_VOTER_BIT)) != BIT(HW_CCF_AP_VOTER_BIT))
+		udelay(VOTE_DELAY_US);
+
+	// set/clr
+	writel_relaxed(BIT(HW_CCF_AP_VOTER_BIT), (priv->hwccf_base + ctrl_reg));
+
+	// //polling
+	// while(readl_relaxed(ctrl_reg) != 0){
+	//	VDISPDBG("HWCCF_CTL_STSTUS= 0x%x", readl_relaxed(ctrl_reg));
+	// }
+
+	// wait for hwccf done
+	while((readl_relaxed(priv->hwccf_base + hwccf_done) & BIT(HW_CCF_AP_VOTER_BIT)) != BIT(HW_CCF_AP_VOTER_BIT))
+		udelay(VOTE_DELAY_US);
+
+	// wait for ctrl status been cleared
+	while((readl_relaxed(priv->hwccf_base + hwccf_ctrl_status) & BIT(HW_CCF_AP_VOTER_BIT)) != 0)
+		udelay(VOTE_DELAY_US);
+}
+
 static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
 {
 	u32 value = 0, mask;
 	int ret = 0;
+
+	if (IS_ERR_OR_NULL(priv->vlp_base))
+		return;
 
 	/* [0] MMINFRA_DONE_STA
 	 * [1] VCP_READY_STA
@@ -200,15 +274,58 @@ static int genpd_event_notifier(struct notifier_block *nb,
 			  unsigned long event, void *data)
 {
 	struct mtk_vdisp *priv = container_of(nb, struct mtk_vdisp, pd_nb);
+	int i = 0;
 
 	switch (event) {
-	case GENPD_NOTIFY_PRE_OFF:
 	case GENPD_NOTIFY_PRE_ON:
+		mutex_lock(&g_mtcmos_cnt_lock);
+
 		mminfra_hwv_pwr_ctrl(priv, true);
+
+		if (atomic_read(&g_mtcmos_cnt) == 0)
+			vdisp_hwccf_ctrl(priv, true);
+
+		atomic_inc(&g_mtcmos_cnt);
+		mutex_unlock(&g_mtcmos_cnt_lock);
+		break;
+	case GENPD_NOTIFY_ON:
+		for (i = 0; i < priv->clk_num; i++)
+			clk_prepare_enable(priv->clks[i]);
+
+		/* clr vdisp_ao bus prot */
+		if (priv->mmpc_bus_prot_gp1)
+			writel(0x80, priv->mmpc_bus_prot_gp1 + 0x8);
+
+		/* clr dpc cg */
+		if (priv->vdisp_ao_cg_con)
+			writel(BIT(16), priv->vdisp_ao_cg_con + 0x8);
+
+		mminfra_hwv_pwr_ctrl(priv, false);
+		break;
+	case GENPD_NOTIFY_PRE_OFF:
+		mminfra_hwv_pwr_ctrl(priv, true);
+
+		/* enable vdisp_ao merge irq, to fix burst irq when mtcmos on */
+		if (priv->vdisp_ao_merge_irq)
+			writel(0, priv->vdisp_ao_merge_irq);
+
+		/* set vdisp_ao bus prot */
+		if (priv->mmpc_bus_prot_gp1)
+			writel(0x80, priv->mmpc_bus_prot_gp1 + 0x4);
+
+		for (i = 0; i < priv->clk_num; i++)
+			clk_disable_unprepare(priv->clks[i]);
 		break;
 	case GENPD_NOTIFY_OFF:
-	case GENPD_NOTIFY_ON:
+		mutex_lock(&g_mtcmos_cnt_lock);
+
+		if (atomic_read(&g_mtcmos_cnt) == 1)
+			vdisp_hwccf_ctrl(priv, false);
+
 		mminfra_hwv_pwr_ctrl(priv, false);
+
+		atomic_dec(&g_mtcmos_cnt);
+		mutex_unlock(&g_mtcmos_cnt_lock);
 		break;
 	default:
 		break;
@@ -223,7 +340,9 @@ static void mtk_vdisp_genpd_put(void)
 
 	for (i = 0; i < DISP_PD_NUM; i++) {
 		if (g_dev[i]) {
-			pm_runtime_put(g_dev[i]);
+			VDISPDBG("pd(%d) ref(%u)", i,
+				 atomic_read(&g_dev[i]->power.usage_count));
+			pm_runtime_put_sync(g_dev[i]);
 			j++;
 		}
 	}
@@ -233,6 +352,7 @@ static void mtk_vdisp_genpd_put(void)
 static const struct mtk_vdisp_funcs funcs = {
 	.genpd_put = mtk_vdisp_genpd_put,
 	.vlp_disp_vote = mtk_vdisp_vlp_disp_vote,
+	.poll_power_cnt = mtk_vdisp_poll_power_cnt,
 };
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
@@ -267,6 +387,8 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	int ret = 0;
 	int support = 0;
 	u32 pd_id = 0;
+	struct clk *clk;
+	int i, clk_num;
 
 	vcp_node = of_find_node_by_name(NULL, "vcp");
 	if (vcp_node == NULL)
@@ -305,6 +427,42 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 		g_vlp_base = priv->vlp_base;
 	}
 
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mmpc_bus_prot_gp1");
+	if (res) {
+		priv->mmpc_bus_prot_gp1 = devm_ioremap(dev, res->start, resource_size(res));
+		if (!priv->mmpc_bus_prot_gp1) {
+			VDISPERR("fail to ioremap mmpc_bus_prot_gp1: 0x%llx", res->start);
+			return -EINVAL;
+		}
+	}
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vdisp_ao_inten");
+	if (res) {
+		priv->vdisp_ao_merge_irq = devm_ioremap(dev, res->start, resource_size(res));
+		if (!priv->vdisp_ao_merge_irq) {
+			VDISPERR("fail to ioremap vdisp_ao_merge_irq: 0x%llx", res->start);
+			return -EINVAL;
+		}
+	}
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vdisp_ao_cg_con");
+	if (res) {
+		priv->vdisp_ao_cg_con = devm_ioremap(dev, res->start, resource_size(res));
+		if (!priv->vdisp_ao_cg_con) {
+			VDISPERR("fail to ioremap vdisp_ao_cg_con: 0x%llx", res->start);
+			return -EINVAL;
+		}
+	}
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "hwccf_base");
+	if (res) {
+		priv->hwccf_base = devm_ioremap(dev, res->start, resource_size(res));
+		if (!priv->hwccf_base) {
+			VDISPERR("fail to ioremap hwccf_base: 0x%llx", res->start);
+			return -EINVAL;
+		}
+	}
+
 	if (of_find_property(dev->of_node, "dis1-shutdown-supply", NULL)) {
 		rgu = devm_regulator_get(dev, "dis1-shutdown");
 		if (!IS_ERR(rgu)) {
@@ -321,9 +479,31 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	clk_num = of_count_phandle_with_args(dev->of_node, "clocks", "#clock-cells");
+	if (clk_num > 0) {
+		priv->clk_num = clk_num;
+		priv->clks = devm_kmalloc_array(dev, priv->clk_num, sizeof(*priv->clks), GFP_KERNEL);
+
+		for (i = 0; i < priv->clk_num; i++) {
+			clk = of_clk_get(dev->of_node, i);
+			if (IS_ERR(clk)) {
+				VDISPERR("%s get %d clk failed\n", __func__, i);
+				priv->clk_num = 0;
+				break;
+			}
+			priv->clks[i] = clk;
+
+			clk_prepare_enable(priv->clks[i]);
+			VDISPDBG("pd(%d) clk(%d) enable", pd_id, i);
+		}
+	}
+
 	priv->pd_nb.notifier_call = genpd_event_notifier;
 	priv->pd_id = pd_id;
 	g_dev[pd_id] = dev;
+
+	// Vote on when probe for sync status
+	vdisp_hwccf_ctrl(priv, true);
 
 	if (!pm_runtime_enabled(dev))
 		pm_runtime_enable(dev);
@@ -331,7 +511,9 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	if (ret)
 		VDISPERR("dev_pm_genpd_add_notifier fail(%d)", ret);
 
-	pm_runtime_get(dev);
+	pm_runtime_get_sync(dev);
+	VDISPDBG("get pd(%d)", pd_id);
+	atomic_inc(&g_mtcmos_cnt);
 	mtk_vdisp_register(&funcs);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
@@ -348,6 +530,7 @@ static int mtk_vdisp_remove(struct platform_device *pdev)
 
 static const struct of_device_id mtk_vdisp_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6989-vdisp-ctrl"},
+	{.compatible = "mediatek,mt6991-vdisp-ctrl"},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_vdisp_driver_dt_match);

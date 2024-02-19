@@ -143,6 +143,11 @@ struct mtk_drm_kernel_pm {
 	wait_queue_head_t wq;
 };
 
+struct lateinit_task {
+	struct kthread_worker *worker;
+	struct kthread_work work;
+};
+
 struct mtk_drm_private {
 	struct drm_device *drm;
 	struct device *dma_dev;
@@ -151,6 +156,7 @@ struct mtk_drm_private {
 	struct device *ovlsys_dev;
 	struct device *side_ovlsys_dev;
 	struct device *dpc_dev;
+	struct device *dsi_phy0_dev;
 
 	struct drm_crtc *crtc[MAX_CRTC];
 	unsigned int pre_defined_bw[MAX_CRTC];
@@ -186,7 +192,6 @@ struct mtk_drm_private {
 	struct device_node *comp_node[DDP_COMPONENT_ID_MAX];
 	struct mtk_ddp_comp *ddp_comp[DDP_COMPONENT_ID_MAX];
 	const struct mtk_mmsys_driver_data *data;
-	void __iomem *dispvcore_pwr_chk;
 
 	struct {
 		struct drm_atomic_state *state;
@@ -201,6 +206,8 @@ struct mtk_drm_private {
 		struct list_head list;
 		spinlock_t lock;
 	} unreference;
+
+	struct lateinit_task lateinit;
 
 	/* property */
 	struct drm_property *crtc_property[MAX_CRTC][CRTC_PROP_MAX];
@@ -378,6 +385,7 @@ enum disp_pm_action {
 	DISP_PM_DISABLE,
 	DISP_PM_GET,
 	DISP_PM_PUT,
+	DISP_PM_PUT_SYNC,
 	DISP_PM_CHECK,
 };
 

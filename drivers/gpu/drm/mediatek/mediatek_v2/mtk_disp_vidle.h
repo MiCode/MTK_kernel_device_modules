@@ -8,16 +8,6 @@
 
 #include "mtk_dpc.h"
 
-extern void dpc_enable(bool en);
-extern void dpc_group_enable(const u16 group, bool en);
-extern void dpc_config(const enum mtk_dpc_subsys subsys, bool en);
-extern void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
-extern void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
-extern void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
-extern void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force);
-extern void dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb);
-extern int dpc_vidle_power_keep(const enum mtk_vidle_voter_user);
-extern void dpc_vidle_power_release(const enum mtk_vidle_voter_user);
 
 struct mtk_disp_vidle_para {
 	unsigned int vidle_en;
@@ -47,6 +37,7 @@ struct mtk_disp_dpc_data {
 struct mtk_vdisp_funcs {
 	void (*genpd_put)(void);
 	void (*vlp_disp_vote)(u32 user, bool set);
+	s32 (*poll_power_cnt)(s32 val);
 };
 
 bool mtk_vidle_is_ff_enabled(void);
@@ -72,5 +63,6 @@ void mtk_vidle_config_ff(bool en);
 void mtk_vidle_dpc_analysis(void);
 
 void mtk_vdisp_register(const struct mtk_vdisp_funcs *fp);
+void mtk_vidle_wait_init(void);
 
 #endif

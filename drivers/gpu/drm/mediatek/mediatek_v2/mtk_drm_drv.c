@@ -1558,7 +1558,6 @@ static void mtk_atomic_mml(struct drm_device *dev,
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	int i = 0;
 	enum mml_mode new_mode = MML_MODE_UNKNOWN;
-	struct mtk_drm_private *priv = dev->dev_private;
 
 	for_each_oldnew_crtc_in_state(state, crtc, old_cs, new_cs, i) {
 		if (drm_crtc_index(crtc) == 0)
@@ -1615,18 +1614,6 @@ static void mtk_atomic_mml(struct drm_device *dev,
 		mtk_crtc->mml_link_state = MML_DIRECT_LINKING;
 	else
 		mtk_crtc->mml_link_state = NON_MML;
-
-	if (priv && priv->dpc_dev) {
-		if ((mtk_crtc->mml_link_state == MML_DIRECT_LINKING) &&
-		    !mtk_vidle_is_ff_enabled()) {
-			mtk_vidle_enable(true, priv);
-			mtk_vidle_config_ff(true);
-		} else if ((mtk_crtc->mml_link_state == MML_STOP_LINKING) &&
-			   mtk_vidle_is_ff_enabled()) {
-			mtk_vidle_config_ff(false);
-			mtk_vidle_enable(false, priv);
-		}
-	}
 }
 
 static void mtk_set_first_config(struct drm_device *dev,
@@ -6056,6 +6043,9 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 
 	switch (action) {
 	case DISP_PM_ENABLE:
+		if (priv->dsi_phy0_dev && (!pm_runtime_enabled(priv->dsi_phy0_dev)))
+			pm_runtime_enable(priv->dsi_phy0_dev);
+
 		if (priv->dpc_dev && (!pm_runtime_enabled(priv->dpc_dev)))
 			pm_runtime_enable(priv->dpc_dev);
 
@@ -6080,8 +6070,19 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 
 		if (priv->dpc_dev)
 			pm_runtime_disable(priv->dpc_dev);
+
+		if (priv->dsi_phy0_dev)
+			pm_runtime_disable(priv->dsi_phy0_dev);
 		break;
 	case DISP_PM_GET:
+		if (priv->dsi_phy0_dev) {
+			ret = pm_runtime_resume_and_get(priv->dsi_phy0_dev);
+			if (unlikely(ret)) {
+				DDPMSG("request dsi phy power failed\n");
+				return ret;
+			}
+		}
+
 		/* mminfra power request */
 		if (priv->dpc_dev) {
 			ret = pm_runtime_resume_and_get(priv->dpc_dev);
@@ -6114,10 +6115,33 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 		if (priv->dpc_dev)
 			pm_runtime_put_sync(priv->dpc_dev);
 
+		if (priv->dsi_phy0_dev)
+			pm_runtime_put_sync(priv->dsi_phy0_dev);
+		break;
+	case DISP_PM_PUT_SYNC:
+		if (priv->side_ovlsys_dev)
+			pm_runtime_put_sync(priv->side_ovlsys_dev);
+		if (priv->ovlsys_dev)
+			pm_runtime_put_sync(priv->ovlsys_dev);
+		if (priv->side_mmsys_dev)
+			pm_runtime_put_sync(priv->side_mmsys_dev);
+
+		pm_runtime_put_sync(priv->mmsys_dev);
+
+		if (priv->dpc_dev) {
+			if (vdisp_func.poll_power_cnt)
+				vdisp_func.poll_power_cnt(0);
+			pm_runtime_put_sync(priv->dpc_dev);
+		}
+
+		if (priv->dsi_phy0_dev)
+			pm_runtime_put_sync(priv->dsi_phy0_dev);
 		break;
 	case DISP_PM_CHECK:
-		if (priv->dpc_dev && pm_runtime_get_if_in_use(priv->dpc_dev) <= 0)
+		if (priv->dsi_phy0_dev && pm_runtime_get_if_in_use(priv->dsi_phy0_dev) <= 0)
 			return -1;
+		if (priv->dpc_dev && pm_runtime_get_if_in_use(priv->dpc_dev) <= 0)
+			goto err_dpc_dev;
 		if (priv->mmsys_dev && pm_runtime_get_if_in_use(priv->mmsys_dev) <= 0)
 			goto err_mmsys;
 		if (priv->side_mmsys_dev && pm_runtime_get_if_in_use(priv->side_mmsys_dev) <= 0)
@@ -6142,6 +6166,9 @@ err_side_mmsys:
 err_mmsys:
 	if (priv->dpc_dev)
 		pm_runtime_put(priv->dpc_dev);
+err_dpc_dev:
+	if (priv->dsi_phy0_dev)
+		pm_runtime_put_sync(priv->dsi_phy0_dev);
 	return -1;
 }
 
@@ -6150,7 +6177,7 @@ static void mtk_drm_get_top_clk(struct mtk_drm_private *priv)
 	struct device *dev = priv->mmsys_dev;
 	struct device_node *node = dev->of_node;
 	struct clk *clk;
-	int ret, i;
+	int ret, i, clk_num;
 
 	if (disp_helper_get_stage() != DISP_HELPER_STAGE_NORMAL) {
 		spin_lock_init(&top_clk_lock);
@@ -6160,17 +6187,19 @@ static void mtk_drm_get_top_clk(struct mtk_drm_private *priv)
 		priv->power_state = true;
 	}
 
-	if (of_property_read_u32(node, "clock-num", &priv->top_clk_num)) {
+	clk_num = of_count_phandle_with_args(node, "clocks", "#clock-cells");
+	if (clk_num == -ENOENT) {
 		priv->top_clk_num = -1;
 		priv->top_clk = NULL;
-		DDPINFO("%s, no clock-num\n", __func__);
 		return;
 	}
+	priv->top_clk_num = clk_num;
 
 	priv->top_clk = devm_kmalloc_array(dev, priv->top_clk_num,
 					   sizeof(*priv->top_clk), GFP_KERNEL);
 
 	mtk_drm_pm_ctrl(priv, DISP_PM_GET);
+	DDPFUNC("first pm_get\n");
 
 	for (i = 0; i < priv->top_clk_num; i++) {
 		clk = of_clk_get(node, i);
@@ -6216,8 +6245,6 @@ void mtk_drm_top_clk_prepare_enable(struct drm_device *drm)
 
 	//set_swpm_disp_active(true);
 	mtk_drm_pm_ctrl(priv, DISP_PM_GET);
-	mtk_vidle_config_ff(false);
-	mtk_vidle_enable(mtk_vidle_is_ff_enabled(), priv);
 
 	for (i = 0; i < priv->top_clk_num; i++) {
 		if (IS_ERR(priv->top_clk[i])) {
@@ -6234,6 +6261,9 @@ void mtk_drm_top_clk_prepare_enable(struct drm_device *drm)
 	if (atomic_read(&top_clk_ref) == 1) {
 		DDPFENCE("%s:%d power_state = true\n", __func__, __LINE__);
 		priv->power_state = true;
+
+		mtk_vidle_enable(true, priv);
+		mtk_vidle_config_ff(true);
 	}
 
 	spin_unlock_irqrestore(&top_clk_lock, flags);
@@ -6269,6 +6299,9 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm)
 			spin_lock_irqsave(&top_clk_lock, flags);
 		}
 		priv->power_state = false;
+
+		mtk_vidle_config_ff(false);
+		mtk_vidle_enable(false, priv);
 	}
 	spin_unlock_irqrestore(&top_clk_lock, flags);
 
@@ -6280,9 +6313,10 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm)
 		clk_disable_unprepare(priv->top_clk[i]);
 	}
 
-	mtk_vidle_config_ff(false);
-	mtk_vidle_enable(false, priv);
-	mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+	if (atomic_read(&top_clk_ref) == 0)
+		mtk_drm_pm_ctrl(priv, DISP_PM_PUT_SYNC);
+	else
+		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 
 	DRM_MMP_MARK(top_clk, atomic_read(&top_clk_ref),
 			atomic_read(&top_isr_ref));
@@ -7749,6 +7783,60 @@ static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm
 	return NOTIFY_DONE;
 }
 
+static void mtk_drm_kms_lateinit(struct kthread_work *work)
+{
+	struct lateinit_task *task = container_of(work, struct lateinit_task, work);
+	struct mtk_drm_private *private = container_of(task, struct mtk_drm_private, lateinit);
+	struct drm_device *drm = private->drm;
+
+#ifdef CONFIG_DRM_MEDIATEK_DEBUG_FS
+	mtk_drm_debugfs_init(drm, private);
+#endif
+	disp_dbg_init(drm);
+	PanelMaster_Init(drm);
+
+	if (private->dpc_dev)
+		mtk_vidle_wait_init();
+
+	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_MMDVFS_SUPPORT))
+		mtk_drm_mmdvfs_init(drm->dev);
+	mtk_drm_init_dummy_table(private);
+
+	/* Load emi efficiency table for ovl bandwidht monitor */
+	if ((private->data->mmsys_id == MMSYS_MT6897) ||
+		(private->data->mmsys_id == MMSYS_MT6989))
+		mtk_drm_init_emi_eff_table(drm);
+
+	mtk_drm_first_enable(drm);
+
+	/* power off mtcmos */
+	/* Because of align lk hw power status,
+	 * we power on mtcmos at the beginning of the display initialization.
+	 * We power off mtcmos at the end of the display initialization.
+	 * Here we only decrease ref count, the power will hold on.
+	 */
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+		mtk_drm_top_clk_disable_unprepare(drm);
+
+	/*
+	 * When kernel init, SMI larb will get once for keeping
+	 * MTCMOS on. Then, this keeping will be released after
+	 * display keep MTCMOS by itself.
+	 * Trigger mminfra gipc to hfrp.
+	 */
+	mtk_smi_init_power_off();
+	DDPFUNC("mtk_smi_init_power_off\n");
+	mtk_mminfra_off_gipc();
+	mtk_dump_mminfra_ck(private);
+
+#ifndef DRM_OVL_SELF_PATTERN
+	mtk_drm_assert_init(drm);
+#endif
+
+	if (is_bdg_supported())
+		bdg_first_init();
+}
+
 static int mtk_drm_kms_init(struct drm_device *drm)
 {
 	struct mtk_drm_private *private = drm->dev_private;
@@ -7926,47 +8014,12 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	}
 	atomic_set(&private->rollback_all, 0);
 
-#ifdef CONFIG_DRM_MEDIATEK_DEBUG_FS
-	mtk_drm_debugfs_init(drm, private);
-#endif
-	disp_dbg_init(drm);
-	mtk_drm_svp_init(drm);
-
-	PanelMaster_Init(drm);
-	if (mtk_drm_helper_get_opt(private->helper_opt,
-			MTK_DRM_OPT_MMDVFS_SUPPORT))
-		mtk_drm_mmdvfs_init(drm->dev);
 	DDPINFO("%s-\n", __func__);
-	mtk_drm_init_dummy_table(private);
 
-	/* Load emi efficiency table for ovl bandwidht monitor */
-	if ((private->data->mmsys_id == MMSYS_MT6897) ||
-		(private->data->mmsys_id == MMSYS_MT6989))
-		mtk_drm_init_emi_eff_table(drm);
+	private->lateinit.worker = kthread_create_worker(0, "mtk_drm_bind");
+	kthread_init_work(&private->lateinit.work, mtk_drm_kms_lateinit);
+	kthread_queue_work(private->lateinit.worker, &private->lateinit.work);
 
-	mtk_drm_first_enable(drm);
-
-	/* power off mtcmos */
-	/* Because of align lk hw power status,
-	 * we power on mtcmos at the beginning of the display initialization.
-	 * We power off mtcmos at the end of the display initialization.
-	 * Here we only decrease ref count, the power will hold on.
-	 */
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
-		mtk_drm_top_clk_disable_unprepare(drm);
-
-	/*
-	 * When kernel init, SMI larb will get once for keeping
-	 * MTCMOS on. Then, this keeping will be released after
-	 * display keep MTCMOS by itself.
-	 * Trigger mminfra gipc to hfrp.
-	 */
-	mtk_smi_init_power_off();
-	mtk_mminfra_off_gipc();
-	mtk_dump_mminfra_ck(private);
-
-	if (is_bdg_supported())
-		bdg_first_init();
 	return 0;
 
 err_unset_dma_parms:
@@ -9432,7 +9485,6 @@ SKIP_OVLSYS_CONFIG:
 	if (private->dpc_dev) {
 		pm_runtime_irq_safe(private->dpc_dev);
 		g_dpc_dev = private->dpc_dev;
-		private->dispvcore_pwr_chk = ioremap(0x1c001e8c, 0x4);
 	}
 	mtk_drm_pm_ctrl(private, DISP_PM_ENABLE);
 
