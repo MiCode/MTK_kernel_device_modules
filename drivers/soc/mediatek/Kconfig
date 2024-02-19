@@ -45,6 +45,16 @@ config DEVICE_MODULES_MTK_SCPSYS
 	  Say yes here to add support for the MediaTek SCPSYS power domain
 	  driver.
 
+config DEVICE_MODULES_MTK_SCPSYS_IVI
+	tristate "MediaTek SCPSYS IVI Support"
+	depends on DEVICE_MODULES_MTK_SCPSYS
+	help
+	  Say yes here to add support for the MediaTek SCPSYS IVI power domain
+	  driver.
+	  In order to meet high auto project power control,
+	  the DEVICE_MODULES_MTK_SCPSYS_IVI is used to set auto project
+	  related power domain.
+
 config DEVICE_MODULES_MTK_SCPSYS_PM_DOMAINS
 	tristate "MediaTek SCPSYS generic power domain"
 	default ARCH_MEDIATEK
