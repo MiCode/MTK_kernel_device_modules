@@ -114,6 +114,9 @@ static int mmdvfs_debug_set_force_step(const char *val,
 		return -EINVAL;
 	}
 
+	if (!mmdvfs_is_init_done())
+		return -ENODEV;
+
 	if (idx == PWR_MMDVFS_VCORE && (!g_mmdvfs->debug_version ||
 		g_mmdvfs->debug_version & MMDVFS_DBG_VER1)) {
 		mmdvfs_set_force_step(opp);
@@ -144,6 +147,9 @@ static int mmdvfs_debug_set_vote_step(const char *val,
 		MMDVFS_DBG("failed:%d idx:%hhu opp:%hhd", ret, idx, opp);
 		return -EINVAL;
 	}
+
+	if (!mmdvfs_is_init_done())
+		return -ENODEV;
 
 	if (idx == PWR_MMDVFS_VCORE && (!g_mmdvfs->debug_version ||
 		g_mmdvfs->debug_version & MMDVFS_DBG_VER1)) {
