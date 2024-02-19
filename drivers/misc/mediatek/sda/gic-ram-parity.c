@@ -139,9 +139,9 @@ call_aee:
 	/* Note: the length of message printed by aee_kernel_exception is limited by
 	 * KERNEL_REPORT_LENGTH (should be 344), if oversize, it will be cut off.
 	 */
-	aee_kernel_exception("gic ram parity", "%s\n%s", buf, "CRDISPATCH_KEY:Cache Parity Issue");
+	aee_kernel_exception("gic ram parity", "%s\n%s", buf, "CRDISPATCH_KEY:GIC RAM Parity Issue");
 #endif
-	pr_debug("CRDISPATCH_KEY:Cache Parity Issue");
+	pr_debug("CRDISPATCH_KEY:GIC RAM Parity Issue");
 	if (!buf)
 		kfree(buf);
 }
