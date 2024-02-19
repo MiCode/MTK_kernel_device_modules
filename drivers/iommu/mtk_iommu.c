@@ -3502,6 +3502,35 @@ static const struct mtk_iommu_plat_data mt6873_data_apu = {
 	.iova_region_nr  = ARRAY_SIZE(mt6873_multi_dom),
 };
 
+/* copy the mtk_iommu_plat_data form the mt6873 because
+ * the mt6877 almost uset the same data as mt6873.
+ * but only add the IOVA_34_EN flag.
+ */
+static const struct mtk_iommu_plat_data mt6877_data_iommu0 = {
+	.m4u_plat = M4U_MT6877,
+	.flags         = HAS_SUB_COMM | OUT_ORDER_WR_EN | WR_THROT_EN |
+			 HAS_BCLK | NOT_STD_AXI_MODE | SHARE_PGTABLE | IOVA_34_EN | HAS_EMI_PM,
+	.inv_sel_reg   = REG_MMU_INV_SEL_GEN2,
+	.iommu_id	= DISP_IOMMU,
+	.iommu_type     = MM_IOMMU,
+	.iova_region    = mt6873_multi_dom,
+	.iova_region_nr = ARRAY_SIZE(mt6873_multi_dom),
+	.larbid_remap = {{0}, {1}, {4, 5}, {7}, {2}, {9, 11, 19, 20},
+			 {0, 14, 16}, {0, 13, 18, 17}},
+};
+
+static const struct mtk_iommu_plat_data mt6877_data_iommu1 = {
+	.m4u_plat = M4U_MT6877,
+	.flags         = IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE | HAS_EMI_PM,
+	.inv_sel_reg   = REG_MMU_INV_SEL_GEN2,
+	.iommu_id	= APU_IOMMU,
+	.iommu_type     = APU_IOMMU,
+	.iova_region    = mt6873_multi_dom,
+	.iova_region_nr = ARRAY_SIZE(mt6873_multi_dom),
+	.larbid_remap = {{0}, {1}, {4, 5}, {7}, {2}, {9, 11, 19, 20},
+			 {0, 14, 16}, {0, 13, 18, 17}},
+};
+
 static const struct mtk_iommu_plat_data mt6879_data_disp = {
 	.m4u_plat	= M4U_MT6879,
 	.flags          = HAS_SUB_COMM | OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
@@ -3946,6 +3975,8 @@ static const struct of_device_id mtk_iommu_of_ids[] = {
 	{ .compatible = "mediatek,mt6855-disp-iommu", .data = &mt6855_data_disp},
 	{ .compatible = "mediatek,mt6873-m4u", .data = &mt6873_data},
 	{ .compatible = "mediatek,mt6873-apu-iommu", .data = &mt6873_data_apu},
+	{ .compatible = "mediatek,mt6877-iommu0", .data = &mt6877_data_iommu0},
+	{ .compatible = "mediatek,mt6877-iommu1", .data = &mt6877_data_iommu1},
 	{ .compatible = "mediatek,mt6879-apu-iommu0", .data = &mt6879_data_apu0},
 	{ .compatible = "mediatek,mt6879-disp-iommu", .data = &mt6879_data_disp},
 	{ .compatible = "mediatek,mt6886-apu-iommu0", .data = &mt6886_data_apu0},
