@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0
 
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek
+ccflags-y += \
+	-I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM) \
 
 obj-$(CONFIG_DEVICE_MODULES_COMMON_CLK_MEDIATEK) += clk-common.o
 clk-common-$(CONFIG_DEVICE_MODULES_COMMON_CLK_MEDIATEK) += clk-mtk.o clk-pll.o clk-gate.o clk-apmixed.o clk-cpumux.o reset.o clk-mux.o clkchk.o clk-fmeter.o mtk-pd-chk.o clkdbg.o
@@ -30,6 +32,30 @@ obj-$(CONFIG_COMMON_CLK_MT6853_MMSYS_CONFIG) += clk-mt6853-mm.o
 obj-$(CONFIG_COMMON_CLK_MT6853_SCP_ADSP) += clk-mt6853-scp_par.o
 obj-$(CONFIG_COMMON_CLK_MT6853_VDEC_GCON) += clk-mt6853-vdec.o
 obj-$(CONFIG_COMMON_CLK_MT6853_VENC_GCON) += clk-mt6853-venc.o
+
+ifneq ($(wildcard $(srctree)/$(src)/clk-mt6877.c),)
+obj-$(CONFIG_COMMON_CLK_MT6877) += clk-mt6877.o clk-bringup.o
+obj-$(CONFIG_COMMON_CLK_MT6877) += clk-mt6877-pg.o
+obj-$(CONFIG_COMMON_CLK_MT6877) += clkchk-mt6877.o
+# obj-$(CONFIG_COMMON_CLK_MT6877) += clk-fmeter-mt6877.o
+ifeq ($(CONFIG_DEBUG_FS), y)
+# obj-$(CONFIG_COMMON_CLK_MT6877) += clkdbg-mt6877.o
+endif
+obj-$(CONFIG_COMMON_CLK_MT6877_APU) += clk-mt6877-apu.o
+obj-$(CONFIG_COMMON_CLK_MT6877_AUDIOSYS) += clk-mt6877-audsys.o
+obj-$(CONFIG_COMMON_CLK_MT6877_CAM) += clk-mt6877-cam.o
+obj-$(CONFIG_COMMON_CLK_MT6877_IMG) += clk-mt6877-img.o
+obj-$(CONFIG_COMMON_CLK_MT6877_I2C) += clk-mt6877-i2c.o
+obj-$(CONFIG_COMMON_CLK_MT6877_IPESYS) += clk-mt6877-ipe.o
+obj-$(CONFIG_COMMON_CLK_MT6877_MDPSYS) += clk-mt6877-mdp.o
+obj-$(CONFIG_COMMON_CLK_MT6877_MFGCFG) += clk-mt6877-mfgcfg.o
+obj-$(CONFIG_COMMON_CLK_MT6877_DISPSYS) += clk-mt6877-mm.o
+obj-$(CONFIG_COMMON_CLK_MT6877_MSDC) += clk-mt6877-msdc.o
+obj-$(CONFIG_COMMON_CLK_MT6877_SCP_ADSP) += clk-mt6877-scp_par.o
+obj-$(CONFIG_COMMON_CLK_MT6877_VDE) += clk-mt6877-vde.o
+obj-$(CONFIG_COMMON_CLK_MT6877_VEN) += clk-mt6877-ven.o
+endif
+
 ifneq ($(wildcard $(srctree)/$(src)/clk-mt6897.c),)
 obj-$(CONFIG_COMMON_CLK_MT6897) += clk-mt6897.o clk-bringup.o
 obj-$(CONFIG_COMMON_CLK_MT6897_ADSP) += clk-mt6897-adsp.o
