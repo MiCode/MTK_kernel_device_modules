@@ -3268,17 +3268,25 @@ static const enum mtk_ddp_comp_id mt6989_mtk_ddp_mem_dp_wo_tdshp[] = {
 };
 
 static const enum mtk_ddp_comp_id mt6991_mtk_ovlsys_main_bringup[] = {
-	DDP_COMPONENT_OVL_EXDMA2,
-	//DDP_COMPONENT_OVL0_BLENDER0,
+	DDP_COMPONENT_OVL_EXDMA3,
+	DDP_COMPONENT_OVL0_BLENDER1,
+	DDP_COMPONENT_OVL_EXDMA4,
+	DDP_COMPONENT_OVL0_BLENDER2,
+	DDP_COMPONENT_OVL_EXDMA5,
+	DDP_COMPONENT_OVL0_BLENDER3,
+	DDP_COMPONENT_OVL_EXDMA6,
+	DDP_COMPONENT_OVL0_BLENDER4,
+	DDP_COMPONENT_OVL_EXDMA7,
+	DDP_COMPONENT_OVL0_BLENDER5,
+	DDP_COMPONENT_OVL_EXDMA8,
+	DDP_COMPONENT_OVL0_BLENDER6,
+	DDP_COMPONENT_OVL0_OUTPROC0,
+	//DDP_COMPONENT_OVL0_OUTPROC_OUT_CB6,
 	DDP_COMPONENT_OVLSYS_DLO_ASYNC5,
 };
 
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_main_bringup[] = {
-	DDP_COMPONENT_OVL_EXDMA2,	//DDP_COMPONENT_OVL0_RSZ_IN_CB2,
-	DDP_COMPONENT_OVL0_EXDMA_OUT_CB3,
-	DDP_COMPONENT_OVL0_BLENDER_OUT_CB10,
-	DDP_COMPONENT_OVL0_OUTPROC_OUT_CB6,
-	DDP_COMPONENT_OVLSYS_DLO_ASYNC5, DDP_COMPONENT_DLI_ASYNC0,
+	DDP_COMPONENT_DLI_ASYNC0,
 	DDP_COMPONENT_PQ0_IN_CB0,
 	DDP_COMPONENT_PQ0_OUT_CB6,
 	DDP_COMPONENT_PANEL0_COMP_OUT_CB1,
@@ -4921,8 +4929,8 @@ static const struct mtk_crtc_path_data mt6989_mtk_discrete_path_data = {
 };
 
 static const struct mtk_crtc_path_data mt6991_mtk_main_path_data = {
-//	.ovl_path[DDP_MAJOR][0] = mt6991_mtk_ovlsys_main_bringup,
-//	.ovl_path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ovlsys_main_bringup),
+	.ovl_path[DDP_MAJOR][0] = mt6991_mtk_ovlsys_main_bringup,
+	.ovl_path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ovlsys_main_bringup),
 	.path[DDP_MAJOR][0] = mt6991_mtk_ddp_main_bringup,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ddp_main_bringup),
 	.path_req_hrt[DDP_MAJOR][0] = true,
@@ -9172,6 +9180,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_OVL_EXDMA},
 	{.compatible = "mediatek,mt6991-disp-ovl-blender",
 	 .data = (void *)MTK_OVL_BLENDER},
+	{.compatible = "mediatek,mt6991-disp-ovl-outproc",
+	 .data = (void *)MTK_OVL_OUTPROC},
 	{.compatible = "mediatek,mt6991-vdisp-ao",
 	 .data = (void *)MTK_DISP_VDISP_AO},
 	/* MML */
@@ -9759,7 +9769,7 @@ SKIP_OVLSYS_CONFIG:
 		 */
 		if (comp_type == MTK_DISP_OVL || comp_type == MTK_OVL_EXDMA ||
 			comp_type == MTK_OVL_BLENDER || comp_type == MTK_DISP_VDISP_AO ||
-		    comp_type == MTK_DISP_MERGE ||
+		    comp_type == MTK_DISP_MERGE || comp_type == MTK_OVL_OUTPROC ||
 		    comp_type == MTK_DISP_RDMA || comp_type == MTK_DISP_MDP_RDMA
 		    || comp_type == MTK_DISP_WDMA || comp_type == MTK_DISP_RSZ
 		    || comp_type == MTK_DISP_MDP_RSZ ||
@@ -10061,6 +10071,7 @@ static struct platform_driver *const mtk_drm_drivers[] = {
 	&mtk_disp_ovl_driver,
 	&mtk_ovl_exdma_driver,
 	&mtk_ovl_blender_driver,
+	&mtk_ovl_outproc_driver,
 	&mtk_disp_rdma_driver,
 	&mtk_disp_mdp_rdma_driver,
 	&mtk_disp_wdma_driver,

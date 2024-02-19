@@ -20498,6 +20498,9 @@ static int mtk_ddp_ovl_exdma_out_cb_MT6991(enum mtk_ddp_comp_id cur, enum mtk_dd
 	case DDP_COMPONENT_OVLSYS1_DLO_ASYNC4:
 		value = MT6991_DISP_OVL_EXDMA_OUT_CB_TO_OVL_DLO_RELAY4;
 		break;
+	case DDP_COMPONENT_ID_MAX:
+		value = 0;
+		break;
 
 	default:
 		value = -1;
@@ -20606,6 +20609,9 @@ static int mtk_ddp_ovl_blender_out_cb_MT6991(enum mtk_ddp_comp_id cur, enum mtk_
 	case DDP_COMPONENT_OVL0_OUTPROC_OUT_CB7:
 	case DDP_COMPONENT_OVL1_OUTPROC_OUT_CB7:
 		value = MT6991_DISP_OUT_BLENDER_CB_TO_OVL_OUTPROC_CB7;
+		break;
+	case DDP_COMPONENT_ID_MAX:
+		value = 0;
 		break;
 
 	default:
@@ -20724,6 +20730,9 @@ static int mtk_ddp_ovl_out_proc_cb_MT6991(enum mtk_ddp_comp_id cur, enum mtk_ddp
 	case DDP_COMPONENT_OVLSYS_RELAY0:
 	case DDP_COMPONENT_OVLSYS1_RELAY0:
 		value = MT6991_DISP_OVL_OUT_PROC_CB_TO_OVL_OVLSYS_RELAY0;
+		break;
+	case DDP_COMPONENT_ID_MAX:
+		value = 0;
 		break;
 	default:
 		value = -1;
@@ -30206,7 +30215,7 @@ void ovlsys_config_dump_reg_mt6991(void __iomem *config_regs)
 	for (off = 0xB00; off <= 0xB24; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
-	for (off = 0xE70; off <= 0xFF0; off += 0x10)
+	for (off = 0xE00; off <= 0xFF0; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 }
 
@@ -33232,6 +33241,54 @@ void mmsys_config_dump_analysis_mt6855(void __iomem *config_regs)
 			DDPDUMP("%s, Can't smi dump in IRQ\n", __func__);
 	}
 #endif
+}
+
+int mtk_ddp_exdma_mout_MT6991(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id next,
+			   unsigned int *addr)
+{
+	int value = -1;
+
+	if (cur == DDP_COMPONENT_MML_MML0 || cur == DDP_COMPONENT_MML_MUTEX0)
+		return 0;
+
+	if (mtk_ddp_comp_get_type(cur) == MTK_OVL_EXDMA) {
+		if (cur == DDP_COMPONENT_OVL_EXDMA2)
+			value = mtk_ddp_ovl_rsz_in_cb_MT6991(cur, next, addr);
+		else
+			value = mtk_ddp_ovl_exdma_out_cb_MT6991(cur, next, addr);
+		return value;
+	}
+
+	if (mtk_ddp_comp_get_type(cur) == MTK_OVL_BLENDER) {
+		if (mtk_ddp_comp_get_type(next) != MTK_OVL_EXDMA)
+			value = mtk_ddp_ovl_blender_out_cb_MT6991(cur, next, addr);
+		return value;
+	}
+
+	if (mtk_ddp_comp_get_type(cur) == MTK_OVL_OUTPROC) {
+		value = mtk_ddp_ovl_out_proc_cb_MT6991(cur, next, addr);
+		return value;
+	}
+
+	return value;
+}
+
+int mtk_ddp_exdma_mout_reset_MT6991(enum mtk_ddp_comp_type type, int *offset,
+			   unsigned int *addr_begin, unsigned int *addr_end)
+{
+	if (type == MTK_OVL_EXDMA) {
+		*addr_begin = MT6991_OVL_EXDMA_OUT_CROSSBAR0_MOUT_EN;
+		*addr_end = MT6991_OVL_EXDMA_OUT_CROSSBAR10_MOUT_EN;
+		*offset = 8;
+	}
+
+	if (type ==  MTK_OVL_BLENDER) {
+		*addr_begin = MT6991_OVL_BLENDER_OUT_CROSSBAR0_MOUT_EN;
+		*addr_end = MT6991_OVL_BLENDER_OUT_CROSSBAR6_MOUT_EN;
+		*offset = 4;
+	}
+
+	return 0;
 }
 
 void mtk_ddp_disable_merge_irq(struct drm_device *drm)

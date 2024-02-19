@@ -373,6 +373,12 @@ char *mtk_ddp_get_mutex_sof_name(unsigned int regval);
 void mtk_ddp_rst_module(struct mtk_drm_crtc *mtk_crtc,
 	enum mtk_ddp_comp_id m, struct cmdq_pkt *handle);
 
+int mtk_ddp_exdma_mout_MT6991(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id next,
+			   unsigned int *addr);
+
+int mtk_ddp_exdma_mout_reset_MT6991(enum mtk_ddp_comp_type type, int *offset,
+			   unsigned int *addr_begin, unsigned int *addr_end);
+
 void mtk_gce_event_config_MT6991(struct drm_device *drm);
 
 #endif /* MTK_DRM_DDP_H */

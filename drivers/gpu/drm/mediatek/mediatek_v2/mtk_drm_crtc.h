@@ -1109,6 +1109,9 @@ struct mtk_drm_crtc {
 
 	unsigned int usage_ovl_fmt[OVL_LAYER_NR]; // for mt6989 hrt by larb
 
+	struct mtk_ddp_comp *last_blender;
+	unsigned int need_change_exdma_path;
+
 	wait_queue_head_t esd_notice_wq;
 	atomic_t esd_notice_status;
 
@@ -1462,6 +1465,14 @@ int mtk_vblank_config_rec_end_cal(struct mtk_drm_crtc *mtk_crtc,
 unsigned int mtk_drm_dump_vblank_config_rec(
 	struct mtk_drm_private *priv, char *stringbuf, int buf_len);
 void mtk_crtc_default_path_rst(struct drm_crtc *crtc);
+
+void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
+	struct mtk_ddp_comp *comp, unsigned int plane_index, struct cmdq_pkt *cmdq_handle);
+void mtk_drm_crtc_exdma_ovl_path_out(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *cmdq_handle);
+void mtk_drm_crtc_exdma_path_setting_reset(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *cmdq_handle);
+
 void mtk_crtc_gce_event_config(struct drm_crtc *crtc);
 void mtk_crtc_vdisp_ao_config(struct drm_crtc *crtc);
 

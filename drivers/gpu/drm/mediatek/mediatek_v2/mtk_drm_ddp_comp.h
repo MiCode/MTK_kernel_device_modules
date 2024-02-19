@@ -1158,6 +1158,7 @@ struct mtk_ddp_comp_funcs {
 	void (*mutex_eof_irq)(struct mtk_ddp_comp *comp);
 	int (*partial_update)(struct mtk_ddp_comp *comp,
 			struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable);
+	int (*first_layer)(struct mtk_ddp_comp *comp);
 };
 
 struct mtk_ddp_comp {
@@ -1195,6 +1196,7 @@ struct mtk_ddp_comp {
 	u32 fbdc_bw;
 	u32 hrt_bw;
 	bool in_scaling_path;
+	struct mtk_ddp_comp *bind_comp;
 };
 
 static inline void mtk_ddp_comp_config_overhead(struct mtk_ddp_comp *comp,
