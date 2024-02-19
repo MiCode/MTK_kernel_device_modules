@@ -43,29 +43,29 @@ static int dfd_dump_trg_ctrl(unsigned int par1, unsigned int par2, unsigned int 
 }
 
 struct region_header {
-    uint32_t offset;
-    uint32_t size;
+	uint32_t offset;
+	uint32_t size;
 };
 
 struct dfd_cmd_header {
-    uint32_t conninfra_version;
-    struct region_header conninfra_hdr;
-    uint32_t wifi_version;
-    struct region_header wifi_hdr;
-    uint32_t bt_version;
-    struct region_header bt_hdr;
+	uint32_t conninfra_version;
+	struct region_header conninfra_hdr;
+	uint32_t wifi_version;
+	struct region_header wifi_hdr;
+	uint32_t bt_version;
+	struct region_header bt_hdr;
 };
 
 struct dfd_value_header {
-    struct region_header conninfra_hdr;
-    struct region_header wifi_hdr;
-    struct region_header bt_hdr;
+	struct region_header conninfra_hdr;
+	struct region_header wifi_hdr;
+	struct region_header bt_hdr;
 };
 
 struct dfd_header {
-    uint32_t version;
-    struct dfd_cmd_header cmd_hdr;
-    struct dfd_value_header val_hdr;
+	uint32_t version;
+	struct dfd_cmd_header cmd_hdr;
+	struct dfd_value_header val_hdr;
 };
 
 
@@ -113,8 +113,8 @@ static int dfd_emi_dump(unsigned int par1, unsigned int par2, unsigned int par3)
 
 	phys_addr_t cmd_addr = connsys_scp_get_dfd_cmd_addr();
 	uint32_t cmd_size = connsys_scp_get_dfd_cmd_size();
-	size = sizeof(hdr);
 
+	size = sizeof(hdr);
 	pr_info("[%s] cmd addr=[%llx] size=[%x]", __func__, cmd_addr, cmd_size);
 
 	vir_addr = ioremap(cmd_addr, size);
