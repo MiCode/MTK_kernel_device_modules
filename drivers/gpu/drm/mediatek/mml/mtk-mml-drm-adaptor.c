@@ -683,7 +683,8 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 
 	/* copy per-frame info */
 	task->ctx = ctx;
-	if (cfg->info.mode == MML_MODE_MML_DECOUPLE) {
+	if (cfg->info.mode == MML_MODE_MML_DECOUPLE ||
+	    cfg->info.mode == MML_MODE_MML_DECOUPLE2) {
 		task->end_time.tv_sec = submit->end.sec;
 		task->end_time.tv_nsec = submit->end.nsec;
 		/* give default time if empty */
@@ -858,12 +859,13 @@ EXPORT_SYMBOL_GPL(mml_drm_dump);
 static void drm_task_ddren(struct mml_task *task, struct cmdq_pkt *pkt, bool enable)
 {
 	struct mml_drm_ctx *ctx = task_ctx_to_drm(task);
+	enum mml_mode mode = task->config->info.mode;
 
 	if (!ctx->ddren_cb)
 		return;
 
 	/* no need ddren for srt case */
-	if (task->config->info.mode == MML_MODE_MML_DECOUPLE)
+	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2)
 		return;
 
 	ctx->ddren_cb(pkt, enable, ctx->ddren_param);
@@ -872,12 +874,13 @@ static void drm_task_ddren(struct mml_task *task, struct cmdq_pkt *pkt, bool ena
 static void drm_task_dispen(struct mml_task *task, bool enable)
 {
 	struct mml_drm_ctx *ctx = task_ctx_to_drm(task);
+	enum mml_mode mode = task->config->info.mode;
 
 	if (!ctx->dispen_cb)
 		return;
 
 	/* no need ddren so no dispen */
-	if (task->config->info.mode == MML_MODE_MML_DECOUPLE)
+	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2)
 		return;
 
 	ctx->dispen_cb(enable, ctx->dispen_param);
