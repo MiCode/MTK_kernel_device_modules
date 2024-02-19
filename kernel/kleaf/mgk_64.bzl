@@ -1429,6 +1429,11 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/soc/mediatek/mtk-dvfsrc-start.ko":"mt6761"})
         mgk_64_device_modules.remove("drivers/char/rpmb/rpmb.ko")
         mgk_64_device_modules.remove("drivers/char/rpmb/rpmb-mtk.ko")
+
+        mgk_64_device_modules.append("drivers/misc/mediatek/hps_v3/mtk_cpuhp.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/power_gs_v1/mtk_power_gs_v1.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/cm_mgr_legacy_v0/mtk_cm_mgr_v0.ko")
+
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi-fake-eng.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi-mpu.ko")
