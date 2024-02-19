@@ -4317,6 +4317,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 		};
 
+		fdvfs: fdvfs@c220400 {
+			compatible = "mediatek,fdvfs";
+			reg = <0 0x0c220400 0 0x20>,
+				<0 0x0c220420 0 0x4>,
+				<0 0x0c2c2034 0 0x4>;
+		};
+
 		gpio: gpio@1002d000 {
 			compatible = "mediatek,gpio";
 			reg = <0 0x1002d000 0 0x1000>;
