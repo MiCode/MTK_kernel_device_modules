@@ -25,8 +25,6 @@
 #include "mtk-mml-mmp.h"
 #include "mtk-mml-pq-core.h"
 
-#define MML_DEFAULT_END_NS	15000000
-
 int drm_max_cache_task = 4;
 module_param(drm_max_cache_task, int, 0644);
 
@@ -492,14 +490,6 @@ done:
 	mml_lock_wake_lock(mml, false);
 
 	mml_trace_ex_end();
-}
-
-static void frame_check_end_time(struct timespec64 *endtime)
-{
-	if (!endtime->tv_sec && !endtime->tv_nsec) {
-		ktime_get_real_ts64(endtime);
-		timespec64_add_ns(endtime, MML_DEFAULT_END_NS);
-	}
 }
 
 s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,

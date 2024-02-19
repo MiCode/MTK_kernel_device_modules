@@ -3,6 +3,7 @@
  * Copyright (c) 2023 MediaTek Inc.
  * Author: Iris-SC Yang <iris-sc.yang@mediatek.com>
  */
+#include <linux/time.h>
 
 #include <media/v4l2-device.h>
 #include <media/v4l2-mem2mem.h>
@@ -1534,6 +1535,14 @@ static void mml_m2m_device_run(void *priv)
 			src_vbuf, dst_vbuf);
 		goto err_buf_exit;
 	}
+
+	/* update endTime here */
+	task->end_time = ns_to_timespec64(src_vbuf->vb2_buf.timestamp);
+	/* give default time if empty */
+	frame_check_end_time(&task->end_time);
+	mml_log("[m2m] mml job %u endTime: %2u.%03llu",
+		task->job.jobid,
+		(u32)task->end_time.tv_sec, div_u64(task->end_time.tv_nsec, 1000000));
 
 	result = m2m_frame_buf_to_task_buf(&task->buf.src,
 		&submit->buffer.src, src_vbuf,

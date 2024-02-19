@@ -72,4 +72,6 @@ int mml_ctx_init(struct mml_ctx *ctx, struct mml_dev *mml,
 	const char * const threads[]);
 void mml_ctx_deinit(struct mml_ctx *ctx);
 
+void frame_check_end_time(struct timespec64 *endtime);
+
 #endif	/* __MTK_MML_ADAPTOR_H__ */
