@@ -180,9 +180,7 @@ int tcpci_dp_notify_config_start(struct tcpc_device *tcpc);
 int tcpci_dp_notify_config_done(struct tcpc_device *tcpc,
 	uint32_t local_cfg, uint32_t remote_cfg, bool ack);
 
-#if CONFIG_USB_PD_CUSTOM_VDM
-int tcpci_notify_uvdm(struct tcpc_device *tcpc, bool ack);
-#endif	/* CONFIG_USB_PD_CUSTOM_VDM */
+int tcpci_notify_cvdm(struct tcpc_device *tcpc, bool ack);
 
 #if CONFIG_USB_PD_REV30
 

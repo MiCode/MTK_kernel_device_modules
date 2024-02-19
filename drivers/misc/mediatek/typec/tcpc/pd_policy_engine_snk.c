@@ -114,7 +114,8 @@ void pe_snk_transition_sink_entry(struct pd_port *pd_port)
 
 void pe_snk_ready_entry(struct pd_port *pd_port)
 {
-	if (pd_check_ctrl_msg_event(pd_port, PD_CTRL_WAIT))
+	if (pd_port->state_machine == PE_STATE_MACHINE_NORMAL &&
+	    pd_check_ctrl_msg_event(pd_port, PD_CTRL_WAIT))
 		pd_enable_timer(pd_port, PD_TIMER_SINK_REQUEST);
 
 	pd_notify_pe_snk_explicit_contract(pd_port);

@@ -166,12 +166,6 @@ static bool pd_process_ctrl_msg_wait_reject(struct pd_port *pd_port)
 	return true;
 }
 
-static inline bool pd_process_ctrl_msg_wait(struct pd_port *pd_port)
-{
-
-	return pd_process_ctrl_msg_wait_reject(pd_port);
-}
-
 static bool pd_process_tx_msg(struct pd_port *pd_port, uint8_t msg)
 {
 #if CONFIG_USB_PD_DISCARD_AND_UNEXPECT_MSG
@@ -247,7 +241,7 @@ static inline bool pd_process_ctrl_msg(
 
 		if (pd_port->pe_data.pe_state_flags &
 			PE_STATE_FLAG_BACK_READY_IF_RECV_WAIT) {
-			return pd_process_ctrl_msg_wait(pd_port);
+			return pd_process_ctrl_msg_wait_reject(pd_port);
 		}
 		break;
 
@@ -484,6 +478,12 @@ static inline bool pd_process_dpm_msg(
 			return true;
 		}
 		break;
+	case PD_DPM_CABLE_NOT_SUPPORT:
+		if (pd_get_rev(pd_port, TCPC_TX_SOP_PRIME) >= PD_REV30) {
+			PE_TRANSIT_STATE(pd_port, PE_VDM_NOT_SUPPORTED);
+			return true;
+		}
+		break;
 #endif	/* CONFIG_USB_PD_REV30 */
 	}
 
@@ -574,13 +574,9 @@ static inline bool pd_process_hw_msg(
 static inline bool pd_check_rx_pending(struct pd_port *pd_port)
 {
 	bool pending = false;
-	uint32_t alert;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
-	if (tcpci_get_alert_status(tcpc, &alert))
-		return false;
-
-	if (alert & TCPC_REG_ALERT_RX_STATUS) {
+	if (mutex_is_locked(&tcpc->rxbuf_lock)) {
 		PE_INFO("rx_pending\n");
 		pending = true;
 	} else if (!pd_is_msg_empty(tcpc)) {
@@ -661,12 +657,10 @@ static inline bool pd_process_timer_msg(
 #endif	/* CONFIG_USB_PD_VCONN_STABLE_DELAY */
 
 #if CONFIG_USB_PD_REV30
-#if CONFIG_USB_PD_REV30_COLLISION_AVOID
 	case PD_TIMER_DEFERRED_EVT:
 		pd_notify_tcp_event_buf_reset(
 			pd_port, TCP_DPM_RET_DROP_PE_BUSY);
 		break;
-#endif	/* CONFIG_USB_PD_REV30_COLLISION_AVOID */
 #endif	/* CONFIG_USB_PD_REV30 */
 	default:
 		break;

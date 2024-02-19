@@ -49,7 +49,6 @@
 #define DP_INFO_ENABLE		1
 #define DP_DBG_ENABLE		1
 
-#define UVDM_INFO_ENABLE	1
 #define TCPM_DBG_ENABLE		1
 
 #define TCPC_ENABLE_ANYMSG	\
@@ -60,8 +59,7 @@
 		(PE_STATE_INFO_ENABLE)|(TCPC_INFO_ENABLE)|\
 		(TCPC_TIMER_DBG_ENABLE)|(TYPEC_DBG_ENABLE)|\
 		(TYPEC_INFO_ENABLE)|\
-		(DP_INFO_ENABLE)|(DP_DBG_ENABLE)|\
-		(UVDM_INFO_ENABLE)|(TCPM_DBG_ENABLE))
+		(DP_INFO_ENABLE)|(DP_DBG_ENABLE)|(TCPM_DBG_ENABLE))
 
 /* Disable VDM DBG Msg */
 #define PE_STATE_INFO_VDM_DIS	0
@@ -360,13 +358,8 @@ struct tcpc_device {
 	bool typec_ext_discharge;
 #endif	/* CONFIG_TCPC_EXT_DISCHARGE */
 
-#if CONFIG_TCPC_VCONN_SUPPLY_MODE
 	uint8_t tcpc_vconn_supply;
-#endif	/* CONFIG_TCPC_VCONN_SUPPLY_MODE */
-
-#if CONFIG_TCPC_SOURCE_VCONN
 	bool tcpc_source_vconn;
-#endif	/* CONFIG_TCPC_SOURCE_VCONN */
 
 	uint32_t tcpc_flags;
 
@@ -433,6 +426,7 @@ struct tcpc_device {
 	u64 tx_jiffies;
 	u64 tx_jiffies_max;
 	struct delayed_work tx_pending_work;
+	struct mutex rxbuf_lock;
 #endif /* CONFIG_USB_POWER_DELIVERY */
 	u8 vbus_level:2;
 	bool vbus_safe0v;
@@ -621,13 +615,6 @@ static inline bool pd_check_rev30(struct pd_port *pd_port)
 #else
 #define DP_DBG(format, args...)
 #endif /* DP_DBG_ENABLE */
-
-#if UVDM_INFO_ENABLE
-#define UVDM_INFO(format, args...)	\
-	RT_DBG_INFO(CONFIG_TCPC_DBG_PRESTR "UVDM:" format, ##args)
-#else
-#define UVDM_INFO(format, args...)
-#endif
 
 #if TCPM_DBG_ENABLE
 #define TCPM_DBG(format, args...)	\

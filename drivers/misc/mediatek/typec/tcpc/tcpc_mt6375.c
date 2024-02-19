@@ -2399,12 +2399,10 @@ static int mt6375_parse_dt(struct mt6375_tcpc_data *ddata)
 		}
 	}
 
-#if CONFIG_TCPC_VCONN_SUPPLY_MODE
 	if ((!device_property_read_u32(dev, "tcpc,vconn-supply", &val) ||
 	     !device_property_read_u32(dev, "tcpc,vconn_supply", &val)) &&
 	    val < TCPC_VCONN_SUPPLY_NR)
 		desc->vconn_supply = val;
-#endif	/* CONFIG_TCPC_VCONN_SUPPLY_MODE */
 
 	for (i = 0; i < ARRAY_SIZE(tcpc_props_bool); i++) {
 		*tcpc_props_bool[i].val_ptr =

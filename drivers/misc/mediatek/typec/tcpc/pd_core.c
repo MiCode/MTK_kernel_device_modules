@@ -292,6 +292,7 @@ static inline void pd_parse_pdata_src_cap_ext(
 static inline void pd_parse_pdata_snk_cap_ext(
 	struct pd_port *pd_port, struct device_node *np)
 {
+#if CONFIG_USB_PD_REV30
 	int ret = 0;
 
 	ret = of_property_read_u8_array(np, "pd,sink-cap-ext",
@@ -304,6 +305,7 @@ static inline void pd_parse_pdata_snk_cap_ext(
 	pd_port->snk_cap_ext.battery_info =
 		PD_SKEDB_BATTERIES(0, pd_port->bat_nr);
 #endif	/* CONFIG_USB_PD_REV30_BAT_INFO */
+#endif	/* CONFIG_USB_PD_REV30 */
 }
 
 static inline void pd_parse_pdata_mfrs(
@@ -355,8 +357,10 @@ static inline void pd_parse_pdata_mfrs(
 	pd_port->src_cap_ext.vid = vid;
 	pd_port->src_cap_ext.pid = pid;
 #endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL */
+#if CONFIG_USB_PD_REV30
 	pd_port->snk_cap_ext.vid = vid;
 	pd_port->snk_cap_ext.pid = pid;
+#endif	/* CONFIG_USB_PD_REV30 */
 
 	pd_port->id_vdos[0] &= ~PD_IDH_VID_MASK;
 	pd_port->id_vdos[0] |= PD_IDH_VID(vid);
@@ -586,7 +590,6 @@ int pd_core_init(struct tcpc_device *tcpc)
 	int ret;
 
 	mutex_init(&pd_port->pd_lock);
-	mutex_init(&pd_port->rxbuf_lock);
 
 #if CONFIG_USB_PD_BLOCK_TCPM
 	mutex_init(&pd_port->tcpm_bk_lock);
@@ -711,10 +714,8 @@ bool pd_is_reset_cable(struct pd_port *pd_port)
 
 bool pd_is_discover_cable(struct pd_port *pd_port)
 {
-	if (pd_port->pe_data.discover_id_counter >= PD_DISCOVER_ID_COUNT) {
-		dpm_reaction_clear(pd_port, DPM_REACTION_DISCOVER_CABLE);
+	if (pd_port->pe_data.discover_id_counter >= PD_DISCOVER_ID_COUNT)
 		return false;
-	}
 
 	return pd_is_cable_communication_available(pd_port);
 }
@@ -1029,9 +1030,9 @@ int pd_handle_soft_reset(struct pd_port *pd_port)
 
 void pd_handle_first_pd_command(struct pd_port *pd_port)
 {
-#if CONFIG_USB_PD_REV30
+#if CONFIG_USB_PD_REV30_SYNC_SPEC_REV
 	pd_sync_sop_spec_revision(pd_port);
-#endif	/* CONFIG_USB_PD_REV30 */
+#endif /* CONFIG_USB_PD_REV30_SYNC_SPEC_REV */
 
 	pd_port->pe_data.pd_connected = true;
 	pd_port->pe_data.pd_prev_connected = true;
@@ -1238,9 +1239,13 @@ int pd_disable_bist_mode2(struct pd_port *pd_port)
 uint8_t pd_get_svdm_ver_min(
 	struct pd_port *pd_port, enum tcpm_transmit_type sop_type)
 {
+#if CONFIG_USB_PD_REV30_SYNC_SPEC_REV
 	if (sop_type >= ARRAY_SIZE(pd_port->svdm_ver_min))
 		return 0;
 	return pd_port->svdm_ver_min[sop_type];
+#else
+	return 0;
+#endif	/* CONFIG_USB_PD_REV30_SYNC_SPEC_REV */
 }
 
 int pd_send_svdm_request(struct pd_port *pd_port,
@@ -1248,11 +1253,6 @@ int pd_send_svdm_request(struct pd_port *pd_port,
 		uint8_t obj_pos, uint8_t cnt, uint32_t *data_obj,
 		uint32_t timer_id)
 {
-#if CONFIG_USB_PD_STOP_SEND_VDM_IF_RX_BUSY
-	int rv;
-	uint32_t alert_status;
-#endif	/* CONFIG_USB_PD_STOP_SEND_VDM_IF_RX_BUSY */
-
 	int ret;
 	uint8_t ver = SVDM_REV10;
 	uint32_t payload[PD_DATA_OBJ_SIZE];
@@ -1269,17 +1269,6 @@ int pd_send_svdm_request(struct pd_port *pd_port,
 			   CMDT_INIT, vdm_cmd, obj_pos);
 	memcpy(&payload[1], data_obj, sizeof(uint32_t) * cnt);
 
-#if CONFIG_USB_PD_STOP_SEND_VDM_IF_RX_BUSY
-	rv = tcpci_get_alert_status(pd_port->tcpc, &alert_status);
-	if (rv)
-		return rv;
-
-	if (alert_status & TCPC_REG_ALERT_RX_STATUS) {
-		PE_DBG("RX Busy, stop send VDM\n");
-		return 0;
-	}
-#endif	/* CONFIG_USB_PD_STOP_SEND_VDM_IF_RX_BUSY */
-
 	ret = pd_send_data_msg(
 			pd_port, sop_type, PD_DATA_VENDOR_DEF, 1+cnt, payload);
 
@@ -1292,10 +1281,6 @@ int pd_send_svdm_request(struct pd_port *pd_port,
 int pd_reply_svdm_request(struct pd_port *pd_port,
 	uint8_t reply, uint8_t cnt, uint32_t *data_obj)
 {
-#if CONFIG_USB_PD_STOP_REPLY_VDM_IF_RX_BUSY
-	int rv;
-	uint32_t alert_status;
-#endif	/* CONFIG_USB_PD_STOP_REPLY_VDM_IF_RX_BUSY */
 	uint8_t ver = SVDM_REV10;
 	uint32_t payload[PD_DATA_OBJ_SIZE];
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
@@ -1313,17 +1298,6 @@ int pd_reply_svdm_request(struct pd_port *pd_port,
 		memcpy(&payload[1], data_obj, sizeof(uint32_t) * cnt);
 	}
 
-#if CONFIG_USB_PD_STOP_REPLY_VDM_IF_RX_BUSY
-	rv = tcpci_get_alert_status(tcpc, &alert_status);
-	if (rv)
-		return rv;
-
-	if (alert_status & TCPC_REG_ALERT_RX_STATUS) {
-		PE_DBG("RX Busy, stop reply VDM\n");
-		return 0;
-	}
-#endif	/* CONFIG_USB_PD_STOP_REPLY_VDM_IF_RX_BUSY */
-
 	if (reply != CMDT_RSP_ACK)
 		PE_INFO("VDM_NAK_BUSY\n");
 	else
@@ -1335,13 +1309,11 @@ int pd_reply_svdm_request(struct pd_port *pd_port,
 			PD_DATA_VENDOR_DEF, 1+cnt, payload);
 }
 
-#if CONFIG_USB_PD_CUSTOM_VDM
-
 int pd_send_custom_vdm(struct pd_port *pd_port, uint8_t sop_type)
 {
 	return pd_send_data_msg(pd_port,
 		sop_type, PD_DATA_VENDOR_DEF,
-		pd_port->uvdm_cnt, pd_port->uvdm_data);
+		pd_port->cvdm_cnt, pd_port->cvdm_data);
 }
 
 int pd_reply_custom_vdm(struct pd_port *pd_port, uint8_t sop_type,
@@ -1352,8 +1324,6 @@ int pd_reply_custom_vdm(struct pd_port *pd_port, uint8_t sop_type,
 	return pd_send_data_msg(pd_port,
 		sop_type, PD_DATA_VENDOR_DEF, cnt, payload);
 }
-
-#endif	/* CONFIG_USB_PD_CUSTOM_VDM */
 
 void pd_reset_pe_timer(struct pd_port *pd_port)
 {
@@ -1387,7 +1357,6 @@ int pd_update_connect_state(struct pd_port *pd_port, uint8_t state)
 
 void pd_set_sink_tx(struct pd_port *pd_port, uint8_t cc)
 {
-#if CONFIG_USB_PD_REV30_COLLISION_AVOID
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
 	if (cc == PD30_SINK_TX_OK &&
@@ -1407,12 +1376,11 @@ void pd_set_sink_tx(struct pd_port *pd_port, uint8_t cc)
 		pd_port->pe_data.pd_traffic_control = PD_SINK_TX_NG;
 		pd_enable_timer(pd_port, PD_TIMER_SINK_TX);
 	}
-#endif	/* CONFIG_USB_PD_REV30_COLLISION_AVOID */
 }
 
+#if CONFIG_USB_PD_REV30_SYNC_SPEC_REV
 void pd_sync_sop_spec_revision(struct pd_port *pd_port)
 {
-#if CONFIG_USB_PD_REV30_SYNC_SPEC_REV
 	uint8_t rev = pd_get_msg_hdr_rev(pd_port);
 	uint8_t ver_min = rev >= PD_REV30 ? 1 : 0;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
@@ -1424,12 +1392,10 @@ void pd_sync_sop_spec_revision(struct pd_port *pd_port)
 		pd_sync_svdm_ver_min(pd_port, TCPC_TX_SOP_PRIME, ver_min);
 		PE_INFO("pd_rev=%d\n", pd_port->pd_revision[0]);
 	}
-#endif /* CONFIG_USB_PD_REV30_SYNC_SPEC_REV */
 }
 
 void pd_sync_sop_prime_spec_revision(struct pd_port *pd_port, uint8_t rev)
 {
-#if CONFIG_USB_PD_REV30_SYNC_SPEC_REV
 	uint8_t ver_min = rev >= PD_REV30 ? 1 : 0;
 	struct pe_data *pe_data = &pd_port->pe_data;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
@@ -1440,7 +1406,6 @@ void pd_sync_sop_prime_spec_revision(struct pd_port *pd_port, uint8_t rev)
 		pd_sync_svdm_ver_min(pd_port, TCPC_TX_SOP_PRIME, ver_min);
 		PE_INFO("cable_rev=%d\n", pd_port->pd_revision[1]);
 	}
-#endif /* CONFIG_USB_PD_REV30_SYNC_SPEC_REV */
 }
 
 void pd_sync_svdm_ver_min(
@@ -1455,6 +1420,7 @@ void pd_sync_svdm_ver_min(
 		MIN(pd_port->svdm_ver_min[sop_type], ver);
 	PE_DBG("svdm_ver_min[%d]=%u\n", sop_type, ver);
 }
+#endif /* CONFIG_USB_PD_REV30_SYNC_SPEC_REV */
 
 bool pd_is_multi_chunk_msg(struct pd_port *pd_port)
 {

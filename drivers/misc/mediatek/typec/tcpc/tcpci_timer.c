@@ -91,9 +91,7 @@ DECL_TCPC_TIMEOUT(PD_TIMER_SOURCE_SWAP_STANDBY, 650),
 DECL_TCPC_TIMEOUT(PD_TIMER_SRC_RECOVER, 900 - CONFIG_USB_PD_SAFE0V_DELAY),
 #if CONFIG_USB_PD_REV30
 DECL_TCPC_TIMEOUT(PD_TIMER_CK_NOT_SUPPORTED, 40),
-#if CONFIG_USB_PD_REV30_COLLISION_AVOID
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_SINK_TX, 16, 20),
-#endif	/* CONFIG_USB_PD_REV30_COLLISION_AVOID */
 #if CONFIG_USB_PD_REV30_PPS_SOURCE
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_SOURCE_PPS_TIMEOUT, 12000, 15000),
 #endif	/* CONFIG_USB_PD_REV30_PPS_SOURCE */
@@ -119,18 +117,16 @@ DECL_TCPC_TIMEOUT(PD_TIMER_DISCARD, 3),
 #if CONFIG_USB_PD_VBUS_STABLE_TOUT
 DECL_TCPC_TIMEOUT(PD_TIMER_VBUS_STABLE, CONFIG_USB_PD_VBUS_STABLE_TOUT),
 #endif	/* CONFIG_USB_PD_VBUS_STABLE_TOUT */
-DECL_TCPC_TIMEOUT(PD_TIMER_UVDM_RESPONSE, CONFIG_USB_PD_CUSTOM_VDM_TOUT),
+DECL_TCPC_TIMEOUT(PD_TIMER_CVDM_RESPONSE, CONFIG_USB_PD_CUSTOM_VDM_TOUT),
 DECL_TCPC_TIMEOUT(PD_TIMER_DFP_FLOW_DELAY, CONFIG_USB_PD_DFP_FLOW_DLY),
 DECL_TCPC_TIMEOUT(PD_TIMER_UFP_FLOW_DELAY, CONFIG_USB_PD_UFP_FLOW_DLY),
 DECL_TCPC_TIMEOUT(PD_TIMER_VCONN_READY, CONFIG_USB_PD_VCONN_READY_TOUT),
 DECL_TCPC_TIMEOUT(PD_PE_VDM_POSTPONE, 3),
 #if CONFIG_USB_PD_REV30
-#if CONFIG_USB_PD_REV30_COLLISION_AVOID
 DECL_TCPC_TIMEOUT(PD_TIMER_DEFERRED_EVT, 5000),
 #if CONFIG_USB_PD_REV30_SNK_FLOW_DELAY_STARTUP
 DECL_TCPC_TIMEOUT(PD_TIMER_SNK_FLOW_DELAY, CONFIG_USB_PD_UFP_FLOW_DLY),
 #endif	/* CONFIG_USB_PD_REV30_SNK_FLOW_DELAY_STARTUP */
-#endif	/* CONFIG_USB_PD_REV30_COLLISION_AVOID */
 #if CONFIG_USB_PD_REV30_PPS_SINK
 DECL_TCPC_TIMEOUT(PD_TIMER_PPS_REQUEST, CONFIG_USB_PD_PPS_REQUEST_INTERVAL),
 #endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
@@ -188,7 +184,7 @@ static inline void on_pe_timer_timeout(
 	case PD_TIMER_VDM_MODE_ENTRY:
 	case PD_TIMER_VDM_MODE_EXIT:
 	case PD_TIMER_VDM_RESPONSE:
-	case PD_TIMER_UVDM_RESPONSE:
+	case PD_TIMER_CVDM_RESPONSE:
 		pd_put_vdm_event(tcpc, &pd_event, false);
 		break;
 
@@ -200,10 +196,10 @@ static inline void on_pe_timer_timeout(
 
 #if CONFIG_USB_PD_SAFE0V_TIMEOUT
 	case PD_TIMER_VSAFE0V_TOUT:
-		mutex_lock(&tcpc->typec_lock);
+		tcpci_lock_typec(tcpc);
 		TCPC_INFO("VSafe0V TOUT (%d)\n", tcpc->vbus_level);
 		ret = tcpci_check_vbus_valid_from_ic(tcpc);
-		mutex_unlock(&tcpc->typec_lock);
+		tcpci_unlock_typec(tcpc);
 		pd_put_vbus_safe0v_event(tcpc, !ret);
 		break;
 #endif	/* CONFIG_USB_PD_SAFE0V_TIMEOUT */
@@ -216,10 +212,14 @@ static inline void on_pe_timer_timeout(
 
 #if CONFIG_USB_PD_RETRY_CRC_DISCARD
 	case PD_TIMER_DISCARD:
-		mutex_lock(&tcpc->typec_lock);
+		mutex_lock(&tcpc->access_lock);
+		if (!tcpc->pd_discard_pending) {
+			mutex_unlock(&tcpc->access_lock);
+			break;
+		}
 		tcpc->pd_discard_pending = false;
+		mutex_unlock(&tcpc->access_lock);
 		pd_put_hw_event(tcpc, PD_HW_TX_DISCARD);
-		mutex_unlock(&tcpc->typec_lock);
 		break;
 #endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
 
@@ -418,14 +418,14 @@ static void tcpc_handle_timer_triggered(struct tcpc_device *tcpc)
 	}
 #endif /* CONFIG_USB_POWER_DELIVERY */
 
-	mutex_lock(&tcpc->typec_lock);
+	tcpci_lock_typec(tcpc);
 	for (; i < PD_TIMER_NR; i++) {
 		if (tick & RT_MASK64(i)) {
 			TCPC_TIMER_DBG("Trigger %s\n", tcpc_timer_desc[i].name);
 			tcpc_typec_handle_timeout(tcpc, i);
 		}
 	}
-	mutex_unlock(&tcpc->typec_lock);
+	tcpci_unlock_typec(tcpc);
 
 	atomic_dec_if_positive(&tcpc->suspend_pending);
 }

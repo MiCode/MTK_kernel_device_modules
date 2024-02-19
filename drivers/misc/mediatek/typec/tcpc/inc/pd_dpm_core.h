@@ -80,13 +80,9 @@ void pd_dpm_dfp_inform_dp_configuration(struct pd_port *pd_port, bool ack);
 
 /* ---- SVDM/UVDM  ---- */
 
-#if CONFIG_USB_PD_CUSTOM_VDM
-
-void pd_dpm_ufp_recv_uvdm(struct pd_port *pd_port);
-void pd_dpm_dfp_send_uvdm(struct pd_port *pd_port);
-void pd_dpm_dfp_inform_uvdm(struct pd_port *pd_port, bool ack);
-
-#endif     /* CONFIG_USB_PD_CUSTOM_VDM */
+void pd_dpm_ufp_recv_cvdm(struct pd_port *pd_port);
+void pd_dpm_dfp_send_cvdm(struct pd_port *pd_port);
+void pd_dpm_dfp_inform_cvdm(struct pd_port *pd_port, bool ack);
 
 void pd_dpm_ufp_send_svdm_nak(struct pd_port *pd_port);
 
@@ -334,8 +330,7 @@ static inline void dpm_reaction_set(struct pd_port *pd_port, uint32_t mask)
 	struct tcpc_device *tcpc = pd_port->tcpc;
 
 	pd_port->pe_data.dpm_ready_reactions |= mask;
-	atomic_inc(&tcpc->pending_event);
-	wake_up(&tcpc->event_wait_que);
+	tcpc_event_thread_wake_up(tcpc);
 }
 
 static inline void dpm_reaction_set_ready_once(struct pd_port *pd_port)
@@ -351,8 +346,7 @@ static inline void dpm_reaction_set_clear(
 	uint32_t val = pd_port->pe_data.dpm_ready_reactions | set;
 
 	pd_port->pe_data.dpm_ready_reactions = val & (~clear);
-	atomic_inc(&tcpc->pending_event);
-	wake_up(&tcpc->event_wait_que);
+	tcpc_event_thread_wake_up(tcpc);
 }
 
 static inline uint32_t dpm_reaction_check(

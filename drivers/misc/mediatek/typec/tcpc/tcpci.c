@@ -295,7 +295,6 @@ EXPORT_SYMBOL(tcpci_set_polarity);
 
 int tcpci_set_vconn(struct tcpc_device *tcpc, int enable)
 {
-#if CONFIG_TCPC_SOURCE_VCONN
 	struct tcp_notify tcp_noti;
 
 	if (tcpc->tcpc_source_vconn == enable)
@@ -309,7 +308,6 @@ int tcpci_set_vconn(struct tcpc_device *tcpc, int enable)
 
 	if (tcpc->ops->set_vconn)
 		return tcpc->ops->set_vconn(tcpc, enable);
-#endif	/* CONFIG_TCPC_SOURCE_VCONN */
 
 	return 0;
 }
@@ -546,11 +544,11 @@ static void tcpc_wait_tx_done(struct tcpc_device *tcpc)
 	ret = wait_event_timeout(tcpc->tx_wait_que,
 				 !atomic_read(&tcpc->tx_pending),
 				 tcpc->tx_jiffies + tcpc->tx_jiffies_max - j);
+	TCPC_INFO("%s ret = %ld\n", __func__, ret);
 #else
 	wait_event_timeout(tcpc->tx_wait_que, !atomic_read(&tcpc->tx_pending),
 			   tcpc->tx_jiffies + tcpc->tx_jiffies_max - j);
 #endif /* TCPC_INFO_ENABLE */
-	TCPC_INFO("%s ret = %ld\n", __func__, ret);
 }
 
 int tcpci_transmit(struct tcpc_device *tcpc,
@@ -558,15 +556,14 @@ int tcpci_transmit(struct tcpc_device *tcpc,
 {
 	int ret = 0;
 	unsigned int bits = 0;
-	struct pd_port *pd_port = &tcpc->pd_port;
 
 	PD_BUG_ON(tcpc->ops->transmit == NULL);
 
 	tcpc_wait_tx_done(tcpc);
 
-	mutex_lock(&pd_port->rxbuf_lock);
+	mutex_lock(&tcpc->rxbuf_lock);
 	ret = tcpc->ops->transmit(tcpc, type, header, data);
-	mutex_unlock(&pd_port->rxbuf_lock);
+	mutex_unlock(&tcpc->rxbuf_lock);
 	if (ret < 0)
 		return ret;
 
@@ -620,13 +617,12 @@ EXPORT_SYMBOL(tcpci_transmit);
 int tcpci_retransmit(struct tcpc_device *tcpc)
 {
 	int ret = 0;
-	struct pd_port *pd_port = &tcpc->pd_port;
 
 	tcpc_wait_tx_done(tcpc);
 
-	mutex_lock(&pd_port->rxbuf_lock);
+	mutex_lock(&tcpc->rxbuf_lock);
 	ret = tcpc->ops->retransmit(tcpc);
-	mutex_unlock(&pd_port->rxbuf_lock);
+	mutex_unlock(&tcpc->rxbuf_lock);
 	if (ret < 0)
 		return ret;
 
@@ -1081,26 +1077,26 @@ int tcpci_dp_notify_config_done(struct tcpc_device *tcpc,
 }
 EXPORT_SYMBOL(tcpci_dp_notify_config_done);
 
-#if CONFIG_USB_PD_CUSTOM_VDM
-int tcpci_notify_uvdm(struct tcpc_device *tcpc, bool ack)
+int tcpci_notify_cvdm(struct tcpc_device *tcpc, bool ack)
 {
 	struct tcp_notify tcp_noti;
+	struct tcp_ny_cvdm *cvdm_msg = &tcp_noti.cvdm_msg;
 	struct pd_port *pd_port = &tcpc->pd_port;
 
-	tcp_noti.uvdm_msg.ack = ack;
+	cvdm_msg->ack = ack;
+	cvdm_msg->cable = pd_port->cvdm_cable;
 
 	if (ack) {
-		tcp_noti.uvdm_msg.uvdm_cnt = pd_port->uvdm_cnt;
-		tcp_noti.uvdm_msg.uvdm_svid = pd_port->uvdm_svid;
-		tcp_noti.uvdm_msg.uvdm_data = pd_port->uvdm_data;
+		cvdm_msg->cnt = pd_port->cvdm_cnt;
+		memcpy(cvdm_msg->data, pd_port->cvdm_data,
+		       sizeof(cvdm_msg->data[0]) * cvdm_msg->cnt);
 	}
 
 	tcpc_check_notify_time(tcpc, &tcp_noti,
-		TCP_NOTIFY_IDX_MODE, TCP_NOTIFY_UVDM);
+		TCP_NOTIFY_IDX_MODE, TCP_NOTIFY_CVDM);
 	return 0;
 }
-EXPORT_SYMBOL(tcpci_notify_uvdm);
-#endif	/* CONFIG_USB_PD_CUSTOM_VDM */
+EXPORT_SYMBOL(tcpci_notify_cvdm);
 
 /* ---- Policy Engine (PD30) ---- */
 

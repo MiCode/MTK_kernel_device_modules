@@ -365,12 +365,10 @@ enum pd_pe_state {
 
 /******************* UVDM & SVDM *******************/
 
-#if CONFIG_USB_PD_CUSTOM_VDM
-	PE_UFP_UVDM_RECV,
-	PE_DFP_UVDM_SEND,
-	PE_DFP_UVDM_ACKED,
-	PE_DFP_UVDM_NAKED,
-#endif/* CONFIG_USB_PD_CUSTOM_VDM */
+	PE_UFP_CVDM_RECV,
+	PE_DFP_CVDM_SEND,
+	PE_DFP_CVDM_ACKED,
+	PE_DFP_CVDM_NAKED,
 
 	PE_UFP_VDM_SEND_NAK,
 
@@ -873,16 +871,14 @@ void pe_dfp_vdm_dp_configuration_acked_entry(
 void pe_dfp_vdm_dp_configuration_naked_entry(
 	struct pd_port *pd_port);
 /******************* UVDM & SVDM *******************/
-#if CONFIG_USB_PD_CUSTOM_VDM
-void pe_ufp_uvdm_recv_entry(
+void pe_ufp_cvdm_recv_entry(
 	struct pd_port *pd_port);
-void pe_dfp_uvdm_send_entry(
+void pe_dfp_cvdm_send_entry(
 	struct pd_port *pd_port);
-void pe_dfp_uvdm_acked_entry(
+void pe_dfp_cvdm_acked_entry(
 	struct pd_port *pd_port);
-void pe_dfp_uvdm_naked_entry(
+void pe_dfp_cvdm_naked_entry(
 	struct pd_port *pd_port);
-#endif/* CONFIG_USB_PD_CUSTOM_VDM */
 void pe_ufp_vdm_send_nak_entry(
 	struct pd_port *pd_port);
 

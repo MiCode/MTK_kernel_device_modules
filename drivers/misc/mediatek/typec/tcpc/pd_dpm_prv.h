@@ -63,13 +63,11 @@ struct svdm_svid_ops {
 	bool (*notify_pe_shutdown)(struct pd_port *pd_port,
 		struct svdm_svid_data *svid_data);
 
-#if CONFIG_USB_PD_CUSTOM_VDM
-	bool (*dfp_notify_uvdm)(struct pd_port *pd_port,
+	bool (*dfp_notify_cvdm)(struct pd_port *pd_port,
 		struct svdm_svid_data *svid_data, bool ack);
 
-	bool (*ufp_notify_uvdm)(struct pd_port *pd_port,
+	bool (*ufp_notify_cvdm)(struct pd_port *pd_port,
 		struct svdm_svid_data *svid_data);
-#endif
 
 	bool (*reset_state)(struct pd_port *pd_port,
 		struct svdm_svid_data *svid_data);

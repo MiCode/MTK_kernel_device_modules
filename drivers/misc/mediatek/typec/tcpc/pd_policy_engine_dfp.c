@@ -215,24 +215,20 @@ void pe_dfp_vdm_dp_configuration_naked_entry(struct pd_port *pd_port)
 }
 
 /*
- * UVDM
+ * Custom VDM
  */
 
-#if CONFIG_USB_PD_CUSTOM_VDM
-
-void pe_dfp_uvdm_send_entry(struct pd_port *pd_port)
+void pe_dfp_cvdm_send_entry(struct pd_port *pd_port)
 {
-	pd_dpm_dfp_send_uvdm(pd_port);
+	pd_dpm_dfp_send_cvdm(pd_port);
 }
 
-void pe_dfp_uvdm_acked_entry(struct pd_port *pd_port)
+void pe_dfp_cvdm_acked_entry(struct pd_port *pd_port)
 {
-	pd_dpm_dfp_inform_uvdm(pd_port, true);
+	pd_dpm_dfp_inform_cvdm(pd_port, true);
 }
 
-void pe_dfp_uvdm_naked_entry(struct pd_port *pd_port)
+void pe_dfp_cvdm_naked_entry(struct pd_port *pd_port)
 {
-	pd_dpm_dfp_inform_uvdm(pd_port, false);
+	pd_dpm_dfp_inform_cvdm(pd_port, false);
 }
-
-#endif      /* CONFIG_USB_PD_CUSTOM_VDM */

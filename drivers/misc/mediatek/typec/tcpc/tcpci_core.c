@@ -25,7 +25,7 @@
 #endif /* CONFIG_USB_POWER_DELIVERY */
 #include "inc/rt-regmap.h"
 
-#define TCPC_CORE_VERSION		"2.0.27_MTK"
+#define TCPC_CORE_VERSION		"2.0.28_MTK"
 
 static ssize_t tcpc_show_property(struct device *dev,
 				  struct device_attribute *attr, char *buf);
@@ -429,10 +429,7 @@ struct tcpc_device *tcpc_device_register(struct device *parent,
 	tcpc->typec_polarity = false;
 	tcpc->bootmode = bootmode;
 	tcpc->cc_hi = INT_MAX;
-
-#if CONFIG_TCPC_VCONN_SUPPLY_MODE
 	tcpc->tcpc_vconn_supply = tcpc_desc->vconn_supply;
-#endif	/* CONFIG_TCPC_VCONN_SUPPLY_MODE */
 
 	device_set_of_node_from_dev(&tcpc->dev, parent);
 
@@ -454,6 +451,7 @@ struct tcpc_device *tcpc_device_register(struct device *parent,
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	init_waitqueue_head(&tcpc->tx_wait_que);
 	atomic_set(&tcpc->tx_pending, 0);
+	mutex_init(&tcpc->rxbuf_lock);
 	INIT_DELAYED_WORK(&tcpc->tx_pending_work, tcpc_tx_pending_work_func);
 	pd_core_init(tcpc);
 #endif /* CONFIG_USB_POWER_DELIVERY */
@@ -880,6 +878,14 @@ MODULE_VERSION(TCPC_CORE_VERSION);
 MODULE_LICENSE("GPL");
 
 /* Release Version
+ * 2.0.28_MTK
+ * (1) Revise rx_pending, rxbuf_lock, and discard_pending
+ * (2) Revise macros
+ * (3) Update modal operation supported
+ * (4) Revise receiving Hard Reset after unattached
+ * (5) Limit discover cable count in pd_dpm_reaction.c
+ * (6) Revise custom VDM
+ *
  * 2.0.27_MTK
  * (1) Do not discharge VBUS when Attached.SNK
  * (2) Bump the PD revision/version to R3.1 V1.6
