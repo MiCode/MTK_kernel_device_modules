@@ -25,12 +25,13 @@
 				(UTP_TASK_REQ_COMPL | UFSHCD_ERROR_MASK)
 
 /* REG_UFS_MMIO_OPT_CTRL_0 160h */
-#define EHS_EN                  0x1
-#define PFM_IMPV                0x2
-#define MCQ_MULTI_INTR_EN       0x4
-#define MCQ_CMB_INTR_EN         0x8
-#define MCQ_AH8                 0x10
-#define MON_EN			0x20
+#define EHS_EN                  BIT(0)
+#define PFM_IMPV                BIT(1)
+#define MCQ_MULTI_INTR_EN       BIT(2)
+#define MCQ_CMB_INTR_EN         BIT(3)
+#define MCQ_AH8                 BIT(4)
+#define MON_EN                  BIT(5)
+#define MRTT_EN                 BIT(25)
 
 #define MCQ_INTR_EN_MSK         (MCQ_MULTI_INTR_EN | MCQ_CMB_INTR_EN)
 
