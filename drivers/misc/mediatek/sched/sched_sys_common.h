@@ -24,16 +24,4 @@ extern int set_cpu_active_bitmask(int mask);
 extern void task_rotate_init(void);
 extern void check_for_migration(struct task_struct *p);
 #endif
-extern unsigned long get_turn_point_freq(int cpu);
-extern int set_turn_point_freq(int cpu, unsigned long freq);
-extern int set_target_margin(int cpu, int margin);
-extern unsigned int get_target_margin(int cpu);
-extern int set_target_margin_low(int cpu, int margin);
-extern unsigned int get_target_margin_low(int cpu);
-extern struct kobj_attribute sched_turn_point_freq_attr;
-extern struct kobj_attribute sched_target_margin_attr;
-extern struct kobj_attribute sched_target_margin_low_attr;
-extern struct kobj_attribute sched_util_est_ctrl;
-extern int set_util_est_ctrl(bool enable);
-
 #endif
