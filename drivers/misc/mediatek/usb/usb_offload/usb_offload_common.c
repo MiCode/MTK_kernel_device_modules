@@ -305,6 +305,7 @@ static struct notifier_block adsp_usb_offload_notifier = {
 };
 #endif
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+#ifdef SKIP
 static int usb_offload_event_receive_scp(struct notifier_block *this,
 					 unsigned long event,
 					 void *ptr)
@@ -331,6 +332,7 @@ static int usb_offload_event_receive_scp(struct notifier_block *this,
 static struct notifier_block scp_usb_offload_notifier = {
 	.notifier_call = usb_offload_event_receive_scp,
 };
+#endif
 #endif
 static struct snd_usb_substream *find_snd_usb_substream(unsigned int card_num,
 	unsigned int pcm_idx, unsigned int direction, struct snd_usb_audio
@@ -3102,7 +3104,9 @@ static int usb_offload_probe(struct platform_device *pdev)
 #endif
 		} else if (dsp_type == ADSP_TYPE_RV55) {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+#ifdef SKIP
 			scp_A_register_notify(&scp_usb_offload_notifier);
+#endif
 #else
 			USB_OFFLOAD_ERR("Do not register notifier. SCP not enabled\n");
 #endif
