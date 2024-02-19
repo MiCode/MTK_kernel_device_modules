@@ -13511,6 +13511,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		gauge1 = <&mtk_gauge>;
 		charger = <&mt6379_chg>;
 		bootmode = <&chosen>;
+		io-channels = <&pmic_adc AUXADC_VSYSSNS>;
+		io-channel-names = "vsys";
 	};
 
 	lk_charger: lk-charger {
@@ -16338,10 +16340,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 };
 
-
-&mtk_gauge {
-	disable-mtkbattery = <1>;
-};
 
 #include "mediatek/bat_setting/mt6991_battery_prop.dtsi"
 #include "mediatek/mt6685.dtsi"
