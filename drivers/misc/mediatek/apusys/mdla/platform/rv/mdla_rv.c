@@ -83,6 +83,7 @@ DEFINE_IPI_DBGFS_ATTRIBUTE(profiling,      MDLA_IPI_PROFILE_EN,     0, "%llu\n")
 DEFINE_IPI_DBGFS_ATTRIBUTE(dump_cmdbuf_en, MDLA_IPI_DUMP_CMDBUF_EN, 0, "%llu\n");
 DEFINE_IPI_DBGFS_ATTRIBUTE(info,           MDLA_IPI_INFO,           0, "%llu\n");
 DEFINE_IPI_DBGFS_ATTRIBUTE(dbg_brk,        MDLA_IPI_HALT_STA,       0, "0x%llx\n");
+DEFINE_IPI_DBGFS_ATTRIBUTE(dbg_options,    MDLA_IPI_DBG_OPTIONS,    0, "0x%llx\n");
 
 struct mdla_dbgfs_ipi_file {
 	int type0;
@@ -121,6 +122,7 @@ static struct mdla_dbgfs_ipi_file ipi_dbgfs_file[] = {
 	{MDLA_IPI_DUMP_CMDBUF_EN, 0, 0x2C, 0660, "dump_cmdbuf_en", &dump_cmdbuf_en_fops, 0},
 	{MDLA_IPI_INFO,           0, 0x2C, 0660,           "info",           &info_fops, 0},
 	{MDLA_IPI_HALT_STA,       0, 0x28, 0660,        "dbg_brk",        &dbg_brk_fops, 0},
+	{MDLA_IPI_DBG_OPTIONS,    0, 0x20, 0660,    "dbg_options",    &dbg_options_fops, 0},
 	{NF_MDLA_IPI_TYPE_0,      0, 0x00,    0,             NULL,                 NULL, 0}
 };
 
@@ -260,6 +262,13 @@ static void mdla_plat_v5_dbgfs_usage(struct seq_file *s, void *data)
 
 	seq_puts(s, "\n----------- allocate debug memory -----------\n");
 	seq_printf(s, "echo [size(dec)] > /d/mdla/%s\n", DBGFS_MEM_NAME);
+
+	seq_puts(s, "\n----------- set debug options (after Liber) -----------\n");
+	seq_printf(s, "echo [mask(hex))] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_DBG_OPTIONS));
+	seq_puts(s, "\tDump cmdbuf in seq log while CMD hang            = 0x1\n");
+	seq_puts(s, "\tEnable external HSE check while free HSE         = 0x10\n");
+	seq_puts(s, "\tEnable internal HSE check while CMD done         = 0x20\n");
+	seq_puts(s, "\tShow backup data in seq/player log if preemption = 0x100\n");
 }
 
 static int mdla_plat_dbgfs_usage(struct seq_file *s, void *data)
