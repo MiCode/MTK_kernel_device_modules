@@ -7511,7 +7511,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 //				"disp_ovlsys_wdma0_eof0",
 				"disp_token_disp_v_idle_power_on0",
 				"disp_token_disp_check_trigger_merge0",
-//				"dpc_disp1_prete",
+				"dpc_disp1_prete",
 				"disp_mdp_rdma0_eof3",
 				"disp_y2r_eof3";
 //				"mml_disp_done_event";
@@ -7559,7 +7559,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 //				<&gce CMDQ_EVENT_OVL0_DISP_WDMA2_FRAME_DONE>,
 				<&gce CMDQ_SYNC_TOKEN_VIDLE_POWER_ON>,
 				<&gce CMDQ_SYNC_TOKEN_CHECK_TRIGGER_MERGE>,
-//				<&gce CMDQ_EVENT_DPC_DT6_DONE>,
+				<&gce CMDQ_EVENT_DPC_DT_DONE6_0_MERGE>,
 				<&gce CMDQ_EVENT_DISP0_STREAM_SOF0>,
 				<&gce CMDQ_EVENT_DISP0_STREAM_SOF1>;
 //				<&gce CMDQ_SYNC_TOKEN_MML_DISP_DONE_EVENT>;
@@ -8599,10 +8599,12 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>;
 			reg =
 				<0 0x3e8f0000 0 0x1000>,
+				<0 0x31b501b8 0 0x4>,             /* hfrp rtff pwr con */
 				<0 0x31bd0070 0 0x4>,             /* hfrp DISP_SW_VOTE_SET */
 				<0 0x31bd0074 0 0x4>,             /* hfrp DISP_SW_VOTE_CLR */
 				<0 0x31a912b4 0 0x4>,             /* hfrp_dvfsrc_disp_debug_sta_6 */
 				<0 0x31ac1e50 0 0x4>,             /* hfrp sub pm DISP_VCORE bit29, or 0x31b50100 bit24*/
+				<0 0x3e800100 0 0x10>,            /* VDISP_AO_CG_CON0 */
 				<0 0x3e8f105c 0 0x4>,             /* DIS0 pwr chk */
 				<0 0x3e8f205c 0 0x4>,             /* DIS1 pwr chk */
 				<0 0x3e8f305c 0 0x4>,             /* OVL0 pwr chk */
@@ -8613,10 +8615,12 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<0 0x3e8f805c 0 0x4>;             /* DPTX pwr chk */
 			reg-names =
 				"DPC_BASE",
+				"rtff_pwr_con",
 				"disp_sw_vote_set",
 				"disp_sw_vote_clr",
 				"vdisp_dvfsrc",
 				"disp_vcore_pwr_chk",
+				"vdisp_ao_cg_con",
 				"dis0_pwr_chk",
 				"dis1_pwr_chk",
 				"ovl0_pwr_chk",
@@ -11286,13 +11290,20 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_VCORE>;
 		clocks =
 			<&disp_vdisp_ao_config_clk CLK_MM_V_DISP_VDISP_AO_CONFIG_DISP>,
+			<&disp_vdisp_ao_config_clk CLK_MM_V_DISP_DPC_DISP>,
 			<&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>;
 		#clock-cells = <1>;
 		reg =
+			<0 0x3e800000 0 0x4>,             /* DISP_REG_VDISP_AO_INTEN */
+			<0 0x3e800100 0 0x10>,            /* VDISP_AO_CG_CON0 */
+			<0 0x31b00000 0 0x2000>,          /* HWCCF_BASE_ADDR */
 			<0 0x31b50180 0 0x4>,             /* MMPC_BUS_PROTECT_CG_GP1 */
 			<0 0x31bd0070 0 0x4>,             /* hfrp DISP_SW_VOTE_SET */
 			<0 0x31bd0074 0 0x4>;             /* hfrp DISP_SW_VOTE_CLR */
 		reg-names =
+			"vdisp_ao_inten",
+			"vdisp_ao_cg_con",
+			"hwccf_base",
 			"mmpc_bus_prot_gp1",
 			"disp_sw_vote_set",
 			"disp_sw_vote_clr";
