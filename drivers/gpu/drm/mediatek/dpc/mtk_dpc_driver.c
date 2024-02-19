@@ -318,7 +318,7 @@ static int mtk_disp_wait_pwr_ack(const enum mtk_dpc_subsys subsys)
 	u32 value = 0;
 
 	if (!g_priv->mtcmos_cfg[subsys].chk_va) {
-		DPCERR("%llu not exist\n", g_priv->mtcmos_cfg[subsys].chk_pa);
+		DPCERR("0x%pa not exist\n", &g_priv->mtcmos_cfg[subsys].chk_pa);
 		return -1;
 	}
 
@@ -1181,7 +1181,7 @@ static void get_addr_byname(const char *name, void __iomem **va, resource_size_t
 			if (pa)
 				*pa = res->start;
 
-			DPCDUMP("mapping %s %llx done",name, res->start);
+			DPCDUMP("mapping %s 0x%pa done",name, &res->start);
 		} else
 			DPCERR("failed to map %s %pR", name, res);
 	} else
