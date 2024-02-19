@@ -50,6 +50,7 @@ static struct uarthub_drv_cbs uarthub_drv_cbs;
 #define MTK_UART_XOFF1		0X2A
 #define MTK_UART_XON2		0X29
 #define MTK_UART_XOFF2		0X2B
+#define MTK_UART_INB_WORD	0x30
 
 #define MTK_UART_FCR_RD		0x17
 #define MTK_UART_DEBUG0		0x18
@@ -83,14 +84,17 @@ static struct uarthub_drv_cbs uarthub_drv_cbs;
 #define MTK_UART_RX_SIZE	0x8000
 #define MTK_UART_TX_TRIGGER	1
 #define MTK_UART_RX_TRIGGER	MTK_UART_RX_SIZE
+#define MTK_UART_FIFO_SIZE	0x20
 
 #ifdef CONFIG_FPGA_EARLY_PORTING
 #define MTK_UART_FPGA_CLK  10000000
 #define MTK_UART_FPGA_BAUD 921600
 #endif
+#define MTK_UART_HUB_12M_BAUD 12000000
+#define MTK_UART_HUB_24M_BAUD 24000000
 
 #define MAX_POLLING_CNT 8
-#define LOG_BUF_SIZE 30
+#define LOG_BUF_SIZE 35
 
 #define FIFO_POLLING_INTERVAL  5    /*us*/
 #define FIFO_POLLING_COUNT  4
@@ -102,9 +106,10 @@ static struct uarthub_drv_cbs uarthub_drv_cbs;
 
 #define FIFO_TX_STATUS_MASK  0x1F
 #define FIFO_TX_CNT_MASK 0x1F
+#define UART_FCR_R_TRIG_MASK	0xC0
+#define XOFF_STATUS_MASK	0x80
 #define RXTRIG_THRESHOLD	0x19
 
-#define MTK_UART_HUB_BAUD 12000000
 #define UART_DUMP_RECORE_NUM 10
 #define UART_DUMP_BUF_LEN PAGE_SIZE
 #define CONFIG_UART_DATA_RECORD
@@ -167,6 +172,7 @@ struct mtk8250_data {
 	unsigned int   hub_baud;
 	struct mutex uart_mutex;
 	unsigned int   support_wakeup;
+	unsigned int support_rtff;
 	struct workqueue_struct  *uart_workqueue;
 	int wakeup_irq;
 	atomic_t uart_state;
@@ -210,6 +216,7 @@ struct mtk8250_info_dump rx_record;
 
 static struct mtk8250_reset_data peri_reset = {0};
 static struct mtk8250_reg_data peri_wakeup = {0};
+
 static struct mtk8250_data *hub_uart_data;
 #ifndef CONFIG_FPGA_EARLY_PORTING
 static u64 wakeup_irq_time;
@@ -244,6 +251,8 @@ void uarthub_drv_callbacks_register(struct uarthub_drv_cbs *cbs)
 	uarthub_drv_cbs.dump_debug_info = cbs->dump_debug_info;
 	uarthub_drv_cbs.dump_debug_info_with_tag = cbs->dump_debug_info_with_tag;
 	uarthub_drv_cbs.debug_dump_tx_rx_count = cbs->debug_dump_tx_rx_count;
+	uarthub_drv_cbs.inband_irq_register_cb = cbs->inband_irq_register_cb;
+	uarthub_drv_cbs.debug_bus_status_info = cbs->debug_bus_status_info;
 	uarthub_drv_cbs.get_bt_sleep_flow_hw_mech_en = cbs->get_bt_sleep_flow_hw_mech_en;
 	uarthub_drv_cbs.set_bt_sleep_flow_hw_mech_en = cbs->set_bt_sleep_flow_hw_mech_en;
 	uarthub_drv_cbs.get_host_awake_sta = cbs->get_host_awake_sta;
@@ -252,6 +261,11 @@ void uarthub_drv_callbacks_register(struct uarthub_drv_cbs *cbs)
 	uarthub_drv_cbs.get_host_bt_awake_sta = cbs->get_host_bt_awake_sta;
 	uarthub_drv_cbs.get_cmm_bt_awake_sta = cbs->get_cmm_bt_awake_sta;
 	uarthub_drv_cbs.get_bt_awake_sta = cbs->get_bt_awake_sta;
+	uarthub_drv_cbs.inband_set_esc_sta = cbs->inband_set_esc_sta;
+	uarthub_drv_cbs.inband_trigger_ctrl = cbs->inband_trigger_ctrl;
+	uarthub_drv_cbs.inband_is_tx_complete = cbs->inband_is_tx_complete;
+	uarthub_drv_cbs.inband_enable_ctrl = cbs->inband_enable_ctrl;
+	uarthub_drv_cbs.inband_is_support = cbs->inband_is_support;
 }
 EXPORT_SYMBOL(uarthub_drv_callbacks_register);
 
@@ -260,7 +274,6 @@ void uarthub_drv_callbacks_unregister(void)
 	memset(&uarthub_drv_cbs, 0, sizeof(struct uarthub_drv_cbs));
 }
 EXPORT_SYMBOL(uarthub_drv_callbacks_unregister);
-
 #endif
 
 static void mtk8250_clear_wakeup(void)
@@ -383,6 +396,39 @@ static void mtk8250_reset_peri(struct uart_8250_port *up)
 		iounmap(peri_remap_reset_clr);
 }
 
+static struct uart_8250_port *mtk8250_get_up_from_tty(struct tty_struct *tty)
+{
+	struct uart_state *state = NULL;
+	struct uart_port *port = NULL;
+	struct uart_8250_port *up = NULL;
+
+	if (tty == NULL) {
+		pr_info("[%s] para error. tty is NULL\n", __func__);
+		goto exit;
+	}
+
+	state = tty->driver_data;
+	if (state == NULL) {
+		pr_info("[%s] para error. state is NULL\n", __func__);
+		goto exit;
+	}
+
+	port = state->uart_port;
+	if (port == NULL) {
+		pr_info("[%s] para error. port is NULL\n", __func__);
+		goto exit;
+	}
+
+	up = up_to_u8250p(port);
+	if (up == NULL) {
+		pr_info("[%s] para error. up is NULL\n", __func__);
+		goto exit;
+	}
+
+exit:
+	return up;
+}
+
 /*
  * uart disable dma --> avoid new apdma request occurred
  * checking apdma transaction status
@@ -394,33 +440,11 @@ static void mtk8250_reset_peri(struct uart_8250_port *up)
 static int mtk8250_clear_fifo(struct tty_struct *tty)
 {
 	int ret = 0;
-	struct uart_state *state = NULL;
-	struct uart_port *port = NULL;
 	struct uart_8250_port *up = NULL;
 	unsigned int uart_fcr = 0;
 	unsigned int uart_efr = 0;
 
-	if (tty == NULL) {
-		pr_info("[%s] para error. tty is NULL\n", __func__);
-		ret = -EINVAL;
-		goto exit;
-	}
-
-	state = tty->driver_data;
-	if (state == NULL) {
-		pr_info("[%s] para error. state is NULL\n", __func__);
-		ret = -EINVAL;
-		goto exit;
-	}
-
-	port = state->uart_port;
-	if (port == NULL) {
-		pr_info("[%s] para error. port is NULL\n", __func__);
-		ret = -EINVAL;
-		goto exit;
-	}
-
-	up = up_to_u8250p(port);
+	up = mtk8250_get_up_from_tty(tty);
 	if (up == NULL) {
 		pr_info("[%s] para error. up is NULL\n", __func__);
 		ret = -EINVAL;
@@ -463,32 +487,11 @@ exit:
 static int mtk8250_polling_tx_fifo_empty(struct tty_struct *tty)
 {
 	unsigned int tx_status = 0, tx_cnt = 0, count = FIFO_POLLING_COUNT;
+	unsigned int xoff_status = 0;
 	int ret = 0;
-	struct uart_state *state = NULL;
-	struct uart_port *port = NULL;
 	struct uart_8250_port *up = NULL;
 
-	if (tty == NULL) {
-		pr_info("[%s] para error. tty is NULL\n", __func__);
-		ret = -EINVAL;
-		goto exit;
-	}
-
-	state = tty->driver_data;
-	if (state == NULL) {
-		pr_info("[%s] para error. state is NULL\n", __func__);
-		ret = -EINVAL;
-		goto exit;
-	}
-
-	port = state->uart_port;
-	if (port == NULL) {
-		pr_info("[%s] para error. port is NULL\n", __func__);
-		ret = -EINVAL;
-		goto exit;
-	}
-
-	up = up_to_u8250p(port);
+	up = mtk8250_get_up_from_tty(tty);
 	if (up == NULL) {
 		pr_info("[%s] para error. up is NULL\n", __func__);
 		ret = -EINVAL;
@@ -496,11 +499,11 @@ static int mtk8250_polling_tx_fifo_empty(struct tty_struct *tty)
 	}
 
 	while (count) {
-
 		tx_status = serial_in(up, MTK_UART_DEBUG1) & FIFO_TX_STATUS_MASK; /*0x64*/
 		tx_cnt = serial_in(up, MTK_UART_DEBUG4) & FIFO_TX_CNT_MASK;  /*0x70*/
+		xoff_status = serial_in(up, UART_MCR) & XOFF_STATUS_MASK;
 
-		if (tx_status || tx_cnt) {
+		if (tx_status || tx_cnt || xoff_status) {
 			udelay(FIFO_POLLING_INTERVAL);
 			count--;
 		} else
@@ -508,11 +511,43 @@ static int mtk8250_polling_tx_fifo_empty(struct tty_struct *tty)
 	}
 
 	if (count == 0)
-		pr_info("polling failed, tx_status: 0x%x, tx_cnt: 0x%x\n", tx_status, tx_cnt);
+		pr_info("polling failed, tx_status: 0x%x, tx_cnt: 0x%x, xoff_status: 0x%x\n",
+			tx_status, tx_cnt, xoff_status);
 
 exit:
 	return ret;
 }
+
+static void mtk8250_set_rx_threshold(struct uart_8250_port *up, unsigned int level, unsigned int val)
+{
+	unsigned int uart_fcr = 0;
+	unsigned int uart_efr = 0;
+	unsigned int fcr_config = 0;
+
+	if (level != UART_FCR_R_TRIG_11 && level != UART_FCR_R_TRIG_00 &&
+		level != UART_FCR_R_TRIG_01 && level != UART_FCR_R_TRIG_10) {
+		pr_info("[%s] invalid para, level: 0x%x\n", __func__, level);
+		return;
+	}
+
+	if (level == UART_FCR_R_TRIG_11) {
+		if ((val == 0) || (val > MTK_UART_FIFO_SIZE - 1)) {
+			pr_info("[%s] invalid para, val: 0x%x\n", __func__, val);
+			return;
+		}
+		serial_out(up, MTK_UART_RXTRI_AD, val);
+	}
+
+	uart_fcr = serial_in(up, MTK_UART_FCR_RD);
+	fcr_config = uart_fcr & ~ UART_FCR_R_TRIG_MASK;
+	serial_out(up, MTK_UART_FEATURE_SEL, 1);
+	uart_efr = serial_in(up, MTK_UART_EFR);
+	serial_out(up, MTK_UART_EFR, uart_efr | UART_EFR_ECB);
+	serial_out(up, UART_FCR, fcr_config | level | UART_FCR_ENABLE_FIFO);
+	serial_out(up, MTK_UART_EFR, uart_efr);
+	serial_out(up, MTK_UART_FEATURE_SEL, 0);
+}
+
 
 #ifdef CONFIG_SERIAL_8250_DMA
 static void mtk8250_save_uart_apdma_reg(struct dma_chan *chan, unsigned int *reg_buf)
@@ -608,6 +643,8 @@ static void mtk_save_uart_reg(struct uart_8250_port *up, unsigned int *reg_buf)
 	reg_buf[27] = serial_in(up, MTK_UART_XOFF2);
 	reg_buf[28] = serial_in(up, MTK_UART_FCR_RD);
 	reg_buf[29] = serial_in(up, UART_MCR);
+	reg_buf[30] = serial_in(up, MTK_UART_RXTRI_AD);
+	reg_buf[31] = serial_in(up, MTK_UART_INB_WORD);
 	serial_out(up, MTK_UART_FEATURE_SEL, 0x00);
 	spin_unlock_irqrestore(&up->port.lock, flags);
 }
@@ -618,10 +655,11 @@ static void mtk8250_debug_regs_dump(struct uart_8250_port *up, const char *str)
 		str = "N/A";
 	mtk_save_uart_reg(up, uart_reg_buf);
 	pr_info("[%s][%s]: 0x60=0x%x,0x64=0x%x,0x68=0x%x,0x6c=0x%x,"
-		"0x70=0x%x,0x74=0x%x,0x78=0x%x,0x7c=0x%x,0x80=0x%x,\n",
+		"0x70=0x%x,0x74=0x%x,0x78=0x%x,0x7c=0x%x,0x80=0x%x,INB=0x%x\n",
 		__func__, str, uart_reg_buf[11], uart_reg_buf[12], uart_reg_buf[13],
 		uart_reg_buf[14], uart_reg_buf[15], uart_reg_buf[16],
-		uart_reg_buf[17], uart_reg_buf[18], uart_reg_buf[19]);
+		uart_reg_buf[17], uart_reg_buf[18], uart_reg_buf[19],
+		uart_reg_buf[31]);
 }
 
 void mtk8250_data_dump(void)
@@ -629,10 +667,9 @@ void mtk8250_data_dump(void)
 #ifdef CONFIG_UART_DATA_RECORD
 	int idx = 0;
 	int count = 0;
-	uint64_t temp = rx_record.rec_total + 1;
 
 	if (rx_record.rec_total > UART_DUMP_RECORE_NUM)
-		idx = (unsigned int)do_div(temp, UART_DUMP_RECORE_NUM);
+		idx = (unsigned int)((rx_record.rec_total + 1) % UART_DUMP_RECORE_NUM);
 
 	while (count < min_t(unsigned long long, UART_DUMP_RECORE_NUM, rx_record.rec_total)) {
 		unsigned int cnt_ = 0;
@@ -679,6 +716,60 @@ void mtk8250_data_dump(void)
 #endif
 }
 
+int mtk8250_uart_hub_inband_enable_ctrl(int enable)
+{
+	if (uarthub_drv_cbs.inband_enable_ctrl)
+		return uarthub_drv_cbs.inband_enable_ctrl(enable);
+	else
+		return -1;
+}
+EXPORT_SYMBOL(mtk8250_uart_hub_inband_enable_ctrl);
+
+int mtk8250_uart_hub_inband_is_support(void)
+{
+	if (uarthub_drv_cbs.inband_is_support)
+		return uarthub_drv_cbs.inband_is_support();
+	else
+		return -1;
+}
+EXPORT_SYMBOL(mtk8250_uart_hub_inband_is_support);
+
+int mtk8250_uart_hub_inband_irq_register_cb(UARTHUB_INBAND_IRQ_CB inband_irq_callback)
+{
+	if (uarthub_drv_cbs.inband_irq_register_cb)
+		return uarthub_drv_cbs.inband_irq_register_cb(inband_irq_callback);
+	else
+		return 0;
+}
+EXPORT_SYMBOL(mtk8250_uart_hub_inband_irq_register_cb);
+
+int mtk8250_uart_hub_inband_set_esc_sta(unsigned int esc_sta)
+{
+	if (uarthub_drv_cbs.inband_set_esc_sta)
+		return uarthub_drv_cbs.inband_set_esc_sta(esc_sta);
+	else
+		return -1;
+}
+EXPORT_SYMBOL(mtk8250_uart_hub_inband_set_esc_sta);
+
+int mtk8250_uart_hub_inband_inband_trigger_ctrl(void)
+{
+	if (uarthub_drv_cbs.inband_trigger_ctrl)
+		return uarthub_drv_cbs.inband_trigger_ctrl();
+	else
+		return -1;
+}
+EXPORT_SYMBOL(mtk8250_uart_hub_inband_inband_trigger_ctrl);
+
+int mtk8250_uart_hub_inband_is_tx_complete(void)
+{
+	if (uarthub_drv_cbs.inband_is_tx_complete)
+		return uarthub_drv_cbs.inband_is_tx_complete();
+	else
+		return -1;
+}
+EXPORT_SYMBOL(mtk8250_uart_hub_inband_is_tx_complete);
+
 int mtk8250_uart_hub_dump_with_tag(const char *tag)
 {
 	if (uarthub_drv_cbs.dump_debug_info_with_tag)
@@ -686,6 +777,100 @@ int mtk8250_uart_hub_dump_with_tag(const char *tag)
 	return -1;
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_dump_with_tag);
+
+
+int mtk8250_uart_dump_bus_status_info(struct tty_struct *tty)
+{
+	int ret = 0;
+	struct uart_state *state = NULL;
+	struct uart_port *port = NULL;
+	struct uart_8250_port *up = NULL;
+	struct mtk8250_data *data = NULL;
+	unsigned int uart_dbg_reg[LOG_BUF_SIZE];
+	unsigned int apdma_rx_reg_buf[LOG_BUF_SIZE];
+
+	if (tty == NULL) {
+		pr_info("[%s] para error. tty is NULL\n", __func__);
+		ret = -EINVAL;
+		goto err_exit;
+	}
+	state = tty->driver_data;
+	if (state == NULL) {
+		pr_info("[%s] para error. state is NULL\n", __func__);
+		ret = -EINVAL;
+		goto err_exit;
+	}
+	port = state->uart_port;
+	if (port == NULL) {
+		pr_info("[%s] para error. port is NULL\n", __func__);
+		ret = -EINVAL;
+		goto err_exit;
+	}
+	up = up_to_u8250p(port);
+	if (up == NULL) {
+		pr_info("[%s] para error. up is NULL\n", __func__);
+		ret = -EINVAL;
+		goto err_exit;
+	}
+	data = port->private_data;
+	if (data == NULL) {
+		pr_info("[%s] para error. data is NULL\n", __func__);
+		ret = -EINVAL;
+		goto err_exit;
+	}
+	mutex_lock(&data->uart_mutex);
+
+	/*save uart reg*/
+	mtk_save_uart_reg(up, uart_dbg_reg);
+	/*save apdma reg*/
+	#ifdef CONFIG_SERIAL_8250_DMA
+	if ((up->dma == NULL) || (up->dma->rxchan == NULL) ||
+		(up->dma->txchan == NULL)) {
+		pr_info("[%s] para error. up->dma,rx,tx is NULL\n", __func__);
+		ret = -EINVAL;
+		goto err_unlock_exit;
+	}
+	if (data->support_wakeup) {
+		#if defined(KERNEL_mtk_uart_set_apdma_clk)
+		KERNEL_mtk_uart_set_apdma_clk(true);
+		#endif
+	}
+	mtk8250_save_uart_apdma_reg(up->dma->rxchan, apdma_rx_reg_buf);
+	if (data->support_wakeup) {
+		#if defined(KERNEL_mtk_uart_set_apdma_clk)
+		KERNEL_mtk_uart_set_apdma_clk(false);
+		#endif
+	}
+	#endif
+	/*dump uart reg info*/
+	pr_info("[%s] db0=0x%x,db1=0x%x,db2=0x%x,db3=0x%x,db4=0x%x,db5=0x%x,db6=0x%x,"
+		"db7=0x%x,db8=0x%x,lsr=0x%x,dma_en=0x%x,fcr=0x%x, efr=0x%x, rxtri_ad=0x%x\n",
+		__func__, uart_dbg_reg[11], uart_dbg_reg[12], uart_dbg_reg[13],
+		uart_dbg_reg[14], uart_dbg_reg[15], uart_dbg_reg[16], uart_dbg_reg[17],
+		uart_dbg_reg[18], uart_dbg_reg[19], uart_dbg_reg[22], uart_dbg_reg[23],
+		uart_dbg_reg[28], uart_dbg_reg[8], uart_dbg_reg[30]);
+
+	/*dump apdma reg info*/
+	#ifdef CONFIG_SERIAL_8250_DMA
+	pr_info("[%s] [apdma_rx] int_flag=0x%x,int_en=0x%x,en=0x%x,flush=0x%x,addr=0x%x,len=0x%x,"
+		"thre=0x%x,wpt=0x%x,rpt=0x%x,int_sz=0x%x,valid_sz=0x%x,left_sz=0x%x,debug=0x%x\n",
+		__func__, apdma_rx_reg_buf[0], apdma_rx_reg_buf[1], apdma_rx_reg_buf[2],
+		apdma_rx_reg_buf[3], apdma_rx_reg_buf[4], apdma_rx_reg_buf[5], apdma_rx_reg_buf[6],
+		apdma_rx_reg_buf[7], apdma_rx_reg_buf[8], apdma_rx_reg_buf[9], apdma_rx_reg_buf[10],
+		apdma_rx_reg_buf[11], apdma_rx_reg_buf[12]);
+	#endif
+
+	/*dump uarthub reg info*/
+	if (uarthub_drv_cbs.debug_bus_status_info)
+		uarthub_drv_cbs.debug_bus_status_info("8250_uarthub");
+
+err_unlock_exit:
+	mutex_unlock(&data->uart_mutex);
+err_exit:
+	return ret;
+}
+EXPORT_SYMBOL(mtk8250_uart_dump_bus_status_info);
+
 
 int mtk8250_uart_hub_get_bt_sleep_flow_hw_mech_en(void)
 {
@@ -762,38 +947,19 @@ EXPORT_SYMBOL(mtk8250_uart_hub_get_bt_awake_sta);
 int mtk8250_uart_dump(struct tty_struct *tty)
 {
 	int ret = 0;
-	struct uart_state *state = NULL;
-	struct uart_port *port = NULL;
 	struct uart_8250_port *up = NULL;
 	struct mtk8250_data *data = NULL;
 	unsigned int uart_reg_buf[LOG_BUF_SIZE];
 	unsigned int apdma_rx_reg_buf[LOG_BUF_SIZE];
 	unsigned int apdma_tx_reg_buf[LOG_BUF_SIZE];
 
-	if (tty == NULL) {
-		pr_info("[%s] para error. tty is NULL\n", __func__);
-		ret = -EINVAL;
-		goto err_exit;
-	}
-	state = tty->driver_data;
-	if (state == NULL) {
-		pr_info("[%s] para error. state is NULL\n", __func__);
-		ret = -EINVAL;
-		goto err_exit;
-	}
-	port = state->uart_port;
-	if (port == NULL) {
-		pr_info("[%s] para error. port is NULL\n", __func__);
-		ret = -EINVAL;
-		goto err_exit;
-	}
-	up = up_to_u8250p(port);
+	up = mtk8250_get_up_from_tty(tty);
 	if (up == NULL) {
 		pr_info("[%s] para error. up is NULL\n", __func__);
 		ret = -EINVAL;
 		goto err_exit;
 	}
-	data = port->private_data;
+	data = up->port.private_data;
 	if (data == NULL) {
 		pr_info("[%s] para error. data is NULL\n", __func__);
 		ret = -EINVAL;
@@ -836,11 +1002,11 @@ int mtk8250_uart_dump(struct tty_struct *tty)
 	mtk8250_uart_hub_dump_with_tag("8250_uarthub");
 
 	pr_info("[%s] line=%d,lcr=0x%x,hs=0x%x,count=0x%x,point=0x%x,dll=0x%x,dlh=0x%x,frel=0x%x,"
-		"frem=0x%x,efr=0x%x,xon1=0x%x,xoff1=0x%x,ier=0x%x,lsr=0x%x,dma_en=0x%x\n",
+		"frem=0x%x,efr=0x%x,xon1=0x%x,xoff1=0x%x,ier=0x%x,lsr=0x%x,dma_en=0x%x, INB[0x%x]\n",
 		__func__, data->line, uart_reg_buf[0], uart_reg_buf[1], uart_reg_buf[2],
 		uart_reg_buf[3], uart_reg_buf[4], uart_reg_buf[5], uart_reg_buf[6],
 		uart_reg_buf[7], uart_reg_buf[8], uart_reg_buf[9], uart_reg_buf[10],
-		uart_reg_buf[20], uart_reg_buf[22], uart_reg_buf[23]);
+		uart_reg_buf[20], uart_reg_buf[22], uart_reg_buf[23], uart_reg_buf[31]);
 
 	pr_info("[%s] line=%d,db0=0x%x,db1=0x%x,db2=0x%x,db3=0x%x,db4=0x%x,db5=0x%x,db6=0x%x,"
 		"db7=0x%x,db8=0x%x,iir=0x%x,fcr=0x%x,mcr=0x%x,esc_dat=0x%x,esc_en=0x%x\n",
@@ -878,31 +1044,15 @@ EXPORT_SYMBOL(mtk8250_uart_dump);
 
 void mtk8250_uart_start_record(struct tty_struct *tty)
 {
-	struct uart_state *state = NULL;
-	struct uart_port *port = NULL;
 	struct uart_8250_port *up = NULL;
 	struct mtk8250_data *data = NULL;
 
-	if (tty == NULL) {
-		pr_info("[%s] para error. tty is NULL\n", __func__);
-		return;
-	}
-	state = tty->driver_data;
-	if (state == NULL) {
-		pr_info("[%s] para error. state is NULL\n", __func__);
-		return;
-	}
-	port = state->uart_port;
-	if (port == NULL) {
-		pr_info("[%s] para error. port is NULL\n", __func__);
-		return;
-	}
-	up = up_to_u8250p(port);
+	up = mtk8250_get_up_from_tty(tty);
 	if (up == NULL) {
 		pr_info("[%s] para error. up is NULL\n", __func__);
 		return;
 	}
-	data = port->private_data;
+	data = up->port.private_data;
 	if (data == NULL) {
 		pr_info("[%s] para error. data is NULL\n", __func__);
 		return;
@@ -914,9 +1064,11 @@ void mtk8250_uart_start_record(struct tty_struct *tty)
 		uarthub_drv_cbs.debug_dump_tx_rx_count("mtk8250_uarthub", DUMP0);
 
 #ifdef CONFIG_SERIAL_8250_DMA
+	mutex_lock(&data->uart_mutex);
 	if ((up->dma == NULL) || (up->dma->rxchan == NULL) ||
 		(up->dma->txchan == NULL)) {
 		pr_info("[%s] para error. up->dma,rx,tx is NULL\n", __func__);
+		mutex_unlock(&data->uart_mutex);
 		return;
 	}
 	if (data->support_wakeup) {
@@ -931,6 +1083,7 @@ void mtk8250_uart_start_record(struct tty_struct *tty)
 		KERNEL_mtk_uart_set_apdma_clk(false);
 		#endif
 	}
+	mutex_unlock(&data->uart_mutex);
 #endif
 }
 EXPORT_SYMBOL(mtk8250_uart_start_record);
@@ -938,32 +1091,16 @@ EXPORT_SYMBOL(mtk8250_uart_start_record);
 
 void mtk8250_uart_end_record(struct tty_struct *tty)
 {
-	struct uart_state *state = NULL;
-	struct uart_port *port = NULL;
 	struct uart_8250_port *up = NULL;
 	struct mtk8250_data *data = NULL;
 	unsigned int uart_dbg_reg[LOG_BUF_SIZE];
 
-	if (tty == NULL) {
-		pr_info("[%s] para error. tty is NULL\n", __func__);
-		return;
-	}
-	state = tty->driver_data;
-	if (state == NULL) {
-		pr_info("[%s] para error. state is NULL\n", __func__);
-		return;
-	}
-	port = state->uart_port;
-	if (port == NULL) {
-		pr_info("[%s] para error. port is NULL\n", __func__);
-		return;
-	}
-	up = up_to_u8250p(port);
+	up = mtk8250_get_up_from_tty(tty);
 	if (up == NULL) {
 		pr_info("[%s] para error. up is NULL\n", __func__);
 		return;
 	}
-	data = port->private_data;
+	data = up->port.private_data;
 	if (data == NULL) {
 		pr_info("[%s] para error. data is NULL\n", __func__);
 		return;
@@ -972,26 +1109,28 @@ void mtk8250_uart_end_record(struct tty_struct *tty)
 	mtk_save_uart_reg(up, uart_dbg_reg);
 
 	pr_info("[%s] start db0=0x%x,db1=0x%x,db2=0x%x,db3=0x%x,db4=0x%x,db5=0x%x,db6=0x%x,"
-		"db7=0x%x,db8=0x%x,lsr=0x%x,dma_en=0x%x,iir=0x%x,ier=0x%x,fcr=0x%x\n",
+		"db7=0x%x,db8=0x%x,lsr=0x%x,dma_en=0x%x,iir=0x%x,ier=0x%x,fcr=0x%x, INB=0x%x\n",
 		__func__, uart_reg_buf[11], uart_reg_buf[12], uart_reg_buf[13],
 		uart_reg_buf[14], uart_reg_buf[15], uart_reg_buf[16], uart_reg_buf[17],
 		uart_reg_buf[18], uart_reg_buf[19], uart_reg_buf[22], uart_reg_buf[23],
-		uart_reg_buf[21], uart_reg_buf[20], uart_reg_buf[28]);
+		uart_reg_buf[21], uart_reg_buf[20], uart_reg_buf[28], uart_reg_buf[31]);
 
 	pr_info("[%s] end   db0=0x%x,db1=0x%x,db2=0x%x,db3=0x%x,db4=0x%x,db5=0x%x,db6=0x%x,"
-		"db7=0x%x,db8=0x%x,lsr=0x%x,dma_en=0x%x,iir=0x%x,ier=0x%x,fcr=0x%x\n",
+		"db7=0x%x,db8=0x%x,lsr=0x%x,dma_en=0x%x,iir=0x%x,ier=0x%x,fcr=0x%x,INB=0x%x\n",
 		__func__, uart_dbg_reg[11], uart_dbg_reg[12], uart_dbg_reg[13],
 		uart_dbg_reg[14], uart_dbg_reg[15], uart_dbg_reg[16], uart_dbg_reg[17],
 		uart_dbg_reg[18], uart_dbg_reg[19], uart_dbg_reg[22], uart_dbg_reg[23],
-		uart_dbg_reg[21], uart_dbg_reg[20], uart_dbg_reg[28]);
+		uart_dbg_reg[21], uart_dbg_reg[20], uart_dbg_reg[28], uart_dbg_reg[31]);
 
 	if (uarthub_drv_cbs.debug_dump_tx_rx_count)
 		uarthub_drv_cbs.debug_dump_tx_rx_count("mtk8250_uarthub", DUMP1);
 
 #ifdef CONFIG_SERIAL_8250_DMA
+	mutex_lock(&data->uart_mutex);
 	if ((up->dma == NULL) || (up->dma->rxchan == NULL) ||
 		(up->dma->txchan == NULL)) {
 		pr_info("[%s] para error. up->dma,rx,tx is NULL\n", __func__);
+		mutex_unlock(&data->uart_mutex);
 		return;
 	}
 
@@ -1007,6 +1146,7 @@ void mtk8250_uart_end_record(struct tty_struct *tty)
 		KERNEL_mtk_uart_set_apdma_clk(false);
 		#endif
 	}
+	mutex_unlock(&data->uart_mutex);
 #endif
 }
 EXPORT_SYMBOL(mtk8250_uart_end_record);
@@ -1039,12 +1179,32 @@ EXPORT_SYMBOL(mtk8250_uart_hub_get_host_wakeup_status);
 int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 {
 	int ret  = 0;
+	unsigned int uart_fcr = 0;
+	unsigned int rx_state = 0;
+	struct uart_8250_port *up = NULL;
+	unsigned int xoff = 0;
+
 	if (uarthub_drv_cbs.dev0_set_tx_request){
 		if (hub_uart_data != NULL && hub_uart_data->support_wakeup) {
 			mutex_lock(&hub_uart_data->clk_mutex);
 			if (atomic_read(&hub_uart_data->wakeup_state) == 0) {
 				/* clear wakeup */
 				mtk8250_set_wakeup_irq(hub_uart_data, false);
+				/*modify INB word*/
+				up = mtk8250_get_up_from_tty(tty);
+				if (up) {
+					/*modify INB word*/
+					serial_out(up, MTK_UART_FEATURE_SEL, 1);
+					xoff = serial_in(up, MTK_UART_XOFF1);
+					serial_out(up, MTK_UART_INB_WORD, xoff);
+					serial_out(up, MTK_UART_FEATURE_SEL, 0);
+					/* modify rx threshold*/
+					uart_fcr = serial_in(up, MTK_UART_FCR_RD);
+					if (hub_uart_data->support_rtff && ((uart_fcr
+						& UART_FCR_R_TRIG_MASK) != UART_FCR_R_TRIG_11))
+						mtk8250_set_rx_threshold(up,
+							UART_FCR_R_TRIG_11, RXTRIG_THRESHOLD);
+				}
 				/*set rx res*/
 				#if defined(KERNEL_mtk_uart_set_rx_res_status)
 					KERNEL_mtk_uart_set_rx_res_status(1);
@@ -1066,12 +1226,18 @@ int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 						KERNEL_mtk_uart_apdma_enable_vff(true);
 					#endif
 				}
-				/*unmask dma irq*/
-				#if defined(KERNEL_mtk_uart_set_apdma_rx_irq)
-					KERNEL_mtk_uart_set_apdma_rx_irq(true);
+				#if defined(KERNEL_mtk_uart_get_apdma_rx_state)
+					rx_state = KERNEL_mtk_uart_get_apdma_rx_state();
+					if(!rx_state) {
+						/*unmask dma irq*/
+						#if defined(KERNEL_mtk_uart_set_apdma_rx_irq)
+						KERNEL_mtk_uart_set_apdma_rx_irq(true);
+						#endif
+					}
 				#endif
 				atomic_set(&hub_uart_data->wakeup_state, 1);
-				pr_info("[%s]: atomic_set wakeup_state 1\n", __func__);
+				pr_info("[%s]: atomic_set wakeup_state 1,rx_state[%d], INB[0x%x]\n"
+					, __func__, rx_state, xoff);
 			}
 			mutex_unlock(&hub_uart_data->clk_mutex);
 		}
@@ -1098,7 +1264,7 @@ int mtk8250_uart_hub_dev0_set_rx_request(void)
 	if (uarthub_drv_cbs.dev0_set_rx_request)
 		return uarthub_drv_cbs.dev0_set_rx_request();
 	else
-		return 0;
+		return -1;
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_dev0_set_rx_request);
 
@@ -1107,7 +1273,7 @@ int mtk8250_uart_hub_dev0_clear_tx_request(void)
 	if (uarthub_drv_cbs.dev0_clear_tx_request)
 		return uarthub_drv_cbs.dev0_clear_tx_request();
 	else
-		return 0;
+		return -1;
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_dev0_clear_tx_request);
 
@@ -1117,6 +1283,7 @@ static int mtk8250_polling_rx_handle_complete(unsigned int count)
 	bool dma_flag_state = false;
 	u64 polling_start_time = 0;
 	u64 polling_end_time = 0;
+	int ret = 0;
 
 	polling_start_time = sched_clock();
 	while (count) {
@@ -1134,18 +1301,22 @@ static int mtk8250_polling_rx_handle_complete(unsigned int count)
 		}
 	}
 	polling_end_time = sched_clock();
-	if (count == 0)
+	if (count == 0) {
 		pr_info("%s: Error: dma_state[%d], polling_time[%lld]!!\n",
 			 __func__, dma_state,
 			 polling_end_time - polling_start_time);
-	return count;
+		ret = -1;
+	}
+	return ret;
 }
 
 int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 {
 	int ret = 0;
 	int count = DMA_RX_POLLING_CNT;
-	int dma_state = 0;
+	int dma_tx_state = 0;
+	int dma_rx_state = 0;
+	struct uart_8250_port *up = NULL;
 
 	if (uarthub_drv_cbs.dev0_clear_rx_request) {
 		if (hub_uart_data != NULL && hub_uart_data->support_wakeup == 0)
@@ -1157,20 +1328,23 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 			KERNEL_mtk_uart_set_tx_res_status(0);
 		#endif
 
-		if (hub_uart_data != NULL && hub_uart_data->support_wakeup == 1) {
-			/*polling tx dma finish*/
-			#if defined(KERNEL_mtk_uart_apdma_polling_tx_finish)
-			ret = KERNEL_mtk_uart_apdma_polling_tx_finish();
-			if (ret)
-				pr_info("%s polling tx fail but still run the clear rx flow!\n", __func__);
-			#endif
+	if (hub_uart_data != NULL && hub_uart_data->support_wakeup == 1) {
+		/*avoid multi call*/
+		if (atomic_read(&hub_uart_data->wakeup_state) == 0) {
+			pr_info("%s is already done!\n", __func__);
+			ret = -1;
+			goto exit;
 		}
+		/*polling tx dma finish*/
+		#if defined(KERNEL_mtk_uart_apdma_polling_tx_finish)
+		dma_tx_state = KERNEL_mtk_uart_apdma_polling_tx_finish();
+		if (dma_tx_state)
+			pr_info("%s polling tx fail but still run the clear rx flow!\n", __func__);
+		#endif
+	}
 
 		/*polling tx fifo empty*/
 		mtk8250_polling_tx_fifo_empty(tty);
-
-		/*clear fifo*/
-		//mtk8250_clear_fifo(tty);
 
 		ret = uarthub_drv_cbs.dev0_clear_rx_request();
 		if (ret) {
@@ -1193,10 +1367,10 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 				KERNEL_mtk_uart_apdma_polling_rx_finish();
 			#endif
 			/*polling check dma rx complete*/
-			dma_state = mtk8250_polling_rx_handle_complete(count);
+			dma_rx_state = mtk8250_polling_rx_handle_complete(count);
 			/*polling fail error handler*/
-			if (!dma_state) {
-			/*set tx res status*/
+			if (dma_rx_state || dma_tx_state) {
+			/*set rx res status*/
 			#if defined(KERNEL_mtk_uart_set_rx_res_status)
 				KERNEL_mtk_uart_set_rx_res_status(1);
 			#endif
@@ -1210,6 +1384,11 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 				#if defined(KERNEL_mtk_uart_set_apdma_clk)
 					KERNEL_mtk_uart_set_apdma_clk(false);
 				#endif
+			}
+			if (hub_uart_data->support_rtff) {
+				up = mtk8250_get_up_from_tty(tty);
+				if (up)
+					mtk8250_set_rx_threshold(up, UART_FCR_R_TRIG_10, 0);
 			}
 			/*clear uart wakeup status and enable wakeup*/
 			mtk8250_set_wakeup_irq(hub_uart_data, true);
@@ -1318,8 +1497,8 @@ int mtk8250_uart_hub_clear_request(void)
 
 	if (uarthub_drv_cbs.dev0_clear_txrx_request)
 		return uarthub_drv_cbs.dev0_clear_txrx_request();
-
-	return 0;
+	else
+		return -1;
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_clear_request);
 
@@ -1327,7 +1506,8 @@ int mtk8250_uart_hub_is_assert(void)
 {
 	if (uarthub_drv_cbs.is_assert_state)
 		return uarthub_drv_cbs.is_assert_state();
-	return 0;
+	else
+		return -1;
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_is_assert);
 
@@ -1336,7 +1516,7 @@ int mtk8250_uart_hub_is_ready(void)
 	if (uarthub_drv_cbs.dev0_is_uarthub_ready)
 		return uarthub_drv_cbs.dev0_is_uarthub_ready(NULL);
 	else
-		return 0;
+		return -1;
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_is_ready);
 
@@ -1370,7 +1550,7 @@ static void mtk8250_dma_rx_complete(void *param)
 #ifdef CONFIG_UART_DATA_RECORD
 	bool is_exceed_buf_size = false;
 #endif
-	uint64_t temp = rx_record.rec_total - 1;
+
 	if (data->rx_status == DMA_RX_SHUTDOWN) {
 		#if defined(KERNEL_mtk_uart_set_apdma_rx_state)
 		if (data->support_hub == 1 && data->support_wakeup == 1)
@@ -1381,7 +1561,7 @@ static void mtk8250_dma_rx_complete(void *param)
 	rx_start_time = sched_clock();
 	if ((data->support_hub == 1) && rx_record.rec_total) {
 		//first assign as last record idx
-		idx = (unsigned int)do_div(temp, UART_DUMP_RECORE_NUM);
+		idx = (unsigned int)((rx_record.rec_total - 1) % UART_DUMP_RECORE_NUM);
 
 		while (polling_cnt) {
 			if (!rx_record.rec[idx].r_copied)
@@ -1396,7 +1576,7 @@ static void mtk8250_dma_rx_complete(void *param)
 	if (((of_device_get_match_data(up->port.dev) != NULL) && !data->support_hub)
 		&& rx_record.rec_total) {
 		//first assign as last record idx
-		idx = (unsigned int)do_div(temp, UART_DUMP_RECORE_NUM);
+		idx = (unsigned int)((rx_record.rec_total - 1) % UART_DUMP_RECORE_NUM);
 
 		while (polling_cnt) {
 			if (!rx_record.rec[idx].r_copied)
@@ -1418,8 +1598,7 @@ static void mtk8250_dma_rx_complete(void *param)
 
 	if (data->support_hub == 1) {
 		//reassign to the new record
-		temp = rx_record.rec_total;
-		idx = (unsigned int)do_div(temp, UART_DUMP_RECORE_NUM);
+		idx = (unsigned int)(rx_record.rec_total % UART_DUMP_RECORE_NUM);
 		rx_record.rec_total++;
 		rx_record.rec[idx].trans_len = total;
 		rx_record.rec[idx].start_time = rx_start_time;
@@ -1433,8 +1612,7 @@ static void mtk8250_dma_rx_complete(void *param)
 
 	if ((of_device_get_match_data(up->port.dev) != NULL) && !data->support_hub) {
 		//reassign to the new record
-		temp = rx_record.rec_total;
-		idx = (unsigned int)do_div(temp, UART_DUMP_RECORE_NUM);
+		idx = (unsigned int)(rx_record.rec_total % UART_DUMP_RECORE_NUM);
 		rx_record.rec_total++;
 		rx_record.rec[idx].trans_len = total;
 				rx_record.rec[idx].start_time = rx_start_time;
@@ -1642,6 +1820,7 @@ static int mtk8250_startup(struct uart_port *port)
 
 static void mtk8250_shutdown(struct uart_port *port)
 {
+	int errflag_config = 0;
 #ifdef CONFIG_SERIAL_8250_DMA
 	struct uart_8250_port *up = up_to_u8250p(port);
 	struct mtk8250_data *data = port->private_data;
@@ -1652,6 +1831,7 @@ static void mtk8250_shutdown(struct uart_port *port)
 
 	mutex_lock(&data->clk_mutex);
 	mutex_lock(&data->uart_mutex);
+	errflag_config = 0;
 	if (uarthub_drv_cbs.close) {
 		if (data->support_hub == 1) {
 			uarthub_drv_cbs.close();
@@ -1660,18 +1840,20 @@ static void mtk8250_shutdown(struct uart_port *port)
 				/* polling fail error handler */
 				if (atomic_read(&data->errflag_state) == 1) {
 					pr_info("%s: disable apdma clk in shutdown flow\n",__func__);
-					#if defined(KERNEL_mtk_uart_set_apdma_clk)
-						KERNEL_mtk_uart_set_apdma_clk(false);
-					#endif
-					atomic_set(&hub_uart_data->errflag_state, 0);
+					errflag_config = 1;
 				}
 			} else {
 				mtk8250_clear_wakeup();
 			}
 		}
 	}
-
 	serial8250_do_shutdown(port);
+	if (errflag_config) {
+		#if defined(KERNEL_mtk_uart_set_apdma_clk)
+		KERNEL_mtk_uart_set_apdma_clk(false);
+		#endif
+		atomic_set(&hub_uart_data->errflag_state, 0);
+	}
 	mutex_unlock(&data->uart_mutex);
 	mutex_unlock(&data->clk_mutex);
 	return;
@@ -1747,6 +1929,7 @@ static void mtk8250_set_flow_ctrl(struct uart_8250_port *up, int mode)
 			serial_out(up, MTK_UART_XOFF1, STOP_CHAR(port->state->port.tty));
 			serial_out(up, MTK_UART_XON2,  START_CHAR(port->state->port.tty));
 			serial_out(up, MTK_UART_XOFF2, STOP_CHAR(port->state->port.tty));
+			serial_out(up, MTK_UART_INB_WORD, STOP_CHAR(port->state->port.tty));
 		}
 		serial_out(up, MTK_UART_FEATURE_SEL, 0);
 		mtk8250_disable_intrs(up, MTK_UART_IER_CTSI|MTK_UART_IER_RTSI);
@@ -1782,6 +1965,7 @@ mtk8250_set_termios(struct uart_port *port, struct ktermios *termios,
 	unsigned int uart_fcr = 0;
 	unsigned int uart_efr = 0;
 	unsigned long flags;
+	unsigned int xoff;
 	int mode;
 	struct mtk8250_data *data = port->private_data;
 
@@ -1845,8 +2029,11 @@ mtk8250_set_termios(struct uart_port *port, struct ktermios *termios,
 		}
 	}
 #endif
-
-	if (data->support_hub) {
+	serial_out(up, MTK_UART_FEATURE_SEL, 1);
+	xoff = serial_in(up, MTK_UART_XOFF1);
+	serial_out(up, MTK_UART_INB_WORD, xoff);
+	serial_out(up, MTK_UART_FEATURE_SEL, 0);
+	if (data->support_hub && !data->support_rtff) {
 		uart_fcr = serial_in(up, MTK_UART_FCR_RD);
 		serial_out(up, MTK_UART_RXTRI_AD, RXTRIG_THRESHOLD);
 
@@ -1918,7 +2105,7 @@ mtk8250_set_termios(struct uart_port *port, struct ktermios *termios,
 
 	/* reset DLAB */
 
-	if (baud == MTK_UART_HUB_BAUD) {
+	if (baud == MTK_UART_HUB_12M_BAUD || baud == MTK_UART_HUB_24M_BAUD) {
 		serial_port_out(port, MTK_UART_SAMPLE_COUNT, 7);
 		serial_port_out(port, MTK_UART_SAMPLE_POINT, 3);
 		serial_port_out(port, MTK_UART_FRACDIV_L, 0xdb);
@@ -2029,7 +2216,7 @@ mtk8250_do_pm(struct uart_port *port, unsigned int state, unsigned int old)
 	if (!state) {
 		ret = pm_runtime_get_sync(port->dev);
 		if (ret)
-			dev_info(port->dev, "8250 do PM get sync fail!");
+			dev_dbg(port->dev, "8250 do PM get sync fail!");
 	}
 	serial8250_rpm_get(up);
 
@@ -2053,7 +2240,7 @@ mtk8250_do_pm(struct uart_port *port, unsigned int state, unsigned int old)
 	if (state) {
 		ret = pm_runtime_put_sync_suspend(port->dev);
 		if (ret)
-			dev_info(port->dev, "8250 do PM put sync fail!");
+			dev_dbg(port->dev, "8250 do PM put sync fail!");
 	}
 }
 
@@ -2074,6 +2261,9 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 	u64 wakeup_time_2 = 0;
 	u64 wakeup_time_3 = 0;
 	u64 wakeup_time_4 = 0;
+	int rx_state = 0;
+	unsigned int uart_fcr = 0;
+	unsigned int xoff;
 
 	pdev= (struct platform_device *)dev_id;
 	data = platform_get_drvdata(pdev);
@@ -2099,6 +2289,18 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 		#if defined(KERNEL_mtk_uart_set_rx_res_status)
 				KERNEL_mtk_uart_set_rx_res_status(1);
 		#endif
+		/*modify INB word*/
+		serial_out(up, MTK_UART_FEATURE_SEL, 1);
+		xoff = serial_in(up, MTK_UART_XOFF1);
+		serial_out(up, MTK_UART_INB_WORD, xoff);
+		serial_out(up, MTK_UART_FEATURE_SEL, 0);
+		/* modify rx threshold*/
+		if (data->support_rtff) {
+			uart_fcr = serial_in(up, MTK_UART_FCR_RD);
+			if ((uart_fcr & UART_FCR_R_TRIG_MASK) != UART_FCR_R_TRIG_11) {
+				mtk8250_set_rx_threshold(up, UART_FCR_R_TRIG_11, RXTRIG_THRESHOLD);
+			}
+		}
 		/*polling fail error handler*/
 		if (atomic_read(&hub_uart_data->errflag_state) == 1) {
 			pr_info("%s: no need enable apdma clk in wakeup flow\n",__func__);
@@ -2117,16 +2319,20 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 			KERNEL_mtk_uart_apdma_enable_vff(true);
 			#endif
 		}
-		/*unmask dma irq*/
-		#if defined(KERNEL_mtk_uart_set_apdma_rx_irq)
-			KERNEL_mtk_uart_set_apdma_rx_irq(true);
+		#if defined(KERNEL_mtk_uart_get_apdma_rx_state)
+			rx_state = KERNEL_mtk_uart_get_apdma_rx_state();
+			if(!rx_state) {
+				/*unmask dma irq*/
+				#if defined(KERNEL_mtk_uart_set_apdma_rx_irq)
+				KERNEL_mtk_uart_set_apdma_rx_irq(true);
+				#endif
+			}
 		#endif
-
 		atomic_set(&data->wakeup_state, 1);
 		wakeup_time_4 = sched_clock();
-		pr_info("[%s]: handler[%lld]ns, udelay[%lld], bottom_half[%lld]\n", __func__,
-			 wakeup_time_4 - wakeup_irq_time, wakeup_time_3 - wakeup_time_2,
-			 wakeup_time_4 - wakeup_time_1);
+		pr_info("[%s]: handler[%lld]ns, udelay[%lld], bottom_half[%lld], rx_state[%d]\n"
+			, __func__, wakeup_time_4 - wakeup_irq_time, wakeup_time_3 - wakeup_time_2,
+			 wakeup_time_4 - wakeup_time_1, rx_state);
 	}
 	mutex_unlock(&data->clk_mutex);
 	return IRQ_HANDLED;
@@ -2222,7 +2428,6 @@ static int mtk8250_wakeup_probe_of(struct platform_device *pdev, struct uart_por
 		return -1;
 	}
 
-	mutex_init(&data->clk_mutex);
 	/*get wakeup irq id*/
 	data->wakeup_irq = platform_get_irq(pdev, 1);
 	if (data->wakeup_irq < 0) {
@@ -2350,6 +2555,11 @@ static int mtk8250_probe_of(struct platform_device *pdev, struct uart_port *p,
 			"wakeup-irq-support", 0, &data->support_wakeup);
 		if (index)
 			pr_notice("[%s] get wakeup-irq-support fail\n", __func__);
+
+		index = of_property_read_u32_index(pdev->dev.of_node,
+			"rtff-support", 0, &data->support_rtff);
+		if (index)
+			pr_notice("[%s] get rtff-support fail\n", __func__);
 
 		/*switch clock*/
 		dev_info(&pdev->dev, "switch clock as 104M\n");
@@ -2531,6 +2741,7 @@ static int mtk8250_probe(struct platform_device *pdev)
 			"uart support uarthub: %d\n", data->support_hub);
 
 	mutex_init(&data->uart_mutex);
+	mutex_init(&data->clk_mutex);
 
 	uart.port.private_data = data;
 #ifndef CONFIG_FPGA_EARLY_PORTING

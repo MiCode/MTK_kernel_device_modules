@@ -91,7 +91,7 @@
 #define CONFIG_UART_DMA_DATA_RECORD
 #define DBG_STAT_WD_ACT		BIT(5)
 #define MAX_POLL_CNT_RX		200
-#define MAX_POLL_CNT_TX		200
+#define MAX_POLL_CNT_TX		900
 #define MAX_GLOBAL_VD_COUNT	5
 #define VFF_POLL_INTERVAL	100
 #define VFF_POLL_TIMEOUT	4000
@@ -175,7 +175,6 @@ struct mtk_chan {
 static unsigned long long num;
 static unsigned int flag_state;
 static unsigned int g_vff_sz;
-static unsigned int res_status;
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 atomic_t tx_res_status;
 atomic_t rx_res_status;
@@ -417,12 +416,6 @@ int mtk_uart_get_apdma_rx_state(void)
 }
 EXPORT_SYMBOL(mtk_uart_get_apdma_rx_state);
 
-void mtk_uart_set_res_status(unsigned int status)
-{
-	res_status = status;
-}
-EXPORT_SYMBOL(mtk_uart_set_res_status);
-
 bool mtk_uart_get_apdma_handler_state(void)
 {
 	bool state1 = true;
@@ -620,10 +613,6 @@ void mtk_uart_rx_setting(struct dma_chan *chan, int copied, int total)
 		rpt_new = rpt_old + (unsigned int)copied;
 		if ((rpt_new & vff_sz) == vff_sz)
 			rpt_new = (rpt_new - vff_sz) ^ VFF_RING_WRAP;
-
-		pr_info("%s: copied=%d,total=%d,rpt_old=0x%x,wpt_old=0x%x,rpt_new=0x%x\n",
-				__func__, copied, total, rpt_old, c->irq_wg, rpt_new);
-
 		c->irq_wg = rpt_new;
 	}
 	/* Flush before update vff_rpt */
@@ -654,13 +643,14 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 	unsigned int idx = 0;
 	int poll_cnt = MAX_POLLING_CNT;
 
+#if IS_ENABLED(CONFIG_MTK_UARTHUB)
 	if (c->is_hub_port) {
 		if (!mtk_uart_get_tx_res_status()) {
 			pr_info("[WARN]%s, tx_request is not set\n", __func__);
 			return;
 		}
 	}
-
+#endif
 	vff_sz = c->cfg.dst_port_window_size;
 
 	left_data = mtk_uart_apdma_read(c, VFF_INT_BUF_SIZE);
@@ -932,13 +922,16 @@ static int mtk_uart_apdma_tx_handler(struct mtk_chan *c)
 static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 {
 	struct mtk_uart_apdma_desc *d = c->desc;
-	struct mtk_uart_apdmadev *mtkd =
-		to_mtk_uart_apdma_dev(c->vc.chan.device);
 	unsigned int len, wg, rg, left_data;
 	int cnt;
 	unsigned int idx = 0;
 	int poll_cnt = MAX_POLL_CNT_RX;
+#if IS_ENABLED(CONFIG_MTK_UARTHUB)
+	struct mtk_uart_apdmadev *mtkd =
+		to_mtk_uart_apdma_dev(c->vc.chan.device);
+#endif
 
+#if IS_ENABLED(CONFIG_MTK_UARTHUB)
 	if (mtkd->support_wakeup && c->is_hub_port) {
 		if (atomic_read(&dma_clk_count) == 0) {
 			pr_info("[%s]: dma_clk_count == 0\n", __func__);
@@ -946,6 +939,7 @@ static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 		}
 		mtk_uart_set_apdma_rx_state(true);
 	}
+#endif
 	left_data = mtk_uart_apdma_read(c, VFF_DEBUG_STATUS);
 	while (((left_data & DBG_STAT_WD_ACT) == DBG_STAT_WD_ACT) && (poll_cnt > 0)) {
 		udelay(1);
@@ -959,8 +953,10 @@ static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 
 	if (!mtk_uart_apdma_read(c, VFF_VALID_SIZE)) {
 		num++;
+	#if IS_ENABLED(CONFIG_MTK_UARTHUB)
 		if (mtkd->support_wakeup  && c->is_hub_port)
 			mtk_uart_set_apdma_rx_state(false);
+	#endif
 		return -EINVAL;
 	}
 	num = 0;
@@ -1049,6 +1045,7 @@ static int mtk_uart_apdma_alloc_chan_resources(struct dma_chan *chan)
 	int ret;
 
 	if (mtkd->support_hub && c->is_hub_port) {
+	#if IS_ENABLED(CONFIG_MTK_UARTHUB)
 		if (mtkd->support_wakeup)
 			mtk_uart_set_apdma_clk(true);
 		if (c->dir == DMA_DEV_TO_MEM) {
@@ -1065,6 +1062,7 @@ static int mtk_uart_apdma_alloc_chan_resources(struct dma_chan *chan)
 				mtk_uart_apdma_read(c, VFF_ADDR),
 				mtk_uart_apdma_read(c, VFF_4G_SUPPORT));
 		}
+	#endif
 	} else {
 		ret = clk_prepare_enable(mtkd->clk);
 		if (ret) {
@@ -1132,8 +1130,10 @@ static int mtk_uart_apdma_alloc_chan_resources(struct dma_chan *chan)
 		mtk_uart_apdma_write(c, VFF_4G_SUPPORT, VFF_4G_SUPPORT_CLR_B);
 
 err_out:
+#if IS_ENABLED(CONFIG_MTK_UARTHUB)
 	if (mtkd->support_hub && (mtkd->support_wakeup) && c->is_hub_port)
 		mtk_uart_set_apdma_clk(false);
+#endif
 	return ret;
 }
 
@@ -1556,7 +1556,7 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 		c->rec_idx = 0;
 		c->cur_rec_idx = 0;
 		atomic_set(&c->rxdma_state, 0);
-#if IS_ENABLED(CONFIG_MTK_UARTHUB)
+	#if IS_ENABLED(CONFIG_MTK_UARTHUB)
 		c->is_hub_port = mtkd->support_hub & (1 << i);
 		if (c->is_hub_port) {
 			pr_info("c->is_hub_port is %d\n", c->is_hub_port);
@@ -1567,8 +1567,8 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 			if (!hub_dma_rx_chan)
 				hub_dma_rx_chan = c;
 		}
+	#endif
 	}
-#endif
 
 	rc = dma_async_device_register(&mtkd->ddev);
 	if (rc)
