@@ -801,19 +801,11 @@ static const char * const mt8195_pinctrl_register_base_names[] = {
 	"iocfg_rb", "iocfg_tl",
 };
 
-static const struct mtk_eint_hw mt8195_eint_hw = {
-	.port_mask = 0xf,
-	.ports     = 7,
-	.ap_num    = 225,
-	.db_cnt    = 32,
-};
-
 static const struct mtk_pin_soc mt8195_data = {
 	.reg_cal = mt8195_reg_cals,
 	.pins = mtk_pins_mt8195,
 	.npins = ARRAY_SIZE(mtk_pins_mt8195),
 	.ngrps = ARRAY_SIZE(mtk_pins_mt8195),
-	.eint_hw = &mt8195_eint_hw,
 	.nfuncs = 8,
 	.gpio_m = 0,
 	.base_names = mt8195_pinctrl_register_base_names,
@@ -827,21 +819,16 @@ static const struct mtk_pin_soc mt8195_data = {
 };
 
 static const struct of_device_id mt8195_pinctrl_of_match[] = {
-	{ .compatible = "mediatek,mt8195-pinctrl", },
+	{ .compatible = "mediatek,mt8195-pinctrl", .data = &mt8195_data },
 	{ }
 };
-
-static int mt8195_pinctrl_probe(struct platform_device *pdev)
-{
-	return mtk_paris_pinctrl_probe(pdev, &mt8195_data);
-}
 
 static struct platform_driver mt8195_pinctrl_driver = {
 	.driver = {
 		.name = "mt8195-pinctrl",
 		.of_match_table = mt8195_pinctrl_of_match,
 	},
-	.probe = mt8195_pinctrl_probe,
+	.probe = mtk_paris_pinctrl_probe,
 };
 
 module_platform_driver(mt8195_pinctrl_driver);
