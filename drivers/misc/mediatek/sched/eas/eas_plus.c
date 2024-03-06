@@ -819,7 +819,7 @@ unsigned long calc_pwr_eff(int wl_type, int cpu, unsigned long cpu_util, int *va
 {
 	int opp;
 	unsigned long static_pwr_eff, pwr_eff;
-	int util = map_util_perf(cpu_util);
+	int util = get_cpu_util_with_margin(cpu, cpu_util);
 	int cap;
 	int pd_pwr_eff;
 

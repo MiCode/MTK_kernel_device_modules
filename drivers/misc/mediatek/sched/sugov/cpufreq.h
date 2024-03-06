@@ -252,6 +252,7 @@ extern int am_support;
 extern int get_am_ctrl(void);
 extern void set_am_ctrl(int set);
 extern unsigned int get_adaptive_margin(unsigned int cpu);
+extern int get_cpu_util_with_margin(int cpu, int cpu_util);
 extern int get_gear_max_active_ratio_cap(int gear);
 extern int get_cpu_active_ratio_cap(int cpu);
 extern void update_active_ratio_all(void);

@@ -2087,8 +2087,7 @@ int get_cpu_gear_uclamp_max_capacity(unsigned int cpu)
 	if (gu_ctrl == false)
 		return SCHED_CAPACITY_SCALE;
 
-	capacity = (gear_uclamp_max[topology_cluster_id(cpu)] *
-		get_adaptive_margin(cpu)) >> SCHED_CAPACITY_SHIFT;
+	capacity = get_cpu_util_with_margin(cpu, (gear_uclamp_max[topology_cluster_id(cpu)]));
 	freq = pd_get_util_freq(cpu, capacity);
 	return pd_get_freq_util(cpu, freq);
 }
@@ -2597,6 +2596,12 @@ unsigned int get_adaptive_margin(unsigned int cpu)
 		return util_scale;
 }
 EXPORT_SYMBOL_GPL(get_adaptive_margin);
+
+int get_cpu_util_with_margin(int cpu, int cpu_util)
+{
+	return (cpu_util * get_adaptive_margin(cpu)) >> SCHED_CAPACITY_SHIFT;
+}
+EXPORT_SYMBOL_GPL(get_cpu_util_with_margin);
 
 int get_cpu_active_ratio_cap(int cpu)
 {
