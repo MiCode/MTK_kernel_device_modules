@@ -26,6 +26,8 @@
 #include "mux_switch.h"
 #endif
 
+#define TX_EQ_COUNT 3
+
 struct ps5170 {
 	struct device *dev;
 	struct i2c_client *i2c;
@@ -53,6 +55,9 @@ struct ps5170 {
 	u32 vsv_reg;
 	u32 vsv_mask;
 	u32 vsv_vers;
+
+	u32 tx_eq[TX_EQ_COUNT];
+	bool tx_eq_tuning;
 
 	uint8_t pin_assign;
 	u8 polarity;
@@ -177,6 +182,20 @@ static int ps5170_vsvoter_of_property_parse(struct ps5170 *ps,
 	return PTR_ERR_OR_ZERO(ps->vsv);
 }
 
+static void ps5170_driving_of_property_parse(struct ps5170 *ps)
+{
+
+	ps->tx_eq_tuning = false;
+
+	if (!device_property_read_u32_array(ps->dev, "mediatek,tx-eq",
+		ps->tx_eq, TX_EQ_COUNT))
+		ps->tx_eq_tuning = true;
+
+	dev_info(ps->dev, "tx_eq: <0x50>:0x%x, <0x54>:0x%x, <0x5d>:0x%x\n",
+			ps->tx_eq[0], ps->tx_eq[1], ps->tx_eq[2]);
+
+}
+
 static int ps5170_init(struct ps5170 *ps)
 {
 	/* Configure PS5170 redriver */
@@ -215,7 +234,15 @@ static int ps5170_init(struct ps5170 *ps)
 	i2c_smbus_write_byte_data(ps->i2c, 0x75, 0x0C);
 	i2c_smbus_write_byte_data(ps->i2c, 0x77, 0x00);
 	i2c_smbus_write_byte_data(ps->i2c, 0x78, 0x7C);
+
+	if (ps->tx_eq_tuning == true) {
+		i2c_smbus_write_byte_data(ps->i2c, 0x50, ps->tx_eq[0]);
+		i2c_smbus_write_byte_data(ps->i2c, 0x54, ps->tx_eq[1]);
+		i2c_smbus_write_byte_data(ps->i2c, 0x5d, ps->tx_eq[2]);
+	}
+
 	return 0;
+
 }
 
 /*
@@ -519,6 +546,8 @@ static int ps5170_probe(struct i2c_client *client)
 	ret = ps5170_vsvoter_of_property_parse(ps, node);
 	if (ret)
 		dev_info(dev, "failed to parse vsv property\n");
+
+	ps5170_driving_of_property_parse(ps);
 
 	/* Setting Switch callback */
 	sw_desc.drvdata = ps;
