@@ -40,8 +40,7 @@
 extern void register_bootprof_write_log(void (*fn)(char *str, size_t str_len));
 
 #define EXPDB_PATH "/dev/block/by-name/expdb"
-#define EXPDB_SIZE (128*1024*1024)
-#define BOOT_BUFF_SIZE (50*1024)
+#define BOOT_BUFF_SIZE (64*1024)
 #define BOOT_LOG_LEN 290
 #define READ_KERNEL_LOG_SIZE 0x20000
 #endif
@@ -52,82 +51,90 @@ static int dram_log_store_status = BUFF_NOT_READY;
 static char *pbuff;
 static struct pl_lk_log *dram_curlog_header;
 static struct dram_buf_header *sram_dram_buff;
-static bool early_log_disable;
 static struct proc_dir_entry *entry;
 static u32 last_boot_phase = FLAG_INVALID;
 static struct regmap *map;
 static u32 pmic_addr;
-static u32 log_block_size = 512; /*default, emmc:512*/
 
 #if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
-static char *bootbuff;
-static dev_t dev_num;
-static bool buffer_full_flag;                   /* bootbuff is full or not */
-static u32  boot_log_size;                      /* expdb is reserved for boot log */
-static u32 boot_log_write;                      /* bootbuff write pointer */
-static u32 boot_log_read;                       /* bootbuff read pointer */
-static u32 expdb_log_size = 0x200000;           /* expdb log store size, default 2M */
-static sector_t logstore_offset;                /* the offset of logstore in expdb */
-static sector_t logindex_offset;                /* the offset of logindex in expdb */
-static sector_t bootlog_offset;                 /* the offset of bootlog in expdb */
-static struct task_struct *write_emmc_thread;   /* the thread to update boot log to expdb */
+struct log_store_partition *expdb_logstore;
+static struct task_struct *write_expdb_thread;
+
 
 DECLARE_WAIT_QUEUE_HEAD(wait_queue);
 
 
-static inline int mtk_trylock_buffer(struct buffer_head *bh)
+static inline int logstore_trylock_buffer(struct buffer_head *bh)
 {
 	return likely(!test_and_set_bit_lock(BH_Lock, &bh->b_state));
 }
 
-static inline void mtk_lock_buffer(struct buffer_head *bh)
+static inline void logstore_lock_buffer(struct buffer_head *bh)
 {
 	might_sleep();
-	if (!mtk_trylock_buffer(bh))
+	if (!logstore_trylock_buffer(bh))
 		__lock_buffer(bh);
 }
 
-static inline void mtk_wait_on_buffer(struct buffer_head *bh)
+static inline void logstore_wait_on_buffer(struct buffer_head *bh)
 {
 	might_sleep();
 	if (buffer_locked(bh))
 		__wait_on_buffer(bh);
 }
 
-static int partition_block_rw(dev_t devt, int write, sector_t index,
-		sector_t index_offset, void *buffer, size_t len)
+static int get_partition_info(void)
 {
 	struct block_device *bdev;
+	dev_t dev_num = 0;
+
+	lookup_bdev(EXPDB_PATH, &dev_num);
+	if (dev_num == 0)
+		return -EIO;
+
+	bdev = blkdev_get_by_dev(dev_num, FMODE_WRITE | FMODE_READ, NULL, NULL);
+	if (IS_ERR(bdev))
+		return -EIO;
+
+	expdb_logstore->bdev = bdev;
+	expdb_logstore->block_size = block_size(bdev);
+	expdb_logstore->part_size = bdev_nr_bytes(bdev);
+	expdb_logstore->bootlog_offset = (expdb_logstore->part_size - expdb_logstore->logstore_size
+			- expdb_logstore->bootlog_size) / expdb_logstore->block_size;
+	expdb_logstore->logstore_offset = (expdb_logstore->part_size - expdb_logstore->logstore_size)
+		/ expdb_logstore->block_size;
+	expdb_logstore->logindex_offset = expdb_logstore->part_size / expdb_logstore->block_size -1;
+	pr_info("log_store: partition %s size 0x%lx, block_size 0x%x, index_offset 0x%lx, 0x%lx, 0x%lx.\n",
+			EXPDB_PATH, (unsigned long)expdb_logstore->part_size, expdb_logstore->block_size,
+			(unsigned long)expdb_logstore->bootlog_offset, (unsigned long)expdb_logstore->logstore_offset,
+			(unsigned long)expdb_logstore->logindex_offset);
+	return 0;
+}
+
+
+
+static int partition_block_rw(struct block_device *bdev, int write, sector_t index,
+		sector_t index_offset, void *buffer, size_t len)
+{
 	struct buffer_head *bh = NULL;
-	fmode_t mode = FMODE_READ;
 	int err = -EIO;
 
-	if (len > log_block_size)
+	if (bdev == NULL)
+		if (get_partition_info() != 0)
+			return err;
+
+	if (len > expdb_logstore->block_size)
 		return -EINVAL;
 
-	mode = write ? FMODE_WRITE : FMODE_READ;
-	bdev = blkdev_get_by_dev(devt, mode, NULL, NULL);
-	if (IS_ERR(bdev))
-		return PTR_ERR(bdev);
-
-	pr_debug("log_store: devt 0x%lx, block_size 0x%lx, index 0x%lx, index_offset 0x%lx\n", (unsigned long)devt,
-			(unsigned long)log_block_size, (unsigned long)index, (unsigned long)index_offset);
-
-	err = set_blocksize(bdev, log_block_size);
-	if(err)
-		return err;
-
-	bh = __getblk_gfp(bdev, index, log_block_size, __GFP_MOVABLE);
+	bh = __getblk_gfp(bdev, index, expdb_logstore->block_size, __GFP_MOVABLE);
 	if (bh) {
 		clear_bit(BH_Uptodate, &bh->b_state);
-		atomic_inc(&bh->b_count);
-		mtk_lock_buffer(bh);
+		get_bh(bh);
+		logstore_lock_buffer(bh);
 		bh->b_end_io = end_buffer_read_sync;
 
-		pr_debug("log_store: bh->b_blocknr %lx bh->b_size %lx\n",
-			(unsigned long)bh->b_blocknr, (unsigned long)bh->b_size);
 		submit_bh(REQ_OP_READ, bh);
-		mtk_wait_on_buffer(bh);
+		logstore_wait_on_buffer(bh);
 
 		if (unlikely(!buffer_uptodate(bh))) {
 			pr_err("log_store: buffer up to date is error!\n");
@@ -135,32 +142,454 @@ static int partition_block_rw(dev_t devt, int write, sector_t index,
 		}
 
 		if (write) {
-			mtk_lock_buffer(bh);
-			memcpy(bh->b_data+index_offset, buffer, len);
+			logstore_lock_buffer(bh);
+			memcpy(bh->b_data + index_offset, buffer, len);
 			bh->b_end_io = end_buffer_write_sync;
-			atomic_inc(&bh->b_count);
+			get_bh(bh);
 			submit_bh(REQ_OP_WRITE, bh);
-			mtk_wait_on_buffer(bh);
+			logstore_wait_on_buffer(bh);
 			if (unlikely(!buffer_uptodate(bh))) {
 				pr_err("log_store: write expdb error!!\n");
 				goto out;
 			}
 		} else {
-			memcpy(buffer, bh->b_data+index_offset, len);
+			memcpy(buffer, bh->b_data + index_offset, len);
 		}
 		err = 0;
 	} else {
 		err = -EIO;
-		pr_info("log_store: mtk_getblk is error\n");
+		pr_info("log_store: logstore_getblk is error\n");
 	}
 
 out:
 	if (bh)
 		__brelse(bh);
-	blkdev_put(bdev, NULL);
 
 	return err;
 }
+
+int set_emmc_config(int type, int value)
+{
+	int ret = 0;
+	struct log_emmc_header pEmmc;
+
+	if (type >= EMMC_STORE_FLAG_TYPE_NR || type < 0) {
+		pr_notice("invalid config type: %d.\n", type);
+		return -1;
+	}
+
+	if (expdb_logstore->bdev == NULL) {
+		ret = get_partition_info();
+		if (ret != 0)
+			return ret;
+	}
+
+	memset(&pEmmc, 0, sizeof(struct log_emmc_header));
+	ret = partition_block_rw(expdb_logstore->bdev, 0, expdb_logstore->logindex_offset, 0,
+			&pEmmc, sizeof(struct log_emmc_header));
+	if (ret == 0) {
+		if (pEmmc.sig != LOG_EMMC_SIG) {
+			pr_err("%s: header sig error.\n", __func__);
+			return -1;
+		}
+
+		if (type == UART_LOG || type == PRINTK_RATELIMIT ||
+			type == KEDUMP_CTL) {
+			if (value)
+				pEmmc.reserve_flag[type] = FLAG_ENABLE;
+			else
+				pEmmc.reserve_flag[type] = FLAG_DISABLE;
+		} else {
+			pEmmc.reserve_flag[type] = value;
+		}
+
+		ret = partition_block_rw(expdb_logstore->bdev, 1, expdb_logstore->logindex_offset, 0,
+				&pEmmc, sizeof(struct log_emmc_header));
+		if (ret)
+			pr_err("%s: write partition is error!\n", __func__);
+	}
+
+	pr_info("%s: type %d, value %d.\n", __func__, type, value);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(set_emmc_config);
+
+int read_emmc_config(struct log_emmc_header *log_header)
+{
+	int ret = 0;
+
+	if (expdb_logstore->bdev == NULL)
+		if (get_partition_info() != 0)
+			return -EIO;
+
+	if(expdb_logstore->bdev != 0) {
+		ret = partition_block_rw(expdb_logstore->bdev, 0, expdb_logstore->logindex_offset, 0,
+				log_header, sizeof(struct log_emmc_header));
+		if (ret == 0) {
+			if (log_header->sig != LOG_EMMC_SIG) {
+				pr_err("%s: header sig error.\n", __func__);
+				return -1;
+			}
+		}
+	}
+	return ret;
+}
+EXPORT_SYMBOL_GPL(read_emmc_config);
+
+static int log_store_to_emmc(char *buffer, size_t write_len, u32 log_type)
+{
+	char *logstore_pos = buffer;
+	int i = 0, ret = -1;
+	size_t write_remain = write_len;
+	sector_t block_num = 0;
+	sector_t index_offset = 0;
+	sector_t write_block_offset = 0;
+	struct emmc_log log_config;
+	struct log_emmc_header pEmmc;
+
+	if (write_remain <= 0) {
+		pr_err("the buffer is empty.\n");
+		return 0;
+	}
+
+	if (expdb_logstore->bdev == NULL)
+		if (get_partition_info() != 0)
+			return -EIO;
+
+		memset(&pEmmc, 0, sizeof(struct log_emmc_header));
+		ret = partition_block_rw(expdb_logstore->bdev, 0, expdb_logstore->logindex_offset, 0,
+				&pEmmc, sizeof(struct log_emmc_header));
+		if (ret == 0) {
+			if (pEmmc.sig != LOG_EMMC_SIG) {
+				pr_err("%s: header sig error.\n", __func__);
+				memset(&pEmmc, 0, sizeof(struct log_emmc_header));
+				pEmmc.sig = LOG_EMMC_SIG;
+			}
+
+			log_config.start = pEmmc.offset;
+			write_block_offset = pEmmc.offset / expdb_logstore->block_size;
+			if (pEmmc.offset % expdb_logstore->block_size != 0)
+				write_block_offset += 1;
+
+			/* the last block is index */
+			if (write_remain > (expdb_logstore->logstore_size - expdb_logstore->block_size)) {
+				write_remain = expdb_logstore->logstore_size - expdb_logstore->block_size;
+				logstore_pos += (write_remain - expdb_logstore->logstore_size
+					+ expdb_logstore->block_size);
+			}
+
+			block_num = write_remain / expdb_logstore->block_size;
+			if (write_remain % expdb_logstore->block_size != 0)
+				block_num += 1;
+
+			for (i = 0; i < block_num; i++) {
+				if ((pEmmc.offset + expdb_logstore->block_size) >
+					(expdb_logstore->logstore_size - expdb_logstore->block_size)) {
+					pEmmc.offset = 0;
+					write_block_offset = 0;
+				}
+				if (write_block_offset > (expdb_logstore->logstore_size /
+						expdb_logstore->block_size - 2)) {
+					pEmmc.offset = 0;
+					write_block_offset = 0;
+				}
+				if (write_remain >= expdb_logstore->block_size) {
+					ret = partition_block_rw(expdb_logstore->bdev, 1,
+						expdb_logstore->logstore_offset + write_block_offset, 0,
+						logstore_pos, expdb_logstore->block_size);
+					write_remain -= expdb_logstore->block_size;
+					logstore_pos += expdb_logstore->block_size;
+				} else {
+					ret = partition_block_rw(expdb_logstore->bdev, 1,
+						expdb_logstore->logstore_offset + write_block_offset, 0,
+						logstore_pos, write_remain);
+					write_remain -= write_remain;
+				}
+				if (ret) {
+					pr_err("%s: write log to partition is error!\n", __func__);
+					return ret;
+				}
+
+				/* not enough one block, it will be counted as the one block */
+				pEmmc.offset += expdb_logstore->block_size;
+				write_block_offset += 1;
+				if (write_remain <= 0)
+					break;
+			}
+
+			log_config.end = pEmmc.offset;
+			log_config.type = log_type;
+			index_offset = sizeof(struct log_emmc_header) +
+				(pEmmc.reserve_flag[LOG_INDEX] % HEADER_INDEX_MAX)* sizeof(struct emmc_log);
+
+			if (sram_header->reserve[SRAM_EXPDB_VER] != pEmmc.reserve_flag[EXPDB_SIZE_VER])
+				pEmmc.reserve_flag[EXPDB_SIZE_VER] = sram_header->reserve[SRAM_EXPDB_VER];
+
+			pEmmc.reserve_flag[LOG_INDEX] += 1;
+			pEmmc.reserve_flag[LOG_INDEX] = pEmmc.reserve_flag[LOG_INDEX] % HEADER_INDEX_MAX;
+
+			ret = partition_block_rw(expdb_logstore->bdev, 1, expdb_logstore->logindex_offset, 0,
+					&pEmmc, sizeof(struct log_emmc_header));
+			if (ret) {
+				pr_err("%s: write log index is error!\n", __func__);
+				return ret;
+			}
+
+			ret = partition_block_rw(expdb_logstore->bdev, 1, expdb_logstore->logindex_offset, index_offset,
+					&log_config, sizeof(struct emmc_log));
+			if (ret) {
+				pr_err("%s: write log to partition is error!\n", __func__);
+				return ret;
+			}
+			ret = block_num * expdb_logstore->block_size;
+		}
+	pr_info("write log to partition done!\n");
+	return ret;
+}
+
+static int get_kernel_log(void)
+{
+	int ret = -1;
+	char *kernel_log = NULL;
+	size_t len = 0;
+	struct kmsg_dump_iter dumper;
+
+	kernel_log = kmalloc(READ_KERNEL_LOG_SIZE, GFP_KERNEL);
+	if (kernel_log == NULL)
+		return ret;
+	memset((char *)kernel_log, 0, READ_KERNEL_LOG_SIZE);
+
+	kmsg_dump_rewind(&dumper);
+	kmsg_dump_get_buffer(&dumper, true, kernel_log, READ_KERNEL_LOG_SIZE, &len);
+	pr_debug("get kernel log %zu line.\n", len);
+
+	if (len > 0)
+		ret = log_store_to_emmc(kernel_log, READ_KERNEL_LOG_SIZE, LOG_LAST_KERNEL);
+
+	kfree(kernel_log);
+	return ret;
+}
+
+static int boot_log_write_to_partition(char *buffer, size_t write_len)
+{
+	int ret = -1;
+	sector_t block_num = 0;
+	struct log_emmc_header pEmmc;
+	u32 reserve_size = 0, block_reserve_size = 0, block_offset = 0, write_pos = 0;
+
+	if (expdb_logstore->bdev == NULL)
+		if (get_partition_info() != 0)
+			return -EIO;
+
+	if (write_len == 0 || buffer == NULL) {
+		pr_err("write boot log is error!\n");
+		return 0;
+	}
+
+	memset(&pEmmc, 0, sizeof(struct log_emmc_header));
+	ret = partition_block_rw(expdb_logstore->bdev, 0, expdb_logstore->logindex_offset, 0,
+			&pEmmc, sizeof(struct log_emmc_header));
+	if (ret == 0) {
+		if (pEmmc.sig != LOG_EMMC_SIG) {
+			pr_err("%s: header sig error.\n", __func__);
+			memset(&pEmmc, 0, sizeof(struct log_emmc_header));
+			pEmmc.sig = LOG_EMMC_SIG;
+		}
+		block_num = pEmmc.reserve_flag[BOOT_PROF_OFFSET] / expdb_logstore->block_size;
+		block_offset = pEmmc.reserve_flag[BOOT_PROF_OFFSET] % expdb_logstore->block_size;
+		reserve_size = expdb_logstore->bootlog_size - pEmmc.reserve_flag[BOOT_PROF_OFFSET];
+
+		while (write_pos < write_len) {
+			block_reserve_size = expdb_logstore->block_size - block_offset;
+			if ((write_len - write_pos) > block_reserve_size) {
+				ret = partition_block_rw(expdb_logstore->bdev, 1,
+					expdb_logstore->bootlog_offset + block_num,
+					block_offset, buffer + write_pos, block_reserve_size);
+				if (ret) {
+					pr_err("1: write boot prof log is error!\n");
+					return ret;
+				}
+				write_pos += block_reserve_size;
+			} else {
+				ret = partition_block_rw(expdb_logstore->bdev, 1,
+					expdb_logstore->bootlog_offset + block_num,
+					block_offset, buffer + write_pos, write_len - write_pos);
+				if (ret) {
+					pr_err("2: write boot prof log is error!\n");
+					return ret;
+				}
+				write_pos += (write_len - write_pos);
+				break;
+			}
+			block_num = (block_num + 1) % (expdb_logstore->bootlog_size / expdb_logstore->block_size);
+			block_offset = 0;
+		}
+
+		if (sram_header->reserve[SRAM_EXPDB_VER] != pEmmc.reserve_flag[EXPDB_SIZE_VER])
+			pEmmc.reserve_flag[EXPDB_SIZE_VER] = sram_header->reserve[SRAM_EXPDB_VER];
+		pEmmc.reserve_flag[BOOT_PROF_OFFSET] += write_len;
+		if (pEmmc.reserve_flag[BOOT_PROF_OFFSET] >= expdb_logstore->bootlog_size )
+			pEmmc.reserve_flag[BOOT_PROF_OFFSET] = 0;
+		ret = partition_block_rw(expdb_logstore->bdev, 1, expdb_logstore->logindex_offset,
+			0, &pEmmc, sizeof(struct log_emmc_header));
+		if (ret) {
+			pr_err("%s: write log index is error!\n", __func__);
+			return ret;
+		}
+		ret = write_len;
+	}
+
+	return ret;
+}
+
+static void bootlog_to_partition(void)
+{
+	u32 write_len = 0;
+
+	if (expdb_logstore->bdev == NULL)
+		if (get_partition_info() != 0)
+			return;
+
+	if (expdb_logstore->log_offset != expdb_logstore->store_offset) {
+		write_len = 0;
+		/* ring buffer is full */
+		if (expdb_logstore->log_offset < expdb_logstore->store_offset) {
+			write_len = BOOT_BUFF_SIZE - expdb_logstore->store_offset;
+			if (boot_log_write_to_partition(expdb_logstore->bootbuff + expdb_logstore->store_offset,
+					write_len) <= 0) {
+				pr_err("update boot log to partition 1 is error!\n");
+				return;
+			}
+			/* clear the buffer and set expdb_logstore->store_offset to 0 */
+			memset(expdb_logstore->bootbuff + expdb_logstore->store_offset, 0, write_len);
+			expdb_logstore->store_offset = 0;
+			write_len = expdb_logstore->log_offset;
+			if (boot_log_write_to_partition(expdb_logstore->bootbuff + expdb_logstore->store_offset,
+					write_len) <= 0) {
+				pr_err("update boot log to partition 2 is error!\n");
+				return;
+			}
+			/* update the expdb_logstore->store_offset and clear the buffer */
+			memset(expdb_logstore->bootbuff + expdb_logstore->store_offset, 0, write_len);
+			expdb_logstore->store_offset = write_len;
+		} else {
+			/* ring buffer is not full */
+			write_len = expdb_logstore->log_offset - expdb_logstore->store_offset;
+			if (write_len > 0) {
+				if (boot_log_write_to_partition(expdb_logstore->bootbuff + expdb_logstore->store_offset,
+					write_len) <= 0) {
+					pr_err("update boot log to partition 3 is error!\n");
+					return;
+				}
+				/* update the expdb_logstore->store_offset and clear the buffer */
+				memset(expdb_logstore->bootbuff + expdb_logstore->store_offset, 0, write_len);
+				expdb_logstore->store_offset += write_len;
+			}
+		}
+
+		if (expdb_logstore->store_offset >= BOOT_BUFF_SIZE)
+			expdb_logstore->store_offset = 0;
+	}
+}
+
+static void write_to_logstore(char *str, size_t str_len)
+{
+	char textbuff[BOOT_LOG_LEN];
+	u32 new_str_len = 0;
+	u32 reserver_memory =0;
+	u64 time_ms_high = sched_clock();
+	u64 time_ms_low = 0;
+
+	if (str_len <= 0 || expdb_logstore == NULL || expdb_logstore->bootbuff == NULL)
+		return;
+
+	memset(textbuff, 0, sizeof(textbuff));
+	time_ms_low = do_div(time_ms_high, 1000000);
+	new_str_len = scnprintf(textbuff, sizeof(textbuff), "%10llu.%06llu :%5d-%-16s: %s\n",
+				time_ms_high, time_ms_low, current->pid, current->comm, str);
+
+	reserver_memory = BOOT_BUFF_SIZE - expdb_logstore->log_offset;
+	if(new_str_len > reserver_memory) {
+		memcpy_toio(expdb_logstore->bootbuff + expdb_logstore->log_offset, textbuff, reserver_memory);
+		memcpy_toio(expdb_logstore->bootbuff, textbuff + reserver_memory, new_str_len - reserver_memory);
+		expdb_logstore->log_offset = new_str_len - reserver_memory;
+	} else {
+		memcpy_toio(expdb_logstore->bootbuff + expdb_logstore->log_offset, textbuff, new_str_len);
+		expdb_logstore->log_offset += new_str_len;
+	}
+}
+
+static void get_bootprof_dts(void)
+{
+	char textbuff[100];
+	int bf_lk_t = 0, bf_pl_t = 0, bf_logo_t = 0;
+	int bf_bl2ext_t = 0, bf_gz_t = 0;
+	int bf_tfa_t = 0, bf_sec_os_t = 0;
+	struct device_node *node;
+
+	node = of_find_node_by_name(NULL, "bootprof");
+	if (node) {
+		of_property_read_s32(node, "pl_t", &bf_pl_t);
+		of_property_read_s32(node, "lk_t", &bf_lk_t);
+
+		if (of_property_read_s32(node, "logo_t", &bf_logo_t))
+			of_property_read_s32(node, "lk_logo_t", &bf_logo_t);
+		of_property_read_s32(node, "logo_t", &bf_logo_t);
+		of_property_read_s32(node, "bl2_ext_t", &bf_bl2ext_t);
+		of_property_read_s32(node, "tfa_t", &bf_tfa_t);
+		of_property_read_s32(node, "sec_os_t", &bf_sec_os_t);
+		of_property_read_s32(node, "gz_t", &bf_gz_t);
+
+		scnprintf(textbuff, sizeof(textbuff),
+			"BOOTPROF: pl=%d, bl2ext=%d,lk=%d, logo=%d, tfa=%d, sec_os=%d, gz=%d",
+			bf_pl_t, bf_bl2ext_t, bf_lk_t, bf_logo_t, bf_tfa_t, bf_sec_os_t, bf_gz_t);
+		write_to_logstore(textbuff, strnlen(textbuff, sizeof(textbuff)));
+	}
+}
+
+static int write_expdb_thread_fn(void *data)
+{
+	char *bootbuff = NULL;
+
+	pr_info("log_store: write_expdb_thread is start!\n");
+	if (write_expdb_thread == NULL)
+		return -1;
+
+	bootbuff = kzalloc(BOOT_BUFF_SIZE, GFP_KERNEL);
+	if (bootbuff == NULL) {
+		write_expdb_thread = NULL;
+		return -1;
+	}
+
+	expdb_logstore->bootbuff = bootbuff;
+	get_bootprof_dts();
+	register_bootprof_write_log(write_to_logstore);
+
+	while (!kthread_should_stop()) {
+		wait_event_interruptible_timeout(wait_queue,
+			expdb_logstore->log_offset != expdb_logstore->store_offset, 2 * HZ);
+		bootlog_to_partition();
+	}
+	return 0;
+}
+
+void close_monitor_thread(void)
+{
+	if (write_expdb_thread != NULL) {
+		register_bootprof_write_log(NULL);
+		if (expdb_logstore->log_offset != expdb_logstore->store_offset)
+			bootlog_to_partition();
+		kthread_stop(write_expdb_thread);
+		write_expdb_thread = NULL;
+		pr_info("update partition thread is stopped!\n");
+
+		if(expdb_logstore->bootbuff != NULL) {
+			kfree(expdb_logstore->bootbuff);
+			expdb_logstore->bootbuff = NULL;
+		}
+	}
+}
+EXPORT_SYMBOL_GPL(close_monitor_thread);
 #endif
 
 bool get_pmic_interface(void)
@@ -185,7 +614,6 @@ bool get_pmic_interface(void)
 	}
 
 	/* get regmap */
-
 	map = dev_get_regmap(pmic_pdev->dev.parent, NULL);
 	if (!map) {
 		pr_err("log_store:pmic regmap not found.\n");
@@ -264,418 +692,6 @@ void store_log_to_emmc_enable(bool value)
 }
 EXPORT_SYMBOL_GPL(store_log_to_emmc_enable);
 
-#if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
-int set_emmc_config(int type, int value)
-{
-	int ret = 0;
-	struct log_emmc_header pEmmc;
-
-	if (type >= EMMC_STORE_FLAG_TYPE_NR || type < 0) {
-		pr_notice("invalid config type: %d.\n", type);
-		return -1;
-	}
-
-	if (dev_num == 0)
-		lookup_bdev(EXPDB_PATH, &dev_num);
-
-	if(dev_num != 0) {
-		memset(&pEmmc, 0, sizeof(struct log_emmc_header));
-		ret = partition_block_rw(dev_num, 0, logindex_offset, 0,
-				&pEmmc, sizeof(struct log_emmc_header));
-		if (ret == 0) {
-			if (pEmmc.sig != LOG_EMMC_SIG) {
-				pr_err("%s: header sig error.\n", __func__);
-				return -1;
-			}
-
-			if (type == UART_LOG || type == PRINTK_RATELIMIT ||
-				type == KEDUMP_CTL) {
-				if (value)
-					pEmmc.reserve_flag[type] = FLAG_ENABLE;
-				else
-					pEmmc.reserve_flag[type] = FLAG_DISABLE;
-			} else {
-				pEmmc.reserve_flag[type] = value;
-			}
-
-			ret = partition_block_rw(dev_num, 1, logindex_offset, 0,
-					&pEmmc, sizeof(struct log_emmc_header));
-			if (ret)
-				pr_err("%s: write partition is error!\n", __func__);
-		}
-	} else {
-		pr_err("%s: don't found partition!\n", __func__);
-	}
-
-	pr_info("%s: type %d, value %d.\n", __func__, type, value);
-	return ret;
-}
-EXPORT_SYMBOL_GPL(set_emmc_config);
-
-int read_emmc_config(struct log_emmc_header *log_header)
-{
-	int ret = 0;
-
-	if (dev_num == 0)
-		lookup_bdev(EXPDB_PATH, &dev_num);
-
-	if(dev_num != 0) {
-		ret = partition_block_rw(dev_num, 0, logindex_offset, 0,
-				log_header, sizeof(struct log_emmc_header));
-		if (ret == 0) {
-			if (log_header->sig != LOG_EMMC_SIG) {
-				pr_err("%s: header sig error.\n", __func__);
-				return -1;
-			}
-		}
-	}
-	return ret;
-}
-EXPORT_SYMBOL_GPL(read_emmc_config);
-
-static int log_store_to_emmc(char *buffer, size_t write_len, u32 log_type)
-{
-	char *mtk_pos = buffer;
-	int i = 0, ret = -1;
-	size_t write_remain = write_len;
-	sector_t block_num = 0;
-	sector_t index_offset = 0;
-	sector_t write_block_offset = 0;
-	struct emmc_log log_config;
-	struct log_emmc_header pEmmc;
-
-	if (write_remain <= 0) {
-		pr_err("the buffer is empty.\n");
-		return 0;
-	}
-
-	if (dev_num == 0)
-		lookup_bdev(EXPDB_PATH, &dev_num);
-
-	if(dev_num != 0) {
-		memset(&pEmmc, 0, sizeof(struct log_emmc_header));
-		ret = partition_block_rw(dev_num, 0, logindex_offset, 0,
-				&pEmmc, sizeof(struct log_emmc_header));
-		if (ret == 0) {
-			if (pEmmc.sig != LOG_EMMC_SIG) {
-				pr_err("%s: header sig error.\n", __func__);
-				memset(&pEmmc, 0, sizeof(struct log_emmc_header));
-				pEmmc.sig = LOG_EMMC_SIG;
-			}
-
-			log_config.start = pEmmc.offset;
-			write_block_offset = pEmmc.offset / log_block_size;
-			if (pEmmc.offset % log_block_size != 0)
-				write_block_offset += 1;
-
-			/* the last block is index */
-			if (write_remain > (expdb_log_size - log_block_size)) {
-				write_remain = expdb_log_size - log_block_size;
-				mtk_pos +=  (write_remain - expdb_log_size + log_block_size);
-			}
-
-			block_num = write_remain / log_block_size;
-			if (write_remain % log_block_size != 0)
-				block_num += 1;
-
-			for (i = 0; i < block_num; i++) {
-				if ((pEmmc.offset + log_block_size) > (expdb_log_size - log_block_size)) {
-					pEmmc.offset = 0;
-					write_block_offset = 0;
-				}
-				if (write_block_offset > (expdb_log_size / log_block_size - 2)) {
-					pEmmc.offset = 0;
-					write_block_offset = 0;
-				}
-				if (write_remain >= log_block_size) {
-					ret = partition_block_rw(dev_num, 1, logstore_offset + write_block_offset, 0,
-							mtk_pos, log_block_size);
-					write_remain -= log_block_size;
-					mtk_pos += log_block_size;
-				} else {
-					ret = partition_block_rw(dev_num, 1, logstore_offset + write_block_offset, 0,
-							mtk_pos, write_remain);
-					write_remain -= write_remain;
-				}
-				if (ret) {
-					pr_err("%s: write log to partition is error!\n", __func__);
-					return ret;
-				}
-
-				/* not enough one block, it will be counted as the one block */
-				pEmmc.offset += log_block_size;
-				write_block_offset += 1;
-				if (write_remain <= 0)
-					break;
-			}
-
-			log_config.end = pEmmc.offset;
-			log_config.type = log_type;
-			index_offset = sizeof(struct log_emmc_header) +
-				(pEmmc.reserve_flag[LOG_INDEX] % HEADER_INDEX_MAX)* sizeof(struct emmc_log);
-
-			if (sram_header->reserve[SRAM_EXPDB_VER] != pEmmc.reserve_flag[EXPDB_SIZE_VER])
-				pEmmc.reserve_flag[EXPDB_SIZE_VER] = sram_header->reserve[SRAM_EXPDB_VER];
-
-			pEmmc.reserve_flag[LOG_INDEX] += 1;
-			pEmmc.reserve_flag[LOG_INDEX] = pEmmc.reserve_flag[LOG_INDEX] % HEADER_INDEX_MAX;
-
-			ret = partition_block_rw(dev_num, 1, logindex_offset, 0,
-					&pEmmc, sizeof(struct log_emmc_header));
-			if (ret) {
-				pr_err("%s: write log index is error!\n", __func__);
-				return ret;
-			}
-
-			ret = partition_block_rw(dev_num, 1, logindex_offset, index_offset,
-					&log_config, sizeof(struct emmc_log));
-			if (ret) {
-				pr_err("%s: write log to partition is error!\n", __func__);
-				return ret;
-			}
-			ret = block_num * log_block_size;
-		}
-	}
-	pr_info("write log to partition done!\n");
-	return ret;
-}
-
-int get_kernel_log(void)
-{
-	int ret = -1;
-	char *kernel_log = NULL;
-	size_t len = 0;
-	struct kmsg_dump_iter dumper;
-
-	kernel_log = kmalloc(READ_KERNEL_LOG_SIZE, GFP_KERNEL);
-	if (kernel_log == NULL)
-		return ret;
-	memset((char *)kernel_log, 0, READ_KERNEL_LOG_SIZE);
-
-	kmsg_dump_rewind(&dumper);
-	kmsg_dump_get_buffer(&dumper, true, kernel_log, READ_KERNEL_LOG_SIZE, &len);
-	pr_debug("get kernel log %zu line.\n", len);
-
-	if (len > 0)
-		ret = log_store_to_emmc(kernel_log, READ_KERNEL_LOG_SIZE, LOG_LAST_KERNEL);
-
-	kfree(kernel_log);
-	return ret;
-}
-EXPORT_SYMBOL_GPL(get_kernel_log);
-
-static int boot_log_write_to_emmc(char *buffer, size_t write_len)
-{
-	int ret = -1;
-	sector_t block_num = 0;
-	struct log_emmc_header pEmmc;
-	u32 reserve_size = 0, block_reserve_size = 0, block_offset = 0, write_pos = 0;
-
-	if (boot_log_size <= 0) {
-		pr_err("the partition does not reserved memory!\n");
-		return 0;
-	}
-
-	if (write_len == 0) {
-		pr_err("write boot log size is error!\n");
-		return 0;
-	}
-
-	memset(&pEmmc, 0, sizeof(struct log_emmc_header));
-	ret = partition_block_rw(dev_num, 0, logindex_offset, 0,
-			&pEmmc, sizeof(struct log_emmc_header));
-	if (ret == 0) {
-		if (pEmmc.sig != LOG_EMMC_SIG) {
-			pr_err("%s: header sig error.\n", __func__);
-			memset(&pEmmc, 0, sizeof(struct log_emmc_header));
-			pEmmc.sig = LOG_EMMC_SIG;
-		}
-		block_num = pEmmc.reserve_flag[BOOT_PROF_OFFSET]/log_block_size;
-		block_offset = pEmmc.reserve_flag[BOOT_PROF_OFFSET]%log_block_size;
-		reserve_size = boot_log_size - pEmmc.reserve_flag[BOOT_PROF_OFFSET];
-
-		while (write_pos < write_len) {
-			block_reserve_size = log_block_size - block_offset;
-			if ((write_len - write_pos) > block_reserve_size) {
-				ret = partition_block_rw(dev_num, 1, bootlog_offset + block_num,
-						block_offset, buffer + write_pos, block_reserve_size);
-				if (ret) {
-					pr_err("1: write boot prof log is error!\n");
-					return ret;
-				}
-				write_pos += block_reserve_size;
-			} else {
-				ret = partition_block_rw(dev_num, 1, bootlog_offset + block_num,
-						block_offset, buffer + write_pos, write_len - write_pos);
-				if (ret) {
-					pr_err("2: write boot prof log is error!\n");
-					return ret;
-				}
-				write_pos += (write_len - write_pos);
-				break;
-			}
-			block_num = (block_num + 1) % (boot_log_size/log_block_size);
-			block_offset = 0;
-		}
-
-		if (sram_header->reserve[SRAM_EXPDB_VER] != pEmmc.reserve_flag[EXPDB_SIZE_VER])
-			pEmmc.reserve_flag[EXPDB_SIZE_VER] = sram_header->reserve[SRAM_EXPDB_VER];
-		pEmmc.reserve_flag[BOOT_PROF_OFFSET] += write_len;
-		if (pEmmc.reserve_flag[BOOT_PROF_OFFSET] >= boot_log_size )
-			pEmmc.reserve_flag[BOOT_PROF_OFFSET] = 0;
-		ret = partition_block_rw(dev_num, 1, logindex_offset, 0, &pEmmc, sizeof(struct log_emmc_header));
-		if (ret) {
-			pr_err("%s: write log index is error!\n", __func__);
-			return ret;
-		}
-		ret = write_len;
-	}
-
-	return ret;
-}
-
-static void update_to_emmc(void)
-{
-	u32 write_len = 0;
-
-	if (dev_num == 0)
-		lookup_bdev(EXPDB_PATH, &dev_num);
-
-	if (dev_num == 0 || !bootbuff)
-		return;
-
-	if (boot_log_read < boot_log_write || buffer_full_flag) {
-		write_len = 0;
-		/* ring buffer is full */
-		if (buffer_full_flag == true){
-			write_len = BOOT_BUFF_SIZE - boot_log_read;
-			if (boot_log_write_to_emmc(bootbuff + boot_log_read,
-					write_len) <= 0) {
-				pr_err("update boot log to partition 1 is error!\n");
-				return;
-			}
-			/* clear the buffer and set boot_log_read to 0 */
-			memset(bootbuff + boot_log_read, 0, write_len);
-			buffer_full_flag = false;
-			boot_log_read = 0;
-			write_len = boot_log_write;
-			if (boot_log_write_to_emmc(bootbuff + boot_log_read,
-					write_len) <= 0) {
-				pr_err("update boot log to partition 2 is error!\n");
-				return;
-			}
-			/* clear the buffer of the already read */
-			memset(bootbuff + boot_log_read, 0, write_len);
-			/* update the offset of the boot_log_read */
-			boot_log_read = write_len;
-		} else {
-			/* ring buffer is not full */
-			write_len = boot_log_write - boot_log_read;
-			if (write_len > 0) {
-				if (boot_log_write_to_emmc(bootbuff + boot_log_read,
-					write_len) <= 0) {
-					pr_err("update boot log to partition 3 is error!\n");
-					return;
-				}
-				/* clear the buffer of the already read */
-				memset(bootbuff + boot_log_read, 0, write_len);
-				/* update the offset of the boot_log_read */
-				boot_log_read += write_len;
-			}
-		}
-
-		if (boot_log_read >= BOOT_BUFF_SIZE)
-			boot_log_read = 0;
-	}
-}
-
-static int update_to_emmc_thread(void *data)
-{
-	pr_info("log_store: update emmc thread is start!\n");
-	while (!kthread_should_stop()) {
-		wait_event_interruptible_timeout(wait_queue,
-			buffer_full_flag || boot_log_read < boot_log_write, 2 * HZ);
-		update_to_emmc();
-	}
-	return 0;
-}
-
-static void write_to_logstore(char *str, size_t str_len)
-{
-	char textbuff[BOOT_LOG_LEN];
-	u32 mtk_len = 0;
-	u32 reserver_memory =0;
-	u64 time_ms_high = sched_clock();
-	u64 time_ms_low = 0;
-
-	if (str_len <= 0 || boot_log_size <= 0)
-		return;
-
-	memset(textbuff, 0, sizeof(textbuff));
-	time_ms_low = do_div(time_ms_high, 1000000);
-	mtk_len = scnprintf(textbuff, sizeof(textbuff), "%10llu.%06llu :%5d-%-16s: %s\n",
-				time_ms_high, time_ms_low, current->pid, current->comm, str);
-
-	if (bootbuff) {
-		if (boot_log_write >= BOOT_BUFF_SIZE)
-			boot_log_write = 0;
-		reserver_memory = BOOT_BUFF_SIZE - boot_log_write;
-		if(mtk_len > reserver_memory) {
-			memcpy_toio(bootbuff + boot_log_write, textbuff, reserver_memory);
-			boot_log_write = 0;
-			buffer_full_flag = true;
-			memcpy_toio(bootbuff + boot_log_write, textbuff + reserver_memory, mtk_len - reserver_memory);
-			boot_log_write += (mtk_len - reserver_memory);
-		} else {
-			memcpy_toio(bootbuff + boot_log_write, textbuff, mtk_len);
-			boot_log_write += mtk_len;
-		}
-	}
-}
-
-static void close_monitor_thread(void)
-{
-	if (boot_log_size > 0 && bootbuff) {
-		if (write_emmc_thread) {
-			register_bootprof_write_log(NULL);
-			if (boot_log_read < boot_log_write || buffer_full_flag)
-				update_to_emmc();
-			kthread_stop(write_emmc_thread);
-		}
-		kfree(bootbuff);
-		bootbuff = NULL;
-		pr_info("update partition thread is stopped!\n");
-	}
-}
-
-static void get_bootloader_time(void)
-{
-	char textbuff[100];
-	int bf_lk_t = 0, bf_pl_t = 0, bf_logo_t = 0;
-	int bf_bl2ext_t = 0, bf_gz_t = 0;
-	int bf_tfa_t = 0, bf_sec_os_t = 0;
-	struct device_node *node;
-
-	node = of_find_node_by_name(NULL, "bootprof");
-	if (node) {
-		of_property_read_s32(node, "pl_t", &bf_pl_t);
-		of_property_read_s32(node, "lk_t", &bf_lk_t);
-
-		if (of_property_read_s32(node, "logo_t", &bf_logo_t))
-			of_property_read_s32(node, "lk_logo_t", &bf_logo_t);
-		of_property_read_s32(node, "logo_t", &bf_logo_t);
-		of_property_read_s32(node, "bl2_ext_t", &bf_bl2ext_t);
-		of_property_read_s32(node, "tfa_t", &bf_tfa_t);
-		of_property_read_s32(node, "sec_os_t", &bf_sec_os_t);
-		of_property_read_s32(node, "gz_t", &bf_gz_t);
-
-		scnprintf(textbuff, sizeof(textbuff),
-			"BOOTPROF: pl=%d, bl2ext=%d,lk=%d, logo=%d, tfa=%d, sec_os=%d, gz=%d",
-			bf_pl_t, bf_bl2ext_t, bf_lk_t, bf_logo_t, bf_tfa_t, bf_sec_os_t, bf_gz_t);
-		write_to_logstore(textbuff, strnlen(textbuff, sizeof(textbuff)));
-	}
-}
-#endif
 
 void set_boot_phase(u32 step)
 {
@@ -694,12 +710,16 @@ void set_boot_phase(u32 step)
 	sram_header->reserve[SRAM_HISTORY_BOOT_PHASE] |= step;
 
 #if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
-	if(dev_num == 0)
-		lookup_bdev(EXPDB_PATH, &dev_num);
+	if (expdb_logstore == NULL)
+		return;
 
-	if(dev_num != 0) {
+	if (expdb_logstore->bdev == NULL)
+		if (get_partition_info() != 0)
+			return;
+
 		memset(&pEmmc, 0, sizeof(struct log_emmc_header));
-		ret = partition_block_rw(dev_num, 0, logindex_offset, 0, &pEmmc, sizeof(struct log_emmc_header));
+		ret = partition_block_rw(expdb_logstore->bdev, 0, expdb_logstore->logindex_offset,
+			0, &pEmmc, sizeof(struct log_emmc_header));
 		if (ret == 0) {
 			if (pEmmc.sig != LOG_EMMC_SIG) {
 				pr_err("%s: header sig error.\n", __func__);
@@ -720,15 +740,12 @@ void set_boot_phase(u32 step)
 			if (sram_header->reserve[SRAM_EXPDB_VER] != pEmmc.reserve_flag[EXPDB_SIZE_VER])
 				pEmmc.reserve_flag[EXPDB_SIZE_VER] = sram_header->reserve[SRAM_EXPDB_VER];
 
-			ret = partition_block_rw(dev_num, 1, logindex_offset, 0,
+			ret = partition_block_rw(expdb_logstore->bdev, 1, expdb_logstore->logindex_offset, 0,
 				&pEmmc, sizeof(struct log_emmc_header));
 			if (ret)
 				pr_err("%s: write log index is error!\n", __func__);
 		}
 
-	} else {
-		pr_err("%s: insmod early, don't found expdb partition!\n", __func__);
-	}
 #endif
 }
 EXPORT_SYMBOL_GPL(set_boot_phase);
@@ -879,7 +896,7 @@ struct logstore_tag_bootmode {
 };
 #define NORMAL_BOOT_MODE 0
 
-unsigned int get_boot_mode_from_dts(void)
+static unsigned int get_boot_mode_from_dts(void)
 {
 	struct device_node *np_chosen = NULL;
 	struct logstore_tag_bootmode *tag = NULL;
@@ -902,34 +919,14 @@ unsigned int get_boot_mode_from_dts(void)
 		return NORMAL_BOOT_MODE;
 	}
 
-	/* boottype == BOOT_TYPE_UFS  ufs:4096 */
-	if (tag->boottype == BOOT_TYPE_UFS)
-		log_block_size = 4096;
 
-#if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
-	if (tag->bootmode == NORMAL_BOOT_MODE && boot_log_size > 0) {
-		logstore_offset = (EXPDB_SIZE - expdb_log_size)/log_block_size;
-		bootlog_offset = logstore_offset - boot_log_size/log_block_size;
-		logindex_offset = EXPDB_SIZE/log_block_size - 1;
-		bootbuff = kzalloc(BOOT_BUFF_SIZE, GFP_KERNEL);
-
-		if (bootbuff) {
-			write_emmc_thread = kthread_create(update_to_emmc_thread, NULL ,"write_emmc_thread");
-			if (write_emmc_thread) {
-				wake_up_process(write_emmc_thread);
-				get_bootloader_time();
-				register_bootprof_write_log(write_to_logstore);
-			}
-		}
-	}
-#endif
 	pr_notice("log_store: bootmode: 0x%x boottype: 0x%x.\n",
 		tag->bootmode, tag->boottype);
 
 	return tag->bootmode;
 }
 
-static int logstore_reset(struct notifier_block *nb, unsigned long action, void *data)
+int logstore_reset(struct notifier_block *nb, unsigned long action, void *data)
 {
 	if(data == NULL)
 		return 0;
@@ -942,14 +939,16 @@ static int logstore_reset(struct notifier_block *nb, unsigned long action, void 
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(logstore_reset);
 
 static struct notifier_block logstore_reboot_notify = {
 	.notifier_call = logstore_reset,
 };
 
-static int __init log_store_late_init(void)
+int log_store_late_init(void)
 {
 	static struct notifier_block logstore_pm_nb;
+	unsigned int boot_mode;
 
 	logstore_pm_nb.notifier_call = logstore_pm_notify;
 	register_pm_notifier(&logstore_pm_nb);
@@ -961,7 +960,28 @@ static int __init log_store_late_init(void)
 		return -1;
 	}
 
-	if (get_boot_mode_from_dts() != NORMAL_BOOT_MODE)
+	boot_mode = get_boot_mode_from_dts();
+
+#if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
+	if (boot_mode == NORMAL_BOOT_MODE &&
+		sram_header->reserve[SRAM_EXPDB_VER] != FLAG_VERSION_0)	{
+		expdb_logstore = kzalloc(sizeof(struct log_store_partition), GFP_KERNEL);
+		if (expdb_logstore != NULL) {
+			memset(expdb_logstore, 0, sizeof(struct log_store_partition));
+			expdb_logstore->bootlog_size = 0x100000;
+			expdb_logstore->logstore_size = 0x400000;
+			write_expdb_thread = kthread_create(write_expdb_thread_fn, NULL ,"log_store_thread");
+			if (write_expdb_thread)
+				wake_up_process(write_expdb_thread);
+			else
+				pr_notice("log_store: create log_store_thread failed.\n");
+		} else {
+			pr_info("log_store: kzalloc expdb_logstore failed, exit write_expdb_thread.\n");
+		}
+	}
+#endif
+
+	if (boot_mode != NORMAL_BOOT_MODE)
 		store_log_to_emmc_enable(false);
 
 	if (!sram_dram_buff->buf_addr || !sram_dram_buff->buf_size) {
@@ -1009,6 +1029,7 @@ static int __init log_store_late_init(void)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(log_store_late_init);
 
 
 /* need mapping virtual address to phy address */
@@ -1034,8 +1055,8 @@ void store_printk_buff(void)
 	buff_size = (u32)(1 << prb->text_data_ring.size_bits);
 	sram_dram_buff->klog_addr = __virt_to_phys_nodebug(buff);
 	sram_dram_buff->klog_size = buff_size;
-	if (buff_size > expdb_log_size/4)
-		sram_dram_buff->klog_size = expdb_log_size/4;
+	if (buff_size > expdb_logstore->logstore_size/4)
+		sram_dram_buff->klog_size = expdb_logstore->logstore_size/4;
 
 	if (!early_log_disable)
 		sram_dram_buff->flag |= BUFF_EARLY_PRINTK;
@@ -1050,6 +1071,8 @@ EXPORT_SYMBOL_GPL(store_printk_buff);
 
 void disable_early_log(void)
 {
+	static bool early_log_disable;
+
 	pr_notice("log_store: %s.\n", __func__);
 	early_log_disable = true;
 	if (!sram_dram_buff) {
@@ -1090,6 +1113,7 @@ int dt_get_log_store(struct mem_desc_ls *data)
 }
 EXPORT_SYMBOL_GPL(dt_get_log_store);
 
+
 void *get_sram_header(void)
 {
 	if ((sram_header != NULL) && (sram_header->sig == SRAM_HEADER_SIG))
@@ -1098,10 +1122,8 @@ void *get_sram_header(void)
 }
 EXPORT_SYMBOL_GPL(get_sram_header);
 
-/* store log_store information to */
-static int __init log_store_early_init(void)
+int log_store_sram_init(void)
 {
-
 #if IS_ENABLED(CONFIG_MTK_DRAM_LOG_STORE)
 	struct mem_desc_ls sram_ls = { 0 };
 
@@ -1128,13 +1150,6 @@ static int __init log_store_early_init(void)
 		return -1;
 	}
 
-#if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
-	if (sram_header->reserve[SRAM_EXPDB_VER] == FLAG_VERSION_1) {
-		expdb_log_size = 0x400000;
-		boot_log_size = 0x100000;
-	}
-#endif
-
 	sram_dram_buff = &(sram_header->dram_buf);
 	if (sram_dram_buff->sig != DRAM_HEADER_SIG) {
 		pr_notice("log_store: sram header DRAM sig error");
@@ -1147,7 +1162,16 @@ static int __init log_store_early_init(void)
 		sram_dram_buff->sig, sram_dram_buff->flag,
 		sram_dram_buff->buf_addr, sram_dram_buff->buf_size,
 		sram_dram_buff->buf_offsize, sram_dram_buff->buf_point);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(log_store_sram_init);
 
+
+/* store log_store information to */
+static int __init log_store_early_init(void)
+{
+
+	log_store_sram_init();
 #ifdef MODULE
 	log_store_late_init();
 #endif
@@ -1178,5 +1202,4 @@ MODULE_DESCRIPTION("MediaTek LogStore Driver");
 MODULE_AUTHOR("MediaTek Inc.");
 #else
 early_initcall(log_store_early_init);
-late_initcall(log_store_late_init);
 #endif
