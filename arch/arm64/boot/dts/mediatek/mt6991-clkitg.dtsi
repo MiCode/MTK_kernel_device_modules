@@ -10,20 +10,10 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x0>;
 		clocks =
-			<&apmixedsys_clk CLK_APMIXED_UNIVPLL>,
 			<&cksys_gp2_clk CLK_CK2_MMINFRA_SEL>,
 			<&cksys_gp2_clk CLK_CK2_MMINFRA_SNOC_SEL>,
 			<&cksys_gp2_clk CLK_CK2_MMUP_SEL>,
 			<&cksys_gp2_clk CLK_CK2_MMINFRA_AO_SEL>,
-			<&apmixedsys_gp2_clk CLK_APMIXED2_MAINPLL2>,
-			<&apmixedsys_gp2_clk CLK_APMIXED2_UNIVPLL2>,
-			<&apmixedsys_gp2_clk CLK_APMIXED2_MMPLL2>,
-			<&apmixedsys_gp2_clk CLK_APMIXED2_IMGPLL>,
-			<&apmixedsys_gp2_clk CLK_APMIXED2_TVDPLL1>,
-			<&apmixedsys_gp2_clk CLK_APMIXED2_TVDPLL2>,
-			<&apmixedsys_gp2_clk CLK_APMIXED2_TVDPLL3>,
-			<&vlp_cksys_clk CLK_VLP_CK_VLP_APLL1>,
-			<&vlp_cksys_clk CLK_VLP_CK_VLP_APLL2>,
 			<&vlp_cksys_clk CLK_VLP_CK_MMINFRA_VLP_SEL>;
 	};
 	bring-up-pq@a {
