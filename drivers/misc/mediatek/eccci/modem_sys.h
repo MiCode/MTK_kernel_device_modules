@@ -175,7 +175,6 @@ static inline void *ccci_md_get_hw_info(void)
 /***************************************************************************/
 /* API Region called by ccci modem object */
 /***************************************************************************/
-extern u32 mt_irq_get_pending(unsigned int irq);
 extern int ccci_modem_init_common(struct platform_device *plat_dev,
 	struct ccci_dev_cfg *dev_cfg, struct md_hw_info *md_hw);
 
