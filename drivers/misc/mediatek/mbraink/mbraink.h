@@ -48,6 +48,7 @@
 #define GPU_OPP_INFO			'u'
 #define GPU_STATE_INFO			'v'
 #define GPU_LOADING_INFO		'w'
+#define PMIC_VOLTAGE_INFO		'x'
 
 /*Mbrain Delegate IOCTL List*/
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
@@ -116,6 +117,9 @@
 
 #define RO_GPU_LOADING_INFO	_IOR(IOC_MAGIC, GPU_LOADING_INFO, \
 						struct mbraink_gpu_loading_info*)
+
+#define RO_PMIC_VOLTAGE_INFO	_IOR(IOC_MAGIC, PMIC_VOLTAGE_INFO, \
+						struct mbraink_pmic_voltage_info*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1

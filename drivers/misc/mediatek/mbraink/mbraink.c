@@ -290,6 +290,29 @@ static long handleMdvInfo(unsigned long arg)
 	return ret;
 }
 
+static long handlePmicVoltageInfo(unsigned long arg)
+{
+	long ret = 0;
+	struct mbraink_pmic_voltage_info pmicVoltageInfo;
+
+	pr_notice("mbraink %s\n", __func__);
+	memset(&pmicVoltageInfo,
+			0,
+			sizeof(struct mbraink_pmic_voltage_info));
+
+	ret = mbraink_power_get_pmic_voltage_info(&pmicVoltageInfo);
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_pmic_voltage_info *)arg,
+						&pmicVoltageInfo,
+						sizeof(pmicVoltageInfo))) {
+			pr_notice("Copy pmic voltage info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -855,6 +878,11 @@ static long mbraink_ioctl(struct file *filp,
 			pr_notice("Copy gpu_loading_info_buffer to UserSpace error!\n");
 			return -EPERM;
 		}
+		break;
+	}
+	case RO_PMIC_VOLTAGE_INFO:
+	{
+		ret = handlePmicVoltageInfo(arg);
 		break;
 	}
 	default:

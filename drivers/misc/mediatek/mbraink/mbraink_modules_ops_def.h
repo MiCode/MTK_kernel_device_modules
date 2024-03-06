@@ -44,6 +44,7 @@ struct mbraink_power_ops {
 	int (*getModemInfo)(struct mbraink_modem_raw *modem_buffer);
 	int (*getSpmiInfo)(struct mbraink_spmi_struct_data *mbraink_spmi_data);
 	int (*getUvloInfo)(struct mbraink_uvlo_struct_data *mbraink_uvlo_data);
+	int (*getPmicVoltageInfo)(struct mbraink_pmic_voltage_info *pmicVoltageInfo);
 };
 int register_mbraink_power_ops(struct mbraink_power_ops *ops);
 int unregister_mbraink_power_ops(void);

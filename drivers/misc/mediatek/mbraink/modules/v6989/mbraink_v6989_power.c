@@ -7,6 +7,7 @@
 #include <linux/fs.h>
 #include <linux/rtc.h>
 #include <linux/sched/clock.h>
+#include <linux/regulator/consumer.h>
 #include <swpm_module_ext.h>
 #include <mbraink_modules_ops_def.h>
 #include "mbraink_v6989_power.h"
@@ -622,6 +623,51 @@ static int mbraink_v6989_power_get_uvlo_info(
 	return ret;
 }
 
+static int mbraink_v6989_power_get_pmic_voltage_info(struct mbraink_pmic_voltage_info *pmicVoltageInfo)
+{
+	unsigned int vcore = 0;
+	unsigned int vsram_core = 0;
+	int ret = 0;
+	int err = 0;
+	struct regulator *reg_vcore;
+	struct regulator *reg_vsram_core;
+
+	reg_vcore = regulator_get(NULL, "8_vbuck1");
+	if (IS_ERR(reg_vcore)) {
+		err = PTR_ERR(reg_vcore);
+		pr_notice("Failed to get '8_vbuck1' regulator: %d\n", err);
+	} else {
+		ret = regulator_get_voltage(reg_vcore);
+		if (ret > 0) {
+			vcore = ret;
+			pr_info("get 8_vbuck1, vcore: %d", vcore);
+		} else {
+			pr_info("failed to get 8_vbuck1, vcore: %d", vcore);
+		}
+		regulator_put(reg_vcore);
+	}
+
+	reg_vsram_core = regulator_get(NULL, "mt6363_vbuck4");
+	if (IS_ERR(reg_vsram_core)) {
+		err = PTR_ERR(reg_vsram_core);
+		pr_notice("Failed to get 'mt6363_vbuck4' regulator: %d\n", err);
+	} else {
+		ret = regulator_get_voltage(reg_vsram_core);
+		if (ret > 0) {
+			vsram_core = ret;
+			pr_info("get mt6363_vbuck4, vsram_core: %d", vsram_core);
+		} else {
+			pr_info("failed to get mt6363_vbuck4, vsram_core: %d", vsram_core);
+		}
+		regulator_put(reg_vsram_core);
+	}
+
+	pmicVoltageInfo->vcore = vcore;
+	pmicVoltageInfo->vsram_core = vsram_core;
+
+	return 0;
+}
+
 static struct mbraink_power_ops mbraink_v6989_power_ops = {
 	.getVotingInfo = mbraink_v6989_power_get_voting_info,
 	.getPowerInfo = NULL,
@@ -634,6 +680,7 @@ static struct mbraink_power_ops mbraink_v6989_power_ops = {
 	.getModemInfo = mbraink_v6989_power_get_modem_info,
 	.getSpmiInfo = mbraink_v6989_power_get_spmi_info,
 	.getUvloInfo = mbraink_v6989_power_get_uvlo_info,
+	.getPmicVoltageInfo = mbraink_v6989_power_get_pmic_voltage_info,
 };
 
 int mbraink_v6989_power_init(void)

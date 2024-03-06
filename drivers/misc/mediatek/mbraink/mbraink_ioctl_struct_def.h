@@ -329,4 +329,9 @@ struct mbraink_gpu_loading_info {
 	uint64_t data1;
 	uint64_t data2;
 };
+
+struct mbraink_pmic_voltage_info {
+	uint64_t vcore;
+	uint64_t vsram_core;
+};
 #endif
