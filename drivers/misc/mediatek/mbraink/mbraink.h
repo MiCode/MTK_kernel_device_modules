@@ -14,7 +14,6 @@
 #include "mbraink_ioctl_struct_def.h"
 
 #define IOC_MAGIC	'k'
-#define MBRAINK_NETLINK 30
 
 #define MAX_BUF_SZ			1024
 
@@ -43,6 +42,12 @@
 #define TRACE_BINDER_INFO              'o'
 #define VCORE_VOTE_INFO			'p'
 #define POWER_SPM_L2_INFO		'q'
+#define POWER_SCP_INFO			'r'
+#define POWER_SPMI_INFO		's'
+#define POWER_UVLO_INFO		't'
+#define GPU_OPP_INFO			'u'
+#define GPU_STATE_INFO			'v'
+#define GPU_LOADING_INFO		'w'
 
 /*Mbrain Delegate IOCTL List*/
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
@@ -96,10 +101,43 @@
 #define RO_POWER_SPM_L2_INFO	_IOR(IOC_MAGIC, POWER_SPM_L2_INFO, \
 						struct mbraink_power_spm_raw*)
 
+#define RO_POWER_SCP_INFO	_IOR(IOC_MAGIC, POWER_SCP_INFO, \
+						struct mbraink_power_scp_raw*)
+#define RO_POWER_SPMI_INFO	_IOR(IOC_MAGIC, POWER_SPMI_INFO, \
+						struct mbraink_spmi_struct_data*)
+#define RO_POWER_UVLO_INFO	_IOR(IOC_MAGIC, POWER_UVLO_INFO, \
+							struct mbraink_uvlo_struct_data*)
+
+#define RO_GPU_OPP_INFO	_IOR(IOC_MAGIC, GPU_OPP_INFO, \
+						struct mbraink_gpu_opp_info*)
+
+#define RO_GPU_STATE_INFO	_IOR(IOC_MAGIC, GPU_STATE_INFO, \
+						struct mbraink_gpu_state_info*)
+
+#define RO_GPU_LOADING_INFO	_IOR(IOC_MAGIC, GPU_LOADING_INFO, \
+						struct mbraink_gpu_loading_info*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1
 #define CURRENT_DATA	2
+
+#ifndef GENL_ID_GENERATE
+#define GENL_ID_GENERATE    0
+#endif
+
+enum {
+	MBRAINK_A_UNSPEC,
+	MBRAINK_A_MSG,
+	__MBRAINK_A_MAX,
+};
+#define MBRAINK_A_MAX (__MBRAINK_A_MAX - 1)
+
+enum {
+	MBRAINK_C_UNSPEC,
+	MBRAINK_C_PID_CTRL,
+	__MBRAINK_C_MAX,
+};
+#define MBRAINK_C_MAX (__MBRAINK_C_MAX - 1)
 
 struct mbraink_data {
 #define CHRDEV_NAME     "mbraink_chrdev"
@@ -114,7 +152,6 @@ struct mbraink_data {
 	long long last_resume_timestamp;
 	long long last_suspend_ktime;
 	struct mbraink_battery_data suspend_battery_buffer;
-	struct sock *mbraink_sock;
 	int client_pid;
 	unsigned int feature_en;
 	unsigned int pmu_en;
