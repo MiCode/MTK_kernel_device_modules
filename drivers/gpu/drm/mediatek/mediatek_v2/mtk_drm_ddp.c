@@ -21640,6 +21640,18 @@ static int mtk_ddp_mout_en_MT6991(const struct mtk_mmsys_reg_data *data,
 		   (cur == DDP_COMPONENT_CHIST0 && next == DDP_COMPONENT_CHIST1)) {
 		*addr = MT6991_PQ_OUT_CROSSBAR6_MOUT_EN;
 		value = MT6991_DISP_PQ_IN_CB_TO_CHIST1;
+	} else if ((cur == DDP_COMPONENT_SPLITTER0_OUT_CB9 &&
+		next == DDP_COMPONENT_COMP0_OUT_CB7)) {
+		*addr = MT6991_SPLITTER_OUT_CB9_MOUT_EN;
+		value = MT6991_DISP_SPLITTER_IN_CB_TO_COMP_OUT_CB7;
+	} else if ((cur == DDP_COMPONENT_COMP0_OUT_CB7 &&
+		next == DDP_COMPONENT_MERGE0_OUT_CB8)) {
+		*addr = MT6991_COMP_OUT_CB7_MOUT_EN;
+		value = MT6991_DISP_SPLITTER_OUT_CB_TO_MERGE_OUT_CB8;
+	} else if ((cur == DDP_COMPONENT_MERGE0_OUT_CB8 &&
+		next == DDP_COMPONENT_WDMA1)) {
+		*addr = MT6991_MERGE_OUT_CB8_MOUT_EN;
+		value = MT6991_DISP_COMP_OUT_CB_TO_WDMA1;
 	} else {
 		value = -1;
 		DDPINFO("%s, cur=%s->next=%s not found in MOUT_EN\n", __func__,
@@ -31191,7 +31203,7 @@ void mmsys_config_dump_reg_mt6991(void __iomem *config_regs)
 	for (off = 0xC30; off <= 0xC40; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
-	for (off = 0xE70; off <= 0xFF0; off += 0x10)
+	for (off = 0xD00; off <= 0xFF0; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 }
 

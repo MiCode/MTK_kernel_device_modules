@@ -3465,6 +3465,10 @@ int get_addon_path_wait_event(struct drm_crtc *crtc,
 		DDPPR_ERR("%s, Cannot find output component\n", __func__);
 		return -EINVAL;
 	}
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
+		if (comp->id == DDP_COMPONENT_WDMA1)
+			return mtk_crtc->gce_obj.event[EVENT_WDMA0_EOF];
+	}
 	if (priv->data->mmsys_id == MMSYS_MT6989) {
 		if (comp->id == DDP_COMPONENT_WDMA1)
 			return mtk_crtc->gce_obj.event[EVENT_WDMA0_EOF];
@@ -3478,7 +3482,7 @@ int get_addon_path_wait_event(struct drm_crtc *crtc,
 	else if (comp->id == DDP_COMPONENT_OVLSYS_WDMA1)
 		return mtk_crtc->gce_obj.event[EVENT_OVLSYS_WDMA1_EOF];
 
-	DDPPR_ERR("The output component has not frame done event\n");
+	DDPPR_ERR("The output component has not frame done event %s\n", __func__);
 	return -EINVAL;
 }
 
@@ -3565,6 +3569,8 @@ void _mtk_crtc_wb_addon_module_disconnect(
 			addon_module->module == DISP_WDMA0_v4) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v5) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA0_v6) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0) ||
 			(addon_module->type == ADDON_AFTER &&
@@ -3882,6 +3888,8 @@ _mtk_crtc_wb_addon_module_connect(
 			addon_module->module == DISP_WDMA0_v4) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v5) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA0_v6) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0) ||
 			(addon_module->type == ADDON_AFTER &&
@@ -6825,7 +6833,7 @@ void mtk_crtc_wait_comp_done(struct mtk_drm_crtc *mtk_crtc,
 		gce_event == mtk_crtc->gce_obj.event[EVENT_Y2R_EOF])
 		cmdq_pkt_wfe(cmdq_handle, gce_event);
 	else
-		DDPPR_ERR("The component has not frame done event\n");
+		DDPPR_ERR("The component has not frame done event %s\n", __func__);
 }
 
 void mtk_crtc_wait_frame_done(struct mtk_drm_crtc *mtk_crtc,
@@ -6876,7 +6884,7 @@ void mtk_crtc_wait_frame_done(struct mtk_drm_crtc *mtk_crtc,
 					mtk_crtc->gce_obj.event[EVENT_OVLSYS1_WDMA0_EOF]);
 		}
 	} else
-		DDPPR_ERR("The output component has not frame done event\n");
+		DDPPR_ERR("The output component has not frame done event %s\n", __func__);
 }
 
 static int _mtk_crtc_cmdq_retrig(void *data)
@@ -17925,7 +17933,8 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			/* HW support cwb dump */
 			if (priv->data->mmsys_id == MMSYS_MT6985 ||
 				priv->data->mmsys_id == MMSYS_MT6989 ||
-				priv->data->mmsys_id == MMSYS_MT6897)
+				priv->data->mmsys_id == MMSYS_MT6897 ||
+				priv->data->mmsys_id == MMSYS_MT6991)
 				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_IDLEMGR;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_ESD_CHECK;

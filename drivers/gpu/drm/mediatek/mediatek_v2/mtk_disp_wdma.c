@@ -26,6 +26,7 @@
 #include "mtk_drm_trace.h"
 #include "mtk_drm_drv.h"
 #include "mtk_disp_wdma.h"
+#include "mtk_disp_pmqos.h"
 #include "platform/mtk_drm_platform.h"
 
 #define DO_DIV_ROUND_UP(n, d) DO_COMMON_DIV(((n) + (d) - 1), (d))
@@ -1407,6 +1408,7 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 {
 	unsigned int size = 0;
 	unsigned int con = 0;
+	unsigned int bw_base = 1306;
 	dma_addr_t addr = 0;
 	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
 	struct mtk_wdma_cfg_info *cfg_info = &wdma->cfg_info;
@@ -1429,6 +1431,9 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 		return;
 	}
 	cfg_info->addr = addr;
+	// WDMA bandwidth setting
+	mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
+						   &bw_base);
 
 	write_dst_addr(comp, handle, 0, addr);
 
@@ -1482,7 +1487,7 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 	gsc = addon_config->addon_wdma_config.p_golden_setting_context;
 	mtk_wdma_golden_setting(comp, gsc, handle);
 
-	DDPINFO("[capture] config addr:0x%lx, roi:(%d,%d,%d,%d)\n",
+	DDPMSG("[capture] config addr:0x%lx, roi:(%d,%d,%d,%d)\n",
 		(unsigned long)addr, clip_x, clip_y, clip_w, clip_h);
 	cfg_info->width = clip_w;
 	cfg_info->height = clip_h;
@@ -1825,6 +1830,14 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			  enum mtk_ddp_io_cmd cmd, void *params)
 {
 	struct mtk_disp_wdma *wdma = container_of(comp, struct mtk_disp_wdma, ddp_comp);
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv;
+	int ret = 0;
+
+	mtk_crtc = comp->mtk_crtc;
+	crtc = &mtk_crtc->base;
+	priv = crtc->dev->dev_private;
 
 	switch (cmd) {
 	case WDMA_WRITE_DST_ADDR0:
@@ -1870,6 +1883,18 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		mtk_ddp_write(comp, inten, DISP_REG_WDMA_INTEN, handle);
 		break;
 	}
+	case PMQOS_SET_HRT_BW: {
+		if (!mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_MMQOS_SUPPORT))
+			break;
+		if (priv->data->respective_ostdl) {
+			if (!IS_ERR(comp->hrt_qos_req))
+				__mtk_disp_set_module_hrt(comp->hrt_qos_req, 1306,
+					priv->data->respective_ostdl);
+		}
+		ret = WDMA_REQ_HRT;
+		break;
+	}
 	default:
 		break;
 	}
@@ -1893,16 +1918,24 @@ static int mtk_disp_wdma_bind(struct device *dev, struct device *master,
 {
 	struct mtk_disp_wdma *priv = dev_get_drvdata(dev);
 	struct drm_device *drm_dev = data;
+	struct mtk_drm_private *private = drm_dev->dev_private;
 	int ret;
+	char buf[50];
 
-	DDPINFO("%s\n", __func__);
 	ret = mtk_ddp_comp_register(drm_dev, &priv->ddp_comp);
 	if (ret < 0) {
 		dev_err(dev, "Failed to register component %s: %d\n",
 			dev->of_node->full_name, ret);
 		return ret;
 	}
-
+	if (mtk_drm_helper_get_opt(private->helper_opt,
+			MTK_DRM_OPT_MMQOS_SUPPORT)) {
+		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
+				&priv->ddp_comp, "hrt_qos");
+		priv->ddp_comp.hrt_qos_req = of_mtk_icc_get(dev, buf);
+		if (!IS_ERR(priv->ddp_comp.hrt_qos_req))
+			DDPMSG("%s, %s create success, dev:%s\n", __func__, buf, dev_name(dev));
+	}
 	return 0;
 }
 
