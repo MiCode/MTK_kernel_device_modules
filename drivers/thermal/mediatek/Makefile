@@ -1,5 +1,6 @@
 ccflags-y += \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/ \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v2 \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcupm/include \
 	-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq \
@@ -38,3 +39,5 @@ obj-$(CONFIG_MTK_BOARD_THERMAL)	+= board_temp.o
 obj-$(CONFIG_MTK_VTSKIN_THERMAL)	+= vtskin_temp.o
 
 obj-$(CONFIG_MTK_WIFI_THERMAL) += wifi_cooling.o
+
+obj-$(CONFIG_MTK_FAN_THERMAL) += fan_cooling.o

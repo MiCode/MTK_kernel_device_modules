@@ -125,4 +125,13 @@ config MTK_VTSKIN_THERMAL
 	  This driver collects other sensor temperature with coefficient to calculate
 	  virtual skin temperatrure.
 
+config MTK_FAN_THERMAL
+	tristate "Mediatek fan cooling framework"
+	depends on MTK_PWM
+	help
+	  Enable this option to turn on fan throttle mechanisms
+	  for Mediatek platforms.
+	  This option depends on MTK_PWM which is
+	  MTK pwm driver.
+
 endif
