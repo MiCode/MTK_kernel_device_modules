@@ -16,7 +16,6 @@
 			accdet-mic-vol = <8>;
 			accdet-plugout-debounce = <1>;
 			accdet-mic-mode = <2>;
-			eint-use-ext-res = <0>;
 			headset-mode-setting = <0x500 0x500 1 0x1f0
 						0x800 0x800 0x20 0x44
 						0x4 0x1

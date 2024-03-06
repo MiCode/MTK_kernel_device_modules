@@ -2040,6 +2040,20 @@
 			"PWM4-main",
 			"PWM-HCLK-main",
 			"PWM-main";
+
+		/* 1. pwm infraclk control reg offset */
+		mediatek,pwm-topclk-ctl-reg = <0x410>;
+		/* 2. pwm bclk sw ctrl offset */
+		mediatek,pwm-bclk-sw-ctrl-offset = <12>;
+		/* 3. pwm_x bclk sw ctrl offset */
+		mediatek,pwm1-bclk-sw-ctrl-offset = <0>;
+		mediatek,pwm2-bclk-sw-ctrl-offset = <2>;
+		mediatek,pwm3-bclk-sw-ctrl-offset = <4>;
+		mediatek,pwm4-bclk-sw-ctrl-offset = <6>;
+		/* 4. pwm version */
+		mediatek,pwm-version = <0x2>;
+
+		pwmsrcclk = <&infracfg_ao>;
 	};
 
 	sys_cirq@10204000 {
@@ -6044,6 +6058,7 @@
 		compatible = "mediatek,irtx-pwm";
 		pwm_ch = <0>;
 		pwm_data_invert = <0>;
+		pwm-supply = "vio28";
 	};
 
 	odm: odm {
