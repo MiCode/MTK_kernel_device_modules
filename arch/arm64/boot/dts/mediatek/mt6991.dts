@@ -14298,6 +14298,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 	vcp: vcp@31800000 {
 		compatible = "mediatek,vcp";
 		vcp-support = <1>;
+		power-domains = <&scpsys MT6991_POWER_DOMAIN_MM_PROC_DORMANT>;
 		status = "okay";
 		reg = <0 0x31800000 0 0x60000>, /* tcm */
 			<0 0x31900000 0 0x1000>, /* bus tracker */
@@ -14418,7 +14419,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<8 0x1000>, /* MMDVFS_MEM_ID 4KB */
 			<9 0x1000>, /* MMQOS_MEM_ID 4KB */
 			<10 0x0>; /* secure dump, its size is in secure_dump_size */
-
 	};
 
 	vcp_io2: vcp-iommu-vdec {
@@ -14457,7 +14457,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 	mmup: mmup@31a00000 {
 		compatible = "mediatek,mmup";
 		status = "okay";
-		l2tcm-offset = <0x030000>;
+		l2tcm-offset = <0x031000>;
 		twohart = <0>;		/* two hart arch */
 		reg = <0 0x31bb0000 0 0x100>, /* mbox0 base, is actully mbox3 hw */
 			<0 0x31bb0100 0 0x4>, /* mbox0 set, is actully mbox3 hw*/
