@@ -6561,8 +6561,8 @@
 			"mtcmos_mfg3",      /* Shader Stack2 */
 			"mtcmos_mfg4",      /* Shader Stack4 */
 			"mtcmos_mfg5";      /* Shader Stack6 */
-		/* _vgpu-supply = <&mt_pmic_vproc2_buck_reg>; */
-		/* _vsram_gpu-supply = <&mt_pmic_vsram_md_ldo_reg>; */
+			vgpu-supply = <&mt6359p_vproc2_reg>;
+			vsram-gpu-supply = <&mt6359p_vsram_md_reg>;
 	};
 
 	ged: ged {
