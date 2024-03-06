@@ -6423,7 +6423,6 @@
 			<&audio_clk CLK_AUDSYS_3RD_DAC_HIRES>,
 			<&infracfg_ao_clk CLK_IFRAO_AUDIO>,
 			<&infracfg_ao_clk CLK_IFRAO_AUDIO_26M_BCLK>,
-			<&scpsys SCP_SYS_AUDIO>,
 			<&topckgen_clk CLK_TOP_AUDIO_SEL>,
 			<&topckgen_clk CLK_TOP_AUDIO_H_SEL>,
 			<&topckgen_clk CLK_TOP_AUD_INTBUS_SEL>,
@@ -6483,7 +6482,6 @@
 			"aud_3rd_dac_hires_clk",
 			"aud_infra_clk",
 			"aud_infra_26m_clk",
-			"scp_sys_audio",
 			"top_mux_audio",
 			"top_mux_audio_h",
 			"top_mux_audio_int",
@@ -6557,54 +6555,35 @@
 		pinctrl-17 = <&vow_gpio_on>;
 	};
 
-	mt6359_snd: mt6359_snd {
-		compatible = "mediatek,mt6359-sound";
-		mediatek,pwrap-regmap = <&pwrap>;
-		nvmem = <&pmic_efuse>;
-		nvmem-names = "pmic-hp-efuse";
-		io-channels =
-			<&pmic_auxadc AUXADC_HPOFS_CAL>,
-			<&pmic_auxadc AUXADC_ACCDET>;
-		io-channel-names =
-			"pmic_hpofs_cal",
-			"pmic_accdet";
-	};
-
 	sound: sound {
 		compatible = "mediatek,mt6877-mt6359-sound";
-		mediatek,audio-codec = <&mt6359_snd>;
-		mediatek,platform = <&afe>;
 		mediatek,snd_audio_dsp = <&snd_audio_dsp>;
-		mtk_spk_i2s_out = <3>;
-		mtk_spk_i2s_in = <0>;
-		/* mtk_spk_i2s_mck = <3>; */
-		mediatek,speaker-codec {
-			sound-dai = <&speaker_amp>;
-		};
+		mediatek,platform = <&afe>;
+		mediatek,headset-codec = <&accdet>;
 	};
 
 	/* feature : $enable $dl_mem $ul_mem $ref_mem $size */
-	snd_audio_dsp: snd_audio_dsp {
-		compatible = "mediatek,snd_audio_dsp";
-		mtk_dsp_voip = <0x1f 0xffffffff 0xffffffff 0xffffffff 0x30000>;
-		mtk_dsp_primary = <0x5 0xffffffff 0xffffffff \
+	snd_audio_dsp: snd-audio-dsp {
+		compatible = "mediatek,snd-audio-dsp";
+		mtk-dsp-voip = <0x1f 0xffffffff 0xffffffff 0xffffffff 0x30000>;
+		mtk-dsp-primary = <0x5 0xffffffff 0xffffffff \
 				   0xffffffff 0x30000>;
-		mtk_dsp_offload = <0x1 0xffffffff 0xffffffff \
+		mtk-dsp-offload = <0x1 0xffffffff 0xffffffff \
 				   0xffffffff 0x400000>;
-		mtk_dsp_deep = <0x5 0xffffffff 0xffffffff 0xffffffff 0x30000>;
-		mtk_dsp_playback = <0x1 0x4 0xffffffff 0x14 0x30000>;
-		mtk_dsp_music = <0x1 0xffffffff 0xffffffff 0xffffffff 0x0>;
-		mtk_dsp_capture1 = <0x1 0xffffffff 0xd 0x13 0x20000>;
-		mtk_dsp_a2dp = <0x1 0xffffffff 0xffffffff 0xffffffff 0x40000>;
-		mtk_dsp_dataprovider = <0x0 0xffffffff 0xf 0xffffffff 0x30000>;
-		mtk_dsp_call_final = <0x5 0x4 0x10 0x14 0x18000>;
-		mtk_dsp_fast = <0x5 0xffffffff 0xffffffff 0xffffffff 0x5000>;
-		mtk_dsp_ktv = <0x1 0x8 0x12 0xffffffff 0x10000>;
-		mtk_dsp_capture_raw = <0x1 0xffffffff 0xffffffff 0xffffffff 0x20000>;
-		mtk_dsp_fm = <0x1 0xffffffff 0x10 0xffffffff 0x10000>;
-		mtk_dsp_ver = <0x1>;
-		swdsp_smartpa_process_enable = <0x5>;
-		mtk_dsp_mem_afe = <0x1 0x40000>; /* always enable */
+		mtk-dsp-deep = <0x5 0xffffffff 0xffffffff 0xffffffff 0x30000>;
+		mtk-dsp-playback = <0x1 0x4 0xffffffff 0x14 0x30000>;
+		mtk-dsp-music = <0x1 0xffffffff 0xffffffff 0xffffffff 0x0>;
+		mtk-dsp-capture1 = <0x1 0xffffffff 0xd 0x13 0x20000>;
+		mtk-dsp-a2dp = <0x1 0xffffffff 0xffffffff 0xffffffff 0x40000>;
+		mtk-dsp-dataprovider = <0x0 0xffffffff 0xf 0xffffffff 0x30000>;
+		mtk-dsp-call-final = <0x5 0x4 0x10 0x14 0x18000>;
+		mtk-dsp-fast = <0x5 0xffffffff 0xffffffff 0xffffffff 0x5000>;
+		mtk-dsp-ktv = <0x1 0x8 0x12 0xffffffff 0x10000>;
+		mtk-dsp-capture-raw = <0x1 0xffffffff 0xffffffff 0xffffffff 0x20000>;
+		mtk-dsp-fm = <0x1 0xffffffff 0x10 0xffffffff 0x10000>;
+		mtk-dsp-ver = <0x1>;
+		swdsp-smartpa-process-enable = <0x5>;
+		mtk-dsp-mem-afe = <0x1 0x40000>; /* always enable */
 	};
 
 	snd_scp_ultra: snd_scp_ultra {
@@ -6616,13 +6595,13 @@
 	audio_sram@11212000 {
 		compatible = "mediatek,audio_sram";
 		reg = <0 0x11212000 0 0x18000>;
-		prefer_mode = <0>;
-		mode_size = <0x12000 0x18000>;
-		block_size = <0x1000>;
+		prefer-mode = <0>;
+		mode-size = <0x12000 0x18000>;
+		block-size = <0x1000>;
 	};
 
-	mt_soc_playback_offload {
-		compatible = "mediatek,mt_soc_offload_common";
+	mt-soc-offload-common {
+		compatible = "mediatek,mt-soc-offload-common";
 	};
 
 	btcvsd_snd: mtk-btcvsd-snd@18830000 {
@@ -6717,12 +6696,6 @@
 };
 
 &i2c6 {
-	speaker_amp: speaker_amp@5c {
-		compatible = "mediatek,speaker_amp";
-		#sound-dai-cells = <0>;
-		reg = <0x5c>;
-		status = "okay";
-	};
 	gate_ic: gate_ic@11 {
 		compatible = "mediatek,gate-ic-i2c";
 		gate-power-gpios = <&pio 107 0>;
