@@ -16,6 +16,11 @@
 #define FLAG_DISABLE 0X44495341 // acsii-DISA
 #define FLAG_ENABLE 0X454E454E // acsii-ENEN
 #define FLAG_INVALID 0xdeaddead
+
+#if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
+#define FLAG_VERSION_1 0x76657231
+#define FLAG_VERSION_0 0x76657248
+#endif
 #define KEDUMP_ENABLE (1)
 #define KEDUMP_DISABLE (0)
 
@@ -84,12 +89,16 @@ struct sram_log_header {
 	/* reserve[2] pmic save boot phase enable/disable */
 	/* reserve[3] save history boot phase */
 	/* reserve[4] save pl/lk log size/point */
+	/* reserve[5] expdb size version(0:2M,1:4M+1M) */
 } __packed;
 #define SRAM_RECORD_LOG_SIZE 0X00
 #define SRAM_BLOCK_SIZE 0x01
 #define SRAM_PMIC_BOOT_PHASE 0x02
 #define SRAM_HISTORY_BOOT_PHASE 0x03
-
+#if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
+#define SRAM_PLLK_SIZE 0x04
+#define SRAM_EXPDB_VER 0x05
+#endif
 
 /* emmc last block struct */
 struct log_emmc_header {
@@ -102,6 +111,8 @@ struct log_emmc_header {
 	/* [2] used to save printk ratalimit  flag */
 	/* [3] used to save kedump contrl flag */
 	/* [4] used to save boot step */
+	/* [5] expdb size version(0:2M,1:4M+1M)*/
+	/* [6] boot prof offset*/
 };
 
 enum EMMC_STORE_FLAG_TYPE {
@@ -110,6 +121,10 @@ enum EMMC_STORE_FLAG_TYPE {
 	PRINTK_RATELIMIT = 0X02,
 	KEDUMP_CTL = 0x03,
 	BOOT_STEP = 0x04,
+#if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
+	EXPDB_SIZE_VER = 0x05,
+	BOOT_PROF_OFFSET = 0x06,
+#endif
 	EMMC_STORE_FLAG_TYPE_NR,
 };
 
@@ -119,7 +134,8 @@ enum EMMC_STORE_FLAG_TYPE {
 #define PMIC_BOOT_PHASE_SHIFT 0x8
 #define PMIC_LAST_BOOT_PHASE_SHIFT 0Xc
 
-#define HEADER_INDEX_MAX 0x10
+#define HEADER_INDEX_MAX 0x20
+#define BOOT_TYPE_UFS 0x2
 
 /* emmc store log */
 struct emmc_log {
@@ -155,6 +171,13 @@ bool get_pmic_interface(void);
 u32 set_pmic_boot_phase(u32 boot_phase);
 u32 get_pmic_boot_phase(void);
 void store_log_to_emmc_enable(bool value);
+
+#if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
+int set_emmc_config(int type, int value);
+int read_emmc_config(struct log_emmc_header *log_header);
+int get_kernel_log(void);
+#endif
+
 void set_boot_phase(u32 step);
 u32 get_last_boot_phase(void);
 void log_store_bootup(void);
@@ -162,7 +185,7 @@ void store_printk_buff(void);
 void disable_early_log(void);
 int dt_get_log_store(struct mem_desc_ls *data);
 void *get_sram_header(void);
-int read_emmc_config(struct log_emmc_header *log_header);
+
 #else
 static inline bool get_pmic_interface(void)
 {
@@ -182,6 +205,23 @@ static inline u32 get_pmic_boot_phase(void)
 static inline void store_log_to_emmc_enable(bool value)
 {
 }
+
+#if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
+static inline int set_emmc_config(int type, int value)
+{
+	return 0;
+}
+
+static inline int read_emmc_config(struct log_emmc_header *log_header)
+{
+	return 0;
+}
+
+static inline int get_kernel_log(void)
+{
+	return 0;
+}
+#endif
 
 static inline void set_boot_phase(u32 step)
 {
@@ -214,10 +254,6 @@ static inline void *get_sram_header(void)
 	return NULL;
 }
 
-static inline int read_emmc_config(struct log_emmc_header *log_header)
-{
-	return 0;
-}
 #endif
 
 #endif
