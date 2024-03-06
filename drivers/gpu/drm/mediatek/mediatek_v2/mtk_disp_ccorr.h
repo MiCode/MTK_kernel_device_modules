@@ -90,6 +90,8 @@ int disp_ccorr_act_get_ccorr_caps(struct mtk_ddp_comp *comp, struct drm_mtk_ccor
 void disp_ccorr_set_bypass(struct drm_crtc *crtc, int bypass);
 void disp_ccorr_regdump(struct mtk_ddp_comp *comp);
 int disp_ccorr_act_get_irq(struct mtk_ddp_comp *comp, void *data);
+// for displayPQ update to swpm tppa
+unsigned int disp_ccorr_bypass_info(struct mtk_drm_crtc *mtk_crtc);
 
 #endif
 
