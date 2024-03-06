@@ -1372,6 +1372,12 @@ static inline void core_ctl_main_algo(void)
 			cpumask_bits(&active_cpus)[0], orig_need_cpu);
 }
 
+unsigned int (*calc_eff_hook)(unsigned int first_cpu, int opp, unsigned int temp,
+	unsigned int dyn_power, unsigned int cap);
+EXPORT_SYMBOL(calc_eff_hook);
+static int need_update_ppm_eff = 1;
+static int update_ppm_eff(void);
+
 void core_ctl_tick(void *data, struct rq *rq)
 {
 	unsigned int index = 0;
@@ -1379,6 +1385,12 @@ void core_ctl_tick(void *data, struct rq *rq)
 	struct cluster_data *cluster;
 	int cpu = 0;
 	struct cpu_data *c;
+
+	if (need_update_ppm_eff != 0 && calc_eff_hook) {
+		/* Prevent other threads into this section */
+		need_update_ppm_eff = 0;
+		need_update_ppm_eff = update_ppm_eff();
+	}
 
 	/* prevent irq disable on cpu 0 */
 	if (rq->cpu == 0)
@@ -2010,6 +2022,72 @@ static unsigned int find_turn_point(struct cluster_data *c1,
 #define em_scale_power(p) (p)
 #endif
 
+static int update_ppm_eff(void)
+{
+	int opp_nr, first_cpu, cid, i;
+	struct cluster_data *cluster;
+	struct ppm_table *ppm_tbl;
+
+	for(cid=0; cid<MAX_CLUSTERS; cid++) {
+		cluster = &cluster_state[cid];
+		first_cpu = cluster->first_cpu;
+
+		/* false: gearless, true: legacy */
+		opp_nr = pd_freq2opp(first_cpu, 0, true, 0) + 1;
+		ppm_tbl = cluster->ppm_data.ppm_tbl;
+
+		for(i=0; i<opp_nr; i++) {
+			cluster->ppm_data.ppm_tbl[i].eff = calc_eff_hook(first_cpu,
+				i, NORMAL_TEMP, ppm_tbl[i].power, ppm_tbl[i].capacity);
+			cluster->ppm_data.ppm_tbl[i].thermal_eff = calc_eff_hook(first_cpu,
+				i, THERMAL_TEMP, ppm_tbl[i].power, ppm_tbl[i].capacity);
+		}
+
+		/* calculate turning point */
+		if (cid == AB_CLUSTER_ID) {
+			struct cluster_data *prev_cluster = &cluster_state[cid - 1];
+			unsigned int turn_point = 0;
+
+			turn_point = find_turn_point(prev_cluster, cluster, false);
+			/*
+			 * If the turn-point can't be figure out.
+			 * Use max capacity of BLCPU as turn-point
+			 */
+			if (!turn_point)
+				turn_point = prev_cluster->ppm_data.ppm_tbl[0].capacity;
+
+			if (turn_point) {
+				unsigned int val = 0;
+
+				val = div64_u64(turn_point * 100,
+					prev_cluster->ppm_data.ppm_tbl[0].capacity);
+				set_up_thres(prev_cluster, val);
+
+				pr_info("%s: update_ppm turn_pint is %u, down_thre is change to %u",
+					TAG, turn_point, val);
+			}
+
+			/* thermal case */
+			turn_point = find_turn_point(prev_cluster, cluster, true);
+			if (!turn_point)
+				turn_point = prev_cluster->ppm_data.ppm_tbl[0].capacity;
+
+			if (turn_point) {
+				unsigned int val = 0;
+
+				val = div64_u64(turn_point * 100,
+					prev_cluster->ppm_data.ppm_tbl[0].capacity);
+				if (val <= 100)
+					prev_cluster->thermal_up_thres = val;
+
+				pr_info("%s: update_ppm thermal_turn_pint is %u, thermal_down_thre is change to %u",
+					TAG, turn_point, val);
+			}
+		}
+	}
+	return 0;
+}
+
 static int ppm_data_init(struct cluster_data *cluster)
 {
 	struct cpufreq_policy *policy;
@@ -2041,19 +2119,14 @@ static int ppm_data_init(struct cluster_data *cluster)
 	pd = em_cpu_get(first_cpu);
 	if (!pd)
 		return -ENOMEM;
-	/* get power and capacity and calculate efficiency */
 
+	/* get power and capacity and calculate efficiency */
 	for (i = 0; i < opp_nr; i++) {
 		ps = &pd->table[opp_nr-1-i];
 		ppm_tbl[i].power = em_scale_power(ps->power);
 		ppm_tbl[i].freq = ps->frequency;
-		ppm_tbl[i].leakage = pd_get_opp_leakage(first_cpu, i, NORMAL_TEMP);
-		ppm_tbl[i].thermal_leakage = pd_get_opp_leakage(first_cpu, i, THERMAL_TEMP);
 		ppm_tbl[i].capacity = pd_get_opp_capacity_legacy(first_cpu, i);
-		ppm_tbl[i].eff =
-			div64_u64(ppm_tbl[i].leakage + ppm_tbl[i].power, ppm_tbl[i].capacity);
-		ppm_tbl[i].thermal_eff = div64_u64(ppm_tbl[i].thermal_leakage + ppm_tbl[i].power,
-						ppm_tbl[i].capacity);
+		ppm_tbl[i].thermal_eff = ppm_tbl[i].eff = div64_u64(ppm_tbl[i].power, ppm_tbl[i].capacity);
 	}
 
 	cluster->ppm_data.ppm_tbl = ppm_tbl;
