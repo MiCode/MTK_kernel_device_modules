@@ -301,6 +301,7 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_select_rq_mask);
 	unsigned int cpu, pd_idx;
 	struct perf_domain *pd_ptr = pd;
+	unsigned long pd_base_freq[MAX_NR_CPUS] = {0};
 
 	eenv_task_busy_time(eenv, p, prev_cpu);
 
@@ -325,6 +326,7 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 
 	for (; pd_ptr; pd_ptr = pd_ptr->next) {
 		unsigned long cpu_thermal_cap;
+		unsigned long max_util, pd_freq;
 
 		cpumask_and(cpus, perf_domain_span(pd_ptr), cpu_active_mask);
 		if (cpumask_empty(cpus))
@@ -350,6 +352,13 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 		if (eenv->wl_support) {
 			eenv_pd_busy_time(eenv, cpus, p);
 			eenv->total_util += eenv->pds_busy_time[pd_idx];
+
+			/* get dsu_freq_base by max_util voting */
+			eenv->gear_idx = topology_cluster_id(pd_idx);
+			max_util = eenv_pd_max_util(eenv, cpus, p, -1);
+			pd_freq = pd_get_util_cpufreq(eenv, cpus, max_util,
+					eenv->pds_cpu_cap[pd_idx], arch_scale_cpu_capacity(pd_idx));
+			pd_base_freq[pd_idx] = max(pd_freq, per_cpu(min_freq, pd_idx));
 		}
 	}
 
@@ -374,8 +383,9 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 	if (eenv->wl_support) {
 		unsigned int output[6], val[MAX_NR_CPUS];
 
-		eenv_dsu_init(eenv->android_vendor_data1, eenv->wl,
-				PERCORE_L3_BW, cpu_active_mask->bits[0], val, output);
+		eenv_dsu_init(eenv->android_vendor_data1, false, eenv->wl,
+				PERCORE_L3_BW, cpu_active_mask->bits[0], pd_base_freq,
+				val, output);
 
 		if (PERCORE_L3_BW) {
 			unsigned int sum_val = 0;

@@ -96,32 +96,29 @@ int dsu_freq_changed(void *private)
 	return 0;
 }
 
-void (*eenv_dsu_init_hook)(void *private, unsigned int wl,
+void (*eenv_dsu_init_hook)(void *private, int quant, unsigned int wl,
 		int PERCORE_L3_BW, unsigned int cpumask_val,
-		void __iomem *base, unsigned int dsu_target_freq,
+		void __iomem *base, unsigned long *pd_base_freq,
 		unsigned int dsu_ceiling_freq, int dsu_temp,
 		unsigned int *val, unsigned int *output);
 EXPORT_SYMBOL(eenv_dsu_init_hook);
 
-void eenv_dsu_init(void *private, unsigned int wl,
-		int PERCORE_L3_BW, unsigned int cpumask_val,
+void eenv_dsu_init(void *private, int quant, unsigned int wl,
+		int PERCORE_L3_BW, unsigned int cpumask_val, unsigned long *pd_base_freq,
 		unsigned int *val, unsigned int *output)
 {
 	if (eenv_dsu_init_hook) {
-		static struct cpu_dsu_freq_state *freq_state;
 		int dsu_temp = 0;
 		unsigned int dsu_freq_thermal = 0;
-
-		freq_state = get_dsu_freq_state();
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 		dsu_temp = get_dsu_temp()/1000;
 		dsu_freq_thermal = get_dsu_ceiling_freq();
 #endif
 
-		(*eenv_dsu_init_hook)(private, wl,
+		(*eenv_dsu_init_hook)(private, quant, wl,
 			PERCORE_L3_BW, cpumask_val,
-			get_l3ctl_sram_base_addr(), freq_state->dsu_target_freq,
+			get_l3ctl_sram_base_addr(), pd_base_freq,
 			dsu_freq_thermal, dsu_temp,
 			val, output);
 	}
