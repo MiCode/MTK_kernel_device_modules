@@ -1356,7 +1356,7 @@ int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 	int ret;
 
 	ret = sscanf(val, "%hhu %hhu %d", &func, &idx, &opp);
-	if (ret != 3) {
+	if (ret != 3 || func >= FUNC_NUM) {
 		MMDVFS_ERR("input failed:%d func:%hhu idx:%hhu opp:%hhd", ret, func, idx, opp);
 		return -EINVAL;
 	}
