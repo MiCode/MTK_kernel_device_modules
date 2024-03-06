@@ -4863,7 +4863,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mpu-base-clear = <1>;
 		};
 
-		slc-parity@1046e000 {
+		slcparity: slc-parity@1046e000 {
 			compatible = "mediatek,common-slc-parity";
 			reg = <0 0x1046e000 0 0x1000>,
 				<0 0x1056e000 0 0x1000>;
@@ -4873,6 +4873,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			cs-num = <2>;
 			chn-num = <2>;
 			clear = <0x014>;
+			assert = <0>;
 		};
 
 		ktf-emislc-test {
