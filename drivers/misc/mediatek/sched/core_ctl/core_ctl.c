@@ -1386,18 +1386,18 @@ void core_ctl_tick(void *data, struct rq *rq)
 	int cpu = 0;
 	struct cpu_data *c;
 
-	if (need_update_ppm_eff != 0 && calc_eff_hook) {
-		/* Prevent other threads into this section */
-		need_update_ppm_eff = 0;
-		need_update_ppm_eff = update_ppm_eff();
-	}
-
 	/* prevent irq disable on cpu 0 */
 	if (rq->cpu == 0)
 		return;
 
 	if (!window_check())
 		return;
+
+	if (need_update_ppm_eff != 0 && calc_eff_hook) {
+		/* Prevent other threads into this section */
+		need_update_ppm_eff = 0;
+		need_update_ppm_eff = update_ppm_eff();
+	}
 
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
 
@@ -2031,6 +2031,9 @@ static int update_ppm_eff(void)
 	for(cid=0; cid<MAX_CLUSTERS; cid++) {
 		cluster = &cluster_state[cid];
 		first_cpu = cluster->first_cpu;
+
+		if (!cluster->ppm_data.init)
+			continue;
 
 		/* false: gearless, true: legacy */
 		opp_nr = pd_freq2opp(first_cpu, 0, true, 0) + 1;
