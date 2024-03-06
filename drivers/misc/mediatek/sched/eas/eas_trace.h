@@ -12,10 +12,10 @@
 #include <linux/tracepoint.h>
 #include <linux/sched/clock.h>
 
+#include "common.h"
 #include "eas_plus.h"
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
-#include "common.h"
 #include "group.h"
 #include "flt_cal.h"
 extern const char *task_event_names[];

@@ -6,6 +6,14 @@
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include "common.h"
+#define CREATE_TRACE_POINTS
+#include "common_trace.h"
+
+#define lsub_positive(_ptr, _val) do {				\
+	typeof(_ptr) ptr = (_ptr);				\
+	*ptr -= min_t(typeof(*ptr), *ptr, _val);		\
+} while (0)
+
 MODULE_LICENSE("GPL");
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
@@ -92,16 +100,67 @@ unsigned long mtk_uclamp_rq_util_with(struct rq *rq, unsigned long util,
 	return util;
 }
 #endif /* CONFIG_UCLAMP_TASK */
+
+static inline unsigned long task_util(struct task_struct *p)
+{
+	return READ_ONCE(p->se.avg.util_avg);
+}
+
+static inline unsigned long _task_util_est(struct task_struct *p)
+{
+	struct util_est ue = READ_ONCE(p->se.avg.util_est);
+
+	return max(ue.ewma, (ue.enqueued & ~UTIL_AVG_UNCHANGED));
+}
+
+/* modified from k66 cpu_util() */
+unsigned long mtk_cpu_util_next(int cpu, struct task_struct *p, int dst_cpu, int boost)
+{
+	struct cfs_rq *cfs_rq = &cpu_rq(cpu)->cfs;
+	unsigned long util = READ_ONCE(cfs_rq->avg.util_avg);
+	unsigned long runnable;
+
+	if (is_runnable_boost_enable() && boost) {
+		runnable = READ_ONCE(cfs_rq->avg.runnable_avg);
+		util = max(util, runnable);
+	}
+
+	if (p && task_cpu(p) == cpu && dst_cpu != cpu)
+		lsub_positive(&util, task_util(p));
+	else if (p && task_cpu(p) != cpu && dst_cpu == cpu)
+		util += task_util(p);
+
+	if (sched_feat(UTIL_EST) && is_util_est_enable()) {
+		unsigned long util_est;
+
+		util_est = READ_ONCE(cfs_rq->avg.util_est.enqueued);
+
+		if (is_runnable_boost_enable() && boost)
+			util_est = max(util_est, runnable);
+
+		if (dst_cpu == cpu)
+			util_est += _task_util_est(p);
+		else if (p && unlikely(task_on_rq_queued(p) || current == p))
+			lsub_positive(&util_est, _task_util_est(p));
+
+		util = max(util, util_est);
+	}
+
+	if (trace_sched_runnable_boost_enabled())
+		trace_sched_runnable_boost(is_runnable_boost_enable(), boost, cfs_rq->avg.util_avg,
+				cfs_rq->avg.util_est.enqueued, runnable, util);
+
+	return min(util, capacity_orig_of(cpu) + 1);
+}
+
+/* cloned from k66 cpu_util_cfs() */
 unsigned long mtk_cpu_util_cfs(int cpu)
 {
-	struct cfs_rq *cfs_rq;
-	unsigned int util;
+	return mtk_cpu_util_next(cpu, NULL, -1, 0);
+}
 
-	cfs_rq = &cpu_rq(cpu)->cfs;
-	util = READ_ONCE(cfs_rq->avg.util_avg);
-
-	if (sched_feat(UTIL_EST) && is_util_est_enable())
-		util = max(util, READ_ONCE(cfs_rq->avg.util_est.enqueued));
-
-	return min_t(unsigned long, util, capacity_orig_of(cpu));
+/* cloned from k66 cpu_util_cfs_boost() */
+unsigned long mtk_cpu_util_cfs_boost(int cpu)
+{
+	return mtk_cpu_util_next(cpu, NULL, -1, 1);
 }

@@ -79,6 +79,23 @@ EXPORT_SYMBOL(sysctl_util_est);
 void (*fpsgo_notify_fbt_is_boost_fp)(int fpsgo_is_boost);
 EXPORT_SYMBOL(fpsgo_notify_fbt_is_boost_fp);
 
+/************************* scheduler common ************************/
+
+/* runnable_boost_enable ctrl */
+static bool runnable_boost_enable = true;
+
+void set_runnable_boost_enable(bool boost_ctrl)
+{
+	runnable_boost_enable = boost_ctrl;
+}
+EXPORT_SYMBOL(set_runnable_boost_enable);
+
+bool is_runnable_boost_enable(void)
+{
+	return runnable_boost_enable;
+}
+EXPORT_SYMBOL(is_runnable_boost_enable);
+
 /************************ Governor internals ***********************/
 
 static bool sugov_should_update_freq(struct sugov_policy *sg_policy, u64 time)
@@ -419,12 +436,13 @@ EXPORT_SYMBOL(sugov_grp_awr_update_cpu_tar_util_hook);
 
 static void sugov_get_util(struct sugov_cpu *sg_cpu)
 {
+	unsigned long cpu_util = mtk_cpu_util_cfs_boost(sg_cpu->cpu);
 	struct rq *rq = cpu_rq(sg_cpu->cpu);
 
 	sg_cpu->max = arch_scale_cpu_capacity(sg_cpu->cpu);
 	sg_cpu->bw_dl = cpu_bw_dl(rq);
 
-	sg_cpu->util = mtk_cpu_util(sg_cpu->cpu, mtk_cpu_util_cfs(sg_cpu->cpu), FREQUENCY_UTIL,
+	sg_cpu->util = mtk_cpu_util(sg_cpu->cpu, cpu_util, FREQUENCY_UTIL,
 							(struct task_struct *)UINTPTR_MAX,
 							0, SCHED_CAPACITY_SCALE);
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
