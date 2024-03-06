@@ -28,6 +28,7 @@
 #define RTC_POWERKEY2          0x002a
 #define RTC_PROT               0x0034
 #define RTC_CON                0x003c
+#define RTC_WRTGR_MT6357       0x003a
 #define RTC_WRTGR_MT6358       0x003a
 #define RTC_WRTGR_MT6397       0x003c
 #define RTC_WRTGR_MT6323       RTC_WRTGR_MT6397
