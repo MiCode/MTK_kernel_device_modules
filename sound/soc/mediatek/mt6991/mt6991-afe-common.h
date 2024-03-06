@@ -106,12 +106,14 @@ enum {
 	MT6991_DAI_I2S_IN2,
 	MT6991_DAI_I2S_IN3,
 	MT6991_DAI_I2S_IN4,
+	MT6991_DAI_I2S_IN5,
 	MT6991_DAI_I2S_IN6,
 	MT6991_DAI_I2S_OUT0,
 	MT6991_DAI_I2S_OUT1,
 	MT6991_DAI_I2S_OUT2,
 	MT6991_DAI_I2S_OUT3,
 	MT6991_DAI_I2S_OUT4,
+	MT6991_DAI_I2S_OUT5,
 	MT6991_DAI_I2S_OUT6,
 	MT6991_DAI_FM_I2S_MASTER,
 	MT6991_DAI_HW_GAIN_0,
@@ -702,6 +704,8 @@ int mt6991_add_misc_control(struct snd_soc_component *component);
 int mt6991_set_local_afe(struct mtk_base_afe *afe);
 
 unsigned int mt6991_general_rate_transform(struct device *dev,
+		unsigned int rate);
+unsigned int mt6991_general_rate_transform_inverse(struct device *dev,
 		unsigned int rate);
 unsigned int mt6991_rate_transform(struct device *dev,
 				   unsigned int rate, int aud_blk);

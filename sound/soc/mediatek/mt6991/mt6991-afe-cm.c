@@ -109,12 +109,7 @@ static unsigned int calculate_cm_update(int rate, int ch)
 	pr_info("%s(), rate %d, channel %d\n",
 		 __func__, rate, ch);
 
-	update_val = 26000000 / rate / (ch / 2);
-	update_val = update_val * 10 / 7;
-	if (update_val > 100)
-		update_val = 100;
-	if (update_val < 7)
-		update_val = 7;
+	update_val = (((26000000 / rate) - 10) / (ch / 2)) - 1;
 
 	return (unsigned int)update_val;
 }
@@ -124,6 +119,7 @@ int mt6991_set_cm(struct mtk_base_afe *afe, int id,
 {
 	unsigned int rate = 0;
 	struct mtk_base_cm_data cm;
+	unsigned int samplerate = 0;
 	unsigned int update_val = 0;
 
 	pr_info("%s()-0, CM%d, rate %d, update %d, swap %d, ch %d\n",
@@ -146,7 +142,9 @@ int mt6991_set_cm(struct mtk_base_afe *afe, int id,
 		pr_info("%s(), CM%d not found\n", __func__, id);
 		return 0;
 	}
-	update_val = (update == 0x1)? calculate_cm_update(rate, (int)ch) : 0x64;
+	/* use real samplerate to count */
+	samplerate = mt6991_general_rate_transform_inverse(afe->dev, rate);
+	update_val = (update == 0x1)? calculate_cm_update(samplerate, (int)ch) : 0x64;
 
 	/* update cnt */
 	mtk_regmap_update_bits(afe->regmap, cm.reg,
