@@ -7265,12 +7265,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg =
 				<0 0x48500000 0 0x1000>,   /* MFG_TOP_CONFIG */
 				<0 0x48600000 0 0x200000>, /* MFG_SMMU */
+				<0 0x48800000 0 0x1000>,   /* MFG_VGPU_DBG_TRACKER */
 				<0 0x4b800000 0 0x10000>,  /* MFG_RPC */
 				<0 0x4b810000 0 0x400>,    /* MFG_PLL */
 				<0 0x4b810400 0 0x400>,    /* MFG_PLL_SC0 */
 				<0 0x4b810800 0 0x400>,    /* MFG_PLL_SC1 */
 				<0 0x4b840000 0 0x1000>,   /* MFG_HBVC */
 				<0 0x4b860000 0 0x1000>,   /* MFG_VCORE_AO_CFG */
+				<0 0x4b8b0000 0 0x1000>,   /* MFG_VCORE_DEVAPC */
+				<0 0x4b900000 0 0x1000>,   /* MFG_VCORE_DBG_TRACKER */
 				<0 0x0c000000 0 0x1000>,   /* MCUSYS_PAR_WRAP */
 				<0 0x10000000 0 0x1000>,   /* CKSYS */
 				<0 0x10404000 0 0x1000>,   /* NTH_EMICFG_AO_MEM */
@@ -7293,12 +7296,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg-names =
 				"mfg_top_config",
 				"mfg_smmu",
+				"mfg_vgpu_dbg_trk",
 				"mfg_rpc",
 				"mfg_pll",
 				"mfg_pll_sc0",
 				"mfg_pll_sc1",
 				"mfg_hbvc",
 				"mfg_vcore_ao_cfg",
+				"mfg_vcore_devapc",
+				"mfg_vcore_dbg_trk",
 				"mcusys_par_wrap",
 				"cksys",
 				"nth_emicfg_ao_mem",
