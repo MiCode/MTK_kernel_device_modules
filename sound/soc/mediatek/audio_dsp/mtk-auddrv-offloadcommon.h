@@ -102,6 +102,7 @@ enum ipi_send_ogffload {
 	OFFLOAD_VIDEO_INFO,
 	OFFLOAD_MDATA_INFO,
 	OFFLOAD_SEND_MAX,
+	OFFLOAD_STREAMING_INFO,
 };
 
 enum ipi_received_offload {

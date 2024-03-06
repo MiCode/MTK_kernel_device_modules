@@ -381,7 +381,7 @@ static int mtk_compr_offload_open(struct snd_soc_component *component,
 		pr_debug("get_dsp_base again\n");
 	}
 
-	if (offload_buffer_size < 262144) { // 256K
+	if (offload_buffer_size < 131072) { // 128K
 		pr_debug("%s err offload_buffer_size = %u\n", __func__, offload_buffer_size);
 		return -1;
 	}
