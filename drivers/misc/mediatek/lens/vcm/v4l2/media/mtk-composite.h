@@ -36,6 +36,7 @@ struct mtk_composite_v4l2_device {
 	struct v4l2_subdev **sd;
 	struct v4l2_async_connection *asd[MISC_MAX_SUBDEVS];
 	struct v4l2_subdev *subdevs[MISC_MAX_SUBDEVS];
+	struct device_node *dnode[MISC_MAX_SUBDEVS];
 };
 
 #endif /* _MTK_COMPOSITE_H */
