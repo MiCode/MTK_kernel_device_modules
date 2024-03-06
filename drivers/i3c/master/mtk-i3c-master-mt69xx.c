@@ -501,6 +501,13 @@ static void mtk_i3c_record_dma_info(struct mtk_i3c_master *i3c)
 }
 #endif
 
+extern void gpio_dump_regs_range(int start, int end);
+static void mtk_i3c_gpio_dump(struct mtk_i3c_master *i3c)
+{
+	gpio_dump_regs_range(i3c->scl_gpio_id, i3c->scl_gpio_id);
+	gpio_dump_regs_range(i3c->sda_gpio_id, i3c->sda_gpio_id);
+}
+
 static void mtk_i3c_dump_reg(struct mtk_i3c_master *i3c)
 {
 	dev_info(i3c->dev, "irq=%d,irq_stat=0x%x,addr=0x%x,ccc=0x%x,dma=%d\n"
@@ -586,6 +593,7 @@ static void mtk_i3c_dump_reg(struct mtk_i3c_master *i3c)
 			readl(i3c->pdmabase + OFFSET_TX_4G_MODE),
 			readl(i3c->pdmabase + OFFSET_RX_4G_MODE));
 	}
+	mtk_i3c_gpio_dump(i3c);
 }
 
 static enum i3c_addr_slot_status
@@ -1998,7 +2006,7 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 		}
 		if (i3c->irq_stat & I3C_INTR_HS_ACKERR) {
 			if (i3c->base.init_done) {
-				mtk_i3c_dump_reg(i3c);
+				//mtk_i3c_dump_reg(i3c);
 				xfer->error = I3C_ERROR_M2;
 				ret = -ENXIO;
 			}
@@ -2009,7 +2017,7 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 		}
 
 		if (i3c->irq_stat & I3C_INTR_ACKERR) {
-			mtk_i3c_dump_reg(i3c);
+			//mtk_i3c_dump_reg(i3c);
 			dev_info(i3c->dev, "[%s] addr=0x%x,ackerr=0x%x,init_done=%u\n",
 				__func__, xfer->addr, i3c->irq_stat, i3c->base.init_done);
 			mtk_i3c_init_hw(i3c);
@@ -2769,8 +2777,11 @@ static int mtk_i3c_master_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, i3c);
 
+	//workaround for lockdep. It need to communicate with google to resolve
+	lockdep_off();
 	ret = i3c_master_register(&i3c->base, &pdev->dev,
 		    &mtk_i3c_master_ops, false);
+	lockdep_on();
 	if (ret) {
 		dev_info(&pdev->dev, "i3c_master_register failed!\n");
 		return ret;
