@@ -9346,6 +9346,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 						"mediatek,mt6991-disp-c3d";
 			reg = <0 0x32050000 0 0x1000>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_C3D0_PQ>;
+			bin-num = <9>;
 		};
 
 		disp_c3d1: disp-c3d1@32060000 {
@@ -9353,6 +9354,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 						"mediatek,mt6991-disp-c3d";
 			reg = <0 0x32060000 0 0x1000>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_C3D1_PQ>;
+			bin-num = <17>;
 		};
 
 		disp_c3d2: disp-c3d2@32070000 {
@@ -9360,6 +9362,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 						"mediatek,mt6991-disp-c3d";
 			reg = <0 0x32070000 0 0x1000>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_C3D0_PQ>;
+			bin-num = <9>;
 		};
 
 		disp_c3d3: disp-c3d3@32080000 {
@@ -9367,6 +9370,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 						"mediatek,mt6991-disp-c3d";
 			reg = <0 0x32080000 0 0x1000>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_C3D1_PQ>;
+			bin-num = <17>;
 		};
 
 		disp_aal0: disp-aal0@32030000 {
