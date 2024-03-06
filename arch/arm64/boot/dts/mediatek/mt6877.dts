@@ -6908,12 +6908,12 @@
 			<&topckgen_clk CLK_TOP_MFG_INTERNAL1>,
 			<&topckgen_clk CLK_TOP_MFGPLL4>,
 			<&mfgcfg_clk CLK_MFGCFG_BG3D>,
-			<&scpsys SCP_SYS_MFG0>,
-			<&scpsys SCP_SYS_MFG1>,
-			<&scpsys SCP_SYS_MFG2>,
-			<&scpsys SCP_SYS_MFG3>,
-			<&scpsys SCP_SYS_MFG4>,
-			<&scpsys SCP_SYS_MFG5>;
+			<&scpsys_clk SCP_SYS_MFG0>,
+			<&scpsys_clk SCP_SYS_MFG1>,
+			<&scpsys_clk SCP_SYS_MFG2>,
+			<&scpsys_clk SCP_SYS_MFG3>,
+			<&scpsys_clk SCP_SYS_MFG4>,
+			<&scpsys_clk SCP_SYS_MFG5>;
 		clock-names =
 			"clk_mux",          /* switch main/sub */
 			"clk_main_parent",  /* main pll freq */
