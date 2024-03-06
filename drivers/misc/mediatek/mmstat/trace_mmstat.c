@@ -252,17 +252,17 @@ static void mmstat_trace_buddyinfo(void)
 		if (populated_zone(zone)) {
 			unsigned long flags;
 			unsigned int order;
-			unsigned long buddyinfo[MAX_ORDER + 1] = {0};
+			unsigned long buddyinfo[MAX_ORDER + 2] = {0};
 
 			buddyinfo[0] = zone_idx(zone);
 			spin_lock_irqsave(&zone->lock, flags);
-			for (order = 0; order < MAX_ORDER; ++order)
+			for (order = 0; order <= MAX_ORDER; ++order)
 				buddyinfo[order + 1] =
 					zone->free_area[order].nr_free;
 			spin_unlock_irqrestore(&zone->lock, flags);
 
 			trace_mmstat_trace_buddyinfo((unsigned long *)buddyinfo,
-					MAX_ORDER + 1, MAX_ORDER + 1);
+					MAX_ORDER + 2, MAX_ORDER + 2);
 		}
 	}
 }
@@ -467,7 +467,7 @@ int mmstat_print_fmt(struct seq_file *m)
 			if (populated_zone(zone)) {
 				seq_puts(m, "mmstat_trace_buddyinfo: ");
 				seq_printf(m, "%s", zone->name);
-				for (order = 0; order < MAX_ORDER; ++order)
+				for (order = 0; order <= MAX_ORDER; ++order)
 					seq_printf(m, ",%d", order);
 				seq_putc(m, '\n');
 			}
