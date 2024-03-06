@@ -148,7 +148,7 @@ static void setupfw_work_handler(struct work_struct *work)
 {
 #if IS_ENABLED(CONFIG_MTK_QOS_FRAMEWORK)
 	struct qos_ipi_data qos_d;
-	int ret;
+	int ret = -1;
 
 	qos_d.cmd = QOS_IPI_SETUP_GPU_INFO;
 	qos_d.u.gpu_info.addr = (unsigned int)setupfw_data.phyaddr;
@@ -171,13 +171,14 @@ static void setupfw_work_handler(struct work_struct *work)
 		pr_info("%s: sspm_ipi_to_scmi success! (%d)\n", __func__, ret);
 
 #else
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
 	ret = qos_ipi_to_sspm_command(&qos_d, 4);
 
 	if (ret == 1)
 		pr_info("%s: sspm_ipi success! (%d)\n", __func__, ret);
 	else
 		pr_info("%s: sspm_ipi fail (%d)\n", __func__, ret);
-
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
 #endif /* MTK_SCMI */
 	gpu_bm_inited = 1;
 	pr_debug("%s: addr:0x%x, addr_hi:0x%x, ret:%d\n",

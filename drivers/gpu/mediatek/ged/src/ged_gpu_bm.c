@@ -60,10 +60,12 @@ static void __iomem *_gpu_bm_of_ioremap(void)
 		of_node_put(node);
 		/* get sysram address from "reg" property then translate into a resource */
 		ret = of_address_to_resource(node, 0, &res);
-		rec_phys_addr = res.start;
 		if (ret)
 			GED_LOGE("[GPU_QOS]Cannot get physical memory addr");
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
+		rec_phys_addr = res.start;
 		GED_LOGI("[GPU_QOS] get physical memory addr: %x", (unsigned int)rec_phys_addr);
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
 	}
 
 	return mapped_addr;
@@ -71,6 +73,7 @@ static void __iomem *_gpu_bm_of_ioremap(void)
 
 static void check_sysram_support(void)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
 	struct device_node *gpu_qos_node = NULL;
 	int ret = 0;
 
@@ -84,6 +87,7 @@ static void check_sysram_support(void)
 			GED_LOGI("[GPU_QOS] sysram not support");
 	}
 	GED_LOGI("[GPU_QOS] sysram support: %d", g_qos_sysram_support);
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
 }
 
 static void get_rec_addr(void)
@@ -121,7 +125,7 @@ static void get_rec_addr(void)
 		gpu_info_ref = (struct v1_data *)(uintptr_t)rec_virt_addr;
 	}
 
-#endif
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
 }
 
 int mtk_bandwidth_resource_init(void)
@@ -146,7 +150,7 @@ int mtk_bandwidth_resource_init(void)
 	is_gpu_bm_inited = 1;
 
 	return err;
-#endif
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
 	return -1;
 }
 EXPORT_SYMBOL(mtk_bandwidth_resource_init);
