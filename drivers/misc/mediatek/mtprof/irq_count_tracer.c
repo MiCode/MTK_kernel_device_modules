@@ -161,6 +161,7 @@ struct irq_mon_desc {
 	unsigned int irq;
 	unsigned int __percpu (*count)[2];
 	u64 __percpu *time;
+	unsigned int __percpu *long_count;
 	aee_callback_t fn;
 };
 
@@ -186,6 +187,9 @@ static struct irq_mon_desc *irq_mon_desc_alloc(unsigned int irq)
 	desc->time = alloc_percpu_gfp((*desc->time), GFP_ATOMIC);
 	if (!desc->time)
 		goto out_free_count;
+	desc->long_count = alloc_percpu_gfp((*desc->long_count), GFP_ATOMIC);
+	if (!desc->long_count)
+		goto out_free_time;
 	desc->irq = irq;
 	/*
 	 * This entry might be stored by concurrent irq_mon_desc_alloc()
@@ -196,6 +200,8 @@ static struct irq_mon_desc *irq_mon_desc_alloc(unsigned int irq)
 	if (!err)
 		goto out;
 
+	free_percpu(desc->long_count);
+out_free_time:
 	free_percpu(desc->time);
 out_free_count:
 	free_percpu(desc->count);
@@ -214,8 +220,12 @@ void irq_mon_account_irq_time(u64 time, int irq)
 	struct irq_mon_desc *desc = irq_mon_desc_lookup(irq);
 
 	desc = (desc) ? : irq_mon_desc_alloc(irq);
-	if (desc)
-		__this_cpu_add(*desc->time, time);
+	if (!desc)
+		return;
+
+	__this_cpu_add(*desc->time, time);
+	if (time >= 5000000ULL)
+		__this_cpu_inc(*desc->long_count);
 }
 
 static int irq_time_proc_show(struct seq_file *m, void *v)
@@ -228,6 +238,22 @@ static int irq_time_proc_show(struct seq_file *m, void *v)
 		seq_printf(m, "%u", (unsigned int)index);
 		for_each_possible_cpu(cpu)
 			seq_printf(m, " %llu", *per_cpu_ptr(desc->time, cpu));
+		seq_putc(m, '\n');
+	}
+	return 0;
+}
+
+static int irq_long_count_proc_show(struct seq_file *m, void *v)
+{
+	unsigned long index;
+	struct irq_mon_desc *desc;
+	int cpu;
+
+	xa_for_each(&imdesc_xa, index, desc) {
+		seq_printf(m, "%u", (unsigned int)index);
+		for_each_possible_cpu(cpu)
+			seq_printf(m, " %u",
+				   *per_cpu_ptr(desc->long_count, cpu));
 		seq_putc(m, '\n');
 	}
 	return 0;
@@ -581,6 +607,8 @@ void irq_count_tracer_exit(void)
 	if (irq_count_task)
 		kthread_stop(irq_count_task);
 	xa_for_each(&imdesc_xa, index, desc) {
+		free_percpu(desc->long_count);
+		free_percpu(desc->time);
 		free_percpu(desc->count);
 		kfree(desc);
 	}
@@ -616,6 +644,8 @@ void irq_count_tracer_proc_init(struct proc_dir_entry *parent)
 	struct proc_dir_entry *dir;
 
 	proc_create_single("irq_time", 0444, parent, irq_time_proc_show);
+	proc_create_single("irq_lcount", 0444, parent,
+			   irq_long_count_proc_show);
 	dir = proc_mkdir("irq_count_tracer", parent);
 	if (!dir)
 		return;
