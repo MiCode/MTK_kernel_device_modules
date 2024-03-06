@@ -451,6 +451,12 @@ int pid_sysui;
 int pid_sf;
 static u64 eb_ullTimeStamp;
 
+/* LB async ratio */
+#define POLICY_FRAME_NUM 10
+static int g_policy_frame_his[POLICY_FRAME_NUM];
+static int g_policy_his_idx;
+static bool g_stable_lb;
+
 /* ------------------------------------------------------------------- */
 void (*ged_kpi_output_gfx_info2_fp)(long long t_gpu, unsigned int cur_freq
 	, unsigned int cur_max_freq, u64 ulID);
@@ -1326,6 +1332,25 @@ static GED_BOOL ged_kpi_check_other_producer_func(unsigned long ulID,
 }
 
 /* ------------------------------------------------------------------- */
+/* Determine whether the past 10 frames are LB */
+/* ------------------------------------------------------------------- */
+static bool check_stable_LB(int current_policy)
+{
+	int idx = 0;
+
+	g_policy_frame_his[g_policy_his_idx++] = current_policy;
+	if (g_policy_his_idx >= POLICY_FRAME_NUM)
+		g_policy_his_idx = 0;
+
+	while (idx < POLICY_FRAME_NUM) {
+		// return if frame-based
+		if (g_policy_frame_his[idx++] == 0)
+			return false;
+	}
+	return true;
+}
+
+/* ------------------------------------------------------------------- */
 /* for FB-base/LB-base mode switch */
 /* ------------------------------------------------------------------- */
 static void ged_kpi_set_fallback_mode(struct GED_KPI_HEAD *psHead)
@@ -1336,6 +1361,7 @@ static void ged_kpi_set_fallback_mode(struct GED_KPI_HEAD *psHead)
 	static unsigned int diff_times;
 	static struct GED_KPI_HEAD *candidate_head;
 	int isSmallFrame = 0;
+	int his_lb_num = 0;
 
 	spin_lock_irqsave(&gs_hashtableLock, ulIRQFlags);
 	g_is_multiproducer = false;
@@ -1401,6 +1427,8 @@ static void ged_kpi_set_fallback_mode(struct GED_KPI_HEAD *psHead)
 		is_loading_based = 1; /*switch LB*/
 	/*else keep pre_state*/
 	ged_eb_dvfs_task(EB_UPDATE_SMALL_FRAME, isSmallFrame);
+	g_stable_lb = check_stable_LB(is_loading_based);
+	ged_eb_dvfs_task(EB_UPDATE_STABLE_LB, g_stable_lb);
 }
 
 static int ged_kpi_get_fallback_mode(void)
@@ -3242,3 +3270,8 @@ GED_ERROR ged_kpi_set_gift_target_pid(int pid)
 	return GED_OK;
 }
 EXPORT_SYMBOL(ged_kpi_set_gift_target_pid);
+/* ------------------------------------------------------------------- */
+bool ged_kpi_get_stable_lb(void)
+{
+	return g_stable_lb;
+}

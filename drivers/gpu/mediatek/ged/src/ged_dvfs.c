@@ -100,7 +100,7 @@ static unsigned int g_cust_boost_freq_id;
 #define ENABLE_ASYNC_RATIO 1
 #define ASYNC_LOG_LEVEL (g_async_log_level|g_default_log_level)
 #define DEFAULT_ASYNC_DIFF 3
-#define LB_ASYNC_PERF_DIFF_TH 130
+#define LB_ASYNC_PERF_DIFF_TH 140
 
 /**
  * Define some global variable for async ratio.
@@ -228,7 +228,7 @@ static int g_lb_last_opp;
 static int g_step_size_by_platform[3];
 static int g_ultra_step_size_by_platform[3];
 static int g_step_size_freq_th[3] = {300000, 600000, 900000};
-static int g_async_pmodel_ver = 1;
+static int g_async_pmodel_ver = 2;
 static int g_async_opp_diff;
 static int g_lb_async_perf_diff_th = LB_ASYNC_PERF_DIFF_TH;
 static int g_enable_lb_async;
@@ -670,7 +670,7 @@ static void gpu_util_history_query_specific_loading(
 	unsigned int his_loading = 0;
 	int pre_idx = cidx - MAX_SLIDE_WINDOW_SIZE;
 	int his_idx = 0;
-	int max_mcu_th = 35;
+	int max_mcu_th = 35, max_iter_th = 10;
 	int i = 0;
 
 	for (i = cidx; i > pre_idx; i--) {
@@ -700,6 +700,7 @@ static void gpu_util_history_query_specific_loading(
 
 		// check if mcu > iter
 		if (util_ex->util_mcu >= max_mcu_th &&
+			util_ex->util_iter >= max_iter_th &&
 			util_ex->util_mcu > util_ex->util_iter)
 			*max_is_mcu += 1;
 
@@ -1232,6 +1233,7 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 		if (ui32NewFreqID > ui32FloorID)
 			ui32NewFreqID = ui32FloorID;
 
+		ged_eb_dvfs_task(EB_UPDATE_DESIRE_FREQ_ID, ui32NewFreqID);
 		g_ulCommitFreq = ged_get_freq_by_idx(ui32NewFreqID);
 		ged_commit_freq = ui32NewFreq;
 		ged_commit_opp_freq = ged_get_freq_by_idx(ui32NewFreqID);
@@ -1338,6 +1340,7 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	if (topNewFreqID > ui32FloorID)
 		topNewFreqID = ui32FloorID;
 
+	ged_eb_dvfs_task(EB_UPDATE_DESIRE_FREQ_ID, stackNewFreqID);
 	g_ulCommitFreq = ged_get_freq_by_idx(stackNewFreqID);
 	ged_commit_freq = ui32NewFreq;
 	ged_commit_opp_freq = ged_get_freq_by_idx(stackNewFreqID);
@@ -1832,6 +1835,19 @@ static unsigned int calculate_performance(struct async_counter *counters, unsign
 			counters->compute * async_coeff_1[8]) / ratio / ratio * RATIO_SCAL * RATIO_SCAL;
 
 		perf += counters->gpuactive * async_coeff_1[10];
+	} else if (g_async_pmodel_ver == 2) {
+		perf = (counters->mcu * async_coeff_2[0] +
+			counters->compute * async_coeff_2[4] +
+			counters->l2ext * async_coeff_2[9]) * ratio / RATIO_SCAL +
+			(counters->mcu * async_coeff_2[1] +
+			counters->compute * async_coeff_2[5] +
+			counters->l2ext * async_coeff_2[7]) * ratio * ratio / RATIO_SCAL / RATIO_SCAL +
+			(counters->iter * async_coeff_2[3]) / ratio * RATIO_SCAL +
+			(counters->mcu * async_coeff_2[2] +
+			counters->compute * async_coeff_2[6] +
+			counters->l2ext * async_coeff_2[8]) / ratio / ratio * RATIO_SCAL * RATIO_SCAL;
+
+		perf += counters->gpuactive * async_coeff_2[10];
 	}
 
 	if (perf <= 0) {
@@ -2517,7 +2533,7 @@ static int ged_determine_lb_async(int gpu_target)
 	unsigned int max_mcu = 0, avg_mcu = 0, max_is_mcu = 0;
 	unsigned int max_mcu_th = 50, avg_mcu_th = 25;
 
-	if (g_enable_lb_async == 0)
+	if (g_enable_lb_async == 0 || !ged_kpi_get_stable_lb())
 		return 0;
 
 	// Not apply if fps <= 60
@@ -3883,6 +3899,10 @@ int ged_dvfs_get_async_perf_model(void)
 void ged_dvfs_set_async_perf_model(int version)
 {
 	g_async_pmodel_ver = version;
+
+	ged_eb_dvfs_task(EB_ASYNC_PARAM, g_async_pmodel_ver);
+	// Send ipi to trigger eb reinit
+	ged_eb_dvfs_task(EB_REINIT, EB_ASYNC_RATIO_ENABLE);
 }
 
 int ged_dvfs_get_lb_async_ratio_support(void)
