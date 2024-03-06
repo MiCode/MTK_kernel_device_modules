@@ -14640,7 +14640,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<0 0x31ba0100 0 0x4>, /* mbox2 set */
 			<0 0x31ba010c 0 0x4>, /* mbox2 clr */
 			<0 0x31a70028 0 0x4>, /* mbox2 init */
-			<0 0x31bd0000 0 0x1000>; /* cfg ap*/
+			<0 0x31bd0000 0 0x1000>, /* cfg ap*/
+			<0 0x31a70040 0 0x10>; /* cfg sec gpr */
 
 		reg-names = "vcp_sram_base",
 			"vcp_bus_tracker",
@@ -14664,7 +14665,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			"mbox2_set",
 			"mbox2_clr",
 			"mbox2_init",
-			"vcp_cfgreg_ap";
+			"vcp_cfgreg_ap",
+			"vcp_sec_gpr";
 
 		interrupts = <GIC_SPI 787 IRQ_TYPE_LEVEL_HIGH 0>,
 			<GIC_SPI 788 IRQ_TYPE_LEVEL_HIGH 0>,
