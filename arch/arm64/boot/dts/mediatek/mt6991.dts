@@ -9349,6 +9349,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<0 0x31b501b8 0 0x4>,             /* hfrp rtff pwr con */
 				<0 0x31bd0070 0 0x4>,             /* hfrp DISP_SW_VOTE_SET */
 				<0 0x31bd0074 0 0x4>,             /* hfrp DISP_SW_VOTE_CLR */
+				<0 0x31bd0078 0 0x4>,             /* hfrp DISP_GENERAL_CTRL_SET */
+				<0 0x31bd007c 0 0x4>,             /* hfrp DISP_GENERAL_CTRL_CLR */
 				<0 0x31a912b4 0 0x4>,             /* hfrp_dvfsrc_disp_debug_sta_6 */
 				<0 0x31ac1e50 0 0x4>,             /* hfrp sub pm DISP_VCORE bit29, or 0x31b50100 bit24*/
 				<0 0x3e800100 0 0x10>,            /* VDISP_AO_CG_CON0 */
@@ -9365,6 +9367,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"rtff_pwr_con",
 				"disp_sw_vote_set",
 				"disp_sw_vote_clr",
+				"vcore_mode_set",
+				"vcore_mode_clr",
 				"vdisp_dvfsrc",
 				"disp_vcore_pwr_chk",
 				"vdisp_ao_cg_con",
