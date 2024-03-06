@@ -4208,7 +4208,8 @@ _mtk_crtc_lye_addon_module_connect(
 					module = &addon_module[1];
 
 				if (priv->data->mmsys_id == MMSYS_MT6768 ||
-					priv->data->mmsys_id == MMSYS_MT6761) {
+					priv->data->mmsys_id == MMSYS_MT6761 ||
+					priv->data->mmsys_id == MMSYS_MT6885) {
 					if (addon_module[0]->type == ADDON_BETWEEN)
 						mtk_addon_connect_between(crtc, ddp_mode, addon_module[0],
 									&addon_config, cmdq_handle);
@@ -12172,8 +12173,7 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 
 #ifndef DRM_CMDQ_DISABLE
 	if (priv->data->mmsys_id == MMSYS_MT6985 ||
-		priv->data->mmsys_id == MMSYS_MT6989 ||
-		priv->data->mmsys_id == MMSYS_MT6885) {
+		priv->data->mmsys_id == MMSYS_MT6989) {
 		/*Set EVENT_GCED_EN EVENT_GCEM_EN*/
 		writel(0x3, mtk_crtc->config_regs +
 				DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL);
