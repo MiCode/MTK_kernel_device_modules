@@ -878,6 +878,14 @@ mtk_sec_heap_region_map_dma_buf(struct dma_buf_attachment *attachment,
 		return table;
 	}
 
+#if !IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+	if (is_disable_map_sec()) {
+		pr_debug("%s : Secure buffer mapping not supported, dev:%s\n", __func__,
+			 dev_name(attachment->dev));
+		return ERR_PTR(-EINVAL);
+	}
+#endif
+
 	buffer = dmabuf->priv;
 	sec_heap = sec_heap_region_get(buffer->heap);
 	if (!sec_heap) {
