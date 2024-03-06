@@ -1000,8 +1000,8 @@ static int __init mtk_scheduler_init(void)
 		pr_info("register android_rvh_tick_entry failed\n");
 
 
-	//ret = register_trace_android_vh_set_wake_flags(
-	//		mtk_set_wake_flags, NULL);
+	ret = register_trace_android_vh_set_wake_flags(
+			mtk_set_wake_flags, NULL);
 	if (ret)
 		pr_info("register android_vh_set_wake_flags failed\n");
 
