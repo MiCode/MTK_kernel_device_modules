@@ -12,6 +12,7 @@
 #include <linux/usb/typec.h>
 #include <linux/usb/typec_mux.h>
 #include <linux/usb/typec_dp.h>
+#include <linux/phy/phy.h>
 
 #if IS_ENABLED(CONFIG_MTK_USB_TYPEC_MUX)
 #include "mux_switch.h"
@@ -60,12 +61,42 @@ static inline void uds_clrbits(void __iomem *base, u32 bits)
 	writel((tmp & ~(bits)), addr);
 }
 
+#define PHY_MODE_NORMAL	7
+#define PHY_MODE_FLIP	8
+
+static int notify_tcpc_orientation(struct usb_dp_selector *uds,
+				enum typec_orientation orientation)
+{
+	struct phy *phy;
+	int mode = 0;
+	int ret;
+
+	phy = phy_get(uds->dev, "usb3-phy");
+	if (IS_ERR_OR_NULL(phy)) {
+		dev_info(uds->dev, "failed to get usb3-phy\n");
+		return -ENODEV;
+	}
+
+	if (orientation == TYPEC_ORIENTATION_NORMAL)
+		mode = PHY_MODE_NORMAL;
+	else if (orientation == TYPEC_ORIENTATION_REVERSE)
+		mode = PHY_MODE_FLIP;
+
+	ret = phy_set_mode_ext(phy, PHY_MODE_USB_DEVICE, mode);
+	if (ret)
+		dev_info(uds->dev, "failed to set phy ext mode\n");
+	phy_put(uds->dev, phy);
+	return ret;
+}
+
 static int usb_dp_selector_switch_set(struct typec_switch_dev *sw,
 			      enum typec_orientation orientation)
 {
 	struct usb_dp_selector *uds = typec_switch_get_drvdata(sw);
 
 	dev_info(uds->dev, "%s %d\n", __func__, orientation);
+
+	notify_tcpc_orientation(uds, orientation);
 
 	switch (orientation) {
 	case TYPEC_ORIENTATION_NONE:
