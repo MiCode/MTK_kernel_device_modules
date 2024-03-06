@@ -152,15 +152,11 @@ static unsigned long cpu_util(int cpu, struct task_struct *p, int dst_cpu, int b
 static inline unsigned long task_util(struct task_struct *p);
 static inline unsigned long _task_util_est(struct task_struct *p);
 static int cpu_loading_thres = 85;
-static int fps_drop_vip_throttle = 99;
-static int fps_drop_vip_enable;
 static int tt_vip_enable = 1;
 static struct cpu_info ci;
 static bool win_vip_status;
 static bool touch_vip_status;
 static u64 checked_timestamp;
-static pid_t cam_hal_tgid = -1;
-static pid_t cam_svr_tgid = -1;
 static int max_cpus;
 static struct cpu_time *cur_wall_time, *cur_idle_time,
 						*prev_wall_time, *prev_idle_time;
@@ -170,7 +166,13 @@ static struct task_struct *ts_inputDispatcher;
 atomic_long_t inputDispatcher_ptr;
 static int last_ts_inputDispatcher_tgid;
 static int touch_countdown_timer;
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
+static int fps_drop_vip_throttle = 99;
+static int fps_drop_vip_enable;
+static pid_t cam_hal_tgid = -1;
+static pid_t cam_svr_tgid = -1;
 static int fps_drop_countdown_timer;
+#endif
 
 static struct win_info_tbl wi_tbl = { .wi = NULL, .size = 0 };
 static struct win_info_tbl last_wi_tbl = { .wi = NULL, .size = 0 };
@@ -340,6 +342,7 @@ static int enable_tt_vip(const char *buf, const struct kernel_param *kp)
 				unset_tgid_basic_vip(last_wi_tbl.wi[tbl_i].tgid);
 			}
 		}
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
 		if (cam_hal_tgid > 0) {
 			unset_task_basic_vip(cam_hal_tgid);
 			unset_tgid_basic_vip(cam_hal_tgid);
@@ -350,6 +353,7 @@ static int enable_tt_vip(const char *buf, const struct kernel_param *kp)
 			unset_tgid_basic_vip(cam_svr_tgid);
 			cam_svr_tgid = -1;
 		}
+#endif
 		if (touch_vip_status) {
 			touch_vip_status = false;
 			unset_task_basic_vip(last_ts_inputDispatcher_tgid);
@@ -377,10 +381,13 @@ static void tt_vip_handler(struct work_struct *work)
 	bool need_set = false;
 	bool cur_qualified = false;
 	bool content_changed = false;
-	bool status_3rd_cam = false;
 	bool touching = false;
-	struct task_struct *p;
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
+	bool status_3rd_cam = false;
 	bool fps_drop = false;
+#endif
+	struct task_struct *p;
+
 
 
 	// get cpu_loading from magt
@@ -394,13 +401,16 @@ static void tt_vip_handler(struct work_struct *work)
 	avg_cpu_loading /= max_cpus;
 
 	cur_qualified = avg_cpu_loading >= cpu_loading_thres;
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
 	status_3rd_cam = get_cam_status_for_task_turbo();
+#endif
 	if (touch_countdown_timer > 0) {
 		touch_countdown_timer--;
 		touching = true;
 		p = (struct task_struct *)atomic_long_read(&inputDispatcher_ptr);
 	}
 	mutex_lock(&wi_tbl_lock);
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
 	if (fps_drop_vip_enable > 0) {
 		if (fps_drop_countdown_timer > 0) {
 			cur_qualified |= true;
@@ -418,6 +428,7 @@ static void tt_vip_handler(struct work_struct *work)
 	} else {
 		fps_drop_countdown_timer = 0;
 	}
+#endif
 	if ((!win_vip_status && !cur_qualified) || (last_wi_tbl.size == 0 && wi_tbl.size == 0) ||
 		(wi_tbl.size == 0 && !win_vip_status) || (last_wi_tbl.size == 0 && !cur_qualified))
 		goto out_unlock;
@@ -448,6 +459,7 @@ static void tt_vip_handler(struct work_struct *work)
 			unset_tgid_basic_vip(last_wi_tbl.wi[tbl_i].tgid);
 		}
 	}
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
 	if (cam_hal_tgid > 0 && (need_clean || !status_3rd_cam)) {
 		unset_task_basic_vip(cam_hal_tgid);
 		unset_tgid_basic_vip(cam_hal_tgid);
@@ -458,6 +470,7 @@ static void tt_vip_handler(struct work_struct *work)
 		unset_tgid_basic_vip(cam_svr_tgid);
 		cam_svr_tgid = -1;
 	}
+#endif
 	if (touch_vip_status && (need_clean || !touching)) {
 		touch_vip_status = false;
 		unset_task_basic_vip(last_ts_inputDispatcher_tgid);
@@ -469,6 +482,7 @@ static void tt_vip_handler(struct work_struct *work)
 			set_task_basic_vip(wi_tbl.wi[tbl_i].tgid);
 			set_tgid_basic_vip(wi_tbl.wi[tbl_i].tgid);
 		}
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
 		if (status_3rd_cam) {
 			if (cam_hal_tgid <= 0)
 				cam_hal_tgid = get_cam_hal_pid_for_task_turbo();
@@ -483,6 +497,7 @@ static void tt_vip_handler(struct work_struct *work)
 				set_tgid_basic_vip(cam_svr_tgid);
 			}
 		}
+#endif
 		if (touching) {
 			touch_vip_status = true;
 			set_task_basic_vip(p->tgid);
@@ -496,8 +511,10 @@ out_unlock:
 	mutex_unlock(&wi_tbl_lock);
 }
 module_param(cpu_loading_thres, int, 0644);
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
 module_param(fps_drop_vip_throttle, int, 0644);
 module_param(fps_drop_vip_enable, int, 0644);
+#endif
 
 static void find_inputDispatcher(void)
 {
