@@ -2249,7 +2249,9 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"top_active,top_idle_1,top_idle_2,top_off,",
 				"smmu_active,smmu_idle,smmu_off,",
 				"stack_active,stack_idle,stack_off,",
-				"other_exec_core_active,other_gpu_active_2,other_gpu_active_3";
+				"other_exec_core_active,other_gpu_active_2,other_gpu_active_3,",
+				"dcm,clock_gating,",
+				"vcore_req,vcore_req_and_no_other";
 			node-106 = "SSPM_VCORE_DVFS__DDR",
 				"EMI_MON,QOS_B,HR_BW";
 			node-107 = "SSPM_VCORE_DVFS__VCORE",
