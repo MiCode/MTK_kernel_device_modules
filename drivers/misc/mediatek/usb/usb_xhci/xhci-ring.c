@@ -1917,7 +1917,7 @@ static void handle_port_status(struct xhci_hcd *xhci,
 
 	if (hcd->speed >= HCD_USB3 &&
 	    (portsc & PORT_PLS_MASK) == XDEV_INACTIVE) {
-		slot_id = xhci_find_slot_id_by_port(hcd, xhci, hcd_portnum + 1);
+		slot_id = xhci_find_slot_id_by_port_(hcd, xhci, hcd_portnum + 1);
 		if (slot_id && xhci->devs[slot_id])
 			xhci->devs[slot_id]->flags |= VDEV_PORT_ERROR;
 	}
@@ -1977,7 +1977,7 @@ static void handle_port_status(struct xhci_hcd *xhci,
 		 * so the roothub behavior is consistent with external
 		 * USB 3.0 hub behavior.
 		 */
-		slot_id = xhci_find_slot_id_by_port(hcd, xhci, hcd_portnum + 1);
+		slot_id = xhci_find_slot_id_by_port_(hcd, xhci, hcd_portnum + 1);
 		if (slot_id && xhci->devs[slot_id])
 			xhci_ring_device(xhci, slot_id);
 		if (bus_state->port_remote_wakeup & (1 << hcd_portnum)) {

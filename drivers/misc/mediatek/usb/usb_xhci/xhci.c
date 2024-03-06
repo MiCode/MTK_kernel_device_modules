@@ -796,7 +796,7 @@ static void xhci_disable_hub_port_wake(struct xhci_hcd *xhci,
 
 	for (i = 0; i < rhub->num_ports; i++) {
 		portsc = readl(rhub->ports[i]->addr);
-		t1 = xhci_port_state_to_neutral(portsc);
+		t1 = xhci_port_state_to_neutral_(portsc);
 		t2 = t1;
 
 		/* clear wake bits if do_wake is not set */

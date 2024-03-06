@@ -2262,8 +2262,8 @@ unsigned long xhci_get_resuming_ports(struct usb_hcd *hcd);
 #define	xhci_get_resuming_ports	NULL
 #endif	/* CONFIG_PM */
 
-u32 xhci_port_state_to_neutral(u32 state);
-int xhci_find_slot_id_by_port(struct usb_hcd *hcd, struct xhci_hcd *xhci,
+u32 xhci_port_state_to_neutral_(u32 state);
+int xhci_find_slot_id_by_port_(struct usb_hcd *hcd, struct xhci_hcd *xhci,
 		u16 port);
 void xhci_ring_device(struct xhci_hcd *xhci, int slot_id);
 
