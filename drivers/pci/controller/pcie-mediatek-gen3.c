@@ -1997,6 +1997,11 @@ static int __maybe_unused mtk_pcie_turn_off_link(struct mtk_pcie_port *port)
 
 		val = readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG);
 		dev_info(port->dev, "Can't enter L2 state, LTSSM=%#x\n", val);
+
+		/* Dump WAKE and P2 signal for clarify the problem quickly */
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0xc, 0xc, 0xc, 0xc));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x45, 0x48, 0x4d, 0x59));
+
 		return ret;
 	}
 
