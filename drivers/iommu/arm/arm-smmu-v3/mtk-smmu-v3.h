@@ -522,6 +522,7 @@ struct mtk_smmu_data {
 	bool				axslc;
 	u32				*smi_com_base;
 	u32				smi_com_base_cnt;
+	bool				irq_disable;
 	u32				irq_cnt;
 	unsigned long			irq_first_jiffies;
 	struct timer_list		irq_pause_timer;
