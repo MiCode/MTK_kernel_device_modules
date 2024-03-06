@@ -119,6 +119,7 @@ struct scp_domain {
 	struct regulator *supply;
 	struct regmap *hwv_regmap;
 	bool rtff_flag;
+	bool is_on;
 };
 
 struct scp_ctrl_reg {
