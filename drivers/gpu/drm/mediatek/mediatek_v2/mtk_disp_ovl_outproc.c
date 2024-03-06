@@ -263,6 +263,7 @@ static void mtk_ovl_outproc_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 	unsigned int value = 0, mask = 0;
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
+	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 	cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_REG_OVL_OUTPROC_RST, BIT(0), BIT(0));
 	cmdq_pkt_write(handle, comp->cmdq_base,
@@ -291,13 +292,12 @@ static void mtk_ovl_outproc_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 			       value, mask);
 	} // Aaron_check need to check with DE
 
-	DDPINFO("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
-
+	DDPDBG("%s-\n", __func__);
 }
 
 static void mtk_ovl_outproc_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
-	DDPINFO("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
+	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_OUTPROC_INTEN, 0, ~0);
@@ -478,14 +478,14 @@ static void mtk_ovl_outproc_addon_config(struct mtk_ddp_comp *comp,
 
 static void mtk_ovl_outproc_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, const u32 idx)
 {
-	DDPINFO("%s,%d\n", __func__, __LINE__);
+	DDPINFO("%s+\n", __func__);
 }
 
 static void mtk_ovl_outproc_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			    enum mtk_ddp_comp_id prev,
 			    enum mtk_ddp_comp_id next)
 {
-	DDPINFO("%s,%d\n", __func__, __LINE__);
+	DDPINFO("%s+\n", __func__);
 }
 
 static int mtk_ovl_outproc_golden_setting(struct mtk_ddp_comp *comp,
@@ -978,7 +978,7 @@ static int mtk_disp_ovl_outproc_probe(struct platform_device *pdev)
 	int ret, len;
 	const __be32 *ranges = NULL;
 
-	DDPINFO("%s+\n", __func__);
+	DDPDBG("%s+\n", __func__);
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -991,7 +991,6 @@ static int mtk_disp_ovl_outproc_probe(struct platform_device *pdev)
 		return comp_id;
 	}
 
-	DDPINFO("%s comp_id:%d\n", __func__, comp_id);
 
 	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
 				&mtk_disp_ovl_outproc_funcs);
@@ -1037,10 +1036,8 @@ static int mtk_disp_ovl_outproc_probe(struct platform_device *pdev)
 		mtk_ddp_comp_pm_disable(&priv->ddp_comp);
 	}
 
-	DDPINFO("%s-\n", __func__);
+	DDPDBG("%s-\n", __func__);
 	return ret;
-
-	return 0;
 }
 
 static int mtk_disp_ovl_outproc_remove(struct platform_device *pdev)
