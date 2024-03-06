@@ -14,6 +14,7 @@ struct mtk_disp_spr_tile_overhead_v {
 	unsigned int overhead_v;
 	unsigned int comp_overhead_v;
 };
+int mtk_spr_check_postalign_status(struct mtk_drm_crtc *mtk_crtc);
 
 enum SPR_IP_TYPE {
 	DISP_MTK_SPR = 0,
