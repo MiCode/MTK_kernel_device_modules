@@ -145,8 +145,10 @@
 			spr0 = &disp_spr0;
 			postalign0 = &disp_postalign0;
 			oddmr0 = &disp_oddmr0;
-			rsz0 = &disp_rsz0;
-			rsz1 = &disp_rsz1;
+			mdp-rsz0 = &disp_rsz0;
+			mdp-rsz1 = &disp_rsz1;
+			mdp-rsz2 = &ovl0_rsz0;
+			mdp-rsz4 = &ovl1_rsz0;
 			postmask0 = &disp_postmask0;
 			postmask1 = &disp_postmask1;
 			dsc0 = &disp_dsc_wrap0;
@@ -8330,7 +8332,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<1>, /*MTK_DRM_OPT_MML_IR*/
 				<0>, /*MTK_DRM_OPT_DUAL_TE*/
 				<0>, /*MTK_DRM_OPT_RES_SWITCH*/
-				<0>, /*MTK_DRM_OPT_RES_SWITCH_ON_AP*/
+				<1>, /*MTK_DRM_OPT_RES_SWITCH_ON_AP*/
 				<0>, /*MTK_DRM_OPT_PREFETCH_TE*/
 				<0>, /*MTK_DRM_OPT_VIDLE_APSRC_OFF*/
 				<0>, /*MTK_DRM_OPT_VIDLE_DSI_PLL_OFF*/
@@ -9627,16 +9629,30 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 		disp_rsz0: disp-rsz0@321a0000 {
 			compatible = "mediatek,disp_rsz0",
-					"mediatek,mt6991-disp-rsz";
+					"mediatek,mt6991-disp-mdp-rsz";
 			reg = <0 0x321a0000 0 0x1000>;
 			clocks = <&dispsys_config_clk CLK_MM_MDP_RSZ0_DISP>;
 		};
 
 		disp_rsz1: disp-rsz1@321b0000 {
 			compatible = "mediatek,disp_rsz1",
-					"mediatek,mt6991-disp-rsz";
+					"mediatek,mt6991-disp-mdp-rsz";
 			reg = <0 0x321b0000 0 0x1000>;
 			clocks = <&dispsys_config_clk CLK_MM_MDP_RSZ1_DISP>;
+		};
+
+		ovl0_rsz0: ovl-rsz0@329d0000 {
+			compatible = "mediatek,ovl0_rsz0",
+				"mediatek,mt6991-disp-mdp-rsz";
+			reg = <0 0x329d0000 0 0x1000>;
+			clocks = <&ovlsys_config_clk CLK_OVL_MDP_RSZ0_DISP>;
+		};
+
+		ovl1_rsz0: ovl1-rsz0@32dd0000 {
+			compatible = "mediatek,ovl1_mdp_rsz0",
+				"mediatek,mt6991-disp-mdp-rsz";
+			reg = <0 0x32dd0000 0 0x1000>;
+			clocks = <&ovlsys1_config_clk CLK_OVL1_OVL_MDP_RSZ0_DISP>;
 		};
 
 		disp_postmask0: disp-postmask0@32180000 {
