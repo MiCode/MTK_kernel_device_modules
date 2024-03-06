@@ -218,12 +218,6 @@ static int enable(struct bus_tracer_plt *plt, unsigned char force_enable,
 		writel(plt->tracer[i].at_id, plt->tracer[i].base +
 				BUS_TRACE_ATID);
 
-		writel(0x1, plt->tracer[i].base + BUS_TRACE_CON_SYNC_SET);
-
-		ret = readl(plt->tracer[i].base + BUS_TRACE_CON_SYNC_STATUS);
-		while (0 == (ret & 0x1))
-			ret = readl(plt->tracer[i].base + BUS_TRACE_CON_SYNC_STATUS);
-
 		/* enable tracer */
 		if (plt->tracer[i].enabled) {
 			ret = readl(plt->tracer[i].base + BUS_TRACE_CON);
