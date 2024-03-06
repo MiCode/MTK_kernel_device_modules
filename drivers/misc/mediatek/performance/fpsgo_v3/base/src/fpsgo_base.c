@@ -717,6 +717,7 @@ void fpsgo_reset_attr(struct fpsgo_boost_attr *boost_attr)
 		boost_attr->expected_fps_margin_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->quota_v2_diff_clamp_min_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->quota_v2_diff_clamp_max_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->limit_min_cap_target_t_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->aa_b_minus_idle_t_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->limit_cfreq2cap_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->limit_rfreq2cap_by_pid = BY_PID_DEFAULT_VAL;
@@ -1051,6 +1052,7 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.expected_fps_margin_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.quota_v2_diff_clamp_min_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.quota_v2_diff_clamp_max_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.limit_min_cap_target_t_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.aa_b_minus_idle_t_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.limit_cfreq2cap_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.limit_rfreq2cap_by_pid == BY_PID_DEFAULT_VAL &&
@@ -2684,6 +2686,63 @@ void fpsgo_check_jank_detection_info_status(void)
 	}
 }
 
+int fpsgo_get_lr_pair(unsigned long long sf_buffer_id,
+	unsigned long long *cur_queue_ts,
+	unsigned long long *l2q_ns, unsigned long long *logic_head_ts,
+	unsigned int *is_logic_head_alive,
+	unsigned long long *now_ts)
+{
+	struct render_info *iter, *curr_iter;
+	struct rb_node *n;
+	struct FSTB_FRAME_L2Q_INFO *cur_l2q_info;
+	int i = 0, buf_index = -1, ret = 0;
+	unsigned long long now_ktime_ns, now_queue_end_ns = 0;
+
+	now_ktime_ns = fpsgo_get_time();
+
+	fpsgo_render_tree_lock(__func__);
+
+	for (n = rb_first(&render_pid_tree); n != NULL; n = rb_next(n)) {
+		iter = rb_entry(n, struct render_info, render_key_node);
+		for (i = 0; i < MAX_SF_BUFFER_SIZE; i++) {
+			cur_l2q_info = &(iter->l2q_info[i]);
+				if (!cur_l2q_info)
+					continue;
+			if (cur_l2q_info->sf_buf_id == sf_buffer_id &&
+				cur_l2q_info->queue_end_ns > now_queue_end_ns) {
+				buf_index = i;
+				now_queue_end_ns = cur_l2q_info->queue_end_ns;
+				curr_iter = iter;
+			}
+		}
+	}
+
+	if (buf_index == -1 || !curr_iter) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	cur_l2q_info = &(curr_iter->l2q_info[buf_index]);
+
+	if (logic_head_ts)
+		*logic_head_ts = cur_l2q_info->logic_head_fixed_ts;
+	if (cur_queue_ts)
+		*cur_queue_ts = cur_l2q_info->queue_end_ns;
+	if (l2q_ns)
+		*l2q_ns = cur_l2q_info->l2q_ts;
+	if (is_logic_head_alive)
+		*is_logic_head_alive = cur_l2q_info->is_logic_head_alive;
+	if (now_ts)
+		*now_ts = now_ktime_ns;
+
+out:
+	fpsgo_main_trace("[%s] sf_buf_id=%llu, idx=%d, queue_ts=%llu, l2q_ns=%llu, is_logic_alive=%d, now_ts=%llu",
+		__func__, sf_buffer_id, buf_index, *cur_queue_ts, *l2q_ns, *is_logic_head_alive, *now_ts);
+
+	fpsgo_render_tree_unlock(__func__);
+	return ret;
+}
+
 int fpsgo_ctrl2base_get_render_frame_info(int max_num, unsigned long mask,
 	struct render_frame_info *frame_info_arr)
 {
@@ -2963,7 +3022,7 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 				" gcc_enq_bound_thrs, gcc_enq_bound_quota, gcc_deq_bound_thrs, gcc_deq_bound_quota\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-				" check_buffer_quota, expected_fps_margin, quota_v2_diff_clamp_min, quota_v2_diff_clamp_max\n");
+				" check_buffer_quota, expected_fps_margin, quota_v2_diff_clamp_min, quota_v2_diff_clamp_max, limit_min_cap\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" boost_VIP, RT_prio1, RT_prio2, RT_prio3, vip_mask, set_ls, ls_groupmask, set_vvip\n");
@@ -3084,11 +3143,12 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 		pos += length;
 
 		length = scnprintf(temp + pos,
-			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d %4d %4d\n",
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d %4d %4d, %4d,\n",
 			attr_item.check_buffer_quota_by_pid,
 			attr_item.expected_fps_margin_by_pid,
 			attr_item.quota_v2_diff_clamp_min_by_pid,
-			attr_item.quota_v2_diff_clamp_max_by_pid);
+			attr_item.quota_v2_diff_clamp_max_by_pid,
+			attr_item.limit_min_cap_target_t_by_pid);
 		pos += length;
 
 		length = scnprintf(temp + pos,
@@ -3171,7 +3231,7 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 				" gcc_enq_bound_thrs, gcc_enq_bound_quota, gcc_deq_bound_thrs, gcc_deq_bound_quota\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-				" check_buffer_quota, expected_fps_margin, quota_v2_diff_clamp_min, quota_v2_diff_clamp_max\n");
+				" check_buffer_quota, expected_fps_margin, quota_v2_diff_clamp_min, quota_v2_diff_clamp_max, limit_min_cap\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" boost_VIP, RT_prio1, RT_prio2, RT_prio3, vip_mask, set_ls, ls_groupmask, set_vvip\n");
@@ -3263,11 +3323,12 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 		pos += length;
 
 		length = scnprintf(temp + pos,
-			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d\n",
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d\n",
 			attr_item.check_buffer_quota_by_pid,
 			attr_item.expected_fps_margin_by_pid,
 			attr_item.quota_v2_diff_clamp_min_by_pid,
-			attr_item.quota_v2_diff_clamp_max_by_pid);
+			attr_item.quota_v2_diff_clamp_max_by_pid,
+			attr_item.limit_min_cap_target_t_by_pid);
 		pos += length;
 
 		length = scnprintf(temp + pos,

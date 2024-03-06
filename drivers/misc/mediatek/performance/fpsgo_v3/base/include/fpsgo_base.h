@@ -36,6 +36,7 @@
 #define FPSGO_MAX_SBE_SPID_LOADING_SIZE 10
 #define FPSGO_MAX_JANK_DETECTION_INFO_SIZE 5
 #define FPSGO_MAX_JANK_DETECTION_BOOST_CNT 2
+#define MAX_SF_BUFFER_SIZE 10
 
 enum {
 	FPSGO_SET_UNKNOWN = -1,
@@ -353,9 +354,26 @@ struct fpsgo_boost_attr {
 	int expected_fps_margin_by_pid;
 	int quota_v2_diff_clamp_min_by_pid;
 	int quota_v2_diff_clamp_max_by_pid;
+	int limit_min_cap_target_t_by_pid;
 
 	/* Minus idle time*/
 	int aa_b_minus_idle_t_by_pid;
+};
+
+struct FSTB_FRAME_L2Q_INFO {
+	unsigned long long sf_buf_id;
+	unsigned long long queue_end_ns;
+	unsigned long long logic_head_ts;
+	unsigned long long logic_head_fixed_ts;
+	unsigned long long l2l_ts;
+	unsigned long long l2q_ts;
+	unsigned int is_logic_head_alive;
+
+	unsigned int frame_id;
+	unsigned long long logic_head_sys_ts;
+	unsigned long long render_head_sys_ts;
+	unsigned long long queue_end_sys_ns;
+	unsigned int is_magt_l2q_enabled;
 };
 
 struct render_info {
@@ -423,6 +441,12 @@ struct render_info {
 
 	/* boost policy */
 	struct fpsgo_boost_attr attr;
+
+	/* touch latency */
+	struct FSTB_FRAME_L2Q_INFO l2q_info[MAX_SF_BUFFER_SIZE];
+	int l2q_index;
+
+	int target_fps_origin;
 };
 
 #if FPSGO_MW
@@ -535,6 +559,11 @@ void fpsgo_thread_unlock(struct mutex *mlock);
 void fpsgo_lockprove(const char *tag);
 void fpsgo_thread_lockprove(const char *tag, struct mutex *mlock);
 int fpsgo_get_acquire_hint_is_enable(void);
+int fpsgo_get_lr_pair(unsigned long long sf_buffer_id,
+	unsigned long long *cur_queue_ts,
+	unsigned long long *l2q_ns, unsigned long long *logic_head_ts,
+	unsigned int *is_logic_head_alive,
+	unsigned long long *now_ts);
 #if FPSGO_MW
 void fpsgo_clear_llf_cpu_policy_by_pid(int tgid);
 struct fpsgo_attr_by_pid *fpsgo_find_attr_by_pid(int pid, int add_new);

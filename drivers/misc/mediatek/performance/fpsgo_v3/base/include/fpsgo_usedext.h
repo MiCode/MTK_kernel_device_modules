@@ -7,8 +7,8 @@
 #define __FPSGO_USEDEXT_H__
 
 extern void (*cpufreq_notifier_fp)(int cid, unsigned long freq);
-extern int (*fpsgo_notify_qudeq_fp)(int qudeq, unsigned int startend,
-		int pid, unsigned long long identifier);
+extern int (*fpsgo_notify_qudeq_fp)(int qudeq, unsigned int startend, int pid,
+		unsigned long long identifier, unsigned long long sf_buf_id);
 extern int (*fpsgo_notify_frame_hint_fp)(int qudeq,
 		int pid, int frameID,
 		unsigned long long id,
@@ -59,5 +59,13 @@ extern int (*xgff_frame_startend_fp)(unsigned int startend,
 extern void (*xgff_frame_getdeplist_maxsize_fp)
 		(unsigned int *pdeplistsize);
 extern void (*xgff_frame_min_cap_fp)(unsigned int min_cap);
+
+extern int (*fpsgo_get_lr_pair_fp)(unsigned long long sf_buffer_id,
+	unsigned long long *cur_queue_ts,
+	unsigned long long *l2q_ns, unsigned long long *logic_head_ts,
+	unsigned int *is_logic_head_alive, unsigned long long *now_ts);
+extern void (*fpsgo_set_rl_expected_l2q_us_fp)(int vsync_multiple,
+	unsigned long long user_expected_l2q_us);
+extern void (*fpsgo_set_rl_l2q_enable_fp)(int enable);
 
 #endif
