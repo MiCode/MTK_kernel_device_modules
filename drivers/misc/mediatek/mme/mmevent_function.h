@@ -55,7 +55,7 @@
 	_MMEVENT_LOG(_NUM_ARGS(__VA_ARGS__), module, type, LOG_LEVEL_INFO, ##__VA_ARGS__)
 
 #define MME_DEBUG(module, type, ...) \
-	_MMEVENT_LOG(_NUM_ARGS(__VA_ARGS__), module, type, LOG_LEVEL_DEBUG, ##__VA_ARGS__) \
+	_MMEVENT_LOG(_NUM_ARGS(__VA_ARGS__), module, type, LOG_LEVEL_DEBUG, ##__VA_ARGS__)
 
 #define _MMEVENT_LOG(N, module, type, log_level, ...) \
 	_MMEVENT_LOG_CHOICE(N, module, type, log_level, ##__VA_ARGS__)
@@ -93,12 +93,12 @@
 	do { \
 		unsigned int mme_format_size = sizeof(char *); \
 		unsigned int mme_data_size[N], mme_data_flag[N], mme_str_len[N]; \
-		unsigned int mme_log_flag = 0, mme_log_length = mme_format_size + MME_PID_SIZE, mme_index; \
-		unsigned long long p_mme_buf = 0; \
+		unsigned int mme_log_length = mme_format_size + MME_PID_SIZE, mme_index; \
+		unsigned long long mme_log_flag = 0, p_mme_buf = 0; \
 		PROCESS_DATA_##N(mme_data_size, mme_data_flag, mme_str_len, ##__VA_ARGS__); \
 		for (mme_index=0; mme_index<N; mme_index++) { \
 			mme_log_length += mme_data_size[mme_index]; \
-			mme_log_flag |= (mme_data_flag[mme_index] << g_flag_shifts[mme_index]); \
+			mme_log_flag |= ((unsigned long long)mme_data_flag[mme_index] << g_flag_shifts[mme_index]); \
 		} \
 		p_mme_buf = mmevent_log(mme_log_length, mme_log_flag, module, type, log_level); \
 		if (p_mme_buf) { \
@@ -164,7 +164,7 @@
 						((size) == 8 ? DATA_FLAG_SIZE_8 : \
 						((size) == 1 ? DATA_FLAG_SIZE_1 : \
 						((size) == 2 ? DATA_FLAG_SIZE_2 : \
-						-1))))
+						0))))
 
 #define MME_STR_OFFSET(ptr1, ptr2) abs(((uintptr_t)(ptr1) - (uintptr_t)(ptr2)))
 
@@ -196,8 +196,7 @@
 			*((char **)p) = (char *)(unsigned long)(data); \
 			strscpy((char *)(p+sizeof(char *)), ((char *)(unsigned long)(data)), str_len); \
 		} else if (flag_data < DATA_FLAG_SIZE_8) { \
-			*((char **)p) = (char *)((unsigned long)(data) | \
-							(*((unsigned long *)p) & 0xFFFFFFFF00000000ULL)); \
+			*((unsigned int *)p) = (unsigned int)(unsigned long)(data); \
 		} else { \
 			*((char **)p) = (char *)(unsigned long)(data); \
 		} \

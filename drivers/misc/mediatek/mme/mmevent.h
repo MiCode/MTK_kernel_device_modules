@@ -20,7 +20,7 @@ extern "C" {
 #define MME_MODULE_NAME_LEN 16
 
 enum mme_log_modules {
-	MME_MODULE_DISP,
+	MME_MODULE_DISP = 0,
 	MME_MODULE_MMSYS,
 	MME_MODULE_VIDEO,
 	MME_MODULE_TEST,
@@ -42,11 +42,20 @@ enum mme_buffer_type {
 };
 
 enum mme_log_level {
-	LOG_LEVEL_ERROR,
+	LOG_LEVEL_ERROR = 0,
 	LOG_LEVEL_WARN,
 	LOG_LEVEL_INFO,
 	LOG_LEVEL_DEBUG,
 	LOG_LEVEL_MAX
+};
+
+enum mme_invalid_flag {
+	INVALID_FLAG_HEADER = 100,
+	INVALID_MODULE_TOKEN,
+	INVALID_MISMATCH_UNIT_SIZE,
+	INVALID_SMALL_UNIT_SIZE,
+	INVALID_LOG_LEVEL,
+	INVALID_FLAG_TYPE
 };
 
 struct android_time {
@@ -148,6 +157,9 @@ extern unsigned long long mmevent_log(
 #define MME_HEADER_UNIT_SIZE 2 // time(8bit), flag(8bit)
 #define MME_PID_SIZE 4  // PID 4 byte
 #define MME_FMT_SIZE sizeof(char *) // format 8 byte
+#define MME_TIMER_SIZE 8
+#define MME_FLAG_SIZE 8
+#define MME_HEADER_SIZE 16
 
 #define RESERVE_BUFFER_UNITS 64
 
