@@ -10,8 +10,6 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x0>;
 		clocks =
-			<&cksys_clk CLK_CK_UART_SEL>,
-			<&cksys_clk CLK_CK_UARTHUB_BCLK_SEL>,
 			<&apmixedsys_clk CLK_APMIXED_UNIVPLL>,
 			<&cksys_gp2_clk CLK_CK2_CCUSYS_SEL>,
 			<&cksys_gp2_clk CLK_CK2_CCUTM_SEL>,
