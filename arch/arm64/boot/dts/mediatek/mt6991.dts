@@ -6942,7 +6942,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"PWR";
 			protected-memory-allocator = <&gpu_protected_memory_allocator>;
 			#cooling-cells = <2>;
-			system-coherency = <31>;
+			system-coherency = <0>;
 			ged-supply = <&ged>;
 			sleep-mode-enable = <1>;
 			firmware-idle-hysteresis-time-us = <0>;
