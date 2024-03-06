@@ -21,6 +21,17 @@ enum mm_power {
 	MM_PWR_NR,
 };
 
+enum mmpc_sta {
+	MM_DDRSRC = 0,
+	MM_EMI,
+	MM_BUSPLL,
+	MM_INFRA,
+	MM_CK26M,
+	MM_PMIC,
+	MM_VCORE,
+	MMPC_NR,
+};
+
 int mtk_mminfra_dbg_hang_detect(const char *user, bool skip_pm_runtime);
 
 void mtk_mminfra_off_gipc(void);
