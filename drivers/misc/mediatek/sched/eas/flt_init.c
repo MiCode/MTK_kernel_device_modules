@@ -341,9 +341,9 @@ static void flt_fei(int wl, int ctp)
 		gear_cpus = get_gear_cpumask(gear_idx);
 		cpu = cpumask_first(gear_cpus);
 		MF = pd_opp2freq(cpu, 0, false, wl);
-		MU = pd_opp2cap(cpu, 0, false, wl, NULL, true, "flt_init");
+		MU = pd_opp2cap(cpu, 0, false, wl, NULL, true, DPT_CALL_FLT_INIT);
 		LF = pd_opp2freq(cpu, 0xffff, false, wl);
-		LU = pd_opp2cap(cpu, 0xffff, false, wl, NULL, true, "flt_init");
+		LU = pd_opp2cap(cpu, 0xffff, false, wl, NULL, true, DPT_CALL_FLT_INIT);
 		MU = clamp_t(unsigned int, MU, 0, AMI);
 		if (gear_idx == 2) {
 			KY = 0;
