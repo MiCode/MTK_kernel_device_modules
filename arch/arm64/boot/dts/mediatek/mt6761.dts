@@ -1552,24 +1552,24 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		interrupts = <GIC_SPI 85 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
-	ap_ccif0@10209000 {
+	ap-ccif0@10209000 {
 		compatible = "mediatek,ap_ccif0";
 		reg = <0 0x10209000 0 0x1000>;
 		interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
-	md_ccif0@1020a000 {
+	md-ccif0@1020a000 {
 		compatible = "mediatek,md_ccif0";
 		reg = <0 0x1020a000 0 0x1000>;
 	};
 
-	ap_ccif1@1020b000 {
+	ap-ccif1@1020b000 {
 		compatible = "mediatek,ap_ccif1";
 		reg = <0 0x1020b000 0 0x1000>;
 		interrupts = <GIC_SPI 94 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
-	md_ccif1@1020c000 {
+	md-ccif1@1020c000 {
 		compatible = "mediatek,md_ccif1";
 		reg = <0 0x1020c000 0 0x1000>;
 	};
@@ -1677,7 +1677,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		compatible = "mediatek,ccci_ccif";
 		reg = <0 0x10209000 0 0x1000>, /*AP_CCIF_BASE*/
 			<0 0x1020a000 0 0x1000>; /*MD_CCIF_BASE*/
-		mediatek,sram_size = <512>;
+		mediatek,sram-size = <512>;
 		/*CCIF0 174/206, CCIF0 175/207*/
 		interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH 0>,
 					<GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -1697,8 +1697,8 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 			  <0 0x1021b000 0 0x1000>; /*AP_CLDMA_PDN "mediatek,apcldmain*/
 		/* IRQ_CLDMA "mediatek,apcldmamisc" */
 		interrupts = <GIC_SPI 109 IRQ_TYPE_LEVEL_HIGH 0>;
-		mediatek,cldma_capability = <6>;
-		mediatek,md_generation = <6293>;
+		mediatek,cldma-capability = <6>;
+		mediatek,md-generation = <6293>;
 		mediatek,platform = <6761>;
 		clocks = <&infracfg_ao CLK_IFR_CLDMA_BCLK>;
 		clock-names = "infra-cldma-bclk";
@@ -1708,16 +1708,16 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 	mddriver:mddriver {
 		compatible = "mediatek,mddriver";
 		/* bit0~3: CLDMA|CCIF|DPMAIF */
-		mediatek,mdhif_type = <3>; /* bit0 CLDMA|bit1 CCIF|bit2 DPMAIF */
-		mediatek,md_id = <0>;
-		mediatek,ap_plat_info = <6761>;
-		mediatek,md_generation = <6293>;
-		mediatek,offset_epon_md1 = <0x1c24>;
-		mediatek,cldma_capability = <6>;
+		mediatek,mdhif-type = <3>; /* bit0 CLDMA|bit1 CCIF|bit2 DPMAIF */
+		mediatek,md-id = <0>;
+		mediatek,ap-plat-info = <6761>;
+		mediatek,md-generation = <6293>;
+		mediatek,offset-epon-md1 = <0x1c24>;
+		mediatek,cldma-capability = <6>;
 		/* bit0:srcclkena|bit1:srclken_o1_on|bit2:revert_sequencer */
-		mediatek,power_flow_config = <0x1>;//bit0~4:10000
+		mediatek,power-flow-config = <0x1>;//bit0~4:10000
 		/* srclken_o1 set value |= 1<<21 */
-		mediatek,srclken_o1 = <0>;
+		mediatek,srclken-o1 = <0>;
 		/* DTS/GIC_ID: MDWDT 205/107; CCIF0 92/128; CCIF0 93/129 */
 		interrupts = <GIC_SPI 205 IRQ_TYPE_EDGE_RISING 0>,
 				<GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -1729,25 +1729,27 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 	};
 
-	md_auxadc:md_auxadc {
+	md_auxadc:md-auxadc {
 		compatible = "mediatek,md_auxadc";
 		io-channels = <&auxadc 2>;
 		io-channel-names = "md-channel",
 			"md-battery";
 	};
 
-	ccci_scp:ccci_scp {
+	ccci_scp:ccci-scp {
 		compatible = "mediatek,ccci_md_scp";
+		reg = <0 0x1023c000 0 0x1000>, /* AP_CCIF2_BASE */
+			<0 0x1023d000 0 0x1000>; /* MD_CCIF2_BASE */
 		clocks = <&infracfg_ao CLK_IFR_CCIF2_AP>,
 			<&infracfg_ao CLK_IFR_CCIF2_MD>;
 		clock-names = "infra-ccif2-ap",
 			"infra-ccif2-md";
 	};
 
-	md1_sim1_hot_plug_eint:MD1_SIM1_HOT_PLUG_EINT {
+	md1_sim1_hot_plug_eint:MD1-SIM1-HOT-PLUG-EINT {
 	};
 
-	md1_sim2_hot_plug_eint:MD1_SIM2_HOT_PLUG_EINT {
+	md1_sim2_hot_plug_eint:MD1-SIM2-HOT-PLUG-EINT {
 	};
 
 	bpi_bsi_slv0@1021e000 {
@@ -4222,8 +4224,8 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 
 &mddriver {
 	/* for md pmic voltage setting*/
-	md_vmodem-supply = <&mt_pmic_vmodem_buck_reg>;
-	md_vmodem = <800000 800000>;
+	md-vmodem-supply = <&mt_pmic_vmodem_buck_reg>;
+	md-vmodem = <800000 800000>;
 };
 
 &mt6370_chg {
