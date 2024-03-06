@@ -5590,7 +5590,7 @@ static const struct hc_driver xhci_hc_driver = {
 	/*
 	 * root hub support
 	 */
-	.hub_control =		xhci_hub_control,
+	.hub_control =		xhci_hub_control_,
 	.hub_status_data =	xhci_hub_status_data,
 	.bus_suspend =		xhci_bus_suspend_,
 	.bus_resume =		xhci_bus_resume_,
