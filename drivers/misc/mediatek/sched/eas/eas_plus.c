@@ -913,8 +913,6 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 
 		if (share_buck.gear_idx != eenv->gear_idx)
 			dsu_volt = 0;
-
-		extern_volt = dsu_volt;
 	}
 
 	if (!cpumask_equal(cpus, get_gear_cpumask(eenv->gear_idx))) {
@@ -945,7 +943,7 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 			shared_buck_mode = 2;
 		}
 	} else {
-		extern_volt = 0;
+		extern_volt = dsu_volt;
 		pwr_eff = calc_pwr_eff_v2(eenv, dst_cpu, max_util,
 				cpus, extern_volt);
 		shared_buck_mode = 0;

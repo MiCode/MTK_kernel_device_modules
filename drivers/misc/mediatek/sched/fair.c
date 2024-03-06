@@ -432,8 +432,6 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 
 		if (share_buck.gear_idx != eenv->gear_idx)
 			dsu_volt = 0;
-
-		extern_volt = dsu_volt;
 	}
 
 	/* dvfs power overhead */
@@ -465,6 +463,7 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 			shared_buck_mode = 2;
 		}
 	} else {
+		extern_volt = dsu_volt;
 		energy =  mtk_em_cpu_energy(pd->em_pd, pd_max_util, busy_time,
 				eenv->pds_cpu_cap[pd_idx], eenv, extern_volt);
 		shared_buck_mode = 0;
