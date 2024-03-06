@@ -34,6 +34,7 @@
 #include <trace/hooks/binder.h>
 #include <uapi/linux/android/binder.h>
 #include <asm/page.h>
+#include <linux/tracepoint.h>
 
 #include "mbraink_process.h"
 #include <binder_internal.h>
@@ -63,33 +64,6 @@ struct mbraink_tracing_pidlist mbraink_tracing_pidlist_data[MAX_TRACE_NUM];
 static DEFINE_SPINLOCK(binder_trace_lock);
 /*Please make sure that binder trace list is protected by spinlock*/
 struct mbraink_binder_tracelist mbraink_binder_tracelist_data[MAX_BINDER_TRACE_NUM];
-
-#if IS_ENABLED(CONFIG_MTK_MBRAINK_EXPORT_DEPENDED)
-#else
-
-static int register_trace_android_vh_do_fork(void *t, void *p)
-{
-	pr_info("%s: not support yet...", __func__);
-	return 0;
-}
-
-static int register_trace_android_vh_do_exit(void *t, void *p)
-{
-	pr_info("%s: not support yet...", __func__);
-	return 0;
-}
-
-static int unregister_trace_android_vh_do_fork(void *t, void *p)
-{
-	pr_info("%s: not support yet...", __func__);
-	return 0;
-}
-static int unregister_trace_android_vh_do_exit(void *t, void *p)
-{
-	pr_info("%s: not support yet...", __func__);
-	return 0;
-}
-#endif
 
 void mbraink_get_process_memory_info(pid_t current_pid, unsigned int cnt,
 				struct mbraink_process_memory_data *process_memory_buffer)
@@ -539,7 +513,6 @@ void mbraink_show_process_info(void)
 	pr_info("total task list element number = %u\n", counter);
 }
 
-#if IS_ENABLED(CONFIG_ANDROID_VENDOR_HOOKS)
 /*****************************************************************
  * Note: this function can only be used during tracing function
  * This function is only used in tracing function so that there
@@ -613,7 +586,234 @@ static int is_monitor_process(unsigned short pid)
 	return ret;
 }
 
+/*******************************************************************
+ *	mbraink_sched_process_data_send must be called between
+ *	spin_lock_irqsave(&tracing_pidlist_lock, flags) and
+ *	spin_unlock_irqrestore(&tracing_pidlist_lock, flags);
+ *******************************************************************/
+static void mbraink_sched_process_data_send(void)
+{
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
+	int pos = 0;
+	int num = 0;
+	int i = 0;
+
+	for (i = 0; i < MAX_TRACE_NUM; i++) {
+		if (num % 8 == 0) {
+			pos = 0;
+			n = snprintf(netlink_buf,
+				NETLINK_EVENT_MESSAGE_SIZE, "%s ",
+				NETLINK_EVENT_SYSPROCESS);
+			if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE)
+				break;
+			pos += n;
+		}
+		if (mbraink_tracing_pidlist_data[i].end != 0) {
+			n = snprintf(netlink_buf + pos,
+				NETLINK_EVENT_MESSAGE_SIZE - pos,
+				"%u:%u:%u:%d:%s:%llu:%llu:%llu ",
+				mbraink_tracing_pidlist_data[i].pid,
+				mbraink_tracing_pidlist_data[i].tgid,
+				mbraink_tracing_pidlist_data[i].uid,
+				mbraink_tracing_pidlist_data[i].priority,
+				mbraink_tracing_pidlist_data[i].name,
+				mbraink_tracing_pidlist_data[i].start,
+				mbraink_tracing_pidlist_data[i].end,
+				mbraink_tracing_pidlist_data[i].jiffies);
+
+			memset(&mbraink_tracing_pidlist_data[i], 0,
+				sizeof(struct mbraink_tracing_pidlist));
+
+			if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+				break;
+			pos += n;
+
+			if ((num % 8 == 7) || (i == MAX_TRACE_NUM - 1 && num % 8 != 0)) {
+				mbraink_netlink_send_msg(netlink_buf);
+				memset(netlink_buf, 0,
+					NETLINK_EVENT_MESSAGE_SIZE);
+			}
+			++num;
+		}
+	}
+	/*  No record is out, we do not record the data without exit.
+	 *  Also, if the process persists long enough,
+	 *  system might record such process's jiffies through other way in mbrain
+	 */
+	if (num == 0) {
+		pr_info("%s: fork/exit full and no record is out !\n",
+			__func__);
+		memset(mbraink_tracing_pidlist_data, 0,
+			sizeof(struct mbraink_tracing_pidlist) * MAX_TRACE_NUM);
+	}
+}
+
+static void mbraink_sched_process_fork(void *data, struct task_struct *self,
+					struct task_struct *p)
+{
+	int i = 0;
+	struct timespec64 tv = { 0 };
+	unsigned long flags;
+
+	if (p->pid == p->tgid || is_monitor_process((unsigned short)(p->tgid))) {
+		spin_lock_irqsave(&tracing_pidlist_lock, flags);
+		for (i = 0; i < MAX_TRACE_NUM; i++) {
+			if (mbraink_tracing_pidlist_data[i].pid == 0) {
+				mbraink_tracing_pidlist_data[i].pid = (unsigned short)(p->pid);
+				mbraink_tracing_pidlist_data[i].tgid = (unsigned short)(p->tgid);
+				mbraink_tracing_pidlist_data[i].uid =
+					mbraink_get_specific_process_uid(p);
+				mbraink_tracing_pidlist_data[i].priority = p->prio - MAX_RT_PRIO;
+				memcpy(mbraink_tracing_pidlist_data[i].name,
+					p->comm, TASK_COMM_LEN);
+				ktime_get_real_ts64(&tv);
+				mbraink_tracing_pidlist_data[i].start =
+					(tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+				mbraink_tracing_pidlist_data[i].dirty = true;
+				break;
+			}
+		}
+
+		if (i == MAX_TRACE_NUM) {
+			pr_info("%s pid=%u:%s, pidlist is full !\n",
+					__func__, p->pid, p->comm);
+			mbraink_sched_process_data_send();
+
+			for (i = 0; i < MAX_TRACE_NUM; i++) {
+				if (mbraink_tracing_pidlist_data[i].pid == 0) {
+					mbraink_tracing_pidlist_data[i].pid =
+						(unsigned short)(p->pid);
+					mbraink_tracing_pidlist_data[i].tgid =
+						(unsigned short)(p->tgid);
+					mbraink_tracing_pidlist_data[i].uid =
+						mbraink_get_specific_process_uid(p);
+					mbraink_tracing_pidlist_data[i].priority =
+						p->prio - MAX_RT_PRIO;
+					memcpy(mbraink_tracing_pidlist_data[i].name,
+						p->comm, TASK_COMM_LEN);
+					ktime_get_real_ts64(&tv);
+					mbraink_tracing_pidlist_data[i].start =
+						(tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+					mbraink_tracing_pidlist_data[i].dirty = true;
+					break;
+				}
+			}
+		}
+		spin_unlock_irqrestore(&tracing_pidlist_lock, flags);
+	}
+}
+
+static void mbraink_sched_process_exit(void *data, struct task_struct *t)
+{
+	int i = 0;
+	struct timespec64 tv = { 0 };
+	unsigned long flags;
+
+	if (t->pid == t->tgid || is_monitor_process((unsigned short)(t->tgid))) {
+		spin_lock_irqsave(&tracing_pidlist_lock, flags);
+		for (i = 0; i < MAX_TRACE_NUM; i++) {
+			if (mbraink_tracing_pidlist_data[i].pid == (unsigned short)(t->pid)) {
+				ktime_get_real_ts64(&tv);
+				mbraink_tracing_pidlist_data[i].end =
+					(tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+				mbraink_tracing_pidlist_data[i].jiffies =
+					mbraink_get_specific_process_jiffies(t);
+				mbraink_tracing_pidlist_data[i].dirty = true;
+				if (mbraink_tracing_pidlist_data[i].jiffies) {
+					/**********************************************************
+					 * pr_info("pid=%s:%u, tgid=%u, pidlist[%d].start=%lld,	\
+					 * pidlist[%d].end=%lld, pidlist[%d].jiffies=%llu\n",
+					 * t->comm, t->pid, t->tgid, i,
+					 * mbraink_tracing_pidlist_data[i].start, i,
+					 * mbraink_tracing_pidlist_data[i].end, i,
+					 * mbraink_tracing_pidlist_data[i].jiffies);
+					 **********************************************************/
+				} else {
+					/*system does not record process whose jiffies is 0*/
+					memset(&mbraink_tracing_pidlist_data[i], 0,
+						sizeof(struct mbraink_tracing_pidlist));
+				}
+				break;
+			}
+		}
+
+		if (i == MAX_TRACE_NUM && mbraink_get_specific_process_jiffies(t)) {
+			for (i = 0; i < MAX_TRACE_NUM; i++) {
+				if (mbraink_tracing_pidlist_data[i].pid == 0) {
+					mbraink_tracing_pidlist_data[i].pid =
+						(unsigned short)(t->pid);
+					mbraink_tracing_pidlist_data[i].tgid =
+						(unsigned short)(t->tgid);
+					mbraink_tracing_pidlist_data[i].uid =
+						mbraink_get_specific_process_uid(t);
+					mbraink_tracing_pidlist_data[i].priority =
+						t->prio - MAX_RT_PRIO;
+					memcpy(mbraink_tracing_pidlist_data[i].name,
+						t->comm, TASK_COMM_LEN);
+					ktime_get_real_ts64(&tv);
+					mbraink_tracing_pidlist_data[i].end =
+						(tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+					mbraink_tracing_pidlist_data[i].jiffies =
+						mbraink_get_specific_process_jiffies(t);
+					mbraink_tracing_pidlist_data[i].dirty = true;
+					/******************************************************
+					 * pr_info("pid=%s:%u, tgid=%u pidlist[%d],	\
+					 * start=%lld,pidlist[%d].end=%lld,	\
+					 * pidlist[%d].jiffies=%llu\n",
+					 * t->comm, t->pid, t->tgid, i,
+					 * mbraink_tracing_pidlist_data[i].start, i,
+					 * mbraink_tracing_pidlist_data[i].end, i,
+					 * mbraink_tracing_pidlist_data[i].jiffies);
+					 *****************************************************/
+					break;
+				}
+			}
+			if (i == MAX_TRACE_NUM) {
+				pr_info("%s pid=%u:%s, jiffies=%llu pidlist is full !\n",
+					__func__, t->pid, t->comm,
+					mbraink_get_specific_process_jiffies(t));
+
+				mbraink_sched_process_data_send();
+
+				for (i = 0; i < MAX_TRACE_NUM; i++) {
+					if (mbraink_tracing_pidlist_data[i].pid == 0) {
+						mbraink_tracing_pidlist_data[i].pid =
+							(unsigned short)(t->pid);
+						mbraink_tracing_pidlist_data[i].tgid =
+							(unsigned short)(t->tgid);
+						mbraink_tracing_pidlist_data[i].uid =
+							mbraink_get_specific_process_uid(t);
+						mbraink_tracing_pidlist_data[i].priority =
+							t->prio - MAX_RT_PRIO;
+						memcpy(mbraink_tracing_pidlist_data[i].name,
+							t->comm, TASK_COMM_LEN);
+						ktime_get_real_ts64(&tv);
+						mbraink_tracing_pidlist_data[i].end =
+							(tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+						mbraink_tracing_pidlist_data[i].jiffies =
+							mbraink_get_specific_process_jiffies(t);
+						mbraink_tracing_pidlist_data[i].dirty = true;
+						/*************************************************
+						 * pr_info("pid=%s:%u, tgid=%u pidlist[%d],	\
+						 * start=%lld,pidlist[%d].end=%lld,	\
+						 * pidlist[%d].jiffies=%llu\n",
+						 * t->comm, t->pid, t->tgid, i,
+						 * mbraink_tracing_pidlist_data[i].start, i,
+						 * mbraink_tracing_pidlist_data[i].end, i,
+						 * mbraink_tracing_pidlist_data[i].jiffies);
+						 *************************************************/
+						break;
+					}
+				}
+			}
+		}
+		spin_unlock_irqrestore(&tracing_pidlist_lock, flags);
+	}
+}
+
 #if (MBRAINK_LANDING_FEATURE_CHECK == 0)
+#if IS_ENABLED(CONFIG_ANDROID_VENDOR_HOOKS)
 static int is_monitor_binder_process(unsigned short pid)
 {
 	int ret = 0, index = 0;
@@ -638,111 +838,7 @@ static int is_monitor_binder_process(unsigned short pid)
 	spin_unlock_irqrestore(&monitor_binder_pidlist_lock, flags);
 	return ret;
 }
-#endif
 
-static void mbraink_trace_android_vh_do_exit(void *data, struct task_struct *t)
-{
-	int i = 0;
-	struct timespec64 tv = { 0 };
-	unsigned long flags;
-
-	if (t->pid == t->tgid || is_monitor_process((unsigned short)(t->tgid))) {
-		spin_lock_irqsave(&tracing_pidlist_lock, flags);
-		for (i = 0; i < MAX_TRACE_NUM; i++) {
-			if (mbraink_tracing_pidlist_data[i].pid == (unsigned short)(t->pid)) {
-				ktime_get_real_ts64(&tv);
-				mbraink_tracing_pidlist_data[i].end =
-					(tv.tv_sec*1000)+(tv.tv_nsec/1000000);
-				mbraink_tracing_pidlist_data[i].jiffies =
-						mbraink_get_specific_process_jiffies(t);
-				mbraink_tracing_pidlist_data[i].dirty = true;
-				/*************************************************************
-				 * pr_info("pid=%s:%u, tgid=%u, pidlist[%d].start=%-10lld,	\
-				 * pidlist[%d].end=%-10lld, pidlist[%d].jiffies=%llu\n",
-				 * t->comm, t->pid, t->tgid, i,
-				 * mbraink_tracing_pidlist_data[i].start, i,
-				 * mbraink_tracing_pidlist_data[i].end, i,
-				 * mbraink_tracing_pidlist_data[i].jiffies);
-				 **************************************************************/
-				break;
-			}
-		}
-		if (i == MAX_TRACE_NUM) {
-			for (i = 0; i < MAX_TRACE_NUM; i++) {
-				if (mbraink_tracing_pidlist_data[i].pid == 0) {
-					mbraink_tracing_pidlist_data[i].pid =
-							(unsigned short)(t->pid);
-					mbraink_tracing_pidlist_data[i].tgid =
-							(unsigned short)(t->tgid);
-					mbraink_tracing_pidlist_data[i].uid =
-							mbraink_get_specific_process_uid(t);
-					mbraink_tracing_pidlist_data[i].priority =
-							t->prio - MAX_RT_PRIO;
-					memcpy(mbraink_tracing_pidlist_data[i].name,
-									t->comm, TASK_COMM_LEN);
-					ktime_get_real_ts64(&tv);
-					mbraink_tracing_pidlist_data[i].end =
-							(tv.tv_sec*1000)+(tv.tv_nsec/1000000);
-					mbraink_tracing_pidlist_data[i].jiffies =
-							mbraink_get_specific_process_jiffies(t);
-					mbraink_tracing_pidlist_data[i].dirty = true;
-					/******************************************************
-					 * pr_info("pid=%s:%u, tgid=%u pidlist[%d].	\
-					 * start=%-10lld,pidlist[%d].end=%-10lld,	\
-					 * pidlist[%d].jiffies=%llu\n",
-					 * t->comm, t->pid, t->tgid, i,
-					 * mbraink_tracing_pidlist_data[i].start, i,
-					 * mbraink_tracing_pidlist_data[i].end, i,
-					 * mbraink_tracing_pidlist_data[i].jiffies);
-					 ********************************************************/
-					break;
-				}
-			}
-			if (i == MAX_TRACE_NUM) {
-				pr_info("%s pid=%u:%s.\n", __func__, t->pid, t->comm);
-				memset(mbraink_tracing_pidlist_data, 0,
-					sizeof(struct mbraink_tracing_pidlist) * MAX_TRACE_NUM);
-			}
-		}
-		spin_unlock_irqrestore(&tracing_pidlist_lock, flags);
-	}
-}
-
-static void mbraink_trace_android_vh_do_fork(void *data, struct task_struct *p)
-{
-	int i = 0;
-	struct timespec64 tv = { 0 };
-	unsigned long flags;
-
-	if (p->pid == p->tgid || is_monitor_process((unsigned short)(p->tgid))) {
-		spin_lock_irqsave(&tracing_pidlist_lock, flags);
-		for (i = 0; i < MAX_TRACE_NUM; i++) {
-			if (mbraink_tracing_pidlist_data[i].pid == 0) {
-				mbraink_tracing_pidlist_data[i].pid = (unsigned short)(p->pid);
-				mbraink_tracing_pidlist_data[i].tgid = (unsigned short)(p->tgid);
-				mbraink_tracing_pidlist_data[i].uid =
-						mbraink_get_specific_process_uid(p);
-				mbraink_tracing_pidlist_data[i].priority = p->prio - MAX_RT_PRIO;
-				memcpy(mbraink_tracing_pidlist_data[i].name,
-					p->comm, TASK_COMM_LEN);
-				ktime_get_real_ts64(&tv);
-				mbraink_tracing_pidlist_data[i].start =
-						(tv.tv_sec*1000)+(tv.tv_nsec/1000000);
-				mbraink_tracing_pidlist_data[i].dirty = true;
-				break;
-			}
-		}
-
-		if (i == MAX_TRACE_NUM) {
-			pr_info("%s child_pid=%u:%s.\n", __func__, p->pid, p->comm);
-			memset(mbraink_tracing_pidlist_data, 0,
-				sizeof(struct mbraink_tracing_pidlist) * MAX_TRACE_NUM);
-		}
-		spin_unlock_irqrestore(&tracing_pidlist_lock, flags);
-	}
-}
-
-#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
 static void mbraink_trace_android_vh_binder_trans(void *data,
 						struct binder_proc *target_proc,
 						struct binder_proc *proc,
@@ -821,6 +917,75 @@ static void mbraink_trace_android_vh_binder_trans(void *data,
 	spin_unlock_irqrestore(&binder_trace_lock, flags);
 }
 #endif
+#endif
+
+struct tracepoints_table {
+	const char *name;
+	void *func;
+	struct tracepoint *tp;
+	bool init;
+};
+
+static struct tracepoints_table mbraink_tracepoints[] = {
+{.name = "sched_process_fork", .func = mbraink_sched_process_fork, .tp = NULL},
+{.name = "sched_process_exit", .func = mbraink_sched_process_exit, .tp = NULL},
+};
+
+#define FOR_EACH_INTEREST(i) \
+	for (i = 0; i < sizeof(mbraink_tracepoints) / sizeof(struct tracepoints_table); i++)
+
+static void lookup_tracepoints(struct tracepoint *tp, void *data)
+{
+	int i;
+
+	FOR_EACH_INTEREST(i) {
+		if (strcmp(mbraink_tracepoints[i].name, tp->name) == 0)
+			mbraink_tracepoints[i].tp = tp;
+	}
+}
+
+/* Find out interesting tracepoints and try to register them. */
+static void mbraink_hookup_tracepoints(void)
+{
+	int i;
+	int ret;
+
+	/* Find out interesting tracepoints */
+	for_each_kernel_tracepoint(lookup_tracepoints, NULL);
+
+	/* Probing found tracepoints */
+	FOR_EACH_INTEREST(i) {
+		if (mbraink_tracepoints[i].tp != NULL) {
+			ret = tracepoint_probe_register(mbraink_tracepoints[i].tp,
+							mbraink_tracepoints[i].func,  NULL);
+			if (ret)
+				pr_info("Failed to register %s\n", mbraink_tracepoints[i].name);
+			else
+				mbraink_tracepoints[i].init = true;
+		}
+
+		/* Check which one is not probed */
+		if (!mbraink_tracepoints[i].init)
+			pr_info("%s: %s is not probed!\n", __func__, mbraink_tracepoints[i].name);
+	}
+}
+
+/* Unregister interesting tracepoints. */
+static void mbraink_disconnect_tracepoints(void)
+{
+	int i;
+	int ret;
+
+	/* Unregister found tracepoints */
+	FOR_EACH_INTEREST(i) {
+		if (mbraink_tracepoints[i].init) {
+			ret = tracepoint_probe_unregister(mbraink_tracepoints[i].tp,
+							mbraink_tracepoints[i].func,  NULL);
+			if (ret)
+				pr_info("Failed to unregister %s\n", mbraink_tracepoints[i].name);
+		}
+	}
+}
 
 int mbraink_process_tracer_init(void)
 {
@@ -832,43 +997,27 @@ int mbraink_process_tracer_init(void)
 	memset(mbraink_binder_tracelist_data, 0,
 		sizeof(struct mbraink_binder_tracelist) * MAX_BINDER_TRACE_NUM);
 
-	ret = register_trace_android_vh_do_fork(mbraink_trace_android_vh_do_fork, NULL);
-	if (ret) {
-		pr_notice("register_trace_android_vh_do_fork failed.\n");
-		goto register_trace_android_vh_do_fork;
-	}
-	ret = register_trace_android_vh_do_exit(mbraink_trace_android_vh_do_exit, NULL);
-	if (ret) {
-		pr_notice("register register_trace_android_vh_do_exit failed.\n");
-		goto register_trace_android_vh_do_exit;
-	}
-#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
-	ret = register_trace_android_vh_binder_trans(mbraink_trace_android_vh_binder_trans,
-						NULL);
-	if (ret) {
-		pr_notice("register_trace_android_vh_binder_trans failed.\n");
-		goto register_trace_android_vh_binder_trans;
-	}
-#endif
-	return ret;
+	mbraink_hookup_tracepoints();
 
 #if (MBRAINK_LANDING_FEATURE_CHECK == 0)
-register_trace_android_vh_binder_trans:
-	unregister_trace_android_vh_do_exit(mbraink_trace_android_vh_do_exit, NULL);
+#if IS_ENABLED(CONFIG_ANDROID_VENDOR_HOOKS)
+	ret = register_trace_android_vh_binder_trans(mbraink_trace_android_vh_binder_trans,
+						NULL);
+	if (ret)
+		pr_notice("register_trace_android_vh_binder_trans failed.\n");
 #endif
-register_trace_android_vh_do_exit:
-	unregister_trace_android_vh_do_fork(mbraink_trace_android_vh_do_fork, NULL);
-register_trace_android_vh_do_fork:
+#endif
 	return ret;
 }
 
 void mbraink_process_tracer_exit(void)
 {
-	unregister_trace_android_vh_do_fork(mbraink_trace_android_vh_do_fork, NULL);
-	unregister_trace_android_vh_do_exit(mbraink_trace_android_vh_do_exit, NULL);
 #if (MBRAINK_LANDING_FEATURE_CHECK == 0)
+#if IS_ENABLED(CONFIG_ANDROID_VENDOR_HOOKS)
 	unregister_trace_android_vh_binder_trans(mbraink_trace_android_vh_binder_trans, NULL);
 #endif
+#endif
+	mbraink_disconnect_tracepoints();
 }
 
 void mbraink_get_tracing_pid_info(unsigned short current_idx,
@@ -885,6 +1034,8 @@ void mbraink_get_tracing_pid_info(unsigned short current_idx,
 
 	for (i = current_idx; i < MAX_TRACE_NUM; i++) {
 		if (mbraink_tracing_pidlist_data[i].dirty == false)
+			continue;
+		else if (mbraink_tracing_pidlist_data[i].end == 0)
 			continue;
 		else {
 			tracing_count = tracing_pid_buffer->tracing_count;
@@ -907,20 +1058,8 @@ void mbraink_get_tracing_pid_info(unsigned short current_idx,
 						mbraink_tracing_pidlist_data[i].jiffies;
 				tracing_pid_buffer->tracing_count++;
 				/*Deal with the end process record*/
-				if (mbraink_tracing_pidlist_data[i].end != 0) {
-					mbraink_tracing_pidlist_data[i].pid = 0;
-					mbraink_tracing_pidlist_data[i].tgid = 0;
-					mbraink_tracing_pidlist_data[i].uid = 0;
-					mbraink_tracing_pidlist_data[i].priority = 0;
-					memset(mbraink_tracing_pidlist_data[i].name,
-						0, TASK_COMM_LEN);
-					mbraink_tracing_pidlist_data[i].start = 0;
-					mbraink_tracing_pidlist_data[i].end = 0;
-					mbraink_tracing_pidlist_data[i].jiffies = 0;
-					mbraink_tracing_pidlist_data[i].dirty = false;
-				} else {
-					mbraink_tracing_pidlist_data[i].dirty = false;
-				}
+				memset(&mbraink_tracing_pidlist_data[i], 0,
+					sizeof(struct mbraink_tracing_pidlist));
 			} else {
 				ret = -1;
 				tracing_pid_buffer->tracing_idx = i;
@@ -933,6 +1072,7 @@ void mbraink_get_tracing_pid_info(unsigned short current_idx,
 	spin_unlock_irqrestore(&tracing_pidlist_lock, flags);
 }
 
+#if IS_ENABLED(CONFIG_ANDROID_VENDOR_HOOKS)
 void mbraink_get_binder_trace_info(unsigned short current_idx,
 				struct mbraink_binder_trace_data *binder_trace_buffer)
 {
@@ -972,23 +1112,6 @@ void mbraink_get_binder_trace_info(unsigned short current_idx,
 }
 
 #else
-int mbraink_process_tracer_init(void)
-{
-	pr_info("%s: Do not support mbraink tracing...\n", __func__);
-	return 0;
-}
-
-void mbraink_process_tracer_exit(void)
-{
-	pr_info("%s: Do not support mbraink tracing...\n", __func__);
-}
-
-int mbraink_get_tracing_pid_info(unsigned short current_idx,
-				struct mbraink_tracing_pid_data *tracing_pid_buffer)
-{
-	pr_info("%s: Do not support mbraink tracing...\n", __func__);
-	return 0;
-}
 void mbraink_get_binder_trace_info(unsigned short current_idx,
 				struct mbraink_binder_trace_data *binder_trace_buffer)
 {

@@ -13,7 +13,7 @@
 #include "mbraink_ioctl_struct_def.h"
 
 #define MAX_RT_PRIO			100
-#define MAX_TRACE_NUM			3072
+#define MAX_TRACE_NUM			1536
 #define MAX_BINDER_TRACE_NUM	2048
 
 struct mbraink_monitor_pidlist {
