@@ -43,6 +43,8 @@
 #include <linux/math64.h>
 #if !IS_ENABLED(CONFIG_ARM64)
 #include <asm/arch_timer.h>
+#else
+#include <linux/clockchips.h>
 #endif
 #include "hangdet.h"
 
@@ -144,6 +146,25 @@ static unsigned int aee_dump_timer_c;
 static unsigned int cpus_skip_bit;
 static uint32_t apwdt_en;
 static bool is_s2idle_status;
+
+#if IS_ENABLED(CONFIG_ARM64)
+static DEFINE_SPINLOCK(kp_lock);
+struct slp_history wk_sl[MAX_CPUNR];
+struct clock_event_device *bc_mtk_clkevt;
+
+static int hrtimer_start_range_ns_pre(struct kprobe *p, struct pt_regs *regs);
+static int clockevents_exchange_device_pre(struct kprobe *p, struct pt_regs *regs);
+
+static struct kprobe kp_hrtimer_start_range_ns = {
+	.symbol_name =  "hrtimer_start_range_ns",
+	.pre_handler = hrtimer_start_range_ns_pre,
+};
+
+static struct kprobe kp_clockevents_exchange_device = {
+	.symbol_name =  "clockevents_exchange_device",
+	.pre_handler = clockevents_exchange_device_pre,
+};
+#endif
 
 __weak void mt_irq_dump_status(unsigned int irq)
 {
@@ -655,14 +676,33 @@ static void show_irq_count(void)
 	aee_sram_fiq_log("\n");
 }
 
+#if IS_ENABLED(CONFIG_SMP)
+static struct __call_single_data wdt_csd[MAX_CPUNR];
+#endif
 static void kwdt_dump_func(void)
 {
 	struct task_struct *g, *t;
 	int i = 0;
 
 #if IS_ENABLED(CONFIG_SMP)
+#if !IS_ENABLED(CONFIG_ARM64)
 	for (i = 0; i < CPU_NR; i++)
 		pr_info("%s", tmr_buf[i]);
+#else
+	unsigned int unkick_mask =
+		(get_kick_bit() ^ get_check_bit()) & get_check_bit();
+
+	pr_info("unkick_mask %x\n", unkick_mask);
+
+	for (i = 0; i < CPU_NR; i++) {
+		pr_info("%s\n", tmr_buf[i]);
+		if (unkick_mask & (1 << i)) {
+			wdt_csd[i].info = tmr_buf;
+			smp_call_function_single_async(i, &wdt_csd[i]);
+			wdt_csd[i].info = NULL;
+		}
+	}
+#endif
 #endif
 
 	for_each_process_thread(g, t) {
@@ -672,7 +712,7 @@ static void kwdt_dump_func(void)
 			break;
 		}
 	}
-
+#if !IS_ENABLED(CONFIG_ARM64)
 	for_each_process_thread(g, t) {
 		if (!strncmp(t->comm, "wdtk-", 5)) {
 			pr_info("%s on CPU %d\n", t->comm, task_thread_info(t)->cpu);
@@ -680,7 +720,58 @@ static void kwdt_dump_func(void)
 			break;
 		}
 	}
+#else
+	for_each_process_thread(g, t) {
+		if (!strncmp(t->comm, "wdtk-", 5)) {
+			int cpu = task_thread_info(t)->cpu;
 
+			pr_info("%s on CPU %d\n", t->comm, cpu);
+			sched_show_task(t);
+
+			if (unkick_mask & (1 << cpu)) {
+				struct slp_history *slp = &wk_sl[cpu];
+
+				/*
+				 * enable/disable kprobe cannot be added in
+				 * here because preemption is disabled and
+				 * the two functions might be sleep
+				 */
+
+				if (IS_ERR_OR_NULL(slp) ||
+					IS_ERR_OR_NULL(slp->timer)) {
+					pr_info("slp is null %d %lld %llx %llx\n",
+						slp->cpu, slp->sc,
+						(unsigned long long)slp,
+						(unsigned long long)slp->timer);
+				} else {
+					struct hrtimer *wdt_timer = slp->timer;
+
+					if (IS_ERR_OR_NULL(wdt_timer) ||
+						IS_ERR_OR_NULL(wdt_timer->base) ||
+						IS_ERR_OR_NULL(wdt_timer->base->cpu_base))
+						pr_info("wdt sleeper is invalid\n");
+					else
+						pr_info("%d %lld timer on cpu %d softexpires %lld\n",
+						slp->cpu, slp->sc,
+						IS_ERR_OR_NULL(wdt_timer) ? 100 :
+						 wdt_timer->base->cpu_base->cpu,
+						IS_ERR_OR_NULL(wdt_timer) ? 100 :
+						 wdt_timer->_softexpires);
+				}
+
+			}
+			break;
+		}
+	}
+
+	if(IS_ERR_OR_NULL(bc_mtk_clkevt))
+		pr_info("mtk-clkevt is invalid\n");
+	else
+		pr_info("%s irq %d cpumask %*pbl next_event %lld\n",
+			bc_mtk_clkevt->name, bc_mtk_clkevt->irq,
+			cpumask_pr_args(bc_mtk_clkevt->cpumask),
+			bc_mtk_clkevt->next_event);
+#endif
 	for (i = 0; i < CPU_NR; i++) {
 		struct rq *rq;
 
@@ -758,8 +849,6 @@ static void aee_dump_timer_func(struct timer_list *t)
 }
 
 #if IS_ENABLED(CONFIG_SMP)
-static struct __call_single_data wdt_csd[MAX_CPUNR];
-
 #if !IS_ENABLED(CONFIG_ARM64)
 static u32 arch_timer_reg_read_tval(void)
 {
@@ -780,18 +869,21 @@ static void wdt_dump_cntcv(void *arg)
 		cnt = readl(systimer_base + SYSTIMER_CNTCV_H);
 		cnt = cnt << 32 | low;
 	}
+
+	if (arg)
+		pr_info("sc:%lld\n", sched_clock());
+	else {
 #if IS_ENABLED(CONFIG_ARM64)
-	ret = snprintf(tmr_buf[smp_processor_id()], WK_MAX_MSG_SIZE,
-		"%s CPU:%d CNTCV_CTL:%llx CNTCV_TVAL:%llx CNTVCT:%llx SYST_CNTCR:%x SYST_DISTL:%x SYST_CNTCV:%llx sc:%lld\n",
-		__func__,
-		smp_processor_id(),
-		read_sysreg(cntv_ctl_el0),
-		read_sysreg(cntv_tval_el0),
-		read_sysreg(cntvct_el0),
-		systimer_base ? ioread32(systimer_base + SYST_CNTCR) : 0,
-		systimer_base ? ioread32(systimer_base + SYST_DISTL) : 0,
-		systimer_base ? cnt : 0,
-		sched_clock());
+		ret = snprintf(tmr_buf[smp_processor_id()], WK_MAX_MSG_SIZE,
+			"CPU:%d CNTCV_CTL:%llx CNTCV_TVAL:%llx CNTVCT:%llx SYST_CNTCR:%x SYST_DISTL:%x SYST_CNTCV:%llx sc:%lld\n",
+			smp_processor_id(),
+			read_sysreg(cntv_ctl_el0),
+			read_sysreg(cntv_tval_el0),
+			read_sysreg(cntvct_el0),
+			systimer_base ? ioread32(systimer_base + SYST_CNTCR) : 0,
+			systimer_base ? ioread32(systimer_base + SYST_DISTL) : 0,
+			systimer_base ? cnt : 0,
+			sched_clock());
 #else
 	ret = snprintf(tmr_buf[smp_processor_id()], WK_MAX_MSG_SIZE,
 		"%s CPU:%d CNTCV_CTL:%x CNTCV_TVAL:%x CNTVCT:%llx SYST_CNTCR:%x SYST_DISTL:%x SYST_CNTCV:%llx sc:%lld\n",
@@ -805,6 +897,7 @@ static void wdt_dump_cntcv(void *arg)
 		systimer_base ? cnt : 0,
 		sched_clock());
 #endif
+	}
 
 	if (ret < 0) {
 		tmr_buf[smp_processor_id()][0] = 'E';
@@ -1286,6 +1379,63 @@ static const struct of_device_id systimer_of_match[] = {
 	{},
 };
 
+#if IS_ENABLED(CONFIG_ARM64)
+static int hrtimer_start_range_ns_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	if (!strncmp(current->comm, "wdtk-", 5)) {
+		struct slp_history *slp;
+		unsigned long flags;
+
+		spin_lock_irqsave(&kp_lock, flags);
+
+		if (!strncmp(current->comm, "wdtk-0", 6))
+			slp = &wk_sl[0];
+		else if (!strncmp(current->comm, "wdtk-1", 6))
+			slp = &wk_sl[1];
+		else if (!strncmp(current->comm, "wdtk-2", 6))
+			slp = &wk_sl[2];
+		else if (!strncmp(current->comm, "wdtk-3", 6))
+			slp = &wk_sl[3];
+		else if (!strncmp(current->comm, "wdtk-4", 6))
+			slp = &wk_sl[4];
+		else if (!strncmp(current->comm, "wdtk-5", 6))
+			slp = &wk_sl[5];
+		else if (!strncmp(current->comm, "wdtk-6", 6))
+			slp = &wk_sl[6];
+		else if (!strncmp(current->comm, "wdtk-7", 6))
+			slp = &wk_sl[7];
+		else {
+			spin_unlock_irqrestore(&kp_lock, flags);
+			return 0;
+		}
+
+		if (IS_ERR_OR_NULL(slp)) {
+			spin_unlock_irqrestore(&kp_lock, flags);
+			return 0;
+		}
+
+		slp->cpu = smp_processor_id();
+		slp->sc = sched_clock();
+		slp->timer = (struct hrtimer *)regs->regs[0];
+
+		spin_unlock_irqrestore(&kp_lock, flags);
+	}
+
+	return 0;
+}
+
+static int clockevents_exchange_device_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	struct clock_event_device *clkevt = (struct clock_event_device *)regs->regs[1];
+
+	if (!IS_ERR_OR_NULL(clkevt) && (clkevt->features & CLOCK_EVT_FEAT_ONESHOT) &&
+	    !strncmp(clkevt->name, "mtk-clkevt", 10))
+		bc_mtk_clkevt = clkevt;
+
+	return 0;
+}
+#endif
+
 static int __init hangdet_init(void)
 {
 	int res = 0;
@@ -1395,6 +1545,22 @@ static int __init hangdet_init(void)
 	}
 #endif
 
+#if IS_ENABLED(CONFIG_ARM64)
+	res = register_kprobe(&kp_hrtimer_start_range_ns);
+	if (res < 0)
+		pr_info("kp_hrtimer_start_range_ns kprobe failed %d\n", res);
+	else
+		pr_info("Planted kprobe at %llx for hrtimer_start_range_ns\n",
+			(unsigned long long) kp_hrtimer_start_range_ns.addr);
+
+	res = register_kprobe(&kp_clockevents_exchange_device);
+	if (res < 0)
+		pr_info("kp_clockevents_exchange_device kprobe failed %d\n", res);
+	else
+		pr_info("Planted kprobe at %llx for hrtimer_start_range_ns\n",
+			(unsigned long long) kp_clockevents_exchange_device.addr);
+#endif
+
 	aee_reboot_hook_init();
 	timer_list_debug_init();
 
@@ -1403,6 +1569,10 @@ static int __init hangdet_init(void)
 
 static void __exit hangdet_exit(void)
 {
+#if IS_ENABLED(CONFIG_ARM64)
+	unregister_kprobe(&kp_hrtimer_start_range_ns);
+	unregister_kprobe(&kp_clockevents_exchange_device);
+#endif
 	unregister_pm_notifier(&wdt_pm_nb);
 	kthread_stop((struct task_struct *)wk_tsk);
 	aee_reboot_hook_exit();
