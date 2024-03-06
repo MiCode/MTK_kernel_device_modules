@@ -50,8 +50,6 @@ static int scp_ultra_pcm_dev_probe(struct platform_device *pdev)
 	struct mtk_base_scp_ultra *scp_ultra;
 	int ret = 0;
 
-	dev_dbg(&pdev->dev, "%s()\n", __func__);
-
 	scp_ultra = devm_kzalloc(&pdev->dev,
 			sizeof(struct mtk_base_scp_ultra), GFP_KERNEL);
 	if (!scp_ultra)
@@ -71,7 +69,7 @@ static int scp_ultra_pcm_dev_probe(struct platform_device *pdev)
 	}
 	/*  register dsp dai driver*/
 	scp_ultra->mtk_scp_hardware = &scp_ultra_hardware;
-	pr_debug("%s: dev name %s\n", __func__, dev_name(&pdev->dev));
+	pr_info("%s: dev name %s\n", __func__, dev_name(&pdev->dev));
 	scp_ultra->dev = &pdev->dev;
 	scp_ultra->ultra_mem.ultra_ul_memif_id = -1;
 	scp_ultra->ultra_mem.ultra_dl_memif_id = -1;
