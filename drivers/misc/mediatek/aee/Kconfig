@@ -58,3 +58,13 @@ config MTK_PANIC_ON_WARN
 	  aed-debug.c is AEE UT test case file, just for generate some vendor
 	  exception to test AEE dump flow, include in KE, HWT, HW_reboot, EE,
 	  and kernelAPI exception
+
+config MTK_AEE_YOCTO
+	bool "AED runs on the Yocto system"
+	help
+	  MTK_AEE_YOCTO is the kernel config of designed by MTK,
+	  The AED is specified to run on the Yocto system, and
+          the paths for AED-related binaries on the Yocto system
+          are different from those on the Android system. aee
+          driver needs to distinguish whether the current system
+          is Yocto.
