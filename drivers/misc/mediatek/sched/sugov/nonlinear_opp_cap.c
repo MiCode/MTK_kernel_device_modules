@@ -26,6 +26,9 @@
 #include "dsu_interface.h"
 #include <mt-plat/mtk_irq_mon.h>
 #include "eas/group.h"
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
+#include <thermal_interface.h>
+#endif
 
 DEFINE_PER_CPU(struct sbb_cpu_data *, sbb);
 EXPORT_SYMBOL(sbb);
@@ -223,6 +226,9 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 	int i, cpu, dsu_target_freq = 0, max_freq_in_gear, cpu_idx;
 	unsigned int wl_type = get_em_wl();
 	struct cpufreq_mtk *c = policy->driver_data;
+	unsigned int gov_cpu = policy->cpu;
+	int gearid = topology_cluster_id(gov_cpu);
+	unsigned int freq_thermal = 0;
 
 	for_each_cpu(cpu_idx, policy->related_cpus)
 		freq_state.cpu_freq[cpu_idx] = policy->cached_target_freq;
@@ -253,10 +259,15 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 		freq_state.dsu_freq_vote[i]
 			= dsu_freq_agg(cpu, max_freq_in_gear, false, wl_type, &dsu_target_freq);
 
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
+		freq_thermal = get_cpu_ceiling_freq(gearid);
+		if(dsu_target_freq > freq_thermal)
+			dsu_target_freq = freq_thermal;
+#endif
 skip_single_idle_cpu:
 		if (trace_sugov_ext_dsu_freq_vote_enabled())
 			trace_sugov_ext_dsu_freq_vote(wl_type, i,
-					max_freq_in_gear, freq_state.dsu_freq_vote[i]);
+					max_freq_in_gear, freq_state.dsu_freq_vote[i], freq_thermal);
 	}
 
 	freq_state.dsu_target_freq = dsu_target_freq;
@@ -1579,7 +1590,7 @@ static void cpufreq_update_target_freq(struct cpufreq_policy *policy, unsigned i
 			c->sb_ch = -1;
 			if (trace_sugov_ext_dsu_freq_vote_enabled())
 				trace_sugov_ext_dsu_freq_vote(UINT_MAX,
-					topology_cluster_id(cpu), target_freq, UINT_MAX);
+					topology_cluster_id(cpu), target_freq, UINT_MAX, 0);
 		}
 	}
 
