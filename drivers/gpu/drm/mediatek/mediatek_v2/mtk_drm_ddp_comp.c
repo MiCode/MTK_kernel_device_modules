@@ -1614,18 +1614,16 @@ void mtk_ddp_comp_unregister(struct drm_device *drm, struct mtk_ddp_comp *comp)
 
 void mtk_ddp_comp_pm_enable(struct mtk_ddp_comp *comp)
 {
-	if (comp->larb_dev)
-		pm_runtime_enable(comp->dev);
-	else if (comp->larb_devs)
-		pm_runtime_enable(comp->dev);
+	if (comp->larb_dev || comp->larb_devs)
+		if (!pm_runtime_enabled(comp->dev))
+			pm_runtime_enable(comp->dev);
 }
 
 void mtk_ddp_comp_pm_disable(struct mtk_ddp_comp *comp)
 {
-	if (comp->larb_dev)
-		pm_runtime_disable(comp->dev);
-	else if (comp->larb_devs)
-		pm_runtime_disable(comp->dev);
+	if (comp->larb_dev || comp->larb_devs)
+		if (pm_runtime_enabled(comp->dev))
+			pm_runtime_disable(comp->dev);
 }
 
 static void mtk_ddp_comp_larb_get(struct mtk_ddp_comp *comp,
