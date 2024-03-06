@@ -844,6 +844,7 @@ mgk_64_platform_device_modules = {
     "drivers/interconnect/mediatek/mmqos-mt6985.ko": "mt6985",
     "drivers/interconnect/mediatek/mmqos-mt6989.ko": "mt6989",
     "drivers/interconnect/mediatek/mmqos-mt6991.ko": "mt6991",
+    "drivers/interconnect/mediatek/mmqos-mt6877.ko": "mt6877",
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6855.ko": "mt6855",
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6879.ko": "mt6879",
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6886.ko": "mt6886",
