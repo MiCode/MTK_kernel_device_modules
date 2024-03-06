@@ -392,24 +392,6 @@ static void smpu_clean_cpu_write_vio(struct smpu *mpu)
 		for (i = 0; i < mpu->dump_cnt; i++)
 			dump_reg[i].value =
 				readl(mpu_base + dump_reg[i].offset);
-		if (msg_len < MTK_SMPU_MAX_CMD_LEN) {
-			prefetch = mtk_clear_smpu_log(vio_type % 2);
-			mpu->is_prefetch = prefetch == 1 ? true : false;
-			msg_len += scnprintf(mpu->vio_msg + msg_len,
-					     MTK_SMPU_MAX_CMD_LEN - msg_len,
-					     "\ncpu-prefetch:%d", prefetch);
-			msg_len += scnprintf(mpu->vio_msg + msg_len,
-					     MTK_SMPU_MAX_CMD_LEN - msg_len,
-					     "\n[SMPU]%s\n", mpu->name);
-		}
-		for (i = 0; i < mpu->dump_cnt; i++) {
-			if (msg_len < MTK_SMPU_MAX_CMD_LEN)
-				msg_len += scnprintf(
-					mpu->vio_msg + msg_len,
-					MTK_SMPU_MAX_CMD_LEN - msg_len,
-					"[%x]%x;", dump_reg[i].offset,
-					dump_reg[i].value);
-		}
 
 		/* check whether cpu type master lead this smpu violation */
 		if (!(strcmp(mpu->name, "nsmpu")) ||
@@ -418,6 +400,24 @@ static void smpu_clean_cpu_write_vio(struct smpu *mpu)
 			if ((mpu->dump_reg[5].value == sec_cpu_aid) ||
 			    (mpu->dump_reg[5].value == ns_cpu_aid) ||
 			    (mpu->dump_reg[5].value == hyp_cpu_aid)) {
+				if (msg_len < MTK_SMPU_MAX_CMD_LEN) {
+					prefetch = mtk_clear_smpu_log(vio_type % 2);
+					mpu->is_prefetch = prefetch == 1 ? true : false;
+					msg_len += scnprintf(mpu->vio_msg + msg_len,
+					     MTK_SMPU_MAX_CMD_LEN - msg_len,
+					     "\ncpu-prefetch:%d", prefetch);
+					msg_len += scnprintf(mpu->vio_msg + msg_len,
+					     MTK_SMPU_MAX_CMD_LEN - msg_len,
+					     "\n[SMPU]%s\n", mpu->name);
+				}
+				for (i = 0; i < mpu->dump_cnt; i++) {
+					if (msg_len < MTK_SMPU_MAX_CMD_LEN)
+						msg_len += scnprintf(
+						mpu->vio_msg + msg_len,
+						MTK_SMPU_MAX_CMD_LEN - msg_len,
+						"[%x]%x;", dump_reg[i].offset,
+						dump_reg[i].value);
+				}
 				pr_info("%s: %s", __func__, mpu->vio_msg);
 				clear_violation(mpu);
 			}
