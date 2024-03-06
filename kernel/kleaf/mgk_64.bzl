@@ -119,7 +119,6 @@ mgk_64_device_modules = [
     "drivers/char/hw_random/sec-rng.ko",
     "drivers/char/rpmb/rpmb.ko",
     "drivers/char/rpmb/rpmb-mtk.ko",
-    "drivers/clk/mediatek/clk-bringup.ko",
     "drivers/clk/mediatek/clk-common.ko",
     "drivers/clk/mediatek/clk-disable-unused.ko",
     "drivers/clk/mediatek/fhctl.ko",
@@ -695,6 +694,7 @@ mgk_64_device_modules = [
 
 mgk_64_platform_device_modules = {
     # keep sorted
+    "drivers/clk/mediatek/clk-bringup.ko": "mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt6991 mt8192 mt8188",
     "drivers/clk/mediatek/clk-chk-mt6886.ko": "mt6886",
     "drivers/clk/mediatek/clk-chk-mt6897.ko": "mt6897",
     "drivers/clk/mediatek/clk-mt6893-apu0.ko": "mt6893",
