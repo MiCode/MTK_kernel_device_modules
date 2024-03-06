@@ -13800,12 +13800,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		scp-protect = "enable";   /* enable scp protections */
 		secure-dump = "enable";   /* enable dump via secure world*/
 		secure-dump-size = <0x628000>;
-		scp-pm-notify = "disable";
+		scp-pm-notify = "enable";
 		scp-thermal-wq = "disable";
 		scp-low-pwr-dbg = "enable";
 		scp-cfgreg-ap-en = "enable";
 		scp-read-infra-irq-status = "enable";
 		scp-scpsys-regmap = "enable";
+		scp-bus-tracker-ver = <0x2>;
 
 		//scp_aovmem_key = "mediatek,scp_aov_reserved";
 		scp-mem-key = "mediatek,reserve-memory-scp_share";
