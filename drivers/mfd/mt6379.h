@@ -15,6 +15,7 @@
 #define MT6379_REG_DEV_INFO	0x00
 #define MT6379_REG_TM_PASS_CODE	0x07
 #define MT6379_REG_IRQ_IND	0x0B
+#define MT6379_REG_IRQ_MASK	0x0C
 #define MT6379_REG_SPMI_TXDRV2	0x2B
 
 #define MT6379_VENID_MASK	GENMASK(7, 4)
@@ -39,6 +40,7 @@ struct mt6379_data {
 	struct irq_chip irq_chip;
 	struct mutex irq_lock;
 	u8 mask_buf[MT6379_MAX_IRQ_REG];
+	u8 tmp_buf[MT6379_MAX_IRQ_REG];
 	bool test_mode_entered;
 	int irq;
 };
