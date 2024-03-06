@@ -497,6 +497,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/swpm/modules/debug/v6989/mtk-swpm-mml-dbg-v6989.ko",
     "drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-dbg-v6991.ko",
     "drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-cpu-dbg-v6991.ko",
+    "drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-disp-dbg-v6991.ko",
     "drivers/misc/mediatek/swpm/mtk-swpm.ko",
     "drivers/misc/mediatek/swpm/mtk-swpm-perf-arm-pmu.ko",
     "drivers/misc/mediatek/task_turbo/task_turbo.ko",
@@ -1135,6 +1136,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6989/mtk-swpm-disp-dbg-v6989.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6989/mtk-swpm-mem-dbg-v6989.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6989/mtk-swpm-mml-dbg-v6989.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-disp-dbg-v6991.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusty/ise-trusty.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusty/ise-trusty-ipc.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusty/ise-trusty-log.ko")
@@ -1538,6 +1540,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6989/mtk-swpm-disp-dbg-v6989.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6989/mtk-swpm-mem-dbg-v6989.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6989/mtk-swpm-mml-dbg-v6989.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-disp-dbg-v6991.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusty/ise-trusty.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusty/ise-trusty-ipc.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusty/ise-trusty-log.ko")
