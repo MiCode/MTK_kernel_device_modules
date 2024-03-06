@@ -19,6 +19,7 @@ ccflags-y += \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/ \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos \
 	-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/ \
+	-I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek \
 	-I$(srctree)/include \
 
 ifeq ($(CONFIG_MTK_TINYSYS_SSPM_V2),y)
