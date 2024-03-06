@@ -671,6 +671,20 @@ int get_catm_ttj(void)
 }
 EXPORT_SYMBOL(get_catm_ttj);
 
+void (*cm_thermal_hint)(int) = NULL;
+
+void cm_thermal_hint_register(ThermalHintFuncPtr func)
+{
+	cm_thermal_hint = func;
+}
+EXPORT_SYMBOL(cm_thermal_hint_register);
+
+void cm_thermal_hint_unregister(void)
+{
+	cm_thermal_hint = NULL;
+}
+EXPORT_SYMBOL(cm_thermal_hint_unregister);
+
 
 static ssize_t ttj_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
@@ -1880,6 +1894,42 @@ static ssize_t lvts_info3_show(struct kobject *kobj,
 		return len;
 }
 
+unsigned int thermal_hint_enable;
+
+static ssize_t thermal_hint_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	if (cm_thermal_hint) {
+		len += snprintf(buf + len, PAGE_SIZE - len, "%u\n",
+			thermal_hint_enable);
+	}
+	return len;
+}
+
+static ssize_t thermal_hint_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char cmd[20];
+	static int enable;
+
+	if (sscanf(buf, "%12s %u", cmd, &thermal_hint_enable)
+		== 2) {
+		if (strncmp(cmd, "thermal_hint", 12) == 0) {
+			if ((cm_thermal_hint) && enable != thermal_hint_enable) {
+				cm_thermal_hint(thermal_hint_enable);
+				enable = thermal_hint_enable;
+			}
+			return count;
+		}
+	}
+
+	pr_info("[thermal_hint] invalid input\n");
+
+	return -EINVAL;
+}
+
 static struct kobj_attribute ttj_attr = __ATTR_RW(ttj);
 static struct kobj_attribute power_budget_attr = __ATTR_RW(power_budget);
 static struct kobj_attribute cpu_info_attr = __ATTR_RO(cpu_info);
@@ -1918,6 +1968,8 @@ static struct kobj_attribute abnormal_temp_attr = __ATTR_RW(abnormal_temp);
 static struct kobj_attribute lvts_info1_attr = __ATTR_RO(lvts_info1);
 static struct kobj_attribute lvts_info2_attr = __ATTR_RO(lvts_info2);
 static struct kobj_attribute lvts_info3_attr = __ATTR_RO(lvts_info3);
+static struct kobj_attribute thermal_hint_attr = __ATTR_RW(thermal_hint);
+
 
 
 static struct attribute *thermal_attrs[] = {
@@ -1958,6 +2010,7 @@ static struct attribute *thermal_attrs[] = {
 	&lvts_info1_attr.attr,
 	&lvts_info2_attr.attr,
 	&lvts_info3_attr.attr,
+	&thermal_hint_attr.attr,
 	NULL
 };
 static struct attribute_group thermal_attr_group = {

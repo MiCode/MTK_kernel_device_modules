@@ -226,6 +226,10 @@ extern int set_reboot_temperature(int temp);
 extern int set_cold_interrupt_enable_addr(int val);
 extern int get_dsu_ceiling_freq(void);
 extern int get_cpu_ceiling_freq (int cluster_id);
+typedef void (*ThermalHintFuncPtr)(int);
+extern void cm_thermal_hint_register(ThermalHintFuncPtr func);
+extern void cm_thermal_hint_unregister(void);
+
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 extern void __iomem *thermal_csram_base;
