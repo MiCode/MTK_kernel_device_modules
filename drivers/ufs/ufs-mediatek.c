@@ -14,6 +14,7 @@
 #include <linux/delay.h>
 #include <linux/of_address.h>
 #include <linux/of.h>
+#include <linux/of_platform.h>
 #include <linux/phy/phy.h>
 #include <linux/platform_device.h>
 #include <linux/pm_qos.h>
@@ -21,7 +22,6 @@
 #include <linux/regulator/consumer.h>
 #include <linux/reset.h>
 #include <linux/rpmb.h>
-#include <linux/sched/clock.h>
 #include <linux/stddef.h>
 #include <linux/tracepoint.h>
 #include <scsi/scsi_proto.h>
@@ -155,7 +155,7 @@ static bool ufs_mtk_is_pmc_via_fastauto(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-	return (host->caps & UFS_MTK_CAP_PMC_VIA_FASTAUTO);
+	return !!(host->caps & UFS_MTK_CAP_PMC_VIA_FASTAUTO);
 }
 
 static bool ufs_mtk_is_tx_skew_fix(struct ufs_hba *hba)
@@ -540,9 +540,6 @@ static int ufs_mtk_wait_link_state(struct ufs_hba *hba, u32 state,
 		usleep_range(100, 200);
 	} while (ktime_before(time_checked, timeout));
 
-	if (val == state)
-		return 0;
-
 	return -ETIMEDOUT;
 }
 
@@ -842,7 +839,7 @@ static void ufs_mtk_mcq_enable_irq(struct ufs_hba *hba)
  * @on: If true, enable clocks else disable them.
  * @status: PRE_CHANGE or POST_CHANGE notify
  *
- * Returns 0 on success, non-zero on failure.
+ * Return: 0 on success, non-zero on failure.
  */
 static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 				enum ufs_notify_change_status status)
@@ -1335,7 +1332,7 @@ static int ufs_mtk_vreg_fix_vcc(struct ufs_hba *hba)
 	if (of_property_read_bool(np, "mediatek,ufs-vcc-by-num")) {
 		ufs_mtk_get_vcc_num(res);
 		if (res.a1 > UFS_VCC_NONE && res.a1 < UFS_VCC_MAX)
-			snprintf(vcc_name, MAX_VCC_NAME, "vcc-opt%u", (unsigned int) res.a1);
+			snprintf(vcc_name, MAX_VCC_NAME, "vcc-opt%lu", res.a1);
 		else
 			return -ENODEV;
 	} else if (of_property_read_bool(np, "mediatek,ufs-vcc-by-ver")) {
@@ -1382,7 +1379,7 @@ static void ufs_mtk_vreg_fix_vccqx(struct ufs_hba *hba)
 		regulator_disable((*vreg_off)->reg);
 		devm_kfree(hba->dev, (*vreg_off)->name);
 		devm_kfree(hba->dev, *vreg_off);
-		*vreg_off  = NULL;
+		*vreg_off = NULL;
 	}
 }
 
@@ -1492,10 +1489,9 @@ static void ufs_mtk_init_mcq_irq(struct ufs_hba *hba)
 	for (i = 0; i < host->mcq_nr_intr; i++) {
 		/* irq index 0 is ufshcd system irq, sq, cq irq start from index 1 */
 		irq = platform_get_irq(pdev, i + 1);
-		if (irq < 0) {
-			dev_err(hba->dev, "get platform mcq irq fail: %d\n", i);
+		if (irq < 0)
 			goto failed;
-		}
+
 		host->mcq_intr_info[i].hba = hba;
 		host->mcq_intr_info[i].irq = irq;
 		dev_info(hba->dev, "get platform mcq irq: %d, %d\n", i, irq);
@@ -1535,7 +1531,7 @@ static bool ufs_host_mcq_support(struct ufs_hba *hba)
  * Binds PHY with controller and powers up PHY enabling clocks
  * and regulators.
  *
- * Returns -EPROBE_DEFER if binding fails, returns negative error
+ * Return: -EPROBE_DEFER if binding fails, returns negative error
  * on phy power up failure and returns zero on success.
  */
 static int ufs_mtk_init(struct ufs_hba *hba)
@@ -1929,12 +1925,10 @@ static int ufs_mtk_pre_link(struct ufs_hba *hba)
 	return ret;
 }
 
-static int ufs_mtk_post_link(struct ufs_hba *hba)
+static void ufs_mtk_post_link(struct ufs_hba *hba)
 {
 	/* enable unipro clock gating feature */
 	ufs_mtk_cfg_unipro_cg(hba, true);
-
-	return 0;
 }
 
 static int ufs_mtk_link_startup_notify(struct ufs_hba *hba,
@@ -1947,7 +1941,7 @@ static int ufs_mtk_link_startup_notify(struct ufs_hba *hba,
 		ret = ufs_mtk_pre_link(hba);
 		break;
 	case POST_CHANGE:
-		ret = ufs_mtk_post_link(hba);
+		ufs_mtk_post_link(hba);
 		break;
 	default:
 		ret = -EINVAL;
@@ -2524,6 +2518,11 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 	/* Dump ufshci register 0x2100 */
 	ufshcd_dump_regs(hba, REG_UFS_EXTREG, 0x4, "Ext Reg (0x2100): ");
 
+	/* Dump ufshci register 0x2200 ~ 0x22AC */
+	ufshcd_dump_regs(hba, REG_UFS_MPHYCTRL,
+			 REG_UFS_REJECT_MON - REG_UFS_MPHYCTRL + 4,
+			 "MPHY Ctrl (0x2200): ");
+
 	/* Direct debugging information to REG_MTK_PROBE */
 	ufs_mtk_dbg_sel(hba);
 	/* Dump ufshci register 0x22C8 */
@@ -3099,7 +3098,7 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
  * ufs_mtk_probe - probe routine of the driver
  * @pdev: pointer to Platform device handle
  *
- * Return zero for success and non-zero for failure
+ * Return: zero for success and non-zero for failure.
  */
 static int ufs_mtk_probe(struct platform_device *pdev)
 {
@@ -3318,18 +3317,6 @@ static int ufs_mtk_runtime_resume(struct device *dev)
 
 	return ret;
 }
-
-void ufs_mtk_shutdown(struct platform_device *pdev)
-{
-	/*
-	 * ufshcd_wl_shutdown may run concurrently and have racing problem.
-	 * ufshcd_pltfrm_shutdown only turn off power and clock, which is not
-	 * necessary in shutdwon flow. Beside, ufshcd_shutdown flow is
-	 * incorrect, it will not turn off power and clock after
-	 * ufshcd_wl_shutdown (dev is poweroff and link is off)
-	 * So, it is not necessary and remove ufshcd_pltfrm_shutdown.
-	 */
-}
 #endif
 
 static const struct dev_pm_ops ufs_mtk_pm_ops = {
@@ -3344,7 +3331,6 @@ static const struct dev_pm_ops ufs_mtk_pm_ops = {
 static struct platform_driver ufs_mtk_pltform = {
 	.probe      = ufs_mtk_probe,
 	.remove     = ufs_mtk_remove,
-	.shutdown   = ufs_mtk_shutdown,
 	.driver = {
 		.name   = "ufshcd-mtk",
 		.pm     = &ufs_mtk_pm_ops,
