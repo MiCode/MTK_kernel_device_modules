@@ -3090,26 +3090,24 @@ static void clkchk_arm64_serror_panic_hook(void *data,
 #endif
 
 static const char * const off_pll_names[] = {
-	NULL
-};
-
-static const char * const notice_pll_names[] = {
 	"mfgpll",
 	"mfgpll-sc0",
 	"mfgpll-sc1",
 	"univpll",
 	"msdcpll",
+	"mainpll2",
 	"univpll2",
 	"mmpll2",
 	"imgpll",
 	"tvdpll1",
 	"tvdpll2",
 	"tvdpll3",
-	"mainpll2",
+};
+
+static const char * const notice_pll_names[] = {
 	"adsppll",
 	"vlp-apll1",
 	"vlp-apll2",
-	NULL
 };
 
 static const char * const bypass_pll_name[] = {
