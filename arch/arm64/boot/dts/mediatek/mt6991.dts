@@ -455,6 +455,9 @@
 
 	pdchk {
 		compatible = "mediatek,mt6991-pdchk";
+		interrupts = <GIC_SPI 389 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 825 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupt-names = "hwv_irq", "hfrp_hwv_irq";
 	};
 
 	clocks {
@@ -508,7 +511,7 @@
 
 	mm_hwv: syscon@31b00000 {
 		compatible = "mediatek,mt6991-mm_hwv", "syscon";
-		reg = <0 0x31b00000 0 0x3000>;
+		reg = <0 0x31b00000 0 0x6000>;
 	};
 
 	mminfra_hwv: syscon@31a80000 {
