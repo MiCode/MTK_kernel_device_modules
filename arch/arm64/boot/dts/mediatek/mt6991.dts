@@ -14840,6 +14840,20 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		iommus = <&apu_smmu 0xe>;
 	};
 
+	apusys-aov {
+		compatible = "mediatek,apusys_aov-v2";
+		smmu-device = <&apusys_aov_smmu_device>;
+		ctrl-size = <0x200000>;
+	};
+
+	apusys_aov_smmu_device: apusys-aov-smmu-device {
+		compatible = "mediatek,apusys-aov-smmu-device";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		mtk,iommu-dma-range = <0xb000000 0x1000000>;
+		iommus = <&apu_smmu 0x11>;
+	};
+
 	apu_top_3: apu-top-3@19020000 {
 		compatible = "mt6991,apu_top_3";
 		reg = <0 0x19020000 0 0x1000>,          // apu_rcx
