@@ -167,6 +167,7 @@ static int fusb304_remove(struct platform_device *pdev)
 
 static const struct of_device_id fusb304_ids[] = {
 	{.compatible = "mediatek,fusb304",},
+	{.compatible = "mediatek,fusb340",},
 	{},
 };
 

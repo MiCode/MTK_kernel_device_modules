@@ -423,6 +423,7 @@ static int typec_mux_switch_remove(struct platform_device *pdev)
 
 static const struct of_device_id typec_mux_switch_ids[] = {
 	{.compatible = "mediatek,typec_mux_switch",},
+	{.compatible = "mediatek,typec_switch",},
 	{},
 };
 
