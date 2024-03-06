@@ -125,6 +125,14 @@ static void sched_task_uclamp_hook(void *data, struct sched_entity *se)
 	}
 }
 
+static void sched_select_task_rq_fair_hook(void *ignore, struct task_struct *p,
+							int prev_cpu, int sd_flag,
+							int wake_flags, int *target_cpu)
+{
+	if (trace_sched_domain_flags_enabled())
+		trace_sched_domain_flags(p, prev_cpu, sd_flag, wake_flags, *target_cpu);
+}
+
 static void sched_rq_load_hook(void *data, struct cfs_rq *rq)
 {
 	if (trace_sched_rq_load_enabled())
@@ -412,6 +420,11 @@ static void mtk_sched_trace_init(void)
 	ret = register_trace_sched_util_est_cfs_tp(sched_rq_load_hook, NULL);
 	if (ret)
 		pr_info("register sched_rq_load_hook failed!\n");
+
+	ret = register_trace_android_rvh_select_task_rq_fair(
+			sched_select_task_rq_fair_hook, NULL);
+	if (ret)
+		pr_info("register sched_select_task_rq_fair_hook failed!\n");
 }
 
 static void mtk_sched_trace_exit(void)
