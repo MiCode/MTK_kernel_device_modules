@@ -2568,6 +2568,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&dram_s0 &dram_s1 &spm_emi>,
 				<&spm_pmic &spm_vcore>;
 		constraints = <&rc_vcore &rc_bus26m &rc_syspll>;
+		lpm-gov-enable = <1>;
+		cpu-gov-info = <&cpul &cpum &cpub>;
 		cg-shift = <0>; // cg blocking index
 		pll-shift = <0>; // pll blocking index
 
@@ -2681,6 +2683,21 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				id = <0x00000000>;
 				value = <0>;
 				cond-info = <1>;
+			};
+		};
+
+		cpu-gov-info-list {
+			cpul: cpul {
+				last-idle-state = "system-vcore";
+				hidden-state = "wfi", "cpuoff-l";
+			};
+			cpum: cpum {
+				last-idle-state = "system-vcore";
+				hidden-state = "wfi", "cpuoff-m";
+			};
+			cpub: cpub {
+				last-idle-state = "system-vcore";
+				hidden-state = "wfi", "cpuoff-b";
 			};
 		};
 
