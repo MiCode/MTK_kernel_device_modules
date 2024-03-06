@@ -9489,12 +9489,11 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,larb-oddmr-dbir = <1>;
 			mediatek,larb-oddmr-odr = <2>;
 			mediatek,larb-oddmr-odw = <3>;
-#if 0
 			mediatek,larb = <&smi_larb33 SMMU_L33_P0_DISP1_ODDMR0_DMRR0>,
 					<&smi_larb33 SMMU_L33_P4_DISP1_ODDMR0_DBIR>,
 					<&smi_larb33 SMMU_L33_P5_DISP1_ODDMR0_ODR>,
 					<&smi_larb33 SMMU_L33_P6_DISP1_ODDMR0_ODW>;
-			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			//mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L33_P0_DISP1_ODDMR0_DMRR0)
 						&mmqos SLAVE_COMMON(1)>,
@@ -9520,7 +9519,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 						"DDP_COMPONENT_ODDMR0_DBIR_HRT",
 						"DDP_COMPONENT_ODDMR0_ODR_HRT",
 						"DDP_COMPONENT_ODDMR0_ODW_HRT";
-#endif
 		};
 
 		disp_rsz0: disp-rsz0@321a0000 {
