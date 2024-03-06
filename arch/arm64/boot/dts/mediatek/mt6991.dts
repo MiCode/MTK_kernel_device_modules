@@ -14747,7 +14747,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			"user-vcore", "user-vmm", "user-vdisp", "user-vdec",
 			"dummy-dis", "dummy-mdp", "dummy-mml", "dummy-smi",
 			"dummy-ven", "dummy-vde", "dummy-img", "dummy-cam", "user-img-smi";
-		//mediatek,free-run;
+		mediatek,free-run;
 		mediatek,dpsw-thres = <1>;
 		//mediatek,vdec-larb = <&smi_larb5>;
 		mediatek,restore-step;
