@@ -3,7 +3,6 @@
  * Copyright (C) 2024 MediaTek Inc.
  */
 
-#include <asm/memory.h>
 #include <linux/device.h>
 #include <linux/fs.h>
 #include <linux/file.h>
