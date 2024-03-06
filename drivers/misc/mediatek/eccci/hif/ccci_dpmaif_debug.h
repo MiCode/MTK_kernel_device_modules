@@ -107,7 +107,8 @@ struct debug_tx_send_skb_hdr {
 	u8  ccmni_idx;
 	u16 queue_idx:3;
 	u16 budget:13;
-
+	u8  net_type:3;
+	u8  reserv:5;
 } __packed;
 
 struct debug_tx_done_skb_hdr {

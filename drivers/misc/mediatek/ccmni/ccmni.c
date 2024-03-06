@@ -689,7 +689,7 @@ static netdev_tx_t ccmni_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	tx_para_info.ccmni_idx = ccmni->index;
 	tx_para_info.hw_qno = skb->queue_mapping;
 	tx_para_info.count_l = (skb->mark & APP_VIP_MARK) ? 0x1000 : 0;
-
+	tx_para_info.network_type = ccmni->net_type;
 	if (ccmni_ops.send_skb) {
 		if (ccmni_ops.send_skb(&tx_para_info))
 			goto tx_busy;

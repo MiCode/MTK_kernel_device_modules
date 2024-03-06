@@ -2409,11 +2409,12 @@ static inline int dpmaif_txq_set_skb_data_to_drb(struct dpmaif_tx_queue *txq,
 
 			hdr.type      = TYPE_TX_SEND_SKB_ID;
 			hdr.qidx      = txq->index;
+			hdr.net_type  = tx_info->network_type;
 			hdr.time      = (unsigned int)(local_clock() >> 16);
 			hdr.wr        = is_frag ? (cur_idx | 0x8000) : cur_idx;
 			hdr.ipid      = ((struct iphdr *)skb->data)->id;
 			hdr.len       = data_len;
-			hdr.count_l   = drb_msg->count_l;
+			hdr.count_l   = tx_info->count_l;
 			hdr.ccmni_idx = tx_info->ccmni_idx;
 			hdr.queue_idx = tx_info->hw_qno;
 			hdr.budget    = atomic_read(&txq->txq_budget) - send_cnt;
