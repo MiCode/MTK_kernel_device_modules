@@ -233,7 +233,10 @@ struct mtk_disp_ovl_blender {
 	int bg_w, bg_h;
 	struct clk *fbdc_clk;
 	struct mtk_ovl_backup_info backup_info[MAX_LAYER_NUM];
+	unsigned int set_partial_update;
+	unsigned int roi_height;
 };
+
 static int mtk_ovl_blender_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			  enum mtk_ddp_io_cmd io_cmd, void *params);
 
@@ -388,7 +391,11 @@ static void _get_bg_roi(struct mtk_ddp_comp *comp, int *h, int *w)
 {
 	struct mtk_disp_ovl_blender *ovl = comp_to_ovl_blender(comp);
 
-	*h = ovl->bg_h;
+	if (ovl->set_partial_update != 1)
+		*h = ovl->bg_h;
+	else
+		*h = ovl->roi_height;
+
 	*w = ovl->bg_w;
 }
 
@@ -422,10 +429,15 @@ static void mtk_ovl_blender_all_layer_off(struct mtk_ddp_comp *comp,
 static void mtk_ovl_blender_config(struct mtk_ddp_comp *comp,
 			   struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
+	struct mtk_disp_ovl_blender *ovl = comp_to_ovl_blender(comp);
 	unsigned int width = 0, height = 0;
 
 	width = cfg->w;
-	height = cfg->h;
+
+	if (ovl->set_partial_update != 1)
+		height = cfg->h;
+	else
+		height = ovl->roi_height;
 
 	if (cfg->w != 0 && cfg->h != 0) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -1201,6 +1213,42 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 	}
 }
 
+static int mtk_ovl_blender_set_partial_update(struct mtk_ddp_comp *comp,
+		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
+{
+	struct mtk_disp_ovl_blender *ovl = comp_to_ovl_blender(comp);
+	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
+						&comp->mtk_crtc->base, comp, false);
+	struct total_tile_overhead_v to_v_info;
+	unsigned int overhead_v;
+
+	DDPINFO("%s, %s set partial update, height:%d, enable:%d\n",
+			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
+
+	ovl->set_partial_update = enable;
+
+	to_v_info = mtk_crtc_get_total_overhead_v(comp->mtk_crtc);
+	overhead_v = to_v_info.overhead_v;
+
+	ovl->roi_height = partial_roi.height + (overhead_v * 2);
+
+	DDPDBG("%s, %s overhead_v:%d, roi_height:%d\n",
+			__func__, mtk_dump_comp_str(comp), overhead_v, ovl->roi_height);
+
+	if (ovl->set_partial_update == 1) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_REG_OVL_BLD_ROI_SIZE,
+				ovl->roi_height << 16, 0x1fff << 16);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_REG_OVL_BLD_ROI_SIZE,
+				full_height << 16, 0x1fff << 16);
+	}
+
+	return 0;
+}
+
+
 static const struct mtk_ddp_comp_funcs mtk_disp_ovl_blender_funcs = {
 	.config = mtk_ovl_blender_config,
 	.first_cfg = mtk_ovl_blender_config,
@@ -1218,7 +1266,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_ovl_blender_funcs = {
 	.connect = mtk_ovl_blender_connect,
 	.first_layer = mtk_ovl_blender_first_layer_mt6991,
 //	.config_trigger = mtk_ovl_blender_config_trigger,
-	//.partial_update = mtk_ovl_set_partial_update,
+	.partial_update = mtk_ovl_blender_set_partial_update,
 };
 
 static int mtk_disp_ovl_blender_bind(struct device *dev, struct device *master,

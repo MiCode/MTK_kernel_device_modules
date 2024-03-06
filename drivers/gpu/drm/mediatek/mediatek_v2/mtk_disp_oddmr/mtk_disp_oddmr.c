@@ -2054,7 +2054,7 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp,
 			mtk_oddmr_write(default_comp, addr >> 20, DISP_ODDMR_DMR_UDMA_CTR_5, handle);
 		}
 
-		if(oddmr->set_partial_update) {
+		if(oddmr->set_partial_update == 1) {
 			overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
 				? 0 : oddmr->tile_overhead_v.overhead_v;
 			comp_overhead_v = (!overhead_v) ? 0 : oddmr->tile_overhead_v.comp_overhead_v;
@@ -7321,7 +7321,7 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 }
 
 static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 	struct mtk_disp_oddmr *oddmr = comp_to_oddmr(comp);
@@ -7358,7 +7358,7 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 		__func__, mtk_dump_comp_str(comp), overhead_v, comp_overhead_v);
 
 	/* update y ini */
-	if (oddmr->set_partial_update)
+	if (oddmr->set_partial_update == 1)
 		dbi_y_ini = partial_roi.y;
 	else
 		dbi_y_ini = 0;
@@ -7391,7 +7391,7 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 	dbi_part_data.y_remain2_ini = y_remain2_ini;
 
 	/* oddmr reg config */
-	if (oddmr->set_partial_update) {
+	if (oddmr->set_partial_update == 1) {
 		if (priv->data->mmsys_id == MMSYS_MT6989) {
 			/* ODDMR on MT6989 not support V crop */
 //			mtk_oddmr_write(comp, oddmr->set_partial_update,

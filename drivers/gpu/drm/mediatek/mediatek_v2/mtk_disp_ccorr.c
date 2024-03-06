@@ -1139,7 +1139,7 @@ static void disp_ccorr_config(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_REG_CCORR_CFG,
 				primary_data->ccorr_8bit_switch << 10, 0x1 << 10);
-	if (!ccorr_data->set_partial_update)
+	if (ccorr_data->set_partial_update != 1)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_REG_CCORR_SIZE,
 				   (width << 16) | cfg->h, ~0);
@@ -1397,7 +1397,7 @@ static int disp_ccorr_ioctl_transact(struct mtk_ddp_comp *comp,
 }
 
 static int disp_ccorr_set_partial_update(struct mtk_ddp_comp *comp,
-				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
@@ -1415,7 +1415,7 @@ static int disp_ccorr_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s overhead_v:%d\n",
 			__func__, mtk_dump_comp_str(comp), overhead_v);
 
-	if (ccorr_data->set_partial_update) {
+	if (ccorr_data->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_REG_CCORR_SIZE,
 				   ccorr_data->roi_height + overhead_v * 2, 0x1fff);

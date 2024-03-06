@@ -493,7 +493,7 @@ struct mtk_disp_ovl {
 	int bg_w, bg_h;
 	struct clk *fbdc_clk;
 	struct mtk_ovl_backup_info backup_info[MAX_LAYER_NUM];
-	bool set_partial_update;
+	unsigned int set_partial_update;
 	unsigned int roi_height;
 };
 
@@ -1254,7 +1254,7 @@ static void _get_bg_roi(struct mtk_ddp_comp *comp, int *h, int *w)
 {
 	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
 
-	if (!ovl->set_partial_update)
+	if (ovl->set_partial_update != 1)
 		*h = ovl->bg_h;
 	else
 		*h = ovl->roi_height;
@@ -1294,7 +1294,7 @@ static void mtk_ovl_config(struct mtk_ddp_comp *comp,
 	} else
 		width = cfg->w;
 
-	if (!ovl->set_partial_update)
+	if (ovl->set_partial_update != 1)
 		height = cfg->h;
 	else
 		height = ovl->roi_height;
@@ -5216,7 +5216,7 @@ mtk_ovl_config_trigger(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkt,
 }
 
 static int mtk_ovl_set_partial_update(struct mtk_ddp_comp *comp,
-				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
 	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
@@ -5241,7 +5241,7 @@ static int mtk_ovl_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s overhead_v:%d, roi_height:%d\n",
 			__func__, mtk_dump_comp_str(comp), overhead_v, ovl->roi_height);
 
-	if (ovl->set_partial_update) {
+	if (ovl->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_REG_OVL_ROI_SIZE,
 				ovl->roi_height << 16, 0x1fff << 16);

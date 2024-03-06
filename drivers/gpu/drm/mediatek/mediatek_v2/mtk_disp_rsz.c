@@ -129,7 +129,7 @@ struct mtk_disp_rsz {
 	struct mtk_ddp_comp ddp_comp;
 	struct drm_crtc *crtc;
 	const struct mtk_disp_rsz_data *data;
-	bool set_partial_update;
+	unsigned int set_partial_update;
 	unsigned int roi_y_offset;
 	unsigned int roi_height;
 	struct mtk_disp_rsz_tile_overhead_v tile_overhead_v;
@@ -612,7 +612,7 @@ static void mtk_rsz_config(struct mtk_ddp_comp *comp,
 
 	rsz_config->th[0].ori_in_len = rsz_config->frm_in_h;
 	rsz_config->th[0].ori_out_len = rsz_config->frm_out_h;
-	if (!rsz->set_partial_update) {
+	if (rsz->set_partial_update != 1) {
 		rsz_config->frm_in_h = cfg->rsz_src_h;
 		rsz_config->frm_out_h = cfg->h;
 		rsz_config->th[0].par_update_y =  false;
@@ -976,7 +976,7 @@ static int mtk_rsz_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 }
 
 static int mtk_rsz_set_partial_update(struct mtk_ddp_comp *comp,
-				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
 	struct mtk_disp_rsz *rsz = comp_to_rsz(comp);
 	unsigned int full_in_height = mtk_crtc_get_height_by_comp(__func__,
@@ -1010,7 +1010,7 @@ static int mtk_rsz_set_partial_update(struct mtk_ddp_comp *comp,
 	//set rsz params
 	th[0].ori_in_len = full_in_height;
 	th[0].ori_out_len = full_out_height;
-	if (rsz->set_partial_update) {
+	if (rsz->set_partial_update == 1) {
 		frm_in_h = full_in_height;
 		frm_out_h = rsz->roi_height;
 		th[0].par_update_y = true;

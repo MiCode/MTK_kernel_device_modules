@@ -71,7 +71,7 @@ struct mtk_disp_ccorr {
 	struct mtk_disp_ccorr_tile_overhead_v tile_overhead_v;
 	bool bypass_color;
 	struct mtk_ddp_comp *color_comp;
-	bool set_partial_update;
+	unsigned int set_partial_update;
 	unsigned int roi_height;
 };
 

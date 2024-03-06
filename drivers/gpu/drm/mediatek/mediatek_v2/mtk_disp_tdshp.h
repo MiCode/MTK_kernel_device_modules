@@ -63,7 +63,7 @@ struct mtk_disp_tdshp {
 	struct mtk_disp_tdshp_primary *primary_data;
 	struct mtk_disp_tdshp_tile_overhead tile_overhead;
 	struct mtk_disp_tdshp_tile_overhead_v tile_overhead_v;
-	bool set_partial_update;
+	unsigned int set_partial_update;
 	unsigned int roi_height;
 };
 

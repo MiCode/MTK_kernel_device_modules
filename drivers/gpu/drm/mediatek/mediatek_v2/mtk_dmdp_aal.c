@@ -82,7 +82,7 @@ struct mtk_dmdp_aal {
 	int path_order;
 	struct mtk_ddp_comp *companion;
 	struct mtk_disp_mdp_primary *primary_data;
-	bool set_partial_update;
+	unsigned int set_partial_update;
 	unsigned int roi_height;
 };
 
@@ -183,7 +183,7 @@ static void disp_mdp_aal_config(struct mtk_ddp_comp *comp,
 		out_width = width;
 	}
 
-	if (!data->set_partial_update) {
+	if (data->set_partial_update != 1) {
 		size = (width << 16) | cfg->h;
 		out_size = (out_width << 16) | cfg->h;
 	} else {
@@ -310,7 +310,7 @@ static void disp_mdp_aal_update_pu_region_setting(struct mtk_ddp_comp *comp,
 	blk_y_start_idx = roi_height_y_start / blk_height;
 	blk_y_end_idx = roi_height_y_end / blk_height;
 
-	if (dmdp_aal->set_partial_update) {
+	if (dmdp_aal->set_partial_update == 1) {
 		// blk_num_y
 		blk_num_y_start = blk_y_start_idx;
 		blk_num_y_end = blk_y_end_idx;
@@ -338,7 +338,7 @@ static void disp_mdp_aal_update_pu_region_setting(struct mtk_ddp_comp *comp,
 }
 
 static int disp_mdp_aal_set_partial_update(struct mtk_ddp_comp *comp,
-				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
 	struct mtk_dmdp_aal *data = comp_to_dmdp_aal(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
@@ -357,7 +357,7 @@ static int disp_mdp_aal_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s overhead_v:%d\n",
 			__func__, mtk_dump_comp_str(comp), overhead_v);
 
-	if (data->set_partial_update) {
+	if (data->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_SIZE,
 				data->roi_height + overhead_v * 2, 0x0FFFF);
 		cmdq_pkt_write(handle, comp->cmdq_base,

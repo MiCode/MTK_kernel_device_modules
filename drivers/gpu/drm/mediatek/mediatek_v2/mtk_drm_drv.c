@@ -6604,9 +6604,11 @@ int mtk_drm_get_display_caps_ioctl(struct drm_device *dev, void *data,
 	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_SPHRT))
 		caps_info->disp_feature_flag |=
 				DRM_DISP_FEATURE_SPHRT;
+#if defined(DRM_PARTIAL_UPDATE)
 	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_PARTIAL_UPDATE))
 		caps_info->disp_feature_flag |=
 				DRM_DISP_FEATURE_PARTIAL_UPDATE;
+#endif
 #ifndef DRM_BYPASS_PQ
 	{
 		struct mtk_ddp_comp *ddp_comp;

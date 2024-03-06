@@ -96,7 +96,7 @@ struct mtk_disp_c3d {
 	atomic_t c3d_is_clock_on;
 	atomic_t c3d_force_sram_apb;
 	bool has_set_1dlut;
-	bool set_partial_update;
+	unsigned int set_partial_update;
 	unsigned int roi_height;
 	int bin_num;
 	int sram_start_addr;

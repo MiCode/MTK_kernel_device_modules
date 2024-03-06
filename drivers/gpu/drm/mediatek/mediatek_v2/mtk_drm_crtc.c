@@ -13928,7 +13928,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	dma_addr_t msync_slot_addr;
 	bool msync20_status_changed = 0;
 	struct mtk_ddp_comp *output_comp;
-	bool partial_enable = 0;
+	unsigned int partial_enable = 0;
 #ifndef DRM_CMDQ_DISABLE
 	struct cmdq_client *client;
 #endif
@@ -14156,12 +14156,15 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	mtk_crtc_update_ddp_state(crtc, old_crtc_state, mtk_crtc_state,
 				  mtk_crtc_state->cmdq_handle);
 
-	if (priv->data->mmsys_id == MMSYS_MT6989) {
+	if (priv->data->mmsys_id == MMSYS_MT6989 || priv->data->mmsys_id == MMSYS_MT6991) {
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_PARTIAL_UPDATE)) {
+#if defined(DRM_PARTIAL_UPDATE)
 			partial_enable =
-			(mtk_crtc_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE] ||
-			mtkfb_is_force_partial_roi());
+				mtk_crtc_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE];
+			if (mtkfb_is_force_partial_roi() && !partial_enable)
+				partial_enable = 1;
+#endif
 
 			DDPDBG("partial_enable: %d\n", partial_enable);
 			if (!partial_enable &&
@@ -15738,7 +15741,7 @@ static void mtk_crtc_validate_roi(struct drm_crtc *crtc,
 
 int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	struct drm_crtc_state *old_crtc_state,
-	struct cmdq_pkt *cmdq_handle, bool enable)
+	struct cmdq_pkt *cmdq_handle, unsigned int enable)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
@@ -15751,7 +15754,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	static struct mtk_rect full_roi;
 	struct total_tile_overhead_v tile_overhead_v;
 	struct mtk_rect partial_roi = {0, 0, 0, 0};
-	bool partial_enable = enable;
+	unsigned int partial_enable = enable;
 	int i, j;
 	int ret = 0;
 
@@ -15778,35 +15781,35 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	/* disable partial update if rpo lye is exist */
 	if (state->lye_state.rpo_lye && partial_enable) {
 		DDPDBG("skip because rpo lye is exist\n");
-		partial_enable = false;
+		partial_enable = 0;
 	}
 
 	/* disable partial update if mml_ir lye is exist */
 	if (state->lye_state.mml_ir_lye && partial_enable) {
 		DDPDBG("skip because mml_ir lye is exist\n");
-		partial_enable = false;
+		partial_enable = 0;
 	}
 
 	/* disable partial update if dal lye is exist */
 	if (mtk_drm_dal_enable() && partial_enable) {
 		DDPDBG("skip because dal lye is exist\n");
-		partial_enable = false;
+		partial_enable = 0;
 	}
 
 #ifdef IF_ZERO
 	/* disable partial update if res switch is enable*/
 	if (mtk_crtc->scaling_ctx.scaling_en) {
 		DDPDBG("skip because res switch is enable\n");
-		partial_enable = false;
+		partial_enable = 0;
 	}
 #endif
 
 	if (mtk_crtc->capturing == true) {
 		DDPDBG("skip because cwb is enable\n");
-		partial_enable = false;
+		partial_enable = 0;
 	}
 
-	if (partial_enable)
+	if (partial_enable == 1)
 		mtk_crtc_partial_compute_ovl_roi(crtc, &partial_roi);
 	else
 		_assign_full_lcm_roi(crtc, &partial_roi, true);
@@ -15831,7 +15834,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		mtk_crtc->panel_ext->params->corner_pattern_height_bot))) {
 		DDPDBG("skip because partial roi overlap with corner pattern\n");
 		_assign_full_lcm_roi(crtc, &partial_roi, true);
-		partial_enable = false;
+		partial_enable = 0;
 	}
 
 	if (!_is_equal_full_lcm(crtc, &partial_roi)) {
@@ -15855,7 +15858,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		mtk_crtc->tile_overhead_v.overhead_v = 0;
 		mtk_crtc->tile_overhead_v.overhead_v_scaling = 0;
 		_assign_full_lcm_roi(crtc, &partial_roi, true);
-		partial_enable = false;
+		partial_enable = 0;
 	}
 
 	DDPINFO("final partial roi: (%d,%d,%d,%d), pu_en: (%d)(%d)\n",
@@ -15894,7 +15897,8 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 			mtk_ddp_comp_get_type(comp->id) == MTK_DISP_POSTMASK ||
 			mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR)) {
 			if (comp->funcs && comp->funcs->bypass)
-				mtk_ddp_comp_bypass(comp, partial_enable, cmdq_handle);
+				mtk_ddp_comp_bypass(comp,
+									(partial_enable == 1) ? 1 : 0, cmdq_handle);
 		}
 	}
 
@@ -17948,9 +17952,11 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_OVL_BW_MONITOR))
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_BW_MONITOR;
+#if defined(DRM_PARTIAL_UPDATE)
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_PARTIAL_UPDATE))
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PARTIAL_UPDATE;
+#endif
 		} else {
 			if (priv->data->mmsys_id == MMSYS_MT6991) {
 				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
