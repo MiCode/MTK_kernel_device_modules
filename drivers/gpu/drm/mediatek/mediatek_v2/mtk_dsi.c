@@ -10528,6 +10528,9 @@ static u32 mtk_dsi_get_line_time_ns(struct mtk_dsi *dsi, struct mtk_drm_crtc *mt
 	}
 
 	ps_wc = mtk_dsi_get_ps_wc(mtk_crtc, dsi);
+	if (dsi->data_rate == 0)
+		mtk_dsi_set_data_rate(dsi);
+
 	if (dsi->ext->params->is_cphy)
 		dsi_clk = dsi->data_rate / 7;
 	else

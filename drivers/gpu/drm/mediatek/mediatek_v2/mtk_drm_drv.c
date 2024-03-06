@@ -3064,6 +3064,7 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ovlsys_main_bringup[] = {
 	DDP_COMPONENT_OVL0_OUTPROC0,
 	//DDP_COMPONENT_OVL0_OUTPROC_OUT_CB6,
 	DDP_COMPONENT_OVLSYS_DLO_ASYNC5,
+	DDP_COMPONENT_OVL_EXDMA0,
 };
 
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_main_bringup[] = {
@@ -3370,6 +3371,10 @@ static const struct mtk_addon_module_data mt6985_addon_mml_dl_data[] = {
 
 static const struct mtk_addon_module_data mt6985_addon_mml_dl_data_1[] = {
 	{DISP_MML_DL_1, ADDON_BEFORE, DDP_COMPONENT_OVL4_2L},
+};
+
+static const struct mtk_addon_module_data mt6991_addon_mml_dl_data[] = {
+	{DISP_MML_DL_EXDMA, ADDON_BEFORE, DDP_COMPONENT_OVL_EXDMA0/*DDP_COMPONENT_OVL0_EXDMA_OUT_CB0*/},
 };
 
 static const struct mtk_addon_module_data addon_dsc0_data[] = {
@@ -3749,6 +3754,18 @@ static const struct mtk_addon_scenario_data mt6989_addon_discrete_path[ADDON_SCN
 	[TRIPLE_DISP] = {
 		.module_num = 0,
 		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
+};
+
+static const struct mtk_addon_scenario_data mt6991_addon_main[ADDON_SCN_NR] = {
+	[NONE] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[MML_DL] = {
+		.module_num = ARRAY_SIZE(mt6991_addon_mml_dl_data),
+		.module_data = mt6991_addon_mml_dl_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 };
 
@@ -4756,7 +4773,7 @@ static const struct mtk_crtc_path_data mt6991_mtk_main_path_data = {
 //	.dual_path_len[0] = ARRAY_SIZE(mt6989_mtk_ddp_dual_main_bringup),
 //	.wb_path[DDP_MAJOR] = mt6983_mtk_ddp_main_wb_path,
 //	.wb_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6983_mtk_ddp_main_wb_path),
-	.addon_data = mt6989_addon_main,
+	.addon_data = mt6991_addon_main,
 //	.addon_data_dual = mt6989_addon_main_dual,
 	.scaling_data = mt6989_scaling_main,
 //	.scaling_data_dual = mt6989_scaling_main_dual,

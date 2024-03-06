@@ -201,6 +201,7 @@
 #define OVL_BLD_ROI_TIMING_4		(0x708)
 #define OVL_BLD_ROI_TIMING_6		(0x70c)
 
+#define OVL_BLD_DBG_STATUS0			(0x7a0)
 #define OVL_BLD_DBG_STATUS5			(0x7b4)
 #define BGCLR_IN_VALID		REG_FLD_MSB_LSB(0, 0)
 #define BGCLR_IN_READY		REG_FLD_MSB_LSB(1, 1)
@@ -255,20 +256,12 @@ int mtk_ovl_blender_dump(struct mtk_ddp_comp *comp)
 		return 0;
 
 	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
-	mtk_serial_dump_reg(baddr, 0x7A0, 4);
-	mtk_serial_dump_reg(baddr, 0x7B0, 3);
 	/* STA, INTEN, INTSTA, DCM_CTRL, DATAPATH_CON*/
-	mtk_cust_dump_reg(baddr, 0x00, 0x04, 0x08, 0x0C);
+	mtk_serial_dump_reg(baddr, 0x00, 4);
 	mtk_serial_dump_reg(baddr, 0x10, 1);
-	/* BLD_EN, BLD_RST, BLD_SHADOW_CTRL, ROI_SIZE */
+
 	for (i = 0; i < 15; i++)
 		mtk_serial_dump_reg(baddr, 0x20 + (i * 0x10), 4);
-
-	/* BLD Layer: EN, OFFSET, SRC_SIZE, CLIP, CLFRMT, CON */
-	for (i = 0; i < 4; i++)
-		mtk_serial_dump_reg(baddr, 0x40 + i * 0x30, 6);
-	/* OVL_BLD_BGCLR_CON, OVL_BLD_BGCLR_CLR */
-	mtk_serial_dump_reg(baddr, 0x100, 2);
 
 	for (i = 0; i < 4; i++)
 		mtk_serial_dump_reg(baddr, 0x200 + i * 0x100, 4);
@@ -356,11 +349,15 @@ int mtk_ovl_blender_analysis(struct mtk_ddp_comp *comp)
 		ovl_en & 0x1, layer_en[0]&0x1, layer_en[1]&0x1, layer_en[2]&0x1, layer_en[3]&0x1,
 		readl(DISP_REG_OVL_BLD_ROI_SIZE + baddr) & 0xfff,
 		(readl(DISP_REG_OVL_BLD_ROI_SIZE + baddr) >> 16) & 0xfff);
-	DDPDUMP("bg_mode=%s,proc:%d,nxt:%d,sta=0x%x\n",
-		REG_FLD_VAL_GET(DISP_BLD_BGCLR_IN_SEL, path_con) ? "DL" : "const",
+	DDPDUMP("in_sel=%s,proc:%d,nxt:%d,sta=0x%x\n",
+		REG_FLD_VAL_GET(DISP_BLD_BGCLR_IN_SEL, path_con) ? "e" : "b",
 		REG_FLD_VAL_GET(DISP_BLD_OUT_PROC, path_con) ,
 		REG_FLD_VAL_GET(DISP_BLD_OUT_NEXT_LAYER, path_con),
 		readl(DISP_REG_OVL_BLD_STA + baddr));
+
+	DDPDUMP("cus_pos(%u,%u)\n",
+		readl(OVL_BLD_DBG_STATUS0 + baddr) & 0x1fff,
+		(readl(OVL_BLD_DBG_STATUS0 + baddr) >> 16) & 0x1fff);
 
 	/* 0: phy layer, 1~3: ext layer */
 	for (i = 0; i < 4; i++) {
@@ -540,7 +537,7 @@ static void mtk_ovl_blender_reset(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 static void mtk_ovl_blender_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
 			     unsigned int ext_idx, struct cmdq_pkt *handle)
 {
-	DDPINFO("%s, %d, idx:%d, ext_idx:%d\n", __func__, __LINE__, idx, ext_idx);
+	DDPINFO("%s,%s,idx:%d,ext_idx:%d\n", __func__, mtk_dump_comp_str(comp), idx, ext_idx);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		   comp->regs_pa + DISP_REG_OVL_BLD_L_EN(idx), DISP_OVL_L_EN, DISP_OVL_L_EN);
@@ -549,6 +546,8 @@ static void mtk_ovl_blender_layer_on(struct mtk_ddp_comp *comp, unsigned int idx
 static void mtk_ovl_blender_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 			      unsigned int ext_idx, struct cmdq_pkt *handle)
 {
+	DDPINFO("%s, %s\n", __func__, mtk_dump_comp_str(comp));
+
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		   comp->regs_pa + DISP_REG_OVL_BLD_L_EN(idx), 0x0, ~0);
 	/**
@@ -562,6 +561,8 @@ static void mtk_ovl_blender_prepare(struct mtk_ddp_comp *comp)
 	struct mtk_disp_ovl_blender *priv = dev_get_drvdata(comp->dev);
 	int ret;
 	struct mtk_disp_ovl_blender *ovl = comp_to_ovl_blender(comp);
+
+	DDPDBG("%s,%s\n", __func__, mtk_dump_comp_str(comp));
 
 	mtk_ddp_comp_clk_prepare(comp);
 
@@ -593,6 +594,8 @@ static void mtk_ovl_blender_unprepare(struct mtk_ddp_comp *comp)
 
 static int mtk_ovl_blender_first_layer_mt6991(struct mtk_ddp_comp *comp)
 {
+	DDPINFO("%s, %s\n", __func__, mtk_dump_comp_str(comp));
+
 	if (comp->id == DDP_COMPONENT_OVL0_BLENDER1 ||
 		comp->id == DDP_COMPONENT_OVL1_BLENDER5 ||
 		comp->id == DDP_COMPONENT_OVL1_BLENDER7)
@@ -918,7 +921,10 @@ static void _ovl_bld_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		}
 	}
 
-	src_size = (dst_h << 16) | dst_w;
+	if (pending->pq_loop_type == 2)
+		src_size = pending->dst_roi;
+	else
+		src_size = (dst_h << 16) | dst_w;
 
 #ifdef CONFIG_MTK_LCM_PHYSICAL_ROTATION_HW
 	if (drm_crtc_index(&comp->mtk_crtc->base) == 0)
@@ -1111,7 +1117,7 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 	}
 
 #define _LAYER_CONFIG_FMT \
-	"BLD:%s %s idx:%d lye_idx:%d ext_idx:%d en:%d fmt:0x%x " \
+	"%s %s idx:%d lye_idx:%d ext_idx:%d en:%d fmt:0x%x " \
 	"addr:0x%lx compr:%d con:0x%x offset:0x%x lye_cap:%x mml:%d\n"
 	DDPINFO(_LAYER_CONFIG_FMT, __func__,
 		mtk_dump_comp_str_id(comp->id), idx, lye_idx, ext_lye_idx,
@@ -1303,8 +1309,6 @@ static const struct mtk_disp_ovl_blender_data mt6991_ovl_bldner_driver_data = {
 //	.aid_per_layer_setting = true,
 //	.mmsys_mapping = &mtk_ovl_mmsys_mapping_MT6991,
 //	.source_bpc = 10,
-//	.support_pq_selfloop = true, /* pq in out self loop */
-	//.is_right_ovl_comp = &is_right_ovl_comp_MT6985,
 //	.ovlsys_mapping = &mtk_ovl_sys_mapping_MT6991,
 };
 

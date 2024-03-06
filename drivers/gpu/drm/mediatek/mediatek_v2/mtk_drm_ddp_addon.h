@@ -63,6 +63,7 @@ enum addon_module {
 	DMDP_PQ_WITH_RDMA,
 	DISP_MML_DL,     /* pq in OVL_2L */
 	DISP_MML_DL_1,
+	DISP_MML_DL_EXDMA,
 	DISP_MML_IR_PQ,    /* OVL_2L blend out, ufod in OVL_4L */
 	DISP_MML_IR_PQ_1,
 	DISP_MML_IR_PQ_v2, /* OVL_2L pq out, pq in OVL_2L */
