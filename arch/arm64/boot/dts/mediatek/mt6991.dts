@@ -13850,6 +13850,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		scp-read-infra-irq-status = "enable";
 		scp-scpsys-regmap = "enable";
 		scp-bus-tracker-ver = <0x2>;
+		scp-mbrain = "enable";
 
 		//scp_aovmem_key = "mediatek,scp_aov_reserved";
 		scp-mem-key = "mediatek,reserve-memory-scp_share";
