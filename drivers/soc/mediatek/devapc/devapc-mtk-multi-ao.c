@@ -109,7 +109,6 @@ static bool is_devapc_subsys_power_on(int devapc_type)
 		devapc_type != DEVAPC_TYPE_MMUP &&
 		devapc_type != DEVAPC_TYPE_GPU &&
 		devapc_type != DEVAPC_TYPE_GPU1) {
-		pr_info(PFX "%s: skip devapc_type %d power check!\n", __func__, devapc_type);
 		return true;
 	}
 
@@ -118,18 +117,13 @@ static bool is_devapc_subsys_power_on(int devapc_type)
 			bool ret = false;
 			if (is_devapc_subsys_enabled(devapc_type) && powercb->query_power)
 				ret = powercb->query_power();
-
-			pr_info(PFX "%s: devapc_type %d power status: %d!\n",
-					__func__, devapc_type, ret);
-
 			return ret;
 		}
 	}
 
 	if (is_devapc_subsys_enabled(devapc_type)) {
 		if (devapc_type == DEVAPC_TYPE_MMINFRA) {
-			pr_info(PFX "%s: mminfra powercb hasn't registered, force dump!\n",
-						__func__);
+			// mminfra powercb hasn't registered, force dump!
 			return true;
 		}
 	}
@@ -589,6 +583,7 @@ static const char * const vio_type_to_str[] = {
 	"SERROR",
 	"Decode error or way_en",
 	"ABNORMAL",
+	"No violation found",
 };
 
 static const char *perm_to_string(uint8_t perm)
@@ -715,10 +710,6 @@ static void mtk_devapc_vio_check(int slave_type, int *shift_bit)
 				"shift_bit", *shift_bit);
 
 	} else {
-		pr_info(PFX "%s: 0x%x is not matched with %s:%d\n",
-				"vio_shift_sta", vio_shift_sta,
-				"shift_bit", *shift_bit);
-
 		for (i = 0; i < MOD_NO_IN_1_DEVAPC * 2; i++) {
 			if (vio_shift_sta & (0x1 << i)) {
 				*shift_bit = i;
@@ -817,9 +808,6 @@ static bool mtk_devapc_dump_vio_dbg(int slave_type, int *vio_idx, int *index)
 		return true;
 	}
 
-	if (!mtk_devapc_ctx->serror)
-		pr_info(PFX "check_devapc_vio_status: no violation for %s:0x%x\n",
-				"slave_type", slave_type);
 	return false;
 }
 
@@ -1054,8 +1042,10 @@ static void devapc_dump_info(bool booting)
 		}
 
 		if (!check_type2_vio_status(slave_type, &vio_idx, &index)) {
-			if (!mtk_devapc_dump_vio_dbg(slave_type, &vio_idx, &index))
+			if (!mtk_devapc_dump_vio_dbg(slave_type, &vio_idx, &index)) {
+				pr_info(PFX "no violation for slave:0x%x\n", slave_type);
 				continue;
+			}
 		}
 
 		/* Ensure that violation info are written before
@@ -1119,12 +1109,12 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 	const struct mtk_device_info **device_info;
 	const struct mtk_device_num *ndevices;
 	struct mtk_devapc_vio_info *vio_info;
-	int slave_type, devapc_type, vio_idx, index;
-	int irq_type;
+	int irq_type, slave_type, devapc_type, vio_idx, index;
 	const char *vio_master;
 	unsigned long flags;
 	uint8_t perm;
 	enum devapc_vio_type vio_type = DEVAPC_VIO_ABNORMAL;
+	bool print_info = true;
 
 	spin_lock_irqsave(&devapc_lock, flags);
 
@@ -1160,11 +1150,6 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 			goto out;
 	}
 
-	pr_info(PFX "irq_number: %d\n", irq_number);
-	pr_info(PFX "irq_type: %d\n", mtk_devapc_ctx->current_irq_type);
-
-	print_vio_mask_sta(false);
-
 	/* There are multiple DEVAPC_PD */
 	for (slave_type = 0; slave_type < slave_type_num; slave_type++) {
 		devapc_type = ndevices[slave_type].devapc_type;
@@ -1177,8 +1162,17 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 			continue;
 
 		if (!check_type2_vio_status(slave_type, &vio_idx, &index)) {
-			if (!mtk_devapc_dump_vio_dbg(slave_type, &vio_idx, &index))
+			if (!mtk_devapc_dump_vio_dbg(slave_type, &vio_idx, &index)) {
+				vio_type = DEVAPC_VIO_NO_VIO_FOUND;
 				continue;
+			}
+		}
+
+		if (print_info) {
+			pr_info(PFX "irq_number: %d\n", irq_number);
+			pr_info(PFX "irq_type: %d\n", mtk_devapc_ctx->current_irq_type);
+			print_vio_mask_sta(false);
+			print_info = false;
 		}
 
 		/* Ensure that violation info are written before
@@ -1230,8 +1224,10 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 		devapc_extra_handler(slave_type, vio_master, vio_idx,
 			vio_info->vio_addr,vio_type);
 		mask_module_irq(slave_type, vio_idx, false);
+	} else if (vio_type == DEVAPC_VIO_NO_VIO_FOUND) {
+		pr_info(PFX "WARNING: No violation found in irq_type: %d\n", mtk_devapc_ctx->current_irq_type);
 	} else {
-		pr_info(PFX "WARNING: Abnormal Status\n");
+		pr_info(PFX "WARNING: Abnormal status in irq_type: %d\n", mtk_devapc_ctx->current_irq_type);
 		print_vio_mask_sta(false);
 		BUG_ON(1);
 	}
