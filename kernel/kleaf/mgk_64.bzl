@@ -492,6 +492,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/swpm/modules/debug/v6989/mtk-swpm-mem-dbg-v6989.ko",
     "drivers/misc/mediatek/swpm/modules/debug/v6989/mtk-swpm-mml-dbg-v6989.ko",
     "drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-dbg-v6991.ko",
+    "drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-cpu-dbg-v6991.ko",
     "drivers/misc/mediatek/swpm/mtk-swpm.ko",
     "drivers/misc/mediatek/swpm/mtk-swpm-perf-arm-pmu.ko",
     "drivers/misc/mediatek/task_turbo/task_turbo.ko",
@@ -1057,6 +1058,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6991.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-dbg-v6991.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-cpu-dbg-v6991.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-mpu.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-mpu-test.ko")
@@ -1402,6 +1404,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6985/mtk-swpm-dbg-v6985.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6985/mtk-swpm-mem-dbg-v6985.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-dbg-v6991.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-cpu-dbg-v6991.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/mtk-swpm.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/mtk-swpm-perf-arm-pmu.ko")
