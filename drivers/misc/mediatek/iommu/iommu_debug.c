@@ -2622,6 +2622,29 @@ static void mtk_iova_del_trace_info(struct iova_info *iova_buf)
 }
 #endif
 
+/*
+ * For ktf test case alloc_iova_in_rbtree
+ */
+int __maybe_unused test_check_iova_count_in_rbtree(void)
+{
+	struct rb_root *root = &iova_list.iova_rb_root;
+	struct rb_node *tmp_rb;
+	u64 rbtree_count = 0;
+	int ret = -1;
+
+	spin_lock(&iova_list.lock);
+	for (tmp_rb = rb_first(root); tmp_rb; tmp_rb = rb_next(tmp_rb))
+		rbtree_count++;
+
+	if (rbtree_count + iova_list.list_only_count == iova_list.count)
+		ret = 0;
+	else
+		pr_info("%s iova_count:%llu, list_only_count:%llu rbtree_count:%llu\n",
+			__func__, iova_list.count, iova_list.list_only_count, rbtree_count);
+	spin_unlock(&iova_list.lock);
+	return ret;
+}
+
 static int mtk_iova_rbtree_compare(struct iova_domain *iovad,
 				   dma_addr_t iova, struct iova_info *entry_p)
 {
