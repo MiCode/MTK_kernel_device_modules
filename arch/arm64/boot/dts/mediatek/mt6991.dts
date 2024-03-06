@@ -11977,7 +11977,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<0 0x34080000 0 0x10000>,	/* 23 IMGSYS_ME_MMG */
 					<0 0x34780000 0 0x00100>;	/* 24 IMGSYS_VCORE */
 			mediatek,hcp = <&hcp>;
-			#if 0
 			mediatek,larbs = <&smi_larb15>,
 					<&smi_larb9>,
 					<&smi_larb39>,
@@ -11988,7 +11987,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<&smi_larb10>,
 					<&smi_larb22>,
 					<&smi_larb23>;
-			#endif
 			mediatek,imgsys-cmdq = <&imgsys_cmdq>;
 			mediatek,imgsys-ddr-en = <4>;
 			mtk,smmu-shared = <&mm_smmu_cam>;
@@ -12012,6 +12010,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<&gce_m 28 3000 CMDQ_THR_PRIO_1>,
 					<&gce_m 29 3000 CMDQ_THR_PRIO_1>,
 					/* power thread */
+					<&gce_m 25 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 					<&gce_m 26 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 					<&gce_m 27 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 					<&gce_m 30 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
@@ -12792,7 +12791,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				sw-sync-token-camsys-pool-10 =
 					/bits/ 16 <CMDQ_SYNC_TOKEN_CAMSYS_POOL_10>;
 #endif
-			#if 0
 			clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP_CAMERA_P2>,
 				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
 				<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_CAMERA_P2>,
@@ -12858,7 +12856,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&traw_dip1_clk CLK_TRAW_DIP1_LARB40_CAMERA_P2>,
 				<&traw_dip1_clk CLK_TRAW_DIP1_TRAW_CAMERA_P2>,
 				<&traw_dip1_clk CLK_TRAW_DIP1_GALS_CAMERA_P2>,
-				<&traw_cap_dip1_clk CLK_TRAW_CAP_DIP1_TRAW_CAP_CAMERA_P2>;
+				<&traw_cap_dip1_clk CLK_TRAW_CAP_DIP1_TRAW_CAP_CAMERA_P2>,
+				<&mmdvfs_mux MMDVFS_USER_IMG>;
 			clock-names = "VCORE_GALS",
 				"VCORE_MAIN",
 				"VCORE_SUB0",
@@ -12924,14 +12923,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"TRAW_DIP1_LARB40",
 				"TRAW_DIP1_TRAW",
 				"TRAW_DIP1_GALS",
-				"TRAW_CAP_DIP1_TRAW_CAP";
+				"TRAW_CAP_DIP1_TRAW_CAP",
+				"mmdvfs_mux";
+			operating-points-v2 = <&opp_table_img>;
+			mediatek,imgsys-dvfs-pix-mode = <4>;
+			mediatek,imgsys-hwqos-support;
 			hwqos-sync-token =
 					/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_QOS_LOCK>;
 			mmqos-supply = <&mmqos>;
-			operating-points-v2 = <&opp_table_img>;
-			mediatek,imgsys-dvfs-pix-mode = <4>;
-			mediatek,imgsys-qof-ver = <1>;
-		#endif
+			mediatek,imgsys-qof-ver = <0>;
 		};
 
 		mae: mae@34310000 {
