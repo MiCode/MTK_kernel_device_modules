@@ -245,6 +245,7 @@ struct lvts_data {
 	bool op_cali_support;
 	bool is_tsfdc_n3e_ver;
 	bool dump_wo_pause;
+	bool support_shutdown;
 };
 
 struct soc_temp_tz {

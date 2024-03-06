@@ -35,6 +35,11 @@
 #define NUM_LVTS_DEVICE_REG (9)
 #define LVTS_CONTROLLER_DEBUG_NUM (12)
 
+static void __iomem *toprgu_base;
+#define WDT_REQ_MODE   0x30
+#define WDT_STATUS_MCU_THERMAL_RST (1<<23)
+#define WDT_REQ_MODE_KEY    (0x33000000)
+
 static const unsigned int g_lvts_device_addrs[NUM_LVTS_DEVICE_REG] = {
 	RG_TSFM_DATA_0,
 	RG_TSFM_CTRL_1,
@@ -1525,11 +1530,27 @@ static void check_runtime_log_from_dts(struct lvts_data *lvts_data,
 	}
 }
 
+static const struct of_device_id toprgu_of_match[] = {
+	{ .compatible = "mediatek,mt6589-wdt" },
+	{},
+};
+
 static int lvts_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct lvts_data *lvts_data;
 	int ret;
+	struct device_node *np_toprgu;
+
+	for_each_matching_node(np_toprgu, toprgu_of_match) {
+		pr_info("%s: compatible node found: %s\n",
+			 __func__, np_toprgu->name);
+		break;
+	}
+
+	toprgu_base = of_iomap(np_toprgu, 0);
+	if (!toprgu_base)
+		pr_debug("toprgu iomap failed\n");
 
 	lvts_data = (struct lvts_data *) of_device_get_match_data(dev);
 	if (!lvts_data)	{
@@ -1568,6 +1589,27 @@ static int lvts_probe(struct platform_device *pdev)
 static int lvts_remove(struct platform_device *pdev)
 {
 	return 0;
+}
+
+static void lvts_shutdown(struct platform_device *pdev)
+{
+	struct lvts_data *lvts_data;
+	struct device *dev = &pdev->dev;
+	unsigned int val = 0;
+
+	lvts_data = (struct lvts_data *) dev_get_drvdata(dev);
+
+	if (lvts_data->support_shutdown) {
+		if (toprgu_base) {
+			val = ioread32(toprgu_base + WDT_REQ_MODE);
+			val &= ~(WDT_STATUS_MCU_THERMAL_RST);
+			val |= WDT_REQ_MODE_KEY;
+			iowrite32(val, toprgu_base + WDT_REQ_MODE);
+		}
+		disable_all_sensing_points(lvts_data);
+		dev_info(dev, "[Thermal/LVTS]%s(WDT_REQ:0x%x!)\n",
+			__func__, ioread32(toprgu_base + WDT_REQ_MODE));
+	}
 }
 
 static int lvts_suspend_noirq(struct device *dev)
@@ -6674,6 +6716,7 @@ static struct lvts_data mt6991_lvts_data = {
 	.op_cali_support = true,
 	.is_tsfdc_n3e_ver = true,
 	.dump_wo_pause = true,
+	.support_shutdown = true,
 };
 
 /*==================================================
@@ -6750,6 +6793,7 @@ MODULE_DEVICE_TABLE(of, lvts_of_match);
 static struct platform_driver soc_temp_lvts = {
 	.probe = lvts_probe,
 	.remove = lvts_remove,
+	.shutdown = lvts_shutdown,
 	.driver = {
 		.name = "mtk-soc-temp-lvts",
 		.of_match_table = lvts_of_match,
