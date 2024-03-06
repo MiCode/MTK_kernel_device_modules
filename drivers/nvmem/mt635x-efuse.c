@@ -59,8 +59,13 @@
 #define EFUSE_POLL_DELAY_US	50
 #define EFUSE_READ_DELAY_US	30
 
+#define EFUSE_ECID_SYSFS 1
+#define EFUSE_ECID_SIZE 8
+#define MAX_PMIC_SIZE 16
+
 struct efuse_reg {
 	unsigned int ck_pdn;
+	unsigned int ck_pdn_mask;
 	unsigned int ck_pdn_hwen;
 	unsigned int ck_pdn_hwen_mask;
 	unsigned int otp_osc_ck_en;
@@ -73,6 +78,7 @@ struct efuse_reg {
 
 static const struct efuse_reg reg_v1 = {
 	.ck_pdn = EFUSE_V1_TOP_CKPDN_CON0,
+	.ck_pdn_mask = RG_EFUSE_CK_PDN_MASK,
 	.ck_pdn_hwen = EFUSE_V1_TOP_CKHWEN_CON0,
 	.ck_pdn_hwen_mask = RG_EFUSE_CK_PDN_HWEN_MASK,
 	.otp_pa = EFUSE_V1_OTP_CON0,
@@ -84,6 +90,7 @@ static const struct efuse_reg reg_v1 = {
 
 static const struct efuse_reg reg_v2 = {
 	.ck_pdn = EFUSE_V2_TOP_CKPDN_CON1,
+	.ck_pdn_mask = RG_EFUSE_CK_PDN_MASK,
 	.ck_pdn_hwen = EFUSE_V2_TOP_CKHWEN_CON0,
 	.ck_pdn_hwen_mask = RG_EFUSE_CK_PDN_HWEN_MASK,
 	.otp_osc_ck_en = EFUSE_V2_OTP_CLK_CON0,
@@ -96,6 +103,7 @@ static const struct efuse_reg reg_v2 = {
 
 static const struct efuse_reg reg_v3 = {
 	.ck_pdn = EFUSE_V3_TOP_CKPDN_CON1,
+	.ck_pdn_mask = RG_EFUSE_CK_PDN_MASK,
 	.ck_pdn_hwen = EFUSE_V3_TOP_CKHWEN_CON0,
 	.ck_pdn_hwen_mask = BIT(0),
 	.otp_pa = EFUSE_V3_OTP_CON0,
@@ -119,6 +127,8 @@ struct mt635x_efuse {
 	struct mutex lock;
 	const struct efuse_chip_data *data;
 	int trig_sta;
+	u16 pmic_ecid[16][EFUSE_ECID_SIZE];
+	const char *pmic_name[16];
 };
 
 static int mt635x_efuse_poll_busy(struct mt635x_efuse *efuse)
@@ -167,7 +177,7 @@ static int mt635x_efuse_read(void *context, unsigned int offset,
 		goto unlock_efuse;
 	ret = regmap_write(efuse->regmap,
 			   reg->ck_pdn + data->ctrl_reg_width * CLR_OFFSET,
-			   RG_EFUSE_CK_PDN_MASK);
+			   reg->ck_pdn_mask);
 	if (ret)
 		goto disable_efuse;
 	if (reg->otp_osc_ck_en) {
@@ -225,7 +235,7 @@ disable_efuse:
 		     reg->ck_pdn_hwen_mask);
 	regmap_write(efuse->regmap,
 		     reg->ck_pdn + data->ctrl_reg_width * SET_OFFSET,
-		     RG_EFUSE_CK_PDN_MASK);
+		     reg->ck_pdn_mask);
 	if (reg->otp_osc_ck_en)
 		regmap_write(efuse->regmap, reg->otp_osc_ck_en, 0);
 unlock_efuse:
@@ -238,6 +248,78 @@ unlock_efuse:
 	return ret;
 }
 
+#if EFUSE_ECID_SYSFS
+/* Create sysfs entry for lbat throttling ext */
+static ssize_t efuse_pmic_ecid_show(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	struct platform_device *pdev;
+	struct mt635x_efuse *efuse;
+	int slvid = 0, i = 0;
+	char *ptr = buf;
+
+	pdev = to_platform_device(dev);
+	efuse = platform_get_drvdata(pdev);
+
+	for (slvid = 0; slvid < MAX_PMIC_SIZE; ++slvid) {
+		if (efuse->pmic_name[slvid] != NULL) {
+			ptr += sprintf(ptr, "%s,\tslave_id:%d,\tecid:",
+					     efuse->pmic_name[slvid], slvid);
+			for (i = 0; i < EFUSE_ECID_SIZE; ++i)
+				ptr += sprintf(ptr, "0x%x ", efuse->pmic_ecid[slvid][i]);
+			ptr += sprintf(ptr, "\n");
+		}
+	}
+	return strlen(buf);
+}
+
+static DEVICE_ATTR_RO(efuse_pmic_ecid);
+
+static int mt635x_get_ecid(struct device *dev, struct mt635x_efuse *efuse)
+{
+	struct device_node *np, *ecid_np;
+	int ret = 0, elems_count = 0, slvid = 0;
+	u16 pmic_ecid[EFUSE_ECID_SIZE] = {0};
+
+	np = of_find_node_by_name(dev->parent->of_node, "pmic-ecid");
+	if (!np) {
+		dev_notice(dev, "\"pmic-ecid\" dts node not found.\n");
+		return -ENODEV;
+	}
+
+	for_each_child_of_node(np, ecid_np) {
+		if (!ecid_np) {
+			dev_notice(dev, "No \"%s\" dts node\n", ecid_np->name);
+			return -ENODEV;
+		}
+
+		elems_count = of_property_count_elems_of_size(ecid_np, "ecid", sizeof(u16));
+		ret = of_property_read_u16_array(ecid_np, "ecid", pmic_ecid, elems_count);
+		if (ret < 0) {
+			if (ret == -ENODATA)
+				dev_notice(dev, "Property \"ecid\" not found.\n");
+			else
+				dev_notice(dev, "Failed to read \"ecid\" property.\n");
+			return ret;
+		}
+
+		ret = of_property_read_u32(ecid_np, "slvid", &slvid);
+		if (ret < 0) {
+			if (ret == -ENODATA)
+				dev_notice(dev, "Property \"slvid\" not found.\n");
+			else
+				dev_notice(dev, "Failed to read \"slvid\" property.\n");
+			return ret;
+		}
+
+		memcpy(efuse->pmic_ecid[slvid], pmic_ecid, sizeof(pmic_ecid));
+		efuse->pmic_name[slvid] = ecid_np->name;
+	}
+	return ret;
+}
+#endif
+
 static int mt635x_efuse_probe(struct platform_device *pdev)
 {
 	struct nvmem_config econfig = { };
@@ -245,6 +327,7 @@ static int mt635x_efuse_probe(struct platform_device *pdev)
 	struct mt635x_efuse *efuse;
 	struct mt6397_chip *chip;
 	int ret;
+	static bool ecid_flag;
 
 	efuse = devm_kzalloc(&pdev->dev, sizeof(*efuse), GFP_KERNEL);
 	if (!efuse)
@@ -291,7 +374,23 @@ static int mt635x_efuse_probe(struct platform_device *pdev)
 		mutex_destroy(&efuse->lock);
 		return PTR_ERR(nvmem);
 	}
+
+#if EFUSE_ECID_SYSFS
+	/* Create sysfs entry */
+	ret = device_create_file(&(pdev->dev), &dev_attr_efuse_pmic_ecid);
+	if (ret < 0) {
+		dev_notice(&pdev->dev, "failed to create efuse PMIC ecid sysfs file\n");
+		return 0;
+	}
+	if (!ecid_flag) {
+		ecid_flag = true;
+		ret = mt635x_get_ecid(&pdev->dev, efuse);
+		if (ret >= 0)
+			platform_set_drvdata(pdev, efuse);
+	}
+#endif
 	pr_info("efuse probe success\n");
+
 	return 0;
 }
 
@@ -299,7 +398,6 @@ static const struct efuse_chip_data mt6359p_efuse_data = {
 	.reg_num = 128,
 	.ctrl_reg_width = 0x2,
 	.reg = &reg_v1,
-
 };
 
 static const struct efuse_chip_data mt6363_efuse_data = {
