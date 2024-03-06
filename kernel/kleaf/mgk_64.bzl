@@ -1697,4 +1697,12 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clkdbg-mt6765.ko":"mt6765"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/mt6765_clkmgr.ko":"mt6765"})
 
+        mgk_64_device_modules.remove("drivers/iommu/arm/arm-smmu-v3/arm_smmu_v3.ko")
+        mgk_64_device_modules.remove("drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-lmu.ko")
+        mgk_64_device_modules.remove("drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-pmu.ko")
+        mgk_64_device_modules.remove("drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-mpam-mon.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/iommu/smmu_secure.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/iommu/mtk_smmu_qos.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/iommu/iommu_gz.ko")
+
 get_overlay_modules_list()
