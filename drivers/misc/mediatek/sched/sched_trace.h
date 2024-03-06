@@ -97,22 +97,27 @@ TRACE_EVENT(sched_find_cpu_in_irq,
 #if IS_ENABLED(CONFIG_MTK_SCHED_UPDOWN_MIGRATE)
 TRACE_EVENT(sched_fits_cap_ceiling,
 
-	TP_PROTO(bool fit, int cpu, unsigned long cpu_util,
-		unsigned long cup_cap, unsigned long ceiling, unsigned int sugov_margin,
+	TP_PROTO(int fit, int cpu, unsigned long util, unsigned long uclamp_min,
+		unsigned long uclamp_max, unsigned long cap,
+		unsigned long ceiling, unsigned int sugov_margin,
 		unsigned int capacity_dn_margin, unsigned int capacity_up_margin, bool AM_enabled),
 
-	TP_ARGS(fit, cpu, cpu_util, cup_cap, ceiling, sugov_margin,
+	TP_ARGS(fit, cpu, util, uclamp_min, uclamp_max, cap,
+			ceiling, sugov_margin,
 			capacity_dn_margin, capacity_up_margin, AM_enabled),
 
 	TP_STRUCT__entry(
-		__field(bool, fit)
+		__field(int, fit)
 		__field(int, cpu)
-		__field(unsigned long,   cpu_util)
-		__field(unsigned long,   cup_cap)
+		__field(unsigned long,   util)
+		__field(unsigned long,   uclamp_min)
+		__field(unsigned long,   uclamp_max)
+		__field(unsigned long,   cap)
+		__field(unsigned long,   thermal_pressure)
 		__field(unsigned long,   ceiling)
+		__field(unsigned int,   sugov_margin)
 		__field(unsigned int,   capacity_dn_margin)
 		__field(unsigned int,   capacity_up_margin)
-		__field(unsigned int,   sugov_margin)
 		__field(unsigned long,   capacity_orig)
 		__field(bool,			AM_enabled)
 		),
@@ -120,22 +125,28 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 	TP_fast_assign(
 		__entry->fit				= fit;
 		__entry->cpu				= cpu;
-		__entry->cpu_util			= cpu_util;
-		__entry->cup_cap			= cup_cap;
+		__entry->util				= util;
+		__entry->uclamp_min			= uclamp_min;
+		__entry->uclamp_max			= uclamp_max;
+		__entry->cap				= cap;
+		__entry->thermal_pressure	= arch_scale_thermal_pressure(cpu);
 		__entry->ceiling			= ceiling;
+		__entry->sugov_margin	= sugov_margin;
 		__entry->capacity_dn_margin	= capacity_dn_margin;
 		__entry->capacity_up_margin	= capacity_up_margin;
-		__entry->sugov_margin	= sugov_margin;
 		__entry->capacity_orig		= capacity_orig_of(cpu);
 		__entry->AM_enabled			= AM_enabled;
 		),
 
 	TP_printk(
-		"fit=%d cpu=%d cpu_util=%ld cup_cap=%ld ceiling=%ld capacity_dn_margin=%d capacity_up_margin=%d sugov_margin=%d capacity_orig=%ld adaptive_margin_ctrl=%d",
+		"fit=%d cpu=%d util=%ld uclamp_min=%lu uclamp_max=%lu cap=%lu thermal=%lu ceiling=%ld capacity_dn_margin=%d capacity_up_margin=%d sugov_margin=%d capacity_orig=%ld adaptive_margin_ctrl=%d",
 		__entry->fit,
 		__entry->cpu,
-		__entry->cpu_util,
-		__entry->cup_cap,
+		__entry->util,
+		__entry->uclamp_min,
+		__entry->uclamp_max,
+		__entry->cap,
+		__entry->thermal_pressure,
 		__entry->ceiling,
 		__entry->capacity_dn_margin,
 		__entry->capacity_up_margin,
@@ -287,10 +298,10 @@ TRACE_EVENT(sched_find_best_candidates,
 TRACE_EVENT(sched_target_max_spare_cpu,
 
 	TP_PROTO(const char *type, int best_cpu, int new_cpu, int replace,
-		long spare_cap, long target_max_spare_cap),
+		long spare_cap, long target_max_spare_cap, int fit, int best_fit),
 
 	TP_ARGS(type, best_cpu, new_cpu, replace,
-		spare_cap, target_max_spare_cap),
+		spare_cap, target_max_spare_cap, fit, best_fit),
 
 	TP_STRUCT__entry(
 		__string(type, type)
@@ -299,6 +310,8 @@ TRACE_EVENT(sched_target_max_spare_cpu,
 		__field(int, replace)
 		__field(long, spare_cap)
 		__field(long, target_max_spare_cap)
+		__field(int, fit)
+		__field(int, best_fit)
 		),
 
 	TP_fast_assign(
@@ -308,15 +321,19 @@ TRACE_EVENT(sched_target_max_spare_cpu,
 		__entry->replace        = replace;
 		__entry->spare_cap        = spare_cap;
 		__entry->target_max_spare_cap        = target_max_spare_cap;
+		__entry->fit            = fit;
+		__entry->best_fit        = best_fit;
 		),
 
-	TP_printk("type=%s best_cpu=%d new_cpu=%d replace=%d spare_cap=%ld target_max_spare_cap=%ld",
+	TP_printk("type=%s best_cpu=%d new_cpu=%d replace=%d spare_cap=%ld target_max_spare_cap=%ld fit=%d best_fit=%d",
 		__get_str(type),
 		__entry->best_cpu,
 		__entry->new_cpu,
 		__entry->replace,
 		__entry->spare_cap,
-		__entry->target_max_spare_cap)
+		__entry->target_max_spare_cap,
+		__entry->fit,
+		__entry->best_fit)
 );
 
 TRACE_EVENT(sched_select_task_rq,
