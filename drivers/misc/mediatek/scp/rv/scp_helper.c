@@ -98,6 +98,7 @@ unsigned int scp_dvfs_cali_ready;
 
 /*scp awake variable*/
 int scp_awake_counts[SCP_CORE_TOTAL];
+unsigned int scp_awake_timeout;
 
 unsigned int scp_recovery_flag[SCP_CORE_TOTAL];
 #define SCP_A_RECOVERY_OK	0x44
@@ -2875,6 +2876,15 @@ static int scp_device_probe(struct platform_device *pdev)
 			scpreg.mbrain = 1;
 		}
 	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, "awake-timeout"
+								, &scp_awake_timeout);
+	if(ret) {
+		pr_notice("[SCP] awake-timeout is not defined.\n");
+		scp_awake_timeout = 100000;
+	}
+
+	pr_notice("[SCP] scp_awake_timeout = %d\n", scp_awake_timeout);
 
 	scpreg.irq0 = platform_get_irq_byname(pdev, "ipc0");
 	if (scpreg.irq0 < 0)

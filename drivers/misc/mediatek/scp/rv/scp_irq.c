@@ -31,7 +31,7 @@ static void wait_scp_ready_to_reboot(void)
 	/* clr after SCP side INT trigger,
 	 * or SCP may lost INT max wait = 200ms
 	 */
-	for (retry = SCP_AWAKE_TIMEOUT; retry > 0; retry--) {
+	for (retry = SCP_WFI_WAIT_TIMEOUT; retry > 0; retry--) {
 		c0 = readl(SCP_GPR_CORE0_REBOOT);
 		c1 = scpreg.core_nums == 2 ? readl(SCP_GPR_CORE1_REBOOT) :
 			CORE_RDY_TO_REBOOT;

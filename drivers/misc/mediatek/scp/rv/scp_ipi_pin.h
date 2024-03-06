@@ -10,7 +10,9 @@
 #include "scp.h"
 
 /* scp awake timeout count definition */
-#define SCP_AWAKE_TIMEOUT 100000
+#define SCP_AWAKE_TIMEOUT scp_awake_timeout
+/* scp ready to reboot count define*/
+#define SCP_WFI_WAIT_TIMEOUT 100000
 
 /* this is only for ipi to distinguish core0 and core1 */
 enum {
