@@ -1273,8 +1273,8 @@ void get_most_powerful_pd_and_util_Th(void)
 	 */
 	cpumask_copy(&bcpus, get_gear_cpumask(nr_gear-1));
 	/* threshold is set to large capacity in mcpus */
-	util_Th = pd_get_opp_capacity(
-		cpumask_first(get_gear_cpumask(nr_gear-2)), 0);
+	util_Th = (pd_get_opp_capacity(
+		cpumask_first(get_gear_cpumask(nr_gear-2)), 0) >> 2);
 
 }
 
@@ -1301,6 +1301,9 @@ static inline bool task_can_skip_this_cpu(struct task_struct *p, unsigned long p
 		return 0;
 
 	if (cpumask_empty(bcpus))
+		return 0;
+
+	if (cpumask_weight(p->cpus_ptr) < 8)
 		return 0;
 
 	cpu_in_bcpus = cpumask_test_cpu(cpu, bcpus);
