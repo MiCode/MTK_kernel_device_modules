@@ -499,6 +499,15 @@ static void devapc_dump(void)
 // };
 #endif
 
+u32 get_mt6877_reg_value(u32 id, u32 ofs)
+{
+	if (id >= chk_sys_num)
+		return 0;
+
+	return clk_readl(rb[id].virt + ofs);
+}
+EXPORT_SYMBOL_GPL(get_mt6877_reg_value);
+
 static void  init_regbase(void)
 {
 	size_t i;
@@ -629,7 +638,6 @@ static int clk_chk_mt6877_probe(struct platform_device *pdev)
 	set_clkchk_ops(&clkchk_mt6877_ops);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
-	//TODO:
 	// register_devapc_vio_callback(&devapc_vio_handle);
 #endif
 

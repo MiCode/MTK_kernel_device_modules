@@ -37,10 +37,12 @@ ifneq ($(wildcard $(srctree)/$(src)/clk-mt6877.c),)
 obj-$(CONFIG_COMMON_CLK_MT6877) += clk-mt6877.o clk-bringup.o
 obj-$(CONFIG_COMMON_CLK_MT6877) += clk-mt6877-pg.o
 obj-$(CONFIG_COMMON_CLK_MT6877) += clkchk-mt6877.o
-# obj-$(CONFIG_COMMON_CLK_MT6877) += clk-fmeter-mt6877.o
+obj-$(CONFIG_COMMON_CLK_MT6877) += clk-fmeter-mt6877.o
 ifeq ($(CONFIG_DEBUG_FS), y)
-# obj-$(CONFIG_COMMON_CLK_MT6877) += clkdbg-mt6877.o
+obj-$(CONFIG_COMMON_CLK_MT6877) += clkdbg-mt6877.o
 endif
+obj-$(CONFIG_COMMON_CLK_MT6877) += pd-chk-mt6877.o
+pd-chk-mt6877-$(CONFIG_COMMON_CLK_MT6877) += mtk-pd-chk-mt6877.o
 obj-$(CONFIG_COMMON_CLK_MT6877_APU) += clk-mt6877-apu.o
 obj-$(CONFIG_COMMON_CLK_MT6877_AUDIOSYS) += clk-mt6877-audsys.o
 obj-$(CONFIG_COMMON_CLK_MT6877_CAM) += clk-mt6877-cam.o
