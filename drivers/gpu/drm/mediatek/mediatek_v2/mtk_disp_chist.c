@@ -251,7 +251,6 @@ static void disp_chist_set_interrupt(struct mtk_ddp_comp *comp,
 static int disp_chist_copy_hist_to_user(struct drm_device *dev, struct drm_file *file_priv,
 	struct drm_mtk_chist_info *hist)
 {
-	unsigned long flags;
 	int ret = 0;
 	unsigned int i = 0;
 	struct mtk_drm_private *private = dev->dev_private;
@@ -291,7 +290,7 @@ static int disp_chist_copy_hist_to_user(struct drm_device *dev, struct drm_file 
 		return -EAGAIN;
 	}
 
-	spin_lock_irqsave(&chist_data->primary_data->data_lock, flags);
+	mutex_lock(&chist_data->primary_data->data_lock);
 
 	for (; i < hist->get_channel_count; i++) {
 		unsigned int channel_id = hist->channel_hist[i].channel_id;
@@ -304,7 +303,7 @@ static int disp_chist_copy_hist_to_user(struct drm_device *dev, struct drm_file 
 		}
 	}
 	hist->present_fence = chist_data->primary_data->present_fence;
-	spin_unlock_irqrestore(&chist_data->primary_data->data_lock, flags);
+	mutex_unlock(&chist_data->primary_data->data_lock);
 
 	//dump all regs
 	if (debug_dump_hist)
@@ -528,7 +527,6 @@ static void disp_chist_config_block(struct drm_mtk_channel_config *channel_confi
 	unsigned int channel_id, struct mtk_disp_chist *chist_data)
 {
 	int roi_left_width = chist_data->primary_data->pipe_width - channel_config->roi_start_x;
-	unsigned long flags;
 	struct mtk_disp_chist *chist_right = comp_to_chist(chist_data->companion);
 
 	if (channel_config->roi_end_x > chist_data->primary_data->pipe_width
@@ -558,7 +556,7 @@ static void disp_chist_config_block(struct drm_mtk_channel_config *channel_confi
 		if (channel_id >= DISP_CHIST_CHANNEL_COUNT)
 			return;
 
-		spin_lock_irqsave(&chist_data->primary_data->data_lock, flags);
+		mutex_lock(&chist_data->primary_data->data_lock);
 		if (right_blk_xfos) {
 			chist_data->primary_data->block_config[channel_id].merge_column
 							= left_blk_column;
@@ -569,7 +567,7 @@ static void disp_chist_config_block(struct drm_mtk_channel_config *channel_confi
 			chist_data->primary_data->block_config[channel_id].merge_column = -1;
 
 		chist_data->primary_data->block_config[channel_id].left_column = left_blk_column;
-		spin_unlock_irqrestore(&chist_data->primary_data->data_lock, flags);
+		mutex_unlock(&chist_data->primary_data->data_lock);
 	}
 }
 
@@ -578,7 +576,6 @@ static int disp_chist_user_cmd(struct mtk_ddp_comp *comp,
 {
 	struct drm_mtk_chist_config *config = data;
 	struct mtk_disp_chist *chist_data = comp_to_chist(comp);
-	unsigned long flags;
 	int i = 0;
 	int bypass = 1;
 
@@ -596,13 +593,13 @@ static int disp_chist_user_cmd(struct mtk_ddp_comp *comp,
 		if (channel_id >= DISP_CHIST_CHANNEL_COUNT)
 			continue;
 
-		spin_lock_irqsave(&chist_data->primary_data->data_lock, flags);
+		mutex_lock(&chist_data->primary_data->data_lock);
 		memset(&(chist_data->primary_data->chist_config[channel_id]), 0,
 			sizeof(struct drm_mtk_channel_config));
 		chist_data->primary_data->chist_config[channel_id].channel_id = channel_id;
 		memset(&(chist_data->primary_data->block_config[channel_id]), 0,
 			sizeof(struct mtk_disp_block_config));
-		spin_unlock_irqrestore(&chist_data->primary_data->data_lock, flags);
+		mutex_unlock(&chist_data->primary_data->data_lock);
 
 		if (channel_config.enabled) {
 			int blk_column = 0;
@@ -622,12 +619,12 @@ static int disp_chist_user_cmd(struct mtk_ddp_comp *comp,
 			ceil((channel_config.roi_end_x - channel_config.roi_start_x + 1),
 				channel_config.blk_width, &blk_column);
 
-			spin_lock_irqsave(&chist_data->primary_data->data_lock, flags);
+			mutex_lock(&chist_data->primary_data->data_lock);
 			chist_data->primary_data->block_config[channel_id].sum_column = blk_column;
 
 			memcpy(&(chist_data->primary_data->chist_config[channel_id]),
 				&channel_config, sizeof(channel_config));
-			spin_unlock_irqrestore(&chist_data->primary_data->data_lock, flags);
+			mutex_lock(&chist_data->primary_data->data_lock);
 
 			if (comp->mtk_crtc->is_dual_pipe) {
 				struct mtk_ddp_comp *dual_comp = chist_data->companion;
@@ -675,14 +672,14 @@ static int disp_chist_user_cmd(struct mtk_ddp_comp *comp,
 			}
 		}
 	}
-	spin_lock_irqsave(&chist_data->primary_data->data_lock, flags);
+	mutex_lock(&chist_data->primary_data->data_lock);
 	for (i = 0; i < DISP_CHIST_CHANNEL_COUNT; i++) {
 		if (chist_data->primary_data->chist_config[i].enabled) {
 			bypass = 0;
 			break;
 		}
 	}
-	spin_unlock_irqrestore(&chist_data->primary_data->data_lock, flags);
+	mutex_unlock(&chist_data->primary_data->data_lock);
 
 	disp_chist_bypass(comp, bypass, handle);
 
@@ -695,41 +692,38 @@ static int disp_chist_user_cmd(struct mtk_ddp_comp *comp,
 
 static void disp_chist_prepare(struct mtk_ddp_comp *comp)
 {
-	unsigned long flags;
 	struct mtk_disp_chist *chist_data = comp_to_chist(comp);
 	DDPINFO("%s, comp->id:%d\n", __func__, comp->id);
 
 	mtk_ddp_comp_clk_prepare(comp);
-	spin_lock_irqsave(&chist_data->primary_data->power_lock, flags);
+	mutex_lock(&chist_data->primary_data->clk_lock);
 	atomic_set(&chist_data->primary_data->clock_on, 1);
-	spin_unlock_irqrestore(&chist_data->primary_data->power_lock, flags);
+	mutex_unlock(&chist_data->primary_data->clk_lock);
 }
 
 static void disp_chist_unprepare(struct mtk_ddp_comp *comp)
 {
-	unsigned long flags;
 	struct mtk_disp_chist *chist_data = comp_to_chist(comp);
 	DDPINFO("%s, comp->id:%d\n", __func__, comp->id);
 
-	spin_lock_irqsave(&chist_data->primary_data->power_lock, flags);
+	mutex_lock(&chist_data->primary_data->clk_lock);
 	atomic_set(&chist_data->primary_data->clock_on, 0);
-	spin_unlock_irqrestore(&chist_data->primary_data->power_lock, flags);
+	mutex_unlock(&chist_data->primary_data->clk_lock);
 	mtk_ddp_comp_clk_unprepare(comp);
 }
 
 static void disp_chist_restore_setting(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct drm_mtk_chist_config config;
-	unsigned long flags;
 	int i = 0;
 	struct mtk_disp_chist *chist_data = comp_to_chist(comp);
 
 	config.config_channel_count = DISP_CHIST_CHANNEL_COUNT;
 	for (; i < DISP_CHIST_CHANNEL_COUNT; i++) {
-		spin_lock_irqsave(&chist_data->primary_data->data_lock, flags);
+		mutex_lock(&chist_data->primary_data->data_lock);
 		memcpy(&(config.chist_config[i]), &(chist_data->primary_data->chist_config[i]),
 			sizeof(chist_data->primary_data->chist_config[i]));
-		spin_unlock_irqrestore(&chist_data->primary_data->data_lock, flags);
+		mutex_unlock(&chist_data->primary_data->data_lock);
 	}
 	disp_chist_user_cmd(comp, handle, CHIST_CONFIG, &config);
 }
@@ -987,7 +981,6 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_private *priv = NULL;
-	unsigned long flags, clock_flags;
 	int max_bins = 0;
 	unsigned int i = 0;
 	unsigned int cur_present_fence;
@@ -1005,13 +998,13 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 	else if (prim_data->pre_frame_width != prim_data->frame_width)
 		return;//need new config by current resolution
 
-	spin_lock_irqsave(&prim_data->power_lock, clock_flags);
+	mutex_lock(&prim_data->clk_lock);
 
 	if (atomic_read(&(prim_data->clock_on)) == 0) {
-		spin_unlock_irqrestore(&prim_data->power_lock, clock_flags);
+		mutex_unlock(&prim_data->clk_lock);
 		return;
 	}
-	spin_lock_irqsave(&prim_data->data_lock, flags);
+	mutex_lock(&prim_data->data_lock);
 	for (; i < DISP_CHIST_CHANNEL_COUNT; i++) {
 		prim_data->chist_config[i].channel_id = i;
 		if (prim_data->chist_config[i].enabled) {
@@ -1041,8 +1034,8 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 		}
 	}
 
-	spin_unlock_irqrestore(&prim_data->data_lock, flags);
-	spin_unlock_irqrestore(&prim_data->power_lock, clock_flags);
+	mutex_unlock(&prim_data->data_lock);
+	mutex_unlock(&prim_data->clk_lock);
 	cur_present_fence = *(unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_PRESENT_FENCE(0)));
 	if (cur_present_fence != 0) {
@@ -1098,8 +1091,8 @@ static void disp_chist_init_primary_data(struct mtk_ddp_comp *comp)
 
 	// init primary data
 	init_waitqueue_head(&(chist_data->primary_data->event_wq));
-	spin_lock_init(&(chist_data->primary_data->power_lock));
-	spin_lock_init(&(chist_data->primary_data->data_lock));
+	mutex_init(&(chist_data->primary_data->clk_lock));
+	mutex_init(&(chist_data->primary_data->data_lock));
 
 	memset(&(chist_data->primary_data->block_config), 0,
 			sizeof(chist_data->primary_data->block_config));

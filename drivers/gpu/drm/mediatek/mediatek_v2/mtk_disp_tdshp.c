@@ -7,50 +7,217 @@
 #include "mtk_disp_pq_helper.h"
 #include "mtk_disp_aal.h"
 
+ /*******************************/
+ /* field definition */
+ /* ------------------------------------- */
+ /* DISP TDSHP */
+#define DISP_TDSHP_00              (0x000)
+#define DISP_TDSHP_01              (0x004)
+#define DISP_TDSHP_02              (0x008)
+#define DISP_TDSHP_03              (0x00C)
+#define DISP_TDSHP_05              (0x014)
+#define DISP_TDSHP_06              (0x018)
+#define DISP_TDSHP_07              (0x01C)
+#define DISP_TDSHP_08              (0x020)
+#define DISP_TDSHP_09              (0x024)
+#define DISP_PBC_00                (0x040)
+#define DISP_PBC_01                (0x044)
+#define DISP_PBC_02                (0x048)
+#define DISP_PBC_03                (0x04C)
+#define DISP_PBC_04                (0x050)
+#define DISP_PBC_05                (0x054)
+#define DISP_PBC_06                (0x058)
+#define DISP_PBC_07                (0x05C)
+#define DISP_PBC_08                (0x060)
+#define DISP_HIST_CFG_00           (0x064)
+#define DISP_HIST_CFG_01           (0x068)
+#define DISP_LUMA_HIST_00          (0x06C)
+#define DISP_LUMA_HIST_01          (0x070)
+#define DISP_LUMA_HIST_02          (0x074)
+#define DISP_LUMA_HIST_03          (0x078)
+#define DISP_LUMA_HIST_04          (0x07C)
+#define DISP_LUMA_HIST_05          (0x080)
+#define DISP_LUMA_HIST_06          (0x084)
+#define DISP_LUMA_HIST_07          (0x08C)
+#define DISP_LUMA_HIST_08          (0x090)
+#define DISP_LUMA_HIST_09          (0x094)
+#define DISP_LUMA_HIST_10          (0x098)
+#define DISP_LUMA_HIST_11          (0x09C)
+#define DISP_LUMA_HIST_12          (0x0A0)
+#define DISP_LUMA_HIST_13          (0x0A4)
+#define DISP_LUMA_HIST_14          (0x0A8)
+#define DISP_LUMA_HIST_15          (0x0AC)
+#define DISP_LUMA_HIST_16          (0x0B0)
+#define DISP_LUMA_SUM              (0x0B4)
+#define DISP_Y_FTN_1_0_MAIN        (0x0BC)
+#define DISP_Y_FTN_3_2_MAIN        (0x0C0)
+#define DISP_Y_FTN_5_4_MAIN        (0x0C4)
+#define DISP_Y_FTN_7_6_MAIN        (0x0C8)
+#define DISP_Y_FTN_9_8_MAIN        (0x0CC)
+#define DISP_Y_FTN_11_10_MAIN      (0x0D0)
+#define DISP_Y_FTN_13_12_MAIN      (0x0D4)
+#define DISP_Y_FTN_15_14_MAIN      (0x0D8)
+#define DISP_Y_FTN_17_16_MAIN      (0x0DC)
+#define DISP_C_BOOST_MAIN          (0x0E0)
+#define DISP_C_BOOST_MAIN_2        (0x0E4)
+#define DISP_TDSHP_C_BOOST_MAIN    (0x0E8)
+#define DISP_TDSHP_C_BOOST_MAIN_2  (0x0EC)
+#define DISP_TDSHP_ATPG            (0x0FC)
+#define DISP_TDSHP_CTRL            (0x100)
+#define DISP_TDSHP_INTEN           (0x104)
+#define DISP_TDSHP_INTSTA          (0x108)
+#define DISP_TDSHP_STATUS          (0x10C)
+#define DISP_TDSHP_CFG             (0x110)
+#define DISP_TDSHP_INPUT_COUNT     (0x114)
+#define DISP_TDSHP_CHKSUM          (0x118)
+#define DISP_TDSHP_OUTPUT_COUNT    (0x11C)
+#define DISP_TDSHP_INPUT_SIZE      (0x120)
+#define DISP_TDSHP_OUTPUT_OFFSET   (0x124)
+#define DISP_TDSHP_OUTPUT_SIZE     (0x128)
+#define DISP_TDSHP_BLANK_WIDTH     (0x12C)
+#define DISP_TDSHP_DEMO_HMASK      (0x130)
+#define DISP_TDSHP_DEMO_VMASK      (0x134)
+#define DISP_TDSHP_DUMMY_REG        (0x14C)
+#define DISP_LUMA_HIST_INIT_00      (0x200)
+#define DISP_LUMA_HIST_INIT_01      (0x204)
+#define DISP_LUMA_HIST_INIT_02      (0x208)
+#define DISP_LUMA_HIST_INIT_03      (0x20C)
+#define DISP_LUMA_HIST_INIT_04      (0x210)
+#define DISP_LUMA_HIST_INIT_05      (0x214)
+#define DISP_LUMA_HIST_INIT_06      (0x218)
+#define DISP_LUMA_HIST_INIT_07      (0x21C)
+#define DISP_LUMA_HIST_INIT_08      (0x220)
+#define DISP_LUMA_HIST_INIT_09      (0x224)
+#define DISP_LUMA_HIST_INIT_10      (0x228)
+#define DISP_LUMA_HIST_INIT_11      (0x22C)
+#define DISP_LUMA_HIST_INIT_12      (0x230)
+#define DISP_LUMA_HIST_INIT_13      (0x234)
+#define DISP_LUMA_HIST_INIT_14      (0x238)
+#define DISP_LUMA_HIST_INIT_15      (0x23C)
+#define DISP_LUMA_HIST_INIT_16      (0x240)
+#define DISP_LUMA_SUM_INIT          (0x244)
+
+/*MT6755 New feature*/
+#define DISP_DC_DBG_CFG_MAIN            (0x250)
+#define DISP_DC_WIN_X_MAIN              (0x254)
+#define DISP_DC_WIN_Y_MAIN              (0x258)
+#define DISP_DC_TWO_D_W1                (0x25C)
+#define DISP_DC_TWO_D_W1_RESULT_INIT    (0x260)
+#define DISP_DC_TWO_D_W1_RESULT         (0x264)
+/*MT6797 New feature*/
+#define DISP_EDF_GAIN_00                (0x300)
+#define DISP_EDF_GAIN_01                (0x304)
+#define DISP_EDF_GAIN_02                (0x308)
+#define DISP_EDF_GAIN_03                (0x30C)
+#define DISP_EDF_GAIN_04                (0x310)
+#define DISP_EDF_GAIN_05                (0x314)
+#define DISP_TDSHP_10                   (0x320)
+#define DISP_TDSHP_11                   (0x324)
+#define DISP_TDSHP_12                   (0x328)
+#define DISP_TDSHP_13                   (0x32C)
+
+#define PAT1_GEN_SET               (0x330)
+#define PAT1_GEN_FRM_SIZE          (0x334)
+#define PAT1_GEN_COLOR0            (0x338)
+#define PAT1_GEN_COLOR1            (0x33C)
+#define PAT1_GEN_COLOR2            (0x340)
+#define PAT1_GEN_POS               (0x344)
+#define PAT1_GEN_TILE_POS          (0x354)
+#define PAT1_GEN_TILE_OV           (0x358)
+#define PAT2_GEN_SET               (0x360)
+#define PAT2_GEN_COLOR0            (0x368)
+#define PAT2_GEN_COLOR1            (0x36C)
+#define PAT2_GEN_POS               (0x374)
+#define PAT2_GEN_CURSOR_RB0        (0x378)
+#define PAT2_GEN_CURSOR_RB1        (0x37C)
+#define PAT2_GEN_TILE_POS          (0x384)
+#define PAT2_GEN_TILE_OV           (0x388)
+
+#define DISP_BITPLUS_00                (0x38C)
+#define DISP_BITPLUS_01                (0x390)
+#define DISP_BITPLUS_02                (0x394)
+#define DISP_DC_SKIN_RANGE0            (0x420)
+
+#define DISP_CONTOUR_HIST_INIT_00      (0x398)
+#define DISP_CONTOUR_HIST_INIT_01      (0x39C)
+#define DISP_CONTOUR_HIST_INIT_02      (0x3A0)
+#define DISP_CONTOUR_HIST_INIT_03      (0x3A4)
+#define DISP_CONTOUR_HIST_INIT_04      (0x3A8)
+#define DISP_CONTOUR_HIST_INIT_05      (0x3AC)
+#define DISP_CONTOUR_HIST_INIT_06      (0x3B0)
+#define DISP_CONTOUR_HIST_INIT_07      (0x3B4)
+#define DISP_CONTOUR_HIST_INIT_08      (0x3B8)
+#define DISP_CONTOUR_HIST_INIT_09      (0x3BC)
+#define DISP_CONTOUR_HIST_INIT_10      (0x3C0)
+#define DISP_CONTOUR_HIST_INIT_11      (0x3C4)
+#define DISP_CONTOUR_HIST_INIT_12      (0x3C8)
+#define DISP_CONTOUR_HIST_INIT_13      (0x3CC)
+#define DISP_CONTOUR_HIST_INIT_14      (0x3D0)
+#define DISP_CONTOUR_HIST_INIT_15      (0x3D4)
+#define DISP_CONTOUR_HIST_INIT_16      (0x3D8)
+#define DISP_CONTOUR_HIST_00           (0x3DC)
+#define DISP_CONTOUR_HIST_01           (0x3E0)
+#define DISP_CONTOUR_HIST_02           (0x3E4)
+#define DISP_CONTOUR_HIST_03           (0x3E8)
+#define DISP_CONTOUR_HIST_04           (0x3EC)
+#define DISP_CONTOUR_HIST_05           (0x3F0)
+#define DISP_CONTOUR_HIST_06           (0x3F4)
+#define DISP_CONTOUR_HIST_07           (0x3F8)
+#define DISP_CONTOUR_HIST_08           (0x3FC)
+#define DISP_CONTOUR_HIST_09           (0x400)
+#define DISP_CONTOUR_HIST_10           (0x404)
+#define DISP_CONTOUR_HIST_11           (0x408)
+#define DISP_CONTOUR_HIST_12           (0x40C)
+#define DISP_CONTOUR_HIST_13           (0x410)
+#define DISP_CONTOUR_HIST_14           (0x414)
+#define DISP_CONTOUR_HIST_15           (0x418)
+#define DISP_CONTOUR_HIST_16           (0x41C)
+#define DISP_DC_SKIN_RANGE1            (0x424)
+#define DISP_DC_SKIN_RANGE2            (0x428)
+#define DISP_DC_SKIN_RANGE3            (0x42C)
+#define DISP_DC_SKIN_RANGE4            (0x430)
+#define DISP_DC_SKIN_RANGE5            (0x434)
+#define DISP_POST_YLEV_00              (0x480)
+#define DISP_POST_YLEV_01              (0x484)
+#define DISP_POST_YLEV_02              (0x488)
+#define DISP_POST_YLEV_03              (0x48C)
+#define DISP_POST_YLEV_04              (0x490)
+
+#define DISP_HFG_CTRL                  (0x500)
+#define DISP_HFG_RAN_0                 (0x504)
+#define DISP_HFG_RAN_1                 (0x508)
+#define DISP_HFG_RAN_2                 (0x50C)
+#define DISP_HFG_RAN_3                 (0x510)
+#define DISP_HFG_RAN_4                 (0x514)
+#define DISP_HFG_CROP_X                (0x518)
+#define DISP_HFG_CROP_Y                (0x51C)
+#define DISP_HFC_CON_0                 (0x524)
+#define DISP_HFC_LUMA_0                (0x528)
+#define DISP_HFC_LUMA_1                (0x52C)
+#define DISP_HFC_LUMA_2                (0x530)
+#define DISP_HFC_SL2_0                 (0x534)
+#define DISP_HFC_SL2_1                 (0x538)
+#define DISP_HFC_SL2_2                 (0x53C)
+#define DISP_SL2_CEN                   (0x544)
+#define DISP_SL2_RR_CON0               (0x548)
+#define DISP_SL2_RR_CON1               (0x54C)
+#define DISP_SL2_GAIN                  (0x550)
+#define DISP_SL2_RZ                    (0x554)
+#define DISP_SL2_XOFF                  (0x558)
+#define DISP_SL2_YOFF                  (0x55C)
+#define DISP_SL2_SLP_CON0              (0x560)
+#define DISP_SL2_SLP_CON1              (0x564)
+#define DISP_SL2_SLP_CON2              (0x568)
+#define DISP_SL2_SLP_CON3              (0x66C)
+#define DISP_SL2_SIZE                  (0x670)
+#define DISP_HFG_OUTPUT_COUNT          (0x678)
+#define DISP_TDSHP_SHADOW_CTRL         (0x724)
+
+#define DISP_TDSHP_EN BIT(0)
+
 enum DISP_TDSHP_IOCTL_CMD {
 	SET_TDSHP_REG,
 	BYPASS_TDSHP,
-};
-
-struct mtk_disp_tdshp_data {
-	bool support_shadow;
-	bool need_bypass_shadow;
-};
-
-struct mtk_disp_tdshp_tile_overhead {
-	unsigned int in_width;
-	unsigned int overhead;
-	unsigned int comp_overhead;
-};
-
-struct mtk_disp_tdshp_tile_overhead_v {
-	unsigned int overhead_v;
-	unsigned int comp_overhead_v;
-};
-
-struct mtk_disp_tdshp_primary {
-	wait_queue_head_t size_wq;
-	bool get_size_available;
-	struct DISP_TDSHP_DISPLAY_SIZE tdshp_size;
-	struct mutex global_lock;
-	unsigned int relay_value;
-	struct DISP_TDSHP_REG *tdshp_regs;
-	int tdshp_reg_valid;
-	int *aal_clarity_support;
-};
-
-struct mtk_disp_tdshp {
-	struct mtk_ddp_comp ddp_comp;
-	struct drm_crtc *crtc;
-	const struct mtk_disp_tdshp_data *data;
-	bool is_right_pipe;
-	int path_order;
-	struct mtk_ddp_comp *companion;
-	struct mtk_disp_tdshp_primary *primary_data;
-	struct mtk_disp_tdshp_tile_overhead tile_overhead;
-	struct mtk_disp_tdshp_tile_overhead_v tile_overhead_v;
-	bool set_partial_update;
-	unsigned int roi_height;
 };
 
 static inline struct mtk_disp_tdshp *comp_to_tdshp(struct mtk_ddp_comp *comp)
@@ -67,7 +234,7 @@ static int disp_tdshp_write_reg(struct mtk_ddp_comp *comp,
 	int ret = 0;
 
 	if (lock)
-		mutex_lock(&primary_data->global_lock);
+		mutex_lock(&primary_data->data_lock);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_TDSHP_CFG, 0x2 | primary_data->relay_value, 0x3);
@@ -310,7 +477,7 @@ static int disp_tdshp_write_reg(struct mtk_ddp_comp *comp,
 
 thshp_write_reg_unlock:
 	if (lock)
-		mutex_unlock(&primary_data->global_lock);
+		mutex_unlock(&primary_data->data_lock);
 
 	return ret;
 }
@@ -338,7 +505,7 @@ static int disp_tdshp_set_reg(struct mtk_ddp_comp *comp,
 		memcpy(tdshp_regs, user_tdshp_regs,
 			sizeof(struct DISP_TDSHP_REG));
 
-		mutex_lock(&primary_data->global_lock);
+		mutex_lock(&primary_data->data_lock);
 
 		old_tdshp_regs = primary_data->tdshp_regs;
 		primary_data->tdshp_regs = tdshp_regs;
@@ -347,7 +514,7 @@ static int disp_tdshp_set_reg(struct mtk_ddp_comp *comp,
 		ret = disp_tdshp_write_reg(comp, handle, 0);
 
 		primary_data->tdshp_reg_valid = 1;
-		mutex_unlock(&primary_data->global_lock);
+		mutex_unlock(&primary_data->data_lock);
 
 		if (old_tdshp_regs != NULL)
 			kfree(old_tdshp_regs);
@@ -709,7 +876,7 @@ static void disp_tdshp_init_primary_data(struct mtk_ddp_comp *comp)
 		primary_data->aal_clarity_support = &aal_data->primary_data->disp_clarity_support;
 	}
 	init_waitqueue_head(&primary_data->size_wq);
-	mutex_init(&primary_data->global_lock);
+	mutex_init(&primary_data->data_lock);
 }
 
 static int disp_tdshp_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,

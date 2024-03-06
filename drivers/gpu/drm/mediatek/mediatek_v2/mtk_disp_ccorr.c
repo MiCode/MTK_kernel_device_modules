@@ -34,45 +34,36 @@
 #define mtk_leds_brightness_set(x, y, m, n) do { } while (0)
 #endif
 
-#define DISP_REG_CCORR_EN (0x000)
-#define DISP_REG_CCORR_INTEN                     (0x008)
-#define DISP_REG_CCORR_INTSTA                    (0x00C)
-#define DISP_REG_CCORR_CFG (0x020)
-#define DISP_REG_CCORR_SIZE (0x030)
+#define DISP_REG_CCORR_EN		(0x000)
+#define DISP_REG_CCORR_INTEN		(0x008)
+#define DISP_REG_CCORR_INTSTA		(0x00C)
+#define DISP_REG_CCORR_CFG		(0x020)
+#define DISP_REG_CCORR_SIZE		(0x030)
+#define DISP_REG_CCORR_SHADOW		(0x0A0)
 #define DISP_REG_CCORR_COLOR_OFFSET_0	(0x100)
 #define DISP_REG_CCORR_COLOR_OFFSET_1	(0x104)
 #define DISP_REG_CCORR_COLOR_OFFSET_2	(0x108)
+
+#define CCORR_13BIT_MASK	(0x1FFF)
 #define CCORR_COLOR_OFFSET_MASK	(0x3FFFFFF)
 
-#define DISP_REG_CCORR_SHADOW (0x0A0)
-#define CCORR_READ_WORKING		BIT(0)
-#define CCORR_BYPASS_SHADOW		BIT(2)
-
-#define CCORR_12BIT_MASK				0x0fff
-#define CCORR_13BIT_MASK				0x1fff
-
 #define CCORR_INVERSE_GAMMA   (0)
-#define CCORR_BYASS_GAMMA      (1)
+#define CCORR_BYASS_GAMMA     (1)
 
 #define CCORR_REG(idx) (idx * 4 + 0x80)
 #define CCORR_CLIP(val, min, max) ((val >= max) ? \
 	max : ((val <= min) ? min : val))
-
-// For color conversion bug fix
-//static bool need_offset;
-#define OFFSET_VALUE (1024)
-
-static struct drm_device *g_drm_dev;
-
-static int disp_ccorr_write_coef_reg(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, int lock);
-/* static void ccorr_dump_reg(void); */
 
 enum CCORR_IOCTL_CMD {
 	SET_CCORR = 0,
 	SET_INTERRUPT,
 	BYPASS_CCORR
 };
+
+static struct drm_device *g_drm_dev;
+
+static int disp_ccorr_write_coef_reg(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, int lock);
 
 inline struct mtk_disp_ccorr *comp_to_ccorr(struct mtk_ddp_comp *comp)
 {
@@ -220,7 +211,7 @@ static int disp_ccorr_write_coef_reg(struct mtk_ddp_comp *comp,
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	if (lock)
-		mutex_lock(&primary_data->ccorr_global_lock);
+		mutex_lock(&primary_data->data_lock);
 
 	DDPINFO("%s: %s, aosp ccorr:%d,nonlinear:%d\n", __func__, mtk_dump_comp_str(comp),
 		primary_data->disp_aosp_ccorr, primary_data->disp_ccorr_without_gamma);
@@ -348,7 +339,7 @@ static int disp_ccorr_write_coef_reg(struct mtk_ddp_comp *comp,
 	DDPINFO("%s: finish\n", __func__);
 ccorr_write_coef_unlock:
 	if (lock)
-		mutex_unlock(&primary_data->ccorr_global_lock);
+		mutex_unlock(&primary_data->data_lock);
 
 	return ret;
 }
@@ -426,17 +417,16 @@ static int disp_ccorr_copy_backlight_to_user(struct mtk_ddp_comp *comp, int *bac
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
-	unsigned long flags;
 	int ret = 0;
 
 	/* We assume only one thread will call this function */
-	spin_lock_irqsave(&primary_data->pq_bl_change_lock, flags);
+	mutex_lock(&primary_data->bl_lock);
 	primary_data->pq_backlight_db = primary_data->pq_backlight;
 
 	if (primary_data->old_pq_backlight != primary_data->pq_backlight)
 		primary_data->old_pq_backlight = primary_data->pq_backlight;
 
-	spin_unlock_irqrestore(&primary_data->pq_bl_change_lock, flags);
+	mutex_unlock(&primary_data->bl_lock);
 
 	memcpy(backlight, &primary_data->pq_backlight_db, sizeof(int));
 
@@ -451,12 +441,11 @@ void disp_ccorr_notify_backlight_changed(struct mtk_ddp_comp *comp, int bl_1024)
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
-	unsigned long flags;
 
-	spin_lock_irqsave(&primary_data->pq_bl_change_lock, flags);
+	mutex_lock(&primary_data->bl_lock);
 	primary_data->old_pq_backlight = primary_data->pq_backlight;
 	primary_data->pq_backlight = bl_1024;
-	spin_unlock_irqrestore(&primary_data->pq_bl_change_lock, flags);
+	mutex_unlock(&primary_data->bl_lock);
 
 	if (atomic_read(&primary_data->ccorr_is_init_valid) != 1)
 		return;
@@ -501,7 +490,7 @@ static int disp_ccorr_set_coef(
 		memcpy(ccorr, user_color_corr,
 			sizeof(struct DRM_DISP_CCORR_COEF_T));
 
-		mutex_lock(&primary_data->ccorr_global_lock);
+		mutex_lock(&primary_data->data_lock);
 
 		old_ccorr = primary_data->disp_ccorr_coef;
 		primary_data->disp_ccorr_coef = ccorr;
@@ -511,7 +500,7 @@ static int disp_ccorr_set_coef(
 
 		ret = disp_ccorr_write_coef_reg(comp, handle, 0);
 
-		mutex_unlock(&primary_data->ccorr_global_lock);
+		mutex_unlock(&primary_data->data_lock);
 
 		if (old_ccorr != NULL)
 			kfree(old_ccorr);
@@ -584,8 +573,7 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		primary_data->disp_ccorr_coef = ccorr;
 	}
 
-	mutex_lock(&primary_data->ccorr_global_lock);
-
+	mutex_lock(&primary_data->data_lock);
 
 	for (i = 0; i < 3; i++) {
 		for (j = 0; j < 3; j++) {
@@ -706,7 +694,7 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	DDPINFO("primary_data->disp_ccorr_without_gamma: [%d], need_refresh: [%d]\n",
 		primary_data->disp_ccorr_without_gamma, need_refresh);
 
-	mutex_unlock(&primary_data->ccorr_global_lock);
+	mutex_unlock(&primary_data->data_lock);
 
 	if (need_refresh == true && comp->mtk_crtc != NULL)
 		mtk_crtc_check_trigger(comp->mtk_crtc, true, false);
@@ -761,7 +749,6 @@ int disp_ccorr_cfg_set_ccorr(struct mtk_ddp_comp *comp,
 	}
 
 	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
-
 		if ((ccorr_config->silky_bright_flag) == 1 &&
 			ccorr_config->FinalBacklight != 0) {
 			DDPINFO("connector_id:%d, brightness:%d, silky_bright_flag:%d",
@@ -1319,9 +1306,8 @@ static void disp_ccorr_init_primary_data(struct mtk_ddp_comp *comp)
 	}
 
 	init_waitqueue_head(&primary_data->ccorr_get_irq_wq);
-	spin_lock_init(&primary_data->ccorr_clock_lock);
-	spin_lock_init(&primary_data->pq_bl_change_lock);
-	mutex_init(&primary_data->ccorr_global_lock);
+	mutex_init(&primary_data->bl_lock);
+	mutex_init(&primary_data->data_lock);
 }
 
 static int disp_ccorr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -1372,9 +1358,6 @@ static int disp_ccorr_frame_config(struct mtk_ddp_comp *comp,
 
 	DDPINFO("%s CMD = %d\n", __func__, cmd);
 	switch (cmd) {
-	case PQ_CCORR_EVENTCTL:
-		ret = disp_ccorr_eventctl(comp, data);
-		break;
 	case PQ_CCORR_SET_CCORR:
 		ret = disp_ccorr_cfg_set_ccorr(comp, handle, data, data_size);
 		break;
@@ -1397,17 +1380,8 @@ static int disp_ccorr_ioctl_transact(struct mtk_ddp_comp *comp,
 		return 0;
 
 	switch (cmd) {
-	case PQ_CCORR_SET_CCORR:
-		ret = disp_ccorr_act_set_ccorr(comp, data);
-		break;
 	case PQ_CCORR_EVENTCTL:
 		ret = disp_ccorr_eventctl(comp, data);
-		break;
-	case PQ_CCORR_GET_IRQ:
-		ret = disp_ccorr_act_get_irq(comp, data);
-		break;
-	case PQ_CCORR_SUPPORT_COLOR_MATRIX:
-		ret = disp_ccorr_act_support_color_matrix(comp, data);
 		break;
 	case PQ_CCORR_AIBLD_CV_MODE:
 		ret = disp_ccorr_act_sbd_cv_mode(comp, data);
@@ -1415,10 +1389,6 @@ static int disp_ccorr_ioctl_transact(struct mtk_ddp_comp *comp,
 	case PQ_CCORR_GET_PQ_CAPS:
 		pq_info = (struct mtk_drm_pq_caps_info *)data;
 		ret = disp_ccorr_act_get_ccorr_caps(comp, &pq_info->ccorr_caps);
-		break;
-	case PQ_CCORR_SET_PQ_CAPS:
-		pq_info = (struct mtk_drm_pq_caps_info *)data;
-		ret = disp_ccorr_act_set_ccorr_caps(comp, &pq_info->ccorr_caps);
 		break;
 	default:
 		break;
