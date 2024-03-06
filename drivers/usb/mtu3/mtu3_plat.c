@@ -15,6 +15,7 @@
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
 #include <linux/pm_wakeirq.h>
+#include <linux/reset.h>
 #include <linux/pm_domain.h>
 #include <linux/regmap.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
@@ -1049,6 +1050,12 @@ static int mtu3_probe(struct platform_device *pdev)
 			goto comm_exit;
 		}
 		dev_info(dev, "wakeup irq %d\n", ssusb->wakeup_irq);
+	}
+
+	ret = device_reset_optional(dev);
+	if (ret) {
+		dev_info(dev, "failed to reset controller, ret:%d\n", ret);
+		goto comm_exit;
 	}
 
 	if (IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3_HOST))
