@@ -56,15 +56,13 @@
 #endif
 #if IS_ENABLED(CONFIG_COMMON_CLK_MT6877)
 #include <clk-fmeter.h>
+#include <clk-mt6877.h>
 #include <clk-mt6877-fmeter.h>
+#include <dt-bindings/clock/mt6877-clk.h>
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_DEVINFO)
 #include <linux/nvmem-consumer.h>
-#endif
-
-#if IS_ENABLED(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING)
-#include <clk-mtk.h>
 #endif
 
 /**
@@ -127,6 +125,7 @@ static int __gpufreq_init_pmic(struct platform_device *pdev);
 static int __gpufreq_init_platform_info(struct platform_device *pdev);
 static int __gpufreq_pdrv_probe(struct platform_device *pdev);
 static int __gpufreq_pdrv_remove(struct platform_device *pdev);
+static int __gpufreq_mfgpll_probe(struct platform_device *pdev);
 /*low power*/
 static void __gpufreq_kick_pbm(int enable);
 static unsigned int __gpufreq_get_ptpod_opp_idx(unsigned int idx);
@@ -153,6 +152,23 @@ static struct platform_driver g_gpufreq_pdrv = {
 		.of_match_table = g_gpufreq_of_match,
 	},
 };
+
+static const struct of_device_id g_mfgpll_of_match[] = {
+	{ .compatible = "mediatek,mt6877-gpu_pll_ctrl" },
+	{ /* sentinel */ }
+};
+
+static struct platform_driver g_gpufreq_mfgpll_pdrv = {
+	.probe = __gpufreq_mfgpll_probe,
+	.remove = NULL,
+	.driver = {
+		.name = "gpufreq_mfgpll",
+		.owner = THIS_MODULE,
+		.of_match_table = g_mfgpll_of_match,
+	},
+};
+
+
 
 static unsigned int g_vgpu_sfchg_rrate;
 static unsigned int g_vgpu_sfchg_frate;
@@ -190,6 +206,21 @@ static DEFINE_MUTEX(gpufreq_lock);
 static DEFINE_MUTEX(ptpod_lock);
 
 struct gpufreq_opp_info *g_default_gpu;
+
+static const struct mtk_pll_data g_mfg_plls[] = {
+	PLL_PWR(CLK_MFG_AO_MFGPLL1, "mfg_ao_mfgpll1",
+		MFGPLL1_CON0_OFS/*base*/,
+		MFGPLL1_CON0_OFS, BIT(0)/*en*/,
+		MFGPLL1_CON3_OFS/*pwr*/, 0/*flags*/,
+		MFGPLL1_CON1_OFS, 24/*pd*/,
+		MFGPLL1_CON1_OFS, 0, 22/*pcw*/),
+	PLL_PWR(CLK_MFG_AO_MFGPLL4, "mfg_ao_mfgpll4",
+		MFGPLL4_CON0_OFS/*base*/,
+		MFGPLL4_CON0_OFS, BIT(0)/*en*/,
+		MFGPLL4_CON3_OFS/*pwr*/, 0/*flags*/,
+		MFGPLL4_CON1_OFS, 24/*pd*/,
+		MFGPLL4_CON1_OFS, 0, 22/*pcw*/),
+};
 
 static struct gpufreq_platform_fp platform_ap_fp = {
 	.power_ctrl_enable = __gpufreq_power_ctrl_enable,
@@ -3252,10 +3283,49 @@ static int __gpufreq_pdrv_remove(struct platform_device *pdev)
 	return GPUFREQ_SUCCESS;
 }
 
+static int __gpufreq_mfgpll_probe(struct platform_device *pdev)
+{
+	int ret = 0;
+
+	GPUFREQ_LOGI("@%s: driver init is started\n", __func__);
+
+	ret = clk_mt6877_pll_registration(GPU_PLL_CTRL, g_mfg_plls,
+		pdev, ARRAY_SIZE(g_mfg_plls));
+	if (ret) {
+		GPUFREQ_LOGI("@%s: failed to register pll\n", __func__);
+		return ret;
+	}
+
+	GPUFREQ_LOGI("@%s: driver init is finished\n", __func__);
+
+	return ret;
+}
+
+/*
+ * register the gpufreq mfgpll driver
+ */
+static int __init __gpufreq_mfgpll_init(void)
+{
+	int ret = 0;
+
+	GPUFREQ_LOGI("@%s: start to initialize mfgpll driver\n",
+			__func__);
+
+	/* register platform driver */
+	ret = platform_driver_register(&g_gpufreq_mfgpll_pdrv);
+	if (ret)
+		GPUFREQ_LOGI("@%s: fail to register mfgpll driver\n",
+			__func__);
+
+	return ret;
+}
+
 /* API: register gpufreq platform driver */
 static int __init __gpufreq_init(void)
 {
 	int ret = GPUFREQ_SUCCESS;
+
+	__gpufreq_mfgpll_init();
 
 	GPUFREQ_LOGI("start to init gpufreq platform driver");
 
@@ -3275,8 +3345,10 @@ done:
 /* API: unregister gpufreq driver */
 static void __exit __gpufreq_exit(void)
 {
+	platform_driver_unregister(&g_gpufreq_mfgpll_pdrv);
 	platform_driver_unregister(&g_gpufreq_pdrv);
 }
+
 #if IS_BUILTIN(CONFIG_MTK_GPU_MT6877_SUPPORT)
 rootfs_initcall(__gpufreq_init);
 #else
@@ -3284,6 +3356,7 @@ module_init(__gpufreq_init);
 #endif
 module_exit(__gpufreq_exit);
 
+MODULE_DEVICE_TABLE(of, g_mfgpll_of_match);
 MODULE_DEVICE_TABLE(of, g_gpufreq_of_match);
 MODULE_DESCRIPTION("MediaTek GPU-DVFS platform driver");
 MODULE_LICENSE("GPL");
