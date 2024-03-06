@@ -4989,7 +4989,7 @@
 		reg = <0 0x1502e000 0 0x1000>;
 		mediatek,smi-supply = <&smi_common>;
 		mediatek,larb-id = <9>;
-		power-domains = <&scpsys MT6877_POWER_DOMAIN_DISP>;
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_ISP0>;
 		clocks = <&imgsys1_clk CLK_IMGSYS1_LARB9>,
 				 <&imgsys1_clk CLK_IMGSYS1_LARB9>,
 				 <&imgsys1_clk CLK_IMGSYS1_LARB9>,
