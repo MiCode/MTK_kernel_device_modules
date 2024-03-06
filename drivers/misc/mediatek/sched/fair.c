@@ -775,29 +775,13 @@ void soft_affinity_init(void)
 	init_tg_soft_affinity();
 }
 
-struct cpumask bit_to_cpumask(unsigned int cpumask_val)
-{
-	unsigned long cpumask_ulval = cpumask_val;
-	struct cpumask cpumask_setting;
-	int cpu;
-
-	cpumask_clear(&cpumask_setting);
-	for_each_possible_cpu(cpu) {
-		if (test_bit(cpu, &cpumask_ulval))
-			cpumask_set_cpu(cpu, &cpumask_setting);
-	}
-	return cpumask_setting;
-}
-
 void __set_group_prefer_cpus(struct task_group *tg, unsigned int cpumask_val)
 {
 	struct cpumask *tg_mask;
-	struct cpumask soft_cpumask;
+	unsigned long cpumask_ulval = cpumask_val;
 
 	tg_mask = &(((struct mtk_tg *) tg->android_vendor_data1)->sa_tg.soft_cpumask);
-	soft_cpumask = bit_to_cpumask(cpumask_val);
-
-	cpumask_copy(tg_mask, &soft_cpumask);
+	cpumask_copy(tg_mask, to_cpumask(&cpumask_ulval));
 }
 
 struct task_group *search_tg_by_name(char *group_name)
@@ -962,7 +946,7 @@ void set_task_ls_prefer_cpus(int pid, unsigned int cpumask_val)
 {
 	struct task_struct *p;
 	struct soft_affinity_task *sa_task;
-	struct cpumask soft_cpumask = bit_to_cpumask(cpumask_val);
+	unsigned long cpumask_ulval = cpumask_val;
 
 	rcu_read_lock();
 	p = find_task_by_vpid(pid);
@@ -970,7 +954,7 @@ void set_task_ls_prefer_cpus(int pid, unsigned int cpumask_val)
 		get_task_struct(p);
 		sa_task = &((struct mtk_task *) p->android_vendor_data1)->sa_task;
 		sa_task->latency_sensitive = true;
-		cpumask_copy(&sa_task->soft_cpumask, &soft_cpumask);
+		cpumask_copy(&sa_task->soft_cpumask, to_cpumask(&cpumask_ulval));
 		put_task_struct(p);
 	}
 	rcu_read_unlock();
@@ -981,7 +965,7 @@ void unset_task_ls_prefer_cpus(int pid)
 {
 	struct task_struct *p;
 	struct soft_affinity_task *sa_task;
-	struct cpumask soft_cpumask = bit_to_cpumask(0xff);
+	unsigned long cpumask_ulval = 0xff;
 
 	rcu_read_lock();
 	p = find_task_by_vpid(pid);
@@ -989,7 +973,7 @@ void unset_task_ls_prefer_cpus(int pid)
 		get_task_struct(p);
 		sa_task = &((struct mtk_task *) p->android_vendor_data1)->sa_task;
 		sa_task->latency_sensitive = false;
-		cpumask_copy(&sa_task->soft_cpumask, &soft_cpumask);
+		cpumask_copy(&sa_task->soft_cpumask, to_cpumask(&cpumask_ulval));
 		put_task_struct(p);
 	}
 	rcu_read_unlock();
