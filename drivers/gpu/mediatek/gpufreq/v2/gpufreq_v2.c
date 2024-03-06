@@ -32,6 +32,7 @@
 #include <gpueb_reserved_mem.h>
 #include <gpueb_debug.h>
 #include <gpueb_common.h>
+#include <ghpm_wrapper.h>
 #include <mtk_gpu_utility.h>
 
 #if IS_ENABLED(CONFIG_MTK_PBM)
@@ -1525,7 +1526,7 @@ static int gpufreq_ipi_to_gpueb(struct gpufreq_ipi_data data)
 	GPUFREQ_LOGD("channel: %d send IPI command: %s (%d)",
 		g_ipi_channel, gpufreq_ipi_cmd_name[data.cmd_id], data.cmd_id);
 
-	ret = mtk_ipi_send_compl(get_gpueb_ipidev(), g_ipi_channel, IPI_SEND_POLLING,
+	ret = mtk_ipi_send_compl_to_gpueb(g_ipi_channel, IPI_SEND_POLLING,
 		(void *)&data, GPUFREQ_IPI_DATA_LEN, IPI_TIMEOUT_MS);
 	if (unlikely(ret != IPI_ACTION_DONE)) {
 		GPUFREQ_LOGE("[ABORT] fail to send IPI channel: %d, command: %s (%d)",
@@ -1900,6 +1901,13 @@ static int gpufreq_wrapper_pdrv_probe(struct platform_device *pdev)
 	/* keep probe successful but do nothing when bringup */
 	if (g_gpufreq_bringup) {
 		GPUFREQ_LOGI("skip gpufreq wrapper driver probe when bringup");
+		goto done;
+	}
+
+	/* ensure probe order */
+	if (!g_ghpm_ready) {
+		GPUFREQ_LOGE("ghpm has not been probed, defer gpufreq wrapper driver probe");
+		ret = -EPROBE_DEFER;
 		goto done;
 	}
 

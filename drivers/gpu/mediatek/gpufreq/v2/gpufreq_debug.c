@@ -25,6 +25,7 @@
 #include <gpufreq_mssv.h>
 #include <gpufreq_debug.h>
 #include <gpufreq_history.h>
+#include <ghpm_wrapper.h>
 
 /**
  * ===============================================
@@ -626,6 +627,12 @@ static ssize_t mfgsys_power_control_proc_write(struct file *file,
 	mutex_lock(&gpufreq_debug_lock);
 
 	if (sysfs_streq(buf, "power_on") && g_debug_power_state == GPU_PWR_OFF) {
+		ret = gpueb_ctrl(GHPM_ON, MFG1_OFF, SUSPEND_POWER_ON);
+		if (ret) {
+			GPUFREQ_LOGE("fail to power on GPUEB (%d)", ret);
+			goto done_unlock;
+		}
+
 		ret = gpufreq_power_control(GPU_PWR_ON);
 		if (ret < 0)
 			GPUFREQ_LOGE("fail to power on MFGSYS (%d)", ret);
@@ -633,14 +640,19 @@ static ssize_t mfgsys_power_control_proc_write(struct file *file,
 			g_debug_power_state = GPU_PWR_ON;
 	} else if (sysfs_streq(buf, "power_off") && g_debug_power_state == GPU_PWR_ON) {
 		ret = gpufreq_power_control(GPU_PWR_OFF);
-		if (ret < 0)
+		if (ret < 0) {
 			GPUFREQ_LOGE("fail to power off MFGSYS (%d)", ret);
-		else
+			goto done_unlock;
+		} else
 			g_debug_power_state = GPU_PWR_OFF;
+
+		ret = gpueb_ctrl(GHPM_OFF, MFG1_OFF, SUSPEND_POWER_OFF);
+		if (ret)
+			GPUFREQ_LOGE("fail to power off GPUEB (%d)", ret);
 	}
 
+done_unlock:
 	mutex_unlock(&gpufreq_debug_lock);
-
 done:
 	return (ret < 0) ? ret : count;
 }

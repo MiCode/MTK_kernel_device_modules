@@ -104,7 +104,7 @@ static void ipi_get_data(unsigned int cmd)
 	ipi_data.cmd = cmd;
 
 	/* 3 sec for debug */
-	ret = mtk_ipi_send_compl(get_gpueb_ipidev(), channel_id,
+	ret = mtk_ipi_send_compl_to_gpueb(channel_id,
 			IPI_SEND_POLLING, &ipi_data,
 			FHCTL_D_LEN, 3000);
 	FHDBG("ret<%d>, ack_data<%x>\n",
@@ -158,7 +158,7 @@ static int gpueb_hopping_v1(void *priv_data, char *domain_name, unsigned int fh_
 	/* make sure tr_id_local is set before send ipi */
 	mb();
 
-	ret = mtk_ipi_send_compl(get_gpueb_ipidev(), channel_id,
+	ret = mtk_ipi_send_compl_to_gpueb(channel_id,
 			IPI_SEND_POLLING, &ipi_data,
 			FHCTL_D_LEN, FHCTL_IPI_TIMEOUT_MS);
 
@@ -252,7 +252,7 @@ static int gpueb_ssc_enable_v1(void *priv_data,
 					sizeof(struct freqhopping_ioctl));
 
 	ipi_data.cmd = FH_DCTL_CMD_SSC_ENABLE;
-	ret = mtk_ipi_send_compl(get_gpueb_ipidev(), channel_id,
+	ret = mtk_ipi_send_compl_to_gpueb(channel_id,
 			IPI_SEND_POLLING, &ipi_data,
 			FHCTL_D_LEN, IPI_TIMEOUT_LONG_MS);
 	FHDBG("ret<%d>\n", ret);
@@ -286,7 +286,7 @@ static int gpueb_ssc_disable_v1(void *priv_data,
 					sizeof(struct freqhopping_ioctl));
 
 	ipi_data.cmd = FH_DCTL_CMD_SSC_DISABLE;
-	ret = mtk_ipi_send_compl(get_gpueb_ipidev(), channel_id,
+	ret = mtk_ipi_send_compl_to_gpueb(channel_id,
 			IPI_SEND_POLLING, &ipi_data,
 			FHCTL_D_LEN, IPI_TIMEOUT_LONG_MS);
 	FHDBG("ret<%d>\n", ret);
