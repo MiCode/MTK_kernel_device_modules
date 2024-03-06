@@ -76,7 +76,9 @@
 #define SYST_CON_IRQ_EN          BIT(1)
 #define SYST_CON_IRQ_CLR         BIT(4)
 
+#ifndef MODULE
 static void __iomem *gpt_sched_reg __read_mostly;
+#endif
 
 static void mtk_syst_ack_irq(struct timer_of *to)
 {
@@ -139,6 +141,7 @@ static int mtk_syst_clkevt_oneshot(struct clock_event_device *clkevt)
 	return 0;
 }
 
+#ifndef MODULE
 static u64 notrace mtk_gpt_read_sched_clock(void)
 {
 	return readl_relaxed(gpt_sched_reg);
@@ -274,6 +277,7 @@ static void mtk_gpt_suspend(struct clock_event_device *clk)
 	 */
 	writel(0x3f, timer_of_base(to) + GPT_IRQ_ACK_REG);
 }
+#endif
 
 static struct timer_of to = {
 	.flags = TIMER_OF_IRQ | TIMER_OF_BASE | TIMER_OF_CLOCK,
@@ -310,6 +314,7 @@ static int __init mtk_syst_init(struct device_node *node)
 	return 0;
 }
 
+#ifndef MODULE
 static int __init mtk_gpt_init(struct device_node *node)
 {
 	int ret;
@@ -345,6 +350,7 @@ static int __init mtk_gpt_init(struct device_node *node)
 
 	return 0;
 }
+#endif
 
 #ifdef MODULE
 static int mtk_timer_probe(struct platform_device *pdev)
@@ -357,10 +363,12 @@ static int mtk_timer_probe(struct platform_device *pdev)
 }
 
 static const struct of_device_id mtk_timer_match_table[] = {
+#ifndef MODULE
 	{
 		.compatible = "mediatek,mt6577-timer",
 		.data = mtk_gpt_init,
 	},
+#endif
 	{
 		.compatible = "mediatek,mt6765-timer",
 		.data = mtk_syst_init,
