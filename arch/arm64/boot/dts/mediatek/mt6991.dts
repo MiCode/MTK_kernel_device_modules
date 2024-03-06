@@ -16071,7 +16071,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 		min-charger-voltage = <4600000>;
 		pd-vbus-low-bound = <5000000>;
-		pd-vbus-upper-bound = <5000000>;
+		pd-vbus-upper-bound = <9000000>;
 		vsys-watt = <5000000>;
 		ibus-err = <14>;
 
