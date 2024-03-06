@@ -23,6 +23,7 @@
 #include "vip.h"
 #endif
 #include <mt-plat/mtk_irq_mon.h>
+#include "arch.h"
 
 MODULE_LICENSE("GPL");
 
@@ -258,20 +259,16 @@ int sort_thermal_headroom(struct cpumask *cpus, int *cpu_order, bool in_irq)
  */
 unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
 		unsigned long max_util, unsigned long sum_util,
-		unsigned long allowed_cpu_cap, struct energy_env *eenv)
+		unsigned long allowed_cpu_cap, struct energy_env *eenv,
+		unsigned long extern_volt)
 {
 	unsigned long freq, scale_cpu;
 	struct em_perf_state *ps;
 	int cpu, this_cpu, opp = -1, wl_type = 0;
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO) && IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	unsigned long pwr_eff, cap, freq_legacy, sum_cap = 0;
-	unsigned int share_volt = 0, cpu_volt = 0;
-	struct dsu_info *dsu = &eenv->dsu;
-	unsigned int dsu_opp;
-	struct dsu_state *dsu_ps;
+	unsigned int cpu_volt = 0;
 	int pd_volt;
-	int pd_freq;
-	int pd_dsu_freq;
 #else
 	int i;
 #endif
@@ -307,9 +304,7 @@ unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
 	opp = pd_freq2opp(cpu, freq, false, eenv->wl_type);
 	pwr_eff = pd_opp2pwr_eff(cpu, opp, false, eenv->wl_type, eenv->val_s, false, DPT_CALL_MTK_EM_CPU_ENERGY);
 	cap = pd_opp2cap(cpu, opp, false, eenv->wl_type, eenv->val_s, false, DPT_CALL_MTK_EM_CPU_ENERGY);
-	pd_freq = pd_opp2freq(cpu, opp, false, eenv->wl_type);
 	pd_volt = pd_opp2volt(cpu, opp, false, eenv->wl_type);
-	pd_dsu_freq = pd_cpu_opp2dsu_freq(cpu, opp, false, eenv->wl_type);
 #else
 	/*
 	 * Find the lowest performance state of the Energy Model above the
@@ -329,7 +324,8 @@ unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
 	for_each_cpu_and(cpu, pd_cpus, cpu_online_mask) {
 		unsigned int cpu_static_pwr;
 
-		cpu_static_pwr = pd_get_opp_leakage(cpu, opp, cpu_temp[cpu]);
+		cpu_static_pwr = shared_buck_lkg_pwr(eenv->wl_type, cpu, opp,
+					cpu_temp[cpu], extern_volt);
 		static_pwr += cpu_static_pwr;
 		sum_cap += cap;
 
@@ -386,27 +382,10 @@ unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO) && IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	dyn_pwr = pwr_eff * sum_util;
 
-	if (eenv->wl_support) {
-		if (share_buck.gear_idx == eenv->gear_idx) {
-			cpu_volt = pd_volt;
-			share_volt = (dsu->dsu_volt > cpu_volt) ? dsu->dsu_volt : cpu_volt;
-		}
+	cpu_volt = pd_volt;
 
-		if (eenv->dsu_freq_thermal != -1)
-			eenv->dsu_freq_new = min((unsigned int)pd_dsu_freq, eenv->dsu_freq_thermal);
-		dsu_opp = dsu_get_freq_opp(eenv->dsu_freq_new);
-		dsu_ps = dsu_get_opp_ps(eenv->wl_type, dsu_opp);
-		eenv->dsu_volt_new = dsu_ps->volt;
-		wl_type = eenv->wl_type;
-
-		if (trace_sched_dsu_freq_enabled())
-			trace_sched_dsu_freq(eenv->gear_idx, eenv->dsu_freq_new, eenv->dsu_volt_new,
-					freq, pd_freq, dyn_pwr, share_volt, cpu_volt);
-
-		if (share_volt > cpu_volt)
-			dyn_pwr = (unsigned long long)dyn_pwr * (unsigned long long)share_volt *
-				(unsigned long long)share_volt / cpu_volt / cpu_volt;
-	}
+	/* shared-buck dynamic power*/
+	dyn_pwr = shared_buck_dyn_pwr(dyn_pwr, cpu_volt, extern_volt);
 
 	/* for pd_opp_capacity is scaled based on maximum scale 1024, so cost = pwr_eff * 1024 */
 	if (trace_sched_em_cpu_energy_enabled()) {
