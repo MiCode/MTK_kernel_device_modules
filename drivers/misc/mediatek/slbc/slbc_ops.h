@@ -41,7 +41,11 @@
 /* maximum number of GID */
 #define GID_MAX				64
 
-
+/* GID settings */
+#define GS_M	BIT(0)
+#define GS_K	BIT(1)
+#define GS_RD	BIT(2)
+#define GS_FD	BIT(3)
 
 /* need to modify slbc_uid_str  */
 enum slbc_uid {
@@ -176,6 +180,7 @@ struct slbc_gid_data {
 	unsigned int dma_size;	//unit: MB
 	unsigned int bw;	//unit: MBps
 	unsigned int fps;	//unit: frames per sec
+	unsigned int flag;
 };
 
 #define ui_to_slbc_data(d, ui) \
