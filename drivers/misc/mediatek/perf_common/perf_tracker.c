@@ -72,53 +72,16 @@ static unsigned int is_gpu_pmu_worked;
 static unsigned int gpu_pmu_period = 8000000; //8ms
 #endif
 static unsigned int mcupm_freq_enable;
-/* 1: enable, 3: enable & enable debug */
-static unsigned int support_cpu_pmu = 1;
 
-static DEFINE_PER_CPU(u64, cpu_last_inst_spec);
-static DEFINE_PER_CPU(u64, cpu_last_cycle);
-static DEFINE_PER_CPU(u64, cpu_last_l3dc);
-static int pmu_init;
 static int emi_last_bw_idx = 0xFFFF;
 
-static void set_pmu_enable(unsigned int enable)
-{
-	if (IS_ERR_OR_NULL((void *)csram_base))
-		return;
-
-	__raw_writel((u32)enable, csram_base + PERF_TRACKER_STATUS_OFFSET);
-	/* make sure register access in order */
-	wmb();
-}
-
-static void init_pmu_data(void)
-{
-	int i = 0;
-
-	for (i = 0; i < num_possible_cpus(); i++) {
-		per_cpu(cpu_last_inst_spec, i) = 0;
-		per_cpu(cpu_last_cycle, i) = 0;
-		per_cpu(cpu_last_l3dc, i) = 0;
-	}
-	set_pmu_enable(1);
-	pmu_init = 1;
-}
-
-static void exit_pmu_data(void)
-{
-	pmu_init = 0;
-	set_pmu_enable(0);
-}
-
-#define PMU_UPDATE_LOCK_OFFSET	0x12F0
-#define PMU_IDX_CNT_OFFSET	0x12EC
-u64 get_cpu_pmu(int cpu, u32 offset)
+u64 get_cpu_stall(int cpu, u32 offset)
 {
 	u64 count = 0;
 	if (perf_tracker_info_exist) {
-		if (IS_ERR_OR_NULL((void *)pmu_tcm_base))
+		if (IS_ERR_OR_NULL((void *)stall_tcm_base))
 			return count;
-		count = __raw_readl(pmu_tcm_base + offset + (cpu * 0x4));
+		count = __raw_readl(stall_tcm_base + offset + (cpu * 0x4));
 	} else {
 		if (IS_ERR_OR_NULL((void *)csram_base))
 			return count;
@@ -126,55 +89,14 @@ u64 get_cpu_pmu(int cpu, u32 offset)
 	}
 	return count;
 }
-EXPORT_SYMBOL_GPL(get_cpu_pmu);
-
-/* 3GHz * 4ms * 10 IPC * 3 chances */
-#define MAX_PMU_VALUE	360000000
-#define DEBUG_BIT	2
-#define DEFINE_GET_CUR_CPU_PMU_FUNC(_name, _pmu_offset)						\
-	u64 get_cur_cpu_##_name(int cpu)							\
-	{											\
-		u64 cur = 0, res = 0;								\
-		int retry = 3;									\
-												\
-		if (cpu >= nr_cpu_ids || !pmu_init)						\
-			return res;								\
-												\
-		do {										\
-			cur = get_cpu_pmu(cpu, _pmu_offset);					\
-			/* invalid counter */							\
-			if (cur == 0 || cur == 0xDEADDEAD)					\
-				return 0;							\
-												\
-			/* handle overflow case */						\
-			if (cur < per_cpu(cpu_last_##_name, cpu))				\
-				res = ((u64)0xffffffff -					\
-					per_cpu(cpu_last_##_name, cpu) + (0x7fffffff & cur));	\
-			else									\
-				res = per_cpu(cpu_last_##_name, cpu) == 0 ?			\
-					0 : cur - per_cpu(cpu_last_##_name, cpu);		\
-			--retry;								\
-		} while (res > MAX_PMU_VALUE && retry > 0);					\
-												\
-		if (res > MAX_PMU_VALUE && retry == 0) {					\
-			if (support_cpu_pmu & DEBUG_BIT)					\
-				trace_cpu_pmu_debug(cpu, "_" #_name ":", 0, cur, res);		\
-			return 0;								\
-		}										\
-												\
-		per_cpu(cpu_last_##_name, cpu) = cur;						\
-		if (support_cpu_pmu & DEBUG_BIT)						\
-			trace_cpu_pmu_debug(cpu, "_" #_name ":", 1, cur, res);			\
-		return res;									\
-	}
-
-DEFINE_GET_CUR_CPU_PMU_FUNC(inst_spec, CPU_INST_SPEC_OFFSET);
-DEFINE_GET_CUR_CPU_PMU_FUNC(cycle, CPU_IDX_CYCLES_OFFSET);
-DEFINE_GET_CUR_CPU_PMU_FUNC(l3dc, CPU_L3DC_OFFSET);
+EXPORT_SYMBOL_GPL(get_cpu_stall);
 
 #define OFFS_DVFS_CUR_OPP_S	0x98
 #define OFFS_MCUPM_CUR_OPP_S	0x544
 #define OFFS_MCUPM_CUR_FREQ_S	0x11e0		//gearless freq
+//per core
+#define OFFS_DVFS_CUR_OPP_S_PER_CORE	0x1380
+#define OFFS_MCUPM_CUR_FREQ_S_PER_CORE	0x13A4
 
 static unsigned int cpudvfs_get_cur_freq(int cluster_id, bool is_mcupm)
 {
@@ -214,6 +136,26 @@ static unsigned int cpudvfs_get_cur_freq(int cluster_id, bool is_mcupm)
 	return 0;
 }
 
+static unsigned int cpudvfs_get_cur_freq_perCore(int core_id, bool is_mcupm)
+{
+	u32 val = 0;
+	u32 offset = 0;
+
+	if (IS_ERR_OR_NULL((void *)csram_base))
+		return 0;
+
+	offset = OFFS_MCUPM_CUR_FREQ_S_PER_CORE;
+
+	if (is_mcupm)
+		val = __raw_readl(csram_base +
+				(offset + (core_id * 0x4)));
+	else
+		val = __raw_readl(csram_base +
+				(OFFS_DVFS_CUR_OPP_S_PER_CORE + (core_id * 0x4)));
+
+	return val;
+}
+
 unsigned int base_offset_read(unsigned int __iomem *base, unsigned int offs)
 {
 	if (IS_ERR_OR_NULL((void *)base))
@@ -230,15 +172,6 @@ int perf_tracker_enable(int on)
 	return (perf_tracker_on == on) ? 0 : -1;
 }
 EXPORT_SYMBOL_GPL(perf_tracker_enable);
-
-static inline u32 cpu_stall_ratio(int cpu)
-{
-#if IS_ENABLED(CONFIG_MTK_QOS_FRAMEWORK)
-	return qos_sram_read(CM_STALL_RATIO_ID_0 + cpu);
-#else
-	return 0;
-#endif
-}
 
 static inline void format_sbin_data(char *buf, u32 size, u32 *sbin_data, u32 lens)
 {
@@ -264,6 +197,7 @@ enum {
 	SBIN_U_VOTING_RECORD		= 1U << 4,
 	SBIN_U_A_E_RECORD		= 1U << 5,
 	SBIN_DRAM_BW_RECORD		= 1U << 6,
+	SBIN_S_RECORD			= 1U << 7,
 };
 
 #define K(x) ((x) << (PAGE_SHIFT - 10))
@@ -276,33 +210,29 @@ enum {
 #define mcupm_record_nums 9
 #define u_voting_record_nums 3
 #define u_a_e_record_nums 5
-/* inst-spec, l3dc, cpu-cycles */
-#define CPU_PMU_NUMS  (3 * max_cpus)
+#define sched_Lcpu_freq_nums 4
+#define sched_freq_nums 6
+#define dram_rate_nums 1
+#define vcore_uv_nums 1
+#define cpu_mcupm_freq_nums 6
 #define PRINT_BUFFER_SIZE ((emi_bw_record_nums+u_record_nums+mcupm_record_nums \
-		+CPU_PMU_NUMS+u_voting_record_nums+u_a_e_record_nums+dram_bw_record_nums) \
+		+u_voting_record_nums+u_a_e_record_nums+dram_bw_record_nums \
+		+sched_freq_nums+dram_rate_nums+vcore_uv_nums+cpu_mcupm_freq_nums) \
 		 * 12 + 8)
-
-#define for_each_cpu_get_pmu(cpu, _pmu)						\
-	do {									\
-		for ((cpu) = 0; (cpu) < max_cpus; (cpu)++)			\
-			sbin_data[sbin_lens + cpu] =				\
-					(u32)get_cur_cpu_##_pmu(cpu);		\
-		sbin_lens += max_cpus;						\
-	} while (0)
 
 void perf_tracker(u64 wallclock,
 		  bool hit_long_check)
 {
 	long mm_available = 0, mm_free = 0;
-	int dram_rate = 0;
+	u32 dram_rate = 0;
 	struct mtk_btag_mictx_iostat_struct *iostat_ptr = &iostat;
-	int bw_c = 0, bw_g = 0, bw_mm = 0, bw_total = 0;
 	int emi_bw_idx = 0xFFFF, dram_bw_idx = 0xFFFF;
 	bool bw_idx_checked = 0;
 	u32 bw_record = 0;
 	u32 sbin_data[emi_bw_record_nums+u_record_nums+mcupm_record_nums
-		+CPU_PMU_NUMS+u_voting_record_nums+u_a_e_record_nums
-		+dram_bw_record_nums] = {0};
+		+u_voting_record_nums+u_a_e_record_nums
+		+dram_bw_record_nums
+		+sched_freq_nums+dram_rate_nums+vcore_uv_nums+cpu_mcupm_freq_nums] = {0};
 	int sbin_lens = 0;
 #if IS_ENABLED(CONFIG_ARM64)
 	char sbin_data_print[PRINT_BUFFER_SIZE] = {0};
@@ -315,11 +245,11 @@ void perf_tracker(u64 wallclock,
 	u32 u_bmoni = 0;
 	u32 u_uff = 0, u_ucf = 0;
 	u32 u_ecf = 0;
-	int vcore_uv = 0;
+	u32 vcore_uv = 0;
 	int i;
 	int stall[max_cpus] = {0};
-	unsigned int sched_freq[3] = {0};
-	unsigned int cpu_mcupm_freq[3] = {0};
+	unsigned int sched_freq[6] = {0};
+	unsigned int cpu_mcupm_freq[6] = {0};
 	int cid;
 
 	if (!perf_tracker_on)
@@ -341,12 +271,6 @@ void perf_tracker(u64 wallclock,
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_QOS_FRAMEWORK)
-	/* emi */
-	bw_c  = qos_sram_read(QOS_DEBUG_1);
-	bw_g  = qos_sram_read(QOS_DEBUG_2);
-	bw_mm = qos_sram_read(QOS_DEBUG_3);
-	bw_total = qos_sram_read(QOS_DEBUG_0);
-
 	/* emi history */
 	emi_bw_idx = qos_rec_get_hist_idx();
 	dram_bw_idx = emi_bw_idx;
@@ -396,13 +320,6 @@ void perf_tracker(u64 wallclock,
 		sbin_data_ctl |= SBIN_MCUPM_RECORD;
 	}
 
-	if (support_cpu_pmu) {
-		/* get pmu */
-		for_each_cpu_get_pmu(i, inst_spec);
-		for_each_cpu_get_pmu(i, cycle);
-		for_each_cpu_get_pmu(i, l3dc);
-		sbin_data_ctl |= SBIN_PMU_RECORD;
-	}
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT) && IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	if (is_wl_support()) {
 		/* get U freq. voting */
@@ -450,6 +367,35 @@ void perf_tracker(u64 wallclock,
 		sbin_data_ctl |= SBIN_DRAM_BW_RECORD;
 	}
 
+	if (!is_percore) { // per cluster
+		sched_freq[0] = cpudvfs_get_cur_freq(0, false);
+		sched_freq[4] = cpudvfs_get_cur_freq(1, false);
+		sched_freq[5] = cpudvfs_get_cur_freq(2, false);
+		cpu_mcupm_freq[0] = cpudvfs_get_cur_freq(0, true);
+		cpu_mcupm_freq[4] = cpudvfs_get_cur_freq(1, true);
+		cpu_mcupm_freq[5] = cpudvfs_get_cur_freq(2, true);
+	} else {
+		for (cid = 0; cid < sched_Lcpu_freq_nums; cid++) {
+			sched_freq[cid] = cpudvfs_get_cur_freq_perCore(cid, false);
+			cpu_mcupm_freq[cid] = cpudvfs_get_cur_freq_perCore(cid, true);
+		}
+		sched_freq[4] = cpudvfs_get_cur_freq_perCore(4, false);
+		sched_freq[5] = cpudvfs_get_cur_freq_perCore(7, false);
+		cpu_mcupm_freq[4] = cpudvfs_get_cur_freq_perCore(4, true);
+		cpu_mcupm_freq[5] = cpudvfs_get_cur_freq_perCore(7, true);
+	}
+
+	for (cid = 0; cid < sched_freq_nums; cid++)
+		sbin_data[sbin_lens+cid]  = sched_freq[cid];
+	sbin_lens += sched_freq_nums;
+	sbin_data[sbin_lens]  = dram_rate;
+	sbin_data[sbin_lens+1]  = vcore_uv;
+	sbin_lens += dram_rate_nums + vcore_uv_nums;
+	for (cid = 0; cid < cpu_mcupm_freq_nums; cid++)
+		sbin_data[sbin_lens+cid]  = cpu_mcupm_freq[cid];
+	sbin_lens += cpu_mcupm_freq_nums;
+	sbin_data_ctl |= SBIN_S_RECORD;
+
 #if IS_ENABLED(CONFIG_ARM64)
 	format_sbin_data(sbin_data_print, sizeof(sbin_data_print), sbin_data, sbin_lens);
 #else
@@ -457,18 +403,11 @@ void perf_tracker(u64 wallclock,
 #endif
 	trace_perf_index_sbin(sbin_data_print, sbin_lens, sbin_data_ctl);
 
-	/* trace for short bin */
-	/* sched: cpu freq */
-	for (cid = 0; cid < cluster_nr; cid++) {
-		sched_freq[cid] = cpudvfs_get_cur_freq(cid, false);
-		cpu_mcupm_freq[cid] = cpudvfs_get_cur_freq(cid, true);
-	}
-
 	/* trace for short msg */
 	trace_perf_index_s(
-			sched_freq[0], sched_freq[1], sched_freq[2],
-			dram_rate, bw_c, bw_g, bw_mm, bw_total,
-			vcore_uv, cpu_mcupm_freq[0], cpu_mcupm_freq[1], cpu_mcupm_freq[2]);
+			sched_freq[0], sched_freq[4], sched_freq[5],
+			dram_rate,
+			vcore_uv, cpu_mcupm_freq[0], cpu_mcupm_freq[4], cpu_mcupm_freq[5]);
 
 	if (!hit_long_check) {
 		#if !IS_ENABLED(CONFIG_ARM64)
@@ -490,7 +429,7 @@ void perf_tracker(u64 wallclock,
 
 	/* cpu stall ratio */
 	for (i = 0; i < nr_cpu_ids || i < max_cpus; i++)
-		stall[i] = cpu_stall_ratio(i);
+		stall[i] = get_cpu_stall(i,CPU_STALL_RATIO_OFFSET);
 
 	/* trace for long msg */
 	trace_perf_index_l(
@@ -550,11 +489,9 @@ static ssize_t store_perf_enable(struct kobject *kobj,
 		/* do something after on/off perf_tracker */
 		if (perf_tracker_on) {
 			insert_freq_qos_hook();
-			init_pmu_data();
 			check_dram_bw = qos_rec_check_sram_ext();
 		} else {
 			remove_freq_qos_hook();
-			exit_pmu_data();
 		}
 	}
 
@@ -764,6 +701,14 @@ static ssize_t store_gpu_pmu_enable(struct kobject *kobj,
 	if (kstrtouint(buf, 10, &gpu_pmu_enable) == 0)
 		gpu_pmu_enable = (gpu_pmu_enable > 0) ? 1 : 0;
 
+	if (perf_tracker_on && gpu_pmu_enable && !is_gpu_pmu_worked) {
+		mtk_ltr_gpu_pmu_start(gpu_pmu_period);
+		is_gpu_pmu_worked = 1;
+	} else if (!gpu_pmu_enable && is_gpu_pmu_worked) {
+		mtk_ltr_gpu_pmu_stop();
+		is_gpu_pmu_worked = 0;
+	}
+
 	mutex_unlock(&perf_ctl_mutex);
 
 	return count;
@@ -819,30 +764,6 @@ static ssize_t store_mcupm_freq_enable(struct kobject *kobj,
 	return count;
 }
 
-static ssize_t show_cpu_pmu_enable(struct kobject *kobj,
-		struct kobj_attribute *attr, char *buf)
-{
-	unsigned int len = 0;
-	unsigned int max_len = 4096;
-
-	len += snprintf(buf, max_len, "cpu_pmu_enable = %u\n", support_cpu_pmu);
-	return len;
-}
-
-#define SUPPORT_BIT	3
-static ssize_t store_cpu_pmu_enable(struct kobject *kobj,
-		struct kobj_attribute *attr, const char *buf, size_t count)
-{
-	mutex_lock(&perf_ctl_mutex);
-
-	if (kstrtouint(buf, 10, &support_cpu_pmu) == 0)
-		support_cpu_pmu &= SUPPORT_BIT;
-
-	mutex_unlock(&perf_ctl_mutex);
-
-	return count;
-}
-
 struct kobj_attribute perf_tracker_enable_attr =
 __ATTR(enable, 0600, show_perf_enable, store_perf_enable);
 struct kobj_attribute perf_fuel_gauge_enable_attr =
@@ -866,6 +787,3 @@ __ATTR(gpu_pmu_period, 0600, show_gpu_pmu_period, store_gpu_pmu_period);
 
 struct kobj_attribute perf_mcupm_freq_enable_attr =
 __ATTR(mcupm_freq_enable, 0600, show_mcupm_freq_enable, store_mcupm_freq_enable);
-
-struct kobj_attribute perf_cpu_pmu_enable_attr =
-__ATTR(cpu_pmu_enable, 0600, show_cpu_pmu_enable, store_cpu_pmu_enable);

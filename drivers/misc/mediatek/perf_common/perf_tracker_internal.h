@@ -21,17 +21,15 @@ struct ppm_data {
 
 extern void __iomem *csram_base;
 extern void __iomem *u_tcm_base;
-extern void __iomem *pmu_tcm_base;
+extern void __iomem *stall_tcm_base;
 
 extern struct ppm_data cluster_ppm_info[MAX_CLUSTER_NR];
 extern int cluster_nr;
 
 #if IS_ENABLED(CONFIG_MTK_PERF_TRACKER)
 /* copy from cpu_swpm_internal.h */
-extern u32 CPU_L3DC_OFFSET;
-extern u32 CPU_INST_SPEC_OFFSET;
-extern u32 CPU_IDX_CYCLES_OFFSET;
 extern u32 PERF_TRACKER_STATUS_OFFSET;
+extern u32 CPU_STALL_RATIO_OFFSET;
 /*u a e*/
 extern u32 U_AFFO;
 extern u32 U_BMONIO;
@@ -75,6 +73,7 @@ extern void perf_tracker(u64 wallclock,
 			 bool hit_long_check);
 extern u64 get_cpu_pmu(int cpu, u32 offset);
 extern bool perf_tracker_info_exist;
+extern bool is_percore;
 extern bool is_perf_tracker_info_exist(void);
 extern u32 get_perf_tracker_info_from_dts(const char *property_name);
 
@@ -96,7 +95,6 @@ extern void remove_freq_qos_hook(void);
 extern void init_perf_freq_tracker(void);
 extern void exit_perf_freq_tracker(void);
 extern struct kobj_attribute perf_mcupm_freq_enable_attr;
-extern struct kobj_attribute perf_cpu_pmu_enable_attr;
 #else
 static inline void perf_tracker(u64 wallclock,
 				bool hit_long_check) {}

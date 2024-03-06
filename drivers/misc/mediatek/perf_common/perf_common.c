@@ -27,16 +27,14 @@ static atomic_t perf_in_progress;
 
 void __iomem *csram_base;
 void __iomem *u_tcm_base;
-void __iomem *pmu_tcm_base;
+void __iomem *stall_tcm_base;
 
 struct em_perf_domain *em_pd;
 u32 U_AFFO;
 u32 U_BMONIO;
 u32 U_UFFO;
 u32 U_UCFO;
-u32 CPU_L3DC_OFFSET = 0x1254;
-u32 CPU_INST_SPEC_OFFSET = 0x1274;
-u32 CPU_IDX_CYCLES_OFFSET = 0x1294;
+u32 CPU_STALL_RATIO_OFFSET;
 u32 PERF_TRACKER_STATUS_OFFSET = 0x12E0;
 u32 U_VOLT_2_CLUSTER = 0x518;
 u32 U_FREQ_2_CLUSTER = 0x11e8;
@@ -44,6 +42,10 @@ u32 U_VOLT_3_CLUSTER = 0x51c;
 u32 U_FREQ_3_CLUSTER = 0x11ec;
 u32 MCUPM_OFFSET_BASE = 0x133c;
 bool perf_tracker_info_exist;
+bool is_percore;
+bool is_percore_need_to_check;
+u32 CHECK_PER_CORE = 0x1124;
+u32 IS_PER_CORE	= 0xABCD0001;
 
 static int first_cpu_in_cluster[MAX_CLUSTER_NR] = {0};
 struct ppm_data cluster_ppm_info[MAX_CLUSTER_NR];
@@ -206,7 +208,6 @@ static struct attribute *perf_attrs[] = {
 	&perf_gpu_pmu_period_attr.attr,
 #endif
 	&perf_mcupm_freq_enable_attr.attr,
-	&perf_cpu_pmu_enable_attr.attr,
 #endif
 
 	NULL,
@@ -293,10 +294,14 @@ u32 get_perf_tracker_info_from_dts(const char *property_name)
 static int __init init_perf_common(void)
 {
 	int ret = 0;
-	u32 cdfv_tcm_base_start = 0, u_tcm_base_start = 0, pmu_tcm_base_start = 0;
+	u32 cdfv_tcm_base_start = 0, u_tcm_base_start = 0, stall_tcm_base_start = 0;
 	struct device_node *dn = NULL;
 	struct platform_device *pdev = NULL;
 	struct resource *csram_res = NULL;
+
+	CPU_STALL_RATIO_OFFSET = 0x0;
+	is_percore = 0;
+	is_percore_need_to_check = 0;
 
 	ret = init_perf_common_sysfs();
 	if (ret)
@@ -329,12 +334,9 @@ static int __init init_perf_common(void)
 		U_BMONIO = get_perf_tracker_info_from_dts("u-bmonio");
 		U_UFFO = get_perf_tracker_info_from_dts("u-uffo");
 		U_UCFO = get_perf_tracker_info_from_dts("u-ucfo");
-		CPU_L3DC_OFFSET = get_perf_tracker_info_from_dts("cpu-l3dc-offset");
-		CPU_INST_SPEC_OFFSET = get_perf_tracker_info_from_dts("cpu-inst-spec-offset");
-		CPU_IDX_CYCLES_OFFSET = get_perf_tracker_info_from_dts("cpu-idx-cycles-offset");
+		CPU_STALL_RATIO_OFFSET = get_perf_tracker_info_from_dts("cpu-stall-ratio-offset");
 		PERF_TRACKER_STATUS_OFFSET = get_perf_tracker_info_from_dts("perf-tracker-status-offset");
 		U_VOLT_3_CLUSTER = get_perf_tracker_info_from_dts("u-volt-3-cluster");
-
 		cdfv_tcm_base_start = get_perf_tracker_info_from_dts("cdfv-tcm-base");
 		if (cdfv_tcm_base_start == 0)
 			goto get_base_failed;
@@ -345,10 +347,15 @@ static int __init init_perf_common(void)
 			u_tcm_base = ioremap(u_tcm_base_start
 						, get_perf_tracker_info_from_dts("u-tcm-base-len"));
 		}
-		pmu_tcm_base_start = get_perf_tracker_info_from_dts("pmu-tcm-base");
-		if (pmu_tcm_base_start != 0) {
-			pmu_tcm_base = ioremap(pmu_tcm_base_start
-						, get_perf_tracker_info_from_dts("pmu-tcm-base-len"));
+		stall_tcm_base_start = get_perf_tracker_info_from_dts("stall-tcm-base");
+		if (stall_tcm_base_start != 0) {
+			stall_tcm_base = ioremap(stall_tcm_base_start
+						, get_perf_tracker_info_from_dts("stall-tcm-base-len"));
+		}
+		is_percore_need_to_check = get_perf_tracker_info_from_dts("is-percore-need-to-check");
+		if(is_percore_need_to_check){
+			if((__raw_readl(csram_base + CHECK_PER_CORE)) == IS_PER_CORE)
+				is_percore = 1;
 		}
 	} else {
 		/* get cpufreq driver base address */
