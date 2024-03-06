@@ -357,17 +357,19 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 		return;
 	}
 
-#if IS_ENABLED(CONFIG_MTK_LEAKAGE_AWARE_TEMP)
+
 	for_each_cpu(cpu, cpu_possible_mask) {
+#if IS_ENABLED(CONFIG_MTK_LEAKAGE_AWARE_TEMP)
 		eenv->cpu_temp[cpu] = get_cpu_temp(cpu);
 		eenv->cpu_temp[cpu] /= 1000;
-
+#else
+		eenv->cpu_temp[cpu] = -1;
+#endif
 		if (!reasonable_temp(eenv->cpu_temp[cpu])) {
 			if (trace_sched_check_temp_enabled())
 				trace_sched_check_temp("cpu", cpu, eenv->cpu_temp[cpu]);
 		}
 	}
-#endif
 
 	if (eenv->wl_support) {
 		unsigned int output[6], val[MAX_NR_CPUS];
