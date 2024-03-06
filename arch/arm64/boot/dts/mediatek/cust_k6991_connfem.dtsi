@@ -16,15 +16,17 @@
 			"sku1_backup",			/* [7] SKU1 Backup EVB */
 			"sku3__phone",			/* [8] SKU3 Phone */
 			"sku3",				/* [9] SKU3 EVB */
-			"qm42655_qm45655__phone",	/* [10] Reserved Phone (Set to SKU1-1 Phone) */
-			"qm42655_qm45655",		/* [11] Reserved EVB (Set to SKU1-1 EVB) */
+			"qm42655_qm45655_e3__phone",	/* [10] SKU1-1 E3 Phone */
+			"qm42655_qm45655_e3",		/* [11] SKU1-1 E3 EVB */
 			"ipa_sky55714",			/* [12] SKU2 with SKY55714 */
 			"sku1_backup",			/* [13] SKU1 Backup TxHD160 */
 			"sku2_backup",			/* [14] SKU2 Backup */
 			"sku2_backup",			/* [15] SKU2 Backup TxHD160 */
 			"qm42655_qm45655",		/* [16] SKU1-1 with MXD7282 BT eFEM */
 			"qm42655_qm45655_2g2a__phone",	/* [17] SKU1-1 Phone 2G+2A */
-			"qm42655_qm45655_2g2a";		/* [18] SKU1-1 EVB 2G+2A */
+			"qm42655_qm45655_2g2a",		/* [18] SKU1-1 EVB 2G+2A */
+			"qm42655_qm45655_e3_2g2a__phone", /* [19] SKU1-1 E3 Phone 2G+2A */
+			"qm42655_qm45655_e3_2g2a";	/* [20] SKU1-1 E3 EVB 2G+2A */
 
 		hwid {
 			/* HWID bit[0]
@@ -39,7 +41,7 @@
 			 *	3'b010: SKU2
 			 *	3'b011: SKU1 Backup
 			 *	3'b100: SKU3
-			 *	3'b101: Reserved
+			 *	3'b101: SKU1-1 (E3)
 			 */
 			pmic {
 				channel-name = "pmic_vin6";
@@ -482,7 +484,7 @@
 		};
 
 		/***************************************************************
-		 * [HW][10] Reserved Phone (Set to SKU1-1 Phone)
+		 * [HW][10] SKU1-1 E3 Phone
 		 **************************************************************/
 		hw-10 {
 			using-fems =
@@ -526,7 +528,7 @@
 		};
 
 		/***************************************************************
-		 * [HW][11] Reserved EVB (Set to SKU1-1 EVB)
+		 * [HW][11] SKU1-1 E3 EVB
 		 **************************************************************/
 		hw-11 {
 			using-fems =
@@ -834,6 +836,90 @@
 		 * [HW][18] SKU1-1 EVB 2G+2A
 		 **************************************************************/
 		hw-18 {
+			using-fems =
+				<&qm42655>,
+				<&qm45655>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&g_wf0_bt0_qm42655>,
+				<&g_wf1_bt1_qm42655>,
+				<&a_wf0_qm45655>,
+				<&a_wf1_qm45655>;
+
+			layout-spdt =
+				<&spdt_g_bt1_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [85];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [90];
+					fe-bt-wf-usage = [80];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&qm42655_rxl>,
+					<&qm45655_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [24]; /* 0x24: G-band RxL */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][19] SKU1-1 E3 Phone 2G+2A
+		 **************************************************************/
+		hw-19 {
+			using-fems =
+				<&qm42655>,
+				<&qm45655>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&g_wf0_bt0_qm42655>,
+				<&g_wf1_bt1_qm42655>,
+				<&a_wf0_qm45655>,
+				<&a_wf1_qm45655>;
+
+			layout-spdt =
+				<&spdt_g_bt1_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [85];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [90];
+					fe-bt-wf-usage = [80];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&qm42655_rxl>,
+					<&qm45655_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [24]; /* 0x24: G-band RxL */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][20] SKU1-1 E3 EVB 2G+2A
+		 **************************************************************/
+		hw-20 {
 			using-fems =
 				<&qm42655>,
 				<&qm45655>;
