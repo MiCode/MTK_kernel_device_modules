@@ -9603,6 +9603,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			interrupt-names = "combined";
 			#iommu-cells = <1>;
 			mediatek,axslc;
+			dma-coherent;
 
 			iommu-groups {
 				soc_iommu_group_0: soc-iommu-group-common {
@@ -9887,6 +9888,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			#iommu-cells = <1>;
 			tcu-prefetch = <2>;
 			mediatek,axslc;
+			dma-coherent;
 
 			iommu-groups {
 				apu_iommu_group_0: apu-iommu-group-code {
@@ -9913,6 +9915,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			#iommu-cells = <1>;
 			tcu-prefetch = <2>;
 			mediatek,axslc;
+			dma-coherent;
 
 			/* global mpam: partid, pmg */
 			mtk,gmpam-cfg = <1 0>;
