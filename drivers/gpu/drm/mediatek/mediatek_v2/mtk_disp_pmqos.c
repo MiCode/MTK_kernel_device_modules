@@ -568,6 +568,7 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 	struct mtk_drm_crtc *mtk_crtc;
 	struct drm_display_mode *mode;
 	unsigned int bw = 0;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	dev_crtc = crtc;
 	mtk_crtc = to_mtk_crtc(dev_crtc);
@@ -576,6 +577,16 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 	bw = _layering_get_frame_bw(crtc, mode);
 	mtk_disp_set_hrt_bw(mtk_crtc, bw);
 	DDPINFO("%s:pan_disp_set_hrt_bw: %u\n", caller, bw);
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_BY_LARB) &&
+		(priv->data->mmsys_id == MMSYS_MT6989 ||
+		priv->data->mmsys_id == MMSYS_MT6991)) {
+
+		/* FIXME: this value is zero when booting, will be assigned in exdma_layer_config */
+		mtk_crtc->usage_ovl_fmt[1] = 4;
+
+		mtk_disp_set_per_larb_hrt_bw(mtk_crtc, bw);
+	}
 }
 
 void mtk_disp_hrt_repaint_blocking(const unsigned int hrt_idx)

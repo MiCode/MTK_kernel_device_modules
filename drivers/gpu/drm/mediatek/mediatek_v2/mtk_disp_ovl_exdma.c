@@ -641,6 +641,22 @@ static unsigned int mtk_ovl_phy_mapping_MT6991(struct mtk_ddp_comp *comp)
 	}
 }
 
+static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
+			struct mtk_ddp_comp *comp, struct mtk_plane_state *plane_state)
+{
+	struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
+	unsigned int lye_id = plane_state->comp_state.lye_id;
+	unsigned int ext_lye_id = plane_state->comp_state.ext_lye_id;
+	unsigned int fmt = plane_state->pending.format;
+	unsigned int phy_id = 0;
+
+	if (ovl->data->ovl_phy_mapping) {
+		phy_id = ovl->data->ovl_phy_mapping(comp);
+		if (ext_lye_id == 0)
+			mtk_crtc->usage_ovl_fmt[(phy_id + lye_id)] = mtk_get_format_bpp(fmt);
+	}
+}
+
 int mtk_ovl_exdma_aid_bit(struct mtk_ddp_comp *comp, bool is_ext, int id)
 {
 	if (is_ext)
@@ -3510,6 +3526,17 @@ other:
 		DDPMSG("%s, %d, invalid comp\n", __func__, __LINE__);
 		return -1;
 		//break;
+	}
+	case OVL_PHY_USAGE: {
+		struct mtk_plane_state *plane_state;
+		struct mtk_drm_crtc *mtk_crtc;
+
+		plane_state = (struct mtk_plane_state *)params;
+		mtk_crtc = comp->mtk_crtc;
+
+		mtk_ovl_update_hrt_usage(mtk_crtc, comp, plane_state);
+
+		break;
 	}
 	default:
 		break;
