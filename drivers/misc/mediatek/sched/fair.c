@@ -436,7 +436,7 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 	int pd_idx = cpumask_first(pd_cpus);
 	unsigned long busy_time = eenv->pds_busy_time[pd_idx];
 	unsigned long energy, extern_volt = 0;
-	unsigned long dsu_volt, pd_volt, gear_volt;
+	unsigned long dsu_volt, pd_volt = 0, gear_volt = 0;
 	int dst_idx, shared_buck_mode;
 
 	if (dst_cpu >= 0)
@@ -452,15 +452,15 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 		extern_volt = dsu_volt;
 	}
 
-	/* dvfs Vin/Vout */
-	pd_volt = pd_get_util_volt_wFloor_Freq(eenv, pd_cpus, pd_max_util);
-
-	dst_idx = (dst_cpu >= 0) ? 1 : 0;
-	gear_max_util = eenv->gear_max_util[eenv->gear_idx][dst_idx];
-	gear_volt = pd_get_util_volt_wFloor_Freq(eenv, pd_cpus, gear_max_util);
-
 	/* dvfs power overhead */
 	if (!cpumask_equal(pd_cpus, get_gear_cpumask(eenv->gear_idx))) {
+		/* dvfs Vin/Vout */
+		pd_volt = pd_get_util_volt_wFloor_Freq(eenv, pd_cpus, pd_max_util);
+
+		dst_idx = (dst_cpu >= 0) ? 1 : 0;
+		gear_max_util = eenv->gear_max_util[eenv->gear_idx][dst_idx];
+		gear_volt = pd_get_util_volt_wFloor_Freq(eenv, pd_cpus, gear_max_util);
+
 		if (gear_volt-pd_volt < volt_diff) {
 			extern_volt = max(gear_volt, dsu_volt);
 			energy =  mtk_em_cpu_energy(pd->em_pd, pd_max_util, busy_time,
@@ -532,7 +532,7 @@ mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 	       struct cpumask *pd_cpus, struct task_struct *p, int dst_cpu)
 {
 	unsigned long cpu_pwr = 0, dsu_pwr = 0;
-	unsigned long shared_pwr = 0, shared_pwr_in_gear = 0;
+	unsigned long shared_pwr = 0, shared_pwr_dvfs = 0;
 	struct dsu_info *dsu = &eenv->dsu;
 	unsigned int dsu_extern_volt = 0, gear_idx;
 	int dst_idx;
@@ -558,10 +558,10 @@ mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 				gear_idx = eenv->gear_idx;
 				eenv->gear_idx = topology_cluster_id(cpu);
 				if (dst_cpu >= 0)
-					shared_pwr_in_gear += mtk_compute_energy_cpu(eenv, pd_ptr,
+					shared_pwr_dvfs += mtk_compute_energy_cpu(eenv, pd_ptr,
 									pd_mask, p, -2);
 				else
-					shared_pwr_in_gear += mtk_compute_energy_cpu(eenv, pd_ptr,
+					shared_pwr_dvfs += mtk_compute_energy_cpu(eenv, pd_ptr,
 									pd_mask, p, -1);
 				eenv->gear_idx = gear_idx;
 			}
@@ -646,10 +646,10 @@ calc_sharebuck_done:
 					total_util, dsu, dsu_extern_volt, dsu_pwr_enable);
 
 	if (trace_sched_compute_energy_cpu_dsu_enabled())
-		trace_sched_compute_energy_cpu_dsu(dst_cpu, cpu_pwr, shared_pwr,
-					dsu_pwr, cpu_pwr + shared_pwr + dsu_pwr);
+		trace_sched_compute_energy_cpu_dsu(dst_cpu, cpu_pwr, shared_pwr_dvfs,
+					shared_pwr, dsu_pwr, cpu_pwr + shared_pwr + dsu_pwr);
 
-	return cpu_pwr + shared_pwr + dsu_pwr;
+	return cpu_pwr + shared_pwr_dvfs + shared_pwr + dsu_pwr;
 }
 
 /*
