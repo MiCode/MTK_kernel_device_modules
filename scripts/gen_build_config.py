@@ -219,6 +219,8 @@ def main(**args):
         file_handle.write('. ${KERNEL_DIR}/build.config.arm\n')
         file_handle.write('DEFCONFIG=olddefconfig\n')
         file_handle.write('POST_DEFCONFIG_CMDS="'+post_defconfig_cmds+'"\n')
+        file_handle.write('BUILD_SYSTEM_DLKM=0\n')
+        file_handle.write('BUILD_GKI_ARTIFACTS=\n')
         file_handle.write('FILES=\"${FILES} vmlinux.symvers modules.builtin modules.builtin.modinfo\"')
         file_handle.close()
         gki_build_config_fragments = 'GKI_BUILD_CONFIG_FRAGMENTS=${REL_GEN_BUILD_CONFIG_DIR}/build.config.arm'
