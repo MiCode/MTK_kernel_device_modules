@@ -67,6 +67,8 @@
 #define LB_TIMEOUT_TYPE_REDUCE_MIPS     4
 #define LB_TIMEOUT_REDUCE_MIPS          1
 
+//Bring up flag
+extern u32 g_is_bringup;
 
 typedef void (*ged_event_change_fp)(void *private_data, int events);
 

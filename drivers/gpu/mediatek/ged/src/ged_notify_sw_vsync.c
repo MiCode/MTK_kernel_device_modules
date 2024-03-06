@@ -755,7 +755,7 @@ enum hrtimer_restart ged_sw_vsync_check_cb(struct hrtimer *timer)
 		}
 
 		if (psNotify) {
-			if (psNotify->bUsed == false) {
+			if (psNotify->bUsed == false && ged_kpi_enabled()) {
 				psNotify->bUsed = true;
 				INIT_WORK(&psNotify->sWork,
 					ged_notify_sw_sync_work_handle);
