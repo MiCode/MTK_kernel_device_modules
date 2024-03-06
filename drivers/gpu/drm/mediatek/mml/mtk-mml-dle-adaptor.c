@@ -489,7 +489,6 @@ void mml_dle_put_context(struct mml_dle_ctx *ctx)
 	mml_dev_put_dle_ctx(ctx->ctx.mml, dle_ctx_release);
 }
 
-#if !IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 struct mml_ddp_comp_match {
 	enum mtk_ddp_comp_id id;
 	enum mtk_ddp_comp_type type;
@@ -507,11 +506,9 @@ static const struct mml_ddp_comp_match mml_ddp_matches[] = {
 	{ DDP_COMPONENT_MML_MUTEX1, MTK_MML_MUTEX, "mml0_mutex0" },
 	{ DDP_COMPONENT_MML_MUTEX0, MTK_MML_MUTEX, "mml1_mutex0" },
 };
-#endif
 
-static u32 mml_ddp_comp_get_id(struct device_node *node, const char *name)
+static s32 mml_ddp_comp_get_id(struct device_node *node, const char *name)
 {
-#if !IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	u32 i;
 
 	if (!name) {
@@ -525,7 +522,6 @@ static u32 mml_ddp_comp_get_id(struct device_node *node, const char *name)
 			return mml_ddp_matches[i].id;
 	}
 	mml_err("no ddp component matches: %s", name);
-#endif
 	return -ENODATA;
 }
 
