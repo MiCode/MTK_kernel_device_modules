@@ -435,6 +435,129 @@ int mtk_btag_mictx_full_logging(struct mtk_btag_mictx_id mictx_id)
 	return ret;
 }
 
+struct mictx_ioctl_info {
+	union {
+		struct mtk_btag_mictx_id mictx_id;
+		struct mtk_btag_mictx_iostat_struct iostat;
+	};
+};
+
+#define MICTX_IOC_MAGIC 'm'
+#define MICTX_ENABLE	_IOW(MICTX_IOC_MAGIC, 1, struct mictx_ioctl_info)
+#define MICTX_DISABLE	_IOW(MICTX_IOC_MAGIC, 2, struct mictx_ioctl_info)
+#define MICTX_GET_DATA	_IOW(MICTX_IOC_MAGIC, 3, struct mictx_ioctl_info)
+
+static long mictx_proc_ioctl(struct file *filp, unsigned int cmd,
+			     unsigned long __arg)
+{
+	struct mictx_ioctl_info info, io_info;
+	void __user *arg = (void __user *)__arg;
+	int ret = 0;
+
+	switch (cmd) {
+	case MICTX_ENABLE:
+		if (copy_from_user(&info, arg,
+				   sizeof(struct mictx_ioctl_info))) {
+			pr_notice("%s: copy from user failed for cmd %u, address %p",
+				  __func__, cmd, arg);
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+
+		ret = mtk_btag_mictx_enable(&info.mictx_id, 1);
+		if (ret) {
+			pr_notice("%s: mictx enable failed %d\n",
+				  __func__, ret);
+			goto ret_ioctl;
+		}
+
+		if (copy_to_user(arg, &info,
+				 sizeof(struct mictx_ioctl_info))) {
+			pr_notice("%s: copy to user failed for cmd %u, address %p",
+				  __func__, cmd, arg);
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+		break;
+	case MICTX_DISABLE:
+		if (copy_from_user(&info, arg,
+				   sizeof(struct mictx_ioctl_info))) {
+			pr_notice("%s: copy from user failed for cmd %u, address %p",
+				  __func__, cmd, arg);
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+
+		ret = mtk_btag_mictx_enable(&info.mictx_id, 0);
+		if (ret) {
+			pr_notice("%s: mictx enable failed %d\n",
+				  __func__, ret);
+			goto ret_ioctl;
+		}
+
+		if (copy_to_user(arg, &info,
+				 sizeof(struct mictx_ioctl_info))) {
+			pr_notice("%s: copy to user failed for cmd %u, address %p",
+				  __func__, cmd, arg);
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+		break;
+	case MICTX_GET_DATA:
+		if (copy_from_user(&info, arg,
+				   sizeof(struct mictx_ioctl_info))) {
+			pr_notice("%s: copy from user failed for cmd %u, address %p",
+				  __func__, cmd, arg);
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+
+		ret = mtk_btag_mictx_get_data(info.mictx_id, &io_info.iostat);
+		if (ret) {
+			pr_notice("%s: mictx get data failed %d\n",
+				  __func__, ret);
+			goto ret_ioctl;
+		}
+
+		if (copy_to_user(arg, &io_info,
+				 sizeof(struct mictx_ioctl_info))) {
+			pr_notice("%s: copy to user failed for cmd %u, address %p",
+				  __func__, cmd, arg);
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+		break;
+	default:
+		pr_notice("%s: unknown cmd %u\n", __func__, cmd);
+		ret = -EFAULT;
+		goto ret_ioctl;
+	}
+
+ret_ioctl:
+	return ret;
+}
+
+static int mictx_ioctl_seq_show(struct seq_file *m, void *v)
+{
+	return 0;
+}
+
+static int mictx_ioctl_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mictx_ioctl_seq_show, inode->i_private);
+}
+
+static const struct proc_ops mictx_ioctl_fops = {
+	.proc_ioctl = mictx_proc_ioctl,
+#if IS_ENABLED(CONFIG_COMPAT)
+	.proc_compat_ioctl = mictx_proc_ioctl,
+#endif
+	.proc_open = mictx_ioctl_proc_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
 static int mictx_alloc(enum mtk_btag_storage_type type)
 {
 	struct mtk_blocktag *btag;
@@ -550,4 +673,6 @@ void mtk_btag_mictx_init(struct mtk_blocktag *btag)
 	spin_lock_init(&btag->ctx.mictx.list_lock);
 	btag->ctx.mictx.nr_list = 0;
 	INIT_LIST_HEAD(&btag->ctx.mictx.list);
+	proc_create("mictx_ioctl", S_IFREG | 0444, btag->dentry.droot,
+		    &mictx_ioctl_fops);
 }
