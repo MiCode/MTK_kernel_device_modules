@@ -14336,6 +14336,45 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		mediatek,enable = <1>;
 	};
 
+	cm_mgr: cm-mgr@c100000 {
+		compatible = "mediatek,mt6991-cm_mgr";
+		reg = <0 0xc100000 0 0x9000>;
+		reg-names = "cm_mgr_base";
+		interconnects = <&dvfsrc MT6873_MASTER_MCU_1 &dvfsrc MT6873_SLAVE_DDR_EMI>;
+		interconnect-names = "cm-perf-bw";
+		required-opps = <&dvfsrc_freq_opp0>,
+				<&dvfsrc_freq_opp1>,
+				<&dvfsrc_freq_opp2>,
+				<&dvfsrc_freq_opp3>,
+				<&dvfsrc_freq_opp4>,
+				<&dvfsrc_freq_opp5>,
+				<&dvfsrc_freq_opp6>,
+				<&dvfsrc_freq_opp7>,
+				<&dvfsrc_freq_opp8>,
+				<&dvfsrc_freq_opp9>;
+		cm-mgr-enable = <0>;
+		cm-mgr-arch = "v1p";
+
+		cm-mgr-num-array = <7>;
+		cm-mgr,cp-down  = <100 100 100 100 100 100 100>;
+		cm-mgr,cp-up = <100 100 100 100 100 100 100>;
+		cm-mgr,dt-down = <0 0 0 0 0 0 0>;
+		cm-mgr,dt-up = <0 0 0 0 0 0 0>;
+		cm-mgr,vp-down = <100 100 100 100 100 100 100>;
+		cm-mgr,vp-up = <100 100 100 100 100 100 100>;
+
+		use-cpu-to-dram-map = "disable";
+		use-cpu-to-dram-map-new = "disable";
+		cm-mgr-cpu-opp-to-dram = <3 3 9 9 9 9 9 9
+					9 9 9 9 9 9 9 9
+					9 9 9 9 9 9 9 9
+					9 9 9 9 9 9 9 9>;
+
+		cm-perf-mode-enable = <1>;
+		cm-perf-mode-ceiling-opp = <0>;
+		cm-perf-mode-thd = <5>;
+	};
+
 	soc-smmu-lmu {
 		compatible = "mtk,smmu-v3-lmu";
 		mtk,smmu = <&soc_smmu>;
