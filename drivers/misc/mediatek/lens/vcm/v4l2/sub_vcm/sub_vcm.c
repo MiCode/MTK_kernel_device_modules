@@ -51,6 +51,8 @@ struct sub_vcm_device {
 
 static struct workqueue_struct *sub_vcm_init_wq;
 
+static DEFINE_MUTEX(sub_vcm_mutex);
+
 #define I2CCOMM_MAXSIZE 4
 
 /* I2C format */
@@ -554,18 +556,23 @@ static int sub_vcm_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 
 	LOG_INF("+\n");
 
+	/* Protect the Multi Process */
+	mutex_lock(&sub_vcm_mutex);
+
 	stop_background_works(sub_vcm);
 
 	if (sub_vcm->is_powered_off) {
 		ret = sub_vcm_power_on(sub_vcm);
 		if (ret < 0) {
 			LOG_INF("power on fail, ret = %d\n", ret);
+			mutex_unlock(&sub_vcm_mutex);
 			return ret;
 		}
 	} else {
 		LOG_INF("no need to power on again\n");
 	}
 
+	mutex_unlock(&sub_vcm_mutex);
 	LOG_INF("-\n");
 
 	return 0;
@@ -577,6 +584,9 @@ static int sub_vcm_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 
 	LOG_INF("+\n");
 
+	/* Protect the Multi Process */
+	mutex_lock(&sub_vcm_mutex);
+
 	/* sub_vcm Workqueue */
 	if (sub_vcm_init_wq == NULL) {
 		LOG_INF("create_singlethread_workqueue\n");
@@ -584,6 +594,7 @@ static int sub_vcm_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 			create_singlethread_workqueue("sub_vcm_init_work");
 		if (!sub_vcm_init_wq) {
 			LOG_INF("create_singlethread_workqueue fail\n");
+			mutex_unlock(&sub_vcm_mutex);
 			return -ENOMEM;
 		}
 	} else {
@@ -595,7 +606,7 @@ static int sub_vcm_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	}
 
 	queue_work(sub_vcm_init_wq, &sub_vcm->poweroff_work);
-
+	mutex_unlock(&sub_vcm_mutex);
 	LOG_INF("-\n");
 
 	return 0;
