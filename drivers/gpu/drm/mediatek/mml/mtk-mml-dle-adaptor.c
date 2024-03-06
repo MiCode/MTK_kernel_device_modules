@@ -6,9 +6,7 @@
 
 #include <linux/sched.h>
 #include <uapi/linux/sched/types.h>
-#if !IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 #include <mtk_drm_drv.h>
-#endif
 
 #include "mtk-mml-dle-adaptor.h"
 #include "mtk-mml-adaptor.h"
@@ -553,7 +551,6 @@ int mml_ddp_comp_init(struct device *dev,
 
 int mml_ddp_comp_register(struct drm_device *drm, struct mtk_ddp_comp *comp)
 {
-#if !IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	struct mtk_drm_private *private = drm->dev_private;
 
 	if (IS_ERR_VALUE(comp->id) || comp->id >= DDP_COMPONENT_ID_MAX)
@@ -562,17 +559,14 @@ int mml_ddp_comp_register(struct drm_device *drm, struct mtk_ddp_comp *comp)
 		return -EBUSY;
 
 	private->ddp_comp[comp->id] = comp;
-#endif
 	return 0;
 }
 
 void mml_ddp_comp_unregister(struct drm_device *drm, struct mtk_ddp_comp *comp)
 {
-#if !IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	struct mtk_drm_private *private = drm->dev_private;
 
 	if (comp && comp->id < DDP_COMPONENT_ID_MAX && !IS_ERR_VALUE(comp->id))
 		private->ddp_comp[comp->id] = NULL;
-#endif
 }
 
