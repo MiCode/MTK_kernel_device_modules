@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2019 MediaTek Inc.
  */
+#include <linux/math64.h>
 #include <linux/module.h>
 #include <linux/sched/cputime.h>
 #include <linux/of_platform.h>
@@ -529,9 +530,8 @@ void mtk_tick_entry(void *data, struct rq *rq)
 		if (sbb_data->tick_start) {
 			idle_time = get_cpu_idle_time(rq->cpu, &wall_time, 1);
 
-			cpu_utilize = 100 - (100 * (idle_time -
-				sbb_data->idle_time)) /
-				(wall_time - sbb_data->wall_time);
+			cpu_utilize = 100 - div_u64((100 * (idle_time - sbb_data->idle_time)),
+				wall_time - sbb_data->wall_time);
 
 			sbb_data->idle_time = idle_time;
 			sbb_data->wall_time = wall_time;
@@ -1012,7 +1012,7 @@ static inline s64 entity_key(struct cfs_rq *cfs_rq, struct sched_entity *se)
 	return (s64)(se->vruntime - cfs_rq->min_vruntime);
 }
 
-int entity_eligible(struct cfs_rq *cfs_rq, struct sched_entity *se)
+int _entity_eligible(struct cfs_rq *cfs_rq, struct sched_entity *se)
 {
 	struct sched_entity *curr = cfs_rq->curr;
 	s64 avg = cfs_rq->avg_vruntime;
@@ -1040,7 +1040,7 @@ void mtk_sched_switch(void *data, struct task_struct *prev,
 	if (trace_sched_stat_vdeadline_enabled()) {
 		if (prev->pid != 0 && next->pid != 0) {
 			if (prev->prio > 99 && next->prio > 99) {
-				if (entity_eligible(&(rq->cfs), &(prev->se)))
+				if (_entity_eligible(&(rq->cfs), &(prev->se)))
 					trace_sched_stat_vdeadline(prev, next);
 			}
 		}
