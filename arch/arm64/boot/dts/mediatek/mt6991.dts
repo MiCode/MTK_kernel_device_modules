@@ -1244,6 +1244,12 @@
 		#size-cells = <2>;
 		ranges;
 
+		mkp_mem: mkp-kernel-code-protection-memory {
+			compatible = "mkp-kernel-protection";
+			size = <0 0x10000>;
+			alloc-ranges = <0 0x80000000 0 0x10000>;
+		};
+
 		dpmaif_resv_cache_mem: ccci-dpmaif-cache-memory {
 			compatible = "mediatek,dpmaif-resv-cache-mem";
 			size = <0 0x00190000>; /* 1638400 Bytes for 1rxq */
@@ -15299,6 +15305,11 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 	gpu-smmu-mpam-mon {
 		compatible = "mtk,smmu-v3-mpam-mon";
 		mtk,smmu = <&gpu_smmu>;
+	};
+
+	mkp {
+		compatible = "mediatek,mkp-drv";
+		memory-region = <&mkp_mem>;
 	};
 
 	mtkheap-slc {
