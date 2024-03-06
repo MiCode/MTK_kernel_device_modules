@@ -153,6 +153,14 @@ static void pdchk_dump_enabled_power_domain(struct generic_pm_domain *pd)
 	}
 }
 
+static bool pdchk_get_mtcmos_sw_state(struct generic_pm_domain *pd)
+{
+	if (pdchk_ops == NULL || pdchk_ops->get_mtcmos_sw_state == NULL)
+		return false;
+
+	return pdchk_ops->get_mtcmos_sw_state(pd);
+}
+
 static bool __check_mtcmos_off(int *pd_id, bool dump_en)
 {
 	int valid = 0;
@@ -163,7 +171,7 @@ static bool __check_mtcmos_off(int *pd_id, bool dump_en)
 
 		if (dump_en) {
 			/* dump devicelist belongs to current power domain */
-			if (pdchk_suspend_is_in_usage(pds[*pd_id]) > 0) {
+			if (pdchk_suspend_is_in_usage(pds[*pd_id]) > 0 || pdchk_get_mtcmos_sw_state(pds[*pd_id])) {
 				pr_notice("suspend warning[0m: %s is on\n", pds[*pd_id]->name);
 
 				pdchk_dump_enabled_power_domain(pds[*pd_id]);

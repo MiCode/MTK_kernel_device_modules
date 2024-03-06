@@ -48,6 +48,7 @@ struct pdchk_ops {
 	void (*check_mm_hwv_irq_sta)(void);
 	bool (*is_suspend_retry_stop)(bool reset_cnt);
 	const char *(*get_pd_name)(int idx);
+	bool (*get_mtcmos_sw_state)(struct generic_pm_domain *pd);
 };
 
 void pdchk_common_init(const struct pdchk_ops *ops);

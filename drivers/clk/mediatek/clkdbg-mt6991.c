@@ -6,16 +6,26 @@
 
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
+#include <linux/kthread.h>
 #include <linux/io.h>
 #include <linux/seq_file.h>
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
+#include <linux/random.h>
 
 #include <clk-mux.h>
 #include "clkdbg.h"
 #include "clkchk.h"
+#include "clkchk-mt6991.h"
 #include "clk-fmeter.h"
+
+#define THREAD_LEN		(16)
+#define THREAD_NUM		(6)
+#define PD_NUM			(6)
+
+static int clkdbg_thread_cnt;
 
 const char * const *get_mt6991_all_clk_names(void)
 {
@@ -1002,6 +1012,89 @@ const char * const *get_mt6991_all_clk_names(void)
 	return clks;
 }
 
+/*
+ * clkdbg test tasks
+ */
+static struct task_struct *clkdbg_test_thread[THREAD_NUM];
+
+static void stop_clkdbg_test_task(void)
+{
+	int i;
+
+	for (i = 0; i < clkdbg_thread_cnt; i++) {
+		if (clkdbg_test_thread[clkdbg_thread_cnt]) {
+			kthread_stop(clkdbg_test_thread[clkdbg_thread_cnt]);
+			clkdbg_test_thread[clkdbg_thread_cnt] = NULL;
+		}
+	}
+}
+
+static int clkdbg_thread_fn(void *data)
+{
+	struct device *dev[PD_NUM] = {NULL};
+	const char *dev_name[PD_NUM] = {
+		"dsi_phy2",
+		"dsi_phy1",
+		"dsi_phy0",
+		"csi_ls_rx",
+		"csi_bs_rx",
+		"mm_infra1",
+	};
+	int i;
+	int ret = 0;
+	unsigned int thread_cnt = 0;
+
+	for (i = 0; i < PD_NUM; i++)
+		dev[i] = clkdbg_dev_from_name(dev_name[i]);
+	while (!kthread_should_stop()) {
+		unsigned int pd_idx = 0;
+
+		if ((thread_cnt % 10000) == 0)
+			pr_info("clkdbg_thread is running...(%d)\n", thread_cnt);
+
+		pd_idx = get_random_u32() % PD_NUM;
+		if (dev[pd_idx] != NULL) {
+			ret = pm_runtime_get_sync(dev[pd_idx]);
+			if (ret < 0 && ret != -EAGAIN) {
+				pr_notice("%s fail to power on(%d)\n", dev_name[pd_idx], ret);
+				goto ERR;
+			}
+			ret = pm_runtime_put_sync(dev[pd_idx]);
+			if (ret < 0 && ret != -EAGAIN) {
+				pr_notice("%s fail to power off(%d)\n", dev_name[pd_idx], ret);
+				goto ERR;
+			}
+		}
+
+		thread_cnt++;
+	}
+ERR:
+	stop_clkdbg_test_task();
+	return 0;
+}
+
+static int start_clkdbg_test_task(void)
+{
+	char thread_name[THREAD_LEN];
+
+	if (clkdbg_thread_cnt > THREAD_NUM)
+		return 0;
+
+	if (clkdbg_test_thread[clkdbg_thread_cnt]) {
+		pr_info("clkdbg_thread is already running\n");
+		return -EBUSY;
+	}
+
+	snprintf(thread_name, THREAD_LEN, "clkdbg_thread_%d", clkdbg_thread_cnt);
+	clkdbg_test_thread[clkdbg_thread_cnt] = kthread_run(clkdbg_thread_fn, NULL, thread_name);
+	if (IS_ERR(clkdbg_test_thread[clkdbg_thread_cnt])) {
+		pr_info("Failed to start clkdbg_thread(%d)\n", clkdbg_thread_cnt);
+		return PTR_ERR(clkdbg_test_thread[clkdbg_thread_cnt]);
+	}
+	clkdbg_thread_cnt++;
+
+	return 0;
+}
 
 /*
  * clkdbg dump all fmeter clks
@@ -1026,6 +1119,7 @@ static struct clkdbg_ops clkdbg_mt6991_ops = {
 	.unprepare_fmeter = NULL,
 	.fmeter_freq = fmeter_freq_op,
 	.get_all_clk_names = get_mt6991_all_clk_names,
+	.start_task = start_clkdbg_test_task,
 };
 
 static int clk_dbg_mt6991_probe(struct platform_device *pdev)
@@ -1054,6 +1148,8 @@ static int __init clkdbg_mt6991_init(void)
 
 static void __exit clkdbg_mt6991_exit(void)
 {
+	unset_clkdbg_ops();
+	stop_clkdbg_test_task();
 	platform_driver_unregister(&clk_dbg_mt6991_drv);
 }
 

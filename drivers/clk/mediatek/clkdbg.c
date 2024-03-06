@@ -1191,6 +1191,12 @@ static struct device *dev_from_name(const char *name)
 	return NULL;
 }
 
+struct device *clkdbg_dev_from_name(const char *name)
+{
+	return dev_from_name(name);
+}
+EXPORT_SYMBOL_GPL(clkdbg_dev_from_name);
+
 static struct generic_pm_domain *genpd_from_name(const char *name)
 {
 	struct generic_pm_domain **pds = get_all_genpd();
