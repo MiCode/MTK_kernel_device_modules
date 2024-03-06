@@ -388,6 +388,7 @@ struct mtk_enc_params {
 	unsigned int    slbc_ready;
 	unsigned int    slbc_encode_performance;
 	unsigned int    slbc_cpu_used_performance;
+	unsigned int    slbc_request_extra;
 	unsigned int    i_qp;
 	unsigned int    p_qp;
 	unsigned int    b_qp;
@@ -740,10 +741,13 @@ struct mtk_vcodec_ctx {
 	struct mutex buf_lock;
 	struct mutex worker_lock;
 	struct slbc_data sram_data;
+	struct slbc_data sram_data_extra;
 	bool later_cnt_once;
 	struct mutex q_mutex;
 	int use_slbc;
+	int use_slbc_extra;
 	unsigned int slbc_addr;
+	unsigned int slbc_addr_extra;
 	int sysram_enable;
 #if ENABLE_FENCE
 	struct sync_timeline *p_timeline_obj;
@@ -959,6 +963,8 @@ struct mtk_vcodec_dev {
 
 	//slb cpu used more performance than venc when throughput is lower than value
 	int enc_slb_cpu_used_perf;
+
+	int enc_slb_extra;
 
 	bool smmu_enabled;
 	struct mutex vp_mode_buf_mutex;

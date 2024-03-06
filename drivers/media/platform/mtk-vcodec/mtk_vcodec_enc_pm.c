@@ -223,6 +223,12 @@ void mtk_venc_deinit_ctx_pm(struct mtk_vcodec_ctx *ctx)
 			atomic_dec(&mtk_venc_slb_cb.later_cnt);
 	}
 
+	if (ctx->use_slbc_extra == 1) {
+		pr_debug("slbc_release_extra, %p\n", &ctx->sram_data_extra);
+		slbc_release(&ctx->sram_data_extra);
+		pr_info("slbc_release_extra ref %d\n", ctx->sram_data_extra.ref);
+	}
+
 	mtk_v4l2_debug(0, "slb_cb %d/%d perf %d cnt %d/%d/%d slb_cpu_used_perf %d",
 		atomic_read(&mtk_venc_slb_cb.release_slbc),
 		atomic_read(&mtk_venc_slb_cb.request_slbc),
