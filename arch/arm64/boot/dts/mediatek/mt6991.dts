@@ -18508,7 +18508,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mivr = <4400000>;	/* uV */
 			aicr = <500000>;	/* uA */
 			ichg = <2000000>;	/* uA */
-			ieoc = <200000>;	/* uA */
+			ieoc = <150000>;	/* uA */
 			cv = <4200000>;		/* uV */
 			vrec = <100000>;	/* uV */
 			/* 0~7, 4.7V, 5.8V, 6.5V, 11V, 14.5V, 18V, 22.5V */
