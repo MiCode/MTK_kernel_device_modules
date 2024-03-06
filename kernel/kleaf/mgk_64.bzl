@@ -862,6 +862,7 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6985.ko": "mt6985",
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6989.ko": "mt6989",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6761.ko": "mt6761",
+    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6765.ko": "mt6765",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6878.ko": "mt6878",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6886.ko": "mt6886",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6897.ko": "mt6897",
