@@ -18,7 +18,7 @@
 #include <linux/delay.h>
 #include <linux/miscdevice.h>
 #include <linux/platform_device.h>
-#include <linux/pm_runtime.h>
+#include <linux/pm.h>
 #include <linux/proc_fs.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
