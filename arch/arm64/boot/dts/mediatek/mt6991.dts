@@ -13036,6 +13036,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		compatible = "mediatek,snd-scp-ultra";
 		scp-ultra-dl-memif-id = <0x7>;
 		scp-ultra-ul-memif-id = <0x16>;
+		ultra-afe-with-adsp;
 	};
 
 	md_auxadc:md-auxadc {
