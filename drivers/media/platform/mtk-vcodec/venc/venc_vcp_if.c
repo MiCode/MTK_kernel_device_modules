@@ -130,9 +130,7 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len,
 	struct venc_ap_ipi_msg_common *msg_ap = (struct venc_ap_ipi_msg_common *)msg;
 	struct venc_ap_ipi_msg_indp *msg_indp = (struct venc_ap_ipi_msg_indp *)msg;
 	bool use_msg_indp = (is_ack || msg_ap->msg_id == AP_IPIMSG_ENC_INIT ||
-		msg_ap->msg_id == AP_IPIMSG_ENC_QUERY_CAP ||
-		msg_ap->msg_id == AP_IPIMSG_ENC_BACKUP ||
-		msg_ap->msg_id == AP_IPIMSG_ENC_PWR_CTRL); // msg use VENC_MSG_PREFIX
+		(msg_ap->msg_id & IPIMSG_TYPE_BITS) == IPIMSG_NO_INST_OFFSET); // msg use VENC_MSG_PREFIX
 
 	if ((!use_msg_indp && msg_ap->vcu_inst_addr == 0) ||
 	     (use_msg_indp && msg_indp->ap_inst_addr == 0 && !is_ack)) {
