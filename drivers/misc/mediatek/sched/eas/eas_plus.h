@@ -141,13 +141,9 @@ extern unsigned long pd_get_util_cpufreq(struct energy_env *eenv,
 /* should hide later */
 #define volt_diff  5000
 extern unsigned long pd_get_dsu_freq_wFloor_Freq(int cpu, unsigned long freq,
-		int wl_type, unsigned long floor_freq);
+		int quant, int wl_type, unsigned long floor_freq);
 extern unsigned long pd_get_volt_wFloor_Freq(int cpu, unsigned long freq,
-		int wl_type, unsigned long floor_freq);
-extern unsigned long shared_buck_lkg_pwr(int wl_type, int cpu, int opp,
-		int temperature, unsigned long extern_volt);
-extern unsigned long shared_buck_dyn_pwr(unsigned long dyn_pwr,
-		unsigned long cpu_volt, unsigned long extern_volt);
+		int quant, int wl_type, unsigned long floor_freq);
 extern unsigned long update_dsu_status(struct energy_env *eenv,
 		unsigned long freq, unsigned long floor_freq, int this_cpu, int dst_cpu);
 /* should hide later */
