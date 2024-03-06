@@ -18,6 +18,13 @@ bool vip_enable;
 #define link_with_others(lh) (!list_empty(lh))
 
 DEFINE_PER_CPU(struct vip_rq, vip_rq);
+inline unsigned int sum_num_vip_in_cpu(int cpu)
+{
+	struct vip_rq *vrq = &per_cpu(vip_rq, cpu);
+
+	return vrq->sum_num_vip_tasks;
+}
+
 inline unsigned int num_vip_in_cpu(int cpu, int vip_prio)
 {
 	struct vip_rq *vrq = &per_cpu(vip_rq, cpu);
