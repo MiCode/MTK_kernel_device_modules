@@ -22,6 +22,7 @@ bool _skip_hiIRQ_enable;
 bool _rt_aggre_preempt_enable;
 bool post_init_util_ctl;
 bool percore_l3_bw;
+bool dsu_pwr_enable;
 
 int init_sched_ctrl(void)
 {
@@ -49,6 +50,7 @@ int init_sched_ctrl(void)
 		_vip_enable = false;
 		post_init_util_ctl = false;
 		percore_l3_bw = false;
+		dsu_pwr_enable = false;
 		break;
 	case EAS_5_5_1:
 		am_support = 0;
@@ -61,6 +63,7 @@ int init_sched_ctrl(void)
 		_vip_enable = false;
 		post_init_util_ctl = false;
 		percore_l3_bw = false;
+		dsu_pwr_enable = false;
 		break;
 	case EAS_6_1:
 		am_support = 1;
@@ -73,6 +76,7 @@ int init_sched_ctrl(void)
 		_vip_enable = true;
 		post_init_util_ctl = true;
 		percore_l3_bw = false;
+		dsu_pwr_enable = true;
 		break;
 	case EAS_6_5:
 		am_support = 1;
@@ -85,6 +89,7 @@ int init_sched_ctrl(void)
 		_vip_enable = true;
 		post_init_util_ctl = true;
 		percore_l3_bw = false;
+		dsu_pwr_enable = true;
 		break;
 	default:
 		am_support = 0;
@@ -155,3 +160,15 @@ void sched_percore_l3_bw_set(bool enable)
 	percore_l3_bw = enable;
 }
 EXPORT_SYMBOL_GPL(sched_percore_l3_bw_set);
+
+bool sched_dsu_pwr_enable_get(void)
+{
+	return dsu_pwr_enable;
+}
+EXPORT_SYMBOL_GPL(sched_dsu_pwr_enable_get);
+
+void sched_dsu_pwr_enable_set(bool enable)
+{
+	dsu_pwr_enable = enable;
+}
+EXPORT_SYMBOL_GPL(sched_dsu_pwr_enable_set);

@@ -912,6 +912,7 @@ static int __init mtk_scheduler_init(void)
 
 	init_updown_migration();
 	init_percore_l3_bw();
+	init_dsu_pwr_enable();
 
 	ret = init_sched_common_sysfs();
 	if (ret)
