@@ -358,6 +358,7 @@ struct mtk_i3c_master {
 	u32 ch_offset_dma;
 	u32 scl_gpio_id;
 	u32 sda_gpio_id;
+	bool suspended;
 	bool fifo_use_pulling;
 	bool priv_xfer_wo7e;
 	bool no_hdr_exit;
@@ -447,6 +448,29 @@ static void mtk_i3c_lock_bus(struct mtk_i3c_master *i3c)
 static void mtk_i3c_unlock_bus(struct mtk_i3c_master *i3c)
 {
 	rt_mutex_unlock(&i3c->bus_lock);
+}
+
+static inline int mtk_i3c_check_suspended(struct mtk_i3c_master *i3c)
+{
+	if (i3c->suspended) {
+		dev_info(i3c->dev, "[%s] Transfer while suspended\n", __func__);
+		return -ESHUTDOWN;
+	}
+	return 0;
+}
+
+static inline void mtk_i3c_mark_suspended(struct mtk_i3c_master *i3c)
+{
+	mtk_i3c_lock_bus(i3c);
+	i3c->suspended = true;
+	mtk_i3c_unlock_bus(i3c);
+}
+
+static inline void mtk_i3c_mark_resumed(struct mtk_i3c_master *i3c)
+{
+	mtk_i3c_lock_bus(i3c);
+	i3c->suspended = false;
+	mtk_i3c_unlock_bus(i3c);
 }
 
 static int mtk_i3c_master_get_free_pos(struct mtk_i3c_master *i3c)
@@ -2110,6 +2134,13 @@ static int mtk_i3c_master_daa(struct i3c_master_controller *m)
 	u8 daa_data[9];
 
 	mtk_i3c_lock_bus(i3c);
+	ret = mtk_i3c_check_suspended(i3c);
+	if (ret) {
+		dev_info(i3c->dev, "[%s] Transfer while suspended.\n", __func__);
+		mtk_i3c_unlock_bus(i3c);
+		return ret;
+	}
+
 	i3c->xfer.mode = MTK_I3C_CCC_MODE;
 	i3c->xfer.addr = I3C_BROADCAST_ADDR;
 	i3c->xfer.ccc_id = I3C_CCC_ENTDAA;
@@ -2227,6 +2258,14 @@ static int mtk_i3c_master_send_ccc_cmd(struct i3c_master_controller *m,
 	u8 ccc_daa_data[9];
 
 	mtk_i3c_lock_bus(i3c);
+	ret = mtk_i3c_check_suspended(i3c);
+	if (ret) {
+		dev_info(i3c->dev, "[%s] Transfer while suspended.ccc=0x%x,addr=0x%x\n",
+			__func__, cmd->id, cmd->dests->addr);
+		mtk_i3c_unlock_bus(i3c);
+		return ret;
+	}
+
 	i3c->xfer.mode = MTK_I3C_CCC_MODE;
 	i3c->xfer.addr = cmd->dests->addr;
 	i3c->xfer.ccc_id = cmd->id;
@@ -2304,6 +2343,14 @@ static int mtk_i3c_master_priv_xfers(struct i3c_dev_desc *dev,
 	u8 *con_wr_buf;
 
 	mtk_i3c_lock_bus(i3c);
+	ret = mtk_i3c_check_suspended(i3c);
+	if (ret) {
+		dev_info(i3c->dev, "[%s] Transfer while suspended.dyn_addr=0x%x,nxfers=%d\n",
+			__func__, dev->info.dyn_addr, i3c_nxfers);
+		mtk_i3c_unlock_bus(i3c);
+		return ret;
+	}
+
 	//if support hdr, dev->info.hdr_cap
 	i3c->xfer.mode = MTK_I3C_SDR_MODE;
 	i3c->xfer.addr = dev->info.dyn_addr;
@@ -2440,6 +2487,13 @@ static int mtk_i3c_master_i2c_xfers(struct i2c_dev_desc *dev,
 	u8 *con_wr_buf;
 
 	mtk_i3c_lock_bus(i3c);
+	ret = mtk_i3c_check_suspended(i3c);
+	if (ret) {
+		dev_info(i3c->dev, "[%s] Transfer while suspended.addr=0x%x,nxfers=%d\n",
+			__func__, msg->addr, i2c_nxfers);
+		mtk_i3c_unlock_bus(i3c);
+		return ret;
+	}
 
 	i3c->xfer.mode = MTK_I3C_I2C_MODE;
 	/* Doing transfers to different devices is not supported. */
@@ -2653,6 +2707,7 @@ static int mtk_i3c_master_probe(struct platform_device *pdev)
 	i3c->dev = &pdev->dev;
 	init_completion(&i3c->msg_complete);
 	rt_mutex_init(&i3c->bus_lock);
+	i3c->suspended = false;
 	i3c->timeout = HZ / 5;
 	i3c->dev_comp = of_device_get_match_data(&pdev->dev);
 	if (!i3c->dev_comp)
@@ -2735,7 +2790,6 @@ static int mtk_i3c_master_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef CONFIG_PM_SLEEP
 static int mtk_i3c_suspend_noirq(struct device *dev)
 {
 	struct mtk_i3c_master *i3c = dev_get_drvdata(dev);
@@ -2745,9 +2799,11 @@ static int mtk_i3c_suspend_noirq(struct device *dev)
 		return -EINVAL;
 	}
 	i2c_mark_adapter_suspended(&i3c->base.i2c);
+	mtk_i3c_mark_suspended(i3c);
 
 	return 0;
 }
+
 static int mtk_i3c_resume_noirq(struct device *dev)
 {
 	struct mtk_i3c_master *i3c = dev_get_drvdata(dev);
@@ -2765,34 +2821,13 @@ static int mtk_i3c_resume_noirq(struct device *dev)
 	mtk_i3c_init_hw(i3c);
 	mtk_i3c_clock_disable(i3c);
 	i2c_mark_adapter_resumed(&i3c->base.i2c);
+	mtk_i3c_mark_resumed(i3c);
 
 	return 0;
 }
-#else
-static int mtk_i3c_suspend_noirq(struct device *dev)
-{
-	struct mtk_i3c_master *i3c = dev_get_drvdata(dev);
-
-	if (!i3c) {
-		dev_info(dev, "[%s] i3c is NULL\n", __func__);
-		return -EINVAL;
-	}
-	return 0;
-}
-static int mtk_i3c_resume_noirq(struct device *dev)
-{
-	struct mtk_i3c_master *i3c = dev_get_drvdata(dev);
-
-	if (!i3c) {
-		dev_info(dev, "[%s] i3c is NULL\n", __func__);
-		return -EINVAL;
-	}
-	return 0;
-}
-#endif
 
 static const struct dev_pm_ops mtk_i3c_pm = {
-	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(mtk_i3c_suspend_noirq,
+	NOIRQ_SYSTEM_SLEEP_PM_OPS(mtk_i3c_suspend_noirq,
 			mtk_i3c_resume_noirq)
 };
 
@@ -2801,14 +2836,15 @@ static const struct of_device_id mtk_i3c_of_match[] = {
 	{ .compatible = "mediatek,mt6991-i3c", .data = &mt6991_compat },
 	{},
 };
+MODULE_DEVICE_TABLE(of, mtk_i3c_of_match);
 
 static struct platform_driver mtk_i3c_driver = {
 	.probe = mtk_i3c_master_probe,
 	.remove = mtk_i3c_master_remove,
 	.driver = {
 		.name = "mtk-i3c-master-mt69xx",
-		.pm = &mtk_i3c_pm,
-		.of_match_table = of_match_ptr(mtk_i3c_of_match),
+		.pm = pm_sleep_ptr(&mtk_i3c_pm),
+		.of_match_table = mtk_i3c_of_match,
 	},
 };
 module_platform_driver(mtk_i3c_driver);
