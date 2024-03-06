@@ -18005,9 +18005,6 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			kthread_create(_mtk_crtc_check_trigger_delay,
 						mtk_crtc, "ddp_trig_d");
 		wake_up_process(mtk_crtc->trigger_delay_task);
-		/* For protect crtc blank state */
-		mutex_init(&mtk_crtc->blank_lock);
-		init_waitqueue_head(&mtk_crtc->state_wait_queue);
 
 		init_waitqueue_head(&mtk_crtc->spr_switch_wait_queue);
 
@@ -18016,6 +18013,10 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			kthread_run(_mtk_crtc_cmdq_retrig,
 					mtk_crtc, "ddp_cmdq_trig");
 	}
+
+	/* For protect crtc blank state */
+	mutex_init(&mtk_crtc->blank_lock);
+	init_waitqueue_head(&mtk_crtc->state_wait_queue);
 
 	init_waitqueue_head(&mtk_crtc->present_fence_wq);
 	atomic_set(&mtk_crtc->pf_event, 0);
