@@ -134,6 +134,7 @@ extern void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p,
 extern void mtk_cpu_overutilized(void *data, int cpu, int *overutilized);
 
 /* should hide later */
+#define volt_diff  5000
 extern unsigned long pd_get_util_dsu_freq_wFloor_Freq(struct energy_env *eenv,
 		struct cpumask *pd_cpus, unsigned long max_util);
 extern unsigned long pd_get_util_volt_wFloor_Freq(struct energy_env *eenv,

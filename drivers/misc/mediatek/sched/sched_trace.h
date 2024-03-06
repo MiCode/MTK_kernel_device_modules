@@ -555,17 +555,27 @@ TRACE_EVENT(sched_max_util,
 TRACE_EVENT(sched_compute_energy,
 
 	TP_PROTO(int dst_cpu, int gear_id, struct cpumask *pd_mask,
-		unsigned long energy, unsigned long max_util, unsigned long sum_util),
+		unsigned long energy, int shared_buck_mode,
+		unsigned long gear_max_util, unsigned long pd_max_util, unsigned long sum_util,
+		unsigned long gear_volt, unsigned long pd_volt, unsigned long dsu_volt,
+		unsigned long extern_volt),
 
-	TP_ARGS(dst_cpu, gear_id, pd_mask, energy, max_util, sum_util),
+	TP_ARGS(dst_cpu, gear_id, pd_mask, energy, shared_buck_mode, pd_max_util, gear_max_util,
+			sum_util, gear_volt, pd_volt, dsu_volt, extern_volt),
 
 	TP_STRUCT__entry(
 		__field(int, dst_cpu)
 		__field(int, gear_id)
 		__field(long, cpu_mask)
 		__field(unsigned long, energy)
-		__field(unsigned long, max_util)
+		__field(int, shared_buck_mode)
+		__field(unsigned long, gear_max_util)
+		__field(unsigned long, pd_max_util)
 		__field(unsigned long, sum_util)
+		__field(unsigned long, gear_volt)
+		__field(unsigned long, pd_volt)
+		__field(unsigned long, dsu_volt)
+		__field(unsigned long, extern_volt)
 		),
 
 	TP_fast_assign(
@@ -573,17 +583,29 @@ TRACE_EVENT(sched_compute_energy,
 		__entry->gear_id    = gear_id;
 		__entry->cpu_mask   = pd_mask->bits[0];
 		__entry->energy     = energy;
-		__entry->max_util   = max_util;
+		__entry->shared_buck_mode = shared_buck_mode;
+		__entry->gear_max_util   = gear_max_util;
+		__entry->pd_max_util   = pd_max_util;
 		__entry->sum_util   = sum_util;
+		__entry->gear_volt   = gear_volt;
+		__entry->pd_volt   = pd_volt;
+		__entry->dsu_volt   = dsu_volt;
+		__entry->extern_volt   = extern_volt;
 		),
 
-	TP_printk("dst_cpu=%d gear_id=%d mask=0x%lx energy=%lu max_util=%lu sum_util=%lu",
+	TP_printk("dst_cpu=%d gear_id=%d mask=0x%lx energy=%lu shared_buck_mode=%d gear_max_util=%lu pd_max_util=%lu sum_util=%lu gear_volt=%lu pd_volt=%lu dsu_volt=%lu extern_volt=%lu",
 		__entry->dst_cpu,
 		__entry->gear_id,
 		__entry->cpu_mask,
 		__entry->energy,
-		__entry->max_util,
-		__entry->sum_util)
+		__entry->shared_buck_mode,
+		__entry->gear_max_util,
+		__entry->pd_max_util,
+		__entry->sum_util,
+		__entry->gear_volt,
+		__entry->pd_volt,
+		__entry->dsu_volt,
+		__entry->extern_volt)
 );
 
 TRACE_EVENT(sched_compute_energy_dsu,

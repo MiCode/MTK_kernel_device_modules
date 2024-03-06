@@ -418,11 +418,13 @@ static inline unsigned long
 mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 		       struct cpumask *pd_cpus, struct task_struct *p, int dst_cpu)
 {
-	unsigned long max_util = eenv_pd_max_util(eenv, pd_cpus, p, dst_cpu);
+	unsigned long pd_max_util = eenv_pd_max_util(eenv, pd_cpus, p, dst_cpu);
+	unsigned long gear_max_util;
 	int pd_idx = cpumask_first(pd_cpus);
 	unsigned long busy_time = eenv->pds_busy_time[pd_idx];
 	unsigned long energy, extern_volt = 0;
-	unsigned long dsu_volt;
+	unsigned long dsu_volt, pd_volt, gear_volt;
+	int dst_idx, shared_buck_mode;
 
 	if (dst_cpu >= 0)
 		busy_time = min(eenv->pds_cap[pd_idx], busy_time + eenv->task_busy_time);
@@ -430,18 +432,44 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 	if (eenv->wl_support) {
 
 		if (share_buck.gear_idx == eenv->gear_idx)
-			dsu_volt = update_dsu_status(eenv, pd_cpus, max_util, dst_cpu);
+			dsu_volt = update_dsu_status(eenv, pd_cpus, pd_max_util, dst_cpu);
 		else
 			dsu_volt = 0;
 
 		extern_volt = dsu_volt;
 	}
 
-	energy =  mtk_em_cpu_energy(pd->em_pd, max_util, busy_time,
-			eenv->pds_cpu_cap[pd_idx], eenv, extern_volt);
+	/* dvfs Vin/Vout */
+	pd_volt = pd_get_util_volt_wFloor_Freq(eenv, pd_cpus, pd_max_util);
+
+	dst_idx = (dst_cpu >= 0) ? 1 : 0;
+	gear_max_util = eenv->gear_max_util[eenv->gear_idx][dst_idx];
+	gear_volt = pd_get_util_volt_wFloor_Freq(eenv, pd_cpus, gear_max_util);
+
+	/* dvfs power overhead */
+	if (!cpumask_equal(pd_cpus, get_gear_cpumask(eenv->gear_idx))) {
+		if (gear_volt-pd_volt < volt_diff) {
+			extern_volt = max(gear_volt, dsu_volt);
+			energy =  mtk_em_cpu_energy(pd->em_pd, pd_max_util, busy_time,
+					eenv->pds_cpu_cap[pd_idx], eenv, extern_volt);
+			shared_buck_mode = 1;
+		} else {
+			extern_volt = 0;
+			energy =  mtk_em_cpu_energy(pd->em_pd, pd_max_util, busy_time,
+					eenv->pds_cpu_cap[pd_idx], eenv, extern_volt);
+			energy = energy * max(gear_volt, dsu_volt) / pd_volt;
+			shared_buck_mode = 2;
+		}
+	} else {
+		energy =  mtk_em_cpu_energy(pd->em_pd, pd_max_util, busy_time,
+				eenv->pds_cpu_cap[pd_idx], eenv, extern_volt);
+		shared_buck_mode = 0;
+	}
 
 	if (trace_sched_compute_energy_enabled())
-		trace_sched_compute_energy(dst_cpu, pd_idx, pd_cpus, energy, max_util, busy_time);
+		trace_sched_compute_energy(dst_cpu, pd_idx, pd_cpus, energy, shared_buck_mode,
+			gear_max_util, pd_max_util, busy_time,
+			gear_volt, pd_volt, dsu_volt, extern_volt);
 
 	return energy;
 }
@@ -485,13 +513,41 @@ mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 	       struct cpumask *pd_cpus, struct task_struct *p, int dst_cpu)
 {
 	unsigned long cpu_pwr = 0, dsu_pwr = 0;
-	unsigned long shared_pwr = 0;
+	unsigned long shared_pwr = 0, shared_pwr_in_gear = 0;
 	struct dsu_info *dsu = &eenv->dsu;
 	unsigned int dsu_extern_volt = 0, gear_idx;
 	int dst_idx;
 	int pd_idx = cpumask_first(pd_cpus);
 
 	cpu_pwr = mtk_compute_energy_cpu(eenv, pd, pd_cpus, p, dst_cpu);
+
+	/* indirect dvfs power overhead (when gear_max_util changes)*/
+	if (!cpumask_equal(pd_cpus, get_gear_cpumask(eenv->gear_idx)) &&
+		eenv->gear_max_util[eenv->gear_idx][1] > eenv->gear_max_util[eenv->gear_idx][0]) {
+		struct root_domain *rd = this_rq()->rd;
+		struct perf_domain *pd_ptr;
+
+		rcu_read_lock();
+		pd_ptr = rcu_dereference(rd->pd);
+		for (; pd_ptr; pd_ptr = pd_ptr->next) {
+			struct cpumask *pd_mask = perf_domain_span(pd_ptr);
+			unsigned int cpu = cpumask_first(pd_mask);
+
+			if (cpu != dst_cpu && cpumask_test_cpu(cpu,
+						get_gear_cpumask(eenv->gear_idx))) {
+				gear_idx = eenv->gear_idx;
+				eenv->gear_idx = topology_cluster_id(cpu);
+				if (dst_cpu >= 0)
+					shared_pwr_in_gear += mtk_compute_energy_cpu(eenv, pd_ptr,
+									pd_mask, p, -2);
+				else
+					shared_pwr_in_gear += mtk_compute_energy_cpu(eenv, pd_ptr,
+									pd_mask, p, -1);
+				eenv->gear_idx = gear_idx;
+			}
+		}
+		rcu_read_unlock();
+	}
 
 	/* calc indirect DSU share_buck */
 	if ((eenv->dsu_freq_new  > eenv->dsu_freq_base) && !(shared_gear(eenv->gear_idx))
