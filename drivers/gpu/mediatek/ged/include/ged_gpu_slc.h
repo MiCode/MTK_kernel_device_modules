@@ -20,10 +20,10 @@ struct gpu_slc_stat {
 	unsigned int isoverflow;
 };
 
-static GED_ERROR gpu_slc_sysram_init(void);
 GED_ERROR ged_gpu_slc_init(void);
 struct gpu_slc_stat *get_gpu_slc_stat(void);
 void ged_gpu_slc_dynamic_mode(unsigned int idx);
+int ged_gpu_slc_get_dynamic_mode(void);
 GED_ERROR ged_gpu_slc_exit(void);
 
 #endif /* __GED_GPU_SLC_H__ */
