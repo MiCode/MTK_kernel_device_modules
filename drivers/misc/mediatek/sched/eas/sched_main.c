@@ -671,6 +671,16 @@ static long eas_ioctl_impl(struct file *filp,
 		if (!unset_gear_indices(val))
 			return -1;
 		break;
+	case EAS_RT_AGGRE_PREEMPT_SET:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		set_rt_aggre_preempt(val);
+		break;
+	case EAS_RT_AGGRE_PREEMPT_GET:
+		val = get_rt_aggre_preempt();
+		if (easctl_copy_to_user((void *)arg, &val, sizeof(unsigned int)))
+			return -1;
+		break;
 	case EAS_SBB_ALL_SET:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;

@@ -30,6 +30,12 @@ void set_rt_aggre_preempt(int val)
 }
 EXPORT_SYMBOL_GPL(set_rt_aggre_preempt);
 
+bool get_rt_aggre_preempt(void)
+{
+	return rt_aggre_preempt_enable;
+}
+EXPORT_SYMBOL_GPL(get_rt_aggre_preempt);
+
 static inline void rt_energy_aware_output_init(struct rt_energy_aware_output *rt_ea_output,
 			struct task_struct *p)
 {
