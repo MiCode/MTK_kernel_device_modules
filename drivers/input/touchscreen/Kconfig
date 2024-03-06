@@ -26,6 +26,9 @@ config TOUCHSCREEN_ILITEK_TOUCH
          Set Y or M to select this feature for touch compile,
          and set N to disable.
 
+source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/GT9966/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/ILITEK/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/synaptics_dsx_96789/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/synaptics_dsx_96851/Kconfig"
 
 endif
