@@ -6947,6 +6947,13 @@
 		nvmem-cell-names = "efuse_segment_cell";
 	};
 
+	gpufreq_wrapper: gpufreq_wrapper {
+		compatible = "mediatek,gpufreq_wrapper";
+		gpufreq-version = <2>;
+		dual-buck = <0>;
+		gpueb-support = <0>;
+	};
+
 	ged: ged {
 		compatible = "mediatek,ged";
 		gpufreq-supply = <&gpufreq>;
