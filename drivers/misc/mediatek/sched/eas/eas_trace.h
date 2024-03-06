@@ -64,9 +64,10 @@ TRACE_EVENT(sched_big_task_rotation,
 TRACE_EVENT(sched_leakage,
 
 	TP_PROTO(int cpu, int opp, unsigned int temp,
-		unsigned long cpu_static_pwr, unsigned long static_pwr, unsigned long sum_cap),
+		unsigned long cpu_static_pwr, unsigned long static_pwr,
+		unsigned long sum_util, unsigned long sum_cap),
 
-	TP_ARGS(cpu, opp, temp, cpu_static_pwr, static_pwr, sum_cap),
+	TP_ARGS(cpu, opp, temp, cpu_static_pwr, static_pwr, sum_util, sum_cap),
 
 	TP_STRUCT__entry(
 		__field(int, cpu)
@@ -74,6 +75,7 @@ TRACE_EVENT(sched_leakage,
 		__field(unsigned int, temp)
 		__field(unsigned long, cpu_static_pwr)
 		__field(unsigned long, static_pwr)
+		__field(unsigned long, sum_util)
 		__field(unsigned long, sum_cap)
 		),
 
@@ -83,15 +85,17 @@ TRACE_EVENT(sched_leakage,
 		__entry->temp       = temp;
 		__entry->cpu_static_pwr = cpu_static_pwr;
 		__entry->static_pwr = static_pwr;
+		__entry->sum_util = sum_util;
 		__entry->sum_cap = sum_cap;
 		),
 
-	TP_printk("cpu=%d opp=%d temp=%u lkg=%lu sum_lkg=%lu, sum_cap=%lu",
+	TP_printk("cpu=%d opp=%d temp=%u lkg=%lu sum_lkg=%lu, sum_util=%lu sum_cap=%lu",
 		__entry->cpu,
 		__entry->opp,
 		__entry->temp,
 		__entry->cpu_static_pwr,
 		__entry->static_pwr,
+		__entry->sum_util,
 		__entry->sum_cap)
 );
 
@@ -161,7 +165,7 @@ TRACE_EVENT(sched_em_cpu_energy,
 		__entry->static_pwr = static_pwr;
 		),
 
-	TP_printk("wl_type=%d, idx=%d freq=%lu %s=%lu scale_cpu=%lu dyn_pwr=%lu static_pwr=%lu",
+	TP_printk("wl_type=%d idx=%d freq=%lu %s=%lu scale_cpu=%lu dyn_pwr=%lu static_pwr=%lu",
 		__entry->wl_type,
 		__entry->idx,
 		__entry->freq,

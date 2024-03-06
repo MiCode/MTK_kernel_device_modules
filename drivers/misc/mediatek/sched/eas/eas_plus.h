@@ -134,18 +134,23 @@ extern void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p,
 		int prev_cpu, int sync, int *new_cpu);
 extern void mtk_cpu_overutilized(void *data, int cpu, int *overutilized);
 
+extern unsigned long pd_get_util_cpufreq(struct energy_env *eenv,
+		struct cpumask *pd_cpus, unsigned long max_util, unsigned long allowed_cpu_cap,
+		unsigned long scale_cpu);
+
 /* should hide later */
 #define volt_diff  5000
-extern unsigned long pd_get_util_dsu_freq_wFloor_Freq(struct energy_env *eenv,
-		struct cpumask *pd_cpus, unsigned long max_util);
-extern unsigned long pd_get_util_volt_wFloor_Freq(struct energy_env *eenv,
-		struct cpumask *pd_cpus, unsigned long max_util);
+extern unsigned long pd_get_dsu_freq_wFloor_Freq(int cpu, unsigned long freq,
+		int wl_type, unsigned long floor_freq);
+extern unsigned long pd_get_volt_wFloor_Freq(int cpu, unsigned long freq,
+		int wl_type, unsigned long floor_freq);
 extern unsigned long shared_buck_lkg_pwr(int wl_type, int cpu, int opp,
 		int temperature, unsigned long extern_volt);
 extern unsigned long shared_buck_dyn_pwr(unsigned long dyn_pwr,
 		unsigned long cpu_volt, unsigned long extern_volt);
 extern unsigned long update_dsu_status(struct energy_env *eenv,
-		struct cpumask *pd_cpus, unsigned long max_util, int dst_cpu);
+		unsigned long freq, unsigned long floor_freq, int this_cpu, int dst_cpu);
+/* should hide later */
 
 extern unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
 		unsigned long max_util, unsigned long sum_util,

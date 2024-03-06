@@ -4,52 +4,44 @@
  */
 #include "eas_plus.h"
 
-int pd_get_util_opp_wFloor_Freq(struct energy_env *eenv,
-	struct cpumask *pd_cpus, unsigned long max_util)
+inline
+int pd_get_opp_wFloor_Freq(int cpu, unsigned long freq,
+	int wl_type, unsigned long floor_freq)
 {
-	int cpu, opp = -1;
-	unsigned long freq;
+	int opp = -1;
 
-	cpu = cpumask_first(pd_cpus);
-	mtk_map_util_freq(NULL, max_util, pd_get_opp_freq(cpu, 0), pd_cpus,
-		&freq, eenv->wl_type);
-	freq = max(freq, per_cpu(min_freq, cpu));
-	opp = pd_freq2opp(cpu, freq, false, eenv->wl_type);
+	freq = max(freq, floor_freq);
+	opp = pd_freq2opp(cpu, freq, false, wl_type);
 
 	return opp;
 }
 
-unsigned long pd_get_util_volt_wFloor_Freq(struct energy_env *eenv,
-	struct cpumask *pd_cpus, unsigned long max_util)
+inline
+unsigned long pd_get_volt_wFloor_Freq(int cpu, unsigned long freq,
+	int wl_type, unsigned long floor_freq)
 {
-	int cpu, opp = -1;
+	int opp = -1;
 
-	cpu = cpumask_first(pd_cpus);
-	opp = pd_get_util_opp_wFloor_Freq(eenv, pd_cpus, max_util);
+	opp = pd_get_opp_wFloor_Freq(cpu, freq, wl_type, floor_freq);
 
-	return (unsigned long) pd_opp2volt(cpu, opp, false, eenv->wl_type);
+	return (unsigned long) pd_opp2volt(cpu, opp, false, wl_type);
 }
 
-unsigned long pd_get_util_dsu_freq_wFloor_Freq(struct energy_env *eenv,
-	struct cpumask *pd_cpus, unsigned long max_util)
+inline
+unsigned long pd_get_dsu_freq_wFloor_Freq(int cpu, unsigned long freq,
+	int wl_type, unsigned long floor_freq)
 {
-	int cpu, opp = -1;
+	int opp = -1;
 
-	cpu = cpumask_first(pd_cpus);
-	opp = pd_get_util_opp_wFloor_Freq(eenv, pd_cpus, max_util);
+	opp = pd_get_opp_wFloor_Freq(cpu, freq, wl_type, floor_freq);
 
-	return (unsigned long) pd_cpu_opp2dsu_freq(cpu, opp, false, eenv->wl_type);
+	return (unsigned long) pd_cpu_opp2dsu_freq(cpu, opp, false, wl_type);
 }
 
-unsigned long pd_get_util_cpufreq_wFloor_Freq(struct energy_env *eenv,
-	struct cpumask *pd_cpus, unsigned long max_util)
+unsigned long pd_get_cpufreq_wFloor_Freq(int cpu, unsigned long freq,
+	int wl_type, unsigned long floor_freq)
 {
-	int cpu, opp = -1;
-
-	cpu = cpumask_first(pd_cpus);
-	opp = pd_get_util_opp_wFloor_Freq(eenv, pd_cpus, max_util);
-
-	return (unsigned long) pd_opp2freq(cpu, opp, false, eenv->wl_type);
+	return max(freq, floor_freq);
 }
 
 unsigned long shared_buck_lkg_pwr(int wl_type, int cpu, int opp, int temperature,
@@ -72,21 +64,22 @@ unsigned long shared_buck_lkg_pwr(int wl_type, int cpu, int opp, int temperature
 unsigned long shared_buck_dyn_pwr(unsigned long dyn_pwr, unsigned long cpu_volt,
 	unsigned long extern_volt)
 {
-	if (!extern_volt || extern_volt <= cpu_volt)
+	if (!extern_volt || !cpu_volt || extern_volt <= cpu_volt)
 		return dyn_pwr;
 
 	return (unsigned long long)dyn_pwr * (unsigned long long)extern_volt *
 			(unsigned long long)extern_volt / cpu_volt / cpu_volt;
 }
 
+inline
 unsigned long update_dsu_status(struct energy_env *eenv,
-	struct cpumask *pd_cpus, unsigned long max_util, int dst_cpu)
+	unsigned long freq, unsigned long floor_freq, int this_cpu, int dst_cpu)
 {
 	unsigned long dsu_freq, dsu_volt;
 	unsigned int dsu_opp;
 	struct dsu_state *dsu_ps;
 
-	dsu_freq = pd_get_util_dsu_freq_wFloor_Freq(eenv, pd_cpus, max_util);
+	dsu_freq = pd_get_dsu_freq_wFloor_Freq(this_cpu, freq, eenv->wl_type, floor_freq);
 	if (dst_cpu >= 0) {
 		if (eenv->dsu_freq_base < dsu_freq) {
 			eenv->dsu_freq_new = dsu_freq;
@@ -100,15 +93,57 @@ unsigned long update_dsu_status(struct energy_env *eenv,
 		dsu_volt = (unsigned long) eenv->dsu_volt_new;
 	} else if (dst_cpu == -2) {
 		dsu_volt = (unsigned long) eenv->dsu_volt_new;
-	} else
+	} else {
 		dsu_volt = (unsigned long) eenv->dsu_volt_base;
-
-	if (trace_sched_dsu_freq_enabled()) {
-		trace_sched_dsu_freq(eenv->gear_idx, dst_cpu,
-			eenv->dsu_freq_new, eenv->dsu_volt_new,
-			pd_get_util_cpufreq_wFloor_Freq(eenv, pd_cpus, max_util),
-			dsu_freq, dsu_volt);
 	}
 
+	if (trace_sched_dsu_freq_enabled())
+		trace_sched_dsu_freq(eenv->gear_idx, dst_cpu,
+			eenv->dsu_freq_new, eenv->dsu_volt_new,
+			pd_get_cpufreq_wFloor_Freq(this_cpu, freq, eenv->wl_type, floor_freq),
+			dsu_freq, dsu_volt);
+
 	return dsu_volt;
+}
+
+inline
+unsigned long get_cpu_power(bool dyn_pwr_ctrl, bool lkg_pwr_ctrl, int wl_type,
+	int *val_s, int this_cpu, int *cpu_temp, int opp, unsigned long sum_util,
+	unsigned long extern_volt, unsigned long cap, unsigned int cpumask_val,
+	unsigned long *dyn_pwr, unsigned long *static_pwr, unsigned long *pwr_eff,
+	unsigned long *sum_cap, unsigned int *cpu_static_pwr_array,
+	unsigned long scale_cpu, unsigned long freq)
+{
+	unsigned int pd_volt = 0;
+	int cpu = 0;
+
+	if (lkg_pwr_ctrl) {
+		while (cpumask_val) {
+			if (cpumask_val & 1) {
+				unsigned int cpu_static_pwr;
+
+				cpu_static_pwr = shared_buck_lkg_pwr(wl_type, cpu, opp,
+						cpu_temp[cpu], extern_volt);
+				*static_pwr += cpu_static_pwr;
+				*sum_cap += cap;
+				cpu_static_pwr_array[cpu] = cpu_static_pwr;
+			}
+			cpumask_val >>= 1;
+			cpu ++;
+		}
+		*static_pwr = (likely(*sum_cap) ? (*static_pwr * sum_util) / *sum_cap : 0);
+	}
+
+	if (dyn_pwr_ctrl) {
+		*pwr_eff = pd_opp2pwr_eff(this_cpu, opp, false, wl_type, val_s,
+				false, DPT_CALL_MTK_EM_CPU_ENERGY);
+		*dyn_pwr = *pwr_eff * sum_util;
+
+		/* shared-buck dynamic power*/
+		pd_volt = pd_opp2volt(this_cpu, opp, false, wl_type);
+		*dyn_pwr = shared_buck_dyn_pwr(*dyn_pwr, pd_volt, extern_volt);
+	} else
+		*dyn_pwr = (*pwr_eff * sum_util / scale_cpu);
+
+	return *dyn_pwr + *static_pwr;
 }
