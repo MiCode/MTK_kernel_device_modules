@@ -105,28 +105,28 @@ void vcp_dump_last_regs(int mmup_enable)
 	pr_notice("[VCP] c0_status = %08x\n", c0_m->status);
 	pr_notice("[VCP] c0_pc = %08x\n", c0_m->pc);
 	pr_notice("[VCP] c0_pc2 = %08x\n", readl(R_CORE0_MON_PC));
-	pr_debug("[VCP] c0_lr = %08x\n", c0_m->lr);
-	pr_debug("[VCP] c0_sp = %08x\n", c0_m->sp);
+	pr_notice("[VCP] c0_lr = %08x\n", c0_m->lr);
+	pr_notice("[VCP] c0_sp = %08x\n", c0_m->sp);
 	pr_notice("[VCP] c0_pc_latch = %08x\n", c0_m->pc_latch);
-	pr_debug("[VCP] c0_lr_latch = %08x\n", c0_m->lr_latch);
-	pr_debug("[VCP] c0_sp_latch = %08x\n", c0_m->sp_latch);
+	pr_notice("[VCP] c0_lr_latch = %08x\n", c0_m->lr_latch);
+	pr_notice("[VCP] c0_sp_latch = %08x\n", c0_m->sp_latch);
 	if (vcpreg.twohart) {
 		pr_notice("[VCP] c0_t1_pc = %08x\n", c0_t1_m->pc);
 		pr_notice("[VCP] c0_t1_pc2 = %08x\n", readl(R_CORE0_T1_MON_PC));
-		pr_debug("[VCP] c0_t1_lr = %08x\n", c0_t1_m->lr);
-		pr_debug("[VCP] c0_t1_sp = %08x\n", c0_t1_m->sp);
+		pr_notice("[VCP] c0_t1_lr = %08x\n", c0_t1_m->lr);
+		pr_notice("[VCP] c0_t1_sp = %08x\n", c0_t1_m->sp);
 		pr_notice("[VCP] c0_t1_pc_latch = %08x\n", c0_t1_m->pc_latch);
-		pr_debug("[VCP] c0_t1_lr_latch = %08x\n", c0_t1_m->lr_latch);
-		pr_debug("[VCP] c0_t1_sp_latch = %08x\n", c0_t1_m->sp_latch);
+		pr_notice("[VCP] c0_t1_lr_latch = %08x\n", c0_t1_m->lr_latch);
+		pr_notice("[VCP] c0_t1_sp_latch = %08x\n", c0_t1_m->sp_latch);
 	}
 	pr_notice("[VCP] RSTN_CLR = %08x RSTN_CLR = %08x\n",
 		readl(R_CORE0_SW_RSTN_CLR), readl(R_CORE0_SW_RSTN_SET));
-	pr_notice("[VCP] irq sta: %08x,%08x,%08x\n", readl(R_CORE0_IRQ_STA0),
-		readl(R_CORE0_IRQ_STA1), readl(R_CORE0_IRQ_STA2));
-	pr_notice("[VCP] irq en: %08x,%08x,%08x\n", readl(R_CORE0_IRQ_EN0),
-		readl(R_CORE0_IRQ_EN1), readl(R_CORE0_IRQ_EN2));
-	pr_notice("[VCP] irq wakeup en: %08x,%08x,%08x\n", readl(R_CORE0_IRQ_SLP0),
-		readl(R_CORE0_IRQ_SLP1), readl(R_CORE0_IRQ_SLP2));
+	pr_notice("[VCP] irq sta: %08x,%08x,%08x,%08x\n", readl(R_CORE0_IRQ_STA0),
+		readl(R_CORE0_IRQ_STA1), readl(R_CORE0_IRQ_STA2), readl(R_CORE0_IRQ_STA3));
+	pr_notice("[VCP] irq en: %08x,%08x,%08x,%08x\n", readl(R_CORE0_IRQ_EN0),
+		readl(R_CORE0_IRQ_EN1), readl(R_CORE0_IRQ_EN2), readl(R_CORE0_IRQ_EN3));
+	pr_notice("[VCP] irq wakeup en: %08x,%08x,%08x,%08x\n", readl(R_CORE0_IRQ_SLP0),
+		readl(R_CORE0_IRQ_SLP1), readl(R_CORE0_IRQ_SLP2), readl(R_CORE0_IRQ_SLP3));
 	if (vcpreg.core_nums == 2)
 		mmup_dump_last_regs();
 
