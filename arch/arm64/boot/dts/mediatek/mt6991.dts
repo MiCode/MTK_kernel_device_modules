@@ -5058,6 +5058,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			uart-line = <3>;
 			hub-baud = <24000000>;
 			wakeup-irq-support = <1>;
+			rtff-support = <1>;
 		};
 
 		spi0: spi0@16110000 {
