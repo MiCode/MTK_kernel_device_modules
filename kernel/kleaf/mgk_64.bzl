@@ -994,6 +994,7 @@ def get_overlay_modules_list():
     if "auto.config" in DEFCONFIG_OVERLAYS:
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6991-ivi.ko":"mt6991"})
         mgk_64_platform_device_modules.update({"drivers/soc/mediatek/mtk-scpsys-mt6991-ivi.ko":"mt6991"})
+        mgk_64_device_modules.append("drivers/misc/mediatek/carevent/carevent.ko")
 
     if "fpga.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/fpsgo_cus:fpsgo_cus")
