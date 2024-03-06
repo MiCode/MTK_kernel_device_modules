@@ -68,6 +68,7 @@ void (*change_dpt_support_driver_hook) (int turn_on);
 EXPORT_SYMBOL(change_dpt_support_driver_hook);
 int val_m = 1;
 EXPORT_SYMBOL_GPL(val_m);
+int dpt_default_status;
 /* End of DPT */
 
 /* group aware dvfs */
@@ -457,7 +458,7 @@ void init_curr_collab_struct(void)
 	wl_collab_type_mapping_mask = kcalloc(nr_collab_type, sizeof(int), GFP_ATOMIC | __GFP_NOFAIL);
 	init_wl_collab_mask_driver_hook(&wl_collab_type_mapping_mask);
 	__dpt_init_done = true;
-	change_dpt_support_driver_hook(1);
+	change_dpt_support_driver_hook(dpt_default_status);
 }
 
 #define is_bit_set(value, bit) (((value) & (1 << (bit))) != 0)
@@ -1523,6 +1524,12 @@ void set_collab_state_manual(int type, int state)
 	pr_info("set collab_type=%d, state=%d\n", type, state);
 }
 EXPORT_SYMBOL_GPL(set_collab_state_manual);
+
+int get_dpt_default_status(void)
+{
+	return dpt_default_status;
+}
+EXPORT_SYMBOL_GPL(get_dpt_default_status);
 
 int init_opp_cap_info(struct proc_dir_entry *dir)
 {
