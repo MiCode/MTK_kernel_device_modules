@@ -207,6 +207,7 @@ static const struct of_device_id emi_icc_of_match[] = {
 	{ .compatible = "mediatek,mt6878-dvfsrc", .data = &mt6873_icc },
 	{ .compatible = "mediatek,mt6991-dvfsrc", .data = &mt6873_icc },
 	{ .compatible = "mediatek,mt6761-dvfsrc", .data = &mt6873_icc },
+	{ .compatible = "mediatek,mt6765-dvfsrc", .data = &mt6873_icc },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, emi_icc_of_match);
@@ -356,7 +357,6 @@ static int emi_icc_probe(struct platform_device *pdev)
 		goto err;
 
 	platform_set_drvdata(pdev, mtk_icc);
-
 	return 0;
 err:
 	icc_nodes_remove(provider);
