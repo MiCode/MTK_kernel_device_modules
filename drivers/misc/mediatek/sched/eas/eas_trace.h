@@ -97,13 +97,14 @@ TRACE_EVENT(sched_leakage,
 
 TRACE_EVENT(sched_dsu_freq,
 
-	TP_PROTO(int gear_id, int dsu_freq_new, int dsu_volt_new, unsigned long cpu_freq,
-			unsigned long dsu_freq, unsigned int dsu_volt),
+	TP_PROTO(int gear_id, int dst_cpu, int dsu_freq_new, int dsu_volt_new,
+			unsigned long cpu_freq, unsigned long dsu_freq, unsigned int dsu_volt),
 
-	TP_ARGS(gear_id, dsu_freq_new, dsu_volt_new, cpu_freq, dsu_freq, dsu_volt),
+	TP_ARGS(gear_id, dst_cpu, dsu_freq_new, dsu_volt_new, cpu_freq, dsu_freq, dsu_volt),
 
 	TP_STRUCT__entry(
 		__field(int, gear_id)
+		__field(int, dst_cpu)
 		__field(int, dsu_freq_new)
 		__field(int, dsu_volt_new)
 		__field(unsigned long, cpu_freq)
@@ -113,6 +114,7 @@ TRACE_EVENT(sched_dsu_freq,
 
 	TP_fast_assign(
 		__entry->gear_id    = gear_id;
+		__entry->dst_cpu    = dst_cpu;
 		__entry->dsu_freq_new   = dsu_freq_new;
 		__entry->dsu_volt_new   = dsu_volt_new;
 		__entry->cpu_freq  = cpu_freq;
@@ -120,8 +122,9 @@ TRACE_EVENT(sched_dsu_freq,
 		__entry->dsu_volt  = dsu_volt;
 		),
 
-	TP_printk("gear_id=%d dsu_freq_new=%d dsu_volt_new=%d cpu_freq=%lu dsu_freq=%lu dsu_volt=%u",
+	TP_printk("gear_id=%d dst_cpu=%d dsu_freq_new=%d dsu_volt_new=%d cpu_freq=%lu dsu_freq=%lu dsu_volt=%u",
 		__entry->gear_id,
+		__entry->dst_cpu,
 		__entry->dsu_freq_new,
 		__entry->dsu_volt_new,
 		__entry->cpu_freq,
