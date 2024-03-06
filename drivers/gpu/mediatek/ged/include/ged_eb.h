@@ -77,6 +77,7 @@ enum gpu_fastdvfs_counter {
 	FASTDVFS_GPU_EB_LOG_DUMP_SOC_TIMER_LO = 149,
 	FASTDVFS_GPU_EB_LOG_DUMP_UNCOM_TIME = 159,
 	FASTDVFS_GPU_EB_LOG_DUMP_OPP = 169,			// cur, target
+	FASTDVFS_GPU_EB_P_MODE_STATUS = 205,
 	FASTDVFS_GPU_EB_26M_REPLACE  = 208,
 	FASTDVFS_GPU_EB_LOADING_MODE                = 209,
 	FASTDVFS_GPU_EB_API_BOOST = 210,
@@ -329,6 +330,10 @@ enum gpu_fastdvfs_counter {
 #define SYSRAM_GPU_EB_LOADING_MODE             \
 (													   \
 (FASTDVFS_GPU_EB_LOADING_MODE*SYSRAM_LOG_SIZE) \
+)
+#define SYSRAM_GPU_EB_P_MODE_STATUS             \
+(													   \
+(FASTDVFS_GPU_EB_P_MODE_STATUS*SYSRAM_LOG_SIZE) \
 )
 #define SYSRAM_GPU_EB_26M_REPLACE             \
 (													   \
