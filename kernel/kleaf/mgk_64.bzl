@@ -1044,6 +1044,9 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_ets.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_modem.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
+        mgk_64_common_eng_modules.append("drivers/pps/clients/pps-gpio.ko")
+        mgk_64_common_userdebug_modules.append("drivers/pps/clients/pps-gpio.ko")
+        mgk_64_common_user_modules.append("drivers/pps/clients/pps-gpio.ko")
 
     if "mt6877_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
