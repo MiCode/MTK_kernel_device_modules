@@ -862,6 +862,7 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6768.ko": "mt6768",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6991.ko": "mt6991",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6877.ko": "mt6877",
+    "drivers/soc/mediatek/mtk-scpsys-mt6765.ko": "mt6765",
     "drivers/soc/mediatek/mtk-scpsys-mt6768.ko": "mt6768",
     "drivers/soc/mediatek/mtk-scpsys-mt6761.ko": "mt6761",
     "drivers/soc/mediatek/mtk-scpsys-mt6877.ko": "mt6877",
@@ -1644,6 +1645,12 @@ def get_overlay_modules_list():
     if "mt6765_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_platform_device_modules.update({"drivers/regulator/mt6357-regulator.ko":"mt6765"})
         mgk_64_platform_device_modules.update({"drivers/pinctrl/mediatek/pinctrl-mt6765.ko":"mt6765"})
-
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6765.ko":"mt6765"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6765-pg.ko":"mt6765"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clkchk-mt6765.ko":"mt6765"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-fmeter-mt6765.ko":"mt6765"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clkchk-mt6765.ko":"mt6765"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clkdbg-mt6765.ko":"mt6765"})
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/mt6765_clkmgr.ko":"mt6765"})
 
 get_overlay_modules_list()
