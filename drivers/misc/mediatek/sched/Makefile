@@ -4,7 +4,6 @@ scheduler-y += eas/sched_sys_common.o
 scheduler-y += eas/eas_plus.o
 scheduler-y += eas/rt.o
 scheduler-y += eas/topology.o
-scheduler-y += eas/dsu_pwr.o
 scheduler-y += eas/eas_adpf.o
 scheduler-y += common.o
 scheduler-y += fair.o

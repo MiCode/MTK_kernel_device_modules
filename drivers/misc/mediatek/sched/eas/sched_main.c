@@ -30,7 +30,6 @@
 #include "mtk_energy_model/v1/energy_model.h"
 #endif
 #include "sugov/dsu_interface.h"
-#include "dsu_pwr.h"
 #include "vip.h"
 #include <mt-plat/mtk_irq_mon.h>
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
