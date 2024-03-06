@@ -27,8 +27,6 @@ struct _TOUCH_BOOST_PACKAGE {
 	__s32 cmd;
 	__s32 enable;
 	__s32 boost_duration;
-	__s32 active_time;
-	__s32 deboost_when_render;
 	__s32 idleprefer_ta;
 	__s32 idleprefer_fg;
 	__s32 util_ta;
