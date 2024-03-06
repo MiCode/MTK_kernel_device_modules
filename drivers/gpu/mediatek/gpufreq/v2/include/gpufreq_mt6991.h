@@ -109,4 +109,29 @@ struct gpufreq_core_mask_info g_core_mask_table[SHADER_CORE_NUM] = {
 #define STACK_DYN_REF_POWER_FREQ            (1800000)       /* KHz */
 #define STACK_DYN_REF_POWER_VOLT            (100000)        /* mV x 100 */
 
+/**************************************************
+ * Bus Tracker Setting
+ **************************************************/
+#define NUM_BUS_INFO                        (10)
+#define BUS_TRACKER_OP(_info, _count, _type, _timestamp, _addr, _id, _log) \
+	{ \
+		strscpy(_info.type, _type, 20); \
+		_info.timestamp = _timestamp; \
+		_info.addr = _addr; \
+		_info.id = _id; \
+		_info.log = _log; \
+		_count++; \
+	}
+
+/**************************************************
+ * Structure
+ **************************************************/
+struct gpufreq_bus_tracker_info {
+	char type[20];
+	unsigned long long timestamp;
+	unsigned int addr;
+	unsigned int id;
+	unsigned int log;
+};
+
 #endif /* __GPUFREQ_MT6991_H__ */
