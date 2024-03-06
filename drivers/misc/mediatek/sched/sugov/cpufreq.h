@@ -203,6 +203,8 @@ extern void (*fpsgo_notify_fbt_is_boost_fp)(int fpsgo_is_boost);
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
 void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 				unsigned int *target_freq, unsigned int old_target_freq);
+void mtk_cpufreq_target(void *data, struct cpufreq_policy *policy,
+				unsigned int *target_freq, unsigned int old_target_freq);
 void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
 				unsigned long freq, unsigned long max, unsigned long *scale);
 extern int set_sched_capacity_margin_dvfs(int capacity_margin);

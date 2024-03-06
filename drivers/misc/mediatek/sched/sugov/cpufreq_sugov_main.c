@@ -1243,6 +1243,10 @@ static int __init cpufreq_mtk_init(void)
 	if (ret)
 		pr_info("register android_vh_cpufreq_fast_switch failed\n");
 
+	ret = register_trace_android_vh_cpufreq_target(mtk_cpufreq_target, NULL);
+	if (ret)
+		pr_info("register android_vh_cpufreq_target failed\n");
+
 #if IS_ENABLED(CONFIG_MTK_ORIGIN_CHANGE)
 	ret = register_trace_android_vh_arch_set_freq_scale(
 			mtk_arch_set_freq_scale, NULL);
