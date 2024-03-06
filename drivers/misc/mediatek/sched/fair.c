@@ -1228,7 +1228,7 @@ static void update_cfs_rq_h_load(struct cfs_rq *cfs_rq)
 	}
 }
 
-static unsigned long task_h_load(struct task_struct *p)
+unsigned long task_h_load(struct task_struct *p)
 {
 	struct cfs_rq *cfs_rq = task_cfs_rq(p);
 
@@ -1675,22 +1675,51 @@ static inline bool task_demand_fits(struct task_struct *p, int dst_cpu)
 				> uclamp_task_util(p) * margin * sugov_margin);
 }
 
-static inline bool util_fits_capacity(unsigned long cpu_util, unsigned long cpu_cap, int cpu)
+/* util_fits_cpu: return fit status to check if util fits capacity.
+ * fit = 1 : fit when considering PELT & uclamp & thermal
+ * fit = -1: fit when considering PELT, not fit if ulcamp min > cap influenced by thermal(capacity_orig_thermal)
+ * fit = 0 : not fit when considering PELT
+ *
+ * util : util before considering uclamp.
+ * capacity: expect this capacity is already thermal-awared.
+ */
+inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
+	unsigned long uclamp_max, unsigned long capacity, int cpu)
 {
-	unsigned long ceiling;
-	bool AM_enabled = adaptive_margin_enabled[cpu], fit;
+	unsigned long ceiling, cap_after_ceiling;
+	bool AM_enabled = adaptive_margin_enabled[cpu];
 	unsigned int sugov_margin = AM_enabled ? get_adaptive_margin(cpu) : SCHED_CAPACITY_SCALE;
+	unsigned long capacity_orig_thermal, capacity_orig = capacity_orig_of(cpu);
+	int fit, uclamp_max_fits;
 
-	/* if updown_migration is not enabled */
+	uclamp_min = clamp((uclamp_min * sugov_margin) >> SCHED_FIXEDPOINT_SHIFT,
+		0UL, (unsigned long) SCHED_CAPACITY_SCALE);
+	uclamp_max = clamp((uclamp_max * sugov_margin) >> SCHED_FIXEDPOINT_SHIFT,
+		0UL, (unsigned long) SCHED_CAPACITY_SCALE);
+
+	/* ceiling shouldn't affect capacity since updown_migration is not enabled,  */
 	if (!updown_migration_enable)
-		return fits_capacity(cpu_util, cpu_cap, get_adaptive_margin(cpu));
+		ceiling = SCHED_CAPACITY_SCALE;
+	else
+		ceiling = SCHED_CAPACITY_SCALE * capacity_orig_of(cpu) / sched_capacity_up_margin[cpu];
 
-	ceiling = SCHED_CAPACITY_SCALE * capacity_orig_of(cpu) / sched_capacity_up_margin[cpu];
+	/* Whether PELT fit after considering up-down migration ? */
+	cap_after_ceiling = min(ceiling, capacity);
+	fit = fits_capacity(util, cap_after_ceiling, sugov_margin);
 
-	fit = (min(ceiling, cpu_cap) * SCHED_CAPACITY_SCALE >= cpu_util * sugov_margin);
+	/* Change fit status from 0 to 1 only if uclamp max restrict util. */
+	uclamp_max_fits = (capacity_orig == SCHED_CAPACITY_SCALE) && (uclamp_max == SCHED_CAPACITY_SCALE);
+	uclamp_max_fits = !uclamp_max_fits && (uclamp_max <= capacity_orig);
+	fit = fit || uclamp_max_fits;
+
+	/* Change fit status from 1 to -1 only if uclamp min raise util. */
+	uclamp_min = min(uclamp_min, uclamp_max);
+	capacity_orig_thermal = min(cap_after_ceiling, (capacity_orig - arch_scale_thermal_pressure(cpu)));
+	if (fit && (util < uclamp_min) && (uclamp_min > capacity_orig_thermal))
+		fit = -1;
 
 	if (trace_sched_fits_cap_ceiling_enabled())
-		trace_sched_fits_cap_ceiling(fit, cpu, cpu_util, cpu_cap, ceiling, sugov_margin,
+		trace_sched_fits_cap_ceiling(fit, cpu, util, capacity, ceiling, sugov_margin,
 			sched_capacity_down_margin[cpu], sched_capacity_up_margin[cpu], AM_enabled);
 
 	return fit;
@@ -1707,11 +1736,32 @@ static inline bool task_demand_fits(struct task_struct *p, int cpu)
 	return task_fits_capacity(p, capacity, get_adaptive_margin(cpu));
 }
 
-static inline bool util_fits_capacity(unsigned long cpu_util, unsigned long cpu_cap, int cpu)
+inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
+	unsigned long uclamp_max, unsigned long capacity, int cpu)
 {
-	return fits_capacity(cpu_util, cpu_cap, get_adaptive_margin(cpu));
+	bool AM_enabled = adaptive_margin_enabled[cpu];
+	unsigned int sugov_margin = AM_enabled ? get_adaptive_margin(cpu) : SCHED_CAPACITY_SCALE;
+	unsigned long capacity_orig_thermal, capacity_orig = capacity_orig_of(cpu);
+	int fit, uclamp_max_fits;
+
+	/* Whether PELT fit after considering up-down migration ? */
+	fit = fits_capacity(util, capacity, sugov_margin);
+
+	/* Change fit status from 0 to 1 only if uclamp max restrict util. */
+	capacity_orig_thermal = (capacity_orig - arch_scale_thermal_pressure(cpu));
+	uclamp_max_fits = (capacity_orig == SCHED_CAPACITY_SCALE) && (uclamp_max == SCHED_CAPACITY_SCALE);
+	uclamp_max_fits = !uclamp_max_fits && (uclamp_max <= capacity_orig);
+	fit = fit || uclamp_max_fits;
+
+	/* Change fit status from 1 to -1 only if uclamp min raise util. */
+	uclamp_min = min(uclamp_min, uclamp_max);
+	if (fit && (util < uclamp_min) && (uclamp_min > capacity_orig_thermal))
+		fit = -1;
+
+	return fit;
+
 }
-#endif
+#endif /* CONFIG_MTK_SCHED_UPDOWN_MIGRATE */
 
 /*default value: gear_start = -1, num_gear = -1, reverse = 0 */
 static inline bool gear_hints_unset(struct task_gear_hints *ghts)
@@ -1823,6 +1873,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_fbc_mask);
 	unsigned long target_cap = 0;
 	unsigned long cpu_cap, cpu_util, cpu_util_without_p;
+	unsigned long cpu_util_without_uclamp, rq_uclamp_max, rq_uclamp_min;
 	bool not_in_softmask;
 	struct cpuidle_state *idle;
 	long sys_max_spare_cap = LONG_MIN, idle_max_spare_cap = LONG_MIN;
@@ -1856,6 +1907,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 
 	/* find best candidate */
 	for (cluster = 0; cluster < num_sched_clusters; cluster++) {
+		int fit;
 		unsigned int uint_cpu;
 		long spare_cap, spare_cap_without_p, pd_max_spare_cap = LONG_MIN;
 		long pd_max_spare_cap_ls_idle = LONG_MIN;
@@ -1907,6 +1959,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 			}
 
 			cpu_util = mtk_cpu_util_next(cpu, p, cpu, 0);
+			cpu_util_without_uclamp = cpu_util;
 			cpu_util_without_p = mtk_cpu_util_next(cpu, p, -1, 0);
 			cpu_cap = capacity_of(cpu);
 			spare_cap = cpu_cap;
@@ -1953,7 +2006,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 			/* record pre-clamping cpu_util */
 			cpu_utils[uint_cpu] = cpu_util;
 			cpu_util = mtk_uclamp_rq_util_with(cpu_rq(cpu), cpu_util, p,
-							min_cap, max_cap);
+							min_cap, max_cap, &rq_uclamp_min, &rq_uclamp_max, true);
 
 			if (trace_sched_util_fits_cpu_enabled())
 				trace_sched_util_fits_cpu(cpu, cpu_utils[uint_cpu], cpu_util, cpu_cap,
@@ -1962,7 +2015,8 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 			/* replace with post-clamping cpu_util */
 			cpu_utils[uint_cpu] = cpu_util;
 
-			if (!util_fits_capacity(cpu_util, cpu_cap, cpu))
+			fit = util_fits_capacity(cpu_util_without_uclamp, rq_uclamp_min, rq_uclamp_max, cpu_cap, cpu);
+			if (!fit)
 				continue;
 
 			/*

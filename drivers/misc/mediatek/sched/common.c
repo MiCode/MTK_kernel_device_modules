@@ -61,7 +61,9 @@ int dequeue_idle_cpu(int cpu)
 __always_inline
 unsigned long mtk_uclamp_rq_util_with(struct rq *rq, unsigned long util,
 				  struct task_struct *p,
-				  unsigned long min_cap, unsigned long max_cap)
+				  unsigned long min_cap, unsigned long max_cap,
+				  unsigned long *__min_util, unsigned long *__max_util,
+				  bool record_uclamp)
 {
 	unsigned long min_util;
 	unsigned long max_util;
@@ -79,6 +81,11 @@ unsigned long mtk_uclamp_rq_util_with(struct rq *rq, unsigned long util,
 #else
 		max_util = max(max_util, max_cap);
 #endif
+	}
+
+	if (record_uclamp) {
+		*__min_util = min_util;
+		*__max_util = max_util;
 	}
 
 	/*

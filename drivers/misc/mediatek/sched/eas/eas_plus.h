@@ -167,6 +167,10 @@ extern unsigned long cpu_cap_ceiling(int cpu);
 extern void mtk_pelt_rt_tp(void *data, struct rq *rq);
 extern void mtk_sched_switch(void *data, struct task_struct *prev,
 		struct task_struct *next, struct rq *rq);
+extern void mtk_update_misfit_status(void *data, struct task_struct *p, struct rq *rq, bool *need_update);
+extern inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
+	unsigned long uclamp_max, unsigned long capacity, int cpu);
+extern unsigned long task_h_load(struct task_struct *p);
 
 extern void set_wake_sync(unsigned int sync);
 extern unsigned int get_wake_sync(void);

@@ -1019,6 +1019,10 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register mtk_sched_switch hooks failed, returned %d\n", ret);
 
+	ret = register_trace_android_rvh_update_misfit_status(mtk_update_misfit_status, NULL);
+	if (ret)
+		pr_info("register mtk_update_misfit_status hooks failed, returned %d\n", ret);
+
 #if IS_ENABLED(CONFIG_MTK_NEWIDLE_BALANCE)
 	ret = register_trace_android_rvh_sched_newidle_balance(
 			mtk_sched_newidle_balance, NULL);
