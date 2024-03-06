@@ -25,6 +25,7 @@ struct mtk_disp_ovl_exdma_data {
 	const struct exdma_compress_info *compr_info;
 	bool support_shadow;
 	bool need_bypass_shadow;
+	bool skip_larb_con;
 	/* golden setting */
 	unsigned int preultra_th_dc;
 	unsigned int fifo_size;

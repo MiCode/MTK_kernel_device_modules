@@ -1750,6 +1750,11 @@ void mtk_ddp_comp_iommu_enable(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 		return;
 	}
 
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
+		DDPINFO("%x no need SMI_LARB_NON_SEC_CON\n", priv->data->mmsys_id);
+		return;
+	}
+
 	index = 0;
 	while (1) {
 		ret =
