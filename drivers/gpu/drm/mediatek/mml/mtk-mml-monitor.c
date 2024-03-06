@@ -30,16 +30,8 @@ static u32 monitor_cnt;
 static u32 monitor_interval = INIT_INTERVAL;
 module_param(monitor_interval, int, 0644);
 
-/* Store info of mml comp when probe */
-struct mml_comp_with_status {
-	u32 status;
-	struct mml_comp *comp;
-	struct mutex comp_mutex;
-};
-static struct mml_comp_with_status mml_swpm_comp[SWPM_NEEDED_MOUDLE_CNT];
-
 /* Store status that will update to swpm */
-static u32 mml_freq, mml_freq_old, mml_pq, mml_pq_old;
+static u32 mml_freq, mml_pq, cg_con0, cg_con1;
 
 /* Function pointer assigned by swpm */
 static struct mml_swpm_func swpm_funcs;
@@ -49,30 +41,6 @@ struct mml_swpm_func *mml_get_swpm_func(void)
 	return &swpm_funcs;
 }
 EXPORT_SYMBOL(mml_get_swpm_func);
-
-/* Called when sys and wrot probe */
-void mml_init_swpm_comp(u32 idx, struct mml_comp *comp)
-{
-	if (idx < SWPM_NEEDED_MOUDLE_CNT) {
-		mml_swpm_comp[idx].comp = comp;
-		mutex_init(&mml_swpm_comp[idx].comp_mutex);
-	} else
-		mml_err("[MonitorThread] wrong idx: %d", idx);
-}
-
-/* Called when comp clk enable/disable */
-void mml_update_comp_status(u32 idx, u32 status)
-{
-	if (!mml_monitor_enable || !mml_get_swpm_func()->set_func)
-		return;
-
-	if (idx < SWPM_NEEDED_MOUDLE_CNT) {
-		mutex_lock(&mml_swpm_comp[idx].comp_mutex);
-		mml_swpm_comp[idx].status = status;
-		mutex_unlock(&mml_swpm_comp[idx].comp_mutex);
-	} else
-		mml_err("[MonitorThread] wrong idx: %d", idx);
-}
 
 /* Called when freq change */
 void mml_update_freq_status(u32 freq)
@@ -104,8 +72,36 @@ void mml_update_pq_status(const void *pq)
 	pq_cfg |= pq_config->en_dre << 7;
 	pq_cfg |= pq_config->en_region_pq << 8;
 	pq_cfg |= pq_config->en_fg << 9;
+	pq_cfg |= pq_config->en_c3d << 10;
 
 	mml_pq = pq_cfg;
+}
+
+/* Called when mml change */
+void mml_update_status_to_tppa(const struct mml_frame_info *info)
+{
+	u32 cg0 = 0;
+	u32 cg1 = 0;
+	const struct mml_frame_dest *dest0 = &(info->dest[0]);
+	const struct mml_frame_dest *dest1 = &(info->dest[1]);
+
+	if (dest0->crop.r.width != dest0->compose.width ||
+			dest0->crop.r.height != dest0->compose.height) {
+		cg0 |= (1 << 7);  // RSZ0
+		cg0 |= (1 << 10); // WROT0
+	}
+	if (dest1->crop.r.width != dest1->compose.width ||
+			dest1->crop.r.height != dest1->compose.height) {
+		cg0 |= (1 << 24);  // RSZ2
+		cg0 |= (1 << 25);  // WROT2
+	}
+	if (info->mode == MML_MODE_DIRECT_LINK)
+		cg1 |= (1 << 8);  // RROT0
+	else if (info->mode == MML_MODE_MML_DECOUPLE)
+		cg0 |= (1 << 3);  // RDMA0
+
+	cg_con0 = cg0;
+	cg_con1 = cg1;
 }
 
 /* Monitor */
@@ -115,15 +111,13 @@ static int create_monitor(void *arg)
 	while (!kthread_should_stop()) {
 		/* Update status here */
 		/* freq*/
-		if (mml_freq_old != mml_freq) {
-			mml_get_swpm_func()->update_freq(mml_freq);
-			mml_freq_old = mml_freq;
-		}
+		mml_get_swpm_func()->update_freq(mml_freq);
+
 		/* pq*/
-		if (mml_pq_old != mml_pq) {
-			mml_get_swpm_func()->update_pq(mml_pq);
-			mml_pq_old = mml_pq;
-		}
+		mml_get_swpm_func()->update_pq(mml_pq);
+
+		/* mml*/
+		mml_get_swpm_func()->update_cg(cg_con0, cg_con1);
 
 		/* Sleep 100us then take status again */
 		usleep_range(monitor_interval, monitor_interval + INIT_INTERVAL_BIAS);

@@ -2448,14 +2448,12 @@ static void wrot_task_done(struct mml_comp *comp, struct mml_task *task,
 static s32 mml_wrot_comp_clk_enable(struct mml_comp *comp)
 {
 	int ret;
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 
 	/* original clk enable */
 	ret = mml_comp_clk_enable(comp);
 	if (ret < 0)
 		return ret;
 
-	mml_update_comp_status(mml_mon_wrot + wrot->idx, 1);
 	mml_mmp(clk_enable, MMPROFILE_FLAG_PULSE, comp->id, 0);
 
 	return 0;
@@ -2465,9 +2463,6 @@ static s32 mml_wrot_comp_clk_disable(struct mml_comp *comp,
 				     bool dpc)
 {
 	int ret;
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
-
-	mml_update_comp_status(mml_mon_wrot + wrot->idx, 0);
 
 	/* original clk enable */
 	ret = mml_comp_clk_disable(comp, dpc);
@@ -2823,7 +2818,6 @@ static int probe(struct platform_device *pdev)
 		priv->event_bufb,
 		priv->event_buf_next);
 
-	mml_init_swpm_comp(mml_mon_wrot + priv->idx, &priv->comp);
 
 	return ret;
 }

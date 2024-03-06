@@ -1198,7 +1198,6 @@ static s32 mml_sys_comp_clk_enable(struct mml_comp *comp)
 	if (ret < 0)
 		return ret;
 
-	mml_update_comp_status(mml_mon_mmlsys, 1);
 	mml_mmp(clk_enable, MMPROFILE_FLAG_PULSE, comp->id, 0);
 
 	return 0;
@@ -1209,7 +1208,6 @@ static s32 mml_sys_comp_clk_disable(struct mml_comp *comp,
 {
 	int ret;
 
-	mml_update_comp_status(mml_mon_mmlsys, 0);
 
 	/* original clk enable */
 	ret = mml_comp_clk_disable(comp, dpc);
@@ -1404,7 +1402,6 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 	comp->config_ops = &sys_config_ops;
 	comp->debug_ops = &sys_debug_ops;
 
-	mml_init_swpm_comp(mml_mon_mmlsys, comp);
 
 #ifndef MML_FPGA
 	comp->hw_ops = sys->data->hw_ops;

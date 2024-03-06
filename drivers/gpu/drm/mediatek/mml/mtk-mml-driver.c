@@ -101,6 +101,9 @@ module_param(mml_crc_err, int, 0644);
 int mml_crc_test;
 module_param(mml_crc_test, int, 0644);
 
+/* mml_freq, always update */
+int mml_freq_for_tppa;
+module_param(mml_freq_for_tppa, int, 0644);
 
 struct mml_dpc {
 	atomic_t task_cnt;
@@ -378,6 +381,9 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, u32 peak_bw, enum mml_sys
 	}
 	i = min(i, sysqos->opp_cnt - 1);
 	volt = sysqos->opp_volts[i];
+
+	if (mml_freq_for_tppa)
+		mml_update_freq_status(sysqos->opp_speeds[i]);
 
 	if (sysqos->current_volt == volt)	/* skip for better performance */
 		goto done;
