@@ -174,6 +174,20 @@ bootargs_ext = "";
 			};
 		};
 	};
+	panel5@4 {
+		compatible = "jdi,nt36672e,cphy,vdo";
+		reg = <4>;
+		pm-enable-gpios = <&pio 174 0>;
+		reset-gpios = <&pio 90 0>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel_in5: endpoint {
+				remote-endpoint = <&dsi_out5>;
+			};
+		};
+	};
+
 	ports {
 		port {
 			dsi_out: endpoint@0 {
@@ -190,6 +204,10 @@ bootargs_ext = "";
 
 			dsi_out4: endpoint@3 {
 				remote-endpoint = <&panel_in4>;
+			};
+
+			dsi_out5: endpoint@4 {
+				remote-endpoint = <&panel_in5>;
 			};
 		};
 	};
@@ -322,32 +340,6 @@ bootargs_ext = "";
 	status = "disabled";
 };
 
-&dsi0 {
-	status = "okay";
-	#address-cells = <1>;
-	#size-cells = <0>;
-	panel1@0 {
-		compatible = "truly,nt35595,cmd";
-		reg = <0>;
-		//pm-enable-gpios = <&pio 163 0>;
-		//reset-gpios = <&pio 97 0>;
-		//gate-ic = <4831>;
-		//pinctrl-names = "default";
-		port {
-			panel_in1: endpoint {
-				remote-endpoint = <&dsi_out>;
-			};
-		};
-	};
-	ports {
-		port {
-			dsi_out: endpoint {
-				remote-endpoint = <&panel_in1>;
-			};
-		};
-	};
-};
-
 &pio {
 	mtkfb_pins_lcd_bias_enp1: lcd_bias_enp1_gpio {
 		pins_cmd_dat {
@@ -469,82 +461,6 @@ bootargs_ext = "";
 	};
 };
 
-&dsi0 {
-	status = "okay";
-	#address-cells = <1>;
-	#size-cells = <0>;
-	panel1@0 {
-		compatible = "jdi,nt36672e,vdo,120hz";
-		reg = <0>;
-		pm-enable-gpios = <&pio 68 0>;
-		reset-gpios = <&pio 86 0>;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel_in1: endpoint {
-				remote-endpoint = <&dsi_out>;
-			};
-		};
-	};
-	panel2@1 {
-		compatible = "truly,td4330,cmd";
-		reg = <1>;
-		pm-enable-gpios = <&pio 68 0>;
-		reset-gpios = <&pio 86 0>;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel_in2: endpoint {
-				remote-endpoint = <&dsi_out2>;
-			};
-		};
-	};
-	panel3@2 {
-		compatible = "tianma,nt36672e,vdo,120hz";
-		reg = <2>;
-		pm-enable-gpios = <&pio 68 0>;
-		reset-gpios = <&pio 86 0>;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel_in3: endpoint {
-				remote-endpoint = <&dsi_out3>;
-			};
-		};
-	};
-	panel4@3 {
-		compatible = "nt37801,cmd,fhd";
-		reg = <3>;
-		pm-enable-gpios = <&pio 68 0>;
-		reset-gpios = <&pio 86 0>;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel_in4: endpoint {
-				remote-endpoint = <&dsi_out4>;
-			};
-		};
-	};
-	ports {
-		port {
-			dsi_out: endpoint {
-				remote-endpoint = <&panel_in1>;
-			};
-
-			dsi_out2: endpoint2 {
-				remote-endpoint = <&panel_in2>;
-			};
-
-			dsi_out3: endpoint3 {
-				remote-endpoint = <&panel_in3>;
-			};
-
-			dsi_out4: endpoint4 {
-				remote-endpoint = <&panel_in4>;
-			};
-		};
-	};
-};
 #if 0
 /* no need set here, 6686 will control elna automatically */
 /* GPS GPIO standardization start */
