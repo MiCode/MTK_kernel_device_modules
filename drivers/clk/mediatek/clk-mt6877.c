@@ -2347,6 +2347,7 @@ int clk_mt6877_pll_registration(enum subsys_id id,
 
 	return r;
 }
+EXPORT_SYMBOL_GPL(clk_mt6877_pll_registration);
 
 static int clk_mt6877_apmixed_probe(struct platform_device *pdev)
 {
