@@ -120,7 +120,7 @@ int xhci_halt(struct xhci_hcd *xhci)
 {
 	int ret;
 
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init, "// Halt the HC");
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_, "// Halt the HC");
 	xhci_quiesce(xhci);
 
 	ret = xhci_handshake(&xhci->op_regs->status,
@@ -146,7 +146,7 @@ int xhci_start(struct xhci_hcd *xhci)
 
 	temp = readl(&xhci->op_regs->command);
 	temp |= (CMD_RUN);
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init, "// Turn on HC, cmd = 0x%x.",
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_, "// Turn on HC, cmd = 0x%x.",
 			temp);
 	writel(temp, &xhci->op_regs->command);
 
@@ -194,7 +194,7 @@ int xhci_reset(struct xhci_hcd *xhci, u64 timeout_us)
 		return 0;
 	}
 
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init, "// Reset the HC");
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_, "// Reset the HC");
 	command = readl(&xhci->op_regs->command);
 	command |= CMD_RESET;
 	writel(command, &xhci->op_regs->command);
@@ -216,7 +216,7 @@ int xhci_reset(struct xhci_hcd *xhci, u64 timeout_us)
 	if (xhci->quirks & XHCI_ASMEDIA_MODIFY_FLOWCONTROL)
 		usb_asmedia_modifyflowcontrol(to_pci_dev(xhci_to_hcd(xhci)->self.controller));
 
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			 "Wait for controller to be ready for doorbell rings");
 	/*
 	 * xHCI cannot write to any doorbells or operational registers other
@@ -331,79 +331,6 @@ static int xhci_disable_interrupter(struct xhci_interrupter *ir)
 }
 
 #ifdef CONFIG_USB_PCI
-/*
- * Set up MSI
- */
-static int xhci_setup_msi(struct xhci_hcd *xhci)
-{
-	int ret;
-	/*
-	 * TODO:Check with MSI Soc for sysdev
-	 */
-	struct pci_dev  *pdev = to_pci_dev(xhci_to_hcd(xhci)->self.controller);
-
-	ret = pci_alloc_irq_vectors(pdev, 1, 1, PCI_IRQ_MSI);
-	if (ret < 0) {
-		xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
-				"failed to allocate MSI entry");
-		return ret;
-	}
-
-	ret = request_irq(pdev->irq, xhci_msi_irq,
-				0, "xhci_hcd", xhci_to_hcd(xhci));
-	if (ret) {
-		xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
-				"disable MSI interrupt");
-		pci_free_irq_vectors(pdev);
-	}
-
-	return ret;
-}
-
-/*
- * Set up MSI-X
- */
-static int xhci_setup_msix(struct xhci_hcd *xhci)
-{
-	int i, ret;
-	struct usb_hcd *hcd = xhci_to_hcd(xhci);
-	struct pci_dev *pdev = to_pci_dev(hcd->self.controller);
-
-	/*
-	 * calculate number of msi-x vectors supported.
-	 * - HCS_MAX_INTRS: the max number of interrupts the host can handle,
-	 *   with max number of interrupters based on the xhci HCSPARAMS1.
-	 * - num_online_cpus: maximum msi-x vectors per CPUs core.
-	 *   Add additional 1 vector to ensure always available interrupt.
-	 */
-	xhci->msix_count = min(num_online_cpus() + 1,
-				HCS_MAX_INTRS(xhci->hcs_params1));
-
-	ret = pci_alloc_irq_vectors(pdev, xhci->msix_count, xhci->msix_count,
-			PCI_IRQ_MSIX);
-	if (ret < 0) {
-		xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
-				"Failed to enable MSI-X");
-		return ret;
-	}
-
-	for (i = 0; i < xhci->msix_count; i++) {
-		ret = request_irq(pci_irq_vector(pdev, i), xhci_msi_irq, 0,
-				"xhci_hcd", xhci_to_hcd(xhci));
-		if (ret)
-			goto disable_msix;
-	}
-
-	hcd->msix_enabled = 1;
-	return ret;
-
-disable_msix:
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init, "disable MSI-X interrupt");
-	while (--i >= 0)
-		free_irq(pci_irq_vector(pdev, i), xhci_to_hcd(xhci));
-	pci_free_irq_vectors(pdev);
-	return ret;
-}
 
 /* Free any IRQs and disable MSI-X */
 static void xhci_cleanup_msix(struct xhci_hcd *xhci)
@@ -444,69 +371,7 @@ static void __maybe_unused xhci_msix_sync_irqs(struct xhci_hcd *xhci)
 	}
 }
 
-int xhci_try_enable_msi_(struct usb_hcd *hcd)
-{
-	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
-	struct pci_dev  *pdev;
-	int ret;
-
-	/* The xhci platform device has set up IRQs through usb_add_hcd. */
-	if (xhci->quirks & XHCI_PLAT)
-		return 0;
-
-	pdev = to_pci_dev(xhci_to_hcd(xhci)->self.controller);
-	/*
-	 * Some Fresco Logic host controllers advertise MSI, but fail to
-	 * generate interrupts.  Don't even try to enable MSI.
-	 */
-	if (xhci->quirks & XHCI_BROKEN_MSI)
-		goto legacy_irq;
-
-	/* unregister the legacy interrupt */
-	if (hcd->irq)
-		free_irq(hcd->irq, hcd);
-	hcd->irq = 0;
-
-	ret = xhci_setup_msix(xhci);
-	if (ret)
-		/* fall back to msi*/
-		ret = xhci_setup_msi(xhci);
-
-	if (!ret) {
-		hcd->msi_enabled = 1;
-		return 0;
-	}
-
-	if (!pdev->irq) {
-		xhci_err(xhci, "No msi-x/msi found and no IRQ in BIOS\n");
-		return -EINVAL;
-	}
-
- legacy_irq:
-	if (!strlen(hcd->irq_descr))
-		snprintf(hcd->irq_descr, sizeof(hcd->irq_descr), "%s:usb%d",
-			 hcd->driver->description, hcd->self.busnum);
-
-	/* fall back to legacy interrupt*/
-	ret = request_irq(pdev->irq, &usb_hcd_irq, IRQF_SHARED,
-			hcd->irq_descr, hcd);
-	if (ret) {
-		xhci_err(xhci, "request interrupt %d failed\n",
-				pdev->irq);
-		return ret;
-	}
-	hcd->irq = pdev->irq;
-	return 0;
-}
-EXPORT_SYMBOL_GPL(xhci_try_enable_msi);
-
 #else
-
-static inline int xhci_try_enable_msi(struct usb_hcd *hcd)
-{
-	return 0;
-}
-
 static inline void xhci_cleanup_msix(struct xhci_hcd *xhci)
 {
 }
@@ -625,18 +490,18 @@ static int xhci_init(struct usb_hcd *hcd)
 	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
 	int retval;
 
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init, "xhci_init");
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_, "xhci_init");
 	spin_lock_init(&xhci->lock);
 	if (xhci->hci_version == 0x95 && link_quirk) {
 		xhci_dbg_trace_(xhci, trace_xhci_dbg_quirks_,
 				"QUIRK: Not clearing Link TRB chain bits.");
 		xhci->quirks |= XHCI_LINK_TRB_QUIRK;
 	} else {
-		xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+		xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 				"xHCI doesn't need link TRB QUIRK");
 	}
 	retval = xhci_mem_init(xhci, GFP_KERNEL);
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init, "Finished xhci init");
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_, "Finished xhci init");
 
 	/* Initializing Compliance Mode Recovery Data If Needed */
 	if (xhci_compliance_mode_recovery_timer_quirk_check()) {
@@ -662,12 +527,12 @@ static int xhci_run_finished(struct xhci_hcd *xhci)
 	 */
 	spin_lock_irqsave(&xhci->lock, flags);
 
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init, "Enable interrupts");
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_, "Enable interrupts");
 	temp = readl(&xhci->op_regs->command);
 	temp |= (CMD_EIE);
 	writel(temp, &xhci->op_regs->command);
 
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init, "Enable primary interrupter");
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_, "Enable primary interrupter");
 	xhci_enable_interrupter(ir);
 
 	if (xhci_start(xhci)) {
@@ -713,14 +578,14 @@ int xhci_run_(struct usb_hcd *hcd)
 	if (!usb_hcd_is_primary_hcd(hcd))
 		return xhci_run_finished(xhci);
 
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init, "xhci_run");
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_, "xhci_run");
 
 	temp_64 = xhci_read_64(xhci, &ir->ir_set->erst_dequeue);
 	temp_64 &= ~ERST_PTR_MASK;
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"ERST deq = 64'h%0lx", (long unsigned int) temp_64);
 
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"// Set the interrupt modulation register");
 	temp = readl(&ir->ir_set->irq_control);
 	temp &= ~ER_IRQ_INTERVAL_MASK;
@@ -739,7 +604,7 @@ int xhci_run_(struct usb_hcd *hcd)
 		if (ret)
 			xhci_free_command_(xhci, command);
 	}
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"Finished %s for main hcd", __func__);
 
 	set_bit(HCD_FLAG_DEFER_RH_REGISTER, &hcd->flags);
@@ -803,16 +668,16 @@ static void xhci_stop(struct usb_hcd *hcd)
 	if (xhci->quirks & XHCI_AMD_PLL_FIX)
 		usb_amd_dev_put();
 
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"// Disabling event ring interrupts");
 	temp = readl(&xhci->op_regs->status);
 	writel((temp & ~0x1fff) | STS_EINT, &xhci->op_regs->status);
 	xhci_disable_interrupter(ir);
 
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init, "cleaning up memory");
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_, "cleaning up memory");
 	xhci_mem_cleanup(xhci);
 	xhci_debugfs_exit(xhci);
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"xhci_stop completed - status = %x",
 			readl(&xhci->op_regs->status));
 	mutex_unlock(&xhci->mutex);
@@ -860,7 +725,7 @@ void xhci_shutdown_(struct usb_hcd *hcd)
 
 	xhci_cleanup_msix(xhci);
 
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"xhci_shutdown completed - status = %x",
 			readl(&xhci->op_regs->status));
 }
@@ -912,7 +777,7 @@ static void xhci_set_cmd_ring_deq(struct xhci_hcd *xhci)
 				      xhci->cmd_ring->dequeue) &
 		 (u64) ~CMD_RING_RSVD_BITS) |
 		xhci->cmd_ring->cycle_state;
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"// Setting command ring address to 0x%llx",
 			(long unsigned long) val_64);
 	xhci_write_64(xhci, val_64, &xhci->op_regs->cmd_ring);

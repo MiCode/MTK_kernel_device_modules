@@ -61,7 +61,7 @@ DEFINE_EVENT(xhci_log_msg, xhci_dbg_cancel_urb,
 	TP_ARGS(vaf)
 );
 
-DEFINE_EVENT(xhci_log_msg, xhci_dbg_init,
+DEFINE_EVENT(xhci_log_msg, xhci_dbg_init_,
 	TP_PROTO(struct va_format *vaf),
 	TP_ARGS(vaf)
 );

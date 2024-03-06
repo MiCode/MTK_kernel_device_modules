@@ -1724,7 +1724,7 @@ static int scratchpad_alloc(struct xhci_hcd *xhci, gfp_t flags)
 	struct device *dev = xhci_to_hcd(xhci)->self.sysdev;
 	int num_sp = HCS_MAX_SCRATCHPAD(xhci->hcs_params2);
 
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"Allocating %d scratchpad buffers", num_sp);
 
 	if (!num_sp)
@@ -1963,12 +1963,12 @@ void xhci_mem_cleanup(struct xhci_hcd *xhci)
 
 	xhci_free_interrupter_(xhci, xhci->interrupter);
 	xhci->interrupter = NULL;
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init, "Freed primary event ring");
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_, "Freed primary event ring");
 
 	if (xhci->cmd_ring)
 		xhci_ring_free_(xhci, xhci->cmd_ring);
 	xhci->cmd_ring = NULL;
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init, "Freed command ring");
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_, "Freed command ring");
 	xhci_cleanup_command_queue(xhci);
 
 	num_ports = HCS_MAX_PORTS(xhci->hcs_params1);
@@ -1986,20 +1986,20 @@ void xhci_mem_cleanup(struct xhci_hcd *xhci)
 
 	dma_pool_destroy(xhci->segment_pool);
 	xhci->segment_pool = NULL;
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init, "Freed segment pool");
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_, "Freed segment pool");
 
 	dma_pool_destroy(xhci->device_pool);
 	xhci->device_pool = NULL;
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init, "Freed device context pool");
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_, "Freed device context pool");
 
 	dma_pool_destroy(xhci->small_streams_pool);
 	xhci->small_streams_pool = NULL;
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"Freed small stream array pool");
 
 	dma_pool_destroy(xhci->medium_streams_pool);
 	xhci->medium_streams_pool = NULL;
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"Freed medium stream array pool");
 
 	if (xhci_vendor_is_usb_offload_enabled(xhci, NULL, 0)) {
@@ -2068,7 +2068,7 @@ static void xhci_set_hc_event_deq(struct xhci_hcd *xhci, struct xhci_interrupter
 	 * there might be more events to service.
 	 */
 	temp &= ~ERST_EHB;
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"// Write event ring dequeue pointer, preserving EHB bit");
 	xhci_write_64(xhci, ((u64) deq & (u64) ~ERST_PTR_MASK) | temp,
 			&ir->ir_set->erst_dequeue);
@@ -2121,7 +2121,7 @@ static void xhci_add_in_port(struct xhci_hcd *xhci, unsigned int num_ports,
 	temp = readl(addr + 2);
 	port_offset = XHCI_EXT_PORT_OFF(temp);
 	port_count = XHCI_EXT_PORT_COUNT(temp);
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 		       "Ext Cap %p, port offset = %u, count = %u, revision = 0x%x",
 		       addr, port_offset, port_count, major_revision);
 	/* Port count includes the current port offset */
@@ -2182,7 +2182,7 @@ static void xhci_add_in_port(struct xhci_hcd *xhci, unsigned int num_ports,
 
 	if ((xhci->hci_version >= 0x100) && (major_revision != 0x03) &&
 		 (temp & XHCI_HLC)) {
-		xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+		xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			       "xHCI 1.0: support USB2 hardware lpm");
 		xhci->hw_lpm_support = 1;
 	}
@@ -2322,7 +2322,7 @@ static int xhci_setup_port_arrays(struct xhci_hcd *xhci, gfp_t flags)
 		xhci_warn(xhci, "No ports on the roothubs?\n");
 		return -ENODEV;
 	}
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 		       "Found %u USB 2.0 ports and %u USB 3.0 ports.",
 		       xhci->usb2_rhub.num_ports, xhci->usb3_rhub.num_ports);
 
@@ -2330,13 +2330,13 @@ static int xhci_setup_port_arrays(struct xhci_hcd *xhci, gfp_t flags)
 	 * descriptors aren't longer than the USB core will allocate.
 	 */
 	if (xhci->usb3_rhub.num_ports > USB_SS_MAXPORTS) {
-		xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+		xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 				"Limiting USB 3.0 roothub ports to %u.",
 				USB_SS_MAXPORTS);
 		xhci->usb3_rhub.num_ports = USB_SS_MAXPORTS;
 	}
 	if (xhci->usb2_rhub.num_ports > USB_MAXCHILDREN) {
-		xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+		xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 				"Limiting USB 2.0 roothub ports to %u.",
 				USB_MAXCHILDREN);
 		xhci->usb2_rhub.num_ports = USB_MAXCHILDREN;
@@ -2432,18 +2432,18 @@ int xhci_mem_init(struct xhci_hcd *xhci, gfp_t flags)
 	init_completion(&xhci->cmd_ring_stop_completion);
 
 	page_size = readl(&xhci->op_regs->page_size);
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"Supported page size register = 0x%x", page_size);
 	i = ffs(page_size);
 	if (i < 16)
-		xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+		xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"Supported page size of %iK", (1 << (i+12)) / 1024);
 	else
 		xhci_warn(xhci, "WARN: no supported page size\n");
 	/* Use 4K pages, since that's common and the minimum the HC supports */
 	xhci->page_shift = 12;
 	xhci->page_size = 1 << xhci->page_shift;
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"HCD page size set to %iK", xhci->page_size / 1024);
 
 	/*
@@ -2451,11 +2451,11 @@ int xhci_mem_init(struct xhci_hcd *xhci, gfp_t flags)
 	 * register with the max value of slots the HC can handle.
 	 */
 	val = HCS_MAX_SLOTS(readl(&xhci->cap_regs->hcs_params1));
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"// xHC can handle at most %d device slots.", val);
 	val2 = readl(&xhci->op_regs->config_reg);
 	val |= (val2 & ~HCS_SLOTS_MASK);
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"// Setting Max device slots reg = 0x%x.", val);
 	writel(val, &xhci->op_regs->config_reg);
 
@@ -2474,7 +2474,7 @@ int xhci_mem_init(struct xhci_hcd *xhci, gfp_t flags)
 			goto fail;
 		xhci->dcbaa->dma = dma;
 	}
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"// Device context base array address = 0x%pad (DMA), %p (virt)",
 			&xhci->dcbaa->dma, xhci->dcbaa);
 	xhci_write_64(xhci, xhci->dcbaa->dma, &xhci->op_regs->dcbaa_ptr);
@@ -2515,9 +2515,9 @@ int xhci_mem_init(struct xhci_hcd *xhci, gfp_t flags)
 	xhci->cmd_ring = xhci_ring_alloc_(xhci, 1, 1, TYPE_COMMAND, 0, flags);
 	if (!xhci->cmd_ring)
 		goto fail;
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"Allocated command ring at %p", xhci->cmd_ring);
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init, "First segment DMA is 0x%pad",
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_, "First segment DMA is 0x%pad",
 			&xhci->cmd_ring->first_seg->dma);
 
 	/* Set the address in the Command Ring Control register */
@@ -2525,7 +2525,7 @@ int xhci_mem_init(struct xhci_hcd *xhci, gfp_t flags)
 	val_64 = (val_64 & (u64) CMD_RING_RSVD_BITS) |
 		(xhci->cmd_ring->first_seg->dma & (u64) ~CMD_RING_RSVD_BITS) |
 		xhci->cmd_ring->cycle_state;
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 			"// Setting command ring address to 0x%016llx", val_64);
 	xhci_write_64(xhci, val_64, &xhci->op_regs->cmd_ring);
 
@@ -2537,13 +2537,13 @@ int xhci_mem_init(struct xhci_hcd *xhci, gfp_t flags)
 
 	val = readl(&xhci->cap_regs->db_off);
 	val &= DBOFF_MASK;
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 		       "// Doorbell array is located at offset 0x%x from cap regs base addr",
 		       val);
 	xhci->dba = (void __iomem *) xhci->cap_regs + val;
 	/* Set ir_set to interrupt register set 0 */
 	/* allocate and set up primary interrupter with an event ring. */
-	xhci_dbg_trace_(xhci, trace_xhci_dbg_init,
+	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_,
 		       "Allocating primary event ring");
 	xhci->interrupter = xhci_alloc_interrupter(xhci, 0, flags);
 	if (!xhci->interrupter)
