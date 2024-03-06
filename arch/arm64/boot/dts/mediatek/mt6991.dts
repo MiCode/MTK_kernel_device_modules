@@ -14010,6 +14010,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<0x1c001818 0x4>;
 
 		scp-infracfg = <&infracfg_ao_clk>;
+		/* awake timeout count plt setting */
+		awake-timeout = <30000>; /* 300 ms */
 	};
 
 
