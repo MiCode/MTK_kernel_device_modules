@@ -863,10 +863,6 @@ void fpsgo_get_pid(int cmd, int *pid, int value1, int value2)
 		cur_ts = fpsgo_get_time();
 		*pid = (int)fpsgo_ctrl2base_get_app_self_ctrl_time(value1, cur_ts);
 		break;
-	case CAMERA_FPSGO_CONTROL:
-		value2 ? fpsgo_search_and_add_fps_control_pid(value1, 1) :
-				fpsgo_delete_fpsgo_control_pid(value1);
-		break;
 	default:
 		FPSGO_LOGE("[FPSGO_CTRL] wrong cmd:%d\n", cmd);
 		break;

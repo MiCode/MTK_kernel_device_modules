@@ -89,7 +89,6 @@ enum FPSGO_CAMERA_CMD {
 	CAMERA_DO_FRAME = 4,
 	CAMERA_APP_MIN_FPS = 5,
 	CAMERA_APP_SELF_CTRL = 7,
-	CAMERA_FPSGO_CONTROL = 8,
 };
 
 enum FPSGO_MASTER_TYPE {
@@ -417,6 +416,8 @@ struct render_info {
 	int buffer_quota;
 
 	struct mutex thr_mlock;
+
+	int bypass_closed_loop;
 
 	/* boost policy */
 	struct fpsgo_boost_attr attr;

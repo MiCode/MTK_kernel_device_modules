@@ -4471,6 +4471,8 @@ static int fbt_boost_policy(
 			fpsgo_set_last_target_t_fp(pid, buffer_id, t2);
 	}
 
+	if (thread_info->bypass_closed_loop)
+		t2 = target_time;
 	t2 = nsec_to_100usec_ull(t2);
 
 	getcap_ret = fbt_get_separatecap(separate_aa_final, filtered_aa_n, filtered_aa_b,
