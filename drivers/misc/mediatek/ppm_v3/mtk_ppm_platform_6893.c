@@ -29,20 +29,21 @@ EXPORT_SYMBOL(ppm_cpufreq_get_cur_volt_register);
 
 static unsigned int ppm_cpufreq_get_cur_volt_get(int i)
 {
-	if (!mt_cpufreq_get_cur_volt_cb) {
-		ppm_ver("ppm_cpufreq_get_cur_volt_cb not init\n");
+	if (!mt_cpufreq_get_cur_volt_cb)
 		return 0;
-	}
 	return mt_cpufreq_get_cur_volt_cb(i);
 }
 
 static int (*s_ppm_thermal_cpuL_temp_cb)(void);
 static int (*s_ppm_thermal_cpuB_temp_cb)(void);
+static int (*s_ppm_thermal_cpuBB_temp_cb)(void);
 void mt_ppm_thermal_get_cpu_cluster_temp_cb(
 	int (*ppm_thermal_cpuL_temp_cb)(void), int (*ppm_thermal_cpuB_temp_cb)(void))
 {
 	s_ppm_thermal_cpuL_temp_cb = ppm_thermal_cpuL_temp_cb;
 	s_ppm_thermal_cpuB_temp_cb = ppm_thermal_cpuB_temp_cb;
+	s_ppm_thermal_cpuBB_temp_cb = ppm_thermal_cpuB_temp_cb;
+	ppm_info("%s registered\n", __func__);
 }
 EXPORT_SYMBOL(mt_ppm_thermal_get_cpu_cluster_temp_cb);
 
@@ -152,14 +153,14 @@ static unsigned int ppm_get_cpu_temp(enum ppm_cluster cluster)
 	case PPM_CLUSTER_L:
 		if (s_ppm_thermal_cpuL_temp_cb)
 			temp = s_ppm_thermal_cpuL_temp_cb() / 1000;
-		else
-			pr_info("%s, s_ppm_thermal_cpuL_temp_cb not init!", __func__);
 		break;
 	case PPM_CLUSTER_B:
 		if (s_ppm_thermal_cpuB_temp_cb)
 			temp = s_ppm_thermal_cpuB_temp_cb() / 1000;
-		else
-			pr_info("%s, s_ppm_thermal_cpuB_temp_cb not init!", __func__);
+		break;
+	case PPM_CLUSTER_BB:
+		if (s_ppm_thermal_cpuBB_temp_cb)
+			temp = s_ppm_thermal_cpuBB_temp_cb() / 1000;
 		break;
 	default:
 		ppm_err("@%s: invalid cluster id = %d\n", __func__, cluster);
@@ -196,7 +197,7 @@ int ppm_platform_init(void)
 			"ppm/cpuhp", ppm_cpu_up,
 			ppm_cpu_dead);
 
-#if IS_ENABLED(CONFIG_MTK_HPS_V3)
+#if IS_ENABLED(CONFIG_MTK_CPUHOTPLUG)
 	ppm_main_info.client_info[PPM_CLIENT_HOTPLUG].name = "HOTPLUG";
 	ppm_main_info.client_info[PPM_CLIENT_HOTPLUG].client = PPM_CLIENT_HOTPLUG;
 	ppm_main_info.client_info[PPM_CLIENT_HOTPLUG].limit_cb = get_cpuhop_ppm_callback();

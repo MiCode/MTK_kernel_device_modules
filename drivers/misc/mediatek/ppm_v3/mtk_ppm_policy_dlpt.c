@@ -12,6 +12,7 @@
 
 #include "mtk_ppm_internal.h"
 #include "mtk_ppm_platform.h"
+#include "mtk_pbm.h"
 
 
 
@@ -21,7 +22,6 @@ static unsigned int ppm_dlpt_pwr_budget_postprocess(
 	unsigned int budget, unsigned int pwr_idx);
 static void ppm_dlpt_update_limit_cb(void);
 static void ppm_dlpt_status_change_cb(bool enable);
-
 static unsigned int dlpt_percentage_to_real_power;
 
 /* other members will init by ppm_main */
@@ -34,10 +34,7 @@ static struct ppm_policy_data dlpt_policy = {
 	.status_change_cb	= ppm_dlpt_status_change_cb,
 };
 
-void __attribute__((weak)) kicker_pbm_by_cpu(
-	unsigned int loading, int core, int voltage)
-{
-}
+
 
 void mt_ppm_dlpt_kick_PBM(struct ppm_cluster_status *cluster_status,
 	unsigned int cluster_num)
@@ -73,10 +70,10 @@ void mt_ppm_dlpt_kick_PBM(struct ppm_cluster_status *cluster_status,
 #ifndef DISABLE_PBM_FEATURE
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 	/*aee_rr_rec_ppm_waiting_for_pbm(1);*/
-	kicker_pbm_by_cpu(budget, total_core, max_volt);
+	kicker_pbm_by_cpu(budget);
 	/*aee_rr_rec_ppm_waiting_for_pbm(0);*/
 #else
-	kicker_pbm_by_cpu(budget, total_core, max_volt);
+	kicker_pbm_by_cpu(budget);
 #endif
 #endif
 
