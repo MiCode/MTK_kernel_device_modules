@@ -59,8 +59,6 @@ struct mml_mutex {
 	u16 event_pipe1_mml;
 
 	struct mutex_module modules[MML_MAX_COMPONENTS];
-
-	u32 vlp_base;
 };
 
 static inline struct mml_mutex *comp_to_mutex(struct mml_comp *comp)
@@ -179,19 +177,12 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 
 			cmdq_pkt_set_event(pkt, mml_ir_get_mml_ready_event(cfg->mml));
 
-			if (cfg->dpc && mutex->vlp_base && (mml_dl_dpc & MML_DPC_MUTEX_VOTE)) {
+			if (cfg->dpc && (mml_dl_dpc & MML_DPC_MUTEX_VOTE)) {
 #ifndef MML_FPGA
-				cmdq_pkt_write(pkt, NULL, mutex->vlp_base + VLP_VOTE_CLR,
-					BIT(DISP_VIDLE_USER_MML_CMDQ), U32_MAX);
-				cmdq_pkt_write(pkt, NULL, mutex->vlp_base + VLP_VOTE_CLR,
-					BIT(DISP_VIDLE_USER_MML_CMDQ), U32_MAX);
-
+				mml_dpc_power_release_gce(comp->sysid, pkt);
 				cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(cfg->mml));
+				mml_dpc_power_keep_gce(comp->sysid, pkt);
 
-				cmdq_pkt_write(pkt, NULL, mutex->vlp_base + VLP_VOTE_SET,
-					BIT(DISP_VIDLE_USER_MML_CMDQ), U32_MAX);
-				cmdq_pkt_write(pkt, NULL, mutex->vlp_base + VLP_VOTE_SET,
-					BIT(DISP_VIDLE_USER_MML_CMDQ), U32_MAX);
 #endif
 			} else {
 				cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(cfg->mml));
@@ -569,10 +560,6 @@ static int probe(struct platform_device *pdev)
 		mml_log("dl event event_pipe0_mml %u", priv->event_pipe0_mml);
 	if (!of_property_read_u16(dev->of_node, "event-pipe1-mml", &priv->event_pipe1_mml))
 		mml_log("dl event event_pipe1_mml %u", priv->event_pipe1_mml);
-
-	of_property_read_u32(dev->of_node, "vlp-base", &priv->vlp_base);
-	if (priv->vlp_base)
-		mml_log("mutex support vlp base %#010x", priv->vlp_base);
 
 	ret = mml_ddp_comp_init(dev, &priv->ddp_comp, &priv->comp,
 				&ddp_comp_funcs);
