@@ -307,6 +307,9 @@ struct mtk_dpc {
 	u32 dt_follow_cfg;
 	u32 total_srt_unit;
 	u32 total_hrt_unit;
+	u32 srt_emi_efficiency;			/* total srt * srt_emi_efficiency / 100 */
+	u32 hrt_emi_efficiency;			/* total hrt * 100 / hrt_emi_efficiency */
+	u32 ch_bw_urate;			/* channel bw * 100 / ch_bw_urate */
 
 	void __iomem *vdisp_dvfsrc;
 	u32 vdisp_dvfsrc_idle_mask;
