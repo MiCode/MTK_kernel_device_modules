@@ -61,9 +61,6 @@ static int total_fstb_policy_cmd_num;
 static int fstb_max_dep_path_num = DEFAULT_MAX_DEP_PATH_NUM;
 static int fstb_max_dep_task_num = DEFAULT_MAX_DEP_TASK_NUM;
 static int gpu_slowdown_check;
-static int vsync_period;
-static unsigned int vsync_count;
-static unsigned long long vsync_duration_sum;
 static unsigned long long last_cam_queue_ts;
 
 int fstb_no_r_timer_enable;
@@ -603,7 +600,7 @@ static void fstb_post_process_target_fps(int tfps, int margin, int diff,
 {
 	int local_tfps, local_margin;
 	int min_limit = min_fps_limit * 1000;
-	int max_limit = min(dfps_ceiling * 1000, FSTB_USEC_DIVIDER * 1000 / vsync_period);
+	int max_limit = dfps_ceiling * 1000;
 	unsigned long long local_time = 1000000000000ULL;
 
 	local_tfps = tfps * 1000;
@@ -2104,11 +2101,6 @@ static void fstb_fps_stats(struct work_struct *work)
 		kfree(work);
 
 	mutex_lock(&fstb_lock);
-	if (vsync_count) {
-		vsync_period = div64_u64(vsync_duration_sum, vsync_count);
-		vsync_count = 0;
-		vsync_duration_sum = 0;
-	}
 
 	hlist_for_each_entry_safe(iter, n, &fstb_frame_infos, hlist) {
 		if (test_bit(ADPF_TYPE, &iter->master_type))
@@ -2132,8 +2124,6 @@ static void fstb_fps_stats(struct work_struct *work)
 
 			fpsgo_systrace_c_fstb_man(iter->pid, 0,
 					dfps_ceiling, "dfrc");
-			fpsgo_systrace_c_fstb_man(iter->pid, 0,
-					vsync_period, "vsync_period");
 			fpsgo_systrace_c_fstb(iter->pid, iter->bufid,
 				iter->target_fps, "fstb_target_fps1");
 			fpsgo_systrace_c_fstb(iter->pid, iter->bufid,
