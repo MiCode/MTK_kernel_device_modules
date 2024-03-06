@@ -5,8 +5,8 @@
 #ifndef __MTK_PD_CHK_H
 #define __MTK_PD_CHK_H
 
+#include <linux/pm_domain.h>
 #include "clkchk.h"
-
 #define PD_PWR_ON	1
 #define PD_PWR_OFF	0
 #define SWCG(_name) {						\
@@ -58,5 +58,5 @@ extern const struct dev_pm_ops pdchk_dev_pm_ops;
 extern struct clk *clk_chk_lookup(const char *name);
 extern int pwr_hw_is_on(enum PWR_STA_TYPE type, s32 mask);
 extern void pdchk_debug_dump(void);
-
+extern struct generic_pm_domain **pdchk_get_all_genpd(void);
 #endif /* __MTK_PD_CHK_H */

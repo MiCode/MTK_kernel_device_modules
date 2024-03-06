@@ -161,7 +161,7 @@ static bool pdchk_get_mtcmos_sw_state(struct generic_pm_domain *pd)
 	return pdchk_ops->get_mtcmos_sw_state(pd);
 }
 
-static bool __check_mtcmos_off(int *pd_id, bool dump_en)
+static bool __is_mtcmos_on(int *pd_id, bool dump_en)
 {
 	int valid = 0;
 
@@ -186,7 +186,7 @@ static bool __check_mtcmos_off(int *pd_id, bool dump_en)
 	return false;
 }
 
-static bool check_mtcmos_off(void)
+static bool is_mtcmos_on(void)
 {
 	int *pd_id;
 	int ret = 0;
@@ -196,14 +196,14 @@ static bool check_mtcmos_off(void)
 
 	pd_id = pdchk_ops->get_off_mtcmos_id();
 
-	ret = __check_mtcmos_off(pd_id, true);
+	ret = __is_mtcmos_on(pd_id, true);
 
 	if (pdchk_ops == NULL || pdchk_ops->get_notice_mtcmos_id == NULL)
 		goto OUT;
 
 	pd_id = pdchk_ops->get_notice_mtcmos_id();
 
-	__check_mtcmos_off(pd_id, false);
+	__is_mtcmos_on(pd_id, false);
 
 	if (ret)
 		return true;
@@ -250,7 +250,7 @@ EXPORT_SYMBOL(pdchk_dump_trace_evt);
 static int pdchk_dev_pm_suspend(struct device *dev)
 {
 	atomic_inc(&check_enabled);
-	if (check_mtcmos_off()) {
+	if (is_mtcmos_on()) {
 		if (!pdchk_is_retry_bug_on(false))
 			return -1;
 
@@ -550,6 +550,12 @@ void pdchk_common_init(const struct pdchk_ops *ops)
 	set_genpd_notify();
 }
 EXPORT_SYMBOL(pdchk_common_init);
+
+struct generic_pm_domain **pdchk_get_all_genpd(void)
+{
+	return pds;
+}
+EXPORT_SYMBOL(pdchk_get_all_genpd);
 
 static void pdchk_check_hwv_irq_sta(void)
 {

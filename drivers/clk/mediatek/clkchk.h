@@ -6,6 +6,9 @@
 #include <linux/pm_domain.h>
 #include <linux/regmap.h>
 
+#ifndef __MTK_CLK_CHK_H
+#define __MTK_CLK_CHK_H
+
 #define CLK_NULL		0
 #define PD_NULL		-1
 #define VCORE_NULL	-1
@@ -116,3 +119,4 @@ extern void pdchk_dump_trace_evt(void);
 extern const struct dev_pm_ops clk_chk_dev_pm_ops;
 extern void clkchk_external_dump(void);
 
+#endif /* __MTK_CLK_CHK_H */
