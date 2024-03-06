@@ -1590,6 +1590,18 @@ void mtk_vdec_queue_error_event(struct mtk_vcodec_ctx *ctx)
 	v4l2_event_queue_fh(&ctx->fh, &ev_error);
 }
 
+void mtk_vdec_queue_error_code_event(struct mtk_vcodec_ctx *ctx, unsigned int info)
+{
+	static struct v4l2_event ev_error = {
+		.type = V4L2_EVENT_MTK_VDEC_ERROR_INFO,
+	};
+
+	memcpy((void *)ev_error.u.data, &info, sizeof(info));
+
+	mtk_v4l2_err("[%d] error_code %d", ctx->id, info);
+	v4l2_event_queue_fh(&ctx->fh, &ev_error);
+}
+
 void mtk_vdec_error_handle(struct mtk_vcodec_ctx *ctx, char *debug_str)
 {
 	struct mtk_vcodec_dev *dev = ctx->dev;
@@ -2965,6 +2977,8 @@ static int vidioc_vdec_subscribe_evt(struct v4l2_fh *fh,
 	case V4L2_EVENT_MTK_VDEC_ERROR:
 		return v4l2_event_subscribe(fh, sub, 0, NULL);
 	case V4L2_EVENT_MTK_VDEC_NOHEADER:
+		return v4l2_event_subscribe(fh, sub, 0, NULL);
+	case V4L2_EVENT_MTK_VDEC_ERROR_INFO:
 		return v4l2_event_subscribe(fh, sub, 0, NULL);
 	default:
 		return v4l2_ctrl_subscribe_event(fh, sub);

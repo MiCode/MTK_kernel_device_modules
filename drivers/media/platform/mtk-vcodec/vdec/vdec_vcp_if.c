@@ -122,6 +122,15 @@ static void get_dvfs_data(struct mtk_vcodec_dev *dev, unsigned int need)
 	dev->vdec_dvfs_params.frame_need_update = need;
 }
 
+static void check_error_code(struct vdec_inst *inst, unsigned int hw_id)
+{
+	if (inst->vsi->dec.error_code[hw_id] == 0)
+		return;
+
+	mtk_vcodec_debug(inst, "hw_id %d get error_code %d", hw_id, inst->vsi->dec.error_code[hw_id]);
+	mtk_vdec_queue_error_code_event(inst->ctx, inst->vsi->dec.error_code[hw_id]);
+}
+
 static void vdec_get_fb_list(struct vdec_inst *inst,
 	struct ring_fb_list *src_list, struct ring_fb_list *dst_list, struct mutex *dst_list_lock)
 {
@@ -828,6 +837,7 @@ return_vdec_ipi_ack:
 			case VCU_IPIMSG_DEC_PUT_FRAME_BUFFER:
 				inst->put_frame_async = false;
 				vcodec_trace_begin("vdec_ipi(PUT_FRAME_BUFFER)");
+				check_error_code(inst, MTK_VDEC_CORE);
 				mtk_vdec_put_fb(vcu->ctx, PUT_BUFFER_CALLBACK, msg->data != 0);
 				msg->msg_id = AP_IPIMSG_DEC_PUT_FRAME_BUFFER_DONE;
 				vdec_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
@@ -836,6 +846,7 @@ return_vdec_ipi_ack:
 			case VCU_ASYNCIPIMSG_DEC_PUT_FRAME_BUFFER:
 				inst->put_frame_async = true;
 				vcodec_trace_begin("vdec_ipi(ASYNC_PUT_FRAME_BUFFER)");
+				check_error_code(inst, MTK_VDEC_CORE);
 				vdec_get_fb_list(inst,
 					&inst->vsi->list_disp, &inst->list_disp_fb, &inst->list_disp_fb_lock);
 				vdec_get_fb_list(inst,
@@ -1528,6 +1539,11 @@ static int vdec_vcp_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 	*src_chg = inst->vsi->dec.vdec_changed_info;
 	*(errormap_info + bs->index % VB2_MAX_FRAME) =
 		inst->vsi->dec.error_map;
+
+	if (inst->ctx->dev->vdec_hw_ipm == VCODEC_IPM_V2)
+		check_error_code(inst, MTK_VDEC_LAT);
+	if (!inst->vsi->output_async)
+		check_error_code(inst, MTK_VDEC_CORE);
 
 	if ((*src_chg & VDEC_NEED_SEQ_HEADER) != 0U)
 		mtk_vcodec_debug(inst, "- need first seq header -");

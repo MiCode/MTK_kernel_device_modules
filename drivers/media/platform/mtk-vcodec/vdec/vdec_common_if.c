@@ -81,6 +81,15 @@ static void get_dpb_size(struct vdec_inst *inst, unsigned int *dpb_sz)
 	mtk_vcodec_debug(inst, "sz=%d", *dpb_sz);
 }
 
+static void check_error_code(struct vdec_inst *inst, unsigned int hw_id)
+{
+	if (inst->vsi->dec.error_code[hw_id] == 0)
+		return;
+
+	mtk_vcodec_debug(inst, "hw_id %d get error_code %d", hw_id, inst->vsi->dec.error_code[hw_id]);
+	mtk_vdec_queue_error_code_event(inst->ctx, inst->vsi->dec.error_code[hw_id]);
+}
+
 static int vdec_init(struct mtk_vcodec_ctx *ctx, unsigned long *h_vdec)
 {
 	struct vdec_inst *inst = NULL;
@@ -276,6 +285,11 @@ static int vdec_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 	*src_chg = inst->vsi->dec.vdec_changed_info;
 	*(errormap_info + bs->index % VB2_MAX_FRAME) =
 		inst->vsi->dec.error_map;
+
+	if (inst->ctx->dev->vdec_hw_ipm == VCODEC_IPM_V2)
+		check_error_code(inst, MTK_VDEC_LAT);
+	if (!inst->vsi->output_async)
+		check_error_code(inst, MTK_VDEC_CORE);
 
 	if ((*src_chg & VDEC_NEED_SEQ_HEADER) != 0U)
 		mtk_vcodec_err(inst, "- need first seq header -");
