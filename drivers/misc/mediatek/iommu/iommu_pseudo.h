@@ -18,5 +18,6 @@ enum mtk_iommu_sec_id {
 int mtk_iommu_sec_init(int mtk_iommu_sec_id);
 bool is_disable_map_sec(void);
 int tmem_type2sec_id(enum TRUSTED_MEM_REQ_TYPE tmem);
+bool is_iommu_sec_on_mtee(void);
 
 #endif

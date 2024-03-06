@@ -3609,7 +3609,7 @@ static const struct mtk_iommu_plat_data mt6886_data_apu0 = {
 static const struct mtk_iommu_plat_data mt6893_data_iommu0 = {
 	.m4u_plat        = M4U_MT6893,
 	.flags           = NOT_STD_AXI_MODE | HAS_SUB_COMM | OUT_ORDER_WR_EN | WR_THROT_EN |
-			   HAS_BCLK | IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE,
+			   HAS_BCLK | IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE | IOMMU_SEC_EN,
 	/* not use larbid_remap */
 	.larbid_remap    = {{0}, {1}, {4, 5}, {7}, {2}, {9, 11, 19, 20},
 			    {0, 14, 16}, {0, 13, 18, 17}},
@@ -3624,8 +3624,8 @@ static const struct mtk_iommu_plat_data mt6893_data_iommu0 = {
 static const struct mtk_iommu_plat_data mt6893_data_iommu1 = {
 	.m4u_plat        = M4U_MT6893,
 	.flags           = NOT_STD_AXI_MODE | HAS_SUB_COMM | OUT_ORDER_WR_EN |
-			   WR_THROT_EN | HAS_BCLK | IOVA_34_EN |
-			   GET_DOM_ID_LEGACY | SHARE_PGTABLE,
+			   WR_THROT_EN | HAS_BCLK | IOVA_34_EN | GET_DOM_ID_LEGACY |
+			   SHARE_PGTABLE | IOMMU_SEC_EN,
 	/* not use larbid_remap */
 	.larbid_remap    = {{0}, {1}, {4, 5}, {7}, {2}, {9, 11, 19, 20},
 			    {0, 14, 16}, {0, 13, 18, 17}},
@@ -3639,8 +3639,8 @@ static const struct mtk_iommu_plat_data mt6893_data_iommu1 = {
 
 static const struct mtk_iommu_plat_data mt6893_data_iommu2 = {
 	.m4u_plat        = M4U_MT6893,
-	//.flags           = LINK_WITH_APU | IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE,
-	.flags           = IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE,
+	.flags           = LINK_WITH_APU | IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE |
+			   PM_OPS_SKIP,
 	.iommu_id	 = APU_IOMMU0,
 	.iommu_type      = APU_IOMMU,
 	.normal_dom      = 0,
@@ -3653,8 +3653,7 @@ static const struct mtk_iommu_plat_data mt6893_data_iommu2 = {
 
 static const struct mtk_iommu_plat_data mt6893_data_iommu3 = {
 	.m4u_plat        = M4U_MT6893,
-	//.flags           = LINK_WITH_APU | SHARE_PGTABLE,
-	.flags           = SHARE_PGTABLE,
+	.flags           = LINK_WITH_APU | SHARE_PGTABLE | PM_OPS_SKIP,
 	.iommu_id	 = APU_IOMMU1,
 	.iommu_type      = APU_IOMMU,
 	.normal_dom	 = 0,
