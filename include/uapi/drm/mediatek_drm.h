@@ -503,6 +503,7 @@ struct DISP_AAL_TRIG_STATE {
 struct DISP_C3D_LUT {
 	unsigned int lut1d[DISP_C3D_1DLUT_SIZE];
 	unsigned long long lut3d;
+	int bin_num;
 };
 
 enum MTKFB_DISPIF_TYPE {
