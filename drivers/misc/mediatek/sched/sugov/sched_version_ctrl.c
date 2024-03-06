@@ -20,9 +20,9 @@ bool _gear_hints_enable;
 bool _updown_migration_enable;
 bool _skip_hiIRQ_enable;
 bool _rt_aggre_preempt_enable;
-bool post_init_util_ctl;
-bool percore_l3_bw;
-bool dsu_pwr_enable;
+bool _post_init_util_ctl;
+bool _percore_l3_bw;
+bool _dsu_pwr_enable;
 
 int init_sched_ctrl(void)
 {
@@ -48,9 +48,9 @@ int init_sched_ctrl(void)
 		_skip_hiIRQ_enable = false;
 		_rt_aggre_preempt_enable = false;
 		_vip_enable = false;
-		post_init_util_ctl = false;
-		percore_l3_bw = false;
-		dsu_pwr_enable = false;
+		_post_init_util_ctl = false;
+		_percore_l3_bw = false;
+		_dsu_pwr_enable = false;
 		break;
 	case EAS_5_5_1:
 		am_support = 0;
@@ -61,9 +61,9 @@ int init_sched_ctrl(void)
 		_skip_hiIRQ_enable = false;
 		_rt_aggre_preempt_enable = false;
 		_vip_enable = false;
-		post_init_util_ctl = false;
-		percore_l3_bw = false;
-		dsu_pwr_enable = false;
+		_post_init_util_ctl = false;
+		_percore_l3_bw = false;
+		_dsu_pwr_enable = false;
 		break;
 	case EAS_6_1:
 		am_support = 1;
@@ -74,9 +74,9 @@ int init_sched_ctrl(void)
 		_skip_hiIRQ_enable = true;
 		_rt_aggre_preempt_enable = false;
 		_vip_enable = true;
-		post_init_util_ctl = true;
-		percore_l3_bw = false;
-		dsu_pwr_enable = true;
+		_post_init_util_ctl = true;
+		_percore_l3_bw = false;
+		_dsu_pwr_enable = true;
 		break;
 	case EAS_6_5:
 		am_support = 1;
@@ -87,9 +87,9 @@ int init_sched_ctrl(void)
 		_skip_hiIRQ_enable = true;
 		_rt_aggre_preempt_enable = false;
 		_vip_enable = true;
-		post_init_util_ctl = true;
-		percore_l3_bw = true;
-		dsu_pwr_enable = true;
+		_post_init_util_ctl = true;
+		_percore_l3_bw = true;
+		_dsu_pwr_enable = true;
 		break;
 	default:
 		am_support = 0;
@@ -100,8 +100,8 @@ int init_sched_ctrl(void)
 		_skip_hiIRQ_enable = false;
 		_rt_aggre_preempt_enable = false;
 		_vip_enable = false;
-		post_init_util_ctl = false;
-		percore_l3_bw = false;
+		_post_init_util_ctl = false;
+		_percore_l3_bw = false;
 		break;
 	}
 	return 0;
@@ -139,36 +139,36 @@ EXPORT_SYMBOL_GPL(sched_rt_aggre_preempt_enable_get);
 
 bool sched_post_init_util_enable_get(void)
 {
-	return post_init_util_ctl;
+	return _post_init_util_ctl;
 }
 EXPORT_SYMBOL_GPL(sched_post_init_util_enable_get);
 
 void sched_post_init_util_set(bool enable)
 {
-	post_init_util_ctl = enable;
+	_post_init_util_ctl = enable;
 }
 EXPORT_SYMBOL_GPL(sched_post_init_util_set);
 
 bool sched_percore_l3_bw_get(void)
 {
-	return percore_l3_bw;
+	return _percore_l3_bw;
 }
 EXPORT_SYMBOL_GPL(sched_percore_l3_bw_get);
 
 void sched_percore_l3_bw_set(bool enable)
 {
-	percore_l3_bw = enable;
+	_percore_l3_bw = enable;
 }
 EXPORT_SYMBOL_GPL(sched_percore_l3_bw_set);
 
 bool sched_dsu_pwr_enable_get(void)
 {
-	return dsu_pwr_enable;
+	return _dsu_pwr_enable;
 }
 EXPORT_SYMBOL_GPL(sched_dsu_pwr_enable_get);
 
 void sched_dsu_pwr_enable_set(bool enable)
 {
-	dsu_pwr_enable = enable;
+	_dsu_pwr_enable = enable;
 }
 EXPORT_SYMBOL_GPL(sched_dsu_pwr_enable_set);
