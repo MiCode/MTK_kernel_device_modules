@@ -340,7 +340,6 @@ enum mtk_phy_jtag_version {
 	MTK_PHY_JTAG_V2,
 };
 
-#if IS_ENABLED(CONFIG_USB_MTK_HDRC)
 enum mtk_phy_efuse {
 	INTR_CAL = 0,
 	IEXT_INTR_CTRL,
@@ -354,7 +353,6 @@ static char *efuse_name[4] = {
 	"rx_impsel",
 	"tx_impsel",
 };
-#endif
 
 struct mtk_phy_pdata {
 	/* avoid RX sensitivity level degradation only for mt8173 */
@@ -417,6 +415,7 @@ struct mtk_phy_instance {
 	int bgr_div;
 	bool bc12_en;
 	struct proc_dir_entry *phy_root;
+	bool set_efuse_v1;
 };
 
 struct mtk_tphy {
@@ -1889,8 +1888,11 @@ static int phy_efuse_get(struct mtk_tphy *tphy, struct mtk_phy_instance *instanc
 	struct device *dev = &instance->phy->dev;
 	int ret = 0;
 
+	instance->set_efuse_v1 = device_property_read_bool(dev,
+				"mediatek,set-efuse-v1");
+	dev_info(dev, "set-efuse-v1:%d\n", instance->set_efuse_v1);
 	/* tphy v1 doesn't support sw efuse, skip it */
-	if (!tphy->pdata->sw_efuse_supported) {
+	if (!tphy->pdata->sw_efuse_supported || instance->set_efuse_v1) {
 		instance->efuse_sw_en = 0;
 		return 0;
 	}
@@ -1958,7 +1960,6 @@ static int phy_efuse_get(struct mtk_tphy *tphy, struct mtk_phy_instance *instanc
 	return ret;
 }
 
-#if IS_ENABLED(CONFIG_USB_MTK_HDRC)
 static int phy_efuse_set_v1(struct mtk_phy_instance *instance,
 			     enum mtk_phy_efuse type)
 {
@@ -2017,11 +2018,24 @@ static int phy_efuse_set_v1(struct mtk_phy_instance *instance,
 	return 0;
 }
 
-static void u2_phy_efuse_set_v1(struct mtk_phy_instance *instance)
+static void phy_efuse_set_(struct mtk_tphy *tphy,
+		struct mtk_phy_instance *instance)
 {
-	phy_efuse_set_v1(instance, INTR_CAL);
+	switch (instance->type) {
+	case PHY_TYPE_USB2:
+		/** u2_phy_efuse_set */
+		phy_efuse_set_v1(instance, INTR_CAL);
+		break;
+	case PHY_TYPE_USB3:
+		/** u3_phy_efuse_set */
+		phy_efuse_set_v1(instance, IEXT_INTR_CTRL);
+		phy_efuse_set_v1(instance, RX_IMPSEL);
+		phy_efuse_set_v1(instance, TX_IMPSEL);
+		break;
+	default:
+		break;
+	}
 }
-#endif
 
 static void phy_efuse_set(struct mtk_phy_instance *instance)
 {
@@ -2029,14 +2043,14 @@ static void phy_efuse_set(struct mtk_phy_instance *instance)
 	struct u2phy_banks *u2_banks = &instance->u2_banks;
 	struct u3phy_banks *u3_banks = &instance->u3_banks;
 
-#if IS_ENABLED(CONFIG_USB_MTK_HDRC)
 	struct mtk_tphy *tphy = dev_get_drvdata(dev->parent);
 
-	if (tphy->pdata->version == MTK_PHY_V1 && !instance->efuse_sw_en) {
-		u2_phy_efuse_set_v1(instance);
+	if ((tphy->pdata->version == MTK_PHY_V1 && !instance->efuse_sw_en) ||
+			instance->set_efuse_v1) {
+		phy_efuse_set_(tphy, instance);
 		return;
 	}
-#endif
+
 	if (!instance->efuse_sw_en)
 		return;
 
