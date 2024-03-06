@@ -945,7 +945,7 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 		pr_info("[name:spm&][SPM] %s", log_buf);
 		suspend_show_detailed_wakeup_reason(wakesrc);
 		lpm_dbg_spm_rsc_req_check(wakesrc->debug_flag);
-		pr_info("[name:spm&][SPM] Suspended for %d.%03d seconds",
+		pr_info("[name:spm&][SPM] suspended for %d.%03d seconds",
 			PCM_TICK_TO_SEC(wakesrc->timer_out),
 			PCM_TICK_TO_SEC((wakesrc->timer_out %
 				PCM_32K_TICKS_PER_SEC)
