@@ -14,6 +14,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <mtk-hw-semaphore.h>
+#include <mtk-smi-dbg.h>
 
 #define MASTER_MAX_NR		(8)
 #define MTCMOS_MAX_NR		(32)
@@ -137,6 +138,10 @@ int mtk_hw_semaphore_ctrl(u32 master_id, bool is_get)
 }
 EXPORT_SYMBOL_GPL(mtk_hw_semaphore_ctrl);
 
+static const struct smi_hw_sema_ops mtk_smi_hw_sema_ops = {
+	.hw_sema_ctrl = mtk_hw_semaphore_ctrl,
+};
+
 static int hw_semaphore_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -198,6 +203,8 @@ static int hw_semaphore_probe(struct platform_device *pdev)
 						hw_sema->dbg_offset[SEMA_TYPE_VCP][i]);
 		}
 	}
+
+	mtk_smi_set_hw_sema_ops(&mtk_smi_hw_sema_ops);
 
 	return 0;
 }
