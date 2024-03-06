@@ -187,6 +187,20 @@ out:
 	fpsgo_systrace_c_fbt_debug(pid, 0, attr.sched_util_max, "max_cap");
 }
 
+int get_fbt_cpu_mask(int prefer_type, int *get_mask)
+{
+	int ret = 0;
+
+	if (!mask_done)
+		return -100;
+	if (prefer_type < 0 || prefer_type >= FPSGO_PREFER_TOTAL)
+		return -EINVAL;
+
+	*get_mask = mask_int[prefer_type];
+
+	return ret;
+}
+
 static int generate_cpu_mask(void)
 {
 	int i, ret, cpu;

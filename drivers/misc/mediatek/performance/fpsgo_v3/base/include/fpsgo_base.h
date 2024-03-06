@@ -171,6 +171,7 @@ struct fpsgo_loading {
 	int ori_nice;	/* original nice */
 	int is_vip;    /* is priority vip set */
 	int is_vvip;   /* is vvip set */
+	int is_prefer; /* is preferred by gear-hint */
 	int action;
 	int rmidx;
 	int heavyidx;
@@ -322,6 +323,14 @@ struct fpsgo_boost_attr {
 	int boost_vip_by_pid;
 	int vip_mask_by_pid;
 	int set_vvip_by_pid;
+
+	/* Gear-Hint Prefer */
+	int gh_prefer_by_pid;
+
+	/* Tuning Point Control */
+	int bm_th_by_pid;
+	int ml_th_by_pid;
+	int tp_policy_by_pid;
 
 	/* QUOTA */
 	int qr_enable_by_pid;
