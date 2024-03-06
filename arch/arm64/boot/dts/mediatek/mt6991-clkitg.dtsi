@@ -13,9 +13,6 @@
 			<&cksys_clk CLK_CK_UART_SEL>,
 			<&cksys_clk CLK_CK_ADSP_SEL>,
 			<&cksys_clk CLK_CK_ADSP_UARTHUB_BCLK_SEL>,
-			<&cksys_clk CLK_CK_TL_SEL>,
-			<&cksys_clk CLK_CK_TL_P1_SEL>,
-			<&cksys_clk CLK_CK_TL_P2_SEL>,
 			<&cksys_clk CLK_CK_UARTHUB_BCLK_SEL>,
 			<&apmixedsys_clk CLK_APMIXED_UNIVPLL>,
 			<&apmixedsys_clk CLK_APMIXED_ADSPPLL>,
@@ -729,70 +726,11 @@
 			<&camsys_mraw_clk CLK_CAM_MR_PDA0_PDA>,
 			<&camsys_mraw_clk CLK_CAM_MR_PDA1_PDA>;
 	};
-	bring-up-pcie@22 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x22>;
-		clocks =
-			<&pextp0cfg_ao_clk CLK_PEXT_PEXTP_MAC_P0_TL_PCIE>,
-			<&pextp0cfg_ao_clk CLK_PEXT_PEXTP_MAC_P0_REF_PCIE>,
-			<&pextp0cfg_ao_clk CLK_PEXT_PEXTP_PHY_P0_MCU_BUS_PCIE>,
-			<&pextp0cfg_ao_clk CLK_PEXT_PEXTP_PHY_P0_PEXTP_REF_PCIE>,
-			<&pextp0cfg_ao_clk CLK_PEXT_PEXTP_MAC_P0_AXI_250_PCIE>,
-			<&pextp0cfg_ao_clk CLK_PEXT_PEXTP_MAC_P0_AHB_APB_PCIE>,
-			<&pextp0cfg_ao_clk CLK_PEXT_PEXTP_MAC_P0_PL_P_PCIE>,
-			<&pextp0cfg_ao_clk CLK_PEXT_PEXTP_VLP_AO_P0_LP_PCIE>,
-			<&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P1_TL_PCIE>,
-			<&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P1_REF_PCIE>,
-			<&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P2_TL_PCIE>,
-			<&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P2_REF_PCIE>,
-			<&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_PHY_P1_MCU_BUS_PCIE>,
-			<&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_PHY_P1_PEXTP_REF_PCIE>,
-			<&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_PHY_P2_MCU_BUS_PCIE>,
-			<&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_PHY_P2_PEXTP_REF_PCIE>,
-			<&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P1_AXI_250_PCIE>,
-			<&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P1_AHB_APB_PCIE>,
-			<&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P1_PL_P_PCIE>,
-			<&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P2_AXI_250_PCIE>,
-			<&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P2_AHB_APB_PCIE>,
-			<&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P2_PL_P_PCIE>,
-			<&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_VLP_AO_P1_LP_PCIE>,
-			<&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_VLP_AO_P2_LP_PCIE>;
-	};
 	bring-up-ccu0@24 {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x24>;
 		clocks =
 			<&ccu_main_clk CLK_CCUSYS_CCU0_CON_CCU0>;
-	};
-	bring-up-pd-pextp-mac0@2a {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x2a>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_PEXTP_MAC0>;
-	};
-	bring-up-pd-pextp-mac1@2b {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x2b>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_PEXTP_MAC1>;
-	};
-	bring-up-pd-pextp-mac2@2c {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x2c>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_PEXTP_MAC2>;
-	};
-	bring-up-pd-pextp-phy0@2d {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x2d>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_PEXTP_PHY0>;
-	};
-	bring-up-pd-pextp-phy1@2e {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x2e>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_PEXTP_PHY1>;
-	};
-	bring-up-pd-pextp-phy2@2f {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x2f>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_PEXTP_PHY2>;
 	};
 	bring-up-pd-adsp-top-dormant@31 {
 		compatible = "mediatek,scpsys-bring-up";
