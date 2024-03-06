@@ -13,7 +13,7 @@
 #include <trace/events/task.h>
 #include <linux/platform_device.h>
 #include <linux/of_platform.h>
-/*#include <trace/hooks/fpsimd.h>*/
+#include <trace/hooks/fpsimd.h>
 #include <trace/hooks/cgroup.h>
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
@@ -742,9 +742,8 @@ static void cpuqos_v3_hook_attach(void __always_unused *data,
 		cpuqos_v3_kick_task(p, -1);
 }
 
-//static void cpuqos_v3_hook_switch(void __always_unused *data,
-void cpuqos_v3_hook_switch(void __always_unused *data,
-			     struct task_struct *prev, struct task_struct *next)
+static void cpuqos_v3_hook_switch(void __always_unused *data,
+				struct task_struct *prev, struct task_struct *next)
 {
 	int prev_pd;
 	int next_pd;
@@ -1177,7 +1176,7 @@ static int __init cpuqos_v3_proto_init(void)
 		goto out;
 	}
 
-	//ret = register_trace_android_vh_is_fpsimd_save(cpuqos_v3_hook_switch, NULL);
+	ret = register_trace_android_vh_is_fpsimd_save(cpuqos_v3_hook_switch, NULL);
 	if (ret) {
 		pr_info("register android_vh_is_fpsimd_save failed\n");
 		goto out_attach;
@@ -1231,7 +1230,7 @@ static void cpuqos_v3_proto_exit(void)
 	if (cpuqos_workq)
 		destroy_workqueue(cpuqos_workq);
 
-	//unregister_trace_android_vh_is_fpsimd_save(cpuqos_v3_hook_switch, NULL);
+	unregister_trace_android_vh_is_fpsimd_save(cpuqos_v3_hook_switch, NULL);
 	unregister_trace_android_vh_cgroup_attach(cpuqos_v3_hook_attach, NULL);
 	unregister_trace_task_newtask(cpuqos_v3_task_newtask, NULL);
 
