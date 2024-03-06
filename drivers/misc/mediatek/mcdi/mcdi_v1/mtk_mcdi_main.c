@@ -122,7 +122,7 @@ static int mcdi_stress_task(void *arg)
 static void mcdi_stress_start(void)
 {
 	int i;
-	char name[16] = {0};
+	char name[18] = {0};
 
 	if (mcdi_stress_en)
 		return;
