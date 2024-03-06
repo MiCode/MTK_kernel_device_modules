@@ -165,7 +165,9 @@ static unsigned long slbc_sid_wait_fail;
 /* 1 in bit is for wait result(done) */
 static unsigned long slbc_sid_wait_done;
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 static phys_addr_t slbc_mem_phys_addr, slbc_mem_virt_addr, slbc_mem_size;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 
 enum slbc_cb_res {
 	RES_ACTIVE = 0,
@@ -262,6 +264,7 @@ void slbc_sram_init(struct mtk_slbc *slbc)
 
 static int slbc_shared_dram_init(struct platform_device *pdev)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	int i = 0, ret = 0;
 
 	unsigned char *byte_ptr;
@@ -286,6 +289,7 @@ static int slbc_shared_dram_init(struct platform_device *pdev)
 	ret = _slbc_sspm_shared_dram_scmi(slbc_mem_phys_addr, slbc_mem_size);
 	if (ret)
 		return ret;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 
 	return 0;
 }
@@ -1327,6 +1331,7 @@ int slbc_read_invalidate(enum slc_ach_uid uid, int gid, int enable)
 
 int slbc_ceil(enum slc_ach_uid uid, unsigned int ceil)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	int ret = 0;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -1334,10 +1339,14 @@ int slbc_ceil(enum slc_ach_uid uid, unsigned int ceil)
 	ret = slbc_ctrl_scmi_info(IPI_SLBC_CACHE_USER_CEIL_SET, uid ,ceil, 0, 0, &rvalue);
 
 	return ret;
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 
 int slbc_window(unsigned int window)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	int ret = 0;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -1345,10 +1354,14 @@ int slbc_window(unsigned int window)
 	ret = slbc_ctrl_scmi_info(IPI_SLBC_CACHE_WINDOW_SET, window, 0, 0, 0, &rvalue);
 
 	return ret;
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 
 int slbc_get_cache_size(enum slc_ach_uid uid)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	int ret = 0;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -1357,10 +1370,14 @@ int slbc_get_cache_size(enum slc_ach_uid uid)
 		return -1;
 
 	return rvalue.slbc_resv1;
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 
 int slbc_get_cache_hit_rate(enum slc_ach_uid uid)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	int ret = 0;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -1369,10 +1386,14 @@ int slbc_get_cache_hit_rate(enum slc_ach_uid uid)
 		return -1;
 
 	return rvalue.slbc_resv2;
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 
 int slbc_get_cache_hit_bw(enum slc_ach_uid uid)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	int ret = 0;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -1381,10 +1402,14 @@ int slbc_get_cache_hit_bw(enum slc_ach_uid uid)
 		return -1;
 
 	return rvalue.slbc_resv3;
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 
 int slbc_get_cache_usage(int *cpu, int *gpu, int *other)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	int ret = 0;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -1397,6 +1422,9 @@ int slbc_get_cache_usage(int *cpu, int *gpu, int *other)
 	*other = (int) rvalue.slbc_resv3;
 
 	return 0;
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 
 #ifdef SLBC_DUMP_DATA
@@ -1432,7 +1460,9 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	int i;
 	int sid;
 	int ret;
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 
 	slbc_sspm_sram_update();
 
@@ -1542,6 +1572,7 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 				rel_val_total / rel_val_count, rel_val_max);
 	}
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	ret = slbc_ctrl_scmi_info(IPI_SLBC_CACHE_WINDOW_GET, 0, 0, 0, 0, &rvalue);
 	if (!ret)
 		seq_printf(m, "SLC Window : %d ms\n", rvalue.slbc_resv1);
@@ -1569,6 +1600,7 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 					slc_ach_uid_str[i], rvalue.slbc_resv1, rvalue.slbc_resv2, rvalue.slbc_resv3);
 		}
 	}
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 
 	seq_puts(m, "emi_pmu_read");
 	for (i = 34; i <= 59; i++)
