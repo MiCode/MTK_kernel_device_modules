@@ -166,8 +166,14 @@ enum DISP_VBLANK_REC_JOB_TYPE {
 #define DISP_SLOT_REQUEST_TE_PREPARE (DISP_SLOT_TE1_EN + 0x4)
 #define DISP_SLOT_REQUEST_TE_EN (DISP_SLOT_REQUEST_TE_PREPARE + 0x4)
 
-#define DISP_SLOT_PANEL_SPR_EN (DISP_SLOT_REQUEST_TE_EN + 0x4)
-#define DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE (DISP_SLOT_PANEL_SPR_EN + 0x4)
+/* PC */
+#define DISP_SLOT_PANEL_SPR_EN (DISP_SLOT_REQUEST_TE_PREPARE + 0x4)
+/* PQ */
+#define DISP_SLOT_AAL_GHIST_REQ (DISP_SLOT_PANEL_SPR_EN + 0x4)
+#define DISP_SLOT_AAL_GHIST_DONE (DISP_SLOT_AAL_GHIST_REQ + 0x4)
+#define DISP_SLOT_AAL_LHIST_REQ (DISP_SLOT_AAL_GHIST_DONE + 0x4)
+#define DISP_SLOT_AAL_LHIST_DONE (DISP_SLOT_AAL_LHIST_REQ + 0x4)
+#define DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE (DISP_SLOT_AAL_LHIST_DONE + 0x4)
 
 /* reset OVL log */
 #define OVL_RT_LOG_NR 10
@@ -562,7 +568,8 @@ enum MTK_CRTC_COLOR_FMT {
 	EXPR(CLIENT_SUB_CFG)                                                   \
 	EXPR(CLIENT_DSI_CFG)                                                   \
 	EXPR(CLIENT_SEC_CFG)                                                   \
-	EXPR(CLIENT_PQ)                                                        \
+	EXPR(CLIENT_PQ_EOF)                                                        \
+	EXPR(CLIENT_PQ)                                                    \
 	EXPR(CLIENT_TYPE_MAX)
 
 enum CRTC_GCE_CLIENT_TYPE { DECLARE_GCE_CLIENT(DECLARE_NUM) };
@@ -600,6 +607,7 @@ enum CRTC_GCE_EVENT_TYPE {
 	EVENT_MDP_RDMA1_EOF,
 	EVENT_Y2R_EOF,
 	EVENT_MML_DISP_DONE_EVENT,
+	EVENT_AAL_EOF,
 	EVENT_TYPE_MAX,
 };
 

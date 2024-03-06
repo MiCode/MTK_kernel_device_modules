@@ -45,6 +45,17 @@ struct pq_tuning_pa_base {
 	resource_size_t companion_pa_base;
 };
 
+struct pq_dma_map {
+	uint32_t start;
+	uint32_t size;
+};
+
+struct pq_dma_buffer {
+	void *va;
+	dma_addr_t pa;
+	uint32_t size;
+};
+
 int mtk_drm_ioctl_pq_frame_config(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
 int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data,

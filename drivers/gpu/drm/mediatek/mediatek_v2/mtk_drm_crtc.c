@@ -16820,6 +16820,10 @@ static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 	case EVENT_MML_DISP_DONE_EVENT:
 		len = snprintf(buf, buf_len, "mml_disp_done_event");
 		break;
+	case EVENT_AAL_EOF:
+		len = snprintf(buf, buf_len, "disp_aal%d_eof",
+				   drm_crtc_index(&mtk_crtc->base));
+		break;
 	default:
 		DDPPR_ERR("%s invalid event_id:%d\n", __func__, event_id);
 		memset(output_comp, 0, sizeof(output_comp));

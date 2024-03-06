@@ -23660,6 +23660,10 @@ void mtk_gce_event_config_MT6991(struct drm_device *drm)
 		priv->config_regs + MT6991_DISP0_GCE_FRAME_DONE_SEL0);
 	writel(MT6991_DISP0_GCE_FRAME_DONE_SEL1_Y2R0,
 		priv->config_regs + MT6991_DISP0_GCE_FRAME_DONE_SEL1);
+	writel(MT6991_DISP0_GCE_FRAME_DONE_SEL2_AAL0,
+		priv->config_regs + MT6991_DISP0_GCE_FRAME_DONE_SEL2);
+	writel(MT6991_DISP0_GCE_FRAME_DONE_SEL3_AAL1,
+		priv->config_regs + MT6991_DISP0_GCE_FRAME_DONE_SEL3);
 }
 
 void mtk_ddp_add_comp_to_path(struct mtk_drm_crtc *mtk_crtc,
