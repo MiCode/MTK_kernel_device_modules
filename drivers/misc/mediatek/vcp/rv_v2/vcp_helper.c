@@ -880,7 +880,7 @@ uint32_t vcp_wait_ready_sync(void)
 						pr_info("[MMUP] feat. id %d cnt %d\n", j, feature_table[j].enable);
 			}
 		}
-
+		i = 0;
 		if (!is_vcp_ready_by_coreid(VCP_ID)) {
 			vcp_A_set_ready(VCP_ID);
 			while (!is_vcp_ready_by_coreid(VCP_ID) && i <= VCP_SYNC_TIMEOUT_MS) {
@@ -892,6 +892,19 @@ uint32_t vcp_wait_ready_sync(void)
 				for (j = 0; j < NUM_FEATURE_ID; j++)
 					if (feature_table[j].enable)
 						pr_info("[VCP] feat. id %d cnt %d\n", j, feature_table[j].enable);
+			}
+		}
+	} else {
+		while (!is_vcp_ready_by_coreid(VCP_CORE_TOTAL)) {
+			i += 5;
+			mdelay(5);
+			if (i > VCP_SYNC_TIMEOUT_MS) {
+				vcp_dump_last_regs(1);
+				for (j = 0; j < NUM_FEATURE_ID; j++)
+					if (feature_table[j].enable)
+						pr_info("[VCP] feat. id %d cnt %d\n",
+							j, feature_table[j].enable);
+				break;
 			}
 		}
 	}
