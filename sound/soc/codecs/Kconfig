@@ -99,7 +99,7 @@ config DEVICE_MODULES_SND_SOC_MT6359_ACCDET
 	  for ASoC codec soc-jack detection mechanism.
 	  Select N if you don't have jack on board.
 
-config SND_SOC_MT6359P
+config DEVICE_MODULES_SND_SOC_MT6359P
 	tristate "MediaTek MT6359P Codec driver"
 	help
 	  MediaTek MT6359P is a codec which contain
