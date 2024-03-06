@@ -136,6 +136,7 @@ enum mml_pq_enable_flag {
 	MML_PQ_AI_REGION_EN = 1 << 10,
 	MML_PQ_C3D_EN = 1 << 11,
 	MML_PQ_CLARITY_EN = 1 << 12,
+	MML_PQ_FG_EN = 1 << 13,
 };
 
 enum mml_pq_user_info {
@@ -171,6 +172,7 @@ struct mml_pq_param {
 	uint32_t connector_id;
 	uint32_t current_panel_lum;
 	bool svp;
+	bool bypass_all_alg;
 };
 
 struct mml_color_desc {
