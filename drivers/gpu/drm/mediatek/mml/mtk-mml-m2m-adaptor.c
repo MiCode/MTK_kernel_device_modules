@@ -1644,6 +1644,9 @@ static void mml_m2m_device_run(void *priv)
 	/* wake lock */
 	mml_lock_wake_lock(task->config->mml, true);
 
+	/* kick vdisp power on */
+	mml_pw_kick_idle(task->config->mml);
+
 	/* config to core */
 	mml_core_config_task(cfg, task);
 	if (cfg->err) {

@@ -48,8 +48,8 @@ struct mml_drm_ctx {
 	u16 panel_width;
 	u16 panel_height;
 	bool racing_begin;
-	void (*ddren_cb)(struct cmdq_pkt *pkt, bool enable, void *ddren_param);
-	void *ddren_param;
+	void (*ddren_cb)(struct cmdq_pkt *pkt, bool enable, void *disp_crtc);
+	void *disp_crtc;
 	void (*dispen_cb)(bool enable, void *dispen_param);
 	void *dispen_param;
 };
@@ -877,7 +877,7 @@ static void drm_task_ddren(struct mml_task *task, struct cmdq_pkt *pkt, bool ena
 	if (mml_isdc(mode))
 		return;
 
-	ctx->ddren_cb(pkt, enable, ctx->ddren_param);
+	ctx->ddren_cb(pkt, enable, ctx->disp_crtc);
 }
 
 static void drm_task_dispen(struct mml_task *task, bool enable)
@@ -940,7 +940,7 @@ static struct mml_drm_ctx *drm_ctx_create(struct mml_dev *mml,
 	ctx->ctx.disp_vdo = disp->vdo_mode;
 	ctx->ctx.submit_cb = disp->submit_cb;
 	ctx->ddren_cb = disp->ddren_cb;
-	ctx->ddren_param = disp->ddren_param;
+	ctx->disp_crtc = disp->disp_crtc;
 	ctx->dispen_cb = disp->dispen_cb;
 	ctx->dispen_param = disp->dispen_param;
 	ctx->panel_width = MML_DEFAULT_PANEL_W;
@@ -956,6 +956,9 @@ static struct mml_drm_ctx *drm_ctx_create(struct mml_dev *mml,
 
 	/* return info to display */
 	disp->racing_height = mml_sram_get_racing_height(mml);
+
+	/* install kick idle callback to mml driver */
+	mml_pw_set_kick_cb(mml, disp->kick_idle_cb, disp->disp_crtc);
 
 	return ctx;
 }

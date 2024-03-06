@@ -172,6 +172,8 @@ struct mml_dev {
 	u16 record_idx;
 
 	struct mml_dpc dpc;
+	void (*kick_idle_cb)(void *disp_crtc);
+	void *disp_crtc;
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	/* crc backup */
@@ -1182,6 +1184,19 @@ void mml_dpc_bw_update(struct mml_dev *mml, enum mml_sys_id sysid, u32 total_bw,
 		mml->dpc.bandwidth[sysid].hrt = peak_bw;
 		mml_dpc_hrt_bw_set(sysid, peak_bw, false);
 	}
+}
+
+void mml_pw_set_kick_cb(struct mml_dev *mml,
+	void (*kick_idle_cb)(void *disp_crtc), void *disp_crtc)
+{
+	mml->kick_idle_cb = kick_idle_cb;
+	mml->disp_crtc = disp_crtc;
+}
+
+void mml_pw_kick_idle(struct mml_dev *mml)
+{
+	if (mml->kick_idle_cb)
+		mml->kick_idle_cb(mml->disp_crtc);
 }
 
 /* mml_calc_bw - calculate bandwidth by giving pixel and current throughput

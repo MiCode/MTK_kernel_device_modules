@@ -130,6 +130,9 @@ void mml_dpc_exc_release_task(struct mml_task *task, const struct mml_topology_p
 void mml_dpc_dc_enable(struct mml_dev *mml, u32 sysid, bool en);
 void mml_dpc_bw_update(struct mml_dev *mml, enum mml_sys_id sysid, u32 total_bw, u32 peak_bw);
 
+void mml_pw_set_kick_cb(struct mml_dev *mml, void (*kick_idle_cb)(void *disp_param), void *param);
+void mml_pw_kick_idle(struct mml_dev *mml);
+
 /*
  * mml_sram_get - get sram addr from slbc and power on
  *
