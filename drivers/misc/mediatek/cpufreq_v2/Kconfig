@@ -50,3 +50,13 @@ config MEDIATEK_CPU_DVFS_MT6833
 	  for power management.
 	  Set Y to select this feature for specific platform-MT6765.
 	  If unsure, set N to disable.
+
+config MEDIATEK_CPUFREQ_DEBUG_SUPPORT_LEGACY
+    bool "Disable mediatek cpu dvfs debug function for legacy chips"
+    help
+      This option disables the debug feature of cpu dvfs
+	  for Mediatek cpufreq driver.
+      It's applied when the platform doesn't support debug nodes.
+      The related debug files path are located at
+	  'kernel_modules/cpufreq_cus' and 'kernel_modules/cpufreq_int'.
+      If unsure, say N.
