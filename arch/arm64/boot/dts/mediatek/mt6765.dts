@@ -1773,9 +1773,30 @@ pwrap: pwrap@1000d000 {
 		compatible = "mediatek,mt6765-iommu-tee-debug";
 	};
 
-	mtk_sec_dmaheap {
-		compatible = "mediatek,dmaheap-region-base";
+	mtkheap-region-prot {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_prot_region";
+		trusted-mem-type = <1>;
+		region-heap-align-name = "mtk_prot_region-aligned";
 		iommus = <&iommu M4U_PORT_DISP_OVL0>;
+	};
+
+	mtkheap_region_svp: mtkheap-region-svp {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_svp_region";
+		trusted-mem-type = <0>;
+		region-heap-align-name = "mtk_svp_region-aligned";
+		iommus = <&iommu M4U_PORT_DISP_OVL0>;
+		status = "disabled";
+	};
+
+	mtkheap_region_wfd: mtkheap-region-wfd {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_wfd_region";
+		trusted-mem-type = <2>;
+		region-heap-align-name = "mtk_wfd_region-aligned";
+		iommus = <&iommu M4U_PORT_DISP_OVL0>;
+		status = "disabled";
 	};
 
 	mtk_dmabufheap_debug0: dmaheap_test0{
