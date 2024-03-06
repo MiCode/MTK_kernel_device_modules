@@ -2830,8 +2830,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 	ise_lpm: ise-lpm {
 		 compatible = "mediatek,ise-lpm";
-		 ise-wakelock = <1>;
+		 ise-wakelock = <0>;
 		 ise-lpm-freerun = <0>;
+		 ise-lpm-deinit-bypass = <1>;
 	};
 
 	ise_trusty: ise-trusty {
