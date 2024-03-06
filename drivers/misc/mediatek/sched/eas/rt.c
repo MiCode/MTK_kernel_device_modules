@@ -429,7 +429,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	bool best_cpu_has_lt, cpu_has_lt;
 	unsigned long pwr_eff, this_pwr_eff;
 	struct perf_domain *target_pd, *pd;
-	bool _rt_aggre_preempt_enable = rt_aggre_preempt_enable;
+	bool _rt_aggre_preempt_enable = rt_ea_output->rt_aggre_preempt_enable;
 
 	irq_log_store();
 	mtk_get_gear_indicies(p, &order_index, &end_index, &reverse);
@@ -451,7 +451,6 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	if (!pd)
 		goto unlock;
 
-	rt_ea_output->rt_aggre_preempt_enable = _rt_aggre_preempt_enable;
 	for (cluster = 0; cluster < num_sched_clusters; cluster++) {
 		best_idle_exit_latency = UINT_MAX;
 		best_idle_cpu_cluster = -1;
@@ -608,6 +607,7 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 		return;
 
 	rt_energy_aware_output_init(&rt_ea_output, p);
+	rt_ea_output.rt_aggre_preempt_enable = rt_aggre_preempt_enable;
 
 	irq_log_store();
 
@@ -697,6 +697,7 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 		return;
 
 	rt_energy_aware_output_init(&rt_ea_output, p);
+	rt_ea_output.rt_aggre_preempt_enable = rt_aggre_preempt_enable;
 
 	irq_log_store();
 
