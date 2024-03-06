@@ -916,6 +916,7 @@ mgk_64_platform_device_modules = {
     "drivers/pinctrl/mediatek/pinctrl-mt6985.ko": "mt6985",
     "drivers/pinctrl/mediatek/pinctrl-mt6989.ko": "mt6989",
     "drivers/pinctrl/mediatek/pinctrl-mt6991.ko": "mt6991",
+    "drivers/soc/mediatek/devapc/device-apc-mt6761.ko": "mt6761",
     "drivers/soc/mediatek/devapc/device-apc-mt6768.ko": "mt6768",
     "drivers/soc/mediatek/devapc/device-apc-mt6879.ko": "mt6879",
     "drivers/soc/mediatek/devapc/device-apc-mt6886.ko": "mt6886",
