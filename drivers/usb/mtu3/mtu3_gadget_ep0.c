@@ -14,6 +14,8 @@
 #include "mtu3_debug.h"
 #include "mtu3_trace.h"
 
+#define MU3D_EP0_RX_WAIT_WA 1
+
 /* ep0 is always mtu3->in_eps[0] */
 #define	next_ep0_request(mtu)	next_request((mtu)->ep0)
 
@@ -66,6 +68,8 @@ static char *decode_ep0_state(struct mtu3 *mtu)
 		return "IN";
 	case MU3D_EP0_STATE_RX:
 		return "OUT";
+	case MU3D_EP0_STATE_RX_WAIT:
+		return "RX-WAIT";
 	case MU3D_EP0_STATE_TX_END:
 		return "TX-END";
 	case MU3D_EP0_STATE_STALL:
@@ -575,8 +579,15 @@ static void ep0_rx_state(struct mtu3 *mtu)
 			req = NULL;
 		}
 	} else {
+#if MU3D_EP0_RX_WAIT_WA
+		/* waiting ep0 requect to receive data */
+		mtu->ep0_state = MU3D_EP0_STATE_RX_WAIT;
+		dev_info(mtu->dev, "%s: ep0 state: %s\n", __func__, decode_ep0_state(mtu));
+		return;
+#else
 		csr |= EP0_RXPKTRDY | EP0_SENDSTALL;
 		dev_dbg(mtu->dev, "%s: SENDSTALL\n", __func__);
+#endif
 	}
 
 	mtu3_writel(mbase, U3D_EP0CSR, csr);
@@ -833,6 +844,7 @@ static int ep0_queue(struct mtu3_ep *mep, struct mtu3_request *mreq)
 	switch (mtu->ep0_state) {
 	case MU3D_EP0_STATE_SETUP:
 	case MU3D_EP0_STATE_RX:	/* control-OUT data */
+	case MU3D_EP0_STATE_RX_WAIT:
 	case MU3D_EP0_STATE_TX:	/* control-IN data */
 		break;
 	default:
@@ -857,6 +869,14 @@ static int ep0_queue(struct mtu3_ep *mep, struct mtu3_request *mreq)
 	/* sequence #1, IN ... start writing the data */
 	if (mtu->ep0_state == MU3D_EP0_STATE_TX)
 		ep0_tx_state(mtu);
+
+#if MU3D_EP0_RX_WAIT_WA
+	/* ep0 requect ready to receive data */
+	if (mtu->ep0_state == MU3D_EP0_STATE_RX_WAIT) {
+		dev_info(mtu->dev, "%s: ep0 request ready\n", __func__);
+		ep0_rx_state(mtu);
+	}
+#endif
 
 	return 0;
 }
