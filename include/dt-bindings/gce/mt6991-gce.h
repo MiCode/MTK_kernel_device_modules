@@ -1363,7 +1363,6 @@
 #define CMDQ_SYNC_TOKEN_IMGSYS_POOL_299		949
 #define CMDQ_SYNC_TOKEN_IMGSYS_POOL_300		950
 
-
 /* ISP sw token */
 #define CMDQ_SYNC_TOKEN_IMGSYS_WPE_EIS			665
 #define CMDQ_SYNC_TOKEN_IMGSYS_OMC_TNR			666
@@ -1398,8 +1397,27 @@
 #define CMDQ_SYNC_TOKEN_TRAW_TRIG_PWR_OFf   871
 #define CMDQ_SYNC_TOKEN_TRAW_PWR_OFF        872
 #define CMDQ_SYNC_TOKEN_TRAW_PWR_HAND_SHAKE 873
-/* end of GCE-M sw token */
 
+/* VSDOF sw event */
+#define	CMDQ_SYNC_TOKEN_DPE_POOL_1		    874
+#define	CMDQ_SYNC_TOKEN_DPE_POOL_2		    875
+#define	CMDQ_SYNC_TOKEN_DPE_POOL_3		    876
+#define	CMDQ_SYNC_TOKEN_DPE_POOL_4		    877
+#define	CMDQ_SYNC_TOKEN_DPE_POOL_5		    878
+#define	CMDQ_SYNC_TOKEN_DPE_POOL_6		    879
+#define	CMDQ_SYNC_TOKEN_DPE_POOL_7		    880
+#define	CMDQ_SYNC_TOKEN_DPE_POOL_8		    881
+#define	CMDQ_SYNC_TOKEN_DPE_POOL_9		    882
+#define	CMDQ_SYNC_TOKEN_DPE_POOL_10		    883
+#define	CMDQ_SYNC_TOKEN_DPE_POOL_11		    884
+#define	CMDQ_SYNC_TOKEN_DPE_POOL_12		    885
+#define	CMDQ_SYNC_TOKEN_DPE_POOL_13		    886
+#define	CMDQ_SYNC_TOKEN_DPE_POOL_14		    887
+#define	CMDQ_SYNC_TOKEN_DPE_POOL_15		    888
+#define	CMDQ_SYNC_TOKEN_DPE_POOL_16		    889
+
+/* end of VSDOF sw event */
+/* end of GCE-M sw token */
 /* begin of common sw token */
 
 /* Notify normal CMDQ there are some secure task done
