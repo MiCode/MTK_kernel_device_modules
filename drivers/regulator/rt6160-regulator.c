@@ -43,7 +43,7 @@
 
 #define RT6160_I2CRDY_TIMEUS	100
 
-#define RT6160_POLLING_RG_TIME	10000
+#define RT6160_POLLING_RG_TIME	60000
 
 #define RT6160_MAX	(10)
 static int ot_cnt[RT6160_MAX];
@@ -325,6 +325,8 @@ static int rt6160_probe(struct i2c_client *i2c)
 		return -ENODEV;
 	}
 
+	i2c_set_clientdata(i2c, priv);
+
 	priv->desc.name = "rt6160-buckboost";
 	priv->desc.type = REGULATOR_VOLTAGE;
 	priv->desc.owner = THIS_MODULE;
@@ -373,6 +375,27 @@ int rt6160_get_chip_num(void)
 }
 EXPORT_SYMBOL(rt6160_get_chip_num);
 
+static int __maybe_unused rt6160_suspend(struct device *dev)
+{
+	struct rt6160_priv *priv = dev_get_drvdata(dev);
+
+	cancel_delayed_work_sync(&priv->polling_error);
+	return 0;
+}
+
+static int __maybe_unused rt6160_resume(struct device *dev)
+{
+	struct rt6160_priv *priv = dev_get_drvdata(dev);
+
+	schedule_delayed_work(&priv->polling_error, msecs_to_jiffies(RT6160_POLLING_RG_TIME));
+	return 0;
+}
+
+static const struct dev_pm_ops rt6160_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(rt6160_suspend, rt6160_resume)
+};
+
+
 void rt6160_get_error_cnt(int id, struct rt6160_error *error)
 {
 	error->ot = ot_cnt[id];
@@ -392,6 +415,7 @@ static struct i2c_driver rt6160_driver = {
 	.driver = {
 		.name = "rt6160",
 		.of_match_table = rt6160_of_match_table,
+		.pm = &rt6160_pm_ops,
 	},
 	.probe = rt6160_probe,
 };
