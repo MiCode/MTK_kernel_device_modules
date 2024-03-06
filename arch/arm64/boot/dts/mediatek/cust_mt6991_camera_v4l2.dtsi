@@ -570,12 +570,6 @@
 			remote-endpoint = <&main_ois_cam2>;
 		};
 	};
-	port@6 {
-		reg = <6>;
-		main_tof_endpoint: endpoint {
-			remote-endpoint = <&main_tof>;
-		};
-	};
 };
 
 &i2c2 {
@@ -725,16 +719,6 @@
 		compatible = "mediatek,camera_eeprom";
 		reg = <0x50>;
 		status = "okay";
-	};
-
-	camera-tof-main@52 {
-		compatible = "mediatek,vl53l4";
-		reg = <0x52>;
-		port {
-			main_tof: endpoint {
-				remote-endpoint = <&main_tof_endpoint>;
-			};
-		};
 	};
 };
 
