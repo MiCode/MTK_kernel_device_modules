@@ -25,6 +25,21 @@ static struct sensor_freq_tb sensor_freq_table[] = {
 		.core_id = 0,
 	},
 	{
+		.sensor_type = SENSOR_TYPE_OIS1,
+		.freq_level = HIGH,
+		.core_id = 0,
+	},
+	{
+		.sensor_type = SENSOR_TYPE_OIS2,
+		.freq_level = HIGH,
+		.core_id = 0,
+	},
+	{
+		.sensor_type = SENSOR_TYPE_OIS3,
+		.freq_level = HIGH,
+		.core_id = 0,
+	},
+	{
 		.sensor_type = SENSOR_TYPE_ACCELEROMETER,
 		.freq_level = LOW,
 		.core_id = 0,
