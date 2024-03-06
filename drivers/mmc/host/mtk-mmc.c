@@ -346,6 +346,29 @@ static const struct mtk_mmc_compatible mt6768_compat = {
 	},
 };
 
+static const struct mtk_mmc_compatible mt6765_compat = {
+	.clk_div_bits = 12,
+	.recheck_sdio_irq = false,
+	.hs400_tune = false,
+	.pad_tune_reg = MSDC_PAD_TUNE0,
+	.async_fifo = true,
+	.data_tune = true,
+	.busy_check = true,
+	.stop_clk_set = {
+		.enable = 1,
+		.stop_cnt = 3,
+		.pop_cnt = 8,
+	},
+	.enhance_rx = true,
+	.support_64g = true,
+	.need_gate_cg = true,
+	.new_tx_ver = 0,
+	.new_rx_ver = 0,
+	.infra_check = {
+		.enable = false,
+	},
+};
+
 static const struct mtk_mmc_compatible common_v2_compat = {
 	.clk_div_bits = 12,
 	.recheck_sdio_irq = false,
@@ -507,6 +530,7 @@ static const struct of_device_id msdc_of_ids[] = {
 	{ .compatible = "mediatek,mt6897-mmc", .data = &mt6897_compat},
 	{ .compatible = "mediatek,mt6989-mmc", .data = &mt6989_compat},
 	{ .compatible = "mediatek,mt6991-mmc", .data = &mt6991_compat},
+	{ .compatible = "mediatek,mt6765-mmc", .data = &mt6765_compat},
 	{}
 };
 MODULE_DEVICE_TABLE(of, msdc_of_ids);
