@@ -89,6 +89,7 @@ struct mmdvfs_debug {
 
 static struct mmdvfs_debug *g_mmdvfs;
 static bool ftrace_v1_ena, ftrace_v3_ena;
+static bool mmdvfs_met_freerun;
 static bool mmdvfs_v3_debug_init_done;
 
 void mtk_mmdvfs_debug_release_step0(void)
@@ -443,6 +444,7 @@ static int mmdvfs_v1_dbg_ftrace_thread(void *data)
 		return 0;
 	}
 
+	ftrace_v1_ena = true;
 	while (!kthread_should_stop()) {
 
 		spin_lock_irqsave(&g_mmdvfs->lock, flags);
@@ -489,6 +491,7 @@ static int mmdvfs_v3_dbg_ftrace_thread(void *data)
 	}
 
 	MMDVFS_DBG("mmdvfs_v3 init & MEM_BASE ready");
+	ftrace_v3_ena = true;
 	while (!kthread_should_stop()) {
 		if (mmdvfs_get_version()) {  //mmdvfs v3.5
 			// power opp
@@ -533,6 +536,11 @@ static int mmdvfs_debug_set_ftrace(const char *val,
 		return -EINVAL;
 	}
 
+	if (!mmdvfs_met_freerun) {
+		MMDVFS_DBG("mmdvfs met not freerun");
+		return 0;
+	}
+
 	if (ver & MMDVFS_DBG_VER1) {
 		if (ena) {
 			if (ftrace_v1_ena)
@@ -542,8 +550,6 @@ static int mmdvfs_debug_set_ftrace(const char *val,
 					mmdvfs_v1_dbg_ftrace_thread, NULL, "mmdvfs-dbg-ftrace-v1");
 				if (IS_ERR(kthr_v1))
 					MMDVFS_DBG("create kthread mmdvfs-dbg-ftrace-v1 failed");
-				else
-					ftrace_v1_ena = true;
 			}
 		} else {
 			if (ftrace_v1_ena) {
@@ -565,8 +571,6 @@ static int mmdvfs_debug_set_ftrace(const char *val,
 					mmdvfs_v3_dbg_ftrace_thread, NULL, "mmdvfs-dbg-ftrace-v3");
 				if (IS_ERR(kthr_v3))
 					MMDVFS_DBG("create kthread mmdvfs-dbg-ftrace-v3 failed");
-				else
-					ftrace_v3_ena = true;
 			}
 		} else {
 			if (ftrace_v3_ena) {
@@ -803,6 +807,8 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 		g_mmdvfs->dev->of_node, "debug-version", &g_mmdvfs->debug_version);
 	if (ret)
 		MMDVFS_DBG("debug_version:%u failed:%d", g_mmdvfs->debug_version, ret);
+
+	mmdvfs_met_freerun = of_property_read_bool(g_mmdvfs->dev->of_node, "mediatek,met-freerun");
 
 	/* MMDVFS_DBG_VER1 */
 	spin_lock_init(&g_mmdvfs->lock);
