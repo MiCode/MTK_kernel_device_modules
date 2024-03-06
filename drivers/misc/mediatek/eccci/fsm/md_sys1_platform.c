@@ -278,36 +278,33 @@ static void md_cd_get_md_bootup_status(unsigned int *buff, int length)
 	}
 }
 
-/*
- * get MD boot up status default value
- * GEN95 and before == 0x54430007U;
- * New GEN95 (6789,6781) == 0x5443000CU;
- * GEN97 and GEN98 == 0x5443000CU;
- * GEN98+ == 0x5443000FU;
- * GEN99 == 0x54430012U;
- */
+/* get MD boot up status default value from dts */
 u32 get_expected_boot_status_val(void)
 {
-	u32 boot_status_val = 0;
-
-	if ((md_cd_plat_val_ptr.md_gen <= 6295) && !md_cd_plat_val_ptr.md_sub_ver)
-		boot_status_val = 0x54430007U;
-	else if (((md_cd_plat_val_ptr.md_gen == 6295) && md_cd_plat_val_ptr.md_sub_ver) ||
-		(md_cd_plat_val_ptr.md_gen == 6297) ||
-		((md_cd_plat_val_ptr.md_gen == 6298) && !md_cd_plat_val_ptr.md_sub_ver))
-		boot_status_val = 0x5443000CU;
-	else if ((md_cd_plat_val_ptr.md_gen == 6298) && md_cd_plat_val_ptr.md_sub_ver)
-		boot_status_val = 0x5443000FU;
-	else if (md_cd_plat_val_ptr.md_gen >= 6299)
-		boot_status_val = 0x54430012U;
-	else {
-		CCCI_ERROR_LOG(-1, TAG,
-			       "%s, unexpected MD Gen:%d (sub_ver:%d)\n",
-			       __func__, md_cd_plat_val_ptr.md_gen, md_cd_plat_val_ptr.md_sub_ver);
-		return 0;
-	}
-
-	return boot_status_val;
+/*
+ *	if ((md_cd_plat_val_ptr.md_gen <= 6295) && !md_cd_plat_val_ptr.md_sub_ver)
+ *		boot_status_val = 0x54430007U;
+ *	else if (((md_cd_plat_val_ptr.md_gen == 6295) && md_cd_plat_val_ptr.md_sub_ver) ||
+ *		(md_cd_plat_val_ptr.md_gen == 6297) ||
+ *		((md_cd_plat_val_ptr.md_gen == 6298) && !md_cd_plat_val_ptr.md_sub_ver))
+ *		boot_status_val = 0x5443000CU;
+ *	else if ((md_cd_plat_val_ptr.md_gen == 6298) && md_cd_plat_val_ptr.md_sub_ver)
+ *		boot_status_val = 0x5443000FU;
+ *	else if (md_cd_plat_val_ptr.md_gen >= 6299)
+ *		boot_status_val = 0x54430012U;
+ *	else {
+ *		CCCI_ERROR_LOG(-1, TAG,
+ *			"%s, unexpected MD Gen:%d (sub_ver:%d)\n",
+ *			__func__, md_cd_plat_val_ptr.md_gen, md_cd_plat_val_ptr.md_sub_ver);
+ *		return 0;
+ *	}
+ */
+	if (md_cd_plat_val_ptr.boot_status_value)
+		return md_cd_plat_val_ptr.boot_status_value;
+	CCCI_ERROR_LOG(-1, TAG,
+		"%s, can not get boot_status_value from dts: MD Gen:%d (sub_ver:%d)\n",
+		__func__, md_cd_plat_val_ptr.md_gen, md_cd_plat_val_ptr.md_sub_ver);
+	return 0;
 }
 
 static void md_pmic_info_dump(void)
@@ -2062,6 +2059,17 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 			"md_wdt_irq:%d\n", hw_info->md_wdt_irq_id);
 		return -1;
 	}
+
+	ret = of_property_read_u32(dev_ptr->dev.of_node,
+		"mediatek,boot-status-value",
+		&md_cd_plat_val_ptr.boot_status_value);
+	if (ret < 0) {
+		md_cd_plat_val_ptr.boot_status_value = 0;
+		CCCI_ERROR_LOG(0, TAG, "%s:get DTS:boot-status-value fail\n",
+			__func__);
+	} else
+		CCCI_NORMAL_LOG(0, TAG, "%s: boot_status_value = 0x%x\n",
+			__func__, md_cd_plat_val_ptr.boot_status_value);
 
 	/* Get spm sleep base */
 	md_cd_plat_val_ptr.spm_sleep_base =
