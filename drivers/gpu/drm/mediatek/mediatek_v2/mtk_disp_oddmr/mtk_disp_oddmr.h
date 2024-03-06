@@ -195,6 +195,7 @@ struct mtk_drm_dbi_cfg_info {
 };
 
 struct bitstream_buffer {
+	uint8_t *_self;
 	uint8_t *_buffer;
 	uint32_t used_entry;
 	uint32_t used_bit;
