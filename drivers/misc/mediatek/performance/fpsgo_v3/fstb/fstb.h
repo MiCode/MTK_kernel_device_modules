@@ -57,7 +57,6 @@ unsigned long long fpsgo_other2fstb_get_app_self_ctrl_time(int pid,
 void fpsgo_comp2fstb_notify_info(int pid, unsigned long long bufID,
 	unsigned long long q2q_time, unsigned long long enq_length,
 	unsigned long long deq_length);
-int fpsgo_ctrl2fstb_gblock(int tid, int start);
 void fpsgo_ctrl2fstb_get_fps(int *pid, int *fps);
 void fpsgo_ctrl2fstb_dfrc_fps(int fps);
 int fpsgo_ctrl2fstb_wait_fstb_active(void);

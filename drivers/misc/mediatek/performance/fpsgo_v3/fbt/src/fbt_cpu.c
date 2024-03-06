@@ -339,7 +339,6 @@ static int jank_min_cap_ratio;
 static int jank_max_cap_ratio;
 static int jank_priority;
 static int jank_cpu_mask;
-static int limit_min_cap_target_t;
 static int rl_l2q_enable;
 static int rl_l2q_exp_us;
 static int rl_l2q_exp_times;
@@ -4785,9 +4784,9 @@ static int fbt_boost_policy(
 	int limit_min_cap_target_t_final;
 	int limit_cap_b = 100, limit_cap_m = 100;
 	int limit_util = 1024, limit_util_b = 1024, limit_util_m = 1024;
-	unsigned long long logical_head_time_ns;
-	unsigned long long l2q_ns;
-	int is_logic_head_alive;
+	unsigned long long logical_head_time_ns = 0;
+	unsigned long long l2q_ns = 0;
+	int is_logic_head_alive = 0;
 
 	if (!thread_info) {
 		FPSGO_LOGE("ERROR %d\n", __LINE__);
@@ -9343,6 +9342,7 @@ int __init fbt_cpu_init(void)
 	limit_min_cap_target_t = 0;
 
 	jank_min_cap_ratio = 100;
+	jank_max_cap_ratio = 100;
 	jank_cpu_mask = 0xFFF;
 
 	rl_l2q_exp_us = 0;
