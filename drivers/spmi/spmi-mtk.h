@@ -94,6 +94,7 @@ enum spmi_regs {
 	SPMI_SLV_B_8_EINT,
 	SPMI_SLV_F_C_EINT,
 	SPMI_TIA,
+	SPMI_WDT_REC,
 	SPMI_DEC_DBG,
 	SPMI_REC_CMD_DEC,
 };

@@ -45,6 +45,9 @@
 
 #define SPMI_OP_ST_BUSY 1
 
+#define MAX_WHITE_LIST_REGION_SIZE	64
+#define WHITELIST_ITEM_NUM	3
+
 #define PMIF_IRQDESC(name) { #name, pmif_##name##_irq_handler, -1}
 
 #define MT6316_PMIC_RG_SPMI_DBGMUX_OUT_L_ADDR                           (0x42b)
@@ -98,6 +101,11 @@ struct pmif_irq_desc {
 	int irq;
 };
 
+struct spmi_white_list {
+	unsigned int slvid;
+	unsigned int start_addr;
+	unsigned int end_addr;
+};
 
 enum pmif_regs {
 	PMIF_INIT_DONE,
@@ -324,6 +332,7 @@ static const u32 mt6853_spmi_regs[] = {
 	[SPMI_REC3] =		0x0050,
 	[SPMI_REC4] =		0x0054,
 	[SPMI_REC_CMD_DEC] =	0x005C,
+	[SPMI_WDT_REC] =	0x0060,
 	[SPMI_DEC_DBG] =	0x00F8,
 	[SPMI_MST_DBG] =	0x00FC,
 };
@@ -391,6 +400,8 @@ enum {
 	IRQ_PMIF_SWINF_ACC_ERR_5_V2 = 28,
 };
 static struct spmi_dev spmidev[16];
+static struct spmi_white_list nack_whitelist_region[MAX_WHITE_LIST_REGION_SIZE];
+static int nack_whitelist_region_size;
 
 struct spmi_dev *get_spmi_device(int slaveid)
 {
@@ -423,6 +434,92 @@ static void spmi_dev_parse(struct platform_device *pdev)
 			spmidev[i].path = 0;
 	}
 }
+
+static void spmi_nack_whitelist_parse(struct platform_device *pdev)
+{
+	int i = 0, ret = 0;
+	int nack_whitelist_arr_size = 0;
+
+	nack_whitelist_arr_size = of_property_count_u32_elems(pdev->dev.of_node, "spmi-nack-whitelist-rgn");
+	if (nack_whitelist_arr_size < 0) {
+		dev_notice(&pdev->dev,
+			"Failed to get spmi-nack-whitelist-rgn, ret = %d\n", nack_whitelist_arr_size);
+		return;
+	}
+
+	/* Whitelist size too large */
+	if ((nack_whitelist_arr_size / WHITELIST_ITEM_NUM) > MAX_WHITE_LIST_REGION_SIZE) {
+		dev_notice(&pdev->dev,
+			"SPMI nack whitelist region size is too large = %d, max size is %d\n",
+			nack_whitelist_arr_size / WHITELIST_ITEM_NUM, MAX_WHITE_LIST_REGION_SIZE);
+	}
+
+	/* NACK whitelist regions are not in pair */
+	if (nack_whitelist_arr_size % WHITELIST_ITEM_NUM != 0) {
+		dev_notice(&pdev->dev,
+			"SPMI nack whitelist slvid, start, end mismatch, array size = %d\n",
+			nack_whitelist_arr_size);
+	}
+
+	nack_whitelist_region_size = nack_whitelist_arr_size / WHITELIST_ITEM_NUM;
+	dev_notice(&pdev->dev,
+			"nack_whitelist_arr_size = %d, nack_whitelist_region_size = %d\n",
+			nack_whitelist_arr_size,
+			nack_whitelist_region_size);
+
+	for (i = 0; i < nack_whitelist_region_size; i++) {
+		ret = of_property_read_u32_index(pdev->dev.of_node,
+				"spmi-nack-whitelist-rgn",
+				i * WHITELIST_ITEM_NUM,
+				&nack_whitelist_region[i].slvid);
+		if (ret) {
+			dev_notice(&pdev->dev,
+				"spmi-nack-whitelist-rgn slvid read fail\n");
+		}
+
+		ret = of_property_read_u32_index(pdev->dev.of_node,
+				"spmi-nack-whitelist-rgn",
+				i * WHITELIST_ITEM_NUM + 1,
+				&nack_whitelist_region[i].start_addr);
+		if (ret) {
+			dev_notice(&pdev->dev,
+				"spmi-nack-whitelist-rgn start addr read fail\n");
+		}
+
+		ret = of_property_read_u32_index(pdev->dev.of_node,
+				"spmi-nack-whitelist-rgn",
+				i * WHITELIST_ITEM_NUM + 2,
+				&nack_whitelist_region[i].end_addr);
+		if (ret) {
+			dev_notice(&pdev->dev,
+				"spmi-nack-whitelist-rgn end addr read fail\n");
+		}
+	}
+}
+
+static bool in_spmi_nack_whitelist(u32 spmi_nack)
+{
+	unsigned int i = 0;
+	unsigned int spmi_nack_addr = 0;
+
+	for (i = 0; i < nack_whitelist_region_size; i++) {
+		if (((spmi_nack & 0x0f00) >> 8) == nack_whitelist_region[i].slvid) {
+			spmi_nack_addr = (spmi_nack & 0xffff0000) >> 16;
+			if ((spmi_nack_addr >= nack_whitelist_region[i].start_addr) &&
+				(spmi_nack_addr <= nack_whitelist_region[i].end_addr)) {
+				pr_notice("%s Match SPMI NACK whitelist\n", __func__);
+				pr_notice("%s Whitelist rgn: %d, slvid: 0x%x, start_addr: 0x%x, end_addr: 0x%x\n",
+					__func__, i,
+					nack_whitelist_region[i].slvid,
+					nack_whitelist_region[i].start_addr,
+					nack_whitelist_region[i].end_addr);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 unsigned long long get_current_time_ms(void)
 {
 	unsigned long long cur_ts;
@@ -1307,7 +1404,8 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	int flag = 0, sid = 0;
 	unsigned int spmi_nack = 0, spmi_p_nack = 0, spmi_nack_data = 0, spmi_p_nack_data = 0;
 	unsigned int spmi_rcs_nack = 0, spmi_debug_nack = 0, spmi_mst_nack = 0,
-		spmi_p_rcs_nack = 0, spmi_p_debug_nack = 0, spmi_p_mst_nack = 0;
+		spmi_p_rcs_nack = 0, spmi_p_debug_nack = 0, spmi_p_mst_nack = 0,
+		spmi_wdt_rec = 0, spmi_p_wdt_rec = 0;
 	u8 rdata = 0, rdata1 = 0;
 	unsigned short mt6316INTSTA = 0x240, hwcidaddr_mt6316 = 0x209, VIO18_SWITCH_6363 = 0x53,
 		hwcidaddr_mt6363 = 0x9;
@@ -1320,6 +1418,7 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	spmi_rcs_nack = mtk_spmi_readl(arb->spmimst_base[0], arb, SPMI_REC_CMD_DEC);
 	spmi_debug_nack = mtk_spmi_readl(arb->spmimst_base[0], arb, SPMI_DEC_DBG);
 	spmi_mst_nack = mtk_spmi_readl(arb->spmimst_base[0], arb, SPMI_MST_DBG);
+	spmi_wdt_rec = mtk_spmi_readl(arb->spmimst_base[0], arb, SPMI_WDT_REC);
 
 	if (!IS_ERR(arb->spmimst_base[1])) {
 		spmi_p_nack = mtk_spmi_readl(arb->spmimst_base[1], arb, SPMI_REC0);
@@ -1327,6 +1426,7 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 		spmi_p_rcs_nack = mtk_spmi_readl(arb->spmimst_base[1], arb, SPMI_REC_CMD_DEC);
 		spmi_p_debug_nack = mtk_spmi_readl(arb->spmimst_base[1], arb, SPMI_DEC_DBG);
 		spmi_p_mst_nack = mtk_spmi_readl(arb->spmimst_base[1], arb, SPMI_MST_DBG);
+		spmi_p_wdt_rec = mtk_spmi_readl(arb->spmimst_base[1], arb, SPMI_WDT_REC);
 	}
 	// Write fail nack, causing OP_ST_NACK/PMIF_NACK/PMIF_BYTE_ERR/PMIF_GRP_RD_ERR
 	if ((spmi_nack & 0xD8) || (spmi_p_nack & 0xD8)) {
@@ -1373,14 +1473,19 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	// Read fail nack, causing parity error
 	if ((spmi_nack & 0x20) || (spmi_p_nack & 0x20)) {
 		spmi_dump_pmif_record_reg();
-		dump_spmip_pmic_dbg_rg(arb);
-		for (sid = 0x6; sid <= 0x8; sid++) {
-			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
-				mt6316INTSTA, &rdata, 1);
-			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
-				hwcidaddr_mt6316, &rdata1, 1);
-			pr_notice("%s slvid 0x%x INT_RAW_STA 0x%x cid 0x%x\n",
-				__func__, sid, rdata, rdata1);
+		if (spmi_nack & 0x20) {
+			flag = (in_spmi_nack_whitelist(spmi_nack)) ? 0 : 1;
+		} else {
+			dump_spmip_pmic_dbg_rg(arb);
+			for (sid = 0x6; sid <= 0x8; sid++) {
+				arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
+					mt6316INTSTA, &rdata, 1);
+				arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
+					hwcidaddr_mt6316, &rdata1, 1);
+				pr_notice("%s slvid 0x%x INT_RAW_STA 0x%x cid 0x%x\n",
+					__func__, sid, rdata, rdata1);
+			}
+			flag = (in_spmi_nack_whitelist(spmi_p_nack)) ? 0 : 1;
 		}
 		pr_notice("%s spmi transaction fail (Read) irq triggered", __func__);
 		pr_notice("SPMI_REC0 m/p:0x%x/0x%x SPMI_REC1 m/p 0x%x/0x%x\n",
@@ -1388,10 +1493,15 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 		if (((spmi_nack & 0x0f00) == 0x0f00) || ((spmi_p_nack & 0x0f00) == 0x0f00)) {
 			pr_notice("%s, Avoid trigger AEE event while reading slvid:0xf for SWRGO project\n", __func__);
 			flag = 0;
-		} else {
-			flag = 1;
 		}
 	}
+	/* SPMI WDT IRQ triggered */
+	if (spmi_wdt_rec || spmi_p_wdt_rec) {
+		pr_notice("%s SPMI WDT IRQ triggered\n", __func__);
+		pr_notice("%s SPMI_WDT_REC m/p = 0x%x/0x%x\n", __func__, spmi_wdt_rec, spmi_p_wdt_rec);
+		flag = 1;
+	}
+
 	if (flag) {
 		/* trigger AEE event*/
 		if (IS_ENABLED(CONFIG_MTK_AEE_FEATURE))
@@ -1419,8 +1529,15 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 			pr_notice("%s 6363 CID/VIO18_SWITCH 0x%x/0x%x\n", __func__, rdata, rdata1);
 		}
 		mtk_spmi_writel(arb->spmimst_base[1], arb, 0x3, SPMI_REC_CTRL);
+	} else if (spmi_wdt_rec || spmi_p_wdt_rec) {
+		pr_notice("%s SPMI_WDT_REC m/p = 0x%x/0x%x\n", __func__, spmi_wdt_rec, spmi_p_wdt_rec);
+		mtk_spmi_writel(arb->spmimst_base[0], arb, 0x7, SPMI_REC_CTRL);
+		mtk_spmi_writel(arb->spmimst_base[1], arb, 0x7, SPMI_REC_CTRL);
+		pr_notice("%s SPMI_WDT_IRQ is cleared\n", __func__);
 	} else
 		pr_notice("%s IRQ not cleared\n", __func__);
+
+
 
 	mutex_unlock(&arb->pmif_m_mutex);
 	__pm_relax(arb->pmif_m_Thread_lock);
@@ -1810,6 +1927,7 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 		}
 	}
 	spmi_dev_parse(pdev);
+	spmi_nack_whitelist_parse(pdev);
 #if defined(CONFIG_FPGA_EARLY_PORTING)
 	/* pmif/spmi initial setting */
 	pmif_writel(arb->pmif_base[0], arb, 0xffffffff, PMIF_INF_EN);
