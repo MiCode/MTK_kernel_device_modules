@@ -6935,7 +6935,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			autosuspend-delay-ms = <10>;
 			adaptive-power-policy = <2>;
 			exception-mask = <0x5>;
-			gpu-frame-base-optimize = <0>;
+			gpu-frame-base-optimize = <1>;
 		};
 
 		gpu_mali_opp: opp-table0 {
@@ -7113,7 +7113,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		gpu_dvfs_mode: gpu-loading-mode {
 			compatible = "mediatek,gpu_loading_mode";
 			dvfs-loading-mode = <0>;
-			dvfs-workload-mode = <0>;
+			dvfs-workload-mode = <6>;
 		};
 
 		ghpm: ghpm@4b800000 {
@@ -7287,7 +7287,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 		gpu_dvfs_async: gpu-async-ratio {
 			compatible = "mediatek,gpu_async_ratio";
-			async-ratio-support = <0>;
+			async-ratio-support = <1>;
 			async-virtual-table-support = <0>;
 			async-oppnum-eachmask = <2>;
 			async-ratio = <170>;
@@ -7297,25 +7297,25 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 		gpu_dvfs_prefence: gpu-prefence {
 			compatible = "mediatek,gpu_prefence";
-			dvfs-prefence-enable = <0>;
+			dvfs-prefence-enable = <1>;
 		};
 
 		gpu_dcs: gpu-dcs {
 			compatible = "mediatek,gpu_dcs";
-			dcs-policy-support = <0>;
-			virtual-opp-support = <0x0>;
+			dcs-policy-support = <1>;
+			virtual-opp-support = <0x820>;
 		};
 
 		gpu_fdvfs: gpu-fdvfs@13f800 {
 			compatible = "mediatek,gpu_fdvfs";
 			reg = <0 0x13f800 0 0x800>;
 			fdvfs-policy-support = <0>;
-			gpu-freq-notify-support = <0>;
+			gpu-freq-notify-support = <1>;
 		};
 
 		gpu_dvfs_mips: gpu-reduce-mips {
 			compatible = "mediatek,gpu_reduce_mips";
-			reduce-mips-support = <0>;
+			reduce-mips-support = <1>;
 		};
 
 		gpufreq: gpufreq@48500000 {
