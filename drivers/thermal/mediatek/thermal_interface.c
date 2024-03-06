@@ -1784,6 +1784,102 @@ static ssize_t user_vsensor_store(struct kobject *kobj,
 	return -EINVAL;
 }
 
+static ssize_t abnormal_temp_show(struct kobject *kobj, struct kobj_attribute *attr,
+	char *buf)
+{
+	int len = 0;
+	int abnormal_flag = 0;
+
+	if (tm_data.is_cputcm) {
+		abnormal_flag = therm_intf_read_cputcm_s32(ABNORMAL_TEMP_TCM_OFFSET);
+		len += snprintf(buf + len, PAGE_SIZE - len, "%u\n", abnormal_flag);
+	} else {
+		len += snprintf(buf + len, PAGE_SIZE - len, "%u\n", 0);
+	}
+	return len;
+}
+
+static ssize_t abnormal_temp_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char cmd[20];
+	unsigned int abnormal_temp_flag;
+
+	if (sscanf(buf, "%14s %u", cmd, &abnormal_temp_flag)
+		== 2) {
+		if (strncmp(cmd, "ABNORMAL_TEMP", 13) == 0) {
+			therm_intf_write_cputcm(abnormal_temp_flag, ABNORMAL_TEMP_TCM_OFFSET);
+			return count;
+		}
+	}
+
+	pr_info("[abnormal_temp] invalid input\n");
+
+	return -EINVAL;
+}
+
+static ssize_t lvts_info1_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE - len, "%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 4),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 8),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 12),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 16),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 20),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 24),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 28),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 32),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 36));
+
+		return len;
+}
+
+static ssize_t lvts_info2_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE - len, "%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 40),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 44),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 48),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 52),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 56),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 60),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 64),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 68),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 72),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 76));
+
+		return len;
+}
+
+static ssize_t lvts_info3_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE - len, "%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 80),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 84),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 88),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 92),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 96),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 100),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 104),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 108),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 112),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 116),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 120),
+		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 124));
+
+		return len;
+}
+
 static struct kobj_attribute ttj_attr = __ATTR_RW(ttj);
 static struct kobj_attribute power_budget_attr = __ATTR_RW(power_budget);
 static struct kobj_attribute cpu_info_attr = __ATTR_RO(cpu_info);
@@ -1818,6 +1914,10 @@ static struct kobj_attribute dram_data_rate_attr = __ATTR_RO(dram_data_rate);
 static struct kobj_attribute pid_info_attr = __ATTR_RW(pid_info);
 static struct kobj_attribute bat_type_attr = __ATTR_RO(bat_type);
 static struct kobj_attribute user_vsensor_attr = __ATTR_RW(user_vsensor);
+static struct kobj_attribute abnormal_temp_attr = __ATTR_RW(abnormal_temp);
+static struct kobj_attribute lvts_info1_attr = __ATTR_RO(lvts_info1);
+static struct kobj_attribute lvts_info2_attr = __ATTR_RO(lvts_info2);
+static struct kobj_attribute lvts_info3_attr = __ATTR_RO(lvts_info3);
 
 
 static struct attribute *thermal_attrs[] = {
@@ -1854,6 +1954,10 @@ static struct attribute *thermal_attrs[] = {
 	&pid_info_attr.attr,
 	&bat_type_attr.attr,
 	&user_vsensor_attr.attr,
+	&abnormal_temp_attr.attr,
+	&lvts_info1_attr.attr,
+	&lvts_info2_attr.attr,
+	&lvts_info3_attr.attr,
 	NULL
 };
 static struct attribute_group thermal_attr_group = {
