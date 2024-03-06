@@ -413,6 +413,9 @@ static int flt_init_ekg(void)
 	struct platform_device *pdev_temp;
 	struct resource *res;
 
+	if (is_flt_io_enable)
+		return 0;
+
 	flt_node = of_find_node_by_name(NULL, "flt");
 	if (!flt_node) {
 		pr_info("failed to find node @ %s\n", __func__);
@@ -490,31 +493,45 @@ static void flt_mi(int ctp, u32 flt_mode)
 	FLT_LOGI("mi xrg 0x%x offset %d\n", ioread32(flt_xrg + offset), offset);
 }
 
-int flt_init_res(void)
+int flt_tul(void)
 {
 	int wl = 0, nr_wl = 0, ctp = 0, nr_cpu, ret;
+	u32 mode = flt_get_mode();
+
 	bool BKV[GKEL] = {false};
+
+	nr_wl = get_nr_wl_type();
+	nr_cpu = get_nr_cpu_type();
+
+	for (wl = 0; wl < nr_wl; ++wl) {
+		ctp = get_cpu_type(wl);
+		FLT_LOGI("nr_cpu %d wl %d get_cpu_type %d\n", nr_cpu, wl, ctp);
+		if (ctp >= 0 && ctp < GKEL && !BKV[ctp]) {
+			flt_fei(wl, ctp);
+			BKV[ctp] = true;
+		}
+	}
+	ret = flt_init_ekg();
+	if (ret)
+		return ret;
+	for (ctp = 0; ctp < GKEL && ctp < nr_cpu; ctp++)
+		flt_mi(ctp, mode);
+	return 0;
+}
+
+int flt_init_res(void)
+{
+	int ret = 0;
 	u32 flt_mode = flt_get_mode();
 
 	flt_cal_init();
-	nr_wl = get_nr_wl_type();
-	nr_cpu = get_nr_cpu_type();
 	if (unlikely(flt_mode == FLT_MODE_0)) {
 		return -1;
 	} else {
-		for (wl = 0; wl < nr_wl; ++wl) {
-			ctp = get_cpu_type(wl);
-			FLT_LOGI("nr_cpu %d wl %d get_cpu_type %d\n", nr_cpu, wl, ctp);
-			if (ctp >= 0 && ctp < GKEL && !BKV[ctp]) {
-				flt_fei(wl, ctp);
-				BKV[ctp] = true;
-			}
-		}
-		ret = flt_init_ekg();
+		ret = flt_tul();
 		if (ret)
 			return ret;
-		for (ctp = 0; ctp < GKEL && ctp < nr_cpu; ctp++)
-			flt_mi(ctp, flt_mode);
+
 		switch (flt_mode) {
 		case FLT_MODE_2:
 			flt_register_api_hooks_mode2();
