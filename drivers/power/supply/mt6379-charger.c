@@ -554,6 +554,8 @@ static enum power_supply_property mt6379_charger_properties[] = {
 	POWER_SUPPLY_PROP_PRECHARGE_CURRENT,
 	POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT,
 	POWER_SUPPLY_PROP_USB_TYPE,
+	POWER_SUPPLY_PROP_CURRENT_MAX,
+	POWER_SUPPLY_PROP_VOLTAGE_MAX,
 	POWER_SUPPLY_PROP_CALIBRATE,
 	POWER_SUPPLY_PROP_ENERGY_EMPTY,
 	POWER_SUPPLY_PROP_TYPE,
@@ -779,6 +781,22 @@ static int mt6379_charger_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_USB_TYPE:
 		val->intval = cdata->psy_usb_type[cdata->active_idx];
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		if (cdata->psy_usb_type[cdata->active_idx] == POWER_SUPPLY_USB_TYPE_SDP)
+			val->intval = 500000;
+		else if (cdata->psy_usb_type[cdata->active_idx] == POWER_SUPPLY_USB_TYPE_DCP)
+			val->intval = 3225000;
+		else if (cdata->psy_usb_type[cdata->active_idx] == POWER_SUPPLY_USB_TYPE_CDP)
+			val->intval = 1500000;
+		else
+			val->intval = 500000;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+		if (cdata->psy_usb_type[cdata->active_idx] == POWER_SUPPLY_USB_TYPE_DCP)
+			val->intval = 22000000;
+		else
+			val->intval = 5000000;
 		break;
 	case POWER_SUPPLY_PROP_TYPE:
 		val->intval = cdata->psy_desc.type;
