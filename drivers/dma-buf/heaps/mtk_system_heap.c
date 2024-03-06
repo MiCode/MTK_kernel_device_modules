@@ -1132,6 +1132,13 @@ static struct page *alloc_largest_available(unsigned long size,
 	return NULL;
 }
 
+static const struct file_operations *dma_buf_file_fops;
+int is_dma_buf_file(struct file *file)
+{
+	return (dma_buf_file_fops && file->f_op == dma_buf_file_fops);
+}
+EXPORT_SYMBOL_GPL(is_dma_buf_file);
+
 static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 					       unsigned long len,
 					       unsigned long fd_flags,
@@ -1264,6 +1271,9 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 		ret = PTR_ERR(dmabuf);
 		goto free_pages;
 	}
+
+	if (unlikely(!dma_buf_file_fops))
+		dma_buf_file_fops = dmabuf->file->f_op;
 
 	/*
 	 * For uncached buffers, we need to initially flush cpu cache, since

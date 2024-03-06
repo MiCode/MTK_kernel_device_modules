@@ -120,6 +120,7 @@ struct mtk_dma_heap_match_data {
 	u32	dmaheap_type;
 };
 
+int is_dma_buf_file(struct file *file);
 int mtk_dma_heap_config_parse(struct device *dev, struct mtk_dma_heap_config *heap_config);
 
 const char **mtk_refill_heap_names(void);
