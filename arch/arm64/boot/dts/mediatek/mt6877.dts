@@ -2102,6 +2102,16 @@
 		compatible = "mediatek,goodix-fp";
 	};
 
+	regulator_vibrator: regulator-vibrator {
+		compatible = "regulator-vibrator";
+		label = "vibrator";
+		min-volt = <2300000>;
+		max-volt = <3200000>;
+		min-limit = <15>;
+		max-limit = <15000>;
+		vib-supply = <&mt6359p_vibr_reg>;
+	};
+
 	mt6359_gauge {
 		compatible = "mediatek,mt6359_gauge";
 		bootmode = <&chosen>;
