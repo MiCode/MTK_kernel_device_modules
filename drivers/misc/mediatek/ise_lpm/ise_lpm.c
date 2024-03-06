@@ -14,6 +14,7 @@
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #include <linux/sched/clock.h>
 #include <linux/slab.h>
 #include <linux/soc/mediatek/mtk_ise.h>
@@ -80,19 +81,22 @@ enum ise_pwr_ut_id_enum {
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 static int ise_scmi_id;
-static uint32_t ise_awake_cnt;
 static struct scmi_tinysys_info_st *_tinfo;
 #endif
 
+struct device *ise_lpm_dev;
 struct mutex mutex_ise_lpm;
 static struct timer_list ise_lpm_timer;
 static struct timer_list ise_lpm_pd_timer;
 static struct timer_list ise_lpm_deinit_timer;
 static struct ise_lpm_work_struct ise_lpm_work;
 static struct workqueue_struct *ise_lpm_wq;
+static struct wakeup_source *ise_wakelock;
 
+static uint32_t ise_awake_cnt;
 static uint32_t ise_wakelock_en;
 static uint32_t ise_lpm_freerun_en;
+static uint32_t ise_lpm_deinit_bypass;
 static uint32_t ise_req_pending_cnt;
 static uint32_t ise_awake_user_list[ISE_AWAKE_ID_NUM];
 static uint64_t ise_boot_cnt;
@@ -209,13 +213,24 @@ EXPORT_SYMBOL_GPL(mtk_ise_awake_unlock);
 
 static void ise_power_on(void)
 {
+	int ret = 0;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct scmi_tinysys_status rvalue;
 	struct ise_scmi_data_t ise_scmi_data;
-	uint32_t ret = 0, retry = 20;
+	uint32_t retry = 0, retry_limit = 20;
+#endif
+
+	/* APMCU wakelock */
+	__pm_stay_awake(ise_wakelock);
+	ret = pm_runtime_resume_and_get(ise_lpm_dev);
+	if (ret)
+		pr_notice("pm_runtime_resume_and_get failed, ret=%d\n", ret);
 
 	ise_req_dram();
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	ise_scmi_data.cmd = SCMI_MBOX_CMD_ISE_PWR_ON;
+
 	do {
 		ret = scmi_tinysys_common_get(_tinfo->ph, ise_scmi_id,
 				ise_scmi_data.cmd, &rvalue);
@@ -224,31 +239,33 @@ static void ise_power_on(void)
 				rvalue.r2,
 				rvalue.r3);
 		if (ret)
-			pr_notice("[ise_lpm] scmi cmd %d send fail, ret = %d\n",
+			pr_notice("scmi cmd %d send fail, ret = %d\n",
 					ise_scmi_data.cmd, ret);
 		if (rvalue.r1 == (uint32_t)ISE_ACTIVE) {
-			pr_info("[ise_lpm] power on done, retry=%d, cnt%llu\n",
+			pr_info("power on done, retry=%d, cnt%llu\n",
 				retry, ++ise_boot_cnt);
 			break;
 		}
+		if(retry >= retry_limit) {
+			pr_notice("iSE power on failed\n");
+			WARN_ON_ONCE(1);
+			break;
+		}
 		udelay(500);
-	} while (--retry);
-
-	if(retry == 0) {
-		pr_notice("[ise_lpm]iSE power on failed\n");
-		WARN_ON_ONCE(1);
-	}
+	} while (++retry);
 #endif
 }
 
 static void ise_power_off(void)
 {
+	int ret;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct scmi_tinysys_status rvalue;
 	struct ise_scmi_data_t ise_scmi_data;
-	uint32_t ret = 0, retry = 400;
+	uint32_t retry = 0, retry_limit = 400;
 
 	ise_scmi_data.cmd = SCMI_MBOX_CMD_ISE_PWR_OFF;
+
 	do {
 		ret = scmi_tinysys_common_get(_tinfo->ph, ise_scmi_id,
 				ise_scmi_data.cmd, &rvalue);
@@ -257,25 +274,32 @@ static void ise_power_off(void)
 				rvalue.r2,
 				rvalue.r3);
 		if (ret)
-			pr_notice("[ise_lpm] scmi cmd %d send fail, ret = %d\n",
+			pr_notice("scmi cmd %d send fail, ret = %d\n",
 					ise_scmi_data.cmd, ret);
 		if (rvalue.r1 == (uint32_t)ISE_POWER_OFF) {
-			pr_info("[ise_lpm] power off done, retry=%d\n", retry);
-			ise_rel_dram();
+			pr_info("power off done, retry=%d\n", retry);
 			break;
 		}
+		if(retry >= retry_limit) {
+			/*
+			 * If power control already abnormal,
+			 * do not call ise_rel_dram() release iSE resource.
+			 */
+			pr_notice("power off failed\n");
+			WARN_ON_ONCE(1);
+			return;
+		}
 		udelay(1000);
-	} while (--retry);
-
-	if(retry == 0) {
-		/*
-		 * If power control already abnormal,
-		 * do not call ise_rel_dram() release iSE resource.
-		 */
-		pr_notice("[ise_lpm] power off failed\n");
-		WARN_ON_ONCE(1);
-	}
+	} while (++retry);
 #endif
+
+	ise_rel_dram();
+	ret = pm_runtime_put_sync(ise_lpm_dev);
+	if (ret)
+		pr_notice("pm_runtime_put_sync failed, ret=%d\n", ret);
+
+	/* reease APMCU wakelock */
+	__pm_relax(ise_wakelock);
 }
 
 static void ise_deinit(void)
@@ -283,7 +307,7 @@ static void ise_deinit(void)
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct scmi_tinysys_status rvalue;
 	struct ise_scmi_data_t ise_scmi_data;
-	uint32_t ret = 0, retry = 5;
+	uint32_t ret = 0, retry = 0, retry_limit = 5;
 
 	ise_scmi_data.cmd = SCMI_MBOX_CMD_ISE_BOOT_DEINIT;
 	do {
@@ -294,18 +318,19 @@ static void ise_deinit(void)
 				rvalue.r2,
 				rvalue.r3);
 		if (ret)
-			pr_notice("[ise_lpm] scmi cmd %d send fail, ret = %d\n",
+			pr_notice("scmi cmd %d send fail, ret = %d\n",
 					ise_scmi_data.cmd, ret);
 		if (rvalue.r1 == (uint32_t)ISE_DEINIT) {
-			pr_info("[ise_lpm] deinit done, retry=%d\n", retry);
+			pr_info("deinit done, retry=%d\n", retry);
+			break;
+		}
+		if(retry >= retry_limit) {
+			pr_notice("deinit failed\n");
+			WARN_ON_ONCE(1);
 			break;
 		}
 		udelay(1000);
-	} while (--retry);
-	if(retry == 0) {
-		pr_notice("[ise_lpm] deinit failed\n");
-		WARN_ON_ONCE(1);
-	}
+	} while (++retry);
 #endif
 }
 
@@ -343,10 +368,10 @@ void ise_lpm_work_handle(struct work_struct *ws)
 	uint32_t ise_lpm_cmd = ise_lpm_ws->flags;
 	int ret;
 
+	ise_scmi_init();
 	pr_notice("%s cmd=%d\n", __func__, ise_lpm_cmd);
 	switch (ise_lpm_cmd) {
 	case ISE_LPM_FREERUN:
-		ise_scmi_init();
 		ret = mtk_ise_awake_unlock(ISE_PM_INIT);
 		if (ret != ISE_SUCCESS) {
 			pr_notice("%s err %d", __func__, ret);
@@ -363,7 +388,6 @@ void ise_lpm_work_handle(struct work_struct *ws)
 		mutex_unlock(&mutex_ise_lpm);
 		break;
 	case ISE_LPM_DEINIT:
-		ise_scmi_init();
 		ise_deinit();
 		break;
 	}
@@ -374,6 +398,8 @@ static void ise_scmi_init(void)
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	unsigned int ret;
 
+	if (_tinfo)
+		return;
 	_tinfo = get_scmi_tinysys_info();
 	ret = of_property_read_u32(_tinfo->sdev->dev.of_node, "scmi-ise",
 			&ise_scmi_id);
@@ -443,6 +469,7 @@ static const struct proc_ops ise_lpm_dbg_fops = {
 static int ise_lpm_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
+	int ret;
 
 	if (!node) {
 		dev_info(&pdev->dev, "of_node required\n");
@@ -457,6 +484,10 @@ static int ise_lpm_probe(struct platform_device *pdev)
 	ise_lpm_freerun_en = 0;
 	if (!of_property_read_u32(pdev->dev.of_node, "ise-lpm-freerun", &ise_lpm_freerun_en))
 		pr_notice("ise_lpm_freerun_en %d\n", ise_lpm_freerun_en);
+
+	ise_lpm_deinit_bypass = 0;
+	if (!of_property_read_u32(pdev->dev.of_node, "ise-lpm-deinit-bypass", &ise_lpm_deinit_bypass))
+		pr_notice("ise_lpm_deinit_bypass %d\n", ise_lpm_deinit_bypass);
 
 	if (ise_wakelock_en) {
 		mutex_init(&mutex_ise_lpm);
@@ -474,6 +505,15 @@ static int ise_lpm_probe(struct platform_device *pdev)
 		timer_setup(&ise_lpm_pd_timer, ise_lpm_pwr_off_cb, 0);
 		mutex_unlock(&mutex_ise_lpm);
 		proc_create("ise_lpm_dbg", 0664, NULL, &ise_lpm_dbg_fops);
+
+		ise_lpm_dev = &pdev->dev;
+		pm_runtime_enable(ise_lpm_dev);
+		ret = pm_runtime_resume_and_get(ise_lpm_dev);
+		if (ret)
+			pr_notice("pm_runtime_resume_and_get failed, ret=%d\n", ret);
+
+		/* System wakelock */
+		ise_wakelock = wakeup_source_register(NULL, "ise_lpm wakelock");
 	}
 
 	if (ise_lpm_freerun_en) {
@@ -485,7 +525,7 @@ static int ise_lpm_probe(struct platform_device *pdev)
 	ise_lpm_wq = create_singlethread_workqueue("ISE_LPM_WQ");
 	INIT_WORK(&ise_lpm_work.work, ise_lpm_work_handle);
 
-	if (!ise_lpm_freerun_en & !ise_wakelock_en) {
+	if (!ise_lpm_freerun_en & !ise_wakelock_en & !ise_lpm_deinit_bypass) {
 		pr_notice("ise not enable, start to deinit\n ");
 		timer_setup(&ise_lpm_deinit_timer, ise_lpm_deinit_cb, 0);
 		mod_timer(&ise_lpm_deinit_timer,
