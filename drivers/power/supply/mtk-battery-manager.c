@@ -1040,10 +1040,7 @@ static int bm_update_psy_property(struct mtk_battery *gm, enum bm_psy_prop prop)
 		}
 		break;
 	case TEMP:
-		if (gm->fixed_bat_tmp != 0xffff)
-			ret_val = gm->fixed_bat_tmp;
-		else
-			ret_val = gm->battery_temp;
+		ret_val = battery_get_int_property(gm, BAT_PROP_TEMPERATURE);
 		break;
 	case QMAX_DESIGN:
 		ret_val = gm->fg_table_cust_data.fg_profile[0].fg_profile[
@@ -1062,7 +1059,7 @@ static int bs_psy_get_property(struct power_supply *psy,
 	enum power_supply_property psp,
 	union power_supply_propval *val)
 {
-	int ret = 0, qmax = 0;
+	int ret = 0, qmax = 0, cycle = 0;
 	int curr_now = 0;
 	int curr_avg = 0;
 	int remain_ui = 0, remain_mah = 0;
@@ -1093,12 +1090,20 @@ static int bs_psy_get_property(struct power_supply *psy,
 		val->intval = bs_data->bat_technology;
 		break;
 	case POWER_SUPPLY_PROP_CYCLE_COUNT: //sum(cycle * qmax) / sum(qmax)
-		if (bm->gm_no == 2)
-			val->intval = ((bm->gm1->bat_cycle + 1) * bm->gm1->daemon_data.qmxa_t_0ma +
-				(bm->gm2->bat_cycle + 1) * bm->gm2->daemon_data.qmxa_t_0ma) /
-				(bm->gm1->daemon_data.qmxa_t_0ma + bm->gm2->daemon_data.qmxa_t_0ma);
-		else
-			val->intval = bm->gm1->bat_cycle + 1;
+		if (bm->gm1 != NULL)
+			if(!bm->gm1->bat_plug_out) {
+				cycle += (bm->gm1->bat_cycle + 1) *
+					bm_update_psy_property(bm->gm1, QMAX_DESIGN);
+				qmax += bm_update_psy_property(bm->gm1, QMAX_DESIGN);
+			}
+		if (bm->gm2 != NULL)
+			if(!bm->gm2->bat_plug_out) {
+				cycle += (bm->gm2->bat_cycle + 1) *
+					bm_update_psy_property(bm->gm2, QMAX_DESIGN);
+				qmax += bm_update_psy_property(bm->gm2, QMAX_DESIGN);
+			}
+		if (qmax != 0)
+			val->intval = cycle / qmax;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY: //sum(uisoc)
 		/* 1 = META_BOOT, 4 = FACTORY_BOOT 5=ADVMETA_BOOT */
@@ -1174,8 +1179,8 @@ static int bs_psy_get_property(struct power_supply *psy,
 				volt_now += bm_update_psy_property(bm->gm2, VOLTAGE_NOW);
 				count += 1;
 			}
-
-		val->intval = volt_now / count * 1000;
+		if (count != 0)
+			val->intval = volt_now / count * 1000;
 		ret = 0;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
@@ -1191,8 +1196,8 @@ static int bs_psy_get_property(struct power_supply *psy,
 				temp += bm_update_psy_property(bm->gm2, TEMP);
 				count += 1;
 			}
-
-		val->intval = temp / count * 10;
+		if (count != 0)
+			val->intval = temp / count * 10;
 		ret = 0;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:

@@ -154,13 +154,17 @@ int get_charger_vbat(struct mtk_battery_manager *bm)
 		ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CHARGE_NOW, &val);
 		if (ret >= 0)
 			ret = val.intval / 1000;
-		else
+		else {
+			ret = gauge_get_int_property(bm->gm1,
+				GAUGE_PROP_BATTERY_VOLTAGE) / 10;
 			pr_err("[%s] get POWER_SUPPLY_PROP_CHARGE_NOW fail\n", __func__);
+		}
 
 		power_supply_put(psy);
 	} else {
+		ret = gauge_get_int_property(bm->gm1,
+			GAUGE_PROP_BATTERY_VOLTAGE) / 10;
 		pr_err("[%s] get charger power supply fail\n", __func__);
-		ret = 4000;
 	}
 
 	return ret;
@@ -284,8 +288,16 @@ int disable_shutdown_cond(struct mtk_battery *gm, int shutdown_cond)
 	int now_current;
 	int now_is_charging = 0;
 	int now_is_kpoc = 0;
-	struct battery_shutdown_unit *sdu = &gm->bm->sdc.bat[gm->id];
+	struct battery_shutdown_unit *sdu;
 	int vbat = 0;
+
+	if (gm->bm == NULL) {
+		pr_err("[%s]battery manager is not rdy\n",
+				__func__);
+		return 0;
+	}
+
+	sdu = &gm->bm->sdc.bat[gm->id];
 
 	now_current = gauge_get_int_property(gm, GAUGE_PROP_BATTERY_CURRENT);
 	now_is_kpoc = is_kernel_power_off_charging(gm);
@@ -334,10 +346,17 @@ int get_shutdown_cond(struct mtk_battery *gm)
 {
 	int ret = 0;
 	int vbat = 0;
-	struct battery_shutdown_unit *sdu = &gm->bm->sdc.bat[gm->id];
+	struct battery_shutdown_unit *sdu;
 
 	vbat = gauge_get_int_property(gm, GAUGE_PROP_BATTERY_VOLTAGE);
 
+	if (gm->bm == NULL) {
+		pr_err("[%s]battery manager is not rdy\n",
+				__func__);
+		return 1;
+	}
+
+	sdu = &gm->bm->sdc.bat[gm->id];
 
 	if (sdu->shutdown_status.is_soc_zero_percent)
 		ret |= 1;
@@ -503,13 +522,22 @@ int set_shutdown_cond(struct mtk_battery *gm, int shutdown_cond)
 	int now_is_charging = 0;
 	int now_is_kpoc = 0;
 	int vbat = 0;
-	struct shutdown_controller *sdc = &gm->bm->sdc;
-	struct battery_shutdown_unit *sdu = &gm->bm->sdc.bat[gm->id];
+	struct shutdown_controller *sdc;
+	struct battery_shutdown_unit *sdu;
 	struct shutdown_condition *sds;
 	int enable_lbat_shutdown;
 	int is_single = 0;
 	int i, enable_timer = 0;
 	ktime_t now;
+
+	if (gm->bm == NULL) {
+		pr_err("[%s]battery manager is not rdy\n",
+				__func__);
+		return 0;
+	}
+
+	sdc = &gm->bm->sdc;
+	sdu = &gm->bm->sdc.bat[gm->id];
 
 #ifdef SHUTDOWN_CONDITION_LOW_BAT_VOLT
 	enable_lbat_shutdown = 1;
@@ -664,8 +692,7 @@ void battery_update(struct mtk_battery_manager *bm)
 	struct fgd_cmd_daemon_data *d1;
 	struct fgd_cmd_daemon_data *d2;
 	static int first;
-	struct battery_shutdown_unit *sdu = &bm->sdc.bmsdu;
-
+	struct battery_shutdown_unit *sdu;
 	int vbat1 = 0, vbat2 = 0, real_uisoc = 0, real_quse = 0;
 
 	if (bm == NULL) {
@@ -673,6 +700,7 @@ void battery_update(struct mtk_battery_manager *bm)
 				__func__);
 		return;
 	}
+	sdu = &bm->sdc.bmsdu;
 	bat_data = &bm->bs_data;
 	bat_psy = bat_data->psy;
 
@@ -691,15 +719,22 @@ void battery_update(struct mtk_battery_manager *bm)
 		}
 
 		if (!bm->gm1->bat_plug_out) {
+			if (d1->quse == 0)
+				d1->quse = bm->gm1->fg_table_cust_data.fg_profile[0].fg_profile[
+					bm->gm1->fg_table_cust_data.fg_profile[0].size - 1].mah;
 			real_uisoc += bm->gm1->ui_soc * d1->quse;
 			real_quse += d1->quse;
 		}
 		if (!bm->gm2->bat_plug_out) {
+			if (d2->quse == 0)
+				d2->quse = bm->gm2->fg_table_cust_data.fg_profile[0].fg_profile[
+					bm->gm2->fg_table_cust_data.fg_profile[0].size - 1].mah;
 			real_uisoc += bm->gm2->ui_soc * d2->quse;
 			real_quse += d2->quse;
 		}
 
-		real_uisoc = real_uisoc / real_quse;
+		if (real_quse != 0)
+			real_uisoc = real_uisoc / real_quse;
 		bm->uisoc = real_uisoc;
 
 		now = ktime_get_boottime();

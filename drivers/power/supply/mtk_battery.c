@@ -1205,6 +1205,12 @@ void fg_custom_init_from_header(struct mtk_battery *gm)
 	fg_table_cust_data->temperature_tb0 = TEMPERATURE_TB0;
 	fg_table_cust_data->temperature_tb1 = TEMPERATURE_TB1;
 
+	/* shutdown jumping*/
+	fg_cust_data->low_tracking_jump = LOW_TRACKING_JUMP;
+	fg_cust_data->pre_tracking_jump = PRE_TRACKING_JUMP;
+	fg_cust_data->last_mode_reset = LAST_MODE_RESET;
+	fg_cust_data->pre_tracking_soc_reset = PRE_TRACKING_SOC_RESET;
+
 	fg_table_cust_data->fg_profile[0].size =
 		sizeof(fg_profile_t0[gm->battery_id]) /
 		sizeof(struct fuelgauge_profile_struct);
@@ -1826,6 +1832,16 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 		&(fg_cust_data->nafg_ratio_tmp_thr), 1);
 	fg_read_dts_val(gm, np, "NAFG_RESISTANCE", &(fg_cust_data->nafg_resistance),
 		1);
+
+	/* shutdown jumping*/
+	fg_read_dts_val(gm, np, "LOW_TRACKING_JUMP",
+		&(fg_cust_data->low_tracking_jump), 1);
+	fg_read_dts_val(gm, np, "PRE_TRACKING_JUMP",
+		&(fg_cust_data->pre_tracking_jump), 1);
+	fg_read_dts_val(gm, np, "LAST_MODE_RESET",
+		&(fg_cust_data->last_mode_reset), 1);
+	fg_read_dts_val(gm, np, "PRE_TRACKING_SOC_RESET",
+		&(fg_cust_data->pre_tracking_soc_reset), 1);
 
 	/* mode select */
 	fg_read_dts_val(gm, np, "PMIC_SHUTDOWN_CURRENT",
@@ -3284,6 +3300,7 @@ int battery_init(struct platform_device *pdev)
 
 	fg_drv_thread_hrtimer_init(gm);
 	battery_sysfs_create_group(gm);
+	gm->battery_sysfs = battery_sysfs_field_tbl;
 
 	/* for gauge hal hw ocv */
 	gm->battery_temp = force_get_tbat(gm, true);
@@ -3300,8 +3317,6 @@ int battery_init(struct platform_device *pdev)
 		battery_algo_init(gm);
 		bm_err(gm, "[%s]: enable Kernel mode Gauge\n", __func__);
 	}
-
-	gm->battery_sysfs = battery_sysfs_field_tbl;
 
 	return 0;
 }

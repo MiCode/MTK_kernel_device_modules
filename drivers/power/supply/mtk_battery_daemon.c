@@ -1812,38 +1812,6 @@ void exec_BAT_EC(struct mtk_battery *gm, int cmd, int param)
 				reg_type_name, cmd, regmap_type);
 		}
 		break;
-	case 808:
-		{
-			set_shutdown_cond(gm, LOW_BAT_VOLT);
-		}
-		break;
-	case 809:
-		{
-			set_shutdown_cond(gm, UISOC_ONE_PERCENT);
-		}
-		break;
-	case 810:
-		{
-			set_shutdown_cond(gm, SOC_ZERO_PERCENT);
-		}
-		break;
-	case 811:
-		{
-			set_shutdown_cond(gm, DLPT_SHUTDOWN);
-		}
-		break;
-	case 812:
-		{
-			set_bm_shutdown_cond(gm->bm, UISOC_ONE_PERCENT);
-		}
-		break;
-	case 813:
-		{
-			wakeup_fg_algo_cmd(
-				gm, FG_INTR_KERNEL_CMD,
-				FG_KERNEL_CMD_UISOC_UPDATE_TYPE, 0);
-		}
-		break;
 	default:
 		bm_err(gm,
 			"exe_BAT_EC cmd %d, param %d, default\n",
@@ -4666,6 +4634,13 @@ void fg_bat_temp_int_sw_check(struct mtk_battery *gm)
 		fg_bat_temp_int_internal(gm);
 	else if (tmp <= gm->bat_tmp_lt)
 		fg_bat_temp_int_internal(gm);
+
+	if (gm->cur_bat_temp >= BATTERY_SHUTDOWN_TEMPERATURE) {
+		bm_debug(gm,
+			"%d battery temperature >= %d,shutdown",
+			gm->cur_bat_temp, BATTERY_SHUTDOWN_TEMPERATURE);
+		set_shutdown_cond(gm, OVERHEAT);
+	}
 }
 
 void fg_int_event(struct mtk_battery *gm, enum gauge_event evt)
@@ -4792,6 +4767,9 @@ static irqreturn_t vbat_h_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
 
+	if (gm->bm == NULL)
+		return IRQ_HANDLED;
+
 	disable_gauge_irq(gm->gauge, VBAT_H_IRQ);
 	disable_gauge_irq(gm->gauge, VBAT_L_IRQ);
 	wake_up_bat_irq_controller(&gm->irq_ctrl, VBAT_H_FLAG);
@@ -4816,6 +4794,9 @@ static int sw_vbat_l_irq_handler(struct mtk_battery *gm)
 static irqreturn_t vbat_l_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
+
+	if (gm->bm == NULL)
+		return IRQ_HANDLED;
 
 	disable_gauge_irq(gm->gauge, VBAT_H_IRQ);
 	disable_gauge_irq(gm->gauge, VBAT_L_IRQ);
@@ -4880,6 +4861,9 @@ static irqreturn_t nafg_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
 
+	if (gm->bm == NULL)
+		return IRQ_HANDLED;
+
 	disable_gauge_irq(gm->gauge, NAFG_IRQ);
 	wake_up_bat_irq_controller(&gm->irq_ctrl, NAFG_FLAG);
 	return IRQ_HANDLED;
@@ -4933,6 +4917,9 @@ static irqreturn_t bat_plugout_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
 
+	if (gm->bm == NULL)
+		return IRQ_HANDLED;
+
 	disable_gauge_irq(gm->gauge, BAT_PLUGOUT_IRQ);
 	bat_plugout_irq_handler(gm);
 	return IRQ_HANDLED;
@@ -4963,6 +4950,9 @@ static void bat_plugin_irq_handler(struct mtk_battery *gm)
 static irqreturn_t bat_plugin_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
+
+	if (gm->bm == NULL)
+		return IRQ_HANDLED;
 
 	disable_gauge_irq(gm->gauge, BAT_PLUGIN_IRQ);
 	bat_plugin_irq_handler(gm);
@@ -5004,6 +4994,9 @@ static void zcv_irq_handler(struct mtk_battery *gm)
 static irqreturn_t zcv_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
+
+	if (gm->bm == NULL)
+		return IRQ_HANDLED;
 
 	disable_gauge_irq(gm->gauge, ZCV_IRQ);
 	wake_up_bat_irq_controller(&gm->irq_ctrl, ZCV_FLAG);
@@ -5065,6 +5058,9 @@ static irqreturn_t cycle_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
 
+	if (gm->bm == NULL)
+		return IRQ_HANDLED;
+
 	disable_gauge_irq(gm->gauge, FG_N_CHARGE_L_IRQ);
 	wake_up_bat_irq_controller(&gm->irq_ctrl, CYCLE_FLAG);
 	return IRQ_HANDLED;
@@ -5091,6 +5087,9 @@ static irqreturn_t iavg_h_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
 
+	if (gm->bm == NULL)
+		return IRQ_HANDLED;
+
 	disable_gauge_irq(gm->gauge, FG_IAVG_H_IRQ);
 	disable_gauge_irq(gm->gauge, FG_IAVG_L_IRQ);
 	wake_up_bat_irq_controller(&gm->irq_ctrl, IAVG_H_FLAG);
@@ -5100,6 +5099,9 @@ static irqreturn_t iavg_h_irq(int irq, void *data)
 static irqreturn_t iavg_l_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
+
+	if (gm->bm == NULL)
+		return IRQ_HANDLED;
 
 	disable_gauge_irq(gm->gauge, FG_IAVG_H_IRQ);
 	disable_gauge_irq(gm->gauge, FG_IAVG_L_IRQ);
@@ -5113,6 +5115,9 @@ static irqreturn_t iavg_l_irq(int irq, void *data)
 static irqreturn_t bat_temp_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
+
+	if (gm->bm == NULL)
+		return IRQ_HANDLED;
 
 	disable_gauge_irq(gm->gauge, BAT_TMP_H_IRQ);
 	disable_gauge_irq(gm->gauge, BAT_TMP_L_IRQ);

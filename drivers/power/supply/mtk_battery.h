@@ -718,6 +718,11 @@ struct fuel_gauge_custom_data {
 	int daemon_log_level;
 	int record_log;
 
+	/* shutdown jumping*/
+	int low_tracking_jump;
+	int pre_tracking_jump;
+	int last_mode_reset;
+	int pre_tracking_soc_reset;
 };
 
 struct fgd_cmd_param_t_custom {
@@ -799,6 +804,7 @@ enum Fg_interrupt_flags {
 	FG_INTR_KERNEL_CMD = 0x2000000,
 	FG_INTR_BAT_INT2_CHECK = 0x4000000,
 	FG_INTR_BAT_PLUGIN = 0x8000000,
+	FG_INTR_LAST_MODE = 0x10000000,
 };
 
 struct mtk_battery_algo {
@@ -1487,6 +1493,13 @@ extern void mtk_irq_thread_init(struct mtk_battery *gm);
 #define SHUTDOWN_GAUGE0_VOLTAGE	34000
 
 #define POWERON_SYSTEM_IBOOT	500	/* mA */
+
+
+/* shutdown jumping*/
+#define LOW_TRACKING_JUMP	0
+#define PRE_TRACKING_JUMP	0
+#define LAST_MODE_RESET	0
+#define PRE_TRACKING_SOC_RESET	0
 
 /*
  * LOW_TEMP_MODE = 0
