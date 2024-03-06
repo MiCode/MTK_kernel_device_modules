@@ -197,6 +197,8 @@ def main(**args):
 
     file_text.append("DIST_CMDS='cp -p ${OUT_DIR}/.config ${DIST_DIR}'\n")
 
+    file_text.append("if [ \"x${PROJECT_DEFCONFIG_NAME}\" != \"xgki_defconfig\" ]; then")
+    file_text.append("  GKI_BUILD_CONFIG=${KERNEL_DIR}/build.config.gki.aarch64")
     gki_build_config_fragments = ''
     if kernel_arch == 'arm64':
         gen_build_config_gki_goals = '%s.gki_goals' % (gen_build_config)
@@ -209,18 +211,19 @@ def main(**args):
         file_handle.close()
         gki_build_config_fragments = '  GKI_BUILD_CONFIG_FRAGMENTS=%s' % (gen_build_config_gki_goals)
 
-        file_text.append("if [ \"x${PROJECT_DEFCONFIG_NAME}\" != \"xgki_defconfig\" ]; then")
-        file_text.append("  GKI_BUILD_CONFIG=${KERNEL_DIR}/build.config.gki.aarch64")
         file_text.append(gki_build_config_fragments)
         file_text.append("fi")
     else:
         gen_build_config_arm = '%s.arm' % (gen_build_config)
         file_handle = open(gen_build_config_arm, 'w')
-        file_handle.write('. ${KERNEL_DIR}/build.config.arm')
-        file_handle.write('\nFILES=\"${FILES} vmlinux.symvers modules.builtin modules.builtin.modinfo\"')
+        file_handle.write('. ${KERNEL_DIR}/build.config.arm\n')
+        file_handle.write('DEFCONFIG=olddefconfig\n')
+        file_handle.write('POST_DEFCONFIG_CMDS="'+post_defconfig_cmds+'"\n')
+        file_handle.write('FILES=\"${FILES} vmlinux.symvers modules.builtin modules.builtin.modinfo\"')
         file_handle.close()
         gki_build_config_fragments = 'GKI_BUILD_CONFIG_FRAGMENTS=${REL_GEN_BUILD_CONFIG_DIR}/build.config.arm'
 
+        file_text.append("fi")
         file_text.append(gki_build_config_fragments)
 
     file_text.append("GKI_PATH=${ROOT_DIR}/../prebuilts/perl/linux-x86/bin:${ROOT_DIR}/build/kernel/build-tools/path/linux-x86:/usr/bin:/bin")
