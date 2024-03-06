@@ -318,33 +318,33 @@ struct mtk_hdr_dynamic_info {
 };
 
 struct dynamicinfo_change_flag {
-	__u32 fgBitrate;
-	__u32 fgFrameQp;
-	__u32 fgSliceHeaderSpacing;
-	__u32 fgForceI;
-	__u32 fgBaseLayerPid;
-	__u32 fgMarkLTR;
-	__u32 fgUseLTR;
-	__u32 fgTemporalLayerCount;
+	__u32 bitrate_status;
+	__u32 frameqp_status;
+	__u32 slice_header_spacing_status;
+	__u32 forceI_status;
+	__u32 baselayer_pid_status;
+	__u32 markLTR_status;
+	__u32 useLTR_status;
+	__u32 temporal_Layer_Count_status;
 };
 
 struct temporal_layer_count {
-	__u32 nPLayerCountActual;
-	__u32 nBLayerCountActual;
+	__u32 p_layercount;
+	__u32 b_layercount;
 };
 
 struct inputqueue_dynamic_info {
 	struct dynamicinfo_change_flag changed;
-	__u64 nTimeStamp;
-	__u32 nBitrate;
-	__u32 nFrameQp;
-	__u32 bSliceHeaderSpacing;
-	__u32 bForceI;
-	__u32 nBaseLayerPid;
-	__u32 nMarkLTR;
-	__u32 nUseLTR;
+	__u32 bitrate;
+	__u32 frameQp;
+	__u32 slice_header_spacing;
+	__u32 forceI;
+	__u32 baselayer_pid;
+	__u32 markLTR;
+	__u32 useLTR;
 	__u32 reserved;
-	struct temporal_layer_count sTemporalLayerCount;
+	struct temporal_layer_count temporal_layer_count;
+	__u64 timestamp;
 };
 
 

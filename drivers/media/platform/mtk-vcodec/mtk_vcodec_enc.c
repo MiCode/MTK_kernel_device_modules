@@ -986,6 +986,12 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_MPEG_MTK_CALLING_PID:
 		ctx->cpu_caller_pid = ctrl->val;
 		break;
+	case V4L2_CID_MPEG_MTK_ENCODE_ENABLE_MLVEC_MODE:
+		mtk_v4l2_debug(2,
+			"V4L2_CID_MPEG_MTK_ENCODE_ENABLE_MLVEC_MODE val = %d",
+			ctrl->val);
+		p->mlvec_mode = ctrl->val;
+		break;
 	default:
 		mtk_v4l2_debug(4, "ctrl-id=%d not support!", ctrl->id);
 		ret = -EINVAL;
@@ -1615,6 +1621,7 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->visual_quality = &enc_params->visual_quality;
 	param->init_qp = &enc_params->init_qp;
 	param->frame_qp_range = &enc_params->frame_qp_range;
+	param->mlvec_mode = enc_params->mlvec_mode;
 }
 
 static int vidioc_venc_subscribe_evt(struct v4l2_fh *fh,
@@ -2170,7 +2177,9 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 			if (meta_desc.type == METADATA_QPMAP && !meta_desc.fd_flag) {
 				mtk_v4l2_err("qpmap should provide buffer fd");
 				continue;
-			} else if (meta_desc.type == METADATA_HDR && meta_desc.fd_flag) {
+			} else if ((meta_desc.type == METADATA_HDR ||
+						meta_desc.type == METADATA_DYNAMICPARAM) &&
+						meta_desc.fd_flag) {
 				mtk_v4l2_err("hdr should not provide buffer fd");
 				continue;
 			}
@@ -2210,40 +2219,6 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 					mtk_v4l2_debug(2, "[%d] Have Qpmap fd, buf->index:%d. qpmap_dma:%p, fd:%u",
 						ctx->id, buf->index,
 						mtkbuf->frm_buf.qpmap_dma, meta_desc.value);
-				} else if (meta_desc.type == METADATA_DYNAMICPARAM) {
-					struct dma_buf_attachment *buf_att;
-					struct sg_table *sgt;
-
-					mtkbuf->frm_buf.dyparams_dma = dma_buf_get(meta_desc.value);
-
-					if (IS_ERR(mtkbuf->frm_buf.dyparams_dma)) {
-						mtk_v4l2_err("%s dynamic_ctl_dma is err 0x%p.\n",
-							__func__, mtkbuf->frm_buf.dyparams_dma);
-						mtk_venc_queue_error_event(ctx);
-						continue;
-					}
-
-					buf_att = dma_buf_attach(mtkbuf->frm_buf.dyparams_dma,
-								dev);
-					sgt = dma_buf_map_attachment_unlocked(buf_att,
-								DMA_TO_DEVICE);
-					if (IS_ERR_OR_NULL(sgt)) {
-						mtk_v4l2_err("dynamic_params dma_buf_map_attachment_unlocked fail %p.\n",
-										sgt);
-						dma_buf_detach(mtkbuf->frm_buf.dyparams_dma,
-										buf_att);
-						dma_buf_put(mtkbuf->frm_buf.dyparams_dma);
-						continue;
-					}
-					mtkbuf->frm_buf.dyparams_dma_addr =
-						sg_dma_address(sgt->sgl);
-
-					dma_buf_unmap_attachment_unlocked(buf_att,
-						sgt, DMA_TO_DEVICE);
-					dma_buf_detach(mtkbuf->frm_buf.dyparams_dma, buf_att);
-					mtk_v4l2_debug(2, "[%d] Have dynamic_param fd, buf->index:%d. qpmap_dma:%p, fd:%u",
-						ctx->id, buf->index,
-						mtkbuf->frm_buf.dyparams_dma, meta_desc.value);
 				}
 			} else {
 				if (meta_desc.type == METADATA_HDR) {
@@ -2254,6 +2229,12 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 					//vpud use fd to get va and pa,we should add a
 					//offset to get real address of hdr
 					mtkbuf->frm_buf.meta_offset = meta_desc.value;
+				} else if (meta_desc.type == METADATA_DYNAMICPARAM) {
+					mtkbuf->frm_buf.dyparams_dma = mtkbuf->frm_buf.metabuffer_dma;
+					mtkbuf->frm_buf.dyparams_dma_addr = mtkbuf->frm_buf.metabuffer_addr;
+					mtkbuf->frm_buf.dyparams_offset = meta_desc.value;
+					mtk_v4l2_debug(2,"meta data:dyparams_dma:%p dyparams_dma_addr  iova 0x%llx",
+						mtkbuf->frm_buf.dyparams_dma, mtkbuf->frm_buf.dyparams_dma_addr);
 				}
 			}
 		}
@@ -2776,16 +2757,6 @@ static void vb2ops_venc_buf_finish(struct vb2_buffer *vb)
 		dma_buf_put(mtkbuf->frm_buf.qpmap_dma);
 		mtkbuf->frm_buf.qpmap_dma = 0;
 	}
-
-	if (mtkbuf->frm_buf.dyparams_dma != 0) {
-		mtk_v4l2_debug(2, "dma_buf_put dyparams_dma=%p, DMA=%lx",
-			mtkbuf->frm_buf.dyparams_dma,
-			(unsigned long)mtkbuf->frm_buf.dyparams_dma);
-
-		dma_buf_put(mtkbuf->frm_buf.dyparams_dma);
-		mtkbuf->frm_buf.dyparams_dma = 0;
-	}
-
 }
 
 
@@ -4545,6 +4516,18 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.step = 1;
 	cfg.def = -1;
 	cfg.dims[0] = (sizeof(struct mtk_venc_frame_qp_range)/sizeof(s32));
+	cfg.ops = ops;
+	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_ENABLE_MLVEC_MODE;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video encode inputDyanmicCtrl";
+	cfg.min = 0;
+	cfg.max = 1;
+	cfg.step = 1;
+	cfg.def = 0;
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
