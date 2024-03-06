@@ -658,7 +658,7 @@
 	cache_parity {
 		compatible = "mediatek,mt6873-cache-parity";
 		ecc-irq-support = <1>;
-		arm_dsu_ecc_hwirq = <32>;
+		arm-dsu-ecc-hwirq = <32>;
 		interrupts = <GIC_SPI 1 IRQ_TYPE_LEVEL_HIGH 0>,
 			     <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH 0>,
 			     <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH 0>,
