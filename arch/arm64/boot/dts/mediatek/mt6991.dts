@@ -6108,6 +6108,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			axid = <0x1801>;
 			mminfra-ao-base = <0x30080000>;
 			gce-ddr-sel-wla;
+			gce-fast-mtcmos;
 		};
 
 		gce_sec: gce-mbox-sec@300c0000 {
