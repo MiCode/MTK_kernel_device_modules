@@ -202,6 +202,7 @@ int mtk_qos_probe(struct platform_device *pdev,
 		qos_share_init_sram_ext(qos->regs, qos->regsize);
 	}
 #endif
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
 	if (mtk_qos_enable) {
 		m_qos = qos;
 		qos_ipi_init(qos);
@@ -214,6 +215,7 @@ int mtk_qos_probe(struct platform_device *pdev,
 	} else {
 		m_qos = NULL;
 	}
+#endif
 
 	platform_set_drvdata(pdev, qos);
 
