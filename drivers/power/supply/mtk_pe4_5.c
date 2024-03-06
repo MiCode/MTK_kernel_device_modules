@@ -406,6 +406,7 @@ int mtk_pe45_get_setting_by_watt(struct chg_alg_device *alg, int *voltage,
 
 	}
 
+	pe45_cap->apdo_idx = i;
 	*voltage = vbus;
 	*ibus_current_setting = ibus_setting;
 	*actual_current = ibus;
@@ -678,10 +679,17 @@ int mtk_pe45_rcable_control_chg_level(struct chg_alg_device *alg, int *vbus, int
 		*vbus = pe45->r_cable_voltage[pe45->rcable_index];
 	if (pe45->max_vbus > pe45->r_cable_voltage[pe45->rcable_index] || chg1_mivr)
 		pe45->max_vbus = pe45->r_cable_voltage[pe45->rcable_index];
+	if (pe45->vbus > pe45_cap->max_mv[pe45_cap->apdo_idx] ||
+		pe45->max_vbus > pe45_cap->max_mv[pe45_cap->apdo_idx]) {
+		pe45->vbus = pe45_cap->max_mv[pe45_cap->apdo_idx];
+		pe45->max_vbus = pe45_cap->max_mv[pe45_cap->apdo_idx];
+	}
+
 	if (pe45->input_current_limit1 > pe45->r_cable_current_limit[pe45->rcable_index] * 1000)
 		pe45->input_current_limit1 = pe45->r_cable_current_limit[pe45->rcable_index] * 1000;
 	if (*ibus > pe45->r_cable_current_limit[pe45->rcable_index])
 		*ibus = pe45->r_cable_current_limit[pe45->rcable_index];
+
 	*adapter_ibus = *ibus;
 	new_watt = (*vbus) * (*ibus);
 	pe4_hal_set_input_current(alg, CHG1, pe45->input_current_limit1);
