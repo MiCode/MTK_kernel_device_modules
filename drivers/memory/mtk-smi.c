@@ -122,6 +122,8 @@
 #define MASK_7				(0x7f)
 #define	MASK_PATH_SEL			GENMASK(19, 16)
 
+#define SMI_USER_SET_MISC_NR		(32)
+
 void __iomem *smi_mmsys_base;
 static u32 DISABLED_GALS;
 
@@ -190,6 +192,8 @@ struct mtk_smi {
 	bool				skip_busy_check;
 	bool				skip_rpm_cb;
 	atomic_t			ref_count;
+	int				common_set_num;
+	struct mtk_smi_reg_pair		common_set_misc[SMI_USER_SET_MISC_NR];
 };
 
 #define LARB_MAX_COMMON		(2)
@@ -215,6 +219,8 @@ struct mtk_smi_larb { /* larb: local arbiter */
 	u32				larb_port_real_time_type[SMI_LARB_PORT_NR_MAX];
 	/* larb port real time type is bit array, 1 means SRT, align disable_ultra value*/
 	u32				real_time_type;
+	int				larb_set_num;
+	struct mtk_smi_reg_pair		larb_set_misc[SMI_USER_SET_MISC_NR];
 };
 
 #define MAX_COMMON_FOR_CLAMP		(3)
@@ -397,10 +403,18 @@ void mtk_smi_larb_port_dis_ultra(struct device *dev, const u32 port, bool is_dis
 
 	if (is_dis_ultra) {
 		larb->real_time_type = larb->real_time_type | (1 << port);
-		writel_relaxed(larb->real_time_type, larb->base + SMI_LARB_DISABLE_ULTRA);
+		if (atomic_read(&larb->smi.ref_count))
+			writel_relaxed(larb->real_time_type, larb->base + SMI_LARB_DISABLE_ULTRA);
+		else
+			dev_notice(dev, "larb%d port%d not enable is_dis_ultra:%d\n",
+				larb->larbid, port, is_dis_ultra);
 	} else {
 		larb->real_time_type = larb->real_time_type & ~(1 << port);
-		writel_relaxed(larb->real_time_type, larb->base + SMI_LARB_DISABLE_ULTRA);
+		if (atomic_read(&larb->smi.ref_count))
+			writel_relaxed(larb->real_time_type, larb->base + SMI_LARB_DISABLE_ULTRA);
+		else
+			dev_notice(dev, "larb%d port%d not enable is_dis_ultra:%d\n",
+				larb->larbid, port, is_dis_ultra);
 	}
 	if (log_level & 1 << log_disable_ultra)
 		dev_notice(dev, "larb%d port%d is_dis_ultra:%d vlue:%#x\n",
@@ -419,12 +433,21 @@ int mtk_smi_larb_bw_thr(struct device *larbdev, const u32 port, bool is_bw_thr)
 	if (unlikely(!larb))
 		return -ENODEV;
 
-	if (is_bw_thr)
-		writel_relaxed(readl_relaxed(larb->base + SMI_LARB_NONSEC_CON(port)) | 0x8,
-			larb->base + SMI_LARB_NONSEC_CON(port));
-	else
-		writel_relaxed(readl_relaxed(larb->base + SMI_LARB_NONSEC_CON(port)) & ~(1 << 3),
-			larb->base + SMI_LARB_NONSEC_CON(port));
+	if (is_bw_thr) {
+		if (atomic_read(&larb->smi.ref_count))
+			writel_relaxed(readl_relaxed(larb->base + SMI_LARB_NONSEC_CON(port)) | 0x8,
+				larb->base + SMI_LARB_NONSEC_CON(port));
+		else
+			dev_notice(larbdev, "larb%d port%d not enable is_bw_thr:%d\n",
+				larb->larbid, port, is_bw_thr);
+	} else {
+		if (atomic_read(&larb->smi.ref_count))
+			writel_relaxed(readl_relaxed(larb->base + SMI_LARB_NONSEC_CON(port)) & ~(1 << 3),
+				larb->base + SMI_LARB_NONSEC_CON(port));
+		else
+			dev_notice(larbdev, "larb%d port%d not enable is_bw_thr:%d\n",
+				larb->larbid, port, is_bw_thr);
+	}
 
 	if (log_level & 1 << log_disable_ultra)
 		dev_notice(larbdev, "larb%d port%d is_bw_thr:%d vlue:%#x\n",
@@ -768,6 +791,11 @@ static void mtk_smi_larb_config_port_gen2_general(struct device *dev)
 			writel(0x780000, smi_mmsys_base + MMSYS_HW_DCM_1ST_DIS_SET0);
 		}
 	}
+
+	for (i = 0; i < larb->larb_set_num; i++)
+		writel_relaxed(larb->larb_set_misc[i].value,
+			larb->base + larb->larb_set_misc[i].offset);
+
 	wmb(); /* make sure settings are written */
 
 }
@@ -1686,10 +1714,11 @@ mtk_smi_larb_mt6989_bw_thrt_en[MTK_LARB_NR_MAX][2] = {
 	{0, 0}, {0, 31},
 };
 
+#define DISP_OSTDL		(0x19)
 static u8
 mtk_smi_larb_mt6989_bwl[MTK_LARB_NR_MAX][SMI_LARB_PORT_NR_MAX] = {
-	{0x8, 0x40, 0x8, 0x40, 0x1, 0x2, 0x32, 0x2, 0x32,}, /* LARB0 */
-	{0x40, 0x40, 0x10, 0x1, 0x32, 0x32,}, /* LARB1 */
+	{0x8, DISP_OSTDL, 0x8, DISP_OSTDL, 0x1, 0x2, 0x32, 0x2, 0x32,}, /* LARB0 */
+	{DISP_OSTDL, DISP_OSTDL, 0x10, 0x1, 0x32, 0x32,}, /* LARB1 */
 	{0x9, 0xb, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x9, 0x1, 0x1, 0x1, 0x3, 0x1,}, /* LARB2 */
 	{0x1a, 0x20, 0x2a, 0x2a, 0x2, 0x2, 0x2, 0x1, 0x1a, 0x1, 0x1c, 0x1c, 0x8, 0x1,}, /* LARB3 */
 	{0x40, 0x40, 0x22, 0x1, 0x1, 0x1, 0x1, 0x1, 0x3, 0x3, 0xa,}, /* LARB4 */
@@ -1715,8 +1744,8 @@ mtk_smi_larb_mt6989_bwl[MTK_LARB_NR_MAX][SMI_LARB_PORT_NR_MAX] = {
 	{0xb, 0x1, 0x10,}, /* LARB18 */
 	{0x1, 0x1, 0x1, 0x1, 0x2, 0x1, 0x9, 0x5, 0x1, 0x1,
 	 0x6, 0x2, 0x1,}, /* LARB19 */
-	{0x8, 0x40, 0x8, 0x40, 0x8, 0x40, 0x2, 0x32, 0x2, 0x32, 0x2, 0x32,}, /* LARB20 */
-	{0x40, 0x40, 0x40, 0x32, 0x32, 0x32, 0x32, 0x32,}, /* LARB21 */
+	{0x8, DISP_OSTDL, 0x8, DISP_OSTDL, 0x8, DISP_OSTDL, 0x2, 0x32, 0x2, 0x32, 0x2, 0x32,}, /* LARB20 */
+	{DISP_OSTDL, DISP_OSTDL, DISP_OSTDL, 0x32, 0x32, 0x32, 0x32, 0x32,}, /* LARB21 */
 	{0x8, 0x16, 0x16, 0x1e, 0xe, 0x1, 0x1, 0x1, 0x10, 0x16, 0x2,}, /* LARB22 */
 	{0x8, 0x16, 0x16, 0x1e, 0xe, 0x1, 0x1, 0x1, 0x10, 0x16, 0x2,}, /* LARB23 */
 	{0x20, 0x4, 0x2, 0x1, 0x1, 0x1d, 0x1d, 0x7, 0x4, 0x1,
@@ -1734,10 +1763,10 @@ mtk_smi_larb_mt6989_bwl[MTK_LARB_NR_MAX][SMI_LARB_PORT_NR_MAX] = {
 	{}, /* LARB31 */
 	{0x2, 0x2, 0x1, 0x1, 0x26, 0xa, 0xa, 0xa, 0x26, 0x12,}, /* LARB32 */
 	{0x1, 0x1, 0x1, 0x26, 0x26, 0x26, 0x26, 0x26, 0x12,}, /* LARB33 */
-	{0x8, 0x40, 0x8, 0x40, 0x1, 0x2, 0x32, 0x2, 0x32,}, /* LARB34 */
-	{0x40, 0x40, 0x10, 0x1, 0x32, 0x32,}, /* LARB35 */
-	{0x8, 0x40, 0x8, 0x40, 0x8, 0x40, 0x2, 0x32, 0x2, 0x32, 0x2, 0x32,}, /* LARB36 */
-	{0x40, 0x40, 0x40, 0x32, 0x32, 0x32, 0x32, 0x32,}, /* LARB37 */
+	{0x8, DISP_OSTDL, 0x8, DISP_OSTDL, 0x1, 0x2, 0x32, 0x2, 0x32,}, /* LARB34 */
+	{DISP_OSTDL, DISP_OSTDL, 0x10, 0x1, 0x32, 0x32,}, /* LARB35 */
+	{0x8, DISP_OSTDL, 0x8, DISP_OSTDL, 0x8, DISP_OSTDL, 0x2, 0x32, 0x2, 0x32, 0x2, 0x32,}, /* LARB36 */
+	{DISP_OSTDL, DISP_OSTDL, DISP_OSTDL, 0x32, 0x32, 0x32, 0x32, 0x32,}, /* LARB37 */
 	{0x1, 0x1b, 0xa, 0x7, 0x4, 0x4, 0x1, 0x1, 0x1, 0x18, 0x7,
 	 0x4, 0x2, 0x2}, /* LARB38 */
 	{0x1, 0x1, 0xa, 0xc, 0x6, 0xe, 0xe, 0x6, 0x6, 0x40, 0x40, 0x2,
@@ -4676,8 +4705,6 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 	if (of_property_read_bool(dev->of_node, "skip-busy-check"))
 		common->skip_busy_check = true;
 
-	if (of_property_read_bool(dev->of_node, "skip-rpm-cb"))
-		common->skip_rpm_cb = true;
 
 	spin_lock_init(&smi_lock.lock);
 	is_mpu_violation(dev, false);
@@ -4757,6 +4784,9 @@ static int __maybe_unused mtk_smi_common_resume(struct device *dev)
 			writel_relaxed(common->plat->misc[i].value,
 				common->base + common->plat->misc[i].offset);
 	}
+	for (i = 0; i < common->common_set_num; i++)
+		writel_relaxed(common->common_set_misc[i].value,
+			common->base + common->common_set_misc[i].offset);
 	wmb(); /* make sure settings are written */
 
 	/* check rpm resume spend time */
@@ -4886,6 +4916,146 @@ int mtk_smi_larb_disable(struct device *larbdev, u32 smi_user_id)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_smi_larb_disable);
+
+int mtk_smi_set_ostdl_type(struct device *larbdev, u32 ostdl_type)
+{
+	struct mtk_smi_larb *larb;
+
+	if (unlikely(!larbdev))
+		return -EINVAL;
+	larb = dev_get_drvdata(larbdev);
+
+	if (ostdl_type) {
+		larb->is_default_ostdl = true;
+		pr_notice("%s: larb%d use default ostdl table\n", __func__, larb->larbid);
+	} else {
+		larb->is_default_ostdl = false;
+		pr_notice("%s: larb%d use esl ostdl table\n", __func__, larb->larbid);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_smi_set_ostdl_type);
+
+int mtk_smi_set_larb_value(struct device *larbdev, u32 offset, u32 value)
+{
+	struct mtk_smi_larb *larb;
+
+	if (unlikely(!larbdev))
+		return -EINVAL;
+	larb = dev_get_drvdata(larbdev);
+
+	larb->larb_set_misc[larb->larb_set_num].offset = offset;
+	larb->larb_set_misc[larb->larb_set_num].value = value;
+
+	raw_notifier_call_chain(&smi_driver_notifier_list,
+					TRIGGER_SMI_FORCE_ALL_ON, NULL);
+	writel_relaxed(value, larb->base + offset);
+	pr_notice("%s: larb%d offset:%#x set_value:%#x real_value:%#x\n",
+		__func__, larb->larbid, offset, value,
+		readl_relaxed(larb->base + offset));
+	raw_notifier_call_chain(&smi_driver_notifier_list,
+					TRIGGER_SMI_FORCE_ALL_PUT, NULL);
+
+	if (larb->larb_set_num < (SMI_USER_SET_MISC_NR - 1))
+		larb->larb_set_num++;
+	else
+		pr_notice("%s: larb%d set buffer is full\n",
+			__func__, larb->larbid);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_smi_set_larb_value);
+
+int mtk_smi_set_comm_value(struct device *dev, u32 offset, u32 value)
+{
+	struct mtk_smi *common;
+
+	if (unlikely(!dev))
+		return -EINVAL;
+	common = dev_get_drvdata(dev);
+
+	common->common_set_misc[common->common_set_num].offset = offset;
+	common->common_set_misc[common->common_set_num].value = value;
+
+	raw_notifier_call_chain(&smi_driver_notifier_list,
+					TRIGGER_SMI_FORCE_ALL_ON, NULL);
+	writel_relaxed(value, common->base + offset);
+	pr_notice("%s: common%d offset:%#x set_value:%#x real_value:%#x\n",
+		__func__, common->commid, offset, value,
+		readl_relaxed(common->base + offset));
+	raw_notifier_call_chain(&smi_driver_notifier_list,
+					TRIGGER_SMI_FORCE_ALL_PUT, NULL);
+
+	if (common->common_set_num < (SMI_USER_SET_MISC_NR - 1))
+		common->common_set_num++;
+	else
+		pr_notice("%s: common%d set buffer is full\n",
+			__func__, common->commid);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_smi_set_comm_value);
+
+int mtk_smi_clear_larb_set_value(struct device *larbdev)
+{
+	struct mtk_smi_larb *larb;
+
+	if (unlikely(!larbdev))
+		return -EINVAL;
+	larb = dev_get_drvdata(larbdev);
+
+	memset(larb->larb_set_misc, 0, larb->larb_set_num);
+	larb->larb_set_num = 0;
+	pr_notice("%s: larb%d set_num:%d\n",
+			__func__, larb->larbid, larb->larb_set_num);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_smi_clear_larb_set_value);
+
+int mtk_smi_clear_comm_set_value(struct device *dev)
+{
+	struct mtk_smi *common;
+
+	if (unlikely(!dev))
+		return -EINVAL;
+	common = dev_get_drvdata(dev);
+
+	memset(common->common_set_misc, 0, common->common_set_num);
+	common->common_set_num = 0;
+	pr_notice("%s: common%d set_num:%d\n",
+			__func__, common->commid, common->common_set_num);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_smi_clear_comm_set_value);
+
+int mtk_smi_dump_all_setting(struct device *dev, bool is_larb)
+{
+	struct mtk_smi *common;
+	struct mtk_smi_larb *larb;
+	int i;
+
+	if (unlikely(!dev))
+		return -EINVAL;
+	if (is_larb) {
+		larb = dev_get_drvdata(dev);
+		for (i = 0; i < larb->larb_set_num; i++)
+			pr_notice("%s: larb%d offset:%#x set_value:%#x\n",
+				__func__, larb->larbid, larb->larb_set_misc[i].offset,
+				larb->larb_set_misc[i].value);
+	} else {
+		common = dev_get_drvdata(dev);
+		for (i = 0; i < common->common_set_num; i++)
+			pr_notice("%s: comm%d offset:%#x set_value:%#x\n",
+				__func__, common->commid, common->common_set_misc[i].offset,
+				common->common_set_misc[i].value);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_smi_dump_all_setting);
 
 static struct platform_driver mtk_smi_common_driver = {
 	.probe	= mtk_smi_common_probe,
