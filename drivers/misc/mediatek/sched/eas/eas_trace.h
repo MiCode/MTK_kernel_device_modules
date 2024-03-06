@@ -2037,14 +2037,14 @@ TRACE_EVENT(sched_set_uclamp,
 );
 
 TRACE_EVENT(sched_mtk_update_misfit_status,
-	TP_PROTO(int cpu, bool fit, int pid, unsigned long util, unsigned long uclamp_min, unsigned long uclamp_max,
+	TP_PROTO(int cpu, int fit, int pid, unsigned long util, unsigned long uclamp_min, unsigned long uclamp_max,
 	unsigned long capacity_of, unsigned long misfit_task_load),
 
 	TP_ARGS(cpu, fit, pid, util, uclamp_min, uclamp_max, capacity_of, misfit_task_load),
 
 	TP_STRUCT__entry(
 		__field(int, cpu)
-		__field(bool, fit)
+		__field(int, fit)
 		__field(int, pid)
 		__field(unsigned long, util)
 		__field(unsigned long, uclamp_min)
