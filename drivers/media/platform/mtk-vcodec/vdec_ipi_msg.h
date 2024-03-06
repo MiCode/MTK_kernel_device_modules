@@ -58,6 +58,7 @@ enum vdec_ipi_msg_id {
 	AP_IPIMSG_DEC_FRAME_BUFFER,
 	AP_IPIMSG_DEC_BACKUP,
 	AP_IPIMSG_DEC_RESUME,
+	AP_IPIMSG_DEC_PWR_CTRL,
 
 	VCU_IPIMSG_DEC_INIT_DONE = VCU_IPIMSG_VDEC_ACK_BASE,
 	VCU_IPIMSG_DEC_START_DONE,
@@ -68,6 +69,7 @@ enum vdec_ipi_msg_id {
 	VCU_IPIMSG_DEC_DONE,
 	VCU_IPIMSG_DEC_BACKUP_DONE,
 	VCU_IPIMSG_DEC_RESUME_DONE,
+	VCU_IPIMSG_DEC_PWR_CTRL_DONE,
 
 	VCU_IPIMSG_DEC_PUT_FRAME_BUFFER = VCU_IPIMSG_VDEC_SEND_BASE,
 	VCU_IPIMSG_DEC_LOCK_CORE,
@@ -201,6 +203,7 @@ enum vdec_set_param_type {
 	SET_PARAM_DISABLE_DEBLOCK,
 	SET_PARAM_LOW_LATENCY,
 	/** only for kernel **/
+	SET_PARAM_VDEC_PWR_CTRL,
 	SET_PARAM_VDEC_VCU_VPUD_LOG,
 	SET_PARAM_VDEC_IN_GROUP,
 	SET_PARAM_MAX = 0xFFFFFFFF
@@ -282,6 +285,26 @@ struct vdec_vcu_ipi_mem_op {
 	VDEC_MSG_PREFIX;
 	struct vcodec_mem_obj mem;
 	__u32 vcp_addr[2];
+};
+
+/**
+ * struct vdec_ap_ipi_pwr_ctrl -VCU/AP bi-direction smi power contrl operation cmd structure
+ * @msg_id:   message id (VCU_IPIMSG_XXX_ENC_DEINIT_DONE)
+ * @status:   cmd status (venc_ipi_msg_status)
+ * @ap_inst_addr:	AP decoder instance (struct vdec_inst*)
+ * @struct vcodec_mem_obj: encoder memories
+ */
+struct vdec_ap_ipi_pwr_ctrl {
+	VDEC_MSG_PREFIX;
+#ifndef CONFIG_64BIT
+	union {
+		__u64 ap_data_addr_64;
+		__u32 ap_data_addr;
+	};
+#else
+	__u64 ap_data_addr;
+#endif
+	struct mtk_smi_pwr_ctrl_info info;
 };
 
 /**

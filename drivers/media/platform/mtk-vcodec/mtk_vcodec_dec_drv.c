@@ -542,7 +542,7 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 		atomic_set(&dev->dec_hw_active[i], 0);
 		atomic_set(&dev->dec_clk_ref_cnt[i], 0);
 	}
-	atomic_set(&dev->dec_larb_ref_cnt, 0);
+	atomic_set(&dev->larb_ref_cnt, 0);
 	mutex_init(&dev->ctx_mutex);
 	mutex_init(&dev->dev_mutex);
 	mutex_init(&dev->ipi_mutex);
@@ -686,7 +686,13 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	vdec_vcp_probe(dev);
+
+	ret = of_property_read_u32(pdev->dev.of_node, "vdec-power-in-vcp", &dev->power_in_vcp);
+	if (ret != 0)
+		dev->power_in_vcp = 0;
 #endif
+
+	mtk_vcodec_dec_smi_pwr_ctrl_register(dev);
 
 	ret = vdec_if_dev_ctx_init(dev);
 	if (ret) {
@@ -766,6 +772,7 @@ static int mtk_vcodec_dec_remove(struct platform_device *pdev)
 		video_unregister_device(dev->vfd_dec);
 
 	v4l2_device_unregister(&dev->v4l2_dev);
+	mtk_vcodec_dec_smi_pwr_ctrl_unregister(dev);
 	mtk_vcodec_release_dec_pm(dev);
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)

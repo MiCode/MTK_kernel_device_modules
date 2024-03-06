@@ -17,7 +17,9 @@
 #include "mtk_vcodec_enc_pm_plat.h"
 #include "mtk_vcodec_util.h"
 #include "mtk_vcu.h"
+#include "venc_drv_if.h"
 //#include "smi_public.h"
+#include "mtk-smi-dbg.h"
 
 #include <mtk_iommu.h>
 
@@ -234,9 +236,11 @@ void mtk_venc_deinit_ctx_pm(struct mtk_vcodec_ctx *ctx)
 
 void mtk_vcodec_enc_pw_on(struct mtk_vcodec_pm *pm)
 {
+	struct mtk_vcodec_dev *dev = container_of(pm, struct mtk_vcodec_dev, pm);
 	int larb_index;
 	int ret;
 
+	atomic_inc(&dev->larb_ref_cnt);
 	for (larb_index = 0; larb_index < MTK_VENC_MAX_LARB_COUNT; larb_index++) {
 		if (pm->larbvencs[larb_index]) {
 			ret = pm_runtime_resume_and_get(pm->larbvencs[larb_index]);
@@ -249,12 +253,14 @@ void mtk_vcodec_enc_pw_on(struct mtk_vcodec_pm *pm)
 
 void mtk_vcodec_enc_pw_off(struct mtk_vcodec_pm *pm)
 {
+	struct mtk_vcodec_dev *dev = container_of(pm, struct mtk_vcodec_dev, pm);
 	int larb_index;
 
 	for (larb_index = 0; larb_index < MTK_VENC_MAX_LARB_COUNT; larb_index++) {
 		if (pm->larbvencs[larb_index])
 			pm_runtime_put_sync(pm->larbvencs[larb_index]);
 	}
+	atomic_dec(&dev->larb_ref_cnt);
 }
 
 void mtk_vcodec_enc_clock_on(struct mtk_vcodec_ctx *ctx, int core_id)
@@ -385,6 +391,111 @@ void mtk_vcodec_enc_clock_on(struct mtk_vcodec_ctx *ctx, int core_id)
 	}
 	time_check_end(MTK_FMT_ENC, core_id, 50);
 #endif
+}
+
+static int mtk_venc_smi_pwr_ctrl(struct mtk_vcodec_dev *dev,
+	enum mtk_smi_pwr_ctrl_type type, enum mtk_venc_hw_id hw_id)
+{
+	if (dev->power_in_vcp && mtk_vcodec_is_vcp(MTK_INST_ENCODER)) {
+		struct mtk_smi_pwr_ctrl_info info;
+		int ret;
+
+		info.type = type;
+		info.hw_id = hw_id;
+		ret = venc_if_get_param(&dev->dev_ctx, GET_PARAM_VENC_PWR_CTRL, (void *)&info);
+
+		return (ret < 0) ? ret : info.ret;
+	}
+
+	// else => not vcp
+	if (type >= MTK_SMI_CTRL_TYPE_MAX)
+		return -1;
+	else if (type == MTK_SMI_GET)
+		mtk_vcodec_enc_pw_on(&dev->pm);
+	else if (type == MTK_SMI_PUT)
+		mtk_vcodec_enc_pw_off(&dev->pm);
+	else if (type == MTK_SMI_GET_IF_IN_USE) {
+		if (atomic_read(&dev->larb_ref_cnt) > 0) {
+			mtk_vcodec_enc_pw_on(&dev->pm);
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int mtk_venc_core0_smi_get(void *data)
+{
+	return mtk_venc_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_GET, MTK_VENC_CORE_0);
+}
+
+static int mtk_venc_core0_smi_put(void *data)
+{
+	return mtk_venc_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_PUT, MTK_VENC_CORE_0);
+}
+
+static int mtk_venc_core1_smi_get(void *data)
+{
+	return mtk_venc_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_GET, MTK_VENC_CORE_1);
+}
+
+static int mtk_venc_core1_smi_put(void *data)
+{
+	return mtk_venc_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_PUT, MTK_VENC_CORE_1);
+}
+
+static int mtk_venc_core2_smi_get(void *data)
+{
+	return mtk_venc_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_GET, MTK_VENC_CORE_2);
+}
+
+static int mtk_venc_core2_smi_put(void *data)
+{
+	return mtk_venc_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_PUT, MTK_VENC_CORE_2);
+}
+
+static struct smi_user_pwr_ctrl venc_pwr_ctrl[MTK_VENC_HW_NUM] = {
+	{
+		.name = "venc_core0",
+		.smi_user_id = MTK_SMI_VENC0,
+		.smi_user_get = mtk_venc_core0_smi_get,
+		.smi_user_put = mtk_venc_core0_smi_put,
+	},
+	{
+		.name = "venc_core1",
+		.smi_user_id = MTK_SMI_VENC1,
+		.smi_user_get = mtk_venc_core1_smi_get,
+		.smi_user_put = mtk_venc_core1_smi_put,
+	},
+	{
+		.name = "venc_core2",
+		.smi_user_id = MTK_SMI_VENC2,
+		.smi_user_get = mtk_venc_core2_smi_get,
+		.smi_user_put = mtk_venc_core2_smi_put,
+	},
+};
+
+void mtk_vcodec_enc_smi_pwr_ctrl_register(struct mtk_vcodec_dev *dev)
+{
+	int hw_id;
+
+	if (!dev->power_in_vcp)
+		return;
+
+	for (hw_id = 0; hw_id < dev->hw_max_count; hw_id++) {
+		venc_pwr_ctrl[hw_id].data = (void *)dev;
+		mtk_smi_dbg_register_pwr_ctrl_cb(&venc_pwr_ctrl[hw_id]);
+	}
+}
+
+void mtk_vcodec_enc_smi_pwr_ctrl_unregister(struct mtk_vcodec_dev *dev)
+{
+	int hw_id;
+
+	if (!dev->power_in_vcp)
+		return;
+
+	for (hw_id = 0; hw_id < dev->hw_max_count; hw_id++)
+		mtk_smi_dbg_unregister_pwr_ctrl_cb(&venc_pwr_ctrl[hw_id]);
 }
 
 #ifndef FPGA_PWRCLK_API_DISABLE

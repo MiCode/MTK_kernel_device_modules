@@ -13,10 +13,12 @@
 #include <linux/slab.h>
 #include <linux/workqueue.h>
 //#include "smi_public.h"
+#include "mtk-smi-dbg.h"
 #include "mtk_vcodec_dec_pm.h"
 #include "mtk_vcodec_dec_pm_plat.h"
 #include "mtk_vcodec_util.h"
 #include "mtk_vcu.h"
+#include "vdec_drv_if.h"
 
 #ifdef CONFIG_MTK_PSEUDO_M4U
 #include <mach/mt_iommu.h>
@@ -208,8 +210,8 @@ void mtk_vcodec_dec_pw_on(struct mtk_vcodec_pm *pm)
 	int ret, larb_index;
 	struct mtk_vcodec_dev *dev = container_of(pm, struct mtk_vcodec_dev, pm);
 
-	atomic_inc(&dev->dec_larb_ref_cnt);
-	mtk_v4l2_debug(8, "dec_larb_ref_cnt: %d", atomic_read(&dev->dec_larb_ref_cnt));
+	atomic_inc(&dev->larb_ref_cnt);
+	mtk_v4l2_debug(8, "larb_ref_cnt: %d", atomic_read(&dev->larb_ref_cnt));
 	for (larb_index = 0; larb_index < MTK_VDEC_MAX_LARB_COUNT; larb_index++) {
 		if (pm->larbvdecs[larb_index]) {
 			ret = pm_runtime_resume_and_get(pm->larbvdecs[larb_index]);
@@ -226,25 +228,25 @@ void mtk_vcodec_dec_pw_off(struct mtk_vcodec_pm *pm)
 	int hw_lock_cnt = 0, i;
 	struct mtk_vcodec_dev *dev = container_of(pm, struct mtk_vcodec_dev, pm);
 
-	if (atomic_read(&dev->dec_larb_ref_cnt) <= 0) {
-		mtk_v4l2_err("dec_larb_ref_cnt %d invalid !!",
-			atomic_read(&dev->dec_larb_ref_cnt));
+	if (atomic_read(&dev->larb_ref_cnt) <= 0) {
+		mtk_v4l2_err("larb_ref_cnt %d invalid !!",
+			atomic_read(&dev->larb_ref_cnt));
 		// BUG();
 		// return;
 	}
 	for (i = 0; i < MTK_VDEC_HW_NUM; i++)
 		hw_lock_cnt += atomic_read(&dev->dec_hw_active[i]);
-	if (atomic_read(&dev->dec_larb_ref_cnt) == 1 && hw_lock_cnt > 0) {
+	if (atomic_read(&dev->larb_ref_cnt) == 1 && hw_lock_cnt > 0) {
 		mtk_v4l2_err("error off last larb ref cnt (%d) when some hw locked %d (%d %d)",
-			atomic_read(&dev->dec_larb_ref_cnt), hw_lock_cnt,
+			atomic_read(&dev->larb_ref_cnt), hw_lock_cnt,
 			atomic_read(&dev->dec_hw_active[MTK_VDEC_LAT]),
 			atomic_read(&dev->dec_hw_active[MTK_VDEC_CORE]));
 		// BUG();
 		dump_stack();
 		// return;
 	}
-	atomic_dec(&dev->dec_larb_ref_cnt);
-	mtk_v4l2_debug(8, "dec_larb_ref_cnt: %d", atomic_read(&dev->dec_larb_ref_cnt));
+	atomic_dec(&dev->larb_ref_cnt);
+	mtk_v4l2_debug(8, "larb_ref_cnt: %d", atomic_read(&dev->larb_ref_cnt));
 	for (larb_index = 0; larb_index < MTK_VDEC_MAX_LARB_COUNT; larb_index++) {
 		if (pm->larbvdecs[larb_index])
 			pm_runtime_put_sync(pm->larbvdecs[larb_index]);
@@ -631,7 +633,7 @@ void mtk_vcodec_dec_clock_off(struct mtk_vcodec_pm *pm, unsigned int hw_id)
 	dev = container_of(pm, struct mtk_vcodec_dev, pm);
 	if (atomic_read(&dev->dec_clk_ref_cnt[hw_id]) <= 0) {
 		mtk_v4l2_err("dec_clk_ref_cnt[%d] %d invalid !!",
-			hw_id, atomic_read(&dev->dec_larb_ref_cnt));
+			hw_id, atomic_read(&dev->larb_ref_cnt));
 		// BUG();
 		// return;
 	}
@@ -696,6 +698,95 @@ void mtk_vcodec_dec_clock_off(struct mtk_vcodec_pm *pm, unsigned int hw_id)
 
 	mtk_vcodec_dec_pw_off(pm);
 #endif
+}
+
+static int mtk_vdec_smi_pwr_ctrl(struct mtk_vcodec_dev *dev,
+	enum mtk_smi_pwr_ctrl_type type, enum mtk_vdec_hw_id hw_id)
+{
+	if (dev->power_in_vcp && mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
+		struct mtk_smi_pwr_ctrl_info info;
+		int ret;
+
+		info.type = type;
+		info.hw_id = hw_id;
+		ret = vdec_if_set_param(&dev->dev_ctx, SET_PARAM_VDEC_PWR_CTRL, (void *)&info);
+
+		return (ret < 0) ? ret : info.ret;
+	}
+
+	// else => not vcp
+	if (type >= MTK_SMI_CTRL_TYPE_MAX)
+		return -1;
+	else if (type == MTK_SMI_GET)
+		mtk_vcodec_dec_pw_on(&dev->pm);
+	else if (type == MTK_SMI_PUT)
+		mtk_vcodec_dec_pw_off(&dev->pm);
+	else if (type == MTK_SMI_GET_IF_IN_USE) {
+		if (atomic_read(&dev->larb_ref_cnt) > 0) {
+			mtk_vcodec_dec_pw_on(&dev->pm);
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int mtk_vdec_lat_smi_get(void *data)
+{
+	return mtk_vdec_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_GET, MTK_VDEC_LAT);
+}
+
+static int mtk_vdec_lat_smi_put(void *data)
+{
+	return mtk_vdec_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_PUT, MTK_VDEC_LAT);
+}
+
+static int mtk_vdec_core_smi_get(void *data)
+{
+	return mtk_vdec_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_GET, MTK_VDEC_CORE);
+}
+
+static int mtk_vdec_core_smi_put(void *data)
+{
+	return mtk_vdec_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_PUT, MTK_VDEC_CORE);
+}
+
+static struct smi_user_pwr_ctrl vdec_lat_pwr_ctrl = {
+	.name = "vdec_lat",
+	.smi_user_id = MTK_SMI_VDEC_LAT,
+	.smi_user_get = mtk_vdec_lat_smi_get,
+	.smi_user_put = mtk_vdec_lat_smi_put,
+};
+
+static struct smi_user_pwr_ctrl vdec_core_pwr_ctrl = {
+	.name = "vdec_core",
+	.smi_user_id = MTK_SMI_VDEC_CORE,
+	.smi_user_get = mtk_vdec_core_smi_get,
+	.smi_user_put = mtk_vdec_core_smi_put,
+};
+
+void mtk_vcodec_dec_smi_pwr_ctrl_register(struct mtk_vcodec_dev *dev)
+{
+	if (!dev->power_in_vcp)
+		return;
+
+	vdec_core_pwr_ctrl.data = (void *)dev;
+	mtk_smi_dbg_register_pwr_ctrl_cb(&vdec_core_pwr_ctrl);
+
+	if (dev->vdec_hw_ipm == VCODEC_IPM_V2){
+		vdec_lat_pwr_ctrl.data = (void *)dev;
+		mtk_smi_dbg_register_pwr_ctrl_cb(&vdec_lat_pwr_ctrl);
+	}
+}
+
+void mtk_vcodec_dec_smi_pwr_ctrl_unregister(struct mtk_vcodec_dev *dev)
+{
+	if (!dev->power_in_vcp)
+		return;
+
+	mtk_smi_dbg_unregister_pwr_ctrl_cb(&vdec_core_pwr_ctrl);
+
+	if (dev->vdec_hw_ipm == VCODEC_IPM_V2)
+		mtk_smi_dbg_unregister_pwr_ctrl_cb(&vdec_lat_pwr_ctrl);
 }
 
 #ifdef VDEC_DEBUG_DUMP

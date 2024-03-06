@@ -131,7 +131,8 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len,
 	struct venc_ap_ipi_msg_indp *msg_indp = (struct venc_ap_ipi_msg_indp *)msg;
 	bool use_msg_indp = (is_ack || msg_ap->msg_id == AP_IPIMSG_ENC_INIT ||
 		msg_ap->msg_id == AP_IPIMSG_ENC_QUERY_CAP ||
-		msg_ap->msg_id == AP_IPIMSG_ENC_BACKUP); // msg use VENC_MSG_PREFIX
+		msg_ap->msg_id == AP_IPIMSG_ENC_BACKUP ||
+		msg_ap->msg_id == AP_IPIMSG_ENC_PWR_CTRL); // msg use VENC_MSG_PREFIX
 
 	if ((!use_msg_indp && msg_ap->vcu_inst_addr == 0) ||
 	     (use_msg_indp && msg_indp->ap_inst_addr == 0 && !is_ack)) {
@@ -597,11 +598,21 @@ int vcp_enc_ipi_handler(void *arg)
 				vcu->failure = msg->status;
 			else
 				mtk_vcodec_set_state_from(ctx, MTK_STATE_INIT, MTK_STATE_FREE);
-			fallthrough;
+			goto return_venc_ipi_ack;
+		case VCU_IPIMSG_ENC_PWR_CTRL_DONE: {
+			struct venc_ap_ipi_pwr_ctrl *ack_msg =
+				(struct venc_ap_ipi_pwr_ctrl *)obj->share_buf;
+			struct mtk_smi_pwr_ctrl_info *ctrl_info =
+				(struct mtk_smi_pwr_ctrl_info *)ack_msg->ap_data_addr;
+
+			ctrl_info->ret = ack_msg->info.ret;
+			goto return_venc_ipi_ack;
+		}
 		case VCU_IPIMSG_ENC_SET_PARAM_DONE:
 		case VCU_IPIMSG_ENC_ENCODE_DONE:
 		case VCU_IPIMSG_ENC_DEINIT_DONE:
 		case VCU_IPIMSG_ENC_BACKUP_DONE:
+return_venc_ipi_ack:
 			vcu->signaled = true;
 			wake_up(&vcu->wq_hd);
 			break;
@@ -1435,6 +1446,26 @@ encode_err:
 	return ret;
 }
 
+static int venc_vcp_set_pwr_ctrl(struct venc_inst *inst, struct mtk_smi_pwr_ctrl_info *ctrl_info)
+{
+	struct venc_ap_ipi_pwr_ctrl msg = {0};
+
+	if (ctrl_info->type == MTK_SMI_GET_IF_IN_USE && !has_valid_vcp_inst(inst->ctx->dev)) {
+		ctrl_info->ret = 0;
+		return 0;
+	}
+
+	msg.msg_id = AP_IPIMSG_ENC_PWR_CTRL;
+	msg.ctx_id = inst->ctx->id;
+	msg.ap_inst_addr = (uintptr_t)&inst->vcu_inst;
+	msg.ap_data_addr = (uintptr_t)ctrl_info;
+	msg.info.type = ctrl_info->type;
+	msg.info.hw_id = ctrl_info->hw_id;
+	venc_vcp_set_vcu(&inst->vcu_inst);
+
+	return venc_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
+}
+
 static void venc_get_free_buffers(struct venc_inst *inst,
 			     struct ring_input_list *list,
 			     struct venc_done_result *pResult)
@@ -1524,6 +1555,9 @@ static int venc_vcp_get_param(unsigned long handle,
 		msg.ctx_id = inst->ctx->id;
 		venc_vcp_set_vcu(&inst->vcu_inst);
 		ret = venc_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
+		break;
+	case GET_PARAM_VENC_PWR_CTRL:
+		ret = venc_vcp_set_pwr_ctrl(inst, (struct mtk_smi_pwr_ctrl_info *)out);
 		break;
 	case GET_PARAM_FREE_BUFFERS:
 		if (inst->vsi == NULL)

@@ -113,6 +113,13 @@ enum mtk_venc_smi_dump_mode {
 	MTK_VENC_POWERCTL_IN_VCP = 1
 };
 
+enum mtk_smi_pwr_ctrl_type {
+	MTK_SMI_GET,
+	MTK_SMI_GET_IF_IN_USE,
+	MTK_SMI_PUT,
+	MTK_SMI_CTRL_TYPE_MAX
+};
+
 // smaller value means higher priority
 enum vdec_priority {
 	VDEC_PRIORITY_REAL_TIME = 0,
@@ -149,6 +156,12 @@ struct mtk_tf_info {
 	__u32	port;
 	__u64	tf_mva;
 	__u32	has_tf;
+};
+
+struct mtk_smi_pwr_ctrl_info {
+	__u32	type;
+	__u32	hw_id;
+	__s32	ret;
 };
 
 /**
