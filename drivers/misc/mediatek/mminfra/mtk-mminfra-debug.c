@@ -45,6 +45,7 @@ struct mminfra_dbg {
 	void __iomem *ctrl_base;
 	void __iomem *mminfra_base;
 	void __iomem *mminfra_ao_base;
+	void __iomem *mminfra_mtcmos_base;
 	void __iomem *gce_base;
 	void __iomem *vlp_base;
 	void __iomem *spm_base;
@@ -871,6 +872,13 @@ static bool mminfra_devapc_power_cb(void)
 		}
 	} else if (mm_pwr_ver == mm_pwr_v3) {
 		if (dbg->irq_safe) {
+			pr_info("mm0 mtcmos = 0x%x, mm1 mtcmos = 0x%x\n",
+				readl(dbg->mminfra_mtcmos_base),
+				readl(dbg->mminfra_mtcmos_base + 0x4));
+			if ((readl(dbg->mminfra_mtcmos_base) & dbg->mm_mtcmos_mask)
+				== dbg->mm_mtcmos_mask)
+				return true;
+
 			pr_info("%s set mminfra pwr on, is_mminfra_shutdown = %d\n",
 				__func__, is_mminfra_shutdown);
 			if (!is_mminfra_shutdown) {
@@ -1028,6 +1036,9 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 			dbg->mm_cfg_base[MM_1] = ioremap(tmp, 0x1000);
 		if (!of_property_read_u32_index(dev->of_node, "mm-cfg-base", MM_AO, &tmp))
 			dbg->mm_cfg_base[MM_AO] = ioremap(tmp, 0x1000);
+
+		if (dbg->mm_mtcmos_base)
+			dbg->mminfra_mtcmos_base = ioremap(dbg->mm_mtcmos_base, 0x10);
 	}
 
 	cmdq_get_mminfra_cb(is_mminfra_power_on);
