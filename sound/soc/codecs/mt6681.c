@@ -2389,6 +2389,55 @@ static SOC_VALUE_ENUM_SINGLE_DECL(vow_ul_src_mux_map_enum,
 static const struct snd_kcontrol_new vow_ul_src_mux_control =
 	SOC_DAPM_ENUM("VOW_UL_SRC_MUX Select", vow_ul_src_mux_map_enum);
 #endif
+
+static int miso0_1_mux_enum_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_dapm_widget *w = snd_soc_dapm_kcontrol_widget(kcontrol);
+	struct snd_soc_dapm_context *dapm = w->dapm;
+	struct snd_soc_component *component = snd_soc_dapm_to_component(dapm);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(component);
+	// only set register when using hdr record or scp accdet
+	if (priv->hdr_record || !priv->audio_r_miso1_enable)
+		return snd_soc_dapm_get_enum_double(kcontrol, ucontrol);
+	return 0;
+}
+
+static int miso0_1_mux_enum_put(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_dapm_widget *w = snd_soc_dapm_kcontrol_widget(kcontrol);
+	struct snd_soc_dapm_context *dapm = w->dapm;
+	struct snd_soc_component *component = snd_soc_dapm_to_component(dapm);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(component);
+	// only set register when using hdr record or scp accdet
+	if (priv->hdr_record || !priv->audio_r_miso1_enable)
+		return snd_soc_dapm_put_enum_double(kcontrol, ucontrol);
+	return 0;
+}
+
+static int miso4_5_mux_enum_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_dapm_widget *w = snd_soc_dapm_kcontrol_widget(kcontrol);
+	struct snd_soc_dapm_context *dapm = w->dapm;
+	struct snd_soc_component *component = snd_soc_dapm_to_component(dapm);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(component);
+	// only set register when using hdr record or scp accdet
+	if (priv->hdr_record || priv->audio_r_miso1_enable)
+		return snd_soc_dapm_get_enum_double(kcontrol, ucontrol);
+	return 0;
+}
+
+static int miso4_5_mux_enum_put(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_dapm_widget *w = snd_soc_dapm_kcontrol_widget(kcontrol);
+	struct snd_soc_dapm_context *dapm = w->dapm;
+	struct snd_soc_component *component = snd_soc_dapm_to_component(dapm);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(component);
+	// only set register when using hdr record or ap accdet
+	if (priv->hdr_record || priv->audio_r_miso1_enable)
+		return snd_soc_dapm_put_enum_double(kcontrol, ucontrol);
+	return 0;
+}
+
 /* MISO MUX */
 static const char *const miso_mux_map[] = {
 	"UL1_CH1", "UL1_CH2", "UL2_CH1", "UL2_CH2", "UL3_CH1", "UL3_CH2",
@@ -2403,15 +2452,18 @@ static SOC_VALUE_ENUM_SINGLE_DECL(miso0_mux_map_enum, MT6681_AFE_MTKAIF_MUX_CFG,
 				  RG_ADDA_CH1_SEL_SFT, RG_ADDA_CH1_SEL_MASK,
 				  miso_mux_map, miso_mux_map_value);
 
+
 static const struct snd_kcontrol_new miso0_mux_control =
-	SOC_DAPM_ENUM("MISO_MUX Select", miso0_mux_map_enum);
+	SOC_DAPM_ENUM_EXT("MISO_MUX Select", miso0_mux_map_enum,
+			  miso0_1_mux_enum_get, miso0_1_mux_enum_put);
 
 static SOC_VALUE_ENUM_SINGLE_DECL(miso1_mux_map_enum, MT6681_AFE_MTKAIF_MUX_CFG,
 				  RG_ADDA_CH2_SEL_SFT, RG_ADDA_CH2_SEL_MASK,
 				  miso_mux_map, miso_mux_map_value);
 
 static const struct snd_kcontrol_new miso1_mux_control =
-	SOC_DAPM_ENUM("MISO_MUX Select", miso1_mux_map_enum);
+	SOC_DAPM_ENUM_EXT("MISO_MUX Select", miso1_mux_map_enum,
+			  miso0_1_mux_enum_get, miso0_1_mux_enum_put);
 
 static SOC_VALUE_ENUM_SINGLE_DECL(miso2_mux_map_enum,
 				  MT6681_AFE_MTKAIF_MUX_CFG_M,
@@ -2427,7 +2479,7 @@ static SOC_VALUE_ENUM_SINGLE_DECL(miso3_mux_map_enum,
 				  miso_mux_map, miso_mux_map_value);
 
 static const struct snd_kcontrol_new miso3_mux_control =
-	SOC_DAPM_ENUM("MIS0_MUX Select", miso3_mux_map_enum);
+	SOC_DAPM_ENUM("MISO_MUX Select", miso3_mux_map_enum);
 
 static SOC_VALUE_ENUM_SINGLE_DECL(miso4_mux_map_enum,
 				  MT6681_AFE_MTKAIF_MUX_CFG_H,
@@ -2435,7 +2487,8 @@ static SOC_VALUE_ENUM_SINGLE_DECL(miso4_mux_map_enum,
 				  miso_mux_map, miso_mux_map_value);
 
 static const struct snd_kcontrol_new miso4_mux_control =
-	SOC_DAPM_ENUM("MIS0_MUX Select", miso4_mux_map_enum);
+	SOC_DAPM_ENUM_EXT("MISO_MUX Select", miso4_mux_map_enum,
+			  miso4_5_mux_enum_get, miso4_5_mux_enum_put);
 
 static SOC_VALUE_ENUM_SINGLE_DECL(miso5_mux_map_enum,
 				  MT6681_AFE_MTKAIF_MUX_CFG_H,
@@ -2443,7 +2496,8 @@ static SOC_VALUE_ENUM_SINGLE_DECL(miso5_mux_map_enum,
 				  miso_mux_map, miso_mux_map_value);
 
 static const struct snd_kcontrol_new miso5_mux_control =
-	SOC_DAPM_ENUM("MIS0_MUX Select", miso5_mux_map_enum);
+	SOC_DAPM_ENUM_EXT("MISO_MUX Select", miso5_mux_map_enum,
+			  miso4_5_mux_enum_get, miso4_5_mux_enum_put);
 
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
 /* VOW PBUF MUX */
@@ -38378,6 +38432,10 @@ static int mt6681_parse_dt(struct mt6681_priv *priv)
 	unsigned int mic_type_mux[3];
 	struct device *dev = priv->dev;
 	struct device_node *np;
+	unsigned int efuse_val = 0;
+	struct nvmem_cell *efuse_spare5;
+	void *efuse_data;
+	size_t efuse_len = 0;
 
 	np = of_get_child_by_name(dev->parent->of_node, "mt6681-sound");
 	if (!np)
@@ -38399,6 +38457,31 @@ static int mt6681_parse_dt(struct mt6681_priv *priv)
 		dev_dbg(priv->dev, "%s() failed to read audio_r_miso1_enable\n",
 			__func__);
 		priv->audio_r_miso1_enable = 0;
+
+		// for liber to check E1 or E2
+		ret = of_property_read_u32(np, "accdet-efuse-check", &efuse_val);
+		if (!ret && efuse_val == 1) {
+			efuse_val = 0;
+			efuse_spare5 = nvmem_cell_get(dev, "efuse_spare5");
+			if (IS_ERR(efuse_spare5)) {
+				dev_info(priv->dev, "%s() failed to read efuse_spare5\n", __func__);
+			} else {
+				efuse_data = nvmem_cell_read(efuse_spare5, &efuse_len);
+				if (IS_ERR(efuse_data)) {
+					dev_info(priv->dev, "%s() get efuse data error = %d\n", __func__, ret);
+				} else {
+					memcpy(&efuse_val, efuse_data, sizeof(unsigned int));
+					kfree(efuse_data);
+					if (efuse_val >> 31 == 1)
+						priv->audio_r_miso1_enable = 1;
+					else
+						priv->audio_r_miso1_enable = 0;
+				}
+				nvmem_cell_put(efuse_spare5);
+			}
+			dev_info(priv->dev, "%s() efuse_val = 0x%x, ap accdet = %d, efuse_len = %zu\n",
+				__func__, efuse_val, priv->audio_r_miso1_enable, efuse_len);
+		}
 	}
 	ret = of_property_read_u32(np, "miso-only",
 				   &priv->miso_only);
