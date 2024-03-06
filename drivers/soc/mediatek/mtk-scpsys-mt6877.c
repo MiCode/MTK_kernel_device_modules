@@ -63,7 +63,7 @@ static const struct scp_domain_data scp_domain_data_mt6877[] = {
 	[MT6877_POWER_DOMAIN_CONN] = {
 		.name = "conn",
 		.sta_mask = BIT(1),
-		.ctl_offs = 0x0E04, //CONN_PWR_CON
+		.ctl_offs = 0x0E04,
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x02A0, 0x02A4, 0x0220, 0x0228,
 				CONN_PROT_STEP1_0_MASK),
@@ -76,7 +76,7 @@ static const struct scp_domain_data scp_domain_data_mt6877[] = {
 	[MT6877_POWER_DOMAIN_ISP0] = {
 		.name = "isp0",
 		.sta_mask = BIT(9),
-		.ctl_offs = 0x0E24, //CONN_PWR_CON
+		.ctl_offs = 0x0E24,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.basic_clk_name = {"img"},
@@ -87,24 +87,22 @@ static const struct scp_domain_data scp_domain_data_mt6877[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x02D4, 0x02D8, 0x02D0, 0x02EC,
 				ISP0_PROT_STEP2_0_MASK),
 		},
-		.caps = MTK_SCPD_BYPASS_INIT_ON,
 	},
 
 	[MT6877_POWER_DOMAIN_ISP1] = {
 		.name = "isp1",
 		.sta_mask = BIT(10),
-		.ctl_offs = 0x0E28, //CONN_PWR_CON
+		.ctl_offs = 0x0E28,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.basic_clk_name = {"img"},
 		.subsys_clk_prefix = "img1",
-		.caps = MTK_SCPD_BYPASS_INIT_ON,
 	},
 
 	[MT6877_POWER_DOMAIN_IPE] = {
 		.name = "ipe",
 		.sta_mask = BIT(11),
-		.ctl_offs = 0x0E2C, //CONN_PWR_CON
+		.ctl_offs = 0x0E2C,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.basic_clk_name = {"ipe"},
@@ -115,13 +113,12 @@ static const struct scp_domain_data scp_domain_data_mt6877[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x02D4, 0x02D8, 0x02D0, 0x02EC,
 				IPE_PROT_STEP2_0_MASK),
 		},
-		.caps = MTK_SCPD_BYPASS_INIT_ON,
 	},
 
 	[MT6877_POWER_DOMAIN_VDEC] = {
 		.name = "vdec",
 		.sta_mask = BIT(12),
-		.ctl_offs = 0x0E30, //CONN_PWR_CON
+		.ctl_offs = 0x0E30,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.bp_table = {
@@ -130,13 +127,12 @@ static const struct scp_domain_data scp_domain_data_mt6877[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x02D4, 0x02D8, 0x02D0, 0x02EC,
 				VDE0_PROT_STEP2_0_MASK),
 		},
-		.caps = MTK_SCPD_BYPASS_INIT_ON,
 	},
 
 	[MT6877_POWER_DOMAIN_VENC] = {
 		.name = "venc",
 		.sta_mask = BIT(14),
-		.ctl_offs = 0x0E38, //CONN_PWR_CON
+		.ctl_offs = 0x0E38,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.basic_clk_name = {"venc"},
@@ -147,13 +143,12 @@ static const struct scp_domain_data scp_domain_data_mt6877[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x02D4, 0x02D8, 0x02D0, 0x02EC,
 				VEN_PROT_STEP2_0_MASK),
 		},
-		.caps = MTK_SCPD_BYPASS_INIT_ON,
 	},
 
 	[MT6877_POWER_DOMAIN_DISP] = {
 		.name = "disp",
 		.sta_mask = BIT(18),
-		.ctl_offs = 0x0E48, //CONN_PWR_CON
+		.ctl_offs = 0x0E48,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.basic_clk_name = {"disp"},
@@ -168,13 +163,12 @@ static const struct scp_domain_data scp_domain_data_mt6877[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x02D4, 0x02D8, 0x02D0, 0x02EC,
 				DIS0_PROT_STEP2_1_MASK),
 		},
-		.caps = MTK_SCPD_BYPASS_INIT_ON,
 	},
 
 	[MT6877_POWER_DOMAIN_AUDIO] = {
 		.name = "audio",
 		.sta_mask = BIT(21),
-		.ctl_offs = 0x0E54, //CONN_PWR_CON
+		.ctl_offs = 0x0E54,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.basic_clk_name = {"cam"},
@@ -183,13 +177,12 @@ static const struct scp_domain_data scp_domain_data_mt6877[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0714, 0x0718, 0x0710, 0x0724,
 				AUDIO_PROT_STEP1_0_MASK),
 		},
-		.caps = MTK_SCPD_BYPASS_INIT_ON,
 	},
 
 	[MT6877_POWER_DOMAIN_ADSP_DORMANT] = {
 		.name = "adsp_dormant",
 		.sta_mask = BIT(22),
-		.ctl_offs = 0x0E58, //CONN_PWR_CON
+		.ctl_offs = 0x0E58,
 		.sram_slp_bits = GENMASK(9, 9),
 		.sram_slp_ack_bits = GENMASK(13, 13),
 		.basic_clk_name = {"adsp"},
@@ -197,13 +190,13 @@ static const struct scp_domain_data scp_domain_data_mt6877[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0714, 0x0718, 0x0710, 0x0724,
 				ADSP_PROT_STEP1_0_MASK),
 		},
-		.caps = MTK_SCPD_BYPASS_INIT_ON | MTK_SCPD_SRAM_SLP,
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_SRAM_SLP,
 	},
 
 	[MT6877_POWER_DOMAIN_CAM] = {
 		.name = "cam",
 		.sta_mask = BIT(23),
-		.ctl_offs = 0x0E5C, //CONN_PWR_CON
+		.ctl_offs = 0x0E5C,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.basic_clk_name = {"cam"},
@@ -218,34 +211,30 @@ static const struct scp_domain_data scp_domain_data_mt6877[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x02A8, 0x02AC, 0x0250, 0x0258,
 				CAM_PROT_STEP2_0_MASK),
 		},
-		.caps = MTK_SCPD_BYPASS_INIT_ON,
 	},
 
 	[MT6877_POWER_DOMAIN_CAM_RAWA] = {
 		.name = "cam_rawa",
 		.sta_mask = BIT(24),
-		.ctl_offs = 0x0E60, //CONN_PWR_CON
+		.ctl_offs = 0x0E60,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.subsys_clk_prefix = "cam_rawa",
-		.caps = MTK_SCPD_BYPASS_INIT_ON,
 	},
 
 	[MT6877_POWER_DOMAIN_CAM_RAWB] = {
 		.name = "cam_rawb",
 		.sta_mask = BIT(25),
-		.ctl_offs = 0x0E64, //CONN_PWR_CON
+		.ctl_offs = 0x0E64,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.subsys_clk_prefix = "cam_rawb",
-		.caps = MTK_SCPD_BYPASS_INIT_ON,
 	},
 
 	[MT6877_POWER_DOMAIN_CSI] = {
 		.name = "csi",
 		.sta_mask = BIT(30),
-		.ctl_offs = 0x0E78, //CONN_PWR_CON
-		.caps = MTK_SCPD_BYPASS_INIT_ON,
+		.ctl_offs = 0x0E78,
 	},
 
 	[MT6877_POWER_DOMAIN_APU] = {
