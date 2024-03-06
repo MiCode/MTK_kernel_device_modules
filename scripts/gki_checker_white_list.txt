@@ -77,6 +77,7 @@ f include/linux/remoteproc.h
 f include/media/media-entity.h
 f include/trace/events/block.h
 f include/trace/events/f2fs.h
+f include/trace/hooks/sched.h
 f include/trace/hooks/traps.h
 f include/trace/hooks/ufshcd.h
 f init/main.c
@@ -88,7 +89,9 @@ f kernel/printk/printk.c
 f kernel/printk/printk_ringbuffer.c
 f kernel/printk/printk_ringbuffer.h
 f kernel/sched/core.c
+f kernel/sched/fair.c
 f kernel/sched/rt.c
+f kernel/sched/vendor_hooks.c
 f kernel/signal.c
 f kernel/smp.c
 f kernel/time/alarmtimer.c

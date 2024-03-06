@@ -167,3 +167,11 @@ config MTK_CORE_CTL
 	  utilizations from scheduler information automatically.
 	  If you are not sure about whether to enable it or not,
 	  please set n.
+
+config MTK_ORIGIN_CHANGE
+	tristate "add code at original"
+	help
+	  This config is for porting code at original code.
+	  Such as wait for ACK merge or debug purpose.
+	  When original code backport to MTK branch,
+	  than the config is not need.
