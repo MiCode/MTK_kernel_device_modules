@@ -223,5 +223,5 @@ static inline bool is_util_est_enable(void)
 	return true;
 #endif
 }
-extern unsigned long cpu_util_cfs(int cpu);
+extern unsigned long mtk_cpu_util_cfs(int cpu);
 #endif /* _SCHED_COMMON_H */

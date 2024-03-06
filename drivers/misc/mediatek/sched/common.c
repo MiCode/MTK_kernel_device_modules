@@ -92,7 +92,7 @@ unsigned long mtk_uclamp_rq_util_with(struct rq *rq, unsigned long util,
 	return util;
 }
 #endif /* CONFIG_UCLAMP_TASK */
-unsigned long cpu_util_cfs(int cpu)
+unsigned long mtk_cpu_util_cfs(int cpu)
 {
 	struct cfs_rq *cfs_rq;
 	unsigned int util;

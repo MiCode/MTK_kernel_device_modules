@@ -99,7 +99,7 @@ void sched_max_util_task(int *util)
 }
 EXPORT_SYMBOL(sched_max_util_task);
 
-unsigned long capacity_of(int cpu)
+unsigned long _capacity_of(int cpu)
 {
 	return cpu_rq(cpu)->cpu_capacity;
 }
@@ -118,7 +118,7 @@ unsigned int get_cpu_util_pct(unsigned int cpu, bool orig)
 		util = max_t(unsigned long, util,
 			READ_ONCE(cfs_rq->avg.util_est.enqueued));
 
-	capacity = (orig == true) ? capacity_orig_of(cpu) : capacity_of(cpu);
+	capacity = (orig == true) ? capacity_orig_of(cpu) : _capacity_of(cpu);
 	util = min_t(unsigned long, util, capacity);
 	util_pct = (unsigned int)div64_ul((util * 100), capacity);
 	return util_pct;
