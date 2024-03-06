@@ -220,6 +220,42 @@ struct em_base_info *mtk_get_em_base_info(void)
 }
 EXPORT_SYMBOL(mtk_get_em_base_info);
 
+unsigned int get_nr_cpus(void)
+{
+	unsigned int cpu_idx = 0, nr_cpus = 0;
+
+	for_each_possible_cpu(cpu_idx)
+		nr_cpus++;
+
+	return nr_cpus;
+}
+
+unsigned int *get_cpu_cluster_id_array(void)
+{
+	unsigned int cpu_idx = 0;
+	unsigned int *cpu_cluster_id;
+
+	cpu_cluster_id = kcalloc(get_nr_cpus(), sizeof(unsigned int), GFP_KERNEL);
+
+	for_each_possible_cpu(cpu_idx)
+		cpu_cluster_id[cpu_idx] = topology_cluster_id(cpu_idx);
+
+	return cpu_cluster_id;
+}
+
+cpumask_t **get_cpu_cluster_mask_array(void)
+{
+	unsigned int cpu_idx = 0;
+	cpumask_t **cpu_cluster_mask;
+
+	cpu_cluster_mask = kcalloc(get_nr_cpus(), sizeof(cpumask_t *), GFP_KERNEL);
+
+	for_each_possible_cpu(cpu_idx)
+		cpu_cluster_mask[cpu_idx] = topology_cluster_cpumask(cpu_idx);
+
+	return cpu_cluster_mask;
+}
+
 static int mtk_static_power_probe(struct platform_device *pdev)
 {
 #if __LKG_DEBUG__
@@ -301,6 +337,8 @@ static int mtk_static_power_probe(struct platform_device *pdev)
 	mtk_em_base_info->curve_adj_support = curve_adj_support;
 	mtk_em_base_info->wl_support = wl_support;
 	mtk_em_base_info->mtk_mapping = mtk_mapping;
+	mtk_em_base_info->cpu_cluster_id = get_cpu_cluster_id_array();
+	mtk_em_base_info->cpu_cluster_mask = get_cpu_cluster_mask_array();
 
 	info.init = 0x5A5A;
 
