@@ -7340,6 +7340,12 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reduce-mips-support = <1>;
 		};
 
+		gpu_slc: gpu-slc@13f820 {
+			compatible = "mediatek,gpu_slc";
+			slc-sysram-support = <1>;
+			reg = <0 0x13f820 0 0x20>;
+		};
+
 		gpufreq: gpufreq@48500000 {
 			compatible = "mediatek,gpufreq";
 			reg =
