@@ -61,17 +61,17 @@ static inline struct mtk_disp_chist *comp_to_chist(struct mtk_ddp_comp *comp)
 	return container_of(comp, struct mtk_disp_chist, ddp_comp);
 }
 
-int mtk_drm_ioctl_get_chist(struct drm_device *dev, void *data,
+int mtk_drm_ioctl_chist_get_hist(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
 
 
-int mtk_drm_ioctl_get_chist_caps(struct drm_device *dev, void *data,
+int mtk_drm_ioctl_chist_get_caps(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
 
-int mtk_drm_ioctl_set_chist_config(struct drm_device *dev, void *data,
+int mtk_drm_ioctl_chist_set_config(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
 
-void mtk_chist_set_tile_overhead(struct mtk_drm_crtc *mtk_crtc, int overhead, bool is_right);
+void disp_chist_set_tile_overhead(struct mtk_drm_crtc *mtk_crtc, int overhead, bool is_right);
 
 #endif
 

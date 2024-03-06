@@ -37,9 +37,8 @@
 #define color_get_offset(module) (0)
 #define is_color1_module(module) (0)
 
-enum COLOR_USER_CMD {
-	SET_PQPARAM = 0,
-	SET_COLOR_REG,
+enum DISP_COLOR_USER_CMD {
+	SET_COLOR_REG = 0,
 	WRITE_REG,
 	BYPASS_COLOR,
 	PQ_SET_WINDOW,
@@ -947,7 +946,7 @@ static inline struct mtk_disp_color *comp_to_color(struct mtk_ddp_comp *comp)
 	return container_of(comp, struct mtk_disp_color, ddp_comp);
 }
 
-static void ddp_color_cal_split_window(struct mtk_ddp_comp *comp,
+static void disp_color_cal_split_window(struct mtk_ddp_comp *comp,
 	unsigned int *p_split_window_x, unsigned int *p_split_window_y)
 {
 	unsigned int split_window_x = 0xFFFF0000;
@@ -1030,7 +1029,7 @@ bool disp_color_reg_get(struct mtk_ddp_comp *comp,
 	return true;
 }
 
-static void ddp_color_set_window(struct mtk_ddp_comp *comp,
+static void disp_color_set_window(struct mtk_ddp_comp *comp,
 	struct DISP_PQ_WIN_PARAM *win_param, struct cmdq_pkt *handle)
 {
 	unsigned int split_window_x, split_window_y;
@@ -1057,7 +1056,7 @@ static void ddp_color_set_window(struct mtk_ddp_comp *comp,
 		((win_param->end_x << 16) | win_param->start_x),
 		((win_param->end_y << 16) | win_param->start_y));
 
-	ddp_color_cal_split_window(comp, &split_window_x, &split_window_y);
+	disp_color_cal_split_window(comp, &split_window_x, &split_window_y);
 
 	DDPINFO("%s: current window setting: en[%d], x[0x%x], y[0x%x]",
 		__func__,
@@ -1086,13 +1085,13 @@ struct DISPLAY_PQ_T *get_Color_index(struct mtk_ddp_comp *comp)
 	return &primary_data->color_index;
 }
 
-void DpEngine_COLORonInit(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+void disp_color_on_init(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	unsigned int split_window_x, split_window_y;
 	struct mtk_disp_color *color = comp_to_color(comp);
 	struct mtk_disp_color_primary *primary_data = color->primary_data;
 
-	ddp_color_cal_split_window(comp, &split_window_x, &split_window_y);
+	disp_color_cal_split_window(comp, &split_window_x, &split_window_y);
 
 	DDPINFO("%s: id[%d], en[%d], x[0x%x], y[0x%x]\n",
 		__func__, comp->id, primary_data->split_en, split_window_x, split_window_y);
@@ -1117,7 +1116,7 @@ void DpEngine_COLORonInit(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		comp->regs_pa + DISP_COLOR_OUT_SEL(color), 0x333, 0x00000333);
 }
 
-void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+void disp_color_on_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	int index = 0;
 	unsigned int u4Temp = 0;
@@ -1600,7 +1599,7 @@ static void disp_color_write_drecolor_hw_reg(struct mtk_ddp_comp *comp,
 		(param->lsp_out_setting[4] << 23), 0x3FFF7F7F);
 }
 
-static void color_write_hw_reg(struct mtk_ddp_comp *comp,
+static void disp_color_write_hw_reg(struct mtk_ddp_comp *comp,
 	const struct DISPLAY_COLOR_REG *color_reg, struct cmdq_pkt *handle)
 {
 	int index = 0;
@@ -2017,7 +2016,7 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 	}
 }
 
-static void mtk_disp_color_config_overhead(struct mtk_ddp_comp *comp,
+static void disp_color_config_overhead(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg)
 {
 	struct mtk_disp_color *color = comp_to_color(comp);
@@ -2053,7 +2052,7 @@ static void mtk_disp_color_config_overhead(struct mtk_ddp_comp *comp,
 	}
 }
 
-static void mtk_disp_color_config_overhead_v(struct mtk_ddp_comp *comp,
+static void disp_color_config_overhead_v(struct mtk_ddp_comp *comp,
 	struct total_tile_overhead_v  *tile_overhead_v)
 {
 	struct mtk_disp_color *color = comp_to_color(comp);
@@ -2069,7 +2068,7 @@ static void mtk_disp_color_config_overhead_v(struct mtk_ddp_comp *comp,
 	color->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
 }
 
-static void mtk_color_config(struct mtk_ddp_comp *comp,
+static void disp_color_config(struct mtk_ddp_comp *comp,
 			     struct mtk_ddp_config *cfg,
 			     struct cmdq_pkt *handle)
 {
@@ -2119,81 +2118,7 @@ static void mtk_color_config(struct mtk_ddp_comp *comp,
 		DDPINFO("Disp COLOR's bit is : %u\n", cfg->bpc);
 }
 
-
-int mtk_drm_color_cfg_set_pqparam(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, void *data, unsigned int data_size)
-{
-	int ret = 0;
-	struct DISP_PQ_PARAM *pq_param;
-	struct mtk_disp_color *color = comp_to_color(comp);
-	struct mtk_disp_color_primary *primary_data = color->primary_data;
-
-	pq_param = &primary_data->color_param;
-	memcpy(pq_param, (struct DISP_PQ_PARAM *)data,
-		sizeof(struct DISP_PQ_PARAM));
-
-	if (primary_data->ncs_tuning_mode == 0) {
-		/* normal mode */
-		/* normal mode */
-		DpEngine_COLORonInit(comp, handle);
-		DpEngine_COLORonConfig(comp, handle);
-		if (comp->mtk_crtc->is_dual_pipe) {
-			struct mtk_ddp_comp *comp_color1 = color->companion;
-
-			DpEngine_COLORonInit(comp_color1, handle);
-			DpEngine_COLORonConfig(comp_color1, handle);
-		}
-
-		DDPINFO("SET_PQ_PARAM\n");
-	} else {
-		/* ncs_tuning_mode = 0; */
-		ret = -EINVAL;
-		DDPINFO("SET_PQ_PARAM, bypassed by ncs_tuning_mode = 1\n");
-	}
-
-	return ret;
-
-}
-
-int mtk_drm_ioctl_set_pqparam_impl(struct mtk_ddp_comp *comp, void *data)
-{
-	int ret = 0;
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	struct mtk_disp_color *color = comp_to_color(comp);
-	struct mtk_disp_color_primary *primary_data = color->primary_data;
-	struct DISP_PQ_PARAM *pq_param;
-
-	pq_param = &primary_data->color_param;
-	memcpy(pq_param, (struct DISP_PQ_PARAM *)data,
-		sizeof(struct DISP_PQ_PARAM));
-
-	if (primary_data->ncs_tuning_mode == 0) {
-		/* normal mode */
-		ret = mtk_crtc_user_cmd(&mtk_crtc->base, comp, SET_PQPARAM, data);
-		mtk_crtc_check_trigger(mtk_crtc, true, true);
-
-		DDPINFO("SET_PQ_PARAM\n");
-	} else {
-		/* ncs_tuning_mode = 0; */
-		DDPINFO
-		 ("SET_PQ_PARAM, bypassed by ncs_tuning_mode = 1\n");
-	}
-
-	return ret;
-}
-
-int mtk_drm_ioctl_set_pqparam(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			to_mtk_crtc(crtc), MTK_DISP_COLOR, 0);
-
-	return mtk_drm_ioctl_set_pqparam_impl(comp, data);
-}
-
-int mtk_drm_color_cfg_set_pqindex(struct mtk_ddp_comp *comp,
+int disp_color_cfg_set_pqindex(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
 {
 	int ret = 0;
@@ -2206,7 +2131,7 @@ int mtk_drm_color_cfg_set_pqindex(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
-int mtk_drm_ioctl_set_pqindex_impl(struct mtk_ddp_comp *comp, void *data)
+int disp_color_act_set_pqindex(struct mtk_ddp_comp *comp, void *data)
 {
 	int ret = 0;
 	struct DISPLAY_PQ_T *pq_index;
@@ -2220,18 +2145,7 @@ int mtk_drm_ioctl_set_pqindex_impl(struct mtk_ddp_comp *comp, void *data)
 	return ret;
 }
 
-int mtk_drm_ioctl_set_pqindex(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			to_mtk_crtc(crtc), MTK_DISP_COLOR, 0);
-
-	return mtk_drm_ioctl_set_pqindex_impl(comp, data);
-}
-
-int mtk_color_cfg_set_color_reg(struct mtk_ddp_comp *comp,
+int disp_color_cfg_set_color_reg(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
 {
 	int ret = 0;
@@ -2244,12 +2158,12 @@ int mtk_color_cfg_set_color_reg(struct mtk_ddp_comp *comp,
 		memcpy(&primary_data->color_reg, (struct DISPLAY_COLOR_REG *)data,
 			sizeof(struct DISPLAY_COLOR_REG));
 
-		color_write_hw_reg(comp, &primary_data->color_reg, handle);
+		disp_color_write_hw_reg(comp, &primary_data->color_reg, handle);
 		if (comp->mtk_crtc->is_dual_pipe) {
 			struct mtk_ddp_comp *comp_color1 = color->companion;
 
 			DDPINFO("%s,SET COLOR REG id(%d)\n", __func__, comp_color1->id);
-			color_write_hw_reg(comp_color1, &primary_data->color_reg, handle);
+			disp_color_write_hw_reg(comp_color1, &primary_data->color_reg, handle);
 		}
 	} else {
 		ret = -EINVAL;
@@ -2260,7 +2174,7 @@ int mtk_color_cfg_set_color_reg(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
-int mtk_drm_ioctl_set_color_reg_impl(struct mtk_ddp_comp *comp, void *data)
+int disp_color_act_set_color_reg(struct mtk_ddp_comp *comp, void *data)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	int ret;
@@ -2271,18 +2185,7 @@ int mtk_drm_ioctl_set_color_reg_impl(struct mtk_ddp_comp *comp, void *data)
 	return ret;
 }
 
-int mtk_drm_ioctl_set_color_reg(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			to_mtk_crtc(crtc), MTK_DISP_COLOR, 0);
-
-	return mtk_drm_ioctl_set_color_reg_impl(comp, data);
-}
-
-int mtk_color_cfg_mutex_control(struct mtk_ddp_comp *comp,
+int disp_color_cfg_mutex_control(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
 {
 	struct mtk_disp_color *color = comp_to_color(comp);
@@ -2307,7 +2210,7 @@ int mtk_color_cfg_mutex_control(struct mtk_ddp_comp *comp,
 
 }
 
-int mtk_drm_ioctl_mutex_control_impl(struct mtk_ddp_comp *comp, void *data)
+int disp_color_act_mutex_control(struct mtk_ddp_comp *comp, void *data)
 {
 	int ret = 0;
 	unsigned int *value = data;
@@ -2332,46 +2235,7 @@ int mtk_drm_ioctl_mutex_control_impl(struct mtk_ddp_comp *comp, void *data)
 	return ret;
 }
 
-int mtk_drm_ioctl_mutex_control(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			to_mtk_crtc(crtc), MTK_DISP_COLOR, 0);
-
-	return mtk_drm_ioctl_mutex_control_impl(comp, data);
-}
-
-int mtk_drm_ioctl_read_sw_reg(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-
-	return mtk_drm_ioctl_sw_read_impl(crtc, data);
-}
-
-int mtk_drm_ioctl_write_sw_reg(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-
-	return mtk_drm_ioctl_sw_write_impl(crtc, data);
-}
-
-int mtk_drm_ioctl_read_reg(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-
-	return mtk_drm_ioctl_hw_read_impl(crtc, data);
-}
-
-
-void mtk_color_bypass(struct mtk_ddp_comp *comp, int bypass,
+void disp_color_bypass(struct mtk_ddp_comp *comp, int bypass,
 	struct cmdq_pkt *handle)
 {
 
@@ -2402,24 +2266,24 @@ void mtk_color_bypass(struct mtk_ddp_comp *comp, int bypass,
 	}
 }
 
-int mtk_color_cfg_bypass(struct mtk_ddp_comp *comp,
+int disp_color_cfg_bypass(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
 {
 	int ret = 0;
 	unsigned int *value = data;
 	struct mtk_disp_color *color = comp_to_color(comp);
 
-	mtk_color_bypass(comp, *value, handle);
+	disp_color_bypass(comp, *value, handle);
 	if (comp->mtk_crtc->is_dual_pipe) {
 		struct mtk_ddp_comp *comp_color1 = color->companion;
 
-		mtk_color_bypass(comp_color1, *value, handle);
+		disp_color_bypass(comp_color1, *value, handle);
 	}
 
 	return ret;
 }
 
-int mtk_drm_ioctl_bypass_color_impl(struct mtk_ddp_comp *comp, void *data)
+int disp_color_act_bypass_color(struct mtk_ddp_comp *comp, void *data)
 {
 	int ret = 0;
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
@@ -2430,18 +2294,7 @@ int mtk_drm_ioctl_bypass_color_impl(struct mtk_ddp_comp *comp, void *data)
 	return ret;
 }
 
-int mtk_drm_ioctl_bypass_color(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			to_mtk_crtc(crtc), MTK_DISP_COLOR, 0);
-
-	return mtk_drm_ioctl_bypass_color_impl(comp, data);
-}
-
-int mtk_drm_color_cfg_pq_set_window(struct mtk_ddp_comp *comp,
+int disp_color_cfg_pq_set_window(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
 {
 	int ret = 0;
@@ -2449,7 +2302,7 @@ int mtk_drm_color_cfg_pq_set_window(struct mtk_ddp_comp *comp,
 	struct mtk_disp_color *color = comp_to_color(comp);
 	struct mtk_disp_color_primary *primary_data = color->primary_data;
 
-	ddp_color_set_window(comp, win_param, handle);
+	disp_color_set_window(comp, win_param, handle);
 	DDPINFO("%s..., id=%d, en=%d, x=0x%x, y=0x%x\n",
 		__func__, comp->id, primary_data->split_en,
 		((primary_data->split_window_x_end << 16) |
@@ -2460,7 +2313,7 @@ int mtk_drm_color_cfg_pq_set_window(struct mtk_ddp_comp *comp,
 	if (comp->mtk_crtc->is_dual_pipe) {
 		struct mtk_ddp_comp *comp_color1 = color->companion;
 
-		ddp_color_set_window(comp_color1, win_param, handle);
+		disp_color_set_window(comp_color1, win_param, handle);
 		DDPINFO("%s..., id=%d, en=%d, x=0x%x, y=0x%x\n",
 			__func__, comp_color1->id, primary_data->split_en,
 			((primary_data->split_window_x_end << 16) |
@@ -2472,7 +2325,7 @@ int mtk_drm_color_cfg_pq_set_window(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
-int mtk_drm_ioctl_pq_set_window_impl(struct mtk_ddp_comp *comp, void *data)
+int disp_color_act_set_window(struct mtk_ddp_comp *comp, void *data)
 {
 	int ret = 0;
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
@@ -2503,7 +2356,7 @@ int mtk_drm_ioctl_pq_set_window_impl(struct mtk_ddp_comp *comp, void *data)
 		((win_param->end_x << 16) | win_param->start_x),
 		((win_param->end_y << 16) | win_param->start_y));
 
-	ddp_color_cal_split_window(comp, &split_window_x, &split_window_y);
+	disp_color_cal_split_window(comp, &split_window_x, &split_window_y);
 
 	DDPINFO("%s: output: x[0x%x], y[0x%x]", __func__,
 		split_window_x, split_window_y);
@@ -2517,7 +2370,7 @@ int mtk_drm_ioctl_pq_set_window_impl(struct mtk_ddp_comp *comp, void *data)
 	if (comp->mtk_crtc->is_dual_pipe) {
 		struct mtk_ddp_comp *comp_color1 = color->companion;
 
-		ddp_color_cal_split_window(comp_color1, &split_window_x, &split_window_y);
+		disp_color_cal_split_window(comp_color1, &split_window_x, &split_window_y);
 		ret = mtk_crtc_user_cmd(&mtk_crtc->base, comp_color1, PQ_SET_WINDOW, data);
 		DDPINFO("%s: output: x[0x%x], y[0x%x]", __func__,
 			split_window_x, split_window_y);
@@ -2532,18 +2385,7 @@ int mtk_drm_ioctl_pq_set_window_impl(struct mtk_ddp_comp *comp, void *data)
 	return ret;
 }
 
-int mtk_drm_ioctl_pq_set_window(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			to_mtk_crtc(crtc), MTK_DISP_COLOR, 0);
-
-	return mtk_drm_ioctl_pq_set_window_impl(comp, data);
-}
-
-static void mtk_color_primary_data_init(struct mtk_ddp_comp *comp)
+static void disp_color_init_primary_data(struct mtk_ddp_comp *comp)
 {
 	int i;
 	struct mtk_disp_color *color_data = comp_to_color(comp);
@@ -2574,7 +2416,7 @@ static void mtk_color_primary_data_init(struct mtk_ddp_comp *comp)
 	mutex_init(&primary_data->reg_lock);
 }
 
-static int mtk_color_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+static int disp_color_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 							enum mtk_ddp_io_cmd cmd, void *params)
 {
 	switch (cmd) {
@@ -2588,16 +2430,16 @@ static int mtk_color_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		if (atomic_read(&comp->mtk_crtc->pq_data->pipe_info_filled) == 1)
 			break;
-		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_order, is_right_pipe, companion);
+		ret = disp_pq_helper_fill_comp_pipe_info(comp, path_order, is_right_pipe, companion);
 		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
 			companion_data = comp_to_color(data->companion);
 			companion_data->path_order = data->path_order;
 			companion_data->is_right_pipe = !data->is_right_pipe;
 			companion_data->companion = comp;
 		}
-		mtk_color_primary_data_init(comp);
+		disp_color_init_primary_data(comp);
 		if (comp->mtk_crtc->is_dual_pipe && data->companion)
-			mtk_color_primary_data_init(data->companion);
+			disp_color_init_primary_data(data->companion);
 	}
 		break;
 	default:
@@ -2606,24 +2448,24 @@ static int mtk_color_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	return 0;
 }
 
-static void mtk_color_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+static void disp_color_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	//struct mtk_disp_color *color = comp_to_color(comp);
 	struct mtk_disp_color_primary *primary_data =
 		comp_to_color(comp)->primary_data;
 	struct DISP_AAL_DRECOLOR_PARAM *drecolor = &primary_data->drecolor_param;
 
-	DpEngine_COLORonInit(comp, handle);
+	disp_color_on_init(comp, handle);
 
 	mutex_lock(&primary_data->reg_lock);
 	if (primary_data->color_reg_valid) {
-		color_write_hw_reg(comp, &primary_data->color_reg, handle);
+		disp_color_write_hw_reg(comp, &primary_data->color_reg, handle);
 		if (drecolor->drecolor_sel)
 			disp_color_write_drecolor_hw_reg(comp, handle, &drecolor->drecolor_reg);
 		mutex_unlock(&primary_data->reg_lock);
 	} else {
 		mutex_unlock(&primary_data->reg_lock);
-		DpEngine_COLORonConfig(comp, handle);
+		disp_color_on_config(comp, handle);
 	}
 	/*
 	 *cmdq_pkt_write(handle, comp->cmdq_base,
@@ -2634,18 +2476,9 @@ static void mtk_color_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	 */
 }
 
-static void mtk_color_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+static void disp_color_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 
-}
-
-int mtk_drm_ioctl_write_reg(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-
-	return mtk_drm_ioctl_hw_write_impl(crtc, data);
 }
 
 void disp_color_write_pos_main_for_dual_pipe(struct mtk_ddp_comp *comp,
@@ -2685,7 +2518,7 @@ void disp_color_write_pos_main_for_dual_pipe(struct mtk_ddp_comp *comp,
 	}
 }
 
-static int mtk_color_cfg_drecolor_set_param(struct mtk_ddp_comp *comp,
+static int disp_color_cfg_drecolor_set_param(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
 {
 	struct mtk_disp_color *priv_data = comp_to_color(comp);
@@ -2713,7 +2546,7 @@ static int mtk_color_cfg_drecolor_set_param(struct mtk_ddp_comp *comp,
 	return 0;
 }
 
-static int mtk_color_pq_frame_config(struct mtk_ddp_comp *comp,
+static int disp_color_frame_config(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, unsigned int cmd, void *data, unsigned int data_size)
 {
 	int ret = -1;
@@ -2724,26 +2557,23 @@ static int mtk_color_pq_frame_config(struct mtk_ddp_comp *comp,
 	/* TYPE1 no user cmd */
 	case PQ_COLOR_MUTEX_CONTROL:
 		/*set ncs mode*/
-		ret = mtk_color_cfg_mutex_control(comp, handle, data, data_size);
+		ret = disp_color_cfg_mutex_control(comp, handle, data, data_size);
 		break;
 	case PQ_COLOR_BYPASS:
-		ret = mtk_color_cfg_bypass(comp, handle, data, data_size);
+		ret = disp_color_cfg_bypass(comp, handle, data, data_size);
 		break;
 	case PQ_COLOR_SET_PQINDEX:
 		/*just memcpy user data*/
-		ret = mtk_drm_color_cfg_set_pqindex(comp, handle, data, data_size);
-		break;
-	case PQ_COLOR_SET_PQPARAM:
-		ret = mtk_drm_color_cfg_set_pqparam(comp, handle, data, data_size);
+		ret = disp_color_cfg_set_pqindex(comp, handle, data, data_size);
 		break;
 	case PQ_COLOR_SET_COLOR_REG:
-		ret = mtk_color_cfg_set_color_reg(comp, handle, data, data_size);
+		ret = disp_color_cfg_set_color_reg(comp, handle, data, data_size);
 		break;
 	case PQ_COLOR_SET_WINDOW:
-		ret = mtk_drm_color_cfg_pq_set_window(comp, handle, data, data_size);
+		ret = disp_color_cfg_pq_set_window(comp, handle, data, data_size);
 		break;
 	case PQ_COLOR_DRECOLOR_SET_PARAM:
-		ret = mtk_color_cfg_drecolor_set_param(comp, handle, data, data_size);
+		ret = disp_color_cfg_drecolor_set_param(comp, handle, data, data_size);
 		break;
 	default:
 		break;
@@ -2751,7 +2581,7 @@ static int mtk_color_pq_frame_config(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
-static int mtk_color_user_cmd(struct mtk_ddp_comp *comp,
+static int disp_color_user_cmd(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, unsigned int cmd, void *data)
 {
 	struct mtk_disp_color *color = comp_to_color(comp);
@@ -2759,19 +2589,6 @@ static int mtk_color_user_cmd(struct mtk_ddp_comp *comp,
 
 	DDPINFO("%s: cmd: %d\n", __func__, cmd);
 	switch (cmd) {
-	case SET_PQPARAM:
-	{
-		/* normal mode */
-		DpEngine_COLORonInit(comp, handle);
-		DpEngine_COLORonConfig(comp, handle);
-		if (comp->mtk_crtc->is_dual_pipe) {
-			struct mtk_ddp_comp *comp_color1 = color->companion;
-
-			DpEngine_COLORonInit(comp_color1, handle);
-			DpEngine_COLORonConfig(comp_color1, handle);
-		}
-	}
-	break;
 	case SET_COLOR_REG:
 	{
 		mutex_lock(&primary_data->reg_lock);
@@ -2780,11 +2597,11 @@ static int mtk_color_user_cmd(struct mtk_ddp_comp *comp,
 			memcpy(&primary_data->color_reg, (struct DISPLAY_COLOR_REG *)data,
 				sizeof(struct DISPLAY_COLOR_REG));
 
-			color_write_hw_reg(comp, &primary_data->color_reg, handle);
+			disp_color_write_hw_reg(comp, &primary_data->color_reg, handle);
 			if (comp->mtk_crtc->is_dual_pipe) {
 				struct mtk_ddp_comp *comp_color1 = color->companion;
 
-				color_write_hw_reg(comp_color1, &primary_data->color_reg, handle);
+				disp_color_write_hw_reg(comp_color1, &primary_data->color_reg, handle);
 			}
 		} else {
 			DDPINFO("%s: data is NULL", __func__);
@@ -2798,11 +2615,11 @@ static int mtk_color_user_cmd(struct mtk_ddp_comp *comp,
 	{
 		unsigned int *value = data;
 
-		mtk_color_bypass(comp, *value, handle);
+		disp_color_bypass(comp, *value, handle);
 		if (comp->mtk_crtc->is_dual_pipe) {
 			struct mtk_ddp_comp *comp_color1 = color->companion;
 
-			mtk_color_bypass(comp_color1, *value, handle);
+			disp_color_bypass(comp_color1, *value, handle);
 		}
 	}
 	break;
@@ -2810,7 +2627,7 @@ static int mtk_color_user_cmd(struct mtk_ddp_comp *comp,
 	{
 		struct DISP_PQ_WIN_PARAM *win_param = data;
 
-		ddp_color_set_window(comp, win_param, handle);
+		disp_color_set_window(comp, win_param, handle);
 	}
 	break;
 	default:
@@ -2820,7 +2637,7 @@ static int mtk_color_user_cmd(struct mtk_ddp_comp *comp,
 	return 0;
 }
 
-static void ddp_color_backup(struct mtk_ddp_comp *comp)
+static void disp_color_backup(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_color_primary *primary_data =
 		comp_to_color(comp)->primary_data;
@@ -2829,7 +2646,7 @@ static void ddp_color_backup(struct mtk_ddp_comp *comp)
 		readl(comp->regs + DISP_COLOR_CFG_MAIN);
 }
 
-static void ddp_color_restore(struct mtk_ddp_comp *comp)
+static void disp_color_restore(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_color_primary *primary_data =
 		comp_to_color(comp)->primary_data;
@@ -2837,7 +2654,7 @@ static void ddp_color_restore(struct mtk_ddp_comp *comp)
 	writel(primary_data->color_backup.COLOR_CFG_MAIN, comp->regs + DISP_COLOR_CFG_MAIN);
 }
 
-static void mtk_color_prepare(struct mtk_ddp_comp *comp)
+static void disp_color_prepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_color *color = comp_to_color(comp);
 
@@ -2852,10 +2669,10 @@ static void mtk_color_prepare(struct mtk_ddp_comp *comp)
 		mtk_ddp_write_mask_cpu(comp, 0,
 			DISP_COLOR_SHADOW_CTRL, COLOR_BYPASS_SHADOW);
 	// restore DISP_COLOR_CFG_MAIN register
-	ddp_color_restore(comp);
+	disp_color_restore(comp);
 }
 
-static void mtk_color_unprepare(struct mtk_ddp_comp *comp)
+static void disp_color_unprepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_color *color_data = comp_to_color(comp);
 	unsigned long flags;
@@ -2867,46 +2684,43 @@ static void mtk_color_unprepare(struct mtk_ddp_comp *comp)
 	spin_unlock_irqrestore(&color_data->clock_lock, flags);
 	DDPINFO("%s @ %d......... spin_unlock_irqrestore ", __func__, __LINE__);
 	// backup DISP_COLOR_CFG_MAIN register
-	ddp_color_backup(comp);
+	disp_color_backup(comp);
 	mtk_ddp_comp_clk_unprepare(comp);
 }
 
-static void mtk_color_data_init(struct mtk_ddp_comp *comp)
+static void disp_color_init_data(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_color *color_data = comp_to_color(comp);
 
 	spin_lock_init(&color_data->clock_lock);
 }
 
-void mtk_color_first_cfg(struct mtk_ddp_comp *comp,
+void disp_color_first_cfg(struct mtk_ddp_comp *comp,
 	       struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
-	mtk_color_config(comp, cfg, handle);
+	disp_color_config(comp, cfg, handle);
 }
 
-static int mtk_color_ioctl_transact(struct mtk_ddp_comp *comp,
+static int disp_color_ioctl_transact(struct mtk_ddp_comp *comp,
 		unsigned int cmd, void *data, unsigned int data_size)
 {
 	int ret = -1;
 
 	switch (cmd) {
-	case PQ_COLOR_SET_PQPARAM:
-		ret = mtk_drm_ioctl_set_pqparam_impl(comp, data);
-		break;
 	case PQ_COLOR_SET_PQINDEX:
-		ret = mtk_drm_ioctl_set_pqindex_impl(comp, data);
+		ret = disp_color_act_set_pqindex(comp, data);
 		break;
 	case PQ_COLOR_SET_COLOR_REG:
-		ret = mtk_drm_ioctl_set_color_reg_impl(comp, data);
+		ret = disp_color_act_set_color_reg(comp, data);
 		break;
 	case PQ_COLOR_MUTEX_CONTROL:
-		ret = mtk_drm_ioctl_mutex_control_impl(comp, data);
+		ret = disp_color_act_mutex_control(comp, data);
 		break;
 	case PQ_COLOR_BYPASS:
-		ret = mtk_drm_ioctl_bypass_color_impl(comp, data);
+		ret = disp_color_act_bypass_color(comp, data);
 		break;
 	case PQ_COLOR_SET_WINDOW:
-		ret = mtk_drm_ioctl_pq_set_window_impl(comp, data);
+		ret = disp_color_act_set_window(comp, data);
 		break;
 	default:
 		break;
@@ -2915,7 +2729,7 @@ static int mtk_color_ioctl_transact(struct mtk_ddp_comp *comp,
 }
 
 
-static int mtk_color_set_partial_update(struct mtk_ddp_comp *comp,
+static int disp_color_set_partial_update(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
 {
 	struct mtk_disp_color *color = comp_to_color(comp);
@@ -2947,23 +2761,23 @@ static int mtk_color_set_partial_update(struct mtk_ddp_comp *comp,
 
 
 static const struct mtk_ddp_comp_funcs mtk_disp_color_funcs = {
-	.config = mtk_color_config,
-	.first_cfg = mtk_color_first_cfg,
-	.start = mtk_color_start,
-	.stop = mtk_color_stop,
-	.bypass = mtk_color_bypass,
-	.user_cmd = mtk_color_user_cmd,
-	.prepare = mtk_color_prepare,
-	.unprepare = mtk_color_unprepare,
-	.config_overhead = mtk_disp_color_config_overhead,
-	.config_overhead_v = mtk_disp_color_config_overhead_v,
-	.io_cmd = mtk_color_io_cmd,
-	.pq_frame_config = mtk_color_pq_frame_config,
-	.pq_ioctl_transact = mtk_color_ioctl_transact,
-	.partial_update = mtk_color_set_partial_update,
+	.config = disp_color_config,
+	.first_cfg = disp_color_first_cfg,
+	.start = disp_color_start,
+	.stop = disp_color_stop,
+	.bypass = disp_color_bypass,
+	.user_cmd = disp_color_user_cmd,
+	.prepare = disp_color_prepare,
+	.unprepare = disp_color_unprepare,
+	.config_overhead = disp_color_config_overhead,
+	.config_overhead_v = disp_color_config_overhead_v,
+	.io_cmd = disp_color_io_cmd,
+	.pq_frame_config = disp_color_frame_config,
+	.pq_ioctl_transact = disp_color_ioctl_transact,
+	.partial_update = disp_color_set_partial_update,
 };
 
-void mtk_color_dump(struct mtk_ddp_comp *comp)
+void disp_color_dump(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr = comp->regs;
 
@@ -2977,7 +2791,7 @@ void mtk_color_dump(struct mtk_ddp_comp *comp)
 	mtk_serial_dump_reg(baddr, 0xC50, 2);
 }
 
-void mtk_color_regdump(struct mtk_ddp_comp *comp)
+void disp_color_regdump(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_color *color = comp_to_color(comp);
 	void __iomem *baddr = comp->regs;
@@ -3010,7 +2824,7 @@ void mtk_color_regdump(struct mtk_ddp_comp *comp)
 	}
 }
 
-static int mtk_disp_color_bind(struct device *dev, struct device *master,
+static int disp_color_bind(struct device *dev, struct device *master,
 			       void *data)
 {
 	struct mtk_disp_color *priv = dev_get_drvdata(dev);
@@ -3027,7 +2841,7 @@ static int mtk_disp_color_bind(struct device *dev, struct device *master,
 	return 0;
 }
 
-static void mtk_disp_color_unbind(struct device *dev, struct device *master,
+static void disp_color_unbind(struct device *dev, struct device *master,
 				  void *data)
 {
 	struct mtk_disp_color *priv = dev_get_drvdata(dev);
@@ -3036,12 +2850,12 @@ static void mtk_disp_color_unbind(struct device *dev, struct device *master,
 	mtk_ddp_comp_unregister(drm_dev, &priv->ddp_comp);
 }
 
-static const struct component_ops mtk_disp_color_component_ops = {
-	.bind	= mtk_disp_color_bind,
-	.unbind = mtk_disp_color_unbind,
+static const struct component_ops disp_color_component_ops = {
+	.bind	= disp_color_bind,
+	.unbind = disp_color_unbind,
 };
 
-static int mtk_disp_color_probe(struct platform_device *pdev)
+static int disp_color_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct mtk_disp_color *priv;
@@ -3072,7 +2886,7 @@ static int mtk_disp_color_probe(struct platform_device *pdev)
 		dev_err(dev, "Failed to initialize component: %d\n", ret);
 		goto error_primary;
 	}
-	mtk_color_data_init(&priv->ddp_comp);
+	disp_color_init_data(&priv->ddp_comp);
 
 	priv->data = of_device_get_match_data(dev);
 
@@ -3080,7 +2894,7 @@ static int mtk_disp_color_probe(struct platform_device *pdev)
 
 	mtk_ddp_comp_pm_enable(&priv->ddp_comp);
 
-	ret = component_add(dev, &mtk_disp_color_component_ops);
+	ret = component_add(dev, &disp_color_component_ops);
 	if (ret != 0) {
 		dev_err(dev, "Failed to add component: %d\n", ret);
 		mtk_ddp_comp_pm_disable(&priv->ddp_comp);
@@ -3098,11 +2912,11 @@ error_dev_init:
 	return ret;
 }
 
-static int mtk_disp_color_remove(struct platform_device *pdev)
+static int disp_color_remove(struct platform_device *pdev)
 {
 	struct mtk_disp_color *priv = dev_get_drvdata(&pdev->dev);
 
-	component_del(&pdev->dev, &mtk_disp_color_component_ops);
+	component_del(&pdev->dev, &disp_color_component_ops);
 	mtk_ddp_comp_pm_disable(&priv->ddp_comp);
 
 	return 0;
@@ -3373,8 +3187,8 @@ static const struct of_device_id mtk_disp_color_driver_dt_match[] = {
 MODULE_DEVICE_TABLE(of, mtk_disp_color_driver_dt_match);
 
 struct platform_driver mtk_disp_color_driver = {
-	.probe = mtk_disp_color_probe,
-	.remove = mtk_disp_color_remove,
+	.probe = disp_color_probe,
+	.remove = disp_color_remove,
 	.driver = {
 			.name = "mediatek-disp-color",
 			.owner = THIS_MODULE,

@@ -10210,7 +10210,7 @@ void mtk_crtc_connect_default_path(struct mtk_drm_crtc *mtk_crtc)
 	/* if VDO mode, enable mutex by CPU here */
 	if (!mtk_crtc_is_frame_trigger_mode(crtc))
 		mtk_disp_mutex_enable(mtk_crtc->mutex[0]);
-	mtk_pq_path_sel_set(mtk_crtc, NULL);
+	disp_pq_path_sel_set(mtk_crtc, NULL);
 }
 
 void mtk_crtc_init_plane_setting(struct mtk_drm_crtc *mtk_crtc)
@@ -18491,7 +18491,7 @@ static void mtk_crtc_connect_single_path_cmdq(struct drm_crtc *crtc,
 			mtk_crtc, comp->id,
 			mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base),
 			cmdq_handle, mutex_id);
-	mtk_pq_path_sel_set(mtk_crtc, cmdq_handle);
+	disp_pq_path_sel_set(mtk_crtc, cmdq_handle);
 }
 
 static void mtk_crtc_config_dual_pipe_cmdq(struct mtk_drm_crtc *mtk_crtc,

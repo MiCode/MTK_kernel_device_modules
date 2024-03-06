@@ -154,41 +154,41 @@ int mtk_dump_reg(struct mtk_ddp_comp *comp)
 	case DDP_COMPONENT_TDSHP1:
 	case DDP_COMPONENT_TDSHP2:
 	case DDP_COMPONENT_TDSHP3:
-		mtk_disp_tdshp_dump(comp);
+		disp_tdshp_dump(comp);
 		break;
 
 	case DDP_COMPONENT_COLOR0:
 	case DDP_COMPONENT_COLOR1:
 	case DDP_COMPONENT_COLOR2:
-		mtk_color_dump(comp);
+		disp_color_dump(comp);
 		break;
 	case DDP_COMPONENT_CCORR0:
 	case DDP_COMPONENT_CCORR1:
 	case DDP_COMPONENT_CCORR2:
 	case DDP_COMPONENT_CCORR3:
-		mtk_ccorr_dump(comp);
+		disp_ccorr_dump(comp);
 		break;
 	case DDP_COMPONENT_C3D0:
 	case DDP_COMPONENT_C3D1:
-		mtk_c3d_dump(comp);
+		disp_c3d_dump(comp);
 		break;
 	case DDP_COMPONENT_AAL0:
 	case DDP_COMPONENT_AAL1:
-		mtk_aal_dump(comp);
+		disp_aal_dump(comp);
 		break;
 	case DDP_COMPONENT_DMDP_AAL0:
 	case DDP_COMPONENT_DMDP_AAL1:
-		mtk_dmdp_aal_dump(comp);
+		disp_mdp_aal_dump(comp);
 		break;
 	case DDP_COMPONENT_DITHER0:
 	case DDP_COMPONENT_DITHER1:
 	case DDP_COMPONENT_DITHER2:
 	case DDP_COMPONENT_DITHER3:
-		mtk_dither_dump(comp);
+		disp_dither_dump(comp);
 		break;
 	case DDP_COMPONENT_GAMMA0:
 	case DDP_COMPONENT_GAMMA1:
-		mtk_gamma_dump(comp);
+		disp_gamma_dump(comp);
 		break;
 	case DDP_COMPONENT_POSTMASK0:
 	case DDP_COMPONENT_POSTMASK1:
@@ -216,7 +216,7 @@ int mtk_dump_reg(struct mtk_ddp_comp *comp)
 		break;
 	case DDP_COMPONENT_CHIST0:
 	case DDP_COMPONENT_CHIST1:
-		mtk_chist_dump(comp);
+		disp_chist_dump(comp);
 		break;
 	case DDP_COMPONENT_OVLSYS_Y2R0:
 	case DDP_COMPONENT_OVLSYS_Y2R2:
@@ -383,7 +383,7 @@ int mtk_dump_analysis(struct mtk_ddp_comp *comp)
 		break;
 	case DDP_COMPONENT_CHIST0:
 	case DDP_COMPONENT_CHIST1:
-		mtk_chist_analysis(comp);
+		disp_chist_analysis(comp);
 		break;
 	case DDP_COMPONENT_ODDMR0:
 	case DDP_COMPONENT_ODDMR1:

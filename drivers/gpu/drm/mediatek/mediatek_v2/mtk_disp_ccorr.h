@@ -81,32 +81,21 @@ struct mtk_disp_ccorr {
 };
 
 inline struct mtk_disp_ccorr *comp_to_ccorr(struct mtk_ddp_comp *comp);
-void ccorr_test(const char *cmd, char *debug_output);
-int ccorr_interface_for_color(unsigned int ccorr_idx,
-	unsigned int ccorr_coef[3][3], void *handle);
-void disp_pq_notify_backlight_changed(struct mtk_ddp_comp *comp, int bl_1024);
+void disp_ccorr_notify_backlight_changed(struct mtk_ddp_comp *comp, int bl_1024);
 int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	int32_t matrix[16], int32_t hint, bool fte_flag, bool linear);
 int disp_ccorr_set_RGB_Gain(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int r, int g, int b);
-int mtk_drm_ioctl_set_ccorr(struct drm_device *dev, void *data,
+int mtk_drm_ioctl_ccorr_support_color_matrix(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
-int mtk_drm_ioctl_ccorr_eventctl(struct drm_device *dev, void *data,
+int mtk_drm_ioctl_ccorr_get_pq_caps(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
-int mtk_drm_ioctl_ccorr_get_irq(struct drm_device *dev, void *data,
+int mtk_drm_ioctl_ccorr_set_pq_caps(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
-int mtk_drm_ioctl_support_color_matrix(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
-int mtk_drm_ioctl_aibld_cv_mode(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
-int mtk_drm_ioctl_get_pq_caps(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
-int mtk_drm_ioctl_set_pq_caps(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
-int mtk_get_ccorr_caps(struct mtk_ddp_comp *comp, struct drm_mtk_ccorr_caps *ccorr_caps);
+int disp_ccorr_act_get_ccorr_caps(struct mtk_ddp_comp *comp, struct drm_mtk_ccorr_caps *ccorr_caps);
 void disp_ccorr_set_bypass(struct drm_crtc *crtc, int bypass);
-void mtk_ccorr_regdump(struct mtk_ddp_comp *comp);
-int mtk_drm_ioctl_ccorr_get_irq_impl(struct mtk_ddp_comp *comp, void *data);
+void disp_ccorr_regdump(struct mtk_ddp_comp *comp);
+int disp_ccorr_act_get_irq(struct mtk_ddp_comp *comp, void *data);
 
 #endif
 

@@ -3630,7 +3630,7 @@ static void process_dbg_opt(const char *opt)
 			return;
 		}
 
-		mtk_disp_c3d_debug(crtc, opt + 4);
+		disp_c3d_debug(crtc, opt + 4);
 	} else if (strncmp(opt, "gamma:", 6) == 0) {
 		struct drm_crtc *crtc;
 
@@ -3640,7 +3640,7 @@ static void process_dbg_opt(const char *opt)
 			return;
 		}
 
-		mtk_disp_gamma_debug(crtc, opt + 6);
+		disp_gamma_debug(crtc, opt + 6);
 	} else if (strncmp(opt, "oddmr:", 4) == 0) {
 		mtk_disp_oddmr_debug(opt + 6);
 	} else if (strncmp(opt, "aee:", 4) == 0) {
@@ -4414,28 +4414,28 @@ static void process_dbg_opt(const char *opt)
 			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 				if ((dump_flag & 0x1) &&
 						mtk_ddp_comp_get_type(comp->id) == MTK_DISP_AAL)
-					mtk_aal_regdump(comp);
+					disp_aal_regdump(comp);
 				else if ((dump_flag & 0x2) &&
 						mtk_ddp_comp_get_type(comp->id) == MTK_DISP_C3D)
-					mtk_c3d_regdump(comp);
+					disp_c3d_regdump(comp);
 				else if ((dump_flag & 0x4) &&
 						mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR)
-					mtk_ccorr_regdump(comp);
+					disp_ccorr_regdump(comp);
 				else if ((dump_flag & 0x8) &&
 						mtk_ddp_comp_get_type(comp->id) == MTK_DISP_COLOR)
-					mtk_color_regdump(comp);
+					disp_color_regdump(comp);
 				else if ((dump_flag & 0x10) &&
 						mtk_ddp_comp_get_type(comp->id) == MTK_DISP_DITHER)
-					mtk_dither_regdump(comp);
+					disp_dither_regdump(comp);
 				else if ((dump_flag & 0x20) &&
 						mtk_ddp_comp_get_type(comp->id) == MTK_DISP_TDSHP)
-					mtk_tdshp_regdump(comp);
+					disp_tdshp_regdump(comp);
 				else if ((dump_flag & 0x40) &&
 						mtk_ddp_comp_get_type(comp->id) == MTK_DMDP_AAL)
-					mtk_dmdp_aal_regdump(comp);
+					disp_mdp_aal_regdump(comp);
 				else if ((dump_flag & 0x80) &&
 						mtk_ddp_comp_get_type(comp->id) == MTK_DISP_GAMMA)
-					mtk_gamma_regdump(comp);
+					disp_gamma_regdump(comp);
 			}
 		}
 	} else if (strncmp(opt, "esd_check", 9) == 0) {

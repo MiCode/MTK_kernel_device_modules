@@ -49,17 +49,15 @@ int mtk_drm_ioctl_pq_frame_config(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
 int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
-int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle,
+int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle,
 	void *data, bool user_lock);
-int mtk_pq_helper_fill_comp_pipe_info(struct mtk_ddp_comp *comp, int *path_order,
+int disp_pq_helper_fill_comp_pipe_info(struct mtk_ddp_comp *comp, int *path_order,
 	bool *is_right_pipe, struct mtk_ddp_comp **companion);
-int mtk_drm_ioctl_pq_get_persist_property(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
-struct drm_crtc *get_crtc_from_connector(int connector_id, struct drm_device *drm_dev);
-int mtk_drm_ioctl_sw_write_impl(struct drm_crtc *crtc, void *data);
-int mtk_drm_ioctl_sw_read_impl(struct drm_crtc *crtc, void *data);
-int mtk_drm_ioctl_hw_read_impl(struct drm_crtc *crtc, void *data);
-int mtk_drm_ioctl_hw_write_impl(struct drm_crtc *crtc, void *data);
-void mtk_pq_path_sel_set(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+struct drm_crtc *disp_pq_get_crtc_from_connector(int connector_id, struct drm_device *drm_dev);
+int disp_pq_proxy_virtual_sw_write(struct drm_crtc *crtc, void *data);
+int disp_pq_proxy_virtual_sw_read(struct drm_crtc *crtc, void *data);
+int disp_pq_proxy_virtual_hw_read(struct drm_crtc *crtc, void *data);
+int disp_pq_proxy_virtual_hw_write(struct drm_crtc *crtc, void *data);
+void disp_pq_path_sel_set(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
 
 #endif /* _MTK_DISP_PQ_HELPER_H_ */
