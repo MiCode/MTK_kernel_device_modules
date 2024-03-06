@@ -88,6 +88,7 @@
 	#define B_CORE_GATED                (1 << 0)
 	#define B_HART0_HALT                (1 << 1)
 	#define B_HART1_HALT                (1 << 2)
+	#define B_CORE_AXIS_BUSY            (1 << 4)
 #define R_CORE0_MON_PC                  (vcpreg.cfg_core0 + 0x0080)
 #define R_CORE0_MON_LR                  (vcpreg.cfg_core0 + 0x0084)
 #define R_CORE0_MON_SP                  (vcpreg.cfg_core0 + 0x0088)
