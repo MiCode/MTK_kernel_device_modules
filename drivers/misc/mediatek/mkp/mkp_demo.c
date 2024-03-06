@@ -109,7 +109,7 @@ static void set_memory_rw(unsigned long addr, int nr_pages)
 	int ret;
 	bool valid_addr = false;
 
-	if ((unsigned long)THIS_MODULE->init_layout.base == addr)
+	if ((unsigned long)THIS_MODULE->mem[MOD_INIT_TEXT].base == addr)
 		return;
 	valid_addr = !!(is_vmalloc_or_module_addr((void *)addr));
 	if (valid_addr) {
@@ -130,7 +130,7 @@ static void set_memory_nx(unsigned long addr, int nr_pages)
 	uint32_t policy;
 	unsigned long flags;
 
-	if ((unsigned long)THIS_MODULE->init_layout.base == addr)
+	if ((unsigned long)THIS_MODULE->mem[MOD_INIT_TEXT].base == addr)
 		return;
 
 	valid_addr = !!(is_vmalloc_or_module_addr((void *)addr));
@@ -159,15 +159,18 @@ static void set_memory_nx(unsigned long addr, int nr_pages)
 static void probe_android_rvh_set_module_core_rw_nx(void *ignore,
 		const struct module *mod)
 {
-	set_memory_rw((unsigned long)mod->core_layout.base, (mod->core_layout.size) >> PAGE_SHIFT);
-	set_memory_nx((unsigned long)mod->core_layout.base, (mod->core_layout.size) >> PAGE_SHIFT);
-}
+	for_class_mod_mem_type(type, core) {
+		const struct module_memory *mod_mem = &mod->mem[type];
 
-static void probe_android_rvh_set_module_init_rw_nx(void *ignore,
-		const struct module *mod)
-{
-	set_memory_rw((unsigned long)mod->init_layout.base, (mod->init_layout.size) >> PAGE_SHIFT);
-	set_memory_nx((unsigned long)mod->init_layout.base, (mod->init_layout.size) >> PAGE_SHIFT);
+		if (mod_mem->size) {
+
+			/* RO_AFTER_INIT will not be set as RO, so no need to recover to RW */
+			if (type != MOD_RO_AFTER_INIT)
+				set_memory_rw((unsigned long)mod_mem->base, (mod_mem->size) >> PAGE_SHIFT);
+
+			set_memory_nx((unsigned long)mod_mem->base, (mod_mem->size) >> PAGE_SHIFT);
+		}
+	}
 }
 
 #ifdef SUPPORT_FULL_KERNEL_CODE_2M
@@ -335,20 +338,6 @@ static void probe_android_rvh_set_module_permit_before_init(void *ignore,
 		module_enable_ro(mod, false, MKP_POLICY_DRV);
 		module_enable_nx(mod, MKP_POLICY_DRV);
 		module_enable_x(mod, MKP_POLICY_DRV);
-	}
-}
-
-static void probe_android_rvh_set_module_permit_after_init(void *ignore,
-	const struct module *mod)
-{
-	if (mod == THIS_MODULE && policy_ctrl[MKP_POLICY_MKP] != 0) {
-		module_enable_ro(mod, true, MKP_POLICY_MKP);
-		return;
-	}
-	if (mod != THIS_MODULE && policy_ctrl[MKP_POLICY_DRV] != 0) {
-		if (drv_skip((char *)mod->name))
-			return;
-		module_enable_ro(mod, true, MKP_POLICY_DRV);
 	}
 }
 
@@ -921,8 +910,23 @@ static void mkp_task_newtask(void *ignore, struct task_struct *task, unsigned lo
 	MKP_HOOK_END(__func__);
 }
 
+static void mkp_module_load(void *ignore, struct module *mod)
+{
+	probe_android_rvh_set_module_permit_before_init(NULL, mod);
+}
+
+static void mkp_module_free(void *ignore, struct module *mod)
+{
+	if (policy_ctrl[MKP_POLICY_DRV] != 0 || policy_ctrl[MKP_POLICY_KERNEL_PAGES] != 0 ||
+		policy_ctrl[MKP_POLICY_MKP] != 0) {
+		probe_android_rvh_set_module_core_rw_nx(NULL, mod);
+	}
+}
+
 static struct tracepoints_table mkp_tracepoints[] = {
 {.name = "task_newtask", .func = mkp_task_newtask, .tp = NULL, .policy = MKP_POLICY_TASK_CRED},
+{.name = "module_load", .func = mkp_module_load, .tp = NULL, .policy = MKP_POLICY_DRV},
+{.name = "module_free", .func = mkp_module_free, .tp = NULL, .policy = MKP_POLICY_DRV},
 };
 
 #define FOR_EACH_INTEREST(i) \
@@ -946,28 +950,31 @@ static void __init mkp_hookup_tracepoints(void)
 {
 	int i;
 	int ret;
+	enum mkp_policy_id policy;
 
 	/* Find out interesting tracepoints */
 	for_each_kernel_tracepoint(lookup_tracepoints, NULL);
 
 	/* Update policy control if needed */
 	FOR_EACH_INTEREST(i) {
-		if (policy_ctrl[i] != 0 && mkp_tracepoints[i].tp == NULL) {
+		policy = mkp_tracepoints[i].policy;
+		if (policy_ctrl[policy] != 0 && mkp_tracepoints[i].tp == NULL) {
 			MKP_ERR("%s not found for policy %d\n",
-				mkp_tracepoints[i].name, mkp_tracepoints[i].policy);
-			policy_ctrl[i] = 0;
+				mkp_tracepoints[i].name, policy);
+			policy_ctrl[policy] = 0;
 		}
 	}
 
 	/* Probing found tracepoints */
 	FOR_EACH_INTEREST(i) {
-		if (policy_ctrl[i] != 0 && mkp_tracepoints[i].tp != NULL) {
-			ret = tracepoint_probe_register(mkp_tracepoints[0].tp,
-							mkp_tracepoints[0].func,  NULL);
+		policy = mkp_tracepoints[i].policy;
+		if (policy_ctrl[policy] != 0 && mkp_tracepoints[i].tp != NULL) {
+			ret = tracepoint_probe_register(mkp_tracepoints[i].tp,
+							mkp_tracepoints[i].func,  NULL);
 			if (ret) {
 				MKP_ERR("Failed to register %s for policy %d\n",
-					mkp_tracepoints[i].name, mkp_tracepoints[i].policy);
-				policy_ctrl[i] = 0;
+					mkp_tracepoints[i].name, policy);
+				policy_ctrl[policy] = 0;
 			}
 		}
 	}
@@ -1158,42 +1165,6 @@ int __init mkp_demo_init(void)
 		}
 		ret = register_trace_android_rvh_revert_creds(
 				probe_android_rvh_revert_creds, NULL);
-		if (ret) {
-			ret_erri_line = __LINE__;
-			goto failed;
-		}
-	}
-
-	if (policy_ctrl[MKP_POLICY_DRV] != 0 ||
-		policy_ctrl[MKP_POLICY_KERNEL_PAGES] != 0 ||
-		policy_ctrl[MKP_POLICY_MKP] != 0) {
-		// register rw, nx
-		ret = register_trace_android_rvh_set_module_core_rw_nx(
-				probe_android_rvh_set_module_core_rw_nx, NULL);
-		if (ret) {
-			ret_erri_line = __LINE__;
-			goto failed;
-		}
-		ret = register_trace_android_rvh_set_module_init_rw_nx(
-				probe_android_rvh_set_module_init_rw_nx, NULL);
-		if (ret) {
-			ret_erri_line = __LINE__;
-			goto failed;
-		}
-	}
-
-	if (policy_ctrl[MKP_POLICY_DRV] != 0 ||
-		policy_ctrl[MKP_POLICY_MKP] != 0) {
-		/* register before/after_init */
-		ret = register_trace_android_rvh_set_module_permit_before_init(
-				probe_android_rvh_set_module_permit_before_init, NULL);
-		if (ret) {
-			ret_erri_line = __LINE__;
-			goto failed;
-		}
-
-		ret = register_trace_android_rvh_set_module_permit_after_init(
-				probe_android_rvh_set_module_permit_after_init, NULL);
 		if (ret) {
 			ret_erri_line = __LINE__;
 			goto failed;
