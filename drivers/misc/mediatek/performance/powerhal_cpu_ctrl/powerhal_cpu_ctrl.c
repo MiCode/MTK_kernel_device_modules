@@ -376,7 +376,7 @@ static ssize_t perfmgr_perfserv_freq_proc_write(
 		struct file *filp, const char *ubuf,
 		size_t cnt, loff_t *_data)
 {
-	int i = 0, cpu, data;
+	int i = 0, j, policy, cpu, data;
 	unsigned int arg_num = 3;
 	char *tok, *tmp;
 	char *buf = perfmgr_copy_from_user_for_proc(ubuf, cnt);
@@ -407,10 +407,20 @@ static ssize_t perfmgr_perfserv_freq_proc_write(
 		} else {
 			if (i == 0)
 				cpu = data;
-			else if (i == 1) /* min */
-				core_freq_to_set[cpu].min = data;
-			else /* max */
-				core_freq_to_set[cpu].max = data;
+			else if (i == 1) { /* min */
+				policy = cpu_mapping_policy[cpu];
+				for(j=0; j<CORE_MAX; j++) {
+					if(cpu_mapping_policy[j] == policy)
+						core_freq_to_set[j].min = data;
+				}
+			} else { /* max */
+				policy = cpu_mapping_policy[cpu];
+				for(j=0; j<CORE_MAX; j++) {
+					if(cpu_mapping_policy[j] == policy)
+						core_freq_to_set[j].max =
+							(data != 0) ? data : cpu_opp_tbl[cpu_mapping_policy[j]][0];
+				}
+			}
 			i++;
 		}
 	}
