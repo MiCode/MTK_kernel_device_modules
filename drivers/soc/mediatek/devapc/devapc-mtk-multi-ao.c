@@ -482,25 +482,19 @@ static bool check_type2_vio_status(int slave_type, int *vio_idx, int *index)
 	return false;
 }
 
-static enum devapc_excep_type check_exception_vio_status(int devapc_type, int slave_type, int vio_idx)
+static bool check_exception_vio_status(int devapc_type, int slave_type)
 {
+	bool ret = false;
 	struct devapc_excep_callbacks *excepcb;
 
 	list_for_each_entry(excepcb, &excepcb_list, list) {
-		if (excepcb->type == devapc_type) {
-			bool ret = false;
-
-			if (excepcb->handle_excep)
-				ret = excepcb->handle_excep(devapc_type, slave_type, vio_idx);
-
-			pr_info(PFX "%s: devapc_type %d exception handle status: %d!\n",
-					__func__, devapc_type, ret);
-
-			return (ret == true)? DEVAPC_EXCEP_HANDLED : DEVAPC_EXCEP_HANDLED_NOT_KE;
+		if ((excepcb->type == devapc_type) && (excepcb->handle_excep)) {
+			ret = excepcb->handle_excep(slave_type);
+			break;
 		}
 	}
 
-	return DEVAPC_EXCEP_NOT_HANDLED;
+	return ret;
 }
 
 /*
@@ -1041,7 +1035,6 @@ static void devapc_dump_info(bool booting)
 	const char *vio_master;
 	uint8_t perm;
 	enum devapc_vio_type vio_type = DEVAPC_VIO_ABNORMAL;
-	enum devapc_excep_type excep_type = DEVAPC_EXCEP_NOT_HANDLED;
 
 	ndevices = mtk_devapc_ctx->soc->ndevices;
 	device_info = mtk_devapc_ctx->soc->device_info;
@@ -1061,13 +1054,8 @@ static void devapc_dump_info(bool booting)
 		}
 
 		if (!check_type2_vio_status(slave_type, &vio_idx, &index)) {
-			if (!mtk_devapc_dump_vio_dbg(slave_type, &vio_idx, &index)) {
-				excep_type = check_exception_vio_status(devapc_type, slave_type, vio_idx);
-				if (excep_type == DEVAPC_EXCEP_NOT_HANDLED)
-					continue;
-				else
-					break;
-			}
+			if (!mtk_devapc_dump_vio_dbg(slave_type, &vio_idx, &index))
+				continue;
 		}
 
 		/* Ensure that violation info are written before
@@ -1113,17 +1101,8 @@ static void devapc_dump_info(bool booting)
 
 		vio_type = devapc_vio_reason(perm);
 
-		if (vio_type < DEVAPC_VIO_ABNORMAL) {
-			devapc_extra_handler(slave_type, vio_master, vio_idx,
+		devapc_extra_handler(slave_type, vio_master, vio_idx,
 				vio_info->vio_addr, vio_type);
-		} else {
-			if (excep_type == DEVAPC_EXCEP_NOT_HANDLED)
-				print_vio_mask_sta(false);
-
-			if (excep_type != DEVAPC_EXCEP_HANDLED_NOT_KE)
-				BUG_ON(1);
-		}
-
 		mask_module_irq(slave_type, vio_idx, false);
 	}
 }
@@ -1146,18 +1125,14 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 	unsigned long flags;
 	uint8_t perm;
 	enum devapc_vio_type vio_type = DEVAPC_VIO_ABNORMAL;
-	enum devapc_excep_type excep_type = DEVAPC_EXCEP_NOT_HANDLED;
 
 	spin_lock_irqsave(&devapc_lock, flags);
-
-	pr_info(PFX "irq_number: %d\n", irq_number);
 
 	if (mtk_devapc_ctx->soc->irq_type_num)
 		irq_type_num = mtk_devapc_ctx->soc->irq_type_num;
 
 	for (irq_type = 0; irq_type < irq_type_num; irq_type++) {
 		if (irq_number == mtk_devapc_ctx->devapc_irq[irq_type]) {
-			pr_info(PFX "irq_type: %d\n", irq_type);
 			mtk_devapc_ctx->current_irq_type = irq_type;
 			break;
 		}
@@ -1170,12 +1145,25 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 	}
 #endif
 
-	print_vio_mask_sta(false);
-
 	device_info = mtk_devapc_ctx->soc->device_info;
 	ndevices = mtk_devapc_ctx->soc->ndevices;
 	vio_info = mtk_devapc_ctx->soc->vio_info;
 	vio_idx = index = -1;
+
+	for (slave_type = 0; slave_type < slave_type_num; slave_type++) {
+		devapc_type = ndevices[slave_type].devapc_type;
+
+		if (!is_matched_slave_type(slave_type))
+			continue;
+
+		if (check_exception_vio_status(devapc_type, slave_type))
+			goto out;
+	}
+
+	pr_info(PFX "irq_number: %d\n", irq_number);
+	pr_info(PFX "irq_type: %d\n", mtk_devapc_ctx->current_irq_type);
+
+	print_vio_mask_sta(false);
 
 	/* There are multiple DEVAPC_PD */
 	for (slave_type = 0; slave_type < slave_type_num; slave_type++) {
@@ -1189,13 +1177,8 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 			continue;
 
 		if (!check_type2_vio_status(slave_type, &vio_idx, &index)) {
-			if (!mtk_devapc_dump_vio_dbg(slave_type, &vio_idx, &index)) {
-				excep_type = check_exception_vio_status(devapc_type, slave_type, vio_idx);
-				if (excep_type == DEVAPC_EXCEP_NOT_HANDLED)
-					continue;
-				else
-					break;
-			}
+			if (!mtk_devapc_dump_vio_dbg(slave_type, &vio_idx, &index))
+				continue;
 		}
 
 		/* Ensure that violation info are written before
@@ -1245,16 +1228,15 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 
 	if (vio_type < DEVAPC_VIO_ABNORMAL) {
 		devapc_extra_handler(slave_type, vio_master, vio_idx,
-			vio_info->vio_addr, vio_type);
+			vio_info->vio_addr,vio_type);
+		mask_module_irq(slave_type, vio_idx, false);
 	} else {
-		if (excep_type == DEVAPC_EXCEP_NOT_HANDLED)
-			print_vio_mask_sta(false);
-
-		if (excep_type != DEVAPC_EXCEP_HANDLED_NOT_KE)
-			BUG_ON(1);
+		pr_info(PFX "WARNING: Abnormal Status\n");
+		print_vio_mask_sta(false);
+		BUG_ON(1);
 	}
 
-	mask_module_irq(slave_type, vio_idx, false);
+out:
 	spin_unlock_irqrestore(&devapc_lock, flags);
 	return IRQ_HANDLED;
 }

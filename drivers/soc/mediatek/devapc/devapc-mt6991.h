@@ -3683,7 +3683,7 @@ static const struct mtk_device_info mt6991_devices_gpu1[] = {
 	{0, 23, 23, "MFG_S_TSFDC_CTRL", true},
 	{0, 24, 24, "MFG_S_ACP_SNOC", true},
 	{0, 25, 25, "MFG_S_TCU_ACP_SNOC", true},
-	{0, 26, 26, "MFG_S_GPUEB_DBG_TRACKER-1", false},
+	{0, 26, 26, "MFG_S_GPUEB_DBG_TRACKER-1", true},
 	{0, 27, 27, "MFG_S_GPUEB_DBG_TRACKER-2", true},
 };
 
