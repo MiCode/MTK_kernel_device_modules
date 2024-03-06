@@ -19,6 +19,7 @@
 #define LKG_COEF_A_MASK 0xFFF
 #define LKG_COEF_A_BIT_NUM 12
 #define LKG_COEF_B_MASK 0xFFFFF
+#define MAX_NR_CPUS CONFIG_MAX_NR_CPUS
 
 enum cpu_lkg_type {
 	CPU_L_LKG,
@@ -38,16 +39,16 @@ enum dsu_pwr_detail {
 /* bw : 100 mb/s, temp : degree, freq : khz, volt : 10uv */
 struct dsu_info {
 	unsigned int dsu_bw;
+	unsigned int per_core_dsu_bw[MAX_NR_CPUS];
 	unsigned int emi_bw;
-#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 	int temp;
-#endif
 	unsigned int dsu_freq;
 	unsigned int dsu_volt;
 };
 
+void init_percore_l3_bw(void);
 unsigned int predict_dsu_bw(int wl_type, int dst_cpu, unsigned long task_util,
-		unsigned long total_util, unsigned int dsu_bw);
+		unsigned long total_util, struct dsu_info *dsu);
 unsigned int predict_emi_bw(int wl_type, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, unsigned int emi_bw);
 unsigned int dsu_dyn_pwr(int wl_type, struct dsu_info *p,

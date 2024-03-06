@@ -108,6 +108,17 @@ int dsu_pwr_swpm_init(void)
 	return ret;
 }
 
+unsigned int get_pelt_per_core_dsu_bw(unsigned int cpu)
+{
+	unsigned int pelt_per_core_dsu_bw;
+
+	pelt_per_core_dsu_bw = ioread32(l3ctl_sram_base_addr
+		+ PELT_DSU_PERCORE_BW_OFFSET + cpu*4);
+
+	return pelt_per_core_dsu_bw;
+}
+EXPORT_SYMBOL_GPL(get_pelt_per_core_dsu_bw);
+
 unsigned int get_pelt_dsu_bw(void)
 {
 	unsigned int pelt_dsu_bw;

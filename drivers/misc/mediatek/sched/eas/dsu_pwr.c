@@ -12,20 +12,38 @@
 #include <linux/irq_work.h>
 #include "sugov/cpufreq.h"
 #include "sugov/dsu_interface.h"
+#include "sugov/sched_version_ctrl.h"
 #include "dsu_pwr.h"
 #include "sched_trace.h"
 
+bool PERCORE_L3_BW;
+
+void init_percore_l3_bw(void)
+{
+	PERCORE_L3_BW = sched_percore_l3_bw_get();
+}
+
 /* bml weighting and the predict way for dsu and emi may different */
 unsigned int predict_dsu_bw(int wl_type, int dst_cpu, unsigned long task_util,
-		unsigned long total_util, unsigned int dsu_bw)
+		unsigned long total_util, struct dsu_info *p)
 {
 	unsigned int bml_weighting;
 	unsigned int ret = 0;
+	unsigned int dsu_bw;
+	unsigned long total_util_orig;
 
-	/* pd_get_dsu_weighting return percentage */
-	bml_weighting = pd_get_dsu_weighting(wl_type, dst_cpu);
-	ret = dsu_bw * bml_weighting * task_util / total_util / 100;
-	ret += dsu_bw;
+	total_util_orig = total_util;
+	total_util = max_t(unsigned long, total_util_orig, 1);
+	if (PERCORE_L3_BW) {
+		dsu_bw = max_t(unsigned int, p->per_core_dsu_bw[dst_cpu], 1);
+		ret = dsu_bw * task_util / total_util;
+	} else {
+		/* pd_get_dsu_weighting return percentage */
+		bml_weighting = pd_get_dsu_weighting(wl_type, dst_cpu);
+		dsu_bw = max_t(unsigned int, p->dsu_bw, 1);
+		ret = p->dsu_bw * bml_weighting * task_util / total_util / 100;
+	}
+	ret += p->dsu_bw;
 
 	return ret;
 }
@@ -162,7 +180,7 @@ unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
 	if (dst_cpu >= 0) {
 		/* predict dsu bw */
 		p_dsu_bw = predict_dsu_bw(wl_type, dst_cpu, task_util, total_util,
-				dsu->dsu_bw);
+				dsu);
 		/* predict emi bw */
 		p_emi_bw = predict_emi_bw(wl_type, dst_cpu, task_util, total_util,
 				dsu->emi_bw);
@@ -188,17 +206,10 @@ unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
 		dsu_pwr[DSU_PWR_TAL] += dsu_pwr[i];
 
 	if (trace_dsu_pwr_cal_enabled()) {
-#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
-		trace_dsu_pwr_cal(dst_cpu, task_util, total_util, dsu->dsu_bw,
-				dsu->emi_bw, dsu->temp, dsu->dsu_freq, dsu->dsu_volt,
+		trace_dsu_pwr_cal(dst_cpu, task_util, total_util, p_dsu_bw,
+				p_emi_bw, dsu, extern_volt,
 				dsu_pwr[DSU_DYN_PWR], dsu_pwr[DSU_LKG_PWR],
 				dsu_pwr[MCU_DYN_PWR], dsu_pwr[DSU_PWR_TAL]);
-#else
-		trace_dsu_pwr_cal(dst_cpu, task_util, total_util, dsu->dsu_bw,
-				dsu->emi_bw, 0, dsu->dsu_freq, dsu->dsu_volt,
-				dsu_pwr[DSU_DYN_PWR], dsu_pwr[DSU_LKG_PWR],
-				dsu_pwr[MCU_DYN_PWR], dsu_pwr[DSU_PWR_TAL]);
-#endif
 	}
 
 	return dsu_pwr[DSU_PWR_TAL];

@@ -306,6 +306,7 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 	unsigned int dsu_opp;
 	struct dsu_state *dsu_ps;
 #endif
+	unsigned int dsu_bw, sum_dsu_bw;
 
 	eenv_task_busy_time(eenv, p, prev_cpu);
 
@@ -380,7 +381,16 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 #endif
 
 		dsu = &(eenv->dsu);
-		dsu->dsu_bw = get_pelt_dsu_bw();
+		if (PERCORE_L3_BW) {
+			sum_dsu_bw = 0;
+			for_each_cpu(cpu, cpu_active_mask) {
+				dsu_bw = get_pelt_per_core_dsu_bw(cpu);
+				dsu->per_core_dsu_bw[cpu] = dsu_bw;
+				sum_dsu_bw += dsu_bw;
+			}
+			dsu->dsu_bw = sum_dsu_bw;
+		} else
+			dsu->dsu_bw = get_pelt_dsu_bw();
 		dsu->emi_bw = get_pelt_emi_bw();
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 		dsu->temp = get_dsu_temp()/1000;
@@ -388,6 +398,8 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 			if (trace_sched_check_temp_enabled())
 				trace_sched_check_temp("dsu", -1, dsu->temp);
 		}
+#else
+		dsu->temp = 0;
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
@@ -517,6 +529,7 @@ mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 	unsigned int dsu_extern_volt = 0, gear_idx;
 	int dst_idx;
 	int pd_idx = cpumask_first(pd_cpus);
+	unsigned long total_util;
 
 	cpu_pwr = mtk_compute_energy_cpu(eenv, pd, pd_cpus, p, dst_cpu);
 
@@ -616,8 +629,13 @@ calc_sharebuck_done:
 					0, dsu->dsu_freq, dsu->dsu_volt, dsu_extern_volt);
 #endif
 
+	if (PERCORE_L3_BW)
+		total_util = eenv->cpu_max_util[eenv->dst_cpu][0];
+	else
+		total_util = eenv->total_util;
+
 	dsu_pwr = get_dsu_pwr(eenv->wl_type, dst_cpu, eenv->task_busy_time,
-					eenv->total_util, dsu, dsu_extern_volt);
+					total_util, dsu, dsu_extern_volt);
 
 	if (trace_sched_compute_energy_cpu_dsu_enabled())
 		trace_sched_compute_energy_cpu_dsu(dst_cpu, cpu_pwr, shared_pwr,
@@ -2163,6 +2181,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 			cur_delta = mtk_compute_energy(&eenv, target_pd, cpus, p,
 								cpu);
 			base_energy = mtk_compute_energy(&eenv, target_pd, cpus, p, -1);
+			eenv.dst_cpu = -1;
 		}
 		cur_delta = max(cur_delta, base_energy) - base_energy;
 		if (cur_delta < best_delta) {
