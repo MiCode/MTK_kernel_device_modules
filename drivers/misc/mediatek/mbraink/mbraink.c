@@ -885,6 +885,24 @@ static long mbraink_ioctl(struct file *filp,
 		ret = handlePmicVoltageInfo(arg);
 		break;
 	}
+	case WO_OPERATION_MODE_INFO:
+	{
+		struct mbraink_operation_mode_info operation_mode;
+
+		memset(&operation_mode,
+				0x00,
+				sizeof(operation_mode));
+
+		if (copy_from_user(&operation_mode,
+					(struct mbraink_operation_mode_info *) arg,
+					sizeof(operation_mode))) {
+			pr_notice("Data write operation_mode from UserSpace Err!\n");
+			return -EPERM;
+		}
+
+		mbraink_gpu_setOpMode(operation_mode.opMode);
+		break;
+	}
 	default:
 		pr_notice("illegal ioctl number %u.\n", cmd);
 		return -EINVAL;
@@ -1196,6 +1214,10 @@ static ssize_t mbraink_gpu_store(struct device *dev,
 			command,
 			value,
 			retSize);
+
+	if (command == 5)
+		mbraink_gpu_setOpMode((int)value);
+
 
 	return count;
 }

@@ -56,6 +56,7 @@ struct mbraink_gpu_ops {
 	int (*getOppInfo)(struct mbraink_gpu_opp_info *gOppInfo);
 	int (*getStateInfo)(struct mbraink_gpu_state_info *gStateInfo);
 	int (*getLoadingInfo)(struct mbraink_gpu_loading_info *gLoadingInfo);
+	void (*setOpMode)(int opMode);
 };
 int register_mbraink_gpu_ops(struct mbraink_gpu_ops *ops);
 int unregister_mbraink_gpu_ops(void);

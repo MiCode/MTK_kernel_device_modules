@@ -16,12 +16,17 @@
 #include <ged_dvfs.h>
 #include <gpufreq_v2.h>
 
+#if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
+#include <ged_mali_event.h>
+#endif
+
 #define Q2QTIMEOUT 500000000 //500ms
 #define Q2QTIMEOUT_HIST 70000000 //70ms
 #define PERFINDEX_TIMEOUT 8000000000 //8sec
 #define PERFINDEX_LIMIT 100
 #define PERFINDEX_BUF 30
 #define PERFINDEX_SLOT 20
+#define PERFINDEX_LO_ALARM_COUNT 30
 
 struct mbraink_gpu_perfidx_info {
 	struct hlist_node hlist;
@@ -31,6 +36,7 @@ struct mbraink_gpu_perfidx_info {
 	int perf_idx[PERFINDEX_BUF];
 	unsigned long long ts[PERFINDEX_BUF];
 	int currentIdx;
+	int current_perf_idx;
 	int sbe_ctrl[PERFINDEX_BUF];
 	unsigned long long err_ts;
 	unsigned long long err_counter;
@@ -42,6 +48,9 @@ unsigned int TimeoutRange[10] = {70, 120, 170, 220, 270, 320, 370, 420, 470, 520
 
 static unsigned long long gperfIdxTimeoutInNs = PERFINDEX_TIMEOUT;
 static int gperfIdxLimit = PERFINDEX_LIMIT;
+
+static int gOpMode = mbraink_op_mode_normal;
+static int gPerfLoAlarmCount = PERFINDEX_LO_ALARM_COUNT;
 
 static HLIST_HEAD(mbk_g_perfidx_list);
 static DEFINE_MUTEX(mbk_g_perfidx_lock);
@@ -117,6 +126,15 @@ out:
 	return ret;
 }
 
+static void mbraink_v6991_gpu_setOpMode(int OpMode)
+{
+	gOpMode = OpMode;
+}
+
+static int mbraink_v6991_gpu_getOpMode(void)
+{
+	return gOpMode;
+}
 
 static ssize_t mbraink_v6991_gpu_getTimeoutCouterReport(char *pBuf)
 {
@@ -229,11 +247,43 @@ static void sendPerfTimeoutEvent(struct mbraink_gpu_perfidx_info *iter)
 
 }
 
+static void sendPerfLowoutEvent(struct mbraink_gpu_perfidx_info *iter, int opMode)
+{
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
+	int pos = 0;
+
+	if (iter == NULL)
+		return;
+
+	pos = 0;
+	memset(netlink_buf, '\0', sizeof(netlink_buf));
+	n = snprintf(netlink_buf + pos,
+			NETLINK_EVENT_MESSAGE_SIZE - pos,
+			"%s:%d:%llu:%d",
+			NETLINK_EVENT_PERFLOWOUT,
+			iter->pid,
+			iter->bufid,
+			opMode);
+
+	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+		return;
+
+	pos += n;
+	//pr_info("(%s)(%s)", __func__, netlink_buf);
+	mbraink_netlink_send_msg(netlink_buf);
+}
+
 void fpsgo2mbrain_hint_perfinfo(int pid, unsigned long long bufID,
 	int perf_idx, int sbe_ctrl, unsigned long long ts)
 {
 	struct mbraink_gpu_perfidx_info *iter = NULL;
+	struct mbraink_gpu_perfidx_info *iter2 = NULL;
 	int currentIdx = 0;
+	int opMode = 0;
+	bool bPass = false;
+
+	opMode = (sbe_ctrl > 0) ? mbraink_op_mode_sbe : mbraink_v6991_gpu_getOpMode();
 
 	mutex_lock(&mbk_g_perfidx_lock);
 
@@ -260,6 +310,7 @@ void fpsgo2mbrain_hint_perfinfo(int pid, unsigned long long bufID,
 		new_perfidx_info->currentIdx = 0;
 		new_perfidx_info->perf_idx[0] = perf_idx;
 		new_perfidx_info->ts[0] = ts;
+		new_perfidx_info->current_perf_idx = perf_idx;
 
 		iter = new_perfidx_info;
 		hlist_add_head(&iter->hlist, &mbk_g_perfidx_list);
@@ -274,6 +325,7 @@ void fpsgo2mbrain_hint_perfinfo(int pid, unsigned long long bufID,
 	iter->ts[currentIdx] = ts;
 	iter->sbe_ctrl[currentIdx] = sbe_ctrl;
 	iter->currentIdx = (currentIdx > PERFINDEX_BUF-2) ? 0 : currentIdx+1;
+	iter->current_perf_idx = perf_idx;
 
 	//process logic here.
 	if (perf_idx >= gperfIdxLimit) {
@@ -292,6 +344,26 @@ void fpsgo2mbrain_hint_perfinfo(int pid, unsigned long long bufID,
 	} else {
 		iter->err_counter = 0;
 		iter->err_ts = 0;
+	}
+
+	//check if all perf indx = 0
+	if (opMode != mbraink_op_mode_normal) {
+		hlist_for_each_entry(iter2, &mbk_g_perfidx_list, hlist) {
+			if (iter2->current_perf_idx > 0) {
+				bPass = true;
+				break;
+			}
+		}
+
+		if (bPass == false)
+			gPerfLoAlarmCount++;
+		else
+			gPerfLoAlarmCount = 0;
+
+		if (gPerfLoAlarmCount >= PERFINDEX_LO_ALARM_COUNT) {
+			gPerfLoAlarmCount = 0;
+			sendPerfLowoutEvent(iter, opMode);
+		}
 	}
 
 out:
@@ -316,6 +388,123 @@ void fpsgo2mbrain_hint_deleteperfinfo(int pid, unsigned long long bufID,
 
 }
 
+#if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
+static void sendGpuFenceTimeoutEvent(int pid, void *data, unsigned long long time)
+{
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	struct ged_mali_event_info *pGpuInfo = NULL;
+	int n = 0;
+	int pos = 0;
+	int i = 0;
+
+	if (data == NULL)
+		return;
+
+	pGpuInfo = (struct ged_mali_event_info *)data;
+
+	pr_info("pid(%d), time(%llu), fenceType(%d), pmodeFlag(%d), fenceTimeoutSec(%d)\n",
+			pid,
+			time,
+			pGpuInfo->fenceType,
+			pGpuInfo->pmode_flag,
+			pGpuInfo->fenceTimeoutSec);
+
+	n = snprintf(netlink_buf + pos,
+			NETLINK_EVENT_MESSAGE_SIZE - pos,
+			"%s:%d:%llu:%d:%d:%d",
+			NETLINK_EVENT_GPUFENCETIMOEUT,
+			pid,
+			time,
+			pGpuInfo->fenceType,
+			pGpuInfo->pmode_flag,
+			pGpuInfo->fenceTimeoutSec);
+
+	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+		return;
+
+	pos += n;
+
+	for (i = 0; i < MAX_RECORD_DATA; i++) {
+		n = snprintf(netlink_buf + pos,
+				NETLINK_EVENT_MESSAGE_SIZE - pos,
+				":%d:%llu:%d:%d:%d:%d:%d:%llu",
+				pGpuInfo->cs_error_info_array[i].pid,
+				pGpuInfo->cs_error_info_array[i].ts,
+				pGpuInfo->cs_error_info_array[i].group_handle,
+				pGpuInfo->cs_error_info_array[i].csg_nr,
+				pGpuInfo->cs_error_info_array[i].csi_index,
+				pGpuInfo->cs_error_info_array[i].cs_fatal_type,
+				pGpuInfo->cs_error_info_array[i].cs_fatal_data,
+				pGpuInfo->cs_error_info_array[i].cs_fatal_info_data);
+
+		if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+			return;
+
+		pos += n;
+	}
+
+	for (i = 0; i < MAX_RECORD_DATA; i++) {
+		n = snprintf(netlink_buf + pos,
+				NETLINK_EVENT_MESSAGE_SIZE - pos,
+				":%llu:%d",
+				pGpuInfo->device_lost_info_array[i].ts,
+				pGpuInfo->device_lost_info_array[i].reason);
+
+		if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+			return;
+
+		pos += n;
+	}
+
+	for (i = 0; i < MAX_RECORD_DATA; i++) {
+		n = snprintf(netlink_buf + pos,
+				NETLINK_EVENT_MESSAGE_SIZE - pos,
+				":%llu:%d",
+				pGpuInfo->gpu_reset_info_array[i].ts,
+				pGpuInfo->gpu_reset_info_array[i].reason);
+
+		if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+			return;
+
+		pos += n;
+	}
+
+	//pr_info("NL:(%s)\n", netlink_buf);
+	mbraink_netlink_send_msg(netlink_buf);
+
+}
+
+void gpu2mbrain_hint_fenceTimeoutNotify(int pid, void *data, unsigned long long time)
+{
+	sendGpuFenceTimeoutEvent(pid, data, time);
+}
+
+static void sendGpuResetDoneEvent(unsigned long long time)
+{
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
+	int pos = 0;
+
+	n = snprintf(netlink_buf + pos,
+			NETLINK_EVENT_MESSAGE_SIZE - pos,
+			"%s:%llu",
+			NETLINK_EVENT_GPURESETDONE,
+			time);
+
+	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+		return;
+
+	//pr_info("GPU Rest Done NL:(%s)\n", netlink_buf);
+	mbraink_netlink_send_msg(netlink_buf);
+}
+
+void gpu2mbrain_hint_GpuResetDoneNotify(unsigned long long time)
+{
+	sendGpuResetDoneEvent(time);
+}
+
+#endif
+
 static int mbraink_v6991_gpu_setFeatureEnable(bool bEnable)
 {
 	if (bEnable == true) {
@@ -329,6 +518,12 @@ static int mbraink_v6991_gpu_setFeatureEnable(bool bEnable)
 		fpsgo_other2fstb_register_perf_callback(FPSGO_DELETE,
 			fpsgo2mbrain_hint_deleteperfinfo);
 #endif
+#if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
+		ged_mali_event_register_fence_timeout_callback(
+			gpu2mbrain_hint_fenceTimeoutNotify);
+		ged_mali_event_register_gpu_reset_done_callback(
+			gpu2mbrain_hint_GpuResetDoneNotify);
+#endif
 	} else {
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
 		fpsgo_other2fstb_unregister_info_callback(FPSGO_Q2Q_TIME,
@@ -340,6 +535,14 @@ static int mbraink_v6991_gpu_setFeatureEnable(bool bEnable)
 		fpsgo_other2fstb_unregister_perf_callback(FPSGO_DELETE,
 			fpsgo2mbrain_hint_deleteperfinfo);
 #endif
+
+#if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
+		ged_mali_event_unregister_fence_timeout_callback(
+			gpu2mbrain_hint_fenceTimeoutNotify);
+		ged_mali_event_unregister_gpu_reset_done_callback(
+			gpu2mbrain_hint_GpuResetDoneNotify);
+#endif
+
 	}
 	return 0;
 }
@@ -467,6 +670,7 @@ static struct mbraink_gpu_ops mbraink_v6991_gpu_ops = {
 	.getOppInfo = mbraink_v6991_gpu_getOppInfo,
 	.getStateInfo = mbraink_v6991_gpu_getStateInfo,
 	.getLoadingInfo = mbraink_v6991_gpu_getLoadingInfo,
+	.setOpMode = mbraink_v6991_gpu_setOpMode,
 };
 
 int mbraink_v6991_gpu_init(void)

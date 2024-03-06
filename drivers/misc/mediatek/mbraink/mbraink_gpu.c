@@ -17,6 +17,7 @@ int mbraink_gpu_init(void)
 	_mbraink_gpu_ops.getOppInfo = NULL;
 	_mbraink_gpu_ops.getStateInfo = NULL;
 	_mbraink_gpu_ops.getLoadingInfo = NULL;
+	_mbraink_gpu_ops.setOpMode = NULL;
 	return 0;
 }
 
@@ -28,6 +29,7 @@ int mbraink_gpu_deinit(void)
 	_mbraink_gpu_ops.getOppInfo = NULL;
 	_mbraink_gpu_ops.getStateInfo = NULL;
 	_mbraink_gpu_ops.getLoadingInfo = NULL;
+	_mbraink_gpu_ops.setOpMode = NULL;
 	return 0;
 }
 
@@ -42,6 +44,7 @@ int register_mbraink_gpu_ops(struct mbraink_gpu_ops *ops)
 	_mbraink_gpu_ops.getOppInfo = ops->getOppInfo;
 	_mbraink_gpu_ops.getStateInfo = ops->getStateInfo;
 	_mbraink_gpu_ops.getLoadingInfo = ops->getLoadingInfo;
+	_mbraink_gpu_ops.setOpMode = ops->setOpMode;
 	return 0;
 }
 EXPORT_SYMBOL(register_mbraink_gpu_ops);
@@ -138,5 +141,13 @@ int mbraink_gpu_getLoadingInfo(struct mbraink_gpu_loading_info *gLoadingInfo)
 		pr_info("%s: Do not support ioctl get gpu loading info query.\n", __func__);
 
 	return ret;
+}
+
+void mbraink_gpu_setOpMode(int OpMode)
+{
+	if (_mbraink_gpu_ops.setOpMode)
+		_mbraink_gpu_ops.setOpMode(OpMode);
+	else
+		pr_info("%s: Do not support ioctl set operation mode.\n", __func__);
 }
 
