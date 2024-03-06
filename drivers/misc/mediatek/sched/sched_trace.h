@@ -512,14 +512,16 @@ TRACE_EVENT(sched_check_temp,
 
 TRACE_EVENT(sched_max_util,
 
-	TP_PROTO(int gear_idx, int dst_cpu,
+	TP_PROTO(const char *domain_name, int idx, int dst_cpu, int dst_idx,
 		unsigned long max_util, int cpu, unsigned long util, unsigned long cpu_util),
 
-	TP_ARGS(gear_idx, dst_cpu, max_util, cpu, util, cpu_util),
+	TP_ARGS(domain_name, idx, dst_cpu, dst_idx, max_util, cpu, util, cpu_util),
 
 	TP_STRUCT__entry(
-		__field(int, gear_idx)
+		__string(domain_name, domain_name)
+		__field(int, idx)
 		__field(int, dst_cpu)
+		__field(int, dst_idx)
 		__field(unsigned long, max_util)
 		__field(int, cpu)
 		__field(unsigned long, util)
@@ -527,17 +529,23 @@ TRACE_EVENT(sched_max_util,
 		),
 
 	TP_fast_assign(
-		__entry->gear_idx   = gear_idx;
+		__assign_str(domain_name, domain_name);
+		__entry->idx   = idx;
 		__entry->dst_cpu    = dst_cpu;
+		__entry->dst_idx    = dst_idx;
 		__entry->max_util   = max_util;
 		__entry->cpu        = cpu;
 		__entry->util       = util;
 		__entry->cpu_util   = cpu_util;
 		),
 
-	TP_printk("gear_idx=%d dst_cpu=%d max_util=%lu cpu=%d util=%lu cpu_util=%lu",
-		__entry->gear_idx,
+	TP_printk("%s_idx=%d dst_cpu=%d dst_idx=%d %s_max_util[%s_idx][dst_idx]=%lu cpu=%d util=%ld cpu_util=%ld",
+		__get_str(domain_name),
+		__entry->idx,
 		__entry->dst_cpu,
+		__entry->dst_idx,
+		__get_str(domain_name),
+		__get_str(domain_name),
 		__entry->max_util,
 		__entry->cpu,
 		__entry->util,

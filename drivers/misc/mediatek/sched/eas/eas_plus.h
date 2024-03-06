@@ -75,7 +75,8 @@ struct energy_env {
 
 	unsigned int gear_idx;
 	unsigned long pds_busy_time[MAX_NR_CPUS];
-	unsigned long pds_max_util[MAX_NR_CPUS][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
+	unsigned long cpu_max_util[MAX_NR_CPUS][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
+	unsigned long gear_max_util[MAX_NR_CPUS][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
 	unsigned long pds_cpu_cap[MAX_NR_CPUS];
 	unsigned long pds_cap[MAX_NR_CPUS];
 	unsigned long total_util;
@@ -131,7 +132,7 @@ extern void mtk_find_busiest_group(void *data, struct sched_group *busiest,
 extern void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p,
 		int prev_cpu, int sync, int *new_cpu);
 extern void mtk_cpu_overutilized(void *data, int cpu, int *overutilized);
-extern unsigned long mtk_em_cpu_energy(int gear_id, struct em_perf_domain *pd,
+extern unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
 		unsigned long max_util, unsigned long sum_util,
 		unsigned long allowed_cpu_cap, struct energy_env *eenv);
 extern unsigned int new_idle_balance_interval_ns;
