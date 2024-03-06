@@ -319,9 +319,9 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 
 	/* get wl snapshot*/
 	if (eenv->wl_support)
-		eenv->wl_type = get_em_wl();
+		eenv->wl = get_em_wl();
 	else
-		eenv->wl_type = 0;
+		eenv->wl = 0;
 
 	for (; pd_ptr; pd_ptr = pd_ptr->next) {
 		unsigned long cpu_thermal_cap;
@@ -372,7 +372,7 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 	if (eenv->wl_support) {
 		unsigned int output[6], val[MAX_NR_CPUS];
 
-		eenv_dsu_init(eenv->android_vendor_data1, eenv->wl_type,
+		eenv_dsu_init(eenv->android_vendor_data1, eenv->wl,
 				PERCORE_L3_BW, cpu_active_mask->bits[0], val, output);
 
 		if (PERCORE_L3_BW) {
@@ -440,14 +440,14 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 		if (!pd_freq)
 			pd_freq = pd_get_util_cpufreq(eenv, pd_cpus, pd_max_util,
 					eenv->pds_cpu_cap[pd_idx], scale_cpu);
-		pd_volt = pd_get_volt_wFloor_Freq(pd_idx, pd_freq, false, eenv->wl_type,
+		pd_volt = pd_get_volt_wFloor_Freq(pd_idx, pd_freq, false, eenv->wl,
 				floor_freq);
 
 		dst_idx = (dst_cpu >= 0) ? 1 : 0;
 		gear_max_util = eenv->gear_max_util[eenv->gear_idx][dst_idx];
 		gear_freq = pd_get_util_cpufreq(eenv, pd_cpus, gear_max_util,
 				eenv->pds_cpu_cap[pd_idx], scale_cpu);
-		gear_volt = pd_get_volt_wFloor_Freq(pd_idx, gear_freq, false, eenv->wl_type,
+		gear_volt = pd_get_volt_wFloor_Freq(pd_idx, gear_freq, false, eenv->wl,
 				floor_freq);
 
 		if (gear_volt-pd_volt < volt_diff) {
@@ -516,8 +516,13 @@ void init_dsu_pwr_enable(void)
 	dsu_pwr_enable = sched_dsu_pwr_enable_get();
 }
 
+/*
+ * compute_energy(): Use the Energy Model to estimate the energy that @pd would
+ * consume for a given utilization landscape @eenv. When @dst_cpu < 0, the task
+ * contribution is ignored.
+ */
 static inline unsigned long
-mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
+mtk_compute_energy(struct energy_env *eenv, struct perf_domain *pd,
 	       struct cpumask *pd_cpus, struct task_struct *p, int dst_cpu)
 {
 	unsigned long cpu_pwr = 0, dsu_pwr = 0;
@@ -558,6 +563,9 @@ mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 		}
 		rcu_read_unlock();
 	}
+
+	if (!eenv->wl_support)
+		goto done;
 
 	/* calc indirect DSU share_buck */
 	if (dsu_freq_changed(eenv->android_vendor_data1) && !(shared_gear(eenv->gear_idx))
@@ -615,7 +623,7 @@ calc_sharebuck_done:
 			eenv->pds_cpu_cap[pd_idx], arch_scale_cpu_capacity(pd_idx));
 	floor_freq = per_cpu(min_freq, pd_idx);
 	dsu_extern_volt = pd_get_volt_wFloor_Freq(cpumask_first(share_buck.cpus),
-			share_buck_freq, false, eenv->wl_type, floor_freq);
+			share_buck_freq, false, eenv->wl, floor_freq);
 	eenv->gear_idx = gear_idx;
 
 	if (PERCORE_L3_BW)
@@ -623,30 +631,15 @@ calc_sharebuck_done:
 	else
 		total_util = eenv->total_util;
 
-	dsu_pwr = get_dsu_pwr(eenv->wl_type, dst_cpu, eenv->task_busy_time,
+	dsu_pwr = get_dsu_pwr(eenv->wl, dst_cpu, eenv->task_busy_time,
 					total_util, eenv->android_vendor_data1, dsu_extern_volt, dsu_pwr_enable);
 
+done:
 	if (trace_sched_compute_energy_cpu_dsu_enabled())
 		trace_sched_compute_energy_cpu_dsu(dst_cpu, cpu_pwr, shared_pwr_dvfs,
 					shared_pwr, dsu_pwr, cpu_pwr + shared_pwr + dsu_pwr);
 
 	return cpu_pwr + shared_pwr_dvfs + shared_pwr + dsu_pwr;
-}
-
-/*
- * compute_energy(): Use the Energy Model to estimate the energy that @pd would
- * consume for a given utilization landscape @eenv. When @dst_cpu < 0, the task
- * contribution is ignored.
- */
-static inline unsigned long
-mtk_compute_energy(struct energy_env *eenv, struct perf_domain *pd,
-	       struct cpumask *pd_cpus, struct task_struct *p, int dst_cpu)
-{
-
-	if (eenv->wl_support)
-		return mtk_compute_energy_cpu_dsu(eenv, pd, pd_cpus, p, dst_cpu);
-	else
-		return mtk_compute_energy_cpu(eenv, pd, pd_cpus, p, dst_cpu);
 }
 #endif
 

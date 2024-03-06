@@ -1097,7 +1097,7 @@ static void flt_set_preferred_gear(void)
 	int grp_id = 0, util = 0, threshold = 0, wl = 0;
 	struct grp *grp = NULL;
 
-	/* gear hint works on wl_type !=4 */
+	/* gear hint works on wl !=4 */
 	wl = get_curr_wl();
 
 	if (unlikely(group_get_mode() == GP_MODE_0))

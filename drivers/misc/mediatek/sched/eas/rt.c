@@ -562,19 +562,19 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 		*best_cpu = cpumask_first(&candidates);
 		goto unlock;
 	} else {
-		int wl_type;
+		int wl;
 
-		wl_type = get_em_wl();
+		wl = get_em_wl();
 		pwr_eff = ULONG_MAX;
 		/* compare pwr_eff among clusters */
 		for_each_cpu(cpu, &candidates) {
 			cpu_util_cum = util_cum[cpu];
 			irq_log_store();
-			this_pwr_eff = calc_pwr_eff(wl_type, cpu, cpu_util_cum, NULL);
+			this_pwr_eff = calc_pwr_eff(wl, cpu, cpu_util_cum, NULL);
 			irq_log_store();
 
 			if (trace_sched_aware_energy_rt_enabled()) {
-				trace_sched_aware_energy_rt(wl_type, cpu, this_pwr_eff,
+				trace_sched_aware_energy_rt(wl, cpu, this_pwr_eff,
 						pwr_eff, cpu_util_cum);
 			}
 

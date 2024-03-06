@@ -98,16 +98,16 @@ struct cpu_dsu_freq_state {
 	unsigned int *dsu_freq_vote;
 };
 
-extern struct dsu_state *dsu_get_opp_ps(int wl_type, int opp);
+extern struct dsu_state *dsu_get_opp_ps(int wl, int opp);
 extern unsigned int dsu_get_freq_opp(unsigned int freq);
 
 extern void update_wl_tbl(unsigned int cpu);
 extern int get_curr_wl(void);
 extern int get_classify_wl(void);
 extern int get_em_wl(void);
-extern void set_wl_type_manual(int val);
-extern int get_wl_type_manual(void);
-extern int get_nr_wl_type(void);
+extern void set_wl_manual(int val);
+extern int get_wl_manual(void);
+extern int get_nr_wl(void);
 extern int get_nr_cpu_type(void);
 extern int get_cpu_type(int type);
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
@@ -145,7 +145,7 @@ extern unsigned long pd_get_freq_util(unsigned int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_opp(unsigned int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_pwr_eff(unsigned int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_opp_legacy(unsigned int cpu, unsigned long freq);
-extern unsigned long pd_get_freq_opp_legacy_type(int wl_type, unsigned int cpu, unsigned long freq);
+extern unsigned long pd_get_freq_opp_legacy_type(int wl, unsigned int cpu, unsigned long freq);
 
 extern unsigned long pd_get_util_freq(unsigned int cpu, unsigned long util);
 extern unsigned long pd_get_util_pwr_eff(unsigned int cpu, unsigned long util, int caller);
@@ -155,8 +155,8 @@ extern unsigned long pd_get_util_opp_legacy(unsigned int cpu, unsigned long util
 extern unsigned int pd_get_cpu_opp(unsigned int cpu);
 extern unsigned int pd_get_opp_leakage(unsigned int cpu, unsigned int opp,
 	unsigned int temperature);
-extern unsigned int pd_get_dsu_weighting(int wl_type, unsigned int cpu);
-extern unsigned int pd_get_emi_weighting(int wl_type, unsigned int cpu);
+extern unsigned int pd_get_dsu_weighting(int wl, unsigned int cpu);
+extern unsigned int pd_get_emi_weighting(int wl, unsigned int cpu);
 extern unsigned int get_curr_cap(unsigned int cpu);
 extern int get_fpsgo_bypass_flag(void);
 extern void (*fpsgo_notify_fbt_is_boost_fp)(int fpsgo_is_boost);
@@ -202,7 +202,7 @@ extern unsigned int get_nr_gears(void);
 extern struct cpumask *get_gear_cpumask(unsigned int gear);
 extern bool is_gearless_support(void);
 /* dsu ctrl */
-extern int wl_type_delay_ch_cnt;
+extern int wl_delay_ch_cnt;
 extern bool get_eas_dsu_ctrl(void);
 extern void set_eas_dsu_ctrl(bool set);
 extern void set_dsu_ctrl(bool set);

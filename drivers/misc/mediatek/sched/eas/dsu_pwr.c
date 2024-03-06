@@ -24,7 +24,7 @@ void init_percore_l3_bw(void)
 }
 
 /* bml weighting and the predict way for dsu and emi may different */
-unsigned int predict_dsu_bw(int wl_type, int dst_cpu, unsigned long task_util,
+unsigned int predict_dsu_bw(int wl, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, struct dsu_info *p)
 {
 	unsigned int bml_weighting;
@@ -39,7 +39,7 @@ unsigned int predict_dsu_bw(int wl_type, int dst_cpu, unsigned long task_util,
 		ret = dsu_bw * task_util / total_util;
 	} else {
 		/* pd_get_dsu_weighting return percentage */
-		bml_weighting = pd_get_dsu_weighting(wl_type, dst_cpu);
+		bml_weighting = pd_get_dsu_weighting(wl, dst_cpu);
 		dsu_bw = max_t(unsigned int, p->dsu_bw, 1);
 		ret = p->dsu_bw * bml_weighting * task_util / total_util / 100;
 	}
@@ -48,20 +48,20 @@ unsigned int predict_dsu_bw(int wl_type, int dst_cpu, unsigned long task_util,
 	return ret;
 }
 
-unsigned int predict_emi_bw(int wl_type, int dst_cpu, unsigned long task_util,
+unsigned int predict_emi_bw(int wl, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, unsigned int emi_bw)
 {
 	unsigned int bml_weighting;
 	unsigned int ret = 0;
 
-	bml_weighting = pd_get_emi_weighting(wl_type, dst_cpu);
+	bml_weighting = pd_get_emi_weighting(wl, dst_cpu);
 	ret = emi_bw * bml_weighting * task_util / total_util / 100;
 	ret += emi_bw;
 
 	return ret;
 }
 
-unsigned int dsu_dyn_pwr(int wl_type, struct dsu_info *p, unsigned int p_dsu_bw,
+unsigned int dsu_dyn_pwr(int wl, struct dsu_info *p, unsigned int p_dsu_bw,
 		unsigned int extern_volt)
 {
 	int dsu_opp = 0;
@@ -75,7 +75,7 @@ unsigned int dsu_dyn_pwr(int wl_type, struct dsu_info *p, unsigned int p_dsu_bw,
 
 	dsu_opp = dsu_get_freq_opp(p->dsu_freq);
 	real_bw = p_dsu_bw;
-	dsu_tbl = dsu_get_opp_ps(wl_type, dsu_opp);
+	dsu_tbl = dsu_get_opp_ps(wl, dsu_opp);
 	old_bw = dsu_tbl->BW;
 	real_co_point = CO_POINT * p->dsu_freq / 100000;/* to 100mb/s */
 
@@ -113,7 +113,7 @@ unsigned int dsu_dyn_pwr(int wl_type, struct dsu_info *p, unsigned int p_dsu_bw,
 }
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
-unsigned int dsu_lkg_pwr(int wl_type, struct dsu_info *p, unsigned int extern_volt)
+unsigned int dsu_lkg_pwr(int wl, struct dsu_info *p, unsigned int extern_volt)
 {
 	int temperature;
 	unsigned int coef_ab = 0, coef_a = 0, coef_b = 0, coef_c = 0, type, opp = 0;
@@ -141,7 +141,7 @@ unsigned int dsu_lkg_pwr(int wl_type, struct dsu_info *p, unsigned int extern_vo
 #endif
 
 #ifdef SEPA_DSU_EMI
-unsigned int mcusys_dyn_pwr(int wl_type, struct dsu_info *p,
+unsigned int mcusys_dyn_pwr(int wl, struct dsu_info *p,
 		unsigned int p_emi_bw)
 {
 	int dsu_opp = 0;
@@ -150,7 +150,7 @@ unsigned int mcusys_dyn_pwr(int wl_type, struct dsu_info *p,
 	struct dsu_state *dsu_tbl;
 	unsigned int volt_temp;
 
-	dsu_tbl = dsu_get_opp_ps(wl_type, dsu_opp);
+	dsu_tbl = dsu_get_opp_ps(wl, dsu_opp);
 	old_bw = dsu_tbl->EMI_BW;/* 100mb/s */
 	new_bw = p_emi_bw;/* 100mb/s */
 
@@ -165,7 +165,7 @@ unsigned int mcusys_dyn_pwr(int wl_type, struct dsu_info *p,
 #endif
 
 /* bw : 100 mb/s, temp : degree, freq : khz, volt : 10uv */
-unsigned long get_dsu_pwr_(int wl_type, int dst_cpu, unsigned long task_util,
+unsigned long get_dsu_pwr_(int wl, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, void *private, unsigned int extern_volt,
 		bool dsu_pwr_enable)
 {
@@ -184,10 +184,10 @@ unsigned long get_dsu_pwr_(int wl_type, int dst_cpu, unsigned long task_util,
 		dsu->dsu_volt = eenv->dsu_volt_new;
 
 		/* predict dsu bw */
-		p_dsu_bw = predict_dsu_bw(wl_type, dst_cpu, task_util, total_util,
+		p_dsu_bw = predict_dsu_bw(wl, dst_cpu, task_util, total_util,
 				dsu);
 		/* predict emi bw */
-		p_emi_bw = predict_emi_bw(wl_type, dst_cpu, task_util, total_util,
+		p_emi_bw = predict_emi_bw(wl, dst_cpu, task_util, total_util,
 				dsu->emi_bw);
 	} else {
 		dsu->dsu_freq = eenv->dsu_freq_base;
@@ -199,14 +199,14 @@ unsigned long get_dsu_pwr_(int wl_type, int dst_cpu, unsigned long task_util,
 
 	/*SWPM in uw */
 	dsu_pwr[DSU_PWR_TAL] = 0;
-	dsu_pwr[DSU_DYN_PWR] = dsu_dyn_pwr(wl_type, dsu, p_dsu_bw, extern_volt);
+	dsu_pwr[DSU_DYN_PWR] = dsu_dyn_pwr(wl, dsu, p_dsu_bw, extern_volt);
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
-	dsu_pwr[DSU_LKG_PWR] = dsu_lkg_pwr(wl_type, dsu, extern_volt);
+	dsu_pwr[DSU_LKG_PWR] = dsu_lkg_pwr(wl, dsu, extern_volt);
 #else
 	dsu_pwr[DSU_LKG_PWR] = 0;
 #endif
 #ifdef SEPA_DSU_EMI
-	dsu_pwr[MCU_DYN_PWR] = mcusys_dyn_pwr(wl_type, dsu, p_emi_bw);
+	dsu_pwr[MCU_DYN_PWR] = mcusys_dyn_pwr(wl, dsu, p_emi_bw);
 #else
 	dsu_pwr[MCU_DYN_PWR] = 0;
 #endif
@@ -224,11 +224,11 @@ unsigned long get_dsu_pwr_(int wl_type, int dst_cpu, unsigned long task_util,
 	return dsu_pwr[DSU_PWR_TAL];
 }
 
-unsigned long (*mtk_get_dsu_pwr_hook)(int wl_type, int dst_cpu, unsigned long task_util,
+unsigned long (*mtk_get_dsu_pwr_hook)(int wl, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, void *private, unsigned int extern_volt,
 		int dsu_pwr_enable, int PERCORE_L3_BW, void __iomem *base, int *data);
 EXPORT_SYMBOL(mtk_get_dsu_pwr_hook);
-unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
+unsigned long get_dsu_pwr(int wl, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, void *private, unsigned int extern_volt,
 		bool dsu_pwr_enable)
 {
@@ -236,7 +236,7 @@ unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
 		unsigned long ret;
 		int data[8];
 
-		ret = mtk_get_dsu_pwr_hook(wl_type, dst_cpu, task_util,
+		ret = mtk_get_dsu_pwr_hook(wl, dst_cpu, task_util,
 			total_util, private, extern_volt, dsu_pwr_enable,
 			PERCORE_L3_BW, get_clkg_sram_base_addr(), &data[0]);
 

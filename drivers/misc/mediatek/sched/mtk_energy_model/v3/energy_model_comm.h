@@ -6,7 +6,7 @@
  * Chung-Kai Yang <Chung-kai.Yang@mediatek.com>
  */
 
-#define MAX_NR_WL_TYPE	5
+#define MAX_NR_WL	5
 
 struct mtk_relation {
 	unsigned int cpu_type;

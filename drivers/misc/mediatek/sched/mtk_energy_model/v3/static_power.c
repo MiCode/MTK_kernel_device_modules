@@ -72,7 +72,7 @@ static int init_mtk_mapping(void)
 		mtk_mapping.nr_dsu_type);
 
 	offset += 0x4;
-	if (mtk_mapping.total_type > MAX_NR_WL_TYPE) {
+	if (mtk_mapping.total_type > MAX_NR_WL) {
 		pr_info("Invalid total type value: %d\n", mtk_mapping.total_type);
 		goto disable_wl;
 	}

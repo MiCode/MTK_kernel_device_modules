@@ -56,23 +56,23 @@ struct eenv_dsu {
 };
 
 void init_percore_l3_bw(void);
-unsigned int predict_dsu_bw(int wl_type, int dst_cpu, unsigned long task_util,
+unsigned int predict_dsu_bw(int wl, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, struct dsu_info *dsu);
-unsigned int predict_emi_bw(int wl_type, int dst_cpu, unsigned long task_util,
+unsigned int predict_emi_bw(int wl, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, unsigned int emi_bw);
-unsigned int dsu_dyn_pwr(int wl_type, struct dsu_info *p,
+unsigned int dsu_dyn_pwr(int wl, struct dsu_info *p,
 		unsigned int p_dsu_bw, unsigned int extern_volt);
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
-unsigned int dsu_lkg_pwr(int wl_type, struct dsu_info *p, unsigned int extern_volt);
+unsigned int dsu_lkg_pwr(int wl, struct dsu_info *p, unsigned int extern_volt);
 #endif
 #ifdef SEPA_DSU_EMI
-unsigned int mcusys_dyn_pwr(int wl_type, struct dsu_info *p,
+unsigned int mcusys_dyn_pwr(int wl, struct dsu_info *p,
 		unsigned int p_emi_bw);
 #endif
-unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
+unsigned long get_dsu_pwr(int wl, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, void *private, unsigned int extern_volt,
 		bool dsu_pwr_enable);
-unsigned long get_dsu_pwr_(int wl_type, int dst_cpu, unsigned long task_util,
+unsigned long get_dsu_pwr_(int wl, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, void *private, unsigned int extern_volt,
 		bool dsu_pwr_enable);
 #endif
