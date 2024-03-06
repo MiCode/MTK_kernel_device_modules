@@ -508,6 +508,9 @@ static void dpc_enable(const u8 en)
 {
 	u16 i = 0;
 
+	if (en == 2)
+		g_priv->vidle_mask = 0;
+
 	if (dpc_pm_ctrl(true))
 		return;
 
