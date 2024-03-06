@@ -3114,6 +3114,38 @@
 			reg = <0 0x10721000 0 0x1000>;	 /* clk*/
 	};
 
+	cm_mgr: cm_mgr@0c530000 {
+		compatible = "mediatek,mt6877-cm_mgr";
+		reg = <0 0x0c530000 0 0x9000>;
+		reg-names = "cm_mgr_base";
+		interconnects = <&dvfsrc MT6873_MASTER_MCU_0 &dvfsrc MT6873_SLAVE_DDR_EMI>;
+		interconnect-names = "cm-perf-bw";
+		required-opps = <&dvfsrc_freq_opp0>,
+				<&dvfsrc_freq_opp1>,
+				<&dvfsrc_freq_opp2>,
+				<&dvfsrc_freq_opp3>,
+				<&dvfsrc_freq_opp4>,
+				<&dvfsrc_freq_opp5>,
+				<&dvfsrc_freq_opp6>,
+				<&dvfsrc_freq_opp7>;
+		cm-mgr,cp-down = <100 100 100 100 100 0>;
+		cm-mgr,cp-up = <100 120 140 100 100 0>;
+		cm-mgr,dt-down = <3 0 0 0 0 0>;
+		cm-mgr,dt-up = <0 0 0 0 0 0>;
+		cm-mgr,vp-down = <100 100 100 100 100 100>;
+		cm-mgr,vp-up = <100 100 100 100 100 100>;
+
+		use-bcpu-weight = "enable";
+		/* cpu_power_bcpu_weight_max = <100>; */
+		/* cpu_power_bcpu_weight_min = <100>; */
+
+		/* use_cpu_to_dram_map = "enable"; */
+		/* cm_mgr_cpu_opp_to_dram = <0 0 0 0 1 1 1 1 */
+					/* 1 2 2 2 2 2 2 2>; */
+
+		/* use_cpu_to_dram_map_new = "enable"; */
+	};
+
 	scp_dvfs {
 		compatible = "mediatek,scp_dvfs";
 		scp-dvfs-feature = "enable";
