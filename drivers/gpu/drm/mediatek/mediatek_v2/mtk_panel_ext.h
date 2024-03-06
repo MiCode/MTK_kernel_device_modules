@@ -298,6 +298,7 @@ struct mtk_panel_spr_params {
 	struct spr_color_params spr_color_params[SPR_COLOR_PARAMS_TYPE_NUM];
 	unsigned int *spr_ip_params;
 	unsigned int *spr_ip_shrink_params;
+	unsigned int *mtk_spr_ip_params;
 	unsigned int spr_ip_params_len;
 	unsigned int spr_switch_type;
 };

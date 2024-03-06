@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2021 MediaTek Inc.
  */
-unsigned int nt37801_spr_ip_bgrg_cfg[] = {
+unsigned int nt37801_nvt_spr_ip_full_bgrg_cfg[] = {
 	0x00960438,
 	0xf00010f0,
 	0x08100800,
@@ -837,7 +837,7 @@ unsigned int nt37801_spr_ip_bgrg_cfg[] = {
 	0x00000706,
 };
 
-unsigned int nt37801_spr_ip_shrink_bgrg_cfg[] = {
+unsigned int nt37801_nvt_spr_ip_shrink_bgrg_cfg[] = {
 	0x00C802DC,// DISP_SPR0_SPR_IP_CFG_0
 	0xF00010F0,// DISP_SPR0_SPR_IP_CFG_1
 	0x08100800,// DISP_SPR0_SPR_IP_CFG_2
@@ -961,4 +961,55 @@ unsigned int nt37801_spr_ip_shrink_bgrg_cfg[] = {
 	0x00000000,// DISP_SPR0_SPR_IP_CFG_120
 	0x00000000,// DISP_SPR0_SPR_IP_CFG_121
 	0x00000000,// DISP_SPR0_SPR_IP_CFG_122
+};
+
+unsigned int nt37801_mtk_spr_ip_bgrg_cfg[] = {
+	0x00000fae,
+	0x00008080,
+	0x00008080,
+	0x00004480,
+	0x00006262,
+	0x00006600,
+	0x00008080,
+	0x00004e00,
+	0x00005050,
+	0x00005600,
+	0x00008080,
+	0x00000e10,
+	0x00000a0c,
+	0x00000608,
+	0x00000204,
+	0x00000000,
+	0x000002fd,
+	0x00000009,
+	0x00000600,
+	0x00000600,
+	0x0000400c,
+	0x00000032,
+	0x000000a1,
+	0x00000032,
+	0xfffffffb,
+	0x00000027,
+	0x000000a1,
+	0x0000003e,
+	0xfffffffa,
+	0x0000001d,
+	0x0000009e,
+	0x0000004b,
+	0xfffffffa,
+	0x00000014,
+	0x0000009a,
+	0x00000058,
+	0xfffffffa,
+	0x0000000d,
+	0x00000092,
+	0x00000065,
+	0xfffffffc,
+	0x00000006,
+	0x00000089,
+	0x00000073,
+	0xfffffffe,
+	0x00000001,
+	0x0000007e,
+	0x0000007e,
 };
