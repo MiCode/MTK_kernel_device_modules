@@ -672,16 +672,21 @@ void mtk_layering_rule_init(struct drm_device *dev)
 		module_data = &addon_data->module_data[0];
 		path_data = mtk_addon_module_get_path(module_data->module);
 
-		comp = private->ddp_comp[module_data->attach_comp];
-		if (!comp) {
-			DDPPR_ERR("RPO attached comp is NULL %d\n", module_data->attach_comp);
-			return;
-		}
-		l_rule_info.rpo_scale_num =
-		    mtk_ddp_comp_io_cmd(comp, NULL, OVL_GET_SELFLOOP_SUPPORT, NULL) ? 1 : 2;
+		if(private->data->mmsys_id != MMSYS_MT6991) {
+			comp = private->ddp_comp[module_data->attach_comp];
+			if (!comp) {
+				DDPPR_ERR("RPO attached comp is NULL %d\n", module_data->attach_comp);
+				return;
+			}
+			l_rule_info.rpo_scale_num =
+			    mtk_ddp_comp_io_cmd(comp, NULL, OVL_GET_SELFLOOP_SUPPORT, NULL) ? 1 : 2;
+		} else
+			l_rule_info.rpo_scale_num = 1;
 
 		for (i = 0; i < path_data->path_len; i++) {
-			if (mtk_ddp_comp_get_type(path_data->path[i]) == MTK_DISP_RSZ) {
+			if ((mtk_ddp_comp_get_type(path_data->path[i]) == MTK_DISP_RSZ
+				&& private->data->mmsys_id != MMSYS_MT6991)
+				|| (mtk_ddp_comp_get_type(path_data->path[i]) == MTK_DISP_MDP_RSZ)) {
 				comp = private->ddp_comp[path_data->path[i]];
 				break;
 			}

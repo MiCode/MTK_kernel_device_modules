@@ -5542,8 +5542,8 @@ static const unsigned int mt6991_mutex_mod[DDP_COMPONENT_ID_MAX] = {
 	[DDP_COMPONENT_POSTMASK1] = MT6991_MUTEX_MOD1_DISP_POSTMASK1,
 	[DDP_COMPONENT_PWM0] = MT6991_MUTEX_MOD1_DISP_PWM0,
 	[DDP_COMPONENT_PWM1] = MT6991_MUTEX_MOD1_DISP_PWM1,
-	[DDP_COMPONENT_RSZ0] = MT6991_MUTEX_MOD1_MDP_RSZ0,
-	[DDP_COMPONENT_RSZ1] = MT6991_MUTEX_MOD1_MDP_RSZ1,
+	[DDP_COMPONENT_MDP_RSZ0] = MT6991_MUTEX_MOD1_MDP_RSZ0,
+	[DDP_COMPONENT_MDP_RSZ1] = MT6991_MUTEX_MOD1_MDP_RSZ1,
 	[DDP_COMPONENT_SPR0] = MT6991_MUTEX_MOD1_DISP_SPR0,
 	[DDP_COMPONENT_TDSHP0] = MT6991_MUTEX_MOD1_DISP_TDSHP0,
 	[DDP_COMPONENT_TDSHP1] = MT6991_MUTEX_MOD1_DISP_TDSHP1,
@@ -21085,7 +21085,7 @@ static int mtk_ddp_ovl_rsz_in_cb_MT6991(enum mtk_ddp_comp_id cur, enum mtk_ddp_c
 		break;
 	case DDP_COMPONENT_OVL_EXDMA2:
 	case DDP_COMPONENT_OVL1_EXDMA2:
-		*addr = MT6991_OVL_RSZ_IN_CROSSBAR2_MOUT_EN;	// OVL_MOUT = 0x2
+		*addr = MT6991_OVL_RSZ_IN_CROSSBAR1_MOUT_EN;	// OVL_MOUT = 0x1
 		break;
 	case DDP_COMPONENT_OVLSYS_RELAY0:
 	case DDP_COMPONENT_OVLSYS1_RELAY0:
@@ -21093,7 +21093,7 @@ static int mtk_ddp_ovl_rsz_in_cb_MT6991(enum mtk_ddp_comp_id cur, enum mtk_ddp_c
 		break;
 	default:
 		value = -1;
-		DDPMSG("%s, cur=%s->next=%s not found in PQ_OUT_cb\n", __func__,
+		DDPPR_ERR("%s, cur=%s->next=%s not found in PQ_OUT_cb\n", __func__,
 			mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
 		return value;
 	}
@@ -21110,7 +21110,7 @@ static int mtk_ddp_ovl_rsz_in_cb_MT6991(enum mtk_ddp_comp_id cur, enum mtk_ddp_c
 		break;
 	default:
 		value = -1;
-		DDPMSG("%s, cur=%s->next=%s not found in RSZ_IN_CB\n", __func__,
+		DDPPR_ERR("%s, cur=%s->next=%s not found in RSZ_IN_CB\n", __func__,
 			mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
 		return value;
 	}
@@ -21193,7 +21193,7 @@ static int mtk_ddp_ovl_exdma_out_cb_MT6991(enum mtk_ddp_comp_id cur, enum mtk_dd
 
 	default:
 		value = -1;
-		DDPMSG("%s, cur=%s->next=%s not found in EXDMA_OUT_cb\n", __func__,
+		DDPPR_ERR("%s, cur=%s->next=%s not found in EXDMA_OUT_cb\n", __func__,
 			mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
 		return value;
 	}
@@ -21270,7 +21270,7 @@ static int mtk_ddp_ovl_exdma_out_cb_MT6991(enum mtk_ddp_comp_id cur, enum mtk_dd
 
 	default:
 		value = -1;
-		DDPMSG("%s, cur=%s->next=%s not found in EXDMA_OUT_cb\n", __func__,
+		DDPPR_ERR("%s, cur=%s->next=%s not found in EXDMA_OUT_cb\n", __func__,
 			mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
 		return value;
 	}
@@ -21541,6 +21541,13 @@ static int mtk_ddp_mout_en_MT6991(const struct mtk_mmsys_reg_data *data,
 		return value;
 	}
 
+	if (mtk_ddp_comp_get_type(cur) == MTK_DISP_MDP_RSZ) {
+		if (cur == DDP_COMPONENT_OVL0_MDP_RSZ0
+			|| cur == DDP_COMPONENT_OVL1_MDP_RSZ0)
+			value = mtk_ddp_ovl_exdma_out_cb_MT6991(cur, next, addr);
+		return value;
+	}
+
 	if ((cur == DDP_COMPONENT_OVLSYS_DLI_ASYNC1) &&
 		(next == DDP_COMPONENT_MML_MUTEX0)) {
 		*addr = MT6991_OVL_MML_IN0_MOUT_EN;
@@ -21570,7 +21577,7 @@ static int mtk_ddp_mout_en_MT6991(const struct mtk_mmsys_reg_data *data,
 		*addr = MT6991_PQ_IN_CROSSBAR0_MOUT_EN;
 		value = MT6991_DISP_PQ_IN_TO_PQ_OUT_CB_in6;
 	} else if ((cur == DDP_COMPONENT_PQ0_IN_CB0 &&
-		next == DDP_COMPONENT_RSZ0)){
+		next == DDP_COMPONENT_MDP_RSZ0)){
 		*addr = MT6991_PQ_IN_CROSSBAR0_MOUT_EN;
 		value = MT6991_DISP_PQ_IN_TO_MDP_RSZ0;
 		if (MT6991_CHIST_PATH_CONNECT & DISP_CHIST_BEFORE_PQ)
@@ -24817,12 +24824,17 @@ void mtk_ddp_add_comp_to_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 		//		config_regs_pa
 		//		+ addr, value, mask);
 
-		value = mtk_ddp_mout_en_MT6991(reg_data,
-			cur, next, &addr);
-		if (value >= 0)
-			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-				config_regs_pa
-				+ addr, value, value);
+		/*attached_comp of mdp_rsz addon is temprately set blender1,*/
+		/*but no need to connect because matching blender will be changed to new if needed.*/
+		if (cur != DDP_COMPONENT_OVL0_MDP_RSZ0
+			&& cur != DDP_COMPONENT_OVL1_MDP_RSZ0) {
+			value = mtk_ddp_mout_en_MT6991(reg_data,
+				cur, next, &addr);
+			if (value >= 0)
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+					config_regs_pa
+					+ addr, value, value);
+		}
 		break;
 	case MMSYS_MT6897:
 		addr = MT6897_DISPSYS_BYPASS_MUX_SHADOW;
@@ -34429,8 +34441,10 @@ int mtk_ddp_exdma_mout_MT6991(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id nex
 		return 0;
 
 	if (mtk_ddp_comp_get_type(cur) == MTK_OVL_EXDMA) {
-		if (cur == DDP_COMPONENT_OVL_EXDMA2)
+		if (cur == DDP_COMPONENT_OVL_EXDMA2 && next == DDP_COMPONENT_OVL0_MDP_RSZ0)
 			value = mtk_ddp_ovl_rsz_in_cb_MT6991(cur, next, addr);
+		else if (cur == DDP_COMPONENT_OVL_EXDMA2 && mtk_ddp_comp_get_type(next) == MTK_OVL_BLENDER)
+			value = mtk_ddp_ovl_exdma_out_cb_MT6991(DDP_COMPONENT_OVL0_MDP_RSZ0, next, addr);
 		else
 			value = mtk_ddp_ovl_exdma_out_cb_MT6991(cur, next, addr);
 		return value;

@@ -1457,8 +1457,8 @@ int mtk_drm_setbacklight_grp(struct drm_crtc *crtc, unsigned int level,
 			unsigned int panel_ext_param, unsigned int cfg_flag);
 void mtk_crtc_update_gce_event(struct mtk_drm_crtc *mtk_crtc);
 
-void mtk_addon_get_comp(u32 addon, u32 *comp_id, u8 *layer_idx);
-void mtk_addon_set_comp(u32 *addon, const u32 comp_id, const u8 layer_idx);
+void mtk_addon_get_comp(struct drm_crtc *crtc, u32 addon, u32 *comp_id, u8 *layer_idx);
+void mtk_addon_set_comp(struct drm_crtc *crtc, u32 *addon, const u32 comp_id, const u8 layer_idx);
 void mtk_addon_get_module(const enum addon_scenario scn,
 			 struct mtk_drm_crtc *mtk_crtc,
 			 const struct mtk_addon_module_data **addon_module,

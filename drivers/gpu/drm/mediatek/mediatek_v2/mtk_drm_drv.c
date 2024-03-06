@@ -1453,7 +1453,7 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	}
 
 	if (submit_kernel->info.mode == MML_MODE_DIRECT_LINK) {
-		mtk_addon_get_comp(crtc_state->lye_state.mml_dl_lye, &tgt_comp, NULL);
+		mtk_addon_get_comp(crtc, crtc_state->lye_state.mml_dl_lye, &tgt_comp, NULL);
 		comp = priv->ddp_comp[tgt_comp];
 		ret = mtk_ddp_comp_io_cmd(comp, NULL, GET_OVL_SYS_NUM, NULL);
 		DDPINFO("%s, %d tgt_comp:%d\n", __func__, __LINE__, tgt_comp);
@@ -3089,7 +3089,7 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_main_bringup[] = {
 	DDP_COMPONENT_SPLITTER0_IN_CB1,
 	DDP_COMPONENT_SPLITTER0_OUT_CB9,
 #else
-	DDP_COMPONENT_RSZ0,		DDP_COMPONENT_TDSHP0,
+	DDP_COMPONENT_MDP_RSZ0,		DDP_COMPONENT_TDSHP0,
 	DDP_COMPONENT_CCORR0,		DDP_COMPONENT_COLOR0,
 	DDP_COMPONENT_C3D0,		DDP_COMPONENT_CCORR1,
 	DDP_COMPONENT_C3D1,		DDP_COMPONENT_DMDP_AAL0,
@@ -3788,6 +3788,11 @@ static const struct mtk_addon_scenario_data mt6989_addon_discrete_path[ADDON_SCN
 	},
 };
 
+static const struct mtk_addon_module_data mt6991_addon_ovl_rsz_data[] = {
+	{OVL_RSZ_2, ADDON_BEFORE, DDP_COMPONENT_OVL0_BLENDER1},
+	//{OVL_RSZ_3, ADDON_BEFORE, DDP_COMPONENT_OVL1_BLENDER9},
+};
+
 static const struct mtk_addon_scenario_data mt6991_addon_main[ADDON_SCN_NR] = {
 	[NONE] = {
 		.module_num = 0,
@@ -3798,6 +3803,15 @@ static const struct mtk_addon_scenario_data mt6991_addon_main[ADDON_SCN_NR] = {
 		.module_data = mt6991_addon_mml_dl_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
+	[ONE_SCALING] = {
+		.module_num = ARRAY_SIZE(mt6991_addon_ovl_rsz_data),
+		.module_data = mt6991_addon_ovl_rsz_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+};
+
+static const enum mtk_ddp_comp_id mt6991_scaling_main[] = {
+	DDP_COMPONENT_MDP_RSZ0,
 };
 
 static const struct mtk_addon_scenario_data mt6897_addon_main[ADDON_SCN_NR] = {
@@ -4806,7 +4820,7 @@ static const struct mtk_crtc_path_data mt6991_mtk_main_path_data = {
 //	.wb_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6983_mtk_ddp_main_wb_path),
 	.addon_data = mt6991_addon_main,
 //	.addon_data_dual = mt6989_addon_main_dual,
-	.scaling_data = mt6989_scaling_main,
+	.scaling_data = mt6991_scaling_main,
 //	.scaling_data_dual = mt6989_scaling_main_dual,
 };
 
