@@ -1003,6 +1003,7 @@ static int vcp_pm_event(struct notifier_block *notifier
 
 			writel(B_CORE0_SUSPEND|B_CORE1_SUSPEND, AP_R_GPR1);
 			writel(B_GIPC4_SETCLR_3 ,R_GIPC_IN_SET);
+			vcp_wait_suspend_resume(1);
 
 #if VCP_LOGGER_ENABLE
 			flush_workqueue(vcp_logger_workqueue);
@@ -1041,6 +1042,8 @@ static int vcp_pm_event(struct notifier_block *notifier
 			}
 			writel(B_CORE0_RESUME|B_CORE1_RESUME, AP_R_GPR1);
 			writel(B_GIPC4_SETCLR_3 ,R_GIPC_IN_SET);
+			vcp_wait_suspend_resume(0);
+
 #if VCP_RECOVERY_SUPPORT
 			cpuidle_pause_and_lock();
 			is_suspending = false;
@@ -2204,45 +2207,70 @@ void vcp_awake_init(void)
 	vcp_reset_awake_counts();
 }
 
+void vcp_wait_suspend_resume(bool suspend)
+{
+	int timeout = 50000; /* max wait 0.5s */
+
+	while (--timeout) {
+		if (suspend && (readl(R_GPR3_CFGREG_SEC) & (VCP_AP_SUSPEND))
+			&& (readl(R_GPR3_CFGREG_SEC) & (MMUP_AP_SUSPEND)))
+			break;
+		else if (!suspend && !(readl(R_GPR3_CFGREG_SEC) & (VCP_AP_SUSPEND))
+			&& !(readl(R_GPR3_CFGREG_SEC) & (MMUP_AP_SUSPEND)))
+			break;
+
+		udelay(10);
+	}
+	if (timeout <= 0) {
+		pr_notice("[VCP] wait vcp %s timeout 0x%x\n",
+			suspend ? "suspend" : "resume", readl(R_GPR3_CFGREG_SEC));
+		vcp_dump_last_regs(1);
+	}
+}
+
 void vcp_wait_core_stop_timeout(enum vcp_core_id core_id)
 {
 	uint32_t core0_halt = 1, core1_halt = 1;
 	uint32_t core0_axi = 0, core1_axi = 0;
 	uint32_t core0_status = 0, core1_status = 0;
+	uint32_t status = 0;
+
 	/* make sure vcp is in idle state */
-	int timeout = 500; /* max wait 0.5s */
+	int timeout = 50000; /* max wait 0.5s */
 
 	while (--timeout) {
 		switch (core_id) {
 		case VCP_ID:
 			core0_status = readl(R_CORE0_STATUS);
-			core0_halt = (vcpreg.twohart ?
-				(core0_status & (B_CORE_GATED | B_HART0_HALT | B_HART1_HALT)) :
-				(core0_status & (B_CORE_GATED | B_HART0_HALT)));
+			status = (vcpreg.twohart ? (B_CORE_GATED | B_HART0_HALT | B_HART1_HALT):
+				(B_CORE_GATED | B_HART0_HALT));
+			core0_halt = ((core0_status & status) == status);
 			core0_axi = core0_status & (B_CORE_AXIS_BUSY);
 			break;
 		case MMUP_ID:
 			if (vcpreg.core_nums == 2) {
 				core1_status = readl(R_CORE1_STATUS);
-				core1_halt = (vcpreg.twohart_core1 ?
-					(core1_status & (B_CORE_GATED | B_HART0_HALT | B_HART1_HALT)) :
-					(core1_status & (B_CORE_GATED | B_HART0_HALT)));
+				status = (vcpreg.twohart_core1 ?
+					(B_CORE_GATED | B_HART0_HALT | B_HART1_HALT):
+					(B_CORE_GATED | B_HART0_HALT));
+				core1_halt = ((core1_status & status) == status);
 				core1_axi = core1_status & (B_CORE_AXIS_BUSY);
 			}
 			break;
 		case VCP_CORE_TOTAL:
 		default:
 			core0_status = readl(R_CORE0_STATUS);
-			core0_halt = (vcpreg.twohart ?
-				(core0_status & (B_CORE_GATED | B_HART0_HALT | B_HART1_HALT)) :
-				(core0_status & (B_CORE_GATED | B_HART0_HALT)));
+			status = (vcpreg.twohart ? (B_CORE_GATED | B_HART0_HALT | B_HART1_HALT):
+				(B_CORE_GATED | B_HART0_HALT));
+			core0_halt = ((core0_status & status) == status);
 			core0_axi = core0_status & (B_CORE_AXIS_BUSY);
 
 			if (vcpreg.core_nums == 2) {
 				core1_status = readl(R_CORE1_STATUS);
-				core1_halt = (vcpreg.twohart_core1 ?
-					(core1_status & (B_CORE_GATED | B_HART0_HALT | B_HART1_HALT)) :
-					(core1_status & (B_CORE_GATED | B_HART0_HALT)));
+				status = (vcpreg.twohart_core1 ?
+					(B_CORE_GATED | B_HART0_HALT | B_HART1_HALT):
+					(B_CORE_GATED | B_HART0_HALT));
+				core1_halt = ((core1_status & status) == status);
 				core1_axi = core1_status & (B_CORE_AXIS_BUSY);
 			}
 			break;
@@ -2252,12 +2280,14 @@ void vcp_wait_core_stop_timeout(enum vcp_core_id core_id)
 			core0_status, core1_status);
 
 		if (core0_halt && core1_halt && (!core0_axi) && (!core1_axi)) {
+			pr_notice("[VCP] core idle 0x%x, 0x%x GPIC 0x%x flag 0x%x\n",
+				core0_status, core1_status, readl(R_GIPC_IN_SET), readl(R_GPR3_CFGREG_SEC));
 			/* VCP stops any activities
 			 * and parks at wfi
 			 */
 			break;
 		}
-		mdelay(1);
+		udelay(10);
 	}
 
 	if (timeout <= 0) {
@@ -2794,6 +2824,12 @@ static int vcp_device_probe(struct platform_device *pdev)
 		return -1;
 	}
 	pr_debug("[VCP] cfgreg_ap base = 0x%p\n", vcpreg.cfgreg_ap);
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_sec_gpr");
+	vcpreg.cfg_sec_gpr = devm_ioremap_resource(dev, res);
+	if (IS_ERR((void const *) vcpreg.cfg_sec_gpr))
+		pr_notice("[VCP] vcpreg.cfg_sec_gpr not support\n");
+	pr_debug("[VCP] cfg_sec_gpr base = 0x%p\n", vcpreg.cfg_sec_gpr);
 
 	of_property_read_u32(pdev->dev.of_node, "vcp-sram-size"
 						, &vcpreg.vcp_tcmsize);
