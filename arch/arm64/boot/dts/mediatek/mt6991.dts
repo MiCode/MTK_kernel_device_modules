@@ -2776,6 +2776,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		dual-buck = <1>;
 		gpueb-support = <1>;
 		gpufreq-bringup = <0>;
+		ghpm-supply = <&ghpm>;
 	};
 
 	pextp0cfg_ao_clk: syscon@169b0000 {
@@ -7115,6 +7116,26 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			dvfs-workload-mode = <0>;
 		};
 
+		ghpm: ghpm@4b800000 {
+			compatible = "mediatek,ghpm";
+			reg =
+				<0 0x4b800000 0 0x1000>,
+				<0 0x4b860128 0 0x4>,
+				<0 0x1c004ea8 0 0x4>,
+				<0 0x1c000070 0 0x4>,
+				<0 0x1c000074 0 0x4>,
+				<0 0x1c000078 0 0x4>;
+			reg-names =
+				"mfg_rpc",
+				"mfg_mt6991_e2_id_con",
+				"spm_mfg0_pwr_con",
+				"clk_cfg_6",
+				"clk_cfg_6_set",
+				"clk_cfg_6_clr";
+
+			gpueb-supply = <&gpueb>;
+		};
+
 		gpueb: gpueb@4b000000 {
 			compatible = "mediatek,gpueb";
 			gpueb-support = <1>;
@@ -7137,7 +7158,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<7 0 6>,
 				<8 0 1>,
 				<9 0 4>,
-				<10 0 3>;
+				<10 0 4>,
+				<11 0 1>;
 			send-name-table =
 				"IPI_ID_FAST_DVFS_EVENT",
 				"IPI_ID_GPUFREQ",
@@ -7149,7 +7171,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"IPI_ID_FAST_DVFS",
 				"CH_IPIR_C_MET", /* = IPIS_C_MET on gpueb side */
 				"CH_IPIS_C_MET", /* = IPIR_C_MET on gpueb side */
-				"IPI_ID_BRISKET";
+				"IPI_ID_BRISKET",
+				"IPI_ID_PPB";
 
 			/* id, mbox, recv_size, recv_opt, cb_ctx_opt */
 			recv-table =
@@ -7163,7 +7186,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<7 0 6 1 1>,
 				<8 0 4 0 1>,
 				<9 0 1 1 1>,
-				<10 0 3 1 1>;
+				<10 0 4 1 1>,
+				<11 0 1 1 1>;
 			recv-name-table =
 				"IPI_ID_FAST_DVFS_EVENT",
 				"IPI_ID_GPUFREQ",
@@ -7175,7 +7199,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"IPI_ID_FAST_DVFS",
 				"CH_IPIR_C_MET", /* = IPIS_C_MET on gpueb side */
 				"CH_IPIS_C_MET", /* = IPIR_C_MET on gpueb side */
-				"IPI_ID_BRISKET";
+				"IPI_ID_BRISKET",
+				"IPI_ID_PPB";
 
 			reg =
 				<0 0x4b000000 0 0xa0000>,
@@ -7188,7 +7213,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<0 0x4b170074 0 0x4>,
 				<0 0x4b170000 0 0x4>,
 				<0 0x4b170078 0 0x4>,
-				<0 0x4b800000 0 0x1000>;
+				<0 0x4b800504 0 0x4>;
 			reg-names =
 				"gpueb_base",
 				"gpueb_gpr_base",
@@ -7200,7 +7225,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"mbox0_clr",
 				"mbox0_send",
 				"mbox0_recv",
-				"mfg_rpc";
+				"mfg0_pwr_con";
 
 			interrupts = <GIC_SPI 608 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names = "mbox0";
