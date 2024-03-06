@@ -477,14 +477,17 @@ TRACE_EVENT(sched_energy_init,
 
 TRACE_EVENT(sched_eenv_init,
 
-	TP_PROTO(unsigned int dsu_freq_base, unsigned int dsu_volt_base, unsigned int dsu_freq_thermal, unsigned int gear_idx),
+	TP_PROTO(unsigned int dsu_freq_base, unsigned int dsu_volt_base, unsigned int dsu_freq_thermal,
+			unsigned int dsu_bw_base, unsigned int emi_bw_base, unsigned int gear_idx),
 
-	TP_ARGS(dsu_freq_base, dsu_volt_base, dsu_freq_thermal, gear_idx),
+	TP_ARGS(dsu_freq_base, dsu_volt_base, dsu_freq_thermal, dsu_bw_base, emi_bw_base, gear_idx),
 
 	TP_STRUCT__entry(
 		__field(unsigned int, dsu_freq_base)
 		__field(unsigned int, dsu_volt_base)
 		__field(unsigned int, dsu_freq_thermal)
+		__field(unsigned int, dsu_bw_base)
+		__field(unsigned int, emi_bw_base)
 		__field(unsigned int, gear_idx)
 		),
 
@@ -492,13 +495,17 @@ TRACE_EVENT(sched_eenv_init,
 		__entry->dsu_freq_base = dsu_freq_base;
 		__entry->dsu_volt_base = dsu_volt_base;
 		__entry->dsu_freq_thermal = dsu_freq_thermal;
+		__entry->dsu_bw_base = dsu_bw_base;
+		__entry->emi_bw_base = emi_bw_base;
 		__entry->gear_idx = gear_idx;
 		),
 
-	TP_printk("dsu_freq_base=%u dsu_volt_base=%u dsu_freq_thermal=%u share_buck_idx=%u",
+	TP_printk("dsu_freq_base=%u dsu_volt_base=%u dsu_freq_thermal=%u dsu_bw_base=%u emi_bw_base=%u share_buck_idx=%u",
 		__entry->dsu_freq_base,
 		__entry->dsu_volt_base,
 		__entry->dsu_freq_thermal,
+		__entry->dsu_bw_base,
+		__entry->emi_bw_base,
 		__entry->gear_idx)
 );
 
@@ -526,6 +533,30 @@ TRACE_EVENT(sched_check_temp,
 		__entry->unit_name,
 		__entry->id,
 		__entry->temp)
+);
+
+TRACE_EVENT(sched_per_core_BW,
+
+	TP_PROTO(int cpu, unsigned int bw, unsigned int sum_bw),
+
+	TP_ARGS(cpu, bw, sum_bw),
+
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(unsigned int, bw)
+		__field(unsigned int, sum_bw)
+		),
+
+	TP_fast_assign(
+		__entry->cpu        = cpu;
+		__entry->bw         = bw;
+		__entry->sum_bw     = sum_bw;
+		),
+
+	TP_printk("cpu=%d bw=%u sum_bw=%u",
+		__entry->cpu,
+		__entry->bw,
+		__entry->sum_bw)
 );
 
 TRACE_EVENT(sched_max_util,
