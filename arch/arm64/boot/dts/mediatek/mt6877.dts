@@ -5241,6 +5241,81 @@
 			<&vdec_gcon_clk CLK_VDE2_VDEC_CKEN>;
 		clock-names =
 			"CORE_MT_CG_VDEC";
+		operating-points-v2 = <&opp_table_vdec>;
+		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		throughput-op-rate-thresh = <120>;
+		throughput-min = <250000000>;
+		throughput-normal-max = <546000000>;
+		max-op-rate-table =
+			<877088845 921600 60 2228224 60 3686400 1>, /* MPEG4 */
+			<826757197 921600 60 2228224 60 3686400 1>, /* MPEG1 */
+			<843534413 921600 60 2228224 60 3686400 1>, /* MPEG2 */
+			<859189832 921600 60 2228224 60 3686400 1>, /* H.263 */
+			<875967048 921600 120 2088960 60 8294400 30>, /* H.264 */
+			<826496577 921600 120 2088960 60 8294400 30>, /* H.264 */
+			<1129727304 921600 120 2088960 60 8294400 30>, /* HEVC */
+			<892744264 921600 120 2088960 60 8294400 30>, /* H.265 */
+			<809062486 921600 120 2088960 60 8294400 30>, /* VP9 */
+			<808996950 921600 60 2088960 60 3686400 1>, /* VP8 */
+			<826496599 921600 30 2088960 30 3686400 1>; /* VC1 */
+		throughput-table =
+			<877088845 0 417 417>, /* MPEG4 */
+			<826757197 0 417 417>, /* MPEG1 */
+			<843534413 0 417 417>, /* MPEG2 */
+			<859189832 0 573 573>, /* H.263 */
+			<875967048 0 448 448>, /* H.264 */
+			<826496577 0 448 448>, /* H.264 */
+			<1129727304 0 448 448>, /* HEVC */
+			<892744264 0 448 448>, /* H.265 */
+			<809062486 0 448 448>, /* VP9 */
+			<808996950 0 417 417>, /* VP8 */
+			<826496599 0 897 897>; /* VC1 */
+		interconnects = <&mmqos MASTER_LARB_PORT(M4U_PORT_L4_VDEC_MC_EXT)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L4_VDEC_UFO_EXT)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L4_VDEC_PP_EXT)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L4_VDEC_PRED_RD_EXT)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L4_VDEC_PRED_WR_EXT)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L4_VDEC_PPWRAP_EXT)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L4_VDEC_TILE_EXT)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L4_VDEC_VLD_EXT)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L4_VDEC_VLD2_EXT)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L4_VDEC_AVC_MV_EXT)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L4_VDEC_UFO_ENC_EXT)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L4_VDEC_RG_CTRL_DMA_EXT)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos SLAVE_LARB(4) &mmqos SLAVE_COMMON(0)>;
+		interconnect-names = "path_vdec_mc", "path_vdec_ufo",
+					"path_vdec_pp", "path_vdec_pred_rd",
+					"path_vdec_pred_wr", "path_vdec_ppwrap",
+					"path_vdec_tile", "path_vdec_vld",
+					"path_vdec_vld2", "path_vdec_avc_mv",
+					"path_vdec_ufo_c", "path_vdec_rg_ctrl_dma",
+					"path_larb4";
+		interconnect-num = <13>;
+		bandwidth-table =
+			<4 2 632>,
+			<4 0 10>,
+			<4 1 265>,
+			<4 2 1>,
+			<4 2 1>,
+			<4 2 1>,
+			<4 2 1>,
+			<4 0 33>,
+			<4 0 33>,
+			<4 2 66>,
+			<4 0 159>,
+			<4 0 1>;
 	};
 
 	vdec_gcon@16010000 {
@@ -5305,6 +5380,74 @@
 			<&venc_gcon_clk CLK_VEN1_CKE1_VENC>;
 		clock-names =
 			"MT_CG_VENC";
+		operating-points-v2 = <&opp_table_venc>;
+		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		interconnects = <&mmqos MASTER_LARB_PORT(M4U_PORT_L7_VENC_RCPU)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_VENC_REC)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_VENC_BSDMA)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_VENC_SV_COMV)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_VENC_RD_COMV)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_VENC_CUR_LUMA)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_VENC_CUR_CHROMA)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_VENC_REF_LUMA)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_VENC_REF_CHROMA)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos SLAVE_LARB(7) &mmqos SLAVE_COMMON(0)>;
+		interconnect-names = "path_venc_rcpu", "path_venc_rec",
+					"path_venc_bsdma",
+					"path_venc_sv_comv", "path_venc_rd_comv",
+					"path_venc_cur_luma",
+					"path_venc_cur_chroma", "venc_ref_luma",
+					"path_venc_ref_chroma", "path_larb7";
+		interconnect-num = <10>;
+		throughput-op-rate-thresh = <120>;
+		throughput-min = <250000000>;
+		throughput-normal-max = <546000000>;
+		throughput-config-offset = <2>;
+		throughput-table =
+				<875967048 4 561 561 416000000 601>, /* H264 4k 30fps */
+				<875967048 5 855 855 250000000 325>, /* H264 1080p 60fps */
+				<875967048 6 962 962 250000000 289>, /* H264 720p 120fps */
+				<1129727304 2 427 427 416000000 189>, /* HEVC 4k 30fps */
+				<1129727304 4 855 855 250000000 140>, /* HEVC 1080p 60fps */
+				<1129727304 6 962 962 250000000 100>, /* HEVC 720p 120fps */
+				<892744264 2 427 427 416000000 189>, /* H265 4k 30fps */
+				<892744264 4 855 855 250000000 140 >, /* H265 1080p 60fps */
+				<892744264 6 962 962 250000000 100>, /* H265 720p 120fps */
+				<1179206984 2 427 427 416000000 189>, /* HEIF 4k 30fps*/
+				<1179206984 4 1711 1711 250000000 189>; /* HEIF 1080p 30fps*/
+		config-table =
+				<875967048 972000 4 4>, /* H264 4k 30fps */
+				<875967048 486000 5 5>, /* H264 1080p 60fps */
+				<875967048 432000 6 6>, /* H264 720p 120fps */
+				<1129727304 972000 2 2>, /* HEVC 4k 30fps */
+				<1129727304 486000 4 4>, /* HEVC 1080p 60fps */
+				<1129727304 432000 6 6>, /* HEVC 720p 120fps */
+				<892744264 972000 2 2>, /* H265 4k 30fps */
+				<892744264 486000 4 4>, /* H265 1080p 60fps */
+				<892744264 432000 6 6>, /* H265 720p 120fps */
+				<1179206984 972000 2 2>, /* HEIF 4k 30fps*/
+				<1179206984 486000 4 4>, /* HEIF 1080p 30fps*/
+				<1179206984 4294967295 9 7>;
+		bandwidth-table =
+			<7 2 6>,
+			<7 1 102>,
+			<7 1 26>,
+			<7 2 5>,
+			<7 1 21>,
+			<7 0 68>,
+			<7 0 33>,
+			<7 0 68>,
+			<7 0 33>,
+			<7 0 0>;
 	};
 
 	smi_larb7: smi-larb7@17010000 {
@@ -5334,12 +5477,26 @@
 		clock-names = "jpgenc";
 		mediatek,larb = <&smi_larb7>;
 		dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
-		support-34bits = <0>;/*mt6835(fake34bits feature) value is 2;*/
-		cshot-spec = <368>;
-		port-id = <M4U_PORT_L7_JPGENC_Y_RDMA>,
-				<M4U_PORT_L7_JPGENC_C_RDMA>,
-				<M4U_PORT_L7_JPGENC_Q_TABLE>,
-				<M4U_PORT_L7_JPGENC_BSDMA>;
+		iommus = <&iommu0  M4U_PORT_L7_JPGENC_Y_RDMA>,
+			 <&iommu0  M4U_PORT_L7_JPGENC_C_RDMA>,
+			 <&iommu0  M4U_PORT_L7_JPGENC_Q_TABLE>,
+			 <&iommu0  M4U_PORT_L7_JPGENC_BSDMA>;
+		operating-points-v2 = <&opp_table_venc>;
+		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		interconnects = <&mmqos MASTER_LARB_PORT(M4U_PORT_L7_JPGENC_Y_RDMA)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_JPGENC_C_RDMA)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_JPGENC_Q_TABLE)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_JPGENC_BSDMA)
+					&mmqos SLAVE_COMMON(0)>;
+		interconnect-names = "path_jpegenc_y_rdma",
+					"path_jpegenc_c_rmda",
+					"path_jpegenc_q_table",
+					"path_jpegenc_bsdma";
+		interconnect-num = <4>;
+		support-34bits = <0>;
 	};
 
 	mbist@17040000 {
