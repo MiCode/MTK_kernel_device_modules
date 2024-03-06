@@ -6,6 +6,8 @@
 #ifndef __GPUEB_IPI_H__
 #define __GPUEB_IPI_H__
 
+#include <linux/platform_device.h>
+
 // Common implementation
 #define IPI_TIMEOUT_MS         10000U
 /* GPUEB side set CFG_AP_EB_IPI_TEST=yes to do IPI test */
@@ -30,6 +32,7 @@ void *get_gpueb_ipidev(void);
 int get_gpueb_slot_size(void);
 unsigned int gpueb_get_mbox1_irq(void);
 void gpueb_clr_mbox1_irq(unsigned int val);
+int mtk_ipi_send_compl_to_gpueb(int ipi_id, int opt, void *data, int len, unsigned long timeout);
 
 #if IPI_TEST
 int gpueb_ipi_test_init(void);
