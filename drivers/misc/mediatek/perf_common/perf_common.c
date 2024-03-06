@@ -353,9 +353,11 @@ static int __init init_perf_common(void)
 						, get_perf_tracker_info_from_dts("stall-tcm-base-len"));
 		}
 		is_percore_need_to_check = get_perf_tracker_info_from_dts("is-percore-need-to-check");
-		if(is_percore_need_to_check){
-			if((__raw_readl(csram_base + CHECK_PER_CORE)) == IS_PER_CORE)
+		if (is_percore_need_to_check) {
+			if ((__raw_readl(csram_base + CHECK_PER_CORE)) == IS_PER_CORE) {
+				U_FREQ_3_CLUSTER = 0x13c4;
 				is_percore = 1;
+			}
 		}
 	} else {
 		/* get cpufreq driver base address */
@@ -365,7 +367,7 @@ static int __init init_perf_common(void)
 			pr_info("%s: find cpuhvfs node failed\n", TAG);
 			goto get_base_failed;
 		}
-		
+
 		pdev = of_find_device_by_node(dn);
 		of_node_put(dn);
 		if (!pdev) {
