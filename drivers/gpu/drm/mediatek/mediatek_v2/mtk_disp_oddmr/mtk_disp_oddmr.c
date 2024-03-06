@@ -41,6 +41,7 @@
 #define REG_ODDMR_TOP_CLK_FORCE_EN REG_FLD_MSB_LSB(15, 15)
 #define REG_FORCE_COMMIT REG_FLD_MSB_LSB(4, 4)
 #define REG_BYPASS_SHADOW REG_FLD_MSB_LSB(5, 5)
+#define REG_ODDMR_BYPASS REG_FLD_MSB_LSB(0, 0)
 #define DISP_ODDMR_TOP_CTR_4 0x001C//rst
 #define REG_DMR_SMI_BRG_SW_RST REG_FLD_MSB_LSB(2, 2)
 #define REG_ODR_SMI_BRG_SW_RST REG_FLD_MSB_LSB(3, 3)
@@ -1451,6 +1452,7 @@ static void mtk_oddmr_prepare(struct mtk_ddp_comp *comp)
 	ODDMRAPI_LOG("+\n");
 	mtk_ddp_comp_clk_prepare(comp);
 
+	mtk_oddmr_write_mask(comp, 1, DISP_ODDMR_TOP_CTR_3, 1, NULL);
 	if (is_oddmr_od_support || is_oddmr_dmr_support ||
 		((comp->mtk_crtc->panel_ext->params->spr_params.enable == 1) &&
 		(comp->mtk_crtc->panel_ext->params->spr_params.relay == 0) &&
@@ -6683,21 +6685,20 @@ static int mtk_disp_oddmr_probe(struct platform_device *pdev)
 		int irq_num;
 
 		irq_num = platform_get_irq(pdev, 0);
-		if (irq_num < 0) {
+		if (irq_num < 0)
 			dev_err(&pdev->dev, "failed to request oddmr irq resource\n");
-			ret = -EPROBE_DEFER;
-			goto err;
-		}
-		irq_set_status_flags(irq_num, IRQ_TYPE_LEVEL_HIGH);
-		ret = devm_request_irq(
-			&pdev->dev, irq_num, priv->data->irq_handler,
-			IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(&pdev->dev), priv);
-		if (ret) {
-			DDPAEE("%s:%d, failed to request irq:%d ret:%d\n",
-					__func__, __LINE__,
-					irq_num, ret);
-			ret = -EPROBE_DEFER;
-			goto err;
+		else {
+			irq_set_status_flags(irq_num, IRQ_TYPE_LEVEL_HIGH);
+			ret = devm_request_irq(
+				&pdev->dev, irq_num, priv->data->irq_handler,
+				IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(&pdev->dev), priv);
+			if (ret) {
+				DDPAEE("%s:%d, failed to request irq:%d ret:%d\n",
+						__func__, __LINE__,
+						irq_num, ret);
+				ret = -EPROBE_DEFER;
+				goto err;
+			}
 		}
 	}
 #endif
@@ -6733,8 +6734,7 @@ static int mtk_disp_oddmr_probe(struct platform_device *pdev)
 	atomic_set(&priv->dbi_data.update_table_idx, 0);
 	atomic_set(&priv->dbi_data.update_table_done, 0);
 
-	DDPMSG("%s id %d, type %d\n", __func__, comp_id, mtk_ddp_comp_get_type(comp_id));
-	return ret;
+	DDPMSG("%s id %d, ret %d\n", __func__, comp_id, ret);
 err:
 	return ret;
 }
@@ -6801,6 +6801,24 @@ static const struct mtk_disp_oddmr_data mt6989_oddmr_driver_data = {
 	.irq_handler = mtk_oddmr_check_framedone,
 };
 
+static const struct mtk_disp_oddmr_data mt6991_oddmr_driver_data = {
+	.need_bypass_shadow = true,
+	.is_od_support_table_update = false,
+	.is_support_rtff = false,
+	.is_od_support_hw_skip_first_frame = false,
+	.is_od_need_crop_garbage = false,
+	.is_od_need_force_clk = false,
+	.is_od_support_sec = false,
+	.is_od_merge_lines = true,
+	.is_od_4_table = true,
+	.p_num = 2,
+	.tile_overhead = 8,
+	.dmr_buffer_size = 458,
+	.odr_buffer_size = 960,
+	.odw_buffer_size = 960,
+	.irq_handler = mtk_oddmr_check_framedone,
+};
+
 static const struct of_device_id mtk_disp_oddmr_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6985-disp-oddmr",
 	  .data = &mt6985_oddmr_driver_data},
@@ -6808,6 +6826,8 @@ static const struct of_device_id mtk_disp_oddmr_driver_dt_match[] = {
 	  .data = &mt6897_oddmr_driver_data},
 	{ .compatible = "mediatek,mt6989-disp-oddmr",
 	  .data = &mt6989_oddmr_driver_data},
+	{ .compatible = "mediatek,mt6991-disp-oddmr",
+	  .data = &mt6991_oddmr_driver_data},
 	{},
 };
 

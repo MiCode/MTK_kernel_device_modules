@@ -47,6 +47,7 @@
 #else
 #define COLOR_MODE			(0)	/*color feature off */
 #endif
+#define DISP_REG_PQ_PATH_SEL 0x34
 
 struct pq_module_match {
 	enum mtk_pq_module_type pq_type;
@@ -134,6 +135,36 @@ void mtk_pq_wake_put(unsigned int cmd, struct pq_common_data *pq_data)
 	mutex_unlock(&pq_data->wake_mutex);
 	if (ref < 0)
 		DDPPR_ERR("%s  put invalid cnt %d\n", __func__, ref);
+}
+
+void mtk_pq_path_sel_set(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
+{
+#ifndef DRM_BYPASS_PQ
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	unsigned int pq_path_sel = priv->pq_path_sel;
+	unsigned int value = 1, addr = 0;
+	void __iomem *config_regs = mtk_crtc->config_regs;
+	resource_size_t config_regs_pa = mtk_crtc->config_regs_pa;
+
+	switch (priv->data->mmsys_id) {
+	case MMSYS_MT6985:
+	case MMSYS_MT6989:
+	case MMSYS_MT6991:
+	case MMSYS_MT6897:
+		addr = DISP_REG_PQ_PATH_SEL;
+		value = pq_path_sel > 0 ? pq_path_sel : 1;
+		value = value | value << 8;
+		break;
+	default:
+		break;
+	}
+	if (!addr)
+		return;
+	if (handle)
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base, config_regs_pa + DISP_REG_PQ_PATH_SEL, value, ~0);
+	else
+		writel(value, config_regs + DISP_REG_PQ_PATH_SEL);
+#endif
 }
 
 int mtk_drm_ioctl_sw_read_impl(struct drm_crtc *crtc, void *data)

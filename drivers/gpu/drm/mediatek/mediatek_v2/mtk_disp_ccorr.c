@@ -1741,10 +1741,6 @@ static int mtk_disp_ccorr_probe(struct platform_device *pdev)
 		goto error_dev_init;
 	}
 
-	irq = platform_get_irq(pdev, 0);
-	if (irq < 0)
-		goto error_primary;
-
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_CCORR);
 	if ((int)comp_id < 0) {
 		DDPPR_ERR("Failed to identify by alias: %d\n", comp_id);
@@ -1770,7 +1766,9 @@ static int mtk_disp_ccorr_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, priv);
 
-	ret = devm_request_irq(dev, irq, mtk_disp_ccorr_irq_handler,
+	irq = platform_get_irq(pdev, 0);
+	if (irq >= 0)
+		ret = devm_request_irq(dev, irq, mtk_disp_ccorr_irq_handler,
 			       IRQF_TRIGGER_NONE | IRQF_SHARED,
 			       dev_name(dev), priv);
 
@@ -1897,6 +1895,10 @@ static const struct mtk_disp_ccorr_data mt6878_ccorr_driver_data = {
 	.need_bypass_shadow = true,
 };
 
+static const struct mtk_disp_ccorr_data mt6991_ccorr_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = true,
+};
 
 static const struct of_device_id mtk_disp_ccorr_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6779-disp-ccorr",
@@ -1935,6 +1937,8 @@ static const struct of_device_id mtk_disp_ccorr_driver_dt_match[] = {
 	  .data = &mt6989_ccorr_driver_data},
 	{ .compatible = "mediatek,mt6878-disp-ccorr",
 	  .data = &mt6878_ccorr_driver_data},
+	{ .compatible = "mediatek,mt6991-disp-ccorr",
+	  .data = &mt6991_ccorr_driver_data},
 	{},
 };
 

@@ -56,6 +56,8 @@
 #define DISP_AAL_OUTPUT_SIZE                    (0x4d8)
 #define DISP_AAL_OUTPUT_OFFSET                  (0x4dc)
 #define DISP_Y_HISTOGRAM_00                     (0x504)
+#define DISP_CMB_MAIN_0                         (0x604)
+#define NEW_CBOOST_EN	BIT(13)
 
 /* DRE 3.0 */
 #define DISP_AAL_CFG_MAIN                       (0x200)

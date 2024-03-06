@@ -75,6 +75,14 @@
 #define	IRQ_TABLE_DISP_OVL0_EXDMA2_MT6991	(0x94)	//452
 #define IRQ_TABLE_DISP_OVL1_WDMA0_MT6991	(0xDE)  //454
 
+#define IRQ_TABLE_DISP_DITHER2_MT6991          (39)    //469
+#define IRQ_TABLE_DISP_DITHER1_MT6991          (22)    //470
+#define IRQ_TABLE_DISP_DITHER0_MT6991          (21)    //471
+#define IRQ_TABLE_DISP_CHIST1_MT6991           (12)    //472
+#define IRQ_TABLE_DISP_CHIST0_MT6991           (11)    //473
+#define IRQ_TABLE_DISP_AAL1_MT6991             (8)     //474
+#define IRQ_TABLE_DISP_AAL0_MT6991             (7)     //475
+
 static void __iomem *vdisp_ao_base;
 
 struct mtk_vdisp_ao {
@@ -202,11 +210,51 @@ static void mtk_vdisp_ao_int_sel_g1_MT6991(void)
 	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
 }
 
+static void mtk_vdisp_ao_int_sel_g4_MT6991(void)
+{
+	int value = 0, mask = 0;
+
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_DITHER2_MT6991, CPU_INTSEL_BIT_19);
+
+	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G4_MT6991);
+
+	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
+}
+
+static void mtk_vdisp_ao_int_sel_g5_MT6991(void)
+{
+	int value = 0, mask = 0;
+
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_DITHER1_MT6991, CPU_INTSEL_BIT_20);
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_DITHER0_MT6991, CPU_INTSEL_BIT_21);
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_CHIST1_MT6991, CPU_INTSEL_BIT_22);
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_CHIST0_MT6991, CPU_INTSEL_BIT_23);
+
+	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G5_MT6991);
+
+	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
+}
+
+static void mtk_vdisp_ao_int_sel_g6_MT6991(void)
+{
+	int value = 0, mask = 0;
+
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_AAL1_MT6991, CPU_INTSEL_BIT_24);
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_AAL0_MT6991, CPU_INTSEL_BIT_25);
+
+	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G6_MT6991);
+
+	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
+}
+
 void mtk_vdisp_ao_irq_config_MT6991(struct drm_device *drm)
 {
 	DDPINFO("%s:%d\n", __func__, __LINE__);
 	mtk_vdisp_ao_int_sel_g0_MT6991();
 	mtk_vdisp_ao_int_sel_g1_MT6991();
+	mtk_vdisp_ao_int_sel_g4_MT6991();
+	mtk_vdisp_ao_int_sel_g5_MT6991();
+	mtk_vdisp_ao_int_sel_g6_MT6991();
 }
 
 static int mtk_vdisp_ao_probe(struct platform_device *pdev)

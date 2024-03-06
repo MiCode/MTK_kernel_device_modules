@@ -1799,19 +1799,12 @@ static int mtk_disp_spr_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mtk_disp_spr *priv;
 	enum mtk_ddp_comp_id comp_id;
-	int irq;
 	int ret;
 
 	DDPINFO("%s+\n", __func__);
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
-
-	irq = platform_get_irq(pdev, 0);
-	if (irq < 0) {
-		DDPMSG("%s+ irq error\n", __func__);
-		return irq;
-	}
 
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_SPR);
 	if ((int)comp_id < 0) {
@@ -1907,6 +1900,13 @@ static const struct mtk_disp_spr_data mt6879_spr_driver_data = {
 	.shrink_cfg = false,
 };
 
+static const struct mtk_disp_spr_data mt6991_spr_driver_data = {
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.version = MTK_SPR_V2,
+	.shrink_cfg = false,
+};
+
 static const struct of_device_id mtk_disp_spr_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6853-disp-spr",
 	  .data = &mt6853_spr_driver_data},
@@ -1924,6 +1924,8 @@ static const struct of_device_id mtk_disp_spr_driver_dt_match[] = {
 	  .data = &mt6886_spr_driver_data},
 	{ .compatible = "mediatek,mt6879-disp-spr",
 	  .data = &mt6879_spr_driver_data},
+	{ .compatible = "mediatek,mt6991-disp-spr",
+	  .data = &mt6991_spr_driver_data},
 	{},
 };
 

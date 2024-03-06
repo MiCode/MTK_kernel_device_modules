@@ -327,17 +327,12 @@ static int mtk_disp_cm_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mtk_disp_cm *priv;
 	enum mtk_ddp_comp_id comp_id;
-	int irq;
 	int ret;
 
 	DDPMSG("%s+\n", __func__);
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
-
-	irq = platform_get_irq(pdev, 0);
-	if (irq < 0)
-		return irq;
 
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_CM);
 	if ((int)comp_id < 0) {

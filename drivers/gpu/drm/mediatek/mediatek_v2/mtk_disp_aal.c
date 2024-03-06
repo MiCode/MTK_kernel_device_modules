@@ -809,12 +809,10 @@ static void mtk_aal_config(struct mtk_ddp_comp *comp,
 	if (atomic_read(&aal_data->primary_data->force_relay) == 1) {
 		// Set reply mode
 		AALFLOW_LOG("g_aal_force_relay\n");
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_AAL_CFG, 1, 1);
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_CFG, 1, 1);
 	} else {
 		// Disable reply mode
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_AAL_CFG, 0, 1);
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_CFG, 0, 1);
 	}
 
 	if (aal_data->primary_data->aal_fo->mtk_dre30_support
@@ -827,6 +825,7 @@ static void mtk_aal_config(struct mtk_ddp_comp *comp,
 	}
 
 	mtk_aal_init(comp, cfg, handle);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_CMB_MAIN_0, 0, NEW_CBOOST_EN);
 
 	AALWC_LOG("AAL_CFG=0x%x  compid:%d\n",
 		readl(comp->regs + DISP_AAL_CFG), comp->id);
@@ -5123,6 +5122,19 @@ static const struct mtk_disp_aal_data mt6878_aal_driver_data = {
 	.bitShift = 16,
 };
 
+static const struct mtk_disp_aal_data mt6991_aal_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = true,
+	.aal_dre_hist_start = 1536,
+	.aal_dre_hist_end   = 4604,
+	.aal_dre_gain_start = 4608,
+	.aal_dre_gain_end   = 6780,
+	.aal_dre3_curve_sram = true,
+	.aal_dre3_auto_inc = true,
+	.mdp_aal_ghist_support = true,
+	.bitShift = 16,
+};
+
 static const struct of_device_id mtk_disp_aal_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6768-disp-aal",
 	  .data = &mt6768_aal_driver_data},
@@ -5158,6 +5170,8 @@ static const struct of_device_id mtk_disp_aal_driver_dt_match[] = {
 	  .data = &mt6989_aal_driver_data},
 	{ .compatible = "mediatek,mt6878-disp-aal",
 	  .data = &mt6878_aal_driver_data},
+	{ .compatible = "mediatek,mt6991-disp-aal",
+	  .data = &mt6991_aal_driver_data},
 	{},
 };
 

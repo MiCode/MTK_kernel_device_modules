@@ -58,6 +58,8 @@
 #define DMDP_AAL_DRE_ROI_00			(0x520)
 #define DMDP_AAL_DRE_ROI_01			(0x524)
 
+#define DMDP_AAL_MISC_CTRL			(0x600)
+
 #define AAL_EN BIT(0)
 
 struct mtk_dmdp_aal_data {
@@ -357,12 +359,10 @@ static void mtk_dmdp_aal_config(struct mtk_ddp_comp *comp,
 
 	//cmdq_pkt_write(handle, comp->cmdq_base,
 	//		comp->regs_pa + DMDP_AAL_DRE_BILATERAL, 0, ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DMDP_AAL_DRE_BITPLUS_00, 0, ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DMDP_AAL_Y2R_00, 0, ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DMDP_AAL_R2Y_00, 0, ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_DRE_BITPLUS_00, 0, ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_Y2R_00, 0, ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_R2Y_00, 0, ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_MISC_CTRL, 1, ~0);
 	DDPINFO("%s [comp_id:%d]: g_dmdp_aal_force_relay[%d], DMDP_AAL_CFG = 0x%08x\n",
 		__func__, comp->id, atomic_read(&data->primary_data->force_relay),
 		readl(comp->regs + DMDP_AAL_CFG));
@@ -954,6 +954,12 @@ static const struct mtk_dmdp_aal_data mt6989_dmdp_aal_driver_data = {
 	.block_info_00_mask = 0xFFFFFFFF,
 };
 
+static const struct mtk_dmdp_aal_data mt6991_dmdp_aal_driver_data = {
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.block_info_00_mask = 0xFFFFFFFF,
+};
+
 static const struct of_device_id mtk_dmdp_aal_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6885-dmdp-aal",
 	  .data = &mt6885_dmdp_aal_driver_data},
@@ -969,6 +975,8 @@ static const struct of_device_id mtk_dmdp_aal_driver_dt_match[] = {
 	  .data = &mt6897_dmdp_aal_driver_data},
 	{ .compatible = "mediatek,mt6989-dmdp-aal",
 	  .data = &mt6989_dmdp_aal_driver_data},
+	{ .compatible = "mediatek,mt6991-dmdp-aal",
+	  .data = &mt6991_dmdp_aal_driver_data},
 	{},
 };
 

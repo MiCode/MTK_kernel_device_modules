@@ -10210,6 +10210,7 @@ void mtk_crtc_connect_default_path(struct mtk_drm_crtc *mtk_crtc)
 	/* if VDO mode, enable mutex by CPU here */
 	if (!mtk_crtc_is_frame_trigger_mode(crtc))
 		mtk_disp_mutex_enable(mtk_crtc->mutex[0]);
+	mtk_pq_path_sel_set(mtk_crtc, NULL);
 }
 
 void mtk_crtc_init_plane_setting(struct mtk_drm_crtc *mtk_crtc)
@@ -12367,6 +12368,8 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 	mtk_crtc->total_srt = 0;
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		mtk_ddp_comp_first_cfg(comp, &cfg, cmdq_handle);
+		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_USE_PQ))
+			mtk_ddp_comp_bypass(comp, 1, cmdq_handle);
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle, IRQ_LEVEL_NORMAL, NULL);
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle, DSI_SET_TARGET_LINE, &cfg);
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
@@ -12394,6 +12397,8 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 
 		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
 			mtk_ddp_comp_first_cfg(comp, &cfg, cmdq_handle);
+			if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_USE_PQ))
+				mtk_ddp_comp_bypass(comp, 1, cmdq_handle);
 			mtk_ddp_comp_io_cmd(comp, cmdq_handle,
 				IRQ_LEVEL_NORMAL, NULL);
 			mtk_ddp_comp_io_cmd(comp, cmdq_handle,
@@ -18486,6 +18491,7 @@ static void mtk_crtc_connect_single_path_cmdq(struct drm_crtc *crtc,
 			mtk_crtc, comp->id,
 			mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base),
 			cmdq_handle, mutex_id);
+	mtk_pq_path_sel_set(mtk_crtc, cmdq_handle);
 }
 
 static void mtk_crtc_config_dual_pipe_cmdq(struct mtk_drm_crtc *mtk_crtc,

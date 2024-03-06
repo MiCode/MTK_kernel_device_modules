@@ -223,6 +223,11 @@ static const struct mtk_disp_postalign_data mt6897_postalign_driver_data = {
 	.need_bypass_shadow = true,
 };
 
+static const struct mtk_disp_postalign_data mt6991_postalign_driver_data = {
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+};
+
 static const struct of_device_id mtk_disp_postalign_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6985-disp-postalign",
 	  .data = &mt6985_postalign_driver_data},
@@ -230,6 +235,8 @@ static const struct of_device_id mtk_disp_postalign_driver_dt_match[] = {
 	  .data = &mt6989_postalign_driver_data},
 	{ .compatible = "mediatek,mt6897-disp-postalign",
 	  .data = &mt6897_postalign_driver_data},
+	{ .compatible = "mediatek,mt6991-disp-postalign",
+	  .data = &mt6991_postalign_driver_data},
 	{},
 };
 

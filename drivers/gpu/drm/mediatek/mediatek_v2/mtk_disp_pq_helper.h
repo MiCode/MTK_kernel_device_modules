@@ -60,5 +60,6 @@ int mtk_drm_ioctl_sw_write_impl(struct drm_crtc *crtc, void *data);
 int mtk_drm_ioctl_sw_read_impl(struct drm_crtc *crtc, void *data);
 int mtk_drm_ioctl_hw_read_impl(struct drm_crtc *crtc, void *data);
 int mtk_drm_ioctl_hw_write_impl(struct drm_crtc *crtc, void *data);
+void mtk_pq_path_sel_set(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
 
 #endif /* _MTK_DISP_PQ_HELPER_H_ */
