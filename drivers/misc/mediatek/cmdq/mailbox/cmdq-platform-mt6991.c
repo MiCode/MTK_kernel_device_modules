@@ -12,7 +12,8 @@
 
 #define GCE_D_PA	0x300c0000
 #define GCE_M_PA	0x30140000
-#define MMSID_SRT_NORMAL	31
+#define GCE_D_NORMAL_SID	199
+#define GCE_M_NORMAL_SID	183
 
 const char *cmdq_thread_module_dispatch(phys_addr_t gce_pa, s32 thread)
 {
@@ -66,9 +67,9 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 
 	if (gce_pa == GCE_D_PA) // GCE-D
 		switch (event) {
-		case CMDQ_EVENT_DISP0_FRAME_DONE_SEL0
+		case CMDQ_EVENT_DISP0_STREAM_SOF0
 			... CMDQ_EVENT_DISP1_BUF_UNDERRUN_ENG_EVENT10:
-		case CMDQ_EVENT_OVL0_FRAME_DONE_SEL0
+		case CMDQ_EVENT_OVL0_STREAM_SOF0
 			... CMDQ_EVENT_DPC_DISP_SW_CONFIG_WHEN_MTCMOS_OFF:
 		case CMDQ_EVENT_DPTX_DPTX_EVENT0
 			... CMDQ_EVENT_EDPTX_EDPTX_EVENT1:
@@ -82,10 +83,10 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 		case CMDQ_SYNC_TOKEN_CONFIG_DIRTY_3
 			... CMDQ_SYNC_TOKEN_CABC_EOF_3:
 			return "MM_DISP";
-		case CMDQ_EVENT_MML0_FRAME_DONE_SEL0
+		case CMDQ_EVENT_MML0_STREAM_SOF0
 			... CMDQ_EVENT_MML0_DISP_MUTEX0_GET_RLZ_ENG_EVENT:
 			return "MM_MDP";
-		case CMDQ_EVENT_MML1_FRAME_DONE_SEL0
+		case CMDQ_EVENT_MML1_STREAM_SOF0
 			... CMDQ_EVENT_MML1_DISP_MUTEX0_GET_RLZ_ENG_EVENT:
 		case CMDQ_EVENT_DPC_MML_SSYS_DT_ERR_ON_BEFORE_OFF
 			... CMDQ_EVENT_DPC_MML_SW_CONFIG_WHEN_MTCMOS_OFF:
@@ -199,10 +200,9 @@ u32 cmdq_util_hw_id(u32 pa)
 u32 cmdq_test_get_subsys_list(u32 **regs_out)
 {
 	static u32 regs[] = {
-		0x1f003000,	/* mdp_rdma0 */
-		0x1f000100,	/* mmsys_config */
-		0x14001000,	/* dispsys */
-		0x15101200,	/* imgsys */
+		0x3e000100,	/* mmlsys0_config */
+		0x32420000,	/* dispsys */
+		0x34101200,	/* imgsys */
 		0x1000106c,	/* infra */
 	};
 
@@ -270,9 +270,11 @@ void cmdq_error_irq_debug(void *chan)
 {
 #if IS_ENABLED(CONFIG_SKIP_BY_CMDQ_BUILT)
 	struct device *dev = cmdq_mbox_get_dev(chan);
+	u32 hw_id = cmdq_util_hw_id((u32)cmdq_mbox_get_base_pa(chan));
+	u32 sid = hw_id? GCE_M_NORMAL_SID: GCE_D_NORMAL_SID;
 
 	//dump smmu info to check gce va mode
-	mtk_smmu_reg_dump(MM_SMMU, dev, MMSID_SRT_NORMAL);
+	mtk_smmu_reg_dump(MM_SMMU, dev, sid);
 	//dump gce req
 	cmdq_mbox_dump_gce_req(chan);
 #endif
