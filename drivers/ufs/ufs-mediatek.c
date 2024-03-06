@@ -971,23 +971,6 @@ static void ufs_mtk_trace_vh_compl_command(void *data, struct ufs_hba *hba, stru
 	ufs_mtk_btag_compl_command(hba, lrbp);
 }
 
-static void ufs_mtk_trace_vh_update_sdev(void *data, struct scsi_device *sdev)
-{
-	struct ufs_hba *hba = shost_priv(sdev->host);
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-
-	sdev->broken_fua = 1;
-
-	dev_dbg(hba->dev, "lu %llu slave configured", sdev->lun);
-
-	blk_queue_flag_set(QUEUE_FLAG_SAME_FORCE, sdev->request_queue);
-	if (hba->luns_avail == 1) {
-		/* The last LUs */
-		dev_info(hba->dev, "%s: LUNs ready", __func__);
-		complete(&host->luns_added);
-	}
-}
-
 void ufs_mtk_trace_vh_ufs_prepare_command(void *data, struct ufs_hba *hba,
 		struct request *rq, struct ufshcd_lrb *lrbp, int *err)
 {
@@ -1019,10 +1002,6 @@ static struct tracepoints_table interests[] = {
 	{
 		.name = "android_vh_ufs_compl_command",
 		.func = ufs_mtk_trace_vh_compl_command
-	},
-	{
-		.name = "android_vh_ufs_update_sdev",
-		.func = ufs_mtk_trace_vh_update_sdev
 	},
 	{
 		.name = "android_vh_ufs_check_int_errors",
@@ -3048,6 +3027,23 @@ static int ufs_mtk_config_esi(struct ufs_hba *hba)
 	return ufs_mtk_config_mcq(hba, true);
 }
 
+static void ufs_mtk_config_scsi_dev(struct scsi_device *sdev)
+{
+	struct ufs_hba *hba = shost_priv(sdev->host);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	sdev->broken_fua = 1;
+
+	dev_dbg(hba->dev, "lu %llu slave configured", sdev->lun);
+
+	blk_queue_flag_set(QUEUE_FLAG_SAME_FORCE, sdev->request_queue);
+	if (hba->luns_avail == 1) {
+		/* The last LUs */
+		dev_info(hba->dev, "%s: LUNs ready", __func__);
+		complete(&host->luns_added);
+	}
+}
+
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 static void ufs_mtk_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
 				    enum ufs_notify_change_status status)
@@ -3092,6 +3088,7 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 	.op_runtime_config   = ufs_mtk_op_runtime_config,
 	.mcq_config_resource = ufs_mtk_mcq_config_resource,
 	.config_esi          = ufs_mtk_config_esi,
+	.config_scsi_dev     = ufs_mtk_config_scsi_dev,
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 	//.check_bus_status    = ufs_mtk_check_bus_status,
 	//.dbg_dump            = _ufs_mtk_dbg_dump,
