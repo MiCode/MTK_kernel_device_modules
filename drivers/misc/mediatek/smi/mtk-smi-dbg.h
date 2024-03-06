@@ -46,6 +46,7 @@ struct smi_user_pwr_ctrl_data {
 	void __iomem *pwr_sta_rg;
 };
 
+#define SMI_CALLER_MAX_LEN 64
 struct smi_user_pwr_ctrl {
 	const char *name;
 	u32 smi_user_id;
@@ -53,7 +54,7 @@ struct smi_user_pwr_ctrl {
 	int (*smi_user_get_if_in_use)(void *v);
 	int (*smi_user_get)(void *v);
 	int (*smi_user_put)(void *v);
-	char *caller;
+	char caller[SMI_CALLER_MAX_LEN];
 	struct list_head list;
 };
 
