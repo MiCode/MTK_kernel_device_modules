@@ -1064,6 +1064,7 @@ static int mt6991_apu_memmap_init(struct mtk_apu *apu)
 {
 	struct platform_device *pdev = apu->pdev;
 	struct device *dev = apu->dev;
+	struct device_node *np = dev->of_node;
 	struct resource *res;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "apu_mbox");
@@ -1123,17 +1124,25 @@ static int mt6991_apu_memmap_init(struct mtk_apu *apu)
 		return -ENOMEM;
 	}
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "md32_tcm");
-	if (res == NULL) {
-		dev_info(dev, "%s: md32_tcm get resource fail\n", __func__);
-		return -ENODEV;
+	if (apu->platdata->flags & F_SECURE_COREDUMP) {
+		apu->md32_tcm = NULL;
+		if (of_property_read_u32(np, "up-tcm-sz", &apu->md32_tcm_sz)) {
+			dev_info(dev, "%s: missing up-tcm-sz\n", __func__);
+			return -ENODEV;
+		}
+	} else {
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "md32_tcm");
+		if (res == NULL) {
+			dev_info(dev, "%s: md32_tcm get resource fail\n", __func__);
+			return -ENODEV;
+		}
+		apu->md32_tcm = devm_ioremap_wc(dev, res->start, res->end - res->start + 1);
+		if (IS_ERR((void const *)apu->md32_tcm)) {
+			dev_info(dev, "%s: md32_tcm remap base fail\n", __func__);
+			return -ENOMEM;
+		}
+		apu->md32_tcm_sz = res->end - res->start + 1;
 	}
-	apu->md32_tcm = devm_ioremap_wc(dev, res->start, res->end - res->start + 1);
-	if (IS_ERR((void const *)apu->md32_tcm)) {
-		dev_info(dev, "%s: md32_tcm remap base fail\n", __func__);
-		return -ENOMEM;
-	}
-	apu->md32_tcm_sz = res->end - res->start + 1;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "md32_cache_dump");
 	if (res == NULL) {
