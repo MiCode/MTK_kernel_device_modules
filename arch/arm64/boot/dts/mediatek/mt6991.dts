@@ -14240,6 +14240,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		interrupt-names = "mbox0",
 			"mbox1";
 
+		mtk,smmu-shared = <&mm_smmu_hfrp>;
 		mmup-secure-dump = <0>;   /* enable dump via secure world*/
 		mmup-secure-dump-size = <0x200000>;
 		mmup-secure-dump-offset = <0xc00000>;
