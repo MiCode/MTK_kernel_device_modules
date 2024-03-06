@@ -423,14 +423,14 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 		busy_time = min(eenv->pds_cap[pd_idx], busy_time + eenv->task_busy_time);
 
 	if (eenv->wl_support) {
-		if (share_buck.gear_idx == eenv->gear_idx) {
-			if (!pd_freq)
-				pd_freq = pd_get_util_cpufreq(eenv, pd_cpus, pd_max_util,
-						eenv->pds_cpu_cap[pd_idx], scale_cpu);
+		if (!pd_freq)
+			pd_freq = pd_get_util_cpufreq(eenv, pd_cpus, pd_max_util,
+					eenv->pds_cpu_cap[pd_idx], scale_cpu);
 
-			dsu_volt = update_dsu_status(eenv, false,
-						pd_freq, floor_freq, pd_idx, dst_cpu);
-		} else
+		dsu_volt = update_dsu_status(eenv, false,
+					pd_freq, floor_freq, pd_idx, dst_cpu);
+
+		if (share_buck.gear_idx != eenv->gear_idx)
 			dsu_volt = 0;
 
 		extern_volt = dsu_volt;
