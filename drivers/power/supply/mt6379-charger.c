@@ -320,11 +320,11 @@ static const struct mt6379_charger_platform_data mt6379_charger_pdata_def = {
 	.ichg = 2000,
 	.ieoc = 150,
 	.cv = 4200,
-	.wdt_time = 40000,
-	.vbus_ov = 14500,
-	.vrec = 100,
+	.wdt_time = MT6379_WDT_TIME_40S,
 	.ircmp_v = 0,
 	.ircmp_r = 0,
+	.vrec = 100,
+	.chgin_ov = MT6379_CHGIN_OV_22_5V,
 	.chg_tmr = 10,
 	.nr_port = 1,
 	.wdt_en = false,
@@ -1378,8 +1378,8 @@ static int mt6379_charger_apply_pdata(struct mt6379_charger_data *cdata)
 
 static int mt6379_charger_init_setting(struct mt6379_charger_data *cdata)
 {
-	struct mt6379_charger_platform_data *pdata = dev_get_platdata(cdata->dev);
 	int ret = 0;
+	struct mt6379_charger_platform_data *pdata = dev_get_platdata(cdata->dev);
 
 	/* enable pre-UV function */
 	ret |= mt6379_enable_hm(cdata, true);
