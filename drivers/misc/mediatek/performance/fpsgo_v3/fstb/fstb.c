@@ -508,28 +508,26 @@ out:
 
 int fpsgo_other2fstb_get_fps(int pid, unsigned long long bufID,
 	int *qfps_arr, int *qfps_num, int max_qfps_num,
-	int *tfps_arr, int *tfps_num, int max_tfps_num)
+	int *tfps_arr, int *tfps_num, int max_tfps_num,
+	int *diff_arr, int *diff_num, int max_diff_num)
 {
 	int local_q_idx = 0;
 	int local_t_idx = 0;
+	int local_diff_idx = 0;
 	int local_tfps = 0;
 	int local_margin = 0;
 	struct FSTB_FRAME_INFO *iter = NULL;
 	struct hlist_node *h = NULL;
 
-	if (!qfps_arr || !qfps_num ||
-		!tfps_arr || !tfps_num)
-		return -ENOMEM;
-
 	mutex_lock(&fstb_lock);
 	hlist_for_each_entry_safe(iter, h, &fstb_frame_infos, hlist) {
 		if (iter->pid == pid &&
 			(!bufID || iter->bufid == bufID)) {
-			if (local_q_idx < max_qfps_num) {
+			if (local_q_idx < max_qfps_num && qfps_arr) {
 				qfps_arr[local_q_idx] = iter->queue_fps;
 				local_q_idx++;
 			}
-			if (local_t_idx < max_tfps_num) {
+			if (local_t_idx < max_tfps_num && tfps_arr) {
 				local_tfps = iter->self_ctrl_fps_enable ?
 					iter->target_fps_v2 : iter->target_fps;
 				local_margin = iter->self_ctrl_fps_enable ?
@@ -539,12 +537,20 @@ int fpsgo_other2fstb_get_fps(int pid, unsigned long long bufID,
 				tfps_arr[local_t_idx] = local_tfps;
 				local_t_idx++;
 			}
+			if (local_diff_idx < max_diff_num && diff_arr) {
+				diff_arr[local_diff_idx] = iter->target_fps_diff;
+				local_diff_idx++;
+			}
 		}
 	}
 	mutex_unlock(&fstb_lock);
 
-	*qfps_num = local_q_idx;
-	*tfps_num = local_t_idx;
+	if (qfps_num)
+		*qfps_num = local_q_idx;
+	if (tfps_num)
+		*tfps_num = local_t_idx;
+	if (diff_num)
+		*diff_num = local_diff_idx;
 
 	return 0;
 }
@@ -1191,6 +1197,24 @@ void gpu_time_update(long long t_gpu, unsigned int cur_freq,
 			(int)cur_max_freq, "max_gpu_cap");
 
 	mutex_unlock(&fstb_lock);
+}
+
+long long fpsgo_base2fstb_get_gpu_time(int pid, unsigned long long bufID)
+{
+	long long ret = 0;
+	struct FSTB_FRAME_INFO *iter = NULL;
+	struct hlist_node *h = NULL;
+
+	mutex_lock(&fstb_lock);
+	hlist_for_each_entry_safe(iter, h, &fstb_frame_infos, hlist) {
+		if (iter->pid == pid && iter->bufid == bufID) {
+			ret = iter->gpu_time;
+			break;
+		}
+	}
+	mutex_unlock(&fstb_lock);
+
+	return ret;
 }
 
 void eara2fstb_get_tfps(int max_cnt, int *is_camera, int *pid, unsigned long long *buf_id,
@@ -1933,16 +1957,6 @@ static int cal_target_fps(struct FSTB_FRAME_INFO *iter)
 	}
 
 	return target_limit;
-}
-
-void fpsgo_fbt_ux2fstb_query_dfrc(int *fps, int *time)
-{
-	unsigned long long local_time = 1000000000ULL;
-
-	mutex_lock(&fstb_lock);
-	*fps = dfps_ceiling;
-	*time = div64_u64(local_time, dfps_ceiling);
-	mutex_unlock(&fstb_lock);
 }
 
 void fpsgo_fbt2fstb_query_fps(int pid, unsigned long long bufID,

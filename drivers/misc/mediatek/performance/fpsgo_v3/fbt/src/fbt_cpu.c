@@ -4480,6 +4480,8 @@ static int fbt_boost_policy(
 
 	get_aa_ret = fbt_get_aa(loading, boost_info->cl_loading, cluster_num, t1, t_Q2Q,
 		separate_aa_final, max_cap_cluster, sec_cap_cluster, &aa_n, &aa_b, &aa_m);
+	thread_info->frame_aa = loading;
+	thread_info->dep_aa = aa_n;
 
 	if (aa_b < aa_m)
 		aa_b = aa_m;

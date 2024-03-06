@@ -49,5 +49,6 @@ void __exit minitop_exit(void);
 
 extern void (*fpsgo_sched_nominate_fp)(pid_t *tid, int *util);
 void fpsgo_comp2minitop_queue_update(unsigned long long ts);
+int fpsgo_other2minitop_get_list(int max_num, int *tid_arr, unsigned long long *ratio_arr);
 
 #endif

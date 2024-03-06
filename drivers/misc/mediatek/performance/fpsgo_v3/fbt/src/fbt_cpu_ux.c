@@ -350,7 +350,6 @@ void fbt_ux_frame_end(struct render_info *thr,
 			&q_c_time, &q_g_time, &targetfpks, &cooler_on);
 	boost->quantile_cpu_time = q_c_time;
 	boost->quantile_gpu_time = q_g_time;	// [ux] unavailable, for statistic only.
-	fpsgo_fbt_ux2fstb_query_dfrc(&targetfps, &targettime);
 
 	if (!targetfps)
 		targetfps = TARGET_UNLIMITED_FPS;

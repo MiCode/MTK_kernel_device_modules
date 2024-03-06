@@ -408,7 +408,8 @@ static int fpsgo_com_check_fps_align(int pid, unsigned long long buffer_id)
 
 	fpsgo_other2fstb_get_fps(pid, buffer_id,
 		local_qfps_arr, &local_qfps_arr_num, 1,
-		local_tfps_arr, &local_tfps_arr_num, 1);
+		local_tfps_arr, &local_tfps_arr_num, 1,
+		NULL, NULL, 0);
 
 	if (local_qfps_arr[0] > local_tfps_arr[0] + fps_align_margin ||
 		(local_app_meta_min_fps > 0 && local_qfps_arr[0] <= local_app_meta_min_fps)) {
