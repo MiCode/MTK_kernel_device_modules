@@ -50,10 +50,9 @@ struct mtk_disp_tdshp {
 	struct mtk_disp_tdshp_tile_overhead tile_overhead;
 	struct mtk_disp_tdshp_tile_overhead_v tile_overhead_v;
 	atomic_t is_clock_on;
+	bool set_partial_update;
+	unsigned int roi_height;
 };
-
-static bool set_partial_update;
-static unsigned int roi_height;
 
 static inline struct mtk_disp_tdshp *comp_to_tdshp(struct mtk_ddp_comp *comp)
 {
@@ -521,7 +520,7 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 		out_width = in_width;
 	}
 
-	if (!set_partial_update) {
+	if (!tdshp_data->set_partial_update) {
 		in_val = (in_width << 16) | (cfg->h);
 		out_val = (out_width << 16) | (cfg->h);
 	} else {
@@ -529,9 +528,9 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 					? 0 : tdshp_data->tile_overhead_v.overhead_v;
 		comp_overhead_v = (!overhead_v) ? 0 : tdshp_data->tile_overhead_v.comp_overhead_v;
 
-		in_val = (in_width << 16) | (roi_height + overhead_v * 2);
+		in_val = (in_width << 16) | (tdshp_data->roi_height + overhead_v * 2);
 		out_val = (out_width << 16) |
-				  (roi_height + (overhead_v - comp_overhead_v) * 2);
+				  (tdshp_data->roi_height + (overhead_v - comp_overhead_v) * 2);
 	}
 
 	DDPINFO("%s: in: 0x%08x, out: 0x%08x\n", __func__, in_val, out_val);
@@ -549,7 +548,7 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 				comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET,
 				tdshp_data->tile_overhead.comp_overhead << 16 | 0, ~0);
 	} else {
-		if (!set_partial_update)
+		if (!tdshp_data->set_partial_update)
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET, 0x0, ~0);
 		else
@@ -808,22 +807,22 @@ static int disp_tdshp_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
-	set_partial_update = enable;
-	roi_height = partial_roi.height;
+	tdshp_data->set_partial_update = enable;
+	tdshp_data->roi_height = partial_roi.height;
 	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
 				? 0 : tdshp_data->tile_overhead_v.overhead_v;
 	comp_overhead_v = (!overhead_v) ? 0 : tdshp_data->tile_overhead_v.comp_overhead_v;
 
-	DDPINFO/*DDPDBG*/("%s, %s overhead_v:%d, comp_overhead_v:%d\n",
+	DDPINFO("%s, %s overhead_v:%d, comp_overhead_v:%d\n",
 			__func__, mtk_dump_comp_str(comp), overhead_v, comp_overhead_v);
 
-	if (set_partial_update) {
+	if (tdshp_data->set_partial_update) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_TDSHP_INPUT_SIZE,
-			roi_height + overhead_v * 2, 0xffff);
+			tdshp_data->roi_height + overhead_v * 2, 0xffff);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_TDSHP_OUTPUT_SIZE,
-			roi_height + (overhead_v - comp_overhead_v) * 2, 0xffff);
+			tdshp_data->roi_height + (overhead_v - comp_overhead_v) * 2, 0xffff);
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET, comp_overhead_v, 0xff);
