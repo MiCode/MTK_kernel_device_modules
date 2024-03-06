@@ -561,8 +561,8 @@ static int smmu_lmu_event_add(struct perf_event *event, int flags)
 		if (err) {
 			raw_spin_unlock_irqrestore(&smmu_lmu->counter_lock,
 						   irq_flags);
-			pr_info("%s, pm get fail, smmu:%d.\n",
-				__func__, smmu_lmu->smmu_type);
+			pr_info_ratelimited("%s, pm get fail, smmu:%d.\n",
+					    __func__, smmu_lmu->smmu_type);
 			return -EPERM;
 		}
 		smmu_lmu->take_power = true;
