@@ -1531,6 +1531,17 @@ int mtk_pcie_pinmux_select(int port_num, enum pin_state state)
 		pinctrl_put(p);
 
 		break;
+	case PCIE_PINMUX_HIZ:
+		dev_info(&pdev->dev, "PCIe pinmux switching to Hi-Z state\n");
+		p = pinctrl_get_select(&pdev->dev, "hiz");
+		if (IS_ERR(p)) {
+			dev_info(&pdev->dev, "PCIe pinmux select Hi-Z state failed\n");
+			return PTR_ERR(p);
+		}
+
+		pinctrl_put(p);
+
+		break;
 	default:
 		dev_info(&pdev->dev, "Pinmux %d not support\n", state);
 		return -EINVAL;
@@ -2285,6 +2296,27 @@ static const struct dev_pm_ops mtk_pcie_pm_ops = {
 				      mtk_pcie_resume_noirq)
 };
 
+int mtk_pcie_disable_refclk(int port)
+{
+	struct platform_device *pdev;
+	struct mtk_pcie_port *pcie_port;
+
+	pdev = mtk_pcie_find_pdev_by_port(port);
+	if (!pdev) {
+		pr_info("PCIe platform device not found!\n");
+		return -ENODEV;
+	}
+
+	pcie_port = platform_get_drvdata(pdev);
+	if (!pcie_port)
+		return -ENODEV;
+
+	reset_control_assert(pcie_port->phy_reset);
+
+	return 0;
+}
+EXPORT_SYMBOL(mtk_pcie_disable_refclk);
+
 int mtk_pcie_soft_off(struct pci_bus *bus)
 {
 	struct mtk_pcie_port *port;
@@ -2334,6 +2366,8 @@ int mtk_pcie_soft_on(struct pci_bus *bus)
 	ret = mtk_pcie_power_up(port);
 	if (ret)
 		return ret;
+
+	pinctrl_select_default_state(port->dev);
 
 	ret = mtk_pcie_startup_port(port);
 	if (ret)
