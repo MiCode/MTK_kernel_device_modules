@@ -138,13 +138,13 @@ int get_cs_side_battery_voltage(struct mtk_charger *info, int *vbat)
 	bat_psy = info->bat2_psy;
 
 	if (bat_psy == NULL || IS_ERR(bat_psy)) {
-		chr_err("%s retry to get bat_psy\n", __func__);
+		chr_debug("%s retry to get bat_psy\n", __func__);
 		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge2");
 		info->bat2_psy = bat_psy;
 	}
 
 	if (bat_psy == NULL || IS_ERR(bat_psy)) {
-		chr_err("%s Couldn't get bat_psy\n", __func__);
+		chr_debug("%s Couldn't get bat_psy\n", __func__);
 		ret = charger_dev_get_vbat(info->cschg1_dev, vbat);
 		if (ret < 0)
 			*vbat = 3999;
@@ -230,13 +230,13 @@ int get_cs_side_battery_current(struct mtk_charger *info, int *ibat)
 	bat_psy = info->bat2_psy;
 
 	if (bat_psy == NULL || IS_ERR(bat_psy)) {
-		chr_err("%s retry to get bat_psy\n", __func__);
+		chr_debug("%s retry to get bat_psy\n", __func__);
 		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge2");
 		info->bat2_psy = bat_psy;
 	}
 
 	if (bat_psy == NULL || IS_ERR(bat_psy)) {
-		chr_err("%s Couldn't get bat_psy\n", __func__);
+		chr_debug("%s Couldn't get bat_psy\n", __func__);
 		ret = charger_cs_get_ibat(info->cschg1_dev, ibat);
 		if (ret < 0)
 			*ibat = 0;
