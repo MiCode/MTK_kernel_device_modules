@@ -511,7 +511,7 @@ static void disp_chist_config_channel(unsigned int channel,
 	disp_chist_enable_channel(channel, 1, comp, handle);
 }
 
-static void ceil(int num, int divisor, int *result)
+static inline void disp_chist_ceil(int num, int divisor, int *result)
 {
 	if (divisor > 0) {
 		if (num % divisor == 0)
@@ -616,7 +616,7 @@ static int disp_chist_user_cmd(struct mtk_ddp_comp *comp,
 				? channel_config.blk_height
 				: channel_config.roi_end_y - channel_config.roi_start_y + 1;
 
-			ceil((channel_config.roi_end_x - channel_config.roi_start_x + 1),
+			disp_chist_ceil((channel_config.roi_end_x - channel_config.roi_start_x + 1),
 				channel_config.blk_width, &blk_column);
 
 			mutex_lock(&chist_data->primary_data->data_lock);
@@ -624,7 +624,7 @@ static int disp_chist_user_cmd(struct mtk_ddp_comp *comp,
 
 			memcpy(&(chist_data->primary_data->chist_config[channel_id]),
 				&channel_config, sizeof(channel_config));
-			mutex_lock(&chist_data->primary_data->data_lock);
+			mutex_unlock(&chist_data->primary_data->data_lock);
 
 			if (comp->mtk_crtc->is_dual_pipe) {
 				struct mtk_ddp_comp *dual_comp = chist_data->companion;
