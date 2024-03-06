@@ -867,22 +867,32 @@ uint32_t vcp_wait_ready_sync(void)
 
 	if ((C0_H0 == CORE_REBOOT_OK) && (C0_H1 == CORE_REBOOT_OK)
 		&& (C1_H0 == CORE_REBOOT_OK) && (C1_H1 == CORE_REBOOT_OK)) {
-		if (vcpreg.core_nums == 2 && !is_vcp_ready_by_coreid(MMUP_ID))
+		if (vcpreg.core_nums == 2 && !is_vcp_ready_by_coreid(MMUP_ID)) {
 			vcp_A_set_ready(MMUP_ID);
-		if (!is_vcp_ready_by_coreid(VCP_ID))
-			vcp_A_set_ready(VCP_ID);
-	}
+			while (!is_vcp_ready_by_coreid(MMUP_ID) && i <= VCP_SYNC_TIMEOUT_MS) {
+				i += 5;
+				mdelay(5);
+			}
+			if (i > VCP_SYNC_TIMEOUT_MS) {
+				vcp_dump_last_regs(1);
+				for (j = 0; j < NUM_FEATURE_ID; j++)
+					if (feature_table[j].enable)
+						pr_info("[MMUP] feat. id %d cnt %d\n", j, feature_table[j].enable);
+			}
+		}
 
-	while (!is_vcp_ready_by_coreid(VCP_CORE_TOTAL)) {
-		i += 5;
-		mdelay(5);
-		if (i > VCP_SYNC_TIMEOUT_MS) {
-			vcp_dump_last_regs(1);
-			for (j = 0; j < NUM_FEATURE_ID; j++)
-				if (feature_table[j].enable)
-					pr_info("[VCP] Active feature id %d cnt %d\n",
-						j, feature_table[j].enable);
-			break;
+		if (!is_vcp_ready_by_coreid(VCP_ID)) {
+			vcp_A_set_ready(VCP_ID);
+			while (!is_vcp_ready_by_coreid(VCP_ID) && i <= VCP_SYNC_TIMEOUT_MS) {
+				i += 5;
+				mdelay(5);
+			}
+			if (i > VCP_SYNC_TIMEOUT_MS) {
+				vcp_dump_last_regs(1);
+				for (j = 0; j < NUM_FEATURE_ID; j++)
+					if (feature_table[j].enable)
+						pr_info("[VCP] feat. id %d cnt %d\n", j, feature_table[j].enable);
+			}
 		}
 	}
 
