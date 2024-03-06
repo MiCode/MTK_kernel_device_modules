@@ -576,9 +576,27 @@ static int lpm_get_common_status(void)
 
 	/* FIXME: common debug reg (SPMFW) */
 	help->wakesrc->debug_flag2 = plat_mmio_read(PCM_WDT_LATCH_SPARE_2); // debug_flag2
-	help->wakesrc->common_cnt0 = plat_mmio_read(PCM_WDT_LATCH_SPARE_6); // apsrc cnt
-	help->wakesrc->common_cnt1 = plat_mmio_read(PCM_WDT_LATCH_SPARE_7); //infra cnt
-	help->wakesrc->common_cnt2 = plat_mmio_read(PCM_WDT_LATCH_SPARE_8); //vcore cnt
+	help->wakesrc->common_cnt0 = plat_mmio_read(SPM_SRAM_D7X_APSRC_CNT); // apsrc cnt
+	help->wakesrc->common_cnt1 = plat_mmio_read(SPM_SRAM_D7X_INFRA_CNT); //infra cnt
+	help->wakesrc->common_cnt2 = plat_mmio_read(SPM_SRAM_D7X_VCORE_CNT); //vcore cnt
+
+	help->wakesrc->req_sta0 = plat_mmio_read(SPM_REQ_STA_0);
+	help->wakesrc->req_sta1 = plat_mmio_read(SPM_REQ_STA_1);
+	help->wakesrc->req_sta2 = plat_mmio_read(SPM_REQ_STA_2);
+	help->wakesrc->req_sta3 = plat_mmio_read(SPM_REQ_STA_3);
+	help->wakesrc->req_sta4 = plat_mmio_read(SPM_REQ_STA_4);
+	help->wakesrc->req_sta5 = plat_mmio_read(SPM_REQ_STA_5);
+	help->wakesrc->req_sta6 = plat_mmio_read(SPM_REQ_STA_6);
+	help->wakesrc->req_sta7 = plat_mmio_read(SPM_REQ_STA_7);
+	help->wakesrc->req_sta8 = plat_mmio_read(SPM_REQ_STA_8);
+	help->wakesrc->req_sta9 = plat_mmio_read(SPM_REQ_STA_9);
+	help->wakesrc->req_sta10 = plat_mmio_read(SPM_REQ_STA_10);
+	help->wakesrc->req_sta11 = plat_mmio_read(SPM_REQ_STA_11);
+	help->wakesrc->req_sta12 = plat_mmio_read(SPM_REQ_STA_12);
+	help->wakesrc->req_sta13 = plat_mmio_read(SPM_REQ_STA_13);
+	help->wakesrc->req_sta14 = plat_mmio_read(SPM_REQ_STA_14);
+	help->wakesrc->req_sta15 = plat_mmio_read(SPM_REQ_STA_15);
+	help->wakesrc->req_sta16 = plat_mmio_read(SPM_REQ_STA_16);
 
 	return 0;
 }
@@ -593,9 +611,25 @@ static int lpm_log_common_info(void)
 	lpm_get_common_status();
 	log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_SIZE - log_size,
-			"Common: debug_flag = 0x%x, cnt = 0x%x 0x%x 0x%x\n",
+			"Common: debug_flag = 0x%x, cnt = 0x%x 0x%x 0x%x, ",
 			wakesrc->debug_flag2, wakesrc->common_cnt0,
 			wakesrc->common_cnt1, wakesrc-> common_cnt2);
+
+	log_size += scnprintf(log_buf + log_size,
+			LOG_BUF_SIZE - log_size,
+			"req_sta =  0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | ",
+			wakesrc->req_sta0, wakesrc->req_sta1,
+			wakesrc->req_sta2, wakesrc->req_sta3,
+			wakesrc->req_sta4, wakesrc->req_sta5,
+			wakesrc->req_sta6, wakesrc->req_sta7);
+
+	log_size += scnprintf(log_buf + log_size,
+			LOG_BUF_SIZE - log_size,
+			"0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x\n",
+			wakesrc->req_sta8, wakesrc->req_sta9,
+			wakesrc->req_sta10, wakesrc->req_sta11,
+			wakesrc->req_sta12, wakesrc->req_sta13,
+			wakesrc->req_sta14, wakesrc->req_sta15, wakesrc->req_sta16);
 
 	pr_info("[name:spm&][SPM] %s", log_buf);
 

@@ -750,6 +750,11 @@
 #define PCM_APWDT_LATCH_37             (SPM_BASE + 0x96CC)
 #define PCM_APWDT_LATCH_38             (SPM_BASE + 0x96D0)
 
+#define SPM_SRAM_BASE                  (SPM_BASE + 0x1000)
+#define SPM_SRAM_D7X_APSRC_CNT         (SPM_SRAM_BASE + 0x7F00)
+#define SPM_SRAM_D7X_INFRA_CNT         (SPM_SRAM_BASE + 0x7F04)
+#define SPM_SRAM_D7X_VCORE_CNT         (SPM_SRAM_BASE + 0x7F08)
+
 /* POWERON_CONFIG_EN (0x1C004000+0x0) */
 #define BCLK_CG_EN_LSB                      (1U << 0)       /* 1b */
 #define PROJECT_CODE_LSB                    (1U << 16)      /* 16b */
