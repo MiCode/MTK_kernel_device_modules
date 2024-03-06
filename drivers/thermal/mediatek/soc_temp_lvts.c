@@ -24,6 +24,9 @@
 #include "soc_temp_lvts.h"
 #include "thermal_interface.h"
 #include "thermal_core.h"
+#ifdef GPU_POWERCHK
+#include "gpueb_common.h"
+#endif
 #include <linux/math64.h>
 /*==================================================
  * LVTS debug patch
@@ -217,6 +220,12 @@ static int lvts_read_tc_temperature(struct lvts_data *lvts_data, unsigned int tz
 		for (j = 0; j < tc[i].num_sensor; j++) {
 			if (s_index != tc[i].sensor_map[j])
 				continue;
+#ifdef GPU_POWERCHK
+			if (lvts_data->gpu_power_ctrl_id)
+				if (i == lvts_data->gpu_power_ctrl_id)
+					if (mfg0_pwr_sta() != MFG0_PWR_ON)
+						return THERMAL_TEMP_INVALID;
+#endif /* GPU_POWERCHK */
 
 			if (lvts_data->is_tsfdc_n3e_ver)
 				msr_raw = lvts_read_tc_msr_raw(LVTSATP0_0 + base + 0x4 * j);
@@ -6717,6 +6726,7 @@ static struct lvts_data mt6991_lvts_data = {
 	.is_tsfdc_n3e_ver = true,
 	.dump_wo_pause = true,
 	.support_shutdown = true,
+	.gpu_power_ctrl_id = MT6991_LVTS_GPU_CTRL0,
 };
 
 /*==================================================

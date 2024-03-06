@@ -246,6 +246,7 @@ struct lvts_data {
 	bool is_tsfdc_n3e_ver;
 	bool dump_wo_pause;
 	bool support_shutdown;
+	int  gpu_power_ctrl_id;
 };
 
 struct soc_temp_tz {
