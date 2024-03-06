@@ -1187,13 +1187,15 @@ static int mml_m2m_s_selection(struct file *file, void *fh,
 		return ret;
 	dest = ctx_get_submit_dest(ctx, 0);
 
-	if (m2m_target_is_crop(s->target))
+	if (m2m_target_is_crop(s->target)) {
 		v4l2_rect_to_mml_rect(&r, &dest->crop.r);
-	else
+	} else {
 		v4l2_rect_to_mml_rect(&r, &dest->compose);
+		dest->data.width = r.width;
+		dest->data.height = r.height;
+	}
 
 	s->r = r;
-
 	return 0;
 }
 
