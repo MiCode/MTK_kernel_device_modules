@@ -680,356 +680,8 @@ static int vcodec_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-//TODO:replace with copy to user and copy from user in kernel6.6
 /* For Compatible Use */
 #if IS_ENABLED(CONFIG_COMPAT)
-
-//static int get_uptr_to_32(compat_uptr_t *p, void __user **uptr)
-//{
-//	void __user *p2p;
-//	int err = get_user(p2p, uptr);
-//	*p = ptr_to_compat(p2p);
-//	return err;
-//}
-
-// static int compat_copy_struct(
-//			enum STRUCT_TYPE eType,
-//			enum COPY_DIRECTION eDirection,
-//			void __user *data32,
-//			void __user *data)
-// {
-//	compat_uint_t u;
-//	compat_ulong_t l;
-//	compat_uptr_t p;
-//	compat_u64 ull;
-//	char c;
-//	int err = 0;
-
-//	switch (eType) {
-//	case VAL_HW_LOCK_TYPE:
-//	{
-//		if (eDirection == COPY_FROM_USER) {
-//			struct COMPAT_VAL_HW_LOCK_T __user *from32 =
-//				(struct COMPAT_VAL_HW_LOCK_T *)data32;
-//			struct VAL_HW_LOCK_T __user *to =
-//				(struct VAL_HW_LOCK_T *)data;
-
-//			err = get_user(p, &(from32->pvHandle));
-//			err |= put_user(compat_ptr(p), &(to->pvHandle));
-//			err |= get_user(u, &(from32->u4HandleSize));
-//			err |= put_user(u, &(to->u4HandleSize));
-//			err |= get_user(p, &(from32->pvLock));
-//			err |= put_user(compat_ptr(p), &(to->pvLock));
-//			err |= get_user(u, &(from32->u4TimeoutMs));
-//			err |= put_user(u, &(to->u4TimeoutMs));
-//			err |= get_user(p, &(from32->pvReserved));
-//			err |= put_user(compat_ptr(p), &(to->pvReserved));
-//			err |= get_user(u, &(from32->u4ReservedSize));
-//			err |= put_user(u, &(to->u4ReservedSize));
-//			err |= get_user(u, &(from32->eDriverType));
-//			err |= put_user(u, &(to->eDriverType));
-//			err |= get_user(c, &(from32->bSecureInst));
-//			err |= put_user(c, &(to->bSecureInst));
-//		} else {
-//			struct COMPAT_VAL_HW_LOCK_T __user *to32 =
-//						(struct COMPAT_VAL_HW_LOCK_T *)data32;
-//			struct VAL_HW_LOCK_T __user *from =
-//						(struct VAL_HW_LOCK_T *)data;
-
-//			err = get_uptr_to_32(&p, &(from->pvHandle));
-//			err |= put_user(p, &(to32->pvHandle));
-//			err |= get_user(u, &(from->u4HandleSize));
-//			err |= put_user(u, &(to32->u4HandleSize));
-//			err |= get_uptr_to_32(&p, &(from->pvLock));
-//			err |= put_user(p, &(to32->pvLock));
-//			err |= get_user(u, &(from->u4TimeoutMs));
-//			err |= put_user(u, &(to32->u4TimeoutMs));
-//			err |= get_uptr_to_32(&p, &(from->pvReserved));
-//			err |= put_user(p, &(to32->pvReserved));
-//			err |= get_user(u, &(from->u4ReservedSize));
-//			err |= put_user(u, &(to32->u4ReservedSize));
-//			err |= get_user(u, &(from->eDriverType));
-//			err |= put_user(u, &(to32->eDriverType));
-//			err |= get_user(c, &(from->bSecureInst));
-//			err |= put_user(c, &(to32->bSecureInst));
-//		}
-//	}
-//	break;
-//	case VAL_POWER_TYPE:
-//	{
-//		if (eDirection == COPY_FROM_USER) {
-//			struct COMPAT_VAL_POWER_T __user *from32 =
-//						(struct COMPAT_VAL_POWER_T *)data32;
-//			struct VAL_POWER_T __user *to =
-//						(struct VAL_POWER_T *)data;
-
-//			err = get_user(p, &(from32->pvHandle));
-//			err |= put_user(compat_ptr(p), &(to->pvHandle));
-//			err |= get_user(u, &(from32->u4HandleSize));
-//			err |= put_user(u, &(to->u4HandleSize));
-//			err |= get_user(u, &(from32->eDriverType));
-//			err |= put_user(u, &(to->eDriverType));
-//			err |= get_user(c, &(from32->fgEnable));
-//			err |= put_user(c, &(to->fgEnable));
-//			err |= get_user(p, &(from32->pvReserved));
-//			err |= put_user(compat_ptr(p), &(to->pvReserved));
-//			err |= get_user(u, &(from32->u4ReservedSize));
-//			err |= put_user(u, &(to->u4ReservedSize));
-//		} else {
-//			struct COMPAT_VAL_POWER_T __user *to32 =
-//					(struct COMPAT_VAL_POWER_T *)data32;
-//			struct VAL_POWER_T __user *from =
-//					(struct VAL_POWER_T *)data;
-
-//			err = get_uptr_to_32(&p, &(from->pvHandle));
-//			err |= put_user(p, &(to32->pvHandle));
-//			err |= get_user(u, &(from->u4HandleSize));
-//			err |= put_user(u, &(to32->u4HandleSize));
-//			err |= get_user(u, &(from->eDriverType));
-//			err |= put_user(u, &(to32->eDriverType));
-//			err |= get_user(c, &(from->fgEnable));
-//			err |= put_user(c, &(to32->fgEnable));
-//			err |= get_uptr_to_32(&p, &(from->pvReserved));
-//			err |= put_user(p, &(to32->pvReserved));
-//			err |= get_user(u, &(from->u4ReservedSize));
-//			err |= put_user(u, &(to32->u4ReservedSize));
-//		}
-//	}
-//	break;
-//	case VAL_ISR_TYPE:
-//	{
-//		int i = 0;
-
-//		if (eDirection == COPY_FROM_USER) {
-//			struct COMPAT_VAL_ISR_T __user *from32 =
-//					(struct COMPAT_VAL_ISR_T *)data32;
-//			struct VAL_ISR_T __user *to = (struct VAL_ISR_T *)data;
-
-//			err = get_user(p, &(from32->pvHandle));
-//			err |= put_user(compat_ptr(p), &(to->pvHandle));
-//			err |= get_user(u, &(from32->u4HandleSize));
-//			err |= put_user(u, &(to->u4HandleSize));
-//			err |= get_user(u, &(from32->eDriverType));
-//			err |= put_user(u, &(to->eDriverType));
-//			err |= get_user(p, &(from32->pvIsrFunction));
-//			err |= put_user(compat_ptr(p), &(to->pvIsrFunction));
-//			err |= get_user(p, &(from32->pvReserved));
-//			err |= put_user(compat_ptr(p), &(to->pvReserved));
-//			err |= get_user(u, &(from32->u4ReservedSize));
-//			err |= put_user(u, &(to->u4ReservedSize));
-//			err |= get_user(u, &(from32->u4TimeoutMs));
-//			err |= put_user(u, &(to->u4TimeoutMs));
-//			err |= get_user(u, &(from32->u4IrqStatusNum));
-//			err |= put_user(u, &(to->u4IrqStatusNum));
-//			for (; i < IRQ_STATUS_MAX_NUM; i++) {
-//				err |= get_user(u, &(from32->u4IrqStatus[i]));
-//				err |= put_user(u, &(to->u4IrqStatus[i]));
-//			}
-//			return err;
-
-//		} else {
-//			struct COMPAT_VAL_ISR_T __user *to32 =
-//					(struct COMPAT_VAL_ISR_T *)data32;
-//			struct VAL_ISR_T __user *from =
-//						(struct VAL_ISR_T *)data;
-
-//			err = get_uptr_to_32(&p, &(from->pvHandle));
-//			err |= put_user(p, &(to32->pvHandle));
-//			err |= get_user(u, &(from->u4HandleSize));
-//			err |= put_user(u, &(to32->u4HandleSize));
-//			err |= get_user(u, &(from->eDriverType));
-//			err |= put_user(u, &(to32->eDriverType));
-//			err |= get_uptr_to_32(&p, &(from->pvIsrFunction));
-//			err |= put_user(p, &(to32->pvIsrFunction));
-//			err |= get_uptr_to_32(&p, &(from->pvReserved));
-//			err |= put_user(p, &(to32->pvReserved));
-//			err |= get_user(u, &(from->u4ReservedSize));
-//			err |= put_user(u, &(to32->u4ReservedSize));
-//			err |= get_user(u, &(from->u4TimeoutMs));
-//			err |= put_user(u, &(to32->u4TimeoutMs));
-//			err |= get_user(u, &(from->u4IrqStatusNum));
-//			err |= put_user(u, &(to32->u4IrqStatusNum));
-//			for (; i < IRQ_STATUS_MAX_NUM; i++) {
-//				err |= get_user(u, &(from->u4IrqStatus[i]));
-//				err |= put_user(u, &(to32->u4IrqStatus[i]));
-//			}
-//		}
-//	}
-//	break;
-//	case VAL_MEMORY_TYPE:
-//	{
-//		if (eDirection == COPY_FROM_USER) {
-//			struct COMPAT_VAL_MEMORY_T __user *from32 =
-//					(struct COMPAT_VAL_MEMORY_T *)data32;
-//			struct VAL_MEMORY_T __user *to =
-//						(struct VAL_MEMORY_T *)data;
-
-//			err = get_user(u, &(from32->eMemType));
-//			err |= put_user(u, &(to->eMemType));
-//			err |= get_user(l, &(from32->u4MemSize));
-//			err |= put_user(l, &(to->u4MemSize));
-//			err |= get_user(p, &(from32->pvMemVa));
-//			err |= put_user(compat_ptr(p), &(to->pvMemVa));
-//			err |= get_user(p, &(from32->pvMemPa));
-//			err |= put_user(compat_ptr(p), &(to->pvMemPa));
-//			err |= get_user(u, &(from32->eAlignment));
-//			err |= put_user(u, &(to->eAlignment));
-//			err |= get_user(p, &(from32->pvAlignMemVa));
-//			err |= put_user(compat_ptr(p), &(to->pvAlignMemVa));
-//			err |= get_user(p, &(from32->pvAlignMemPa));
-//			err |= put_user(compat_ptr(p), &(to->pvAlignMemPa));
-//			err |= get_user(u, &(from32->eMemCodec));
-//			err |= put_user(u, &(to->eMemCodec));
-//			err |= get_user(u, &(from32->i4IonShareFd));
-//			err |= put_user(u, &(to->i4IonShareFd));
-//			err |= get_user(p, &(from32->pIonBufhandle));
-//			err |= put_user(compat_ptr(p), &(to->pIonBufhandle));
-//			err |= get_user(p, &(from32->pvReserved));
-//			err |= put_user(compat_ptr(p), &(to->pvReserved));
-//			err |= get_user(l, &(from32->u4ReservedSize));
-//			err |= put_user(l, &(to->u4ReservedSize));
-//		} else {
-//			struct COMPAT_VAL_MEMORY_T __user *to32 =
-//					(struct COMPAT_VAL_MEMORY_T *)data32;
-
-//			struct VAL_MEMORY_T __user *from =
-//					(struct VAL_MEMORY_T *)data;
-
-//			err = get_user(u, &(from->eMemType));
-//			err |= put_user(u, &(to32->eMemType));
-//			err |= get_user(l, &(from->u4MemSize));
-//			err |= put_user(l, &(to32->u4MemSize));
-//			err |= get_uptr_to_32(&p, &(from->pvMemVa));
-//			err |= put_user(p, &(to32->pvMemVa));
-//			err |= get_uptr_to_32(&p, &(from->pvMemPa));
-//			err |= put_user(p, &(to32->pvMemPa));
-//			err |= get_user(u, &(from->eAlignment));
-//			err |= put_user(u, &(to32->eAlignment));
-//			err |= get_uptr_to_32(&p, &(from->pvAlignMemVa));
-//			err |= put_user(p, &(to32->pvAlignMemVa));
-//			err |= get_uptr_to_32(&p, &(from->pvAlignMemPa));
-//			err |= put_user(p, &(to32->pvAlignMemPa));
-//			err |= get_user(u, &(from->eMemCodec));
-//			err |= put_user(u, &(to32->eMemCodec));
-//			err |= get_user(u, &(from->i4IonShareFd));
-//			err |= put_user(u, &(to32->i4IonShareFd));
-//			err |= get_uptr_to_32(&p,
-//					(void __user **)&(from->pIonBufhandle));
-//			err |= put_user(p, &(to32->pIonBufhandle));
-//			err |= get_uptr_to_32(&p, &(from->pvReserved));
-//			err |= put_user(p, &(to32->pvReserved));
-//			err |= get_user(l, &(from->u4ReservedSize));
-//			err |= put_user(l, &(to32->u4ReservedSize));
-//		}
-//	}
-//	break;
-//	case VAL_FRAME_INFO_TYPE:
-//	{
-//		if (eDirection == COPY_FROM_USER) {
-//			struct COMPAT_VAL_FRAME_INFO_T __user *from32 =
-//				(struct COMPAT_VAL_FRAME_INFO_T *)data32;
-//			struct VAL_FRAME_INFO_T __user *to =
-//				(struct VAL_FRAME_INFO_T *)data;
-
-//			err = get_user(p, &(from32->handle));
-//			err |= put_user(compat_ptr(p), &(to->handle));
-//			err |= get_user(u, &(from32->driver_type));
-//			err |= put_user(u, &(to->driver_type));
-//			err |= get_user(u, &(from32->input_size));
-//			err |= put_user(u, &(to->input_size));
-//			err |= get_user(u, &(from32->frame_width));
-//			err |= put_user(u, &(to->frame_width));
-//			err |= get_user(u, &(from32->frame_height));
-//			err |= put_user(u, &(to->frame_height));
-//			err |= get_user(u, &(from32->frame_type));
-//			err |= put_user(u, &(to->frame_type));
-//			err |= get_user(u, &(from32->is_compressed));
-//			err |= put_user(u, &(to->is_compressed));
-//		} else {
-//			struct COMPAT_VAL_FRAME_INFO_T __user *to32 =
-//				(struct COMPAT_VAL_FRAME_INFO_T *)data32;
-//			struct VAL_FRAME_INFO_T __user *from =
-//				(struct VAL_FRAME_INFO_T *)data;
-
-//			err = get_uptr_to_32(&p, &(from->handle));
-//			err |= put_user(p, &(to32->handle));
-//			err |= get_user(u, &(from->driver_type));
-//			err |= put_user(u, &(to32->driver_type));
-//			err |= get_user(u, &(from->input_size));
-//			err |= put_user(u, &(to32->input_size));
-//			err |= get_user(u, &(from->frame_width));
-//			err |= put_user(u, &(to32->frame_width));
-//			err |= get_user(u, &(from->frame_height));
-//			err |= put_user(u, &(to32->frame_height));
-//			err |= get_user(u, &(from->frame_type));
-//			err |= put_user(u, &(to32->frame_type));
-//			err |= get_user(u, &(from->is_compressed));
-//			err |= put_user(u, &(to32->is_compressed));
-//		}
-//	}
-//	break;
-//	case VAL_MEM_OBJ_TYPE:
-//	{
-//		if (eDirection == COPY_FROM_USER) {
-//			struct COMPAT_VAL_MEM_OBJ __user *from32 =
-//				(struct COMPAT_VAL_MEM_OBJ *)data32;
-//			struct VAL_MEM_INFO_T __user *to =
-//				(struct VAL_MEM_INFO_T *)data;
-
-//			err |= get_user(ull, &(from32->iova));
-//			err |= put_user(ull, &(to->iova));
-//			err |= get_user(l, &(from32->len));
-//			err |= put_user(l, &(to->len));
-//			err |= get_user(u, &(from32->shared_fd));
-//			err |= put_user(u, &(to->shared_fd));
-//			err |= get_user(u, &(from32->cnt));
-//			err |= put_user(u, &(to->cnt));
-//		} else {
-//			struct COMPAT_VAL_MEM_OBJ __user *to32 =
-//				(struct COMPAT_VAL_MEM_OBJ *)data32;
-//			struct VAL_MEM_INFO_T __user *from =
-//				(struct VAL_MEM_INFO_T *)data;
-//			err |= get_user(ull, &(from->iova));
-//			err |= put_user(ull, &(to32->iova));
-//			err |= get_user(l, &(from->len));
-//			err |= put_user(l, &(to32->len));
-//			err |= get_user(u, &(from->shared_fd));
-//			err |= put_user(u, &(to32->shared_fd));
-//			err |= get_user(u, &(from->cnt));
-//			err |= put_user(u, &(to32->cnt));
-//		}
-//	}
-//	break;
-//	case VAL_SEC_HANDLE_OBJ_TYPE:
-//	{
-//		if (eDirection == COPY_FROM_USER) {
-//			struct COMPAT_VAL_SEC_HANDLE_OBJ __user *from32 =
-//				(struct COMPAT_VAL_SEC_HANDLE_OBJ *)data32;
-//			struct VAL_FD_TO_SEC_HANDLE __user *to =
-//				(struct VAL_FD_TO_SEC_HANDLE *)data;
-//			err |= get_user(u, &(from32->shared_fd));
-//			err |= put_user(u, &(to->shared_fd));
-//			err |= get_user(u, &(from32->sec_handle));
-//			err |= put_user(u, &(to->sec_handle));
-//		} else {
-//			struct COMPAT_VAL_SEC_HANDLE_OBJ __user *to32 =
-//				(struct COMPAT_VAL_SEC_HANDLE_OBJ *)data32;
-//			struct VAL_FD_TO_SEC_HANDLE __user *from =
-//				(struct VAL_FD_TO_SEC_HANDLE *)data;
-//			err |= get_user(u, &(from->shared_fd));
-//			err |= put_user(u, &(to32->shared_fd));
-//			err |= get_user(u, &(from->sec_handle));
-//			err |= put_user(u, &(to32->sec_handle));
-//		}
-//	}
-//	break;
-//	default:
-//	break;
-//	}
-
-//	return err;
-//}
-
 long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 					unsigned long arg)
 {
@@ -1052,7 +704,8 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 			__func__, __LINE__);
 			return -EINVAL;
 		}
-
+		ret = file->f_op->unlocked_ioctl(file, cmd,
+				(unsigned long)&mem_data);
 		ret = (long)copy_to_user(user_data_addr, &mem_data,
 			(unsigned long)sizeof(struct VAL_MEMORY_T));
 		if (ret != 0L) {
@@ -1078,7 +731,8 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 			__func__, __LINE__);
 			return -EINVAL;
 		}
-
+		ret = file->f_op->unlocked_ioctl(file, cmd,
+				(unsigned long)&hw_lock_data);
 		ret = (long)copy_to_user(user_data_addr, &hw_lock_data,
 			(unsigned long)sizeof(struct VAL_HW_LOCK_T));
 		if (ret != 0L) {
@@ -1105,7 +759,8 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 			__func__, __LINE__);
 			return -EINVAL;
 		}
-
+		ret = file->f_op->unlocked_ioctl(file, cmd,
+				(unsigned long)&power_data);
 		ret = (long)copy_to_user(user_data_addr, &power_data,
 			(unsigned long)sizeof(struct VAL_POWER_T));
 		if (ret != 0L) {
@@ -1131,7 +786,8 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 			__func__, __LINE__);
 			return -EINVAL;
 		}
-
+		ret = file->f_op->unlocked_ioctl(file, VCODEC_WAITISR,
+				(unsigned long)&isr_data);
 		ret = (long)copy_to_user(user_data_addr, &isr_data,
 			(unsigned long)sizeof(struct VAL_ISR_T));
 		if (ret != 0L) {
@@ -1157,7 +813,8 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 			__func__, __LINE__);
 			return -EINVAL;
 		}
-
+		ret = file->f_op->unlocked_ioctl(file, VCODEC_SET_FRAME_INFO,
+				(unsigned long)&frame_info_data);
 		ret = (long)copy_to_user(user_data_addr, &frame_info_data,
 			(unsigned long)sizeof(struct VAL_FRAME_INFO_T));
 		if (ret != 0L) {
@@ -1165,7 +822,6 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 			__func__, __LINE__);
 			return -EINVAL;
 		}
-		return ret;
 	}
 	break;
 
@@ -1182,7 +838,8 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 			__func__, __LINE__);
 			return -EINVAL;
 		}
-
+		ret = file->f_op->unlocked_ioctl(file, VCODEC_MVA_ALLOCATION,
+				(unsigned long)&mem_info_data);
 		ret = (long)copy_to_user(user_data_addr, &mem_info_data,
 			(unsigned long)sizeof(struct VAL_MEM_INFO_T));
 		if (ret != 0L) {
@@ -1190,7 +847,6 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 			__func__, __LINE__);
 			return -EINVAL;
 		}
-		return ret;
 	}
 	break;
 
@@ -1207,7 +863,8 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 			__func__, __LINE__);
 			return -EINVAL;
 		}
-
+		ret = file->f_op->unlocked_ioctl(file, VCODEC_MVA_FREE,
+				(unsigned long)&mem_info_data);
 		ret = (long)copy_to_user(user_data_addr, &mem_info_data,
 			(unsigned long)sizeof(struct VAL_MEM_INFO_T));
 		if (ret != 0L) {
@@ -1215,7 +872,6 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 			__func__, __LINE__);
 			return -EINVAL;
 		}
-		return ret;
 	}
 	break;
 
@@ -1234,7 +890,8 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 			__func__, __LINE__);
 			return -EINVAL;
 		}
-
+		ret = file->f_op->unlocked_ioctl(file, VCODEC_CACHE_FLUSH_BUFF,
+				(unsigned long)&mem_info_data);
 		ret = (long)copy_to_user(user_data_addr, &mem_info_data,
 			(unsigned long)sizeof(struct VAL_MEM_INFO_T));
 		if (ret != 0L) {
@@ -1242,7 +899,6 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 			__func__, __LINE__);
 			return -EINVAL;
 		}
-		return ret;
 	}
 	break;
 
@@ -1260,7 +916,8 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 			__func__, __LINE__);
 			return -EINVAL;
 		}
-
+		ret = file->f_op->unlocked_ioctl(file, VCODEC_GET_SECURE_HANDLE,
+				(unsigned long)&mem_info_data);
 		ret = (long)copy_to_user(user_data_addr, &mem_info_data,
 			(unsigned long)sizeof(struct VAL_MEM_INFO_T));
 		if (ret != 0L) {
@@ -1268,7 +925,6 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 			__func__, __LINE__);
 			return -EINVAL;
 		}
-		return ret;
 	}
 	break;
 	default:
