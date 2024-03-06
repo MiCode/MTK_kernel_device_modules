@@ -1636,8 +1636,8 @@
 			 <&topckgen_clk CLK_TOP_OSC_D10>;
 		clock-names = "spi", "wrap", "ulposc", "ulposc_osc";
 
-		main_pmic: mt6359-pmic {
-			compatible = "mediatek,mt6359-pmic";
+		pmic: mt6359p {
+			compatible = "mediatek,mt6359p";
 			interrupt-parent = <&pio>;
 			interrupts = <122 IRQ_TYPE_LEVEL_HIGH 122 0>;
 			status = "okay";
