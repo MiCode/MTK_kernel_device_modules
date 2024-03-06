@@ -44,6 +44,7 @@
 #define P0_LOWPOWER_CK_SEL		BIT(0)
 #define P1_LOWPOWER_CK_SEL		P0_LOWPOWER_CK_SEL
 #define P2_LOWPOWER_CK_SEL		BIT(3)
+#define PEXTP_RES_REQ_STA		0x34
 #define PEXTP1_RSV_1			0x3c
 #define PCIE_SUSPEND_L2_CTRL		BIT(7)
 #define PEXTP_PWRCTL_0			0x40
@@ -505,18 +506,25 @@ static void mtk_pcie_dump_pextp_info(struct mtk_pcie_port *port)
 	if (!port || !port->pextpcfg)
 		return;
 
-	dev_info(port->dev, "V1:AP HW MODE:%#x, Modem HW MODE:%#x, PEXTP_PWRCTL_3:%#x, Clock gate:%#x, MSI select=%#x\n",
-		readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_0),
-		readl_relaxed(port->pextpcfg + PEXTP_RSV_0),
-		readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_3),
-		readl_relaxed(port->pextpcfg + PCIE_PEXTP_CG_0),
-		readl_relaxed(port->pextpcfg + PCIE_MSI_SEL));
+	/* Use port->vlpcfg to determine pextp version, because only V1 need use vlpcfg*/
+	if (port->vlpcfg) {
+		dev_info(port->dev, "V1:AP HW MODE:%#x, Modem HW MODE:%#x, PEXTP_PWRCTL_3:%#x, Clock gate:%#x, MSI select=%#x\n",
+			readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_0),
+			readl_relaxed(port->pextpcfg + PEXTP_RSV_0),
+			readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_3),
+			readl_relaxed(port->pextpcfg + PCIE_PEXTP_CG_0),
+			readl_relaxed(port->pextpcfg + PCIE_MSI_SEL));
 
-	dev_info(port->dev, "V2:Modem HW MODE:%#x, RC HW MODE:%#x, EP HW MODE:%#x, Clock gate:%#x, Sleep protect:%#x\n",
+		return;
+	}
+
+	dev_info(port->dev, "V2:Modem HW MODE:%#x, RC HW MODE:%#x, EP HW MODE:%#x, Clock gate:%#x, REQ_STA:%#x, REQ_CTRL:%#x, Sleep protect:%#x\n",
 		readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_4),
 		readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_6),
 		readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_8),
 		readl_relaxed(port->pextpcfg + PCIE_PEXTP_CG_0),
+		readl_relaxed(port->pextpcfg + PEXTP_RES_REQ_STA),
+		readl_relaxed(port->pextpcfg + PEXTP_REQ_CTRL),
 		readl_relaxed(port->pextpcfg + PEXTP_SLPPROT_RDY));
 }
 
@@ -720,6 +728,7 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 	if (err) {
 		val = readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG);
 		dev_info(port->dev, "PCIe link down, ltssm reg val: %#x\n", val);
+		port->phy->ops->calibrate(port->phy);
 		if (!port->soft_off)
 			return err;
 	} else {
@@ -828,7 +837,6 @@ static struct msi_domain_info mtk_msi_domain_info = {
 static void mtk_compose_msi_msg(struct irq_data *data, struct msi_msg *msg)
 {
 	struct mtk_msi_set *msi_set = irq_data_get_irq_chip_data(data);
-	struct mtk_pcie_port *port = data->domain->host_data;
 	unsigned long hwirq;
 
 	hwirq =	data->hwirq % PCIE_MSI_IRQS_PER_SET;
@@ -836,8 +844,6 @@ static void mtk_compose_msi_msg(struct irq_data *data, struct msi_msg *msg)
 	msg->address_hi = upper_32_bits(msi_set->msg_addr);
 	msg->address_lo = lower_32_bits(msi_set->msg_addr);
 	msg->data = hwirq;
-	dev_dbg(port->dev, "msi#%#lx address_hi %#x address_lo %#x data %d\n",
-		hwirq, msg->address_hi, msg->address_lo, msg->data);
 }
 
 static void mtk_msi_bottom_irq_ack(struct irq_data *data)
@@ -1627,6 +1633,8 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		readl_relaxed(port->base + PCIE_RES_STATUS),
 		readl_relaxed(port->base + PHY_ERR_DEBUG_LANE0));
 
+	/* Clear LTSSM record info after dump */
+	writel_relaxed(PCIE_LTSSM_STATE_CLEAR, port->base + PCIE_LTSSM_STATUS_REG);
 	/* Clear AXI info after dump */
 	writel_relaxed(PCIE_ERR_STS_CLEAR, port->base + PCIE_AXI0_ERR_INFO);
 
@@ -1785,6 +1793,9 @@ u32 mtk_pcie_dump_link_info(int port)
 	val = readl_relaxed(pcie_port->base + PCIE_AER_UNC_STATUS);
 	if (val & PCIE_AER_UNC_MTLP)
 		ret_val |= BIT(8);
+
+	if (val & PCI_ERR_UNC_COMP_TIME)
+		ret_val |= BIT(6);
 
 	val = readl_relaxed(pcie_port->base + PCIE_MSI_SET_BASE_REG +
 			    PCIE_MSI_SET_OFFSET + PCIE_MSI_SET_STATUS_OFFSET);
@@ -2223,6 +2234,9 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 		dev_info(port->dev, "pcie LTSSM=%#x, pcie L1SS_pm=%#x\n",
 			 readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 			 readl_relaxed(port->base + PCIE_ISTATUS_PM));
+
+		/* Clear LTSSM record info after dump */
+		writel_relaxed(PCIE_LTSSM_STATE_CLEAR, port->base + PCIE_LTSSM_STATUS_REG);
 
 		if (port->data->suspend_l12) {
 			err = port->data->suspend_l12(port);
