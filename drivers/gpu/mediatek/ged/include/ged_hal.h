@@ -18,4 +18,9 @@ void ged_hal_exit(void);
 
 extern unsigned int ignore_fpsgo_enable;
 extern int stat_mcu_store[][30];
+
+//MBrain
+extern int g_real_oppfreq_num;
+extern int g_real_minfreq_idx;
+
 #endif

@@ -341,5 +341,25 @@ void ged_dvfs_set_lb_async_perf_diff(int perfDiffTH);
 int ged_dvfs_get_lb_async_perf_diff(void);
 void ged_dvfs_write_sysram_virtual_commit_idx(int top_idx, int stack_idx);
 
+/* MBrain */
+//GPU freq part:
+#define MAX_OPP_LOGS_COLUMN_DIGITS 64
+struct GED_DVFS_OPP_STAT {
+	/* unit: ms */
+	uint64_t ui64Active;
+	uint64_t ui64Idle;
+};
+void ged_dvfs_reset_opp_cost(int oppsize);
+int ged_dvfs_query_opp_cost(struct GED_DVFS_OPP_STAT *psReport,
+				int i32NumOpp, bool bStript, u64 *last_ts);
+int ged_dvfs_init_opp_cost(void);
+int ged_dvfs_get_real_oppfreq_num(void);
+extern unsigned int ged_kpi_enabled(void);
 
+//GPU power state part:
+int ged_dvfs_query_power_state_time(u64 *off_time, u64 *idle_time, u64 *on_time, u64 *last_ts);
+
+//GPU average loading part:
+int ged_dvfs_query_loading(u64 *sum_loading, u64 *sum_delta_time);
+/* MBrain end */
 #endif

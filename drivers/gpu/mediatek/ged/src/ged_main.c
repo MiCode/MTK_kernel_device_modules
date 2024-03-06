@@ -785,6 +785,14 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 		goto ERROR;
 	}
 
+	/* MBrain */
+	err = ged_dvfs_init_opp_cost();
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("failed to init opp cost\n");
+		goto ERROR;
+	}
+	/* MBrain end */
+
 	err = ged_notify_sw_vsync_system_init();
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE("Failed to init notify sw vsync!\n");
