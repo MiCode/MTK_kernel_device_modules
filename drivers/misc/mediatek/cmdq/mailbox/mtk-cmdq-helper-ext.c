@@ -2329,20 +2329,22 @@ s32 cmdq_pkt_sleep_reuse(struct cmdq_pkt *pkt, u32 tick, u16 reg_gpr,
 	lop.idx = CMDQ_TPR_ID;
 	rop.reg = false;
 	rop.value = 1;
-	if (spr3_timer)
+	if (spr3_timer) {
 		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_SUBTRACT,
 			CMDQ_THR_SPR_IDX3, &lop, &rop);
-	else
+		cmdq_pkt_write(pkt, NULL, timeout_en, tpr_en, tpr_en);
+	} else {
 		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_SUBTRACT,
 			CMDQ_GPR_CNT_ID + reg_gpr, &lop, &rop);
 
-	lop.reg = true;
-	lop.idx = CMDQ_CPR_TPR_MASK;
-	rop.reg = false;
-	rop.value = tpr_en;
-	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_OR, CMDQ_CPR_TPR_MASK,
-		&lop, &rop);
-	cmdq_pkt_write_indriect(pkt, NULL, timeout_en, CMDQ_CPR_TPR_MASK, ~0);
+		lop.reg = true;
+		lop.idx = CMDQ_CPR_TPR_MASK;
+		rop.reg = false;
+		rop.value = tpr_en;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_OR, CMDQ_CPR_TPR_MASK,
+			&lop, &rop);
+		cmdq_pkt_write_indriect(pkt, NULL, timeout_en, CMDQ_CPR_TPR_MASK, ~0);
+	}
 	cmdq_pkt_read(pkt, NULL, timeout_en, CMDQ_SPR_FOR_TEMP);
 	cmdq_pkt_clear_event(pkt, event);
 
@@ -2407,12 +2409,16 @@ s32 cmdq_pkt_sleep_reuse(struct cmdq_pkt *pkt, u32 tick, u16 reg_gpr,
 	inst = cmdq_pkt_get_va_by_offset(pkt, end_addr_mark);
 	*inst |= CMDQ_REG_SHIFT_ADDR(cmdq_pkt_get_curr_buf_pa(pkt));
 
-	lop.reg = true;
-	lop.idx = CMDQ_CPR_TPR_MASK;
-	rop.reg = false;
-	rop.value = ~tpr_en;
-	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_AND, CMDQ_CPR_TPR_MASK,
-		&lop, &rop);
+	if (spr3_timer) {
+		cmdq_pkt_write(pkt, NULL, timeout_en, ~tpr_en, tpr_en);
+	} else {
+		lop.reg = true;
+		lop.idx = CMDQ_CPR_TPR_MASK;
+		rop.reg = false;
+		rop.value = ~tpr_en;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_AND, CMDQ_CPR_TPR_MASK,
+			&lop, &rop);
+	}
 
 	return 0;
 }
