@@ -4,6 +4,9 @@
  */
 #include <linux/rbtree.h>
 
+extern void set_task_basic_vip(int pid);
+extern void unset_task_basic_vip(int pid);
+
 void fbt_ux_frame_start(struct render_info *thr, unsigned long long ts);
 void fbt_ux_frame_end(struct render_info *thr,
 		unsigned long long start_ts, unsigned long long end_ts);
