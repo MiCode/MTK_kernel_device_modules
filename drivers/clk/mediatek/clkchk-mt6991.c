@@ -3102,12 +3102,14 @@ static const char * const off_pll_names[] = {
 	"tvdpll1",
 	"tvdpll2",
 	"tvdpll3",
+	NULL
 };
 
 static const char * const notice_pll_names[] = {
 	"adsppll",
 	"vlp-apll1",
 	"vlp-apll2",
+	NULL
 };
 
 static const char * const bypass_pll_name[] = {
