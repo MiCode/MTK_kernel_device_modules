@@ -90,9 +90,9 @@ struct DISP_C3D_REG_9BIN {
 struct mtk_disp_c3d_data {
 	bool support_shadow;
 	bool need_bypass_shadow;
-	int bin_num;
-	int c3d_sram_start_addr;
-	int c3d_sram_end_addr;
+	int def_bin_num;
+	int def_sram_start_addr;
+	int def_sram_end_addr;
 };
 
 struct mtk_disp_c3d_tile_overhead {
@@ -107,10 +107,8 @@ struct mtk_disp_c3d_tile_overhead_v {
 };
 
 struct mtk_disp_c3d_primary {
-	struct DISP_C3D_REG_17BIN c3d_reg_17bin;
-	struct DISP_C3D_REG_9BIN c3d_reg_9bin;
+	struct DISP_C3D_REG_17BIN c3d_reg;
 	unsigned int c3d_sram_cfg[DISP_C3D_SRAM_SIZE_17BIN];
-	unsigned int c3d_sram_cfg_9bin[DISP_C3D_SRAM_SIZE_9BIN];
 	unsigned int c3d_lut1d[DISP_C3D_1DLUT_SIZE];
 	struct DISP_C3D_LUT c3d_ioc_data;
 	atomic_t c3d_force_relay;
@@ -147,6 +145,10 @@ struct mtk_disp_c3d {
 	bool has_set_1dlut;
 	bool set_partial_update;
 	unsigned int roi_height;
+	int bin_num;
+	int sram_start_addr;
+	int sram_end_addr;
+	int c3dlut_size;
 };
 
 inline struct mtk_disp_c3d *comp_to_c3d(struct mtk_ddp_comp *comp);
