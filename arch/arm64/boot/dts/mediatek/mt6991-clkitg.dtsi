@@ -11,11 +11,8 @@
 		reg = <0x0>;
 		clocks =
 			<&cksys_clk CLK_CK_UART_SEL>,
-			<&cksys_clk CLK_CK_ADSP_SEL>,
-			<&cksys_clk CLK_CK_ADSP_UARTHUB_BCLK_SEL>,
 			<&cksys_clk CLK_CK_UARTHUB_BCLK_SEL>,
 			<&apmixedsys_clk CLK_APMIXED_UNIVPLL>,
-			<&apmixedsys_clk CLK_APMIXED_ADSPPLL>,
 			<&cksys_gp2_clk CLK_CK2_IMG1_SEL>,
 			<&cksys_gp2_clk CLK_CK2_IPE_SEL>,
 			<&cksys_gp2_clk CLK_CK2_DPE_SEL>,
@@ -513,21 +510,6 @@
 		reg = <0x24>;
 		clocks =
 			<&ccu_main_clk CLK_CCUSYS_CCU0_CON_CCU0>;
-	};
-	bring-up-pd-adsp-top-dormant@31 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x31>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_ADSP_TOP_DORMANT>;
-	};
-	bring-up-pd-adsp-infra@32 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x32>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_ADSP_INFRA>;
-	};
-	bring-up-pd-adsp-ao@33 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x33>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_ADSP_AO>;
 	};
 	bring-up-pd-mm-proc-dormant@34 {
 		compatible = "mediatek,scpsys-bring-up";
