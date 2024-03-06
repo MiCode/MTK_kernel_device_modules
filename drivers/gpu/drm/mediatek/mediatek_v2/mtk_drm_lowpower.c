@@ -1317,12 +1317,11 @@ unsigned int mtk_drm_set_idlemgr(struct drm_crtc *crtc, unsigned int flag,
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
-	unsigned int old_flag;
 
 	if (!idlemgr)
 		return 0;
 
-	old_flag = atomic_read(&idlemgr->idlemgr_task_active);
+	idlemgr->old_flag = atomic_read(&idlemgr->idlemgr_task_active);
 
 	if (flag) {
 		DDPINFO("[LP] enable idlemgr\n");
@@ -1334,7 +1333,7 @@ unsigned int mtk_drm_set_idlemgr(struct drm_crtc *crtc, unsigned int flag,
 		mtk_drm_idlemgr_kick(__func__, crtc, need_lock);
 	}
 
-	return old_flag;
+	return idlemgr->old_flag;
 }
 
 unsigned long long
