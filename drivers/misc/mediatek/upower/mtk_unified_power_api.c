@@ -88,9 +88,12 @@ void upower_update_tables_by_eem(void)
 	upower_update_dyn_pwr();
 	upower_update_lkg_pwr();
 
+#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
+	get_pwr_efficiency();
+#else
 	get_L_pwr_efficiency();
 	get_LL_pwr_efficiency();
-
+#endif
 	upower_cal_turn_point();
 }
 EXPORT_SYMBOL(upower_update_tables_by_eem);
