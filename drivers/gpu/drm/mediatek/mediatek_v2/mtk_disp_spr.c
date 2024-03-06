@@ -723,6 +723,7 @@ struct mtk_disp_spr {
 	struct mtk_disp_spr_tile_overhead_v tile_overhead_v;
 	unsigned int set_partial_update;
 	unsigned int roi_height;
+	unsigned int partial_roi_y;
 	enum SPR_IP_TYPE spr_ip_type;
 };
 
@@ -1259,7 +1260,7 @@ static void mtk_disp_spr_config_overhead_v(struct mtk_ddp_comp *comp,
 	/*set component overhead*/
 	if(spr->data && spr->data->version == MTK_SPR_V3 &&
 		spr->spr_ip_type == DISP_MTK_SPR)
-		spr->tile_overhead_v.comp_overhead_v = 1;
+		spr->tile_overhead_v.comp_overhead_v = 2;
 	else
 		spr->tile_overhead_v.comp_overhead_v = 4;
 	/*add component overhead on total overhead*/
@@ -1684,8 +1685,8 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 		comp_overhead_v = (!overhead_v) ? 0 : spr->tile_overhead_v.comp_overhead_v;
 		height = spr->roi_height + overhead_v * 2;
 		out_height = spr->roi_height + (overhead_v - comp_overhead_v) * 2;
-		image_pos_y = (cfg->h - height) / 2;
-		output_pos_y = (cfg->h - out_height) / 2;
+		image_pos_y = spr->partial_roi_y - overhead_v;
+		output_pos_y = spr->partial_roi_y - overhead_v + comp_overhead_v;
 	}
 	DDPMSG("%s %d panel height:%d panel width:%d\n",
 		__func__, __LINE__, cfg->h, cfg->w);
@@ -1695,9 +1696,9 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 	DDPMSG("%s %d: MTK SPR IP\n", __func__, __LINE__);
 	offset = spr->data->mtk_spr_ip_addr_offset;
 	//input size config
-	mtk_ddp_write_relaxed(comp, image_pos_x,
+	mtk_ddp_write_relaxed(comp, 0, //position based on input
 		MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_POS_X + offset, handle);
-	mtk_ddp_write_relaxed(comp, image_pos_y,
+	mtk_ddp_write_relaxed(comp, 0,
 		MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_POS_Y + offset, handle);
 	mtk_ddp_write_relaxed(comp, width,
 		MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_WIDTH + offset, handle);
@@ -1710,10 +1711,14 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 	//output size config
 	mtk_ddp_write_relaxed(comp, (spr->set_partial_update == 1) ? 1 : 0,
 		MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_EN + offset, handle);
-	mtk_ddp_write_relaxed(comp, output_pos_x,
+	mtk_ddp_write_relaxed(comp, 0,
 		MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_POS_X + offset, handle);
-	mtk_ddp_write_relaxed(comp, output_pos_y,
-		MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_POS_Y + offset, handle);
+	if (spr->set_partial_update == 1)
+		mtk_ddp_write_relaxed(comp, comp_overhead_v, //position based on input
+			MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_POS_Y + offset, handle);
+	else
+		mtk_ddp_write_relaxed(comp, 0, //position based on input
+			MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_POS_Y + offset, handle);
 	mtk_ddp_write_relaxed(comp, width,
 		MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_WIDTH + offset, handle);
 	mtk_ddp_write_relaxed(comp, out_height,
@@ -1982,10 +1987,6 @@ void mtk_cal_spr_valid_partial_roi(struct mtk_drm_crtc *crtc,
 			partial_roi->height = full_height;
 	}
 
-	if (spr->data && spr->data->version == MTK_SPR_V3 &&
-		spr->spr_ip_type == DISP_MTK_SPR)
-		return;
-
 	/* spr roi size must be greater than 120 lines*/
 	if (partial_roi->height < 120) { //extension upwards first
 		line_diff = (partial_roi->y + partial_roi->height - full_height / 2) -
@@ -2046,6 +2047,7 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 			? 0 : spr->tile_overhead_v.overhead_v;
 	comp_overhead_v = (!overhead_v) ? 0 : spr->tile_overhead_v.comp_overhead_v;
 	spr->roi_height = partial_roi.height;
+	spr->partial_roi_y = partial_roi.y;
 	crop_voffset = comp_overhead_v;
 	crop_height = spr->roi_height + (overhead_v - comp_overhead_v) * 2;
 
@@ -2069,12 +2071,12 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 				MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_EN + offset, handle);
 		if (spr->set_partial_update == 1) {
 			//input size config
-			mtk_ddp_write_relaxed(comp, (partial_roi.y - overhead_v),
+			mtk_ddp_write_relaxed(comp, 0,
 				MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_POS_Y + offset, handle);
 			mtk_ddp_write_relaxed(comp, (partial_roi.height + overhead_v * 2),
 				MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_HEIGHT + offset, handle);
 			//output size config
-			mtk_ddp_write_relaxed(comp, (partial_roi.y - comp_overhead_v),
+			mtk_ddp_write_relaxed(comp, comp_overhead_v,
 				MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_POS_Y + offset, handle);
 			mtk_ddp_write_relaxed(comp, crop_height,
 				MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_HEIGHT + offset, handle);
@@ -2083,10 +2085,14 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 				REG_FLD_MASK(MT6989_VSIZE), handle);
 		} else {
 			//input size config
-			mtk_ddp_write_relaxed(comp, 0x0,
+			mtk_ddp_write_relaxed(comp, 0,
 				MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_POS_Y + offset, handle);
 			mtk_ddp_write_relaxed(comp, full_height,
 				MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_HEIGHT + offset, handle);
+			mtk_ddp_write_relaxed(comp, 0,
+				MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_POS_Y + offset, handle);
+			mtk_ddp_write_relaxed(comp, full_height,
+				MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_HEIGHT + offset, handle);
 			mtk_ddp_write_mask(postalign_comp, full_height << 0,
 				MT6989_DISP_REG_POSTALIGN0_SIZE,
 				REG_FLD_MASK(MT6989_VSIZE), handle);
