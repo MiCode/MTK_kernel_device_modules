@@ -12201,6 +12201,141 @@ static char *ddp_signal_0_mt6833(int bit)
 	}
 }
 
+static char *ddp_signal_0_mt6877(int bit)
+{
+	switch (bit) {
+	case 0:
+		return
+			"DISP_AAL0_TO_DISP_GAMMA0_VALID";
+	case 1:
+		return
+			"DISP_BYPASS_SPR0_SEL_TO_DISP_SPR0_MOUT_VALID";
+	case 2:
+		return
+			"DISP_CCORR0_TO_DISP_CCORR1_VALID";
+	case 3:
+		return
+			"DISP_CCORR1_TO_DISP_AAL0_VALID";
+	case 4:
+		return
+			"DISP_CM0_TO_DISP_SPR0_VALID";
+	case 5:
+		return
+			"DISP_COLOR0_TO_DISP_CCORR0_VALID";
+	case 6:
+		return
+			"DISP_DITHER0_TO_DISP_DITHER0_MOUT_VALID";
+	case 7:
+		return
+			"DISP_DITHER0_MOUT_OUT0_TO_BYPA_SPR0_SEL_IN0_VALID";
+	case 8:
+		return
+			"DISP_DITHER0_MOUT_OUT1_TO_DISP_CM0_VALID";
+	case 9:
+		return
+			"DISP_DITHER0_MOUT_OUT2_TO_DISP_WDMA0_SEL_IN4_VALID";
+	case 10:
+		return
+			"DISP_DSC_WRAP0_TO_DSI0_SEL_IN2_VALID";
+	case 11:
+		return
+			"DISP_GAMMA0_TO_DISP_POSTMASK0_VALID";
+	case 12:
+		return
+			"DISP_OVL0_2L_OUT0_TO_DISP_TOVL0_OUT0_MOUT_VALID";
+	case 13:
+		return
+			"DISP_OVL0_2L_OUT1_TO_DISP_OVL0_IN0_VALID";
+	case 14:
+		return
+			"DISP_OVL0_OUT0_TO_DISP_TOVL0_OUT1_MOUT_VALID";
+	case 15:
+		return
+			"DISP_OVL0_OUT1_TO_DISP_OVL0_2L_IN0_VALID";
+	case 16:
+		return
+			"DISP_POSTMASK0_TO_DISP_DITHER0_VALID";
+	case 17:
+		return
+		"DISP_RDMA0_TO_DISP_RDMA0_RSZ0_SOUT_VALID";
+	case 18:
+		return
+		"DISP_RDMA0_RSZ0_SOUT_OUT0_TO_DSI0_SEL_IN0_VALID";
+	case 19:
+		return
+		"DISP_RDMA0_RSZ0_SOUT_OUT1_TO_DISP_COLOR0_VALID";
+	case 20:
+		return
+			"DISP_RDMA0_SEL_TO_DISP_RDMA0_VALID";
+	case 21:
+		return
+			"DISP_RDMA2_RSZ0_RSZ1_SOUT_OUT0_TO_OVL0_2L_IN2_VALID";
+	case 22:
+		return
+			"DISP_RDMA2_RSZ0_RSZ1_SOUT_OUT1_TO_OVL0_IN2_VALID";
+	case 23:
+		return
+			"DISP_RSZ0_TO_DISP_RSZ0_MOUT_VALID";
+	case 24:
+		return
+			"DISP_RSZ0_MOUT_OUT0_TO_DISP_RDMA0_SEL_IN1_VALID";
+	case 25:
+		return
+			"DISP_RSZ0_MOUT_OUT0_TO_DISP_RDMA0_SEL_IN1_VALID";
+	case 26:
+		return
+			"DISP_RSZ0_MOUT_OUT2_TO_RDMA2_RSZ0_RSZ1_SOUT_VALID";
+	case 27:
+		return "DISP_RSZ0_SEL_TO_DISP_RSZ0_VALID";
+	case 28:
+		return
+			"DISP_SPR0_TO_DISP_BYPASS_SPR0_SEL_IN1_VALID";
+	case 29:
+		return
+			"DISP_SPR0_MOUT_OUT0_TO_DSI0_SEL_IN1_VALID";
+	case 30:
+		return
+			"DISP_SPR0_MOUT_OUT1_TO_DISP_WDMA0_SEL_IN0_VALID";
+	case 31:
+		return
+			"DISP_SPR0_MOUT_OUT2_TO_DISP_DSC_WRAP0_VALID";
+	default:
+		return NULL;
+	}
+}
+
+static char *ddp_signal_1_mt6877(int bit)
+{
+	switch (bit) {
+	case 0:
+		return
+			"DISP_TOVL0_OUT0_MOUT_OUT0_TO_DISP_RDMA0_SEL_IN2_VALID";
+	case 1:
+		return
+			"DISP_TOVL0_OUT0_MOUT_OUT1_TO_DISP_RSZ0_SEL_IN0_VALID";
+	case 2:
+		return
+			"TOVL0_OUT0_MOUT_OUT2_TO_DISP_WDMA0_SEL_IN2_VALID";
+	case 3:
+		return
+			"DISP_TOVL0_OUT1_MOUT_OUT0_TO_DISP_RDMA0_SEL_IN0_VALID";
+	case 4:
+		return
+			"DISP_TOVL0_OUT1_MOUT_OUT1_TO_DISP_RSZ0_SEL_IN1_VALID";
+	case 5:
+		return
+			"DISP_TOVL0_OUT1_MOUT_OUT2_TO_DISP_WDMA0_SEL_IN3_VALID";
+	case 6:
+		return
+		"DISP_WDMA0_SEL_TO_DISP_WDMA0_VALID";
+	case 7:
+		return
+		"THP_LMT_DSI0_TO_DSI0_VALID";
+	default:
+		return NULL;
+	}
+}
+
 static char *ddp_signal_0_mt6879(int bit)
 {
 	switch (bit) {
@@ -13086,6 +13221,40 @@ static char *ddp_greq_name_larb1_mt6833(int bit)
 		return "DISP_RDMA0 ";
 	case 3:
 		return "DISP_WDMA0 ";
+	case 4:
+		return "DISP_FAKE_ENG1 ";
+	default:
+		return NULL;
+	}
+}
+
+static char *ddp_greq_name_larb0_mt6877(int bit)
+{
+	switch (bit) {
+	case 0:
+		return "DISP_POSTMASK0 ";
+	case 1:
+		return "DISP_OVL0_HDR ";
+	case 2:
+		return "DISP_OVL0 ";
+	case 3:
+		return "DISP_FAKE_ENG0 ";
+	default:
+		return NULL;
+	}
+}
+
+static char *ddp_greq_name_larb1_mt6877(int bit)
+{
+	switch (bit) {
+	case 0:
+		return "DISP_OVL0_2L_HDR ";
+	case 1:
+		return "DISP_OVL0_2L ";
+	case 2:
+		return "DISP_RDMA0";
+	case 3:
+		return "DISP_WDMA0";
 	case 4:
 		return "DISP_FAKE_ENG1 ";
 	default:
@@ -14411,6 +14580,52 @@ static char *ddp_get_mutex_module0_name_mt6833(unsigned int bit)
 		return "disp_wdma0";
 	case 16:
 		return "disp_pwm0";
+	default:
+		return "mutex-unknown";
+	}
+}
+
+static char *ddp_get_mutex_module0_name_mt6877(unsigned int bit)
+{
+	switch (bit) {
+	case 0:
+		return "disp_ovl0";
+	case 1:
+		return "disp_ovl0_2l";
+	case 2:
+		return "disp_rdma0";
+	case 3:
+		return "disp_rsz0";
+	case 4:
+		return "disp_color0";
+	case 5:
+		return "disp_ccorr0";
+	case 6:
+		return "disp_ccorr1";
+	case 7:
+		return "disp_aal0";
+	case 8:
+		return "disp_gamma0";
+	case 9:
+		return "disp_postmask0";
+	case 10:
+		return "disp_dither0";
+	case 11:
+		return "disp_cm0";
+	case 12:
+		return "spr0";
+	case 13:
+		return "disp_dsc_wrap0";
+	case 14:
+		return "dsi0";
+	case 15:
+		return "disp_wdma0";
+	case 16:
+		return "disp_pwm0";
+	case 17:
+		return "disp_ovl1_2l";
+	case 18:
+		return "disp_ufbc_wdma0";
 	default:
 		return "mutex-unknown";
 	}
@@ -18160,6 +18375,68 @@ static char *ddp_clock_0_mt6853(int bit)
 		return "reserve, ";
 	case 24:
 		return "smi_iommu, ";
+	default:
+		return NULL;
+	}
+}
+
+static char *ddp_clock_0_mt6877(int bit)
+{
+	switch (bit) {
+	case 0:
+		return "disp_mutex0, ";
+	case 1:
+		return "dispsys_config, ";
+	case 2:
+		return "disp_ovl0, ";
+	case 3:
+		return "disp_rdma0, ";
+	case 4:
+		return "disp_ovl0_2l, ";
+	case 5:
+		return "disp_wdma0, ";
+	case 6:
+		return "disp_ccorr1, ";
+	case 7:
+		return "disp_rsz0, ";
+	case 8:
+		return "disp_aal0, ";
+	case 9:
+		return "disp_ccorr0, ";
+	case 10:
+		return "disp_color0, ";
+	case 11:
+		return "smi_infra, ";
+	case 12:
+		return "reserve, ";
+	case 13:
+		return "disp_gamma0, ";
+	case 14:
+		return "disp_postmask0, ";
+	case 15:
+		return "spr0, ";
+	case 16:
+		return "disp_dither0, ";
+	case 17:
+		return "smi_common, ";
+	case 18:
+		return "disp_cm0, ";
+	case 19:
+		return "dsi0, ";
+	case 20:
+		return "disp_fake_eng0, ";
+	case 21:
+		return "disp_fake_eng1, ";
+	case 22:
+		return "smi_gals, ";
+	case 23:
+		return "disp_dsc_wrap0, ";
+	case 24:
+		return "smi_iommu, ";
+	case 26:
+		return "disp_ovl1_2l, ";
+	case 27:
+		return "disp_ufbc_wdma, ";
 	default:
 		return NULL;
 	}
@@ -30476,7 +30753,7 @@ void mutex_dump_analysis_mt6877(struct mtk_disp_mutex *mutex)
 
 			if ((regval & (1 << j))) {
 				len = sprintf(p, "%s,",
-					ddp_get_mutex_module0_name_mt6833(j));
+					ddp_get_mutex_module0_name_mt6877(j));
 				if (len >= 0)
 					p += len;
 			}
@@ -33660,24 +33937,42 @@ void mmsys_config_dump_analysis_mt6833(void __iomem *config_regs)
 void mmsys_config_dump_analysis_mt6877(void __iomem *config_regs)
 {
 	unsigned int i = 0;
-	int len = 0;
 	unsigned int reg = 0;
 	char clock_on[512] = {'\0'};
 	char *pos = NULL;
-	char *name = NULL;
-	unsigned int valid = 0;
-	unsigned int ready = 0;
-	unsigned int greq0 = 0, greq1 = 0;
+	char *name;
 
-	valid =
+	//same address for 6877
+	unsigned int valid0 =
 		readl_relaxed(config_regs + MT6873_DISP_REG_CONFIG_DL_VALID_0);
-	ready =
-		readl_relaxed(config_regs + MT6873_DISP_REG_CONFIG_DL_READY_0);
+	unsigned int valid1 =
+		readl_relaxed(config_regs + MT6873_DISP_REG_CONFIG_DL_VALID_1);
+	unsigned int valid2 =
+		readl_relaxed(config_regs + MT6873_DISP_REG_CONFIG_DL_VALID_2);
+	unsigned int valid3 =
+		readl_relaxed(config_regs + MT6873_DISP_REG_CONFIG_DL_VALID_3);
+	unsigned int valid4 =
+		readl_relaxed(config_regs + MT6873_DISP_REG_CONFIG_DL_VALID_4);
+	unsigned int valid5 =
+		readl_relaxed(config_regs + MT6873_DISP_REG_CONFIG_DL_VALID_5);
 
-	greq0 =
+	unsigned int ready0 =
+		readl_relaxed(config_regs + MT6873_DISP_REG_CONFIG_DL_READY_0);
+	unsigned int ready1 =
+		readl_relaxed(config_regs + MT6873_DISP_REG_CONFIG_DL_READY_1);
+	unsigned int ready2 =
+		readl_relaxed(config_regs + MT6873_DISP_REG_CONFIG_DL_READY_2);
+	unsigned int ready3 =
+		readl_relaxed(config_regs + MT6873_DISP_REG_CONFIG_DL_READY_3);
+	unsigned int ready4 =
+		readl_relaxed(config_regs + MT6873_DISP_REG_CONFIG_DL_READY_4);
+	unsigned int ready5 =
+		readl_relaxed(config_regs + MT6873_DISP_REG_CONFIG_DL_READY_5);
+
+	unsigned int greq0 =
 		readl_relaxed(config_regs +
 				MT6873_DISP_REG_CONFIG_SMI_LARB0_GREQ);
-	greq1 =
+	unsigned int greq1 =
 		readl_relaxed(config_regs +
 				MT6873_DISP_REG_CONFIG_SMI_LARB1_GREQ);
 
@@ -33685,7 +33980,7 @@ void mmsys_config_dump_analysis_mt6877(void __iomem *config_regs)
 	reg = readl_relaxed(config_regs + DISP_REG_CONFIG_MMSYS_CG_CON0_MT6873);
 	for (i = 0; i < 32; i++) {
 		if ((reg & (1 << i)) == 0) {
-			name = ddp_clock_0_mt6833(i);
+			name = ddp_clock_0_mt6877(i);
 			if (name)
 				strncat(clock_on, name, (sizeof(clock_on) -
 							 strlen(clock_on) - 1));
@@ -33693,34 +33988,56 @@ void mmsys_config_dump_analysis_mt6877(void __iomem *config_regs)
 	}
 
 	DDPDUMP("clock on modules:%s\n", clock_on);
-	DDPDUMP("va=0x%x, rd=0x%x, greq0=0x%x, greq1=0x%x\n", valid, ready, greq0, greq1);
+
+	DDPDUMP("va0=0x%x,va1=0x%x,va2=0x%x,va3=0x%x,va4=0x%x,va5=0x%x\n",
+		valid0, valid1,	valid2, valid3, valid4, valid5);
+	DDPDUMP("rd0=0x%x,rd1=0x%x,rd2=0x%x,rd3=0x%x,rd4=0x%x,rd5=0x%x\n",
+		ready0, ready1, ready2, ready3, ready4, ready5);
+	DDPDUMP("greq0=0x%x greq1=0x%x\n", greq0, greq1);
 	for (i = 0; i < 32; i++) {
-		name = ddp_signal_0_mt6833(i);
+		name = ddp_signal_0_mt6877(i);
 		if (!name)
 			continue;
 
 		pos = clock_on;
 
-		if ((valid & (1 << i)))
-			len = sprintf(pos, "%s,", "v");
+		if ((valid0 & (1 << i)))
+			pos += sprintf(pos, "%s,", "v");
 		else
-			len = sprintf(pos, "%s,", "n");
-		if (len >= 0)
-			pos += len;
+			pos += sprintf(pos, "%s,", "n");
 
-		if ((ready & (1 << i)))
-			len = sprintf(pos, "%s", "r");
+		if ((ready0 & (1 << i)))
+			pos += sprintf(pos, "%s", "r");
 		else
-			len = sprintf(pos, "%s", "n");
-		if (len >= 0)
-			pos += len;
+			pos += sprintf(pos, "%s", "n");
 
-		len = sprintf(pos, ": %s", name);
-		if (len >= 0)
-			pos += len;
+		pos += sprintf(pos, ": %s", name);
 
 		DDPDUMP("%s\n", clock_on);
 	}
+
+	for (i = 0; i < 32; i++) {
+		name = ddp_signal_1_mt6877(i);
+		if (!name)
+			continue;
+
+		pos = clock_on;
+
+		if ((valid1 & (1 << i)))
+			pos += sprintf(pos, "%s,", "v");
+		else
+			pos += sprintf(pos, "%s,", "n");
+
+		if ((ready1 & (1 << i)))
+			pos += sprintf(pos, "%s", "r");
+		else
+			pos += sprintf(pos, "%s", "n");
+
+		pos += sprintf(pos, ": %s", name);
+
+		DDPDUMP("%s\n", clock_on);
+	}
+
 
 	/* greq: 1 means SMI dose not grant, maybe SMI hang */
 	if (greq0) {
@@ -33737,7 +34054,7 @@ void mmsys_config_dump_analysis_mt6877(void __iomem *config_regs)
 	clock_on[0] = '\0';
 	for (i = 0; i < 32; i++) {
 		if (greq0 & (1 << i)) {
-			name = ddp_greq_name_larb0_mt6833(i);
+			name = ddp_greq_name_larb0_mt6877(i);
 			if (!name)
 				continue;
 			strncat(clock_on, name,
@@ -33748,7 +34065,7 @@ void mmsys_config_dump_analysis_mt6877(void __iomem *config_regs)
 
 	for (i = 0; i < 32; i++) {
 		if (greq1 & (1 << i)) {
-			name = ddp_greq_name_larb1_mt6833(i);
+			name = ddp_greq_name_larb1_mt6877(i);
 			if (!name)
 				continue;
 			strncat(clock_on, name,
