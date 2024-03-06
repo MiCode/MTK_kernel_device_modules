@@ -640,11 +640,20 @@ static void disp_aal_init_dre3_reg(struct mtk_ddp_comp *comp,
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	phys_addr_t dre3_pa = disp_aal_dre3_pa(comp);
 	int dre_alg_mode = 1;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	uint32_t dre_mapping_00;
+
+	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6761)
+		dre_mapping_00 = GKI_DISP_AAL_DRE_MAPPING_00;
+	else
+		dre_mapping_00 = DISP_AAL_DRE_MAPPING_00;
 
 	AALFLOW_LOG("start, bitShift: %d  compId%d\n", aal_data->data->bitShift, comp->id);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
-		dre3_pa + DISP_AAL_DRE_MAPPING_00,
+		dre3_pa + dre_mapping_00,
 		(init_regs->dre_map_bypass << 4), 1 << 4);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		dre3_pa + DISP_AAL_DRE_BLOCK_INFO_01,
@@ -1081,7 +1090,18 @@ static int disp_aal_write_init_regs(struct mtk_ddp_comp *comp,
 {
 	int ret = -EFAULT;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	uint32_t cabc_gainlmt_tbl_00, dre_mapping_00;
 
+	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6761) {
+		cabc_gainlmt_tbl_00 = GKI_DISP_AAL_CABC_GAINLMT_TBL_00;
+		dre_mapping_00 = GKI_DISP_AAL_DRE_MAPPING_00;
+	} else {
+		cabc_gainlmt_tbl_00 = DISP_AAL_CABC_GAINLMT_TBL_00;
+		dre_mapping_00 = DISP_AAL_DRE_MAPPING_00;
+	}
 	if (atomic_read(&aal_data->primary_data->is_init_regs_valid) == 1) {
 		struct DISP_AAL_INITREG *init_regs = &aal_data->primary_data->init_regs;
 
@@ -1089,12 +1109,12 @@ static int disp_aal_write_init_regs(struct mtk_ddp_comp *comp,
 		int *gain;
 
 		gain = init_regs->cabc_gainlmt;
-		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_DRE_MAPPING_00,
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + dre_mapping_00,
 			(init_regs->dre_map_bypass << 4), 1 << 4);
 
 		for (i = 0; i <= 10; i++) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_AAL_CABC_GAINLMT_TBL(i),
+				comp->regs_pa + DISP_AAL_CABC_GAINLMT_TBL(cabc_gainlmt_tbl_00, i),
 				CABC_GAINLMT(gain[j], gain[j + 1], gain[j + 2]),
 				~0);
 			j += 3;
@@ -1228,50 +1248,102 @@ static int disp_aal_write_dre_to_reg(struct mtk_ddp_comp *comp,
 {
 	const int *gain;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	uint32_t dre_mapping_00;
+
+	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6761)
+		dre_mapping_00 = GKI_DISP_AAL_DRE_MAPPING_00;
+	else
+		dre_mapping_00 = DISP_AAL_DRE_MAPPING_00;
 
 	gain = param->DREGainFltStatus;
 	if (aal_data->primary_data->ess20_spect_param.flag & 0x3)
 		CRTC_MMP_MARK(0, aal_ess20_curve, comp->id, 0);
 
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_DRE_MAPPING_00,
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + dre_mapping_00,
 		(aal_data->primary_data->init_regs.dre_map_bypass << 4), 1 << 4);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(0),
-	    DRE_REG_2(gain[0], 0, gain[1], 14), ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(1),
-		DRE_REG_2(gain[2], 0, gain[3], 13), ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(2),
-		DRE_REG_2(gain[4], 0, gain[5], 12), ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(3),
-		DRE_REG_2(gain[6], 0, gain[7], 11), ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(4),
-		DRE_REG_2(gain[8], 0, gain[9], 11), ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(5),
-		DRE_REG_2(gain[10], 0, gain[11], 11), ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(6),
-		DRE_REG_3(gain[12], 0, gain[13], 11, gain[14], 22), ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(7),
-		DRE_REG_3(gain[15], 0, gain[16], 10, gain[17], 20), ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(8),
-		DRE_REG_3(gain[18], 0, gain[19], 10, gain[20], 20), ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(9),
-		DRE_REG_3(gain[21], 0, gain[22], 9, gain[23], 18), ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(10),
-		DRE_REG_3(gain[24], 0, gain[25], 9, gain[26], 18), ~0);
-	/* Write dre curve to different register */
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(11),
-	    DRE_REG_2(gain[27], 0, gain[28], 9), ~0);
+
+	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6761) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(0),
+		    DRE_REG_2(gain[0], 0, gain[1], 14), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(1),
+			DRE_REG_2(gain[2], 0, gain[3], 13), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(2),
+			DRE_REG_2(gain[4], 0, gain[5], 12), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(3),
+			DRE_REG_2(gain[6], 0, gain[7], 12), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(4),
+			DRE_REG_2(gain[8], 0, gain[9], 11), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(5),
+			DRE_REG_2(gain[10], 0, gain[11], 11), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(6),
+			DRE_REG_2(gain[12], 0, gain[13], 11), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(7),
+			DRE_REG_2(gain[14], 0, gain[15], 11), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(8),
+			DRE_REG_3(gain[16], 0, gain[17], 10, gain[18], 20), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(9),
+			DRE_REG_3(gain[19], 0, gain[20], 10, gain[21], 19), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(10),
+			DRE_REG_3(gain[22], 0, gain[23], 9, gain[24], 18), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(11),
+			DRE_REG_3(gain[25], 0, gain[26], 9, gain[27], 18), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(12), gain[28], ~0);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(0),
+			DRE_REG_2(gain[0], 0, gain[1], 14), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(1),
+			DRE_REG_2(gain[2], 0, gain[3], 13), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(2),
+			DRE_REG_2(gain[4], 0, gain[5], 12), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(3),
+			DRE_REG_2(gain[6], 0, gain[7], 11), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(4),
+			DRE_REG_2(gain[8], 0, gain[9], 11), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(5),
+			DRE_REG_2(gain[10], 0, gain[11], 11), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(6),
+			DRE_REG_3(gain[12], 0, gain[13], 11, gain[14], 22), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(7),
+			DRE_REG_3(gain[15], 0, gain[16], 10, gain[17], 20), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(8),
+			DRE_REG_3(gain[18], 0, gain[19], 10, gain[20], 20), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(9),
+			DRE_REG_3(gain[21], 0, gain[22], 9, gain[23], 18), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(10),
+			DRE_REG_3(gain[24], 0, gain[25], 9, gain[26], 18), ~0);
+		/* Write dre curve to different register */
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(11),
+			DRE_REG_2(gain[27], 0, gain[28], 9), ~0);
+	}
 
 	return 0;
 }
@@ -1281,8 +1353,17 @@ static int disp_aal_write_cabc_to_reg(struct mtk_ddp_comp *comp,
 {
 	int i;
 	const int *gain;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	uint32_t cabc_gainlmt_tbl_00;
 
 	AALFLOW_LOG("\n");
+	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6761)
+		cabc_gainlmt_tbl_00 = GKI_DISP_AAL_CABC_GAINLMT_TBL_00;
+	else
+		cabc_gainlmt_tbl_00 = DISP_AAL_CABC_GAINLMT_TBL_00;
+
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_AAL_CABC_00,
 		1 << 31, 1 << 31);
@@ -1293,7 +1374,7 @@ static int disp_aal_write_cabc_to_reg(struct mtk_ddp_comp *comp,
 	gain = param->cabc_gainlmt;
 	for (i = 0; i <= 10; i++) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_AAL_CABC_GAINLMT_TBL(i),
+			comp->regs_pa + DISP_AAL_CABC_GAINLMT_TBL(cabc_gainlmt_tbl_00, i),
 			CABC_GAINLMT(gain[0], gain[1], gain[2]), ~0);
 		gain += 3;
 	}
