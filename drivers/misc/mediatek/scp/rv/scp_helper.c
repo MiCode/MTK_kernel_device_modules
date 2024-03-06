@@ -2187,13 +2187,16 @@ void scp_recovery_init(void)
 	/*init reset work*/
 	INIT_WORK(&scp_sys_reset_work.work, scp_sys_reset_ws);
 
-	scp_loader_virt = ioremap_wc(
-		scp_region_info_copy.ap_loader_start,
-		scp_region_info_copy.ap_loader_size);
-	pr_notice("[SCP] loader image mem: virt:0x%llx - 0x%llx\n",
-		(uint64_t)(phys_addr_t)scp_loader_virt,
-		(uint64_t)(phys_addr_t)scp_loader_virt +
-		(phys_addr_t)scp_region_info_copy.ap_loader_size);
+	if(!scpreg.secure_dump) {
+		scp_loader_virt = ioremap_wc(
+			scp_region_info_copy.ap_loader_start,
+			scp_region_info_copy.ap_loader_size);
+		pr_notice("[SCP] loader image mem: virt:0x%llx - 0x%llx\n",
+			(uint64_t)(phys_addr_t)scp_loader_virt,
+			(uint64_t)(phys_addr_t)scp_loader_virt +
+			(phys_addr_t)scp_region_info_copy.ap_loader_size);
+	}
+
 	/*init wake,
 	 *this is for prevent scp pll cpu clock disabled during reset flow
 	 */
