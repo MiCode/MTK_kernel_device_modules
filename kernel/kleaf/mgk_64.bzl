@@ -280,6 +280,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/adsp/adsp.ko",
     "drivers/misc/mediatek/adsp/v1/adsp-v1.ko",
     "drivers/misc/mediatek/adsp/v2/adsp-v2.ko",
+    "drivers/misc/mediatek/mkp/mkp.ko",
     "drivers/misc/mediatek/aee/aed/aee_aed.ko",
     "drivers/misc/mediatek/aee/aed/aee_rs.ko",
     "drivers/misc/mediatek/aee/hangdet/aee_hangdet.ko",
