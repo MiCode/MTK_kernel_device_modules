@@ -10,30 +10,11 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x0>;
 		clocks =
-			<&cksys_gp2_clk CLK_CK2_MMINFRA_SEL>,
-			<&cksys_gp2_clk CLK_CK2_MMINFRA_SNOC_SEL>,
-			<&cksys_gp2_clk CLK_CK2_MMUP_SEL>,
-			<&cksys_gp2_clk CLK_CK2_MMINFRA_AO_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_MMINFRA_VLP_SEL>;
+			<&cksys_gp2_clk CLK_CK2_MMUP_SEL>;
 	};
 	bring-up-pd-mm-proc-dormant@34 {
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x34>;
 		power-domains = <&scpsys MT6991_POWER_DOMAIN_MM_PROC_DORMANT>;
-	};
-	bring-up-pd-mm-infra0@58 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x58>;
-		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA0>;
-	};
-	bring-up-pd-mm-infra1@59 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x59>;
-		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>;
-	};
-	bring-up-pd-mm-infra-ao@5a {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x5a>;
-		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA_AO>;
 	};
 };
