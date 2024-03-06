@@ -119,18 +119,14 @@ unsigned int dsu_lkg_pwr(int wl_type, struct dsu_info *p, unsigned int extern_vo
 	unsigned int coef_ab = 0, coef_a = 0, coef_b = 0, coef_c = 0, type, opp = 0;
 	void __iomem *clkg_sram_base_addr;
 	unsigned int shared_volt;
-	struct dsu_state *dsu_tbl;
 
 	clkg_sram_base_addr = get_clkg_sram_base_addr();
 	temperature = p->temp;
 	type = DSU_LKG;
 	// /* volt to opp for calculating offset */
 	shared_volt = max(p->dsu_volt, extern_volt);
-	dsu_tbl = dsu_get_opp_ps(wl_type, opp);
-	while (shared_volt < dsu_tbl->volt) {
-		opp++;
-		dsu_tbl = dsu_get_opp_ps(wl_type, opp);
-	}
+	opp = pd_dsu_volt2opp(shared_volt);
+
 	/* read coef from sysram, real value = value/10000 */
 	coef_ab = ioread32(clkg_sram_base_addr + LKG_BASE_OFFSET +
 			type * LKG_TYPES_OFFSET + opp * 8);
