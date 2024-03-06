@@ -21,7 +21,7 @@ static inline void vcp_wdt_clear(uint32_t coreid)
 	writel(B_WDT_IRQ, R_CORE1_WDT_IRQ);
 }
 
-void wait_vcp_ready_to_reboot(void)
+void wait_vcp_ready_to_reboot(enum vcp_core_id core_id)
 {
 	int retry = 0;
 	unsigned long C0_H0 = CORE_RDY_TO_REBOOT;
@@ -31,17 +31,34 @@ void wait_vcp_ready_to_reboot(void)
 	unsigned int C0_status = 0xFF, C1_status = 0xFF;
 
 	/* clr after VCP side INT trigger,
-	 * or VCP may lost INT max wait = 200ms
+	 * or VCP may lost INT max wait = 1000ms
 	 */
 	for (retry = VCP_AWAKE_TIMEOUT; retry > 0; retry--) {
-		C0_H0 = readl(VCP_GPR_C0_H0_REBOOT);
-		if (vcpreg.twohart)
-			C0_H1 = readl(VCP_GPR_C0_H1_REBOOT);
+		switch (core_id) {
+		case VCP_ID:
+			C0_H0 = readl(VCP_GPR_C0_H0_REBOOT);
+			if (vcpreg.twohart)
+				C0_H1 = readl(VCP_GPR_C0_H1_REBOOT);
+			break;
+		case MMUP_ID:
+			if (vcpreg.core_nums == 2) {
+				C1_H0 = readl(VCP_GPR_C1_H0_REBOOT);
+				if (vcpreg.twohart_core1)
+					C1_H1 = readl(VCP_GPR_C1_H1_REBOOT);
+			}
+			break;
+		case VCP_CORE_TOTAL:
+		default:
+			C0_H0 = readl(VCP_GPR_C0_H0_REBOOT);
+			if (vcpreg.twohart)
+				C0_H1 = readl(VCP_GPR_C0_H1_REBOOT);
 
-		if (vcpreg.core_nums == 2) {
-			C1_H0 = readl(VCP_GPR_C1_H0_REBOOT);
-			if (vcpreg.twohart_core1)
-				C1_H1 = readl(VCP_GPR_C1_H1_REBOOT);
+			if (vcpreg.core_nums == 2) {
+				C1_H0 = readl(VCP_GPR_C1_H0_REBOOT);
+				if (vcpreg.twohart_core1)
+					C1_H1 = readl(VCP_GPR_C1_H1_REBOOT);
+			}
+			break;
 		}
 
 		if ((C0_H0 == CORE_RDY_TO_REBOOT) && (C0_H1 == CORE_RDY_TO_REBOOT)
@@ -79,7 +96,7 @@ static void vcp_A_wdt_handler(struct tasklet_struct *t)
 		/* Call debug dump */
 	}
 
-	wait_vcp_ready_to_reboot();
+	wait_vcp_ready_to_reboot(VCP_CORE_TOTAL);
 	/* Wakeup mobile_log_d after vcp flush the log */
 	vcp_logger_wakeup_handler(0, NULL, NULL, 0);
 	vcp_dump_last_regs(1);

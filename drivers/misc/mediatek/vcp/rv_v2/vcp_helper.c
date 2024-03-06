@@ -716,7 +716,11 @@ void trigger_vcp_dump(enum vcp_core_id core_id, char *user)
 		vcp_dump_last_regs(mmup_enable_count());
 
 		/* trigger vcp dump */
-		writel(B_GIPC3_SETCLR_3, R_GIPC_IN_SET);
+		if (vcpreg.core_nums == 2) {
+			writel(GIPC_MMUP_DUMP, R_GIPC_IN_SET);
+			udelay(1);
+		}
+		writel(GIPC_VCP_HART0_DUMP, R_GIPC_IN_SET);
 		for (j = 0; j < NUM_FEATURE_ID; j++)
 			if (feature_table[j].enable)
 				pr_info("[VCP] Active feature id %d cnt %d\n",
@@ -756,7 +760,7 @@ void trigger_vcp_halt(enum vcp_core_id core_id, char *user)
 		vcp_dump_last_regs(mmup_enable_count());
 
 		/* trigger halt isr, force vcp enter wfi */
-		writel(B_GIPC3_SETCLR_0, R_GIPC_IN_SET);
+		writel(GIPC_VCP_HART0_HALT, R_GIPC_IN_SET);
 		for (j = 0; j < NUM_FEATURE_ID; j++)
 			if (feature_table[j].enable)
 				pr_info("[VCP] Active feature id %d cnt %d\n",
@@ -1613,6 +1617,14 @@ static ssize_t wdt_reset_store(struct device *dev
 			vcp_wdt_reset(0);
 		else if (value == 667)
 			vcp_wdt_reset(1);
+		else if (value == 668)
+			trigger_vcp_dump(MMUP_ID, "TEST");
+		else if (value == 669)
+			trigger_vcp_halt(MMUP_ID, "TEST");
+		else if (value == 670)
+			trigger_vcp_dump(VCP_ID, "TEST");
+		else if (value == 671)
+			trigger_vcp_halt(VCP_ID, "TEST");
 	}
 	return count;
 }
@@ -3036,7 +3048,11 @@ static void vcp_device_shutdown(struct platform_device *pdev)
 	mutex_unlock(&vcp_A_notify_mutex);
 
 	// trigger halt isr to change spm control power
-	writel(B_GIPC3_SETCLR_2, R_GIPC_IN_SET);
+	writel(GIPC_VCP_HART0_SHUT, R_GIPC_IN_SET);
+	if (vcpreg.core_nums == 2) {
+		wait_vcp_ready_to_reboot(VCP_ID);
+		writel(GIPC_MMUP_SHUT, R_GIPC_IN_SET);
+	}
 	pr_notice("[VCP] %s done\n", __func__);
 }
 

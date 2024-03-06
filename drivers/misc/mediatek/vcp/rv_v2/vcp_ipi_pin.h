@@ -10,7 +10,7 @@
 #include "vcp.h"
 
 /* vcp awake timeout count definition */
-#define VCP_AWAKE_TIMEOUT 200000
+#define VCP_AWAKE_TIMEOUT 1000000
 
 extern void vcp_reset_awake_counts(void);
 extern int vcp_awake_counts[];
