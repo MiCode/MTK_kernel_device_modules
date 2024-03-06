@@ -2849,6 +2849,8 @@ static s32 cmdq_genpd_init(struct device *dev, struct cmdq *cmdq)
 	cmdq_msg("%s num:%d pm_domain:%p", __func__, genpd_num, dev->pm_domain);
 	if (genpd_num == 1) {
 		cmdq->pd_mminfra_1 = dev;
+		if (cmdq->fast_mtcmos)
+			pm_runtime_irq_safe(cmdq->pd_mminfra_1);
 	} else {
 		cmdq->pd_mminfra_1 = dev_pm_domain_attach_by_id(dev, 0);
 		if (IS_ERR_OR_NULL(cmdq->pd_mminfra_1)) {
@@ -2857,12 +2859,15 @@ static s32 cmdq_genpd_init(struct device *dev, struct cmdq *cmdq)
 			return err;
 		}
 
+		if (cmdq->fast_mtcmos)
+			pm_runtime_irq_safe(cmdq->pd_mminfra_1);
 		cmdq->pd_mminfra_ao = dev_pm_domain_attach_by_id(dev, 1);
 		if (IS_ERR_OR_NULL(cmdq->pd_mminfra_ao)) {
 			err = PTR_ERR(cmdq->pd_mminfra_ao) ? : -ENODATA;
 			cmdq_err("failed to get MMINFRA_AO error: %d", err);
 			return err;
 		}
+		pm_runtime_irq_safe(cmdq->pd_mminfra_ao);
 	}
 
 	pm_runtime_enable(dev);
@@ -3045,7 +3050,6 @@ static int cmdq_probe(struct platform_device *pdev)
 
 	if (of_property_read_bool(dev->of_node, "gce-fast-mtcmos")) {
 		cmdq->fast_mtcmos = true;
-		pm_runtime_irq_safe(dev);
 	}
 	cmdq_proc_create();
 	spin_lock_init(&cmdq->fast_mtcmos_lock);
@@ -3145,7 +3149,6 @@ static int cmdq_probe(struct platform_device *pdev)
 	cmdq->timeout_wq = create_singlethread_workqueue(
 		"cmdq_timeout_handler");
 
-	pm_runtime_enable(dev);
 	platform_set_drvdata(pdev, cmdq);
 
 	spin_lock_init(&cmdq->lock);
