@@ -198,6 +198,12 @@ static void plat_get_up_drv_data(struct aputop_func_param *aputop)
 	} else if (sub_func == 2) {
 		mbox_data = apu_readl(
 			apupw.regs[apu_md32_mbox] + MBRAIN_DATA_SYNC_1_REG);
+	} else if (sub_func == 3) {
+		mbox_data = apu_readl(
+			apupw.regs[apu_are] + MBRAIN_RCX_CNT);
+	} else if (sub_func == 4) {
+		mbox_data = apu_readl(
+			apupw.regs[apu_are] + MBRAIN_DVFS_CNT);
 	} else {
 		pr_info("%s#%d invalid sub_func : %d\n",
 				__func__, __LINE__, sub_func);
@@ -539,12 +545,65 @@ static int mt6991_apu_top_resume(struct device *dev)
 	return 0;
 }
 
-static uint32_t mt6991_apu_top_func_return_val(int func_id)
+static int mt6991_apu_top_func_return_val(int func_id, char *buf)
 {
-	if (func_id == APUTOP_FUNC_GET_UP_DATA)
-		return mbox_data;
+	ulong reg = 0;
+	int i = 0, length = 0;
+	int dump_size = MBRAIN_DUMP_SIZE;
 
-	return 0x0;
+	if (func_id == APUTOP_FUNC_GET_UP_DATA) {
+		return snprintf(buf, 64,
+			"func_id:%d, aputop_func_return_val:0x%08x\n",
+			func_id, mbox_data);
+	} else if (func_id == APUTOP_FUNC_GET_MBRAIN_DATA) {
+		reg = (ulong)apupw.regs[apu_are] + MBRAIN_RCX_CNT;
+		if (apu_readl((void __iomem *)reg) > 0) {
+			reg = (ulong)apupw.regs[apu_are] + MBRAIN_RCX_DUMPMNOCPLL_REG;
+			for (i = 0; i < dump_size; i++, reg += 4) {
+				length += snprintf(buf + length,
+				PAGE_SIZE - length,
+				"%08x ",
+				apu_readl((void __iomem *)reg));
+				pr_info("%s phys 0x%08lx, val:0x%08x\n",
+				__func__, reg, apu_readl((void __iomem *)reg));
+			}
+			reg = (ulong)apupw.regs[apu_are] + MBRAIN_RCX_DUMPUPPLL_REG;
+			for (i = 0; i < dump_size; i++, reg += 4) {
+				length += snprintf(buf + length,
+				PAGE_SIZE - length,
+				"%08x ",
+				apu_readl((void __iomem *)reg));
+				pr_info("%s phys 0x%08lx, val:0x%08x\n",
+				__func__, reg, apu_readl((void __iomem *)reg));
+			}
+		}
+		reg = (ulong)apupw.regs[apu_are] + MBRAIN_DVFS_CNT;
+		if (apu_readl((void __iomem *)reg) > 0) {
+			reg = (ulong)apupw.regs[apu_are] + MBRAIN_DVFS_DUMPMNOCPLL_REG;
+			for (i = 0; i < dump_size; i++, reg += 4) {
+				length += snprintf(buf + length,
+				PAGE_SIZE - length,
+				"%08x ",
+				apu_readl((void __iomem *)reg));
+				pr_info("%s phys 0x%08lx, val:0x%08x\n",
+				__func__, reg, apu_readl((void __iomem *)reg));
+			}
+			reg = (ulong)apupw.regs[apu_are] + MBRAIN_DVFS_DUMPUPPLL_REG;
+			for (i = 0; i < dump_size; i++, reg += 4) {
+				length += snprintf(buf + length,
+				PAGE_SIZE - length,
+				"%08x ",
+				apu_readl((void __iomem *)reg));
+				pr_info("%s phys 0x%08lx, val:0x%08x\n",
+				__func__, reg, apu_readl((void __iomem *)reg));
+			}
+		}
+		buf[length] = '\0';
+	} else {
+		pr_info("%s func_id %d, NOT supported\n", __func__, func_id);
+	}
+
+	return length;
 }
 
 static int mt6991_apu_top_func(struct platform_device *pdev,
