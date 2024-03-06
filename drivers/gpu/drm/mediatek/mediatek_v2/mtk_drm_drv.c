@@ -6457,7 +6457,6 @@ int mtk_drm_get_display_caps_ioctl(struct drm_device *dev, void *data,
 	struct mtk_drm_disp_caps_info *caps_info = data;
 	struct mtk_panel_params *params =
 		mtk_drm_get_lcm_ext_params(private->crtc[0]);
-	struct mtk_ddp_comp *ddp_comp;
 
 	memset(caps_info, 0, sizeof(*caps_info));
 
@@ -6544,17 +6543,22 @@ int mtk_drm_get_display_caps_ioctl(struct drm_device *dev, void *data,
 	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_PARTIAL_UPDATE))
 		caps_info->disp_feature_flag |=
 				DRM_DISP_FEATURE_PARTIAL_UPDATE;
+#ifndef DRM_BYPASS_PQ
+	{
+		struct mtk_ddp_comp *ddp_comp;
 
-	ddp_comp = private->ddp_comp[DDP_COMPONENT_CHIST0];
-	if (ddp_comp) {
-		struct mtk_disp_chist *chist_data = comp_to_chist(ddp_comp);
+		ddp_comp = private->ddp_comp[DDP_COMPONENT_CHIST0];
+		if (ddp_comp) {
+			struct mtk_disp_chist *chist_data = comp_to_chist(ddp_comp);
 
-		if (chist_data && chist_data->data) {
-			caps_info->color_format = chist_data->data->color_format;
-			caps_info->max_channel = chist_data->data->max_channel;
-			caps_info->max_bin = chist_data->data->max_bin;
+			if (chist_data && chist_data->data) {
+				caps_info->color_format = chist_data->data->color_format;
+				caps_info->max_channel = chist_data->data->max_channel;
+				caps_info->max_bin = chist_data->data->max_bin;
+			}
 		}
 	}
+#endif
 	return ret;
 }
 

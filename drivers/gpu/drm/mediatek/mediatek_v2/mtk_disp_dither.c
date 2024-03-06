@@ -36,6 +36,8 @@
 #define DISP_DITHER_15 0x013c
 #define DISP_DITHER_16 0x0140
 #define DISP_DITHER_PURECOLOR0 0x0160
+#define DISP_DITHER_CLR_DET BIT(0)
+#define DISP_DITHER_CLR_FLAG BIT(4)
 #define DISP_DITHER_PURECOLOR1 0x0164
 
 
@@ -98,7 +100,7 @@ struct mtk_disp_dither_primary {
 	struct work_struct_data work_data;
 	unsigned int dither_mode;
 	struct dither_backup backup;
-	spinlock_t clock_lock;
+	struct mutex clk_lock;
 	struct mtk_disp_pure_clr_data *pure_clr_param;
 	unsigned int *gamma_data_mode;
 };
@@ -117,8 +119,6 @@ struct mtk_disp_dither_tile_overhead_v {
 struct mtk_disp_dither {
 	struct mtk_ddp_comp ddp_comp;
 	struct drm_crtc *crtc;
-	int pwr_sta;
-	unsigned int cfg_reg;
 	const struct mtk_disp_dither_data *data;
 	bool is_right_pipe;
 	int path_order;
@@ -130,6 +130,7 @@ struct mtk_disp_dither {
 	bool reg_backup;
 	bool set_partial_update;
 	unsigned int roi_height;
+	uint32_t purecolor0;
 };
 
 static inline struct mtk_disp_dither *comp_to_dither(struct mtk_ddp_comp *comp)
@@ -137,72 +138,23 @@ static inline struct mtk_disp_dither *comp_to_dither(struct mtk_ddp_comp *comp)
 	return container_of(comp, struct mtk_disp_dither, ddp_comp);
 }
 
-static int disp_dither_set_interrupt(struct mtk_ddp_comp *comp, int enabled)
+static int disp_dither_set_interrupt(struct mtk_ddp_comp *comp, int enabled, struct cmdq_pkt *handle)
 {
-	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
-	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
-	unsigned long flags;
 	int ret = 0;
 
-	spin_lock_irqsave(&primary_data->clock_lock, flags);
-	DDPDBG("%s @ %d......... spin_lock_irqsave -- ",
-		__func__, __LINE__);
-	if (atomic_read(&dither_data->is_clock_on) != 1) {
-		DDPINFO("%s: clock is off. enabled:%d\n",
-			__func__, enabled);
-
-		spin_unlock_irqrestore(&primary_data->clock_lock, flags);
-		DDPDBG("%s @ %d......... spin_unlock_irqrestore -- ",
-			__func__, __LINE__);
-		return ret;
-	}
-
+	DDPDBG("%s %d ++\n", __func__, __LINE__);
 	if (enabled) {
-		if (readl(comp->regs + DISP_DITHER_EN) == 0) {
-			/* Print error message */
-			DDPINFO("[WARNING] DISP_DITHER_EN not enabled!\n");
-		}
 		/* Enable output frame end interrupt */
-		writel(0x2, comp->regs + DISP_DITHER_INTEN);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			       comp->regs_pa + DISP_DITHER_INTEN, 1, ~0);
 		DDPINFO("%s: Interrupt enabled\n", __func__);
 	} else {
 		/* Disable output frame end interrupt */
-		writel(0x0, comp->regs + DISP_DITHER_INTEN);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			       comp->regs_pa + DISP_DITHER_INTEN, 0, ~0);
 		DDPINFO("%s: Interrupt disabled\n", __func__);
 	}
-	spin_unlock_irqrestore(&primary_data->clock_lock, flags);
-	DDPDBG("%s @ %d......... spin_unlock_irqrestore -- ",
-		__func__, __LINE__);
-	return ret;
-}
-
-static bool disp_dither_purecolor_devide(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
-	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
-	unsigned int clr_red, clr_green, clr_blue, i;
-	bool ret = false;
-
-	if (atomic_read(&dither_data->is_clock_on) != 1) {
-		DDPINFO("%s: clock is off.\n", __func__);
-		return ret;
-	}
-	clr_red = (readl(comp->regs +
-		DISP_DITHER_PURECOLOR0) >> 8) & 0xfff;
-	clr_blue = readl(comp->regs +
-		DISP_DITHER_PURECOLOR1) & 0xfff;
-	clr_green = (readl(comp->regs +
-		DISP_DITHER_PURECOLOR1) >> 12) & 0xfff;
-	DDPINFO("%s: clr_red: 0x%x, clr_blue: 0x%x, clr_green: 0x%x"
-		, __func__, clr_red, clr_blue, clr_green);
-	for (i = 0; i < primary_data->pure_clr_param->pure_clr_num; i++) {
-		if (primary_data->pure_clr_param->pure_clr[i][R_VALUE] == clr_red &&
-			primary_data->pure_clr_param->pure_clr[i][B_VALUE] == clr_blue &&
-			primary_data->pure_clr_param->pure_clr[i][G_VALUE] == clr_green) {
-			ret = true;
-			break;
-		}
-	}
+	DDPDBG("%s %d --\n", __func__, __LINE__);
 	return ret;
 }
 
@@ -211,29 +163,29 @@ static void disp_dither_purecolor_detection(struct mtk_ddp_comp *comp)
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct drm_crtc *crtc = &mtk_crtc->base;
-	unsigned int clr_det, clr_flag;
+	uint32_t clr_det, clr_flag, purecolor0;
+	int enable = 0;
 
 	if (atomic_read(&dither_data->is_clock_on) != 1) {
 		DDPINFO("%s: clock is off.\n", __func__);
 		return;
 	}
-	clr_det = readl(comp->regs + DISP_DITHER_PURECOLOR0) & 0x1;
-	DDPINFO("%s: clr_det: 0x%x", __func__, clr_det);
+	purecolor0 = dither_data->purecolor0;
+	clr_det = purecolor0 & DISP_DITHER_CLR_DET;
 
+	//TODO: check_trigger + irq will cause cmd mode always trigger when clr_det enable
 	if (clr_det) {	/* pure color detection support */
-		clr_flag = (readl(comp->regs + DISP_DITHER_PURECOLOR0) >> 4) & 0x1;
-		DDPINFO("%s: clr_flag: 0x%x", __func__, clr_flag);
-		if (clr_flag) {
-			if (disp_dither_purecolor_devide(comp))
-				disp_dither_set_bypass(crtc, 1);
-			else
-				disp_dither_set_bypass(crtc, 0);
-		} else {
+		clr_flag = purecolor0 & DISP_DITHER_CLR_FLAG;
+		DDPINFO("%s: clr_flag: 0x%x\n", __func__, clr_flag);
+		if (clr_flag)
+			disp_dither_set_bypass(crtc, 1);
+		else
 			disp_dither_set_bypass(crtc, 0);
-		}
+		mtk_crtc_check_trigger(mtk_crtc, true, true);
 	} else {
+		DDPINFO("%s: clr_det: 0x%x\n", __func__, clr_det);
 		disp_dither_set_bypass(crtc, 0);
-		disp_dither_set_interrupt(comp, 0);
+		mtk_crtc_user_cmd(crtc, comp, SET_INTERRUPT, &enable);
 	}
 }
 
@@ -247,55 +199,37 @@ static void disp_dither_pure_detect_work(struct work_struct *work_item)
 	disp_dither_purecolor_detection((struct mtk_ddp_comp *)work_data->data);
 }
 
-static void disp_dither_on_end_of_frame(struct mtk_ddp_comp *comp)
+static void disp_dither_on_end_of_frame(struct mtk_ddp_comp *comp, uint32_t status)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
 	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
-	unsigned int intsta;
-	unsigned long flags;
 
-	DDPDBG("%s @ %d......... [IRQ] spin_trylock_irqsave ++ ",
-		  __func__, __LINE__);
-	if (spin_trylock_irqsave(&primary_data->clock_lock, flags)) {
-		DDPDBG("%s @ %d......... spin_trylock_irqsave -- ",
-			__func__, __LINE__);
-		if (atomic_read(&dither_data->is_clock_on) != 1) {
-			DDPINFO("%s: clock is off. enabled:%d\n", __func__, 0);
-
-			spin_unlock_irqrestore(&primary_data->clock_lock, flags);
-			DDPDBG("%s @ %d......... spin_unlock_irqrestore -- ",
-				__func__, __LINE__);
-			return;
-		}
-		intsta = readl(comp->regs + DISP_DITHER_INTSTA);
-		DDPINFO("%s: intsta: 0x%x", __func__, intsta);
-
-		if (intsta & 0x2) {	/* End of frame */
-			// Clear irq
-			writel(intsta & ~0x3, comp->regs
-				+ DISP_DITHER_INTSTA);
-
-			primary_data->work_data.data = (void *)comp;
-			queue_work(primary_data->pure_detect_wq,
-				&primary_data->work_data.pure_detect_task);
-		}
-		DDPDBG("%s @ %d......... [IRQ] spin_unlock_irqrestore ++ ",
-			__func__, __LINE__);
-		spin_unlock_irqrestore(&primary_data->clock_lock, flags);
-		DDPDBG("%s @ %d......... [IRQ] spin_unlock_irqrestore -- ",
-			__func__, __LINE__);
-	} else {
-		DDPINFO("%s @ %d......... Failed to spin_trylock_irqsave -- ",
-			__func__, __LINE__);
+	DDPIRQ("%s:%s status: 0x%x\n", __func__, mtk_dump_comp_str(comp), status);
+	if (status & 0x2) {
+		dither_data->purecolor0 = readl(comp->regs + DISP_DITHER_PURECOLOR0);
+		primary_data->work_data.data = (void *)comp;
+		queue_work(primary_data->pure_detect_wq,
+			&primary_data->work_data.pure_detect_task);
 	}
 }
 
 static irqreturn_t disp_dither_irq_handler(int irq, void *dev_id)
 {
-	struct mtk_disp_dither *priv = dev_id;
-	struct mtk_ddp_comp *dither = &priv->ddp_comp;
+	struct mtk_disp_dither *dither_data = dev_id;
+	struct mtk_ddp_comp *comp = &dither_data->ddp_comp;
+	unsigned int status;
 
-	disp_dither_on_end_of_frame(dither);
+	if (IS_ERR_OR_NULL(dither_data))
+		return IRQ_NONE;
+
+	if (mtk_drm_top_clk_isr_get("dither_irq") == false) {
+		DDPIRQ("%s, top clk off\n", __func__);
+		return IRQ_NONE;
+	}
+	status = readl(comp->regs + DISP_DITHER_INTSTA);
+	writel(status & ~0x3, comp->regs + DISP_DITHER_INTSTA);
+	disp_dither_on_end_of_frame(comp, status);
+	mtk_drm_top_clk_isr_put("dither_irq");
 
 	return IRQ_HANDLED;
 }
@@ -365,7 +299,6 @@ static void disp_dither_config(struct mtk_ddp_comp *comp,
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
 	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
-	struct mtk_disp_dither *priv = dev_get_drvdata(comp->dev);
 	unsigned int enable = 1;
 	unsigned int width;
 	unsigned int overhead_v;
@@ -379,14 +312,7 @@ static void disp_dither_config(struct mtk_ddp_comp *comp,
 			width = cfg->w;
 	}
 
-	DDPINFO("%s: bbp = %u\n", __func__, cfg->bpc);
-	DDPINFO("%s: width = %u height = %u\n", __func__, width, cfg->h);
-
-	/* skip redundant config */
-	if (priv->pwr_sta != 0)
-		return;
-
-	priv->pwr_sta = 1;
+	DDPINFO("%s: bbp = %u width = %u height = %u\n", __func__, cfg->bpc, width, cfg->h);
 
 	if (primary_data->gamma_data_mode && *primary_data->gamma_data_mode == 0) {
 		if (cfg->bpc == 8) { /* 888 */
@@ -442,9 +368,7 @@ static void disp_dither_config(struct mtk_ddp_comp *comp,
 				__func__, cfg->bpc);
 		} else {
 			/* Invalid dither bpp, bypass dither */
-			/* FIXME: this case would cause dither hang */
-			DDPINFO("%s: Invalid dither bpp = %u\n",
-				__func__, cfg->bpc);
+			DDPINFO("%s: Invalid dither bpp = %u\n", __func__, cfg->bpc);
 			enable = 0;
 		}
 	}
@@ -482,10 +406,8 @@ static void disp_dither_config(struct mtk_ddp_comp *comp,
 			       0x00000000, ~0);
 	}
 
-	priv->cfg_reg = enable << 1 | (priv->cfg_reg & ~(0x1 << 1));
-
 	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_DITHER_EN, enable, ~0);
+		comp->regs_pa + DISP_DITHER_EN, 1, ~0);
 
 	/* to avoid different show of dual pipe, pipe1 use pipe0's config data */
 	cmdq_pkt_write(handle, comp->cmdq_base,
@@ -507,6 +429,8 @@ static void disp_dither_config(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_DITHER_PURECOLOR0,
 		primary_data->pure_clr_param->pure_clr_det, 0x1);
+	if (primary_data->pure_clr_param->pure_clr_det && !dither_data->is_right_pipe)
+		disp_dither_set_interrupt(comp, 1, handle);
 }
 
 static void disp_dither_init_primary_data(struct mtk_ddp_comp *comp)
@@ -532,7 +456,7 @@ static void disp_dither_init_primary_data(struct mtk_ddp_comp *comp)
 	primary_data->pure_detect_wq =
 		create_singlethread_workqueue("pure_detect_wq");
 	INIT_WORK(&primary_data->work_data.pure_detect_task, disp_dither_pure_detect_work);
-	spin_lock_init(&primary_data->clock_lock);
+	mutex_init(&primary_data->clk_lock);
 }
 
 static void disp_dither_first_cfg(struct mtk_ddp_comp *comp,
@@ -546,15 +470,6 @@ static void disp_dither_first_cfg(struct mtk_ddp_comp *comp,
 static void disp_dither_start(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle)
 {
-	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
-	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
-	struct mtk_disp_dither *priv = dev_get_drvdata(comp->dev);
-
-	DDPINFO("%s\n", __func__);
-
-	priv->pwr_sta = 1;
-	if (primary_data->pure_clr_param->pure_clr_det)
-		disp_dither_set_interrupt(comp, 1);
 }
 
 static void disp_dither_stop(struct mtk_ddp_comp *comp,
@@ -562,13 +477,11 @@ static void disp_dither_stop(struct mtk_ddp_comp *comp,
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
 	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
-	struct mtk_disp_dither *priv = dev_get_drvdata(comp->dev);
 
 	DDPINFO("%s\n", __func__);
 
-	priv->pwr_sta = 0;
 	if (primary_data->pure_clr_param->pure_clr_det)
-		disp_dither_set_interrupt(comp, 0);
+		disp_dither_set_interrupt(comp, 0, handle);
 }
 
 static void disp_dither_bypass(struct mtk_ddp_comp *comp, int bypass,
@@ -576,21 +489,14 @@ static void disp_dither_bypass(struct mtk_ddp_comp *comp, int bypass,
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
 	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
-	struct mtk_disp_dither *priv = dev_get_drvdata(comp->dev);
 
 	DDPINFO("%s\n", __func__);
 
 	primary_data->relay_value = bypass;
 
-	if (bypass)
-		priv->cfg_reg = 0x1 | (priv->cfg_reg & ~0x1);
-	else
-		priv->cfg_reg = ~0x1 & priv->cfg_reg;
-
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_REG_DITHER_CFG,
 		primary_data->relay_value, 0x1);
-
 }
 
 static int disp_dither_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -670,19 +576,14 @@ static void disp_dither_unprepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
 	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
-	unsigned long flags;
 
-	DDPINFO("%s @ %d......... spin_lock_irqsave ++ ",
-		__func__, __LINE__);
-	spin_lock_irqsave(&primary_data->clock_lock, flags);
-	DDPINFO("%s @ %d......... spin_lock_irqsave -- ",
-		__func__, __LINE__);
+	DDPINFO("%s %d ++\n", __func__, __LINE__);
+	mutex_lock(&primary_data->clk_lock);
 	atomic_set(&dither_data->is_clock_on, 0);
-	spin_unlock_irqrestore(&primary_data->clock_lock, flags);
-	DDPINFO("%s @ %d......... spin_unlock_irqrestore ",
-		__func__, __LINE__);
+	mutex_unlock(&primary_data->clk_lock);
 	disp_dither_backup(comp);
 	mtk_ddp_comp_clk_unprepare(comp);
+	DDPINFO("%s %d --\n", __func__, __LINE__);
 }
 
 /* TODO */
@@ -752,7 +653,6 @@ void disp_dither_user_select(struct mtk_ddp_comp *comp,
 		writel(0x00000000, comp->regs + DITHER_REG(14));
 	}
 
-	writel(enable, comp->regs + DISP_DITHER_EN);
 	writel(enable << 1 | (~enable), comp->regs + DISP_REG_DITHER_CFG);
 }
 
@@ -830,12 +730,7 @@ static int disp_dither_user_cmd(struct mtk_ddp_comp *comp,
 	{
 		int *value = data;
 
-		disp_dither_set_interrupt(comp, *value);
-		if (comp->mtk_crtc->is_dual_pipe) {
-			struct mtk_ddp_comp *comp_dither1 = dither_data->companion;
-
-			disp_dither_set_interrupt(comp_dither1, *value);
-		}
+		disp_dither_set_interrupt(comp, *value, handle);
 	}
 	break;
 	case SET_COLOR_DETECT:
@@ -843,25 +738,14 @@ static int disp_dither_user_cmd(struct mtk_ddp_comp *comp,
 		int *value = data;
 
 		primary_data->pure_clr_param->pure_clr_det = *value;
-		if (atomic_read(&dither_data->is_clock_on) != 1) {
-			DDPINFO("%s: clock is off.\n",
-				__func__);
-		} else {
-			writel(readl(comp->regs + DISP_DITHER_PURECOLOR0) |
-				primary_data->pure_clr_param->pure_clr_det,
-				comp->regs + DISP_DITHER_PURECOLOR0);
-		}
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_DITHER_PURECOLOR0,
+				primary_data->pure_clr_param->pure_clr_det, DISP_DITHER_CLR_DET);
 		if (comp->mtk_crtc->is_dual_pipe) {
 			struct mtk_ddp_comp *comp_dither1 = dither_data->companion;
-
-			if (atomic_read(&dither_data->is_clock_on) != 1) {
-				DDPINFO("%s: clock is off.\n",
-					__func__);
-			} else {
-				writel(readl(comp_dither1->regs + DISP_DITHER_PURECOLOR0) |
-					primary_data->pure_clr_param->pure_clr_det,
-					comp_dither1->regs + DISP_DITHER_PURECOLOR0);
-			}
+			cmdq_pkt_write(handle, comp_dither1->cmdq_base,
+					comp_dither1->regs_pa + DISP_DITHER_PURECOLOR0,
+					primary_data->pure_clr_param->pure_clr_det, DISP_DITHER_CLR_DET);
 		}
 	}
 	break;
@@ -885,7 +769,7 @@ int disp_dither_cfg_set_dither_param(struct mtk_ddp_comp *comp,
 	struct mtk_disp_dither *dither = comp_to_dither(comp);
 
 	primary_data->dither_mode = (unsigned int)(ditherParam->mode);
-	DDPINFO("%s: relay: %d, mode: %d", __func__, relay, mode);
+	DDPINFO("%s: relay: %d, mode: %d\n", __func__, relay, mode);
 
 	disp_dither_set_param(comp, handle, relay, mode);
 	if (comp->mtk_crtc->is_dual_pipe) {
@@ -1136,9 +1020,6 @@ static int disp_dither_probe(struct platform_device *pdev)
 
 	priv->data = of_device_get_match_data(dev);
 
-	priv->pwr_sta = 0;
-	priv->cfg_reg = 0x80000100;
-
 	platform_set_drvdata(pdev, priv);
 
 	ret = devm_request_irq(dev, irq, disp_dither_irq_handler,
@@ -1367,9 +1248,8 @@ void disp_dither_set_bypass(struct drm_crtc *crtc, int bypass)
 	int ret;
 
 	ret = mtk_crtc_user_cmd(crtc, comp, BYPASS_DITHER, &bypass);
-	mtk_crtc_check_trigger(mtk_crtc, true, true);
 
-	DDPINFO("%s : ret = %d", __func__, ret);
+	DDPINFO("%s : ret = %d\n", __func__, ret);
 }
 
 void disp_dither_set_color_detect(struct drm_crtc *crtc, int enable)
