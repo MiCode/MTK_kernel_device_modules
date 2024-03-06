@@ -3228,7 +3228,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		skip-rpm-cb;
 		skip-tcms-check;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1>;
-		smi-user-id = <MTK_SMI_VDEC_CORE>;
+		smi-user-id = <MTK_SMI_VDEC_CORE MTK_SMI_VDEC1_SMI>;
 	};
 
 	smi_larb5: smi-larb5@3600d000 {
@@ -3242,7 +3242,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		skip-rpm-cb;
 		skip-tcms-check;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1>;
-		smi-user-id = <MTK_SMI_VDEC_CORE MTK_SMI_VDEC_LAT>;
+		smi-user-id = <MTK_SMI_VDEC_CORE MTK_SMI_VDEC_LAT MTK_SMI_VDEC0_SMI>;
 	};
 
 	smi_larb6: smi-larb6@3600e000 {
@@ -3256,7 +3256,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		skip-rpm-cb;
 		skip-tcms-check;
 		larb-port-real-time-type = <1 1 1>;
-		smi-user-id = <MTK_SMI_VDEC_CORE>;
+		smi-user-id = <MTK_SMI_VDEC_CORE MTK_SMI_VDEC0_SMI>;
 	};
 
 	smi_disp_venc_sub_comm0: smi-disp-venc-sub-comm0@38070000 {
@@ -3271,7 +3271,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&venc_gcon_clk CLK_VEN1_CKE1_VENC_SMI>;
 		clock-names = "apb", "smi";
 		skip-busy-check;
-		smi-user-id = <MTK_SMI_VENC0 MTK_SMI_JPEGDEC0 MTK_SMI_JPEGENC0>;
+		smi-user-id = <MTK_SMI_VENC0 MTK_SMI_VENC0_SMI MTK_SMI_JPEGDEC0 MTK_SMI_JPEGENC0>;
 	};
 
 	smi_mdp_venc_sub_comm1: smi-mdp-venc-sub-comm1@38870000 {
@@ -3286,8 +3286,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC_SMI>;
 		clock-names = "apb", "smi";
 		skip-busy-check;
-		smi-user-id = <MTK_SMI_VENC1 MTK_SMI_JPEGDEC1 MTK_SMI_JEPGENC1
-					   MTK_SMI_VENC2>;
+		smi-user-id = <MTK_SMI_VENC1 MTK_SMI_VENC1_SMI MTK_SMI_JPEGDEC1 MTK_SMI_JEPGENC1
+					   MTK_SMI_VENC2 MTK_SMI_VENC2_SMI>;
 	};
 
 	smi_sram_venc_sub_comm: smi-sram-venc-sub-comm@38880000 {
@@ -3302,7 +3302,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC_SMI>;
 		clock-names = "apb", "smi";
 		skip-busy-check;
-		smi-user-id = <MTK_SMI_VENC1 MTK_SMI_VENC2>;
+		smi-user-id = <MTK_SMI_VENC1 MTK_SMI_VENC1_SMI MTK_SMI_VENC2 MTK_SMI_VENC2_SMI>;
 	};
 
 	smi_mdp_venc_sub_comm2: smi-mdp-venc-sub-comm2@38c70000 {
@@ -3317,7 +3317,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&venc_gcon_core2_clk CLK_VEN_C2_CKE1_VENC_SMI>;
 		clock-names = "apb", "smi";
 		skip-busy-check;
-		smi-user-id = <MTK_SMI_VENC2>;
+		smi-user-id = <MTK_SMI_VENC2 MTK_SMI_VENC2_SMI>;
 	};
 
 	smi_larb7: smi-larb7@38010000 {
@@ -3332,7 +3332,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		clock-names = "apb", "smi";
 		skip-busy-check;
 		larb-port-real-time-type = <3 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 3 3 1 1 1 1 3>;
-		smi-user-id = <MTK_SMI_VENC0 MTK_SMI_JPEGDEC0 MTK_SMI_JPEGENC0>;
+		smi-user-id = <MTK_SMI_VENC0 MTK_SMI_VENC0_SMI MTK_SMI_JPEGDEC0 MTK_SMI_JPEGENC0>;
 	};
 
 	smi_larb8: smi-larb8@38810000 {
@@ -3347,7 +3347,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		clock-names = "apb", "smi";
 		skip-busy-check;
 		larb-port-real-time-type = <3 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 3 3 1 1 1 1 3>;
-		smi-user-id = <MTK_SMI_VENC1 MTK_SMI_JPEGDEC1 MTK_SMI_JEPGENC1>;
+		smi-user-id = <MTK_SMI_VENC1 MTK_SMI_VENC1_SMI MTK_SMI_JPEGDEC1 MTK_SMI_JEPGENC1>;
 	};
 
 	smi_larb24: smi-larb24@38c10000 {
@@ -3362,7 +3362,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		clock-names = "apb", "smi";
 		skip-busy-check;
 		larb-port-real-time-type = <3 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 3 3 1 1 1 1 3>;
-		smi-user-id = <MTK_SMI_VENC2>;
+		smi-user-id = <MTK_SMI_VENC2 MTK_SMI_VENC2_SMI>;
 	};
 
 	smi_larb41: smi-larb41@38090000 {
@@ -3377,7 +3377,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		clock-names = "apb", "smi";
 		skip-busy-check;
 		larb-port-real-time-type = <3 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 3 3 1 1 1 1 3>;
-		smi-user-id = <MTK_SMI_VENC0>;
+		smi-user-id = <MTK_SMI_VENC0 MTK_SMI_VENC0_SMI>;
 	};
 
 	smi_larb42: smi-larb42@38890000 {
@@ -3392,7 +3392,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		clock-names = "apb", "smi";
 		skip-busy-check;
 		larb-port-real-time-type = <3 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 3 3 1 1 1 1 3>;
-		smi-user-id = <MTK_SMI_VENC1>;
+		smi-user-id = <MTK_SMI_VENC1 MTK_SMI_VENC1_SMI>;
 	};
 
 	smi_larb47: smi-larb47@38c90000 {
@@ -3407,7 +3407,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		clock-names = "apb", "smi";
 		skip-busy-check;
 		larb-port-real-time-type = <3 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 3 3 1 1 1 1 3>;
-		smi-user-id = <MTK_SMI_VENC2>;
+		smi-user-id = <MTK_SMI_VENC2 MTK_SMI_VENC2_SMI>;
 	};
 
 	smi_img_vcore_sub_comm0: smi-img-vcore-sub-comm0@34781000 {
@@ -3994,6 +3994,17 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		mediatek,dump-with-comm = <1>;
 	};
 
+	hw-semaphore {
+		compatible = "mediatek,hw-semaphore";
+		base = <0x1c004000		/* spm */
+			0x31a04000>;		/* vcp */
+		/* <type offset bit> */
+		master = <1 0x1c 0>,
+			<1 0x1c 1>;		/* for ut */
+		spm-sem-dbg-offset = <0x69c 0x6a0 0x6a4 0x6a8 0x6ac 0x6b0 0x6b4 0x6b8>;
+		vcp-sem-dbg-offset = <0x1c>;
+	};
+
 	smi_dbg: smi-dbg {
 		compatible = "mediatek,mtk-smi-dbg";
 		mediatek-larb-supply = <&smi_larb0 &smi_larb1 &smi_larb20 &smi_larb21 &smi_larb32
@@ -4021,6 +4032,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					&smi_cam_sub_comm2 &smi_cam_vcore_sub_comm
 					&smi_ccu_sub_comm1 &smi_ccu_sub_comm0>;
 		dbg-version = <2>;
+		vcodec-pwr-sta-rg = <0x31a0a05c>;  /* vcp gpr for mt6991 vcodec dbg dump*/
+		vcodec-pwr-chk-id = <MTK_SMI_VDEC0_SMI MTK_SMI_VDEC1_SMI MTK_SMI_VENC0_SMI
+						MTK_SMI_VENC1_SMI MTK_SMI_VENC2_SMI>;
 	};
 
 	mminfra_debug: mminfra-debug@30070000 {
