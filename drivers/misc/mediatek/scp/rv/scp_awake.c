@@ -103,6 +103,10 @@ int scp_awake_lock(void *_scp_id)
 		}
 #endif  // SCP_RECOVERY_SUPPORT
 
+		if (scp_wdt_pending_check(0)) {
+			pr_notice("%s: wdt, break(us=%d)\n",__func__, count*10);
+			break;
+		}
 
 		if (scpreg.scpsys_regmap_en) {
 
@@ -243,7 +247,13 @@ int scp_awake_unlock(void *_scp_id)
 			pr_notice("%s: scp is being reset, break\n", __func__);
 			break;
 		}
+
 #endif  // SCP_RECOVERY_SUPPORT
+		if (scp_wdt_pending_check(0)) {
+			pr_notice("%s: wdt, break(us=%d)\n",__func__, count*10);
+			break;
+		}
+
 		if (scpreg.scpsys_regmap_en) {
 
 			if(scpreg.read_infra_irq_sta_en)
