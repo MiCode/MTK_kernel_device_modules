@@ -4132,20 +4132,18 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			compatible = "mediatek,ccu_rproc";
 			reg = <0 0x3c080000 0 0x4000>;
 			interrupts = <GIC_SPI 558 IRQ_TYPE_LEVEL_HIGH 0>;
-#if 0
-			power-domains = <&scpsys MT6991_POWER_DOMAIN_CAM_CCU>;
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_CCU>;
 			mediatek,larbs = <&smi_larb30>;
-			clocks = <&topckgen_clk CLK_TOP_CAM_SEL_CCU>,
-					<&topckgen_clk CLK_TOP_CCUSYS_SEL_CCU>,
-					<&topckgen_clk CLK_TOP_CCUTM_SEL_CCU>,
+			clocks =
+					<&cksys_gp2_clk CLK_CK2_CCUSYS_SEL>,
+					<&cksys_gp2_clk CLK_CK2_CCUTM_SEL>,
 					<&ccu_main_clk CLK_CCU2MM0_GALS_CON_CCU>,
-					<&ccu_main_clk CLK_CCU_LARB30_CON_CCU>,
-					<&ccu_main_clk CLK_CCU_CCU2INFRA_CON_CCU>,
+					<&ccu_main_clk CLK_CCLARB30_CON_CCU>,
+					<&ccu_main_clk CLK_CCU2INFRA_GALS_CON_CCU>,
 					<&ccu_main_clk CLK_CCUSYS_CCU0_CON_CCU0>,
 					<&ccu_main_clk CLK_CCUSYS_CCU1_CON_CCU1>,
-					<&camsys_main_clk CLK_CAM_MAIN_CAM_CCU>,
-					<&cam_vcore_clk CLK_CAM_V_MM0_SUBCOMM_CCU>;
-			clock-names = "TOP_CAM",
+					<&cam_vcore_r1a_clk CLK_CAM_V_MM0_SUBCOMM_CCU>;
+			clock-names =
 					"VLP_CCUSYS",
 					"VLP_CCUTM",
 					"CCU2MM0_GALS",
@@ -4153,13 +4151,11 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					"CCU_INFRA",
 					"CCUSYS_CCU0",
 					"CCUSYS_CCU1",
-					"CAM_CG",
 					"CAM_VCORE_CG";
-#endif
 			mediatek,ccu_rproc1 = <&ccu_rproc1>;
 			// mediatek,cammainpwr = <&ccucammain>;
 			mtk,smmu-shared = <&mm_smmu_ccu_inst>;
-#if 0
+			mmqos-supply = <&mmqos>;
 			interconnects =
 			<&mmqos MASTER_LARB_PORT(SMMU_L30_P1_CCUO)
 				&mmqos SLAVE_COMMON(1)>,
@@ -4168,7 +4164,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			interconnect-names =
 				"ccu_o",
 				"ccu_i";
-#endif
 			secured = "yes";
 			ccu_version = <80>;
 			ccu_sramSize = <0x00010000>;
@@ -4176,7 +4171,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			ccu_dramSize = <0x00200000>;
 			ccu_dramAddr = <0xc0000000>;
 			ccu_emiRegion = <20>;
-			ccu-sramcon-offset = <0x00000eb0>;
+			ccu-sramcon-offset = <0x000000e0>;
 			ccu-resource-offset = <0x000082c>;
 			ccu-resource-bits = <0x0b000000>;
 			ccu-exch-base = <0x3c0b0000>;
@@ -4190,7 +4185,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			compatible = "mediatek,ccu_rproc1";
 			reg = <0 0x3c180000 0 0x4000>;
 			mtk,smmu-shared = <&mm_smmu_ccu_data_protected>;
-#if 0
+			mmqos-supply = <&mmqos>;
 			interconnects =
 			<&mmqos MASTER_LARB_PORT(SMMU_L30_P3_CCUO2)
 				&mmqos SLAVE_COMMON(1)>,
@@ -4199,7 +4194,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			interconnect-names =
 				"ccu_o",
 				"ccu_i";
-#endif
 			ccu-exch-base = <0x3c1b0000>;
 			ccu-cores = <2>;
 			compact-ipc = <1>;
