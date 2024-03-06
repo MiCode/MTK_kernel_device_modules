@@ -4349,6 +4349,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		mm-mtcmos-base = <0x31b50084>;
 		mm-mtcmos-mask = <0xc0000000>;
 		//mminfra-ao-base;
+		mm-devapc-vio-sta-base = <0x30040000>;
 		mmup-gipc-in-set = <0x31bd0028>;
 		mediatek,vcp-supply = <&vcp>;
 		vcp-gipc;
