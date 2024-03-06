@@ -54,7 +54,7 @@
 		synaptics,pwr-reg-name = "vtouch";
 		synaptics,irq-gpio = <&pio 7 0x2008>;
 		synaptics,reset-gpio = <&pio 3 0x0>;
-		synaptics,irq-flags = <2>; /* 1:rising, 2:falling;*/
+		synaptics,irq-flags = <0x08>; /* 1:rising, 2:falling, 8:low;*/
 		synaptics,irq-on-state = <0>;
 		synaptics,reset-on-state = <0>;
 		synaptics,power-on-state = <1>;
