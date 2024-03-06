@@ -2503,6 +2503,7 @@
 		#mbox-cells = <3>;
 		#gce-event-cells = <1>;
 		#gce-subsys-cells = <2>;
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_DISP>;
 		default-tokens = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_0>,
 				 /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_1>,
 				 /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_2>,
