@@ -18529,6 +18529,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 	touch_tui0: touch-tui0 {
 		compatible = "mediatek,tui_common";
 	};
+
+	pps: pps {
+		compatible = "pps-gpio";
+	};
 };
 
 /* WF GPIO start */
