@@ -143,10 +143,10 @@ static const struct platform_data mt6991_platform_data = {
 	.default_gacboost_mode = 0,
 
 	/*combo table*/
-	.ip_peak_power_table        = ip_peak_power_table,
+	.ip_peak_power_table        = ip_peak_power_table_mt6991,
 	.leakage_scale_table        = leakage_scale_table,
-	.peak_power_combo_table_gpu = peak_power_combo_table_gpu,
-	.peak_power_combo_table_cpu = peak_power_combo_table_cpu,
+	.peak_power_combo_table_gpu = peak_power_combo_table_gpu_mt6991,
+	.peak_power_combo_table_cpu = peak_power_combo_table_cpu_mt6991,
 };
 
 
@@ -1057,7 +1057,7 @@ static ssize_t cgppt_dump_show(struct device *dev, struct device_attribute *attr
 
 
 	return snprintf(buf, PAGE_SIZE,
-	"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+	"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
 	// Status
 	ioread32(&DlptCsramCtrlBlock_ptr->peak_power_budget_mode),//cgppt_mod
 	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_status),//cgppt_m
@@ -1088,7 +1088,24 @@ static ssize_t cgppt_dump_show(struct device *dev, struct device_attribute *attr
 	ioread32(&g_dlpt_sram_layout_ptr->cswrun_info.scaling_factor[0]), //L scaling factor (no-use)
 	ioread32(&g_dlpt_sram_layout_ptr->cswrun_info.scaling_factor[1]), //M scaling factor
 	ioread32(&g_dlpt_sram_layout_ptr->cswrun_info.scaling_factor[2]), //B scaling factor
-	ioread32(&g_dlpt_sram_layout_ptr->gswrun_info.scaling_factor)     //GPU scaling factor
+	ioread32(&g_dlpt_sram_layout_ptr->gswrun_info.scaling_factor),    //GPU scaling factor
+	//future
+	ioread32(&g_dlpt_sram_layout_ptr->cswrun_info.future[0]),
+	ioread32(&g_dlpt_sram_layout_ptr->cswrun_info.future[1]),
+	ioread32(&g_dlpt_sram_layout_ptr->cswrun_info.future[2]),
+	ioread32(&g_dlpt_sram_layout_ptr->cswrun_info.future[3]),
+	//vision
+	ioread32(&g_dlpt_sram_layout_ptr->cswrun_info.vision[0]),
+	ioread32(&g_dlpt_sram_layout_ptr->cswrun_info.vision[1]),
+	ioread32(&g_dlpt_sram_layout_ptr->cswrun_info.vision[2]),
+	ioread32(&g_dlpt_sram_layout_ptr->cswrun_info.vision[3]),
+	//future
+	ioread32(&g_dlpt_sram_layout_ptr->gswrun_info.future[0]),
+	ioread32(&g_dlpt_sram_layout_ptr->gswrun_info.future[1]),
+	//vision
+	ioread32(&g_dlpt_sram_layout_ptr->gswrun_info.vision[0]),
+	ioread32(&g_dlpt_sram_layout_ptr->gswrun_info.vision[1])
+
 	);
 
 }
@@ -1351,7 +1368,7 @@ static struct platform_data *get_platform_data(int seg_id)
 	if (strncmp(match->compatible, "mediatek,MT6989", sizeof("mediatek,MT6989")) == 0) {
 		if (seg_id == 3) //mt6989_89t
 			ret_platform_data.peak_power_combo_table_cpu = peak_power_combo_table_cpu_mt6989_89t;
-		else if (seg_id == 4) //mt6989_89tt
+		else if (seg_id == 15) //mt6989_89tt
 			ret_platform_data.peak_power_combo_table_cpu = peak_power_combo_table_cpu_mt6989_89tt;
 	}
 
