@@ -12412,6 +12412,114 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mtk,smmu-shared = <&mm_smmu_cam>;
 		};
 
+		vmm_isp_traw: vmm-isp-traw {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_TRAW>;
+			pd-id = <0>;
+		};
+
+		vmm_isp_dip: vmm-isp-dip {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_DIP>;
+			pd-id = <1>;
+		};
+
+		vmm_isp_main: vmm-isp-main {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_MAIN>;
+			pd-id = <2>;
+		};
+
+		vmm_isp_vcore: vmm-isp-vcore {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_VCORE>;
+			pd-id = <3>;
+		};
+
+		vmm_isp_wpe_eis: vmm-isp-wpe-eis {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_WPE_EIS>;
+			pd-id = <4>;
+		};
+
+		vmm_isp_wpe_tnr: vmm-isp-wpe-tnr {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_WPE_TNR>;
+			pd-id = <5>;
+		};
+
+		vmm_isp_wpe_lite: vmm-isp-wpe-lite {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_WPE_LITE>;
+			pd-id = <6>;
+		};
+
+		vmm_vde0: vmm-vde0 {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VDE0>;
+			pd-id = <7>;
+		};
+
+		vmm_vde1: vmm-vde1 {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VDE1>;
+			pd-id = <8>;
+		};
+
+		vmm_cam_mraw: vmm-cam-mraw {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MRAW>;
+			pd-id = <9>;
+		};
+
+		vmm_cam_rawa: vmm-cam-rawa {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_RAWA>;
+			pd-id = <10>;
+		};
+
+		vmm_cam_rawb: vmm-cam-rawb {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_RAWB>;
+			pd-id = <11>;
+		};
+
+		vmm_cam_rawc: vmm-cam-rawc {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_RAWC>;
+			pd-id = <12>;
+		};
+
+		vmm_cam_rmsa: vmm-cam-rmsa {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_RMSA>;
+			pd-id = <13>;
+		};
+
+		vmm_cam_rmsb: vmm-cam-rmsb {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_RMSB>;
+			pd-id = <14>;
+		};
+
+		vmm_cam_rmsc: vmm-cam-rmsc {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_RMSC>;
+			pd-id = <15>;
+		};
+
+		vmm_cam_main: vmm-cam-main {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MAIN>;
+			pd-id = <16>;
+		};
+
+		vmm_cam_vcore: vmm-cam-vcore {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_VCORE>;
+			pd-id = <17>;
+		};
+
 		imgsys_cmdq: imgsys-cmdq@15002000 {
 			compatible = "mediatek,imgsys-cmdq-8";
 			//dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
