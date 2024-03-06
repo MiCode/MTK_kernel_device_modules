@@ -47,6 +47,10 @@ obj-$(CONFIG_MTK_SWPM_MODULE) += ${BUILD_SWPM_CPU_DBG_MODUDLE_NAME}.o
 ${BUILD_SWPM_CPU_DBG_MODUDLE_NAME}-objs += subsys/swpm_cpu_v6991.o
 ${BUILD_SWPM_CPU_DBG_MODUDLE_NAME}-objs += subsys/swpm_cpu_v6991_dbg_init.o
 
+BUILD_SWPM_MML_DBG_MODUDLE_NAME=mtk-swpm-mml-dbg-v6991
+obj-$(CONFIG_MTK_SWPM_MODULE) += ${BUILD_SWPM_MML_DBG_MODUDLE_NAME}.o
+${BUILD_SWPM_MML_DBG_MODUDLE_NAME}-objs += subsys/swpm_mml_v6991.o
+${BUILD_SWPM_MML_DBG_MODUDLE_NAME}-objs += subsys/swpm_mml_v6991_dbg_init.o
 
 ifneq ($(wildcard $(DEVICE_MODULES_PATH)/sound/soc/mediatek/mt6991/*),)
 subdir-ccflags-y += -DAUDIO_KERNEL_EXIST
