@@ -16,7 +16,7 @@
 #include "mtk_battery_oc_throttling.h"
 #include "mtk_low_battery_throttling.h"
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
-#ifdef PPB_IPI_READY
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
 #include <include/gpueb_ipi.h>
 #endif
 
@@ -31,7 +31,6 @@
 #define BAT_CIRCUIT_DEFAULT_RDC 55
 #define BAT_PATH_DEFAULT_RDC 100
 #define BAT_PATH_DEFAULT_RAC 50
-
 #define PPB_IPI_TIMEOUT_MS    3000U
 #define PPB_IPI_DATA_LEN (sizeof(struct ppb_ipi_data) / sizeof(int))
 
@@ -43,7 +42,7 @@ void __iomem *hpt_ctrl_base;
 struct fg_cus_data fg_data;
 struct power_budget_t pb;
 static struct notifier_block ppb_nb;
-#ifdef PPB_IPI_READY
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
 static int channel_id;
 static unsigned int ack_data;
 #endif
@@ -195,7 +194,7 @@ static void ppb_allocate_budget_manager(void)
 	trace_peak_power_budget(&ppb);
 }
 
-#ifdef PPB_IPI_READY
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
 static int __used ppb_gpueb_ipi_init(void)
 {
 	static bool ipi_init;
@@ -705,7 +704,7 @@ static void bat_handler(struct work_struct *work)
 		pb.hpt_sys_power = get_sys_power_budget(pb.hpt_ocv, pb.cur_rdc, pb.cur_rac, pb.ocp, pb.uvlo);
 		hpt_data.vsys_budget = pb.hpt_sys_power;
 		kicker_ppb_request_power(KR_BUDGET, ppb_sys_power);
-#ifdef PPB_IPI_READY
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
 		notify_gpueb();
 #endif
 		if (mt_ppb_debug)

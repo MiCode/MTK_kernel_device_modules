@@ -15,7 +15,7 @@
 #ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach/
 #ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/$(MTK_PLATFORM)/inc/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/
-
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/
 ifneq ($(strip $(CONFIG_MTK_MDPM)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdpm/
 else
