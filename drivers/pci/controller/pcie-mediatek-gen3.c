@@ -243,6 +243,10 @@
 #define AER_CO_RE			BIT(0)
 #define AER_CO_BTLP			BIT(6)
 
+#define PCIE_CFG_RSV_0			0x1490
+#define MSI_GRP2			BIT(2)
+#define MSI_GRP3			BIT(3)
+
 /* vlpcfg register */
 #define PCIE_VLP_AXI_PROTECT_STA	0x240
 #define PCIE_MAC_SLP_READY_MASK(port)	BIT(11 - port)
@@ -266,6 +270,7 @@ struct mtk_pcie_port;
 /**
  * struct mtk_pcie_data - PCIe data for each SoC
  * @pre_init: Specific init data, called before linkup
+ * @post_init: Specific init data, called after linkup
  * @suspend_l12: To implement special setting in L1.2 suspend flow
  * @resume_l12: To implement special setting in L1.2 resume flow
  * @clkbuf_control: To implement clkbuf control flow
@@ -273,6 +278,7 @@ struct mtk_pcie_port;
  */
 struct mtk_pcie_data {
 	int (*pre_init)(struct mtk_pcie_port *port);
+	int (*post_init)(struct mtk_pcie_port *port);
 	int (*suspend_l12)(struct mtk_pcie_port *port);
 	int (*resume_l12)(struct mtk_pcie_port *port);
 	void (*clkbuf_control)(struct mtk_pcie_port *port, bool enable);
@@ -746,13 +752,18 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 		/* PCIe port0 read completion timeout is adjusted to 4ms */
 		val = PCIE_CFG_FORCE_BYTE_EN | PCIE_CFG_BYTE_EN(0xf) |
 		      PCIE_CFG_HEADER(0, 0);
-		writel_relaxed(val, port->base + PCIE_CFGNUM_REG);
 		val = readl_relaxed(port->base + PCIE_CONF_DEV2_CTL_STS);
 		val &= ~PCIE_DCR2_CPL_TO;
 		val |= PCIE_CPL_TIMEOUT_4MS;
 		writel_relaxed(val, port->base + PCIE_CONF_DEV2_CTL_STS);
 		dev_info(port->dev, "PCIe RC control 2 register=%#x",
 			readl_relaxed(port->base + PCIE_CONF_DEV2_CTL_STS));
+	}
+
+	if (port->data && port->data->post_init) {
+		err = port->data->post_init(port);
+		if (err)
+			return err;
 	}
 
 	/* Set PCIe translation windows */
@@ -2564,8 +2575,26 @@ static int mtk_pcie_pre_init_6991(struct mtk_pcie_port *port)
 	return 0;
 }
 
+static int mtk_pcie_post_init_6991(struct mtk_pcie_port *port)
+{
+	u32 val;
+
+	/*
+	 * Use bit[3:0] of reserved register record the msi group number sent to ADSP
+	 * ex: Group 2 and 3 of 6991 are sent to ADSP, write 1 to bit[2] and bit[3]
+	 */
+	if (port->port_num == 1) {
+		val = readl_relaxed(port->base + PCIE_CFG_RSV_0);
+		val |= MSI_GRP2 | MSI_GRP3;
+		writel_relaxed(val, port->base + PCIE_CFG_RSV_0);
+	}
+
+	return 0;
+}
+
 static const struct mtk_pcie_data mt6991_data = {
 	.pre_init = mtk_pcie_pre_init_6991,
+	.post_init = mtk_pcie_post_init_6991,
 	.control_vote = mtk_pcie_control_vote_v2,
 	.clkbuf_control = mtk_pcie_clkbuf_force_26m,
 };
