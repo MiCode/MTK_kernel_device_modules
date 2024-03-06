@@ -1294,6 +1294,18 @@
 		quality = /bits/ 16 <900>;
 	};
 
+	security_ao: security-ao@1800d000 {
+		compatible = "mediatek,security_ao";
+		reg = <0 0x1800d000 0 0x1000>;
+	};
+
+	masp: masp@1800e000 {
+		compatible = "mediatek,masp";
+		reg = <0 0x1800e000 0 0x1000>;
+		interrupts = <GIC_SPI 360 IRQ_TYPE_LEVEL_HIGH 0>;
+		/* GIC_IRQ ID(sej_axgpt_irq) - 32 = 392 - 32 = 360 */
+	};
+
 	cpuhvfs: cpuhvfs@c2c2310 {
 		compatible = "mediatek,cpufreq-hybrid";
 		reg = <0 0x0c2c2310 0 0xc00>,
