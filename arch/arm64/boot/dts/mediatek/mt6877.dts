@@ -4832,7 +4832,7 @@
 		interrupts = <GIC_SPI 316 IRQ_TYPE_LEVEL_HIGH 0>;
 		power-domains = <&scpsys MT6877_POWER_DOMAIN_DISP>;
 		clocks = <&mmsys_config_clk CLK_MM_SMI_IOMMU>;
-		clock-names = "disp-iommu-ck";
+		clock-names = "bclk";
 		#iommu-cells = <1>;
 	};
 
