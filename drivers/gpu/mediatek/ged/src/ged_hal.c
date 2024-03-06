@@ -628,7 +628,7 @@ static ssize_t eb_dvfs_policy_show(struct kobject *kobj,
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos, "EB DVFS disable,\n");
 
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"dts (%d), eb_policy_mode(%d),\n\n",
+				"dts (%d), EB_policy_mode(%d),\n\n",
 			eb_policy_dts_flag, eb_policy_mode);
 
 
@@ -641,15 +641,15 @@ static ssize_t eb_dvfs_policy_show(struct kobject *kobj,
 
 	if (ret) {
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"eb_flag : %u\n",ipi_data->u.set_para.arg[0]);
+				"EB_Flag: %u\n",ipi_data->u.set_para.arg[0]);
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"DCS : %u\n",ipi_data->u.set_para.arg[1]);
+				"DCS: %u  Async: %u\n",
+				ipi_data->u.set_para.arg[1],
+				ipi_data->u.set_para.arg[2]);
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"async : %u\n",ipi_data->u.set_para.arg[2]);
-		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"real min opp : %u\n",ipi_data->u.set_para.arg[3]);
-		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"virtual min opp : %u\n",ipi_data->u.set_para.arg[4]);
+				"OPP-- Real min: %u  Virtual min: %u\n",
+				ipi_data->u.set_para.arg[3],
+				ipi_data->u.set_para.arg[4]);
 	}
 
 	/* 0:avg loading, 1:uhigh bound, 2:ulow bound, 3:high bound, 4:low bound*/
@@ -658,15 +658,13 @@ static ssize_t eb_dvfs_policy_show(struct kobject *kobj,
 
 	if (ret) {
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"avg loading : %u\n",ipi_data->u.set_para.arg[0]);
+				"Avg loading: %u\n",ipi_data->u.set_para.arg[0]);
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"ultra high : %u\n",ipi_data->u.set_para.arg[1]);
-		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"high : %u\n",ipi_data->u.set_para.arg[3]);
-		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"ultra low : %u\n",ipi_data->u.set_para.arg[2]);
-		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"low : %u\n",ipi_data->u.set_para.arg[4]);
+				"Bound-- u_high: %u  high: %u  low: %u  u_low: %u\n",
+				ipi_data->u.set_para.arg[1],
+				ipi_data->u.set_para.arg[3],
+				ipi_data->u.set_para.arg[4],
+				ipi_data->u.set_para.arg[2]);
 	}
 
 	/* 0:cur margin, 1:margin ceil, 2:margin floor, 3:preserve, 4:debug count*/
@@ -675,15 +673,14 @@ static ssize_t eb_dvfs_policy_show(struct kobject *kobj,
 
 	if (ret) {
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"cur margin : %u\n",ipi_data->u.set_para.arg[0]);
+				"Margin-- ceil: %u  cur: %u  floor: %u\n",
+				ipi_data->u.set_para.arg[1],
+				ipi_data->u.set_para.arg[0],
+				ipi_data->u.set_para.arg[2]);
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"margin ceil : %u\n",ipi_data->u.set_para.arg[1]);
+				"Preserve: %u\n",ipi_data->u.set_para.arg[3]);
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"margin floor : %u\n",ipi_data->u.set_para.arg[2]);
-		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"preserve : %u\n",ipi_data->u.set_para.arg[3]);
-		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"debug count : %u\n",ipi_data->u.set_para.arg[4]);
+				"Debug count: %u\n",ipi_data->u.set_para.arg[4]);
 	}
 
 
