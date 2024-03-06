@@ -30,8 +30,7 @@
 #define PLL_PWR(_id, _name, _reg, _en_reg, _en_mask,		\
 			_pwr_reg, _flags,		\
 			_pd_reg, _pd_shift,			\
-			_pcw_reg, _pcw_shift, _pcwbits,			\
-			_pwr_stat) {					\
+			_pcw_reg, _pcw_shift, _pcwbits) {			\
 		.id = _id,						\
 		.name = _name,						\
 		.reg = _reg,						\
@@ -47,7 +46,6 @@
 		.pcw_shift = _pcw_shift,				\
 		.pcwbits = _pcwbits,					\
 		.pcwibits = MT6877_INTEGER_BITS,			\
-		.pwr_stat = _pwr_stat,					\
 	}
 
 
