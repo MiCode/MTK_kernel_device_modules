@@ -780,9 +780,7 @@ void nq_signal_tee_hung(void)
 
 static int nq_boot_tee(void)
 {
-#ifndef MC_FFA_NOTIFICATION
-	struct irq_data *irq_d = irq_get_irq_data(l_ctx.irq);
-#endif
+	struct irq_data *irq_d = NULL;
 	unsigned long timeout_jiffies;
 	int ret;
 	u64 tee_sched_buffer, mci_buffer = 0;
@@ -791,16 +789,21 @@ static int nq_boot_tee(void)
 	cpumask_t old_affinity = tee_set_affinity();
 
 	/* Set initialization values */
-#ifdef MC_FFA_NOTIFICATION
-	l_ctx.tee_sched->init_values.flags |= MC_IV_FLAG_FFA_NOTIFICATION;
-	l_ctx.tee_sched->init_values.irq = l_ctx.irq;
-#else
-	l_ctx.tee_sched->init_values.flags |= MC_IV_FLAG_IRQ;
+	if (!g_ctx.sel2_support) {
+		irq_d = irq_get_irq_data(l_ctx.irq);
+		l_ctx.tee_sched->init_values.flags |= MC_IV_FLAG_IRQ;
 #if defined(MC_INTR_SSIQ_SWD)
-	l_ctx.tee_sched->init_values.irq = MC_INTR_SSIQ_SWD;
+		l_ctx.tee_sched->init_values.irq = MC_INTR_SSIQ_SWD;
 #endif
-	if (irq_d)
-		l_ctx.tee_sched->init_values.irq = irq_d->hwirq;
+		if (irq_d)
+			l_ctx.tee_sched->init_values.irq = irq_d->hwirq;
+	}
+#ifdef MC_FFA_NOTIFICATION
+	else {
+		(void)irq_d;
+		l_ctx.tee_sched->init_values.flags |= MC_IV_FLAG_FFA_NOTIFICATION;
+		l_ctx.tee_sched->init_values.irq = l_ctx.irq;
+	}
 #endif
 
 #ifdef MC_FFA_FASTCALL
@@ -1223,43 +1226,46 @@ int nq_start(void)
 	int ret, cnt;
 	u64 trace_buffer = 0;
 
-#ifdef MC_FFA_NOTIFICATION
-	l_ctx.irq = ffa_register_notif_handler(irq_handler);
-	if (l_ctx.irq < 0) {
-		ret = -EINVAL;
-		return ret;
-	}
-#else
-	/* Make sure we have the interrupt before going on */
+	if (!g_ctx.sel2_support) {
+		/* Make sure we have the interrupt before going on */
 #if defined(CONFIG_OF)
-	l_ctx.irq = irq_of_parse_and_map(g_ctx.mcd->of_node, 0);
+		l_ctx.irq = irq_of_parse_and_map(g_ctx.mcd->of_node, 0);
 #endif
 #if defined(MC_INTR_SSIQ)
-	if (l_ctx.irq <= 0)
-		l_ctx.irq = MC_INTR_SSIQ;
+		if (l_ctx.irq <= 0)
+			l_ctx.irq = MC_INTR_SSIQ;
 #endif
 
-	if (l_ctx.irq <= 0) {
-		ret = -EINVAL;
-		mc_dev_err(ret, "No IRQ number, aborting");
-		return ret;
-	}
+		if (l_ctx.irq <= 0) {
+			ret = -EINVAL;
+			mc_dev_err(ret, "No IRQ number, aborting");
+			return ret;
+		}
 
-	ret = request_irq(l_ctx.irq, irq_handler, IRQF_NO_SUSPEND,
-			  "trustonic", NULL);
-	if (ret)
-		return ret;
+		ret = request_irq(l_ctx.irq, irq_handler, IRQF_NO_SUSPEND,
+				"trustonic", NULL);
+		if (ret)
+			return ret;
 
 #ifdef MC_DISABLE_IRQ_WAKEUP
-	mc_dev_info("irq_set_irq_wake on irq %u disabled", l_ctx.irq);
+		mc_dev_info("irq_set_irq_wake on irq %u disabled", l_ctx.irq);
 #else
-	ret = irq_set_irq_wake(l_ctx.irq, 1);
-	if (ret) {
-		mc_dev_err(ret, "irq_set_irq_wake error on irq %u",
-			   l_ctx.irq);
-		return ret;
-	}
+		ret = irq_set_irq_wake(l_ctx.irq, 1);
+		if (ret) {
+			mc_dev_err(ret, "irq_set_irq_wake error on irq %u",
+				l_ctx.irq);
+			return ret;
+		}
 #endif
+	}
+#ifdef MC_FFA_NOTIFICATION
+	else {
+		l_ctx.irq = ffa_register_notif_handler(irq_handler);
+		if (l_ctx.irq < 0) {
+			ret = -EINVAL;
+			return ret;
+		}
+	}
 #endif
 
 	/* Enable TEE clock */
