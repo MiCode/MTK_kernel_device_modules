@@ -558,6 +558,52 @@ static ssize_t dvfs_workload_mode_store(struct kobject *kobj,
 
 static KOBJ_ATTR_RW(dvfs_workload_mode);
 
+// -----------------------------------------------------------------------------
+static ssize_t target_fps_vsync_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	struct GED_BRIDGE_OUT_HINT_FRAME_INFO infoOut;
+	int pos = 0;
+	int length;
+
+	ged_kpi_hint_frame_info(&infoOut);
+	length = scnprintf(buf + pos, PAGE_SIZE - pos,
+			"main_head BQ_ID:%ld FPS_V:%d FPS_gpu:%d\n",
+			infoOut.mainHead_BQ_ID, infoOut.mainHead_fps_v, infoOut.mainHead_fps_gpu);
+	pos += length;
+
+	return pos;
+}
+
+static ssize_t target_fps_vsync_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct GED_BRIDGE_OUT_HINT_FRAME_INFO infoOut;
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+	int SET_MAIN_HEAD_MASK = 0x1 << 8; // 256
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
+				if (i32Value & SET_MAIN_HEAD_MASK) {
+					ged_kpi_hint_frame_info(&infoOut);
+					ged_kpi_set_target_FPS_api(infoOut.mainHead_BQ_ID,
+						i32Value & 0xFF, 0);
+				} else if (i32Value > 0) {
+					ged_kpi_set_target_FPS_api(0, i32Value, 0);
+				}
+			}
+		}
+	}
+
+	return count;
+}
+
+
+static KOBJ_ATTR_RW(target_fps_vsync);
 //-----------------------------------------------------------------------------
 
 static ssize_t eb_dvfs_policy_show(struct kobject *kobj,
@@ -2318,6 +2364,13 @@ GED_ERROR ged_hal_init(void)
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE(
 			"Failed to create pre_fence_chk entry!\n");
+		goto ERROR;
+	}
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_target_fps_vsync);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE(
+			"Failed to create target_fps_vsync entry!\n");
 		goto ERROR;
 	}
 
