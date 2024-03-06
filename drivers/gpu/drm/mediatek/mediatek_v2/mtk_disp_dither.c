@@ -35,6 +35,7 @@
 #define DISP_DITHER_7 0x011c
 #define DISP_DITHER_15 0x013c
 #define DISP_DITHER_16 0x0140
+#define DISP_DITHER_SHADOW 0x15C
 #define DISP_DITHER_PURECOLOR0 0x0160
 #define DISP_DITHER_CLR_DET BIT(0)
 #define DISP_DITHER_CLR_FLAG BIT(4)
@@ -215,12 +216,14 @@ static void disp_dither_on_end_of_frame(struct mtk_ddp_comp *comp, uint32_t stat
 
 static irqreturn_t disp_dither_irq_handler(int irq, void *dev_id)
 {
-	struct mtk_disp_dither *dither_data = dev_id;
-	struct mtk_ddp_comp *comp = &dither_data->ddp_comp;
 	unsigned int status;
+	struct mtk_ddp_comp *comp;
+	struct mtk_disp_dither *dither_data = dev_id;
 
 	if (IS_ERR_OR_NULL(dither_data))
 		return IRQ_NONE;
+
+	comp = &dither_data->ddp_comp;
 
 	if (mtk_drm_top_clk_isr_get("dither_irq") == false) {
 		DDPIRQ("%s, top clk off\n", __func__);
@@ -407,13 +410,8 @@ static void disp_dither_config(struct mtk_ddp_comp *comp,
 	}
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_DITHER_EN, 1, ~0);
-
-	/* to avoid different show of dual pipe, pipe1 use pipe0's config data */
-	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_REG_DITHER_CFG,
-		enable << 1 |
-		primary_data->relay_value, 0x3);
+		enable << 1 | (primary_data->relay_value || !enable), 0x3);
 
 	if (!dither_data->set_partial_update)
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -431,6 +429,14 @@ static void disp_dither_config(struct mtk_ddp_comp *comp,
 		primary_data->pure_clr_param->pure_clr_det, 0x1);
 	if (primary_data->pure_clr_param->pure_clr_det && !dither_data->is_right_pipe)
 		disp_dither_set_interrupt(comp, 1, handle);
+
+	/* Bypass shadow register and read shadow register */
+	if (dither_data->data->need_bypass_shadow)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_DITHER_SHADOW, 0x1, 0x1);
+	else
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_DITHER_SHADOW, 0x0, 0x1);
 }
 
 static void disp_dither_init_primary_data(struct mtk_ddp_comp *comp)
@@ -470,6 +476,8 @@ static void disp_dither_first_cfg(struct mtk_ddp_comp *comp,
 static void disp_dither_start(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle)
 {
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_DITHER_EN, 0x1, 0x1);
 }
 
 static void disp_dither_stop(struct mtk_ddp_comp *comp,
@@ -479,6 +487,8 @@ static void disp_dither_stop(struct mtk_ddp_comp *comp,
 	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
 
 	DDPINFO("%s\n", __func__);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_DITHER_EN, 0x0, 0x1);
 
 	if (primary_data->pure_clr_param->pure_clr_det)
 		disp_dither_set_interrupt(comp, 0, handle);
@@ -532,44 +542,12 @@ static int disp_dither_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 	return 0;
 }
 
-static void disp_dither_backup(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
-	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
-
-	dither_data->reg_backup = true;
-	primary_data->backup.REG_DITHER_CFG =
-		readl(comp->regs + DISP_REG_DITHER_CFG);
-}
-
-static void disp_dither_restore(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
-	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
-
-	if (dither_data->reg_backup) {
-		writel(primary_data->backup.REG_DITHER_CFG,
-			comp->regs + DISP_REG_DITHER_CFG);
-		dither_data->reg_backup = false;
-	}
-}
-
 static void disp_dither_prepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
-	struct mtk_disp_dither *priv = dev_get_drvdata(comp->dev);
 
 	mtk_ddp_comp_clk_prepare(comp);
 	atomic_set(&dither_data->is_clock_on, 1);
-
-	/* Bypass shadow register and read shadow register */
-	if (priv->data->need_bypass_shadow)
-		mtk_ddp_write_mask_cpu(comp, DITHER_BYPASS_SHADOW,
-			DITHER_REG(0), DITHER_BYPASS_SHADOW);
-	else
-		mtk_ddp_write_mask_cpu(comp, 0,
-			DITHER_REG(0), DITHER_BYPASS_SHADOW);
-	disp_dither_restore(comp);
 }
 
 static void disp_dither_unprepare(struct mtk_ddp_comp *comp)
@@ -581,7 +559,6 @@ static void disp_dither_unprepare(struct mtk_ddp_comp *comp)
 	mutex_lock(&primary_data->clk_lock);
 	atomic_set(&dither_data->is_clock_on, 0);
 	mutex_unlock(&primary_data->clk_lock);
-	disp_dither_backup(comp);
 	mtk_ddp_comp_clk_unprepare(comp);
 	DDPINFO("%s %d --\n", __func__, __LINE__);
 }
@@ -653,7 +630,7 @@ void disp_dither_user_select(struct mtk_ddp_comp *comp,
 		writel(0x00000000, comp->regs + DITHER_REG(14));
 	}
 
-	writel(enable << 1 | (~enable), comp->regs + DISP_REG_DITHER_CFG);
+	writel(enable << 1 | !enable, comp->regs + DISP_REG_DITHER_CFG);
 }
 
 void disp_dither_set_param(struct mtk_ddp_comp *comp,
@@ -1065,11 +1042,6 @@ static int disp_dither_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct mtk_disp_dither_data mt6779_dither_driver_data = {
-	.support_shadow     = false,
-	.need_bypass_shadow = false,
-};
-
 static const struct mtk_disp_dither_data mt6768_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = false,
@@ -1088,11 +1060,6 @@ static const struct mtk_disp_dither_data mt6885_dither_driver_data = {
 static const struct mtk_disp_dither_data mt6877_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = false,
-};
-
-static const struct mtk_disp_dither_data mt6873_dither_driver_data = {
-	.support_shadow     = false,
-	.need_bypass_shadow = true,
 };
 
 static const struct mtk_disp_dither_data mt6853_dither_driver_data = {
@@ -1116,11 +1083,6 @@ static const struct mtk_disp_dither_data mt6895_dither_driver_data = {
 };
 
 static const struct mtk_disp_dither_data mt6879_dither_driver_data = {
-	.support_shadow     = false,
-	.need_bypass_shadow = true,
-};
-
-static const struct mtk_disp_dither_data mt6855_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
 };
@@ -1156,8 +1118,6 @@ static const struct mtk_disp_dither_data mt6991_dither_driver_data = {
 };
 
 static const struct of_device_id mtk_disp_dither_driver_dt_match[] = {
-	{ .compatible = "mediatek,mt6779-disp-dither",
-	  .data = &mt6779_dither_driver_data},
 	{ .compatible = "mediatek,mt6761-disp-dither",
 	  .data = &mt6761_dither_driver_data},
 	{ .compatible = "mediatek,mt6768-disp-dither",
@@ -1166,8 +1126,6 @@ static const struct of_device_id mtk_disp_dither_driver_dt_match[] = {
 	  .data = &mt6885_dither_driver_data},
 	{ .compatible = "mediatek,mt6877-disp-dither",
 	  .data = &mt6877_dither_driver_data},
-	{ .compatible = "mediatek,mt6873-disp-dither",
-	  .data = &mt6873_dither_driver_data},
 	{ .compatible = "mediatek,mt6853-disp-dither",
 	  .data = &mt6853_dither_driver_data},
 	{ .compatible = "mediatek,mt6833-disp-dither",
@@ -1178,8 +1136,6 @@ static const struct of_device_id mtk_disp_dither_driver_dt_match[] = {
 	  .data = &mt6895_dither_driver_data},
 	{ .compatible = "mediatek,mt6879-disp-dither",
 	  .data = &mt6879_dither_driver_data},
-	{ .compatible = "mediatek,mt6855-disp-dither",
-	  .data = &mt6855_dither_driver_data},
 	{ .compatible = "mediatek,mt6985-disp-dither",
 	  .data = &mt6985_dither_driver_data},
 	{ .compatible = "mediatek,mt6886-disp-dither",

@@ -13,11 +13,6 @@ struct mtk_disp_ccorr_data {
 	bool need_bypass_shadow;
 };
 
-struct ccorr_backup {
-	unsigned int REG_CCORR_CFG;
-	unsigned int REG_CCORR_INTEN;
-};
-
 struct mtk_disp_ccorr_tile_overhead {
 	unsigned int in_width;
 	unsigned int overhead;
@@ -61,7 +56,7 @@ struct mtk_disp_ccorr_primary {
 	int pq_backlight_db;
 	atomic_t ccorr_is_init_valid;
 	struct mutex ccorr_global_lock;
-	struct ccorr_backup backup;
+	unsigned int ccorr_hw_valid;
 };
 
 struct mtk_disp_ccorr {
@@ -73,7 +68,6 @@ struct mtk_disp_ccorr {
 	struct mtk_ddp_comp *companion;
 	enum drm_disp_ccorr_linear_t is_linear;// each comp property
 	struct mtk_disp_ccorr_primary *primary_data;
-	atomic_t is_clock_on;
 	struct mtk_disp_ccorr_tile_overhead tile_overhead;
 	struct mtk_disp_ccorr_tile_overhead_v tile_overhead_v;
 	bool bypass_color;
@@ -86,8 +80,6 @@ inline struct mtk_disp_ccorr *comp_to_ccorr(struct mtk_ddp_comp *comp);
 void disp_ccorr_notify_backlight_changed(struct mtk_ddp_comp *comp, int bl_1024);
 int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	int32_t matrix[16], int32_t hint, bool fte_flag, bool linear);
-int disp_ccorr_set_RGB_Gain(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, int r, int g, int b);
 int mtk_drm_ioctl_ccorr_support_color_matrix(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
 int mtk_drm_ioctl_ccorr_get_pq_caps(struct drm_device *dev, void *data,
