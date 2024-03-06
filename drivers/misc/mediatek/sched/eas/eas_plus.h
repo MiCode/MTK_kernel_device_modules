@@ -283,6 +283,8 @@ extern void mtk_sched_newidle_balance(void *data, struct rq *this_rq,
 
 extern unsigned long calc_pwr(int cpu, unsigned long task_util);
 extern unsigned long calc_pwr_eff(int wl_type, int cpu, unsigned long cpu_util, int *val_s);
+extern unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv,
+		int cpu, unsigned long max_util, struct cpumask *cpus);
 #endif
 
 extern int migrate_running_task(int this_cpu, struct task_struct *p, struct rq *target,
