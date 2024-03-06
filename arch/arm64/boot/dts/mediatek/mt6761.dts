@@ -18,6 +18,7 @@
 #include <dt-bindings/power/mt6761-power.h>
 #include <dt-bindings/interconnect/mtk,emi.h>
 #include <dt-bindings/interconnect/mtk,mmqos.h>
+#include <dt-bindings/power/mtk-charger.h>
 
 / {
 	model = "MT6761";
@@ -3998,8 +3999,10 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 	};
 	mtk_ctd: mtk_ctd {
 		compatible = "mediatek,mtk_ctd";
-		bc12 = <&mtk_charger_type>;
-		bc12_sel = <1>;
+		nr-port = <1>;
+		chg-name-port0 = "primary_chg";
+		bc12-sel-port0 = <MTK_CTD_BY_MAINPMIC>;
+		bc12-psy-port0 = <&mtk_charger_type>;
 	};
 
 	pd_adapter: pd_adapter {
