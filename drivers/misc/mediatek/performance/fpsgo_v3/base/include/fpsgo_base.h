@@ -37,6 +37,7 @@
 #define FPSGO_MAX_JANK_DETECTION_INFO_SIZE 5
 #define FPSGO_MAX_JANK_DETECTION_BOOST_CNT 2
 #define MAX_SF_BUFFER_SIZE 10
+#define HWUI_MAX_FRAME_SAME_TIME 5
 
 enum {
 	FPSGO_SET_UNKNOWN = -1,
@@ -213,6 +214,7 @@ struct fbt_boost_info {
 	unsigned int last_normal_blc_b;
 	unsigned int last_normal_blc_m;
 	unsigned int sbe_rescue;
+	unsigned long long sbe_rescue_target_time;
 
 	/* adjust loading */
 	int loading_weight;
@@ -425,9 +427,15 @@ struct render_info {
 	unsigned long long t_last_start;
 	struct mutex ux_mlock;
 	struct rb_root ux_frame_info_tree;
+	struct list_head scroll_list;
+	struct hwui_frame_info *tmp_hwui_frame_info_arr[HWUI_MAX_FRAME_SAME_TIME];
+	int type;
+	int scroll_status;
 	int ux_blc_next;
 	int ux_blc_cur;
 	int sbe_enhance;
+	int hwui_arr_idx;
+	int sbe_dy_enhance_f;
 
 	/*fbt*/
 	int linger;
@@ -624,7 +632,8 @@ int fpsgo_base_is_finished(struct render_info *thr);
 int fpsgo_update_swap_buffer(int pid);
 void fpsgo_sentcmd(int cmd, int value1, int value2);
 void fpsgo_ctrl2base_get_pwr_cmd(int *cmd, int *value1, int *value2);
-int fpsgo_sbe_rescue_traverse(int pid, int start, int enhance, unsigned long long frame_id);
+int fpsgo_sbe_rescue_traverse(int pid, int start, int enhance,
+		int rescue_type, unsigned long long rescue_target, unsigned long long frame_id);
 void fpsgo_stop_boost_by_pid(int pid);
 void fpsgo_stop_boost_by_render(struct render_info *r);
 int fpsgo_get_render_tid_by_render_name(int tgid, char *name,

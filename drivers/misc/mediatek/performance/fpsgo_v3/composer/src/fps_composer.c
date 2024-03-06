@@ -981,16 +981,18 @@ exit:
 }
 
 void fpsgo_frame_start(struct render_info *f_render,
+	unsigned long long frameID,
 	unsigned long long frame_start_time,
 	unsigned long long bufID)
 {
 	fpsgo_systrace_c_fbt(f_render->pid, bufID, 1, "[ux]sbe_set_ctrl");
-	fbt_ux_frame_start(f_render, frame_start_time);
+	fbt_ux_frame_start(f_render, frameID, frame_start_time);
 }
 
 void fpsgo_frame_end(struct render_info *f_render,
 	unsigned long long frame_start_time,
 	unsigned long long frame_end_time,
+	unsigned long long frameid,
 	unsigned long long bufID)
 {
 	unsigned long long running_time = 0, raw_runtime = 0;
@@ -1018,7 +1020,7 @@ void fpsgo_frame_end(struct render_info *f_render,
 	f_render->raw_runtime = raw_runtime;
 	if (running_time != 0)
 		f_render->running_time = running_time;
-	fbt_ux_frame_end(f_render, frame_start_time, frame_end_time);
+	fbt_ux_frame_end(f_render, frameid, frame_start_time, frame_end_time);
 	fpsgo_comp2fstb_notify_info(f_render->pid, f_render->buffer_id,
 		f_render->Q2Q_time, 0, 0);
 	fpsgo_systrace_c_fbt(f_render->pid, bufID, 0, "[ux]sbe_set_ctrl");
@@ -1061,7 +1063,7 @@ void fpsgo_ctrl2comp_hint_frame_start(int pid,
 
 	// if not overlap, call frame start.
 	if (ux_frame_cnt == 1)
-		fpsgo_frame_start(f_render, frame_start_time, identifier);
+		fpsgo_frame_start(f_render, frameID, frame_start_time, identifier);
 
 	fpsgo_thread_unlock(&f_render->thr_mlock);
 	fpsgo_render_tree_unlock(__func__);
@@ -1077,6 +1079,24 @@ void fpsgo_ctrl2comp_hint_frame_start(int pid,
 		}
 	}
 	mutex_unlock(&recycle_lock);
+}
+
+void fpsgo_ctrl2comp_hint_doframe_end(int pid,
+	unsigned long long frameID,
+	unsigned long long frame_end_time,
+	unsigned long long identifier, long long frame_flags)
+{
+	struct render_info *f_render;
+
+	fpsgo_render_tree_lock(__func__);
+	f_render = fpsgo_search_and_add_render_info(pid, identifier, 0);
+	if (!f_render) {
+		fpsgo_render_tree_unlock(__func__);
+		return;
+	}
+
+	fpsgo_ux_doframe_end(f_render, frameID, frame_flags);
+	fpsgo_render_tree_unlock(__func__);
 }
 
 void fpsgo_ctrl2comp_hint_frame_end(int pid,
@@ -1118,9 +1138,9 @@ void fpsgo_ctrl2comp_hint_frame_end(int pid,
 	mutex_unlock(&f_render->ux_mlock);
 
 	// frame end.
-	fpsgo_frame_end(f_render, frame_start_time, frame_end_time, identifier);
+	fpsgo_frame_end(f_render, frame_start_time, frame_end_time, frameID, identifier);
 	if (ux_frame_cnt == 1)
-		fpsgo_frame_start(f_render, frame_end_time, identifier);
+		fpsgo_frame_start(f_render, frameID, frame_end_time, identifier);
 	fpsgo_systrace_c_fbt(pid, identifier, ux_frame_cnt, "[ux]ux_frame_cnt");
 
 	fpsgo_fstb2other_info_update(f_render->pid, f_render->buffer_id, FPSGO_PERF_IDX,
@@ -1162,8 +1182,8 @@ void fpsgo_ctrl2comp_hint_frame_err(int pid,
 	ux_frame_cnt = fpsgo_ux_count_frame_info(f_render, 1);
 	if (ux_frame_cnt == 0) {
 		fpsgo_systrace_c_fbt(f_render->pid, identifier, 0, "[ux]sbe_set_ctrl");
-		fbt_ux_frame_err(f_render, time);
 	}
+	fbt_ux_frame_err(f_render, ux_frame_cnt, frameID, time);
 	fpsgo_systrace_c_fbt(pid, identifier, ux_frame_cnt, "[ux]ux_frame_cnt");
 	mutex_unlock(&f_render->ux_mlock);
 
@@ -1335,7 +1355,8 @@ out:
 }
 
 int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
-	int start, char *specific_name, int num)
+				   unsigned long long ts, int start,
+				   char *specific_name, int num)
 {
 	char *thread_name = NULL;
 	int ret;
@@ -1346,6 +1367,7 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 	int *local_specific_tid_arr = NULL;
 	int local_specific_tid_num = 0;
 	struct fpsgo_attr_by_pid *attr_iter = NULL;
+	struct render_info *thr = NULL;
 
 	if (tgid <= 0 || !name || !mask) {
 		ret = -EINVAL;
@@ -1386,6 +1408,13 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 			switch_thread_max_fps(final_pid_arr[i], start);
 
 		fpsgo_render_tree_lock(__func__);
+		thr = fpsgo_search_and_add_render_info(final_pid_arr[i], final_bufID_arr[i], 0);
+
+		if (test_bit(FPSGO_CLEAR_SCROLLING_INFO, &mask) && thr != NULL) {
+			clear_ux_info(thr);
+			fpsgo_render_tree_unlock(__func__);
+			goto out;
+		}
 		if (start) {
 			attr_iter = fpsgo_find_attr_by_tid(final_pid_arr[i], 1);
 			if (attr_iter) {
@@ -1398,8 +1427,51 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 				if (test_bit(FPSGO_QUOTA_DISABLE, &mask))
 					attr_iter->attr.qr_enable_by_pid = 0;
 			}
-		} else
+
+			//get render_info struct for this tid and buffer_id
+			if (test_bit(FPSGO_HWUI, &mask) && thr != NULL) {
+				int add_new_scrolling = 1;
+				int type = test_bit(FPSGO_MOVEING, &mask) ?
+						FPSGO_MOVEING : (test_bit(FPSGO_FLING, &mask) ? FPSGO_FLING : 0);
+				if (get_ux_list_length(&thr->scroll_list) >= 1) {
+					struct ux_scroll_info *last =
+						list_first_entry(
+							&thr->scroll_list,
+							struct ux_scroll_info,
+							queue_list);
+					if (last->type == FPSGO_MOVEING && type == FPSGO_FLING)
+						add_new_scrolling = 0;
+
+					if (add_new_scrolling && !last->end_ts) {
+						last->end_ts = ts; // last scroll endtime is current ts
+						fpsgo_ux_scrolling_end(thr);
+					} else if (!add_new_scrolling) {
+						last->type = FPSGO_FLING;
+					}
+				}
+				if (add_new_scrolling) {
+					//add new scroll_info into render_info struct
+					enqueue_ux_scroll_info(type, ts, thr);
+				}
+			}
+		} else {
+
+			//update scroll_info when scroll end
+			if (test_bit(FPSGO_HWUI, &mask) && thr != NULL) {
+				if (get_ux_list_length(&thr->scroll_list) > 0) {
+					struct ux_scroll_info *last =
+						list_first_entry(
+							&thr->scroll_list,
+							struct ux_scroll_info,
+							queue_list);
+					last->end_ts = ts;
+					last->dur_ts = last->end_ts - last->start_ts;
+					fpsgo_ux_scrolling_end(thr);
+				}
+			}
+
 			delete_attr_by_pid(final_pid_arr[i]);
+		}
 		fpsgo_render_tree_unlock(__func__);
 
 		fpsgo_main_trace("[comp] sbe %dth rtid:%d buffer_id:0x%llx",

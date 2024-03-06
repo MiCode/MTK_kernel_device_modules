@@ -16,6 +16,11 @@ enum FPSGO_SBE_MASK {
 	FPSGO_QUOTA_DISABLE,
 	FPSGO_RUNNING_CHECK,
 	FPSGO_RUNNING_QUERY,
+	FPSGO_NON_HWUI,
+	FPSGO_HWUI,
+	FPSGO_CLEAR_SCROLLING_INFO,
+	FPSGO_MOVEING,
+	FPSGO_FLING,
 };
 
 enum FPSGO_COM_KERNEL_NODE {
@@ -71,6 +76,10 @@ void fpsgo_ctrl2comp_hint_frame_end(int pid,
 			unsigned long long frameID,
 			unsigned long long enqueue_start_time,
 			unsigned long long identifier);
+void fpsgo_ctrl2comp_hint_doframe_end(int pid,
+			unsigned long long frameID,
+			unsigned long long enqueue_start_time,
+			unsigned long long identifier, long long frame_flags);
 void fpsgo_ctrl2comp_hint_frame_err(int pid,
 			unsigned long long frameID,
 			unsigned long long time,
@@ -88,7 +97,7 @@ void fpsgo_ctrl2comp_disconnect_api(int pid, int api,
 void fpsgo_ctrl2comp_acquire(int p_pid, int c_pid, int c_tid,
 	int api, unsigned long long buffer_id, unsigned long long ts);
 void fpsgo_ctrl2comp_set_app_meta_fps(int tgid, int fps, unsigned long long ts);
-int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
+int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask, unsigned long long ts,
 	int start, char *specific_name, int num);
 int switch_ui_ctrl(int pid, int set_ctrl);
 int fpsgo_get_fpsgo_is_boosting(void);

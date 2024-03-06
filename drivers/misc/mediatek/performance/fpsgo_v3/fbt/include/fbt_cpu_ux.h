@@ -2,15 +2,35 @@
 /*
  * Copyright (c) 2023 MediaTek Inc.
  */
+
 #include <linux/rbtree.h>
+
+//high 16bit for frame status
+#define FRAME_MASK 0xFFFF0000
+#define FRAME_STATUS_OBTAINVIEW    (1 << 0)
+#define FRAME_STATUS_INFLATE       (1 << 1)
+#define FRAME_STATUS_INPUT         (1 << 2)
+#define FRAME_STATUS_FLING         (1 << 3)
+#define FRAME_STATUS_OTHERS        (1 << 4)
+//low 16bit for rescue reason
+#define RESCUE_MASK 0x0000FFFF
+#define RESCUE_WAITING_ANIMATION_END      (1 << 0)
+#define RESCUE_TRAVERSAL_OVER_VSYNC       (1 << 1)
+#define RESCUE_RUNNING                    (1 << 2)
+#define RESCUE_COUNTINUE_RESCUE           (1 << 3)
+#define RESCUE_WAITING_VSYNC              (1 << 4)
+#define RESCUE_TYPE_TRAVERSAL_DYNAMIC     (1 << 5)
+#define RESCUE_TYPE_OI                    (1 << 6)
+#define SBE_RESCUE_TYPE_MAX_ENHANCE       (1 << 7)
 
 extern void set_task_basic_vip(int pid);
 extern void unset_task_basic_vip(int pid);
 
-void fbt_ux_frame_start(struct render_info *thr, unsigned long long ts);
-void fbt_ux_frame_end(struct render_info *thr,
+void fbt_ux_frame_start(struct render_info *thr, unsigned long long frameid, unsigned long long ts);
+void fbt_ux_frame_end(struct render_info *thr, unsigned long long frameid,
 		unsigned long long start_ts, unsigned long long end_ts);
-void fbt_ux_frame_err(struct render_info *thr, unsigned long long ts);
+void fbt_ux_frame_err(struct render_info *thr, int frame_count,
+		unsigned long long frameID,unsigned long long ts);
 void fpsgo_ux_reset(struct render_info *thr);
 
 struct ux_frame_info {
@@ -19,6 +39,63 @@ struct ux_frame_info {
 	struct rb_node entry;
 };
 
+struct ux_scroll_info{
+	struct list_head queue_list;
+	struct list_head frame_list;
+	unsigned long long start_ts;
+	unsigned long long end_ts;
+	unsigned long long dur_ts;
+	int frame_count;
+	int jank_count;
+	int enhance;
+	int type;
+
+	int checked;
+	int rescue_cap_count;
+	int rescue_frame_oi_count;
+	unsigned long long rescue_frame_time_count;
+	int rescue_frame_count;
+	int *score;
+};
+
+struct hwui_frame_info{
+	struct list_head queue_list;
+	unsigned long long frameID;
+	unsigned long long start_ts;
+	unsigned long long end_ts;
+	unsigned long long dur_ts;
+	unsigned long long rsc_start_ts;
+	unsigned long long rsc_dur_ts;
+	int display_rate;
+
+	int perf_idx;
+	int rescue_reason;
+	int frame_status;
+	bool overtime;
+	int drop;
+	bool rescue;
+	bool rescue_suc;
+	bool promotion;
+	int using;
+};
+
+void fbt_init_ux(struct render_info *info);
+void fbt_del_ux(struct render_info *info);
+void reset_hwui_frame_info(struct hwui_frame_info *frame);
+struct hwui_frame_info *get_valid_hwui_frame_info_from_pool(struct render_info *info);
+struct hwui_frame_info *get_hwui_frame_info_by_frameid(struct render_info *info, unsigned long long frameid);
+struct hwui_frame_info *insert_hwui_frame_info_from_tmp(struct render_info *thr, struct hwui_frame_info *frame);
+void count_scroll_rescue_info(struct render_info *thr, struct hwui_frame_info *hwui_info);
+
+int get_ux_list_length(struct list_head *head);
+void fpsgo_ux_doframe_end(struct render_info *thr, unsigned long long frame_id,
+			long long frame_flags);
+void clear_ux_info(struct render_info *thr);
+void enqueue_ux_scroll_info(int type, unsigned long long start_ts, struct render_info *thr);
+struct ux_scroll_info *search_ux_scroll_info(unsigned long long ts, struct render_info *thr);
+int fpsgo_sbe_dy_enhance(struct render_info *thr);
+void fpsgo_ux_scrolling_end(struct render_info *thr);
+
 void fpsgo_ux_delete_frame_info(struct render_info *thr, struct ux_frame_info *info);
 struct ux_frame_info *fpsgo_ux_search_and_add_frame_info(struct render_info *thr,
 		unsigned long long frameID, unsigned long long start_ts, int action);
@@ -26,7 +103,7 @@ struct ux_frame_info *fpsgo_ux_get_next_frame_info(struct render_info *thr);
 int fpsgo_ux_count_frame_info(struct render_info *thr, int target);
 
 void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
-		unsigned long long frame_id);
+		int rescue_type, unsigned long long rescue_target, unsigned long long frame_id);
 void fpsgo_sbe_rescue_legacy(struct render_info *thr, int start, int enhance,
 		unsigned long long frame_id);
 

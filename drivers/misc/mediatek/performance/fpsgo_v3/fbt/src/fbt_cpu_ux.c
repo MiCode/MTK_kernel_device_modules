@@ -5,6 +5,11 @@
 #include <linux/rbtree.h>
 #include <linux/module.h>
 #include <linux/slab.h>
+#include <linux/list.h>
+#include <linux/kernel.h>
+#include <linux/types.h>
+#include <linux/math64.h>
+#include <linux/math.h>
 
 #include <mt-plat/fpsgo_common.h>
 
@@ -26,6 +31,7 @@
 #define TARGET_UNLIMITED_FPS 240
 #define NSEC_PER_HUSEC 100000
 #define SBE_RESCUE_MODE_UNTIL_QUEUE_END 2
+#define RESCUE_MAX_MONITOR_DROP_ARR_SIZE 10
 
 enum FPSGO_HARD_LIMIT_POLICY {
 	FPSGO_HARD_NONE = 0,
@@ -54,6 +60,8 @@ enum UX_SCROLL_POLICY_TYPE {
 static DEFINE_MUTEX(fbt_mlock);
 
 static struct kmem_cache *frame_info_cachep __ro_after_init;
+static struct kmem_cache *ux_scroll_info_cachep __ro_after_init;
+static struct kmem_cache *hwui_frame_info_cachep __ro_after_init;
 
 static int fpsgo_ux_gcc_enable;
 static int sbe_rescue_enable;
@@ -61,6 +69,10 @@ static int ux_scroll_policy_type;
 static int sbe_rescuing_frame_id;
 static int sbe_rescuing_frame_id_legacy;
 static int sbe_enhance_f;
+static int sbe_dy_max_enhance;
+static int sbe_dy_rescue_enable;
+static int sbe_dy_frame_threshold;
+static int scroll_cnt;
 static int global_ux_blc;
 static int global_ux_max_pid;
 static int set_ux_uclampmin;
@@ -72,10 +84,20 @@ static struct fbt_setting_info sinfo;
 
 module_param(fpsgo_ux_gcc_enable, int, 0644);
 module_param(sbe_enhance_f, int, 0644);
+module_param(sbe_dy_frame_threshold, int, 0644);
+module_param(sbe_dy_rescue_enable, int, 0644);
+module_param(sbe_dy_max_enhance, int, 0644);
+module_param(scroll_cnt, int, 0644);
 module_param(set_ux_uclampmin, int, 0644);
 module_param(set_ux_uclampmax, int, 0644);
 module_param(set_deplist_vip, int, 0644);
 module_param(rescue_cpu_mask, int, 0644);
+
+static void update_hwui_frame_info(struct render_info *info,
+		struct hwui_frame_info *frame, unsigned long long id,
+		unsigned long long start_ts, unsigned long long end_ts,
+		unsigned long long rsc_start_ts, unsigned long long rsc_end_ts,
+		int rescue_reason);
 
 /* main function*/
 static int nsec_to_100usec(unsigned long long nsec)
@@ -310,7 +332,7 @@ static void fbt_ux_set_cap_with_sbe(struct render_info *thr)
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, local_max_cap, "[ux]perf_idx_max");
 }
 
-void fbt_ux_frame_start(struct render_info *thr, unsigned long long ts)
+void fbt_ux_frame_start(struct render_info *thr, unsigned long long frameid, unsigned long long ts)
 {
 	if (!thr)
 		return;
@@ -323,10 +345,20 @@ void fbt_ux_frame_start(struct render_info *thr, unsigned long long ts)
 #endif
 		fpsgo_set_deplist_policy(thr, FPSGO_TASK_VIP);
 	}
+
 	fbt_ux_set_cap_with_sbe(thr);
+
+	if (sbe_dy_rescue_enable && !list_empty(&thr->scroll_list)) {
+		struct hwui_frame_info *frame = get_valid_hwui_frame_info_from_pool(thr);
+
+		if (frame) {
+			frame->frameID = frameid;
+			frame->start_ts = ts;
+		}
+	}
 }
 
-void fbt_ux_frame_end(struct render_info *thr,
+void fbt_ux_frame_end(struct render_info *thr, unsigned long long frameid,
 		unsigned long long start_ts, unsigned long long end_ts)
 {
 	struct fbt_boost_info *boost;
@@ -390,6 +422,21 @@ void fbt_ux_frame_end(struct render_info *thr,
 		else
 			thr->p_blc->dep_num = 0;
 	}
+
+	if (sbe_dy_rescue_enable) {
+		struct hwui_frame_info *new_frame;
+		struct hwui_frame_info *frame =
+			get_hwui_frame_info_by_frameid(thr, frameid);
+		if (frame) {// only insert rescued frame
+			if (frame->rescue) {
+				update_hwui_frame_info(thr, frame, frameid, 0, end_ts, 0, 0, 0);
+				new_frame = insert_hwui_frame_info_from_tmp(thr, frame);
+				count_scroll_rescue_info(thr, new_frame);
+			}
+			reset_hwui_frame_info(frame);
+		}
+	}
+
 	fpsgo_put_blc_mlock(__func__);
 
 	fbt_set_render_boost_attr(thr);
@@ -420,20 +467,29 @@ EXIT:
 		thr->ux_blc_next, 100, 0, 0);
 }
 
-void fbt_ux_frame_err(struct render_info *thr,
-unsigned long long ts)
+void fbt_ux_frame_err(struct render_info *thr, int frame_count,
+		unsigned long long frameID, unsigned long long ts)
 {
 	if (!thr)
 		return;
 
-	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL){
+	if (frame_count == 0) {
+		if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL){
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
-		set_top_grp_aware(0,0);
+			set_top_grp_aware(0,0);
 #endif
-		fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
+			fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
+		}
+		thr->ux_blc_cur = 0;
+		fbt_ux_set_cap_with_sbe(thr);
 	}
-	thr->ux_blc_cur = 0;
-	fbt_ux_set_cap_with_sbe(thr);
+
+	if (sbe_dy_rescue_enable) {
+		struct hwui_frame_info *frame =
+			get_hwui_frame_info_by_frameid(thr, frameID);
+		if (frame)
+			reset_hwui_frame_info(frame);
+	}
 }
 
 void fpsgo_ux_delete_frame_info(struct render_info *thr, struct ux_frame_info *info)
@@ -442,6 +498,23 @@ void fpsgo_ux_delete_frame_info(struct render_info *thr, struct ux_frame_info *i
 		return;
 	rb_erase(&info->entry, &(thr->ux_frame_info_tree));
 	kmem_cache_free(frame_info_cachep, info);
+}
+
+void fpsgo_ux_doframe_end(struct render_info *thr, unsigned long long frame_id,
+				long long frame_flags)
+{
+	int frame_status = (frame_flags & FRAME_MASK) >> 16;
+	int rescue_type = frame_flags & RESCUE_MASK;
+	struct hwui_frame_info *frame;
+
+	if (!thr || !sbe_dy_rescue_enable)
+		return;
+
+	frame = get_hwui_frame_info_by_frameid(thr, frame_id);
+	if (frame) {
+		frame->rescue_reason = rescue_type;
+		frame->frame_status = frame_status;
+	}
 }
 
 struct ux_frame_info *fpsgo_ux_search_and_add_frame_info(struct render_info *thr,
@@ -561,20 +634,229 @@ void fpsgo_set_affnity_on_rescue(int pid, int r_cpu_mask)
 				__func__, r_cpu_mask);
 }
 
+int fpsgo_sbe_dy_enhance(struct render_info *thr)
+{
+	struct ux_scroll_info *scroll_info;
+	struct hwui_frame_info *hwui_info;
+	int drop = 0;
+	int all_rescue_cap_count = 0;
+	unsigned long long all_rescue_frame_time_count = 0;
+	int all_rescue_frame_count = 0;
+	unsigned long long target_time = 0LLU;
+	int last_enhance = 0;
+	int new_enhance = 0;
+	int result = -1;
+	int scroll_count = 0;
+	unsigned long long rescue_target_time = 0LLU;
+	int pid = -1;
+
+	if (!sbe_dy_rescue_enable || !thr || IS_ERR_OR_NULL(&thr->scroll_list))
+		return result;
+
+	target_time = thr->boost_info.target_time;
+
+	if (target_time <= 0)
+		return result;
+
+	rescue_target_time = thr->boost_info.sbe_rescue_target_time;
+	if (rescue_target_time <= 0) {
+		FPSGO_LOGE("[SBE_UX] rescue target is err:%llu\n", rescue_target_time);
+		rescue_target_time = target_time >> 1;
+	}
+
+	pid = thr->pid;
+	scroll_count = get_ux_list_length(&thr->scroll_list);
+
+	if (scroll_cnt > 0 && scroll_count < scroll_cnt) {
+		//TODO: scroll not too much to check dynamic rescue, check drop rate and jank rate
+		//if scroll refresh rate do not match target fps, start to increase rescue
+		return result;
+	}
+
+	list_for_each_entry (scroll_info, &thr->scroll_list, queue_list) {
+		if (!scroll_info
+				|| IS_ERR_OR_NULL(&scroll_info->frame_list)
+				|| scroll_info->jank_count <= 0) {
+			continue;
+		}
+
+		all_rescue_cap_count += scroll_info->rescue_cap_count;
+		all_rescue_frame_time_count += scroll_info->rescue_frame_time_count;
+		all_rescue_frame_count += scroll_info->rescue_frame_count;
+	}
+
+	last_enhance = thr->sbe_dy_enhance_f > 0 ? thr->sbe_dy_enhance_f : sbe_enhance_f;
+
+	if (all_rescue_frame_count > 0 && all_rescue_frame_time_count > 0) {
+		int max_enhance = clamp(sbe_dy_max_enhance, 0, 100);
+		int new = clamp((int)
+			(div64_u64(all_rescue_cap_count, all_rescue_frame_count) + last_enhance), 0, 100);
+		unsigned long long avg_frame_time =
+				div64_u64(all_rescue_frame_time_count, all_rescue_frame_count);
+		//TODO: consider msync case, how to compute new enhance
+		new_enhance = (int)(div64_u64(new *avg_frame_time, target_time) - last_enhance);
+		new_enhance = clamp(new_enhance, 0, max_enhance);
+	}
+
+	result = last_enhance;
+
+	if (new_enhance > 0 && new_enhance != last_enhance) {
+		int max_monitor_drop_frame = RESCUE_MAX_MONITOR_DROP_ARR_SIZE - 1;
+		unsigned long long new_dur;
+		long long old_tmp;
+		int *oldScore;
+		int benifit_f_up = 0;
+		int benifit_f_down = 1;
+		int threshold = sbe_dy_frame_threshold > 0 ? sbe_dy_frame_threshold : 0;
+		int tempScore[RESCUE_MAX_MONITOR_DROP_ARR_SIZE];
+
+		list_for_each_entry (scroll_info, &thr->scroll_list, queue_list) {
+			if (!scroll_info
+					|| IS_ERR_OR_NULL(&scroll_info->frame_list)
+					|| scroll_info->jank_count <= 0) {
+				continue;
+			}
+			drop = 0;
+			for (size_t i = 0; i < RESCUE_MAX_MONITOR_DROP_ARR_SIZE; i++)
+				tempScore[i] = 0;
+
+			list_for_each_entry (hwui_info, &scroll_info->frame_list, queue_list) {
+				if (!hwui_info->rescue)
+					continue;
+
+				int old = clamp((hwui_info->perf_idx + last_enhance), 0, 100);
+				int new = clamp((hwui_info->perf_idx + new_enhance), 0, 100);
+
+				if (new_enhance > last_enhance && hwui_info->dur_ts <= target_time) {
+					new_dur = hwui_info->dur_ts;
+					tempScore[0] += 1;
+					drop = 0;
+				} else {
+					old_tmp = old * ((long long)hwui_info->dur_ts - (long long)rescue_target_time);
+					new_dur = div64_s64(old_tmp, new) + rescue_target_time;
+					drop = (int)div64_u64(new_dur, target_time);
+					if (drop < max_monitor_drop_frame)
+						tempScore[drop]++;
+					else
+						tempScore[max_monitor_drop_frame]++;
+				}
+
+				//compute drop diff with before
+				if (new_enhance > last_enhance) {
+					//increase enhance
+					if (hwui_info->drop - drop > 0)
+						benifit_f_up += (hwui_info->drop - drop);
+
+					benifit_f_down = 0;
+				} else {
+					//decrease enhance, default allow, if drop more, disallow
+					if (drop - hwui_info->drop > 0) {
+						benifit_f_down = 0;
+						break;
+					}
+				}
+			}
+			oldScore = scroll_info->score;
+
+			if (benifit_f_up > threshold || !benifit_f_down) {
+				//already meet condition
+				break;
+			}
+		}
+
+		if (benifit_f_up > threshold || benifit_f_down) {
+			fpsgo_main_trace("SBE_UX enhance change from %d to %d\n",
+					last_enhance, new_enhance);
+			result = new_enhance;
+		}
+	}
+
+	return result;
+}
+
+void fpsgo_ux_scrolling_end(struct render_info *thr)
+{
+	if (!thr || !sbe_dy_rescue_enable)
+		return;
+
+	thr->sbe_dy_enhance_f = fpsgo_sbe_dy_enhance(thr);
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_dy_enhance_f, "[ux]sbe_dy_enhance_f");
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "[ux]sbe_dy_enhance_f");
+}
+
+static void release_scroll(struct ux_scroll_info *info)
+{
+	struct hwui_frame_info *frame, *tmpFrame;
+
+	list_for_each_entry_safe(frame, tmpFrame, &info->frame_list, queue_list) {
+		list_del(&frame->queue_list);
+		kmem_cache_free(hwui_frame_info_cachep, frame);
+	}
+
+	list_del(&info->queue_list);
+	kfree(info->score);
+	kmem_cache_free(ux_scroll_info_cachep, info);
+}
+
+void clear_ux_info(struct render_info *thr)
+{
+	struct ux_scroll_info *pos, *tmp;
+
+	// clear ux scroll infos for new activity
+	fpsgo_main_trace("SBE_UX clear_ux %d\n", thr->pid);
+	list_for_each_entry_safe(pos, tmp, &thr->scroll_list, queue_list) {
+		release_scroll(pos);
+	}
+	// reset sbe dy enhance
+	thr->sbe_dy_enhance_f = -1;
+}
+
 void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
-		unsigned long long frame_id)
+		int rescue_type, unsigned long long rescue_target, unsigned long long frame_id)
 {
 	int cpu_mask;
+	unsigned long long ts = 0;
+	int sbe_dy_enhance = -1;
 
 	if (!thr || !sbe_rescue_enable)	//thr must find the 5566 one.
 		return;
 
 	mutex_lock(&fbt_mlock);
 	if (start) {
-		if (frame_id)
-			sbe_rescuing_frame_id = frame_id;
-		thr->sbe_enhance = enhance < 0 ?  sbe_enhance_f : (enhance + sbe_enhance_f);
+		sbe_rescuing_frame_id = frame_id;
+		if (sbe_dy_max_enhance > 0 && ((rescue_type & SBE_RESCUE_TYPE_MAX_ENHANCE) != 0))
+			sbe_dy_enhance = sbe_dy_max_enhance;
+		else if (!sbe_dy_rescue_enable || thr->sbe_dy_enhance_f <= 0)
+			sbe_dy_enhance = sbe_enhance_f;
+		else
+			sbe_dy_enhance = thr->sbe_dy_enhance_f;
+
+
+		thr->sbe_enhance = enhance < 0 ?  sbe_dy_enhance : (enhance + sbe_dy_enhance);
 		thr->sbe_enhance = clamp(thr->sbe_enhance, 0, 100);
+
+		if (sbe_dy_rescue_enable ) {
+			struct hwui_frame_info *frame = get_hwui_frame_info_by_frameid(thr, frame_id);
+
+			fpsgo_main_trace("%d SBE_UX: rescue frameid %lld sbe_dy_e:%d final_e %d\n",
+					thr->pid, frame_id,
+					thr->sbe_dy_enhance_f, sbe_dy_enhance);
+
+			//update rescue start time
+			ts = fpsgo_get_time();
+			update_hwui_frame_info(thr, frame, frame_id, 0, 0, ts, 0, 0);
+
+			//update rescue_target, default is 1/2 target_time
+			if (rescue_target > 0) {
+				if(thr->boost_info.sbe_rescue_target_time != rescue_target)
+					thr->boost_info.sbe_rescue_target_time = rescue_target;
+			} else
+				thr->boost_info.sbe_rescue_target_time = (thr->boost_info.target_time >> 1);
+
+			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, rescue_type, "[ux]rescue_type");
+
+		}
+
 		if (thr->boost_info.sbe_rescue != 0)
 			goto leave;
 		thr->boost_info.sbe_rescue = 1;
@@ -599,6 +881,14 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 			fpsgo_set_affnity_on_rescue(thr->tgid,cpu_mask);
 			fpsgo_set_affnity_on_rescue(thr->pid, cpu_mask);
 		}
+
+		if (sbe_dy_rescue_enable ) {
+			struct hwui_frame_info *frame = get_hwui_frame_info_by_frameid(thr, frame_id);
+			//update rescue end time
+			ts = fpsgo_get_time();
+			update_hwui_frame_info(thr, frame, frame_id, 0, 0, 0, ts, 0);
+		}
+
 		fbt_ux_set_cap_with_sbe(thr);
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_enhance, "[ux]sbe_rescue");
 	}
@@ -748,9 +1038,283 @@ leave:
 	kfree(pld);
 }
 
+int get_ux_list_length(struct list_head *head)
+{
+	struct list_head *temp;
+	int count = 0;
+
+	list_for_each(temp, head) {
+		count++;
+	}
+	return count;
+}
+
+struct ux_scroll_info *search_ux_scroll_info(unsigned long long ts,
+						 struct render_info *thr)
+{
+	struct ux_scroll_info *scr;
+
+	list_for_each_entry (scr, &thr->scroll_list, queue_list) {
+		if (scr->start_ts == ts)
+			return scr;
+	}
+	return NULL;
+}
+
+void enqueue_ux_scroll_info(int type, unsigned long long start_ts, struct render_info *thr)
+{
+	int list_length;
+	struct ux_scroll_info *new_node;
+	struct ux_scroll_info *tmp;
+	struct ux_scroll_info *first_node = NULL;
+
+	if (!sbe_dy_rescue_enable)
+		return;
+
+	new_node = kmem_cache_alloc(ux_scroll_info_cachep, GFP_KERNEL);
+
+	if (!new_node || !thr)
+		return;
+
+	new_node->score = kmalloc(
+					(RESCUE_MAX_MONITOR_DROP_ARR_SIZE) * sizeof(int)
+					, GFP_KERNEL | __GFP_ZERO);
+
+	if (!new_node->score)
+		return;
+
+	INIT_LIST_HEAD(&new_node->frame_list);
+	new_node->start_ts = start_ts;
+	new_node->type = type;
+
+	list_length = get_ux_list_length(&thr->scroll_list);
+	if (list_length == 0) {
+		for (size_t i = 0; i < HWUI_MAX_FRAME_SAME_TIME; i++) {
+			struct hwui_frame_info *frame = kmem_cache_alloc(hwui_frame_info_cachep, GFP_KERNEL);
+
+			if (!frame)//allocate memory failed
+				break;
+
+			thr->tmp_hwui_frame_info_arr[i] = frame;
+		}
+		thr->hwui_arr_idx = 0;
+	}
+
+	if (list_length >= scroll_cnt) {
+		list_for_each_entry_reverse(tmp, &thr->scroll_list, queue_list) {
+			first_node = tmp;
+			break;
+		}
+		if (first_node != NULL)
+			release_scroll(first_node);
+
+	}
+	list_add(&new_node->queue_list, &thr->scroll_list);
+
+}
+
+static void update_hwui_frame_info(struct render_info *info,
+		struct hwui_frame_info *frame, unsigned long long id,
+		unsigned long long start_ts, unsigned long long end_ts,
+		unsigned long long rsc_start_ts, unsigned long long rsc_end_ts,
+		int rescue_reason)
+{
+	if (frame && frame->frameID == id) {
+		// Update the fields for this frame.
+		if (start_ts) {
+			frame->start_ts = start_ts;
+			frame->display_rate = info->boost_info.target_fps;
+		}
+
+		if (rsc_start_ts) {
+			frame->rescue = true;
+			frame->rsc_start_ts = rsc_start_ts;
+		}
+		if (rsc_end_ts)
+			frame->rsc_dur_ts = rsc_end_ts - frame->rsc_start_ts;
+		if (rescue_reason)
+			frame->rescue_reason = rescue_reason;
+		if (end_ts) {
+			frame->end_ts = end_ts;
+			frame->dur_ts = end_ts - frame->start_ts;
+			if (frame->dur_ts > info->boost_info.target_time) {
+				frame->overtime = true;
+				frame->rescue_suc = false;
+			} else {
+				frame->overtime = false;
+				if(frame->rescue)
+					frame->rescue_suc = true;
+			}
+			if (frame->rescue && !frame->rsc_dur_ts)
+				frame->rsc_dur_ts = end_ts - frame->rsc_start_ts;
+
+		}
+	}
+}
+
+void reset_hwui_frame_info(struct hwui_frame_info *frame)
+{
+	if (frame) {
+		//make frameID max
+		frame->frameID = -1;
+		frame->start_ts = 0;
+		frame->end_ts = 0;
+		frame->dur_ts = 0;
+		frame->rsc_start_ts = 0;
+		frame->rsc_dur_ts = 0;
+		frame->overtime = false;
+		frame->rescue = false;
+		frame->rescue_suc = false;
+		frame->rescue_reason = 0;
+		frame->perf_idx = -1;
+		frame->frame_status = 0;
+		frame->display_rate = 0;
+		frame->promotion = false;
+		frame->drop = -1;
+	}
+}
+
+struct hwui_frame_info *get_valid_hwui_frame_info_from_pool(struct render_info *info)
+{
+	struct hwui_frame_info *frame;
+
+	if (!info || list_empty(&info->scroll_list))
+		return NULL;
+
+	if (info->hwui_arr_idx >= HWUI_MAX_FRAME_SAME_TIME)
+		info->hwui_arr_idx = 0;
+
+	frame = info->tmp_hwui_frame_info_arr[info->hwui_arr_idx];
+
+	info->hwui_arr_idx++;
+	return frame;
+}
+
+struct hwui_frame_info *get_hwui_frame_info_by_frameid(
+		struct render_info *info, unsigned long long frameid)
+{
+	if (!info || list_empty(&info->scroll_list))
+		return NULL;
+
+	for (size_t i = 0; i < HWUI_MAX_FRAME_SAME_TIME; i++) {
+		struct hwui_frame_info *frame = info->tmp_hwui_frame_info_arr[i];
+
+		if (frame && frameid == frame->frameID)
+			return frame;
+	}
+	return NULL;
+}
+
+struct hwui_frame_info *insert_hwui_frame_info_from_tmp(struct render_info *thr, struct hwui_frame_info *frame)
+{
+	struct hwui_frame_info *new_frame;
+	struct ux_scroll_info *last = NULL;
+
+	if (!thr  || list_empty(&thr->scroll_list) || !frame)
+		return NULL;
+
+	// add to the frame list.
+	last = list_first_entry_or_null(&(thr->scroll_list), struct ux_scroll_info, queue_list);
+
+	if (!last)
+		return NULL;
+
+	new_frame = kmem_cache_alloc(hwui_frame_info_cachep, GFP_KERNEL);
+	if (!new_frame)
+		return NULL;
+
+	new_frame->frameID = frame->frameID;
+	new_frame->start_ts = frame->start_ts;
+	new_frame->end_ts = frame->end_ts;
+	new_frame->dur_ts = frame->dur_ts;
+	new_frame->rsc_start_ts = frame->rsc_start_ts;
+	new_frame->rsc_dur_ts = frame->rsc_dur_ts;
+	new_frame->display_rate = frame->display_rate;
+	new_frame->overtime = frame->overtime;
+	new_frame->rescue = frame->rescue;
+	new_frame->rescue_suc = frame->rescue_suc;
+	new_frame->rescue_reason = frame->rescue_reason;
+	new_frame->frame_status = frame->frame_status;
+	new_frame->perf_idx = frame->perf_idx;
+	new_frame->promotion = frame->promotion;
+	new_frame->drop = frame->drop;
+	list_add_tail(&(new_frame->queue_list), &(last->frame_list));
+	return new_frame;
+}
+
+void count_scroll_rescue_info(struct render_info *thr, struct hwui_frame_info *hwui_info)
+{
+	struct ux_scroll_info *scroll_info = NULL;
+	unsigned long long target_time;
+	int drop = 0;
+	int max_monitor_drop_frame;
+
+	if (!thr  || list_empty(&thr->scroll_list))
+		return;
+
+	// add to the frame list.
+	scroll_info = list_first_entry_or_null(&(thr->scroll_list), struct ux_scroll_info, queue_list);
+
+	if (!scroll_info)
+		return;
+
+	target_time = thr->boost_info.target_time;
+	if (target_time <= 0)
+		return;
+
+	max_monitor_drop_frame = RESCUE_MAX_MONITOR_DROP_ARR_SIZE - 1;
+	if (hwui_info->rescue) {
+		// a. check is running or continue rescue
+		if ((hwui_info->rescue_reason & RESCUE_COUNTINUE_RESCUE) != 0
+				|| hwui_info->dur_ts <= 0) {
+			return;
+		}
+		scroll_info->rescue_cap_count += hwui_info->perf_idx;
+		scroll_info->rescue_frame_time_count += hwui_info->dur_ts;
+		scroll_info->rescue_frame_count += 1;
+
+		if (hwui_info->dur_ts <= target_time) {
+			scroll_info->score[0] += 1;
+			hwui_info->drop = 0;
+		} else {
+			drop = (int)div64_u64(hwui_info->dur_ts, target_time);
+			hwui_info->drop = drop;
+			if (drop < max_monitor_drop_frame)
+				scroll_info->score[drop] += 1;
+			else
+				scroll_info->score[max_monitor_drop_frame] += 1;
+		}
+		scroll_info->jank_count++;
+		fpsgo_main_trace("%d SBE_UX: frameid %lld cap:%d dur_ts %lld drop %d\n",
+					thr->pid, hwui_info->frameID,
+					hwui_info->perf_idx, hwui_info->dur_ts, drop);
+	}
+
+}
+
+void fbt_init_ux(struct render_info *info)
+{
+	INIT_LIST_HEAD(&(info->scroll_list));
+	info->hwui_arr_idx = 0;
+}
+
+void fbt_del_ux(struct render_info *info)
+{
+	if (sbe_dy_rescue_enable) {
+		clear_ux_info(info);
+		for (size_t i = 0; i < HWUI_MAX_FRAME_SAME_TIME; i++) {
+			if (info->tmp_hwui_frame_info_arr[i])
+				kmem_cache_free(hwui_frame_info_cachep, info->tmp_hwui_frame_info_arr[i]);
+		}
+	}
+	list_del(&(info->scroll_list));
+}
+
 void __exit fbt_cpu_ux_exit(void)
 {
 	kmem_cache_destroy(frame_info_cachep);
+	kmem_cache_destroy(ux_scroll_info_cachep);
+	kmem_cache_destroy(hwui_frame_info_cachep);
 }
 
 int __init fbt_cpu_ux_init(void)
@@ -760,6 +1324,10 @@ int __init fbt_cpu_ux_init(void)
 	sbe_rescuing_frame_id = -1;
 	sbe_rescuing_frame_id_legacy = -1;
 	sbe_enhance_f = 50;
+	sbe_dy_max_enhance = 80;
+	sbe_dy_frame_threshold = 2;
+	sbe_dy_rescue_enable = 1;
+	scroll_cnt = 6;
 	ux_scroll_policy_type = fbt_get_ux_scroll_policy_type();
 	set_ux_uclampmin = 0;
 	set_ux_uclampmax = 0;
@@ -767,7 +1335,11 @@ int __init fbt_cpu_ux_init(void)
 	rescue_cpu_mask = 1;
 	frame_info_cachep = kmem_cache_create("ux_frame_info",
 		sizeof(struct ux_frame_info), 0, SLAB_HWCACHE_ALIGN, NULL);
-	if (!frame_info_cachep)
+	ux_scroll_info_cachep = kmem_cache_create("ux_scroll_info",
+		sizeof(struct ux_scroll_info), 0, SLAB_HWCACHE_ALIGN, NULL);
+	hwui_frame_info_cachep = kmem_cache_create("hwui_frame_info",
+		sizeof(struct hwui_frame_info), 0, SLAB_HWCACHE_ALIGN, NULL);
+	if (!frame_info_cachep || !ux_scroll_info_cachep || !hwui_frame_info_cachep)
 		return -1;
 
 	return 0;
