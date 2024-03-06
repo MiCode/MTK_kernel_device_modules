@@ -41,6 +41,8 @@
 
 #define MMINFRA_GALS_NR		(10)
 
+#define MMPC_RSC_USER_NR	(2)
+
 struct mminfra_dbg {
 	void __iomem *ctrl_base;
 	void __iomem *mminfra_base;
@@ -56,10 +58,13 @@ struct mminfra_dbg {
 	struct notifier_block nb;
 	u32 gals_sel[MMINFRA_GALS_NR];
 	u32 dbg_sel_out_nr[MM_PWR_NR];
+	u32 mmpc_rsc_user[MMPC_RSC_USER_NR];
 	u32 mm_voter_base;
 	u32 mm_mtcmos_base;
 	u32 mm_mtcmos_mask;
 	u32 vcp_gipc_in_set_base;
+	u32 mmpc_src_ctrl_base;
+	u32 mm_proc_mtcmos_base;
 	bool irq_safe;
 };
 
@@ -81,6 +86,7 @@ static bool skip_apsrc;
 static bool is_mminfra_shutdown;
 static bool mm_no_cg_ctrl;
 static bool mm_no_scmi;
+static bool mmpc_src_ctrl;
 
 #define MMINFRA_BASE		0x1e800000
 #define MMINFRA_AO_BASE		0x1e8ff000
@@ -598,6 +604,92 @@ static const struct kernel_param_ops mminfra_log_ops = {
 module_param_cb(mminfra_log, &mminfra_log_ops, NULL, 0644);
 MODULE_PARM_DESC(mminfra_log, "mminfra log");
 
+int mminfra_dbg_ut(const char *val, const struct kernel_param *kp)
+{
+	int ret, i;
+	unsigned int test_case, arg0, arg1, value;
+	void __iomem *mm_proc_mtcmos;
+	void __iomem *mmpc_src_addr;
+	void __iomem *addr;
+	u32 *mmpc_rsc_user_num = dbg->mmpc_rsc_user;
+
+	ret = sscanf(val, "%u %u %u", &test_case, &arg0, &arg1);
+	if (ret != 3) {
+		pr_notice("%s: invalid input: %s, result(%d)\n", __func__, val, ret);
+		return -EINVAL;
+	}
+
+	pr_notice("%s: input: %s\n", __func__, val);
+	switch (test_case) {
+	case 0:
+		if (mmpc_src_ctrl) {
+			if (mm_pwr_ver == mm_pwr_v3) {
+				mm_proc_mtcmos = ioremap(dbg->mm_proc_mtcmos_base, 0x4);
+				if ((readl(mm_proc_mtcmos) & 0xC0000000) != 0xC0000000) {
+					pr_notice("mmproc pwr off: 0x%x\n", readl(mm_proc_mtcmos));
+				} else {
+					mmpc_src_addr = ioremap(dbg->mmpc_src_ctrl_base, 0x1000);
+					for (i = 0x4; i <= 0xc4; i += 0x20) {
+						pr_notice("mmpc sw mode[0x%x]: 0x%x\n",
+							i, readl(mmpc_src_addr+i));
+					}
+					for (i = 0x18; i <= 0xd8; i += 0x20) {
+						pr_notice("mmpc fsm output[0x%x]: 0x%x\n",
+							i, readl(mmpc_src_addr+i));
+					}
+					for (i = 0x1c; i <= 0xdc; i += 0x20) {
+						pr_notice("mmpc hw req[0x%x]: 0x%x\n",
+							i, readl(mmpc_src_addr+i));
+					}
+					iounmap(mmpc_src_addr);
+				}
+				iounmap(mm_proc_mtcmos);
+			}
+		}
+		break;
+	case 1:
+	case 2:
+		if (mmpc_src_ctrl) {
+			if (mm_pwr_ver == mm_pwr_v3) {
+				if (arg0 >= mmpc_rsc_user_num[0] || arg1 >= mmpc_rsc_user_num[1]) {
+					pr_notice("%s: wrong test index(%d)(%d)(%d)\n",
+						__func__, test_case, arg0, arg1);
+					return -EINVAL;
+				}
+
+				mm_proc_mtcmos = ioremap(dbg->mm_proc_mtcmos_base, 0x4);
+				if ((readl(mm_proc_mtcmos) & 0xC0000000) != 0xC0000000) {
+					pr_notice("mmproc pwr off: 0x%x\n", readl(mm_proc_mtcmos));
+				} else {
+					mmpc_src_addr = ioremap(dbg->mmpc_src_ctrl_base, 0x1000);
+					addr = mmpc_src_addr + (unsigned int)(arg0 << 5) + 4;
+					value = (unsigned int)(1 << arg1);
+					if (test_case == 1)
+						writel(readl(addr) | value, addr);
+					else
+						writel(readl(addr) & ~value, addr);
+					pr_notice("mmpc sw mode[0x%x]: 0x%x\n",
+						((arg0 << 5) + 4), readl(addr));
+					iounmap(mmpc_src_addr);
+				}
+				iounmap(mm_proc_mtcmos);
+			}
+		}
+		break;
+	default:
+		pr_notice("%s: wrong test_case(%d)\n", __func__, test_case);
+		break;
+	}
+
+	return 0;
+}
+
+static const struct kernel_param_ops mminfra_dbg_ut_ops = {
+	.set = mminfra_dbg_ut,
+};
+module_param_cb(mminfra_dbg_ut, &mminfra_dbg_ut_ops, NULL, 0644);
+MODULE_PARM_DESC(mminfra_dbg_ut, "mminfra dbg ut");
+
 static int vcp_mminfra_on(void)
 {
 	int count, ret;
@@ -1039,6 +1131,25 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 
 		if (dbg->mm_mtcmos_base)
 			dbg->mminfra_mtcmos_base = ioremap(dbg->mm_mtcmos_base, 0x10);
+	}
+
+	mmpc_src_ctrl = of_property_read_bool(node, "mmpc-src-ctrl");
+	if (mmpc_src_ctrl) {
+		if (mm_pwr_ver == mm_pwr_v3) {
+			of_property_read_u32(node, "mmpc-src-ctrl-base",
+				&dbg->mmpc_src_ctrl_base);
+			of_property_read_u32(node, "mm-proc-mtcmos-base",
+				&dbg->mm_proc_mtcmos_base);
+			for (i = 0; i < MMPC_RSC_USER_NR; i++) {
+				if (!of_property_read_u32_index(dev->of_node, "mmpc-rsc-user",
+					i, &tmp))
+					dbg->mmpc_rsc_user[i] = tmp;
+				else
+					dbg->mmpc_rsc_user[i] = 0;
+				pr_notice("[mminfra] mmpc_rsc_user[%d]=%d\n",
+					i, dbg->mmpc_rsc_user[i]);
+			}
+		}
 	}
 
 	cmdq_get_mminfra_cb(is_mminfra_power_on);
