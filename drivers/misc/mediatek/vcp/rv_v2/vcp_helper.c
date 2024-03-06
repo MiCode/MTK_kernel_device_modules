@@ -128,6 +128,7 @@ phys_addr_t vcp_mem_logger_virt;
 phys_addr_t vcp_mem_size;
 phys_addr_t vcp_mem_logger_size;
 bool vcp_hwvoter_support = true;
+bool vcp_ao;
 struct vcp_regs vcpreg;
 
 static struct workqueue_struct *vcp_workqueue;
@@ -229,6 +230,7 @@ struct vcp_ipi_irq vcp_ipi_irqs[] = {
 };
 #define IRQ_NUMBER  (sizeof(vcp_ipi_irqs)/sizeof(struct vcp_ipi_irq))
 struct device *vcp_io_devs[VCP_IOMMU_DEV_NUM];
+struct device *vcp_power_devs;
 
 struct vcp_status_fp vcp_helper_fp = {
 	.vcp_get_reserve_mem_phys	= vcp_get_reserve_mem_phys,
@@ -974,6 +976,7 @@ static int vcp_pm_event(struct notifier_block *notifier
 			, unsigned long pm_event, void *unused)
 {
 	uint32_t waitCnt = 0, i = 0;
+	int ret;
 
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
@@ -986,7 +989,8 @@ static int vcp_pm_event(struct notifier_block *notifier
 		pr_notice("[VCP] PM_SUSPEND_PREPARE entered %d %d\n", pwclkcnt, is_suspending);
 		if ((!is_suspending) && pwclkcnt) {
 			is_suspending = true;
-
+			writel(B_CORE0_SUSPEND|B_CORE1_SUSPEND, AP_R_GPR1);
+			writel(B_GIPC4_SETCLR_3 ,R_GIPC_IN_SET);
 #if VCP_RECOVERY_SUPPORT
 				/* make sure all reset done */
 			flush_workqueue(vcp_reset_workqueue);
@@ -1006,8 +1010,14 @@ static int vcp_pm_event(struct notifier_block *notifier
 			for (i = 0; i < VCP_CORE_TOTAL ; i++)
 				del_timer(&vcp_ready_timer[i].tl);
 #endif
-
 			vcp_wait_awake_count();
+
+			if(!vcp_ao) {
+				ret = pm_runtime_put_sync(vcp_power_devs);
+				if (ret)
+					pr_notice("[VCP] %s: pm_runtime_put_sync %d\n"
+						, __func__, ret);
+			}
 		}
 		is_suspending = true;
 		mutex_unlock(&vcp_pw_clk_mutex);
@@ -1021,6 +1031,14 @@ static int vcp_pm_event(struct notifier_block *notifier
 		mutex_lock(&vcp_pw_clk_mutex);
 		pr_notice("[VCP] PM_POST_SUSPEND entered %d %d\n", pwclkcnt, is_suspending);
 		if (is_suspending && pwclkcnt) {
+			if(!vcp_ao) {
+				ret = pm_runtime_get_sync(vcp_power_devs);
+				if (ret)
+					pr_notice("[VCP] %s: pm_runtime_get_sync %d\n"
+						, __func__, ret);
+			}
+			writel(B_CORE0_RESUME|B_CORE1_RESUME, AP_R_GPR1);
+			writel(B_GIPC4_SETCLR_3 ,R_GIPC_IN_SET);
 #if VCP_RECOVERY_SUPPORT
 			cpuidle_pause_and_lock();
 			is_suspending = false;
@@ -1035,7 +1053,6 @@ static int vcp_pm_event(struct notifier_block *notifier
 		vcp_extern_notify(MMUP_ID, VCP_EVENT_RESUME);
 		vcp_extern_notify(VCP_ID, VCP_EVENT_RESUME);
 		mutex_unlock(&vcp_A_notify_mutex);
-
 		// SMC call to TFA / DEVAPC
 		// arm_smccc_smc(MTK_SIP_KERNEL_VCP_CONTROL, MTK_TINYSYS_VCP_KERNEL_OP_XXX,
 		// 0, 0, 0, 0, 0, 0, &res);
@@ -2666,6 +2683,18 @@ static int vcp_device_probe(struct platform_device *pdev)
 	} else
 		vcp_io_devs[vcp_support-1] = dev;
 
+	vcp_power_devs = dev;
+
+	vcp_ao = of_property_read_bool(node, "vcp-ao-feature");
+	pr_info("[VCP] vcp-ao %s", vcp_ao ? "support":"non-support");
+
+	if (!vcp_ao) {
+		pm_runtime_irq_safe(vcp_power_devs);
+		ret = pm_runtime_get_sync(vcp_power_devs);
+		if (ret)
+			pr_notice("[VCP] %s: pm_runtime_get_sync %d\n", __func__, ret);
+	}
+
 	if (vcp_support > 1)
 		return 0;
 
@@ -3060,7 +3089,6 @@ static struct platform_driver mtk_vcp_device = {
 		.owner = THIS_MODULE,
 		.pm = &mtk_vcp_pm_ops,
 		.of_match_table = vcp_of_ids,
-		.pm = &vcp_ipi_dbg_pm_ops,
 	},
 };
 
@@ -3220,6 +3248,7 @@ static int __init vcp_init(void)
 	/* vco io device initialise */
 	for (i = 0; i < VCP_IOMMU_DEV_NUM; i++)
 		vcp_io_devs[i] = NULL;
+	vcp_power_devs = NULL;
 
 	if (platform_driver_register(&mtk_vcp_device)) {
 		pr_info("[VCP] vcp probe fail\n");
