@@ -1529,7 +1529,6 @@ bool disp_aal_dump_reg(struct mtk_ddp_comp *comp, bool locked)
 int disp_aal_act_set_ess20_spect_param(struct mtk_ddp_comp *comp, void *data)
 {
 	int ret = 0;
-	unsigned int flag = 0;
 	struct DISP_AAL_ESS20_SPECT_PARAM *param = (struct DISP_AAL_ESS20_SPECT_PARAM *) data;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	struct mtk_ddp_comp *output_comp = NULL;
@@ -1546,12 +1545,7 @@ int disp_aal_act_set_ess20_spect_param(struct mtk_ddp_comp *comp, void *data)
 	AALAPI_LOG("[aal_kernel]ELVSSPN = %d, flag = %d\n",
 		aal_data->primary_data->ess20_spect_param.ELVSSPN,
 		aal_data->primary_data->ess20_spect_param.flag);
-	if (aal_data->primary_data->ess20_spect_param.flag & (1 << ENABLE_DYN_ELVSS)) {
-		AALAPI_LOG("[aal_kernel]enable dyn elvss, connector_id = %d, flag = %d\n",
-				connector_id, aal_data->primary_data->ess20_spect_param.flag);
-		flag = 1 << ENABLE_DYN_ELVSS;
-		mtk_leds_brightness_set(connector_id, 0, 0, flag);
-	}
+
 	return ret;
 }
 
@@ -1603,7 +1597,7 @@ int disp_aal_act_set_param(struct mtk_ddp_comp *comp, void *data)
 	else
 		aal_data->primary_data->ess20_spect_param.flag |= (1 << SET_BACKLIGHT_LEVEL);
 
-	if (prev_elvsspn == aal_data->primary_data->elvsspn_set)
+	if ((prev_elvsspn == aal_data->primary_data->elvsspn_set) && prev_backlight)
 		aal_data->primary_data->ess20_spect_param.flag &= (~(1 << SET_ELVSS_PN));
 	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
 		if (aal_data->primary_data->aal_param.silky_bright_flag == 0) {
@@ -4312,7 +4306,8 @@ static int disp_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 		aal_data->primary_data->ess20_spect_param.flag &= (~(1 << SET_BACKLIGHT_LEVEL));
 	else
 		aal_data->primary_data->ess20_spect_param.flag |= (1 << SET_BACKLIGHT_LEVEL);
-	if (prev_elvsspn == aal_data->primary_data->elvsspn_set)
+
+	if (prev_elvsspn == aal_data->primary_data->elvsspn_set && prev_backlight)
 		aal_data->primary_data->ess20_spect_param.flag &= (~(1 << SET_ELVSS_PN));
 
 	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
