@@ -14,24 +14,21 @@ static const struct mtk_node_desc node_descs_mt6768[] = {
 	DEFINE_MNODE(common0,
 		SLAVE_COMMON(0), 0, false, 0x0, MMQOS_NO_LINK),
 	DEFINE_MNODE(common0_port0,
-		MASTER_COMMON_PORT(0, 0), 0, false, 0x0, SLAVE_COMMON(0)),
+		MASTER_COMMON_PORT(0, 0), 0, false, 0x1, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port1,
-		MASTER_COMMON_PORT(0, 1), 0, false, 0x0, SLAVE_COMMON(0)),
+		MASTER_COMMON_PORT(0, 1), 0, false, 0x2, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port2,
-		MASTER_COMMON_PORT(0, 2), 0, false, 0x0, SLAVE_COMMON(0)),
+		MASTER_COMMON_PORT(0, 2), 0, false, 0x1, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port3,
-		MASTER_COMMON_PORT(0, 3), 0, false, 0x0, SLAVE_COMMON(0)),
+		MASTER_COMMON_PORT(0, 3), 0, false, 0x1, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port4,
-		MASTER_COMMON_PORT(0, 4), 0, false, 0x0, SLAVE_COMMON(0)),
-	DEFINE_MNODE(common0_port4,
-		MASTER_COMMON_PORT(0, 5), 0, false, 0x0, SLAVE_COMMON(0)),
+		MASTER_COMMON_PORT(0, 4), 0, false, 0x2, SLAVE_COMMON(0)),
     /*SMI Common*/
 	DEFINE_MNODE(larb0, SLAVE_LARB(0), 0, false, 0x0, MASTER_COMMON_PORT(0, 0)),
 	DEFINE_MNODE(larb1, SLAVE_LARB(1), 0, false, 0x0, MASTER_COMMON_PORT(0, 1)),
 	DEFINE_MNODE(larb2, SLAVE_LARB(2), 0, false, 0x0, MASTER_COMMON_PORT(0, 2)),
 	DEFINE_MNODE(larb3, SLAVE_LARB(3), 0, false, 0x0, MASTER_COMMON_PORT(0, 3)),
 	DEFINE_MNODE(larb4, SLAVE_LARB(4), 0, false, 0x0, MASTER_COMMON_PORT(0, 4)),
-	DEFINE_MNODE(larb21, SLAVE_LARB(21), 0, false, 0x0, MASTER_COMMON_PORT(0, 5)),
     /*Larb 0*/
 	DEFINE_MNODE(l0_disp_ovl0,
 		MASTER_LARB_PORT(M4U_PORT_DISP_OVL0), 8, false, 0x0, SLAVE_LARB(0)),
@@ -187,7 +184,7 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6768 = {
 		.emi_ratio = 800,
 	},
 	.comm_port_channels = {
-		{ 0x1, 0x2, 0x1, 0x2, 0x1, 0x3}
+		{ 0x1, 0x2, 0x1, 0x1, 0x2, 0x3}
 	},
 	.comm_port_hrt_types = {
 		{ HRT_MAX_BWL, HRT_NONE, HRT_NONE, HRT_NONE, HRT_NONE, HRT_DISP },
