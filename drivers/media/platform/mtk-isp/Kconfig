@@ -139,6 +139,14 @@ config VIDEO_MTK_ISP_IMGSYS_8
 		such as noise reduction, edge enhencement,
 		and motion estimation, etc.
 
+config MTK_IMGSYS_FRM_SYNC_ISP8
+	tristate "Mediatek imgsys processing function"
+	help
+		ITF driver control frame sync with
+		imgsys and standalone engine
+		To achie the purpose
+		by controling gce software token.
+
 config MTK_C2PS
 	tristate "Support MTK Camera Power Performance Sceduling (C2PS) mechanism mechanism"
 	help
