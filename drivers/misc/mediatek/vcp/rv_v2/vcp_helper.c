@@ -1113,9 +1113,6 @@ int reset_vcp(void)
 	struct arm_smccc_res res;
 	uint32_t timeout = VCP_READY_TIMEOUT_MS * 10;
 
-	/* make sure vcp is in idle state */
-	vcp_wait_core_stop_timeout(VCP_CORE_TOTAL);
-
 	vcp_set_clk();
 
 	if (vcpreg.core_nums == 2) {
