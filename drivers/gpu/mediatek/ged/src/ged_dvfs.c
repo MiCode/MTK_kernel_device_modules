@@ -4082,6 +4082,11 @@ GED_ERROR ged_dvfs_system_init(void)
 	g_sum_loading = 0;
 	g_sum_delta_time = 0;
 
+	g_ged_dvfs_commit_idx = gpufreq_get_opp_num(TARGET_DEFAULT) - 1;
+	g_ged_dvfs_commit_top_idx = gpufreq_get_opp_num(TARGET_GPU) - 1;
+	g_ged_dvfs_commit_dual = (g_ged_dvfs_commit_top_idx << 8) | g_ged_dvfs_commit_idx;
+	g_last_def_commit_freq_id = g_ged_dvfs_commit_idx;
+
 	return GED_OK;
 }
 
