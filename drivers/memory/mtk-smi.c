@@ -2280,34 +2280,39 @@ static struct mtk_smi_reg_pair
 mtk_smi_larb_mt6893_misc[MTK_LARB_NR_MAX][SMI_LARB_MISC_NR] = {
 	/* From mt6885/smi_conf.h, smi_larbX_conf_pair */
 	{{SMI_LARB_VC_PRI_MODE, 0x1}, {SMI_LARB_CMD_THRT_CON, 0x370256},
-	{SMI_LARB_SW_FLAG, 0x1}, {SMI_LARB_WRR_PORTx(5), 0x7},
-	{SMI_LARB_WRR_PORTx(6), 0x7}, {SMI_LARB_WRR_PORTx(7), 0x7},
-	{INT_SMI_LARB_CMD_THRT_CON, 0x370256},},			/* LARB0 */
-	{},								/* LARB1 */
+	{SMI_LARB_SW_FLAG, 0x1}, {INT_SMI_LARB_CMD_THRT_CON, 0x370256},},
+	{{SMI_LARB_VC_PRI_MODE, 0x1}, {SMI_LARB_CMD_THRT_CON, 0x370256},
+	{SMI_LARB_SW_FLAG, 0x1}, {INT_SMI_LARB_CMD_THRT_CON, 0x370256},},
 	{{SMI_LARB_CMD_THRT_CON, 0x370256}, {SMI_LARB_SW_FLAG, 0x1},
-	{INT_SMI_LARB_CMD_THRT_CON, 0x370256},},			/* LARB2 */
-	{},								/* LARB3 */
-	{{SMI_LARB_CMD_THRT_CON, 0x300256}, {SMI_LARB_SW_FLAG, 0x1},},	/* LARB4 */
-	{},								/* LARB5 */
-	{},								/* LARB6 */
+	{INT_SMI_LARB_CMD_THRT_CON, 0x370256},},
+	{{SMI_LARB_CMD_THRT_CON, 0x370256}, {SMI_LARB_SW_FLAG, 0x1},
+	{INT_SMI_LARB_CMD_THRT_CON, 0x370256},},
+	{{SMI_LARB_CMD_THRT_CON, 0x300256}, {SMI_LARB_SW_FLAG, 0x1},},
+	{{SMI_LARB_CMD_THRT_CON, 0x300256}, {SMI_LARB_SW_FLAG, 0x1},},
+	{},
 	{{SMI_LARB_CMD_THRT_CON, 0x300256}, {SMI_LARB_SW_FLAG, 0x1},
-	{INT_SMI_LARB_CMD_THRT_CON, 0x300256},},			/* LARB7 */
-	{},								/* LARB8 */
-	{},								/* LARB9 */
-	{},								/* LARB10 */
-	{},								/* LARB11 */
-	{},								/* LARB12 */
+	{INT_SMI_LARB_CMD_THRT_CON, 0x300256},},
+	{{SMI_LARB_CMD_THRT_CON, 0x300256}, {SMI_LARB_SW_FLAG, 0x1},
+	{INT_SMI_LARB_CMD_THRT_CON, 0x300256},},
+	{{SMI_LARB_CMD_THRT_CON, 0x300256}, {SMI_LARB_SW_FLAG, 0x1},},
+	{},
+	{{SMI_LARB_CMD_THRT_CON, 0x300256}, {SMI_LARB_SW_FLAG, 0x1},},
+	{},
 	{{SMI_LARB_CMD_THRT_CON, 0x370256}, {SMI_LARB_SW_FLAG, 0x1},
 	{SMI_LARB_DBG_CON, 0x1}, {INT_SMI_LARB_CMD_THRT_CON, 0x370256},
-	{INT_SMI_LARB_DBG_CON, 0x1},},					/* LARB13 */
-	{},								/* LARB14 */
-	{},								/* LARB15 */
+	{INT_SMI_LARB_DBG_CON, 0x1},},
 	{{SMI_LARB_CMD_THRT_CON, 0x370256}, {SMI_LARB_SW_FLAG, 0x1},
-	{SMI_LARB_FORCE_ULTRA, 0x8000}, {INT_SMI_LARB_CMD_THRT_CON, 0x370256},},	/*LARB16*/
-	{},								/* LARB17 */
-	{},								/* LARB18 */
-	{},								/* LARB19 */
-	{},								/* LARB20 */
+	{SMI_LARB_DBG_CON, 0x1}, {INT_SMI_LARB_CMD_THRT_CON, 0x370256},
+	{INT_SMI_LARB_DBG_CON, 0x1},},
+	{{SMI_LARB_CMD_THRT_CON, 0x300256}, {SMI_LARB_SW_FLAG, 0x1},},
+	{{SMI_LARB_CMD_THRT_CON, 0x370256}, {SMI_LARB_SW_FLAG, 0x1},
+	{SMI_LARB_FORCE_ULTRA, 0x8000}, {INT_SMI_LARB_CMD_THRT_CON, 0x370256},},
+	{{SMI_LARB_CMD_THRT_CON, 0x370256}, {SMI_LARB_SW_FLAG, 0x1},
+	{SMI_LARB_FORCE_ULTRA, 0x8000}, {INT_SMI_LARB_CMD_THRT_CON, 0x370256},},
+	{{SMI_LARB_CMD_THRT_CON, 0x370256}, {SMI_LARB_SW_FLAG, 0x1},
+	{SMI_LARB_FORCE_ULTRA, 0x8000}, {INT_SMI_LARB_CMD_THRT_CON, 0x370256},},
+	{{SMI_LARB_CMD_THRT_CON, 0x300256}, {SMI_LARB_SW_FLAG, 0x1},},
+	{{SMI_LARB_CMD_THRT_CON, 0x300256}, {SMI_LARB_SW_FLAG, 0x1},},
 };
 
 static struct mtk_smi_reg_pair
@@ -2762,7 +2767,7 @@ static const struct mtk_smi_larb_gen mtk_smi_larb_mt6833 = {
 static const struct mtk_smi_larb_gen mtk_smi_larb_mt6893 = {
 	/* From mt6885/smi_port.h, SMI_LARB_PORT_NUM */
 	.port_in_larb_gen2 = {15, 15, 6, 6, 11, 8, 0, 27, 27, 29, 0, 29,
-				     0, 12, 6, 5, 17, 17, 17, 4, 6,},
+					0, 12, 6, 5, 17, 17, 17, 4, 6,},
 	.config_port                = mtk_smi_larb_config_port_gen2_general,
 	.larb_direct_to_common_mask = BIT(6) | BIT(10) | BIT(12),
 				      /*skip larb: 6,10,12*/
@@ -3923,13 +3928,28 @@ mtk_smi_common_mt6893_misc[MTK_COMMON_NR_MAX][SMI_COMMON_MISC_NR] = {
 	/* From mt6885/smi_conf.h, smi_xxxx_conf_pair */
 	{{SMI_L1LEN, 0xb}, {SMI_BUS_SEL, 0x4514}, {SMI_M4U_TH, 0xe100e10},
 	{SMI_FIFO_TH1, 0x506090a}, {SMI_FIFO_TH2, 0x506090a}, {SMI_DCM, 0x4f1},
-	{SMI_DUMMY, 0x1},},			/* smi_comm_conf_pair */
-	{{SMI_L1LEN, 0x2}, {SMI_BUS_SEL, 0x1111}, {SMI_DCM, 0x4f1},
-	{SMI_DUMMY, 0x1},},				/* smi_sram_comm_conf_pair */
+	{SMI_DUMMY, 0x1},},
 	{{SMI_L1LEN, 0xa}, {SMI_PREULTRA_MASK1, 0x2105}, {SMI_DCM, 0x4f1},
-	{SMI_DUMMY, 0x1},},				/* smi_sub_comm_conf_pair */
+	{SMI_DUMMY, 0x1},},
+	{{SMI_L1LEN, 0xa}, {SMI_PREULTRA_MASK1, 0x2105}, {SMI_DCM, 0x4f1},
+	{SMI_DUMMY, 0x1},},
+	{{SMI_L1LEN, 0xa}, {SMI_PREULTRA_MASK1, 0x2105}, {SMI_DCM, 0x4f1},
+	{SMI_DUMMY, 0x1},},
 	{{SMI_L1LEN, 0x2}, {SMI_PREULTRA_MASK1, 0x2105}, {SMI_DCM, 0x4f1},
-	{SMI_DUMMY, 0x1},},			/* smi_ipe_sub_comm_conf_pair */
+	{SMI_DUMMY, 0x1},},
+	{{SMI_L1LEN, 0xa}, {SMI_PREULTRA_MASK1, 0x2105}, {SMI_DCM, 0x4f1},
+	{SMI_DUMMY, 0x1},},
+	{{SMI_L1LEN, 0xa}, {SMI_PREULTRA_MASK1, 0x2105}, {SMI_DCM, 0x4f1},
+	{SMI_DUMMY, 0x1},},
+	{{SMI_L1LEN, 0xb}, {SMI_BUS_SEL, 0x4514}, {SMI_M4U_TH, 0xe100e10},
+	{SMI_FIFO_TH1, 0x506090a}, {SMI_FIFO_TH2, 0x506090a}, {SMI_DCM, 0x4f1},
+	{SMI_DUMMY, 0x1},},
+	{{SMI_L1LEN, 0xa}, {SMI_PREULTRA_MASK1, 0x2105}, {SMI_DCM, 0x4f1},
+	{SMI_DUMMY, 0x1},},
+	{{SMI_L1LEN, 0x2}, {SMI_BUS_SEL, 0x1111}, {SMI_DCM, 0x4f1},
+	{SMI_DUMMY, 0x1},},
+	{{SMI_L1LEN, 0xa}, {SMI_PREULTRA_MASK1, 0x2105}, {SMI_DCM, 0x4f1},
+	{SMI_DUMMY, 0x1},},
 };
 
 static struct mtk_smi_reg_pair
