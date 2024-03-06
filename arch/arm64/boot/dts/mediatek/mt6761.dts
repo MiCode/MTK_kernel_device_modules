@@ -3636,7 +3636,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 	};
 
 	venc_jpg@17030000 {
-		compatible = "mediatek,mtk-jpgenc-32bit";
+		compatible = "mediatek,mtk-jpgenc";
 		reg = <0 0x17030000 0 0x10000>;
 		interrupts = <GIC_SPI 176 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks =
@@ -3652,6 +3652,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		interconnect-names = "path_jpegenc_bsdma";
 		interconnect-num = <1>;
 		cshot-spec = <26>;
+		support-34bits = <0>;/*mt6835(fake34bits feature) value is 2;*/
 	};
 
 	vdec@17040000 {
