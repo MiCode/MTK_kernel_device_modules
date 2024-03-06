@@ -773,6 +773,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.ctl_offs = 0x058,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"ccusys"},
 		.bp_table = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_CAM_CCU),
