@@ -103,7 +103,11 @@ unsigned int *vcore_power_ratio_down;
 unsigned int *vcore_power_ratio_up;
 unsigned int *debounce_times_down_adb;
 unsigned int *debounce_times_up_adb;
+#if IS_ENABLED(CONFIG_MTK_CM_MGR_MT6877)
+static int debounce_times_perf_down = 5;
+#else
 static int debounce_times_perf_down = 50;
+#endif
 static int debounce_times_perf_force_down = 100;
 #if IS_ENABLED(CONFIG_MTK_CM_IPI)
 static int cm_mgr_dram_opp_ceiling = -1;
@@ -1286,12 +1290,13 @@ fail_reg_cpu_frequency_entry:
 
 		cm_mgr_to_sspm_command(IPI_CM_MGR_BCPU_WEIGHT_MIN_SET,
 				cpu_power_bcpu_weight_min);
-
+#ifdef CM_TRIGEAR
 		cm_mgr_to_sspm_command(IPI_CM_MGR_BBCPU_WEIGHT_MAX_SET,
 				cpu_power_bbcpu_weight_max);
 
 		cm_mgr_to_sspm_command(IPI_CM_MGR_BBCPU_WEIGHT_MIN_SET,
 				cpu_power_bbcpu_weight_min);
+#endif
 	}
 
 	if (cm_mgr_use_cpu_to_dram_map) {
