@@ -891,11 +891,10 @@ static s32 hdr_config_post(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	struct mml_frame_dest *dest = &task->config->info.dest[ccfg->node->out_idx];
-	struct hdr_frame_data *hdr_frm = hdr_frm_data(ccfg);
 	bool vcp = hdr->data->vcp_readback;
 	s8 mode = task->config->info.mode;
 
-	if (!dest->pq_config.en_hdr || !hdr_frm->is_hdr_need_readback)
+	if (!dest->pq_config.en_hdr)
 		goto exit;
 
 	if (mode != MML_MODE_MML_DECOUPLE && mode != MML_MODE_MML_DECOUPLE2)
@@ -1003,7 +1002,7 @@ static s32 hdr_config_repost(struct mml_comp *comp, struct mml_task *task,
 	u32 engine = CMDQ_VCP_ENG_MML_HDR0 + pipe;
 	s8 mode = task->config->info.mode;
 
-	if (!dest->pq_config.en_hdr || !hdr_frm->is_hdr_need_readback)
+	if (!dest->pq_config.en_hdr)
 		goto exit;
 
 	if (mode != MML_MODE_MML_DECOUPLE && mode != MML_MODE_MML_DECOUPLE2)
