@@ -19,7 +19,7 @@
 #include <linux/compat.h>
 #endif
 #ifdef MMDVFS_HOOK
-#include <mmdvfs_mgr.h>
+#include "mmdvfs_mgr.h"
 #endif
 
 #include "mtk-smi-bwc.h"
