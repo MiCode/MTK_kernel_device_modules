@@ -53,6 +53,7 @@ struct mminfra_dbg {
 	void __iomem *spm_base;
 	void __iomem *vcp_gipc_in_set;
 	void __iomem *mm_cfg_base[MM_PWR_NR];
+	void __iomem *mminfra_devapc_vio_sta;
 	ssize_t ctrl_size;
 	struct device *comm_dev[MAX_SMI_COMM_NUM];
 	struct notifier_block nb;
@@ -62,6 +63,7 @@ struct mminfra_dbg {
 	u32 mm_voter_base;
 	u32 mm_mtcmos_base;
 	u32 mm_mtcmos_mask;
+	u32 mm_devapc_vio_sta_base;
 	u32 vcp_gipc_in_set_base;
 	u32 mmpc_src_ctrl_base;
 	u32 mm_proc_mtcmos_base;
@@ -1050,6 +1052,26 @@ static struct devapc_power_callbacks devapc_power_handle = {
 	.type = DEVAPC_TYPE_MMINFRA,
 	.query_power = mminfra_devapc_power_cb,
 };
+
+#define MMINFRA_DEVAPC_VIO_STA_BIT_19		BIT(19)
+
+static bool mminfra_devapc_excep_cb(int slave_type)
+{
+	unsigned int vio_sta_22;
+
+	if (mm_pwr_ver == mm_pwr_v3) {
+		vio_sta_22 = readl(dbg->mminfra_devapc_vio_sta + 0x458);
+		if ((vio_sta_22 & MMINFRA_DEVAPC_VIO_STA_BIT_19) == MMINFRA_DEVAPC_VIO_STA_BIT_19)
+			return true;
+	}
+
+	return false;
+}
+
+struct devapc_excep_callbacks devapc_excep_handle = {
+	.type = DEVAPC_TYPE_MMINFRA,
+	.handle_excep = mminfra_devapc_excep_cb,
+};
 #endif
 
 static int mminfra_debug_probe(struct platform_device *pdev)
@@ -1122,6 +1144,7 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	of_property_read_u32(node, "mm-voter-base", &dbg->mm_voter_base);
 	of_property_read_u32(node, "mm-mtcmos-base", &dbg->mm_mtcmos_base);
 	of_property_read_u32(node, "mm-mtcmos-mask", &dbg->mm_mtcmos_mask);
+	of_property_read_u32(node, "mm-devapc-vio-sta-base", &dbg->mm_devapc_vio_sta_base);
 
 	mm_no_scmi = of_property_read_bool(node, "mm-no-scmi");
 	mm_no_cg_ctrl = of_property_read_bool(node, "mm-no-cg-ctrl");
@@ -1193,6 +1216,9 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 
 		if (dbg->mm_mtcmos_base)
 			dbg->mminfra_mtcmos_base = ioremap(dbg->mm_mtcmos_base, 0x10);
+
+		if (dbg->mm_devapc_vio_sta_base)
+			dbg->mminfra_devapc_vio_sta = ioremap(dbg->mm_devapc_vio_sta_base, 0x1000);
 	}
 
 	mmpc_src_ctrl = of_property_read_bool(node, "mmpc-src-ctrl");
@@ -1258,6 +1284,7 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 	register_devapc_power_callback(&devapc_power_handle);
+	register_devapc_exception_callback(&devapc_excep_handle);
 #endif
 
 	return ret;
