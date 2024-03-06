@@ -648,8 +648,6 @@ mgk_64_device_modules = [
     "drivers/tee/gud/600/TlcTui/t-base-tui.ko",
     "drivers/tee/teei/510/isee.ko",
     "drivers/tee/teei/510/isee-ffa.ko",
-    "drivers/tee/teei/515/isee.ko",
-    "drivers/tee/teei/515/isee-ffa.ko",
     "drivers/tee/teeperf/teeperf.ko",
     "drivers/thermal/mediatek/backlight_cooling.ko",
     "drivers/thermal/mediatek/board_temp.ko",
@@ -1394,7 +1392,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/soc/mediatek/mtk-mmdvfs-v3.ko")
 
         mgk_64_device_modules.remove("drivers/tee/teei/510/isee-ffa.ko")
-        mgk_64_device_modules.remove("drivers/tee/teei/515/isee-ffa.ko")
+        mgk_64_device_modules.append("drivers/tee/teei/515/isee.ko")
 
         mgk_64_device_modules.remove("drivers/thermal/mediatek/backlight_cooling.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/board_temp.ko")
