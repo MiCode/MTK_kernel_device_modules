@@ -756,13 +756,12 @@ void hook_scheduler_tick(void *data, struct rq *rq)
 	if (!get_eas_hook())
 		return;
 
-	/* need upstream, add vendor data
 	struct root_domain *rd = rq->rd;
 
 	rcu_read_lock();
-	rd->android_vendor_data1[0] = system_has_many_heavy_task();
+	rd->android_vendor_data1 = system_has_many_heavy_task();
 	rcu_read_unlock();
-	*/
+
 	if (rq->curr->policy == SCHED_NORMAL)
 		check_for_migration(rq->curr);
 }
