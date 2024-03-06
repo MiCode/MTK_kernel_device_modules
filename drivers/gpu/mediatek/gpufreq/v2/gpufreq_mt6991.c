@@ -85,6 +85,9 @@ static void __iomem *g_mfg_pll_sc1_base;
 static void __iomem *g_mfg_rpc_base;
 static void __iomem *g_mfg_smmu_base;
 static void __iomem *g_mfg_vcore_ao_cfg_base;
+static void __iomem *g_mfg_vcore_devapc_base;
+static void __iomem *g_mfg_vcore_dbg_trk_base;
+static void __iomem *g_mfg_vgpu_dbg_trk_base;
 static void __iomem *g_nemi_mi32_smi;
 static void __iomem *g_nemi_mi33_smi;
 static void __iomem *g_nth_emi_ao_debug_ctrl;
@@ -107,6 +110,7 @@ static DEFINE_MUTEX(gpufreq_lock);
 static struct gpufreq_platform_fp platform_eb_fp = {
 	.dump_infra_status = __gpufreq_dump_infra_status,
 	.dump_power_tracker_status = __gpufreq_dump_power_tracker_status,
+	.dump_dbg_tracker_status = __gpufreq_dump_dbg_tracker_status,
 	.get_dyn_pgpu = __gpufreq_get_dyn_pgpu,
 	.get_dyn_pstack = __gpufreq_get_dyn_pstack,
 	.get_core_mask_table = __gpufreq_get_core_mask_table,
@@ -481,6 +485,140 @@ void __gpufreq_dump_power_tracker_status(void)
 			DRV_Reg32(MFG_POWER_TRACKER_PDC_STATUS4),
 			DRV_Reg32(MFG_POWER_TRACKER_PDC_STATUS5));
 	}
+}
+
+bool __gpufreq_dump_dbg_tracker_status(void)
+{
+	bool ret = true;
+	int i = 0;
+	unsigned int vio_sta = 0, vcore_bus_dbg_con = 0, vgpu_bus_dbg_con = 0;
+
+	if (!g_gpufreq_ready)
+		return ret;
+
+	vio_sta = DRV_Reg32(MFG_VCORE_DEVAPC_D0_VIO_STA_0);
+	/* check bus tracker status */
+	GPUFREQ_LOGI("[VCORE DEVAPC] %s=0x%08x", "D0_VIO_STA_0", vio_sta);
+
+	if (vio_sta & BIT(26)) {
+		/* check bus tracker violation status */
+		vcore_bus_dbg_con = DRV_Reg32(MFG_VCORE_DBG_CON_0);
+		vgpu_bus_dbg_con= DRV_Reg32(MFG_VGPU_DBG_CON_0);
+
+		GPUFREQ_LOGI("[DBG_TRK] %s=0x%08x, %s=0x%08x",
+				"VCORE BUS_DBG_CON_0", vcore_bus_dbg_con, "VGPU BUS_DBG_CON_0", vgpu_bus_dbg_con);
+
+		/* bus transaction timeout */
+		if (vcore_bus_dbg_con & GENMASK(9, 8) || vgpu_bus_dbg_con & GENMASK(9, 8)) {
+			GPUFREQ_LOGE("[VCORE_DBG_TRK] %s=0x%08x, %s=0x%08x, %s=0x%08x",
+				"TIMER_L", DRV_Reg32(MFG_VCORE_DBG_SYSTIMER_LATCH_L),
+				"TIMER_H", DRV_Reg32(MFG_VCORE_DBG_SYSTIMER_LATCH_H),
+				"TIMEOUT_INFO", DRV_Reg32(MFG_VCORE_DBG_TIMEOUT_INFO));
+			GPUFREQ_LOGE("[VGPU_DBG_TRK] %s=0x%08x, %s=0x%08x, %s=0x%08x",
+				"TIMER_L", DRV_Reg32(MFG_VGPU_DBG_SYSTIMER_LATCH_L),
+				"TIMER_H", DRV_Reg32(MFG_VGPU_DBG_SYSTIMER_LATCH_H),
+				"TIMEOUT_INFO", DRV_Reg32(MFG_VGPU_DBG_TIMEOUT_INFO));
+			/* vgpu dbg tracker read timeout info */
+			if (vgpu_bus_dbg_con & BIT(8)) {
+				for (i = 0; i < 32; i++) {
+					GPUFREQ_LOGE("[VGPU_AR_%d] %s=0x%08x, %s=0x%08x, %s=0x%08x", i,
+						"LOG", DRV_Reg32(MFG_VGPU_DBG_AR_TRACKER_LOG + (i * 4)),
+						"ID", DRV_Reg32(MFG_VGPU_DBG_AR_TRACKER_ID + (i * 4)),
+						"ADDR", DRV_Reg32(MFG_VGPU_DBG_AR_TRACKER_L + (i * 4)));
+				}
+			}
+			/* vgpu dbg tracker write timeout info */
+			if (vgpu_bus_dbg_con & BIT(9)) {
+				for (i = 0; i < 32; i++) {
+					GPUFREQ_LOGE("[VGPU_AW_%d] %s=0x%08x, %s=0x%08x, %s=0x%08x", i,
+						"LOG", DRV_Reg32(MFG_VGPU_DBG_AW_TRACKER_LOG + (i * 4)),
+						"ID", DRV_Reg32(MFG_VGPU_DBG_AW_TRACKER_ID + (i * 4)),
+						"ADDR", DRV_Reg32(MFG_VGPU_DBG_AW_TRACKER_L + (i * 4)));
+				}
+			}
+			/* vcore dbg tracker read timeout info */
+			if (vcore_bus_dbg_con & BIT(8)) {
+				for (i = 0; i < 16; i++) {
+					GPUFREQ_LOGE("[VCORE_AR_%d] %s=0x%08x, %s=0x%08x, %s=0x%08x", i,
+						"LOG", DRV_Reg32(MFG_VCORE_DBG_AR_TRACKER_LOG + (i * 4)),
+						"ID", DRV_Reg32(MFG_VCORE_DBG_AR_TRACKER_ID + (i * 4)),
+						"ADDR", DRV_Reg32(MFG_VCORE_DBG_AR_TRACKER_L + (i * 4)));
+				}
+			}
+			/* vcore dbg tracker write timeout info */
+			if (vcore_bus_dbg_con & BIT(9)) {
+				for (i = 0; i < 16; i++) {
+					GPUFREQ_LOGE("[VCORE_AW_%d] %s=0x%08x, %s=0x%08x, %s=0x%08x", i,
+						"LOG", DRV_Reg32(MFG_VCORE_DBG_AW_TRACKER_LOG + (i * 4)),
+						"ID", DRV_Reg32(MFG_VCORE_DBG_AW_TRACKER_ID + (i * 4)),
+						"ADDR", DRV_Reg32(MFG_VCORE_DBG_AW_TRACKER_L + (i * 4)));
+				}
+			}
+			__gpufreq_abort("debug tracker violation");
+		}
+		/* vcore bus read slave error */
+		if (vcore_bus_dbg_con & BIT(12)) {
+			GPUFREQ_LOGI("[VCORE_SLV_TIMER] %s=0x%08x, %s=0x%08x",
+				"SYSTIMER_LATCH_L", DRV_Reg32(MFG_VCORE_DBG_SYSTIMER_LATCH_SLVERR_L),
+				"SYSTIMER_LATCH_H", DRV_Reg32(MFG_VCORE_DBG_SYSTIMER_LATCH_SLVERR_H));
+			GPUFREQ_LOGI("[VCORE_AR_SLV] %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+				"SLVERR_ADDR_L", DRV_Reg32(MFG_VCORE_DBG_AR_SLVERR_ADDR_L),
+				"SLVERR_ADDR_H", DRV_Reg32(MFG_VCORE_DBG_AR_SLVERR_ADDR_H),
+				"SLVERR_ID", DRV_Reg32(MFG_VCORE_DBG_AR_SLVERR_ID),
+				"SLVERR_LOG", DRV_Reg32(MFG_VCORE_DBG_AR_SLVERR_LOG));
+		}
+		/* vcore bus write slave error */
+		if (vcore_bus_dbg_con & BIT(13)) {
+			GPUFREQ_LOGI("[VCORE_SLV_TIMER] %s=0x%08x, %s=0x%08x",
+				"SYSTIMER_LATCH_L", DRV_Reg32(MFG_VCORE_DBG_SYSTIMER_LATCH_SLVERR_L),
+				"SYSTIMER_LATCH_H", DRV_Reg32(MFG_VCORE_DBG_SYSTIMER_LATCH_SLVERR_H));
+			GPUFREQ_LOGI("[VCORE_AW_SLV] %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+				"SLVERR_ADDR_L", DRV_Reg32(MFG_VCORE_DBG_AW_SLVERR_ADDR_L),
+				"SLVERR_ADDR_H", DRV_Reg32(MFG_VCORE_DBG_AW_SLVERR_ADDR_H),
+				"SLVERR_ID", DRV_Reg32(MFG_VCORE_DBG_AW_SLVERR_ID),
+				"SLVERR_LOG", DRV_Reg32(MFG_VCORE_DBG_AW_SLVERR_LOG));
+		}
+		/* vgpu bus read slave error */
+		if (vgpu_bus_dbg_con & BIT(12)) {
+			GPUFREQ_LOGI("[VGPU_SLV_TIMER] %s=0x%08x, %s=0x%08x",
+				"SYSTIMER_LATCH_L", DRV_Reg32(MFG_VGPU_DBG_SYSTIMER_LATCH_SLVERR_L),
+				"SYSTIMER_LATCH_H", DRV_Reg32(MFG_VGPU_DBG_SYSTIMER_LATCH_SLVERR_H));
+			GPUFREQ_LOGI("[VGPU_AR_SLV] %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+				"SLVERR_ADDR_L", DRV_Reg32(MFG_VGPU_DBG_AR_SLVERR_ADDR_L),
+				"SLVERR_ADDR_H", DRV_Reg32(MFG_VGPU_DBG_AR_SLVERR_ADDR_H),
+				"SLVERR_ID", DRV_Reg32(MFG_VGPU_DBG_AR_SLVERR_ID),
+				"SLVERR_LOG", DRV_Reg32(MFG_VGPU_DBG_AR_SLVERR_LOG));
+		}
+		/* vgpu bus write slave error */
+		if (vgpu_bus_dbg_con & BIT(13)) {
+			GPUFREQ_LOGI("[VGPU_SLV_TIMER] %s=0x%08x, %s=0x%08x",
+				"SYSTIMER_LATCH_L", DRV_Reg32(MFG_VGPU_DBG_SYSTIMER_LATCH_SLVERR_L),
+				"SYSTIMER_LATCH_H", DRV_Reg32(MFG_VGPU_DBG_SYSTIMER_LATCH_SLVERR_H));
+			GPUFREQ_LOGI("[VGPU_AW_SLV] %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+				"SLVERR_ADDR_L", DRV_Reg32(MFG_VGPU_DBG_AW_SLVERR_ADDR_L),
+				"SLVERR_ADDR_H", DRV_Reg32(MFG_VGPU_DBG_AW_SLVERR_ADDR_H),
+				"SLVERR_ID", DRV_Reg32(MFG_VGPU_DBG_AW_SLVERR_ID),
+				"SLVERR_LOG", DRV_Reg32(MFG_VGPU_DBG_AW_SLVERR_LOG));
+		}
+		/* clear dbg tracker irq */
+		if (vcore_bus_dbg_con & GENMASK(13, 12)) {
+			DRV_WriteReg32(MFG_VCORE_DBG_CON_0, BIT(7));
+			DRV_WriteReg32(MFG_VCORE_DBG_CON_0, (BIT(7) | BIT(16)));
+			DRV_WriteReg32(MFG_VCORE_DBG_CON_0, 0x0);
+		}
+		if (vgpu_bus_dbg_con & GENMASK(13, 12)) {
+			DRV_WriteReg32(MFG_VGPU_DBG_CON_0, BIT(7));
+			DRV_WriteReg32(MFG_VGPU_DBG_CON_0, (BIT(7) | BIT(16)));
+			DRV_WriteReg32(MFG_VGPU_DBG_CON_0, 0x0);
+		}
+		/* clear devapc irq when only bus slave error happened */
+		if (!(vio_sta & ~BIT(26))) {
+			DRV_WriteReg32(MFG_VCORE_DEVAPC_D0_VIO_STA_0, BIT(26));
+			DRV_WriteReg32(MFG_VCORE_DEVAPC_D0_VIO_MASK_0, 0x0);
+			ret = false;
+		}
+	}
+	return ret;
 }
 
 /* API: get working OPP index of STACK limited by BATTERY_OC via given level */
@@ -967,6 +1105,18 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 		goto done;
 	}
 
+	/* 0x48800000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg_vgpu_dbg_trk");
+	if (!res) {
+		GPUFREQ_LOGE("fail to get resource MFG_VGPU_DBG_TRACKER_BASE");
+		goto done;
+	}
+	g_mfg_vgpu_dbg_trk_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (!g_mfg_vgpu_dbg_trk_base) {
+		GPUFREQ_LOGE("fail to ioremap MFG_VGPU_DBG_TRACKER_BASE: 0x%llx", res->start);
+		goto done;
+	}
+
 	/* 0x4B800000 */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg_rpc");
 	if (!res) {
@@ -1036,6 +1186,30 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 	g_mfg_vcore_ao_cfg_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
 	if (!g_mfg_vcore_ao_cfg_base) {
 		GPUFREQ_LOGE("fail to ioremap MFG_VCORE_AO_CFG: 0x%llx", res->start);
+		goto done;
+	}
+
+	/* 0x4B8B0000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg_vcore_devapc");
+	if (!res) {
+		GPUFREQ_LOGE("fail to get resource MFG_VCORE_DEVAPC");
+		goto done;
+	}
+	g_mfg_vcore_devapc_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (!g_mfg_vcore_devapc_base) {
+		GPUFREQ_LOGE("fail to ioremap MFG_VCORE_DEVAPC: 0x%llx", res->start);
+		goto done;
+	}
+
+	/* 0x4B900000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg_vcore_dbg_trk");
+	if (!res) {
+		GPUFREQ_LOGE("fail to get resource MFG_VCORE_DBG_TRACKER_BASE");
+		goto done;
+	}
+	g_mfg_vcore_dbg_trk_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (!g_mfg_vcore_dbg_trk_base) {
+		GPUFREQ_LOGE("fail to ioremap MFG_VCORE_DBG_TRACKER_BASE: 0x%llx", res->start);
 		goto done;
 	}
 
