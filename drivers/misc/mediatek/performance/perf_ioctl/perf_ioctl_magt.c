@@ -3,9 +3,11 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 #include "perf_ioctl_magt.h"
+#include "fpsgo_base.h"
 #define TAG "PERF_IOCTL_MAGT"
 #define cap_scale(v, s) ((v)*(s) >> SCHED_CAPACITY_SHIFT)
-
+#define MAX_RENDER_TID 10
+static struct render_frame_info render[MAX_RENDER_TID];
 static struct proc_dir_entry *perfmgr_root;
 static DEFINE_MUTEX(cpu_lock);
 
@@ -232,6 +234,12 @@ int (*magt2fpsgo_notify_target_fps_fp)(int *pid_arr,
 		int num);
 EXPORT_SYMBOL(magt2fpsgo_notify_target_fps_fp);
 
+int (*magt2fpsgo_get_all_fps_control_pid_info)(struct fps_control_pid_info *arr);
+EXPORT_SYMBOL(magt2fpsgo_get_all_fps_control_pid_info);
+
+int (*magt2fpsgo_get_fpsgo_frame_info)(int max_num, unsigned long mask,
+	struct render_frame_info *frame_info_arr);
+EXPORT_SYMBOL(magt2fpsgo_get_fpsgo_frame_info);
 /*--------------------MAGT IOCTL------------------------*/
 static long magt_ioctl(struct file *filp,
 		unsigned int cmd, unsigned long arg)
@@ -242,6 +250,7 @@ static long magt_ioctl(struct file *filp,
 	struct target_fps_info tfi;
 	struct dep_list_info *dliKM = NULL, *dliUM = NULL;
 	struct dep_list_info dli;
+	unsigned long query_mask = 0;
 
 	switch (cmd) {
 	case MAGT_GET_CPU_LOADING:
@@ -308,7 +317,255 @@ static long magt_ioctl(struct file *filp,
 		ret = magt2fpsgo_notify_dep_list_fp(dliKM->pid,
 			dliKM->user_dep_arr, dliKM->user_dep_num);
 		break;
+	case MAGT_GET_FPSGO_SUPPORT:
+	{
+		struct fpsgo_pid_support pid_support;
 
+		if (perfctl_copy_from_user(&pid_support, (void *)arg,
+			sizeof(struct fpsgo_pid_support))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+
+		if (!magt2fpsgo_get_fpsgo_frame_info) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+		memset(render, 0, sizeof(struct render_frame_info) * MAX_RENDER_TID);
+		query_mask = (1 << GET_FPSGO_PERF_IDX);
+		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
+		if (ret >= 0) {
+			int i = 0;
+
+			for (i = 0; i < ret; i++) {
+				if (render[i].tgid == pid_support.pid) {
+					pid_support.isSupport = true;
+					break;
+				}
+			}
+			perfctl_copy_to_user((void *)arg, &pid_support, sizeof(struct fpsgo_pid_support));
+			ret = 0;
+		}
+		break;
+	}
+	case MAGT_GET_FPSGO_STATUS:
+	{
+		struct fpsgo_render_status render_status;
+
+		if (perfctl_copy_from_user(&render_status, (void *)arg,
+			sizeof(struct fpsgo_render_status))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+
+		if (!magt2fpsgo_get_fpsgo_frame_info) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+		memset(render, 0, sizeof(struct render_frame_info) * MAX_RENDER_TID);
+		query_mask = (1 << GET_FPSGO_TARGET_FPS | 1 << GET_FPSGO_QUEUE_FPS
+			| 1 << GET_FRS_TARGET_FPS_DIFF | 1 << GET_GED_GPU_TIME);
+		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
+
+		if (ret >= 0) {
+			int i = 0;
+			int render_item = -1;
+
+			for (i = 0; i < ret; i++) {
+				if (render_status.pid == render[i].pid) {
+					render_item = i;
+					break;
+				}
+			}
+
+			if (render_item == -1) {
+				ret = -EINVAL;
+				break;
+			}
+			render_status.curFps = render[render_item].queue_fps;
+			render_status.targetFps = render[render_item].target_fps;
+			render_status.targetFps_diff = render[render_item].target_fps_diff;
+			render_status.t_gpu = render[render_item].t_gpu;
+			perfctl_copy_to_user((void *)arg, &render_status, sizeof(struct fpsgo_render_status));
+			ret = 0;
+		}
+		break;
+	}
+	case MAGT_GET_FPSGO_CRITICAL_THREAD_BG:
+	{
+		struct fpsgo_bg_info bg_info;
+
+		if (perfctl_copy_from_user(&bg_info, (void *)arg,
+			sizeof(struct fpsgo_bg_info))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+
+		if (!magt2fpsgo_get_fpsgo_frame_info) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+
+		memset(render, 0, sizeof(struct render_frame_info) * MAX_RENDER_TID);
+		query_mask = (1 << GET_FPSGO_MINITOP_LIST);
+		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
+
+		if (ret >= 0) {
+			int i = 0;
+			int render_item = -1;
+
+			for (i = 0; i < ret; i++) {
+				if (bg_info.pid == render[i].pid) {
+					render_item = i;
+					break;
+				}
+			}
+
+			if (render_item == -1) {
+				ret = -EINVAL;
+				break;
+			}
+			bg_info.bg_num = render[render_item].non_dep_num;
+
+			for (i = 0; i < bg_info.bg_num && i < FPSGO_MAX_TASK_NUM; i++) {
+				bg_info.bg_pid[i] = render[render_item].non_dep_arr[i].pid;
+				bg_info.bg_loading[i] = render[render_item].non_dep_arr[i].loading;
+			}
+
+			perfctl_copy_to_user((void *)arg, &bg_info, sizeof(struct fpsgo_bg_info));
+			ret = 0;
+		}
+		break;
+	}
+	case MAGT_GET_FPSGO_CPU_FRAMETIME:
+	{
+		struct fpsgo_cpu_frametime cpu_time_info;
+
+		if (perfctl_copy_from_user(&cpu_time_info, (void *)arg,
+			sizeof(struct fpsgo_cpu_frametime))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+
+		if (!magt2fpsgo_get_fpsgo_frame_info) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+
+		memset(render, 0, sizeof(struct render_frame_info) * MAX_RENDER_TID);
+		query_mask = (1 << GET_FPSGO_RAW_CPU_TIME | 1 << GET_FPSGO_EMA_CPU_TIME);
+		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
+
+		if (ret >= 0) {
+			int i = 0;
+			int render_item = -1;
+
+			for (i = 0; i < ret; i++) {
+				if (cpu_time_info.pid == render[i].pid) {
+					render_item = i;
+					break;
+				}
+			}
+
+			if (render_item == -1) {
+				ret = -EINVAL;
+				break;
+			}
+			cpu_time_info.raw_t_cpu = render[render_item].raw_t_cpu;
+			cpu_time_info.ema_t_cpu = render[render_item].ema_t_cpu;
+
+			perfctl_copy_to_user((void *)arg, &cpu_time_info, sizeof(struct fpsgo_cpu_frametime));
+			ret = 0;
+		}
+		break;
+	}
+	case MAGT_GET_FPSGO_THREAD_LOADING:
+	{
+		struct fpsgo_thread_loading thread_loading;
+
+		if (perfctl_copy_from_user(&thread_loading, (void *)arg,
+			sizeof(struct fpsgo_thread_loading))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+
+		if (!magt2fpsgo_get_fpsgo_frame_info) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+
+		memset(render, 0, sizeof(struct render_frame_info) * MAX_RENDER_TID);
+		query_mask = (1 << GET_FPSGO_AVG_FRAME_CAP | 1 << GET_FPSGO_DEP_LIST);
+		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
+
+		if (ret >= 0) {
+			int i = 0;
+			int render_item = -1;
+
+			for (i = 0; i < ret; i++) {
+				if (thread_loading.pid == render[i].pid) {
+					render_item = i;
+					break;
+				}
+			}
+
+			if (render_item == -1) {
+				ret = -EINVAL;
+				break;
+			}
+
+			thread_loading.avg_freq = render[render_item].avg_frame_cap;
+			thread_loading.dep_num = render[render_item].dep_num;
+			for (i = 0; i < thread_loading.dep_num && i < FPSGO_MAX_TASK_NUM; i++) {
+				thread_loading.dep_pid[i] = render[render_item].dep_arr[i].pid;
+				thread_loading.dep_loading[i] = render[render_item].dep_arr[i].loading;
+			}
+
+			perfctl_copy_to_user((void *)arg, &thread_loading, sizeof(struct fpsgo_thread_loading));
+			ret = 0;
+		}
+		break;
+	}
+	case MAGT_GET_FPSGO_RENDER_PERFIDX:
+	{
+		struct fpsgo_render_perf render_perf;
+
+		if (perfctl_copy_from_user(&render_perf, (void *)arg,
+			sizeof(struct fpsgo_render_perf))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+
+		if (!magt2fpsgo_get_fpsgo_frame_info) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+
+		memset(render, 0, sizeof(struct render_frame_info) * MAX_RENDER_TID);
+		query_mask = (1 << GET_FPSGO_PERF_IDX);
+		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
+
+		if (ret >= 0) {
+			int i = 0;
+			int render_item = -1;
+
+			for (i = 0; i < ret; i++) {
+				if (render_perf.pid == render[i].pid) {
+					render_item = i;
+					break;
+				}
+			}
+
+			if (render_item == -1) {
+				ret = -EINVAL;
+				break;
+			}
+			render_perf.perf_idx = render[render_item].blc;
+			perfctl_copy_to_user((void *)arg, &render_perf, sizeof(struct fpsgo_render_perf));
+			ret = 0;
+		}
+		break;
+	}
 	default:
 		pr_debug(TAG "%s %d: unknown cmd %x\n",
 			__FILE__, __LINE__, cmd);
