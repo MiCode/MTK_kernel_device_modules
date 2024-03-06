@@ -78,8 +78,8 @@
 #define IRQ_TABLE_DISP_DITHER2_MT6991          (39)    //469
 #define IRQ_TABLE_DISP_DITHER1_MT6991          (22)    //470
 #define IRQ_TABLE_DISP_DITHER0_MT6991          (21)    //471
-#define IRQ_TABLE_DISP_CHIST1_MT6991           (12)    //472
-#define IRQ_TABLE_DISP_CHIST0_MT6991           (11)    //473
+#define IRQ_TABLE_DISP_CHIST1_MT6991           (18)    //472
+#define IRQ_TABLE_DISP_CHIST0_MT6991           (17)    //473
 #define IRQ_TABLE_DISP_AAL1_MT6991             (8)     //474
 #define IRQ_TABLE_DISP_AAL0_MT6991             (7)     //475
 
