@@ -355,5 +355,6 @@ extern u8 aee_rr_curr_cpu_dvfs_status(void);
 extern u8 aee_rr_curr_cpu_dvfs_step(void);
 extern u8 aee_rr_curr_cpu_dvfs_cb(void);
 extern u8 aee_rr_curr_cpufreq_cb(void);
-
+/* register callbacks */
+extern void ppm_register_cb(void);
 #endif	/* __MTK_CPUFREQ_INTERNAL_H__ */

@@ -355,7 +355,31 @@ int Ripi_cpu_dvfs_thread(void *data)
 						p->mt_policy->min);
 				}
 #endif
-
+#ifdef POLICY_FREQ_LIMIT_CHECK
+				if (p->mt_policy->cur > p->mt_policy->max) {
+					freqs.old = p->mt_policy->cur;
+					freqs.new = p->mt_policy->max;
+					cpufreq_freq_transition_begin(p->mt_policy, &freqs);
+					cpufreq_freq_transition_end(p->mt_policy, &freqs, 0);
+					p->idx_opp_tbl = _search_available_freq_idx(p,
+						freqs.new, 0);
+				} else if (p->mt_policy->cur < p->mt_policy->min) {
+					freqs.old = p->mt_policy->cur;
+					freqs.new = p->mt_policy->min;
+					cpufreq_freq_transition_begin(p->mt_policy, &freqs);
+					cpufreq_freq_transition_end(p->mt_policy, &freqs, 0);
+					p->idx_opp_tbl = _search_available_freq_idx(p,
+						freqs.new, 0);
+				} else if (cpu_dvfs_get_freq_by_idx(p, p->idx_opp_tbl) !=
+						p->mt_policy->cur) {
+					freqs.old = cpu_dvfs_get_freq_by_idx(p, p->idx_opp_tbl);
+					freqs.new = p->mt_policy->cur;
+					cpufreq_freq_transition_begin(p->mt_policy, &freqs);
+					cpufreq_freq_transition_end(p->mt_policy, &freqs, 0);
+					p->idx_opp_tbl = _search_available_freq_idx(p,
+						freqs.new, 0);
+				}
+#endif
 				trace_cpu_frequency_limits(p->mt_policy);
 
 				/* Policy notification */

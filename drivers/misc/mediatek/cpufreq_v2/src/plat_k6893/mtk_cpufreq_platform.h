@@ -8,8 +8,13 @@
 
 #include "mtk_cpufreq_internal.h"
 
+#define GOV_PER_POLICY
+#define PPM_COBRA_VOLT_INIT
 #define CPU_DVFS_DT_REG	1
+#define DISABLE_CPUFREQ_LIMIT_LOG
 
+#define CPUFREQ_REGISTER_CALLBACK
+#define POLICY_FREQ_LIMIT_CHECK
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_MCUPM_SUPPORT)
 #define HYBRID_CPU_DVFS	1
 #define PPM_AP_SIDE	1
@@ -97,4 +102,7 @@ extern unsigned int cpufreq_get_nr_clusters(void);
 extern void cpufreq_get_cluster_cpus(struct cpumask *cpu_mask,
 	unsigned int cid);
 extern unsigned int cpufreq_get_cluster_id(unsigned int cpu_id);
+/* Callbacks */
+void ppm_cpufreq_get_volt_by_idx_register(unsigned int (*cb)(unsigned int, int));
+
 #endif	/* __MTK_CPUFREQ_PLATFORM_H__ */

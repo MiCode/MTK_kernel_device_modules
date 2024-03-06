@@ -22,6 +22,7 @@
 #include "../mtk_cpufreq_hybrid.h"
 #include <linux/nvmem-consumer.h>
 //#include <mt-plat/mtk_chip.h>
+#include <mtk_ppm_api.h>
 
 
 static struct regulator *regulator_proc1;
@@ -853,3 +854,16 @@ void cpufreq_get_imax_reg(unsigned int *imax_addr, unsigned int *reg_val)
 		reg_val[i] = cpufreq_read(mcucfg_base + imax_reg_addr[i]);
 }
 #endif
+
+#ifdef CPUFREQ_REGISTER_CALLBACK
+void ppm_register_cb(void)
+{
+	ppm_cpufreq_get_cur_volt_register(mt_cpufreq_get_cur_volt);
+#ifdef PPM_COBRA_VOLT_INIT
+	ppm_cpufreq_get_volt_by_idx_register(mt_cpufreq_get_volt_by_idx);
+#endif
+	ppm_cpufreq_get_cur_phy_freq_no_lock_register(mt_cpufreq_get_cur_phy_freq_no_lock);
+	tag_pr_info("ppm callbacks registered");
+}
+#endif
+
