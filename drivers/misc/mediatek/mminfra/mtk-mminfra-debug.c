@@ -771,13 +771,18 @@ static int mminfra_smi_dbg_cb(struct notifier_block *nb,
 static int mminfra_get_for_smi_dbg(void *v)
 {
 	int ret;
+	struct smi_user_pwr_ctrl *smi_dbg = (struct smi_user_pwr_ctrl *)v;
 
-	/* force on mminfra power for smi dbg dump */
-	ret = pm_runtime_get_sync(dev);
-	mminfra_gals_dump();
+	pr_notice("%s: caller:%s\n", __func__, smi_dbg->caller);
+	if (strncmp(smi_dbg->caller, "VCP", strlen("VCP")) == 0)
+		ret = 0;
+	else {
+		pm_runtime_get_sync(dev);
+		mminfra_gals_dump();
+		ret = 1;
+	}
 
-	/* return 1 if power on, others for failure */
-	return ret ? ret : 1;
+	return ret;
 }
 
 static int mminfra_put_for_smi_dbg(void *v)
@@ -789,6 +794,7 @@ static int mminfra_put_for_smi_dbg(void *v)
 
 static struct smi_user_pwr_ctrl mminfra_pwr_ctrl = {
 	.name = "mminfra",
+	.data = &mminfra_pwr_ctrl,
 	.smi_user_id = MTK_SMI_MMINFRA,
 	.smi_user_get_if_in_use = mminfra_get_for_smi_dbg,
 	.smi_user_put = mminfra_put_for_smi_dbg,

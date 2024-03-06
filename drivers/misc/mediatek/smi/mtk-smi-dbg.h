@@ -31,6 +31,12 @@ enum smi_pwr_ctrl_action {
 	ACTION_FORCE_ALL_PUT,
 };
 
+struct smi_user_pwr_ctrl_data {
+	u32 *id_list;
+	u32 id_nr;
+	void __iomem *pwr_sta_rg;
+};
+
 struct smi_user_pwr_ctrl {
 	const char *name;
 	u32 smi_user_id;
@@ -38,6 +44,7 @@ struct smi_user_pwr_ctrl {
 	int (*smi_user_get_if_in_use)(void *v);
 	int (*smi_user_get)(void *v);
 	int (*smi_user_put)(void *v);
+	char *caller;
 	struct list_head list;
 };
 

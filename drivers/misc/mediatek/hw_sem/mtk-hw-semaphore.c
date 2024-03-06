@@ -15,7 +15,7 @@
 #include <linux/platform_device.h>
 #include <mtk-hw-semaphore.h>
 
-#define MASTER_MAX_NR		(5)
+#define MASTER_MAX_NR		(8)
 #define MTCMOS_MAX_NR		(32)
 #define MASTER_CELL_NUM		(3)
 #define POWER_CELL_NUM		(2)
@@ -36,155 +36,112 @@ struct hw_semaphore {
 	struct device *dev;
 	u32 base_pa[SEMA_TYPE_NR];			//0: spm, 1: vcp
 	void __iomem *base[SEMA_TYPE_NR];		//0: spm, 1: vcp
-	struct semaphore_master mast[MASTER_MAX_NR];	//0: MM_infra, 1: MM_other
-	s32 mtcmos_id[MTCMOS_MAX_NR][POWER_CELL_NUM];
+	struct semaphore_master mast[MASTER_MAX_NR];
+	u32 dbg_offset[SEMA_TYPE_NR][MASTER_MAX_NR];
 };
 
 static struct hw_semaphore *g_hw_sema;
 
-static int __mtk_hw_semaphore_get(u32 sema_type, u32 master_id)
+static int __mtk_hw_semaphore_get(void __iomem *addr, u32 set_val)
 {
 	struct hw_semaphore *hw_sema = g_hw_sema;
 	struct device *dev = hw_sema->dev;
-	u32 offset, set_val;
 	s32 ret;
-	void __iomem *base;
 
-	base = hw_sema->base[sema_type];
-	offset = hw_sema->mast[master_id].offset;
-	set_val = BIT(hw_sema->mast[master_id].set_bit);
-	if (log_level & 1 << log_config)
-		dev_notice(dev, "%s:type:%d, master_id=%d, offset=%#x, set_val=%#x\n", __func__,
-						sema_type, master_id, offset, set_val);
-	if (!base) {
+	if (!addr) {
 		dev_notice(dev, "%s: Null base addr found\n", __func__);
 		return -EINVAL;
 	}
-
-	if ((readl_relaxed(base + offset) & set_val) == set_val) {
-		dev_notice(dev, "%s:master:%d, hw_sem was already got\n", __func__, master_id);
+	if ((readl_relaxed(addr) & set_val) == set_val) {
+		dev_notice(dev, "%s: hw_sem was already got\n", __func__);
 		return -1;
 	}
 
-	writel_relaxed(set_val, base + offset);
+	writel_relaxed(set_val, addr);
 	udelay(10);
-
-	if ((readl_relaxed(base + offset) & set_val) == set_val)
+	if ((readl_relaxed(addr) & set_val) == set_val)
 		ret = 1;
 	else {
-		dev_notice(dev, "%s:type:%d,master_id=%d,fail!\n", __func__, sema_type, master_id);
+		dev_notice(dev, "%s: fail!\n", __func__);
 		ret = -EAGAIN;
 	}
 
 	return ret;
 }
 
-static int __mtk_hw_semaphore_release(u32 sema_type, u32 master_id)
+static int __mtk_hw_semaphore_release(void __iomem *addr, u32 set_val)
 {
-	struct hw_semaphore *hw_sema = g_hw_sema;
-	struct device *dev = hw_sema->dev;
-	u32 offset, set_val;
+	struct device *dev = g_hw_sema->dev;
 	s32 ret = 1, timeout = TIMEOUT;
-	void __iomem *base;
 
-	base = hw_sema->base[sema_type];
-	offset = hw_sema->mast[master_id].offset;
-	set_val = BIT(hw_sema->mast[master_id].set_bit);
-	if (log_level & 1 << log_config)
-		dev_notice(dev, "%s: type:%d, master_id=%d, offset=%#x, set_val=%#x\n", __func__,
-						sema_type, master_id, offset, set_val);
-	if (!base) {
+	if (!addr) {
 		dev_notice(dev, "%s: Null base addr found\n", __func__);
 		return -EINVAL;
 	}
-
-	if ((readl_relaxed(base + offset) & set_val) != set_val) {
-		dev_notice(dev, "%s:master:%d, hw_sem was already released\n", __func__, master_id);
+	if ((readl_relaxed(addr) & set_val) != set_val) {
+		dev_notice(dev, "%s: hw_sem was already released\n", __func__);
 		return -1;
 	}
 
 	do {
-		writel_relaxed(set_val, base + offset);
+		writel_relaxed(set_val, addr);
 		udelay(10);
 		if (timeout-- < 0) {
-			dev_notice(dev, "%s:type:%d,master_id=%d,timeout!\n", __func__, sema_type,
-					master_id);
+			dev_notice(dev, "%s: timeout!\n", __func__);
 			ret = -EAGAIN;
 			break;
 		}
-	} while ((readl_relaxed(base + offset) & set_val) == set_val);
+	} while ((readl_relaxed(addr) & set_val) == set_val);
 
 	return ret;
 }
 
-static s32 get_master_by_mtcmos_id(s32 mtcmos_id)
-{
-	struct hw_semaphore *hw_sema = g_hw_sema;
-	u32 i;
-
-	for (i = 0; i < MTCMOS_MAX_NR; i++) {
-		if (hw_sema->mtcmos_id[i][0] < 0)
-			break;
-		if (mtcmos_id == hw_sema->mtcmos_id[i][0])
-			return hw_sema->mtcmos_id[i][1];
-	}
-
-	return -EINVAL;
-}
-
  /*
-  * mtk_hw_semaphore_get() - get hw semaphore by mtcmos id
-  * @mtcmos_id: reference to the mtxxxx-power.h
-  *
+  * mtk_hw_semaphore_ctrl() - hw semaphore ctrl
+  * master_id: refer to dts
+  * is_get: get or release hw semaphore
   * Return 1 on success, or an appropriate error code otherwise.
   */
-int mtk_hw_semaphore_get(u32 mtcmos_id)
+int mtk_hw_semaphore_ctrl(u32 master_id, bool is_get)
 {
 	struct hw_semaphore *hw_sema = g_hw_sema;
 	struct device *dev = hw_sema->dev;
-	u32 sema_type;
-	s32 master_id;
+	u32 sema_type, offset, set_val, i;
+	s32 ret;
 
-	master_id = get_master_by_mtcmos_id(mtcmos_id);
-	if (master_id < 0) {
-		dev_notice(dev, "%s:not MM MTCMOS:%d\n", __func__, mtcmos_id);
-		return -EINVAL;
-	}
 	sema_type = hw_sema->mast[master_id].sema_type;
+	offset = hw_sema->mast[master_id].offset;
+	set_val = BIT(hw_sema->mast[master_id].set_bit);
 
-	return __mtk_hw_semaphore_get(sema_type, master_id);
-}
-EXPORT_SYMBOL_GPL(mtk_hw_semaphore_get);
+	if (log_level & 1 << log_config)
+		dev_notice(dev, "%s: is_get:%d, type:%d, id=%d, offset=%#x, set_val=%#x\n",
+				__func__, is_get, sema_type, master_id, offset, set_val);
 
- /*
-  * mtk_hw_semaphore_release() - release hw semaphore by mtcmos id
-  * @mtcmos_id: reference to the mtxxxx-power.h
-  *
-  * Return 1 on success, or an appropriate error code otherwise.
-  */
-int mtk_hw_semaphore_release(u32 mtcmos_id)
-{
-	struct hw_semaphore *hw_sema = g_hw_sema;
-	struct device *dev = hw_sema->dev;
-	u32 sema_type;
-	s32 master_id;
-
-	master_id = get_master_by_mtcmos_id(mtcmos_id);
-	if (master_id < 0) {
-		dev_notice(dev, "%s:not MM MTCMOS:%d\n", __func__, mtcmos_id);
-		return -EAGAIN;
+	if (is_get)
+		ret = __mtk_hw_semaphore_get(hw_sema->base[sema_type] + offset, set_val);
+	else
+		ret = __mtk_hw_semaphore_release(hw_sema->base[sema_type] + offset, set_val);
+	if (ret < 0) {
+		dev_notice(dev, "%s timeout!: is_get:%d, type:%d, id=%d, offset=%#x, set_val=%#x\n",
+				__func__, is_get, sema_type, master_id, offset, set_val);
+		for (i = 0; i < MASTER_MAX_NR; i++) {
+			offset = hw_sema->dbg_offset[sema_type][i];
+			if (!offset)
+				continue;
+			dev_notice(dev, "%s: master %#x=%#x\n", __func__, offset,
+					readl_relaxed(hw_sema->base[sema_type] + offset));
+		}
 	}
-	sema_type = hw_sema->mast[master_id].sema_type;
 
-	return __mtk_hw_semaphore_release(sema_type, master_id);
+	return ret;
 }
-EXPORT_SYMBOL_GPL(mtk_hw_semaphore_release);
+EXPORT_SYMBOL_GPL(mtk_hw_semaphore_ctrl);
 
 static int hw_semaphore_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct hw_semaphore *hw_sema;
-	u32 base_tmp, tmp, i, master_num, power_num, offset;
+	u32 base_tmp, tmp, i, master_num, offset;
 
 	dev_notice(dev, "%s: start to probe\n", __func__);
 
@@ -222,24 +179,24 @@ static int hw_semaphore_probe(struct platform_device *pdev)
 		}
 	}
 
-	memset(&hw_sema->mtcmos_id, -1, sizeof(s32) * MTCMOS_MAX_NR * POWER_CELL_NUM);
-	if (of_get_property(dev->of_node, "mm-power-id", &tmp)) {
-		power_num = tmp / (sizeof(u32) * POWER_CELL_NUM);
-		for (i = 0; i < power_num; i++) {
-			offset = i * POWER_CELL_NUM;
-			if (of_property_read_u32_index(dev->of_node, "mm-power-id", offset,
-					&hw_sema->mtcmos_id[i][0]))
-				break;
-			if (of_property_read_u32_index(dev->of_node, "mm-power-id", offset + 1,
-					&hw_sema->mtcmos_id[i][1]))
-				break;
+	// spm semaphore dbg reg
+	for (i = 0; i < MASTER_MAX_NR; i++) {
+		if (!of_property_read_u32_index(dev->of_node,
+						"spm-sem-dbg-offset", i, &tmp)) {
+			hw_sema->dbg_offset[SEMA_TYPE_SPM][i] = tmp;
+			dev_notice(dev, "spm-sem-dbg-offset offset=%#x\n",
+						hw_sema->dbg_offset[SEMA_TYPE_SPM][i]);
 		}
 	}
 
-	for (i = 0; i < MTCMOS_MAX_NR; i++) {
-		dev_notice(dev, "%s:(mtcmos_id,master_id)=(%d,%d)\n", __func__,
-					hw_sema->mtcmos_id[i][0],
-					hw_sema->mtcmos_id[i][1]);
+	// vcp semaphore dbg reg
+	for (i = 0; i < MASTER_MAX_NR; i++) {
+		if (!of_property_read_u32_index(dev->of_node,
+						"vcp-sem-dbg-offset", i, &tmp)) {
+			hw_sema->dbg_offset[SEMA_TYPE_VCP][i] = tmp;
+			dev_notice(dev, "vcp-sem-dbg-offset offset=%#x\n",
+						hw_sema->dbg_offset[SEMA_TYPE_VCP][i]);
+		}
 	}
 
 	return 0;
@@ -286,48 +243,17 @@ MODULE_PARM_DESC(log_level, "hw_semaphore log level");
 MODULE_DESCRIPTION("MTK HW semaphore driver");
 MODULE_LICENSE("GPL");
 
-int hw_semaphore_ut_by_mtcmos_id(const char *val, const struct kernel_param *kp)
+int hw_semaphore_ut(const char *val, const struct kernel_param *kp)
 {
-	s32 ret, mtcmos_id, is_get;
+	s32 ret, is_get, master_id;
 
-	ret = sscanf(val, "%d:%d", &is_get, &mtcmos_id);
+	ret = sscanf(val, "%d %d", &is_get, &master_id);
 	if (ret != 2) {
 		pr_notice("%s: fail!, %d\n", __func__, ret);
 		return ret;
 	}
 
-	if (is_get)
-		ret = mtk_hw_semaphore_get(mtcmos_id);
-	else
-		ret = mtk_hw_semaphore_release(mtcmos_id);
-	if (ret > 0)
-		pr_notice("%s:pass,is_get:%d,ret:%d\n", __func__, is_get, ret);
-	else
-		pr_notice("%s:fail,is_get:%d,ret:%d\n", __func__, is_get, ret);
-
-	return 0;
-}
-
-static const struct kernel_param_ops hw_sema_ut_by_mtcmos_id_ops = {
-	.set = hw_semaphore_ut_by_mtcmos_id,
-};
-module_param_cb(hw_sema_ut_by_mtcmos_id, &hw_sema_ut_by_mtcmos_id_ops, NULL, 0644);
-MODULE_PARM_DESC(hw_sema_ut_by_mtcmos_id, "hw semaphore ut by mtcmos id");
-
-int hw_semaphore_ut(const char *val, const struct kernel_param *kp)
-{
-	s32 ret, is_get, sema_type, master_id;
-
-	ret = sscanf(val, "%d:%d %d", &is_get, &sema_type, &master_id);
-	if (ret != 3) {
-		pr_notice("%s: fail!, %d\n", __func__, ret);
-		return ret;
-	}
-
-	if (is_get)
-		ret = __mtk_hw_semaphore_get(sema_type, master_id);
-	else
-		ret = __mtk_hw_semaphore_release(sema_type, master_id);
+	ret = mtk_hw_semaphore_ctrl(master_id, is_get);
 	if (ret > 0)
 		pr_notice("%s:pass,is_get:%d,ret:%d\n", __func__, is_get, ret);
 	else

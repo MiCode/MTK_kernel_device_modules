@@ -3278,9 +3278,6 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (of_property_read_bool(dev->of_node, "skip-busy-check"))
-		larb->skip_busy_check = true;
-
 	if (of_property_read_bool(dev->of_node, "skip-restore"))
 		larb->skip_restore = true;
 
@@ -3308,6 +3305,13 @@ static int __maybe_unused mtk_smi_larb_resume(struct device *dev)
 
 	rs_start = ktime_get();
 	atomic_inc(&larb->smi.ref_count);
+	if (larb->skip_rpm_cb) {
+		if (log_level & 1 << log_config_bit)
+			dev_notice(dev, "[SMI]%s: larb%d skip rpm callback\n",
+						__func__, larb->larbid);
+		return 0;
+	}
+
 	if (log_level & 1 << log_config_bit)
 		pr_info("[SMI]larb:%d callback get ref_count:%d\n",
 			larb->larbid, atomic_read(&larb->smi.ref_count));
@@ -3549,6 +3553,13 @@ static int __maybe_unused mtk_smi_larb_suspend(struct device *dev)
 	const struct mtk_smi_larb_gen *larb_gen = larb->larb_gen;
 
 	atomic_dec(&larb->smi.ref_count);
+	if (larb->skip_rpm_cb) {
+		if (log_level & 1 << log_config_bit)
+			dev_notice(dev, "[SMI]%s: larb%d skip rpm callback\n",
+						__func__, larb->larbid);
+		return 0;
+	}
+
 	if (log_level & 1 << log_config_bit)
 		pr_info("[SMI]larb:%d callback put ref_count:%d\n",
 			larb->larbid, atomic_read(&larb->smi.ref_count));
