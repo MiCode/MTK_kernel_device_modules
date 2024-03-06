@@ -3132,6 +3132,8 @@ int smmu_tf_detect(enum mtk_smmu_type type,
 		   u32 options,
 		   struct mtk_smmu_fault_param *param)
 {
+	static DEFINE_RATELIMIT_STATE(detect_rs, SMMU_FAULT_RS_INTERVAL,
+				      SMMU_FAULT_RS_BURST);
 	struct arm_smmu_device *smmu;
 	struct mtk_smmu_data *data;
 	unsigned int irq_sta = 0;
@@ -3157,6 +3159,9 @@ int smmu_tf_detect(enum mtk_smmu_type type,
 	skip_irq = (options & SMMU_DETECT_TF_OPT_SKIP_IRQ);
 	irq_sta = smmu_read_reg(smmu->wp_base, SMMUWP_IRQ_STA);
 	if (skip_irq || irq_sta > 0) {
+		if (!skip_irq && !__ratelimit(&detect_rs))
+			return 0;
+
 		ret = smmuwp_tf_detect(smmu, sid, tbu, axids, num_axids, param);
 		dev_info(smmu->dev,
 			 "[%s] smmu:%s dev:%s sid:0x%x tbu:%d opt:0x%x irq_sta:0x%x ret:%d\n",
