@@ -102,6 +102,7 @@ struct clkchk_ops {
 	void (*check_apmixed_sta)(bool bug_on);
 	void (*dev_pm_resume)(void);
 	void (*external_dump)(void);
+	void (*cg_timeout_handle)(struct regmap *regmap, u32 id, u32 shift);
 };
 
 int pwr_hw_is_on(enum PWR_STA_TYPE type, s32 val);

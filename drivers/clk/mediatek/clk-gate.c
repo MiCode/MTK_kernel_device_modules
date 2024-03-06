@@ -188,6 +188,12 @@ static int __cg_enable_hwv(struct clk_hw *hw, bool inv)
 	if (cg->flags & CLK_EN_MM_INFRA_PWR)
 		mtk_clk_mminfra_hwv_power_ctrl(true);
 
+	regmap_read(cg->hwv_regmap, cg->hwv_set_ofs, &val);
+	if ((val & BIT(cg->bit)) == BIT(cg->bit)) {
+		pr_notice("cg en repeat vote: %s\n", clk_hw_get_name(hw));
+		return 0;
+	}
+
 	regmap_write(cg->hwv_regmap, cg->hwv_set_ofs,
 			BIT(cg->bit));
 
@@ -287,6 +293,10 @@ static void mtk_cg_disable_hwv(struct clk_hw *hw)
 
 	/* dummy read to clr idle signal of hw voter bus */
 	regmap_read(cg->hwv_regmap, cg->hwv_clr_ofs, &val);
+	if ((val & BIT(cg->bit)) != BIT(cg->bit)) {
+		pr_notice("cg dis repeat vote: %s\n", clk_hw_get_name(hw));
+		return;
+	}
 
 	regmap_write(cg->hwv_regmap, cg->hwv_clr_ofs, BIT(cg->bit));
 

@@ -3356,22 +3356,10 @@ static bool is_suspend_retry_stop(bool reset_cnt)
 	return true;
 }
 
-static enum chk_sys_id history_dump_id[] = {
-	ck,
-	ck2,
-	apmixed,
-	apmixed2,
-	hwv,
-	mm_hwv,
-	chk_sys_num,
-};
-
 static void dump_hwv_history(struct regmap *regmap, u32 id)
 {
 	u32 set[XPU_NUM] = {0}, sta = 0, en = 0, done = 0;
 	int i;
-
-	set_subsys_reg_dump_mt6991(history_dump_id);
 
 	if (regmap != NULL) {
 		for (i = 0; i < XPU_NUM; i++)
@@ -3390,8 +3378,6 @@ static void dump_hwv_history(struct regmap *regmap, u32 id)
 				HWV_CG_EN(id), en,
 				HWV_CG_DONE(id), done);
 	}
-
-	get_subsys_reg_dump_mt6991();
 }
 
 static enum chk_sys_id bus_dump_id[] = {
@@ -3453,6 +3439,8 @@ static void dump_bus_reg(struct regmap *regmap, u32 ofs)
 			pr_notice("[%s] %d khz\n", fclks->name,
 				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}
+
+	mdelay(10);
 
 	BUG_ON(1);
 }
@@ -3563,6 +3551,26 @@ static void external_dump(void)
 	}
 }
 
+static void cg_timeout_handle(struct regmap *regmap, u32 id, u32 shift)
+{
+	u32 val;
+	int i;
+
+	if (regmap) {
+		for (i = 0; i < 10; i++) {
+			regmap_write(regmap, HWV_CG_SET(xpu_id[0], id), 1 << shift);
+			regmap_read(regmap, HWV_CG_SET(xpu_id[0], id), &val);
+			if ((val & (1 << shift)) == (1 << shift)) {
+				pr_notice("cg vote retry: %d us\n", i * 10);
+				break;
+			}
+			udelay(10);
+		}
+	}
+
+	dump_bus_reg(regmap, 0);
+}
+
 /*
  * init functions
  */
@@ -3590,6 +3598,7 @@ static struct clkchk_ops clkchk_mt6991_ops = {
 	.check_mm_hwv_irq_sta = check_mm_hwv_irq_sta,
 	.is_suspend_retry_stop = is_suspend_retry_stop,
 	.external_dump = external_dump,
+	.cg_timeout_handle = cg_timeout_handle,
 };
 
 static int clk_chk_mt6991_probe(struct platform_device *pdev)

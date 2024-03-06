@@ -239,7 +239,7 @@ hwv_prepare_fail:
 
 	mtk_clk_notify(mux->regmap, mux->hwv_regmap, NULL,
 			mux->data->fenc_sta_mon_ofs, (mux->data->hwv_set_ofs / MTK_HWV_ID_OFS),
-			mux->data->fenc_shift, CLK_EVT_HWV_CG_TIMEOUT);
+			mux->data->gate_shift, CLK_EVT_HWV_CG_TIMEOUT);
 
 	return -EBUSY;
 }
