@@ -5986,6 +5986,16 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			gce-ddr-sel-wla;
 		};
 
+		gce_sec: gce-mbox-sec@300c0000 {
+			compatible = "mediatek,mailbox-gce-sec";
+			reg = <0 0x300c0000 0 0x80000>;
+			virtio-supply = <&trusty_virtio>;
+			#mbox-cells = <3>;
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>;
+			mboxes = <&gce 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+			dma-mask-bit = <35>;
+		};
+
 		gce_m: gce@30140000 {
 			compatible = "mediatek,mt6991-gce";
 			reg = <0 0x30140000 0 0x80000>;
@@ -6022,15 +6032,30 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			gce-ddr-sel-wla;
 		};
 
+		gce_m_sec: gce-mbox-m-sec@30140000 {
+			compatible = "mediatek,mailbox-gce-sec";
+			reg = <0 0x30140000 0 0x80000>;
+			#mbox-cells = <3>;
+			virtio-supply = <&trusty_virtio>;
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>;
+			mboxes = <&gce_m 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+			dma-mask-bit = <35>;
+		};
+
 		cmdq-test {
 			compatible = "mediatek,cmdq-test";
 			mediatek,gce = <&gce>;
+			cmdq-supply = <&gce_sec>;
 			mediatek,gce-subsys = <99>, <SUBSYS_1400XXXX>;
 			mboxes = <&gce 14 0 CMDQ_THR_PRIO_1>,
-				<&gce_m 14 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
-				//<&gce_m_sec 9 0 CMDQ_THR_PRIO_1>;
+				<&gce 28 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
+				<&gce 9 0 CMDQ_THR_PRIO_1>,
+				<&gce_sec 8 0 CMDQ_THR_PRIO_1>;
+			gce-event-names = "token_user_0";
+			gce-events = <&gce CMDQ_SYNC_TOKEN_USER_0>;
 			token-user0 = /bits/ 16 <CMDQ_SYNC_TOKEN_USER_0>;
-			token-gpr-set4 = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_4>;
+			token-for-ut = /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MDP_LOCK>;
+			token-timeout = /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MML_LOCK>;
 		};
 
 		mminfra-imax {
