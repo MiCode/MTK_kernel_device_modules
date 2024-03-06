@@ -16,7 +16,7 @@
 #include <sched/sched.h>
 #include "cpufreq.h"
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-#include "mtk_energy_model/v2/energy_model.h"
+#include "mtk_energy_model/v3/energy_model.h"
 #else
 #include "mtk_energy_model/v1/energy_model.h"
 #endif
@@ -1217,13 +1217,8 @@ static int __init cpufreq_mtk_init(void)
 	}
 	ret = mtk_static_power_init();
 	if (ret) {
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-		pr_info("%s: failed to init MTK EM, ret: %d, %p, %p\n",
-			__func__, ret, mtk_em_pd_ptr_private, mtk_em_pd_ptr_public);
-#else
 		pr_info("%s: failed to init MTK EM, ret: %d\n",
 			__func__, ret);
-#endif
 		return ret;
 	}
 
@@ -1262,7 +1257,6 @@ static int __init cpufreq_mtk_init(void)
 
 static void __exit cpufreq_mtk_exit(void)
 {
-	clear_opp_cap_info();
 	cpufreq_unregister_governor(&mtk_gov);
 }
 

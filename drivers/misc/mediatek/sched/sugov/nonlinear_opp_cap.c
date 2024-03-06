@@ -18,7 +18,7 @@
 #include "cpufreq.h"
 #include "sugov_trace.h"
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-#include "mtk_energy_model/v2/energy_model.h"
+#include "mtk_energy_model/v3/energy_model.h"
 #else
 #include "mtk_energy_model/v1/energy_model.h"
 #endif
@@ -32,20 +32,12 @@ EXPORT_SYMBOL(sbb);
 
 static void __iomem *l3ctl_sram_base_addr;
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
-static struct resource *csram_res;
-static void __iomem *sram_base_addr;
 static struct cpumask *pd_cpumask;
-static struct pd_capacity_info *pd_capacity_tbl;
-static struct pd_capacity_info **pd_wl_type;
-static struct cpu_weighting **cpu_wt;
 static int *cpu2cluster_id;
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-static void __iomem *sram_base_addr_freq_scaling;
-static struct mtk_em_perf_domain *mtk_em_pd_ptr;
 static bool freq_scaling_disabled = true;
 #endif
 static int pd_count;
-static int entry_count;
 static int busy_tick_boost_all;
 static int sbb_active_ratio[MAX_NR_CPUS] = {
 	[0 ... MAX_NR_CPUS - 1] = 100 };
@@ -58,13 +50,6 @@ static int fpsgo_boosting; //0 : disable, 1 : enable
 void (*flt_get_fpsgo_boosting)(int fpsgo_flag);
 EXPORT_SYMBOL(flt_get_fpsgo_boosting);
 #endif
-
-__weak struct mtk_em_perf_domain *mtk_em_pd_ptr_public;
-__weak struct mtk_em_perf_domain *mtk_em_pd_ptr_private;
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-__weak struct mtk_dsu_em  mtk_dsu_em;
-#endif
-__weak int mtk_update_wl_table(int gear_id, int wl) { return 0; }
 
 /* DPT */
 static void __iomem *dpt_sram_base;
@@ -213,15 +198,6 @@ struct cpu_dsu_freq_state *get_dsu_freq_state(void)
 }
 EXPORT_SYMBOL_GPL(get_dsu_freq_state);
 
-// for mtk em v2
-int mtk_dsu_freq_agg(int cpu, int max_freq_in_gear, int quant, int wl, int *dsu_target_freq)
-{
-	int dsu_freq = pd_cpu_freq2dsu_freq(cpu, max_freq_in_gear, quant, wl);
-		if (*dsu_target_freq < dsu_freq)
-			*dsu_target_freq = dsu_freq;
-		return dsu_freq;
-}
-
 int (*mtk_dsu_freq_agg_hook)(int cpu, int max_freq_in_gear, int quant,
 		int wl, int *dsu_target_freq);
 EXPORT_SYMBOL(mtk_dsu_freq_agg_hook);
@@ -229,20 +205,15 @@ int dsu_freq_agg(int cpu, int max_freq_in_gear, int quant, int wl, int *dsu_targ
 {
 	int dsu_freq;
 
-	if (em_ver() == 3) {
-		if (mtk_dsu_freq_agg_hook)
-			return mtk_dsu_freq_agg_hook(cpu, max_freq_in_gear,
-						quant, wl, dsu_target_freq);
+	if (mtk_dsu_freq_agg_hook)
+		return mtk_dsu_freq_agg_hook(cpu, max_freq_in_gear,
+					quant, wl, dsu_target_freq);
 
-		// if mtk_dsu_freq_agg_hook not ready yet
-		dsu_freq = max_freq_in_gear > 1;
-		if (*dsu_target_freq < dsu_freq)
-			*dsu_target_freq = dsu_freq;
-		return dsu_freq;
-	}
-
-	// for mtk em v2
-	return mtk_dsu_freq_agg(cpu, max_freq_in_gear, quant, wl, dsu_target_freq);
+	// if mtk_dsu_freq_agg_hook not ready yet
+	dsu_freq = max_freq_in_gear > 1;
+	if (*dsu_target_freq < dsu_freq)
+		*dsu_target_freq = dsu_freq;
+	return dsu_freq;
 }
 EXPORT_SYMBOL_GPL(dsu_freq_agg);
 
@@ -295,7 +266,6 @@ skip_single_idle_cpu:
 }
 
 int wl_type_delay_ch_cnt = 1; // change counter
-static struct dsu_table dsu_tbl;
 static int nr_wl_type = 1;
 static int wl_type_curr;
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
@@ -368,8 +338,6 @@ void update_wl_tbl(unsigned int cpu)
 				int i, j;
 
 				for (i = 0; i < pd_count; i++) {
-					if (em_ver() == 2)
-						mtk_update_wl_table(i, wl_type_curr);
 					for_each_cpu(j, &pd_cpumask[i])
 						WRITE_ONCE(per_cpu(cpu_scale, j),
 							pd_opp2cap(j, 0, true, wl_type_curr, NULL, true,
@@ -526,71 +494,6 @@ void update_curr_collab_state(void)
 EXPORT_SYMBOL_GPL(update_curr_collab_state);
 /* End of DPT */
 
-int init_dsu(void)
-{
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-	unsigned int i, t, need_alloc;
-	unsigned int min_gap = UINT_MAX;
-	int k, next_k;
-
-	dsu_tbl.tbl = kcalloc(nr_wl_type, sizeof(struct dsu_state *),
-			GFP_KERNEL);
-
-	for (t = 0; t < nr_wl_type; t++) {
-		need_alloc = 1;
-		for (k = t - 1; k >= 0; k--) {
-			if (mtk_mapping.cpu_to_dsu[t].dsu_type
-					== mtk_mapping.cpu_to_dsu[k].dsu_type) {
-				dsu_tbl.tbl[t] = dsu_tbl.tbl[k];
-				need_alloc = 0;
-				break;
-			}
-		}
-
-		if (need_alloc == 0)
-			continue;
-		else {
-			dsu_tbl.tbl[t] = kcalloc(mtk_dsu_em.nr_perf_states,
-				sizeof(struct dsu_state), GFP_KERNEL);
-			if (!dsu_tbl.tbl[t])
-				return -ENOMEM;
-		}
-
-		mtk_update_wl_table(0, t);
-		for (i = 0; i < mtk_dsu_em.nr_perf_states; i++) {
-			dsu_tbl.tbl[t][i].freq = mtk_dsu_em.dsu_table[i].dsu_frequency;
-			dsu_tbl.tbl[t][i].volt = mtk_dsu_em.dsu_table[i].dsu_volt;
-			dsu_tbl.tbl[t][i].dyn_pwr = mtk_dsu_em.dsu_table[i].dynamic_power;
-			dsu_tbl.tbl[t][i].BW = mtk_dsu_em.dsu_table[i].dsu_bandwidth;
-			dsu_tbl.tbl[t][i].EMI_BW = mtk_dsu_em.dsu_table[i].emi_bandwidth;
-			if (i > 0 && t == 0)
-				min_gap = min(min_gap, dsu_tbl.tbl[t][i - 1].freq
-					- dsu_tbl.tbl[t][i].freq);
-		}
-
-		if (t != 0) /* the O1 mapping table only need init once */
-			continue;
-		dsu_tbl.nr_opp = mtk_dsu_em.nr_perf_states;
-		dsu_tbl.freq_max = mtk_dsu_em.dsu_table[0].dsu_frequency;
-		dsu_tbl.freq_min = mtk_dsu_em.dsu_table[dsu_tbl.nr_opp - 1].dsu_frequency;
-		dsu_tbl.min_gap_log2 =
-			min_t(unsigned int, ilog2(min_gap), sizeof(unsigned int) * 8);
-		dsu_tbl.nr_opp_map = (dsu_tbl.freq_max - dsu_tbl.freq_min) >> dsu_tbl.min_gap_log2;
-		dsu_tbl.opp_map = kcalloc(dsu_tbl.nr_opp_map + 1, sizeof(unsigned int), GFP_KERNEL);
-		for (i = 0; i < dsu_tbl.nr_opp; i++) {
-			k = (dsu_tbl.freq_max - dsu_tbl.tbl[t][i].freq) >> dsu_tbl.min_gap_log2;
-			next_k = (dsu_tbl.freq_max -
-				dsu_tbl.tbl[t][min(dsu_tbl.nr_opp - 1, i + 1)].freq)
-				>> dsu_tbl.min_gap_log2;
-			for (; k <= next_k; k++)
-				dsu_tbl.opp_map[k] = i;
-		}
-	}
-	mtk_update_wl_table(0, 0);
-#endif
-	return 0;
-}
-
 void init_sbb_cpu_data(void)
 {
 	int cpu;
@@ -736,196 +639,6 @@ struct cpumask *get_gear_cpumask(unsigned int gear)
 }
 EXPORT_SYMBOL_GPL(get_gear_cpumask);
 
-static inline int map_freq_idx_by_tbl(struct pd_capacity_info *pd_info, unsigned long freq)
-{
-	int idx;
-
-	freq = min_t(unsigned int, freq, pd_info->table[0].freq);
-	if (freq <= pd_info->freq_min)
-		return pd_info->nr_freq_opp_map - 1;
-
-	idx = mul_u64_u32_shr((u32) pd_info->table[0].freq - freq, pd_info->inv_DFreq, 32);
-	return idx;
-}
-
-static inline int map_util_idx_by_tbl(struct pd_capacity_info *pd_info, unsigned long util)
-{
-	int idx;
-
-	util = clamp_val(util, pd_info->table[pd_info->nr_caps - 1].capacity,
-		pd_info->table[0].capacity);
-	idx = pd_info->table[0].capacity - util;
-	return idx;
-}
-
-/* binary space */
-inline struct mtk_em_perf_state *mtk_opp2state(int cpu, int opp, int quant, int wl)
-{
-	struct pd_capacity_info *pd_info;
-	int cluster_id = topology_cluster_id(cpu);
-
-	pd_info = &pd_wl_type[wl][cluster_id];
-	if (quant) {
-		opp = clamp_val(opp, 0, pd_info->nr_caps_legacy - 1);
-		return &pd_info->table_legacy[opp];
-	}
-	opp = clamp_val(opp, 0, pd_info->nr_caps - 1);
-	return &pd_info->table[opp];
-}
-
-inline int mtk_opp2freq(int cpu, int opp, int quant, int wl)
-{
-	struct mtk_em_perf_state *state = mtk_opp2state(cpu, opp, quant, wl);
-	int cluster_id = topology_cluster_id(cpu);
-	struct pd_capacity_info *pd_info;
-
-	pd_info = &pd_wl_type[wl][cluster_id];
-	return clamp_val(state->freq, pd_info->freq_min,
-		pd_info->freq_max);
-}
-
-inline int mtk_opp2cap(int cpu, int opp, int quant, int wl)
-{
-	struct mtk_em_perf_state *state = mtk_opp2state(cpu, opp, quant, wl);
-
-	return state->capacity;
-}
-
-inline int mtk_opp2pwr_eff(int cpu, int opp, int quant, int wl)
-{
-	struct mtk_em_perf_state *state = mtk_opp2state(cpu, opp, quant, wl);
-
-	return state->pwr_eff;
-}
-
-inline int mtk_opp2dyn_pwr(int cpu, int opp, int quant, int wl)
-{
-	struct mtk_em_perf_state *state = mtk_opp2state(cpu, opp, quant, wl);
-
-	return state->dyn_pwr;
-}
-
-inline int mtk_opp2volt(int cpu, int opp, int quant, int wl)
-{
-	struct mtk_em_perf_state *state = mtk_opp2state(cpu, opp, quant, wl);
-
-	return state->volt;
-}
-
-inline int mtk_cpu_opp2dsu_freq(int cpu, int opp, int quant, int wl)
-{
-	struct mtk_em_perf_state *state = mtk_opp2state(cpu, opp, quant, wl);
-
-	return state->dsu_freq;
-}
-
-inline int mtk_util2opp(int cpu, int util, int quant, int wl)
-{
-	int cluster_id = topology_cluster_id(cpu);
-	struct pd_capacity_info *pd_info;
-	int idx;
-
-	pd_info = &pd_wl_type[wl][cluster_id];
-	idx = map_util_idx_by_tbl(pd_info, util);
-	if (quant)
-		return pd_info->util_opp_map_legacy[idx];
-	else
-		return pd_info->util_opp_map[idx];
-}
-
-inline int mtk_freq2opp(int cpu, int freq, int quant, int wl)
-{
-	int cluster_id = topology_cluster_id(cpu);
-	struct pd_capacity_info *pd_info;
-	int idx;
-
-	pd_info = &pd_wl_type[wl][cluster_id];
-	idx = map_freq_idx_by_tbl(pd_info, freq);
-	if (quant) {
-		if (freq <= pd_info->freq_min)
-			return pd_info->freq_opp_map_legacy[pd_info->nr_freq_opp_map - 1];
-
-		if (freq > pd_get_opp_freq_legacy(cpu, pd_info->freq_opp_map_legacy[idx] + 1))
-			return pd_info->freq_opp_map_legacy[idx];
-		else
-			return pd_info->freq_opp_map_legacy[idx] + 1;
-	} else {
-		return  pd_info->freq_opp_map[idx];
-	}
-}
-
-inline int mtk_cpu_volt2opp_linear(int cpu, int volt, int quant, int wl)
-{
-	int cluster_id = topology_cluster_id(cpu);
-	int nr_opp;
-	int i;
-	struct pd_capacity_info *pd_info;
-
-	pd_info = &pd_wl_type[wl][cluster_id];
-	if (quant)
-		nr_opp = pd_info->nr_caps_legacy;
-	else
-		nr_opp = pd_info->nr_caps;
-	for (i = 0; i < nr_opp; i++)
-		if (volt >= mtk_opp2volt(cpu, i, quant, wl))
-			return i;
-	return nr_opp - 1;
-}
-
-inline int mtk_dsu_weighting(int wl, int cpu)
-{
-	int i;
-
-	i = topology_cluster_id(cpu);
-	return cpu_wt[i][wl].dsu_weighting;
-}
-
-inline int mtk_emi_weighting(int wl, int cpu)
-{
-	int i;
-
-	i = topology_cluster_id(cpu);
-	return cpu_wt[i][wl].emi_weighting;
-}
-
-inline int mtk_dsu_fre2dsu_opp(int freq)
-{
-	unsigned int idx;
-
-	freq = clamp_val(freq, dsu_tbl.freq_min, dsu_tbl.freq_max);
-	idx = (dsu_tbl.freq_max - freq) >> dsu_tbl.min_gap_log2;
-	idx = dsu_tbl.opp_map[idx];
-	if (dsu_tbl.tbl[0][idx].freq < freq)
-		idx--;
-	return idx;
-}
-
-inline struct dsu_state *mtk_dsu_opp2dsu_ps(int wl, int opp)
-{
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-	opp = clamp_val(opp, 0, mtk_dsu_em.nr_perf_states - 1);
-#endif
-	return &dsu_tbl.tbl[wl][opp];
-}
-
-int mtk_dsu_opp2volt(int opp)
-{
-	struct dsu_state *ds = mtk_dsu_opp2dsu_ps(0, opp);
-
-	return ds->volt;
-}
-
-int mtk_dsu_volt2opp_linear(int volt)
-{
-	int i;
-
-	for (i = 0; i < dsu_tbl.nr_opp; i++)
-		if (volt >= mtk_dsu_opp2volt(i))
-			return i;
-	return dsu_tbl.nr_opp - 1;
-}
-/* binary space */
-
 inline int get_eas_wl(int wl)
 {
 	if (wl < 0 || wl >= nr_wl_type)
@@ -1029,12 +742,9 @@ int (*mtk_eas_hook)(void);
 EXPORT_SYMBOL(mtk_eas_hook);
 int get_eas_hook(void)
 {
-	if (em_ver() == 3) {
-		if (mtk_eas_hook)
-			return mtk_eas_hook();
-		return 0;
-	}
-	return 1;
+	if (mtk_eas_hook)
+		return mtk_eas_hook();
+	return 0;
 }
 EXPORT_SYMBOL_GPL(get_eas_hook);
 
@@ -1042,12 +752,9 @@ int (*mtk_data_hook)(int *data);
 EXPORT_SYMBOL(mtk_data_hook);
 int mtk_data_get(int *data)
 {
-	if (em_ver() == 3) {
-		if (mtk_data_hook)
-			return mtk_data_hook(data);
-		return 0;
-	}
-	return 1;
+	if (mtk_data_hook)
+		return mtk_data_hook(data);
+	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_data_get);
 
@@ -1058,13 +765,10 @@ int (*mtk_opp2freq_hook)(int cpu, int opp, int quant, int wl);
 EXPORT_SYMBOL(mtk_opp2freq_hook);
 int pd_opp2freq(int cpu, int opp, int quant, int wl)
 {
-	if (em_ver() == 3) {
-		if (mtk_opp2freq_hook)
-			return mtk_opp2freq_hook(cpu, opp, quant, get_eas_wl(wl));
-		else
-			return em_opp2freq(cpu, opp);
-	}
-	return mtk_opp2freq(cpu, opp, quant, get_eas_wl(wl));
+	if (mtk_opp2freq_hook)
+		return mtk_opp2freq_hook(cpu, opp, quant, get_eas_wl(wl));
+	else
+		return em_opp2freq(cpu, opp);
 }
 EXPORT_SYMBOL_GPL(pd_opp2freq);
 
@@ -1073,24 +777,21 @@ int (*mtk_opp2cap_hook)(int cpu, int opp, int quant, int wl,
 EXPORT_SYMBOL(mtk_opp2cap_hook);
 int pd_opp2cap(int cpu, int opp, int quant, int wl, int *val_s, int r_o, int caller)
 {
-	if (em_ver() == 3) {
-		if (mtk_opp2cap_hook) {
-			int result, val_1, val_2, val_r;
+	if (mtk_opp2cap_hook) {
+		int result, val_1, val_2, val_r;
 
-			result = mtk_opp2cap_hook(cpu, opp, quant, get_eas_wl(wl),
-				&val_1, &val_2, &val_r, val_s, val_m, r_o);
-			if (trace_sched_pd_opp2cap_enabled())  {
-				int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
+		result = mtk_opp2cap_hook(cpu, opp, quant, get_eas_wl(wl),
+			&val_1, &val_2, &val_r, val_s, val_m, r_o);
+		if (trace_sched_pd_opp2cap_enabled())  {
+			int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
 
-				trace_sched_pd_opp2cap(cpu, opp, quant, get_eas_wl(wl),
-					val_1, val_2, val_r, val_s_0, val_m, r_o, caller);
-			}
+			trace_sched_pd_opp2cap(cpu, opp, quant, get_eas_wl(wl),
+				val_1, val_2, val_r, val_s_0, val_m, r_o, caller);
+		}
 
-			return result;
-		} else
-			return em_opp2cap(cpu, opp);
-	}
-	return mtk_opp2cap(cpu, opp, quant, get_eas_wl(wl));
+		return result;
+	} else
+		return em_opp2cap(cpu, opp);
 }
 EXPORT_SYMBOL_GPL(pd_opp2cap);
 
@@ -1099,24 +800,20 @@ int (*mtk_opp2pwr_eff_hook)(int cpu, int opp, int quant, int wl,
 EXPORT_SYMBOL(mtk_opp2pwr_eff_hook);
 int pd_opp2pwr_eff(int cpu, int opp, int quant, int wl, int *val_s, int r_o, int caller)
 {
-	if (em_ver() == 3) {
-		if (mtk_opp2pwr_eff_hook) {
-			int result, val_1, val_2, val_3, val_r1, val_r2;
+	if (mtk_opp2pwr_eff_hook) {
+		int result, val_1, val_2, val_3, val_r1, val_r2;
 
-			result =  mtk_opp2pwr_eff_hook(cpu, opp, quant, get_eas_wl(wl),
-				&val_1, &val_2, &val_3, &val_r1, &val_r2, val_s, val_m, r_o);
-			if (trace_sched_pd_opp2pwr_eff_enabled()) {
-				int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
+		result =  mtk_opp2pwr_eff_hook(cpu, opp, quant, get_eas_wl(wl),
+			&val_1, &val_2, &val_3, &val_r1, &val_r2, val_s, val_m, r_o);
+		if (trace_sched_pd_opp2pwr_eff_enabled()) {
+			int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
 
-				trace_sched_pd_opp2pwr_eff(cpu, opp, quant, wl,
-					val_1, val_2, val_3, val_r1, val_r2, val_s_0, r_o, caller);
-			}
-			return result;
+			trace_sched_pd_opp2pwr_eff(cpu, opp, quant, wl,
+				val_1, val_2, val_3, val_r1, val_r2, val_s_0, r_o, caller);
 		}
-		else
-			return em_opp2pwr_eff(cpu, opp);
-	}
-	return mtk_opp2pwr_eff(cpu, opp, quant, get_eas_wl(wl));
+		return result;
+	} else
+		return em_opp2pwr_eff(cpu, opp);
 }
 EXPORT_SYMBOL_GPL(pd_opp2pwr_eff);
 
@@ -1125,24 +822,20 @@ int (*mtk_opp2dyn_pwr_hook)(int cpu, int opp, int quant, int wl,
 EXPORT_SYMBOL(mtk_opp2dyn_pwr_hook);
 int pd_opp2dyn_pwr(int cpu, int opp, int quant, int wl, int *val_s, int r_o, int caller)
 {
-	if (em_ver() == 3) {
-		if (mtk_opp2dyn_pwr_hook) {
-			int result, val_1, val_r;
+	if (mtk_opp2dyn_pwr_hook) {
+		int result, val_1, val_r;
 
-			result = mtk_opp2dyn_pwr_hook(cpu, opp, quant, get_eas_wl(wl),
-				&val_1, &val_r, val_s, val_m, r_o);
-			if (trace_sched_pd_opp2dyn_pwr_enabled()) {
-				int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
+		result = mtk_opp2dyn_pwr_hook(cpu, opp, quant, get_eas_wl(wl),
+			&val_1, &val_r, val_s, val_m, r_o);
+		if (trace_sched_pd_opp2dyn_pwr_enabled()) {
+			int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
 
-				trace_sched_pd_opp2dyn_pwr(cpu, opp, quant, wl,
-					val_1, val_r, val_s_0, val_m, r_o, caller);
-			}
-			return result;
+			trace_sched_pd_opp2dyn_pwr(cpu, opp, quant, wl,
+				val_1, val_r, val_s_0, val_m, r_o, caller);
 		}
-		else
-			return 1;
-	}
-	return mtk_opp2dyn_pwr(cpu, opp, quant, get_eas_wl(wl));
+		return result;
+	} else
+		return 1;
 }
 EXPORT_SYMBOL_GPL(pd_opp2dyn_pwr);
 
@@ -1150,13 +843,10 @@ int (*mtk_opp2volt_hook)(int cpu, int opp, int quant, int wl);
 EXPORT_SYMBOL(mtk_opp2volt_hook);
 int pd_opp2volt(int cpu, int opp, int quant, int wl)
 {
-	if (em_ver() == 3) {
-		if (mtk_opp2volt_hook)
-			return mtk_opp2volt_hook(cpu, opp, quant, get_eas_wl(wl));
-		else
-			return 1;
-	}
-	return mtk_opp2volt(cpu, opp, quant, get_eas_wl(wl));
+	if (mtk_opp2volt_hook)
+		return mtk_opp2volt_hook(cpu, opp, quant, get_eas_wl(wl));
+	else
+		return 1;
 }
 EXPORT_SYMBOL_GPL(pd_opp2volt);
 
@@ -1164,13 +854,10 @@ int (*mtk_cpu_opp2dsu_freq_hook)(int cpu, int opp, int quant, int wl);
 EXPORT_SYMBOL(mtk_cpu_opp2dsu_freq_hook);
 int pd_cpu_opp2dsu_freq(int cpu, int opp, int quant, int wl)
 {
-	if (em_ver() == 3) {
-		if (mtk_cpu_opp2dsu_freq_hook)
-			return mtk_cpu_opp2dsu_freq_hook(cpu, opp, quant, get_eas_wl(wl));
-		else
-			return 1;
-	}
-	return mtk_cpu_opp2dsu_freq(cpu, opp, quant, get_eas_wl(wl));
+	if (mtk_cpu_opp2dsu_freq_hook)
+		return mtk_cpu_opp2dsu_freq_hook(cpu, opp, quant, get_eas_wl(wl));
+	else
+		return 1;
 }
 EXPORT_SYMBOL_GPL(pd_cpu_opp2dsu_freq);
 
@@ -1179,24 +866,20 @@ int (*mtk_util2opp_hook)(int cpu, int util, int quant, int wl,
 EXPORT_SYMBOL(mtk_util2opp_hook);
 int pd_util2opp(int cpu, int util, int quant, int wl, int *val_s, int r_o, int caller)
 {
-	if (em_ver() == 3) {
-		if (mtk_util2opp_hook) {
-			int result, val_1, val_2, val_3, val_4, val_r;
+	if (mtk_util2opp_hook) {
+		int result, val_1, val_2, val_3, val_4, val_r;
 
-			result = mtk_util2opp_hook(cpu, util, quant, get_eas_wl(wl),
-				&val_1, &val_2, &val_3, &val_4, &val_r, val_s, val_m, r_o);
-			if(trace_sched_pd_util2opp_enabled()) {
-				int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
+		result = mtk_util2opp_hook(cpu, util, quant, get_eas_wl(wl),
+			&val_1, &val_2, &val_3, &val_4, &val_r, val_s, val_m, r_o);
+		if(trace_sched_pd_util2opp_enabled()) {
+			int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
 
-				trace_sched_pd_util2opp(cpu, quant, wl,
-					val_1, val_2, val_3, val_4, val_r, val_s_0, val_m, r_o, caller);
-			}
-			return result;
+			trace_sched_pd_util2opp(cpu, quant, wl,
+				val_1, val_2, val_3, val_4, val_r, val_s_0, val_m, r_o, caller);
 		}
-		else
-			return em_util2opp(cpu, util);
-	}
-	return mtk_util2opp(cpu, util, quant, get_eas_wl(wl));
+		return result;
+	} else
+		return em_util2opp(cpu, util);
 }
 EXPORT_SYMBOL_GPL(pd_util2opp);
 
@@ -1204,13 +887,10 @@ int (*mtk_freq2opp_hook)(int cpu, int freq, int quant, int wl);
 EXPORT_SYMBOL(mtk_freq2opp_hook);
 int pd_freq2opp(int cpu, int freq, int quant, int wl)
 {
-	if (em_ver() == 3) {
-		if (mtk_freq2opp_hook)
-			return mtk_freq2opp_hook(cpu, freq, quant, get_eas_wl(wl));
-		else
-			return em_freq2opp(cpu, freq);
-	}
-	return mtk_freq2opp(cpu, freq, quant, get_eas_wl(wl));
+	if (mtk_freq2opp_hook)
+		return mtk_freq2opp_hook(cpu, freq, quant, get_eas_wl(wl));
+	else
+		return em_freq2opp(cpu, freq);
 }
 EXPORT_SYMBOL_GPL(pd_freq2opp);
 
@@ -1218,13 +898,10 @@ int (*mtk_cpu_volt2opp_hook)(int cpu, int volt, int quant, int wl);
 EXPORT_SYMBOL(mtk_cpu_volt2opp_hook);
 int pd_cpu_volt2opp(int cpu, int volt, int quant, int wl)
 {
-	if (em_ver() == 3) {
-		if (mtk_cpu_volt2opp_hook)
-			return mtk_cpu_volt2opp_hook(cpu, volt, quant, get_eas_wl(wl));
-		else
-			return 1;
-	}
-	return mtk_cpu_volt2opp_linear(cpu, volt, quant, get_eas_wl(wl));
+	if (mtk_cpu_volt2opp_hook)
+		return mtk_cpu_volt2opp_hook(cpu, volt, quant, get_eas_wl(wl));
+	else
+		return 1;
 }
 EXPORT_SYMBOL_GPL(pd_cpu_volt2opp);
 
@@ -1232,13 +909,10 @@ int (*mtk_dsu_weighting_hook)(int wl, int cpu);
 EXPORT_SYMBOL(mtk_dsu_weighting_hook);
 unsigned int pd_get_dsu_weighting(int wl, unsigned int cpu)
 {
-	if (em_ver() == 3) {
-		if (mtk_dsu_weighting_hook)
-			return mtk_dsu_weighting_hook(get_eas_wl(wl), cpu);
-		else
-			return 1;
-	}
-	return mtk_dsu_weighting(get_eas_wl(wl), cpu);
+	if (mtk_dsu_weighting_hook)
+		return mtk_dsu_weighting_hook(get_eas_wl(wl), cpu);
+	else
+		return 1;
 }
 EXPORT_SYMBOL_GPL(pd_get_dsu_weighting);
 
@@ -1246,13 +920,10 @@ int (*mtk_emi_weighting_hook)(int wl, int cpu);
 EXPORT_SYMBOL(mtk_emi_weighting_hook);
 unsigned int pd_get_emi_weighting(int wl, unsigned int cpu)
 {
-	if (em_ver() == 3) {
-		if (mtk_emi_weighting_hook)
-			return mtk_emi_weighting_hook(get_eas_wl(wl), cpu);
-		else
-			return 1;
-	}
-	return mtk_emi_weighting(get_eas_wl(wl), cpu);
+	if (mtk_emi_weighting_hook)
+		return mtk_emi_weighting_hook(get_eas_wl(wl), cpu);
+	else
+		return 1;
 }
 EXPORT_SYMBOL_GPL(pd_get_emi_weighting);
 
@@ -1260,12 +931,9 @@ int (*mtk_dsu_freq2opp_hook)(int freq);
 EXPORT_SYMBOL(mtk_dsu_freq2opp_hook);
 unsigned int dsu_get_freq_opp(unsigned int freq)
 {
-	if (em_ver() == 3) {
-		if (mtk_dsu_freq2opp_hook)
-			return mtk_dsu_freq2opp_hook(freq);
-		return 0;
-	}
-	return mtk_dsu_fre2dsu_opp(freq);
+	if (mtk_dsu_freq2opp_hook)
+		return mtk_dsu_freq2opp_hook(freq);
+	return 0;
 }
 EXPORT_SYMBOL_GPL(dsu_get_freq_opp);
 
@@ -1273,13 +941,10 @@ int (*mtk_dsu_volt2opp_hook)(int volt);
 EXPORT_SYMBOL(mtk_dsu_volt2opp_hook);
 int pd_dsu_volt2opp(int volt)
 {
-	if (em_ver() == 3) {
-		if (mtk_dsu_volt2opp_hook)
-			return mtk_dsu_volt2opp_hook(volt);
-		else
-			return 1;
-	}
-	return mtk_dsu_volt2opp_linear(volt);
+	if (mtk_dsu_volt2opp_hook)
+		return mtk_dsu_volt2opp_hook(volt);
+	else
+		return 1;
 }
 EXPORT_SYMBOL_GPL(pd_dsu_volt2opp);
 
@@ -1288,12 +953,9 @@ struct dsu_state *(*mtk_dsu_opp_ps_hook)(int wl, int opp);
 EXPORT_SYMBOL(mtk_dsu_opp_ps_hook);
 struct dsu_state *dsu_get_opp_ps(int wl, int opp)
 {
-	if (em_ver() == 3) {
-		if (mtk_dsu_opp_ps_hook)
-			return mtk_dsu_opp_ps_hook(wl, opp);
-		return &dsu_state_tmp;
-	}
-	return mtk_dsu_opp2dsu_ps(get_eas_wl(wl), opp);
+	if (mtk_dsu_opp_ps_hook)
+		return mtk_dsu_opp_ps_hook(wl, opp);
+	return &dsu_state_tmp;
 }
 EXPORT_SYMBOL_GPL(dsu_get_opp_ps);
 
@@ -1301,12 +963,9 @@ int (*mtk_leakage_hook)(int cpu, int opp, int temperature);
 EXPORT_SYMBOL(mtk_leakage_hook);
 unsigned int pd_get_opp_leakage(unsigned int cpu, unsigned int opp, unsigned int temperature)
 {
-	if (em_ver() == 3) {
-		if (mtk_leakage_hook)
-			return mtk_leakage_hook(cpu, opp, temperature);
-		return 1;
-	}
-	return mtk_get_leakage(cpu, opp, temperature);
+	if (mtk_leakage_hook)
+		return mtk_leakage_hook(cpu, opp, temperature);
+	return 1;
 }
 EXPORT_SYMBOL_GPL(pd_get_opp_leakage);
 
@@ -1314,12 +973,9 @@ int (*mtk_dsu_freq_hook)(void);
 EXPORT_SYMBOL(mtk_dsu_freq_hook);
 int pd_get_dsu_freq(void)
 {
-	if (em_ver() == 3) {
-		if (mtk_dsu_freq_hook)
-			return mtk_dsu_freq_hook();
-		return 1;
-	}
-	return mtk_get_dsu_freq();
+	if (mtk_dsu_freq_hook)
+		return mtk_dsu_freq_hook();
+	return 1;
 }
 EXPORT_SYMBOL_GPL(pd_get_dsu_freq);
 /* hook API */
@@ -1343,15 +999,6 @@ int pd_util2freq(unsigned int cpu, int util, bool quant, int wl)
 	return pd_opp2freq(cpu, opp, quant, wl);
 }
 EXPORT_SYMBOL_GPL(pd_util2freq);
-
-unsigned long pd_cpu_freq2dsu_freq(unsigned int cpu, int freq, bool quant, int wl)
-{
-	int opp;
-
-	wl = get_eas_wl(wl);
-	opp = pd_freq2opp(cpu, freq, quant, wl);
-	return pd_cpu_opp2dsu_freq(cpu, opp, quant, wl);
-}
 
 unsigned long pd_get_util_opp(unsigned int cpu, unsigned long util)
 {
@@ -1535,450 +1182,14 @@ static void register_fpsgo_sugov_hooks(void)
 	fpsgo_notify_fbt_is_boost_fp = Adaptive_module_bypass;
 }
 
-static inline int cmpulong_dec(const void *a, const void *b)
-{
-	return -(*(unsigned long *)a - *(unsigned long *)b);
-}
-
-static void free_capacity_table(void)
-{
-	int i;
-
-	if (!pd_capacity_tbl)
-		return;
-
-	for (i = 0; i < pd_count; i++) {
-		kfree(pd_capacity_tbl[i].table);
-		pd_capacity_tbl[i].table = NULL;
-		kfree(pd_capacity_tbl[i].util_opp_map);
-		pd_capacity_tbl[i].util_opp_map = NULL;
-		kfree(pd_capacity_tbl[i].util_opp_map_legacy);
-		pd_capacity_tbl[i].util_opp_map_legacy = NULL;
-		kfree(pd_capacity_tbl[i].freq_opp_map);
-		pd_capacity_tbl[i].freq_opp_map = NULL;
-		kfree(pd_capacity_tbl[i].freq_opp_map_legacy);
-		pd_capacity_tbl[i].freq_opp_map_legacy = NULL;
-	}
-	kfree(pd_capacity_tbl);
-	pd_capacity_tbl = NULL;
-}
-
-inline int init_util_freq_opp_mapping_table_type(int t)
-{
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-	int i, j, k, nr_opp, next_k, opp;
-	unsigned int min_gap;
-	unsigned long min_cap, max_cap;
-	unsigned long min_freq, max_freq, curr_freq;
-	struct pd_capacity_info *pd_info;
-	struct cpufreq_policy *policy;
-
-	pd_capacity_tbl = pd_wl_type[t];
-	for (i = 0; i < pd_count; i++) {
-		if (is_wl_support())
-			mtk_update_wl_table(i, t);
-		pd_info = &pd_capacity_tbl[i];
-		nr_opp = pd_info->nr_caps;
-
-		/* init util_opp_map */
-		max_cap = pd_info->table[0].capacity;
-		min_cap = pd_info->table[nr_opp - 1].capacity;
-		pd_info->nr_util_opp_map = max_cap - min_cap + 1;
-
-		pd_info->util_opp_map = kcalloc(pd_info->nr_util_opp_map, sizeof(int),
-									GFP_KERNEL);
-		if (!pd_info->util_opp_map)
-			goto nomem;
-
-		pd_info->util_opp_map_legacy = kcalloc(pd_info->nr_util_opp_map,
-			sizeof(int), GFP_KERNEL);
-		if (!pd_info->util_opp_map_legacy)
-			goto nomem;
-
-		for (j = 0; j < nr_opp; j++) {
-			k = max_cap - pd_info->table[j].capacity;
-			next_k = max_cap - pd_info->table[min(nr_opp - 1, j + 1)].capacity;
-			for (; k <= next_k; k++) {
-				pd_info->util_opp_map[k] = j;
-				for (opp = mtk_em_pd_ptr_public[i].nr_perf_states - 1;
-					opp >= 0; opp--)
-					if (mtk_em_pd_ptr_public[i].table[opp].capacity >=
-						(max_cap - k))
-						break;
-				pd_info->util_opp_map_legacy[k] = opp;
-			}
-		}
-
-		/* init freq_opp_map */
-		min_gap = UINT_MAX;
-		/* skip opp=0, nr_opp-1 because potential irregular freq delta*/
-		for (j = 0; j < nr_opp - 2; j++)
-			min_gap = min(min_gap,
-				pd_info->table[j].freq - pd_info->table[j + 1].freq);
-		pd_info->DFreq = min_gap;
-		pd_info->inv_DFreq = (u32) DIV_ROUND_UP((u64) UINT_MAX, pd_info->DFreq);
-		max_freq = pd_info->table[0].freq;
-		min_freq = rounddown(pd_info->table[nr_opp - 1].freq, pd_info->DFreq);
-
-		pd_info->nr_freq_opp_map = ((max_freq - min_freq) / pd_info->DFreq) + 1;
-
-		pd_info->freq_opp_map = kcalloc(pd_info->nr_freq_opp_map, sizeof(int),
-			GFP_KERNEL);
-		if (!pd_info->freq_opp_map)
-			goto nomem;
-
-		pd_info->freq_opp_map_legacy = kcalloc(pd_info->nr_freq_opp_map,
-			sizeof(int), GFP_KERNEL);
-		if (!pd_info->freq_opp_map_legacy)
-			goto nomem;
-
-		opp = 0;
-		curr_freq = pd_info->table[opp].freq;
-
-		policy = cpufreq_cpu_get(cpumask_first(&pd_cpumask[i]));
-		if (!policy)
-			pr_info("%s: %d: policy NULL in pd=%d\n", __func__, __LINE__, i);
-
-		for (j = 0; j < pd_info->nr_freq_opp_map - 1; j++) {
-			if (curr_freq <= pd_info->table[opp + 1].freq)
-				opp++;
-			pd_info->freq_opp_map[j] = opp;
-
-			if (policy)
-				pd_info->freq_opp_map_legacy[j] =
-					cpufreq_table_find_index_dl(policy,
-					pd_info->table[opp].freq, false);
-
-			curr_freq -= pd_info->DFreq;
-		}
-		/* fill last element with min_freq opp */
-		pd_info->freq_opp_map[pd_info->nr_freq_opp_map - 1] = opp + 1;
-		if (policy) {
-			pd_info->freq_opp_map_legacy[pd_info->nr_freq_opp_map - 1] =
-				cpufreq_table_find_index_dl(policy,
-					pd_info->table[opp + 1].freq, false);
-			cpufreq_cpu_put(policy);
-		}
-	}
-	return 0;
-nomem:
-	pr_info("allocate util mapping table failed\n");
-	free_capacity_table();
-	return -ENOENT;
-#endif
-return 0;
-}
-
-static int init_util_freq_opp_mapping_table(void)
-{
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-	int t, k, ret, need_alloc;
-
-	for (t = nr_wl_type - 1; t >= 0 ; t--) {
-		need_alloc = 1;
-		for (k = t + 1; k < nr_wl_type; k++) {
-			if (mtk_mapping.cpu_to_dsu[t].cpu_type
-					== mtk_mapping.cpu_to_dsu[k].cpu_type) {
-				need_alloc = 0;
-				break;
-			}
-		}
-
-		if (need_alloc == 0)
-			continue;
-		else {
-			ret = init_util_freq_opp_mapping_table_type(t);
-			if (ret)
-				goto nomem;
-		}
-	}
-	return 0;
-nomem:
-	return -ENOENT;
-#endif
-	return 0;
-}
-
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-static int init_capacity_table(void)
-{
-	int i, j, t;
-	struct pd_capacity_info *pd_info;
-
-	for (t = nr_wl_type - 1; t >= 0 ; t--) {
-		pd_capacity_tbl = pd_wl_type[t];
-		for (i = 0; i < pd_count; i++) {
-			if (is_wl_support())
-				mtk_update_wl_table(i, t);
-			pd_info = &pd_capacity_tbl[i];
-			if (!cpumask_equal(&pd_cpumask[i], mtk_em_pd_ptr[i].cpumask)) {
-				pr_info("cpumask mismatch, pd=%*pb, em=%*pb\n",
-					cpumask_pr_args(&pd_cpumask[i]),
-					cpumask_pr_args(mtk_em_pd_ptr[i].cpumask));
-					return -1;
-			}
-			pd_info->table = mtk_em_pd_ptr[i].table;
-			pd_info->table_legacy = mtk_em_pd_ptr_public[i].table;
-
-			/* cpu weighting init*/
-			cpu_wt[i][t].dsu_weighting =
-				mtk_em_pd_ptr_public[i].cur_weighting.dsu_weighting;
-			cpu_wt[i][t].emi_weighting =
-				mtk_em_pd_ptr_public[i].cur_weighting.emi_weighting;
-
-			for_each_cpu(j, &pd_cpumask[i]) {
-				if (per_cpu(cpu_scale, j) != pd_info->table[0].capacity) {
-					pr_info("capacity err: cpu=%d, cpu_scale=%lu, pd_info_cap=%u\n",
-						j, per_cpu(cpu_scale, j),
-						pd_info->table[0].capacity);
-					per_cpu(cpu_scale, j) = pd_info->table[0].capacity;
-				} else {
-					pr_info("capacity match: cpu=%d, cpu_scale=%lu, pd_info_cap=%u\n",
-						j, per_cpu(cpu_scale, j),
-						pd_info->table[0].capacity);
-				}
-			}
-		}
-	}
-	return 0;
-}
 #else
 #if IS_ENABLED(CONFIG_64BIT)
 #define em_scale_power(p) ((p) * 1000)
 #else
 #define em_scale_power(p) (p)
 #endif
-static int init_capacity_table(void)
-{
-	int i, j, cpu;
-	void __iomem *base = sram_base_addr;
-	int count = 0;
-	unsigned long offset = 0;
-	unsigned long cap;
-	unsigned long end_cap;
-	unsigned long *caps, *freqs, *powers;
-	struct pd_capacity_info *pd_info;
-	struct em_perf_domain *pd;
-
-	for (i = 0; i < pd_count; i++) {
-		pd_info = &pd_capacity_tbl[i];
-		cpu = cpumask_first(&pd_cpumask[i]);
-		pd = em_cpu_get(cpu);
-		if (!pd)
-			goto err;
-		caps = kcalloc(pd_info->nr_caps, sizeof(unsigned long), GFP_KERNEL);
-		freqs = kcalloc(pd_info->nr_caps, sizeof(unsigned long), GFP_KERNEL);
-		powers = kcalloc(pd_info->nr_caps, sizeof(unsigned long), GFP_KERNEL);
-
-		for (j = 0; j < pd_info->nr_caps; j++) {
-			/* for init caps */
-			cap = ioread16(base + offset);
-			if (cap == 0)
-				goto err;
-			caps[j] = cap;
-
-			/* for init freqs */
-			freqs[j] = pd->table[j].frequency;
-
-			/* for init pwr_eff */
-			powers[j] = pd->table[j].power;
-
-			count += 1;
-			offset += CAPACITY_ENTRY_SIZE;
-		}
-
-		/* decreasing sorting */
-		sort(caps, pd_info->nr_caps, sizeof(unsigned long), cmpulong_dec, NULL);
-		sort(freqs, pd_info->nr_caps, sizeof(unsigned long), cmpulong_dec, NULL);
-		sort(powers, pd_info->nr_caps, sizeof(unsigned long), cmpulong_dec, NULL);
-
-		/* for init pwr_eff */
-		for (j = 0; j < pd_info->nr_caps; j++) {
-			pd_info->table[j].capacity = caps[j];
-			pd_info->table[j].freq = freqs[j];
-			pd_info->table[j].pwr_eff =
-				em_scale_power(powers[j]) / pd_info->table[j].capacity;
-		}
-		kfree(caps);
-		caps = NULL;
-		kfree(freqs);
-		freqs = NULL;
-		kfree(powers);
-		powers = NULL;
-
-		/* repeated last cap 0 between each cluster */
-		end_cap = ioread16(base + offset);
-		if (end_cap != cap)
-			goto err;
-		offset += CAPACITY_ENTRY_SIZE;
-
-		for_each_cpu(j, &pd_cpumask[i]) {
-			if (per_cpu(cpu_scale, j) != pd_info->table[0].capacity) {
-				pr_info("capacity err: cpu=%d, cpu_scale=%lu, pd_info_cap=%u\n",
-					j, per_cpu(cpu_scale, j),
-					pd_info->table[0].capacity);
-				per_cpu(cpu_scale, j) = pd_info->table[0].capacity;
-			} else {
-				pr_info("capacity match: cpu=%d, cpu_scale=%lu, pd_info_cap=%u\n",
-					j, per_cpu(cpu_scale, j),
-					pd_info->table[0].capacity);
-			}
-		}
-	}
-
-	if (entry_count != count)
-		goto err;
-
-	return 0;
-
-err:
-	pr_info("count %d does not match entry_count %d\n", count, entry_count);
-
-	free_capacity_table();
-	return -ENOENT;
-}
 #endif
-
-static int alloc_capacity_table(void)
-{
-	unsigned int cpu = 0;
-	int cur_tbl = 0;
-	int nr_caps = 1;
-	int i, k, need_alloc;
-	unsigned int nr_cpus;
-
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-	sram_base_addr_freq_scaling =
-		ioremap(csram_res->start + REG_FREQ_SCALING, LUT_ROW_SIZE);
-	if (!sram_base_addr_freq_scaling) {
-		pr_info("Remap sram_base_addr_freq_scaling failed!\n");
-		return -EIO;
-	}
-	if (readl_relaxed(sram_base_addr_freq_scaling))
-		freq_scaling_disabled = false;
-
-	if (mtk_em_pd_ptr_private == NULL || mtk_em_pd_ptr_public == NULL) {
-		pr_info("%s: NULL mtk_em_pd_ptr, private: %p, public: %p\n",
-			__func__, mtk_em_pd_ptr_private, mtk_em_pd_ptr_public);
-		return -EFAULT;
-	}
-
-	if (is_gearless_support())
-		mtk_em_pd_ptr = mtk_em_pd_ptr_private;
-	else
-		mtk_em_pd_ptr = mtk_em_pd_ptr_public;
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-	if (is_wl_support())
-		nr_wl_type = mtk_mapping.total_type;
-	else
-		nr_wl_type = 1;
-#endif
-	pd_wl_type = kcalloc(nr_wl_type, sizeof(struct pd_capacity_info *),
-			GFP_KERNEL);
-	cpu_wt = kcalloc(pd_count, sizeof(struct cpu_weighting *), GFP_KERNEL);
-	for (i = 0; i < pd_count; i++)
-		cpu_wt[i] = kcalloc(nr_wl_type, sizeof(struct cpu_weighting), GFP_KERNEL);
-
-	for (i = 0; i < nr_wl_type; i++) {
-		need_alloc = 1;
-		for (k = i - 1; k >= 0; k--) {
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-			if (mtk_mapping.cpu_to_dsu[i].cpu_type
-					== mtk_mapping.cpu_to_dsu[k].cpu_type) {
-				pd_wl_type[i] = pd_wl_type[k];
-				need_alloc = 0;
-				break;
-			}
-#endif
-		}
-
-		if (need_alloc == 0)
-			continue;
-		else {
-			pd_wl_type[i] = kcalloc(pd_count, sizeof(struct pd_capacity_info),
-					GFP_KERNEL);
-			if (!pd_wl_type[i])
-				return -ENOMEM;
-		}
-	}
-
-	for (cur_tbl = 0; cur_tbl < pd_count; cur_tbl++) {
-		nr_cpus = 0;
-		for_each_possible_cpu(cpu)
-			if (cur_tbl == topology_cluster_id(cpu))
-				nr_cpus++;
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-		nr_caps = mtk_em_pd_ptr[cur_tbl].nr_perf_states;
-#endif
-
-#if !IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-		for (i = 0; i < nr_wl_type; i++) {
-			pd_capacity_tbl = pd_wl_type[i];
-			pd_capacity_tbl[cur_tbl].table = kcalloc(nr_caps,
-				sizeof(struct mtk_em_perf_state), GFP_KERNEL);
-			if (!pd_capacity_tbl[cur_tbl].table) {
-				free_capacity_table();
-				return -ENOMEM;
-			}
-		}
-#endif
-		for (i = 0; i < nr_wl_type; i++) {
-			pd_capacity_tbl = pd_wl_type[i];
-			pd_capacity_tbl[cur_tbl].nr_cpus = nr_cpus;
-			pd_capacity_tbl[cur_tbl].nr_caps = nr_caps;
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-			pd_capacity_tbl[cur_tbl].nr_caps_legacy =
-				mtk_em_pd_ptr_public[cur_tbl].nr_perf_states;
-			pd_capacity_tbl[cur_tbl].freq_max =
-				mtk_em_pd_ptr_public[cur_tbl].max_freq;
-			pd_capacity_tbl[cur_tbl].freq_min =
-				mtk_em_pd_ptr_public[cur_tbl].min_freq ;
-#endif
-			pd_capacity_tbl[cur_tbl].util_opp_map = NULL;
-			pd_capacity_tbl[cur_tbl].util_opp_map_legacy = NULL;
-			pd_capacity_tbl[cur_tbl].freq_opp_map = NULL;
-			pd_capacity_tbl[cur_tbl].freq_opp_map_legacy = NULL;
-		}
-		entry_count += nr_caps;
-	}
-
-	return 0;
-}
-
-static int init_sram_mapping(void)
-{
-	struct device_node *dvfs_node;
-	struct platform_device *pdev_temp;
-
-	dvfs_node = of_find_node_by_name(NULL, "cpuhvfs");
-	if (dvfs_node == NULL) {
-		pr_info("failed to find node @ %s\n", __func__);
-		return -ENODEV;
-	}
-
-	pdev_temp = of_find_device_by_node(dvfs_node);
-	if (pdev_temp == NULL) {
-		pr_info("failed to find pdev @ %s\n", __func__);
-		return -EINVAL;
-	}
-
-	csram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 1);
-
-	if (csram_res)
-		sram_base_addr = ioremap(csram_res->start + CAPACITY_TBL_OFFSET, CAPACITY_TBL_SIZE);
-	else {
-		pr_info("%s can't get resource\n", __func__);
-		return -ENODEV;
-	}
-
-	if (!sram_base_addr) {
-		pr_info("Remap capacity table failed!\n");
-		return -EIO;
-	}
-	return 0;
-}
 
 bool cu_ctrl;
 bool get_curr_uclamp_ctrl(void)
@@ -2158,23 +1369,6 @@ void *get_dpt_sram_base(void)
 }
 EXPORT_SYMBOL(get_dpt_sram_base);
 
-/* show em_ver */
-static int em_ver_show(struct seq_file *m, void *v)
-{
-	seq_printf(m, "em_ver = %d\n", em_ver());
-	return 0;
-}
-
-static int em_ver_open(struct inode *in, struct file *file)
-{
-	return single_open(file, em_ver_show, NULL);
-}
-
-static const struct proc_ops em_ver_ops = {
-	.proc_open = em_ver_open,
-	.proc_read = seq_read,
-};
-
 int init_dpt_io(void)
 {
 	struct device_node *dev_node;
@@ -2288,12 +1482,6 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 {
 	int ret;
 
-	proc_create("mtk_scheduler/em_ver", 0644, NULL, &em_ver_ops);
-
-	ret = init_sram_mapping();
-	if (ret)
-		return ret;
-
 	ret = init_pd_topology();
 	if (ret)
 		return ret;
@@ -2305,24 +1493,7 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	if (ret)
 		pr_info("init_dpt_io fail, return=%d\n", ret);
 
-	if (em_ver() == 2) {
-		ret = alloc_capacity_table();
-		if (ret)
-			return ret;
-
-		ret = init_capacity_table();
-		if (ret)
-			return ret;
-
-		ret = init_util_freq_opp_mapping_table();
-		if (ret)
-			return ret;
-	}
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-	if (em_ver() == 2)
-		for (int i = 0; i < pd_count; i++)
-			mtk_update_wl_table(i, 0); /* set default wl type = 0 */
-
 	for (int i = 0; i < MAX_NR_CPUS; i++) {
 		set_target_margin(i, 20);
 		set_target_margin_low(i, 20);
@@ -2336,8 +1507,6 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 			return ret;
 		}
 		l3ctl_sram_base_addr = get_l3ctl_sram_base_addr();
-		if (em_ver() == 2)
-			init_dsu();
 
 		init_eas_dsu_ctrl();
 	}
@@ -2352,11 +1521,6 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	register_fpsgo_sugov_hooks();
 
 	return ret;
-}
-
-void clear_opp_cap_info(void)
-{
-	free_capacity_table();
 }
 
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
@@ -2925,6 +2089,5 @@ EXPORT_SYMBOL_GPL(mtk_map_util_freq);
 #else
 
 static int init_opp_cap_info(struct proc_dir_entry *dir) { return 0; }
-#define clear_opp_cap_info()
 
 #endif
