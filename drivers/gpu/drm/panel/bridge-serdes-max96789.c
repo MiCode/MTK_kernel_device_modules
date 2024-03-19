@@ -32,8 +32,9 @@
 #define SETTING_NODE_NAME						"setting"
 
 #define SER_INIT_CMD_NODE_NAME					"ser-init-cmd"
-#define SER_DUAL_TIMING_CMD_NODE_NAME			"ser-dual-timing-cmd"
-#define SER_DES_DUAL_SETTING_CMD_NODE_NAME		"ser-des-dual-setting-cmd"
+#define SER_TIMING_CMD_NODE_NAME				"ser-timing-cmd"
+#define SERDES_DUAL_SETTING_CMD_NODE_NAME		"serdes-dual-setting-cmd"
+#define SER_LUT_CMD_NODE_NAME					"ser-lut-cmd"
 #define DES_INIT_CMD_NODE_NAME					"des-init-cmd"
 #define BL_ON_CMD_NODE_NAME						"bl-on-cmd"
 #define BL_OFF_CMD_NODE_NAME					"bl-off-cmd"
@@ -63,6 +64,18 @@
 #define DES_COMPATIBLE_SETTING_NODE_NAME		"comp-setting"
 
 #define MAX_COMPATIBLE_NUM						8
+enum SLAVE_TYPE {
+	SER,
+	DEF_DES,
+	DESA, DESB
+};
+
+struct serdes_dual_cmd {
+	enum SLAVE_TYPE slave;
+	u16 addr;
+	u8  data;
+	u8  delay_ms;
+};
 
 struct serdes_cmd {
 	u16 addr;
@@ -114,15 +127,20 @@ struct serdes {
 	bool inited_in_lk;
 	u32 ser_init_cmd_num;
 	struct serdes_cmd *ser_init_cmd;
-
-	struct deserializer *desa;
-	struct deserializer *desb;
-	struct deserializer *desdef;
-
+	u32 ser_timing_cmd_num;
+	struct serdes_cmd *ser_timing_cmd;
+	u32 ser_lut_cmd_num;
+	struct serdes_cmd *ser_lut_cmd;
+	u32 serdes_dual_setting_cmd_num;
+	struct serdes_dual_cmd *serdes_dual_setting_cmd;
 	u32 comp_setting_cmd_num;
 	struct comp_cmd comp_setting_cmd[MAX_COMPATIBLE_NUM];
 	u32 comp_set_num;
 	struct comp_setting cmp_set[MAX_COMPATIBLE_NUM];
+
+	struct deserializer *desa;
+	struct deserializer *desb;
+	struct deserializer *desdef;
 
 	struct drm_bridge bridge;
 	struct device *dev;
@@ -198,10 +216,10 @@ static int serdes_get_inited_flag_from_dts(struct serdes *ser_des)
 {
 	u32 ret = 0, read_value = 0;
 
-	if (!ser_des || !ser_des->setting_node)
+	if (!ser_des)
 		return -1;
 
-	ret = of_property_read_u32(ser_des->setting_node,
+	ret = of_property_read_u32(ser_des->dev->of_node,
 		SERDES_INITED_IN_LK_NODE_NAME, &read_value);
 	if (!ret) {
 		pr_info("inited_in_lk = 0x%x!\n", read_value);
@@ -594,44 +612,155 @@ static int serdes_get_compatible_setting_from_dts(struct serdes *ser_des, u8 por
 			DES_COMPATIBLE_SETTING_NODE_NAME, i * 3 + 2);
 		ser_des->comp_set_num++;
 
-		pr_info("%s: comp_set[%d]=<0x%x %s>\n", __func__,
-			i, ser_des->cmp_set[i].exp_data, ser_des->cmp_set[i].setting_node->name);
+		pr_info("%s: comp_set[%d]=<0x%x %s>\n", __func__, i,
+			ser_des->cmp_set[i].exp_data, ser_des->cmp_set[i].setting_node->name);
 	}
 
 	return 0;
 }
 
+
+static int serdes_get_timing_cmd_from_dts(struct serdes *ser_des)
+{
+	int num = 0;
+	u32 *array;
+	int ret = 0, i = 0;
+
+	num = of_property_count_u32_elems(ser_des->setting_node, SER_TIMING_CMD_NODE_NAME);
+	if (num < 0) {
+		pr_info("%s: Error:get timing-cmd from %s return %d\n", __func__, ser_des->setting_node->name, num);
+		return -1;
+	}
+	pr_info("%s num=%d\n", __func__, num);
+
+	array = kcalloc(num, sizeof(u32), GFP_KERNEL);
+	if (!array)
+		return -1;
+
+	ret = of_property_read_u32_array(ser_des->setting_node, SER_TIMING_CMD_NODE_NAME, array, num);
+	if (ret) {
+		pr_info("%s:error: read ser-timing-cmd fail!\n", __func__);
+		return -1;
+	}
+
+	ser_des->ser_timing_cmd_num = num / 3;
+	ser_des->ser_timing_cmd = devm_kzalloc(ser_des->dev,
+		ser_des->ser_timing_cmd_num * sizeof(struct serdes_cmd), GFP_KERNEL);
+	for (i = 0; i < num / 3; i++) {
+		ser_des->ser_timing_cmd[i].addr = array[i * 3];
+		ser_des->ser_timing_cmd[i].data = array[i * 3 + 1];
+		ser_des->ser_timing_cmd[i].delay_ms= array[i * 3 + 2];
+	}
+
+	kfree(array);
+	return 0;
+}
+
+static int serdes_get_lut_cmd_from_dts(struct serdes *ser_des)
+{
+	u32 num = 0;
+	u32 *array;
+	int ret = 0, i = 0;
+
+	num = of_property_count_u32_elems(ser_des->setting_node, SER_LUT_CMD_NODE_NAME);
+	if (num < 0) {
+		pr_info("%s: Error:get lut-cmd from %s return %d\n", __func__, ser_des->setting_node->name, num);
+		return -1;
+	}
+
+	pr_info("%s num=%d\n", __func__, num);
+	array = kcalloc(num, sizeof(u32), GFP_KERNEL);
+	if (!array)
+		return -1;
+
+	ret = of_property_read_u32_array(ser_des->setting_node, SER_LUT_CMD_NODE_NAME, array, num);
+	if (ret) {
+		pr_info("%s:error: read ser-dual-lut-cmd fail!\n", __func__);
+		return -1;
+	}
+
+	ser_des->ser_lut_cmd_num = num / 3;
+	ser_des->ser_lut_cmd = devm_kzalloc(ser_des->dev,
+		ser_des->ser_lut_cmd_num * sizeof(struct serdes_cmd), GFP_KERNEL);
+	for (i = 0; i < num / 3; i++) {
+		ser_des->ser_lut_cmd[i].addr = array[i * 3];
+		ser_des->ser_lut_cmd[i].data = array[i * 3 + 1];
+		ser_des->ser_lut_cmd[i].delay_ms= array[i * 3 + 2];
+	}
+
+	kfree(array);
+	return 0;
+}
+
+static int serdes_get_dual_setting_cmd_from_dts(struct serdes *ser_des)
+{
+	u32 num = 0;
+	u32 *array;
+	int ret = 0, i = 0;
+
+	num = of_property_count_u32_elems(ser_des->setting_node, SERDES_DUAL_SETTING_CMD_NODE_NAME);
+	if (num < 0) {
+		pr_info("%s: Error:get dual-setting-cmd from %s return %d\n", __func__,
+			ser_des->setting_node->name, num);
+		return -1;
+	}
+
+	array = kcalloc(num, sizeof(u32), GFP_KERNEL);
+	if (!array)
+		return -1;
+
+	ret = of_property_read_u32_array(ser_des->setting_node, SERDES_DUAL_SETTING_CMD_NODE_NAME, array, num);
+	if (ret) {
+		pr_info("%s:error: read ser-des-dual-setting fail!\n", __func__);
+		return -1;
+	}
+
+	ser_des->serdes_dual_setting_cmd_num = num / 4;
+	ser_des->serdes_dual_setting_cmd = devm_kzalloc(ser_des->dev,
+		ser_des->serdes_dual_setting_cmd_num * sizeof(struct serdes_dual_cmd), GFP_KERNEL);
+	for (i = 0; i < num / 4; i++) {
+		ser_des->serdes_dual_setting_cmd[i].slave = array[i * 4];
+		ser_des->serdes_dual_setting_cmd[i].addr = array[i * 4 + 1];
+		ser_des->serdes_dual_setting_cmd[i].data = array[i * 4 + 2];
+		ser_des->serdes_dual_setting_cmd[i].delay_ms= array[i * 4 + 3];
+	}
+
+	kfree(array);
+	return 0;
+}
 int serdes_bl_on(struct serdes *ser_des)
 {
 	int i;
 
 	mutex_lock(&i2c_access);
-
+	pr_info("%s +\n", __func__);
 	if (!ser_des->super_frame) {
 		if (!ser_des->desdef)
 			return -1;
-		if (ser_des->desdef->bl_on_cmd_num && ser_des->desdef->bl_client)
+		if (ser_des->desdef->bl_on_cmd_num && ser_des->desdef->bl_client) {
 			for (i = 0; i < ser_des->desdef->bl_on_cmd_num; i++) {
 				i2c_master_send(ser_des->desdef->bl_client,
 					ser_des->desdef->bl_on_cmd[i].data,
 					ser_des->desdef->bl_on_cmd[i].len);
 			}
-	}
-
-	if (ser_des->super_frame) {
-		if (ser_des->desa && ser_des->desa->bl_on_cmd_num && ser_des->desa->bl_client)
+		}
+	} else {
+		if (ser_des->desa && ser_des->desa->bl_on_cmd_num && ser_des->desa->bl_client) {
 			for (i = 0; i < ser_des->desa->bl_on_cmd_num; i++) {
 				i2c_master_send(ser_des->desa->bl_client,
 					ser_des->desa->bl_on_cmd[i].data,
 					ser_des->desa->bl_on_cmd[i].len);
 			}
-		if (ser_des->desb && ser_des->desb->bl_on_cmd_num && ser_des->desb->bl_client)
+		}
+		if (ser_des->desb && ser_des->desb->bl_on_cmd_num && ser_des->desb->bl_client) {
 			for (i = 0; i < ser_des->desb->bl_on_cmd_num; i++) {
 				i2c_master_send(ser_des->desb->bl_client,
 					ser_des->desb->bl_on_cmd[i].data,
 					ser_des->desb->bl_on_cmd[i].len);
 			}
+		}
 	}
+	pr_info("%s -\n", __func__);
 	mutex_unlock(&i2c_access);
 	return 1;
 }
@@ -641,34 +770,36 @@ int serdes_bl_off(struct serdes *ser_des)
 	int i;
 
 	mutex_lock(&i2c_access);
-
+	pr_info("%s +\n", __func__);
 	if (!ser_des->super_frame) {
 		if (!ser_des->desdef)
 			return -1;
 
-		if (ser_des->desdef->bl_off_cmd_num && ser_des->desdef->bl_client)
+		if (ser_des->desdef->bl_off_cmd_num && ser_des->desdef->bl_client) {
 			for (i = 0; i < ser_des->desdef->bl_off_cmd_num; i++) {
 				i2c_master_send(ser_des->desdef->bl_client,
 					ser_des->desdef->bl_off_cmd[i].data,
 					ser_des->desdef->bl_off_cmd[i].len);
 			}
-	}
-
-	if (ser_des->super_frame) {
-		if (ser_des->desa && ser_des->desa->bl_off_cmd_num && ser_des->desa->bl_client)
+		}
+	} else {
+		if (ser_des->desa && ser_des->desa->bl_off_cmd_num && ser_des->desa->bl_client) {
 			for (i = 0; i < ser_des->desa->bl_off_cmd_num; i++) {
 				i2c_master_send(ser_des->desa->bl_client,
 					ser_des->desa->bl_off_cmd[i].data,
 					ser_des->desa->bl_off_cmd[i].len);
 			}
-		if (ser_des->desb->bl_off_cmd_num && ser_des->desb->bl_client)
+		}
+		if (ser_des->desb->bl_off_cmd_num && ser_des->desb->bl_client) {
 			for (i = 0; i < ser_des->desb->bl_off_cmd_num; i++) {
 				i2c_master_send(ser_des->desb->bl_client,
 					ser_des->desb->bl_off_cmd[i].data,
 					ser_des->desb->bl_off_cmd[i].len);
 			}
+		}
 	}
 
+	pr_info("%s +-\n", __func__);
 	mutex_unlock(&i2c_access);
 
 	return 1;
@@ -788,6 +919,80 @@ void serdes_poweron_ser(struct serdes *max96789)
 {
 }
 
+static void serdes_set_timing(struct serdes *ser_des)
+{
+	int i;
+
+	pr_info("%s +\n", __func__);
+
+	if (ser_des->ser_timing_cmd_num) {
+		for (i = 0; i < ser_des->ser_timing_cmd_num; i++) {
+			i2c_write_byte(ser_des->ser_client,
+				ser_des->ser_timing_cmd[i].addr, ser_des->ser_timing_cmd[i].data);
+			if (ser_des->ser_timing_cmd[i].delay_ms)
+				mdelay(ser_des->ser_timing_cmd[i].delay_ms);
+		}
+	}
+
+	pr_info("%s -\n", __func__);
+}
+
+static void serdes_set_lut(struct serdes *ser_des)
+{
+	u16 i = 0;
+
+	pr_info("%s +\n", __func__);
+
+	if (ser_des->ser_lut_cmd_num) {
+		for (i = 0; i < ser_des->ser_lut_cmd_num; i++) {
+			i2c_write_byte(ser_des->ser_client,
+				ser_des->ser_lut_cmd[i].addr, ser_des->ser_lut_cmd[i].data);
+			if (ser_des->ser_lut_cmd[i].delay_ms)
+				mdelay(ser_des->ser_lut_cmd[i].delay_ms);
+		}
+	}
+
+	pr_info("%s -\n", __func__);
+}
+
+static void serdes_set_dual_setting(struct serdes *ser_des)
+{
+	int i;
+	struct i2c_client *client;
+
+	pr_info("%s +\n", __func__);
+
+	if (ser_des->serdes_dual_setting_cmd_num) {
+		for (i = 0; i < ser_des->serdes_dual_setting_cmd_num; i++) {
+			switch (ser_des->serdes_dual_setting_cmd[i].slave) {
+			case SER:
+				client = ser_des->ser_client;
+				break;
+			case DEF_DES:
+				client = ser_des->desdef->des_client;
+				break;
+			case DESA:
+				client = ser_des->desa->des_client;
+				break;
+			case DESB:
+				client = ser_des->desb->des_client;
+				break;
+			default:
+				client = ser_des->ser_client;
+				break;
+			};
+			if (!client)
+				return;
+			i2c_write_byte(client,
+				ser_des->serdes_dual_setting_cmd[i].addr, ser_des->serdes_dual_setting_cmd[i].data);
+			if (ser_des->serdes_dual_setting_cmd[i].delay_ms)
+				mdelay(ser_des->serdes_dual_setting_cmd[i].delay_ms);
+		}
+	}
+
+	pr_info("%s -\n", __func__);
+}
+
 void serdes_reset_ser(struct serdes *max96789)
 {
 	if (!max96789->reset_gpio)
@@ -802,7 +1007,7 @@ void serdes_reset_ser(struct serdes *max96789)
 }
 static int serdes_get_general_info_from_dts(struct serdes *ser_des)
 {
-	struct device_node *desdef_node;/*, *desa_node, *desb_node*/
+	struct device_node *desdef_node, *desa_node, *desb_node;
 
 	if (!ser_des) {
 		pr_info("error: %s serdes is NULL!\n", __func__);
@@ -835,13 +1040,114 @@ static int serdes_get_general_info_from_dts(struct serdes *ser_des)
 	}
 	pr_info("default bl iic addr = 0x%x\n", ser_des->desdef->bl_iic_addr);
 
+	serdes_get_super_frame_from_dts(ser_des);
+	pr_info("super frame = 0x%x\n", ser_des->super_frame);
+
 	if (ser_des->super_frame) {
-		// TODO: add super frame support late, get desa/desb info here
-		pr_info("donnot support super frame now!\n");
+		desa_node = of_find_node_by_name(ser_des->setting_node, DESA_NODE_NAME);
+		ser_des->desa->des_node = desa_node;
+		pr_info( "desa name = %s, node=<%p>\n", desa_node->name, desa_node);
+		ser_des->desa->des_iic_addr = serdes_get_des_iic_addr_from_dts(ser_des->desa->des_node);
+		if (ser_des->desa->des_iic_addr == 0xFF) {
+			pr_info( "error: get desa iic addr fail\n");
+			return -1;
+		}
+		pr_info( "desa iic addr = 0x%x\n", ser_des->desa->des_iic_addr);
+
+		ser_des->desa->bl_iic_addr = serdes_get_bl_iic_addr_from_dts(ser_des->desa->des_node);
+		if (ser_des->desa->bl_iic_addr == 0xFF) {
+			pr_info( "error: get desa bl iic addr fail, bl not control by mcu?\n");
+			//return -1;
+		}
+		pr_info( "desa bl iic addr = 0x%x\n", ser_des->desa->bl_iic_addr);
+
+		desb_node = of_find_node_by_name(ser_des->setting_node, DESB_NODE_NAME);
+		pr_info( "desb name = %s, offset=<%p>\n", desb_node->name, desb_node);
+
+		ser_des->desb->des_node = desb_node;
+		ser_des->desb->des_iic_addr = serdes_get_des_iic_addr_from_dts(ser_des->desb->des_node);
+		if (ser_des->desb->des_iic_addr == 0xFF) {
+			pr_info( "error: get desb iic addr fail\n");
+			return -1;
+		}
+		pr_info( "desb iic addr = 0x%x\n", ser_des->desb->des_iic_addr);
+
+		ser_des->desb->bl_iic_addr = serdes_get_bl_iic_addr_from_dts(ser_des->desb->des_node);
+		if (ser_des->desb->bl_iic_addr == 0xFF) {
+			pr_info( "error: get desb bl iic addr fail, bl not control by mcu?\n");
+			//return -1;
+		}
+		pr_info( "desb bl iic addr = 0x%x\n", ser_des->desb->bl_iic_addr);
 	}
 	return 0;
 }
 
+
+int serdes_build_timing_cmd(struct serdes *ser_des)
+{
+	int i = 0;
+	u16 width;
+	u16 hfp;
+	u16 hsa;
+	u16 hbp;
+	u16 height;
+	u16 vfp;
+	u16 vbp;
+	u16 vsa;
+
+	if (!ser_des->super_frame) {
+		pr_info("%s: single link mode no need!\n", __func__);
+		return 0;
+	}
+
+	width = ser_des->desa->disp_mode.width + ser_des->desb->disp_mode.width;
+	hfp = ser_des->desa->disp_mode.hfp + ser_des->desb->disp_mode.hfp;
+	hsa = ser_des->desa->disp_mode.hsa + ser_des->desb->disp_mode.hsa;
+	hbp = ser_des->desa->disp_mode.hbp + ser_des->desb->disp_mode.hbp;
+	height = (ser_des->desa->disp_mode.height >= ser_des->desb->disp_mode.height) ?
+		ser_des->desa->disp_mode.height : ser_des->desb->disp_mode.height;
+	vfp = (ser_des->desa->disp_mode.height >= ser_des->desb->disp_mode.height) ?
+		ser_des->desa->disp_mode.vfp : ser_des->desb->disp_mode.vfp;
+	vsa = (ser_des->desa->disp_mode.height >= ser_des->desb->disp_mode.height) ?
+		ser_des->desa->disp_mode.vsa : ser_des->desb->disp_mode.vsa;
+	vbp = (ser_des->desa->disp_mode.height >= ser_des->desb->disp_mode.height) ?
+		ser_des->desa->disp_mode.vbp : ser_des->desb->disp_mode.vbp;
+
+	// 0x385 hsa[7:0]
+	ser_des->ser_timing_cmd[0].data = hsa & 0xFF;
+	// 0x386 vsa[7:0]
+	ser_des->ser_timing_cmd[1].data = vsa & 0xFF;
+	// 0x387 vsa[11:8]hsa[11:8]
+	ser_des->ser_timing_cmd[2].data = ((vsa >> 8) << 4) | (hsa >> 8);
+	// 0x3A5 vfp[7:0]
+	ser_des->ser_timing_cmd[3].data = vfp & 0xFF;
+	// 0x3A7 vhp[11:4]
+	ser_des->ser_timing_cmd[4].data = vbp >> 4;
+	// 0x3A6 vhp[3:0]vfp[11:8] note: array index are fixed
+	ser_des->ser_timing_cmd[5].data = ((vbp & 0x0F) << 4) | (vfp >> 8);
+	// 0x3A8 vact[7:0]
+	ser_des->ser_timing_cmd[6].data = height & 0xFF;
+	// 0x3A9 vact[12:8]
+	ser_des->ser_timing_cmd[7].data = (height >> 8) & 0x1F;
+	// 0x3AA hfp[7:0]
+	ser_des->ser_timing_cmd[8].data = hfp & 0xFF;
+	// 0x3AC hbp[11:4]
+	ser_des->ser_timing_cmd[9].data = hbp >> 4;
+	// 0x3AB hbp[3:0]hfp[11:8] note: array index are fixed
+	ser_des->ser_timing_cmd[10].data = ((hbp & 0x0F) << 4) | (hfp >> 8);
+	// 0x3AD hact[7:0]
+	ser_des->ser_timing_cmd[11].data = width & 0xFF;
+	// 0x3AE hact[12:8]
+	ser_des->ser_timing_cmd[12].data = (width >> 8) & 0x1F;
+
+	for (i = 0; i < 13; i++)
+		pr_info("vdo-timing-cmd: addr=0x%x, data=0x%x, delay=0x%x\n",
+			ser_des->ser_timing_cmd[i].addr,
+			ser_des->ser_timing_cmd[i].data,
+			ser_des->ser_timing_cmd[i].delay_ms);
+
+	return 0;
+}
 static int serdes_get_serdes_info_from_dts(struct serdes *ser_des)
 {
 	u32 ret = 0;
@@ -862,8 +1168,22 @@ static int serdes_get_serdes_info_from_dts(struct serdes *ser_des)
 	}
 
 	if (ser_des->super_frame) {
-		// TODO: add super frame support late, get desb timing here
-		pr_info("donnot support super frame now!\n");
+		pr_info("%s 6. super frame, get timing cmd\n", __func__);
+		serdes_get_timing_cmd_from_dts(ser_des);
+		pr_info("%s 7. super frame, get lut cmd\n", __func__);
+		serdes_get_lut_cmd_from_dts(ser_des);
+		pr_info("%s 8. super frame, get dual setting cmd\n", __func__);
+		serdes_get_dual_setting_cmd_from_dts(ser_des);
+		pr_info("%s 9. super frame, get desb init cmd\n", __func__);
+		serdes_get_des_init_cmd_from_dts(ser_des, 1);
+		pr_info("%s 10. super frame, get desb timing info\n", __func__);
+		serdes_get_timing_info_from_dts(ser_des, 1);
+		pr_info("%s 11 get desb bl on cmd\n", __func__);
+		serdes_get_bl_on_cmd_from_dts(ser_des, 1);
+		pr_info("%s 12 get desb bl off cmd\n", __func__);
+		serdes_get_bl_off_cmd_from_dts(ser_des, 1);
+		pr_info("%s 13 build dual timing cmd\n", __func__);
+		serdes_build_timing_cmd(ser_des);
 	}
 
 	return 0;
@@ -879,8 +1199,10 @@ void serdes_enable(struct drm_bridge *bridge)
 		return;
 
 	if (ser_des->super_frame) {
-		// TODO: add super frame support late, enable desb here
-		pr_info("donnot support super frame now!\n");
+		serdes_set_timing(ser_des);
+		serdes_set_dual_setting(ser_des);
+		serdes_set_lut(ser_des);
+		serdes_init_des(ser_des, 1);
 	}
 	serdes_init_des(ser_des, 0);
 	serdes_bl_on(ser_des);
@@ -934,7 +1256,26 @@ void serdes_get_modes(struct drm_bridge *bridge, struct vdo_timing *disp_mode)
 	struct serdes *ser_des = bridge_to_serdes(bridge);
 
 	if (ser_des->super_frame) {
-		// TODO: add  super frame support late, set dual link timing here
+		disp_mode->width = ser_des->desa->disp_mode.width + ser_des->desb->disp_mode.width;
+		disp_mode->hfp = ser_des->desa->disp_mode.hfp + ser_des->desb->disp_mode.hfp;
+		disp_mode->hsa = ser_des->desa->disp_mode.hsa + ser_des->desb->disp_mode.hsa;
+		disp_mode->hbp = ser_des->desa->disp_mode.hbp + ser_des->desb->disp_mode.hbp;
+		disp_mode->height = (ser_des->desa->disp_mode.height >= ser_des->desb->disp_mode.height) ?
+			ser_des->desa->disp_mode.height : ser_des->desb->disp_mode.height;
+		disp_mode->vfp = (ser_des->desa->disp_mode.height >= ser_des->desb->disp_mode.height) ?
+			ser_des->desa->disp_mode.vfp : ser_des->desb->disp_mode.vfp;
+		disp_mode->vsa = (ser_des->desa->disp_mode.height >= ser_des->desb->disp_mode.height) ?
+			ser_des->desa->disp_mode.vsa : ser_des->desb->disp_mode.vsa;
+		disp_mode->vbp = (ser_des->desa->disp_mode.height >= ser_des->desb->disp_mode.height) ?
+			ser_des->desa->disp_mode.vbp : ser_des->desb->disp_mode.vbp;
+		disp_mode->fps = (ser_des->desa->disp_mode.height >= ser_des->desb->disp_mode.height) ?
+			ser_des->desa->disp_mode.fps : ser_des->desb->disp_mode.fps;
+		disp_mode->pll = 0;
+		disp_mode->lppf = 1;
+		disp_mode->physcial_w = (ser_des->desa->disp_mode.height >= ser_des->desb->disp_mode.height) ?
+			ser_des->desa->disp_mode.physcial_w : ser_des->desb->disp_mode.physcial_w;
+		disp_mode->physcial_h = (ser_des->desa->disp_mode.height >= ser_des->desb->disp_mode.height) ?
+			ser_des->desa->disp_mode.physcial_h : ser_des->desb->disp_mode.physcial_h;
 	} else {
 		disp_mode->width = ser_des->desdef->disp_mode.width;
 		disp_mode->hfp = ser_des->desdef->disp_mode.hfp;
@@ -1024,8 +1365,19 @@ static int serdes_iic_driver_probe(struct i2c_client *client)
 			max96789->desdef->bl_iic_addr);
 
 	if (max96789->super_frame) {
-		// TODO: add super frame support late!, make i2c client for desa/desb
-		pr_info("donnot support super frame now!\n");
+		if (max96789->desa->des_iic_addr != 0 && max96789->desa->des_iic_addr != 0xFF)
+			max96789->desa->des_client= i2c_new_dummy_device(client->adapter,
+				max96789->desa->des_iic_addr);
+		if (max96789->desa->bl_iic_addr != 0 && max96789->desa->bl_iic_addr != 0xFF)
+			max96789->desa->bl_client = i2c_new_dummy_device(client->adapter,
+				max96789->desa->bl_iic_addr);
+
+		if (max96789->desb->des_iic_addr != 0 && max96789->desb->des_iic_addr != 0xFF)
+			max96789->desb->des_client = i2c_new_dummy_device(client->adapter,
+				max96789->desb->des_iic_addr);
+		if (max96789->desb->bl_iic_addr != 0 && max96789->desb->bl_iic_addr != 0xFF)
+			max96789->desb->bl_client = i2c_new_dummy_device(client->adapter,
+				max96789->desb->bl_iic_addr);
 	}
 
 	if (max96789->inited_in_lk) {
@@ -1052,7 +1404,16 @@ static void serdes_iic_driver_remove(struct i2c_client *client)
 		i2c_unregister_device(max96789->desdef->des_client);
 	if (max96789->desdef->bl_client)
 		i2c_unregister_device(max96789->desdef->bl_client);
-
+	if (max96789->super_frame) {
+		if (max96789->desa->des_client)
+			i2c_unregister_device(max96789->desa->des_client);
+		if (max96789->desb->des_client)
+			i2c_unregister_device(max96789->desb->des_client);
+		if (max96789->desa->bl_client)
+			i2c_unregister_device(max96789->desa->bl_client);
+		if (max96789->desb->bl_client)
+			i2c_unregister_device(max96789->desb->bl_client);
+	}
 	pr_info("%s -\n", __func__);
 }
 
@@ -1072,17 +1433,7 @@ static struct i2c_driver serdes_iic_driver = {
 	.remove = serdes_iic_driver_remove,
 };
 
-static int __init serdes_iic_init(void)
-{
-	return i2c_add_driver(&serdes_iic_driver);
-}
-module_init(serdes_iic_init);
-
-static void __exit serdes_iic_exit(void)
-{
-	i2c_del_driver(&serdes_iic_driver);
-}
-module_exit(serdes_iic_exit);
+module_i2c_driver(serdes_iic_driver);
 
 MODULE_AUTHOR("Henry Tu <henry.tu@mediatek.com>");
 MODULE_DESCRIPTION("max96789 dsi bridge driver");
