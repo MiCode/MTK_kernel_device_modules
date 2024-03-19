@@ -50,6 +50,8 @@
 #define GPU_LOADING_INFO		'w'
 #define PMIC_VOLTAGE_INFO		'x'
 #define OPERATION_MODE_INFO		'y'
+#define GNSS_LP_INFO			'z'
+#define GNSS_MCU_INFO			'A'
 
 /*Mbrain Delegate IOCTL List*/
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
@@ -124,6 +126,10 @@
 
 #define WO_OPERATION_MODE_INFO	_IOW(IOC_MAGIC, OPERATION_MODE_INFO, \
 						struct mbraink_operation_mode_info*)
+#define RO_GNSS_LP		_IOR(IOC_MAGIC, GNSS_LP_INFO, \
+					struct mbraink_gnss2mbr_lp_data*)
+#define RO_GNSS_MCU		_IOR(IOC_MAGIC, GNSS_MCU_INFO, \
+					struct mbraink_gnss2mbr_mcu_data*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1

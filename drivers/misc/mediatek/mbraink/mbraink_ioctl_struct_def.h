@@ -25,6 +25,7 @@
 #define MAX_PMIC_SPMI_SZ		64
 #define MAX_PMIC_UVLO_SZ		8
 #define MAX_GPU_OPP_INFO_SZ			64
+#define MAX_GNSS_DATA_SZ			7
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -351,4 +352,47 @@ struct mbraink_operation_mode_info {
 	enum mbraink_op_mode opMode;
 };
 
+struct mbraink_gnss2mbr_lp_struct {
+	u64 dump_ts;
+	u32 dump_index;
+	u32 gnss_mcu_sid;
+	u8 gnss_mcu_is_on;
+
+	/* N/A if gnss_mcu_is_on = false */
+	u8 gnss_pwr_is_hi;
+	u8 gnss_pwr_wrn;
+
+	/* history statistic */
+	u32 gnss_pwr_wrn_cnt;
+};
+
+struct mbraink_gnss2mbr_lp_data {
+	u16 count;
+	struct mbraink_gnss2mbr_lp_struct lp_data[MAX_GNSS_DATA_SZ];
+};
+
+struct mbraink_gnss2mbr_mcu_struct {
+	u32 gnss_mcu_sid; /* last finished one */
+	u32 clock_cfg_val;
+
+	u64 open_ts;
+	u32 open_duration;
+
+	u8 has_exception;
+	u8 force_close;
+
+	u64 close_ts;
+	u32 close_duration;
+
+	/* history statistic */
+	u32 open_duration_max;
+	u32 close_duration_max;
+	u32 exception_cnt;
+	u32 force_close_cnt;
+};
+
+struct mbraink_gnss2mbr_mcu_data {
+	u16 count;
+	struct mbraink_gnss2mbr_mcu_struct mcu_data[MAX_GNSS_DATA_SZ];
+};
 #endif

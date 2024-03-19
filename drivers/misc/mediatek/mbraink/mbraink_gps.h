@@ -9,7 +9,7 @@
 
 int mbraink_gps_init(void);
 int mbraink_gps_deinit(void);
-void mbraink_get_gnss_lp_data(void);
-void mbraink_get_gnss_mcu_data(void);
+void mbraink_get_gnss_lp_data(struct mbraink_gnss2mbr_lp_data *gnss_lp_buffer);
+void mbraink_get_gnss_mcu_data(struct mbraink_gnss2mbr_mcu_data *gnss_mcu_buffer);
 #endif
 

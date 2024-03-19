@@ -63,8 +63,8 @@ int unregister_mbraink_gpu_ops(void);
 
 /*GPS*/
 struct mbraink_gps_ops {
-	void (*get_gnss_lp_data)(void);
-	void (*get_gnss_mcu_data)(void);
+	void (*get_gnss_lp_data)(struct mbraink_gnss2mbr_lp_data *gnss_lp_buffer);
+	void (*get_gnss_mcu_data)(struct mbraink_gnss2mbr_mcu_data *gnss_mcu_buffer);
 };
 int register_mbraink_gps_ops(struct mbraink_gps_ops *ops);
 int unregister_mbraink_gps_ops(void);
