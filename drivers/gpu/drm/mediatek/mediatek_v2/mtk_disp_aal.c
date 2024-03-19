@@ -4783,6 +4783,16 @@ static const struct mtk_disp_aal_data mt6765_aal_driver_data = {
 	.bitShift = 16,
 };
 
+static const struct mtk_disp_aal_data mt6885_aal_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = false,
+	.aal_dre_hist_start = 1152,
+	.aal_dre_hist_end   = 4220,
+	.aal_dre_gain_start = 4224,
+	.aal_dre_gain_end   = 6396,
+	.bitShift = 13,
+};
+
 static const struct mtk_disp_aal_data mt6877_aal_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
@@ -4899,6 +4909,7 @@ static const struct mtk_disp_aal_data mt6991_aal_driver_data = {
 static const struct of_device_id mtk_disp_aal_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6768-disp-aal", .data = &mt6768_aal_driver_data},
 	{ .compatible = "mediatek,mt6761-disp-aal", .data = &mt6761_aal_driver_data},
+	{ .compatible = "mediatek,mt6885-disp-aal", .data = &mt6885_aal_driver_data},
 	{ .compatible = "mediatek,mt6765-disp-aal", .data = &mt6765_aal_driver_data},
 	{ .compatible = "mediatek,mt6877-disp-aal", .data = &mt6877_aal_driver_data},
 	{ .compatible = "mediatek,mt6983-disp-aal", .data = &mt6983_aal_driver_data},
