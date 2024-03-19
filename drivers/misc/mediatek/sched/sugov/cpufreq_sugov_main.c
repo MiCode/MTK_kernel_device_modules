@@ -1174,7 +1174,7 @@ static void sugov_limits(struct cpufreq_policy *policy)
 		mutex_unlock(&sg_policy->work_lock);
 	}
 
-	sg_policy->limits_changed = true;
+	WRITE_ONCE(sg_policy->limits_changed, true);
 }
 
 struct cpufreq_governor mtk_gov = {
@@ -1213,6 +1213,7 @@ static int __init cpufreq_mtk_init(void)
 			__func__, ret);
 		return ret;
 	}
+
 	ret = mtk_static_power_init();
 	if (ret) {
 		pr_info("%s: failed to init MTK EM, ret: %d\n",
@@ -1230,7 +1231,8 @@ static int __init cpufreq_mtk_init(void)
 
 	ret = init_opp_cap_info(dir);
 	if (ret)
-		return ret;
+		pr_info("init_opp_cap_info failed\n");
+
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
 	ret = register_trace_android_vh_cpufreq_fast_switch(mtk_cpufreq_fast_switch, NULL);
 	if (ret)

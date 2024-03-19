@@ -16,6 +16,7 @@
 #include <linux/of_platform.h>
 #include "common.h"
 #include "cpufreq.h"
+#include "mtk_unified_power.h"
 #include "sugov_trace.h"
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 #include "mtk_energy_model/v3/energy_model.h"
@@ -1703,11 +1704,13 @@ void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
 
 	policy = cpufreq_cpu_get(cpu);
 	if (policy) {
-		freq = policy->cached_target_freq;
+		freq = READ_ONCE(policy->cached_target_freq);
 		cpufreq_cpu_put(policy);
 	}
 	cap = pd_X2Y(cpu, freq, FREQ, CAP, false, DPT_CALL_MTK_ARCH_SET_FREQ_SCALE);
 	max_cap = pd_X2Y(cpu, max, FREQ, CAP, false, DPT_CALL_MTK_ARCH_SET_FREQ_SCALE);
+	if (max_cap == 0)
+		return;
 	*scale = ((cap << SCHED_CAPACITY_SHIFT) / max_cap);
 	irq_log_store();
 }
@@ -2167,7 +2170,7 @@ void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq, struc
 		struct sugov_policy *sg_policy = (struct sugov_policy *)data;
 		struct cpufreq_policy *policy = sg_policy->policy;
 
-		policy->cached_target_freq = *next_freq;
+		WRITE_ONCE(policy->cached_target_freq, *next_freq);
 		policy->cached_resolved_idx = pd_X2Y(cpu, *next_freq, FREQ, OPP, true, DPT_CALL_MTK_MAP_UTIL_FREQ);
 		sg_policy->cached_raw_freq = *next_freq;
 	}
