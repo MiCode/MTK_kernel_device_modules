@@ -14,6 +14,7 @@
 #include "gpueb_timesync.h"
 #include "gpueb_ipi.h"
 #include "gpueb_helper.h"
+#include "ghpm_wrapper.h"
 
 #define TIMESYNC_TAG	"[GPUEB_TS]"
 
@@ -59,6 +60,8 @@ static struct timesync_context_t timesync_ctx;
 static struct timecounter timesync_counter;
 static struct hrtimer timesync_refresh_timer;
 static u8 gpueb_base_ver;
+static u64 latest_tick, latest_ts;
+static int latest_freeze;
 
 static void gpueb_ts_update(int suspended, u64 tick, u64 ts)
 {
@@ -101,6 +104,12 @@ static void gpueb_ts_update(int suspended, u64 tick, u64 ts)
 	mb();
 }
 
+void gpueb_timesync_update(void)
+{
+	gpueb_ts_update(latest_freeze, latest_tick, latest_ts);
+}
+EXPORT_SYMBOL(gpueb_timesync_update);
+
 static u64 timesync_tick_read(const struct cyclecounter *cc)
 {
 	return arch_timer_read_counter();
@@ -119,7 +128,7 @@ static void timesync_sync_base_internal(unsigned int flag)
 
 	spin_lock_irqsave(&timesync_ctx.lock, irq_flags);
 
-	ts =  timecounter_read(&timesync_counter);
+	ts = timecounter_read(&timesync_counter);
 	tick = timesync_counter.cycle_last;
 
 	timesync_ctx.base_tick = tick;
@@ -128,8 +137,12 @@ static void timesync_sync_base_internal(unsigned int flag)
 	freeze = (flag & TIMESYNC_FLAG_FREEZE) ? 1 : 0;
 	unfreeze = (flag & TIMESYNC_FLAG_UNFREEZE) ? 1 : 0;
 
-	/* sync with gpueb */
-	gpueb_ts_update(freeze, tick, ts);
+	/* store latest values, sync with gpueb when pwr on */
+	latest_ts = ts;
+	latest_tick = tick;
+	latest_freeze = freeze;
+	if (!g_ghpm_support)
+		gpueb_timesync_update();
 
 	spin_unlock_irqrestore(&timesync_ctx.lock, irq_flags);
 
@@ -212,7 +225,7 @@ unsigned int gpueb_timesync_init(void)
 	hrtimer_init(&timesync_refresh_timer,
 				CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	timesync_refresh_timer.function = timesync_refresh;
-	hrtimer_start(&timesync_refresh_timer, wrap, HRTIMER_MODE_REL);
+	hrtimer_start(&timesync_refresh_timer, timesync_ctx.wrap_kt, HRTIMER_MODE_REL);
 
 	gpueb_pr_info(GPUEB_TAG, "%s ts: cycle_last %lld, time_base:%lld, wrap:%lld",
 		TIMESYNC_TAG, timesync_counter.cycle_last,
