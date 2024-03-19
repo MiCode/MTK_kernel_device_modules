@@ -517,6 +517,8 @@
 
 #define DISP_V2_SPR_IP_SHRINK_PARAMS_NUM    (123)
 
+#define DISP_V3_MTK_SPR_IP_PARAMS_NUM       (48)
+
 #define DISP_REG_V2_SPR_IP_CFG_0       0x0080
 
 #define DISP_REG_V2_SPR_IP_CFG_18      0x00C8
@@ -673,6 +675,8 @@
 	#define MT6991_REG_SPR_STALL_CG_ON                                 BIT(4)
 	#define MT6991_REG_SPR_RELAY_MODE                                  BIT(5)
 	#define MT6991_READ_WRK_REG                                        BIT(12)
+	#define MT6991_CON_FLD_SPR_EN                                      REG_FLD_MSB_LSB(0, 0)
+	#define MT6991_CON_FLD_DISP_SPR_RELAY_MODE                         REG_FLD_MSB_LSB(5, 5)
 #define MT6991_DISP_MTK_SPR_REG_SPR_OUT_OF_BOUNDARY_REPEAT_EN          0x080
 	#define MT6991_REG_SPR_OUT_OF_BOUNDARY_REPEAT_EN                   BIT(0)
 	#define MT6991_REG_SPR_DE_GAMMA_EN                                 BIT(1)
@@ -871,7 +875,7 @@ static void mtk_spr_prepare(struct mtk_ddp_comp *comp)
 		if (!((spr_params->enable == 1) && (spr_params->relay == 0)))
 			return;
 		offset = spr->data->mtk_spr_ip_addr_offset;
-		for (i = 0; i < DISP_V2_SPR_IP_SHRINK_PARAMS_NUM; i++) {
+		for (i = 0; i < DISP_V3_MTK_SPR_IP_PARAMS_NUM; i++) {
 			mtk_ddp_write_relaxed(comp,
 				*(spr_params->mtk_spr_ip_params + i),
 				(MT6991_DISP_MTK_SPR_REG_SPR_OUT_OF_BOUNDARY_REPEAT_EN + offset + 0x4 * i),
@@ -1254,15 +1258,22 @@ static void mtk_disp_spr_config_overhead_v(struct mtk_ddp_comp *comp,
 	struct total_tile_overhead_v  *tile_overhead_v)
 {
 	struct mtk_disp_spr *spr = comp_to_spr(comp);
+	struct mtk_panel_spr_params *spr_params;
 
 	DDPDBG("%s line: %d\n", __func__, __LINE__);
 
+	spr_params = &comp->mtk_crtc->panel_ext->params->spr_params;
 	/*set component overhead*/
-	if(spr->data && spr->data->version == MTK_SPR_V3 &&
-		spr->spr_ip_type == DISP_MTK_SPR)
-		spr->tile_overhead_v.comp_overhead_v = 2;
-	else
-		spr->tile_overhead_v.comp_overhead_v = 4;
+	if (spr_params->enable == 1 && spr_params->relay == 0
+		&& comp->mtk_crtc->spr_is_on == 1) {
+		if(spr->data && spr->data->version == MTK_SPR_V3 &&
+			spr->spr_ip_type == DISP_MTK_SPR)
+			spr->tile_overhead_v.comp_overhead_v = 2;
+		else
+			spr->tile_overhead_v.comp_overhead_v = 4;
+	} else {
+		spr->tile_overhead_v.comp_overhead_v = 0;
+	}
 	/*add component overhead on total overhead*/
 	tile_overhead_v->overhead_v +=
 			spr->tile_overhead_v.comp_overhead_v;
@@ -1698,7 +1709,7 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 	//input size config
 	mtk_ddp_write_relaxed(comp, 0, //position based on input
 		MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_POS_X + offset, handle);
-	mtk_ddp_write_relaxed(comp, 0,
+	mtk_ddp_write_relaxed(comp, image_pos_y,
 		MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_POS_Y + offset, handle);
 	mtk_ddp_write_relaxed(comp, width,
 		MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_WIDTH + offset, handle);
@@ -1709,8 +1720,6 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 	mtk_ddp_write_relaxed(comp, cfg->h,
 		MT6991_DISP_MTK_SPR_REG_SPR_PANEL_HEIGHT + offset, handle);
 	//output size config
-	mtk_ddp_write_relaxed(comp, (spr->set_partial_update == 1) ? 1 : 0,
-		MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_EN + offset, handle);
 	mtk_ddp_write_relaxed(comp, 0,
 		MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_POS_X + offset, handle);
 	if (spr->set_partial_update == 1)
@@ -1932,13 +1941,40 @@ void mtk_spr_dump(struct mtk_ddp_comp *comp)
 int mtk_spr_analysis(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr = comp->regs;
+	struct mtk_disp_spr *spr = comp_to_spr(comp);
+	u32 offset = 0;
 
 	if (!baddr) {
 		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
 		return 0;
 	}
 
-	DDPDUMP("== %s ANALYSIS:0x%llx ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	if (!spr->data)
+		return 0;
+
+	if (spr->data->version == MTK_SPR_V3 &&
+		spr->spr_ip_type == DISP_MTK_SPR) {
+		offset = spr->data->mtk_spr_ip_addr_offset;
+		baddr += offset;
+	}
+
+	DDPDUMP("== %s ANALYSIS:0x%llx ==\n", mtk_dump_comp_str(comp), (comp->regs_pa + offset));
+	if (spr->data->version == MTK_SPR_V3) {
+		if (spr->spr_ip_type == DISP_MTK_SPR)
+			DDPDUMP("en=%d, spr_bypass=%d\n",
+				DISP_REG_GET_FIELD(MT6991_CON_FLD_SPR_EN,
+					baddr + MT6991_DISP_MTK_SPR_REG_SPR_EN),
+				DISP_REG_GET_FIELD(MT6991_CON_FLD_DISP_SPR_RELAY_MODE,
+					baddr + MT6991_DISP_MTK_SPR_REG_SPR_EN));
+		else if (spr->spr_ip_type == DISP_NVT_SPR)
+			DDPDUMP("en=%d, spr_bypass=%d\n",
+				DISP_REG_GET_FIELD(CON_FLD_SPR_EN,
+					baddr + DISP_REG_SPR_EN),
+				DISP_REG_GET_FIELD(CON_FLD_DISP_SPR_RELAY_MODE,
+					baddr + DISP_REG_SPR_EN));
+		return 0;
+	}
+
 	DDPDUMP("en=%d, spr_bypass=%d\n",
 		DISP_REG_GET_FIELD(CON_FLD_SPR_EN,
 			baddr + DISP_REG_SPR_EN),
@@ -1986,6 +2022,10 @@ void mtk_cal_spr_valid_partial_roi(struct mtk_drm_crtc *crtc,
 		if (partial_roi->height > full_height)
 			partial_roi->height = full_height;
 	}
+
+	if (spr->data && spr->data->version == MTK_SPR_V3 &&
+		spr->spr_ip_type == DISP_MTK_SPR)
+		return;
 
 	/* spr roi size must be greater than 120 lines*/
 	if (partial_roi->height < 120) { //extension upwards first
@@ -2067,11 +2107,9 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 	if (spr->data && spr->data->version == MTK_SPR_V3 &&
 		spr->spr_ip_type == DISP_MTK_SPR) {
 		offset = spr->data->mtk_spr_ip_addr_offset;
-		mtk_ddp_write_relaxed(comp, (spr->set_partial_update == 1) ? 1 : 0,
-				MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_EN + offset, handle);
 		if (spr->set_partial_update == 1) {
 			//input size config
-			mtk_ddp_write_relaxed(comp, 0,
+			mtk_ddp_write_relaxed(comp, (partial_roi.y - overhead_v),
 				MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_POS_Y + offset, handle);
 			mtk_ddp_write_relaxed(comp, (partial_roi.height + overhead_v * 2),
 				MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_HEIGHT + offset, handle);
