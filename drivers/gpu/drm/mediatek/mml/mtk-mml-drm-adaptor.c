@@ -653,7 +653,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	mml_drm_try_frame(dctx, &submit->info);
 
 	/* +1 for real id assign to next task */
-	mml_mmp(submit, MMPROFILE_FLAG_PULSE,
+	mml_mmp(submit, MMPROFILE_FLAG_START,
 		atomic_read(&ctx->job_serial) + 1, submit->info.mode);
 
 	mutex_lock(&ctx->config_mutex);
@@ -836,12 +836,14 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	/* submit to core */
 	mml_core_submit_task(cfg, task);
 
+	mml_mmp(submit, MMPROFILE_FLAG_END, atomic_read(&ctx->job_serial), 0);
 	mml_trace_end();
 	return 0;
 
 err_unlock_exit:
 	mutex_unlock(&ctx->config_mutex);
 err_buf_exit:
+	mml_mmp(submit, MMPROFILE_FLAG_END, atomic_read(&ctx->job_serial), 0);
 	mml_trace_end();
 	mml_log("%s fail result %d task %p", __func__, result, task);
 	if (task) {
@@ -1098,6 +1100,31 @@ void mml_drm_put_context(struct mml_drm_ctx *ctx)
 	mml_dev_put_drm_ctx(ctx->ctx.mml, drm_ctx_release);
 }
 EXPORT_SYMBOL_GPL(mml_drm_put_context);
+
+void mml_drm_kick_done(struct mml_drm_ctx *dctx)
+{
+	struct mml_ctx *ctx = &dctx->ctx;
+	u32 jobid = atomic_read(&ctx->job_serial);
+	u32 i;
+
+	mml_mmp(kick, MMPROFILE_FLAG_START, jobid, 0);
+
+	for (i = 0; i < MML_MAX_CMDQ_CLTS; i++) {
+		struct cmdq_client *clt = mml_get_cmdq_clt(ctx->mml, i);
+
+		if (!clt)
+			continue;
+
+		mml_mmp(kick, MMPROFILE_FLAG_PULSE, i, 0);
+		cmdq_check_thread_complete(clt->chan);
+	}
+
+	mml_mmp(kick, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
+	kthread_flush_worker(ctx->kt_done);
+
+	mml_mmp(kick, MMPROFILE_FLAG_END, jobid, 0);
+}
+EXPORT_SYMBOL_GPL(mml_drm_kick_done);
 
 void mml_drm_set_panel_pixel(struct mml_drm_ctx *dctx, u32 panel_width, u32 panel_height)
 {
