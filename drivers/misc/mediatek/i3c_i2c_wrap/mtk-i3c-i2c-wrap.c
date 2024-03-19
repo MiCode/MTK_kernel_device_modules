@@ -997,7 +997,7 @@ int mtk_i3c_i2c_driver_register(struct i3c_i2c_driver *drv)
 	i2c_drv->shutdown = mtk_i2c_shutdown;
 	i2c_drv->flags = drv->flags;
 	ret = i2c_add_driver(i2c_drv);
-	if (ret < 0) {
+	if (ret) {
 		pr_info("[%s][%s] i2c_add_driver error, ret=%d\n",
 			WRAP_INFO, __func__, ret);
 		return ret;
@@ -1011,7 +1011,7 @@ int mtk_i3c_i2c_driver_register(struct i3c_i2c_driver *drv)
 	else {
 		i3c_drv->id_table = drv->id_table->i3c_id_table;
 		ret = i3c_driver_register(i3c_drv);
-		if (ret < 0)
+		if (ret)
 			pr_info("[%s][%s] i3c_driver_register error, ret=%d\n",
 				WRAP_INFO, __func__, ret);
 	}
