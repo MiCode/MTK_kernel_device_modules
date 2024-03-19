@@ -47,6 +47,7 @@ struct mbraink_power_ops {
 	int (*getPmicVoltageInfo)(struct mbraink_pmic_voltage_info *pmicVoltageInfo);
 	void (*suspendprepare)(void);
 	void (*postsuspend)(void);
+	int (*getMmdvfsInfo)(struct mbraink_mmdvfs_info *mmdvfsInfo);
 };
 int register_mbraink_power_ops(struct mbraink_power_ops *ops);
 int unregister_mbraink_power_ops(void);
