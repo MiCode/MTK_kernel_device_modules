@@ -13,6 +13,7 @@
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
+#include <linux/gpio/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/pm_wakeirq.h>
 #include <linux/reset.h>
@@ -437,6 +438,67 @@ static int ssusb_clkgate_of_property_parse(struct ssusb_mtk *ssusb,
 	return PTR_ERR_OR_ZERO(ssusb->clkgate);
 }
 
+static void ssusb_toggle_vbus_work(struct work_struct *w)
+{
+	struct ssusb_mtk *ssusb = container_of(w, struct ssusb_mtk, vbus_work);
+	int vbus;
+
+	vbus = gpiod_get_value_cansleep(ssusb->vbus_gpio);
+	if (ssusb->otg_switch.current_role == USB_ROLE_HOST) {
+		dev_info(ssusb->dev, "%s vbus %s on host mode, skip\n",
+				__func__, vbus ? "rise" : "drop");
+		return;
+	}
+	dev_info(ssusb->dev, "%s vbus %s\n", __func__, vbus ? "rise" : "drop");
+	ssusb_toggle_vbus(ssusb);
+}
+
+static irqreturn_t ssusb_vbus_irq(int irq, void *data)
+{
+	struct ssusb_mtk *ssusb = data;
+
+	queue_work(system_power_efficient_wq, &ssusb->vbus_work);
+
+	return IRQ_HANDLED;
+}
+
+static void ssusb_parse_toggle_vbus(struct ssusb_mtk *ssusb,
+			struct device_node *nd)
+{
+	struct device *dev = ssusb->dev;
+	int ret;
+
+	ssusb->toggle_vbus = of_property_read_bool(nd, "mediatek,toggle-vbus");
+	if (!ssusb->toggle_vbus)
+		return;
+
+	ssusb->vbus_gpio = devm_gpiod_get_optional(dev, "vbus", GPIOD_IN);
+	if (IS_ERR(ssusb->vbus_gpio)) {
+		dev_info(dev, "get vbus gpio err\n");
+		ssusb->vbus_gpio = NULL;
+		return;
+	}
+
+	INIT_WORK(&ssusb->vbus_work, ssusb_toggle_vbus_work);
+	if (ssusb->vbus_gpio) {
+		ret = gpiod_set_debounce(ssusb->vbus_gpio, 2000);
+		ssusb->vbus_irq = gpiod_to_irq(ssusb->vbus_gpio);
+		if (ssusb->vbus_irq < 0) {
+			dev_info(dev, "vbus gpio to irq err\n");
+			return;
+		}
+
+		ret = devm_request_threaded_irq(dev, ssusb->vbus_irq, NULL,
+				ssusb_vbus_irq, IRQF_ONESHOT |
+				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+				dev_name(dev), ssusb);
+		if (ret < 0) {
+			dev_info(dev, "req vbus irq err\n");
+			return;
+		}
+	}
+}
+
 static int ssusb_offload_get_mode(void)
 {
 	if (usb_offload && usb_offload->get_mode)
@@ -493,6 +555,26 @@ out:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(ssusb_offload_unregister);
+
+void ssusb_toggle_vbus(struct ssusb_mtk *ssusb)
+{
+	u32 misc;
+
+	if (!ssusb->toggle_vbus)
+		return;
+
+	misc = mtu3_readl(ssusb->mac_base, U3D_MISC_CTRL);
+
+	/* force vbus off first */
+	misc |= VBUS_FRC_EN;
+	misc &= ~VBUS_ON;
+	mtu3_writel(ssusb->mac_base, U3D_MISC_CTRL, misc);
+	mdelay(1);
+
+	/* force vbus on */
+	misc |= VBUS_ON;
+	mtu3_writel(ssusb->mac_base, U3D_MISC_CTRL, misc);
+}
 
 static bool ssusb_pm_runtime_forbid(struct ssusb_mtk *ssusb)
 {
@@ -865,6 +947,9 @@ get_phy:
 		return PTR_ERR(ssusb->ippc_base);
 
 	ssusb->force_vbus = of_property_read_bool(node, "mediatek,force-vbus");
+
+	ssusb_parse_toggle_vbus(ssusb, node);
+
 	ssusb->clk_mgr = of_property_read_bool(node, "mediatek,clk-mgr");
 	ssusb->noise_still_tr =
 		of_property_read_bool(node, "mediatek,noise-still-tr");

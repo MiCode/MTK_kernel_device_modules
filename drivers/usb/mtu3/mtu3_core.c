@@ -582,6 +582,8 @@ void mtu3_start(struct mtu3 *mtu)
 
 	/* set vbus limit*/
 	mtu3_gadget_vbus_draw(&mtu->g, USB_SELF_POWER_VBUS_MAX_DRAW);
+
+	ssusb_toggle_vbus(mtu->ssusb);
 }
 
 void mtu3_stop(struct mtu3 *mtu)

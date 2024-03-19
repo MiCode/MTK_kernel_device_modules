@@ -310,6 +310,11 @@ struct ssusb_mtk {
 	struct phy **phys;
 	int num_phys;
 	int wakeup_irq;
+	/* vbus gpio */
+	struct gpio_desc *vbus_gpio;
+	struct work_struct vbus_work;
+	int vbus_irq;
+	bool toggle_vbus;
 	/* common power & clock */
 	struct regulator *vusb33;
 	struct clk_bulk_data clks[BULK_CLKS_CNT];
@@ -532,6 +537,7 @@ static inline void mtu3_clrbits(void __iomem *base, u32 offset, u32 bits)
 }
 
 int ssusb_check_clocks(struct ssusb_mtk *ssusb, u32 ex_clks);
+void ssusb_toggle_vbus(struct ssusb_mtk *ssusb);
 void ssusb_set_force_vbus(struct ssusb_mtk *ssusb, bool vbus_on);
 int ssusb_phy_power_on(struct ssusb_mtk *ssusb);
 void ssusb_phy_power_off(struct ssusb_mtk *ssusb);
