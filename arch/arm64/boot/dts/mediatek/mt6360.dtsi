@@ -12,7 +12,7 @@ status = "okay";
     subpmic_mtk: mt6360@34 {
 		#interrupt-cells = <2>;
 		status = "ok";
-		compatible = "mediatek,mt6360_pmu";
+		compatible = "mediatek,mt6360";
 		reg = <0x34>;
 		wakeup-source;
 		interrupt-controller;
@@ -20,7 +20,7 @@ status = "okay";
 		interrupts = <24 IRQ_TYPE_EDGE_FALLING>;
 		interrupt-names = "IRQB";
 		mt6360_chg: chg {
-			compatible = "mediatek,mt6360_chg";
+			compatible ="mediatek,mt6360-chg";
 			vinovp = <14500000>;
 			io-channels = <&mt6360_adc 0>, <&mt6360_adc 1>,
 				      <&mt6360_adc 3>, <&mt6360_adc 4>,
@@ -57,7 +57,7 @@ status = "okay";
 			};
 		};
 		mt6360_adc: adc {
-			compatible = "mediatek,mt6360_adc";
+			compatible = "mediatek,mt6360-adc";
 			#io-channel-cells = <1>;
 		};
 		mt6360_led: led {
@@ -118,8 +118,8 @@ status = "okay";
 				};
 			};
 		};
-		mt6360_pmic: pmic {
-			compatible = "mediatek,mt6360_pmic";
+		mt6360_pmic: regulator {
+			compatible = "mt6360-regulator";
 			mt6360_mdla_buck_reg: buck1 {
 				regulator-compatible = "BUCK1";
 				regulator-name = "mt6360,buck1";
@@ -152,9 +152,6 @@ status = "okay";
 				regulator-allowed-modes = <0 2>;
 				regulator-always-on;
 			};
-		};
-		ldo {
-			compatible = "mediatek,mt6360_ldo";
 			mt_pmic_vfp_ldo_reg: ldo1 {
 				regulator-compatible = "LDO1";
 				regulator-name = "mt6360,ldo1";
