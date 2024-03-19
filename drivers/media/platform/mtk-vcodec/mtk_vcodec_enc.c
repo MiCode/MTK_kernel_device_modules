@@ -2006,7 +2006,8 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 		if (!ctx->has_first_input) {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 			if (!ctx->enc_params.svp_mode) {
-				if (!(buf->flags & V4L2_BUF_FLAG_NO_CACHE_CLEAN) &&
+				if (ctx->dev->support_acp && mtk_venc_acp_enable &&
+				    !(buf->flags & V4L2_BUF_FLAG_NO_CACHE_CLEAN) &&
 				    vcp_get_io_device(VCP_IOMMU_ACP_CODEC)) {
 					vq->dev = vcp_get_io_device(VCP_IOMMU_ACP_CODEC);
 					mtk_v4l2_debug(4, "[%d] src_vq use VCP_IOMMU_ACP_CODEC domain %p",
@@ -4627,7 +4628,8 @@ int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 	dst_vq->lock            = &ctx->q_mutex;
 	dst_vq->allow_zero_bytesused = 1;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-	if (!ctx->enc_params.svp_mode && vcp_get_io_device(VCP_IOMMU_ACP_VENC) != NULL) {
+	if (ctx->dev->support_acp && mtk_venc_acp_enable &&
+	    !ctx->enc_params.svp_mode && vcp_get_io_device(VCP_IOMMU_ACP_VENC) != NULL) {
 		dst_vq->dev     = vcp_get_io_device(VCP_IOMMU_ACP_VENC);
 		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_ACP_VENC domain %p", name, dst_vq->dev);
 	} else if (ctx->dev->iommu_domain_swtich && (ctx->dev->enc_cnt & 1)) {

@@ -427,6 +427,7 @@ struct vdec_dec_info {
 	__u32 vdec_changed_info;
 	__u64 bs_dma;
 	__u64 bs_fd;
+	__u64 bs_non_acp_dma; // for acp debug
 	__u64 fb_dma[VIDEO_MAX_PLANES];
 	__u64 fb_fd[VIDEO_MAX_PLANES];
 	__u64 vdec_bs_va;

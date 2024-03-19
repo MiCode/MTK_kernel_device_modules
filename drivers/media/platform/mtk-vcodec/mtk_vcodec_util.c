@@ -168,6 +168,18 @@ EXPORT_SYMBOL_GPL(mtk_vdec_enable_dynll);
 bool mtk_vdec_slc_enable = true;
 EXPORT_SYMBOL_GPL(mtk_vdec_slc_enable);
 
+/* For vdec acp switch on/off */
+bool mtk_vdec_acp_enable;
+EXPORT_SYMBOL_GPL(mtk_vdec_acp_enable);
+
+/* For vecn acp switch on/off */
+bool mtk_venc_acp_enable;
+EXPORT_SYMBOL_GPL(mtk_venc_acp_enable);
+
+/* For vecn acp switch on/off */
+int mtk_vdec_acp_debug;
+EXPORT_SYMBOL_GPL(mtk_vdec_acp_debug);
+
 struct vcu_v4l2_func vcu_func = { NULL };
 EXPORT_SYMBOL_GPL(vcu_func);
 

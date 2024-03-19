@@ -95,6 +95,7 @@ struct mtk_vcodec_mem {
 	int general_buf_fd;
 	struct dma_buf *dma_general_buf;
 	dma_addr_t dma_general_addr;
+	__u64 non_acp_iova; // for acp debug
 };
 
 /**
@@ -172,6 +173,9 @@ extern int mtk_vdec_lpw_limit;
 extern int mtk_vdec_lpw_timeout;
 extern bool mtk_vdec_enable_dynll;
 extern bool mtk_vdec_slc_enable;
+extern bool mtk_vdec_acp_enable;
+extern bool mtk_venc_acp_enable;
+extern int mtk_vdec_acp_debug;
 extern int support_svp_region;
 extern int support_wfd_region;
 extern int venc_disable_hw_break;
