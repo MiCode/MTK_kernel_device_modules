@@ -19,7 +19,7 @@
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/pinctrl/mt6877-pinfunc.h>
 #include <dt-bindings/soc/mediatek,boot-mode.h>
-#include <dt-bindings/interconnect/mtk,mt6873-emi.h>
+#include <dt-bindings/interconnect/mtk,emi.h>
 #include <dt-bindings/reset/ti-syscon.h>
 #include <dt-bindings/power/mtk-charger.h>
 #include <dt-bindings/regulator/mediatek,mt6360-regulator.h>
