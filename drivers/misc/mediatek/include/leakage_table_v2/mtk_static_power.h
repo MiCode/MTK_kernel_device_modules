@@ -17,6 +17,8 @@
 #include "mtk_static_power_6739.h"
 #elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6761)
 #include "mtk_static_power_6761.h"
+#elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6877)
+#include "mtk_static_power_6877.h"
 #elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
 #include "mtk_static_power_6893.h"
 #else
