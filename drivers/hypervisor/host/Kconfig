@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 #
-# Virtualization support drivers
+# Virtualization yocto host support drivers
 #
 
 config DEVICE_MODULES_ACRN_HSM

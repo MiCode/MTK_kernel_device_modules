@@ -112,6 +112,8 @@ source "$(KCONFIG_EXT_PREFIX)fs/f2fs/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)arch/arm/Kconfig"
 
-source "$(KCONFIG_EXT_PREFIX)drivers/hypervisor/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/hypervisor/guest/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)drivers/hypervisor/host/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)/drivers/media/virtio/Kconfig"
