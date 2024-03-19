@@ -1154,6 +1154,9 @@ static int mt8678_set_delay(struct mediatek_dwmac_plat_data *plat)
 		delay_val |= FIELD_PREP(MT8678_DLY_RXC_INV, mac_delay->rx_inv);
 
 		break;
+	case PHY_INTERFACE_MODE_2500BASEX:
+	case PHY_INTERFACE_MODE_SGMII:
+		break;
 	default:
 		dev_err(plat->dev, "phy interface not supported\n");
 		return -EINVAL;
