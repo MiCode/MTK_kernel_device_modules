@@ -27,6 +27,10 @@
 extern u32 *disp_perfs;
 #endif
 
+#include <linux/module.h>
+int debug_vidle_bw;
+module_param(debug_vidle_bw, int, 0644);
+
 #define CRTC_NUM		4
 static struct drm_crtc *dev_crtc;
 /* add for mm qos */
@@ -463,13 +467,13 @@ unsigned int mtk_disp_get_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc)
 
 	bw_base = mtk_drm_primary_frame_bw(crtc);
 	if (priv->data->mmsys_id == MMSYS_MT6989) {
-		if (bw_base != 7000)
-			tmp = mtk_disp_larb_hrt_bw_MT6989(mtk_crtc, 7000, bw_base);
+		if (bw_base != MAX_MMCLK)
+			tmp = mtk_disp_larb_hrt_bw_MT6989(mtk_crtc, MAX_MMCLK, bw_base);
 		else
 			tmp = bw_base;
 	} else if (priv->data->mmsys_id == MMSYS_MT6991) {
-		if (bw_base != 7000)
-			tmp = mtk_disp_larb_hrt_bw_MT6991(mtk_crtc, 7000, bw_base);
+		if (bw_base != MAX_MMCLK)
+			tmp = mtk_disp_larb_hrt_bw_MT6991(mtk_crtc, MAX_MMCLK, bw_base);
 		else
 			tmp = bw_base;
 	}
@@ -548,6 +552,11 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	for (i = 0; i < MAX_CRTC; ++i)
 		total += priv->req_hrt[i];
 
+	if (bw == MAX_MMCLK) {
+		DDPMSG("%s,total:%d->65535\n", __func__, total);
+		total = 65535;
+	}
+
 #ifdef CONFIG_MTK_FB_MMDVFS_SUPPORT
 	if (priv->data->mmsys_id == MMSYS_MT6768)
 		mtk_disp_hrt_mmclk_request_mt6768(mtk_crtc, tmp);
@@ -559,6 +568,10 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 		mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(1));
 	else
 		mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(total));
+
+	if (debug_vidle_bw)
+		total = debug_vidle_bw;
+
 	mtk_vidle_hrt_bw_set(total);
 #endif
 	DRM_MMP_MARK(hrt_bw, 0, tmp);
@@ -641,12 +654,12 @@ int mtk_disp_set_per_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DSI) {
 		if (total > 0) {
 			if (priv->data->mmsys_id == MMSYS_MT6989) {
-				if (bw != 7000)
+				if (bw != MAX_MMCLK)
 					tmp1 = mtk_disp_larb_hrt_bw_MT6989(mtk_crtc, total, bw_base);
 				else
 					tmp1 = bw;
 			} else if (priv->data->mmsys_id == MMSYS_MT6991) {
-				if (bw != 7000)
+				if (bw != MAX_MMCLK)
 					tmp1 = mtk_disp_larb_hrt_bw_MT6991(mtk_crtc, total, bw_base);
 				else
 					tmp1 = bw;

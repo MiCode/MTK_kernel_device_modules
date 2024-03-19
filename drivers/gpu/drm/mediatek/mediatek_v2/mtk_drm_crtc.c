@@ -5244,7 +5244,7 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	}
 
 	if (is_force_high_step)
-		bw = 7000; //max mmclk
+		bw = MAX_MMCLK;
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 		(crtc_idx == 0) && lyeblob_ids &&

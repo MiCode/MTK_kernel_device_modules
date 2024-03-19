@@ -24,6 +24,7 @@ enum DISP_QOS_BW_MODE {
 #define MDP_RDMA_REQ_HRT (0x3)
 #define WDMA_REQ_HRT (0x4)
 
+#define MAX_MMCLK (7000)
 struct drm_crtc;
 struct mtk_drm_crtc;
 struct mtk_ddp_comp;
