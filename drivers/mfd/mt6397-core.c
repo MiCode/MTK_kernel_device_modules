@@ -276,6 +276,12 @@ static const struct resource mt6359p_gauge_resources[] = {
 	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_BAT_TEMP_L, "BAT_TMP_L"),
 };
 
+static const struct resource mt6357_accdet_resources[] = {
+	DEFINE_RES_IRQ_NAMED(MT6357_IRQ_ACCDET, "ACCDET_IRQ"),
+	DEFINE_RES_IRQ_NAMED(MT6357_IRQ_ACCDET_EINT0, "ACCDET_EINT0"),
+	DEFINE_RES_IRQ_NAMED(MT6357_IRQ_ACCDET_EINT1, "ACCDET_EINT1"),
+};
+
 static const struct resource mt6358_accdet_resources[] = {
 	DEFINE_RES_IRQ_NAMED(MT6358_IRQ_ACCDET, "ACCDET_IRQ"),
 	DEFINE_RES_IRQ_NAMED(MT6358_IRQ_ACCDET_EINT0, "ACCDET_EINT0"),
@@ -373,6 +379,11 @@ static const struct mfd_cell mt6357_devs[] = {
 	{
 		.name = "mt6357-sound",
 		.of_compatible = "mediatek,mt6357-sound"
+	}, {
+		.name = "mt635x-accdet",
+		.of_compatible = "mediatek,mt6357-accdet",
+		.num_resources = ARRAY_SIZE(mt6357_accdet_resources),
+		.resources = mt6357_accdet_resources,
 	}, {
 		.name = "mt635x-auxadc",
 		.of_compatible = "mediatek,mt6357-auxadc",

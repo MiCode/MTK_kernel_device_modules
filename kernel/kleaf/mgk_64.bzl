@@ -689,6 +689,7 @@ mgk_64_device_modules = [
     "drivers/usb/mtu3/mtu3.ko",
     "drivers/watchdog/mtk_wdt.ko",
     "sound/soc/codecs/mt6338-accdet.ko",
+    "sound/soc/codecs/mt6357-accdet.ko",
     "sound/soc/codecs/mt6358-accdet.ko",
     "sound/soc/codecs/mt6359p-accdet.ko",
     "sound/soc/codecs/mt6368-accdet.ko",
