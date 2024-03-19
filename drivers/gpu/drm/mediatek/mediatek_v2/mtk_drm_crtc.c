@@ -18053,6 +18053,9 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_EXT_LAYER;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_CWB;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_MSYNC20;
+#if defined(DISP_STASH_ENABLE)
+			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_STASH_CMD;
+#endif
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_OVL_BW_MONITOR))
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_BW_MONITOR;
