@@ -375,7 +375,6 @@ module_param(boost_affinity, int, 0644);
 module_param(rescue_second_time, int, 0644);
 module_param(rescue_second_group, int, 0644);
 module_param(rescue_second_enable, int, 0644);
-module_param(rescue_second_enhance_f, int, 0644);
 module_param(no_buffer_rescue, int, 0644);
 module_param(qr_enable, int, 0644);
 module_param(qr_t2wnt_x, int, 0644);
@@ -631,9 +630,10 @@ int fbt_cluster_X2Y(int cluster, unsigned long input, enum sugov_type in_type,
 	}
 #endif
 
-	if (out_type == CAP && is_to_scale_cap)
+	if (out_type == CAP && is_to_scale_cap) {
 		output = output * 100 >> 10;
-
+		output = clamp(output, 1, 100);
+	}
 	xgf_trace("[%s][%s] clus=%d,cpu=%d,input=%lu,intype=%d,outtype=%d, output=%lu",
 		__func__, caller, cluster, cpu, input, in_type, out_type, output);
 	return (int)output;
@@ -3136,8 +3136,10 @@ static void fbt_do_sjerk(struct work_struct *work)
 	int do_jerk = FPSGO_JERK_DISAPPEAR;
 	int rescue_second_enable_final;
 	int rescue_second_group_final;
+	int rescue_second_enhance_f_final;
 	int separate_aa_final;
 	int check_buffer_quota_final;
+	int cluster;
 
 	jerk = container_of(work, struct fbt_sjerk, work);
 
@@ -3158,6 +3160,7 @@ static void fbt_do_sjerk(struct work_struct *work)
 
 	rescue_second_enable_final = thr->attr.rescue_second_enable_by_pid;
 	rescue_second_group_final = thr->attr.rescue_second_group_by_pid;
+	rescue_second_enhance_f_final = rescue_second_enhance_f;
 	separate_aa_final = thr->attr.separate_aa_by_pid;
 	check_buffer_quota_final = thr->attr.check_buffer_quota_by_pid;
 
@@ -3190,14 +3193,15 @@ static void fbt_do_sjerk(struct work_struct *work)
 	if (!pld)
 		goto EXIT;
 
-	rescue_opp_f = clamp(rescue_opp_f, 0, nr_freq_cpu - 1);
-	blc_wt = fbt_get_new_base_blc(pld, thr->boost_info.last_blc,
-		rescue_second_enhance_f, rescue_opp_f, rescue_second_copp);
+	for (cluster = 0 ; cluster < cluster_num; cluster++) {
+		pld[cluster].min = -1;
+		pld[cluster].max = -1;
+	}
+
+	blc_wt = rescue_second_enhance_f_final;
 	if (separate_aa_final) {
-		blc_wt_b = fbt_get_new_base_blc(pld, thr->boost_info.last_blc_b,
-			rescue_second_enhance_f, rescue_opp_f, rescue_second_copp);
-		blc_wt_m = fbt_get_new_base_blc(pld, thr->boost_info.last_blc_m,
-			rescue_second_enhance_f, rescue_opp_f, rescue_second_copp);
+		blc_wt_b = rescue_second_enhance_f_final;
+		blc_wt_m = rescue_second_enhance_f_final;
 	}
 
 	fbt_set_hard_limit_locked(FPSGO_HARD_NONE, pld);
@@ -9053,6 +9057,10 @@ out:
 
 static KOBJ_ATTR_RW(rl_l2q_exp_times);
 
+FBT_SYSFS_READ(rescue_second_enhance_f, fbt_mlock, rescue_second_enhance_f);
+FBT_SYSFS_WRITE_VALUE(rescue_second_enhance_f, fbt_mlock, rescue_second_enhance_f, 0, 100);
+static KOBJ_ATTR_RW(rescue_second_enhance_f);
+
 FBT_SYSFS_READ(bm_th, fbt_mlock, bm_th);
 FBT_SYSFS_WRITE_VALUE(bm_th, fbt_mlock, bm_th, 0, 100);
 static KOBJ_ATTR_RW(bm_th);
@@ -9205,6 +9213,7 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_fbt_info);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_enable_switch_down_throttle);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_rescue_enable);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_rescue_second_enhance_f);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_llf_task_policy);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_boost_ta);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_uclamp);
@@ -9455,6 +9464,7 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_fbt_info);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_enable_switch_down_throttle);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_rescue_enable);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_rescue_second_enhance_f);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_llf_task_policy);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_boost_ta);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_limit_uclamp);
