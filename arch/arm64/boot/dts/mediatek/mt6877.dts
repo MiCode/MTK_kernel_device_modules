@@ -3371,13 +3371,14 @@
 			"mbox2",
 			"mbox3";
 		#mbox-cells = <1>;
-		power-domains = <&scpsys MT6877_POWER_DOMAIN_ADSP_DORMANT>;
-		clocks = <&scp_par_top_clk CLK_SCP_PAR_RG_AUDIODSP>,
+		clocks = <&scpsys_clk SCP_SYS_ADSP_DORMANT>,
+			<&scp_par_top_clk CLK_SCP_PAR_RG_AUDIODSP>,
 			<&topckgen_clk CLK_TOP_ADSP_SEL>,
 			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
 			<&topckgen_clk CLK_TOP_ADSPPLL>,
 			<&topckgen_clk CLK_TOP_SCP_SEL>;
-		clock-names = "clk_adsp_ck_cg",
+		clock-names = "scp_sys_adsp",
+			"clk_adsp_ck_cg",
 			"clk_top_adsp_sel",
 			"clk_top_clk26m",
 			"clk_top_adsppll",
