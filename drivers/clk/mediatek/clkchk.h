@@ -103,6 +103,7 @@ struct clkchk_ops {
 	void (*dev_pm_resume)(void);
 	void (*external_dump)(void);
 	void (*cg_timeout_handle)(struct regmap *regmap, u32 id, u32 shift);
+	int (*chk_pm_state)(void);
 };
 
 int pwr_hw_is_on(enum PWR_STA_TYPE type, s32 val);
@@ -119,5 +120,6 @@ extern bool pdchk_get_bug_on_stat(void);
 extern void pdchk_dump_trace_evt(void);
 extern const struct dev_pm_ops clk_chk_dev_pm_ops;
 extern void clkchk_external_dump(void);
+extern int clkchk_chk_pm_state(void);
 
 #endif /* __MTK_CLK_CHK_H */

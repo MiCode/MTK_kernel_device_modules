@@ -1429,24 +1429,6 @@ const char *trace_subsys_cgs[] = {
 	[TRACE_CLK_NUM] = "NULL",
 };
 
-struct clkchk_fm {
-	const char *fm_name;
-	unsigned int fm_id;
-	unsigned int fm_type;
-};
-
-/* check which fmeter clk you want to get freq */
-enum {
-	CHK_FM_MMPLL2 = 0,
-	CHK_FM_NUM,
-};
-
-/* fill in the fmeter clk you want to get freq */
-struct  clkchk_fm chk_fm_list[] = {
-	[CHK_FM_MMPLL2] = {"mmpll2", FM_MMPLL2_CKDIV_CK, ABIST_2},
-	{},
-};
-
 static void trace_clk_event(const char *name, unsigned int clk_sta)
 {
 	unsigned long flags = 0;
@@ -1493,6 +1475,39 @@ static void dump_clk_event(void)
 
 	spin_unlock_irqrestore(&clk_trace_lock, flags);
 }
+
+struct rg2str {
+	u32 rg_val;
+	const char *map_str;
+};
+
+static struct rg2str debug_mapping[] = {
+	[BUS_PROT_SET_ACK]	= {0x1, "wait bus protect set timeout"},
+	[SRAM_OFF_ACK]	= {0x2, "wait sram off ack timeout"},
+	[RTFF_BK]	= {0x4, "set rtff backup"},
+	[SET_ISO]	= {0x8, "set iso(0->1)"},
+	[SET_ISO_CLK_DIS]	= {0x10, "set between iso and clk_dis"},
+	[SET_CLK_DIS]	= {0x20, "set clk_dis(0->1)"},
+	[SET_CLK_DIS_RSTB]	= {0x40, "set between clk_dis and rst_b"},
+	[CLR_RSTB]	= {0x80, "clr rst_b(1->0)"},
+	[POWER_OFF_ACK]	= {0x100, "wait pwr off ack timeout"},
+	[POWER_OFF_2ND_ACK]	= {0x200, "wait 2nd pwr off ack timeout"},
+	[POWER_OFF_IDLE]	= {0x400, "power off idle"},
+	[POWER_ON]		= {0x800, "set power on"},
+	[POWER_ON_ACK]		= {0x1000, "wait power on ack timeout"},
+	[POWER_ON_2ND]		= {0x2000, "set 2nd power on"},
+	[POWER_ON_2ND_ACK]	= {0x4000, "wait 2nd power on ack timeout"},
+	[CLR_CLK_DIS]		= {0x8000, "clr clk_dis(1->0)"},
+	[CLR_ISO]		= {0x10000, "clr iso(1->0)"},
+	[CLK_ISO_RSTB]		= {0x20000, "clr between iso and rst_b"},
+	[SET_RSTB]		= {0x40000, "set rst_b(0->1)"},
+	[RTFF_RS]		= {0x80000, "set rtff restore"},
+	[SRAM_ON_ACK]	= {0x100000, "wait sram on ack timeout"},
+	[BUS_PROT_CLR_ACK]	= {0x200000, "wait bus protect clr timeout"},
+	[SRAM_REPAIR_ACK]	= {0x400000, "wait sram repair done timeout"},
+	[POWER_ON_IDLE]		= {0x800001, "power on idle"},
+	[PM_STATE_NUM]		= {0, NULL},
+};
 
 /*
  * clkchk dump_regs
@@ -2753,7 +2768,7 @@ static struct regname rn[] = {
 	REGNAME(disp0_pm, 0x054, DISP0_PM_DEBUG0),
 	REGNAME(disp0_pm, 0x058, DISP0_PM_DEBUG1),
 	REGNAME(disp0_pm, 0x05C, DISP0_PM_DEBUG2),
-	REGNAME(disp1_pm, 0x054, DISP1_PM_DEBUG1),
+	REGNAME(disp1_pm, 0x054, DISP1_PM_DEBUG0),
 	REGNAME(disp1_pm, 0x058, DISP1_PM_DEBUG1),
 	REGNAME(disp1_pm, 0x05C, DISP1_PM_DEBUG2),
 	REGNAME(ovl0_pm, 0x054, OVL0_PM_DEBUG0),
@@ -3187,6 +3202,89 @@ void print_subsys_reg_mt6991(enum chk_sys_id id)
 }
 EXPORT_SYMBOL_GPL(print_subsys_reg_mt6991);
 
+static enum chk_sys_id pm_dump_id[] = {
+	mm_vcore_pm,
+	isp_main_pm,
+	isp_dip_pm,
+	isp_traw_pm,
+	isp_wpe_eis_pm,
+	isp_wpe_tnr_pm,
+	isp_wpe_lite_pm,
+	disp0_pm,
+	disp1_pm,
+	ovl0_pm,
+	ovl1_pm,
+	mml1_pm,
+	mml0_pm,
+	edptx_pm,
+	dptx_pm,
+	vdec0_pm,
+	vdec1_pm,
+	venc1_pm,
+	venc2_pm,
+	cam_rawa_pm,
+	cam_rawb_pm,
+	cam_rawc_pm,
+	cam_rmsa_pm,
+	cam_rmsb_pm,
+	cam_rmsc_pm,
+	cam_mraw_pm,
+	cam_main_pm,
+	cam_ccu_pm,
+	chk_sys_num,
+};
+
+int chk_pm_state(void)
+{
+	const struct regname *rns = &rn[0];
+	u32 chk_val = 0;
+	u8 wait_cnt = 0;
+	bool state_valid = false;
+	int i, j;
+
+	set_subsys_reg_dump_mt6991(pm_dump_id);
+
+	for (i = 0; i < ARRAY_SIZE(rn) && rns->base != NULL; i++, rns++) {
+		/* check pm_debug0 only */
+		if (!reg_dump_valid[i] || ((rns->ofs & 0x4) == 0x4))
+			continue;
+		chk_val = reg_dump_val[i];
+		wait_cnt = 0;
+		do {
+			/* check if pm state neither power on nor off idle */
+			if (((chk_val & 0xFFFFFF) != debug_mapping[POWER_OFF_IDLE].rg_val)
+					&& ((chk_val & 0xFFFFFF) != debug_mapping[POWER_ON_IDLE].rg_val)) {
+				udelay(10);
+				wait_cnt++;
+			}
+
+			/* retry 10 times to check if pm state is stucked */
+			if (wait_cnt > 10) {
+				state_valid = false;
+				for (j = 0; j < PM_STATE_NUM; j++) {
+					/* print current state */
+					if ((chk_val & 0xFFFFFF) == debug_mapping[j].rg_val) {
+						pr_info("%-18s: %s(0x%08x)\n", rns->name,
+							debug_mapping[j].map_str,
+							chk_val);
+						state_valid = true;
+					}
+				}
+
+				/* state not matched, possible fast on/off */
+				if (!state_valid)
+					pr_info("%-18s: multiple state(0x%08x)\n",
+						rns->name, chk_val);
+				break;
+			}
+
+			chk_val = clk_readl(ADDR(rns));
+		}while(1);
+	}
+
+	return 0;
+}
+
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 static enum chk_sys_id devapc_dump_id[] = {
 	spm,
@@ -3244,6 +3342,8 @@ static void devapc_dump(void)
 	set_subsys_reg_dump_mt6991(devapc_dump_id);
 	get_subsys_reg_dump_mt6991();
 
+	chk_pm_state();
+
 	dump_clk_event();
 	pdchk_dump_trace_evt();
 
@@ -3251,7 +3351,7 @@ static void devapc_dump(void)
 	vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "clk_devapc");
 
 	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
-		if (fclks->type != VLPCK && fclks->type != SUBSYS)
+		if (fclks->type != SUBSYS)
 			pr_notice("[%s] %d khz\n", fclks->name,
 				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}
@@ -3273,6 +3373,8 @@ static void serror_dump(void)
 	set_subsys_reg_dump_mt6991(devapc_dump_id);
 	get_subsys_reg_dump_mt6991();
 
+	chk_pm_state();
+
 	dump_clk_event();
 	pdchk_dump_trace_evt();
 
@@ -3280,7 +3382,7 @@ static void serror_dump(void)
 	vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "clk_serror");
 
 	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
-		if (fclks->type != VLPCK && fclks->type != SUBSYS)
+		if (fclks->type != SUBSYS)
 			pr_notice("[%s] %d khz\n", fclks->name,
 				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}
@@ -3435,10 +3537,12 @@ static void dump_bus_reg(struct regmap *regmap, u32 ofs)
 	set_subsys_reg_dump_mt6991(bus_dump_id);
 	get_subsys_reg_dump_mt6991();
 
+	chk_pm_state();
+
 	vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "hwv_cg_timeout");
 
 	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
-		if (fclks->type != VLPCK && fclks->type != SUBSYS)
+		if (fclks->type != SUBSYS)
 			pr_notice("[%s] %d khz\n", fclks->name,
 				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}
@@ -3602,6 +3706,7 @@ static struct clkchk_ops clkchk_mt6991_ops = {
 	.is_suspend_retry_stop = is_suspend_retry_stop,
 	.external_dump = external_dump,
 	.cg_timeout_handle = cg_timeout_handle,
+	.chk_pm_state = chk_pm_state,
 };
 
 static int clk_chk_mt6991_probe(struct platform_device *pdev)
