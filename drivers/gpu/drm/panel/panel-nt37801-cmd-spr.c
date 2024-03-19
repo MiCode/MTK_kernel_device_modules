@@ -25,6 +25,7 @@
 
 #include "../../../misc/mediatek/gate_ic/gate_i2c.h"
 #include "include/panel-nt37801-cmd-spr.h"
+#include "../mediatek/mediatek_v2/mtk_corner_pattern/nt37801_cmd_120hz_rc.h"
 
 #define CONFIG_MTK_PANEL_EXT
 #if defined(CONFIG_MTK_PANEL_EXT)
@@ -33,7 +34,7 @@
 #endif
 
 #ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
-#include "../mediatek/mediatek_v2/mtk_corner_pattern/mtk_data_hw_roundedpattern.h"
+//#include "../mediatek/mediatek_v2/mtk_corner_pattern/mtk_data_hw_roundedpattern.h"
 #endif
 
 #define FRAME_WIDTH				(1440)
@@ -985,6 +986,12 @@ static struct mtk_panel_params ext_params = {
 		.vact_timing_fps = 120,
 	},
 	.real_te_duration = 8333,
+
+	.round_corner_en = 1,
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
+	.corner_pattern_tp_size = sizeof(nt37801_cmd_120hz_top_pattern_l),
+	.corner_pattern_lt_addr = (void *)nt37801_cmd_120hz_top_pattern_l,
 };
 
 
@@ -1151,6 +1158,12 @@ static struct mtk_panel_params ext_params_90hz = {
 	.real_te_duration = 11111,
 	.mode_switch_delay = 2,
 	.merge_trig_offset = 510,
+
+		.round_corner_en = 1,
+		.corner_pattern_height = ROUND_CORNER_H_TOP,
+		.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
+		.corner_pattern_tp_size = sizeof(nt37801_cmd_120hz_top_pattern_l),
+		.corner_pattern_lt_addr = (void *)nt37801_cmd_120hz_top_pattern_l,
 };
 
 
@@ -1316,6 +1329,12 @@ static struct mtk_panel_params ext_params_60hz = {
 		.vact_timing_fps = 120,
 	},
 	.real_te_duration = 8333,
+
+		.round_corner_en = 1,
+		.corner_pattern_height = ROUND_CORNER_H_TOP,
+		.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
+		.corner_pattern_tp_size = sizeof(nt37801_cmd_120hz_top_pattern_l),
+		.corner_pattern_lt_addr = (void *)nt37801_cmd_120hz_top_pattern_l,
 };
 
 struct drm_display_mode *get_mode_by_id(struct drm_connector *connector,

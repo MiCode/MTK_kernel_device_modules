@@ -49,6 +49,7 @@
 #include "mtk_disp_bdg.h"
 #include "mtk_dsi.h"
 #include "mtk_disp_vidle.h"
+#include "mtk_disp_postmask.h"
 #include <clk-fmeter.h>
 #include <linux/pm_domain.h>
 
@@ -3443,6 +3444,35 @@ static void process_dbg_opt(const char *opt)
 		}
 
 		mtkfb_set_aod_backlight_level(level);
+	} else if (!strncmp(opt, "postmask_relay:", 15)) {
+		unsigned int relay;
+		int ret;
+		struct mtk_ddp_comp *comp;
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
+
+		/* this debug cmd only for crtc0 */
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPPR_ERR("find crtc fail\n");
+			return;
+		}
+
+		mtk_crtc = to_mtk_crtc(crtc);
+		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_POSTMASK, 0);
+		if (!comp) {
+			DDPPR_ERR("find postmask fail\n");
+			return;
+		}
+
+		ret = sscanf(opt, "postmask_relay:%u\n", &relay);
+		if (ret != 1) {
+			DDPPR_ERR("%d fail to parse cmd %s\n",
+				__LINE__, opt);
+			return;
+		}
+		mtk_postmask_relay_debug(comp, relay);
 	} else if (strncmp(opt, "set_partial_roi_highlight:", 26) == 0) {
 		int en;
 		int ret;
