@@ -5512,6 +5512,39 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,use-l2-slp-stat;
 		};
 
+		sgmiisys_0: sgmiisys@138d0000 {
+			compatible = "mediatek,liber-sgmiisys_0", "syscon";
+			reg = <0 0x138d0000 0 0x1000>;
+			mediatek,physpeed = "auto";
+		};
+
+		sgmiisys_1: sgmiisys@138e0000 {
+			compatible = "mediatek,liber-sgmiisys_1", "syscon";
+			reg = <0 0x138e0000 0 0x1000>;
+			mediatek,physpeed = "auto";
+		};
+
+		sgmiisys_phy_0: sgmiiphy@13910000 {
+			compatible = "mediatek,liber-sgmiisys_phy_0", "syscon";
+			reg = <0 0x13910000 0 0x10000>;
+		};
+
+		sgmiisys_phy_1: sgmiiphy@13920000 {
+			compatible = "mediatek,liber-sgmiisys_phy_1", "syscon";
+			reg = <0 0x13920000 0 0x10000>;
+		};
+
+		pdsgmii-0-top {
+			compatible = "mediatek,sgmii-up";
+			power-domains = <&ivi_scpsys MT6991_POWER_DOMAIN_HSGMII0>;
+		};
+
+		pdsgmii-1-top {
+			compatible = "mediatek,sgmii-up";
+			power-domains = <&ivi_scpsys MT6991_POWER_DOMAIN_HSGMII1>;
+			status = "disabled";
+		};
+
 		lvts: lvts@14414000 {
 			compatible = "mediatek,mt6991-lvts";
 			#thermal-sensor-cells = <1>;
@@ -5602,6 +5635,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			snps,txpbl = <16>;
 			snps,rxpbl = <16>;
 			clk-csr = <0>;
+			mediatek,sgmiisys = <&sgmiisys_0>;
+			mediatek,sgmiisys-phy = <&sgmiisys_phy_0>;
 			status = "disabled";
 
 			stmmac_axi_setup_mac0: stmmac-axi-config-mac0 {
