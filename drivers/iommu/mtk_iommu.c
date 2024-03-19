@@ -46,7 +46,6 @@
 #include "mtk_iommu.h"
 
 #define REG_MMU_PT_BASE_ADDR			0x000
-#define MMU_PT_ADDR_MASK			GENMASK(31, 7)
 
 #define REG_MMU_STA				0x008
 
