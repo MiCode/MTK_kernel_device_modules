@@ -11715,6 +11715,9 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 		return;
 	}
 
+	if (crtc_id != 0)
+		mtk_vidle_config_ff(false);
+
 	CRTC_MMP_EVENT_START((int) crtc_id, enable,
 			mtk_crtc->enabled, 0);
 
@@ -12939,6 +12942,9 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 	/* 11. set CRTC SW status */
 	mtk_crtc_set_status(crtc, false);
 
+	if ((atomic_read(&priv->kernel_pm.wakelock_cnt) == 2) && (crtc_id != 0))
+		mtk_vidle_config_ff(true);
+
 end:
 	CRTC_MMP_EVENT_END((int) crtc_id, disable,
 			mtk_crtc->enabled, 0);
@@ -13209,7 +13215,8 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 				mtk_crtc->gce_obj.client[CLIENT_CFG]);
 	}
 
-	mtk_vidle_clear_wfe_event(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
+	if (crtc_id == 0)
+		mtk_vidle_clear_wfe_event(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
 				  mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
 	mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
 					 comp ? mtk_get_gpr(comp, cmdq_handle) : 0);
