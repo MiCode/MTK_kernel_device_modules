@@ -244,6 +244,35 @@ void dptx_write_reg(u32 offset, u32 val)
 	DPTXMSG("addr = 0x%x, value = 0x%x\n", offset, value);
 }
 
+void dptx_read_reg(u32 offset)
+{
+	u32 value = 0;
+
+	value = mtk_dp_read(g_mtk_dp, offset);
+	DPTXMSG("dptx addr = 0x%x, value = 0x%x\n", offset, value);
+}
+
+void dptx_phy_write_reg(u32 offset, u32 val)
+{
+	u32 value = 0;
+
+	value = mtk_dp_phy_read(g_mtk_dp, offset);
+	DPTXMSG("dptx_phy ori addr = 0x%x, value = 0x%x\n", offset, value);
+
+	DPTXMSG("dptx_phy want addr = 0x%x, val = 0x%x\n", offset, val);
+	mtk_dp_phy_write(g_mtk_dp, offset, val);
+	value = mtk_dp_phy_read(g_mtk_dp, offset);
+	DPTXMSG("dptx_phy get addr = 0x%x, value = 0x%x\n", offset, value);
+}
+
+void dptx_phy_read_reg(u32 offset)
+{
+	u32 value = 0;
+
+	value = mtk_dp_phy_read(g_mtk_dp, offset);
+	DPTXMSG("dptx_phy addr = 0x%x, value = 0x%x\n", offset, value);
+}
+
 bool mdrv_DPTx_AuxWrite_Bytes(struct mtk_dp *mtk_dp, u8 ubCmd,
 	u32  usDPCDADDR, size_t ubLength, BYTE *pData)
 {
@@ -899,7 +928,7 @@ bool mdrv_DPTx_PHY_PatternSetting(struct mtk_dp *mtk_dp, BYTE ubPatternType,
 		break;
 	case PATTERN_D10_2:
 		mhal_DPTx_SetTxTrainingPattern(mtk_dp, BIT(4));
-		mhal_DPTx_SetTxLane(mtk_dp, (ubTEST_LANE_COUNT/2));
+		mhal_DPTx_SetTxLane(mtk_dp, ubTEST_LANE_COUNT);
 		break;
 	case PATTERN_SYMBOL_ERR:
 		break;
@@ -1266,7 +1295,7 @@ DPTX_TEST_PHY80B_EN)
 #if DPTX_TEST_CP2520_P3_EN
 				mhal_DPTx_SetTxTrainingPattern(mtk_dp, BIT(7));
 				mhal_DPTx_SetTxLane(mtk_dp,
-					ubTEST_LANE_COUNT / 2);
+					ubTEST_LANE_COUNT);
 #else
 				ubTempBuffer[0x0] = 0x01;
 				drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00260,
@@ -1720,7 +1749,7 @@ int mdrv_DPTx_TrainingFlow(struct mtk_dp *mtk_dp, u8 ubLaneRate, u8 ubLaneCount)
 	ubIterationCount = 0x1;
 	ubDPCD206 = 0xFF;
 
-	mhal_DPTx_SetTxLane(mtk_dp, ubTargetLaneCount/2);
+	mhal_DPTx_SetTxLane(mtk_dp, ubTargetLaneCount);
 	mhal_DPTx_SetTxRate(mtk_dp, ubTargetLinkRate);
 
 	do {
@@ -3475,7 +3504,12 @@ static int mtk_dp_dt_parse_pdata(struct mtk_dp *mtk_dp,
 		dev_err(dev, "Missing reg in %s node\n",
 		dev->of_node->full_name);
 
+	if (of_address_to_resource(dev->of_node, 1, &regs) != 0)
+		dev_err(dev, "Missing reg[1] in %s node\n",
+		dev->of_node->full_name);
+
 	mtk_dp->regs = of_iomap(dev->of_node, 0);
+	mtk_dp->phyd_regs = of_iomap(dev->of_node, 1);
 	pm_runtime_enable(dev);
 
 	ret = of_property_read_u32_array(dev->of_node, "dptx,phy_params",
@@ -3660,7 +3694,7 @@ static enum drm_mode_status mtk_dp_conn_mode_valid(struct drm_connector *conn,
 	if (fakecablein == true)
 		bandwidth = dp_plat_limit[0].clock;
 
-	DPTXDBG("Hde:%d,Vde:%d,fps:%d,clk:%d,bandwidth:%d,4k60:%d\n",
+	DPTXMSG("Hde:%d,Vde:%d,fps:%d,clk:%d,bandwidth:%d,4k60:%d\n",
 		mode->hdisplay, mode->vdisplay, drm_mode_vrefresh(mode), mode->clock,
 		bandwidth, dp_plat_limit[0].valid);
 
@@ -3702,7 +3736,10 @@ static enum drm_mode_status mtk_dp_conn_mode_valid(struct drm_connector *conn,
 	if (0x1fff > 0 && mode->vdisplay > 0x1fff)
 		return MODE_VIRTUAL_Y;
 
-	return MODE_OK;
+	if (mode->hdisplay == 1920 && mode->vdisplay == 1080)
+		return MODE_OK;
+	else
+		return MODE_BAD_VSCAN;
 }
 
 static const struct drm_connector_helper_funcs mtk_dp_connector_helper_funcs = {
@@ -3994,6 +4031,8 @@ void mtk_dp_fake_plugin(unsigned int status, unsigned int bpc)
 
 void mtk_dp_HPDInterruptSet(int bstatus)
 {
+	void *base;
+
 	if (g_mtk_dp == NULL) {
 		DPTXERR("%s: dp not initial\n", __func__);
 		return;
@@ -4011,6 +4050,11 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 
 		if (bstatus == HPD_CONNECT) {
 			pm_runtime_get_sync(g_mtk_dp->dev);
+			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+				/* mt6991 need to config HWCCF setiing */
+				base = ioremap(0x31b50000, 0x1000);
+				writel(0xc2fc224d, base + 0x78);
+			}
 			mdrv_DPTx_InitPort(g_mtk_dp);
 			mhal_DPTx_USBC_HPD(g_mtk_dp, true);
 			g_mtk_dp->bPowerOn = true;

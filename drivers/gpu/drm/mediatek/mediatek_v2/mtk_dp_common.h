@@ -34,11 +34,22 @@
 #define UINT8   unsigned char
 #endif
 
+#define DPTX_PETRUS_CHIP_ID	0x10
+#define DPTX_MT8195_CHIP_ID	0x15
+#define DPTX_LEPIN_CHIP_ID	0x20
+#define DPTX_DUJAC_CHIP_ID	0x30
+#define DPTX_PONSOT_CHIP_ID	0x32
+#define DPTX_LEROY_CHIP_ID	0x40
+#define DPTX_LIBER_CHIP_ID	0x50
+#define DPTX_PINGUS_CHIP_ID	0x52
+#define DPTX_FPGA_CHIP_ID	0x999
+
+#define DPTX_CHIP_ID DPTX_LIBER_CHIP_ID
 
 #define EDID_SIZE 0x200
 #define ENABLE_DPTX_SSC_FORCEON		0
 #define ENABLE_DPTX_FIX_LRLC		0
-#define ENABLE_DPTX_SSC_OUTPUT		1
+#define ENABLE_DPTX_SSC_OUTPUT		0
 #define ENABLE_DPTX_FIX_TPS2		0
 #define AUX_WRITE_READ_WAIT_TIME        20 //us
 #define AUX_NO_REPLY_WAIT_TIME          3200
@@ -46,7 +57,7 @@
 #define DPTX_PHY_LEVEL_COUNT            10
 #define DPTX_PHY_REG_COUNT              6
 
-#define DPTX_AutoTest_ENABLE		0x1
+#define DPTX_AutoTest_ENABLE		0x0
 #if DPTX_AutoTest_ENABLE
 #define DPTX_TEST_LINK_TRAINING_EN	0x1
 #define DPTX_TEST_PATTERN_EN		0x0
@@ -125,6 +136,10 @@ enum dp_usb_pin_assign_type {
 	DP_USB_PIN_ASSIGNMENT_MAX_NUM,
 };
 
+enum DPTX_SDP_ASP_HB3_AUCH{
+	DPTX_SDP_ASP_HB3_AU02CH	= 0x01,
+	DPTX_SDP_ASP_HB3_AU08CH	= 0x07,
+};
 
 union PPS_T {
 	struct{
@@ -306,6 +321,7 @@ struct mtk_dp {
 	u32 max_vdisplay;
 
 	void __iomem *regs;
+	void __iomem *phyd_regs;
 	struct clk *dp_tx_clk;
 
 	u32 bUeventToHwc;

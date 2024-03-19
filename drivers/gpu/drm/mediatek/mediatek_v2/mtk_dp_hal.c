@@ -11,6 +11,7 @@
 #include <linux/arm-smccc.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include "mtk_dp_reg.h"
+#include "mtk_dp.h"
 /* TODO: porting*/
 /* #include "mtk_devinfo.h" */
 /* display port control related SMC call */
@@ -74,6 +75,63 @@ void mtk_dp_write_byte(struct mtk_dp *mtk_dp,
 	mtk_dp_write(mtk_dp, DP_TX_TOP_APB_WSTRB, 0x00);
 }
 
+u32 mtk_dp_phy_read(struct mtk_dp *mtk_dp, u32 offset)
+{
+	u32 read_val = 0;
+
+	if (offset > 0x1500) {
+		DPTXERR("dptx %s, error offset 0x%x\n",
+			__func__, offset);
+		return 0;
+	}
+
+	read_val = readl(mtk_dp->phyd_regs + offset - (offset%4))
+			>> ((offset % 4) * 8);
+
+	return read_val;
+}
+
+void mtk_dp_phy_write(struct mtk_dp *mtk_dp, u32 offset, u32 val)
+{
+	if ((offset % 4 != 0) || (offset > 0x1500)) {
+		DPTXERR("dptx %s, error offset 0x%x, value 0x%x\n",
+			__func__, offset, val);
+		return;
+	}
+
+	writel(val, mtk_dp->phyd_regs + offset);
+}
+
+void mtk_dp_phy_mask(struct mtk_dp *mtk_dp, u32 offset, u32 val, u32 mask)
+{
+	void __iomem *reg = mtk_dp->phyd_regs + offset;
+	u32 tmp;
+
+	if ((offset % 4 != 0) || (offset > 0x1500)) {
+		DPTXERR("dptx %s, error reg 0x%p, offset 0x%x, value 0x%x\n",
+			__func__, mtk_dp->phyd_regs, offset, val);
+		return;
+	}
+
+	tmp = readl(reg);
+	tmp = (tmp & ~mask) | (val & mask);
+	writel(tmp, reg);
+}
+
+void mtk_dp_phy_write_byte(struct mtk_dp *mtk_dp,
+	u32 addr, u8 val, u32 mask)
+{
+	if (addr % 2) {
+		mtk_dp_write(mtk_dp, DP_TX_TOP_APB_WSTRB, 0x12);
+		mtk_dp_phy_mask(mtk_dp, addr - 1, (u32)(val << 8), (mask << 8));
+	} else {
+		mtk_dp_write(mtk_dp, DP_TX_TOP_APB_WSTRB, 0x11);
+		mtk_dp_phy_mask(mtk_dp, addr, (u32)val, mask);
+	}
+
+	mtk_dp_write(mtk_dp, DP_TX_TOP_APB_WSTRB, 0x00);
+}
+
 unsigned long mtk_dp_atf_call(unsigned int cmd, unsigned int para)
 {
 #ifndef CONFIG_FPGA_EARLY_PORTING
@@ -130,13 +188,50 @@ void mhal_DPTx_Verify_Clock(struct mtk_dp *mtk_dp)
 		pix_clk, pix_clk/4);
 }
 
+void mhal_DPTx_fec_init_setting(struct mtk_dp *mtk_dp)
+{
+	msWrite4ByteMask(mtk_dp, REG_3540_DP_TRANS_P0,
+				1 << FEC_CLOCK_EN_MODE_DP_TRANS_P0_FLDMASK_POS,
+				FEC_CLOCK_EN_MODE_DP_TRANS_P0_FLDMASK);
+	msWrite4ByteMask(mtk_dp, REG_3540_DP_TRANS_P0,
+				2 << FEC_FIFO_UNDER_POINT_DP_TRANS_P0_FLDMASK_POS,
+				FEC_FIFO_UNDER_POINT_DP_TRANS_P0_FLDMASK);
+}
+
 void mhal_DPTx_InitialSetting(struct mtk_dp *mtk_dp)
 {
+
+#if (DPTX_CHIP_ID >= DPTX_LIBER_CHIP_ID)
+	msWrite4ByteMask(mtk_dp, DP_TX_TOP_PWR_STATE,
+			(0x3 << DP_PWR_STATE_FLDMASK_POS), DP_PWR_STATE_FLDMASK);
+
+	msWriteByte(mtk_dp, REG_342C_DP_TRANS_P0, 0x68);//26M xtal clock
+
+	mhal_DPTx_fec_init_setting(mtk_dp);
+
+	msWrite4ByteMask(mtk_dp, REG_31EC_DP_ENCODER0_P0 , BIT(4), BIT(4));
+	msWrite4ByteMask(mtk_dp, REG_304C_DP_ENCODER0_P0 , 0, BIT(8));
+	msWrite4ByteMask(mtk_dp, REG_304C_DP_ENCODER0_P0 , BIT(3), BIT(3));
+
+	//31C4[13] : DSC bypass [11]pps bypass
+	msWrite2ByteMask(mtk_dp, REG_31C4_DP_ENCODER0_P0,
+			0,
+			PPS_HW_BYPASS_MASK_DP_ENCODER0_P0_FLDMASK);
+
+	msWrite2ByteMask(mtk_dp, REG_31C4_DP_ENCODER0_P0,
+			0,
+			DSC_BYPASS_EN_DP_ENCODER0_P0_FLDMASK);
+
+	msWrite2ByteMask(mtk_dp, REG_336C_DP_ENCODER1_P0,
+			0,
+			DSC_BYTE_SWAP_DP_ENCODER1_P0_FLDMASK);
+#else
 	msWriteByte(mtk_dp, REG_342C_DP_TRANS_P0, 0x69);
 	msWrite4ByteMask(mtk_dp, REG_3540_DP_TRANS_P0, BIT(3), BIT(3));
 	msWrite4ByteMask(mtk_dp, REG_31EC_DP_ENCODER0_P0, BIT(4), BIT(4));
 	msWrite4ByteMask(mtk_dp, REG_304C_DP_ENCODER0_P0, 0, BIT(8));
 	msWrite4ByteMask(mtk_dp, DP_TX_TOP_IRQ_MASK, BIT(2), BIT(2));
+#endif
 }
 
 void mhal_DPTx_DataLanePNSwap(struct mtk_dp *mtk_dp, bool bENABLE)
@@ -1918,44 +2013,80 @@ bool mhal_DPTx_SetSwingtPreEmphasis(struct mtk_dp *mtk_dp, int lane_num,
 
 	switch (lane_num) {
 	case DPTx_LANE0:
+	#if (DPTX_CHIP_ID >= DPTX_LIBER_CHIP_ID)
+		msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN0_OFFSET + DRIVING_FORCE,
+				(swingValue << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
+				DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
+		msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN0_OFFSET + DRIVING_FORCE,
+				(preEmphasis << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
+				DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK);
+	#else
 		msWrite4ByteMask(mtk_dp,
-			DP_TX_TOP_SWING_EMP,
-			swingValue << DP_TX0_VOLT_SWING_FLDMASK_POS,
-			DP_TX0_VOLT_SWING_FLDMASK);
+		DP_TX_TOP_SWING_EMP,
+		swingValue << DP_TX0_VOLT_SWING_FLDMASK_POS,
+		DP_TX0_VOLT_SWING_FLDMASK);
 		msWrite4ByteMask(mtk_dp,
 			DP_TX_TOP_SWING_EMP,
 			preEmphasis << DP_TX0_PRE_EMPH_FLDMASK_POS,
 			DP_TX0_PRE_EMPH_FLDMASK);
+	#endif
 		break;
 	case DPTx_LANE1:
+	#if (DPTX_CHIP_ID >= DPTX_LIBER_CHIP_ID)
+		msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN1_OFFSET + DRIVING_FORCE,
+				(swingValue << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
+				DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
+		msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN1_OFFSET + DRIVING_FORCE,
+				(preEmphasis << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
+				DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK);
+	#else
 		msWrite4ByteMask(mtk_dp,
-			DP_TX_TOP_SWING_EMP,
-			swingValue << DP_TX1_VOLT_SWING_FLDMASK_POS,
-			DP_TX1_VOLT_SWING_FLDMASK);
+		DP_TX_TOP_SWING_EMP,
+		swingValue << DP_TX1_VOLT_SWING_FLDMASK_POS,
+		DP_TX1_VOLT_SWING_FLDMASK);
 		msWrite4ByteMask(mtk_dp,
 			DP_TX_TOP_SWING_EMP,
 			preEmphasis << DP_TX1_PRE_EMPH_FLDMASK_POS,
 			DP_TX1_PRE_EMPH_FLDMASK);
+	#endif
 		break;
 	case DPTx_LANE2:
+	#if (DPTX_CHIP_ID >= DPTX_LIBER_CHIP_ID)
+		msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN2_OFFSET + DRIVING_FORCE,
+				(swingValue << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
+				DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
+		msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN2_OFFSET + DRIVING_FORCE,
+				(preEmphasis << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
+				DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK);
+	#else
 		msWrite4ByteMask(mtk_dp,
-			DP_TX_TOP_SWING_EMP,
-			swingValue << DP_TX2_VOLT_SWING_FLDMASK_POS,
-			DP_TX2_VOLT_SWING_FLDMASK);
+		DP_TX_TOP_SWING_EMP,
+		swingValue << DP_TX2_VOLT_SWING_FLDMASK_POS,
+		DP_TX2_VOLT_SWING_FLDMASK);
 		msWrite4ByteMask(mtk_dp,
 			DP_TX_TOP_SWING_EMP,
 			preEmphasis << DP_TX2_PRE_EMPH_FLDMASK_POS,
 			DP_TX2_PRE_EMPH_FLDMASK);
+	#endif
 		break;
 	case DPTx_LANE3:
+	#if (DPTX_CHIP_ID >= DPTX_LIBER_CHIP_ID)
+		msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN3_OFFSET + DRIVING_FORCE,
+				(swingValue << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
+				DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
+		msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN3_OFFSET + DRIVING_FORCE,
+				(preEmphasis << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
+				DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK);
+	#else
 		msWrite4ByteMask(mtk_dp,
-			DP_TX_TOP_SWING_EMP,
-			swingValue << DP_TX3_VOLT_SWING_FLDMASK_POS,
-			DP_TX3_VOLT_SWING_FLDMASK);
+		DP_TX_TOP_SWING_EMP,
+		swingValue << DP_TX3_VOLT_SWING_FLDMASK_POS,
+		DP_TX3_VOLT_SWING_FLDMASK);
 		msWrite4ByteMask(mtk_dp,
 			DP_TX_TOP_SWING_EMP,
 			preEmphasis << DP_TX3_PRE_EMPH_FLDMASK_POS,
 			DP_TX3_PRE_EMPH_FLDMASK);
+	#endif
 		break;
 	default:
 		DPTXERR("lane number is error\n");
@@ -1965,10 +2096,62 @@ bool mhal_DPTx_SetSwingtPreEmphasis(struct mtk_dp *mtk_dp, int lane_num,
 	return true;
 }
 
+
 bool mhal_DPTx_ResetSwingtPreEmphasis(struct mtk_dp *mtk_dp)
 {
+#if (DPTX_CHIP_ID >= DPTX_LIBER_CHIP_ID)
+	msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN0_OFFSET + DRIVING_FORCE,
+			 (0x1 << DP_TX_FORCE_VOLT_SWING_EN_FLDMASK_POS),
+			 DP_TX_FORCE_VOLT_SWING_EN_FLDMASK);
+	msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN0_OFFSET + DRIVING_FORCE,
+			 (0x1 << DP_TX_FORCE_PRE_EMPH_EN_FLDMASK_POS),
+			 DP_TX_FORCE_PRE_EMPH_EN_FLDMASK);
+	msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN1_OFFSET + DRIVING_FORCE,
+			 (0x1 << DP_TX_FORCE_VOLT_SWING_EN_FLDMASK_POS),
+			 DP_TX_FORCE_VOLT_SWING_EN_FLDMASK);
+	msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN1_OFFSET + DRIVING_FORCE,
+			 (0x1 << DP_TX_FORCE_PRE_EMPH_EN_FLDMASK_POS),
+			 DP_TX_FORCE_PRE_EMPH_EN_FLDMASK);
+	msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN2_OFFSET + DRIVING_FORCE,
+			 (0x1 << DP_TX_FORCE_VOLT_SWING_EN_FLDMASK_POS),
+			 DP_TX_FORCE_VOLT_SWING_EN_FLDMASK);
+	msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN2_OFFSET + DRIVING_FORCE,
+			 (0x1 << DP_TX_FORCE_PRE_EMPH_EN_FLDMASK_POS),
+			 DP_TX_FORCE_PRE_EMPH_EN_FLDMASK);
+	msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN3_OFFSET + DRIVING_FORCE,
+			 (0x1 << DP_TX_FORCE_VOLT_SWING_EN_FLDMASK_POS),
+			 DP_TX_FORCE_VOLT_SWING_EN_FLDMASK);
+	msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN3_OFFSET + DRIVING_FORCE,
+			 (0x1 << DP_TX_FORCE_PRE_EMPH_EN_FLDMASK_POS),
+			 DP_TX_FORCE_PRE_EMPH_EN_FLDMASK);
+
+	msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN0_OFFSET + DRIVING_FORCE,
+			 (0x0 << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
+			 DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
+	msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN0_OFFSET + DRIVING_FORCE,
+			 (0x0  << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
+			 DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK);
+	msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN1_OFFSET + DRIVING_FORCE,
+			 (0x0 << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
+			 DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
+	msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN1_OFFSET + DRIVING_FORCE,
+			 (0x0 << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
+			 DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK);
+	msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN2_OFFSET + DRIVING_FORCE,
+			 (0x0 << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
+			 DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
+	msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN2_OFFSET + DRIVING_FORCE,
+			 (0x0 << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
+			 DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK);
+	msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN3_OFFSET + DRIVING_FORCE,
+			 (0x0 << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
+			 DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
+	msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN3_OFFSET + DRIVING_FORCE,
+			 (0x0 << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
+			 DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK);
+#else
 	msWrite4ByteMask(mtk_dp,
-		DP_TX_TOP_SWING_EMP, 0, DP_TX0_VOLT_SWING_FLDMASK);
+	DP_TX_TOP_SWING_EMP, 0, DP_TX0_VOLT_SWING_FLDMASK);
 	msWrite4ByteMask(mtk_dp,
 		DP_TX_TOP_SWING_EMP, 0, DP_TX1_VOLT_SWING_FLDMASK);
 	msWrite4ByteMask(mtk_dp,
@@ -1983,6 +2166,8 @@ bool mhal_DPTx_ResetSwingtPreEmphasis(struct mtk_dp *mtk_dp)
 		DP_TX_TOP_SWING_EMP, 0, DP_TX2_PRE_EMPH_FLDMASK);
 	msWrite4ByteMask(mtk_dp,
 		DP_TX_TOP_SWING_EMP, 0, DP_TX3_PRE_EMPH_FLDMASK);
+#endif
+
 	return true;
 }
 
@@ -2212,6 +2397,28 @@ void mhal_DPTx_HPDInterruptEnable(struct mtk_dp *mtk_dp, bool enable)
 
 void mhal_DPTx_HPDDetectSetting(struct mtk_dp *mtk_dp)
 {
+#if (DPTX_CHIP_ID >= DPTX_LIBER_CHIP_ID)
+	//Crystal frequency value for 1us timing normalization
+	//[7:2]: Integer value
+	//[1:0]: Fractional value
+	//0x30: 12.0 us //0x68: 26us
+	msWrite2ByteMask(mtk_dp, REG_366C_AUX_TX_P0,
+			0x68 << XTAL_FREQ_AUX_TX_P0_FLDMASK_POS,
+			XTAL_FREQ_AUX_TX_P0_FLDMASK);
+
+	//Adjust Tx reg_hpd_disc_thd to 2ms, it is because of the spec. "HPD pulse" description
+	//Low Bound: 3'b010 ~ 500us
+	//Up Bound: 3'b110 ~1.9ms
+	msWrite2ByteMask(mtk_dp, REG_364C_AUX_TX_P0,
+		(0x32 << HPD_INT_THD_AUX_TX_P0_FLDMASK_POS),
+		HPD_INT_THD_AUX_TX_P0_FLDMASK);
+	msWrite2ByteMask(mtk_dp, REG_364C_AUX_TX_P0,
+		(0x32 << HPD_INT_THD_AUX_TX_P0_FLDMASK_POS),
+		HPD_INT_THD_AUX_TX_P0_FLDMASK);
+	/* dptx phy setting for usbc */
+	msWrite4ByteMask(mtk_dp, REG_364C_AUX_TX_P0, BIT(11), BIT(11));
+	msWrite4ByteMask(mtk_dp, REG_364C_AUX_TX_P0, BIT(10), BIT(10));
+#else
 	msWriteByteMask(mtk_dp,
 		REG_3410_DP_TRANS_P0,
 		0x8,
@@ -2228,10 +2435,88 @@ void mhal_DPTx_HPDDetectSetting(struct mtk_dp *mtk_dp)
 	msWriteByte(mtk_dp,
 		REG_3430_DP_TRANS_P0,
 		0x02); //1113 MK
+#endif
+}
+
+void mhal_DPTx_phyd_power_on(struct mtk_dp *mtk_dp)
+{
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
+			0x1 << FORCE_PWR_STATE_EN_FLDMASK_POS, FORCE_PWR_STATE_EN_FLDMASK);
+	mdelay(30);
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
+			0x3 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
+	DPTXMSG("DPTX PHYD enable\n");
+	udelay(100);
+}
+
+void mhal_DPTx_phyd_power_off(struct mtk_dp *mtk_dp)
+{
+	mhal_DPTx_PHYD_Reset(mtk_dp);
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
+			0x0, FORCE_PWR_STATE_VAL_FLDMASK);
+}
+
+void mhal_DPTx_phy_param_init(struct mtk_dp *mtk_dp, UINT32 *buffer, UINT32 size)
+{
+	UINT32 i = 0;
+	UINT8  mask = 0x3F;
+
+	if (buffer == NULL || size != DPTX_PHY_REG_COUNT) {
+		DPTXERR("invalid param\n");
+		return;
+	}
+
+	for (i = 0; i < DPTX_PHY_LEVEL_COUNT; i++) {
+		mtk_dp->phy_params[i].C0 = (buffer[i / 4] >> (8 * (i % 4))) & mask;
+		mtk_dp->phy_params[i].CP1
+			= (buffer[i / 4 + 3] >> (8 * (i % 4))) & mask;
+	}
+}
+
+void mhal_DPTx_hw_phy_set_param(struct mtk_dp *mtk_dp)
+{
+	//UINT32 value = 0;
+	UINT8 i;
+	UINT32 phy_param[6] = {0x221C1814, 0x24241e18, 0x0000302A,	//c0
+			       0x0E080400, 0x000c0600, 0x00000006	//cp1
+			      };
+
+	/*4Lane issue*/
+	msPhyWriteByteMask(mtk_dp, 0x0614, BIT(0), BIT(0));
+	mdelay(30);
+	msPhyWrite4ByteMask(mtk_dp, 0x0700, 0x0, BIT(20));
+	mdelay(30);
+	for (i = 1; i <= 4; i++) {
+		msPhyWrite2Byte(mtk_dp, 0x0100 * i, 0x3000);
+		mdelay(30);
+	}
+	//msPhyWriteByte(mtk_dp, 0x01A0, 0x47);
+	msPhyWriteByte(mtk_dp, 0x01A0, 0x46);
+	mdelay(25);
+	//msPhyWriteByte(mtk_dp, 0x02A0, 0x47);
+	msPhyWriteByte(mtk_dp, 0x02A0, 0x46);
+	mdelay(25);
+	msPhyWriteByte(mtk_dp, 0x03A0, 0x47);
+	udelay(25);
+	msPhyWriteByte(mtk_dp, 0x04A0, 0x47);
+	udelay(25);
+
+	mhal_DPTx_phy_param_init(mtk_dp, phy_param, ARRAY_SIZE(phy_param));
 }
 
 void mhal_DPTx_PHYSetting(struct mtk_dp *mtk_dp)
 {
+#if (DPTX_CHIP_ID >= DPTX_LIBER_CHIP_ID)
+	mhal_DPTx_phyd_power_on(mtk_dp);
+	mhal_DPTx_hw_phy_set_param(mtk_dp);
+
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
+			0x1 << FORCE_PWR_STATE_EN_FLDMASK_POS, FORCE_PWR_STATE_EN_FLDMASK);
+	msPhyWrite4Byte(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_BIT_RATE, 0x0);
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
+			0x3 << FORCE_PWR_STATE_EN_FLDMASK_POS, FORCE_PWR_STATE_EN_FLDMASK);
+	udelay(100);
+#else
 	uint32_t value = 0;
 	uint8_t mask = 0x3F;
 
@@ -2288,21 +2573,58 @@ void mhal_DPTx_PHYSetting(struct mtk_dp *mtk_dp)
 	msWrite4Byte(mtk_dp, 0x124C, value);
 	DPTXDBG("0x4C:%#010x, 0x4C:%#010x", value, msRead4Byte(mtk_dp, 0x114C));
 
-//PORTING FROM CTP
+	//PORTING FROM CTP
 	msWrite4ByteMask(mtk_dp, 0x003C, 0x004 << 24, BITMASK(28:24));
 	msWrite4ByteMask(mtk_dp, 0x0008, 0x7 << 3, BITMASK(6:3));
 	msWrite4ByteMask(mtk_dp, 0x003C, BIT(23), BIT(23));
 	msWrite4ByteMask(mtk_dp, 0x0054, BIT(23), BIT(23));
 	msWrite4ByteMask(mtk_dp, 0x0054, 0x004 << 24, BITMASK(28:24));
-//PORTING FROM CTP END
+	//PORTING FROM CTP END
 
 	msWrite4ByteMask(mtk_dp, 0x3690, BIT(8), BIT(8));
+#endif
 }
 
 void mhal_DPTx_SSCOnOffSetting(struct mtk_dp *mtk_dp, bool bENABLE)
 {
 	DPTXMSG("SSC_enable = %d\n", bENABLE);
+#if (DPTX_CHIP_ID >= DPTX_LIBER_CHIP_ID)
+	// power off TPLL and Lane;
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
+		0x1 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
 
+	// Set SSC disable
+	msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_1, 0x0, TPLL_SSC_EN_FLDMASK);
+
+	//delta1 = 0.05% and delta=0.05%
+	// HBR3 8.1G
+	msPhyWrite4ByteMask(mtk_dp, 0x10D4, 79 << 16, BITMASK(31:16)); //delta1
+	msPhyWrite4ByteMask(mtk_dp, 0x10DC, 49 << 16, BITMASK(31:16)); //delta
+
+	// HBR2 5.4G
+	msPhyWrite4ByteMask(mtk_dp, 0x10D4, 105, BITMASK(15:0)); //delta1
+	msPhyWrite4ByteMask(mtk_dp, 0x10DC, 65, BITMASK(15:0)); //delta
+
+	// HBR 2.7G
+	msPhyWrite4ByteMask(mtk_dp, 0x10D0, 105 << 16, BITMASK(31:16)); //delta1
+	msPhyWrite4ByteMask(mtk_dp, 0x10D8, 65 << 16, BITMASK(31:16)); //delta
+
+	// RBR 1.62G
+	msPhyWrite4ByteMask(mtk_dp, 0x10D0, 63, BITMASK(15:0)); //delta1
+	msPhyWrite4ByteMask(mtk_dp, 0x10D8, 39, BITMASK(15:0)); //delta
+
+	if (bENABLE)
+		// Set SSC enable
+		msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_1,
+				TPLL_SSC_EN_FLDMASK, TPLL_SSC_EN_FLDMASK);
+	else
+		msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_1,
+				0, TPLL_SSC_EN_FLDMASK);
+
+	// power on BandGap, TPLL and Lane;
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
+		0x3 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
+#else
 	msWrite4ByteMask(mtk_dp, 0x2000, BIT(0), BITMASK(1:0));
 
 	msWrite4ByteMask(mtk_dp, 0x1014, 0x0, BIT(3));
@@ -2330,12 +2652,55 @@ void mhal_DPTx_SSCOnOffSetting(struct mtk_dp *mtk_dp, bool bENABLE)
 		msWrite4ByteMask(mtk_dp, 0x1014, 0x0, BIT(3));
 
 	msWrite4ByteMask(mtk_dp, 0x2000, BIT(0)|BIT(1), BITMASK(1:0));
-
+#endif
 	udelay(50);
 }
 
 void mhal_DPTx_AuxSetting(struct mtk_dp *mtk_dp)
 {
+#if (DPTX_CHIP_ID >= DPTX_LIBER_CHIP_ID)
+	// modify timeout threshold = 1595 [12 : 8]
+	msWrite2ByteMask(mtk_dp,
+		REG_360C_AUX_TX_P0,
+		0x1D0C,
+		AUX_TIMEOUT_THR_AUX_TX_P0_FLDMASK);
+	msWriteByteMask(mtk_dp,
+		REG_3658_AUX_TX_P0,
+		0,
+		BIT(0));    //[0]mtk_dp, REG_aux_tx_ov_en
+
+	msWrite2Byte(mtk_dp, REG_36A0_AUX_TX_P0, 0xFFFC);
+
+	//26M
+	msWrite2ByteMask(mtk_dp, REG_3634_AUX_TX_P0,
+			0x19 << AUX_TX_OVER_SAMPLE_RATE_AUX_TX_P0_FLDMASK_POS,
+			AUX_TX_OVER_SAMPLE_RATE_AUX_TX_P0_FLDMASK);
+	msWriteByteMask(mtk_dp,
+		REG_3614_AUX_TX_P0,
+		0x0D,
+		MASKBIT(6 : 0));    // Modify, 13 for 26M
+	msWrite4ByteMask(mtk_dp,
+		REG_37C8_AUX_TX_P0,
+		0x01 << MTK_ATOP_EN_AUX_TX_P0_FLDMASK_POS,
+		MTK_ATOP_EN_AUX_TX_P0_FLDMASK);
+	// disable aux sync_stop detect function
+	msWrite4ByteMask(mtk_dp,REG_3690_AUX_TX_P0,
+			RX_REPLY_COMPLETE_MODE_AUX_TX_P0_FLDMASK,
+			RX_REPLY_COMPLETE_MODE_AUX_TX_P0_FLDMASK);
+
+	//Con Thd = 1.5ms+Vx0.1ms
+	msWrite4ByteMask(mtk_dp,REG_367C_AUX_TX_P0,
+		5 << HPD_CONN_THD_AUX_TX_P0_FLDMASK_POS,
+		HPD_CONN_THD_AUX_TX_P0_FLDMASK);
+	//DisCon Thd = 1.5ms+Vx0.1ms
+	msWrite4ByteMask(mtk_dp,REG_37A0_AUX_TX_P0,
+		5 << HPD_DISC_THD_AUX_TX_P0_FLDMASK_POS,
+		HPD_DISC_THD_AUX_TX_P0_FLDMASK);
+
+	msWrite4ByteMask(mtk_dp,REG_3690_AUX_TX_P0,
+		RX_REPLY_COMPLETE_MODE_AUX_TX_P0_FLDMASK,
+		RX_REPLY_COMPLETE_MODE_AUX_TX_P0_FLDMASK);
+#else
 	// modify timeout threshold = 1595 [12 : 8]
 	msWrite2ByteMask(mtk_dp,
 		REG_360C_AUX_TX_P0,
@@ -2356,12 +2721,67 @@ void mhal_DPTx_AuxSetting(struct mtk_dp *mtk_dp)
 		REG_37C8_AUX_TX_P0,
 		0x01 << MTK_ATOP_EN_AUX_TX_P0_FLDMASK_POS,
 		MTK_ATOP_EN_AUX_TX_P0_FLDMASK);
+#endif
+}
+
+static void mhal_DPTx_spkg_asp_hb32(struct mtk_dp *mtk_dp, u8 enable, u8 HB3, u8 HB2)
+{
+
+	msWrite2ByteMask(mtk_dp, REG_30BC_DP_ENCODER0_P0 ,
+			(enable ? 0x01 : 0x00) << ASP_HB23_SEL_DP_ENCODER0_P0_FLDMASK_POS,
+			ASP_HB23_SEL_DP_ENCODER0_P0_FLDMASK);
+	msWrite2ByteMask(mtk_dp, REG_312C_DP_ENCODER0_P0,
+			HB2 << ASP_HB2_DP_ENCODER0_P0_FLDMASK_POS,
+			ASP_HB2_DP_ENCODER0_P0_FLDMASK);
+	msWrite2ByteMask(mtk_dp, REG_312C_DP_ENCODER0_P0,
+			HB3 << ASP_HB3_DP_ENCODER0_P0_FLDMASK_POS,
+			ASP_HB3_DP_ENCODER0_P0_FLDMASK);
+}
+
+void mtk_dptx_hal_encoder_reset(struct mtk_dp *mtk_dp)
+{
+	// dp tx encoder reset all sw
+	msWrite2ByteMask(mtk_dp, (REG_3004_DP_ENCODER0_P0 ),
+			1 << DP_TX_ENCODER_4P_RESET_SW_DP_ENCODER0_P0_FLDMASK_POS,
+			DP_TX_ENCODER_4P_RESET_SW_DP_ENCODER0_P0_FLDMASK);
+	mdelay(1);
+
+	// dp tx encoder reset all sw
+	msWrite2ByteMask(mtk_dp, (REG_3004_DP_ENCODER0_P0),
+			0,
+			DP_TX_ENCODER_4P_RESET_SW_DP_ENCODER0_P0_FLDMASK);
 }
 
 void mhal_DPTx_DigitalSetting(struct mtk_dp *mtk_dp)
 {
 	DPTXFUNC();
+#if (DPTX_CHIP_ID >= DPTX_LIBER_CHIP_ID)
+	mhal_DPTx_spkg_asp_hb32(mtk_dp, FALSE, DPTX_SDP_ASP_HB3_AU02CH, 0x0);
+	// Mengkun suggest: disable reg_sdp_down_cnt_new_mode
+	msWriteByteMask(mtk_dp, REG_304C_DP_ENCODER0_P0, 0,
+					SDP_DOWN_CNT_NEW_MODE_DP_ENCODER0_P0_FLDMASK);
+	// reg_sdp_asp_insert_in_hblank: default = 1
+	msWrite2ByteMask(mtk_dp, REG_3374_DP_ENCODER1_P0,
+		0x1 << SDP_ASP_INSERT_IN_HBLANK_DP_ENCODER1_P0_FLDMASK_POS,
+		SDP_ASP_INSERT_IN_HBLANK_DP_ENCODER1_P0_FLDMASK);
 
+	msWriteByteMask(mtk_dp,
+		REG_304C_DP_ENCODER0_P0,
+		0,
+		VBID_VIDEO_MUTE_DP_ENCODER0_P0_FLDMASK);
+	mhal_DPTx_SetColorFormat(mtk_dp, DP_COLOR_FORMAT_RGB);//MISC0
+	// [13 : 12] : = 2b'01 VDE check BS2BS & set min value
+	mhal_DPTx_SetColorDepth(mtk_dp, DP_COLOR_DEPTH_8BIT);
+	msWrite4Byte(mtk_dp, REG_3368_DP_ENCODER1_P0,
+		//(0x1 << BS_FOLLOW_SEL_DP_ENCODER1_P0_FLDMASK_POS) |
+		(0x1 << 15) |
+		(0x4 << BS2BS_MODE_DP_ENCODER1_P0_FLDMASK_POS) |
+		(0x1 << SDP_DP13_EN_DP_ENCODER1_P0_FLDMASK_POS) |
+		(0x1 << VIDEO_STABLE_CNT_THRD_DP_ENCODER1_P0_FLDMASK_POS) |
+		(0x1 << VIDEO_SRAM_FIFO_CNT_RESET_SEL_DP_ENCODER1_P0_FLDMASK_POS));
+
+	mtk_dptx_hal_encoder_reset(mtk_dp);
+#else
 	msWriteByteMask(mtk_dp,
 		REG_304C_DP_ENCODER0_P0,
 		0,
@@ -2381,6 +2801,7 @@ void mhal_DPTx_DigitalSetting(struct mtk_dp *mtk_dp)
 	mdelay(1);
 	// dp tx encoder reset all sw
 	msWriteByteMask(mtk_dp, REG_3004_DP_ENCODER0_P0 + 1, 0, BIT(1));
+#endif
 }
 
 
@@ -2404,15 +2825,52 @@ void mhal_DPTx_SetTxLaneToLane(struct mtk_dp *mtk_dp, BYTE ucLaneNum,
 
 void mhal_DPTx_PHYD_Reset(struct mtk_dp *mtk_dp)
 {
+#if (DPTX_CHIP_ID >= DPTX_LIBER_CHIP_ID)
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_SW_RST, 0, BIT(0));
+	udelay(50);
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_SW_RST, BIT(0), BIT(0));
+#else
 	msWriteByteMask(mtk_dp, 0x1038, 0, BIT(0));
 	udelay(50);
 	msWriteByteMask(mtk_dp, 0x1038, BIT(0), BIT(0));
+#endif
 }
 
-void mhal_DPTx_SetTxLane(struct mtk_dp *mtk_dp, int Value)
+void mhal_DPTx_SetTxLane(struct mtk_dp *mtk_dp, const enum DPTX_LANE_COUNT lane_count)
 {
-	DPTXFUNC();
+	const UINT8 Value = lane_count/2;
 
+	DPTXFUNC();
+#if (DPTX_CHIP_ID >= DPTX_LIBER_CHIP_ID)
+	if (Value == 0)
+		msWriteByteMask(mtk_dp,
+			REG_35F0_DP_TRANS_P0,
+			0,
+			BIT(3)|BIT(2));
+	else
+		msWriteByteMask(mtk_dp,
+			REG_35F0_DP_TRANS_P0,
+			BIT(3),
+			BIT(3)|BIT(2));
+
+
+	msWriteByteMask(mtk_dp, REG_3000_DP_ENCODER0_P0,
+	Value << LANE_NUM_DP_ENCODER0_P0_FLDMASK_POS,
+	LANE_NUM_DP_ENCODER0_P0_FLDMASK);
+
+
+	msWriteByteMask(mtk_dp,
+		REG_34A4_DP_TRANS_P0,
+		(Value << 2),
+		BIT(3)|BIT(2));
+
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_TX_CTL_0,
+			((1 << (lane_count)) - 1) << TX_LN_EN_FLDMASK_POS, TX_LN_EN_FLDMASK);
+	DPTXMSG("Current lane power %x\n", ((1 << (lane_count)) - 1));
+
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_SW_RST, 0, 0xFF);
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_SW_RST, 0xFF, 0xFF);
+#else
 	if (Value == 0)
 		msWriteByteMask(mtk_dp,
 			REG_35F0_DP_TRANS_P0,
@@ -2433,6 +2891,7 @@ void mhal_DPTx_SetTxLane(struct mtk_dp *mtk_dp, int Value)
 		REG_34A4_DP_TRANS_P0,
 		(Value << 2),
 		BIT(3)|BIT(2));
+#endif
 }
 
 void mhal_DPTx_SetAuxSwap(struct mtk_dp *mtk_dp, bool enable)
@@ -2451,7 +2910,35 @@ void mhal_DPTx_SetAuxSwap(struct mtk_dp *mtk_dp, bool enable)
 void mhal_DPTx_SetTxRate(struct mtk_dp *mtk_dp, int Value)
 {
 	DPTXFUNC();
+#if (DPTX_CHIP_ID >= DPTX_LIBER_CHIP_ID)
+	// power off TPLL and Lane;
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
+		0x1 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
 
+	DPTXMSG("Set Tx Rate = 0x%x\n", Value);
+
+	/// Set gear : 0x0 : RBR, 0x1 : HBR, 0x2 : HBR2, 0x3 : HBR3
+	switch (Value) {
+	case 0x06:
+		msPhyWrite4Byte(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_BIT_RATE, 0x0);
+		break;
+	case 0x0A:
+		msPhyWrite4Byte(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_BIT_RATE, 0x1);
+		break;
+	case 0x14:
+		msPhyWrite4Byte(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_BIT_RATE, 0x2);
+		break;
+	case 0x1E:
+		msPhyWrite4Byte(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_BIT_RATE, 0x3);
+		break;
+	default:
+		break;
+	}
+
+	// power on BandGap, TPLL and Lane;
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
+		0x3 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
+#else
 	msWrite4Byte(mtk_dp, 0x2000, 0x00000001); // power off TPLL and Lane;
 	/// Set gear : 0x0 : RBR, 0x1 : HBR, 0x2 : HBR2, 0x3 : HBR3
 	msWrite4ByteMask(mtk_dp, 0x003C, 0x001 << 23, BITMASK(23:23));
@@ -2487,6 +2974,7 @@ void mhal_DPTx_SetTxRate(struct mtk_dp *mtk_dp, int Value)
 	msWrite4Byte(mtk_dp,
 		0x2000,
 		0x00000003); // power on BandGap, TPLL and Lane;
+#endif
 }
 
 void mhal_DPTx_SetTxTrainingPattern(struct mtk_dp *mtk_dp, int  Value)
@@ -2656,7 +3144,7 @@ void mhal_DPTx_PHY_ResetPattern(struct mtk_dp *mtk_dp)
 {
 	DPTXFUNC();
 	//reset pattern
-	mhal_DPTx_SetTxLane(mtk_dp, DPTx_LANE_4);
+	mhal_DPTx_SetTxLane(mtk_dp, DPTX_4LANE);
 	mhal_DPTx_ProgramPatternEnable(mtk_dp, false);
 	mhal_DPTx_PatternSelect(mtk_dp, 0x00);
 	mhal_DPTx_PRBSEnable(mtk_dp, false);
@@ -2741,9 +3229,14 @@ void mhal_DPTx_AnalogPowerOnOff(struct mtk_dp *mtk_dp, bool enable)
 	} else {
 		msWrite2Byte(mtk_dp, TOP_OFFSET, 0x0);
 		udelay(10);
+	#if (DPTX_CHIP_ID >= DPTX_LIBER_CHIP_ID)
+		msPhyWrite2Byte(mtk_dp, 0x0034, 0x4AA);
+		msPhyWrite2Byte(mtk_dp, 0x1040, 0x0);
+		msPhyWrite2Byte(mtk_dp, 0x0038, 0x555);
+	#else
 		msWrite2Byte(mtk_dp, 0x0034, 0x4AA);
 		msWrite2Byte(mtk_dp, 0x1040, 0x0);
 		msWrite2Byte(mtk_dp, 0x0038, 0x555);
+	#endif
 	}
 }
-
