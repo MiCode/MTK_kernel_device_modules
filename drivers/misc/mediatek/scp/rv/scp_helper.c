@@ -871,10 +871,10 @@ static int scp_check_kasan_handler(unsigned int id, void *prdata, void *data,
 	struct scp_kasan_info_st *info = (struct scp_kasan_info_st *)data;
 
 	if(info->ubsan_en)
-		pr_notice("[SCP] scp ubsan is enable\n");
+		pr_debug("[SCP] scp ubsan is enable\n");
 
 	if(info->asan_en)
-		pr_notice("[SCP] scp asan is enable\n");
+		pr_debug("[SCP] scp asan is enable\n");
 
 	return 0;
 }
