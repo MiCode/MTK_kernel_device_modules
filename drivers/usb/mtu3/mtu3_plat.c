@@ -136,7 +136,7 @@ static void ssusb_hwrscs_req_v2(struct ssusb_mtk *ssusb,
 		regmap_update_bits(ssusb->clkgate, REQ_GATE7, 0xF, 0xF);
 	}
 
-	spm_ctrl = mtu3_readl(ibase, U3D_SSUSB_SPM_CTRL);
+	spm_ctrl = mtu3_readl(ibase, U3D_SSUSB_SPM_CTRL_V2);
 
 	/* Clear FORCE HW Request which is default on since MT6989 */
 	spm_ctrl &= ~SSUSB_SPM_FORCE_HW_REQ_MSK;
