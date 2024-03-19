@@ -87,7 +87,7 @@ char *smpu_clear_md_violation(void)
 	ssize_t msg_len = 0;
 	int i;
 	unsigned int parser_shift = 0x40;
-	char *ret0 = "fail", *ret1 = "clear_md_vio";
+	char *ret0 = "fail", *ret1 = "clear_md_vio", *ret2 = "get_md_vio_fail";
 
 	/*
 	 * get the violation log after 6897
@@ -126,6 +126,7 @@ char *smpu_clear_md_violation(void)
 					dump_reg[i].offset - parser_shift,
 					dump_reg[i].value);
 		}
+		ret2 = smpu->vio_msg;
 		if( (dump_reg[0].value > 0x2) || (dump_reg[9].value > 0x2 ))
 			pr_info("%s: %s", __func__, smpu->vio_msg);
 	}
@@ -165,7 +166,7 @@ char *smpu_clear_md_violation(void)
 		return ret1;
 	}
 
-	return smpu->vio_msg;
+	return ret2;
 }
 EXPORT_SYMBOL(smpu_clear_md_violation);
 
