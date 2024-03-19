@@ -267,6 +267,8 @@ enum smi_log_level {
 	log_disable_ultra,
 };
 
+static u32 enable_perm_aee = 1;
+
 #define MAX_INIT_POWER_ON_DEV	(30)
 static struct mtk_smi *init_power_on_dev[MAX_INIT_POWER_ON_DEV];
 static unsigned int init_power_on_num;
@@ -489,17 +491,17 @@ void mtk_smi_set_hrt_perm(struct device *dev, const u32 port, bool is_hrt)
 	if (log_level & 1 << log_disable_ultra)
 		dev_notice(dev, "larb%d port%d set hrt:%d\n", larb->larbid, port, is_hrt);
 	if (is_hrt) {
-		if (is_larb_port_can_be_hrt(dev, port)) {
-			if (atomic_read(&larb->smi.ref_count)) {
-				//disable dis_ultra
-				mtk_smi_larb_port_dis_ultra(larb->smi.dev, port, false);
-				//disable bw thr
-				mtk_smi_larb_bw_thr(larb->smi.dev, port, false);
-			}
-		} else {
+		if (!is_larb_port_can_be_hrt(dev, port) && enable_perm_aee) {
 			aee_kernel_exception("smi",
 				"larb%u port%u is SRT or cannot modify in APMCU, reports HRT BW\n",
 				larb->larbid, port);
+			return;
+		}
+		if (atomic_read(&larb->smi.ref_count)) {
+			//disable dis_ultra
+			mtk_smi_larb_port_dis_ultra(larb->smi.dev, port, false);
+			//disable bw thr
+			mtk_smi_larb_bw_thr(larb->smi.dev, port, false);
 		}
 	} else {
 		//enable dis_ultra
@@ -5544,6 +5546,9 @@ module_exit(mtk_smi_exit);
 
 module_param(log_level, uint, 0644);
 MODULE_PARM_DESC(log_level, "smi log level");
+
+module_param(enable_perm_aee, uint, 0644);
+MODULE_PARM_DESC(enable_perm_aee, "enable_perm_aee");
 
 MODULE_DESCRIPTION("MediaTek SMI driver");
 MODULE_LICENSE("GPL v2");
