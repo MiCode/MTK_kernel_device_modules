@@ -116,99 +116,6 @@ bootargs_ext = "rcu_nocbs=0-7";
 	pinctrl-names = "mode_te_te";
 	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
 	status = "okay";
-//	enable-secondary-path = <1>;
-};
-
-&mipi_tx_config1 {
-//	status = "okay";
-};
-
-&dsi1 {
-//	status = "okay";
-	#address-cells = <1>;
-	#size-cells = <0>;
-	init-panel-off;
-	panel1@0 {
-		compatible = "truly,td4330,cmd";
-		reg = <0>;
-		pm-enable-gpios = <&pio 215 0>;
-		reset-gpios = <&pio 9 0>;
-		swap-from-dts;
-		lane-swap-setting = <1 2 0 3 4 2>;
-		pn-swap-setting = <1 1 1 1 1 1>;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel1_in: endpoint {
-				remote-endpoint = <&dsi1_out>;
-			};
-		};
-	};
-	panel2@1 {
-		compatible = "jdi,nt36672e,vdo,120hz";
-		reg = <1>;
-		pm-enable-gpios = <&pio 215 0>;
-		reset-gpios = <&pio 9 0>;
-		swap-from-dts;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel2_in: endpoint {
-				remote-endpoint = <&dsi1_out2>;
-			};
-		};
-	};
-	panel3@2 {
-		compatible = "jdi,nt36672e,cphy,vdo";
-		reg = <2>;
-		pm-enable-gpios = <&pio 215 0>;
-		reset-gpios = <&pio 9 0>;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel3_in: endpoint {
-				remote-endpoint = <&dsi1_out3>;
-			};
-		};
-	};
-	panel4@3 {
-		compatible = "jdi,nt36672e,vdo,60hz";
-		reg = <3>;
-		pm-enable-gpios = <&pio 215 0>;
-		reset-gpios = <&pio 9 0>;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel4_in: endpoint {
-				remote-endpoint = <&dsi1_out4>;
-			};
-		};
-	};
-	ports {
-		port {
-			dsi1_out: endpoint@0 {
-				remote-endpoint = <&panel1_in>;
-			};
-
-			dsi1_out2: endpoint@1 {
-				remote-endpoint = <&panel2_in>;
-			};
-
-			dsi1_out3: endpoint@2 {
-				remote-endpoint = <&panel3_in>;
-			};
-
-			dsi1_out4: endpoint@3 {
-				remote-endpoint = <&panel4_in>;
-			};
-		};
-	};
-};
-
-&dsi1_te {
-	interrupt-parent = <&pio>;
-	interrupts = <10 1 10 1>;
-	status = "okay";
 };
 
 &dsi0 {
@@ -450,6 +357,56 @@ bootargs_ext = "rcu_nocbs=0-7";
 &charger {
 	disable-charger;
 	status = "disabled";
+};
+
+&mtkfb {
+	pinctrl-names = "lcd_bias_enp1_gpio", "lcd_bias_enp0_gpio",
+		"lcd_bias_enn1_gpio", "lcd_bias_enn0_gpio",
+		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
+		"mode_te_te", "lcm_led_en1_gpio", "lcm_led_en0_gpio";
+	pinctrl-0 = <&mtkfb_pins_lcd_bias_enp1>;
+	pinctrl-1 = <&mtkfb_pins_lcd_bias_enp0>;
+	pinctrl-2 = <&mtkfb_pins_lcd_bias_enn1>;
+	pinctrl-3 = <&mtkfb_pins_lcd_bias_enn0>;
+	pinctrl-4 = <&mtkfb_pins_lcm_rst_out1_gpio>;
+	pinctrl-5 = <&mtkfb_pins_lcm_rst_out0_gpio>;
+	pinctrl-6 = <&mtkfb_pins_lcm_dsi_te>;
+	pinctrl-7 = <&mtkfb_pins_lcm_led_en1>;
+	pinctrl-8 = <&mtkfb_pins_lcm_led_en0>;
+
+	status = "okay";
+};
+
+&dispsys_config {
+	pinctrl-names = "mode_te_te";
+	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
+	status = "okay";
+};
+
+&dsi1 {
+//	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	panel21@0 {
+		compatible = "jdi,nt36672e,vdo,60hz";
+		reg = <0>;
+		pm-enable-gpios = <&pio 68 0>;
+		reset-gpios = <&pio 75 0>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel21_in: endpoint {
+				remote-endpoint = <&dsi1_out>;
+			};
+		};
+	};
+	ports {
+		port {
+			dsi1_out: endpoint {
+				remote-endpoint = <&panel21_in>;
+			};
+		};
+	};
 };
 
 #if 0

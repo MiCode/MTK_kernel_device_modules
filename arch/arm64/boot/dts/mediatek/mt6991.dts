@@ -6315,11 +6315,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			status = "disabled";
 		};
 
-		dsi1_te: dsi1-te {
-			compatible = "mediatek, dsi1_te-eint";
-			status = "disabled";
-		};
-
 		gce: gce@300c0000 {
 			compatible = "mediatek,mt6991-gce";
 			reg = <0 0x300c0000 0 0x80000>;
@@ -8534,7 +8529,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					0x0e080400 0x000c0600 0x00000006>;
 		};
 
-		dsi0: dsi0@32490000 {
+		dsi0: dsi@32490000 {
 			compatible = "mediatek,disp1_dsi0",
 					"mediatek,mt6991-dsi";
 			reg = <0 0x32490000 0 0x1000>;
@@ -8547,13 +8542,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			phy-names = "dphy";
 		};
 
-		dsi1: dsi1@324a0000 {
+		dsi1: dsi@324a0000 {
 			compatible = "mediatek,disp1_dsi1",
 					"mediatek,mt6991-dsi";
 			reg = <0 0x324a0000 0 0x1000>;
 			interrupts = <GIC_SPI 450 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSI1_DISP>,
-				<&dispsys1_config_clk CLK_MM1_MOD2_DISP>,
+				 <&dispsys1_config_clk CLK_MM1_MOD1_DISP>,
 				 <&mipi_tx_config1>;
 			clock-names = "engine", "digital", "hs";
 			phys = <&mipi_tx_config1>;
@@ -8561,13 +8556,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			status = "disabled";
 		};
 
-		dsi2: dsi2@324b0000 {
+		dsi2: dsi@324b0000 {
 			compatible = "mediatek,disp1_dsi2",
 					"mediatek,mt6991-dsi";
 			reg = <0 0x324b0000 0 0x1000>;
 			interrupts = <GIC_SPI 450 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSI2_DISP>,
-				<&dispsys1_config_clk CLK_MM1_MOD3_DISP>,
+				 <&dispsys1_config_clk CLK_MM1_MOD1_DISP>,
 				 <&mipi_tx_config2>;
 			clock-names = "engine", "digital", "hs";
 			phys = <&mipi_tx_config2>;
@@ -9420,7 +9415,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			vidle-mask = <0x13>;
 		};
 
-		mipi_tx_config0: mipi-tx-config0@130b0000 {
+		mipi_tx_config0: mipi-tx-config@130b0000 {
 			compatible = "mediatek,mipi_tx_config0",
 						"mediatek,mt6991-mipi-tx";
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DSI_PHY0>;
@@ -9431,7 +9426,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			clock-output-names = "mipi_tx0_pll";
 		};
 
-		mipi_tx_config1: mipi-tx-config1@130c0000 {
+		mipi_tx_config1: mipi-tx-config@130c0000 {
 			compatible = "mediatek,mipi_tx_config1",
 						"mediatek,mt6991-mipi-tx";
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DSI_PHY1>;
@@ -9443,7 +9438,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			status = "disabled";
 		};
 
-		mipi_tx_config2: mipi-tx-config2@130d0000 {
+		mipi_tx_config2: mipi-tx-config@130d0000 {
 			compatible = "mediatek,mipi_tx_config2",
 						"mediatek,mt6991-mipi-tx";
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DSI_PHY2>;
