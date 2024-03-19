@@ -342,6 +342,7 @@ static int jank_cpu_mask;
 static int rl_l2q_enable;
 static int rl_l2q_exp_us;
 static int rl_l2q_exp_times;
+static int user_vsync_fpks;
 static unsigned long long fps_drop_time;
 static int powerRL_enable;
 static int powerRL_FPS_margin;
@@ -4580,7 +4581,10 @@ unsigned int fbt_get_expected_fpks(int pid, unsigned long long bufID,
 
 	if (display_fps_enable && vsync_period_ns) {
 		vsync_period_us = vsync_period_ns / 1000;
-		vsync_fpks = FBTCPU_SEC_DIVIDER / vsync_period_us;
+		if (!user_vsync_fpks)
+			vsync_fpks = FBTCPU_SEC_DIVIDER / vsync_period_us;
+		else
+			vsync_fpks = user_vsync_fpks;
 		final_expect_fpks = min(vsync_fpks, final_expect_fpks);
 		fpsgo_systrace_c_fbt(pid, bufID, vsync_fpks, "vsync_fpks");
 	}
@@ -9149,6 +9153,10 @@ FBT_SYSFS_READ(rl_l2q_enable, fbt_mlock, rl_l2q_enable);
 FBT_SYSFS_WRITE_VALUE(rl_l2q_enable, fbt_mlock, rl_l2q_enable, 0, 1);
 static KOBJ_ATTR_RW(rl_l2q_enable);
 
+FBT_SYSFS_READ(user_vsync_fpks, fbt_mlock, user_vsync_fpks);
+FBT_SYSFS_WRITE_VALUE(user_vsync_fpks, fbt_mlock, user_vsync_fpks, 0, 144000);
+static KOBJ_ATTR_RW(user_vsync_fpks);
+
 void fbt_init_cpu_loading_info(void)
 {
 	int i = 0, err_exit = 0;
@@ -9263,6 +9271,7 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_rl_l2q_enable);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_rl_l2q_exp_us);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_rl_l2q_exp_times);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_user_vsync_fpks);
 
 	fpsgo_sysfs_remove_dir(&fbt_kobj);
 	fbt_delete_cpu_loading_info();
@@ -9518,6 +9527,7 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_rl_l2q_enable);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_rl_l2q_exp_us);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_rl_l2q_exp_times);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_user_vsync_fpks);
 	}
 
 	bat_psy = power_supply_get_by_name("battery");
