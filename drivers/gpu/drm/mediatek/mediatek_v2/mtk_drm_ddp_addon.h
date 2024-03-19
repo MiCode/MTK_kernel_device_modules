@@ -148,6 +148,7 @@ struct mtk_addon_wdma_config {
 	dma_addr_t addr;
 	struct drm_framebuffer *fb;
 	struct golden_setting_context *p_golden_setting_context;
+	bool is_secure;
 };
 
 struct mtk_addon_mml_config {
