@@ -153,8 +153,7 @@ static const struct scp_domain_data scp_domain_mt6991_spm_data[] = {
 			BUS_PROT_IGN(SPM_TYPE, 0xDC, 0xE0, 0xD8, 0x208,
 				MT6991_SPM_PROT_EN_BUS_PEXTP_MAC0),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF | MTK_SCPD_RTFF_DELAY
-				| default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_PEXTP_MAC1] = {
 		.name = "pextp-mac1",
@@ -165,8 +164,7 @@ static const struct scp_domain_data scp_domain_mt6991_spm_data[] = {
 			BUS_PROT_IGN(SPM_TYPE, 0xDC, 0xE0, 0xD8, 0x208,
 				MT6991_SPM_PROT_EN_BUS_PEXTP_MAC1),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF | MTK_SCPD_RTFF_DELAY
-				| default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_PEXTP_MAC2] = {
 		.name = "pextp-mac2",
@@ -177,8 +175,7 @@ static const struct scp_domain_data scp_domain_mt6991_spm_data[] = {
 			BUS_PROT_IGN(SPM_TYPE, 0xDC, 0xE0, 0xD8, 0x208,
 				MT6991_SPM_PROT_EN_BUS_PEXTP_MAC2),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF | MTK_SCPD_RTFF_DELAY
-				| default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_PEXTP_PHY0] = {
 		.name = "pextp-phy0",
@@ -187,8 +184,7 @@ static const struct scp_domain_data scp_domain_mt6991_spm_data[] = {
 			BUS_PROT_IGN(SPM_TYPE, 0xDC, 0xE0, 0xD8, 0x208,
 				MT6991_SPM_PROT_EN_BUS_PEXTP_PHY0),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF | MTK_SCPD_RTFF_DELAY
-				| default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_PEXTP_PHY1] = {
 		.name = "pextp-phy1",
@@ -197,8 +193,7 @@ static const struct scp_domain_data scp_domain_mt6991_spm_data[] = {
 			BUS_PROT_IGN(SPM_TYPE, 0xDC, 0xE0, 0xD8, 0x208,
 				MT6991_SPM_PROT_EN_BUS_PEXTP_PHY1),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF | MTK_SCPD_RTFF_DELAY
-				| default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_PEXTP_PHY2] = {
 		.name = "pextp-phy2",
@@ -207,8 +202,7 @@ static const struct scp_domain_data scp_domain_mt6991_spm_data[] = {
 			BUS_PROT_IGN(SPM_TYPE, 0xDC, 0xE0, 0xD8, 0x208,
 				MT6991_SPM_PROT_EN_BUS_PEXTP_PHY2),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF | MTK_SCPD_RTFF_DELAY
-				| default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_AUDIO] = {
 		.name = "audio",
@@ -360,8 +354,7 @@ static const struct scp_domain_data scp_domain_mt6991_spm_hwv_data[] = {
 			BUS_PROT_IGN(SPM_TYPE, 0xDC, 0xE0, 0xD8, 0x208,
 				MT6991_SPM_PROT_EN_BUS_PEXTP_MAC0),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF | MTK_SCPD_RTFF_DELAY
-				| default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_PEXTP_MAC1] = {
 		.name = "pextp-mac1",
@@ -372,8 +365,7 @@ static const struct scp_domain_data scp_domain_mt6991_spm_hwv_data[] = {
 			BUS_PROT_IGN(SPM_TYPE, 0xDC, 0xE0, 0xD8, 0x208,
 				MT6991_SPM_PROT_EN_BUS_PEXTP_MAC1),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF | MTK_SCPD_RTFF_DELAY
-				| default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_PEXTP_MAC2] = {
 		.name = "pextp-mac2",
@@ -384,8 +376,7 @@ static const struct scp_domain_data scp_domain_mt6991_spm_hwv_data[] = {
 			BUS_PROT_IGN(SPM_TYPE, 0xDC, 0xE0, 0xD8, 0x208,
 				MT6991_SPM_PROT_EN_BUS_PEXTP_MAC2),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF | MTK_SCPD_RTFF_DELAY
-				| default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_PEXTP_PHY0] = {
 		.name = "pextp-phy0",
@@ -394,8 +385,7 @@ static const struct scp_domain_data scp_domain_mt6991_spm_hwv_data[] = {
 			BUS_PROT_IGN(SPM_TYPE, 0xDC, 0xE0, 0xD8, 0x208,
 				MT6991_SPM_PROT_EN_BUS_PEXTP_PHY0),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF | MTK_SCPD_RTFF_DELAY
-				| default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_PEXTP_PHY1] = {
 		.name = "pextp-phy1",
@@ -404,8 +394,7 @@ static const struct scp_domain_data scp_domain_mt6991_spm_hwv_data[] = {
 			BUS_PROT_IGN(SPM_TYPE, 0xDC, 0xE0, 0xD8, 0x208,
 				MT6991_SPM_PROT_EN_BUS_PEXTP_PHY1),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF | MTK_SCPD_RTFF_DELAY
-				| default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_PEXTP_PHY2] = {
 		.name = "pextp-phy2",
@@ -414,8 +403,7 @@ static const struct scp_domain_data scp_domain_mt6991_spm_hwv_data[] = {
 			BUS_PROT_IGN(SPM_TYPE, 0xDC, 0xE0, 0xD8, 0x208,
 				MT6991_SPM_PROT_EN_BUS_PEXTP_PHY2),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF | MTK_SCPD_RTFF_DELAY
-				| default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_AUDIO] = {
 		.name = "audio",
