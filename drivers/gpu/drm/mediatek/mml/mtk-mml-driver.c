@@ -486,7 +486,7 @@ static void create_dev_topology_locked(struct mml_dev *mml)
 	if (!mml->topology) {
 		mml->topology = mml_topology_create(mml, mml->pdev,
 			mml->cmdq_clts, mml->cmdq_clt_cnt);
-		if (mml->topology)
+		if (!IS_ERR_OR_NULL(mml->topology))
 			mml->topology->qos = mml->qos;
 	}
 	if (IS_ERR(mml->topology))

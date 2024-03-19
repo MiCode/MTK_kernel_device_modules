@@ -317,20 +317,13 @@ struct mml_topology_cache *mml_topology_create(struct mml_dev *mml,
 	}
 	mutex_unlock(&tp_mutex);
 
-	if (tp->op->init_cache)
-		tp->op->init_cache(mml, tp, clts, clt_cnt);
-
-
-	tp->mode_caps = BIT(MML_MODE_MML_DECOUPLE);
-	if (mml_dl_enable(mml))
-		tp->mode_caps |= BIT(MML_MODE_DIRECT_LINK);
-	if (mml_racing_enable(mml))
-		tp->mode_caps |= BIT(MML_MODE_RACING);
-	if (tp->op->support_dc2 && tp->op->support_dc2())
-		tp->mode_caps |= BIT(MML_MODE_MML_DECOUPLE2);
-	else
-		tp->mode_caps |= BIT(MML_MODE_MDP_DECOUPLE);
-
+	if (tp->op->init_cache) {
+		err = tp->op->init_cache(mml, tp, clts, clt_cnt);
+		if (err) {
+			devm_kfree(&pdev->dev, tp);
+			tp = err == -EAGAIN ? NULL : ERR_PTR(err);
+		}
+	}
 	return tp;
 }
 
