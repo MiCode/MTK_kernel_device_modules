@@ -96,7 +96,7 @@ ged-y += \
 	src/ged_gpufreq_v1.o
 endif
 
-ifeq ($(CONFIG_MTK_GPU_SUPPORT),m)
+ifneq ($(filter y m, $(CONFIG_MTK_GPU_SUPPORT)),)
 ged-y += \
 	src/ged.o \
 	src/ged_base.o \
