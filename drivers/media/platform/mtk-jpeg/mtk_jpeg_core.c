@@ -728,7 +728,6 @@ static void mtk_jpeg_update_bw_request(struct mtk_jpeg_ctx *ctx)
 	} else {
 		picSize = (ctx->out_q.pix_mp.width * ctx->out_q.pix_mp.height) / 1000;
 		emi_bw = picSize * target_fps;
-		emi_bw = emi_bw * 4/3;
 		pr_info("Width %d Height %d emi_bw %d\n",
 		ctx->out_q.pix_mp.width, ctx->out_q.pix_mp.height, emi_bw);
 		if (ctx->out_q.fmt->fourcc == V4L2_PIX_FMT_YUYV ||
