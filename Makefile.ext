@@ -90,6 +90,8 @@ obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/media/platform/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/usb/
 
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/net/ethernet/stmicro/
+
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/devfreq/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/misc/mediatek/

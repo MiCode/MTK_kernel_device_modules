@@ -90,6 +90,8 @@ obj-y += drivers/media/platform/
 
 obj-y += drivers/usb/
 
+obj-y += drivers/net/ethernet/stmicro/
+
 obj-y += drivers/devfreq/
 
 obj-y += drivers/misc/mediatek/
