@@ -18,6 +18,7 @@ unsigned int ged_get_cur_volt(void);
 int ged_get_cur_oppidx(void);
 int ged_get_max_oppidx(void);
 int ged_get_min_oppidx(void);
+int ged_get_min_stack_oppidx(void);
 int ged_get_min_oppidx_real(void);
 int ged_get_opp_num(void);
 int ged_get_opp_num_real(void);

@@ -33,6 +33,7 @@
 #include "ged_global.h"
 #include "ged_log.h"
 #include "ged_tracepoint.h"
+#include "ged_dcs.h"
 
 #include <mt-plat/mtk_gpu_utility.h>
 
@@ -113,6 +114,12 @@ static void ged_eb_work_cb(struct work_struct *psWork)
 		GPUFDVFS_LOGD("%s@%d top clock:%d(KHz)\n",
 				__func__, __LINE__, psEBEvent->freq_new);
 		mtk_notify_gpu_freq_change(0, psEBEvent->freq_new);
+		if (eb_policy_dts_flag && ged_get_cur_oppidx() < ged_get_min_stack_oppidx()
+			&& dcs_get_cur_core_num() != dcs_get_max_core_num()) {
+			mutex_lock(&gsPolicyLock);
+			ged_kpi_fastdvfs_update_dcs();
+			mutex_unlock(&gsPolicyLock);
+		}
 		break;
 	case GPUFDVFS_IPI_EVENT_DEBUG_MODE_ON:
 		//eb_cur_loading = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_CUR_LOADING);
