@@ -49,6 +49,16 @@ config DEVICE_MODULES_DWMAC_MEDIATEK
 
 	  This selects the MT2712 SoC support for the stmmac driver.
 
+config DEVICE_MODULES_SGMII_PWR
+	tristate "SGMII support"
+	depends on OF && ARCH_MEDIATEK
+	help
+	  Enable MediaTek platform SGMII for fast Ethernet transmission.
+	  Necessary for MediaTek Ethernet systems.
+	  Provides MT8678 SGMII driver support.
+
+	  This selects the MT8678 SGMII support.
+
 endif
 
 endif
