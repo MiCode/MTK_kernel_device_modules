@@ -1588,7 +1588,7 @@ static const struct mtk_disp_color_data mt6877_color_driver_data = {
 			0x1400D000, 0x1400F000, 0x1400A000},
 	.color_window = 0x40185E57,
 	.support_shadow = false,
-	.need_bypass_shadow = false,
+	.need_bypass_shadow = true,
 };
 
 static const struct mtk_disp_color_data mt6853_color_driver_data = {
