@@ -703,7 +703,7 @@ static void bat_handler(struct work_struct *work)
 	}
 
 	if (temp != last_temp || soc != last_soc) {
-		volt = soc_to_ocv(soc * 100, 0, SOC_ERROR);
+		volt = soc_to_ocv(soc * 100, 0, pb.soc_err);
 		pb.ppb_ocv = volt / 10;
 		ppb_sys_power = get_sys_power_budget(pb.ppb_ocv, pb.cur_rdc, pb.cur_rac, pb.ocp, pb.uvlo);
 		last_temp = temp;
@@ -950,6 +950,9 @@ static int __used read_power_budget_dts(struct platform_device *pdev)
 
 	if (read_dts_val(np, "ppb-version", &pb.version, 1))
 		pb.version = 1;
+
+	if (read_dts_val(np, "soc-error", &pb.soc_err, 1))
+		pb.soc_err = SOC_ERROR;
 
 	read_dts_val(np, "max-temperature-stage", &num, 1);
 	if (num > 4 || num < 0)

@@ -92,6 +92,7 @@ struct hpt {
 
 struct power_budget_t {
 	unsigned int version;
+	unsigned int soc_err;
 	unsigned int temp_cur_stage;
 	unsigned int temp_max_stage;
 	int temp_thd[4];
