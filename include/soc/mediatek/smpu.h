@@ -59,7 +59,7 @@ typedef void (*smpu_md_handler)(const char *vio_msg);
 typedef irqreturn_t (*smpu_isr_hook)(struct smpu_reg_info_t *dump,
 				     unsigned int leng, int vio_type);
 int mtk_smpu_isr_hook_register(smpu_isr_hook hook);
-void smpu_clear_md_violation(void);
+char *smpu_clear_md_violation(void);
 
 struct smpu {
 	const char *name;
@@ -72,6 +72,7 @@ struct smpu {
 	struct smpu_reg_info_t *dump_reg;
 	struct smpu_reg_info_t *clear_reg;
 	struct smpu_reg_info_t *mask_reg;
+	struct smpu_reg_info_t *dump_md_reg;
 	struct smpu_reg_info_t *clear_md_reg;
 
 	struct smpu_vio_dump_info_t *vio_reg_info;
@@ -79,6 +80,7 @@ struct smpu {
 	unsigned int dump_cnt;
 	unsigned int clear_cnt;
 	unsigned int mask_cnt;
+	unsigned int dump_md_cnt;
 	unsigned int clear_md_cnt;
 	unsigned int vio_dump_cnt;
 	void __iomem **mpu_base;
