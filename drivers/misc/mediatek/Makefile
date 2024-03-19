@@ -135,3 +135,4 @@ obj-$(CONFIG_MTK_WLA) += wla/
 obj-$(CONFIG_MTK_SPM_CAREVENT) += carevent/
 obj-$(CONFIG_ARM) += arm_div/
 obj-$(CONFIG_ROOTFS_CHECK) += rootfs_check/
+obj-$(CONFIG_MTK_PKVM_MKP) += pkvm_mkp/
