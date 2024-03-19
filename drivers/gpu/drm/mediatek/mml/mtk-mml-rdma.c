@@ -432,10 +432,10 @@ enum rdma_golden_fmt {
 struct rdma_data {
 	u32 tile_width;
 	u32 sram_size;
-	u8 rb_swap;	/* version for rb channel swap behavior */
-	bool alpha_rsz_crop;
-	bool write_sec_reg;
-	bool tile_reset;
+	u8 rb_swap;		/* WA: version for rb channel swap behavior */
+	bool alpha_rsz_crop;	/* WA: align rdma crop size when alpha resize */
+	bool write_sec_reg;	/* WA: write rdma registers in secured domain */
+	bool tile_reset;	/* WA: write dummy register to clean up states */
 
 	/* threshold golden setting for racing mode */
 	struct rdma_golden golden[GOLDEN_FMT_TOTAL];

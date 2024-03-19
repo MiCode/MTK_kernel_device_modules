@@ -212,8 +212,8 @@ static const u16 rrot_preultra_th[] = {
 
 struct rrot_data {
 	u32 tile_width;
-	bool alpha_pq_r2y;
-	bool ddren_off;
+	bool alpha_pq_r2y;	/* WA: fix rrot r2y to BT601 full when alpha resize */
+	bool ddren_off;		/* WA: disable ddren manually after frame done */
 
 	/* threshold golden setting for racing mode */
 	struct rrot_golden golden[GOLDEN_FMT_TOTAL];

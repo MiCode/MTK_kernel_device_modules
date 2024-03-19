@@ -251,12 +251,12 @@ struct aal_data {
 	u32 min_tile_width;
 	u32 tile_width;
 	u32 min_hist_width;
-	bool vcp_readback;
 	u16 gpr[MML_PIPE_CNT];
 	u16 cpr[MML_PIPE_CNT];
 	const u16 *reg_table;
 	bool crop;
-	bool alpha_pq_r2y;
+	bool vcp_readback;	/* WA: use vcp to replace gce readback */
+	bool alpha_pq_r2y;	/* WA: enable aal r2y to BT601 full when alpha resize */
 	u8 rb_mode;
 	bool is_linear;
 	u8 curve_ready_bit;
@@ -302,11 +302,11 @@ static const struct aal_data mt6895_aal0_data = {
 	.min_tile_width = 50,
 	.tile_width = 1300,
 	.min_hist_width = 128,
-	.vcp_readback = true,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
+	.vcp_readback = true,
 	.rb_mode = RB_EOF_MODE,
 	.curve_ready_bit = 16,
 };
@@ -315,11 +315,11 @@ static const struct aal_data mt6895_aal1_data = {
 	.min_tile_width = 50,
 	.tile_width = 852,
 	.min_hist_width = 128,
-	.vcp_readback = true,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
+	.vcp_readback = true,
 	.rb_mode = RB_EOF_MODE,
 	.curve_ready_bit = 16,
 };

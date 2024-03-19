@@ -107,7 +107,7 @@ struct tdshp_data {
 	u16 cpr[MML_PIPE_CNT];
 	const u16 *reg_table;
 	u8 rb_mode;
-	bool wrot_pending;
+	bool wrot_pending;	/* WA: enable wrot yuv422/420 pending zero */
 };
 
 static const struct tdshp_data mt6893_tdshp_data = {
