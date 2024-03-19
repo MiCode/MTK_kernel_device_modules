@@ -435,8 +435,8 @@ static void probe_irq_handler_exit(void *ignore, int irq,
 
 				set_bit(irq, irq_aee_state);
 				irq_mon_aee_callback(irq, IRQ_MON_AEE_TYPE_IRQ_LONG);
-				scnprintf(module, sizeof(module), "IRQ LONG:%d, %pS, %llu ms"
-					, irq, (void *)action->handler, msec_high(duration));
+				scnprintf(module, sizeof(module), "IRQ LONG:%d, %pS"
+					, irq, (void *)action->handler);
 				aee_kernel_warning_api(__FILE__, __LINE__,
 						       DB_OPT_DEFAULT | DB_OPT_FTRACE,
 						       module, msg);
@@ -639,8 +639,8 @@ static void probe_hrtimer_expire_exit(void *ignore, struct hrtimer *hrtimer)
 
 				ever_dump = 1;
 
-				scnprintf(module, sizeof(module), "HRTIMER LONG: %pS, %llu ms"
-					, (void *)hrtimer->function, msec_high(duration));
+				scnprintf(module, sizeof(module), "HRTIMER LONG: %pS"
+					, (void *)hrtimer->function);
 				aee_kernel_warning_api(__FILE__, __LINE__,
 						       DB_OPT_DEFAULT | DB_OPT_FTRACE,
 						       module, msg);

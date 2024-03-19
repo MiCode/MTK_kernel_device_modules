@@ -47,6 +47,7 @@ struct irq_count_period_setting {
 	{"arch_timer", 50000}, /* 20000 irqs per sec*/
 	{"musb-hdrc", 16666}, /* 60000 irqs per sec*/
 	{"11201000.usb0", 16666}, /* 60000 irqs per sec*/
+	{"16701000.usb0", 16666}, /* 60000 irqs per sec*/
 	{"wlan0", 12500}, /* 80000 irqs per sec*/
 	{"DPMAIF_AP", 1837}, /* 544125 irqs per sec */ /* data tput */
 	{"CCIF_AP_DATA0", 0}, /* No limit for MD EE to save debug logs. */
@@ -545,7 +546,6 @@ static void irq_count_core(void)
 				       sec_high(stat->t_start), sec_low(stat->t_start),
 				       sec_high(stat->t_end), sec_low(stat->t_end),
 				       cpu);
-			seq_buf_printf(&buf_mod, " +%lu in %llums", count, t_diff_ms);
 
 			irq_mon_msg(out, aee_msg);
 			if (out & TO_AEE) {
