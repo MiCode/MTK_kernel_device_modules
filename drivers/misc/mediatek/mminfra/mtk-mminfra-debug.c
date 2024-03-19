@@ -78,7 +78,9 @@ static atomic_t clk_ref_cnt = ATOMIC_INIT(0);
 static atomic_t vcp_ref_cnt = ATOMIC_INIT(0);
 static struct device *dev;
 static struct mminfra_dbg *dbg;
+#if IS_ENABLED(CONFIG_MTK_MMINFRA_DEBUG)
 static struct task_struct *mminfra_power_mon_thread;
+#endif
 static u32 mminfra_bkrs;
 static u32 bkrs_reg_pa;
 static u32 mm_pwr_ver;
