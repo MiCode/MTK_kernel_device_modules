@@ -550,7 +550,6 @@ static void mtk_pcie_save_restore_cfg(struct mtk_pcie_port *port, bool save)
 
 	if (port->cfg_saved && save) {
 		dev_info(port->dev, "Aleady saved config space, exit\n");
-		pci_dev_put(pdev);
 		spin_unlock_irqrestore(&port->cfg_lock, flags);
 		return;
 	}
@@ -565,7 +564,6 @@ static void mtk_pcie_save_restore_cfg(struct mtk_pcie_port *port, bool save)
 		port->cfg_saved = false;
 	}
 
-	pci_dev_put(pdev);
 	spin_unlock_irqrestore(&port->cfg_lock, flags);
 }
 
@@ -1510,6 +1508,8 @@ static int mtk_pcie_remove(struct platform_device *pdev)
 		dev_info(&pdev->dev, "Failed to set PCIe pins sleep state\n");
 		return err;
 	}
+
+	pci_dev_put(port->pcidev);
 
 	return 0;
 }
@@ -2603,11 +2603,11 @@ static int mtk_pcie_post_init_6991(struct mtk_pcie_port *port)
 {
 	u32 val;
 
-	/*
-	 * Use bit[3:0] of reserved register record the msi group number sent to ADSP
-	 * ex: Group 2 and 3 of 6991 are sent to ADSP, write 1 to bit[2] and bit[3]
-	 */
 	if (port->port_num == 1) {
+		/*
+		 * Use bit[3:0] of reserved register record the msi group number sent to ADSP
+		 * ex: Group 2 and 3 of 6991 are sent to ADSP, write 1 to bit[2] and bit[3]
+		 */
 		val = readl_relaxed(port->base + PCIE_CFG_RSV_0);
 		val |= MSI_GRP2 | MSI_GRP3;
 		writel_relaxed(val, port->base + PCIE_CFG_RSV_0);
