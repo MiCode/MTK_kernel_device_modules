@@ -2705,7 +2705,7 @@ static int mtk_iommu_probe(struct platform_device *pdev)
 	struct mtk_iommu_data   *data;
 	struct device           *dev = &pdev->dev;
 	struct device_node	*larbnode, *smicomm_node;
-	struct platform_device	*plarbdev;
+	struct platform_device	*plarbdev, *pcommdev;
 	struct device_link	*link;
 	struct resource         *res;
 	resource_size_t		ioaddr;
@@ -2916,6 +2916,7 @@ out:
 
 		component_match_add_release(dev, &match, release_of,
 					    compare_of, larbnode);
+		platform_device_put(plarbdev);
 	}
 
 	/* Get smi-common dev from the last larb. */
@@ -2958,11 +2959,14 @@ repeat:
 			goto repeat;
 		}
 	}
-	plarbdev = of_find_device_by_node(smicomm_node);
+	pcommdev = of_find_device_by_node(smicomm_node);
+	if (!pcommdev)
+		return -ENODEV;
 	of_node_put(smicomm_node);
-	data->smicomm_dev = &plarbdev->dev;
+	data->smicomm_dev = &pcommdev->dev;
 	pr_info("%s, smi_common:%s, iommu_dev:%s\n", __func__,
-		dev_name(&plarbdev->dev), dev_name(dev));
+		dev_name(&pcommdev->dev), dev_name(dev));
+	platform_device_put(pcommdev);
 
 skip_smi:
 	pm_runtime_enable(dev);
