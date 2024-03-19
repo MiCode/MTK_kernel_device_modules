@@ -54,6 +54,11 @@ enum {
 /* Register */
 #define MT6363_TOP_TRAP                             (0x36)
 #define MT6363_TOP_TMA_KEY_L                        (0x39e)
+#define MT6363_CPSWKEY                              (0xa33)
+#define MT6363_CPSWKEY_H                            (0xa34)
+#define MT6363_CPSDSA31                             (0xa59)
+#define MT6363_CPSDSA32                             (0xa5a)
+#define MT6363_CPSDSA33                             (0xa5b)
 #define MT6363_BUCK_TOP_KEY_PROT_LO                 (0x142a)
 #define MT6363_BUCK_VS2_OP_EN_0                     (0x148d)
 #define MT6363_BUCK_VS2_HW_LP_MODE                  (0x1498)
