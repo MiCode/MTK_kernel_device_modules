@@ -39,9 +39,9 @@
 #include <linux/delay.h>
 #include <aee.h>
 #include <soc/mediatek/smi.h>
-//#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
-//#include <linux/soc/mediatek/devapc_public.h>
-//#endif
+#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
+#include <linux/soc/mediatek/devapc_public.h>
+#endif
 #include "vcp_feature_define.h"
 #include "vcp_helper.h"
 #include "vcp_excep.h"
@@ -1090,18 +1090,18 @@ void vcp_set_clk(void)
 #endif
 }
 
-//#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
-//static bool devapc_power_cb(void)
-//{
-//	pr_info("[VCP] %s\n", __func__);
-//	return mmup_enable_count();
-//}
+#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
+static bool devapc_power_cb(void)
+{
+	pr_info("[VCP] %s %d\n", __func__, is_suspending);
+	return !is_suspending;
+}
 
-//static struct devapc_power_callbacks devapc_power_handle = {
-//	.type = DEVAPC_TYPE_MMUP,
-//	.query_power = devapc_power_cb,
-//};
-//#endif
+static struct devapc_power_callbacks devapc_power_handle = {
+	.type = DEVAPC_TYPE_MMUP,
+	.query_power = devapc_power_cb,
+};
+#endif
 
 /*
  * reset vcp and create a timer waiting for vcp notify
@@ -3400,9 +3400,9 @@ static int __init vcp_init(void)
 
 	vcp_set_fp(&vcp_helper_fp);
 
-//#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
-//	register_devapc_power_callback(&devapc_power_handle);
-//#endif
+#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
+	register_devapc_power_callback(&devapc_power_handle);
+#endif
 
 	pr_notice("[VCP] %s core0 status: 0x%x, core1 status: 0x%x\n",
 		__func__, readl(R_CORE0_STATUS), readl(R_CORE1_STATUS));
