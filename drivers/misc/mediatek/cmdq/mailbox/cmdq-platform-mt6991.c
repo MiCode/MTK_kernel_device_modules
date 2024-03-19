@@ -268,7 +268,7 @@ bool cmdq_mbox_hw_trace_thread(void *chan)
 
 void cmdq_error_irq_debug(void *chan)
 {
-#if IS_ENABLED(CONFIG_SKIP_BY_CMDQ_BUILT)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
 	struct device *dev = cmdq_mbox_get_dev(chan);
 	u32 hw_id = cmdq_util_hw_id((u32)cmdq_mbox_get_base_pa(chan));
 	u32 sid = hw_id? GCE_M_NORMAL_SID: GCE_D_NORMAL_SID;
@@ -283,7 +283,7 @@ void cmdq_error_irq_debug(void *chan)
 bool cmdq_check_tf(struct device *dev,
 	u32 sid, u32 tbu, u32 *axids)
 {
-#if IS_ENABLED(CONFIG_SKIP_BY_CMDQ_BUILT)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
 	struct mtk_smmu_fault_param out_param;
 
 	return mtk_smmu_tf_detect(MM_SMMU, dev,
