@@ -777,6 +777,7 @@ static int vcp_mminfra_on(void)
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 static int vcp_mminfra_off(void)
 {
 	int count, ret;
@@ -787,6 +788,7 @@ static int vcp_mminfra_off(void)
 
 	return ret;
 }
+#endif
 
 static void mminfra_gals_dump_v1(void)
 {
@@ -861,11 +863,13 @@ static void mminfra_gals_dump(void)
 	}
 }
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 static void vcp_debug_dump(void)
 {
 	pr_info("cg_con0 = 0x%x\n", readl(dbg->mminfra_base + MMINFRA_CG_CON0));
 	mminfra_gals_dump();
 }
+#endif
 
 int mtk_mminfra_dbg_hang_detect(const char *user, bool skip_pm_runtime)
 {
@@ -1259,7 +1263,9 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 		if (vcp_gipc) {
 			pm_runtime_irq_safe(dev);
 			dbg->irq_safe = true;
+		#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 			vcp_register_mminfra_cb_ex(vcp_mminfra_on, vcp_mminfra_off, vcp_debug_dump);
+		#endif
 			is_mminfra_shutdown = false;
 		}
 	} else {
