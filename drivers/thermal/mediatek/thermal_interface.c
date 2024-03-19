@@ -1519,7 +1519,7 @@ static ssize_t vtskin_info_store(struct kobject *kobj,
 	char skin_name[THERMAL_NAME_LENGTH + 1], ref_name[THERMAL_NAME_LENGTH + 1];
 	long long ref_coef;
 	unsigned int skin_id, i;
-	struct thermal_zone_device *tzd;
+	struct thermal_zone_device *tzd[MAX_VTSKIN_REF_NUM];
 	struct vtskin_tz_param *param;
 	struct vtskin_coef coef[MAX_VTSKIN_REF_NUM];
 
@@ -1555,6 +1555,7 @@ static ssize_t vtskin_info_store(struct kobject *kobj,
 	}
 
 	memset(&coef[0], 0, sizeof(struct vtskin_coef) * MAX_VTSKIN_REF_NUM);
+	memset(tzd, 0, sizeof(tzd));
 
 	for (i = 0; i < ref_num; i++) {
 		if (sscanf(buf, "%20s %lld%n", ref_name, &ref_coef, &len) != 2) {
@@ -1563,8 +1564,8 @@ static ssize_t vtskin_info_store(struct kobject *kobj,
 		}
 		buf += len;
 
-		tzd = thermal_zone_get_zone_by_name(ref_name);
-		if (IS_ERR_OR_NULL(tzd)) {
+		tzd[i] = thermal_zone_get_zone_by_name(ref_name);
+		if (IS_ERR_OR_NULL(tzd[i])) {
 			pr_info("get %s for thermal zone fail\n", ref_name);
 			return -EINVAL;
 		}
@@ -1577,6 +1578,8 @@ static ssize_t vtskin_info_store(struct kobject *kobj,
 	param->operation = op;
 	param->ref_num = (unsigned int)ref_num;
 	memcpy(&param->vtskin_ref[0], &coef[0], sizeof(struct vtskin_coef) * MAX_VTSKIN_REF_NUM);
+	for (i = 0; i < MAX_VTSKIN_REF_NUM; i++)
+		param->tzd[i] = tzd[i];
 
 	return count;
 }
