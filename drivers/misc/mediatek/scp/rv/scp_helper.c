@@ -1805,11 +1805,7 @@ static void scp_control_feature(enum feature_id id, bool enable)
 
 	/* send request only when scp is not down */
 	if (scp_ready[SCP_A_ID]) {
-		if (scp_current_freq != scp_expected_freq
-			|| sap_expected_freq != last_sap_expected_freq
-		) {
 			/* set scp freq. */
-
 			if (scp_dvfs_feature_enable())
 				ret = scp_request_freq();
 
@@ -1817,7 +1813,7 @@ static void scp_control_feature(enum feature_id id, bool enable)
 				pr_notice("[SCP] %s: req_freq fail\n", __func__);
 				WARN_ON(1);
 			}
-		}
+
 	} else {
 		pr_notice("[SCP]Not send SCP DVFS request because SCP is down\n");
 		WARN_ON(1);
@@ -1841,6 +1837,8 @@ EXPORT_SYMBOL_GPL(scp_deregister_feature);
 /*scp sensor type register*/
 int sensor_control_scp(enum feature_id id, int freq)
 {
+	pr_debug("[SCP]feature_id:%d, freq:%d\n", id, freq);
+
 	if (id != SENS_FEATURE_ID) {
 		pr_debug("[SCP]register sensor id err");
 		return -EINVAL;
