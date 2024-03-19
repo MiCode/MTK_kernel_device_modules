@@ -292,7 +292,9 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/task_turbo/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/pgboost/Kconfig"
 endmenu # Performance
 
-
+menu "Secure Boot"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/rootfs_check/Kconfig"
+endmenu # Secure Boot
 
 menu "Config File"
 config BUILD_CONFIG_FILE
