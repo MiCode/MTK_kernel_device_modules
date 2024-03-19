@@ -124,6 +124,7 @@ static struct mtk_jpeg_fmt mtk_jpeg_dec_formats[] = {
 struct mtk_jpeg_src_buf {
 	struct vb2_v4l2_buffer b;
 	struct list_head list;
+	u32 bs_size;
 	struct mtk_jpeg_dec_param dec_param;
 };
 
@@ -131,6 +132,15 @@ static int debug;
 static int jpgenc_probe_time;
 module_param(debug, int, 0644);
 
+#if MTK_JPEG_DEC_SUPPORT
+static int jpgDec_probe_time;
+#define JPEG_LOG(level, format, args...)                       \
+	do {                                                        \
+		if ((debug & level) == level)              \
+			pr_info("level=%d %s(),%d: " format "\n",\
+				level, __func__, __LINE__, ##args);      \
+	} while (0)
+#endif
 static inline struct mtk_jpeg_ctx *ctrl_to_ctx(struct v4l2_ctrl *ctrl)
 {
 	return container_of(ctrl->handler, struct mtk_jpeg_ctx, ctrl_hdl);
@@ -156,9 +166,16 @@ static int mtk_jpeg_querycap(struct file *file, void *priv,
 	strscpy(cap->card, jpeg->variant->dev_name, sizeof(cap->card));
 	SNPRINTF(cap->bus_info, sizeof(cap->bus_info), "platform:%s",
 			dev_name(jpeg->dev));
-	cap->reserved[0] = jpgenc_probe_time;
-
-	v4l2_info(&jpeg->v4l2_dev, "device numbers: %d\n", jpgenc_probe_time);
+#if MTK_JPEG_DEC_SUPPORT
+	if (jpeg->jpeg_dev_type != MTK_JPEG_ENC) {
+		v4l2_info(&jpeg->v4l2_dev, "dec device numbers: %d\n", jpgDec_probe_time);
+		cap->reserved[0] = jpgDec_probe_time;
+	} else
+#endif
+		{
+			cap->reserved[0] = jpgenc_probe_time;
+			v4l2_info(&jpeg->v4l2_dev, "device numbers: %d\n", jpgenc_probe_time);
+		}
 	return 0;
 }
 
@@ -543,6 +560,8 @@ static int mtk_jpeg_subscribe_event(struct v4l2_fh *fh,
 	switch (sub->type) {
 	case V4L2_EVENT_SOURCE_CHANGE:
 		return v4l2_src_change_event_subscribe(fh, sub);
+	case V4L2_EVENT_EOS:
+		return v4l2_event_subscribe(fh, sub, 0, NULL);
 	}
 
 	return v4l2_ctrl_subscribe_event(fh, sub);
@@ -625,6 +644,7 @@ static int mtk_jpeg_enc_s_selection(struct file *file, void *priv,
 	return 0;
 }
 
+#if MTK_JPEG_DVFS_BW_SUPPORT
 static void mtk_jpeg_prepare_dvfs(struct mtk_jpeg_dev *jpeg)
 {
 
@@ -825,12 +845,16 @@ static void mtk_jpeg_dvfs_end(struct mtk_jpeg_ctx *ctx)
 		pr_info("%s  freq: %lu\n", __func__, active_freq);
 	}
 }
+#endif
 
 static int mtk_jpeg_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 {
 	struct v4l2_fh *fh;
+	struct vb2_queue *vq;
+	struct vb2_buffer *vb;
+	struct mtk_jpeg_src_buf *jpeg_src_buf;
 	struct mtk_jpeg_ctx *ctx;
-
+	struct mtk_jpeg_dev *jpeg;
 
 	if (IS_ERR_OR_NULL(file) || IS_ERR_OR_NULL(priv) || IS_ERR_OR_NULL(buf)) {
 		pr_info("%s %d qbuf error, invalid input param\n", __func__, __LINE__);
@@ -839,24 +863,116 @@ static int mtk_jpeg_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 
 	fh = file->private_data;
 	ctx = mtk_jpeg_fh_to_ctx(priv);
-
-	if (IS_ERR_OR_NULL(ctx)) {
-		pr_info("%s %d invalid ctx\n", __func__, __LINE__);
+	if (IS_ERR_OR_NULL(ctx) || IS_ERR_OR_NULL(fh)) {
+		pr_info("%s %d invalid parameter\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
-	if (buf->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
-		if (IS_ERR_OR_NULL(buf->m.planes) || buf->length <= 0) {
-			pr_info("%s %d invalid buffer planes\n", __func__, __LINE__);
-			return -EINVAL;
-		}
-		ctx->dst_offset = buf->m.planes[0].data_offset;
-		pr_info("%s %d data_offset %d\n", __func__, __LINE__, buf->m.planes[0].data_offset);
+	if (IS_ERR_OR_NULL(buf->m.planes) || (buf->length <= 0)) {
+		pr_info("%s %d invalid buffer parameter\n", __func__, __LINE__);
+		return -EINVAL;
 	}
 
+	jpeg = ctx->jpeg;
+	if (IS_ERR_OR_NULL(jpeg)) {
+		pr_info("%s %d invalid ctx->jpeg\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	vq = v4l2_m2m_get_vq(fh->m2m_ctx, buf->type);
+	if (buf->index >= vq->num_buffers) {
+		pr_info("%s %d buf num is over %d\n", __func__, __LINE__, buf->index);
+		return -EINVAL;
+	}
+
+	if (!V4L2_TYPE_IS_MULTIPLANAR(buf->type)) {
+		pr_info("%s %d buf type is not multiplanar\n", __func__, __LINE__);
+		goto end;
+	}
+
+	if (strcmp((const char *)jpeg->variant->dev_name, "mtk-jpeg-dec") == 0) {
+		vb = vq->bufs[buf->index];
+		jpeg_src_buf = mtk_jpeg_vb2_to_srcbuf(vb);
+		if (IS_ERR_OR_NULL(jpeg_src_buf))
+			pr_info("%s %d jpeg_src_buf null\n", __func__, __LINE__);
+		else
+			jpeg_src_buf->bs_size = buf->m.planes[0].bytesused;
+	}
+
+	if (buf->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
+		ctx->dst_offset = buf->m.planes[0].data_offset;
+	}
+
+end:
 	return v4l2_m2m_qbuf(file, fh->m2m_ctx, buf);
 }
 
+static int mtk_jpeg_decoder_cmd(struct file *file, void *priv,
+				struct v4l2_decoder_cmd *cmd)
+{
+	struct v4l2_fh *fh = file->private_data;
+	struct mtk_jpeg_ctx *ctx = mtk_jpeg_fh_to_ctx(fh);
+	struct mtk_jpeg_dev *jpeg = ctx->jpeg;
+	int ret;
+	unsigned long flags;
+
+	ret = v4l2_m2m_ioctl_try_decoder_cmd(file, fh, cmd);
+	if (ret < 0)
+		return ret;
+
+	v4l2_dbg(1, debug, &jpeg->v4l2_dev, "dec cmd=%d\n", cmd->cmd);
+
+	if (cmd->cmd == V4L2_DEC_CMD_STOP) {
+		if (!vb2_is_streaming(v4l2_m2m_get_src_vq(fh->m2m_ctx))) {
+			v4l2_dbg(0, debug, &jpeg->v4l2_dev, "Out stream off\n");
+			return 0;
+		}
+
+		spin_lock_irqsave(&ctx->jpeg->hw_lock, flags);
+		ret = v4l2_m2m_ioctl_decoder_cmd(file, priv, cmd);
+		spin_unlock_irqrestore(&ctx->jpeg->hw_lock, flags);
+		if (ret < 0) {
+			v4l2_err(&jpeg->v4l2_dev, "dec cmd fail %d\n", ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int mtk_jpeg_encoder_cmd(struct file *file, void *priv,
+				struct v4l2_encoder_cmd *cmd)
+{
+	struct v4l2_fh *fh = file->private_data;
+	struct mtk_jpeg_ctx *ctx = mtk_jpeg_fh_to_ctx(fh);
+	struct mtk_jpeg_dev *jpeg = ctx->jpeg;
+	int ret;
+	unsigned long flags;
+
+	ret = v4l2_m2m_ioctl_try_encoder_cmd(file, fh, cmd);
+	if (ret < 0)
+		return ret;
+
+	if (cmd->cmd == V4L2_ENC_CMD_STOP) {
+		if (!vb2_is_streaming(v4l2_m2m_get_src_vq(fh->m2m_ctx)) ||
+		    !vb2_is_streaming(v4l2_m2m_get_dst_vq(fh->m2m_ctx))) {
+			v4l2_dbg(0, debug, &jpeg->v4l2_dev, "Out or Cap stream off\n");
+			return 0;
+		}
+
+		v4l2_dbg(0, debug, &jpeg->v4l2_dev, "V4L2_ENC_CMD_STOP\n");
+
+		spin_lock_irqsave(&ctx->jpeg->hw_lock, flags);
+		ret = v4l2_m2m_ioctl_encoder_cmd(file, priv, cmd);
+		spin_unlock_irqrestore(&ctx->jpeg->hw_lock, flags);
+		if (ret < 0) {
+			v4l2_err(&jpeg->v4l2_dev, "enc cmd fail %d\n", ret);
+			return 0;
+		}
+	}
+
+	return 0;
+}
 static const struct v4l2_ioctl_ops mtk_jpeg_enc_ioctl_ops = {
 	.vidioc_querycap                = mtk_jpeg_querycap,
 	.vidioc_enum_fmt_vid_cap	= mtk_jpeg_enum_fmt_vid_cap,
@@ -882,6 +998,9 @@ static const struct v4l2_ioctl_ops mtk_jpeg_enc_ioctl_ops = {
 	.vidioc_streamoff               = v4l2_m2m_ioctl_streamoff,
 
 	.vidioc_unsubscribe_event	= v4l2_event_unsubscribe,
+
+	.vidioc_try_encoder_cmd		= v4l2_m2m_ioctl_try_encoder_cmd,
+	.vidioc_encoder_cmd		= mtk_jpeg_encoder_cmd,
 };
 
 static const struct v4l2_ioctl_ops mtk_jpeg_dec_ioctl_ops = {
@@ -894,7 +1013,7 @@ static const struct v4l2_ioctl_ops mtk_jpeg_dec_ioctl_ops = {
 	.vidioc_g_fmt_vid_out_mplane    = mtk_jpeg_g_fmt_vid_mplane,
 	.vidioc_s_fmt_vid_cap_mplane    = mtk_jpeg_s_fmt_vid_cap_mplane,
 	.vidioc_s_fmt_vid_out_mplane    = mtk_jpeg_s_fmt_vid_out_mplane,
-	.vidioc_qbuf                    = v4l2_m2m_ioctl_qbuf,
+	.vidioc_qbuf                    = mtk_jpeg_qbuf,
 	.vidioc_subscribe_event         = mtk_jpeg_subscribe_event,
 	.vidioc_g_selection		= mtk_jpeg_dec_g_selection,
 
@@ -908,6 +1027,9 @@ static const struct v4l2_ioctl_ops mtk_jpeg_dec_ioctl_ops = {
 	.vidioc_streamoff               = v4l2_m2m_ioctl_streamoff,
 
 	.vidioc_unsubscribe_event	= v4l2_event_unsubscribe,
+
+	.vidioc_try_decoder_cmd		= v4l2_m2m_ioctl_try_decoder_cmd,
+	.vidioc_decoder_cmd		= mtk_jpeg_decoder_cmd,
 };
 
 static int mtk_jpeg_queue_setup(struct vb2_queue *q,
@@ -1036,9 +1158,22 @@ static void mtk_jpeg_enc_buf_queue(struct vb2_buffer *vb)
 {
 	struct mtk_jpeg_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
 	struct mtk_jpeg_dev *jpeg = ctx->jpeg;
+	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
 
 	v4l2_dbg(2, debug, &jpeg->v4l2_dev, "(%d) buf_q id=%d, vb=%p\n",
 		 vb->vb2_queue->type, vb->index, vb);
+
+	if (V4L2_TYPE_IS_CAPTURE(vb->vb2_queue->type) &&
+		vb2_is_streaming(vb->vb2_queue) &&
+		v4l2_m2m_dst_buf_is_last(ctx->fh.m2m_ctx)) {
+		struct mtk_jpeg_q_data *q_data;
+
+		q_data = mtk_jpeg_get_q_data(ctx, vb->vb2_queue->type);
+		vbuf->field = V4L2_FIELD_NONE;
+		v4l2_m2m_last_buffer_done(ctx->fh.m2m_ctx, vbuf);
+		v4l2_dbg(0, debug, &jpeg->v4l2_dev, "last cap buf done\n");
+		return;
+	}
 
 	v4l2_m2m_buf_queue(ctx->fh.m2m_ctx, to_vb2_v4l2_buffer(vb));
 }
@@ -1049,10 +1184,23 @@ static void mtk_jpeg_dec_buf_queue(struct vb2_buffer *vb)
 	struct mtk_jpeg_dec_param *param;
 	struct mtk_jpeg_dev *jpeg = ctx->jpeg;
 	struct mtk_jpeg_src_buf *jpeg_src_buf;
+	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
 	bool header_valid;
 
 	v4l2_dbg(2, debug, &jpeg->v4l2_dev, "(%d) buf_q id=%d, vb=%p\n",
 		 vb->vb2_queue->type, vb->index, vb);
+
+	if (V4L2_TYPE_IS_CAPTURE(vb->vb2_queue->type) &&
+		vb2_is_streaming(vb->vb2_queue) &&
+		v4l2_m2m_dst_buf_is_last(ctx->fh.m2m_ctx)) {
+		struct mtk_jpeg_q_data *q_data;
+
+		q_data = mtk_jpeg_get_q_data(ctx, vb->vb2_queue->type);
+		vbuf->field = V4L2_FIELD_NONE;
+		v4l2_m2m_last_buffer_done(ctx->fh.m2m_ctx, vbuf);
+		v4l2_dbg(0, debug, &jpeg->v4l2_dev, "last cap buf done\n");
+		return;
+	}
 
 	if (vb->vb2_queue->type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
 		goto end;
@@ -1200,13 +1348,16 @@ static void mtk_jpeg_enc_device_run(void *priv)
 		v4l2_err(&jpeg->v4l2_dev, "Error!! dst_buf is NULL\n");
 		return;
 	}
+	dst_buf->vb2_buf.timestamp = src_buf->vb2_buf.timestamp;
 
 	ret = pm_runtime_get_sync(jpeg->dev);
 	if (ret < 0)
 		goto enc_end;
 
+#if MTK_JPEG_DVFS_BW_SUPPORT
 	mtk_jpeg_update_bw_request(ctx);
 	mtk_jpeg_dvfs_begin(ctx);
+#endif
 
 	schedule_delayed_work(&jpeg->job_timeout_work,
 			      msecs_to_jiffies(MTK_JPEG_HW_TIMEOUT_MSEC));
@@ -1281,7 +1432,11 @@ static void mtk_jpeg_dec_device_run(void *priv)
 	spin_lock_irqsave(&jpeg->hw_lock, flags);
 	mtk_jpeg_dec_reset(jpeg->reg_base);
 	mtk_jpeg_dec_set_config(jpeg->reg_base,
-				&jpeg_src_buf->dec_param, &bs, &fb);
+				jpeg->support_34bits,
+				&jpeg_src_buf->dec_param,
+				jpeg_src_buf->bs_size,
+				&bs,
+				&fb);
 
 	mtk_jpeg_dec_start(jpeg->reg_base);
 	spin_unlock_irqrestore(&jpeg->hw_lock, flags);
@@ -1334,7 +1489,7 @@ static int mtk_jpeg_queue_init(void *priv, struct vb2_queue *src_vq,
 	dst_vq->type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	dst_vq->io_modes = VB2_DMABUF | VB2_MMAP;
 	dst_vq->drv_priv = ctx;
-	dst_vq->buf_struct_size = sizeof(struct v4l2_m2m_buffer);
+	dst_vq->buf_struct_size = sizeof(struct mtk_jpeg_src_buf);//sizeof(struct v4l2_m2m_buffer);
 	dst_vq->ops = jpeg->variant->qops;
 	dst_vq->mem_ops = &vb2_dma_contig_memops;
 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
@@ -1350,26 +1505,64 @@ static void mtk_jpeg_clk_on(struct mtk_jpeg_dev *jpeg)
 	int ret, i;
 
 	for (i = 0; i < jpeg->variant->num_clks; i++) {
-		ret = pm_runtime_resume_and_get(jpeg->larb[i]);
-		if (ret)
-			pr_info("clk on jpeg clk %d fail %d\n", i, ret);
+		if (jpeg->larb[i]) {
+			ret = pm_runtime_resume_and_get(jpeg->larb[i]);
+			if (ret)
+				pr_info("clk on jpeg clk %d fail %d\n", i, ret);
+		}
 	}
 
-	pr_info("%s %d jpeg->variant->num_clks %d\n", __func__, __LINE__, jpeg->variant->num_clks);
-	ret = clk_bulk_prepare_enable(jpeg->variant->num_clks,
-				      jpeg->variant->clks);
-	if (ret)
-		dev_err(jpeg->dev, "Failed to open jpeg clk: %d\n", ret);
+	pr_info("%s %d num_clks %d\n", __func__,
+		__LINE__, jpeg->variant->num_clks);
+#if MTK_JPEG_DEC_SUPPORT
+	if (jpeg->jpeg_dev_type != MTK_JPEG_ENC) {
+		ret = clk_prepare_enable(jpeg->jpegDecClk.clk_jpgDec);
+		if (ret)
+			JPEG_LOG(0, "clk MT_CG_VENC_JPGDEC failed %d",
+					ret);
+		ret = clk_prepare_enable(jpeg->jpegDecClk.clk_jpgDec_c1);
+		if (ret)
+			JPEG_LOG(0, "clk MT_CG_VENC_JPGDEC_C1 failed %d",
+					ret);
+
+		//core1 need open core0 firstly
+		if (jpeg->jpeg_dev_type == MTK_JPEG_DEC_C1) {
+			ret = clk_prepare_enable(jpeg->jpegDecClk.clk_jpgDec_c2);
+			if (ret)
+				JPEG_LOG(0, "clk enable MT_CG_VENC_JPGDEC_C2 failed %d",
+						ret);
+		}
+	} else
+#endif
+		{
+			ret = clk_bulk_prepare_enable(jpeg->variant->num_clks,
+					jpeg->variant->clks);
+			if (ret)
+				v4l2_err(&jpeg->v4l2_dev, "Failed to open jpeg clk: %d\n", ret);
+		}
 }
 
 static void mtk_jpeg_clk_off(struct mtk_jpeg_dev *jpeg)
 {
 	int i;
-	clk_bulk_disable_unprepare(jpeg->variant->num_clks,
-				   jpeg->variant->clks);
+#if MTK_JPEG_DEC_SUPPORT
+	if (jpeg->jpeg_dev_type != MTK_JPEG_ENC) {
+		//core1 need close core0 firstly
+		if (jpeg->jpeg_dev_type == MTK_JPEG_DEC_C1)
+			clk_disable_unprepare(jpeg->jpegDecClk.clk_jpgDec_c2);
 
-	for (i = 0; i < jpeg->variant->num_clks; i++)
-		pm_runtime_put_sync(jpeg->larb[i]);
+		clk_disable_unprepare(jpeg->jpegDecClk.clk_jpgDec_c1);
+		clk_disable_unprepare(jpeg->jpegDecClk.clk_jpgDec);
+	} else
+#endif
+		clk_bulk_disable_unprepare(jpeg->variant->num_clks,
+					jpeg->variant->clks);
+
+	for (i = 0; i < jpeg->variant->num_clks; i++) {
+		if (jpeg->larb[i])
+			pm_runtime_put_sync(jpeg->larb[i]);
+	}
+	pr_info("clk off jpeg OK larb num[%d]\n", jpeg->variant->num_clks);
 }
 
 static irqreturn_t mtk_jpeg_enc_done(struct mtk_jpeg_dev *jpeg)
@@ -1397,6 +1590,7 @@ static irqreturn_t mtk_jpeg_enc_done(struct mtk_jpeg_dev *jpeg)
 		return IRQ_NONE;
 	}
 
+	dst_buf->vb2_buf.timestamp = src_buf->vb2_buf.timestamp;
 	result_size = mtk_jpeg_enc_get_file_size(jpeg->reg_base, jpeg->support_34bits);
 	pr_info("%s %d result_size %u\n", __func__, __LINE__, result_size);
 	vb2_set_plane_payload(&dst_buf->vb2_buf, 0, result_size);
@@ -1463,6 +1657,7 @@ static irqreturn_t mtk_jpeg_dec_irq(int irq, void *priv)
 		v4l2_err(&jpeg->v4l2_dev, "Error!! dst_buf is NULL\n");
 		return IRQ_NONE;
 	}
+	dst_buf->vb2_buf.timestamp = src_buf->vb2_buf.timestamp;
 	jpeg_src_buf = mtk_jpeg_vb2_to_srcbuf(&src_buf->vb2_buf);
 
 	if (dec_irq_ret >= MTK_JPEG_DEC_RESULT_UNDERFLOW)
@@ -1480,10 +1675,17 @@ static irqreturn_t mtk_jpeg_dec_irq(int irq, void *priv)
 	buf_state = VB2_BUF_STATE_DONE;
 
 dec_end:
+
+	if (v4l2_m2m_is_last_draining_src_buf(ctx->fh.m2m_ctx, src_buf)) {
+		v4l2_dbg(0, debug, &jpeg->v4l2_dev, "mark stopped\n");
+		dst_buf->flags |= V4L2_BUF_FLAG_LAST;
+		v4l2_m2m_mark_stopped(ctx->fh.m2m_ctx);
+	}
+
 	v4l2_m2m_buf_done(src_buf, buf_state);
 	v4l2_m2m_buf_done(dst_buf, buf_state);
-	v4l2_m2m_job_finish(jpeg->m2m_dev, ctx->fh.m2m_ctx);
 	pm_runtime_put(ctx->jpeg->dev);
+	v4l2_m2m_job_finish(jpeg->m2m_dev, ctx->fh.m2m_ctx);
 	return IRQ_HANDLED;
 }
 
@@ -1585,8 +1787,10 @@ static int mtk_jpeg_release(struct file *file)
 	struct mtk_jpeg_ctx *ctx = mtk_jpeg_fh_to_ctx(file->private_data);
 
 	if (ctx->state == MTK_JPEG_RUNNING) {
+	#if MTK_JPEG_DVFS_BW_SUPPORT
 		mtk_jpeg_dvfs_end(ctx);
 		mtk_jpeg_end_bw_request(ctx);
+	#endif
 		pm_runtime_put(ctx->jpeg->dev);
 	}
 	mutex_lock(&jpeg->lock);
@@ -1626,12 +1830,62 @@ static struct clk_bulk_data mtk_jpeg_clocks_c0_c1[] = {
 	{ .id = "jpgenc_c1" },
 };
 
+#if MTK_JPEG_DEC_SUPPORT
+static struct clk_bulk_data mt6991_jpeg_dec_c0_clocks[] = {
+	{ .id = "MT_CG_VENC_JPGDEC" },
+	{ .id = "MT_CG_VENC_JPGDEC_C1" },
+};
+
+static struct clk_bulk_data mt6991_jpeg_dec_c1_clocks[] = {
+	{ .id = "MT_CG_VENC_JPGDEC_C2" },
+};
+
+static int jpeg_get_node_type(const char *name)
+{
+	if (strncmp(name, "jpgdec0", strlen("jpgdec0")) == 0) {
+		JPEG_LOG(0, "name %s", name);
+		return MTK_JPEG_DEC_C0;
+	} else if (strncmp(name, "jpgdec1", strlen("jpgdec1")) == 0) {
+		JPEG_LOG(0, "name %s", name);
+		return MTK_JPEG_DEC_C1;
+	}else
+		return MTK_JPEG_ENC;
+
+	JPEG_LOG(0, "name not found %s", name);
+	return 0;
+}
+
+static void mtk_jpeg_dec_clk_init(struct mtk_jpeg_dev *jpeg)
+{
+	jpeg->jpegDecClk.clk_jpgDec =
+		of_clk_get_by_name(jpeg->dev->of_node, "MT_CG_VENC_JPGDEC");
+	if (IS_ERR(jpeg->jpegDecClk.clk_jpgDec))
+		JPEG_LOG(0, "get MT_CG_VENC_JPGDEC clk error!");
+
+	jpeg->jpegDecClk.clk_jpgDec_c1 =
+		of_clk_get_by_name(jpeg->dev->of_node, "MT_CG_VENC_JPGDEC_C1");
+	if (IS_ERR(jpeg->jpegDecClk.clk_jpgDec))
+		JPEG_LOG(0, "get MT_CG_VENC_JPGDEC_C1 clk error!");
+
+	JPEG_LOG(0, "clk_C0 OK!");
+
+	//core1 need open core0 firstly
+	if (jpeg->jpeg_dev_type == MTK_JPEG_DEC_C1) {
+		jpeg->jpegDecClk.clk_jpgDec_c2 =
+		of_clk_get_by_name(jpeg->dev->of_node, "MT_CG_VENC_JPGDEC_C2");
+		if (IS_ERR(jpeg->jpegDecClk.clk_jpgDec_c2))
+			JPEG_LOG(0, "get MT_CG_VENC_JPGDEC_C2 clk error!");
+
+		JPEG_LOG(0, "clk_C1 OK!");
+	}
+}
+#endif
 
 static int mtk_jpeg_clk_init(struct mtk_jpeg_dev *jpeg)
 {
 	struct device_node *node;
 	struct platform_device *pdev;
-	int ret;
+	int ret = 0;
 	int larb_index;
 
 	for (larb_index = 0; larb_index < jpeg->variant->num_clks; larb_index++) {
@@ -1653,16 +1907,23 @@ static int mtk_jpeg_clk_init(struct mtk_jpeg_dev *jpeg)
 		}
 	}
 
-	pr_info("jpeg->variant->num_clks %d\n", jpeg->variant->num_clks);
-	ret = devm_clk_bulk_get(jpeg->dev, jpeg->variant->num_clks,
+#if MTK_JPEG_DEC_SUPPORT
+	if (jpeg->jpeg_dev_type != MTK_JPEG_ENC)
+		mtk_jpeg_dec_clk_init(jpeg);
+	else
+#endif
+	{
+		ret = devm_clk_bulk_get(jpeg->dev, jpeg->variant->num_clks,
 				jpeg->variant->clks);
-	if (ret) {
-		dev_err(&pdev->dev, "failed to get jpeg clock:%d\n", ret);
-		for (larb_index = 0; larb_index < jpeg->variant->num_clks; larb_index++)
-			put_device(jpeg->larb[larb_index]);
-		return ret;
+		if (ret) {
+			v4l2_err(&jpeg->v4l2_dev, "failed to get jpeg clock:%d\n", ret);
+			for (larb_index = 0; larb_index < jpeg->variant->num_clks; larb_index++) {
+				if (jpeg->larb[larb_index])
+					put_device(jpeg->larb[larb_index]);
+			}
+			return ret;
+		}
 	}
-
 	return 0;
 }
 
@@ -1688,6 +1949,7 @@ static void mtk_jpeg_job_timeout_work(struct work_struct *work)
 		v4l2_err(&jpeg->v4l2_dev, "Error!! dst_buf is NULL\n");
 		return;
 	}
+	dst_buf->vb2_buf.timestamp = src_buf->vb2_buf.timestamp;
 
 	jpeg->variant->hw_reset(jpeg->reg_base);
 
@@ -1702,8 +1964,10 @@ static inline void mtk_jpeg_clk_release(struct mtk_jpeg_dev *jpeg)
 {
 	int i;
 
-	for (i = 0; i < jpeg->variant->num_clks; i++)
-		put_device(jpeg->larb[i]);
+	for (i = 0; i < jpeg->variant->num_clks; i++) {
+		if (jpeg->larb[i])
+			put_device(jpeg->larb[i]);
+	}
 }
 
 static int mtk_jpeg_probe(struct platform_device *pdev)
@@ -1716,6 +1980,10 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 	jpeg = devm_kzalloc(mtk_smmu_get_shared_device(&pdev->dev), sizeof(*jpeg), GFP_KERNEL);
 	if (!jpeg)
 		return -ENOMEM;
+
+#if MTK_JPEG_DEC_SUPPORT
+	jpeg->jpeg_dev_type = jpeg_get_node_type(pdev->dev.of_node->name);
+#endif
 
 	jpeg->smmu_dev = mtk_smmu_get_shared_device(&pdev->dev);
 
@@ -1739,7 +2007,13 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	if (jpeg->support_34bits == MTK_JPEG_FAKE_34BITS) {
+#if MTK_JPEG_DEC_SUPPORT
+	if ((jpeg->support_34bits == MTK_JPEG_FAKE_34BITS)
+		&& (jpeg->jpeg_dev_type == MTK_JPEG_ENC))
+#else
+	if (jpeg->support_34bits == MTK_JPEG_FAKE_34BITS)
+#endif
+	{
 		res = platform_get_resource(pdev, IORESOURCE_MEM, VENC_GCON);
 		jpeg->gcon_base = devm_ioremap_resource(&pdev->dev, res);
 		if (IS_ERR(jpeg->gcon_base)) {
@@ -1791,9 +2065,10 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 	SNPRINTF(jpeg->vdev->name, sizeof(jpeg->vdev->name),
 		 "%s", jpeg->variant->dev_name);
 
-
+#if MTK_JPEG_DVFS_BW_SUPPORT
 	mtk_jpeg_prepare_dvfs(jpeg);
 	mtk_jpeg_prepare_bw_request(jpeg);
+#endif
 
 	jpeg->vdev->fops = &mtk_jpeg_fops;
 	jpeg->vdev->ioctl_ops = jpeg->variant->ioctl_ops;
@@ -1829,6 +2104,10 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 
 	if (strcmp((const char *)jpeg->variant->dev_name, "mtk-jpeg-enc") == 0)
 		jpgenc_probe_time++;
+#if MTK_JPEG_DEC_SUPPORT
+	if (strcmp((const char *)jpeg->variant->dev_name, "mtk-jpeg-dec") == 0)
+		jpgDec_probe_time++;
+#endif
 	return 0;
 
 err_vfd_jpeg_register:
@@ -1945,6 +2224,39 @@ static const struct mtk_jpeg_variant mtk_jpeg_drvdata_c0_c1 = {
 	.cap_q_default_fourcc = V4L2_PIX_FMT_JPEG,
 };
 
+#if MTK_JPEG_DEC_SUPPORT
+static const struct mtk_jpeg_variant mt6991_jpeg_drvdata_c0 = {
+	.clks = mt6991_jpeg_dec_c0_clocks,
+	.num_clks = 1,/*ARRAY_SIZE(mt6991_jpeg_dec_c0_clocks),*/
+	.formats = mtk_jpeg_dec_formats,
+	.num_formats = MTK_JPEG_DEC_NUM_FORMATS,
+	.qops = &mtk_jpeg_dec_qops,
+	.irq_handler = mtk_jpeg_dec_irq,
+	.hw_reset = mtk_jpeg_dec_reset,
+	.m2m_ops = &mtk_jpeg_dec_m2m_ops,
+	.dev_name = "mtk-jpeg-dec",
+	.ioctl_ops = &mtk_jpeg_dec_ioctl_ops,
+	.out_q_default_fourcc = V4L2_PIX_FMT_JPEG,
+	.cap_q_default_fourcc = V4L2_PIX_FMT_YUV420M,
+};
+
+//dec core1 need open core0 firstly, so num_clks = 2
+static const struct mtk_jpeg_variant mt6991_jpeg_drvdata_c1 = {
+	.clks = mt6991_jpeg_dec_c1_clocks,
+	.num_clks = 2,/*ARRAY_SIZE(mt6991_jpeg_dec_c1_clocks),*/
+	.formats = mtk_jpeg_dec_formats,
+	.num_formats = MTK_JPEG_DEC_NUM_FORMATS,
+	.qops = &mtk_jpeg_dec_qops,
+	.irq_handler = mtk_jpeg_dec_irq,
+	.hw_reset = mtk_jpeg_dec_reset,
+	.m2m_ops = &mtk_jpeg_dec_m2m_ops,
+	.dev_name = "mtk-jpeg-dec",
+	.ioctl_ops = &mtk_jpeg_dec_ioctl_ops,
+	.out_q_default_fourcc = V4L2_PIX_FMT_JPEG,
+	.cap_q_default_fourcc = V4L2_PIX_FMT_YUV420M,
+};
+#endif
+
 static const struct of_device_id mtk_jpeg_match[] = {
 	{
 		.compatible = "mediatek,mt8173-jpgdec",
@@ -1954,6 +2266,16 @@ static const struct of_device_id mtk_jpeg_match[] = {
 		.compatible = "mediatek,mt2701-jpgdec",
 		.data = &mt8173_jpeg_drvdata,
 	},
+#if MTK_JPEG_DEC_SUPPORT
+	{
+		.compatible = "mediatek,jpgdec_c0_v4l2",
+		.data = &mt6991_jpeg_drvdata_c0,
+	},
+	{
+		.compatible = "mediatek,jpgdec_c1_v4l2",
+		.data = &mt6991_jpeg_drvdata_c1,
+	},
+#endif
 	{
 		.compatible = "mediatek,mtk-jpgenc",
 		.data = &mtk_jpeg_drvdata,
