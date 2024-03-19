@@ -34,6 +34,7 @@ int apu_mem_iova_decode(uint64_t eva, uint64_t *iova);
 int apu_mem_unmap_iova(uint64_t session, uint64_t device_va, uint32_t buf_size);
 int apu_mem_table_get(uint64_t session, void **tbl_kva, uint32_t *size);
 int apu_mem_table_free(uint64_t session);
+int apu_mem_DRAM_FB_alloc (uint64_t session, uint32_t vlm_size, uint32_t subcmd_num);
 
 int apummu_export_API_init(void);
 #endif /* end of __APUSYS_APU_MEM_EXPORT_H__ */
