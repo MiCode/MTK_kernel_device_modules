@@ -6403,6 +6403,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mminfra-ao-base = <0x30080000>;
 			gce-ddr-sel-wla;
 			cmdq-dump-buf-size = <1>;
+			event-debug;
+			event-dump-range = <0 383>;
+			event-clr-range = <0 255>;
 		};
 
 		gce_m_sec: gce-mbox-m-sec@30140000 {
