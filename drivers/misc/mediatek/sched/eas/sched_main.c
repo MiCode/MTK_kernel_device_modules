@@ -920,6 +920,15 @@ static int __init mtk_scheduler_init(void)
 	/* build cpu_array for hints-based gear search*/
 	init_cpu_array();
 	build_cpu_array();
+
+#if !IS_ENABLED(CONFIG_ARM64)
+	ret = parse_dt_topology_arm();
+	if (ret) {
+		pr_info("parse_dt_topology fail on arm32, returned %d\n", ret);
+		return ret;
+	}
+#endif
+
 	init_gear_hints();
 
 	init_updown_migration();
