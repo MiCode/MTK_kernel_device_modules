@@ -102,6 +102,8 @@ obj-y += ../$(DEVICE_MODULES_REL_DIR)/sound/soc/codecs/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/sound/soc/mediatek/
 
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/sound/virtio/
+
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/pci/controller/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/media/virtio/
