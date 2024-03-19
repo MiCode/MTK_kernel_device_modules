@@ -623,8 +623,8 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (mtk_drm_pm_ctrl(priv, DISP_PM_CHECK))
-		goto done_return;
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+		mtk_drm_pm_ctrl(priv, DISP_PM_GET);
 
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT2701:
@@ -770,7 +770,8 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 			mtk_dump_reg(comp);
 	}
 
-	mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 
 done_return:
 	return;
@@ -794,8 +795,7 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 	}
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
-		if (mtk_drm_pm_ctrl(priv, DISP_PM_CHECK))
-			goto done_return;
+		mtk_drm_pm_ctrl(priv, DISP_PM_GET);
 
 	DDPFUNC("crtc%d\n", crtc_id);
 
@@ -1084,8 +1084,8 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (mtk_drm_pm_ctrl(priv, DISP_PM_CHECK))
-		goto done_return;
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+		mtk_drm_pm_ctrl(priv, DISP_PM_GET);
 
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT2701:
@@ -1173,7 +1173,8 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 				mtk_dump_analysis(comp);
 		}
 
-		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+		if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 
 		/* MT6989 only dump OVL module and topsys in mini analysis */
 		goto done_return;
@@ -1200,7 +1201,8 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 					mtk_dump_analysis(comp);
 			}
 
-			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+			if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+				mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 
 			/* MT6991 only dump EXDMA module and topsys in mini analysis */
 			goto done_return;
@@ -1272,7 +1274,8 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 			mtk_dump_analysis(comp);
 	}
 
-	mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 
 done_return:
 	return;
@@ -1295,8 +1298,7 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 	}
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
-		if (mtk_drm_pm_ctrl(priv, DISP_PM_CHECK))
-			goto done_return;
+		mtk_drm_pm_ctrl(priv, DISP_PM_GET);
 
 	DDPFUNC("crtc%d\n", crtc_id);
 
