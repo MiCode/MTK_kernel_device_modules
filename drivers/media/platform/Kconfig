@@ -20,6 +20,15 @@ config DEVICE_MODULES_VIDEO_MEDIATEK_JPEG
 	  To compile this driver as a module, choose M here: the
 	  module will be called mtk-jpeg
 
+config JPEG_V4L2_DECODE
+	tristate "JPEG V4L2 DECODE driver"
+	help
+	  Mediatek jpeg codec driver provides HW capability to decode
+	  JPEG format
+
+	  To compile this driver as a module, choose y here: the
+	  define will be open
+
 source "$(KCONFIG_EXT_PREFIX)drivers/media/platform/mtk-vcodec/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/media/platform/mtk-isp/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/media/platform/mtk-aie/Kconfig"
