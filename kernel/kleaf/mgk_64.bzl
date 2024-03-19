@@ -1297,6 +1297,10 @@ def get_overlay_modules_list():
 
 
 
+    if "mt6781_overlay.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_device_modules.remove("drivers/char/rpmb/rpmb.ko")
+        mgk_64_device_modules.remove("drivers/char/rpmb/rpmb-mtk.ko")
+
     if "mt6768_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpu:gpu_mt6768")
