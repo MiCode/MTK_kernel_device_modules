@@ -21,6 +21,7 @@ mgk_module_ext_outs = [
     "drivers/media/v4l2-core/v4l2-flash-led-class.ko",
     "drivers/net/ethernet/microchip/lan743x.ko",
     "drivers/net/pcs/pcs_xpcs.ko",
+    "drivers/net/phy/mxl-gpy.ko",
     "drivers/net/phy/realtek.ko",
     "drivers/perf/arm_dsu_pmu.ko",
     "drivers/power/reset/reboot-mode.ko",
