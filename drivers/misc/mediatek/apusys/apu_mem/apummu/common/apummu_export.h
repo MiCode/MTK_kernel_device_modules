@@ -72,4 +72,6 @@ int apummu_table_free(uint64_t session);
  *  VLM DRAM FB allocated according to vlm_size and subcmd_num
  */
 int apummu_DRAM_FB_alloc(uint64_t session, uint32_t vlm_size, uint32_t subcmd_num);
+
+int apummu_export_API_init(void);
 #endif

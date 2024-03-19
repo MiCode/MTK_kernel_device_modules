@@ -648,8 +648,8 @@ out_before_lock:
 int get_session_table(uint64_t session, void **tbl_kva, uint32_t *size)
 {
 	int ret = 0;
-	ammu_trace_begin("APUMMU: Get session table");
 
+	ammu_trace_begin("APUMMU: Get session table");
 	mutex_lock(&g_ammu_table_set.table_lock);
 
 	if (!is_session_table_exist(session)) {
