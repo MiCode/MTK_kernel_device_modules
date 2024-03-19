@@ -362,6 +362,8 @@ unsigned long estimate_energy(struct em_perf_domain *pd,
 	}
 
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
+	wl = eenv->wl;
+
 	/* for pd_opp_capacity is scaled based on maximum scale 1024, so cost = pwr_eff * 1024 */
 	if (trace_sched_em_cpu_energy_enabled()) {
 		freq_legacy = pd_get_opp_freq_legacy(this_cpu, pd_get_freq_opp_legacy(this_cpu,
