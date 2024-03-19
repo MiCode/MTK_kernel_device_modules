@@ -4190,7 +4190,7 @@ int mtk_ovl_exdma_analysis(struct mtk_ddp_comp *comp)
 	void __iomem *baddr = comp->regs;
 	unsigned int src_con;
 	unsigned int ext_con, ext_en[3];
-	unsigned int path_con;
+	unsigned int path_con, ovl_en;
 
 	if (!baddr) {
 		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
@@ -4200,6 +4200,7 @@ int mtk_ovl_exdma_analysis(struct mtk_ddp_comp *comp)
 	if (comp->blank_mode)
 		return 0;
 
+	ovl_en = readl(DISP_REG_OVL_EN + baddr);
 	src_con = readl(DISP_REG_OVL_L_EN(0) + baddr);
 	ext_en[0] = readl(DISP_REG_OVL_L_EN(1) + baddr);
 	ext_en[1] = readl(DISP_REG_OVL_L_EN(2) + baddr);
@@ -4209,7 +4210,7 @@ int mtk_ovl_exdma_analysis(struct mtk_ddp_comp *comp)
 
 	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	DDPDUMP("ovl_en=%d,layer_en(%d,%d,%d,%d),bg(%dx%d)\n",
-		readl(DISP_REG_OVL_EN + baddr) & 0x1, src_con & 0x1, 0, 0, 0,
+		ovl_en & 0x1, src_con & 0x1, 0, 0, 0,
 		readl(DISP_REG_OVL_ROI_SIZE + baddr) & 0xfff,
 		(readl(DISP_REG_OVL_ROI_SIZE + baddr) >> 16) & 0xfff);
 	DDPDUMP("ext_layer:layer_en(%d,%d,%d),attach_layer(%d,%d,%d)\n",
@@ -4223,6 +4224,9 @@ int mtk_ovl_exdma_analysis(struct mtk_ddp_comp *comp)
 		REG_FLD_VAL_GET(DISP_OVL_PQ_OUT_EN, path_con),
 		REG_FLD_VAL_GET(DATAPATH_PQ_OUT_SEL, path_con),
 		REG_FLD_VAL_GET(DISP_OVL_PQ_OUT_OPT, path_con));
+
+	if (!(ovl_en & 0x1))
+		return 0;
 
 	/* phy layer */
 	for (i = 0; i < mtk_ovl_exdma_layer_num(comp); i++) {
