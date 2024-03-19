@@ -2060,8 +2060,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 	priv = crtc->dev->dev_private;
 	crtc_idx = (unsigned long)drm_crtc_index(crtc);
 
-	if (mtk_crtc->need_change_exdma_path)
-		mtk_drm_crtc_exdma_ovl_path(mtk_crtc, comp, idx, handle);
+	mtk_drm_crtc_exdma_ovl_path(mtk_crtc, comp, idx, handle);
 
 	/* handle dim layer for compression flag & color dim*/
 	if (fmt == DRM_FORMAT_C8) {
@@ -3020,7 +3019,7 @@ static void mtk_ovl_exdma_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pk
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
-	DDPINFO("%s,%d\n", __func__, __LINE__);
+	DDPINFO("%s,%s\n", __func__, mtk_dump_comp_str(comp));
 
 	if (!comp->mtk_crtc)
 		return;

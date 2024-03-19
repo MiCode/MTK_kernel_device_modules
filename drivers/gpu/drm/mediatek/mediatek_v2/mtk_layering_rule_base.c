@@ -3826,9 +3826,6 @@ void lye_add_blob_ids(struct drm_mtk_layering_info *l_info,
 	else
 		list_add_tail(&lyeblob_ids->list, &priv->lyeblob_head);
 
-	if (priv->data->ovl_exdma_rule)
-		mtk_crtc->need_change_exdma_path = 1;
-
 	DRM_MMP_MARK(layering_blob, lyeblob_ids->lye_idx, lyeblob_ids->frame_weight);
 	mutex_unlock(&priv->lyeblob_list_mutex);
 }
