@@ -162,9 +162,8 @@ static struct cpu_time *cur_wall_time, *cur_idle_time,
 						*prev_wall_time, *prev_idle_time;
 static void tt_vip_handler(struct work_struct *work);
 static DECLARE_WORK(tt_vip, tt_vip_handler);
-static struct task_struct *ts_inputDispatcher;
-atomic_long_t inputDispatcher_ptr;
-static int last_ts_inputDispatcher_tgid;
+static int inputDispatcher_tgid;
+static int last_inputDispatcher_tgid;
 static int touch_countdown_timer;
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
 static int fps_drop_vip_throttle = 99;
@@ -255,15 +254,17 @@ static int add_tgid_to_tbl(pid_t pid)
 
 static int del_tgid_from_tbl(pid_t pid)
 {
-	size_t i;
+	size_t tbl_i;
 	int found = 0;
 	struct win_info *new_tbl;
 
-	for (i = 0; i < wi_tbl.size; i++) {
-		if (wi_tbl.wi[i].tgid == pid) {
+	for (tbl_i = 0; tbl_i < wi_tbl.size; tbl_i++) {
+		if (wi_tbl.wi[tbl_i].tgid == pid) {
 			found = 1;
-			unset_task_basic_vip(wi_tbl.wi[i].tgid);
-			unset_tgid_basic_vip(wi_tbl.wi[i].tgid);
+			unset_task_basic_vip(wi_tbl.wi[tbl_i].tgid);
+			unset_tgid_basic_vip(wi_tbl.wi[tbl_i].tgid);
+			trace_turbo_vip(-1, cpu_loading_thres,
+				"window unset_tgid_basic_vip:", wi_tbl.wi[tbl_i].tgid);
 			break;
 		}
 	}
@@ -271,8 +272,8 @@ static int del_tgid_from_tbl(pid_t pid)
 	if (!found)
 		return -ESRCH;
 
-	for (; i < wi_tbl.size - 1; i++)
-		wi_tbl.wi[i] = wi_tbl.wi[i + 1];
+	for (; tbl_i < wi_tbl.size - 1; tbl_i++)
+		wi_tbl.wi[tbl_i] = wi_tbl.wi[tbl_i + 1];
 
 	wi_tbl.size--;
 	if (wi_tbl.size == 0) {
@@ -340,24 +341,32 @@ static int enable_tt_vip(const char *buf, const struct kernel_param *kp)
 			for (tbl_i = 0; tbl_i < last_wi_tbl.size; tbl_i++) {
 				unset_task_basic_vip(last_wi_tbl.wi[tbl_i].tgid);
 				unset_tgid_basic_vip(last_wi_tbl.wi[tbl_i].tgid);
+				trace_turbo_vip(-1, cpu_loading_thres,
+					"window unset_tgid_basic_vip:", wi_tbl.wi[tbl_i].tgid);
 			}
 		}
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
 		if (cam_hal_tgid > 0) {
 			unset_task_basic_vip(cam_hal_tgid);
 			unset_tgid_basic_vip(cam_hal_tgid);
+			trace_turbo_vip(-1, cpu_loading_thres,
+				"cam_hal unset_tgid_basic_vip:", cam_hal_tgid);
 			cam_hal_tgid = -1;
 		}
 		if (cam_svr_tgid > 0) {
 			unset_task_basic_vip(cam_svr_tgid);
 			unset_tgid_basic_vip(cam_svr_tgid);
+			trace_turbo_vip(-1, cpu_loading_thres,
+				"cam_server unset_tgid_basic_vip:", cam_svr_tgid);
 			cam_svr_tgid = -1;
 		}
 #endif
 		if (touch_vip_status) {
 			touch_vip_status = false;
-			unset_task_basic_vip(last_ts_inputDispatcher_tgid);
-			unset_tgid_basic_vip(last_ts_inputDispatcher_tgid);
+			unset_task_basic_vip(last_inputDispatcher_tgid);
+			unset_tgid_basic_vip(last_inputDispatcher_tgid);
+			trace_turbo_vip(-1, cpu_loading_thres,
+				"system_server unset_tgid_basic_vip:", last_inputDispatcher_tgid);
 		}
 		touch_countdown_timer = 0;
 	}
@@ -386,9 +395,6 @@ static void tt_vip_handler(struct work_struct *work)
 	bool status_3rd_cam = false;
 	bool fps_drop = false;
 #endif
-	struct task_struct *p;
-
-
 
 	// get cpu_loading from magt
 	ret = get_cpu_loading(&ci);
@@ -407,7 +413,6 @@ static void tt_vip_handler(struct work_struct *work)
 	if (touch_countdown_timer > 0) {
 		touch_countdown_timer--;
 		touching = true;
-		p = (struct task_struct *)atomic_long_read(&inputDispatcher_ptr);
 	}
 	mutex_lock(&wi_tbl_lock);
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
@@ -457,30 +462,40 @@ static void tt_vip_handler(struct work_struct *work)
 		for (tbl_i = 0; tbl_i < last_wi_tbl.size; tbl_i++) {
 			unset_task_basic_vip(last_wi_tbl.wi[tbl_i].tgid);
 			unset_tgid_basic_vip(last_wi_tbl.wi[tbl_i].tgid);
+			trace_turbo_vip(avg_cpu_loading, cpu_loading_thres,
+				"window unset_tgid_basic_vip:", wi_tbl.wi[tbl_i].tgid);
 		}
 	}
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
 	if (cam_hal_tgid > 0 && (need_clean || !status_3rd_cam)) {
 		unset_task_basic_vip(cam_hal_tgid);
 		unset_tgid_basic_vip(cam_hal_tgid);
+		trace_turbo_vip(avg_cpu_loading, cpu_loading_thres,
+			"cam_hal unset_tgid_basic_vip:", cam_hal_tgid);
 		cam_hal_tgid = -1;
 	}
 	if (cam_svr_tgid > 0 && (need_clean || !status_3rd_cam)) {
 		unset_task_basic_vip(cam_svr_tgid);
 		unset_tgid_basic_vip(cam_svr_tgid);
+		trace_turbo_vip(avg_cpu_loading, cpu_loading_thres,
+			"cam_server unset_tgid_basic_vip:", cam_svr_tgid);
 		cam_svr_tgid = -1;
 	}
 #endif
 	if (touch_vip_status && (need_clean || !touching)) {
 		touch_vip_status = false;
-		unset_task_basic_vip(last_ts_inputDispatcher_tgid);
-		unset_tgid_basic_vip(last_ts_inputDispatcher_tgid);
+		unset_task_basic_vip(last_inputDispatcher_tgid);
+		unset_tgid_basic_vip(last_inputDispatcher_tgid);
+		trace_turbo_vip(avg_cpu_loading, cpu_loading_thres,
+			"system_server unset_tgid_basic_vip:", last_inputDispatcher_tgid);
 	}
 	if (need_set) {
 		win_vip_status = true;
 		for (tbl_i = 0; tbl_i < wi_tbl.size; tbl_i++) {
 			set_task_basic_vip(wi_tbl.wi[tbl_i].tgid);
 			set_tgid_basic_vip(wi_tbl.wi[tbl_i].tgid);
+			trace_turbo_vip(avg_cpu_loading, cpu_loading_thres,
+				"window set_tgid_basic_vip:", wi_tbl.wi[tbl_i].tgid);
 		}
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
 		if (status_3rd_cam) {
@@ -489,20 +504,26 @@ static void tt_vip_handler(struct work_struct *work)
 			if (cam_hal_tgid > 0 && cam_hal_tgid <= PID_MAX_DEFAULT) {
 				set_task_basic_vip(cam_hal_tgid);
 				set_tgid_basic_vip(cam_hal_tgid);
+				trace_turbo_vip(avg_cpu_loading, cpu_loading_thres,
+					"cam_hal set_tgid_basic_vip:", cam_hal_tgid);
 			}
 			if (cam_svr_tgid <= 0)
 				cam_svr_tgid = get_cam_server_pid_for_task_turbo();
 			if (cam_svr_tgid > 0 && cam_svr_tgid <= PID_MAX_DEFAULT) {
 				set_task_basic_vip(cam_svr_tgid);
 				set_tgid_basic_vip(cam_svr_tgid);
+				trace_turbo_vip(avg_cpu_loading, cpu_loading_thres,
+					"cam_server set_tgid_basic_vip:", cam_svr_tgid);
 			}
 		}
 #endif
 		if (touching) {
 			touch_vip_status = true;
-			set_task_basic_vip(p->tgid);
-			set_tgid_basic_vip(p->tgid);
-			last_ts_inputDispatcher_tgid = p->tgid;
+			set_task_basic_vip(inputDispatcher_tgid);
+			set_tgid_basic_vip(inputDispatcher_tgid);
+			trace_turbo_vip(avg_cpu_loading, cpu_loading_thres,
+				"system_server set_tgid_basic_vip:", inputDispatcher_tgid);
+			last_inputDispatcher_tgid = inputDispatcher_tgid;
 		}
 	}
 	update_last_win_info_tbl(&last_wi_tbl, &wi_tbl);
@@ -516,36 +537,28 @@ module_param(fps_drop_vip_throttle, int, 0644);
 module_param(fps_drop_vip_enable, int, 0644);
 #endif
 
-static void find_inputDispatcher(void)
-{
-	struct task_struct *p;
-
-	rcu_read_lock();
-	for_each_process(p) {
-		if (strstr(p->comm, "system_server")) {
-			ts_inputDispatcher = p;
-			atomic_long_set(&inputDispatcher_ptr, (long)p);
-			break;
-		}
-	}
-	rcu_read_unlock();
-}
-
 static void tt_input_event(struct input_handle *handle, unsigned int type,
 						   unsigned int code, int value)
 {
 	struct task_struct *p;
+	int find_ret = 0;
 
-	if (tt_vip_enable > 0) {
-		p = (struct task_struct *)atomic_long_read(&inputDispatcher_ptr);
-		if (type == EV_KEY && code == BTN_TOUCH && value == TOUCH_DOWN) {
-			if (!(p && strstr(p->comm, "system_server")))
-				find_inputDispatcher();
-			touch_countdown_timer = 2;
+	touch_countdown_timer = 2;
+	if (tt_vip_enable > 0 && type == EV_KEY && code == BTN_TOUCH && value == TOUCH_DOWN) {
+		rcu_read_lock();
+		p = find_task_by_vpid(inputDispatcher_tgid);
+		if (!p || !strstr(p->comm, "system_server"))
+			find_ret = -ESRCH;
+			for_each_process(p) {
+				if (strstr(p->comm, "system_server")) {
+					inputDispatcher_tgid = p->tgid;
+					find_ret = 0;
+					break;
+				}
+			}
+		rcu_read_unlock();
+		if (find_ret == 0)
 			queue_work(system_highpri_wq, &tt_vip);
-		} else {
-			touch_countdown_timer = 2;
-		}
 	}
 }
 
@@ -608,7 +621,7 @@ void fpsgo2tt_hint_perf_idx(int pid, unsigned long long bufID,
 {
 	struct task_struct *p;
 	int tgid;
-	size_t i;
+	size_t tbl_i;
 
 	rcu_read_lock();
 	p = find_task_by_vpid(pid);
@@ -620,9 +633,9 @@ void fpsgo2tt_hint_perf_idx(int pid, unsigned long long bufID,
 	rcu_read_unlock();
 
 	mutex_lock(&wi_tbl_lock);
-	for (i = 0; i < wi_tbl.size; i++) {
-		if (wi_tbl.wi[i].tgid == tgid) {
-			wi_tbl.wi[i].perf_idx = perf_idx;
+	for (tbl_i = 0; tbl_i < wi_tbl.size; tbl_i++) {
+		if (wi_tbl.wi[tbl_i].tgid == tgid) {
+			wi_tbl.wi[tbl_i].perf_idx = perf_idx;
 			break;
 		}
 	}
