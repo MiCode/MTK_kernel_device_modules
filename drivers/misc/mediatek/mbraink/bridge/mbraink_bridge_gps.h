@@ -9,13 +9,16 @@
 #include <linux/types.h>
 
 enum gnss2mbr_status {
-	NO_DATA,
-	DATA_OK_END,
-	DATA_OK_AGAIN,
+	GNSS2MBR_NO_DATA,
+	GNSS2MBR_OK_NO_MORE,
+	GNSS2MBR_OK_MORE,
 };
 
 enum mbr2gnss_reason {
-	TEST,
+	MBR2GNSS_TEST,
+	MBR2GNSS_PERIODIC,
+	MBR2GNSS_APP_SWITCH,
+	MBR2GNSS_AP_RESUME,
 };
 
 struct gnss2mbr_data_hdr {
@@ -26,31 +29,42 @@ struct gnss2mbr_data_hdr {
 };
 
 #define LP_DATA_MAJOR_VER (1)
-#define LP_DATA_MINOR_VER (0)
+#define LP_DATA_MINOR_VER (1)
 struct gnss2mbr_lp_data {
-	struct gnss2mbr_data_hdr hdr;
-	u64 ap_resume_ts;
-	u32 ap_resume_index;
+	/* fill by the one to get data */
+	struct gnss2mbr_data_hdr hdr_in;
+
+	/* fill by the data provider */
+	struct gnss2mbr_data_hdr hdr_out;
+	u64 dump_ts;
+	u32 dump_index;
 	u32 gnss_mcu_sid;
 	bool gnss_mcu_is_on;
 
 	/* N/A if gnss_mcu_is_on = false */
 	bool gnss_pwr_is_hi;
 	bool gnss_pwr_wrn;
+
+	/* history statistic */
+	u32 gnss_pwr_wrn_cnt;
 };
 
 #define MCU_DATA_MAJOR_VER (1)
-#define MCU_DATA_MINOR_VER (0)
+#define MCU_DATA_MINOR_VER (1)
 struct gnss2mbr_mcu_data {
-	struct gnss2mbr_data_hdr hdr;
+	/* fill by the one to get data */
+	struct gnss2mbr_data_hdr hdr_in;
 
+	/* fill by the data provider */
+	struct gnss2mbr_data_hdr hdr_out;
 	u32 gnss_mcu_sid; /* last finished one */
 	u32 clock_cfg_val;
 
 	u64 open_ts;
 	u32 open_duration;
 
-	u32 has_exception;
+	bool has_exception;
+	bool force_close;
 
 	u64 close_ts;
 	u32 close_duration;
@@ -59,6 +73,7 @@ struct gnss2mbr_mcu_data {
 	u32 open_duration_max;
 	u32 close_duration_max;
 	u32 exception_cnt;
+	u32 force_close_cnt;
 };
 
 struct mbraink2gps_ops {
