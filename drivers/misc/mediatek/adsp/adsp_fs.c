@@ -62,6 +62,11 @@ static inline ssize_t ipi_test_store(struct device *dev,
 	if (kstrtoint(buf, 10, &value))
 		return -EINVAL;
 
+	if (value == 0xee && is_aed_work_busy()) {
+		pr_info("[ADSP] aed_work busy skip EE test.\n");
+		return -EBUSY;
+	}
+
 	if (_adsp_register_feature(pdata->id, SYSTEM_FEATURE_ID, 0) == 0) {
 		adsp_push_message(ADSP_IPI_TEST1, &value, sizeof(value),
 				  20, pdata->id);
