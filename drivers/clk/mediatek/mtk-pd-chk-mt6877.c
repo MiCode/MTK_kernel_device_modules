@@ -250,7 +250,6 @@ unsigned int pd_list[] = {
 	MT6877_CHK_PD_VENC,
 	MT6877_CHK_PD_DISP,
 	MT6877_CHK_PD_AUDIO,
-	MT6877_CHK_PD_ADSP_DORMANT,
 	MT6877_CHK_PD_APU,
 	MT6877_CHK_PD_CAM,
 	MT6877_CHK_PD_CAM_RAWA,
@@ -310,7 +309,6 @@ static struct pd_sta pd_pwr_sta[] = {
 	{MT6877_CHK_PD_VENC, spm, 0x0EF0, BIT(14)},
 	{MT6877_CHK_PD_DISP, spm, 0x0EF0, BIT(18)},
 	{MT6877_CHK_PD_AUDIO, spm, 0x0EF0, BIT(21)},
-	{MT6877_CHK_PD_ADSP_DORMANT, spm, 0x0EF0, BIT(22)},
 	{MT6877_CHK_PD_APU, spm, 0x0178, BIT(5)},
 	{MT6877_CHK_PD_CAM, spm, 0x0EF0, BIT(23)},
 	{MT6877_CHK_PD_CAM_RAWA, spm, 0x0EF0, BIT(24)},
@@ -357,7 +355,6 @@ static int off_mtcmos_id[] = {
 static int notice_mtcmos_id[] = {
 	MT6877_CHK_PD_CONN,
 	MT6877_CHK_PD_AUDIO,
-	MT6877_CHK_PD_ADSP_DORMANT,
 	PD_NULL,
 };
 
