@@ -532,7 +532,7 @@ void get_LL_pwr_efficiency(void)
 	for (i = 0; i < UPOWER_OPP_NUM; i++) {
 		LL_pwr = (unsigned long long)(tbl->row[i].lkg_pwr[LKG_IDX] +
 				tbl->row[i].dyn_pwr);
-#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6833)
+#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6833) || IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6877)
 		CCI_pwr = 0;
 #else
 		CCI_pwr = (unsigned long long)(ctbl->row[i].lkg_pwr[LKG_IDX] +

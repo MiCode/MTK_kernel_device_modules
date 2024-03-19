@@ -27,6 +27,8 @@ ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_V0)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v0/
 else ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_V1)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v1/
+else ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_V2)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v2/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/devfreq
 endif
 endif
@@ -46,6 +48,8 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/cpufreq_v2/src/common_v3/
 Upower-y += mtk_unified_power_plat_6833.o
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6761)),)
 Upower-y += mtk_unified_power_plat_6761.o
+else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6877)),)
+Upower-y += mtk_unified_power_plat_6877.o
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6739)),)
 Upower-y += mtk_unified_power_plat_6739.o
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6893)),)
