@@ -18331,7 +18331,10 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		/* define each pipe's CRTC ability's default value */
 		/* use it when CRTC not define ability in DTS */
 		if (pipe == 0) {
-			mtk_crtc->crtc_caps.wb_caps[0].support = 1;
+			if(mtk_addon_scenario_support(&mtk_crtc->base, WDMA_WRITE_BACK_OVL))
+				mtk_crtc->crtc_caps.wb_caps[0].support = 1;
+			if(mtk_addon_scenario_support(&mtk_crtc->base, WDMA_WRITE_BACK))
+				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
 			/* HW support cwb dump */
 			if (priv->data->mmsys_id == MMSYS_MT6985 ||
 				priv->data->mmsys_id == MMSYS_MT6989 ||
