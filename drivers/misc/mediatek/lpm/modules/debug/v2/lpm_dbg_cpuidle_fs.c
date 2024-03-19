@@ -2,6 +2,13 @@
 /*
  * Copyright (c) 2019 MediaTek Inc.
  */
+
+#include <linux/cpumask.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_address.h>
+#include <linux/cpu.h>
+
 #include <mtk_cpuidle_sysfs.h>
 #include <lpm_dbg_fs_common.h>
 #include <lpm_dbg_syssram_v1.h>
@@ -116,6 +123,51 @@ static ssize_t cpuidle_enable_write(char *FromUserBuf, size_t sz, void *priv)
 	return -EINVAL;
 }
 
+static ssize_t cpuidle_cpu_ret_en_read(char *ToUserBuf, size_t sz, void *priv)
+{
+	char *p = ToUserBuf;
+	long en;
+
+	if (!p)
+		return -EINVAL;
+
+	en = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_GET,
+					0, 0);
+
+	if (en == 0)
+		mtk_dbg_cpuidle_log("CPU retention: Disable\n");
+	else
+		mtk_dbg_cpuidle_log("CPU retention: Enable\n");
+
+	return p - ToUserBuf;
+}
+static long cpuidle_cpu_ret_en_smc(void *pData)
+{
+	unsigned int *enabled = (unsigned int *)pData;
+
+	lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_SET,
+				*enabled, 0);
+	return 0;
+}
+
+static ssize_t cpuidle_cpu_ret_en_write(char *FromUserBuf, size_t sz, void *priv)
+{
+	int cpu;
+	unsigned int enabled = 0;
+
+	if (!FromUserBuf)
+		return -EINVAL;
+
+	if (!kstrtouint(FromUserBuf, 10, &enabled)) {
+		for_each_online_cpu(cpu) {
+			work_on_cpu(cpu, cpuidle_cpu_ret_en_smc, &enabled);
+		}
+		return sz;
+	}
+
+	return -EINVAL;
+}
+
 static const struct mtk_lp_sysfs_op cpuidle_info_fops = {
 	.fs_read = cpuidle_info_read,
 	.fs_write = cpuidle_info_write,
@@ -126,6 +178,18 @@ static const struct mtk_lp_sysfs_op cpuidle_enable_fops = {
 	.fs_write = cpuidle_enable_write,
 };
 
+static const struct mtk_lp_sysfs_op cpuidle_cpu_ret_en_fops = {
+	.fs_read = cpuidle_cpu_ret_en_read,
+	.fs_write = cpuidle_cpu_ret_en_write,
+};
+
+int lpm_cpuidle_retention_init(void)
+{
+	mtk_cpuidle_sysfs_entry_node_add("cpu_ret_en", MTK_CPUIDLE_SYS_FS_MODE,
+			&cpuidle_cpu_ret_en_fops, NULL);
+	return 0;
+}
+
 int lpm_cpuidle_fs_init(void)
 {
 	mtk_cpuidle_sysfs_root_entry_create();
@@ -135,6 +199,8 @@ int lpm_cpuidle_fs_init(void)
 
 	mtk_cpuidle_sysfs_entry_node_add("enable", MTK_CPUIDLE_SYS_FS_MODE
 			, &cpuidle_enable_fops, NULL);
+
+	lpm_cpuidle_retention_init();
 
 	lpm_cpuidle_control_init();
 
