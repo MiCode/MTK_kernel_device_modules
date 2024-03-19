@@ -8322,6 +8322,7 @@ static void mtk_drm_kms_deinit(struct drm_device *drm)
 	PanelMaster_Deinit();
 
 	if (private->mml_ctx) {
+		mml_drm_kick_done(private->mml_ctx);
 		mml_drm_put_context(private->mml_ctx);
 		private->mml_ctx = NULL;
 	}

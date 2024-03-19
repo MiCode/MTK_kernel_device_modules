@@ -11377,6 +11377,8 @@ skip:
 		mtk_crtc_free_sram(mtk_crtc);
 		refcount_set(&mtk_crtc->mml_ir_sram.ref.refcount, 0);
 	}
+	if ((crtc_id == 0) && priv && priv->mml_ctx)
+		mml_drm_kick_done(priv->mml_ctx);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_IDLEMGR_ASYNC)) {
