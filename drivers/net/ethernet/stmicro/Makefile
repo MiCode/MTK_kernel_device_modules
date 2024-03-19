@@ -3,4 +3,4 @@
 # Makefile for the STMicroelectronics device drivers.
 #
 
-obj-$(CONFIG_STMMAC_ETH) += stmmac/
+obj-$(CONFIG_DEVICE_MODULES_STMMAC_ETH) += stmmac/
