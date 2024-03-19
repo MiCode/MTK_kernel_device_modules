@@ -11332,9 +11332,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg =	<0 0x3a000000 0 0x1000>,
 				<0 0x3a430000 0 0x1000>,
 				<0 0x3a440000 0 0x1000>,
-				<0 0x3a0a0000 0 0x800>,
-				<0 0x3a00d000 0 0x950>;
-			reg-names = "base", "adlwr", "adlrd", "qof_base", "bwr_base";
+				<0 0x3a0a0000 0 0x800>;
+			reg-names = "base", "adlwr", "adlrd", "qof_base";
 			mediatek,ccd = <&remoteproc_ccd>;
 			mediatek,camisp-vcore = <&camisp_vcore>;
 			mtk,smmu-shared = <&mm_smmu_cam>;
@@ -11349,7 +11348,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<&cam_main_r1a_clk CLK_CAM_MAIN_ADLRD_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_ADLWR_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_QOF_CON_1_CAMRAW>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_BWR_CON_1_CAMBWR>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBA_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBB_CAMRAWB>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBC_CAMRAWC>,
@@ -11363,7 +11361,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"camsys_adlrd_cgpdn",
 				"camsys_adlwr_cgpdn",
 				"camsys_qof_cgpdn",
-				"camsys_bwr_cgpdn",
 				"camsys_suba_cgpdn",
 				"camsys_subb_cgpdn",
 				"camsys_subc_cgpdn",
@@ -11373,6 +11370,18 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"camsys_cam2mm2_gals_cgpdn",
 				"mmdvfs_mux";
 			mboxes = <&gce_m 24 0 CMDQ_THR_PRIO_1>;
+		};
+
+		cam_bwr: cam-bwr@3a00d000 {
+			compatible = "mediatek,mt6991-cam-bwr";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MAIN>;
+			reg = <0 0x3a00d000 0 0x950>;
+			reg-names = "bwr_base";
+			mediatek,camisp-vcore = <&camisp_vcore>;
+			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
+				<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_BWR_CON_1_CAMBWR>;
+			clock-names = "camsys_cam_cgpdn",
+				"camsys_bwr_cgpdn";
 		};
 
 		cam_raw_a: cam-raw-a@3a800000 {
@@ -12359,6 +12368,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			interrupts = <GIC_SPI 512 IRQ_TYPE_LEVEL_HIGH 0>;
 			mediatek,pda2 = <&pda2>;
+			mediatek,cam-bwr = <&cam_bwr>;
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MRAW>;
 			clocks = <&camsys_mraw_clk CLK_CAM_MR_PDA0_PDA>,
 				<&camsys_mraw_clk CLK_CAM_MR_PDA1_PDA>,
@@ -12427,6 +12437,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x3a760000 0 0x1000>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			interrupts = <GIC_SPI 513 IRQ_TYPE_LEVEL_HIGH 0>;
+			mediatek,cam-bwr = <&cam_bwr>;
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MRAW>;
 			clocks = <&camsys_mraw_clk CLK_CAM_MR_PDA0_PDA>,
 				<&camsys_mraw_clk CLK_CAM_MR_PDA1_PDA>,
