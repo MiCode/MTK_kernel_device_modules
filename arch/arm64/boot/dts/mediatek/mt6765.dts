@@ -3516,6 +3516,12 @@ pwrap: pwrap@1000d000 {
 			"mmdvfs_clk_mmpll_d2_ck";
 	};
 
+	smi-dbg {
+		compatible = "mediatek,mtk-smi-dbg";
+		mediatek-larb-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb3>;
+		mediatek-common-supply = <&smi_common>;
+	};
+
 	smi_common: smi_common@14002000 {
 		compatible = "mediatek,mt6765-smi-common","mediatek,smi-common","syscon";
 		reg = <0 0x14002000 0 0x1000>;
