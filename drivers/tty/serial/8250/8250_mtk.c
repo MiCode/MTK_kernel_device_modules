@@ -734,6 +734,15 @@ int mtk8250_uart_hub_inband_is_support(void)
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_inband_is_support);
 
+int mtk8250_uart_hub_is_txrx_idle(int rx)
+{
+	if (uarthub_drv_cbs.dev0_is_txrx_idle)
+		return uarthub_drv_cbs.dev0_is_txrx_idle(rx);
+	else
+		return -1;
+}
+EXPORT_SYMBOL(mtk8250_uart_hub_is_txrx_idle);
+
 int mtk8250_uart_hub_inband_irq_register_cb(UARTHUB_INBAND_IRQ_CB inband_irq_callback)
 {
 	if (uarthub_drv_cbs.inband_irq_register_cb)
