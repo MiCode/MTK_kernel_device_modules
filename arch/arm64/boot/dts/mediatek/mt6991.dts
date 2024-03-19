@@ -7332,13 +7332,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<GIC_SPI 605 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 604 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 607 IRQ_TYPE_LEVEL_HIGH 0>,
-				<GIC_SPI 608 IRQ_TYPE_LEVEL_HIGH 0>;
+				<GIC_SPI 608 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 612 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names =
 				"JOB",
 				"MMU",
 				"GPU",
 				"EVENT",
-				"PWR";
+				"PWR",
+				"GPUEB_MBOX1";
 			protected-memory-allocator = <&gpu_protected_memory_allocator>;
 			operating-points-v2 = <&gpu_mali_opp>;
 			#cooling-cells = <2>;
