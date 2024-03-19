@@ -1400,6 +1400,8 @@ static int disp_ccorr_set_partial_update(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
+	unsigned int full_width = mtk_crtc_get_width_by_comp(__func__,
+						&comp->mtk_crtc->base, comp, true);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
 	unsigned int overhead_v;
@@ -1418,11 +1420,12 @@ static int disp_ccorr_set_partial_update(struct mtk_ddp_comp *comp,
 	if (ccorr_data->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_REG_CCORR_SIZE,
-				   ccorr_data->roi_height + overhead_v * 2, 0x1fff);
+				   (full_width << 16) |
+				   (ccorr_data->roi_height + overhead_v * 2), ~0);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_REG_CCORR_SIZE,
-				   full_height, 0x1fff);
+				   (full_width << 16) | full_height, ~0);
 	}
 
 	return 0;
