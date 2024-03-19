@@ -563,6 +563,7 @@ mgk_64_device_modules = [
     "drivers/mmc/host/mtk-sd.ko",
     "drivers/mmc/host/mtk-mmc-wp.ko",
     "drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.ko",
+    "drivers/net/ethernet/stmicro/stmmac/mtk_sgmii_pwr.ko",
     "drivers/net/ethernet/stmicro/stmmac/stmmac-platform.ko",
     "drivers/net/ethernet/stmicro/stmmac/stmmac.ko",
     "drivers/nvmem/nvmem-mt6338-efuse.ko",
