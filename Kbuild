@@ -104,4 +104,6 @@ obj-y += sound/soc/mediatek/
 
 obj-y += drivers/pci/controller/
 
+obj-y += drivers/media/virtio/
+
 endif
