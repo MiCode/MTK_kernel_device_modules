@@ -5754,6 +5754,7 @@
 		power-domain-names =
 			"pd_csi",
 			"pd_cam";
+		mediatek,platform = "mt6877";
 		clocks = <&camsys_main_clk CLK_CAM_M_SENINF>,
 			<&topckgen_clk CLK_TOP_SENINF_SEL>,
 			<&topckgen_clk CLK_TOP_SENINF1_SEL>,
