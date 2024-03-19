@@ -5920,6 +5920,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			dr_mode = "otg";
 			maximum-speed = "high-speed";
 			mediatek,gen1-txdeemph;
+			mediatek,ux-exit-lfps = <0x1e>;
+			mediatek,polling-scdlfps-time = <0x21>;
 			mediatek,hwrscs-vers = <2>;
 			mediatek,clkgate = <&usbcfg_ao_clk 0x13>;
 			cdp-block;
