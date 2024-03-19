@@ -81,6 +81,10 @@ void mml_mmp_init(void)
 	mml_mmp_events.dpc_exception_flow = mmprofile_register_event(dpc, "dpc_exception_flow");
 	mml_mmp_events.dpc_pm_runtime_get = mmprofile_register_event(dpc, "dpc_pm_runtime_get");
 	mml_mmp_events.dpc_pm_runtime_put = mmprofile_register_event(dpc, "dpc_pm_runtime_put");
+	mml_mmp_events.dpc_dc = mmprofile_register_event(dpc, "dpc_dc");
+	mml_mmp_events.dpc_bw_hrt = mmprofile_register_event(dpc, "dpc_bw_hrt");
+	mml_mmp_events.dpc_bw_srt = mmprofile_register_event(dpc, "dpc_bw_srt");
+	mml_mmp_events.dpc_dvfs = mmprofile_register_event(dpc, "dpc_dvfs");
 
 	clock = mmprofile_register_event(mml, "clock");
 	mml_mmp_events.clock = clock;

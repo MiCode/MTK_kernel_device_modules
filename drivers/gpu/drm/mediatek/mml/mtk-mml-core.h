@@ -425,6 +425,7 @@ struct mml_sys_qos {
 	int opp_volts[MML_MAX_OPPS];
 	u64 freq_max;
 	u32 current_volt;
+	u8 current_level;
 	struct mutex qos_mutex;
 };
 
@@ -652,7 +653,7 @@ struct mml_task {
 	u32 wrot_crc_idx[MML_PIPE_CNT];
 	u32 rdma_crc_idx[MML_PIPE_CNT]; /* rdma or rrot0 and rrot0_2nd */
 	u32 total_bw[mml_max_sys];
-	u32 peak_bw[mml_max_sys];
+	u32 hrt_bw[mml_max_sys];
 
 	/* mml context */
 	struct mml_ctx *ctx;
