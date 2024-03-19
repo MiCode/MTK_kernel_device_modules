@@ -2292,7 +2292,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-104 = "SSPM_VCORE_DVFS__MISC_DETAIL",
 				"PS_B0,PS_B1,PS_B2,PS_B3,",
 				"PS_B4,PS_B5,PS_B6,PS_DPC,",
-				"PS_TOTAL,MD_SCE,MD_STA,EMI_OPP,",
+				"PS_TOTAL,MD_SCE,MD_STA,EMI_LEVEL,",
 				"HR_DB,HR_IB,HR_MB,HR_BASE,",
 				"CEIL_MISC";
 			node-105 = "SSPM_SWPM_GPU__STATE_RATIO",
