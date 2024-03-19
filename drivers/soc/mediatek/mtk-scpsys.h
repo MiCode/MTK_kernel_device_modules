@@ -95,6 +95,7 @@ struct scp_domain_data {
 	u32 sram_slp_ack_bits;
 	int extb_iso_offs;
 	u32 extb_iso_bits;
+	u32 hwv_debug_history_ofs;
 	const char *basic_clk_name[MAX_CLKS];
 	const char *basic_lp_clk_name[MAX_CLKS];
 	const char *subsys_clk_prefix;

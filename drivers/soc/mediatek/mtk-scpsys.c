@@ -1191,6 +1191,11 @@ static int scpsys_hwv_power_on(struct generic_pm_domain *genpd)
 	/* add debounce time */
 	udelay(1);
 
+	if (scpd->data->hwv_debug_history_ofs) {
+		regmap_read(hwv_regmap, scpd->data->hwv_debug_history_ofs, &val);
+		regmap_write(hwv_regmap, scpd->data->hwv_debug_history_ofs, val + 1);
+	}
+
 	/* wait until VOTER_ACK = 1 */
 	ret = readx_poll_timeout_atomic(mtk_hwv_is_enable_done, scpd, tmp, tmp > 0,
 			MTK_POLL_DELAY_US, MTK_POLL_300MS_TIMEOUT);
@@ -1270,6 +1275,11 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 
 	/* delay 100us for stable status */
 	udelay(100);
+
+	if (scpd->data->hwv_debug_history_ofs) {
+		regmap_read(hwv_regmap, scpd->data->hwv_debug_history_ofs, &val);
+		regmap_write(hwv_regmap, scpd->data->hwv_debug_history_ofs, val + 1);
+	}
 
 	/* wait until VOTER_ACK = 0 */
 	ret = readx_poll_timeout_atomic(mtk_hwv_is_disable_done, scpd, tmp, tmp > 0,

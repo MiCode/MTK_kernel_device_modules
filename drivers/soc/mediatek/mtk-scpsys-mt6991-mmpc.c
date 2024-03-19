@@ -898,6 +898,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x1464,
 		.hwv_clr_sta_ofs = 0x1468,
 		.hwv_shift = 1,
+		.hwv_debug_history_ofs = 0x3F9C,
 		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_IRQ_SAVE | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_MM_INFRA1] = {
@@ -921,6 +922,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x1464,
 		.hwv_clr_sta_ofs = 0x1468,
 		.hwv_shift = 0,
+		.hwv_debug_history_ofs = 0x3F9C,
 		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_IRQ_SAVE | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CSI_BS_RX] = {
