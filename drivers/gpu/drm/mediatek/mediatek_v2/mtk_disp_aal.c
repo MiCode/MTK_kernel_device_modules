@@ -625,7 +625,9 @@ static void disp_aal_init(struct mtk_ddp_comp *comp,
 		SET_VAL_MASK(value, mask, 0, FLD_RELAY_MODE);
 	SET_VAL_MASK(value, mask, 1, FLD_AAL_ENGINE_EN);
 	SET_VAL_MASK(value, mask, 1, FLD_AAL_HIST_EN);
-	if (priv->data->mmsys_id != MMSYS_MT6768 && priv->data->mmsys_id != MMSYS_MT6761)
+	if (priv->data->mmsys_id != MMSYS_MT6768 &&
+		 priv->data->mmsys_id != MMSYS_MT6765 &&
+		 priv->data->mmsys_id != MMSYS_MT6761)
 		SET_VAL_MASK(value, mask, 1, FLD_BLK_HIST_EN);
 	SET_VAL_MASK(value, mask, 0x40, FLD_FRAME_DONE_DELAY);
 
@@ -649,7 +651,9 @@ static void disp_aal_init_dre3_reg(struct mtk_ddp_comp *comp,
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	uint32_t dre_mapping_00;
 
-	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6761)
+	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6765 ||
+		priv->data->mmsys_id == MMSYS_MT6761)
 		dre_mapping_00 = GKI_DISP_AAL_DRE_MAPPING_00;
 	else
 		dre_mapping_00 = DISP_AAL_DRE_MAPPING_00;
@@ -1099,7 +1103,9 @@ static int disp_aal_write_init_regs(struct mtk_ddp_comp *comp,
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	uint32_t cabc_gainlmt_tbl_00, dre_mapping_00;
 
-	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6761) {
+	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6765 ||
+		priv->data->mmsys_id == MMSYS_MT6761) {
 		cabc_gainlmt_tbl_00 = GKI_DISP_AAL_CABC_GAINLMT_TBL_00;
 		dre_mapping_00 = GKI_DISP_AAL_DRE_MAPPING_00;
 	} else {
@@ -1257,7 +1263,9 @@ static int disp_aal_write_dre_to_reg(struct mtk_ddp_comp *comp,
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	uint32_t dre_mapping_00;
 
-	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6761)
+	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6765 ||
+		priv->data->mmsys_id == MMSYS_MT6761)
 		dre_mapping_00 = GKI_DISP_AAL_DRE_MAPPING_00;
 	else
 		dre_mapping_00 = DISP_AAL_DRE_MAPPING_00;
@@ -1270,6 +1278,7 @@ static int disp_aal_write_dre_to_reg(struct mtk_ddp_comp *comp,
 		(aal_data->primary_data->init_regs.dre_map_bypass << 4), 1 << 4);
 
 	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6765 ||
 		priv->data->mmsys_id == MMSYS_MT6761) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(0),
@@ -1363,7 +1372,9 @@ static int disp_aal_write_cabc_to_reg(struct mtk_ddp_comp *comp,
 	uint32_t cabc_gainlmt_tbl_00;
 
 	AALFLOW_LOG("\n");
-	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6761)
+	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6765 ||
+		priv->data->mmsys_id == MMSYS_MT6761)
 		cabc_gainlmt_tbl_00 = GKI_DISP_AAL_CABC_GAINLMT_TBL_00;
 	else
 		cabc_gainlmt_tbl_00 = DISP_AAL_CABC_GAINLMT_TBL_00;
@@ -4762,6 +4773,16 @@ static const struct mtk_disp_aal_data mt6761_aal_driver_data = {
 	.bitShift = 16,
 };
 
+static const struct mtk_disp_aal_data mt6765_aal_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = false,
+	.aal_dre_hist_start = 1024,
+	.aal_dre_hist_end   = 4092,
+	.aal_dre_gain_start = 4096,
+	.aal_dre_gain_end   = 6268,
+	.bitShift = 16,
+};
+
 static const struct mtk_disp_aal_data mt6877_aal_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
@@ -4878,6 +4899,7 @@ static const struct mtk_disp_aal_data mt6991_aal_driver_data = {
 static const struct of_device_id mtk_disp_aal_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6768-disp-aal", .data = &mt6768_aal_driver_data},
 	{ .compatible = "mediatek,mt6761-disp-aal", .data = &mt6761_aal_driver_data},
+	{ .compatible = "mediatek,mt6765-disp-aal", .data = &mt6765_aal_driver_data},
 	{ .compatible = "mediatek,mt6877-disp-aal", .data = &mt6877_aal_driver_data},
 	{ .compatible = "mediatek,mt6983-disp-aal", .data = &mt6983_aal_driver_data},
 	{ .compatible = "mediatek,mt6895-disp-aal", .data = &mt6895_aal_driver_data},

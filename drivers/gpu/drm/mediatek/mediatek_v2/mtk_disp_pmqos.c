@@ -26,6 +26,9 @@
 #include "mtk_disp_bdg.h"
 extern u32 *disp_perfs;
 #endif
+#if IS_ENABLED(CONFIG_MTK_DRAMC)
+#include <soc/mediatek/dramc.h>
+#endif
 
 #include <linux/module.h>
 int debug_vidle_bw;
@@ -80,6 +83,50 @@ struct hrt_mmclk_request hrt_req_level_mt6761[] = {
 	{40, 650000},
 	{60, 700000},
 	{70, 800000},
+};
+
+//LPDDR3
+/* aspect ratio <= 18 : 9 */
+struct hrt_mmclk_request hrt_req_level_ddr3_hd_mt6765[] = {
+	{75, 650000},
+	{75, 700000},
+	{75, 800000},
+};
+
+/* aspect ratio > 18 : 9 */
+struct hrt_mmclk_request hrt_req_level_ddr3_fhd_mt6765[] = {
+	{35, 650000},
+	{35, 700000},
+	{35, 800000},
+};
+
+//LPDDR4
+/* aspect ratio <= 18 : 9 */
+struct hrt_mmclk_request hrt_req_level_ddr4_hd_mt6765[] = {
+	{75, 650000},
+	{135, 700000},
+	{155, 800000},
+};
+
+/* aspect ratio > 18 : 9 */
+struct hrt_mmclk_request hrt_req_level_ddr4_fhd_mt6765[] = {
+	{35, 650000},
+	{60, 700000},
+	{70, 800000},
+};
+
+//LPDDR4 and high fps
+/* aspect ratio <= 18 : 9 */
+struct hrt_mmclk_request hrt_req_level_ddr4_hd_hfps_mt6765[] = {
+	{50, 650000},
+	{90, 700000},
+	{100, 800000},
+};
+/* aspect ratio > 18 : 9 */
+struct hrt_mmclk_request hrt_req_level_ddr4_fhd_hfps_mt6765[] = {
+	{20, 650000},/*23*/
+	{40, 700000},/*40*/
+	{45, 800000},/*47*/
 };
 #endif
 void mtk_disp_pmqos_get_icc_path_name(char *buf, int buf_len,
@@ -457,6 +504,97 @@ void mtk_disp_hrt_mmclk_request_mt6761(struct mtk_drm_crtc *mtk_crtc, unsigned i
 		DDPMSG("%s layer_num = %d, volt = %d\n", __func__, layer_num, req_level[2].volt);
 	}
 }
+
+void mtk_disp_hrt_mmclk_request_mt6765(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
+{
+	int layer_num;
+	int ret;
+#if IS_ENABLED(CONFIG_MTK_DRAMC)
+	unsigned int ddr_type;
+#endif
+	unsigned long long bw_base;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+#if IS_ENABLED(CONFIG_MTK_DRAMC)
+	struct hrt_mmclk_request *req_level = hrt_req_level_ddr3_fhd_mt6765;
+#else
+	struct hrt_mmclk_request *req_level = hrt_req_level_ddr4_fhd_mt6765;
+#endif
+	struct mtk_ddp_comp *output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	struct drm_display_mode *mode = NULL;
+	unsigned int max_fps = 0;
+	bool is_tall_aspect_ratio = ((mtk_crtc->base.mode.vdisplay*100) /
+					mtk_crtc->base.mode.hdisplay) > 200 /*18:9*/;
+
+	bw_base = mtk_drm_primary_frame_bw(crtc);
+	if (bw_base != 0)
+		layer_num = bw * 10 / bw_base;
+	else {
+		DDPINFO("%s-error: frame_bw is zero, skip request mmclk\n", __func__);
+		return;
+	}
+
+	mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_MODE_BY_MAX_VREFRESH, &mode);
+	if (mode)
+		max_fps = drm_mode_vrefresh(mode);
+	if (max_fps >= 90) {
+		if (is_tall_aspect_ratio ||
+			(mtk_crtc->base.mode.hdisplay > 800)/*fhdp*/) {
+			DDPINFO("%s DDR4, fhd@90, h:%d", __func__, mtk_crtc->base.mode.hdisplay);
+			req_level = hrt_req_level_ddr4_fhd_hfps_mt6765;
+		} else {
+			DDPINFO("%s DDR4, hd@90, h:%d", __func__, mtk_crtc->base.mode.hdisplay);
+			req_level = hrt_req_level_ddr4_hd_hfps_mt6765;
+		}
+	} else { /*(max_fps < 90)*/
+#if IS_ENABLED(CONFIG_MTK_DRAMC)
+		ddr_type = mtk_dramc_get_ddr_type();
+		if (ddr_type == TYPE_LPDDR4 || ddr_type == TYPE_LPDDR4X) {
+			if (is_tall_aspect_ratio ||
+				(mtk_crtc->base.mode.hdisplay > 800)/*fhdp*/) {
+				DDPINFO("%s DDR4, fhd, h:%d",
+					__func__, mtk_crtc->base.mode.hdisplay);
+				req_level = hrt_req_level_ddr4_fhd_mt6765;
+			} else {
+				DDPINFO("%s DDR4, hd, h:%d",
+					__func__, mtk_crtc->base.mode.hdisplay);
+				req_level = hrt_req_level_ddr4_hd_mt6765;
+			}
+		} else { /*ddr3*/
+			if (is_tall_aspect_ratio ||
+				(mtk_crtc->base.mode.hdisplay > 800)/*fhdp*/) {
+				DDPINFO("%s DDR3, fhd, h:%d",
+					__func__, mtk_crtc->base.mode.hdisplay);
+				req_level = hrt_req_level_ddr3_fhd_mt6765;
+			} else {
+				DDPINFO("%s DDR3, hd, h:%d",
+					__func__, mtk_crtc->base.mode.hdisplay);
+				req_level = hrt_req_level_ddr3_hd_mt6765;
+			}
+		}
+#endif
+	} /*(max_fps >= 90)*/
+
+	if (layer_num <= req_level[0].layer_num) {
+		icc_set_bw(priv->hrt_bw_request, 0, disp_perfs[HRT_LEVEL_LEVEL2]);
+		ret = regulator_set_voltage(mm_freq_request, req_level[0].volt, INT_MAX);
+		if (ret)
+			DDPPR_ERR("%s:regulator_set_voltage fail\n", __func__);
+		DDPMSG("%s layer_num = %d, volt = %d\n", __func__, layer_num, req_level[0].volt);
+	} else if (layer_num > req_level[0].layer_num && layer_num <= req_level[1].layer_num) {
+		icc_set_bw(priv->hrt_bw_request, 0, disp_perfs[HRT_LEVEL_LEVEL1]);
+		ret = regulator_set_voltage(mm_freq_request, req_level[1].volt, INT_MAX);
+		if (ret)
+			DDPPR_ERR("%s:regulator_set_voltage fail\n", __func__);
+		DDPMSG("%s layer_num = %d, volt = %d\n", __func__, layer_num, req_level[1].volt);
+	} else if (layer_num > req_level[1].layer_num) {
+		icc_set_bw(priv->hrt_bw_request, 0, disp_perfs[HRT_LEVEL_LEVEL0]);
+		ret = regulator_set_voltage(mm_freq_request, req_level[2].volt, INT_MAX);
+		if (ret)
+			DDPPR_ERR("%s:regulator_set_voltage fail\n", __func__);
+		DDPMSG("%s layer_num = %d, volt = %d\n", __func__, layer_num, req_level[2].volt);
+	}
+}
 #endif
 
 unsigned int mtk_disp_get_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc)
@@ -562,6 +700,8 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 		mtk_disp_hrt_mmclk_request_mt6768(mtk_crtc, tmp);
 	else if (priv->data->mmsys_id == MMSYS_MT6761)
 		mtk_disp_hrt_mmclk_request_mt6761(mtk_crtc, tmp);
+	else if (priv->data->mmsys_id == MMSYS_MT6765)
+		mtk_disp_hrt_mmclk_request_mt6765(mtk_crtc, tmp);
 #else
 	if ((priv->data->mmsys_id == MMSYS_MT6897) &&
 		(mtk_disp_check_segment(mtk_crtc, priv) == false))
