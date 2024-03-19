@@ -134,14 +134,15 @@ unsigned long update_dsu_status(struct energy_env *eenv, int quant,
 {
 	if (update_dsu_status_hook) {
 		unsigned long dsu_volt;
-		unsigned int output[4];
+		unsigned int output[6];
 
 		dsu_volt = update_dsu_status_hook(eenv->android_vendor_data1, quant,
 			eenv->wl, eenv->gear_idx, freq, floor_freq, this_cpu, dst_cpu, output);
 
 		if (trace_sched_dsu_freq_enabled())
 			trace_sched_dsu_freq(eenv->gear_idx, dst_cpu, output[0], output[1],
-					(unsigned long)output[2], (unsigned long)output[3], dsu_volt);
+					output[2], output[3], (unsigned long)output[4],
+					(unsigned long)output[5], dsu_volt);
 
 		return dsu_volt;
 	}

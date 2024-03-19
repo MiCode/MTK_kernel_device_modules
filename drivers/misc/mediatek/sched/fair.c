@@ -418,11 +418,11 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 		       struct cpumask *pd_cpus, struct task_struct *p, int dst_cpu)
 {
 	unsigned long pd_max_util = eenv_pd_max_util(eenv, pd_cpus, p, dst_cpu);
-	unsigned long gear_max_util;
+	unsigned long gear_max_util = -1;
 	int pd_idx = cpumask_first(pd_cpus);
 	unsigned long busy_time = eenv->pds_busy_time[pd_idx];
-	unsigned long energy, extern_volt = 0;
-	unsigned long dsu_volt, pd_volt = 0, gear_volt = 0;
+	unsigned long energy, extern_volt = -1;
+	unsigned long dsu_volt = -1, pd_volt = -1, gear_volt = -1;
 	int dst_idx, shared_buck_mode;
 	unsigned long pd_freq = 0, gear_freq, floor_freq, scale_cpu;
 
