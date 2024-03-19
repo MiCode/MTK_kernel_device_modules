@@ -29,6 +29,7 @@
 #include <linux/arm-smccc.h>
 
 #include <iommu_debug.h>
+#include <mt-plat/mtk_irq_mon.h>
 
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 #include "cmdq-util.h"
@@ -1475,6 +1476,8 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 	u64 start = sched_clock(), end[4];
 	u32 end_cnt = 0;
 #endif
+
+	cmdq_thrd_irq_history_record(cmdq->hwid, thread->idx);
 
 	cmdq_mtcmos_by_fast(cmdq, true);
 	if (atomic_read(&cmdq->usage) <= 0 ||
@@ -2944,6 +2947,23 @@ static void cmdq_shutdown(struct platform_device *pdev)
 		}
 }
 
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR)
+static int cmdq_burst_irq_callback(unsigned int irq, enum irq_mon_aee_type type)
+{
+	u32 i;
+
+	if (type != IRQ_MON_AEE_TYPE_BURST_IRQ)
+		return -1;
+
+	for (i = 0; i < 2; i++) {
+		if(irq == g_cmdq[i]->irq)
+			cmdq_dump_thrd_irq_history(g_cmdq[i]->hwid);
+	}
+
+	return 0;
+}
+#endif
+
 static int cmdq_probe(struct platform_device *pdev)
 {
 	struct device_node *node;
@@ -2990,7 +3010,9 @@ static int cmdq_probe(struct platform_device *pdev)
 		cmdq_err("failed to get irq");
 		return -EINVAL;
 	}
-
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR)
+	irq_mon_aee_callback_register(cmdq->irq, cmdq_burst_irq_callback);
+#endif
 	err = devm_request_irq(dev, cmdq->irq, cmdq_irq_handler, IRQF_SHARED,
 			       "mtk_cmdq", cmdq);
 	if (err < 0) {
