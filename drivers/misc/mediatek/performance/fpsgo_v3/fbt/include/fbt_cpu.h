@@ -137,6 +137,7 @@ int fbt_get_rescue_opp_f(void);
 void fbt_set_max_blc_stage(int stage);
 void fbt_set_max_blc_cur(unsigned int blc);
 void fbt_get_setting_info(struct fbt_setting_info *sinfo);
+void fbt_update_freq_qos_min(int policy_id, unsigned int freq);
 
 void fpsgo_comp2fbt_jank_thread_boost(int boost, int pid);
 void fpsgo_base2fbt_jank_thread_deboost(int pid);
@@ -192,6 +193,7 @@ static inline void fpsgo_set_rl_l2q_enable(int enable) { }
 static inline void fpsgo_set_expected_l2q_us(int vsync_multiple,
 	unsigned long long user_expected_l2q_us) { }
 static inline int fpsgo_get_rl_l2q_enable(void) { return 0; }
+static inline void fbt_update_freq_qos_min(int policy_id, unsigned int freq) { }
 static inline void notify_powerRL_ko_is_ready(void) { }
 static inline int fbt_get_powerRL_ko_is_ready(void)  { return 0; }
 #endif
