@@ -210,8 +210,6 @@ struct cmdq_util_platform_fp {
 
 };
 
-void cmdq_dump_thrd_irq_history(u8 hwid);
-void cmdq_thrd_irq_history_record(u8 hwid ,u8 thread_idx);
 void cmdq_util_set_fp(struct cmdq_util_platform_fp *cust_cmdq_platform);
 void cmdq_util_reset_fp(struct cmdq_util_platform_fp *cust_cmdq_platform);
 bool cmdq_util_check_hw_trace_work(u8 hwid);
