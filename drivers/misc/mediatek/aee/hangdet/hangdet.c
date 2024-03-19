@@ -1376,6 +1376,7 @@ static const struct of_device_id toprgu_of_match[] = {
 
 static const struct of_device_id systimer_of_match[] = {
 	{ .compatible = "mediatek,mt6765-timer" },
+	{ .compatible = "mediatek,legacy-timer" },
 	{},
 };
 
