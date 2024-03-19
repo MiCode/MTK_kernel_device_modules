@@ -395,6 +395,17 @@ static void mtk_disp_channel_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
 	}
 }
 
+static void mtk_disp_clear_channel_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
+{
+	int i;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned int crtc_idx = drm_crtc_index(crtc);
+
+	for (i = 0; i < BW_CHANNEL_NR; i++)
+		priv->hrt_channel_bw_sum[crtc_idx][i] = 0;
+}
+
 static void mtk_disp_channel_srt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
 {
 	int i,j;
@@ -780,7 +791,12 @@ int mtk_disp_set_per_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 			MTK_DRM_OPT_HRT_BY_LARB))
 		return 0;
 
-	bw_base = mtk_drm_primary_frame_bw(crtc);
+	if (bw == 0) {
+		bw_base = bw;
+		total = bw;
+	} else
+		bw_base = mtk_drm_primary_frame_bw(crtc);
+
 	for (i = 0; i < DDP_PATH_NR; i++) {
 		if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
 			continue;
@@ -812,6 +828,9 @@ int mtk_disp_set_per_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 				else
 					tmp1 = bw;
 			}
+		} else {
+			tmp1 = bw;
+			mtk_disp_clear_channel_hrt_bw_MT6991(mtk_crtc);
 		}
 
 		mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(tmp1));
