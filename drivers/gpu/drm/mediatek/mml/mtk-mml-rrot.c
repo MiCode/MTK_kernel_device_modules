@@ -331,6 +331,7 @@ struct rrot_frame_data {
 	u16 crop_off_l;		/* crop offset left */
 	u16 crop_off_t;		/* crop offset top */
 	u32 gmcif_con;
+	u32 slice_size;
 	u32 slice_pixel;
 	bool ultra_off;
 	bool binning;
@@ -971,17 +972,14 @@ static void rrot_select_threshold_hrt(struct mml_comp_rrot *rrot,
 	}
 }
 
-static void rrot_config_slice(struct mml_comp *comp, struct mml_frame_config *cfg,
-	struct mml_frame_data *src, struct mml_frame_dest *dest, struct rrot_frame_data *rrot_frm,
-	struct cmdq_pkt *pkt)
+static void rrot_calc_slice(struct mml_frame_config *cfg,
+	struct mml_frame_data *src, const struct mml_frame_dest *dest,
+	struct rrot_frame_data *rrot_frm)
 {
 	u32 slice_size = 0;
-	u32 slice_num;
-	u32 slice0 = 0, slice1 = 0, slice_px;
-	u32 width;
 
 	if (dest->rotate == MML_ROT_0 || dest->rotate == MML_ROT_180)
-		goto done;
+		return;
 
 	if (MML_FMT_YUV420(src->format) && rrot_frm->blk)
 		slice_size = 4 + cfg->bin_x;
@@ -992,14 +990,27 @@ static void rrot_config_slice(struct mml_comp *comp, struct mml_frame_config *cf
 	else
 		mml_log("no slice for format %#x", src->format);
 
-	width = dest->crop.r.width;
-	slice_px = 1 << slice_size;	/* full slice size */
+	rrot_frm->slice_size = slice_size;
+	rrot_frm->slice_pixel = 1 << slice_size;	/* full slice size */
+}
+
+static void rrot_config_slice(struct mml_comp *comp, struct mml_frame_config *cfg,
+	u32 width, const struct mml_frame_dest *dest,
+	struct rrot_frame_data *rrot_frm, struct cmdq_pkt *pkt)
+{
+	const u32 slice_size = rrot_frm->slice_size;
+	const u32 slice_px = rrot_frm->slice_pixel;
+	u32 slice_num;
+	u32 slice0 = 0, slice1 = 0;
+
+	if (dest->rotate == MML_ROT_0 || dest->rotate == MML_ROT_180)
+		goto done;
+
 	slice_num = DIV_ROUND_UP(width, slice_px);
 	slice0 = slice_size << 16 | slice_num << 3 | 1;
 	slice1 = slice_px << 16 | (width - slice_px * (slice_num - 1));
-	rrot_frm->slice_pixel = slice_px;
 
-	mml_msg("width %u slice size %u num %u slice0 %#010x slice1 %#010x",
+	mml_msg("[rrot]width %u slice size %u num %u slice0 %#010x slice1 %#010x",
 		width, slice_size, slice_num, slice0, slice1);
 done:
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_AUTO_SLICE_0, slice0, U32_MAX);
@@ -1180,7 +1191,7 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		U32_MAX);
 
 	rrot_color_fmt(cfg, rrot_frm);
-	rrot_config_slice(comp, cfg, src, dest, rrot_frm, pkt);
+	rrot_calc_slice(cfg, src, dest, rrot_frm);
 
 	/* Enable dither on output, not input */
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_DITHER_CON, 0x0, U32_MAX);
@@ -1913,6 +1924,8 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 		base_pa + RROT_SRC_BASE_ADD_2,
 		base_pa + RROT_SRC_BASE_ADD_2_MSB,
 		ofst.v);
+
+	rrot_config_slice(comp, cfg, mf_src_w, dest, rrot_frm, pkt);
 
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_SRC_OFFSET_WP, src_offset_wp, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_SRC_OFFSET_HP, src_offset_hp, U32_MAX);

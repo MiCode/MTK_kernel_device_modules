@@ -2102,8 +2102,8 @@ static s32 dl_mml_config_tile(struct mml_comp *comp, struct mml_task *task,
 	u16 offset = sys->dl_relays[sys->adjacency[comp->id][comp->id]];
 	u32 size;
 
-	if (cfg->info.mode != MML_MODE_DIRECT_LINK || !cfg->rrot_dual) {
-		mml_err("%s skip since dl_mml only use in dual rrot, current mode %u dual %s",
+	if (!cfg->rrot_dual) {
+		mml_err("%s skip since not dual rrot, current mode %u dual %s",
 			__func__, cfg->info.mode, cfg->rrot_dual ? "true" : "false");
 		return 0;
 	}
