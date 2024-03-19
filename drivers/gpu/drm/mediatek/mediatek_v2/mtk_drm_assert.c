@@ -162,20 +162,13 @@ static struct mtk_ddp_comp *_handle_phy_top_plane(struct mtk_drm_crtc *mtk_crtc)
 	struct mtk_plane_comp_state comp_state;
 	struct mtk_ddp_comp *ovl_comp = NULL;
 	struct mtk_ddp_comp *comp;
-	struct mtk_drm_private *priv = NULL;
 
-
-	priv = mtk_crtc->base.dev->dev_private;
-	if (priv && priv->data->mmsys_id == MMSYS_MT6991) {
-		ovl_comp = priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA8];
-	} else {
-		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-			type = mtk_ddp_comp_get_type(comp->id);
-			if (type == MTK_DISP_OVL || type == MTK_OVL_EXDMA) {
-				ovl_comp = comp;
-			} else if (type == MTK_DISP_RDMA)
-				break;
-		}
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+		type = mtk_ddp_comp_get_type(comp->id);
+		if (type == MTK_DISP_OVL || type == MTK_OVL_EXDMA)
+			ovl_comp = comp;
+		else if (type == MTK_DISP_RDMA)
+			break;
 	}
 
 	if (ovl_comp == NULL) {
@@ -227,7 +220,6 @@ static struct mtk_plane_state *drm_set_dal_plane_state(struct drm_crtc *crtc,
 	struct mtk_ddp_comp *ovl_comp = _handle_phy_top_plane(mtk_crtc);
 	struct MFC_CONTEXT *ctxt = (struct MFC_CONTEXT *)mfc_handle;
 	int layer_id = -1;
-	struct mtk_drm_private *priv = NULL;
 
 	if (ovl_comp)
 		layer_id = mtk_ovl_layer_num(ovl_comp) - 1;
@@ -241,12 +233,7 @@ static struct mtk_plane_state *drm_set_dal_plane_state(struct drm_crtc *crtc,
 		return NULL;
 	}
 
-	priv = crtc->dev->dev_private;
-
-	if (priv && priv->data->mmsys_id == MMSYS_MT6991)
-		plane = &mtk_crtc->planes[5].base;
-	else
-		plane = &mtk_crtc->planes[mtk_crtc->layer_nr - 1].base;
+	plane = &mtk_crtc->planes[mtk_crtc->layer_nr - 1].base;
 	plane_state = to_mtk_plane_state(plane->state);
 	pending = &plane_state->pending;
 	memset(pending, 0, sizeof(struct mtk_plane_pending_state));
@@ -272,7 +259,6 @@ static struct mtk_plane_state *drm_set_dal_plane_state(struct drm_crtc *crtc,
 	plane_state->comp_state.lye_id = layer_id;
 	plane_state->comp_state.ext_lye_id = 0;
 	plane_state->base.crtc = crtc;
-	plane_state->base.visible = false;
 
 	return plane_state;
 }
@@ -343,7 +329,6 @@ int drm_show_dal(struct drm_crtc *crtc, bool enable)
 	struct cmdq_pkt *cmdq_handle = NULL;
 	int layer_id = 0;
 	int ret = 0;
-	u32 bw_base;
 
 	if ((crtc == NULL) || (crtc->dev == NULL)) {
 		DDPPR_ERR("%s: crtc is null\n", __func__);
@@ -376,8 +361,6 @@ int drm_show_dal(struct drm_crtc *crtc, bool enable)
 
 	DDP_COMMIT_LOCK(&priv->commit.lock, __func__, __LINE__);
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
-
-	drm_dal_enable = enable;
 	if (!mtk_crtc->enabled) {
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		DDP_COMMIT_UNLOCK(&priv->commit.lock, __func__, __LINE__);
@@ -393,15 +376,6 @@ int drm_show_dal(struct drm_crtc *crtc, bool enable)
 	}
 
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
-
-	if (enable && priv->data->mmsys_id == MMSYS_MT6991) {
-		bw_base = mtk_drm_primary_frame_bw(crtc);
-		mtk_crtc->usage_ovl_fmt[6] = 4;
-		mtk_ddp_comp_io_cmd(ovl_comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
-	}
-
-	if (priv->data->mmsys_id == MMSYS_MT6991)
-		layer_id = 5;
 
 	/* set DAL config and trigger display */
 	cmdq_handle = mtk_crtc_gce_commit_begin(crtc, NULL, NULL, false);
@@ -437,7 +411,6 @@ void drm_set_dal(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_plane_state *plane_state;
 	struct mtk_ddp_comp *ovl_comp = _handle_phy_top_plane(mtk_crtc);
-	struct mtk_drm_private *priv = NULL;
 	int layer_id;
 
 	if (ovl_comp == NULL) {
@@ -458,9 +431,6 @@ void drm_set_dal(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 
 	disable_attached_layer(crtc, ovl_comp, layer_id, cmdq_handle);
 
-	priv = crtc->dev->dev_private;
-	if (priv && priv->data->mmsys_id == MMSYS_MT6991)
-		layer_id = 5;
 	if (mtk_crtc->is_dual_pipe)
 		mtk_crtc_dual_layer_config(mtk_crtc, ovl_comp, layer_id, plane_state, cmdq_handle);
 	else
@@ -511,8 +481,10 @@ int DAL_Clean(void)
 	ctxt->screen_color = 0;
 	DAL_SetScreenColor(DAL_COLOR_RED);
 
-	if (drm_dal_enable == 1)
+	if (drm_dal_enable == 1) {
+		drm_dal_enable = 0;
 		drm_show_dal(dal_crtc, false);
+	}
 
 end:
 	DAL_UNLOCK();
@@ -525,11 +497,21 @@ int DAL_Printf(const char *fmt, ...)
 {
 	va_list args;
 	u32 i;
+	struct mtk_drm_private *priv = NULL;
 
 	if (!mfc_handle)
 		return -1;
 	if (!fmt)
 		return -1;
+
+	priv = dal_crtc->dev->dev_private;
+	if (IS_ERR_OR_NULL(priv)) {
+		DDPINFO("%s: can't find priv\n", __func__);
+		goto err_DAL_Print;
+	} else {
+		if (priv->data->mmsys_id == MMSYS_MT6991)
+			goto err_DAL_Print;
+	}
 
 	DAL_LOCK();
 
@@ -543,6 +525,9 @@ int DAL_Printf(const char *fmt, ...)
 	}
 
 	MFC_Print(mfc_handle, drm_dal_str_buf);
+
+	if (drm_dal_enable == 0)
+		drm_dal_enable = 1;
 
 #ifndef DRM_CMDQ_DISABLE
 	drm_show_dal(dal_crtc, true);
