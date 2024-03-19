@@ -206,10 +206,12 @@ struct mtk_pcie_lane_efuse {
  * struct mtk_pcie_phy_data - phy data for each SoC
  * @sw_efuse_supported: support software to load eFuse data
  * @phy_int: special init function of each SoC
+ * @get_efuse_info: get efuse info function of each SoC
  */
 struct mtk_pcie_phy_data {
 	bool sw_efuse_supported;
 	int (*phy_init)(struct phy *phy);
+	int (*get_efuse_info)(struct phy *phy);
 };
 
 /**
@@ -242,6 +244,8 @@ struct mtk_pcie_phy {
 	bool sw_efuse_en;
 	bool short_reach_en;
 	u32 efuse_glb_intr;
+	u32 *efuse_info;
+	size_t efuse_info_len;
 	struct mtk_pcie_lane_efuse *efuse;
 };
 
@@ -546,6 +550,12 @@ static int mtk_pcie_phy_probe(struct platform_device *pdev)
 
 	phy_set_drvdata(pcie_phy->phy, pcie_phy);
 
+	if (pcie_phy->data->get_efuse_info) {
+		ret = pcie_phy->data->get_efuse_info(pcie_phy->phy);
+		if (ret == -EPROBE_DEFER || ret == -ENOMEM)
+			goto err_probe;
+	}
+
 	provider = devm_of_phy_provider_register(dev, of_phy_simple_xlate);
 	if (IS_ERR(provider)) {
 		dev_info(dev, "PCIe phy probe failed\n");
@@ -564,6 +574,7 @@ static int mtk_pcie_phy_probe(struct platform_device *pdev)
 
 err_probe:
 	pm_runtime_disable(dev);
+	kfree(pcie_phy->efuse_info);
 
 	return ret;
 }
@@ -669,7 +680,7 @@ static int mtk_pcie_sr_init_6991(struct phy *phy)
 	return 0;
 }
 
-static int mtk_pcie_sphy3_calibrate(struct phy *phy)
+static int mtk_pcie_get_efuse_info(struct phy *phy)
 {
 	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
 	struct device *dev = pcie_phy->dev;
@@ -677,18 +688,11 @@ static int mtk_pcie_sphy3_calibrate(struct phy *phy)
 	bool nvmem_enabled;
 	size_t len = 0;
 	u32 *efuse_buff;
-	u32 i;
 
 	/* nvmem data is optional */
 	nvmem_enabled = device_property_present(dev, "nvmem-cells");
 	if (!nvmem_enabled)
-		goto no_efuse_info;
-
-	/* Current SPHY3 efuse architecture only support 1 or 2 lane */
-	if (pcie_phy->num_lanes > SPHY3_EFUSE_MAX_LANE) {
-		dev_info(dev, "The number of lanes %d out of range\n", pcie_phy->num_lanes);
-		return -EINVAL;
-	}
+		return 0;
 
 	cell = nvmem_cell_get(dev, "calibration");
 	if (IS_ERR(cell)) {
@@ -703,37 +707,52 @@ static int mtk_pcie_sphy3_calibrate(struct phy *phy)
 		return PTR_ERR(efuse_buff);
 	}
 
-	if ((pcie_phy->num_lanes + 1) * sizeof(u32) > len) {
-		kfree(efuse_buff);
-		dev_info(dev, "efuse info length = %zu error\n", len);
-		return -EINVAL;
+	pcie_phy->efuse_info = efuse_buff;
+	pcie_phy->efuse_info_len = len;
+
+	return 0;
+}
+
+static int mtk_pcie_sphy3_calibrate(struct phy *phy)
+{
+	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
+	struct device *dev = pcie_phy->dev;
+	u32 i;
+
+	/* Efuse info is null or chip without calibrated data */
+	if (!pcie_phy->efuse_info || !pcie_phy->efuse_info_len || !pcie_phy->efuse_info[0])
+		goto no_efuse_info;
+
+	/* Current SPHY3 efuse architecture only support 1 or 2 lane */
+	if (pcie_phy->num_lanes > SPHY3_EFUSE_MAX_LANE) {
+		dev_info(dev, "The number of lanes %d out of range\n", pcie_phy->num_lanes);
+		goto no_efuse_info;
 	}
 
-	/* Chip without calibrated data */
-	if (!efuse_buff[0]) {
-		kfree(efuse_buff);
+	if ((pcie_phy->num_lanes + 1) * sizeof(u32) > pcie_phy->efuse_info_len) {
+		dev_info(dev, "efuse info length = %zu error\n", pcie_phy->efuse_info_len);
 		goto no_efuse_info;
 	}
 
 	mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_GLB_60,
 			     RG_XTP_GLB_BIAS_INTR_CTRL,
-			     FIELD_GET(EFUSE_GLB_BIAS_INTR_CTRL, efuse_buff[0]));
+			     FIELD_GET(EFUSE_GLB_BIAS_INTR_CTRL, pcie_phy->efuse_info[0]));
 
 	mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_GLB_C0,
 			     RG_XTP_GLB_BIAS_V2V_VTRIM,
-			     FIELD_GET(EFUSE_GLB_BIAS_V2V_VTRIM, efuse_buff[0]));
+			     FIELD_GET(EFUSE_GLB_BIAS_V2V_VTRIM, pcie_phy->efuse_info[0]));
 
 	mtk_phy_update_field(pcie_phy->ckm_base + XTP_CKM_DA_REG_D4,
 			     RG_CKM_CKTX_IMPSEL_PMOS,
-			     FIELD_GET(EFUSE_CKM_CKTX_IMPSEL_PMOS, efuse_buff[0]));
+			     FIELD_GET(EFUSE_CKM_CKTX_IMPSEL_PMOS, pcie_phy->efuse_info[0]));
 
 	mtk_phy_update_field(pcie_phy->ckm_base + XTP_CKM_DA_REG_D4,
 			     RG_CKM_CKTX_IMPSEL_NMOS,
-			     FIELD_GET(EFUSE_CKM_CKTX_IMPSEL_NMOS, efuse_buff[0]));
+			     FIELD_GET(EFUSE_CKM_CKTX_IMPSEL_NMOS, pcie_phy->efuse_info[0]));
 
 	mtk_phy_update_field(pcie_phy->ckm_base + XTP_CKM_DA_REG_D4,
 			     RG_CKM_CKTX_IMPSEL_SW,
-			     FIELD_GET(EFUSE_CKM_CKTX_IMPSEL_RMID, efuse_buff[0]));
+			     FIELD_GET(EFUSE_CKM_CKTX_IMPSEL_RMID, pcie_phy->efuse_info[0]));
 
 	for (i = 0; i < pcie_phy->num_lanes; i++) {
 		if (i)
@@ -741,48 +760,46 @@ static int mtk_pcie_sphy3_calibrate(struct phy *phy)
 					     PEXTP_ANA_LN_TRX_C +
 					     i * PEXTP_ANA_LANE_OFFSET,
 					     RG_XTP_LN_TX_RSWN_IMPSEL,
-					     FIELD_GET(EFUSE_LN1_TX_RSWN_IMPSEL, efuse_buff[0]));
+					     FIELD_GET(EFUSE_LN1_TX_RSWN_IMPSEL, pcie_phy->efuse_info[0]));
 		else
 			mtk_phy_update_field(pcie_phy->sif_base +
 					     PEXTP_ANA_LN_TRX_C +
 					     i * PEXTP_ANA_LANE_OFFSET,
 					     RG_XTP_LN_TX_RSWN_IMPSEL,
-					     FIELD_GET(EFUSE_LN0_TX_RSWN_IMPSEL, efuse_buff[0]));
+					     FIELD_GET(EFUSE_LN0_TX_RSWN_IMPSEL, pcie_phy->efuse_info[0]));
 
 		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A8 +
 				     i * PEXTP_ANA_LANE_OFFSET,
 				     RG_XTP_LN_RX_LEQ_RL_CTLE_CAL,
-				     FIELD_GET(EFUSE_LN_RX_LEQ_RL_CTLE_CAL, efuse_buff[i+1]));
+				     FIELD_GET(EFUSE_LN_RX_LEQ_RL_CTLE_CAL, pcie_phy->efuse_info[i+1]));
 
 		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A8 +
 				     i * PEXTP_ANA_LANE_OFFSET,
 				     RG_XTP_LN_RX_LEQ_RL_VGA_CAL,
-				     FIELD_GET(EFUSE_LN_RX_LEQ_RL_VGA_CAL, efuse_buff[i+1]));
+				     FIELD_GET(EFUSE_LN_RX_LEQ_RL_VGA_CAL, pcie_phy->efuse_info[i+1]));
 
 		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A8 +
 				     i * PEXTP_ANA_LANE_OFFSET,
 				     RG_XTP_LN_RX_LEQ_RL_DFE_CAL,
-				     FIELD_GET(EFUSE_LN_RX_LEQ_RL_DEF_CAL, efuse_buff[i+1]));
+				     FIELD_GET(EFUSE_LN_RX_LEQ_RL_DEF_CAL, pcie_phy->efuse_info[i+1]));
 
 		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A0 +
 				     i * PEXTP_ANA_LANE_OFFSET,
 				     RG_XTP_LN_RX_IMPSEL,
-				     FIELD_GET(EFUSE_LN_RX_IMPSEl, efuse_buff[i+1]));
+				     FIELD_GET(EFUSE_LN_RX_IMPSEl, pcie_phy->efuse_info[i+1]));
 
 		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A0 +
 				     i * PEXTP_ANA_LANE_OFFSET,
 				     RG_XTP_LN_TX_IMPSEL_PMOS,
-				     FIELD_GET(EFUSE_LN_TX_IMPSEL_PMOS, efuse_buff[i+1]));
+				     FIELD_GET(EFUSE_LN_TX_IMPSEL_PMOS, pcie_phy->efuse_info[i+1]));
 
 		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A0 +
 				     i * PEXTP_ANA_LANE_OFFSET,
 				     RG_XTP_LN_TX_IMPSEL_NMOS,
-				     FIELD_GET(EFUSE_LN_TX_IMPSEL_NMOS, efuse_buff[i+1]));
+				     FIELD_GET(EFUSE_LN_TX_IMPSEL_NMOS, pcie_phy->efuse_info[i+1]));
 	}
 
 	dev_info(dev, "Calibration successful\n");
-
-	kfree(efuse_buff);
 
 	return 0;
 
@@ -981,6 +998,7 @@ static const struct mtk_pcie_phy_data mt6989_data = {
 static const struct mtk_pcie_phy_data mt6991_data = {
 	.sw_efuse_supported = false,
 	.phy_init = mtk_pcie_phy_init_6991,
+	.get_efuse_info = mtk_pcie_get_efuse_info,
 };
 
 static const struct of_device_id mtk_pcie_phy_of_match[] = {
