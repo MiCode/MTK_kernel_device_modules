@@ -598,8 +598,12 @@ static void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb,
 		addr = DISP_REG_DPC_DISP_HIGH_HRT_BW;
 	else
 		addr = DISP_REG_DPC_MML_SW_HRT_BW;
+
 	writel(bw_in_mb * 100 / g_priv->hrt_emi_efficiency / g_priv->total_hrt_unit,
 	       dpc_base + addr);
+
+	if (g_priv->mml_ch_bw_set && subsys != DPC_SUBSYS_DISP)
+		g_priv->mml_ch_bw_set(subsys, DPC_HRT_READ, bw_in_mb, force);
 
 	if (unlikely(debug_dvfs))
 		DPCFUNC("subsys(%u) hrt bw(%u)MB force(%u)", subsys, bw_in_mb, force);
@@ -620,6 +624,9 @@ static void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb,
 	writel(bw_in_mb * g_priv->srt_emi_efficiency / 100 / g_priv->total_srt_unit,
 	       dpc_base + addr);
 
+	if (g_priv->mml_ch_bw_set && subsys != DPC_SUBSYS_DISP)
+		g_priv->mml_ch_bw_set(subsys, DPC_SRT_READ, bw_in_mb, force);
+
 	if (unlikely(debug_dvfs))
 		DPCFUNC("subsys(%u) srt bw(%u)MB force(%u)", subsys, bw_in_mb, force);
 	dpc_mmp(srt_bw, MMPROFILE_FLAG_PULSE, subsys << 16 | force, bw_in_mb);
@@ -634,7 +641,7 @@ static int vdisp_level_set_vcp(const enum mtk_dpc_subsys subsys, const u8 level)
 	if (subsys == DPC_SUBSYS_DISP) {
 		mmdvfs_user = VCP_PWR_USR_DISP;
 		addr = DISP_REG_DPC_DISP_VDISP_DVFS_VAL;
-	} else if (subsys == DPC_SUBSYS_MML) {
+	} else {
 		mmdvfs_user = VCP_PWR_USR_DISP;
 		addr = DISP_REG_DPC_MML_VDISP_DVFS_VAL;
 	}
@@ -685,7 +692,7 @@ static void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool 
 		mmdvfs_user = MMDVFS_USER_DISP;
 		addr = DISP_REG_DPC_DISP_VDISP_DVFS_VAL;
 		g_priv->dvfs_bw.disp_level = level;
-	} else if (subsys == DPC_SUBSYS_MML) {
+	} else {
 		mmdvfs_user = MMDVFS_USER_MML;
 		addr = DISP_REG_DPC_MML_VDISP_DVFS_VAL;
 		g_priv->dvfs_bw.mml_level = level;
@@ -703,7 +710,7 @@ static void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool 
 	dpc_mmp(vdisp_level, MMPROFILE_FLAG_PULSE,
 		(g_priv->dvfs_bw.mml_bw << 24) | (g_priv->dvfs_bw.disp_bw << 16) |
 		(g_priv->dvfs_bw.mml_level << 8) | g_priv->dvfs_bw.disp_level,
-		(BIT(subsys) << 16) | max_level);
+		subsys << 16 | max_level);
 
 	if (unlikely(debug_dvfs))
 		DPCFUNC("subsys(%u) level(%u,%u,%u) force(%u)", subsys,
@@ -724,7 +731,7 @@ static void dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb
 
 	if (subsys == DPC_SUBSYS_DISP)
 		g_priv->dvfs_bw.disp_bw = bw_in_mb * 10 / 7;
-	else if (subsys == DPC_SUBSYS_MML)
+	else
 		g_priv->dvfs_bw.mml_bw = bw_in_mb * 10 / 7;
 
 	total_bw = g_priv->dvfs_bw.disp_bw + g_priv->dvfs_bw.mml_bw;
@@ -755,7 +762,7 @@ static void dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb
 	dpc_mmp(vdisp_level, MMPROFILE_FLAG_PULSE,
 		(g_priv->dvfs_bw.mml_bw << 24) | (g_priv->dvfs_bw.disp_bw << 16) |
 		(g_priv->dvfs_bw.mml_level << 8) | g_priv->dvfs_bw.disp_level,
-		(BIT(subsys) << 16) | max_level);
+		subsys << 16 | max_level);
 
 	mutex_unlock(&g_priv->dvfs_bw.lock);
 
@@ -786,7 +793,7 @@ static void dpc_dvfs_both_set(const enum mtk_dpc_subsys subsys, const u8 level, 
 		addr = DISP_REG_DPC_DISP_VDISP_DVFS_VAL;
 		g_priv->dvfs_bw.disp_level = level;
 		g_priv->dvfs_bw.disp_bw = bw_in_mb * 10 / 7;
-	} else if (subsys == DPC_SUBSYS_MML) {
+	} else {
 		mmdvfs_user = MMDVFS_USER_MML;
 		addr = DISP_REG_DPC_MML_VDISP_DVFS_VAL;
 		g_priv->dvfs_bw.mml_level = level;
@@ -818,7 +825,7 @@ static void dpc_dvfs_both_set(const enum mtk_dpc_subsys subsys, const u8 level, 
 	dpc_mmp(vdisp_level, MMPROFILE_FLAG_PULSE,
 		(g_priv->dvfs_bw.mml_bw << 24) | (g_priv->dvfs_bw.disp_bw << 16) |
 		(g_priv->dvfs_bw.mml_level << 8) | g_priv->dvfs_bw.disp_level,
-		(BIT(subsys) << 16) | max_level);
+		subsys << 16 | max_level);
 
 	if (unlikely(debug_dvfs))
 		DPCFUNC("subsys(%u) level(%u,%u,%u) force(%u)", subsys,
@@ -863,6 +870,46 @@ static void dpc_ch_bw_set(const enum mtk_dpc_subsys subsys, const u8 idx, const 
 	dpc_mmp(ch_bw, MMPROFILE_FLAG_PULSE, subsys << 16 | idx, bw_in_mb);
 }
 
+void mt6991_mml_ch_bw_set(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_channel_type type,
+			  const u32 bw_in_mb, const bool force)
+{
+	u32 *ch = NULL;
+	u8 idx = 0;
+
+/*	mmlsys	bits		AXI	S/H	R/W	*/
+/* 0	0xA70	[9:0]		00	S	R	*/
+/* 1	0xA7C	[9:0]		00	S	W	*/
+/* 2	0xA88	[9:0]		00	H	R	*/
+/* 3	0xA94	[9:0]		00	H	W	*/
+/*12	0xA74	[21:12]		11	S	R	*/
+/*13	0xA80	[21:12]		11	S	W	*/
+/*14	0xA8C	[21:12]		11	H	R	*/
+/*15	0xA98	[21:12]		11	H	W	*/
+/*	AXI00	AXI01	AXI10	AXI11	*/
+/*	0	1	20	21	*/
+/*	37	36	35	34	*/
+/*	2	32	33	3	*/
+	if (subsys == DPC_SUBSYS_MML0) {
+		ch = &g_priv->dvfs_bw.mml0_ch_bw_r;
+		idx = type;
+	} else if (subsys == DPC_SUBSYS_MML1) {
+		ch = &g_priv->dvfs_bw.mml1_ch_bw_r;
+		idx = type + 12;
+	} else
+		return;
+
+	mutex_lock(&g_priv->dvfs_bw.lock);
+
+	/* U32_MAX means no need to update, just read */
+	if (bw_in_mb != U32_MAX)
+		*ch = bw_in_mb;
+
+	if (force)
+		dpc_ch_bw_set(subsys, idx, *ch);
+
+	mutex_unlock(&g_priv->dvfs_bw.lock);
+}
+
 static void dpc_channel_bw_set_by_idx(const enum mtk_dpc_subsys subsys, const u8 idx,
 		const u32 bw_in_mb)
 {
@@ -871,6 +918,14 @@ static void dpc_channel_bw_set_by_idx(const enum mtk_dpc_subsys subsys, const u8
 
 	if (g_priv->mmsys_id == MMSYS_MT6991)
 		dpc_ch_bw_set(DPC_SUBSYS_DISP, idx, bw_in_mb);
+}
+
+static void dpc_dvfs_trigger(const char *caller)
+{
+	if (g_priv->mml_ch_bw_set) {
+		g_priv->mml_ch_bw_set(DPC_SUBSYS_MML0, DPC_HRT_READ, U32_MAX, true);
+		g_priv->mml_ch_bw_set(DPC_SUBSYS_MML1, DPC_HRT_READ, U32_MAX, true);
+	}
 }
 
 static void mt6991_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
@@ -882,6 +937,7 @@ static void mt6991_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
 		DPCFUNC("disp vcore is not power on, subsys(%u) en(%u) skip", subsys, en);
 		return;
 	}
+	dpc_mmp(mtcmos_auto, MMPROFILE_FLAG_PULSE, subsys, en);
 
 	if (subsys == DPC_SUBSYS_DISP) {
 		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_DIS1].cfg);
@@ -912,6 +968,8 @@ static void mt6991_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
 		writel(readl(g_priv->rtff_pwr_con) & ~rtff_mask, g_priv->rtff_pwr_con);
 	else
 		writel(readl(g_priv->rtff_pwr_con) | rtff_mask, g_priv->rtff_pwr_con);
+
+	dpc_mmp(mtcmos_auto, MMPROFILE_FLAG_PULSE, subsys, readl(g_priv->rtff_pwr_con));
 }
 
 static void mt6989_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
@@ -944,6 +1002,18 @@ static void mt6989_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
 		// writel(value, dpc_base + DISP_REG_DPC_DISP1_MTCMOS_OFF_PROT_CFG);
 		// writel(value, dpc_base + DISP_REG_DPC_MML1_MTCMOS_OFF_PROT_CFG);
 	}
+}
+
+void dpc_mtcmos_auto(const enum mtk_dpc_subsys subsys, const bool en)
+{
+	unsigned long flags;
+
+	if (!g_priv->set_mtcmos)
+		return;
+
+	spin_lock_irqsave(&g_priv->mtcmos_cfg_lock, flags);
+	g_priv->set_mtcmos(subsys, en);
+	spin_unlock_irqrestore(&g_priv->mtcmos_cfg_lock, flags);
 }
 
 static void dpc_disp_group_enable(bool en)
@@ -1007,6 +1077,14 @@ static void dpc_mml_group_enable(bool en)
 	}
 }
 
+void dpc_group_enable(const u16 group, bool en)
+{
+	if (group == DPC_SUBSYS_DISP)
+		dpc_disp_group_enable(en);
+	else
+		dpc_mml_group_enable(en);
+}
+
 static void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 {
 	static bool is_mminfra_ctrl_by_dpc;
@@ -1035,11 +1113,9 @@ static void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 		writel(0x010101, dpc_base + DISP_DPC2_MML_26M_PMIC_VCORE_OFF_CFG);
 
 	/* set mtcmos auto or manual mode */
-	if (g_priv->set_mtcmos) {
-		g_priv->set_mtcmos(DPC_SUBSYS_DISP, en);
-		g_priv->set_mtcmos(DPC_SUBSYS_MML1, en);
-		g_priv->set_mtcmos(DPC_SUBSYS_MML0, en);
-	}
+	dpc_mtcmos_auto(DPC_SUBSYS_DISP, en);
+	dpc_mtcmos_auto(DPC_SUBSYS_MML1, en);
+	dpc_mtcmos_auto(DPC_SUBSYS_MML0, en);
 
 	if (en && has_cap(DPC_CAP_MMINFRA_PLL) && !is_mminfra_ctrl_by_dpc) {
 		dpc_pm_ctrl(false);
@@ -1050,7 +1126,7 @@ static void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 	/* unvote after all hw mode config done */
 	mtk_disp_vlp_vote(VOTE_CLR, DISP_VIDLE_USER_DISP_DPC_CFG);
 
-	dpc_mmp(config, MMPROFILE_FLAG_PULSE, BIT(subsys), en);
+	dpc_mmp(config, MMPROFILE_FLAG_PULSE, subsys, en);
 }
 
 irqreturn_t mt6991_irq_handler(int irq, void *dev_id)
@@ -1717,19 +1793,6 @@ static const struct file_operations debug_fops = {
 };
 #endif
 
-void dpc_group_enable(const u16 group, bool en)
-{
-	if (group == DPC_SUBSYS_MML)
-		dpc_mml_group_enable(en);
-}
-
-void dpc_mtcmos_auto(const enum mtk_dpc_subsys subsys, const bool en)
-{
-	dpc_mmp(mtcmos_auto, MMPROFILE_FLAG_START, subsys, en);
-	g_priv->set_mtcmos(subsys, en);
-	dpc_mmp(mtcmos_auto, MMPROFILE_FLAG_END, subsys, en);
-}
-
 static const struct dpc_funcs funcs = {
 	.dpc_enable = dpc_enable,
 	.dpc_ddr_force_enable = dpc_ddr_force_enable,
@@ -1750,6 +1813,7 @@ static const struct dpc_funcs funcs = {
 	.dpc_dvfs_set = dpc_dvfs_set,
 	.dpc_dvfs_bw_set = dpc_dvfs_bw_set,
 	.dpc_dvfs_both_set = dpc_dvfs_both_set,
+	.dpc_dvfs_trigger = dpc_dvfs_trigger,
 	.dpc_channel_bw_set_by_idx = dpc_channel_bw_set_by_idx,
 	.dpc_analysis = dpc_analysis,
 };
@@ -1795,6 +1859,7 @@ static struct mtk_dpc mt6991_dpc_driver_data = {
 	.srt_emi_efficiency = 133,			// multiply 1.33
 	.hrt_emi_efficiency = 85,			// divide 0.85
 	.ch_bw_urate = 70,				// divide 0.7
+	.mml_ch_bw_set = mt6991_mml_ch_bw_set,
 };
 
 static const struct of_device_id mtk_dpc_driver_dt_match[] = {
@@ -1834,6 +1899,7 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, priv);
 
 	mutex_init(&priv->dvfs_bw.lock);
+	spin_lock_init(&priv->mtcmos_cfg_lock);
 	spin_lock_init(&priv->skip_force_power_lock);
 
 	if (of_find_property(dev->of_node, "power-domains", NULL)) {
