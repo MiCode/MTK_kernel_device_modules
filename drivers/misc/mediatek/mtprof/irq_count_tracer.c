@@ -51,6 +51,8 @@ struct irq_count_period_setting {
 	{"wlan0", 12500}, /* 80000 irqs per sec*/
 	{"DPMAIF_AP", 1837}, /* 544125 irqs per sec */ /* data tput */
 	{"CCIF_AP_DATA0", 0}, /* No limit for MD EE to save debug logs. */
+	{"mtk_uart_apdma", 40000}, /* 25000 irqs per sec*/
+	{"48000000.mali", 71428}, /* 14000 irqs per sec*/
 };
 
 const char *irq_to_name(int irq)
