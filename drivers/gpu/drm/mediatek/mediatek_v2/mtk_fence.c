@@ -63,8 +63,26 @@ char *mtk_fence_session_mode_spy(unsigned int session_id)
 		return "E";
 	case MTK_SESSION_MEMORY:
 		return "M";
-	case MTK_SESSION_SP:
-		return "N";
+	case MTK_SESSION_SP0:
+		return "N0";
+	case MTK_SESSION_SP1:
+		return "N1";
+	case MTK_SESSION_SP2:
+		return "N2";
+	case MTK_SESSION_SP3:
+		return "N3";
+	case MTK_SESSION_SP4:
+		return "N4";
+	case MTK_SESSION_SP5:
+		return "N5";
+	case MTK_SESSION_SP6:
+		return "N6";
+	case MTK_SESSION_SP7:
+		return "N7";
+	case MTK_SESSION_SP8:
+		return "N8";
+	case MTK_SESSION_SP9:
+		return "N9";
 	default:
 		return "Unknown";
 	}
@@ -79,10 +97,8 @@ _get_session_sync_info(unsigned int session_id)
 	struct mtk_fence_info *layer_info = NULL;
 	char name[32];
 
-	if ((MTK_SESSION_TYPE(session_id) != MTK_SESSION_PRIMARY) &&
-	    (MTK_SESSION_TYPE(session_id) != MTK_SESSION_EXTERNAL) &&
-	    (MTK_SESSION_TYPE(session_id) != MTK_SESSION_MEMORY) &&
-	    (MTK_SESSION_TYPE(session_id) != MTK_SESSION_SP)) {
+	if (MTK_SESSION_TYPE(session_id) < MTK_SESSION_PRIMARY ||
+		MTK_SESSION_TYPE(session_id) >= MTK_SESSION_MAX) {
 		DDPFENCE("invalid session id:0x%08x\n", session_id);
 		return NULL;
 	}
@@ -155,9 +171,11 @@ _get_session_sync_info(unsigned int session_id)
 				    MTK_SESSION_MEMORY)
 					sprintf(name, "-M_%d_%d-",
 						MTK_SESSION_DEV(session_id), j);
-				else if (MTK_SESSION_TYPE(session_id) ==
-				    MTK_SESSION_SP)
-					sprintf(name, "-N_%d_%d-",
+				else if (MTK_SESSION_TYPE(session_id) >=
+				    MTK_SESSION_SP0 && MTK_SESSION_TYPE(session_id) <
+				    MTK_SESSION_MAX)
+					sprintf(name, "-N%d_%d_%d-",
+						MTK_SESSION_TYPE(session_id) - MTK_SESSION_SP0,
 						MTK_SESSION_DEV(session_id), j);
 				else
 					sprintf(name, "-NA_%d_%d-",
@@ -670,8 +688,10 @@ int mtk_fence_get_present_timeline_id(unsigned int session_id)
 		return MTK_TIMELINE_PRIMARY_PRESENT_TIMELINE_ID;
 	if (MTK_SESSION_TYPE(session_id) == MTK_SESSION_EXTERNAL)
 		return MTK_TIMELINE_SECONDARY_PRESENT_TIMELINE_ID;
-	if (MTK_SESSION_TYPE(session_id) == MTK_SESSION_SP)
-		return MTK_TIMELINE_SP_PRESENT_TIMELINE_ID;
+	if (MTK_SESSION_TYPE(session_id) >= MTK_SESSION_SP0 &&
+		MTK_SESSION_TYPE(session_id) < MTK_SESSION_MAX)
+		return MTK_TIMELINE_SP0_PRESENT_TIMELINE_ID +
+			(MTK_SESSION_TYPE(session_id) - MTK_SESSION_SP0);
 
 	DDPFENCE("session id is wrong, session=0x%x!!\n", session_id);
 	return -1;
