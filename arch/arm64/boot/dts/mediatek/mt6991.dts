@@ -6801,9 +6801,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,larb = <&smi_larb2 MTK_M4U_TO_PORT(SMMU_L2_P6_MDP_RROT0)>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L2_P6_MDP_RROT0)
-					&mmqos SLAVE_COMMON(1)>,
+					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(49, 6))
-					&mmqos SLAVE_COMMON(1)>;
+					&mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 			mmqos-supply = <&mmqos>;
 		};
