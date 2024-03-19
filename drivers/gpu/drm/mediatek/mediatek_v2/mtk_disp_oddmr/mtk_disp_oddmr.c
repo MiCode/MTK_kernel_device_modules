@@ -5731,11 +5731,13 @@ static void mtk_oddmr_dmr_static_cfg(struct mtk_ddp_comp *comp,
 	ODDMRAPI_LOG("+\n");
 	if (static_cfg_data && static_cfg_data->reg_num &&
 		static_cfg_data->reg_offset &&
-		static_cfg_data->reg_value) {
+		static_cfg_data->reg_value &&
+		static_cfg_data->reg_mask) {
 		cnt = static_cfg_data->reg_num;
 		for (i = 0; i < cnt; i++)
-			mtk_oddmr_write(comp, static_cfg_data->reg_value[i],
-				static_cfg_data->reg_offset[i], pkg);
+			if(static_cfg_data->reg_mask[i])
+				mtk_oddmr_write_mask(comp,static_cfg_data->reg_value[i],
+					static_cfg_data->reg_offset[i], static_cfg_data->reg_mask[i], pkg);
 	} else
 		ODDMRFLOW_LOG("dmr static config data error\n");
 }
