@@ -5874,15 +5874,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			ranges;
 			dr_mode = "otg";
 			maximum-speed = "high-speed";
-			mediatek,force-vbus;
-			mediatek,clk-mgr;
-			mediatek,usb3-drd;
 			mediatek,gen1-txdeemph;
 			mediatek,hwrscs-vers = <2>;
-			mediatek,uds = <&usb_dp_selector 19>;
 			mediatek,clkgate = <&usbcfg_ao_clk 0x13>;
-			mediatek,eusb2-cm-l1 = <0x474>;
-			usb-role-switch;
 			cdp-block;
 			port {
 				mtu3_drd_switch: endpoint {
@@ -5897,7 +5891,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				interrupts = <GIC_SPI 600 IRQ_TYPE_LEVEL_HIGH 0>;
 				clocks = <&clk26m>;
 				clock-names = "sys_ck";
-				mediatek,usb-offload = <&usb_offload>;
 				status = "okay";
 			};
 		};

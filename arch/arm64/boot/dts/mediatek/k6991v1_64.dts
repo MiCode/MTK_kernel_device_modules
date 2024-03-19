@@ -235,6 +235,21 @@ bootargs_ext = "rcu_nocbs=0-7";
 
 };
 
+&ssusb {
+	mediatek,force-vbus;
+	mediatek,clk-mgr;
+	mediatek,usb3-drd;
+	mediatek,uds = <&usb_dp_selector 19>;
+	mediatek,eusb2-cm-l1 = <0x474>;
+	usb-role-switch;
+	status = "okay";
+};
+
+&usb_host {
+	mediatek,usb-offload = <&usb_offload>;
+	status = "okay";
+};
+
 &mt6379_eusb2_repeater {
 	status = "okay";
 };
