@@ -182,7 +182,7 @@ struct dpc_funcs {
 	void (*dpc_dvfs_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb);
 	void (*dpc_dvfs_both_set)(const enum mtk_dpc_subsys subsys, const u8 level, bool force,
 		const u32 bw_in_mb);
-	void (*dpc_channel_bw_set)(const enum mtk_dpc_subsys subsys, const u8 idx,
+	void (*dpc_channel_bw_set_by_idx)(const enum mtk_dpc_subsys subsys, const u8 idx,
 		const u32 bw_in_mb);
 	void (*dpc_analysis)(void);
 

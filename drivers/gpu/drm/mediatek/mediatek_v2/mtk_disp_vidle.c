@@ -351,8 +351,8 @@ void mtk_vidle_dvfs_bw_set(const u32 bw_in_mb)
 void mtk_vidle_channel_bw_set(const u32 bw_in_mb, const u32 idx)
 {
 	vidle_data.channel_bw = bw_in_mb;
-	if (disp_dpc_driver.dpc_channel_bw_set)
-		disp_dpc_driver.dpc_channel_bw_set(DPC_SUBSYS_DISP, idx, bw_in_mb);
+	if (disp_dpc_driver.dpc_channel_bw_set_by_idx)
+		disp_dpc_driver.dpc_channel_bw_set_by_idx(DPC_SUBSYS_DISP, idx, bw_in_mb);
 	else
 		DDPINFO("%s NOT SET:%d\n", __func__, bw_in_mb);
 

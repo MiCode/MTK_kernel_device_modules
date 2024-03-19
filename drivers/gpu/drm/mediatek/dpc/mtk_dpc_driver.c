@@ -39,13 +39,7 @@ int debug_dvfs;
 module_param(debug_dvfs, int, 0644);
 int debug_irq;
 module_param(debug_irq, int, 0644);
-int mminfra_ao = 1;
-module_param(mminfra_ao, int, 0644);
-int mtcmos_ao = 1;
-module_param(mtcmos_ao, int, 0644);
-int vdisp_ao = 1;
-module_param(vdisp_ao, int, 0644);
-int mminfra_floor = 363;
+int mminfra_floor;
 module_param(mminfra_floor, int, 0644);
 
 u32 dump_begin;
@@ -306,6 +300,9 @@ static void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, c
 {
 	u32 addr = 0;
 
+	if (subsys >= DPC_SUBSYS_CNT)
+		return;
+
 	if (dpc_pm_ctrl(true))
 		return;
 
@@ -321,6 +318,9 @@ static int mtk_disp_wait_pwr_ack(const enum mtk_dpc_subsys subsys)
 {
 	int ret = 0;
 	u32 value = 0;
+
+	if (subsys >= DPC_SUBSYS_CNT)
+		return -1;
 
 	if (!g_priv->mtcmos_cfg[subsys].chk_va) {
 		DPCERR("0x%pa not exist\n", &g_priv->mtcmos_cfg[subsys].chk_pa);
@@ -589,89 +589,40 @@ static void dpc_enable(const u8 en)
 
 static void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force)
 {
-	u32 addr1 = 0, addr2 = 0;
-	u32 ch_bw = bw_in_mb;
-
-	if (dpc_pm_ctrl(true))
-		return;
-
-	if (g_priv->total_hrt_unit == 0)
-		return;
-/*
-	if (mminfra_floor && bw_in_mb && (bw_in_mb < mminfra_floor * 16))
-		ch_bw = mminfra_floor * 16;
-*/
-	if (subsys == DPC_SUBSYS_DISP) {
-		addr1 = DISP_REG_DPC_DISP_HIGH_HRT_BW;
-		addr2 = DISP_REG_DPC_DISP_HRTBW_SRTBW_CFG;
-	} else if (subsys == DPC_SUBSYS_MML) {
-		addr1 = DISP_REG_DPC_MML_SW_HRT_BW;
-		addr2 = DISP_REG_DPC_MML_HRTBW_SRTBW_CFG;
-	}
-	writel(ch_bw * g_priv->hrt_emi_efficiency / 100 / g_priv->total_hrt_unit, dpc_base + addr1);
-
-	writel((!force && has_cap(DPC_CAP_QOS)) ? 0 : 0x00010001, dpc_base + addr2);
-	if (unlikely(debug_dvfs))
-		DPCFUNC("subsys(%u) hrt bw(%u,%u)MB force(%u)", subsys, bw_in_mb, ch_bw, force);
-	/*
-	 *	if (g_priv->mmsys_id == MMSYS_MT6991)
-	 *		dpc_ch_bw_set(DPC_SUBSYS_DISP, 2, ch_bw);
-	 */
-
-	dpc_pm_ctrl(false);
-}
-
-static void dpc_channel_bw_set(const enum mtk_dpc_subsys subsys, const u8 idx,
-		const u32 bw_in_mb)
-{
-	u32 ch_bw = bw_in_mb;
-
-	if (dpc_pm_ctrl(true))
-		return;
+	u32 addr = 0;
 
 	if (g_priv->total_hrt_unit == 0)
 		return;
 
-	if (mminfra_floor && bw_in_mb && (bw_in_mb < mminfra_floor * 16))
-		ch_bw = mminfra_floor * 16;
+	if (subsys == DPC_SUBSYS_DISP)
+		addr = DISP_REG_DPC_DISP_HIGH_HRT_BW;
+	else
+		addr = DISP_REG_DPC_MML_SW_HRT_BW;
+	writel(bw_in_mb * 100 / g_priv->hrt_emi_efficiency / g_priv->total_hrt_unit,
+	       dpc_base + addr);
 
 	if (unlikely(debug_dvfs))
-		DPCFUNC("subsys(%u) hrt bw(%u,%u)MB", subsys, bw_in_mb, ch_bw);
-
-	if (g_priv->mmsys_id == MMSYS_MT6991)
-		dpc_ch_bw_set(DPC_SUBSYS_DISP, idx, ch_bw);
-
-
-	dpc_pm_ctrl(false);
+		DPCFUNC("subsys(%u) hrt bw(%u)MB force(%u)", subsys, bw_in_mb, force);
+	dpc_mmp(hrt_bw, MMPROFILE_FLAG_PULSE, subsys << 16 | force, bw_in_mb);
 }
 
 static void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force)
 {
-	u32 addr1 = 0, addr2 = 0;
-
-	if (dpc_pm_ctrl(true))
-		return;
+	u32 addr = 0;
 
 	if (g_priv->total_srt_unit == 0)
 		return;
 
-	if (subsys == DPC_SUBSYS_DISP) {
-		addr1 = DISP_REG_DPC_DISP_SW_SRT_BW;
-		addr2 = DISP_REG_DPC_DISP_HRTBW_SRTBW_CFG;
-	} else if (subsys == DPC_SUBSYS_MML) {
-		addr1 = DISP_REG_DPC_MML_SW_SRT_BW;
-		addr2 = DISP_REG_DPC_MML_HRTBW_SRTBW_CFG;
-	}
-	writel(bw_in_mb * g_priv->srt_emi_efficiency / 100 / g_priv->total_srt_unit, dpc_base + addr1);
+	if (subsys == DPC_SUBSYS_DISP)
+		addr = DISP_REG_DPC_DISP_SW_SRT_BW;
+	else
+		addr = DISP_REG_DPC_MML_SW_SRT_BW;
+	writel(bw_in_mb * g_priv->srt_emi_efficiency / 100 / g_priv->total_srt_unit,
+	       dpc_base + addr);
 
-	writel((!force && has_cap(DPC_CAP_QOS)) ? 0 : 0x00010001, dpc_base + addr2);
 	if (unlikely(debug_dvfs))
 		DPCFUNC("subsys(%u) srt bw(%u)MB force(%u)", subsys, bw_in_mb, force);
-
-	if (g_priv->mmsys_id == MMSYS_MT6991)
-		dpc_ch_bw_set(DPC_SUBSYS_DISP, 0, bw_in_mb);
-
-	dpc_pm_ctrl(false);
+	dpc_mmp(srt_bw, MMPROFILE_FLAG_PULSE, subsys << 16 | force, bw_in_mb);
 }
 
 static int vdisp_level_set_vcp(const enum mtk_dpc_subsys subsys, const u8 level)
@@ -887,11 +838,15 @@ static void dpc_ch_bw_set(const enum mtk_dpc_subsys subsys, const u8 idx, const 
 {
 	u32 addr = 0;
 	u32 value = 0;
+	u32 ch_bw = bw_in_mb;
 
 	if (idx > 24) {
 		DPCERR("idx %u > 24", idx);
 		return;
 	}
+
+	if (mminfra_floor && bw_in_mb && (bw_in_mb < mminfra_floor * 16))
+		ch_bw = mminfra_floor * 16;
 
 	if (subsys == DPC_SUBSYS_DISP)
 		addr = mt6991_ch_bw_cfg[idx].offset;
@@ -899,12 +854,23 @@ static void dpc_ch_bw_set(const enum mtk_dpc_subsys subsys, const u8 idx, const 
 		addr = mt6991_ch_bw_cfg[idx].offset + 0x60;
 
 	value = readl(dpc_base + addr) & ~(0x3ff << mt6991_ch_bw_cfg[idx].shift);
-	value |= (bw_in_mb * 100 / g_priv->ch_bw_urate / 16) << mt6991_ch_bw_cfg[idx].shift;
+	value |= (ch_bw * 100 / g_priv->ch_bw_urate / 16) << mt6991_ch_bw_cfg[idx].shift;
 
 	if (unlikely(debug_dvfs))
 		DPCFUNC("subsys(%u) idx(%u) bw(%u)MB", subsys, idx, bw_in_mb);
 
 	writel(value, dpc_base + addr);
+	dpc_mmp(ch_bw, MMPROFILE_FLAG_PULSE, subsys << 16 | idx, bw_in_mb);
+}
+
+static void dpc_channel_bw_set_by_idx(const enum mtk_dpc_subsys subsys, const u8 idx,
+		const u32 bw_in_mb)
+{
+	if (unlikely(debug_dvfs))
+		DPCFUNC("subsys(%u) channel bw(%u)MB", subsys, bw_in_mb);
+
+	if (g_priv->mmsys_id == MMSYS_MT6991)
+		dpc_ch_bw_set(DPC_SUBSYS_DISP, idx, bw_in_mb);
 }
 
 static void mt6991_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
@@ -940,7 +906,7 @@ static void mt6991_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
 		return;
 	}
 
-	if (!g_priv->rtff_pwr_con)
+	if (!g_priv->rtff_pwr_con || !has_cap(DPC_CAP_MTCMOS))
 		return;
 	if (en)
 		writel(readl(g_priv->rtff_pwr_con) & ~rtff_mask, g_priv->rtff_pwr_con);
@@ -1085,8 +1051,6 @@ static void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 	mtk_disp_vlp_vote(VOTE_CLR, DISP_VIDLE_USER_DISP_DPC_CFG);
 
 	dpc_mmp(config, MMPROFILE_FLAG_PULSE, BIT(subsys), en);
-
-	// DPCFUNC("subsys(%u) en(%u)", subsys, en);
 }
 
 irqreturn_t mt6991_irq_handler(int irq, void *dev_id)
@@ -1117,14 +1081,22 @@ irqreturn_t mt6991_irq_handler(int irq, void *dev_id)
 	if (mml_sta)
 		writel(~mml_sta, dpc_base + DISP_REG_DPC_MML_INTSTA);
 
+	if (disp_sta & BIT(31) || mml_sta & BIT(31)) {
+		u32 disp_err_sta = readl(dpc_base + 0x87c);
+		u32 mml_err_sta = readl(dpc_base + 0x880);
+
+		dpc_mmp(folder, MMPROFILE_FLAG_PULSE, disp_err_sta, mml_err_sta);
+		DPCERR("config when mtcmos off disp(%#x) mml(%#x)", disp_err_sta, mml_err_sta);
+	}
+
 	/* MML1 */
 	if (mml_sta & BIT(16))
 		dpc_mmp(mml_sof, MMPROFILE_FLAG_PULSE, 0, 0);
 	if (mml_sta & BIT(17))
 		dpc_mmp(mml_rrot_done, MMPROFILE_FLAG_PULSE, 0, 0);
-	if (mml_sta & BIT(13))
+	if (mml_sta & BIT(14))
 		dpc_mmp(mtcmos_mml1, MMPROFILE_FLAG_START, 0, 0);
-	if (mml_sta & BIT(12))
+	if (mml_sta & BIT(13))
 		dpc_mmp(mtcmos_mml1, MMPROFILE_FLAG_END, 0, 0);
 	if (mml_sta & BIT(1))
 		dpc_mmp(mtcmos_mml1, MMPROFILE_FLAG_PULSE, 0x50F, 1);
@@ -1162,15 +1134,6 @@ irqreturn_t mt6991_irq_handler(int irq, void *dev_id)
 			cnt_total = 0;
 		}
 	}
-
-	if (disp_sta & BIT(31)) {
-		u32 disp_err_sta = readl(dpc_base + 0x87c);
-		u32 mml_err_sta = readl(dpc_base + 0x880);
-
-		dpc_mmp(folder, MMPROFILE_FLAG_PULSE, disp_err_sta, mml_err_sta);
-		DPCERR("config when mtcmos off disp(%#x) mml(%#x)", disp_err_sta, mml_err_sta);
-	}
-
 	if (disp_sta & BIT(24)) {
 		if (readl(priv->mtcmos_cfg[DPC_SUBSYS_DIS0].chk_va) != 0xb)
 			cnt_dis0++;
@@ -1787,7 +1750,7 @@ static const struct dpc_funcs funcs = {
 	.dpc_dvfs_set = dpc_dvfs_set,
 	.dpc_dvfs_bw_set = dpc_dvfs_bw_set,
 	.dpc_dvfs_both_set = dpc_dvfs_both_set,
-	.dpc_channel_bw_set = dpc_channel_bw_set,
+	.dpc_channel_bw_set_by_idx = dpc_channel_bw_set_by_idx,
 	.dpc_analysis = dpc_analysis,
 };
 
@@ -1936,10 +1899,10 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 		// dpc_dvfs_set(DPC_SUBSYS_DISP, 0x4, true);
 
 		/* set channel bw for larb0 HRT READ */
-		dpc_ch_bw_set(DPC_SUBSYS_DISP, 2, mminfra_floor * 16);
+		dpc_ch_bw_set(DPC_SUBSYS_DISP, 2, 363 * 16);
 
 		/* set total HRT bw */
-		dpc_hrt_bw_set(DPC_SUBSYS_DISP, mminfra_floor * priv->total_hrt_unit, true);
+		dpc_hrt_bw_set(DPC_SUBSYS_DISP, 363 * priv->total_hrt_unit, true);
 
 		writel(priv->dt_follow_cfg, dpc_base + DISP_REG_DPC_DISP_DT_FOLLOW_CFG);
 		writel(priv->dt_follow_cfg, dpc_base + DISP_REG_DPC_MML_DT_FOLLOW_CFG);

@@ -37,6 +37,9 @@ void dpc_mmp_init(void)
 	dpc_mmp_events.mtcmos_mml1 = mmprofile_register_event(folder, "mtcmos_mml1");
 	dpc_mmp_events.vdisp_level = mmprofile_register_event(folder, "vdisp_level");
 	dpc_mmp_events.mtcmos_auto = mmprofile_register_event(folder, "mtcmos_auto");
+	dpc_mmp_events.ch_bw = mmprofile_register_event(folder, "ch_bw");
+	dpc_mmp_events.hrt_bw = mmprofile_register_event(folder, "hrt_bw");
+	dpc_mmp_events.srt_bw = mmprofile_register_event(folder, "srt_bw");
 
 	mmprofile_enable_event_recursive(folder, 1);
 	mmprofile_start(1);
