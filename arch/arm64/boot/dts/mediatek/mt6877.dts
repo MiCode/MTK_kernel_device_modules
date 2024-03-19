@@ -1343,43 +1343,129 @@
 		temp_t1_threshold = <0>;
 	};
 
+	pe: pe {
+		compatible = "mediatek,charger,pe";
+		gauge = <&mtk_gauge>;
+
+		ta-12v-support;
+		ta-9v-support;
+
+		pe-ichg-level-threshold = <1000000>; /* uA */
+		ta-start-battery-soc = <0>;
+		ta-stop-battery-soc = <85>;
+		min-charger-voltage = <4600000>;
+
+		ta-ac-12v-input-current = <3200000>;
+		ta-ac-9v-input-current = <3200000>;
+		ta-ac-7v-input-current = <3200000>;
+		pe-charger-current = <3000000>;
+		vbat-threshold = <4150>;
+	};
+
+	pe2: pe2 {
+		compatible = "mediatek,charger,pe2";
+		gauge = <&mtk_gauge>;
+
+		/* PE 2.0 */
+		pe20-ichg-level-threshold = <1000000>; /* uA */
+		ta-start-battery-soc = <0>;
+		ta-stop-battery-soc = <85>;
+		min-charger-voltage = <4600000>;
+
+		/* cable measurement impedance */
+		cable-imp-threshold = <699>;
+		vbat-cable-imp-threshold = <3900000>; /* uV */
+
+		/* single charger */
+		sc-input-current = <3200000>;
+		sc-charger-current = <3000000>;
+
+		/* dual charger in series*/
+		dcs-input-current = <3200000>;
+		dcs-chg1-charger-current = <1500000>;
+		dcs-chg2-charger-current = <1500000>;
+
+		dual-polling-ieoc = <450000>;
+		slave-mivr-diff = <100000>;
+		vbat-threshold = <4150>;
+	};
+
+	pdc: pdc {
+		compatible = "mediatek,charger,pd";
+		gauge = <&mtk_gauge>;
+
+		min-charger-voltage = <4600000>;
+		pd-vbus-low-bound = <5000000>;
+		pd-vbus-upper-bound = <5000000>;
+		vsys-watt = <5000000>;
+		ibus-err = <14>;
+
+		pd-stop-battery-soc = <80>;
+
+		/* single charger */
+		sc-input-current = <3200000>;
+		sc-charger-current = <3000000>;
+
+		/* dual charger in series*/
+		dcs-input-current = <3200000>;
+		dcs-chg1-charger-current = <1500000>;
+		dcs-chg2-charger-current = <1500000>;
+
+		/* dual charger */
+		dual-polling-ieoc = <450000>;
+		slave-mivr-diff = <100000>;
+		vbat-threshold = <4150>;
+	};
+
+	pe4: pe4 {
+		compatible = "mediatek,charger,pe4";
+		gauge = <&mtk_gauge>;
+
+		min-charger-voltage = <4600000>;
+		pe40-stop-battery-soc = <80>;
+
+		high-temp-to-leave-pe40 = <46>;
+		high-temp-to-enter-pe40 = <39>;
+		low-temp-to-leave-pe40 = <10>;
+		low-temp-to-enter-pe40 = <16>;
+		ibus-err = <14>;
+
+		/* PE 4.0 cable impedance (mohm) */
+		pe40-r-cable-1a-lower = <500>;
+		pe40-r-cable-2a-lower = <351>;
+		pe40-r-cable-3a-lower = <240>;
+
+		/* single charger */
+		sc-input-current = <3200000>;
+		sc-charger-current = <3000000>;
+
+		/* dual charger in series*/
+		dcs-input-current = <3200000>;
+		dcs-chg1-charger-current = <1500000>;
+		dcs-chg2-charger-current = <1500000>;
+
+		dual-polling-ieoc = <450000>;
+		slave-mivr-diff = <100000>;
+		vbat-threshold = <4150>;
+	};
+
 	charger: charger {
 		compatible = "mediatek,charger";
-		algorithm_name = "SwitchCharging2";
-		/* enable_sw_jeita; */
-		/* enable_pe_plus; */
-		/* enable_pe_2; */
-		/* enable_pe_3; */
-		/* enable_pe_4; */
-		enable_type_c;
-		power_path_support;
-		enable_dynamic_mivr;
+		gauge = <&mtk_gauge>;
+		charger = <&mt6360_chg>;
 		bootmode = <&chosen>;
+		pmic = <&pmic>;
+
+		algorithm-name = "Basic";
+		charger-configuration= <0>;
 
 		/* common */
 		battery_cv = <4350000>;
 		max_charger_voltage = <6500000>;
 		min_charger_voltage = <4600000>;
 
-		/* dynamic mivr */
-		min_charger_voltage_1 = <4400000>;
-		min_charger_voltage_2 = <4200000>;
-		max_dmivr_charger_current = <1400000>;
-
-		/* charging current */
-		usb_charger_current_suspend = <0>;
-		usb_charger_current_unconfigured = <70000>;
-		usb_charger_current_configured = <500000>;
-		usb_charger_current = <500000>;
-		ac_charger_current = <2050000>;
-		ac_charger_input_current = <3200000>;
-		non_std_ac_charger_current = <500000>;
-		charging_host_charger_current = <1500000>;
-		apple_1_0a_charger_current = <650000>;
-		apple_2_1a_charger_current = <800000>;
-		ta_ac_charger_current = <3000000>;
-
 		/* sw jeita */
+		/* enable_sw_jeita; */
 		jeita_temp_above_t4_cv = <4240000>;
 		jeita_temp_t3_to_t4_cv = <4240000>;
 		jeita_temp_t2_to_t3_cv = <4340000>;
@@ -1405,68 +1491,27 @@
 		max_charge_temp = <50>;
 		max_charge_temp_minus_x_degree = <47>;
 
-		/* PE */
-		ta_12v_support;
-		ta_9v_support;
-		pe_ichg_level_threshold = <1000000>; /* uA */
-		ta_ac_12v_input_current = <3200000>;
-		ta_ac_9v_input_current = <3200000>;
-		ta_ac_7v_input_current = <3200000>;
+		/* charging current */
+		usb-charger-current = <500000>;
+		ac-charger-current = <2050000>;
+		ac-charger-input-current = <3200000>;
+		charging-host-charger-current = <1500000>;
 
-		/* PE 2.0 */
-		pe20_ichg_level_threshold = <1000000>; /* uA */
-		ta_start_battery_soc = <0>;
-		ta_stop_battery_soc = <85>;
+		/* dynamic mivr */
+		enable-dynamic-mivr;
+		min-charger-voltage-1 = <4400000>;
+		min-charger-voltage-2 = <4200000>;
+		max-dmivr-charger-current = <1800000>;
 
-		/* PE 4.0 */
-		high_temp_to_leave_pe40 = <46>;
-		high_temp_to_enter_pe40 = <39>;
-		low_temp_to_leave_pe40 = <10>;
-		low_temp_to_enter_pe40 = <16>;
-
-		/* PE 4.0 single charger*/
-		pe40_single_charger_input_current = <3000000>;
-		pe40_single_charger_current = <3000000>;
-
-		/* PE 4.0 dual charger*/
-		pe40_dual_charger_input_current = <3000000>;
-		pe40_dual_charger_chg1_current = <2000000>;
-		pe40_dual_charger_chg2_current = <2000000>;
-		pe40_stop_battery_soc = <80>;
-
-		/* PE 4.0 cable impedance (mohm) */
-		pe40_r_cable_1a_lower = <559>;
-		pe40_r_cable_2a_lower = <420>;
-		pe40_r_cable_3a_lower = <279>;
-
-		/* dual charger */
-		chg1_ta_ac_charger_current = <1500000>;
-		chg2_ta_ac_charger_current = <1500000>;
-		slave_mivr_diff = <100000>;
-		dual_polling_ieoc = <750000>;
-
-		/* cable measurement impedance */
-		cable_imp_threshold = <699>;
-		vbat_cable_imp_threshold = <3900000>; /* uV */
-
-		/* bif */
-		bif_threshold1 = <4250000>;
-		bif_threshold2 = <4300000>;
-		bif_cv_under_threshold2 = <4450000>;
-
-		/* PD */
-		pd_vbus_low_bound = <5000000>;
-		pd_vbus_upper_bound = <5000000>;
-		pd_ichg_level_threshold = <1000000>; /* uA */
-		pd_stop_battery_soc = <80>;
-
-		ibus_err = <14>;
-		vsys_watt = <5000000>;
+		/* fast charging algo support indicator */
+		enable-fast-charging-indicator;
 	};
 
-	pd_adapter: pd_adapter {
+	pd_adapter: pd-adapter {
 		compatible = "mediatek,pd_adapter";
-		adapter_name = "pd_adapter";
+		nr-port = <1>;
+		force-cv;
+		adapter-name = "pd_adapter";
 	};
 
 	mtk_ctd: mtk-ctd {
