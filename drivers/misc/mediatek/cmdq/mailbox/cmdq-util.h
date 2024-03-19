@@ -186,6 +186,10 @@ typedef void (*platform_error_irq_debug)(void *chan);
 typedef bool (*platform_check_tf)(struct device	*dev,
 	u32 sid, u32 tbu, u32 *axids);
 typedef u32 (*platform_get_mdp_min_thread)(void);
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+typedef s32 (*platform_get_thread_id)(void *chan);
+typedef s32 (*platform_check_pkt_finalize)(void *pkt);
+#endif
 
 struct cmdq_util_platform_fp {
 	platform_thread_module_dispatch thread_module_dispatch;
@@ -199,6 +203,11 @@ struct cmdq_util_platform_fp {
 	platform_error_irq_debug dump_error_irq_debug;
 	platform_check_tf check_tf;
 	platform_get_mdp_min_thread get_mdp_min_thread;
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	platform_get_thread_id get_thread_id;
+	platform_check_pkt_finalize check_pkt_finalize;
+#endif
+
 };
 
 void cmdq_util_set_fp(struct cmdq_util_platform_fp *cust_cmdq_platform);

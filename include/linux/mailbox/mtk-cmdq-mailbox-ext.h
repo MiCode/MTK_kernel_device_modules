@@ -245,6 +245,9 @@ struct cmdq_thread {
 	u64			user_cb_cost;
 	u32			pkt_id_arr[CMDQ_THRD_PKT_ARR_MAX][CMDQ_PKT_ID_ARR_IDX_END];
 	struct mutex	pkt_id_mutex;
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	bool			is_virtio;
+#endif
 };
 
 extern int mtk_cmdq_log;
