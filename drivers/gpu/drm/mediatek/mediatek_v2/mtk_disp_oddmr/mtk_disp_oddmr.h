@@ -359,6 +359,7 @@ struct mtk_disp_oddmr {
 	struct mtk_disp_oddmr_tile_overhead_v tile_overhead_v;
 	unsigned int set_partial_update;
 	unsigned int roi_height;
+	struct mtk_disp_oddmr_parital_data_v dbi_pu_data;
 };
 
 int mtk_drm_ioctl_oddmr_load_param(struct drm_device *dev, void *data,
