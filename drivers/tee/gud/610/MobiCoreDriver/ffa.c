@@ -57,6 +57,12 @@ int ffa_module_probe(void)
 	return 0;
 }
 
+struct ffa_device *get_tee_ffa_dev(void)
+{
+	return l_ffa_ctx.dev;
+}
+EXPORT_SYMBOL(get_tee_ffa_dev);
+
 static int ffa_probe(struct ffa_device *ffa_dev)
 {
 	int ret = 0;
