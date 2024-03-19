@@ -275,6 +275,24 @@ static int aggregate_requests_v2(struct icc_path *path, u32 avg_bw, u32 peak_bw)
 }
 #endif
 
+static int update_apply_comm_chn_info(struct icc_path *path)
+{
+	struct icc_node *next, *prev = NULL;
+	int ret = -EINVAL;
+
+	if (path->num_nodes >= 3) {
+		//common port
+		next = path->reqs[path->num_nodes - 2].node;
+		//larb
+		prev = path->reqs[path->num_nodes - 3].node;
+		ret = next->provider->comm_chn_info(prev, next);
+		if (ret)
+			goto out;
+	}
+out:
+	return ret;
+}
+
 static int apply_constraints(struct icc_path *path)
 {
 	struct icc_node *next, *prev = NULL;
@@ -573,6 +591,7 @@ int mtk_icc_set_bw(struct icc_path *path, u32 avg_bw, u32 peak_bw)
 		trace_mtk_icc_set_bw(path, node, i, avg_bw, peak_bw);
 	}
 
+	update_apply_comm_chn_info(path); //update path comm & channel id
 	MMQOS_ICC_SYSTRACE_BEGIN("%s apply_constraints\n", __func__);
 	ret = apply_constraints(path);
 	MMQOS_ICC_SYSTRACE_END(); //apply_constraints

@@ -1312,6 +1312,21 @@ static bool mtk_mmqos_path_is_write(struct icc_node *node)
 	return false;
 }
 
+static int mtk_mmqos_update_comm_chn_info(struct icc_node *src, struct icc_node *dst)
+{
+	struct common_port_node *comm_port_node = NULL;
+	struct larb_node *larb_node = NULL;
+
+	larb_node = (struct larb_node *)src->data;
+	comm_port_node = (struct common_port_node *)dst->data;
+
+	if (NODE_TYPE(dst->id) == MTK_MMQOS_NODE_COMMON_PORT
+		&& NODE_TYPE(src->id) == MTK_MMQOS_NODE_LARB)
+		larb_node->channel_v2 = comm_port_node->channel_v2;
+	return 0;
+}
+
+
 static struct icc_node *mtk_mmqos_xlate(
 	struct of_phandle_args *spec, void *data)
 {
@@ -1688,6 +1703,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	mmqos->prov.set = mtk_mmqos_set;
 	mmqos->prov.aggregate = mtk_mmqos_aggregate;
 	mmqos->prov.path_is_write = mtk_mmqos_path_is_write;
+	mmqos->prov.comm_chn_info = mtk_mmqos_update_comm_chn_info;
 	mmqos->prov.xlate = mtk_mmqos_xlate;
 	mmqos->prov.dev = &pdev->dev;
 	ret = mtk_icc_provider_add(&mmqos->prov);
