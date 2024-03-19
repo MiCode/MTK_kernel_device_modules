@@ -15908,6 +15908,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			"hpt_ctrl", "gpu_dbg", "cpu_dbg";
 
 		ppb-version = <2>;
+		soc-error = <2500>;
 		battery-circult-rdc = <40>;
 		battery0-path-rac-t0 = <65>;
 		battery0-path-rac-t1 = <80>;
