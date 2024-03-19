@@ -3656,9 +3656,9 @@ pwrap: pwrap@1000d000 {
 		mediatek,larb = <&smi_larb2>;
 	};
 
-	smi_larb0: smi_larb0@14003000 {
-		cell-index = <0>;
-		compatible = "mediatek,smi_larb0","mediatek,mt6765-smi-larb", "mediatek,smi-larb";
+	smi_larb0: smi-larb0@14003000 {
+		compatible = "mediatek,smi_larb0","mediatek,mt6765-smi-larb",
+				"mediatek,smi-larb";
 		reg = <0 0x14003000 0 0x1000>;
 		mediatek,smi-supply = <&smi_common 0>;
 		init-power-on;
@@ -3785,8 +3785,7 @@ pwrap: pwrap@1000d000 {
 		power-domains = <&scpsys MT6765_POWER_DOMAIN_DIS>;
 	};
 
-	smi_larb2: smi_larb2@15021000 {
-		cell-index = <2>;
+	smi_larb2: smi-larb2@15021000 {
 		compatible = "mediatek,smi_larb2","mediatek,mt6765-smi-larb","mediatek,smi-larb";
 		reg = <0 0x15021000 0 0x1000>;
 		mediatek,smi-supply = <&smi_common 0>;
@@ -3849,8 +3848,7 @@ pwrap: pwrap@1000d000 {
 		interconnect-num = <1>;
 	};
 
-	smi_larb1: smi_larb1@17010000 {
-		cell-index = <1>;
+	smi_larb1: smi-larb1@17010000 {
 		compatible = "mediatek,smi_larb1","mediatek,mt6765-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x17010000 0 0x1000>;
 		mediatek,smi-supply = <&smi_common 0>;
@@ -3979,8 +3977,7 @@ pwrap: pwrap@1000d000 {
 		#clock-cells = <1>;
 	};
 
-	smi_larb3: smi_larb3@1a002000 {
-		cell-index = <3>;
+	smi_larb3: smi-larb3@1a002000 {
 		compatible = "mediatek,smi_larb3", "mediatek,mt6765-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a002000 0 0x1000>;
 		mediatek,smi-supply = <&smi_common 0>;
