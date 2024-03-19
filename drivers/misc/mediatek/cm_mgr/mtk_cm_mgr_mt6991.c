@@ -187,7 +187,9 @@ static void cm_mgr_thermal_hint(int is_thermal)
 
 static int cm_mgr_check_dts_setting_mt6991(struct platform_device *pdev)
 {
+#if IS_ENABLED(CONFIG_MTK_DVFSRC)
 	int i = 0;
+#endif /* CONFIG_MTK_DVFSRC */
 	int ret = 0;
 	int temp = 0;
 	struct device_node *node = pdev->dev.of_node;
