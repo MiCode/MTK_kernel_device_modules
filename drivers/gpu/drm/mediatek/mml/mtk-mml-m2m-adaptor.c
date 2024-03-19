@@ -1411,7 +1411,7 @@ static int m2m_queue_init(void *priv,
 			  struct vb2_queue *dst_vq)
 {
 	struct mml_m2m_ctx *ctx = priv;
-	struct device *mmu_dev = mml_get_mmu_dev(ctx->ctx.mml, 0); /* not secure */
+	struct device *mmu_dev = mml_get_mmu_dev(ctx->ctx.mml, ctx->param.secure);
 	int ret;
 
 	src_vq->type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
@@ -1615,6 +1615,27 @@ static s32 m2m_frame_buf_to_task_buf(struct mml_ctx *ctx,
 	if (unlikely(!mmu_dev)) {
 		mml_err("%s mmu_dev is null", __func__);
 		return -EFAULT;
+	}
+
+	if (vb->vb2_queue->memory == VB2_MEMORY_MMAP) {
+		/* use vb2 buffer iova */
+		for (i = 0; i < vb->num_planes; i++) {
+			fbuf->dma[i].dmabuf = vb->planes[i].dbuf;
+			fbuf->dma[i].iova = vb2_dma_contig_plane_dma_addr(vb, i);
+		}
+
+		/* also copy size for later use */
+		for (i = 0; i < user_buf->cnt; i++) {
+			fbuf->size[i] = user_buf->size[i];
+			if (!fbuf->dma[i].iova) {
+				/* no iova but need this plane, use previous iova */
+				if (i)
+					fbuf->dma[i].iova = fbuf->dma[i-1].iova;
+			}
+		}
+		fbuf->cnt = user_buf->cnt;
+
+		return 0;
 	}
 
 	for (i = 0; i < vb->num_planes; i++)
