@@ -792,19 +792,23 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 		call_hw_op(path->mmlsys2, pw_enable);
 	mml_trace_ex_end();
 
-	if (cfg->info.mode == MML_MODE_RACING && cfg->dpc) {
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK && cfg->dpc) {
 		/* keep and release pw off until next DT */
-		mml_msg_dpc("%s dpc exception flow for IR", __func__);
-		mml_dpc_exc_keep_task(task, path);
-		mml_dpc_exc_release_task(task, path);
-	} else if (mml_isdc(cfg->info.mode)) {
+		mml_msg_dpc("%s dpc auto for DL", __func__);
+		mml_dpc_mtcmos_auto(path->mmlsys->sysid, true);
+		if (path->mmlsys2)
+			mml_dpc_mtcmos_auto(path->mmlsys2->sysid, true);
+	} else if (mml_isdc(cfg->info.mode) || !cfg->dpc) {
 		mml_msg_dpc("%s dpc exception flow enable for mode %u", __func__, cfg->info.mode);
 		mml_dpc_exc_keep_task(task, path);
 		mml_dpc_dc_enable(cfg->mml, path->mmlsys->sysid, true);
-		if (path->mmlsys2)
+		mml_dpc_mtcmos_auto(path->mmlsys->sysid, false);
+		if (path->mmlsys2) {
 			mml_dpc_dc_enable(cfg->mml, path->mmlsys2->sysid, true);
-	} else if (!cfg->dpc) {
-		mml_msg_dpc("%s dpc exception flow enable for IR/DL no dpc", __func__);
+			mml_dpc_mtcmos_auto(path->mmlsys2->sysid, false);
+		}
+	} else {
+		mml_msg_dpc("%s dpc exception flow enable", __func__);
 		mml_dpc_exc_keep_task(task, path);
 	}
 
@@ -851,8 +855,6 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 	const struct mml_topology_path *path = cfg->path[pipe];
 	struct mml_comp *comp;
 	int i;
-	s32 cur_task_cnt;
-	bool pw_disable_exc;
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
 
@@ -886,33 +888,29 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
+	/* make sure whole clock and dpc sw operation in except range */
+	mml_dpc_exc_keep_task(task, path);
 
-	if (cfg->info.mode == MML_MODE_MML_DECOUPLE) {
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK && cfg->dpc) {
+		/* no restore operation for dl w/ mml_dpc on */
+		mml_msg_dpc("%s dpc flow disable for dl w/ dpc", __func__);
+	} else if (mml_isdc(cfg->info.mode) || !cfg->dpc) {
+		mml_msg_dpc("%s dpc exception flow disable for mode %u", __func__, cfg->info.mode);
 		/* must before pw_disable */
 		if (path->mmlsys2)
 			mml_dpc_dc_enable(cfg->mml, path->mmlsys2->sysid, false);
 		mml_dpc_dc_enable(cfg->mml, path->mmlsys->sysid, false);
+		mml_dpc_exc_release_task(task, path);
+	} else {
+		mml_msg_dpc("%s dpc exception flow disable", __func__);
+		mml_dpc_exc_release_task(task, path);
 	}
-
-	/* no need exception flow for DL/IR with dpc until scenario out */
-	cur_task_cnt = mml_dpc_task_cnt_get(task, false);
-	pw_disable_exc = cfg->dpc && cur_task_cnt == 1;
-
-	if (pw_disable_exc)
-		mml_dpc_exc_keep_task(task, path);
 
 	if (path->mmlsys2)
 		call_hw_op(path->mmlsys2, pw_disable);
 	call_hw_op(path->mmlsys, pw_disable);
 
-	if (pw_disable_exc)
-		mml_dpc_exc_release_task(task, path);
-
-	if (cfg->info.mode == MML_MODE_MML_DECOUPLE || !cfg->dpc) {
-		mml_msg_dpc("%s dpc exception flow disable for DC or IR/DL no dpc", __func__);
-		mml_dpc_exc_release_task(task, path);
-	}
-
+	mml_dpc_exc_release_task(task, path);
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "cmdq", pipe);

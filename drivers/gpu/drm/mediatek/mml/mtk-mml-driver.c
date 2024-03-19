@@ -1168,8 +1168,6 @@ void mml_dpc_dc_enable(struct mml_dev *mml, u32 sysid, bool dcen)
 		}
 	}
 
-	if (!(mml_dl_dpc & MML_DPC_PKT_VOTE))
-		mml_dpc_mtcmos_auto(sysid, !dcen);
 	mml_dpc_group_enable(!dcen);
 }
 
