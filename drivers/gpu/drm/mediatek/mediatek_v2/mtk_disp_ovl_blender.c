@@ -132,6 +132,7 @@
 
 #define OVL_BLD_SRCKEY(n)		(0x204 + 0x100*(n))
 #define OVL_BLD_L_PITCH(n)		(0x208 + 0x100*(n))
+#define L0_CONST_BLD			BIT(24)
 #define L_SA_SEL				REG_FLD_MSB_LSB(2, 0)
 #define L_SRGB_SEL				REG_FLD_MSB_LSB(7, 4)
 #define L_DA_SEL				REG_FLD_MSB_LSB(10, 8)
@@ -1171,13 +1172,13 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 	if (pixel_blend_mode == DRM_MODE_BLEND_PIXEL_NONE)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + disp_reg_ovl_pitch,
-			L_CONST_BLD,
-			L_CONST_BLD);
+			L0_CONST_BLD,
+			L0_CONST_BLD);
 	else
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + disp_reg_ovl_pitch,
 			0,
-			L_CONST_BLD);
+			L0_CONST_BLD);
 
 	if (pending->enable) {
 		u32 vrefresh;
