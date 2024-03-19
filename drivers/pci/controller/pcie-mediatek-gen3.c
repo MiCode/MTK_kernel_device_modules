@@ -150,6 +150,7 @@
 
 #define PCIE_INT_ENABLE_REG		0x180
 #define PCIE_AXI_POST_ERR_ENABLE	BIT(16)
+#define PCIE_AER_EVT_EN			BIT(29)
 #define PCIE_MSI_ENABLE			GENMASK(PCIE_MSI_SET_NUM + 8 - 1, 8)
 #define PCIE_MSI_SHIFT			8
 #define PCIE_INTX_SHIFT			24
@@ -247,6 +248,10 @@
 #define MSI_GRP2			BIT(2)
 #define MSI_GRP3			BIT(3)
 
+#define PCIE_AER_UNC_STA		0x204
+#define PCIE_AER_CO_STA			0x210
+#define PCIE_RP_STS_REG			0x230
+
 /* vlpcfg register */
 #define PCIE_VLP_AXI_PROTECT_STA	0x240
 #define PCIE_MAC_SLP_READY_MASK(port)	BIT(11 - port)
@@ -300,6 +305,7 @@ struct mtk_msi_set {
 /**
  * struct mtk_pcie_port - PCIe port information
  * @dev: pointer to PCIe device
+ * @pcidev: pointer to PCI device
  * @base: IO mapped register base
  * @pextpcfg: pextpcfg_ao(pcie HW MTCMOS) IO mapped register base
  * @vlpcfg: vlpcfg(bus protect ready) IO mapped register base
@@ -331,6 +337,7 @@ struct mtk_msi_set {
  */
 struct mtk_pcie_port {
 	struct device *dev;
+	struct pci_dev *pcidev;
 	void __iomem *base;
 	void __iomem *pextpcfg;
 	void __iomem *vlpcfg;
@@ -536,8 +543,7 @@ static void mtk_pcie_dump_pextp_info(struct mtk_pcie_port *port)
 
 static void mtk_pcie_save_restore_cfg(struct mtk_pcie_port *port, bool save)
 {
-	struct pci_host_bridge *host = pci_host_bridge_from_priv(port);
-	struct pci_dev *pdev = pci_get_slot(host->bus, 0);
+	struct pci_dev *pdev = port->pcidev;
 	unsigned long flags;
 
 	spin_lock_irqsave(&port->cfg_lock, flags);
@@ -749,9 +755,7 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 	writel_relaxed(val, port->base + PCIE_INT_ENABLE_REG);
 
 	if (port->pextpcfg) {
-		/* PCIe port0 read completion timeout is adjusted to 4ms */
-		val = PCIE_CFG_FORCE_BYTE_EN | PCIE_CFG_BYTE_EN(0xf) |
-		      PCIE_CFG_HEADER(0, 0);
+		/* PCIe read completion timeout is adjusted to 4ms */
 		val = readl_relaxed(port->base + PCIE_CONF_DEV2_CTL_STS);
 		val &= ~PCIE_DCR2_CPL_TO;
 		val |= PCIE_CPL_TIMEOUT_4MS;
@@ -1124,14 +1128,32 @@ static void mtk_pcie_irq_handler(struct irq_desc *desc)
 {
 	struct mtk_pcie_port *port = irq_desc_get_handler_data(desc);
 	struct irq_chip *irqchip = irq_desc_get_chip(desc);
-	unsigned long status;
+	unsigned long status, int_enable;
 	irq_hw_number_t irq_bit = PCIE_INTX_SHIFT;
+	u32 cor_sta = 0, uncor_sta = 0, root_err_sta = 0;
 
 	chained_irq_enter(irqchip, desc);
 
 	status = readl_relaxed(port->base + PCIE_INT_STATUS_REG);
-	if (status & PCIE_AXI_POST_ERR_EVT) {
-		dev_info(port->dev, "PCIe AXI post error detected\n");
+	int_enable = readl_relaxed(port->base + PCIE_INT_ENABLE_REG);
+	status &= int_enable;
+	if (status & (PCIE_AXI_POST_ERR_EVT | PCIE_AER_EVT)) {
+		if (port->port_num == 1) {
+			pci_read_config_dword(port->pcidev, PCIE_AER_CO_STA, &cor_sta);
+			pci_read_config_dword(port->pcidev, PCIE_AER_UNC_STA, &uncor_sta);
+			dev_info(port->dev, "ltssm reg:%#x, link sta:%#x, axi err add:%#x, axi err info:%#x, cor:%#x, uncor:%#x\n",
+				readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
+				readl_relaxed(port->base + PCIE_LINK_STATUS_REG),
+				readl_relaxed(port->base + PCIE_AXI0_ERR_ADDR_L),
+				readl_relaxed(port->base + PCIE_AXI0_ERR_INFO),
+				cor_sta, uncor_sta);
+
+			pci_read_config_dword(port->pcidev, PCIE_RP_STS_REG, &root_err_sta);
+			if ((root_err_sta & PCI_ERR_ROOT_UNCOR_RCV) || (status & PCIE_AXI_POST_ERR_EVT))
+				mtk_pcie_disable_data_trans(port->port_num);
+		}
+
+		dev_info(port->dev, "PCIe error %#lx detected\n", status);
 		mtk_pcie_dump_link_info(port->port_num);
 		writel_relaxed(PCIE_AXI_POST_ERR_EVT, port->base + PCIE_INT_STATUS_REG);
 	}
@@ -1445,6 +1467,8 @@ static int mtk_pcie_probe(struct platform_device *pdev)
 		mtk_pcie_power_down(port);
 		goto err_probe;
 	}
+
+	port->pcidev = pci_get_slot(host->bus, 0);
 
 	return 0;
 
@@ -2587,6 +2611,11 @@ static int mtk_pcie_post_init_6991(struct mtk_pcie_port *port)
 		val = readl_relaxed(port->base + PCIE_CFG_RSV_0);
 		val |= MSI_GRP2 | MSI_GRP3;
 		writel_relaxed(val, port->base + PCIE_CFG_RSV_0);
+
+		/* Enable aer report and reset error interrupt */
+		val = readl_relaxed(port->base + PCIE_INT_ENABLE_REG);
+		val |= PCIE_AER_EVT_EN;
+		writel_relaxed(val, port->base + PCIE_INT_ENABLE_REG);
 	}
 
 	return 0;
