@@ -675,7 +675,8 @@ static void sgmii_polling_link_status(void *vpriv)
 	struct mediatek_dwmac_plat_data *priv_plat = priv->plat->bsp_priv;
 	int ret;
 
-	if (priv_plat->phy_mode == PHY_INTERFACE_MODE_SGMII) {
+	if (priv_plat->phy_mode == PHY_INTERFACE_MODE_SGMII ||
+	    priv_plat->phy_mode == PHY_INTERFACE_MODE_2500BASEX) {
 		ret = mediatek_sgmii_polling_link_status(priv_plat->sgmii);
 		if (ret)
 			pr_err("%s: sgmii link up fail", __func__);
@@ -1290,7 +1291,8 @@ static int mediatek_dwmac_clk_init(struct mediatek_dwmac_plat_data *plat)
 		plat->rmii_internal_clk = NULL;
 	}
 
-	if (plat->phy_mode == PHY_INTERFACE_MODE_SGMII) {
+	if (plat->phy_mode == PHY_INTERFACE_MODE_SGMII ||
+	    plat->phy_mode == PHY_INTERFACE_MODE_2500BASEX) {
 		plat->sgmii_sel_clk = devm_clk_get(plat->dev, "sgmii_sel");
 		if (IS_ERR(plat->sgmii_sel_clk))
 			ret = PTR_ERR(plat->sgmii_sel_clk);
