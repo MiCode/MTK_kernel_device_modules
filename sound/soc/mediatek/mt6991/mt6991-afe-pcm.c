@@ -151,12 +151,14 @@ int mt6991_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 	int ret = 0;
 	unsigned int tmp_reg = 0;
 
-	if (!in_interrupt())
+	if (!in_interrupt()) {
 		dev_info(afe->dev,
 			 "%s(), %s cmd %d, irq_id %d, is_afe_need_triggered %d, no_period_wakeup %d\n",
 			 __func__, memif->data->name, cmd, irq_id,
 			 is_afe_need_triggered(memif),
 			 runtime->no_period_wakeup);
+		mt6991_aud_update_power_scenario();
+	}
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
@@ -6392,6 +6394,9 @@ static ssize_t mt6991_debug_read_reg(char *buffer, int size, struct mtk_base_afe
 				"CLK_AUDDIV_5 = 0x%x\n", value);
 	}
 	if (afe_priv->vlp_ck) {
+		regmap_read(afe_priv->vlp_ck, VLP_CLK_CFG_9, &value);
+		n += scnprintf(buffer + n, size - n,
+				"VLP_CLK_CFG_9 = 0x%x\n", value);
 		regmap_read(afe_priv->vlp_ck, VLP_CLK_CFG_UPDATE1, &value);
 		n += scnprintf(buffer + n, size - n,
 				"VLP_CLK_CFG_UPDATE1 = 0x%x\n", value);

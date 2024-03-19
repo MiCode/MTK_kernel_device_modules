@@ -11,6 +11,7 @@ static ATOMIC_NOTIFIER_HEAD(semaphore_noitify_chain);
 static RAW_NOTIFIER_HEAD(vp_audio_noitify_chain);
 static RAW_NOTIFIER_HEAD(vow_ipi_send_noitify_chain);
 static RAW_NOTIFIER_HEAD(ultra_afe_hw_free_noitify_chain);
+void* (*afe_get_power_scenario)(void) = NULL;
 
 /* memory allocate */
 int register_afe_allocate_mem_notifier(struct notifier_block *nb)
@@ -131,6 +132,19 @@ int notify_ultra_afe_hw_free(unsigned long module, void *v)
 }
 EXPORT_SYMBOL_GPL(notify_ultra_afe_hw_free);
 
+void *audio_get_power_scenario(void)
+{
+	if (afe_get_power_scenario)
+		return afe_get_power_scenario();
+	return NULL;
+}
+EXPORT_SYMBOL_GPL(audio_get_power_scenario);
+
+void register_get_power_scene_callback(void* (*callback)(void))
+{
+	afe_get_power_scenario = callback;
+}
+EXPORT_SYMBOL_GPL(register_get_power_scene_callback);
 
 MODULE_SOFTDEP("post: mediatek-drm");
 

@@ -411,6 +411,9 @@ void mt6991_afe_disable_clock(struct mtk_base_afe *afe)
 	mt6991_set_audio_int_bus_parent(afe, CLK_VLP_CLK26M);
 	clk_disable_unprepare(afe_priv->clk[CLK_VLP_MUX_AUDIOINTBUS]);
 	clk_disable_unprepare(afe_priv->clk[CLK_CK_ADSP_SEL]);
+
+	// update power scenario to afe off
+	mt6991_aud_swpm_power_off();
 }
 
 int mt6991_afe_dram_request(struct device *dev)
