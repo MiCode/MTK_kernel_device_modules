@@ -314,6 +314,7 @@ struct mtk_dpc {
 
 	unsigned int mmsys_id;
 	u32 vidle_mask;
+	u32 vidle_mask_bk;
 	u32 dt_follow_cfg;
 	u32 total_srt_unit;
 	u32 total_hrt_unit;

@@ -21,9 +21,11 @@
 #endif
 
 #include <dt-bindings/clock/mmdvfs-clk.h>
+#include <dt-bindings/memory/mtk-smi-user.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include "mtk-mmdvfs-v3-memory.h"
 #include <clk-fmeter.h>
+#include "mtk-smi-dbg.h"
 
 #include "mtk_dpc.h"
 #include "mtk_dpc_mmp.h"
@@ -32,6 +34,7 @@
 #include "mtk_disp_vidle.h"
 #include "mtk-mml-dpc.h"
 #include "mdp_dpc.h"
+#include "mtk_vdisp.h"
 
 int debug_mmp = 1;
 module_param(debug_mmp, int, 0644);
@@ -1472,7 +1475,9 @@ static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 		return -1;
 
 	mtk_disp_vlp_vote(VOTE_SET, user);
-	udelay(50);
+
+	if (user >= DISP_VIDLE_USER_CRTC)
+		udelay(50);
 
 	return 0;
 }
@@ -1636,6 +1641,27 @@ static int dpc_pm_notifier(struct notifier_block *notifier, unsigned long pm_eve
 	}
 	return NOTIFY_DONE;
 }
+
+static int dpc_smi_pwr_get(void *data)
+{
+	dpc_vidle_power_keep(DISP_VIDLE_USER_SMI_DUMP);
+	g_priv->vidle_mask_bk = g_priv->vidle_mask;
+	g_priv->vidle_mask = 0;
+	return 0;
+}
+static int dpc_smi_pwr_put(void *data)
+{
+	g_priv->vidle_mask = g_priv->vidle_mask_bk;
+	dpc_vidle_power_release(DISP_VIDLE_USER_SMI_DUMP);
+	return 0;
+}
+static struct smi_user_pwr_ctrl dpc_smi_pwr_funcs = {
+	 .name = "disp_dpc",
+	 .data = NULL,
+	 .smi_user_id =  MTK_SMI_DISP,
+	 .smi_user_get = dpc_smi_pwr_get,
+	 .smi_user_put = dpc_smi_pwr_put,
+};
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 static void process_dbg_opt(const char *opt)
@@ -1980,6 +2006,8 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 	mtk_vidle_register(&funcs);
 	mml_dpc_register(&funcs);
 	mdp_dpc_register(&funcs);
+	mtk_vdisp_dpc_register(&funcs);
+	mtk_smi_dbg_register_pwr_ctrl_cb(&dpc_smi_pwr_funcs);
 
 	DPCFUNC("-");
 	return ret;

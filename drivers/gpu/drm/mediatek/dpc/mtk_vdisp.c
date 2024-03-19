@@ -13,6 +13,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
 
+#include "mtk_vdisp.h"
 #include "mtk_disp_vidle.h"
 #include "mtk-smi-dbg.h"
 
@@ -84,11 +85,12 @@ struct mtk_vdisp {
 };
 static struct device *g_dev[DISP_PD_NUM];
 static void __iomem *g_vlp_base;
+static void __iomem *g_disp_voter;
 static atomic_t g_mtcmos_cnt = ATOMIC_INIT(0);
 static DEFINE_MUTEX(g_mtcmos_cnt_lock);
+static struct dpc_funcs disp_dpc_driver;
 
 static bool vcp_warmboot_support;
-
 
 static s32 mtk_vdisp_get_power_cnt(void)
 {
@@ -104,6 +106,10 @@ static s32 mtk_vdisp_get_power_cnt(void)
 static s32 mtk_vdisp_poll_power_cnt(s32 val)
 {
 	s32 ret, tmp;
+
+	/* if users except DISP_VIDLE_USER_CRTC were in exception flow, skip polling */
+	if (g_disp_voter && (readl(g_disp_voter) & 0xFFFE0000))
+		return 0;
 
 	ret = readx_poll_timeout(mtk_vdisp_get_power_cnt, , tmp, tmp == val, 100, TIMEOUT_300MS);
 	if (ret < 0)
@@ -285,6 +291,19 @@ static int genpd_event_notifier(struct notifier_block *nb,
 		if (atomic_read(&g_mtcmos_cnt) == 0)
 			vdisp_hwccf_ctrl(priv, true);
 
+		/* vote and power on mminfra */
+		if (disp_dpc_driver.dpc_vidle_power_keep)
+			disp_dpc_driver.dpc_vidle_power_keep((enum mtk_vidle_voter_user)priv->pd_id);
+
+		if (disp_dpc_driver.dpc_mtcmos_auto) {
+			if (priv->pd_id == DISP_PD_DISP1)
+				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_DIS1, false);
+			else if (priv->pd_id == DISP_PD_MML1)
+				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML1, false);
+			else if (priv->pd_id == DISP_PD_MML0)
+				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML0, false);
+		}
+
 		atomic_inc(&g_mtcmos_cnt);
 		mutex_unlock(&g_mtcmos_cnt_lock);
 		break;
@@ -300,10 +319,26 @@ static int genpd_event_notifier(struct notifier_block *nb,
 		if (priv->vdisp_ao_cg_con)
 			writel(BIT(16), priv->vdisp_ao_cg_con + 0x8);
 
+		/* unvote and power off mminfra */
+		if (disp_dpc_driver.dpc_vidle_power_release)
+			disp_dpc_driver.dpc_vidle_power_release((enum mtk_vidle_voter_user)priv->pd_id);
+
 		mminfra_hwv_pwr_ctrl(priv, false);
 		break;
 	case GENPD_NOTIFY_PRE_OFF:
 		mminfra_hwv_pwr_ctrl(priv, true);
+
+		if (disp_dpc_driver.dpc_vidle_power_keep)
+			disp_dpc_driver.dpc_vidle_power_keep((enum mtk_vidle_voter_user)priv->pd_id);
+
+		if (disp_dpc_driver.dpc_mtcmos_auto) {
+			if (priv->pd_id == DISP_PD_DISP1)
+				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_DIS1, false);
+			else if (priv->pd_id == DISP_PD_MML1)
+				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML1, false);
+			else if (priv->pd_id == DISP_PD_MML0)
+				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML0, false);
+		}
 
 		/* enable vdisp_ao merge irq, to fix burst irq when mtcmos on */
 		if (priv->vdisp_ao_merge_irq)
@@ -321,6 +356,9 @@ static int genpd_event_notifier(struct notifier_block *nb,
 
 		if (atomic_read(&g_mtcmos_cnt) == 1)
 			vdisp_hwccf_ctrl(priv, false);
+
+		if (disp_dpc_driver.dpc_vidle_power_release)
+			disp_dpc_driver.dpc_vidle_power_release((enum mtk_vidle_voter_user)priv->pd_id);
 
 		mminfra_hwv_pwr_ctrl(priv, false);
 
@@ -463,6 +501,15 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 		}
 	}
 
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "disp_sw_vote_set");
+	if (res) {
+		g_disp_voter = devm_ioremap(dev, res->start, resource_size(res));
+		if (!g_disp_voter) {
+			VDISPERR("fail to ioremap hwccf_base: 0x%pa", &res->start);
+			return -EINVAL;
+		}
+	}
+
 	if (of_find_property(dev->of_node, "dis1-shutdown-supply", NULL)) {
 		rgu = devm_regulator_get(dev, "dis1-shutdown");
 		if (!IS_ERR(rgu)) {
@@ -522,6 +569,12 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 
 	return ret;
 }
+
+void mtk_vdisp_dpc_register(const struct dpc_funcs *funcs)
+{
+	disp_dpc_driver = *funcs;
+}
+EXPORT_SYMBOL(mtk_vdisp_dpc_register);
 
 static int mtk_vdisp_remove(struct platform_device *pdev)
 {
