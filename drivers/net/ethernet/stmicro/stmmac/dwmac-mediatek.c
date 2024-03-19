@@ -7,6 +7,7 @@
 #include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/of_mdio.h>
 #include <linux/of_net.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
@@ -146,6 +147,491 @@ static const char * const mt8195_dwmac_clk_l[] = {
 static const char * const mt8678_dwmac_clk_l[] = {
 	"mac_main", "ptp_ref"
 };
+
+#ifdef CONFIG_DEBUG_FS
+static int eth_smt_result = 2;
+
+static struct sk_buff *get_skb(struct stmmac_priv *priv,
+			       u32 payload_len,
+			       u16 queue_id)
+{
+	struct sk_buff *skb = NULL;
+	unsigned char *ppayload;
+	struct ethhdr *ehdr;
+	u32 size;
+	unsigned char bc_addr[ETH_ALEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+	size = payload_len + sizeof(struct ethhdr);
+
+	skb = netdev_alloc_skb(priv->dev, size);
+	if (!skb)
+		return NULL;
+
+	ehdr = skb_push(skb, ETH_HLEN);
+	prefetchw(skb->data);
+
+	skb_reset_mac_header(skb);
+	ether_addr_copy(ehdr->h_source, priv->dev->dev_addr);
+	ether_addr_copy(ehdr->h_dest, bc_addr);
+
+	ehdr->h_proto = htons(ETH_P_TSN);
+
+	ppayload = skb_put(skb, payload_len);
+
+	get_random_bytes(ppayload, payload_len);
+
+	skb->protocol = htons(ETH_P_TSN);
+	skb->pkt_type = PACKET_HOST;
+	skb->dev = priv->dev;
+
+	return skb;
+}
+
+static bool __loopback_test(struct stmmac_priv *priv, int num, int delay,
+			    bool log, u32 frame_size)
+{
+	const struct net_device_ops *netdev_ops = priv->dev->netdev_ops;
+	unsigned int rx_framecount_gb, rx_octetcount_gb, rx_octetcount_g;
+	unsigned int tx_octetcount_gb, tx_framecount_gb;
+	struct sk_buff *skb = NULL;
+	int i, j, cpu;
+	bool ret;
+
+	priv->mmc.mmc_tx_octetcount_gb += readl(priv->mmcaddr + 0x14);
+	priv->mmc.mmc_tx_framecount_gb += readl(priv->mmcaddr + 0x18);
+	priv->mmc.mmc_rx_framecount_gb += readl(priv->mmcaddr + 0x80);
+	priv->mmc.mmc_rx_octetcount_gb += readl(priv->mmcaddr + 0x84);
+	priv->mmc.mmc_rx_octetcount_g += readl(priv->mmcaddr + 0x88);
+	tx_octetcount_gb = priv->mmc.mmc_tx_octetcount_gb;
+	tx_framecount_gb = priv->mmc.mmc_tx_framecount_gb;
+	rx_framecount_gb = priv->mmc.mmc_rx_framecount_gb;
+	rx_octetcount_gb = priv->mmc.mmc_rx_octetcount_gb;
+	rx_octetcount_g = priv->mmc.mmc_rx_octetcount_g;
+	usleep_range(delay, delay + 100);
+	for (j = 0; j < priv->plat->tx_queues_to_use; j++) {
+		for (i = 0; i < num; i++) {
+			struct netdev_queue *txq =
+					netdev_get_tx_queue(priv->dev, j);
+			skb = get_skb(priv, frame_size, j);
+			if (!skb) {
+				pr_err("alloc skb failed\n");
+				return false;
+			}
+			cpu = get_cpu();
+			do {
+				/* Disable soft irqs for various locks below.
+				 * Also stops preemption for RCU.
+				 * avoid dql bug-on issue.
+				 */
+				rcu_read_lock_bh();
+				HARD_TX_LOCK(priv->dev, txq, cpu);
+				ret = netdev_ops->ndo_start_xmit(skb,
+								 priv->dev);
+				if (ret == NETDEV_TX_OK)
+					txq_trans_update(txq);
+				HARD_TX_UNLOCK(priv->dev, txq);
+				rcu_read_unlock_bh();
+			} while (ret != NETDEV_TX_OK);
+			put_cpu();
+		}
+	}
+
+	usleep_range(delay, delay + 100);
+	priv->mmc.mmc_tx_octetcount_gb += readl(priv->mmcaddr + 0x14);
+	priv->mmc.mmc_tx_framecount_gb += readl(priv->mmcaddr + 0x18);
+	priv->mmc.mmc_rx_framecount_gb += readl(priv->mmcaddr + 0x80);
+	priv->mmc.mmc_rx_octetcount_gb += readl(priv->mmcaddr + 0x84);
+	priv->mmc.mmc_rx_octetcount_g += readl(priv->mmcaddr + 0x88);
+	tx_octetcount_gb = priv->mmc.mmc_tx_octetcount_gb - tx_octetcount_gb;
+	tx_framecount_gb = priv->mmc.mmc_tx_framecount_gb - tx_framecount_gb;
+	rx_framecount_gb = priv->mmc.mmc_rx_framecount_gb - rx_framecount_gb;
+	rx_octetcount_gb = priv->mmc.mmc_rx_octetcount_gb - rx_octetcount_gb;
+	rx_octetcount_g = priv->mmc.mmc_rx_octetcount_g - rx_octetcount_g;
+
+	if (tx_framecount_gb == rx_framecount_gb &&
+	    tx_octetcount_gb == rx_octetcount_gb &&
+	    rx_octetcount_gb == rx_octetcount_g &&
+	    tx_framecount_gb == (priv->plat->tx_queues_to_use * num))
+		ret = true;
+	else
+		ret = false;
+
+	if (log) {
+		pr_info("loop back %s:\n", ret ? "success" : "fail");
+		pr_info("tx_queues:%d\t pkt_num_per_queue:%d\n",
+			priv->plat->tx_queues_to_use, num);
+		pr_info("tx_framecount_gb:%u\t tx_octetcount_gb:%u\n",
+			tx_framecount_gb, tx_octetcount_gb);
+		pr_info("rx_framecount_gb:%u\t rx_octetcount_gb:%u, rx_octetcount_g:%u\n",
+			rx_framecount_gb, rx_octetcount_gb, rx_octetcount_g);
+	}
+
+	return ret;
+}
+
+static int mmd_write(struct stmmac_priv *priv, int phy_addr,
+		     int dev_addr, int reg, int data)
+{
+	priv->mii->write(priv->mii, phy_addr,
+			 0xd, dev_addr);
+
+	priv->mii->write(priv->mii, phy_addr,
+			 0xe, reg);
+
+	priv->mii->write(priv->mii, phy_addr,
+			 0xd, (1 << 14) | dev_addr);
+
+	priv->mii->write(priv->mii, phy_addr,
+			 0xe, data);
+	return 0;
+}
+
+static int mmd_read(struct stmmac_priv *priv, int phy_addr, int dev_addr, int reg)
+{
+	int origin;
+
+	priv->mii->write(priv->mii, phy_addr,
+			 0xd, dev_addr);
+
+	priv->mii->write(priv->mii, phy_addr,
+			 0xe, reg);
+
+	priv->mii->write(priv->mii, phy_addr,
+			 0xd, (1 << 14) | dev_addr);
+
+	origin = priv->mii->read(priv->mii, phy_addr, 0xe);
+
+	return origin;
+}
+
+static ssize_t stmmac_show(struct device *dev,
+			   struct device_attribute *attr,
+			   char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct net_device *netdev = platform_get_drvdata(pdev);
+	struct stmmac_priv *priv = netdev_priv(netdev);
+	int len = 0;
+	int buf_len = (int)PAGE_SIZE;
+	struct phy_device *phy_dev = of_phy_find_device(priv->plat->phy_node);
+
+	len += snprintf(buf + len, buf_len - len,
+			"stmmac debug commands: in hexadecimal notation\n");
+	len += snprintf(buf + len, buf_len - len,
+			"mac read: echo er reg_start reg_range > stmmac\n");
+	len += snprintf(buf + len, buf_len - len,
+			"mac write: echo ew reg_addr value > stmmac\n");
+	len += snprintf(buf + len, buf_len - len,
+			"clause22 read: echo cl22r phy_reg > stmmac\n");
+	len += snprintf(buf + len, buf_len - len,
+			"clause22 write: echo cl22w phy_reg value > stmmac\n");
+	len += snprintf(buf + len, buf_len - len,
+			"clause45 read: echo cl45r dev_id reg_addr > stmmac\n");
+	len += snprintf(buf + len, buf_len - len,
+			"clause45 write: echo cl45w dev_id reg_addr value > stmmac\n");
+	len += snprintf(buf + len, buf_len - len,
+			"reg read: echo rr reg_addr > stmmac\n");
+	len += snprintf(buf + len, buf_len - len,
+			"reg write: echo wr reg_addr value > stmmac\n");
+	len += snprintf(buf + len, buf_len - len,
+			"phy addr:%d\n", phy_dev->mdio.addr);
+	len += snprintf(buf + len, buf_len - len,
+			"eth_smt_result:%d\n", eth_smt_result);
+
+	return len;
+}
+
+static ssize_t stmmac_store(struct device *dev,
+			    struct device_attribute *attr,
+			    const char *buf,
+			    size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct net_device *netdev = platform_get_drvdata(pdev);
+	struct stmmac_priv *priv = netdev_priv(netdev);
+	void __iomem *tmp_addr;
+	int reg, data, devid, origin, i, reg_addr, phy_addr, dev_addr;
+	struct phy_device *phy_dev = of_phy_find_device(priv->plat->phy_node);
+
+	if (!strncmp(buf, "er", 2) &&
+	    (sscanf(buf + 2, "%x %x", &reg, &data) == 2)) {
+		for (i = 0; i < data / 0x10 + 1; i++) {
+			dev_info(dev,
+				 "%08x:\t%08x\t%08x\t%08x\t%08x\t\n",
+				 reg + i * 16,
+				 readl(priv->ioaddr + reg + i * 0x10),
+				 readl(priv->ioaddr + reg + i * 0x10 + 0x4),
+				 readl(priv->ioaddr + reg + i * 0x10 + 0x8),
+				 readl(priv->ioaddr + reg + i * 0x10 + 0xc));
+		}
+	} else if (!strncmp(buf, "ew", 2) &&
+		   (sscanf(buf + 2, "%x %x", &reg, &data) == 2)) {
+		origin = readl(priv->ioaddr + reg);
+		writel(data, priv->ioaddr + reg);
+		dev_info(dev, "mac reg%#x, value:%#x -> %#x\n",
+			 reg, origin, readl(priv->ioaddr + reg));
+	} else if (!strncmp(buf, "smt", 3)) {
+		eth_smt_result = 0;
+
+		if (!phy_dev) {
+			dev_info(dev, "null phy_dev\n");
+			goto out;
+		}
+
+		if (priv->mii->read(priv->mii, phy_dev->mdio.addr, 2) == 0x1c &&
+		    priv->mii->read(priv->mii, phy_dev->mdio.addr, 3) == 0xc916)
+			eth_smt_result = 1;
+		dev_info(dev, "eth_smt_result:%d\n", eth_smt_result);
+	} else if (!strncmp(buf, "cl22r", 5)) {
+		if (sscanf(buf + 5, "%x %x", &phy_addr, &reg) == 2) {
+			dev_info(dev, "cl22 phyaddr:%#x, reg:%#x, value:%#x\n",
+				 phy_addr,
+				 reg,
+				 mdiobus_read(priv->mii, phy_addr, reg));
+		} else if (sscanf(buf + 5, "%x", &reg) == 1) {
+			if (!phy_dev) {
+				dev_info(dev, "null phy_dev\n");
+				goto out;
+			}
+
+			dev_info(dev, "cl22 phyaddr:%#x, reg:%#x, value:%#x\n",
+				 phy_dev->mdio.addr,
+				 reg,
+				 mdiobus_read(priv->mii,
+					      phy_dev->mdio.addr,
+					      reg));
+		} else {
+			dev_info(dev, "format error\n");
+		}
+	} else if (!strncmp(buf, "cl22w", 5)) {
+		if (sscanf(buf + 5, "%x %x %x", &phy_addr, &reg, &data) == 3) {
+			origin = mdiobus_read(priv->mii, phy_addr, reg);
+			mdiobus_write(priv->mii, phy_addr, reg, data);
+			dev_info(dev, "cl22 phyaddr:%#x, reg:%#x, %#x -> %#x\n",
+				 phy_addr,
+				 reg,
+				 origin,
+				 mdiobus_read(priv->mii, phy_addr, reg));
+		} else if (sscanf(buf + 5, "%x %x", &reg, &data) == 2) {
+			if (!phy_dev) {
+				dev_info(dev, "null phy_dev\n");
+				goto out;
+			}
+
+			origin = mdiobus_read(priv->mii, phy_dev->mdio.addr, reg);
+			mdiobus_write(priv->mii, phy_dev->mdio.addr, reg, data);
+			dev_info(dev, "cl22 phyaddr:%#x, reg:%#x, %#x -> %#x\n",
+				 phy_dev->mdio.addr,
+				 reg,
+				 origin,
+				 mdiobus_read(priv->mii,
+					      phy_dev->mdio.addr,
+					      reg));
+		} else {
+			dev_info(dev, "format error\n");
+		}
+	} else if (!strncmp(buf, "cl45r", 5)) {
+		if (sscanf(buf + 5, "%x %x %x", &phy_addr, &devid, &reg) == 3) {
+			reg_addr = (1 << 30) |
+				   ((devid & 0x1f) << 16) |
+				   (reg & 0xffff);
+			dev_info(dev, "cl45 phyaddr:%#x, reg:%#x-%#x, %#x\n",
+				 phy_addr, devid, reg,
+				 mdiobus_read(priv->mii, phy_addr, reg_addr));
+		} else if (sscanf(buf + 5, "%x %x", &devid, &reg) == 2) {
+			if (!phy_dev) {
+				dev_info(dev, "null phy_dev\n");
+				goto out;
+			}
+
+			reg_addr = (1 << 30) |
+				   ((devid & 0x1f) << 16) |
+				   (reg & 0xffff);
+			dev_info(dev, "cl45 phyaddr:%#x, reg:%#x-%#x, %#x\n",
+				 phy_dev->mdio.addr,
+				 devid,
+				 reg,
+				 mdiobus_read(priv->mii,
+					      phy_dev->mdio.addr,
+					      reg_addr));
+		} else {
+			dev_info(dev, "format error\n");
+		}
+	} else if (!strncmp(buf, "cl45w", 5)) {
+		if (sscanf(buf + 5, "%x %x %x %x", &phy_addr, &devid,
+			   &reg, &data) == 4) {
+			reg_addr = (1 << 30) |
+				   ((devid & 0x1f) << 16) |
+				   (reg & 0xffff);
+			origin = mdiobus_read(priv->mii,
+					      phy_addr,
+					      reg_addr);
+			mdiobus_write(priv->mii,
+				      phy_addr,
+				      reg_addr,
+				      data);
+			dev_info(dev, "cl45 phyaddr:%#x, reg:%#x-%#x, %#x -> %#x\n",
+				 phy_addr,
+				 devid,
+				 reg,
+				 origin,
+				 mdiobus_read(priv->mii,
+					      phy_addr,
+					      reg_addr));
+		} else if (sscanf(buf + 5, "%x %x %x", &devid,
+				  &reg, &data) == 3) {
+			if (!phy_dev) {
+				dev_info(dev, "null phy_dev\n");
+				goto out;
+			}
+
+			reg_addr = (1 << 30) |
+				   ((devid & 0x1f) << 16) |
+				   (reg & 0xffff);
+			origin = mdiobus_read(priv->mii,
+					      phy_dev->mdio.addr,
+					      reg_addr);
+			mdiobus_write(priv->mii, phy_dev->mdio.addr,
+				      reg_addr, data);
+			dev_info(dev, "cl45 phyaddr:%#x, reg:%#x-%#x, %#x -> %#x\n",
+				 phy_dev->mdio.addr,
+				 devid,
+				 reg,
+				 origin,
+				 mdiobus_read(priv->mii,
+					      phy_dev->mdio.addr,
+					      reg_addr));
+		} else {
+			dev_info(dev, "format error\n");
+		}
+	}  else if (!strncmp(buf, "mmdr", 4)) {
+		if (sscanf(buf + 4, "%x %x %x", &phy_addr, &dev_addr, &reg) == 3){
+			mmd_read(priv, phy_addr, dev_addr, reg);
+			dev_info(dev, "mmd phyaddr:%#x, reg:%#x-%#x, %#x\n",
+				 phy_addr,
+				 dev_addr,
+				 reg,
+				 mmd_read(priv,
+					  phy_addr,
+					  dev_addr,
+					  reg));
+		}else if (sscanf(buf + 4, "%x %x", &dev_addr, &reg) == 2){
+			if (!phy_dev) {
+				dev_info(dev, "null phy_dev\n");
+				goto out;
+			}
+
+			mmd_read(priv, phy_dev->mdio.addr, dev_addr, reg);
+			dev_info(dev, "mmd phyaddr:%#x, reg:%#x-%#x, %#x\n",
+				 phy_dev->mdio.addr,
+				 dev_addr,
+				 reg,
+				 mmd_read(priv,
+					  phy_dev->mdio.addr,
+					  dev_addr,
+					  reg));
+		} else {
+			dev_info(dev, "format error\n");
+		}
+	} else if (!strncmp(buf, "mmdw", 4) ) {
+		if (sscanf(buf + 4, "%x %x %x %x", &phy_addr,
+			   &dev_addr, &reg, &data) == 4){
+			origin = mmd_read(priv, phy_addr, dev_addr, reg);
+			mmd_write(priv, phy_addr, dev_addr, reg, data);
+			dev_info(dev, "mmd phyaddr:%#x, reg:%#x-%#x, %#x -> %#x\n",
+				 phy_addr,
+				 dev_addr,
+				 reg,
+				 origin,
+				 mmd_read(priv, phy_addr, dev_addr, reg));
+		} else if ((sscanf(buf + 4, "%x %x %x", &dev_addr,
+				   &reg, &data) == 3)) {
+			if (!phy_dev) {
+				dev_info(dev, "null phy_dev\n");
+				goto out;
+			}
+
+			origin = mmd_read(priv,
+					  phy_dev->mdio.addr,
+					  dev_addr,
+					  reg);
+			mmd_write(priv,
+				  phy_dev->mdio.addr,
+				  dev_addr,
+				  reg,
+				  data);
+			dev_info(dev, "mmd phyaddr:%#x, reg:%#x-%#x, %#x -> %#x\n",
+				 phy_dev->mdio.addr,
+				 dev_addr,
+				 reg,
+				 origin,
+				 mmd_read(priv,
+					  phy_dev->mdio.addr,
+					  dev_addr,
+					  reg));
+		} else {
+			dev_info(dev, "format error\n");
+		}
+	} else if (!strncmp(buf, "rr", 2) &&
+		   (sscanf(buf + 2, "%x", &reg) == 1)) {
+		tmp_addr = ioremap_cache(reg, 32);
+		data = readl(tmp_addr);
+		dev_info(dev, "rr reg%#x, value:%#x\n", reg, data);
+	} else if (!strncmp(buf, "wr", 2) &&
+		   (sscanf(buf + 2, "%x %x", &reg, &data) == 2)) {
+		tmp_addr = ioremap_cache(reg, 32);
+		origin = readl(tmp_addr);
+		writel(data, tmp_addr);
+		dev_info(dev, "reg%#x, value:%#x -> %#x\n",
+			 reg, origin, readl(tmp_addr));
+	} else if (!strncmp(buf, "dump_mac", 8)) {
+		for (i = 0; i < 0x1300 / 0x10 + 1; i++) {
+			pr_info("%08x:\t%08x\t%08x\t%08x\t%08x\t\n",
+				reg + i * 16,
+				readl(priv->ioaddr + i * 0x10),
+				readl(priv->ioaddr + i * 0x10 + 0x4),
+				readl(priv->ioaddr + i * 0x10 + 0x8),
+				readl(priv->ioaddr + i * 0x10 + 0xc));
+		}
+	} else if (!strncmp(buf, "tx", 2)) {
+		if (sscanf(buf + 2, "%d %d %d", &reg, &data, &reg_addr) == 3)
+			__loopback_test(priv, reg, reg_addr, true, data);
+		else if (sscanf(buf + 2, "%d %d", &reg, &data) == 2)
+			__loopback_test(priv, reg, 10000, true, data);
+		else if (sscanf(buf + 2, "%d", &reg) == 1)
+			__loopback_test(priv, reg, 10000, true, 1500);
+	} else if (!strncmp(buf, "carrier_on", 10)) {
+		netif_carrier_on(priv->dev);
+	} else if (!strncmp(buf, "carrier_off", 11)) {
+		netif_carrier_off(priv->dev);
+	} else {
+		dev_info(dev, "Error: command not support\n");
+	}
+out:
+	return count;
+}
+
+static DEVICE_ATTR_RW(stmmac);
+
+static int eth_create_attr(struct device *dev)
+{
+	int err = 0;
+
+	if (!dev)
+		return -EINVAL;
+
+	err = device_create_file(dev, &dev_attr_stmmac);
+	if (err)
+		pr_err("create debug file fail:%s\n", __func__);
+
+	return err;
+}
+
+static void eth_remove_attr(struct device *dev)
+{
+	device_remove_file(dev, &dev_attr_stmmac);
+}
+#endif
 
 static int mt2712_set_interface(struct mediatek_dwmac_plat_data *plat)
 {
@@ -882,6 +1368,10 @@ static int mediatek_dwmac_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_drv_probe;
 
+#ifdef CONFIG_DEBUG_FS
+	eth_create_attr(&pdev->dev);
+#endif
+
 	return 0;
 
 err_drv_probe:
@@ -895,6 +1385,10 @@ err_remove_config_dt:
 static void mediatek_dwmac_remove(struct platform_device *pdev)
 {
 	struct mediatek_dwmac_plat_data *priv_plat = get_stmmac_bsp_priv(&pdev->dev);
+
+#ifdef CONFIG_DEBUG_FS
+	eth_remove_attr(&pdev->dev);
+#endif
 
 	stmmac_pltfr_remove(pdev);
 	mediatek_dwmac_clks_config(priv_plat, false);
