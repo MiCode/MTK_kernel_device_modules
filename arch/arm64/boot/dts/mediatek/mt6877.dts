@@ -2211,12 +2211,9 @@
 	};
 
 	pmic_clock_buffer_ctrl:pmic_clock_buffer_ctrl {
-		compatible = "mediatek,pmic_clock_buffer";
-		mediatek,clkbuf-quantity = <7>;
-		mediatek,clkbuf-config = <2 1 1 2 0 0 1>;
-		mediatek,clkbuf-output_impedance = <6 4 4 4 0 0 4>;
-		mediatek,clkbuf-controls-for-desense = <0 4 0 4 0 0 0>;
-		tcxo_support = "false";
+		compatible = "mediatek,mt6877-clkbuf";
+		pmic = <&mt6359p_clkbuf>;
+		pmif = <&pwrap 0>;
 	};
 
 	md_ccif0@1020a000 {
