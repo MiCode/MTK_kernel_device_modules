@@ -399,7 +399,6 @@
 #define HDCP_SYNC_SW_DP_ENCODER0_P0_FLDMASK_POS                           5
 #define HDCP_SYNC_SW_DP_ENCODER0_P0_FLDMASK_LEN                           1
 
-
 #define SDP_DOWN_CNT_NEW_MODE_DP_ENCODER0_P0_FLDMASK                      0x80
 #define SDP_DOWN_CNT_NEW_MODE_DP_ENCODER0_P0_FLDMASK_POS                  7
 #define SDP_DOWN_CNT_NEW_MODE_DP_ENCODER0_P0_FLDMASK_LEN                  1
@@ -1903,7 +1902,6 @@
 #define AUDIO_SAMPLE_PRSENT_REGEN_DP_ENCODER1_P0_FLDMASK_POS              12
 #define AUDIO_SAMPLE_PRSENT_REGEN_DP_ENCODER1_P0_FLDMASK_LEN              1
 
-
 #define REG_3308_DP_ENCODER1_P0 (0x3308)
 #define MST_RESET_SW_DP_ENCODER1_P0_FLDMASK                               0x1
 #define MST_RESET_SW_DP_ENCODER1_P0_FLDMASK_POS                           0
@@ -1940,6 +1938,15 @@
 #define VIDEO_PIXEL1_MUX_DP_ENCODER1_P0_FLDMASK                           0xc00
 #define VIDEO_PIXEL1_MUX_DP_ENCODER1_P0_FLDMASK_POS                       10
 #define VIDEO_PIXEL1_MUX_DP_ENCODER1_P0_FLDMASK_LEN                       2
+
+#define REG_330C_DP_ENCODER1_P0 (0x330C)
+#define SDP_MST_INSERT_CNT_DP_ENCODER1_P0_FLDMASK                         0xfff
+#define SDP_MST_INSERT_CNT_DP_ENCODER1_P0_FLDMASK_POS                     0
+#define SDP_MST_INSERT_CNT_DP_ENCODER1_P0_FLDMASK_LEN                     12
+
+#define MST_MTP_CNT_VIDEO_MASK_DP_ENCODER1_P0_FLDMASK                     0x1000
+#define MST_MTP_CNT_VIDEO_MASK_DP_ENCODER1_P0_FLDMASK_POS                 12
+#define MST_MTP_CNT_VIDEO_MASK_DP_ENCODER1_P0_FLDMASK_LEN                 1
 
 #define REG_3310_DP_ENCODER1_P0 (0x3310)
 #define MST_MTP_SIZE_DP_ENCODER1_P0_FLDMASK                               0x7f
@@ -4364,6 +4371,33 @@
 #define ID_BUF_2_OV_DP_MST_DPTX_FLDMASK                                   0xff00
 #define ID_BUF_2_OV_DP_MST_DPTX_FLDMASK_POS                               8
 #define ID_BUF_2_OV_DP_MST_DPTX_FLDMASK_LEN                               8
+
+#define REG_3858_DP_MST_DPTX (0x3858)
+#define ID_BUF_3_OV_DP_MST_DPTX_FLDMASK                                   0xff
+#define ID_BUF_3_OV_DP_MST_DPTX_FLDMASK_POS                               0
+#define ID_BUF_3_OV_DP_MST_DPTX_FLDMASK_LEN                               8
+
+#define ID_BUF_4_OV_DP_MST_DPTX_FLDMASK                                   0xff00
+#define ID_BUF_4_OV_DP_MST_DPTX_FLDMASK_POS                               8
+#define ID_BUF_4_OV_DP_MST_DPTX_FLDMASK_LEN                               8
+
+#define REG_385C_DP_MST_DPTX (0x385C)
+#define ID_BUF_5_OV_DP_MST_DPTX_FLDMASK                                   0xff
+#define ID_BUF_5_OV_DP_MST_DPTX_FLDMASK_POS                               0
+#define ID_BUF_5_OV_DP_MST_DPTX_FLDMASK_LEN                               8
+
+#define ID_BUF_6_OV_DP_MST_DPTX_FLDMASK                                   0xff00
+#define ID_BUF_6_OV_DP_MST_DPTX_FLDMASK_POS                               8
+#define ID_BUF_6_OV_DP_MST_DPTX_FLDMASK_LEN                               8
+
+#define REG_3860_DP_MST_DPTX (0x3860)
+#define ID_BUF_7_OV_DP_MST_DPTX_FLDMASK                                   0xff
+#define ID_BUF_7_OV_DP_MST_DPTX_FLDMASK_POS                               0
+#define ID_BUF_7_OV_DP_MST_DPTX_FLDMASK_LEN                               8
+
+#define ID_BUF_8_OV_DP_MST_DPTX_FLDMASK                                   0xff00
+#define ID_BUF_8_OV_DP_MST_DPTX_FLDMASK_POS                               8
+#define ID_BUF_8_OV_DP_MST_DPTX_FLDMASK_LEN                               8
 
 #define REG_3868_DP_MST_DPTX (0x3868)
 #define UPDATE_ID_BUF_TX_TRIG_DP_MST_DPTX_FLDMASK                         0x200

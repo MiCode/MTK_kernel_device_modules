@@ -11,10 +11,10 @@
 
 #define DPTX_CheckSinkCap_TimeOutCnt		0x3
 
-#define HPD_INT_EVNET		BIT(3)
-#define HPD_CONNECT		BIT(2)
-#define HPD_DISCONNECT		BIT(1)
-#define HPD_INITIAL_STATE	0
+#define HPD_INT_EVNET			BIT(2)
+#define HPD_CONNECT			BIT(0)
+#define HPD_DISCONNECT			BIT(10)
+#define HPD_INITIAL_STATE		0
 
 #define DPTX_TBC_SELBUF_CASE		2
 #define DPTX_TBC_BUF_SIZE		DPTX_TBC_SELBUF_CASE
@@ -46,6 +46,9 @@ enum DPTx_State {
 	DPTXSTATE_IDLE			= 1,
 	DPTXSTATE_PREPARE		= 2,
 	DPTXSTATE_NORMAL		= 3,
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
+	DPTXSTATE_AUTH			= 4,
+#endif
 };
 
 enum DPTx_DISP_State {
@@ -242,7 +245,7 @@ void mtk_dp_video_trigger(int res);
 struct edid *mtk_dp_handle_edid(struct mtk_dp *mtk_dp);
 int mdrv_DPTx_SetTrainingStart(struct mtk_dp *mtk_dp);
 void mdrv_DPTx_CheckMaxLinkRate(struct mtk_dp *mtk_dp);
-void mtk_dp_video_config(struct mtk_dp *mtk_dp);
+void mtk_dp_video_config(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id);
 void mtk_dp_force_res(unsigned int res, unsigned int bpc);
 void mtk_dp_hotplug_uevent(unsigned int status);
 void mtk_dp_set_force_2lane(bool en);
@@ -250,20 +253,20 @@ bool mtk_dp_2lane_only(void);
 void mtk_dp_enable_4k60(int enable);
 void mdrv_DPTx_FEC_Ready(struct mtk_dp *mtk_dp, u8 err_cnt_sel);
 void mdrv_DPTx_DSC_Support(struct mtk_dp *mtk_dp);
-void mtk_dp_dsc_pps_send(u8 *PPS_128);
-bool mdrv_DPTx_PHY_AutoTest(struct mtk_dp *mtk_dp, u8 ubDPCD_201);
-void mdrv_DPTx_VideoMute(struct mtk_dp *mtk_dp, bool bENABLE);
-void mdrv_DPTx_AudioMute(struct mtk_dp *mtk_dp, bool bENABLE);
-void mdrv_DPTx_SPKG_SDP(struct mtk_dp *mtk_dp, bool bEnable, u8 ucSDPType,
+void mtk_dp_dsc_pps_send(const enum DPTX_ENCODER_ID encoder_id, u8 *PPS_128);
+bool mdrv_DPTx_PHY_AutoTest(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, u8 ubDPCD_201);
+void mdrv_DPTx_VideoMute(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bENABLE);
+void mdrv_DPTx_AudioMute(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bENABLE);
+void mdrv_DPTx_SPKG_SDP(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bEnable, u8 ucSDPType,
 	u8 *pHB, u8 *pDB);
-void mdrv_DPTx_I2S_Audio_Config(struct mtk_dp *mtk_dp);
-void mdrv_DPTx_I2S_Audio_Enable(struct mtk_dp *mtk_dp, bool bEnable);
-void mdrv_DPTx_I2S_Audio_Ch_Status_Set(struct mtk_dp *mtk_dp, u8 ucChannel,
+void mdrv_DPTx_I2S_Audio_Config(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id);
+void mdrv_DPTx_I2S_Audio_Enable(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bEnable);
+void mdrv_DPTx_I2S_Audio_Ch_Status_Set(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, u8 ucChannel,
 	u8 ucFs, u8 ucWordlength);
-void mdrv_DPTx_I2S_Audio_SDP_Channel_Setting(struct mtk_dp *mtk_dp,
+void mdrv_DPTx_I2S_Audio_SDP_Channel_Setting(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id,
 	u8 ucChannel, u8 ucFs, u8 ucWordlength);
 int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp);
-void mdrv_DPTx_Video_Enable(struct mtk_dp *mtk_dp, bool bEnable);
+void mdrv_DPTx_Video_Enable(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bEnable);
 DWORD getTimeDiff(DWORD dwPreTime);
 DWORD getSystemTime(void);
 void mtk_dp_fake_plugin(unsigned int status, unsigned int bpc);
@@ -279,13 +282,13 @@ int mtk_dp_hdcp_getInfo(char *buffer, int size);
 int mtk_dp_phy_getInfo(char *buffer, int size);
 #endif
 void mdrv_DPTx_reAuthentication(struct mtk_dp *mtk_dp);
-void mdrv_DPTx_PatternSet(bool enable, int resolution);
+void mdrv_DPTx_PatternSet(const enum DPTX_ENCODER_ID encoder_id, bool enable, int resolution);
 void mdrv_DPTx_set_maxlinkrate(bool enable, int maxlinkrate);
 void mtk_dp_SWInterruptSet(int bstatus);
 void mtk_dp_aux_swap_enable(bool enable);
 void mtk_dp_set_pin_assign(u8 type);
 
-extern void mhal_DPTx_VideoClock(bool enable, int resolution);
+extern void mtk_dp_intf_mode_copy(struct drm_display_mode *mode);
 void mtk_dp_clock_debug(unsigned int clksrc, unsigned int con1);
 unsigned int mtk_de_get_clk_debug(void);
 unsigned int mtk_de_get_clksrc(void);
@@ -294,4 +297,9 @@ void mtk_dp_vsvoter_set(struct mtk_dp *mtk_dp);
 void mtk_dp_vsvoter_clr(struct mtk_dp *mtk_dp);
 void dptx_dump_reg(void);
 void dptx_write_reg(u32 offset, u32 val);
+void dptx_read_reg(u32 offset);
+void dptx_phy_write_reg(u32 offset, u32 val);
+void dptx_phy_read_reg(u32 offset);
+void mtk_dp_get_dsc_capability(u8 *dsc_cap);
+void mdrv_DPTx_CheckSinkHPDEvent(struct mtk_dp *mtk_dp);
 #endif //__MTK_DP__H__

@@ -14,14 +14,12 @@
 #define AUX_CMD_NATIVE_R		0x09
 #define AuxWaitReplyLpCntNum		20000
 
-#if (DPTX_CHIP_ID >= DPTX_LIBER_CHIP_ID)
 #define ENCODER_IRQ				BIT(0)
 #define TRANS_IRQ				BIT(1)
 #define AUX_IRQ					BIT(2)
 #define ENCODER_IRQ_MSK				BIT(0)
 #define TRANS_IRQ_MSK				BIT(1)
 #define AUX_IRQ_MSK				BIT(2)
-#endif
 
 #define MASKBIT(a)			(BIT((1 ? a) + 1) - BIT((0 ? a)))
 #define _BITMASK(loc_msb, loc_lsb) \
@@ -37,16 +35,10 @@ enum DPTx_LANE_NUM {
 	DPTx_LANE_MAX,
 };
 
-enum DPTX_LANE_COUNT{
+enum DPTX_LANE_COUNT {
 	DPTX_1LANE = 0x01,
 	DPTX_2LANE = 0x02,
 	DPTX_4LANE = 0x04,
-};
-
-enum DPTx_LANE_Count {
-	DPTx_LANE_0 = 0x0,
-	DPTx_LANE_2 = 0x01,
-	DPTx_LANE_4 = 0x02,
 };
 
 enum DPTx_LINK_Rate {
@@ -73,6 +65,7 @@ enum DPTx_SDP_PKG_TYPE {
 	DPTx_SDPTYP_PPS2 = 0x0D,
 	DPTx_SDPTYP_PPS3 = 0x0E,
 	DPTx_SDPTYP_DRM  = 0x10,
+	DPTx_SDPTYP_ADS  = 0x11,
 	DPTx_SDPTYP_MAX_NUM
 };
 
@@ -210,7 +203,6 @@ void mtk_dp_write_byte(struct mtk_dp *mtk_dp, u32 addr, u8 val, u32 mask);
 void mtk_dp_mask(struct mtk_dp *mtk_dp, u32 offset, u32 val, u32 mask);
 void mtk_dp_write(struct mtk_dp *mtk_dp, u32 offset, u32 val);
 
-
 u32 mtk_dp_phy_read(struct mtk_dp *mtk_dp, u32 offset);
 void mtk_dp_phy_write_byte(struct mtk_dp *mtk_dp, u32 addr, u8 val, u32 mask);
 void mtk_dp_phy_mask(struct mtk_dp *mtk_dp, u32 offset, u32 val, u32 mask);
@@ -254,7 +246,7 @@ void mhal_DPTx_Fake_Plugin(struct mtk_dp *mtk_dp, bool conn);
 void mhal_dump_reg(struct mtk_dp *mtk_dp);
 void mhal_DPTx_Verify_Clock(struct mtk_dp *mtk_dp);
 void mhal_DPTx_ISR(struct mtk_dp *mtk_dp);
-BYTE mhal_DPTx_GetColorBpp(struct mtk_dp *mtk_dp);
+BYTE mhal_DPTx_GetColorBpp(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id);
 UINT8 mhal_DPTx_AuxRead_Bytes(struct mtk_dp *mtk_dp,
 	BYTE ubCmd, DWORD usDPCDADDR, size_t ubLength, BYTE *pRxBuf);
 UINT8 mhal_DPTx_AuxWrite_Bytes(struct mtk_dp *mtk_dp,
@@ -268,13 +260,13 @@ void mhal_DPTx_SSCOnOffSetting(struct mtk_dp *mtk_dp, bool bENABLE);
 void mhal_DPTx_SWInterruptSet(struct mtk_dp *mtk_dp, WORD bstatus);
 void mhal_DPTx_SWInterruptClr(struct mtk_dp *mtk_dp, WORD bstatus);
 void mhal_DPTx_SWInterruptEnable(struct mtk_dp *mtk_dp, bool enable);
-void mhal_DPTx_HPDInterruptClr(struct mtk_dp *mtk_dp, BYTE bstatus);
+void mhal_DPTx_HPDInterruptClr(struct mtk_dp *mtk_dp, u16 bstatus);
 void mhal_DPTx_HPDInterruptEnable(struct mtk_dp *mtk_dp, bool enable);
 void mhal_DPTx_HPDDetectSetting(struct mtk_dp *mtk_dp);
 void mhal_DPTx_PHYSetting(struct mtk_dp *mtk_dp);
 void mhal_DPTx_AuxSetting(struct mtk_dp *mtk_dp);
 void mhal_DPTx_AdjustPHYSetting(struct mtk_dp *mtk_dp, BYTE c0, BYTE cp1);
-void mhal_DPTx_DigitalSetting(struct mtk_dp *mtk_dp);
+void mhal_DPTx_DigitalSetting(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id);
 void mhal_DPTx_PSCTRL(bool AUXNHighEnable);
 void mhal_DPTx_SetTxLane(struct mtk_dp *mtk_dp, const enum DPTX_LANE_COUNT lane_count);
 void mhal_DPTx_SetTxLaneToLane(struct mtk_dp *mtk_dp,
@@ -295,64 +287,68 @@ void mhal_DPTx_SetScramble(struct mtk_dp *mtk_dp, bool  bENABLE);
 void mhal_DPTx_SetScramble_Type(struct mtk_dp *mtk_dp, bool bSelType);
 void mhal_DPTx_ShutDownDPTxPort(struct mtk_dp *mtk_dp);
 void mhal_DPTx_EnableFEC(struct mtk_dp *mtk_dp, bool bENABLE);
-void mhal_DPTx_EnableDSC(struct mtk_dp *mtk_dp, bool bENABLE);
-void mhal_DPTx_SetChunkSize(struct mtk_dp *mtk_dp,
+void mhal_DPTx_EnableDSC(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bENABLE);
+void mhal_DPTx_SetChunkSize(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id,
 	BYTE slice_num, WORD chunk_num,
 	BYTE remainder, BYTE lane_count,
 	BYTE hde_last_num, BYTE hde_num_even);
 void mhal_DPTx_InitialSetting(struct mtk_dp *mtk_dp);
 void mhal_DPTx_Set_Efuse_Value(struct mtk_dp *mtk_dp);
-void mhal_DPTx_VideoMuteSW(struct mtk_dp *mtk_dp, bool bENABLE);
-void mhal_DPTx_VideoMute(struct mtk_dp *mtk_dp, bool bENABLE);
-void mhal_DPTx_AudioMute(struct mtk_dp *mtk_dp, bool bENABLE);
-void mhal_DPTx_SetFreeSync(struct mtk_dp *mtk_dp, bool bENABLE);
-void mhal_DPTx_Set_VideoInterlance(struct mtk_dp *mtk_dp, bool bENABLE);
-void mhal_DPTx_EnableBypassMSA(struct mtk_dp *mtk_dp, bool bENABLE);
-void mhal_DPTx_PGEnable(struct mtk_dp *mtk_dp, bool bENABLE);
-void mhal_DPTx_PG_Pure_Color(struct mtk_dp *mtk_dp, BYTE BGR, DWORD ColorDepth);
-void mhal_DPTx_PG_VerticalRamping(struct mtk_dp *mtk_dp, BYTE BGR,
+void mhal_DPTx_VideoMuteSW(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bENABLE);
+void mhal_DPTx_VideoMute(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bENABLE);
+void mhal_DPTx_AudioMute(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bENABLE);
+void mhal_DPTx_SetFreeSync(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bENABLE);
+void mhal_DPTx_Set_VideoInterlance(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bENABLE);
+void mhal_DPTx_EnableBypassMSA(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bENABLE);
+void mhal_DPTx_PGEnable(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bENABLE);
+void mhal_DPTx_PG_Pure_Color(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, BYTE BGR, DWORD ColorDepth);
+void mhal_DPTx_PG_VerticalRamping(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, BYTE BGR,
 	DWORD ColorDepth, BYTE Location);
-void mhal_DPTx_PG_HorizontalRamping(struct mtk_dp *mtk_dp, BYTE BGR,
+void mhal_DPTx_PG_HorizontalRamping(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, BYTE BGR,
 	DWORD ColorDepth, BYTE Location);
-void mhal_DPTx_PG_VerticalColorBar(struct mtk_dp *mtk_dp, BYTE Location);
-void mhal_DPTx_PG_HorizontalColorBar(struct mtk_dp *mtk_dp, BYTE Location);
-void mhal_DPTx_PG_Chessboard(struct mtk_dp *mtk_dp, BYTE Location,
+void mhal_DPTx_PG_VerticalColorBar(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, BYTE Location);
+void mhal_DPTx_PG_HorizontalColorBar(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, BYTE Location);
+void mhal_DPTx_PG_Chessboard(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, BYTE Location,
 	WORD Hde, WORD Vde);
-void mhal_DPTx_PG_SubPixel(struct mtk_dp *mtk_dp, BYTE Location);
-void mhal_DPTx_PG_Frame(struct mtk_dp *mtk_dp, BYTE Location,
+void mhal_DPTx_PG_SubPixel(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, BYTE Location);
+void mhal_DPTx_PG_Frame(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, BYTE Location,
 	WORD Hde, WORD Vde);
-void mhal_DPTx_Set_MVIDx2(struct mtk_dp *mtk_dp, bool bEnable);
-bool mhal_DPTx_OverWrite_MN(struct mtk_dp *mtk_dp,
+void mhal_DPTx_Set_MVIDx2(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bEnable);
+bool mhal_DPTx_OverWrite_MN(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id,
 	bool bEnable, DWORD ulVideo_M, DWORD ulVideo_N);
-void mhal_DPTx_SetTU_SramRdStart(struct mtk_dp *mtk_dp, WORD uwValue);
-void mhal_DPTx_SetSDP_DownCntinitInHblanking(struct mtk_dp *mtk_dp,
+void mhal_DPTx_SetTU_SramRdStart(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, WORD uwValue);
+void mhal_DPTx_SetSDP_DownCntinitInHblanking(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id,
 	WORD uwValue);
-void mhal_DPTx_SetSDP_DownCntinit(struct mtk_dp *mtk_dp, WORD uwValue);
-void mhal_DPTx_SetTU_SetEncoder(struct mtk_dp *mtk_dp);
-void mhal_DPTx_SetMSA(struct mtk_dp *mtk_dp);
-void mhal_DPTx_SetMISC(struct mtk_dp *mtk_dp, BYTE ucMISC[2]);
-void mhal_DPTx_SetColorDepth(struct mtk_dp *mtk_dp, BYTE coloer_depth);
-void mhal_DPTx_SetColorFormat(struct mtk_dp *mtk_dp, BYTE enOutColorFormat);
-void mhal_DPTx_SPKG_SDP(struct mtk_dp *mtk_dp, bool bEnable, BYTE ucSDPType,
+void mhal_DPTx_SetSDP_DownCntinit(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, WORD uwValue);
+void mhal_DPTx_SetTU_SetEncoder(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id);
+void mhal_DPTx_SetMSA(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id);
+void mhal_DPTx_SetMISC(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, BYTE ucMISC[2]);
+void mhal_DPTx_SetColorDepth(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, BYTE coloer_depth);
+void mhal_DPTx_SetColorFormat(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, BYTE enOutColorFormat);
+void mhal_DPTx_SPKG_SDP(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bEnable, BYTE ucSDPType,
 	BYTE *pHB, BYTE *pDB);
-void mhal_DPTx_SPKG_VSC_EXT_VESA(struct mtk_dp *mtk_dp, bool bEnable,
+void mhal_DPTx_SPKG_VSC_EXT_VESA(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bEnable,
 	BYTE ucHDR_NUM, BYTE *pDB);
-void mhal_DPTx_SPKG_VSC_EXT_CEA(struct mtk_dp *mtk_dp, bool bEnable,
+void mhal_DPTx_SPKG_VSC_EXT_CEA(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bEnable,
 	BYTE ucHDR_NUM, BYTE *pDB);
-BYTE mhal_DPTx_GetHPDIRQStatus(struct mtk_dp *mtk_dp);
-void mhal_DPTx_Audio_PG_EN(struct mtk_dp *mtk_dp, BYTE Channel, BYTE Fs,
+u16 mhal_DPTx_GetHPDIRQStatus(struct mtk_dp *mtk_dp);
+void mhal_DPTx_Audio_PG_EN(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, BYTE Channel, BYTE Fs,
 	BYTE bEnable);
-void mhal_DPTx_Audio_TDM_PG_EN(struct mtk_dp *mtk_dp, BYTE Channel, BYTE Fs,
+void mhal_DPTx_Audio_TDM_PG_EN(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, BYTE Channel, BYTE Fs,
 	BYTE bEnable);
 WORD mhal_DPTx_GetSWIRQStatus(struct mtk_dp *mtk_dp);
-void mhal_DPTx_Audio_Ch_Status_Set(struct mtk_dp *mtk_dp, BYTE Channel,
+void mhal_DPTx_Audio_Ch_Status_Set(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, BYTE Channel,
 	BYTE Fs, BYTE Wordlength);
-void mhal_DPTx_Audio_SDP_Setting(struct mtk_dp *mtk_dp, BYTE Channel);
-void mhal_DPTx_Audio_M_Divider_Setting(struct mtk_dp *mtk_dp, BYTE Div);
+void mhal_DPTx_Audio_SDP_Setting(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, BYTE Channel);
+void mhal_DPTx_Audio_M_Divider_Setting(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, BYTE Div);
 void mhal_DPTx_SetTxRate(struct mtk_dp *mtk_dp, int Value);
 void mhal_DPTx_AnalogPowerOnOff(struct mtk_dp *mtk_dp, bool enable);
 void mhal_DPTx_DataLanePNSwap(struct mtk_dp *mtk_dp, bool bENABLE);
 void mhal_DPTx_SetAuxSwap(struct mtk_dp *mtk_dp, bool enable);
-void mhal_DPTx_Set_BS2BS_Cnt(struct mtk_dp *mtk_dp, bool bEnable, DWORD uiHTT);
+void mhal_DPTx_Set_BS2BS_Cnt(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, bool bEnable, DWORD uiHTT);
+void mhal_DPTx_set_sdp_asp_count_init(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, const u16 val);
+void mhal_DPTx_mvid_renew(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id);
+void mhal_DPTx_audio_sample_arrange(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID encoder_id, UINT8 enable);
+
 
 #endif //__DRTX_HAL_H__
