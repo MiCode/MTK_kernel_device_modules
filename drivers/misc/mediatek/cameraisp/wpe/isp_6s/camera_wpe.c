@@ -246,9 +246,7 @@ static signed int ConfigWPEHW(struct WPE_Config *pWpeConfig);
 static void WPE_ScheduleWork(struct work_struct *data);
 
 /*For GKI 2.0*/
-static int CG_IMG1_ON = 0;
-static int CG_IMG_LARB11_ON = 0;
-static int GKI_IMG1_LARB_ON = 0;
+static int CG_DUAL_WPE_ON;
 
 typedef irqreturn_t(*IRQ_CB) (signed int, void *);
 
@@ -2409,11 +2407,11 @@ static bool Check_WPE_Is_Busy(void)
 static signed int WPE_DumpReg(void)
 {
 	signed int  Ret = 0;
-	unsigned int  i, j;
-	/*  */
+	/*unsigned int  i, j;  */
+
 	cmdq_util_err("- E.");
 	/*  */
-	cmdq_util_err("WPE Registers Info\n");
+	cmdq_util_err("WPE (IMG2) Registers Info\n");
 	/* WPE Config0 */
 	cmdq_util_err("[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
 		(unsigned int)(WPE_WPE_START_HW),
@@ -2593,189 +2591,189 @@ static signed int WPE_DumpReg(void)
 		(unsigned int)(WPE_VEC3I_ERR_STAT_HW),
 		(unsigned int)WPE_RD32(WPE_VEC3I_ERR_STAT_REG));
 
- if (CG_IMG_LARB11_ON == CG_ENABLE) {
-	cmdq_util_err("WPE B Registers Info\n");
-	/* WPE Config0 */
-	cmdq_util_err("[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
-		(unsigned int)(WPE_B_WPE_START_HW),
-		(unsigned int)WPE_RD32(WPE_B_WPE_START_REG),
-		(unsigned int)(WPE_B_CTL_MOD_EN_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_MOD_EN_REG),
-		(unsigned int)(WPE_B_CTL_DMA_EN_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_DMA_EN_REG),
-		(unsigned int)(WPE_B_CTL_CFG_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_CFG_REG));
-	cmdq_util_err("[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
-		(unsigned int)(WPE_B_CTL_FMT_SEL_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_FMT_SEL_REG),
-		(unsigned int)(WPE_B_CTL_INT_EN_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_INT_EN_REG),
-		(unsigned int)(WPE_B_CTL_INT_STATUS_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_INT_STATUS_REG),
-		(unsigned int)(WPE_B_CTL_INT_STATUSX_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_INT_STATUSX_REG));
-	cmdq_util_err("[0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
-		(unsigned int)(WPE_B_CTL_TDR_TILE_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_TDR_TILE_REG),
-		(unsigned int)(WPE_B_CTL_TDR_DBG_STATUS_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_TDR_DBG_STATUS_REG),
-		(unsigned int)(WPE_B_CTL_TDR_TCM_EN_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_TDR_TCM_EN_REG));
-	cmdq_util_err("[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
-		(unsigned int)(WPE_B_CTL_WPE_DCM_DIS_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_WPE_DCM_DIS_REG),
-		(unsigned int)(WPE_B_CTL_DMA_DCM_DIS_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_DMA_DCM_DIS_REG),
-		(unsigned int)(WPE_B_CTL_WPE_DCM_STATUS_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_WPE_DCM_STATUS_REG),
-		(unsigned int)(WPE_B_CTL_DMA_DCM_STATUS_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_DMA_DCM_STATUS_REG));
-	cmdq_util_err(
-		"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
-		(unsigned int)(WPE_B_CTL_DBG_R_BW_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_DBG_R_BW_REG),
-		(unsigned int)(WPE_B_CTL_DBG_W_BW_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_DBG_W_BW_REG),
-		(unsigned int)(WPE_B_CTL_DBG_RUNTIME_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_DBG_RUNTIME_REG),
-		(unsigned int)(WPE_B_RDMA1_PEND_DATA_CNT_HW),
-		(unsigned int)WPE_RD32(WPE_B_RDMA1_PEND_DATA_CNT_REG));
-	cmdq_util_err(
-		"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
-		(unsigned int)(WPE_B_CTL_WPE_REQ_STATUS_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_WPE_REQ_STATUS_REG),
-		(unsigned int)(WPE_B_CTL_DMA_REQ_STATUS_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_DMA_REQ_STATUS_REG),
-		(unsigned int)(WPE_B_CTL_WPE_RDY_STATUS_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_WPE_RDY_STATUS_REG),
-		(unsigned int)(WPE_B_CTL_DMA_RDY_STATUS_HW),
-		(unsigned int)WPE_RD32(WPE_B_CTL_DMA_RDY_STATUS_REG));
-	cmdq_util_err(
-		"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
-		(unsigned int)(WPE_B_VGEN_CTL_HW),
-		(unsigned int)WPE_RD32(WPE_B_VGEN_CTL_REG),
-		(unsigned int)(WPE_B_VGEN_IN_IMG_HW),
-		(unsigned int)WPE_RD32(WPE_B_VGEN_IN_IMG_REG),
-		(unsigned int)(WPE_B_VGEN_OUT_IMG_HW),
-		(unsigned int)WPE_RD32(WPE_B_VGEN_OUT_IMG_REG),
-		(unsigned int)(WPE_B_VGEN_HORI_STEP_HW),
-		(unsigned int)WPE_RD32(WPE_B_VGEN_HORI_STEP_REG),
-		(unsigned int)(WPE_B_VGEN_VERT_STEP_HW),
-		(unsigned int)WPE_RD32(WPE_B_VGEN_VERT_STEP_REG));
-	cmdq_util_err(
-		"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
-		(unsigned int)(WPE_B_VFIFO_CTL_HW),
-		(unsigned int)WPE_RD32(WPE_B_VFIFO_CTL_REG),
-		(unsigned int)(WPE_B_CFIFO_CTL_HW),
-		(unsigned int)WPE_RD32(WPE_B_CFIFO_CTL_REG),
-		(unsigned int)(WPE_B_C24_TILE_EDGE_HW),
-		(unsigned int)WPE_RD32(WPE_B_C24_TILE_EDGE_REG),
-		(unsigned int)(WPE_B_MDP_CROP_X_HW),
-		(unsigned int)WPE_RD32(WPE_B_MDP_CROP_X_REG),
-		(unsigned int)(WPE_B_MDP_CROP_Y_HW),
-		(unsigned int)WPE_RD32(WPE_B_MDP_CROP_Y_REG));
-	cmdq_util_err(
-		"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
-		(unsigned int)(WPE_B_ISPCROP_CON1_HW),
-		(unsigned int)WPE_RD32(WPE_B_ISPCROP_CON1_REG),
-		(unsigned int)(WPE_B_ISPCROP_CON2_HW),
-		(unsigned int)WPE_RD32(WPE_B_ISPCROP_CON2_REG),
-		(unsigned int)(WPE_B_PSP_CTL_HW),
-		(unsigned int)WPE_RD32(WPE_B_PSP_CTL_REG),
-		(unsigned int)(WPE_B_PSP2_CTL_HW),
-		(unsigned int)WPE_RD32(WPE_B_PSP2_CTL_REG),
-		(unsigned int)(WPE_B_PSP_BORDER_HW),
-		(unsigned int)WPE_RD32(WPE_B_PSP_BORDER_REG));
-	cmdq_util_err("[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
-		(unsigned int)(WPE_B_ADDR_GEN_SOFT_RSTSTAT_0_HW),
-		(unsigned int)WPE_RD32(WPE_B_ADDR_GEN_SOFT_RSTSTAT_0_REG),
-		(unsigned int)(WPE_B_ADDR_GEN_BASE_ADDR_0_HW),
-		(unsigned int)WPE_RD32(WPE_B_ADDR_GEN_BASE_ADDR_0_REG),
-		(unsigned int)(WPE_B_ADDR_GEN_OFFSET_ADDR_0_HW),
-		(unsigned int)WPE_RD32(WPE_B_ADDR_GEN_OFFSET_ADDR_0_REG),
-		(unsigned int)(WPE_B_ADDR_GEN_STRIDE_0_HW),
-		(unsigned int)WPE_RD32(WPE_B_ADDR_GEN_STRIDE_0_REG));
-	cmdq_util_err("[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
-		(unsigned int)(WPE_B_ADDR_GEN_SOFT_RSTSTAT_1_HW),
-		(unsigned int)WPE_RD32(WPE_B_ADDR_GEN_SOFT_RSTSTAT_1_REG),
-		(unsigned int)(WPE_B_ADDR_GEN_BASE_ADDR_1_HW),
-		(unsigned int)WPE_RD32(WPE_B_ADDR_GEN_BASE_ADDR_1_REG),
-		(unsigned int)(WPE_B_ADDR_GEN_OFFSET_ADDR_1_HW),
-		(unsigned int)WPE_RD32(WPE_B_ADDR_GEN_OFFSET_ADDR_1_REG),
-		(unsigned int)(WPE_B_ADDR_GEN_STRIDE_1_HW),
-		(unsigned int)WPE_RD32(WPE_B_ADDR_GEN_STRIDE_1_REG));
-	cmdq_util_err("[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
-		(unsigned int)(WPE_B_DMA_SOFT_RSTSTAT_HW),
-		(unsigned int)WPE_RD32(WPE_B_DMA_SOFT_RSTSTAT_REG),
-		(unsigned int)(WPE_B_TDRI_BASE_ADDR_HW),
-		(unsigned int)WPE_RD32(WPE_B_TDRI_BASE_ADDR_REG),
-		(unsigned int)(WPE_B_TDRI_OFST_ADDR_HW),
-		(unsigned int)WPE_RD32(WPE_B_TDRI_OFST_ADDR_REG),
-		(unsigned int)(WPE_B_TDRI_XSIZE_HW),
-		(unsigned int)WPE_RD32(WPE_B_TDRI_XSIZE_REG));
-	cmdq_util_err(
-		"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
-		(unsigned int)(WPE_B_WPEO_BASE_ADDR_HW),
-		(unsigned int)WPE_RD32(WPE_B_WPEO_BASE_ADDR_REG),
-		(unsigned int)(WPE_B_WPEO_OFST_ADDR_HW),
-		(unsigned int)WPE_RD32(WPE_B_WPEO_OFST_ADDR_REG),
-		(unsigned int)(WPE_B_WPEO_XSIZE_HW),
-		(unsigned int)WPE_RD32(WPE_B_WPEO_XSIZE_REG),
-		(unsigned int)(WPE_B_WPEO_YSIZE_HW),
-		(unsigned int)WPE_RD32(WPE_B_WPEO_YSIZE_REG),
-		(unsigned int)(WPE_B_WPEO_STRIDE_HW),
-		(unsigned int)WPE_RD32(WPE_B_WPEO_STRIDE_REG));
-	cmdq_util_err(
-		"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X][ 0x%08X %08X]\n",
-		(unsigned int)(WPE_B_VECI_BASE_ADDR_HW),
-		(unsigned int)WPE_RD32(WPE_B_VECI_BASE_ADDR_REG),
-		(unsigned int)(WPE_B_VECI_OFST_ADDR_HW),
-		(unsigned int)WPE_RD32(WPE_B_VECI_OFST_ADDR_REG),
-		(unsigned int)(WPE_B_VECI_XSIZE_HW),
-		(unsigned int)WPE_RD32(WPE_B_VECI_XSIZE_REG),
-		(unsigned int)(WPE_B_VECI_YSIZE_HW),
-		(unsigned int)WPE_RD32(WPE_B_VECI_YSIZE_REG),
-		(unsigned int)(WPE_B_VECI_STRIDE_HW),
-		(unsigned int)WPE_RD32(WPE_B_VECI_STRIDE_REG));
-	cmdq_util_err(
-		"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
-		(unsigned int)(WPE_B_VEC2I_BASE_ADDR_HW),
-		(unsigned int)WPE_RD32(WPE_B_VEC2I_BASE_ADDR_REG),
-		(unsigned int)(WPE_B_VEC2I_OFST_ADDR_HW),
-		(unsigned int)WPE_RD32(WPE_B_VEC2I_OFST_ADDR_REG),
-		(unsigned int)(WPE_B_VEC2I_XSIZE_HW),
-		(unsigned int)WPE_RD32(WPE_B_VEC2I_XSIZE_REG),
-		(unsigned int)(WPE_B_VEC2I_YSIZE_HW),
-		(unsigned int)WPE_RD32(WPE_B_VEC2I_YSIZE_REG),
-		(unsigned int)(WPE_B_VEC2I_STRIDE_HW),
-		(unsigned int)WPE_RD32(WPE_B_VEC2I_STRIDE_REG));
-	cmdq_util_err(
-		"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
-		(unsigned int)(WPE_B_VEC3I_BASE_ADDR_HW),
-		(unsigned int)WPE_RD32(WPE_B_VEC3I_BASE_ADDR_REG),
-		(unsigned int)(WPE_B_VEC3I_OFST_ADDR_HW),
-		(unsigned int)WPE_RD32(WPE_B_VEC3I_OFST_ADDR_REG),
-		(unsigned int)(WPE_B_VEC3I_XSIZE_HW),
-		(unsigned int)WPE_RD32(WPE_B_VEC3I_XSIZE_REG),
-		(unsigned int)(WPE_B_VEC3I_YSIZE_HW),
-		(unsigned int)WPE_RD32(WPE_B_VEC3I_YSIZE_REG),
-		(unsigned int)(WPE_B_VEC3I_STRIDE_HW),
-		(unsigned int)WPE_RD32(WPE_B_VEC3I_STRIDE_REG));
-	cmdq_util_err(
-		"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
-		(unsigned int)(WPE_B_DMA_ERR_CTRL_HW),
-		(unsigned int)WPE_RD32(WPE_B_DMA_ERR_CTRL_REG),
-		(unsigned int)(WPE_B_WPEO_ERR_STAT_HW),
-		(unsigned int)WPE_RD32(WPE_B_WPEO_ERR_STAT_REG),
-		(unsigned int)(WPE_B_VECI_ERR_STAT_HW),
-		(unsigned int)WPE_RD32(WPE_B_VECI_ERR_STAT_REG),
-		(unsigned int)(WPE_B_VEC2I_ERR_STAT_HW),
-		(unsigned int)WPE_RD32(WPE_B_VEC2I_ERR_STAT_REG),
-		(unsigned int)(WPE_B_VEC3I_ERR_STAT_HW),
-		(unsigned int)WPE_RD32(WPE_B_VEC3I_ERR_STAT_REG));
-}
+	if (CG_DUAL_WPE_ON == CG_ENABLE) {
+		cmdq_util_err("DUAL WPE (IMG1) Registers Info\n");
+		/* WPE Config0 */
+		cmdq_util_err("[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
+			(unsigned int)(WPE_B_WPE_START_HW),
+			(unsigned int)WPE_RD32(WPE_B_WPE_START_REG),
+			(unsigned int)(WPE_B_CTL_MOD_EN_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_MOD_EN_REG),
+			(unsigned int)(WPE_B_CTL_DMA_EN_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_DMA_EN_REG),
+			(unsigned int)(WPE_B_CTL_CFG_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_CFG_REG));
+		cmdq_util_err("[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
+			(unsigned int)(WPE_B_CTL_FMT_SEL_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_FMT_SEL_REG),
+			(unsigned int)(WPE_B_CTL_INT_EN_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_INT_EN_REG),
+			(unsigned int)(WPE_B_CTL_INT_STATUS_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_INT_STATUS_REG),
+			(unsigned int)(WPE_B_CTL_INT_STATUSX_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_INT_STATUSX_REG));
+		cmdq_util_err("[0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
+			(unsigned int)(WPE_B_CTL_TDR_TILE_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_TDR_TILE_REG),
+			(unsigned int)(WPE_B_CTL_TDR_DBG_STATUS_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_TDR_DBG_STATUS_REG),
+			(unsigned int)(WPE_B_CTL_TDR_TCM_EN_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_TDR_TCM_EN_REG));
+		cmdq_util_err("[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
+			(unsigned int)(WPE_B_CTL_WPE_DCM_DIS_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_WPE_DCM_DIS_REG),
+			(unsigned int)(WPE_B_CTL_DMA_DCM_DIS_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_DMA_DCM_DIS_REG),
+			(unsigned int)(WPE_B_CTL_WPE_DCM_STATUS_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_WPE_DCM_STATUS_REG),
+			(unsigned int)(WPE_B_CTL_DMA_DCM_STATUS_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_DMA_DCM_STATUS_REG));
+		cmdq_util_err(
+			"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
+			(unsigned int)(WPE_B_CTL_DBG_R_BW_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_DBG_R_BW_REG),
+			(unsigned int)(WPE_B_CTL_DBG_W_BW_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_DBG_W_BW_REG),
+			(unsigned int)(WPE_B_CTL_DBG_RUNTIME_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_DBG_RUNTIME_REG),
+			(unsigned int)(WPE_B_RDMA1_PEND_DATA_CNT_HW),
+			(unsigned int)WPE_RD32(WPE_B_RDMA1_PEND_DATA_CNT_REG));
+		cmdq_util_err(
+			"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
+			(unsigned int)(WPE_B_CTL_WPE_REQ_STATUS_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_WPE_REQ_STATUS_REG),
+			(unsigned int)(WPE_B_CTL_DMA_REQ_STATUS_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_DMA_REQ_STATUS_REG),
+			(unsigned int)(WPE_B_CTL_WPE_RDY_STATUS_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_WPE_RDY_STATUS_REG),
+			(unsigned int)(WPE_B_CTL_DMA_RDY_STATUS_HW),
+			(unsigned int)WPE_RD32(WPE_B_CTL_DMA_RDY_STATUS_REG));
+		cmdq_util_err(
+			"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
+			(unsigned int)(WPE_B_VGEN_CTL_HW),
+			(unsigned int)WPE_RD32(WPE_B_VGEN_CTL_REG),
+			(unsigned int)(WPE_B_VGEN_IN_IMG_HW),
+			(unsigned int)WPE_RD32(WPE_B_VGEN_IN_IMG_REG),
+			(unsigned int)(WPE_B_VGEN_OUT_IMG_HW),
+			(unsigned int)WPE_RD32(WPE_B_VGEN_OUT_IMG_REG),
+			(unsigned int)(WPE_B_VGEN_HORI_STEP_HW),
+			(unsigned int)WPE_RD32(WPE_B_VGEN_HORI_STEP_REG),
+			(unsigned int)(WPE_B_VGEN_VERT_STEP_HW),
+			(unsigned int)WPE_RD32(WPE_B_VGEN_VERT_STEP_REG));
+		cmdq_util_err(
+			"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
+			(unsigned int)(WPE_B_VFIFO_CTL_HW),
+			(unsigned int)WPE_RD32(WPE_B_VFIFO_CTL_REG),
+			(unsigned int)(WPE_B_CFIFO_CTL_HW),
+			(unsigned int)WPE_RD32(WPE_B_CFIFO_CTL_REG),
+			(unsigned int)(WPE_B_C24_TILE_EDGE_HW),
+			(unsigned int)WPE_RD32(WPE_B_C24_TILE_EDGE_REG),
+			(unsigned int)(WPE_B_MDP_CROP_X_HW),
+			(unsigned int)WPE_RD32(WPE_B_MDP_CROP_X_REG),
+			(unsigned int)(WPE_B_MDP_CROP_Y_HW),
+			(unsigned int)WPE_RD32(WPE_B_MDP_CROP_Y_REG));
+		cmdq_util_err(
+			"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
+			(unsigned int)(WPE_B_ISPCROP_CON1_HW),
+			(unsigned int)WPE_RD32(WPE_B_ISPCROP_CON1_REG),
+			(unsigned int)(WPE_B_ISPCROP_CON2_HW),
+			(unsigned int)WPE_RD32(WPE_B_ISPCROP_CON2_REG),
+			(unsigned int)(WPE_B_PSP_CTL_HW),
+			(unsigned int)WPE_RD32(WPE_B_PSP_CTL_REG),
+			(unsigned int)(WPE_B_PSP2_CTL_HW),
+			(unsigned int)WPE_RD32(WPE_B_PSP2_CTL_REG),
+			(unsigned int)(WPE_B_PSP_BORDER_HW),
+			(unsigned int)WPE_RD32(WPE_B_PSP_BORDER_REG));
+		cmdq_util_err("[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
+			(unsigned int)(WPE_B_ADDR_GEN_SOFT_RSTSTAT_0_HW),
+			(unsigned int)WPE_RD32(WPE_B_ADDR_GEN_SOFT_RSTSTAT_0_REG),
+			(unsigned int)(WPE_B_ADDR_GEN_BASE_ADDR_0_HW),
+			(unsigned int)WPE_RD32(WPE_B_ADDR_GEN_BASE_ADDR_0_REG),
+			(unsigned int)(WPE_B_ADDR_GEN_OFFSET_ADDR_0_HW),
+			(unsigned int)WPE_RD32(WPE_B_ADDR_GEN_OFFSET_ADDR_0_REG),
+			(unsigned int)(WPE_B_ADDR_GEN_STRIDE_0_HW),
+			(unsigned int)WPE_RD32(WPE_B_ADDR_GEN_STRIDE_0_REG));
+		cmdq_util_err("[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
+			(unsigned int)(WPE_B_ADDR_GEN_SOFT_RSTSTAT_1_HW),
+			(unsigned int)WPE_RD32(WPE_B_ADDR_GEN_SOFT_RSTSTAT_1_REG),
+			(unsigned int)(WPE_B_ADDR_GEN_BASE_ADDR_1_HW),
+			(unsigned int)WPE_RD32(WPE_B_ADDR_GEN_BASE_ADDR_1_REG),
+			(unsigned int)(WPE_B_ADDR_GEN_OFFSET_ADDR_1_HW),
+			(unsigned int)WPE_RD32(WPE_B_ADDR_GEN_OFFSET_ADDR_1_REG),
+			(unsigned int)(WPE_B_ADDR_GEN_STRIDE_1_HW),
+			(unsigned int)WPE_RD32(WPE_B_ADDR_GEN_STRIDE_1_REG));
+		cmdq_util_err("[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
+			(unsigned int)(WPE_B_DMA_SOFT_RSTSTAT_HW),
+			(unsigned int)WPE_RD32(WPE_B_DMA_SOFT_RSTSTAT_REG),
+			(unsigned int)(WPE_B_TDRI_BASE_ADDR_HW),
+			(unsigned int)WPE_RD32(WPE_B_TDRI_BASE_ADDR_REG),
+			(unsigned int)(WPE_B_TDRI_OFST_ADDR_HW),
+			(unsigned int)WPE_RD32(WPE_B_TDRI_OFST_ADDR_REG),
+			(unsigned int)(WPE_B_TDRI_XSIZE_HW),
+			(unsigned int)WPE_RD32(WPE_B_TDRI_XSIZE_REG));
+		cmdq_util_err(
+			"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
+			(unsigned int)(WPE_B_WPEO_BASE_ADDR_HW),
+			(unsigned int)WPE_RD32(WPE_B_WPEO_BASE_ADDR_REG),
+			(unsigned int)(WPE_B_WPEO_OFST_ADDR_HW),
+			(unsigned int)WPE_RD32(WPE_B_WPEO_OFST_ADDR_REG),
+			(unsigned int)(WPE_B_WPEO_XSIZE_HW),
+			(unsigned int)WPE_RD32(WPE_B_WPEO_XSIZE_REG),
+			(unsigned int)(WPE_B_WPEO_YSIZE_HW),
+			(unsigned int)WPE_RD32(WPE_B_WPEO_YSIZE_REG),
+			(unsigned int)(WPE_B_WPEO_STRIDE_HW),
+			(unsigned int)WPE_RD32(WPE_B_WPEO_STRIDE_REG));
+		cmdq_util_err(
+			"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X][ 0x%08X %08X]\n",
+			(unsigned int)(WPE_B_VECI_BASE_ADDR_HW),
+			(unsigned int)WPE_RD32(WPE_B_VECI_BASE_ADDR_REG),
+			(unsigned int)(WPE_B_VECI_OFST_ADDR_HW),
+			(unsigned int)WPE_RD32(WPE_B_VECI_OFST_ADDR_REG),
+			(unsigned int)(WPE_B_VECI_XSIZE_HW),
+			(unsigned int)WPE_RD32(WPE_B_VECI_XSIZE_REG),
+			(unsigned int)(WPE_B_VECI_YSIZE_HW),
+			(unsigned int)WPE_RD32(WPE_B_VECI_YSIZE_REG),
+			(unsigned int)(WPE_B_VECI_STRIDE_HW),
+			(unsigned int)WPE_RD32(WPE_B_VECI_STRIDE_REG));
+		cmdq_util_err(
+			"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
+			(unsigned int)(WPE_B_VEC2I_BASE_ADDR_HW),
+			(unsigned int)WPE_RD32(WPE_B_VEC2I_BASE_ADDR_REG),
+			(unsigned int)(WPE_B_VEC2I_OFST_ADDR_HW),
+			(unsigned int)WPE_RD32(WPE_B_VEC2I_OFST_ADDR_REG),
+			(unsigned int)(WPE_B_VEC2I_XSIZE_HW),
+			(unsigned int)WPE_RD32(WPE_B_VEC2I_XSIZE_REG),
+			(unsigned int)(WPE_B_VEC2I_YSIZE_HW),
+			(unsigned int)WPE_RD32(WPE_B_VEC2I_YSIZE_REG),
+			(unsigned int)(WPE_B_VEC2I_STRIDE_HW),
+			(unsigned int)WPE_RD32(WPE_B_VEC2I_STRIDE_REG));
+		cmdq_util_err(
+			"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
+			(unsigned int)(WPE_B_VEC3I_BASE_ADDR_HW),
+			(unsigned int)WPE_RD32(WPE_B_VEC3I_BASE_ADDR_REG),
+			(unsigned int)(WPE_B_VEC3I_OFST_ADDR_HW),
+			(unsigned int)WPE_RD32(WPE_B_VEC3I_OFST_ADDR_REG),
+			(unsigned int)(WPE_B_VEC3I_XSIZE_HW),
+			(unsigned int)WPE_RD32(WPE_B_VEC3I_XSIZE_REG),
+			(unsigned int)(WPE_B_VEC3I_YSIZE_HW),
+			(unsigned int)WPE_RD32(WPE_B_VEC3I_YSIZE_REG),
+			(unsigned int)(WPE_B_VEC3I_STRIDE_HW),
+			(unsigned int)WPE_RD32(WPE_B_VEC3I_STRIDE_REG));
+		cmdq_util_err(
+			"[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
+			(unsigned int)(WPE_B_DMA_ERR_CTRL_HW),
+			(unsigned int)WPE_RD32(WPE_B_DMA_ERR_CTRL_REG),
+			(unsigned int)(WPE_B_WPEO_ERR_STAT_HW),
+			(unsigned int)WPE_RD32(WPE_B_WPEO_ERR_STAT_REG),
+			(unsigned int)(WPE_B_VECI_ERR_STAT_HW),
+			(unsigned int)WPE_RD32(WPE_B_VECI_ERR_STAT_REG),
+			(unsigned int)(WPE_B_VEC2I_ERR_STAT_HW),
+			(unsigned int)WPE_RD32(WPE_B_VEC2I_ERR_STAT_REG),
+			(unsigned int)(WPE_B_VEC3I_ERR_STAT_HW),
+			(unsigned int)WPE_RD32(WPE_B_VEC3I_ERR_STAT_REG));
+	}
 
-
+/*
 	for (i = 0; i < _SUPPORT_MAX_WPE_REQUEST_RING_SIZE_; i++) {
 		LOG_INF(
 			"WPE Req:State:%d, procID:0x%08X, callerID:0x%08X, enqReqNum:%d, FraWRIdx:%d, FraRDIdx:%d\n",
@@ -2804,6 +2802,7 @@ static signed int WPE_DumpReg(void)
 		}
 
 	}
+*/
 
 	cmdq_util_err("- X.");
 	/*  */
@@ -2856,7 +2855,7 @@ static inline void WPE_Prepare_Enable_ccf_clock(void)
 		LOG_INF("get CG_IMGSYS_WPE_B OK");
 	}
 
-	LOG_INF("CG_IMG_LARB11_ON = %d,CG_IMG1_ON = %d, GKI_IMG1_LARB_ON= %d \n",CG_IMG_LARB11_ON,CG_IMG1_ON,GKI_IMG1_LARB_ON);
+	LOG_INF("CG_DUAL_WPE_ON = %d\n",CG_DUAL_WPE_ON);
 }
 
 static inline void WPE_Disable_Unprepare_ccf_clock(void)
@@ -2883,12 +2882,11 @@ static inline void WPE_Disable_Unprepare_ccf_clock(void)
 	if (wpe_clk.CG_IMGSYS_LARB11 != NULL)
 		clk_disable_unprepare(wpe_clk.CG_IMGSYS_LARB11);
 
-	CG_IMG_LARB11_ON = CG_DISABLE;
-	GKI_IMG1_LARB_ON = CG_DISABLE;
+	CG_DUAL_WPE_ON = CG_DISABLE;
 
 	pm_runtime_put_sync(WPE_devs->dev);
 
-	LOG_INF("[WPE_Disable_Unprepare_ccf_clock]CG_IMG_LARB11_ON = %d,CG_IMG1_ON = %d ,GKI_IMG1_LARB_ON =%d \n",CG_IMG_LARB11_ON,CG_IMG1_ON,GKI_IMG1_LARB_ON);
+	LOG_INF("CG_DUAL_WPE_ON = %d\n",CG_DUAL_WPE_ON);
 }
 #endif
 
@@ -5198,9 +5196,8 @@ static signed int WPE_probe(struct platform_device *pDev)
 		if (WARN_ON(!pdev_larb11)) {
 			of_node_put(node_larb11);
 			return -EINVAL;
-		} else {
-			GKI_IMG1_LARB_ON = CG_ENABLE;
 		}
+
 		of_node_put(node_larb11);
 		WPE_devs->larb11 = &pdev_larb11->dev;
 		LOG_INF("larb11 %p", WPE_devs->larb11);
@@ -5318,9 +5315,8 @@ static signed int WPE_probe(struct platform_device *pDev)
 		if (IS_ERR(wpe_clk.CG_IMGSYS1)) {
 			LOG_INF("cannot get CG_IMGSYS1 clock\n");
 			wpe_clk.CG_IMGSYS1 = NULL;
-		} else {
-				CG_IMG1_ON = CG_ENABLE;
 		}
+
 #endif
 		/* Create class register */
 		pWPEClass = class_create("WPEdrv");
@@ -5386,18 +5382,17 @@ static signed int WPE_probe(struct platform_device *pDev)
 		if (IS_ERR(wpe_clk.CG_IMGSYS_LARB11)) {
 			LOG_ERR("cannot get CG_IMGSYS_LARB11 clock\n");
 			wpe_clk.CG_IMGSYS_LARB11 = NULL;
-		} else {
-			LOG_INF("get CG_IMGSYS_LARB11 clock");
-			CG_IMG_LARB11_ON = CG_ENABLE;
 		}
 
 		wpe_clk.CG_IMGSYS_WPE_B =
 			devm_clk_get(&pDev->dev, "WPE_CLK_IMG_WPE_B");
-			LOG_INF("devm_clk_get WPE_CLK_IMG_WPE_B");
 
 		if (IS_ERR(wpe_clk.CG_IMGSYS_WPE_B)) {
-			LOG_ERR("cannot get CG_IMGSYS_WPE_B clock\n");
+			LOG_ERR("cannot get CG_DUAL_WPE_B clock\n");
 			wpe_clk.CG_IMGSYS_WPE_B = NULL;
+		}else {
+			LOG_INF("get CG_DUAL_WPE_B clock");
+			CG_DUAL_WPE_ON = CG_ENABLE;
 		}
 #endif
 	}
@@ -5407,8 +5402,7 @@ EXIT:
 	if (Ret < 0)
 		WPE_UnregCharDev();
 
-	LOG_INF("[WPE_probe]CG_IMG_LARB11_ON = %d,CG_IMG1_ON = %d,GKI_IMG1_LARB_ON =%d \n",CG_IMG_LARB11_ON,CG_IMG1_ON,GKI_IMG1_LARB_ON);
-	LOG_INF("- X. WPE driver probe.");
+	LOG_INF("- X. WPE driver probe.[CG_DUAL_WPE_ON] = %d\n",CG_DUAL_WPE_ON);
 
 	return Ret;
 }
@@ -5824,9 +5818,8 @@ static signed int __init WPE_Init(void)
 	int i;
 
 	/*for GKI 2.0 */
-	CG_IMG1_ON = CG_DISABLE;
-	CG_IMG_LARB11_ON = CG_DISABLE;
-	GKI_IMG1_LARB_ON = CG_DISABLE;
+	CG_DUAL_WPE_ON = CG_DISABLE;
+
 	/*  */
 	LOG_INF("- E. WPE_Init");
 	/*  */
@@ -5892,10 +5885,10 @@ static signed int __init WPE_Init(void)
 #ifndef EP_CODE_MARK_CMDQ
 	LOG_INF("register wpe callback for CMDQ");
 	cmdqCoreRegisterCB(mdp_get_group_wpe(),
-			   WPE_ClockOnCallback,
-			   WPE_DumpCallback,
-			   WPE_ResetCallback,
-			   WPE_ClockOffCallback);
+					WPE_ClockOnCallback,
+					WPE_DumpCallback,
+					WPE_ResetCallback,
+					WPE_ClockOffCallback);
 #endif
 
 #if IS_ENABLED(CONFIG_PM)
@@ -5906,7 +5899,7 @@ static signed int __init WPE_Init(void)
 	}
 #endif
 
-	LOG_INF("[WPE_init]CG_IMG_LARB11_ON = %d ,CG_IMG1_ON = %d , GKI_IMG1_LARB_ON = %d \n",CG_IMG_LARB11_ON, CG_IMG1_ON, GKI_IMG1_LARB_ON);
+	LOG_INF("- X. CG_DUAL_WPE_ON = %d\n",CG_DUAL_WPE_ON);
 	LOG_DBG("- X. Ret: %d.", Ret);
 	return Ret;
 }
