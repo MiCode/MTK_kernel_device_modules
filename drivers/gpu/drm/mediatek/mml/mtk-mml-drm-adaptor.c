@@ -1123,6 +1123,7 @@ void mml_drm_kick_done(struct mml_drm_ctx *dctx)
 	kthread_flush_worker(ctx->kt_done);
 
 	mml_mmp(kick, MMPROFILE_FLAG_END, jobid, 0);
+	mml_msg("%s kick done job id %u", __func__, jobid);
 }
 EXPORT_SYMBOL_GPL(mml_drm_kick_done);
 
