@@ -2957,7 +2957,9 @@ static int cmdq_probe(struct platform_device *pdev)
 	int err, i, smi_cnt;
 	struct gce_plat *plat_data;
 	static u8 hwid;
+#if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	int port;
+#endif
 	u32 dram_pwr_pa, mminfra_ao_pa;
 
 	plat_data = (struct gce_plat *)of_device_get_match_data(dev);
@@ -3233,6 +3235,7 @@ static int cmdq_probe(struct platform_device *pdev)
 		cmdq->tbu = 0;
 	cmdq_msg("%s sid:%x axid:%x tbu:%x", __func__, cmdq->sid, cmdq->axid, cmdq->tbu);
 
+#if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	if (!of_parse_phandle_with_args(
 		dev->of_node, "iommus", "#iommu-cells", 0, &args)) {
 		mtk_iommu_register_fault_callback(
@@ -3242,7 +3245,7 @@ static int cmdq_probe(struct platform_device *pdev)
 		mtk_iommu_register_fault_callback(
 			port, cmdq_iommu_fault_callback, cmdq, false);
 	}
-
+#endif
 	if (of_property_read_bool(dev->of_node, "error-irq-sw-req")) {
 		cmdq->error_irq_sw_req = true;
 		if (!of_property_read_u32(dev->of_node, "dram-pwr-base", &dram_pwr_pa)) {
