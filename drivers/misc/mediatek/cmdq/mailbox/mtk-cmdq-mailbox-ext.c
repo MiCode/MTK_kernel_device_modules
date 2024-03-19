@@ -110,6 +110,7 @@ struct cmdq_util_controller_fp *cmdq_util_controller;
 #define GCE_DBG0			0x3004
 #define GCE_DBG2			0x300C
 #define GCE_DBG3			0x3010
+#define GCE_READ_TPR_CTL_VAL	0x500
 
 #define GCE_HOST_VM_IRQ_STATUS			0x3014
 #define GCE_CPR_GSIZE		0x50C4
@@ -308,6 +309,7 @@ struct cmdq {
 	struct device	*pd_mminfra_1;
 	struct device	*pd_mminfra_ao;
 	bool		gce_ddr_sel_wla;
+	unsigned int	dbg3;
 };
 
 struct gce_plat {
@@ -401,6 +403,46 @@ static const struct kernel_param_ops cmdq_hw_trace_ops = {
 	.set = cmdq_hw_trace_set,
 };
 module_param_cb(cmdq_hw_trace, &cmdq_hw_trace_ops, NULL, 0644);
+
+u32 cmdq_mbox_get_tpr(void *chan)
+{
+	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
+		typeof(*cmdq), mbox);
+	u32 id;
+	unsigned long flags;
+	void *base = cmdq->base;
+	u32 dbg3;
+	u64 dbg[5];
+
+	if (!cmdq_tfa_read_dbg && !base) {
+		cmdq_util_msg("no cmdq dbg since no base");
+		return U32_MAX;
+	}
+
+	spin_lock_irqsave(&cmdq->lock, flags);
+	if (atomic_read(&cmdq->usage) <= 0 ||
+		(mminfra_power_cb && !mminfra_power_cb()) ||
+		(mminfra_gce_cg && !mminfra_gce_cg(cmdq->hwid))) {
+		cmdq_util_msg("no cmdq dbg since mbox disable");
+		spin_unlock_irqrestore(&cmdq->lock, flags);
+		return U32_MAX;
+	}
+
+	id = cmdq_util_get_hw_id((u32)cmdq->base_pa);
+	cmdq_util_enable_dbg(id);
+	if (!cmdq_tfa_read_dbg) {
+		/* debug select */
+		writel(GCE_READ_TPR_CTL_VAL, base + GCE_DBG_CTL);
+		dbg3 = readl(base + GCE_DBG3);
+	} else {
+		cmdq_util_return_dbg(id, dbg);
+		dbg3 = (u32)dbg[1];
+	}
+	spin_unlock_irqrestore(&cmdq->lock, flags);
+
+	return dbg3 == U32_MAX ? 0 : dbg3;
+}
+EXPORT_SYMBOL(cmdq_mbox_get_tpr);
 
 u8 cmdq_get_irq_long_times(void *chan)
 {
