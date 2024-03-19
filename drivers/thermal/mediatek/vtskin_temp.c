@@ -239,6 +239,10 @@ enum common_vtskin_sensor_enum {
 	COMMON_VTSKIN_4,
 	COMMON_VTSKIN_5,
 	COMMON_VTSKIN_6,
+	COMMON_VTSKIN_7,
+	COMMON_VTSKIN_8,
+	COMMON_VTSKIN_9,
+	COMMON_VTSKIN_10,
 	COMMON_VTSKIN_NUM,
 };
 
@@ -268,6 +272,22 @@ struct vtskin_tz_param common_vtskin_params[] = {
 		.operation = OP_COEF,
 	},
 	[COMMON_VTSKIN_6] = {
+		.ref_num = 0,
+		.operation = OP_COEF,
+	},
+	[COMMON_VTSKIN_7] = {
+		.ref_num = 0,
+		.operation = OP_COEF,
+	},
+	[COMMON_VTSKIN_8] = {
+		.ref_num = 0,
+		.operation = OP_COEF,
+	},
+	[COMMON_VTSKIN_9] = {
+		.ref_num = 0,
+		.operation = OP_COEF,
+	},
+	[COMMON_VTSKIN_10] = {
 		.ref_num = 0,
 		.operation = OP_COEF,
 	}
