@@ -986,6 +986,13 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_MPEG_MTK_CALLING_PID:
 		ctx->cpu_caller_pid = ctrl->val;
 		break;
+	case V4L2_CID_MPEG_MTK_SET_NAL_SIZE_LENGTH:
+		mtk_v4l2_debug(2,
+			"V4L2_CID_MPEG_MTK_SET_NAL_SIZE_LENGTH: Prefer(%d), Bytes(%d)",
+			ctrl->p_new.p_u32[0], ctrl->p_new.p_u32[1]);
+		memcpy(&p->nal_length, ctrl->p_new.p_u32,
+		sizeof(struct mtk_venc_nal_length));
+		break;
 	case V4L2_CID_MPEG_MTK_ENCODE_ENABLE_MLVEC_MODE:
 		mtk_v4l2_debug(2,
 			"V4L2_CID_MPEG_MTK_ENCODE_ENABLE_MLVEC_MODE val = %d",
@@ -1621,6 +1628,7 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->visual_quality = &enc_params->visual_quality;
 	param->init_qp = &enc_params->init_qp;
 	param->frame_qp_range = &enc_params->frame_qp_range;
+	param->nal_length = &enc_params->nal_length;
 	param->mlvec_mode = enc_params->mlvec_mode;
 }
 
@@ -3172,6 +3180,8 @@ static int mtk_venc_encode_header(void *priv)
 	if (!already_put) {
 		if (enc_result.flags&VENC_FLAG_MULTINAL)
 			dst_vb2_v4l2->flags |= V4L2_BUF_FLAG_MULTINAL;
+		if (enc_result.flags&VENC_FLAG_NAL_LENGTH_BS)
+			dst_vb2_v4l2->flags |= V4L2_BUF_FLAG_NAL_LENGTH_BS;
 
 		dst_buf->planes[0].bytesused = enc_result.bs_size;
 		v4l2_m2m_buf_done(dst_vb2_v4l2, VB2_BUF_STATE_DONE);
@@ -4517,6 +4527,21 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.step = 1;
 	cfg.def = -1;
 	cfg.dims[0] = (sizeof(struct mtk_venc_frame_qp_range)/sizeof(s32));
+	cfg.ops = ops;
+	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
+
+	ctx->enc_params.nal_length.prefer = 0;
+	ctx->enc_params.nal_length.bytes = 0;
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MPEG_MTK_SET_NAL_SIZE_LENGTH;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video encode Nal Length";
+	cfg.min = 0;
+	cfg.max = 5;
+	cfg.step = 1;
+	cfg.def = 0;
+	cfg.dims[0] = (sizeof(struct mtk_venc_nal_length)/sizeof(s32));
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 

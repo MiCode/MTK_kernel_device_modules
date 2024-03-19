@@ -493,4 +493,9 @@ struct mtk_venc_frame_qp_range {
 	__s32	min;
 };
 
+struct mtk_venc_nal_length {
+	__u32	prefer;
+	__u32	bytes;
+};
+
 #endif
