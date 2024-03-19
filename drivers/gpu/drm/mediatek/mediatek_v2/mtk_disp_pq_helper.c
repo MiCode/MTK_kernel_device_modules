@@ -145,6 +145,8 @@ void disp_pq_path_sel_set(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle
 	unsigned int value = 1, addr = 0;
 	void __iomem *config_regs = mtk_crtc->config_regs;
 	resource_size_t config_regs_pa = mtk_crtc->config_regs_pa;
+	void __iomem *side_config_regs = mtk_crtc->side_config_regs;
+	resource_size_t side_config_regs_pa = mtk_crtc->side_config_regs_pa;
 
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT6985:
@@ -164,6 +166,10 @@ void disp_pq_path_sel_set(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base, config_regs_pa + DISP_REG_PQ_PATH_SEL, value, ~0);
 	else
 		writel(value, config_regs + DISP_REG_PQ_PATH_SEL);
+	if (mtk_crtc->is_dual_pipe && handle)
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base, side_config_regs_pa + DISP_REG_PQ_PATH_SEL, value, ~0);
+	else if (mtk_crtc->is_dual_pipe)
+		writel(value, side_config_regs + DISP_REG_PQ_PATH_SEL);
 #endif
 }
 
