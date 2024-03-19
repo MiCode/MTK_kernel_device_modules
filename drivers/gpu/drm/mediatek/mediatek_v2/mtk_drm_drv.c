@@ -1090,6 +1090,8 @@ static void mtk_atomic_doze_preparation(struct drm_device *dev,
 	struct drm_connector *connector;
 	struct drm_connector_state *old_conn_state;
 	int i;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_ddp_comp *comp = NULL;
 
 	for_each_new_connector_in_state(old_state, connector,
 		old_conn_state, i) {
@@ -1100,8 +1102,16 @@ static void mtk_atomic_doze_preparation(struct drm_device *dev,
 			continue;
 		}
 
-		if (old_state && old_state->crtcs[i].old_state)
-			mtk_atomit_doze_update_pq(crtc, 0, old_state->crtcs[i].old_state->active);
+		mtk_crtc = to_mtk_crtc(crtc);
+		comp = mtk_ddp_comp_request_output(mtk_crtc);
+
+		if (comp && comp->id == DDP_COMPONENT_DSI0 && old_state->crtcs[0].old_state)
+			mtk_atomit_doze_update_pq(crtc, 0,
+				old_state->crtcs[0].old_state->active);
+
+		if (comp && comp->id == DDP_COMPONENT_DSI1 && old_state->crtcs[3].old_state)
+			mtk_atomit_doze_update_pq(crtc, 0,
+				old_state->crtcs[3].old_state->active);
 
 		mtk_atomic_doze_update_dsi_state(dev, crtc, 1);
 
@@ -1117,6 +1127,8 @@ static void mtk_atomic_doze_finish(struct drm_device *dev,
 	struct drm_connector *connector;
 	struct drm_connector_state *old_conn_state;
 	int i;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_ddp_comp *comp = NULL;
 
 	for_each_new_connector_in_state(old_state, connector,
 		old_conn_state, i) {
@@ -1129,8 +1141,16 @@ static void mtk_atomic_doze_finish(struct drm_device *dev,
 
 		mtk_atomic_doze_update_dsi_state(dev, crtc, 0);
 
-		if (old_state && old_state->crtcs[i].old_state)
-			mtk_atomit_doze_update_pq(crtc, 1, old_state->crtcs[i].old_state->active);
+		mtk_crtc = to_mtk_crtc(crtc);
+		comp = mtk_ddp_comp_request_output(mtk_crtc);
+
+		if (comp && comp->id == DDP_COMPONENT_DSI0 && old_state->crtcs[0].old_state)
+			mtk_atomit_doze_update_pq(crtc, 1,
+				old_state->crtcs[0].old_state->active);
+
+		if (comp && comp->id == DDP_COMPONENT_DSI1 && old_state->crtcs[3].old_state)
+			mtk_atomit_doze_update_pq(crtc, 1,
+				old_state->crtcs[3].old_state->active);
 	}
 }
 
