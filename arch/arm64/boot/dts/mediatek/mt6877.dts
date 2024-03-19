@@ -3448,7 +3448,19 @@
 				u2_phy_data: u2_phy_data {
 					reg = <0x1b0 0x4>;
 				};
-        };
+
+		efuse_srm_rp136: efuse-srm-rp136 {
+			reg = <0x2d4 0x4>;
+		};
+
+		efuse_srm_rp137: efuse-srm-rp137 {
+			reg = <0x2d8 0x4>;
+		};
+
+		efuse_ptpod28: efuse-ptpod28 {
+			reg = <0x2dc 0x4>;
+		};
+	};
 
 	dcm: dcm@10001000 {
 		compatible = "mediatek,mt6877-dcm";
@@ -7371,8 +7383,11 @@
 			"mtcmos_mfg5";      /* Shader Stack6 */
 			vgpu-supply = <&mt6359p_vproc2_reg>;
 			vsram-gpu-supply = <&mt6359p_vsram_md_reg>;
-		nvmem-cells = <&efuse_segment>;
-		nvmem-cell-names = "efuse_segment_cell";
+		nvmem-cells = <&efuse_segment &efuse_srm_rp136 &efuse_srm_rp137 &efuse_ptpod28>;
+		nvmem-cell-names = "efuse_segment_cell", \
+						   "efuse_srm_rp136_cell", \
+						   "efuse_srm_rp137_cell", \
+						   "efuse_ptpod28_cell";
 	};
 
 	gpufreq_wrapper: gpufreq_wrapper {
