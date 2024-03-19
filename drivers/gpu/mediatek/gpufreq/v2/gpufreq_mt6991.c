@@ -246,6 +246,10 @@ void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
 		"== [GPUFREQ INFRA STATUS] ==");
 
 	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s %s=0x%08x",
+		"[MFG]",
+		"EDCM_CON", DRV_Reg32(MFG_EARLY_DCM_CON));
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
 		"%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
 		"[BUS_PROT]",
 		"EMI_SLPPROT_EN_SET", DRV_Reg32(EMI_SLPPROT_EN_SET),
