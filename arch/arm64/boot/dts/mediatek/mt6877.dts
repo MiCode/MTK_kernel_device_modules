@@ -6702,6 +6702,7 @@
 		mediatek,usb3-drd;
 		mediatek,noise-still-tr;
 		mediatek,gen2cp-unsupported;
+		mediatek,smc-req;
 		usb-role-switch;
 		mediatek,syscon-wakeup = <&pericfg 0x420 101>;
 		wakeup-source;
