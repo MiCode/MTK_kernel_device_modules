@@ -165,6 +165,10 @@ static ssize_t mbraink_v6989_gpu_getTimeoutCouterReport(char *pBuf)
 void fpsgo2mbrain_hint_frameinfo(int pid, unsigned long long bufID,
 	int fps, unsigned long long time)
 {
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
+	int pos = 0;
+
 	if (time > Q2QTIMEOUT_HIST)
 		calculateTimeoutCouter(time);
 
@@ -174,7 +178,18 @@ void fpsgo2mbrain_hint_frameinfo(int pid, unsigned long long bufID,
 			bufID,
 			time,
 			gq2qTimeoutInNs);
-		mbraink_netlink_send_msg(NETLINK_EVENT_Q2QTIMEOUT);
+		n = snprintf(netlink_buf + pos,
+				NETLINK_EVENT_MESSAGE_SIZE - pos,
+				"%s:%d:%llu:%llu",
+				NETLINK_EVENT_Q2QTIMEOUT,
+				pid,
+				bufID,
+				time);
+
+		if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+			return;
+
+		mbraink_netlink_send_msg(netlink_buf);
 	}
 }
 
