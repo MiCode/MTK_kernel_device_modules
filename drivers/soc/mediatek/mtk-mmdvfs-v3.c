@@ -1370,6 +1370,7 @@ int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 {
 	s32 opp;
 	u8 func, idx, mux_idx, vcp;
+	bool ready;
 	s8 level;
 	int ret;
 
@@ -1380,6 +1381,13 @@ int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 	if (ret != 3 || func >= FUNC_NUM) {
 		MMDVFS_ERR("input failed:%d func:%hhu idx:%hhu opp:%d vcp:%hhu", ret, func, idx, opp, vcp);
 		return -EINVAL;
+	}
+
+	ready = is_vcp_ready_ex(vcp ? MMDVFS_VCP_FEATURE_ID : MMDVFS_MMUP_FEATURE_ID);
+	if (!ready || !mmdvfs_vcp_cb_ready || mmdvfs_rst_clk_done) {
+		MMDVFS_ERR("vcp_ready:%d mmdvfs_vcp_cb_ready:%d mmdvfs_rst_clk_done:%d",
+			ready, mmdvfs_vcp_cb_ready, mmdvfs_rst_clk_done);
+		return -EACCES;
 	}
 
 	if (func == TEST_AP_SET_OPP || func == TEST_AP_SET_USER_RATE) {
