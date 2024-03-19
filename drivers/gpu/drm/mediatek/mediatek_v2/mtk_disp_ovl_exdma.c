@@ -46,6 +46,8 @@
 
 int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 
+int debug_module_bw[15];
+module_param_array(debug_module_bw, int, NULL, 0644);
 
 #define REG_FLD(width, shift)                                                  \
 	((unsigned int)((((width)&0xFF) << 16) | ((shift)&0xFF)))
@@ -3627,6 +3629,11 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		if (priv->data->respective_ostdl) {
 			if (ovl->data->ovl_phy_mapping)
 				phy_id = ovl->data->ovl_phy_mapping(comp);
+
+			bw_val = bw_val * mtk_crtc->usage_ovl_fmt[phy_id];
+
+			if (debug_module_bw[phy_id])
+				bw_val = debug_module_bw[phy_id];
 
 			if (mtk_crtc->usage_ovl_fmt[phy_id])
 				__mtk_disp_set_module_hrt(comp->hrt_qos_req, bw_val,
