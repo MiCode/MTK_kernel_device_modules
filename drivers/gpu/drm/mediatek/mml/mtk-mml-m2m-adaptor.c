@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2023 MediaTek Inc.
+ * Copyright (c) 2024 MediaTek Inc.
  * Author: Iris-SC Yang <iris-sc.yang@mediatek.com>
  */
 #include <linux/time.h>

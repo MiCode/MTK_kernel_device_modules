@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2022 MediaTek Inc.
+ * Copyright (c) 2024 MediaTek Inc.
  * Author: Dennis-YC Hsieh <dennis-yc.hsieh@mediatek.com>
  */
 
