@@ -1058,6 +1058,10 @@ unsigned int disp_dither_bypass_info(struct mtk_drm_crtc *mtk_crtc)
 	struct mtk_disp_dither *dither_data;
 
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_DITHER, 0);
+	if (!comp) {
+		DDPPR_ERR("%s, comp is null!\n", __func__);
+		return 1;
+	}
 	dither_data = comp_to_dither(comp);
 
 	return dither_data->primary_data->relay_value;

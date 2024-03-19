@@ -1802,6 +1802,10 @@ unsigned int disp_color_bypass_info(struct mtk_drm_crtc *mtk_crtc)
 {
 	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
 			mtk_crtc, MTK_DISP_COLOR, 0);
+	if (!comp) {
+		DDPPR_ERR("%s, comp is null!\n", __func__);
+		return 1;
+	}
 	struct mtk_disp_color *color_data = comp_to_color(comp);
 
 	return color_data->primary_data->color_bypass;
