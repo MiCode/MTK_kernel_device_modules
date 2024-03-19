@@ -33,6 +33,7 @@
 #include "mbraink_battery.h"
 #include "mbraink_pmu.h"
 #include "mbraink_gps.h"
+#include "mbraink_wifi.h"
 
 #if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
 	IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT) && \
@@ -1172,6 +1173,8 @@ static ssize_t mbraink_info_show(struct device *dev,
 {
 	mbraink_get_gnss_lp_data();
 	mbraink_get_gnss_mcu_data();
+	mbraink_get_wifi_data(0);
+	mbraink_get_wifi_data(1);
 
 	return sprintf(buf, "show the process information...\n");
 }
@@ -1443,6 +1446,10 @@ static int mbraink_init(void)
 	ret = mbraink_gps_init();
 	if (ret)
 		pr_notice("mbraink gps init failed.\n");
+
+	ret = mbraink_wifi_init();
+	if (ret)
+		pr_notice("mbraink wifi init failed.\n");
 	return ret;
 }
 
@@ -1495,6 +1502,7 @@ static void mbraink_exit(void)
 	mbraink_gpu_deinit();
 	mbraink_power_deinit();
 	mbraink_gps_deinit();
+	mbraink_wifi_deinit();
 }
 
 module_init(mbraink_init);

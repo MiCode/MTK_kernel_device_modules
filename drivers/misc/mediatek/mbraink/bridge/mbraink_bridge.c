@@ -167,6 +167,7 @@ static int mbraink_bridge_init(void)
 		pr_notice("[MBK_BDG_INFO] mbraink device init failed.\n");
 
 	mbraink_bridge_gps_init();
+	mbraink_bridge_wifi_init();
 
 	return ret;
 }
@@ -190,6 +191,7 @@ static void mbraink_bridge_dev_exit(void)
 
 static void mbraink_bridge_exit(void)
 {
+	mbraink_bridge_wifi_deinit();
 	mbraink_bridge_gps_deinit();
 	mbraink_bridge_dev_exit();
 }

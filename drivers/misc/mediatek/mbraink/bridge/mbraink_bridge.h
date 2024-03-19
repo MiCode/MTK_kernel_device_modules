@@ -10,6 +10,7 @@
 #include <linux/cdev.h>
 
 #include "mbraink_bridge_gps.h"
+#include "mbraink_bridge_wifi.h"
 
 struct mbraink_bridge_data {
 #define CHRDEV_NAME     "mbraink_bridge_chrdev"

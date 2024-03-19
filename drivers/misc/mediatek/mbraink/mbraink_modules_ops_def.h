@@ -69,4 +69,10 @@ struct mbraink_gps_ops {
 int register_mbraink_gps_ops(struct mbraink_gps_ops *ops);
 int unregister_mbraink_gps_ops(void);
 
+/*WIFI*/
+struct mbraink_wifi_ops {
+	void (*get_wifi_data)(unsigned int reason);
+};
+int register_mbraink_wifi_ops(struct mbraink_wifi_ops *ops);
+int unregister_mbraink_wifi_ops(void);
 #endif //MBRAINK_MODULES_OPS_STRUCT_H
