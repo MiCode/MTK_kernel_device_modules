@@ -294,6 +294,8 @@ void mtk_btag_mictx_complete_command(struct mtk_blocktag *btag, __u64 end_t,
 				     __u32 tid, __u16 qid);
 void mtk_btag_mictx_set_full_logging(struct mtk_btag_mictx_id mictx_id,
 				     bool enable);
+void mtk_btag_mictx_ioctl_create(struct proc_dir_entry *btag_root);
+void mtk_btag_mictx_ioctl_remove(void);
 int mtk_btag_mictx_full_logging(struct mtk_btag_mictx_id mictx_id);
 void mtk_btag_mictx_free_all(struct mtk_blocktag *btag);
 void mtk_btag_mictx_init(struct mtk_blocktag *btag);
