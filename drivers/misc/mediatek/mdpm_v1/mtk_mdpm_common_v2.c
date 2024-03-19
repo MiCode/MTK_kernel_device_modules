@@ -17,14 +17,15 @@
 #include "mtk_ccci_common.h"
 #endif
 
-bool mt_mdpm_debug;
-static int g_dbm_power[POWER_TYPE_NUM], g_scenario_power[POWER_TYPE_NUM];
+int mt_mdpm_debug;
+struct md_power_status mdpm_power_sta;
+
 #ifdef MD_POWER_UT
 u32 fake_share_reg;
-u32 fake_share_mem[SHARE_MEM_BLOCK_NUM];
+u32 fake_share_mem[SHARE_MEM_SIZE];
 #endif
 
-#if MD_POWER_METER_ENABLE
+#if MD_POWER_METER_ENABLE && IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 static bool md1_ccci_ready;
 u32 *md_share_mem;
 #endif
@@ -39,38 +40,45 @@ u32 *md_share_mem;
 (((unsigned int)-1>>(31-((1)?_bits_)))&~((1U<<((0)?_bits_))-1))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-static u32 (*mdpm_get_MD_status)(void);
-
-void mdpm_register_md_status_cb(u32 (*get_MD_status)(void))
-{
-	mdpm_get_MD_status = get_MD_status;
-}
-EXPORT_SYMBOL(mdpm_register_md_status_cb);
+#define DLPT_TAG     "[MDPM]"
+#define mdpl_pr_err(fmt, args...)		pr_err(DLPT_TAG fmt, ##args)
+#define mdpl_pr_warn(fmt, args...)		pr_warn(DLPT_TAG fmt, ##args)
 
 #if MD_POWER_METER_ENABLE
 void init_md_section_level(enum pbm_kicker kicker, u32 *share_mem)
 {
-	if (share_mem == NULL)
-		pr_notice("mdpm init md share mem failed\n");
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
+	if (share_mem == NULL) {
+		pr_info_ratelimited("can't get dbm share memory\n");
+		return;
+	}
+
+#ifdef DBM_RESERVE_OFFSET
+	share_mem += DBM_RESERVE_OFFSET;
+#endif
 
 	if (kicker == KR_MD1) {
 		init_md1_section_level(share_mem);
+		init_version_check(share_mem);
 		md_share_mem = share_mem;
 		md1_ccci_ready = 1;
 	} else
-		pr_warn("unknown MD kicker: %d\n", kicker);
+		mdpl_pr_warn("unknown MD kicker: %d\n", kicker);
+#else
+	return;
+#endif
 }
 EXPORT_SYMBOL(init_md_section_level);
 
 int get_md1_power(enum mdpm_power_type power_type, bool need_update)
 {
-	u32 share_reg, *share_mem;
-	unsigned int scenario;
-	int scenario_power, dbm_power;
-
-#if !IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
-	return 0;
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
+#if defined(MD_POWER_UT) || !defined(MD_SCEANRIO_USE_SHARE_MEMORY)
+	u32 share_reg;
 #endif
+	u32 *share_mem;
+	enum md_scenario scenario;
+	int scenario_power, tx_power;
 
 	if (power_type >= POWER_TYPE_NUM ||
 		power_type < 0) {
@@ -80,43 +88,56 @@ int get_md1_power(enum mdpm_power_type power_type, bool need_update)
 	}
 
 	if (need_update == false)
-		return g_scenario_power[MAX_POWER] + g_dbm_power[MAX_POWER];
+		return mdpm_power_sta.total_power;
+
+	memset((void *)&mdpm_power_sta, 0, sizeof(struct md_power_status));
 
 #ifdef MD_POWER_UT
+	share_mem = fake_share_mem;
 	share_reg = fake_share_reg;
 #else
 	if (!md1_ccci_ready)
 		return MAX_MD1_POWER;
-	if (mdpm_get_MD_status)
-		share_reg = mdpm_get_MD_status();
-	else
-		return MAX_MD1_POWER;
-#endif
-	scenario = get_md1_scenario(share_reg, power_type);
 
-	scenario_power = get_md1_scenario_power(scenario, power_type);
-	g_scenario_power[power_type] = scenario_power;
-
-#ifdef MD_POWER_UT
-	share_mem = fake_share_mem;
-#else
+	share_reg = get_md1_status_reg();
 	share_mem = md_share_mem;
+	if (share_mem == NULL) {
+		pr_info_ratelimited("can't get dbm share memory\n");
+		return MAX_MD1_POWER;
+	}
+#ifdef DBM_RESERVE_OFFSET
+	share_mem += DBM_RESERVE_OFFSET;
 #endif
-	dbm_power = get_md1_dBm_power(scenario, share_mem, power_type);
-	g_dbm_power[power_type] = dbm_power;
+
+#endif /* MD_POWER_UT */
+
+#ifdef GET_MD_SCEANRIO_BY_SHARE_MEMORY
+	scenario = get_md1_scenario_by_shm(share_mem);
+#else
+	scenario = get_md1_scenario(share_reg, power_type);
+#endif
+	scenario_power = get_md1_scenario_power(scenario, power_type,
+		&mdpm_power_sta);
+
+	tx_power = get_md1_tx_power(scenario, share_mem, power_type,
+		&mdpm_power_sta);
 
 	if (mt_mdpm_debug)
-		pr_info("[md1_power] scenario_power=%d dbm_power=%d total=%d\n",
-			scenario_power, dbm_power, scenario_power + dbm_power);
+		pr_info("[md1_power] scenario_power=%d tx_power=%d total=%d\n",
+			scenario_power, tx_power, scenario_power + tx_power);
 
-	return scenario_power + dbm_power;
+	return scenario_power + tx_power;
+#else
+	return 0;
+#endif /* CONFIG_MTK_ECCCI_DRIVER */
 }
 EXPORT_SYMBOL(get_md1_power);
 
 static int mt_mdpm_debug_proc_show(struct seq_file *m, void *v)
 {
 	if (mt_mdpm_debug)
-		seq_puts(m, "mdpm debug enabled\n");
+		seq_printf(m, "mdpm debug enabled mt_mdpm_debug=%d\n",
+			mt_mdpm_debug);
 	else
 		seq_puts(m, "mdpm debug disabled\n");
 
@@ -134,7 +155,6 @@ static ssize_t mt_mdpm_debug_proc_write
 	int debug = 0;
 
 	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
-
 	if (copy_from_user(desc, buffer, len))
 		return 0;
 
@@ -143,23 +163,24 @@ static ssize_t mt_mdpm_debug_proc_write
 
 	/* if (sscanf(desc, "%d", &debug) == 1) { */
 	if (kstrtoint(desc, 10, &debug) == 0) {
-		if (debug == 0)
-			mt_mdpm_debug = 0;
-		else if (debug == 1)
-			mt_mdpm_debug = 1;
+		if (debug >= 0 && debug <= 2)
+			mt_mdpm_debug = debug;
 		else
-			pr_notice("should be [0:disable,1:enable]\n");
+			pr_notice("should be [0:disable, 1,2:enable level]\n");
 	} else
-		pr_notice("should be [0:disable,1:enable]\n");
+		pr_notice("should be [0:disable, 1,2:enable level]\n");
 
 	return count;
 }
 
 static int mt_mdpm_power_proc_show(struct seq_file *m, void *v)
 {
-	seq_printf(m, "MAX power: scenario=%dmW dbm=%dmW total=%dmW\n",
-		g_scenario_power[MAX_POWER], g_dbm_power[MAX_POWER],
-		g_scenario_power[MAX_POWER] + g_dbm_power[MAX_POWER]);
+	seq_printf(m, "MAX power: scenario=%dmW dbm=%dmW total=%dmW\n scenario name=%s(%d) section=%d, rat=%d, power_type=%d\n",
+		mdpm_power_sta.scanario_power, mdpm_power_sta.tx_power,
+		mdpm_power_sta.total_power,
+		mdpm_power_sta.scenario_name, mdpm_power_sta.scenario_id,
+		mdpm_power_sta.dbm_section, mdpm_power_sta.rat,
+		mdpm_power_sta.power_type);
 
 	return 0;
 }
@@ -212,14 +233,14 @@ static int mt_mdpm_create_procfs(void)
 	dir = proc_mkdir("mdpm", NULL);
 
 	if (!dir) {
-		pr_err("fail to create /proc/mdpm @ %s()\n", __func__);
+		mdpl_pr_err("fail to create /proc/mdpm @ %s()\n", __func__);
 		return -ENOMEM;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(entries); i++) {
 		if (!proc_create
 		    (entries[i].name, 0664, dir, entries[i].fops))
-			pr_err("@%s: create /proc/mdpm/%s failed\n", __func__,
+			mdpl_pr_err("@%s: create /proc/mdpm/%s failed\n", __func__,
 				    entries[i].name);
 	}
 
@@ -250,10 +271,10 @@ static int __init mdpm_module_init(void)
 
 #if MD_POWER_METER_ENABLE
 	mt_mdpm_create_procfs();
-
 #ifdef MD_POWER_UT
 	mt_mdpm_debug = 1;
 	init_md1_section_level(fake_share_mem);
+	init_version_check(fake_share_mem);
 	md_power_meter_ut();
 #endif
 #endif /* MD_POWER_METER_ENABLE */

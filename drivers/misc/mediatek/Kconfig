@@ -55,6 +55,14 @@ config MTK_PLAT_POWER_MT6768
 	  If the macro is enabled, compile the mt6768 related code.
 	  If unsure, say N.
 
+config MTK_PLAT_POWER_MT6877
+	tristate "Platform power specified macro"
+	help
+	  This macro is used to distinguish the platform dependent parts
+	  from those power related features.
+	  If the macro is enabled, compile the mt6877 related code.
+	  If unsure, say N.
+
 config MTK_PLAT_POWER_6893
 	tristate "Platform power specified macro"
 	help
