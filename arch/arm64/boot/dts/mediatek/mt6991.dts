@@ -5876,7 +5876,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,force-vbus;
 			mediatek,clk-mgr;
 			mediatek,usb3-drd;
-			mediatek,noise-still-tr;
 			mediatek,gen1-txdeemph;
 			mediatek,hwrscs-vers = <2>;
 			mediatek,uds = <&usb_dp_selector 19>;
