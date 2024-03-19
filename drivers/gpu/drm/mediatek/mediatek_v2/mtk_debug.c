@@ -4402,6 +4402,31 @@ static void process_dbg_opt(const char *opt)
 		val = *(unsigned int *)(cmdq_buf->va_base + DISP_SLOT_TE1_EN);
 		DDPMSG("[reg_dbg] gce_rd: addr(0x%x) = 0x%x\n", addr, val);
 #endif
+	}  else if (strncmp(opt, "crtc_caps:", strlen("crtc_caps:")) == 0) {
+		uint32_t en = 0;
+		uint32_t bit_num = 0;
+		int ret;
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
+
+		ret = sscanf(opt, "crtc_caps:%x,%x\n", &bit_num, &en);
+		DDPINFO("[crtc_caps] en: %d, bit: %d\n", en, bit_num);
+		if (ret != 2)
+			return;
+
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPPR_ERR("[reg_dbg] find crtc fail\n");
+			return;
+		}
+		mtk_crtc = to_mtk_crtc(crtc);
+		DDPINFO("[crtc_caps] crtc_ability[0x%x]+++\n", mtk_crtc->crtc_caps.crtc_ability);
+		if (en)
+			mtk_crtc->crtc_caps.crtc_ability |= BIT(bit_num);
+		else
+			mtk_crtc->crtc_caps.crtc_ability &= ~BIT(bit_num);
+		DDPINFO("[crtc_caps] crtc_ability[0x%x]---\n", mtk_crtc->crtc_caps.crtc_ability);
 	} else if (strncmp(opt, "vidle_cmd:", strlen("vidle_cmd:")) == 0) {
 		uint32_t en = 0;
 		uint32_t stop = 0;
