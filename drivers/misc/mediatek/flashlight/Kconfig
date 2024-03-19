@@ -195,3 +195,12 @@ config MTK_FLASHLIGHT_DLPT
 	  the current of battary dynamicly. It will start by request
 	  and notice user by kernel notifier.
 
+config MTK_FLASHLIGHT_PPB
+	bool "Mediatek flashlight config for controlling the ppb API switch"
+	depends on MTK_FLASHLIGHT_DLPT
+	help
+	  This is a config for controlling the ppb API switch.
+
+	  PPB is used to collect the power consumption of the flashlight,
+	  some platforms do not support it,for those unsupported platforms,
+	  please set its config to not set.

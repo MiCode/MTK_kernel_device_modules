@@ -563,7 +563,7 @@ void flashlight_kicker_pbm_by_device_id(
 	}
 
 	pr_info_ratelimited("kicker ppb (%u)mW", total_mW);
-#if IS_ENABLED(CONFIG_MTK_PEAK_POWER_BUDGET)
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_PPB)
 	kicker_ppb_request_power(KR_FLASHLIGHT, total_mW);
 #endif
 }
