@@ -249,6 +249,11 @@ int mtk_spk_update_info(struct snd_soc_card *card,
 			   mtk_spk_i2s_out == MTK_SPK_I2S_OUT4) {
 			i2s_out_dai_link_idx = i;
 			dai_link->name = MTK_SPK_NAME;
+		} else if (i2s_out_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "I2SOUT5") == 0 &&
+			   mtk_spk_i2s_out == MTK_SPK_I2S_OUT5) {
+			i2s_out_dai_link_idx = i;
+			dai_link->name = MTK_SPK_NAME;
 		}
 
 		if (i2s_in_dai_link_idx < 0 &&
@@ -283,6 +288,11 @@ int mtk_spk_update_info(struct snd_soc_card *card,
 		} else if (i2s_in_dai_link_idx < 0 &&
 			   strcmp(dai_link->cpus->dai_name, "I2SIN4") == 0 &&
 			   mtk_spk_i2s_in == MTK_SPK_I2S_IN4) {
+			i2s_in_dai_link_idx = i;
+			dai_link->name = MTK_SPK_REF_NAME;
+		} else if (i2s_in_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "I2SIN5") == 0 &&
+			   mtk_spk_i2s_in == MTK_SPK_I2S_IN5) {
 			i2s_in_dai_link_idx = i;
 			dai_link->name = MTK_SPK_REF_NAME;
 		}
