@@ -184,6 +184,14 @@ int error_irq_bug_on;
 EXPORT_SYMBOL(error_irq_bug_on);
 module_param(error_irq_bug_on, int, 0644);
 
+int cmdq_ut_count;
+EXPORT_SYMBOL(cmdq_ut_count);
+module_param(cmdq_ut_count, int, 0644);
+
+int cmdq_ut_sleep_time;
+EXPORT_SYMBOL(cmdq_ut_sleep_time);
+module_param(cmdq_ut_sleep_time, int, 0644);
+
 int cmdq_proc_debug_off;
 EXPORT_SYMBOL(cmdq_proc_debug_off);
 module_param(cmdq_proc_debug_off, int, 0644);
