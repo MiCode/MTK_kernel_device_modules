@@ -175,6 +175,7 @@ extern bool mtk_vdec_enable_dynll;
 extern bool mtk_vdec_slc_enable;
 extern bool mtk_vdec_acp_enable;
 extern bool mtk_venc_acp_enable;
+extern bool mtk_venc_input_acp_enable;
 extern int mtk_vdec_acp_debug;
 extern int support_svp_region;
 extern int support_wfd_region;
