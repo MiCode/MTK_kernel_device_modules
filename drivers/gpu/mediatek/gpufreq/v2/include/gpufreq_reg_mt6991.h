@@ -300,6 +300,10 @@
 #define EMI_SLPPROT_EN_SET                     (g_emi_infra_ao_mem_base + 0xB08)   /* 0x10646B08 */
 
 #define EMI_INFRACFG_REG_BASE                  (0x10648000)
+#define IFR_EMI_M7_STH_GALS_SLV_DBG            (g_emi_infra_cfg_base + 0x824)      /* 0x10648824 */
+#define IFR_EMI_M7_NTH_GALS_SLV_DBG            (g_emi_infra_cfg_base + 0x828)      /* 0x10648828 */
+#define IFR_EMI_M6_STH_GALS_SLV_DBG            (g_emi_infra_cfg_base + 0x82C)      /* 0x1064882C */
+#define IFR_EMI_M6_NTH_GALS_SLV_DBG            (g_emi_infra_cfg_base + 0x830)      /* 0x10648830 */
 #define MFG_EMI1_STH_GALS_SLV_DBG              (g_emi_infra_cfg_base + 0x83C)      /* 0x1064883C */
 #define MFG_EMI1_NTH_GALS_SLV_DBG              (g_emi_infra_cfg_base + 0x840)      /* 0x10648840 */
 #define MFG_EMI0_STH_GALS_SLV_DBG              (g_emi_infra_cfg_base + 0x844)      /* 0x10648844 */
