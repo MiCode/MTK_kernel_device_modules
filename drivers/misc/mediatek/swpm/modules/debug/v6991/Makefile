@@ -60,3 +60,8 @@ BUILD_SWPM_DISP_DBG_MODUDLE_NAME=mtk-swpm-disp-dbg-v6991
 obj-$(CONFIG_MTK_SWPM_MODULE) += ${BUILD_SWPM_DISP_DBG_MODUDLE_NAME}.o
 ${BUILD_SWPM_DISP_DBG_MODUDLE_NAME}-objs += subsys/swpm_disp_v6991.o
 ${BUILD_SWPM_DISP_DBG_MODUDLE_NAME}-objs += subsys/swpm_disp_v6991_dbg_init.o
+
+BUILD_SWPM_AUDIO_DBG_MODUDLE_NAME=mtk-swpm-audio-dbg-v6991
+obj-$(CONFIG_MTK_SWPM_MODULE) += ${BUILD_SWPM_AUDIO_DBG_MODUDLE_NAME}.o
+${BUILD_SWPM_AUDIO_DBG_MODUDLE_NAME}-objs += subsys/swpm_audio_v6991.o
+${BUILD_SWPM_AUDIO_DBG_MODUDLE_NAME}-objs += subsys/swpm_audio_v6991_dbg_init.o
