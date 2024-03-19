@@ -364,6 +364,9 @@ struct ssusb_mtk {
 	struct device_link *genpd_dl_u3;
 	bool use_multi_genpd;
 	u32 eusb2_cm_l1;
+	u32 ux_exit_lfps;
+	u32 ux_exit_lfps_gen2;
+	u32 polling_scdlfps_time;
 	bool utmi_8bit;
 	bool smc_req;
 };
@@ -471,6 +474,7 @@ struct mtu3 {
 	int ep_slot_mode;
 
 	unsigned u3_lpm:1;
+	unsigned u3_u1gou2:1;
 
 	const char *usb_psy_name;
 	struct power_supply *usb_psy;
@@ -548,6 +552,8 @@ int ssusb_clks_enable(struct ssusb_mtk *ssusb);
 void ssusb_clks_disable(struct ssusb_mtk *ssusb);
 void ssusb_ip_sw_reset(struct ssusb_mtk *ssusb);
 void ssusb_set_power_state(struct ssusb_mtk *ssusb, enum mtu3_power_state);
+void ssusb_set_ux_exit_lfps(struct ssusb_mtk *ssusb);
+void ssusb_set_polling_scdlfps_time(struct ssusb_mtk *ssusb);
 void ssusb_set_txdeemph(struct ssusb_mtk *ssusb);
 void ssusb_set_noise_still_tr(struct ssusb_mtk *ssusb);
 void ssusb_vsvoter_set(struct ssusb_mtk *ssusb);
