@@ -2600,10 +2600,56 @@ static void __gpufreq_aging_adjustment(void)
 	kfree(aging_adj);
 }
 
-//todo default return g_opp_table_segment_1 for boot up
-static struct gpufreq_opp_info *__gpufreq_get_segment_table(void)
+static int __gpufreq_get_segment_table(struct platform_device *pdev)
 {
-	return g_opp_table_segment_1;
+	int ret = 0;
+	unsigned int efuse_id = 0;
+#if IS_ENABLED(CONFIG_MTK_DEVINFO)
+	struct nvmem_cell *efuse_cell;
+	unsigned int *efuse_buf;
+	size_t efuse_len;
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_DEVINFO)
+	efuse_cell = nvmem_cell_get(&pdev->dev, "efuse_ptpod28_cell");
+	if (IS_ERR(efuse_cell)) {
+		GPUFREQ_LOGE("cannot get efuse_ptpod28_cell\n");
+		ret = PTR_ERR(efuse_cell);
+		return ret;
+	}
+
+	efuse_buf = (unsigned int *)nvmem_cell_read(efuse_cell, &efuse_len);
+	nvmem_cell_put(efuse_cell);
+	if (IS_ERR(efuse_buf)) {
+		GPUFREQ_LOGE("cannot get efuse_buf of efuse_ptpod28_cell\n");
+		ret = PTR_ERR(efuse_buf);
+		return ret;
+	}
+
+	efuse_id = (*efuse_buf >> 14 & 0x3);
+	kfree(efuse_buf);
+
+#else
+	efuse_id = 0x0;
+#endif /* CONFIG_MTK_DEVINFO */
+
+	switch (efuse_id) {
+	case 0x0: // EFUSE 0x11F105F0[15:14] = 2’b00
+		g_default_gpu = g_opp_table_segment_1;
+		break;
+	case 0x1: // EFUSE 0x11F105F0[15:14] = 2’b01
+		g_default_gpu = g_opp_table_segment_3;
+		break;
+	case 0x2: // EFUSE 0x11F105F0[15:14] = 2’b10
+		g_default_gpu = g_opp_table_segment_2;
+		break;
+	default:
+		GPUFREQ_LOGE("@%s: invalid efuse_id(0x%x)\n",
+				__func__, efuse_id);
+		g_default_gpu = g_opp_table_segment_1;
+	}
+	GPUFREQ_LOGE("@%s: efuse_id(0x%x)\n",__func__, efuse_id);
+	return ret;
 }
 
 static void __gpufreq_custom_adjustment(void)
@@ -2680,7 +2726,7 @@ static int __gpufreq_init_opp_table(struct platform_device *pdev)
 	GPUFREQ_LOGI("number of working GPU OPP: %d, max and min OPP index: [%d, %d]",
 		g_gpu.opp_num, g_gpu.max_oppidx, g_gpu.min_oppidx);
 
-	g_default_gpu = __gpufreq_get_segment_table();
+	__gpufreq_get_segment_table(pdev);
 	g_gpu.signed_table = g_default_gpu;
 	/* apply segment adjustment to GPU signed table */
 	__gpufreq_segment_adjustment(pdev);
@@ -2940,9 +2986,9 @@ static int __gpufreq_init_clk(struct platform_device *pdev)
 	}
 
 	// 0x1000d000
-	g_dbgtop = __gpufreq_of_ioremap("mediatek,dbgtop", 0);
+	g_dbgtop = __gpufreq_of_ioremap("mediatek,dbgtop-drm", 0);
 	if (!g_dbgtop) {
-		GPUFREQ_LOGE("@%s: ioremap failed at dbgtop\n", __func__);
+		GPUFREQ_LOGE("@%s: ioremap failed at dbgtop-drm\n", __func__);
 		return -ENOENT;
 	}
 
