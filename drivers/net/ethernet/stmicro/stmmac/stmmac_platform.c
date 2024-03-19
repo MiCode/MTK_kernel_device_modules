@@ -113,9 +113,9 @@ static struct stmmac_axi *stmmac_axi_setup(struct platform_device *pdev)
 	axi->axi_mb = of_property_read_bool(np, "snps,mb");
 	axi->axi_rb =  of_property_read_bool(np, "snps,rb");
 
-	if (of_property_read_u32(np, "snps,wr_osr_lmt", &axi->axi_wr_osr_lmt))
+	if (of_property_read_u32(np, "snps,wr-osr-lmt", &axi->axi_wr_osr_lmt))
 		axi->axi_wr_osr_lmt = 1;
-	if (of_property_read_u32(np, "snps,rd_osr_lmt", &axi->axi_rd_osr_lmt))
+	if (of_property_read_u32(np, "snps,rd-osr-lmt", &axi->axi_rd_osr_lmt))
 		axi->axi_rd_osr_lmt = 1;
 	of_property_read_u32_array(np, "snps,blen", axi->axi_blen, AXI_BLEN);
 	of_node_put(np);
@@ -444,7 +444,7 @@ stmmac_probe_config_dt(struct platform_device *pdev, u8 *mac)
 	 */
 	plat->clk_csr = -1;
 	if (of_property_read_u32(np, "snps,clk-csr", &plat->clk_csr))
-		of_property_read_u32(np, "clk_csr", &plat->clk_csr);
+		of_property_read_u32(np, "clk-csr", &plat->clk_csr);
 
 	/* "snps,phy-addr" is not a standard property. Mark it as deprecated
 	 * and warn of its use. Remove this when phy node support is added.
