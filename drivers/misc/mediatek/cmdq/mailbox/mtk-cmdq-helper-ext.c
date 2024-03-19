@@ -3260,7 +3260,7 @@ void cmdq_pkt_err_dump_cb(struct cmdq_cb_data data)
 		cmdq_dump_pkt(pkt, pc, true);
 
 #ifdef CMDQ_SECURE_SUPPORT
-		if (!pkt->sec_data)
+		if (!pkt->sec_data && hwid == 0 && err_num[hwid] == 0)
 			cmdq_util_helper->dump_smi();
 #else
 		cmdq_util_helper->dump_smi();
