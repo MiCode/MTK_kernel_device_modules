@@ -683,9 +683,165 @@ static int rtl822x_get_features(struct phy_device *phydev)
 	return genphy_read_abilities(phydev);
 }
 
+static void rtl822x_software_reset(struct phy_device *phydev)
+{
+	phy_modify(phydev, MII_BMCR, BMCR_ANENABLE | BMCR_RESET,
+		   BMCR_ANENABLE | BMCR_RESET);
+
+	usleep_range(20000, 21000);
+}
+
+static int rtl822x_mmd31_write(struct phy_device *phydev, u32 regnum, u16 set)
+{
+	u32 reg;
+	int page, ret;
+
+	page = regnum >> 4;
+	reg = 0x10 + (regnum % 0x10)/2;
+
+	ret = phy_write_paged(phydev, page, reg, set);
+
+	return ret? ret: 0;
+}
+
+static int rtl822x_mmd31_read(struct phy_device *phydev, u32 regnum)
+{
+	u32 reg;
+	int page, ret;
+
+	page = regnum >> 4;
+	reg = 0x10 + (regnum % 0x10)/2;
+
+	ret = phy_read_paged(phydev, page, reg);
+
+	return ret;
+}
+
+static int rtl822x_disable_hisgmii_an_mode(struct phy_device *phydev)
+{
+	int val, ret, i;
+
+	ret = phy_write_mmd(phydev, 0x1e, 0x7588, 0x2);
+	if (ret < 0)
+		return ret;
+
+	rtl822x_software_reset(phydev);
+
+	ret = phy_write_mmd(phydev, 0x1e, 0x7589, 0x71d0);
+	if (ret < 0)
+		return ret;
+
+	rtl822x_software_reset(phydev);
+
+	ret = phy_write_mmd(phydev, 0x1e, 0x7587, 0x3);
+	if (ret < 0)
+		return ret;
+
+	rtl822x_software_reset(phydev);
+
+	for (i = 0; i < 30; i++) {
+		val = phy_read_mmd(phydev, 0x1e, 0x7587);
+		if (val < 0)
+			return val;
+
+		if (!(val & BIT(0)))
+			break;
+
+		usleep_range(1000, 1100);
+	}
+
+	if (i == 30) {
+		dev_err(&phydev->mdio.dev, "Disable HiSGMII AN Failed\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int rtl822x_set_serdes_an(struct phy_device *phydev)
+{
+	int val, ret, i;
+
+	ret = phy_modify_mmd(phydev, 0x1e, 0x75f3, BIT(0), 0);
+	if (ret)
+		return ret;
+
+	rtl822x_software_reset(phydev);
+
+	ret = phy_modify_mmd(phydev, 0x1e, 0x697a, GENMASK(5, 0), 0x1);
+	if (ret)
+		return ret;
+
+	rtl822x_software_reset(phydev);
+
+	ret = phy_write_mmd(phydev, 0x1e, 0x6a04, 0x503);
+	if (ret)
+		return ret;
+
+	rtl822x_software_reset(phydev);
+
+	ret = phy_write_mmd(phydev, 0x1e, 0x6f10, 0xd433);
+	if (ret)
+		return ret;
+
+	rtl822x_software_reset(phydev);
+
+	ret = phy_write_mmd(phydev, 0x1e, 0x6f11, 0x8020);
+	if (ret)
+		return ret;
+
+	rtl822x_software_reset(phydev);
+
+	val = rtl822x_mmd31_read(phydev, 0xa400);
+	if (val < 0)
+		return ret;
+
+	val |= BIT(14);
+	ret = rtl822x_mmd31_write(phydev, 0xa400, val);
+	if (ret < 0)
+		return ret;
+
+	for (i = 0; i < 30; i++) {
+		val = rtl822x_mmd31_read(phydev, 0xa434);
+		if (val < 0)
+			return ret;
+
+		if (val & BIT(2)) {
+			val = rtl822x_mmd31_read(phydev, 0xa400);
+			if (val < 0)
+				return ret;
+
+			val &= ~BIT(14);
+			ret = rtl822x_mmd31_write(phydev, 0xa400, val);
+			if (ret < 0)
+				return ret;
+			break;
+		}
+
+		usleep_range(100000, 110000);
+	}
+
+	if (i == 30) {
+		dev_err(&phydev->mdio.dev, "Set Serdes Normal Mode Failed\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int rtl822x_config_aneg(struct phy_device *phydev)
 {
 	int ret = 0;
+
+	if (phydev->interface == PHY_INTERFACE_MODE_2500BASEX) {
+		ret = rtl822x_disable_hisgmii_an_mode(phydev);
+		if (ret)
+			return ret;
+	} else if (phydev->interface == PHY_INTERFACE_MODE_SGMII) {
+		ret = rtl822x_set_serdes_an(phydev);
+		if (ret)
+			return ret;
+	}
 
 	if (phydev->autoneg == AUTONEG_ENABLE) {
 		u16 adv2500 = 0;
@@ -1033,8 +1189,6 @@ static struct phy_driver realtek_drvs[] = {
 		.get_features   = rtl822x_get_features,
 		.config_aneg    = rtl822x_config_aneg,
 		.read_status    = rtl822x_read_status,
-		.suspend        = genphy_suspend,
-		.resume         = rtlgen_resume,
 		.read_page      = rtl821x_read_page,
 		.write_page     = rtl821x_write_page,
 	}, {
