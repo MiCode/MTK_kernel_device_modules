@@ -804,6 +804,14 @@ static long eas_ioctl_impl(struct file *filp,
 		if(reset_grp_awr_margin() == -1)
 			return -1;
 		break;
+	case EAS_DPT_CTRL:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(int)))
+			return -1;
+		if(change_dpt_support_driver_hook)
+			change_dpt_support_driver_hook(val);
+		else
+			pr_info("dpt ctrl hook is not ready!!!\n");
+		break;
 #endif
 	default:
 		pr_debug(TAG "%s %d: unknown cmd %x\n",
