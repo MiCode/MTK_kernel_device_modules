@@ -3630,7 +3630,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 			if (ovl->data->ovl_phy_mapping)
 				phy_id = ovl->data->ovl_phy_mapping(comp);
 
-			bw_val = bw_val * mtk_crtc->usage_ovl_fmt[phy_id];
+			bw_val = (bw_val * mtk_crtc->usage_ovl_fmt[phy_id]) >> 2;
 
 			if (debug_module_bw[phy_id])
 				bw_val = debug_module_bw[phy_id];
