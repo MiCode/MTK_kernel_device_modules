@@ -162,14 +162,26 @@ static int mt6991_mt6681_spk_amp_event(struct snd_soc_dapm_widget *w,
 	struct snd_soc_dapm_context *dapm = w->dapm;
 	struct snd_soc_card *card = dapm->card;
 
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	struct snd_soc_pcm_runtime *rtd = snd_soc_get_pcm_runtime(card, &card->dai_link[0]);
+	struct snd_soc_component *component = snd_soc_rtdcom_lookup(rtd, AFE_PCM_NAME);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(component);
+#endif
+
 	dev_info(card->dev, "%s(), event %d\n", __func__, event);
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		/* spk amp on control */
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+		mt6991_afe_gpio_request(afe, true, MT6991_GPIO_EXT_HP_AMP, 0);
+#endif
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		/* spk amp off control */
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+		mt6991_afe_gpio_request(afe, false, MT6991_GPIO_EXT_HP_AMP, 0);
+#endif
 		break;
 	default:
 		break;
