@@ -365,6 +365,7 @@ struct mtk_i2c {
 	int  sda_gpio_id;
 	bool ignore_restart_irq;
 	bool ctrl_irq_sel;
+	bool ctrl_rs_stop;
 	bool master_code_sended;
 	struct mtk_i2c_ac_timing ac_timing;
 	const struct mtk_i2c_compatible *dev_comp;
@@ -1775,9 +1776,14 @@ static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 		else
 			control_reg |= I2C_CONTROL_CLK_EXT_EN;
 	}
-	if ((i2c->speed_hz > I2C_MAX_FAST_MODE_PLUS_FREQ) || (left_num >= 1) ||
-		(i2c->op == I2C_MASTER_CONTINUOUS_WR))
-		control_reg |= I2C_CONTROL_RS;
+	if (i2c->ctrl_rs_stop == true) {
+		if ((i2c->speed_hz > I2C_MAX_FAST_MODE_PLUS_FREQ) || (left_num >= 1))
+			control_reg |= I2C_CONTROL_RS;
+	} else {
+		if ((i2c->speed_hz > I2C_MAX_FAST_MODE_PLUS_FREQ) || (left_num >= 1) ||
+			(i2c->op == I2C_MASTER_CONTINUOUS_WR))
+			control_reg |= I2C_CONTROL_RS;
+	}
 
 	if (i2c->op == I2C_MASTER_WRRD)
 		control_reg |= I2C_CONTROL_DIR_CHANGE | I2C_CONTROL_RS;
@@ -2356,8 +2362,11 @@ static int mtk_i2c_parse_dt(struct device_node *np, struct mtk_i2c *i2c)
 	of_property_read_u32(np, "ch-offset-ccu", &i2c->ch_offset_ccu);
 	of_property_read_u32(np, "ch-offset-dma", &i2c->ch_offset_dma);
 	i2c->ctrl_irq_sel = of_property_read_bool(np, "mediatek,control-irq-sel");
-	dev_info(i2c->dev, "clk_src=%d, offset_i2c=0x%x, offset_scp=0x%x, offset_dma=0x%x, irq_sel=%d\n",
-			i2c->clk_src_in_hz, i2c->ch_offset_i2c, i2c->ch_offset_scp, i2c->ch_offset_dma, i2c->ctrl_irq_sel);
+	i2c->ctrl_rs_stop = of_property_read_bool(np, "mediatek,control-rs-stop");
+	dev_info(i2c->dev, "clk_src=%d, offset_i2c=0x%x, offset_scp=0x%x,\n"
+			   "offset_dma=0x%x, irq_sel=%d, rs_stop=%d\n",
+			   i2c->clk_src_in_hz, i2c->ch_offset_i2c, i2c->ch_offset_scp,
+			   i2c->ch_offset_dma, i2c->ctrl_irq_sel, i2c->ctrl_rs_stop);
 	i2c->have_pmic = of_property_read_bool(np, "mediatek,have-pmic");
 	i2c->use_push_pull =
 		of_property_read_bool(np, "mediatek,use-push-pull");
