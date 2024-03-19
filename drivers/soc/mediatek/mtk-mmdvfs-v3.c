@@ -43,9 +43,13 @@ static u8 mmdvfs_rst_clk_num;
 static bool mmdvfs_rst_clk_done;
 static bool mmdvfs_rst_clk_high_rate;
 
-static phys_addr_t mmdvfs_memory_iova;
-static phys_addr_t mmdvfs_memory_pa;
-static void *mmdvfs_memory_va;
+static phys_addr_t mmdvfs_mmup_iova;
+static phys_addr_t mmdvfs_mmup_pa;
+static void *mmdvfs_mmup_va;
+
+static phys_addr_t mmdvfs_vcp_iova;
+static phys_addr_t mmdvfs_vcp_pa;
+static void *mmdvfs_vcp_va;
 
 static bool mmdvfs_free_run;
 static bool mmdvfs_init_done;
@@ -114,11 +118,19 @@ int mtk_mmdvfs_fmeter_register_notifier(struct notifier_block *nb)
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_fmeter_register_notifier);
 
+void *mmdvfs_get_mmup_base(phys_addr_t *pa)
+{
+	if (pa)
+		*pa = mmdvfs_mmup_pa;
+	return mmdvfs_mmup_va;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_get_mmup_base);
+
 void *mmdvfs_get_vcp_base(phys_addr_t *pa)
 {
 	if (pa)
-		*pa = mmdvfs_memory_pa;
-	return mmdvfs_memory_va;
+		*pa = mmdvfs_vcp_pa;
+	return mmdvfs_vcp_va;
 }
 EXPORT_SYMBOL_GPL(mmdvfs_get_vcp_base);
 
@@ -280,10 +292,11 @@ get_bootmode_err:
 	MMDVFS_ERR("np_chosen:%p tag:%p bootmode:%u", np_chosen, tag, bootmode);
 }
 
-static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *data) // ap > vcp
+static int mmdvfs_vcp_ipi_send_ex(const u8 func, const u8 idx, const u8 opp, u32 *data, const bool vcp)
 {
-	struct mmdvfs_ipi_data slot = {
-		func, idx, opp, mmdvfs_memory_iova >> 32, (u32)mmdvfs_memory_iova};
+	const u32 feature_id = vcp ? MMDVFS_VCP_FEATURE_ID : MMDVFS_MMUP_FEATURE_ID;
+	struct mmdvfs_ipi_data slot = {func, idx, opp,
+		(vcp ? mmdvfs_vcp_iova : mmdvfs_mmup_iova) >> 32, (u32)(vcp ? mmdvfs_vcp_iova : mmdvfs_mmup_iova)};
 	int gen, ret = 0, retry = 0;
 	static u8 times;
 	u32 val;
@@ -334,10 +347,10 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 		writel(*data, MEM_PROFILE_TIMES);
 		break;
 	}
-	val = readl(MEM_IPI_SYNC_FUNC);
+	val = readl(MEM_IPI_SYNC_FUNC(vcp));
 	mutex_unlock(&mmdvfs_vcp_ipi_mutex);
 
-	while (!is_vcp_ready_ex(MMDVFS_MMUP_FEATURE_ID) || !mmdvfs_vcp_cb_ready || mmdvfs_rst_clk_done) {
+	while (!is_vcp_ready_ex(feature_id) || !mmdvfs_vcp_cb_ready || mmdvfs_rst_clk_done) {
 		if (!mmdvfs_vcp_cb_ready &&
 			(func == FUNC_MMDVFS_INIT || func == FUNC_MMDVFSRC_INIT))
 			break;
@@ -354,9 +367,9 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 	}
 
 	mutex_lock(&mmdvfs_vcp_ipi_mutex);
-	writel(0, MEM_IPI_SYNC_DATA);
-	writel(val | (1 << func), MEM_IPI_SYNC_FUNC);
-	gen = vcp_cmd_ex(MMDVFS_MMUP_FEATURE_ID, VCP_GET_GEN, "mmdvfs_task");
+	writel(0, MEM_IPI_SYNC_DATA(vcp));
+	writel(val | (1 << func), MEM_IPI_SYNC_FUNC(vcp));
+	gen = vcp_cmd_ex(feature_id, VCP_GET_GEN, "mmdvfs_task");
 
 	mutex_lock(&mmdvfs_vcp_cb_mutex);
 	if (!mmdvfs_vcp_cb_ready && func != FUNC_MMDVFS_INIT && func != FUNC_MMDVFSRC_INIT) {
@@ -366,18 +379,18 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 	}
 	mutex_unlock(&mmdvfs_vcp_cb_mutex);
 
-	ret = mtk_ipi_send(vcp_get_ipidev(MMDVFS_MMUP_FEATURE_ID), IPI_OUT_MMDVFS_MMUP, IPI_SEND_WAIT,
-		&slot, PIN_OUT_SIZE_MMDVFS, IPI_TIMEOUT_MS);
+	ret = mtk_ipi_send(vcp_get_ipidev(feature_id), vcp ? IPI_OUT_MMDVFS_VCP : IPI_OUT_MMDVFS_MMUP,
+		IPI_SEND_WAIT, &slot, PIN_OUT_SIZE_MMDVFS, IPI_TIMEOUT_MS);
 	if (ret != IPI_ACTION_DONE)
 		goto ipi_lock_end;
 
 	retry = 0;
-	while (!(readl(MEM_IPI_SYNC_DATA) & (1 << func))) {
+	while (!(readl(MEM_IPI_SYNC_DATA(vcp)) & (1 << func))) {
 		if (++retry > 1000000) {
 			ret = IPI_COMPL_TIMEOUT;
 			break;
 		}
-		if (!is_vcp_ready_ex(MMDVFS_MMUP_FEATURE_ID)) {
+		if (!is_vcp_ready_ex(feature_id)) {
 			ret = -ETIMEDOUT;
 			break;
 		}
@@ -385,29 +398,34 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 	}
 
 	if (!ret)
-		writel(val & ~readl(MEM_IPI_SYNC_DATA), MEM_IPI_SYNC_FUNC);
-	else if (gen == vcp_cmd_ex(MMDVFS_MMUP_FEATURE_ID, VCP_GET_GEN, "mmdvfs_task")) {
+		writel(val & ~readl(MEM_IPI_SYNC_DATA(vcp)), MEM_IPI_SYNC_FUNC(vcp));
+	else if (gen == vcp_cmd_ex(feature_id, VCP_GET_GEN, "mmdvfs_task")) {
 		if (!times)
-			vcp_cmd_ex(MMDVFS_MMUP_FEATURE_ID, VCP_SET_HALT, "mmdvfs_task");
+			vcp_cmd_ex(feature_id, VCP_SET_HALT, "mmdvfs_task");
 		times += 1;
 	}
 
 ipi_lock_end:
-	val = readl(MEM_IPI_SYNC_FUNC);
+	val = readl(MEM_IPI_SYNC_FUNC(vcp));
 	mutex_unlock(&mmdvfs_vcp_ipi_mutex);
 
 ipi_send_end:
 	if (ret || (log_level & (1 << log_ipi))) {
 		MMDVFS_ERR(
-			"ret:%d retry:%d ready:%d cb_ready:%d slot:%#llx vcp_power:%d unfinish func:%#x",
-			ret, retry, is_vcp_ready_ex(MMDVFS_MMUP_FEATURE_ID), mmdvfs_vcp_cb_ready,
+			"ret:%d retry:%d vcp:%d feature_id:%u ready:%d cb_ready:%d slot:%#llx vcp_power:%d unfinish func:%#x",
+			ret, retry, vcp, feature_id, is_vcp_ready_ex(feature_id), mmdvfs_vcp_cb_ready,
 			*(u64 *)&slot, vcp_power, val);
 		MMDVFS_ERR("rst_clk:%d sync_data:%#x ts_pm_suspend:%llu ts_vcp_suspend:%llu ts_vcp_ready:%llu",
-			mmdvfs_rst_clk_done, readl(MEM_IPI_SYNC_DATA),
+			mmdvfs_rst_clk_done, readl(MEM_IPI_SYNC_DATA(vcp)),
 			cb_timestamp[0], cb_timestamp[1], cb_timestamp[2]);
 	}
 	mmdvfs_ipi_status = ret;
 	return ret;
+}
+
+static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *data)
+{
+	return mmdvfs_vcp_ipi_send_ex(func, idx, opp, data, false);
 }
 
 static int mtk_mmdvfs_set_rate(struct clk_hw *hw, unsigned long rate, unsigned long parent_rate)
@@ -1351,19 +1369,22 @@ MODULE_PARM_DESC(vote_step, "vote mmdvfs to specified step");
 int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 {
 	s32 opp;
-	u8 func, idx, mux_idx;
+	u8 func, idx, mux_idx, vcp;
 	s8 level;
 	int ret;
 
 	ret = sscanf(val, "%hhu %hhu %d", &func, &idx, &opp);
+	vcp = func & (1U << 7);
+	func &= ~(1U << 7);
+
 	if (ret != 3 || func >= FUNC_NUM) {
-		MMDVFS_ERR("input failed:%d func:%hhu idx:%hhu opp:%hhd", ret, func, idx, opp);
+		MMDVFS_ERR("input failed:%d func:%hhu idx:%hhu opp:%d vcp:%hhu", ret, func, idx, opp, vcp);
 		return -EINVAL;
 	}
 
 	if (func == TEST_AP_SET_OPP || func == TEST_AP_SET_USER_RATE) {
 		if (idx >= MMDVFS_USER_NUM) {
-			MMDVFS_ERR("invalid idx:%hhu opp:%hhd", idx, opp);
+			MMDVFS_ERR("invalid idx:%hhu opp:%d", idx, opp);
 			return -EINVAL;
 		}
 
@@ -1379,7 +1400,7 @@ int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 	switch (func) {
 	case TEST_SET_RATE:
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_VOTE);
-		ret = mmdvfs_vcp_ipi_send(func, (idx << 4) | ((opp >> 8) & 0xf), opp & 0xff, NULL);
+		ret = mmdvfs_vcp_ipi_send_ex(func, (idx << 4) | ((opp >> 8) & 0xf), opp & 0xff, NULL, vcp);
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_VOTE);
 		break;
 	case TEST_AP_SET_OPP:
@@ -1403,12 +1424,12 @@ int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 		break;
 	default:
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_GENPD);
-		ret = mmdvfs_vcp_ipi_send(func, idx, opp, NULL);
+		ret = mmdvfs_vcp_ipi_send_ex(func, idx, opp, NULL, vcp);
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_GENPD);
 		break;
 	}
 
-	MMDVFS_DBG("ret:%d func:%hhu idx:%hhu opp:%hhd", ret, func, idx, opp);
+	MMDVFS_DBG("ret:%d func:%hhu idx:%hhu opp:%d vcp:%hhu", ret, func, idx, opp, vcp);
 	return ret;
 }
 
@@ -1715,15 +1736,26 @@ static int mmdvfs_vcp_init_thread(void *data)
 		ssleep(1);
 	}
 
-	mmdvfs_memory_iova = vcp_get_reserve_mem_phys_ex(MMDVFS_MEM_ID);
+	mmdvfs_mmup_iova = vcp_get_reserve_mem_phys_ex(MMDVFS_MMUP_MEM_ID);
 	if (smmu_v3_enabled())
 		domain = iommu_get_domain_for_dev(
 			mtk_smmu_get_shared_device(&vcp_ipi_dev->mrpdev->pdev->dev));
 	else
 		domain = iommu_get_domain_for_dev(&vcp_ipi_dev->mrpdev->pdev->dev);
 	if (domain)
-		mmdvfs_memory_pa = iommu_iova_to_phys(domain, mmdvfs_memory_iova);
-	mmdvfs_memory_va = (void *)vcp_get_reserve_mem_virt_ex(MMDVFS_MEM_ID);
+		mmdvfs_mmup_pa = iommu_iova_to_phys(domain, mmdvfs_mmup_iova);
+	mmdvfs_mmup_va = (void *)vcp_get_reserve_mem_virt_ex(MMDVFS_MMUP_MEM_ID);
+
+	mmdvfs_vcp_iova = vcp_get_reserve_mem_phys_ex(MMDVFS_VCP_MEM_ID);
+	if (smmu_v3_enabled())
+		domain = iommu_get_domain_for_dev(
+			mtk_smmu_get_shared_device(&vcp_ipi_dev->mrpdev->pdev->dev));
+	else
+		domain = iommu_get_domain_for_dev(&vcp_ipi_dev->mrpdev->pdev->dev);
+	if (domain)
+		mmdvfs_vcp_pa = iommu_iova_to_phys(domain, mmdvfs_vcp_iova);
+	mmdvfs_vcp_va = (void *)vcp_get_reserve_mem_virt_ex(MMDVFS_VCP_MEM_ID);
+
 
 	writel_relaxed(mmdvfs_free_run ? 1 : 0, MEM_FREERUN);
 	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
@@ -1739,15 +1771,18 @@ static int mmdvfs_vcp_init_thread(void *data)
 		writel_relaxed(MAX_OPP, MEM_MUX_MIN(i));
 		writel_relaxed(MAX_OPP, MEM_FORCE_CLK(i));
 	}
-	for (i = 0; i < MMDVFS_USER_NUM; i++)
-		writel_relaxed(MAX_OPP, MEM_USR_OPP(i));
+	for (i = 0; i < MMDVFS_USER_NUM; i++) {
+		writel_relaxed(MAX_OPP, MEM_USR_OPP(i, false));
+		writel_relaxed(MAX_OPP, MEM_USR_OPP(i, true));
+	}
 
 	if (mmdvfs_lp_mode)
 		writel_relaxed(1, MEM_MMDVFS_LP_MODE);
 
 	mmdvfs_init_done = true;
-	MMDVFS_DBG("iova:%pa pa:%pa va:%#lx init_done:%d",
-		&mmdvfs_memory_iova, &mmdvfs_memory_pa, (unsigned long)mmdvfs_memory_va, mmdvfs_init_done);
+	MMDVFS_DBG("mmup: iova:%pa pa:%pa va:%#lx vcp: iova:%pa pa:%pa va:%#lx init_done:%d",
+		&mmdvfs_mmup_iova, &mmdvfs_mmup_pa, (unsigned long)mmdvfs_mmup_va,
+		&mmdvfs_vcp_iova, &mmdvfs_vcp_pa, (unsigned long)mmdvfs_vcp_va, mmdvfs_init_done);
 
 	if (vcp_log_level)
 		mtk_mmdvfs_v3_set_vcp_log(vcp_log_level);
@@ -2087,10 +2122,10 @@ int mmdvfs_mux_set_opp(const char *name, unsigned long rate)
 	mux->opp = (mux->freq_num - ((i == mux->freq_num) ? (i - 1) : i) - 1);
 
 	if (MEM_BASE) {
-		writel_relaxed(rate, MEM_USR_FREQ(user->id));
-		writel_relaxed(mux->opp, MEM_USR_OPP(user->id));
-		writel_relaxed(sec, MEM_USR_OPP_SEC(user->id));
-		writel_relaxed(usec, MEM_USR_OPP_USEC(user->id));
+		writel_relaxed(rate, MEM_USR_FREQ(user->id, false));
+		writel_relaxed(mux->opp, MEM_USR_OPP(user->id, false));
+		writel_relaxed(sec, MEM_USR_OPP_SEC(user->id, false));
+		writel_relaxed(usec, MEM_USR_OPP_USEC(user->id, false));
 	}
 
 	if (mux->opp == mux->last)

@@ -8,9 +8,16 @@
 #define _MTK_MMDVFS_V3_MEMORY_H_
 
 #if IS_ENABLED(CONFIG_MTK_MMDVFS) && IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+void *mmdvfs_get_mmup_base(phys_addr_t *pa);
 void *mmdvfs_get_vcp_base(phys_addr_t *pa);
 bool mmdvfs_is_init_done(void);
 #else
+static inline void *mmdvfs_get_mmup_base(phys_addr_t *pa)
+{
+	if (pa)
+		*pa = 0;
+	return NULL;
+}
 static inline void *mmdvfs_get_vcp_base(phys_addr_t *pa)
 {
 	if (pa)
@@ -20,12 +27,13 @@ static inline void *mmdvfs_get_vcp_base(phys_addr_t *pa)
 static inline bool mmdvfs_is_init_done(void) { return false; }
 #endif
 
-#define MEM_BASE		mmdvfs_get_vcp_base(NULL)
+#define MEM_BASE		mmdvfs_get_mmup_base(NULL)
+#define MEM_VCP_BASE		mmdvfs_get_vcp_base(NULL)
 #define MEM_LOG_FLAG		(MEM_BASE + 0x0)
 #define MEM_FREERUN		(MEM_BASE + 0x4)
 #define MEM_VSRAM_VOL		(MEM_BASE + 0x8)
-#define MEM_IPI_SYNC_FUNC	(MEM_BASE + 0xC)
-#define MEM_IPI_SYNC_DATA	(MEM_BASE + 0x10)
+#define MEM_IPI_SYNC_FUNC(vcp)	((vcp && MEM_VCP_BASE ? MEM_VCP_BASE : MEM_BASE) + 0xC)
+#define MEM_IPI_SYNC_DATA(vcp)	((vcp && MEM_VCP_BASE ? MEM_VCP_BASE : MEM_BASE) + 0x10)
 #define MEM_VMRC_LOG_FLAG	(MEM_BASE + 0x14)
 
 #define MEM_GENPD_ENABLE_USR(x)	(MEM_BASE + 0x18 + 0x4 * (x)) // CAM, VDE
@@ -51,10 +59,11 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 #define MEM_VCP_EXC_USEC	(MEM_BASE + 0xE8)
 #define MEM_VCP_EXC_VAL		(MEM_BASE + 0xEC)
 
-#define MEM_USR_OPP_SEC(x)	(MEM_BASE + 0xF0 + 0x4 * (x))  // USER_NUM(32)
-#define MEM_USR_OPP_USEC(x)	(MEM_BASE + 0x170 + 0x4 * (x)) // USER_NUM(32)
-#define MEM_USR_OPP(x)		(MEM_BASE + 0x1F0 + 0x4 * (x)) // USER_NUM(32)
-#define MEM_USR_FREQ(x)		(MEM_BASE + 0x270 + 0x4 * (x)) // USER_NUM(32)
+// USER_NUM(32)
+#define MEM_USR_OPP_SEC(x, vcp)		((vcp && MEM_VCP_BASE ? MEM_VCP_BASE : MEM_BASE) + 0xF0 + 0x4 * (x))
+#define MEM_USR_OPP_USEC(x, vcp)	((vcp && MEM_VCP_BASE ? MEM_VCP_BASE : MEM_BASE) + 0x170 + 0x4 * (x))
+#define MEM_USR_OPP(x, vcp)		((vcp && MEM_VCP_BASE ? MEM_VCP_BASE : MEM_BASE) + 0x1F0 + 0x4 * (x))
+#define MEM_USR_FREQ(x, vcp)		((vcp && MEM_VCP_BASE ? MEM_VCP_BASE : MEM_BASE) + 0x270 + 0x4 * (x))
 
 #define MEM_MUX_OPP_SEC(x)	(MEM_BASE + 0x2F0 + 0x4 * (x)) // MUX_NUM(16)
 #define MEM_MUX_OPP_USEC(x)	(MEM_BASE + 0x330 + 0x4 * (x)) // MUX_NUM(16)

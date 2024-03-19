@@ -8,6 +8,7 @@
 
 static const int vcp_reserve_mblock_remap[] = {
 	MMQOS_MEM_ID,
+	MMDVFS_VCP_MEM_ID,
 	VDEC_SET_PROP_MEM_ID,
 	VENC_SET_PROP_MEM_ID,
 	VDEC_VCP_LOG_INFO_ID,
@@ -19,7 +20,7 @@ static const int vcp_reserve_mblock_remap[] = {
 	VDEC_MEM_ID,
 	VENC_MEM_ID,
 	VCP_A_LOGGER_MEM_ID,
-	MMDVFS_MEM_ID
+	MMDVFS_MMUP_MEM_ID
 };
 
 static struct vcp_reserve_mblock vcp_reserve_mblock[] = {
@@ -72,7 +73,7 @@ static struct vcp_reserve_mblock vcp_reserve_mblock[] = {
 		.size = 0x0,
 	},
 	{
-		.num = MMDVFS_MEM_ID,
+		.num = MMDVFS_MMUP_MEM_ID,
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.size = 0x0,
@@ -85,6 +86,12 @@ static struct vcp_reserve_mblock vcp_reserve_mblock[] = {
 	},
 	{
 		.num = VCP_SECURE_DUMP_ID,
+		.start_phys = 0x0,
+		.start_virt = 0x0,
+		.size = 0x0,
+	},
+	{
+		.num = MMDVFS_VCP_MEM_ID,
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.size = 0x0,

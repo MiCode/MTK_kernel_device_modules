@@ -27,12 +27,15 @@
 #include "mtk-mmdvfs-ftrace.h"
 #include "clk-mtk.h"
 
+#ifndef MAX_OPP
+#define MAX_OPP		(8)
+#endif
+
 #define MMDVFS_DBG_VER1	BIT(0)
 #define MMDVFS_DBG_VER3	BIT(1)
 
 #define MMDVFS_DBG(fmt, args...) \
 	pr_notice("[mmdvfs_dbg][dbg]%s: "fmt"\n", __func__, ##args)
-
 
 #define mmdvfs_debug_dump_line(file, fmt, args...)	\
 ({							\
@@ -275,10 +278,13 @@ void mmdvfs_debug_status_dump(struct seq_file *file)
 
 	//user latest request freq/opp
 	mmdvfs_debug_dump_line(file, "user latest request opp/freq\n");
-	for (i = 0; i < MMDVFS_USER_NUM; i++)
+	for (i = 0; i < MMDVFS_USER_NUM; i++) {
+		bool vcp = readl(MEM_USR_OPP(i, true)) != MAX_OPP;
+
 		mmdvfs_debug_dump_line(file, "[%5u.%6u] user: %2u opp: %u freq: %u\n",
-			readl(MEM_USR_OPP_SEC(i)), readl(MEM_USR_OPP_USEC(i)), i,
-			readl(MEM_USR_OPP(i)), readl(MEM_USR_FREQ(i)));
+			readl(MEM_USR_OPP_SEC(i, vcp)), readl(MEM_USR_OPP_USEC(i, vcp)), i,
+			readl(MEM_USR_OPP(i, vcp)), readl(MEM_USR_FREQ(i, vcp)));
+	}
 
 	// mux opp records
 	i = readl(MEM_REC_MUX_CNT) % MEM_REC_CNT_MAX;
@@ -391,9 +397,16 @@ static int mmdvfs_v3_debug_thread(void *data)
 		ssleep(2);
 	}
 
-	va = (unsigned long)(unsigned long *)mmdvfs_get_vcp_base(&pa);
+	va = (unsigned long)(unsigned long *)mmdvfs_get_mmup_base(&pa);
 	if (va && pa) {
 		ret = mrdump_mini_add_extra_file(va, pa, PAGE_SIZE, "MMDVFS_OPP");
+		if (ret)
+			MMDVFS_DBG("failed:%d va:%#lx pa:%pa", ret, va, &pa);
+	}
+
+	va = (unsigned long)(unsigned long *)mmdvfs_get_vcp_base(&pa);
+	if (va && pa) {
+		ret = mrdump_mini_add_extra_file(va, pa, PAGE_SIZE, "MMDVFS_OPP_VCP");
 		if (ret)
 			MMDVFS_DBG("failed:%d va:%#lx pa:%pa", ret, va, &pa);
 	}
@@ -500,7 +513,7 @@ static int mmdvfs_v3_dbg_ftrace_thread(void *data)
 
 			// user opp
 			for (i = 0; i < MMDVFS_USER_NUM; i++)
-				ftrace_user_opp_v3(i, readl(MEM_USR_OPP(i)));
+				ftrace_user_opp_v3(i, readl(MEM_USR_OPP(i, readl(MEM_USR_OPP(i, true)) != MAX_OPP)));
 		} else {                     //mmdvfs v3.0
 			// power opp
 			for (i = 0; i <= PWR_MMDVFS_VMM; i++)

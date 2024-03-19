@@ -747,7 +747,7 @@ static void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool 
 
 	/* add vdisp info to met */
 	if (MEM_BASE)
-		writel(4 - max_level, MEM_USR_OPP(mmdvfs_user));
+		writel(4 - max_level, MEM_USR_OPP(mmdvfs_user, false));
 
 	dpc_mmp(vdisp_level, MMPROFILE_FLAG_PULSE,
 		(g_priv->dvfs_bw.mml_bw << 24) | (g_priv->dvfs_bw.disp_bw << 16) |
@@ -862,7 +862,7 @@ static void dpc_dvfs_both_set(const enum mtk_dpc_subsys subsys, const u8 level, 
 
 	/* add vdisp info to met */
 	if (MEM_BASE)
-		writel(4 - max_level, MEM_USR_OPP(mmdvfs_user));
+		writel(4 - max_level, MEM_USR_OPP(mmdvfs_user, false));
 
 	dpc_mmp(vdisp_level, MMPROFILE_FLAG_PULSE,
 		(g_priv->dvfs_bw.mml_bw << 24) | (g_priv->dvfs_bw.disp_bw << 16) |
