@@ -295,7 +295,7 @@ static int vcp_ipi_dbg_resume_noirq(struct device *dev)
 	int ret = 0;
 	bool state = false;
 
-	if (mmup_enable_count() == 0)
+	if (is_suspending)
 		return 0;
 
 	for (i = 0; i < IRQ_NUMBER; i++) {
@@ -630,6 +630,7 @@ static void vcp_wait_ready_timeout(struct timer_list *t)
 	struct vcp_timer *timeout_timer = container_of(t, struct vcp_timer, tl);
 	enum vcp_core_id core_id = timeout_timer->core_id;
 
+	vcp_dump_last_regs(1);
 #if VCP_RECOVERY_SUPPORT
 	if (vcp_timeout_times < 10 && core_id < VCP_CORE_TOTAL)
 		vcp_send_reset_wq(core_id, RESET_TYPE_TIMEOUT);
@@ -638,8 +639,6 @@ static void vcp_wait_ready_timeout(struct timer_list *t)
 #endif
 	vcp_timeout_times++;
 	pr_notice("[VCP] core id %u timeout times=%x\n", core_id, vcp_timeout_times);
-
-	vcp_dump_last_regs(1);
 }
 #endif
 
@@ -711,12 +710,12 @@ void trigger_vcp_dump(enum vcp_core_id core_id, char *user)
 		}
 	}
 
-	if (mmup_enable_count() && is_vcp_ready_by_coreid(core_id)) {
+	if (!is_suspending && is_vcp_ready_by_coreid(core_id)) {
 		pr_notice("[VCP] %s trigger vcp core %d dump vcp clk: %d\n", user, core_id,
 			mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type));
 		pr_notice("[VCP] Module:%s\n", get_module_by_taskname(user));
 
-		vcp_dump_last_regs(mmup_enable_count());
+		vcp_dump_last_regs(1);
 		clkchk_external_dump();
 
 		/* trigger vcp dump */
@@ -752,7 +751,7 @@ void trigger_vcp_halt(enum vcp_core_id core_id, char *user)
 		}
 	}
 
-	if (mmup_enable_count() && is_vcp_ready_by_coreid(core_id)) {
+	if (!is_suspending && is_vcp_ready_by_coreid(core_id)) {
 		if (halt_user == NULL) {
 			halt_user = user;
 
@@ -761,7 +760,7 @@ void trigger_vcp_halt(enum vcp_core_id core_id, char *user)
 			pr_notice("[VCP] Module:%s\n", get_module_by_taskname(user));
 		}
 
-		vcp_dump_last_regs(mmup_enable_count());
+		vcp_dump_last_regs(1);
 
 		/* trigger halt isr, force vcp enter wfi */
 		writel(GIPC_VCP_HART0_HALT, R_GIPC_IN_SET);
@@ -2341,7 +2340,7 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 	pr_notice("[VCP] %s(): vcp_reset_type %d remain %x times, core id %u\n",
 		__func__, vcp_reset_type, vcp_reset_counts, core_id);
 
-	if (mmup_enable_count() == 0 || core_id >= VCP_CORE_TOTAL)
+	if (is_suspending || core_id >= VCP_CORE_TOTAL)
 		return;
 
 	/*
