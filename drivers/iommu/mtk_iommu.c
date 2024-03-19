@@ -3560,7 +3560,7 @@ static const struct mtk_iommu_plat_data mt6873_data_apu = {
 static const struct mtk_iommu_plat_data mt6877_data_iommu0 = {
 	.m4u_plat = M4U_MT6877,
 	.flags         = HAS_SUB_COMM | OUT_ORDER_WR_EN | WR_THROT_EN |
-			 HAS_BCLK | NOT_STD_AXI_MODE | SHARE_PGTABLE | IOVA_34_EN | HAS_EMI_PM,
+			 HAS_BCLK | NOT_STD_AXI_MODE | SHARE_PGTABLE | IOVA_34_EN,
 	.inv_sel_reg   = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= DISP_IOMMU,
 	.iommu_type     = MM_IOMMU,
@@ -3572,7 +3572,7 @@ static const struct mtk_iommu_plat_data mt6877_data_iommu0 = {
 
 static const struct mtk_iommu_plat_data mt6877_data_iommu1 = {
 	.m4u_plat = M4U_MT6877,
-	.flags         = IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE | HAS_EMI_PM,
+	.flags         = IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE,
 	.inv_sel_reg   = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= APU_IOMMU,
 	.iommu_type     = APU_IOMMU,
