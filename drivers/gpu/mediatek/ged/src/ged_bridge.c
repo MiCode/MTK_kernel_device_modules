@@ -171,9 +171,6 @@ int ged_bridge_gpu_hint_to_cpu(
 	int ret = 0;
 	trace_GPU_DVFS__Policy__Common__Sync_Api(in->hint);
 	trace_tracing_mark_write(5566, "Sync_Api", in->hint);
-#ifdef CONFIG_MTK_FPSGO_V3
-	ret = fpsgo_notify_gpu_block(in->tid, in->i32BridgeFD, in->hint);
-#endif
 	out->eError = GED_OK;
 	out->boost_flag = ret;
 	if (in->hint <= 1)
