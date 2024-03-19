@@ -203,19 +203,11 @@ static int lcm_panel_bias_disable(struct lcm *ctx)
 }
 #endif
 
-static void udelay_panel(unsigned int del)
-{
-	unsigned int count = del / 1000;
-
-	while (count--)
-		udelay(1000);
-	udelay(del % 1000);
-}
-
 static void lcm_panel_init(struct lcm *ctx)
 {
-	pr_info("%s+\n", __func__);
-	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
+	pr_info("+%s\n", __func__);
+	ctx->reset_gpio =
+		devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	if (IS_ERR(ctx->reset_gpio)) {
 		dev_info(ctx->dev, "%s: cannot get reset_gpio %ld\n",
 			__func__, PTR_ERR(ctx->reset_gpio));
@@ -223,11 +215,11 @@ static void lcm_panel_init(struct lcm *ctx)
 	}
 	gpiod_set_value(ctx->reset_gpio, 0);
 	gpiod_set_value(ctx->reset_gpio, 1);
-	udelay_panel(1 * 1000);
+	udelay(1 * 1000);
 	gpiod_set_value(ctx->reset_gpio, 0);
-	udelay_panel(10 * 1000);
+	udelay(10 * 1000);
 	gpiod_set_value(ctx->reset_gpio, 1);
-	udelay_panel(10 * 1000);
+	udelay(10 * 1000);
 	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 
 	lcm_dcs_write_seq_static(ctx, 0xFF, 0x24);
@@ -752,7 +744,7 @@ static void lcm_panel_init(struct lcm *ctx)
 	/* set partial update option */
 	lcm_dcs_write_seq_static(ctx, 0xC9, 0x49, 0x02, 0x05, 0x00, 0x0F,
 		0x06, 0x67, 0x03, 0x2E, 0x10, 0xF0);
-	lcm_dcs_write_seq_static(ctx, 0xBB, 0x03);
+	lcm_dcs_write_seq_static(ctx, 0xBB, 0x10);
 
 	lcm_dcs_write_seq_static(ctx, 0x11);
 	msleep(200);
@@ -817,7 +809,7 @@ static int lcm_unprepare(struct drm_panel *panel)
 	gpiod_set_value(ctx->bias_neg, 0);
 	devm_gpiod_put(ctx->dev, ctx->bias_neg);
 
-	udelay_panel(1000);
+	udelay(1000);
 
 	ctx->bias_pos = devm_gpiod_get_index(ctx->dev,
 		"bias", 0, GPIOD_OUT_HIGH);
@@ -855,7 +847,7 @@ static int lcm_prepare(struct drm_panel *panel)
 	gpiod_set_value(ctx->bias_pos, 1);
 	devm_gpiod_put(ctx->dev, ctx->bias_pos);
 
-	udelay_panel(2000);
+	udelay(2000);
 
 	ctx->bias_neg = devm_gpiod_get_index(ctx->dev,
 		"bias", 1, GPIOD_OUT_HIGH);
@@ -1000,8 +992,8 @@ static int lcm_get_virtual_width(void)
 }
 
 static struct mtk_panel_params ext_params = {
-	.pll_clk = 443,
-	.vfp_low_power = 1530,
+	.pll_clk = 420,
+	.vfp_low_power = 620,
 	.cust_esd_check = 0,
 	.esd_check_enable = 1,
 	.phy_timcon = {
@@ -1012,7 +1004,6 @@ static struct mtk_panel_params ext_params = {
 		.count = 1,
 		.para_list[0] = 0x24,
 	},
-	.wait_sof_before_dec_vfp = 1,
 #ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
 	.round_corner_en = 1,
 	.corner_pattern_height = ROUND_CORNER_H_TOP,
@@ -1066,7 +1057,7 @@ static void change_drm_disp_mode_params(struct drm_display_mode *mode)
 		mode->hsync_end = fake_width + HFP + HSA;
 		mode->htotal = fake_width + HFP + HSA + HBP;
 	}
-	mode->clock = 70626;//72960;
+	mode->clock = 70626;
 }
 
 static int lcm_get_modes(struct drm_panel *panel, struct drm_connector *connector)
@@ -1152,8 +1143,8 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	ctx->dev = dev;
 	dsi->lanes = 4;
 	dsi->format = MIPI_DSI_FMT_RGB888;
-	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE
-			 | MIPI_DSI_MODE_LPM | MIPI_DSI_MODE_NO_EOT_PACKET
+	dsi->mode_flags =
+			 MIPI_DSI_MODE_LPM | MIPI_DSI_MODE_NO_EOT_PACKET
 			 | MIPI_DSI_CLOCK_NON_CONTINUOUS;
 
 	backlight = of_parse_phandle(dev->of_node, "backlight", 0);
@@ -1234,7 +1225,7 @@ static void lcm_remove(struct mipi_dsi_device *dsi)
 }
 
 static const struct of_device_id lcm_of_match[] = {
-	{ .compatible = "nt35695b,auo,vdo", },
+	{ .compatible = "nt35695b,auo,cmd", },
 	{ }
 };
 
@@ -1244,7 +1235,7 @@ static struct mipi_dsi_driver lcm_driver = {
 	.probe = lcm_probe,
 	.remove = lcm_remove,
 	.driver = {
-		.name = "panel-nt35695b-auo-vdo",
+		.name = "panel-nt35695b-auo-cmd",
 		.owner = THIS_MODULE,
 		.of_match_table = lcm_of_match,
 	},
@@ -1253,6 +1244,5 @@ static struct mipi_dsi_driver lcm_driver = {
 module_mipi_dsi_driver(lcm_driver);
 
 MODULE_AUTHOR("Yi-Lun Wang <Yi-Lun.Wang@mediatek.com>");
-MODULE_DESCRIPTION("nt35695b VDO LCD Panel Driver");
-MODULE_LICENSE("GPL v2");
-
+MODULE_DESCRIPTION("nt35695b CMD LCD Panel Driver");
+MODULE_LICENSE("GPL");
