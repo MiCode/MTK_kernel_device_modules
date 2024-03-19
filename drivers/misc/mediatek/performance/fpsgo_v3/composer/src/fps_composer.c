@@ -1425,25 +1425,22 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 		sbe_info = fpsgo_search_and_add_sbe_info(tgid, 1);
 
 		if (sbe_info) {
-			if (test_bit(FPSGO_HWUI, &mask))
-				sbe_info->ux_crtl_type = FPSGO_HWUI;
+			if (test_bit(FPSGO_HWUI, &mask) || test_bit(FPSGO_NON_HWUI, &mask)) {
 
-			if (test_bit(FPSGO_NON_HWUI, &mask))
-				sbe_info->ux_crtl_type = FPSGO_NON_HWUI;
+				if (start && !sbe_info->ux_scrolling) {
+					sbe_info->ux_scrolling = start;
+					if (!ux_scroll_count)
+						fpsgo_set_ux_general_policy(start);
 
-			if (start && !sbe_info->ux_scrolling) {
-				sbe_info->ux_scrolling = start;
-				if (!ux_scroll_count)
-					fpsgo_set_ux_general_policy(start);
+					ux_scroll_count++;
+				}
 
-				ux_scroll_count++;
-			}
-
-			if (!start && sbe_info->ux_scrolling) {
-				sbe_info->ux_scrolling = start;
-				ux_scroll_count--;
-				if (!ux_scroll_count)
-					fpsgo_set_ux_general_policy(start);
+				if (!start && sbe_info->ux_scrolling) {
+					sbe_info->ux_scrolling = start;
+					ux_scroll_count--;
+					if (!ux_scroll_count)
+						fpsgo_set_ux_general_policy(start);
+				}
 			}
 		}
 		fpsgo_render_tree_unlock(__func__);
