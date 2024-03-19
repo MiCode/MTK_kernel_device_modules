@@ -3576,7 +3576,7 @@ pwrap: pwrap@1000d000 {
 		clock-names = "mm", "TOP_MMPLL", "TOP_UNIVPLL1_D2", "TOP_MMPLL_D2";
 	};
 
-	mmqos_wrapper {
+	mmqos-wrapper {
 		compatible = "mediatek,mt6765-mmqos-wrapper";
 	};
 
