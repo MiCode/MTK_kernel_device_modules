@@ -5850,80 +5850,7 @@
 		dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
 		mediatek,platform = "mt6877";
 
-		iommus = /* imgsys_config, msf_b and wpe */
-			<&iommu0 M4U_PORT_L9_IMG_IMGI_D1>,
-			<&iommu0 M4U_PORT_L9_IMG_IMGBI_D1>,
-			<&iommu0 M4U_PORT_L9_IMG_DMGI_D1>,
-			<&iommu0 M4U_PORT_L9_IMG_DEPI_D1>,
-			<&iommu0 M4U_PORT_L9_IMG_ICE_D1>,
-			<&iommu0 M4U_PORT_L9_IMG_SMTI_D1>,
-			<&iommu0 M4U_PORT_L9_IMG_SMTO_D2>,
-			<&iommu0 M4U_PORT_L9_IMG_SMTO_D1>,
-			<&iommu0 M4U_PORT_L9_IMG_CRZO_D1>,
-			<&iommu0 M4U_PORT_L9_IMG_IMG3O_D1>,
-			<&iommu0 M4U_PORT_L9_IMG_VIPI_D1>,
-			<&iommu0 M4U_PORT_L9_IMG_SMTI_D5>,
-			<&iommu0 M4U_PORT_L9_IMG_TIMGO_D1>,
-			<&iommu0 M4U_PORT_L9_IMG_UFBC_W0>,
-			<&iommu0 M4U_PORT_L9_IMG_UFBC_R0>,
-			<&iommu0 M4U_PORT_L9_IMG_WPE_RDMA1>,
-			<&iommu0 M4U_PORT_L9_IMG_WPE_RDMA0>,
-			<&iommu0 M4U_PORT_L9_IMG_WPE_WDMA>,
-			<&iommu0 M4U_PORT_L9_IMG_MFB_RDMA0>,
-			<&iommu0 M4U_PORT_L9_IMG_MFB_RDMA1>,
-			<&iommu0 M4U_PORT_L9_IMG_MFB_RDMA2>,
-			<&iommu0 M4U_PORT_L9_IMG_MFB_RDMA3>,
-			<&iommu0 M4U_PORT_L9_IMG_MFB_RDMA4>,
-			<&iommu0 M4U_PORT_L9_IMG_MFB_RDMA5>,
-			<&iommu0 M4U_PORT_L9_IMG_MFB_WDMA0>,
-			<&iommu0 M4U_PORT_L9_IMG_MFB_WDMA1>,
-
-			/* mraw */
-			<&iommu0 M4U_PORT_L13_CAM_MRAWI>,
-			<&iommu0 M4U_PORT_L13_CAM_MRAWO0>,
-			<&iommu0 M4U_PORT_L13_CAM_MRAWO1>,
-
-			/* camsv */
-			<&iommu0 M4U_PORT_L13_CAM_CAMSV4>,
-			<&iommu0 M4U_PORT_L13_CAM_CAMSV5>,
-			<&iommu0 M4U_PORT_L13_CAM_CAMSV6>,
-
-			/* isp p1 */
-			<&iommu0 M4U_PORT_L16_CAM_IMGO_R1_A>,
-			<&iommu0 M4U_PORT_L16_CAM_RRZO_R1_A>,
-			<&iommu0 M4U_PORT_L16_CAM_CQI_R1_A>,
-			<&iommu0 M4U_PORT_L16_CAM_BPCI_R1_A>,
-			<&iommu0 M4U_PORT_L16_CAM_YUVO_R1_A>,
-			<&iommu0 M4U_PORT_L16_CAM_UFDI_R2_A>,
-			<&iommu0 M4U_PORT_L16_CAM_RAWI_R2_A>,
-			<&iommu0 M4U_PORT_L16_CAM_RAWI_R3_A>,
-			<&iommu0 M4U_PORT_L16_CAM_AAO_R1_A>,
-			<&iommu0 M4U_PORT_L16_CAM_AFO_R1_A>,
-			<&iommu0 M4U_PORT_L16_CAM_FLKO_R1_A>,
-			<&iommu0 M4U_PORT_L16_CAM_LCESO_R1_A>,
-			<&iommu0 M4U_PORT_L16_CAM_CRZO_R1_A>,
-			<&iommu0 M4U_PORT_L16_CAM_LTMSO_R1_A>,
-			<&iommu0 M4U_PORT_L16_CAM_RSSO_R1_A>,
-			<&iommu0 M4U_PORT_L16_CAM_AAHO_R1_A>,
-			<&iommu0 M4U_PORT_L16_CAM_LSCI_R1_A>,
-
-			<&iommu0 M4U_PORT_L17_CAM_IMGO_R1_B>,
-			<&iommu0 M4U_PORT_L17_CAM_RRZO_R1_B>,
-			<&iommu0 M4U_PORT_L17_CAM_CQI_R1_B>,
-			<&iommu0 M4U_PORT_L17_CAM_BPCI_R1_B>,
-			<&iommu0 M4U_PORT_L17_CAM_YUVO_R1_B>,
-			<&iommu0 M4U_PORT_L17_CAM_UFDI_R2_B>,
-			<&iommu0 M4U_PORT_L17_CAM_RAWI_R2_B>,
-			<&iommu0 M4U_PORT_L17_CAM_RAWI_R3_B>,
-			<&iommu0 M4U_PORT_L17_CAM_AAO_R1_B>,
-			<&iommu0 M4U_PORT_L17_CAM_AFO_R1_B>,
-			<&iommu0 M4U_PORT_L17_CAM_FLKO_R1_B>,
-			<&iommu0 M4U_PORT_L17_CAM_LCESO_R1_B>,
-			<&iommu0 M4U_PORT_L17_CAM_CRZO_R1_B>,
-			<&iommu0 M4U_PORT_L17_CAM_LTMSO_R1_B>,
-			<&iommu0 M4U_PORT_L17_CAM_RSSO_R1_B>,
-			<&iommu0 M4U_PORT_L17_CAM_AAHO_R1_B>,
-			<&iommu0 M4U_PORT_L17_CAM_LSCI_R1_B>;
+		iommus = <&iommu0 M4U_PORT_L16_CAM_IMGO_R1_A>;
 	};
 
 	camisp_legacy: camisp_legacy@1a000000 {
@@ -5984,6 +5911,25 @@
 		dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
 		interrupts = <GIC_SPI 392 IRQ_TYPE_LEVEL_HIGH 0>;
 		power-domains = <&scpsys MT6877_POWER_DOMAIN_CAM_RAWA>;
+		iommus =
+			<&iommu0 M4U_PORT_L16_CAM_IMGO_R1_A>,
+			<&iommu0 M4U_PORT_L16_CAM_RRZO_R1_A>,
+			<&iommu0 M4U_PORT_L16_CAM_CQI_R1_A>,
+			<&iommu0 M4U_PORT_L16_CAM_BPCI_R1_A>,
+			<&iommu0 M4U_PORT_L16_CAM_YUVO_R1_A>,
+			<&iommu0 M4U_PORT_L16_CAM_UFDI_R2_A>,
+			<&iommu0 M4U_PORT_L16_CAM_RAWI_R2_A>,
+			<&iommu0 M4U_PORT_L16_CAM_RAWI_R3_A>,
+			<&iommu0 M4U_PORT_L16_CAM_AAO_R1_A>,
+			<&iommu0 M4U_PORT_L16_CAM_AFO_R1_A>,
+			<&iommu0 M4U_PORT_L16_CAM_FLKO_R1_A>,
+			<&iommu0 M4U_PORT_L16_CAM_LCESO_R1_A>,
+			<&iommu0 M4U_PORT_L16_CAM_CRZO_R1_A>,
+			<&iommu0 M4U_PORT_L16_CAM_LTMSO_R1_A>,
+			<&iommu0 M4U_PORT_L16_CAM_RSSO_R1_A>,
+			<&iommu0 M4U_PORT_L16_CAM_AAHO_R1_A>,
+			<&iommu0 M4U_PORT_L16_CAM_LSCI_R1_A>;
+
 		mediatek,larb = <&smi_larb16>;
 	};
 
@@ -6007,6 +5953,25 @@
 		dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
 		interrupts = <GIC_SPI 393 IRQ_TYPE_LEVEL_HIGH 0>;
 		power-domains = <&scpsys MT6877_POWER_DOMAIN_CAM_RAWB>;
+		iommus =
+			<&iommu0 M4U_PORT_L17_CAM_IMGO_R1_B>,
+			<&iommu0 M4U_PORT_L17_CAM_RRZO_R1_B>,
+			<&iommu0 M4U_PORT_L17_CAM_CQI_R1_B>,
+			<&iommu0 M4U_PORT_L17_CAM_BPCI_R1_B>,
+			<&iommu0 M4U_PORT_L17_CAM_YUVO_R1_B>,
+			<&iommu0 M4U_PORT_L17_CAM_UFDI_R2_B>,
+			<&iommu0 M4U_PORT_L17_CAM_RAWI_R2_B>,
+			<&iommu0 M4U_PORT_L17_CAM_RAWI_R3_B>,
+			<&iommu0 M4U_PORT_L17_CAM_AAO_R1_B>,
+			<&iommu0 M4U_PORT_L17_CAM_AFO_R1_B>,
+			<&iommu0 M4U_PORT_L17_CAM_FLKO_R1_B>,
+			<&iommu0 M4U_PORT_L17_CAM_LCESO_R1_B>,
+			<&iommu0 M4U_PORT_L17_CAM_CRZO_R1_B>,
+			<&iommu0 M4U_PORT_L17_CAM_LTMSO_R1_B>,
+			<&iommu0 M4U_PORT_L17_CAM_RSSO_R1_B>,
+			<&iommu0 M4U_PORT_L17_CAM_AAHO_R1_B>,
+			<&iommu0 M4U_PORT_L17_CAM_LSCI_R1_B>;
+
 		mediatek,larb = <&smi_larb17>;
 	};
 
@@ -6052,6 +6017,7 @@
 		dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
 		interrupts = <GIC_SPI 397 IRQ_TYPE_LEVEL_HIGH 0>;
 		mediatek,larb = <&smi_larb13>;
+		iommus = <&iommu0 M4U_PORT_L13_CAM_CAMSV1>;
 	};
 
 	camsv1_legacy: camsv1_legacy@1a091000 {
@@ -6061,6 +6027,7 @@
 		dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
 		interrupts = <GIC_SPI 398 IRQ_TYPE_LEVEL_HIGH 0>;
 		mediatek,larb = <&smi_larb13>;
+		iommus = <&iommu0 M4U_PORT_L13_CAM_CAMSV2>;
 	};
 
 	camsv2_legacy: camsv2_legacy@1a092000 {
@@ -6070,6 +6037,7 @@
 		dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
 		interrupts = <GIC_SPI 399 IRQ_TYPE_LEVEL_HIGH 0>;
 		mediatek,larb = <&smi_larb13>;
+		iommus = <&iommu0 M4U_PORT_L13_CAM_CAMSV3>;
 	};
 
 	camsv3_legacy: camsv3_legacy@1a093000 {
@@ -6079,6 +6047,7 @@
 		dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
 		interrupts = <GIC_SPI 400 IRQ_TYPE_LEVEL_HIGH 0>;
 		mediatek,larb = <&smi_larb13>;
+		iommus = <&iommu0 M4U_PORT_L13_CAM_CAMSV4>;
 	};
 
 	camsv4_legacy: camsv4_legacy@1a094000 {
@@ -6088,6 +6057,7 @@
 		dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
 		interrupts = <GIC_SPI 401 IRQ_TYPE_LEVEL_HIGH 0>;
 		mediatek,larb = <&smi_larb13>;
+		iommus = <&iommu0 M4U_PORT_L13_CAM_CAMSV5>;
 	};
 
 	camsv5_legacy: camsv5_legacy@1a095000 {
@@ -6097,6 +6067,7 @@
 		dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
 		interrupts = <GIC_SPI 402 IRQ_TYPE_LEVEL_HIGH 0>;
 		mediatek,larb = <&smi_larb13>;
+		iommus = <&iommu0 M4U_PORT_L13_CAM_CAMSV6>;
 	};
 
 	camsv6_legacy: camsv6_legacy@1a096000 {
@@ -6105,7 +6076,8 @@
 		reg = <0 0x1a096000 0 0x1000>;
 		dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
 		interrupts = <GIC_SPI 406 IRQ_TYPE_LEVEL_HIGH 0>;
-		mediatek,larb = <&smi_larb13>;
+		mediatek,larb = <&smi_larb14>;
+		iommus = <&iommu0 M4U_PORT_L14_CAMSV7>;
 	};
 
 	camsv7_legacy: camsv7_legacy@1a097000 {
@@ -6114,7 +6086,8 @@
 		reg = <0 0x1a097000 0 0x1000>;
 		dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
 		interrupts = <GIC_SPI 407 IRQ_TYPE_LEVEL_HIGH 0>;
-		mediatek,larb = <&smi_larb13>;
+		mediatek,larb = <&smi_larb14>;
+		iommus = <&iommu0 M4U_PORT_L14_CAMSV8>;
 	};
 
 	camera_af_hw_node: camera_af_hw_node {
