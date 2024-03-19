@@ -1293,7 +1293,7 @@ static void set_lb_timeout(int t_gpu_target)
 		lb_timeout = (u64)g_loading_stride_size * 1000000; //ms to ns
 		break;
 	case 1:
-		lb_timeout = (u64)t_gpu_target * g_loading_stride_size / 10;
+		lb_timeout = div_u64((u64)t_gpu_target * g_loading_stride_size, 10);
 		break;
 	case 2:
 		lb_timeout = (u64)g_loading_stride_size * 1000000;
@@ -1441,6 +1441,7 @@ static int ged_kpi_get_fallback_mode(void)
 
 static void ged_kpi_update_soc_timer(struct GED_KPI_HEAD *psHead, unsigned int ulMask)
 {
+#if defined(MTK_GPU_EB_SUPPORT)
 	u64 soc_timer = 0;
 
 	if (is_fdvfs_enable()) {
@@ -1490,6 +1491,7 @@ static void ged_kpi_update_soc_timer(struct GED_KPI_HEAD *psHead, unsigned int u
 			mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_TIME, 0);
 		}
 	}
+#endif
 }
 
 static void ged_kpi_remove_head(u64 ulID)
@@ -1804,11 +1806,11 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 					psKPI->ullTimeStamp2 - power_on_TimeStamp < psHead->t_gpu_latest ) {
 					unsigned long long power_duration = psKPI->ullTimeStamp2 - power_on_TimeStamp;
 
-					t_gpu_w_latest = power_duration * cur_stack_freq / min_stack_freq;
+					t_gpu_w_latest = div_u64(power_duration * cur_stack_freq, min_stack_freq);
 				} else
-					t_gpu_w_latest = psHead->t_gpu_latest * cur_stack_freq / min_stack_freq;
+					t_gpu_w_latest = div_u64(psHead->t_gpu_latest * cur_stack_freq, min_stack_freq);
 			} else
-				t_gpu_w_latest = psHead->t_gpu_latest * cur_stack_freq / min_stack_freq;
+				t_gpu_w_latest = div_u64(psHead->t_gpu_latest * cur_stack_freq, min_stack_freq);
 
 			psHead->t_gpu_w_latest_store[psHead->t_gpu_w_latest_index] = t_gpu_w_latest;
 			psHead->for_dcs_valid_cnt++;
@@ -1838,8 +1840,8 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 					if (t_gpu_w_min == 0)
 						t_gpu_w_min = 1;
 					cond_1 = t_gpu_w_max > t_gpu_target;
-					cond_2 = t_gpu_w_max * 10 / t_gpu_w_min >= dcs_get_adjust_ratio_th();
-					cond_3 = (non_dcs_cnt * 100 / fr_cnt) > dcs_get_adjust_non_dcs_th();
+					cond_2 = div_u64(t_gpu_w_max * 10, t_gpu_w_min) >= dcs_get_adjust_ratio_th();
+					cond_3 = div_u64(non_dcs_cnt * 100, fr_cnt) > dcs_get_adjust_non_dcs_th();
 
 					if (cond_1 && cond_2 && cond_3)
 						g_force_disable_dcs = true;
@@ -1889,9 +1891,9 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		psKPI->gpu_done_interval = psHead->last_TimeStamp2 -
 			psHead->pre_TimeStamp2;
 		psKPI->cpu_gpu_info.gpu.t_gpu_real =
-				((unsigned long long)
+				div_u64(((unsigned long long)
 				(psHead->last_TimeStamp2 - psHead->pre_TimeStamp2))
-				* psKPI->gpu_loading / 100U;
+				* psKPI->gpu_loading, 100U);
 
 		psKPI->cpu_gpu_info.gpu.limit_upper = ged_get_cur_limiter_ceil();
 		psKPI->cpu_gpu_info.gpu.limit_lower = ged_get_cur_limiter_floor();
@@ -2218,11 +2220,11 @@ static GED_ERROR ged_kpi_push_timestamp(
 		case GED_TIMESTAMP_TYPE_1:
 			atomic_inc_return(&event_QedBuffer_cnt);
 			atomic_inc_return(&event_3d_fence_cnt);
-			ged_eb_dvfs_task(EB_UPDATE_FB_TARGET_TIME, fb_timeout / 1000);
+			ged_eb_dvfs_task(EB_UPDATE_FB_TARGET_TIME, div_u64(fb_timeout, 1000));
 			break;
 		case GED_TIMESTAMP_TYPE_2:
 			atomic_dec_return(&event_3d_fence_cnt);
-			ged_eb_dvfs_task(EB_UPDATE_FB_TARGET_TIME_DONE, fb_timeout / 1000);
+			ged_eb_dvfs_task(EB_UPDATE_FB_TARGET_TIME_DONE, div_u64(fb_timeout, 1000));
 			break;
 		case GED_TIMESTAMP_TYPE_P:
 			break;
@@ -2628,6 +2630,7 @@ static GED_BOOL ged_kpi_update_sysram_uncompleted_fcn(void *pvoid, void *pvParam
 
 void ged_kpi_update_sysram_uncompleted_tgpu(struct ged_sysram_info *info)
 {
+#if defined(MTK_GPU_EB_SUPPORT)
 	unsigned long long t_gpu_uncomplete = 0;
 	unsigned long long soc_timer = 0;
 	unsigned long long cur_type = 0;
@@ -2725,7 +2728,7 @@ void ged_kpi_update_sysram_uncompleted_tgpu(struct ged_sysram_info *info)
 	}
 
 	spin_unlock_irqrestore(&gs_hashtableLock, ulIRQFlags);
-
+#endif
 }
 
 
@@ -2974,8 +2977,8 @@ static GED_BOOL ged_kpi_find_riskyBQ_func(unsigned long ulID,
 
 		t_gpu_latest_uncompleted = psHead->t_gpu_latest_uncompleted;
 		t_gpu_target = psHead->t_gpu_target;
-		risk_completed = t_gpu_latest * 100 / t_gpu_target;
-		risk_uncompleted = t_gpu_latest_uncompleted * 100 / t_gpu_target;
+		risk_completed = div_u64(t_gpu_latest * 100, t_gpu_target);
+		risk_uncompleted = div_u64(t_gpu_latest_uncompleted * 100, t_gpu_target);
 
 		if (psHead->t_gpu_fps < GPU_MAX_FPS &&
 			psHead->t_gpu_fps > GPU_MIN_FPS &&
@@ -3032,10 +3035,10 @@ GED_ERROR ged_kpi_timer_based_pick_riskyBQ(struct ged_risky_bq_info *info)
 		return ret;
 
 	// t_gpu unit: ns -> us
-	info->completed_bq.t_gpu /= 1000;
-	info->completed_bq.t_gpu_target /= 1000;
-	info->uncompleted_bq.t_gpu /= 1000;
-	info->uncompleted_bq.t_gpu_target /= 1000;
+	info->completed_bq.t_gpu = div_u64(info->completed_bq.t_gpu, 1000);
+	info->completed_bq.t_gpu_target = div_u64(info->completed_bq.t_gpu_target, 1000);
+	info->uncompleted_bq.t_gpu = div_u64(info->uncompleted_bq.t_gpu, 1000);
+	info->uncompleted_bq.t_gpu_target = div_u64(info->uncompleted_bq.t_gpu_target, 1000);
 
 	// if uncompleted gpu time is calculated by TimeStampD
 	// allow gpu freq to decrease in fallback mode
@@ -3079,10 +3082,10 @@ GED_ERROR ged_kpi_eb_dvfs_get_time(struct ged_risky_bq_info *info)
 		return ret;
 
 	// t_gpu unit: ns -> us
-	info->completed_bq.t_gpu /= 1000;
-	info->completed_bq.t_gpu_target /= 1000;
-	info->uncompleted_bq.t_gpu /= 1000;
-	info->uncompleted_bq.t_gpu_target /= 1000;
+	info->completed_bq.t_gpu = div_u64(info->completed_bq.t_gpu, 1000);
+	info->completed_bq.t_gpu_target = div_u64(info->completed_bq.t_gpu_target, 1000);
+	info->uncompleted_bq.t_gpu = div_u64(info->uncompleted_bq.t_gpu, 1000);
+	info->uncompleted_bq.t_gpu_target = div_u64(info->uncompleted_bq.t_gpu_target, 1000);
 
 	// if uncompleted gpu time is calculated by TimeStampD
 	// allow gpu freq to decrease in fallback mode

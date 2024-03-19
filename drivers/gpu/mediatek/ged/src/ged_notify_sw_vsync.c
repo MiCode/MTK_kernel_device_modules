@@ -176,9 +176,9 @@ u64 ged_get_fallback_time(void)
 	if (g_fallback_mode == ALIGN_INTERVAL)
 		temp = (u64)g_fallback_time * 1000000;   //ms to ns
 	else if (g_fallback_mode == ALIGN_FB)
-		temp = fb_timeout * g_fallback_time / 10;
+		temp = div_u64(fb_timeout * g_fallback_time, 10);
 	else if (g_fallback_mode == ALIGN_LB)
-		temp = lb_timeout * g_fallback_time / 10;
+		temp = div_u64(lb_timeout * g_fallback_time, 10);
 	else
 		temp = (u64)g_fallback_time * 1000000;   //ms to ns
 
@@ -208,6 +208,7 @@ void ged_set_prev_policy_state(enum gpu_dvfs_policy_state state)
 
 void ged_eb_dvfs_trace_dump(void)
 {
+#if defined(MTK_GPU_EB_SUPPORT)
 	int ui32CeilingID = ged_get_cur_limit_idx_ceil();
 	int ui32FloorID = ged_get_cur_limit_idx_floor();
 	u64 eb_timeout_value = ged_get_fallback_time();
@@ -297,10 +298,8 @@ void ged_eb_dvfs_trace_dump(void)
 	pre_eb_policy_state = eb_policy_state;
 	pre_ged_policy_state = ged_policy_state;
 	freq_id = pre_freq_id;
-
-
+#endif
 }
-
 
 static unsigned long long sw_vsync_ts;
 static void ged_notify_sw_sync_work_handle(struct work_struct *psWork)
@@ -858,12 +857,12 @@ void ged_set_apo_autosuspend_delay_ms_ref_idletime_nolock(long long idle_time)
 	/* autosuspend_delay setting */
 	if (g_apo_autosuspend_delay_ctrl == 0) {
 		if (g_gpu_frame_time_ns >= 16666666) {
-			if (idle_time > (long long)(g_gpu_frame_time_ns / 2 + 1000000))
+			if (idle_time > (long long)(div_u64(g_gpu_frame_time_ns, 2) + 1000000))
 				g_apo_autosuspend_delay_ms = 0;
 			else
 				g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_MS;
 		} else {
-			if (idle_time > (long long)(g_gpu_frame_time_ns / 2 + 1000000))
+			if (idle_time > (long long)(div_u64(g_gpu_frame_time_ns, 2) + 1000000))
 				g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_MS;
 			else
 				g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_HFR_MS;
@@ -1125,8 +1124,8 @@ void ged_check_predict_power_duration(void)
 		if (g_ns_gpu_predict_A_to_A_duration > 0 &&
 			g_ns_gpu_predict_prev_A_to_A_duration > 0) {
 			// Not predict idle when A_to_A is too short.
-			if (!((g_ns_gpu_predict_A_to_A_duration < g_apo_wakeup_ns / 2) ||
-				(g_ns_gpu_predict_prev_A_to_A_duration < g_apo_wakeup_ns / 2) ||
+			if (!((g_ns_gpu_predict_A_to_A_duration < div_u64(g_apo_wakeup_ns, 2)) ||
+				(g_ns_gpu_predict_prev_A_to_A_duration < div_u64(g_apo_wakeup_ns, 2)) ||
 				(g_ns_gpu_predict_A_to_A_duration < g_apo_wakeup_ns &&
 				g_ns_gpu_predict_prev_A_to_A_duration < g_apo_wakeup_ns))) {
 				// Jobs in one frame or similar power-durations
@@ -1149,7 +1148,7 @@ void ged_check_predict_power_duration(void)
 			}
 		}
 
-		trace_GPU_Power__Policy__APO__Predicted_Idle_Time(llDiff/1000);
+		trace_GPU_Power__Policy__APO__Predicted_Idle_Time(div_u64(llDiff, 1000));
 
 		/* autosuspend_delay setting */
 		ged_set_apo_autosuspend_delay_ms_ref_idletime_nolock(llDiff);
@@ -1271,7 +1270,7 @@ static void ged_dvfs_update_power_state_time(
 	pwr_state_time[g_curr_pwr_state].end_ts = g_last_pwr_ts;
 
 	ktime_get_real_ts64(&tv);
-	g_last_pwr_update_ts_ms = tv.tv_sec * 1000 + tv.tv_nsec / 1000000;
+	g_last_pwr_update_ts_ms = tv.tv_sec * 1000 + div_u64(tv.tv_nsec, 1000000);
 
 	// Check to prevent overflow error
 	if (pwr_state_time[g_curr_pwr_state].end_ts >=
@@ -1279,13 +1278,13 @@ static void ged_dvfs_update_power_state_time(
 		delta_time = pwr_state_time[g_curr_pwr_state].end_ts -
 			pwr_state_time[g_curr_pwr_state].start_ts;
 		pwr_state_time[g_curr_pwr_state].accumulate_time +=
-			(delta_time / 1000000);
+			div_u64(delta_time, 1000000);
 	} else {
 		delta_time = (ULLONG_MAX -
 				pwr_state_time[g_curr_pwr_state].start_ts) +
 			pwr_state_time[g_curr_pwr_state].end_ts;
 		pwr_state_time[g_curr_pwr_state].accumulate_time +=
-			(delta_time / 1000000);
+			div_u64(delta_time, 1000000);
 	}
 
 	// Reset power state timestamps

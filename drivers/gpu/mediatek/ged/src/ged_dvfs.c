@@ -425,7 +425,7 @@ static void _init_loading_ud_table(void)
 
 		if (a != 0)
 			loading_ud_table[i].down
-				= ((100 - gx_tb_dvfs_margin_cur) * b) / a;
+				= div_u64(((100 - gx_tb_dvfs_margin_cur) * b), a);
 	}
 
 	if (num >= 2)
@@ -445,8 +445,8 @@ static void gpu_util_history_update(struct GpuUtilization_Ex *util_ex)
 {
 	unsigned int current_idx = g_util_hs.current_idx + 1;
 	unsigned long long max_workload =
-		util_ex->freq * util_ex->delta_time / 1000000;   // unit: cycle
-	unsigned long long max_t_gpu = util_ex->delta_time / 1000;   // unit: us
+		div_u64(util_ex->freq * util_ex->delta_time, 1000000);   // unit: cycle
+	unsigned long long max_t_gpu = div_u64(util_ex->delta_time, 1000);   // unit: us
 	unsigned int workload_mode = 0;
 	//MBrain: loading
 	unsigned long long loading = 0;
@@ -466,39 +466,39 @@ static void gpu_util_history_update(struct GpuUtilization_Ex *util_ex)
 	workload_mode = ged_get_dvfs_workload_mode();
 	if (workload_mode == WORKLOAD_3D) {
 		g_util_hs.gpu_frame_property.workload +=
-			max_workload * util_ex->util_3d / 100;
+			div_u64(max_workload * util_ex->util_3d, 100);
 		g_util_hs.gpu_frame_property.t_gpu +=
-			max_t_gpu * util_ex->util_3d / 100;
+			div_u64(max_t_gpu * util_ex->util_3d, 100);
 		//MBrain: loading
 		loading = util_ex->util_3d;
 	} else if (workload_mode == WORKLOAD_ITER) {
 		g_util_hs.gpu_frame_property.workload +=
-			max_workload * util_ex->util_iter / 100;
+			div_u64(max_workload * util_ex->util_iter, 100);
 		g_util_hs.gpu_frame_property.t_gpu +=
-			max_t_gpu * util_ex->util_iter / 100;
+			div_u64(max_t_gpu * util_ex->util_iter, 100);
 		//MBrain: loading
 		loading = util_ex->util_iter;
 	} else if (workload_mode == WORKLOAD_MAX_ITERMCU) {
 		unsigned int util_temp = MAX(util_ex->util_iter, util_ex->util_mcu);
 
 		g_util_hs.gpu_frame_property.workload +=
-			max_workload * util_temp / 100;
+			div_u64(max_workload * util_temp, 100);
 		g_util_hs.gpu_frame_property.t_gpu +=
-			max_t_gpu * util_temp / 100;
+			div_u64(max_t_gpu * util_temp, 100);
 		//MBrain: loading
 		loading = util_temp;
 	} else if (workload_mode == WORKLOAD_UNION_ITERMCU) {
 		g_util_hs.gpu_frame_property.workload +=
-			max_workload * util_ex->util_iter_u_mcu / 100;
+			div_u64(max_workload * util_ex->util_iter_u_mcu, 100);
 		g_util_hs.gpu_frame_property.t_gpu +=
-			max_t_gpu * util_ex->util_iter_u_mcu / 100;
+			div_u64(max_t_gpu * util_ex->util_iter_u_mcu, 100);
 		//MBrain: loading
 		loading = util_ex->util_iter_u_mcu;
 	} else {   // WORKLOAD_ACTIVE or unknown mode
 		g_util_hs.gpu_frame_property.workload +=
-			max_workload * util_ex->util_active / 100;
+			div_u64(max_workload * util_ex->util_active, 100);
 		g_util_hs.gpu_frame_property.t_gpu +=
-			max_t_gpu * util_ex->util_active / 100;
+			div_u64(max_t_gpu * util_ex->util_active, 100);
 		//MBrain: loading
 		loading = util_ex->util_active;
 	}
@@ -563,7 +563,7 @@ static unsigned int gpu_util_history_query_loading(unsigned int window_size_us ,
 
 		// accumulate data
 		remaining_time = window_size_us - sum_delta_time;
-		delta_time = util_ex->delta_time / 1000;
+		delta_time = div_u64(util_ex->delta_time, 1000);
 		// clip delta_time
 		if (delta_time > remaining_time)
 			delta_time = remaining_time;
@@ -580,9 +580,9 @@ static unsigned int gpu_util_history_query_loading(unsigned int window_size_us ,
 	}
 
 	if (sum_delta_time != 0){
-		window_avg_loading = sum_loading / sum_delta_time;
+		window_avg_loading = div_u64(sum_loading, sum_delta_time);
 		if (loading_mode == LOADING_ACTIVE)
-			window_avg_loading_comp = sum_loading_comp / sum_delta_time;
+			window_avg_loading_comp = div_u64(sum_loading_comp, sum_delta_time);
 	}
 
 	if (window_avg_loading > 100)
@@ -634,14 +634,14 @@ static void gpu_util_history_query_lb_counter(unsigned int window_size_us,
 			counters->gpuactive += util_ex->util_active_raw;
 		}
 		counters->iter		+= util_ex->util_iter_raw;
-		counters->compute	+= util_ex->util_sc_comp_raw / shader_conter_scale;
-		counters->l2ext		+= util_ex->util_l2ext_raw / memory_conter_scale;
+		counters->compute	+= div_u64(util_ex->util_sc_comp_raw, shader_conter_scale);
+		counters->l2ext		+= div_u64(util_ex->util_l2ext_raw, memory_conter_scale);
 		counters->irq		+= util_ex->util_irq_raw;
 		counters->mcu		+= util_ex->util_mcu_raw;
 
 		// accumulate data
 		remaining_time = window_size_us - sum_delta_time;
-		delta_time = util_ex->delta_time / 1000;
+		delta_time = div_u64(util_ex->delta_time, 1000);
 		if (delta_time > remaining_time)
 			delta_time = remaining_time;   // clip delta_time
 		sum_delta_time += delta_time;
@@ -706,7 +706,7 @@ static void gpu_util_history_query_specific_loading(
 
 		// accumulate data
 		remaining_time = window_size_us - sum_delta_time;
-		delta_time = util_ex->delta_time / 1000;
+		delta_time = div_u64(util_ex->delta_time, 1000);
 		if (delta_time > remaining_time)
 			delta_time = remaining_time;   // clip delta_time
 		sum_loading += his_loading * delta_time;
@@ -718,7 +718,7 @@ static void gpu_util_history_query_specific_loading(
 	}
 
 	if (sum_delta_time != 0)
-		window_avg_loading = sum_loading / sum_delta_time;
+		window_avg_loading = div_u64(sum_loading, sum_delta_time);
 
 	if (window_avg_loading > 100)
 		window_avg_loading = 100;
@@ -757,7 +757,7 @@ static unsigned int gpu_util_history_query_frequency(
 
 		// accumulate data
 		remaining_time = window_size_us - sum_delta_time;
-		delta_time = util_ex->delta_time / 1000;
+		delta_time = div_u64(util_ex->delta_time, 1000);
 		if (delta_time > remaining_time)
 			delta_time = remaining_time;   // clip delta_time
 		sum_freq += his_freq * delta_time;
@@ -769,7 +769,7 @@ static unsigned int gpu_util_history_query_frequency(
 	}
 
 	if (sum_delta_time != 0)
-		window_avg_freq = sum_freq / sum_delta_time;
+		window_avg_freq = div_u64(sum_freq, sum_delta_time);
 
 	return window_avg_freq;
 }
@@ -874,7 +874,7 @@ static void ged_dvfs_update_opp_cost(u32 loading, u32 cur_opp_idx)
 		base_ts = (g_last_opp_cost_cal_ts > pwr_on_ts)? g_last_opp_cost_cal_ts: pwr_on_ts;
 
 		ktime_get_real_ts64(&tv);
-		g_last_opp_cost_update_ts_ms = tv.tv_sec * 1000 + tv.tv_nsec / 1000000;
+		g_last_opp_cost_update_ts_ms = tv.tv_sec * 1000 + div_u64(tv.tv_nsec, 1000000);
 
 		if (cur_ts > base_ts) {
 			diff_time = cur_ts - base_ts;
@@ -1265,15 +1265,16 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 
 
 		trace_tracing_mark_write(5566, "gpu_freq",
-			(long long) ged_get_cur_stack_freq() / 1000);
+			(long long) div_u64(ged_get_cur_stack_freq(), 1000));
 
-		trace_GPU_DVFS__Frequency(ged_get_cur_stack_freq() / 1000,
-			ged_get_cur_real_stack_freq() / 1000, ged_get_cur_top_freq() / 1000);
+		trace_GPU_DVFS__Frequency(div_u64(ged_get_cur_stack_freq(), 1000),
+			div_u64(ged_get_cur_real_stack_freq(), 1000),
+			div_u64(ged_get_cur_top_freq(), 1000));
 
 		trace_tracing_mark_write(5566, "gpu_freq_ceil",
-			(long long) ged_get_freq_by_idx(ui32CeilingID) / 1000);
+			(long long) div_u64(ged_get_freq_by_idx(ui32CeilingID), 1000));
 		trace_tracing_mark_write(5566, "gpu_freq_floor",
-			(long long) ged_get_freq_by_idx(ui32FloorID) / 1000);
+			(long long) div_u64(ged_get_freq_by_idx(ui32FloorID), 1000));
 		trace_tracing_mark_write(5566, "limitter_ceil",
 			ged_get_cur_limiter_ceil());
 		trace_tracing_mark_write(5566, "limitter_floor",
@@ -1390,15 +1391,15 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	}
 
 	trace_tracing_mark_write(5566, "gpu_freq",
-		(long long) ged_get_cur_stack_freq() / 1000);
+		(long long) div_u64(ged_get_cur_stack_freq(), 1000));
 
-	trace_GPU_DVFS__Frequency(ged_get_cur_stack_freq() / 1000,
-		ged_get_cur_real_stack_freq() / 1000, ged_get_cur_top_freq() / 1000);
+	trace_GPU_DVFS__Frequency(div_u64(ged_get_cur_stack_freq(), 1000),
+		div_u64(ged_get_cur_real_stack_freq(), 1000), div_u64(ged_get_cur_top_freq(), 1000));
 
 	trace_tracing_mark_write(5566, "gpu_freq_ceil",
-		(long long) ged_get_freq_by_idx(ui32CeilingID) / 1000);
+		(long long) div_u64(ged_get_freq_by_idx(ui32CeilingID), 1000));
 	trace_tracing_mark_write(5566, "gpu_freq_floor",
-		(long long) ged_get_freq_by_idx(ui32FloorID) / 1000);
+		(long long) div_u64(ged_get_freq_by_idx(ui32FloorID), 1000));
 	trace_tracing_mark_write(5566, "limitter_ceil",
 		ged_get_cur_limiter_ceil());
 	trace_tracing_mark_write(5566, "limitter_floor",
@@ -1769,10 +1770,10 @@ static void set_fb_timeout(int t_gpu_target_ori, int t_gpu_target_margin)
 {
 	switch (g_frame_target_mode) {
 	case 1:
-		fb_timeout = (u64)t_gpu_target_ori * g_frame_target_time  / 10;
+		fb_timeout = div_u64((u64)t_gpu_target_ori * g_frame_target_time, 10);
 		break;
 	case 2:
-		fb_timeout = (u64)t_gpu_target_margin * g_frame_target_time / 10;
+		fb_timeout = div_u64((u64)t_gpu_target_margin * g_frame_target_time, 10);
 		break;
 	default:
 		fb_timeout = (u64)g_frame_target_time * 1000000; //ms to ns
@@ -1857,7 +1858,7 @@ static unsigned int calculate_performance(struct async_counter *counters, unsign
 		return (unsigned int)perf;
 	}
 
-	perf = PERF_SCAL * COEFF_SCAL * counters->gpuactive / perf;
+	perf = div_u64(PERF_SCAL * COEFF_SCAL * counters->gpuactive, perf);
 	return (unsigned int)perf;
 }
 
@@ -1910,8 +1911,8 @@ static int get_async_counters(struct async_counter *counters)
 		counters->gpuactive = (long)g_counter_hs.util_active_raw;
 
 	counters->iter		= (long)g_counter_hs.util_iter_raw;
-	counters->compute	= (long)(g_counter_hs.util_sc_comp_raw / shader_conter_scale);
-	counters->l2ext		= (long)g_counter_hs.util_l2ext_raw / memory_conter_scale;
+	counters->compute	= (long)div_u64(g_counter_hs.util_sc_comp_raw, shader_conter_scale);
+	counters->l2ext		= (long)div_u64(g_counter_hs.util_l2ext_raw, memory_conter_scale);
 	counters->irq		= (long)g_counter_hs.util_irq_raw;
 	counters->mcu		= (long)g_counter_hs.util_mcu_raw;
 
@@ -1968,9 +1969,9 @@ static int ged_async_ratio_perf_model(int oppidx, int tar_freq, bool is_decreasi
 		if (!ged_get_sc_freq_by_virt_opp(oppidx) || !ged_get_top_freq_by_virt_opp(oppidx))
 			return tar_opp;
 
-		perf_toler = PERF_SCAL * tar_freq / ged_get_sc_freq_by_virt_opp(oppidx);
-		adjust_ratio = RATIO_SCAL * ged_get_top_freq_by_virt_opp(oppidx + 1) /
-						ged_get_top_freq_by_virt_opp(oppidx);
+		perf_toler = div_u64(PERF_SCAL * tar_freq, ged_get_sc_freq_by_virt_opp(oppidx));
+		adjust_ratio = div_u64(RATIO_SCAL * ged_get_top_freq_by_virt_opp(oppidx + 1),
+						ged_get_top_freq_by_virt_opp(oppidx));
 		perf_improve = calculate_performance(&asyncCounter, adjust_ratio);
 		if (perf_improve > 100 || perf_improve == 0) {
 			GED_LOGD_IF(ASYNC_LOG_LEVEL,
@@ -2121,7 +2122,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	int cur_opp_id = ged_get_cur_oppidx();
 
 	gpu_freq_pre = ged_get_cur_freq();
-	gpu_freq_overdue_max = (ged_get_max_freq_in_opp() * 1000) / OVERDUE_FREQ_TH;
+	gpu_freq_overdue_max = div_u64((ged_get_max_freq_in_opp() * 1000), OVERDUE_FREQ_TH);
 
 	/* DVFS is not enabled */
 	if (gpu_dvfs_enable == 0) {
@@ -2183,21 +2184,21 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	spin_unlock_irqrestore(&gsGpuUtilLock, ui32IRQFlags);
 
 	/* obtain GPU frame property */
-	t_gpu /= 100000;   // change unit from ns to 100*us
-	t_gpu_target /= 100000;   // change unit from ns to 100*us
+	t_gpu = div_u64(t_gpu, 100000);   // change unit from ns to 100*us
+	t_gpu_target = div_u64(t_gpu_target, 100000);   // change unit from ns to 100*us
 
 	gpu_util_history_query_frame_property(&frame_workload, &frame_t_gpu);
 	t_gpu_pipe = t_gpu;
-	t_gpu_real = (int) (frame_t_gpu / 100);   // change unit from us to 100*us
+	t_gpu_real = (int) div_u64(frame_t_gpu, 100);   // change unit from us to 100*us
 	// define t_gpu = max(t_gpu_completion, t_gpu_real) for FB policy
 	if (t_gpu_real > t_gpu)
 		t_gpu = t_gpu_real;
 
 	frame_freq = gpu_util_history_query_frequency(t_gpu_pipe * 100);
 	ap_workload_real =
-		frame_workload / 100;   // change unit from cycle to 100*cycle
+		div_u64(frame_workload, 100);   // change unit from cycle to 100*cycle
 	ap_workload_pipe =
-		frame_freq * t_gpu_pipe / 1000;   // change unit from 0.1 to 100*cycle
+		div_u64(frame_freq * t_gpu_pipe, 1000);   // change unit from 0.1 to 100*cycle
 	ap_workload = ap_workload_pipe;
 	// define workload = max(t_gpu_completion * avg_freq, freq * t_gpu_real)
 	if (ap_workload_real > ap_workload)
@@ -2218,22 +2219,21 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 		int temp;
 
 		if (dvfs_margin_mode == DYNAMIC_MARGIN_MODE_PERF) {
-			t_gpu_target_hd = t_gpu_target *
-				(1000 - dvfs_margin_low_bound) / 1000;
+			t_gpu_target_hd = div_u64(t_gpu_target *
+				(1000 - dvfs_margin_low_bound), 1000);
 			if (t_gpu_target_hd <= 0)
 				t_gpu_target_hd = 1;
 		} else
 			t_gpu_target_hd = t_gpu_target;
 		// from this point on, t_gpu_target & t_gpu_target_hd would be > 0
 
-		if (t_gpu_pipe > (t_gpu_target * OVERDUE_TH / 10) &&
+		if (t_gpu_pipe > div_u64(t_gpu_target * OVERDUE_TH, 10) &&
 			gpu_freq_pre > gpu_freq_overdue_max)
 			overdue_counter = OVERDUE_LIMIT_FRAME;
 
 		if (t_gpu > t_gpu_target_hd) {   // previous frame overdued
 			// adjust margin
-			temp = (gx_fb_dvfs_margin*(t_gpu-t_gpu_target_hd))
-				/ t_gpu_target_hd;
+			temp = div_u64((gx_fb_dvfs_margin*(t_gpu-t_gpu_target_hd)), t_gpu_target_hd);
 			if (temp < dvfs_min_margin_inc_step)
 				temp = dvfs_min_margin_inc_step;
 			gx_fb_dvfs_margin += temp;
@@ -2252,14 +2252,11 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 				if (target_fps_margin <= 0)
 					margin_low_bound = MIN_DVFS_MARGIN;
 				else {
-					target_time_low_bound =
-					10000/((10000/t_gpu_target) +
-					target_fps_margin);
+					target_time_low_bound = div_u64(10000,
+							(div_u64(10000, t_gpu_target) + target_fps_margin));
 
-					margin_low_bound =
-					1000 *
-					(t_gpu_target - target_time_low_bound)
-					/ t_gpu_target;
+					margin_low_bound = div_u64(1000 * (t_gpu_target - target_time_low_bound),
+							t_gpu_target);
 				}
 
 				// margin_low_bound range clipping
@@ -2271,8 +2268,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 			}
 
 			// adjust margin
-			temp = (gx_fb_dvfs_margin*(t_gpu_target_hd-t_gpu))
-				/ t_gpu_target_hd;
+			temp = div_u64((gx_fb_dvfs_margin*(t_gpu_target_hd-t_gpu)), t_gpu_target_hd);
 			gx_fb_dvfs_margin -= temp;
 		}
 	} else {   // unknown mode
@@ -2296,7 +2292,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	trace_GPU_DVFS__Policy__Frame_based__Margin__Detail(dvfs_margin_mode,
 		target_fps_margin, dvfs_min_margin_inc_step, dvfs_margin_low_bound);
 
-	t_gpu_target_hd = t_gpu_target * (1000 - gx_fb_dvfs_margin) / 1000;
+	t_gpu_target_hd = div_u64(t_gpu_target * (1000 - gx_fb_dvfs_margin), 1000);
 
 	//  * 100 to keep unit uniform
 	trace_GPU_DVFS__Policy__Frame_based__GPU_Time((t_gpu * 100),
@@ -2322,7 +2318,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	} else {
 		for (i = 0; i < GED_DVFS_BUSY_CYCLE_MONITORING_WINDOW_NUM; i++)
 			gpu_busy_cycle += busy_cycle[i];
-		gpu_busy_cycle /= GED_DVFS_BUSY_CYCLE_MONITORING_WINDOW_NUM;
+		gpu_busy_cycle = div_u64(gpu_busy_cycle, GED_DVFS_BUSY_CYCLE_MONITORING_WINDOW_NUM);
 		gpu_busy_cycle = (gpu_busy_cycle > busy_cycle_cur) ?
 			gpu_busy_cycle : busy_cycle_cur;
 	}
@@ -2333,17 +2329,16 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 
 	/* compute target frequency */
 	if (t_gpu_target_hd != 0)
-		gpu_freq_tar = (gpu_busy_cycle / t_gpu_target_hd) * 1000;
+		gpu_freq_tar = div_u64(gpu_busy_cycle, t_gpu_target_hd) * 1000;
 	else
 		gpu_freq_tar = gpu_freq_pre;
 
-	gpu_freq_floor = gpu_freq_pre * GED_FB_DVFS_FERQ_DROP_RATIO_LIMIT / 100;
+	gpu_freq_floor = div_u64(gpu_freq_pre * GED_FB_DVFS_FERQ_DROP_RATIO_LIMIT, 100);
 	/* overdue_counter : 4~1, limit gpu_freq_floor 95%~80% */
 	if (overdue_counter <= 4 && overdue_counter > 0) {
 		if (gpu_freq_pre > gpu_freq_overdue_max)
-			gpu_freq_floor =
-				gpu_freq_pre *
-				(100 - (OVERDUE_LIMIT_FREQ_SCALE * (5 - overdue_counter))) / 100;
+			gpu_freq_floor = div_u64(gpu_freq_pre *
+					(100 - (OVERDUE_LIMIT_FREQ_SCALE * (5 - overdue_counter))), 100);
 		overdue_counter--;
 	}
 
@@ -2371,7 +2366,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	}
 
 	if (dvfs_margin_mode == VARIABLE_MARGIN_MODE_OPP_INDEX)
-		gx_fb_dvfs_margin = (ui32NewFreqID / 3)*10;
+		gx_fb_dvfs_margin = div_u64(ui32NewFreqID, 3) * 10;
 
 	/* overdue_counter : 8~4, prevent decreasing opp if previous frame overdue too much */
 	if (overdue_counter <= 8 && overdue_counter > 4) {
@@ -2451,8 +2446,9 @@ static int _loading_avg(int ui32loading)
 	static int data[4];
 	static int idx;
 	static int sum;
+	uint64_t temp = ++idx;
 
-	int cidx = ++idx % ARRAY_SIZE(data);
+	int cidx = do_div(temp, ARRAY_SIZE(data));
 
 	sum += ui32loading - data[cidx];
 	data[cidx] = ui32loading;
@@ -2485,7 +2481,7 @@ void set_api_sync_flag(int flag)
 		api_sync_flag = flag;
 		ged_eb_dvfs_task(EB_UPDATE_API_BOOST, api_sync_flag);
 		if (flag)
-			g_latest_api_sync_ts_ms = ged_get_time() / 1000000;
+			g_latest_api_sync_ts_ms = div_u64(ged_get_time(), 1000000);
 	} else if (flag == 3) {
 		dcs_set_fix_num(8);
 		start_mewtwo_timer();
@@ -2572,7 +2568,7 @@ static bool ged_dvfs_policy(
 
 	gpu_freq_pre = ged_get_cur_freq();
 	gpu_freq_overdue_max =
-		(ged_get_max_freq_in_opp() * 1000) / OVERDUE_FREQ_TH;
+		div_u64((ged_get_max_freq_in_opp() * 1000), OVERDUE_FREQ_TH);
 
 	g_um_gpu_tar_freq = 0;
 	if (bRefreshed == false) {
@@ -2675,8 +2671,8 @@ static bool ged_dvfs_policy(
 			q = (int)(info.uncompleted_bq.ullWnd % 0xF);
 			ged_update_margin_by_fps(t_gpu_target);
 			if (g_tb_dvfs_margin_mode & DYNAMIC_TB_PERF_MODE_MASK)
-				t_gpu_target_hd = t_gpu_target
-					* (100 - g_tb_dvfs_margin_value_min) / 100;
+				t_gpu_target_hd = div_u64(t_gpu_target
+					* (100 - g_tb_dvfs_margin_value_min), 100);
 			else
 				t_gpu_target_hd = t_gpu_target;
 			if (t_gpu > t_gpu_target_hd)
@@ -2727,8 +2723,8 @@ static bool ged_dvfs_policy(
 				ged_update_margin_by_fps(t_gpu_target);
 				// overwrite t_gpu_target_hd in perf mode
 				if (g_tb_dvfs_margin_mode & DYNAMIC_TB_PERF_MODE_MASK)
-					t_gpu_target_hd = t_gpu_target
-						* (100 - g_tb_dvfs_margin_value_min) / 100;
+					t_gpu_target_hd = div_u64(t_gpu_target
+						* (100 - g_tb_dvfs_margin_value_min), 100);
 
 				// margin modifying
 				if (t_gpu > t_gpu_target_hd) {   // overtime
@@ -2744,7 +2740,7 @@ static bool ged_dvfs_policy(
 					/* else decrease margin */
 					if (gpu_freq_pre > gpu_freq_overdue_max &&
 						t_gpu_uncomplete > t_gpu_complete &&
-						t_gpu_uncomplete > (t_gpu_target_hd / 2)) {
+						t_gpu_uncomplete > div_u64(t_gpu_target_hd, 2)) {
 						gx_tb_dvfs_margin += g_tb_dvfs_margin_step;
 					} else if (gpu_completed_count != prev_gpu_completed_count)
 						gx_tb_dvfs_margin -= g_tb_dvfs_margin_step;
@@ -2773,7 +2769,7 @@ static bool ged_dvfs_policy(
 			// overwrite state & timeout value set prior to ged_dvfs_run
 			if (uncomplete_flag || api_sync_flag == 1 ||
 				(gpu_freq_pre > gpu_freq_overdue_max &&
-				t_gpu > (t_gpu_target * OVERDUE_TH / 10))) {
+				t_gpu > div_u64(t_gpu_target * OVERDUE_TH, 10))) {
 				ged_set_policy_state(POLICY_STATE_LB_FALLBACK);
 				ged_set_backup_timer_timeout(ged_get_fallback_time());
 			} else {
