@@ -9,6 +9,7 @@
 #include <linux/platform_device.h>
 
 #define GHPM_TEST                          (0)       /* use proc node to test ghpm on/off */
+#define GPUEB_TIMESYNC_ENABLE              (0)
 
 enum ghpm_init_ret {
 	GHPM_INIT_SUCCESS,

@@ -61,8 +61,10 @@ int wait_gpueb(enum gpueb_low_power_event event)
 	else
 		gpueb_pr_err(GHPM_TAG, "null ghpm platform function pointer (ENOENT)");
 
+#if GPUEB_TIMESYNC_ENABLE
 	if (event == SUSPEND_POWER_ON)
 		gpueb_timesync_update();
+#endif
 
 	return ret;
 }
