@@ -959,6 +959,11 @@
 		hw-voter-regmap = <&hwv>;
 	};
 
+	hfrpsys_bus: syscon@31b50000 {
+		compatible = "mediatek,mt6991-hfrpsys-bus", "syscon";
+		reg = <0 0x31b50000 0 0x1000>;
+	};
+
 	hfrpsys: power-controller@31b50000 {
 		compatible = "mediatek,mt6991-hfrpsys-hwv", "syscon";
 		reg = <0 0x31b50000 0 0x1000>;
@@ -967,7 +972,7 @@
 				/* CCU */
 				<&cksys_gp2_clk CLK_CK2_CCUSYS_SEL>;
 		clock-names = "ccusys";
-		mmpc = <&hfrpsys>;
+		mmpc = <&hfrpsys_bus>;
 		mm-hw-ccf-regmap = <&mm_hwv>;
 		mminfra-hwv-regmap = <&mminfra_hwv>;
 	};
