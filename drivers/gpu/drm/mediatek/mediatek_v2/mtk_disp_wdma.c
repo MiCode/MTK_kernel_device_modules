@@ -1873,8 +1873,22 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	int ret = 0;
 
 	mtk_crtc = comp->mtk_crtc;
+	if (!mtk_crtc) {
+		DDPMSG("%s:%d mtk_crtc is NULL\n", __func__, __LINE__);
+		return -1;
+	}
+
 	crtc = &mtk_crtc->base;
+	if (!crtc) {
+		DDPMSG("%s:%d crtc is NULL\n", __func__, __LINE__);
+		return -1;
+	}
+
 	priv = crtc->dev->dev_private;
+	if (!priv) {
+		DDPMSG("%s:%d priv is NULL\n", __func__, __LINE__);
+		return -1;
+	}
 
 	switch (cmd) {
 	case WDMA_WRITE_DST_ADDR0:
