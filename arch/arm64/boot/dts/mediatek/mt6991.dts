@@ -15775,9 +15775,12 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		bootmode = <&chosen>;
 		gauge = <&mtk_gauge>;
 		reg = <0 0x00117700 0 0x100>,
-			<0 0x13020170 0 0xc>;
+			<0 0x13020170 0 0xc>,
+			<0 0x4b840c18 0 0x8>,
+			<0 0x0c220c04 0 0x20>;
 		reg-names = "ppb_sram",
-			"hpt_ctrl";
+			"hpt_ctrl", "gpu_dbg", "cpu_dbg";
+
 		ppb-version = <2>;
 		battery-circult-rdc = <40>;
 		battery0-path-rac-t0 = <65>;
