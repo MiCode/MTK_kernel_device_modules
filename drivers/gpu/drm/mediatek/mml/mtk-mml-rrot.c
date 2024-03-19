@@ -252,6 +252,7 @@ static const struct rrot_data mt6989_rrot_data = {
 
 static const struct rrot_data mt6991_rrot_data = {
 	.tile_width = 4096,	/* 2048+2048 */
+	.alpha_pq_r2y = true,
 	.ddren_off = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
@@ -1285,19 +1286,19 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	if (MML_FMT_HYFBC(src->format)) {
 		hyfbc = 1;
 		ufbdc = 1;
-		width_in_pxl = ((src->width + 31) >> 5) << 5;
-		height_in_pxl = ((src->height + 15) >> 4) << 4;
+		width_in_pxl = round_up(src->width, 32);
+		height_in_pxl = round_up(src->height, 16);
 	} else if (MML_FMT_AFBC(src->format)) {
 		afbc = 1;
 		if (MML_FMT_IS_RGB(src->format))
 			afbc_y2r = 1;
 		ufbdc = 1;
 		if (MML_FMT_IS_YUV(src->format)) {
-			width_in_pxl = ((src->width + 15) >> 4) << 4;
-			height_in_pxl = ((src->height + 15) >> 4) << 4;
+			width_in_pxl = round_up(src->width, 16);
+			height_in_pxl = round_up(src->height, 16);
 		} else {
-			width_in_pxl = ((src->width + 31) >> 5) << 5;
-			height_in_pxl = ((src->height + 7) >> 3) << 3;
+			width_in_pxl = round_up(src->width, 32);
+			height_in_pxl = round_up(src->height, 8);
 		}
 	} else if (rrot_frm->enable_ufo && rrot_frm->blk_10bit) {
 		width_in_pxl = (src->y_stride << 2) / 5;

@@ -662,6 +662,7 @@ static const struct rdma_data mt6878_rdma_data = {
 
 static const struct rdma_data mt6991_mmlt_rdma_data = {
 	.tile_width = 640,
+	.alpha_rsz_crop = true,
 	.tile_reset = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
@@ -694,6 +695,7 @@ static const struct rdma_data mt6991_mmlt_rdma_data = {
 static const struct rdma_data mt6991_mmlf_rdma_data = {
 	.tile_width = 3872,
 	.sram_size = 512 * 1024,	/* 1MB sram divid to 512K + 512K */
+	.alpha_rsz_crop = true,
 	.tile_reset = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
