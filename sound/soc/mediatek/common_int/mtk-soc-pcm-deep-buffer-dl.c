@@ -486,9 +486,9 @@ static struct page *mtk_deep_buffer_dl_page(struct snd_soc_component *component,
 static int mtk_pcm_deep_buffer_copy(struct snd_soc_component *component,
 				    struct snd_pcm_substream *substream,
 				    int channel, unsigned long hwoff,
-				    void *buf, unsigned long bytes)
+				    struct iov_iter *buf, unsigned long bytes)
 {
-	return  mtk_afe_pcm_copy(substream, channel, hwoff, (void __user *)buf, bytes);
+	return  mtk_afe_pcm_copy(substream, channel, hwoff, buf, bytes);
 
 }
 

@@ -307,7 +307,7 @@ static int mtk_mod_dai_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 static int mtk_mod_dai_pcm_copy(struct snd_pcm_substream *substream,
 				int channel,
 				unsigned long pos,
-				void __user *buf,
+				struct iov_iter *buf,
 				unsigned long bytes)
 {
 	return mtk_memblk_copy(substream, channel, pos, buf, bytes,
@@ -340,7 +340,7 @@ static const struct snd_pcm_ops mtk_afe_mod_dai_ops = {
 	.prepare = mtk_mod_dai_pcm_prepare,
 	.trigger = mtk_mod_dai_pcm_trigger,
 	.pointer = mtk_mod_dai_pcm_pointer,
-	.copy_user = mtk_mod_dai_pcm_copy,
+	.copy = mtk_mod_dai_pcm_copy,
 	.fill_silence = mtk_mod_dai_pcm_silence,
 	.page = mtk_mod_dai_pcm_page,
 };

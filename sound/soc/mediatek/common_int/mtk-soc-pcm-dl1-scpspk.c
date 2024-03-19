@@ -964,7 +964,7 @@ static int mtk_pcm_dl1spk_trigger(struct snd_pcm_substream *substream, int cmd)
 static int mtk_pcm_dl1spk_copy(struct snd_pcm_substream *substream,
 			       int channel,
 			       unsigned long pos,
-			       void __user *buf,
+			       struct iov_iter *buf,
 			       unsigned long bytes)
 {
 	int ret = 0;
@@ -1015,7 +1015,7 @@ static const struct snd_pcm_ops mtk_dl1spk_ops = {
 	.prepare = mtk_pcm_dl1spk_prepare,
 	.trigger = mtk_pcm_dl1spk_trigger,
 	.pointer = mtk_pcm_dl1spk_pointer,
-	.copy_user = mtk_pcm_dl1spk_copy,
+	.copy = mtk_pcm_dl1spk_copy,
 	.fill_silence = mtk_pcm_dl1spk_silence,
 	.page = mtk_dl1spk_pcm_page,
 };

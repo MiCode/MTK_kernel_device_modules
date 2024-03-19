@@ -355,7 +355,7 @@ snd_pcm_uframes_t get_mem_frame_index(struct snd_pcm_substream *substream,
 void mem_blk_spinlock(enum soc_aud_digital_block mem_blk);
 void mem_blk_spinunlock(enum soc_aud_digital_block mem_blk);
 int mtk_memblk_copy(struct snd_pcm_substream *substream, int channel,
-		    unsigned long pos, void __user *dst,
+		    unsigned long pos, struct iov_iter *dst,
 		    unsigned long count,
 		    struct afe_mem_control_t *pMemControl,
 		    enum soc_aud_digital_block mem_blk);
@@ -387,6 +387,6 @@ int mtk_pcm_mmap(struct snd_pcm_substream *substream,
 
 int mtk_afe_pcm_copy(struct snd_pcm_substream *substream,
 		     int channel, unsigned long hwoff,
-		     void *buf, unsigned long bytes);
+		     struct iov_iter *buf, unsigned long bytes);
 
 #endif

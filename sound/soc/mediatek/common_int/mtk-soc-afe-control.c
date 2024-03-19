@@ -4640,353 +4640,8 @@ void mem_blk_spinunlock(enum soc_aud_digital_block mem_blk)
 	}
 }
 
-static int mtk_mem_dlblk_copy(struct snd_pcm_substream *substream, int channel,
-			      unsigned long pos, void __user *dst,
-			      unsigned long count,
-			      struct afe_mem_control_t *pMemControl,
-			      enum soc_aud_digital_block mem_blk)
-{
-	struct afe_block_t *Afe_Block = NULL;
-	int copy_size = 0, Afe_WriteIdx_tmp;
-	char *data_w_ptr = (char *)dst;
-
-	/* check which memif nned to be write */
-	Afe_Block = &pMemControl->rBlock;
-
-	/* handle for buffer management */
-
-	/* pr_debug(" WriteIdx=0x%x, ReadIdx=0x%x, DataRemained=0x%x\n",
-	 * Afe_Block->u4WriteIdx, Afe_Block->u4DMAReadIdx,
-	 * Afe_Block->u4DataRemained);
-	 */
-	if (Afe_Block->u4BufferSize == 0) {
-		pr_err(" u4BufferSize=0 Error");
-		return 0;
-	}
-
-	if (mem_blk == Soc_Aud_Digital_Block_MEM_DL1)
-		AudDrv_checkDLISRStatus();
-
-	mem_blk_spinlock(mem_blk);
-	/* free space of the buffer */
-	copy_size = Afe_Block->u4BufferSize - Afe_Block->u4DataRemained;
-	mem_blk_spinunlock(mem_blk);
-	if (count <= copy_size) {
-		if (copy_size < 0)
-			copy_size = 0;
-		else
-			copy_size = count;
-	}
-
-	copy_size = word_size_align(copy_size);
-
-	if (copy_size != 0) {
-		mem_blk_spinlock(mem_blk);
-		Afe_WriteIdx_tmp = Afe_Block->u4WriteIdx;
-		mem_blk_spinunlock(mem_blk);
-
-		if (Afe_WriteIdx_tmp + copy_size <
-		    Afe_Block->u4BufferSize) { /* copy once */
-			if (!access_ok(data_w_ptr, copy_size)) {
-				pr_warn("0 w_ptr=%p, size=%d Size=%d,left=%d",
-					data_w_ptr, copy_size,
-					Afe_Block->u4BufferSize,
-					Afe_Block->u4DataRemained);
-			} else {
-#ifdef AFE_CONTROL_DEBUG_LOG
-				pr_debug(
-					"memcpy Idx= %p data_w_ptr = %p copy_size = 0x%x\n",
-					Afe_Block->pucVirtBufAddr +
-					Afe_WriteIdx_tmp,
-					data_w_ptr, copy_size);
-#endif
-				if (copy_from_user((Afe_Block->pucVirtBufAddr +
-						    Afe_WriteIdx_tmp),
-						   data_w_ptr, copy_size)) {
-					pr_warn("[AudioWarn] Fail copy from user\n");
-					return -1;
-				}
-			}
-
-			mem_blk_spinlock(mem_blk);
-			Afe_Block->u4DataRemained += copy_size;
-			Afe_Block->u4WriteIdx = Afe_WriteIdx_tmp + copy_size;
-			Afe_Block->u4WriteIdx %= Afe_Block->u4BufferSize;
-			mem_blk_spinunlock(mem_blk);
-			data_w_ptr += copy_size;
-			count -= copy_size;
-#ifdef AFE_CONTROL_DEBUG_LOG
-			pr_debug("finish1, copy_size:%x, WriteIdx:%x, ReadIdx=%x, Remained:%x, count=%x \r\n",
-				 copy_size, Afe_Block->u4WriteIdx,
-				 Afe_Block->u4DMAReadIdx,
-				 Afe_Block->u4DataRemained,
-				 (unsigned int)count);
-#endif
-		} else { /* copy twice */
-			kal_uint32 size_1 = 0, size_2 = 0;
-
-			size_1 = word_size_align(
-				(Afe_Block->u4BufferSize - Afe_WriteIdx_tmp));
-			size_2 = word_size_align((copy_size - size_1));
-#ifdef AFE_CONTROL_DEBUG_LOG
-			pr_debug("size_1=0x%x, size_2=0x%x\n", size_1,
-				 size_2);
-#endif
-			if (!access_ok(data_w_ptr, size_1)) {
-				pr_warn("1 w_ptr=%p, size_1=%d bSize=%d,left=%d",
-					data_w_ptr, size_1,
-					Afe_Block->u4BufferSize,
-					Afe_Block->u4DataRemained);
-			} else {
-#ifdef AFE_CONTROL_DEBUG_LOG
-				pr_debug(
-					"mcmcpy Idx= %p data_w_ptr = %p size_1 = %x\n",
-					Afe_Block->pucVirtBufAddr +
-					Afe_WriteIdx_tmp,
-					data_w_ptr, size_1);
-#endif
-				if ((copy_from_user((Afe_Block->pucVirtBufAddr +
-						     Afe_WriteIdx_tmp),
-						    data_w_ptr, size_1))) {
-					pr_warn(" Fail 1 copy from user");
-					return -1;
-				}
-			}
-			mem_blk_spinlock(mem_blk);
-			Afe_Block->u4DataRemained += size_1;
-			Afe_Block->u4WriteIdx = Afe_WriteIdx_tmp + size_1;
-			Afe_Block->u4WriteIdx %= Afe_Block->u4BufferSize;
-			Afe_WriteIdx_tmp = Afe_Block->u4WriteIdx;
-			mem_blk_spinunlock(mem_blk);
-
-			if (!access_ok(data_w_ptr + size_1,
-				       size_2)) {
-				pr_warn("2ptr invalid data_w_ptr=%p, size_1=%d, size_2=%d u4BufferSize=%d, u4DataRemained=%d",
-					data_w_ptr, size_1, size_2,
-					Afe_Block->u4BufferSize,
-					Afe_Block->u4DataRemained
-				       );
-			} else {
-#ifdef AFE_CONTROL_DEBUG_LOG
-				pr_debug(
-					"mcmcpy Idx= %p data_w_ptr+size_1 = %p size_2 = %x\n",
-					Afe_Block->pucVirtBufAddr +
-					Afe_WriteIdx_tmp,
-					data_w_ptr + size_1, size_2);
-#endif
-				if ((copy_from_user((Afe_Block->pucVirtBufAddr +
-						     Afe_WriteIdx_tmp),
-						    (data_w_ptr + size_1),
-						    size_2))) {
-					pr_warn("AudDrv_write Fail 2  copy from user");
-					return -1;
-				}
-			}
-			mem_blk_spinlock(mem_blk);
-			Afe_Block->u4DataRemained += size_2;
-			Afe_Block->u4WriteIdx = Afe_WriteIdx_tmp + size_2;
-			Afe_Block->u4WriteIdx %= Afe_Block->u4BufferSize;
-			mem_blk_spinunlock(mem_blk);
-
-			count -= copy_size;
-			data_w_ptr += copy_size;
-#ifdef AFE_CONTROL_DEBUG_LOG
-			pr_debug("finish2, copy size:%x, WriteIdx:%x,ReadIdx=%x DataRemained:%x \r\n",
-				 copy_size, Afe_Block->u4WriteIdx,
-				 Afe_Block->u4DMAReadIdx,
-				 Afe_Block->u4DataRemained);
-#endif
-		}
-	}
-#ifdef AFE_CONTROL_DEBUG_LOG
-	pr_debug("pcm_copy return\n");
-#endif
-	return 0;
-}
-
-static bool CheckNullPointer(void *pointer)
-{
-	if (pointer == NULL) {
-		pr_info("%s(), pointer = NULL", __func__);
-		return true;
-	}
-	return false;
-}
-
-static int mtk_mem_ulblk_copy(struct snd_pcm_substream *substream, int channel,
-			      unsigned long pos, void __user *dst,
-			      unsigned long count,
-			      struct afe_mem_control_t *pMemControl,
-			      enum soc_aud_digital_block mem_blk)
-{
-	struct afe_mem_control_t *pVUL_MEM_ConTrol = NULL;
-	struct afe_block_t *Vul_Block = NULL;
-	char *Read_Data_Ptr = (char *)dst;
-	ssize_t DMA_Read_Ptr = 0, read_size = 0, read_count = 0;
-	struct snd_pcm_runtime *runtime = substream->runtime;
-#ifdef AFE_CONTROL_DEBUG_LOG
-	pr_debug("%s(), pos = %lucount = %lu\n ", __func__, pos,
-		 count);
-#endif
-	/* check which memif nned to be write */
-	pVUL_MEM_ConTrol = pMemControl;
-	Vul_Block = &(pVUL_MEM_ConTrol->rBlock);
-
-	if (pVUL_MEM_ConTrol == NULL) {
-		pr_warn("cannot find MEM control !!!!!!!\n");
-		msleep(50);
-		return 0;
-	}
-
-	if (Vul_Block->u4BufferSize <= 0) {
-		msleep(50);
-		pr_err("Vul_Block->u4BufferSize <= 0  =%d\n",
-		       Vul_Block->u4BufferSize);
-		return 0;
-	}
-
-	if (CheckNullPointer((void *)Vul_Block->pucVirtBufAddr)) {
-		pr_err("CheckNullPointer  pucVirtBufAddr = %p\n",
-		       Vul_Block->pucVirtBufAddr);
-		return 0;
-	}
-
-	mem_blk_spinlock(mem_blk);
-	if (Vul_Block->u4DataRemained > Vul_Block->u4BufferSize) {
-		/* pr_debug("%s u4DataRemained=%x > u4BufferSize=%x",
-		 * __func__, Vul_Block->u4DataRemained,
-		 * Vul_Block->u4BufferSize);
-		 */
-		Vul_Block->u4DataRemained = 0;
-		Vul_Block->u4DMAReadIdx = Vul_Block->u4WriteIdx;
-	}
-
-	if (count > Vul_Block->u4DataRemained)
-		read_size = Vul_Block->u4DataRemained;
-	else
-		read_size = count;
-
-	DMA_Read_Ptr = Vul_Block->u4DMAReadIdx;
-	mem_blk_spinunlock(mem_blk);
-#ifdef AFE_CONTROL_DEBUG_LOG
-	pr_debug(
-		"%s finish0, read_count:%x, read_size:%x, Remained:%x, ReadIdx:0x%x, WriteIdx:%x \r\n",
-		__func__, (unsigned int)read_count, (unsigned int)read_size,
-		Vul_Block->u4DataRemained, Vul_Block->u4DMAReadIdx,
-		Vul_Block->u4WriteIdx);
-#endif
-	if (DMA_Read_Ptr + read_size < Vul_Block->u4BufferSize) {
-		if (DMA_Read_Ptr != Vul_Block->u4DMAReadIdx) {
-			pr_warn("%s 1, read_size:%zu, Remained:%x, Ptr:%zu, DMAReadIdx:%x \r\n",
-				__func__, read_size, Vul_Block->u4DataRemained,
-				DMA_Read_Ptr, Vul_Block->u4DMAReadIdx);
-		}
-
-		if (copy_to_user((void __user *)Read_Data_Ptr,
-				 (Vul_Block->pucVirtBufAddr + DMA_Read_Ptr),
-				 read_size)) {
-
-			pr_err("%s Fail 1 copy to user Ptr:%p, Addr:%p, ReadIdx:0x%x, Read_Ptr:%zu,size:%zu",
-			       __func__, Read_Data_Ptr,
-			       Vul_Block->pucVirtBufAddr,
-			       Vul_Block->u4DMAReadIdx, DMA_Read_Ptr,
-			       read_size);
-			return 0;
-		}
-
-		read_count += read_size;
-		mem_blk_spinlock(mem_blk);
-		Vul_Block->u4DataRemained -= read_size;
-		Vul_Block->u4DMAReadIdx += read_size;
-		Vul_Block->u4DMAReadIdx %= Vul_Block->u4BufferSize;
-		DMA_Read_Ptr = Vul_Block->u4DMAReadIdx;
-		mem_blk_spinunlock(mem_blk);
-
-		Read_Data_Ptr += read_size;
-		count -= read_size;
-#ifdef AFE_CONTROL_DEBUG_LOG
-		pr_debug(
-			"%s finish1, copy size:%x, ReadIdx:0x%x, WriteIdx:%x, Remained:%x \r\n",
-			__func__, (unsigned int)read_size,
-			Vul_Block->u4DMAReadIdx, Vul_Block->u4WriteIdx,
-			Vul_Block->u4DataRemained);
-#endif
-	}
-
-	else {
-		unsigned int size_1 = Vul_Block->u4BufferSize - DMA_Read_Ptr;
-		unsigned int size_2 = read_size - size_1;
-
-		if (DMA_Read_Ptr != Vul_Block->u4DMAReadIdx) {
-
-			pr_warn("%s 2, read_size1:%x, Remained:%x, Read_Ptr:%zu, ReadIdx:%x \r\n",
-				__func__, size_1, Vul_Block->u4DataRemained,
-				DMA_Read_Ptr, Vul_Block->u4DMAReadIdx);
-		}
-		if (copy_to_user((void __user *)Read_Data_Ptr,
-				 (Vul_Block->pucVirtBufAddr + DMA_Read_Ptr),
-				 (unsigned int)size_1)) {
-
-			pr_err("%s Fail 2 copy to user Ptr:%p, Addr:%p, ReadIdx:0x%x, Read_Ptr:%zu,read_size:%zu",
-			       __func__, Read_Data_Ptr,
-			       Vul_Block->pucVirtBufAddr,
-			       Vul_Block->u4DMAReadIdx, DMA_Read_Ptr,
-			       read_size);
-			return 0;
-		}
-
-		read_count += size_1;
-		mem_blk_spinlock(mem_blk);
-		Vul_Block->u4DataRemained -= size_1;
-		Vul_Block->u4DMAReadIdx += size_1;
-		Vul_Block->u4DMAReadIdx %= Vul_Block->u4BufferSize;
-		DMA_Read_Ptr = Vul_Block->u4DMAReadIdx;
-		mem_blk_spinunlock(mem_blk);
-#ifdef AFE_CONTROL_DEBUG_LOG
-		pr_debug(
-			"%s finish2, copy size_1:%x, ReadIdx:0x%x, WriteIdx:0x%x, Remained:%x \r\n",
-			__func__, size_1, Vul_Block->u4DMAReadIdx,
-			Vul_Block->u4WriteIdx, Vul_Block->u4DataRemained);
-#endif
-		if (DMA_Read_Ptr != Vul_Block->u4DMAReadIdx) {
-
-			pr_warn("%s 3, read_size2:%x, Remained:%x, DMA_Read_Ptr:%zu, DMAReadIdx:%x \r\n",
-				__func__, size_2, Vul_Block->u4DataRemained,
-				DMA_Read_Ptr, Vul_Block->u4DMAReadIdx);
-		}
-		if (copy_to_user((void __user *)(Read_Data_Ptr + size_1),
-				 (Vul_Block->pucVirtBufAddr + DMA_Read_Ptr),
-				 size_2)) {
-
-			pr_err("%s Fail 3 copy to user Ptr:%p, Addr:%p, ReadIdx:0x%x , Read_Ptr:%zu, read_size:%zu",
-			       __func__, Read_Data_Ptr,
-			       Vul_Block->pucVirtBufAddr,
-			       Vul_Block->u4DMAReadIdx, DMA_Read_Ptr,
-			       read_size);
-			return bytes_to_frames(runtime, read_count);
-		}
-
-		read_count += size_2;
-		mem_blk_spinlock(mem_blk);
-		Vul_Block->u4DataRemained -= size_2;
-		Vul_Block->u4DMAReadIdx += size_2;
-		DMA_Read_Ptr = Vul_Block->u4DMAReadIdx;
-		mem_blk_spinunlock(mem_blk);
-		count -= read_size;
-		Read_Data_Ptr += read_size;
-#ifdef AFE_CONTROL_DEBUG_LOG
-		pr_debug(
-			"%s finish3, copy size_2:%x, u4DMAReadIdx:0x%x, u4WriteIdx:0x%x u4DataRemained:%x \r\n",
-			__func__, size_2, Vul_Block->u4DMAReadIdx,
-			Vul_Block->u4WriteIdx, Vul_Block->u4DataRemained);
-#endif
-	}
-
-	return bytes_to_frames(runtime, read_count);
-}
-
 int mtk_memblk_copy(struct snd_pcm_substream *substream, int channel,
-		    unsigned long pos, void __user *dst,
+		    unsigned long pos, struct iov_iter *dst,
 		    unsigned long count,
 		    struct afe_mem_control_t *pMemControl,
 		    enum soc_aud_digital_block mem_blk)
@@ -4994,26 +4649,7 @@ int mtk_memblk_copy(struct snd_pcm_substream *substream, int channel,
 	if (pMemControl == NULL)
 		return 0;
 
-	switch (mem_blk) {
-	case Soc_Aud_Digital_Block_MEM_DL1:
-	case Soc_Aud_Digital_Block_MEM_DL2:
-	case Soc_Aud_Digital_Block_MEM_DL3:
-		mtk_mem_dlblk_copy(substream, channel, pos, dst, count,
-				   pMemControl, mem_blk);
-		break;
-	case Soc_Aud_Digital_Block_MEM_VUL:
-	case Soc_Aud_Digital_Block_MEM_DAI:
-	case Soc_Aud_Digital_Block_MEM_AWB:
-	case Soc_Aud_Digital_Block_MEM_MOD_DAI:
-	case Soc_Aud_Digital_Block_MEM_VUL_DATA2:
-	case Soc_Aud_Digital_Block_MEM_VUL2:
-		mtk_mem_ulblk_copy(substream, channel, pos, dst, count,
-				   pMemControl, mem_blk);
-		break;
-	default:
-		pr_info("%s not support", __func__);
-	}
-	return 0;
+	return mtk_afe_pcm_copy(substream, channel, pos, dst, count);
 }
 EXPORT_SYMBOL(mtk_memblk_copy);
 
@@ -5168,10 +4804,10 @@ static void *get_dma_ptr(struct snd_pcm_runtime *runtime,
 /* default copy_user ops for write; used for both interleaved and non- modes */
 static int default_write_copy(struct snd_pcm_substream *substream,
 			      int channel, unsigned long hwoff,
-			      void *buf, unsigned long bytes)
+			      struct iov_iter *buf, unsigned long bytes)
 {
-	if (copy_from_user(get_dma_ptr(substream->runtime, channel, hwoff),
-			   (void __user *)buf, bytes))
+	if (copy_from_iter(get_dma_ptr(substream->runtime, channel, hwoff),
+			   bytes, buf))
 		return -EFAULT;
 	return 0;
 }
@@ -5179,27 +4815,25 @@ static int default_write_copy(struct snd_pcm_substream *substream,
 /* default copy_user ops for read; used for both interleaved and non- modes */
 static int default_read_copy(struct snd_pcm_substream *substream,
 			     int channel, unsigned long hwoff,
-			     void *buf, unsigned long bytes)
+			     struct iov_iter *buf, unsigned long bytes)
 {
-	if (copy_to_user((void __user *)buf,
-			 get_dma_ptr(substream->runtime, channel, hwoff),
-			 bytes))
+	if (copy_to_iter(get_dma_ptr(substream->runtime, channel, hwoff),
+			 bytes, buf))
 		return -EFAULT;
 	return 0;
 }
 
 int mtk_afe_pcm_copy(struct snd_pcm_substream *substream,
 		     int channel, unsigned long hwoff,
-		     void *buf, unsigned long bytes)
+		     struct iov_iter *buf, unsigned long bytes)
 {
 	int (*sp_copy)(struct snd_pcm_substream *substream,
 		       int channel, unsigned long hwoff,
-		       void *buf, unsigned long bytes) = NULL;
+		       struct iov_iter *buf, unsigned long bytes) = NULL;
 	int is_playback = substream->stream == SNDRV_PCM_STREAM_PLAYBACK;
 
 	sp_copy = is_playback ? default_write_copy : default_read_copy;
-	sp_copy(substream, channel, hwoff,
-		(void __user *)buf, bytes);
+	sp_copy(substream, channel, hwoff, buf, bytes);
 
 	return 0;
 }

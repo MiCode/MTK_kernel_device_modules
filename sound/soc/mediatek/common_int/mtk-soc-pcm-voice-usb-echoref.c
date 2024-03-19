@@ -393,9 +393,9 @@ mtk_usb_echoref_pointer(struct snd_soc_component *component,
 static int mtk_usb_echoref_copy(struct snd_soc_component *component,
 				struct snd_pcm_substream *substream,
 				int channel, unsigned long hwoff,
-				void *buf, unsigned long bytes)
+				struct iov_iter *buf, unsigned long bytes)
 {
-	return  mtk_afe_pcm_copy(substream, channel, hwoff, (void __user *)buf, bytes);
+	return  mtk_afe_pcm_copy(substream, channel, hwoff, buf, bytes);
 }
 
 

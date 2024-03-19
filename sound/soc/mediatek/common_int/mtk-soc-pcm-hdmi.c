@@ -980,7 +980,7 @@ static const struct snd_pcm_ops mtk_hdmi_ops = {
 	.prepare = mtk_pcm_hdmi_prepare,
 	.trigger = mtk_pcm_hdmi_trigger,
 	.pointer = mtk_pcm_hdmi_pointer,
-	.copy_user = mtk_pcm_hdmi_copy,
+	.copy = mtk_pcm_hdmi_copy,
 	.fill_silence = mtk_pcm_hdmi_silence,
 	.page = mtk_pcm_page,
 };

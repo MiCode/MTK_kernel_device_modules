@@ -291,7 +291,7 @@ static int mtk_fm_i2s_awb_pcm_copy(struct snd_soc_component *component,
 				   struct snd_pcm_substream *substream,
 				   int channel,
 				   unsigned long pos,
-				   void __user *buf,
+				   struct iov_iter *buf,
 				   unsigned long bytes)
 {
 	return mtk_memblk_copy(substream, channel, pos, buf, bytes,
