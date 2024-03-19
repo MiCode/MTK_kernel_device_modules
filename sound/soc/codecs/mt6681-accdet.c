@@ -2274,6 +2274,11 @@ static int accdet_get_dts_data(void)
 	int pwm_deb[15] = {0};
 	int three_key[4] = {0};
 	u32 tmp = 0;
+	unsigned int efuse_val = 0;
+	struct device *dev = (accdet && accdet->pdev) ? &accdet->pdev->dev : NULL;
+	struct nvmem_cell *efuse_spare5;
+	void *efuse_data;
+	size_t efuse_len = 0;
 
 	node = of_find_matching_node(node, accdet_of_match);
 	if (!node) {
@@ -2473,9 +2478,37 @@ static int accdet_get_dts_data(void)
 
 	ret = of_property_read_u32(node, "accdet-irq-gpio-enable",
 		&accdet_dts.accdet_irq_gpio_enable);
-	if (ret)
+	if (ret) {
 		accdet_dts.accdet_irq_gpio_enable = 0x0;
 
+		// for liber to check E1 or E2
+		ret = of_property_read_u32(node, "accdet-efuse-check", &efuse_val);
+		if (!ret && efuse_val == 1) {
+			efuse_val = 0;
+			if (!dev) {
+				pr_info("(%s) dev is null\n", __func__);
+			} else {
+				efuse_spare5 = nvmem_cell_get(dev, "efuse_spare5");
+				if (IS_ERR(efuse_spare5)) {
+					pr_info("(%s) failed to read efuse_spare5\n", __func__);
+				} else {
+					efuse_data = nvmem_cell_read(efuse_spare5, &efuse_len);
+					if (IS_ERR(efuse_data)) {
+						pr_info("(%s) get efuse data error = %d\n", __func__, ret);
+					} else {
+						memcpy(&efuse_val, efuse_data, sizeof(unsigned int));
+						kfree(efuse_data);
+						accdet_dts.accdet_irq_gpio_enable =
+							(((efuse_val >> 31) & 0x1) == 1) ? 0x1 : 0x0;
+					}
+					nvmem_cell_put(efuse_spare5);
+				}
+			}
+
+			pr_info("(%s) efuse_val = 0x%x, ap accdet = %d, efuse_len = %zu\n",
+				__func__, efuse_val, accdet_dts.accdet_irq_gpio_enable, efuse_len);
+		}
+	}
 
 	return 0;
 }
