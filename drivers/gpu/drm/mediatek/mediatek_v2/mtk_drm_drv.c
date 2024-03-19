@@ -10296,10 +10296,13 @@ static struct platform_driver *const mtk_drm_drivers[] = {
 	&mtk_dsi_driver,
 	&mtk_dp_intf_driver,
 	&mtk_disp_mdp_rsz_driver,
-#ifdef CONFIG_DRM_MEDIATEK_HDMI
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_HDMI)
 	&mtk_dpi_driver,
 	&mtk_lvds_driver,
 	&mtk_lvds_tx_driver,
+#endif
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_CEC)
+	&mtk_cec_driver,
 #endif
 	&mtk_disp_cm_driver,
 	&mtk_disp_spr_driver,

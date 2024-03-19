@@ -109,6 +109,30 @@ endif
 #	mtk_dp_hdcp2.o
 #endif
 
+ifneq ($(findstring $(CONFIG_DRM_MEDIATEK_CEC), y m),)
+mediatek-drm-y += mtk_cec.o
+endif
+
+ifneq ($(findstring $(CONFIG_DRM_MEDIATEK_HDMI), y m),)
+mediatek-drm-y += mtk_dpi.o
+
+mediatek-drm-hdmi-objs := mtk_hdmi.o \
+	mtk_hdmi_ddc.o \
+	mtk_mt8195_hdmi_phy.o \
+	mtk_hdmi_ca.o \
+	mtk_hdmi_hdr.o \
+	mtk_hdmi_edid.o \
+	mtk_hdmi_debug.o
+
+ifneq ($(findstring $(CONFIG_DRM_MEDIATEK_HDMI_HDCP), y m),)
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/hdmirx/
+mediatek-drm-hdmi-objs += mtk_hdmi_hdcp.o
+endif
+
+endif
+
+obj-$(CONFIG_DRM_MEDIATEK_HDMI) += mediatek-drm-hdmi.o
+
 mediatek-drm-$(CONFIG_DRM_FBDEV_EMULATION) += mtk_drm_fbdev.o
 
 obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mediatek-drm.o
