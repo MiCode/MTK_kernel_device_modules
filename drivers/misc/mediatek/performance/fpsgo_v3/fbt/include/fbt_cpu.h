@@ -145,6 +145,7 @@ void fpsgo_base2fbt_jank_thread_deboost(int pid);
 void fpsgo_set_rl_l2q_enable(int enable);
 void fpsgo_set_expected_l2q_us(int vsync_multiple, unsigned long long user_expected_l2q_us);
 int fpsgo_get_rl_l2q_enable(void);
+void fbt_task_reset_pmu(struct rb_root *pmu_info_tree, unsigned long long ts);
 
 #else
 static inline void fpsgo_ctrl2fbt_dfrc_fps(int fps_limit) { }
@@ -196,6 +197,7 @@ static inline int fpsgo_get_rl_l2q_enable(void) { return 0; }
 static inline void fbt_update_freq_qos_min(int policy_id, unsigned int freq) { }
 static inline void notify_powerRL_ko_is_ready(void) { }
 static inline int fbt_get_powerRL_ko_is_ready(void)  { return 0; }
+static inline void fbt_task_reset_pmu(struct rb_root *pmu_info_tree, unsigned long long ts) { }
 #endif
 
 #endif

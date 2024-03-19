@@ -418,12 +418,6 @@ module_param(limit_min_cap_target_t, int, 0644);
 module_param(exp_fps_raw_enable, int, 0644);
 module_param(exp_normal_fps_pct, int, 0644);
 module_param(exp_fps_disp_enable, int, 0644);
-module_param(powerRL_enable, int, 0644);
-module_param(powerRL_FPS_margin, int, 0644);
-module_param(powerRL_current_unit, int, 0644);
-module_param(powerRL_voltage_unit, int, 0644);
-module_param(powerRL_total_unit, int, 0644);
-module_param(powerRL_voltage, int, 0644);
 
 static DEFINE_SPINLOCK(freq_slock);
 static DEFINE_MUTEX(fbt_mlock);
@@ -1060,7 +1054,7 @@ static struct pmu_info *fbt_pmu_search_add(struct rb_root *pmu_info_tree, int pi
 	return iter;
 }
 
-static void fbt_task_reset_pmu(struct rb_root *pmu_info_tree, unsigned long long ts)
+void fbt_task_reset_pmu(struct rb_root *pmu_info_tree, unsigned long long ts)
 {
 	struct rb_node *cur = NULL;
 	struct rb_node *next = NULL;
@@ -4753,35 +4747,64 @@ int fbt_power_rl(struct render_info *thr, int is_powerRL_ready, int separate_aa_
 {
 	int ret = 0;
 
+	thr->powerRL.uclamp = 100;
+	thr->powerRL.ruclamp = 100;
+	thr->powerRL.uclamp_m = 100;
+	thr->powerRL.ruclamp_m = 100;
+
 	if (is_powerRL_ready && fbt_power_rl_fp) {
-		// record power current
 		unsigned long long inst_frame = 0;
 		int power_current = 0;
 		int min_cap = separate_aa_active ? thr->boost_info.last_blc_b : thr->boost_info.last_blc;
 		union power_supply_propval ps_current = { .intval = 0 }, ps_voltage = {.intval = 0};
-
-		if (power_supply_get_property(bat_psy, POWER_SUPPLY_PROP_CURRENT_NOW, &ps_current) < 0)
-			FPSGO_LOGE("%s Get current status fail\n", __func__);
-
-		if (power_supply_get_property(bat_psy, POWER_SUPPLY_PROP_VOLTAGE_NOW, &ps_voltage) < 0)
-			FPSGO_LOGE("%s Get voltage status fail\n", __func__);
-
-		power_current = (ps_current.intval / powerRL_current_unit) *
-			(ps_voltage.intval / powerRL_voltage_unit) * -1;
-		power_current = power_current / powerRL_total_unit / powerRL_voltage;
-		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, power_current, "power_current");
+		union power_supply_propval ps_status = { .intval = 0 };
 
 		// record instructions
 		inst_frame = fbt_pmu_read(&thr->pmu_info_tree);
 
-		// cal limit by powerRL
-		ret = fbt_power_rl_fp(thr->pid, thr->buffer_id,
-			ts, target_fps_ori,
-			power_current, inst_frame,
-			min_cap, powerRL_FPS_margin_final,
-			&thr->powerRL.uclamp, &thr->powerRL.ruclamp,
-			&thr->powerRL.uclamp_m, &thr->powerRL.ruclamp_m);
+		// record power
+		ret = power_supply_get_property(bat_psy, POWER_SUPPLY_PROP_CURRENT_NOW, &ps_current);
+		if (ret < 0) {
+			FPSGO_LOGE("%s Get power current fail\n", __func__);
+			goto DONE;
+		}
+
+		ret = power_supply_get_property(bat_psy, POWER_SUPPLY_PROP_VOLTAGE_NOW, &ps_voltage);
+		if (ret < 0) {
+			FPSGO_LOGE("%s Get power voltage fail\n", __func__);
+			goto DONE;
+		}
+
+		ret = power_supply_get_property(bat_psy, POWER_SUPPLY_PROP_STATUS, &ps_status);
+		if (ret < 0) {
+			FPSGO_LOGE("%s Get power status fail\n", __func__);
+			goto DONE;
+		}
+
+		if (powerRL_current_unit && powerRL_voltage_unit && powerRL_total_unit && powerRL_voltage) {
+			power_current = (ps_current.intval / powerRL_current_unit) *
+				(ps_voltage.intval / powerRL_voltage_unit) * -1;
+			power_current = power_current / powerRL_total_unit / powerRL_voltage;
+			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, power_current, "power_current");
+		}
+
+		if (ps_status.intval == POWER_SUPPLY_STATUS_DISCHARGING && power_current > 0) {
+			// cal limit by powerRL
+			ret = fbt_power_rl_fp(thr->pid, thr->buffer_id,
+				ts, target_fps_ori,
+				power_current, inst_frame,
+				min_cap, powerRL_FPS_margin_final,
+				&thr->powerRL.uclamp, &thr->powerRL.ruclamp,
+				&thr->powerRL.uclamp_m, &thr->powerRL.ruclamp_m);
+			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 1, "powerRL_enable");
+		} else {
+			fpsgo_fbt_delete_power_rl(thr->pid, thr->buffer_id);
+			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "powerRL_enable");
+		}
 	}
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->powerRL.uclamp, "powerRL_uclamp");
+
+DONE:
 	return ret;
 }
 EXPORT_SYMBOL(fbt_power_rl);
@@ -9157,6 +9180,30 @@ FBT_SYSFS_READ(user_vsync_fpks, fbt_mlock, user_vsync_fpks);
 FBT_SYSFS_WRITE_VALUE(user_vsync_fpks, fbt_mlock, user_vsync_fpks, 0, 144000);
 static KOBJ_ATTR_RW(user_vsync_fpks);
 
+FBT_SYSFS_READ(powerRL_enable, fbt_mlock, powerRL_enable);
+FBT_SYSFS_WRITE_VALUE(powerRL_enable, fbt_mlock, powerRL_enable, 0, 1);
+static KOBJ_ATTR_RW(powerRL_enable);
+
+FBT_SYSFS_READ(powerRL_FPS_margin, fbt_mlock, powerRL_FPS_margin);
+FBT_SYSFS_WRITE_VALUE(powerRL_FPS_margin, fbt_mlock, powerRL_FPS_margin, -50, 0);
+static KOBJ_ATTR_RW(powerRL_FPS_margin);
+
+FBT_SYSFS_READ(powerRL_current_unit, fbt_mlock, powerRL_current_unit);
+FBT_SYSFS_WRITE_VALUE(powerRL_current_unit, fbt_mlock, powerRL_current_unit, 1, 10000);
+static KOBJ_ATTR_RW(powerRL_current_unit);
+
+FBT_SYSFS_READ(powerRL_voltage_unit, fbt_mlock, powerRL_voltage_unit);
+FBT_SYSFS_WRITE_VALUE(powerRL_voltage_unit, fbt_mlock, powerRL_voltage_unit, 1, 10000);
+static KOBJ_ATTR_RW(powerRL_voltage_unit);
+
+FBT_SYSFS_READ(powerRL_total_unit, fbt_mlock, powerRL_total_unit);
+FBT_SYSFS_WRITE_VALUE(powerRL_total_unit, fbt_mlock, powerRL_total_unit, 1, 10000);
+static KOBJ_ATTR_RW(powerRL_total_unit);
+
+FBT_SYSFS_READ(powerRL_voltage, fbt_mlock, powerRL_voltage);
+FBT_SYSFS_WRITE_VALUE(powerRL_voltage, fbt_mlock, powerRL_voltage, 1, 10);
+static KOBJ_ATTR_RW(powerRL_voltage);
+
 void fbt_init_cpu_loading_info(void)
 {
 	int i = 0, err_exit = 0;
@@ -9272,6 +9319,12 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_rl_l2q_exp_us);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_rl_l2q_exp_times);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_user_vsync_fpks);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_enable);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_FPS_margin);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_current_unit);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_voltage_unit);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_total_unit);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_voltage);
 
 	fpsgo_sysfs_remove_dir(&fbt_kobj);
 	fbt_delete_cpu_loading_info();
@@ -9528,6 +9581,12 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_rl_l2q_exp_us);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_rl_l2q_exp_times);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_user_vsync_fpks);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_enable);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_FPS_margin);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_current_unit);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_voltage_unit);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_total_unit);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_voltage);
 	}
 
 	bat_psy = power_supply_get_by_name("battery");
