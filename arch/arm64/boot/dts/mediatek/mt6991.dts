@@ -12457,6 +12457,11 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		mmlsys-config-supply = <&mmlsys1_config>;
 	};
 
+	mml-ait {
+		compatible = "mediatek,mml-ait";
+		mediatek,mml = <&mmlsys1_config>;
+	};
+
 	disp-vcore-vdisp-ctrl@0 {
 		compatible = "mediatek,mt6991-vdisp-ctrl";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_VCORE>;
