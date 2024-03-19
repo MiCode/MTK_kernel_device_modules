@@ -2116,14 +2116,12 @@
 		vib-supply = <&mt6359p_vibr_reg>;
 	};
 
-	mt6359_gauge {
-		compatible = "mediatek,mt6359_gauge";
+	battery_manager: battery-manager {
+		compatible = "mediatek,battery manager";
+		gauge1 = <&mtk_gauge>;
+		charger = <&mt6360_chg>;
 		bootmode = <&chosen>;
-		gauge_name = "gauge";
-		alias_name = "MT6359";
 	};
-
-	#include "mediatek/bat_setting/mt6877_battery_prop.dtsi"
 
 	pmic_clock_buffer_ctrl:pmic_clock_buffer_ctrl {
 		compatible = "mediatek,pmic_clock_buffer";
@@ -8036,6 +8034,7 @@
 #include "mediatek/mt6315_s6.dtsi"
 #include "mediatek/mt6315_s3.dtsi"
 #include "mediatek/mt6359p.dtsi"
+#include "mediatek/bat_setting/mt6877_battery_prop.dtsi"
 #include "mediatek/cust_mt6877_msdc.dtsi"
 #include "mediatek/mt6877-clkitg.dtsi"
 #include "mediatek/mt6877-disable-unused.dtsi"
@@ -8080,4 +8079,8 @@
 
 &mt6359p_vbif28_reg {
 	regulator-always-on;
+};
+
+&mtk_gauge {
+	charger = <&mt6360_chg>;
 };
