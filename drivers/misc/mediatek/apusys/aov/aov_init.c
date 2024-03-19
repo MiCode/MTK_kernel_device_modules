@@ -96,6 +96,10 @@ static int apusys_aov_query_testcase_result(struct seq_file *s)
 			seq_printf(s, "Case %d power test fail!!!\n", testcase);
 			seq_puts(s, "~ FAILED ~\n");
 			break;
+		case NPU_SCP_TEST_NOT_SUPPORTED:
+			seq_puts(s, "Unit-test is not Supported!\n");
+			seq_puts(s, "~ NOT SUPPORTED ~\n");
+			break;
 		default:
 			seq_printf(s, "Unknown status ret : %u\n", test_ret);
 			seq_puts(s, "~ FAILED ~\n");
