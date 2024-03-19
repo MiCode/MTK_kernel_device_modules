@@ -8,7 +8,7 @@
 
 #include <linux/bits.h>
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-#include <mt-plat/mboot_params.h>
+#include <mboot_params.h>
 #endif
 
 /**************************************************
