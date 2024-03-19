@@ -788,6 +788,9 @@ static int __used pt_check_power_off(void)
 	static int pt_power_off_cnt;
 	struct lbat_thd_tbl *thd_info;
 
+	if (!low_bat_thl_data)
+		return 0;
+
 	thd_info = &low_bat_thl_data->lbat_thd_info[INTR_1][low_bat_thl_data->temp_reg_stage];
 	pt_power_off_lv = thd_info->lbat_intr_info[thd_info->thd_volts_size - 1].lt_lv;
 #ifdef LBAT2_ENABLE
@@ -812,8 +815,10 @@ static int __used pt_check_power_off(void)
 	} else
 		pt_power_off_cnt = 0;
 
-	if (pt_power_off_cnt >= 4)
-		kernel_restart("PT reboot system");
+	if (pt_power_off_cnt >= 4) {
+		pr_info("Powering off by PT.\n");
+		kernel_power_off();
+	}
 	return ret;
 }
 
@@ -856,8 +861,8 @@ static int pt_notify_handler(void *unused)
 			pt_set_shutdown_condition();
 			pr_info("[PT] notify battery SOC=0 to power off.\n");
 		}
-		low_bat_thl_data->notify_flag = false;
 		mod_timer(&low_bat_thl_data->notify_timer, jiffies + HZ * 20);
+		low_bat_thl_data->notify_flag = false;
 	} while (!kthread_should_stop());
 	return 0;
 }
@@ -886,12 +891,11 @@ int pt_psy_event(struct notifier_block *nb, unsigned long event, void *v)
 		return NOTIFY_DONE;
 	soc = val.intval;
 
-	if (soc <= 1 && soc >= 0) {
-		low_bat_thl_data->notify_flag = true;
-		wake_up_interruptible(&low_bat_thl_data->notify_waiter);
-	} else {
-		low_bat_thl_data->notify_flag = false;
-		del_timer_sync(&low_bat_thl_data->notify_timer);
+	if (soc <= 1 && soc >= 0 && !timer_pending(&low_bat_thl_data->notify_timer)) {
+		mod_timer(&low_bat_thl_data->notify_timer, jiffies);
+	} else if (soc < 0 || soc > 1) {
+		if (timer_pending(&low_bat_thl_data->notify_timer))
+			del_timer_sync(&low_bat_thl_data->notify_timer);
 	}
 
 	return NOTIFY_DONE;
