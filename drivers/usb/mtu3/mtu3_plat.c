@@ -182,11 +182,45 @@ static void ssusb_hwrscs_req_v2(struct ssusb_mtk *ssusb,
 			smc_req, 0, 0, 0, 0, 0, 0, &res);
 }
 
+static void ssusb_smc_request(struct ssusb_mtk *ssusb,
+	enum mtu3_power_state state)
+{
+	struct arm_smccc_res res;
+	int op;
+
+	dev_info(ssusb->dev, "%s state = %d\n", __func__, state);
+
+	switch (state) {
+	case MTU3_STATE_POWER_OFF:
+		op = SSUSB_SMC_HWRECS_RELEASE;
+		break;
+	case MTU3_STATE_POWER_ON:
+		op = SSUSB_SMC_HWRECS_REQUEST;
+		break;
+	case MTU3_STATE_RESUME:
+		op = SSUSB_SMC_HWRECS_RESUME;
+		break;
+	case MTU3_STATE_SUSPEND:
+		op = SSUSB_SMC_HWRECS_SUSPEND;
+		break;
+	default:
+		return;
+	}
+
+	arm_smccc_smc(MTK_SIP_KERNEL_USB_CONTROL,
+		op, 0, 0, 0, 0, 0, 0, &res);
+}
+
 void ssusb_set_power_state(struct ssusb_mtk *ssusb,
 	enum mtu3_power_state state)
 {
 	if (ssusb->plat_type == PLAT_FPGA || !ssusb->clk_mgr)
 		return;
+
+	if(ssusb->smc_req) {
+		ssusb_smc_request(ssusb, state);
+		return;
+	}
 
 	switch (ssusb->hwrscs_vers) {
 	case SSUSB_HWRECS_V1:
@@ -844,6 +878,7 @@ get_phy:
 		if (of_property_read_bool(node, "mediatek,hw-req-ctrl"))
 			ssusb->hwrscs_vers = SSUSB_HWRECS_V1;
 	}
+	ssusb->smc_req = of_property_read_bool(node, "mediatek,smc-req");
 
 	ret = ssusb_clkgate_of_property_parse(ssusb, node);
 	if (ret)
