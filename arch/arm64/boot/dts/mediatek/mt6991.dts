@@ -11417,13 +11417,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<&mmqos MASTER_LARB_PORT(SMMU_L16_P15_DRZB2NCO_R1)
 						&mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L16_P16_AWBO_R1)
-						&mmqos SLAVE_COMMON(0)>;
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L27_P0_IPUI_I1)
+						&mmqos SLAVE_COMMON(1)>;
 			interconnect-names =
 					"cqi_r1", "cqi_r5", "rawi_r2", "rawi_r3",
 					"rawi_r4", "rawi_r5", "bpci_r1", "bpci_r3",
 					"grmgi_r1", "lsci_r1", "imgo_r1", "imgo_r2",
 					"drzb2no_r1", "drzb2nbo_r1", "gmpo_r1", "drzb2nco_r1",
-					"awbo_r1";
+					"awbo_r1", "ipui_i1";
 		};
 
 		cam-rms-a@3a840000 {
@@ -11557,13 +11559,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<&mmqos MASTER_LARB_PORT(SMMU_L43_P15_DRZB2NCO_R1)
 						&mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L43_P16_AWBO_R1)
+						&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L27_P0_IPUI_I1)
 						&mmqos SLAVE_COMMON(1)>;
 			interconnect-names =
 					"cqi_r1", "cqi_r5", "rawi_r2", "rawi_r3",
 					"rawi_r4", "rawi_r5", "bpci_r1", "bpci_r3",
 					"grmgi_r1", "lsci_r1", "imgo_r1", "imgo_r2",
 					"drzb2no_r1", "drzb2nbo_r1", "gmpo_r1", "drzb2nco_r1",
-					"awbo_r1";
+					"awbo_r1", "ipui_i1";
 		};
 
 		cam-rms-b@3a940000 {
@@ -11697,13 +11701,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<&mmqos MASTER_LARB_PORT(SMMU_L44_P15_DRZB2NCO_R1)
 						&mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L44_P16_AWBO_R1)
-						&mmqos SLAVE_COMMON(0)>;
+						&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L27_P0_IPUI_I1)
+						&mmqos SLAVE_COMMON(1)>;
 			interconnect-names =
 					"cqi_r1", "cqi_r5", "rawi_r2", "rawi_r3",
 					"rawi_r4", "rawi_r5", "bpci_r1", "bpci_r3",
 					"grmgi_r1", "lsci_r1", "imgo_r1", "imgo_r2",
 					"drzb2no_r1", "drzb2nbo_r1", "gmpo_r1", "drzb2nco_r1",
-					"awbo_r1";
+					"awbo_r1", "ipui_i1";
 		};
 
 		cam-rms-c@3aa40000 {
