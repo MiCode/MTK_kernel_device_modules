@@ -35,9 +35,11 @@ EXPORT_SYMBOL(sbb);
 
 static void __iomem *l3ctl_sram_base_addr;
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
+static struct resource *csram_res;
 static struct cpumask *pd_cpumask;
 static int *cpu2cluster_id;
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+static void __iomem *sram_base_addr_freq_scaling;
 static bool freq_scaling_disabled = true;
 #endif
 static int pd_count;
@@ -1510,6 +1512,48 @@ void set_collab_state_manual(int type, int state)
 }
 EXPORT_SYMBOL_GPL(set_collab_state_manual);
 
+static int init_sram_mapping(void)
+{
+	struct device_node *dvfs_node;
+	struct platform_device *pdev_temp;
+
+	dvfs_node = of_find_node_by_name(NULL, "cpuhvfs");
+	if (dvfs_node == NULL) {
+		pr_info("failed to find node @ %s\n", __func__);
+		return -ENODEV;
+	}
+
+	pdev_temp = of_find_device_by_node(dvfs_node);
+	if (pdev_temp == NULL) {
+		pr_info("failed to find pdev @ %s\n", __func__);
+		return -EINVAL;
+	}
+
+	csram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 1);
+
+	if (!csram_res) {
+		pr_info("%s can't get resource\n", __func__);
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
+static int init_feature_status(void)
+{
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+	sram_base_addr_freq_scaling =
+		ioremap(csram_res->start + REG_FREQ_SCALING, LUT_ROW_SIZE);
+	if (!sram_base_addr_freq_scaling) {
+		pr_info("Remap sram_base_addr_freq_scaling failed!\n");
+		return -EIO;
+	}
+	if (readl_relaxed(sram_base_addr_freq_scaling))
+		freq_scaling_disabled = false;
+#endif
+	return 0;
+}
+
 int get_dpt_default_status(void)
 {
 	return dpt_default_status;
@@ -1519,6 +1563,18 @@ EXPORT_SYMBOL_GPL(get_dpt_default_status);
 int init_opp_cap_info(struct proc_dir_entry *dir)
 {
 	int ret;
+
+	ret = init_sram_mapping();
+	if (ret) {
+		pr_info("init_sram_mapping fail, return=%d\n", ret);
+		return ret;
+	}
+
+	ret = init_feature_status();
+	if (ret) {
+		pr_info("init_feature_status fail, return=%d\n", ret);
+		return ret;
+	}
 
 	ret = init_pd_topology();
 	if (ret)
