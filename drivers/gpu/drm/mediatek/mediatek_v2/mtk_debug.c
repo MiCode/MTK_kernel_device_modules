@@ -2561,7 +2561,9 @@ static void mtk_get_panels_info(void)
 	panel_ctx->connector_obj_id = vmalloc(sizeof(unsigned int) * panel_ctx->connector_cnt);
 	panel_ctx->possible_crtc = vzalloc(sizeof(unsigned int *) * panel_ctx->connector_cnt);
 	panel_ctx->panel_name = vzalloc(sizeof(char *) * panel_ctx->connector_cnt);
-	if (!panel_ctx->connector_obj_id || !panel_ctx->possible_crtc || !panel_ctx->panel_name) {
+	panel_ctx->dsi_mode = vzalloc((sizeof(unsigned int) * panel_ctx->connector_cnt));
+	if (!panel_ctx->connector_obj_id || !panel_ctx->possible_crtc || !panel_ctx->panel_name ||
+			!panel_ctx->dsi_mode) {
 		DDPPR_ERR("%s ojb_id or panel_name alloc fail\n", __func__);
 		goto out1;
 	}
@@ -2584,9 +2586,10 @@ static void mtk_get_panels_info(void)
 	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_ALL_CONNECTOR_PANEL_NAME, panel_ctx);
 
 	for (i = 0 ; i < panel_ctx->connector_cnt ; ++i)
-		DDPMSG("%s get connector_id %d, panel_name %s, panel_id %lu possible_crtc %x\n", __func__,
+		DDPMSG("%s get connector_id %d, panel_name %s, panel_id %lu possible_crtc %x, dsi_mode %d\n", __func__,
 				panel_ctx->connector_obj_id[i], panel_ctx->panel_name[i],
-				(unsigned long)panel_ctx->panel_id, panel_ctx->possible_crtc[i][0]);
+				(unsigned long)panel_ctx->panel_id, panel_ctx->possible_crtc[i][0],
+				panel_ctx->dsi_mode[i]);
 
 out0:
 	for (i = 0 ; i < panel_ctx->connector_cnt ; ++i) {
@@ -2596,6 +2599,7 @@ out0:
 out1:
 	vfree(panel_ctx->panel_name);
 	vfree(panel_ctx->connector_obj_id);
+	vfree(panel_ctx->dsi_mode);
 out2:
 	vfree(panel_ctx);
 }

@@ -7712,8 +7712,9 @@ int mtk_drm_ioctl_get_all_connector_panel_info(struct drm_device *dev, void *dat
 			vmalloc(sizeof(unsigned int) * __panel_ctx.connector_cnt);
 		__panel_ctx.possible_crtc = vzalloc(sizeof(unsigned int *) * __panel_ctx.connector_cnt);
 		__panel_ctx.panel_name = vzalloc(sizeof(char *) * __panel_ctx.connector_cnt);
+		__panel_ctx.dsi_mode = vzalloc(sizeof(unsigned int) * __panel_ctx.connector_cnt);
 		if (!__panel_ctx.connector_obj_id || !__panel_ctx.possible_crtc ||
-				!__panel_ctx.panel_name) {
+				!__panel_ctx.panel_name || !__panel_ctx.dsi_mode) {
 			DDPPR_ERR("%s ojb_id panel_id or panel_name alloc fail\n", __func__);
 			ret = -ENOMEM;
 			goto exit0;
@@ -7792,6 +7793,14 @@ int mtk_drm_ioctl_get_all_connector_panel_info(struct drm_device *dev, void *dat
 				goto exit3;
 			}
 		}
+		// copy dsi mode
+		ptr = panel_ctx->dsi_mode;
+		if (ptr != NULL && copy_to_user((void __user *)ptr, __panel_ctx.dsi_mode,
+				sizeof(unsigned int) * __panel_ctx.connector_cnt)) {
+			DDPPR_ERR("%s copy_to_user dsi_mode fail\n", __func__);
+			ret = -EINVAL;
+			goto exit3;
+		}
 	} else {
 		panel_ctx->connector_cnt = __panel_ctx.connector_cnt;
 		panel_ctx->default_connector_id = __panel_ctx.default_connector_id;
@@ -7810,6 +7819,7 @@ exit0:
 	vfree(__panel_ctx.connector_obj_id);
 	vfree(__panel_ctx.possible_crtc);
 	vfree(__panel_ctx.panel_name);
+	vfree(__panel_ctx.dsi_mode);
 
 	return ret;
 }

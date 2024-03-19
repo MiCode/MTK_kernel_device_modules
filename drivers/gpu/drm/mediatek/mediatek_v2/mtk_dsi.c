@@ -10711,6 +10711,8 @@ static void mtk_dsi_get_panels_info(struct mtk_dsi *dsi, struct mtk_drm_panels_i
 					GET_PANELS_STR_LEN - 1);
 				panel_ctx->connector_obj_id[dsi_cnt] = mtk_dsi->conn.base.id;
 				panel_ctx->possible_crtc[dsi_cnt][0] = encoder->possible_crtcs;
+				panel_ctx->dsi_mode[dsi_cnt] = mtk_dsi_is_cmd_mode(&mtk_dsi->ddp_comp) ?
+						MTK_PANEL_DSI_MODE_CMD : MTK_PANEL_DSI_MODE_VDO;
 			} else {
 				DDPPR_ERR("%s NULL panel_name\n", __func__);
 				break;

@@ -1642,6 +1642,12 @@ enum mtk_pq_aal_eventctl {
 
 #define GET_PANELS_STR_LEN 64
 #define MAX_CRTC_CNT 10
+enum MTK_PANEL_DSI_MODE {
+	MTK_PANEL_DSI_MODE_UNKNOWN = 0,
+	MTK_PANEL_DSI_MODE_VDO,
+	MTK_PANEL_DSI_MODE_CMD,
+};
+
 struct mtk_drm_panels_info {
 	int connector_cnt;
 	int default_connector_id;
@@ -1649,6 +1655,7 @@ struct mtk_drm_panels_info {
 	unsigned int **possible_crtc;
 	char **panel_name;
 	unsigned int *panel_id;
+	unsigned int *dsi_mode;
 };
 
 struct DISP_PANEL_BASE_VOLTAGE {
