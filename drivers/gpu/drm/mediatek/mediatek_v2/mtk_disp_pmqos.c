@@ -282,6 +282,7 @@ static unsigned int mtk_disp_larb_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc,
 	unsigned int subcomm_bw_sum[4] = {0};
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned int crtc_idx = drm_crtc_index(crtc);
 	int oddmr_hrt = 0;
 
 	/* sub_comm0: exdma2(0) + exdma7(5) + 1_exdma5(11) + (1_exdma8)
@@ -291,14 +292,23 @@ static unsigned int mtk_disp_larb_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc,
 	 */
 	for (i = 0; i < max_ovl_phy_layer; i++) {
 		if (mtk_crtc->usage_ovl_fmt[i]) {
-			if (i == 0 || i == 5 || i == 11)
+			if (i == 0 || i == 5 || i == 11) {
 				subcomm_bw_sum[0] += bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
-			else if (i == 1 || i == 4 || i == 10)
+				if (priv->last_hrt_channel_bw_sum[crtc_idx][0] != subcomm_bw_sum[0])
+					priv->hrt_channel_bw_sum[crtc_idx][0] = subcomm_bw_sum[0];
+			} else if (i == 1 || i == 4 || i == 10) {
 				subcomm_bw_sum[1] += bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
-			else if (i == 2 || i == 7 || i == 9)
+				if (priv->last_hrt_channel_bw_sum[crtc_idx][1] != subcomm_bw_sum[1])
+					priv->hrt_channel_bw_sum[crtc_idx][1] = subcomm_bw_sum[1];
+			} else if (i == 2 || i == 7 || i == 9) {
 				subcomm_bw_sum[2] += bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
-			else if (i == 3 || i == 6 || i == 8)
+				if (priv->last_hrt_channel_bw_sum[crtc_idx][2] != subcomm_bw_sum[2])
+					priv->hrt_channel_bw_sum[crtc_idx][2] = subcomm_bw_sum[2];
+			} else if (i == 3 || i == 6 || i == 8) {
 				subcomm_bw_sum[3] += bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
+				if (priv->last_hrt_channel_bw_sum[crtc_idx][3] != subcomm_bw_sum[3])
+					priv->hrt_channel_bw_sum[crtc_idx][3] = subcomm_bw_sum[3];
+			}
 		}
 	}
 
@@ -308,6 +318,51 @@ static unsigned int mtk_disp_larb_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc,
 	}
 
 	return mtk_disp_getMaxBW(subcomm_bw_sum, max_sub_comm, total_bw);
+}
+
+static void mtk_disp_channel_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
+{
+	int i, j;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned int crtc_idx = drm_crtc_index(crtc);
+	unsigned int channel_sum = 0;
+
+	for (i = 0; i < BW_CHANNEL_NR; i++) {
+		for (j = 0; j < MAX_CRTC; j++)
+			channel_sum += priv->hrt_channel_bw_sum[j][i];
+		mtk_vidle_channel_bw_set(channel_sum, 2 + (i * 4)); //2, 6, 10, 14
+		DDPINFO("%s, total hrt bw %d\n", __func__, channel_sum);
+
+		priv->last_hrt_channel_bw_sum[crtc_idx][i] = priv->hrt_channel_bw_sum[crtc_idx][i];
+	}
+}
+
+static void mtk_disp_channel_srt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
+{
+	int i,j;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned int channel_sum = 0;
+
+	for (i = 0; i < BW_CHANNEL_NR; i++) {
+		for (j = 0; j < MAX_CRTC; j++)
+			channel_sum += priv->srt_channel_bw_sum[j][i];
+		mtk_vidle_channel_bw_set(channel_sum, (i * 4)); //0, 4, 8, 12
+		DDPINFO("%s, total srt bw %d\n", __func__, channel_sum);
+	}
+
+}
+
+static void mtk_disp_clear_channel_srt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
+{
+	int i;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned int crtc_idx = drm_crtc_index(crtc);
+
+	for (i = 0; i < BW_CHANNEL_NR; i++)
+		priv->srt_channel_bw_sum[crtc_idx][i] = 0;
 }
 
 #ifdef CONFIG_MTK_FB_MMDVFS_SUPPORT
@@ -419,6 +474,41 @@ unsigned int mtk_disp_get_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc)
 			tmp = bw_base;
 	}
 	return tmp;
+}
+
+bool mtk_disp_check_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc)
+{
+	int i = 0;
+	bool check_flag = false;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned int crtc_idx = drm_crtc_index(crtc);
+
+	for (i = 0; i < BW_CHANNEL_NR; i++)
+		if (priv->last_hrt_channel_bw_sum[crtc_idx][i] !=
+				priv->hrt_channel_bw_sum[crtc_idx][i])
+			check_flag = true;
+	return check_flag;
+}
+
+
+void mtk_disp_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+
+	if (priv->data->mmsys_id == MMSYS_MT6991)
+		mtk_disp_channel_srt_bw_MT6991(mtk_crtc);
+
+}
+
+void mtk_disp_clear_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+
+	if (priv->data->mmsys_id == MMSYS_MT6991)
+		mtk_disp_clear_channel_srt_bw_MT6991(mtk_crtc);
 }
 
 
@@ -566,6 +656,8 @@ int mtk_disp_set_per_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 		mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(tmp1));
 
 		mtk_vidle_dvfs_bw_set(tmp1);
+		if (priv->data->mmsys_id == MMSYS_MT6991)
+			mtk_disp_channel_hrt_bw_MT6991(mtk_crtc);
 		DDPINFO("%s, CRTC%d larb bw=%u bw_base=%d\n",
 			__func__, crtc_idx, tmp1, bw_base);
 	}

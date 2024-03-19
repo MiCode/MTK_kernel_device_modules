@@ -458,6 +458,27 @@ unsigned int mtk_wdma_aid_sel_MT6895(struct mtk_ddp_comp *comp)
 	}
 }
 
+unsigned int mtk_wdma_hrt_channel_MT6991(struct mtk_ddp_comp *comp)
+{
+	switch (comp->id) {
+	case DDP_COMPONENT_OVLSYS_WDMA3:
+		return 3;
+	case DDP_COMPONENT_WDMA0:
+	case DDP_COMPONENT_OVLSYS_WDMA1:
+		return 7;
+	case DDP_COMPONENT_WDMA1:
+	case DDP_COMPONENT_WDMA2:
+	case DDP_COMPONENT_WDMA3:
+	case DDP_COMPONENT_WDMA4:
+	case DDP_COMPONENT_OVLSYS_WDMA2:
+		return 11;
+	case DDP_COMPONENT_OVLSYS_WDMA0:
+		return 15;
+	default:
+		return 0;
+	}
+}
+
 
 resource_size_t mtk_wdma_check_sec_reg_MT6886(struct mtk_ddp_comp *comp)
 {
@@ -1942,6 +1963,8 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			if (!IS_ERR(comp->hrt_qos_req))
 				__mtk_disp_set_module_hrt(comp->hrt_qos_req, 1306,
 					priv->data->respective_ostdl);
+			if (wdma->data->hrt_channel)
+				mtk_vidle_channel_bw_set(1306, wdma->data->hrt_channel(comp));
 		}
 		ret = WDMA_REQ_HRT;
 		break;
@@ -2349,6 +2372,7 @@ static const struct mtk_disp_wdma_data mt6991_wdma_driver_data = {
 	.need_bypass_shadow = true,
 	.is_support_34bits = true,
 	.use_larb_control_sec = false,
+	.hrt_channel = &mtk_wdma_hrt_channel_MT6991,
 };
 
 static const struct mtk_disp_wdma_data mt6897_wdma_driver_data = {
