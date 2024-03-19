@@ -7784,7 +7784,7 @@
 		wakeup-source;
 		interrupt-controller;
 		interrupt-parent = <&pio>;
-		interrupts = <24 IRQ_TYPE_LEVEL_LOW>;
+		interrupts = <4 IRQ_TYPE_LEVEL_LOW>;
 		interrupt-names = "IRQB";
 		mt6360_chg: chg {
 			compatible = "mediatek,mt6360-chg";
