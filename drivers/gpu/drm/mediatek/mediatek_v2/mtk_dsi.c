@@ -3128,6 +3128,8 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			DRM_MMP_MARK(dsi0, status, 0);
 		else if (dsi->ddp_comp.id == DDP_COMPONENT_DSI1)
 			DRM_MMP_MARK(dsi1, status, 0);
+		else if (dsi->ddp_comp.id == DDP_COMPONENT_DSI2)
+			DRM_MMP_MARK(dsi2, status, 0);
 	}
 
 	DDPIRQ("%s irq, val:0x%x\n", mtk_dump_comp_str(&dsi->ddp_comp), status);
@@ -3242,13 +3244,15 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 		if ((status & TE_RDY_INT_FLAG) &&
 				(atomic_read(&mtk_crtc->d_te.te_switched) != 1)) {
 			if (dsi->ddp_comp.id == DDP_COMPONENT_DSI0 ||
-				dsi->ddp_comp.id == DDP_COMPONENT_DSI1) {
+				dsi->ddp_comp.id == DDP_COMPONENT_DSI1 ||
+				dsi->ddp_comp.id == DDP_COMPONENT_DSI2) {
 				unsigned long long ext_te_time = sched_clock();
 				lcm_fps_ctx_update(ext_te_time, 0, 0);
 			}
 
 			if ((dsi->ddp_comp.id == DDP_COMPONENT_DSI0 ||
-				dsi->ddp_comp.id == DDP_COMPONENT_DSI1) &&
+				dsi->ddp_comp.id == DDP_COMPONENT_DSI1 ||
+				dsi->ddp_comp.id == DDP_COMPONENT_DSI2) &&
 				mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 				unsigned long flags;
 
@@ -3335,7 +3339,9 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 		if (status & TARGET_LINE_INT_FLAG) {
 			if (mtk_crtc && mtk_crtc->esd_ctx) {
 				if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) &&
-					dsi->ddp_comp.id == DDP_COMPONENT_DSI0 &&
+					(dsi->ddp_comp.id == DDP_COMPONENT_DSI0 ||
+					 dsi->ddp_comp.id == DDP_COMPONENT_DSI1 ||
+					 dsi->ddp_comp.id == DDP_COMPONENT_DSI2) &&
 					(priv->data->mmsys_id == MMSYS_MT6989 ||
 					 priv->data->mmsys_id == MMSYS_MT6991)) {
 					CRTC_MMP_MARK(index, target_time, dsi->ddp_comp.id, 0xffff0001);
@@ -3348,7 +3354,9 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 		if (status & FRAME_DONE_INT_FLAG) {
 			if (mtk_crtc && mtk_crtc->esd_ctx) {
 				if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) &&
-					dsi->ddp_comp.id == DDP_COMPONENT_DSI0) {
+					(dsi->ddp_comp.id == DDP_COMPONENT_DSI0 ||
+					 dsi->ddp_comp.id == DDP_COMPONENT_DSI1 ||
+					 dsi->ddp_comp.id == DDP_COMPONENT_DSI2)) {
 					CRTC_MMP_MARK(index, target_time, dsi->ddp_comp.id, 0xffff0000);
 					atomic_set(&mtk_crtc->esd_ctx->target_time, 0);
 				}
@@ -3361,7 +3369,9 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				wakeup_dsi_wq(&dsi->frame_done);
 
 			if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) &&
-				dsi->ddp_comp.id == DDP_COMPONENT_DSI0 &&
+				(dsi->ddp_comp.id == DDP_COMPONENT_DSI0 ||
+				 dsi->ddp_comp.id == DDP_COMPONENT_DSI1 ||
+				 dsi->ddp_comp.id == DDP_COMPONENT_DSI2) &&
 					mtk_crtc->pf_ts_type == IRQ_DSI_EOF) {
 				mtk_crtc->pf_time = ktime_get();
 				atomic_set(&mtk_crtc->signal_irq_for_pre_fence, 1);
@@ -4993,6 +5003,9 @@ static void mtk_dsi_encoder_disable(struct drm_encoder *encoder)
 	else if (comp->id == DDP_COMPONENT_DSI1)
 		mtk_disp_sub_notifier_call_chain(MTK_DISP_EARLY_EVENT_BLANK,
 					&data);
+	else if (comp->id == DDP_COMPONENT_DSI2)
+		mtk_disp_3rd_notifier_call_chain(MTK_DISP_EARLY_EVENT_BLANK,
+					&data);
 
 	CRTC_MMP_MARK(index, dsi_suspend, 2, 0);
 
@@ -5007,6 +5020,9 @@ static void mtk_dsi_encoder_disable(struct drm_encoder *encoder)
 					&data);
 	else if (comp->id == DDP_COMPONENT_DSI1)
 		mtk_disp_sub_notifier_call_chain(MTK_DISP_EVENT_BLANK,
+					&data);
+	else if (comp->id == DDP_COMPONENT_DSI2)
+		mtk_disp_3rd_notifier_call_chain(MTK_DISP_EVENT_BLANK,
 					&data);
 
 	CRTC_MMP_EVENT_END(index, dsi_suspend,
@@ -5052,6 +5068,11 @@ static void mtk_dsi_encoder_enable(struct drm_encoder *encoder)
 		mtk_disp_sub_notifier_call_chain(MTK_DISP_EARLY_EVENT_BLANK,
 					&data);
 		DDP_PROFILE("[PROFILE] %s before notify end\n", __func__);
+	} else if (comp->id == DDP_COMPONENT_DSI2) {
+		DDP_PROFILE("[PROFILE] %s before notify start\n", __func__);
+		mtk_disp_3rd_notifier_call_chain(MTK_DISP_EARLY_EVENT_BLANK,
+					&data);
+		DDP_PROFILE("[PROFILE] %s before notify end\n", __func__);
 	}
 
 	if (is_bdg_supported())
@@ -5071,6 +5092,11 @@ static void mtk_dsi_encoder_enable(struct drm_encoder *encoder)
 	} else if (comp->id == DDP_COMPONENT_DSI1) {
 		DDP_PROFILE("[PROFILE] %s after notify start\n", __func__);
 		mtk_disp_sub_notifier_call_chain(MTK_DISP_EVENT_BLANK,
+					&data);
+		DDP_PROFILE("[PROFILE] %s after notify end\n", __func__);
+	} else if (comp->id == DDP_COMPONENT_DSI2) {
+		DDP_PROFILE("[PROFILE] %s after notify start\n", __func__);
+		mtk_disp_3rd_notifier_call_chain(MTK_DISP_EVENT_BLANK,
 					&data);
 		DDP_PROFILE("[PROFILE] %s after notify end\n", __func__);
 	}
@@ -5432,16 +5458,18 @@ static int mtk_dsi_create_conn_enc(struct drm_device *drm, struct mtk_dsi *dsi)
 	 * Currently display data paths are statically assigned to a crtc each.
 	 * crtc 0 is OVL0 -> COLOR0 -> AAL -> OD -> RDMA0 -> UFOE -> DSI0
 	 */
-	if (of_property_read_u32(dsi->dev->of_node, "possible-crtcs", &possible_crtcs))
+	if (of_property_read_u32(dsi->dev->of_node, "possible-crtcs", &possible_crtcs)) {
 		possible_crtcs = 0;
-	DDPMSG("%s possible_crtcs=%d\n", __func__, possible_crtcs);
+		DDPMSG("%s can't find possible-crtcs in FDT\n", __func__);
+	}
 
 	if (possible_crtcs != 0)
 		dsi->encoder.possible_crtcs = possible_crtcs;
-	else if (comp && comp->id == DDP_COMPONENT_DSI0)
-		dsi->encoder.possible_crtcs = BIT(0);
 	else
-		dsi->encoder.possible_crtcs = BIT(3);
+		dsi->encoder.possible_crtcs =
+			mtk_drm_find_possible_crtc_by_comp(drm, *comp);
+
+	DDPMSG("%s possible_crtcs=%d\n", __func__, dsi->encoder.possible_crtcs);
 
 	/* If there's a bridge, attach to it and let it create the connector */
 	ret = mtk_drm_attach_bridge(dsi->bridge, &dsi->encoder);
@@ -10206,7 +10234,8 @@ static void mtk_dsi_dy_fps_cmdq_cb(struct cmdq_cb_data data)
 			goto done;
 		}
 		if (comp && (comp->id == DDP_COMPONENT_DSI0 ||
-			comp->id == DDP_COMPONENT_DSI1)) {
+			comp->id == DDP_COMPONENT_DSI1 ||
+			comp->id == DDP_COMPONENT_DSI2)) {
 			dsi = container_of(comp, struct mtk_dsi, ddp_comp);
 			if (dsi && dsi->driver_data && dsi->driver_data->mmclk_by_datarate)
 				dsi->driver_data->mmclk_by_datarate(dsi, mtk_crtc, 1);
@@ -10437,7 +10466,8 @@ static irqreturn_t dsi_te1_irq_handler(int irq, void *data)
 		return IRQ_NONE;
 
 	if (dsi->ddp_comp.id == DDP_COMPONENT_DSI0 ||
-		dsi->ddp_comp.id == DDP_COMPONENT_DSI1) {
+		dsi->ddp_comp.id == DDP_COMPONENT_DSI1 ||
+		dsi->ddp_comp.id == DDP_COMPONENT_DSI2) {
 		unsigned long long ext_te_time = sched_clock();
 
 		lcm_fps_ctx_update(ext_te_time, 0, 0);

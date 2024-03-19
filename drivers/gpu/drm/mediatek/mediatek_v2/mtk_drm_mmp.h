@@ -43,6 +43,7 @@ struct DRM_MMP_Events {
 	mmp_event dsi;
 	mmp_event dsi0;
 	mmp_event dsi1;
+	mmp_event dsi2;
 	mmp_event aal;
 	mmp_event aal0;
 	mmp_event aal1;
