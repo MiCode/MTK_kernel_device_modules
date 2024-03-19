@@ -142,10 +142,10 @@
 #define DSI_VSA_NL(data) (0x20 + data->reg_40_ofs)
 #define DSI_VBP_NL(data) (0x24 + data->reg_40_ofs)
 #define DSI_VFP_NL(data) (0x28 + data->reg_40_ofs)
-#define DSI_SIZE_CON(data) (data->dsi_size_con?data->dsi_size_con:0x38)
+#define DSI_SIZE_CON(data) (data->dsi_size_con ? data->dsi_size_con : 0x38)
 
 /*Msync 2.0 related register start*/
-#define DSI_VFP_EARLY_STOP(data) (data->dsi_vfp_early_stop?data->dsi_vfp_early_stop:0x3c)
+#define DSI_VFP_EARLY_STOP(data) (data->dsi_vfp_early_stop ? data->dsi_vfp_early_stop : 0x3c)
 #define VFP_EARLY_STOP_EN BIT(0)
 #define FLD_VFP_EARLY_STOP_EN REG_FLD_MSB_LSB(0, 0)
 #define VFP_EARLY_STOP_SKIP_VSA_EN BIT(1)
@@ -161,8 +161,8 @@
 /*Msync 2.0 related register end*/
 
 #define DSI_VACT_NL(data)	(0x2c + data->reg_40_ofs)
-#define DSI_LFR_CON(data)	(data->dsi_lfr_con?data->dsi_lfr_con:0x30)
-#define DSI_LFR_STA(data)	(data->dsi_lfr_con?data->dsi_lfr_con+0x4:0x34)
+#define DSI_LFR_CON(data)	(data->dsi_lfr_con ? data->dsi_lfr_con : 0x30)
+#define DSI_LFR_STA(data)	(data->dsi_lfr_con ? data->dsi_lfr_con + 0x4 : 0x34)
 #define LFR_STA_FLD_REG_LFR_SKIP_STA REG_FLD_MSB_LSB(8, 8)
 #define LFR_STA_FLD_REG_LFR_SKIP_CNT REG_FLD_MSB_LSB(5, 0)
 #define LFR_CON_FLD_REG_LFR_MODE REG_FLD_MSB_LSB(1, 0)
@@ -182,12 +182,12 @@
 
 #define DSI_BLLP_WC(data)	(0x5c + data->reg_30_ofs)
 
-#define DSI_CMDQ_SIZE(data)	(data->dsi_cmdq_size?data->dsi_cmdq_size:0x60)
+#define DSI_CMDQ_SIZE(data)	(data->dsi_cmdq_size ? data->dsi_cmdq_size : 0x60)
 #define CMDQ_SIZE 0xff
 #define CMDQ_PAGE 0x70000
 #define CMDQ_SIZE_SEL BIT(15)
 
-#define DSI_CMD_TYPE1_HS(data)	(data->dsi_type1_hs?data->dsi_type1_hs:0x6C)
+#define DSI_CMD_TYPE1_HS(data)	(data->dsi_type1_hs ? data->dsi_type1_hs : 0x6C)
 #define CMD_HS_HFP_BLANKING_NULL_LEN 0xffff
 #define CMD_HS_HFP_BLANKING_HS_EN BIT(16)
 #define CMD_HS_HFP_BLANKING_NULL_EN BIT(17)
@@ -195,7 +195,7 @@
 #define CMD_TYPE1_HS_FLD_HFP_BLANKING_NULL_LEN REG_FLD_MSB_LSB(3, 0)
 #define CMD_TYPE1_HS_FLD_HFP_BLANKING_NULL_EN REG_FLD_MSB_LSB(17, 17)
 
-#define DSI_HSTX_CKL_WC(data)	(data->dsi_hstx_ckl_wc?data->dsi_hstx_ckl_wc:0x64)
+#define DSI_HSTX_CKL_WC(data)	(data->dsi_hstx_ckl_wc ? data->dsi_hstx_ckl_wc : 0x64)
 
 #define DSI_RX_DATA0(data)	(0x74 + data->reg_30_ofs)
 #define DSI_RX_DATA1(data)	(0x78 + data->reg_30_ofs)
@@ -205,32 +205,38 @@
 #define DSI_RACK(data)	(0x84 + data->reg_30_ofs)
 #define RACK BIT(0)
 
-#define DSI_MEM_CONTI(data)	(data->dsi_mem_conti?data->dsi_mem_conti:0x90)
+#define DSI_MEM_CONTI(data)	(data->dsi_mem_conti ? data->dsi_mem_conti : 0x90)
 #define DSI_WMEM_CONTI 0x3C
 
-#define DSI_TIME_CON0(data)	(data->dsi_time_con?data->dsi_time_con:0xA0)
+#define DSI_TIME_CON0(data)	(data->dsi_time_con ? data->dsi_time_con : 0xA0)
 #define FLD_SKEWCAL_PRD REG_FLD_MSB_LSB(31, 16)
-#define DSI_TIME_CON1(data)	(data->dsi_time_con?data->dsi_time_con+0x4:0xAA)
-#define DSI_RESERVED(data)	(data->dsi_reserved?data->dsi_reserved:0xF0)
+#define DSI_TIME_CON1(data)	(data->dsi_time_con ? data->dsi_time_con + 0x4 : 0xAA)
+#define DSI_RESERVED(data)	(data->dsi_reserved ? data->dsi_reserved : 0xF0)
 #define DSI_VDE_BLOCK_ULTRA BIT(29)
 
-#define DSI_PHY_LCPAT(data)	(data->reg_phy_base?data->reg_phy_base+0x10:0x100)
-#define DSI_PHY_LCCON(data)	(data->reg_phy_base?0x1D0:0x104)
+#define DSI_PHY_LCPAT(data)	(data->reg_phy_base ? data->reg_phy_base + 0x10 : 0x100)
+#define DSI_PHY_LCCON(data)	(data->reg_phy_base ? 0x1D0 : 0x104)
 #define LC_HS_TX_EN BIT(0)
 #define LC_ULPM_EN BIT(1)
 #define LC_WAKEUP_EN BIT(2)
 #define PHY_FLD_REG_LC_HSTX_EN REG_FLD_MSB_LSB(0, 0)
 
-#define DSI_PHY_LD0CON(data)	(data->reg_phy_base?0x1D4:0x108)
+#define DSI_PHY_CON(data)		(data->reg_phy_base + 0x14)
+#define CPHY_EN BIT(0)
+
+#define DSI_DPHY_LANE_SWAP(data)	(data->reg_phy_base + 0x18)
+#define DSI_CPHY_TRIO_SWAP(data)	(data->reg_phy_base + 0x1C)
+
+#define DSI_PHY_LD0CON(data)	(data->reg_phy_base ? 0x1D4 : 0x108)
 #define LD0_HS_TX_EN BIT(0)
 #define LD0_ULPM_EN BIT(1)
 #define LD0_WAKEUP_EN BIT(2)
 #define LDX_ULPM_AS_L0 BIT(3)
 
-#define DSI_PHY_SYNCON(data)	(data->dsi_phy_syncon?data->dsi_phy_syncon:0x10C)
+#define DSI_PHY_SYNCON(data)	(data->dsi_phy_syncon ? data->dsi_phy_syncon : 0x10C)
 #define HS_DB_SYNC_EN BIT(24)
 
-#define DSI_PHY_TIMECON0(data)	(data->reg_phy_base?data->reg_phy_base:0x110)
+#define DSI_PHY_TIMECON0(data)	(data->reg_phy_base ? data->reg_phy_base : 0x110)
 #define LPX (0xff << 0)
 #define HS_PREP (0xff << 8)
 #define HS_ZERO (0xff << 16)
@@ -274,32 +280,32 @@
 #define VM_CMD_EN BIT(0)
 #define TS_VFP_EN BIT(5)
 
-#define DSI_STATE_DBG6(data)	(data->dsi_state_dbg6?data->dsi_state_dbg6:0x160)
+#define DSI_STATE_DBG6(data)	(data->dsi_state_dbg6 ? data->dsi_state_dbg6 : 0x160)
 #define STATE_DBG6_FLD_REG_CMCTL_STATE REG_FLD_MSB_LSB(14, 0)
 
 /*Msync 2.0*/
 #define DSI_STATE_DBG7(data)	(DSI_STATE_DBG6(data) + 0x4)
-#define FLD_VFP_PERIOD REG_FLD_MSB_LSB(12, 12)
+#define FLD_VFP_PERIOD		REG_FLD_MSB_LSB(12, 12)
 
 #define DSI_STATE_DBG8(data)	(DSI_STATE_DBG6(data) + 0x8)
 #define DSI_STATE_DBG9(data)	(DSI_STATE_DBG6(data) + 0xc)
 
 
-#define DSI_DEBUG_SEL(data)	(data->dsi_dbg_sel?data->dsi_dbg_sel:0x170)
+#define DSI_DEBUG_SEL(data)	(data->dsi_dbg_sel ? data->dsi_dbg_sel : 0x170)
 #define MM_RST_SEL BIT(10)
 
-#define DSI_SHADOW_DEBUG(data)	(data->dsi_shadow_dbg?data->dsi_shadow_dbg:0xc00)
+#define DSI_SHADOW_DEBUG(data)	(data->dsi_shadow_dbg ? data->dsi_shadow_dbg : 0xc00)
 #define DSI_BYPASS_SHADOW BIT(1)
 #define DSI_READ_WORKING BIT(2)
 
-#define DSI_SCRAMBLE_CON(data)	(data->dsi_scramble_con?data->dsi_scramble_con:0x1d8)
+#define DSI_SCRAMBLE_CON(data)	(data->dsi_scramble_con ? data->dsi_scramble_con : 0x1d8)
 #define DATA_SCRAMBLE_EN BIT(31)
 
-#define DSI_TARGET_NL(data)	(data->dsi_target_nl?data->dsi_target_nl:0x300)
-#define TARGET_NL REG_FLD_MSB_LSB(14, 0)
+#define DSI_TARGET_NL(data)	(data->dsi_target_nl ? data->dsi_target_nl : 0x300)
+#define TARGET_NL	REG_FLD_MSB_LSB(14, 0)
 #define TARGET_NL_EN BIT(16)
 
-#define DSI_BUF_CON0(data)	(data->dsi_buf_con_base?data->dsi_buf_con_base:0x400)
+#define DSI_BUF_CON0(data)	(data->dsi_buf_con_base ? data->dsi_buf_con_base : 0x400)
 #define BUF_BUF_EN BIT(0)
 #define DSI_BUF_CON1(data)	(DSI_BUF_CON0(data) + 0x4)
 
@@ -1646,6 +1652,42 @@ static int mtk_dsi_set_data_rate(struct mtk_dsi *dsi)
 	return ret;
 }
 
+void mtk_dsi_tx_lane_config(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
+	void *handle)
+{
+	enum MIPITX_PHY_LANE_SWAP *swap_base;
+	unsigned int val;
+
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL && dsi->ext) {
+		if (dsi->ext->params->is_cphy) {
+			if (dsi->ext->params->lane_swap_en)
+				DDPMSG("%s cphy lane swap need implement\n", __func__);
+			else {
+				if (handle == NULL)
+					mtk_dsi_mask(dsi, DSI_PHY_CON(dsi->driver_data),
+						CPHY_EN, CPHY_EN);
+				else
+					cmdq_pkt_write(handle, comp->cmdq_base,
+						comp->regs_pa + DSI_PHY_CON(dsi->driver_data),
+						CPHY_EN, CPHY_EN);
+			}
+		} else {
+			if (dsi->ext->params->lane_swap_en) {
+				swap_base = dsi->ext->params->lane_swap[0];
+				val = swap_base[0] + (swap_base[1] << 4) + (swap_base[2] << 8) +
+					(swap_base[3] << 12) + (swap_base[4] << 16);
+				DDPMSG("%s val=0x%x\n", __func__, val);
+				if (handle == NULL)
+					writel(val, dsi->regs + DSI_DPHY_LANE_SWAP(dsi->driver_data));
+				else
+					cmdq_pkt_write(handle, comp->cmdq_base,
+						comp->regs_pa + DSI_DPHY_LANE_SWAP(dsi->driver_data),
+						val, ~0);
+			}
+		}
+	}
+}
+
 void mtk_dsi_config_null_packet(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	void *handle)
 {
@@ -1797,21 +1839,8 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 		}
 	}
 
-	if ((disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) && dsi->ext &&
-		(priv->data->mmsys_id == MMSYS_MT6991)) {
-		if (dsi->ext->params->is_cphy) {
-			writel(0x3f3f0001, dsi->regs + dsi->driver_data->reg_phy_base + 0x14);
-			if (dsi->ext->params->lane_swap_en)
-				DDPMSG("%s cphy lane swap need implement\n", __func__);
-			else
-				writel(0x3210, dsi->regs + dsi->driver_data->reg_phy_base + 0x1c);
-		} else {
-			if (dsi->ext->params->lane_swap_en)
-				writel(0x442310, dsi->regs + dsi->driver_data->reg_phy_base + 0x18);
-			else
-				writel(0x443210, dsi->regs + dsi->driver_data->reg_phy_base + 0x18);
-		}
-	}
+	if (priv->data->mmsys_id == MMSYS_MT6991)
+		mtk_dsi_tx_lane_config(dsi, NULL, NULL);
 
 	mtk_dsi_config_null_packet(dsi, NULL, NULL);
 
