@@ -103,7 +103,8 @@
 						struct mbraink_voting_struct_data*)
 
 #define RO_POWER_SPM_L2_INFO	_IOR(IOC_MAGIC, POWER_SPM_L2_INFO, \
-						struct mbraink_power_spm_raw*)
+						struct mbraink_power_spm_l2_info*)
+
 
 #define RO_POWER_SCP_INFO	_IOR(IOC_MAGIC, POWER_SCP_INFO, \
 						struct mbraink_power_scp_raw*)

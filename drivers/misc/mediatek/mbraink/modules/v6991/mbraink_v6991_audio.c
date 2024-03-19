@@ -10,7 +10,7 @@
 #include <mbraink_modules_ops_def.h>
 #include "mbraink_v6991_audio.h"
 
-#include <swpm_module_ext.h>
+#include <swpm_module_psp.h>
 
 static int mbraink_v6991_audio_getIdleRatioInfo(
 	struct mbraink_audio_idleRatioInfo *pmbrainkAudioIdleRatioInfo)

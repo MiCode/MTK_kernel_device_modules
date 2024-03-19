@@ -1142,9 +1142,15 @@ static int mbraink_sys_res_pm_event(struct notifier_block *notifier,
 {
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
+		pr_notice("mbraink_PM_SUSPEND_PREPARE\n");
+		mbraink_power_suspend_prepare();
+		pr_notice("mbraink_PM_SUSPEND_PREPARE exit\n");
 		return NOTIFY_DONE;
 	case PM_POST_SUSPEND:
+		pr_notice("mbraink_PM_POST_SUSPEND\n");
+		mbraink_power_post_suspend();
 		mbraink_notifier_post_suspend();
+		pr_notice("mbraink_PM_POST_SUSPEND exit\n");
 		return NOTIFY_DONE;
 	default:
 		return NOTIFY_DONE;

@@ -9,7 +9,7 @@
 #include <mbraink_modules_ops_def.h>
 #include "mbraink_v6991_memory.h"
 
-#include <swpm_module_ext.h>
+#include <swpm_module_psp.h>
 #include <dvfsrc-mb.h>
 
 static int mbraink_v6991_memory_getDdrInfo(struct mbraink_memory_ddrInfo *pMemoryDdrInfo)

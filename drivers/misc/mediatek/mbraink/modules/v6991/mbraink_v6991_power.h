@@ -10,14 +10,10 @@
 #include <linux/io.h>
 #include <mbraink_ioctl_struct_def.h>
 
-#if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
-		IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
-#include <lpm_dbg_common_v2.h>
-#endif
 
 #define MAX_POWER_HD_SZ 8
-#define SPM_DATA_SZ (5640)
-#define SPM_TOTAL_SZ (MAX_POWER_HD_SZ+SPM_DATA_SZ)
+#define SPM_TOTAL_MAX_SIG_NUM (1000)
+
 
 #if IS_ENABLED(CONFIG_MTK_LPM_MT6985) && \
 	IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
