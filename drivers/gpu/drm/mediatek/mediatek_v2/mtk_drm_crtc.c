@@ -129,6 +129,22 @@ bool flush_add_delay_need;
 bool msync2_is_on;
 unsigned int atomic_fps;
 static unsigned int msync_fps_record[MSYNC20_AVG_FPS_FRAME_NUM];
+#define MT6991_GCE_D_PA (0x300c0000)
+struct cmdq_instruction {
+	u16 arg_c:16;
+	u16 arg_b:16;
+	u16 arg_a:16;
+	u8 s_op:5;
+	u8 arg_c_type:1;
+	u8 arg_b_type:1;
+	u8 arg_a_type:1;
+	u8 op:8;
+};
+#define TPR_MAX (0xFFFFFFFF)
+#define GCE_DBG3 (0x3010)
+#define CMDQ_GET_ARG_B(arg)		(((arg) & GENMASK(31, 16)) >> 16)
+#define CMDQ_GET_ARG_C(arg)		((arg) & GENMASK(15, 0))
+#define CMDQ_TPR_TIMEOUT_EN  (0xDC)
 
 /* Overlay bw monitor define */
 struct layer_compress_ratio_data
@@ -7050,9 +7066,12 @@ static int _mtk_crtc_cmdq_retrig(void *data)
 static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 {
 	struct drm_crtc *crtc = data.data;
+	struct mtk_drm_private *priv = NULL;
+	int id;
 
 #ifndef DRM_CMDQ_DISABLE
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct cmdq_client *client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 	struct cmdq_client *cl;
 	dma_addr_t trig_pc;
 	u64 *inst;
@@ -7063,12 +7082,37 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 		return;
 	}
 
+	if (mtk_crtc->base.dev && mtk_crtc->base.dev->dev_private)
+		priv = mtk_crtc->base.dev->dev_private;
+	else if (!priv) {
+		DDPPR_ERR("%s:%d errors with NULL mtk_crtc->base.dev->dev_private\n",
+			__func__, __LINE__);
+		return;
+	}
+
+	id = drm_crtc_index(crtc);
+
 	mtk_dprec_snapshot();
 
 	DDPPR_ERR("%s cmdq timeout, crtc id:%d\n", __func__,
 		drm_crtc_index(crtc));
 	mtk_drm_crtc_analysis(crtc);
 	mtk_drm_crtc_dump(crtc);
+
+	if (mtk_crtc_is_frame_trigger_mode(crtc) &&
+		msync2_is_on && (id == 0) &&
+		(flush_add_delay_need == true) &&
+		(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MSYNC2_0_WAIT_EPT))) {
+		unsigned long long current_time = ktime_get_boottime_ns();
+
+		DDPMSG("flush+delay:%llu callback:%llu\n", flush_add_delay_time,
+			current_time/1000);
+		if (flush_add_delay_time > (current_time/1000)) {
+			cmdq_thread_dump_spr((struct cmdq_thread *)client->chan->con_priv);
+			DDPMSG("flush+delay:%llu callback:%llu\n", flush_add_delay_time,
+				current_time/1000);
+		}
+	}
 
 #ifndef DRM_CMDQ_DISABLE
 	if ((mtk_crtc->trig_loop_cmdq_handle) &&
@@ -8326,6 +8370,22 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	id = drm_crtc_index(crtc);
 
 	CRTC_MMP_EVENT_START(id, frame_cfg, (unsigned long)cb_data->cmdq_handle, 0);
+
+	if (mtk_crtc_is_frame_trigger_mode(crtc) &&
+		msync2_is_on && (id == 0) &&
+		(flush_add_delay_need == true) &&
+		(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MSYNC2_0_WAIT_EPT))) {
+		unsigned long long current_time = ktime_get_boottime_ns();
+
+		DDPINFO("flush+delay:%llu callback:%llu\n", flush_add_delay_time,
+			current_time/1000);
+		if (flush_add_delay_time > (current_time/1000)) {
+			cmdq_thread_dump_spr((struct cmdq_thread *)(
+			(struct cmdq_client *)cb_data->cmdq_handle->cl)->chan->con_priv);
+			DDPAEE("%s:%d flush+delay time > callback time\n", __func__,
+				__LINE__);
+		}
+	}
 
 	if ((drm_crtc_index(crtc) != 2) && (priv && priv->power_state)) {
 		// only VDO mode panel use CMDQ call
@@ -13425,8 +13485,6 @@ static struct msync_parameter_table msync_params_tb;
 static struct msync_level_table msync_level_tb[MSYNC_MAX_LEVEL];
 unsigned int msync_cmd_level_tb_dirty;
 
-int (*mtk_drm_get_target_fps_fp)(unsigned int vrefresh, unsigned int atomic_fps);
-EXPORT_SYMBOL(mtk_drm_get_target_fps_fp);
 
 int (*mtk_sync_te_level_decision_fp)(void *level_tb, unsigned int te_type,
 	unsigned int target_fps, unsigned int *fps_level,
@@ -13615,15 +13673,10 @@ static void mtk_crtc_msync2_send_cmds_bef_cfg(struct drm_crtc *crtc, unsigned in
 	struct drm_display_mode *mode;
 
 
-	DDPMSG("[Msync2.0] Cmd mode send cmds before config\n");
+	DDPINFO("[Msync2.0] Cmd mode send cmds before config\n");
 
 	if (!params || !state || !mtk_crtc || !comp) {
 		DDPPR_ERR("[Msync2.0] Some pointer is NULL\n");
-		return;
-	}
-
-	if (!mtk_drm_get_target_fps_fp) {
-		DDPPR_ERR("[Msync2.0] mtk_drm_get_target_fps_fp is NULL\n");
 		return;
 	}
 
@@ -13634,7 +13687,7 @@ static void mtk_crtc_msync2_send_cmds_bef_cfg(struct drm_crtc *crtc, unsigned in
 	usec = DO_COMMON_DIV(rdma_sof_tval.tv_nsec, 1000) - DO_COMMON_DIV(atomic_flush_tval.tv_nsec,
 		1000);
 	x_time = sec * 1000000 + usec;  /* time is usec as unit */
-	DDPMSG("[Msync2.0]Get SOF - atomic_flush time:%lu\n", x_time);
+	DDPINFO("[Msync2.0]Get SOF - atomic_flush time:%lu\n", x_time);
 
 	/* If need request TE, to do it here */
 	if (params->msync_cmd_table.te_type == REQUEST_TE) {
@@ -13645,7 +13698,7 @@ static void mtk_crtc_msync2_send_cmds_bef_cfg(struct drm_crtc *crtc, unsigned in
 			DDPPR_ERR("[Msync2.0] Some pointer is NULL\n");
 			return;
 		}
-		DDPMSG("%s:%d RTE\n", __func__, __LINE__);
+		DDPINFO("%s:%d RTE\n", __func__, __LINE__);
 		if (target_fps == 0xFFFF) {
 			DDPMSG("[Msync2.0] Msync Need close R-TE\n");
 			fps_level = 0xFFFF;
@@ -13663,13 +13716,13 @@ static void mtk_crtc_msync2_send_cmds_bef_cfg(struct drm_crtc *crtc, unsigned in
 				level_min_fps = msync_level_tb[0].min_fps;
 			}
 		} else {
-			DDPMSG("[Msync2.0] Not have level decision function\n");
+			DDPINFO("[Msync2.0] Not have level decision function\n");
 			return;
 		}
 
-		DDPMSG("[Msync2.0] R-TE target_fps:%u fps_level:%u dirty:%u min_fps:%u\n",
+		DDPINFO("[Msync2.0] R-TE target_fps:%u fps_level:%u dirty:%u min_fps:%u\n",
 			target_fps, fps_level, msync_cmd_level_tb_dirty, min_fps);
-		DDPMSG("[Msync2.0] R-TE fps_level_old:%u min_fps_old:%u\n",
+		DDPINFO("[Msync2.0] R-TE fps_level_old:%u min_fps_old:%u\n",
 			fps_level_old, min_fps_old);
 
 
@@ -13691,7 +13744,7 @@ static void mtk_crtc_msync2_send_cmds_bef_cfg(struct drm_crtc *crtc, unsigned in
 						addr, DISABLE_REQUEST_TE, ~0);
 				}
 				msync_is_close = 1;
-				DDPMSG("[Msync2.0] low min fps close msync\n");
+				DDPINFO("[Msync2.0] low min fps close msync\n");
 				return;
 			}
 
@@ -13701,16 +13754,16 @@ static void mtk_crtc_msync2_send_cmds_bef_cfg(struct drm_crtc *crtc, unsigned in
 			if (target_fps <= level_min_fps)
 				count1 = 0;
 
-			DDPMSG("[Msync2.0] count1:%u msync_is_close:%d\n",
+			DDPINFO("[Msync2.0] count1:%u msync_is_close:%d\n",
 					count1, msync_is_close);
 			if ((count1 != 5) && (msync_is_close == 1)) {
-				DDPMSG("[Msync2.0] continue close msync\n");
+				DDPINFO("[Msync2.0] continue close msync\n");
 				return;
 			}
 
 			count1 = 0;
 			msync_is_close = 0;
-			DDPMSG("[Msync2.0] come back enable msync\n");
+			DDPINFO("[Msync2.0] come back enable msync\n");
 		}
 		cmdq_pkt_write(state->cmdq_handle, mtk_crtc->gce_obj.base, addr,
 			ENABLE_REQUSET_TE, ~0);
@@ -13719,7 +13772,7 @@ rte_target:
 		if (mtk_sync_slow_descent_fp) {
 			int ret = mtk_sync_slow_descent_fp(fps_level, fps_level_old,
 				params->msync_cmd_table.delay_frame_num);
-			DDPMSG("[Msync2.0] mtk_sync_slow_descent ret:%d\n", ret);
+			DDPINFO("[Msync2.0] mtk_sync_slow_descent ret:%d\n", ret);
 			if (ret == 1)
 				return;
 		}
@@ -13804,10 +13857,10 @@ rte_target:
 			DDPPR_ERR("[Msync2.0] Some pointer is NULL\n");
 			return;
 		}
-		DDPMSG("[Msync2.0] M-TE\n");
+		DDPINFO("[Msync2.0] M-TE\n");
 
 		if (target_fps == 0xFFFF) {
-			DDPMSG("[Msync2.0] Msync Need close M-TE\n");
+			DDPINFO("[Msync2.0] Msync Need close M-TE\n");
 			fps_level = 0xFFFF;
 			min_fps = drm_mode_vrefresh(&crtc->state->mode);
 		} else if (mtk_sync_te_level_decision_fp &&
@@ -13822,13 +13875,13 @@ rte_target:
 				level_min_fps = msync_level_tb[0].min_fps;
 			}
 		} else {
-			DDPMSG("[Msync2.0] Not have level decision function\n");
+			DDPINFO("[Msync2.0] Not have level decision function\n");
 			return;
 		}
 
-		DDPMSG("[Msync2.0] M-TE target_fps:%u fps_level:%u dirty:%u min_fps:%u\n",
+		DDPINFO("[Msync2.0] M-TE target_fps:%u fps_level:%u dirty:%u min_fps:%u\n",
 			target_fps, fps_level, msync_cmd_level_tb_dirty, min_fps);
-		DDPMSG("[Msync2.0] M-TE fps_level_old:%u min_fps_old:%u\n",
+		DDPINFO("[Msync2.0] M-TE fps_level_old:%u min_fps_old:%u\n",
 			fps_level_old, min_fps_old);
 
 		if (target_fps == 0xFFFF)
@@ -13846,7 +13899,7 @@ rte_target:
 				if (msync_is_close == 0)
 					mtk_crtc_msync2_send_cmds_bef_cfg(crtc, 0xFFFF);
 				msync_is_close = 1;
-				DDPMSG("[Msync2.0] low min fps close msync\n");
+				DDPINFO("[Msync2.0] low min fps close msync\n");
 				return;
 			}
 
@@ -13856,7 +13909,7 @@ rte_target:
 			if (target_fps <= level_min_fps)
 				count1 = 0;
 
-			DDPMSG("[Msync2.0] count1:%u msync_is_close:%d\n",
+			DDPINFO("[Msync2.0] count1:%u msync_is_close:%d\n",
 					count1, msync_is_close);
 			if ((count1 != 5) && (msync_is_close == 1)) {
 				DDPMSG("[Msync2.0] continue close msync\n");
@@ -13865,14 +13918,14 @@ rte_target:
 
 			count1 = 0;
 			msync_is_close = 0;
-			DDPMSG("[Msync2.0] come back enable msync\n");
+			DDPINFO("[Msync2.0] come back enable msync\n");
 		}
 
 mte_target:
 		if (mtk_sync_slow_descent_fp) {
 			int ret = mtk_sync_slow_descent_fp(fps_level, fps_level_old,
 				params->msync_cmd_table.delay_frame_num);
-			DDPMSG("[Msync2.0] mtk_sync_slow_descent ret:%d\n", ret);
+			DDPINFO("[Msync2.0] mtk_sync_slow_descent ret:%d\n", ret);
 			if (ret == 1)
 				return;
 		}
@@ -14224,13 +14277,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		else
 			position = 0;
 
-		WARN_ON(!mtk_drm_get_target_fps_fp);
-		if (mtk_drm_get_target_fps_fp)
-			target_fps = mtk_drm_get_target_fps_fp(
-				drm_mode_vrefresh(&crtc->state->adjusted_mode),
-				atomic_fps);
-		else
-			target_fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+		target_fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
 
 		CRTC_MMP_MARK(index, atomic_begin, 0, 1);
 
@@ -15159,6 +15206,188 @@ static void mtk_drm_wb_cb(struct cmdq_cb_data data)
 	kfree(cb_data);
 }
 
+void mtk_drm_atomic_gce_delay(struct cmdq_pkt *pkt, struct mtk_drm_crtc *mtk_crtc,
+			unsigned int diff)
+{
+	struct cmdq_operand lop, rop;
+	unsigned int TPR_CPU = 0;
+	unsigned int thrd_id = 0;
+	unsigned int target = 0;
+	const u16 spr_event = (u16)CMDQ_EVENT_SPR_TIMER + thrd_id;
+	size_t else_jump_mark;
+	size_t wait_gpr_jump_mark;
+	size_t mark_1;
+	size_t mark_2;
+	size_t set_gpr_mark;
+	size_t skip_save_spr_mark;
+	struct cmdq_instruction *inst = NULL;
+	dma_addr_t cmd_pa;
+	dma_addr_t shift_pa;
+	const u32 tpr_en = 1 << thrd_id;
+	const u32 timeout_en = MT6991_GCE_D_PA + CMDQ_TPR_TIMEOUT_EN;
+	struct cmdq_client *client = mtk_crtc->gce_obj.client[CLIENT_CFG];
+
+	/* set target spr value to max to avoid event trigger
+	 * before new value write to spr
+	 */
+	lop.reg = true;
+	lop.idx = CMDQ_TPR_ID;
+	rop.reg = false;
+	rop.value = 1;
+	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_SUBTRACT,
+		CMDQ_THR_SPR_IDX3, &lop, &rop);
+
+	lop.reg = true;
+	lop.idx = CMDQ_CPR_TPR_MASK;
+	rop.reg = false;
+	rop.value = tpr_en;
+	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_OR, CMDQ_CPR_TPR_MASK,
+		&lop, &rop);
+
+	cmdq_pkt_write_indriect(pkt, NULL, timeout_en, CMDQ_CPR_TPR_MASK, ~0);
+
+	cmdq_pkt_clear_event(pkt, spr_event);
+
+	set_gpr_mark =  pkt->cmd_buf_size;
+	// SPR3 = Targe
+	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX3, target);
+
+	// GPR3 = diff
+	cmdq_pkt_assign_command(pkt, CMDQ_GPR_CNT_ID + CMDQ_GPR_R03, diff);
+	// record_mark : jump to if(TPR > GPR), else condition  ========> SPR2
+	else_jump_mark = pkt->cmd_buf_size;
+	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX2, 0); // go to else
+	// record_mark : jump to wait for GPR timer event       ========> SPR3
+	wait_gpr_jump_mark = pkt->cmd_buf_size;
+	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX1, 0);
+
+	lop.reg = true;
+	lop.idx = CMDQ_THR_SPR_IDX3;
+	rop.reg = true;
+	rop.idx = CMDQ_TPR_ID;
+	// if (TARGE_SPR3 < TPR) go else(SPR2)
+	cmdq_pkt_cond_jump_abs(pkt, CMDQ_THR_SPR_IDX2, &lop, &rop,
+			CMDQ_LESS_THAN);
+
+	lop.reg = true;
+	lop.idx = CMDQ_THR_SPR_IDX3;
+	rop.reg = true;
+	rop.idx = CMDQ_TPR_ID;
+	// SPR0 = TARGE_SPR3 - TPR
+	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_SUBTRACT, CMDQ_THR_SPR_IDX0,
+		&lop, &rop);
+
+	lop.reg = true;
+	lop.idx = CMDQ_THR_SPR_IDX0;
+	rop.reg = true;
+	rop.idx = CMDQ_GPR_CNT_ID + CMDQ_GPR_R03;
+	// if (TARGE_SPR3 - TPR < diff(GPR3)) go to wfe(SPR1)
+	cmdq_pkt_cond_jump_abs(pkt, CMDQ_THR_SPR_IDX1, &lop, &rop,
+		CMDQ_LESS_THAN);
+
+	// record mark : jump to end(skip wfe)
+	mark_1 = pkt->cmd_buf_size;
+	cmdq_pkt_jump_addr(pkt, 0);  //skip wfe
+
+	// else start
+	// set spr2 = else start
+	inst = (struct cmdq_instruction *)cmdq_pkt_get_va_by_offset(
+		pkt, else_jump_mark);
+
+	cmd_pa = cmdq_pkt_get_pa_by_offset(pkt, pkt->cmd_buf_size);
+	shift_pa = CMDQ_REG_SHIFT_ADDR(cmd_pa);
+	inst->arg_b = CMDQ_GET_ARG_B(shift_pa);
+	inst->arg_c = CMDQ_GET_ARG_C(shift_pa);
+
+	// move the TPR_MAX value to SPR0
+	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX0, TPR_MAX);
+
+	lop.reg = true;
+	lop.idx = CMDQ_THR_SPR_IDX0;
+	rop.reg = true;
+	rop.idx = CMDQ_TPR_ID;
+	// SPR0 : Max - TPR
+	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_SUBTRACT, CMDQ_THR_SPR_IDX0,
+		&lop, &rop);
+
+	lop.reg = true;
+	lop.idx = CMDQ_THR_SPR_IDX0;
+	rop.reg = true;
+	rop.idx = CMDQ_THR_SPR_IDX3;
+	// SPR0 = Targe(SPR3) + (Max - TPR)
+	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, CMDQ_THR_SPR_IDX0,
+		&lop, &rop);
+
+	lop.reg = true;
+	lop.idx = CMDQ_THR_SPR_IDX0;
+	rop.reg = true;
+	rop.idx = CMDQ_GPR_CNT_ID + CMDQ_GPR_R03;
+	// if (GPR + (max - tpr) < diff) go to WFE(SPR3)
+	cmdq_pkt_cond_jump_abs(pkt, CMDQ_THR_SPR_IDX1, &lop, &rop,
+		CMDQ_LESS_THAN);
+
+	// record mark : jump to end(skip wfe)
+	mark_2 = pkt->cmd_buf_size;
+	cmdq_pkt_jump_addr(pkt, 0);  //skip wfe
+
+	// fix SPR3 assign value
+	inst = (struct cmdq_instruction *)cmdq_pkt_get_va_by_offset(
+		pkt, wait_gpr_jump_mark);
+
+	cmd_pa = cmdq_pkt_get_pa_by_offset(pkt, pkt->cmd_buf_size);
+	shift_pa = CMDQ_REG_SHIFT_ADDR(cmd_pa);
+	inst->arg_b = CMDQ_GET_ARG_B(shift_pa);
+	inst->arg_c = CMDQ_GET_ARG_C(shift_pa);
+
+	// wait spr event
+	cmdq_pkt_wfe(pkt, spr_event);
+	skip_save_spr_mark = pkt->cmd_buf_size;
+	cmdq_pkt_jump_addr(pkt, 0);  //skip save spr
+
+	// fix jump address
+	inst = (struct cmdq_instruction *)cmdq_pkt_get_va_by_offset(
+			pkt, mark_1);
+
+	cmd_pa = cmdq_pkt_get_pa_by_offset(pkt, pkt->cmd_buf_size);
+	DDPINFO("%s inst:0x%llx cmd_pa:%pa\n", __func__, *(u64 *)inst, &cmd_pa);
+	*(u64 *)inst = ((u64)(CMDQ_CODE_JUMP << 24 | 1) << 32) |
+		(CMDQ_REG_SHIFT_ADDR(cmd_pa) & 0xFFFFFFFF);
+
+	inst = (struct cmdq_instruction *)cmdq_pkt_get_va_by_offset(
+		pkt, mark_2);
+
+	cmd_pa = cmdq_pkt_get_pa_by_offset(pkt, pkt->cmd_buf_size);
+	*(u64 *)inst = ((u64)(CMDQ_CODE_JUMP << 24 | 1) << 32) |
+		(CMDQ_REG_SHIFT_ADDR(cmd_pa) & 0xFFFFFFFF);
+
+	//jump to here when wait for event
+	inst = (struct cmdq_instruction *)cmdq_pkt_get_va_by_offset(
+		pkt, skip_save_spr_mark);
+
+	cmd_pa = cmdq_pkt_get_pa_by_offset(pkt, pkt->cmd_buf_size);
+	*(u64 *)inst = ((u64)(CMDQ_CODE_JUMP << 24 | 1) << 32) |
+		(CMDQ_REG_SHIFT_ADDR(cmd_pa) & 0xFFFFFFFF);
+
+	//dummy for TPR
+	TPR_CPU = cmdq_mbox_get_tpr(client->chan);
+	DDPINFO("%s:%d TPR_CPU:%u\n", __func__, __LINE__, TPR_CPU);
+
+	// set target
+	target = TPR_CPU + diff;
+	if(target > TPR_MAX)
+		target -= TPR_MAX;
+
+	// set GPR = target
+	inst = (struct cmdq_instruction *)cmdq_pkt_get_va_by_offset(
+		pkt, set_gpr_mark);
+
+	inst->arg_b = CMDQ_GET_ARG_B(target);
+	inst->arg_c = CMDQ_GET_ARG_C(target);
+
+	// for debug
+	//cmdq_pkt_dump_buf(pkt, 0);
+}
+
 int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	void *cb_data, struct cmdq_pkt *cmdq_handle)
 {
@@ -15246,7 +15475,8 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		DDPDBG("%s:%d systime:%lld\n", __func__, __LINE__, current_time);
 		DDPDBG("%s:%d last frame sof:%llu\n", __func__, __LINE__, g_pf_time);
 		DDPDBG("%s:%d MSYNC2_0_EPT:%llu\n", __func__, __LINE__, ept_time);
-		DDPDBG("%s:%d vrefresh%u frame_time:%u\n", __func__, __LINE__, frame_rate, frame_time);
+		DDPDBG("%s:%d vrefresh%u frame_time:%u\n", __func__, __LINE__,
+			frame_rate, frame_time);
 
 		if (params) {
 			te_step_time = params->msync_cmd_table.te_step_time;
@@ -15259,12 +15489,14 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		if ((ept_time > g_pf_time) &&
 			(ept_time - g_pf_time < frame_time)) {
 			ept_time += frame_time - (ept_time - g_pf_time);
-			DDPINFO("%s:%d > MSYNC2_0_EPT modified:%llu\n", __func__, __LINE__, ept_time);
+			DDPINFO("%s:%d > MSYNC2_0_EPT modified:%llu\n",
+				__func__, __LINE__, ept_time);
 		}
 
 		if (ept_time <= g_pf_time) {
 			ept_time = frame_time + g_pf_time;
-			DDPINFO("%s:%d < MSYNC2_0_EPT modified:%llu\n", __func__, __LINE__, ept_time);
+			DDPINFO("%s:%d < MSYNC2_0_EPT modified:%llu\n", __func__, __LINE__,
+				ept_time);
 		}
 
 		if ((ept_time != 0) &&
@@ -15280,10 +15512,15 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			flush_add_delay_time = current_time/1000 + delay_us;
 			flush_add_delay_need = false;
 			//GCE wait EPT
-			if (params && params->msync_cmd_table.is_gce_delay && (delay_us < 1000000)) {
+			if (params && params->msync_cmd_table.is_gce_delay &&
+					(delay_us < 1000000)) {
+				drm_trace_tag_value("msync2_delay", delay_us);
 				CRTC_MMP_MARK(crtc_index, atomic_delay, delay_us, 0);
-				// TODO: add gce wait EPT function
-				DDPINFO("%s:%d GCE delay: msync2 st sleep %u us\n", __func__, __LINE__, delay_us);
+				mtk_drm_atomic_gce_delay(cmdq_handle, mtk_crtc,
+					CMDQ_US_TO_TICK(delay_us));
+
+				DDPINFO("%s:%d GCE delay: msync2 st sleep %u us\n",
+					__func__, __LINE__, delay_us);
 				flush_add_delay_need = true;
 			//CPU wait EPT
 			} else if (delay_us < 1000000) {
@@ -15297,7 +15534,8 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 				CRTC_MMP_EVENT_END(crtc_index, atomic_delay, delay_us, 0);
 				mtk_drm_trace_end("msync2_delay:%u", delay_us);
 
-				DDPINFO("%s:%d CPU delay: msync2 st sleep %u us\n", __func__, __LINE__, delay_us);
+				DDPINFO("%s:%d CPU delay: msync2 st sleep %u us\n",
+					__func__, __LINE__, delay_us);
 			}
 		}
 	}
