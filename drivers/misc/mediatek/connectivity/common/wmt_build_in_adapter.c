@@ -370,8 +370,6 @@ void wmt_export_platform_bridge_register(struct wmt_platform_bridge *cb)
 	bridge.conninfra_reg_readable_cb = cb->conninfra_reg_readable_cb;
 	bridge.conninfra_reg_is_bus_hang_cb = cb->conninfra_reg_is_bus_hang_cb;
 
-	conn_dbg_dev_init();
-	conn_dbg_log_init();
 	CONNADP_INFO_FUNC("\n");
 }
 EXPORT_SYMBOL(wmt_export_platform_bridge_register);
@@ -388,9 +386,11 @@ void wmt_export_platform_dbg_bridge_register(const struct wmt_platform_dbg_bridg
 	if (unlikely(!cb))
 		return;
 	if (cb->write_cb != NULL && cb->read_cb != NULL) {
+		conn_dbg_dev_init();
 		g_dbg_bridge.write_cb = cb->write_cb;
 		g_dbg_bridge.read_cb = cb->read_cb;
 	}
+	conn_dbg_log_init();
 }
 EXPORT_SYMBOL(wmt_export_platform_dbg_bridge_register);
 
