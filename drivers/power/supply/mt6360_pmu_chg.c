@@ -1849,10 +1849,11 @@ static int mt6360_get_tchg(struct charger_device *chg_dev,
 
 static int mt6360_kick_wdt(struct charger_device *chg_dev)
 {
+	unsigned int regval;
 	struct mt6360_chg_info *mci = charger_get_data(chg_dev);
 
 	dev_dbg(mci->dev, "%s\n", __func__);
-	return regmap_read(mci->regmap, MT6360_PMU_CHG_CTRL1, NULL);
+	return regmap_read(mci->regmap, MT6360_PMU_CHG_CTRL1, &regval);
 }
 
 static int mt6360_safety_check(struct charger_device *chg_dev, u32 polling_ieoc)
