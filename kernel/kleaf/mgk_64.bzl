@@ -669,9 +669,6 @@ mgk_64_device_modules = [
     "drivers/spi/spi-mt65xx.ko",
     "drivers/spmi/spmi-mtk-mpu.ko",
     "drivers/spmi/spmi-mtk-pmif.ko",
-    "drivers/tee/gud/600/MobiCoreDriver/mcDrvModule.ko",
-    "drivers/tee/gud/600/MobiCoreDriver/mcDrvModule-ffa.ko",
-    "drivers/tee/gud/600/TlcTui/t-base-tui.ko",
     "drivers/tee/gud/610/MobiCoreDriver/mcDrvModule.ko",
     "drivers/tee/gud/610/MobiCoreDriver/mcDrvModule-ffa.ko",
     "drivers/tee/gud/610/TlcTui/t-base-tui.ko",
@@ -1305,6 +1302,10 @@ def get_overlay_modules_list():
         mgk_64_common_eng_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_userdebug_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_user_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
+        mgk_64_device_modules.append("drivers/tee/gud/600/MobiCoreDriver/mcDrvModule.ko")
+        mgk_64_device_modules.append("drivers/tee/gud/600/MobiCoreDriver/mcDrvModule-ffa.ko")
+        mgk_64_device_modules.append("drivers/tee/gud/600/TlcTui/t-base-tui.ko")
+
         mgk_64_common_eng_modules.append("drivers/pwm/pwm-mtk-disp.ko")
         mgk_64_common_userdebug_modules.append("drivers/pwm/pwm-mtk-disp.ko")
         mgk_64_common_user_modules.append("drivers/pwm/pwm-mtk-disp.ko")
@@ -1956,6 +1957,9 @@ def get_overlay_modules_list():
         mgk_64_common_eng_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_userdebug_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_user_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
+        mgk_64_device_modules.append("drivers/tee/gud/600/MobiCoreDriver/mcDrvModule.ko")
+        mgk_64_device_modules.append("drivers/tee/gud/600/MobiCoreDriver/mcDrvModule-ffa.ko")
+        mgk_64_device_modules.append("drivers/tee/gud/600/TlcTui/t-base-tui.ko")
 
         mgk_64_common_eng_modules.append("drivers/pwm/pwm-mtk-disp.ko")
         mgk_64_common_userdebug_modules.append("drivers/pwm/pwm-mtk-disp.ko")
