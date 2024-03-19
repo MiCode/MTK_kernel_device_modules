@@ -8098,10 +8098,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			pre-define-bw = <0xffffffff>, <4200>, <0>, <2700>;
 			crtc-ovl-usage = <0xe0>, <0x2>, <0x2>, <0x4>;
 
-	//		default-emi-eff = <8500>;
-	//		emi-eff-lp5-table =
-	//			<2964 3648 5110 5795 6388 7066 7215 7849
-	//			7774 8264 7937 8330 7920 8344 7811 8257>;
+			default-emi-eff = <8500>;
+			emi-eff-lp5-table =
+				<2883 3996 4858 6148 6373 7405 7239 8216
+				7528 8393 7645 8241 7604 8384 7553 8048>;
 
 			/* define threads, see mt6991-gce.h */
 	//		mediatek,mailbox-gce = <&gce>;
@@ -8392,7 +8392,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<0>, /*MTK_DRM_OPT_VIDLE_DSI_PLL_OFF*/
 				<0>, /*MTK_DRM_OPT_CHECK_TRIGGER_MERGE*/
 				<0>, /*MTK_DRM_OPT_VIRTUAL_DISP*/
-				<0>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
+				<1>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
 				<0>, /*MTK_DRM_OPT_GPU_CACHE*/
 				<1>, /*MTK_DRM_OPT_SPHRT*/
 				<0>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
