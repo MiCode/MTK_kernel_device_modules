@@ -3290,8 +3290,10 @@ static void devapc_dump(void)
 	dump_clk_event();
 	pdchk_dump_trace_evt();
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	/* kick vcp wdt */
 	vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "clk_devapc");
+#endif
 
 	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
 		if (fclks->type != SUBSYS)
@@ -3321,8 +3323,10 @@ static void serror_dump(void)
 	dump_clk_event();
 	pdchk_dump_trace_evt();
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	/* kick vcp wdt */
 	vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "clk_serror");
+#endif
 
 	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
 		if (fclks->type != SUBSYS)
@@ -3480,9 +3484,10 @@ static void dump_bus_reg(struct regmap *regmap, u32 ofs)
 	set_subsys_reg_dump_mt6991(bus_dump_id);
 	get_subsys_reg_dump_mt6991();
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	chk_pm_state();
-
 	vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "hwv_cg_timeout");
+#endif
 
 	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
 		if (fclks->type != SUBSYS)
