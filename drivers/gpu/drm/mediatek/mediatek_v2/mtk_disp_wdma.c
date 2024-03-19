@@ -1523,6 +1523,28 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 			cmdq_pkt_write(handle, comp->cmdq_base,
 							mmsys_reg + MT6991_DISP1_WDMA1_AID_SETTING, BIT(0), BIT(0));
 		}
+	} else {
+		if (priv->data->mmsys_id == MMSYS_MT6989) {
+			mtk_ddp_write(comp, 0x1,
+				WDMA_SECURITY_DISABLE, handle);
+			mmsys_reg = priv->side_config_regs_pa;
+			cmdq_pkt_write(handle, comp->cmdq_base,
+							mmsys_reg + MT6989_DISP1_AID_SEL_MANUAL,
+								0, DISP_WDMA0_AID_SEL_MANUAL);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+							mmsys_reg + MT6989_DISP1_WDMA0_AID_SETTING, 0, BIT(0));
+		} else if (priv->data->mmsys_id == MMSYS_MT6991) {
+			mtk_ddp_write(comp, 0x7,
+				WDMA_SECURITY_DISABLE, handle);
+			mmsys_reg = priv->side_config_regs_pa;
+			// DISP1_AID_SEL_MANUAL
+			cmdq_pkt_write(handle, comp->cmdq_base,
+							mmsys_reg + MT6991_DISP1_AID_SEL_MANUAL,
+								0, DISP_WDMA0_AID_SEL_MANUAL);
+			// DISP1_WDMA1_AID_SETTING
+			cmdq_pkt_write(handle, comp->cmdq_base,
+							mmsys_reg + MT6991_DISP1_WDMA1_AID_SETTING, 0, BIT(0));
+		}
 	}
 
 	switch (comp->fb->format->format) {
