@@ -232,6 +232,57 @@ void mml_topology_unregister_ip(const char *ip)
 }
 EXPORT_SYMBOL_GPL(mml_topology_unregister_ip);
 
+u32 mml_topology_get_mode_caps(void)
+{
+	struct topology_ip_node *tp_node;
+	u32 modes = 0;
+	const char *ip = "not ready";
+
+	mutex_lock(&tp_mutex);
+	tp_node = list_first_entry_or_null(&tp_ips, typeof(*tp_node), entry);
+	if (tp_node) {
+		if (tp_node->op->query_mode2)
+			modes = BIT(MML_MODE_MML_DECOUPLE) | BIT(MML_MODE_MML_DECOUPLE2);
+		else
+			/* enable mdp decouple bit if no mml dc2 support */
+			modes = BIT(MML_MODE_MML_DECOUPLE) | BIT(MML_MODE_MDP_DECOUPLE);
+		if (tp_node->op->support_couple)
+			modes |= BIT(tp_node->op->support_couple());
+
+		ip = tp_node->ip;
+	}
+	mml_log("platform %s modes %#x", ip, modes);
+	mutex_unlock(&tp_mutex);
+
+	return modes;
+}
+
+u32 mml_topology_get_hw_caps(void)
+{
+	struct topology_ip_node *tp_node;
+	const char *ip = "not ready";
+	static u32 caps;
+
+	if (caps)
+		goto done;
+
+	mutex_lock(&tp_mutex);
+	tp_node = list_first_entry_or_null(&tp_ips, typeof(*tp_node), entry);
+	if (tp_node) {
+		if (tp_node->op->support_hw_caps)
+			caps = tp_node->op->support_hw_caps();
+		else
+			caps = MML_HW_PQ_HDR | MML_HW_PQ_HDR10 | MML_HW_PQ_HDR10P |
+				MML_HW_PQ_HLG | MML_HW_PQ_HDRVIVID;
+		ip = tp_node->ip;
+	}
+	mml_log("platform %s hw_caps %#x", ip, caps);
+	mutex_unlock(&tp_mutex);
+
+done:
+	return caps;
+}
+
 struct mml_topology_cache *mml_topology_create(struct mml_dev *mml,
 					       struct platform_device *pdev,
 					       struct cmdq_client **clts,
@@ -268,6 +319,17 @@ struct mml_topology_cache *mml_topology_create(struct mml_dev *mml,
 
 	if (tp->op->init_cache)
 		tp->op->init_cache(mml, tp, clts, clt_cnt);
+
+
+	tp->mode_caps = BIT(MML_MODE_MML_DECOUPLE);
+	if (mml_dl_enable(mml))
+		tp->mode_caps |= BIT(MML_MODE_DIRECT_LINK);
+	if (mml_racing_enable(mml))
+		tp->mode_caps |= BIT(MML_MODE_RACING);
+	if (tp->op->support_dc2 && tp->op->support_dc2())
+		tp->mode_caps |= BIT(MML_MODE_MML_DECOUPLE2);
+	else
+		tp->mode_caps |= BIT(MML_MODE_MDP_DECOUPLE);
 
 	return tp;
 }

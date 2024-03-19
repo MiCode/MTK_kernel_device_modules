@@ -74,24 +74,43 @@ struct mml_drm_param {
 };
 
 /*
+ * mml_drm_get_hw_caps - Query mml supported modes. The mode bits refer to enum mml_mode
+ *
+ * @mode_caps:	Bits to represent enabled mode in current platform.
+ * @pq_caps:	Bits to represent pq capability.
+ *
+ * Return:	Query success or not.
+ */
+int mml_drm_get_hw_caps(u32 *mode_caps, u32 *pq_caps);
+
+/*
+ * mml_drm_query_hw_support - Query frame info meet hardware spec.
+ *
+ * @info:	Frame info which describe frame process by mml.
+ *
+ * Return:	True for support, false for not support.
+ */
+bool mml_drm_query_hw_support(const struct mml_frame_info *info);
+
+/*
  * mml_drm_query_cap - Query current running mode and possible support mode
  * for specific frame info.
  *
- * @ctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
+ * @dctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
  * @info:	Frame info which describe frame process by mml.
  *
  * Return:	Capability result of target mode by giving info.
  */
-enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *ctx,
+enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *dctx,
 				struct mml_frame_info *info);
 
 /*
  * mml_drm_try_frame - Try/adjust frame info to match mml hardware spec.
  *
- * @ctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
+ * @dctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
  * @info:	Frame info which describe frame process by mml.
  */
-void mml_drm_try_frame(struct mml_drm_ctx *ctx, struct mml_frame_info *info);
+void mml_drm_try_frame(struct mml_drm_ctx *dctx, struct mml_frame_info *info);
 
 /*
  * mml_drm_get_context - Get mml drm context to control mml.
@@ -111,17 +130,17 @@ struct mml_drm_ctx *mml_drm_get_context(struct platform_device *pdev,
 /*
  * mml_drm_ctx_idle - Check if all tasks in this drm ctx stop.
  *
- * @ctx:	The drm context instance.
+ * @dctx:	The drm context instance.
  */
-bool mml_drm_ctx_idle(struct mml_drm_ctx *ctx);
+bool mml_drm_ctx_idle(struct mml_drm_ctx *dctx);
 
 /*
  * mml_drm_put_context - Release mml drm context and related cached info
  * inside this context.
  *
- * @ctx:	The drm context instance.
+ * @dctx:	The drm context instance.
  */
-void mml_drm_put_context(struct mml_drm_ctx *ctx);
+void mml_drm_put_context(struct mml_drm_ctx *dctx);
 
 /*
  * mml_drm_set_panel_pixel - Set pixel count of display panel (lcm) pixel count
@@ -131,38 +150,38 @@ void mml_drm_put_context(struct mml_drm_ctx *ctx);
  * Note this API also update currecnt existing frame config HRT base on new
  * panel pixel count.
  *
- * @ctx:	The drm context instance.
+ * @dctx:	The drm context instance.
  * @panel_width:	Pixel count width of panel. Default value is 1440 (wqhd).
  * @panel_height:	Pixel count height of panel. Default value is 3200 (wqhd).
  */
-void mml_drm_set_panel_pixel(struct mml_drm_ctx *ctx, u32 panel_width, u32 panel_height);
+void mml_drm_set_panel_pixel(struct mml_drm_ctx *dctx, u32 panel_width, u32 panel_height);
 
 /*
  * mml_drm_racing_config_sync - append event sync instructions to disp pkt
  *
- * @ctx:	The drm context instance.
+ * @dctx:	The drm context instance.
  * @pkt:	The pkt to append cmdq instructions, which helps this pkt
  *		and mml pkt execute at same time.
  *
  * return:	0 if success and < 0 error no if fail
  */
-s32 mml_drm_racing_config_sync(struct mml_drm_ctx *ctx, struct cmdq_pkt *pkt);
+s32 mml_drm_racing_config_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt);
 
 /*
  * mml_drm_racing_stop_sync - append event sync instructions to disp pkt
  *
- * @ctx:	The drm context instance.
+ * @dctx:	The drm context instance.
  * @pkt:	The pkt to append cmdq instructions, which helps this pkt
  *		and mml pkt execute at same time.
  *
  * return:	0 if success and < 0 error no if fail
  */
-s32 mml_drm_racing_stop_sync(struct mml_drm_ctx *ctx, struct cmdq_pkt *pkt);
+s32 mml_drm_racing_stop_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt);
 
 /*
  * mml_drm_split_info - split submit info to racing info and pq info
  *
- * @ctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
+ * @dctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
  * @submit:	[in/out]Frame info which want mml driver to execute. The info
  *		data inside this submit will change for racing mode
  * @submit_pq:	[out]Frame info for pq engines separate from submit
@@ -172,20 +191,20 @@ void mml_drm_split_info(struct mml_submit *submit, struct mml_submit *submit_pq)
 /*
  * mml_drm_submit - submit mml job
  *
- * @ctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
+ * @dctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
  * @submit:	Frame info which want mml driver to execute.
  * @cb_param:	The parameter used in submit done callback (if registered).
  *
  * Return:	Result of submit. In value < 0 case job did not send to mml
  *		driver core.
  */
-s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
+s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	void *cb_param);
 
 /*
  * mml_drm_stop - stop mml task (for racing mode)
  *
- * @ctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
+ * @dctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
  * @submit:	Frame info which want mml driver to execute.
  * @force:	true to use cmdq stop gce hardware thread, false to set next_spr
  *		to next only.
@@ -193,39 +212,39 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
  * Return:	Result of submit. In value < 0 case job did not send to mml
  *		driver core.
  */
-s32 mml_drm_stop(struct mml_drm_ctx *ctx, struct mml_submit *submit, bool force);
+s32 mml_drm_stop(struct mml_drm_ctx *dctx, struct mml_submit *submit, bool force);
 
 /*
  * mml_drm_config_rdone - append instruction to config mmlsys rdone sel to
  *		default, which makes mmlsys always active rdone. This avoid
  *		mml task hang if disp stop.
  *
- * @ctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
+ * @dctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
  * @submit:	Frame info which want mml driver to execute.
  * @pkt:	The pkt to append cmdq instructions.
  *
  * Return:	Result of submit. In value < 0 case job did not send to mml
  *		driver core.
  */
-void mml_drm_config_rdone(struct mml_drm_ctx *ctx, struct mml_submit *submit,
+void mml_drm_config_rdone(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	struct cmdq_pkt *pkt);
 
 /*
  * mml_drm_dump - dump cmdq thread status for mml
  *
- * @ctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
+ * @dctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
  * @submit:	Frame info which want mml driver to execute.
  */
-void mml_drm_dump(struct mml_drm_ctx *ctx, struct mml_submit *submit);
+void mml_drm_dump(struct mml_drm_ctx *dctx, struct mml_submit *submit);
 
 /*
  * mml_drm_query_dl_path - query direct link path
  *
- * @ctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
+ * @dctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
  * @submit:	Frame info which want mml driver to execute.
  * @pipe:	path pipe
  */
-const struct mml_topology_path *mml_drm_query_dl_path(struct mml_drm_ctx *ctx,
+const struct mml_topology_path *mml_drm_query_dl_path(struct mml_drm_ctx *dctx,
 	struct mml_submit *submit, u32 pipe);
 
 /*
