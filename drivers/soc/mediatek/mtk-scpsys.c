@@ -1376,6 +1376,8 @@ int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
 		i++;
 	} while (1);
 
+	udelay(1);
+
 	if (onoff) {
 		tmp = 0;
 		/* wait until VOTER_ACK = 1 */
