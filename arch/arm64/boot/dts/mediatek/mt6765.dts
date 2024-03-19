@@ -4766,11 +4766,12 @@ pwrap: pwrap@1000d000 {
 
 &mt6370_chg {
 	charger = <&mtk_charger_type>; /*mt6370 get online status*/
+	charger-name = "mt6370-charger";
+
 };
 
 &mtk_charger_type {
 	charger = <&mt6370_chg>; /*mt6357 get charger status*/
-	charger-name = "mt6370-charger";
 };
 
 
