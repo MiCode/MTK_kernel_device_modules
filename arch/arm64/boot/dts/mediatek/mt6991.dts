@@ -337,73 +337,73 @@
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00010000>;
 				local-timer-stop;
-				entry-latency-us = <97>;
-				exit-latency-us = <252>;
-				min-residency-us = <8160>;
+				entry-latency-us = <92>;
+				exit-latency-us = <167>;
+				min-residency-us = <7860>;
 			};
 			cpuoff_m: cpuoff-m {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00010000>;
 				local-timer-stop;
-				entry-latency-us = <53>;
-				exit-latency-us = <143>;
-				min-residency-us = <3860>;
+				entry-latency-us = <68>;
+				exit-latency-us = <151>;
+				min-residency-us = <3720>;
 			};
 			cpuoff_b: cpuoff-b {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00010000>;
 				local-timer-stop;
-				entry-latency-us = <40>;
-				exit-latency-us = <107>;
-				min-residency-us = <3180>;
+				entry-latency-us = <62>;
+				exit-latency-us = <160>;
+				min-residency-us = <2980>;
 			};
 			clusteroff_l: clusteroff-l {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010001>;
 				local-timer-stop;
-				entry-latency-us = <109>;
-				exit-latency-us = <325>;
-				min-residency-us = <8160>;
+				entry-latency-us = <192>;
+				exit-latency-us = <267>;
+				min-residency-us = <7860>;
 			};
 			clusteroff_m: clusteroff-m {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010001>;
 				local-timer-stop;
-				entry-latency-us = <59>;
-				exit-latency-us = <188>;
-				min-residency-us = <3860>;
+				entry-latency-us = <169>;
+				exit-latency-us = <257>;
+				min-residency-us = <3720>;
 			};
 			clusteroff_b: clusteroff-b {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010001>;
 				local-timer-stop;
-				entry-latency-us = <43>;
-				exit-latency-us = <138>;
-				min-residency-us = <4120>;
+				entry-latency-us = <167>;
+				exit-latency-us = <253>;
+				min-residency-us = <3440>;
 			};
 			mcusysoff_l: mcusysoff-l {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x02010007>;
 				local-timer-stop;
-				entry-latency-us = <1357>;
-				exit-latency-us = <835>;
-				min-residency-us = <8160>;
+				entry-latency-us = <636>;
+				exit-latency-us = <1036>;
+				min-residency-us = <7860>;
 			};
 			mcusysoff_m: mcusysoff-m {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x02010007>;
 				local-timer-stop;
-				entry-latency-us = <1202>;
-				exit-latency-us = <679>;
-				min-residency-us = <3860>;
+				entry-latency-us = <562>;
+				exit-latency-us = <989>;
+				min-residency-us = <3720>;
 			};
 			mcusysoff_b: mcusysoff-b {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x02010007>;
 				local-timer-stop;
-				entry-latency-us = <1143>;
-				exit-latency-us = <611>;
-				min-residency-us = <4570>;
+				entry-latency-us = <542>;
+				exit-latency-us = <981>;
+				min-residency-us = <3440>;
 			};
 			system_vcore: system-vcore {
 				compatible = "arm,idle-state";
