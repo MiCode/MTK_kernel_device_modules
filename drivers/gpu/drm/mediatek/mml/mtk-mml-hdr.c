@@ -669,6 +669,11 @@ static s32 hdr_config_tile(struct mml_comp *comp, struct mml_task *task,
 	else
 		hdr_hist_end_x = tile->out.xe - tile->in.xs;
 
+	if (tile->in.xs + hdr_hist_begin_x > tile->in.xe)
+		hdr_hist_begin_x = tile->in.xe - tile->in.xs;
+	if (hdr_hist_end_x < hdr_hist_begin_x)
+		hdr_hist_end_x = hdr_hist_begin_x;
+
 	cmdq_pkt_write(pkt, NULL,
 		base_pa + hdr->data->reg_table[HDR_HIST_CTRL_0], hdr_hist_begin_x, 0x0000ffff);
 	cmdq_pkt_write(pkt, NULL,
