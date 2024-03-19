@@ -10431,6 +10431,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,platform = "platform:mt6991";
 			mediatek,ipm = <2>;
 			//mediatek,slc = <1>;
+			support-acp = <1>;
 			reg = <0 0x36000000 0 0x1000>,	/* VDEC_BASE */
 				<0 0x3602f000 0 0x1000>,	/* VDEC_SYS */
 				<0 0x36020000 0 0x1000>,	/* VDEC_VLD */
@@ -10571,6 +10572,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			compatible = "mediatek,mt6991-vcodec-enc";
 			mediatek,platform = "platform:mt6991";
 			mediatek,ipm = <2>;
+			support-acp = <1>;
 			reg = <0 0x38020000 0 0x6000>,
 				<0 0x38820000 0 0x6000>,
 				<0 0x38c20000 0 0x6000>;
@@ -14819,6 +14821,24 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		mtk,smmu-shared = <&mm_smmu_hfrp_protected>;
 	};
 
+	vcp_io6: vcp-iommu-acp-vdec {
+		compatible =  "mediatek,vcp-io-acp-vdec";
+		vcp-support = <8>;
+		mtk,smmu-shared = <&mm_smmu_acp_hfrp>;
+	};
+
+	vcp_io7: vcp-iommu-acp-venc {
+		compatible =  "mediatek,vcp-io-acp-venc";
+		vcp-support = <9>;
+		mtk,smmu-shared = <&mm_smmu_acp_hfrp>;
+	};
+
+	vcp_io8: vcp-iommu-acp-codec {
+		compatible =  "mediatek,vcp-io-acp-codec";
+		vcp-support = <10>;
+		mtk,smmu-shared = <&mm_smmu_acp_codec>;
+	};
+
 	slbc: slbc@117800 {
 		compatible = "mediatek,mtk-slbc";
 		reg = <0 0x00117800 0 0x400>;
@@ -15683,7 +15703,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		dma-coherent;
 	};
 	mm_smmu_acp_hfrp: mm-smmu-acp-hfrp {
-		//compatible = "mediatek,smmu-share-group";
+		compatible = "mediatek,smmu-share-group";
 		label = "mm_smmu_acp_hfrp";
 		iommus = <&mm_smmu 222>;
 		mtk,iommu-group = <&mm_iommu_group_1>;
@@ -15691,7 +15711,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		dma-coherent;
 	};
 	mm_smmu_acp_codec: mm-smmu-acp-codec {
-		//compatible = "mediatek,smmu-share-group";
+		compatible = "mediatek,smmu-share-group";
 		label = "mm_smmu_acp_codec";
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 223>;
