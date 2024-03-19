@@ -4491,9 +4491,9 @@ static signed int FDVT_probe(struct platform_device *pDev)
 
 		fdvt_secure_clt = cmdq_mbox_create(FDVT_dev->dev, 1);
 		if (!fdvt_secure_clt)
-			log_err("cmdq mbox create fail\n");
+			log_err("sec cmdq mbox create fail\n");
 		else
-			log_inf("cmdq sec mbox create done\n");
+			log_inf("sec cmdq sec mbox create done\n");
 
 		of_property_read_u32(pDev->dev.of_node, "fdvt_frame_done",
 				     &fdvt_event_id);
