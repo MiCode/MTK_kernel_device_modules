@@ -705,9 +705,7 @@ void fpsgo_set_ux_general_policy(int scrolling)
 #endif
 		if (change_dpt_support_driver_hook)
 			change_dpt_support_driver_hook(1);
-		fpsgo_main_trace("begin runtime power talbe");
 	} else {
-		//disable sched run-time power table
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 		fpsgo_main_trace("set_wl_manual: -1");
 		set_wl_manual(-1);
@@ -729,7 +727,6 @@ void fpsgo_set_ux_general_policy(int scrolling)
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE) && IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	set_ignore_idle_ctrl(scrolling);
 	fpsgo_set_group_dvfs(scrolling);
-	fpsgo_main_trace("set group aware: %d", scrolling);
 #endif
 }
 

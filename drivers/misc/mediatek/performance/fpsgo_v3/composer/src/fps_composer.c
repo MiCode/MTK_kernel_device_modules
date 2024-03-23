@@ -1533,17 +1533,20 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 
 				if (start && !sbe_info->ux_scrolling) {
 					sbe_info->ux_scrolling = start;
-					if (!ux_scroll_count)
+					if (!ux_scroll_count) {
 						fpsgo_set_ux_general_policy(start);
-
+						fpsgo_systrace_c_fbt(tgid, 0, start, "ux_policy");
+					}
 					ux_scroll_count++;
 				}
 
 				if (!start && sbe_info->ux_scrolling) {
 					sbe_info->ux_scrolling = start;
 					ux_scroll_count--;
-					if (!ux_scroll_count)
+					if (!ux_scroll_count) {
 						fpsgo_set_ux_general_policy(start);
+						fpsgo_systrace_c_fbt(tgid, 0, start, "ux_policy");
+					}
 				}
 			}
 		}
