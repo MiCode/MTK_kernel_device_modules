@@ -283,6 +283,18 @@ static bool is_cache_sync_dev(struct device *dev)
 	return false;
 }
 
+static int dma_coherent_check(struct device *dev, bool uncached)
+{
+#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
+	if (dev && dev_is_dma_coherent(dev) && uncached) {
+		pr_info("%s fail, coherent dev:%s use uncached buffer!",
+			__func__, dev_name(dev));
+		return -EINVAL;
+	}
+#endif
+	return 0;
+}
+
 static int system_heap_attach(struct dma_buf *dmabuf,
 			      struct dma_buf_attachment *attachment)
 {
@@ -290,6 +302,11 @@ static int system_heap_attach(struct dma_buf *dmabuf,
 	struct dma_heap_attachment *a;
 	struct sg_table *table;
 	u64 tm1, tm2, tm_mid;
+	int ret;
+
+	ret = dma_coherent_check(attachment->dev, buffer->uncached);
+	if (ret)
+		return ret;
 
 	tm1 = sched_clock();
 	DMABUF_TRACE_BEGIN("%s(%lu,%u)", __func__, buffer->len, buffer->sg_table.nents);
@@ -686,8 +703,10 @@ static void *system_heap_do_vmap(struct system_heap_buffer *buffer)
 	vaddr = vmap(pages, npages, VM_MAP, pgprot);
 	vfree(pages);
 
-	if (!vaddr)
+	if (!vaddr) {
+		pr_info("%s vmap %d pages fail!", __func__, npages);
 		return ERR_PTR(-ENOMEM);
+	}
 
 	return vaddr;
 }
