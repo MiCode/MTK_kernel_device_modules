@@ -153,16 +153,16 @@ static const char *get_ce_job_name_by_id(uint32_t job_id)
 		return "APUSYS_CE_UNDEFINED";
 }
 
-uint32_t apu_ce_reg_dump(struct mtk_apu *apu)
+uint32_t apu_ce_reg_dump(struct device *dev)
 {
-	return apusys_rv_smc_call(apu->dev,
+	return apusys_rv_smc_call(dev,
 		MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP,
 		(unsigned int)exception_job_id, 0, NULL, NULL, NULL);
 }
 
-uint32_t apu_ce_sram_dump(struct mtk_apu *apu)
+uint32_t apu_ce_sram_dump(struct device *dev)
 {
-	return apusys_rv_smc_call(apu->dev,
+	return apusys_rv_smc_call(dev,
 		MTK_APUSYS_KERNEL_OP_APUSYS_CE_SRAM_DUMP, 0, 0, NULL, NULL, NULL);
 }
 

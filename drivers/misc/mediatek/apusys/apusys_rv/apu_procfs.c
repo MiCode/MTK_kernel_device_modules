@@ -90,7 +90,6 @@ static ssize_t dump_ce_fw_sram_write(struct file *file,
 	char tmp[PROC_WRITE_TEMP_BUFF_SIZE] = {0};
 	int ret;
 	unsigned int input = 0;
-	struct mtk_apu *apu = (struct mtk_apu *)platform_get_drvdata(g_apu_pdev);
 
 	if (count >= PROC_WRITE_TEMP_BUFF_SIZE - 1)
 		return -ENOMEM;
@@ -111,13 +110,13 @@ static ssize_t dump_ce_fw_sram_write(struct file *file,
 	dev_info(&g_apu_pdev->dev, "%s: dump ops (0x%x)\n", __func__, input);
 
 	if (input & (0x1)) {
-		if (apu_ce_reg_dump(apu) == 0)
+		if (apu_ce_reg_dump(&g_apu_pdev->dev) == 0)
 			dev_info(&g_apu_pdev->dev, "%s: dump ce register success\n", __func__);
 		else
 			dev_info(&g_apu_pdev->dev, "%s: dump ce register smc call fail\n", __func__);
 	}
 	if (input & (0x2)) {
-		if (apu_ce_sram_dump(apu) == 0)
+		if (apu_ce_sram_dump(&g_apu_pdev->dev) == 0)
 			dev_info(&g_apu_pdev->dev, "%s: dump are sram success\n", __func__);
 		else
 			dev_info(&g_apu_pdev->dev, "%s: dump are sram call fail\n", __func__);
