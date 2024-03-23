@@ -6,6 +6,7 @@
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 #include <linux/module.h>
+#include <linux/of.h>
 
 #include "mcupm_plt.h"
 #include "mcupm_driver.h"
@@ -13,6 +14,7 @@
 
 /* import from mcupm_driver */
 extern int mcupm_plt_ackdata;
+//extern int mcupm_mcdi_ackdata;
 
 #if MCUPM_PLT_SERV_SUPPORT
 struct plt_ctrl_s {
@@ -47,6 +49,51 @@ static ssize_t mcupm_alive_show(struct device *kobj,
 }
 DEVICE_ATTR_RO(mcupm_alive);
 
+static ssize_t mcdi_dynamic_finegrain_show(struct device *kobj,
+				 struct device_attribute *attr, char *buf)
+{
+
+	struct mcupm_ipi_data_s mcdi_ipi_data;
+	int ret = 0;
+
+	mcdi_ipi_data.cmd = 0xA1;
+	mcupm_plt_ackdata = 0;
+
+	ret = mtk_ipi_send_compl(&mcupm_ipidev, CH_S_PLATFORM, IPI_SEND_WAIT,
+		&mcdi_ipi_data,
+		sizeof(struct mcupm_ipi_data_s) / MCUPM_MBOX_SLOT_SIZE,
+		2000);
+
+	return snprintf(buf, PAGE_SIZE, "%s / MBOX%d.\n",
+			mcupm_plt_ackdata ? "Finegrain status: disable" : "Finegrain status: enable", CH_S_FG);
+}
+
+static ssize_t mcdi_dynamic_finegrain_store(struct device *kobj,
+	struct device_attribute *attr, const char *buf, size_t n)
+{
+
+	struct mcupm_ipi_data_s mcdi_ipi_data;
+	int ret = 0;
+
+	mcdi_ipi_data.cmd = 0xB1;
+
+	ret = kstrtou32(buf, 0, &mcdi_ipi_data.u.logger.enable);
+	if (ret != 0) {
+		free_page((unsigned long)buf);
+		return -EINVAL;
+	}
+
+	ret = mtk_ipi_send_compl(&mcupm_ipidev, CH_S_PLATFORM, IPI_SEND_WAIT,
+		&mcdi_ipi_data,
+		sizeof(struct mcupm_ipi_data_s) / MCUPM_MBOX_SLOT_SIZE,
+		2000);
+
+	return n;
+}
+
+DEVICE_ATTR_RW(mcdi_dynamic_finegrain);
+
+
 int mcupm_plt_module_init(void)
 {
 	phys_addr_t phys_addr, virt_addr, mem_sz;
@@ -54,15 +101,31 @@ int mcupm_plt_module_init(void)
 	struct plt_ctrl_s *plt_ctl;
 	int ret = 0;
 	unsigned int last_ofs;
+	unsigned int mcdi_fg_support;
 #if MCUPM_LOGGER_SUPPORT
 	unsigned int last_sz;
 #endif
 	unsigned int *mark;
 	unsigned char *b;
+	struct device_node *node = NULL;
+	char mcupm_desc[] = "mediatek,mcupm";
+
 
 	if (mcupm_sysfs_init()) {
 		pr_info("[MCUPM] Sysfs Init Failed\n");
 		return -1;
+	}
+
+
+	node = of_find_compatible_node(NULL, NULL, mcupm_desc);
+	if (!node)
+		pr_notice("of_find_compatible_node unable to find mcupm device node\n");
+
+	if (!of_property_read_u32(node, "mcdi-fg-node-support", &mcdi_fg_support)) {
+		if (mcdi_fg_support)
+			ret = mcupm_sysfs_create_file(&dev_attr_mcdi_dynamic_finegrain);
+	} else {
+		pr_info("Failed to get finegrain support index from dts.\n");
 	}
 
 	ret = mcupm_sysfs_create_file(&dev_attr_mcupm_alive);

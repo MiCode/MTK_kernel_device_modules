@@ -18,7 +18,7 @@
 #define CH_S_EEMSN      7
 #define CH_S_WLC        8
 #define CH_S_PTP3       9
-#define CH_S_10         10
+#define CH_S_FG         10
 #define CH_S_11         11
 #define CH_S_12         12
 #define CH_S_13         13
