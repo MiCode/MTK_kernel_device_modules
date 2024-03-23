@@ -525,6 +525,14 @@ static ssize_t swpm_psp_test_read(char *ToUser, size_t sz, void *priv)
 	out1=0;
 	out2=0;
 	out3=0;
+	ret = get_res_group_info(SWPM_PSP_MAIN_RES_RC_REQ,  &out1, &out2, &out3);
+	if (ret)
+		pr_info("[SWPM] get_res_group_info fail (%d)\n", ret);
+	swpm_dbg_log("RC_REQ PLL_EN: main %u, start %u, size %u ret %d\n", out1, out2, out3, ret);
+
+	out1=0;
+	out2=0;
+	out3=0;
 	ret = get_res_group_info(SWPM_PSP_MAIN_RES_PWR_OFF, &out1, &out2, &out3);
 	if (ret)
 		pr_info("[SWPM] get_res_group_info fail (%d)\n", ret);

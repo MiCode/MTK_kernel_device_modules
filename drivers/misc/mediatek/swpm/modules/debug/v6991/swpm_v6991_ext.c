@@ -81,7 +81,7 @@ static struct share_subsys_data *share_swpm_sub_data_ptr;
 static unsigned int update_count;
 
 static char xpu_ip_str[NR_XPU_IP][MAX_IP_NAME_LENGTH] = {
-	"DISP0", "DISP1", "VENC0", "VENC1", "VDEC0", "SCP", "ADSP"
+	"DISP0", "DISP1", "VENC0", "VENC1", "VDEC0", "SCP", "ADSP", "MCU",
 };
 /* ddr bw ip (total r/total w/cpu/gpu/mm/md) */
 static char ddr_bc_ip_str[NR_DDR_BC_IP][MAX_IP_NAME_LENGTH] = {
