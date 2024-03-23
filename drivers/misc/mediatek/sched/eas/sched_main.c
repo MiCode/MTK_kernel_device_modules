@@ -299,8 +299,8 @@ void mtk_setscheduler_uclamp(void *data, struct task_struct *tsk,
 		trace_sched_set_uclamp(tsk->pid,
 		task_cpu(tsk), task_on_rq_queued(tsk), clamp_id, value);
 }
-//static void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
-void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
+
+static void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
 				      unsigned int new_pelt, int *ret)
 {
 	int pelt_weight = 0, pelt_sum = 0;
@@ -1096,7 +1096,7 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register find_lowest_rq hooks failed, returned %d\n", ret);
 
-	//ret = register_trace_android_vh_sched_pelt_multiplier(mtk_sched_pelt_multiplier, NULL);
+	ret = register_trace_android_vh_sched_pelt_multiplier(mtk_sched_pelt_multiplier, NULL);
 	if (ret)
 		pr_info("register mtk_sched_pelt_multiplier hooks failed, returned %d\n", ret);
 
