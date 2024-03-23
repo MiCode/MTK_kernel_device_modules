@@ -453,11 +453,21 @@ struct mtk_xsphy {
 	int src_coef;    /* coefficient for slew rate calibrate */
 	bool tx_chirpK_disable; /* Disable tx chirpK at normol status */
 	bool bc11_switch_disable; /* Force usb control dpdm */
+	int sw_ver; /* chip id ver  */
+	int u2_procfs_disable; /* disable porc node set from dts */
 	struct proc_dir_entry *root;
 	struct workqueue_struct *wq;
 	struct phy **repeater;
 	int (*suspend)(struct device *dev);
 	int (*resume)(struct device *dev);
+};
+
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
 };
 
 static void u2_phy_props_set(struct mtk_xsphy *xsphy,
@@ -1429,6 +1439,9 @@ static void mtk_xsphy_procfs_init_worker(struct work_struct *data)
 		}
 	}
 
+	if (xsphy->u2_procfs_disable && inst->type == PHY_TYPE_USB2)
+		return;
+
 	if (!xsphy->root) {
 		xsphy->root = proc_mkdir(dev->parent->of_node->name, usb_root);
 		if (!xsphy->root) {
@@ -1448,6 +1461,23 @@ static int mtk_xsphy_procfs_exit(struct mtk_xsphy *xsphy)
 {
 	proc_remove(xsphy->root);
 	return 0;
+}
+
+static int mtk_xsphy_get_chipid(void)
+{
+	struct device_node *dn = of_find_node_by_path("/chosen");
+	struct tag_chipid *chipid;
+	int sw_ver = 0;
+
+	if (!dn)
+		dn = of_find_node_by_path("/chosen@0");
+	if (dn) {
+		chipid = (struct tag_chipid *) of_get_property(dn,"atag,chipid", NULL);
+		if (!chipid)
+			return 0;
+		sw_ver = (int)chipid->sw_ver;
+	}
+	return sw_ver;
 }
 
 static void u2_phy_sw_efsue_set(struct mtk_xsphy *xsphy,
@@ -1807,8 +1837,10 @@ static void u2_phy_instance_power_on(struct mtk_xsphy *xsphy,
 
 	u2_phy_lpm_pll_set(xsphy, inst);
 
-	if (inst->chp_en_disable)
-		mtk_phy_clear_bits(pbase + XSP_USBPHYACR0, P2A0_RG_USB20_CHP_EN);
+	if (inst->chp_en_disable) {
+		if (!xsphy->sw_ver)
+			mtk_phy_clear_bits(pbase + XSP_USBPHYACR0, P2A0_RG_USB20_CHP_EN);
+	}
 
 	dev_info(xsphy->dev, "%s(%d)\n", __func__, index);
 }
@@ -2313,9 +2345,11 @@ static void u2_phy_props_set(struct mtk_xsphy *xsphy,
 		mtk_phy_update_field(pbase + XSP_U2PHYA_RESERVE1, P2A2R1_RG_PLL_POSDIV,
 				     inst->pll_posdiv);
 
-	if (inst->hsrx_vref_sel != -EINVAL)
-		mtk_phy_update_field(pbase + XSP_U2PHYA_RESERVE0, P2A2R0_RG_HSRX_VREF_SEL,
+	if (inst->hsrx_vref_sel != -EINVAL) {
+		if (!xsphy->sw_ver)
+			mtk_phy_update_field(pbase + XSP_U2PHYA_RESERVE0, P2A2R0_RG_HSRX_VREF_SEL,
 				     inst->hsrx_vref_sel);
+	}
 
 }
 
@@ -2536,7 +2570,7 @@ static int mtk_phy_exit(struct phy *phy)
 	struct mtk_xsphy *xsphy = dev_get_drvdata(phy->dev.parent);
 	int i;
 
-	if (inst->type == PHY_TYPE_USB2)
+	if (inst->type == PHY_TYPE_USB2 && !xsphy->u2_procfs_disable)
 		u2_phy_procfs_exit(inst);
 	else if (inst->type == PHY_TYPE_USB3)
 		u3_phy_procfs_exit(inst);
@@ -2890,6 +2924,15 @@ static int mtk_xsphy_probe(struct platform_device *pdev)
 	xsphy->bc11_switch_disable = device_property_read_bool(dev,
 			"bc11-switch-disable");
 	dev_info(dev, "bc11-switch-disable = %d\n", xsphy->bc11_switch_disable);
+
+	xsphy->u2_procfs_disable = device_property_read_bool(dev,
+				"u2-procfs-disable");
+
+	dev_info(dev, "u2-procfs-disable = %d\n", xsphy->u2_procfs_disable);
+
+	xsphy->sw_ver = mtk_xsphy_get_chipid();
+
+	dev_info(dev, "xsphy->sw_ver = %d\n", xsphy->sw_ver);
 
 	/* create phy workqueue */
 	xsphy->wq = create_singlethread_workqueue("xsphy");
