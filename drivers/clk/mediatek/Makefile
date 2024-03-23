@@ -86,6 +86,7 @@ obj-$(CONFIG_COMMON_CLK_MT6886_VCODEC) += clk-mt6886-vcodec.o
 endif
 ifneq ($(wildcard $(srctree)/$(src)/clk-mt6893.c),)
 obj-$(CONFIG_COMMON_CLK_MT6893) += clk-mt6893.o clk-bringup.o
+obj-$(CONFIG_COMMON_CLK_MT6893) += clk-mt6893-pg.o
 obj-$(CONFIG_COMMON_CLK_MT6893_APU0) += clk-mt6893-apu0.o
 obj-$(CONFIG_COMMON_CLK_MT6893_APU1) += clk-mt6893-apu1.o
 obj-$(CONFIG_COMMON_CLK_MT6893_APU2) += clk-mt6893-apu2.o
