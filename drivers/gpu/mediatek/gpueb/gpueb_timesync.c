@@ -63,6 +63,7 @@ static struct hrtimer timesync_refresh_timer;
 static u8 gpueb_base_ver;
 static u64 latest_tick, latest_ts;
 static int latest_freeze;
+static int need_sync;
 
 static void gpueb_ts_update(int suspended, u64 tick, u64 ts)
 {
@@ -107,7 +108,14 @@ static void gpueb_ts_update(int suspended, u64 tick, u64 ts)
 
 void gpueb_timesync_update(void)
 {
-	gpueb_ts_update(latest_freeze, latest_tick, latest_ts);
+	unsigned long irq_flags = 0;
+
+	if (need_sync) {
+		spin_lock_irqsave(&timesync_ctx.lock, irq_flags);
+		gpueb_ts_update(latest_freeze, latest_tick, latest_ts);
+		need_sync = false;
+		spin_unlock_irqrestore(&timesync_ctx.lock, irq_flags);
+	}
 }
 EXPORT_SYMBOL(gpueb_timesync_update);
 
@@ -138,18 +146,17 @@ static void timesync_sync_base_internal(unsigned int flag)
 	freeze = (flag & TIMESYNC_FLAG_FREEZE) ? 1 : 0;
 	unfreeze = (flag & TIMESYNC_FLAG_UNFREEZE) ? 1 : 0;
 
-#if GPUEB_TIMESYNC_ENABLE
 	/* store latest values, sync with gpueb when pwr on */
 	latest_ts = ts;
 	latest_tick = tick;
 	latest_freeze = freeze;
+
+	/* sync with gpueb */
 	if (!g_ghpm_support)
-		gpueb_timesync_update();
-#else
-	if (mfg0_pwr_sta() == MFG0_PWR_ON)
-		/* sync with gpueb */
 		gpueb_ts_update(freeze, tick, ts);
-#endif /* GPUEB_TIMESYNC_ENABLE */
+	else
+		/* no need to sync when gpueb power on every time */
+		need_sync = true;
 
 	spin_unlock_irqrestore(&timesync_ctx.lock, irq_flags);
 

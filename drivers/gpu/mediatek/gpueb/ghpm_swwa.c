@@ -40,6 +40,7 @@
 #include "ghpm_wrapper.h"
 #include "ghpm_swwa.h"
 #include "ghpm_debug.h"
+#include "gpueb_timesync.h"
 
 
 static bool __is_gpueb_exist(void);
@@ -271,6 +272,7 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 					goto wait_err;
 				}
 			}
+			gpueb_timesync_update();
 			atomic_set(&g_progress_status, NOT_IN_PROGRESS);
 			gpueb_pr_debug(GHPM_SWWA_TAG, "GPUEB resume done, i=%u", i);
 		} else if (atomic_read(&g_progress_status) == POWER_OFF_IN_PROGRESS) {
