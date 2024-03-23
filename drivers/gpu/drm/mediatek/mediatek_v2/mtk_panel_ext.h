@@ -24,6 +24,7 @@
 #define MAX_DYN_CMD_NUM 20
 #define MAX_TX_CMD_NUM_PACK 64
 #define MAX_MODE_SWITCH_CMD_NUM 20
+#define MTK_MAX_PANEL 2
 
 struct mtk_dsi;
 struct cmdq_pkt;
@@ -531,8 +532,6 @@ struct mtk_panel_params {
 	void *corner_pattern_lt_addr_r;
 	unsigned int physical_width_um;
 	unsigned int physical_height_um;
-	unsigned int physical_width;
-	unsigned int physical_height;
 	unsigned int lane_swap_en;
 	unsigned int bdg_lane_swap_en;
 	unsigned int is_cphy;
@@ -584,6 +583,11 @@ struct mtk_panel_params {
 
 	bool dual_swap;
 	unsigned int mode_switch_delay;
+
+	unsigned int physical_width;
+	unsigned int physical_height;
+	unsigned int crop_width[MTK_MAX_PANEL];
+	unsigned int crop_height[MTK_MAX_PANEL];
 };
 
 struct mtk_panel_ext {

@@ -1344,6 +1344,18 @@ void serdes_get_modes(struct drm_bridge *bridge, struct vdo_timing *disp_mode)
 		disp_mode->physcial_h = (ser_des->desa->disp_mode.height
 			>= ser_des->desb->disp_mode.height) ?
 			ser_des->desa->disp_mode.physcial_h : ser_des->desb->disp_mode.physcial_h;
+		disp_mode->crop_width[0] = (ser_des->desa->disp_mode.height
+			>= ser_des->desb->disp_mode.height) ? ser_des->desa->disp_mode.width
+			: ser_des->desb->disp_mode.width;
+		disp_mode->crop_width[1] = (ser_des->desa->disp_mode.height
+			>= ser_des->desb->disp_mode.height) ? ser_des->desb->disp_mode.width
+			: ser_des->desa->disp_mode.width;
+		disp_mode->crop_height[0] = (ser_des->desa->disp_mode.height
+			>= ser_des->desb->disp_mode.height) ? ser_des->desa->disp_mode.height
+			: ser_des->desb->disp_mode.height;
+		disp_mode->crop_height[1] = (ser_des->desa->disp_mode.height
+			>= ser_des->desb->disp_mode.height) ? ser_des->desb->disp_mode.height
+			: ser_des->desa->disp_mode.height;
 	} else {
 		disp_mode->width = ser_des->desdef->disp_mode.width;
 		disp_mode->hfp = ser_des->desdef->disp_mode.hfp;
@@ -1356,6 +1368,10 @@ void serdes_get_modes(struct drm_bridge *bridge, struct vdo_timing *disp_mode)
 		disp_mode->fps = ser_des->desdef->disp_mode.fps;
 		disp_mode->pll = ser_des->desdef->disp_mode.pll;
 		disp_mode->lppf = ser_des->desdef->disp_mode.lppf;
+		disp_mode->crop_width[0] =
+			disp_mode->crop_height[0] =
+			disp_mode->crop_width[1] =
+			disp_mode->crop_height[1] = 0;
 		disp_mode->physcial_w = ser_des->desdef->disp_mode.physcial_w;
 		disp_mode->physcial_h = ser_des->desdef->disp_mode.physcial_h;
 	}

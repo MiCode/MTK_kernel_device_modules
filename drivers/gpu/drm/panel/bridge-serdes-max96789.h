@@ -26,6 +26,8 @@ struct vdo_timing {
 	u32 lppf;
 	u32 physcial_w;
 	u32 physcial_h;
+	u32 crop_width[2];
+	u32 crop_height[2];
 };
 
 void serdes_enable(struct drm_bridge *bridge);

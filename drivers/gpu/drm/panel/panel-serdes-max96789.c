@@ -77,6 +77,21 @@ struct lcm {
 	u32 lppf;
 };
 
+static const struct panel_desc serdes_panel_desc = {
+	.bpc = 8,
+	.size = {
+		.width_mm = 141,
+		.height_mm = 226,
+	},
+	.lanes = 4,
+	.format = MIPI_DSI_FMT_RGB888,
+	.mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE |
+				MIPI_DSI_MODE_LPM,
+};
+static struct mtk_panel_params ext_params = {
+	.pll_clk = 478,
+};
+
 static inline struct lcm *panel_to_lcm(struct drm_panel *panel)
 {
 	return container_of(panel, struct lcm, panel);
@@ -123,6 +138,14 @@ static void get_timing(struct lcm *ctx)
 	ctx->lppf = timing.lppf;
 	ctx->disp_mode.width_mm = timing.physcial_w;
 	ctx->disp_mode.height_mm = timing.physcial_h;
+	if (timing.crop_width[0] != 0 && timing.crop_width[1] != 0) {
+		ext_params.crop_width[0] = timing.crop_width[0];
+		ext_params.crop_width[1] = timing.crop_width[1];
+		ext_params.crop_height[0] = timing.crop_height[0];
+		ext_params.crop_height[1] = timing.crop_height[1];
+		ext_params.physical_width = timing.crop_width[0] + timing.crop_width[1];
+		ext_params.physical_height = timing.crop_height[0];
+	}
 	pr_info("%s -\n", __func__);
 }
 
@@ -217,21 +240,6 @@ static int panel_ext_reset(struct drm_panel *panel, int on)
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
 	.ata_check = panel_ata_check,
-};
-
-static const struct panel_desc serdes_panel_desc = {
-	.bpc = 8,
-	.size = {
-		.width_mm = 141,
-		.height_mm = 226,
-	},
-	.lanes = 4,
-	.format = MIPI_DSI_FMT_RGB888,
-	.mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE |
-				MIPI_DSI_MODE_LPM,
-};
-static struct mtk_panel_params ext_params = {
-	.pll_clk = 478,
 };
 
 static int lcm_get_modes(struct drm_panel *panel,
@@ -343,6 +351,14 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	ext_params.pll_clk = ctx->pll;
 	ext_params.vdo_per_frame_lp_enable = ctx->lppf;
 	pr_info("pll_clk=%d, lppf=%d\n", ext_params.pll_clk, ext_params.vdo_per_frame_lp_enable);
+	if (ext_params.crop_width[0] && ext_params.crop_width[1]) {
+		pr_info("super frame![%d*%d]+[%d*%d]=[%d*%d]\n", ext_params.crop_width[0],
+			ext_params.crop_height[1],
+			ext_params.crop_width[0],
+			ext_params.crop_height[1],
+			ext_params.physical_width,
+			ext_params.physical_height);
+	}
 	ret = mtk_panel_ext_create(dev, &ext_params, &ext_funcs, &ctx->panel);
 	if (ret < 0) {
 		pr_info("%s error!\n", __func__);
