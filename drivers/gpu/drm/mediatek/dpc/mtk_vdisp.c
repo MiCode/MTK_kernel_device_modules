@@ -11,6 +11,7 @@
 #include <linux/of_platform.h>
 #include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
+#include <linux/pm_wakeup.h>
 #include <linux/regulator/consumer.h>
 
 #include "mtk_vdisp.h"
@@ -82,6 +83,7 @@ struct mtk_vdisp {
 	enum disp_pd_id pd_id;
 	int clk_num;
 	struct clk **clks;
+	int pm_ret;
 };
 static struct device *g_dev[DISP_PD_NUM];
 static void __iomem *g_vlp_base;
@@ -89,6 +91,7 @@ static void __iomem *g_disp_voter;
 static atomic_t g_mtcmos_cnt = ATOMIC_INIT(0);
 static DEFINE_MUTEX(g_mtcmos_cnt_lock);
 static struct dpc_funcs disp_dpc_driver;
+struct wakeup_source *g_vdisp_wake_lock;
 
 static bool vcp_warmboot_support;
 
@@ -106,10 +109,6 @@ static s32 mtk_vdisp_get_power_cnt(void)
 static s32 mtk_vdisp_poll_power_cnt(s32 val)
 {
 	s32 ret, tmp;
-
-	/* if users except DISP_VIDLE_USER_CRTC were in exception flow, skip polling */
-	if (g_disp_voter && (readl(g_disp_voter) & 0xFFFE0000))
-		return 0;
 
 	ret = readx_poll_timeout(mtk_vdisp_get_power_cnt, , tmp, tmp == val, 100, TIMEOUT_300MS);
 	if (ret < 0)
@@ -286,6 +285,9 @@ static int genpd_event_notifier(struct notifier_block *nb,
 	case GENPD_NOTIFY_PRE_ON:
 		mutex_lock(&g_mtcmos_cnt_lock);
 
+		if (priv->pd_id == DISP_PD_DISP_VCORE)
+			__pm_stay_awake(g_vdisp_wake_lock);
+
 		mminfra_hwv_pwr_ctrl(priv, true);
 
 		if (atomic_read(&g_mtcmos_cnt) == 0)
@@ -293,7 +295,7 @@ static int genpd_event_notifier(struct notifier_block *nb,
 
 		/* vote and power on mminfra */
 		if (disp_dpc_driver.dpc_vidle_power_keep)
-			disp_dpc_driver.dpc_vidle_power_keep((enum mtk_vidle_voter_user)priv->pd_id);
+			priv->pm_ret = disp_dpc_driver.dpc_vidle_power_keep((enum mtk_vidle_voter_user)priv->pd_id);
 
 		if (disp_dpc_driver.dpc_mtcmos_auto) {
 			if (priv->pd_id == DISP_PD_DISP1)
@@ -319,8 +321,8 @@ static int genpd_event_notifier(struct notifier_block *nb,
 		if (priv->vdisp_ao_cg_con)
 			writel(BIT(16), priv->vdisp_ao_cg_con + 0x8);
 
-		/* unvote and power off mminfra */
-		if (disp_dpc_driver.dpc_vidle_power_release)
+		/* unvote and power off mminfra, release should be called only if keep successfully */
+		if (disp_dpc_driver.dpc_vidle_power_release && !priv->pm_ret)
 			disp_dpc_driver.dpc_vidle_power_release((enum mtk_vidle_voter_user)priv->pd_id);
 
 		mminfra_hwv_pwr_ctrl(priv, false);
@@ -329,7 +331,12 @@ static int genpd_event_notifier(struct notifier_block *nb,
 		mminfra_hwv_pwr_ctrl(priv, true);
 
 		if (disp_dpc_driver.dpc_vidle_power_keep)
-			disp_dpc_driver.dpc_vidle_power_keep((enum mtk_vidle_voter_user)priv->pd_id);
+			priv->pm_ret = disp_dpc_driver.dpc_vidle_power_keep((enum mtk_vidle_voter_user)priv->pd_id);
+
+		if (priv->pm_ret) {
+			VDISPERR("pd(%d) pre off power keep failed(%d)", priv->pd_id, priv->pm_ret);
+			break;
+		}
 
 		if (disp_dpc_driver.dpc_mtcmos_auto) {
 			if (priv->pd_id == DISP_PD_DISP1)
@@ -357,10 +364,13 @@ static int genpd_event_notifier(struct notifier_block *nb,
 		if (atomic_read(&g_mtcmos_cnt) == 1)
 			vdisp_hwccf_ctrl(priv, false);
 
-		if (disp_dpc_driver.dpc_vidle_power_release)
+		if (disp_dpc_driver.dpc_vidle_power_release && !priv->pm_ret)
 			disp_dpc_driver.dpc_vidle_power_release((enum mtk_vidle_voter_user)priv->pd_id);
 
 		mminfra_hwv_pwr_ctrl(priv, false);
+
+		if (priv->pd_id == DISP_PD_DISP_VCORE)
+			__pm_relax(g_vdisp_wake_lock);
 
 		atomic_dec(&g_mtcmos_cnt);
 		mutex_unlock(&g_mtcmos_cnt_lock);
@@ -551,6 +561,11 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 
 	// Vote on when probe for sync status
 	vdisp_hwccf_ctrl(priv, true);
+
+	if (pd_id == DISP_PD_DISP_VCORE) {
+		g_vdisp_wake_lock = wakeup_source_create("vdisp_wakelock");
+		wakeup_source_add(g_vdisp_wake_lock);
+	}
 
 	if (!pm_runtime_enabled(dev))
 		pm_runtime_enable(dev);
