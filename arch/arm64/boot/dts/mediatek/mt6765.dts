@@ -112,11 +112,11 @@ aliases {
 #endif
 			power-domains = <&scpsys MT6765_POWER_DOMAIN_DIS>;
 			operating-points-v2 = <&opp_table_mm>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			interconnects = <&dvfsrc MT6873_MASTER_MM_DISP &dvfsrc
 					MT6873_SLAVE_DDR_EMI>;
 			interconnect-names = "disp-perf-bw";
-			required-opps = <&dvfsrc_freq_opp0>,
+			dvfsrc-required-opps = <&dvfsrc_freq_opp0>,
 					<&dvfsrc_freq_opp1>,
 					 <&dvfsrc_freq_opp2>;
 
