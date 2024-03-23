@@ -3067,8 +3067,10 @@ cpus {
 		regulator_vibrator {
 			compatible = "regulator-vibrator";
 			label = "vibrator";
-			min-volt = <1200000>;
-			max-volt = <3300000>;
+			min-volt = <2300000>;
+			max-volt = <3200000>;
+			min-limit = <15>;
+			max-limit = <15000>;
 			vib-supply = <&mt6359p_vibr_reg>;
 		};
 
