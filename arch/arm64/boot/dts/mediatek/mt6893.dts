@@ -903,6 +903,13 @@
 		vbat_threshold = <4150>;
 	};
 
+	battery_manager: battery-manager {
+		compatible = "mediatek,battery manager";
+		gauge1 = <&mtk_gauge>;
+		charger = <&mt6360_chg>;
+		bootmode = <&chosen>;
+	};
+
 	device_mpu_low@1021a000 {
 		compatible = "mediatek,device_mpu_low";
 		reg = <0 0x1021a000 0 0x1000>;
