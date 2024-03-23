@@ -412,6 +412,10 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 
 	if (mmqos_state & SRT_DATA_BW)
 		avg_bw = div_u64(avg_bw * 100, 75);
+	if (mmqos_state & SMMU_TCU_BW) {
+		avg_bw = div_u64(avg_bw * 105, 100);
+		peak_bw = div_u64(peak_bw * 105, 100);
+	}
 
 	comm_id = MASK_8(comm_node->base->icc_node->id);
 	if (mmqos_met_enabled())

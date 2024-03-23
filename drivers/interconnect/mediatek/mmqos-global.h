@@ -48,6 +48,7 @@ enum mmqos_state_level {
 	REAL_TIME_PERM_ENABLE = BIT(12),
 	FORCE_BW_TO_OSTDL = BIT(13),
 	SRT_DATA_BW = BIT(14),
+	SMMU_TCU_BW = BIT(15),
 };
 extern u32 mmqos_state;
 
