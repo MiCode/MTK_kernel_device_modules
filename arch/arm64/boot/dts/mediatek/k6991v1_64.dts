@@ -8,6 +8,7 @@
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/pinctrl/mt6991-pinfunc.h>
+#include <dt-bindings/power/mt6991-power.h>
 
 &chosen {
 bootargs_ext = "rcu_nocbs=0-7";
@@ -21,6 +22,21 @@ bootargs_ext = "rcu_nocbs=0-7";
 		gate-enable = <1>;
 		pwm-config = <0 1 0 0 0>;
 	};
+};
+
+&ise_mbox {
+	mediatek,real-drv = <1>;
+};
+
+&ise_lpm {
+	ise-wakelock = <1>;
+	ise-lpm-freerun = <1>;
+	ise-lpm-deinit-bypass = <0>;
+	power-domains = <&scpsys MT6991_POWER_DOMAIN_SSR>;
+};
+
+&ise_trusty {
+	mediatek,real-drv = <1>;
 };
 
 &pio {
