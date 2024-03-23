@@ -636,6 +636,16 @@
 		#clock-cells = <1>;
 	};
 
+	disp_pwm: disp-pwm0@160b0000 {
+		compatible = "mediatek,disp_pwm0",
+			"mediatek,mt6991-disp-pwm0";
+		reg = <0 0x160b0000 0 0x1000>;
+		interrupts = <GIC_SPI 254 IRQ_TYPE_LEVEL_HIGH 0>;
+		#pwm-cells = <2>;
+		clocks = <&cksys_clk CLK_CK_DISP_PWM_SEL>;
+		clock-names = "main";
+	};
+
 	imp_iic_wrap_c_clk: syscon@16300000 {
 		compatible = "mediatek,mt6991-imp_iic_wrap_c", "syscon";
 		reg = <0 0x16300000 0 0x1000>;
@@ -3020,6 +3030,17 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			max-brightness = <2047>;
 			min-brightness = <4>;
 			max-hw-brightness = <2047>;
+		};
+	};
+
+	pwmleds: pwmleds {
+		compatible = "mediatek,pwm-leds";
+		status = "disabled";
+		backlight {
+			label = "lcd-backlight";
+			pwms = <&disp_pwm 0 39385>;
+			max-brightness = <255>;
+			pwm-names = "lcd-backlight";
 		};
 	};
 
