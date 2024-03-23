@@ -15328,6 +15328,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		clk-offsets = <0x0020>, <0x0030>, <0x0040>, <0x0050>, <0x0060>;
 		vcore-supply = <&mt6316_8_vbuck1>;
 		vmm-pmic-supply = <&mt6363_vbuck2>;
+		vdisp-pmic-supply = <&mt6363_vbuck1>;
 		mediatek,met-freerun;
 	};
 
