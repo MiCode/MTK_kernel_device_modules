@@ -7579,6 +7579,32 @@
 			compatible = "mediatek,mt6315_6-regulator";
 			interrupt-parent = <&pio>;
 			interrupts = <109 IRQ_TYPE_LEVEL_HIGH 109 0>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+
+			mt6315_6_vbuck1: 6-vbuck1 {
+				regulator-compatible = "vbuck1";
+				regulator-name = "6_vbuck1";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1193750>;
+				regulator-enable-ramp-delay = <256>;
+				regulator-always-on;
+			};
+			mt6315_6_vbuck3: 6-vbuck3 {
+				regulator-compatible = "vbuck3";
+				regulator-name = "6_vbuck3";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1193750>;
+				regulator-enable-ramp-delay = <256>;
+				regulator-always-on;
+			};
+			mt6315_6_vbuck4: 6-vbuck4 {
+				regulator-compatible = "vbuck4";
+				regulator-name = "6_vbuck4";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1193750>;
+				regulator-enable-ramp-delay = <256>;
+			};
 		};
 	};
 	mt6315_3: mt6315@3 {
@@ -7590,6 +7616,30 @@
 			compatible = "mediatek,mt6315_3-regulator";
 			interrupt-parent = <&pio>;
 			interrupts = <108 IRQ_TYPE_LEVEL_HIGH 108 0>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+
+			mt6315_3_vbuck1: 3-vbuck1 {
+				regulator-compatible = "vbuck1";
+				regulator-name = "3_vbuck1";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1193750>;
+				regulator-enable-ramp-delay = <256>;
+			};
+			mt6315_3_vbuck3: 3-vbuck3 {
+				regulator-compatible = "vbuck3";
+				regulator-name = "3_vbuck3";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1193750>;
+				regulator-enable-ramp-delay = <256>;
+			};
+			mt6315_3_vbuck4: 3-vbuck4 {
+				regulator-compatible = "vbuck4";
+				regulator-name = "3_vbuck4";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1193750>;
+				regulator-enable-ramp-delay = <256>;
+			};
 		};
 	};
 };
@@ -8193,9 +8243,6 @@
 };
 
 
-
-#include "mediatek/mt6315_s6.dtsi"
-#include "mediatek/mt6315_s3.dtsi"
 #include "mediatek/mt6359p.dtsi"
 #include "mediatek/bat_setting/mt6877_battery_prop.dtsi"
 #include "mediatek/cust_mt6877_msdc.dtsi"
