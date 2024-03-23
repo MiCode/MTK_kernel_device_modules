@@ -100,10 +100,48 @@ int ppb_set_wifi_pwr_addr(unsigned int val)
 		return -1;
 	}
 
+	pr_info("ppb_wifi_pwr_addr: 0x%x\n", val);
 	writel(val, (void __iomem *)(ppb_sram_base + PPB_WIFI_SMEM_ADDR * 4));
 	return 0;
 }
 EXPORT_SYMBOL(ppb_set_wifi_pwr_addr);
+
+int ppb_set_wifi_pwr_addr_by_dts(void)
+{
+	struct device_node *wifi_node = NULL;
+	unsigned long long wlan_emi_pa = 0;
+	unsigned int wlan_ppb_offset = 0;
+	int ret;
+
+	if (!ppb_sram_base) {
+		pr_info("%s: ppb_sram_base error %p\n", __func__, ppb_sram_base);
+		return -1;
+	}
+
+	wifi_node = of_find_compatible_node(NULL, NULL, "mediatek,wifi");
+	if (!wifi_node) {
+		pr_info("%s: get from dts, emi for ppb error\n", __func__);
+		return -1;
+	}
+
+	ret = of_property_read_u64(wifi_node, "conninfra-emi-addr", &wlan_emi_pa);
+	if (ret || wlan_emi_pa == 0) {
+		pr_info("%s: ret %d, wlan_emi_pa 0x%llx\n", __func__, ret, wlan_emi_pa);
+		of_node_put(wifi_node);
+		return -1;
+	}
+
+	ret = of_property_read_u32(wifi_node, "ppb-emi-offset", &wlan_ppb_offset);
+	of_node_put(wifi_node);
+	if (ret || wlan_ppb_offset == 0) {
+		pr_info("%s: ret %d, wlan_ppb_offset 0x%x\n", __func__, ret, wlan_ppb_offset);
+		return -1;
+	}
+
+	ppb_set_wifi_pwr_addr((unsigned int)(0xFFFFFFFF & wlan_emi_pa) + wlan_ppb_offset);
+
+	return 0;
+}
 
 static int __used ppb_read_sram(int offset)
 {
@@ -1745,6 +1783,7 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 		}
 	}
 	get_md_dbm_info();
+	ppb_set_wifi_pwr_addr_by_dts();
 
 	ppb_ctrl.ppb_drv_done = 1;
 
