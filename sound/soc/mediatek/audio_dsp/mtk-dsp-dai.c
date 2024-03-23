@@ -170,7 +170,11 @@ static struct snd_soc_dai_driver mtk_dai_dsp_driver[] = {
 		.capture = {
 				.stream_name = "DSP_Capture_Raw",
 				.channels_min = 1,
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+				.channels_max = 16,
+#else
 				.channels_max = 6,
+#endif
 				.rates = MTK_I2S_RATES,
 				.formats = MTK_I2S_FORMATS,
 			},
@@ -318,6 +322,247 @@ static struct snd_soc_dai_driver mtk_dai_dsp_driver[] = {
 				.formats = MTK_I2S_FORMATS,
 			},
 	},
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+	{
+		.name = "audio_task_hfp_client_rx_dai",
+		.id = AUDIO_TASK_HFP_CLIENT_RX_ADSP_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_HFP_CLIENT_RX",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
+	{
+		.name = "audio_task_anc_dai",
+		.id = AUDIO_TASK_ANC_ADSP_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_ANC",
+				.channels_min = 1,
+				.channels_max = 4,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
+	{
+		.name = "audio_task_extstream1_dai",
+		.id = AUDIO_TASK_EXTSTREAM1_ADSP_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_EXTSTREAM1",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_extstream2_dai",
+		.id = AUDIO_TASK_EXTSTREAM2_ADSP_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_EXTSTREAM2",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT)
+	{
+		.name = "audio_task_Sub_Playback_dai",
+		.id = AUDIO_TASK_SUB_PLAYBACK_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_Sub_Playback",
+				.channels_min = 1,
+				.channels_max = 16,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+#endif
+	{
+		.name = "audio_task_playback0_dai",
+		.id = AUDIO_TASK_PLAYBACK0_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_Playback0",
+				.channels_min = 1,
+				.channels_max = 16,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_playback1_dai",
+		.id = AUDIO_TASK_PLAYBACK1_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_Playback1",
+				.channels_min = 1,
+				.channels_max = 16,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_playback2_dai",
+		.id = AUDIO_TASK_PLAYBACK2_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_Playback2",
+				.channels_min = 1,
+				.channels_max = 16,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_playback3_dai",
+		.id = AUDIO_TASK_PLAYBACK3_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_Playback3",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_playback4_dai",
+		.id = AUDIO_TASK_PLAYBACK4_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_Playback4",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_playback5_dai",
+		.id = AUDIO_TASK_PLAYBACK5_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_Playback5",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_playback6_dai",
+		.id = AUDIO_TASK_PLAYBACK6_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_Playback6",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_playback7_dai",
+		.id = AUDIO_TASK_PLAYBACK7_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_Playback7",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_playback8_dai",
+		.id = AUDIO_TASK_PLAYBACK8_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_Playback8",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_playback9_dai",
+		.id = AUDIO_TASK_PLAYBACK9_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_Playback9",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_playback10_dai",
+		.id = AUDIO_TASK_PLAYBACK10_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_Playback10",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_playback11_dai",
+		.id = AUDIO_TASK_PLAYBACK11_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_Playback11",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_playback12_dai",
+		.id = AUDIO_TASK_PLAYBACK12_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_Playback12",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_playback13_dai",
+		.id = AUDIO_TASK_PLAYBACK13_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_Playback13",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_playback14_dai",
+		.id = AUDIO_TASK_PLAYBACK14_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_Playback14",
+				.channels_min = 1,
+				.channels_max = 16,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_playback15_dai",
+		.id = AUDIO_TASK_PLAYBACK15_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_Playback15",
+				.channels_min = 1,
+				.channels_max = 16,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+#endif
 };
 
 int dai_dsp_register(struct platform_device *pdev, struct mtk_base_dsp *dsp)

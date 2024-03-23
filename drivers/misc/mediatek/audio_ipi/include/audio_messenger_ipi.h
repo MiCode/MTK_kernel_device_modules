@@ -21,7 +21,11 @@
 #define MAX_IPI_MSG_BUF_SIZE     (112) /* SHARE_BUF_SIZE - 16 */
 #define IPI_MSG_HEADER_SIZE      (16)
 #define MAX_IPI_MSG_PAYLOAD_SIZE (MAX_IPI_MSG_BUF_SIZE - IPI_MSG_HEADER_SIZE)
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+#define MAX_DSP_DMA_WRITE_SIZE   (0x30000)
+#else
 #define MAX_DSP_DMA_WRITE_SIZE   (0x20000)
+#endif
 
 #define IPI_MSG_MAGIC_NUMBER     (0x8888)
 
@@ -249,4 +253,3 @@ int audio_recv_ipi_buf_from_dsp(
 
 
 #endif /* end of AUDIO_MESSENGER_IPI_H */
-

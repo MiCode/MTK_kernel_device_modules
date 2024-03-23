@@ -1309,6 +1309,9 @@ static int mt6991_adsp_mem_get(struct snd_kcontrol *kcontrol,
 	case AUDIO_TASK_USBDL_ID:
 	case AUDIO_TASK_MDUL_ID:
 	case AUDIO_TASK_CALLDL_ID:
+#if (IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP) && IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT))
+	case AUDIO_TASK_SUB_PLAYBACK_ID:
+#endif
 		memif_num = get_dsp_task_attr(task_id,
 					      ADSP_TASK_ATTR_MEMDL);
 		break;
@@ -1319,6 +1322,19 @@ static int mt6991_adsp_mem_get(struct snd_kcontrol *kcontrol,
 	case AUDIO_TASK_USBUL_ID:
 	case AUDIO_TASK_MDDL_ID:
 	case AUDIO_TASK_CALLUL_ID:
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+	case AUDIO_TASK_HFP_CLIENT_RX_ADSP_ID:
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
+	case AUDIO_TASK_ANC_ADSP_ID:
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
+	case AUDIO_TASK_EXTSTREAM1_ADSP_ID:
+	case AUDIO_TASK_EXTSTREAM2_ADSP_ID:
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	case AUDIO_TASK_CAPTURE_MCH_ID:
+#endif
 		memif_num = get_dsp_task_attr(task_id,
 					      ADSP_TASK_ATTR_MEMUL);
 		break;
@@ -1369,6 +1385,9 @@ static int mt6991_adsp_mem_set(struct snd_kcontrol *kcontrol,
 	case AUDIO_TASK_USBUL_ID:
 	case AUDIO_TASK_MDDL_ID:
 	case AUDIO_TASK_BTUL_ID:
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	case AUDIO_TASK_CAPTURE_MCH_ID:
+#endif
 		ul_memif_num = get_dsp_task_attr(task_id,
 						 ADSP_TASK_ATTR_MEMUL);
 		break;
@@ -1381,6 +1400,19 @@ static int mt6991_adsp_mem_set(struct snd_kcontrol *kcontrol,
 	case AUDIO_TASK_CALL_FINAL_ID:
 	case AUDIO_TASK_PLAYBACK_ID:
 	case AUDIO_TASK_KTV_ID:
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+	case AUDIO_TASK_HFP_CLIENT_RX_ADSP_ID:
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
+	case AUDIO_TASK_ANC_ADSP_ID:
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
+	case AUDIO_TASK_EXTSTREAM1_ADSP_ID:
+	case AUDIO_TASK_EXTSTREAM2_ADSP_ID:
+#endif
+#if (IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP) && IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT))
+	case AUDIO_TASK_SUB_PLAYBACK_ID:
+#endif
 		dl_memif_num = get_dsp_task_attr(task_id,
 						 ADSP_TASK_ATTR_MEMDL);
 		ul_memif_num = get_dsp_task_attr(task_id,
@@ -1727,6 +1759,40 @@ static const struct snd_kcontrol_new mt6991_pcm_kcontrols[] = {
 		       SND_SOC_NOPM, 0, 0x1, 0,
 		       mt6991_adsp_mem_get,
 		       mt6991_adsp_mem_set),
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+	SOC_SINGLE_EXT("adsp_hfp_client_rx_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6991_adsp_mem_get,
+		       mt6991_adsp_mem_set),
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
+	SOC_SINGLE_EXT("adsp_anc_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6991_adsp_mem_get,
+		       mt6991_adsp_mem_set),
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
+	SOC_SINGLE_EXT("adsp_extstream1_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6991_adsp_mem_get,
+		       mt6991_adsp_mem_set),
+	SOC_SINGLE_EXT("adsp_extstream2_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6991_adsp_mem_get,
+		       mt6991_adsp_mem_set),
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT)
+	SOC_SINGLE_EXT("adsp_subpb_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6991_adsp_mem_get,
+		       mt6991_adsp_mem_set),
+#endif
+	SOC_SINGLE_EXT("adsp_capture_mch_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6991_adsp_mem_get,
+		       mt6991_adsp_mem_set),
+#endif
 #endif
 	SOC_SINGLE_EXT("mmap_play_scenario", SND_SOC_NOPM, 0, 0x1, 0,
 		       mt6991_mmap_dl_scene_get, mt6991_mmap_dl_scene_set),
@@ -2161,6 +2227,10 @@ static const struct snd_kcontrol_new memif_ul5_ch1_mix[] = {
 				    I_PCM_1_CAP_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("GAIN0_OUT_CH1", AFE_CONN028_0,
 				    I_GAIN0_OUT_CH1, 1, 0),
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	SOC_DAPM_SINGLE_AUTODISABLE("DL5_CH1", AFE_CONN028_1,
+				    I_DL5_CH1, 1, 0),
+#endif
 };
 
 static const struct snd_kcontrol_new memif_ul5_ch2_mix[] = {
@@ -2188,6 +2258,10 @@ static const struct snd_kcontrol_new memif_ul5_ch2_mix[] = {
 				    I_PCM_1_CAP_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("GAIN0_OUT_CH2", AFE_CONN029_0,
 				    I_GAIN0_OUT_CH2, 1, 0),
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	SOC_DAPM_SINGLE_AUTODISABLE("DL5_CH2", AFE_CONN029_1,
+				    I_DL5_CH2, 1, 0),
+#endif
 };
 
 static const struct snd_kcontrol_new memif_ul6_ch1_mix[] = {
@@ -2199,6 +2273,10 @@ static const struct snd_kcontrol_new memif_ul6_ch1_mix[] = {
 				    I_DL1_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL2_CH1", AFE_CONN030_1,
 				    I_DL2_CH1, 1, 0),
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	SOC_DAPM_SINGLE_AUTODISABLE("DL6_CH1", AFE_CONN030_1,
+				    I_DL6_CH1, 1, 0),
+#endif
 };
 
 static const struct snd_kcontrol_new memif_ul6_ch2_mix[] = {
@@ -2210,6 +2288,10 @@ static const struct snd_kcontrol_new memif_ul6_ch2_mix[] = {
 				    I_DL1_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL2_CH2", AFE_CONN031_1,
 				    I_DL2_CH2, 1, 0),
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	SOC_DAPM_SINGLE_AUTODISABLE("DL6_CH2", AFE_CONN031_1,
+				    I_DL6_CH2, 1, 0),
+#endif
 };
 
 static const struct snd_kcontrol_new memif_ul7_ch1_mix[] = {
@@ -3217,6 +3299,10 @@ static const struct snd_soc_dapm_widget mt6991_memif_widgets[] = {
 	SND_SOC_DAPM_INPUT("UL1_VIRTUAL_INPUT"),
 	SND_SOC_DAPM_INPUT("UL2_VIRTUAL_INPUT"),
 	SND_SOC_DAPM_INPUT("UL4_VIRTUAL_INPUT"),
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	SND_SOC_DAPM_INPUT("UL5_VIRTUAL_INPUT"),
+	SND_SOC_DAPM_INPUT("UL6_VIRTUAL_INPUT"),
+#endif
 
 	SND_SOC_DAPM_OUTPUT("DL_TO_DSP"),
 	SND_SOC_DAPM_OUTPUT("DL6_VIRTUAL_OUTPUT"),
@@ -3371,6 +3457,11 @@ static const struct snd_soc_dapm_route mt6991_memif_routes[] = {
 	{"UL5_CH2", "PCM_1_CAP_CH1", "PCM 1 Capture"},
 	{"UL5_CH1", "GAIN0_OUT_CH1", "HW Gain 0 Out"},
 	{"UL5_CH2", "GAIN0_OUT_CH2", "HW Gain 0 Out"},
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	{"UL5_CH1", "DL5_CH1", "Hostless_UL5 UL"},
+	{"UL5_CH2", "DL5_CH2", "Hostless_UL5 UL"},
+	{"Hostless_UL5 UL", NULL, "UL5_VIRTUAL_INPUT"},
+#endif
 
 	{"UL6", NULL, "UL6_CH1"},
 	{"UL6", NULL, "UL6_CH2"},
@@ -3378,6 +3469,11 @@ static const struct snd_soc_dapm_route mt6991_memif_routes[] = {
 	{"UL6_CH2", "ADDA_UL_CH2", "ADDA_UL_Mux"},
 	{"UL6_CH1", "CONNSYS_I2S_CH1", "Connsys I2S"},
 	{"UL6_CH2", "CONNSYS_I2S_CH2", "Connsys I2S"},
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	{"UL6_CH1", "DL6_CH1", "Hostless_UL6 UL"},
+	{"UL6_CH2", "DL6_CH2", "Hostless_UL6 UL"},
+	{"Hostless_UL6 UL", NULL, "UL6_VIRTUAL_INPUT"},
+#endif
 
 	{"UL7", NULL, "UL7_CH1"},
 	{"UL7", NULL, "UL7_CH2"},

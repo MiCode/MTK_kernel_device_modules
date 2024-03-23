@@ -51,6 +51,38 @@ static struct adsp_feature_tb feature_table[ADSP_NUM_FEATURE_ID] = {
 	[BLE_CALL_DL_FEATURE_ID]      = {.name = "blecalldl"},
 	[BLE_CALL_UL_FEATURE_ID]      = {.name = "blecallul"},
 	[PCIE_FEATURE_ID]             = {.name = "pcie"},
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+	[HFP_CLIENT_RX_FEATURE_ID]    = {.name = "hfp_client_rx"},
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
+	[ANC_FEATURE_ID]              = {.name = "anc"},
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
+	[EXTSTREAM1_FEATURE_ID]       = {.name = "extstream1"},
+	[EXTSTREAM2_FEATURE_ID]       = {.name = "extstream2"},
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT)
+	[SUB_PLAYBACK_FEATURE_ID]      = {.name = "sub_playback"},
+#endif
+	[PLAYBACK0_FEATURE_ID]        = {.name = "playback0"},
+	[PLAYBACK1_FEATURE_ID]        = {.name = "playback1"},
+	[PLAYBACK2_FEATURE_ID]        = {.name = "playback2"},
+	[PLAYBACK3_FEATURE_ID]        = {.name = "playback3"},
+	[PLAYBACK4_FEATURE_ID]        = {.name = "playback4"},
+	[PLAYBACK5_FEATURE_ID]        = {.name = "playback5"},
+	[PLAYBACK6_FEATURE_ID]        = {.name = "playback6"},
+	[PLAYBACK7_FEATURE_ID]        = {.name = "playback7"},
+	[PLAYBACK8_FEATURE_ID]        = {.name = "playback8"},
+	[PLAYBACK9_FEATURE_ID]        = {.name = "playback9"},
+	[PLAYBACK10_FEATURE_ID]        = {.name = "playback10"},
+	[PLAYBACK11_FEATURE_ID]        = {.name = "playback11"},
+	[PLAYBACK12_FEATURE_ID]        = {.name = "playback12"},
+	[PLAYBACK13_FEATURE_ID]        = {.name = "playback13"},
+	[PLAYBACK14_FEATURE_ID]        = {.name = "playback14"},
+	[PLAYBACK15_FEATURE_ID]        = {.name = "playback15"},
+	[CAPTURE_MCH_FEATURE_ID]       = {.name = "capture_mch"},
+#endif
 };
 
 int adsp_get_feature_index(const char *str)
