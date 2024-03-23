@@ -215,11 +215,6 @@
 
 #define DISP_TDSHP_EN BIT(0)
 
-enum DISP_TDSHP_IOCTL_CMD {
-	SET_TDSHP_REG,
-	BYPASS_TDSHP,
-};
-
 static inline struct mtk_disp_tdshp *comp_to_tdshp(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_disp_tdshp, ddp_comp);
@@ -237,7 +232,7 @@ static int disp_tdshp_write_reg(struct mtk_ddp_comp *comp,
 		mutex_lock(&primary_data->data_lock);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_TDSHP_CFG, 0x2 | primary_data->relay_value, 0x3);
+		comp->regs_pa + DISP_TDSHP_CFG, 0x2, 0x2);
 
 	/* to avoid different show of dual pipe, pipe1 use pipe0's config data */
 	disp_tdshp_regs = primary_data->tdshp_regs;
@@ -513,7 +508,19 @@ static int disp_tdshp_set_reg(struct mtk_ddp_comp *comp,
 		pr_notice("%s: Set module(%d) lut\n", __func__, comp->id);
 		ret = disp_tdshp_write_reg(comp, handle, 0);
 
-		primary_data->tdshp_reg_valid = 1;
+		if (!primary_data->tdshp_reg_valid) {
+			primary_data->relay_state &= ~(0x1 << PQ_FEATURE_DEFAULT);
+			if (primary_data->relay_state == 0) {
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + DISP_TDSHP_CFG, 0x0, 0x1);
+				DDPINFO("%s, set tdshp unrelay\n", __func__);
+			}
+
+			if (!comp->mtk_crtc->is_dual_pipe)
+				primary_data->tdshp_reg_valid = 1;
+			else if (tdshp_data->is_right_pipe)
+				primary_data->tdshp_reg_valid = 1;
+		}
 		mutex_unlock(&primary_data->data_lock);
 
 		if (old_tdshp_regs != NULL)
@@ -562,13 +569,6 @@ static int disp_tdshp_cfg_set_reg(struct mtk_ddp_comp *comp,
 		}
 	}
 	return ret;
-}
-
-int disp_tdshp_act_set_reg(struct mtk_ddp_comp *comp, void *data)
-{
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-
-	return mtk_crtc_user_cmd(&mtk_crtc->base, comp, SET_TDSHP_REG, data);
 }
 
 int disp_tdshp_act_get_size(struct mtk_ddp_comp *comp, void *data)
@@ -742,10 +742,10 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 			comp->regs_pa + DISP_TDSHP_CFG, 0x1F << 12, 0x1F << 12);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_TDSHP_CFG, 0, 0x1 << 12);
+			comp->regs_pa + DISP_TDSHP_CFG, 0x0 << 12, 0x1 << 12);
 	}
 
-	if (primary_data->tdshp_reg_valid)
+	if (primary_data->relay_state == 0)
 		disp_tdshp_write_reg(comp, handle, 0);
 	else
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -761,27 +761,47 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 }
 
 static void disp_tdshp_bypass(struct mtk_ddp_comp *comp, int bypass,
-	struct cmdq_pkt *handle)
+	int caller, struct cmdq_pkt *handle)
 {
 	struct mtk_disp_tdshp *tdshp_data = comp_to_tdshp(comp);
 	struct mtk_disp_tdshp_primary *primary_data = tdshp_data->primary_data;
+	struct mtk_ddp_comp *companion = tdshp_data->companion;
 
-	pr_notice("%s, comp_id: %d, bypass: %d\n",
-			__func__, comp->id, bypass);
+	DDPINFO("%s: comp: %s, bypass: %d, caller: %d, relay_state: 0x%x\n",
+		__func__, mtk_dump_comp_str(comp), bypass, caller, primary_data->relay_state);
 
+	mutex_lock(&primary_data->data_lock);
 	if (bypass == 1) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_TDSHP_CFG, 0x1, 0x1);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_TDSHP_00, (0x1 << 31), (0x1 << 31));
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_TDSHP_CTRL, 0xfffffffd, ~0);
-		primary_data->relay_value = 0x1;
+		if (primary_data->relay_state == 0) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_TDSHP_CFG, 0x1, 0x1);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_TDSHP_00, (0x1 << 31), (0x1 << 31));
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_TDSHP_CTRL, 0xfffffffd, ~0);
+			if (comp->mtk_crtc->is_dual_pipe && companion) {
+				cmdq_pkt_write(handle, companion->cmdq_base,
+					companion->regs_pa + DISP_TDSHP_CFG, 0x1, 0x1);
+				cmdq_pkt_write(handle, companion->cmdq_base,
+					companion->regs_pa + DISP_TDSHP_00, (0x1 << 31), (0x1 << 31));
+				cmdq_pkt_write(handle, companion->cmdq_base,
+					companion->regs_pa + DISP_TDSHP_CTRL, 0xfffffffd, ~0);
+			}
+		}
+		primary_data->relay_state |= (1 << caller);
 	} else {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_TDSHP_CFG, 0x0, 0x1);
-		primary_data->relay_value = 0x0;
+		if (primary_data->relay_state != 0) {
+			primary_data->relay_state &= ~ (0x1 << caller);
+			if (primary_data->relay_state) {
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + DISP_TDSHP_CFG, 0x0, 0x1);
+				if (comp->mtk_crtc->is_dual_pipe && companion)
+					cmdq_pkt_write(handle, companion->cmdq_base,
+						companion->regs_pa + DISP_TDSHP_CFG, 0x0, 0x1);
+			}
+		}
 	}
+	mutex_unlock(&primary_data->data_lock);
 }
 
 static int disp_tdshp_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -791,38 +811,6 @@ static int disp_tdshp_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 
 	pr_notice("%s, cmd: %d\n", __func__, cmd);
 	switch (cmd) {
-	case SET_TDSHP_REG:
-	{
-		struct DISP_TDSHP_REG *config = data;
-
-		if (disp_tdshp_set_reg(comp, handle, config) < 0) {
-			DDPPR_ERR("%s: failed\n", __func__);
-			return -EFAULT;
-		}
-		if (comp->mtk_crtc->is_dual_pipe) {
-			struct mtk_ddp_comp *comp_tdshp1 = tdshp->companion;
-
-			if (disp_tdshp_set_reg(comp_tdshp1, handle, config) < 0) {
-				DDPPR_ERR("%s: comp_tdshp1 failed\n", __func__);
-				return -EFAULT;
-			}
-		}
-
-		mtk_crtc_check_trigger(comp->mtk_crtc, true, false);
-	}
-	break;
-	case BYPASS_TDSHP:
-	{
-		unsigned int *value = data;
-
-		disp_tdshp_bypass(comp, *value, handle);
-		if (comp->mtk_crtc->is_dual_pipe) {
-			struct mtk_ddp_comp *comp_tdshp1 = tdshp->companion;
-
-			disp_tdshp_bypass(comp_tdshp1, *value, handle);
-		}
-	}
-	break;
 	default:
 		DDPPR_ERR("%s: error cmd: %d\n", __func__, cmd);
 		return -EINVAL;
@@ -877,6 +865,8 @@ static void disp_tdshp_init_primary_data(struct mtk_ddp_comp *comp)
 	}
 	init_waitqueue_head(&primary_data->size_wq);
 	mutex_init(&primary_data->data_lock);
+	primary_data->tdshp_reg_valid = 0;
+	primary_data->relay_state = 0x1 << PQ_FEATURE_DEFAULT;
 }
 
 static int disp_tdshp_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -941,9 +931,6 @@ static int disp_tdshp_ioctl_transact(struct mtk_ddp_comp *comp,
 	int ret = -1;
 
 	switch (cmd) {
-	case PQ_TDSHP_SET_REG:
-		ret = disp_tdshp_act_set_reg(comp, data);
-		break;
 	case PQ_TDSHP_GET_SIZE:
 		ret = disp_tdshp_act_get_size(comp, data);
 		break;
@@ -1090,6 +1077,8 @@ void disp_tdshp_regdump(struct mtk_ddp_comp *comp)
 
 	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp),
 			&comp->regs_pa);
+	DDPDUMP("== %s RELAY_STATE: 0x%x ==\n", mtk_dump_comp_str(comp),
+			tdshp->primary_data->relay_state);
 	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(comp));
 	for (k = 0; k <= 0x720; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
@@ -1254,18 +1243,6 @@ struct platform_driver mtk_disp_tdshp_driver = {
 		},
 };
 
-void disp_tdshp_set_bypass(struct drm_crtc *crtc, int bypass)
-{
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			mtk_crtc, MTK_DISP_TDSHP, 0);
-	int ret;
-
-	ret = mtk_crtc_user_cmd(crtc, comp, BYPASS_TDSHP, &bypass);
-
-	DDPINFO("%s : ret = %d", __func__, ret);
-}
-
 unsigned int disp_tdshp_bypass_info(struct mtk_drm_crtc *mtk_crtc)
 {
 	struct mtk_ddp_comp *comp;
@@ -1278,5 +1255,5 @@ unsigned int disp_tdshp_bypass_info(struct mtk_drm_crtc *mtk_crtc)
 	}
 	tdshp_data = comp_to_tdshp(comp);
 
-	return tdshp_data->primary_data->relay_value;
+	return tdshp_data->primary_data->relay_state != 0 ? 1 : 0;
 }

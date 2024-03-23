@@ -50,7 +50,6 @@ struct mtk_disp_gamma_primary {
 	atomic_t clock_on;
 	atomic_t sof_filp;
 	atomic_t force_delay_check_trig;
-	atomic_t force_relay;
 	unsigned int data_mode;
 	unsigned int table_config_sel;
 	unsigned int table_out_sel;
@@ -58,6 +57,7 @@ struct mtk_disp_gamma_primary {
 	bool gamma_wake_locked;
 	bool need_refinalize;
 	atomic_t gamma_sram_hw_init;
+	unsigned int relay_state;
 };
 
 struct mtk_disp_gamma {
@@ -85,7 +85,6 @@ void disp_gamma_get_gain_from_aal(struct mtk_ddp_comp *comp,
 	unsigned int gain[3], unsigned int bl, void *param);
 int disp_gamma_cfg_get_gain_from_aal(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle, struct DISP_AAL_PARAM *aal_param, unsigned int bl, void *param);
-void disp_gamma_set_bypass(struct drm_crtc *crtc, int bypass);
 void disp_gamma_regdump(struct mtk_ddp_comp *comp);
 void disp_gamma_debug(struct drm_crtc *crtc, const char *opt);
 

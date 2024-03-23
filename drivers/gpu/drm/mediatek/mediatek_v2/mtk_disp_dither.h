@@ -37,12 +37,12 @@ struct mtk_disp_dither_tile_overhead_v {
 };
 
 struct mtk_disp_dither_primary {
-	unsigned int relay_value;
 	struct workqueue_struct *pure_detect_wq;
 	struct work_struct_data work_data;
 	unsigned int dither_mode;
 	struct mtk_disp_pure_clr_data *pure_clr_param;
 	unsigned int *gamma_data_mode;
+	unsigned int relay_state;
 };
 
 struct mtk_disp_dither {

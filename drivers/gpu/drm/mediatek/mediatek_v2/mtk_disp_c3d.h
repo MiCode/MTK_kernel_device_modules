@@ -69,7 +69,6 @@ struct mtk_disp_c3d_primary {
 	struct DISP_C3D_REG_17BIN c3d_reg;
 	unsigned int c3d_sram_cfg[DISP_C3D_SRAM_SIZE_17BIN];
 	unsigned int c3d_lut1d[DISP_C3D_1DLUT_SIZE];
-	atomic_t c3d_force_relay;
 	struct wakeup_source *c3d_wake_lock;
 	bool c3d_wake_locked;
 	bool set_lut_flag;
@@ -79,6 +78,7 @@ struct mtk_disp_c3d_primary {
 	struct mutex data_lock;
 	struct cmdq_pkt *sram_pkt;
 	atomic_t c3d_sram_hw_init;
+	unsigned int relay_state;
 };
 
 struct mtk_disp_c3d {
@@ -106,7 +106,6 @@ struct mtk_disp_c3d {
 
 inline struct mtk_disp_c3d *comp_to_c3d(struct mtk_ddp_comp *comp);
 void disp_c3d_debug(struct drm_crtc *crtc, const char *opt);
-void disp_c3d_set_bypass(struct drm_crtc *crtc, int bypass);
 void disp_c3d_regdump(struct mtk_ddp_comp *comp);
 // for displayPQ update to swpm tppa
 unsigned int disp_c3d_bypass_info(struct mtk_drm_crtc *mtk_crtc, int num);

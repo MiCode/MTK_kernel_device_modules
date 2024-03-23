@@ -85,7 +85,6 @@ enum AAL_USER_CMD {
 	SET_PARAM,
 	FLIP_SRAM,
 	FLIP_CURVE_SRAM,
-	BYPASS_AAL,
 	SET_CLARITY_REG
 };
 
@@ -181,7 +180,7 @@ static void disp_aal_set_interrupt(struct mtk_ddp_comp *comp,
 	if (aal_data->is_right_pipe)
 		return;
 
-	bypass = atomic_read(&aal_data->primary_data->force_relay);
+	bypass = aal_data->primary_data->relay_state != 0 ? 1 : 0;
 	if (enable &&
 		(bypass != 1 || pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS])) {
 		/* Enable output frame end interrupt */
@@ -277,7 +276,7 @@ void disp_aal_refresh_by_kernel(struct mtk_disp_aal *aal_data, int need_lock)
 		if (need_lock)
 			DDP_MUTEX_LOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
 		atomic_set(&aal_data->primary_data->force_enable_event, 1);
-		if (!atomic_read(&aal_data->primary_data->force_relay)) {
+		if (aal_data->primary_data->relay_state == 0) {
 			atomic_set(&aal_data->primary_data->event_en, 1);
 			atomic_set(&aal_data->primary_data->should_stop, 0);
 		}
@@ -339,7 +338,7 @@ void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
 		/* on phone resumption */
 		service_flags = AAL_SERVICE_FORCE_UPDATE;
 	} else if (atomic_read(&aal_data->primary_data->is_init_regs_valid) == 0 ||
-		(atomic_read(&aal_data->primary_data->force_relay) == 1 &&
+		((aal_data->primary_data->relay_state != 0) &&
 		!pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS])) {
 		/* AAL Service is not running */
 
@@ -410,7 +409,7 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 
 		aal_data = comp_to_aal(comp);
 		if (pq_data->new_persist_property[DISP_PQ_GAMMA_SILKY_BRIGHTNESS] &&
-			(atomic_read(&aal_data->primary_data->force_relay) != 1)) {
+			((aal_data->primary_data->relay_state == 0))) {
 			disp_aal_notify_backlight_changed(comp, trans_level, -1,
 				led_conf->cdev.max_brightness, 1);
 		} else {
@@ -618,7 +617,7 @@ static void disp_aal_init(struct mtk_ddp_comp *comp,
 	else
 		DDPPR_ERR("%s invalid bpc %u\n", __func__, cfg->source_bpc);
 
-	if (atomic_read(&aal_data->primary_data->force_relay) == 1) {
+	if (aal_data->primary_data->relay_state != 0) {
 		AALFLOW_LOG("g_aal_force_relay\n");
 		SET_VAL_MASK(value, mask, 1, FLD_RELAY_MODE);
 	} else
@@ -3467,7 +3466,7 @@ static void disp_aal_on_start_of_frame(struct mtk_ddp_comp *comp)
 		aal_data->primary_data->dre30_enabled,
 		atomic_read(&aal_data->hist_available),
 		atomic_read(&aal_data->dre20_hist_is_ready),
-		atomic_read(&aal_data->primary_data->force_relay),
+		aal_data->primary_data->relay_state != 0 ? 1 : 0,
 		atomic_read(&aal_data->primary_data->should_stop),
 		atomic_read(&aal_data->primary_data->change_to_dre30),
 		mtk_crtc->enabled);
@@ -3494,7 +3493,7 @@ static void disp_aal_on_start_of_frame(struct mtk_ddp_comp *comp)
 		return;
 	}
 
-	if (atomic_read(&aal_data->primary_data->force_relay) == 1 &&
+	if ((aal_data->primary_data->relay_state != 0) &&
 		!pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS])
 		return;
 	if (atomic_read(&aal_data->primary_data->change_to_dre30) != 0x3)
@@ -3506,7 +3505,7 @@ static void disp_aal_on_start_of_frame(struct mtk_ddp_comp *comp)
 		wake_up_interruptible(&aal_data->primary_data->sof_irq_wq);
 	} else if (!atomic_read(&aal_data->primary_data->sof_irq_available) &&
 		   aal_data->data->support_cmdq_eof &&
-		   !atomic_read(&aal_data->primary_data->force_relay)) {
+		   (aal_data->primary_data->relay_state == 0)) {
 		atomic_set(&aal_data->primary_data->sof_irq_available, 1);
 		AALIRQ_LOG("wake up dre3\n");
 		wake_up_interruptible(&aal_data->primary_data->sof_irq_wq);
@@ -3574,7 +3573,7 @@ static irqreturn_t disp_aal_irq_handler(int irq, void *dev_id)
 		goto out;
 	}
 
-	if (atomic_read(&aal->primary_data->force_relay) == 1) {
+	if (aal->primary_data->relay_state != 0) {
 		AALIRQ_LOG("aal is force_relay\n");
 		disp_aal_set_interrupt(comp, 0, NULL);
 		ret = IRQ_HANDLED;
@@ -3598,20 +3597,45 @@ out:
 }
 
 static void disp_aal_bypass(struct mtk_ddp_comp *comp, int bypass,
-	struct cmdq_pkt *handle)
+	int caller, struct cmdq_pkt *handle)
 {
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+	struct mtk_disp_aal_primary *primary_data = aal_data->primary_data;
+	struct mtk_ddp_comp *companion = aal_data->companion;
 
-	AALFLOW_LOG("bypass: %d\n", bypass);
-	atomic_set(&aal_data->primary_data->force_relay, bypass);
+	DDPINFO("%s: comp: %s, bypass: %d, caller: %d, relay_state: 0x%x\n",
+		__func__, mtk_dump_comp_str(comp), bypass, caller, primary_data->relay_state);
 
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_CFG, bypass, 0x1);
-	disp_aal_set_interrupt(comp, !bypass, handle);
-
-	if (bypass == 0) // Enable AAL Histogram
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_AAL_CFG, 0x6, 0x7);
-
+	if (bypass == 1) {
+		if (primary_data->relay_state == 0) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_AAL_CFG, 0x1, 0x1);
+			if (comp->mtk_crtc->is_dual_pipe && companion)
+				cmdq_pkt_write(handle, companion->cmdq_base,
+					companion->regs_pa + DISP_AAL_CFG, 0x1, 0x1);
+		}
+		primary_data->relay_state |= (1 << caller);
+		disp_aal_set_interrupt(comp, !bypass, handle);
+	} else {
+		if (primary_data->relay_state != 0) {
+			primary_data->relay_state &= ~(1 << caller);
+			if (primary_data->relay_state == 0) {
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + DISP_AAL_CFG, 0x0, 0x1);
+				// Enable AAL Histogram
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + DISP_AAL_CFG, 0x6, 0x7);
+				if (comp->mtk_crtc->is_dual_pipe && companion) {
+					cmdq_pkt_write(handle, companion->cmdq_base,
+						companion->regs_pa + DISP_AAL_CFG, 0x0, 0x1);
+					// Enable AAL Histogram
+					cmdq_pkt_write(handle, companion->cmdq_base,
+						companion->regs_pa + DISP_AAL_CFG, 0x6, 0x7);
+				}
+				disp_aal_set_interrupt(comp, !bypass, handle);
+			}
+		}
+	}
 }
 
 static int disp_aal_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -3645,24 +3669,6 @@ static int disp_aal_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		disp_aal_flip_curve_sram(comp, handle, __func__);
 		if (comp->mtk_crtc->is_dual_pipe)
 			disp_aal_flip_curve_sram(aal_data->companion, handle, __func__);
-	}
-		break;
-	case BYPASS_AAL:
-	{
-		int *value = data;
-
-		disp_aal_bypass(comp, *value, handle);
-		if (aal_data->primary_data->aal_fo->mtk_dre30_support)
-			disp_mdp_aal_bypass(aal_data->comp_dmdp_aal, *value, handle);
-
-		if (comp->mtk_crtc->is_dual_pipe) {
-			disp_aal_bypass(aal_data->companion, *value, handle);
-			if (aal_data->primary_data->aal_fo->mtk_dre30_support) {
-				struct mtk_disp_aal *aal_companion_data = comp_to_aal(aal_data->companion);
-
-				disp_mdp_aal_bypass(aal_companion_data->comp_dmdp_aal, *value, handle);
-			}
-		}
 	}
 		break;
 	case SET_CLARITY_REG:
@@ -4056,7 +4062,6 @@ static void disp_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	atomic_set(&(aal_data->primary_data->backlight_notified), 0);
 	atomic_set(&(aal_data->primary_data->allowPartial), 0);
 	atomic_set(&(aal_data->primary_data->force_enable_event), 0);
-	atomic_set(&(aal_data->primary_data->force_relay), 0);
 	atomic_set(&(aal_data->primary_data->should_stop), 0);
 	atomic_set(&(aal_data->primary_data->dre30_write), 0);
 	atomic_set(&(aal_data->primary_data->event_en), 0);
@@ -4113,6 +4118,7 @@ static void disp_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	aal_data->primary_data->dre_en_cmd_id = 0;
 	aal_data->primary_data->ess_en_cmd_id = 0;
 	aal_data->primary_data->led_type = TYPE_FILE;
+	aal_data->primary_data->relay_state = 0x0 << PQ_FEATURE_DEFAULT;
 	if (aal_data->data->support_cmdq_eof) {
 		mtk_crtc_pkt_create(&aal_data->primary_data->hist_pkt,
 			&comp->mtk_crtc->base, comp->mtk_crtc->gce_obj.client[CLIENT_PQ_EOF]);
@@ -4541,6 +4547,8 @@ void disp_aal_regdump(struct mtk_ddp_comp *comp)
 
 	DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(comp),
 			comp->regs_pa);
+	DDPDUMP("== %s RELAY_STATE: 0x%x ==\n", mtk_dump_comp_str(comp),
+			aal_data->primary_data->relay_state);
 	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(comp));
 	for (k = 0; k <= 0x580; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
@@ -5124,27 +5132,6 @@ void disp_aal_debug(struct drm_crtc *crtc, const char *opt)
 	}
 }
 
-void disp_aal_set_bypass(struct drm_crtc *crtc, int bypass)
-{
-	int ret;
-	struct mtk_ddp_comp *comp;
-	struct mtk_disp_aal *aal_data;
-
-	comp = mtk_ddp_comp_sel_in_cur_crtc_path(to_mtk_crtc(crtc), MTK_DISP_AAL, 0);
-	if (!comp) {
-		DDPPR_ERR("%s, comp is null!\n", __func__);
-		return;
-	}
-
-	aal_data = comp_to_aal(comp);
-	if (atomic_read(&aal_data->primary_data->force_relay) == bypass)
-		return;
-
-	ret = mtk_crtc_user_cmd(crtc, comp, BYPASS_AAL, &bypass);
-
-	DDPINFO("%s : ret = %d", __func__, ret);
-}
-
 unsigned int disp_aal_bypass_info(struct mtk_drm_crtc *mtk_crtc)
 {
 	struct mtk_ddp_comp *comp;
@@ -5157,5 +5144,5 @@ unsigned int disp_aal_bypass_info(struct mtk_drm_crtc *mtk_crtc)
 	}
 	aal_data = comp_to_aal(comp);
 
-	return atomic_read(&aal_data->primary_data->force_relay);
+	return aal_data->primary_data->relay_state != 0 ? 1 : 0;
 }

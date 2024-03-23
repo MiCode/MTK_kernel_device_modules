@@ -154,7 +154,6 @@ enum LUT_REG {
 
 enum DISP_COLOR_USER_CMD {
 	WRITE_REG = 0,
-	BYPASS_COLOR,
 	PQ_SET_WINDOW,
 };
 struct DISP_PQ_DC_PARAM dc_param_init = {
@@ -411,52 +410,50 @@ static void disp_color_write_hw_reg(struct mtk_ddp_comp *comp,
 
 	DDPINFO("%s,SET COLOR REG id(%d) drecolor_sel %d\n", __func__, comp->id, drecolor_sel);
 
-	if (primary_data->color_bypass == 0) {
-		if (color->data->support_color21 == true) {
-			SET_VAL_MASK(value, mask, 1 , FLD_LSP_SAT_LIMIT);
-			SET_VAL_MASK(value, mask, color_reg->LSP_EN , FLD_LSP_EN);
-			SET_VAL_MASK(value, mask, color_reg->S_GAIN_BY_Y_EN, FLD_S_GAIN_BY_Y_EN);
-			SET_VAL_MASK(value, mask, wide_gamut_en, FLD_WIDE_GAMUT_EN);
-			mask = ~((drecolor_sel << 15) | (drecolor_sel << 20)) & mask;
-		} else {
-			SET_VAL_MASK(value, mask, 0, FLD_WIDE_GAMUT_EN);
-			/* disable wide_gamut */
-		}
+	if (color->data->support_color21 == true) {
+		SET_VAL_MASK(value, mask, 1 , FLD_LSP_SAT_LIMIT);
+		SET_VAL_MASK(value, mask, color_reg->LSP_EN , FLD_LSP_EN);
+		SET_VAL_MASK(value, mask, color_reg->S_GAIN_BY_Y_EN, FLD_S_GAIN_BY_Y_EN);
+		SET_VAL_MASK(value, mask, wide_gamut_en, FLD_WIDE_GAMUT_EN);
+		mask = ~((drecolor_sel << 15) | (drecolor_sel << 20)) & mask;
+	} else {
+		SET_VAL_MASK(value, mask, 0, FLD_WIDE_GAMUT_EN);
+		/* disable wide_gamut */
+	}
 
-		if (!primary_data->color_reg_valid) {
+	if (!primary_data->color_reg_valid) {
+		primary_data->relay_state &= ~(0x1 << PQ_FEATURE_DEFAULT);
+		if (primary_data->relay_state == 0) {
 			SET_VAL_MASK(value, mask, 0, FLD_ALLBP);
 			DDPINFO("%s, set color unrelay\n", __func__);
 		}
+	}
 
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_COLOR_CFG_MAIN,
+		value, mask);
+
+	/* color start */
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_COLOR_START(color), 0x1, 0x1);
+
+	/* enable R2Y/Y2R in Color Wrapper */
+	if (color->data->support_color21 == true) {
+		/* RDMA & OVL will enable wide-gamut function */
+		/* disable rgb clipping function in CM1 */
+		/* to keep the wide-gamut range */
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_CFG_MAIN,
-			value, mask);
-
-		/* color start */
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_START(color), 0x1, 0x3);
-
-		/* enable R2Y/Y2R in Color Wrapper */
-		if (color->data->support_color21 == true) {
-			/* RDMA & OVL will enable wide-gamut function */
-			/* disable rgb clipping function in CM1 */
-			/* to keep the wide-gamut range */
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_COLOR_CM1_EN(color),
-				0x03, 0x03);
-		} else {
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_COLOR_CM1_EN(color),
-				0x03, 0x03);
-		}
-
-		/* also set no rounding on Y2R */
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_CM2_EN(color), 0x01, 0x01);
+			comp->regs_pa + DISP_COLOR_CM1_EN(color),
+			0x03, 0x03);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_START(color), 0x1, 0x1);
+			comp->regs_pa + DISP_COLOR_CM1_EN(color),
+			0x03, 0x03);
 	}
+
+	/* also set no rounding on Y2R */
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_COLOR_CM2_EN(color), 0x01, 0x01);
 
 	/* for partial Y contour issue */
 	if (wide_gamut_en == 0)
@@ -924,16 +921,17 @@ static void disp_color_config(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_SHADOW_CTRL, (0x0 << 0), (0x1 << 0));
 
-	if (!primary_data->color_reg_valid || primary_data->color_bypass) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_CFG_MAIN,
-			(0x1 << 7) | (0x1 << 13), (0x1 << 7) | (0x1 << 13));
-		return;
-	}
-
 	disp_color_on_init(comp, handle);
 	// config hal parameter if needed
 	mutex_lock(&primary_data->data_lock);
+	if (primary_data->relay_state != 0) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_COLOR_CFG_MAIN,
+			(0x1 << 7) | (0x1 << 13), (0x1 << 7) | (0x1 << 13));
+		mutex_unlock(&primary_data->data_lock);
+		return;
+	}
+
 	if (primary_data->color_reg_valid) {
 		disp_color_write_hw_reg(comp, &primary_data->color_reg, handle);
 		if (drecolor->drecolor_sel)
@@ -981,7 +979,10 @@ int disp_color_cfg_set_color_reg(struct mtk_ddp_comp *comp,
 		ret = -EINVAL;
 		DDPINFO("%s: data is NULL", __func__);
 	}
-	primary_data->color_reg_valid = 1;
+
+	if (primary_data->color_reg_valid == 0)
+		primary_data->color_reg_valid = 1;
+
 	mutex_unlock(&primary_data->data_lock);
 
 	return ret;
@@ -1012,46 +1013,52 @@ int disp_color_act_mutex_control(struct mtk_ddp_comp *comp, void *data)
 	return ret;
 }
 
-void disp_color_bypass(struct mtk_ddp_comp *comp, int bypass,
+void disp_color_bypass(struct mtk_ddp_comp *comp, int bypass, int caller,
 	struct cmdq_pkt *handle)
 {
-
 	struct mtk_disp_color *color;
 	struct mtk_disp_color_primary *primary_data;
+	struct mtk_ddp_comp *companion;
 
 	if (comp == NULL) {
 		DDPPR_ERR("%s, null pointer!", __func__);
 		return;
 	}
+
 	color = comp_to_color(comp);
-	primary_data = NULL;
+	primary_data = color->primary_data;
+	companion = color->companion;
 
+	DDPINFO("%s: comp: %s, bypass: %d, caller: %d, relay_state: 0x%x\n",
+		__func__, mtk_dump_comp_str(comp), bypass, caller, primary_data->relay_state);
 
-	DDPINFO("%s: bypass: %d\n", __func__, bypass);
-
-	primary_data = comp_to_color(comp)->primary_data;
-	primary_data->color_bypass = bypass;
-
-	if (bypass) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_COLOR_CFG_MAIN,
-			       COLOR_BYPASS_ALL | COLOR_SEQ_SEL, ~0);
+	mutex_lock(&primary_data->data_lock);
+	if (bypass == 1) {
+		if (primary_data->relay_state == 0) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_COLOR_CFG_MAIN,
+				COLOR_BYPASS_ALL | COLOR_SEQ_SEL, ~0);
+			if (comp->mtk_crtc->is_dual_pipe && companion)
+				cmdq_pkt_write(handle, companion->cmdq_base,
+					companion->regs_pa + DISP_COLOR_CFG_MAIN,
+					COLOR_BYPASS_ALL | COLOR_SEQ_SEL, ~0);
+		}
+		primary_data->relay_state |= (1 << caller);
 	} else {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_CFG_MAIN,
-			(0 << 7), 0xFF); /* resume all */
+		if (primary_data->relay_state != 0) {
+			primary_data->relay_state &= ~(1 << caller);
+			if (primary_data->relay_state == 0) {
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + DISP_COLOR_CFG_MAIN,
+					(0 << 7), 0xFF);
+				if (comp->mtk_crtc->is_dual_pipe && companion)
+					cmdq_pkt_write(handle, companion->cmdq_base,
+						companion->regs_pa + DISP_COLOR_CFG_MAIN,
+						(0 << 7), 0xFF);
+			}
+		}
 	}
-}
-
-int disp_color_act_bypass_color(struct mtk_ddp_comp *comp, void *data)
-{
-	int ret = 0;
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-
-	ret = mtk_crtc_user_cmd(&mtk_crtc->base, comp, BYPASS_COLOR, data);
-	mtk_crtc_check_trigger(mtk_crtc, true, true);
-
-	return ret;
+	mutex_unlock(&primary_data->data_lock);
 }
 
 int disp_color_act_set_window(struct mtk_ddp_comp *comp, void *data)
@@ -1139,6 +1146,8 @@ static void disp_color_init_primary_data(struct mtk_ddp_comp *comp)
 	memcpy(&primary_data->color_index, &color_index_init,
 			sizeof(struct DISPLAY_PQ_T));
 	mutex_init(&primary_data->data_lock);
+	primary_data->color_reg_valid = 0;
+	primary_data->relay_state = 0x1 << PQ_FEATURE_DEFAULT;
 }
 
 static int disp_color_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -1280,18 +1289,6 @@ static int disp_color_user_cmd(struct mtk_ddp_comp *comp,
 
 	DDPINFO("%s: cmd: %d\n", __func__, cmd);
 	switch (cmd) {
-	case BYPASS_COLOR:
-	{
-		unsigned int *value = data;
-
-		disp_color_bypass(comp, *value, handle);
-		if (comp->mtk_crtc->is_dual_pipe) {
-			struct mtk_ddp_comp *comp_color1 = color->companion;
-
-			disp_color_bypass(comp_color1, *value, handle);
-		}
-	}
-	break;
 	case PQ_SET_WINDOW:
 	{
 		struct DISP_PQ_WIN_PARAM *win_param = data;
@@ -1335,9 +1332,6 @@ static int disp_color_ioctl_transact(struct mtk_ddp_comp *comp,
 		break;
 	case PQ_COLOR_MUTEX_CONTROL:
 		ret = disp_color_act_mutex_control(comp, data);
-		break;
-	case PQ_COLOR_BYPASS:
-		ret = disp_color_act_bypass_color(comp, data);
 		break;
 	case PQ_COLOR_SET_WINDOW:
 		ret = disp_color_act_set_window(comp, data);
@@ -1417,6 +1411,8 @@ void disp_color_regdump(struct mtk_ddp_comp *comp)
 
 	DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(comp),
 			comp->regs_pa);
+	DDPDUMP("== %s RELAY_STATE: 0x%x ==\n", mtk_dump_comp_str(comp),
+			color->primary_data->relay_state);
 	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(comp));
 	for (k = 0x400; k <= 0xd5c; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
@@ -1786,20 +1782,9 @@ struct platform_driver mtk_disp_color_driver = {
 		},
 };
 
-void disp_color_set_bypass(struct drm_crtc *crtc, int bypass)
-{
-	int ret;
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			mtk_crtc, MTK_DISP_COLOR, 0);
-
-	ret = mtk_crtc_user_cmd(crtc, comp, BYPASS_COLOR, &bypass);
-
-	DDPINFO("%s : ret = %d", __func__, ret);
-}
-
 unsigned int disp_color_bypass_info(struct mtk_drm_crtc *mtk_crtc)
 {
+	unsigned int relay = 0;
 	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
 			mtk_crtc, MTK_DISP_COLOR, 0);
 	if (!comp) {
@@ -1808,5 +1793,7 @@ unsigned int disp_color_bypass_info(struct mtk_drm_crtc *mtk_crtc)
 	}
 	struct mtk_disp_color *color_data = comp_to_color(comp);
 
-	return color_data->primary_data->color_bypass;
+	relay = color_data->primary_data->relay_state != 0 ? 1 : 0;
+
+	return relay;
 }

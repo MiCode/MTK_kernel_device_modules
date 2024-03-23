@@ -924,34 +924,6 @@ static int disp_pq_proxy_virtual_get_persist_property(struct drm_crtc *crtc, voi
 
 	DDPFUNC("+");
 
-	if (pq_data->old_persist_property[DISP_PQ_COLOR_BYPASS] !=
-		pq_data->new_persist_property[DISP_PQ_COLOR_BYPASS])
-		disp_color_set_bypass(crtc, pq_data->new_persist_property[DISP_PQ_COLOR_BYPASS]);
-
-	if (pq_data->old_persist_property[DISP_PQ_CCORR_BYPASS] !=
-		pq_data->new_persist_property[DISP_PQ_CCORR_BYPASS])
-		disp_ccorr_set_bypass(crtc, pq_data->new_persist_property[DISP_PQ_CCORR_BYPASS]);
-
-	if (pq_data->old_persist_property[DISP_PQ_GAMMA_BYPASS] !=
-		pq_data->new_persist_property[DISP_PQ_GAMMA_BYPASS])
-		disp_gamma_set_bypass(crtc, pq_data->new_persist_property[DISP_PQ_GAMMA_BYPASS]);
-
-	if (pq_data->old_persist_property[DISP_PQ_DITHER_BYPASS] !=
-		pq_data->new_persist_property[DISP_PQ_DITHER_BYPASS])
-		disp_dither_set_bypass(crtc, pq_data->new_persist_property[DISP_PQ_DITHER_BYPASS]);
-
-	if (pq_data->old_persist_property[DISP_PQ_AAL_BYPASS] !=
-		pq_data->new_persist_property[DISP_PQ_AAL_BYPASS])
-		disp_aal_set_bypass(crtc, pq_data->new_persist_property[DISP_PQ_AAL_BYPASS]);
-
-	if (pq_data->old_persist_property[DISP_PQ_C3D_BYPASS] !=
-		pq_data->new_persist_property[DISP_PQ_C3D_BYPASS])
-		disp_c3d_set_bypass(crtc, pq_data->new_persist_property[DISP_PQ_C3D_BYPASS]);
-
-	if (pq_data->old_persist_property[DISP_PQ_TDSHP_BYPASS] !=
-		pq_data->new_persist_property[DISP_PQ_TDSHP_BYPASS])
-		disp_tdshp_set_bypass(crtc, pq_data->new_persist_property[DISP_PQ_TDSHP_BYPASS]);
-
 	if (pq_data->old_persist_property[DISP_PQ_DITHER_COLOR_DETECT] !=
 		pq_data->new_persist_property[DISP_PQ_DITHER_COLOR_DETECT])
 		disp_dither_set_color_detect(crtc,
@@ -1047,6 +1019,7 @@ static int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data
 	int relay = 0;
 	bool wait_config_done = false;
 	uint32_t relay_engines = 0x0;
+	uint32_t caller;
 
 	struct mtk_pq_relay_enable *relayCtlSet = data;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -1054,30 +1027,21 @@ static int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data
 	struct mtk_cmdq_cb_data *cb_data = NULL;
 	struct cmdq_pkt *cmdq_handle = NULL;
 	struct mtk_ddp_comp *comp = NULL;
+	int index = drm_crtc_index(crtc);
 	int ret = 0;
 	int i, j;
 
 	relay = relayCtlSet->enable ? 1 : 0;
 	wait_config_done = relayCtlSet->wait_hw_config_done;
 	relay_engines = relayCtlSet->relay_engines;
+	caller = (uint32_t)relayCtlSet->caller;
 
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
-
-	if (!(mtk_crtc->enabled)) {
-		DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-		return 1;
-	}
-
-	DDPMSG("%s: relay: %d, wait: %d, engine: 0x%x\n", __func__,
-			relay, wait_config_done, relay_engines);
-
-	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+	DDPMSG("%s: crtc_index: %d, relay: %d, wait: %d, engine: 0x%x\n",
+		__func__, index, relay, wait_config_done, relay_engines);
 
 	cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return -EFAULT;
 	}
 	if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
@@ -1088,21 +1052,20 @@ static int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (comp && comp->funcs && comp->funcs->bypass
 			&& disp_pq_is_relay_engines(comp, relay_engines))
-			mtk_ddp_comp_bypass(comp, relay, cmdq_handle);
+			mtk_ddp_comp_bypass(comp, relay, caller, cmdq_handle);
 	}
 
 	if (mtk_crtc->is_dual_pipe) {
 		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
 			if (comp && comp->funcs && comp->funcs->bypass
 				&& disp_pq_is_relay_engines(comp, relay_engines))
-				mtk_ddp_comp_bypass(comp, relay, cmdq_handle);
+				mtk_ddp_comp_bypass(comp, relay, caller, cmdq_handle);
 		}
 	}
 
 	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
 	if (!cb_data) {
 		DDPPR_ERR("cb data creation failed\n");
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return -1;
 	}
 
@@ -1111,6 +1074,18 @@ static int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data
 
 	cb_data->crtc = crtc;
 	cb_data->cmdq_handle = cmdq_handle;
+
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+
+	if (!(mtk_crtc->enabled)) {
+		DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
+		cmdq_pkt_destroy(cmdq_handle);
+		kfree(cb_data);
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return 1;
+	}
+
 	if (cmdq_pkt_flush_threaded(cmdq_handle, disp_pq_relay_cmdq_cb, cb_data) < 0) {
 		DDPPR_ERR("failed to flush %s\n", __func__);
 		kfree(cb_data);

@@ -63,9 +63,7 @@
 #define GAMMA_ENTRY(r10, g10, b10) (((r10) << 20) | ((g10) << 10) | (b10))
 
 enum DISP_GAMMA_USER_CMD {
-	SET_GAMMALUT = 0,
-	BYPASS_GAMMA,
-	SET_GAMMA_GAIN,
+	SET_GAMMA_GAIN = 0,
 };
 
 enum GAMMA_MODE {
@@ -243,12 +241,7 @@ static int disp_gamma_write_lut_reg(struct mtk_ddp_comp *comp,
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_CFG,
-			GAMMA_LUT_EN | atomic_read(&primary_data->force_relay),
-			GAMMA_LUT_EN | GAMMA_RELAYMODE);
-
-	if (!atomic_read(&primary_data->gamma_sram_hw_init))
-		atomic_set(&primary_data->gamma_sram_hw_init, 1);
-
+			GAMMA_LUT_EN, GAMMA_LUT_EN);
 gamma_write_lut_unlock:
 	if (lock)
 		mutex_unlock(&gamma->primary_data->data_lock);
@@ -263,8 +256,7 @@ static void disp_gamma_flip_sram(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_CFG,
-			GAMMA_LUT_EN | atomic_read(&primary_data->force_relay),
-			GAMMA_LUT_EN | GAMMA_RELAYMODE);
+			GAMMA_LUT_EN, GAMMA_LUT_EN);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_SHADOW_SRAM,
@@ -275,14 +267,24 @@ static void disp_gamma_cfg_set_lut(struct mtk_ddp_comp *comp, struct cmdq_pkt *h
 {
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
 	struct mtk_disp_gamma_primary *primary_data = gamma->primary_data;
-	struct mtk_ddp_comp *comp_gamma1 = gamma->companion;
+	struct mtk_ddp_comp *companion = gamma->companion;
 
 	disp_gamma_flip_sram(comp, handle);
-	if (comp->mtk_crtc->is_dual_pipe && comp_gamma1)
-		disp_gamma_flip_sram(comp_gamma1, handle);
+	if (comp->mtk_crtc->is_dual_pipe && companion)
+		disp_gamma_flip_sram(companion, handle);
 
-	if (!atomic_read(&primary_data->gamma_sram_hw_init))
+	if (!atomic_read(&primary_data->gamma_sram_hw_init)) {
 		atomic_set(&primary_data->gamma_sram_hw_init, 1);
+		primary_data->relay_state &= ~(0x1 << PQ_FEATURE_DEFAULT);
+		if (primary_data->relay_state == 0) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_GAMMA_CFG, 0x0, 0x1);
+			if (comp->mtk_crtc->is_dual_pipe && companion)
+				cmdq_pkt_write(handle, companion->cmdq_base,
+					companion->regs_pa + DISP_GAMMA_CFG, 0x0, 0x1);
+			DDPINFO("%s, set gamma unrelay\n", __func__);
+		}
+	}
 	CRTC_MMP_MARK(0, gamma_ioctl, comp->id, (unsigned long)handle);
 }
 
@@ -468,15 +470,10 @@ static int disp_gamma_set_lut(struct mtk_ddp_comp *comp,
 {
 	/* TODO: use CPU to write register */
 	int ret = 0;
-	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
 
-	DDPINFO("%s\n", __func__);
-
-	mutex_lock(&gamma->primary_data->data_lock);
 	DDPINFO("%s: Set module(%d) lut\n", __func__, comp->id);
 	ret = disp_gamma_write_lut_reg(comp, handle, 0, user_gamma_lut);
 
-	mutex_unlock(&gamma->primary_data->data_lock);
 	return ret;
 }
 
@@ -547,6 +544,8 @@ static void disp_gamma_init_primary_data(struct mtk_ddp_comp *comp)
 	primary_data->gamma_lut_cur.hw_id = DISP_GAMMA_TOTAL;
 
 	disp_gamma_create_gce_pkt(comp, &primary_data->sram_pkt);
+	atomic_set(&primary_data->gamma_sram_hw_init, 0);
+	primary_data->relay_state = 0x1 << PQ_FEATURE_DEFAULT;
 }
 
 static void disp_gamma_config_overhead(struct mtk_ddp_comp *comp,
@@ -636,9 +635,10 @@ static void disp_gamma_config(struct mtk_ddp_comp *comp,
 			gamma->primary_data->color_protect.gamma_color_protect_support |
 			gamma->primary_data->color_protect.gamma_color_protect_lsb, ~0);
 	}
+
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_GAMMA_CFG, 0, STALL_CG_ON);
-	if (!atomic_read(&primary_data->gamma_sram_hw_init)) {
+	if (primary_data->relay_state != 0) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_CFG, GAMMA_RELAYMODE, GAMMA_RELAYMODE);
 		return;
@@ -677,21 +677,38 @@ static void disp_gamma_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 }
 
 static void disp_gamma_bypass(struct mtk_ddp_comp *comp, int bypass,
-	struct cmdq_pkt *handle)
+	int caller, struct cmdq_pkt *handle)
 {
 	struct mtk_disp_gamma *data = comp_to_gamma(comp);
 	struct mtk_disp_gamma_primary *primary_data = data->primary_data;
+	struct mtk_ddp_comp *comp_gamma1 = data->companion;
 
-	DDPINFO("%s\n", __func__);
+	DDPINFO("%s: comp: %s, bypass: %d, caller: %d, relay_state: 0x%x\n",
+		__func__, mtk_dump_comp_str(comp), bypass, caller, primary_data->relay_state);
 
-	if (!atomic_read(&primary_data->gamma_sram_hw_init) && !bypass) {
-		DDPPR_ERR("%s, gamma table invalid, skip unrelay setting!\n", __func__);
-		return;
+	mutex_lock(&primary_data->data_lock);
+	if (bypass == 1) {
+		if (primary_data->relay_state == 0) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_GAMMA_CFG, 0x1, 0x1);
+			if (comp->mtk_crtc->is_dual_pipe && comp_gamma1)
+				cmdq_pkt_write(handle, comp_gamma1->cmdq_base,
+					comp_gamma1->regs_pa + DISP_GAMMA_CFG, 0x1, 0x1);
+		}
+		primary_data->relay_state |= (1 << caller);
+	} else {
+		if (primary_data->relay_state != 0) {
+			primary_data->relay_state &= ~(1 << caller);
+			if (primary_data->relay_state == 0) {
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + DISP_GAMMA_CFG, 0x0, 0x1);
+				if (comp->mtk_crtc->is_dual_pipe && comp_gamma1)
+					cmdq_pkt_write(handle, comp_gamma1->cmdq_base,
+						comp_gamma1->regs_pa + DISP_GAMMA_CFG, 0x0, 0x1);
+			}
+		}
 	}
-
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_GAMMA_CFG, bypass, GAMMA_RELAYMODE);
-	atomic_set(&primary_data->force_relay, bypass);
+	mutex_unlock(&primary_data->data_lock);
 }
 
 static void disp_gamma_set(struct mtk_ddp_comp *comp,
@@ -830,20 +847,6 @@ static int disp_gamma_user_set_12bit_gammalut(struct mtk_ddp_comp *comp,
 	return 0;
 }
 
-static int disp_gamma_bypass_gamma(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, void *data)
-{
-	struct mtk_disp_gamma *gamma_data = comp_to_gamma(comp);
-	int *value = data;
-
-	disp_gamma_bypass(comp, *value, handle);
-	if (comp->mtk_crtc->is_dual_pipe && gamma_data->companion)
-		disp_gamma_bypass(gamma_data->companion, *value, handle);
-
-	return 0;
-}
-
-
 static int disp_gamma_user_set_gamma_gain(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data)
 {
@@ -882,19 +885,38 @@ static int disp_gamma_set_gammalut(struct mtk_ddp_comp *comp,
 {
 	struct mtk_disp_gamma *gamma_data = comp_to_gamma(comp);
 	struct DISP_GAMMA_LUT_T *config = data;
+	struct mtk_ddp_comp *companion = gamma_data->companion;
 
 	gamma_data->primary_data->gamma_lut_cur = *((struct DISP_GAMMA_LUT_T *)data);
 
+	mutex_lock(&gamma_data->primary_data->data_lock);
 	if (disp_gamma_set_lut(comp, handle, config) < 0) {
 		DDPPR_ERR("%s: failed\n", __func__);
+		mutex_unlock(&gamma_data->primary_data->data_lock);
 		return -EFAULT;
 	}
 	if (comp->mtk_crtc->is_dual_pipe && gamma_data->companion) {
 		if (disp_gamma_set_lut(gamma_data->companion, handle, config) < 0) {
 			DDPPR_ERR("%s: comp_gamma1 failed\n", __func__);
+			mutex_unlock(&gamma_data->primary_data->data_lock);
 			return -EFAULT;
 		}
 	}
+
+	if (!atomic_read(&gamma_data->primary_data->gamma_sram_hw_init)) {
+		atomic_set(&gamma_data->primary_data->gamma_sram_hw_init, 1);
+		gamma_data->primary_data->relay_state &= ~(0x1 << PQ_FEATURE_DEFAULT);
+		if (gamma_data->primary_data->relay_state == 0) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_GAMMA_CFG, 0x0, 0x1);
+			if (comp->mtk_crtc->is_dual_pipe && companion)
+				cmdq_pkt_write(handle, companion->cmdq_base,
+					companion->regs_pa + DISP_GAMMA_CFG, 0x0, 0x1);
+			DDPINFO("%s, set gamma unrelay\n", __func__);
+		}
+	}
+	mutex_unlock(&gamma_data->primary_data->data_lock);
+
 	return 0;
 }
 
@@ -903,20 +925,6 @@ static int disp_gamma_user_cmd(struct mtk_ddp_comp *comp,
 {
 	DDPINFO("%s: cmd: %d\n", __func__, cmd);
 	switch (cmd) {
-	case SET_GAMMALUT:
-	{
-		int ret;
-
-		ret = disp_gamma_set_gammalut(comp, handle, data);
-		if (ret < 0)
-			return ret;
-		if (comp->mtk_crtc != NULL)
-			mtk_crtc_check_trigger(comp->mtk_crtc, true, false);
-	}
-	break;
-	case BYPASS_GAMMA:
-		disp_gamma_bypass_gamma(comp, handle, data);
-		break;
 	case SET_GAMMA_GAIN:
 	{
 		int ret;
@@ -994,6 +1002,7 @@ int disp_gamma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	{
 		DDPMSG("%s, set sram_hw_init 0\n", __func__);
 		atomic_set(&primary_data->gamma_sram_hw_init, 0);
+		primary_data->relay_state |= (0x1 << PQ_FEATURE_DEFAULT);
 	}
 		break;
 	default:
@@ -1145,12 +1154,6 @@ static int disp_gamma_ioctl_transact(struct mtk_ddp_comp *comp,
 
 	/* will only call left path */
 	switch (cmd) {
-	case PQ_GAMMA_SET_GAMMALUT:
-		ret = mtk_crtc_user_cmd(&comp->mtk_crtc->base, comp, SET_GAMMALUT, data);
-		break;
-	case PQ_GAMMA_BYPASS_GAMMA:
-		ret = mtk_crtc_user_cmd(&comp->mtk_crtc->base, comp, BYPASS_GAMMA, data);
-		break;
 	default:
 		break;
 	}
@@ -1262,6 +1265,8 @@ void disp_gamma_regdump(struct mtk_ddp_comp *comp)
 
 	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp),
 			&comp->regs_pa);
+	DDPDUMP("== %s RELAY_STATE: 0x%x ==\n", mtk_dump_comp_str(comp),
+			gamma_data->primary_data->relay_state);
 	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(comp));
 	for (k = 0; k <= 0xff0; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
@@ -1499,18 +1504,6 @@ struct platform_driver mtk_disp_gamma_driver = {
 		},
 };
 
-void disp_gamma_set_bypass(struct drm_crtc *crtc, int bypass)
-{
-	int ret;
-	struct mtk_ddp_comp *comp;
-
-	comp = mtk_ddp_comp_sel_in_cur_crtc_path(to_mtk_crtc(crtc), MTK_DISP_GAMMA, 0);
-
-	ret = mtk_crtc_user_cmd(crtc, comp, BYPASS_GAMMA, &bypass);
-
-	DDPINFO("%s : ret = %d", __func__, ret);
-}
-
 // for HWC LayerBrightness, backlight & gamma gain update by atomic
 int disp_gamma_set_silky_brightness_gain(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	unsigned int gain[3], unsigned int gain_range)
@@ -1594,5 +1587,5 @@ unsigned int disp_gamma_bypass_info(struct mtk_drm_crtc *mtk_crtc)
 	}
 	gamma_data = comp_to_gamma(comp);
 
-	return atomic_read(&gamma_data->primary_data->force_relay);
+	return gamma_data->primary_data->relay_state != 0 ? 1 : 0;
 }

@@ -51,7 +51,6 @@
 
 enum C3D_IOCTL_CMD {
 	SET_C3DLUT = 0,
-	BYPASS_C3D,
 };
 
 enum C3D_CMDQ_TYPE {
@@ -486,20 +485,6 @@ static int disp_c3d_write_3dlut_to_reg(struct mtk_ddp_comp *comp,
 	return 0;
 }
 
-int disp_c3d_act_bypass_c3d(struct mtk_ddp_comp *comp, void *data)
-{
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	int ret = 0;
-
-	C3DAPI_LOG("line: %d\n", __LINE__);
-
-	ret = mtk_crtc_user_cmd(crtc, comp, BYPASS_C3D, data);
-
-	mtk_crtc_check_trigger(mtk_crtc, true, false);
-	return ret;
-}
-
 static int disp_c3d_set_1dlut(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *handle, int lock)
 {
@@ -571,6 +556,8 @@ static int disp_c3d_set_1dlut(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + C3D_C1D_030_031,
 				C3D_REG_2(lut1d[31], 0, lut1d[30], 16), ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + C3D_CFG, 0x1 << 1, 0x1 << 1);
 	}
 
 	if (lock)
@@ -614,16 +601,8 @@ static int disp_c3d_write_lut_to_reg(struct mtk_ddp_comp *comp,
 	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
 	struct mtk_disp_c3d_primary *primary_data = c3d_data->primary_data;
 
-	if (atomic_read(&primary_data->c3d_force_relay) == 1) {
-		// Set reply mode
-		DDPINFO("c3d_force_relay\n");
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + C3D_CFG, 0x3, 0x3);
-	} else {
-		// Disable reply mode
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + C3D_CFG, 0x2, 0x3);
-	}
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + C3D_CFG, 0x1 << 1, 0x1 << 1);
 
 	disp_c3d_write_1dlut_to_reg(comp, handle, c3d_lut);
 
@@ -636,47 +615,68 @@ static int disp_c3d_set_lut(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	int ret;
 	struct mtk_disp_c3d *c3d = comp_to_c3d(comp);
 	struct mtk_disp_c3d_primary *primary_data = c3d->primary_data;
+	struct mtk_ddp_comp *comp_c3d1 = c3d->companion;
 
 	ret = disp_c3d_write_lut_to_reg(comp, handle, (struct DISP_C3D_LUT *)data);
-	if (comp->mtk_crtc->is_dual_pipe) {
-		struct mtk_ddp_comp *comp_c3d1 = c3d->companion;
-
+	if (comp->mtk_crtc->is_dual_pipe && comp_c3d1) {
 		ret = disp_c3d_write_lut_to_reg(comp_c3d1, handle, (struct DISP_C3D_LUT *)data);
 		disp_c3d_flip_sram(comp, handle, __func__);
 		disp_c3d_flip_sram(comp_c3d1, handle, __func__);
 	} else {
 		disp_c3d_flip_sram(comp, handle, __func__);
 	}
-	atomic_set(&primary_data->c3d_sram_hw_init, 1);
+
+	mutex_lock(&primary_data->data_lock);
+	if (atomic_read(&primary_data->c3d_sram_hw_init) == 0) {
+		atomic_set(&primary_data->c3d_sram_hw_init, 1);
+		primary_data->relay_state &= ~(0x1 << PQ_FEATURE_DEFAULT);
+		if (primary_data->relay_state == 0) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + C3D_CFG, 0x10, 0x11);
+			if (comp->mtk_crtc->is_dual_pipe && comp_c3d1)
+				cmdq_pkt_write(handle, comp_c3d1->cmdq_base,
+					comp_c3d1->regs_pa + C3D_CFG, 0x10, 0x11);
+			DDPINFO("%s, set c3d unrelay\n", __func__);
+		}
+	}
+	mutex_unlock(&primary_data->data_lock);
 
 	return ret;
 }
 
 static void disp_c3d_bypass(struct mtk_ddp_comp *comp, int bypass,
-	struct cmdq_pkt *handle)
+	int caller, struct cmdq_pkt *handle)
 {
 	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
 	struct mtk_disp_c3d_primary *primary_data = c3d_data->primary_data;
-	char comp_name[64] = {0};
+	struct mtk_ddp_comp *companion = c3d_data->companion;
 
-	if (!atomic_read(&primary_data->c3d_sram_hw_init) && !bypass) {
-		DDPPR_ERR("%s, c3d sram invalid, skip unrelay setting!\n", __func__);
-		return;
-	}
+	DDPINFO("%s: comp: %s, bypass: %d, caller: %d, relay_state: 0x%x\n",
+		__func__, mtk_dump_comp_str(comp), bypass, caller, primary_data->relay_state);
 
-	mtk_ddp_comp_get_name(comp, comp_name, sizeof(comp_name));
-	pr_notice("%s, comp: %s, bypass: %d\n",
-			__func__, comp_name, bypass);
-
+	mutex_lock(&primary_data->data_lock);
 	if (bypass == 1) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
+		if (primary_data->relay_state == 0) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + C3D_CFG, 0x1, 0x1);
-		atomic_set(&primary_data->c3d_force_relay, 0x1);
+			if (comp->mtk_crtc->is_dual_pipe && companion)
+				cmdq_pkt_write(handle, companion->cmdq_base,
+					companion->regs_pa + C3D_CFG, 0x1, 0x1);
+		}
+		primary_data->relay_state |= (1 << caller);
 	} else {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + C3D_CFG, 0x0, 0x1);
-		atomic_set(&primary_data->c3d_force_relay, 0x0);
+		if (primary_data->relay_state != 0) {
+			primary_data->relay_state &= ~(1 << caller);
+			if (primary_data->relay_state == 0) {
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + C3D_CFG, 0x0, 0x1);
+				if (comp->mtk_crtc->is_dual_pipe && companion)
+					cmdq_pkt_write(handle, companion->cmdq_base,
+						companion->regs_pa + C3D_CFG, 0x0, 0x1);
+			}
+		}
 	}
+	mutex_unlock(&primary_data->data_lock);
 }
 
 static int disp_c3d_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -686,16 +686,6 @@ static int disp_c3d_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 	C3DFLOW_LOG("cmd: %d\n", cmd);
 	switch (cmd) {
-	case BYPASS_C3D:
-	{
-		struct mtk_ddp_comp *comp_c3d1 = c3d_data->companion;
-		unsigned int *value = data;
-
-		disp_c3d_bypass(comp, *value, handle);
-		if (comp->mtk_crtc->is_dual_pipe && comp_c3d1)
-			disp_c3d_bypass(comp_c3d1, *value, handle);
-	}
-	break;
 	default:
 		DDPPR_ERR("error cmd: %d\n", cmd);
 		return -EINVAL;
@@ -788,7 +778,7 @@ static void disp_c3d_config(struct mtk_ddp_comp *comp,
 
 	if (c3d_data->bin_num == 9)
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + C3D_CFG, 0, (0x1 << 4));
+			comp->regs_pa + C3D_CFG, 0x0 << 4, (0x1 << 4));
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_R2Y_09, 0, 0x1);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_Y2R_09, 0, 0x1);
@@ -799,29 +789,22 @@ static void disp_c3d_config(struct mtk_ddp_comp *comp,
 	else
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_SHADOW_CTL, 0x0, 0x1);
 
-	if (atomic_read(&primary_data->c3d_sram_hw_init) == 0) {
+	mutex_lock(&primary_data->data_lock);
+	if (primary_data->relay_state != 0) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + C3D_CFG, 0x3, 0x3);
-		C3DFLOW_LOG("compID: %d, c3d_sram_hw_init == 0\n", comp->id);
+			comp->regs_pa + C3D_CFG, 0x11, 0x11);
+		mutex_unlock(&primary_data->data_lock);
 		return;
 	}
 
-	if (atomic_read(&primary_data->c3d_force_relay) == 1)
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + C3D_CFG, 0x3, 0x3);
-	else
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + C3D_CFG, 0x2, 0x3);
-
-	mutex_lock(&primary_data->data_lock);
 	disp_c3d_write_with_mask(comp->regs + C3D_SRAM_CFG,
 		(0 << 6)|(0 << 5)|(1 << 4), (0x7 << 4));
 	disp_c3d_write_sram(comp, C3D_RESUME);
 	atomic_set(&c3d_data->c3d_force_sram_apb, 0);
 	disp_c3d_set_1dlut(comp, handle, 0);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_CFG, 0x10, 0x11);
 	mutex_unlock(&primary_data->data_lock);
 }
-
 
 static void disp_c3d_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
@@ -850,7 +833,7 @@ static void disp_c3d_unprepare(struct mtk_ddp_comp *comp)
 
 	c3d_data->has_set_1dlut = false;
 
-	C3DFLOW_LOG("line: %d\n", __LINE__);
+	C3DFLOW_LOG("comp: %s\n", mtk_dump_comp_str(comp));
 
 	mutex_lock(&primary_data->clk_lock);
 	atomic_set(&c3d_data->c3d_is_clock_on, 0);
@@ -881,6 +864,8 @@ static void disp_c3d_init_primary_data(struct mtk_ddp_comp *comp)
 	mutex_init(&primary_data->data_lock);
 	// destroy used pkt and create new one
 	disp_c3d_create_gce_pkt(comp, &primary_data->sram_pkt);
+	atomic_set(&primary_data->c3d_sram_hw_init, 0);
+	primary_data->relay_state = 0x1 << PQ_FEATURE_DEFAULT;
 }
 
 void disp_c3d_first_cfg(struct mtk_ddp_comp *comp,
@@ -1022,6 +1007,7 @@ static int disp_c3d_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	{
 		DDPMSG("%s, set sram_hw_init 0\n", __func__);
 		atomic_set(&primary_data->c3d_sram_hw_init, 0);
+		primary_data->relay_state |= (0x1 << PQ_FEATURE_DEFAULT);
 	}
 		break;
 	default:
@@ -1053,9 +1039,6 @@ static int disp_c3d_ioctl_transact(struct mtk_ddp_comp *comp,
 	switch (cmd) {
 	case PQ_C3D_GET_BIN_NUM:
 		ret = disp_c3d_act_get_bin_num(comp, data);
-		break;
-	case PQ_C3D_BYPASS:
-		ret = disp_c3d_act_bypass_c3d(comp, data);
 		break;
 	default:
 		break;
@@ -1183,6 +1166,8 @@ void disp_c3d_regdump(struct mtk_ddp_comp *comp)
 
 	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp),
 			&comp->regs_pa);
+	DDPDUMP("== %s RELAY_STATE: 0x%x ==\n", mtk_dump_comp_str(comp),
+			c3d_data->primary_data->relay_state);
 	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(comp));
 	for (k = 0; k <= 0x94; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
@@ -1419,17 +1404,6 @@ void disp_c3d_debug(struct drm_crtc *crtc, const char *opt)
 	}
 }
 
-void disp_c3d_set_bypass(struct drm_crtc *crtc, int bypass)
-{
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			to_mtk_crtc(crtc), MTK_DISP_C3D, 0);
-	int ret;
-
-	ret = mtk_crtc_user_cmd(crtc, comp, BYPASS_C3D, &bypass);
-
-	DDPINFO("%s : ret = %d", __func__, ret);
-}
-
 unsigned int disp_c3d_bypass_info(struct mtk_drm_crtc *mtk_crtc, int num)
 {
 	struct mtk_ddp_comp *comp;
@@ -1447,7 +1421,7 @@ unsigned int disp_c3d_bypass_info(struct mtk_drm_crtc *mtk_crtc, int num)
 	c3d_bin_num = mtk_crtc->pq_data->c3d_per_crtc;
 
 	if ((c3d_bin_num & 0xFF) == num )
-		return atomic_read(&c3d_data_0->primary_data->c3d_force_relay);
+		return c3d_data_0->primary_data->relay_state != 0 ? 1 : 0;
 	else if (((c3d_bin_num >> 16) & 0xFF) == num) {
 		comp1 = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_C3D, 1);
 		if (!comp1) {
@@ -1455,7 +1429,7 @@ unsigned int disp_c3d_bypass_info(struct mtk_drm_crtc *mtk_crtc, int num)
 			return 1;
 		}
 		c3d_data_1 = comp_to_c3d(comp1);
-		return atomic_read(&c3d_data_1->primary_data->c3d_force_relay);
+		return c3d_data_1->primary_data->relay_state != 0 ? 1 : 0;
 	}
 
 	return 1;

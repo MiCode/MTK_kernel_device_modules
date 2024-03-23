@@ -39,8 +39,7 @@
 #define DISP_DITHER_CLR_FLAG	BIT(4)
 
 enum COLOR_IOCTL_CMD {
-	SET_PARAM = 0,
-	BYPASS_DITHER,
+	BYPASS_DITHER = 0,
 	SET_INTERRUPT,
 	SET_COLOR_DETECT,
 };
@@ -322,7 +321,7 @@ static void disp_dither_config(struct mtk_ddp_comp *comp,
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_REG_DITHER_CFG,
-		enable << 1 | (primary_data->relay_value || !enable), 0x3);
+		enable << 1 | ((primary_data->relay_state != 0) || !enable), 0x3);
 
 	if (dither_data->set_partial_update != 1)
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -373,6 +372,7 @@ static void disp_dither_init_primary_data(struct mtk_ddp_comp *comp)
 	primary_data->pure_detect_wq =
 		create_singlethread_workqueue("pure_detect_wq");
 	INIT_WORK(&primary_data->work_data.pure_detect_task, disp_dither_pure_detect_work);
+	primary_data->relay_state = 0x0 << PQ_FEATURE_DEFAULT;
 }
 
 static void disp_dither_first_cfg(struct mtk_ddp_comp *comp,
@@ -405,18 +405,36 @@ static void disp_dither_stop(struct mtk_ddp_comp *comp,
 }
 
 static void disp_dither_bypass(struct mtk_ddp_comp *comp, int bypass,
-			      struct cmdq_pkt *handle)
+			      int caller, struct cmdq_pkt *handle)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
 	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
+	struct mtk_ddp_comp *companion = dither_data->companion;
 
-	DDPINFO("%s\n", __func__);
+	DDPINFO("%s: comp: %s, bypass: %d, caller: %d, relay_state: 0x%x\n",
+		__func__, mtk_dump_comp_str(comp), bypass, caller, primary_data->relay_state);
 
-	primary_data->relay_value = bypass;
-
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_REG_DITHER_CFG,
-		primary_data->relay_value, 0x1);
+	if (bypass == 1) {
+		if (primary_data->relay_state == 0) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_REG_DITHER_CFG, 0x1, 0x1);
+			if (comp->mtk_crtc->is_dual_pipe && companion)
+				cmdq_pkt_write(handle, companion->cmdq_base,
+					companion->regs_pa + DISP_REG_DITHER_CFG, 0x1, 0x1);
+		}
+		primary_data->relay_state |= (0x1 << caller);
+	} else {
+		if (primary_data->relay_state != 0) {
+			primary_data->relay_state &= ~(1 << caller);
+			if (primary_data->relay_state == 0) {
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + DISP_REG_DITHER_CFG, 0x0, 0x1);
+				if (comp->mtk_crtc->is_dual_pipe && companion)
+					cmdq_pkt_write(handle, companion->cmdq_base,
+						companion->regs_pa + DISP_REG_DITHER_CFG, 0x0, 0x1);
+			}
+		}
+	}
 }
 
 static int disp_dither_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -508,19 +526,11 @@ void disp_dither_set_param(struct mtk_ddp_comp *comp,
 	uint32_t dither_mode = 0x00003000 | (0x1 << mode);
 
 	pr_notice("%s: bypass: %d, dither_mode: %x", __func__, bypass, dither_mode);
-	if (bypass) {
-		primary_data->relay_value = 0x1;
 
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_DITHER_CFG, 0x1, 0x1);
-	} else {
-		primary_data->relay_value = 0x0;
-
-		cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_REG_DITHER_CFG, 0x0, 0x1);
-	}
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DITHER_REG(6), dither_mode, ~0);
+
+	disp_dither_bypass(comp, bypass, PQ_FEATURE_HAL_SET_DITHER_PARAM, handle);
 }
 
 static int disp_dither_user_cmd(struct mtk_ddp_comp *comp,
@@ -531,32 +541,15 @@ static int disp_dither_user_cmd(struct mtk_ddp_comp *comp,
 
 	DDPINFO("%s: cmd: %d\n", __func__, cmd);
 	switch (cmd) {
-	case SET_PARAM:
-	{
-		struct DISP_DITHER_PARAM *ditherParam = (struct DISP_DITHER_PARAM *)data;
-		bool relay = ditherParam->relay;
-		uint32_t mode = ditherParam->mode;
-
-		primary_data->dither_mode = (unsigned int)(ditherParam->mode);
-		pr_notice("%s: relay: %d, mode: %d", __func__, relay, mode);
-
-		disp_dither_set_param(comp, handle, relay, mode);
-		if (comp->mtk_crtc->is_dual_pipe) {
-			struct mtk_ddp_comp *comp_dither1 = dither_data->companion;
-
-			disp_dither_set_param(comp_dither1, handle, relay, mode);
-		}
-	}
-	break;
 	case BYPASS_DITHER:
 	{
 		int *value = data;
 
-		disp_dither_bypass(comp, *value, handle);
+		disp_dither_bypass(comp, *value, PQ_FEATURE_HAL_COLOR_DETECT, handle);
 		if (comp->mtk_crtc->is_dual_pipe) {
 			struct mtk_ddp_comp *comp_dither1 = dither_data->companion;
 
-			disp_dither_bypass(comp_dither1, *value, handle);
+			disp_dither_bypass(comp_dither1, *value, PQ_FEATURE_HAL_COLOR_DETECT, handle);
 		}
 	}
 	break;
@@ -615,13 +608,6 @@ int disp_dither_cfg_set_dither_param(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
-int disp_dither_act_set_dither_param(struct mtk_ddp_comp *comp, void *data)
-{
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-
-	return mtk_crtc_user_cmd(&mtk_crtc->base, comp, SET_PARAM, data);
-}
-
 static int disp_dither_frame_config(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, unsigned int cmd, void *data, unsigned int data_size)
 {
@@ -631,21 +617,6 @@ static int disp_dither_frame_config(struct mtk_ddp_comp *comp,
 	/* TYPE1 no user cmd */
 	case PQ_DITHER_SET_DITHER_PARAM:
 		ret = disp_dither_cfg_set_dither_param(comp, handle, data, data_size);
-		break;
-	default:
-		break;
-	}
-	return ret;
-}
-
-static int disp_dither_ioctl_transact(struct mtk_ddp_comp *comp,
-		unsigned int cmd, void *data, unsigned int data_size)
-{
-	int ret = -1;
-
-	switch (cmd) {
-	case PQ_DITHER_SET_DITHER_PARAM:
-		ret = disp_dither_act_set_dither_param(comp, data);
 		break;
 	default:
 		break;
@@ -701,7 +672,6 @@ static const struct mtk_ddp_comp_funcs mtk_disp_dither_funcs = {
 	 */
 	.io_cmd = disp_dither_io_cmd,
 	.pq_frame_config = disp_dither_frame_config,
-	.pq_ioctl_transact = disp_dither_ioctl_transact,
 	.partial_update = disp_dither_set_partial_update,
 };
 
@@ -760,6 +730,8 @@ void disp_dither_regdump(struct mtk_ddp_comp *comp)
 
 	DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(comp),
 			comp->regs_pa);
+	DDPDUMP("== %s RELAY_STATE: 0x%x ==\n", mtk_dump_comp_str(comp),
+			dither->primary_data->relay_state);
 	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(comp));
 	for (k = 0; k <= 0x164; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
@@ -1064,5 +1036,5 @@ unsigned int disp_dither_bypass_info(struct mtk_drm_crtc *mtk_crtc)
 	}
 	dither_data = comp_to_dither(comp);
 
-	return dither_data->primary_data->relay_value;
+	return dither_data->primary_data->relay_state != 0 ? 1 : 0;
 }

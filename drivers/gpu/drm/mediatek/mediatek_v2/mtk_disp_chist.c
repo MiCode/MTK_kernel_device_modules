@@ -419,9 +419,10 @@ static void disp_chist_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 }
 
 static void disp_chist_bypass(struct mtk_ddp_comp *comp, int bypass,
-	struct cmdq_pkt *handle)
+	int caller, struct cmdq_pkt *handle)
 {
-	DDPINFO("%s, comp->id:%s\n", __func__, mtk_dump_comp_str(comp));
+	DDPINFO("%s, comp->id:%s, bypass: %d, caller: %d\n",
+		__func__, mtk_dump_comp_str(comp), bypass, caller);
 
 	if (bypass == 1)
 		disp_chist_stop(comp, handle);
@@ -681,11 +682,11 @@ static int disp_chist_user_cmd(struct mtk_ddp_comp *comp,
 	}
 	mutex_unlock(&chist_data->primary_data->data_lock);
 
-	disp_chist_bypass(comp, bypass, handle);
+	disp_chist_bypass(comp, bypass, 1, handle);
 
 	if (comp->mtk_crtc->is_dual_pipe) {
 		if (chist_data->companion)
-			disp_chist_bypass(chist_data->companion, bypass, handle);
+			disp_chist_bypass(chist_data->companion, bypass, 1, handle);
 	}
 	return 0;
 }
@@ -810,7 +811,7 @@ static void disp_chist_config(struct mtk_ddp_comp *comp,
 		if (chist_data->primary_data->need_restore)
 			disp_chist_restore_setting(comp, handle);
 		else
-			disp_chist_bypass(comp, 1, handle);
+			disp_chist_bypass(comp, 1, 1, handle);
 	}
 }
 

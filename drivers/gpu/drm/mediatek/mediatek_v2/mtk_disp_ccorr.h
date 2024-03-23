@@ -26,7 +26,6 @@ struct mtk_disp_ccorr_tile_overhead_v {
 
 struct mtk_disp_ccorr_primary {
 	unsigned int ccorr_8bit_switch;
-	unsigned int ccorr_relay_value;
 	struct drm_mtk_ccorr_caps disp_ccorr_caps;
 	int ccorr_offset_base;
 	int ccorr_max_negative;
@@ -56,6 +55,7 @@ struct mtk_disp_ccorr_primary {
 	struct mutex data_lock;
 	struct mutex bl_lock;
 	unsigned int ccorr_hw_valid;
+	unsigned int relay_state;
 };
 
 struct mtk_disp_ccorr {
@@ -86,7 +86,6 @@ int mtk_drm_ioctl_ccorr_get_pq_caps(struct drm_device *dev, void *data,
 int mtk_drm_ioctl_ccorr_set_pq_caps(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
 int disp_ccorr_act_get_ccorr_caps(struct mtk_ddp_comp *comp, struct drm_mtk_ccorr_caps *ccorr_caps);
-void disp_ccorr_set_bypass(struct drm_crtc *crtc, int bypass);
 void disp_ccorr_regdump(struct mtk_ddp_comp *comp);
 int disp_ccorr_act_get_irq(struct mtk_ddp_comp *comp, void *data);
 // for displayPQ update to swpm tppa

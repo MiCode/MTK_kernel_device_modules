@@ -899,6 +899,7 @@ struct pq_common_data {
 	struct wakeup_source *wake_lock;
 	char *wake_lock_name;
 	int c3d_per_crtc;
+	bool opt_bypass_pq;
 };
 
 struct mtk_vblank_config_rec {

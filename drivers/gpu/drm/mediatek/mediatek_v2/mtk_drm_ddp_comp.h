@@ -1128,7 +1128,7 @@ struct mtk_ddp_comp_funcs {
 			  struct cmdq_pkt *handle);
 	void (*first_cfg)(struct mtk_ddp_comp *comp,
 		       struct mtk_ddp_config *cfg, struct cmdq_pkt *handle);
-	void (*bypass)(struct mtk_ddp_comp *comp, int bypass,
+	void (*bypass)(struct mtk_ddp_comp *comp, int bypass, int caller,
 		struct cmdq_pkt *handle);
 	void (*config_trigger)(struct mtk_ddp_comp *comp,
 			       struct cmdq_pkt *handle,
@@ -1333,10 +1333,10 @@ static inline void mtk_ddp_gamma_set(struct mtk_ddp_comp *comp,
 }
 
 static inline void mtk_ddp_comp_bypass(struct mtk_ddp_comp *comp, int bypass,
-				       struct cmdq_pkt *handle)
+				       int caller, struct cmdq_pkt *handle)
 {
 	if (comp && comp->funcs && comp->funcs->bypass && !comp->blank_mode)
-		comp->funcs->bypass(comp, bypass, handle);
+		comp->funcs->bypass(comp, bypass, caller, handle);
 }
 
 static inline void mtk_ddp_comp_first_cfg(struct mtk_ddp_comp *comp,
