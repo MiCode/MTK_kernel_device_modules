@@ -1588,6 +1588,7 @@ static void dpc_analysis(void)
 	dpc_pm_ctrl(false);
 }
 
+#if IS_ENABLED(CONFIG_DEBUG_FS)
 static void dpc_dump(void)
 {
 	u32 i = 0;
@@ -1609,6 +1610,7 @@ static void dpc_dump(void)
 	}
 	dpc_pm_ctrl(false);
 }
+#endif
 
 static int dpc_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
 {
