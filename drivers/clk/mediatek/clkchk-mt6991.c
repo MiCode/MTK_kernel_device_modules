@@ -2650,6 +2650,7 @@ static struct regname rn[] = {
 	REGNAME(mm_hwv, 0x3F9C, HW_CCF_ECO_OPEN_1),
 	REGNAME(mm_hwv, 0x3FA0, HW_CCF_ECO_XPU_0),
 	REGNAME(mm_hwv, 0x3FA4, HW_CCF_ECO_XPU_1),
+	REGNAME(mm_hwv, 0x550C, HW_CCF_MTCMOS_FLOW_FLAG_SET),
 	/* MM SUBSYS PM RG */
 	REGNAME(mm_vcore_pm, 0x0D4, ISP_VCORE_PM_DEBUG0),
 	REGNAME(mm_vcore_pm, 0x0D8, ISP_VCORE_PM_DEBUG1),
