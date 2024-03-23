@@ -1638,6 +1638,10 @@ static int mml_record_print(struct seq_file *seq, void *data)
 			record->src_crc[1],
 			record->dest_crc[1]);
 		idx = (idx + 1) & MML_RECORD_NUM_MASK;
+
+		/* do not occupy log space */
+		if (seq->size <= MML_LOG_SIZE)
+			break;
 	}
 
 	mml_print_log_record(seq);
@@ -1685,8 +1689,9 @@ void mml_record_dump(struct mml_dev *mml)
 
 static int mml_record_open(struct inode *inode, struct file *file)
 {
+	/* 128KB for records and MML_LOG_SIZE for log */
 	return single_open_size(file, mml_record_print, inode->i_private,
-		PAGE_SIZE + MML_LOG_SIZE);
+		0x20000 + MML_LOG_SIZE);
 }
 
 static const struct file_operations mml_record_fops = {
