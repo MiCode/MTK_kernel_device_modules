@@ -22,6 +22,9 @@
 #include "vcp.h"
 #include "vcp_status.h"
 #include "vcp_reg.h"
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+#include "cmdq.h"
+#endif
 
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 #include "cmdq-util.h"
@@ -239,6 +242,19 @@ void cmdq_set_thrd_pkt_id(struct cmdq_pkt *pkt, bool add)
 		dump_stack();
 	}
 }
+
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+struct vhost_cmdq_platform_fp *vhost_cmdq_platform;
+void vhost_cmdq_util_set_fp(struct vhost_cmdq_platform_fp *cust_cmdq_platform)
+{
+	if (!cust_cmdq_platform) {
+		cmdq_err("%s cmdq_util_platform_fp is NULL ", __func__);
+		return;
+	}
+	vhost_cmdq_platform = cust_cmdq_platform;
+}
+EXPORT_SYMBOL(vhost_cmdq_util_set_fp);
+#endif
 
 void cmdq_hw_trace_dump(void *chan)
 {
@@ -538,9 +554,9 @@ void cmdq_mbox_stop(struct cmdq_client *cl)
 	}
 #elif IS_ENABLED(CONFIG_VHOST_CMDQ)
 	if (cl->is_virtio) {
-		virtio_cmdq_mbox_channel_stop(cl->chan);
+		vhost_cmdq_platform->vhost_cmdq_mbox_channel_stop(cl->chan);
 		return;
-	}
+}
 #endif
 
 	cmdq_mbox_channel_stop(cl->chan);
@@ -1411,7 +1427,7 @@ void cmdq_pkt_destroy(struct cmdq_pkt *pkt)
 		virtio_cmdq_pkt_destroy(pkt);
 #elif IS_ENABLED(CONFIG_VHOST_CMDQ)
 	if (client && client->is_virtio)
-		virtio_cmdq_pkt_destroy(pkt);
+		vhost_cmdq_platform->vhost_cmdq_pkt_destroy(pkt);
 #endif
 
 	cmdq_log("%s pkt:%p ", __func__, pkt);
@@ -3350,7 +3366,7 @@ s32 cmdq_pkt_flush_async(struct cmdq_pkt *pkt,
 #endif
 #if IS_ENABLED(CONFIG_VHOST_CMDQ)
 	if (client->is_virtio)
-		return virtio_cmdq_pkt_flush_async(pkt, cb, data);
+		return vhost_cmdq_platform->vhost_cmdq_pkt_flush_async(pkt, cb, data);
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
@@ -3521,9 +3537,8 @@ int cmdq_pkt_wait_complete(struct cmdq_pkt *pkt)
 		return virtio_cmdq_pkt_wait_complete(pkt);
 #elif IS_ENABLED(CONFIG_VHOST_CMDQ)
 	struct cmdq_client *client = pkt->cl;
-
 	if (client->is_virtio)
-		return virtio_cmdq_pkt_wait_complete(pkt);
+		return vhost_cmdq_platform->vhost_cmdq_pkt_wait_complete(pkt);
 #endif
 
 	if (!item) {

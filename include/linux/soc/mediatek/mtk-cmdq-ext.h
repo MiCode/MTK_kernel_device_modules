@@ -341,6 +341,8 @@ void virtio_cmdq_mbox_enable(void *chan);
 #endif
 
 #if IS_ENABLED(CONFIG_VHOST_CMDQ)
+struct vhost_cmdq_platform_fp;
+void vhost_cmdq_util_set_fp(struct vhost_cmdq_platform_fp *cust_cmdq_platform);
 struct cmdq_client *virtio_cmdq_mbox_create(struct device *dev, int index);
 s32 virtio_cmdq_pkt_flush_async(struct cmdq_pkt *pkt, cmdq_async_flush_cb cb, void *data);
 int virtio_cmdq_pkt_wait_complete(struct cmdq_pkt *pkt);

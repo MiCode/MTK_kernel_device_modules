@@ -155,6 +155,7 @@ void build_from_pkt(struct cmdq_pkt *pkt, struct cmdq_flush_request *req)
 		req->iov[cnt].iov_base = buf->va_base;
 		req->iov[cnt].iov_len = size;
 		req->cmd_buf_paddrs[cnt] = buf->pa_base;
+		req->cmd_buf_iovaddrs[cnt] = buf->iova_base;
 		cnt++;
 	}
 
@@ -495,7 +496,7 @@ void virtio_cmdq_mbox_channel_stop(struct mbox_chan *chan)
 {
 	struct virtio_cmdq_req *vcr = kzalloc(sizeof(*vcr), GFP_KERNEL);
 	struct cmdq_thread *thread = chan->con_priv;
-	uint32_t hwid = 0; //cmdq_util_get_hw_id((u32)virtual_cmdq_mbox_get_base_pa(chan));
+	uint32_t hwid = virtio_cmdq_platform->util_hw_id((u32)virtual_cmdq_mbox_get_base_pa(chan));
 
 	WARN_ON_ONCE(vcr == NULL);
 	vcr->req.chan_stop_req.thread_id = thread->idx;
@@ -511,7 +512,7 @@ void virtio_cmdq_mbox_enable(void *chan)
 {
 	struct virtio_cmdq_req *vcr = kzalloc(sizeof(*vcr), GFP_KERNEL);
 	struct cmdq_thread *thread = ((struct mbox_chan *)chan)->con_priv;
-	uint32_t hwid = 0; //cmdq_util_get_hw_id((u32)virtual_cmdq_mbox_get_base_pa(chan));
+	uint32_t hwid = virtio_cmdq_platform->util_hw_id((u32)virtual_cmdq_mbox_get_base_pa(chan));
 
 	WARN_ON_ONCE(vcr == NULL);
 	vcr->req.mbox_enable_req.thread_id = thread->idx;

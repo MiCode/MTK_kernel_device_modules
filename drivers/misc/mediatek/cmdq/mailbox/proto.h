@@ -3,45 +3,15 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
-#ifndef __VIRTIO_MTK_PROTO_H__
-#define __VIRTIO_MTK_PROTO_H__
+#ifndef __MTK_VIRTIO_CMDQ_PROTO_H__
+#define __MTK_VIRTIO_CMDQ_PROTO_H__
 
 #include <linux/types.h>
+#include <linux/uio.h>
 
-#define RESPONSE_DATA_SIZE	8
+#define RESPONSE_DATA_SIZE 8
 
 #define MAX_CMDQ_IOV_SIZE (35)
-
-enum {
-	REQ_MBOX,
-	REQ_IPI,
-	REQ_CLK,
-};
-
-enum {
-	MCUPM_MBOX,
-	SSPM_MBOX,
-};
-
-enum {
-	MBOX_OPS_READ,
-	MBOX_OPS_WRITE,
-	MBOX_OPS_GET_IRQSTATE,
-};
-
-enum {
-	IPI_OPS_SEND,
-	IPI_OPS_SEND_COMP,
-};
-
-enum {
-	CLK_OPS_PREPARE,
-	CLK_OPS_UNPREPARE,
-	CLK_OPS_ENABLE,
-	CLK_OPS_DISABLE,
-	CLK_OPS_SET_RATE,
-	CLK_OPS_SET_PARENT,
-};
 
 enum {
 	CMDQ_OPS_FLUSH,
@@ -49,54 +19,6 @@ enum {
 	CMDQ_OPS_DESTROY,
 	CMDQ_OPS_CHAN_STOP,
 	CMDQ_OPS_MBOX_ENABLE,
-};
-
-enum {
-	VCORE_DVFS_TYPE_UNKNOWN,
-	VCORE_DVFS_TYPE_ADD_REQUEST,
-	VCORE_DVFS_TYPE_UPDATE_REQUEST,
-	VCORE_DVFS_TYPE_REMOVE_REQUEST,
-};
-
-struct mbox_req {
-	uint8_t mbox_type;
-	uint8_t ops;
-	uint8_t mbox_id;
-	uint8_t slot;
-	uint8_t pin_index;
-};
-
-struct ipi_req {
-	uint8_t mbox_type;
-	uint8_t ipi_id;
-	uint8_t ops;
-	uint8_t opt;
-	uint32_t timeout_ms;
-};
-
-#define CLK_NAME_MAX_LEN 64
-
-struct clk_req {
-	char name[CLK_NAME_MAX_LEN];
-	char parent_name[CLK_NAME_MAX_LEN];
-	uint8_t ops;
-	uint64_t arg1;
-	uint64_t arg2;
-};
-
-struct mtk_request {
-	uint8_t type;
-	union {
-		struct mbox_req mbox_req;
-		struct ipi_req ipi_req;
-		struct clk_req clk_req;
-	};
-};
-
-struct mtk_response {
-	int32_t ret;
-	uint32_t payload_len;
-	uint64_t payload[RESPONSE_DATA_SIZE];
 };
 
 struct cmdq_flush_request {
@@ -154,7 +76,4 @@ struct cmdq_response {
 	int32_t ret;
 };
 
-struct cmdq_util_platform_fp;
-void virtio_cmdq_util_set_fp(struct cmdq_util_platform_fp *cust_cmdq_platform);
 #endif
-
