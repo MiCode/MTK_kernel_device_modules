@@ -46,6 +46,9 @@ enum ssusb_hwrscs_vers {
 	SSUSB_HWRECS_V2 = 2,
 };
 
+struct regmap *usb_mbist;
+struct regmap *usb_cfg_ao;
+
 static struct ssusb_offload *usb_offload;
 static DEFINE_MUTEX(offload_lock);
 
@@ -530,6 +533,92 @@ static void ssusb_parse_toggle_vbus(struct ssusb_mtk *ssusb,
 	}
 }
 
+static int ssusb_ao_cfg_of_property_parse(struct device_node *dn)
+{
+	struct of_phandle_args args;
+	struct platform_device *pdev;
+	int ret;
+
+	usb_mbist = NULL;
+	usb_cfg_ao = NULL;
+
+	/* usb mbist */
+	if (!of_property_read_bool(dn, "mediatek,usb-mbist"))
+		goto usb_aocfg;
+
+	ret = of_parse_phandle_with_fixed_args(dn,
+		"mediatek,usb-mbist", 0, 0, &args);
+
+	if (ret)
+		goto usb_aocfg;
+
+	pdev = of_find_device_by_node(args.np);
+	if (!pdev)
+		goto usb_aocfg;
+
+	usb_mbist = device_node_to_regmap(args.np);
+
+usb_aocfg:
+
+	/* usb ao cfg */
+	if (!of_property_read_bool(dn, "mediatek,usb-ao-cfg"))
+		return 0;
+
+	ret = of_parse_phandle_with_fixed_args(dn,
+		"mediatek,usb-ao-cfg", 0, 0, &args);
+
+	if (ret)
+		return 0;
+
+	pdev = of_find_device_by_node(args.np);
+	if (!pdev)
+		return 0;
+
+	usb_cfg_ao = device_node_to_regmap(args.np);
+
+	return 0;
+}
+
+void mtu3_ao_rg_dump(void)
+{
+	u32 val = 0;
+
+	if (!IS_ERR_OR_NULL(usb_mbist)) {
+		regmap_read(usb_mbist, 0x54, &val);
+		pr_notice("[MTU3] debug dump usb-mbist: %x\n", val);
+	}
+
+	if (!IS_ERR_OR_NULL(usb_cfg_ao)) {
+		regmap_read(usb_cfg_ao, 0x284, &val);
+		pr_notice("[MTU3] debug dump usb-cfg-ao: %x\n", val);
+
+	}
+}
+
+static int ssusb_pd_event(struct notifier_block *nb,
+				  unsigned long flags , void *data)
+{
+	switch (flags) {
+	case GENPD_NOTIFY_ON:
+		pr_notice("%s() mtu3 pwr on\n", __func__);
+		mtu3_ao_rg_dump();
+		break;
+	case GENPD_NOTIFY_PRE_OFF:
+		pr_notice("%s() mtu3 pwr pre off\n", __func__);
+		mtu3_ao_rg_dump();
+		break;
+	default:
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+struct notifier_block ssusb_pd_notifier_block = {
+	.notifier_call = ssusb_pd_event,
+	.priority = 0,
+};
+
 static int ssusb_offload_get_mode(void)
 {
 	if (usb_offload && usb_offload->get_mode)
@@ -1006,6 +1095,8 @@ get_phy:
 	if (ret)
 		dev_info(dev, "failed to parse dp_switch property\n");
 
+	ssusb_ao_cfg_of_property_parse(node);
+
 	ssusb->wakeup_irq = platform_get_irq_byname_optional(pdev, "wakeup");
 	if (ssusb->wakeup_irq == -EPROBE_DEFER)
 		return ssusb->wakeup_irq;
@@ -1080,7 +1171,7 @@ static int ssusb_genpd_init(struct device *dev,
 {
 	int genpd_num = 0;
 	int err = 0;
-
+	int ret = 0;
 
 	ssusb->use_multi_genpd = false;
 	genpd_num = of_count_phandle_with_args(dev->of_node,
@@ -1132,6 +1223,10 @@ static int ssusb_genpd_init(struct device *dev,
 		dev_info(dev, "failed to add usb genpd u3 link\n");
 		return -ENODEV;
 	}
+
+	ret = dev_pm_genpd_add_notifier(ssusb->genpd_u2, &ssusb_pd_notifier_block);
+	if (ret)
+		dev_info(dev, "failed to register genpd notify %d\n", ret);
 
 	return 0;
 }
