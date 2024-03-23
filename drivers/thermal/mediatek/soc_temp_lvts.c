@@ -1616,7 +1616,6 @@ static void lvts_shutdown(struct platform_device *pdev)
 			val |= WDT_REQ_MODE_KEY;
 			iowrite32(val, toprgu_base + WDT_REQ_MODE);
 		}
-		disable_all_sensing_points(lvts_data);
 		dev_info(dev, "[Thermal/LVTS]%s(WDT_REQ:0x%x!)\n",
 			__func__, ioread32(toprgu_base + WDT_REQ_MODE));
 	}
