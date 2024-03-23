@@ -912,6 +912,7 @@ int vcp_enable_pm_clk(enum feature_id id)
 
 		if (!is_vcp_ready_by_coreid(VCP_CORE_TOTAL)) {
 			if (reset_vcp()) {
+				vcp_disable_irqs();
 				mutex_unlock(&vcp_pw_clk_mutex);
 				return -1;
 			}
