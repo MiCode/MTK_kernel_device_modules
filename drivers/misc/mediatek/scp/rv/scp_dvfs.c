@@ -180,6 +180,7 @@ const char *scp_clk_ver[MAX_SCP_CLK_VERSION] __initconst = {
 const char *scp_dvfs_hw_chip_ver[MAX_SCP_DVFS_CHIP_HW] __initconst = {
 	[MT6853] = "mediatek,mt6853",
 	[MT6873] = "mediatek,mt6873",
+	[MT6877] = "mediatek,mt6877",
 	[MT6893] = "mediatek,mt6893",
 	[MT6833] = "mediatek,mt6833",
 };
@@ -225,6 +226,14 @@ struct scp_pmic_regs scp_pmic_hw_regs[MAX_SCP_DVFS_CHIP_HW] = {
 		REG_DEFINE_WITH_INIT(sshub_op_cfg, 0x151a, 0x1, 11, 1, 1)
 	},
 	[MT6873] = {
+		REG_DEFINE_WITH_INIT(sshub_op_mode, 0x15a0, 0x1, 11, 0, 1)
+		REG_DEFINE_WITH_INIT(sshub_op_en, 0x1594, 0x1, 11, 1, 1)
+		REG_DEFINE_WITH_INIT(sshub_op_cfg, 0x159a, 0x1, 11, 1, 1)
+		REG_DEFINE_WITH_INIT(sshub_buck_en, 0x15aa, 0x1, 0, 1, 0)
+		REG_DEFINE_WITH_INIT(sshub_ldo_en, 0x1f28, 0x1, 0, 0, 0)
+		REG_DEFINE_WITH_INIT(pmrc_en, 0x1ac, 0x1, 2, 0, 1)
+	},
+	[MT6877] = {
 		REG_DEFINE_WITH_INIT(sshub_op_mode, 0x15a0, 0x1, 11, 0, 1)
 		REG_DEFINE_WITH_INIT(sshub_op_en, 0x1594, 0x1, 11, 1, 1)
 		REG_DEFINE_WITH_INIT(sshub_op_cfg, 0x159a, 0x1, 11, 1, 1)
@@ -321,7 +330,6 @@ static int scp_reg_update(struct regmap *regmap, struct reg_info *reg, u32 val)
 {
 	u32 mask;
 	int ret = 0;
-	bool need_scp_wakelock = false;
 
 	if (!reg->msk) {
 		pr_notice("[%s]: reg not support\n", __func__);
@@ -330,23 +338,12 @@ static int scp_reg_update(struct regmap *regmap, struct reg_info *reg, u32 val)
 	mask = reg->msk << reg->bit;
 	val = (val & reg->msk) << reg->bit;
 
-	/* Keep SCP active to read */
-	need_scp_wakelock = g_dvfs_dev.clk_hw->scp_clk_regmap == regmap;
-	if (need_scp_wakelock)
-		if (scp_awake_lock((void *)SCP_A_ID)) {
-			pr_notice("[%s] scp_awake_lock failed\n", __func__);
-			return 0;
-		}
-
 	if (reg->setclr) {
 		ret = regmap_write(regmap, reg->ofs + 4, mask);
 		ret = regmap_write(regmap, reg->ofs + 2, val);
 	} else {
 		ret = regmap_update_bits(regmap, reg->ofs, mask, val);
 	}
-
-	if (need_scp_wakelock)
-		scp_awake_unlock((void *)SCP_A_ID);
 
 	return ret;
 }
@@ -2417,18 +2414,24 @@ static int __init mt_scp_dts_ulposc_cali_init(struct device_node *node,
 
 	/* Get the version of hw reg & the version of algorithm */
 	ret = mt_scp_dts_get_cali_hw_regs(node, cali_hw);
-	if (ret)
+	if (ret) {
+		pr_notice("[%s]: get cali hw regs failed\n", __func__);
 		return ret;
+	}
 
 	/* Get calibration target frequencies */
 	ret = mt_scp_dts_get_cali_target(node, cali_hw);
-	if (ret)
+	if (ret) {
+		pr_notice("[%s]: get cali target failed\n", __func__);
 		return ret;
+	}
 
 	/* Get calibration configs */
 	ret = mt_scp_dts_get_cali_hw_setting(node, cali_hw);
-	if (ret)
+	if (ret) {
+		pr_notice("[%s]: get cali hw setting\n", __func__);
 		return ret;
+	}
 
 	return ret;
 }

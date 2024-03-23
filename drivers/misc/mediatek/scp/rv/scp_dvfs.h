@@ -144,6 +144,7 @@ enum ulposc_ver_enum {
 enum scp_dvfs_chip_hw_enum {
 	MT6853,
 	MT6873,
+	MT6877,
 	MT6893,
 	MT6833,
 	MAX_SCP_DVFS_CHIP_HW,
