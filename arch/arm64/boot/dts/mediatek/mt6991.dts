@@ -6028,6 +6028,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			compatible = "mediatek,xsphy";
 			reg = <0 0x16730000 0 0x400>;
 			reg-names = "u2_port_base";
+			u2-procfs-disable;
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
