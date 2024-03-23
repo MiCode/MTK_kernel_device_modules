@@ -15,6 +15,7 @@
 #include <mt-plat/sync_write.h>
 
 #include "seninf.h"
+#include "platform_common.h"
 
 #define SENINF_WR32(addr, data)    mt_reg_sync_writel(data, addr)
 #define SENINF_RD32(addr)          ioread32((void *)addr)

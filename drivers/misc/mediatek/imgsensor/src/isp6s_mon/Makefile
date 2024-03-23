@@ -16,7 +16,7 @@ subdir-ccflags-y += -I$(IMGSENSOR_DRIVER_PATH)/common/$(COMMON_VERSION) \
 	-I$(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/seninf/ \
 	-I$(DEVICE_MODULES_PATH)/drivers/i2c/busses/
 
-subdir-ccflags-y += -DIMGSENSOR_MT6877
+subdir-ccflags-y += -DNO_I2C_MTK -DNO_CLK_METER -DSENINF_USE_RPM -DDFS_CTRL_BY_OPP
 
 obj-$(CONFIG_MTK_IMGSENSOR_ISP6S_MON) += imgsensor_isp6s_mon.o
 imgsensor_isp6s_mon-objs :=
@@ -59,7 +59,6 @@ $(foreach drv,$(subst $\",,$(CONFIG_CUSTOM_KERNEL_IMGSENSOR)),$(eval $(call FILT
 CUSTOM_KERNEL_KNOWN_DRV := $(filter-out $(unknown_drv),$(subst $\",,$(CONFIG_CUSTOM_KERNEL_IMGSENSOR)))
 CUSTOM_KERNEL_FLAGS := $(addprefix -D, $(shell echo $(CUSTOM_KERNEL_KNOWN_DRV) | tr a-z A-Z))
 subdir-ccflags-y += $(CUSTOM_KERNEL_FLAGS)
-
 
 ifneq ($(unknown_drv),)
 $(info unknown_drv: $(unknown_drv))
@@ -109,8 +108,6 @@ else
 $(eval $(call add_subdrv,seninf))
 endif
 
-
-subdir-ccflags-y += -DNO_I2C_MTK -DNO_CLK_METER -DSENINF_USE_RPM
 #subdir-ccflags-y += -DSENINF_N3D_SUPPORT
 
 $(info imgsensor_isp6s_mon-objs : $(imgsensor_isp6s_mon-objs))
