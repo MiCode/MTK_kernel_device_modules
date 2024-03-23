@@ -636,8 +636,6 @@ static void mtk_pcie_clkbuf_force_26m(struct mtk_pcie_port *port, bool enable)
 
 	if (enable)
 		val |= PCIE_26M_REQ_FORCE_ON;
-	else
-		val &= ~PCIE_26M_REQ_FORCE_ON;
 
 	writel_relaxed(val, port->pextpcfg + PEXTP_REQ_CTRL);
 
