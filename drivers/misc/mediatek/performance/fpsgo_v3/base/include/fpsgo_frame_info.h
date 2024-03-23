@@ -6,6 +6,7 @@
 #ifndef __FPSGO_FRAME_INFO_H__
 #define __FPSGO_FRAME_INFO_H__
 
+#define FPSGO_MAX_CALLBACK_NUM 5
 #define FPSGO_MAX_TASK_NUM 100
 
 enum GET_FPSGO_FRAME_INFO {
@@ -22,6 +23,9 @@ enum GET_FPSGO_FRAME_INFO {
 	GET_FPSGO_MINITOP_LIST = 10,
 	GET_FPSGO_DELETE_INFO = 11,
 	GET_GED_GPU_TIME = 12,
+	GET_FPSGO_Q2Q_TIME = 13,
+	GET_SBE_CTRL = 14,
+	GET_FPSGO_JERK_BOOST = 15,
 	FPSGO_FRAME_INFO_MAX_NUM
 };
 
@@ -40,14 +44,25 @@ struct render_frame_info {
 	int dep_num;
 	int non_dep_num;
 	int blc;
+	int sbe_control_flag;
+	int jerk_boost_flag;
 	long frame_aa;
 	long dep_aa;
 	long long t_gpu;
 	unsigned long long buffer_id;
 	unsigned long long raw_t_cpu;
 	unsigned long long ema_t_cpu;
+	unsigned long long q2q_time;
 	struct task_info dep_arr[FPSGO_MAX_TASK_NUM];
 	struct task_info non_dep_arr[FPSGO_MAX_TASK_NUM];
+};
+
+typedef void (*fpsgo_frame_info_callback)(unsigned long cmd, struct render_frame_info *iter);
+
+struct render_frame_info_cb {
+	unsigned long mask;
+	struct render_frame_info info_iter;
+	fpsgo_frame_info_callback func_cb;
 };
 
 int fpsgo_ctrl2base_get_render_frame_info(int max_num, unsigned long mask,

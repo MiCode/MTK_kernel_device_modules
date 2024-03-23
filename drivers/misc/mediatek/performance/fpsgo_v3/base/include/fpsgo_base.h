@@ -669,6 +669,7 @@ void fpsgo_check_jank_detection_info_status(void);
 struct render_info *fpsgo_get_render_info_by_bufID(int pid,
 	unsigned long long buffer_id);
 int fpsgo_fbt_delete_power_rl(int pid, unsigned long long buf_id);
+void fpsgo_notify_frame_info_callback(unsigned long cmd, struct render_info *r_iter);
 
 void fpsgo_ktf_test_read_node(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf,

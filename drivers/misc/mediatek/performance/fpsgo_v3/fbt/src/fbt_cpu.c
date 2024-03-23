@@ -56,6 +56,7 @@
 #include "fpsgo_cpu_policy.h"
 #include "fbt_cpu_ctrl.h"
 #include "fbt_cpu_ux.h"
+#include "fpsgo_frame_info.h"
 
 #define GED_VSYNC_MISS_QUANTUM_NS 16666666
 #define TIME_3MS  3000000
@@ -3067,6 +3068,8 @@ static void fbt_do_jerk_boost(struct render_info *thr, int blc_wt, int blc_wt_b,
 {
 	int max_cap = 100, max_cap_b = 100, max_cap_m = 100;
 	int max_util = 1024, max_util_b = 1024, max_util_m = 1024;
+	unsigned long cb_mask = 0;
+
 	if (boost_ta || boost_group) {
 		fbt_set_boost_value(blc_wt);
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, blc_wt, "perf idx");
@@ -3080,6 +3083,9 @@ static void fbt_do_jerk_boost(struct render_info *thr, int blc_wt, int blc_wt_b,
 			max_cap_b, max_cap_m, max_util, max_util_b, max_util_m, 0, jerk);
 	}
 	fps_drop_time = ktime_to_ms(ktime_get());
+
+	cb_mask = 1 << GET_FPSGO_JERK_BOOST;
+	fpsgo_notify_frame_info_callback(cb_mask, thr);
 }
 
 static void fbt_cancel_sjerk(void)

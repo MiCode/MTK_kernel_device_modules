@@ -32,6 +32,7 @@
 #include "xgf.h"
 #include "mini_top.h"
 #include "fbt_cpu_platform.h"
+#include "fpsgo_frame_info.h"
 
 #define MAX_FPSGO_CB_NUM 5
 
@@ -67,8 +68,10 @@ static DEFINE_MUTEX(fpsgo_com_policy_cmd_lock);
 static DEFINE_MUTEX(fpsgo_boost_cb_lock);
 static DEFINE_MUTEX(fpsgo_boost_lock);
 static DEFINE_MUTEX(adpf_hint_lock);
+static DEFINE_MUTEX(fpsgo_frame_info_cb_lock);
 
 static fpsgo_notify_is_boost_cb notify_fpsgo_boost_cb_list[MAX_FPSGO_CB_NUM];
+static struct render_frame_info_cb fpsgo_frame_info_cb_list[FPSGO_MAX_CALLBACK_NUM];
 
 typedef void (*heavy_fp)(int jank, int pid);
 int (*fpsgo2jank_detection_register_callback_fp)(heavy_fp cb);
@@ -194,6 +197,85 @@ void fpsgo_com_notify_fpsgo_is_boost(int enable)
 	}
 	mutex_unlock(&fpsgo_boost_lock);
 	mutex_unlock(&fpsgo_boost_cb_lock);
+}
+
+int fpsgo_register_frame_info_callback(unsigned long mask, fpsgo_frame_info_callback cb)
+{
+	int i = 0;
+	int ret = -ENOMEM;
+	struct render_frame_info_cb *iter = NULL;
+
+	mutex_lock(&fpsgo_frame_info_cb_lock);
+	for (i = 0; i < FPSGO_MAX_CALLBACK_NUM; i++) {
+		if (fpsgo_frame_info_cb_list[i].func_cb == NULL)
+			break;
+	}
+
+	if (i >= FPSGO_MAX_CALLBACK_NUM || i < 0)
+		goto out;
+
+	iter = &fpsgo_frame_info_cb_list[i];
+	iter->mask = mask;
+	iter->func_cb = cb;
+	memset(&iter->info_iter, 0, sizeof(struct render_frame_info));
+	ret = i;
+
+out:
+	mutex_unlock(&fpsgo_frame_info_cb_lock);
+	return ret;
+}
+EXPORT_SYMBOL(fpsgo_register_frame_info_callback);
+
+int fpsgo_unregister_frame_info_callback(fpsgo_frame_info_callback cb)
+{
+	int i = 0;
+	int ret = -ESPIPE;
+	struct render_frame_info_cb *iter = NULL;
+
+	mutex_lock(&fpsgo_frame_info_cb_lock);
+	for (i = 0; i < FPSGO_MAX_CALLBACK_NUM; i++) {
+		iter = &fpsgo_frame_info_cb_list[i];
+		if (iter->func_cb == cb) {
+			iter->mask = 0;
+			iter->func_cb = NULL;
+			memset(&iter->info_iter, 0, sizeof(struct render_frame_info));
+			ret = i;
+		}
+	}
+	mutex_unlock(&fpsgo_frame_info_cb_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL(fpsgo_unregister_frame_info_callback);
+
+void fpsgo_notify_frame_info_callback(unsigned long cmd, struct render_info *r_iter)
+{
+	int i;
+	struct render_frame_info_cb *iter = NULL;
+
+	mutex_lock(&fpsgo_frame_info_cb_lock);
+	for (i = 0; i < FPSGO_MAX_CALLBACK_NUM; i++) {
+		iter = &fpsgo_frame_info_cb_list[i];
+
+		if (iter->func_cb && cmd & iter->mask) {
+			iter->info_iter.tgid = r_iter->tgid;
+			iter->info_iter.pid = r_iter->pid;
+			iter->info_iter.buffer_id = r_iter->buffer_id;
+
+			if (test_bit(GET_FPSGO_Q2Q_TIME, &cmd))
+				iter->info_iter.q2q_time = r_iter->Q2Q_time;
+			if (test_bit(GET_FPSGO_PERF_IDX, &cmd))
+				iter->info_iter.blc = r_iter->boost_info.last_normal_blc;
+			if (test_bit(GET_SBE_CTRL, &cmd))
+				iter->info_iter.sbe_control_flag =
+					r_iter->frame_type == FRAME_HINT_TYPE || r_iter->sbe_control_flag;
+			if (test_bit(GET_FPSGO_JERK_BOOST, &cmd))
+				iter->info_iter.jerk_boost_flag = r_iter->boost_info.cur_stage + 1;
+
+			iter->func_cb(cmd, &iter->info_iter);
+		}
+	}
+	mutex_unlock(&fpsgo_frame_info_cb_lock);
 }
 
 static void fpsgo_com_do_jank_detection_hint(struct work_struct *psWork)
@@ -780,6 +862,7 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 	unsigned long long sf_buf_id)
 {
 	int ret;
+	unsigned long cb_mask = 0;
 	unsigned long long raw_runtime = 0;
 	unsigned long long running_time = 0;
 	unsigned long long enq_running_time = 0;
@@ -887,9 +970,14 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 		break;
 	}
 
+	// legacy version, phase out in future
 	fpsgo_fstb2other_info_update(f_render->pid, f_render->buffer_id,
 		FPSGO_PERF_IDX, 0, 0, f_render->boost_info.last_blc,
 		f_render->sbe_control_flag);
+
+	cb_mask = 1 << GET_FPSGO_Q2Q_TIME | 1 << GET_FPSGO_PERF_IDX |
+				1 << GET_SBE_CTRL;
+	fpsgo_notify_frame_info_callback(cb_mask, f_render);
 
 exit:
 	fpsgo_thread_unlock(&f_render->thr_mlock);
@@ -1128,6 +1216,7 @@ void fpsgo_ctrl2comp_hint_frame_end(int pid,
 	struct ux_frame_info *frame_info;
 	unsigned long long frame_start_time = 0;
 	int ux_frame_cnt = 0;
+	unsigned long cb_mask = 0;
 
 	fpsgo_render_tree_lock(__func__);
 
@@ -1163,8 +1252,12 @@ void fpsgo_ctrl2comp_hint_frame_end(int pid,
 		fpsgo_frame_start(f_render, frameID, frame_end_time, identifier);
 	fpsgo_systrace_c_fbt(pid, identifier, ux_frame_cnt, "[ux]ux_frame_cnt");
 
+	// legacy version, phase out in future
 	fpsgo_fstb2other_info_update(f_render->pid, f_render->buffer_id, FPSGO_PERF_IDX,
 		0, 0, f_render->boost_info.last_blc, 1);
+
+	cb_mask = 1 << GET_FPSGO_PERF_IDX | 1 << GET_SBE_CTRL;
+	fpsgo_notify_frame_info_callback(cb_mask, f_render);
 
 	fpsgo_thread_unlock(&f_render->thr_mlock);
 	fpsgo_render_tree_unlock(__func__);
@@ -1769,6 +1862,7 @@ int fpsgo_ctrl2comp_report_workload(int tgid, int render_tid, unsigned long long
 	xgf_trace("[adpf][xgf][%d][0x%llx] | local_tcpu:%llu local_ts:%llu",
 		render_tid, buffer_id, local_tcpu, local_ts);
 
+	local_ts = fpsgo_get_time();
 	fpsgo_adpf_boost(render_tid, buffer_id, local_tcpu, local_ts, 0);
 
 out:
@@ -2388,6 +2482,19 @@ out:
 }
 EXPORT_SYMBOL(fpsgo_ktf2comp_fuzz_test_node);
 
+void init_fpsgo_frame_info_cb_list(void)
+{
+	int i;
+	struct render_frame_info_cb *iter = NULL;
+
+	for (i = 0; i < FPSGO_MAX_CALLBACK_NUM; i++) {
+		iter = &fpsgo_frame_info_cb_list[i];
+		iter->mask = 0;
+		iter->func_cb = NULL;
+		memset(&iter->info_iter, 0, sizeof(struct render_frame_info));
+	}
+}
+
 void __exit fpsgo_composer_exit(void)
 {
 	hrtimer_cancel(&recycle_hrt);
@@ -2422,6 +2529,7 @@ int __init fpsgo_composer_init(void)
 	hrtimer_start(&recycle_hrt, ktime_set(0, NSEC_PER_SEC), HRTIMER_MODE_REL);
 
 	init_fpsgo_is_boosting_callback();
+	init_fpsgo_frame_info_cb_list();
 
 	if (!fpsgo_sysfs_create_dir(NULL, "composer", &comp_kobj)) {
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_control_hwui);
