@@ -5,13 +5,13 @@
 #include <linux/rbtree.h>
 #include <linux/module.h>
 #include <linux/slab.h>
+#include <linux/cpufreq.h>
 #include <linux/list.h>
 #include <linux/kernel.h>
 #include <linux/types.h>
 #include <linux/math64.h>
 #include <linux/math.h>
 #include <linux/cpufreq.h>
-
 #include <mt-plat/fpsgo_common.h>
 
 #include "eas/grp_awr.h"
@@ -78,6 +78,18 @@ static int global_sbe_dy_enhance_max_pid;
 
 static struct fpsgo_loading temp_blc_dep[MAX_DEP_NUM];
 static struct fbt_setting_info sinfo;
+
+#if IS_ENABLED(CONFIG_ARM64)
+static int smart_launch_off_on;
+static int cluster_num;
+static int nr_freq_opp_cnt;
+struct smart_launch_capacity_info {
+	unsigned int *capacity;
+	int first_cpu_id;
+	int num_opp;
+};
+struct smart_launch_capacity_info *capacity_info;
+#endif
 
 module_param(fpsgo_ux_gcc_enable, int, 0644);
 module_param(sbe_enhance_f, int, 0644);
@@ -1436,8 +1448,170 @@ void fbt_del_ux(struct render_info *info)
 	list_del(&(info->scroll_list));
 }
 
+#if IS_ENABLED(CONFIG_ARM64)
+int updata_smart_launch_capacity_tb(void)
+{
+#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
+	int i = 0;
+	int big_clsuter_num = cluster_num -1;
+	int big_cluster_cpu = capacity_info[big_clsuter_num].first_cpu_id;
+
+	if ((cluster_num > 0) && capacity_info &&
+		capacity_info[big_clsuter_num].capacity &&
+		(nr_freq_opp_cnt > 0)) {
+		for (i = 0; i < nr_freq_opp_cnt; i++) {
+			capacity_info[big_clsuter_num].capacity[i]
+			= pd_X2Y(big_cluster_cpu, i, OPP, CAP, true, DPT_CALL_FBT_CLUSTER_X2Y);
+		}
+	}
+#endif
+	return 0;
+}
+
+static inline int abs_f(int value)
+{
+	return value < 0 ? -value : value;
+}
+
+int findBestFitNumTabIdx(int *numbers, int size, int target)
+{
+	int idx = 0;
+	int closest = 0;
+	int min_diff = 0;
+	int diff = 0;
+
+	if (size == 0)
+		return idx;
+
+	closest = numbers[0];
+	min_diff = abs_f(target - closest);
+
+	for (int i = 0; i < size; ++i) {
+		diff = abs_f(target - numbers[i]);
+		if (diff < min_diff) {
+			min_diff = diff;
+			closest = numbers[i];
+			idx = i;
+		}
+	}
+	return idx;
+}
+
+int fpsgo_notify_smart_launch_algorithm(int feedback_time, int target_time,
+			int pre_opp, int ration)
+{
+	int delta = 0;
+	int gap_capacity = 0;
+	int next_capacity = 0;
+	int pre_capacity = 0;
+	int min_cap = 0;
+	int max_cap = 1024;
+	int kp = 1;
+	int big_cluster = cluster_num -1;
+	int next_opp = pre_opp;
+
+	if (target_time <= 0 || feedback_time <= 0
+		|| pre_opp < 0 || ration < 0)
+		return next_opp;
+
+	if (capacity_info && big_cluster>= 0 &&
+		capacity_info[big_cluster].capacity &&
+		nr_freq_opp_cnt >= 1 &&
+		pre_opp <= nr_freq_opp_cnt-1) {
+		pre_capacity = capacity_info[big_cluster].capacity[pre_opp];
+		next_capacity = pre_capacity;
+		min_cap = capacity_info[big_cluster].capacity[nr_freq_opp_cnt -1];
+		max_cap = capacity_info[big_cluster].capacity[0];
+	} else {
+		return next_opp;
+	}
+
+	delta = feedback_time - target_time;
+
+	if (delta <= 0) {
+		delta = abs(delta) << 10;
+		kp = div64_u64(delta, target_time);
+		gap_capacity = (kp * pre_capacity) >> 10;
+		gap_capacity = gap_capacity * (100 - ration);
+		gap_capacity = div64_u64(gap_capacity, 100);
+		next_capacity = pre_capacity - gap_capacity;
+	} else {
+		delta = delta << 10;
+		kp = div64_u64(delta, target_time);
+		gap_capacity = (kp * pre_capacity) >> 10;
+		gap_capacity = gap_capacity * (100 + ration);
+		gap_capacity = div64_u64(gap_capacity, 100);
+		next_capacity = pre_capacity + gap_capacity;
+	}
+
+	next_capacity = clamp(next_capacity, min_cap, max_cap);
+	next_opp = findBestFitNumTabIdx(capacity_info[big_cluster].capacity,
+				nr_freq_opp_cnt, next_capacity);
+	return next_opp;
+}
+
+int init_smart_launch_capacity_tb(int cluster_num)
+{
+	struct cpufreq_policy *policy;
+	int cluster = 0;
+	int cpu;
+
+	for_each_possible_cpu(cpu) {
+		if (cluster_num <= 0 || cluster >= cluster_num)
+			break;
+		policy = cpufreq_cpu_get(cpu);
+		if (!policy)
+			break;
+
+		capacity_info[cluster].first_cpu_id = cpumask_first(policy->related_cpus);
+		capacity_info[cluster].num_opp =
+		fpsgo_arch_nr_get_opp_cpu(capacity_info[cluster].first_cpu_id);
+		capacity_info[cluster].capacity = kcalloc(nr_freq_opp_cnt,
+					sizeof(unsigned int), GFP_KERNEL);
+
+		cluster++;
+		cpu = cpumask_last(policy->related_cpus);
+		cpufreq_cpu_put(policy);
+	}
+	return 0;
+}
+#endif
+
+void init_smart_launch_engine(void)
+{
+#if IS_ENABLED(CONFIG_ARM64)
+	smart_launch_off_on = fbt_get_ux_smart_launch_enable();
+	if (smart_launch_off_on) {
+		fpsgo_notify_smart_launch_algorithm_fp =
+		fpsgo_notify_smart_launch_algorithm;
+		cluster_num  = fpsgo_arch_nr_clusters();
+		nr_freq_opp_cnt = fpsgo_arch_nr_max_opp_cpu();
+		capacity_info = kcalloc(cluster_num,
+				sizeof(struct smart_launch_capacity_info), GFP_KERNEL);
+		init_smart_launch_capacity_tb(cluster_num);
+		updata_smart_launch_capacity_tb();
+	}
+#endif
+}
+
+void destroy_smart_launch_capinfo(void)
+{
+#if IS_ENABLED(CONFIG_ARM64)
+	int i = 0;
+
+	if (smart_launch_off_on) {
+		for (i = 0; i < cluster_num; i++) {
+			if (capacity_info && capacity_info[i].capacity)
+				kfree(capacity_info[i].capacity);
+		}
+		kfree(capacity_info);
+	}
+#endif
+}
+
 void __exit fbt_cpu_ux_exit(void)
 {
+	destroy_smart_launch_capinfo();
 	kmem_cache_destroy(frame_info_cachep);
 	kmem_cache_destroy(ux_scroll_info_cachep);
 	kmem_cache_destroy(hwui_frame_info_cachep);
@@ -1447,6 +1621,7 @@ int __init fbt_cpu_ux_init(void)
 {
 	fpsgo_ux_gcc_enable = 0;
 	sbe_rescue_enable = fbt_get_default_sbe_rescue_enable();
+	init_smart_launch_engine();
 	ux_general_policy = 1;
 	sbe_rescuing_frame_id = -1;
 	sbe_rescuing_frame_id_legacy = -1;

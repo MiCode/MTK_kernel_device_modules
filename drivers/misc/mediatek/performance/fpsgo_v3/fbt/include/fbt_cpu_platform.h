@@ -53,6 +53,7 @@ int fbt_get_default_gcc_enable(void);
 int fbt_get_default_sbe_rescue_enable(void);
 int fbt_get_default_powerRL_enable(void);
 int fbt_get_ux_scroll_policy_type(void);
+int fbt_get_ux_smart_launch_enable(void);
 int fbt_get_l_min_bhropp(void);
 void init_fbt_platform(void);
 void exit_fbt_platform(void);

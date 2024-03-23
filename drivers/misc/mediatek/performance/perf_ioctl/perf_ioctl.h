@@ -84,6 +84,14 @@ struct _XGFFRAME_PACKAGE {
 	};
 };
 
+struct _SMART_LAUNCH_PACKAGE {
+	int target_time;
+	int feedback_time;
+	int pre_opp;
+	int next_opp;
+	int capabilty_ration;
+};
+
 struct _FPSGO_LR_PAIR_PACKAGE {
 	union {
 		__u32 tid;
@@ -131,6 +139,8 @@ struct _FPSGO_LR_PAIR_PACKAGE {
 #define XGFFRAME_START              _IOW('g', 1, struct _XGFFRAME_PACKAGE)
 #define XGFFRAME_END                _IOW('g', 2, struct _XGFFRAME_PACKAGE)
 #define XGFFRAME_MIN_CAP            _IOW('g', 3, struct _XGFFRAME_PACKAGE)
+
+#define SMART_LAUNCH_ALGORITHM      _IOW('g', 1, struct _SMART_LAUNCH_PACKAGE)
 
 #define FPSGO_LR_PAIR               _IOW('g', 1, struct _FPSGO_LR_PAIR_PACKAGE)
 #define FPSGO_SF_TOUCH_ACTIVE       _IOW('g', 2, struct _FPSGO_LR_PAIR_PACKAGE)

@@ -26,11 +26,13 @@ static unsigned int peak_bw;
 static int plat_gcc_enable;
 static int plat_sbe_rescue_enable;
 static int plat_ux_scroll_general_policy;
+static int plat_smart_launch_enable;
 static int plat_cpu_limit;
 
 static int generate_cpu_mask(void);
 static int generate_sbe_rescue_enable(void);
 static int generate_ux_scroll_general_policy(void);
+static int generate_smart_launch_enable(void);
 static int platform_fpsgo_probe(struct platform_device *pdev)
 {
 	int ret = 0, retval = 0;
@@ -64,6 +66,7 @@ static int platform_fpsgo_probe(struct platform_device *pdev)
 	generate_cpu_mask();
 	generate_sbe_rescue_enable();
 	generate_ux_scroll_general_policy();
+	generate_smart_launch_enable();
 
 	return 0;
 }
@@ -254,6 +257,20 @@ static int generate_sbe_rescue_enable(void)
 	return ret;
 }
 
+static int generate_smart_launch_enable(void)
+{
+	int ret = 0, retval = 0;
+
+	ret = of_property_read_u32(node,
+		 "ux-smart-launch-enable", &retval);
+	if (!ret)
+		plat_smart_launch_enable = retval;
+	else
+		FPSGO_LOGE("%s unable to get plat_smart_launch_enable\n", __func__);
+
+	return ret;
+}
+
 static int generate_ux_scroll_general_policy(void)
 {
 	int ret = 0, retval = 0;
@@ -386,6 +403,11 @@ int fbt_get_ux_scroll_policy_type(void)
 #else
 	return 0;
 #endif
+}
+
+int fbt_get_ux_smart_launch_enable(void)
+{
+	return plat_smart_launch_enable;
 }
 
 int fbt_get_l_min_bhropp(void)

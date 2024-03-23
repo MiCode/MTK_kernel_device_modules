@@ -49,6 +49,10 @@ int (*fpsgo_notify_frame_hint_fp)(int qudeq,
 		int dep_mode, char *dep_name, int dep_num, long long frame_flags);
 EXPORT_SYMBOL_GPL(fpsgo_notify_frame_hint_fp);
 
+int (*fpsgo_notify_smart_launch_algorithm_fp)(int feedback_time,
+		int target_time, int pre_opp, int capabilty_ration);
+EXPORT_SYMBOL_GPL(fpsgo_notify_smart_launch_algorithm_fp);
+
 void (*fpsgo_notify_buffer_quota_fp)(int pid, int quota, unsigned long long identifier);
 EXPORT_SYMBOL_GPL(fpsgo_notify_buffer_quota_fp);
 
@@ -411,6 +415,27 @@ static long device_ioctl(struct file *filp,
 	struct _FPSGO_PACKAGE smsgKM;
 	struct _FPSGO_SBE_PACKAGE *msgKM_SBE = NULL, *msgUM_SBE = NULL;
 	struct _FPSGO_SBE_PACKAGE smsgKM_SBE;
+	struct _SMART_LAUNCH_PACKAGE *smart_launch_p;
+	struct _SMART_LAUNCH_PACKAGE smart_launch;
+
+	if (cmd == SMART_LAUNCH_ALGORITHM) {
+		smart_launch_p = (struct _SMART_LAUNCH_PACKAGE *)arg;
+		if (perfctl_copy_from_user(&smart_launch, smart_launch_p,
+					sizeof(struct _SMART_LAUNCH_PACKAGE))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+
+		if (fpsgo_notify_smart_launch_algorithm_fp)
+			ret = fpsgo_notify_smart_launch_algorithm_fp(smart_launch.feedback_time,
+				smart_launch.target_time, smart_launch.pre_opp, smart_launch.capabilty_ration);
+
+		smart_launch.next_opp = ret;
+		perfctl_copy_to_user(smart_launch_p, &smart_launch, sizeof(struct _SMART_LAUNCH_PACKAGE));
+
+		goto ret_ioctl;
+	}
+
 	if (cmd == FPSGO_SBE_SET_POLICY || cmd == FPSGO_HINT_FRAME) {
 		msgUM_SBE = (struct _FPSGO_SBE_PACKAGE *)arg;
 		msgKM_SBE = &smsgKM_SBE;

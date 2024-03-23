@@ -34,6 +34,8 @@ extern void (*fpsgo_notify_buffer_quota_fp)(int pid, int quota,
 extern void (*fpsgo_get_pid_fp)(int cmd, int *pid, int value1, int value2);
 extern int (*fpsgo_notify_sbe_policy_fp)(int pid,  char *name,
 	unsigned long mask, int start, char *specific_name, int num);
+extern int (*fpsgo_notify_smart_launch_algorithm_fp)(int feedback_time,
+	int target_time, int pre_opp, int capabilty_ration);
 
 extern int (*magt2fpsgo_notify_target_fps_fp)(int *pid_arr, int *tid_arr,
 	int *tfps_arr, int num);
