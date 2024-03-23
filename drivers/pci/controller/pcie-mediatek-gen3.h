@@ -27,5 +27,7 @@ u32 mtk_pcie_dump_link_info(int port);
 int mtk_pcie_disable_data_trans(int port);
 int mtk_pcie_hw_control_vote(int port, bool hw_mode_en, u8 who);
 int mtk_pcie_pinmux_select(int port_num, enum pin_state state);
+int mtk_pcie_enable_cfg_dump(int port);
+int mtk_pcie_disable_cfg_dump(int port);
 
 #endif

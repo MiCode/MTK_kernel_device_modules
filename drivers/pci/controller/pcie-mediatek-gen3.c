@@ -321,6 +321,7 @@ struct mtk_msi_set {
  * @cfg_saved: Determine whether config space has been saved
  * @dvfs_req_en: pcie wait request to reply ack when pcie exit from P2 state
  * @peri_reset_en: clear peri pcie reset to open pcie phy & mac
+ * @dump_cfg: dump info when access config space
  * @irq: PCIe controller interrupt number
  * @saved_irq_state: IRQ enable state saved at suspend time
  * @irq_lock: lock protecting IRQ register access
@@ -356,6 +357,7 @@ struct mtk_pcie_port {
 	bool dvfs_req_en;
 	bool peri_reset_en;
 	bool soft_off;
+	bool dump_cfg;
 	bool skip_suspend;
 	int irq;
 	u32 saved_irq_state;
@@ -414,6 +416,12 @@ static int mtk_pcie_config_read(struct pci_bus *bus, unsigned int devfn,
 	if (port->soft_off)
 		return 0;
 
+	if (port->dump_cfg) {
+		dev_info(port->dev, "Dump config access, bus:%#x,devfn:%#x, where:%#x, size:%#x\n",
+			 bus->number, devfn, where, size);
+		dump_stack();
+	}
+
 	mtk_pcie_config_tlp_header(bus, devfn, where, size);
 
 	return pci_generic_config_read32(bus, devfn, where, size, val);
@@ -426,6 +434,12 @@ static int mtk_pcie_config_write(struct pci_bus *bus, unsigned int devfn,
 
 	if (port->soft_off)
 		return 0;
+
+	if (port->dump_cfg) {
+		dev_info(port->dev, "Dump config access, bus:%#x,devfn:%#x, where:%#x, size:%#x, val:%#x\n",
+			 bus->number, devfn, where, size, val);
+		dump_stack();
+	}
 
 	mtk_pcie_config_tlp_header(bus, devfn, where, size);
 
@@ -2383,6 +2397,52 @@ int mtk_pcie_disable_refclk(int port)
 	return 0;
 }
 EXPORT_SYMBOL(mtk_pcie_disable_refclk);
+
+int mtk_pcie_enable_cfg_dump(int port)
+{
+	struct platform_device *pdev;
+	struct mtk_pcie_port *pcie_port;
+
+	pdev = mtk_pcie_find_pdev_by_port(port);
+	if (!pdev) {
+		pr_info("PCIe platform device not found!\n");
+		return -ENODEV;
+	}
+
+	pcie_port = platform_get_drvdata(pdev);
+	if (!pcie_port)
+		return -ENODEV;
+
+	pcie_port->dump_cfg = true;
+
+	dev_info(pcie_port->dev, "port%d config space dump enabled\n", pcie_port->port_num);
+
+	return 0;
+}
+EXPORT_SYMBOL(mtk_pcie_enable_cfg_dump);
+
+int mtk_pcie_disable_cfg_dump(int port)
+{
+	struct platform_device *pdev;
+	struct mtk_pcie_port *pcie_port;
+
+	pdev = mtk_pcie_find_pdev_by_port(port);
+	if (!pdev) {
+		pr_info("PCIe platform device not found!\n");
+		return -ENODEV;
+	}
+
+	pcie_port = platform_get_drvdata(pdev);
+	if (!pcie_port)
+		return -ENODEV;
+
+	pcie_port->dump_cfg = false;
+
+	dev_info(pcie_port->dev, "port%d config space dump disabled\n", pcie_port->port_num);
+
+	return 0;
+}
+EXPORT_SYMBOL(mtk_pcie_disable_cfg_dump);
 
 int mtk_pcie_soft_off(struct pci_bus *bus)
 {
