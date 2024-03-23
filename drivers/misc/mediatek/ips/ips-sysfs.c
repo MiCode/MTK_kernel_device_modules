@@ -23,7 +23,7 @@ static ssize_t ips_read_vmin_show(struct device *dev,
 {
 	struct ips_drv_data *ips_data = dev_get_drvdata(dev);
 
-	return sprintf(buf, "ips vmin = %d\n", mtkips_getvmin(ips_data));
+	return sprintf(buf, "ips vmin = %d\n", ips_data->dvd->ips_getvmin(ips_data));
 }
 DEVICE_ATTR_RO(ips_read_vmin);
 
@@ -32,7 +32,7 @@ static ssize_t ips_read_vmin_clear_show(struct device *dev,
 {
 	struct ips_drv_data *ips_data = dev_get_drvdata(dev);
 
-	return sprintf(buf, "ips vmin = %d\n", mtkips_getvmin_clear(ips_data));
+	return sprintf(buf, "ips vmin = %d\n", ips_data->dvd->ips_getvmin_clear(ips_data));
 }
 DEVICE_ATTR_RO(ips_read_vmin_clear);
 
@@ -54,9 +54,9 @@ static inline ssize_t ips_enable_store(struct device *dev,
 		return -EINVAL;
 
 	if (en)
-		mtkips_enable(ips_data);
+		ips_data->dvd->ips_enalbe(ips_data);
 	else
-		mtkips_disable(ips_data);
+		ips_data->dvd->ips_disalbe(ips_data);
 
 	return count;
 }
@@ -85,12 +85,25 @@ static inline ssize_t ips_set_clk_store(struct device *dev,
 }
 DEVICE_ATTR_RW(ips_set_clk);
 
+static ssize_t ips_vsense_detect_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct ips_drv_data *ips_data = dev_get_drvdata(dev);
+
+	if (!ips_data->dvd->vsense_support)
+		return -EINVAL;
+
+	return sprintf(buf, "ips vsense = %d\n", ips_data->dvd->ips_vsense_detect(ips_data));
+}
+DEVICE_ATTR_RO(ips_vsense_detect);
+
 static struct attribute *ips_sysfs_attrs[] = {
 	&dev_attr_ips_enable.attr,
 	&dev_attr_ips_read_vmin.attr,
 	&dev_attr_ips_read_vmin_clear.attr,
 	&dev_attr_ips_worst_vmin.attr,
 	&dev_attr_ips_set_clk.attr,
+	&dev_attr_ips_vsense_detect.attr,
 	NULL,
 };
 

@@ -6,10 +6,18 @@
 #ifndef __IPS_HELPER_H
 #define __IPS_HELPER_H
 
+struct ips_drv_data;
+
 struct ips_soc_data {
 	const int *regs;
 	int id;
 	bool clk_bypass;
+	bool vsense_support;
+	int (*ips_enalbe)(struct ips_drv_data *ips_data);
+	int (*ips_disalbe)(struct ips_drv_data *ips_data);
+	int (*ips_getvmin)(struct ips_drv_data *ips_data);
+	int (*ips_getvmin_clear)(struct ips_drv_data *ips_data);
+	int (*ips_vsense_detect)(struct ips_drv_data *ips_data);
 };
 
 struct ips_drv_data {
@@ -33,14 +41,9 @@ enum clk_freq {
 	clk_src_3,
 };
 
-extern int mtkips_enable(struct ips_drv_data *ips_data);
-extern int mtkips_disable(struct ips_drv_data *ips_data);
-extern int mtkips_getvmin(struct ips_drv_data *ips_data);
-extern int mtkips_getvmin_clear(struct ips_drv_data *ips_data);
 extern int mtkips_worst_vmin(struct ips_drv_data *ips_data);
 extern int mtkips_set_clk(struct ips_drv_data *ips_data, int clk);
 extern int ips_register_sysfs(struct device *dev);
 extern void ips_unregister_sysfs(struct device *dev);
-
 #endif
 
