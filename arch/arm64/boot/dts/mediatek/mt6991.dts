@@ -5910,7 +5910,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			compatible = "mediatek,mt6991-adsp_core_1";
 			status = "okay";
 			reg = <0 0x1a0d0000 0 0x9000>, /* ITCM */
-				<0 0x1a0a0000 0 0x8000>, /* DTCM */
+				<0 0x1a0a0000 0 0x10000>, /* DTCM */
 				<0 0x1a214000 0 0x4000>; /* L2SRAM */
 			system = <0 0x50e00000 0 0xf00000>;
 			interrupts = <GIC_SPI 704 IRQ_TYPE_LEVEL_HIGH 0>,
