@@ -466,10 +466,8 @@ void mtk_release_fence(unsigned int session_id, unsigned int layer_id,
 		DDPFENCE("%s:%d list is empty\n", __func__, __LINE__);
 	}
 	list_for_each_entry_safe(buf, n, &layer_info->buf_list, list) {
-		if (buf->idx > fence) {
-			DDPFENCE("%s:%d buf->idx > fence\n", __func__, __LINE__);
+		if (buf->idx > fence)
 			continue;
-		}
 
 		layer_info->fence_fd = buf->fence;
 

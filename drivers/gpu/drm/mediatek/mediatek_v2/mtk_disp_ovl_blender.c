@@ -250,6 +250,7 @@ int mtk_ovl_blender_dump(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr = comp->regs;
 	int i;
+	int offset;
 
 	if (!baddr) {
 		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
@@ -264,8 +265,12 @@ int mtk_ovl_blender_dump(struct mtk_ddp_comp *comp)
 	mtk_serial_dump_reg(baddr, 0x00, 4);
 	mtk_serial_dump_reg(baddr, 0x10, 1);
 
-	for (i = 0; i < 15; i++)
-		mtk_serial_dump_reg(baddr, 0x20 + (i * 0x10), 4);
+	for (i = 0; i < 15; i++) {
+		offset = 0x20 + (i * 0x10);
+		if (offset == 0x060 || offset == 0x090 || offset == 0x0c0 || offset == 0x0f0)
+			continue;
+		mtk_serial_dump_reg(baddr, offset, 4);
+	}
 
 	for (i = 0; i < 4; i++)
 		mtk_serial_dump_reg(baddr, 0x200 + i * 0x100, 4);
@@ -349,7 +354,7 @@ int mtk_ovl_blender_analysis(struct mtk_ddp_comp *comp)
 	path_con = readl(DISP_REG_OVL_BLD_DATAPATH_CON + baddr);
 
 	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
-	DDPDUMP("ovl_en=%d,l0_en:%d,ext_en(%d,%d,%d)bg(%dx%d)\n",
+	DDPDUMP("ovl_en=%d,l0_en=%d,ext_en(%d,%d,%d)bg(%dx%d)\n",
 		ovl_en & 0x1, layer_en[0]&0x1, layer_en[1]&0x1, layer_en[2]&0x1, layer_en[3]&0x1,
 		readl(DISP_REG_OVL_BLD_ROI_SIZE + baddr) & 0xfff,
 		(readl(DISP_REG_OVL_BLD_ROI_SIZE + baddr) >> 16) & 0xfff);
@@ -1091,14 +1096,13 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 
 	alpha = 0xFF & (state->base.alpha >> 8);
 
-	DDPINFO("Blending: state->base.alpha =0x%x, alpha = 0x%x\n", state->base.alpha, alpha);
+	DDPDBG("Blending: state->base.alpha =0x%x, alpha = 0x%x\n", state->base.alpha, alpha);
 	if (state->base.fb) {
-		if (state->base.fb->format->has_alpha) {
+		if (state->base.fb->format->has_alpha)
 			pixel_blend_mode = state->base.pixel_blend_mode;
-			DDPINFO("Blending:real alpha exist X mode(%x)\n", fmt);
-		}
-		DDPINFO("Blending: has_alpha %d pixel_blend_mode=0x%x\n",
-			state->base.fb->format->has_alpha, state->base.pixel_blend_mode);
+
+		DDPDBG("Blending: has_alpha %d pixel_blend_mode=0x%x fmt=0x%x\n",
+			state->base.fb->format->has_alpha, state->base.pixel_blend_mode, fmt);
 	}
 
 	if (pixel_blend_mode == DRM_MODE_BLEND_PREMULTI)
