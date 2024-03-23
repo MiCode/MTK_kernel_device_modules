@@ -1246,7 +1246,11 @@ static void __exit touch_boost_exit(void)
 	kmem_cache_destroy(touch_boost_cache);
 }
 
+#if IS_BUILTIN(CONFIG_MTK_PERF_COMMON)
+late_initcall(touch_boost_init);
+#else
 module_init(touch_boost_init);
+#endif
 module_exit(touch_boost_exit);
 
 MODULE_LICENSE("GPL");
