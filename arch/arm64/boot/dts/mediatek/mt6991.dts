@@ -11232,112 +11232,140 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 				seninf_outmux_0: seninf-outmux@3a100000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a100000 0 0x1000>;
-					reg-names = "base";
+					reg = <0 0x3a100000 0 0x1000>,
+						<0 0x3a108000 0 0x1000>;
+					reg-names = "base",
+						"base-inner";
 
 					connected-cam-type = "camsv";
 				};
 
 				seninf_outmux_1: seninf-outmux@3a110000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a110000 0 0x1000>;
-					reg-names = "base";
+					reg = <0 0x3a110000 0 0x1000>,
+						<0 0x3a118000 0 0x1000>;
+					reg-names = "base",
+						"base-inner";
 
 					connected-cam-type = "camsv";
 				};
 
 				seninf_outmux_2: seninf-outmux@3a120000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a120000 0 0x1000>;
-					reg-names = "base";
+					reg = <0 0x3a120000 0 0x1000>,
+						<0 0x3a128000 0 0x1000>;
+					reg-names = "base",
+						"base-inner";
 
 					connected-cam-type = "camsv";
 				};
 
 				seninf_outmux_3: seninf-outmux@3a130000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a130000 0 0x1000>;
-					reg-names = "base";
+					reg = <0 0x3a130000 0 0x1000>,
+						<0 0x3a138000 0 0x1000>;
+					reg-names = "base",
+						"base-inner";
 
 					connected-cam-type = "camsv";
 				};
 
 				seninf_outmux_4: seninf-outmux@3a140000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a140000 0 0x1000>;
-					reg-names = "base";
+					reg = <0 0x3a140000 0 0x1000>,
+						<0 0x3a148000 0 0x1000>;
+					reg-names = "base",
+						"base-inner";
 
 					connected-cam-type = "camsv";
 				};
 
 				seninf_outmux_5: seninf-outmux@3a150000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a150000 0 0x1000>;
-					reg-names = "base";
+					reg = <0 0x3a150000 0 0x1000>,
+						<0 0x3a158000 0 0x1000>;
+					reg-names = "base",
+						"base-inner";
 
 					connected-cam-type = "camsv";
 				};
 
 				seninf_outmux_6: seninf-outmux@3a160000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a160000 0 0x1000>;
-					reg-names = "base";
+					reg = <0 0x3a160000 0 0x1000>,
+						<0 0x3a168000 0 0x1000>;
+					reg-names = "base",
+						"base-inner";
 
 					connected-cam-type = "raw";
 				};
 
 				seninf_outmux_7: seninf-outmux@3a170000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a170000 0 0x1000>;
-					reg-names = "base";
+					reg = <0 0x3a170000 0 0x1000>,
+						<0 0x3a178000 0 0x1000>;
+					reg-names = "base",
+						"base-inner";
 
 					connected-cam-type = "raw";
 				};
 
 				seninf_outmux_8: seninf-outmux@3a180000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a180000 0 0x1000>;
-					reg-names = "base";
+					reg = <0 0x3a180000 0 0x1000>,
+						<0 0x3a188000 0 0x1000>;
+					reg-names = "base",
+						"base-inner";
 
 					connected-cam-type = "raw";
 				};
 
 				seninf_outmux_9: seninf-outmux@3a190000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a190000 0 0x1000>;
-					reg-names = "base";
+					reg = <0 0x3a190000 0 0x1000>,
+						<0 0x3a198000 0 0x1000>;
+					reg-names = "base",
+						"base-inner";
 
 					connected-cam-type = "pdp";
 				};
 
 				seninf_outmux_10: seninf-outmux@3a1a0000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a1a0000 0 0x1000>;
-					reg-names = "base";
+					reg = <0 0x3a1a0000 0 0x1000>,
+						<0 0x3a1a8000 0 0x1000>;
+					reg-names = "base",
+						"base-inner";
 
 					connected-cam-type = "pdp";
 				};
 
 				seninf_outmux_11: seninf-outmux@3a1b0000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a1b0000 0 0x1000>;
-					reg-names = "base";
+					reg = <0 0x3a1b0000 0 0x1000>,
+						<0 0x3a1b8000 0 0x1000>;
+					reg-names = "base",
+						"base-inner";
 
 					connected-cam-type = "pdp";
 				};
 
 				seninf_outmux_12: seninf-outmux@3a1c0000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a1c0000 0 0x1000>;
-					reg-names = "base";
+					reg = <0 0x3a1c0000 0 0x1000>,
+						<0 0x3a1c8000 0 0x1000>;
+					reg-names = "base",
+						"base-inner";
 
 					connected-cam-type = "pdp";
 				};
 
 				seninf_outmux_13: seninf-outmux@3a1d0000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a1d0000 0 0x1000>;
-					reg-names = "base";
+					reg = <0 0x3a1d0000 0 0x1000>,
+						<0 0x3a1d8000 0 0x1000>;
+					reg-names = "base",
+						"base-inner";
 
 					connected-cam-type = "uisp";
 				};
