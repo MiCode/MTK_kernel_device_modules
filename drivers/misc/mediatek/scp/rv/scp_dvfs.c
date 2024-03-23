@@ -1490,7 +1490,6 @@ bool sync_ulposc_cali_data_to_scp(void)
 				__func__,
 				g_dvfs_dev.ulposc_hw.cali_freq[i],
 				*(p + 1));
-			WARN_ON(1);
 			cali_ok = false;
 		}
 	}
