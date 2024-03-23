@@ -2650,6 +2650,7 @@ void mdrv_DPTx_InitPort(struct mtk_dp *mtk_dp)
 
 	mhal_DPTx_InitialSetting(mtk_dp);
 	mhal_DPTx_AuxSetting(mtk_dp);
+	mhal_DPTx_SetAuxSwap(mtk_dp, aux_swap);
 	for (encoder_id = 0; encoder_id < DPTX_ENCODER_ID_MAX; encoder_id++)
 		mhal_DPTx_DigitalSetting(mtk_dp, encoder_id);
 	mhal_DPTx_AnalogPowerOnOff(mtk_dp, true);
@@ -3732,7 +3733,10 @@ static enum drm_mode_status mtk_dp_conn_mode_valid(struct drm_connector *conn,
 	if (0x1fff > 0 && mode->vdisplay > 0x1fff)
 		return MODE_VIRTUAL_Y;
 
-	return MODE_OK;
+	if (mode->hdisplay == 1920 && mode->vdisplay == 1080)
+		return MODE_OK;
+	else
+		return MODE_BAD_VSCAN;
 }
 
 static const struct drm_connector_helper_funcs mtk_dp_connector_helper_funcs = {
@@ -3992,13 +3996,6 @@ void mtk_dp_hotplug_uevent(unsigned int event)
 		return;
 	}
 
-	if (g_mtk_dp->drm_dev) {
-		DPTXFUNC("notify drm framework hotplug event\n");
-		drm_helper_hpd_irq_event(g_mtk_dp->drm_dev);
-	} else {
-		DPTXFUNC("there is no drm dev\n");
-	}
-
 	DPTXFUNC("fake:%d, event:%d\n", fakecablein, event);
 	notify_uevent_user(&dptx_notify_data,
 		event > 0 ? DPTX_STATE_ACTIVE : DPTX_STATE_NO_DEVICE);
@@ -4071,6 +4068,8 @@ void mtk_dp_fake_plugin(unsigned int status, unsigned int bpc)
 
 void mtk_dp_HPDInterruptSet(int bstatus)
 {
+	void *base;
+
 	if (g_mtk_dp == NULL) {
 		DPTXERR("%s: dp not initial\n", __func__);
 		return;
@@ -4088,6 +4087,11 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 
 		if (bstatus == HPD_CONNECT) {
 			pm_runtime_get_sync(g_mtk_dp->dev);
+			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+				/* mt6991 need to config HWCCF setiing */
+				base = ioremap(0x31b50000, 0x1000);
+				writel(0xc2fc224d, base + 0x78);
+			}
 			mdrv_DPTx_InitPort(g_mtk_dp);
 			mhal_DPTx_USBC_HPD(g_mtk_dp, true);
 			g_mtk_dp->bPowerOn = true;
@@ -4251,7 +4255,7 @@ static int mtk_dp_bind(struct device *dev, struct device *master, void *data)
 		DRM_MODE_ENCODER_DPMST, "DP MST"))
 		goto err_encoder_init;
 	drm_encoder_helper_add(&mtk_dp->enc, &mtk_dp_encoder_helper_funcs);
-	mtk_dp->enc.possible_crtcs = mtk_drm_find_possible_crtc_by_comp(drm, mtk_dp->ddp_comp);
+	mtk_dp->enc.possible_crtcs = 2;
 	drm_connector_attach_encoder(&mtk_dp->conn, &mtk_dp->enc);
 	g_mtk_dp = mtk_dp;
 
@@ -4259,7 +4263,6 @@ static int mtk_dp_bind(struct device *dev, struct device *master, void *data)
 		__func__, __LINE__, mtk_dp->enc.possible_crtcs);
 
 	//mtk_dp->conn.kdev = drm->dev;
-	mtk_dp->conn.polled = DRM_CONNECTOR_POLL_HPD;
 	mtk_dp->aux.dev = mtk_dp->conn.kdev;
 	mtk_dp->aux.drm_dev = mtk_dp->drm_dev;
 	if (drm_dp_aux_register(&mtk_dp->aux))
