@@ -984,7 +984,9 @@ int log_store_late_init(void)
 	}
 #endif
 
+#if !IS_ENABLED(CONFIG_MTK_LOG_STORE_ALWAYS_CLEAR_EMMC_FLAG)
 	if (boot_mode != NORMAL_BOOT_MODE)
+#endif
 		store_log_to_emmc_enable(false);
 
 	if (!sram_dram_buff->buf_addr || !sram_dram_buff->buf_size) {
