@@ -452,6 +452,15 @@ static inline void ccci_md_check_rx_seq_num(
 	seq_num = ccci_h->seq_num;
 	assert_bit = ccci_h->assert_bit;
 
+	if (channel >= CCCI_MAX_CH_NUM) {
+		CCCI_ERROR_LOG(0, CORE, "channel num overflow %d, seq number %d\n",
+			channel, seq_num);
+		param[0] = channel;
+		ccci_md_force_assert(MD_FORCE_ASSERT_BY_MD_SEQ_ERROR,
+			(char *)param, sizeof(param[0]));
+		return;
+	}
+
 	if (assert_bit && traffic_info->seq_nums[IN][channel] != 0
 		&& ((seq_num - traffic_info->seq_nums[IN][channel])
 		& 0x7FFF) != 1) {
