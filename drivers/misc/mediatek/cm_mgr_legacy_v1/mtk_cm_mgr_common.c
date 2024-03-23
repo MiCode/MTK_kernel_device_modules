@@ -925,7 +925,7 @@ int cm_mgr_check_dts_setting(struct platform_device *pdev)
 
 	/* cm_mgr_cpu_opp_to_dram */
 	opp_count = of_count_phandle_with_args(node,
-			"cm_mgr_cpu_opp_to_dram", NULL);
+			"cm-mgr-cpu-opp-to-dram", NULL);
 	pr_info("#@# %s(%d) opp_count %d\n",
 			__func__, __LINE__, opp_count);
 
@@ -947,7 +947,7 @@ int cm_mgr_check_dts_setting(struct platform_device *pdev)
 	}
 
 	if (opp_count > 0) {
-		ret = of_property_read_u32_array(node, "cm_mgr_cpu_opp_to_dram",
+		ret = of_property_read_u32_array(node, "cm-mgr-cpu-opp-to-dram",
 				cm_mgr_cpu_opp_to_dram, cm_mgr_cpu_opp_size);
 	}
 
@@ -974,7 +974,7 @@ int cm_mgr_check_dts_setting(struct platform_device *pdev)
 			__func__, __LINE__, cm_mgr_use_bcpu_weight);
 
 	ret = of_property_read_string(node,
-			"use_cpu_to_dram_map", (const char **)&buf);
+			"use-cpu-to-dram-map", (const char **)&buf);
 	if (!ret) {
 		if (!strcmp(buf, "enable"))
 			cm_mgr_use_cpu_to_dram_map = 1;
