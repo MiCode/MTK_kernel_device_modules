@@ -530,8 +530,8 @@ int dsp_send_msg_to_queue(
 		}
 		if (retval == 0) { /* timeout */
 			p_ipi_msg = (struct ipi_msg_t *)p_element->msg.buf;
-			pr_info("wait %u ms timeout, will still send to dsp later!! msg: 0x%x, task: %d",
-				wait_ms, p_ipi_msg->msg_id,
+			pr_info("wait %u ms timeout, will still send to dsp later!! ipi_id: %u, msg: 0x%x, task: %d",
+				wait_ms, ipi_id, p_ipi_msg->msg_id,
 				p_ipi_msg->task_scene);
 			break;
 		}

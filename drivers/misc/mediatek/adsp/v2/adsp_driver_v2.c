@@ -44,6 +44,15 @@ const struct adspsys_description mt6895_adspsys_desc = {
 	.axibus_idle_val = 0x0,
 };
 
+const struct adspsys_description mt6991_adspsys_desc = {
+	.platform_name = "mt6991",
+	.semaphore_ways = 3,
+	.semaphore_ctrl = 2,
+	.semaphore_retry = 5000,
+	.axibus_idle_val = 0x0,
+	.mtcmos_ao_ctrl = 1,
+};
+
 const struct adsp_core_description mt6983_adsp_c0_desc = {
 	.id = 0,
 	.name = "adsp_0",
@@ -115,7 +124,7 @@ static const struct of_device_id adspsys_of_ids[] = {
 	{ .compatible = "mediatek,mt6886-adspsys", .data = &mt6879_adspsys_desc},
 	{ .compatible = "mediatek,mt6897-adspsys", .data = &mt6983_adspsys_desc},
 	{ .compatible = "mediatek,mt6989-adspsys", .data = &mt6983_adspsys_desc},
-	{ .compatible = "mediatek,mt6991-adspsys", .data = &mt6983_adspsys_desc},
+	{ .compatible = "mediatek,mt6991-adspsys", .data = &mt6991_adspsys_desc},
 	{}
 };
 

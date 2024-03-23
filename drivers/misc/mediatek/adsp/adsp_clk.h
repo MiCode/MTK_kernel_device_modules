@@ -18,10 +18,14 @@ struct adsp_clk_operations {
 	void (*select)(enum adsp_clk_mode mode);
 	int (*enable)(void);
 	void (*disable)(void);
+	void (*enable_pd)(void);
+	void (*disable_pd)(void);
 };
 
 void adsp_select_clock_mode(enum adsp_clk_mode mode);
 int adsp_enable_clock(void);
 void adsp_disable_clock(void);
+void adsp_enable_pd(void);
+void adsp_disable_pd(void);
 
 #endif /* ADSP_CLK_H */

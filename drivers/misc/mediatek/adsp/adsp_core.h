@@ -41,6 +41,7 @@ enum adsp_smc_ops {
 	MTK_ADSP_KERNEL_OP_QUERY_STATE,
 	MTK_ADSP_KERNEL_OP_DUMP_PWR_CLK,
 	MTK_ADSP_KERNEL_OP_SET_SLP_PROT,
+	MTK_ADSP_KERNEL_OP_SET_CLOCK_MUX,
 	MTK_ADSP_KERNEL_OP_NUM
 };
 
@@ -77,6 +78,7 @@ int adsp_copy_from_sharedmem(struct adsp_priv *pdata, int id, void *dst, int cou
 void adsp_extern_notify_chain(enum ADSP_NOTIFY_EVENT event);
 void adsp_pow_clk_dump(void);
 void adsp_slp_prot_set(bool en, enum ADSP_PD domain);
+void adsp_set_clock_mux(bool en);
 
 /* wakelock */
 int adsp_awake_lock(u32 cid);

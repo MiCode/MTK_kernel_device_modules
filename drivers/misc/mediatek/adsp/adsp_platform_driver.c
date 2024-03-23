@@ -167,6 +167,7 @@ ERROR:
 int adsp_core0_resume(void)
 {
 	int ret = 0;
+	static int first_time = 1;
 	struct adsp_priv *pdata = adsp_cores[ADSP_A_ID];
 	ktime_t start = ktime_get();
 
@@ -184,6 +185,12 @@ int adsp_core0_resume(void)
 		}
 
 		adsp_timesync_resume();
+
+		if (first_time && adspsys->desc->mtcmos_ao_ctrl) {
+			pr_info("%s set ADSP power domain as AO\n", __func__);
+			adsp_enable_pd();
+			first_time = 0;
+		}
 
 		pr_info("%s(), done elapse %lld us", __func__,
 			ktime_us_delta(ktime_get(), start));
