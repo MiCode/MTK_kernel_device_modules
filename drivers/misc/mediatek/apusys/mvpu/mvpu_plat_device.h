@@ -34,4 +34,4 @@ const struct of_device_id *mvpu_plat_get_device(void);
 int mvpu_config_init(struct mtk_apu *apu);
 int mvpu_config_remove(struct mtk_apu *apu);
 
-#endif /* __MDLA_PLAT_API_H__ */
+#endif /* __MVPU_PLAT_API_H__ */

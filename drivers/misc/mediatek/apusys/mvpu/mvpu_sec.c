@@ -33,8 +33,6 @@
 #include "mvpu_driver.h"
 #include "mvpu_sec.h"
 
-static struct device *mvpu_dev;
-
 //#define FULL_RP_INFO
 
 void set_sec_log_lvl(int log_lvl)
