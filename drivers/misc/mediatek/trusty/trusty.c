@@ -7,6 +7,7 @@
 #include <linux/arm-smccc.h>
 #include <linux/arm_ffa.h>
 #include <linux/delay.h>
+#include <linux/init.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
@@ -23,6 +24,10 @@
 #include <linux/soc/mediatek/mtk_ise.h>
 #include <linux/soc/mediatek/mtk_ise_lpm.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
+
+#if IS_ENABLED(CONFIG_TRUSTONIC_TEE_SUPPORT)
+#include "trusty-dci.h"
+#endif
 
 struct trusty_state;
 
@@ -675,6 +680,12 @@ static int trusty_probe(struct platform_device *pdev)
 	}
 	INIT_WORK(&ise_notif_call_work, ise_notif_call_work_func);
 	INIT_WORK(&ise_check_vqs_work, ise_check_vqs_work_func);
+
+#if IS_ENABLED(CONFIG_TRUSTONIC_TEE_SUPPORT)
+	ret = trusty_dci_init();
+	if (ret == 0)
+		dev_info(&pdev->dev, "trusty_dci_init done.\n");
+#endif
 
 	return 0;
 
