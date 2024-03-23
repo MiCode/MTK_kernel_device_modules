@@ -1584,6 +1584,7 @@
 	mcupm: mcupm@c240000 {
 		compatible = "mediatek,mcupm";
 		mbox-extend = <16>;
+		mcdi-fg-node-support = <1>;
 		reg = <0 0x0c240000 0 0x50000>,
 			<0 0x0c2cf600 0 0xa0>,
 			<0 0x0c242004 0 0x4>,
