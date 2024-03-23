@@ -52,6 +52,8 @@ EXPORT_SYMBOL_GPL(mt_get_uartlog_status);
 void update_uartlog_status(bool new_value, int value)
 {
 	struct console *bcon = NULL;
+	struct console *bcon_ttys = NULL;
+	u64 max_seq = 0;
 
 	if (new_value == false || printk_ctrl_disable == 2) {
 		pr_info("use default valut %d to set uart status.\n",
@@ -80,11 +82,15 @@ void update_uartlog_status(bool new_value, int value)
 		console_list_lock();
 		for_each_console(bcon) {
 			pr_info("console name: %s. status 0x%x.\n", bcon->name, bcon->flags);
-			if (!strncmp(bcon->name, "ttyS", 4)) {
-				WRITE_ONCE(bcon->flags, READ_ONCE(bcon->flags) | CON_ENABLED);
-				console_list_unlock();
-				return;
-			}
+			if (!strncmp(bcon->name, "ttyS", 4))
+				bcon_ttys = bcon;
+
+			if (bcon->seq > max_seq)
+				max_seq = bcon->seq;
+		}
+		if (bcon_ttys != NULL) {
+			WRITE_ONCE(bcon_ttys->seq , max_seq);
+			WRITE_ONCE(bcon_ttys->flags, READ_ONCE(bcon_ttys->flags) | CON_ENABLED);
 		}
 		console_list_unlock();
 	}
