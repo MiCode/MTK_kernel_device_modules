@@ -1556,6 +1556,7 @@ cpus {
 			required-opps = <&dvfsrc_freq_opp0>,
 					<&dvfsrc_freq_opp1>;
 			net-spd-ver = <3>;
+			dpmaif-infracfg = <&infracfg_ao_clk>;
 		};
 
 		systimer: systimer@10017000 {
