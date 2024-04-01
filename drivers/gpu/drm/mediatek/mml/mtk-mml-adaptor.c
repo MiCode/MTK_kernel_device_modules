@@ -17,8 +17,6 @@
 #include "mtk-mml-pq-core.h"
 
 #define MML_DEFAULT_END_NS	15000000
-#define MML_DURATION_RESERVE	2000
-#define MML_MIN_FPS		120
 
 /* set to 0 to disable reuse config */
 int mml_reuse = 1;
@@ -163,12 +161,6 @@ void frame_config_init(struct mml_frame_config *cfg,
 	struct mml_ctx *ctx,
 	struct mml_submit *submit)
 {
-	struct timespec64 curr_time;
-	struct timespec64 end_time = {
-		.tv_sec = submit->end.sec,
-		.tv_nsec = submit->end.nsec,
-	};
-
 	mml_core_init_config(cfg);
 
 	list_add(&cfg->entry, &ctx->configs);
@@ -186,12 +178,6 @@ void frame_config_init(struct mml_frame_config *cfg,
 	memcpy(cfg->dl_out, submit->dl_out, sizeof(cfg->dl_out));
 	INIT_WORK(&cfg->work_destroy, frame_config_destroy_work);
 	kref_init(&cfg->ref);
-
-	ktime_get_real_ts64(&curr_time);
-	cfg->duration = (u32)mml_core_time_dur_us(&end_time, &curr_time);
-	cfg->duration = cfg->duration > MML_DURATION_RESERVE ?
-		cfg->duration - MML_DURATION_RESERVE : 1;
-	cfg->fps = max_t(u32, 1000000 / cfg->duration, 120);
 }
 
 struct mml_frame_config *frame_config_create(
