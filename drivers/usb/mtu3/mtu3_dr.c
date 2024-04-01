@@ -48,8 +48,14 @@ static int ssusb_port0_switch(struct ssusb_mtk *ssusb,
 		/* 2. power on, enable u2 port0 and select its mode */
 		value = mtu3_readl(ibase, SSUSB_U2_CTRL(0));
 		value &= ~(SSUSB_U2_PORT_PDN | SSUSB_U2_PORT_DIS);
-		value = tohost ? (value | SSUSB_U2_PORT_HOST_SEL) :
-			(value & (~SSUSB_U2_PORT_HOST_SEL));
+
+		if (ssusb->keep_ao)
+			value = tohost ? (value | SSUSB_U2_PORT_HOST) :
+				(value & (~SSUSB_U2_PORT_HOST));
+		else
+			value = tohost ? (value | SSUSB_U2_PORT_HOST_SEL) :
+				(value & (~SSUSB_U2_PORT_HOST_SEL));
+
 		mtu3_writel(ibase, SSUSB_U2_CTRL(0), value);
 	} else {
 		/* 1. power off and disable u3 port0 */
@@ -359,6 +365,9 @@ static void ssusb_mode_sw_work(struct work_struct *work)
 	default:
 		dev_err(ssusb->dev, "invalid role\n");
 	}
+
+	otg_sx->current_role = desired_role;
+
 	pm_runtime_put(ssusb->dev);
 
 same_role:

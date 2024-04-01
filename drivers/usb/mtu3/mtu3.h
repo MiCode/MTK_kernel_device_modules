@@ -328,6 +328,7 @@ struct ssusb_mtk {
 	int u3p_dis_msk;
 	struct dentry *dbgfs_root;
 	bool force_vbus;
+	bool keep_ao;
 	/* usb wakeup for host mode */
 	bool uwk_en;
 	struct regmap *uwk;

@@ -224,7 +224,9 @@ static inline void mtu3_hs_softconn_set(struct mtu3 *mtu, bool enable)
 int mtu3_device_enable(struct mtu3 *mtu)
 {
 	void __iomem *ibase = mtu->ippc_base;
+	struct ssusb_mtk *ssusb = mtu->ssusb;
 	u32 check_clk = 0;
+	u32 u2_ctrl = 0;
 
 	mtu3_clrbits(ibase, U3D_SSUSB_IP_PW_CTRL2, SSUSB_IP_DEV_PDN);
 
@@ -234,9 +236,10 @@ int mtu3_device_enable(struct mtu3 *mtu)
 			(SSUSB_U3_PORT_DIS | SSUSB_U3_PORT_PDN |
 			SSUSB_U3_PORT_HOST_SEL));
 	}
-	mtu3_clrbits(ibase, SSUSB_U2_CTRL(0),
-		(SSUSB_U2_PORT_DIS | SSUSB_U2_PORT_PDN |
-		SSUSB_U2_PORT_HOST_SEL));
+
+	u2_ctrl = SSUSB_U2_PORT_DIS | SSUSB_U2_PORT_PDN;
+	u2_ctrl |= ssusb->keep_ao ? SSUSB_U2_PORT_HOST : SSUSB_U2_PORT_HOST_SEL;
+	mtu3_clrbits(ibase, SSUSB_U2_CTRL(0), u2_ctrl);
 
 	if (mtu->ssusb->dr_mode == USB_DR_MODE_OTG) {
 		mtu3_setbits(ibase, SSUSB_U2_CTRL(0), SSUSB_U2_PORT_OTG_SEL);
