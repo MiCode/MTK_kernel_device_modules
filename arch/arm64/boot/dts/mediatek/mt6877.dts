@@ -4149,10 +4149,6 @@
 			"TOP_MAINPLL_D6", "TOP_MMPLL_D7",
 			"TOP_UNIVPLL_D5";
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-		mediatek,support-hopping = "clk_mmpll_ck";
-		mediatek,hopping-clk-mmpll-ck = <2290000000 2750000000
-			 2750000000 2750000000>;
-		mediatek,action = <1>;
 
 		clocks = <&topckgen_clk CLK_TOP_DISP0_SEL>,	/* 0 */
 			<&topckgen_clk CLK_TOP_CAM_SEL>,	/* 1 */
