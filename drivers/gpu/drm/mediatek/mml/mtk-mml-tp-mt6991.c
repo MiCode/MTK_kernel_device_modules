@@ -1455,6 +1455,8 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 		    info->dest[0].crop.r.width <= 9 ||
 		    info->dest[0].compose.width <= 9)
 			goto not_support;
+		if (mml_isdc(info->mode))
+			return info->mode;
 		return MML_MODE_MML_DECOUPLE;
 	}
 
