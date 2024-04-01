@@ -9446,6 +9446,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x31bd0078 0 0x4>,             /* hfrp DISP_GENERAL_CTRL_SET */
 				<0 0x31bd007c 0 0x4>,             /* hfrp DISP_GENERAL_CTRL_CLR */
 				<0 0x31a912b4 0 0x4>,             /* hfrp_dvfsrc_disp_debug_sta_6 */
+				<0 0x31ac03dc 0 0x4>,             /* hfrp sub pm MMINFRA bit1 */
 				<0 0x31ac1e50 0 0x4>,             /* hfrp sub pm DISP_VCORE bit29, or 0x31b50100 bit24*/
 				<0 0x3e800100 0 0x10>,            /* VDISP_AO_CG_CON0 */
 				<0 0x3e8f105c 0 0x4>,             /* DIS0 pwr chk */
@@ -9464,6 +9465,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"vcore_mode_set",
 				"vcore_mode_clr",
 				"vdisp_dvfsrc",
+				"mminfra_pwr_chk",
 				"disp_vcore_pwr_chk",
 				"vdisp_ao_cg_con",
 				"dis0_pwr_chk",
