@@ -1878,7 +1878,7 @@ static int md_cd_let_md_go(struct ccci_modem *md)
 }
 
 static struct ccci_plat_ops md_cd_plat_ptr = {
-	.md_dump_reg = &md_dump_register_6873,
+	.md_dump_reg = &legacy_md_dump_register,
 	//.cldma_hw_rst = &md_cldma_hw_reset,
 	//.set_clk_cg = &ccci_set_clk_cg,
 	//.remap_md_reg = &md_cd_io_remap_md_side_register,
