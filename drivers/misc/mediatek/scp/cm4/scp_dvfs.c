@@ -43,7 +43,9 @@
 #include "scp_excep.h"
 #include "scp_dvfs.h"
 #include "dvfsrc-exp.h"
+#if IS_ENABLED(CONFIG_MTK_SPM_V0) || IS_ENABLED(CONFIG_MTK_SPM)
 #include "mtk_spm_resource_req.h"
+#endif
 #include "registers.h"
 
 //#include <mt-plat/mtk_secure_api.h>
@@ -135,8 +137,11 @@ void scp_resource_req_ext(unsigned int req_type)
 	}
 	if (dvfs->legacy_support_v2)
 		scp_resource_req(req_type);
-	else
+	else {
+#if IS_ENABLED(CONFIG_MTK_SPM_V0) || IS_ENABLED(CONFIG_MTK_SPM)
 		spm_resource_req(SPM_RESOURCE_USER_SCP, req_type);
+#endif
+	}
 }
 EXPORT_SYMBOL(scp_resource_req_ext);
 
@@ -146,8 +151,11 @@ void scp_register_print_ipi_id_cb(void (*scp_callback)(void))
 		pr_debug("scp dvfs not ready\n");
 		return;
 	}
-	if (!(dvfs->legacy_support_v2))
+	if (!(dvfs->legacy_support_v2)) {
+#if IS_ENABLED(CONFIG_MTK_SPM_V0) || IS_ENABLED(CONFIG_MTK_SPM)
 		spm_set_scp_ipi_id_cb(scp_callback);
+#endif
+	}
 }
 EXPORT_SYMBOL(scp_register_print_ipi_id_cb);
 
@@ -514,11 +522,14 @@ int scp_request_freq(void)
 		/* because SCP may park in it during DFS process */
 		if (dvfs->legacy_support_v2)
 			scp_resource_req(SCP_REQ_26M | SCP_REQ_IFR | SCP_REQ_SYSPLL1);
-		else
+		else {
+#if IS_ENABLED(CONFIG_MTK_SPM_V0) || IS_ENABLED(CONFIG_MTK_SPM)
 			spm_resource_req(SPM_RESOURCE_USER_SCP,
 						SPM_RESOURCE_MAINPLL |
 						SPM_RESOURCE_CK_26M |
 						SPM_RESOURCE_AXI_BUS);
+#endif
+}
 
 		/*  turn on PLL if necessary */
 		scp_pll_ctrl_set(PLL_ENABLE, scp_expected_freq);
@@ -562,23 +573,29 @@ int scp_request_freq(void)
 					scp_resource_req(SCP_REQ_26M | SCP_REQ_IFR |
 							SCP_REQ_SYSPLL1);
 				} else {
+#if IS_ENABLED(CONFIG_MTK_SPM_V0) || IS_ENABLED(CONFIG_MTK_SPM)
 					spm_resource_req(SPM_RESOURCE_USER_SCP,
 							SPM_RESOURCE_MAINPLL);
+#endif
 				}
 			} else if (scp_expected_freq == UNIVPLL_416M) {
 				if (dvfs->legacy_support_v2) {
 					scp_resource_req(SCP_REQ_26M | SCP_REQ_IFR);
 				} else {
+#if IS_ENABLED(CONFIG_MTK_SPM_V0) || IS_ENABLED(CONFIG_MTK_SPM)
 					spm_resource_req(SPM_RESOURCE_USER_SCP,
 							SPM_RESOURCE_CK_26M |
 							SPM_RESOURCE_AXI_BUS);
+#endif
 				}
 			} else {
 				if (dvfs->legacy_support_v2) {
 					scp_resource_req(SCP_REQ_RELEASE);
 				} else {
+#if IS_ENABLED(CONFIG_MTK_SPM_V0) || IS_ENABLED(CONFIG_MTK_SPM)
 					spm_resource_req(SPM_RESOURCE_USER_SCP,
 								 SPM_RESOURCE_RELEASE);
+#endif
 				}
 			}
 		} else {
@@ -586,16 +603,20 @@ int scp_request_freq(void)
 				if (dvfs->legacy_support_v2) {
 					scp_resource_req(SCP_REQ_26M | SCP_REQ_IFR);
 				} else {
+#if IS_ENABLED(CONFIG_MTK_SPM_V0) || IS_ENABLED(CONFIG_MTK_SPM)
 					spm_resource_req(SPM_RESOURCE_USER_SCP,
 								SPM_RESOURCE_CK_26M |
 								SPM_RESOURCE_AXI_BUS);
+#endif
 				}
 			} else {
 				if (dvfs->legacy_support_v2) {
 					scp_resource_req(SCP_REQ_RELEASE);
 				} else {
+#if IS_ENABLED(CONFIG_MTK_SPM_V0) || IS_ENABLED(CONFIG_MTK_SPM)
 					spm_resource_req(SPM_RESOURCE_USER_SCP,
 									 SPM_RESOURCE_RELEASE);
+#endif
 				}
 			}
 		}
