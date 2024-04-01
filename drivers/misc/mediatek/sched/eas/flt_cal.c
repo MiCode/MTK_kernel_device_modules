@@ -1102,8 +1102,11 @@ static void flt_set_preferred_gear(void)
 
 	if (unlikely(group_get_mode() == GP_MODE_0))
 		return;
-
-	if (wl == 4 && !get_grp_high_freq(0)) {
+	/* Two condition to reset gear hint
+	 * 1. wl == 4 && no high freq()
+	 * 2. no grp dvfs ctrl
+	 */
+	if ((wl == 4 && !get_grp_high_freq(0)) || !get_grp_dvfs_ctrl()) {
 		for (grp_id = 0; grp_id < GROUP_ID_RECORD_MAX; grp_id++) {
 			grp = lookup_grp(grp_id);
 			if (!grp)
