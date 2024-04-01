@@ -2362,7 +2362,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"active_ratio6,active_ratio5,active_ratio4,active_ratio3,",
 				"active_ratio2,active_ratio1,active_ratio0,Freq";
 			node-113 = "SSPM_SWPM_DISP__PWR_STA",
-				"off,act,disp_clk,Time,dsi_off,dsi_lp_pll_on,dsi_act,dsi_lane_num,",
+				"off,act,disp_clk,dsi_off,dsi_lp_pll_on,dsi_act,dsi_lane_num,",
 				"dsi_phy_type,dsi_clk,DISP_AAL,DISP_CCORR,DISP_C3D,DISP_GAMMA,",
 				"DISP_COLOR,DISP_TDSHP,DISP_DITHER";
 			node-114 = "SSPM_SWPM_USB",
