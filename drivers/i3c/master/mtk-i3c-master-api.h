@@ -36,5 +36,6 @@ int mtk_i3c_master_gethdrcap(struct i3c_master_controller *master,
 				       struct i3c_device_info *info);
 int mtk_i3c_master_change_i3c_speed(struct i3c_master_controller *master,
 		unsigned int scl_rate_i3c);
+struct list_head *get_mtk_i3c_list(void);
 
 #endif /* MTK_I3C_MASTER_API_H */

@@ -231,6 +231,12 @@ enum DMA_REGS_OFFSET {
 	OFFSET_SEC_EN = 0x7c,
 };
 
+struct mtk_i3c_controller_info {
+	int id;
+	struct i3c_master_controller *base;
+	struct list_head list;
+};
+
 struct mtk_i3c_compatible {
 	const u16 *regs;
 	bool hdr_exit_support;
@@ -377,6 +383,7 @@ struct mtk_i3c_master {
 	enum mtk_i3c_master_state state;
 	u32 free_pos;
 	u8 addrs[MTK_I3C_MAX_DEVS];
+	struct mtk_i3c_controller_info s_controller_info;
 #ifdef MTK_I3C_RECORD_DMA_REG
 	struct mtk_i3c_dma_info dma_reg;
 #endif
@@ -385,6 +392,8 @@ struct mtk_i3c_master {
 struct mtk_i3c_i2c_dev_data {
 	u8 index;
 };
+
+LIST_HEAD(g_mtk_i3c_list);
 
 #define I3C_DUMP_BUF(p, l, fmt, ...)						\
 	do {	\
@@ -1689,6 +1698,12 @@ err_exit:
 }
 EXPORT_SYMBOL_GPL(mtk_i3c_master_change_i3c_speed);
 
+struct list_head *get_mtk_i3c_list(void)
+{
+	return &g_mtk_i3c_list;
+}
+EXPORT_SYMBOL_GPL(get_mtk_i3c_list);
+
 static int mtk_i3c_start_enable(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *xfer)
 {
 	u32 control_reg = 0;
@@ -2850,6 +2865,9 @@ static int mtk_i3c_master_probe(struct platform_device *pdev)
 		return ret;
 	}
 	i3c->timeout = 2 * HZ;
+	i3c->s_controller_info.id = i3c->base.bus.id;
+	i3c->s_controller_info.base = &i3c->base;
+	list_add_tail(&i3c->s_controller_info.list, &g_mtk_i3c_list);
 
 	dev_dbg(&pdev->dev, "[%s] probe_id[%d] success\n", __func__, i3c->base.bus.id);
 	return 0;
@@ -2859,6 +2877,7 @@ static int mtk_i3c_master_remove(struct platform_device *pdev)
 {
 	struct mtk_i3c_master *i3c = platform_get_drvdata(pdev);
 
+	list_del(&i3c->s_controller_info.list);
 	i3c_master_unregister(&i3c->base);
 
 	return 0;
