@@ -215,6 +215,13 @@ static int adspsys_drv_probe(struct platform_device *pdev)
 		adspsys->slp_prot_ctrl = 0;
 	}
 
+	ret = of_property_read_u32(dev->of_node, "sram-sleep-mode-ctrl",
+				   &adspsys->sram_sleep_mode_ctrl);
+	if (ret) {
+		pr_info("%s(), get sram-sleep-mode-ctrl fail\n", __func__);
+		adspsys->sram_sleep_mode_ctrl = 0;
+	}
+
 	of_property_read_u32(dev->of_node, "core-num", &adspsys->num_cores);
 
 	ret = of_property_read_u32(dev->of_node, "system-l2sram",
@@ -384,10 +391,10 @@ static int adsp_pd_event(struct notifier_block *nb,
 {
 	switch (flags) {
 	case GENPD_NOTIFY_ON:
-		adsp_slp_prot_set(false, ADSP_INFRA);
+		adsp_set_slp_prot(false, ADSP_INFRA);
 		break;
 	case GENPD_NOTIFY_PRE_OFF:
-		adsp_slp_prot_set(true, ADSP_INFRA);
+		adsp_set_slp_prot(true, ADSP_INFRA);
 		break;
 	default:
 		break;

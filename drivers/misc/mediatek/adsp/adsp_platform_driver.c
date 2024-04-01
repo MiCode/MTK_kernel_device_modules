@@ -27,6 +27,7 @@ const struct attribute_group *adsp_core_attr_groups[] = {
 
 static int slb_memory_control(bool en);
 static u32 adsp_pending_cnt;
+static bool resume_first_time = true;
 
 int adsp_after_bootup(struct adsp_priv *pdata)
 {
@@ -167,7 +168,6 @@ ERROR:
 int adsp_core0_resume(void)
 {
 	int ret = 0;
-	static int first_time = 1;
 	struct adsp_priv *pdata = adsp_cores[ADSP_A_ID];
 	ktime_t start = ktime_get();
 
@@ -186,10 +186,10 @@ int adsp_core0_resume(void)
 
 		adsp_timesync_resume();
 
-		if (first_time && adspsys->desc->mtcmos_ao_ctrl) {
+		if (resume_first_time && adspsys->desc->mtcmos_ao_ctrl) {
 			pr_info("%s set ADSP power domain as AO\n", __func__);
 			adsp_enable_pd();
-			first_time = 0;
+			resume_first_time = false;
 		}
 
 		pr_info("%s(), done elapse %lld us", __func__,

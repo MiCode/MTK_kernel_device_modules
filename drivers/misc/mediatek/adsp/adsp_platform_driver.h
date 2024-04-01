@@ -96,6 +96,7 @@ struct adsp_priv {
 struct adspsys_priv {
 	u32 num_cores;
 	u32 slp_prot_ctrl;
+	u32 sram_sleep_mode_ctrl;
 	u32 system_l2sram;
 
 	/* address & size */

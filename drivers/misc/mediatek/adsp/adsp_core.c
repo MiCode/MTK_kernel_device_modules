@@ -470,7 +470,7 @@ void adsp_pow_clk_dump(void)
 	adsp_smc_send(MTK_ADSP_KERNEL_OP_DUMP_PWR_CLK, 0, 0);
 }
 
-void adsp_slp_prot_set(bool en, enum ADSP_PD domain)
+void adsp_set_slp_prot(bool en, enum ADSP_PD domain)
 {
 	if ((domain >= ADSP_PD_NUM) || (domain < 0)) {
 		pr_info("[ADSP] %s: invalid domain %u", __func__, domain);
@@ -483,21 +483,29 @@ void adsp_slp_prot_set(bool en, enum ADSP_PD domain)
 		adsp_smc_send(MTK_ADSP_KERNEL_OP_SET_SLP_PROT, RELEASE_BUS_PROTECT, domain);
 
 }
-EXPORT_SYMBOL(adsp_slp_prot_set);
+EXPORT_SYMBOL(adsp_set_slp_prot);
 
 void adsp_set_clock_mux(bool en)
 {
-	adsp_smc_send(MTK_ADSP_KERNEL_OP_SET_CLOCK_MUX, en, 0);
+	adsp_smc_send(MTK_ADSP_KERNEL_OP_SET_CLOCK_MUX, ADSP_MAGIC_PATTERN, en);
 }
 EXPORT_SYMBOL(adsp_set_clock_mux);
+
+void adsp_set_sram_sleep_mode(bool en)
+{
+	adsp_smc_send(MTK_ADSP_KERNEL_OP_SET_SRAM_SLEEP_MODE, ADSP_MAGIC_PATTERN, en);
+}
 
 static int adsp_pd_event(struct notifier_block *nb,
 				  unsigned long flags , void *data)
 {
 	switch (flags) {
 	case GENPD_NOTIFY_ON:
+		if (adspsys && adspsys->sram_sleep_mode_ctrl)
+			adsp_set_sram_sleep_mode(false);
+
 		if (adspsys && adspsys->slp_prot_ctrl)
-			adsp_slp_prot_set(false, ADSP_TOP);
+			adsp_set_slp_prot(false, ADSP_TOP);
 
 		pr_info("%s() pwr on\n", __func__);
 		adsp_smc_send(MTK_ADSP_KERNEL_OP_DUMP_PWR_CLK, flags, 0);
@@ -507,7 +515,10 @@ static int adsp_pd_event(struct notifier_block *nb,
 		adsp_smc_send(MTK_ADSP_KERNEL_OP_DUMP_PWR_CLK, flags, 0);
 
 		if (adspsys && adspsys->slp_prot_ctrl)
-			adsp_slp_prot_set(true, ADSP_TOP);
+			adsp_set_slp_prot(true, ADSP_TOP);
+
+		if (adspsys && adspsys->sram_sleep_mode_ctrl)
+			adsp_set_sram_sleep_mode(true);
 		break;
 	default:
 		break;
