@@ -1016,6 +1016,8 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/soc/mediatek/mtk-scpsys-mt6991-ivi.ko":"mt6991"})
         mgk_64_device_modules.append("drivers/misc/mediatek/carevent/carevent.ko")
         mgk_64_device_modules.append("drivers/thermal/mediatek/fan_cooling.ko")
+        mgk_64_device_modules.append("sound/soc/codecs/ak7709/snd-soc-ak7709.ko")
+        mgk_64_device_modules.append("sound/soc/codecs/hfda80x/snd-soc-hfda80x.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/vow/ver02/mtk-vow.ko")
         mgk_64_device_modules.remove("sound/soc/mediatek/audio_dsp/mtk-soc-offload-common.ko")
         mgk_64_device_modules.remove("sound/soc/mediatek/ultrasound/ultra_common/mtk-scp-ultra.ko")
