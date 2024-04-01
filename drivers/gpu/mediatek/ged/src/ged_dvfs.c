@@ -2182,6 +2182,9 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 		is_fallback_mode_triggered = 0;
 	spin_unlock_irqrestore(&gsGpuUtilLock, ui32IRQFlags);
 
+#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
+	ged_get_gpu_frame_time(t_gpu_target);
+#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 	/* obtain GPU frame property */
 	t_gpu = div_u64(t_gpu, 100000);   // change unit from ns to 100*us
 	t_gpu_target = div_u64(t_gpu_target, 100000);   // change unit from ns to 100*us

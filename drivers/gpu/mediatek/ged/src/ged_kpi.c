@@ -3034,6 +3034,12 @@ GED_ERROR ged_kpi_timer_based_pick_riskyBQ(struct ged_risky_bq_info *info)
 		// uncompleted BQ is optional, so no need to check
 		return ret;
 
+#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
+	if (info->uncompleted_bq.t_gpu_target > 0)
+		ged_get_gpu_frame_time(min(info->completed_bq.t_gpu_target, info->uncompleted_bq.t_gpu_target));
+	else
+		ged_get_gpu_frame_time(info->completed_bq.t_gpu_target);
+#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 	// t_gpu unit: ns -> us
 	info->completed_bq.t_gpu = div_u64(info->completed_bq.t_gpu, 1000);
 	info->completed_bq.t_gpu_target = div_u64(info->completed_bq.t_gpu_target, 1000);

@@ -1116,6 +1116,16 @@ static void ged_eb_dvfs_udpate_gpu_time(void)
 	mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_COMPLETE_COUNT, gpu_completed_counteb);
 	mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_TIME, info_sysram.last_tgpu_uncompleted);
 	mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_TARGET_TIME, info_sysram.last_tgpu_uncompleted_target);
+#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
+	if (ged_get_policy_state() == POLICY_STATE_LB) {
+		if (t_gpu_target_eb_complete > 0 && info_sysram.last_tgpu_uncompleted_target > 0)
+			ged_get_gpu_frame_time(umin(t_gpu_target_eb_complete,
+				info_sysram.last_tgpu_uncompleted_target) * 1000);
+		else
+			ged_get_gpu_frame_time(umax(t_gpu_target_eb_complete,
+				info_sysram.last_tgpu_uncompleted_target) * 1000);
+	}
+#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 	if (info_sysram.uncompleted_count > 0) {
 		mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_SOC_TIMER_HI,
 				(u32)(info_sysram.last_uncomplete_soc_timer >> 32));
