@@ -92,6 +92,10 @@ static bool is_mminfra_shutdown;
 static bool mm_no_cg_ctrl;
 static bool mm_no_scmi;
 static bool mmpc_src_ctrl;
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+static bool mm_dapc_pwr_on;
+spinlock_t mm_dapc_lock;
+#endif
 
 #define MMINFRA_BASE		0x1e800000
 #define MMINFRA_AO_BASE		0x1e8ff000
@@ -1025,10 +1029,45 @@ static irqreturn_t mminfra_irq_handler(int irq, void *data)
 }
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+static void mminfra_devapc_power_off_cb(void)
+{
+	unsigned long flags;
+	int ret;
+
+	spin_lock_irqsave(&mm_dapc_lock, flags);
+	if (!mm_dapc_pwr_on) {
+		spin_unlock_irqrestore(&mm_dapc_lock, flags);
+		return;
+	}
+	if (mm_pwr_ver == mm_pwr_v3) {
+		if (dbg->irq_safe) {
+			pr_info("mm0 mtcmos = 0x%x, mm1 mtcmos = 0x%x\n",
+				readl(dbg->mminfra_mtcmos_base),
+				readl(dbg->mminfra_mtcmos_base + 0x4));
+
+			pr_info("%s mm_dapc_pwr_on = %d\n", __func__, mm_dapc_pwr_on);
+			pr_info("%s is_mminfra_shutdown = %d\n", __func__, is_mminfra_shutdown);
+			if (!is_mminfra_shutdown) {
+				pr_info("%s set mminfra pwr off\n", __func__);
+				ret = pm_runtime_put_sync(dev);
+				if (ret)
+					pr_notice("%s: ret=%d\n", __func__, ret);
+				mm_dapc_pwr_on = false;
+				spin_unlock_irqrestore(&mm_dapc_lock, flags);
+				return;
+			}
+		}
+	}
+
+	spin_unlock_irqrestore(&mm_dapc_lock, flags);
+}
+
 static bool mminfra_devapc_power_cb(void)
 {
 	int ret;
+	unsigned long flags;
 
+	spin_lock_irqsave(&mm_dapc_lock, flags);
 	if (mm_pwr_ver <= mm_pwr_v2) {
 		if (dbg->irq_safe) {
 			pdchk_debug_dump();
@@ -1037,9 +1076,12 @@ static bool mminfra_devapc_power_cb(void)
 				readl(dbg->mminfra_base + MMINFRA_CG_CON0),
 				readl(dbg->mminfra_ao_base + MMINFRA_CG_CON0),
 				readl(dbg->mminfra_ao_base + MMINFRA_CG_CON1));
-			pr_info("%s set mminfra pwr on\n", __func__);
-			if (!is_mminfra_shutdown)
+			pr_info("%s is_mminfra_shutdown = %d\n", __func__, is_mminfra_shutdown);
+			if (!is_mminfra_shutdown) {
+				pr_info("%s set mminfra pwr on\n", __func__);
 				vcp_mminfra_on();
+			}
+			spin_unlock_irqrestore(&mm_dapc_lock, flags);
 			return true;
 		}
 	} else if (mm_pwr_ver == mm_pwr_v3) {
@@ -1048,25 +1090,32 @@ static bool mminfra_devapc_power_cb(void)
 				readl(dbg->mminfra_mtcmos_base),
 				readl(dbg->mminfra_mtcmos_base + 0x4));
 			if ((readl(dbg->mminfra_mtcmos_base) & dbg->mm_mtcmos_mask)
-				== dbg->mm_mtcmos_mask)
+				== dbg->mm_mtcmos_mask) {
+				spin_unlock_irqrestore(&mm_dapc_lock, flags);
 				return true;
+			}
 
-			pr_info("%s set mminfra pwr on, is_mminfra_shutdown = %d\n",
-				__func__, is_mminfra_shutdown);
-			if (!is_mminfra_shutdown) {
+			pr_info("%s mm_dapc_pwr_on = %d\n", __func__, mm_dapc_pwr_on);
+			pr_info("%s is_mminfra_shutdown = %d\n", __func__, is_mminfra_shutdown);
+			if (!is_mminfra_shutdown && !mm_dapc_pwr_on) {
+				pr_info("%s set mminfra pwr on\n", __func__);
 				ret = pm_runtime_get_sync(dev);
 				if (ret)
 					pr_notice("%s: ret=%d\n", __func__, ret);
+				mm_dapc_pwr_on = true;
+				spin_unlock_irqrestore(&mm_dapc_lock, flags);
 				return true;
 			}
 		}
 	}
+	spin_unlock_irqrestore(&mm_dapc_lock, flags);
 	return is_mminfra_power_on();
 }
 
 static struct devapc_power_callbacks devapc_power_handle = {
 	.type = DEVAPC_TYPE_MMINFRA,
 	.query_power = mminfra_devapc_power_cb,
+	.power_off = mminfra_devapc_power_off_cb,
 };
 
 #define MMINFRA_DEVAPC_VIO_STA_BIT_19		BIT(19)
@@ -1301,6 +1350,7 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	}
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+	spin_lock_init(&mm_dapc_lock);
 	register_devapc_power_callback(&devapc_power_handle);
 	register_devapc_exception_callback(&devapc_excep_handle);
 #endif
