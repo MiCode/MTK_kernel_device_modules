@@ -951,8 +951,8 @@
 			chn-emi-reg-size = <0xa90>;
 			dramc-nao-reg-base = <0x10234000 0x10244000 0x10254000 0x10264000>;
 			dramc-nao-reg-size = <0x76c>;
-			dranc-ao-reg-base = <0x10230000 0x10240000 0x10250000 0x10260000>;
-			dranc-ao-reg-size = <0x2000>;
+			dramc-ao-reg-base = <0x10230000 0x10240000 0x10250000 0x10260000>;
+			dramc-ao-reg-size = <0x2000>;
 			ddrphy-ao-reg-base = <0x10238000 0x10248000 0x10258000 0x10268000>;
 			ddrphy-ao-reg-size = <0x1650>;
 			ddrphy-ao-misc-cg-ctrl0 = <0x66c>;
