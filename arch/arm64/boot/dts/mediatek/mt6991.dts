@@ -6736,7 +6736,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L2_P4_MDP_RDMA0)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(SMMU_L2_P9_MDP_RDMA0_STASH)
+				<&mmqos MASTER_LARB_PORT(SMMU_L2_P12_MDP_RDMA0_STASH)
 					&mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "mml_dma", "mml_dma_stash";
 			mmqos-supply = <&mmqos>;
@@ -6753,7 +6753,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L2_P0_MDP_RDMA2)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(SMMU_L2_P12_MDP_RDMA2_STASH)
+				<&mmqos MASTER_LARB_PORT(SMMU_L2_P15_MDP_RDMA2_STASH)
 					&mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "mml_dma", "mml_dma_stash";
 			mmqos-supply = <&mmqos>;
@@ -6839,7 +6839,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L2_P5_MDP_WROT0)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(SMMU_L2_P10_MDP_WROT0_STASH)
+				<&mmqos MASTER_LARB_PORT(SMMU_L2_P13_MDP_WROT0_STASH)
 					&mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "mml_dma", "mml_dma_stash";
 			mmqos-supply = <&mmqos>;
@@ -6856,7 +6856,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L2_P1_MDP_WROT2)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(SMMU_L2_P13_MDP_WROT2_STASH)
+				<&mmqos MASTER_LARB_PORT(SMMU_L2_P9_MDP_WROT2_STASH)
 					&mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "mml_dma", "mml_dma_stash";
 			mmqos-supply = <&mmqos>;
@@ -6877,7 +6877,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(49, 6))
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(SMMU_L2_P14_MDP_RDMA1_STASH)
+				<&mmqos MASTER_LARB_PORT(SMMU_L2_P14_MDP_RROT0_STASH)
 					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(49, 14))
 					&mmqos SLAVE_COMMON(0)>;
