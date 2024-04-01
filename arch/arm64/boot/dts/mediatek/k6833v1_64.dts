@@ -9,6 +9,14 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/pinctrl/mt6833-pinfunc.h>
 
+&mtkheap_region_svp {
+	status = "ok";
+};
+
+&mtkheap_region_wfd {
+	status = "ok";
+};
+
 /* chosen */
 &chosen {
 	atag,videolfb-fb_base_l = <0x7e605000>;
