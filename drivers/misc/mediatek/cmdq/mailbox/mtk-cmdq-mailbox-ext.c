@@ -4247,8 +4247,17 @@ s32 cmdq_pkt_set_spr3_timer(struct cmdq_pkt *pkt)
 		return -EINVAL;
 	}
 
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	if (g_cmdq[cmdq->hwid]) {
+		if (g_cmdq[cmdq->hwid]->spr3_timer)
+			pkt->support_spr3_timer = true;
+	} else {
+		cmdq_log("g_cmdq[%d] is null", cmdq->hwid);
+	}
+#else
 	if (g_cmdq[cmdq->hwid]->spr3_timer)
 		pkt->support_spr3_timer = true;
+#endif
 
 	return 0;
 }

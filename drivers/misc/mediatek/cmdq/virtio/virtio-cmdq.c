@@ -609,9 +609,6 @@ int virtio_cmdq_mbox_probe(struct platform_device *pdev)
 	if (!cmdq)
 		return -ENOMEM;
 
-	spin_lock_init(&cmdq->client_pkt_list_lock);
-	INIT_LIST_HEAD(&cmdq->client_pkt_list);
-
 	cmdq->mbox.dev = dev;
 	cmdq->mbox.chans = devm_kcalloc(dev, CMDQ_THR_MAX_COUNT,
 					sizeof(*cmdq->mbox.chans), GFP_KERNEL);
@@ -662,6 +659,8 @@ int virtio_cmdq_mbox_probe(struct platform_device *pdev)
 	cmdq_msg("virtual cmdq driver info name: %s, hwid: %d base_pa: %lld",
 		pdev->name, hwid, cmdq->base_pa);
 	g_cmdq_service[hwid] = *cmdq;
+	spin_lock_init(&g_cmdq_service[hwid].client_pkt_list_lock);
+	INIT_LIST_HEAD(&g_cmdq_service[hwid].client_pkt_list);
 	cmdq->hwid = hwid++;
 	return 0;
 
