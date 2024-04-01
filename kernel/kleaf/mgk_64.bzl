@@ -159,6 +159,7 @@ mgk_64_device_modules = [
     "drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-cphy-vdo.ko",
     "drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-120hz-hfp.ko",
     "drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-120hz.ko",
+    "drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-120hz-threshold.ko",
     "drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-144hz-hfp.ko",
     "drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-144hz.ko",
     "drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-60hz.ko",
@@ -2073,6 +2074,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/rt4831a.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-120hz-hfp.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-120hz.ko")
+        mgk_64_device_modules.remove("drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-120hz-threshold.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-144hz-hfp.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-144hz.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-60hz.ko")
