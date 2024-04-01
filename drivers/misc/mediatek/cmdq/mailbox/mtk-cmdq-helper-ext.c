@@ -254,6 +254,13 @@ void vhost_cmdq_util_set_fp(struct vhost_cmdq_platform_fp *cust_cmdq_platform)
 	vhost_cmdq_platform = cust_cmdq_platform;
 }
 EXPORT_SYMBOL(vhost_cmdq_util_set_fp);
+
+void vhost_cmdq_set_client(void *client, uint32_t hwid)
+{
+	if (vhost_cmdq_platform)
+		vhost_cmdq_platform->vhost_cmdq_set_client(client, hwid);
+}
+EXPORT_SYMBOL(vhost_cmdq_set_client);
 #endif
 
 void cmdq_hw_trace_dump(void *chan)

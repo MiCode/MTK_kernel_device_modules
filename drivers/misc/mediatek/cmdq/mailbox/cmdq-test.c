@@ -784,12 +784,12 @@ static void cmdq_test_mbox_write(
 	cmdq_msg("sec:%d va:%#lx pa:%#lx pttn:%#x mask:%#x clt:%p",
 		secure, va, pa, pttn, mask, clt);
 
+#if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	if (clk_prepare_enable(test->gce.clk)) {
 		cmdq_err("clk fail");
-#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 		return;
-#endif
 	}
+#endif
 
 	writel(0, (void *)va);
 
