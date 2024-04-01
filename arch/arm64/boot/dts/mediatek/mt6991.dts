@@ -8605,7 +8605,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,disp1_dsi1",
 					"mediatek,mt6991-dsi";
 			reg = <0 0x324a0000 0 0x1000>;
-			interrupts = <GIC_SPI 450 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 462 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSI1_DISP>,
 				 <&dispsys1_config_clk CLK_MM1_MOD1_DISP>,
 				 <&mipi_tx_config1>;
@@ -8619,7 +8619,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,disp1_dsi2",
 					"mediatek,mt6991-dsi";
 			reg = <0 0x324b0000 0 0x1000>;
-			interrupts = <GIC_SPI 450 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 463 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSI2_DISP>,
 				 <&dispsys1_config_clk CLK_MM1_MOD1_DISP>,
 				 <&mipi_tx_config2>;
