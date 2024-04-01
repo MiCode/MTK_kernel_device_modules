@@ -135,7 +135,7 @@ void mtk_vidle_user_power_release_by_gce(enum mtk_vidle_voter_user user, struct 
 
 int mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user)
 {
-	if (disp_dpc_driver.dpc_vidle_power_keep == NULL)
+	if (disp_dpc_driver.dpc_vidle_power_keep == NULL || vidle_data.drm_priv == NULL)
 		return 0;
 
 	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN)
@@ -146,7 +146,7 @@ int mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user)
 
 void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user)
 {
-	if (disp_dpc_driver.dpc_vidle_power_release == NULL)
+	if (disp_dpc_driver.dpc_vidle_power_release == NULL || vidle_data.drm_priv == NULL)
 		return;
 
 	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN)
@@ -369,19 +369,8 @@ void mtk_vidle_config_ff(bool en)
 	if (en && !mtk_disp_vidle_flag.vidle_en)
 		return;
 
-	// if (!en && mtk_vidle_is_ff_enabled())
-	//	pm_runnnnntime_get_sync(vidle_data.drm_priv->dpc_dev);
-
 	disp_dpc_driver.dpc_config(DPC_SUBSYS_DISP, en);
 
-	// if (en) {
-	//	if ((atomic_read(&vidle_data.drm_priv->dpc_dev->power.usage_count) > 0))
-	//		pm_runnnnntime_put_sync(vidle_data.drm_priv->dpc_dev);
-	//	else
-	//		DDPMSG("skip unbalanced mminfra put by (%s)\n", __func__);
-	//}
-
-	// should be the last step
 	atomic_set(&g_ff_enabled, en);
 }
 
