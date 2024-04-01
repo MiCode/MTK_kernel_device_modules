@@ -28,3 +28,11 @@ config DEVICE_MODULES_VHOST_BLK
 
 	  To compile this driver as a module, choose M here: the module will
 	  be called vhost_blk.
+
+config VHOST_CMDQ
+	tristate "hypervisor vhost cmdq driver"
+	help
+	  This extension enable vhost cmdq driver, vhost cmdq driver
+	  for hypervisor project. The vhost driver is located at virt/grt,
+	  Also used to isolate the conflicting part of the cmdq driver
+	  on main project, default is n.
