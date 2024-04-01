@@ -2243,6 +2243,10 @@ static int __init ufs_mtk_dbg_init(void)
 			   sizeof(struct cmd_hist_struct),
 			   GFP_KERNEL);
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+	mrdump_mini_add_extra_file((unsigned long)cmd_hist,
+						__pa_nodebug(cmd_hist),
+						UFS_AEE_BUFFER_SIZE,
+						"UFS_CMD_HIST");
 	mrdump_set_extra_dump(AEE_EXTRA_FILE_UFS, ufs_mtk_dbg_get_aee_buffer);
 #endif
 	return 0;
