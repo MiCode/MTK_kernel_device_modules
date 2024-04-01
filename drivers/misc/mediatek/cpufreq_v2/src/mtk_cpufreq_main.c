@@ -905,6 +905,7 @@ static void _mt_cpufreq_set(struct cpufreq_policy *policy,
 }
 
 /* one action could be combinational set */
+__no_kcsan
 void _mt_cpufreq_dvfs_request_wrapper(struct mt_cpu_dvfs *p, int new_opp_idx,
 	enum mt_cpu_dvfs_action_id action, void *data)
 {
@@ -1114,6 +1115,7 @@ static void ppm_limit_callback(struct ppm_client_req req)
 /*
  * cpufreq driver
  */
+__no_kcsan
 static int _mt_cpufreq_verify(struct cpufreq_policy_data *policy)
 {
 
