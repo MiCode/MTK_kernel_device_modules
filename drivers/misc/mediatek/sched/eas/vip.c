@@ -16,6 +16,9 @@ unsigned int ls_vip_threshold                   =  DEFAULT_VIP_PRIO_THRESHOLD;
 bool vip_enable;
 
 #define link_with_others(lh) (!list_empty(lh))
+#define NUM_MAXIMUM_TGID 12
+static int *tgid_vip_arr;
+int tgid_vip_status;
 
 DEFINE_PER_CPU(struct vip_rq, vip_rq);
 inline unsigned int sum_num_vip_in_cpu(int cpu)
@@ -728,6 +731,73 @@ void unset_tgid_basic_vip(int tgid)
 }
 EXPORT_SYMBOL_GPL(unset_tgid_basic_vip);
 
+int show_tgid(int slot_id)
+{
+	return tgid_vip_arr[slot_id];
+}
+EXPORT_SYMBOL_GPL(show_tgid);
+
+void set_tgid_vip(int tgid)
+{
+	int slot_id = 0, done = 0;
+
+	for (slot_id = 0; slot_id < NUM_MAXIMUM_TGID; slot_id++) {
+		if (tgid_vip_arr[slot_id] == -1) {
+			tgid_vip_arr[slot_id] = tgid;
+			done = 1;
+			break;
+		}
+	}
+
+	if (trace_sched_set_vip_enabled())
+		trace_sched_set_vip(tgid, done, "tgid", WORKER_VIP, VIP_TIME_LIMIT_DEFAULT, slot_id);
+}
+EXPORT_SYMBOL_GPL(set_tgid_vip);
+
+void unset_tgid_vip(int tgid)
+{
+	int slot_id = 0, done = 0;
+
+	for (slot_id = 0; slot_id < NUM_MAXIMUM_TGID; slot_id++) {
+		if (tgid_vip_arr[slot_id] == tgid) {
+			tgid_vip_arr[slot_id] = -1;
+			done = 1;
+		}
+	}
+
+	if (trace_sched_unset_vip_enabled())
+		trace_sched_unset_vip(tgid, done, "tgid", slot_id);
+}
+EXPORT_SYMBOL_GPL(unset_tgid_vip);
+
+bool is_VIP_tgid(struct task_struct *p)
+{
+	int slot_id = 0;
+
+	for (slot_id = 0; slot_id < NUM_MAXIMUM_TGID; slot_id++) {
+		if (p->tgid == tgid_vip_arr[slot_id])
+			return true;
+	}
+
+	return false;
+}
+
+void turn_on_tgid_vip(void)
+{
+	tgid_vip_status = 1;
+}
+EXPORT_SYMBOL_GPL(turn_on_tgid_vip);
+
+void turn_off_tgid_vip(void)
+{
+	tgid_vip_status = 0;
+}
+EXPORT_SYMBOL_GPL(turn_off_tgid_vip);
+
+int tgid_vip_on(void)
+{
+	return tgid_vip_status;
+}
 /* end of TGID */
 
 /* basic vip interace */
@@ -810,7 +880,8 @@ inline int get_vip_task_prio(struct task_struct *p)
 	}
 
 	/* prio = 0 */
-	if (is_VIP_task_group(p) || is_VIP_latency_sensitive(p) || is_VIP_basic(vts))
+	if (is_VIP_task_group(p) || is_VIP_latency_sensitive(p) || is_VIP_basic(vts) ||
+		(tgid_vip_on() && is_VIP_tgid(p)))
 		vip_prio = WORKER_VIP;
 
 out:
@@ -1248,7 +1319,7 @@ void register_vip_hooks(void)
 void vip_init(void)
 {
 	struct task_struct *g, *p;
-	int cpu;
+	int cpu, slot_id;
 
 	balance_vvip_overutilied = false;
 	balance_vip_overutilized = false;
@@ -1283,6 +1354,11 @@ void vip_init(void)
 		 */
 		init_vip_task_struct(cpu_rq(cpu)->idle);
 	}
+
+	tgid_vip_status = 0;
+	tgid_vip_arr = kcalloc(NUM_MAXIMUM_TGID, sizeof(int),  GFP_KERNEL);
+	for (slot_id = 0; slot_id < NUM_MAXIMUM_TGID; slot_id++)
+		tgid_vip_arr[slot_id] = -1;
 
 	/* init vip related value to newly forked tasks */
 	register_vip_hooks();
