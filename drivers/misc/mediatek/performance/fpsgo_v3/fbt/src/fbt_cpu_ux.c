@@ -62,7 +62,6 @@ static struct kmem_cache *hwui_frame_info_cachep __ro_after_init;
 
 static int fpsgo_ux_gcc_enable;
 static int sbe_rescue_enable;
-static int sbe_rescuing_frame_id;
 static int sbe_rescuing_frame_id_legacy;
 static int sbe_enhance_f;
 static int sbe_dy_max_enhance;
@@ -339,7 +338,7 @@ static void fbt_ux_set_cap_with_sbe(struct render_info *thr)
 
 	local_min_cap = set_blc_wt;
 
-	if (thr->sbe_enhance > 0)
+	if (!set_blc_wt || thr->sbe_enhance > 0)
 		local_max_cap = 100;
 	else
 		local_max_cap = fbt_ux_get_max_cap(thr->pid, thr->buffer_id, set_blc_wt);
@@ -499,11 +498,17 @@ void fbt_ux_frame_err(struct render_info *thr, int frame_count,
 	if (!thr)
 		return;
 
-	if (frame_count == 0 && ux_general_policy) {
-		fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
+	if (frame_count == 0) {
+		if (ux_general_policy)
+			fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
 		thr->ux_blc_cur = 0;
 		fbt_ux_set_cap_with_sbe(thr);
 	}
+
+	//try end this frame rescue when err
+	if (thr->sbe_rescuing_frame_id == frameID
+			&& thr->boost_info.sbe_rescue != 0)
+		fpsgo_sbe_rescue(thr, 0, 0, 0, 0, frameID);
 
 	if (sbe_dy_rescue_enable) {
 		struct hwui_frame_info *frame =
@@ -546,6 +551,7 @@ void fpsgo_ux_doframe_end(struct render_info *thr, unsigned long long frame_id,
 			rescue_time = frame->start_ts + (thr->boost_info.target_time >> 1);
 			update_hwui_frame_info(thr, frame, frame_id, 0, 0, rescue_time, 0, 0);
 		}
+		thr->rescue_start_time = 0;
 	}
 }
 
@@ -934,6 +940,59 @@ void clear_ux_info(struct render_info *thr)
 	release_all_ux_info(thr);
 }
 
+static void fpsgo_update_sbe_dy_rescue(struct render_info *thr, int sbe_dy_enhance,
+		int rescue_type, unsigned long long rescue_target, unsigned long long frame_id)
+{
+	unsigned long long ts = 0;
+
+	if ((rescue_type & RESCUE_COUNTINUE_RESCUE) != 0
+			&& (rescue_type & RESCUE_TYPE_PRE_ANIMATION) != 0
+			&& (rescue_type & RESCUE_RUNNING) != 0
+			&& thr->rescue_start_time > 0) {
+		//pre-animation case, think frame start time same as rescue time
+		struct hwui_frame_info *frame = get_hwui_frame_info_by_frameid(thr, frame_id);
+
+		if (frame) {
+			update_hwui_frame_info(thr, frame, frame_id,
+					0, 0, thr->rescue_start_time, 0, 0);
+			//update rescue start time
+			frame->start_ts = thr->rescue_start_time;
+		}
+
+	} else if (((rescue_type & RESCUE_WAITING_ANIMATION_END) != 0
+			|| (rescue_type & RESCUE_TYPE_TRAVERSAL_DYNAMIC) != 0
+			|| (rescue_type & RESCUE_TYPE_OI) != 0
+			|| (rescue_type & RESCUE_TYPE_PRE_ANIMATION) != 0)
+			&& (rescue_type & RESCUE_COUNTINUE_RESCUE) == 0) {
+		unsigned long long target_time = 0;
+		struct hwui_frame_info *frame = get_hwui_frame_info_by_frameid(thr, frame_id);
+
+		//update rescue start time
+		ts = fpsgo_get_time();
+		if (frame)
+			update_hwui_frame_info(thr, frame, frame_id, 0, 0, ts, 0, 0);
+
+		fpsgo_main_trace("%d dy_rescue id %lld sbe_dy_e:%d final_e %d rescue_t:%llu ts:%llu",
+				thr->pid, frame_id, thr->sbe_dy_enhance_f,
+				sbe_dy_enhance, rescue_target, ts);
+
+		target_time = thr->boost_info.target_time;
+
+		if (target_time > 0) {
+			//update rescue_target, default is 1/2 target_time
+			if (rescue_target > 0 && rescue_target < target_time) {
+				if(thr->boost_info.sbe_rescue_target_time != rescue_target)
+					thr->boost_info.sbe_rescue_target_time = rescue_target;
+			} else
+				thr->boost_info.sbe_rescue_target_time = (target_time >> 1);
+		}
+
+		thr->rescue_start_time = ts;
+
+		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, rescue_type, "[ux]rescue_type");
+	}
+}
+
 void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		int rescue_type, unsigned long long rescue_target, unsigned long long frame_id)
 {
@@ -945,7 +1004,7 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 
 	mutex_lock(&fbt_mlock);
 	if (start) {
-		sbe_rescuing_frame_id = frame_id;
+		thr->sbe_rescuing_frame_id = frame_id;
 		if (sbe_dy_max_enhance > 0 && ((rescue_type & RESCUE_TYPE_MAX_ENHANCE) != 0))
 			sbe_dy_enhance = sbe_dy_max_enhance;
 		else if (!sbe_dy_rescue_enable)
@@ -960,34 +1019,10 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		thr->sbe_enhance = enhance < 0 ?  sbe_dy_enhance : (enhance + sbe_dy_enhance);
 		thr->sbe_enhance = clamp(thr->sbe_enhance, 0, 100);
 
-		if (sbe_dy_rescue_enable
-				&& ((rescue_type & RESCUE_WAITING_ANIMATION_END) != 0
-				|| (rescue_type & RESCUE_TYPE_TRAVERSAL_DYNAMIC) != 0
-				|| (rescue_type & RESCUE_TYPE_OI) != 0)) {
-			unsigned long long target_time;
-			struct hwui_frame_info *frame = get_hwui_frame_info_by_frameid(thr, frame_id);
+		if (sbe_dy_rescue_enable)
+			fpsgo_update_sbe_dy_rescue(thr, sbe_dy_enhance,
+					rescue_type, rescue_target, frame_id);
 
-			fpsgo_main_trace("%d SBE_UX: rescue frameid %lld sbe_dy_e:%d final_e %d rescue_t:%llu",
-					thr->pid, frame_id,
-					thr->sbe_dy_enhance_f, sbe_dy_enhance, rescue_target);
-
-			//update rescue start time
-			ts = fpsgo_get_time();
-			update_hwui_frame_info(thr, frame, frame_id, 0, 0, ts, 0, 0);
-
-			target_time = thr->boost_info.target_time;
-
-			if (target_time > 0) {
-				//update rescue_target, default is 1/2 target_time
-				if (rescue_target > 0 && rescue_target < target_time) {
-					if(thr->boost_info.sbe_rescue_target_time != rescue_target)
-						thr->boost_info.sbe_rescue_target_time = rescue_target;
-				} else
-					thr->boost_info.sbe_rescue_target_time = (target_time >> 1);
-			}
-
-			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, rescue_type, "[ux]rescue_type");
-		}
 
 		//if sbe mark second rescue, then rescue again
 		if (thr->boost_info.sbe_rescue != 0 && ((rescue_type & RESCUE_TYPE_SECOND_RESCUE) == 0))
@@ -1003,9 +1038,9 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 	} else {
 		if (thr->boost_info.sbe_rescue == 0)
 			goto leave;
-		if (frame_id < sbe_rescuing_frame_id)
+		if (frame_id < thr->sbe_rescuing_frame_id)
 			goto leave;
-		sbe_rescuing_frame_id = -1;
+		thr->sbe_rescuing_frame_id = -1;
 		thr->boost_info.sbe_rescue = 0;
 		thr->sbe_enhance = 0;
 
@@ -1018,6 +1053,7 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 			//update rescue end time
 			ts = fpsgo_get_time();
 			update_hwui_frame_info(thr, frame, frame_id, 0, 0, 0, ts, 0);
+			thr->rescue_start_time = 0;
 		}
 
 		fbt_ux_set_cap_with_sbe(thr);
@@ -1431,6 +1467,8 @@ void fbt_init_ux(struct render_info *info)
 {
 	INIT_LIST_HEAD(&(info->scroll_list));
 	info->hwui_arr_idx = 0;
+	info->sbe_rescuing_frame_id = -1;
+	info->rescue_start_time = 0;
 }
 
 void fbt_del_ux(struct render_info *info)
@@ -1620,7 +1658,6 @@ int __init fbt_cpu_ux_init(void)
 	sbe_rescue_enable = fbt_get_default_sbe_rescue_enable();
 	init_smart_launch_engine();
 	ux_general_policy = fbt_get_ux_scroll_policy_type();
-	sbe_rescuing_frame_id = -1;
 	sbe_rescuing_frame_id_legacy = -1;
 	sbe_enhance_f = 50;
 	sbe_dy_max_enhance = 80;

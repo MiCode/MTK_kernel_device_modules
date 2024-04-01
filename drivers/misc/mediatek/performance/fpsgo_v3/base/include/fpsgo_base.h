@@ -449,6 +449,8 @@ struct render_info {
 	int sbe_enhance;
 	int hwui_arr_idx;
 	int sbe_dy_enhance_f;
+	int sbe_rescuing_frame_id;
+	unsigned long long rescue_start_time;
 
 	/*fbt*/
 	int linger;
