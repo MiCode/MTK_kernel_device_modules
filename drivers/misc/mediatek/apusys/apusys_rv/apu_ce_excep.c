@@ -519,9 +519,16 @@ int apu_ce_excep_init(struct platform_device *pdev, struct mtk_apu *apu)
 void apu_ce_excep_remove(struct platform_device *pdev, struct mtk_apu *apu)
 {
 	struct device *dev = apu->dev;
+	ce_apu = NULL;
 	disable_irq(apu->ce_exp_irq_number);
 	dev_info(dev, "%s: disable ce_exp_irq (%d)\n", __func__,
 		apu->ce_exp_irq_number);
 
 	cancel_work_sync(&(apu_ce_coredump_work.work));
 }
+
+int is_apu_ce_excep_init(void)
+{
+	return ce_apu != NULL;
+}
+
