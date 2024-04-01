@@ -61,7 +61,7 @@ status = "okay";
 			#io-channel-cells = <1>;
 		};
 		mt6360_led: led {
-			compatible = "mediatek,mt6360_led";
+			compatible = "mediatek,mt6360-led";
 			rgbon_sync = <1>;
 			iled  {
 				#address-cells = <1>;
