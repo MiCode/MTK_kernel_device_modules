@@ -499,7 +499,7 @@
 	#define MT6991_REG_DBI_REQ_STASH_EN					REG_FLD_MSB_LSB(8, 8)
 
 // mt6991 DBI DDREN CTL
-#define MT6991_DISP_ODDMR_SMI_SB_FLG_ODW_0		0x084
+#define MT6991_DISP_ODDMR_REG_DBI_DDREN_CTRL		0x084
 
 // mt6991 DBI CTL
 #define MT6991_DISP_ODDMR_REG_ODDMR_FRAME_WIDTH			0x098
@@ -2791,8 +2791,7 @@ void mtk_oddmr_dump(struct mtk_ddp_comp *comp)
 	if(mtk_crtc->base.dev->dev_private)
 		priv = mtk_crtc->base.dev->dev_private;
 
-	if ((priv && (priv->data->mmsys_id == MMSYS_MT6989)) ||
-		(priv && (priv->data->mmsys_id == MMSYS_MT6991))) {
+	if (priv && (priv->data->mmsys_id == MMSYS_MT6989)) {
 		DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 		DDPDUMP("-- Start dump oddmr registers --\n");
 		mbaddr = baddr;
@@ -5046,7 +5045,7 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 				mtk_oddmr_write(comp, 0,
 					MT6991_DISP_ODDMR_TOP_DMR_BYPASS, handle);
 				mtk_oddmr_write(comp, 4,
-					MT6991_DISP_ODDMR_SMI_SB_FLG_ODW_0, handle);
+					MT6991_DISP_ODDMR_REG_DBI_DDREN_CTRL, handle);
 
 				/* stash_lead_cnt = stash_lead_time / dsi_line_time */
 				output_comp = mtk_ddp_comp_request_output(mtk_crtc);
@@ -5061,8 +5060,8 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 			} else {
 				mtk_oddmr_write(comp, 1,
 					MT6991_DISP_ODDMR_TOP_DMR_BYPASS, handle);
-				mtk_oddmr_write(comp, 0,
-					MT6991_DISP_ODDMR_SMI_SB_FLG_ODW_0, handle);
+				mtk_oddmr_write(comp, 9,
+					MT6991_DISP_ODDMR_REG_DBI_DDREN_CTRL, handle);
 				mtk_oddmr_write(comp, 0,
 					MT6991_DISP_ODDMR_UDMA_DBI_CTRL30, handle);
 			}
@@ -7663,6 +7662,41 @@ static void mtk_oddmr_odr_get_status(struct mtk_ddp_comp *comp, struct cmdq_pkt 
 	*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
 }
 
+static void mtk_oddmr_dbi_ddren_en(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, unsigned int en)
+{
+	GCE_COND_DECLARE;
+	struct cmdq_operand lop, rop;
+	const u16 var1 = CMDQ_THR_SPR_IDX2;
+	const u16 var2 = 0;
+
+	if (en == 1) {
+		GCE_COND_ASSIGN(handle, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
+		/* get dbi status */
+		lop.reg = true;
+		lop.idx = var1;
+		rop.reg = false;
+		rop.value = 2;
+		cmdq_pkt_read(handle, NULL,
+			comp->regs_pa + MT6991_DISP_ODDMR_REG_DMR_EN, var1);
+		cmdq_pkt_logic_command(handle, CMDQ_LOGIC_AND, var1, &lop, &rop);
+
+		lop.reg = true;
+		lop.idx = var1;
+		rop.reg = false;
+		rop.idx = var2;
+		rop.value = 2;
+		GCE_IF(lop, R_CMDQ_EQUAL, rop);
+		/* condition true: DBI enabled, enable dbi ddren */
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + MT6991_DISP_ODDMR_REG_DBI_DDREN_CTRL, 4, ~0);
+		GCE_FI;
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + MT6991_DISP_ODDMR_REG_DBI_DDREN_CTRL, 9, ~0);
+	}
+}
+
 static void mtk_oddmr_config_trigger(struct mtk_ddp_comp *comp,
 				   struct cmdq_pkt *handle,
 				   enum mtk_ddp_comp_trigger_flag flag)
@@ -7679,8 +7713,21 @@ static void mtk_oddmr_config_trigger(struct mtk_ddp_comp *comp,
 	priv = mtk_crtc->base.dev->dev_private;
 	ODDMRFLOW_LOG("%d\n", flag);
 	switch (flag) {
+	case MTK_TRIG_FLAG_TRIGGER:
+	{
+		if (priv && (priv->data->mmsys_id == MMSYS_MT6991)) {
+			if(is_oddmr_dbi_support)
+				mtk_oddmr_dbi_ddren_en(comp, handle, 1);
+		}
+	}
+		break;
 	case MTK_TRIG_FLAG_EOF:
 	{
+		if (priv && (priv->data->mmsys_id == MMSYS_MT6991)) {
+			if (is_oddmr_dbi_support)
+				mtk_oddmr_dbi_ddren_en(comp, handle, 0);
+		}
+
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_ODDMR_OD_AEE))
 			break;
