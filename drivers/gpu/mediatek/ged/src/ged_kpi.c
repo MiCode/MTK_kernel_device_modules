@@ -1840,7 +1840,7 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 					if (t_gpu_w_min == 0)
 						t_gpu_w_min = 1;
 					cond_1 = t_gpu_w_max > t_gpu_target;
-					cond_2 = div_u64(t_gpu_w_max * 10, t_gpu_w_min) >= dcs_get_adjust_ratio_th();
+					cond_2 = div64_u64(t_gpu_w_max * 10, t_gpu_w_min) >= dcs_get_adjust_ratio_th();
 					cond_3 = div_u64(non_dcs_cnt * 100, fr_cnt) > dcs_get_adjust_non_dcs_th();
 
 					if (cond_1 && cond_2 && cond_3)
