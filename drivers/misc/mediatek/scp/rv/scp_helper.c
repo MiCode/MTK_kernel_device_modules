@@ -2169,7 +2169,7 @@ void scp_sys_reset_ws(struct work_struct *ws)
 	writel((unsigned int)scp_mem_size, DRAM_RESV_SIZE_REG);
 	/* start scp */
 	pr_notice("[SCP] start scp\n");
-	//writel(1, R_CORE0_SW_RSTN_CLR);
+	writel(1, R_CORE0_SW_RSTN_CLR);
 	pr_notice("[SCP] rstn core0 %x\n", readl(R_CORE0_SW_RSTN_CLR));
 	dsb(SY); /* may take lot of time */
 	}
