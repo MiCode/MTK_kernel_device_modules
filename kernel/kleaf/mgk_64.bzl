@@ -1699,6 +1699,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/leakage_table_v2/mediatek_static_power.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/upower/Upower.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/ppm_v3/mtk_ppm_v3.ko":"mt6761"})
+        mgk_64_platform_device_modules.update({"drivers/misc/mediatek/cpufreq_v2/src/CPU_DVFS.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/dvfsrc/dvfsrc-opp-mt6761.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/soc/mediatek/mtk-dvfsrc.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/regulator/mtk-dvfsrc-regulator.ko":"mt6761"})
