@@ -2373,6 +2373,9 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 	struct pci_dev *pdev = port->pcidev;
 	int err;
 
+	if (!device_find_child(dev, NULL, match_any))
+		return 0;
+
 	if (port->suspend_mode == LINK_STATE_L12) {
 		dev_info(port->dev, "pcie LTSSM=%#x, pcie L1SS_pm=%#x\n",
 			 readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
@@ -2395,9 +2398,6 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 
 		mtk_pcie_dump_pextp_info(port);
 	} else {
-		if (!device_find_child(dev, NULL, match_any))
-			return 0;
-
 		if (mtk_pcie_in_use(port->port_num)) {
 			port->skip_suspend = true;
 			dev_info(port->dev, "port%d in use, keep active\n", port->port_num);
@@ -2433,6 +2433,9 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 	struct pci_dev *pdev = port->pcidev;
 	int err;
 
+	if (!device_find_child(dev, NULL, match_any))
+		return 0;
+
 	if (port->suspend_mode == LINK_STATE_L12) {
 		port->data->clkbuf_control(port, true);
 
@@ -2451,9 +2454,6 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 				return err;
 		}
 	} else {
-		if (!device_find_child(dev, NULL, match_any))
-			return 0;
-
 		if (port->port_num == 1 && port->skip_suspend) {
 			port->skip_suspend = false;
 			dev_info(port->dev, "port%d resume done\n", port->port_num);
