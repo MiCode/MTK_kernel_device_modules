@@ -999,7 +999,6 @@ void mml_core_init_config(struct mml_frame_config *cfg);
 void mml_core_deinit_config(struct mml_frame_config *cfg);
 
 /**
- * mml_core_submit_task - queue the task in config work thread
  * mml_core_submit_task - submit and config the task. If the queue operation is
  * presented, queue the task in config work thread; otherwise, config the task
  * in current thread.
