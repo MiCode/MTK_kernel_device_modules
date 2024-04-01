@@ -86,7 +86,7 @@ enum wifi2mbr_status mbraink_bridge_wifi_get_data(enum wifi2mbr_tag tag,
 						void *data,
 						unsigned short *real_len)
 {
-	enum wifi2mbr_status ret = WIFI2MBR_NO_DATA;
+	enum wifi2mbr_status ret = WIFI2MBR_FAILURE;
 
 	mutex_lock(&bridge_wifi_lock);
 

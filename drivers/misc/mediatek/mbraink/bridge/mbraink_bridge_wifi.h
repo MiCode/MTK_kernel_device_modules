@@ -7,14 +7,13 @@
 #define MBRAINK_BRIDGE_WIFI_H
 
 enum wifi2mbr_status {
-	WIFI2MBR_NO_DATA,
-	WIFI2MBR_DATA_OK_END,
-	WIFI2MBR_DATA_OK_AGAIN,
+	WIFI2MBR_SUCCESS,
+	WIFI2MBR_FAILURE,
 };
 
 enum mbr2wifi_reason {
-	MBR2WIFI_TEST1,
-	MBR2WIFI_TEST2,
+	MBR2WIFI_TRX_BIG_DATA,
+	MBR2WIFI_TEST_LP_RATIO,
 };
 
 struct wifi2mbr_hdr {
@@ -28,6 +27,7 @@ enum wifi2mbr_tag {
 	WIFI2MBR_TAG_LLS_RATE,
 	WIFI2MBR_TAG_LLS_RADIO,
 	WIFI2MBR_TAG_LLS_AC,
+	WIFI2MBR_TAG_LP_RATIO,
 	WIFI2MBR_TAG_MAX
 };
 
@@ -40,6 +40,7 @@ enum wifi2mbr_tag {
 /* struct for WIFI2MBR_TAG_LLS_RATE */
 struct wifi2mbr_llsRateInfo {
 	struct wifi2mbr_hdr hdr;
+	u64 timestamp;
 	unsigned int rate_idx; /* rate idx, ref: LLS_RATE_XXX_MASK */
 	unsigned int bitrate;
 	unsigned int tx_mpdu;
@@ -51,6 +52,7 @@ struct wifi2mbr_llsRateInfo {
 /* struct for WIFI2MBR_TAG_LLS_RADIO */
 struct wifi2mbr_llsRadioInfo {
 	struct wifi2mbr_hdr hdr;
+	u64 timestamp;
 	int radio;
 	unsigned int on_time;
 	unsigned int tx_time;
@@ -71,11 +73,11 @@ enum enum_mbr_wifi_ac {
 /* struct for WIFI2MBR_TAG_LLS_AC */
 struct wifi2mbr_llsAcInfo {
 	struct wifi2mbr_hdr hdr;
+	u64 timestamp;
 	enum enum_mbr_wifi_ac ac;
 	unsigned int tx_mpdu;
 	unsigned int rx_mpdu;
 	unsigned int tx_mcast;
-	unsigned int rx_ampdu;
 	unsigned int tx_ampdu;
 	unsigned int mpdu_lost;
 	unsigned int retries;
@@ -83,6 +85,18 @@ struct wifi2mbr_llsAcInfo {
 	unsigned int contention_time_max;
 	unsigned int contention_time_avg;
 	unsigned int contention_num_samples;
+};
+
+/* struct for WIFI2MBR_TAG_LP_RATIO */
+struct wifi2mbr_lpRatioInfo {
+	struct wifi2mbr_hdr hdr;
+	u64 timestamp;
+	int radio;
+	unsigned int total_time;
+	unsigned int tx_time;
+	unsigned int rx_time;
+	unsigned int rx_listen_time;
+	unsigned int sleep_time;
 };
 
 struct mbraink2wifi_ops {
