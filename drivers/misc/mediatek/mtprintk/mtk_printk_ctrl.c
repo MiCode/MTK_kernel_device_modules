@@ -67,6 +67,10 @@ void update_uartlog_status(bool new_value, int value)
 			value, printk_ctrl_disable == 1 ? 0 : 1);
 	}
 
+#if IS_ENABLED(CONFIG_MTK_PRINTK_DEBUG)
+	set_uart_status(!printk_ctrl_disable);
+#endif
+
 	if (printk_ctrl_disable == 1) {
 		console_list_lock();
 		for_each_console(bcon) {
