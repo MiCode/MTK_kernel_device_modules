@@ -2829,7 +2829,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 	};
 
 	usb_meta: usb_meta {
-		compatible = "mediatek,usb_meta";
+		compatible = "mediatek,usb-meta";
 		udc = <&usb>;
 	};
 

@@ -2805,6 +2805,7 @@ cpus {
 			mediatek,force-vbus;
 			mediatek,clk-mgr;
 			mediatek,usb3-drd;
+			mediatek,smc-req;
 			usb-role-switch;
 			mediatek,noise-still-tr;
 			mediatek,syscon-wakeup = <&infracfg_ao_clk 0x200 103>;

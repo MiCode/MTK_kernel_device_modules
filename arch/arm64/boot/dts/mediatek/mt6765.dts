@@ -3205,7 +3205,7 @@ pwrap: pwrap@1000d000 {
 	};
 
 	usb_meta: usb_meta {
-		compatible = "mediatek,usb_meta";
+		compatible = "mediatek,usb-meta";
 		udc = <&usb>;
 	};
 
