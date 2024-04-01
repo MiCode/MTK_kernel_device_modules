@@ -1198,21 +1198,6 @@ static void hdr_task_done_readback(struct mml_comp *comp, struct mml_task *task,
 	if (!dest->pq_config.en_hdr || !task->pq_task->hdr_hist[pipe])
 		goto exit;
 
-	if (!dest->pq_config.en_hdr) {
-		s32 i;
-		u32 *phist = kmalloc(HDR_HIST_NUM*sizeof(u32), GFP_KERNEL);
-		void __iomem *base = comp->base;
-
-		for (i = 0; i < HDR_HIST_NUM; i++) {
-			if (i == 57) {
-				phist[i] = readl(base + hdr->data->reg_table[HDR_LBOX_DET_4]);
-				continue;
-			}
-			phist[i] = readl(base + hdr->data->reg_table[HDR_HIST_DATA]);
-		}
-		mml_pq_dc_hdr_readback(task, ccfg->pipe, phist);
-	}
-
 	offset = vcp ? task->pq_task->hdr_hist[pipe]->va_offset : 0;
 
 	mml_pq_msg("%s job_id[%d] id[%d] pipe[%d] en_hdr[%d] va[%p] pa[%pad]",
