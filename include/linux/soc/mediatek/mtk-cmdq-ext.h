@@ -103,10 +103,10 @@ enum {CMDQ_PREBUILT_MDP, CMDQ_PREBUILT_MML, CMDQ_PREBUILT_VFMT,
 
 /* Compatible with 32bit division and mold operation */
 #if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
-#define DO_COMMON_DIV(x, base) ((x) / (base))
-#define DO_COMMMON_MOD(x, base) ((x) % (base))
+#define DO_COMMON_DIV_CMDQ(x, base) (do_div((x), (base)))
+#define DO_COMMMON_MOD_CMDQ(x, base) ((x) % (base))
 #else
-#define DO_COMMON_DIV(x, base) ({                   \
+#define DO_COMMON_DIV_CMDQ(x, base) ({                   \
 	uint64_t result = 0;                        \
 	if (sizeof(x) < sizeof(uint64_t))           \
 		result = ((x) / (base));            \
@@ -117,7 +117,7 @@ enum {CMDQ_PREBUILT_MDP, CMDQ_PREBUILT_MML, CMDQ_PREBUILT_VFMT,
 	}                                           \
 	result;                                     \
 })
-#define DO_COMMMON_MOD(x, base) ({                  \
+#define DO_COMMMON_MOD_CMDQ(x, base) ({                  \
 	uint32_t result = 0;                        \
 	if (sizeof(x) < sizeof(uint64_t))           \
 		result = ((x) % (base));            \
@@ -133,7 +133,7 @@ enum {CMDQ_PREBUILT_MDP, CMDQ_PREBUILT_MML, CMDQ_PREBUILT_VFMT,
  * which is, 1 microsecond = 26 ticks
  */
 #define CMDQ_US_TO_TICK(_t)		(_t * 26)
-#define CMDQ_TICK_TO_US(_t)		(DO_COMMON_DIV(_t, 26))
+#define CMDQ_TICK_TO_US(_t)		(DO_COMMON_DIV_CMDQ(_t, 26))
 
 extern int gce_shift_bit;
 extern unsigned long long gce_mminfra;
