@@ -35,7 +35,12 @@
 #define PHYA_U2_CR0_1			0x11
 #define RG_USB20_INTR_CAL		GENMASK(5,0)
 #define RG_USB20_INTR_CAL_SHIFT		0
-#define RG_USB20_INTR_CAL_MASK		0x3f
+#define RG_USB20_INTR_CAL_MASK		0x3F
+
+#define PHYA_U2_CR1_0			0x14
+#define RG_USB20_FS_SR			GENMASK(2,0)
+#define RG_USB20_FS_SR_SHIFT		0
+#define RG_USB20_FS_SR_MASK		0x7
 
 #define PHYA_U2_CR2_0			0x18
 #define RG_USB20_SQTH			GENMASK(3,0)
@@ -60,46 +65,121 @@
 #define RG_USB20_HS_PE_SHIFT		4
 #define RG_USB20_HS_PE_MASK		0x7
 
+#define PHYA_EU2_CR1_0			0x24
+#define RG_EUSB20_FS_CR			GENMASK(2,0)
+#define RG_EUSB20_FS_CR_SHIFT	0
+#define RG_EUSB20_FS_CR_MASK		0x7
+
+#define RG_EUSB20_LS_CR			GENMASK(6,4)
+#define RG_EUSB20_LS_CR_SHIFT	4
+#define RG_EUSB20_LS_CR_MASK		0x7
+
+#define PHYA_EU2_CR1_3			0x27
+#define RG_EUSB20_FSRX_HYS_SEL	GENMASK(7,6)
+#define RG_EUSB20_FSRX_HYS_SEL_SHIFT	6
+#define RG_EUSB20_FSRX_HYS_SEL_MASK		0x3
+
+#define PHYA_EU2_CR2_0			0x28
+#define RG_EUSB20_HSRX_TERM_CAL		GENMASK(7,4)
+#define RG_EUSB20_HSRX_TERM_CAL_SHIFT	4
+#define RG_EUSB20_HSRX_TERM_CAL_MASK	0xF
+
+#define PHYA_EU2_CR2_1			0x29
+#define RG_EUSB20_HSTX_IMPN		GENMASK(4,0)
+#define RG_EUSB20_HSTX_IMPN_SHIFT	0
+#define RG_EUSB20_HSTX_IMPN_MASK	0x1F
+
+#define PHYA_EU2_CR2_2			0x2A
+#define RG_EUSB20_HSTX_IMPP		GENMASK(4,0)
+#define RG_EUSB20_HSTX_IMPP_SHIFT	0
+#define RG_EUSB20_HSTX_IMPP_MASK	0x1F
+
+#define PHYA_U2_EXT_CR0_0		0x30
+#define RG_USB20_OSC_CALI		GENMASK(6,0)
+#define RG_USB20_OSC_CALI_SHIFT		0
+#define RG_USB20_OSC_CALI_MASK		0x7F
+
+#define PHYD_COM_CR2_0			0x88
+#define RG_USB20_MANU_MODE		BIT(3)
+#define RG_USB20_PU_DP			BIT(6)
+
+#define PHYD_COM_CR2_1			0x89
+#define RG_INIT_SW_SEL			BIT(6)
+#define RG_INIT_SW_SEL_SHIFT		6
+#define RG_INIT_SW_SEL_MASK		0x1
+
 #define PHYA_COM_CR0_0			0x0
 #define PHYA_COM_CR0_3			0x3
 #define PHYA_U2_CR0_2			0x12
 #define PHYA_U2_CR0_3			0x13
 #define PHA_EU2_CR0_1			0x21
 #define PHA_EU2_CR0_2			0x22
-#define PHYD_COM_CR2_1			0x89
 #define PHYD_COM_CR2_3			0x8b
 #define PHYA_U2_CR2_1			0x0019
 #define PHYD_FM_CR0_1			0x00A5
 
 /* MT6379 VID */
-#define MT6379_REG_DEV_INFO	0x70
+#define MT6379_REG_DEV_INFO	0x00
 #define MT6379_VENID_MASK	GENMASK(7, 4)
+#define MT6379_VENDOR_ID	0x70
 
 /* EUSB EFUSE */
-#define EUSB_RSV_81			0x381
-#define EUSB_RSV_82			0x382
+#define EUSB_RSV_23	0x323
+#define EUSB_RSV_24	0x324
+#define EUSB_RSV_25	0x325
+#define EUSB_RSV_26	0x326
+#define EUSB_RSV_27	0x327
+#define EUSB_RSV_81	0x381
+#define EUSB_RSV_82	0x382
+
+/* EFUSE TOP MASK */
+#define RG_USB20_INTR_CAL_TOP_MASK	 0x3F
+#define RG_USB20_TERM_CAL_TOP_MASK	 0xF
+#define RG_EUSB20_HSTX_IMPN_TOP_MASK	 0xF8
+#define RG_EUSB20_HSTX_IMPP_TOP_MASK	 0xF8
+#define RG_EUSB20_HSRX_TERM_CAL_TOP_MASK 0xF0
+#define RG_USB20_OSC_CALI_TOP_MASK	 0x7F
+#define RG_EUSB20_FS_CR_TOP_MASK		 0x7
+#define RG_EUSB20_LS_CR_TOP_MASK		 0x7
+
+/* EFUSE TOP SHIFT */
+#define RG_EUSB20_HSTX_IMPN_TOP_SFT	3
+#define RG_EUSB20_HSTX_IMPP_TOP_SFT	3
 
 /* U2 */
-#define MTK_USB_STR	"mtk_eusb2"
-#define VRT_SEL_STR	"vrt_sel"
-#define DISCTH_STR	"discth"
-#define RX_SQTH_STR	"rx_sqth"
-#define PRE_EMP_STR	"pre_emphasis"
-#define EQ_STR		"equalization"
-#define INTR_CAL_STR	"intr_cal"
-#define TERM_CAL_STR	"term_cal"
-#define EUSB2_SQTH_STR	"eusb2_sqth"
+#define MTK_USB_STR		"mtk_eusb2"
+#define VRT_SEL_STR		"vrt_sel"
+#define DISCTH_STR		"discth"
+#define RX_SQTH_STR		"rx_sqth"
+#define PRE_EMP_STR		"pre_emphasis"
+#define EQ_STR			"equalization"
+#define INTR_OFS_STR		"intr_ofs"
+#define TERM_OFS_STR		"term_ofs"
+#define EUSB2_SQTH_STR		"eusb2_sqth"
 #define EUSB2_HSTX_SR_STR	"eusb2_hstx_sr"
 #define EUSB2_REV_COM		"eusb2_tx_swing_enhance"
+
+#define PHY_MODE_DPPULLUP_SET	5
+#define PHY_MODE_DPPULLUP_CLR	6
 
 struct eusb2_repeater {
 	struct device *dev;
 	struct regmap *regmap;
 	struct phy *phy;
 	u16 base;
-	/* tuning parameter */
+	/* sw efuse */
 	int intr_cal;
 	int term_cal;
+	int osc_cali;
+	int hstx_impn;
+	int hstx_impp;
+	int hsrx_term_cal;
+	int fs_cr;
+	int ls_cr;
+	int intr_ofs;
+	int term_ofs;
+	int host_intr_ofs;
+	int host_term_ofs;
 	/* Device */
 	int vrt_sel;
 	int rx_sqth;
@@ -112,6 +192,9 @@ struct eusb2_repeater {
 	int host_discth;
 	int host_pre_emphasis;
 	int host_equalization;
+	/* Common */
+	int usb20_fs_sr;
+	int eusb20_fsrx_hys_sel;
 	enum phy_mode mode;
 	struct proc_dir_entry *root;
 	struct work_struct procfs_work;
@@ -121,6 +204,17 @@ struct eusb2_repeater {
 static void eusb2_rptr_prop_parse(struct eusb2_repeater *rptr)
 {
 	struct device *dev = rptr->dev;
+	const char *ofs_str;
+	u32 val = 0;
+
+	/* Common */
+	if (device_property_read_u32(dev, "mediatek,usb20-fs-sr",
+				&rptr->usb20_fs_sr) || rptr->usb20_fs_sr < 0)
+		rptr->usb20_fs_sr =-EINVAL;
+
+	if (device_property_read_u32(dev, "mediatek,eusb20-fsrx-hys-sel",
+				&rptr->eusb20_fsrx_hys_sel) || rptr->eusb20_fsrx_hys_sel < 0)
+		rptr->eusb20_fsrx_hys_sel =-EINVAL;
 
 	/* Device */
 	if (device_property_read_u32(dev, "mediatek,vrt-sel",
@@ -172,10 +266,38 @@ static void eusb2_rptr_prop_parse(struct eusb2_repeater *rptr)
 		rptr->host_vrt_sel, rptr->host_rx_sqth, rptr->host_discth, rptr->host_pre_emphasis,
 		rptr->host_equalization);
 
+	/* HW efuse, SW mode */
+	if (device_property_read_string(dev, "mediatek,intr-ofs",
+				&ofs_str) || kstrtoint(ofs_str, 10, &rptr->intr_ofs) < 0)
+		rptr->intr_ofs = -(RG_USB20_INTR_CAL_MASK + 1);
+
+	if (device_property_read_string(dev, "mediatek,term-ofs",
+				&ofs_str) || kstrtoint(ofs_str, 10, &rptr->term_ofs) < 0)
+		rptr->term_ofs = -(RG_USB20_TERM_CAL_MASK + 1);
+
+	if (device_property_read_string(dev, "mediatek,host-intr-ofs",
+				&ofs_str) || kstrtoint(ofs_str, 10, &rptr->host_intr_ofs) < 0)
+		rptr->host_intr_ofs = -(RG_USB20_INTR_CAL_MASK + 1);
+
+	if (device_property_read_string(dev, "mediatek,host-term-ofs",
+				&ofs_str) || kstrtoint(ofs_str, 10, &rptr->host_term_ofs) < 0)
+		rptr->host_term_ofs = -(RG_USB20_TERM_CAL_MASK + 1);
+
+	/* Read efuse RG to set this default value */
+	regmap_read(rptr->regmap, rptr->base + PHYA_U2_CR0_1, &val);
+	rptr->intr_cal = val;
+	regmap_read(rptr->regmap, rptr->base + PHYA_U2_CR2_2, &val);
+	rptr->term_cal = val;
+
+	dev_info(dev, "intr-cal:%d, term-cal:%d",
+		rptr->intr_cal, rptr->term_cal);
+	dev_info(dev, "intr-cal-ofs:%d, term-cal-ofs:%d, host-intr-cal-ofs:%d, host-term-cal-ofs:%d",
+		rptr->intr_ofs, rptr->term_ofs,
+		rptr->host_intr_ofs, rptr->host_term_ofs);
 
 }
 
-static void eusb2_prop_set(struct eusb2_repeater *rptr)
+static void eusb2_device_prop_set(struct eusb2_repeater *rptr)
 {
 
 	if (rptr->vrt_sel != -EINVAL)
@@ -197,6 +319,31 @@ static void eusb2_prop_set(struct eusb2_repeater *rptr)
 	if (rptr->equalization != -EINVAL)
 		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_3, RG_USB20_HS_EQ,
 			rptr->equalization << RG_USB20_HS_EQ_SHIFT);
+
+	/* HW efuse, sw mode */
+	if (rptr->intr_cal != -EINVAL) {
+		int intr_cal_val = rptr->intr_cal + rptr->intr_ofs;
+
+		if (rptr->intr_ofs < -RG_USB20_INTR_CAL_MASK ||
+				rptr->intr_ofs > RG_USB20_INTR_CAL_MASK ||
+				intr_cal_val < 0 || intr_cal_val > RG_USB20_INTR_CAL_MASK)
+			intr_cal_val = rptr->intr_cal;
+
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_1, RG_USB20_INTR_CAL,
+			intr_cal_val << RG_USB20_INTR_CAL_SHIFT);
+	}
+
+	if (rptr->term_cal != -EINVAL) {
+		int term_cal_val = rptr->term_cal + rptr->term_ofs;
+
+		if (rptr->term_ofs < -RG_USB20_TERM_CAL_MASK ||
+				rptr->term_ofs > RG_USB20_TERM_CAL_MASK ||
+				term_cal_val < 0 || term_cal_val > RG_USB20_TERM_CAL_MASK)
+			term_cal_val = rptr->term_cal;
+
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_2, RG_USB20_TERM_CAL,
+			term_cal_val << RG_USB20_TERM_CAL_SHIFT);
+	}
 
 }
 
@@ -223,16 +370,48 @@ static void eusb2_host_prop_set(struct eusb2_repeater *rptr)
 		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_3, RG_USB20_HS_EQ,
 			rptr->host_equalization << RG_USB20_HS_EQ_SHIFT);
 
+	/* HW efuse, sw mode */
+	if (rptr->intr_cal != -EINVAL) {
+		int host_intr_cal_val = rptr->intr_cal + rptr->host_intr_ofs;
+
+		if (rptr->host_intr_ofs < -RG_USB20_INTR_CAL_MASK ||
+				rptr->host_intr_ofs > RG_USB20_INTR_CAL_MASK ||
+				host_intr_cal_val < 0 || host_intr_cal_val > RG_USB20_INTR_CAL_MASK)
+			host_intr_cal_val = rptr->intr_cal;
+
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_1, RG_USB20_INTR_CAL,
+			host_intr_cal_val << RG_USB20_INTR_CAL_SHIFT);
+	}
+
+	if (rptr->term_cal != -EINVAL) {
+		int host_term_cal_val = rptr->term_cal + rptr->host_term_ofs;
+
+		if (rptr->host_term_ofs < -RG_USB20_TERM_CAL_MASK ||
+				rptr->host_term_ofs > RG_USB20_TERM_CAL_MASK ||
+				host_term_cal_val < 0 || host_term_cal_val > RG_USB20_TERM_CAL_MASK)
+			host_term_cal_val = rptr->term_cal;
+
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_2, RG_USB20_TERM_CAL,
+			host_term_cal_val << RG_USB20_TERM_CAL_SHIFT);
+	}
+
 }
 
-static void eusb2_rptr_prop_set(struct eusb2_repeater *rptr)
+static void eusb2_efuse_prop_set(struct eusb2_repeater *rptr)
 {
 	u32 value1;
 	u32 value2;
+	u32 value3;
+	u32 osc;
+	u32 fs_cr;
+	u32 ls_cr;
 
-	/* eUSB2 eFUSE */
+	/* eUSB2 efuse */
 	regmap_read(rptr->regmap, EUSB_RSV_81, &value1);
 	regmap_read(rptr->regmap, EUSB_RSV_82, &value2);
+
+	if (!(value1 | value2))
+		goto hw_efuse_sw_mode;
 
 	/* 0x81 */
 	regmap_update_bits(rptr->regmap, rptr->base + PHA_EU2_CR0_2, (value1 & 0x40) >> 6, (value1 & 0x40) >> 6);
@@ -249,6 +428,70 @@ static void eusb2_rptr_prop_set(struct eusb2_repeater *rptr)
 	regmap_update_bits(rptr->regmap, rptr->base + PHA_EU2_CR0_2, (value2 & 0x4) << 4, (value2 & 0x4) << 4);
 	regmap_update_bits(rptr->regmap, rptr->base + PHA_EU2_CR0_2, (value2 & 0x2) << 4, (value2 & 0x2) << 4);
 	regmap_update_bits(rptr->regmap, rptr->base + PHA_EU2_CR0_2, (value2 & 0x1) << 4, (value2 & 0x1) << 4);
+
+hw_efuse_sw_mode:
+
+	/* HW efuse, SW mode sel */
+	regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_1, RG_INIT_SW_SEL, RG_INIT_SW_SEL);
+
+	/* EFUSE_USB20_INTR_CAL */
+	regmap_read(rptr->regmap, EUSB_RSV_23, &value3);
+	if (value3 & RG_USB20_INTR_CAL_TOP_MASK) {
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_1, RG_USB20_INTR_CAL,
+				(value3 & RG_USB20_INTR_CAL_TOP_MASK) << RG_USB20_INTR_CAL_SHIFT);
+		rptr->intr_cal = value3 & RG_USB20_INTR_CAL_TOP_MASK;
+	}
+
+	/* EFUSE_USB20_TERM_CAL */
+	regmap_read(rptr->regmap, EUSB_RSV_24, &value3);
+	if (value3 & RG_USB20_TERM_CAL_TOP_MASK) {
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_2, RG_USB20_TERM_CAL,
+				(value3 & RG_USB20_TERM_CAL_TOP_MASK) << RG_USB20_TERM_CAL_SHIFT);
+		rptr->term_cal = value3 & RG_USB20_TERM_CAL_TOP_MASK;
+	}
+
+	/* EFUSE_EUSB20_HSTX_IMPN */
+	regmap_read(rptr->regmap, EUSB_RSV_25, &value3);
+	if (value3 & RG_EUSB20_HSTX_IMPN_TOP_MASK)
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR2_1, RG_EUSB20_HSTX_IMPN,
+				(value3 & RG_EUSB20_HSTX_IMPN_TOP_MASK) >> RG_EUSB20_HSTX_IMPN_TOP_SFT);
+
+	/* EFUSE_EUSB20_HSTX_IMPP */
+	regmap_read(rptr->regmap, EUSB_RSV_26, &value3);
+	if (value3 & RG_EUSB20_HSTX_IMPP_TOP_MASK)
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR2_2, RG_EUSB20_HSTX_IMPP,
+				(value3 & RG_EUSB20_HSTX_IMPP_TOP_MASK) >> RG_EUSB20_HSTX_IMPP_TOP_SFT);
+
+	/* EFUSE_EUSB20_HSRX_TERM_CAL */
+	regmap_read(rptr->regmap, EUSB_RSV_24, &value3);
+	if (value3 & RG_EUSB20_HSRX_TERM_CAL_TOP_MASK)
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR2_0, RG_EUSB20_HSRX_TERM_CAL,
+				(value3 & RG_EUSB20_HSRX_TERM_CAL_TOP_MASK));
+
+
+	/* since osc, fs_cr, ls_cr could be efuse 0 */
+	regmap_read(rptr->regmap, EUSB_RSV_27, &osc);
+	regmap_read(rptr->regmap, EUSB_RSV_25, &fs_cr);
+	regmap_read(rptr->regmap, EUSB_RSV_26, &ls_cr);
+
+	osc = (osc & RG_USB20_OSC_CALI_TOP_MASK);
+	fs_cr = (fs_cr & RG_EUSB20_FS_CR_TOP_MASK);
+	ls_cr = (ls_cr & RG_EUSB20_LS_CR_TOP_MASK);
+
+	if (!(osc | fs_cr | ls_cr))
+		return;
+
+	/* EFUSE_USB20_OSC_CALI */
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_EXT_CR0_0, RG_USB20_OSC_CALI,
+			osc << RG_USB20_OSC_CALI_SHIFT);
+
+	/* EFUSE_EUSB20_FS_CR */
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR1_0, RG_EUSB20_FS_CR,
+			fs_cr << RG_EUSB20_FS_CR_SHIFT);
+
+	/* EFUSE_EUSB20_LS_CR */
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR1_0, RG_EUSB20_LS_CR,
+			ls_cr << RG_EUSB20_LS_CR_SHIFT);
 
 }
 
@@ -328,7 +571,15 @@ static int eusb2_repeater_power_on(struct phy *phy)
 	regmap_update_bits(rptr->regmap, rptr->base + PHYD_FM_CR0_1, RG_FM_DUMMY, RG_FM_DUMMY);
 
 	/* Set phy tuning */
-	eusb2_rptr_prop_set(rptr);
+	eusb2_efuse_prop_set(rptr);
+
+	/* RG_USB20_FS_SR */
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR1_0, RG_USB20_FS_SR,
+			rptr->usb20_fs_sr << RG_USB20_FS_SR_SHIFT);
+
+	/* RG_EUSB20_FSRX_HYS_SEL */
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR1_3, RG_EUSB20_FSRX_HYS_SEL,
+			rptr->eusb20_fsrx_hys_sel << RG_EUSB20_FSRX_HYS_SEL_SHIFT);
 
 	return 0;
 }
@@ -360,10 +611,23 @@ static int eusb2_repeater_set_mode(struct phy *phy,
 	if (!submode) {
 		switch (mode) {
 		case PHY_MODE_USB_DEVICE:
-			eusb2_prop_set(rptr);
+			eusb2_device_prop_set(rptr);
 			break;
 		case PHY_MODE_USB_HOST:
 			eusb2_host_prop_set(rptr);
+			break;
+		default:
+			return -EINVAL;
+		}
+	} else {
+		switch (submode) {
+		case PHY_MODE_DPPULLUP_SET:
+			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_0,
+				RG_USB20_MANU_MODE | RG_USB20_PU_DP, RG_USB20_MANU_MODE | RG_USB20_PU_DP);
+			break;
+		case PHY_MODE_DPPULLUP_CLR:
+			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_0,
+				RG_USB20_MANU_MODE | RG_USB20_PU_DP, 0);
 			break;
 		default:
 			return -EINVAL;
@@ -434,6 +698,7 @@ static ssize_t proc_vrt_sel_write(struct file *file,
 		return -EINVAL;
 
 	rptr->vrt_sel = val;
+	rptr->host_vrt_sel = val;
 
 	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_0, RG_USB20_VRT_SEL,
 			rptr->vrt_sel << RG_USB20_VRT_SEL_SHIFT);
@@ -486,6 +751,7 @@ static ssize_t proc_discth_write(struct file *file,
 		return -EINVAL;
 
 	rptr->discth = val;
+	rptr->host_discth = val;
 
 	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_0, RG_USB20_DISCTH,
 			rptr->discth << RG_USB20_DISCTH_SHIFT);
@@ -538,6 +804,7 @@ static ssize_t proc_rx_sqth_write(struct file *file,
 		return -EINVAL;
 
 	rptr->rx_sqth = val;
+	rptr->host_rx_sqth = val;
 
 	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_0, RG_USB20_SQTH,
 			rptr->rx_sqth << RG_USB20_SQTH_SHIFT);
@@ -590,6 +857,7 @@ static ssize_t proc_pre_emphasis_write(struct file *file,
 		return -EINVAL;
 
 	rptr->pre_emphasis = val;
+	rptr->host_pre_emphasis = val;
 
 	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_3, RG_USB20_HS_PE,
 			rptr->pre_emphasis << RG_USB20_HS_PE_SHIFT);
@@ -642,6 +910,7 @@ static ssize_t proc_equalization_write(struct file *file,
 		return -EINVAL;
 
 	rptr->equalization = val;
+	rptr->host_equalization = val;
 
 	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_3, RG_USB20_HS_EQ,
 			rptr->equalization << RG_USB20_HS_EQ_SHIFT);
@@ -652,6 +921,146 @@ static ssize_t proc_equalization_write(struct file *file,
 static const struct proc_ops proc_equalization_fops = {
 	.proc_open = proc_equalization_open,
 	.proc_write = proc_equalization_write,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+static int proc_intr_ofs_show(struct seq_file *s, void *unused)
+{
+	struct eusb2_repeater *rptr = s->private;
+	u32 tmp;
+	char str[16];
+
+	regmap_read(rptr->regmap, rptr->base + PHYA_U2_CR0_1, &tmp);
+	tmp >>= RG_USB20_INTR_CAL_SHIFT;
+	tmp &= RG_USB20_INTR_CAL_MASK;
+
+	cover_val_to_str(tmp, 6, str);
+
+	seq_printf(s, "%s = %d\n", INTR_OFS_STR,
+		(rptr->intr_ofs == -(RG_USB20_INTR_CAL_MASK + 1)? 0 : rptr->intr_ofs));
+	seq_printf(s, "%s = %d\n", "host_intr_ofs",
+		(rptr->host_intr_ofs == -(RG_USB20_INTR_CAL_MASK + 1)? 0 : rptr->host_intr_ofs));
+	seq_printf(s, "%s = %d\n", "intr_cal", rptr->intr_cal);
+	seq_printf(s, "%s = %s (%d)\n", "RG intr cal val", str, tmp);
+
+	return 0;
+}
+
+static int proc_intr_ofs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, proc_intr_ofs_show, pde_data(inode));
+}
+
+static ssize_t proc_intr_ofs_write(struct file *file,
+	const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	struct seq_file *s = file->private_data;
+	struct eusb2_repeater *rptr = s->private;
+	char buf[20];
+	u32 val, new_val;
+
+	memset(buf, 0x00, sizeof(buf));
+	if (count > sizeof(buf) - 1)
+		return -EINVAL;
+
+	if (copy_from_user(&buf, ubuf, count))
+		return -EFAULT;
+
+	if (kstrtoint(buf, 10, &val))
+		return -EINVAL;
+
+	new_val = rptr->intr_cal + val;
+
+	if (new_val < 0 || new_val > RG_USB20_INTR_CAL_MASK) {
+		dev_info(rptr->dev, "intr_cal (%d) +/- intr_ofs (%d) out of range.\n",
+		rptr->intr_cal, val);
+		return -EINVAL;
+	}
+
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_1, RG_USB20_INTR_CAL,
+			new_val << RG_USB20_INTR_CAL_SHIFT);
+
+	rptr->intr_ofs = val;
+	rptr->host_intr_ofs = val;
+
+	return count;
+}
+
+static const struct proc_ops proc_intr_ofs_fops = {
+	.proc_open = proc_intr_ofs_open,
+	.proc_write = proc_intr_ofs_write,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+static int proc_term_ofs_show(struct seq_file *s, void *unused)
+{
+	struct eusb2_repeater *rptr = s->private;
+	u32 tmp;
+	char str[16];
+
+	regmap_read(rptr->regmap, rptr->base + PHYA_U2_CR2_2, &tmp);
+	tmp >>= RG_USB20_TERM_CAL_SHIFT;
+	tmp &= RG_USB20_TERM_CAL_MASK;
+
+	cover_val_to_str(tmp, 4, str);
+
+	seq_printf(s, "%s = %d\n", TERM_OFS_STR,
+		(rptr->term_ofs == -(RG_USB20_TERM_CAL_MASK + 1)? 0 : rptr->term_ofs));
+	seq_printf(s, "%s = %d\n", "host_term_ofs",
+		(rptr->host_term_ofs == -(RG_USB20_TERM_CAL_MASK + 1)? 0 : rptr->host_term_ofs));
+	seq_printf(s, "%s = %d\n", "term_cal", rptr->term_cal);
+	seq_printf(s, "%s = %s (%d)\n", "RG term cal val", str, tmp);
+
+	return 0;
+}
+
+static int proc_term_ofs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, proc_term_ofs_show, pde_data(inode));
+}
+
+static ssize_t proc_term_ofs_write(struct file *file,
+	const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	struct seq_file *s = file->private_data;
+	struct eusb2_repeater *rptr = s->private;
+	char buf[20];
+	u32 val, new_val;
+
+	memset(buf, 0x00, sizeof(buf));
+	if (count > sizeof(buf) - 1)
+		return -EINVAL;
+
+	if (copy_from_user(&buf, ubuf, count))
+		return -EFAULT;
+
+	if (kstrtoint(buf, 10, &val))
+		return -EINVAL;
+
+	new_val = rptr->term_cal + val;
+
+	if (new_val < 0 || new_val > RG_USB20_TERM_CAL_MASK) {
+		dev_info(rptr->dev, "term_cal (%d) +/- term_ofs (%d) out of range.\n",
+		rptr->term_cal, val);
+		return -EINVAL;
+	}
+
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_2, RG_USB20_TERM_CAL,
+			new_val << RG_USB20_TERM_CAL_SHIFT);
+
+	rptr->term_ofs = val;
+	rptr->host_term_ofs = val;
+
+	return count;
+}
+
+static const struct proc_ops proc_term_ofs_fops = {
+	.proc_open = proc_term_ofs_open,
+	.proc_write = proc_term_ofs_write,
 	.proc_read = seq_read,
 	.proc_lseek = seq_lseek,
 	.proc_release = single_release,
@@ -706,6 +1115,22 @@ static int rptr_procfs_init(struct eusb2_repeater *rptr)
 			root, &proc_equalization_fops, rptr);
 	if (!file) {
 		dev_info(dev, "failed to creat proc file: %s\n", EQ_STR);
+		ret = -ENOMEM;
+		goto err1;
+	}
+
+	file = proc_create_data(INTR_OFS_STR, 0644,
+			root, &proc_intr_ofs_fops, rptr);
+	if (!file) {
+		dev_info(dev, "failed to creat proc file: %s\n", INTR_OFS_STR);
+		ret = -ENOMEM;
+		goto err1;
+	}
+
+	file = proc_create_data(TERM_OFS_STR, 0644,
+			root, &proc_term_ofs_fops, rptr);
+	if (!file) {
+		dev_info(dev, "failed to creat proc file: %s\n", TERM_OFS_STR);
 		ret = -ENOMEM;
 		goto err1;
 	}
