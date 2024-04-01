@@ -77,6 +77,16 @@ static wait_queue_head_t wait_queue_enque;
 static uint32_t ccu_version;
 static uint32_t clock_num;
 static struct mtk_ccu_clk_name MT6833_ccu_clock_name[] = {
+	{true, "TOP_CCU_CLK"},
+	{true, "CCU_CLK_CAM_CAM"},
+	{true, "CCU_CLK_CAM_LARB13"},
+	{true, "CCU_CLK_CAM_CCU0"},
+	{true, "CCU_CLK_CAM_GALS"},
+	{true, "CCU_CLK_CAM_CCU_GALS"},
+	{false, ""}};
+
+static struct mtk_ccu_clk_name MT6877_ccu_clock_name[] = {
+	{true, "TOP_CCU_CLK"},
 	{true, "CCU_CLK_CAM_CAM"},
 	{true, "CCU_CLK_CAM_LARB13"},
 	{true, "CCU_CLK_CAM_CCU0"},
@@ -1401,6 +1411,9 @@ err_attach:
 		cs = get_checksum((uint8_t *)&(handle.meminfo.shareFd),
 			sizeof(struct CcuMemInfo) - sizeof(unsigned int));
 		if (cs != handle.meminfo.chksum) {
+			LOG_ERR(
+			"CCU_IOCTL_ALLOC_MEM checksum failed: %x\n",
+			cs);
 			ret = -EINVAL;
 			break;
 		}
@@ -1413,6 +1426,8 @@ err_attach:
 			ret);
 			break;
 		}
+		LOG_INF("CCU_IOCTL_ALLOC_MEM size(%d) cached(%d) OK\n",
+			handle.meminfo.size, handle.meminfo.cached);
 		break;
 	}
 
@@ -1658,7 +1673,7 @@ static int ccu_probe(struct platform_device *pdev)
 			devm_ioremap(dev, phy_addr, phy_size);
 #endif
 		LOG_INF("ccu_base pa: 0x%x, size: 0x%x\n", phy_addr, phy_size);
-		LOG_INF("ccu_base va: 0x%lx\n", (uint64_t)g_ccu_device->ccu_base);
+		LOG_INF("ccu_base va: 0x%llx\n", (uint64_t)g_ccu_device->ccu_base);
 
 		/*remap dmem_base*/
 		phy_addr = CCU_DMEM_BASE;
@@ -1671,7 +1686,7 @@ static int ccu_probe(struct platform_device *pdev)
 			devm_ioremap(dev, phy_addr, phy_size);
 #endif
 		LOG_INF("dmem_base pa: 0x%x, size: 0x%x\n", phy_addr, phy_size);
-		LOG_INF("dmem_base va: 0x%lx\n", (uint64_t)g_ccu_device->dmem_base);
+		LOG_INF("dmem_base va: 0x%llx\n", (uint64_t)g_ccu_device->dmem_base);
 
 		phy_addr = CCU_PMEM_BASE;
 		phy_size = CCU_PMEM_SIZE;
@@ -1696,15 +1711,17 @@ static int ccu_probe(struct platform_device *pdev)
 			devm_ioremap(dev, phy_addr, phy_size);
 #endif
 		LOG_INF("camsys_base pa: 0x%x, size: 0x%x\n", phy_addr, phy_size);
-		LOG_INF("camsys_base va: 0x%lx\n", (uint64_t)g_ccu_device->camsys_base);
+		LOG_INF("camsys_base va: 0x%llx\n", (uint64_t)g_ccu_device->camsys_base);
 
 		/* get Clock control from device tree.  */
 
 		// check platform version
 		if (ccu_version == CCU_VER_MT6893)
 			memcpy(clock_name, MT6893_ccu_clock_name, sizeof(MT6893_ccu_clock_name));
-		else
+		else if (ccu_version == CCU_VER_MT6833)
 			memcpy(clock_name, MT6833_ccu_clock_name, sizeof(MT6833_ccu_clock_name));
+		else
+			memcpy(clock_name, MT6877_ccu_clock_name, sizeof(MT6877_ccu_clock_name));
 
 		for (clki = 0; clki < CCU_CLK_PWR_NUM; ++clki) {
 			if (!clock_name[clki].enable)
@@ -1766,7 +1783,7 @@ static int ccu_probe(struct platform_device *pdev)
 		}
 
 		g_ccu_device->dev1 = &pdev1->dev;
-		LOG_INF("ccu1@0x%lx\n", (uint64_t)g_ccu_device->dev1);
+		LOG_INF("ccu1@0x%llx\n", (uint64_t)g_ccu_device->dev1);
 
 		g_ccu_device->irq_num = irq_of_parse_and_map(node, 0);
 		LOG_INF_MUST("probe 1, ccu_base: 0x%llx, bin_base: 0x%llx,",
