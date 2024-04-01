@@ -1600,18 +1600,17 @@ static void mmdvfs_v3_release_step(bool enable_vcp)
 
 	for (i = 0; i < MMDVFS_USER_NUM; i++) {
 		u8 mux_idx = mmdvfs_user[i].target_id;
-		s8 level = mmdvfs_mux[mux_idx].freq_num - 1;
 
 		if (last_test_set_rate[i]) {
 			mmdvfs_vcp_ipi_send_ex(TEST_SET_RATE, (i << 4), 0, NULL, true);
 			last_test_set_rate[i] = 0;
 		}
 		if (last_test_ap_set_opp[i] != -1) {
-			mmdvfs_mux_set_opp(mmdvfs_user[i].name, mmdvfs_mux[mux_idx].freq[level]);
+			mmdvfs_mux_set_opp(mmdvfs_user[i].name, mmdvfs_mux[mux_idx].freq[0]);
 			last_test_ap_set_opp[i] = -1;
 		}
 		if (last_test_ap_set_rate[i] != -1) {
-			clk_set_rate(mmdvfs_user_clk[i], mmdvfs_mux[mux_idx].freq[level]);
+			clk_set_rate(mmdvfs_user_clk[i], mmdvfs_mux[mux_idx].freq[0]);
 			last_test_ap_set_rate[i] = -1;
 		}
 	}
