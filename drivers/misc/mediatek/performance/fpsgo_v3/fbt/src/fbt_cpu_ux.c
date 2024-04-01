@@ -690,15 +690,17 @@ void fpsgo_set_group_dvfs(int start)
 }
 #endif
 
-void fpsgo_boost_non_hwui_policy(struct render_info *thr)
+void fpsgo_boost_non_hwui_policy(struct render_info *thr, int set_vip)
 {
 	if (!thr) {
 		fpsgo_main_trace("%s: NON render info!!!!\n",
 			__func__);
 		return;
 	}
-
-	fpsgo_set_deplist_policy(thr, FPSGO_TASK_VIP);
+	if (set_vip)
+		fpsgo_set_deplist_policy(thr, FPSGO_TASK_VIP);
+	else
+		fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
 }
 
 void fpsgo_set_ux_general_policy(int scrolling)
@@ -1473,6 +1475,9 @@ void fbt_init_ux(struct render_info *info)
 
 void fbt_del_ux(struct render_info *info)
 {
+	if (ux_general_policy)
+		fpsgo_reset_deplist_task_priority(info);
+
 	if (sbe_dy_rescue_enable) {
 		release_all_ux_info(info);
 		for (size_t i = 0; i < HWUI_MAX_FRAME_SAME_TIME; i++) {

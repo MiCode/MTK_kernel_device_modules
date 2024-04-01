@@ -6335,6 +6335,8 @@ void fpsgo_base2fbt_stop_boost(struct render_info *thr)
 	if (!thr)
 		return;
 
+	fpsgo_reset_deplist_task_priority(thr);
+
 	if (thr->boost_info.last_blc == 0)
 		return;
 

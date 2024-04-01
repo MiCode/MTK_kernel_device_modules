@@ -880,6 +880,9 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 
 	fpsgo_thread_lock(&f_render->thr_mlock);
 
+	if(get_ux_general_policy())
+		fpsgo_boost_non_hwui_policy(f_render, 0);
+
 	ret = fpsgo_com_refetch_buffer(f_render, pid, identifier, 0);
 	if (!ret)
 		goto exit;
@@ -936,7 +939,7 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 				enqueue_end_time);
 
 		if (get_ux_general_policy())
-			fpsgo_boost_non_hwui_policy(f_render);
+			fpsgo_boost_non_hwui_policy(f_render, 1);
 
 		fpsgo_comp2fstb_queue_time_update(pid,
 			f_render->buffer_id,
