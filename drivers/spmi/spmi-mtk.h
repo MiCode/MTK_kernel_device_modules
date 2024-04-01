@@ -64,6 +64,8 @@ struct pmif {
 	int spmi_nack_irq;
 	int spmi_p_nack_irq;
 	u32 caps;
+	u32 swintf_err_idx[2];
+	u32 hwintf_err_idx[2];
 };
 
 struct spmi_dev {
@@ -99,6 +101,11 @@ enum spmi_regs {
 	SPMI_REC_CMD_DEC,
 };
 
+struct spmi_nack_monitor_pair {
+	unsigned int slvid;
+	unsigned int addr;
+};
+
 /* pmif debug API declaration */
 extern void spmi_dump_wdt_reg(void);
 extern void spmi_dump_pmif_acc_vio_reg(void);
@@ -106,13 +113,13 @@ extern void spmi_dump_pmic_acc_vio_reg(void);
 extern void spmi_dump_pmif_busy_reg(void);
 extern void spmi_dump_pmif_swinf_reg(void);
 extern void spmi_dump_pmif_all_reg(void);
-extern void spmi_dump_pmif_record_reg(void);
+extern void spmi_dump_pmif_record_reg(int irq_m, int irq_p);
 /* spmi debug API declaration */
 extern void spmi_dump_spmimst_all_reg(void);
 /* pmic debug API declaration */
 extern int spmi_pmif_create_attr(struct device_driver *driver);
 extern int spmi_pmif_dbg_init(struct spmi_controller *ctrl);
-extern void spmi_slvid_nack_cnt_add(unsigned int slaveID);
+extern void spmi_slvid_nack_cnt_add(unsigned int nack_m, unsigned int nack_p);
 extern void get_spmi_slvid_nack_cnt(unsigned int *buf);
 #endif /*__SPMI_MTK_H__*/
 
