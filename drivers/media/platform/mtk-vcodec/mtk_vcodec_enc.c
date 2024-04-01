@@ -571,14 +571,14 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		struct vb2_queue *dst_vq;
 
 		if (ctrl->val) {
-			if (vcp_get_io_device(VCP_IOMMU_SEC)) {
+			if (vcp_get_io_device_ex(VCP_IOMMU_SEC)) {
 				dst_vq = v4l2_m2m_get_vq(ctx->m2m_ctx,
 					V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
 				if (!dst_vq) {
 					mtk_v4l2_err("fail to get dst_vq");
 					return -EINVAL;
 				}
-				dst_vq->dev = vcp_get_io_device(VCP_IOMMU_SEC);
+				dst_vq->dev = vcp_get_io_device_ex(VCP_IOMMU_SEC);
 				mtk_v4l2_debug(4, "[%d] dst_vq use VCP_IOMMU_SEC domain %p", ctx->id, dst_vq->dev);
 			}
 
@@ -2016,8 +2016,8 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 			if (!ctx->enc_params.svp_mode) {
 				if (ctx->dev->support_acp && mtk_venc_input_acp_enable &&
 				    !(buf->flags & V4L2_BUF_FLAG_NO_CACHE_CLEAN) &&
-				    vcp_get_io_device(VCP_IOMMU_ACP_CODEC)) {
-					vq->dev = vcp_get_io_device(VCP_IOMMU_ACP_CODEC);
+				    vcp_get_io_device_ex(VCP_IOMMU_ACP_CODEC)) {
+					vq->dev = vcp_get_io_device_ex(VCP_IOMMU_ACP_CODEC);
 					mtk_v4l2_debug(4, "[%d] src_vq use VCP_IOMMU_ACP_CODEC domain %p",
 						ctx->id, vq->dev);
 				} else if (vq->dev != ctx->dev->smmu_dev) {
@@ -4654,14 +4654,14 @@ int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 	dst_vq->allow_zero_bytesused = 1;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	if (ctx->dev->support_acp && mtk_venc_acp_enable &&
-	    !ctx->enc_params.svp_mode && vcp_get_io_device(VCP_IOMMU_ACP_VENC) != NULL) {
-		dst_vq->dev     = vcp_get_io_device(VCP_IOMMU_ACP_VENC);
+	    !ctx->enc_params.svp_mode && vcp_get_io_device_ex(VCP_IOMMU_ACP_VENC) != NULL) {
+		dst_vq->dev     = vcp_get_io_device_ex(VCP_IOMMU_ACP_VENC);
 		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_ACP_VENC domain %p", name, dst_vq->dev);
 	} else if (ctx->dev->iommu_domain_swtich && (ctx->dev->enc_cnt & 1)) {
-		dst_vq->dev     = vcp_get_io_device(VCP_IOMMU_VDEC);
+		dst_vq->dev     = vcp_get_io_device_ex(VCP_IOMMU_VDEC);
 		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_VDEC domain %p", name, dst_vq->dev);
 	} else {
-		dst_vq->dev     = vcp_get_io_device(VCP_IOMMU_VENC);
+		dst_vq->dev     = vcp_get_io_device_ex(VCP_IOMMU_VENC);
 		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_VENC domain %p", name, dst_vq->dev);
 	}
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)

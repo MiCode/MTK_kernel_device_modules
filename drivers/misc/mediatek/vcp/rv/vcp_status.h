@@ -7,6 +7,7 @@
 #define VCP_STATUS_H
 
 #include "vcp.h"
+#include "vcp_helper.h"
 
 typedef phys_addr_t (*vcp_get_reserve_mem_phys_fp)(enum vcp_reserve_mem_id_t id);
 typedef phys_addr_t (*vcp_get_reserve_mem_virt_fp)(enum vcp_reserve_mem_id_t id);
@@ -20,6 +21,7 @@ typedef unsigned int (*vcp_cmd_fp)(enum feature_id id, enum vcp_cmd_id cmd_id, c
 typedef unsigned int (*is_vcp_suspending_fp)(void);
 typedef unsigned int (*is_vcp_ao_fp)(void);
 typedef struct mtk_ipi_device *(*get_ipidev_fp)(enum feature_id id);
+typedef struct device *(*vcp_get_io_device_fp)(enum VCP_IOMMU_DEV io_num);
 
 struct vcp_status_fp {
 	vcp_get_reserve_mem_phys_fp	vcp_get_reserve_mem_phys;
@@ -34,6 +36,7 @@ struct vcp_status_fp {
 	is_vcp_suspending_fp		is_vcp_suspending;
 	is_vcp_ao_fp				is_vcp_ao;
 	get_ipidev_fp				get_ipidev;
+	vcp_get_io_device_fp			vcp_get_io_device;
 };
 
 typedef int (*mminfra_pwr_ptr)(void);
@@ -67,5 +70,6 @@ unsigned int is_vcp_ao_ex(void);
 void vcp_set_mminfra_cb(struct vcp_mminfra_on_off_st *str_ptr);
 int vcp_register_mminfra_cb_ex(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off,
 	mminfra_dump_ptr mminfra_dump_func);
+struct device *vcp_get_io_device_ex(enum VCP_IOMMU_DEV io_num);
 
 #endif

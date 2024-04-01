@@ -216,7 +216,7 @@ extern struct tasklet_struct vcp_A_irq0_tasklet;
 extern struct tasklet_struct vcp_A_irq1_tasklet;
 
 void dump_vcp_irq_status(void);
-extern void mt_irq_dump_status(int irq);
+extern void mt_irq_dump_status(unsigned int irq);
 
 
 
