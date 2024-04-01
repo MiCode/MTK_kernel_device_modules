@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0
-/*
- * Copyright (C) 2022 Asahi Kasei Microdevices Corporation
- */
+//
+// ak7709.c  --  audio driver for AK7709
+//
+// Copyright (C) 2022 Asahi Kasei Microdevices Corporation
+// Author            Date        Revision
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//                   22/09/21    0.1  Kernel 4.19
+//                   22/12/07    1.0  Kernel 4.19
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -33,7 +39,8 @@
 #include "ak7709ctl.h"
 #endif
 
-#define AK7709_DEBUG                                    //used at debug mode
+//#define AK7709_DEBUG                                    //used at debug mode
+#define akdbgprt(format, arg...) do {} while (0)
 
 /* AK7709 CODEC Private Data */
 struct ak7709_priv {
@@ -145,19 +152,19 @@ static const char * const ak7709_hifi_firmware[] = {
 struct ak7709_raminf ak77dspBasicRam[] = {
 	{ sizeof(ak7709_77dsp1_pram_basic), ak7709_77dsp1_pram_basic },
 	{ sizeof(ak7709_77dsp1_cram_basic), ak7709_77dsp1_cram_basic },
-	// { sizeof(ak7709_77dsp1_ofreg_basic), ak7709_77dsp1_ofreg_basic },
+	{ sizeof(ak7709_77dsp1_ofreg_basic), ak7709_77dsp1_ofreg_basic },
 
-	// { sizeof(ak7709_77dsp2_pram_basic), ak7709_77dsp2_pram_basic },
-	// { sizeof(ak7709_77dsp2_cram_basic), ak7709_77dsp2_cram_basic },
-	// { sizeof(ak7709_77dsp2_ofreg_basic), ak7709_77dsp2_ofreg_basic },
+	{ sizeof(ak7709_77dsp2_pram_basic), ak7709_77dsp2_pram_basic },
+	{ sizeof(ak7709_77dsp2_cram_basic), ak7709_77dsp2_cram_basic },
+	{ sizeof(ak7709_77dsp2_ofreg_basic), ak7709_77dsp2_ofreg_basic },
 
-	// { sizeof(ak7709_77dsp3_pram_basic), ak7709_77dsp3_pram_basic },
-	// { sizeof(ak7709_77dsp3_cram_basic), ak7709_77dsp3_cram_basic },
-	// { sizeof(ak7709_77dsp3_ofreg_basic), ak7709_77dsp3_ofreg_basic },
+	{ sizeof(ak7709_77dsp3_pram_basic), ak7709_77dsp3_pram_basic },
+	{ sizeof(ak7709_77dsp3_cram_basic), ak7709_77dsp3_cram_basic },
+	{ sizeof(ak7709_77dsp3_ofreg_basic), ak7709_77dsp3_ofreg_basic },
 
-	// { sizeof(ak7709_77dsp4_pram_basic), ak7709_77dsp4_pram_basic },
-	// { sizeof(ak7709_77dsp4_cram_basic), ak7709_77dsp4_cram_basic },
-	// { sizeof(ak7709_77dsp4_ofreg_basic), ak7709_77dsp4_ofreg_basic },
+	{ sizeof(ak7709_77dsp4_pram_basic), ak7709_77dsp4_pram_basic },
+	{ sizeof(ak7709_77dsp4_cram_basic), ak7709_77dsp4_cram_basic },
+	{ sizeof(ak7709_77dsp4_ofreg_basic), ak7709_77dsp4_ofreg_basic },
 };
 
 static const char * const ak7709_77dsp_firmware[] = {
@@ -263,21 +270,21 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x400013, 0x00 },   /* AK7709_C0_013_SYNC_DOMAIN1_SET4 */
 	{ 0x400014, 0x80 },   /* AK7709_C0_014_SYNC_DOMAIN2_SET1 */
 	{ 0x400015, 0x03 },   /* AK7709_C0_015_SYNC_DOMAIN2_SET2 */
-	{ 0x400016, 0x01 },   /* AK7709_C0_016_SYNC_DOMAIN2_SET3 */
-	{ 0x400017, 0x04 },   /* AK7709_C0_017_SYNC_DOMAIN2_SET4 */
+	{ 0x400016, 0x03 },   /* AK7709_C0_016_SYNC_DOMAIN2_SET3 */
+	{ 0x400017, 0x03 },   /* AK7709_C0_017_SYNC_DOMAIN2_SET4 */
 	{ 0x400018, 0x80 },   /* AK7709_C0_018_SYNC_DOMAIN3_SET1 */
 	{ 0x400019, 0x03 },   /* AK7709_C0_019_SYNC_DOMAIN3_SET2 */
 	{ 0x40001A, 0x03 },   /* AK7709_C0_01A_SYNC_DOMAIN3_SET3 */
 	{ 0x40001B, 0x03 },   /* AK7709_C0_01B_SYNC_DOMAIN3_SET4 */
 	{ 0x40001C, 0x80 },   /* AK7709_C0_01C_SYNC_DOMAIN4_SET1 */
-	{ 0x40001D, 0x03 },   /* AK7709_C0_01D_SYNC_DOMAIN4_SET2 */
-	{ 0x40001E, 0x01 },   /* AK7709_C0_01E_SYNC_DOMAIN4_SET3 */
-	{ 0x40001F, 0x04 },   /* AK7709_C0_01F_SYNC_DOMAIN4_SET4 */
+	{ 0x40001D, 0x01 },   /* AK7709_C0_01D_SYNC_DOMAIN4_SET2 */
+	{ 0x40001E, 0x0F },   /* AK7709_C0_01E_SYNC_DOMAIN4_SET3 */
+	{ 0x40001F, 0x00 },   /* AK7709_C0_01F_SYNC_DOMAIN4_SET4 */
 
 	{ 0x400020, 0x80 },   /* AK7709_C0_020_SYNC_DOMAIN5_SET1 */
-	{ 0x400021, 0x01 },   /* AK7709_C0_021_SYNC_DOMAIN5_SET2 */
+	{ 0x400021, 0x03 },   /* AK7709_C0_021_SYNC_DOMAIN5_SET2 */
 	{ 0x400022, 0x03 },   /* AK7709_C0_022_SYNC_DOMAIN5_SET3 */
-	{ 0x400023, 0x04 },   /* AK7709_C0_023_SYNC_DOMAIN5_SET4 */
+	{ 0x400023, 0x03 },   /* AK7709_C0_023_SYNC_DOMAIN5_SET4 */
 	{ 0x400024, 0x80 },   /* AK7709_C0_024_SYNC_DOMAIN6_SET1 */
 	{ 0x400025, 0x01 },   /* AK7709_C0_025_SYNC_DOMAIN6_SET2 */
 	{ 0x400026, 0x07 },   /* AK7709_C0_026_SYNC_DOMAIN6_SET3 */
@@ -306,16 +313,16 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x40003D, 0x00 },   /* AK7709_C0_03D_SYNC_DOMAIN_COMMON_SET6 */
 	{ 0x40003E, 0x00 },   /* AK7709_C0_03E_SYNC_DOMAIN_COMMON_SET7 */
 	{ 0x40003F, 0x00 },   /* AK7709_C0_03F_SYNC_DOMAIN_COMMON_SET8 */
-	{ 0x400040, 0x00 },   /* AK7709_C0_040_BICK_FMT_SET1 */
-	{ 0x400041, 0x08 },   /* AK7709_C0_041_BICK_SYNCDOMAIN_SEL1 */
+	{ 0x400040, 0x06 },   /* AK7709_C0_040_BICK_FMT_SET1 */
+	{ 0x400041, 0x00 },   /* AK7709_C0_041_BICK_SYNCDOMAIN_SEL1 */
 	{ 0x400042, 0x06 },   /* AK7709_C0_042_BICK_FMT_SET2 */
-	{ 0x400043, 0x03 },   /* AK7709_C0_043_BICK_SYNCDOMAIN_SEL2 */
+	{ 0x400043, 0x02 },   /* AK7709_C0_043_BICK_SYNCDOMAIN_SEL2 */
 	{ 0x400044, 0x06 },   /* AK7709_C0_044_BICK_FMT_SET3 */
 	{ 0x400045, 0x03 },   /* AK7709_C0_045_BICK_SYNCDOMAIN_SEL3 */
-	{ 0x400046, 0x00 },   /* AK7709_C0_046_BICK_FMT_SET4 */
-	{ 0x400047, 0x00 },   /* AK7709_C0_047_BICK_SYNCDOMAIN_SEL4 */
-	{ 0x400048, 0x00 },   /* AK7709_C0_048_BICK_FMT_SET5 */
-	{ 0x400049, 0x06 },   /* AK7709_C0_049_BICK_SYNCDOMAIN_SEL5 */
+	{ 0x400046, 0x06 },   /* AK7709_C0_046_BICK_FMT_SET4 */
+	{ 0x400047, 0x04 },   /* AK7709_C0_047_BICK_SYNCDOMAIN_SEL4 */
+	{ 0x400048, 0x06 },   /* AK7709_C0_048_BICK_FMT_SET5 */
+	{ 0x400049, 0x05 },   /* AK7709_C0_049_BICK_SYNCDOMAIN_SEL5 */
 	{ 0x40004A, 0x06 },   /* AK7709_C0_04A_BICK_FMT_SET6 */
 	{ 0x40004B, 0x06 },   /* AK7709_C0_04B_BICK_SYNCDOMAIN_SEL6 */
 	{ 0x40004C, 0x05 },   /* AK7709_C0_04C_BICK_FMT_SET7 */
@@ -325,34 +332,34 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x400050, 0xB3 },   /* AK7709_C0_050_SDIN1_DIGITAL_IN_FMT */
 	{ 0x400051, 0x01 },   /* AK7709_C0_051_SDIN1_SYNC_DOMAIN_SEL */
 	{ 0x400052, 0x00 },   /* AK7709_C0_052_SDIN2_DIGITAL_IN_FMT */
-	{ 0x400053, 0x02 },   /* AK7709_C0_053_SDIN2_SYNC_DOMAIN_SEL */
+	{ 0x400053, 0x00 },   /* AK7709_C0_053_SDIN2_SYNC_DOMAIN_SEL */
 	{ 0x400054, 0x00 },   /* AK7709_C0_054_SDIN3_DIGITAL_IN_FMT */
-	{ 0x400055, 0x02 },   /* AK7709_C0_055_SDIN3_SYNC_DOMAIN_SEL */
+	{ 0x400055, 0x00 },   /* AK7709_C0_055_SDIN3_SYNC_DOMAIN_SEL */
 	{ 0x400056, 0x00 },   /* AK7709_C0_056_SDIN4_DIGITAL_IN_FMT */
-	{ 0x400057, 0x02 },   /* AK7709_C0_057_SDIN4_SYNC_DOMAIN_SEL */
-	{ 0x400058, 0xB0 },   /* AK7709_C0_058_SDIN5_DIGITAL_IN_FMT */
-	{ 0x400059, 0x03 },   /* AK7709_C0_059_SDIN5_SYNC_DOMAIN_SEL */
-	{ 0x40005A, 0xB0 },   /* AK7709_C0_05A_SDIN6_DIGITAL_IN_FMT */
-	{ 0x40005B, 0x01 },   /* AK7709_C0_05B_SDIN6_SYNC_DOMAIN_SEL */
+	{ 0x400057, 0x00 },   /* AK7709_C0_057_SDIN4_SYNC_DOMAIN_SEL */
+	{ 0x400058, 0x00 },   /* AK7709_C0_058_SDIN5_DIGITAL_IN_FMT */
+	{ 0x400059, 0x00 },   /* AK7709_C0_059_SDIN5_SYNC_DOMAIN_SEL */
+	{ 0x40005A, 0x00 },   /* AK7709_C0_05A_SDIN6_DIGITAL_IN_FMT */
+	{ 0x40005B, 0x00 },   /* AK7709_C0_05B_SDIN6_SYNC_DOMAIN_SEL */
 	{ 0x40005C, 0x00 },   /* AK7709_C0_05C_SDIN7_DIGITAL_IN_FMT */
-	{ 0x40005D, 0x08 },   /* AK7709_C0_05D_SDIN7_SYNC_DOMAIN_SEL */
-	{ 0x40005E, 0xB0 },   /* AK7709_C0_05E_SDIN8_DIGITAL_IN_FMT */
-	{ 0x40005F, 0x07 },   /* AK7709_C0_05F_SDIN8_SYNC_DOMAIN_SEL */
-	{ 0x400060, 0x80 },   /* AK7709_C0_060_SDIN9_DIGITAL_IN_FMT */
-	{ 0x400061, 0x06 },   /* AK7709_C0_061_SDIN9_SYNC_DOMAIN_SEL */
+	{ 0x40005D, 0x00 },   /* AK7709_C0_05D_SDIN7_SYNC_DOMAIN_SEL */
+	{ 0x40005E, 0x00 },   /* AK7709_C0_05E_SDIN8_DIGITAL_IN_FMT */
+	{ 0x40005F, 0x00 },   /* AK7709_C0_05F_SDIN8_SYNC_DOMAIN_SEL */
+	{ 0x400060, 0x00 },   /* AK7709_C0_060_SDIN9_DIGITAL_IN_FMT */
+	{ 0x400061, 0x00 },   /* AK7709_C0_061_SDIN9_SYNC_DOMAIN_SEL */
 	{ 0x400062, 0x00 },   /* AK7709_C0_062_SDIN10_DIGITAL_IN_FMT */
-	{ 0x400063, 0x02 },   /* AK7709_C0_063_SDIN10_SYNC_DOMAIN_SEL */
-	{ 0x400064, 0xB0 },   /* AK7709_C0_064_SDIN11_DIGITAL_IN_FMT */
-	{ 0x400065, 0x07 },   /* AK7709_C0_065_SDIN11_SYNC_DOMAIN_SEL */
+	{ 0x400063, 0x00 },   /* AK7709_C0_063_SDIN10_SYNC_DOMAIN_SEL */
+	{ 0x400064, 0x00 },   /* AK7709_C0_064_SDIN11_DIGITAL_IN_FMT */
+	{ 0x400065, 0x00 },   /* AK7709_C0_065_SDIN11_SYNC_DOMAIN_SEL */
 	{ 0x400066, 0xB3 },   /* AK7709_C0_066_SDOUT1_DIGITAL_OUT_FMT */
-	{ 0x400067, 0x03 },   /* AK7709_C0_067_SDOUT1_SYNC_DOMAIN_SEL */
+	{ 0x400067, 0x02 },   /* AK7709_C0_067_SDOUT1_SYNC_DOMAIN_SEL */
 	{ 0x400068, 0xB3 },   /* AK7709_C0_068_SDOUT2_DIGITAL_OUT_FMT */
-	{ 0x400069, 0x03 },   /* AK7709_C0_069_SDOUT2_SYNC_DOMAIN_SEL */
+	{ 0x400069, 0x02 },   /* AK7709_C0_069_SDOUT2_SYNC_DOMAIN_SEL */
 	{ 0x40006A, 0xB3 },   /* AK7709_C0_06A_SDOUT3_DIGITAL_OUT_FMT */
 	{ 0x40006B, 0x03 },   /* AK7709_C0_06B_SDOUT3_SYNC_DOMAIN_SEL */
 	{ 0x40006C, 0xB3 },   /* AK7709_C0_06C_SDOUT4_DIGITAL_OUT_FMT */
 	{ 0x40006D, 0x03 },   /* AK7709_C0_06D_SDOUT4_SYNC_DOMAIN_SEL */
-	{ 0x40006E, 0xB0 },   /* AK7709_C0_06E_SDOUT5_DIGITAL_OUT_FMT */
+	{ 0x40006E, 0x00 },   /* AK7709_C0_06E_SDOUT5_DIGITAL_OUT_FMT */
 	{ 0x40006F, 0x00 },   /* AK7709_C0_06F_SDOUT5_SYNC_DOMAIN_SEL */
 	{ 0x400070, 0x30 },   /* AK7709_C0_070_SDOUT6_DIGITAL_OUT_FMT */
 	{ 0x400071, 0x00 },   /* AK7709_C0_071_SDOUT6_SYNC_DOMAIN_SEL */
@@ -362,8 +369,8 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x400075, 0x00 },   /* AK7709_C0_075_SDOUT8_SYNC_DOMAIN_SEL */
 	{ 0x400076, 0x80 },   /* AK7709_C0_076_SDOUT9_DIGITAL_OUT_FMT */
 	{ 0x400077, 0x06 },   /* AK7709_C0_077_SDOUT9_SYNC_DOMAIN_SEL */
-	{ 0x400078, 0x00 },   /* AK7709_C0_078_SDOUT10_DIGITAL_OUT_FMT */
-	{ 0x400079, 0x00 },   /* AK7709_C0_079_SDOUT10_SYNC_DOMAIN_SEL */
+	{ 0x400078, 0xB3 },   /* AK7709_C0_078_SDOUT10_DIGITAL_OUT_FMT */
+	{ 0x400079, 0x01 },   /* AK7709_C0_079_SDOUT10_SYNC_DOMAIN_SEL */
 	{ 0x40007A, 0xB3 },   /* AK7709_C0_07A_SDOUT11_DIGITAL_OUT_FMT */
 	{ 0x40007B, 0x01 },   /* AK7709_C0_07B_SDOUT11_SYNC_DOMAIN_SEL */
 	{ 0x400080, 0x00 },   /* AK7709_C0_080_AUDIOHUB_AIFI_IN_SET1 */
@@ -431,8 +438,8 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x4000CE, 0x00 },   /* AK7709_C0_0CE_TDMFS_MODE_SET15 */
 	{ 0x4000CF, 0x00 },   /* AK7709_C0_0CF_TDMFS_MODE_SET16 */
 	{ 0x4000D0, 0x00 },   /* AK7709_C0_0D0_TDMFS_MODE_SET17 */
-	{ 0x400100, 0x00 },   /* AK7709_C0_100_DMIC1_SYNC_DOMAIN_SEL */
-	{ 0x400101, 0x00 },   /* AK7709_C0_101_DMIC2_SYNC_DOMAIN_SEL */
+	{ 0x400100, 0x04 },   /* AK7709_C0_100_DMIC1_SYNC_DOMAIN_SEL */
+	{ 0x400101, 0x04 },   /* AK7709_C0_101_DMIC2_SYNC_DOMAIN_SEL */
 	{ 0x400102, 0x00 },   /* AK7709_C0_102_DIR_SYNC_DOMAIN_SEL */
 	{ 0x400103, 0x00 },   /* AK7709_C0_103_OSMEM1_SYNC_DOMAIN_SEL */
 	{ 0x400104, 0x00 },   /* AK7709_C0_104_OSMEM2_SYNC_DOMAIN_SEL */
@@ -444,8 +451,8 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x40010A, 0x00 },   /* AK7709_C0_10A_MIXER1_SYNC_DOMAIN_SEL */
 	{ 0x40010B, 0x00 },   /* AK7709_C0_10B_MIXER2_SYNC_DOMAIN_SEL */
 	{ 0x40010C, 0x02 },   /* AK7709_C0_10C_SRC1_SYNC_DOMAIN_SEL */
-	{ 0x40010D, 0x02 },   /* AK7709_C0_10D_SRC2_SYNC_DOMAIN_SEL */
-	{ 0x40010E, 0x08 },   /* AK7709_C0_10E_SRC3_SYNC_DOMAIN_SEL */
+	{ 0x40010D, 0x01 },   /* AK7709_C0_10D_SRC2_SYNC_DOMAIN_SEL */
+	{ 0x40010E, 0x01 },   /* AK7709_C0_10E_SRC3_SYNC_DOMAIN_SEL */
 	{ 0x40010F, 0x08 },   /* AK7709_C0_10F_SRC4_SYNC_DOMAIN_SEL */
 	{ 0x400110, 0x08 },   /* AK7709_C0_110_SRC5_SYNC_DOMAIN_SEL */
 	{ 0x400111, 0x08 },   /* AK7709_C0_111_SRC6_SYNC_DOMAIN_SEL */
@@ -570,8 +577,8 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x40021A, 0x00 },   /* AK7709_C0_21A_MIXER2_CH_A_DATA_SEL */
 	{ 0x40021B, 0x00 },   /* AK7709_C0_21B_MIXER2_CH_B_DATA_SEL */
 	{ 0x400220, 0x30 },   /* AK7709_C0_220_SRC1_IN_DATA_SEL */
-	{ 0x400221, 0x00 },   /* AK7709_C0_221_SRC2_IN_DATA_SEL */
-	{ 0x400222, 0x00 },   /* AK7709_C0_222_SRC3_IN_DATA_SEL */
+	{ 0x400221, 0x04 },   /* AK7709_C0_221_SRC2_IN_DATA_SEL */
+	{ 0x400222, 0x05 },   /* AK7709_C0_222_SRC3_IN_DATA_SEL */
 	{ 0x400223, 0x00 },   /* AK7709_C0_223_SRC4_IN_DATA_SEL */
 	{ 0x400224, 0x00 },   /* AK7709_C0_224_SRC5_IN_DATA_SEL */
 	{ 0x400225, 0x00 },   /* AK7709_C0_225_SRC6_IN_DATA_SEL */
@@ -581,8 +588,8 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x400229, 0x74 },   /* AK7709_C0_229_SRC10_IN_DATA_SEL */
 	{ 0x40022A, 0x74 },   /* AK7709_C0_22A_SRC11_IN_DATA_SEL */
 	{ 0x40022B, 0xD1 },   /* AK7709_C0_22B_SRC12_IN_DATA_SEL */
-	{ 0x400230, 0xD0 },   /* AK7709_C0_230_SDOUT1A_OUT_DATA_SEL */
-	{ 0x400231, 0xD1 },   /* AK7709_C0_231_SDOUT1B_OUT_DATA_SEL */
+	{ 0x400230, 0x30 },   /* AK7709_C0_230_SDOUT1A_OUT_DATA_SEL */
+	{ 0x400231, 0x31 },   /* AK7709_C0_231_SDOUT1B_OUT_DATA_SEL */
 	{ 0x400232, 0x00 },   /* AK7709_C0_232_SDOUT1C_OUT_DATA_SEL */
 	{ 0x400233, 0x00 },   /* AK7709_C0_233_SDOUT1D_OUT_DATA_SEL */
 	{ 0x400234, 0x00 },   /* AK7709_C0_234_SDOUT1E_OUT_DATA_SEL */
@@ -597,24 +604,24 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x40023D, 0x00 },   /* AK7709_C0_23D_SDOUT1N_OUT_DATA_SEL */
 	{ 0x40023E, 0x00 },   /* AK7709_C0_23E_SDOUT1O_OUT_DATA_SEL */
 	{ 0x40023F, 0x00 },   /* AK7709_C0_23F_SDOUT1P_OUT_DATA_SEL */
-	{ 0x400240, 0xD2 },   /* AK7709_C0_240_SDOUT2A_OUT_DATA_SEL */
-	{ 0x400241, 0xD3 },   /* AK7709_C0_241_SDOUT2B_OUT_DATA_SEL */
+	{ 0x400240, 0x32 },   /* AK7709_C0_240_SDOUT2A_OUT_DATA_SEL */
+	{ 0x400241, 0x33 },   /* AK7709_C0_241_SDOUT2B_OUT_DATA_SEL */
 	{ 0x400242, 0x00 },   /* AK7709_C0_242_SDOUT2C_OUT_DATA_SEL */
 	{ 0x400243, 0x00 },   /* AK7709_C0_243_SDOUT2D_OUT_DATA_SEL */
 	{ 0x400244, 0x00 },   /* AK7709_C0_244_SDOUT2E_OUT_DATA_SEL */
 	{ 0x400245, 0x00 },   /* AK7709_C0_245_SDOUT2F_OUT_DATA_SEL */
 	{ 0x400246, 0x00 },   /* AK7709_C0_246_SDOUT2G_OUT_DATA_SEL */
 	{ 0x400247, 0x00 },   /* AK7709_C0_247_SDOUT2H_OUT_DATA_SEL */
-	{ 0x400248, 0xD4 },   /* AK7709_C0_248_SDOUT3A_OUT_DATA_SEL */
-	{ 0x400249, 0xD5 },   /* AK7709_C0_249_SDOUT3B_OUT_DATA_SEL */
+	{ 0x400248, 0x34 },   /* AK7709_C0_248_SDOUT3A_OUT_DATA_SEL */
+	{ 0x400249, 0x35 },   /* AK7709_C0_249_SDOUT3B_OUT_DATA_SEL */
 	{ 0x40024A, 0x00 },   /* AK7709_C0_24A_SDOUT3C_OUT_DATA_SEL */
 	{ 0x40024B, 0x00 },   /* AK7709_C0_24B_SDOUT3D_OUT_DATA_SEL */
 	{ 0x40024C, 0x00 },   /* AK7709_C0_24C_SDOUT3E_OUT_DATA_SEL */
 	{ 0x40024D, 0x00 },   /* AK7709_C0_24D_SDOUT3F_OUT_DATA_SEL */
 	{ 0x40024E, 0x00 },   /* AK7709_C0_24E_SDOUT3G_OUT_DATA_SEL */
 	{ 0x40024F, 0x00 },   /* AK7709_C0_24F_SDOUT3H_OUT_DATA_SEL */
-	{ 0x400250, 0xD6 },   /* AK7709_C0_250_SDOUT4A_OUT_DATA_SEL */
-	{ 0x400251, 0xD7 },   /* AK7709_C0_251_SDOUT4B_OUT_DATA_SEL */
+	{ 0x400250, 0x36 },   /* AK7709_C0_250_SDOUT4A_OUT_DATA_SEL */
+	{ 0x400251, 0x37 },   /* AK7709_C0_251_SDOUT4B_OUT_DATA_SEL */
 	{ 0x400252, 0x00 },   /* AK7709_C0_252_SDOUT4C_OUT_DATA_SEL */
 	{ 0x400253, 0x00 },   /* AK7709_C0_253_SDOUT4D_OUT_DATA_SEL */
 	{ 0x400254, 0x00 },   /* AK7709_C0_254_SDOUT4E_OUT_DATA_SEL */
@@ -649,8 +656,8 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x400271, 0x00 },   /* AK7709_C0_271_SDOUT9B_OUT_DATA_SEL */
 	{ 0x400272, 0x00 },   /* AK7709_C0_272_SDOUT9C_OUT_DATA_SEL */
 	{ 0x400273, 0x00 },   /* AK7709_C0_273_SDOUT9D_OUT_DATA_SEL */
-	{ 0x400274, 0x00 },   /* AK7709_C0_274_SDOUT10A_OUT_DATA_SEL */
-	{ 0x400275, 0x00 },   /* AK7709_C0_275_SDOUT10B_OUT_DATA_SEL */
+	{ 0x400274, 0x04 },   /* AK7709_C0_274_SDOUT10A_OUT_DATA_SEL */
+	{ 0x400275, 0x05 },   /* AK7709_C0_275_SDOUT10B_OUT_DATA_SEL */
 	{ 0x400276, 0x00 },   /* AK7709_C0_276_SDOUT10C_OUT_DATA_SEL */
 	{ 0x400277, 0x00 },   /* AK7709_C0_277_SDOUT10D_OUT_DATA_SEL */
 	{ 0x400278, 0x30 },   /* AK7709_C0_278_SDOUT11A_OUT_DATA_SEL */
@@ -762,11 +769,11 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x4002FE, 0x00 },   /* AK7709_C0_2FE_TIF_OUT_DATA_SEL1 */
 	{ 0x4002FF, 0x00 },   /* AK7709_C0_2FF_TIF_OUT_DATA_SEL2 */
 
-	{ 0x400300, 0x00 },   /* AK7709_C0_300_PIN_FUNCTION_SEL1 */
+	{ 0x400300, 0x30 },   /* AK7709_C0_300_PIN_FUNCTION_SEL1 */
 	{ 0x400301, 0x02 },   /* AK7709_C0_301_PIN_FUNCTION_SEL2 */
 	{ 0x400302, 0x51 },   /* AK7709_C0_302_PIN_FUNCTION_SEL3 */
 	{ 0x400303, 0x12 },   /* AK7709_C0_303_PIN_FUNCTION_SEL4 */
-	{ 0x400304, 0x26 },   /* AK7709_C0_304_PIN_FUNCTION_SEL5 */
+	{ 0x400304, 0x02 },   /* AK7709_C0_304_PIN_FUNCTION_SEL5 */
 	{ 0x400305, 0x00 },   /* AK7709_C0_305_PIN_FUNCTION_SEL6 */
 	{ 0x400306, 0x00 },   /* AK7709_C0_306_PIN_FUNCTION_SEL7 */
 	{ 0x400307, 0x00 },   /* AK7709_C0_307_PIN_FUNCTION_SEL8 */
@@ -984,7 +991,7 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x410076, 0x00 },   /* AK7709_C1_076_HIFI4A_LOW_LATENCY_SET7 */
 	{ 0x410077, 0x00 },   /* AK7709_C1_077_HIFI4A_LOW_LATENCY_SET8 */
 	{ 0x410078, 0x00 },   /* AK7709_C1_078_HIFI4A_LOW_LATENCY_SET9 */
-	{ 0x410079, 0x00 },   /* AK7709_C1_079_HIFI4A_LOW_LATENCY_SET10 */
+	{ 0x410079, 0x01 },   /* AK7709_C1_079_HIFI4A_LOW_LATENCY_SET10 */
 	{ 0x41007A, 0x00 },   /* AK7709_C1_07A_HIFI4A_LOW_LATENCY_SET11 */
 	{ 0x41007B, 0x00 },   /* AK7709_C1_07B_HIFI4A_LOW_LATENCY_SET12 */
 	{ 0x41007C, 0x00 },   /* AK7709_C1_07C_HIFI4A_LOW_LATENCY_SET13 */
@@ -1171,8 +1178,8 @@ static const struct reg_default ak7709_reg[] = {
 
 	{ 0x420326, 0x00 },   /* AK7709_C2_326_DIR_STC_DAT_DET */
 
-	{ 0x420329, 0x00 },   /* AK7709_C2_329_DMIC_POWERMNG */
-	{ 0x42032A, 0x00 },   /* AK7709_C2_32A_DMIC_IF */
+	{ 0x420329, 0x03 },   /* AK7709_C2_329_DMIC_POWERMNG */
+	{ 0x42032A, 0x03 },   /* AK7709_C2_32A_DMIC_IF */
 	{ 0x42032B, 0x30 },   /* AK7709_C2_32B_DMIC1_LCH_VOL */
 	{ 0x42032C, 0x30 },   /* AK7709_C2_32C_DMIC1_RCH_VOL */
 	{ 0x42032D, 0x30 },   /* AK7709_C2_32D_DMIC2_LCH_VOL */
@@ -52343,6 +52350,7 @@ static int ak7709_set_bias_level(struct snd_soc_component *component,
 
 	dev_info(ak7709->dev, "%s(), level:%d\n", __func__, level);
 
+#if !IS_ENABLED(CONFIG_DEVICE_MODULES_SND_SOC_MT6991)
 	switch (level) {
 	case SND_SOC_BIAS_ON:
 		break;
@@ -52359,6 +52367,7 @@ static int ak7709_set_bias_level(struct snd_soc_component *component,
 	default:
 		break;
 	}
+#endif /* CONFIG_DEVICE_MODULES_SND_SOC_MT6991 */
 
 	dapm->bias_level = level;
 
@@ -52633,6 +52642,9 @@ static int ak7709_init_reg(struct snd_soc_component *component)
 		ak7709->sdcks[i] = 0;   // Low
 	}
 
+
+	dev_info(ak7709->dev, "%s() done!, rc:%d\n", __func__, rc);
+
 	return 0;
 }
 
@@ -52683,15 +52695,16 @@ static int ak7709_probe(struct snd_soc_component *component)
 
 	ret = ak7709_parse_dt(ak7709);
 	if (ret < 0) {
+		dev_info(ak7709->dev, "%s() gpio parse dts failed\n", __func__);
 		ak7709->pdn_gpio = -1;
-		return ret;
+		// return ret;
 	}
 
 	if (ak7709->pdn_gpio > 0) {
 		ret = gpio_request(ak7709->pdn_gpio, "ak7709 pdn");
 		if (ret) {
 			dev_info(ak7709->dev, "%s() gpio request failed, ret:%d\n", __func__, ret);
-			return ret;
+			// return ret;
 		}
 	}
 	/* Power up! */
@@ -52703,14 +52716,15 @@ static int ak7709_probe(struct snd_soc_component *component)
 	init_ak7709_pd(ak7709);
 #endif
 
-	return ret;
+	return 0;
 }
 
 static void ak7709_remove(struct snd_soc_component *component)
 {
 	struct ak7709_priv *ak7709 = snd_soc_component_get_drvdata(component);
 
-	// ak7709_set_bias_level(component, SND_SOC_BIAS_OFF);
+
+	ak7709_set_bias_level(component, SND_SOC_BIAS_OFF);
 
 	if (ak7709->pdn_gpio > 0) {
 		gpio_set_value(ak7709->pdn_gpio, GPO_PDN_LOW);
@@ -52757,6 +52771,7 @@ static int ak7709_resume(struct snd_soc_component *component)
 	return 0;
 }
 
+#if !IS_ENABLED(CONFIG_DEVICE_MODULES_SND_SOC_MT6991)
 static int ak7709_load_dsp_firmware(struct ak7709_priv *ak7709)
 {
 	int ret = 0;
@@ -52798,6 +52813,7 @@ static void ak7709_fw_work(struct work_struct *work)
 		dev_info(ak7709->dev, "%s, dsp inited, do nothing!\n", __func__);
 	}
 }
+#endif /*CONFIG_DEVICE_MODULES_SND_SOC_MT6991*/
 
 static const struct snd_soc_component_driver soc_codec_dev_ak7709 = {
 	.probe = ak7709_probe,
@@ -52949,7 +52965,9 @@ static int ak7709_spi_probe(struct spi_device *spi)
 
 	mtk_spk_set_type(MTK_SPK_AKM_AK7709);
 
+#if !IS_ENABLED(CONFIG_DEVICE_MODULES_SND_SOC_MT6991)
 	INIT_DELAYED_WORK(&ak7709->fw_work, ak7709_fw_work);
+#endif
 
 	return 0;
 }
@@ -52957,7 +52975,6 @@ static int ak7709_spi_probe(struct spi_device *spi)
 static void ak7709_spi_remove(struct spi_device *spi)
 {
 	snd_soc_unregister_component(&spi->dev);
-	// cancel_delayed_work_sync(&ak7709->fw_work);
 }
 
 static struct spi_driver ak7709_spi_driver = {
@@ -53011,4 +53028,3 @@ module_exit(ak7709_exit);
 
 MODULE_DESCRIPTION("ASoC ak7709 driver");
 MODULE_LICENSE("GPL v2");
-
