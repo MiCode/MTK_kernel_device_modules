@@ -65,13 +65,13 @@ static int ise_tdrv_gp_listenDci(void *arg)
 			break;
 		}
 
-		cmdId = ise_tdrv_gp_dci->command.header.commandId;
+		if (ise_tdrv_gp_dci->command.len == CMD_LEN_MAGIC_NUM) {
+			cmdId = ise_tdrv_gp_dci->command.header.commandId;
+			mc_ret = ise_tdrv_gp_execute(cmdId);
+		}
 
 		pr_info("%s: wait notification done!! cmdId = %x\n",
 			__func__, cmdId);
-
-
-		mc_ret = ise_tdrv_gp_execute(cmdId);
 
 		/* Notify the STH*/
 		mc_ret = mc_notify(&ise_tdrv_gp_session);
