@@ -78,6 +78,7 @@ struct mtk_mmsys_driver_data {
 	bool has_smi_limitation;
 	bool doze_ctrl_pmic;
 	bool can_compress_rgb565;
+	bool need_emi_eff;
 	void (*disable_merge_irq)(struct drm_device *drm);
 	void (*gce_event_config)(struct drm_device *drm);
 	void (*vdisp_ao_irq_config)(struct drm_device *drm);
