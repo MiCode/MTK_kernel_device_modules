@@ -1944,7 +1944,7 @@ static void mtk_iommu_trace_init(struct mtk_m4u_data *data)
 #if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 	iommu_globals.iova_alloc_list = 1;
 	iommu_globals.iova_alloc_rbtree = 1;
-	iommu_globals.iova_map_list = (smmu_v3_enable ? 0 : 1);
+	iommu_globals.iova_map_list = 0;
 #else
 	iommu_globals.iova_alloc_list = 0;
 	iommu_globals.iova_alloc_rbtree = 0;
