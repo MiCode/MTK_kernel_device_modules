@@ -4664,6 +4664,7 @@ pwrap: pwrap@1000d000 {
 					/* 1 2 2 2 2 2 2 2>; */
 
 		/* use_cpu_to_dram_map_new = "enable"; */
+		dvfs = <&dvfsrc>;
 	};
 
 	dram_ctrl {
