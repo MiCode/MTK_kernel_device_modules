@@ -13,6 +13,7 @@
 #include <linux/rcutree.h>
 #include <linux/proc_fs.h>
 #include <linux/sched/clock.h>
+#include <linux/sched/debug.h>
 #include <linux/slab.h>
 #include <linux/stacktrace.h>
 #include <linux/tracepoint.h>
@@ -654,38 +655,63 @@ static void probe_hrtimer_expire_exit(void *ignore, struct hrtimer *hrtimer)
 /* start of kprobes */
 
 /* Skip duration tracers */
-static int handler_pre(struct kprobe *p, struct pt_regs *regs)
-{
-	if (!irqs_disabled())
-		return 0;
 
-	this_cpu_write(irq_handler_tracer.stat->tracing, 0);
-	this_cpu_write(ipi_tracer.stat->tracing, 0);
-	this_cpu_write(hrtimer_expire_tracer.stat->tracing, 0);
+struct irq_mon_kret {
+	u64 ts;
+};
+
+static struct kretprobe kp[] = {
+	/* for perf: interrupt took too long */
+	{.kp.symbol_name = "perf_duration_warn"},
+	/* for _deferred */
+	{.kp.symbol_name = "wake_up_klogd_work_func"},
+	/* for self test */
+	{.kp.symbol_name = "irq_mon_irq_work2"},
+};
+
+static int entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+{
+	struct irq_mon_kret *data = (struct irq_mon_kret *)ri->data;
+
+	data->ts = sched_clock();
 	return 0;
 }
 
-static struct kprobe kp[] = {
-	/* for perf: interrupt took too long */
-	{.symbol_name = "perf_duration_warn"},
-	/* for _deferred */
-	{.symbol_name = "wake_up_klogd_work_func"},
-	/* for self test */
-	{.symbol_name = "irq_mon_irq_work2"},
+static int ret_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+{
+	struct irq_mon_kret *data = (struct irq_mon_kret *)ri->data;
+	u64 now, delta, delta_ms;
 
-};
+	if (!irqs_disabled())
+		return 0;
+
+	now = sched_clock();
+	delta = now - data->ts;
+	delta_ms = msec_high(delta);
+	if (delta_ms >= irq_handler_tracer.th2_ms)
+		this_cpu_write(irq_handler_tracer.stat->tracing, 0);
+	if (delta_ms >= ipi_tracer.th2_ms)
+		this_cpu_write(ipi_tracer.stat->tracing, 0);
+	if (delta_ms >= hrtimer_expire_tracer.th2_ms)
+		this_cpu_write(hrtimer_expire_tracer.stat->tracing, 0);
+	return 0;
+}
+
 
 int irq_mon_kprobes_init(void)
 {
 	int i, ret = 0;
 
 	for (i = 0; i < ARRAY_SIZE(kp); i++) {
-		kp[i].pre_handler = handler_pre;
-		ret = register_kprobe(&kp[i]);
+		kp[i].handler = ret_handler;
+		kp[i].entry_handler = entry_handler;
+		kp[i].data_size = sizeof(struct irq_mon_kret);
+		kp[i].maxactive = 20;
+		ret = register_kretprobe(&kp[i]);
 		if (ret) {
 			pr_info("register_kprobe failed, returned %d\n", ret);
 			while (i-- > 0)
-				unregister_kprobe(&kp[i]);
+				unregister_kretprobe(&kp[i]);
 			return ret;
 		}
 	}
@@ -697,7 +723,7 @@ void irq_mon_kprobes_exit(void)
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(kp); i++)
-		unregister_kprobe(&kp[i]);
+		unregister_kretprobe(&kp[i]);
 }
 /* end of kprobes */
 
