@@ -314,10 +314,14 @@ static void mdw_rv_ipi_cmplt_cmd(struct mdw_ipi_msg_sync *s_msg)
 	switch (s_msg->msg.ret) {
 	case MDW_IPI_MSG_STATUS_BUSY:
 		ret = -EBUSY;
+		mdw_exception("uP mdw busy, sync_id (0x%llx)\n",
+			s_msg->msg.sync_id);
 		break;
 
 	case MDW_IPI_MSG_STATUS_ERR:
 		ret = -EREMOTEIO;
+		mdw_exception("uP mdw error, sync_id (0x%llx)\n",
+			s_msg->msg.sync_id);
 		break;
 
 	case MDW_IPI_MSG_STATUS_TIMEOUT:
