@@ -564,15 +564,6 @@ struct mtk_smmu_ops {
 	int (*smmu_power_put)(struct arm_smmu_device *smmu);
 };
 
-#define ARM_64_LPAE_S1_CONTIG U32_MAX
-extern struct io_pgtable_init_fns mtk_io_pgtable_arm_64_lpae_s1_contig_fns;
-
-struct io_pgtable_ops *mtk_alloc_io_pgtable_ops(enum io_pgtable_fmt fmt,
-			struct io_pgtable_cfg *cfg,
-			void *cookie);
-
-void mtk_free_io_pgtable_ops(struct io_pgtable_ops *ops);
-
 static inline bool smmu_v3_enabled(void)
 {
 	struct device_node *node = NULL;
