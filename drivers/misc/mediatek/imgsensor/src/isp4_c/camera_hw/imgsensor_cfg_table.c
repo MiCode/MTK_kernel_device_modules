@@ -10,8 +10,6 @@
 /*#include "mt6306/mt6306.h"*/
 #include "mclk/mclk.h"
 
-
-
 #include "imgsensor_cfg_table.h"
 
 enum IMGSENSOR_RETURN

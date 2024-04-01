@@ -24,12 +24,14 @@ endif
 
 subdir-ccflags-y += \
     -I$(IMGSENSOR_DRIVER_PATH)/common/$(COMMON_VERSION) \
+    -I$(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/ \
 	-I$(DEVICE_MODULES_PATH)/drivers/i2c/busses/ \
 	-DNO_I2C_MTK -DNO_CLK_METER -DIMGSENSOR_USE_RPM -DIMGSENSOR_DFS_CTRL_ENABLE -DSENINF_USE_WAKE_LOCK
 
 define add_subdrv
 $(eval subdrv-rpath = $1)
-$(eval include $(srctree)/$1/Makefile)
+$(info path: $(srctree)/$(src)/$1/Makefile)
+$(eval include $(srctree)/$(src)/$1/Makefile)
 endef
 
 define FILTER_DRV

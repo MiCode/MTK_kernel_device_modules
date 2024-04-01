@@ -12,7 +12,6 @@
 
 #define IMGSENSOR_DEV_NAME "kd_camera_hw"
 
-
 #define IMGSENSOR_HW_POWER_INFO_MAX	12
 #define IMGSENSOR_HW_SENSOR_MAX_NUM	8
 
@@ -140,7 +139,9 @@ struct IMGSENSOR_HW_DEVICE {
 };
 
 extern struct IMGSENSOR_HW_CFG       imgsensor_custom_config[];
-extern struct IMGSENSOR_HW_CFG       imgsensor_mt6768_config_alpha[];
+#ifdef IMGSENSOR_ISP4_T_REF
+extern struct IMGSENSOR_HW_CFG       imgsensor_isp4_t_ref[];
+#endif
 extern struct IMGSENSOR_HW_POWER_SEQ platform_power_sequence[];
 extern struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[];
 extern enum IMGSENSOR_RETURN
