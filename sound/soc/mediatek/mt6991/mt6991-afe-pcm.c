@@ -1848,8 +1848,7 @@ static int ul_cm0_event(struct snd_soc_dapm_widget *w,
 		mt6991_set_cm(afe, CM0, 0x1, false, channels);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		/* remove so we fix in normal mode */
-		// mt6991_enable_cm_bypass(afe, CM0, 0x1);
+		mt6991_enable_cm_bypass(afe, CM0, 0x1);
 		break;
 	default:
 		break;
@@ -3313,7 +3312,7 @@ static const struct snd_soc_dapm_widget mt6991_memif_widgets[] = {
 			  &ul_cm2_mux_control),
 
 	SND_SOC_DAPM_SUPPLY("CM0_Enable",
-			SND_SOC_NOPM, 0, 0,
+			AFE_CM0_CON0, AFE_CM0_ON_SFT, 0,
 			ul_cm0_event,
 			SND_SOC_DAPM_PRE_PMU |
 			SND_SOC_DAPM_PRE_PMD),
