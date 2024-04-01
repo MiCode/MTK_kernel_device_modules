@@ -2696,7 +2696,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<&level_apusys_rv_apu_wdt>,
 					<&level_apusys_rv_mbox0 &level_apusys_rv_mbox1>,
 					<&level_apusys_rv_ce_exp>,
-					<&level_apusys_hw_apu_logtop>;
+					<&level_apusys_hw_apu_logtop>,
+					<&level_dsi0>;
 
 
 		resource-ctrl = <&bus26m &infra &syspll>,
@@ -2782,6 +2783,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			};
 			level_apusys_hw_apu_logtop: level-apusys-hw-apu-logtop {
 				target = <&apusys_hw_logger>;
+				value = <0 0 0 0>;
+			};
+			level_dsi0: level-dsi0 {
+				target = <&dsi0>;
 				value = <0 0 0 0>;
 			};
 		};
