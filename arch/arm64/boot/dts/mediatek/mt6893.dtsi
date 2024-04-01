@@ -4515,6 +4515,8 @@ cpus {
 				<&gce CMDQ_EVENT_VDEC_LAT_7>;
 
 			gce-gpr = <GCE_GPR_R10>, <GCE_GPR_R11>;
+			gce-norm-token = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_VENC_WAIT>;
+			gce-sec-token = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_VENC_SET>;
 		};
 
 		vcu-iommu-venc {
