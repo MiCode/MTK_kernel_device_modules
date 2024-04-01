@@ -4693,8 +4693,8 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 			dev, &layering_info);
 
 	/* Check can do MML or not */
-	if (disp_idx == 0 && layering_info.layer_num[HRT_PRIMARY] > 0) {
-		check_is_mml_layer(disp_idx, &layering_info,
+	if (layering_info.layer_num[HRT_PRIMARY] > 0) {
+		check_is_mml_layer(HRT_PRIMARY, &layering_info,
 			dev, _layering_rule_get_hrt_idx(disp_idx));
 		check_gles_change(&dbg_gles, __LINE__, false);
 	}
