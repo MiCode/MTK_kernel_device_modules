@@ -86,6 +86,15 @@
 #define TOTAL_BW(i)		(gmmqos->mmpc_total_mmqos_bw + 4 * i)
 #define TOTAL_HRT_BW		(gmmqos->mmpc_total_pmqos_bw)
 #define TOTAL_SRT_BW		(gmmqos->mmpc_total_pmqos_bw + 4)
+#define MAX_BUF_LEN			1024
+
+#define mmqos_debug_dump_line(file, fmt, args...)	\
+({							\
+	if (file)					\
+		seq_printf(file, fmt, ##args);		\
+	else						\
+		pr_notice(fmt, ##args);		\
+})
 
 enum mmqos_rw_type {
 	path_no_type = 0,
@@ -413,8 +422,8 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 	if (mmqos_state & SRT_DATA_BW)
 		avg_bw = div_u64(avg_bw * 100, 75);
 	if (mmqos_state & SMMU_TCU_BW) {
-		avg_bw = div_u64(avg_bw * 105, 100);
-		peak_bw = div_u64(peak_bw * 105, 100);
+		avg_bw = div_u64(avg_bw * 103, 100);
+		peak_bw = div_u64(peak_bw * 103, 100);
 	}
 
 	comm_id = MASK_8(comm_node->base->icc_node->id);
@@ -1373,7 +1382,7 @@ static void larb_port_ostdl_dump(struct seq_file *file, u32 larb_id, u32 i)
 		larb_port_bw_rec->ostdl[larb_id][i] == 0)
 		return;
 
-	seq_printf(file, "[%5llu.%06llu] larb%2d port%2d %8d %8d %8d %8d\n",
+	mmqos_debug_dump_line(file, "[%5llu.%06llu] larb%2d port%2d %8d %8d %8d %8d\n",
 		(u64)ts, rem_nsec / 1000,
 		larb_id,
 		larb_port_bw_rec->port_id[larb_id][i],
@@ -1381,6 +1390,70 @@ static void larb_port_ostdl_dump(struct seq_file *file, u32 larb_id, u32 i)
 		larb_port_bw_rec->peak_bw[larb_id][i],
 		larb_port_bw_rec->mix_bw[larb_id][i],
 		larb_port_bw_rec->ostdl[larb_id][i]);
+}
+
+static void larb_port_ostdl_dump_line(u32 larb_id)
+{
+	u64 ts, rem_nsec;
+	u32 i, start;
+	s32 len = 0, ret = 0;
+	char	buf[MAX_BUF_LEN] = {0};
+
+	start = larb_port_bw_rec->idx[larb_id];
+
+	ret = snprintf(buf + len, MAX_BUF_LEN - len,
+		"larb%2d ", larb_id);
+	if (ret < 0)
+		pr_notice("Failed to print larb id");
+	len += ret;
+
+	for (i = start; i < RECORD_NUM; i++) {
+		ts = larb_port_bw_rec->time[larb_id][i];
+		rem_nsec = do_div(ts, 1000000000);
+
+		if (ts == 0 &&
+			larb_port_bw_rec->port_id[larb_id][i] == 0 &&
+			larb_port_bw_rec->avg_bw[larb_id][i] == 0 &&
+			larb_port_bw_rec->peak_bw[larb_id][i] == 0)
+			return;
+
+		ret = snprintf(buf + len, MAX_BUF_LEN - len,
+			"[%5llu.%06llu] port%2d %8d %8d ",
+			(u64)ts, rem_nsec / 1000,
+			larb_port_bw_rec->port_id[larb_id][i],
+			larb_port_bw_rec->avg_bw[larb_id][i],
+			larb_port_bw_rec->peak_bw[larb_id][i]);
+		if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+			pr_notice("%s\n", buf);
+			len = 0;
+			memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+		}
+		len += ret;
+	}
+	for (i = 0; i < start; i++) {
+		ts = larb_port_bw_rec->time[larb_id][i];
+		rem_nsec = do_div(ts, 1000000000);
+
+		if (ts == 0 &&
+			larb_port_bw_rec->port_id[larb_id][i] == 0 &&
+			larb_port_bw_rec->avg_bw[larb_id][i] == 0 &&
+			larb_port_bw_rec->peak_bw[larb_id][i] == 0)
+			return;
+
+		ret = snprintf(buf + len, MAX_BUF_LEN - len,
+			"[%5llu.%06llu] port%2d %8d %8d ",
+			(u64)ts, rem_nsec / 1000,
+			larb_port_bw_rec->port_id[larb_id][i],
+			larb_port_bw_rec->avg_bw[larb_id][i],
+			larb_port_bw_rec->peak_bw[larb_id][i]);
+		if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+			pr_notice("%s\n", buf);
+			len = 0;
+			memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+		}
+		len += ret;
+	}
+	pr_notice("%s\n", buf);
 }
 
 static void comm_port_bw_dump(struct seq_file *file, u32 comm_id, u32 port_id, u32 i)
@@ -1459,7 +1532,6 @@ static void larb_port_ostdl_full_dump(struct seq_file *file, u32 larb_id)
 
 	for (i = 0; i < start; i++)
 		larb_port_ostdl_dump(file, larb_id, i);
-
 }
 
 static void comm_port_bw_full_dump(struct seq_file *file, u32 comm_id, u32 port_id)
@@ -1554,24 +1626,105 @@ static const struct proc_ops mmqos_last_debug_fops = {
 
 static void mmpc_subsys_hw_mode_full_dump(struct seq_file *file, int sid)
 {
-	seq_printf(file, "\nsid:%d, Total HRT: %u, SRT: %u\n",
+	mmqos_debug_dump_line(file, "\nsid:%d, Total HRT: %u, SRT: %u\n",
 		sid, read_register(SUBSYS_HW_BW_HRT(sid)),
 		read_register(SUBSYS_HW_BW_SRT(sid)));
 
 	for (int i = 0; i < MAX_REG_VALUE_NUM; i++) {
-		seq_printf(file, "i:%d, offset:%#x, value:%#x\n",
+		mmqos_debug_dump_line(file, "i:%d, offset:%#x, value:%#x\n",
 			i, SUBSYS_HW_BW_OFFSET(sid, i), read_register(SUBSYS_HW_BW_OFFSET(sid, i)));
 	}
+}
+static void mmpc_subsys_hw_mode_full_dump_line(int sid)
+{
+	s32 len = 0, ret = 0;
+	char buf[MAX_BUF_LEN] = {0};
+	u32 hw_bw = 0;
+
+	ret = snprintf(buf + len, MAX_BUF_LEN - len,
+		"sid:%d, Total HRT: %5u, SRT: %5u, ",
+		sid, read_register(SUBSYS_HW_BW_HRT(sid)),
+		read_register(SUBSYS_HW_BW_SRT(sid)));
+	if (ret < 0)
+		pr_notice("Failed to print subsys %d hw mode\n", sid);
+	len += ret;
+
+	for (int i = 0; i < MAX_REG_VALUE_NUM; i++) {
+		hw_bw = read_register(SUBSYS_HW_BW_OFFSET(sid, i));
+		if (i == 0) {
+			ret = snprintf(buf + len, MAX_BUF_LEN - len,
+				"i:%d, offset:%#x, value:%5u %5u %5u ",
+				i, SUBSYS_HW_BW_OFFSET(sid, i),
+				hw_bw & 0x3FF, (hw_bw >> 10) & 0x3FF, (hw_bw >> 20) & 0x3FF);
+			if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+				pr_notice("err ret:%d\n", ret);
+				pr_notice("%s\n", buf);
+				len = 0;
+				memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+			}
+			len += ret;
+		} else {
+			ret = snprintf(buf + len, MAX_BUF_LEN - len,
+				"%5u %5u %5u ",
+				hw_bw & 0x3FF, (hw_bw >> 10) & 0x3FF, (hw_bw >> 20) & 0x3FF);
+			if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+				pr_notice("err ret:%d\n", ret);
+				pr_notice("%s\n", buf);
+				len = 0;
+				memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+			}
+			len += ret;
+		}
+	}
+	pr_notice("%s\n", buf);
 }
 
 static void mmpc_total_bw_full_dump(struct seq_file *file)
 {
-	seq_printf(file, "\nTotal HRT: %u, SRT: %u\n",
+	mmqos_debug_dump_line(file, "\nTotal HRT: %u, SRT: %u\n",
 		read_register(TOTAL_HRT_BW), read_register(TOTAL_SRT_BW));
 	for (int i = 0; i < MAX_BW_VALUE_NUM; i++) {
-		seq_printf(file, "i:%d, offset:%#x, value:%u\n",
+		mmqos_debug_dump_line(file, "i:%d, offset:%#x, value:%u\n",
 			i, TOTAL_BW(i), read_register(TOTAL_BW(i)));
 	}
+}
+static void mmpc_total_bw_full_dump_line(void)
+{
+	s32 len = 0, ret = 0;
+	char buf[MAX_BUF_LEN] = {0};
+
+	ret = snprintf(buf + len, MAX_BUF_LEN - len,
+		"       Total HRT: %5u, SRT: %5u, ",
+		read_register(TOTAL_HRT_BW), read_register(TOTAL_SRT_BW));
+	if (ret < 0)
+		pr_notice("%s Failed to print subsys hw mode\n", __func__);
+	len += ret;
+
+	for (int i = 0; i < MAX_BW_VALUE_NUM; i++) {
+		if (!i) {
+			ret = snprintf(buf + len, MAX_BUF_LEN - len,
+				"i:%d, offset:%#x, value:%5u ",
+				i, TOTAL_BW(i), read_register(TOTAL_BW(i)));
+			if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+				pr_notice("err ret:%d\n", ret);
+				pr_notice("%s\n", buf);
+				len = 0;
+				memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+			}
+			len += ret;
+		} else {
+			ret = snprintf(buf + len, MAX_BUF_LEN - len,
+				"%5u ", read_register(TOTAL_BW(i)));
+			if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+				pr_notice("err ret:%d\n", ret);
+				pr_notice("%s\n", buf);
+				len = 0;
+				memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+			}
+			len += ret;
+		}
+	}
+	pr_notice("%s\n", buf);
 }
 static void mmpc_dvfsrc_full_dump(struct seq_file *file)
 {
@@ -1579,6 +1732,13 @@ static void mmpc_dvfsrc_full_dump(struct seq_file *file)
 		mmpc_subsys_hw_mode_full_dump(file, sid);
 
 	mmpc_total_bw_full_dump(file);
+}
+static void mmpc_dvfsrc_full_dump_line(void)
+{
+	for (int sid = 0; sid < MAX_SUBSYS_NUM; sid++)
+		mmpc_subsys_hw_mode_full_dump_line(sid);
+
+	mmpc_total_bw_full_dump_line();
 }
 static int mmqos_bw_dump(struct seq_file *file, void *data)
 {
@@ -1615,6 +1775,20 @@ static int mmqos_bw_dump(struct seq_file *file, void *data)
 		mmpc_dvfsrc_full_dump(file);
 	return 0;
 }
+
+void mmqos_hrt_dump(void)
+{
+	u32 larb_id = 0;
+
+	//mmpc dvfsrc dump
+	if (mmqos_state & MMPC_ENABLE)
+		mmpc_dvfsrc_full_dump_line();
+
+	//larb port qos bw dump
+	for (larb_id = 0; larb_id < MAX_RECORD_LARB_NUM; larb_id++)
+		larb_port_ostdl_dump_line(larb_id);
+}
+EXPORT_SYMBOL_GPL(mmqos_hrt_dump);
 
 static int mmqos_debug_opp_open(struct inode *inode, struct file *file)
 {

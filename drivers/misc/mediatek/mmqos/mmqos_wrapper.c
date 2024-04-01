@@ -9,6 +9,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include "mmqos_wrapper.h"
+
 static DEFINE_MUTEX(bw_mutex);
 static u32 max_bw_bound;
 struct wrapper_data {
