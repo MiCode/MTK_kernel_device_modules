@@ -109,7 +109,9 @@ static DEFINE_SPINLOCK(TURBO_SPIN_LOCK);
 static DEFINE_SPINLOCK(RWSEM_SPIN_LOCK);
 static DEFINE_SPINLOCK(check_lock);
 static DEFINE_MUTEX(cpu_lock);
-static DEFINE_MUTEX(wi_tbl_lock);
+static DEFINE_MUTEX(cpu_loading_lock);
+static DEFINE_MUTEX(wi_lock);
+static DEFINE_MUTEX(enforced_qualified_lock);
 static pid_t turbo_pid[TURBO_PID_COUNT] = {0};
 static unsigned int task_turbo_feats;
 static struct task_struct *inherited_rwsem_owners[INHERITED_RWSEM_COUNT] = {NULL};
@@ -151,31 +153,56 @@ static void init_turbo_attr(struct task_struct *p);
 static unsigned long cpu_util(int cpu, struct task_struct *p, int dst_cpu, int boost);
 static inline unsigned long task_util(struct task_struct *p);
 static inline unsigned long _task_util_est(struct task_struct *p);
+static int avg_cpu_loading;
 static int cpu_loading_thres = 85;
 static int tt_vip_enable = 1;
 static struct cpu_info ci;
 static bool win_vip_status;
 static bool touch_vip_status;
+static bool cam_3rd_hal_vip_status;
+static bool cam_3rd_svr_vip_status;
 static u64 checked_timestamp;
 static int max_cpus;
 static struct cpu_time *cur_wall_time, *cur_idle_time,
 						*prev_wall_time, *prev_idle_time;
 static void tt_vip_handler(struct work_struct *work);
-static DECLARE_WORK(tt_vip, tt_vip_handler);
+static DECLARE_WORK(tt_vip_worker, tt_vip_handler);
+static void tt_vip_periodic_handler(struct work_struct *work);
+static DECLARE_WORK(tt_vip_periodic_worker, tt_vip_periodic_handler);
 static int inputDispatcher_tgid;
-static int last_inputDispatcher_tgid;
-static int touch_countdown_timer;
+static int cur_inputDispatcher_tgid;
+static ktime_t cur_touch_time;
+static ktime_t cur_touch_down_time;
+static size_t win_info_size;
+static size_t cur_win_info_size;
+static u64 enforced_qualified_mask;
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
-static int fps_drop_vip_throttle = 99;
-static int fps_drop_vip_enable;
-static pid_t cam_hal_tgid = -1;
-static pid_t cam_svr_tgid = -1;
-static int fps_drop_countdown_timer;
+static pid_t cam_hal_tgid = INVALID_TGID;
+static pid_t cam_svr_tgid = INVALID_TGID;
 #endif
 
-static struct win_info_tbl wi_tbl = { .wi = NULL, .size = 0 };
-static struct win_info_tbl last_wi_tbl = { .wi = NULL, .size = 0 };
+static struct win_info wi_head = {
+	.list = LIST_HEAD_INIT(wi_head.list),
+};
 
+static struct win_info cur_wi_head = {
+	.list = LIST_HEAD_INIT(cur_wi_head.list),
+};
+
+/*
+ * get_cpu_loading - Calculates the CPU loading for each CPU
+ * @_ci: Pointer to a cpu_info structure to store the loading of each CPU
+ *
+ * This function iterates over each possible CPU and calculates its loading
+ * based on the difference between total wall time and idle time since the last
+ * measurement. It stores the calculated CPU loading in the provided cpu_info
+ * structure.
+ *
+ * The CPU loading is calculated as a percentage value representing the
+ * proportion of non-idle time(active time) over the total measured wall time for each CPU.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
 static int get_cpu_loading(struct cpu_info *_ci)
 {
 	int i, cpu_loading = 0;
@@ -212,84 +239,107 @@ static int get_cpu_loading(struct cpu_info *_ci)
 	return 0;
 }
 
-static void update_last_win_info_tbl(struct win_info_tbl *last_wi_tbl, struct win_info_tbl *new_wi_tbl)
+/*
+ * update_cur_win_info - Update current window information list
+ * @cur_wi_head: head of the current window info list
+ * @wi_head: head of the new window info list to update from
+ *
+ * This function will clear the current list of window information and
+ * replace it with the contents of a new list. The new nodes are allocated
+ * and initialized with the information from the new list, and the old nodes
+ * are deleted and their memory is freed.
+ */
+static void update_cur_win_info(struct win_info *cur_wi_head, struct win_info *wi_head)
 {
-	struct win_info *new_tbl;
+	struct win_info *pos, *n;
+	struct win_info *new_node;
 
-	kfree(last_wi_tbl->wi);
-	if (new_wi_tbl->size == 0) {
-		last_wi_tbl->wi = NULL;
-		last_wi_tbl->size = 0;
-		return;
+	list_for_each_entry_safe(pos, n, &cur_wi_head->list, list) {
+		list_del(&pos->list);
+		kfree(pos);
 	}
 
-	new_tbl = kmalloc(new_wi_tbl->size * sizeof(struct win_info), GFP_KERNEL);
-	if (!new_tbl) {
-		last_wi_tbl->wi = NULL;
-		last_wi_tbl->size = 0;
-		return;
-	}
+	list_for_each_entry(pos, &wi_head->list, list) {
+		new_node = kmalloc(sizeof(struct win_info), GFP_KERNEL);
+		if (!new_node)
+			return;
 
-	memcpy(new_tbl, new_wi_tbl->wi, new_wi_tbl->size * sizeof(struct win_info));
-	last_wi_tbl->wi = new_tbl;
-	last_wi_tbl->size = new_wi_tbl->size;
+		*new_node = *pos;
+		INIT_LIST_HEAD(&new_node->list);
+		list_add_tail(&new_node->list, &cur_wi_head->list);
+	}
+	cur_win_info_size = win_info_size;
 }
 
-static int add_tgid_to_tbl(pid_t pid)
+/*
+ * wi_add_tgid - Add a task group ID to the window info list
+ * @pid: the process ID (PID) of the task group leader
+ *
+ * Allocates a new window info node, initializes it with the provided PID,
+ * and adds it to the global window info list.
+ *
+ * Return: 0 on success, -ENOMEM on memory allocation failure
+ */
+static int wi_add_tgid(pid_t pid)
 {
-	struct win_info *new_tbl;
-	size_t new_size = wi_tbl.size + 1;
+	struct win_info *new_node;
 
-	new_tbl = krealloc(wi_tbl.wi, new_size * sizeof(struct win_info), GFP_KERNEL);
-	if (!new_tbl)
+	new_node = kmalloc(sizeof(struct win_info), GFP_KERNEL);
+	if (!new_node)
 		return -ENOMEM;
 
-	wi_tbl.wi = new_tbl;
-	wi_tbl.wi[wi_tbl.size].tgid = pid;
-	wi_tbl.wi[wi_tbl.size].perf_idx = 0;
-	wi_tbl.size = new_size;
+	new_node->tgid = pid;
+	INIT_LIST_HEAD(&new_node->list);
+	list_add_tail(&new_node->list, &wi_head.list);
+	win_info_size++;
 
 	return 0;
 }
 
-static int del_tgid_from_tbl(pid_t pid)
+/*
+ * wi_del_tgid - Delete a task group ID from the window info list
+ * @pid: the process ID (PID) of the task group leader to remove
+ *
+ * Iterates over the global window info list to find the node with the
+ * matching PID. If found, it removes the node from the list, frees its
+ * memory, and updates the current window info list.
+ *
+ * Return: 0 on success, -ESRCH if the PID is not found
+ */
+static int wi_del_tgid(pid_t pid)
 {
-	size_t tbl_i;
-	int found = 0;
-	struct win_info *new_tbl;
+	struct win_info *pos, *n;
 
-	for (tbl_i = 0; tbl_i < wi_tbl.size; tbl_i++) {
-		if (wi_tbl.wi[tbl_i].tgid == pid) {
-			found = 1;
-			unset_task_basic_vip(wi_tbl.wi[tbl_i].tgid);
-			unset_tgid_basic_vip(wi_tbl.wi[tbl_i].tgid);
-			trace_turbo_vip(-1, cpu_loading_thres,
-				"window unset_tgid_basic_vip:", wi_tbl.wi[tbl_i].tgid);
-			break;
+	list_for_each_entry_safe(pos, n, &wi_head.list, list) {
+		if (pos->tgid == pid) {
+			unset_task_basic_vip(pos->tgid);
+			unset_tgid_vip(pos->tgid);
+			trace_turbo_vip(INVALID_LOADING, cpu_loading_thres,
+				"delete win: window unset_tgid_vip:", pos->tgid);
+
+			list_del(&pos->list);
+			kfree(pos);
+			win_info_size--;
+			update_cur_win_info(&cur_wi_head, &wi_head);
+			return 0;
 		}
 	}
 
-	if (!found)
-		return -ESRCH;
-
-	for (; tbl_i < wi_tbl.size - 1; tbl_i++)
-		wi_tbl.wi[tbl_i] = wi_tbl.wi[tbl_i + 1];
-
-	wi_tbl.size--;
-	if (wi_tbl.size == 0) {
-		kfree(wi_tbl.wi);
-		wi_tbl.wi = NULL;
-	} else {
-		new_tbl = krealloc(wi_tbl.wi, wi_tbl.size * sizeof(struct win_info), GFP_KERNEL);
-		if (!new_tbl)
-			return -ENOMEM;
-		wi_tbl.wi = new_tbl;
-	}
-	update_last_win_info_tbl(&last_wi_tbl, &wi_tbl);
-
-	return 0;
+	return -ESRCH;
 }
 
+/*
+ * update_win_pid_status - Update the status of a window PID
+ * @buf: the user-provided buffer with the PID and status
+ * @kp: kernel parameter structure
+ *
+ * Parses the PID and status from the user-provided buffer. If the parsing
+ * succeeds, the function either adds or deletes the PID from the window
+ * info list based on the status value.
+ * status: 0 [PAUSED] APP in background, 1 [RESUMED] APP on screen, 3 [DEAD] APP is killed.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
 static char win_pid_status_param[64] = "";
 static int update_win_pid_status(const char *buf, const struct kernel_param *kp)
 {
@@ -302,14 +352,14 @@ static int update_win_pid_status(const char *buf, const struct kernel_param *kp)
 	if (pid < 0 || pid > PID_MAX_DEFAULT)
 		return -EINVAL;
 
-	mutex_lock(&wi_tbl_lock);
+	mutex_lock(&wi_lock);
 	if (status == 1)
-		retval = add_tgid_to_tbl(pid);
+		retval = wi_add_tgid(pid);
 	else
-		retval = del_tgid_from_tbl(pid);
-	mutex_unlock(&wi_tbl_lock);
+		retval = wi_del_tgid(pid);
+	mutex_unlock(&wi_lock);
 
-	pr_info("%s: retval=%d\n", __func__, retval);
+	pr_info("turbo_vip: %s: retval=%d\n", __func__, retval);
 	return 0;
 }
 
@@ -321,54 +371,72 @@ static const struct kernel_param_ops update_win_pid_status_ops = {
 module_param_cb(update_win_pid_status, &update_win_pid_status_ops, &win_pid_status_param, 0664);
 MODULE_PARM_DESC(update_win_pid_status, "send window pid and status to task turbo");
 
+/*
+ * enable_tt_vip - Master switch for enabling or disabling tt vip feature
+ * @buf: the user-provided buffer with the value to set
+ * @kp: kernel parameter structure (unused)
+ *
+ * Parses the value from the user-provided buffer and sets the tt_vip_enable
+ * flag accordingly. When disabling, it also turns off all previously set
+ * configurations by resetting related flags and clearing VIP settings.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
 static int enable_tt_vip(const char *buf, const struct kernel_param *kp)
 {
 	int retval = 0, val = 0;
-	size_t tbl_i;
+	struct win_info *pos;
 
 	retval = kstrtouint(buf, 0, &val);
 
 	if (retval)
 		return -EINVAL;
 
-	val = (val > 0) ? 1 : 0;
-	if (val == 1) {
-		tt_vip_enable = 1;
-	} else {
-		tt_vip_enable = 0;
-		if (win_vip_status) {
+	if (val < 0)
+		return -EINVAL;
+
+	tt_vip_enable = !!val;
+
+	if (!tt_vip_enable) {
+		turn_off_tgid_vip();
+		if (win_vip_status || enforced_qualified_mask) {
 			win_vip_status = false;
-			for (tbl_i = 0; tbl_i < last_wi_tbl.size; tbl_i++) {
-				unset_task_basic_vip(last_wi_tbl.wi[tbl_i].tgid);
-				unset_tgid_basic_vip(last_wi_tbl.wi[tbl_i].tgid);
-				trace_turbo_vip(-1, cpu_loading_thres,
-					"window unset_tgid_basic_vip:", wi_tbl.wi[tbl_i].tgid);
+			list_for_each_entry(pos, &cur_wi_head.list, list) {
+				unset_task_basic_vip(pos->tgid);
+				unset_tgid_vip(pos->tgid);
+				trace_turbo_vip(INVALID_LOADING, cpu_loading_thres,
+					"disable tt_vip: window unset_tgid_vip:", pos->tgid);
 			}
 		}
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
-		if (cam_hal_tgid > 0) {
-			unset_task_basic_vip(cam_hal_tgid);
-			unset_tgid_basic_vip(cam_hal_tgid);
-			trace_turbo_vip(-1, cpu_loading_thres,
-				"cam_hal unset_tgid_basic_vip:", cam_hal_tgid);
-			cam_hal_tgid = -1;
+		if (cam_3rd_hal_vip_status) {
+			cam_3rd_hal_vip_status = false;
+			if (cam_hal_tgid > 0) {
+				unset_task_basic_vip(cam_hal_tgid);
+				unset_tgid_vip(cam_hal_tgid);
+				trace_turbo_vip(INVALID_LOADING, cpu_loading_thres,
+					"disable tt_vip: cam_hal unset_tgid_vip:", cam_hal_tgid);
+				cam_hal_tgid = INVALID_TGID;
+			}
 		}
-		if (cam_svr_tgid > 0) {
-			unset_task_basic_vip(cam_svr_tgid);
-			unset_tgid_basic_vip(cam_svr_tgid);
-			trace_turbo_vip(-1, cpu_loading_thres,
-				"cam_server unset_tgid_basic_vip:", cam_svr_tgid);
-			cam_svr_tgid = -1;
+		if (cam_3rd_svr_vip_status) {
+			cam_3rd_svr_vip_status = false;
+			if (cam_svr_tgid > 0) {
+				unset_task_basic_vip(cam_svr_tgid);
+				unset_tgid_vip(cam_svr_tgid);
+				trace_turbo_vip(INVALID_LOADING, cpu_loading_thres,
+					"disable tt_vip: cam_server unset_tgid_vip:", cam_svr_tgid);
+				cam_svr_tgid = INVALID_TGID;
+			}
 		}
 #endif
 		if (touch_vip_status) {
 			touch_vip_status = false;
-			unset_task_basic_vip(last_inputDispatcher_tgid);
-			unset_tgid_basic_vip(last_inputDispatcher_tgid);
-			trace_turbo_vip(-1, cpu_loading_thres,
-				"system_server unset_tgid_basic_vip:", last_inputDispatcher_tgid);
+			unset_task_basic_vip(cur_inputDispatcher_tgid);
+			unset_tgid_vip(cur_inputDispatcher_tgid);
+			trace_turbo_vip(INVALID_LOADING, cpu_loading_thres,
+				"disable tt_vip: system_server unset_tgid_vip:", cur_inputDispatcher_tgid);
 		}
-		touch_countdown_timer = 0;
 	}
 
 	return retval;
@@ -382,183 +450,381 @@ static const struct kernel_param_ops enable_tt_vip_ops = {
 module_param_cb(enable_tt_vip, &enable_tt_vip_ops, &tt_vip_enable, 0664);
 MODULE_PARM_DESC(enable_tt_vip, "Enable or disable tt vip");
 
-static void tt_vip_handler(struct work_struct *work)
-{
-	int ret = 0, i = 0, avg_cpu_loading = 0;
-	size_t tbl_i;
-	bool need_clean = false;
-	bool need_set = false;
-	bool cur_qualified = false;
-	bool content_changed = false;
-	bool touching = false;
-#if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
-	bool status_3rd_cam = false;
-	bool fps_drop = false;
-#endif
 
-	// get cpu_loading from magt
+/*
+ * enforce_ct_to_vip - Enforce critical task(ct) VIP status based on caller id
+ * @val: the value indicating whether to enforce VIP status
+ * @caller_id: the caller id, which determines the context of the enforcement
+ *
+ * Sets or clears the enforced VIP status based on the value and caller id.
+ * If any caller id has enforced VIP status, the corresponding bit in the
+ * mask is set, and process the VIP settings.
+ * Otherwise, the enforcement is cleared. The function also logs the action
+ * for debugging purposes.
+ *
+ * Return: 0 on success, -EINVAL if the caller id is out of range
+ */
+int enforce_ct_to_vip(int val, int caller_id)
+{
+	char desc[256];
+	u64 tmp_mask;
+	static const char * const caller_id_desc[] = {"DEBUG_NODE", "FPSGO", "UX"};
+	enum {
+		DEBUG_NODE,
+		FPSGO,
+		UX,
+		MAX_TYPE
+	};
+
+	if (caller_id >= MAX_TYPE)
+		return -EINVAL;
+
+	val = (val > 0) ? 1 : 0;
+	mutex_lock(&enforced_qualified_lock);
+	if (val)
+		enforced_qualified_mask |= (1U << caller_id);
+	else
+		enforced_qualified_mask &= ~(1U << caller_id);
+
+	snprintf(desc, sizeof(desc), "%s %s=%d, enforced_qualified_mask=%llu"
+			, caller_id_desc[caller_id], __func__, val, enforced_qualified_mask);
+
+	tmp_mask = enforced_qualified_mask;
+	mutex_unlock(&enforced_qualified_lock);
+	if (tmp_mask && val && tt_vip_enable)
+		queue_work(system_highpri_wq, &tt_vip_worker);
+
+	trace_turbo_vip(INVALID_LOADING, INVALID_LOADING, desc, INVALID_TGID);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(enforce_ct_to_vip);
+
+/**
+ * enforce_ct_to_vip_param - Callback for setting enforce_ct_to_vip via sysfs
+ * @buf: the user-provided buffer with the value and caller id
+ * @kp: kernel parameter structure
+ *
+ * Parses the value and caller id from the user-provided buffer and calls
+ * enforce_ct_to_vip() to enforce or clear VIP status accordingly.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+static char enforced_qualified_param[64] = "";
+static int enforce_ct_to_vip_param(const char *buf, const struct kernel_param *kp)
+{
+	int val = 0, caller_id = 0;
+
+	if (sscanf(buf, "%d %d", &val, &caller_id) != 2)
+		return -EINVAL;
+
+	return enforce_ct_to_vip(val, caller_id);
+}
+
+static const struct kernel_param_ops enforce_ct_to_vip_param_ops = {
+	.set = enforce_ct_to_vip_param,
+	.get = param_get_int,
+};
+module_param_cb(enforce_ct_to_vip_param, &enforce_ct_to_vip_param_ops,
+				&enforced_qualified_param, 0664);
+
+/*
+ * update_cpu_loading - Update the average CPU loading
+ *
+ * Retrieves the CPU loading (CPU active time / wall time duration) and
+ * updates the average CPU loading across all CPUs. The value is then used
+ * to determine if tasks should be promoted to VIP status based on CPU load.
+ */
+static void update_cpu_loading(void)
+{
+	int ret = 0, i = 0;
+
 	ret = get_cpu_loading(&ci);
 
 	if (ret < 0)
 		return;
 
+	mutex_lock(&cpu_loading_lock);
 	for (i = 0; i < max_cpus; i++)
 		avg_cpu_loading += ci.cpu_loading[i];
 	avg_cpu_loading /= max_cpus;
+	mutex_unlock(&cpu_loading_lock);
+}
 
-	cur_qualified = avg_cpu_loading >= cpu_loading_thres;
+
+/*
+ * tt_vip - Task Turbo VIP management routine
+ *
+ * Manages the VIP status of tasks based on various conditions such as CPU load,
+ * enforced VIP status, and touch input. It sets or clears the VIP status for
+ * tasks and logs these actions for debugging purposes.
+ */
+static void tt_vip(void)
+{
+	struct win_info *pos;
+	struct win_info *pos_wi, *pos_cur_wi;
+	struct list_head *wi_ptr, *cur_wi_ptr;
+	bool need_clean = false;
+	bool need_set = false;
+	bool ct_vip_qualified = false;
+	bool content_changed = false;
+	bool touching = false;
+	int tmp_avg_cpu_loading = 0;
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
-	status_3rd_cam = get_cam_status_for_task_turbo();
+	bool in_cam_3rd = false;
+
+	/* Check if we are in a 3rd camera scenario */
+	in_cam_3rd = get_cam_status_for_task_turbo();
 #endif
-	if (touch_countdown_timer > 0) {
-		touch_countdown_timer--;
+
+	/* The effect after touch ends lasts for TOUCH_SUSTAIN_MS milliseconds */
+	if (ktime_to_ms(ktime_get() - cur_touch_time) < TOUCH_SUSTAIN_MS)
 		touching = true;
-	}
-	mutex_lock(&wi_tbl_lock);
-#if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
-	if (fps_drop_vip_enable > 0) {
-		if (fps_drop_countdown_timer > 0) {
-			cur_qualified |= true;
-			fps_drop_countdown_timer--;
-		} else {
-			for (tbl_i = 0; tbl_i < wi_tbl.size; tbl_i++) {
-				if (ktime_sub(ktime_to_ms(ktime_get()), fps_drop_hint_for_task_turbo()) <= 1000)
-					fps_drop = true;
-				if (wi_tbl.wi[tbl_i].perf_idx == 100 && fps_drop) {
-					cur_qualified |= true;
-					fps_drop_countdown_timer = fps_drop_vip_throttle;
-				}
-			}
-		}
-	} else {
-		fps_drop_countdown_timer = 0;
-	}
-#endif
-	if ((!win_vip_status && !cur_qualified) || (last_wi_tbl.size == 0 && wi_tbl.size == 0) ||
-		(wi_tbl.size == 0 && !win_vip_status) || (last_wi_tbl.size == 0 && !cur_qualified))
-		goto out_unlock;
 
-	if ((last_wi_tbl.size > 0 && win_vip_status) && (wi_tbl.size == 0 || !cur_qualified))
+	mutex_lock(&cpu_loading_lock);
+	tmp_avg_cpu_loading = avg_cpu_loading;
+	mutex_unlock(&cpu_loading_lock);
+	ct_vip_qualified = tmp_avg_cpu_loading >= cpu_loading_thres;
+
+	mutex_lock(&enforced_qualified_lock);
+	/* enforced_qualified_mask can forcibly make critical task(s) to VIP */
+	if (enforced_qualified_mask)
+		ct_vip_qualified = true;
+	mutex_unlock(&enforced_qualified_lock);
+
+	mutex_lock(&wi_lock);
+	if (!cam_3rd_hal_vip_status && !cam_3rd_svr_vip_status && !touch_vip_status) {
+		/* If conditions are not met and there are no VIPs to clear, directly unlock and exit */
+		if (!ct_vip_qualified && !win_vip_status)
+			goto out_unlock;
+		if (!ct_vip_qualified && list_empty(&cur_wi_head.list))
+			goto out_unlock;
+
+		/* If there are no targets to set as VIP and no VIPs to clear, directly unlock and exit */
+		if (list_empty(&wi_head.list) && list_empty(&cur_wi_head.list))
+			goto out_unlock;
+		if (list_empty(&wi_head.list) && !win_vip_status)
+			goto out_unlock;
+	}
+
+	/*
+	 * If conditions are not met or there are no targets to set,but VIPs need to be cleared,
+	 * set the need_clean flag to true
+	 */
+	if ((!ct_vip_qualified || list_empty(&wi_head.list)) && (cur_win_info_size > 0 && win_vip_status)) {
 		need_clean = true;
+		turn_off_tgid_vip();
+	}
 
-	if (last_wi_tbl.size == wi_tbl.size) {
-		for (tbl_i = 0; tbl_i < wi_tbl.size; tbl_i++) {
-			if (wi_tbl.wi[tbl_i].tgid != last_wi_tbl.wi[tbl_i].tgid) {
+	/* Check if the content of the current list has changed compared to the previous list */
+	if (win_info_size == cur_win_info_size) {
+		wi_ptr = wi_head.list.next;
+		cur_wi_ptr = cur_wi_head.list.next;
+
+		while (wi_ptr != &wi_head.list && cur_wi_ptr != &cur_wi_head.list) {
+			pos_wi = list_entry(wi_ptr, struct win_info, list);
+			pos_cur_wi = list_entry(cur_wi_ptr, struct win_info, list);
+
+			if (pos_wi->tgid != pos_cur_wi->tgid) {
 				content_changed = true;
 				break;
 			}
+
+			wi_ptr = wi_ptr->next;
+			cur_wi_ptr = cur_wi_ptr->next;
 		}
 	} else
 		content_changed = true;
 
-	if (wi_tbl.size > 0 && cur_qualified) {
+	/* If conditions are met and there are targets to set as VIP, set the need_set flag to true */
+	if (ct_vip_qualified && win_info_size > 0)
 		need_set = true;
-		if (last_wi_tbl.size > 0 && win_vip_status && content_changed)
-			need_clean = true;
-	}
 
-	if (need_clean) {
+	/*
+	 * If the need_clean flag is true or the win_info list content has changed,
+	 * clear the VIP status in the win_info list
+	 */
+	if (need_clean || (cur_win_info_size > 0 && win_vip_status && content_changed)) {
 		win_vip_status = false;
-		for (tbl_i = 0; tbl_i < last_wi_tbl.size; tbl_i++) {
-			unset_task_basic_vip(last_wi_tbl.wi[tbl_i].tgid);
-			unset_tgid_basic_vip(last_wi_tbl.wi[tbl_i].tgid);
-			trace_turbo_vip(avg_cpu_loading, cpu_loading_thres,
-				"window unset_tgid_basic_vip:", wi_tbl.wi[tbl_i].tgid);
+		list_for_each_entry(pos, &cur_wi_head.list, list) {
+			unset_task_basic_vip(pos->tgid);
+			unset_tgid_vip(pos->tgid);
+			trace_turbo_vip(tmp_avg_cpu_loading, cpu_loading_thres,
+				"ct_vip_unqualified: window unset_tgid_vip:", pos->tgid);
 		}
 	}
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
-	if (cam_hal_tgid > 0 && (need_clean || !status_3rd_cam)) {
-		unset_task_basic_vip(cam_hal_tgid);
-		unset_tgid_basic_vip(cam_hal_tgid);
-		trace_turbo_vip(avg_cpu_loading, cpu_loading_thres,
-			"cam_hal unset_tgid_basic_vip:", cam_hal_tgid);
-		cam_hal_tgid = -1;
+	/*
+	 * If the need_clean flag is true or we are not in a 3rd camera scenario,
+	 * clear the camerahal/cameraserver VIP status
+	 */
+	if (cam_3rd_hal_vip_status && (need_clean || !in_cam_3rd)) {
+		cam_3rd_hal_vip_status = false;
+		if (cam_hal_tgid > 0) {
+			unset_task_basic_vip(cam_hal_tgid);
+			unset_tgid_vip(cam_hal_tgid);
+			trace_turbo_vip(tmp_avg_cpu_loading, cpu_loading_thres,
+				"ct_vip_unqualified: cam_hal unset_tgid_vip:", cam_hal_tgid);
+			cam_hal_tgid = INVALID_TGID;
+		}
 	}
-	if (cam_svr_tgid > 0 && (need_clean || !status_3rd_cam)) {
-		unset_task_basic_vip(cam_svr_tgid);
-		unset_tgid_basic_vip(cam_svr_tgid);
-		trace_turbo_vip(avg_cpu_loading, cpu_loading_thres,
-			"cam_server unset_tgid_basic_vip:", cam_svr_tgid);
-		cam_svr_tgid = -1;
+	if (cam_3rd_svr_vip_status && (need_clean || !in_cam_3rd)) {
+		cam_3rd_svr_vip_status = false;
+		if (cam_svr_tgid > 0) {
+			unset_task_basic_vip(cam_svr_tgid);
+			unset_tgid_vip(cam_svr_tgid);
+			trace_turbo_vip(tmp_avg_cpu_loading, cpu_loading_thres,
+				"ct_vip_unqualified: cam_server unset_tgid_vip:", cam_svr_tgid);
+			cam_svr_tgid = INVALID_TGID;
+		}
 	}
 #endif
+	/*
+	 * If the need_clean flag is true or we are not touching,
+	 * clear the VIP status of system_server (including inputDispatcher)
+	 */
 	if (touch_vip_status && (need_clean || !touching)) {
 		touch_vip_status = false;
-		unset_task_basic_vip(last_inputDispatcher_tgid);
-		unset_tgid_basic_vip(last_inputDispatcher_tgid);
-		trace_turbo_vip(avg_cpu_loading, cpu_loading_thres,
-			"system_server unset_tgid_basic_vip:", last_inputDispatcher_tgid);
+		unset_task_basic_vip(cur_inputDispatcher_tgid);
+		unset_tgid_vip(cur_inputDispatcher_tgid);
+		trace_turbo_vip(tmp_avg_cpu_loading, cpu_loading_thres,
+			"ct_vip_unqualified: system_server unset_tgid_vip:", cur_inputDispatcher_tgid);
 	}
+
+	/* If the need_set flag is true, check if VIP status needs to be set */
 	if (need_set) {
-		win_vip_status = true;
-		for (tbl_i = 0; tbl_i < wi_tbl.size; tbl_i++) {
-			set_task_basic_vip(wi_tbl.wi[tbl_i].tgid);
-			set_tgid_basic_vip(wi_tbl.wi[tbl_i].tgid);
-			trace_turbo_vip(avg_cpu_loading, cpu_loading_thres,
-				"window set_tgid_basic_vip:", wi_tbl.wi[tbl_i].tgid);
+		/*
+		 * If the win_info list content has changed or is not yet set as VIP,
+		 * set the windows in the win_info list as VIP
+		 */
+		if (content_changed || !win_vip_status) {
+			win_vip_status = true;
+			list_for_each_entry(pos, &wi_head.list, list) {
+				set_task_basic_vip(pos->tgid);
+				set_tgid_vip(pos->tgid);
+				turn_on_tgid_vip();
+				trace_turbo_vip(tmp_avg_cpu_loading, cpu_loading_thres,
+					"ct_vip_qualified: window set_tgid_vip:", pos->tgid);
+			}
 		}
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
-		if (status_3rd_cam) {
+		/* If we are in a 3rd camera scenario, set camerahal/cameraserver as VIP */
+		if (in_cam_3rd) {
 			if (cam_hal_tgid <= 0)
 				cam_hal_tgid = get_cam_hal_pid_for_task_turbo();
-			if (cam_hal_tgid > 0 && cam_hal_tgid <= PID_MAX_DEFAULT) {
+			if (cam_hal_tgid > 0 && cam_hal_tgid <= PID_MAX_DEFAULT && !cam_3rd_hal_vip_status) {
+				cam_3rd_hal_vip_status = true;
 				set_task_basic_vip(cam_hal_tgid);
-				set_tgid_basic_vip(cam_hal_tgid);
-				trace_turbo_vip(avg_cpu_loading, cpu_loading_thres,
-					"cam_hal set_tgid_basic_vip:", cam_hal_tgid);
+				set_tgid_vip(cam_hal_tgid);
+				turn_on_tgid_vip();
+				trace_turbo_vip(tmp_avg_cpu_loading, cpu_loading_thres,
+					"ct_vip_qualified: cam_hal set_tgid_vip:", cam_hal_tgid);
 			}
 			if (cam_svr_tgid <= 0)
 				cam_svr_tgid = get_cam_server_pid_for_task_turbo();
-			if (cam_svr_tgid > 0 && cam_svr_tgid <= PID_MAX_DEFAULT) {
+			if (cam_svr_tgid > 0 && cam_svr_tgid <= PID_MAX_DEFAULT && !cam_3rd_svr_vip_status) {
+				cam_3rd_svr_vip_status = true;
 				set_task_basic_vip(cam_svr_tgid);
-				set_tgid_basic_vip(cam_svr_tgid);
-				trace_turbo_vip(avg_cpu_loading, cpu_loading_thres,
-					"cam_server set_tgid_basic_vip:", cam_svr_tgid);
+				set_tgid_vip(cam_svr_tgid);
+				turn_on_tgid_vip();
+				trace_turbo_vip(tmp_avg_cpu_loading, cpu_loading_thres,
+					"ct_vip_qualified: cam_server set_tgid_vip:", cam_svr_tgid);
 			}
 		}
 #endif
-		if (touching) {
+		/* If touching, set system_server (including inputDispatcher) as VIP */
+		if (touching && inputDispatcher_tgid > 0 && !touch_vip_status) {
 			touch_vip_status = true;
 			set_task_basic_vip(inputDispatcher_tgid);
-			set_tgid_basic_vip(inputDispatcher_tgid);
-			trace_turbo_vip(avg_cpu_loading, cpu_loading_thres,
-				"system_server set_tgid_basic_vip:", inputDispatcher_tgid);
-			last_inputDispatcher_tgid = inputDispatcher_tgid;
+			set_tgid_vip(inputDispatcher_tgid);
+			turn_on_tgid_vip();
+			trace_turbo_vip(tmp_avg_cpu_loading, cpu_loading_thres,
+				"ct_vip_qualified: system_server set_tgid_vip:", inputDispatcher_tgid);
+			cur_inputDispatcher_tgid = inputDispatcher_tgid;
 		}
 	}
-	update_last_win_info_tbl(&last_wi_tbl, &wi_tbl);
+	/* Synchronize the content of the win_info lists */
+	update_cur_win_info(&cur_wi_head, &wi_head);
 
 out_unlock:
-	mutex_unlock(&wi_tbl_lock);
+	mutex_unlock(&wi_lock);
 }
 module_param(cpu_loading_thres, int, 0644);
-#if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
-module_param(fps_drop_vip_throttle, int, 0644);
-module_param(fps_drop_vip_enable, int, 0644);
-#endif
 
+/**
+ * tt_vip_handler - Event-triggered work handler for VIP management
+ *
+ * This function is designed to be called in response to specific events that require
+ * immediate attention to VIP status management.
+ */
+static void tt_vip_handler(struct work_struct *work)
+{
+	tt_vip();
+}
+
+/*
+ * tt_vip_periodic_handler - Periodic work handler for VIP management
+ *
+ * This function is invoked periodically, to perform regular updates
+ * of the CPU loading information. After updating the CPU loading, it calls the
+ * tt_vip function to manage the VIP status.
+ */
+static void tt_vip_periodic_handler(struct work_struct *work)
+{
+	update_cpu_loading();
+	tt_vip();
+}
+
+/*
+ * tt_input_event - Handles touch input events for VIP management
+ * @handle: input handle associated with the event
+ * @type: type of input event (e.g., EV_KEY for key events)
+ * @code: event code (e.g., BTN_TOUCH for touch events)
+ * @value: value of the event (e.g., TOUCH_DOWN)
+ *
+ * This function is invoked upon receiving input events and serves two primary purposes:
+ * 1. Updates the `cur_touch_time` with the current time for all types of touch events. This
+ *	timestamp is used to determine if touch-based VIP management should be active, allowing
+ *	for VIP status to be maintained for a period after the last touch event.
+ * 2. Specifically for TOUCH_DOWN events (indicating the start of a touch), it triggers the
+ *	VIP management logic if the VIP feature is enabled.
+ *	This is done by finding the `system_server` task (if not already known) and
+ *	updating the `inputDispatcher_tgid` with its task group ID, then queuing the VIP management
+ *	work (`tt_vip_worker`).
+ *
+ * The effect of this logic is to potentially elevate tasks to VIP status from the moment of touch
+ * down and to continue considering them for VIP status for up to TOUCH_SUSTAIN_MS milliseconds after
+ * the last touch event. This approach aims to ensure that the system remains responsive during
+ * and shortly after user interactions.
+ */
 static void tt_input_event(struct input_handle *handle, unsigned int type,
 						   unsigned int code, int value)
 {
 	struct task_struct *p;
 	int find_ret = 0;
+	ktime_t diff = 0;
 
-	touch_countdown_timer = 2;
-	if (tt_vip_enable > 0 && type == EV_KEY && code == BTN_TOUCH && value == TOUCH_DOWN) {
-		rcu_read_lock();
-		p = find_task_by_vpid(inputDispatcher_tgid);
-		if (!p || !strstr(p->comm, "system_server"))
-			find_ret = -ESRCH;
-			for_each_process(p) {
-				if (strstr(p->comm, "system_server")) {
-					inputDispatcher_tgid = p->tgid;
-					find_ret = 0;
-					break;
+	cur_touch_time = ktime_get();
+	if (tt_vip_enable && type == EV_KEY && code == BTN_TOUCH && value == TOUCH_DOWN) {
+		diff = cur_touch_time - cur_touch_down_time;
+		cur_touch_down_time = cur_touch_time;
+		if (diff >= TOUCH_SUSTAIN_MS) {
+			rcu_read_lock();
+			p = find_task_by_vpid(inputDispatcher_tgid);
+			if (!p || !strstr(p->comm, "system_server")) {
+				find_ret = -ESRCH;
+				for_each_process(p) {
+					if (strstr(p->comm, "system_server")) {
+						inputDispatcher_tgid = p->tgid;
+						find_ret = 0;
+						break;
+					}
 				}
 			}
-		rcu_read_unlock();
-		if (find_ret == 0)
-			queue_work(system_highpri_wq, &tt_vip);
+			rcu_read_unlock();
+			if (find_ret == 0)
+				queue_work(system_highpri_wq, &tt_vip_worker);
+		}
 	}
 }
 
@@ -615,32 +881,6 @@ static struct input_handler tt_input_handler = {
 	.name = "tt_input_handler",
 	.id_table = tt_input_ids,
 };
-
-void fpsgo2tt_hint_perf_idx(int pid, unsigned long long bufID,
-	int perf_idx, int sbe_ctrl, unsigned long long ts)
-{
-	struct task_struct *p;
-	int tgid;
-	size_t tbl_i;
-
-	rcu_read_lock();
-	p = find_task_by_vpid(pid);
-	if (!p) {
-		rcu_read_unlock();
-		return;
-	}
-	tgid = p->tgid;
-	rcu_read_unlock();
-
-	mutex_lock(&wi_tbl_lock);
-	for (tbl_i = 0; tbl_i < wi_tbl.size; tbl_i++) {
-		if (wi_tbl.wi[tbl_i].tgid == tgid) {
-			wi_tbl.wi[tbl_i].perf_idx = perf_idx;
-			break;
-		}
-	}
-	mutex_unlock(&wi_tbl_lock);
-}
 
 static void probe_android_rvh_prepare_prio_fork(void *ignore, struct task_struct *p)
 {
@@ -1933,6 +2173,8 @@ err_cur_wall_time:
 
 int init_tt_input_handler(void)
 {
+	cur_touch_time = 0;
+	cur_touch_down_time = 0;
 	return input_register_handler(&tt_input_handler);
 }
 
@@ -1957,12 +2199,12 @@ static void tt_tick(void *data, struct rq *rq)
 {
 	u64 wallclock;
 
-	if (tt_vip_enable > 0) {
+	if (tt_vip_enable) {
 		wallclock = ktime_get_ns();
 		if (!tt_vip_do_check(wallclock))
 			return;
 
-		queue_work(system_highpri_wq, &tt_vip);
+		queue_work(system_highpri_wq, &tt_vip_periodic_worker);
 	}
 }
 
@@ -2110,11 +2352,6 @@ static int __init init_task_turbo(void)
 		pr_info("%s: init cpu time failed, returned %d\n", TAG, ret);
 		goto register_failed;
 	}
-
-#if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
-	fpsgo_other2fstb_register_perf_callback(FPSGO_PERF_IDX,
-		fpsgo2tt_hint_perf_idx);
-#endif
 
 	ret = init_tt_input_handler();
 	if (ret)

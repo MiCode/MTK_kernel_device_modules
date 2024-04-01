@@ -15,6 +15,9 @@
 #define get_inherit_task(parent)	\
 	((struct task_struct *)((u64)(parent)->android_vendor_data1))
 #define TOUCH_DOWN 1
+#define TOUCH_SUSTAIN_MS 2000
+#define INVALID_TGID -1
+#define INVALID_LOADING -1
 
 struct list_head;
 
@@ -59,12 +62,7 @@ struct cluster_info {
 
 struct win_info {
 	pid_t tgid;
-	int perf_idx;
-};
-
-struct win_info_tbl {
-	struct win_info *wi;
-	size_t size;
+	struct list_head list;
 };
 
 struct cpu_time {
@@ -77,12 +75,13 @@ struct cpu_info {
 
 extern void set_task_basic_vip(int pid);
 extern void unset_task_basic_vip(int pid);
-extern void set_tgid_basic_vip(int tgid);
-extern void unset_tgid_basic_vip(int tgid);
+extern void set_tgid_vip(int tgid);
+extern void unset_tgid_vip(int tgid);
+extern void turn_on_tgid_vip(void);
+extern void turn_off_tgid_vip(void);
 extern int get_cam_hal_pid_for_task_turbo(void);
 extern int get_cam_server_pid_for_task_turbo(void);
 extern bool get_cam_status_for_task_turbo(void);
-extern unsigned long long fps_drop_hint_for_task_turbo(void);
 
 /*
  * Nice levels are multiplicative, with a gentle 10% change for every
