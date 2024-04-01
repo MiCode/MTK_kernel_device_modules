@@ -22,6 +22,14 @@
 
 #include "mediatek/cust_mt6893_touch_1080x2300.dtsi"
 
+&mtkheap_region_svp {
+	status = "ok";
+};
+
+&mtkheap_region_wfd {
+	status = "ok";
+};
+
 &chosen {
 	atag,videolfb-fb_base_l = <0x7e605000>;
 	atag,videolfb-fb_base_h = <0x0>;

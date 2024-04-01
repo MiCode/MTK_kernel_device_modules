@@ -876,7 +876,7 @@ cpus {
 		#size-cells = <2>;
 		compatible = "simple-bus";
 		ranges;
-
+		dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		dvfsp: dvfsp@0011bc00 {
 		compatible = "mediatek,mt6885-dvfsp";
 		reg = <0 0x0011bc00 0 0x1400>,
