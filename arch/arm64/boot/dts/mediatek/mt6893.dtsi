@@ -567,6 +567,17 @@ cpus {
 		reg = <0 0x0c000000 0 0x40000>, // distributor
 		      <0 0x0c040000 0 0x200000>; // redistributor
 		interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH 0>;
+		ppi-partitions {
+			ppi_cluster0: interrupt-partition-0 {
+				affinity = <&cpu0 &cpu1 &cpu2 &cpu3>;
+			};
+			ppi_cluster1: interrupt-partition-1 {
+				affinity = <&cpu4 &cpu5 &cpu6>;
+			};
+			ppi_cluster2: interrupt-partition-2 {
+				affinity = <&cpu7>;
+			};
+		};
 	};
 
 	dcm: dcm@10001000 {
