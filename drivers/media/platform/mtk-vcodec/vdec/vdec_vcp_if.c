@@ -307,6 +307,9 @@ wait_ack:
 		if (ret == 0) {
 			mtk_vcodec_err(inst, "wait vcp ipi %X ack time out! %d %d",
 				msg_cmd->msg_id, ret, inst->vcu.failure);
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+			dump_vcp_irq_status();
+#endif
 			goto ipi_err_wait_and_unlock;
 		} else if (-ERESTARTSYS == ret) {
 			mtk_vcodec_err(inst, "wait vcp ipi %X ack ret %d RESTARTSYS retry! (%d)",
