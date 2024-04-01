@@ -1935,7 +1935,10 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"sound/soc/mediatek/common_int/mtk-soc-tdm-capture.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"sound/soc/mediatek/common_int/mtk-soc-pcm-hp-impedance.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"sound/soc/mediatek/common_int/mtk-soc-machine.ko":"mt6761"})
-
+        mgk_64_device_modules.append("drivers/misc/mediatek/scp/cm4/scp.ko")
+        mgk_64_device_modules.remove("sound/soc/codecs/mt6338-accdet.ko")
+        mgk_64_device_modules.remove("sound/soc/codecs/mt6681-accdet.ko")
+        mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/mediatek_v2/mtk_aod_scp.ko")
 
 
     if "mt6768_overlay_ref.config" in DEFCONFIG_OVERLAYS:
