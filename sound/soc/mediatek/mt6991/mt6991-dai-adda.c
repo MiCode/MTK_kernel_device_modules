@@ -1750,7 +1750,6 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 
 		switch (id) {
 		case MT6991_DAI_ADDA:
-		case MT6991_DAI_AP_DMIC:
 #ifdef MTKAIF4
 			if (afe_priv->audio_r_miso1_enable == 1) {
 				/* AFE_ADDA_MTKAIFV4_RX_CFG0 */
@@ -1807,8 +1806,93 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 			regmap_write(afe->regmap,
 				     AFE_ADDA_UL1_IIR_COEF_10_09, 0x0000C048);
 
+			regmap_update_bits(afe->regmap,
+				     AFE_ADDA_UL1_SRC_CON0,
+				     UL_IIR_ON_TMP_CTL_MASK_SFT |
+				     UL_IIRMODE_CTL_MASK_SFT |
+				     UL_VOICE_MODE_CH1_CH2_CTL_MASK_SFT,
+				     ul_src_con0);
+
+			/* mtkaif_rxif_data_mode = 0, amic */
+			if (afe_priv->mtkaif_dmic) {
+				regmap_update_bits(afe->regmap,
+					AFE_MTKAIF1_RX_CFG0,
+					0x1 << 0,
+					0x1 << 0);
+			} else {
+				regmap_update_bits(afe->regmap,
+					AFE_MTKAIF1_RX_CFG0,
+					0x1 << 0,
+					0x0 << 0);
+			}
+
+			/* 35Hz @ 48k */
 			regmap_write(afe->regmap,
-				     AFE_ADDA_UL1_SRC_CON0, ul_src_con0);
+				     AFE_ADDA_UL0_IIR_COEF_02_01, 0x00000000);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL0_IIR_COEF_04_03, 0x00003FB8);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL0_IIR_COEF_06_05, 0x3FB80000);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL0_IIR_COEF_08_07, 0x3FB80000);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL0_IIR_COEF_10_09, 0x0000C048);
+
+			regmap_update_bits(afe->regmap,
+				     AFE_ADDA_UL0_SRC_CON0,
+				     UL_IIR_ON_TMP_CTL_MASK_SFT |
+				     UL_IIRMODE_CTL_MASK_SFT |
+				     UL_VOICE_MODE_CH1_CH2_CTL_MASK_SFT,
+				     ul_src_con0);
+
+			/* mtkaif_rxif_data_mode = 0, amic */
+			if (afe_priv->mtkaif_dmic) {
+				regmap_update_bits(afe->regmap,
+					AFE_MTKAIF0_RX_CFG0,
+					0x1 << 0,
+					0x1 << 0);
+			} else {
+				regmap_update_bits(afe->regmap,
+					AFE_MTKAIF0_RX_CFG0,
+					0x1 << 0,
+					0x0 << 0);
+			}
+			break;
+
+		case MT6991_DAI_AP_DMIC:
+#ifdef MTKAIF4
+
+			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+					MTKAIFV4_UL_CH1CH2_IN_EN_SEL_MASK_SFT,
+					0x0 << MTKAIFV4_UL_CH1CH2_IN_EN_SEL_SFT);
+			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+					MTKAIFV4_UL_CH3CH4_IN_EN_SEL_MASK_SFT,
+					0x0 << MTKAIFV4_UL_CH3CH4_IN_EN_SEL_SFT);
+#else
+			/* mtkaif3.0 no bypass ul0 */
+			regmap_update_bits(afe->regmap,
+					AFE_MTKAIF0_CFG0,
+					RG_MTKAIF0_RXIF_BYPASS_SRC_MASK_SFT,
+					0x0 << RG_MTKAIF0_RXIF_BYPASS_SRC_SFT);
+#endif
+			/* 35Hz @ 48k */
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL1_IIR_COEF_02_01, 0x00000000);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL1_IIR_COEF_04_03, 0x00003FB8);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL1_IIR_COEF_06_05, 0x3FB80000);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL1_IIR_COEF_08_07, 0x3FB80000);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL1_IIR_COEF_10_09, 0x0000C048);
+
+			regmap_update_bits(afe->regmap,
+				     AFE_ADDA_UL1_SRC_CON0,
+				     UL_IIR_ON_TMP_CTL_MASK_SFT |
+				     UL_IIRMODE_CTL_MASK_SFT |
+				     UL_VOICE_MODE_CH1_CH2_CTL_MASK_SFT,
+				     ul_src_con0);
 
 			/* mtkaif_rxif_data_mode = 0, amic */
 			regmap_update_bits(afe->regmap,
@@ -1828,8 +1912,12 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 			regmap_write(afe->regmap,
 				     AFE_ADDA_UL0_IIR_COEF_10_09, 0x0000C048);
 
-			regmap_write(afe->regmap,
-				     AFE_ADDA_UL0_SRC_CON0, ul_src_con0);
+			regmap_update_bits(afe->regmap,
+				     AFE_ADDA_UL0_SRC_CON0,
+				     UL_IIR_ON_TMP_CTL_MASK_SFT |
+				     UL_IIRMODE_CTL_MASK_SFT |
+				     UL_VOICE_MODE_CH1_CH2_CTL_MASK_SFT,
+				     ul_src_con0);
 
 			/* mtkaif_rxif_data_mode = 0, amic */
 			regmap_update_bits(afe->regmap,
@@ -1838,7 +1926,6 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 					0x0 << 0);
 			break;
 		case MT6991_DAI_ADDA_CH34:
-		case MT6991_DAI_AP_DMIC_CH34:
 #ifdef MTKAIF4
 			if (afe_priv->audio_r_miso1_enable == 0) {
 				/* AFE_ADDA_MTKAIFV4_RX_CFG0 */
@@ -1869,8 +1956,59 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 			regmap_write(afe->regmap,
 				     AFE_ADDA_UL1_IIR_COEF_10_09, 0x0000C048);
 
+			regmap_update_bits(afe->regmap,
+				     AFE_ADDA_UL1_SRC_CON0,
+				     UL_IIR_ON_TMP_CTL_MASK_SFT |
+				     UL_IIRMODE_CTL_MASK_SFT |
+				     UL_VOICE_MODE_CH1_CH2_CTL_MASK_SFT,
+				     ul_src_con0);
+
+			/* mtkaif_rxif_data_mode = 0, amic */
+			if (afe_priv->mtkaif_dmic) {
+				regmap_update_bits(afe->regmap,
+					AFE_MTKAIF1_RX_CFG0,
+					0x1 << 0,
+					0x1 << 0);
+			} else {
+				regmap_update_bits(afe->regmap,
+					AFE_MTKAIF1_RX_CFG0,
+					0x1 << 0,
+					0x0 << 0);
+			}
+			break;
+		case MT6991_DAI_AP_DMIC_CH34:
+#ifdef MTKAIF4
+			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+					MTKAIFV4_UL_CH1CH2_IN_EN_SEL_MASK_SFT,
+					0x0 << MTKAIFV4_UL_CH1CH2_IN_EN_SEL_SFT);
+			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+					MTKAIFV4_UL_CH3CH4_IN_EN_SEL_MASK_SFT,
+					0x0 << MTKAIFV4_UL_CH3CH4_IN_EN_SEL_SFT);
+#else
+			regmap_update_bits(afe->regmap,
+					AFE_MTKAIF1_CFG0,
+					RG_MTKAIF1_RXIF_BYPASS_SRC_MASK_SFT,
+					0x0 << RG_MTKAIF1_RXIF_BYPASS_SRC_SFT);
+
+#endif
+			/* 35Hz @ 48k */
 			regmap_write(afe->regmap,
-				     AFE_ADDA_UL1_SRC_CON0, ul_src_con0);
+				     AFE_ADDA_UL1_IIR_COEF_02_01, 0x00000000);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL1_IIR_COEF_04_03, 0x00003FB8);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL1_IIR_COEF_06_05, 0x3FB80000);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL1_IIR_COEF_08_07, 0x3FB80000);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL1_IIR_COEF_10_09, 0x0000C048);
+
+			regmap_update_bits(afe->regmap,
+				     AFE_ADDA_UL1_SRC_CON0,
+				     UL_IIR_ON_TMP_CTL_MASK_SFT |
+				     UL_IIRMODE_CTL_MASK_SFT |
+				     UL_VOICE_MODE_CH1_CH2_CTL_MASK_SFT,
+				     ul_src_con0);
 
 			/* mtkaif_rxif_data_mode = 0, amic */
 			regmap_update_bits(afe->regmap,
@@ -1913,6 +2051,7 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 			break;
 		default:
 			break;
+
 		}
 
 		/* ap dmic */
