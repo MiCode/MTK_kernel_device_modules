@@ -39,6 +39,9 @@
 #define NS_TO_MS(X) (div_u64(X, 1000000))
 #define NS_MOD_MS(X) (do_div(X, 1000000))
 #define MS_TO_NS(X) ((X) * 1000000)
+// FOURCC_STR: fourcc to string
+#define FOURCC_STR(x) ((const char[]){(x) & 0xFF, ((x) >> 8) & 0xFF, ((x) >> 16) & 0xFF, ((x) >> 24) & 0xFF, 0})
+
 #define isENCODE_PERFORMANCE_USAGE(w, h, fr, opr) \
 		((((w) >= 3840 && (h) >= 2160 && (fr) >= 30) || \
 		((h) >= 3840 && (w) >= 2160 && (fr) >= 30) || \

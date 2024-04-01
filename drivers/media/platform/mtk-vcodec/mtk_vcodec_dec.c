@@ -224,11 +224,10 @@ static void get_supported_format(struct mtk_vcodec_ctx *ctx)
 
 		for (i = 0; i < MTK_MAX_DEC_CODECS_SUPPORT; i++) {
 			if (mtk_vdec_formats[i].fourcc != 0)
-				mtk_v4l2_debug(1,
-				  "fmt[%d] fourcc %d type %d planes %d",
-				  i, mtk_vdec_formats[i].fourcc,
-				  mtk_vdec_formats[i].type,
-				  mtk_vdec_formats[i].num_planes);
+				mtk_v4l2_debug(1, "fmt[%d] fourcc %s(0x%x) type %d planes %d",
+					i, FOURCC_STR(mtk_vdec_formats[i].fourcc), mtk_vdec_formats[i].fourcc,
+					mtk_vdec_formats[i].type,
+					mtk_vdec_formats[i].num_planes);
 		}
 		for (i = 0; i < MTK_MAX_DEC_CODECS_SUPPORT; i++) {
 			if (mtk_vdec_formats[i].fourcc != 0 &&
@@ -261,15 +260,14 @@ static void get_supported_framesizes(struct mtk_vcodec_ctx *ctx)
 
 		for (i = 0; i < MTK_MAX_DEC_CODECS_SUPPORT; i++) {
 			if (mtk_vdec_framesizes[i].fourcc != 0) {
-				mtk_v4l2_debug(1,
-				"vdec_fs[%d] fourcc %d s %d %d %d %d %d %d\n",
-				i, mtk_vdec_framesizes[i].fourcc,
-				mtk_vdec_framesizes[i].stepwise.min_width,
-				mtk_vdec_framesizes[i].stepwise.max_width,
-				mtk_vdec_framesizes[i].stepwise.step_width,
-				mtk_vdec_framesizes[i].stepwise.min_height,
-				mtk_vdec_framesizes[i].stepwise.max_height,
-				mtk_vdec_framesizes[i].stepwise.step_height);
+				mtk_v4l2_debug(1, "vdec_fs[%d] fourcc %s(0x%x) s %d %d %d %d %d %d\n",
+					i, FOURCC_STR(mtk_vdec_framesizes[i].fourcc), mtk_vdec_framesizes[i].fourcc,
+					mtk_vdec_framesizes[i].stepwise.min_width,
+					mtk_vdec_framesizes[i].stepwise.max_width,
+					mtk_vdec_framesizes[i].stepwise.step_width,
+					mtk_vdec_framesizes[i].stepwise.min_height,
+					mtk_vdec_framesizes[i].stepwise.max_height,
+					mtk_vdec_framesizes[i].stepwise.step_height);
 				if (mtk_vdec_framesizes[i].stepwise.max_width > mtk_vdec_max_width)
 					mtk_vdec_max_width =
 						mtk_vdec_framesizes[i].stepwise.max_width;
@@ -287,7 +285,8 @@ static struct mtk_video_fmt *mtk_vdec_find_format(struct mtk_vcodec_ctx *ctx,
 	struct mtk_video_fmt *fmt;
 	unsigned int k;
 
-	mtk_v4l2_debug(3, "[%d] fourcc %d", ctx->id, f->fmt.pix_mp.pixelformat);
+	mtk_v4l2_debug(2, "[%d] fourcc %s(0x%x)",ctx->id,
+		FOURCC_STR(f->fmt.pix_mp.pixelformat), f->fmt.pix_mp.pixelformat);
 	for (k = 0; k < MTK_MAX_DEC_CODECS_SUPPORT &&
 		 mtk_vdec_formats[k].fourcc != 0; k++) {
 		fmt = &mtk_vdec_formats[k];
@@ -309,7 +308,7 @@ static struct mtk_video_fmt *mtk_find_fmt_by_pixel(unsigned int pixelformat)
 		if (fmt->fourcc == pixelformat)
 			return fmt;
 	}
-	mtk_v4l2_err("Error!! Cannot find fourcc: %d use default", pixelformat);
+	mtk_v4l2_err("Error!! Cannot find fourcc: 0x%x use default", pixelformat);
 
 	return &mtk_vdec_formats[default_out_fmt_idx];
 }
@@ -3366,9 +3365,8 @@ static int vidioc_enum_frameintervals(struct file *file, void *priv,
 
 	fival->stepwise = mtk_vdec_frameintervals.stepwise;
 	mutex_unlock(&ctx->dev->cap_mutex);
-	mtk_v4l2_debug(1,
-		"vdec frm_interval fourcc %d width %d height %d max %d/%d min %d/%d step %d/%d\n",
-		fival->pixel_format,
+	mtk_v4l2_debug(1, "vdec frm_interval fourcc %s(0x%x) width %d height %d max %d/%d min %d/%d step %d/%d\n",
+		FOURCC_STR(fival->pixel_format), fival->pixel_format,
 		fival->width,
 		fival->height,
 		fival->stepwise.max.numerator,
@@ -3540,9 +3538,9 @@ static int vidioc_vdec_g_fmt(struct file *file, void *priv,
 				q_data->sizeimage[i];
 		}
 
-		mtk_v4l2_debug(1, "fourcc:(%d %d),field:%d,bytesperline:%d,sizeimage:%d,%d,%d\n",
-			ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc,
-			q_data->fmt->fourcc,
+		mtk_v4l2_debug(1, "fourcc:(%s(0x%x) %s(0x%x)),field:%d,bytesperline:%d,sizeimage:%d,%d,%d\n",
+			FOURCC_STR(ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc), ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc,
+			FOURCC_STR(q_data->fmt->fourcc), q_data->fmt->fourcc,
 			pix_mp->field,
 			pix_mp->plane_fmt[0].bytesperline,
 			pix_mp->plane_fmt[0].sizeimage,
@@ -4043,29 +4041,22 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 
 	bs_fourcc = ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc;
 	fm_fourcc = ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc;
-	mtk_v4l2_debug(0,
-				   "[%d] Init Vdec OK wxh=%dx%d pic wxh=%dx%d bitdepth:%d lo:%d sz[0]=0x%x sz[1]=0x%x",
-				   ctx->id,
-				   ctx->last_decoded_picinfo.buf_w,
-				   ctx->last_decoded_picinfo.buf_h,
-				   ctx->last_decoded_picinfo.pic_w,
-				   ctx->last_decoded_picinfo.pic_h,
-				   ctx->last_decoded_picinfo.bitdepth,
-				   ctx->last_decoded_picinfo.layout_mode,
-				   dst_q_data->sizeimage[0],
-				   dst_q_data->sizeimage[1]);
+	mtk_v4l2_debug(0, "[%d] Init Vdec OK wxh=%dx%d pic wxh=%dx%d bitdepth:%d lo:%d sz[0]=0x%x sz[1]=0x%x",
+		ctx->id,
+		ctx->last_decoded_picinfo.buf_w,
+		ctx->last_decoded_picinfo.buf_h,
+		ctx->last_decoded_picinfo.pic_w,
+		ctx->last_decoded_picinfo.pic_h,
+		ctx->last_decoded_picinfo.bitdepth,
+		ctx->last_decoded_picinfo.layout_mode,
+		dst_q_data->sizeimage[0],
+		dst_q_data->sizeimage[1]);
 
-	mtk_v4l2_debug(0, "[%d] bs %c%c%c%c fm %c%c%c%c, num_planes %d, fb_sz[0] %d, fb_sz[1] %d, BS %s",
-				   ctx->id,
-				   bs_fourcc & 0xFF, (bs_fourcc >> 8) & 0xFF,
-				   (bs_fourcc >> 16) & 0xFF,
-				   (bs_fourcc >> 24) & 0xFF,
-				   fm_fourcc & 0xFF, (fm_fourcc >> 8) & 0xFF,
-				   (fm_fourcc >> 16) & 0xFF,
-				   (fm_fourcc >> 24) & 0xFF,
-				   dst_q_data->fmt->num_planes,
-				   ctx->last_decoded_picinfo.fb_sz[0],
-				   ctx->last_decoded_picinfo.fb_sz[1], debug_bs);
+	mtk_v4l2_debug(0, "[%d] bs %s fm %s, num_planes %d, fb_sz[0] %d, fb_sz[1] %d, BS %s",
+		ctx->id, FOURCC_STR(bs_fourcc), FOURCC_STR(fm_fourcc),
+		dst_q_data->fmt->num_planes,
+		ctx->last_decoded_picinfo.fb_sz[0],
+		ctx->last_decoded_picinfo.fb_sz[1], debug_bs);
 
 	ret = vdec_if_get_param(ctx, GET_PARAM_DPB_SIZE, &dpbsize);
 	if (dpbsize == 0)
