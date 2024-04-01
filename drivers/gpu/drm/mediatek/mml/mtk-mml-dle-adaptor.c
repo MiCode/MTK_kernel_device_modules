@@ -319,7 +319,7 @@ s32 mml_dle_config(struct mml_dle_ctx *dctx, struct mml_submit *submit,
 	/* mml_lock_wake_lock(task->config->mml, true); */
 
 	/* get config from core */
-	mml_core_config_task(cfg, task);
+	mml_core_submit_task(cfg, task);
 	if (cfg->err)
 		result = -EINVAL;
 

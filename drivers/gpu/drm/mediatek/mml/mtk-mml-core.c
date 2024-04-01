@@ -2096,10 +2096,11 @@ static void core_config_task(struct mml_task *task)
 {
 	struct mml_frame_config *cfg = task->config;
 	const u32 jobid = task->job.jobid;
+	enum mml_mode mode = cfg->info.mode;
 	s32 err;
 
 	mml_trace_begin("%s_%u", __func__, jobid);
-	if (cfg->info.mode == MML_MODE_DDP_ADDON)
+	if (mode == MML_MODE_DDP_ADDON)
 		mml_mmp2(config_dle, MMPROFILE_FLAG_START,
 			cfg->info.src.width, cfg->info.src.height,
 			cfg->info.dest[0].data.width, cfg->info.dest[0].data.height);
@@ -2140,7 +2141,7 @@ static void core_config_task(struct mml_task *task)
 
 	/* create dual work_thread[1] */
 	if (cfg->dual) {
-		if (cfg->info.mode == MML_MODE_RACING) {
+		if (mode == MML_MODE_RACING) {
 			/* init for dual pipe sync flush */
 			init_completion(&task->pipe[0].ready);
 			init_completion(&task->pipe[1].ready);
@@ -2166,12 +2167,13 @@ static void core_config_task(struct mml_task *task)
 
 	cfg->task_ops->submit_done(task);
 
+	cfg->cfg_ops->put(cfg);
+
 done:
-	if (cfg->info.mode == MML_MODE_DDP_ADDON)
+	if (mode == MML_MODE_DDP_ADDON)
 		mml_mmp(config_dle, MMPROFILE_FLAG_END, jobid, 0);
 	else
 		mml_mmp(config, MMPROFILE_FLAG_END, jobid, 0);
-	cfg->cfg_ops->put(cfg);
 	mml_trace_end();
 }
 
@@ -2331,24 +2333,17 @@ static void core_update_config(struct mml_frame_config *cfg)
 	}
 }
 
-static void core_reinit_task(struct mml_frame_config *cfg, struct mml_task *task)
+void mml_core_submit_task(struct mml_frame_config *cfg, struct mml_task *task)
 {
 	/* reset to 0 in case reuse task */
 	atomic_set(&task->pipe_done, 0);
 	if (task->state == MML_TASK_INITIAL)
 		core_update_config(cfg);
-}
 
-void mml_core_config_task(struct mml_frame_config *cfg, struct mml_task *task)
-{
-	core_reinit_task(cfg, task);
-	core_config_task(task);
-}
-
-void mml_core_submit_task(struct mml_frame_config *cfg, struct mml_task *task)
-{
-	core_reinit_task(cfg, task);
-	cfg->task_ops->queue(task, 0);
+	if (cfg->task_ops->queue)
+		cfg->task_ops->queue(task, 0);
+	else
+		core_config_task(task);
 }
 
 void mml_core_stop_racing(struct mml_frame_config *cfg, bool force)

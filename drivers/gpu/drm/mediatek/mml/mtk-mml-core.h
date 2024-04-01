@@ -436,7 +436,6 @@ struct mml_topology_cache {
 	u32 dpc_qos_ref;
 	struct mutex qos_mutex;	/* lock to qos operation */
 	struct mml_sys_qos *qos;
-	u32 mode_caps;
 };
 
 struct mml_comp_config {
@@ -573,10 +572,10 @@ struct mml_file_buf {
 	u32 size[MML_MAX_PLANES];
 	u8 cnt;
 	struct dma_fence *fence;
-	u32 usage;
 	u64 map_time;
 	u64 unmap_time;
 
+	/* buffer usage */
 	bool flush:1;
 	bool invalid:1;
 };
@@ -1000,17 +999,12 @@ void mml_core_init_config(struct mml_frame_config *cfg);
 void mml_core_deinit_config(struct mml_frame_config *cfg);
 
 /**
- * mml_core_config_task - config the task in current thread
- *
- * @cfg:	the frame config to handle
- * @task:	task to execute
- */
-void mml_core_config_task(struct mml_frame_config *cfg, struct mml_task *task);
-
-/**
  * mml_core_submit_task - queue the task in config work thread
+ * mml_core_submit_task - submit and config the task. If the queue operation is
+ * presented, queue the task in config work thread; otherwise, config the task
+ * in current thread.
  *
- * @cfg:	the frame config to queue
+ * @cfg:	the frame config to handle task
  * @task:	task to execute
  */
 void mml_core_submit_task(struct mml_frame_config *cfg, struct mml_task *task);
