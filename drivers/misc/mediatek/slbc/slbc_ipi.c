@@ -24,7 +24,7 @@
 static int slbc_sspm_ready;
 static int scmi_slbc_id;
 static struct scmi_tinysys_info_st *_tinfo;
-//static unsigned int scmi_id;
+static unsigned int scmi_id;
 #endif /* CONFIG_MTK_TINYSYS_SCMI */
 static struct slbc_ipi_ops *ipi_ops;
 static DEFINE_MUTEX(slbc_scmi_lock);
@@ -821,6 +821,7 @@ int slbc_scmi_ctrl(void *buffer, void *ptr)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	int ret;
+	unsigned int local_id;
 	struct slbc_ipi_data *slbc_ipi_d = buffer;
 	struct scmi_tinysys_slbc_ctrl_status *rvalue = ptr;
 
@@ -834,8 +835,35 @@ int slbc_scmi_ctrl(void *buffer, void *ptr)
 			/* __func__, __LINE__, */
 			/* scmi_slbc_id, slbc_ipi_d->cmd, slbc_ipi_d.arg1); */
 
+	mutex_lock(&slbc_scmi_lock);
+
+	local_id = ++scmi_id;
+	slbc_sram_write(SLBC_SCMI_AP, local_id);
+
 	ret = scmi_tinysys_slbc_ctrl(_tinfo->ph, slbc_ipi_d->cmd, slbc_ipi_d->arg1,
 		slbc_ipi_d->arg2, slbc_ipi_d->arg3, slbc_ipi_d->arg4, rvalue);
+
+	/* scmi timeout WA */
+	if (ret == -ETIMEDOUT) {
+		mdelay(3);
+		if (local_id == slbc_sram_read(SLBC_SCMI_SSPM)) {
+			ret = 0;
+			rvalue->slbc_resv1 = slbc_sram_read(SLBC_SCMI_RET1);
+			rvalue->slbc_resv2 = slbc_sram_read(SLBC_SCMI_RET2);
+			rvalue->slbc_resv3 = slbc_sram_read(SLBC_SCMI_RET3);
+			rvalue->slbc_resv4 = slbc_sram_read(SLBC_SCMI_RET4);
+			rvalue->ret = slbc_sram_read(SLBC_SCMI_RET_VAL);
+			pr_info("slbc scmi timed out!(id=%u) return 0x%x 0x%x 0x%x 0x%x ret=%u\n",
+					local_id,
+					rvalue->slbc_resv1,
+					rvalue->slbc_resv2,
+					rvalue->slbc_resv3,
+					rvalue->slbc_resv4,
+					rvalue->ret);
+		}
+	}
+
+	mutex_unlock(&slbc_scmi_lock);
 
 	if (ret) {
 		pr_info("slbc scmi cmd %d send fail, ret = %d\n",
