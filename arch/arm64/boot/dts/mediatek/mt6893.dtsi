@@ -6500,12 +6500,16 @@ cpus {
 			iommus = <&iommu1 M4U_PORT_L2_MDP_RDMA0>,
 			 <&iommu1 M4U_PORT_L2_MDP_RDMA2>,
 			 <&iommu1 M4U_PORT_L2_MDP_WROT0>,
-			 <&iommu1 M4U_PORT_L2_MDP_WROT2>,
-			 <&iommu1 M4U_PORT_L3_MDP_RDMA1>,
+			 <&iommu1 M4U_PORT_L2_MDP_WROT2>;
+			 dma-mask-bit = <35>;
+		};
+
+		mdpsys_iommu: mdpsys-iommu@1f000000 {
+			compatible = "mediatek,mdpsys_iommu", "syscon";
+			iommus = <&iommu1 M4U_PORT_L3_MDP_RDMA1>,
 			 <&iommu1 M4U_PORT_L3_MDP_RDMA3>,
 			 <&iommu1 M4U_PORT_L3_MDP_WROT1>,
 			 <&iommu1 M4U_PORT_L3_MDP_WROT3>;
-			dma-mask-bit = <35>;
 		};
 
 		mdp: mdp@1f000000 {
@@ -6518,7 +6522,7 @@ cpus {
 				<&gce_m 14 0 CMDQ_THR_PRIO_1>,
 				<&gce_m 21 0 CMDQ_THR_PRIO_1>,
 				<&gce_m 22 0 CMDQ_THR_PRIO_1>;
-			mmsys-config = <&mdpsys_config>;
+			mmsys-config = <&mdpsys_config>,<&mdpsys_iommu>;
 			mm-mutex   = <&mdp_mutex>;
 			mdp_rdma0  = <&mdp_rdma0>;
 			mdp_rdma1  = <&mdp_rdma1>;
