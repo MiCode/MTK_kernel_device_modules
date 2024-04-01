@@ -2024,7 +2024,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 			mtk_crtc->base.dev->dev_private;
 	bool mode = mtk_crtc_is_dc_mode(crtc);
 	struct mtk_ddp_comp *comp;
-	unsigned int i, j;
+	unsigned int i, j, bw_base = 0;
 	struct mtk_ddp_comp *output_comp = NULL;
 	int en = 1, perf_detail = 0;
 	struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
@@ -2207,6 +2207,11 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 				"restore_plane", 16, perf_string, true);
 	/* 11. restore OVL setting */
 	mtk_crtc_restore_plane_setting(mtk_crtc);
+
+	if (priv->data->respective_ostdl) {
+		bw_base = mtk_drm_primary_frame_bw(crtc);
+		mtk_disp_set_module_hrt(mtk_crtc, bw_base);
+	}
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"update_pmqos", 17, perf_string, true);
