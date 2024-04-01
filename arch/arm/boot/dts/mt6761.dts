@@ -1162,6 +1162,13 @@ firmware_class.path=/vendor/firmware clk_ignore_unused=1";
 		};
 	};
 
+	battery_manager: battery-manager {
+		compatible = "mediatek,battery manager";
+		gauge1 = <&mtk_gauge>;
+		charger = <&mtk_charger_type>;
+		bootmode = <&chosen>;
+	};
+
 	scp: scp@10500000 {
 		compatible = "mediatek,scp";
 		status = "okay";
