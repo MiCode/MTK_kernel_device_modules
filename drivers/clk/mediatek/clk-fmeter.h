@@ -39,6 +39,14 @@ struct fmeter_clk {
 	u32 ck_div;
 };
 
+struct fmeter_pll {
+	enum FMETER_TYPE type;
+	u32 id;
+	u32 con0_ofs;
+	u32 grp;
+	u32 ckdiv_en;
+};
+
 struct fm_pwr_sta {
 	unsigned int ofs;
 	unsigned int msk;

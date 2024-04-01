@@ -119,7 +119,6 @@ static DEFINE_SPINLOCK(subsys_meter_lock);
 
 
 static void __iomem *fm_base[FM_SYS_NUM];
-static unsigned int fm_ckdiv_en;
 
 struct fmeter_data {
 	enum fm_sys_id type;
@@ -171,6 +170,28 @@ const char *comp_list[] = {
 /*
  * clk fmeter
  */
+
+#define FPLL(_type, _id, _con0_ofs, _grp, _ckdiv_en) {.type = _type, \
+		.id = _id, .con0_ofs = _con0_ofs, .grp = _grp, .ckdiv_en = _ckdiv_en}
+
+static struct fmeter_pll fplls[] = {
+	FPLL(ABIST, FM_MDPLL_FS26M_CK, 0, 0, 0),
+	FPLL(ABIST, FM_RTC32K_I, 0, 0, 0),
+	FPLL(ABIST, FM_MAINPLL_CKDIV_CK, 0x024C, 3, 0),
+	FPLL(ABIST, FM_UNIVPLL_CKDIV_CK, 0x0260, 3, 0),
+	FPLL(ABIST, FM_ADSPPLL_CKDIV_CK, 0x0288, 3, 0),
+	FPLL(ABIST, FM_EMIPLL2_CKDIV_CK, 0x02B0, 3, 0),
+	FPLL(ABIST, FM_EMIPLL_CKDIV_CK, 0x029C, 3, 0),
+	FPLL(ABIST, FM_MSDCPLL_CKDIV_CK, 0x0278, 3, 0),
+	FPLL(ABIST_CK2, FM_MAINPLL2_CKDIV_CK, 0x024C, 3, 0),
+	FPLL(ABIST_CK2, FM_UNIV2_192M_CK, 0x0264, 3, 0),
+	FPLL(ABIST_CK2, FM_MMPLL2_CKDIV_CK, 0x0278, 3, 0),
+	FPLL(ABIST_CK2, FM_IMGPLL_CKDIV_CK, 0x028C, 3, 0),
+	FPLL(ABIST_CK2, FM_TVDPLL1_CKDIV_CK, 0x029C, 3, 0),
+	FPLL(ABIST_CK2, FM_TVDPLL2_CKDIV_CK, 0x02B4, 3, 0),
+	FPLL(ABIST_CK2, FM_TVDPLL3_CKDIV_CK, 0x02C4, 3, 0),
+	{},
+};
 
 #define FMCLK3(_t, _i, _n, _o, _g, _c) { .type = _t, \
 		.id = _i, .name = _n, .ofs = _o, .grp = _g, .ck_div = _c}
@@ -487,29 +508,29 @@ static void set_clk_div_en(unsigned int type, unsigned int ID, bool onoff)
 			|| (type == ABIST_CK2 && ID >= FM_ABIST_2_NUM))
 		return;
 
-	for (i = 0; i < ARRAY_SIZE(fclks) - 1; i++) {
-		if (fclks[i].type == type && fclks[i].id == ID
-				&& fclks[i].grp != 0) {
+	for (i = 0; i < ARRAY_SIZE(fplls) - 1; i++) {
+		if (fplls[i].type == type && fplls[i].id == ID
+				&& fplls[i].grp != 0) {
 			if (type == ABIST)
-				pll_con0 =  fm_base[FM_APMIXEDSYS] + fclks[i].ofs - 0x4;
+				pll_con0 =  fm_base[FM_APMIXEDSYS] + fplls[i].con0_ofs;
 			else if(type == ABIST_CK2)
-				pll_con0 =  fm_base[FM_APMIXEDSYS_GP2] + fclks[i].ofs - 0x4;
+				pll_con0 =  fm_base[FM_APMIXEDSYS_GP2] + fplls[i].con0_ofs;
 			break;
 		}
 	}
 
-	if ((i == (ARRAY_SIZE(fclks) - 1)) || pll_con0 == NULL)
+	if ((i == (ARRAY_SIZE(fplls) - 1)) || pll_con0 == NULL)
 		return;
 
 	if (onoff) {
 		// check ckdiv_en
 		if (clk_readl(pll_con0) & FM_CKDIV_EN)
-			fm_ckdiv_en = 1;
+			fplls[i].ckdiv_en = 1;
 		// pll con0[17] = 1
 		// select pll_ckdiv, enable pll_ckdiv, enable test clk
 		clk_writel(pll_con0, (clk_readl(pll_con0) | FM_CKDIV_EN));
 	} else {
-		if (!fm_ckdiv_en)
+		if (!fplls[i].ckdiv_en)
 			clk_writel(pll_con0, (clk_readl(pll_con0) & ~(FM_CKDIV_EN)));
 	}
 }
