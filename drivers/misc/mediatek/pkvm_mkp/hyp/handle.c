@@ -17,7 +17,7 @@
 #define SMP_MAX_CPUS	8
 
 /* The predicates checked here are taken from lib/list_debug.c. */
-
+/*
 bool __list_add_valid(struct list_head *new, struct list_head *prev,
 		      struct list_head *next)
 {
@@ -28,7 +28,8 @@ bool __list_add_valid(struct list_head *new, struct list_head *prev,
 
 	return true;
 }
-
+*/
+/*
 bool __list_del_entry_valid(struct list_head *entry)
 {
 	struct list_head *prev, *next;
@@ -44,6 +45,7 @@ bool __list_del_entry_valid(struct list_head *entry)
 
 	return true;
 }
+*/
 /* Global list for handles */
 static hyp_spinlock_t handle_glist_lock __cacheline_aligned;
 static struct list_head handle_glist;
@@ -288,8 +290,8 @@ void init_handle_manipulation(u64 dram_size, u64 smccc_trng_available)
 
 	/* Get maintainable IPA range */
 	HANDLE_IPA_END = HANDLE_IPA_START + platform_dram_size;
-	trace_hyp_printk("[MKP] init_handle_manipulation:%d - (0x%llx..0x%llx)",
-		__LINE__, HANDLE_IPA_START, HANDLE_IPA_END);
+	//trace_hyp_printk("[MKP] init_handle_manipulation:%d - (0x%llx..0x%llx)",
+	//	__LINE__, HANDLE_IPA_START, HANDLE_IPA_END);
 
 	/* Initialize handle pool */
 	hyp_spin_lock_init(&handle_lock);
@@ -314,8 +316,8 @@ void init_handle_manipulation(u64 dram_size, u64 smccc_trng_available)
 	if (cb_section)
 		module_ops->memset((void *)cb_section, 0, cbs_size);
 	else
-		trace_hyp_printk("[MKP] init_handle_manipulation:%d - \
-			Failed to alloc memory for cb_section!", __LINE__);
+		//trace_hyp_printk("[MKP] init_handle_manipulation:%d - \
+		//	Failed to alloc memory for cb_section!", __LINE__);
 
 
 	/* Initialize structures for synchronization of exception handling and granting tickets */
@@ -397,12 +399,12 @@ u32 create_handle(u64 ipa, u64 size, enum mkp_policy_id policy)
 
 	/* Sanity check (TBD) */
 	if (ipa == 0 || (ipa % PAGE_SIZE) != 0) {
-		trace_hyp_printk("[MKP] create_handle:%d invalid ipa(0x%llx)", __LINE__, ipa);
+		//trace_hyp_printk("[MKP] create_handle:%d invalid ipa(0x%llx)", __LINE__, ipa);
 		return 0;
 	}
 
 	if (size == 0 || (size % PAGE_SIZE) != 0) {
-		trace_hyp_printk("[MKP] create_handle:%d invalid size(0x%llx) ", __LINE__, size);
+		//trace_hyp_printk("[MKP] create_handle:%d invalid size(0x%llx) ", __LINE__, size);
 		return 0;
 	}
 
@@ -411,7 +413,7 @@ u32 create_handle(u64 ipa, u64 size, enum mkp_policy_id policy)
 	/* IPA range should be maintainable */
 	range_end = ipa + size;
 	if (ipa > range_end || ipa < HANDLE_IPA_START || range_end > HANDLE_IPA_END) {
-		trace_hyp_printk("[MKP] create_handle:%d invalid range(0x%llx..0x%llx)", __LINE__, ipa, range_end);
+		//trace_hyp_printk("[MKP] create_handle:%d invalid range(0x%llx..0x%llx)", __LINE__, ipa, range_end);
 		return 0;
 	}
 
@@ -424,7 +426,7 @@ u32 create_handle(u64 ipa, u64 size, enum mkp_policy_id policy)
 	/* Create handle object */
 	handle_obj = create_handle_object();
 	if (handle_obj == NULL) {
-		trace_hyp_printk("[MKP] create_handle:%d failed to create handle_object", __LINE__);
+		//trace_hyp_printk("[MKP] create_handle:%d failed to create handle_object", __LINE__);
 		return 0;
 	}
 
@@ -441,8 +443,8 @@ u32 create_handle(u64 ipa, u64 size, enum mkp_policy_id policy)
 	handle_obj->start = ipa;
 	handle_obj->size = size;
 	if (validate_add_to_handle_glist(handle_obj) < 0) {
-		trace_hyp_printk("[MKP] create_handle:%d validation failed: ipa(0x%llx), size(0x%llx)",
-			__LINE__, ipa, size);
+		//trace_hyp_printk("[MKP] create_handle:%d validation failed: ipa(0x%llx), size(0x%llx)",
+		//	__LINE__, ipa, size);
 		free(handle_obj);
 		BUG_ON(1);
 		return 0;
@@ -461,7 +463,7 @@ retry:
 		hyp_spin_unlock(&handle_lock);
 		del_from_handle_glist(handle_obj);
 		free(handle_obj);
-		trace_hyp_printk("[MKP] create_handle:%d: no available handles", __LINE__);
+		//trace_hyp_printk("[MKP] create_handle:%d: no available handles", __LINE__);
 		return 0;
 	}
 
@@ -532,7 +534,7 @@ int destroy_handle(u32 handle, enum mkp_policy_id policy)
 err:
 	/* Put the handle back */
 	add_to_handle_htab(handle_obj);
-	trace_hyp_printk("[MKP] destroy_handle: error occurs at (%d)", err_line);
+	//trace_hyp_printk("[MKP] destroy_handle: error occurs at (%d)", err_line);
 
 	return ret;
 }

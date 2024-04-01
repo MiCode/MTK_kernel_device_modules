@@ -81,35 +81,37 @@ static u64 gva_to_par_ipa(u64 va)
 	par = read_sysreg(PAR_EL1);
 	write_sysreg(tmp, PAR_EL1);
 
-	trace_hyp_printk("[MKP] gva_to_par_ipa:%d - PAR_EL1:0x%llx", __LINE__, par);
+	// trace_hyp_printk("[MKP] gva_to_par_ipa:%d - PAR_EL1:0x%llx", __LINE__, par);
 
 	return (par & PAR_PA47_MASK) >> PAR_PA12 << PAR_PA12;
 }
 
 // TODO: MAYBE_UNUSED
-static void dump_info(int line, struct kvm_cpu_context *ctx, u32 *ptr)
+static void dump_info(int line, struct user_pt_regs *regs, u32 *ptr)
 {
-	trace_hyp_printk("******************************************");
-	trace_hyp_printk("**************************** dump_info ***");
-	trace_hyp_printk("%d:*fault(0x%lx)", line, *(uint32_t *)ptr);
-	trace_hyp_printk(" X0:%16llx  X1:%16llx", cpu_reg(ctx, 0), cpu_reg(ctx, 1));
-	trace_hyp_printk(" X2:%16llx  X3:%16llx", cpu_reg(ctx, 2), cpu_reg(ctx, 3));
-	trace_hyp_printk(" X4:%16llx  X5:%16llx", cpu_reg(ctx, 4), cpu_reg(ctx, 5));
-	trace_hyp_printk(" X6:%16llx  X7:%16llx", cpu_reg(ctx, 6), cpu_reg(ctx, 7));
-	trace_hyp_printk(" X8:%16llx  X9:%16llx", cpu_reg(ctx, 8), cpu_reg(ctx, 9));
-	trace_hyp_printk("X10:%16llx X11:%16llx", cpu_reg(ctx, 10), cpu_reg(ctx, 11));
-	trace_hyp_printk("X12:%16llx X13:%16llx", cpu_reg(ctx, 12), cpu_reg(ctx, 13));
-	trace_hyp_printk("X14:%16llx X15:%16llx", cpu_reg(ctx, 14), cpu_reg(ctx, 15));
-	trace_hyp_printk("X16:%16llx X17:%16llx", cpu_reg(ctx, 16), cpu_reg(ctx, 17));
-	trace_hyp_printk("X18:%16llx X19:%16llx", cpu_reg(ctx, 18), cpu_reg(ctx, 19));
-	trace_hyp_printk("X20:%16llx X21:%16llx", cpu_reg(ctx, 20), cpu_reg(ctx, 21));
-	trace_hyp_printk("X22:%16llx X23:%16llx", cpu_reg(ctx, 22), cpu_reg(ctx, 23));
-	trace_hyp_printk("X24:%16llx X25:%16llx", cpu_reg(ctx, 24), cpu_reg(ctx, 25));
-	trace_hyp_printk("X26:%16llx X27:%16llx", cpu_reg(ctx, 26), cpu_reg(ctx, 27));
-	trace_hyp_printk("X28:%16llx X29:%16llx", cpu_reg(ctx, 28), cpu_reg(ctx, 29));
-	trace_hyp_printk("X30:%16llx  PC:%16llx  CPSR:%16llx",
-		cpu_reg(ctx, 30), ctx->regs.pc, read_sysreg_el2(SYS_SPSR));
-	trace_hyp_printk("******************************************");
+/*
+ *	trace_hyp_printk("******************************************");
+ *	trace_hyp_printk("**************************** dump_info ***");
+ *	trace_hyp_printk("%d:*fault(0x%lx)", line, *(uint32_t *)ptr);
+ *	trace_hyp_printk(" X0:%16llx  X1:%16llx", regs->regs[0], regs->regs[1]);
+ *	trace_hyp_printk(" X2:%16llx  X3:%16llx", regs->regs[2], regs->regs[3]);
+ *	trace_hyp_printk(" X4:%16llx  X5:%16llx", regs->regs[4], regs->regs[5]);
+ *	trace_hyp_printk(" X6:%16llx  X7:%16llx", regs->regs[6], regs->regs[7]);
+ *	trace_hyp_printk(" X8:%16llx  X9:%16llx", regs->regs[8], regs->regs[9]);
+ *	trace_hyp_printk("X10:%16llx X11:%16llx", regs->regs[10], regs->regs[11]);
+ *	trace_hyp_printk("X12:%16llx X13:%16llx", regs->regs[12], regs->regs[13]);
+ *	trace_hyp_printk("X14:%16llx X15:%16llx", regs->regs[14], regs->regs[15]);
+ *	trace_hyp_printk("X16:%16llx X17:%16llx", regs->regs[16], regs->regs[17]);
+ *	trace_hyp_printk("X18:%16llx X19:%16llx", regs->regs[18], regs->regs[19]);
+ *	trace_hyp_printk("X20:%16llx X21:%16llx", regs->regs[20], regs->regs[21]);
+ *	trace_hyp_printk("X22:%16llx X23:%16llx", regs->regs[22], regs->regs[23]);
+ *	trace_hyp_printk("X24:%16llx X25:%16llx", regs->regs[24], regs->regs[25]);
+ *	trace_hyp_printk("X26:%16llx X27:%16llx", regs->regs[26], regs->regs[27]);
+ *	trace_hyp_printk("X28:%16llx X29:%16llx", regs->regs[28], regs->regs[29]);
+ *	trace_hyp_printk("X30:%16llx  PC:%16llx  CPSR:%16llx",
+ *		regs->regs[30], regs->pc, read_sysreg_el2(SYS_SPSR));
+ *		trace_hyp_printk("******************************************");
+ */
 }
 
 /* Return true if it's a post-index */
@@ -228,7 +230,7 @@ static void apply_to_memory(void *dst, const void *src, u32 xt, u32 size)
 #undef ZERO_REG
 }
 
-static int fix_store(struct kvm_cpu_context *ctx,
+static int fix_store(struct user_pt_regs *regs,
 		u32 inst,
 		u64 el2_gpa_va,
 		u32 size)
@@ -237,7 +239,6 @@ static int fix_store(struct kvm_cpu_context *ctx,
 	void *fixmap_ptr = NULL;
 	u32 xt, xn, xm;
 	int imm;
-	// u64 *regs = (u64 *)(&ctx->regs.regs);
 	int scale;
 
 	/* Is it a load/store inst */
@@ -267,11 +268,11 @@ static int fix_store(struct kvm_cpu_context *ctx,
 	if ((inst & A64_LOAD_STORE_OP2_24_MASK) == A64_LOAD_STORE_OP2_24_1) {
 		decode_STR_Xt_Xn_imm12(inst, &xt, &xn, &imm);
 		imm <<= scale;
-		trace_hyp_printk("[MKP] Xt(%u), Xn(%u), Imm(%d)", xt, xn, imm);
+		// trace_hyp_printk("[MKP] Xt(%u), Xn(%u), Imm(%d)", xt, xn, imm);
 		fixmap_ptr = module_ops->fixmap_map((u64)ptr);
-		dump_info(__LINE__, ctx, (u32 *)fixmap_ptr);
-		apply_to_memory(fixmap_ptr, &(cpu_reg(ctx, xt)), xt, size);
-		dump_info(__LINE__, ctx, (u32 *)fixmap_ptr);
+		dump_info(__LINE__, regs, (u32 *)fixmap_ptr);
+		apply_to_memory(fixmap_ptr, &(regs->regs[xt]), xt, size);
+		dump_info(__LINE__, regs, (u32 *)fixmap_ptr);
 		module_ops->fixmap_unmap();
 	} else {
 		/* op3[21] == 0 */
@@ -282,20 +283,23 @@ static int fix_store(struct kvm_cpu_context *ctx,
 			 */
 			if ((inst & A64_LOAD_STORE_OP4_10_MASK) == A64_LOAD_STORE_OP4_10_1) {
 				// TODO: MAYBE_UNUSED
-				bool is_post = decode_STR_Xt_Xn_imm9(inst, &xt, &xn, &imm);
+				// bool is_post = decode_STR_Xt_Xn_imm9(inst, &xt, &xn, &imm);
+				decode_STR_Xt_Xn_imm9(inst, &xt, &xn, &imm);  // tmp
 
-				trace_hyp_printk("[MKP] Xt(%u), Xn(%u), Imm(%d)", xt, xn, imm);
+				// trace_hyp_printk("[MKP] Xt(%u), Xn(%u), Imm(%d)", xt, xn, imm);
+				/*
 				if (is_post)
 					trace_hyp_printk("[MKP] post-index");
 				else
 					trace_hyp_printk("[MKP] pre-index");
+				*/
 
 				fixmap_ptr = module_ops->fixmap_map((u64)ptr);
-				dump_info(__LINE__, ctx, (u32 *)fixmap_ptr);
-				apply_to_memory(fixmap_ptr, &(cpu_reg(ctx, xt)), xt, size);
+				dump_info(__LINE__, regs, (u32 *)fixmap_ptr);
+				apply_to_memory(fixmap_ptr, &(regs->regs[xt]), xt, size);
 				/* Update register here no matter whether it is post- or pre-indexed */
-				cpu_reg(ctx, xn) += imm;
-				dump_info(__LINE__, ctx, (u32 *)fixmap_ptr);
+				regs->regs[xn] += imm;
+				dump_info(__LINE__, regs, (u32 *)fixmap_ptr);
 				module_ops->fixmap_unmap();
 			} else {
 				/*
@@ -303,14 +307,15 @@ static int fix_store(struct kvm_cpu_context *ctx,
 				 * STR Xt, [Xn] or STR Xt, [Xn, #simm]
 				 */
 				// TODO: MAYBE_UNUSED
-				bool ignored = decode_STR_Xt_Xn_imm9(inst, &xt, &xn, &imm);
+				// bool ignored = decode_STR_Xt_Xn_imm9(inst, &xt, &xn, &imm);
+				decode_STR_Xt_Xn_imm9(inst, &xt, &xn, &imm);
 
-				trace_hyp_printk("[MKP] Xt(%u), Xn(%u), Imm(%d)", xt, xn, imm);
-				trace_hyp_printk("[MKP] ignored: %d", (int)ignored);
+				// trace_hyp_printk("[MKP] Xt(%u), Xn(%u), Imm(%d)", xt, xn, imm);
+				// trace_hyp_printk("[MKP] ignored: %d", (int)ignored);
 				fixmap_ptr = module_ops->fixmap_map((u64)ptr);
-				dump_info(__LINE__, ctx, (u32 *)fixmap_ptr);
-				apply_to_memory(fixmap_ptr, &(cpu_reg(ctx, xt)), xt, size);
-				dump_info(__LINE__, ctx, (u32 *)fixmap_ptr);
+				dump_info(__LINE__, regs, (u32 *)fixmap_ptr);
+				apply_to_memory(fixmap_ptr, &(regs->regs[xt]), xt, size);
+				dump_info(__LINE__, regs, (u32 *)fixmap_ptr);
 				module_ops->fixmap_unmap();
 			}
 		}
@@ -322,10 +327,10 @@ static int fix_store(struct kvm_cpu_context *ctx,
 			 */
 			if ((inst & A64_LOAD_STORE_OP4_MASK) == A64_LOAD_STORE_OP4_10) {
 				decode_STR_Xt_Xn_Xm(inst, &xt, &xn, &xm);
-				trace_hyp_printk("[MKP] Xt(%u), Xn(%u), Xm(%u)", xt, xn, xm);
+				// trace_hyp_printk("[MKP] Xt(%u), Xn(%u), Xm(%u)", xt, xn, xm);
 				fixmap_ptr = module_ops->fixmap_map((u64)ptr);
-				dump_info(__LINE__, ctx, (u32 *)fixmap_ptr);
-				apply_to_memory(fixmap_ptr, &(cpu_reg(ctx, xt)), xt, size);
+				dump_info(__LINE__, regs, (u32 *)fixmap_ptr);
+				apply_to_memory(fixmap_ptr, &(regs->regs[xt]), xt, size);
 				module_ops->fixmap_unmap();
 			} else {
 				goto no_err;
@@ -341,7 +346,7 @@ no_err:
 
 /* Currently, it can handle write abort only */
 // TODO: MAYBE_UNUSED macro
-static u32 handle_low_el_dabt(struct kvm_cpu_context *ctx, u64 fault_va, u64 pc_ipa,
+static u32 handle_low_el_dabt(struct user_pt_regs *regs, u64 fault_va, u64 pc_ipa,
 		u64 el2_gpa_va, u32 size)
 {
 	u64 pc_el2_va = pc_ipa;
@@ -353,7 +358,7 @@ static u32 handle_low_el_dabt(struct kvm_cpu_context *ctx, u64 fault_va, u64 pc_
 	pc = read_sysreg_el2(SYS_ELR);
 
 	if (pc_el2_va == 0) {
-		trace_hyp_printk("[MKP] handle_low_el_dabt:%d: invalid pc_el2_va!", __LINE__);
+		// trace_hyp_printk("[MKP] handle_low_el_dabt:%d: invalid pc_el2_va!", __LINE__);
 		goto no_err;
 	}
 
@@ -361,18 +366,18 @@ static u32 handle_low_el_dabt(struct kvm_cpu_context *ctx, u64 fault_va, u64 pc_
 	inst = *(u32 *)fixmap_ptr;
 	module_ops->fixmap_unmap();
 
-	trace_hyp_printk("[MKP] handle_low_el_dabt:%d pc(0x%llx) pc_el2_va(0x%llx)", __LINE__, pc, pc_el2_va);
-	trace_hyp_printk("[MKP] handle_low_el_dabt: INST(%x) fault_va(0x%llx) el2_gpa_va(0x%llx)",
-		inst, fault_va, el2_gpa_va);
+	// trace_hyp_printk("[MKP] handle_low_el_dabt:%d pc(0x%llx) pc_el2_va(0x%llx)", __LINE__, pc, pc_el2_va);
+	// trace_hyp_printk("[MKP] handle_low_el_dabt: INST(%x) fault_va(0x%llx) el2_gpa_va(0x%llx)",
+	//	inst, fault_va, el2_gpa_va);
 
-	ret = fix_store(ctx, inst, el2_gpa_va, size);
+	ret = fix_store(regs, inst, el2_gpa_va, size);
 
 no_err:
-	trace_hyp_printk("[MKP] handle_low_el_dabt:%d - INST(%x)", __LINE__, inst);
+	// trace_hyp_printk("[MKP] handle_low_el_dabt:%d - INST(%x)", __LINE__, inst);
 	return MKP_EXCEPTION_NO_ERROR;
 }
 
-u32 mkp_sync_handler(struct kvm_cpu_context *ctx)
+u32 mkp_sync_handler(struct user_pt_regs *regs)
 {
 	u64 esr = read_sysreg_el2(SYS_ESR);
 	u64 far = read_sysreg_el2(SYS_FAR);
@@ -383,27 +388,29 @@ u32 mkp_sync_handler(struct kvm_cpu_context *ctx)
 	int line = 0;
 	u32 ret = 1;
 
+	/*
 	if (el2_gpa_va == 0) {
 		trace_hyp_printk("[MKP] mkp_sync_handler:%d ESR_EL2(0x%lx) EC(0x%lx)", __LINE__,
 			esr, ESR_ELx_EC(esr));
 		trace_hyp_printk("[MKP] mkp_sync_handler, pc(%llx) gva(%llx) el2_gpa_va(%llx)",
-			ctx->regs.pc, far, el2_gpa_va);
+			regs->pc, far, el2_gpa_va);
 	}
+	*/
 
 	switch(ESR_ELx_EC(esr)) {
 	case ESR_ELx_EC_DABT_LOW:
 		/* Fault in MKP's protections */
 		if (query_policy_from_ipa(el2_gpa_va) == MKP_POLICY_NR) {
-			trace_hyp_printk("[MKP] mkp_sync_handler:%d, %llx doesn't belong to MKP's protections.",
-				__LINE__, el2_gpa_va);
+			//trace_hyp_printk("[MKP] mkp_sync_handler:%d, %llx doesn't belong to MKP's protections.",
+			//	__LINE__, el2_gpa_va);
 			ret = MKP_EXCEPTION_NO_ERROR;
 			goto finish;
 		}
 
 		/* Cache maintenance or fault on S2 tranlation, just return MKP_EXCEPTION_NO_ERROR */
 		if ((esr & ESR_ELx_S1PTW) || (esr & ESR_ELx_CM)) {
-			trace_hyp_printk("[MKP] mkp_sync_handler:%d, ESR_EL2(0x%lx) EC(0x%lx)",
-				__LINE__, esr, ESR_ELx_EC(esr));
+			//trace_hyp_printk("[MKP] mkp_sync_handler:%d, ESR_EL2(0x%lx) EC(0x%lx)",
+			//	__LINE__, esr, ESR_ELx_EC(esr));
 			ret = MKP_EXCEPTION_NO_ERROR;
 			goto finish;
 		}
@@ -437,7 +444,7 @@ u32 mkp_sync_handler(struct kvm_cpu_context *ctx)
 		/* TODO: Is faulting va in the range of FIXADDR_xxx */
 
 		/* Start handling lower EL data abort */
-		ret = handle_low_el_dabt(ctx, far, pc_el2_va, el2_gpa_va,
+		ret = handle_low_el_dabt(regs, far, pc_el2_va, el2_gpa_va,
 			(u32)(1 << ((esr & ESR_ELx_SAS) >> ESR_ELx_SAS_SHIFT)));
 
 		/* Handling is completed */
@@ -445,32 +452,35 @@ u32 mkp_sync_handler(struct kvm_cpu_context *ctx)
 
 	case ESR_ELx_EC_IABT_LOW:
 	default:
-		trace_hyp_printk("[MKP] mkp_sync_handler:%d: unable to handle - ESR_EL2(0x%lx) EC(0x%lx)",
-			__LINE__, esr, ESR_ELx_EC(esr));
+		//trace_hyp_printk("[MKP] mkp_sync_handler:%d: unable to handle - ESR_EL2(0x%lx) EC(0x%lx)",
+		//	__LINE__, esr, ESR_ELx_EC(esr));
+		break;
 	}
 
 	/* MKP service tries to report something it fails to handle by injecting a dabt to EL1 */
+	/*
 	trace_hyp_printk("[MKP] mkp_sync_handler: failed to handle at %d - ESR_EL2(0x%lx) EC(0x%lx)",
 		line, esr, ESR_ELx_EC(esr));
-	trace_hyp_printk("[MKP] pc(%llx) gva(%llx) el2_gpa_va(%llx)", ctx->regs.pc, far, el2_gpa_va);
+	trace_hyp_printk("[MKP] pc(%llx) gva(%llx) el2_gpa_va(%llx)", regs->pc, far, el2_gpa_va);
+	*/
 
 finish:
 
 	return ret;
 }
 
-int mkp_perm_fault_handler(struct kvm_cpu_context *host_ctxt, u64 esr, u64 addr)
+int mkp_perm_fault_handler(struct user_pt_regs *regs, u64 esr, u64 addr)
 {
 	int ret;
 
-	ret = mkp_sync_handler(host_ctxt);
+	ret = mkp_sync_handler(regs);
 	write_sysreg_el2(read_sysreg_el2(SYS_ELR) + 4, SYS_ELR);
 
 	return ret;
 }
 
-void mkp_illegal_abt_notifier(struct kvm_cpu_context *ctx)
+void mkp_illegal_abt_notifier(struct user_pt_regs *regs)
 {
-	mkp_sync_handler(ctx);
+	mkp_sync_handler(regs);
 	write_sysreg_el2(read_sysreg_el2(SYS_ELR) + 4, SYS_ELR);
 }

@@ -11,8 +11,8 @@
 #define MKP_EXCEPTION_NO_ERROR	0
 #define MKP_EXCEPTION_NORMAL	1
 
-u32 mkp_sync_handler(struct kvm_cpu_context *ctx);
-int mkp_perm_fault_handler(struct kvm_cpu_context *host_ctxt, u64 esr, u64 addr);
-void mkp_illegal_abt_notifier(struct kvm_cpu_context *ctx);
+u32 mkp_sync_handler(struct user_pt_regs *regs);
+int mkp_perm_fault_handler(struct user_pt_regs *regs, u64 esr, u64 addr);
+void mkp_illegal_abt_notifier(struct user_pt_regs *regs);
 
 #endif

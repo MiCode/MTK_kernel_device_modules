@@ -19,10 +19,6 @@
 #define UART_PORT 0
 // #define PAGE_SIZE 4096
 
-#define cpu_reg(ctxt, r)	((ctxt)->regs.regs[r])
-#define DECLARE_REG(type, name, ctxt, reg)	\
-				(type name = (type)cpu_reg(ctxt, (reg)))
-
 typedef unsigned int uint32_t;
 typedef struct hvc_retval {
 	long x[4];
@@ -177,7 +173,7 @@ int mkp_hyp_init(const struct pkvm_module_ops *ops)
 	module_ops = (const struct pkvm_module_ops *)ops;
 	initialize_policy_table();
 	init_sharebuf_manipulation();
-	trace_hyp_printk("[MKP] MKP EL2 init done");
+	// trace_hyp_printk("[MKP] MKP EL2 init done");
 
 	return 0;
 }
