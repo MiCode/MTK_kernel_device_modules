@@ -434,6 +434,7 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 		}
 		if (is_pkvm_enabled()) {
 			/* pkvm doesn't need to merge cpu pgtbl, so directly do nothing */
+			pr_info("%s: pkvm already merged the cpu pgtbl\n", __func__);
 		} else {
 			arm_smccc_smc(HYP_PMM_MERGED_TABLE, page_to_pfn(sec_heap->bitmap),
 					0, 0, 0, 0, 0, 0, &smc_res);
@@ -1303,8 +1304,8 @@ static int mtee_common_buffer_v2(struct ssheap_buf_info *ssheap, u8 pmm_attr,
 				(uint32_t)PMM_MSG_ENTRIES_PER_PAGE :
 				(uint32_t)(count % PMM_MSG_ENTRIES_PER_PAGE);
 
-#if IS_ENABLED(CONFIG_MTK_PKVM_TMEM)
 		if (is_pkvm_enabled()) {
+#if IS_ENABLED(CONFIG_MTK_PKVM_TMEM)
 			int ret;
 
 			smc_id = lock == 1 ? get_hvc_nr_page_protect() :
@@ -1315,11 +1316,10 @@ static int mtee_common_buffer_v2(struct ssheap_buf_info *ssheap, u8 pmm_attr,
 				pr_err("smc_id=%#x ret=%x\n", smc_id, ret);
 				return -EINVAL;
 			}
-		} else {
-			pr_err("Not enable pKvm dts\n");
-		}
 #else
-		{
+			pr_info("ERROR: CONFIG_MTK_PKVM_TMEM not enable\n");
+#endif
+		} else {
 			struct arm_smccc_res smc_res;
 
 			smc_id = lock == 1 ? HYP_PMM_ASSIGN_BUFFER_V2 :
@@ -1332,7 +1332,7 @@ static int mtee_common_buffer_v2(struct ssheap_buf_info *ssheap, u8 pmm_attr,
 				return -EINVAL;
 			}
 		}
-#endif
+
 		count -= PMM_MSG_ENTRIES_PER_PAGE;
 	}
 	return 0;
