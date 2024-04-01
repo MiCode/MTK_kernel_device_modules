@@ -111,6 +111,11 @@
 #define PWR_STATUS_HIF1			BIT(26)	/* MT7622 */
 #define PWR_STATUS_WB			BIT(27)	/* MT7622 */
 
+#define SSYSPM_MTCMOS_DEFAULT_ON	BIT(0)
+#define MTCMOS_SSYS_PWR_ON_OFF		BIT(4)
+#define SSYS_RTFF_GRP_EN		(BIT(8) | BIT(9) | BIT(10) | BIT(11))
+#define SSYS_PWR_ACK			BIT(31)
+
 enum regmap_type {
 	INVALID_TYPE = 0,
 	IFR_TYPE,
@@ -198,6 +203,14 @@ static int scpsys_pwr_ack_2nd_is_on(struct scp_domain *scpd)
 
 	return __scpsys_domain_is_on(scp->base + scpd->data->ctl_offs,
 			PWR_ACK_2ND);
+}
+
+static int scpsys_pbus_pwr_ack_is_on(struct scp_domain *scpd)
+{
+	struct scp *scp = scpd->scp;
+
+	return __scpsys_domain_is_on(scp->base + scpd->data->ctl_offs,
+			SSYS_PWR_ACK);
 }
 
 static int scpsys_regulator_is_enabled(struct scp_domain *scpd)
@@ -1317,6 +1330,102 @@ err_lp_clk:
 	return ret;
 }
 
+static int scpsys_pbus_power_on(struct generic_pm_domain *genpd)
+{
+	struct scp_domain *scpd = container_of(genpd, struct scp_domain, genpd);
+	struct scp *scp = scpd->scp;
+	void __iomem *ctl_addr = scp->base + scpd->data->ctl_offs;
+	u32 val;
+	int ret, tmp;
+	unsigned int pd_start_time, pd_end_time;
+
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_PROFILE))
+		pd_start_time = jiffies_to_msecs(jiffies);
+
+	/* Turn on MTCMOS */
+	val = readl(ctl_addr);
+	val |= MTCMOS_SSYS_PWR_ON_OFF;
+	writel(val, ctl_addr);
+
+	/* wait until PWR_ACK == 1 */
+	ret = readx_poll_timeout_atomic(scpsys_pbus_pwr_ack_is_on, scpd, tmp, tmp > 0,
+			MTK_POLL_DELAY_US, MTK_POLL_TIMEOUT);
+
+	if (ret < 0)
+		goto err_pwr_ack;
+
+	/* P-Bus Mode MTCMOS Tie On */
+	val = readl(ctl_addr);
+	val |= SSYSPM_MTCMOS_DEFAULT_ON;
+	writel(val, ctl_addr);
+
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_PROFILE)) {
+		pd_end_time = jiffies_to_msecs(jiffies);
+		if ((pd_end_time - pd_start_time) > MTK_PROFILE_TIMEOUT)
+			dev_err(scp->dev, "%s profile time(%u)\n",
+				genpd->name, (pd_end_time - pd_start_time));
+	}
+
+	return 0;
+
+err_pwr_ack:
+	dev_err(scp->dev, "Failed to power on(pbus mode) mtcmos %s(%d)\n", genpd->name, ret);
+	return ret;
+}
+
+static int scpsys_pbus_power_off(struct generic_pm_domain *genpd)
+{
+	struct scp_domain *scpd = container_of(genpd, struct scp_domain, genpd);
+	struct scp *scp = scpd->scp;
+	void __iomem *ctl_addr = scp->base + scpd->data->ctl_offs;
+	u32 val;
+	int ret, tmp;
+	unsigned int pd_start_time, pd_end_time;
+
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_PROFILE))
+		pd_start_time = jiffies_to_msecs(jiffies);
+
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_BYPASS_OFF)) {
+		dev_err(scp->dev, "bypass power off %s for bringup\n", genpd->name);
+		return 0;
+	}
+
+	/* Enable P-Bus Mode RTFF */
+	val = readl(ctl_addr);
+	val |= SSYS_RTFF_GRP_EN;
+	writel(val, ctl_addr);
+
+	/* Disable P-Bus Mode Tie Value */
+	val = readl(ctl_addr);
+	val &= ~SSYSPM_MTCMOS_DEFAULT_ON;
+	writel(val, ctl_addr);
+
+	/* Turn off MTCMOS */
+	val = readl(ctl_addr);
+	val &= ~MTCMOS_SSYS_PWR_ON_OFF;
+	writel(val, ctl_addr);
+
+	/* wait until PWR_ACK == 0 */
+	ret = readx_poll_timeout_atomic(scpsys_pbus_pwr_ack_is_on, scpd, tmp, tmp == 0,
+			MTK_POLL_DELAY_US, MTK_POLL_TIMEOUT);
+
+	if (ret < 0)
+		goto err_pwr_ack;
+
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_PROFILE)) {
+		pd_end_time = jiffies_to_msecs(jiffies);
+		if ((pd_end_time - pd_start_time) > MTK_PROFILE_TIMEOUT)
+			dev_err(scp->dev, "%s profile time(%u)\n",
+				genpd->name, (pd_end_time - pd_start_time));
+	}
+
+	return 0;
+
+err_pwr_ack:
+	dev_err(scp->dev, "Failed to power off(pbus mode) mtcmos %s(%d)\n", genpd->name, ret);
+	return ret;
+}
+
 static int mtk_mminfra_hwv_is_enable_done(struct scp_domain *scpd)
 {
 	u32 val = 0;
@@ -1686,6 +1795,9 @@ struct scp *init_scp(struct platform_device *pdev,
 		} else if (MTK_SCPD_CAPS(scpd, MTK_SCPD_MMINFRA_HWV_OPS)) {
 			genpd->power_on = scpsys_mminfra_hwv_power_on;
 			genpd->power_off = scpsys_mminfra_hwv_power_off;
+		} else if (MTK_SCPD_CAPS(scpd, MTK_SCPD_PBUS_OPS)) {
+			genpd->power_on = scpsys_pbus_power_on;
+			genpd->power_off = scpsys_pbus_power_off;
 		} else {
 			genpd->power_off = scpsys_power_off;
 			genpd->power_on = scpsys_power_on;
