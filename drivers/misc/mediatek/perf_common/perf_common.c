@@ -14,7 +14,8 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <trace/hooks/sched.h>
-
+#include <linux/hrtimer.h>
+#include <linux/ktime.h>
 #include <perf_tracker_internal.h>
 
 #define TAG	"mtk_perf_common"
@@ -28,6 +29,12 @@ static atomic_t perf_in_progress;
 void __iomem *csram_base;
 void __iomem *u_tcm_base;
 void __iomem *stall_tcm_base;
+
+//timer
+static int perf_timer_delay = 4000000; //4ms
+static int long_time_check;
+static struct hrtimer perf_hrtimer;
+static ktime_t kt_period;
 
 struct em_perf_domain *em_pd;
 u32 U_AFFO;
@@ -44,6 +51,7 @@ u32 MCUPM_OFFSET_BASE = 0x133c;
 bool perf_tracker_info_exist;
 bool is_percore;
 bool is_percore_need_to_check;
+bool perf_timer_enable;
 u32 CHECK_PER_CORE = 0x1124;
 u32 IS_PER_CORE	= 0xABCD0001;
 
@@ -252,6 +260,46 @@ static void cleanup_perf_common_sysfs(void)
 	}
 }
 
+enum hrtimer_restart perf_timer_handler(struct hrtimer *timer)
+{
+	u64 wallclock;
+
+	if (!perf_timer_enable)
+		return HRTIMER_NORESTART;
+
+	wallclock = ktime_get_ns();
+	long_time_check ^= 1;
+	perf_tracker(wallclock, long_time_check);
+
+	hrtimer_forward_now(timer, kt_period);
+	return HRTIMER_RESTART;
+}
+
+void timer_on(void)
+{
+	hrtimer_start(&perf_hrtimer, kt_period, HRTIMER_MODE_REL);
+}
+
+void timer_off(void)
+{
+	hrtimer_cancel(&perf_hrtimer);
+}
+
+void passtiveTick_on(void)
+{
+	int ret;
+
+	// /* register tracepoint of scheduler_tick */
+	ret = register_trace_android_vh_scheduler_tick(perf_common, NULL);
+	if (ret)
+		pr_info("%s: register hooks failed, returned %d\n", TAG, ret);
+}
+
+void passtiveTick_off(void)
+{
+	unregister_trace_android_vh_scheduler_tick(perf_common, NULL);
+}
+
 bool is_perf_tracker_info_exist(void)
 {
 	struct device_node *perf_tracker_node;
@@ -319,14 +367,12 @@ static int __init init_perf_common(void)
 	init_perf_freq_tracker();
 #endif
 
-	/* register tracepoint of scheduler_tick */
-	ret = register_trace_android_vh_scheduler_tick(perf_common, NULL);
-	if (ret) {
-		pr_info("%s: register hooks failed, returned %d\n", TAG, ret);
-		goto out;
-	}
 	perf_common_init = 1;
 	atomic_set(&perf_in_progress, 0);
+
+	hrtimer_init(&perf_hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	perf_hrtimer.function = perf_timer_handler;
+	kt_period = ktime_set(0, perf_timer_delay); // 0 second, 4000000 nanoseconds
 
 	perf_tracker_info_exist = is_perf_tracker_info_exist();
 	if (perf_tracker_info_exist) {
@@ -397,7 +443,6 @@ get_base_failed:
 	return 0;
 #endif
 	exit_cpufreq_table();
-	unregister_trace_android_vh_scheduler_tick(perf_common, NULL);
 out:
 	cleanup_perf_common_sysfs();
 	return ret;
@@ -407,6 +452,7 @@ static void __exit exit_perf_common(void)
 {
 	while (atomic_read(&perf_in_progress) > 0)
 		udelay(30);
+	hrtimer_cancel(&perf_hrtimer);
 	unregister_trace_android_vh_scheduler_tick(perf_common, NULL);
 	exit_cpufreq_table();
 	cleanup_perf_common_sysfs();
