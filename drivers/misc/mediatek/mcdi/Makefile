@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2017 MediaTek Inc.
+# Copyright (C) 2024 MediaTek Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -54,4 +54,9 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcdi/platform/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/spm/common/
 mcdi-y += platform/mtk_mcdi_plat.o
 mcdi-y += platform/mtk_mcdi_state.o
+else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6765)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcdi/plat_k6765/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/spm/common/
+mcdi-y += plat_k6765/mtk_mcdi_plat.o
+mcdi-y += plat_k6765/mtk_mcdi_state.o
 endif
