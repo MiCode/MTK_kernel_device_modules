@@ -26,6 +26,9 @@
 #define MAX_PMIC_UVLO_SZ		8
 #define MAX_GPU_OPP_INFO_SZ			64
 #define MAX_GNSS_DATA_SZ			7
+#define MAX_WIFI_RADIO_SZ			3
+#define MAX_WIFI_RATE_SZ			32
+#define MAX_WIFI_LP_SZ				5
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -65,7 +68,6 @@
 #define MD_BLK_SZ 300
 #define MD_SECBLK_NUM 6
 #define MD_SEC_SZ (MD_SECBLK_NUM*MD_BLK_SZ)
-
 
 #define MAX_GPU_FENCE_RECORD_DATA 8
 
@@ -397,9 +399,88 @@ struct mbraink_gnss2mbr_mcu_data {
 	u16 count;
 	struct mbraink_gnss2mbr_mcu_struct mcu_data[MAX_GNSS_DATA_SZ];
 };
+
 struct mbraink_mmdvfs_info {
 	unsigned short size;
 	unsigned char mmdvfs_data[MAX_POWER_MMDVFS_SEC_SZ];
+};
+
+struct mbraink_wifi2mbr_lls_rate_struct {
+	u64 timestamp;
+	unsigned int rate_idx; /* rate idx, ref: LLS_RATE_XXX_MASK */
+	unsigned int bitrate;
+	unsigned int tx_mpdu;
+	unsigned int rx_mpdu;
+	unsigned int mpdu_lost;
+	unsigned int retries;
+};
+
+struct mbraink_wifi2mbr_lls_rate_data {
+	u16 count;
+	u32 idx;
+	struct mbraink_wifi2mbr_lls_rate_struct rate_data[MAX_WIFI_RATE_SZ];
+};
+
+struct mbraink_wifi2mbr_lls_radio_struct {
+	u64 timestamp;
+	int radio;
+	unsigned int on_time;
+	unsigned int tx_time;
+	unsigned int rx_time;
+	unsigned int on_time_scan;
+	unsigned int on_time_roam_scan;
+	unsigned int on_time_pno_scan;
+};
+
+struct mbraink_wifi2mbr_lls_radio_data {
+	u16 count;
+	u32 idx;
+	struct mbraink_wifi2mbr_lls_radio_struct radio_data[MAX_WIFI_RADIO_SZ];
+};
+
+enum mbraink_enum_mbr_wifi_ac {
+	MBRAINK_MBR_WIFI_AC_VO,
+	MBRAINK_MBR_WIFI_AC_VI,
+	MBRAINK_MBR_WIFI_AC_BE,
+	MBRAINK_MBR_WIFI_AC_BK,
+	MBRAINK_MBR_WIFI_AC_MAX,
+};
+
+struct mbraink_wifi2mbr_lls_ac_struct {
+	u64 timestamp;
+	enum mbraink_enum_mbr_wifi_ac ac;
+	unsigned int tx_mpdu;
+	unsigned int rx_mpdu;
+	unsigned int tx_mcast;
+	unsigned int tx_ampdu;
+	unsigned int mpdu_lost;
+	unsigned int retries;
+	unsigned int contention_time_min;
+	unsigned int contention_time_max;
+	unsigned int contention_time_avg;
+	unsigned int contention_num_samples;
+};
+
+struct mbraink_wifi2mbr_lls_ac_data {
+	u16 count;
+	u32 idx;
+	struct mbraink_wifi2mbr_lls_ac_struct ac_data[MBRAINK_MBR_WIFI_AC_MAX];
+};
+
+struct mbraink_wifi2mbr_lp_ratio_struct {
+	u64 timestamp;
+	int radio;
+	unsigned int total_time;
+	unsigned int tx_time;
+	unsigned int rx_time;
+	unsigned int rx_listen_time;
+	unsigned int sleep_time;
+};
+
+struct mbraink_wifi2mbr_lp_ratio_data {
+	u16 count;
+	u32 idx;
+	struct mbraink_wifi2mbr_lp_ratio_struct lp_data[MAX_WIFI_LP_SZ];
 };
 
 #endif

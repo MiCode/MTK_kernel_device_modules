@@ -53,6 +53,10 @@
 #define GNSS_LP_INFO			'z'
 #define GNSS_MCU_INFO			'A'
 #define MMDVFS_INFO				'B'
+#define WIFI_RATE_INFO			'C'
+#define WIFI_RADIO_INFO			'D'
+#define WIFI_AC_INFO			'E'
+#define WIFI_LP_INFO			'F'
 
 /*Mbrain Delegate IOCTL List*/
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
@@ -134,6 +138,15 @@
 					struct mbraink_gnss2mbr_mcu_data*)
 #define RO_MMDVFS_INFO	_IOR(IOC_MAGIC, MMDVFS_INFO, \
 						struct mbraink_mmdvfs_info*)
+
+#define RO_WIFI_RATE_INFO	_IOR(IOC_MAGIC, WIFI_RATE_INFO, \
+					struct mbraink_wifi2mbr_lls_rate_data*)
+#define RO_WIFI_RADIO_INFO	_IOR(IOC_MAGIC, WIFI_RADIO_INFO, \
+					struct mbraink_wifi2mbr_lls_radio_data*)
+#define RO_WIFI_AC_INFO		_IOR(IOC_MAGIC, WIFI_AC_INFO, \
+					struct mbraink_wifi2mbr_lls_ac_data*)
+#define RO_WIFI_LP_INFO		_IOR(IOC_MAGIC, WIFI_LP_INFO, \
+					struct mbraink_wifi2mbr_lp_ratio_data*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1

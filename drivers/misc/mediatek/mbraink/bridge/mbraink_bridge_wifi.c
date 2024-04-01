@@ -15,7 +15,6 @@ void mbraink_bridge_wifi_init(void)
 
 	mutex_lock(&bridge_wifi_lock);
 
-	g_mbraink2wifi_ops.get_next_tag = NULL;
 	g_mbraink2wifi_ops.get_data = NULL;
 	g_mbraink2wifi_ops.priv = NULL;
 
@@ -26,7 +25,6 @@ void mbraink_bridge_wifi_deinit(void)
 {
 	mutex_lock(&bridge_wifi_lock);
 
-	g_mbraink2wifi_ops.get_next_tag = NULL;
 	g_mbraink2wifi_ops.get_data = NULL;
 	g_mbraink2wifi_ops.priv = NULL;
 
@@ -43,7 +41,6 @@ void register_wifi2mbraink_ops(struct mbraink2wifi_ops *ops)
 
 	mutex_lock(&bridge_wifi_lock);
 
-	g_mbraink2wifi_ops.get_next_tag = ops->get_next_tag;
 	g_mbraink2wifi_ops.get_data = ops->get_data;
 	g_mbraink2wifi_ops.priv = ops->priv;
 
@@ -57,7 +54,6 @@ void unregister_wifi2mbraink_ops(void)
 
 	mutex_lock(&bridge_wifi_lock);
 
-	g_mbraink2wifi_ops.get_next_tag = NULL;
 	g_mbraink2wifi_ops.get_data = NULL;
 	g_mbraink2wifi_ops.priv = NULL;
 
@@ -65,40 +61,24 @@ void unregister_wifi2mbraink_ops(void)
 }
 EXPORT_SYMBOL_GPL(unregister_wifi2mbraink_ops);
 
-int mbraink_bridge_wifi_get_next_tag(enum mbr2wifi_reason reason)
+enum wifi2mbr_status
+mbraink_bridge_wifi_get_data(enum mbr2wifi_reason reason,
+			enum wifi2mbr_tag tag,
+			void *data,
+			unsigned short *real_len)
 {
-	int len = -1;
-
-	mutex_lock(&bridge_wifi_lock);
-
-	if (!g_mbraink2wifi_ops.get_next_tag || !g_mbraink2wifi_ops.priv)
-		pr_info("%s: get_next_tag or privis NULL\n", __func__);
-	else
-		len = g_mbraink2wifi_ops.get_next_tag(g_mbraink2wifi_ops.priv, reason);
-
-	mutex_unlock(&bridge_wifi_lock);
-
-	return len;
-}
-EXPORT_SYMBOL_GPL(mbraink_bridge_wifi_get_next_tag);
-
-enum wifi2mbr_status mbraink_bridge_wifi_get_data(enum wifi2mbr_tag tag,
-						void *data,
-						unsigned short *real_len)
-{
-	enum wifi2mbr_status ret = WIFI2MBR_FAILURE;
+	enum wifi2mbr_status ret = WIFI2MBR_NO_OPS;
 
 	mutex_lock(&bridge_wifi_lock);
 
 	if (!g_mbraink2wifi_ops.get_data || !g_mbraink2wifi_ops.priv)
 		pr_info("%s: get_data || priv is NULL\n", __func__);
 	else
-		ret = g_mbraink2wifi_ops.get_data(g_mbraink2wifi_ops.priv, tag, data, real_len);
+		ret = g_mbraink2wifi_ops.get_data(g_mbraink2wifi_ops.priv,
+						reason, tag, data, real_len);
 
 	mutex_unlock(&bridge_wifi_lock);
 
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mbraink_bridge_wifi_get_data);
-
-

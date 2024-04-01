@@ -962,7 +962,61 @@ static long mbraink_ioctl(struct file *filp,
 		ret = handleMmdvfsInfo(arg);
 		break;
 	}
+	case RO_WIFI_RATE_INFO:
+	{
+		struct mbraink_wifi2mbr_lls_rate_data wifi_rate_buf;
 
+		if (copy_from_user(&wifi_rate_buf,
+			(struct mbraink_wifi2mbr_lls_rate_data *) arg,
+			sizeof(struct mbraink_wifi2mbr_lls_rate_data))) {
+			pr_notice("copy mbraink_wifi2mbr_lls_rate_data data from user Err!\n");
+			return -EPERM;
+		}
+
+		mbraink_get_wifi_rate_data(wifi_rate_buf.idx, &wifi_rate_buf);
+		if (copy_to_user((struct mbraink_wifi2mbr_lls_rate_data *) arg,
+			&wifi_rate_buf, sizeof(wifi_rate_buf))) {
+			pr_notice("Copy wifi_rate_buf to UserSpace error!\n");
+			return -EPERM;
+		}
+		break;
+	}
+	case RO_WIFI_RADIO_INFO:
+	{
+		struct mbraink_wifi2mbr_lls_radio_data wifi_radio_buf;
+
+		mbraink_get_wifi_radio_data(&wifi_radio_buf);
+		if (copy_to_user((struct mbraink_wifi2mbr_lls_radio_data *) arg,
+			&wifi_radio_buf, sizeof(wifi_radio_buf))) {
+			pr_notice("Copy wifi_radio_buf to UserSpace error!\n");
+			return -EPERM;
+		}
+		break;
+	}
+	case RO_WIFI_AC_INFO:
+	{
+		struct mbraink_wifi2mbr_lls_ac_data wifi_ac_buf;
+
+		mbraink_get_wifi_ac_data(&wifi_ac_buf);
+		if (copy_to_user((struct mbraink_wifi2mbr_lls_ac_data *) arg,
+			&wifi_ac_buf, sizeof(wifi_ac_buf))) {
+			pr_notice("Copy wifi_ac_buf to UserSpace error!\n");
+			return -EPERM;
+		}
+		break;
+	}
+	case RO_WIFI_LP_INFO:
+	{
+		struct mbraink_wifi2mbr_lp_ratio_data wifi_lp_buf;
+
+		mbraink_get_wifi_lp_data(&wifi_lp_buf);
+		if (copy_to_user((struct mbraink_wifi2mbr_lp_ratio_data *) arg,
+			&wifi_lp_buf, sizeof(wifi_lp_buf))) {
+			pr_notice("Copy wifi_lp_buf to UserSpace error!\n");
+			return -EPERM;
+		}
+		break;
+	}
 	default:
 		pr_notice("illegal ioctl number %u.\n", cmd);
 		return -EINVAL;
@@ -1236,9 +1290,6 @@ static ssize_t mbraink_info_show(struct device *dev,
 								struct device_attribute *attr,
 								char *buf)
 {
-	mbraink_get_wifi_data(0);
-	mbraink_get_wifi_data(1);
-
 	return sprintf(buf, "show the process information...\n");
 }
 

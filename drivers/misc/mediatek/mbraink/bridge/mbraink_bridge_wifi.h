@@ -9,6 +9,8 @@
 enum wifi2mbr_status {
 	WIFI2MBR_SUCCESS,
 	WIFI2MBR_FAILURE,
+	WIFI2MBR_END,
+	WIFI2MBR_NO_OPS,
 };
 
 enum mbr2wifi_reason {
@@ -100,18 +102,20 @@ struct wifi2mbr_lpRatioInfo {
 };
 
 struct mbraink2wifi_ops {
-	int (*get_next_tag)(void *priv, enum mbr2wifi_reason reason);
-	enum wifi2mbr_status (*get_data)(void *priv, enum wifi2mbr_tag tag,
+	enum wifi2mbr_status (*get_data)(void *priv,
+				enum mbr2wifi_reason reason,
+				enum wifi2mbr_tag tag,
 				void *data, unsigned short *real_len);
-	void *priv;
+				void *priv;
 };
 
 void mbraink_bridge_wifi_init(void);
 void mbraink_bridge_wifi_deinit(void);
 void register_wifi2mbraink_ops(struct mbraink2wifi_ops *ops);
 void unregister_wifi2mbraink_ops(void);
-int mbraink_bridge_wifi_get_next_tag(enum mbr2wifi_reason reason);
-enum wifi2mbr_status mbraink_bridge_wifi_get_data(enum wifi2mbr_tag tag,
-						void *data,
-						unsigned short *real_len);
+enum wifi2mbr_status
+mbraink_bridge_wifi_get_data(enum mbr2wifi_reason reason,
+			enum wifi2mbr_tag tag,
+			void *data,
+			unsigned short *real_len);
 #endif /*MBRAINK_BRIDGE_WIFI_H*/
