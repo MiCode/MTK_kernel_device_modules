@@ -1459,8 +1459,7 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 	}
 
 	/* skip all racing mode check if use prefer dc */
-	if (info->mode == MML_MODE_MML_DECOUPLE ||
-		info->mode == MML_MODE_MDP_DECOUPLE) {
+	if (mml_isdc(info->mode) || info->mode == MML_MODE_MDP_DECOUPLE) {
 		*reason = mml_query_userdc;
 		goto decouple_user;
 	}
