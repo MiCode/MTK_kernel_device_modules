@@ -6464,7 +6464,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			dma-mask-bit = <35>;
 		};
 
-		cmdq-test {
+		cmdq_test: cmdq-test@0 {
 			compatible = "mediatek,cmdq-test";
 			mediatek,gce = <&gce>;
 			cmdq-supply = <&gce_sec>;
@@ -6478,6 +6478,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			token-user0 = /bits/ 16 <CMDQ_SYNC_TOKEN_USER_0>;
 			token-for-ut = /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MDP_LOCK>;
 			token-timeout = /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MML_LOCK>;
+		};
+
+		vhost_cmdq: vhost-cmdq@300c0000 {
+			status = "disabled";
+		};
+
+		vhost_cmdq_m: vhost-cmdq-m@30140000 {
+			status = "disabled";
 		};
 
 		mminfra-imax {
