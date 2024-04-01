@@ -210,6 +210,11 @@ enum mtk_dbi_version {
 	MTK_DBI_V2,
 };
 
+enum mtk_dmr_version {
+	MTK_DMR_V1,
+	MTK_DMR_V2,
+};
+
 enum mtk_od_version {
 	MTK_OD_V1,
 	MTK_OD_V2,
@@ -235,6 +240,7 @@ struct mtk_disp_oddmr_data {
 	uint32_t p_num;
 	irqreturn_t (*irq_handler)(int irq, void *dev_id);
 	enum mtk_dbi_version dbi_version;
+	enum mtk_dmr_version dmr_version;
 	enum mtk_od_version od_version;
 };
 
