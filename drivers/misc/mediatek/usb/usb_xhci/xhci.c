@@ -1533,7 +1533,7 @@ static int xhci_urb_enqueue_(struct usb_hcd *hcd, struct urb *urb, gfp_t mem_fla
 
 	if (xhci_vendor_usb_offload_skip_urb(xhci, urb)) {
 		xhci_dbg(xhci, "skip urb for usb offload\n");
-		return -EOPNOTSUPP;
+		return 0;
 	}
 
 	if (usb_endpoint_xfer_isoc(&urb->ep->desc))
@@ -1650,7 +1650,7 @@ free_priv:
  * Note that this function can be called in any context, or so says
  * usb_hcd_unlink_urb()
  */
-static int xhci_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
+static int xhci_urb_dequeue_(struct usb_hcd *hcd, struct urb *urb, int status)
 {
 	unsigned long flags;
 	int ret, i;
@@ -1667,7 +1667,7 @@ static int xhci_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 	xhci = hcd_to_xhci(hcd);
 	spin_lock_irqsave(&xhci->lock, flags);
 
-	trace_xhci_urb_dequeue(urb);
+	trace_xhci_urb_dequeue_(urb);
 
 	/* Make sure the URB hasn't completed or been unlinked already */
 	ret = usb_hcd_check_unlink_urb(hcd, urb, status);
@@ -5409,7 +5409,7 @@ static const struct hc_driver xhci_hc_driver = {
 	.map_urb_for_dma =      xhci_map_urb_for_dma,
 	.unmap_urb_for_dma =    xhci_unmap_urb_for_dma,
 	.urb_enqueue =		xhci_urb_enqueue_,
-	.urb_dequeue =		xhci_urb_dequeue,
+	.urb_dequeue =		xhci_urb_dequeue_,
 	.alloc_dev =		xhci_alloc_dev,
 	.free_dev =		xhci_free_dev,
 	.alloc_streams =	xhci_alloc_streams,

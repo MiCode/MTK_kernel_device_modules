@@ -36,4 +36,5 @@ obj-$(CONFIG_MTK_USB_OFFLOAD)	+= usb_offload.o
 ifneq ($(CONFIG_MTK_USB_OFFLOAD), )
 usb_offload-y := usb_offload_common.o
 usb_offload-y += usb_offload_mem.o
+usb_offload-y += usb_offload_hid.o
 endif

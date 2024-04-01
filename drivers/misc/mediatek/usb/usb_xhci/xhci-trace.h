@@ -305,7 +305,7 @@ DEFINE_EVENT(xhci_log_urb, xhci_urb_giveback_,
 	TP_ARGS(urb)
 );
 
-DEFINE_EVENT(xhci_log_urb, xhci_urb_dequeue,
+DEFINE_EVENT(xhci_log_urb, xhci_urb_dequeue_,
 	TP_PROTO(struct urb *urb),
 	TP_ARGS(urb)
 );

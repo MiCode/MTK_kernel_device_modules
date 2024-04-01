@@ -179,7 +179,7 @@ static int xhci_mtk_ring_expansion(struct xhci_hcd *xhci,
 	struct xhci_ring *ring, dma_addr_t phys, void *vir);
 static int xhci_mtk_update_erst(struct usb_offload_dev *udev,
 	struct xhci_segment *first,	struct xhci_segment *last, unsigned int num_segs);
-static int xhci_mtk_realloc_transfer_ring(struct snd_usb_substream *subs);
+static int xhci_mtk_realloc_isoc_ring(struct snd_usb_substream *subs);
 static void fake_sram_pwr_ctrl(bool power);
 
 static void memory_cleanup(void)
@@ -1495,7 +1495,7 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 
 		if (sram_version == 0x3) {
 			/* re-placing trasnfer ring on rsv_sram/dram */
-			ret = xhci_mtk_realloc_transfer_ring(subs);
+			ret = xhci_mtk_realloc_isoc_ring(subs);
 			USB_OFFLOAD_INFO("re-alloc transfer ring, ret: %d\n", ret);
 			if (ret != 0) {
 				mutex_unlock(&uodev->dev_lock);
@@ -1690,33 +1690,33 @@ static int get_first_avail_buf_seg_idx(void)
 	return -1;
 }
 
-static void xhci_mtk_usb_offload_segment_free(struct xhci_hcd *xhci,
-			struct xhci_segment *seg)
+struct usb_offload_buffer *usb_offload_get_ring_buf(dma_addr_t phy)
 {
 	unsigned int idx;
 
 	if (!buf_seg) {
 		USB_OFFLOAD_ERR("buf_seg is NULL\n");
-		return;
+		return NULL;
 	}
 
+	for (idx = 0; idx < BUF_SEG_SIZE; idx++) {
+		if (buf_seg[idx].allocated && buf_seg[idx].dma_addr == phy)
+			return &buf_seg[idx];
+	}
+
+	USB_OFFLOAD_INFO("NO Segment MATCH. dma:0x%llx\n",	phy);
+	return NULL;
+}
+
+static void xhci_mtk_usb_offload_segment_free(struct xhci_hcd *xhci,
+			struct xhci_segment *seg)
+{
+	struct usb_offload_buffer *buf;
+
 	if (seg->trbs) {
-		for (idx = 0; idx < BUF_SEG_SIZE; idx++) {
-			USB_OFFLOAD_MEM_DBG("buf_seg[%d] alloc:%d va:%p phy:0x%llx size:%zu\n",
-					idx,
-					buf_seg[idx].allocated,
-					buf_seg[idx].dma_area,
-					buf_seg[idx].dma_addr,
-					buf_seg[idx].dma_bytes);
-			if (buf_seg[idx].allocated && buf_seg[idx].dma_addr == seg->dma) {
-				if (mtk_offload_free_mem(&buf_seg[idx]))
-					USB_OFFLOAD_ERR("FAIL: free mem seg: %d\n", idx);
-				goto done;
-			}
-		}
-		USB_OFFLOAD_INFO("NO Segment MATCH to be freed. seg->trbs:%p, seg->dma:0x%llx\n",
-				seg->trbs, seg->dma);
-done:
+		buf = usb_offload_get_ring_buf(seg->dma);
+		if (buf && mtk_offload_free_mem(buf))
+			USB_OFFLOAD_ERR("FAIL: free mem seg\n");
 		seg->trbs = NULL;
 	}
 
@@ -1803,30 +1803,6 @@ static struct xhci_segment *xhci_mtk_usb_offload_segment_alloc(struct xhci_hcd *
 	seg->next = NULL;
 
 	return seg;
-}
-
-static void xhci_mtk_initialize_ring_info(struct xhci_ring *ring,
-				   unsigned int cycle_state)
-{
-	/* The ring is empty, so the enqueue pointer == dequeue pointer */
-	ring->enqueue = ring->first_seg->trbs;
-	ring->enq_seg = ring->first_seg;
-	ring->dequeue = ring->enqueue;
-	ring->deq_seg = ring->first_seg;
-	/* The ring is initialized to 0. The producer must write 1 to the cycle
-	 * bit to handover ownership of the TRB, so PCS = 1.  The consumer must
-	 * compare CCS to the cycle bit to check ownership, so CCS = 1.
-	 *
-	 * New rings are initialized with cycle state equal to 1; if we are
-	 * handling ring expansion, set the cycle state equal to the old ring.
-	 */
-	ring->cycle_state = cycle_state;
-
-	/*
-	 * Each segment has a link TRB, and leave an extra TRB for SW
-	 * accounting purpose
-	 */
-	ring->num_trbs_free = ring->num_segs * (USB_OFFLOAD_TRBS_PER_SEGMENT - 1) - 1;
 }
 
 /* Allocate segments and link them for a ring */
@@ -2053,7 +2029,7 @@ static struct xhci_ring *xhci_mtk_alloc_ring(struct xhci_hcd *xhci,
 		ring->last_seg->trbs[USB_OFFLOAD_TRBS_PER_SEGMENT - 1].link.control |=
 			cpu_to_le32(LINK_TOGGLE);
 	}
-	xhci_mtk_initialize_ring_info(ring, cycle_state);
+	xhci_initialize_ring_info_(ring, cycle_state);
 	return ring;
 
 fail:
@@ -2197,35 +2173,25 @@ static int get_segment_buf(struct xhci_ring *ring, struct usb_offload_buffer **b
 }
 
 /* realloc transfer ring, placing on adsp/ap-view memory (sram or dram) */
-static int xhci_mtk_realloc_transfer_ring(struct snd_usb_substream *subs)
+int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
+	enum usb_offload_mem_id mem_type)
 {
-	struct usb_host_endpoint *ep;
 	struct xhci_hcd *xhci = uodev->xhci;
 	struct xhci_virt_device *virt_dev;
 	struct xhci_ep_ctx *out_ep_ctx, *in_ep_ctx;
 	struct xhci_input_control_ctx *ctrl_ctx;
 	struct usb_hcd *hcd = xhci->main_hcd;
 	struct xhci_ring *ring;
-	unsigned int slot_id, ep_id;
 	int num_segs = 1, max_packet;
 	int cycle_state = 1;
 	enum xhci_ring_type ring_type;
-	enum usb_offload_mem_id mem_type;
 
-	ep = usb_pipe_endpoint(subs->dev, subs->data_endpoint->pipe);
-	if (!ep) {
-		USB_OFFLOAD_ERR("host endpoint is NULL\n");
-		return -1;
-	}
-
-	slot_id = subs->dev->slot_id;
 	virt_dev = xhci->devs[slot_id];
 	if (!virt_dev) {
 		USB_OFFLOAD_ERR("(slot:%d) virtual device is NULL\n", slot_id);
 		return -1;
 	}
 
-	ep_id = xhci_get_endpoint_index_(&ep->desc);
 	USB_OFFLOAD_INFO("(slot:%d ep:%d) virt_dev:%p\n", slot_id, ep_id, virt_dev);
 
 	out_ep_ctx = xhci_get_ep_ctx__(xhci, virt_dev->out_ctx, ep_id);
@@ -2243,11 +2209,6 @@ static int xhci_mtk_realloc_transfer_ring(struct snd_usb_substream *subs)
 	 * virt_dev->eps[ep_id].new_ring is the temp buffer where we place new ring.
 	 * xhci_check_bandwidth_() would assign (ring = new_ring).
 	 */
-	if (uodev->adv_lowpwr_dl_only && usb_endpoint_dir_in(&ep->desc))
-		mem_type = USB_OFFLOAD_MEM_DRAM_ID;
-	else
-		mem_type = lowpwr_mem_type();
-
 	max_packet = virt_dev->eps[ep_id].ring->bounce_buf_len;
 	ring_type = virt_dev->eps[ep_id].ring->type;
 	ring = xhci_mtk_alloc_ring(xhci, num_segs, cycle_state, ring_type,
@@ -2287,6 +2248,29 @@ static int xhci_mtk_realloc_transfer_ring(struct snd_usb_substream *subs)
 
 	/* 5. inform XHC to reconfigure endoint */
 	return xhci_check_bandwidth_(hcd, virt_dev->udev);
+}
+
+static int xhci_mtk_realloc_isoc_ring(struct snd_usb_substream *subs)
+{
+	struct usb_host_endpoint *ep;
+	unsigned int slot_id, ep_id;
+	enum usb_offload_mem_id mem_type;
+
+	ep = usb_pipe_endpoint(subs->dev, subs->data_endpoint->pipe);
+	if (!ep) {
+		USB_OFFLOAD_ERR("host endpoint is NULL\n");
+		return -EINVAL;
+	}
+
+	slot_id = subs->dev->slot_id;
+	ep_id = xhci_get_endpoint_index_(&ep->desc);
+
+	if (uodev->adv_lowpwr_dl_only && usb_endpoint_dir_in(&ep->desc))
+		mem_type = USB_OFFLOAD_MEM_DRAM_ID;
+	else
+		mem_type = lowpwr_mem_type();
+
+	return xhci_mtk_realloc_transfer_ring(slot_id, ep_id, mem_type);
 }
 
 /* Xhci checkes ep type before allocating transfer ring but it doesn't
@@ -2831,6 +2815,7 @@ static long usb_offload_ioctl(struct file *fp,
 			}
 		}
 		kfree(xhci_mem);
+		usb_offload_register_ipi_recv();
 		break;
 	case USB_OFFLOAD_ENABLE_STREAM:
 	case USB_OFFLOAD_DISABLE_STREAM:
@@ -2987,6 +2972,7 @@ static struct xhci_vendor_ops xhci_mtk_vendor_ops = {
 	.alloc_transfer_ring = xhci_mtk_alloc_transfer_ring,
 	.free_transfer_ring = xhci_mtk_free_transfer_ring,
 	.is_streaming = xhci_mtk_is_streaming,
+	.usb_offload_skip_urb = xhci_mtk_skip_hid_urb,
 #if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
 	.offload_connect = sound_usb_connect,
 	.offload_disconnect = sound_usb_disconnect,
@@ -3008,6 +2994,41 @@ int xhci_mtk_ssusb_offload_get_mode(struct device *dev)
 	 * notifying SSUSB_OFFLOAD_MODE_S to mtu3 driver
 	 */
 	return is_in_advanced ? SSUSB_OFFLOAD_MODE_S : SSUSB_OFFLOAD_MODE_D;
+}
+
+static void usb_offload_link_mtu3(struct device *uo_dev)
+{
+	struct device_node *node;
+	struct device *mtu3_dev;
+	struct device_link *link;
+	struct platform_device *pdev = NULL;
+
+	node = of_find_node_by_name(NULL, "usb0");
+	if (node) {
+		pdev = of_find_device_by_node(node);
+		if (!pdev) {
+			USB_OFFLOAD_ERR("no device found by ssusb node!\n");
+			hid_disable_offload = 1;
+			goto put_node;
+		}
+
+		mtu3_dev = &pdev->dev;
+
+		link =  device_link_add(uo_dev, mtu3_dev,
+						DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+		if (!link) {
+			USB_OFFLOAD_ERR("fail to link mtu3\n");
+			hid_disable_offload = 1;
+		} else {
+			USB_OFFLOAD_ERR("success to link mtu3\n");
+			hid_disable_offload = 0;
+		}
+put_node:
+		of_node_put(node);
+	} else {
+		USB_OFFLOAD_ERR("no 'usb0' node!\n");
+		hid_disable_offload = 1;
+	}
 }
 
 static int usb_offload_probe(struct platform_device *pdev)
@@ -3123,6 +3144,8 @@ static int usb_offload_probe(struct platform_device *pdev)
 			goto REG_SSUSB_OFFLOAD_FAIL;
 		}
 
+		usb_offload_link_mtu3(&pdev->dev);
+
 	} else {
 		USB_OFFLOAD_ERR("No 'xhci_host' node, NOT support USB_OFFLOAD\n");
 		ret = -ENODEV;
@@ -3132,6 +3155,8 @@ static int usb_offload_probe(struct platform_device *pdev)
 	buf_seg = kzalloc(sizeof(struct usb_offload_buffer) * BUF_SEG_SIZE, GFP_KERNEL);
 	buf_ev_table = kzalloc(sizeof(struct usb_offload_buffer), GFP_KERNEL);
 	buf_ev_ring = kzalloc(sizeof(struct usb_offload_buffer), GFP_KERNEL);
+
+	usb_offload_hid_probe();
 
 	USB_OFFLOAD_INFO("Probe Success!!!");
 	return ret;
@@ -3190,6 +3215,8 @@ static int __maybe_unused usb_offload_suspend(struct device *dev)
 		return 0;
 	}
 
+	usb_offload_hid_start();
+
 	/* if it's streaming, call to TFA if it's required */
 	return usb_offload_smc_ctrl(uodev->smc_suspend);
 }
@@ -3204,6 +3231,8 @@ static int __maybe_unused usb_offload_resume(struct device *dev)
 			fake_sram_pwr_ctrl(true);
 		return 0;
 	}
+
+	usb_offload_hid_finish();
 
 	return usb_offload_smc_ctrl(uodev->smc_resume);
 }
@@ -3222,6 +3251,8 @@ static int __maybe_unused usb_offload_runtime_suspend(struct device *dev)
 		return 0;
 	}
 
+	usb_offload_hid_start();
+
 	return usb_offload_smc_ctrl(uodev->smc_suspend);
 }
 
@@ -3238,6 +3269,8 @@ static int __maybe_unused usb_offload_runtime_resume(struct device *dev)
 			fake_sram_pwr_ctrl(true);
 		return 0;
 	}
+
+	usb_offload_hid_finish();
 
 	return usb_offload_smc_ctrl(uodev->smc_resume);
 }
