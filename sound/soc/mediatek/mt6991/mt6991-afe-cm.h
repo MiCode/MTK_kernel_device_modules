@@ -14,7 +14,8 @@ enum {
 };
 
 void mt6991_set_cm_rate(int id, unsigned int rate);
-
+void mt6991_set_cm_mux(int id, unsigned int mux);
+int mt6991_get_cm_mux(int id);
 int mt6991_set_cm(struct mtk_base_afe *afe, int id, unsigned int update,
 				bool swap, unsigned int ch);
 int mt6991_enable_cm_bypass(struct mtk_base_afe *afe, int id, bool en);
