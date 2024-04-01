@@ -49,6 +49,7 @@ void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc);
 void mtk_disp_clr_module_hrt(struct mtk_drm_crtc *mtk_crtc);
 int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 			unsigned int overlap_num);
+void mtk_aod_scp_set_BW(void);
 void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller);
 int __mtk_disp_pmqos_slot_look_up(int comp_id, int mode);
 int mtk_disp_hrt_cond_init(struct drm_crtc *crtc);

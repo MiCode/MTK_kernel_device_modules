@@ -495,7 +495,7 @@ extern int aod_scp_flag;
 extern int mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param,
 				 unsigned int cfg_flag);
 extern int mtkfb_set_backlight_level_AOD(unsigned int level);
-
+extern void mtk_ovl_set_aod_scp_hrt(void);
 void mtk_atomic_state_put_queue(struct drm_atomic_state *state);
 void mtk_drm_fence_update(unsigned int fence_idx, unsigned int index);
 void drm_trigger_repaint(enum DRM_REPAINT_TYPE type,
