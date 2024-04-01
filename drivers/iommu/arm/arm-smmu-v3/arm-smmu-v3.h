@@ -18,7 +18,7 @@
 #include <linux/mmzone.h>
 #include <linux/sizes.h>
 
-#include <asm/arm-smmu-v3-regs.h>
+#include "arm-smmu-v3-regs.h"
 
 /* ARM_SMMU_IDR3 */
 #define IDR3_MPAM			(1 << 7)
@@ -528,8 +528,13 @@ static void __maybe_unused queue_sync_cons_out(struct arm_smmu_queue *q)
 	/*
 	 * Ensure that all CPU accesses (reads and writes) to the queue
 	 * are complete before we update the cons pointer.
+	 * __iomb() is only used in arm64-specific.
 	 */
+#if IS_ENABLED(CONFIG_ARM64)
 	__iomb();
+#else
+	dma_mb();
+#endif
 	writel_relaxed(q->llq.cons, q->cons_reg);
 }
 
