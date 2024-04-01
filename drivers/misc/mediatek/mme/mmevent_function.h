@@ -72,46 +72,57 @@
 
 #define _MMEVENT_LOG_CHOICE_1(module, type, log_level, format) \
 	do { \
-		unsigned int mme_format_size = sizeof(char *); \
-		unsigned long long p_mme_buf = mmevent_log((mme_format_size + MME_PID_SIZE), \
-										0, module, type, log_level); \
-		if (p_mme_buf) { \
-			SAVE_PROCESS(p_mme_buf); \
-			SAVE_FORMAT(p_mme_buf, format, mme_format_size); \
+		if ((module < MME_MODULE_MAX) && (type < MME_BUFFER_INDEX_MAX) && \
+			(g_ring_buffer_units[module][type] > 0)) { \
+			unsigned int mme_format_size = sizeof(char *); \
+			unsigned long long p_mme_buf; \
+			p_mme_buf = mmevent_log((mme_format_size + MME_PID_SIZE), \
+											0, module, type, log_level); \
+			if (p_mme_buf) { \
+				SAVE_PROCESS(p_mme_buf); \
+				SAVE_FORMAT(p_mme_buf, format, mme_format_size); \
+			} \
 		} \
 	} while(0)
 
 #define _MMEVENT_LOG_CHOICE_2(module, type, log_level, format, data1) \
 	do { \
-		unsigned int mme_format_size = sizeof(char *); \
-		unsigned int mme_data1_size, mme_data1_flag, mme_str_len; \
-		unsigned long long p_mme_buf; \
-		PROCESS_DATA(data1, mme_data1_size, mme_data1_flag, mme_str_len); \
-		p_mme_buf = mmevent_log((mme_format_size + mme_data1_size + MME_PID_SIZE), \
-								mme_data1_flag, module , type, log_level); \
-		if (p_mme_buf) { \
-			SAVE_PROCESS(p_mme_buf); \
-			SAVE_FORMAT(p_mme_buf, format, mme_format_size); \
-			SAVE_DATA(p_mme_buf, data1, mme_data1_size, mme_data1_flag, mme_str_len); \
+		if ((module < MME_MODULE_MAX) && (type < MME_BUFFER_INDEX_MAX) && \
+			(g_ring_buffer_units[module][type] > 0)) { \
+			unsigned int mme_format_size = sizeof(char *); \
+			unsigned int mme_data1_size, mme_data1_flag, mme_str_len; \
+			unsigned long long p_mme_buf; \
+			PROCESS_DATA(data1, mme_data1_size, mme_data1_flag, mme_str_len); \
+			p_mme_buf = mmevent_log((mme_format_size + mme_data1_size + MME_PID_SIZE), \
+									mme_data1_flag, module , type, log_level); \
+			if (p_mme_buf) { \
+				SAVE_PROCESS(p_mme_buf); \
+				SAVE_FORMAT(p_mme_buf, format, mme_format_size); \
+				SAVE_DATA(p_mme_buf, data1, mme_data1_size, mme_data1_flag, mme_str_len); \
+			} \
 		} \
 	} while(0)
 
 #define _MMEVENT_LOG_PORXY(N, module, type, log_level, format, ...) \
 	do { \
-		unsigned int mme_format_size = sizeof(char *); \
-		unsigned int mme_data_size[N], mme_data_flag[N], mme_str_len[N]; \
-		unsigned int mme_log_length = mme_format_size + MME_PID_SIZE, mme_index; \
-		unsigned long long mme_log_flag = 0, p_mme_buf = 0; \
-		PROCESS_DATA_##N(mme_data_size, mme_data_flag, mme_str_len, ##__VA_ARGS__); \
-		for (mme_index=0; mme_index<N; mme_index++) { \
-			mme_log_length += mme_data_size[mme_index]; \
-			mme_log_flag |= ((unsigned long long)mme_data_flag[mme_index] << g_flag_shifts[mme_index]); \
-		} \
-		p_mme_buf = mmevent_log(mme_log_length, mme_log_flag, module, type, log_level); \
-		if (p_mme_buf) { \
-			SAVE_PROCESS(p_mme_buf); \
-			SAVE_FORMAT(p_mme_buf, format, mme_format_size); \
-			SAVE_DATA_##N(p_mme_buf, mme_data_size, mme_data_flag, mme_str_len, ##__VA_ARGS__); \
+		if ((module < MME_MODULE_MAX) && (type < MME_BUFFER_INDEX_MAX) && \
+			(g_ring_buffer_units[module][type] > 0)) { \
+			unsigned int mme_format_size = sizeof(char *); \
+			unsigned int mme_data_size[N], mme_data_flag[N], mme_str_len[N]; \
+			unsigned int mme_log_length = mme_format_size + MME_PID_SIZE, mme_index; \
+			unsigned long long mme_log_flag = 0, p_mme_buf = 0; \
+			PROCESS_DATA_##N(mme_data_size, mme_data_flag, mme_str_len, ##__VA_ARGS__); \
+			for (mme_index=0; mme_index<N; mme_index++) { \
+				mme_log_length += mme_data_size[mme_index]; \
+				mme_log_flag |= ((unsigned long long)mme_data_flag[mme_index] << \
+								g_flag_shifts[mme_index]); \
+			} \
+			p_mme_buf = mmevent_log(mme_log_length, mme_log_flag, module, type, log_level); \
+			if (p_mme_buf) { \
+				SAVE_PROCESS(p_mme_buf); \
+				SAVE_FORMAT(p_mme_buf, format, mme_format_size); \
+				SAVE_DATA_##N(p_mme_buf, mme_data_size, mme_data_flag, mme_str_len, ##__VA_ARGS__); \
+			} \
 		} \
 	} while(0)
 
