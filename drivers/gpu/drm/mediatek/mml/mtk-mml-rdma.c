@@ -437,6 +437,7 @@ enum rdma_golden_fmt {
 struct rdma_data {
 	u32 tile_width;
 	u32 sram_size;
+	u8 px_per_tick;
 	u8 rb_swap;		/* WA: version for rb channel swap behavior */
 	bool alpha_rsz_crop;	/* WA: align rdma crop size when alpha resize */
 	bool write_sec_reg;	/* WA: write rdma registers in secured domain */
@@ -449,11 +450,13 @@ struct rdma_data {
 
 static const struct rdma_data mt6893_rdma_data = {
 	.tile_width = 640,
+	.px_per_tick = 1,
 	.rb_swap = 1,
 };
 
 static const struct rdma_data mt6983_rdma_data = {
 	.tile_width = 1696,
+	.px_per_tick = 1,
 	.rb_swap = 1,
 	.write_sec_reg = true,
 	.golden = {
@@ -482,12 +485,14 @@ static const struct rdma_data mt6983_rdma_data = {
 
 static const struct rdma_data mt6879_rdma_data = {
 	.tile_width = 1440,
+	.px_per_tick = 1,
 	.rb_swap = 1,
 	.write_sec_reg = true,
 };
 
 static const struct rdma_data mt6895_rdma0_data = {
 	.tile_width = 1344,
+	.px_per_tick = 1,
 	.rb_swap = 1,
 	.write_sec_reg = true,
 	.golden = {
@@ -516,6 +521,7 @@ static const struct rdma_data mt6895_rdma0_data = {
 
 static const struct rdma_data mt6895_rdma1_data = {
 	.tile_width = 896,
+	.px_per_tick = 1,
 	.rb_swap = 1,
 	.write_sec_reg = true,
 	.golden = {
@@ -545,6 +551,7 @@ static const struct rdma_data mt6895_rdma1_data = {
 static const struct rdma_data mt6985_rdma_data = {
 	.tile_width = 1760,
 	.sram_size = 512 * 1024,	/* 1MB sram divid to 512K + 512K */
+	.px_per_tick = 1,
 	.rb_swap = 2,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
@@ -576,6 +583,7 @@ static const struct rdma_data mt6985_rdma_data = {
 
 static const struct rdma_data mt6886_rdma_data = {
 	.tile_width = 1312,
+	.px_per_tick = 1,
 	.rb_swap = 1,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
@@ -604,6 +612,7 @@ static const struct rdma_data mt6886_rdma_data = {
 static const struct rdma_data mt6989_rdma_data = {
 	.tile_width = 3520,
 	.sram_size = 512 * 1024,	/* 1MB sram divid to 512K + 512K */
+	.px_per_tick = 2,
 	.rb_swap = 1,
 	.alpha_rsz_crop = true,
 	.tile_reset = true,
@@ -637,6 +646,7 @@ static const struct rdma_data mt6989_rdma_data = {
 
 static const struct rdma_data mt6878_rdma_data = {
 	.tile_width = 640,
+	.px_per_tick = 1,
 	.rb_swap = 2,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
@@ -668,6 +678,7 @@ static const struct rdma_data mt6878_rdma_data = {
 
 static const struct rdma_data mt6991_mmlt_rdma_data = {
 	.tile_width = 640,
+	.px_per_tick = 2,
 	.alpha_rsz_crop = true,
 	.tile_reset = true,
 	.stash = true,
@@ -701,6 +712,7 @@ static const struct rdma_data mt6991_mmlt_rdma_data = {
 
 static const struct rdma_data mt6991_mmlf_rdma_data = {
 	.tile_width = 3872,
+	.px_per_tick = 2,
 	.sram_size = 512 * 1024,	/* 1MB sram divid to 512K + 512K */
 	.alpha_rsz_crop = true,
 	.tile_reset = true,
@@ -774,6 +786,11 @@ struct rdma_frame_data {
 	u16 crop_off_t;		/* crop offset top */
 	u32 gmcif_con;
 	u32 crc_inst_offset;
+
+	/* dvfs */
+	u32 line_bubble;
+	struct mml_frame_size max_size;
+
 	bool ultra_off;
 
 	/* array of indices to one of entry in cache entry list,
@@ -1855,7 +1872,6 @@ static s32 rdma_config_tile(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	struct mml_frame_config *cfg = task->config;
-	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
 	struct mml_frame_data *src = &cfg->info.src;
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
@@ -2058,14 +2074,13 @@ static s32 rdma_config_tile(struct mml_comp *comp, struct mml_task *task,
 		const u32 w = round_up(in_xe + 1, 32) - round_down(in_xs, 32);
 		const u32 h = round_up(in_ye + 1, 16) - round_down(in_ys, 16);
 
-		cache->max_size.width = w;
-		cache->max_size.height = h;
-		cache->line_bubble = w - mf_src_w;
+		rdma_frm->max_size.width += w;
+		rdma_frm->max_size.height = h;
+		rdma_frm->line_bubble += w - mf_src_w;
 	} else {
 		/* no block align */
-		cache->max_size.width = mf_src_w;
-		cache->max_size.height = mf_src_h;
-		cache->line_bubble = 0;
+		rdma_frm->max_size.width += mf_src_w;
+		rdma_frm->max_size.height = mf_src_h;
 	}
 
 	/* calculate qos for later use */
@@ -2142,6 +2157,7 @@ static void rdma_backup_crc_update(struct mml_comp *comp, struct mml_task *task,
 static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
+	const struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	struct mml_frame_config *cfg = task->config;
 	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
@@ -2150,10 +2166,10 @@ static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 	if (MML_FMT_UFO(cfg->info.src.format))
 		rdma_frm->datasize = (u32)div_u64((u64)rdma_frm->datasize * 7, 10);
 
-	/* Data size add to task,
-	 * it is ok for rdma to directly assign and accumulate in wrot.
-	 */
-	cache->total_datasize = rdma_frm->datasize;
+	cache->total_datasize += rdma_frm->datasize;
+	dvfs_cache_sz(cache, rdma_frm->max_size.width / rdma->data->px_per_tick,
+		rdma_frm->max_size.height, rdma_frm->line_bubble / rdma->data->px_per_tick);
+	dvfs_cache_log(cache, comp, "rdma");
 
 	mml_msg("%s task %p pipe %hhu data %u",
 		__func__, task, ccfg->pipe, rdma_frm->datasize);

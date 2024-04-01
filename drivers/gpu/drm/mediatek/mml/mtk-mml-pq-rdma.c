@@ -397,6 +397,7 @@ enum rdma_golden_fmt {
 
 struct rdma_data {
 	u32 tile_width;
+	u8 px_per_tick;
 	bool write_sec_reg;	/* WA: write rdma registers in secured domain */
 	bool tile_reset;	/* WA: write dummy register to clean up states */
 	bool stash;		/* enable stash prefetch with delay time */
@@ -407,6 +408,7 @@ struct rdma_data {
 
 static const struct rdma_data mt6985_pq_rdma_data = {
 	.tile_width = 1760,
+	.px_per_tick = 1,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
 			.cnt = ARRAY_SIZE(th_argb_mt6983),
@@ -425,6 +427,7 @@ static const struct rdma_data mt6985_pq_rdma_data = {
 
 static const struct rdma_data mt6989_pq_rdma_data = {
 	.tile_width = 3520,
+	.px_per_tick = 2,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
 			.cnt = ARRAY_SIZE(th_argb_mt6983),
@@ -443,6 +446,7 @@ static const struct rdma_data mt6989_pq_rdma_data = {
 
 static const struct rdma_data mt6991_pq_rdma_data = {
 	.tile_width = 516,
+	.px_per_tick = 2,
 	.tile_reset = true,
 	.stash = true,
 	.golden = {
@@ -492,6 +496,11 @@ struct rdma_frame_data {
 	u16 crop_off_l;		/* crop offset left */
 	u16 crop_off_t;		/* crop offset top */
 	u32 gmcif_con;
+
+	/* dvfs */
+	u32 line_bubble;
+	struct mml_frame_size max_size;
+
 	bool ultra_off;
 
 	/* array of indices to one of entry in cache entry list,
@@ -959,17 +968,16 @@ static void rdma_reset(struct mml_comp *comp, struct mml_task *task, struct mml_
 static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
+	const struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
 
 	/* Data size add to task and pixel,
 	 * it is ok for rdma to directly assign and accumulate in wrot.
 	 */
-	cache->total_datasize = rdma_frm->datasize;
-	cache->max_pixel = rdma_frm->pixel_acc;
-
-	mml_msg("%s task %p pipe %hhu data %u pixel %u",
-		__func__, task, ccfg->pipe, rdma_frm->datasize, rdma_frm->pixel_acc);
+	cache->total_datasize += rdma_frm->datasize;
+	cache->max_tput_pixel = rdma_frm->pixel_acc / rdma->data->px_per_tick;
+	dvfs_cache_log(cache, comp, "rdma2");
 
 	return 0;
 }

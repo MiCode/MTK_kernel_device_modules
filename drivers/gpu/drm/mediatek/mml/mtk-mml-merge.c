@@ -26,7 +26,8 @@
 do { \
 	if (mtk_mml_msg || mml_rrot_msg) { \
 		_mml_log("[merge]" fmt, ##args); \
-	} \
+	} else \
+		mml_msg("[merge]" fmt, ##args); \
 } while (0)
 
 /* MERGE register offset */
@@ -70,6 +71,7 @@ struct mml_comp_merge {
 };
 
 struct merge_frame_data {
+	struct mml_frame_size max_size;
 };
 
 static inline struct mml_comp_merge *comp_to_merge(struct mml_comp *comp)
@@ -168,9 +170,8 @@ static s32 merge_config_frame(struct mml_comp *comp, struct mml_task *task,
 static s32 merge_config_tile(struct mml_comp *comp, struct mml_task *task,
 			     struct mml_comp_config *ccfg, u32 idx)
 {
-	const struct mml_comp_merge *merge = comp_to_merge(comp);
+	struct merge_frame_data *merge_frm = merge_frm_data(ccfg);
 	struct mml_frame_config *cfg = task->config;
-	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	const phys_addr_t base_pa = comp->base_pa;
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
@@ -204,8 +205,9 @@ static s32 merge_config_tile(struct mml_comp *comp, struct mml_task *task,
 	/* vpp_merge_merge_1_fwidth, vpp_merge_merge_1_fheight */
 	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_27, input1, U32_MAX);
 
-	/* qos accumulate tile pixel */
-	cache_max_sz(cache, width / merge->data->px_per_tick, height);
+	/* dvfs and qos accumulate tile pixel */
+	merge_frm->max_size.width += width;
+	merge_frm->max_size.height = height;
 
 	if (cfg->rrot_out[0].width + cfg->rrot_out[1].width == width &&
 		cfg->rrot_out[0].height == height &&
@@ -225,11 +227,25 @@ static s32 merge_config_tile(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
+static s32 merge_post(struct mml_comp *comp, struct mml_task *task, struct mml_comp_config *ccfg)
+{
+	const struct mml_comp_merge *merge = comp_to_merge(comp);
+	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
+	struct merge_frame_data *merge_frm = merge_frm_data(ccfg);
+
+	dvfs_cache_sz(cache, merge_frm->max_size.width / merge->data->px_per_tick,
+		merge_frm->max_size.height, 0);
+	dvfs_cache_log(cache, comp, "merge");
+
+	return 0;
+}
+
 static const struct mml_comp_config_ops merge_cfg_ops = {
 	.prepare = merge_prepare,
 	.get_label_count = merge_get_label_count,
 	.frame = merge_config_frame,
 	.tile = merge_config_tile,
+	.post = merge_post,
 };
 
 static void merge_debug_dump(struct mml_comp *comp)

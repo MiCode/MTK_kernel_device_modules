@@ -1114,7 +1114,7 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 	struct mml_task_pipe *task_pipe_tmp;
 	struct timespec64 curr_time, dvfs_end_time;
 	u32 throughput, tput_up;
-	u32 max_pixel = cfg->cache[pipe].max_pixel;
+	u32 max_pixel = cfg->cache[pipe].max_tput_pixel;
 	u64 duration = 0;
 	u64 boost_time = 0;
 	u32 tmp_pipe = pipe;
@@ -1313,7 +1313,7 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 		entry_clt);
 	if (task_pipe_cur) {
 		/* calculate remaining time to complete pixels */
-		max_pixel = task_pipe_cur->task->config->cache[pipe].max_pixel;
+		max_pixel = task_pipe_cur->task->config->cache[pipe].max_tput_pixel;
 
 		/* for racing mode, use throughput from act time directly */
 		if (racing_mode) {

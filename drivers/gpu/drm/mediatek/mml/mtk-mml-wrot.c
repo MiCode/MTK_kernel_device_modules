@@ -359,6 +359,7 @@ static const struct wrot_data mt6983_wrot_data = {
 	.tile_width = 512,
 	.sram_size = 512 * 1024,
 	.rb_swap = 1,
+	.px_per_tick = 1,
 };
 
 static const struct wrot_data mt6985_wrot_data = {
@@ -368,6 +369,7 @@ static const struct wrot_data mt6985_wrot_data = {
 	.sram_size = 512 * 1024,
 	.read_mode = MML_PQ_EOF_MODE,
 	/* .rb_swap = 2 */
+	.px_per_tick = 1,
 };
 
 static const struct wrot_data mt6989_wrot_data = {
@@ -378,6 +380,7 @@ static const struct wrot_data mt6989_wrot_data = {
 	.read_mode = MML_PQ_SOF_MODE,
 	.px_per_tick = 2,
 	/* .rb_swap = 2 */
+	.px_per_tick = 2,
 	.yuv_pending = true,
 };
 
@@ -386,6 +389,7 @@ static const struct wrot_data mt6878_wrot_data = {
 	.fifo = 256,
 	.tile_width = 512,
 	.sram_size = 512 * 1024,
+	.px_per_tick = 1,
 };
 
 static const struct wrot_data mt6991_wrot_data = {
@@ -393,6 +397,7 @@ static const struct wrot_data mt6991_wrot_data = {
 	.fifo = 256,
 	.tile_width = 512,
 	.sram_size = 512 * 1024,
+	.px_per_tick = 2,
 	.read_mode = MML_PQ_SOF_MODE,
 	.px_per_tick = 2,
 	.yuv_pending = true,
@@ -478,7 +483,8 @@ struct wrot_frame_data {
 	u32 fifo_max_sz;
 	u32 max_line_cnt;
 
-	u32 pixel_acc;		/* pixel accumulation */
+	/* dvfs and qos */
+	struct mml_frame_size max_size;
 	u32 datasize;		/* qos data size in bytes */
 	u32 stash_srt_bw;
 	u32 stash_hrt_bw;
@@ -2044,7 +2050,6 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 	struct mml_frame_config *cfg = task->config;
-	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
 	u32 plane;
@@ -2188,8 +2193,13 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	 */
 
 	/* qos accumulate tile pixel */
-	cache_max_sz(cache, wrot_tar_xsize, wrot_tar_ysize);
-	wrot_frm->pixel_acc += cache_max_pixel(cache);
+	if (dest->rotate == MML_ROT_0 || dest->rotate == MML_ROT_180) {
+		wrot_frm->max_size.width += wrot_tar_xsize;
+		wrot_frm->max_size.height = wrot_tar_ysize;
+	} else {
+		wrot_frm->max_size.width += wrot_tar_ysize;
+		wrot_frm->max_size.height = wrot_tar_xsize;
+	}
 
 	/* no bandwidth for racing mode since wrot write to sram */
 	if (cfg->info.mode != MML_MODE_RACING) {
@@ -2409,21 +2419,16 @@ static s32 wrot_post(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
-	u32 pixel = wrot_frm->pixel_acc;
 
 	/* accmulate data size and use max pixel */
-	if (wrot->data->px_per_tick)
-		pixel = pixel / wrot->data->px_per_tick;
 	cache->total_datasize += wrot_frm->datasize;
-	cache->max_pixel = max(cache->max_pixel, pixel);
-
-	mml_msg("%s task %p pipe %hhu data %u bubble %u pixel %ux%u %u eol %u",
-		__func__, task, ccfg->pipe, wrot_frm->datasize, cache->line_bubble,
-		cache->max_size.width, cache->max_size.height, cache->max_pixel,
-		wrot_frm->wdone_cnt);
+	dvfs_cache_sz(cache, wrot_frm->max_size.width / wrot->data->px_per_tick,
+		wrot_frm->max_size.height, 0);
+	dvfs_cache_log(cache, comp, "wrot");
 
 	wrot_backup_crc(comp, task, ccfg);
 
+	mml_msg("%s pipe %hhu eol %u", __func__, ccfg->pipe, wrot_frm->wdone_cnt);
 	return 0;
 }
 
