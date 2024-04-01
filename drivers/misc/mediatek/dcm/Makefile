@@ -9,9 +9,9 @@ obj-$(CONFIG_MTK_DCM_MT6768) += mt6768_dcm.o
 mt6768_dcm-objs := mt6768_dcm_internal.o mt6768_dcm_autogen.o
 endif
 
-ifneq ($(wildcard $(srctree)/$(src)/mt6873_dcm_internal.c),)
-obj-$(CONFIG_MTK_DCM_MT6893) += mt6873_dcm.o
-mt6873_dcm-objs := mt6873_dcm_internal.o mt6873_dcm_autogen.o
+ifneq ($(wildcard $(srctree)/$(src)/mt6885_dcm_internal.c),)
+obj-$(CONFIG_MTK_DCM_MT6885) += mt6885_dcm.o
+mt6885_dcm-objs := mt6885_dcm_internal.o mt6885_dcm_autogen.o
 endif
 
 
