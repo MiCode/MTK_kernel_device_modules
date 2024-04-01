@@ -9,6 +9,7 @@
 #include <linux/regmap.h>
 #include "mt6991-afe-common.h"
 #include "mt6991-interconnection.h"
+#include <linux/pm_runtime.h>
 
 #define HW_GAIN_0_EN_W_NAME "HW GAIN 0 Enable"
 #define HW_GAIN_1_EN_W_NAME "HW GAIN 1 Enable"
@@ -218,6 +219,98 @@ static int mt6991_gain1_set(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
+
+static int mt6991_gain_l_set(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct soc_mixer_control *mc =
+		(struct soc_mixer_control *)kcontrol->private_value;
+	unsigned int reg = mc->reg;
+	unsigned int max = mc->max;
+	unsigned int val = ucontrol->value.integer.value[0];
+
+	dev_dbg(afe->dev,
+		"%s(), ucontrol string = %s, val = %d, max = 0x%x\n",
+		__func__, ucontrol->id.name, val, max);
+	if (val > max)
+		return 0;
+
+	pm_runtime_get_sync(afe->dev);
+	regmap_update_bits(afe->regmap, reg,
+			   GAIN_TARGET_L_MASK_SFT, val << GAIN_TARGET_L_SFT);
+	pm_runtime_put(afe->dev);
+	return 0;
+}
+
+static int mt6991_gain_l_get(struct snd_kcontrol *kcontrol,
+			   struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct soc_mixer_control *mc =
+		(struct soc_mixer_control *)kcontrol->private_value;
+	unsigned int val = 0x0;
+	unsigned int reg = mc->reg;
+
+	pm_runtime_get_sync(afe->dev);
+	regmap_read(afe->regmap, reg, &val);
+	pm_runtime_put(afe->dev);
+
+	dev_dbg(afe->dev,
+		"%s(), ucontrol string = %s, val = %d\n",
+		__func__, ucontrol->id.name, val);
+	ucontrol->value.integer.value[0] = val & GAIN_TARGET_L_MASK_SFT;
+
+	return 0;
+}
+
+static int mt6991_gain_r_set(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct soc_mixer_control *mc =
+		(struct soc_mixer_control *)kcontrol->private_value;
+	unsigned int reg = mc->reg;
+	unsigned int max = mc->max;
+	unsigned int val = ucontrol->value.integer.value[0];
+
+	dev_dbg(afe->dev, "%s(), ucontrol string = %s, val = %d, max = 0x%x\n",
+		__func__, ucontrol->id.name, val, max);
+	if (val > max)
+		return 0;
+
+	pm_runtime_get_sync(afe->dev);
+	regmap_update_bits(afe->regmap, reg,
+			   GAIN_TARGET_R_MASK_SFT, val << GAIN_TARGET_R_SFT);
+	pm_runtime_put(afe->dev);
+
+	return 0;
+}
+
+static int mt6991_gain_r_get(struct snd_kcontrol *kcontrol,
+			   struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct soc_mixer_control *mc =
+		(struct soc_mixer_control *)kcontrol->private_value;
+	unsigned int val = 0x0;
+	unsigned int reg = mc->reg;
+
+	regmap_read(afe->regmap, reg, &val);
+	dev_dbg(afe->dev, "%s(), ucontrol string = %s, val = %d\n",
+		__func__, ucontrol->id.name, val);
+
+	pm_runtime_get_sync(afe->dev);
+	ucontrol->value.integer.value[0] = val & GAIN_TARGET_R_MASK_SFT;
+	pm_runtime_put(afe->dev);
+
+	return 0;
+}
+
 static const struct snd_soc_dapm_widget mtk_dai_hw_gain_widgets[] = {
 	/* inter-connections */
 	SND_SOC_DAPM_MIXER("HW_GAIN0_IN_CH1", SND_SOC_NOPM, 0, 0,
@@ -306,22 +399,30 @@ static const struct snd_kcontrol_new mtk_hw_gain_controls[] = {
 		       mt6991_gain0_get, mt6991_gain0_set),
 	SOC_SINGLE_EXT("HW Gain 2", SND_SOC_NOPM, 0, 0xffffffff, 0,
 		       mt6991_gain1_get, mt6991_gain1_set),
-	SOC_SINGLE("HW Gain 0 L", AFE_GAIN0_CON1_L,
-		   GAIN_TARGET_L_SFT, GAIN_TARGET_L_MASK, 0),
-	SOC_SINGLE("HW Gain 0 R", AFE_GAIN0_CON1_R,
-		   GAIN_TARGET_R_SFT, GAIN_TARGET_R_MASK, 0),
-	SOC_SINGLE("HW Gain 1 L", AFE_GAIN1_CON1_L,
-		   GAIN_TARGET_L_SFT, GAIN_TARGET_L_MASK, 0),
-	SOC_SINGLE("HW Gain 1 R", AFE_GAIN1_CON1_R,
-		   GAIN_TARGET_R_SFT, GAIN_TARGET_R_MASK, 0),
-	SOC_SINGLE("HW Gain 2 L", AFE_GAIN2_CON1_L,
-		   GAIN_TARGET_L_SFT, GAIN_TARGET_L_MASK, 0),
-	SOC_SINGLE("HW Gain 2 R", AFE_GAIN2_CON1_R,
-		   GAIN_TARGET_R_SFT, GAIN_TARGET_R_MASK, 0),
-	SOC_SINGLE("HW Gain 3 L", AFE_GAIN3_CON1_L,
-		   GAIN_TARGET_L_SFT, GAIN_TARGET_L_MASK, 0),
-	SOC_SINGLE("HW Gain 3 R", AFE_GAIN3_CON1_R,
-		   GAIN_TARGET_R_SFT, GAIN_TARGET_R_MASK, 0),
+	SOC_SINGLE_EXT("HW Gain 0 L", AFE_GAIN0_CON1_L,
+		   0, 0xffffffff, 0,
+		   mt6991_gain_l_get, mt6991_gain_l_set),
+	SOC_SINGLE_EXT("HW Gain 0 R", AFE_GAIN0_CON1_R,
+		   0, 0xffffffff, 0,
+		   mt6991_gain_r_get, mt6991_gain_r_set),
+	SOC_SINGLE_EXT("HW Gain 1 L", AFE_GAIN1_CON1_L,
+		   0, 0xffffffff, 0,
+		   mt6991_gain_l_get, mt6991_gain_l_set),
+	SOC_SINGLE_EXT("HW Gain 1 R", AFE_GAIN1_CON1_R,
+		   0, 0xffffffff, 0,
+		   mt6991_gain_r_get, mt6991_gain_r_set),
+	SOC_SINGLE_EXT("HW Gain 2 L", AFE_GAIN2_CON1_L,
+		   0, 0xffffffff, 0,
+		   mt6991_gain_l_get, mt6991_gain_l_set),
+	SOC_SINGLE_EXT("HW Gain 2 R", AFE_GAIN2_CON1_R,
+		   0, 0xffffffff, 0,
+		   mt6991_gain_r_get, mt6991_gain_r_set),
+	SOC_SINGLE_EXT("HW Gain 3 L", AFE_GAIN3_CON1_L,
+		   0, 0xffffffff, 0,
+		   mt6991_gain_l_get, mt6991_gain_l_set),
+	SOC_SINGLE_EXT("HW Gain 3 R", AFE_GAIN3_CON1_R,
+		   0, 0xffffffff, 0,
+		   mt6991_gain_r_get, mt6991_gain_r_set),
 };
 
 /* dai ops */
