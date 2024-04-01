@@ -36,6 +36,7 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/connectivity/wlan/adaptor/build/connac3x:wmt_chrdev_wifi_connac3",
     "//vendor/mediatek/kernel_modules/connectivity/wlan/adaptor/wlan_page_pool:wlan_page_pool",
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6768:wlan_drv_gen4m_6768",
+    "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6893:wlan_drv_gen4m_6893",
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6897:wlan_drv_gen4m_6897",
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6985_6639:wlan_drv_gen4m_6985_6639",
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6989_6639:wlan_drv_gen4m_6989_6639",
