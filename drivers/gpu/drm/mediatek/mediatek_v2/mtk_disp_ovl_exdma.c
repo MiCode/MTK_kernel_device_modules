@@ -4216,6 +4216,9 @@ int mtk_ovl_exdma_analysis(struct mtk_ddp_comp *comp)
 		ext_en[0] & 0x1, ext_en[1] & 0x1, ext_en[2] & 0x1,
 		(ext_con >> 16) & 0xf, (ext_con >> 20) & 0xf,
 		(ext_con >> 24) & 0xf);
+	if (!(ovl_en & 0x1) || (!(src_con & 0x1) && !(ext_en[0] & 0x1) &&
+			!(ext_en[1] & 0x1) && !(ext_en[2] & 0x1)))
+		return 0;
 	DDPDUMP("bg_mode=%s,sta=0x%x\n",
 		REG_FLD_VAL_GET(FLD_DISP_OVL_BGCLR_IN_SEL, path_con) ? "DL" : "const",
 		readl(DISP_REG_OVL_STA + baddr));
@@ -4223,9 +4226,6 @@ int mtk_ovl_exdma_analysis(struct mtk_ddp_comp *comp)
 		REG_FLD_VAL_GET(DISP_OVL_PQ_OUT_EN, path_con),
 		REG_FLD_VAL_GET(DATAPATH_PQ_OUT_SEL, path_con),
 		REG_FLD_VAL_GET(DISP_OVL_PQ_OUT_OPT, path_con));
-
-	if (!(ovl_en & 0x1))
-		return 0;
 
 	/* phy layer */
 	for (i = 0; i < mtk_ovl_exdma_layer_num(comp); i++) {
