@@ -10888,6 +10888,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"seninf-dev2-irq",
 				"seninf-dev3-irq";
 
+			/* for sentest adjust isp clk used */
+			operating-points-v2 = <&opp_table_cam>;
+
 			/* for clock scaling bind vcore */
 			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			/*
@@ -10929,7 +10932,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&cksys_gp2_clk CLK_CK2_UNIVPLL2_D4_D2>,
 				<&cksys_gp2_clk CLK_CK2_MAINPLL2_D6>,
 				<&cksys_gp2_clk CLK_CK2_UNIVPLL2_D6>,
-				<&cksys_gp2_clk CLK_CK2_UNIVPLL2_D5>;
+				<&cksys_gp2_clk CLK_CK2_UNIVPLL2_D5>,
+				<&mmdvfs_mux MMDVFS_USER_CAM>;
 			clock-names = "clk_cam_vcore_cg0",
 				"clk_cam_vcore_cg2",
 				"clk_cam_vcore_cg3",
@@ -10948,7 +10952,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"clk_top_ap_step0",
 				"clk_top_ap_step1",
 				"clk_top_ap_step2",
-				"clk_top_ap_step3";
+				"clk_top_ap_step3",
+				"mmdvfs_mux";
 
 			clk-fmeter-isp {
 				fmeter-type = "CKGEN_CK2";
