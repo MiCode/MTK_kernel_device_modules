@@ -559,7 +559,8 @@ void mtk_venc_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 			mtk_v4l2_debug(8, "[VENC] unknown port type %d\n",
 					dev->venc_larb_bw[i].larb_type);
 		}
-		dev->venc_qos.prev_comm_bw[i] = target_bw;
+		if (dev->venc_qos.need_smi_monitor && venc_smi_monitor_mode)
+			dev->venc_qos.prev_comm_bw[i] = target_bw;
 	}
 #endif
 }
