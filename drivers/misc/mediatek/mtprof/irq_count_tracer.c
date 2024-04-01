@@ -48,6 +48,7 @@ struct irq_count_period_setting {
 	{"musb-hdrc", 16666}, /* 60000 irqs per sec*/
 	{"11201000.usb0", 16666}, /* 60000 irqs per sec*/
 	{"16701000.usb0", 16666}, /* 60000 irqs per sec*/
+	{"xhci-hcd:usb1", 16666}, /* 60000 irqs per sec*/
 	{"wlan0", 12500}, /* 80000 irqs per sec*/
 	{"DPMAIF_AP", 1837}, /* 544125 irqs per sec */ /* data tput */
 	{"DPMAIF_AP_RX0", 1498}, /* 667230 irqs per sec */ /* data tput */
