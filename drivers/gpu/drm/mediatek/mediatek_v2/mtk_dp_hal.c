@@ -2409,11 +2409,6 @@ void mhal_DPTx_HPDDetectSetting(struct mtk_dp *mtk_dp)
 			(0x32 << HPD_INT_THD_AUX_TX_P0_FLDMASK_POS),
 			HPD_INT_THD_AUX_TX_P0_FLDMASK);
 
-		/* dptx phy setting for usbc */
-		#if (DPTX_USE_USBC == 1)
-		msWrite4ByteMask(mtk_dp, REG_364C_AUX_TX_P0, BIT(11), BIT(11));
-		msWrite4ByteMask(mtk_dp, REG_364C_AUX_TX_P0, BIT(10), BIT(10));
-		#endif
 }
 
 void mhal_DPTx_phyd_power_on(struct mtk_dp *mtk_dp)
@@ -2581,6 +2576,12 @@ void mhal_DPTx_AuxSetting(struct mtk_dp *mtk_dp)
 	msWrite4ByteMask(mtk_dp,REG_3690_AUX_TX_P0,
 		RX_REPLY_COMPLETE_MODE_AUX_TX_P0_FLDMASK,
 		RX_REPLY_COMPLETE_MODE_AUX_TX_P0_FLDMASK);
+
+	/* dptx phy setting for usbc */
+	#if (DPTX_USE_USBC == 1)
+	msWrite4ByteMask(mtk_dp, REG_364C_AUX_TX_P0, BIT(11), BIT(11));
+	msWrite4ByteMask(mtk_dp, REG_364C_AUX_TX_P0, BIT(10), BIT(10));
+	#endif
 }
 
 static void mhal_DPTx_spkg_asp_hb32(struct mtk_dp *mtk_dp, enum DPTX_ENCODER_ID encoder_id, u8 enable, u8 HB3, u8 HB2)
