@@ -3981,7 +3981,7 @@ transparent_hugepage=never";
 		compatible = "mediatek,smi_larb0",
 				"mediatek,mt6768-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x14003000 0 0x1000>;
-		mediatek,smi-supply = <&smi_common>;
+		mediatek,smi-supply = <&smi_common 0>;
 		mediatek,larb-id = <0>;
 		init-power-on;
 		power-domains = <&scpsys MT6768_POWER_DOMAIN_DISP>;
@@ -4205,7 +4205,7 @@ transparent_hugepage=never";
 		compatible = "mediatek,smi_larb2",
 				"mediatek,mt6768-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x15021000 0 0x1000>;
-		mediatek,smi-supply = <&smi_common>;
+		mediatek,smi-supply = <&smi_common 0>;
 		mediatek,larb-id = <2>;
 		power-domains = <&scpsys MT6768_POWER_DOMAIN_ISP>;
 		clocks = <&mmsys_config CLK_MM_SMI_IMG>,
@@ -4359,7 +4359,7 @@ transparent_hugepage=never";
 		compatible = "mediatek,smi_larb1",
 				"mediatek,mt6768-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x16010000 0 0x1000>;
-		mediatek,smi-supply = <&smi_common>;
+		mediatek,smi-supply = <&smi_common 0>;
 		interrupts = <GIC_SPI 247 IRQ_TYPE_LEVEL_HIGH 0>;
 		mediatek,larb-id = <1>;
 		power-domains = <&scpsys MT6768_POWER_DOMAIN_VDEC>;
@@ -4452,7 +4452,7 @@ transparent_hugepage=never";
 		compatible = "mediatek,smi_larb4",
 				"mediatek,mt6768-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x17010000 0 0x1000>;
-		mediatek,smi-supply = <&smi_common>;
+		mediatek,smi-supply = <&smi_common 0>;
 		mediatek,larb-id = <4>;
 		power-domains = <&scpsys MT6768_POWER_DOMAIN_VENC>;
 		clocks = <&mmsys_config CLK_MM_SMI_VENC>,
@@ -4571,7 +4571,7 @@ transparent_hugepage=never";
 		compatible = "mediatek,smi_larb3",
 				"mediatek,mt6768-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a002000 0 0x1000>;
-		mediatek,smi-supply = <&smi_common>;
+		mediatek,smi-supply = <&smi_common 0>;
 		mediatek,larb-id = <3>;
 		power-domains = <&scpsys MT6768_POWER_DOMAIN_CAM>;
 		clocks = <&mmsys_config CLK_MM_SMI_CAM>,
