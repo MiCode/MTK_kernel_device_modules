@@ -2259,7 +2259,8 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			pending->prop_val[PLANE_PROP_COMPRESS]);
 	con |= (alpha_con << 8) | alpha;
 
-	if (fmt == DRM_FORMAT_UYVY || fmt == DRM_FORMAT_YUYV) {
+	if (fmt == DRM_FORMAT_UYVY || fmt == DRM_FORMAT_YUYV ||
+		pending->mml_mode == MML_MODE_DIRECT_LINK) {
 		unsigned int prop = (unsigned int)pending->prop_val[PLANE_PROP_DATASPACE];
 
 		con |= mtk_ovl_yuv_matrix_convert((enum mtk_drm_dataspace)prop);
