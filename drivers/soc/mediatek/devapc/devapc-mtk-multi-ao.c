@@ -1193,6 +1193,9 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 		if (!is_devapc_subsys_power_on(devapc_type))
 			continue;
 
+		if (check_exception_vio_status(devapc_type, slave_type))
+			goto out;
+
 		if (!check_type2_vio_status(slave_type, &vio_idx, &index)) {
 			if (!mtk_devapc_dump_vio_dbg(slave_type, &vio_idx, &index))
 				vio_type = DEVAPC_VIO_NO_VIO_FOUND;
