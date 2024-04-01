@@ -405,8 +405,14 @@ static int eusb2_repeater_power_off(struct phy *phy)
 
 	dev_info(rptr->dev, "eusb2 repeater power off\n");
 
-	if (rptr->disable)
+	if (rptr->disable) {
 		pinctrl_select_state(rptr->pinctrl, rptr->disable);
+		udelay(10);
+	}
+
+	/* keep low is reset, keep high to save power */
+	if (rptr->enable)
+		pinctrl_select_state(rptr->pinctrl, rptr->enable);
 
 
 	return 0;
