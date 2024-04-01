@@ -2772,14 +2772,14 @@
 			<&infracfg_ao_clk CLK_IFRAO_RG_AES_CK_0P_CK>,
 			<&topckgen_clk CLK_TOP_UFS_MBIST_SEL>;
 		clock-names = "ufs-clk", "ufs-unipro-clk", "ufs-mp-clk",
-					  "ufs-crypto-clk";
+					"ufs-crypto-clk";
 		freq-table-hz = <0 0>, <0 0>, <0 0>,
 						<0 0>;
 
 		vcc-supply = <&mt6359p_vemc_reg>;
 
 		resets = <&infracfg_rst 0>, <&infracfg_rst 1>,
-				 <&infracfg_rst 2>;
+				<&infracfg_rst 2>;
 		reset-names = "hci_rst", "unipro_rst", "crypto_rst";
 
 		bootmode = <&chosen>;
@@ -2788,6 +2788,7 @@
 		mediatek,ufs-ah8-legacy;
 		mediatek,ufs-disable-ah8;
 		mediatek,ufs-qos;
+		mediatek,ufs-broken-vcc;
 	};
 
 	msdc1_ins:msdc1_ins {
@@ -2797,11 +2798,6 @@
 	};
 
 	md1_sim2_hot_plug_eint:MD1-SIM2-HOT-PLUG-EINT {
-	};
-
-	ufs_mphy@11fa0000 {
-		compatible = "mediatek,ufs_mphy";
-		reg = <0 0x11fa0000 0 0xc000>;
 	};
 
 	ap-ccif2@1023c000 {
