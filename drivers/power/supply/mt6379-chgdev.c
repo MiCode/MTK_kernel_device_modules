@@ -796,7 +796,7 @@ static int mt6379_dump_registers(struct charger_device *chgdev)
 		}
 
 		ret = scnprintf(buf + strlen(buf), DUMP_REG_BUF_SIZE,
-				"VBATCELL(VBAT_MON) = %dmV\n", val);
+				"VBATCELL(VBAT_MON) = %dmV\n", val / 1000);
 	}
 
 	for (i = 0; i < ARRAY_SIZE(regs); i++) {
@@ -843,19 +843,25 @@ static int mt6379_do_event(struct charger_device *chgdev, u32 event, u32 args)
 	return 0;
 }
 
-static int mt6379_enable_6pin_battery_charging(struct charger_device *chgdev,
-					       bool en)
+static int mt6379_enable_6pin_battery_charging(struct mt6379_charger_data *cdata,
+					       enum mt6379_batpro_src src, bool en)
 {
-	struct mt6379_charger_data *cdata = charger_get_data(chgdev);
 	struct mt6379_charger_platform_data *pdata = dev_get_platdata(cdata->dev);
+	u32 vbat = 0, cv = 0, vbat_mon_en_field, adc_chan, stat;
 	u16 batend_code;
-	u32 vbat, cv;
 	int ret = 0;
 
 	mutex_lock(&cdata->cv_lock);
+
+	vbat_mon_en_field = src == MT6379_BATPRO_SRC_VBAT_MON2 ? F_VBAT_MON2_EN : F_VBAT_MON_EN;
+	adc_chan = src == MT6379_BATPRO_SRC_VBAT_MON2 ? ADC_CHAN_VBATMON2 : ADC_CHAN_VBATMON;
+
+	dev_info(cdata->dev, "%s, cdata->batprotect_en = %d, en = %d\n",
+		 __func__, cdata->batprotect_en, en);
+
 	if (cdata->batprotect_en == en)
 		goto out;
-	dev_info(cdata->dev, "%s en = %d\n", __func__, en);
+
 	if (!en)
 		goto dis_pro;
 
@@ -863,21 +869,41 @@ static int mt6379_enable_6pin_battery_charging(struct charger_device *chgdev,
 	if (atomic_read(&cdata->no_6pin_used) == 1)
 		goto dis_pro;
 
-	/* avoid adc too fast, write 0 for make sure read adc succuessfully */
-	ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_VBATMON], &vbat);
+	/* Select the source of batprotect */
+	ret =  mt6379_charger_field_set(cdata, F_BATPROTECT_SOURCE, src);
 	if (ret) {
-		dev_info(cdata->dev, "Failed to read VBATMON(ret:%d)\n", ret);
+		dev_info(cdata->dev, "%s, Failed to select the source of batprotect(ret:%d)!\n",
+			 __func__, ret);
+		goto dis_pro;
+	}
+
+	/* Enable vbat mon */
+	ret = mt6379_charger_field_set(cdata, vbat_mon_en_field, 1);
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to enable vbat_mon%s(ret:%d)!\n",
+			 __func__, src == MT6379_BATPRO_SRC_VBAT_MON2 ? "2" : "", ret);
+		goto dis_mon;
+	}
+
+	/* Read vbat mon adc by chg_adc */
+	ret = iio_read_channel_processed(&cdata->iio_adcs[adc_chan], &vbat);
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to read vbat_mon%s(ret:%d)\n",
+			 __func__, src == MT6379_BATPRO_SRC_VBAT_MON2 ? "2" : "", ret);
 		goto dis_mon;
 	}
 
 	ret = mt6379_charger_field_get(cdata, F_CV, &cv);
-	if (ret < 0) {
-		dev_err(cdata->dev, "Failed to get cv\n");
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to get cv\n", __func__);
 		goto dis_mon;
 	}
-	dev_info(cdata->dev, "%s vbat = %dmV, cv = %dmV\n", __func__, vbat / 1000, cv / 1000);
+
+	dev_info(cdata->dev, "%s, vbat = %dmV, cv = %dmV\n", __func__, vbat / 1000, cv / 1000);
+
 	if (vbat >= cv) {
-		dev_info(cdata->dev, "vbat(%d) >= cv(%d), should not start\n", vbat, cv);
+		dev_info(cdata->dev, "%s, vbat(%d) >= cv(%d), should not start\n",
+			 __func__, vbat, cv);
 		goto dis_mon;
 	} else if (vbat <= pdata->pmic_uvlo) {
 		/*
@@ -885,49 +911,82 @@ static int mt6379_enable_6pin_battery_charging(struct charger_device *chgdev,
 		 * lower than the PMIC UVLO.
 		 */
 		atomic_set(&cdata->no_6pin_used, 1);
-			dev_notice(cdata->dev, "vbat <= PMIC UVLO(%d mV), should not start\n",
-				   pdata->pmic_uvlo);
+			dev_notice(cdata->dev, "%s, vbat <= PMIC UVLO(%d mV), should not start\n",
+				   __func__, pdata->pmic_uvlo);
 		goto dis_mon;
+	}
 
-	}
 	ret = mt6379_charger_field_set(cdata, F_BATINT, cv);
-	if (ret < 0) {
-		dev_err(cdata->dev, "Failed to set batint\n");
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to set batint(ret:%d)\n", __func__, ret);
 		goto dis_mon;
 	}
+
 	batend_code = ADC_TO_VBAT_RAW(cv);
 	batend_code = cpu_to_be16(batend_code);
-	dev_info(cdata->dev, "%s batend code = 0x%04x\n", __func__, batend_code);
+	dev_info(cdata->dev, "%s, batend code = 0x%04x\n", __func__, batend_code);
+
 	ret = regmap_bulk_write(cdata->rmap, MT6379_REG_BATEND_CODE, &batend_code, 2);
-	if (ret < 0) {
-		dev_err(cdata->dev, "Failed to set batend code\n");
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to set batend code(ret:%d)\n", __func__, ret);
 		goto dis_mon;
 	}
+
 	ret = mt6379_charger_field_set(cdata, F_BATPROTECT_EN, 1);
-	if (ret < 0) {
-		dev_err(cdata->dev, "Failed to enable bat protect\n");
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to enable bat protect(ret:%d)\n", __func__, ret);
 		goto dis_mon;
 	}
+
 	/* set Max CV */
 	ret = mt6379_charger_field_set(cdata, F_CV, 4710000);
-	if (ret < 0) {
-		dev_err(cdata->dev, "failed to set maximum cv\n");
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to set maximum cv(ret:%d)\n", __func__, ret);
 		goto dis_pro;
 	}
+
 	cdata->batprotect_en = true;
-	dev_info(cdata->dev, "%s successfully\n", __func__);
+	dev_info(cdata->dev, "%s, enable 6pin charging successfully!!\n", __func__);
 	goto out;
+
 dis_pro:
 	if (mt6379_charger_field_set(cdata, F_BATPROTECT_EN, 0) < 0)
-		dev_notice(cdata->dev, "Failed to disable bat protect\n");
+		dev_notice(cdata->dev, "%s, Failed to disable bat protect\n", __func__);
 	if (mt6379_charger_field_set(cdata, F_CV, cdata->cv) < 0)
-		dev_notice(cdata->dev, "Failed to set cv\n");
+		dev_notice(cdata->dev, "%s, Failed to set cv\n", __func__);
+
 dis_mon:
 	cdata->batprotect_en = false;
+	ret = mt6379_charger_field_set(cdata, vbat_mon_en_field, 0);
+	if (ret)
+		dev_info(cdata->dev, "%s, Failed to disable vbat_mon%s(ret:%d)!\n",
+			 __func__, src == MT6379_BATPRO_SRC_VBAT_MON2 ? "2" : "", ret);
+
+	ret = mt6379_charger_field_get(cdata, vbat_mon_en_field, &stat);
+	if (ret)
+		dev_info(cdata->dev, "%s, Failed to get vbat_mon%s stat(ret:%d)!\n",
+			 __func__, src == MT6379_BATPRO_SRC_VBAT_MON2 ? "2" : "", ret);
+
+	dev_info(cdata->dev, "%s, Disable vbat_mon%s (current stat: %d)\n",
+		 __func__, src == MT6379_BATPRO_SRC_VBAT_MON2 ? "2" : "", stat);
+
 out:
 	mutex_unlock(&cdata->cv_lock);
 	return ret;
+}
 
+static inline int mt6379_enable_bat1_6pin_battery_charging(struct charger_device *chgdev, bool en)
+{
+	struct mt6379_charger_data *cdata = charger_get_data(chgdev);
+
+	return mt6379_enable_6pin_battery_charging(cdata, MT6379_BATPRO_SRC_VBAT_MON, en);
+}
+
+static inline int __maybe_unused mt6379_enable_bat2_6pin_battery_charging(struct charger_device *chgdev, bool en)
+{
+	struct mt6379_charger_data *cdata = charger_get_data(chgdev);
+
+	return mt6379_enable_6pin_battery_charging(cdata, MT6379_BATPRO_SRC_VBAT_MON2, en);
 }
 
 static int mt6379_enable_usbid(struct charger_device *chgdev, bool en)
@@ -1104,7 +1163,7 @@ static const struct charger_ops mt6379_charger_ops = {
 	.enable_hz = mt6379_enable_hz,
 	/* event */
 	.event = mt6379_do_event,
-	.enable_6pin_battery_charging = mt6379_enable_6pin_battery_charging,
+	.enable_6pin_battery_charging = mt6379_enable_bat1_6pin_battery_charging,
 	/* TypeC */
 	.enable_usbid = mt6379_enable_usbid,
 	.set_usbid_rup = mt6379_set_usbid_rup,

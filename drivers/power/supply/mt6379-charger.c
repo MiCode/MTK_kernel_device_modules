@@ -173,6 +173,7 @@ static const struct linear_range mt6379_charger_ranges[MT6379_RANGE_F_MAX] = {
 
 
 static const struct mt6379_charger_field mt6379_charger_fields[F_MAX] = {
+	MT6379_CHARGER_FIELD(F_BATPROTECT_SOURCE, MT6379_REG_CHG_BATPRO_SLE, 5, 5),
 	MT6379_CHARGER_FIELD(F_SHIP_RST_DIS, MT6379_REG_CORE_CTRL2, 0, 0),
 	MT6379_CHARGER_FIELD(F_PD_MDEN, MT6379_REG_CORE_CTRL2, 1, 1),
 	MT6379_CHARGER_FIELD(F_ST_PWR_RDY, MT6379_REG_CHG_STAT0, 0, 0),
@@ -232,6 +233,8 @@ static const struct mt6379_charger_field mt6379_charger_fields[F_MAX] = {
 	MT6379_CHARGER_FIELD_RANGE(F_IRCMP_V, MT6379_REG_CHG_COMP2, 0, 4),
 	MT6379_CHARGER_FIELD(F_IC_STAT, MT6379_REG_CHG_STAT, 0, 3),
 	MT6379_CHARGER_FIELD(F_FORCE_VBUS_SINK, MT6379_REG_CHG_HD_TOP1, 5, 5),
+	MT6379_CHARGER_FIELD(F_VBAT_MON_EN, MT6379_REG_ADC_CONFG1, 5, 5),
+	MT6379_CHARGER_FIELD(F_VBAT_MON2_EN, MT6379_REG_ADC_CONFG1, 4, 4),
 	MT6379_CHARGER_FIELD(F_IS_TDET, MT6379_REG_USBID_CTRL1, 2, 4),
 	MT6379_CHARGER_FIELD(F_ID_RUPSEL, MT6379_REG_USBID_CTRL1, 5, 6),
 	MT6379_CHARGER_FIELD(F_USBID_EN, MT6379_REG_USBID_CTRL1, 7, 7),
@@ -715,19 +718,72 @@ static int mt6379_get_charger_status(struct mt6379_charger_data *cdata)
 	return POWER_SUPPLY_STATUS_UNKNOWN;
 }
 
-static int mt6379_get_vbat_monitor(struct mt6379_charger_data *cdata,
-				   union power_supply_propval *val)
+static int mt6379_get_vbat_monitor(struct mt6379_charger_data *cdata, enum mt6379_batpro_src src,
+				   u32 *vbat_mon)
 {
-	u32 vbat_mon = 0;
+	u32 vbat_mon_en_field = 0, adc_chan = 0, reg_val = 0, stat;
 	int ret = 0;
 
-	ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_VBATMON], &vbat_mon);
-	if (ret)
-		dev_info(cdata->dev, "Failed to read VBATMON(ret:%d)\n", ret);
+	mutex_lock(&cdata->cv_lock);
 
-	val->intval = vbat_mon;
+	/* Check if 6pin battery charging is enabled */
+	vbat_mon_en_field = src == MT6379_BATPRO_SRC_VBAT_MON2 ? F_VBAT_MON2_EN : F_VBAT_MON_EN;
+	ret = mt6379_charger_field_get(cdata, vbat_mon_en_field, &reg_val);
+	if (reg_val || ret) {
+		if (reg_val)
+			dev_info(cdata->dev, "%s, 6pin battery charging is enabled!\n", __func__);
+		else
+			dev_info(cdata->dev, "%s, Failed to get vbat_mon%s stat(ret:%d)!\n",
+				 __func__, src == MT6379_BATPRO_SRC_VBAT_MON2 ? "2" : "", ret);
+
+		ret = -EBUSY;
+		goto out;
+	}
+
+	/* Enable vbat mon */
+	ret = mt6379_charger_field_set(cdata, vbat_mon_en_field, 1);
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to enable vbat_mon%s(ret:%d)!\n",
+			 __func__, src == MT6379_BATPRO_SRC_VBAT_MON2 ? "2" : "", ret);
+		goto out;
+	}
+
+	/* Read vbat mon adc by chg_adc */
+	adc_chan = src == MT6379_BATPRO_SRC_VBAT_MON2 ? ADC_CHAN_VBATMON2 : ADC_CHAN_VBATMON;
+	ret = iio_read_channel_processed(&cdata->iio_adcs[adc_chan], vbat_mon);
+	if (ret)
+		dev_info(cdata->dev, "%s, Failed to read vbat_mon%s(ret:%d)\n",
+			 __func__, src == MT6379_BATPRO_SRC_VBAT_MON2 ? "2" : "", ret);
+
+	/* Disable vbat mon */
+	ret = mt6379_charger_field_set(cdata, vbat_mon_en_field, 0);
+	if (ret)
+		dev_info(cdata->dev, "%s, Failed to disable vbat_mon%s(ret:%d)!\n",
+			 __func__, src == MT6379_BATPRO_SRC_VBAT_MON2 ? "2" : "", ret);
+
+	ret = mt6379_charger_field_get(cdata, vbat_mon_en_field, &stat);
+	if (ret)
+		dev_info(cdata->dev, "%s, Failed to get vbat_mon%s stat(ret:%d)!\n",
+			 __func__, src == MT6379_BATPRO_SRC_VBAT_MON2 ? "2" : "", ret);
+
+	dev_info(cdata->dev, "%s, Disable vbat_mon%s (current stat: %d)\n",
+		 __func__, src == MT6379_BATPRO_SRC_VBAT_MON2 ? "2" : "", stat);
+out:
+	mutex_unlock(&cdata->cv_lock);
 
 	return ret;
+}
+
+static inline int mt6379_get_bat1_vbat_monitor(struct mt6379_charger_data *cdata,
+					       union power_supply_propval *val)
+{
+	return mt6379_get_vbat_monitor(cdata, MT6379_BATPRO_SRC_VBAT_MON, &val->intval);
+}
+
+static inline int __maybe_unused mt6379_get_bat2_vbat_monitor(struct mt6379_charger_data *cdata,
+							      union power_supply_propval *val)
+{
+	return mt6379_get_vbat_monitor(cdata, MT6379_BATPRO_SRC_VBAT_MON2, &val->intval);
 }
 
 static int mt6379_charger_get_property(struct power_supply *psy,
@@ -802,7 +858,7 @@ static int mt6379_charger_get_property(struct power_supply *psy,
 		val->intval = cdata->psy_desc.type;
 		break;
 	case POWER_SUPPLY_PROP_CALIBRATE: /* for Gauge */
-		ret = mt6379_get_vbat_monitor(cdata, val);
+		ret = mt6379_get_bat1_vbat_monitor(cdata, val);
 		break;
 	case POWER_SUPPLY_PROP_ENERGY_EMPTY:
 		val->intval = cdata->vbat0_flag;
