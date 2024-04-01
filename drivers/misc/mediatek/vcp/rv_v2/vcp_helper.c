@@ -130,6 +130,7 @@ phys_addr_t vcp_mem_size;
 phys_addr_t vcp_mem_logger_size;
 bool vcp_hwvoter_support = true;
 bool vcp_ao;
+bool is_vcp_shutdown;
 struct vcp_regs vcpreg;
 
 static struct workqueue_struct *vcp_workqueue;
@@ -1043,16 +1044,35 @@ static int vcp_pm_event(struct notifier_block *notifier
 					pr_notice("[VCP] %s: pm_runtime_get_sync %d\n"
 						, __func__, ret);
 			}
-			writel(B_CORE0_RESUME|B_CORE1_RESUME, AP_R_GPR1);
-			writel(B_GIPC4_SETCLR_3 ,R_GIPC_IN_SET);
-			vcp_wait_suspend_resume(0);
+			if (!is_vcp_shutdown) {
+				writel(B_CORE0_RESUME|B_CORE1_RESUME, AP_R_GPR1);
+				writel(B_GIPC4_SETCLR_3 ,R_GIPC_IN_SET);
+				vcp_wait_suspend_resume(0);
 
 #if VCP_RECOVERY_SUPPORT
-			cpuidle_pause_and_lock();
-			is_suspending = false;
-			waitCnt = vcp_wait_ready_sync();
-			cpuidle_resume_and_unlock();
+				cpuidle_pause_and_lock();
+				is_suspending = false;
+				waitCnt = vcp_wait_ready_sync();
+				cpuidle_resume_and_unlock();
 #endif
+			} else {
+				/* shutdown flow */
+				mutex_lock(&vcp_ready_mutex);
+				for (i = 0; i < VCP_CORE_TOTAL ; i++)
+					vcp_ready[i] = 0;
+				mutex_unlock(&vcp_ready_mutex);
+
+				// trigger halt isr to change spm control power
+				writel(GIPC_VCP_HART0_SHUT, R_GIPC_IN_SET);
+				if (vcpreg.core_nums == 2) {
+					wait_vcp_ready_to_reboot(VCP_ID);
+					writel(GIPC_MMUP_SHUT, R_GIPC_IN_SET);
+				}
+				is_suspending = false;
+				pr_notice("[VCP] %s shutdown done\n", __func__);
+				mutex_unlock(&vcp_pw_clk_mutex);
+				return NOTIFY_OK;
+			}
 		}
 		is_suspending = false;
 		mutex_unlock(&vcp_pw_clk_mutex);
@@ -2717,11 +2737,13 @@ static int vcp_device_probe(struct platform_device *pdev)
 	} else
 		vcp_io_devs[vcp_support-1] = dev;
 
+	if (vcp_support > 1)
+		return 0;
+
 	vcp_power_devs = dev;
 
 	vcp_ao = of_property_read_bool(node, "vcp-ao-feature");
 	pr_info("[VCP] vcp-ao %s", vcp_ao ? "support":"non-support");
-
 	if (!vcp_ao) {
 		pm_runtime_irq_safe(vcp_power_devs);
 		ret = pm_runtime_get_sync(vcp_power_devs);
@@ -2729,8 +2751,7 @@ static int vcp_device_probe(struct platform_device *pdev)
 			pr_notice("[VCP] %s: pm_runtime_get_sync %d\n", __func__, ret);
 	}
 
-	if (vcp_support > 1)
-		return 0;
+	is_vcp_shutdown = false;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_sram_base");
 	if (res == NULL) {
@@ -3075,6 +3096,15 @@ static void vcp_device_shutdown(struct platform_device *pdev)
 		pr_notice("[VCP] %s bypass\n", __func__);
 		return;
 	}
+
+	mutex_lock(&vcp_pw_clk_mutex);
+	is_vcp_shutdown = true;
+	if (is_suspending) {
+		pr_notice("[VCP] vcp suspending %s bypass\n", __func__);
+		mutex_unlock(&vcp_pw_clk_mutex);
+		return;
+	}
+	mutex_unlock(&vcp_pw_clk_mutex);
 
 	mutex_lock(&vcp_ready_mutex);
 	for (i = 0; i < VCP_CORE_TOTAL ; i++)
