@@ -12,8 +12,7 @@
 #
 
 ccflags-y += \
-	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_v2/src/plat_k68	\
-	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ppm_v3/inc			\
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ppm_v3/inc		\
 	-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/include		\
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling		\
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/			\

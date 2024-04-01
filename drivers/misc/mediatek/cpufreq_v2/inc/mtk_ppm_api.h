@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2020 MediaTek Inc.
+ * Copyright (c) 2024 MediaTek Inc.
  */
 
 #ifndef __MT_PPM_API_H__
@@ -106,6 +106,9 @@ extern void mt_ppm_register_client(enum ppm_client client,
 
 /* DVFS */
 extern void mt_cpufreq_get_cur_volt_register(void *callback);
+extern void mt_ppm_set_dvfs_table(unsigned int cpu,
+			struct cpufreq_frequency_table *tbl,
+			unsigned int num, enum dvfs_table_type type);
 
 /* SYS boost policy */
 extern void mt_ppm_sysboost_core(enum ppm_sysboost_user user,
