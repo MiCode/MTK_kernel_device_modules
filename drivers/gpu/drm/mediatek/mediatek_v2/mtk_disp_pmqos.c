@@ -363,9 +363,17 @@ static unsigned int mtk_disp_larb_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc,
 		mtk_oddmr_hrt_cal_notify(&oddmr_hrt);
 		subcomm_bw_sum[2] += bw_base * oddmr_hrt / 400;
 	}
+
+	/* hrt_channel_bw_sum[0]: comm0_ch0: sub_comm0
+	 * hrt_channel_bw_sum[1]: comm0_ch1: sub_comm1
+	 * hrt_channel_bw_sum[2]: comm1_ch0: sub_comm3
+	 * hrt_channel_bw_sum[3]: comm1_ch1: sub_comm2
+	 */
 	//TODO: decouple chan_hrt_bw from mtk_disp_larb_hrt_bw
-	for (i = 0; i < max_sub_comm; i++)
-		priv->hrt_channel_bw_sum[crtc_idx][i] = subcomm_bw_sum[i];
+	priv->hrt_channel_bw_sum[crtc_idx][0] = subcomm_bw_sum[0];
+	priv->hrt_channel_bw_sum[crtc_idx][1] = subcomm_bw_sum[1];
+	priv->hrt_channel_bw_sum[crtc_idx][2] = subcomm_bw_sum[3];
+	priv->hrt_channel_bw_sum[crtc_idx][3] = subcomm_bw_sum[2];
 
 	return mtk_disp_getMaxBW(subcomm_bw_sum, max_sub_comm, total_bw);
 }

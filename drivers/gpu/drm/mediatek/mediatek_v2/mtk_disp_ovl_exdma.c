@@ -655,10 +655,10 @@ static unsigned int mtk_ovl_phy_mapping_MT6991(struct mtk_ddp_comp *comp)
 
 static unsigned int mtk_ovl_phy_channel_mapping_MT6991(struct mtk_ddp_comp *comp)
 {
-	/* sub_comm0: exdma2(0) + exdma7(5) + 1_exdma5(11) + (1_exdma8)
-	 * sub_comm1: exdma3(1) + exdma6(4) + 1_exdma4(10) + (1_exdma9)
-	 * sub_comm2: exdma4(2) + exdma9(7) + 1_exdma3(9) + (1_exdma6)
-	 * sub_comm3: exdma5(3) + exdma8(6) + 1_exdma2(8) + (1_exdma7)
+	/* channel0: sub_comm0: exdma2(0) + exdma7(5) + 1_exdma5(11) + (1_exdma8)
+	 * channel1: sub_comm1: exdma3(1) + exdma6(4) + 1_exdma4(10) + (1_exdma9)
+	 * channel3: sub_comm2: exdma4(2) + exdma9(7) + 1_exdma3(9) + (1_exdma6)
+	 * channel2: sub_comm3: exdma5(3) + exdma8(6) + 1_exdma2(8) + (1_exdma7)
 	 */
 	switch (comp->id) {
 	case DDP_COMPONENT_OVL_EXDMA2:
@@ -675,12 +675,12 @@ static unsigned int mtk_ovl_phy_channel_mapping_MT6991(struct mtk_ddp_comp *comp
 	case DDP_COMPONENT_OVL_EXDMA9:
 	case DDP_COMPONENT_OVL1_EXDMA3:
 	case DDP_COMPONENT_OVL1_EXDMA6:
-		return 2;
+		return 3;
 	case DDP_COMPONENT_OVL_EXDMA5:
 	case DDP_COMPONENT_OVL_EXDMA8:
 	case DDP_COMPONENT_OVL1_EXDMA2:
 	case DDP_COMPONENT_OVL1_EXDMA7:
-		return 3;
+		return 2;
 	case DDP_COMPONENT_OVL_EXDMA0:
 	case DDP_COMPONENT_OVL1_EXDMA0:
 		return 4; // no use

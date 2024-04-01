@@ -20427,7 +20427,7 @@ void mtk_crtc_tui_ovl_bw(struct drm_crtc *crtc)
 			__mtk_disp_set_module_srt(comp->qos_req, comp->id, qos_bw, 0,
 					    DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
 			mtk_crtc->total_srt += qos_bw;
-			priv->srt_channel_bw_sum[0][3] = qos_bw;
+			priv->srt_channel_bw_sum[0][2] = qos_bw;
 		}
 	}
 }
