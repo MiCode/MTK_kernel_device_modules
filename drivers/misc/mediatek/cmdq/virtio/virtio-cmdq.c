@@ -15,7 +15,6 @@
 #include <linux/spinlock.h>
 #include <linux/virtio.h>
 #include <linux/vringh.h>
-#include <linux/virtio_ids.h>
 #include <linux/virtio_ring.h>
 #include <linux/dma-mapping.h>
 #include <linux/virtio_config.h>
@@ -28,6 +27,7 @@
 
 #include "proto.h"
 #include "cmdq-util.h"
+#include "virtio_ids.h"
 
 #define CMDQ_THR_BASE			0x100
 #define CMDQ_THR_SIZE			0x80
