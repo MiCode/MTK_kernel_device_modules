@@ -6,7 +6,7 @@
 #ifndef __MTK_HPS_INTERNAL_H__
 #define __MTK_HPS_INTERNAL_H__
 
-#define PPM_NOT_READY
+//#define PPM_NOT_READY
 
 #include <linux/kernel.h>
 #include <linux/io.h>
