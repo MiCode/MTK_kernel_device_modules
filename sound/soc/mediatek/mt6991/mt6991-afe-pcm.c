@@ -5990,7 +5990,7 @@ static irqreturn_t mt6991_afe_irq_handler(int irq_id, void *dev)
 	unsigned int cus_mcu_en = 0;
 	unsigned int tmp_reg = 0;
 	int ret, cus_ret;
-	int i;
+	int i, j;
 	struct timespec64 ts64;
 	unsigned long long t1, t2;
 	/* one interrupt period = 5ms */
@@ -6007,12 +6007,22 @@ static irqreturn_t mt6991_afe_irq_handler(int irq_id, void *dev)
 	cus_status_mcu = cus_status & cus_mcu_en & AFE_IRQ_STATUS_BITS;
 	if ((ret || (status_mcu == 0)) &&
 	    (cus_ret || (cus_status_mcu == 0))) {
-		dev_info(afe->dev, "%s(), irq status err, ret %d, status 0x%x, mcu_en 0x%x\n",
-			 __func__, ret, status, mcu_en);
-		dev_info(afe->dev, "%s(), irq status err, ret %d, cus_status_mcu 0x%x, cus_mcu_en 0x%x\n",
-			 __func__, ret, cus_status_mcu, cus_mcu_en);
-
-		goto err_irq;
+		dev_info_ratelimited(
+			afe->dev,
+			"%s(), irq status err, ret %d, status 0x%x, mcu_en 0x%x, cus_ret %d, cus_status_mcu 0x%x, cus_mcu_en 0x%x\n",
+			 __func__,
+			 ret, status, mcu_en,
+			 cus_ret, cus_status_mcu, cus_mcu_en);
+		/* make sure all irq status are cleared for error handle to avoid burst irq */
+		for (j = 0; j < 2; ++j) {
+			for (i = 0; i < MT6991_IRQ_NUM; ++i) {
+				regmap_read(afe->regmap, irq_data[i].irq_clr_reg, &tmp_reg);
+				regmap_update_bits(afe->regmap, irq_data[i].irq_clr_reg,
+						0xc0000000,
+						tmp_reg^0xc0000000);
+			}
+		}
+		return IRQ_HANDLED;
 	}
 
 	ktime_get_ts64(&ts64);
@@ -6047,7 +6057,6 @@ static irqreturn_t mt6991_afe_irq_handler(int irq_id, void *dev)
 			t2, timeout_limit, ret);
 	}
 
-err_irq:
 	/* clear irq */
 	for (i = 0; i < MT6991_IRQ_NUM; ++i) {
 		if (((cus_status_mcu & (0x1 << irq_data[i].id)) && i == MT6991_IRQ_31) ||
