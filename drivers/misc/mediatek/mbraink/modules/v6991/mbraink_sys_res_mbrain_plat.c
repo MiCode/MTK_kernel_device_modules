@@ -28,10 +28,11 @@ static int group_release[NR_SPM_GRP] = {
 	MBRAINK_NOT_RELEASE,
 	MBRAINK_NOT_RELEASE,
 	MBRAINK_NOT_RELEASE,
+	MBRAINK_NOT_RELEASE,
 };
 
 struct mbraink_sys_res_mbrain_header header;
-static unsigned int sys_res_sig_num, sys_res_grp_num; //sys_res_sig_num=177
+static unsigned int sys_res_sig_num, sys_res_grp_num;
 static uint32_t spm_res_sig_tbl_num;
 static struct mbraink_sys_res_sig_info *spm_res_sig_tbl_ptr;
 
