@@ -138,7 +138,7 @@ static struct clk *__clk_dbg_lookup(const char *name)
 
 static void print_fclk_freq(const struct fmeter_clk *fclk, u32 freq, void *data)
 {
-	pr_dbg("%2d: %-29s: %u\n", fclk->id, fclk->name, freq);
+	pr_dbg("%2d: %-29s: %d\n", fclk->id, fclk->name, freq);
 }
 
 void print_fmeter_all(void)
@@ -151,7 +151,7 @@ static void seq_print_fclk_freq(const struct fmeter_clk *fclk,
 {
 	struct seq_file *s = data;
 
-	seq_printf(s, "%2d: %-29s: %u\n", fclk->id, fclk->name, freq);
+	seq_printf(s, "%2d: %-29s: %d\n", fclk->id, fclk->name, freq);
 }
 
 static int seq_print_fmeter_all(struct seq_file *s, void *v)
