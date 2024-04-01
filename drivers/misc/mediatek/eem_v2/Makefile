@@ -102,7 +102,7 @@ mediatek_eem-y += common_v4/mtk_eem_api.o
 mediatek_eem-y += common_v4/mtk_aee_rr.o
 
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6893)),)
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v5/inc/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v1/inc/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eem_v2/common_6893/inc
 obj-$(CONFIG_MTK_PTPOD_LEGACY) += mediatek_eem.o
 mediatek_eem-y += common_6893/mtk_eem.o

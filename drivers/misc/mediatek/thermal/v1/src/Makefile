@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2015 MediaTek Inc.
+# Copyright (C) 2018 MediaTek Inc.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -11,19 +11,18 @@
 # GNU General Public License for more details.
 #
 
-ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/inc
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v1/inc
-ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/
-ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include/
+ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/gpu/hal/
+ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/
+ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/fakeHeader/
+ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/eem_v2/inc
+ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pmic/include/
+ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/common/inc/
+ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v1/
+ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/spm/
+ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/mt-plat/
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
-ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/gpu/hal/
-ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/fakeHeader/
-ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/common/inc/
-ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/eem_v1/inc/
-
-ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vpu/
-ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdla/1.0
-ccflags-y  += -I$(srctree)/drivers/gpu/mediatek/gpufreq/v2_legacy/include/
 

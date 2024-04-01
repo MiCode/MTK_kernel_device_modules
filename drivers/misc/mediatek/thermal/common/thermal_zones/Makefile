@@ -27,6 +27,7 @@ ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/mt-plat/
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcupm/
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/include/
+ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v2_legacy/include/
 
 
 ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)$(CONFIG_MTK_TINYSYS_SSPM_PLT_SUPPORT)),)
