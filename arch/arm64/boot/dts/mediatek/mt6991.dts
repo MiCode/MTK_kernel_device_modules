@@ -20289,24 +20289,44 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	// ap dmic gpio
 	aud_gpio_ap_dmic_off: aud-gpio-ap-dmic-off {
 		pins-cmd1-dat {
-			pinmux = <PINMUX_GPIO178__FUNC_GPIO178>;
+			pinmux = <PINMUX_GPIO21__FUNC_GPIO21>;
 			input-enable;
 			bias-pull-down;
 		};
 		pins-cmd2-dat {
-			pinmux = <PINMUX_GPIO179__FUNC_GPIO179>;
+			pinmux = <PINMUX_GPIO22__FUNC_GPIO22>;
+			input-enable;
+			bias-pull-down;
+		};
+		pins-cmd3-dat {
+			pinmux = <PINMUX_GPIO23__FUNC_GPIO23>;
+			input-enable;
+			bias-pull-down;
+		};
+		pins-cmd4-dat {
+			pinmux = <PINMUX_GPIO24__FUNC_GPIO24>;
 			input-enable;
 			bias-pull-down;
 		};
 	};
 	aud_gpio_ap_dmic_on: aud-gpio-ap-dmic-on {
 		pins-cmd1-dat {
-			pinmux = <PINMUX_GPIO178__FUNC_DMIC_CLK>;
+			pinmux = <PINMUX_GPIO21__FUNC_DMIC_CLK>;
 			input-schmitt-enable;
 			bias-disable;
 		};
 		pins-cmd2-dat {
-			pinmux = <PINMUX_GPIO179__FUNC_DMIC_DAT>;
+			pinmux = <PINMUX_GPIO22__FUNC_DMIC_DAT>;
+			input-schmitt-enable;
+			bias-disable;
+		};
+		pins-cmd3-dat {
+			pinmux = <PINMUX_GPIO23__FUNC_DMIC1_CLK>;
+			input-schmitt-enable;
+			bias-disable;
+		};
+		pins-cmd4-dat {
+			pinmux = <PINMUX_GPIO24__FUNC_DMIC1_DAT>;
 			input-schmitt-enable;
 			bias-disable;
 		};
