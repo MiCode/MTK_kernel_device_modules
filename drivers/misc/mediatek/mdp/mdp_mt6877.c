@@ -1699,7 +1699,7 @@ static void *mdp_qos_get_path(u32 thread_id, u32 port)
 	 * port ID for getting icc path which can be used
 	 */
 
-	u32 temp_port = port | (9 << 5);
+	u32 temp_port = port | (2 << 16);
 
 	switch (temp_port) {
 	case M4U_PORT_L9_IMG_IMGI_D1:
@@ -1732,11 +1732,6 @@ static void *mdp_qos_get_path(u32 thread_id, u32 port)
 		return path_l9_img_ufbc_w0[thread_id];
 	case M4U_PORT_L9_IMG_UFBC_R0:
 		return path_l9_img_ufbc_r0[thread_id];
-	}
-
-	temp_port = port | (11 << 5);
-
-	switch (temp_port) {
 	case M4U_PORT_L11_IMG_WPE_RDMA1:
 		return path_l11_img_wpe_rdma1[thread_id];
 	case M4U_PORT_L11_IMG_WPE_RDMA0:
