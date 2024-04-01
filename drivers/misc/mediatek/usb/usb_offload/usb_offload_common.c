@@ -158,10 +158,8 @@ static bool ir_lost;
 static struct usb_audio_dev uadev[SNDRV_CARDS];
 struct usb_offload_dev *uodev;
 static struct snd_usb_audio *usb_chip[SNDRV_CARDS];
-
-#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
 static void uaudio_disconnect_cb(struct snd_usb_audio *chip);
-#endif
+
 
 static int mtk_usb_offload_free_allocated(bool is_in);
 static struct xhci_ring *xhci_mtk_alloc_ring(struct xhci_hcd *xhci,
@@ -397,8 +395,7 @@ err:
 	return subs;
 }
 
-#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
-static void sound_usb_connect(struct usb_interface *intf, struct snd_usb_audio *chip)
+static void sound_usb_connect(struct snd_usb_audio *chip)
 {
 	struct device_node *node_xhci_host;
 	struct platform_device *pdev_xhci_host = NULL;
@@ -441,9 +438,8 @@ static void sound_usb_connect(struct usb_interface *intf, struct snd_usb_audio *
 	}
 }
 
-static void sound_usb_disconnect(struct usb_interface *intf)
+static void sound_usb_disconnect(struct snd_usb_audio *chip)
 {
-	struct snd_usb_audio *chip = usb_get_intfdata(intf);
 	unsigned int card_num;
 
 	USB_OFFLOAD_INFO("\n");
@@ -470,7 +466,6 @@ static void sound_usb_disconnect(struct usb_interface *intf)
 		if (chip->index >= 0)
 			usb_chip[chip->index] = NULL;
 }
-#endif
 
 static int sound_usb_trace_init(void)
 {
@@ -703,7 +698,6 @@ int send_disconnect_ipi_msg_to_adsp(void)
 	return send_result;
 }
 
-#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
 static void uaudio_disconnect_cb(struct snd_usb_audio *chip)
 {
 	int ret;
@@ -749,7 +743,6 @@ done:
 
 	USB_OFFLOAD_INFO("done\n");
 }
-#endif
 
 static void uaudio_dev_release(struct kref *kref)
 {
@@ -2973,10 +2966,8 @@ static struct xhci_vendor_ops xhci_mtk_vendor_ops = {
 	.free_transfer_ring = xhci_mtk_free_transfer_ring,
 	.is_streaming = xhci_mtk_is_streaming,
 	.usb_offload_skip_urb = xhci_mtk_skip_hid_urb,
-#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
-	.offload_connect = sound_usb_connect,
-	.offload_disconnect = sound_usb_disconnect,
-#endif
+	.usb_offload_connect = sound_usb_connect,
+	.usb_offload_disconnect = sound_usb_disconnect,
 };
 
 int xhci_mtk_ssusb_offload_get_mode(struct device *dev)
