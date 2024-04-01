@@ -4571,7 +4571,7 @@ static irqreturn_t mtk_disp_ovl_exdma_irq_handler(int irq, void *dev_id)
 	if (IS_ERR_OR_NULL(ovl))
 		return IRQ_NONE;
 
-	if (mtk_drm_top_clk_isr_get("ovl_exdma_irq") == false) {
+	if (mtk_drm_top_clk_isr_get(ovl) == false) {
 		DDPIRQ("%s, top clk off\n", __func__);
 		return IRQ_NONE;
 	}
@@ -4653,7 +4653,7 @@ static irqreturn_t mtk_disp_ovl_exdma_irq_handler(int irq, void *dev_id)
 	ret = IRQ_HANDLED;
 
 out:
-	mtk_drm_top_clk_isr_put("ovl_exdma_irq");
+	mtk_drm_top_clk_isr_put(ovl);
 
 	return ret;
 }

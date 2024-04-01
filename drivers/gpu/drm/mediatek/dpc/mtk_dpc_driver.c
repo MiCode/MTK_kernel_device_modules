@@ -32,6 +32,7 @@
 #include "mtk_dpc_mmp.h"
 #include "mtk_dpc_internal.h"
 
+#include "mtk_log.h"
 #include "mtk_disp_vidle.h"
 #include "mtk-mml-dpc.h"
 #include "mdp_dpc.h"
@@ -1384,6 +1385,7 @@ static int dpc_res_init(struct mtk_dpc *priv)
 	get_addr_byname("vcore_mode_clr", &priv->vcore_mode_clr_va, NULL);
 	get_addr_byname("vdisp_dvfsrc", &priv->vdisp_dvfsrc, NULL);
 	get_addr_byname("disp_vcore_pwr_chk", &priv->dispvcore_chk, NULL);
+	get_addr_byname("mminfra_pwr_chk", &priv->mminfra_chk, NULL);
 	get_addr_byname("dis0_pwr_chk",
 			&priv->mtcmos_cfg[DPC_SUBSYS_DIS0].chk_va,
 			&priv->mtcmos_cfg[DPC_SUBSYS_DIS0].chk_pa);
@@ -1491,20 +1493,33 @@ static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread)
 
 static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 {
-	if (dpc_pm_ctrl(true))
-		return -1;
+	int ret = 0;
+
+	if (user == DISP_VIDLE_USER_TOP_CLK_ISR) {
+		if (!mminfra_is_power_on())
+			ret = 2;
+		/* skip pm_get to fix unstable DSI TE, mminfra power is held by DPC usually */
+		/* but if no power at this time, the user should call pm_get to ensure power */
+	} else {
+		if (dpc_pm_ctrl(true))
+			return -1;
+	}
 
 	mtk_disp_vlp_vote(VOTE_SET, user);
 
 	if (user >= DISP_VIDLE_USER_CRTC)
 		udelay(50);
 
-	return 0;
+	return ret;
 }
 
 static void dpc_vidle_power_release(const enum mtk_vidle_voter_user user)
 {
 	mtk_disp_vlp_vote(VOTE_CLR, user);
+
+	if (user == DISP_VIDLE_USER_TOP_CLK_ISR)
+		return;
+
 	dpc_pm_ctrl(false);
 }
 
@@ -1541,6 +1556,14 @@ static bool dpc_is_power_on(void)
 		return true;
 
 	return readl(g_priv->dispvcore_chk) & g_priv->dispvcore_chk_mask;
+}
+
+static bool mminfra_is_power_on(void)
+{
+	if (!g_priv->mminfra_chk)
+		return true;
+
+	return readl(g_priv->mminfra_chk) & BIT(1);
 }
 
 static void dpc_analysis(void)

@@ -1206,6 +1206,7 @@ struct mtk_ddp_comp {
 	u32 last_hrt_bw_other;
 	bool in_scaling_path;
 	struct mtk_ddp_comp *bind_comp;
+	int pm_ret;
 };
 
 static inline void mtk_ddp_comp_config_overhead(struct mtk_ddp_comp *comp,

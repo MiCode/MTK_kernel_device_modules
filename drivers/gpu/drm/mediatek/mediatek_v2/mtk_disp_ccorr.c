@@ -350,7 +350,7 @@ static irqreturn_t disp_ccorr_irq_handler(int irq, void *dev_id)
 	if (IS_ERR_OR_NULL(ccorr))
 		return IRQ_NONE;
 
-	if (mtk_drm_top_clk_isr_get("ccorr_irq") == false) {
+	if (mtk_drm_top_clk_isr_get(comp) == false) {
 		DDPIRQ("%s, top clk off\n", __func__);
 		return IRQ_NONE;
 	}
@@ -366,7 +366,7 @@ static irqreturn_t disp_ccorr_irq_handler(int irq, void *dev_id)
 	writel(intsta & ~0x3, comp->regs + DISP_REG_CCORR_INTSTA);
 	ret = IRQ_HANDLED;
 out:
-	mtk_drm_top_clk_isr_put("ccorr_irq");
+	mtk_drm_top_clk_isr_put(comp);
 	return ret;
 }
 

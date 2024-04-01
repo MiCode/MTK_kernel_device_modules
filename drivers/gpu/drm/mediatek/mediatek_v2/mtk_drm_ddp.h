@@ -185,6 +185,7 @@ struct mtk_ddp {
 	const struct mtk_disp_ddp_data *data;
 	struct mtk_drm_crtc *mtk_crtc[MAX_CRTC];
 	struct cmdq_base *cmdq_base;
+	struct mtk_ddp_comp ddp_comp;
 };
 
 struct mtk_mmsys_reg_data {
