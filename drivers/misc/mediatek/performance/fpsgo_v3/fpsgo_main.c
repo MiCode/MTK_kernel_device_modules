@@ -389,7 +389,6 @@ static void fpsgo_notifier_wq_cb_hint_frame(int qudeq,
 		fpsgo_ctrl2comp_hint_frame_dep_task(cur_pid, id,
 			dep_mode, dep_name, dep_num);
 
-	sbe2fpsgo_query_is_running = fpsgo_ctrl2base_query_sbe_spid_loading();
 }
 
 static void fpsgo_notifier_wq_cb_adpf_hint(struct fpsgo_adpf_session *session)

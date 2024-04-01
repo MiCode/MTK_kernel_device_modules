@@ -2578,7 +2578,7 @@ int fpsgo_ctrl2base_query_sbe_spid_loading(void)
 	fpsgo_render_tree_lock(__func__);
 	for (rbn = rb_first(&sbe_spid_loading_tree); rbn; rbn = rb_next(rbn)) {
 		iter = rb_entry(rbn, struct sbe_spid_loading, rb_node);
-		if (!fpsgo_get_tgid(iter->tgid))
+		if (!iter || !fpsgo_get_tgid(iter->tgid))
 			continue;
 
 		for (i = 0; i < iter->spid_num; i++) {
