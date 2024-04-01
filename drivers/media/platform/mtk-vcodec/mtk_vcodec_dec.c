@@ -843,6 +843,45 @@ static void mtk_vdec_trigger_set_frame(struct mtk_vcodec_ctx *ctx)
 		queue_work(ctx->vdec_set_frame_wq, &ctx->vdec_set_frame_work.work);
 }
 
+static void mtk_vdec_cgrp_handler(struct work_struct *work_ptr)
+{
+	struct delayed_work *delay_work = to_delayed_work(work_ptr);
+	struct mtk_vcodec_ctx *ctx = container_of(delay_work, struct mtk_vcodec_ctx, cgrp_delay_work);
+
+	mtk_vcodec_set_cgrp(ctx, false, __func__);
+}
+
+static void mtk_vdec_trigger_cgrp(struct mtk_vcodec_ctx *ctx)
+{
+	if (!ctx->cgrp_wq || mtk_vdec_open_cgrp_delay <= 0)
+		return;
+
+	mtk_vcodec_set_cgrp(ctx, true, __func__);
+	INIT_DELAYED_WORK(&ctx->cgrp_delay_work, mtk_vdec_cgrp_handler);
+	queue_delayed_work(ctx->cgrp_wq, &ctx->cgrp_delay_work, msecs_to_jiffies(mtk_vdec_open_cgrp_delay));
+}
+
+static void mtk_vdec_cgrp_init(struct mtk_vcodec_ctx *ctx)
+{
+	char name[25];
+
+	snprintf(name, sizeof(name), "vdec_cgrp-%d", ctx->id);
+	ctx->cgrp_wq = create_workqueue(name);
+}
+
+static void mtk_vdec_cgrp_deinit(struct mtk_vcodec_ctx *ctx)
+{
+	if (!ctx->cgrp_wq)
+		return;
+
+	cancel_delayed_work(&ctx->cgrp_delay_work);
+	flush_workqueue(ctx->cgrp_wq);
+	destroy_workqueue(ctx->cgrp_wq);
+	ctx->cgrp_wq = NULL;
+
+	mtk_vcodec_set_cgrp(ctx, false, __func__); // double check to disable cgroup
+}
+
 /*
  * This function tries to clean all display buffers, the buffers will return
  * in display order.
@@ -2434,6 +2473,8 @@ void mtk_vcodec_dec_release(struct mtk_vcodec_ctx *ctx)
 	}
 	memset(ctx->dma_meta_list, 0, sizeof(struct dma_meta_buf) * MAX_META_BUF_CNT);
 #endif
+
+	mtk_vdec_cgrp_deinit(ctx);
 }
 
 static bool mtk_vdec_dvfs_params_change(struct mtk_vcodec_ctx *ctx)
@@ -2556,6 +2597,9 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 void mtk_vcodec_dec_set_default_params(struct mtk_vcodec_ctx *ctx)
 {
 	struct mtk_q_data *q_data;
+
+	mtk_vdec_cgrp_init(ctx);
+	mtk_vdec_trigger_cgrp(ctx);
 
 	ctx->m2m_ctx->q_lock = &ctx->q_mutex;
 	ctx->fh.m2m_ctx = ctx->m2m_ctx;

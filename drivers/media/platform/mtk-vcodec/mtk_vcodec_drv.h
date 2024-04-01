@@ -648,6 +648,11 @@ struct mtk_vcodec_ctx {
 	struct list_head list;
 	int cpu_caller_pid;
 
+	/* for vdec open set cgroup colocate */
+	struct workqueue_struct *cgrp_wq;
+	struct delayed_work cgrp_delay_work;
+	bool cgrp_enable;
+
 	struct v4l2_fh fh;
 	struct v4l2_m2m_ctx *m2m_ctx;
 	struct device *general_dev;
@@ -896,8 +901,10 @@ struct mtk_vcodec_dev {
 	struct mutex enc_dvfs_mutex;
 	struct mutex enc_qos_mutex;  /* only for SWRGO, need to remove in mp branch */
 	struct mutex cpu_hint_mutex;
+	struct mutex cgrp_mutex;
 	unsigned int cpu_hint_ref_cnt;
 	int cpu_hint_mode;
+	unsigned int cgrp_ref_cnt;
 
 	struct mtk_vcodec_pm pm;
 	struct notifier_block pm_notifier;

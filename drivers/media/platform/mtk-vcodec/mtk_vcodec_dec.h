@@ -14,6 +14,7 @@
 
 #define MTK_VDEC_GROUP_CNT		6
 #define MTK_VDEC_WAIT_GROUP_MS		160
+#define MTK_VDEC_OPEN_CGRP_MS		200
 
 /**
  * struct vdec_fb  - decoder frame buffer
