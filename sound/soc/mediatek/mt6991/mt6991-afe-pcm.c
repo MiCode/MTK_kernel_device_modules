@@ -6050,14 +6050,14 @@ static irqreturn_t mt6991_afe_irq_handler(int irq_id, void *dev)
 err_irq:
 	/* clear irq */
 	for (i = 0; i < MT6991_IRQ_NUM; ++i) {
-		if (status_mcu & (0x1 << i)) {
+		if (((cus_status_mcu & (0x1 << irq_data[i].id)) && i == MT6991_IRQ_31) ||
+		    ((status_mcu & (0x1 << irq_data[i].id)) && i != MT6991_IRQ_31)) {
 			regmap_read(afe->regmap, irq_data[i].irq_clr_reg, &tmp_reg);
 			regmap_update_bits(afe->regmap, irq_data[i].irq_clr_reg,
 					0xc0000000,
 					tmp_reg^0xc0000000);
 		}
 	}
-
 	return IRQ_HANDLED;
 }
 #endif
