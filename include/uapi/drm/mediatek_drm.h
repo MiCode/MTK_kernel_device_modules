@@ -459,9 +459,7 @@ struct DISP_AAL_TRIG_STATE {
 /* PQ */
 #define DRM_MTK_GET_LCM_INDEX   0x2C
 #define DRM_MTK_SUPPORT_COLOR_TRANSFORM    0x2D
-
-/* AAL */
-#define DRM_MTK_AAL_GET_SIZE	0x35
+#define DRM_MTK_PQ_PROXY_IOCTL 0x37
 
 #define DRM_MTK_HDMI_GET_DEV_INFO	0x3A
 #define DRM_MTK_HDMI_AUDIO_ENABLE	0x3B
@@ -489,13 +487,9 @@ struct DISP_AAL_TRIG_STATE {
 /* DISP_ESD_CEHCK */
 #define DRM_MTK_ESD_STAT_CHK 0x5d
 
-/* DISP_CLARITY */
-#define DRM_MTK_DISP_CLARITY_SET_REG 0x5E
-
 /* DISP to MML */
 #define DRM_MTK_MML_CTRL 0x5f
 
-#define DRM_MTK_PQ_PROXY_IOCTL 0x37
 /* The device specific ioctl range is from DRM_COMMAND_BASE(0x40) to DRM_COMMAND_END(0x9f)
  * The index of ioctl which define here must be less then 0x60
  */
@@ -1801,10 +1795,6 @@ struct mtk_pixel_type_fence {
 			DRM_MTK_SUPPORT_COLOR_TRANSFORM, \
 			struct DISP_COLOR_TRANSFORM)
 
-// for Display Clarity
-#define DRM_IOCTL_MTK_DISP_CLARITY_SET_REG      DRM_IOWR(DRM_COMMAND_BASE + \
-			DRM_MTK_DISP_CLARITY_SET_REG, struct DISP_CLARITY_REG)
-
 #define DRM_IOCTL_MTK_GET_CHIST     DRM_IOWR(DRM_COMMAND_BASE + \
 			DRM_MTK_GET_CHIST, struct drm_mtk_chist_info)
 
@@ -2007,9 +1997,6 @@ enum SET_BL_EXT_TYPE {
 	ENABLE_DYN_ELVSS,
 	DISABLE_DYN_ELVSS,
 };
-
-#define DRM_IOCTL_MTK_AAL_GET_SIZE	DRM_IOWR(DRM_COMMAND_BASE + \
-			DRM_MTK_AAL_GET_SIZE, struct DISP_AAL_DISPLAY_SIZE)
 
 #define DRM_IOCTL_MTK_HDMI_GET_DEV_INFO     DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_MTK_HDMI_GET_DEV_INFO, struct mtk_dispif_info)
