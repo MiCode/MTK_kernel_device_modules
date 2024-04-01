@@ -1516,17 +1516,19 @@ failed:
 }
 
 #ifdef CONFIG_PM_SLEEP
-static void ufs_mtk_rq_dwork_fn(struct work_struct *dwork)
+static enum hrtimer_restart rq_timer_fn(struct hrtimer *timer)
 {
 	struct scsi_device *sdev;
 	struct ufs_hba *hba;
 	struct ufs_mtk_host *host;
 
-	host = container_of(dwork, struct ufs_mtk_host, rq_dwork.work);
+	host = container_of(timer, struct ufs_mtk_host, rq_timer);
 	hba = host->hba;
 
 	__shost_for_each_device(sdev, hba->host)
 		wake_up_all(&sdev->request_queue->mq_freeze_wq);
+
+	return HRTIMER_NORESTART;
 }
 #endif
 
@@ -1667,8 +1669,8 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	host->ufs_wake_lock = wakeup_source_register(NULL, "ufs_wake_lock");
 
 #ifdef CONFIG_PM_SLEEP
-	INIT_DELAYED_WORK(&host->rq_dwork, ufs_mtk_rq_dwork_fn);
-	host->rq_workq = create_singlethread_workqueue("ufs_mtk_rq_wq");
+	hrtimer_init(&host->rq_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	host->rq_timer.function = rq_timer_fn;
 #endif
 
 	if (host->caps & UFS_MTK_CAP_DISABLE_MCQ || !ufs_host_mcq_support(hba))
@@ -3285,10 +3287,7 @@ out:
 	host = ufshcd_get_variant(hba);
 	if (!ret) {
 		up(&host->rpmb_sem);
-#ifdef CONFIG_PM_SLEEP
-		queue_delayed_work(host->rq_workq, &host->rq_dwork,
-				   msecs_to_jiffies(500));
-#endif
+		hrtimer_start(&host->rq_timer, 500 * NSEC_PER_MSEC, HRTIMER_MODE_REL);
 	}
 
 	return ret;
