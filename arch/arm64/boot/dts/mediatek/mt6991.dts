@@ -2571,6 +2571,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			node-46 = "GPUEB_PTP3_HBVC_VOLT__detail", "ST0_Vt,ST1_Vt,ST3_Vt,ST4_Vt,ST5_Vt,ST6_Vt,TOP_Vt";
 			node-47 = "GPUEB_POWER_STATE", "power_state";
 			node-48 = "GPUEB_OPP", "pow_restore,desire_sys,desire_opp,virtual_min,cur";
+			node-49 = "GPUEB_SLCV2_ITER_TRACE", "source,event,context_id,\
+sw_info,frame_id,custom,pipeline_stage,RPID,UID";
+			node-50 = "GPUEB_SLCV2_CCMD_PMU_CNT", "TLS,r_LSC_non_TLS,r_TEX";
 		};
 	};
 
