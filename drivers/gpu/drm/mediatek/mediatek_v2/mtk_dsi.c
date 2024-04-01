@@ -12236,7 +12236,7 @@ static const struct mtk_dsi_driver_data mt6989_dsi_driver_data = {
 
 static const struct mtk_dsi_driver_data mt6991_dsi_driver_data = {
 	.reg_cmdq0_ofs = 0x400,
-	.reg_cmdq1_ofs = 0xd04,
+	.reg_cmdq1_ofs = 0x404,
 	.reg_vm_cmd_con_ofs = 0x110,
 	.reg_vm_cmd_data0_ofs = 0x118,
 	.reg_vm_cmd_data10_ofs = 0x128,
