@@ -2220,7 +2220,7 @@ static const struct mtk_disp_wdma_data mt6765_wdma_driver_data = {
 	.fifo_size_uv_3plane = 50,
 	.sodi_config = mt6768_mtk_sodi_config,
 	.support_shadow = false,
-	.need_bypass_shadow = false,
+	.need_bypass_shadow = true,
 	.is_support_34bits = false,
 };
 
