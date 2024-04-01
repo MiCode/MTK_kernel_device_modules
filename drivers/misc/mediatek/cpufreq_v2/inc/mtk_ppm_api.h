@@ -161,8 +161,8 @@ extern unsigned int ppm_get_cluster_cpi(unsigned int cluster);
 /* Callbacks */
 extern void ppm_cpufreq_get_cur_volt_register(unsigned int (*cb)(unsigned int));
 extern void ppm_cpufreq_get_cur_phy_freq_no_lock_register(unsigned int (*cb)(unsigned int));
-extern void ppm_cpu_level_register(unsigned int (*cb)(void));
 extern void ppm_cpufreq_get_volt_by_idx_register(unsigned int (*cb)(unsigned int cluster_id, int idx));
+extern void ppm_cpufreq_get_cpu_level_register(unsigned int (*cb)(void));
 
 #ifdef __cplusplus
 }
