@@ -19954,6 +19954,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	status = "okay";
 };
 
+&mt6685_clkbuf {
+	XO-BBCK2 {
+		perms = <0x10fffc>;
+	};
+};
+
 /* KEY GPIO standardization start */
 &pio{
 	key_gpio_default:key-default {
