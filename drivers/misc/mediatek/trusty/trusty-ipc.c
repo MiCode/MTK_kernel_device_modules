@@ -1070,7 +1070,7 @@ static long filp_send_ioctl(struct file *filp,
 	if (ret < 0)
 		goto trusty_elf_init_failed;
 
-	ret = import_iovec(READ, u64_to_user_ptr(req.iov), req.iov_cnt,
+	ret = import_iovec(WRITE, u64_to_user_ptr(req.iov), req.iov_cnt,
 			   ARRAY_SIZE(fast_iovs), &iov, &iter);
 	if (ret < 0) {
 		dev_err(dev, "Failed to import iovec\n");
