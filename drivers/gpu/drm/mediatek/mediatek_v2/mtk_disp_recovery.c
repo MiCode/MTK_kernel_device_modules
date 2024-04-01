@@ -876,11 +876,13 @@ void mtk_disp_chk_recover_init(struct drm_crtc *crtc)
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_ddp_comp *output_comp;
+	bool mode;
 
 	output_comp = (mtk_crtc) ? mtk_ddp_comp_request_output(mtk_crtc) : NULL;
+	mode = mtk_dsi_is_cmd_mode(output_comp);
 
 	/* only support ESD check for DSI output interface */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_ESD_CHECK_RECOVERY) &&
-			output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)
+			output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI && mode)
 		mtk_disp_esd_chk_init(crtc);
 }
