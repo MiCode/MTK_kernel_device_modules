@@ -303,6 +303,9 @@
 #define TCPC_NORMAL     0
 #define TCPC_FLIP       1
 
+#define XSPHY_SUB_CLASS	1
+#define RPTR_SUB_CLASS	2
+
 enum mtk_xsphy_mode {
 	XSP_MODE_USB = 0,
 	XSP_MODE_UART,
@@ -2488,7 +2491,7 @@ static int mtk_phy_init(struct phy *phy)
 
 	for (i = 0; i < xsphy->num_rptr; i++) {
 		if (!IS_ERR_OR_NULL(xsphy->repeater[i])) {
-			lockdep_set_subclass(&xsphy->repeater[i]->mutex, 1);
+			lockdep_set_subclass(&xsphy->repeater[i]->mutex, RPTR_SUB_CLASS);
 			phy_init(xsphy->repeater[i]);
 		}
 	}
@@ -3047,6 +3050,9 @@ static int mtk_xsphy_probe(struct platform_device *pdev)
 			retval = PTR_ERR(inst->ref_clk);
 			goto put_child;
 		}
+
+		/* rename phy lock name to avoid possible lock warning. */
+		lockdep_set_subclass(&inst->phy->mutex, XSPHY_SUB_CLASS);
 	}
 
 	provider = devm_of_phy_provider_register(dev, mtk_phy_xlate);
