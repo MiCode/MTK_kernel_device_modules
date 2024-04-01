@@ -62,6 +62,19 @@ pid_t list_head_to_pid(struct list_head *lh)
 	return pid;
 }
 
+int vip_in_gh;
+void turn_on_vip_in_gh(void)
+{
+	vip_in_gh = 1;
+}
+EXPORT_SYMBOL_GPL(turn_on_vip_in_gh);
+
+void turn_off_vip_in_gh(void)
+{
+	vip_in_gh = 0;
+}
+EXPORT_SYMBOL_GPL(turn_off_vip_in_gh);
+
 struct cpumask find_min_num_vip_cpus_slow(int vip_prio, struct cpumask *allowed_cpu_mask_for_slow)
 {
 	int cpu, num_same_vip, num_higher_vip, min_num_same_vip = UINT_MAX, min_num_higher_vip = UINT_MAX;
@@ -100,15 +113,16 @@ struct cpumask find_min_num_vip_cpus_slow(int vip_prio, struct cpumask *allowed_
 #define ret_first_vip(vrq) (link_with_others(&vrq->vip_tasks) ? \
 	container_of(vrq->vip_tasks.next, struct vip_task_struct, vip_list) : NULL)
 struct cpumask find_min_num_vip_cpus(struct perf_domain *pd, struct task_struct *p,
-		int vip_prio, struct cpumask *allowed_cpu_mask)
-{
+		int vip_prio, struct cpumask *allowed_cpu_mask, int order_index, int end_index, int reverse) {
 	unsigned int cpu, num_same_vip, min_num_same_vip = UINT_MAX;
 	struct cpumask vip_candidate;
 	struct perf_domain *pd_ptr = pd;
 	unsigned int num_vip_in_cpu_arr[MAX_NR_CPUS] = {[0 ... MAX_NR_CPUS-1] = -1};
 	bool failed = false;
-	struct cpumask allowed_cpu_mask_for_slow;
+	struct cpumask allowed_cpu_mask_for_slow, *pd_cpumask;
+	int cluster;
 
+	/* Remain this to prevent from crucial error. */
 	if (!pd_ptr) {
 		failed = true;
 		goto backup;
@@ -116,8 +130,14 @@ struct cpumask find_min_num_vip_cpus(struct perf_domain *pd, struct task_struct 
 
 	cpumask_clear(&allowed_cpu_mask_for_slow);
 	/* fast path: find min num SP(Same Prio) VIP within CPUs don't have higher prio */
-	for (; pd_ptr; pd_ptr = pd_ptr->next) {
-		for_each_cpu_and(cpu, perf_domain_span(pd_ptr), cpu_active_mask) {
+
+	for (cluster = 0; cluster < num_sched_clusters; cluster++) {
+		if (!vip_in_gh)
+			pd_cpumask = get_gear_cpumask(cluster);
+		else
+			pd_cpumask = &cpu_array[order_index][cluster][reverse];
+
+		for_each_cpu_and(cpu, pd_cpumask, cpu_active_mask) {
 			struct vip_rq *vrq = &per_cpu(vip_rq, cpu);
 			struct vip_task_struct *first_vip = NULL;
 
@@ -156,6 +176,8 @@ struct cpumask find_min_num_vip_cpus(struct perf_domain *pd, struct task_struct 
 
 			cpumask_set_cpu(cpu, &vip_candidate);
 		}
+		if (vip_in_gh && (cluster >= end_index))
+			break;
 	}
 
 	if (!cpumask_empty(&vip_candidate))
