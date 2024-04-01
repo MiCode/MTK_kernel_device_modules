@@ -2241,6 +2241,8 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6991.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6991.ko")
 
+        mgk_64_device_modules.remove("sound/soc/codecs/mt6681-accdet.ko")
+        mgk_64_device_modules.remove("sound/soc/codecs/mt6359p-accdet.ko")
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6886.ko")
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6893.ko")
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6895.ko")
