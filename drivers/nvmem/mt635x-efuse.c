@@ -282,10 +282,9 @@ static ssize_t efuse_pmic_ecid_show(struct device *dev,
 
 	for (slvid = 0; slvid < MAX_PMIC_SIZE; ++slvid) {
 		if (efuse->pmic_name[slvid] != NULL) {
-			ptr += sprintf(ptr, "%s,\tslave_id:%d,\tecid:",
-					     efuse->pmic_name[slvid], slvid);
+			ptr += sprintf(ptr, "%s:", efuse->pmic_name[slvid]);
 			for (i = 0; i < EFUSE_ECID_SIZE; ++i)
-				ptr += sprintf(ptr, "0x%x ", efuse->pmic_ecid[slvid][i]);
+				ptr += sprintf(ptr, "%X ", efuse->pmic_ecid[slvid][i]);
 			ptr += sprintf(ptr, "\n");
 		}
 	}
