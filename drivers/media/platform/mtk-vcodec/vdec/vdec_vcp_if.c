@@ -1784,6 +1784,7 @@ static int vdec_vcp_set_param(unsigned long h_vdec,
 	case SET_PARAM_VDEC_PLUS_DROP_RATIO:
 	case SET_PARAM_CONTAINER_FRAMERATE:
 	case SET_PARAM_DISABLE_DEBLOCK:
+	case SET_PARAM_VDEC_LINECOUNT_THRESHOLD:
 		msg.data[0] = (__u32)(*param_ptr);
 		vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
 		break;

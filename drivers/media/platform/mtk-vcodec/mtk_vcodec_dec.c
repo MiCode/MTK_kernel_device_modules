@@ -2755,6 +2755,17 @@ static int mtk_vdec_set_param(struct mtk_vcodec_ctx *ctx)
 		}
 	}
 
+	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_LINECOUNT_THRESHOLD) {
+		in[0] = ctx->dec_params.linecount_threshold_mode;
+		mtk_v4l2_debug(0, "[%d] MTK_DEC_PARAM_LINECOUNT_THRESHOLD mode %lu",
+			ctx->id, in[0]);
+		if (vdec_if_set_param(ctx, SET_PARAM_VDEC_LINECOUNT_THRESHOLD, in) != 0) {
+			mtk_v4l2_err("[%d] Error!! Cannot set param", ctx->id);
+			return -EINVAL;
+		}
+		ctx->dec_params.dec_param_change &= (~MTK_DEC_PARAM_LINECOUNT_THRESHOLD);
+	}
+
 	if (vdec_if_get_param(ctx, GET_PARAM_INPUT_DRIVEN, &ctx->input_driven)) {
 		mtk_v4l2_err("[%d] Error!! Cannot get param : GET_PARAM_INPUT_DRIVEN ERR",
 			ctx->id);
@@ -4857,6 +4868,12 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 		ctx->max_buf_height = ctrl->p_new.p_u32[2];
 		break;
 	}
+	case V4L2_CID_MPEG_MTK_LINECOUNT_THRESHOLD:
+		ctx->dec_params.linecount_threshold_mode = ctrl->val;
+		ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_LINECOUNT_THRESHOLD;
+		mtk_v4l2_debug(0, "[%d] V4L2_CID_MPEG_MTK_LINECOUNT_THRESHOLD id %d val %d",
+			ctx->id, ctrl->id, ctrl->val);
+		break;
 	default:
 		mtk_v4l2_debug(4, "ctrl-id=%x not support!", ctrl->id);
 		return -EINVAL;
@@ -5344,6 +5361,18 @@ int mtk_vcodec_dec_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.def = 0;
 	cfg.ops = ops;
 	cfg.dims[0] = (sizeof(struct v4l2_vdec_bandwidth_info)),
+	mtk_vcodec_dec_custom_ctrls_check(handler, &cfg, NULL);
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MPEG_MTK_LINECOUNT_THRESHOLD;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video LineCount ThresHold";
+	cfg.min = 0;
+	cfg.max = 32;
+	cfg.step = 1;
+	cfg.def = 0;
+	cfg.ops = ops;
 	mtk_vcodec_dec_custom_ctrls_check(handler, &cfg, NULL);
 
 	if (ctx->ctrl_hdl.error) {
