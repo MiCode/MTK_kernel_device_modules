@@ -5428,15 +5428,17 @@
 	};
 	vdec@16000000 {
 		compatible = "mediatek,mt6877-vcodec-dec";
-		reg = <0 0x1602f000 0 0x1000>,		/* VDEC_SYS */
-			 <0 0x16029800 0 0x400>,		/* VDEC_UFO */
+		mediatek,platform = "platform:mt6877";
+		mediatek,ipm = <1>;
+		reg = <0 0x16000000 0 0x1000>,		/* VDEC_BASE */
+			 <0 0x1602f000 0 0x1000>,		/* VDEC_SYS */
 			 <0 0x16020000 0 0x400>,		/* VDEC_VLD */
 			 <0 0x16021000 0 0x1000>,		/* VDEC_MC */
 			 <0 0x16023000 0 0x1000>,		/* VDEC_MV */
 			 <0 0x16025000 0 0x1000>;		/* VDEC_MISC */
 		reg-names =
+				"VDEC_BASE",
 				"VDEC_SYS",
-				"VDEC_UFO",
 				"VDEC_VLD",
 				"VDEC_MC",
 				"VDEC_MV",
@@ -5477,7 +5479,7 @@
 			"M4U_PORT_VDEC_AVC_MV",
 			"M4U_PORT_VDEC_UFO_ENC",
 			"M4U_PORT_VDEC_RG_CTRL_DMA";
-		mediatek,larb = <&smi_larb4>;
+		mediatek,larbs = <&smi_larb4>;
 		interrupts = <GIC_SPI 512 IRQ_TYPE_LEVEL_HIGH 0>;
 		mediatek,vcu = <&vcu>;
 		clocks =
@@ -5598,6 +5600,7 @@
 
 	venc@17000000 {
 		compatible = "mediatek,mt6877-vcodec-enc";
+		mediatek,platform = "platform:mt6877";
 		mediatek,ipm = <1>;
 		reg = <0 0x17020000 0 0x2000>;
 		reg-names = "VENC_SYS";
@@ -5616,7 +5619,7 @@
 			<&iommu0 M4U_PORT_L7_VENC_CUR_CHROMA>,
 			<&iommu0 M4U_PORT_L7_VENC_REF_LUMA>,
 			<&iommu0 M4U_PORT_L7_VENC_REF_CHROMA>;
-		mediatek,larb = <&smi_larb7>;
+		mediatek,larbs = <&smi_larb7>;
 		interrupts = <GIC_SPI 382 IRQ_TYPE_LEVEL_HIGH 0>;
 		mediatek,vcu = <&vcu>;
 		clocks =
