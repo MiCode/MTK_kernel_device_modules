@@ -94,6 +94,25 @@ bool is_runnable_boost_enable(void)
 }
 EXPORT_SYMBOL(is_runnable_boost_enable);
 
+static ssize_t show_runnable_boost(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	unsigned int len = 0;
+	unsigned int max_len = 4096;
+
+	len += snprintf(buf+len, max_len-len, "runnable_boost_enable = %d\n", runnable_boost_enable);
+	return len;
+}
+
+static ssize_t set_runnable_boost(struct kobject *kobj, struct kobj_attribute *attr, const char *ubuf,	size_t cnt)
+{
+	unsigned int val = -1;
+
+	if (sscanf(ubuf, "%iu", &val) != 0)
+		set_runnable_boost_enable(val);
+
+	return cnt;
+}
+
 /************************ Governor internals ***********************/
 
 static bool sugov_should_update_freq(struct sugov_policy *sg_policy, u64 time)
@@ -1022,6 +1041,41 @@ static void sugov_clear_global_tunables(void)
 		global_tunables = NULL;
 }
 
+struct kobj_attribute sugov_ext_sysfs =
+__ATTR(runnable_boost, 0600, show_runnable_boost, set_runnable_boost);
+
+static struct attribute *sugov_ext_sysfs_attrs[] = {
+	&sugov_ext_sysfs.attr,
+	NULL,
+};
+
+static struct attribute_group sugov_ext_sysfs_attr_group = {
+	.attrs = sugov_ext_sysfs_attrs,
+};
+
+static struct kobject *kobj;
+int init_sugov_ext_sysfs(void)
+{
+	int ret = 0;
+	struct device *dev_root = bus_get_dev_root(&cpu_subsys);
+
+	if (dev_root)
+		kobj = kobject_create_and_add("sugov_ext_sysfs", &dev_root->kobj);
+
+	if (!kobj) {
+		pr_info("sugov_ext_sysfs folder create failed\n");
+		return -ENOMEM;
+	}
+
+	ret = sysfs_create_group(kobj, &sugov_ext_sysfs_attr_group);
+
+	if (ret)
+		pr_info("sysfs_create_group create failed\n");
+
+	kobject_uevent(kobj, KOBJ_ADD);
+	return 0;
+}
+
 static int sugov_init(struct cpufreq_policy *policy)
 {
 	struct sugov_policy *sg_policy;
@@ -1069,6 +1123,8 @@ static int sugov_init(struct cpufreq_policy *policy)
 
 	policy->governor_data = sg_policy;
 	sg_policy->tunables = tunables;
+
+	ret = init_sugov_ext_sysfs();
 
 	ret = kobject_init_and_add(&tunables->attr_set.kobj, &sugov_tunables_ktype,
 				   get_governor_parent_kobj(policy), "%s",
