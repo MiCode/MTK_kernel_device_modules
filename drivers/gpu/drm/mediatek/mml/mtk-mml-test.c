@@ -559,6 +559,10 @@ static void case_general_submit_ut(struct mml_test *test,
 		mml_err("[test]%s not support", __func__);
 		goto err_done;
 	}
+	if (mode == MML_MODE_DIRECT_LINK) {
+		mode = MML_MODE_MML_DECOUPLE;
+		mml_log("[test]force change from dl to dc");
+	}
 
 	/* for ut do not fall to inline rotate unless force use */
 	if (task.info.mode == MML_MODE_UNKNOWN) { /* auto query */
