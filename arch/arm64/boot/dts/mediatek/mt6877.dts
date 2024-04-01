@@ -1426,9 +1426,9 @@
 		imgsys_config: imgsys_config@15020000 {
 			compatible = "mediatek,imgsys","syscon";
 			reg = <0 0x15020000 0 0x1000>;
-			mediatek,larb = <&smi_larb11>,<&smi_larb9>;
-			power-domains = <&scpsys MT6877_POWER_DOMAIN_ISP1>,
-					<&scpsys MT6877_POWER_DOMAIN_ISP0>;
+			mediatek,larb = <&smi_larb9>,<&smi_larb11>;
+			power-domains = <&scpsys MT6877_POWER_DOMAIN_ISP0>,
+					<&scpsys MT6877_POWER_DOMAIN_ISP1>;
 			clocks =
 					<&imgsys1_clk CLK_IMGSYS1_LARB9>,
 					<&imgsys1_clk CLK_IMGSYS1_DIP>,
@@ -1457,15 +1457,7 @@
 					<&iommu0 M4U_PORT_L9_IMG_SMTI_D5>,
 					<&iommu0 M4U_PORT_L9_IMG_TIMGO_D1>,
 					<&iommu0 M4U_PORT_L9_IMG_UFBC_W0>,
-					<&iommu0 M4U_PORT_L9_IMG_UFBC_R0>,
-					<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA0>,
-					<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA1>,
-					<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA2>,
-					<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA3>,
-					<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA4>,
-					<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA5>,
-					<&iommu0 M4U_PORT_L11_IMG_MFB_WDMA0>,
-					<&iommu0 M4U_PORT_L11_IMG_MFB_WDMA1>;
+					<&iommu0 M4U_PORT_L9_IMG_UFBC_R0>;
 		};
 
 		dip_a0@15021000 {
