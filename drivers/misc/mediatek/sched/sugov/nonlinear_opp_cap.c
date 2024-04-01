@@ -263,15 +263,8 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 				!available_idle_cpu(cpu))
 				max_freq_in_gear = freq_state.cpu_freq[cpu_idx];
 
-		if(max_freq_in_gear != 0)
-			freq_state.dsu_freq_vote[i]
-				= dsu_freq_agg(cpu, max_freq_in_gear, false, wl, &dsu_target_freq);
-		else {
-			sugov_data_ptr = &per_cpu(rq_data, cpu)->sugov_data;
-			freq_state.dsu_freq_vote[i] = 0;
-			WRITE_ONCE(sugov_data_ptr->enq_update_dsu_freq, true);
-			goto skip_single_idle_cpu;
-		}
+		freq_state.dsu_freq_vote[i]
+			= dsu_freq_agg(cpu, max_freq_in_gear, false, wl, &dsu_target_freq);
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 		freq_thermal = get_cpu_ceiling_freq(gearid);
