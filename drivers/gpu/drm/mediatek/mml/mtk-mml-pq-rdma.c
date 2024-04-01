@@ -47,6 +47,7 @@
 #define RDMA_MF_OFFSET_1		0x080
 #define RDMA_SF_BKGD_SIZE_IN_BYTE	0x090
 #define RDMA_MF_BKGD_H_SIZE_IN_PXL	0x098
+#define RDMA_PREFETCH_CONTROL		0x0a8
 #define RDMA_VC1_RANGE			0x0f0
 #define RDMA_SRC_OFFSET_0		0x118
 #define RDMA_SRC_OFFSET_1		0x120
@@ -398,6 +399,7 @@ struct rdma_data {
 	u32 tile_width;
 	bool write_sec_reg;	/* WA: write rdma registers in secured domain */
 	bool tile_reset;	/* WA: write dummy register to clean up states */
+	bool stash;		/* enable stash prefetch with delay time */
 
 	/* threshold golden setting for racing mode */
 	struct rdma_golden golden[GOLDEN_FMT_TOTAL];
@@ -442,6 +444,7 @@ static const struct rdma_data mt6989_pq_rdma_data = {
 static const struct rdma_data mt6991_pq_rdma_data = {
 	.tile_width = 516,
 	.tile_reset = true,
+	.stash = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
 			.cnt = ARRAY_SIZE(th_argb_mt6983),
@@ -701,6 +704,7 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 	u8 filter_mode = 3;
 	u64 iova[3];
 	u32 gmcif_con;
+	u32 prefetch = 0x43000000;
 
 	mml_msg("use config %p rdma %p", cfg, rdma);
 
@@ -798,6 +802,18 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_TRANSFORM_0,
 		   (rdma_frm->matrix_sel << 23),
 		   write_sec);
+
+	if (rdma->data->stash) {
+		if (mml_stash_en(cfg->info.mode)) {
+			/* prefetch_line_cnt = src_w * src_h * FPS * 12.5us / src_w */
+			u32 prefetch_line_cnt = src->height * rdma_stash_leading * cfg->fps;
+
+			prefetch = prefetch | (prefetch_line_cnt & 0xffff);
+			mml_msg("%s prefetch %#010x", __func__, prefetch);
+		}
+		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_PREFETCH_CONTROL, prefetch, U32_MAX);
+	}
+
 
 	return 0;
 }
@@ -1004,14 +1020,23 @@ static const struct mml_comp_config_ops rdma_cfg_ops = {
 	.reframe = rdma_reconfig_frame,
 };
 
-u32 pq_rdma_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg)
+static u32 pq_rdma_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg)
 {
 	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
 
 	return rdma_frm->datasize;
 }
 
-u32 pq_rdma_format_get(struct mml_task *task, struct mml_comp_config *ccfg)
+static u32 pq_rdma_qos_stash_bw_get(struct mml_task *task, struct mml_comp_config *ccfg,
+	u32 *srt_bw_out, u32 *hrt_bw_out)
+{
+	/* stash command for every 4KB size */
+	*srt_bw_out = *srt_bw_out / 256;
+	*hrt_bw_out = *hrt_bw_out / 256;
+	return 0;
+}
+
+static u32 pq_rdma_format_get(struct mml_task *task, struct mml_comp_config *ccfg)
 {
 	return task->config->info.seg_map.format;
 }
@@ -1029,6 +1054,7 @@ static const struct mml_comp_hw_ops rdma_hw_ops = {
 	.clk_enable = &mml_comp_clk_enable,
 	.clk_disable = &mml_comp_clk_disable,
 	.qos_datasize_get = &pq_rdma_datasize_get,
+	.qos_stash_bw_get = &pq_rdma_qos_stash_bw_get,
 	.qos_format_get = &pq_rdma_format_get,
 	.qos_set = &mml_comp_qos_set,
 	.qos_clear = &mml_comp_qos_clear,

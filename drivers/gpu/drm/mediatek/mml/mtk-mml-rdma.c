@@ -36,6 +36,7 @@
 #define RDMA_GMCIF_CON			0x028
 #define RDMA_SRC_CON			0x030
 #define RDMA_COMP_CON			0x038
+#define RDMA_UFBDC_CONFIG_STASH_CTRL	0x03c
 #define RDMA_PVRIC_CRYUVAL_0		0x040
 #define RDMA_PVRIC_CRYUVAL_1		0x048
 #define RDMA_PVRIC_CRCH0123VAL_0	0x050
@@ -47,6 +48,7 @@
 #define RDMA_MF_OFFSET_1		0x080
 #define RDMA_SF_BKGD_SIZE_IN_BYTE	0x090
 #define RDMA_MF_BKGD_H_SIZE_IN_PXL	0x098
+#define RDMA_PREFETCH_CONTROL		0x0a8
 #define RDMA_UYVY10B_DUMMY		0x0b0
 #define RDMA_VC1_RANGE			0x0f0
 #define RDMA_SRC_OFFSET_0		0x118
@@ -338,6 +340,9 @@ u32 *rdma_crc_va[MML_PIPE_CNT];
 dma_addr_t rdma_crc_pa[MML_PIPE_CNT];
 #endif
 
+int rdma_stash_leading = 12;
+module_param(rdma_stash_leading, int, 0644);
+
 static s32 rdma_write(struct cmdq_pkt *pkt, phys_addr_t base_pa, u8 hw_pipe,
 		      enum cpr_reg_idx idx, u32 value, bool write_sec)
 {
@@ -436,6 +441,7 @@ struct rdma_data {
 	bool alpha_rsz_crop;	/* WA: align rdma crop size when alpha resize */
 	bool write_sec_reg;	/* WA: write rdma registers in secured domain */
 	bool tile_reset;	/* WA: write dummy register to clean up states */
+	bool stash;		/* enable stash prefetch with delay time */
 
 	/* threshold golden setting for racing mode */
 	struct rdma_golden golden[GOLDEN_FMT_TOTAL];
@@ -664,6 +670,7 @@ static const struct rdma_data mt6991_mmlt_rdma_data = {
 	.tile_width = 640,
 	.alpha_rsz_crop = true,
 	.tile_reset = true,
+	.stash = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
 			.cnt = ARRAY_SIZE(th_argb_mt6985),
@@ -697,6 +704,7 @@ static const struct rdma_data mt6991_mmlf_rdma_data = {
 	.sram_size = 512 * 1024,	/* 1MB sram divid to 512K + 512K */
 	.alpha_rsz_crop = true,
 	.tile_reset = true,
+	.stash = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
 			.cnt = ARRAY_SIZE(th_argb_mt6985),
@@ -1783,6 +1791,33 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_SF_BKGD_SIZE_IN_BYTE,
 		   src->uv_stride, write_sec);
 
+	if (rdma->data->stash) {
+		if (mml_stash_en(cfg->info.mode)) {
+			u32 prefetch;
+			/* prefetch_line_cnt = src_w * src_h * FPS * 12.5us / src_w */
+			u32 prefetch_line_cnt = src->height * rdma_stash_leading * cfg->fps;
+
+			if (MML_FMT_COMPRESS(src->format)) {
+				prefetch = (prefetch_line_cnt << 12) | 0x1;
+				cmdq_pkt_write(pkt, NULL, base_pa + RDMA_UFBDC_CONFIG_STASH_CTRL,
+					prefetch, U32_MAX);
+			} else {
+				prefetch = 0x43000000 | (prefetch_line_cnt & 0xffff);
+				cmdq_pkt_write(pkt, NULL, base_pa + RDMA_PREFETCH_CONTROL,
+					prefetch, U32_MAX);
+			}
+
+			mml_msg("%s prefetch %#010x", __func__, prefetch);
+		} else {
+			if (MML_FMT_COMPRESS(src->format))
+				cmdq_pkt_write(pkt, NULL, base_pa + RDMA_UFBDC_CONFIG_STASH_CTRL,
+					0, U32_MAX);
+			else
+				cmdq_pkt_write(pkt, NULL, base_pa + RDMA_PREFETCH_CONTROL,
+					0x43000000, U32_MAX);
+		}
+	}
+
 	return 0;
 }
 
@@ -2250,6 +2285,18 @@ u32 rdma_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg)
 	return rdma_frm->datasize;
 }
 
+static u32 rdma_qos_stash_bw_get(struct mml_task *task, struct mml_comp_config *ccfg,
+	u32 *srt_bw_out, u32 *hrt_bw_out)
+{
+	/* stash command for every 4KB size, 4K to 1 stash (1 burst), 1 burst = 16bytes, thus
+	 * stash_bw = normal_bw / 4K * 16
+	 *	    = normal_bw / 256
+	 */
+	*srt_bw_out = *srt_bw_out / 256;
+	*hrt_bw_out = *hrt_bw_out / 256;
+	return 0;
+}
+
 u32 rdma_format_get(struct mml_task *task, struct mml_comp_config *ccfg)
 {
 	return task->config->info.src.format;
@@ -2290,6 +2337,7 @@ static const struct mml_comp_hw_ops rdma_hw_ops = {
 	.clk_enable = &mml_comp_clk_enable,
 	.clk_disable = &mml_comp_clk_disable,
 	.qos_datasize_get = &rdma_datasize_get,
+	.qos_stash_bw_get = &rdma_qos_stash_bw_get,
 	.qos_format_get = &rdma_format_get,
 	.qos_set = &mml_comp_qos_set,
 	.qos_clear = &mml_comp_qos_clear,
