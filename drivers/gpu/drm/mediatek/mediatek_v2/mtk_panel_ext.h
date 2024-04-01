@@ -530,6 +530,7 @@ struct mtk_panel_params {
 	void *corner_pattern_lt_addr;
 	void *corner_pattern_lt_addr_l;
 	void *corner_pattern_lt_addr_r;
+	void *corner_pattern_size_per_line;
 	unsigned int physical_width_um;
 	unsigned int physical_height_um;
 	unsigned int lane_swap_en;

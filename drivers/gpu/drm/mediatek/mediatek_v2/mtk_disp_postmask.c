@@ -129,6 +129,14 @@ struct mtk_disp_postmask {
 	const struct mtk_disp_postmask_data *data;
 	unsigned int postmask_force_relay;
 	unsigned int postmask_debug;
+	unsigned int set_partial_update;
+	unsigned int roi_y_offset;
+	unsigned int roi_height;
+	unsigned int pu_force_relay;
+	dma_addr_t pu_mem_addr;
+	unsigned int pu_mem_length;
+	unsigned int pu_pause_start;
+	unsigned int pu_pause_end;
 };
 
 struct mtk_disp_postmark_tile_overhead {
@@ -140,8 +148,13 @@ struct mtk_disp_postmark_tile_overhead {
 	unsigned int right_comp_overhead;
 };
 
-struct mtk_disp_postmark_tile_overhead postmark_tile_overhead = { 0 };
+struct mtk_disp_postmask_tile_overhead_v {
+	unsigned int overhead_v;
+	unsigned int comp_overhead_v;
+};
 
+struct mtk_disp_postmark_tile_overhead postmark_tile_overhead = { 0 };
+struct mtk_disp_postmask_tile_overhead_v postmask_tile_overhead_v = { 0 };
 
 static inline struct mtk_disp_postmask *comp_to_postmask(struct mtk_ddp_comp *comp)
 {
@@ -244,8 +257,19 @@ static void mtk_disp_postmark_config_overhead(struct mtk_ddp_comp *comp,
 	}
 }
 
+static void mtk_disp_postmask_config_overhead_v(struct mtk_ddp_comp *comp,
+	struct total_tile_overhead_v  *tile_overhead_v)
+{
+	DDPDBG("line: %d\n", __LINE__);
 
-
+	/*set component overhead*/
+	postmask_tile_overhead_v.comp_overhead_v = 0;
+	/*add component overhead on total overhead*/
+	tile_overhead_v->overhead_v +=
+		postmask_tile_overhead_v.comp_overhead_v;
+	/*copy from total overhead info*/
+	postmask_tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
+}
 
 static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 				struct mtk_ddp_config *cfg,
@@ -265,6 +289,7 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 	struct mtk_disp_postmask *postmask = comp_to_postmask(comp);
 #endif
 	unsigned int width;
+	unsigned int overhead_v;
 
 	if (comp->mtk_crtc->is_dual_pipe) {
 		width = cfg->w / 2;
@@ -292,7 +317,14 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 		value |= REG_FLD_VAL((BYPASS_SHADOW), 1);
 	mtk_ddp_write_relaxed(comp, value, DISP_POSTMASK_SHADOW_CTRL, handle);
 
-	value = (width << 16) + cfg->h;
+	if (postmask->set_partial_update != 1)
+		value = (width << 16) + cfg->h;
+	else {
+		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
+					? 0 : postmask_tile_overhead_v.overhead_v;
+		value = (width << 16) + (postmask->roi_height + overhead_v * 2);
+	}
+
 	mtk_ddp_write_relaxed(comp, value, DISP_POSTMASK_SIZE, handle);
 
 	if (!panel_ext)
@@ -301,12 +333,20 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 	DDPINFO("postmask_en[%d]\n", panel_ext->round_corner_en);
 
 	if (panel_ext && panel_ext->round_corner_en) {
-		value = (REG_FLD_VAL((PAUSE_REGION_FLD_RDMA_PAUSE_START),
+		if (postmask->set_partial_update != 1) {
+			value = (REG_FLD_VAL((PAUSE_REGION_FLD_RDMA_PAUSE_START),
 				     panel_ext->corner_pattern_height) |
 			 REG_FLD_VAL(
 				 (PAUSE_REGION_FLD_RDMA_PAUSE_END),
 				 cfg->h -
 					 panel_ext->corner_pattern_height_bot));
+		} else {
+			value = (REG_FLD_VAL((PAUSE_REGION_FLD_RDMA_PAUSE_START),
+				     postmask->pu_pause_start) |
+			 REG_FLD_VAL(
+				 (PAUSE_REGION_FLD_RDMA_PAUSE_END),
+				 postmask->pu_pause_end));
+		}
 		mtk_ddp_write_relaxed(comp, value, DISP_POSTMASK_PAUSE_REGION,
 				      handle);
 
@@ -376,11 +416,18 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 		} else if (comp->mtk_crtc->round_corner_gem &&
 			   panel_ext->corner_pattern_tp_size) {
 			gem = comp->mtk_crtc->round_corner_gem;
-			addr = gem->dma_addr;
-			size = panel_ext->corner_pattern_tp_size;
+			if (postmask->set_partial_update != 1) {
+				addr = gem->dma_addr;
+				size = panel_ext->corner_pattern_tp_size;
+			} else {
+				addr = postmask->pu_mem_addr;
+				size = postmask->pu_mem_length;
+			}
 		}
 		DDPINFO("POSTMASK_DRAM_MODE\n");
 
+		if (postmask->set_partial_update == 1)
+			force_relay = postmask->pu_force_relay;
 		if (addr == 0 || size == 0) {
 			DDPPR_ERR("invalid postmaks addr/size\n");
 			force_relay = 1;
@@ -460,11 +507,14 @@ int mtk_postmask_dump(struct mtk_ddp_comp *comp)
 	mtk_serial_dump_reg(baddr, 0x20, 2);
 	mtk_serial_dump_reg(baddr, 0x30, 1);
 	mtk_serial_dump_reg(baddr, 0x40, 3);
-	mtk_serial_dump_reg(baddr, 0x50, 3);
-	mtk_serial_dump_reg(baddr, 0xA0, 2);
-	mtk_serial_dump_reg(baddr, 0xB0, 3);
+	mtk_serial_dump_reg(baddr, 0x50, 4);
+	mtk_serial_dump_reg(baddr, 0xA0, 4);
+	mtk_serial_dump_reg(baddr, 0xB0, 4);
+	mtk_serial_dump_reg(baddr, 0xC0, 3);
+	mtk_serial_dump_reg(baddr, 0xD0, 3);
 	mtk_serial_dump_reg(baddr, 0x100, 4);
 	mtk_serial_dump_reg(baddr, 0x110, 2);
+	mtk_serial_dump_reg(baddr, 0x120, 3);
 	mtk_serial_dump_reg(baddr, 0x130, 2);
 	mtk_serial_dump_reg(baddr, 0x140, 3);
 
@@ -653,6 +703,307 @@ static int mtk_postmask_io_cmd(struct mtk_ddp_comp *comp,
 	return 0;
 }
 
+static unsigned int sum_corner_pattern_per_line
+		(unsigned int line_num_start, unsigned int line_num_end, unsigned int arr[])
+{
+	unsigned int sum, i = 0;
+
+	if (line_num_start > line_num_end)
+		return 0;
+
+	for (i = line_num_start; i <= line_num_end; i++)
+		sum = sum + arr[i];
+
+	return sum;
+}
+
+static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
+				struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
+{
+	struct mtk_disp_postmask *postmask = comp_to_postmask(comp);
+	struct mtk_panel_params *panel_ext =
+		mtk_drm_get_lcm_ext_params(&comp->mtk_crtc->base);
+	struct mtk_drm_gem_obj *gem;
+	unsigned int size = 0;
+	unsigned int size_per_line_top = 0, size_per_line_bot = 0;
+	unsigned int size_per_line_top_b = 0, size_per_line_bot_t = 0;
+	unsigned int tmp_top = 0, tmp_bot = 0, tmp_top_b = 0, tmp_bot_t = 0;
+	dma_addr_t addr = 0;
+	unsigned int force_relay = 0;
+	unsigned int pause_start = 0, pause_end = 0;
+	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
+						&comp->mtk_crtc->base, comp, true);
+	unsigned int overhead_v;
+
+	DDPINFO("%s, %s set partial update, height:%d, enable:%d\n",
+			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
+
+	if (!panel_ext->corner_pattern_size_per_line) {
+		DDPINFO("%s, size_per_line table is null\n", __func__);
+		return 0;
+	}
+
+	postmask->set_partial_update = enable;
+	postmask->roi_height = partial_roi.height;
+	postmask->roi_y_offset = partial_roi.y;
+	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
+				? 0 : postmask_tile_overhead_v.overhead_v;
+
+	DDPDBG("%s, %s overhead_v:%d\n",
+			__func__, mtk_dump_comp_str(comp), overhead_v);
+
+	if (comp->mtk_crtc->round_corner_gem &&
+			panel_ext->corner_pattern_tp_size &&
+			panel_ext->corner_pattern_size_per_line) {
+		gem = comp->mtk_crtc->round_corner_gem;
+		addr = gem->dma_addr;
+		size = panel_ext->corner_pattern_tp_size;
+	}
+
+	DDPDBG("ori addr = 0x%pa, ori size = %d\n", &addr, size);
+
+	if (postmask->set_partial_update == 1) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_POSTMASK_SIZE,
+			postmask->roi_height + overhead_v * 2, 0x1fff);
+
+		if ((postmask->roi_y_offset - overhead_v) >= panel_ext->corner_pattern_height
+			&& (postmask->roi_y_offset + postmask->roi_height + overhead_v)
+			< full_height - panel_ext->corner_pattern_height_bot) {
+			/*1. No overlapping cases*/
+			DDPINFO("%s, 1. No overlapping cases\n",__func__);
+			DDPDBG("%s, force_relay = 1\n",__func__);
+			force_relay = 1;
+		} else if ((postmask->roi_y_offset - overhead_v) < panel_ext->corner_pattern_height
+			&& (postmask->roi_y_offset + postmask->roi_height + overhead_v)
+			< full_height - panel_ext->corner_pattern_height_bot) {
+			/*2. partial roi overlap with top corner and not overlap with bot corner*/
+			tmp_top = postmask->roi_y_offset - overhead_v - 1;
+			size_per_line_top = sum_corner_pattern_per_line(0, tmp_top,
+							panel_ext->corner_pattern_size_per_line);
+			DDPINFO("%s, 2. overlap with top and not overlap with bot\n",__func__);
+			DDPDBG("%s, size_per_line_top: %d, num_start: %d, num_end: %d\n",
+				__func__, size_per_line_top, 0, tmp_top);
+
+			/*2-1. partial roi inside top corner*/
+			if (postmask->roi_y_offset + postmask->roi_height + overhead_v
+				<= panel_ext->corner_pattern_height) {
+				tmp_top_b = (postmask->roi_y_offset + postmask->roi_height
+							+ overhead_v);
+				size_per_line_top_b = sum_corner_pattern_per_line(
+						tmp_top_b, panel_ext->corner_pattern_height - 1,
+						panel_ext->corner_pattern_size_per_line);
+				DDPDBG("%s, size_per_line_top_b: %d, num_start: %d, num_end: %d\n",
+				__func__, size_per_line_top_b,
+				tmp_top_b, panel_ext->corner_pattern_height - 1);
+			}
+
+			tmp_bot = panel_ext->corner_pattern_height
+						+ panel_ext->corner_pattern_height_bot - 1;
+			size_per_line_bot = sum_corner_pattern_per_line(
+							panel_ext->corner_pattern_height, tmp_top,
+							panel_ext->corner_pattern_size_per_line);
+			DDPDBG("%s, size_per_line_bot: %d, num_start: %d, num_end: %d\n",
+				__func__, size_per_line_bot,
+				panel_ext->corner_pattern_height, tmp_bot);
+
+			force_relay = 0;
+			addr = addr + size_per_line_top;
+			size = size - size_per_line_top - size_per_line_top_b - size_per_line_bot;
+			pause_start = panel_ext->corner_pattern_height - (tmp_top + 1);
+			pause_end = postmask->roi_height + overhead_v * 2;
+			DDPDBG("%s, tmp_top: %d, tmp_top_b: %d, tmp_bot: %d\n",
+				__func__, tmp_top, tmp_top_b, tmp_bot);
+			DDPDBG("%s, addr: 0x%pa, size: %d, pause start: %d, pause end: %d\n",
+				__func__, &addr, size, pause_start, pause_end);
+		} else if ((postmask->roi_y_offset - overhead_v) >= panel_ext->corner_pattern_height
+			&& (postmask->roi_y_offset + postmask->roi_height + overhead_v)
+			>= full_height - panel_ext->corner_pattern_height_bot) {
+			/*3. partial roi not overlap with top corner and overlap with bot corner*/
+			tmp_top = panel_ext->corner_pattern_height - 1;
+			size_per_line_top = sum_corner_pattern_per_line(0, tmp_top,
+							panel_ext->corner_pattern_size_per_line);
+			DDPINFO("%s, 3. not overlap with top and overlap with bot\n",__func__);
+			DDPDBG("%s, size_per_line_top: %d, num_start: %d, num_end: %d\n",
+				__func__, size_per_line_top, 0, tmp_top);
+
+			/*3-1. partial roi inside bot corner*/
+			if ((postmask->roi_y_offset - overhead_v) > full_height
+			 - panel_ext->corner_pattern_height_bot) {
+				tmp_bot_t = (postmask->roi_y_offset - overhead_v) -
+					(full_height - panel_ext->corner_pattern_height_bot) - 1;
+				size_per_line_bot_t = sum_corner_pattern_per_line(
+						(panel_ext->corner_pattern_height),
+						(panel_ext->corner_pattern_height + tmp_bot_t),
+							panel_ext->corner_pattern_size_per_line);
+				DDPDBG("%s, size_per_line_bot_t: %d, num_start: %d, num_end: %d\n",
+				__func__, size_per_line_bot_t,
+				(panel_ext->corner_pattern_height)
+				, (panel_ext->corner_pattern_height + tmp_bot_t));
+			}
+
+			tmp_bot = full_height - (postmask->roi_y_offset
+						+ postmask->roi_height + overhead_v);
+			size_per_line_bot = sum_corner_pattern_per_line(
+			(panel_ext->corner_pattern_height
+				+ panel_ext->corner_pattern_height_bot - tmp_bot),
+			(panel_ext->corner_pattern_height
+				+ panel_ext->corner_pattern_height_bot - 1),
+			panel_ext->corner_pattern_size_per_line);
+			DDPDBG("%s, size_per_line_bot: %d, num_start: %d, num_end: %d\n",
+			__func__, size_per_line_bot,
+			(panel_ext->corner_pattern_height
+				+ panel_ext->corner_pattern_height_bot - tmp_bot),
+			(panel_ext->corner_pattern_height
+				+ panel_ext->corner_pattern_height_bot - 1));
+
+			force_relay = 0;
+			addr = addr + size_per_line_top + size_per_line_bot_t;
+			size = size - size_per_line_top - size_per_line_bot_t - size_per_line_bot;
+			pause_start = 0;
+			pause_end = tmp_bot_t ? 0 : postmask->roi_height + overhead_v * 2 -
+						(panel_ext->corner_pattern_height_bot - tmp_bot);
+			DDPDBG("%s, tmp_top: %d, tmp_bot_t: %d, tmp_bot: %d\n",
+					__func__, tmp_top, tmp_bot_t, tmp_bot);
+			DDPDBG("%s, addr: 0x%pa, size: %d, pause start: %d, pause end: %d\n",
+				__func__, &addr, size, pause_start, pause_end);
+		} else if ((postmask->roi_y_offset - overhead_v)
+			< panel_ext->corner_pattern_height
+			&& (postmask->roi_y_offset + postmask->roi_height + overhead_v)
+			>= full_height - panel_ext->corner_pattern_height_bot) {
+			/*4. partial roi overlap with top corner and overlap with bot corner*/
+			tmp_top = postmask->roi_y_offset - overhead_v - 1;
+			size_per_line_top = sum_corner_pattern_per_line(0, tmp_top,
+							panel_ext->corner_pattern_size_per_line);
+			DDPINFO("%s, 4. overlap with top and overlap with bot\n",__func__);
+			DDPDBG("%s, size_per_line_top: %d, num_start: %d, num_end: %d\n",
+				__func__, size_per_line_top, 0, tmp_top);
+
+			tmp_bot = full_height - (postmask->roi_y_offset
+						+ postmask->roi_height + overhead_v);
+			size_per_line_bot = sum_corner_pattern_per_line(
+				(panel_ext->corner_pattern_height
+					+ panel_ext->corner_pattern_height_bot - tmp_bot),
+				(panel_ext->corner_pattern_height
+					+ panel_ext->corner_pattern_height_bot - 1),
+				panel_ext->corner_pattern_size_per_line);
+			DDPDBG("%s, size_per_line_bot: %d, num_start: %d, num_end: %d\n",
+			__func__, size_per_line_bot,
+			(panel_ext->corner_pattern_height
+				+ panel_ext->corner_pattern_height_bot - tmp_bot),
+			(panel_ext->corner_pattern_height
+				+ panel_ext->corner_pattern_height_bot - 1));
+
+			force_relay = 0;
+			addr = addr + size_per_line_top;
+			size = size - size_per_line_top - size_per_line_bot;
+			pause_start = panel_ext->corner_pattern_height - (tmp_top + 1);
+			pause_end = postmask->roi_height + overhead_v * 2 -
+						(panel_ext->corner_pattern_height_bot - tmp_bot);
+			DDPDBG("%s, tmp_top: %d, tmp_bot: %d\n", __func__, tmp_top, tmp_bot);
+			DDPINFO("%s, addr: 0x%pa, size: %d, pause start: %d, pause end: %d\n",
+				__func__, &addr, size, pause_start, pause_end);
+		}
+
+		if (addr == 0 || size == 0) {
+			DDPPR_ERR("%s, invalid postmaks addr/size: %d\n", __func__);
+			force_relay = 1;
+		} else if (postmask->postmask_force_relay) {
+			DDPDBG("%s, postmask force relay\n", __func__);
+			force_relay = 1;
+		}
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_POSTMASK_SIZE,
+			postmask->roi_height + overhead_v * 2, 0x1fff);
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_POSTMASK_CFG,
+			REG_FLD_VAL((CFG_FLD_RELAY_MODE), force_relay),
+			REG_FLD_MASK(CFG_FLD_RELAY_MODE));
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_POSTMASK_MEM_ADDR,
+			addr, ~0);
+
+		if (postmask->data->is_support_34bits)
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_POSTMASK_MEM_ADDR_MSB,
+				(addr >> 32), ~0);
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + DISP_POSTMASK_MEM_LENGTH, size, ~0);
+
+		if (panel_ext && panel_ext->round_corner_en) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_POSTMASK_PAUSE_REGION,
+				REG_FLD_VAL((PAUSE_REGION_FLD_RDMA_PAUSE_START),
+				pause_start),
+				REG_FLD_MASK(PAUSE_REGION_FLD_RDMA_PAUSE_START));
+
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_POSTMASK_PAUSE_REGION,
+				REG_FLD_VAL((PAUSE_REGION_FLD_RDMA_PAUSE_END),
+				pause_end),
+				REG_FLD_MASK(PAUSE_REGION_FLD_RDMA_PAUSE_END));
+		}
+
+		postmask->pu_force_relay = force_relay;
+		postmask->pu_mem_addr = addr;
+		postmask->pu_mem_length = size;
+		postmask->pu_pause_start = pause_start;
+		postmask->pu_pause_end = pause_end;
+	} else {
+		if (addr == 0 || size == 0) {
+			DDPPR_ERR("%s, invalid postmaks addr/size: %d\n", __func__, size);
+			force_relay = 1;
+		} else if (postmask->postmask_force_relay) {
+			DDPINFO("%s, postmask force relay\n", __func__);
+			force_relay = 1;
+		}
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_POSTMASK_SIZE,
+			full_height, 0x1fff);
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_POSTMASK_CFG,
+			REG_FLD_VAL((CFG_FLD_RELAY_MODE), force_relay),
+			REG_FLD_MASK(CFG_FLD_RELAY_MODE));
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_POSTMASK_MEM_ADDR,
+			addr, ~0);
+
+		if (postmask->data->is_support_34bits)
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_POSTMASK_MEM_ADDR_MSB,
+				(addr >> 32), ~0);
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + DISP_POSTMASK_MEM_LENGTH, size, ~0);
+
+		if (panel_ext && panel_ext->round_corner_en) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_POSTMASK_PAUSE_REGION,
+				REG_FLD_VAL((PAUSE_REGION_FLD_RDMA_PAUSE_START),
+				panel_ext->corner_pattern_height),
+				REG_FLD_MASK(PAUSE_REGION_FLD_RDMA_PAUSE_START));
+
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_POSTMASK_PAUSE_REGION,
+				REG_FLD_VAL((PAUSE_REGION_FLD_RDMA_PAUSE_END),
+				full_height - panel_ext->corner_pattern_height_bot),
+				REG_FLD_MASK(PAUSE_REGION_FLD_RDMA_PAUSE_END));
+		}
+
+		postmask->pu_force_relay = force_relay;
+	}
+
+	return 0;
+}
+
+
 static const struct mtk_ddp_comp_funcs mtk_disp_postmask_funcs = {
 	.first_cfg = mtk_postmask_config,
 	.config = mtk_postmask_config,
@@ -663,6 +1014,8 @@ static const struct mtk_ddp_comp_funcs mtk_disp_postmask_funcs = {
 	.unprepare = mtk_postmask_unprepare,
 	.io_cmd = mtk_postmask_io_cmd,
 	.config_overhead = mtk_disp_postmark_config_overhead,
+	.config_overhead_v = mtk_disp_postmask_config_overhead_v,
+	.partial_update = mtk_postmask_set_partial_update,
 };
 
 static const struct component_ops mtk_disp_postmask_component_ops = {
