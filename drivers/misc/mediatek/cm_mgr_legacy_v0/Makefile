@@ -12,7 +12,6 @@
 #
 
 ccflags-y += \
-	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_v2/src/platform \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_v2/inc \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cm_mgr_legacy_v0 \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat \
@@ -22,7 +21,7 @@ ccflags-y += \
 	-I$(DEVICE_MODULES_PATH)/include \
 
 ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6761)),)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/mt6761
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_v2/src/plat_k6761
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/dramc/mt6761
 endif
 
