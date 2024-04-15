@@ -171,6 +171,8 @@ struct xhci_hcd_mtk {
 	struct regmap *uwk;
 	u32 uwk_reg_base;
 	u32 uwk_vers;
+	/* quirk */
+	u32 rxfifo_depth;
 	struct proc_dir_entry *root;
 	struct proc_dir_entry *testmode_file;
 };
