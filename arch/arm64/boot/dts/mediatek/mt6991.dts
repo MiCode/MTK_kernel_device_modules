@@ -9981,11 +9981,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			};
 		};
 
-		panel_edp: panel@1 {
-			compatible = "edp-panel";
-			status = "disabled";
-		};
-
 		pcie0: pcie@16910000 {
 			device_type = "pci";
 			compatible = "mediatek,mt6991-pcie";
