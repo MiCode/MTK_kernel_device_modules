@@ -2318,10 +2318,10 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"img,cam,mae,dbi,gpu_ovl";
 			node-100 = "SSPM_SLBC_CACHE_SIZE",
 				"pd,md,adsp,cpu,gpu,vdec_frame,vdec_ube,smmu,aov,",
-				"img,cam,mae,dbi,gpu_ovl,total,valid";
+				"img,cam,mae,dbi,gpu_ovl,null,total,valid";
 			node-101 = "SSPM_SLBC_CACHE_WAY",
 				"pd,md,adsp,cpu,gpu,vdec_frame,vdec_ube,smmu,aov,",
-				"img,cam,mae,dbi,gpu_ovl,total,buf_unused";
+				"img,cam,mae,dbi,gpu_ovl,null,total,buf_unused";
 			node-102 = "SSPM_VCORE_DVFS__DDR_DETAIL",
 				"EMI_MON,QOS_B,HR_BW,SW_R1,SW_R2,",
 				"SW_R3,MD,MD2,ADSP";
