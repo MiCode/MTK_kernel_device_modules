@@ -81,15 +81,11 @@ static inline struct mtk_disp_gamma *comp_to_gamma(struct mtk_ddp_comp *comp)
 	return container_of(comp, struct mtk_disp_gamma, ddp_comp);
 }
 
-void disp_gamma_get_gain_from_aal(struct mtk_ddp_comp *comp,
-	unsigned int gain[3], unsigned int bl, void *param);
-int disp_gamma_cfg_get_gain_from_aal(struct mtk_drm_crtc *mtk_crtc,
-	struct cmdq_pkt *handle, struct DISP_AAL_PARAM *aal_param, unsigned int bl, void *param);
 void disp_gamma_regdump(struct mtk_ddp_comp *comp);
 void disp_gamma_debug(struct drm_crtc *crtc, const char *opt);
 
 // for HWC LayerBrightness, backlight & gamma gain update by atomic
-int disp_gamma_set_silky_brightness_gain(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+int disp_gamma_set_gain(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	unsigned int gain[3], unsigned int gain_range);
 // for displayPQ update to swpm tppa
 unsigned int disp_gamma_bypass_info(struct mtk_drm_crtc *mtk_crtc);

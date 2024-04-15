@@ -3064,6 +3064,42 @@ static int disp_aal_cfg_clarity_set_reg(struct mtk_ddp_comp *comp,
 	return 0;
 }
 
+
+int disp_gamma_set_silky_brightness_gain(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle, struct DISP_AAL_PARAM *aal_param, unsigned int bl, void *param)
+{
+	struct DISP_AAL_ESS20_SPECT_PARAM *ess20_spect_param = param;
+	struct mtk_ddp_comp *comp;
+	unsigned int *gain = (unsigned int *)aal_param->silky_bright_gain;
+	unsigned int silky_gain_range = (unsigned int)aal_param->silky_gain_range;
+	struct mtk_ddp_comp *output_comp = NULL;
+	unsigned int connector_id = 0;
+
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (output_comp == NULL) {
+		DDPPR_ERR("%s: failed to get output_comp!\n", __func__);
+		return -1;
+	}
+	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
+
+	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_GAMMA, 0);
+	if ((!comp) || (param == NULL)) {
+		DDPINFO("[aal_kernel] comp is null\n");
+		return -EFAULT;
+	}
+
+	CRTC_MMP_MARK(0, gamma_backlight, gain[gain_r], bl);
+	mtk_leds_brightness_set(connector_id, bl, ess20_spect_param->ELVSSPN,
+				ess20_spect_param->flag);
+	DDPINFO("%s connector_id:%d, backlight:%d, flag:%d, elvss:%d\n",
+		__func__, connector_id, bl, ess20_spect_param->flag,
+		ess20_spect_param->ELVSSPN);
+
+	disp_gamma_set_gain(comp, handle, gain, silky_gain_range);
+
+	return 0;
+}
+
 static int disp_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
 {
@@ -3137,7 +3173,7 @@ static int disp_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 			aal_data->primary_data->ess20_spect_param.ELVSSPN,
 			aal_data->primary_data->ess20_spect_param.flag);
 
-		disp_gamma_cfg_get_gain_from_aal(mtk_crtc, handle,
+		disp_gamma_set_silky_brightness_gain(mtk_crtc, handle,
 			&aal_data->primary_data->aal_param,
 			aal_data->primary_data->backlight_set,
 			(void *)&aal_data->primary_data->ess20_spect_param);
