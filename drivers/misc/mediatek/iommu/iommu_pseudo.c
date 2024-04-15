@@ -286,9 +286,10 @@ EXPORT_SYMBOL_GPL(is_iommu_sec_on_mtee);
 #endif
 
 static const struct of_device_id mtk_iommu_pseudo_of_ids[] = {
-	{ .compatible = "mediatek,mt6833-iommu-pseudo" },
-	{ .compatible = "mediatek,mt6789-iommu-pseudo" },
 	{ .compatible = "mediatek,mt6765-iommu-pseudo" },
+	{ .compatible = "mediatek,mt6781-iommu-pseudo" },
+	{ .compatible = "mediatek,mt6789-iommu-pseudo" },
+	{ .compatible = "mediatek,mt6833-iommu-pseudo" },
 	{ .compatible = "mediatek,mt6877-iommu-pseudo" },
 	{ .compatible = "mediatek,mt6893-iommu-pseudo" },
 	{},
