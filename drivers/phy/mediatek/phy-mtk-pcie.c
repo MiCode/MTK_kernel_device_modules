@@ -29,6 +29,11 @@
 #define PEXTP_DIG_GLB_28		0x28
 #define RG_XTP_PCIE_MODE		BIT(3)
 #define RG_XTP_PHY_CLKREQ_N_IN		GENMASK(13, 12)
+#define PEXTP_DIG_GLB_38		0x38
+#define RG_XTP_TPLL_SET_STB_T_SEL	GENMASK(7, 2)
+#define TPLL_SET_STB_T_SEL_TO_3F	0x3f
+#define RG_XTP_TPLL_PWE_ON_STB_T_SEL	GENMASK(9, 8)
+#define TPLL_PWE_ON_STB_T_SEL_TO_3	0x3
 #define PEXTP_DIG_GLB_50		0x50
 #define RG_XTP_CKM_EN_L1S0		BIT(13)
 #define PEXTP_DIG_PROBE_OUT		0xd0
@@ -38,6 +43,9 @@
 #define PEXTP_DIG_GLB_A4		0xa4
 #define RG_XTP_FRC_TX_SWING		BIT(1)
 #define PEXTP_DIG_GLB_D0		0xd0
+#define PEXTP_DIG_GLB_F4		0xf4
+#define RG_XTP_TPLL_ISO_EN_STB_T_SEL	GENMASK(13, 12)
+#define TPLL_ISO_EN_STB_T_SEL_TO_3	0x3
 
 #define PEXTP_DIG_TPLL0_78		0x1078
 #define RG_XTP_VCO_CFIX_EN_GEN1		GENMASK(21, 20)
@@ -869,10 +877,22 @@ static int mtk_pcie_phy_init_6991(struct phy *phy)
 			 readl_relaxed(pcie_phy->sif_base + PEXTP_DIG_GLB_28),
 			 readl_relaxed(pcie_phy->sif_base + PEXTP_ANA_GLB_10_REG));
 	} else {
-		/* RC mode need adjust RG_CKM_BIAS_WAIT_PRD to avoid L1.2 exit fail */
+		/* RC mode need adjust PHY sequence to fix L1.2 issue */
 		mtk_phy_update_field(pcie_phy->ckm_base + XTP_CKM_DA_REG_38,
 				     RG_CKM_BIAS_WAIT_PRD,
 				     CKM_BIAS_WAIT_PRD_TO_4US);
+
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_GLB_38,
+				     RG_XTP_TPLL_SET_STB_T_SEL,
+				     TPLL_SET_STB_T_SEL_TO_3F);
+
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_GLB_38,
+				     RG_XTP_TPLL_PWE_ON_STB_T_SEL,
+				     TPLL_PWE_ON_STB_T_SEL_TO_3);
+
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_GLB_F4,
+				     RG_XTP_TPLL_ISO_EN_STB_T_SEL,
+				     TPLL_ISO_EN_STB_T_SEL_TO_3);
 
 		dev_info(dev, "CKM_38=%#x\n",
 			 readl_relaxed(pcie_phy->ckm_base + XTP_CKM_DA_REG_38));
