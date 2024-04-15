@@ -31,6 +31,7 @@
 		bootargs = "console=tty0 console=ttyS0,921600n1 root=/dev/ram \
 			vmalloc=400M slub_debug=OFZPU swiotlb=noforce \
 			initcall_debug=1 \
+			8250.nr_uarts=2 \
 			firmware_class.path=/vendor/firmware \
 			page_owner=on loop.max_part=7";
 			kaslr-seed = <0 0>;
@@ -2755,7 +2756,7 @@
 	};
 
 	apdma: dma-controller@10200d80 {
-		compatible = "mediatek,mt6577-uart-dma";
+		compatible = "mediatek,mt6779-uart-dma";
 		reg = <0 0x10200d80 0 0x80>,
 		      <0 0x10200e00 0 0x80>,
 		      <0 0x10200e80 0 0x80>,
@@ -2767,7 +2768,6 @@
 		clocks = <&infracfg_ao INFRACFG_AO_AP_DMA_CG>;
 		clock-names = "apdma";
 		#dma-cells = <1>;
-		dma-bits = <34>;
 		dma-requests = <4>;
 	};
 
