@@ -393,6 +393,14 @@ static const struct mfd_cell mt6357_devs[] = {
 		.name = "mt6357-efuse",
 		.of_compatible = "mediatek,mt6357-efuse",
 	}, {
+		.name = "mtk-battery-oc-throttling",
+		.of_compatible = "mediatek,mt6357-battery_oc_throttling",
+		.num_resources = ARRAY_SIZE(mt6357_battery_oc_resources),
+		.resources = mt6357_battery_oc_resources,
+	}, {
+		.name = "mtk-dynamic-loading-throttling",
+		.of_compatible = "mediatek,mt6357-dynamic_loading_throttling",
+	}, {
 		.name = "mt6357-lbat_service",
 		.of_compatible = "mediatek,mt6357-lbat_service",
 		.num_resources = ARRAY_SIZE(mt6357_lbat_service_resources),

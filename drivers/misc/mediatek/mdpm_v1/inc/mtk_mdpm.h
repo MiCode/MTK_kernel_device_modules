@@ -6,6 +6,10 @@
 #ifndef _MTK_MDPM_H_
 #define _MTK_MDPM_H_
 
+#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6761)
+#include "mtk_mdpm_platform_mt6761.h"
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6768)
 #include "mtk_mdpm_platform_mt6768.h"
 #endif

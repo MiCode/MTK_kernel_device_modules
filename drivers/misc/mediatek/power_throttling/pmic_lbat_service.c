@@ -8,6 +8,7 @@
 #include <linux/list.h>
 #include <linux/list_sort.h>
 #include <linux/interrupt.h>
+#include <linux/mfd/mt6357/registers.h>
 #include <linux/mfd/mt6358/registers.h>
 #include <linux/mfd/mt6359p/registers.h>
 #include <linux/mfd/mt6377/registers.h>
@@ -92,6 +93,22 @@ struct lbat_regs_t {
 	struct reg_t adc_out;
 	int volt_full;
 };
+
+struct lbat_regs_t mt6357_lbat_regs = {
+	.regmap_source = "parent_drvdata",
+	.en = {0},
+	.debt_max = {MT6357_AUXADC_LBAT0, 0xFF, 1},
+	.debt_min = {MT6357_AUXADC_LBAT0, 0xFF00, 1},
+	.det_prd_l = {MT6357_AUXADC_LBAT1, 0xFFFF, 1},
+	.det_prd_h = {MT6357_AUXADC_LBAT2, 0xF, 1},
+	.max_en = {MT6357_AUXADC_LBAT3, 0x3000, 1},
+	.volt_max = {MT6357_AUXADC_LBAT3, 0xFFF, 1},
+	.min_en = {MT6357_AUXADC_LBAT4, 0x3000, 1},
+	.volt_min = {MT6357_AUXADC_LBAT4, 0xFFF, 1},
+	.adc_out = {MT6357_AUXADC_ADC14, 0xFFF, 1},
+	.volt_full = 1800,
+};
+
 struct lbat_regs_t mt6358_lbat_regs = {
 	.regmap_source = "parent_drvdata",
 	.en = {0},
@@ -1112,13 +1129,14 @@ static int pmic_lbat_service_probe(struct platform_device *pdev)
 		regmap = chip->regmap;
 
 		switch (chip->chip_id) {
-			case MT6358_CHIP_ID:
-				mt6357_lbat_init_setting();
-				break;
-			default:
-				mt6359p_lbat_init_setting();
-				break;
-			}
+		case MT6357_CHIP_ID:
+		case MT6358_CHIP_ID:
+			mt6357_lbat_init_setting();
+			break;
+		default:
+			mt6359p_lbat_init_setting();
+			break;
+		}
 	} else {
 		regmap = dev_get_regmap(pdev->dev.parent, NULL);
 		mt6359p_lbat_init_setting();
@@ -1209,6 +1227,9 @@ static SIMPLE_DEV_PM_OPS(lbat_service_pm_ops, lbat_service_suspend,
 
 static const struct of_device_id lbat_service_of_match[] = {
 	{
+		.compatible = "mediatek,mt6357-lbat_service",
+		.data = &mt6357_lbat_regs,
+	}, {
 		.compatible = "mediatek,mt6358-lbat_service",
 		.data = &mt6358_lbat_regs,
 	}, {

@@ -9,6 +9,7 @@
 #include <linux/linear_range.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
+#include <linux/mfd/mt6357/registers.h>
 #include <linux/mfd/mt6358/registers.h>
 #include <linux/mfd/mt6359p/registers.h>
 #include <linux/mfd/mt6363/registers.h>
@@ -48,6 +49,25 @@ struct tag_bootmode {
 	u32 tag;
 	u32 bootmode;
 	u32 boottype;
+};
+
+struct dlpt_regs_t mt6357_dlpt_regs = {
+	.rgs_chrdet = {
+		MT6357_RGS_CHRDET_ADDR,
+		MT6357_RGS_CHRDET_MASK << MT6357_RGS_CHRDET_SHIFT,
+		MT6357_RGS_CHRDET_SHIFT
+	},
+	.uvlo_reg = {
+		MT6357_RG_UVLO_VTHL_ADDR,
+		MT6357_RG_UVLO_VTHL_MASK << MT6357_RG_UVLO_VTHL_SHIFT,
+		MT6357_RG_UVLO_VTHL_SHIFT
+	},
+	.uvlo_range = {
+		.min = 2500,
+		.min_sel = 0,
+		.max_sel = 8,
+		.step = 50,
+	},
 };
 
 struct dlpt_regs_t mt6358_dlpt_regs = {
@@ -621,6 +641,9 @@ static SIMPLE_DEV_PM_OPS(dlpt_pm_ops,
 
 static const struct of_device_id dynamic_loading_throttling_of_match[] = {
 	{
+		.compatible = "mediatek,mt6357-dynamic_loading_throttling",
+		.data = &mt6357_dlpt_regs,
+	}, {
 		.compatible = "mediatek,mt6358-dynamic_loading_throttling",
 		.data = &mt6358_dlpt_regs,
 	}, {
