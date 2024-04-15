@@ -271,7 +271,7 @@ wh_statistic_show(struct device *dev, struct device_attribute *attr, char *buf)
 static DEVICE_ATTR_RO(wh_statistic);
 
 #ifdef MDDP_EM_SUPPORT
-#define EM_CMD_BUF_SZ 32
+#define EM_CMD_BUF_SZ 512
 static uint8_t em_cmd_buf[EM_CMD_BUF_SZ];
 static int32_t em_cmd_app = -1;
 static int32_t em_cmd_status;

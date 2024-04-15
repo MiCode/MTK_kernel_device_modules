@@ -137,7 +137,7 @@ struct mddpw_md_notify_info_t {
 #define STATS_LLS_MAX_VHT_BW_NUM 3
 #define STATS_LLS_MAX_HE_BW_NUM 4
 #define STATS_LLS_MAX_EHT_BW_NUM 5
-#define BSS_NUM 4
+#define BSS_NUM 6
 #define AC_NUM 4
 #define STA_NUM 27
 
