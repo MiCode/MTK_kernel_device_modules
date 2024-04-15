@@ -322,6 +322,9 @@ enum fg_daemon_cmds {
 	FG_DAEMON_CMD_SET_BATTERY_CAPACITY,
 	FG_DAEMON_CMD_GET_BH_DATA,
 	FG_DAEMON_CMD_SEND_DAEMON_DATA,
+	FG_DAEMON_CMD_GET_SD_DATA,
+	FG_DAEMON_CMD_SEND_SD_DATA,
+	FG_DAEMON_CMD_SET_SELECT_ZCV,
 
 	FG_DAEMON_CMD_FROM_USER_NUMBER
 
@@ -346,7 +349,9 @@ enum Fg_kernel_cmds {
 	FG_KERNEL_CMD_FORCE_BAT_TEMP,
 	FG_KERNEL_CMD_SEND_BH_DATA,
 	FG_KERNEL_CMD_GET_DYNAMIC_CV,
-
+	FG_KERNEL_CMD_GET_DYNAMIC_GAUGE0,
+	FG_KERNEL_CMD_SEND_SHUTDOWN_DATA,
+	FG_KERNEL_CMD_GET_DYNAMIC_ZCV_TABLE,
 	FG_KERNEL_CMD_FROM_USER_NUMBER
 
 };
@@ -1074,6 +1079,9 @@ struct ag_center_data_st {
 	struct timespec64 times[3];
 };
 
+struct shutdown_data {
+	int data[7];
+};
 struct mtk_battery {
 	/*linux driver related*/
 	wait_queue_head_t  wait_que;
@@ -1297,7 +1305,9 @@ struct mtk_battery {
 
 	/* low bat bound */
 	int bat_voltage_low_bound;
+	int bat_voltage_low_bound_orig;
 	int low_tmp_bat_voltage_low_bound;
+	int low_tmp_bat_voltage_low_bound_orig;
 
 	/* for bat_plug_out*/
 	int bat_plug_out;
@@ -1307,6 +1317,8 @@ struct mtk_battery {
 
 	/* for BatteryNotify*/
 	unsigned int notify_code;
+
+	struct shutdown_data sd_data;
 };
 
 struct mtk_battery_manager {
@@ -1435,6 +1447,7 @@ extern int dump_pseudo100(struct mtk_battery *gm, enum charge_sel select);
 
 extern int bm_get_vsys(struct mtk_battery_manager *bm);
 extern int get_charger_vbat(struct mtk_battery_manager *bm);
+extern void reload_battery_zcv_table(struct mtk_battery *gm, int select_zcv);
 /*mtk_battery.c end */
 
 /* mtk_battery_algo.c */
@@ -1553,6 +1566,9 @@ extern void mtk_irq_thread_init(struct mtk_battery *gm);
 #define VBAT2_DET_VOLTAGE3	35000
 #define VSYS_DET_VOLTAGE1	3100
 #define VSYS_DET_VOLTAGE2	3000
+
+/* dynamic sd*/
+#define DYNAMIC_SHUTDOWN_MAX 200		/* mv */
 
 /* PCB setting */
 #define CALI_CAR_TUNE_AVG_NUM	60

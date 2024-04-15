@@ -16,7 +16,7 @@ int set_kernel_soc(struct mtk_battery *gm, int _soc)
 
 void set_fg_bat_tmp_c_gap(struct mtk_battery *gm, int tmp)
 {
-	battery_set_property(gm, BAT_PROP_UISOC, tmp);
+	/*battery_set_property(gm, BAT_PROP_UISOC, tmp);*/
 }
 
 void set_fg_time(struct mtk_battery *gm, int _time)

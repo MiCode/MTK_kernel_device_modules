@@ -1625,6 +1625,56 @@ static void fg_custom_parse_table(struct mtk_battery *gm,
 	kvfree(temp);
 }
 
+void reload_battery_zcv_table(
+	struct mtk_battery *gm, int select_zcv)
+{
+	int ret = 0, column = 0, i;
+	char node_name[128];
+	int bat_id;
+	struct device_node *np = gm->gauge->pdev->dev.of_node;
+	struct fuel_gauge_table_custom_data *fg_table_cust_data;
+
+	bm_err(gm, "[%s] reload_ZCV by select_zcv %d\n", __func__, select_zcv);
+	fg_table_cust_data = &gm->fg_table_cust_data;
+	bat_id = fgauge_get_profile_id(gm);
+	//reload ZCV TABLE BY VAL
+	for (i = 0; i < fg_table_cust_data->active_table_number; i++) {
+		if (select_zcv == 0)
+			ret = sprintf(node_name, "battery%d_profile_t%d_num", bat_id, i);
+		else
+			ret = sprintf(node_name, "battery%d_profile_t%d_cycle%d_num", bat_id, i, select_zcv);
+		if (ret >= 0)
+			fg_read_dts_val(gm, np, node_name,
+				&(fg_table_cust_data->fg_profile[i].size), 1);
+
+		/* compatiable with old dtsi table*/
+		if (select_zcv == 0)
+			ret = sprintf(node_name, "battery%d_profile_t%d_col", bat_id, i);
+		else
+			ret = sprintf(node_name, "battery%d_profile_t%d_cycle%d_col", bat_id, i, select_zcv);
+		if (ret >= 0) {
+			ret = fg_read_dts_val(gm, np, node_name, &(column), 1);
+			if (ret == -1)
+				column = 3;
+		} else
+			column = 3;
+
+		if (column < 3 || column > 8) {
+			bm_err(gm, "%s, %s,column:%d ERROR!",
+				__func__, node_name, column);
+			/* correction */
+			column = 3;
+		}
+		if (select_zcv == 0)
+			ret = sprintf(node_name, "battery%d_profile_t%d", bat_id, i);
+		else
+			ret = sprintf(node_name, "battery%d_profile_t%d_cycle%d", bat_id, i, select_zcv);
+		if (ret >= 0)
+			fg_custom_parse_table(gm, np, node_name,
+				fg_table_cust_data->fg_profile[i].fg_profile, column);
+	}
+}
+
 void fg_check_bat_type(struct platform_device *dev,
 	struct mtk_battery *gm)
 {
@@ -2126,6 +2176,8 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 		&(gm->bat_voltage_low_bound), 1);
 	fg_read_dts_val(gm, np, "LOW_TMP_BAT_VOLTAGE_LOW_BOUND",
 		&(gm->low_tmp_bat_voltage_low_bound), 1);
+	gm->bat_voltage_low_bound_orig = gm->bat_voltage_low_bound;
+	gm->low_tmp_bat_voltage_low_bound_orig = gm->low_tmp_bat_voltage_low_bound;
 	/* battery temperature  related*/
 	fg_read_dts_val(gm, np, "RBAT_PULL_UP_R", &(gm->rbat.rbat_pull_up_r), 1);
 	fg_read_dts_val(gm, np, "RBAT_PULL_UP_VOLT",
