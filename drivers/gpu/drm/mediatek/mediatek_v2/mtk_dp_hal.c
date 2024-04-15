@@ -1287,7 +1287,7 @@ void mhal_DPTx_Audio_TDM_PG_EN(struct mtk_dp *mtk_dp, const enum DPTX_ENCODER_ID
 				 AUDIO_8CH_EN_DP_ENCODER0_P0_FLDMASK);
 		if (!bEnable)	//TDM audio interface, audio channel number, 7: 8ch
 			msWrite2ByteMask(mtk_dp, REG_331C_DP_ENCODER1_P0 + reg_offset_enc,
-				(0x7 << TDM_AUDIO_DATA_CH_NUM_DP_ENCODER1_P0_FLDMASK_POS),
+				(0x1 << TDM_AUDIO_DATA_CH_NUM_DP_ENCODER1_P0_FLDMASK_POS),
 				TDM_AUDIO_DATA_CH_NUM_DP_ENCODER1_P0_FLDMASK);
 		break;
 
