@@ -50,6 +50,9 @@ obj-$(CONFIG_MTK_ECCCI_DRIVER) := ccci_fsm_all.o
 
 ccci_fsm_all-y := ap_md_mem.o \
 			ap_md_reg_dump.o \
+			ap_md_reg_dump_gen93.o \
+			ap_md_reg_dump_gen95.o \
+			ap_md_reg_dump_gen97.o \
 			ccci_fsm.o \
 			ccci_fsm_ioctl.o \
 			ccci_fsm_monitor.o \

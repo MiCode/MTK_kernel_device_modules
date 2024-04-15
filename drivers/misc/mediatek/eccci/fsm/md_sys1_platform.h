@@ -89,7 +89,7 @@ struct md_pll_reg {
 
 
 struct ccci_plat_ops {
-	void (*md_dump_reg)(void);
+	void (*md_dump_reg)(struct ccci_modem *md);
 	void (*lock_modem_clock_src)(int locked);
 	void (*get_md_bootup_status)(unsigned int *buff, int length);
 	void (*debug_reg)(struct ccci_modem *md, bool isr_skip_dump);
@@ -147,7 +147,7 @@ enum MD_REG_DUMP_ID {
 /* ADD_SYS_CORE */
 int ccci_modem_syssuspend(void);
 void ccci_modem_sysresume(void);
-void md_dump_register_6873(void);
+void legacy_md_dump_register(struct ccci_modem *md);
 
 #if IS_ENABLED(CONFIG_MTK_EMI)
 extern void mtk_emidbg_dump(void);
