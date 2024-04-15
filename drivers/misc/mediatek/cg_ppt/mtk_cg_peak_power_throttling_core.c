@@ -1299,6 +1299,84 @@ void cgppt_set_mo_multiscene(int value)
 }
 EXPORT_SYMBOL(cgppt_set_mo_multiscene);
 
+int cgppt_get_cpu_combo_usage_count(int idx)
+{
+	int value = 0;
+
+	if (g_dlpt_sram_layout_ptr && idx >= 0 && idx < CPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT) {
+		value = ioread32(&g_dlpt_sram_layout_ptr->gswrun_info.cpu_combo_usage_count[idx]);
+		// read clear
+		iowrite32(0, &g_dlpt_sram_layout_ptr->gswrun_info.cpu_combo_usage_count[idx]);
+	}
+	return value;
+}
+EXPORT_SYMBOL(cgppt_get_cpu_combo_usage_count);
+
+int cgppt_get_gpu_combo_usage_count(int idx)
+{
+	int value = 0;
+
+	if (g_dlpt_sram_layout_ptr && idx >= 0 && idx < GPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT) {
+		value = ioread32(&g_dlpt_sram_layout_ptr->gswrun_info.gpu_combo_usage_count[idx]);
+		// read clear
+		iowrite32(0, &g_dlpt_sram_layout_ptr->gswrun_info.gpu_combo_usage_count[idx]);
+	}
+	return value;
+}
+EXPORT_SYMBOL(cgppt_get_gpu_combo_usage_count);
+
+int cgppt_get_cpu_m_scaling_factor(void)
+{
+	int value = 0;
+
+	if (g_dlpt_sram_layout_ptr)
+		value = ioread32(&g_dlpt_sram_layout_ptr->cswrun_info.scaling_factor[1]); //M scaling factor
+	return value;
+
+}
+EXPORT_SYMBOL(cgppt_get_cpu_m_scaling_factor);
+
+int cgppt_get_cpu_b_scaling_factor(void)
+{
+	int value = 0;
+
+	if (g_dlpt_sram_layout_ptr)
+		value = ioread32(&g_dlpt_sram_layout_ptr->cswrun_info.scaling_factor[2]); //B scaling factor
+	return value;
+}
+EXPORT_SYMBOL(cgppt_get_cpu_b_scaling_factor);
+
+int cgppt_get_gpu_scaling_factor(void)
+{
+	int value = 0;
+
+	if (g_dlpt_sram_layout_ptr)
+		value = ioread32(&g_dlpt_sram_layout_ptr->gswrun_info.scaling_factor);    //GPU scaling factor
+	return value;
+}
+EXPORT_SYMBOL(cgppt_get_gpu_scaling_factor);
+
+int cgppt_get_combo_idx(void)
+{
+	int value = 0;
+
+	if (g_dlpt_sram_layout_ptr)
+		value = ioread32(&g_dlpt_sram_layout_ptr->gswrun_info.combo_idx);
+	return value;
+}
+EXPORT_SYMBOL(cgppt_get_combo_idx);
+
+int cgppt_get_cg_budget(void)
+{
+	int value = 0;
+
+	if (g_dlpt_sram_layout_ptr)
+		value = ioread32(&g_dlpt_sram_layout_ptr->gswrun_info.cgppb_mw);
+	return value;
+}
+EXPORT_SYMBOL(cgppt_get_cg_budget);
+
+
 
 /*
  * ========================================================
