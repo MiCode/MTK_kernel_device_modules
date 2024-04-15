@@ -145,7 +145,6 @@ static void set_devapc_subsys_power_off(int devapc_type)
 		devapc_type != DEVAPC_TYPE_MMUP &&
 		devapc_type != DEVAPC_TYPE_GPU &&
 		devapc_type != DEVAPC_TYPE_GPU1) {
-		pr_info(PFX "%s: incorrect devapc_type %d!\n", __func__, devapc_type);
 		return;
 	}
 
