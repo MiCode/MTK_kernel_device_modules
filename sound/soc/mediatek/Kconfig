@@ -360,3 +360,9 @@ config MTK_SCP_AUDIO
 	  that can be used with other platforms
 	  Select Y if you have such device.
 	  If unsure select "N".
++config MTK_USIP_DRIVER
+	tristate "Enable usip driver"
+	help
+	  This option enable mtk-usip driver support.
+	  Select Y if need support mtk-usip driver.
+	  If unsure select "N".
