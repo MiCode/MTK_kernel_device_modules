@@ -76,6 +76,7 @@ struct mme_module_t {
 	unsigned int write_pointer[MME_BUFFER_INDEX_MAX];
 	unsigned int buffer_units[MME_BUFFER_INDEX_MAX];
 	unsigned int buffer_bytes[MME_BUFFER_INDEX_MAX];
+	unsigned int buffer_start_pos[MME_BUFFER_INDEX_MAX]; // start postion of the debug buffer
 	unsigned int module_dump_bytes;
 	unsigned int reserve[2];
 };
