@@ -2239,7 +2239,10 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/mailbox/mtk-mbox-mailbox.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/pgboost/pgboost.ko")
         mgk_64_device_modules.remove("drivers/regulator/mt6370-regulator.ko")
-
+        mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/platform/v1/mtk-lpm-plat-v1-legacy.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/debug/k6893/mtk-lpm-dbg-mt6893-legacy.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/mtk-lpm-legacy.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/debug/v1/mtk-lpm-dbg-common-v1-legacy.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/eem_v2/mediatek_eem.ko")
 
     if "mt6765_overlay.config" in DEFCONFIG_OVERLAYS:
