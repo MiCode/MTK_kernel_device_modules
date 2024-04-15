@@ -58,9 +58,16 @@ EXPORT_SYMBOL_GPL(mt_leds_call_notifier);
 static int get_desp_index(int id)
 {
 	int i = 0;
-
+	if (IS_ERR_OR_NULL(leds_info)) {
+		pr_info("Get a null pointer exception of leds_info!!!");
+		return -1;
+	}
 	while (i < leds_info->lens) {
-//		pr_info("%s: leds %d connector id is %d\n", __func__, i, leds_info->leds[i]->connector_id);
+		pr_debug("leds %d connector id is %d", i, leds_info->leds[i]->connector_id);
+		if (IS_ERR_OR_NULL(leds_info->leds[i])) {
+			pr_info("Get a null pointer exception of leds_info->leds[%d]!!!", i);
+			return -1;
+		}
 		if (leds_info->leds[i]->connector_id < 0) {
 			struct mt_led_data *led_dat = container_of(leds_info->leds[i],
 				struct mt_led_data, desp);
