@@ -328,45 +328,21 @@ static long handleMmdvfsInfo(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
-static long handle_spmpower_info(unsigned long arg)
+static long handle_spmpower_info(unsigned long arg, void *mbraink_data)
 {
+	char *power_buffer = (char *)(mbraink_data);
 	int n = 0;
 	long ret = 0;
 
-	n = mbraink_get_power_info(mbraink_priv.power_buffer, MAX_BUF_SZ, CURRENT_DATA);
+	n = mbraink_get_power_info(power_buffer, MAX_BUF_SZ, CURRENT_DATA);
 	if (n <= 0) {
 		pr_notice("mbraink_get_power_info return failed, err %d\n", n);
-	} else {
-		mutex_lock(&power_lock);
+		return -EPERM;
+	}
 
-		if (mbraink_priv.suspend_power_info_en[0] == '1') {
-			if (mbraink_priv.suspend_power_buffer[0] != '\0'
-				&& mbraink_priv.suspend_power_data_size != 0) {
-				memcpy(mbraink_priv.power_buffer+n,
-					mbraink_priv.suspend_power_buffer,
-					mbraink_priv.suspend_power_data_size+1);
-				n = n + mbraink_priv.suspend_power_data_size;
-			}
-			mbraink_priv.suspend_power_buffer[0] = '\0';
-			mbraink_priv.suspend_power_data_size = 0;
-
-			if (mbraink_priv.resume_power_buffer[0] != '\0'
-				 && mbraink_priv.resume_power_data_size != 0) {
-				memcpy(mbraink_priv.power_buffer+n,
-					mbraink_priv.resume_power_buffer,
-					mbraink_priv.resume_power_data_size+1);
-				n = n + mbraink_priv.resume_power_data_size;
-			}
-			mbraink_priv.resume_power_buffer[0] = '\0';
-			mbraink_priv.resume_power_data_size = 0;
-		}
-
-		if (copy_to_user((char *)arg, mbraink_priv.power_buffer, n+1)) {
-			pr_notice("Copy Power_info to UserSpace error!\n");
-			mutex_unlock(&power_lock);
-			return -EPERM;
-		}
-		mutex_unlock(&power_lock);
+	if (copy_to_user((char *)arg, power_buffer, n+1)) {
+		pr_notice("Copy Power_info to UserSpace error!\n");
+		return -EPERM;
 	}
 	return ret;
 }
@@ -380,7 +356,9 @@ static long handle_video_info(unsigned long arg, void *mbraink_data)
 	n = mbraink_get_video_info(buffer);
 	if (n <= 0) {
 		pr_notice("mbraink_get_video_info return failed, err %d\n", n);
-	} else if (copy_to_user((char *)arg, buffer, n+1)) {
+		return -EPERM;
+	}
+	if (copy_to_user((char *)arg, buffer, n+1)) {
 		pr_notice("Copy Video_info to UserSpace error!\n");
 		return -EPERM;
 	}
@@ -1037,12 +1015,16 @@ static long mbraink_ioctl(struct file *filp,
 	switch (cmd) {
 	case RO_POWER:
 	{
-		ret = handle_spmpower_info(arg);
+		mbraink_data = kmalloc(MAX_BUF_SZ, GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_spmpower_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_VIDEO:
 	{
-		mbraink_data = kmalloc(128 * sizeof(char), GFP_KERNEL);
+		mbraink_data = kmalloc(128, GFP_KERNEL);
 		if (!mbraink_data)
 			goto End;
 		ret = handle_video_info(arg, mbraink_data);
@@ -1436,18 +1418,6 @@ static int mbraink_suspend(struct device *dev)
 {
 	int ret;
 
-	mutex_lock(&power_lock);
-	if (mbraink_priv.suspend_power_info_en[0] == '1') {
-		mbraink_priv.suspend_power_data_size =
-			mbraink_get_power_info(mbraink_priv.suspend_power_buffer,
-						MAX_BUF_SZ, SUSPEND_DATA);
-		if (mbraink_priv.suspend_power_data_size <= 0) {
-			pr_notice("mbraink_get_power_info return failed, err %d\n",
-						mbraink_priv.suspend_power_data_size);
-		}
-	}
-	mutex_unlock(&power_lock);
-
 	pr_info("[MBK_INFO] %s\n", __func__);
 	ret = pm_generic_suspend(dev);
 
@@ -1461,18 +1431,6 @@ static int mbraink_resume(struct device *dev)
 	ret = pm_generic_resume(dev);
 
 	pr_info("[MBK_INFO] %s\n", __func__);
-
-	mutex_lock(&power_lock);
-	if (mbraink_priv.suspend_power_info_en[0] == '1') {
-		mbraink_priv.resume_power_data_size =
-			mbraink_get_power_info(mbraink_priv.resume_power_buffer,
-						MAX_BUF_SZ, RESUME_DATA);
-		if (mbraink_priv.resume_power_data_size <= 0) {
-			pr_notice("mbraink_get_power_info return failed, err %d\n",
-				mbraink_priv.resume_power_data_size);
-		}
-	}
-	mutex_unlock(&power_lock);
 
 	return ret;
 }
@@ -1522,7 +1480,7 @@ static void mbraink_post_suspend(void)
 #endif
 
 	n += snprintf(netlink_buf, MAX_BUF_SZ,
-			"%s %lld:%lld:%lld:%lld:%lld %d:%d:%d:%d %d:%d:%d:%d",
+			"%s %lld:%lld:%lld:%lld:%lld %d:%d:%d:%d:%d:%d:%d:%d %d:%d:%d:%d:%d:%d:%d:%d",
 			NETLINK_EVENT_SYSRESUME,
 			mbraink_priv.last_suspend_timestamp,
 			mbraink_priv.last_resume_timestamp,
@@ -1533,10 +1491,18 @@ static void mbraink_post_suspend(void)
 			mbraink_priv.suspend_battery_buffer.qmaxt,
 			mbraink_priv.suspend_battery_buffer.precise_soc,
 			mbraink_priv.suspend_battery_buffer.precise_uisoc,
+			mbraink_priv.suspend_battery_buffer.quse2,
+			mbraink_priv.suspend_battery_buffer.qmaxt2,
+			mbraink_priv.suspend_battery_buffer.precise_soc2,
+			mbraink_priv.suspend_battery_buffer.precise_uisoc2,
 			resume_battery_buffer.quse,
 			resume_battery_buffer.qmaxt,
 			resume_battery_buffer.precise_soc,
-			resume_battery_buffer.precise_uisoc
+			resume_battery_buffer.precise_uisoc,
+			resume_battery_buffer.quse2,
+			resume_battery_buffer.qmaxt2,
+			resume_battery_buffer.precise_soc2,
+			resume_battery_buffer.precise_uisoc2
 	);
 
 	mbraink_netlink_send_msg(netlink_buf);
@@ -1720,11 +1686,6 @@ static int mbraink_dev_init(void)
 	dev_t mbraink_dev_no = 0;
 	int attr_ret = 0;
 
-	mbraink_priv.power_buffer[0] = '\0';
-	mbraink_priv.suspend_power_buffer[0] = '\0';
-	mbraink_priv.suspend_power_data_size = 0;
-	mbraink_priv.resume_power_buffer[0] = '\0';
-	mbraink_priv.resume_power_data_size = 0;
 	mbraink_priv.suspend_power_info_en[0] = '0';
 	mbraink_priv.last_suspend_timestamp = 0;
 	mbraink_priv.last_suspend_ktime = 0;
@@ -1945,6 +1906,7 @@ static void mbraink_dev_exit(void)
 	int ret = 0;
 #endif
 	device_remove_file(&mbraink_device, &dev_attr_mbraink_info);
+	device_remove_file(&mbraink_device, &dev_attr_mbraink_gpu);
 
 	device_unregister(&mbraink_device);
 	mbraink_device.class = NULL;

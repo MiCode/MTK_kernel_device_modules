@@ -6,13 +6,12 @@
 #ifndef MBRAINK_V6991_H
 #define MBRAINK_V6991_H
 
-#include <linux/ioctl.h>
-#include <linux/cdev.h>
-#include <linux/pid.h>
-
-struct mbraink_v6991_data {
-#define CHRDEV_NAME     "mbraink_v6991_chrdev"
-	struct cdev mbraink_v6991_cdev;
-};
+#include "mbraink_v6991_memory.h"
+#include "mbraink_v6991_audio.h"
+#include "mbraink_v6991_battery.h"
+#include "mbraink_v6991_power.h"
+#include "mbraink_v6991_gpu.h"
+#include "mbraink_v6991_gps.h"
+#include "mbraink_v6991_wifi.h"
 
 #endif /*end of MBRAINK_V6991_H*/

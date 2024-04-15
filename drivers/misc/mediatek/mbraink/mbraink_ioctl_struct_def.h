@@ -218,6 +218,10 @@ struct mbraink_battery_data {
 	int qmaxt;
 	int precise_soc;
 	int precise_uisoc;
+	int quse2;
+	int qmaxt2;
+	int precise_soc2;
+	int precise_uisoc2;
 };
 
 struct mbraink_feature_en {
