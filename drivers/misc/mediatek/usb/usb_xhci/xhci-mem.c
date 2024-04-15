@@ -415,6 +415,25 @@ void xhci_vendor_free_transfer_ring(struct xhci_hcd *xhci,
 		ops->free_transfer_ring(xhci, ring, ep_index);
 }
 
+static struct xhci_interrupter *xhci_vendor_alloc_interrupter(struct xhci_hcd *xhci,
+		int num_seg, gfp_t mem_flags)
+{
+	struct xhci_vendor_ops *ops = xhci_vendor_get_ops_(xhci);
+
+	if (ops && ops->alloc_interrupter)
+		return ops->alloc_interrupter(xhci, num_seg, mem_flags);
+
+	return 0;
+}
+
+static void xhci_vendor_free_interrupter(struct xhci_hcd *xhci, struct xhci_interrupter *ir)
+{
+	struct xhci_vendor_ops *ops = xhci_vendor_get_ops_(xhci);
+
+	if (ops && ops->free_interrupter)
+		return ops->free_interrupter(xhci, ir);
+}
+
 bool xhci_vendor_is_usb_offload_enabled(struct xhci_hcd *xhci,
 		struct xhci_virt_device *virt_dev, unsigned int ep_index)
 {
@@ -1920,7 +1939,7 @@ xhci_remove_interrupter(struct xhci_hcd *xhci, struct xhci_interrupter *ir)
 	}
 }
 
-static void
+void
 xhci_free_interrupter_(struct xhci_hcd *xhci, struct xhci_interrupter *ir)
 {
 	struct device *dev = xhci_to_hcd(xhci)->self.sysdev;
@@ -1944,6 +1963,7 @@ xhci_free_interrupter_(struct xhci_hcd *xhci, struct xhci_interrupter *ir)
 
 	kfree(ir);
 }
+EXPORT_SYMBOL_GPL(xhci_free_interrupter_);
 
 static struct xhci_device_context_array *xhci_vendor_alloc_dcbaa(
 		struct xhci_hcd *xhci, gfp_t flags)
@@ -1985,7 +2005,10 @@ void xhci_remove_secondary_interrupter_(struct usb_hcd *hcd, struct xhci_interru
 
 	spin_unlock_irq(&xhci->lock);
 
-	xhci_free_interrupter_(xhci, ir);
+	if (xhci_vendor_is_usb_offload_enabled(xhci, NULL, 0))
+		xhci_vendor_free_interrupter(xhci, ir);
+	else
+		xhci_free_interrupter_(xhci, ir);
 }
 EXPORT_SYMBOL_GPL(xhci_remove_secondary_interrupter_);
 
@@ -1999,7 +2022,10 @@ void xhci_mem_cleanup(struct xhci_hcd *xhci)
 	for (i = 0; i < xhci->max_interrupters; i++) {
 		if (xhci->interrupters[i]) {
 			xhci_remove_interrupter(xhci, xhci->interrupters[i]);
-			xhci_free_interrupter_(xhci, xhci->interrupters[i]);
+			if (xhci_vendor_is_usb_offload_enabled(xhci, NULL, 0))
+				xhci_vendor_free_interrupter(xhci, xhci->interrupters[i]);
+			else
+				xhci_free_interrupter_(xhci, xhci->interrupters[i]);
 			xhci->interrupters[i] = NULL;
 		}
 	}
@@ -2477,7 +2503,10 @@ xhci_create_secondary_interrupter_(struct usb_hcd *hcd, int num_seg)
 	if (!xhci->interrupters || xhci->max_interrupters <= 1)
 		return NULL;
 
-	ir = xhci_alloc_interrupter(xhci, num_seg, GFP_KERNEL);
+	if (xhci_vendor_is_usb_offload_enabled(xhci, NULL, 0))
+		ir = xhci_vendor_alloc_interrupter(xhci, num_seg, GFP_KERNEL);
+	else
+		ir = xhci_alloc_interrupter(xhci, num_seg, GFP_KERNEL);
 	if (!ir)
 		return NULL;
 
@@ -2496,7 +2525,10 @@ xhci_create_secondary_interrupter_(struct usb_hcd *hcd, int num_seg)
 	if (err) {
 		xhci_warn(xhci, "Failed to add secondary interrupter, max interrupters %d\n",
 			  xhci->max_interrupters);
-		xhci_free_interrupter_(xhci, ir);
+		if (xhci_vendor_is_usb_offload_enabled(xhci, NULL, 0))
+			xhci_vendor_free_interrupter(xhci, ir);
+		else
+			xhci_free_interrupter_(xhci, ir);
 		return NULL;
 	}
 

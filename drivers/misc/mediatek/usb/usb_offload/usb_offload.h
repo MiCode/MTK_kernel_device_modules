@@ -252,8 +252,7 @@ struct usb_audio_dev {
 struct usb_offload_dev {
 	struct device *dev;
 	struct xhci_hcd *xhci;
-	struct xhci_ring *event_ring;
-	struct xhci_erst *erst;
+	struct xhci_interrupter *ir_2nd;
 	struct xhci_erst_entry *backup_erst;
 	unsigned char *backup_ev_ring;
 	unsigned int num_entries_in_use;
