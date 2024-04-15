@@ -484,27 +484,26 @@ static int disp_tdshp_update_param(struct mtk_ddp_comp *comp,
 	struct mtk_disp_tdshp *tdshp_data = comp_to_tdshp(comp);
 	struct mtk_disp_tdshp_primary *primary_data = tdshp_data->primary_data;
 	int ret = 0;
-	struct DISP_TDSHP_REG *tdshp_regs, *old_tdshp_regs;
+	struct DISP_TDSHP_REG *tdshp_regs;
 
 	pr_notice("%s\n", __func__);
 
-	tdshp_regs = kmalloc(sizeof(struct DISP_TDSHP_REG), GFP_KERNEL);
-	if (tdshp_regs == NULL) {
-		DDPPR_ERR("%s: no memory\n", __func__);
-		return -EFAULT;
+	if (primary_data->tdshp_regs == NULL) {
+		tdshp_regs = kmalloc(sizeof(struct DISP_TDSHP_REG), GFP_KERNEL);
+		if (tdshp_regs == NULL) {
+			DDPPR_ERR("%s: no memory\n", __func__);
+			return -EFAULT;
+		}
+
+		primary_data->tdshp_regs = tdshp_regs;
 	}
 
 	if (user_tdshp_regs == NULL) {
 		ret = -EFAULT;
-		kfree(tdshp_regs);
 	} else {
-		memcpy(tdshp_regs, user_tdshp_regs,
-			sizeof(struct DISP_TDSHP_REG));
-
 		mutex_lock(&primary_data->data_lock);
-
-		old_tdshp_regs = primary_data->tdshp_regs;
-		primary_data->tdshp_regs = tdshp_regs;
+		memcpy(primary_data->tdshp_regs, user_tdshp_regs,
+			sizeof(struct DISP_TDSHP_REG));
 
 		pr_notice("%s: Set module(%d) lut\n", __func__, comp->id);
 		ret = disp_tdshp_write_tdshp_reg(comp, handle, 0);
@@ -523,9 +522,6 @@ static int disp_tdshp_update_param(struct mtk_ddp_comp *comp,
 				primary_data->tdshp_reg_valid = 1;
 		}
 		mutex_unlock(&primary_data->data_lock);
-
-		if (old_tdshp_regs != NULL)
-			kfree(old_tdshp_regs);
 	}
 
 	return ret;
