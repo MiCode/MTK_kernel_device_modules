@@ -1191,7 +1191,7 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 			throughput = max(throughput, task_pipe_tmp->throughput);
 		}
 	} else {
-		/* there is no time for this task, use mas throughput */
+		/* there is no time for this task, use max throughput */
 		if (unlikely(!tp)) {
 			mml_err("%s mml_topology_get_cache return null", __func__);
 			goto done;
