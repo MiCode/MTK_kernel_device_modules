@@ -891,6 +891,8 @@ void mnoc_hw_v1_50_init(void)
 	for (idx = 0; idx < NR_IOMMU; idx++)
 		iommu_tfrp[idx] = 0;
 
+	nr_apu_qos_engine = NR_APU_QOS_ENGINE;
+
 	LOG_DEBUG("-\n");
 }
 

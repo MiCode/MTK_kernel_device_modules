@@ -69,6 +69,7 @@ struct mnoc_plat_drv mnoc_drv;
 
 struct apusys_core_info *mnoc_core_info;
 
+int nr_apu_qos_engine;
 
 phys_addr_t get_apu_iommu_tfrp(unsigned int id)
 {
@@ -244,9 +245,9 @@ static int mnoc_probe(struct platform_device *pdev)
 	create_debugfs(mnoc_core_info->dbg_root);
 	mnoc_qos_create_sys(&pdev->dev);
 	spin_lock_init(&mnoc_spinlock);
-	apu_qos_counter_init(&pdev->dev);
 	mnoc_pmu_init();
 	mnoc_drv.init();
+	apu_qos_counter_init(&pdev->dev);
 
 	node = pdev->dev.of_node;
 	if (!node) {

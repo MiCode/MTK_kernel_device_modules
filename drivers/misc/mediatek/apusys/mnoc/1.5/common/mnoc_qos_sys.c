@@ -168,7 +168,7 @@ static ssize_t mnoc_apu_qos_bw_store(struct device *dev,
 	}
 
 	if (sscanf(buf, "%d %d %d", &core_id, &avg_bw, &peak_bw) == 3)
-		if (core_id < NR_APU_QOS_ENGINE) {
+		if (core_id < nr_apu_qos_engine) {
 			dev_info(dev, "set core %d, avb_bw %d, peak_bw %d ret %d\n",
 					core_id, avg_bw, peak_bw,
 					icc_set_bw(p_mnoc->engines[core_id].emi_icc_path,
