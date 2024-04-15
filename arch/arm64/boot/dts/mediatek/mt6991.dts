@@ -13087,7 +13087,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<&gce_m 30 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 					<&gce_m 31 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 					/* qos thread */
-					<&gce_m 6 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
+					<&gce_m 6 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
 					/* secure thread */
 					<&gce_m_sec 10 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
 					/* thread list end */
