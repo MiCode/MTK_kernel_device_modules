@@ -98,6 +98,17 @@
 #define IBUF_POLL_INTERVAL	10
 #define IBUF_POLL_TIMEOUT	100
 
+/* dma debug info*/
+#define DMA_DEFAULT_VALUE	0
+#define DMA_NOT_TX_REQUEST	-1
+#define DMA_POLL_CNT		-2
+#define DMA_DESC_CNT		-3
+#define DMA_RESET_FAIL		-4
+#define DMA_TX_ENABLE_FAIL	-5
+#define DMA_U_STATE		-6
+#define DMA_D_STATE		-7
+#define DMA_RX_ENABLE_FAIL	-8
+
 struct uart_info {
 	unsigned int wpt_reg;
 	unsigned int rpt_reg;
@@ -148,6 +159,7 @@ struct mtk_chan {
 	int chan_desc_count;
 	spinlock_t dma_lock;
 	atomic_t rxdma_state;
+	int chan_debug_value;
 
 	unsigned int irq_wg;
 	unsigned int rx_status;
@@ -646,7 +658,7 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 	if (c->is_hub_port) {
 		if (!mtk_uart_get_tx_res_status()) {
-			pr_info("[WARN]%s, tx_request is not set\n", __func__);
+			c->chan_debug_value = DMA_NOT_TX_REQUEST; /* tx_request is not set */
 			return;
 		}
 	}
@@ -660,9 +672,13 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 		poll_cnt--;
 	}
 
-	if ((poll_cnt == 0) || (c->chan_desc_count <= 0)) {
-		pr_info("[WARN] %s, c->chan_desc_count[%d], poll_cnt[%d]\n",
-			__func__, c->chan_desc_count, poll_cnt);
+	if (poll_cnt == 0) {
+		c->chan_debug_value = DMA_POLL_CNT; /* poll_cnt ==0 */
+		return;
+	}
+
+	if (c->chan_desc_count <= 0) {
+		c->chan_debug_value = DMA_DESC_CNT; /* chan_desc_count <=0 */
 		return;
 	}
 	wpt = mtk_uart_apdma_read(c, VFF_ADDR);
@@ -677,8 +693,7 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 		rst_status = mtk_uart_apdma_read(c, VFF_RST);
 		if (rst_status != 0) {
 			udelay(5);
-			pr_info("%s: apdma: rst_status: 0x%x, new rst_status: 0x%x!\n",
-				__func__, rst_status, mtk_uart_apdma_read(c, VFF_RST));
+			c->chan_debug_value = DMA_RESET_FAIL; /* apdma reset fail */
 		}
 	}
 
@@ -696,7 +711,7 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 
 	mtk_uart_apdma_write(c, VFF_EN, VFF_EN_B);
 	if (mtk_uart_apdma_read(c, VFF_EN) != VFF_EN_B)
-		dev_err(c->vc.chan.device->dev, "Enable TX fail\n");
+		c->chan_debug_value = DMA_TX_ENABLE_FAIL; /* Enable TX fail */
 
 	if (!mtk_uart_apdma_read(c, VFF_LEFT_SIZE)) {
 		mtk_uart_apdma_write(c, VFF_INT_EN, VFF_TX_INT_EN_B);
@@ -735,7 +750,7 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 				memcpy(c->rec_info[idx].rec_buf, ptr,
 					min((unsigned int)dump_len, c->rec_info[idx].trans_len));
 		} else {
-			dev_info(c->vc.chan.device->dev, "[%s] u_state==NULL\n", __func__);
+			c->chan_debug_value = DMA_U_STATE; /* u_state==NULL */
 		}
 	}
 #endif
@@ -764,7 +779,7 @@ static void mtk_uart_apdma_start_rx(struct mtk_chan *c)
 	int idx;
 
 	if (d == NULL) {
-		dev_info(c->vc.chan.device->dev, "%s:[%d] FIX ME1!", __func__, c->irq);
+		c->chan_debug_value = DMA_D_STATE; /* FIX ME1! */
 		return;
 	}
 	idx = (unsigned int)(c->rec_idx % UART_RECORD_COUNT);
@@ -798,7 +813,7 @@ static void mtk_uart_apdma_start_rx(struct mtk_chan *c)
 #endif
 	mtk_uart_apdma_write(c, VFF_EN, VFF_EN_B);
 	if (mtk_uart_apdma_read(c, VFF_EN) != VFF_EN_B)
-		dev_err(c->vc.chan.device->dev, "Enable RX fail\n");
+		c->chan_debug_value = DMA_RX_ENABLE_FAIL;  /* Enable RX fail */
 }
 
 /* vchan_cookie_complete use irq_thread */
@@ -1025,7 +1040,7 @@ static irqreturn_t mtk_uart_apdma_irq_handler(int irq, void *dev_id)
 	//spin_unlock_irqrestore(&c->vc.lock, flags);
 	spin_unlock(&c->vc.lock);
 	if (current_dir == DMA_DEV_TO_MEM) {
-		if (num % 5000 == 2)
+		if ((num != 2) && (num % 5000 == 2))
 			pr_debug("debug: %s: VFF_VALID_SIZE=0, num[%llu], flag_state[0x%x]\n",
 				__func__, num, flag_state);
 	} else if (current_dir == DMA_MEM_TO_DEV) {
@@ -1231,8 +1246,10 @@ static void mtk_uart_apdma_issue_pending(struct dma_chan *chan)
 	struct mtk_chan *c = to_mtk_uart_apdma_chan(chan);
 	struct virt_dma_desc *vd;
 	unsigned long flags;
+	int debug_value = 0;
 
 	spin_lock_irqsave(&c->vc.lock, flags);
+	c->chan_debug_value = DMA_DEFAULT_VALUE;
 	if (vchan_issue_pending(&c->vc)) {
 		vd = vchan_next_desc(&c->vc);
 		c->desc = to_mtk_uart_apdma_desc(&vd->tx);
@@ -1242,8 +1259,10 @@ static void mtk_uart_apdma_issue_pending(struct dma_chan *chan)
 		else if (c->dir == DMA_MEM_TO_DEV)
 			mtk_uart_apdma_start_tx(c);
 	}
-
+	debug_value = c->chan_debug_value;
 	spin_unlock_irqrestore(&c->vc.lock, flags);
+	if(debug_value)
+		pr_info("[WARN]%s, debug_value[%d]\n", __func__, debug_value);
 }
 
 static int mtk_uart_apdma_slave_config(struct dma_chan *chan,
