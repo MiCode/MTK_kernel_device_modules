@@ -824,6 +824,119 @@ cpus {
 		nvmem-names = "mtk_efuse";
 		nvmem-cells = <&efuse_segment>;
 		nvmem-cell-names = "efuse_segment_cell";
+		infracfg = <&infracfg_ao_clk>;
+		devinfo-idx = <0xc8 0xcc 0xd0 0xd4 0xd8 0xdc 0xe0 0xe4 0xe8 0xec
+			0xf0 0xf4 0xf8 0xfc 0x100 0x104 0x108 0x10c>;
+		devinfo-mcl50 = <0x00000001 0x0 0x5a1e242a 0x57142476
+			0x49172454 0x0 0x0 0x4d152457 0x00000000 0x56ec00dc
+			0x081800a6 0x6f572444 0x725c244d 0x1b031b03 0x1b031b03
+			0x00000000 0x1b031b03 0x1b031b03>;
+		devinfo = <
+			0x0
+			0x6610240a
+			0x98eb2424
+			0x4112243e
+			0x70152430
+			0x591f2450
+			0x4513243c
+			0x70152430
+			0x2e152404
+			0x56112477
+			0x3914243f
+			0xc3990089
+			0xdc910089
+			0x1b031b03
+			0x1b031b03
+			0x1b031b03
+			0x1b031b03
+			0x1b031b03
+		>;
+		devinfo-fake = <1>;
+		devinfo-fake-ignore = <0x9860>;
+		golden-temp = <0x1d0>;
+		golden-temp-mask = <0xff000000>;
+		golden-temp-default = <50>;
+		gpu-vb = <1>;
+		gpu-vb-efuse = <0x0120 0x1e00000>;
+		gpu-vb-opp0 = <80000 80000 80000 80000 76250 72500 70000>;
+		gpu-vb-opp0-mcl50 = <80000>;
+		eemg_detectors = "EEMG_DET_GPU", "EEMG_DET_GPU_HI";
+		EEMG_DET_GPU {
+			ctrl_id = <0>;
+			features = <0x2>;
+			max_freq_khz = <675000>;
+			VBOOT = <0x38>;
+			VMAX = <0x60>;
+			VMIN = <0x0218 0x7>;
+			VMIN-idx = <0x18 0x18 0x20 0x18>;
+			eemg_v_base = <40000>;
+			eemg_step = <625>;
+			pmic_base = <0>;
+			pmic_step = <625>;
+			DETWINDOW = <0xa28>;
+			DTHI = <0x01>;
+			DTLO = <0xfe>;
+			DETMAX = <0xffff>;
+			AGECONFIG = <0x555555>;
+			AGEM = <0x0>;
+			DVTFIXED = <0x1>;
+			loo_role = <1>;
+			loo_couple = <1>;
+			turn_pt = <6>;
+			VCO = <0x18>;
+			DCONFIG = <1>;
+			EEMCTL0 = <0x00540003>;
+			low_temp_off = <4>;
+			extra_low_temp_off = <7>;
+			high_temp_off = <0>;
+			volt_policy = <1>;
+			DCMDET = <13 0x0000ff00>;
+			DCBDET = <13 0x000000ff>;
+			MTDES = <16 0x000000ff>;
+			EEMINITEN = <16 0x00000100>;
+			EEMMONEN = <16 0x00000200>;
+			SPEC = <16 0x0000e000>;
+			BDES = <16 0x00ff0000>;
+			MDES = <16 0xff000000>;
+		};
+		EEMG_DET_GPU_HI {
+			ctrl_id = <1>;
+			features = <0x3>;
+			max_freq_khz = <836000>;
+			VBOOT = <0x38>;
+			VMAX = <0x60>;
+			VMIN = <0x0218 0x7>;
+			VMIN-idx = <0x18 0x18 0x20 0x18>;
+			eemg_v_base = <40000>;
+			eemg_step = <625>;
+			pmic_base = <0>;
+			pmic_step = <625>;
+			DETWINDOW = <0xa28>;
+			DTHI = <0x01>;
+			DTLO = <0xfe>;
+			DETMAX = <0xffff>;
+			AGECONFIG = <0x555555>;
+			AGEM = <0x0>;
+			DVTFIXED = <0x6>;
+			loo_role = <2>;
+			loo_couple = <0>;
+			turn_pt = <6>;
+			VCO = <0x18>;
+			DCONFIG = <1>;
+			EEMCTL0 = <0x00540003>;
+			low_temp_off = <4>;
+			extra_low_temp_off = <7>;
+			high_temp_off = <0>;
+			volt_policy = <1>;
+			DCMDET = <13 0x0000ff00>;
+			DCBDET = <13 0x000000ff>;
+			MTDES = <15 0x000000ff>;
+			EEMINITEN = <15 0x00000100>;
+			EEMMONEN = <15 0x00000200>;
+			SPEC = <15 0x0000e000>;
+			BDES = <15 0x00ff0000>;
+			MDES = <15 0xff000000>;
+		};
 	};
 
 	dfd_mcu: dfd_mcu@0c600000 {
