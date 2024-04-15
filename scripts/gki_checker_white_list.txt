@@ -110,7 +110,13 @@ f mm/page_alloc.c
 f mm/memory.c
 f mm/mempool.c
 f mm/zsmalloc.c
+f net/core/skbuff.c
+f net/core/gro.c
+f net/core/dev.c
 f net/core/rtnetlink.c
+f net/ipv4/ip_forward.c
+f net/ipv4/ip_input.c
+f net/ipv4/ip_output.c
 f security/selinux/avc.c
 f security/selinux/include/avc.h
 f include/linux/dma-buf.h

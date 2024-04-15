@@ -1,0 +1,8 @@
+config MTK_UDP_GRO_DEBUG
+	tristate "MediaTek Network UDP GRO Debug"
+	help
+	  This is the network for MediaTek kernel UDP GRO debug.
+	  When GRO packet is merged and skb->tail is pulled.
+	  Only for udp GRO packets.
+	  Only for GRO fraglist mode.
+	  Only for fraglist is NULL and gso_size is not zero.
