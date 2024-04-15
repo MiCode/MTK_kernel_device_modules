@@ -943,7 +943,7 @@
 	};
 };
 
-&spmi {
+&spmi_bus {
 	grpid = <11>;
 	mt6362_9: mt6362@9 {
 		compatible = "mediatek,mt6362";
