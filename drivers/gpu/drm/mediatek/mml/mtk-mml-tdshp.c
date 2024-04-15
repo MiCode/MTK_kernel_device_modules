@@ -523,7 +523,7 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 		if (cfg->info.mode == MML_MODE_DDP_ADDON ||
 			cfg->info.mode == MML_MODE_DIRECT_LINK) {
 			/* enable to crop */
-			tdshp_relay(comp, pkt, base_pa, alpha);
+			tdshp_relay(comp, pkt, base_pa, alpha | 0x1);
 			cmdq_pkt_write(pkt, NULL,
 				base_pa + tdshp->data->reg_table[TDSHP_00], 0, 1 << 31);
 		} else {
