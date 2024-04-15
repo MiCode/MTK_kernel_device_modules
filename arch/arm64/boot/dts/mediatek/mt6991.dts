@@ -111,6 +111,8 @@
 			dsi0 = &dsi0;
 			dsi1 = &dsi1;
 			dsi2 = &dsi2;
+			y2r0 = &disp_y2r0;
+			mdp-rdma0 = &disp_mdp_rdma0;
 			mutex0 = &disp1_mutex0;
 			wdma10 = &ovl_wdma0;
 			wdma11 = &ovl_wdma1;
@@ -6373,6 +6375,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			status = "disabled";
 		};
 
+		dsi1_te: dsi1-te {
+			compatible = "mediatek, dsi1_te-eint";
+			status = "disabled";
+		};
+
 		gce: gce@300c0000 {
 			compatible = "mediatek,mt6991-gce";
 			reg = <0 0x300c0000 0 0x80000>;
@@ -8672,9 +8679,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,disp1_dsi1",
 					"mediatek,mt6991-dsi";
 			reg = <0 0x324a0000 0 0x1000>;
-			interrupts = <GIC_SPI 462 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 456 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSI1_DISP>,
-				 <&dispsys1_config_clk CLK_MM1_MOD1_DISP>,
+				<&dispsys1_config_clk CLK_MM1_MOD2_DISP>,
 				 <&mipi_tx_config1>;
 			clock-names = "engine", "digital", "hs";
 			phys = <&mipi_tx_config1>;
@@ -8686,15 +8693,39 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,disp1_dsi2",
 					"mediatek,mt6991-dsi";
 			reg = <0 0x324b0000 0 0x1000>;
-			interrupts = <GIC_SPI 463 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 457 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSI2_DISP>,
-				 <&dispsys1_config_clk CLK_MM1_MOD1_DISP>,
+				<&dispsys1_config_clk CLK_MM1_MOD3_DISP>,
 				 <&mipi_tx_config2>;
 			clock-names = "engine", "digital", "hs";
 			phys = <&mipi_tx_config2>;
 			phy-names = "dphy";
 			status = "disabled";
 		};
+
+		disp_y2r0: disp-y2r0@32210000 {
+			compatible = "mediatek,disp_y2r0",
+					"mediatek,mt6991-disp-y2r";
+			reg = <0 0x32210000 0 0x1000>;
+			interrupts = <GIC_SPI 457 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys_config_clk CLK_MM_DISP_Y2R0_DISP>;
+		};
+
+		disp_mdp_rdma0: disp-mdp-rdma0@32170000 {
+			compatible = "mediatek,disp_mdp_rdma0",
+						"mediatek,mt6991-disp-mdp-rdma";
+			reg = <0 0x32170000 0 0x1000>;
+			interrupts = <GIC_SPI 458 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys_config_clk CLK_MM_MDP_RDMA0_DISP>;
+			mediatek,larb = <&smi_larb32 SMMU_L32_P6_DISP_MDP_RDMA0>;
+			mtk,smmu-shared = <&mm_smmu_disp>;
+			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L32_P6_DISP_MDP_RDMA0)
+						&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "DDP_COMPONENT_MDP_RDMA0_hrt_qos";
+		};
+
 
 		disp_wdma1: disp1-wdma1@325a0000 {
 			compatible = "mediatek,disp_wdma1",
