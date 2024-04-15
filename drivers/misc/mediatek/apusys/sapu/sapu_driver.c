@@ -212,8 +212,8 @@ long apusys_sapu_internal_ioctl(struct file *filep, unsigned int cmd, void __use
 			return ret;
 		}
 
-		// ha_transfer.sec_handle = 0;
-		get_secure_handle(&mem_info, &ha_transfer.sec_handle);
+		ha_transfer.sec_handle = 0;
+		// get_secure_handle(&mem_info, &ha_transfer.sec_handle);
 		get_apu_iova(&mem_info, &ha_transfer.dma_addr);
 
 		ret = sapu_ha_bridge(&mem_info, &ha_transfer);
