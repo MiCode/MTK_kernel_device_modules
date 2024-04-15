@@ -1271,7 +1271,7 @@ void fpsgo_sbe_rescue_legacy(struct render_info *thr, int start, int enhance,
 				max_cap_b, max_cap_m, max_util, max_util_b,
 				max_util_m, 0, FPSGO_JERK_FIRST);
 		}
-		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "sbe rescue legacy");
+		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "sbe rescue");
 	}
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, blc_wt, "perf idx");
 
