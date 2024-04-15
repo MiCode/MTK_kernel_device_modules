@@ -329,7 +329,7 @@
 		idle-states {
 			entry-method = "arm,psci";
 			cpuoff_l: cpuoff_l {
-				compatible = "mediatek,idle-state";
+				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00010001>;
 				local-timer-stop;
 				entry-latency-us = <50>;
@@ -337,7 +337,7 @@
 				min-residency-us = <1600>;
 			};
 			cpuoff_b: cpuoff_b {
-				compatible = "mediatek,idle-state";
+				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00010001>;
 				local-timer-stop;
 				entry-latency-us = <50>;
@@ -345,7 +345,7 @@
 				min-residency-us = <1400>;
 			};
 			clusteroff_l: clusteroff_l {
-				compatible = "mediatek,idle-state";
+				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010001>;
 				local-timer-stop;
 				entry-latency-us = <100>;
@@ -353,7 +353,7 @@
 				min-residency-us = <2100>;
 			};
 			clusteroff_b: clusteroff_b {
-				compatible = "mediatek,idle-state";
+				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010001>;
 				local-timer-stop;
 				entry-latency-us = <100>;
@@ -361,7 +361,7 @@
 				min-residency-us = <1900>;
 			};
 			mcusysoff: mcusysoff {
-				compatible = "mediatek,idle-state";
+				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010002>;
 				local-timer-stop;
 				entry-latency-us = <300>;
@@ -369,7 +369,7 @@
 				min-residency-us = <2600>;
 			};
 			s2idle: s2idle {
-				compatible = "mediatek,idle-state";
+				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010100>;
 				local-timer-stop;
 				entry-latency-us = <500>;
@@ -384,22 +384,26 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
-		suspend-method = "s2idle";
-		cpupm-method = "mcu";
+		suspend-method = "enable";
+
+		logger-enable-states = "mcusysoff";
 
 		irq-remain = <&edge_keypad &edge_mdwdt>,
-				<&level_vpu_core0 &level_vpu_core1>,
-				<&level_mtk_mdla0 &level_edma0>,
 				<&level_mali0 &level_mali1>,
 				<&level_mali2 &level_mali3 &level_mali4>,
-				<&level_i2c0>,
-				<&level_btif_tx &level_btif_rx &level_bt>,
+				<&level_mtk_mdla>,
+				<&level_usb_host>,
 				<&level_cam1 &level_cam2>;
 
 		resource-ctrl = <&bus26m &infra &syspll>,
 				<&dram_s0 &dram_s1>;
 
 		constraints = <&rc_bus26m &rc_syspll &rc_dram>;
+		spm-cond = <&spm_cond_cg &spm_cond_pll>;
+		cg-shift = <0>; /* cg blocking index */
+		pll-shift = <16>; /* pll blocking index */
+
+		mcusys-cnt-chk = <1>;
 
 		cpupm_sysram: cpupm-sysram@0011b000 {
 			compatible = "mediatek,cpupm-sysram";
@@ -414,27 +418,11 @@
 		irq-remain-list {
 			edge_keypad: edge_keypad {
 				target = <&keypad>;
-				value = <1 0 0 0x4>;
+				value = <1 0 0 0x04>;
 			};
 			edge_mdwdt: edge_mdwdt {
 				target = <&mddriver>;
-				value = <1 0 0x80000000 0x02000000>;
-			};
-			level_vpu_core0: level_vpu_core0 {
-				target = <&vpu_core0>;
-				value = <0 0 0 0>;
-			};
-			level_vpu_core1: level_vpu_core1 {
-				target = <&vpu_core1>;
-				value = <0 0 0 0>;
-			};
-			level_mtk_mdla0: level_mtk_mdla0 {
-				target = <&mtk_mdla>;
-				value = <0 0 0 0>;
-			};
-			level_edma0: level_edma0 {
-				target = <&edma0>;
-				value = <0 0 0 0>;
+				value = <1 0 0 0x02000000>;
 			};
 			level_mali0: level_mali0 {
 				target = <&mali>;
@@ -456,20 +444,12 @@
 				target = <&mali>;
 				value = <0 4 0 0>;
 			};
-			level_i2c0: level_i2c0 {
-				target = <&i2c0>;
+			level_mtk_mdla: level_mtk_mdla {
+				target = <&mtk_mdla>;
 				value = <0 0 0 0>;
 			};
-			level_btif_tx: level_btif_tx {
-				target = <&btif>;
-				value = <0 1 0 0>;
-			};
-			level_btif_rx: level_btif_rx {
-				target = <&btif>;
-				value = <0 2 0 0>;
-			};
-			level_bt: level_bt {
-				target = <&bt>;
+			level_usb_host: level_usb_host {
+				target = <&usb_host>;
 				value = <0 0 0 0>;
 			};
 			level_cam1: level_cam1 {
@@ -507,16 +487,42 @@
 
 		constraint-list {
 			rc_bus26m: rc_bus26m {
+				rc-name = "bus26m";
 				id = <0x00000000>;
 				value = <1>;
+				cond-info = <1>;
 			};
 			rc_syspll: rc_syspll {
+				rc-name = "syspll";
 				id = <0x00000001>;
 				value = <1>;
+				cond-info = <1>;
 			};
 			rc_dram: rc_dram {
+				rc-name = "dram";
 				id = <0x00000002>;
 				value = <1>;
+				cond-info = <1>;
+			};
+		};
+		/* FIXME */
+		spm-cond-list {
+			spm_cond_cg: spm_cond_cg {
+				cg-name = "MTCMOS_0",
+					"INFRA_0",
+					"INFRA_1",
+					"INFRA_2",
+					"INFRA_3",
+					"MMSYS_0",
+					"MMSYS_1",
+					"MMSYS_2";
+			};
+			spm_cond_pll: spm_cond_pll {
+				pll-name = "UNIVPLL",
+					"MFGPLL",
+					"MSDCPLL",
+					"TVPLL",
+					"MMPLL";
 			};
 		};
 	};
