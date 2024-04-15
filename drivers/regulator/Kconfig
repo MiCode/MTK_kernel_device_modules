@@ -83,7 +83,7 @@ config DEVICE_MODULES_REGULATOR_MT6360
 
 config REGULATOR_MT6362
 	tristate "MT6362 SPMI Regulator driver"
-	depends on MFD_MT6362
+	depends on DEVICE_MODULES_MFD_MT6397
 	help
 	  Say yes here to have support for the MT6362 Regulator
 	  Include six BUCKs and seven LDOs.

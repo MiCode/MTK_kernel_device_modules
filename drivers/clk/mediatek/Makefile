@@ -8,6 +8,7 @@ obj-$(CONFIG_DEVICE_MODULES_COMMON_CLK_MEDIATEK) += clk-common.o
 clk-common-$(CONFIG_DEVICE_MODULES_COMMON_CLK_MEDIATEK) += clk-mtk.o clk-pll.o clk-gate.o clk-apmixed.o clk-cpumux.o reset.o clk-mux.o clkchk.o clk-fmeter.o mtk-pd-chk.o clkdbg.o
 obj-$(CONFIG_DEVICE_MODULES_COMMON_CLK_MEDIATEK) += clk-disable-unused.o
 
+ifneq ($(wildcard $(srctree)/$(src)/clk-mt6853.c),)
 obj-$(CONFIG_COMMON_CLK_MT6853) += clk-mt6853.o
 obj-$(CONFIG_COMMON_CLK_MT6853_APU0) += clk-mt6853-apu0.o
 obj-$(CONFIG_COMMON_CLK_MT6853_APU1) += clk-mt6853-apu1.o
@@ -32,7 +33,7 @@ obj-$(CONFIG_COMMON_CLK_MT6853_MMSYS_CONFIG) += clk-mt6853-mm.o
 obj-$(CONFIG_COMMON_CLK_MT6853_SCP_ADSP) += clk-mt6853-scp_par.o
 obj-$(CONFIG_COMMON_CLK_MT6853_VDEC_GCON) += clk-mt6853-vdec.o
 obj-$(CONFIG_COMMON_CLK_MT6853_VENC_GCON) += clk-mt6853-venc.o
-
+endif
 ifneq ($(wildcard $(srctree)/$(src)/clk-mt6877.c),)
 obj-$(CONFIG_COMMON_CLK_MT6877) += clk-mt6877.o clk-bringup.o
 obj-$(CONFIG_COMMON_CLK_MT6877) += clk-mt6877-pg.o
@@ -234,11 +235,13 @@ ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_V0)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v0/
 endif
 
-obj-$(CONFIG_COMMON_CLK_MT6853) += clk-chk.o
-clk-chk-$(CONFIG_COMMON_CLK_MT6853) += clkchk.o clkchk-mt6853.o
+ifneq ($(wildcard $(srctree)/$(src)/clk-mt6853.c),)
+obj-$(CONFIG_COMMON_CLK_MT6853) += clk-chk-mt6853.o
+clk-chk-mt6853-$(CONFIG_COMMON_CLK_MT6853) += clkchk-mt6853.o
 ifeq ($(CONFIG_DEBUG_FS), y)
-obj-$(CONFIG_COMMON_CLK_MT6853) += clk-dbg.o
-clk-dbg-$(CONFIG_COMMON_CLK_MT6853) += clkdbg.o clkdbg-mt6853.o
+obj-$(CONFIG_COMMON_CLK_MT6853) += clk-dbg-mt6853.o
+clk-dbg-mt6853-$(CONFIG_COMMON_CLK_MT6853) += clkdbg-mt6853.o
+endif
 endif
 
 ifneq ($(wildcard $(srctree)/$(src)/clk-mt6886.c),)
