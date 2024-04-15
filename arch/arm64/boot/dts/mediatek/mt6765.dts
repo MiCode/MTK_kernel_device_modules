@@ -3199,6 +3199,9 @@ pwrap: pwrap@1000d000 {
 			clock-names = "ref";
 			mediatek,usb-special-phy-settings;
 			#phy-cells = <1>;
+			nvmem-cells = <&u2_phy_data>;
+			nvmem-cell-names = "intr_cal";
+			nvmem-cell-masks = <0x1f>;
 			status = "okay";
 		};
 	};
