@@ -2899,8 +2899,16 @@ cpus {
 				reg = <0x78 0x4>;
 			};
 
+			efuse_ptpod22: ptpod22@120 {
+				reg = <0x120 0x4>;
+			};
+
 			efuse_fabinfo2: fabinfo2@210 {
 				reg = <0x210 0x4>;
+			};
+
+			efuse_fabinfo4: fabinfo4l@218 {
+				reg = <0x218 0x4>;
 			};
 
 			apu_pod19: apu_efuse2 {
@@ -5424,7 +5432,7 @@ cpus {
 			opp-208000000 {
 				opp-hz = /bits/ 64 <208000000>;
 				opp-microvolt = <575000>;
-				aging-volt = <6250>;
+				aging-volt = <12500>;
 			};
 		};
 
@@ -5458,7 +5466,7 @@ cpus {
 			opp-208000000 {
 				opp-hz = /bits/ 64 <208000000>;
 				opp-microvolt = <575000>;
-				aging-volt = <6250>;
+				aging-volt = <12500>;
 			};
 		};
 
@@ -5492,7 +5500,7 @@ cpus {
 			opp-273000000 {
 				opp-hz = /bits/ 64 <273000000>;
 				opp-microvolt = <575000>;
-				aging-volt = <6250>;
+				aging-volt = <12500>;
 			};
 		};
 
@@ -5502,6 +5510,7 @@ cpus {
 				opp-hz = /bits/ 64 <900000000>;
 				opp-microvolt = <825000>;
 				aging-volt = <18750>;
+				dis_seg = <0x10>;
 			};
 
 			opp-800000000 {
@@ -5531,7 +5540,7 @@ cpus {
 			opp-280000000 {
 				opp-hz = /bits/ 64 <280000000>;
 				opp-microvolt = <575000>;
-				aging-volt = <6250>;
+				aging-volt = <12500>;
 			};
 		};
 
@@ -5580,6 +5589,15 @@ cpus {
 				compatible = "mtk688x,apucon";
 				operating-points-v2 = <&conn_opp_table>;
 				vvpu-supply = <&mt6359p_vproc1_reg>;
+				nvmem-cells = <&efuse_segment &efuse_ptpod22 &efuse_fabinfo4>;
+				nvmem-cell-names = "efuse_seg","efuse_bin","efuse_raise";
+				bin = <0xdeadbeef 0xdeadbeef 0xdeadbeef 0xdeadbeef 775000 762500 750000>;
+				bin-offset = <12>;
+				bin-mask = <7>;
+				raise = <0xdeadbeef 600000 625000>;
+				raise-offset = <0>;
+				raise-mask = <7>;
+				vb_mtd = "vb_intpl";
 				vsram-supply = <&mt6359p_vsram_md_reg>;
 				sys-mux = <&topckgen_clk CLK_TOP_DSP_SEL>;
 				sys-mux-parent =
@@ -5605,6 +5623,15 @@ cpus {
 					gov = "apupassive";
 					depth = <2>;
 					consumer = <&iommu2 &iommu3>;
+					nvmem-cells = <&efuse_segment &efuse_ptpod22 &efuse_fabinfo4>;
+					nvmem-cell-names = "efuse_seg","efuse_bin","efuse_raise";
+					bin = <0xdeadbeef 0xdeadbeef 0xdeadbeef 0xdeadbeef 775000 762500 750000>;
+					bin-offset = <12>;
+					bin-mask = <7>;
+					raise = <0xdeadbeef 600000 625000>;
+					raise-offset = <0>;
+					raise-mask = <7>;
+					vb_mtd = "vb_intpl";
 				};
 			};
 		};
@@ -5618,6 +5645,15 @@ cpus {
 				compatible = "mtk688x,apumdla";
 				operating-points-v2 = <&mdla_opp_table>;
 				vmdla-supply = <&mt6359p_vproc2_reg>;
+				nvmem-cells = <&efuse_segment &efuse_ptpod22 &efuse_fabinfo4>;
+				nvmem-cell-names = "efuse_seg","efuse_bin","efuse_raise";
+				bin = <0xdeadbeef 0xdeadbeef 0xdeadbeef 0xdeadbeef 800000 787500 775000>;
+				bin-offset = <15>;
+				bin-mask = <7>;
+				raise = <0xdeadbeef 600000 625000>;
+				raise-offset = <0>;
+				raise-mask = <7>;
+				vb_mtd = "vb_intpl";
 				sys-mux = <&topckgen_clk CLK_TOP_UNIVPLL_D4_D2>;
 				top-mux = <&topckgen_clk CLK_TOP_DSP6_SEL>;
 				top-pll = <&topckgen_clk CLK_TOP_APUPLL>;
@@ -5654,6 +5690,15 @@ cpus {
 				devfreq = <&apuiommu>;
 				gov = "apupassive-pe";
 				depth = <0>;
+				nvmem-cells = <&efuse_segment &efuse_ptpod22 &efuse_fabinfo4>;
+				nvmem-cell-names = "efuse_seg","efuse_bin","efuse_raise";
+				bin = <0xdeadbeef 0xdeadbeef 0xdeadbeef 0xdeadbeef 775000 762500 750000>;
+				bin-offset = <12>;
+				bin-mask = <7>;
+				raise = <0xdeadbeef 600000 625000>;
+				raise-offset = <0>;
+				raise-mask = <7>;
+				vb_mtd = "vb_intpl";
 			};
 			vpu1: APUVPU@1 {
 				compatible = "mtk688x,apuvpu1";
@@ -5682,6 +5727,9 @@ cpus {
 				devfreq = <&apuiommu>;
 				gov = "apupassive-pe";
 				depth = <0>;
+			};
+			misc: APUVB {
+				compatible = "mtk6893,vb";
 			};
 		};
 
