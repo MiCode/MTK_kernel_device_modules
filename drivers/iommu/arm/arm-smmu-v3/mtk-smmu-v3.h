@@ -743,8 +743,6 @@ int mtk_smmu_tf_detect(enum mtk_smmu_type type,
 		       u32 sid, u32 tbu,
 		       u32 *axids, u32 num_axids,
 		       struct mtk_smmu_fault_param *param);
-int mtk_smmu_register_pmu_device(struct smmuv3_pmu_device *pmu_device);
-void mtk_smmu_unregister_pmu_device(struct smmuv3_pmu_device *pmu_device);
 #else
 static inline void mtk_smmu_reg_dump(enum mtk_smmu_type type,
 				     struct device *master_dev,
@@ -760,7 +758,12 @@ static inline int mtk_smmu_tf_detect(enum mtk_smmu_type type,
 {
 	return 0;
 }
+#endif /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 && CONFIG_MTK_IOMMU_DEBUG */
 
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+int mtk_smmu_register_pmu_device(struct smmuv3_pmu_device *pmu_device);
+void mtk_smmu_unregister_pmu_device(struct smmuv3_pmu_device *pmu_device);
+#else
 static inline int mtk_smmu_register_pmu_device(struct smmuv3_pmu_device *pmu_device)
 {
 	return 0;
