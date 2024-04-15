@@ -18,6 +18,7 @@
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/power/mt6765-power.h>
 #include <dt-bindings/interconnect/mtk,mmqos.h>
+#include <dt-bindings/power/mtk-charger.h>
 
 /dts-v1/;
 
@@ -4271,8 +4272,10 @@ initcall_debug=1 pelt=8 clk_ignore_unused=1";
 
 	mtk_ctd: mtk_ctd {
 		compatible = "mediatek,mtk_ctd";
-		bc12 = <&mtk_charger_type>;
-		bc12_sel = <1>;
+		nr-port = <1>;
+		chg-name-port0 = "primary_chg";
+		bc12-sel-port0 = <MTK_CTD_BY_MAINPMIC>;
+		bc12-psy-port0 = <&mtk_charger_type>;
 	};
 
 	pd_adapter: pd_adapter {
@@ -4594,6 +4597,7 @@ initcall_debug=1 pelt=8 clk_ignore_unused=1";
 
 &mt6370_chg {
 	charger = <&mtk_charger_type>; /*mt6370 get online status*/
+	charger-name = "mt6370-charger";
 };
 
 &mtk_charger_type {
