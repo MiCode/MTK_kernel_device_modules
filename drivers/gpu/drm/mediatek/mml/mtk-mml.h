@@ -15,6 +15,7 @@
 #define MML_MAX_OUTPUTS		2
 #define MML_MAX_PLANES		3
 #define MML_PIPE_CNT		2
+#define MML_MAX_LAYER		4	/* max layer count for time sharing */
 
 struct mml_job {
 	uint32_t jobid;
@@ -24,13 +25,14 @@ struct mml_job {
 enum mml_hw_caps {
 	MML_HW_ALPHARSZ		= 0x0001,
 	MML_HW_ALPHARSZ_R2R	= 0x0002,
-	MML_HW_PQ_HDR		= 0x0004,
-	MML_HW_PQ_MATRIX	= 0x0008,
-	MML_HW_PQ_HDR10		= 0x0010,
-	MML_HW_PQ_HDR10P	= 0x0020,
-	MML_HW_PQ_HLG		= 0x0040,
-	MML_HW_PQ_HDRVIVID	= 0x0080,
-	MML_HW_PQ_FG		= 0x0100,
+	MML_HW_MULTI_LAYER	= 0x0004,
+	MML_HW_PQ_HDR		= 0x0008,
+	MML_HW_PQ_MATRIX	= 0x0010,
+	MML_HW_PQ_HDR10		= 0x0020,
+	MML_HW_PQ_HDR10P	= 0x0040,
+	MML_HW_PQ_HLG		= 0x0080,
+	MML_HW_PQ_HDRVIVID	= 0x0100,
+	MML_HW_PQ_FG		= 0x0200,
 };
 
 enum mml_mode {

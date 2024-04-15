@@ -238,8 +238,8 @@ not_support:
 }
 EXPORT_SYMBOL_GPL(mml_drm_query_hw_support);
 
-enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *dctx,
-				struct mml_frame_info *info)
+enum mml_mode mml_drm_query_frame(struct mml_drm_ctx *dctx, struct mml_frame_info *info,
+	struct mml_frame_info_cache *info_cache)
 {
 	u8 i;
 	struct mml_topology_cache *tp = mml_topology_get_cache(dctx->ctx.mml);
@@ -266,7 +266,7 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *dctx,
 
 	if (tp->op->query_mode2)
 		mode = tp->op->query_mode2(dctx->ctx.mml, info, &reason,
-			dctx->panel_width, dctx->panel_height);
+			dctx->panel_width, dctx->panel_height, info_cache);
 	else
 		mode = tp->op->query_mode(dctx->ctx.mml, info, &reason);
 	if (mode == MML_MODE_MML_DECOUPLE && mml_dev_get_couple_cnt(dctx->ctx.mml)) {
@@ -306,7 +306,65 @@ not_support:
 		info->mode, MML_MODE_NOT_SUPPORT, 0, mml_query_not_support);
 	return MML_MODE_NOT_SUPPORT;
 }
+
+enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *dctx,
+				struct mml_frame_info *info)
+{
+	return mml_drm_query_frame(dctx, info, NULL);
+}
 EXPORT_SYMBOL_GPL(mml_drm_query_cap);
+
+/* dc mode reserve time in us */
+int dc_sw_reserve = 3000;
+module_param(dc_sw_reserve, int, 0644);
+
+int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
+	struct mml_frame_info *infos, u32 cnt, u32 duration_us)
+{
+	/* TODO: put into drm context */
+	struct mml_frame_info_cache info_cache[MML_MAX_LAYER] = {0};
+
+	enum mml_mode mode = MML_MODE_UNKNOWN;
+	u32 remain[mml_max_sys] = {0};
+	u32 mml_layer_cnt = 0;
+	u32 i;
+	bool couple_used = false;
+
+	remain[mml_sys_frame] = duration_us -  dc_sw_reserve;
+	remain[mml_sys_tile] = duration_us -  dc_sw_reserve;
+
+	for (i = 0; i < cnt; i++) {
+		if (mml_layer_cnt >= MML_MAX_LAYER) {
+			infos[i].mode = MML_MODE_NOT_SUPPORT;
+			continue;
+		}
+		if (couple_used)
+			infos[i].mode = MML_MODE_MML_DECOUPLE2;
+		else if (i > 0 && infos[i].mode == 0)
+			infos[i].mode = MML_MODE_MML_DECOUPLE;
+		mode = mml_drm_query_frame(dctx, &infos[i], &info_cache[mml_layer_cnt]);
+		if (mode == MML_MODE_MML_DECOUPLE) {
+			if (remain[mml_sys_frame] < info_cache[mml_layer_cnt].duration)
+				mode = MML_MODE_NOT_SUPPORT;
+			else
+				remain[mml_sys_frame] -= info_cache[mml_layer_cnt].duration;
+		} else if (mode == MML_MODE_MML_DECOUPLE2) {
+			if (remain[mml_sys_tile] < info_cache[mml_layer_cnt].duration)
+				mode = MML_MODE_NOT_SUPPORT;
+			else
+				remain[mml_sys_tile] -= info_cache[mml_layer_cnt].duration;
+		}
+		infos[i].mode = mode;
+
+		if (mode == MML_MODE_DIRECT_LINK || mode == MML_MODE_RACING)
+			couple_used = true;
+
+		mml_layer_cnt++;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mml_drm_query_multi_layer);
 
 static void mml_adjust_src(struct mml_frame_data *src, struct mml_frame_dest *dest)
 {

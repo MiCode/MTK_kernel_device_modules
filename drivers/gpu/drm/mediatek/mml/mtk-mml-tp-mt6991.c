@@ -29,6 +29,7 @@
 #define MML_DL_MAX_H		2400
 #define MML_DL_RROT_S_PX	(1920 * 1088)
 #define MML_MIN_SIZE		480
+#define MML_DC_MAX_DURATION_US	8300
 
 /* use OPP index 0(229Mhz) 1(273Mhz) 2(458Mhz) */
 #define MML_IR_MAX_OPP		2
@@ -1007,17 +1008,17 @@ static inline bool tp_need_resize(struct mml_frame_info *info, bool *can_binning
 		info->dest[0].compose.height != info->dest[0].data.height;
 }
 
-static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache *tp,
-	u32 panel_width, u32 panel_height, bool *dual)
+static bool tp_check_tput_dl(struct mml_frame_info *info, struct mml_topology_cache *tp,
+	u32 panel_width, u32 panel_height, bool *dual, struct mml_frame_info_cache *info_cache)
 {
-	u32 srcw, srch, binw, binh;
+	u32 srcw, srch, tputw, tputh, pixel;
 	u32 cropw = info->dest[0].crop.r.width;
 	u32 croph = info->dest[0].crop.r.height;
-	const u32 destw = info->dest[0].data.width;
-	const u32 desth = info->dest[0].data.height;
+	u32 destw = info->dest[0].data.width;
+	u32 desth = info->dest[0].data.height;
 	const enum mml_orientation rotate = info->dest[0].rotate;
 	const u32 plane = MML_FMT_PLANE(info->src.format);
-	u64 tput, pixel, hrt;
+	u64 tput, hrt;
 
 	/* always assign dual as default */
 	*dual = mml_rrot_single == 1 ? false : true;
@@ -1035,40 +1036,53 @@ static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache
 		round_down(info->dest[0].crop.r.left, 32);
 	srch = round_up(info->dest[0].crop.r.top + info->dest[0].crop.r.height, 16) -
 		round_down(info->dest[0].crop.r.top, 16);
-	binw = srcw;
-	binh = srch;
+	tputw = srcw;
+	tputh = srch;
 
-	/* rotate source */
-	if (rotate == MML_ROT_90 || rotate == MML_ROT_270) {
-		swap(binw, binh);
-		swap(cropw, croph);
-	}
+	if (rotate == MML_ROT_90 || rotate == MML_ROT_270)
+		swap(tputw, tputh);
 
 	/* binning case */
 	if (MML_FMT_YUV420(info->src.format)) {
-		if ((cropw >> 1) >= destw)
-			binw = binw >> 1;
-		if ((croph >> 1) >= desth)
-			binh = binh >> 1;
+		if (rotate == MML_ROT_0 || rotate == MML_ROT_180) {
+			if ((croph >> 1) >= desth)
+				tputh = tputh >> 1;
+		} else {
+			if ((cropw >> 1) >= desth)
+				tputh = tputh >> 1;
+		}
 	}
+	tputw = tputw / 2;	/* for rrot 1t2p */
+	tputh += 32;		/* for rrot max latency */
+
+	/* path after rsz 1t2p if not aipq */
+	if (!info->dest[0].pq_config.en_region_pq)
+		destw = destw / 2;
 
 	/* not support if exceeding max throughput
 	 * pixel per-pipe is:
-	 *	pipe_pixel = pixel / 2 * 1.1
+	 *	pipe_pixel = pixel * 1.1
+	 * note that the 1t2p already contained in tputw before rotate and destw,
 	 * and necessary throughput:
 	 *	pipe_pixel / active_time(ns) * 1000
 	 * so merge all constant:
-	 *	tput = pixel / 2 * 11 / 10 / (act_time / 1000)
+	 *	tput = pixel  * 11 / 10 / (act_time / 1000)
 	 */
-	pixel = max(binw, destw) * max(binh, desth);
-	tput = pixel * 11 / 20 / (info->act_time / 1000);
+	pixel = max(tputw, destw) * max(tputh, desth) * 11 / 10;
+	tput = pixel / (info->act_time / 1000);
+	mml_msg("%s pixel %u tput %llu %u %u dest %u %u",
+		__func__, pixel, tput, tputw, tputh, destw, desth);
 	if (panel_width > destw)
 		tput = tput * panel_width / destw;
-	if (mml_rrot_single != 2 && binw * binh <= MML_DL_RROT_S_PX &&
-		tput < tp->qos[mml_sys_frame].opp_speeds[tp->qos[mml_sys_frame].opp_cnt / 2]) {
+	if (mml_rrot_single != 2 && tputw * tputh <= MML_DL_RROT_S_PX &&
+		tput < tp->qos[mml_sys_frame].opp_speeds[1]) {
 		*dual = false;
 		goto check_hrt;
-	} else if (tput < tp->qos[mml_sys_frame].opp_speeds[tp->qos[mml_sys_frame].opp_cnt - 1]) {
+	}
+
+	pixel = max(tputw / 2, destw) * max(tputh, desth) * 11 / 10;
+	tput = pixel / (info->act_time / 1000);
+	if (tput < tp->qos[mml_sys_frame].opp_speeds[tp->qos[mml_sys_frame].opp_cnt - 1]) {
 		*dual = mml_rrot_single == 1 ? false : true;
 		goto check_hrt;
 	}
@@ -1086,6 +1100,65 @@ check_hrt:
 		return true;
 
 	return false;
+}
+
+static bool tp_check_tput_dc(struct mml_frame_info *info, struct mml_topology_cache *tp,
+	u32 panel_width, u32 panel_height, struct mml_frame_info_cache *info_cache)
+{
+	u32 srcw, srch, tputw, tputh;
+	u32 destw = info->dest[0].data.width;
+	u32 desth = info->dest[0].data.height;
+	const enum mml_orientation rotate = info->dest[0].rotate;
+	u32 max_clock, pixel;
+
+	if (!info_cache) {
+		/* not checking throughput */
+		return true;
+	}
+
+	if (!tp->qos[mml_sys_frame].opp_cnt) {
+		mml_err("no opp table support");
+		return false;
+	}
+
+	srcw = round_up(info->dest[0].crop.r.left + info->dest[0].crop.r.width, 32) -
+		round_down(info->dest[0].crop.r.left, 32);
+	srch = round_up(info->dest[0].crop.r.top + info->dest[0].crop.r.height, 16) -
+		round_down(info->dest[0].crop.r.top, 16);
+	tputw = srcw;
+	tputh = srch;
+
+	/* rotate destination for data path requirement */
+	if (rotate == MML_ROT_90 || rotate == MML_ROT_270)
+		swap(destw, desth);
+
+	/* for rrot 1t2p */
+	tputw = tputw / 2;
+
+	/* path after rsz 1t2p if not aipq */
+	if (!info->dest[0].pq_config.en_region_pq)
+		destw = destw / 2;
+
+	/* not support if exceeding max throughput
+	 * pixel per-pipe is:
+	 *	pipe_pixel = pixel * 1.1
+	 * note that the 1t2p already contained in tputw and destw before rotate,
+	 * and necessary throughput:
+	 *	pipe_pixel / duration
+	 * so merge all constant:
+	 *	tput = pixel  * 11 / 10 / duration
+	 * and back to min necessary duration:
+	 *	duration = pixel * 11 / 10 / max_clock
+	 */
+	pixel = max(tputw, destw) * max(tputh, desth) * 11 / 10;
+	max_clock = tp->qos[mml_sys_frame].opp_speeds[tp->qos[mml_sys_frame].opp_cnt - 1];
+	info_cache->pixels = pixel;
+	info_cache->duration = pixel / max_clock;
+	if (info_cache->duration > MML_DC_MAX_DURATION_US)
+		return false;
+
+	mml_msg("%s pixel %u duration %u", __func__, pixel, info_cache->duration);
+	return true;
 }
 
 static enum topology_scenario scene_to_ovl1(u32 ovlsys_id, enum topology_scenario scene)
@@ -1180,9 +1253,8 @@ static void tp_select_path(struct mml_topology_cache *cache,
 		}
 	}
 
-	tp_check_tput(&cfg->info, cache, cfg->panel_w, cfg->panel_h, &dual);
-
 	if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		tp_check_tput_dl(&cfg->info, cache, cfg->panel_w, cfg->panel_h, &dual, NULL);
 		if (dual)
 			scene = mode_rr_dispatch[scene];
 	} else if (cfg->info.mode == MML_MODE_MML_DECOUPLE && mml_rrot == 1 && !aipq) {
@@ -1190,6 +1262,7 @@ static void tp_select_path(struct mml_topology_cache *cache,
 		scene = mode_rr_dispatch[scene];
 
 		/* dual rrot if necessary */
+		dual = mml_rrot_single == 1;
 		if (dual)
 			scene = mode_rr_dispatch[scene];
 	}
@@ -1247,9 +1320,9 @@ static s32 tp_select(struct mml_topology_cache *cache,
 }
 
 static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info *info,
-	u32 *reason, u32 panel_width, u32 panel_height)
+	u32 *reason, u32 panel_width, u32 panel_height, struct mml_frame_info_cache *info_cache)
 {
-	struct mml_topology_cache *tp;
+	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
 	const struct mml_frame_dest *dest = &info->dest[0];
 	const bool rotated = dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270;
 	bool dual = true;
@@ -1305,9 +1378,8 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 	}
 
 	/* get mid opp frequency */
-	tp = mml_topology_get_cache(mml);
 	if (tp && tp->qos[mml_sys_frame].opp_cnt) {
-		if (!tp_check_tput(info, tp, panel_width, panel_height, &dual)) {
+		if (!tp_check_tput_dl(info, tp, panel_width, panel_height, &dual, NULL)) {
 			*reason = mml_query_opp_out;
 			goto decouple;
 		}
@@ -1320,6 +1392,9 @@ dl_force:
 	return MML_MODE_DIRECT_LINK;
 
 decouple:
+	if (!tp_check_tput_dc(info, tp, panel_width, panel_height, NULL))
+		return MML_MODE_NOT_SUPPORT;
+
 	return MML_MODE_MML_DECOUPLE;
 }
 
@@ -1441,7 +1516,7 @@ decouple:
 }
 
 static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *info,
-	u32 *reason, u32 panel_width, u32 panel_height)
+	u32 *reason, u32 panel_width, u32 panel_height, struct mml_frame_info_cache *info_cache)
 {
 	if (unlikely(mml_path_mode))
 		return mml_path_mode;
@@ -1476,7 +1551,7 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 		(info->dest[0].rotate == MML_ROT_90 || info->dest[0].rotate == MML_ROT_270))
 		return tp_query_mode_racing(mml, info, reason);
 
-	return tp_query_mode_dl(mml, info, reason, panel_width, panel_height);
+	return tp_query_mode_dl(mml, info, reason, panel_width, panel_height, info_cache);
 
 decouple_user:
 	return info->mode;
@@ -1499,7 +1574,7 @@ static const struct mml_topology_path *tp_get_dl_path(struct mml_topology_cache 
 	if (!info)
 		return &cache->paths[PATH_MML1_DL];
 
-	tp_check_tput(info, cache, panel->width, panel->height, &dual);
+	tp_check_tput_dl(info, cache, panel->width, panel->height, &dual, NULL);
 
 	scene = dual ? PATH_MML1_DL2 : PATH_MML1_DL;
 
@@ -1521,7 +1596,7 @@ static bool tp_support_dc2(void)
 
 static enum mml_hw_caps support_hw_caps(void)
 {
-	return MML_HW_ALPHARSZ | MML_HW_PQ_HDR | MML_HW_PQ_MATRIX |
+	return MML_HW_ALPHARSZ | MML_HW_MULTI_LAYER | MML_HW_PQ_HDR | MML_HW_PQ_MATRIX |
 		MML_HW_PQ_HDR10 | MML_HW_PQ_HDR10P | MML_HW_PQ_HLG | MML_HW_PQ_HDRVIVID |
 		MML_HW_PQ_FG;
 }
