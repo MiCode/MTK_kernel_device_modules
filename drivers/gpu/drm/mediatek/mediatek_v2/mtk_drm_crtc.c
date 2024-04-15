@@ -3329,11 +3329,23 @@ mtk_crtc_get_plane_comp(struct drm_crtc *crtc,
 			struct mtk_plane_state *plane_state)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	struct mtk_ddp_comp *comp = NULL;
+	struct drm_crtc_state *crtc_state = crtc->state;
+	struct mtk_crtc_state *state = to_mtk_crtc_state(crtc_state);
 	int i, j;
 
 	if (plane_state->comp_state.comp_id == 0)
 		return mtk_crtc_get_comp(crtc, mtk_crtc->ddp_mode, 0, 0);
+
+	if ((priv->data->mmsys_id == MMSYS_MT6991) &&
+		(plane_state->comp_state.comp_id) == DDP_COMPONENT_OVL_EXDMA2) {
+		DDPINFO("%s i:%d, ovl_id:%d lye_id:%d, ext_lye_id:%d\n", __func__, i,
+			plane_state->comp_state.comp_id,
+			plane_state->comp_state.lye_id,
+			plane_state->comp_state.ext_lye_id);
+		return priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2];
+	}
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		if (comp->id == plane_state->comp_state.comp_id)
@@ -4588,6 +4600,9 @@ _mtk_crtc_atmoic_addon_module_connect(
 		mtk_ddp_clean_ovl_pq_crossbar(mtk_crtc, cmdq_handle);
 
 	if (priv->data->ovl_exdma_rule && lye_state->mml_dl_lye)
+		mtk_drm_crtc_exdma_path_setting_reset(mtk_crtc, cmdq_handle);
+
+	if (priv->data->ovl_exdma_rule && lye_state->rpo_lye)
 		mtk_drm_crtc_exdma_path_setting_reset(mtk_crtc, cmdq_handle);
 
 	_mtk_crtc_lye_addon_module_connect(
@@ -7558,6 +7573,7 @@ static void mtk_crtc_release_input_layer_fence(
 static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 		unsigned int ddp_mode)
 {
+	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_private *priv =
 			mtk_crtc->base.dev->dev_private;
@@ -7567,6 +7583,14 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 
 	crtc_idx = drm_crtc_index(crtc);
 	if (crtc_idx < MAX_CRTC && priv->usage[crtc_idx] == DISP_ENABLE) {
+		//EXDMA2 is not on the list of basic main data path, need extra setting
+		if ((priv->data->mmsys_id == MMSYS_MT6991)
+			&& mtk_crtc_state->lye_state.rpo_lye) {
+			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+				NULL, PMQOS_SET_BW, NULL);
+			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+				NULL, PMQOS_UPDATE_BW, &flag);
+		}
 		for_each_comp_in_target_ddp_mode_bound(comp, mtk_crtc,
 				i, j, ddp_mode, 0) {
 			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
@@ -10776,6 +10800,13 @@ void mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc)
 	/* Update QOS BW*/
 	mtk_crtc->total_srt = 0;	/* reset before PMQOS_UPDATE_BW sum all srt bw */
 	mtk_disp_clear_channel_srt_bw(mtk_crtc);
+
+	//EXDMA2 is not on the list of basic main data path, need extra setting
+	if ((priv->data->mmsys_id == MMSYS_MT6991)
+		&& mtk_crtc_state->lye_state.rpo_lye) {
+		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+			cmdq_handle, PMQOS_UPDATE_BW, NULL);
+	}
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
 			PMQOS_UPDATE_BW, NULL);
@@ -11420,6 +11451,11 @@ void mtk_crtc_stop_ddp(struct mtk_drm_crtc *mtk_crtc,
 					    DSI_STOP_VDO_MODE, NULL);
 	}
 
+	/*EXDMA2 is not on the list of main path. Need extra stop*/
+	if(priv->data->mmsys_id == MMSYS_MT6991) {
+		mtk_ddp_comp_stop(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],cmdq_handle);
+	}
+
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (only_output && !mtk_ddp_comp_is_output(comp))
 			continue;
@@ -11451,6 +11487,7 @@ void mtk_crtc_stop(struct mtk_drm_crtc *mtk_crtc, bool need_wait)
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct drm_device *dev = crtc->dev;
 	struct mtk_drm_private *priv = dev->dev_private;
+	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
 
 	DDPINFO("%s:%d +\n", __func__, __LINE__);
 
@@ -11546,6 +11583,14 @@ skip:
 	}
 
 	/* 4. Set QOS BW to 0 */
+	//EXDMA2 is not on the list of basic main data path, need extra setting
+	if ((priv->data->mmsys_id == MMSYS_MT6991)
+		&& mtk_crtc_state->lye_state.rpo_lye) {
+		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+			NULL, PMQOS_SET_BW, NULL);
+		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+			NULL, PMQOS_UPDATE_BW, &flag);
+	}
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
 		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
@@ -12028,6 +12073,11 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 		mtk_crtc_restore_plane_setting(mtk_crtc);
 
 	/* 10. Set QOS BW */
+	if ((priv->data->mmsys_id == MMSYS_MT6991)
+		&& mtk_state->lye_state.rpo_lye) {
+		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+			NULL, PMQOS_SET_BW, NULL);
+	}
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
 
@@ -12627,6 +12677,7 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 	int i, j;
 	struct mtk_ddp_comp *output_comp;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
@@ -12823,6 +12874,34 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 	/*5. Enable Frame done IRQ &  process first config */
 	mtk_crtc->total_srt = 0;
 	mtk_disp_clear_channel_srt_bw(mtk_crtc);
+
+	//EXDMA2 is not on the list of basic main data path, need extra setting
+	if ((priv->data->mmsys_id == MMSYS_MT6991)
+		&& mtk_crtc_state->lye_state.rpo_lye) {
+		mtk_ddp_comp_first_cfg(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+			&cfg, cmdq_handle);
+		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_USE_PQ)) {
+			mtk_crtc->pq_data->opt_bypass_pq = true;
+			mtk_ddp_comp_bypass(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+				1, PQ_FEATURE_KRN_OPT_USE_PQ, cmdq_handle);
+		} else {
+			if (mtk_crtc->pq_data->opt_bypass_pq)
+				mtk_ddp_comp_bypass(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+				0, PQ_FEATURE_KRN_OPT_USE_PQ, cmdq_handle);
+		}
+		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+			cmdq_handle, IRQ_LEVEL_NORMAL, NULL);
+		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+			cmdq_handle, DSI_SET_TARGET_LINE, &cfg);
+		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+			cmdq_handle,
+			MTK_IO_CMD_RDMA_GOLDEN_SETTING, &cfg);
+		cfg.source_bpc = mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+			cmdq_handle, OVL_GET_SOURCE_BPC, NULL);
+		/* update SRT BW */
+		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+			cmdq_handle, PMQOS_UPDATE_BW, NULL);
+	}
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		mtk_ddp_comp_first_cfg(comp, &cfg, cmdq_handle);
 		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_USE_PQ)) {
@@ -14969,11 +15048,7 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 		u8 tgt_layer = 0;
 		u8 cur_layer = plane_state->comp_state.lye_id;
 
-		if ((priv->data->mmsys_id == MMSYS_MT6991) && state->lye_state.rpo_lye &&
-			(plane_state->comp_state.comp_id) == DDP_COMPONENT_OVL_EXDMA2)
-			comp = priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2];
-		else
-			comp = mtk_crtc_get_plane_comp(crtc, plane_state);
+		comp = mtk_crtc_get_plane_comp(crtc, plane_state);
 
 		if (!comp) {
 			DDPPR_ERR("%s,%d NULL comp error\n", __func__, __LINE__);
@@ -16926,6 +17001,19 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	if (!only_output) {
 		mtk_crtc->total_srt = 0;	/* reset before PMQOS_UPDATE_BW sum all srt bw */
 		mtk_disp_clear_channel_srt_bw(mtk_crtc);
+		//EXDMA2 is not on the list of basic main data path, need extra setting
+		if ((priv->data->mmsys_id == MMSYS_MT6991)
+			&& mtk_crtc_state->lye_state.rpo_lye) {
+			if (crtc->state->color_mgmt_changed)
+				mtk_ddp_gamma_set(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+				crtc->state, cmdq_handle);
+			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+				cmdq_handle, COMP_ODDMR_CFG, &mtk_crtc->sec_on);
+			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+				cmdq_handle, PMQOS_UPDATE_BW, NULL);
+			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+				cmdq_handle, FRAME_DIRTY, NULL);
+		}
 		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 			if (crtc->state->color_mgmt_changed)
 				mtk_ddp_gamma_set(comp, crtc->state, cmdq_handle);
@@ -18578,6 +18666,10 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			MTK_DRM_OPT_OVL_WCG))
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_WCG;
 	}
+
+	if (priv->data->mmsys_id == MMSYS_MT6991)
+		mtk_crtc->crtc_caps.rpo_support_num = 1;
+
 	if (check_comp_in_crtc(path_data, MTK_DISP_CCORR) &&
 			check_comp_in_crtc(path_data, MTK_DISP_AAL))
 		mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PQ;

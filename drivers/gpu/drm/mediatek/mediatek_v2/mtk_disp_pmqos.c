@@ -685,6 +685,8 @@ void mtk_disp_clear_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc)
 void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc, unsigned int bw_base)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_ddp_comp *comp;
 	int i, j, ret = 0;
 
@@ -699,6 +701,12 @@ void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc, unsigned int bw_base
 			continue;
 		if (!(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
 			continue;
+
+		if ((priv->data->mmsys_id == MMSYS_MT6991) && mtk_crtc_state->lye_state.rpo_lye) {
+			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+				NULL, PMQOS_SET_HRT_BW, &bw_base);
+		}
+
 		for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
 			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
 						   &bw_base);
@@ -714,6 +722,8 @@ void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc, unsigned int bw_base
 void mtk_disp_clr_module_hrt(struct mtk_drm_crtc *mtk_crtc)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_ddp_comp *comp;
 	int i, j, ret = 0;
 
@@ -728,6 +738,12 @@ void mtk_disp_clr_module_hrt(struct mtk_drm_crtc *mtk_crtc)
 			continue;
 		if (!(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
 			continue;
+
+		if ((priv->data->mmsys_id == MMSYS_MT6991) && mtk_crtc_state->lye_state.rpo_lye) {
+			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+				NULL, PMQOS_CLR_HRT_BW, NULL);
+		}
+
 		for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
 			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_CLR_HRT_BW, NULL);
 		}
