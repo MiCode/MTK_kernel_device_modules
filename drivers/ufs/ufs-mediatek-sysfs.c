@@ -31,6 +31,8 @@
 #define EYEMON_PRINTF(out, len, fmt, args...) \
 	(len += sprintf(out+len, fmt, ##args))
 
+static DEFINE_SEMAPHORE(eyemon_sem, 1);
+
 struct eyemon_cmd {
 	int get_set; /* 1: dme_(peer_)get, 0: dme_(peer_)set */
 	u32 attr;
@@ -269,6 +271,10 @@ int eyemon_scan(struct ufs_hba *hba, int lane, int host_device,
 	ui_per_step = max_timing_offset * 100 / max_timing_step;
 	mv_per_step = max_voltage_offset * 10 * 100 / max_voltage_step;
 
+	/* Mediatek host EOM mv_per_step always = 6mV */
+	if ((host->ip_ver >= IP_VER_MT6991) && (host_device == HOST_EYE))
+		mv_per_step = 600;
+
 	EYEMON_PRINTF(out, *size, "[UFS] max timing steps: %d\n",
 		max_timing_step);
 	EYEMON_PRINTF(out, *size, "[UFS] max voltage steps: %d\n",
@@ -376,10 +382,12 @@ int eyemon_scan(struct ufs_hba *hba, int lane, int host_device,
 
 			err_cnt += cmd.value;
 
-			/* get tested count */
-			err = eyemon_command(hba, &cmd, host_device, 0, lane_index, TESTED_COUNT);
-			if (err)
-				goto exit_free_eye_data;
+			/*
+			 * get tested count
+			 * err = eyemon_command(hba, &cmd, host_device, 0, lane_index, TESTED_COUNT);
+			 * if (err)
+			 *	goto exit_free_eye_data;
+			 */
 
 			/* eyemon disable */
 			err = eyemon_command(hba, &cmd, host_device, 0, lane_index, EYEMON_DISABLE);
@@ -387,7 +395,7 @@ int eyemon_scan(struct ufs_hba *hba, int lane, int host_device,
 				goto exit_free_eye_data;
 
 			/* change to lower power mode to trigger configuration update */
-			ufs_mtk_dynamic_clock_scaling(hba, CLK_FORCE_SCALE_G1);
+			ufs_mtk_dynamic_clock_scaling(hba, CLK_FORCE_SCALE_DOWN);
 
 			/* calculate average error count and tested count */
 			eye_data[eye_data_cnt] = err_cnt;
@@ -512,6 +520,7 @@ void eyemon_scan_show(struct ufs_hba *hba, char *out, ssize_t *size,
 	ufshcd_rpm_get_sync(hba);
 	ufsm_scsi_block_requests(hba);
 	ufshcd_hold(hba);
+	down(&eyemon_sem);
 
 	if (ufsm_wait_for_doorbell_clr(hba, 1000 * 1000)) { /* 1 sec */
 		dev_err(hba->dev, "%s: ufshcd_wait_for_doorbell_clr timeout!\n",
@@ -600,11 +609,16 @@ void eyemon_scan_show(struct ufs_hba *hba, char *out, ssize_t *size,
 		goto out;
 	}
 
+	/* Change power mode to trigger scramble update */
+	ufs_mtk_dynamic_clock_scaling(hba, CLK_FORCE_SCALE_G1);
+	ufs_mtk_dynamic_clock_scaling(hba, CLK_SCALE_FREE_RUN);
+
 out_ah8:
 	/* Enable auto-hibern8 */
 	ufshcd_writel(hba, hba->ahit, REG_AUTO_HIBERNATE_IDLE_TIMER);
 
 out:
+	up(&eyemon_sem);
 	ufshcd_release(hba);
 	ufsm_scsi_unblock_requests(hba);
 	ufshcd_rpm_put(hba);
