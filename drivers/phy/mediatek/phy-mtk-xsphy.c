@@ -1536,68 +1536,68 @@ static void u3_phy_sw_efsue_set(struct mtk_xsphy *xsphy,
 	switch (inst->orientation) {
 	case TCPC_NORMAL:
 		if (inst->u3_sw_efuse_normal[0])
-			mtk_phy_update_field(xsphy->glb_base + SSPXTP_SIFSLV_PHYA_GLB,
+			mtk_phy_update_field(xsphy->glb_base + SSPXTP_PHYA_GLB_14,
 				RG_XTP_GLB_BIAS_V2V_VTRIM, inst->u3_sw_efuse_normal[0]);
 
 		if (inst->u3_sw_efuse_normal[1])
-			mtk_phy_update_field(xsphy->glb_base + SSPXTP_SIFSLV_PHYA_GLB,
+			mtk_phy_update_field(xsphy->glb_base + SSPXTP_PHYA_GLB_00,
 				RG_XTP_GLB_BIAS_INTR_CTRL, inst->u3_sw_efuse_normal[1]);
 
 		if (inst->u3_sw_efuse_normal[2])
-			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+			mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_58,
 				RX_XTP_LN0_TX_IMPSEL_PMOS, inst->u3_sw_efuse_normal[2]);
 
 		if (inst->u3_sw_efuse_normal[3])
-			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+			mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_58,
 				RX_XTP_LN0_TX_IMPSEL_NMOS, inst->u3_sw_efuse_normal[3]);
 
 		if (inst->u3_sw_efuse_normal[4])
-			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+			mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_14,
 				RG_XTP_LN0_RX_IMPSEL, inst->u3_sw_efuse_normal[4]);
 
 		if (inst->u3_sw_efuse_normal[5])
-			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+			mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_70,
 				RX_XTP_LN0_RX_LEQ_RL_CTLE_CAL, inst->u3_sw_efuse_normal[5]);
 
 		if (inst->u3_sw_efuse_normal[6])
-			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+			mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_70,
 				RX_XTP_LN0_RX_LEQ_RL_VGA_CAL, inst->u3_sw_efuse_normal[6]);
 
 		if (inst->u3_sw_efuse_normal[7])
-			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+			mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_74,
 				RX_XTP_LN0_RX_LEQ_RL_DFE_CAL, inst->u3_sw_efuse_normal[7]);
 		break;
 	case TCPC_FLIP:
 		if (inst->u3_sw_efuse_flip[0])
-			mtk_phy_update_field(xsphy->glb_base + SSPXTP_SIFSLV_PHYA_GLB,
+			mtk_phy_update_field(xsphy->glb_base + SSPXTP_PHYA_GLB_14,
 				RG_XTP_GLB_BIAS_V2V_VTRIM, inst->u3_sw_efuse_flip[0]);
 
 		if (inst->u3_sw_efuse_flip[1])
-			mtk_phy_update_field(xsphy->glb_base + SSPXTP_SIFSLV_PHYA_GLB,
+			mtk_phy_update_field(xsphy->glb_base + SSPXTP_PHYA_GLB_00,
 				RG_XTP_GLB_BIAS_INTR_CTRL, inst->u3_sw_efuse_flip[1]);
 
 		if (inst->u3_sw_efuse_flip[2])
-			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+			mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_58,
 				RX_XTP_LN0_TX_IMPSEL_PMOS, inst->u3_sw_efuse_flip[2]);
 
 		if (inst->u3_sw_efuse_flip[3])
-			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+			mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_58,
 				RX_XTP_LN0_TX_IMPSEL_NMOS, inst->u3_sw_efuse_flip[3]);
 
 		if (inst->u3_sw_efuse_flip[4])
-			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+			mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_14,
 				RG_XTP_LN0_RX_IMPSEL, inst->u3_sw_efuse_flip[4]);
 
 		if (inst->u3_sw_efuse_flip[5])
-			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+			mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_70,
 				RX_XTP_LN0_RX_LEQ_RL_CTLE_CAL, inst->u3_sw_efuse_flip[5]);
 
 		if (inst->u3_sw_efuse_flip[6])
-			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+			mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_70,
 				RX_XTP_LN0_RX_LEQ_RL_VGA_CAL, inst->u3_sw_efuse_flip[6]);
 
 		if (inst->u3_sw_efuse_flip[7])
-			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+			mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_74,
 				RX_XTP_LN0_RX_LEQ_RL_DFE_CAL, inst->u3_sw_efuse_flip[7]);
 		break;
 	default:
