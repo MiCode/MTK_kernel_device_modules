@@ -1931,7 +1931,6 @@
 		clock-names = "apdma";
 		dma-requests = <4>;
 		#dma-cells = <1>;
-		dma-bits = <34>;
 	};
 
 	gce: gce_mbox@10228000 {
@@ -4655,8 +4654,9 @@
 
 	pwrap: pwrap@10026000 {
 		compatible = "mediatek,mt6833-pwrap";
-		reg = <0 0x10026000 0 0x1000>;
-		reg-names = "pwrap";
+		reg = <0 0x10026000 0 0x1000>,
+		      <0 0x10028000 0 0x1000>;
+		reg-names = "pwrap","spi_mst";
 		interrupts = <GIC_SPI 220 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&infracfg_ao_clk CLK_IFRAO_PMIC_AP>,
 			 <&infracfg_ao_clk CLK_IFRAO_PMIC_TMR>,
@@ -4707,7 +4707,7 @@
 	};
 
 	spmi: spmi@10027000 {
-		compatible = "mediatek,mt6833-spmi";
+		compatible = "mediatek,mt6833-spmi-m";
 		reg = <0 0x10027000 0 0x0008ff>,
 		      <0 0x10027900 0 0x000500>,
 		      <0 0x10029000 0 0x000100>;
