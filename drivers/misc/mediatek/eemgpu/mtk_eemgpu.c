@@ -131,6 +131,7 @@ static int get_devinfo(struct platform_device *pdev)
 	int devinfo = 0, efuse = 0, efuse_mask = 0;
 	int count = 0;
 	int mcl50 = 0;
+	unsigned long ul_mask;
 
 	FUNC_ENTER(FUNC_LV_HELP);
 	val = (int *)&eemg_devinfo;
@@ -153,10 +154,11 @@ static int get_devinfo(struct platform_device *pdev)
 		of_property_read_u32_index(node, "gpu-vb-efuse", 0, &efuse);
 		of_property_read_u32_index(node, "gpu-vb-efuse", 1,
 			&efuse_mask);
+		ul_mask = (unsigned long)efuse_mask;
 		nvmem_device_read(nvmem_dev, efuse, sizeof(__u32), &devinfo);
 		of_property_read_u32_index(node, "gpu-vb-opp0",
 			(devinfo & efuse_mask) >> find_first_bit(
-			(unsigned long *)&efuse_mask, 32), &gpu_vb_volt);
+			&ul_mask, 32), &gpu_vb_volt);
 		if (mcl50) {
 			ret = of_property_read_u32(node, "gpu-vb-opp0-mcl50",
 				&gpu_vb_volt);
@@ -209,8 +211,8 @@ static int get_devinfo(struct platform_device *pdev)
 	nvmem_device_read(nvmem_dev, efuse, sizeof(__u32), &devinfo);
 
 	ret = of_property_read_u32(node, "golden-temp-mask", &efuse);
-
-	golden_temp = ((devinfo & efuse)) >> find_first_bit((unsigned long *)&efuse, 32);
+	ul_mask = (unsigned long)efuse;
+	golden_temp = ((devinfo & efuse)) >> find_first_bit(&ul_mask, 32);
 
 	if (golden_temp != 0) {
 		ret = of_property_read_u32(node, "golden-temp-default", &efuse);
@@ -1339,6 +1341,7 @@ static void eemg_init_det(struct eemg_det *det, struct eemg_devinfo *devinfo,
 	const char *domain;
 	int *val;
 	int ret, efuse_offset = 0, efuse_mask = 0, efuse = 0;
+	unsigned long ul_mask;
 	struct eemg_det *h_det, *l_det;
 
 	FUNC_ENTER(FUNC_LV_HELP);
@@ -1355,36 +1358,44 @@ static void eemg_init_det(struct eemg_det *det, struct eemg_devinfo *devinfo,
 	if (np) {
 		of_property_read_u32_index(np, "MDES", 0, &efuse_offset);
 		of_property_read_u32_index(np, "MDES", 1, &efuse_mask);
+		ul_mask = (unsigned long)efuse_mask;
 		det->MDES      = (*(val + efuse_offset) & efuse_mask) >>
-			find_first_bit((unsigned long *)&efuse_mask, 32);
+			find_first_bit(&ul_mask, 32);
 		of_property_read_u32_index(np, "BDES", 0, &efuse_offset);
 		of_property_read_u32_index(np, "BDES", 1, &efuse_mask);
+		ul_mask = (unsigned long)efuse_mask;
 		det->BDES       = (*(val + efuse_offset) & efuse_mask) >>
-			find_first_bit((unsigned long *)&efuse_mask, 32);
+			find_first_bit(&ul_mask, 32);
 		of_property_read_u32_index(np, "DCMDET", 0, &efuse_offset);
 		of_property_read_u32_index(np, "DCMDET", 1, &efuse_mask);
+		ul_mask = (unsigned long)efuse_mask;
 		det->DCMDET       = (*(val + efuse_offset) & efuse_mask) >>
-			find_first_bit((unsigned long *)&efuse_mask, 32);
+			find_first_bit(&ul_mask, 32);
 		of_property_read_u32_index(np, "DCBDET", 0, &efuse_offset);
 		of_property_read_u32_index(np, "DCBDET", 1, &efuse_mask);
+		ul_mask = (unsigned long)efuse_mask;
 		det->DCBDET      = (*(val + efuse_offset) & efuse_mask) >>
-			find_first_bit((unsigned long *)&efuse_mask, 32);
+			find_first_bit(&ul_mask, 32);
 		of_property_read_u32_index(np, "EEMINITEN", 0, &efuse_offset);
 		of_property_read_u32_index(np, "EEMINITEN", 1, &efuse_mask);
+		ul_mask = (unsigned long)efuse_mask;
 		det->EEMINITEN = (*(val + efuse_offset) & efuse_mask) >>
-			find_first_bit((unsigned long *)&efuse_mask, 32);
+			find_first_bit(&ul_mask, 32);
 		of_property_read_u32_index(np, "EEMMONEN", 0, &efuse_offset);
 		of_property_read_u32_index(np, "EEMMONEN", 1, &efuse_mask);
+		ul_mask = (unsigned long)efuse_mask;
 		det->EEMMONEN      = (*(val + efuse_offset) & efuse_mask) >>
-			find_first_bit((unsigned long *)&efuse_mask, 32);
+			find_first_bit(&ul_mask, 32);
 		of_property_read_u32_index(np, "MTDES", 0, &efuse_offset);
 		of_property_read_u32_index(np, "MTDES", 1, &efuse_mask);
+		ul_mask = (unsigned long)efuse_mask;
 		det->MTDES      = (*(val + efuse_offset) & efuse_mask) >>
-			find_first_bit((unsigned long *)&efuse_mask, 32);
+			find_first_bit(&ul_mask, 32);
 		of_property_read_u32_index(np, "SPEC", 0, &efuse_offset);
 		of_property_read_u32_index(np, "SPEC", 1, &efuse_mask);
+		ul_mask = (unsigned long)efuse_mask;
 		det->SPEC       = (*(val + efuse_offset) & efuse_mask) >>
-			find_first_bit((unsigned long *)&efuse_mask, 32);
+			find_first_bit(&ul_mask, 32);
 		ret = of_property_read_u32(np, "max_freq_khz",
 			&det->max_freq_khz);
 		ret = of_property_read_u32(np, "loo_role", &det->loo_role);
@@ -1393,8 +1404,9 @@ static void eemg_init_det(struct eemg_det *det, struct eemg_devinfo *devinfo,
 		of_property_read_u32_index(np, "VMIN", 1, &efuse_mask);
 		nvmem_device_read(nvmem_dev, efuse_offset, sizeof(__u32),
 			&efuse);
+		ul_mask = (unsigned long)efuse_mask;
 		of_property_read_u32_index(np, "VMIN-idx", (efuse  & efuse_mask)
-			>> find_first_bit((unsigned long *)&efuse_mask, 32),
+			>> find_first_bit(&ul_mask, 32),
 			&det->VMIN);
 		ret = of_property_read_u32(np, "VMAX", &det->VMAX);
 		det->VMAX	+= det->DVTFIXED;
