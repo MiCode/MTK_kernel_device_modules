@@ -31,7 +31,6 @@
 #define LVSYS_THD_VOLT_L 2900
 #define MAX_INT 0x7FFFFFFF
 #define MIN_LBAT_VOLT 2000
-#define LBAT_THL_CNT_THD 200
 #define LOW_BATTERY_INIT_NUM (LOW_BATTERY_LEVEL_NUM-2)
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define VOLT_L_STR "thd-volts-l"
@@ -88,7 +87,6 @@ struct low_bat_thl_priv {
 	unsigned int pmic_idx[INTR_MAX_NUM];
 	unsigned int lbat_intr_num;
 	int lbat_level[INTR_MAX_NUM];
-	unsigned int thl_cnt_enable;
 	unsigned int thl_cnt[LOW_BATTERY_USER_NUM][LOW_BATTERY_LEVEL_NUM];
 	struct lbat_mbrain lbat_mbrain_info;
 	struct lbat_user *lbat_pt[INTR_MAX_NUM];
@@ -107,39 +105,6 @@ static struct low_battery_callback_table lbcb_tb[LBCB_MAX_NUM] = { {0}, {0} };
 static low_battery_mbrain_callback lb_mbrain_cb;
 static DEFINE_MUTEX(exe_thr_lock);
 
-static int __used reset_throttle_cnt(void)
-{
-	if (!low_bat_thl_data) {
-		pr_info("[%s] Failed to create low_bat_thl_data\n", __func__);
-		return -EINVAL;
-	}
-
-	memset(low_bat_thl_data->thl_cnt, 0,
-		sizeof(unsigned int) * LOW_BATTERY_USER_NUM * LOW_BATTERY_LEVEL_NUM);
-	return 0;
-}
-
-static int __used lbat_throttle_cnt_check(void)
-{
-	int total_cnt = 0;
-	int i = 0, j = 0;
-
-	if (!low_bat_thl_data) {
-		pr_info("[%s] Failed to create low_bat_thl_data\n", __func__);
-		return -EINVAL;
-	}
-
-	for (i = 0; i < LOW_BATTERY_USER_NUM; i++)
-		for ( j = 0; j < LOW_BATTERY_LEVEL_NUM; j++)
-			total_cnt += low_bat_thl_data->thl_cnt[i][j];
-
-	if (total_cnt > LBAT_THL_CNT_THD) {
-		low_bat_thl_data->thl_cnt_enable = 0;
-		pr_info("[%s] Stop throttle counting\n", __func__);
-	}
-
-	return 0;
-}
 
 static int rearrange_volt(struct lbat_intr_tbl *intr_info, unsigned int *volt_l,
 	unsigned int *volt_h, unsigned int *thd_level, unsigned int num)
@@ -404,10 +369,7 @@ void exec_throttle(unsigned int level, enum LOW_BATTERY_USER_TAG user, unsigned 
 	if (lb_mbrain_cb)
 		lb_mbrain_cb(low_bat_thl_data->lbat_mbrain_info);
 
-	if (low_bat_thl_data->thl_cnt_enable == 1) {
-		lbat_throttle_cnt_check();
-		low_bat_thl_data->thl_cnt[user][level]++;
-	}
+	low_bat_thl_data->thl_cnt[user][level] += 1;
 
 	pr_info("[%s] low_battery_level = %d\n", __func__, level);
 }
@@ -611,15 +573,11 @@ static ssize_t low_battery_throttle_cnt_show(
 		return -EINVAL;
 	}
 
-	low_bat_thl_data->thl_cnt_enable = 1;
-
 	for (i = 0; i < ARRAY_SIZE(user); i++) {
 		len += snprintf(buf + len, PAGE_SIZE, "user%d: ",i);
 		for ( j = 0; j < LOW_BATTERY_LEVEL_NUM; j++)
 			len += snprintf(buf + len, PAGE_SIZE, "%d ", low_bat_thl_data->thl_cnt[i][j]);
 	}
-
-	reset_throttle_cnt();
 
 	return len;
 }
