@@ -4103,6 +4103,8 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 				pm_runtime_get_sync(g_mtk_dp->dev);
 				base = ioremap(0x31b50000, 0x1000);
 				writel(0xc2fc224d, base + 0x78);
+				/* Enable 26M to enable aux */
+				mtk_dp_intf_prepare_clk();
 			} else {
 				pm_runtime_get_sync(g_mtk_dp->dev);
 			}
