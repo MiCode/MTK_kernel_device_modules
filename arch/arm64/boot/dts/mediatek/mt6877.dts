@@ -8863,6 +8863,10 @@
 #include "mediatek/trusty.dtsi"
 #include "mediatek/cust_mt6877_connfem.dtsi"
 
+&hypervisor {
+	status = "okay";
+};
+
 &pmic {
 	mt6359p_batoc_throttle: mtk_battery_oc_throttling {
 		compatible = "mediatek,mt6359p-battery_oc_throttling";
