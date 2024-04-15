@@ -60,6 +60,11 @@ struct sram_ctl {
 	bool wait_ack;
 };
 
+struct pre_chk_data {
+	u32 hwv_debug_mux_ofs_opt;
+	u32 hwv_debug_mux_shift_opt;
+};
+
 /**
  * struct scp_domain_data - scp domain data for power on/off flow
  * @name: The domain name.
@@ -98,8 +103,6 @@ struct scp_domain_data {
 	int extb_iso_offs;
 	u32 extb_iso_bits;
 	u32 hwv_debug_history_ofs;
-	u32 hwv_debug_mux_ofs_opt;
-	u32 hwv_debug_mux_shift_opt;
 	const char *basic_clk_name[MAX_CLKS];
 	const char *basic_lp_clk_name[MAX_CLKS];
 	const char *subsys_clk_prefix;
@@ -107,6 +110,7 @@ struct scp_domain_data {
 	u32 caps;
 	struct bus_prot bp_table[MAX_STEPS];
 	struct sram_ctl sram_table[MAX_SRAM_STEPS];
+	struct pre_chk_data chk_data;
 	u32 child[MAX_CHILDREN];
 	spinlock_t *lock;
 };
