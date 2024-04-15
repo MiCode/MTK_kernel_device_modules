@@ -15469,6 +15469,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,met-freerun;
 	};
 
+	mmdebug-vcp {
+		compatible = "mediatek,mmdebug-vcp";
+	};
+
 	pmic-oc-debug {
 		compatible = "mediatek,mt6983-oc-debug";
 		status = "okay";
