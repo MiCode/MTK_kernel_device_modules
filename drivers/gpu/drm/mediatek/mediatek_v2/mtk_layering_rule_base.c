@@ -3162,7 +3162,8 @@ static void clear_layer(struct drm_mtk_layering_info *disp_info,
 		{
 			c->layer_caps &= ~MTK_DISP_RSZ_LAYER;
 
-			if ((c->src_width != c->dst_width ||
+			if (!(priv->data->ovl_exdma_rule) &&
+				(c->src_width != c->dst_width ||
 			     c->src_height != c->dst_height) &&
 			    !mtk_has_layer_cap(c, MTK_MDP_RSZ_LAYER)) {
 				c->layer_caps &= ~MTK_DISP_CLIENT_CLEAR_LAYER;
@@ -3299,6 +3300,9 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			} else if (mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER)) {
 				comp_state.comp_id = DDP_COMPONENT_OVL_EXDMA2;
 				fun_lye++;
+			} else if (mtk_has_layer_cap(layer_info, MTK_DISP_CLIENT_CLEAR_LAYER)) {
+				comp_state.comp_id = DDP_COMPONENT_OVL_EXDMA3;
+				fun_lye = -1;
 			} else {
 				comp_state.comp_id =
 					mtk_lye_get_exdma_comp_id(disp_idx, i, drm_dev, fun_lye);
