@@ -10,10 +10,8 @@
 #ifndef _MTK_DMABUF_PAGE_POOL_H
 #define _MTK_DMABUF_PAGE_POOL_H
 
-#include <linux/device.h>
-#include <linux/kref.h>
 #include <linux/mm_types.h>
-#include <linux/mutex.h>
+#include <linux/spinlock.h>
 #include <linux/shrinker.h>
 #include <linux/types.h>
 #include "mtk_heap_priv.h"
@@ -47,7 +45,7 @@ enum {
  * struct mtk_dmabuf_page_pool - pagepool struct
  * @count[]:		array of number of pages of that type in the pool
  * @items[]:		array of list of pages of the specific type
- * @mutex:		lock protecting this struct and especially the count
+ * @lock:		lock protecting this struct and especially the count
  *			item list
  * @gfp_mask:		gfp_mask to use from alloc
  * @order:		order of pages in the pool
@@ -58,7 +56,7 @@ enum {
 struct mtk_dmabuf_page_pool {
 	int count[POOL_TYPE_SIZE];
 	struct list_head items[POOL_TYPE_SIZE];
-	struct mutex mutex;
+	spinlock_t lock;
 	gfp_t gfp_mask;
 	unsigned int order;
 	struct list_head list;
@@ -85,6 +83,10 @@ struct page *mtk_dmabuf_page_pool_fetch(struct mtk_dmabuf_page_pool *pool);
 struct page *mtk_dmabuf_page_pool_alloc(struct mtk_dmabuf_page_pool *pool);
 void mtk_dmabuf_page_pool_add(struct mtk_dmabuf_page_pool *pool, struct page *page);
 void mtk_dmabuf_page_pool_free(struct mtk_dmabuf_page_pool *pool, struct page *page);
+
+/* get pool size in bytes */
+unsigned long mtk_dmabuf_page_pool_get_size(struct mtk_dmabuf_page_pool *pool);
+
 int mtk_dmabuf_page_pool_init_shrinker(void);
 int mtk_dmabuf_page_pool_total(struct mtk_dmabuf_page_pool *pool, bool high);
 long mtk_dmabuf_page_pool_size(struct dma_heap *heap);
