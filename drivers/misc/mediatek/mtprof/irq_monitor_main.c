@@ -192,6 +192,7 @@ struct trace_stat {
 	bool tracing;
 	unsigned long long start_timestamp;
 	unsigned long long end_timestamp;
+	bool skip;
 };
 
 struct preemptirq_stat {
@@ -346,6 +347,7 @@ static void trace_stat_start(struct irq_mon_tracer *tracer)
 
 	stat->start_timestamp = sched_clock();
 	stat->end_timestamp = 0;
+	stat->skip = false;
 }
 
 static int trace_stat_end(struct irq_mon_tracer *tracer)
@@ -383,7 +385,7 @@ static void probe_irq_handler_exit(void *ignore, int irq,
 	duration = stat_dur(stat);
 	irq_mon_account_irq_time(duration, irq);
 	out = check_threshold(duration, tracer);
-	if (out) {
+	if (out && !stat->skip) {
 		char msg[MAX_MSG_LEN];
 		char handler_name[64];
 		const char *irq_name = irq_to_name(irq);
@@ -496,7 +498,7 @@ static void probe_ipi_exit(void *ignore, const char *reason)
 		return;
 	duration = stat_dur(stat);
 	out = check_threshold(duration, tracer);
-	if (out) {
+	if (out && !stat->skip) {
 		irq_mon_msg(out, "ipi: %s, duration %llu ms, from %llu ns to %llu ns on CPU:%d",
 			    reason,
 			    msec_high(duration),
@@ -619,7 +621,7 @@ static void probe_hrtimer_expire_exit(void *ignore, struct hrtimer *hrtimer)
 		return;
 	duration = stat_dur(stat);
 	out = check_threshold(duration, tracer);
-	if (out) {
+	if (out && !stat->skip) {
 		char msg[MAX_MSG_LEN];
 
 		scnprintf(msg, sizeof(msg),
@@ -660,6 +662,20 @@ struct irq_mon_kret {
 	u64 ts;
 };
 
+/*
+ * These functions are considered false alarms or GKI native code that cannot
+ * be removed. If they contribute more than half of the time in a single check,
+ * we will ignore this check.
+ *
+ * Why half of the time? Consider this case: if a function contributes 99% of
+ * the time and is not considered a false alarm, and then other code
+ * contributes the remaining 1% and triggers a warning, this case also needs to
+ * be considered as a false alarm.
+ *
+ * Why not just treat them as false alarms when we see them? If they only
+ * contribute 1% of the time and other code contributes 99%, this case
+ * shouldn't be considered a false alarm.
+ */
 static struct kretprobe kp[] = {
 	/* for perf: interrupt took too long */
 	{.kp.symbol_name = "perf_duration_warn"},
@@ -688,12 +704,14 @@ static int ret_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 	now = sched_clock();
 	delta = now - data->ts;
 	delta_ms = msec_high(delta);
+	/* Check the comment on kp to see why we need to double the delta_ms. */
+	delta_ms *= 2;
 	if (delta_ms >= irq_handler_tracer.th2_ms)
-		this_cpu_write(irq_handler_tracer.stat->tracing, 0);
+		this_cpu_write(irq_handler_tracer.stat->skip, 1);
 	if (delta_ms >= ipi_tracer.th2_ms)
-		this_cpu_write(ipi_tracer.stat->tracing, 0);
+		this_cpu_write(ipi_tracer.stat->skip, 1);
 	if (delta_ms >= hrtimer_expire_tracer.th2_ms)
-		this_cpu_write(hrtimer_expire_tracer.stat->tracing, 0);
+		this_cpu_write(hrtimer_expire_tracer.stat->skip, 1);
 	return 0;
 }
 
