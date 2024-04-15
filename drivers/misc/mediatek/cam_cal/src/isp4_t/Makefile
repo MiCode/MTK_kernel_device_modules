@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0
 
-MTK_PLATFORM := isp4
+MTK_PLATFORM := isp4_t
 MTK_CUSTOM_PATH := $(DEVICE_MODULES_PATH)/drivers/misc/mediatek
 CAM_CAL_SRC_PATH := $(MTK_CUSTOM_PATH)/cam_cal/src
 CAM_CAL_PLATFORM_SRC_PATH := $(CAM_CAL_SRC_PATH)/$(MTK_PLATFORM)
@@ -14,11 +14,11 @@ CAM_CAL_OBJ := \
 	cam_cal_list.o \
 	eeprom_i2c_dev.o \
 
-ifeq ($(CONFIG_MTK_CAM_CAL_ISP4), m)
-obj-$(CONFIG_MTK_CAM_CAL_ISP4) += $(MTK_PLATFORM_KO).o
+ifeq ($(CONFIG_MTK_CAM_CAL_ISP4_T), m)
+obj-$(CONFIG_MTK_CAM_CAL_ISP4_T) += $(MTK_PLATFORM_KO).o
 $(eval $(MTK_PLATFORM_KO)-objs += $(CAM_CAL_OBJ))
-else ifeq ($(CONFIG_MTK_CAM_CAL_ISP4), y)
-obj-$(CONFIG_MTK_CAM_CAL_ISP4) += $(CAM_CAL_OBJ)
+else ifeq ($(CONFIG_MTK_CAM_CAL_ISP4_T), y)
+obj-$(CONFIG_MTK_CAM_CAL_ISP4_T) += $(CAM_CAL_OBJ)
 endif
 
 subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/imgsensor/inc \

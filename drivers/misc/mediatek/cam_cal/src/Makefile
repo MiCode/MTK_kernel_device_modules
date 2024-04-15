@@ -14,8 +14,8 @@ ifeq ($(CONFIG_MTK_CAM_CAL), m)
 obj-$(CONFIG_MTK_CAM_CAL) += custom/
 endif
 
-ifeq ($(filter $(CONFIG_MTK_CAM_CAL_ISP4), m y), $(CONFIG_MTK_CAM_CAL_ISP4))
-obj-$(CONFIG_MTK_CAM_CAL_ISP4) += isp4/
+ifeq ($(filter $(CONFIG_MTK_CAM_CAL_ISP4_T), m y), $(CONFIG_MTK_CAM_CAL_ISP4_T))
+obj-$(CONFIG_MTK_CAM_CAL_ISP4_T) += isp4_t/
 endif
 
 ifeq ($(filter $(CONFIG_MTK_CAM_CAL_ISP4_C), m y), $(CONFIG_MTK_CAM_CAL_ISP4_C))
