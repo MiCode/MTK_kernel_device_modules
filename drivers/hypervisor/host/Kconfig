@@ -36,3 +36,13 @@ config VHOST_CMDQ
 	  for hypervisor project. The vhost driver is located at virt/grt,
 	  Also used to isolate the conflicting part of the cmdq driver
 	  on main project, default is n.
+
+config VHOST_DMABUF
+	tristate "vhost_dmabuf driver used to share buffers between dual systems"
+	help
+	  This kernel module can be loaded into the host kernel to import the
+	  virtual address (va) passed by the guest and export a vhost file
+	  descriptor (fd) to provide users with shared buffer capabilities.
+
+	  To compile as a module, choose M, the module will be called
+	  acrn. If unsure, say N.
