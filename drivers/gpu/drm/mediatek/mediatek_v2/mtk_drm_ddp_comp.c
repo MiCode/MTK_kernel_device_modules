@@ -923,7 +923,7 @@ static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC8, MTK_DISP_DLO_ASYNC, 29, NULL, 0},
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC9, MTK_DISP_DLO_ASYNC, 30, NULL, 0},
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC10, MTK_DISP_VIRTUAL, 31, NULL, 0},
-/* 550 */	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC11, MTK_DISP_DLO_ASYNC, 32, NULL, 0},
+/* 550 */	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC11, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC12, MTK_DISP_DLO_ASYNC, 33, NULL, 0},
 	{DDP_COMPONENT_DLI_ASYNC13, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_DLI_ASYNC14, MTK_DISP_VIRTUAL, -1, NULL, 0},
@@ -1428,6 +1428,12 @@ unsigned int mtk_drm_find_possible_crtc_by_comp(struct drm_device *drm,
 	} else if (mtk_drm_find_comp_in_ddp(
 			   ddp_comp, private->data->third_path_data) == true) {
 		ret = BIT(2);
+	} else if (mtk_drm_find_comp_in_ddp(
+			ddp_comp, private->data->fourth_path_data_secondary) == true) {
+		ret = BIT(3);
+	} else if (mtk_drm_find_comp_in_ddp(
+			ddp_comp, private->data->fourth_path_data_discrete) == true) {
+		ret = BIT(3);
 	} else {
 		DRM_INFO("Failed to find comp in ddp table\n");
 		ret = 0;
