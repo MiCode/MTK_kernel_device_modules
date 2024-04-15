@@ -1865,8 +1865,10 @@ static int mmdvfs_vcp_init_thread(void *data)
 	mmdvfs_mmup_notifier.notifier_call = mmdvfs_mmup_notifier_callback;
 	vcp_A_register_notify_ex(MMDVFS_MMUP_FEATURE_ID, &mmdvfs_mmup_notifier);
 
-	mmdvfs_vcp_notifier.notifier_call = mmdvfs_vcp_notifier_callback;
-	vcp_A_register_notify_ex(MMDVFS_VCP_FEATURE_ID, &mmdvfs_vcp_notifier);
+	if (is_mmup_enable_ex()) {
+		mmdvfs_vcp_notifier.notifier_call = mmdvfs_vcp_notifier_callback;
+		vcp_A_register_notify_ex(MMDVFS_VCP_FEATURE_ID, &mmdvfs_vcp_notifier);
+	}
 
 	force_on_notifier.notifier_call = mmdvfs_force_on_callback;
 	mtk_smi_dbg_register_force_on_notifier(&force_on_notifier);
