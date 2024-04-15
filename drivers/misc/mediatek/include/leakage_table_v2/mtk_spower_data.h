@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2017 MediaTek Inc.
+ * Copyright (c) 2024 MediaTek Inc.
  */
 
 #ifndef __MTK_SPOWER_DATA_H__
@@ -32,6 +32,8 @@ struct spower_raw_t {
 #include "mtk_spower_data_6877.h"
 #elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
 #include "mtk_spower_data_6893.h"
+#elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_6781)
+#include "mtk_spower_data_6781.h"
 #else
 #include "mtk_spower_data_plat.h"
 #endif
