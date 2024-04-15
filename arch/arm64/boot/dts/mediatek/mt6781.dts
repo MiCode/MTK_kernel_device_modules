@@ -844,24 +844,31 @@
 
 	pio: pinctrl {
 		compatible = "mediatek,mt6781-pinctrl";
-		reg_bases = <&gpio>,
-				<&iocfg_lt>,
-				<&iocfg_lm>,
-				<&iocfg_lb>,
-				<&iocfg_bl>,
-				<&iocfg_bm>,
-				<&iocfg_rm>,
-				<&iocfg_rt>,
-				<&iocfg_tl>;
-		reg_base_eint = <&eint>;
-		pins-are-numbered;
+		reg = <0 0x10005000 0 0x1000>,
+			<0 0x10002000 0 0x1000>,
+			<0 0x10002200 0 0x1000>,
+			<0 0x10002400 0 0x1000>,
+			<0 0x10002600 0 0x1000>,
+			<0 0x10002800 0 0x1000>,
+			<0 0x10002a00 0 0x1000>,
+			<0 0x10002c00 0 0x1000>,
+			<0 0x10002e00 0 0x1000>;
+		reg-names = "gpio",
+				"iocfg_lt",
+				"iocfg_lm",
+				"iocfg_lb",
+				"iocfg_bl",
+				"iocfg_bm",
+				"iocfg_rm",
+				"iocfg_rt",
+				"iocfg_tl";
 		gpio-controller;
 		gpio-ranges = <&pio 0 0 202>;
 		#gpio-cells = <2>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
-		interrupts = <GIC_SPI 186 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-parent = <&gic>;
+		mediatek,eint = <&eint>;
 	};
 
 	seninf1@1a004000 {
@@ -1030,9 +1037,13 @@
 		reg = <0 0x1000a000 0 0x1000>;
 	};
 
-	eint: eint@1000b000 {
-		compatible = "mediatek,eint";
+	eint: apirq@1000b000 {
+		compatible = "mediatek,mt6983-eint";
 		reg = <0 0x1000b000 0 0x1000>;
+		interrupts = <GIC_SPI 186 IRQ_TYPE_LEVEL_HIGH>;
+		reg-name = "eint";
+		mediatek,total-pin-number = <152>;
+		mediatek,instance-num = <1>;
 	};
 
 	apmixed: apmixed@1000c000 {
