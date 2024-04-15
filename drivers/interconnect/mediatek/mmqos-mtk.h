@@ -79,6 +79,8 @@ struct common_node {
 	u64 freq;
 	u64 smi_clk;
 	u32 volt;
+	u32 sum_up_peak_bw;
+	u32 sum_up_avg_bw;
 	struct list_head list;
 	struct icc_path *icc_path;
 	struct icc_path *icc_hrt_path;
