@@ -223,7 +223,7 @@ static int __init sspm_device_probe(struct platform_device *pdev)
 
 	sspm_pdev = pdev;
 
-	if (sspm_ipi_init()) {
+	if (sspm_ipi_init(pdev)) {
 		pr_err("[SSPM] IPI Init Failed\n");
 		return -1;
 	}

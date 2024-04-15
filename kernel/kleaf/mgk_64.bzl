@@ -1827,7 +1827,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/apusys/sapu/sapu.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/sensor/2.0/sensorhub/sensorhub.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/sspm/v3/sspm_v3.ko")
-        mgk_64_device_modules.append("drivers/misc/mediatek/sspm/v0/sspm_v0.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/sspm/v1/sspm_v1.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/tinysys_scmi/tinysys-scmi.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v1/mtk-swpm-dbg-common-v1.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6886/mtk-swpm-core-dbg-v6886.ko")
@@ -2353,7 +2353,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/soc/mediatek/mtk-mmdvfs-v3.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/sspm/v3/sspm_v3.ko")
-        mgk_64_device_modules.append("drivers/misc/mediatek/sspm/v0/sspm_v0.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/sspm/v1/sspm_v1.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/qos/mtk_qos_legacy.ko")
         mgk_64_platform_device_modules.update({"drivers/power/supply/mt6357-charger-type.ko":"mt6765"})
         mgk_64_platform_device_modules.update({"drivers/power/supply/rt9465.ko":"mt6765"})

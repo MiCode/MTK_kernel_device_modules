@@ -20,8 +20,8 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v2/inc/mach/
 endif
 # Include sspm header "sspm_ipi.h"
-ifneq ($(CONFIG_MTK_TINYSYS_SSPM_V0),)
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v0/
+ifneq ($(CONFIG_MTK_TINYSYS_SSPM_V1),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v1/
 endif
 # Include mcdi header "mtk_mcdi_api.h"
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcdi/include/
@@ -41,7 +41,7 @@ endif
 MTK_INTERNAL_SPM-y += mtk_spm_internal.o
 MTK_INTERNAL_SPM-y += mtk_spm_suspend.o
 MTK_INTERNAL_SPM-y += mtk_spm_suspend_process.o
-ifneq ($(CONFIG_MTK_TINYSYS_SSPM_V0),)
+ifneq ($(CONFIG_MTK_TINYSYS_SSPM_LEGACY),)
 MTK_INTERNAL_SPM-y += mtk_sspm.o
 MTK_INTERNAL_SPM-y += mtk_spm_power.o
 endif

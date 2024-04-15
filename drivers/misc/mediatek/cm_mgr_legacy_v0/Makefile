@@ -36,8 +36,6 @@ endif
 
 ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6765)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_v2/src/plat_k6765 \
-		-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v0
+		-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v1
 mtk_cm_mgr_v0-y += mtk_cm_mgr_mt6765.o
 endif
-
-
