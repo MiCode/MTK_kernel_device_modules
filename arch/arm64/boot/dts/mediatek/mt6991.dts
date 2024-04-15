@@ -3740,9 +3740,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		master-ostd-bits = <7>;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_VCORE>;
 		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_SMI>,
-				<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP_CAMERA_P2>,
-				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>;
-		clock-names = "apb", "smi", "gals0";
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP_CAMERA_P2>;
+		clock-names = "apb", "smi";
 		smi-user-id = <MTK_SMI_IMG_WPE_EIS MTK_SMI_IMG_TRAW MTK_SMI_IMG_DIP MTK_SMI_IMG_AOV MTK_SMI_IMG_FW>;
 	};
 
@@ -3755,9 +3754,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		master-ostd-bits = <7>;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_VCORE>;
 		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1_SMI>,
-				<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP_CAMERA_P2>,
-				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>;
-		clock-names = "apb", "smi", "gals0";
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP_CAMERA_P2>;
+		clock-names = "apb", "smi";
 		smi-user-id = <MTK_SMI_IMG_FW MTK_SMI_IMG_DIP MTK_SMI_IMG_WPE_TNR MTK_SMI_IMG_WPE_LITE>;
 	};
 
@@ -3769,9 +3767,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,common-id = <21>;
 		master-ostd-bits = <7>;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_MAIN>;
-		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON0_SMI>,
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
+				<&imgsys_main_clk CLK_IMG_SUB_COMMON0_SMI>,
 				<&imgsys_main_clk CLK_IMG_GALS_CAMERA_P2>;
-		clock-names = "apb", "smi";
+		clock-names = "apb", "smi", "gals0";
 		smi-user-id = <MTK_SMI_IMG_WPE_EIS MTK_SMI_IMG_DIP MTK_SMI_IMG_TRAW>;
 	};
 
@@ -3783,9 +3782,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,common-id = <22>;
 		master-ostd-bits = <7>;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_MAIN>;
-		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON3_SMI>,
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
+				<&imgsys_main_clk CLK_IMG_SUB_COMMON3_SMI>,
 				<&imgsys_main_clk CLK_IMG_GALS_CAMERA_P2>;
-		clock-names = "apb", "smi";
+		clock-names = "apb", "smi", "gals0";
 		smi-user-id = <MTK_SMI_IMG_AOV MTK_SMI_IMG_FW MTK_SMI_IMG_DIP MTK_SMI_IMG_TRAW>;
 	};
 
@@ -3797,9 +3797,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,common-id = <25>;
 		master-ostd-bits = <7>;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_MAIN>;
-		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON2_SMI>,
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
+				<&imgsys_main_clk CLK_IMG_SUB_COMMON2_SMI>,
 				<&imgsys_main_clk CLK_IMG_GALS_CAMERA_P2>;
-		clock-names = "apb", "smi";
+		clock-names = "apb", "smi", "gals0";
 		smi-user-id = <MTK_SMI_IMG_AOV MTK_SMI_IMG_FW>;
 	};
 
@@ -3811,9 +3812,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,common-id = <23>;
 		master-ostd-bits = <7>;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_MAIN>;
-		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON1_SMI>,
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
+				<&imgsys_main_clk CLK_IMG_SUB_COMMON1_SMI>,
 				<&imgsys_main_clk CLK_IMG_GALS_CAMERA_P2>;
-		clock-names = "apb", "smi";
+		clock-names = "apb", "smi", "gals0";
 		smi-user-id = <MTK_SMI_IMG_FW MTK_SMI_IMG_DIP MTK_SMI_IMG_WPE_TNR>;
 	};
 
@@ -3825,9 +3827,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,common-id = <24>;
 		master-ostd-bits = <7>;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_MAIN>;
-		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON4_SMI>,
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
+				<&imgsys_main_clk CLK_IMG_SUB_COMMON4_SMI>,
 				<&imgsys_main_clk CLK_IMG_GALS_CAMERA_P2>;
-		clock-names = "apb", "smi";
+		clock-names = "apb", "smi", "gals0";
 		smi-user-id = <MTK_SMI_IMG_FW MTK_SMI_IMG_DIP MTK_SMI_IMG_WPE_LITE>;
 	};
 
