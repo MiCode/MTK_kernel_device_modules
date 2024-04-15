@@ -998,6 +998,7 @@
 		mmpc = <&hfrpsys_bus>;
 		mm-hw-ccf-regmap = <&mm_hwv>;
 		mminfra-hwv-regmap = <&mminfra_hwv>;
+		cksys2-regmap = <&cksys_gp2_clk>;
 	};
 
 	mfgpll_pll_ctrl_clk: syscon@4b810000 {
