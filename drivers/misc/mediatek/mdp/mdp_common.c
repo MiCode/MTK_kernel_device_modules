@@ -1366,6 +1366,8 @@ s32 cmdq_mdp_handle_create(struct cmdqRecStruct **handle_out)
 
 	/* assign handle for mdp */
 	*handle_out = handle;
+	CMDQ_MME_MSG("%s pid:%d, handle:0x%p, pkt:0x%p",
+		__func__, current->pid, handle, handle->pkt);
 
 	return 0;
 }
@@ -1951,6 +1953,9 @@ s32 cmdq_mdp_wait(struct cmdqRecStruct *handle,
 	if (exec_cost > 150000)
 		CMDQ_LOG("[warn]wait flush result cost:%lluus handle:0x%p\n",
 			exec_cost, handle);
+
+	CMDQ_MME_MSG("%s pid:%d, handle:0x%p, pkt:0x%p",
+		__func__, current->pid, handle, handle->pkt);
 
 	if (results && results->count &&
 		results->count <= CMDQ_MAX_DUMP_REG_COUNT) {

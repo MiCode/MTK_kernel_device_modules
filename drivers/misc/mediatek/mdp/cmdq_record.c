@@ -2417,6 +2417,10 @@ void cmdq_task_destroy_handle(struct kref *kref)
 		handle, handle->pkt, handle->state,
 		(s32)atomic_read(&handle->exec), handle->gotIRQ);
 
+	CMDQ_MME_MSG("release handle:0x%p pkt:0x%p pid:%d state:%d exec:%d irq:%llu\n",
+		handle, handle->pkt, current->pid, handle->state,
+		(s32)atomic_read(&handle->exec), handle->gotIRQ);
+
 	if (handle->running_task)
 		cmdq_task_stop_loop(handle);
 

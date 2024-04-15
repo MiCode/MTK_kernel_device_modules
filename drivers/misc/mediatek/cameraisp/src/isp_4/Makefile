@@ -25,6 +25,10 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ccu/src/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdp/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 
+ifneq ($(filter y m, $(CONFIG_MTK_MME_SUPPORT)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mme/
+endif
+
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/v3/$(MTK_PLATFORM)/
 
 # camera_isp_4_t.o for mt6768 series; camera_isp_4_c.o for mt6765 series.

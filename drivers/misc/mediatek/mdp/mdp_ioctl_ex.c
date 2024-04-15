@@ -324,6 +324,8 @@ static unsigned long translate_fd(struct op_meta *meta,
 			mapping_job->mvas[i] = ion_addr;
 			mapping_job->handle_count++;
 
+			CMDQ_MME_MSG("%s op:%u fd_offset:%d fd:%d -> iova:%#llx\n",
+				__func__, meta->op, meta->fd_offset, meta->fd, (u64)ion_addr);
 			CMDQ_MSG("%s fd:%d -> iova:%#llx\n",
 				__func__, meta->fd, (u64)ion_addr);
 		} else {
