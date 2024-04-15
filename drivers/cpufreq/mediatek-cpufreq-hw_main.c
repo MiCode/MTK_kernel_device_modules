@@ -72,7 +72,7 @@ static bool freq_scaling_disabled = true;
 static bool fdvfs_enabled;
 static bool per_core_enabled;
 static void __iomem *qos_base;
-static void __iomem *pre_core_base;
+static void __iomem *per_core_base;
 static int control_group_num;
 static int cpu_control_group_map[MAX_CONTROL_GROUPS];
 static int control_group_master[MAX_CONTROL_GROUPS];
@@ -167,7 +167,7 @@ static unsigned int mtk_cpufreq_hw_get(unsigned int cpu)
 	nr_opp = c->nr_opp;
 
 	if (per_core_enabled)
-		index = readl_relaxed(pre_core_base + 0x4 * cpu);
+		index = readl_relaxed(per_core_base + 0x4 * cpu);
 	else
 		index = readl_relaxed(c->reg_bases[REG_FREQ_PERF_STATE]);
 
@@ -616,9 +616,9 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 	per_core_enabled = check_per_core_enabled();
 
 	if (per_core_enabled) {
-		pre_core_base = ioremap(csram_res->start + PER_CORE_OFF, PER_CORE_SIZE);
-		if (!pre_core_base) {
-			pr_notice("failed to map pre_core_base @ %s\n", __func__);
+		per_core_base = ioremap(csram_res->start + PER_CORE_OFF, PER_CORE_SIZE);
+		if (!per_core_base) {
+			pr_notice("failed to map per_core_base @ %s\n", __func__);
 			return -ENOMEM;
 		}
 	}
