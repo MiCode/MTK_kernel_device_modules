@@ -11407,6 +11407,7 @@ static void mtk_crtc_all_layer_off(struct mtk_drm_crtc *mtk_crtc,
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
 			OVL_ALL_LAYER_OFF, &keep_first_layer);
 		if (priv->data->mmsys_id == MMSYS_MT6761 ||
+			priv->data->mmsys_id == MMSYS_MT6765 ||
 			priv->data->mmsys_id == MMSYS_MT6768)
 			DDPMSG("keep first layer for OVLs\n");
 		else
