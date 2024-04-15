@@ -59,7 +59,6 @@ static int ux_scroll_count;
 
 // touch latency
 static int fpsgo_touch_latency_ko_ready;
-static int fpsgo_logic_vanish_min_thresh = 70;
 
 static void fpsgo_com_notify_to_do_recycle(struct work_struct *work);
 static DECLARE_WORK(do_recycle_work, fpsgo_com_notify_to_do_recycle);
@@ -301,9 +300,9 @@ static int fpsgo_comp_make_pair_l2q(struct render_info *f_render,
 	int is_logic_valid, unsigned long long sf_buf_id)
 {
 	struct FSTB_FRAME_L2Q_INFO *prev_l2q_info, *cur_l2q_info;
-	unsigned long long logic_disappear_min_ts = 0;
-	int prev_l2q_index = -1, cur_l2q_index = -1, is_logic_alive = 0;
+	int prev_l2q_index = -1, cur_l2q_index = -1;
 	int ret = 0;
+	unsigned long long expected_fps = 0, expected_time = 0;
 
 	prev_l2q_index = f_render->l2q_index;
 	cur_l2q_index = (f_render->l2q_index + 1) % MAX_SF_BUFFER_SIZE;
@@ -315,75 +314,45 @@ static int fpsgo_comp_make_pair_l2q(struct render_info *f_render,
 		goto out;
 	}
 
-	logic_disappear_min_ts = f_render->boost_info.target_time * fpsgo_logic_vanish_min_thresh / 100;
+	expected_fps = (unsigned long long) f_render->boost_info.target_fps;
+	expected_time = div64_u64(NSEC_PER_SEC, expected_fps);
 	cur_l2q_info->sf_buf_id = sf_buf_id;
 	cur_l2q_info->queue_end_ns = cur_queue_end;
 
-	if (logic_head_ts) {
+	if (logic_head_ts && cur_queue_end > logic_head_ts) {
 		if (is_logic_valid != 0) {
-			fpsgo_main_trace("[%s] pid=%d, cur_queue_end=%llu, logic_head_ts=%llu", __func__,
+			fpsgo_main_trace("[%s]pid=%d, cur_que_end=%llu, logic_head_ts=%llu", __func__,
 				f_render->pid, cur_queue_end, logic_head_ts);
 			ret = 1;
 		}
-		if (cur_queue_end > logic_head_ts) {
-			if (cur_queue_end - logic_head_ts > logic_disappear_min_ts) {  // current frame
-				if (logic_head_ts == prev_l2q_info->logic_head_ts) { // 這框頭和上框重複
-					if (logic_head_ts > prev_l2q_info->logic_head_fixed_ts &&
-						logic_head_ts - prev_l2q_info->logic_head_fixed_ts
-						> logic_disappear_min_ts) {
-						// 比對fixed logic_head_ts，大了一框的時間,
-						// 上框的頭不是這個頭，雖然重複但是這框的頭
-						cur_l2q_info->logic_head_fixed_ts = logic_head_ts;
-						is_logic_alive = 1;
-					} else { // 上框的頭是這個頭，這框頭消失
-						cur_l2q_info->logic_head_fixed_ts = prev_l2q_info->logic_head_fixed_ts +
-							f_render->boost_info.target_time + 1;
-						is_logic_alive = 0;
-					}
-				} else { // 沒重複直接當這框頭
-					cur_l2q_info->logic_head_fixed_ts = logic_head_ts;
-					is_logic_alive = 1;
-				}
-			} else {  // next frame
-				if (prev_l2q_info->logic_head_ts > prev_l2q_info->logic_head_fixed_ts &&
-					prev_l2q_info->logic_head_ts - prev_l2q_info->logic_head_fixed_ts
-					> logic_disappear_min_ts) {
-					cur_l2q_info->logic_head_fixed_ts = prev_l2q_info->logic_head_ts;
-					is_logic_alive = 1;
-				} else {
-					cur_l2q_info->logic_head_fixed_ts = prev_l2q_info->logic_head_fixed_ts +
-						f_render->boost_info.target_time + 1;
-					is_logic_alive = 0;
-				}
-			}
-		} else {
-			cur_l2q_info->logic_head_fixed_ts = prev_l2q_info->logic_head_fixed_ts +
-				f_render->boost_info.target_time;
-			is_logic_alive = 0;
-		}
-
+		cur_l2q_info->logic_head_fixed_ts = logic_head_ts;
 		cur_l2q_info->logic_head_ts = logic_head_ts;
-		cur_l2q_info->is_logic_head_alive = is_logic_alive;
 	} else {
 		cur_l2q_info->logic_head_fixed_ts = prev_l2q_info->logic_head_fixed_ts +
-			f_render->boost_info.target_time;
-		is_logic_alive = 0;
+			expected_time;
+		cur_l2q_info->logic_head_ts = 0;
 	}
+	cur_l2q_info->is_logic_head_alive = has_logic_head;
+
 	if (cur_queue_end > cur_l2q_info->logic_head_fixed_ts)
 		cur_l2q_info->l2q_ts = cur_queue_end - cur_l2q_info->logic_head_fixed_ts;
 	else  // Error handling 拿前一框L2Q
 		cur_l2q_info->l2q_ts = prev_l2q_info->l2q_ts;
 
-	fpsgo_main_trace("[fstb_logical][%d]l_ts=%llu,l_fixed_ts=%llu,q=%llu,l2q_ts=%llu,exp_t=%llu,min=%llu",
-		f_render->pid, cur_l2q_info->logic_head_ts, cur_l2q_info->logic_head_fixed_ts, cur_queue_end,
-		cur_l2q_info->l2q_ts, f_render->pid, f_render->boost_info.target_time, logic_disappear_min_ts);
+	fpsgo_main_trace("[fstb_logical][%d]l_ts=%llu,l_fixed_ts=%llu,q=%llu,l2q_ts=%llu,exp_t=%llu,has=%d",
+		f_render->pid, cur_l2q_info->logic_head_ts, cur_l2q_info->logic_head_fixed_ts,
+		cur_queue_end, cur_l2q_info->l2q_ts, expected_time,
+		cur_l2q_info->is_logic_head_alive);
 	fpsgo_systrace_c_fstb_man(f_render->pid, f_render->buffer_id,
-			cur_l2q_info->logic_head_fixed_ts / 1000000, "L_fixed");
+			div64_u64(cur_l2q_info->logic_head_fixed_ts, 1000000), "L_fixed");
 	fpsgo_systrace_c_fstb_man(f_render->pid, f_render->buffer_id, cur_l2q_info->sf_buf_id,
 		"L2Q_sf_buf_id");
-	fpsgo_systrace_c_fstb_man(f_render->pid, f_render->buffer_id, cur_l2q_info->l2q_ts, "L2Q_ts");
-	fpsgo_systrace_c_fstb_man(f_render->pid, f_render->buffer_id, cur_queue_end / 1000000, "L2Q_q_end_ts");
-	fpsgo_systrace_c_fstb_man(f_render->pid, f_render->buffer_id, logic_head_ts / 1000000, "Logical ts");
+	fpsgo_systrace_c_fstb_man(f_render->pid, f_render->buffer_id, cur_l2q_info->l2q_ts,
+		"L2Q_ts");
+	fpsgo_systrace_c_fstb_man(f_render->pid, f_render->buffer_id,
+		div64_u64(cur_queue_end, 1000000), "L2Q_q_end_ts");
+	fpsgo_systrace_c_fstb_man(f_render->pid, f_render->buffer_id,
+		div64_u64(logic_head_ts, 1000000), "Logical ts");
 out:
 	return ret;
 }
@@ -409,8 +378,8 @@ static void fpsgo_com_receive_jank_detection(int jank, int pid)
 
 static void fpsgo_com_get_l2q_time(int pid, unsigned long long buf_id, int tgid,
 		unsigned long long enqueue_end_time, unsigned long long prev_queue_end_ts,
-		unsigned long long pprev_queue_end_ts,	unsigned long long sf_buf_id,
-		struct render_info *f_render)
+		unsigned long long pprev_queue_end_ts, unsigned long long dequeue_start_ts,
+		unsigned long long sf_buf_id, struct render_info *f_render)
 {
 		unsigned long long logic_head_ts = 0;
 		int has_logic_head = 0, is_logic_valid = 0;
@@ -418,7 +387,7 @@ static void fpsgo_com_get_l2q_time(int pid, unsigned long long buf_id, int tgid,
 		if (fpsgo_touch_latency_ko_ready && fpsgo_get_rl_l2q_enable()) {
 			is_logic_valid = fpsgo_comp2fstb_get_logic_head(pid, buf_id,
 				tgid, enqueue_end_time, prev_queue_end_ts, pprev_queue_end_ts,
-				&logic_head_ts, &has_logic_head);
+				dequeue_start_ts, &logic_head_ts, &has_logic_head);
 			fpsgo_comp_make_pair_l2q(f_render, enqueue_end_time, logic_head_ts,
 				has_logic_head, is_logic_valid, sf_buf_id);
 		}
@@ -935,7 +904,7 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 
 		fpsgo_com_get_l2q_time(pid, f_render->buffer_id, f_render->tgid,
 			enqueue_end_time, prev_enqueue_end, pprev_enqueue_end,
-			sf_buf_id, f_render);
+			f_render->t_dequeue_start, sf_buf_id, f_render);
 
 		fpsgo_comp2fbt_frame_start(f_render,
 				enqueue_end_time);
@@ -2173,10 +2142,6 @@ FPSGO_COM_SYSFS_READ(fps_align_margin, 1, fps_align_margin);
 FPSGO_COM_SYSFS_WRITE_VALUE(fps_align_margin, fps_align_margin, 0, 10);
 static KOBJ_ATTR_RW(fps_align_margin);
 
-FPSGO_COM_SYSFS_READ(fpsgo_logic_vanish_min_thresh, 1, fpsgo_logic_vanish_min_thresh);
-FPSGO_COM_SYSFS_WRITE_VALUE(fpsgo_logic_vanish_min_thresh, fpsgo_logic_vanish_min_thresh, 0, 100);
-static KOBJ_ATTR_RW(fpsgo_logic_vanish_min_thresh);
-
 FPSGO_COM_SYSFS_WRITE_POLICY_CMD(bypass_non_SF_by_pid, 0, 0, 1);
 static KOBJ_ATTR_WO(bypass_non_SF_by_pid);
 
@@ -2524,7 +2489,6 @@ void __exit fpsgo_composer_exit(void)
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_dep_loading_thr_by_pid);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_fpsgo_com_policy_cmd);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_is_fpsgo_boosting);
-	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_fpsgo_logic_vanish_min_thresh);
 
 	fpsgo_sysfs_remove_dir(&comp_kobj);
 }
@@ -2556,7 +2520,6 @@ int __init fpsgo_composer_init(void)
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_dep_loading_thr_by_pid);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_fpsgo_com_policy_cmd);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_is_fpsgo_boosting);
-		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_fpsgo_logic_vanish_min_thresh);
 	}
 
 	return 0;
