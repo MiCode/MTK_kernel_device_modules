@@ -290,6 +290,7 @@ static const struct of_device_id mtk_iommu_pseudo_of_ids[] = {
 	{ .compatible = "mediatek,mt6781-iommu-pseudo" },
 	{ .compatible = "mediatek,mt6789-iommu-pseudo" },
 	{ .compatible = "mediatek,mt6833-iommu-pseudo" },
+	{ .compatible = "mediatek,mt6853-iommu-pseudo" },
 	{ .compatible = "mediatek,mt6877-iommu-pseudo" },
 	{ .compatible = "mediatek,mt6893-iommu-pseudo" },
 	{},
