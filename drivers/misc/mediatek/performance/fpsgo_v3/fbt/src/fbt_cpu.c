@@ -1282,10 +1282,9 @@ static void fbt_change_task_policy(int policy, int pid, int group, int spid_acti
 #if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	int group_bit = group == FPSGO_GROUP_OTHERS ? 1 : group << 1;
 	if (spid_prio) {
-		if (spid_timeout)
-			set_task_priority_based_vip_and_throttle(pid, spid_prio, spid_timeout);
-		else
-			set_task_priority_based_vip(pid, spid_prio);
+		if (!spid_timeout)
+			spid_timeout = 60;
+		set_task_priority_based_vip_and_throttle(pid, spid_prio, spid_timeout);
 		goto OUT;
 	}
 
@@ -1293,7 +1292,7 @@ static void fbt_change_task_policy(int policy, int pid, int group, int spid_acti
 		int prio = group + MIN_PRIORITY_BASED_VIP;
 
 		if (prio >= MIN_PRIORITY_BASED_VIP && prio <= MAX_PRIORITY_BASED_VIP) {
-			set_task_priority_based_vip(pid, prio);
+			set_task_priority_based_vip_and_throttle(pid, prio, 60);
 			*is_vip = 1;
 		}
 	} else if (reset || *is_vip) {
@@ -6691,7 +6690,7 @@ void fbt_jank_thread_priority(int boost, int pid, int cmd)
 {
 #if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	if (cmd == 1)
-		boost ? set_task_priority_based_vip(pid, MAX_PRIORITY_BASED_VIP) :
+		boost ? set_task_priority_based_vip_and_throttle(pid, MAX_PRIORITY_BASED_VIP, 60) :
 				unset_task_priority_based_vip(pid);
 	else if (cmd == 2)
 		boost ? set_task_vvip(pid) : unset_task_vvip(pid);
