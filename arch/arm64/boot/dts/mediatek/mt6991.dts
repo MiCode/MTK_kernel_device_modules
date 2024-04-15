@@ -4063,7 +4063,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS_CAMRAWA>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_DPE>,
-			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_SUB_COMMON_DCM_DIS_SMI>;
+			<&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_SMI>;
 		clock-names = "apb", "smi", "gals0", "gals1";
 		smi-user-id = <MTK_SMI_CAMSV1 MTK_SMI_CAMSV2 MTK_SMI_CAMSV3
 					   MTK_SMI_PDA1 MTK_SMI_MRAW1 MTK_SMI_CAM_RAWA
@@ -4078,9 +4078,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,common-id = <27>;
 		power-domains =<&hfrpsys MT6991_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMRAWA>,
-			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_SUB_COMMON_DCM_DIS_SMI>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_LARB13_SMI>;
-		clock-names = "apb", "smi", "gals0";
+		clock-names = "apb", "smi";
 		smi-user-id = <MTK_SMI_CAMSV2 MTK_SMI_PDA2 MTK_SMI_MRAW2
 					   MTK_SMI_CAMSV3 MTK_SMI_CAM_YUVA MTK_SMI_CAM_RAWB
 					   MTK_SMI_CAM_YUVC MTK_SMI_CAM_AOV MTK_SMI_CAM_RAW>;
