@@ -2548,4 +2548,18 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/iommu/iommu_gz.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko")
 
+    if "mt6781_overlay.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_device_modules.append("drivers/regulator/mt6358-regulator.ko")
+        mgk_64_device_modules.append("drivers/regulator/mtk-pmic-oc-debug.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/bridge/mtk_mbraink_bridge.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/mtk_mbraink.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/modules/v6989/mtk_mbraink_v6989.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/modules/v6991/mtk_mbraink_v6991.ko")
+        mgk_64_device_modules.remove("drivers/spmi/spmi-mtk-mpu.ko")
+        mgk_64_device_modules.remove("drivers/spmi/spmi-mtk-pmif.ko")
+        mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v1/mtk_dpc_v1.ko")
+        mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v1/mtk_vdisp_v1.ko")
+        mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v2/mtk_dpc_v2.ko")
+        mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v2/mtk_vdisp_v2.ko")
+
 get_overlay_modules_list()
