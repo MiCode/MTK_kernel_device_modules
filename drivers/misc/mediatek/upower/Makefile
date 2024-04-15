@@ -54,4 +54,6 @@ else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6739)),)
 Upower-y += mtk_unified_power_plat_6739.o
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6893)),)
 Upower-y += mtk_unified_power_plat_6893.o
+else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6781)),)
+Upower-y += mtk_unified_power_plat_6781.o
 endif
