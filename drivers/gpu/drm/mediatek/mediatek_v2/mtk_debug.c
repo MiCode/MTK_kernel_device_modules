@@ -2795,13 +2795,9 @@ static bool is_comp_addr(uint32_t addr, struct mtk_ddp_comp *comp)
 {
 	uint32_t range = 0x1000;
 	uint32_t offset = 0x0;
-	struct mtk_drm_private *priv = drm_dev->dev_private;
 
 	if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR)
-		if (priv->data->mmsys_id == MMSYS_MT6991)
-			range = 0x20000;
-		else
-			range = 0x2000;
+		range = 0x2000;
 	if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_SPR)
 		offset = 0x10000;
 	if (addr >= (comp->regs_pa + offset) &&
