@@ -230,6 +230,10 @@ ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_V1)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v1/
 endif
 
+ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_V0)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v0/
+endif
+
 obj-$(CONFIG_COMMON_CLK_MT6853) += clk-chk.o
 clk-chk-$(CONFIG_COMMON_CLK_MT6853) += clkchk.o clkchk-mt6853.o
 ifeq ($(CONFIG_DEBUG_FS), y)
