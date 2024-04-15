@@ -1768,6 +1768,12 @@
 		disable = <0>;
 	};
 
+	mbraink_v6991: mbraink-v6991 {
+		compatible = "mediatek,mbraink-v6991";
+		gauge = <&mtk_gauge>;
+		gauge2 = <&mtk_gauge2>;
+	};
+
 	met {
 		met_emi: met-emi {
 			compatible = "mediatek,met_emi";
