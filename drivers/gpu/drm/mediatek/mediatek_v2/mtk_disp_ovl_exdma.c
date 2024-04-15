@@ -3431,6 +3431,9 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 	struct drm_display_mode *mode = NULL;
 	unsigned int bw;
 	int ret = 0;
+	unsigned int aid_sel_offset = 0;
+	resource_size_t mmsys_reg = 0;
+	struct mtk_disp_ovl_exdma *ovl = NULL;
 
 	if (unlikely(!(comp && comp->mtk_crtc))) {
 		DDPPR_ERR("%s invalid comp or mtk_crtc\n", __func__);
@@ -3440,11 +3443,21 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 	mtk_crtc = comp->mtk_crtc;
 	crtc = &mtk_crtc->base;
 	priv = crtc->dev->dev_private;
+	ovl = comp_to_ovl_exdma(comp);
+
 	if (crtc->state) {
 		mode = &crtc->state->adjusted_mode;
 		bw = _layering_get_frame_bw(crtc, mode);
 	}
 	if (src_on & DISP_OVL_L_EN) {
+		if (ovl->data->mmsys_mapping)
+			mmsys_reg = ovl->data->mmsys_mapping(comp);
+		if (ovl->data->aid_sel_mapping)
+			aid_sel_offset = ovl->data->aid_sel_mapping(comp);
+		if (mmsys_reg && aid_sel_offset &&
+			(comp->id == DDP_COMPONENT_OVL_EXDMA3 || comp->id == DDP_COMPONENT_OVL_EXDMA4))
+			cmdq_pkt_write(handle, comp->cmdq_base,	mmsys_reg + aid_sel_offset,
+				0x0, 0x7);
 		layer_addr = read_phy_layer_addr(comp, 0);
 		if (comp->id == DDP_COMPONENT_OVL_EXDMA2 || comp->id == DDP_COMPONENT_OVL_EXDMA3) {
 			DDPMSG("%s, replace mva same as pa %pad\n", __func__, &layer_addr);
