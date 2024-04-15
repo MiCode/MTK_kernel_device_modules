@@ -4253,8 +4253,8 @@ transparent_hugepage=never clk_ignore_unused=1";
 			"path_larb1";
 		interconnect-num = <2>;
 		bandwidth-table =
-			<3 949>,
-			<6 1>;
+			<3 0 949>,
+			<6 1 1>;
 	};
 
 	vdec_gcon: vdec_gcon@16000000 {
@@ -4347,8 +4347,8 @@ transparent_hugepage=never clk_ignore_unused=1";
 			"path_larb4";
 		interconnect-num = <2>;
 		bandwidth-table =
-			<4 712>,
-			<6 4>;
+			<4 0 712>,
+			<6 1 4>;
 	};
 
 	venc_gcon: venc_gcon@17000000 {
