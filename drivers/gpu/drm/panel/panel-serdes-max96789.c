@@ -43,6 +43,7 @@
 #define DEFAULT_PLL								478
 #define DEFAULT_FPS								60
 #define DEFAULT_LPPF							1
+#define DEFAULT_CLOCK							278554
 
 struct panel_desc {
 	const struct drm_display_mode *modes;
@@ -97,6 +98,18 @@ static inline struct lcm *panel_to_lcm(struct drm_panel *panel)
 	return container_of(panel, struct lcm, panel);
 }
 
+static struct drm_display_mode default_mode = {
+	.clock = DEFAULT_CLOCK,
+	.hdisplay = DEFAULT_WIDTH,
+	.hsync_start = DEFAULT_WIDTH + DEFAULT_HFP,
+	.hsync_end = DEFAULT_WIDTH + DEFAULT_HFP + DEFAULT_HSA,
+	.htotal = DEFAULT_WIDTH + DEFAULT_HFP +DEFAULT_HSA + DEFAULT_HBP,
+	.vdisplay = DEFAULT_HEIGHT,
+	.vsync_start = DEFAULT_HEIGHT + DEFAULT_VFP,
+	.vsync_end = DEFAULT_HEIGHT + DEFAULT_VFP + DEFAULT_VSA,
+	.vtotal = DEFAULT_HEIGHT + DEFAULT_VFP + DEFAULT_VSA + DEFAULT_VBP,
+};
+
 static void get_timing(struct lcm *ctx)
 {
 	struct vdo_timing timing;
@@ -145,7 +158,21 @@ static void get_timing(struct lcm *ctx)
 		ext_params.crop_height[1] = timing.crop_height[1];
 		ext_params.physical_width = timing.crop_width[0] + timing.crop_width[1];
 		ext_params.physical_height = timing.crop_height[0];
+	} else {
+		ext_params.physical_width = ctx->disp_mode.hdisplay;
+		ext_params.physical_height = ctx->disp_mode.vdisplay;
 	}
+
+	default_mode.hdisplay = ctx->disp_mode.hdisplay;
+	default_mode.vdisplay = ctx->disp_mode.vdisplay;
+	default_mode.hsync_start = ctx->disp_mode.hsync_start;
+	default_mode.hsync_end = ctx->disp_mode.hsync_end;
+	default_mode.htotal = ctx->disp_mode.htotal;
+	default_mode.vsync_start = ctx->disp_mode.vsync_start;
+	default_mode.vsync_end = ctx->disp_mode.vsync_end;
+	default_mode.vtotal = ctx->disp_mode.vtotal;
+	default_mode.clock = ctx->disp_mode.clock;
+
 	pr_info("%s -\n", __func__);
 }
 
@@ -246,16 +273,14 @@ static int lcm_get_modes(struct drm_panel *panel,
 	struct drm_connector *connector)
 {
 	struct drm_display_mode *mode;
-	struct lcm *ctx = panel_to_lcm(panel);
-	const struct drm_display_mode *m = &ctx->disp_mode;
 
 	pr_info("%s +\n", __func__);
-	mode = drm_mode_duplicate(connector->dev, m);
+	mode = drm_mode_duplicate(connector->dev, &default_mode);
 	if (!mode) {
 		pr_info("failed to add mode %ux%ux@%u\n",
-			  m->hdisplay,
-			  m->vdisplay,
-			  drm_mode_vrefresh(m));
+			  default_mode.hdisplay,
+			  default_mode.vdisplay,
+			  drm_mode_vrefresh(&default_mode));
 		return -ENOMEM;
 	}
 
@@ -264,8 +289,8 @@ static int lcm_get_modes(struct drm_panel *panel,
 	drm_mode_set_name(mode);
 	drm_mode_probed_add(connector, mode);
 
-	connector->display_info.width_mm = m->width_mm;
-	connector->display_info.height_mm = m->height_mm;
+	connector->display_info.width_mm = default_mode.width_mm;
+	connector->display_info.height_mm = default_mode.height_mm;
 
 	pr_info("%s -\n", __func__);
 
