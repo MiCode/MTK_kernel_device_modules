@@ -339,8 +339,7 @@ struct rrot_frame_data {
 	u32 gmcif_con;
 	u32 slice_size;
 	u32 slice_pixel;
-	u32 stash_srt_bw;
-	u32 stash_hrt_bw;
+	u32 stash_bw;
 	bool ultra_off;
 	bool binning;
 
@@ -2207,111 +2206,157 @@ static u32 rrot_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg
 static u32 rrot_qos_stash_bw_get(struct mml_task *task, struct mml_comp_config *ccfg,
 	u32 *srt_bw_out, u32 *hrt_bw_out)
 {
-	const struct mml_frame_data *src = &task->config->info.src;
-	const u32 rotate = task->config->info.dest[0].rotate;
+	const struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_data *src = &cfg->info.src;
+	const u32 rotate = cfg->info.dest[0].rotate;
 	const u32 format = src->format;
-	const u32 plane = MML_FMT_PLANE(format);
+	const u32 acttime = mml_iscouple(cfg->info.mode) ? cfg->info.act_time : cfg->duration;
+	const u32 bin_hor = 1 << cfg->bin_x;
+	const u32 pgsz = PAGE_SIZE;
+	u32 w = src->width, h = src->height;
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
-	u32 burst, burst1 = 1;
-	u32 srt_bw = *srt_bw_out, hrt_bw = *hrt_bw_out;
+	u32 stash_cmd_num, stash_bw = 256;
 
-	if (rrot_frm->stash_srt_bw)
+	if (rrot_frm->stash_bw)
 		goto done;
 
-	if (rotate == MML_ROT_0 || rotate == MML_ROT_180) {
-		/* same as rdma */
-		rrot_frm->stash_srt_bw = srt_bw / 256;
-		rrot_frm->stash_hrt_bw = hrt_bw / 256;
-		goto done;
+	if (cfg->rrot_dual) {
+		if (rotate == MML_ROT_0 || rotate == MML_ROT_180)
+			w = w / 2;
+		else
+			h = h / 2;
 	}
 
-	switch (format) {
-	case MML_FMT_RGB565:
-	case MML_FMT_BGR565:
-		burst = 4;
-		break;
-	case MML_FMT_RGB888:
-	case MML_FMT_BGR888:
-		burst = 6;
-		break;
-	/* RGB 8bit/10bit */
-	case MML_FMT_RGBA8888:
-	case MML_FMT_BGRA8888:
-	case MML_FMT_ARGB8888:
-	case MML_FMT_ABGR8888:
-	case MML_FMT_RGBA1010102:
-	case MML_FMT_BGRA1010102:
-	case MML_FMT_ARGB2101010:
-	case MML_FMT_ABGR2101010:
-	case MML_FMT_YUVA8888:
-	case MML_FMT_AYUV8888:
-	/* YUV422 1 plane */
-	case MML_FMT_UYVY:
-	case MML_FMT_VYUY:
-	case MML_FMT_YUYV:
-	case MML_FMT_YVYU:
-	/* compress */
-	case MML_FMT_RGBA8888_AFBC:
-	case MML_FMT_RGBA1010102_AFBC:
-	case MML_FMT_YUV420_AFBC:
-	case MML_FMT_YUV420_10P_AFBC:
-	case MML_FMT_NV12_HYFBC:
-	case MML_FMT_P010_HYFBC:
-		burst = 8;
-		break;
-	/* YUV420 3plane */
-	case MML_FMT_I420:
-	case MML_FMT_YV12:
-		burst = 4;
-		burst1 = 2;
-		break;
-	/* YUV422 3plane */
-	case MML_FMT_I422:
-	case MML_FMT_YV16:
-		burst = 4;
-		burst1 = 2;
-		break;
-	/* YUV420 2plane */
-	case MML_FMT_NV12:
-	case MML_FMT_NV21:
-		burst = 4;
-		burst1 = 4;
-		break;
-	/* YUV422 2plane */
-	case MML_FMT_NV16:
-	case MML_FMT_NV61:
-		burst = 4;
-		burst1 = 4;
-		break;
-	default:
-		burst = 8;
-		mml_log("%s unknown format burst for rrot %#010x", __func__, format);
-		break;
+	if (format == MML_FMT_RGBA8888_AFBC || format == MML_FMT_RGBA1010102_AFBC) {
+		u32 block_line_header_per_page = pgsz / (w / 32 * 16);
+		u32 header_cmd_num, payload_cmd_num;
+
+		if (rotate == MML_ROT_0 || rotate == MML_ROT_180) {
+			header_cmd_num = h / 4 / block_line_header_per_page;
+			payload_cmd_num = w * h / (32 * 4) / 4;
+		} else {
+			header_cmd_num = h / 4 / block_line_header_per_page * (w / 32);
+			payload_cmd_num = w * h / (32 * 8);
+		}
+
+		stash_cmd_num = header_cmd_num + payload_cmd_num;
+		stash_bw = stash_cmd_num * 16 * 1000 / acttime;
+
+	} else if (format == MML_FMT_YUV420_AFBC || format == MML_FMT_YUV420_10P_AFBC) {
+		u32 block_line_header_per_page = pgsz / (w / 16 * 16);
+		u32 header_cmd_num, payload_cmd_num;
+
+		if (bin_hor > 1) {
+			if (rotate == MML_ROT_0 || rotate == MML_ROT_180) {
+				header_cmd_num = h / 16 / block_line_header_per_page / bin_hor;
+				payload_cmd_num = w * h / (16 * 16) / bin_hor;
+			} else {
+				header_cmd_num = h / 16 / block_line_header_per_page *
+					(w / 16) / bin_hor;
+				payload_cmd_num = w * h / (16 * 16) / bin_hor;
+			}
+		} else {
+			u32 block_per_4k = format == MML_FMT_YUV420_AFBC ? pgsz / 384 : pgsz / 512;
+
+			if (rotate == MML_ROT_0 || rotate == MML_ROT_180) {
+				header_cmd_num = h / 16 / block_line_header_per_page;
+				payload_cmd_num = w * h / (16 * 16) / block_per_4k;
+			} else {
+				header_cmd_num = h / 16 / block_line_header_per_page * (w / 16);
+				payload_cmd_num = w * h / (16 * 16);
+			}
+		}
+
+		stash_cmd_num = header_cmd_num + payload_cmd_num;
+		stash_bw = stash_cmd_num * 16 * 1000 / acttime;
+
+	} else if (format == MML_FMT_NV12_HYFBC || format == MML_FMT_P010_HYFBC) {
+		u32 y_head_cmd_num, c_head_cmd_num;
+		u32 y_block_line_header_per_4k, c_block_line_header_per_4k;
+		u32 header_cmd_num, payload_cmd_num;
+
+		y_block_line_header_per_4k = pgsz / (w / 16 * 4);
+		c_block_line_header_per_4k = pgsz / (w / 2 / 16 * 4);
+
+		if (bin_hor > 1) {
+			if (rotate == MML_ROT_0 || rotate == MML_ROT_180) {
+				y_head_cmd_num = h / 16 / y_block_line_header_per_4k;
+				c_head_cmd_num = h / 2 / 8 / c_block_line_header_per_4k;
+			} else {
+				y_head_cmd_num = h / 16 / y_block_line_header_per_4k *
+					(w / 16 / bin_hor);
+				c_head_cmd_num = h / 2 / 8 / c_block_line_header_per_4k *
+					(w / 8 / bin_hor);
+			}
+
+			header_cmd_num = y_head_cmd_num + c_head_cmd_num;
+			payload_cmd_num = w * h / (16 * 16) * 2 / bin_hor;
+		} else {
+			if (rotate == MML_ROT_0 || rotate == MML_ROT_180) {
+				u32 block_per_4k = format == MML_FMT_NV12_HYFBC ?
+					pgsz / 256 : pgsz / 384;
+
+				y_head_cmd_num = h / 16 / y_block_line_header_per_4k;
+				c_head_cmd_num = h / 2 / 8 / c_block_line_header_per_4k;
+
+				header_cmd_num = y_head_cmd_num + c_head_cmd_num;
+				payload_cmd_num = w * h / (16 * 16) * 2 / block_per_4k;
+			} else {
+				y_head_cmd_num = h / 16 / y_block_line_header_per_4k *
+					(w / 16 / bin_hor);
+				c_head_cmd_num = h / 2 / 8 / c_block_line_header_per_4k *
+					(w / 8 / bin_hor);
+
+				header_cmd_num = y_head_cmd_num + c_head_cmd_num;
+				payload_cmd_num = w * h / (16 * 16) * 2;
+			}
+		}
+
+		stash_cmd_num = header_cmd_num + payload_cmd_num;
+		stash_bw = stash_cmd_num * 16 * 1000 / acttime;
+
+	} else if (MML_FMT_IS_RGB(format)) {
+		if (rotate == MML_ROT_0 || rotate == MML_ROT_180)
+			stash_cmd_num = mml_color_get_y_size(format, w, h, src->y_stride) / pgsz;
+		else {
+			u32 cmd_per_slice = h * w / pgsz;
+			u32 slice_num = w / 32;
+
+			stash_cmd_num = cmd_per_slice * slice_num;
+		}
+
+		stash_bw = stash_cmd_num * 1000 / acttime;
+
+	} else if (format == MML_FMT_YV12) {
+		u32 plane_y, plane_yv;
+
+		if (rotate == MML_ROT_0 || rotate == MML_ROT_180) {
+			plane_y = w * h / pgsz;
+			plane_yv = w * h / pgsz;
+		} else {
+			u32 y_cmd_per_slice, uv_cmd_per_slice;
+			u32 y_slice_num, uv_slice_num;
+
+			y_cmd_per_slice = h * w / pgsz;
+			y_slice_num = w / 64 / bin_hor;
+			uv_cmd_per_slice = h / 2 * (w / 2 / pgsz);
+			uv_slice_num = w / 2 / 32 / bin_hor;
+
+			plane_y = y_cmd_per_slice * y_slice_num;
+			plane_yv = y_cmd_per_slice * uv_slice_num;
+		}
+
+		stash_cmd_num = plane_y + plane_yv * 2;
+		stash_bw = stash_cmd_num * 1000 / acttime;
 	}
 
-	if (plane == 2) {
-		u32 ysz = mml_color_get_y_size(format, src->width, src->height, src->y_stride);
-		u32 uvsz = mml_color_get_uv_size(format, src->width, src->height, src->uv_stride);
-
-		srt_bw = stash_bw_2plane(srt_bw, ysz, uvsz, burst, burst1);
-		hrt_bw = stash_bw_2plane(hrt_bw, ysz, uvsz, burst, burst1);
-	} else if (plane == 3) {
-		u32 ysz = mml_color_get_y_size(format, src->width, src->height, src->y_stride);
-		u32 uvsz = mml_color_get_uv_size(format, src->width, src->height, src->uv_stride);
-
-		srt_bw = stash_bw_3plane(srt_bw, ysz, uvsz, burst, burst1);
-		hrt_bw = stash_bw_3plane(hrt_bw, ysz, uvsz, burst, burst1);
-	} else {
-		srt_bw = srt_bw / burst;
-		hrt_bw = hrt_bw / burst;
-	}
-
-	rrot_frm->stash_srt_bw = srt_bw;
-	rrot_frm->stash_hrt_bw = hrt_bw;
+	rrot_frm->stash_bw = stash_bw;
+	mml_msg("%s bw %u bin %u acttime %u cmd num %u dual %d",
+		__func__, stash_bw, bin_hor, acttime, stash_cmd_num, cfg->rrot_dual);
 
 done:
-	*srt_bw_out = rrot_frm->stash_srt_bw;
-	*hrt_bw_out = rrot_frm->stash_hrt_bw;
+	*srt_bw_out = rrot_frm->stash_bw;
+	*hrt_bw_out = rrot_frm->stash_bw;
 
 	return 0;
 }
