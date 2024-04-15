@@ -7,6 +7,10 @@
 
 #include "mtk_disp_pq_helper.h"
 
+#if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+#include "mmevent_function.h"
+#endif
+
 /* field definition */
 /* ----------------------------------------------- */
 #define C3D_EN                             (0x000)
@@ -52,6 +56,8 @@
 #define C3D_REG_2(v0, off0, v1, off1) \
 	(((v1) << (off1)) | ((v0) << (off0)))
 
+#define MME_C3D_BUFFER_SIZE (160 * 1024)
+
 enum C3D_IOCTL_CMD {
 	SET_C3DLUT = 0,
 };
@@ -62,16 +68,32 @@ enum C3D_CMDQ_TYPE {
 };
 
 static bool debug_flow_log;
+static bool debug_api_log;
+
+#if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+#define C3DFLOW_LOG(fmt, arg...) do { \
+	MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_8, fmt, ##arg); \
+	if (debug_flow_log) \
+		pr_notice("[FLOW]%s:" fmt, __func__, ##arg); \
+	} while (0)
+
+#define C3DAPI_LOG(fmt, arg...) do { \
+	MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_8, fmt, ##arg); \
+	if (debug_api_log) \
+		pr_notice("[API]%s:" fmt, __func__, ##arg); \
+	} while (0)
+
+#else
 #define C3DFLOW_LOG(fmt, arg...) do { \
 	if (debug_flow_log) \
 		pr_notice("[FLOW]%s:" fmt, __func__, ##arg); \
 	} while (0)
 
-static bool debug_api_log;
 #define C3DAPI_LOG(fmt, arg...) do { \
 	if (debug_api_log) \
 		pr_notice("[API]%s:" fmt, __func__, ##arg); \
 	} while (0)
+#endif
 
 static void disp_c3d_write_with_mask(void __iomem *address, u32 data, u32 mask)
 {
@@ -1194,6 +1216,13 @@ void disp_c3d_regdump(struct mtk_ddp_comp *comp)
 	}
 }
 
+static void init_mme_log(void)
+{
+#if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+	MME_REGISTER_BUFFER(MME_MODULE_DISP, "DISP_C3D", MME_BUFFER_INDEX_8, MME_C3D_BUFFER_SIZE);
+#endif
+}
+
 static int disp_c3d_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -1238,6 +1267,9 @@ static int disp_c3d_probe(struct platform_device *pdev)
 		dev_err(dev, "Failed to add component: %d\n", ret);
 		mtk_ddp_comp_pm_disable(&priv->ddp_comp);
 	}
+#if IS_ENABLED(CONFIG_MTK_DISP_LOGGER)
+	init_mme_log();
+#endif
 	pr_notice("%s-\n", __func__);
 
 error_primary:
