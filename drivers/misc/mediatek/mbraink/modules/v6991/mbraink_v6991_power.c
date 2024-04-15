@@ -750,12 +750,26 @@ static int mbraink_v6991_power_sys_res_deinit(void)
 
 static void mbraink_v6991_power_suspend_prepare(void)
 {
-	mbraink_sys_res_plat_update();
+	struct mbraink_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
+
+	sys_res_mbrain_ops = get_mbraink_dbg_ops();
+
+	if (sys_res_mbrain_ops && sys_res_mbrain_ops->update) {
+		if (sys_res_mbrain_ops->update() != 0)
+			pr_info("suspend_prepare mbraink update sys res fail");
+	}
 }
 
 static void mbraink_v6991_power_post_suspend(void)
 {
-	mbraink_sys_res_plat_update();
+	struct mbraink_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
+
+	sys_res_mbrain_ops = get_mbraink_dbg_ops();
+
+	if (sys_res_mbrain_ops && sys_res_mbrain_ops->update) {
+		if (sys_res_mbrain_ops->update() != 0)
+			pr_info("post_suspend mbraink update sys res fail");
+	}
 }
 
 static int mbraink_v6991_power_get_mmdfvs_info(struct mbraink_mmdvfs_info *mmdvfsInfo)

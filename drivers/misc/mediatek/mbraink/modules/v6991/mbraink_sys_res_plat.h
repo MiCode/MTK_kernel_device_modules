@@ -26,10 +26,6 @@ extern struct mbraink_sys_res_group_info sys_res_group_info[NR_SPM_GRP];
 int mbraink_sys_res_plat_init(void);
 void mbraink_sys_res_plat_deinit(void);
 
-int mbraink_sys_res_plat_update(void);
-int mbraink_sys_res_plat_log(void);
-
-
 
 #endif
 

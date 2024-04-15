@@ -24,6 +24,7 @@ int register_mbraink_dbg_ops(struct mbraink_sys_res_mbrain_dbg_ops *ops)
 	_mbraink_sys_res_mbrain_dbg_ops.get_last_suspend_res_data = ops->get_last_suspend_res_data;
 	_mbraink_sys_res_mbrain_dbg_ops.get_over_threshold_num = ops->get_over_threshold_num;
 	_mbraink_sys_res_mbrain_dbg_ops.get_over_threshold_data = ops->get_over_threshold_data;
+	_mbraink_sys_res_mbrain_dbg_ops.update= ops->update;
 
 	return 0;
 }
@@ -36,5 +37,6 @@ void unregister_mbraink_dbg_ops(void)
 	_mbraink_sys_res_mbrain_dbg_ops.get_last_suspend_res_data = NULL;
 	_mbraink_sys_res_mbrain_dbg_ops.get_over_threshold_num = NULL;
 	_mbraink_sys_res_mbrain_dbg_ops.get_over_threshold_data = NULL;
+	_mbraink_sys_res_mbrain_dbg_ops.update= NULL;
 }
 EXPORT_SYMBOL(unregister_mbraink_dbg_ops);

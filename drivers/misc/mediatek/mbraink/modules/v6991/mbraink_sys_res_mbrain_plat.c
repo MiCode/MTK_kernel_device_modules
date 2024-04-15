@@ -354,12 +354,25 @@ static int mbraink_get_over_threshold_data(void *address, uint32_t size)
 	return 0;
 }
 
+static int mbraink_update_sys_res_record(void)
+{
+	int ret = 0;
+	struct mbraink_sys_res_ops *ops = NULL;
+
+	ops = get_mbraink_sys_res_ops();
+	if (ops && ops->update)
+		ret = ops->update();
+
+	return ret;
+}
+
 static struct mbraink_sys_res_mbrain_dbg_ops sys_res_mbrain_ops = {
 	.get_length = mbraink_get_sys_res_length,
 	.get_data = mbraink_get_sys_res_data,
 	.get_last_suspend_res_data = mbraink_get_last_suspend_res_data,
 	.get_over_threshold_num = mbraink_get_over_threshold_num,
-	.get_over_threshold_data = mbraink_get_over_threshold_data
+	.get_over_threshold_data = mbraink_get_over_threshold_data,
+	.update = mbraink_update_sys_res_record,
 };
 
 int mbraink_sys_res_mbrain_plat_init(void)

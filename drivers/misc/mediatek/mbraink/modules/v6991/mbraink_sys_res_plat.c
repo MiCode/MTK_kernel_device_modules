@@ -330,8 +330,10 @@ static int update_mbraink_sys_res_record(void)
 			&sys_res_record[sys_res_temp_buffer_index],
 			&sys_res_record[sys_res_last_buffer_index]);
 
-	if (sys_res_record[sys_res_last_diff_buffer_index].spm_res_sig_stats_ptr->suspend_time
+	if (sys_res_record[sys_res_last_diff_buffer_index].spm_res_sig_stats_ptr != NULL &&
+		sys_res_record[sys_res_last_diff_buffer_index].spm_res_sig_stats_ptr->suspend_time
 		> 0) {
+
 		__mbraink_sys_res_record_add(&sys_res_record[MBRAINK_SYS_RES_SCENE_SUSPEND],
 				      &sys_res_record[sys_res_last_diff_buffer_index]);
 
@@ -340,6 +342,7 @@ static int update_mbraink_sys_res_record(void)
 		sys_res_last_suspend_diff_buffer_index = temp;
 
 	} else {
+
 		__mbraink_sys_res_record_add(&sys_res_record[MBRAINK_SYS_RES_SCENE_COMMON],
 				      &sys_res_record[sys_res_last_diff_buffer_index]);
 	}
@@ -642,27 +645,9 @@ void mbraink_sys_res_plat_deinit(void)
 {
 	int i;
 
+	unregister_mbraink_sys_res_ops();
+
 	for (i = 0; i < MBRAINK_SYS_RES_SCENE_NUM; i++)
 		mbraink_sys_res_free(&sys_res_record[i]);
-
-	unregister_mbraink_sys_res_ops();
 }
-
-int mbraink_sys_res_plat_update(void)
-{
-	int ret = 0;
-
-	if (sys_res_ops.update)
-		ret = sys_res_ops.update();
-
-	return ret;
-}
-
-int mbraink_sys_res_plat_log(void)
-{
-	sys_res_ops.log(MBRAINK_SYS_RES_LAST_SUSPEND);
-
-	return 0;
-}
-
 
