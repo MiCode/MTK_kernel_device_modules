@@ -2757,7 +2757,7 @@ static int mtk_vdec_set_param(struct mtk_vcodec_ctx *ctx)
 
 	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_LINECOUNT_THRESHOLD) {
 		in[0] = ctx->dec_params.linecount_threshold_mode;
-		mtk_v4l2_debug(0, "[%d] MTK_DEC_PARAM_LINECOUNT_THRESHOLD mode %lu",
+		mtk_v4l2_debug(4, "[%d] MTK_DEC_PARAM_LINECOUNT_THRESHOLD mode %lu",
 			ctx->id, in[0]);
 		if (vdec_if_set_param(ctx, SET_PARAM_VDEC_LINECOUNT_THRESHOLD, in) != 0) {
 			mtk_v4l2_err("[%d] Error!! Cannot set param", ctx->id);
@@ -3087,7 +3087,7 @@ static int vidioc_try_fmt(struct v4l2_format *f, struct mtk_video_fmt *fmt)
 			(pix_fmt_mp->height + 64) <= MTK_VDEC_MAX_H)
 			pix_fmt_mp->height += 64;
 
-		mtk_v4l2_debug(0,
+		mtk_v4l2_debug((tmp_w != pix_fmt_mp->width || tmp_h != pix_fmt_mp->height) ? 0 : 1,
 			"before resize width=%d, height=%d, after resize width=%d, height=%d, sizeimage=%d",
 			tmp_w, tmp_h, pix_fmt_mp->width,
 			pix_fmt_mp->height,
@@ -4052,20 +4052,15 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 
 	bs_fourcc = ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc;
 	fm_fourcc = ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc;
-	mtk_v4l2_debug(0, "[%d] Init Vdec OK wxh=%dx%d pic wxh=%dx%d bitdepth:%d lo:%d sz[0]=0x%x sz[1]=0x%x",
-		ctx->id,
+	mtk_v4l2_debug(0, "[%d] Init Vdec OK bs %s fm %s, wxh=%dx%d pic wxh=%dx%d bitdepth:%d lo:%d sz[0]=0x%x sz[1]=0x%x num_planes %d, fb_sz[0] %d, fb_sz[1] %d, BS %s",
+		ctx->id, FOURCC_STR(bs_fourcc), FOURCC_STR(fm_fourcc),
 		ctx->last_decoded_picinfo.buf_w,
 		ctx->last_decoded_picinfo.buf_h,
 		ctx->last_decoded_picinfo.pic_w,
 		ctx->last_decoded_picinfo.pic_h,
 		ctx->last_decoded_picinfo.bitdepth,
 		ctx->last_decoded_picinfo.layout_mode,
-		dst_q_data->sizeimage[0],
-		dst_q_data->sizeimage[1]);
-
-	mtk_v4l2_debug(0, "[%d] bs %s fm %s, num_planes %d, fb_sz[0] %d, fb_sz[1] %d, BS %s",
-		ctx->id, FOURCC_STR(bs_fourcc), FOURCC_STR(fm_fourcc),
-		dst_q_data->fmt->num_planes,
+		dst_q_data->sizeimage[0], dst_q_data->sizeimage[1], dst_q_data->fmt->num_planes,
 		ctx->last_decoded_picinfo.fb_sz[0],
 		ctx->last_decoded_picinfo.fb_sz[1], debug_bs);
 
@@ -4869,9 +4864,11 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	}
 	case V4L2_CID_MPEG_MTK_LINECOUNT_THRESHOLD:
-		ctx->dec_params.linecount_threshold_mode = ctrl->val;
-		ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_LINECOUNT_THRESHOLD;
-		mtk_v4l2_debug(0, "[%d] V4L2_CID_MPEG_MTK_LINECOUNT_THRESHOLD id %d val %d",
+		if (ctrl->val) {
+			ctx->dec_params.linecount_threshold_mode = ctrl->val;
+			ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_LINECOUNT_THRESHOLD;
+		}
+		mtk_v4l2_debug(ctrl->val ? 0 : 1, "[%d] V4L2_CID_MPEG_MTK_LINECOUNT_THRESHOLD id %d val %d",
 			ctx->id, ctrl->id, ctrl->val);
 		break;
 	default:
