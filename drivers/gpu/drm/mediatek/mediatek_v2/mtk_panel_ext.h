@@ -589,6 +589,10 @@ struct mtk_panel_params {
 	unsigned int physical_height;
 	unsigned int crop_width[MTK_MAX_PANEL];
 	unsigned int crop_height[MTK_MAX_PANEL];
+
+	/*vdo ltpo*/
+	unsigned int ltpo_vm_enable;
+	unsigned int ltpo_vm_minimum_fps;
 };
 
 struct mtk_panel_ext {

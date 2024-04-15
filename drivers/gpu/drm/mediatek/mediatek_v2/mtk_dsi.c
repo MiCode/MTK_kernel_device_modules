@@ -84,7 +84,10 @@
 #define BUFFER_UNDERRUN_INT_FLAG BIT(12)
 #define INP_UNFINISH_INT_EN BIT(14)
 #define SLEEPIN_ULPS_DONE_INT_FLAG BIT(15)
+#define DSI_DONE_INT_FLAG BIT(16)
 #define TARGET_LINE_INT_FLAG BIT(18)
+#define INTERNAL_SOF_INT_FLAG BIT(19)
+#define LTPO_VSYNC_INT_FLAG BIT(20)
 #define DSI_BUSY BIT(31)
 #define INTSTA_FLD_REG_RD_RDY REG_FLD_MSB_LSB(0, 0)
 #define INTSTA_FLD_REG_CMD_DONE REG_FLD_MSB_LSB(1, 1)
@@ -171,6 +174,17 @@
 #define LFR_CON_FLD_REG_LFR_UPDATE REG_FLD_MSB_LSB(5, 5)
 #define LFR_CON_FLD_REG_LFR_VSE_DIS REG_FLD_MSB_LSB(6, 6)
 #define LFR_CON_FLD_REG_LFR_SKIP_NUM REG_FLD_MSB_LSB(13, 8)
+
+#define DSI_LTPO_VDO_CON(data)	(data->dsi_ltpo_vdo_con)
+#define LTPO_VDO_CON_FLD_REG_LTPO_VM_EN REG_FLD_MSB_LSB(0, 0)
+#define LTPO_VDO_CON_FLD_REG_LTPO_VM_UPDATE REG_FLD_MSB_LSB(1, 1)
+#define LTPO_VDO_CON_FLD_REG_LTPO_TE_EN REG_FLD_MSB_LSB(2, 2)
+#define LTPO_VDO_CON_FLD_REG_LTPO_VSYNC_EN REG_FLD_MSB_LSB(11, 11)
+
+#define DSI_LTPO_VDO_SQ0(data)	(data->dsi_ltpo_vdo_sq0)
+#define LTPO_VDO_SQ0_CYC_NUM0 REG_FLD_MSB_LSB(7, 0)
+#define LTPO_VDO_SQ0_ALL_NUM0 REG_FLD_MSB_LSB(15, 8)
+#define LTPO_VDO_SQ0_ACT_NUM0 REG_FLD_MSB_LSB(23, 16)
 
 #define DSI_HSA_WC(data)	(0x50 + data->reg_30_ofs)
 #define DSI_HBP_WC(data)	(0x54 + data->reg_30_ofs)
@@ -1650,6 +1664,168 @@ static int mtk_dsi_LFR_status_check(struct mtk_dsi *dsi)
 	return 0;
 }
 
+static bool mtk_dsi_is_LTPO_VM_Enable(struct mtk_dsi *dsi)
+{
+	struct mtk_drm_crtc *mtk_crtc = dsi->is_slave ?
+		dsi->master_dsi->ddp_comp.mtk_crtc :
+		dsi->ddp_comp.mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
+
+	DDPMSG("%s+\n", __func__);
+	if (mtk_crtc && mtk_crtc->base.dev)
+		priv = mtk_crtc->base.dev->dev_private;
+	if (!(priv && mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_LTPO_VM))) {
+		return false;
+	}
+	if (dsi->ext && dsi->ext->params->ltpo_vm_enable == 0)
+		return false;
+
+	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
+		return false;
+
+	DDPMSG("%s-\n", __func__);
+	return true;
+}
+static int mtk_dsi_set_LTPO_VM(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
+	void *handle, int en)
+{
+	u32 lfr_val = 0, lfr_mask = 0;
+	u32 ltpo_vdo_sq0_val = 0, ltpo_vdo_sq0_mask = 0;
+	u32 ltpo_vdo_val = 0, ltpo_vdo_mask = 0;
+
+	unsigned int ltpo_vm_skip_type = 2;
+	unsigned int val_ltpo_vm_en = en;
+	unsigned int ltpo_vm_max_skip_num = 0;
+
+
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	unsigned int refresh_rate;
+
+	DDPMSG("%s+\n", __func__);
+
+	if (dsi->is_slave) {
+		dev_info(dsi->dev, "is slave\n");
+		return 0;
+	}
+
+	crtc = dsi->encoder.crtc;
+
+	if (crtc == NULL) {
+		dev_info(dsi->dev, "set LFR crtc is null\n");
+		return 0;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	refresh_rate =
+		drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
+
+
+	if (!mtk_dsi_is_LTPO_VM_Enable(dsi))
+		return -1;
+
+	if (dsi->ext && dsi->ext->params &&
+		dsi->ext->params->ltpo_vm_minimum_fps != 0) {
+		ltpo_vm_max_skip_num =
+			(refresh_rate / dsi->ext->params->ltpo_vm_minimum_fps) - 1;
+	}
+
+
+	//first turn off LFR; if support LTPO_VM, no need LFR, we can use LTPO_VM implement all LFR function
+	SET_VAL_MASK(lfr_val, lfr_mask, 0, LFR_CON_FLD_REG_LFR_EN);
+
+	//choose Hsync only, LFR_TYPE also can work on LTPO_VM_EN, no matter LFR_EN
+	SET_VAL_MASK(lfr_val, lfr_mask, ltpo_vm_skip_type, LFR_CON_FLD_REG_LFR_TYPE);
+
+	//set SEQ0, only use one seq now
+	SET_VAL_MASK(ltpo_vdo_sq0_val, ltpo_vdo_sq0_mask, 1, LTPO_VDO_SQ0_CYC_NUM0);
+	SET_VAL_MASK(ltpo_vdo_sq0_val, ltpo_vdo_sq0_mask, ltpo_vm_max_skip_num + 1, LTPO_VDO_SQ0_ALL_NUM0);
+	SET_VAL_MASK(ltpo_vdo_sq0_val, ltpo_vdo_sq0_mask, 1, LTPO_VDO_SQ0_ACT_NUM0);
+
+	//LTPO_VM_EN, LTPO_TE_EN, LTPO_VSYNC_EVENT_EN
+	SET_VAL_MASK(ltpo_vdo_val, ltpo_vdo_mask, val_ltpo_vm_en, LTPO_VDO_CON_FLD_REG_LTPO_VM_EN);
+	SET_VAL_MASK(ltpo_vdo_val, ltpo_vdo_mask, 1, LTPO_VDO_CON_FLD_REG_LTPO_TE_EN);
+	SET_VAL_MASK(ltpo_vdo_val, ltpo_vdo_mask, 1, LTPO_VDO_CON_FLD_REG_LTPO_VSYNC_EN);
+
+
+	if (handle == NULL) {
+		mtk_dsi_mask(dsi, DSI_LFR_CON(dsi->driver_data), lfr_mask, lfr_val);
+		mtk_dsi_mask(dsi, DSI_LTPO_VDO_SQ0(dsi->driver_data), ltpo_vdo_sq0_mask, ltpo_vdo_sq0_val);
+		mtk_dsi_mask(dsi, DSI_LTPO_VDO_CON(dsi->driver_data), ltpo_vdo_mask, ltpo_vdo_val);
+		if (dsi->slave_dsi) {
+			mtk_dsi_mask(dsi->slave_dsi, DSI_LFR_CON(dsi->driver_data), lfr_mask, lfr_val);
+			mtk_dsi_mask(dsi->slave_dsi, DSI_LTPO_VDO_SQ0(dsi->driver_data),
+				ltpo_vdo_sq0_mask, ltpo_vdo_sq0_val);
+			mtk_dsi_mask(dsi->slave_dsi, DSI_LTPO_VDO_CON(dsi->driver_data),
+				ltpo_vdo_mask, ltpo_vdo_val);
+		}
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DSI_LFR_CON(dsi->driver_data), lfr_val, lfr_mask);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DSI_LTPO_VDO_SQ0(dsi->driver_data), ltpo_vdo_sq0_val, ltpo_vdo_sq0_mask);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DSI_LTPO_VDO_CON(dsi->driver_data), ltpo_vdo_val, ltpo_vdo_mask);
+		if (dsi->slave_dsi) {
+			cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
+				dsi->slave_dsi->ddp_comp.regs_pa + DSI_LFR_CON(dsi->driver_data),
+				lfr_val, lfr_mask);
+			cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
+				dsi->slave_dsi->ddp_comp.regs_pa + DSI_LTPO_VDO_SQ0(dsi->driver_data),
+				ltpo_vdo_sq0_val, ltpo_vdo_sq0_mask);
+			cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
+				dsi->slave_dsi->ddp_comp.regs_pa + DSI_LTPO_VDO_CON(dsi->driver_data),
+				ltpo_vdo_val, ltpo_vdo_mask);
+		}
+	}
+
+	DDPMSG("%s-\n", __func__);
+
+	return 0;
+}
+
+static int mtk_dsi_LTPO_VM_update(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
+	void *handle)
+{
+	u32 val = 0, mask = 0;
+
+	DDPMSG("%s+\n", __func__);
+
+	if (!mtk_dsi_is_LTPO_VM_Enable(dsi))
+		return -1;
+
+	if (comp == NULL) {
+		DDPPR_ERR("%s mtk_ddp_comp is null\n", __func__);
+		return -1;
+	}
+
+	if (handle == NULL) {
+		DDPPR_ERR("%s cmdq handle is null\n", __func__);
+		return -1;
+	}
+
+	SET_VAL_MASK(val, mask, 0, LTPO_VDO_CON_FLD_REG_LTPO_VM_UPDATE);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DSI_LTPO_VDO_CON(dsi->driver_data), val, mask);
+	if (dsi->slave_dsi)
+		cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
+			dsi->slave_dsi->ddp_comp.regs_pa + DSI_LTPO_VDO_CON(dsi->driver_data),
+			val, mask);
+
+	SET_VAL_MASK(val, mask, 1, LTPO_VDO_CON_FLD_REG_LTPO_VM_UPDATE);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DSI_LTPO_VDO_CON(dsi->driver_data), val, mask);
+	if (dsi->slave_dsi)
+		cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
+			dsi->slave_dsi->ddp_comp.regs_pa + DSI_LTPO_VDO_CON(dsi->driver_data),
+			val, mask);
+
+	DDPMSG("%s-\n", __func__);
+	return 0;
+
+}
+
 static int mtk_dsi_set_data_rate(struct mtk_dsi *dsi)
 {
 	unsigned int data_rate;
@@ -1865,6 +2041,9 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 	mtk_dsi_config_null_packet(dsi, NULL, NULL);
 
 	mtk_dsi_set_LFR(dsi, NULL, NULL, 1);
+
+	//vdo ltpo
+	mtk_dsi_set_LTPO_VM(dsi, NULL, NULL, 1);
 
 	/* Bypass shadow register and read shadow register */
 	if (dsi->driver_data->need_bypass_shadow)
@@ -2192,6 +2371,9 @@ static void mtk_dsi_rxtx_control(struct mtk_dsi *dsi)
 	/* enable ext te for 6382 dsi te gce event */
 	if (is_bdg_supported())
 		tmp_reg |= EXT_TE_EN;
+	if (mtk_dsi_is_LTPO_VM_Enable(dsi))
+		tmp_reg |= EXT_TE_EN;
+
 	writel(tmp_reg, dsi->regs + DSI_TXRX_CTRL(dsi->driver_data));
 
 	/* need to config for cmd mode to transmit frame data to DDIC */
@@ -2828,6 +3010,11 @@ static void mtk_dsi_set_interrupt_enable(struct mtk_dsi *dsi)
 		if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
 						priv->data->mmsys_id == MMSYS_MT6991))
 			inten |= TARGET_LINE_INT_FLAG;
+
+		if (mtk_dsi_is_LTPO_VM_Enable(dsi)) {
+			inten |= TE_RDY_INT_FLAG | INTERNAL_SOF_INT_FLAG | LTPO_VSYNC_INT_FLAG;
+			inten |= DSI_DONE_INT_FLAG | SLEEPIN_ULPS_DONE_INT_FLAG | SLEEPOUT_DONE_INT_FLAG;
+		}
 	} else
 		inten |= TE_RDY_INT_FLAG;
 
@@ -3483,6 +3670,12 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			}
 
 			drm_trace_tag_mark("dsi_frame_done");
+			/*for vdo LTPO debug*/
+			DDPMSG("frame done irq!\n");
+			drm_trace_tag_end("dsi_active_frame");
+			CRTC_MMP_EVENT_END(index, active_frame, dsi->ddp_comp.id, 0xffff0000);
+			drm_trace_tag_end("dsi_normal_frame");
+			CRTC_MMP_EVENT_END(index, normal_frame, dsi->ddp_comp.id, 0xffff0000);
 
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 							   MTK_DRM_OPT_HBM))
@@ -3526,6 +3719,20 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 		if (status & CMD_DONE_INT_FLAG) {
 			DDPDBG("dsi cmd done!\n");
 			drm_trace_tag_mark("dsi_cmd_done");
+		}
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_LTPO_VM)) {
+			if (status & INTERNAL_SOF_INT_FLAG) {
+				DDPMSG("internal SOF irq!\n");
+				drm_trace_tag_start("dsi_active_frame");
+				CRTC_MMP_EVENT_START(index, active_frame, dsi->ddp_comp.id,
+					0xffff0001);
+			}
+			if (status & LTPO_VSYNC_INT_FLAG) {
+				DDPMSG("ltpo vsync irq!\n");
+				drm_trace_tag_start("dsi_normal_frame");
+				CRTC_MMP_EVENT_START(index, normal_frame, dsi->ddp_comp.id,
+					0xffff0001);
+			}
 		}
 	}
 
@@ -3900,6 +4107,8 @@ static int mtk_preconfig_dsi_enable(struct mtk_dsi *dsi)
 	mtk_dsi_cmdq_size_sel(dsi);
 
 	mtk_dsi_set_interrupt_enable(dsi);
+	/*vdo ltpo*/
+	mtk_dsi_set_LTPO_VM(dsi, NULL, NULL, 1);
 
 	mtk_dsi_exit_ulps(dsi, false);
 	if (is_bdg_supported())
@@ -4807,6 +5016,8 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 		if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
 			mtk_dsi_mask(dsi, DSI_TXRX_CTRL(dsi->driver_data), (EXT_TE_EN | HSTX_CKLP_EN),
 						(EXT_TE_EN | HSTX_CKLP_EN));
+		if (mtk_dsi_is_LTPO_VM_Enable(dsi))
+			mtk_dsi_mask(dsi, DSI_TXRX_CTRL(dsi->driver_data), EXT_TE_EN, EXT_TE_EN);
 	}
 
 	mtk_dsi_set_mode(dsi);
@@ -4815,7 +5026,8 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 		if (mtk_dsi_is_cmd_mode(&dsi->slave_dsi->ddp_comp))
 			mtk_dsi_mask(dsi, DSI_TXRX_CTRL(dsi->driver_data), (EXT_TE_EN | HSTX_CKLP_EN),
 								(EXT_TE_EN | HSTX_CKLP_EN));
-
+		if (mtk_dsi_is_LTPO_VM_Enable(dsi))
+			mtk_dsi_mask(dsi, DSI_TXRX_CTRL(dsi->driver_data), EXT_TE_EN, EXT_TE_EN);
 		mtk_dsi_set_mode(dsi->slave_dsi);
 		mtk_dsi_clk_hs_mode(dsi->slave_dsi, 1);
 	}
@@ -6663,6 +6875,8 @@ static void mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
 			if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
 				mtk_dsi_mask(dsi, DSI_TXRX_CTRL(dsi->driver_data), (EXT_TE_EN | HSTX_CKLP_EN),
 									(EXT_TE_EN | HSTX_CKLP_EN));
+			if (mtk_dsi_is_LTPO_VM_Enable(dsi))
+				mtk_dsi_mask(dsi, DSI_TXRX_CTRL(dsi->driver_data), EXT_TE_EN, EXT_TE_EN);
 		mtk_dsi_set_mode(dsi);
 		mtk_dsi_clk_hs_mode(dsi, 1);
 
@@ -11122,6 +11336,10 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
 						priv->data->mmsys_id == MMSYS_MT6991))
 				inten |= TARGET_LINE_INT_FLAG;
+			if (mtk_dsi_is_LTPO_VM_Enable(dsi)) {
+				inten |= TE_RDY_INT_FLAG | LTPO_VSYNC_INT_FLAG | INTERNAL_SOF_INT_FLAG;
+				inten |= DSI_DONE_INT_FLAG | SLEEPIN_ULPS_DONE_INT_FLAG | SLEEPOUT_DONE_INT_FLAG;
+			}
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_INTEN, inten, inten);
 			if (dsi->slave_dsi)
@@ -11168,6 +11386,10 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
 							priv->data->mmsys_id == MMSYS_MT6991))
 				inten |= TARGET_LINE_INT_FLAG;
+			if (mtk_dsi_is_LTPO_VM_Enable(dsi)) {
+				inten |= TE_RDY_INT_FLAG | LTPO_VSYNC_INT_FLAG | INTERNAL_SOF_INT_FLAG;
+				inten |= DSI_DONE_INT_FLAG | SLEEPIN_ULPS_DONE_INT_FLAG | SLEEPOUT_DONE_INT_FLAG;
+			}
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_INTEN, inten, inten);
 			if (dsi->slave_dsi)
@@ -11955,6 +12177,18 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		DDPMSG("Print DSI_GET_PANEL_STATE\n");
 	}
 		break;
+	case DSI_LTPO_VDO_SET:
+	{
+		int *en = (int *)params;
+
+		mtk_dsi_set_LTPO_VM(dsi, comp, handle, *en);
+	}
+		break;
+	case DSI_LTPO_VDO_UPDATE:
+	{
+		mtk_dsi_LTPO_VM_update(dsi, comp, handle);
+	}
+		break;
 	default:
 		break;
 	}
@@ -12306,6 +12540,8 @@ static const struct mtk_dsi_driver_data mt6989_dsi_driver_data = {
 	.bubble_rate = 115,
 	.n_verion = VER_N4,
 	.require_phy_reset = true,
+	.dsi_ltpo_vdo_con = 0xAC,
+	.dsi_ltpo_vdo_sq0 = 0xB4,
 };
 
 static const struct mtk_dsi_driver_data mt6991_dsi_driver_data = {
@@ -12354,6 +12590,8 @@ static const struct mtk_dsi_driver_data mt6991_dsi_driver_data = {
 	.dsi_target_nl = 0xf0,
 	.dsi_buf_con_base = 0x300,
 	.dsi_phy_syncon = 0x1D8,
+	.dsi_ltpo_vdo_con = 0x1A8,
+	.dsi_ltpo_vdo_sq0 = 0x1AC,
 };
 
 static const struct mtk_dsi_driver_data mt6897_dsi_driver_data = {

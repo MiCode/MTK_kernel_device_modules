@@ -1025,6 +1025,8 @@ enum mtk_ddp_io_cmd {
 	NOTIFY_CONNECTOR_SWITCH,
 	OVL_PHY_USAGE,
 	BYPASS_SPR2RGB,
+	DSI_LTPO_VDO_SET,
+	DSI_LTPO_VDO_UPDATE,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {

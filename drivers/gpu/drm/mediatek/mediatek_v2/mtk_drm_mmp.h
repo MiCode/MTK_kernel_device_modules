@@ -161,6 +161,9 @@ struct CRTC_MMP_Events {
 	mmp_event csc_bl;
 	mmp_event vblank_rec_thread;
 	mmp_event bdg_gce_irq;
+	/*vdo ltpo*/
+	mmp_event active_frame;
+	mmp_event normal_frame;
 };
 
 struct DRM_MMP_Events *get_drm_mmp_events(void);

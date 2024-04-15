@@ -882,6 +882,8 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 		int en = 0;
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_VFP_IDLE_MODE, NULL);
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_LFR_SET, &en);
+		/*Not turn off vdo ltpo when enter idle*/
+		//mtk_ddp_comp_io_cmd(comp, handle, DSI_LTPO_VDO_SET, &en);
 	}
 
 	cmdq_pkt_flush(handle);
@@ -930,6 +932,8 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 		int en = 1;
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_VFP_DEFAULT_MODE, NULL);
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_LFR_SET, &en);
+		/*Make sure turn on vdo ltpo when enter idle, TODO: only choose one(LFR or VDO LTPO)*/
+		mtk_ddp_comp_io_cmd(comp, handle, DSI_LTPO_VDO_SET, &en);
 	}
 
 	cmdq_pkt_flush(handle);

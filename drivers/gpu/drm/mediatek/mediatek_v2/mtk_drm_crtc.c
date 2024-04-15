@@ -6234,6 +6234,8 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 		}
 	}
 	mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, DSI_LFR_SET, &en);
+	//vdo ltpo
+	mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, DSI_LTPO_VDO_SET, &en);
 	/* pull up mm clk if dst fps is higher than src fps */
 	if (output_comp && fps_dst >= fps_src
 		&& !mtk_crtc_is_frame_trigger_mode(crtc)) {

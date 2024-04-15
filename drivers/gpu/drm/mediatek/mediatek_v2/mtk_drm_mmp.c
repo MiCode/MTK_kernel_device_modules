@@ -354,6 +354,12 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "vblank_rec_thread");
 		g_CRTC_MMP_Events[i].bdg_gce_irq = mmprofile_register_event(
 			crtc_mmp_root, "bdg_gce_irq");
+		/*vdo ltpo*/
+		g_CRTC_MMP_Events[i].active_frame =
+			mmprofile_register_event(crtc_mmp_root, "active_frame");
+		g_CRTC_MMP_Events[i].normal_frame =
+			mmprofile_register_event(crtc_mmp_root, "normal_frame");
+
 	}
 }
 void drm_mmp_init(void)
