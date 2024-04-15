@@ -65,14 +65,14 @@ mediatek_eem-y += mtk_aee_rr.o
 
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6765)),)
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v2/inc
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eem_v2/common_v2/inc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eem_v2/plat_k6765/inc
 obj-$(CONFIG_MTK_PTPOD_LEGACY) += mediatek_eem.o
-mediatek_eem-y += common_v2/mtk_eem.o
-mediatek_eem-y += common_v2/mtk_eem_platform.o
-mediatek_eem-y += common_v2/mtk_eem_internal.o
-mediatek_eem-y += common_v2/mtk_eem_api.o
+mediatek_eem-y += plat_k6765/mtk_eem.o
+mediatek_eem-y += plat_k6765/mtk_eem_platform.o
+mediatek_eem-y += plat_k6765/mtk_eem_internal.o
+mediatek_eem-y += plat_k6765/mtk_eem_api.o
 obj-$(CONFIG_MTK_PTPOD_LEGACY) += mtk_picachu.o
-mtk_picachu-y += common_v2/mtk_picachu.o
+mtk_picachu-y += plat_k6765/mtk_picachu.o
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6833)),)
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v1/inc
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eem_v2/common_v3/inc
