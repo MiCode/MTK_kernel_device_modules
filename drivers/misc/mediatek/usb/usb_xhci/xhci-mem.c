@@ -133,7 +133,7 @@ static void xhci_link_rings(struct xhci_hcd *xhci, struct xhci_ring *ring,
 		struct xhci_segment *first, struct xhci_segment *last,
 		unsigned int num_segs)
 {
-	struct xhci_segment *next;
+	struct xhci_segment *next, *seg;
 	bool chain_links;
 
 	if (!ring || !first || !last)
@@ -156,6 +156,9 @@ static void xhci_link_rings(struct xhci_hcd *xhci, struct xhci_ring *ring,
 			|= cpu_to_le32(LINK_TOGGLE);
 		ring->last_seg = last;
 	}
+
+	for (seg = last; seg != ring->last_seg; seg = seg->next)
+		seg->next->num = seg->num + 1;
 }
 
 /*
@@ -328,11 +331,11 @@ EXPORT_SYMBOL_GPL(xhci_initialize_ring_info_);
 /* Allocate segments and link them for a ring */
 static int xhci_alloc_segments_for_ring(struct xhci_hcd *xhci,
 		struct xhci_segment **first, struct xhci_segment **last,
-		unsigned int num_segs, unsigned int cycle_state,
-		enum xhci_ring_type type, unsigned int max_packet, gfp_t flags)
+		unsigned int num_segs, unsigned int num,
+		unsigned int cycle_state, enum xhci_ring_type type,
+		unsigned int max_packet, gfp_t flags)
 {
 	struct xhci_segment *prev;
-	unsigned int num = 0;
 	bool chain_links;
 
 	/* Set chain bit for 0.95 hosts, and for isoc rings on AMD 0.96 host */
@@ -446,7 +449,7 @@ struct xhci_ring *xhci_ring_alloc_(struct xhci_hcd *xhci,
 		return ring;
 
 	ret = xhci_alloc_segments_for_ring(xhci, &ring->first_seg,
-			&ring->last_seg, num_segs, cycle_state, type,
+			&ring->last_seg, num_segs, 0, cycle_state, type,
 			max_packet, flags);
 	if (ret)
 		goto fail;
@@ -491,7 +494,8 @@ int xhci_ring_expansion(struct xhci_hcd *xhci, struct xhci_ring *ring,
 	int			ret;
 
 	ret = xhci_alloc_segments_for_ring(xhci, &first, &last,
-			num_new_segs, ring->cycle_state, ring->type,
+			num_new_segs, ring->enq_seg->num + 1,
+			ring->cycle_state, ring->type,
 			ring->bounce_buf_len, flags);
 	if (ret)
 		return -ENOMEM;
