@@ -23,7 +23,6 @@
 #endif
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 #include "vcp_status.h"
-#include "vcp_helper.h"
 #endif
 // TODO: need remove ISR ipis
 #include "mtk_vcodec_intr.h"

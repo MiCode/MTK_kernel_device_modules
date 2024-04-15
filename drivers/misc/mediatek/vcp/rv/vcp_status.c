@@ -8,32 +8,11 @@
 #include "vcp.h"
 
 struct vcp_status_fp *vcp_fp;
-struct mtk_ipi_device *vcp_ipidev_ex;
-struct vcp_mminfra_on_off_st *vcp_mminfra_cb_ptr;
-mminfra_dump_ptr mminfra_debug_dump;
-EXPORT_SYMBOL_GPL(mminfra_debug_dump);
-
-int pwclkcnt;
-EXPORT_SYMBOL_GPL(pwclkcnt);
-bool is_suspending;
-EXPORT_SYMBOL_GPL(is_suspending);
-bool vcp_ao;
-EXPORT_SYMBOL_GPL(vcp_ao);
 
 static int __init mtk_vcp_status_init(void)
 {
-	pwclkcnt = 0;
 	return 0;
 }
-
-int mmup_enable_count(void)
-{
-	if (vcp_ao)
-		return pwclkcnt;
-
-	return ((is_suspending) ? 0 : pwclkcnt);
-}
-EXPORT_SYMBOL_GPL(mmup_enable_count);
 
 void vcp_set_fp(struct vcp_status_fp *fp)
 {
@@ -43,17 +22,29 @@ void vcp_set_fp(struct vcp_status_fp *fp)
 }
 EXPORT_SYMBOL_GPL(vcp_set_fp);
 
-void vcp_set_ipidev(struct mtk_ipi_device *ipidev)
+int mmup_enable_count_ex(void)
 {
-	if (!ipidev)
-		return;
-	vcp_ipidev_ex = ipidev;
+	if (!vcp_fp || !vcp_fp->mmup_enable_count)
+		return 0;
+
+	return vcp_fp->mmup_enable_count();
 }
-EXPORT_SYMBOL_GPL(vcp_set_ipidev);
+EXPORT_SYMBOL_GPL(mmup_enable_count_ex);
+
+bool is_mmup_enable_ex(void)
+{
+	if (!vcp_fp || !vcp_fp->is_mmup_enable)
+		return 1;
+
+	return vcp_fp->is_mmup_enable();
+}
+EXPORT_SYMBOL_GPL(is_mmup_enable_ex);
 
 struct mtk_ipi_device *vcp_get_ipidev(enum feature_id id)
 {
-	return vcp_ipidev_ex;
+	if (!vcp_fp || !vcp_fp->get_ipidev)
+		return NULL;
+	return vcp_fp->get_ipidev(id);
 }
 EXPORT_SYMBOL_GPL(vcp_get_ipidev);
 
@@ -145,22 +136,13 @@ unsigned int vcp_cmd_ex(enum feature_id id, enum vcp_cmd_id cmd_id, char *user)
 }
 EXPORT_SYMBOL_GPL(vcp_cmd_ex);
 
-void vcp_set_mminfra_cb(struct vcp_mminfra_on_off_st *str_ptr)
-{
-	if (!str_ptr)
-		return;
-	vcp_mminfra_cb_ptr = str_ptr;
-}
-EXPORT_SYMBOL_GPL(vcp_set_mminfra_cb);
-
 int vcp_register_mminfra_cb_ex(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off,
 	mminfra_dump_ptr mminfra_dump_func)
 {
-	if(!vcp_mminfra_cb_ptr)
+	if(!vcp_fp || !vcp_fp->vcp_register_mminfra_cb)
 		return -1;
-	vcp_mminfra_cb_ptr->mminfra_on = fpt_on;
-	vcp_mminfra_cb_ptr->mminfra_off = fpt_off;
-	mminfra_debug_dump = mminfra_dump_func;
+
+	vcp_fp->vcp_register_mminfra_cb(fpt_on, fpt_off, mminfra_dump_func);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(vcp_register_mminfra_cb_ex);
@@ -179,4 +161,4 @@ static void __exit mtk_vcp_status_exit(void)
 }
 module_init(mtk_vcp_status_init);
 module_exit(mtk_vcp_status_exit);
-MODULE_LICENSE("GPL v2");
+MODULE_LICENSE("GPL");

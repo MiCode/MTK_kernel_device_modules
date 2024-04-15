@@ -258,20 +258,29 @@ struct vcp_mminfra_on_off_st vcp_mminfra_on_off = {
 	.mminfra_off = NULL,
 	.mminfra_ref = 0
 };
+mminfra_dump_ptr mminfra_debug_dump;
+
+int pwclkcnt;
+bool is_suspending;
+bool vcp_ao;
 
 struct vcp_status_fp vcp_helper_fp = {
-	.vcp_get_reserve_mem_phys	= vcp_get_reserve_mem_phys,
-	.vcp_get_reserve_mem_virt	= vcp_get_reserve_mem_virt,
-	.vcp_get_reserve_mem_size	= vcp_get_reserve_mem_size,
-	.vcp_register_feature		= vcp_register_feature,
-	.vcp_deregister_feature		= vcp_deregister_feature,
-	.is_vcp_ready				= is_vcp_ready,
-	.vcp_A_register_notify		= vcp_A_register_notify,
-	.vcp_A_unregister_notify	= vcp_A_unregister_notify,
-	.vcp_cmd					= vcp_cmd,
-	.is_vcp_suspending			= is_vcp_suspending,
-	.is_vcp_ao					= is_vcp_ao,
-	.vcp_get_io_device			= vcp_get_io_device,
+	.vcp_get_reserve_mem_phys   = vcp_get_reserve_mem_phys,
+	.vcp_get_reserve_mem_virt   = vcp_get_reserve_mem_virt,
+	.vcp_get_reserve_mem_size   = vcp_get_reserve_mem_size,
+	.vcp_register_feature       = vcp_register_feature,
+	.vcp_deregister_feature     = vcp_deregister_feature,
+	.is_vcp_ready               = is_vcp_ready,
+	.vcp_A_register_notify      = vcp_A_register_notify,
+	.vcp_A_unregister_notify    = vcp_A_unregister_notify,
+	.vcp_cmd                    = vcp_cmd,
+	.mmup_enable_count          = mmup_enable_count,
+	.is_mmup_enable             = is_mmup_enable,
+	.is_vcp_suspending          = is_vcp_suspending,
+	.is_vcp_ao                  = is_vcp_ao,
+	.get_ipidev                 = get_ipidev,
+	.vcp_get_io_device          = vcp_get_io_device,
+	.vcp_register_mminfra_cb    = vcp_register_mminfra_cb,
 };
 
 #undef pr_debug
@@ -300,7 +309,6 @@ struct mtk_ipi_device vcp_ipidev = {
 	.post_cb = (ipi_tx_cb_t)vcp_awake_unlock,
 	.prdata = 0,
 };
-EXPORT_SYMBOL(vcp_ipidev);
 
 static void vcp_enable_dapc(void)
 {
@@ -486,7 +494,7 @@ int get_vcp_semaphore(int flag)
 
 	return ret;
 }
-EXPORT_SYMBOL_GPL(get_vcp_semaphore);
+
 
 /*
  * release a hardware semaphore
@@ -533,7 +541,32 @@ int release_vcp_semaphore(int flag)
 
 	return ret;
 }
-EXPORT_SYMBOL_GPL(release_vcp_semaphore);
+
+int mmup_enable_count(void)
+{
+	if (vcp_ao)
+		return pwclkcnt;
+
+	return ((is_suspending) ? 0 : pwclkcnt);
+}
+
+bool is_mmup_enable(void)
+{
+	if (vcpreg.core_nums > 1)
+		return true;
+	return false;
+}
+
+int vcp_register_mminfra_cb(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off,
+	mminfra_dump_ptr mminfra_dump_func)
+{
+	vcp_mminfra_on_off.mminfra_on = fpt_on;
+	vcp_mminfra_on_off.mminfra_off = fpt_off;
+	mminfra_debug_dump = mminfra_dump_func;
+
+	return 0;
+}
+
 
 int vcp_turn_mminfra_on(void)
 {
@@ -609,7 +642,6 @@ void vcp_A_register_notify(enum feature_id id, struct notifier_block *nb)
 		nb->notifier_call(nb, VCP_EVENT_READY, NULL);
 	mutex_unlock(&vcp_A_notify_mutex);
 }
-EXPORT_SYMBOL_GPL(vcp_A_register_notify);
 
 
 /*
@@ -624,7 +656,11 @@ void vcp_A_unregister_notify(enum feature_id id, struct notifier_block *nb)
 	blocking_notifier_chain_unregister(&vcp_A_notifier_list, nb);
 	mutex_unlock(&vcp_A_notify_mutex);
 }
-EXPORT_SYMBOL_GPL(vcp_A_unregister_notify);
+
+struct mtk_ipi_device *get_ipidev(enum feature_id id)
+{
+	return &vcp_ipidev;
+}
 
 void vcp_schedule_work(struct vcp_work_struct *vcp_ws)
 {
@@ -959,7 +995,6 @@ void trigger_vcp_halt(enum vcp_core_id id, char *user, bool vote_mminfra)
 		pr_notice("[VCP] %s %s tigger but VCP not ready\n", __func__, user);
 	mutex_unlock(&vcp_pw_clk_mutex);
 }
-EXPORT_SYMBOL_GPL(trigger_vcp_halt);
 
 /*
  * @return: 1 if vcp is ready for running tasks
@@ -979,19 +1014,16 @@ unsigned int is_vcp_ready(enum feature_id id)
 	else
 		return 0;
 }
-EXPORT_SYMBOL_GPL(is_vcp_ready);
 
 unsigned int is_vcp_suspending(void)
 {
 	return is_suspending;
 }
-EXPORT_SYMBOL_GPL(is_vcp_suspending);
 
 unsigned int is_vcp_ao(void)
 {
 	return vcp_ao;
 }
-EXPORT_SYMBOL_GPL(is_vcp_ao);
 
 /*
  * @return: generaltion count of vcp (reset count)
@@ -1000,7 +1032,6 @@ unsigned int get_vcp_generation(void)
 {
 	return vcp_reset_counts;
 }
-EXPORT_SYMBOL_GPL(get_vcp_generation);
 
 unsigned int vcp_cmd(enum feature_id id, enum vcp_cmd_id cmd_id, char *user)
 {
@@ -1141,7 +1172,6 @@ int vcp_enable_pm_clk(enum feature_id id)
 	mutex_unlock(&vcp_pw_clk_mutex);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(vcp_enable_pm_clk);
 
 int vcp_disable_pm_clk(enum feature_id id)
 {
@@ -1230,7 +1260,6 @@ int vcp_disable_pm_clk(enum feature_id id)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(vcp_disable_pm_clk);
 
 static int vcp_pm_event(struct notifier_block *notifier
 			, unsigned long pm_event, void *unused)
@@ -2062,13 +2091,10 @@ static int create_files(void)
 	return 0;
 }
 
-
 struct device *vcp_get_io_device(enum VCP_IOMMU_DEV io_num)
 {
 	return ((io_num >= VCP_IOMMU_DEV_NUM) ? NULL:vcp_io_devs[io_num]);
 }
-EXPORT_SYMBOL_GPL(vcp_get_io_device);
-
 
 #if VCP_RESERVED_MEM && defined(CONFIG_OF_RESERVED_MEM)
 #define VCP_MEM_RESERVED_KEY "mediatek,reserve-memory-vcp_share"
@@ -2111,7 +2137,6 @@ phys_addr_t vcp_get_reserve_mem_phys(enum vcp_reserve_mem_id_t id)
 		return base_addr + offset;
 	}
 }
-EXPORT_SYMBOL_GPL(vcp_get_reserve_mem_phys);
 
 phys_addr_t vcp_get_reserve_mem_virt(enum vcp_reserve_mem_id_t id)
 {
@@ -2139,7 +2164,6 @@ phys_addr_t vcp_get_reserve_mem_virt(enum vcp_reserve_mem_id_t id)
 		return base_addr + offset;
 	}
 }
-EXPORT_SYMBOL_GPL(vcp_get_reserve_mem_virt);
 
 phys_addr_t vcp_get_reserve_mem_size(enum vcp_reserve_mem_id_t id)
 {
@@ -2149,7 +2173,6 @@ phys_addr_t vcp_get_reserve_mem_size(enum vcp_reserve_mem_id_t id)
 	pr_notice("[VCP] no reserve memory for %d", id);
 	return 0;
 }
-EXPORT_SYMBOL_GPL(vcp_get_reserve_mem_size);
 
 #if VCP_RESERVED_MEM && defined(CONFIG_OF)
 static int vcp_alloc_iova(struct device *dev, __u32 size, __u64 *start_phys, __u64 *start_virt)
@@ -2455,7 +2478,6 @@ int vcp_register_feature(enum feature_id id)
 
 	return ret;
 }
-EXPORT_SYMBOL_GPL(vcp_register_feature);
 
 int vcp_deregister_feature(enum feature_id id)
 {
@@ -2484,7 +2506,6 @@ int vcp_deregister_feature(enum feature_id id)
 
 	return ret;
 }
-EXPORT_SYMBOL_GPL(vcp_deregister_feature);
 
 /*
  * apps notification
@@ -3764,8 +3785,6 @@ static int __init vcp_init(void)
 	pwclkcnt = 0;
 
 	vcp_set_fp(&vcp_helper_fp);
-	vcp_set_ipidev(&vcp_ipidev);
-	vcp_set_mminfra_cb(&vcp_mminfra_on_off);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 	register_devapc_power_callback(&devapc_power_handle);
