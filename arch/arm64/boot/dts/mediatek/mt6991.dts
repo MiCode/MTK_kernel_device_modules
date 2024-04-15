@@ -16731,6 +16731,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	bp_thl: bp-thl {
 		compatible = "mediatek,mtk-bp-thl";
 
+		reg = <0 0x13020170 0 0xc>;
+		reg-names = "hpt_ctrl";
+
 		max-throttle-level = <2>;
 		soc-throttle-level = < 0 1 2>;
 
