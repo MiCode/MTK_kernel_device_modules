@@ -14660,8 +14660,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mtk-dsp-mem-afe = <0x1 0x40000>;
 		mtk-dsp-btdl = <0x1 0x9 0xffffffff 0xffffffff 0x30000>;
 		mtk-dsp-btul = <0x1 0xffffffff 0x1b 0x10 0x20000>;
-		mtk-dsp-calldl = <0x1 0xa 0xffffffff 0xffffffff 0x30000>;
-		mtk-dsp-callul = <0x1 0xffffffff 0x18 0x10 0x30000>;
 		adsp-dynamic-buffer = <0x1>;
 		adsp-slc = <0x51ca11ca 0x0 0x0 0x0 0x0 0x0 0x2 0x32 0x0>;
 	};
@@ -14679,6 +14677,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	speech_usip_mem: speech-usip-mem {
 		compatible = "mediatek,speech-usip-mem";
 		adsp-phone-call-enh-enable = <0x3>;
+		adsp-phone-call-hwif = <0x0>;
 		adsp-ble-phone-call-enable = <0x1>;
 	};
 
