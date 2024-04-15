@@ -50,12 +50,45 @@ const char *apu_dev_string(enum DVFS_USER user)
 		[EDMA2] = "APUEDMA2",
 		[REVISER] = "APUREVISER",
 		[APUMNOC] = "APUMNOC",
+		[APUVB]   = "APUVB",
 	};
 
 	if (user < 0 || user >= ARRAY_SIZE(names))
 		return NULL;
 
 	return names[user];
+}
+
+/**
+ * apu_dump_opp_table() - dump opp table
+ * @ad:	apu device
+ * @fun_name: char print in log
+ * @dir: 1:high --> low, 0: low --> high
+ * Dump opp table belong to this apu_dev.
+ */
+void apu_dump_opp_table(struct apu_dev *ad, const char *fun_name, int dir)
+{
+	unsigned long freq = 0, volt = 0;
+
+	if (dir)
+		freq = ULONG_MAX;
+	while(1) {
+		if (apupw_dbg_get_loglvl() < VERBOSE_LVL)
+			break;
+		if (dir) {
+			if (IS_ERR(dev_pm_opp_find_freq_floor(ad->dev, &freq)))
+				break;
+		} else {
+			if (IS_ERR(dev_pm_opp_find_freq_ceil(ad->dev, &freq)))
+				break;
+		}
+		apu_get_recommend_freq_volt(ad->dev, &freq, &volt, dir);
+		aprobe_info(ad->dev, " %s freq/volt %lu/%lu\n", fun_name, freq, volt);
+		if (dir)
+			freq--;
+		else
+			freq++;
+	}
 }
 
 /**
@@ -170,28 +203,28 @@ int apu_del_devfreq(struct apu_dev *del_dev)
  * @ad: apu_dev
  * @boost: boost value (0 ~ 100)
  *
- *  opp = abs(max_state - boost/opp_div)
- *  for example:
- *      opps is from 0 ~ 5 (total 6)
- *      100/6 = 16 (each increase interval)
- *
- * boost            0  ~  16 ~ 32 ~ 48 ~ 64 ~ 80 ~ 96 ~ 100
- * boost/opp_div       0     1    2    3    4    5    5
- * opp                 5     4    3    2    1    0    0
  */
 int apu_boost2opp(struct apu_dev *ad, int boost)
 {
-	u32 rdown;
-	u32 max_st;
-	u32 opp;
+	u32 max_st = 0, opp = 0;
+	u64 max_freq;
 
 	if (!_valid_ad(ad))
 		return -EINVAL;
 
 	/* minus 1 for opp inex starts from 0 */
 	max_st = ad->df->profile->max_state - 1;
-	rdown = DIV_ROUND_DOWN_ULL(boost, ad->opp_div);
-	opp = (rdown > max_st) ? 0 : abs(max_st - rdown);
+	if (boost >= 100) {
+		opp = 0;
+	} else {
+		max_freq = ad->df->profile->freq_table[max_st];
+		max_freq = boost * (max_freq / 100);
+		for (opp = 0; opp <= max_st; opp++)
+			if (max_freq > ad->df->profile->freq_table[max_st - opp])
+				break;
+	}
+	apower_info(ad->dev, "[%s] boost %d --> opp %d\n",
+		    __func__, boost, opp);
 
 	return opp;
 }
@@ -259,14 +292,11 @@ int apu_opp2freq(struct apu_dev *ad, int opp)
  *
  *  opp = abs(max_state - boost/opp_div)
  *  boost = (max_state - opp + 1) * opp_div
- *
- * boost            0  ~  16 ~ 32 ~ 48 ~ 64 ~ 80 ~ 96 ~ 100
- * boost/opp_div       0     1    2    3    4    5    5
- * opp                 5     4    3    2    1    0    0
  */
 int apu_opp2boost(struct apu_dev *ad, int opp)
 {
 	int max_st = 0;
+	unsigned long freq = 0, max_freq = 0;
 
 	if (!_valid_ad(ad))
 		return -EINVAL;
@@ -277,7 +307,10 @@ int apu_opp2boost(struct apu_dev *ad, int opp)
 	if (opp > max_st)
 		opp = max_st;
 
-	return (max_st - opp + 1) * ad->opp_div;
+	max_freq = ad->df->profile->freq_table[max_st];
+	freq = ad->df->profile->freq_table[max_st - opp];
+
+	return (freq * 100) / max_freq;
 }
 
 /**
