@@ -449,14 +449,15 @@ struct hdr10plus_info {
 };
 
 enum vcodec_mem_type {
-	MEM_TYPE_FOR_SW = 0,                    /* /< External memory for SW */
+	MEM_TYPE_FOR_SW,                        /* /< External memory for SW */
 	MEM_TYPE_FOR_HW,                        /* /< External memory for HW  */
+	MEM_TYPE_FOR_HW_CACHE,                  /* /< External memory for HW which kernel touch so need cacheable */
 	MEM_TYPE_FOR_UBE_HW,                    /* /< External memory for UBE reserved memory */
 	MEM_TYPE_FOR_SEC_SW,                    /* /< External memory for secure SW */
 	MEM_TYPE_FOR_SEC_HW,                    /* /< External memory for secure HW */
 	MEM_TYPE_FOR_SEC_UBE_HW,                /* /< External memory for secure UBE */
-	MEM_TYPE_FOR_SHM,                       /* /< External memory for share memory */
 	MEM_TYPE_FOR_SEC_WFD_HW,                /* /< External memory for secure WFD */
+	MEM_TYPE_FOR_SHM,                       /* /< External memory for share memory */
 	MEM_TYPE_MAX = 0xFFFFFFFF               /* /< Max memory type */
 };
 
