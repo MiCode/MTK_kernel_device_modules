@@ -15152,7 +15152,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	mmup: mmup@31a00000 {
 		compatible = "mediatek,mmup";
 		status = "okay";
-		l2tcm-offset = <0x031000>;
+		l2tcm-offset = <0x02d000>;
 		twohart = <0>;		/* two hart arch */
 		reg = <0 0x31bb0000 0 0x100>, /* mbox0 base, is actully mbox3 hw */
 			<0 0x31bb0100 0 0x4>, /* mbox0 set, is actully mbox3 hw*/
