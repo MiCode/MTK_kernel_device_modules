@@ -10646,7 +10646,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mtk,smmu = <&gpu_smmu>;
 		};
 
-		vdec@36000000 {
+		vcodec_vdec: vdec@36000000 {
 			compatible = "mediatek,mt6991-vcodec-dec";
 			mediatek,platform = "platform:mt6991";
 			mediatek,ipm = <2>;
@@ -10788,7 +10788,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"path_jpegenc_bsdma";
 		};
 
-		venc@38000000 {
+		vcodec_venc: venc@38000000 {
 			compatible = "mediatek,mt6991-vcodec-enc";
 			mediatek,platform = "platform:mt6991";
 			mediatek,ipm = <2>;
