@@ -2034,6 +2034,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/cpuhotplug/mtk_cpuhp.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/upower/Upower.ko")
         mgk_64_device_modules.append("drivers/soc/mediatek/devmpu/devmpu.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/eemgpu/mtk_eem.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/leakage_table_v2/mediatek_static_power.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/sspm/v2/sspm.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/mcupm/v1/mcupm.ko")

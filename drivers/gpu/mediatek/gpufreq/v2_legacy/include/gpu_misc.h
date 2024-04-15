@@ -11,6 +11,7 @@
  **************************************************/
 /* PTPOD for legacy chip*/
 extern unsigned int mt_gpufreq_update_volt(unsigned int pmic_volt[], unsigned int array_size);
+extern unsigned int mt_gpufreq_not_ready(void);
 extern void mt_gpufreq_enable_by_ptpod(void);
 extern void mt_gpufreq_disable_by_ptpod(void);
 extern void mt_gpufreq_restore_default_volt(void);
