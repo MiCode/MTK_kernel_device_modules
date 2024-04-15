@@ -2283,6 +2283,9 @@ struct xhci_ring *xhci_triad_to_transfer_ring(struct xhci_hcd *xhci,
 		unsigned int slot_id, unsigned int ep_index,
 		unsigned int stream_id);
 
+void xhci_kill_endpoint_urbs(struct xhci_hcd *xhci,
+		int slot_id, int ep_index);
+
 static inline struct xhci_ring *xhci_urb_to_transfer_ring(struct xhci_hcd *xhci,
 								struct urb *urb)
 {

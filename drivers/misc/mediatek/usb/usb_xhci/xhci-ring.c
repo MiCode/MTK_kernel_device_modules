@@ -1200,7 +1200,7 @@ static void xhci_kill_ring_urbs(struct xhci_hcd *xhci, struct xhci_ring *ring)
 	}
 }
 
-static void xhci_kill_endpoint_urbs(struct xhci_hcd *xhci,
+void xhci_kill_endpoint_urbs(struct xhci_hcd *xhci,
 		int slot_id, int ep_index)
 {
 	struct xhci_td *cur_td;

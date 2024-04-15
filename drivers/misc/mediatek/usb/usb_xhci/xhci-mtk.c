@@ -1007,6 +1007,28 @@ disable_pm:
 	return ret;
 }
 
+void xhci_mtk_halt_and_cleanup(struct xhci_hcd *xhci)
+{
+	int i, j;
+
+	spin_lock_irq(&xhci->lock);
+	/*  wait for HCHalted */
+	xhci_halt(xhci);
+
+	xhci_cleanup_command_queue(xhci);
+
+	/* return any pending urbs, remove may be waiting for them */
+	for (i = 0; i <= HCS_MAX_SLOTS(xhci->hcs_params1); i++) {
+		if (!xhci->devs[i])
+			continue;
+		for (j = 0; j < 31; j++)
+			xhci_kill_endpoint_urbs(xhci, i, j);
+	}
+	spin_unlock_irq(&xhci->lock);
+
+	xhci_info(xhci, "halt and cleanup\n");
+}
+
 static void xhci_mtk_remove(struct platform_device *pdev)
 {
 	struct xhci_hcd_mtk *mtk = platform_get_drvdata(pdev);
@@ -1019,6 +1041,8 @@ static void xhci_mtk_remove(struct platform_device *pdev)
 	xhci->xhc_state |= XHCI_STATE_REMOVING;
 	dev_pm_clear_wake_irq(dev);
 	device_init_wakeup(dev, false);
+
+	xhci_mtk_halt_and_cleanup(xhci);
 
 	if (shared_hcd) {
 		usb_remove_hcd(shared_hcd);
