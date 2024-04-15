@@ -44,6 +44,8 @@ int debug_dvfs;
 module_param(debug_dvfs, int, 0644);
 int debug_irq;
 module_param(debug_irq, int, 0644);
+int irq_aee;
+module_param(irq_aee, int, 0644);
 int mminfra_floor;
 module_param(mminfra_floor, int, 0644);
 
@@ -449,7 +451,7 @@ static void dpc_dt_en_all(const enum mtk_dpc_subsys subsys, u32 dt_en)
 	}
 }
 
-static void dpc_dt_update_table(u16 dt, u32 us)
+static void dpc_dt_set_update(u16 dt, u32 us)
 {
 	if (g_priv->dpc2_dt_usage) {
 		g_priv->dpc2_dt_usage[dt].val = us;
@@ -459,12 +461,35 @@ static void dpc_dt_update_table(u16 dt, u32 us)
 		else if (dt < DPC_DISP_DT_CNT + DPC_MML_DT_CNT)
 			mt6989_mml_dt_usage[dt - DPC_DISP_DT_CNT].ep = us;
 	}
+
+	dpc_dt_set(dt, us);
 }
 
-static void dpc_dt_set_dur(u16 dt, u32 us)
+static void dpc_duration_update(const u32 us)
 {
-	dpc_dt_update_table(dt, us);
-	dpc_dt_set(dt, us);
+	if (g_priv->mmsys_id == MMSYS_MT6991) {
+		dpc_dt_set_update( 1, us - DPC2_DT_PRESZ - DPC2_DT_MTCMOS);
+		dpc_dt_set_update( 5, us - DPC2_DT_PRESZ - DPC2_DT_MTCMOS);
+		dpc_dt_set_update( 6, us - DPC2_DT_PRESZ);
+		dpc_dt_set_update( 9, us - DPC2_DT_PRESZ - DPC2_DT_MMINFRA);
+		dpc_dt_set_update(12, us - DPC2_DT_INFRA);
+		dpc_dt_set_update(18, us - DPC2_DT_PRESZ - DPC2_DT_MMINFRA);
+		dpc_dt_set_update(33, us - DPC2_DT_PRESZ - DPC2_DT_MTCMOS);
+		dpc_dt_set_update(40, us - DPC2_DT_INFRA);
+		dpc_dt_set_update(46, us - DPC2_DT_PRESZ - DPC2_DT_MMINFRA);
+		dpc_dt_set_update(64, us - DPC2_DT_PRESZ - DPC2_DT_MTCMOS - DPC2_DT_DSION - DPC2_DT_VCORE);
+		dpc_dt_set_update(61, us - DPC2_DT_INFRA);
+		dpc_dt_set_update(70, us - DPC2_DT_INFRA);
+		dpc_dt_set_update(73, us - DPC2_DT_PRESZ - DPC2_DT_MTCMOS - DPC2_DT_DSION - DPC2_DT_VCORE);
+		dpc_dt_set_update(76, us - DPC2_DT_PRESZ - DPC2_DT_MTCMOS - DPC2_DT_DSION);
+	} else {
+		dpc_dt_set_update( 1, us - DT_OVL_OFFSET);
+		dpc_dt_set_update( 5, us - DT_DISP1_OFFSET);
+		dpc_dt_set_update( 6, us - DT_DISP1TE_OFFSET);
+		dpc_dt_set_update(12, us - DT_MMINFRA_OFFSET);
+		dpc_dt_set_update(33, us - DT_OVL_OFFSET);
+		dpc_dt_set_update(40, us - DT_MMINFRA_OFFSET);
+	}
 }
 
 static void dpc_ddr_force_enable(const enum mtk_dpc_subsys subsys, const bool en)
@@ -541,12 +566,12 @@ static void dpc_enable(const u8 en)
 			for (i = 0; i < DPC2_VIDLE_CNT; i ++) {
 				if (g_priv->dpc2_dt_usage[i].en) {
 					dpc2_dt_en(i, true, false);
-					dpc_dt_set_dur(i, g_priv->dpc2_dt_usage[i].val);
+					dpc_dt_set_update(i, g_priv->dpc2_dt_usage[i].val);
 				}
 			}
 
 			if (debug_irq) {
-				writel(BIT(31),
+				writel(BIT(31) | BIT(18),
 				       dpc_base + DISP_REG_DPC_DISP_INTEN);
 
 				writel(BIT(12) | BIT(13) | BIT(16) | BIT(17) | BIT(31),
@@ -603,8 +628,6 @@ static void dpc_enable(const u8 en)
 
 	/* enable gce event */
 	writel(en, dpc_base + DISP_REG_DPC_EVENT_EN);
-
-	DPCFUNC("en(%u)", en);
 
 	dpc_pm_ctrl(false);
 }
@@ -1130,7 +1153,7 @@ static void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 	mtk_disp_wait_pwr_ack(DPC_SUBSYS_OVL0);
 
 	if (!en && is_mminfra_ctrl_by_dpc) {
-		DPCFUNC("get mminfra");
+		mtk_dprec_logger_pr(DPREC_LOGGER_FENCE, "dpc get mminfra\n");
 		dpc_pm_ctrl(true);
 		is_mminfra_ctrl_by_dpc = false;
 	}
@@ -1154,7 +1177,7 @@ static void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 	if (en && has_cap(DPC_CAP_MMINFRA_PLL) && !is_mminfra_ctrl_by_dpc) {
 		dpc_pm_ctrl(false);
 		is_mminfra_ctrl_by_dpc = true;
-		DPCFUNC("put mminfra");
+		mtk_dprec_logger_pr(DPREC_LOGGER_FENCE, "dpc put mminfra\n");
 	}
 
 	/* unvote after all hw mode config done */
@@ -1168,20 +1191,39 @@ irqreturn_t mt6991_irq_handler(int irq, void *dev_id)
 	struct mtk_dpc *priv = dev_id;
 	u32 disp_sta, mml_sta;
 	irqreturn_t ret = IRQ_NONE;
-	static u32 cnt_total, cnt_dis0, cnt_dis1, cnt_ovl0, cnt_vcore, cnt_mml0, cnt_mml1;
 
 	if (IS_ERR_OR_NULL(priv))
 		return ret;
 
+	if (!mminfra_is_power_on()) {
+		dpc_mmp(mminfra, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
+		disable_irq_nosync(irq);
+		ret = IRQ_HANDLED;
+		goto out;
+	}
+
 	disp_sta = readl(dpc_base + DISP_REG_DPC_DISP_INTSTA);
 	mml_sta =  readl(dpc_base + DISP_REG_DPC_MML_INTSTA);
 	if ((!disp_sta) && (!mml_sta)) {
-		DPCAEE("irq err clksq(%u) ulposc(%u) vdisp_ao_cg(%#x) dpc_merge(%#x, %#x)",
-		       mt_get_fmeter_freq(47, VLPCK), /* clksq */
-		       mt_get_fmeter_freq(59, VLPCK), /* ulposc */
-		       readl(priv->vdisp_ao_cg_con),
-		       readl(dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG),
-		       readl(dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG));
+		dpc_mmp(folder, MMPROFILE_FLAG_PULSE,
+			readl(priv->vdisp_ao_cg_con), readl(priv->mminfra_chk));
+
+		if (unlikely(irq_aee)) {
+			DPCAEE("irq err clksq(%u) ulposc(%u) vdisp_ao_cg(%#x) dpc_merge(%#x, %#x)",
+			       mt_get_fmeter_freq(47, VLPCK), /* clksq */
+			       mt_get_fmeter_freq(59, VLPCK), /* ulposc */
+			       readl(priv->vdisp_ao_cg_con),
+			       readl(dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG),
+			       readl(dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG));
+		} else {
+			DPCERR("irq err clksq(%u) ulposc(%u) vdisp_ao_cg(%#x) dpc_merge(%#x, %#x)",
+			       mt_get_fmeter_freq(47, VLPCK), /* clksq */
+			       mt_get_fmeter_freq(59, VLPCK), /* ulposc */
+			       readl(priv->vdisp_ao_cg_con),
+			       readl(dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG),
+			       readl(dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG));
+		}
+
 		disable_irq_nosync(irq);
 		goto out;
 	}
@@ -1196,7 +1238,12 @@ irqreturn_t mt6991_irq_handler(int irq, void *dev_id)
 		u32 mml_err_sta = readl(dpc_base + 0x880);
 
 		dpc_mmp(folder, MMPROFILE_FLAG_PULSE, disp_err_sta, mml_err_sta);
-		DPCERR("config when mtcmos off disp(%#x) mml(%#x)", disp_err_sta, mml_err_sta);
+		if (unlikely(irq_aee))
+			DPCAEE("config when mtcmos off disp(%#x) mml(%#x)", disp_err_sta, mml_err_sta);
+		else
+			DPCERR("config when mtcmos off disp(%#x) mml(%#x)", disp_err_sta, mml_err_sta);
+
+		disable_irq_nosync(irq);
 	}
 
 	/* MML1 */
@@ -1229,35 +1276,11 @@ irqreturn_t mt6991_irq_handler(int irq, void *dev_id)
 	if (disp_sta & BIT(13))
 		dpc_mmp(mtcmos_disp1, MMPROFILE_FLAG_PULSE, 0x50F, 0);
 
-	if (disp_sta & BIT(9)) {
+	/* Panel TE */
+	if (disp_sta & BIT(18))
 		dpc_mmp(prete, MMPROFILE_FLAG_PULSE, 0, 0);
-		cnt_total++;
-		if (cnt_total == 100) {
-			DPCDUMP("off ratio: dis0(%u) dis1(%u) ovl0(%u) mml0(%u) mml1(%u) vcore(%u)",
-				cnt_dis0, cnt_dis1, cnt_ovl0, cnt_mml0, cnt_mml1, cnt_vcore);
-			cnt_dis0 = 0;
-			cnt_dis1 = 0;
-			cnt_ovl0 = 0;
-			cnt_mml0 = 0;
-			cnt_mml1 = 0;
-			cnt_vcore = 0;
-			cnt_total = 0;
-		}
-	}
-	if (disp_sta & BIT(24)) {
-		if (readl(priv->mtcmos_cfg[DPC_SUBSYS_DIS0].chk_va) != 0xb)
-			cnt_dis0++;
-		if (readl(priv->mtcmos_cfg[DPC_SUBSYS_DIS1].chk_va) != 0xb)
-			cnt_dis1++;
-		if (readl(priv->mtcmos_cfg[DPC_SUBSYS_OVL0].chk_va) != 0xb)
-			cnt_ovl0++;
-		if (readl(priv->mtcmos_cfg[DPC_SUBSYS_MML0].chk_va) != 0xb)
-			cnt_mml0++;
-		if (readl(priv->mtcmos_cfg[DPC_SUBSYS_MML1].chk_va) != 0xb)
-			cnt_mml1++;
-		if ((readl(g_priv->dispvcore_chk) & g_priv->dispvcore_chk_mask) == 0)
-			cnt_vcore++;
-	}
+	if (disp_sta & BIT(9))
+		dpc_mmp(prete, MMPROFILE_FLAG_PULSE, DPC2_DT_PRESZ, priv->dpc2_dt_usage[6].val);
 
 	ret = IRQ_HANDLED;
 out:
@@ -1781,10 +1804,10 @@ static void process_dbg_opt(const char *opt)
 	} else if (strncmp(opt, "dt:", 3) == 0) {
 		ret = sscanf(opt, "dt:%u,%u\n", &v1, &v2);
 		if (ret != 2) {
-			DPCDUMP("vdisp:2,1000 => set dt(4) counter as 1000us");
+			DPCDUMP("dt:2,1000 => set dt(4) counter as 1000us");
 			goto err;
 		}
-		dpc_dt_set_dur((u16)v1, v2);
+		dpc_dt_set_update((u16)v1, v2);
 	} else if (strncmp(opt, "force_rsc:", 10) == 0) {
 		ret = sscanf(opt, "force_rsc:%u\n", &v1);
 		if (v1) {
@@ -1881,7 +1904,7 @@ static const struct dpc_funcs funcs = {
 	.dpc_config = dpc_config,
 	.dpc_group_enable = dpc_group_enable,
 	.dpc_mtcmos_auto = dpc_mtcmos_auto,
-	.dpc_dt_set = dpc_dt_set_dur,
+	.dpc_duration_update = dpc_duration_update,
 	.dpc_mtcmos_vote = dpc_mtcmos_vote,
 	.dpc_clear_wfe_event = dpc_clear_wfe_event,
 	.dpc_vidle_power_keep = dpc_vidle_power_keep,

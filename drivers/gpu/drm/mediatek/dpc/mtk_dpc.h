@@ -49,7 +49,7 @@
 #define DT_13 (DT_OFF1 + DT_PRE_MMINFRA_OFF)
 
 #define DPC2_DT_PRESZ 300
-#define DPC2_DT_POSTSZ 300
+#define DPC2_DT_POSTSZ 500
 #define DPC2_DT_MTCMOS 100
 #define DPC2_DT_INFRA 300
 #define DPC2_DT_MMINFRA 700
@@ -153,11 +153,11 @@ struct dpc_funcs {
 	/* only for display driver */
 	void (*dpc_enable)(const u8 en);
 	void (*dpc_dvfs_trigger)(const char *caller);
+	void (*dpc_duration_update)(u32 us);
 
 	/* dpc driver internal use */
 	void (*dpc_ddr_force_enable)(const enum mtk_dpc_subsys subsys, const bool en);
 	void (*dpc_infra_force_enable)(const enum mtk_dpc_subsys subsys, const bool en);
-	void (*dpc_dt_set)(u16 dt, u32 us);
 
 	/* resource auto mode control */
 	void (*dpc_group_enable)(const u16 group, bool en);
