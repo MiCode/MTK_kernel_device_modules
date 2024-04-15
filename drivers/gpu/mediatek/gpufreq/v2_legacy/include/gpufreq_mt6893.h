@@ -322,4 +322,10 @@ struct gpufreq_adj_info g_adj_gpu_custom[] = {
 	ADJOP(0, 0, 0, 0),
 };
 
+struct mt_gpufreq_power_table_info {
+	unsigned int gpufreq_khz;
+	unsigned int gpufreq_volt;
+	unsigned int gpufreq_power;
+};
+
 #endif /* __GPUFREQ_MT6893_H__ */
