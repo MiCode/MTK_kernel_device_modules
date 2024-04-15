@@ -909,44 +909,38 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 	return ret;
 }
 
-static void ufs_mtk_mcq_set_irq_affinity(struct ufs_hba *hba)
+static void ufs_mtk_mcq_set_irq_affinity(struct ufs_hba *hba, unsigned int cpu)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	struct blk_mq_tag_set *tag_set = &hba->host->tag_set;
 	struct blk_mq_queue_map	*map = &tag_set->map[HCTX_TYPE_DEFAULT];
 	unsigned int nr = map->nr_queues;
-	unsigned int q_index, cpu, _cpu, irq;
+	unsigned int q_index, _cpu, irq;
 	int ret;
 
-	/* Set affinity, only map HCTX_TYPE_DEFAULT
-	 * If CPU count > HWQ count, only mapping HWQ count
-	 * For example, CPU count 8, HWQ count 6, only mapping 6 HWQ interrupt
-	 */
-	for (cpu = 0; cpu < nr; cpu++) {
-		q_index = map->mq_map[cpu];
-		if (q_index > (nr)) {
-			dev_err(hba->dev, "hwq index %d exceed %d\n",
-				q_index, nr);
-			return;
-		}
-
-		irq = host->mcq_intr_info[q_index].irq;
-		if (irq == MTK_MCQ_INVALID_IRQ) {
-			dev_err(hba->dev, "invalid irq. unable to bind q%d to cpu%d",
-				q_index, cpu);
-			return;
-		}
-
-		/* force migrate irq of cpu0 to cpu3 */
-		_cpu = (cpu == 0) ? 3 : cpu;
-		ret = irq_set_affinity(irq, cpumask_of(_cpu));
-		if (ret) {
-			dev_err(hba->dev, "set irq %d affinity to CPU %d failed\n",
-				irq, _cpu);
-			return;
-		}
-		dev_info(hba->dev, "set irq %d affinity to CPU: %d\n", irq, _cpu);
+	q_index = map->mq_map[cpu];
+	if (q_index > nr) {
+		dev_err(hba->dev, "hwq index %d exceed %d\n",
+			q_index, nr);
+		return;
 	}
+
+	irq = host->mcq_intr_info[q_index].irq;
+	if (irq == MTK_MCQ_INVALID_IRQ) {
+		dev_err(hba->dev, "invalid irq. unable to bind q%d to cpu%d",
+			q_index, cpu);
+		return;
+	}
+
+	/* force migrate irq of cpu0 to cpu3 */
+	_cpu = (cpu == 0) ? 3 : cpu;
+	ret = irq_set_affinity(irq, cpumask_of(_cpu));
+	if (ret) {
+		dev_err(hba->dev, "set irq %d affinity to CPU %d failed\n",
+			irq, _cpu);
+		return;
+	}
+	dev_info(hba->dev, "set irq %d affinity to CPU: %d\n", irq, _cpu);
 }
 
 #define UFS_VEND_SAMSUNG  (1 << 0)
@@ -1539,6 +1533,30 @@ static bool ufs_host_mcq_support(struct ufs_hba *hba)
 	return FIELD_GET(MASK_MCQ_SUPPORT, cap);
 }
 
+
+static int ufs_mtk_cpu_online_notify(unsigned int cpu, struct hlist_node *node)
+{
+	struct ufs_mtk_host *host = hlist_entry_safe(node, struct ufs_mtk_host, cpuhp_node);
+	struct ufs_hba *hba = host->hba;
+	int ret = 0;
+
+	if (is_mcq_enabled(hba) && cpu != 0) {
+		ufs_mtk_mcq_set_irq_affinity(hba, cpu);
+
+		/* Migrate irq of cpu0 to cpu3 */
+		if (cpu == 3)
+			ufs_mtk_mcq_set_irq_affinity(hba, 0);
+	}
+
+	if (cpu == 3) {
+		ret = irq_set_affinity_hint(hba->irq, cpumask_of(cpu));
+		dev_info(hba->dev, "set irq %d affinity to CPU: %d %s\n",
+					hba->irq, cpu, ret ? "failed" : "");
+	}
+
+	return 0;
+}
+
 /**
  * ufs_mtk_init - find other essential mmio bases
  * @hba: host controller instance
@@ -1679,6 +1697,11 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	ufs_mtk_dbg_register(hba);
 
 	ufs_mtk_rpmb_init(hba);
+
+	host->cpuhp_state = cpuhp_setup_state_multi(CPUHP_AP_ONLINE_DYN,
+						"ufs:online", ufs_mtk_cpu_online_notify, NULL);
+	if (host->cpuhp_state < 0)
+		dev_err(hba->dev, "Setup cpu hotplug state failed, ret: %d\n", host->cpuhp_state);
 
 	goto out;
 
@@ -2587,6 +2610,7 @@ static int ufs_mtk_apply_dev_quirks(struct ufs_hba *hba)
 {
 	struct ufs_dev_info *dev_info = &hba->dev_info;
 	u16 mid = dev_info->wmanufacturerid;
+	unsigned int cpu;
 
 	if (is_mcq_enabled(hba)) {
 		/* Use none scheduler for mcq */
@@ -2595,8 +2619,9 @@ static int ufs_mtk_apply_dev_quirks(struct ufs_hba *hba)
 				BLK_MQ_F_NO_SCHED_BY_DEFAULT;
 		}
 
-		/* set affinity */
-		ufs_mtk_mcq_set_irq_affinity(hba);
+		/* Iterate all cpus to set affinity for mcq irqs */
+		for (cpu = 0; cpu < nr_cpu_ids; cpu++)
+			ufs_mtk_mcq_set_irq_affinity(hba, cpu);
 	}
 
 	if (mid == UFS_VENDOR_SAMSUNG) {
@@ -3014,7 +3039,16 @@ static int ufs_mtk_config_mcq_irq(struct ufs_hba *hba)
 			return ret;
 	}
 
-	return 0;
+	if (host->cpuhp_state >= 0) {
+		ret = cpuhp_state_add_instance_nocalls(host->cpuhp_state, &host->cpuhp_node);
+
+		if (ret) {
+			dev_err(hba->dev, "Add cpu hotplug instance failed, ret: %d\n", ret);
+			cpuhp_remove_multi_state(host->cpuhp_state);
+		}
+	}
+
+	return ret;
 }
 
 static int ufs_mtk_config_mcq(struct ufs_hba *hba, bool irq)
@@ -3188,7 +3222,7 @@ skip_phy:
 
 	/* set affinity to cpu3 */
 	if (hba->irq)
-		irq_set_affinity_hint(hba->irq, get_cpu_mask(3));
+		irq_set_affinity_hint(hba->irq, cpumask_of(3));
 
 	if ((phy_node) && (phy_dev)) {
 		host = ufshcd_get_variant(hba);
@@ -3217,8 +3251,12 @@ out:
 static int ufs_mtk_remove(struct platform_device *pdev)
 {
 	struct ufs_hba *hba = platform_get_drvdata(pdev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
 	pm_runtime_get_sync(&(pdev)->dev);
+
+	cpuhp_state_remove_instance_nocalls(host->cpuhp_state, &host->cpuhp_node);
+	cpuhp_remove_multi_state(host->cpuhp_state);
 
 	ufs_mtk_btag_exit(hba);
 

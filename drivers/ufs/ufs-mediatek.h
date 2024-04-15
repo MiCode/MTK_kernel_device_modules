@@ -312,6 +312,8 @@ struct ufs_mtk_host {
 	int mcq_nr_intr;
 	struct ufs_mtk_mcq_intr_info mcq_intr_info[UFSHCD_MAX_Q_NR];
 	struct tag_ufs *atag;
+	int cpuhp_state;
+	struct hlist_node cpuhp_node;
 };
 
 #define UFSHCD_MAX_TAG	256
