@@ -3039,7 +3039,7 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 		if (priv->data->mmsys_id == MMSYS_MT6991) {
 			int exdma_comp = 0;
 
-			exdma_comp = DDP_COMPONENT_OVL1_EXDMA6 + layer_idx - fun_lye;
+			exdma_comp = DDP_COMPONENT_OVL1_EXDMA6 + ((layer_idx - fun_lye) * 2);
 
 			return exdma_comp;
 		} else
