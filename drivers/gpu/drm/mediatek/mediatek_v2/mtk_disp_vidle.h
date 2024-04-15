@@ -38,6 +38,7 @@ struct mtk_vdisp_funcs {
 	void (*genpd_put)(void);
 	void (*vlp_disp_vote)(u32 user, bool set);
 	s32 (*poll_power_cnt)(s32 val);
+	void (*sent_aod_scp_sema)(void __iomem *_SPM_SEMA_AP);
 };
 
 bool mtk_vidle_is_ff_enabled(void);
