@@ -1554,6 +1554,8 @@ void mt6768_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data);
 void mt6877_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data);
+void mt6781_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
+			    struct cmdq_pkt *handle, void *data);
 
 void mt6985_mtk_sodi_apsrc_config(struct drm_crtc *crtc,
 	struct cmdq_pkt *_cmdq_handle, bool reset, bool condition_check,

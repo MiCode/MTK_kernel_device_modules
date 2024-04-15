@@ -919,6 +919,11 @@ static const struct mtk_disp_dither_data mt6833_dither_driver_data = {
 	.need_bypass_shadow = true,
 };
 
+static const struct mtk_disp_dither_data mt6781_dither_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = true,
+};
+
 static const struct mtk_disp_dither_data mt6983_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,

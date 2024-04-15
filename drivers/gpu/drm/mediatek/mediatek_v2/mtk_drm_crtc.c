@@ -781,6 +781,7 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 	case MMSYS_MT6879:
 	case MMSYS_MT6855:
 	case MMSYS_MT6877:
+	case MMSYS_MT6781:
 		mmsys_config_dump_reg_mt6879(mtk_crtc->config_regs);
 		break;
 	default:
@@ -968,6 +969,7 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 	case MMSYS_MT6855:
 	case MMSYS_MT6835:
 	case MMSYS_MT6877:
+	case MMSYS_MT6781:
 		mmsys_config_dump_reg_mt6879(mtk_crtc->config_regs);
 		mutex_dump_reg_mt6879(mtk_crtc->mutex[0]);
 		break;
@@ -1286,6 +1288,7 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 	case MMSYS_MT6879:
 	case MMSYS_MT6855:
 	case MMSYS_MT6877:
+	case MMSYS_MT6781:
 		break;
 	default:
 		DDPPR_ERR("%s mtk drm not support mmsys id %d\n",
@@ -1531,6 +1534,10 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 	case MMSYS_MT6877:
 		mmsys_config_dump_analysis_mt6877(mtk_crtc->config_regs);
 		mutex_dump_analysis_mt6877(mtk_crtc->mutex[0]);
+		break;
+	case MMSYS_MT6781:
+		mmsys_config_dump_analysis_mt6781(mtk_crtc->config_regs);
+		mutex_dump_analysis_mt6781(mtk_crtc->mutex[0]);
 		break;
 	case MMSYS_MT6879:
 		mmsys_config_dump_analysis_mt6879(mtk_crtc->config_regs);
@@ -3878,7 +3885,8 @@ static void _mtk_crtc_lye_addon_module_disconnect(
 		priv->data->mmsys_id == MMSYS_MT6877 ||
 		priv->data->mmsys_id == MMSYS_MT6833 ||
 		priv->data->mmsys_id == MMSYS_MT6885 ||
-		priv->data->mmsys_id == MMSYS_MT6853) {
+		priv->data->mmsys_id == MMSYS_MT6853 ||
+		priv->data->mmsys_id == MMSYS_MT6781) {
 		union mtk_addon_config addon_config;
 		int w = crtc->state->adjusted_mode.hdisplay;
 		int h = crtc->state->adjusted_mode.vdisplay;
@@ -3916,7 +3924,8 @@ static void _mtk_crtc_lye_addon_module_disconnect(
 				priv->data->mmsys_id == MMSYS_MT6877 ||
 				priv->data->mmsys_id == MMSYS_MT6833 ||
 				priv->data->mmsys_id == MMSYS_MT6885 ||
-				priv->data->mmsys_id == MMSYS_MT6853) {
+				priv->data->mmsys_id == MMSYS_MT6853 ||
+				priv->data->mmsys_id == MMSYS_MT6781) {
 				if (addon_module[0]->type == ADDON_BETWEEN &&
 					(addon_module[0]->module == DISP_RSZ ||
 						addon_module[0]->module == DISP_RSZ_v2))
@@ -4449,7 +4458,8 @@ _mtk_crtc_lye_addon_module_connect(
 		priv->data->mmsys_id == MMSYS_MT6877 ||
 		priv->data->mmsys_id == MMSYS_MT6833 ||
 		priv->data->mmsys_id == MMSYS_MT6885 ||
-		priv->data->mmsys_id == MMSYS_MT6853) {
+		priv->data->mmsys_id == MMSYS_MT6853 ||
+		priv->data->mmsys_id == MMSYS_MT6781) {
 		const struct mtk_addon_module_data *addon_module[2] = {NULL, NULL};
 		union mtk_addon_config addon_config;
 		u32 tgt_comp[2];
@@ -4494,6 +4504,7 @@ _mtk_crtc_lye_addon_module_connect(
 
 				if (priv->data->mmsys_id == MMSYS_MT6768 ||
 					priv->data->mmsys_id == MMSYS_MT6877 ||
+					priv->data->mmsys_id == MMSYS_MT6781 ||
 					priv->data->mmsys_id == MMSYS_MT6761 ||
 					priv->data->mmsys_id == MMSYS_MT6765 ||
 					priv->data->mmsys_id == MMSYS_MT6833 ||
@@ -6442,6 +6453,7 @@ static void mtk_crtc_frame_buffer_release(struct drm_crtc *crtc,
 
 	if (priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
+		priv->data->mmsys_id == MMSYS_MT6781 ||
 		priv->data->mmsys_id == MMSYS_MT6885 ||
 		priv->data->mmsys_id == MMSYS_MT6833 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
@@ -8368,6 +8380,7 @@ void mtk_crtc_enable_iommu_runtime(struct mtk_drm_crtc *mtk_crtc,
 			priv->data->mmsys_id == MMSYS_MT6765 ||
 			priv->data->mmsys_id == MMSYS_MT6885 ||
 			priv->data->mmsys_id == MMSYS_MT6853 ||
+			priv->data->mmsys_id == MMSYS_MT6781 ||
 			priv->data->mmsys_id == MMSYS_MT6985 ||
 			priv->data->mmsys_id == MMSYS_MT6897 ||
 			priv->data->mmsys_id == MMSYS_MT6879 ||
@@ -10329,6 +10342,9 @@ static void mtk_crtc_addon_connector_disconnect(struct drm_crtc *crtc,
 		case MMSYS_MT6877:
 			mtk_ddp_remove_dsc_prim_MT6877(mtk_crtc, handle);
 			break;
+		case MMSYS_MT6781:
+			mtk_ddp_remove_dsc_prim_MT6781(mtk_crtc, handle);
+			break;
 		case MMSYS_MT6879:
 			mtk_ddp_remove_dsc_prim_MT6879(mtk_crtc, handle);
 			break;
@@ -10489,6 +10505,9 @@ void mtk_crtc_addon_connector_connect(struct drm_crtc *crtc,
 			break;
 		case MMSYS_MT6877:
 			mtk_ddp_insert_dsc_prim_MT6877(mtk_crtc, handle);
+			break;
+		case MMSYS_MT6781:
+			mtk_ddp_insert_dsc_prim_MT6781(mtk_crtc, handle);
 			break;
 		case MMSYS_MT6879:
 			mtk_ddp_insert_dsc_prim_MT6879(mtk_crtc, handle);
@@ -11176,6 +11195,7 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 		priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
 		priv->data->mmsys_id == MMSYS_MT6833 ||
+		priv->data->mmsys_id == MMSYS_MT6781 ||
 		priv->data->mmsys_id == MMSYS_MT6761 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
 		priv->data->mmsys_id == MMSYS_MT6895 ||
@@ -11708,6 +11728,7 @@ void mtk_crtc_prepare_instr(struct drm_crtc *crtc)
 		priv->data->mmsys_id == MMSYS_MT6833 ||
 		priv->data->mmsys_id == MMSYS_MT6885 ||
 		priv->data->mmsys_id == MMSYS_MT6853 ||
+		priv->data->mmsys_id == MMSYS_MT6781 ||
 		priv->data->mmsys_id == MMSYS_MT6761 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
 		priv->data->mmsys_id == MMSYS_MT6985 ||
@@ -14551,6 +14572,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		priv->data->mmsys_id == MMSYS_MT6877 ||
 		priv->data->mmsys_id == MMSYS_MT6885 ||
 		priv->data->mmsys_id == MMSYS_MT6853 ||
+		priv->data->mmsys_id == MMSYS_MT6781 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
 		priv->data->mmsys_id == MMSYS_MT6833 ||
 		priv->data->mmsys_id == MMSYS_MT6761)
