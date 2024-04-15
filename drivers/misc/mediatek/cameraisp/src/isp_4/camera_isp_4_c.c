@@ -110,9 +110,7 @@
 
 #include <archcounter_timesync.h>
 
-#ifdef CCU_HELP
 #include <ccu_inc.h>
-#endif
 
 /*  */
 #ifndef MTRUE
@@ -7181,10 +7179,8 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 			unsigned long long reg_trans_Time;
 			unsigned long long sum;
 
-#ifdef CCU_HELP
 			ccu_get_timestamp(&hwTickCnt_ccu_direct[0],
 				&hwTickCnt_ccu_direct[1]);
-#endif
 
 			pr_debug("hwTickCnt_ccu_direct[0]:%u,hwTickCnt_ccu_direct[1]:%u",
 				hwTickCnt_ccu_direct[0],
