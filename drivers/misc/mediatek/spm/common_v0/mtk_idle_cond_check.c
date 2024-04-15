@@ -10,7 +10,7 @@
 #include <linux/of_address.h>
 #include <linux/io.h>
 
-//#include "mtk_idle_event.h"
+#include "mtk_idle_event.h"
 
 #include "mtk_idle.h" /* IDLE_TYPE_xxx */
 #include "mtk_idle_internal.h"
@@ -305,7 +305,7 @@ void mtk_idle_cg_monitor(int sel)
 
 
 #define TRACE_CGMON(_g, _n, _cond)\
-	//trace_idle_cg(_g * 32 + _n, ((1 << _n) & _cond) ? 1 : 0)
+	trace_idle_cg(_g * 32 + _n, ((1 << _n) & _cond) ? 1 : 0)
 
 static void mtk_idle_cgmon_trace_log(void)
 {

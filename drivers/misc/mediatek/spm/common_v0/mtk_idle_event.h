@@ -4,7 +4,7 @@
  */
 
 #undef TRACE_SYSTEM
-#define TRACE_SYSTEM mtk_idle_event
+#define TRACE_SYSTEM mtk_idle
 
 #if !defined(_TRACE_MTK_IDLE_EVENT_H) || defined(TRACE_HEADER_MULTI_READ)
 #define _TRACE_MTK_IDLE_EVENT_H
@@ -402,10 +402,8 @@ TRACE_EVENT(idle_check_clkmux,
 #endif /* _TRACE_MTK_IDLE_EVENT_H */
 
 #undef TRACE_INCLUDE_PATH
+#define TRACE_INCLUDE_PATH ../../drivers/misc/mediatek/spm/common_v0
 #undef TRACE_INCLUDE_FILE
-#define TRACE_INCLUDE_PATH .
 #define TRACE_INCLUDE_FILE mtk_idle_event
-
-
 /* This part must be outside protection */
 #include <trace/define_trace.h>
