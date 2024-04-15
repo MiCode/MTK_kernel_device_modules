@@ -14587,6 +14587,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		scp-dvfs-flag = "enable"; /* enable/disable */
 	};
 
+	monitorhang: monitorhang {
+		/* compatible = "mediatek,monitorhang"; */
+		enabled = <0>;
+	};
+
 	watchdog: watchdog@1c010000 {
 		compatible = "mediatek,mt6991-wdt",
 			      "mediatek,mt6589-wdt",
