@@ -77,6 +77,9 @@ module_param(mml_qos, int, 0644);
 int mml_qos_log;
 module_param(mml_qos_log, int, 0644);
 
+int mml_stash_bw;
+module_param(mml_stash_bw, int, 0644);
+
 int mml_dpc_log;
 module_param(mml_dpc_log, int, 0644);
 
@@ -115,6 +118,9 @@ int mml_stash = 0x3;
 int mml_stash;
 #endif
 module_param(mml_stash, int, 0644);
+
+int mml_urate = 110;
+module_param(mml_urate, int, 0644);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 static bool mml_timeout_dump = true;
@@ -1065,8 +1071,8 @@ static u32 mml_core_calc_tput_couple(struct mml_task *task, u32 pixel, u32 pipe)
 		if (cfg->panel_w > dest->data.width)
 			task->pipe[pipe].throughput = (u32)((u64)task->pipe[pipe].throughput *
 				cfg->panel_w / dest->data.width);
-		else
-			task->pipe[pipe].throughput = task->pipe[pipe].throughput * 27 / 25;
+		/* always increase urate */
+		task->pipe[pipe].throughput = task->pipe[pipe].throughput * mml_urate / 100;
 	}
 
 	return act_time_us;
