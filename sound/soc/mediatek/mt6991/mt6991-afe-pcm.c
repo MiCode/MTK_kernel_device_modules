@@ -6280,8 +6280,9 @@ static irqreturn_t mt6991_afe_irq_handler(int irq_id, void *dev)
 	if (status_mcu == 0) {
 		dev_info(afe->dev, "%s(), irq status err, ret %d, status 0x%x, mcu_en 0x%x\n",
 			__func__, ret, status, mcu_en);
-
-		goto err_irq;
+		arm_smccc_smc(SMC_SC_NBL_VHM_REQ, 0x90000001, hwirq, AFE_IRQ_STATUS_BITS, 0, 0, 0,
+				0, &res);
+		return IRQ_HANDLED;
 	}
 #endif
 
