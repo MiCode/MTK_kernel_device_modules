@@ -143,7 +143,8 @@ static struct ged_gpu_fps_table g_ged_gpu_fps[GED_FPS_CONFIG_NUM] = {
 #define  GPU_MIN_FPS 13
 #define  V_TARGET_FPS_TH 60
 #define  TARGET_FPS_GAP 30
-
+#define  GPU_TINY_FPS_THRESHOLD 10
+#define  T_GPU_REAL_PIPE_DIFF_RATIO 10
 
 struct GED_KPI_HEAD {
 	int pid;
@@ -162,7 +163,8 @@ struct GED_KPI_HEAD {
 	long long t_cpu_remained;
 	long long t_gpu_remained;
 	long long t_cpu_latest;
-	long long t_gpu_latest;   // recent completed GPU time
+	long long t_gpu_latest;   // recent completed GPU pipe time
+	long long t_gpu_latest_real; // recent completed GPU real time
 	long long t_gpu_latest_store[t_gpu_store_count];   //store 4 completed GPU time
 	int t_gpu_latest_index;   //store array index
 	long long t_gpu_w_latest_store[t_gpu_w_store_count];   //store 100 weighted completed GPU time
@@ -1362,6 +1364,8 @@ static void ged_kpi_set_fallback_mode(struct GED_KPI_HEAD *psHead)
 	static struct GED_KPI_HEAD *candidate_head;
 	int isSmallFrame = 0;
 	int his_lb_num = 0;
+	bool is_offscreen = false;
+	unsigned int t_gpu_real_pipe_ratio = 0;
 
 	spin_lock_irqsave(&gs_hashtableLock, ulIRQFlags);
 	g_is_multiproducer = false;
@@ -1410,6 +1414,12 @@ static void ged_kpi_set_fallback_mode(struct GED_KPI_HEAD *psHead)
 		(int)(psHead->ullWnd % 0xF), psHead->i32Count);
 	trace_GPU_DVFS__Policy__Common__Commit_Reason(same_times, diff_times);
 	/*check if LB or FB*/
+	if (main_head->t_gpu_fps < GPU_TINY_FPS_THRESHOLD) {
+		t_gpu_real_pipe_ratio = div64_u64(main_head->t_gpu_latest_real,
+				main_head->t_gpu_latest);
+		is_offscreen = (t_gpu_real_pipe_ratio > T_GPU_REAL_PIPE_DIFF_RATIO)? true: false;
+	}
+
 	if (same_times >= GED_KPI_SWITCH_FB_THRESHOLD) {
 		if (main_head->isSF == 1) //surfacefliger use LB only
 			is_loading_based = 1;
@@ -1421,6 +1431,9 @@ static void ged_kpi_set_fallback_mode(struct GED_KPI_HEAD *psHead)
 			is_loading_based = 1;
 			isSmallFrame = 1;
 			trace_tracing_mark_write(5566, "sf_policy", 1);
+		} else if (is_offscreen) {
+			is_loading_based = 1;
+			trace_tracing_mark_write(5566, "is_offscreen", 1);
 		} else /*switch FB*/
 			is_loading_based = 0;
 	} else if (diff_times > GED_KPI_SWITCH_LB_THRESHOLD)
@@ -1638,7 +1651,7 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		/*First FB to LB*/
 		mutex_lock(&gsPolicyLock);
 		if (ged_get_policy_state() == POLICY_STATE_FB &&
-		ged_kpi_get_fallback_mode()) {
+			ged_kpi_get_fallback_mode()) {
 			ged_set_policy_state(POLICY_STATE_LB);
 			ged_eb_dvfs_task(EB_UPDATE_POLICY_STATE, GED_DVFS_LOADING_BASE_COMMIT);
 			set_lb_timeout(psHead->t_gpu_target);
@@ -1894,7 +1907,7 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 				div_u64(((unsigned long long)
 				(psHead->last_TimeStamp2 - psHead->pre_TimeStamp2))
 				* psKPI->gpu_loading, 100U);
-
+		psHead->t_gpu_latest_real = psKPI->cpu_gpu_info.gpu.t_gpu_real;
 		psKPI->cpu_gpu_info.gpu.limit_upper = ged_get_cur_limiter_ceil();
 		psKPI->cpu_gpu_info.gpu.limit_lower = ged_get_cur_limiter_floor();
 		psKPI->cpu_gpu_info.gpu.gpu_dvfs |=
