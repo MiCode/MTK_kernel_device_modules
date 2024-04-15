@@ -4,7 +4,9 @@
  */
 
 #include <linux/module.h>
+#include <lpm_module.h>
 #include <lpm_sys_res_mbrain_dbg.h>
+#include <lpm_dbg_common_v2.h>
 
 static struct lpm_sys_res_mbrain_dbg_ops _lpm_sys_res_mbrain_dbg_ops;
 
@@ -38,3 +40,21 @@ void unregister_lpm_mbrain_dbg_ops(void)
 	_lpm_sys_res_mbrain_dbg_ops.get_over_threshold_data = NULL;
 }
 EXPORT_SYMBOL(unregister_lpm_mbrain_dbg_ops);
+
+void lpm_get_suspend_event_info(struct lpm_dbg_lp_info *info)
+{
+	unsigned int smc_id, i;
+
+	if(!info)
+		return;
+
+	smc_id = MT_SPM_DBG_SMC_SUSPEND_PWR_STAT;
+
+	for (i = 0; i < NUM_SPM_STAT; i++) {
+		info->record[i].count = lpm_smc_spm_dbg(smc_id,
+			MT_LPM_SMC_ACT_GET, i, SPM_SLP_COUNT);
+		info->record[i].duration = lpm_smc_spm_dbg(smc_id,
+			MT_LPM_SMC_ACT_GET, i, SPM_SLP_DURATION);
+	}
+}
+EXPORT_SYMBOL(lpm_get_suspend_event_info);
