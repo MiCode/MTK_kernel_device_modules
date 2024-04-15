@@ -530,7 +530,7 @@ struct xhci_intr_reg {
  * a work queue (or delayed service routine)?
  */
 #define ERST_EHB		(1 << 3)
-#define ERST_PTR_MASK		(0xf)
+#define ERST_PTR_MASK       (GENMASK_ULL(63, 4))
 
 /**
  * struct xhci_run_regs
