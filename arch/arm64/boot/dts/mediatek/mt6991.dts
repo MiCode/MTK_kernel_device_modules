@@ -15937,7 +15937,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_img_protected: mm-smmu-img-protected {
-		//compatible = "mediatek,smmu-share-group";
+		compatible = "mediatek,smmu-share-group";
 		label = "mm_smmu_img_protected";
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 138>;
