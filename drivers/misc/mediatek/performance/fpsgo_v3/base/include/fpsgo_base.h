@@ -177,6 +177,8 @@ struct fpsgo_loading {
 	int rmidx;
 	int heavyidx;
 	int reset_taskmask;
+	int prio;	/* magt hint prio */
+	int timeout; /* magt hint time out */
 };
 
 struct fbt_thread_blc {

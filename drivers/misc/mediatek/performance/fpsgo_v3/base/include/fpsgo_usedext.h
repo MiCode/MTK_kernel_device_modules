@@ -39,7 +39,7 @@ extern int (*fpsgo_notify_smart_launch_algorithm_fp)(int feedback_time,
 
 extern int (*magt2fpsgo_notify_target_fps_fp)(int *pid_arr, int *tid_arr,
 	int *tfps_arr, int num);
-extern int (*magt2fpsgo_notify_dep_list_fp)(int pid, int *dep_task_arr,
+extern int (*magt2fpsgo_notify_dep_list_fp)(int pid, void *dep_task_arr,
 	int dep_task_num);
 
 int fpsgo_is_force_enable(void);

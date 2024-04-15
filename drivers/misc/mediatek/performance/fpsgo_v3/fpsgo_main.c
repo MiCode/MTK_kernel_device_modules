@@ -83,7 +83,7 @@ struct fpsgo_magt_target_fps {
 
 struct fpsgo_magt_dep_list {
 	int pid;
-	int dep_task_arr[MAX_MAGT_DEP_LIST_NUM];
+	struct dep_and_prio dep_task_arr[MAX_MAGT_DEP_LIST_NUM];
 	int dep_task_num;
 };
 
@@ -1169,12 +1169,14 @@ int fpsgo_notify_magt_target_fps(int *pid_arr, int *tid_arr,
 	return 0;
 }
 
-int fpsgo_notify_magt_dep_list(int pid, int *dep_task_arr, int dep_task_num)
+int fpsgo_notify_magt_dep_list(int pid, void *dep_task_arr, int dep_task_num)
 {
+	struct dep_and_prio *param = (struct dep_and_prio *)dep_task_arr;
 	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush = NULL;
+	int i;
 
 	if (dep_task_num < 0 || dep_task_num > MAX_MAGT_DEP_LIST_NUM ||
-		(!dep_task_arr && dep_task_num != 0))
+		(!param && dep_task_num != 0))
 		return -EINVAL;
 
 	if (!kfpsgo_tsk)
@@ -1193,10 +1195,15 @@ int fpsgo_notify_magt_dep_list(int pid, int *dep_task_arr, int dep_task_num)
 
 	vpPush->magt_dep_hint->pid = pid;
 	memset(vpPush->magt_dep_hint->dep_task_arr, 0,
-		MAX_MAGT_DEP_LIST_NUM * sizeof(int));
-	if (dep_task_arr)
-		memcpy(vpPush->magt_dep_hint->dep_task_arr, dep_task_arr,
-			dep_task_num * sizeof(int));
+		MAX_MAGT_DEP_LIST_NUM * sizeof(struct dep_and_prio));
+	if (param) {
+		for (i = 0; i < dep_task_num; i++) {
+			vpPush->magt_dep_hint->dep_task_arr[i].pid = param[i].pid;
+			vpPush->magt_dep_hint->dep_task_arr[i].prio = param[i].prio;
+			vpPush->magt_dep_hint->dep_task_arr[i].timeout = param[i].timeout;
+		}
+	}
+
 	vpPush->magt_dep_hint->dep_task_num = dep_task_num;
 	vpPush->ePushType = FPSGO_NOTIFIER_MAGT_DEP_LIST;
 
