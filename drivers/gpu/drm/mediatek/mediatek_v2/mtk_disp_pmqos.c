@@ -684,6 +684,7 @@ void mtk_disp_clear_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc)
 
 void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc, unsigned int bw_base)
 {
+	static u32 pre_rpo_lye;
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
@@ -705,7 +706,13 @@ void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc, unsigned int bw_base
 		if ((priv->data->mmsys_id == MMSYS_MT6991) && mtk_crtc_state->lye_state.rpo_lye) {
 			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
 				NULL, PMQOS_SET_HRT_BW, &bw_base);
+		} else if ((priv->data->mmsys_id == MMSYS_MT6991) && pre_rpo_lye) { //exit RPO
+			unsigned int bw_zero = 0;
+
+			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+				NULL, PMQOS_SET_HRT_BW, &bw_zero);
 		}
+		pre_rpo_lye = mtk_crtc_state->lye_state.rpo_lye;
 
 		for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
 			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
@@ -739,10 +746,8 @@ void mtk_disp_clr_module_hrt(struct mtk_drm_crtc *mtk_crtc)
 		if (!(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
 			continue;
 
-		if ((priv->data->mmsys_id == MMSYS_MT6991) && mtk_crtc_state->lye_state.rpo_lye) {
-			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
-				NULL, PMQOS_CLR_HRT_BW, NULL);
-		}
+		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+			NULL, PMQOS_CLR_HRT_BW, NULL);
 
 		for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
 			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_CLR_HRT_BW, NULL);
