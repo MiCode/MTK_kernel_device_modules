@@ -402,7 +402,11 @@ TRACE_EVENT(idle_check_clkmux,
 #endif /* _TRACE_MTK_IDLE_EVENT_H */
 
 #undef TRACE_INCLUDE_PATH
+#ifdef CONFIG_ARM64
 #define TRACE_INCLUDE_PATH ../../drivers/misc/mediatek/spm/common_v0
+#else
+#define TRACE_INCLUDE_PATH .
+#endif
 #undef TRACE_INCLUDE_FILE
 #define TRACE_INCLUDE_FILE mtk_idle_event
 /* This part must be outside protection */
