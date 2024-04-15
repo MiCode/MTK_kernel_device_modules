@@ -482,6 +482,9 @@ static void dpc_duration_update(const u32 us)
 		dpc_dt_set_update(70, us - DPC2_DT_INFRA);
 		dpc_dt_set_update(73, us - DPC2_DT_PRESZ - DPC2_DT_MTCMOS - DPC2_DT_DSION - DPC2_DT_VCORE);
 		dpc_dt_set_update(76, us - DPC2_DT_PRESZ - DPC2_DT_MTCMOS - DPC2_DT_DSION);
+
+		/* wa for 90 hz extra dsi te */
+		dpc_dt_set_update(7, us == 11111 ? 3000 : DPC2_DT_POSTSZ);
 	} else {
 		dpc_dt_set_update( 1, us - DT_OVL_OFFSET);
 		dpc_dt_set_update( 5, us - DT_DISP1_OFFSET);
