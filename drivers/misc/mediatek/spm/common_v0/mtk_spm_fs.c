@@ -175,7 +175,7 @@ static ssize_t show_pwr_ctrl(int id, const struct pwr_ctrl *pwrctrl, char *buf)
 	for (i = 0; i < PW_MAX_COUNT; i++) {
 		p += sprintf(p, "%s = 0x%zx\n",
 				pwr_ctrl_str[i],
-				SMC_CALL(GET_PWR_CTRL_ARGS,
+				(size_t)SMC_CALL(GET_PWR_CTRL_ARGS,
 				id, i, 0));
 	}
 	WARN_ON(p - buf >= PAGE_SIZE);
