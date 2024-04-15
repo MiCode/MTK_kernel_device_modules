@@ -235,6 +235,7 @@ unsigned long mtk_cpu_util_next(int cpu, struct task_struct *p, int dst_cpu, int
 
 unsigned long mtk_cpu_util_cfs(int cpu);
 unsigned long mtk_cpu_util_cfs_boost(int cpu);
+void mtk_cpu_util_cfs_boost_hook(void *data, int cpu, unsigned long *util);
 
 #define EAS_NODE_NAME "eas_info"
 #define EAS_PROP_CSRAM "csram-base"
