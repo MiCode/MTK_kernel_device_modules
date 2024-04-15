@@ -186,6 +186,7 @@ struct moInfo {
 	int mo_gpu_avs;
 	int mo_gpu_curr_freq_power_calc;
 	int mo_onetime_power_table_calc;
+	int mo_gpu_low_freq_power_calc;
 	unsigned int mo_status;
 };
 
