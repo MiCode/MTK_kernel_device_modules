@@ -2506,6 +2506,7 @@ int fpsgo_delete_sbe_spid_loading(int tgid)
 	int ret = 0;
 	struct sbe_spid_loading *iter = NULL;
 
+	fpsgo_render_tree_lock(__func__);
 	iter = fpsgo_get_sbe_spid_loading(tgid, 0);
 	if (iter) {
 		rb_erase(&iter->rb_node, &sbe_spid_loading_tree);
@@ -2513,6 +2514,7 @@ int fpsgo_delete_sbe_spid_loading(int tgid)
 		total_sbe_spid_loading_num--;
 		ret = 1;
 	}
+	fpsgo_render_tree_unlock(__func__);
 
 	return ret;
 }
@@ -2527,14 +2529,17 @@ int fpsgo_update_sbe_spid_loading(int *cur_pid_arr, int cur_pid_num, int tgid)
 
 	if (!cur_pid_arr || cur_pid_num <= 0) {
 		ret = -EINVAL;
-		goto out;
+		return ret;
 	}
 
+	fpsgo_render_tree_lock(__func__);
 	iter = fpsgo_get_sbe_spid_loading(tgid, 1);
 	if (!iter) {
 		ret = -ENOMEM;
 		goto out;
 	}
+
+
 	iter->ts = fpsgo_get_time();
 
 	memset(iter->spid_arr, 0, MAX_DEP_NUM * sizeof(int));
@@ -2563,6 +2568,7 @@ int fpsgo_update_sbe_spid_loading(int *cur_pid_arr, int cur_pid_num, int tgid)
 	iter->spid_num = cur_pid_num <= MAX_DEP_NUM ? cur_pid_num : MAX_DEP_NUM;
 
 out:
+	fpsgo_render_tree_unlock(__func__);
 	return ret;
 }
 
