@@ -8,6 +8,10 @@
 #include <linux/types.h>
 #include <linux/list.h>
 
+#ifndef MREG_CMD_SIZE
+#define MREG_CMD_SIZE      (0x1C0)
+#endif
+
 struct command_entry;
 
 struct mdla_wait_cmd {

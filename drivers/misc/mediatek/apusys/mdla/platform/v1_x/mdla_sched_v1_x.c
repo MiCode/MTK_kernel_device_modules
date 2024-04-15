@@ -422,6 +422,12 @@ static void mdla_split_alloc_command_batch(struct command_entry *ce)
 
 	INIT_LIST_HEAD(ce->batch_list_head);
 
+	/**
+	 * cmdbuf.kva     ce->kva = cmdbuf.kva + cd->offset
+	 *         |______________|_____________________________________________
+	 * codebuf |___________________________________________________________|
+	 *         <--------------------- cmdbuf.size ------------------------->
+	 */
 	apusys_mem_invalidate_kva(ce->kva, ce->cmdbuf->size - (ce->kva - ce->cmdbuf->kva));
 
 	// TODO: add default policy when batch_size is zero
@@ -477,6 +483,49 @@ static void mdla_split_alloc_command_batch(struct command_entry *ce)
 		}
 }
 
+static void mdla_backup_command_batch(struct command_entry *ce)
+{
+	uint32_t i = 0;
+	void *cmd_kva = NULL;
+
+	if (unlikely(!ce->cmd_int_backup || !ce->cmd_ctrl_1_backup))
+		return;
+
+	apusys_mem_invalidate_kva(ce->kva, ce->cmdbuf->size - (ce->kva - ce->cmdbuf->kva));
+	/* backup cmd buffer value */
+	for (i = 1; i <= ce->count; i++) {
+		cmd_kva = ce->kva + (i - 1) * MREG_CMD_SIZE;
+
+		ce->cmd_int_backup[i - 1] =
+			mdla_get_swcmd(cmd_kva, MREG_CMD_TILE_CNT_INT);
+		ce->cmd_ctrl_1_backup[i - 1] =
+			mdla_get_swcmd(cmd_kva, MREG_CMD_GENERAL_CTRL_1);
+	}
+	apusys_mem_flush_kva(ce->kva, ce->cmdbuf->size - (ce->kva - ce->cmdbuf->kva));
+}
+
+static void mdla_restore_command_batch(struct command_entry *ce)
+{
+	uint32_t i = 0;
+	void *cmd_kva = NULL;
+
+	if (unlikely(ce->cmdbuf == NULL))
+		return;
+
+	if (unlikely(!ce->cmd_int_backup || !ce->cmd_ctrl_1_backup))
+		return;
+
+	apusys_mem_invalidate_kva(ce->kva, ce->cmdbuf->size - (ce->kva - ce->cmdbuf->kva));
+	for (i = 1; i <= ce->count; i++) {
+		cmd_kva = ce->kva + (i - 1) * MREG_CMD_SIZE;
+		mdla_set_swcmd(cmd_kva,
+			MREG_CMD_TILE_CNT_INT, ce->cmd_int_backup[i - 1]);
+		mdla_set_swcmd(cmd_kva,
+			MREG_CMD_GENERAL_CTRL_1, ce->cmd_ctrl_1_backup[i - 1]);
+	}
+	apusys_mem_flush_kva(ce->kva, ce->cmdbuf->size - (ce->kva - ce->cmdbuf->kva));
+}
+
 int mdla_v1_x_sched_init(void)
 {
 	struct mdla_scheduler *sched;
@@ -517,6 +566,8 @@ int mdla_v1_x_sched_init(void)
 	/* set scheduler callback */
 	sched_cb->split_alloc_cmd_batch = mdla_split_alloc_command_batch;
 	sched_cb->del_free_cmd_batch    = mdla_del_free_command_batch;
+	sched_cb->backup_cmd_batch      = mdla_backup_command_batch;
+	sched_cb->restore_cmd_batch     = mdla_restore_command_batch;
 
 	return 0;
 

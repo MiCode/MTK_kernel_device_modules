@@ -14,6 +14,10 @@
 #define get_code_buf_kva(apusys_hd, run_cmd)\
 			((run_cmd)->kva + (run_cmd)->offset)
 
+#ifndef MREG_CMD_SIZE
+#define MREG_CMD_SIZE      (0x180)
+#endif
+
 struct mdla_run_cmd {
 	struct {
 		uint32_t size;
