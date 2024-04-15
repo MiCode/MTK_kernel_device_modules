@@ -53,46 +53,48 @@ static unsigned long p_init_begin;
 #endif
 
 #if IS_ENABLED(CONFIG_KALLSYMS_BASE_RELATIVE)
+unsigned long aee_get_kns_addr(void);
+
 unsigned long aee_get_kn_off(void)
 {
-	if (!_mrdump_kns)
+	if (!mrdump_kn)
 		return 0;
 
-	return (unsigned long)mrdump_kn - (unsigned long)mrdump_ko;
-}
-
-unsigned long aee_get_kns_off(void)
-{
-	if (!_mrdump_kns)
-		return 0;
-
-	return aee_get_kn_off() - KALLS_ALGN;
+	return (unsigned long)mrdump_kn - aee_get_kns_addr();
 }
 
 unsigned long aee_get_km_off(void)
 {
-	if (!_mrdump_kns)
+	if (!mrdump_km)
 		return 0;
 
-	return (unsigned long)mrdump_km - (unsigned long)mrdump_ko;
+	return (unsigned long)mrdump_km - aee_get_kns_addr();
 }
 
 unsigned long aee_get_ktt_off(void)
 {
-	if (!_mrdump_kns)
+	if (!mrdump_ktt)
 		return 0;
 
-	return (unsigned long)mrdump_ktt - (unsigned long)mrdump_ko;
+	return (unsigned long)mrdump_ktt - aee_get_kns_addr();
 }
 
 unsigned long aee_get_kti_off(void)
 {
-	if (!_mrdump_kns)
+	if (!mrdump_kti)
 		return 0;
 
-	return (unsigned long)mrdump_kti - (unsigned long)mrdump_ko;
+	return (unsigned long)mrdump_kti - aee_get_kns_addr();
 }
 #endif
+
+unsigned long aee_get_ka_off(void)
+{
+	if (!mrdump_ko)
+		return 0;
+
+	return (unsigned long)mrdump_ko - aee_get_kns_addr();
+}
 
 static int retry_nm = 100;
 
@@ -279,11 +281,18 @@ void *aee_log_buf_addr_get(void)
 }
 EXPORT_SYMBOL(aee_log_buf_addr_get);
 
-unsigned long aee_get_kallsyms_addresses(void)
+unsigned long aee_get_kns_addr(void)
 {
-	if (!IS_ENABLED(CONFIG_KALLSYMS_BASE_RELATIVE))
-		return (unsigned long)mrdump_ka;
-	return (unsigned long)mrdump_ko;
+	if (!mrdump_kn)
+		return 0;
+
+	return (unsigned long)mrdump_kn - 8;
+}
+
+unsigned long aee_get_kallsyms_mem_size(void)
+{
+	return (unsigned long)mrdump_ko - (unsigned long)mrdump_kn + 16 +
+		(3 + sizeof(int)) * _mrdump_kns;
 }
 
 unsigned long aee_get_kti_addresses(void)
@@ -379,11 +388,15 @@ void *aee_log_buf_addr_get(void)
 	return NULL;
 }
 
-unsigned long aee_get_kallsyms_addresses(void)
+unsigned long aee_get_kns_addr(void)
 {
-	if (!IS_ENABLED(CONFIG_KALLSYMS_BASE_RELATIVE))
-		return (unsigned long)kallsyms_addresses;
-	return (unsigned long)kallsyms_offsets;
+	return (unsigned long)&kallsyms_num_syms;
+}
+
+unsigned long aee_get_kallsyms_mem_size(void)
+{
+	return (unsigned long)&kallsyms_seqs_of_names - (unsigned long)&kallsyms_num_syms +
+		3 * kallsyms_num_syms;
 }
 
 unsigned long aee_get_kti_addresses(void)

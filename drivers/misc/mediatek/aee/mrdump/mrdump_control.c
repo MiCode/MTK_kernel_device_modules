@@ -87,7 +87,7 @@ static void mrdump_cblock_kallsyms_init(struct mrdump_ksyms_param *kparam)
 	unsigned long start_addr;
 
 	memset(&tmp_kp, 0, sizeof(struct mrdump_ksyms_param));
-	start_addr = aee_get_kallsyms_addresses();
+	start_addr = aee_get_kns_addr();
 	tmp_kp.tag[0] = 'K';
 	tmp_kp.tag[1] = 'S';
 	tmp_kp.tag[2] = 'Y';
@@ -107,17 +107,17 @@ static void mrdump_cblock_kallsyms_init(struct mrdump_ksyms_param *kparam)
 	}
 
 	tmp_kp.start_addr = __pa_symbol(start_addr);
-	tmp_kp.size = (u32)(aee_get_kti_addresses() - start_addr + 512);
+	tmp_kp.size = (u32)aee_get_kallsyms_mem_size();
 	tmp_kp.crc = crc32(0, (unsigned char *)start_addr, tmp_kp.size);
-	tmp_kp.addresses_off = 0;
+	tmp_kp.num_syms_off = 0;
 #ifdef MODULE
-	tmp_kp.num_syms_off = (u32)aee_get_kns_off();
+	tmp_kp.addresses_off = (u32)aee_get_ka_off();
 	tmp_kp.names_off = (u32)aee_get_kn_off();
 	tmp_kp.markers_off = (u32)aee_get_km_off();
 	tmp_kp.token_table_off = (u32)aee_get_ktt_off();
 	tmp_kp.token_index_off = (u32)aee_get_kti_off();
 #else
-	tmp_kp.num_syms_off = (unsigned long)&kallsyms_num_syms - start_addr;
+	tmp_kp.addresses_off = (unsigned long)&kallsyms_offsets - start_addr;
 	tmp_kp.names_off = (unsigned long)&kallsyms_names - start_addr;
 	tmp_kp.markers_off = (unsigned long)&kallsyms_markers - start_addr;
 	tmp_kp.token_table_off =
