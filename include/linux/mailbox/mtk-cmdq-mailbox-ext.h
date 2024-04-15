@@ -432,4 +432,5 @@ u32 cmdq_get_tf_high_addr_by_dev(struct device *dev);
 #endif
 void cmdq_event_dump_and_clr(void *chan);
 u32 cmdq_mbox_get_tpr(void *chan);
+bool cmdq_is_hw_trace_thread(struct mbox_chan *chan);
 #endif /* __MTK_CMDQ_MAILBOX_H__ */

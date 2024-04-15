@@ -157,6 +157,9 @@ EXPORT_SYMBOL(cmdq_tfa_read_dbg);
 bool hw_trace_built_in[2];
 EXPORT_SYMBOL(hw_trace_built_in);
 
+bool hw_trace_vm;
+EXPORT_SYMBOL(hw_trace_vm);
+
 /* CMDQ log flag */
 int mtk_cmdq_log;
 EXPORT_SYMBOL(mtk_cmdq_log);
@@ -254,6 +257,7 @@ struct cmdq {
 	phys_addr_t		base_pa;
 	u8			hwid;
 	u32			irq;
+	u32			irq_vm6;
 	struct list_head	irq_removes;
 	spinlock_t		irq_removes_lock;
 	struct wait_queue_head	err_irq_wq;
@@ -400,6 +404,16 @@ int cmdq_hw_trace_set(const char *val, const struct kernel_param *kp)
 
 	return ret;
 }
+
+bool cmdq_is_hw_trace_thread(struct mbox_chan *chan)
+{
+	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
+
+	if (chan == cmdq->hw_trace_clt->chan)
+		return true;
+	return false;
+}
+EXPORT_SYMBOL(cmdq_is_hw_trace_thread);
 
 static const struct kernel_param_ops cmdq_hw_trace_ops = {
 	.set = cmdq_hw_trace_set,
@@ -1716,7 +1730,7 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 {
 	struct cmdq *cmdq = dev;
-	unsigned long irq_status, irq_status_vm, flags = 0L, irq_idx_flag;
+	unsigned long irq_status, flags = 0L, irq_idx_flag;
 	int bit, i;
 	bool secure_irq = false;
 	u32 thd_cnt = 0;
@@ -1746,7 +1760,6 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 #endif
 	if (cmdq->gce_vm) {
 		irq_status = readl(cmdq->base + GCE_HOST_VM_IRQ_STATUS) & CMDQ_IRQ_MASK;
-		irq_status_vm = readl(cmdq->base + GCE_VM6_OFFSET + GCE_HOST_VM_IRQ_STATUS) & CMDQ_IRQ_MASK;
 	} else
 		irq_status = readl(cmdq->base + CMDQ_CURR_IRQ_STATUS) & CMDQ_IRQ_MASK;
 	cmdq_log("gce:%lx irq: %#x, %#x",
@@ -1785,28 +1798,124 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 		thread->irq_time = sched_clock() - irq_time;
 		thd_cnt += 1;
 	}
-	if (cmdq->gce_vm) {
-		for_each_clear_bit(bit, &irq_status_vm, fls(CMDQ_IRQ_MASK)) {
-			struct cmdq_thread *thread = &cmdq->thread[bit];
-			u64 irq_time;
 
-			cmdq_log("bit=%d, thread->base=%p", bit, thread->base);
-			if (!thread->occupied) {
-				secure_irq = true;
-				continue;
-			}
+	cmdq_mtcmos_by_fast(cmdq, false);
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
+	spin_lock_irqsave(&cmdq->irq_idx_lock, irq_idx_flag);
+	set_bit(gce_thread_nr, &cmdq->err_irq_idx);
+	spin_unlock_irqrestore(&cmdq->irq_idx_lock, irq_idx_flag);
+	wake_up_interruptible(&cmdq->err_irq_wq);
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	end[end_cnt] = sched_clock();
+	if (end[end_cnt] - start >= 5000000 && !cmdq->irq_long_times) { /* 5ms */
+		cmdq_util_err(
+			"IRQ_LONG:%llu atomic:%llu readl:%llu bit:%llu wakeup:%llu",
+			end[end_cnt] - start, end[0] - start,
+			end[1] - end[0], end[2] - end[1], end[3] - end[2]);
+		for (i = 0; i < ARRAY_SIZE(cmdq->thread); i += 8) {
+			struct cmdq_thread *thread = &cmdq->thread[i];
 
-			irq_time = sched_clock();
-			spin_lock_irqsave(&thread->chan->lock, flags);
-			thread->lock_time = sched_clock() - irq_time;
-			cmdq_thread_irq_handler(cmdq, thread, &cmdq->irq_removes);
-			spin_unlock_irqrestore(&thread->chan->lock, flags);
-			thread->irq_time = sched_clock() - irq_time;
-			thd_cnt += 1;
+			cmdq_util_err(
+				" hwid:%d thread:%u:%d %llu:%llu:%u:%llu %llu:%llu:%u:%llu %llu:%llu:%u:%llu %llu:%llu:%u:%llu %llu:%llu:%u:%llu %llu:%llu:%u:%llu %llu:%llu:%u:%llu %llu:%llu:%u:%llu",
+				cmdq->hwid, thd_cnt, i, thread->lock_time, thread->irq_time,
+				thread->irq_task, thread->user_cb_cost,
+				(thread + 1)->lock_time, (thread + 1)->irq_time,
+				(thread + 1)->irq_task, (thread + 1)->user_cb_cost,
+				(thread + 2)->lock_time, (thread + 2)->irq_time,
+				(thread + 2)->irq_task, (thread + 2)->user_cb_cost,
+				(thread + 3)->lock_time, (thread + 3)->irq_time,
+				(thread + 3)->irq_task, (thread + 3)->user_cb_cost,
+				(thread + 4)->lock_time, (thread + 4)->irq_time,
+				(thread + 4)->irq_task, (thread + 4)->user_cb_cost,
+				(thread + 5)->lock_time, (thread + 5)->irq_time,
+				(thread + 5)->irq_task, (thread + 5)->user_cb_cost,
+				(thread + 6)->lock_time, (thread + 6)->irq_time,
+				(thread + 6)->irq_task, (thread + 6)->user_cb_cost,
+				(thread + 7)->lock_time, (thread + 7)->irq_time,
+				(thread + 7)->irq_task, (thread + 7)->user_cb_cost);
 		}
 	}
-	cmdq_mtcmos_by_fast(cmdq, false);
 
+	if (end[end_cnt] - start >= 5000000)
+		cmdq->irq_long_times += 1;
+#endif
+	cmdq_trace_end();
+	return secure_irq ? IRQ_NONE : IRQ_HANDLED;
+}
+
+static irqreturn_t cmdq_vm_irq_handler(int irq, void *dev)
+{
+	struct cmdq *cmdq = dev;
+	unsigned long irq_status_vm, flags = 0L, irq_idx_flag;
+	int bit, i;
+	bool secure_irq = false;
+	u32 thd_cnt = 0;
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	u64 start = sched_clock(), end[4];
+	u32 end_cnt = 0;
+#endif
+
+	cmdq_trace_begin("%s hwid:%d", __func__, cmdq->hwid);
+
+	cmdq_mtcmos_by_fast(cmdq, true);
+	if (atomic_read(&cmdq->usage) <= 0 ||
+		(mminfra_gce_cg && !mminfra_gce_cg(cmdq->hwid))) {
+		for (i = 0; i < ARRAY_SIZE(cmdq->thread); i++)
+			if (!list_empty(&cmdq->thread[i].task_busy_list))
+				cmdq_err(
+					"hwid:%hu suspend:%d usage:%d idx:%d usage:%d still has tasks",
+					cmdq->hwid, cmdq->suspended,
+					atomic_read(&cmdq->usage), i,
+					atomic_read(&cmdq->thread[i].usage));
+		cmdq_mtcmos_by_fast(cmdq, false);
+		return IRQ_HANDLED;
+	}
+
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
+
+	irq_status_vm = readl(cmdq->base + GCE_VM6_OFFSET + GCE_HOST_VM_IRQ_STATUS) & CMDQ_IRQ_MASK;
+	cmdq_log("gce:%lx irq: %#x, %#x",
+		(unsigned long)cmdq->base_pa, (u32)irq_status_vm,
+		(u32)(irq_status_vm ^ CMDQ_IRQ_MASK));
+	if (!(irq_status_vm ^ CMDQ_IRQ_MASK)) {
+		cmdq_msg("not handle for empty status:0x%x",
+			(u32)irq_status_vm);
+		cmdq_mtcmos_by_fast(cmdq, false);
+		cmdq_trace_end();
+		return IRQ_NONE;
+	}
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
+	for (i = 0; i < ARRAY_SIZE(cmdq->thread); i++) {
+		cmdq->thread[i].irq_time = 0;
+		cmdq->thread[i].irq_task = 0;
+	}
+
+	for_each_clear_bit(bit, &irq_status_vm, fls(CMDQ_IRQ_MASK)) {
+		struct cmdq_thread *thread = &cmdq->thread[bit];
+		u64 irq_time;
+
+		cmdq_log("bit=%d, thread->base=%p", bit, thread->base);
+		if (!thread->occupied) {
+			secure_irq = true;
+			continue;
+		}
+
+		irq_time = sched_clock();
+		spin_lock_irqsave(&thread->chan->lock, flags);
+		thread->lock_time = sched_clock() - irq_time;
+		cmdq_thread_irq_handler(cmdq, thread, &cmdq->irq_removes);
+		spin_unlock_irqrestore(&thread->chan->lock, flags);
+		thread->irq_time = sched_clock() - irq_time;
+		thd_cnt += 1;
+	}
+
+	cmdq_mtcmos_by_fast(cmdq, false);
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	end[end_cnt++] = sched_clock();
 #endif
@@ -3085,6 +3194,12 @@ static int cmdq_probe(struct platform_device *pdev)
 	if(of_property_read_bool(dev->of_node, "hw-trace-built-in"))
 		hw_trace_built_in[hwid] = true;
 
+	if(of_property_read_bool(dev->of_node, "hw-trace-vm"))
+		hw_trace_vm = true;
+
+	if (of_property_read_bool(dev->of_node, "cmdq-tfa-read-dbg"))
+		cmdq_tfa_read_dbg = true;
+
 	if (of_property_read_bool(dev->of_node, "event-debug")) {
 		cmdq->event_debug = true;
 		of_property_read_u32_array(dev->of_node, "event-dump-range",
@@ -3101,52 +3216,6 @@ static int cmdq_probe(struct platform_device *pdev)
 	of_property_read_u32(dev->of_node, "error-irq-bug-on", &error_irq_bug_on);
 	of_property_read_u32(dev->of_node, "cmdq-pwr-log", &cmdq_pwr_log);
 	of_property_read_u32(dev->of_node, "cmdq-proc-debug-off", &cmdq_proc_debug_off);
-
-
-	if (of_property_read_bool(dev->of_node, "skip-poll-sleep"))
-		skip_poll_sleep = true;
-
-	if (of_property_read_bool(dev->of_node, "gce-in-vcp"))
-		gce_in_vcp = true;
-
-	if (of_property_read_bool(dev->of_node, "support-gce-vm"))
-		cmdq->gce_vm = true;
-
-	if (of_property_read_bool(dev->of_node, "support-spr3-timer"))
-		cmdq->spr3_timer = true;
-
-#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
-	if (!of_property_read_bool(dev->of_node, "cmdq-log-perf-off"))
-		cmdq_util_log_feature_set(NULL, CMDQ_LOG_FEAT_PERF);
-#endif
-
-	if (of_property_read_bool(dev->of_node, "cpr-not-support-cookie"))
-		cpr_not_support_cookie = true;
-
-	if (!of_property_read_bool(dev->of_node, "no-append-by-event"))
-		append_by_event = true;
-
-	if (of_property_read_bool(dev->of_node, "cmdq-tfa-read-dbg"))
-		cmdq_tfa_read_dbg = true;
-
-	if(of_property_read_bool(dev->of_node, "hw-trace-built-in"))
-		hw_trace_built_in[hwid] = true;
-
-	if (of_property_read_bool(dev->of_node, "event-debug")) {
-		cmdq->event_debug = true;
-		of_property_read_u32_array(dev->of_node, "event-dump-range",
-			cmdq->event_dump_range, 2);
-		of_property_read_u32_array(dev->of_node, "event-clr-range",
-			cmdq->event_clr_range, 2);
-		cmdq_msg("%s dump range: %d ~ %d", __func__,
-			cmdq->event_dump_range[0], cmdq->event_dump_range[1]);
-		cmdq_msg("%s clr range: %d ~ %d", __func__,
-			cmdq->event_clr_range[0], cmdq->event_clr_range[1]);
-	}
-
-	of_property_read_u32(dev->of_node, "cmdq-dump-buf-size", &cmdq_dump_buf_size);
-	of_property_read_u32(dev->of_node, "error-irq-bug-on", &error_irq_bug_on);
-	of_property_read_u32(dev->of_node, "cmdq-pwr-log", &cmdq_pwr_log);
 
 	cmdq_msg("dump_buf_size %d error irq %d cmdq_tfa_read_dbg:%d ",
 		cmdq_dump_buf_size,
@@ -3263,6 +3332,20 @@ static int cmdq_probe(struct platform_device *pdev)
 
 	cmdq_mmp_init();
 
+	if (cmdq->gce_vm && hw_trace_vm) {
+		cmdq->irq_vm6 = platform_get_irq(pdev, 1);
+		if (!cmdq->irq_vm6) {
+			cmdq_err("failed to get irq");
+			return -EINVAL;
+		}
+		err = devm_request_irq(dev, cmdq->irq_vm6, cmdq_vm_irq_handler, IRQF_SHARED,
+					"mtk_cmdq_vm6", cmdq);
+		if (err < 0) {
+			cmdq_err("failed to register ISR (%d)", err);
+			return err;
+		}
+	}
+
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 	cmdq_util_controller->track_ctrl(cmdq, cmdq->base_pa, false);
 #endif
@@ -3272,9 +3355,10 @@ static int cmdq_probe(struct platform_device *pdev)
 		struct cmdq_thread *thread = (struct cmdq_thread *)cmdq->prebuilt_clt->chan->con_priv;
 
 		cmdq->hw_trace_clt = cmdq->prebuilt_clt;
-		cmdq->thread[thread->idx].base += GCE_VM6_OFFSET;
-		cmdq->thread[thread->idx].gce_pa += GCE_VM6_OFFSET;
-
+		if (hw_trace_vm) {
+			cmdq->thread[thread->idx].base += GCE_VM6_OFFSET;
+			cmdq->thread[thread->idx].gce_pa += GCE_VM6_OFFSET;
+		}
 		cmdq_msg("%s hw_trace thrd:%d base_va:0x%lx 0x%lx", __func__, thread->idx,
 			(unsigned long)cmdq->thread[thread->idx].base,
 			(unsigned long)cmdq->thread[thread->idx].gce_pa);
@@ -3522,7 +3606,10 @@ void cmdq_mbox_enable(void *chan)
 		if (cmdq->gce_vm) {
 			//config VMID
 			writel(0x3fffffff, cmdq->base + GCE_VM_ID_MAP0);
-			writel(0x3ffffdff, cmdq->base + GCE_VM_ID_MAP1); //thread 13 map to vm6
+			if (hw_trace_vm)
+				writel(0x3ffffdff, cmdq->base + GCE_VM_ID_MAP1); //thread 13 map to vm6
+			else
+				writel(0x3fffffff, cmdq->base + GCE_VM_ID_MAP1);
 			writel(0x3fffffff, cmdq->base + GCE_VM_ID_MAP2);
 			writel(0x3f, cmdq->base + GCE_VM_ID_MAP3);
 		}

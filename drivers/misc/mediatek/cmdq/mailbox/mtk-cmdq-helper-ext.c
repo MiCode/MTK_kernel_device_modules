@@ -3518,7 +3518,7 @@ static int cmdq_pkt_wait_complete_loop(struct cmdq_pkt *pkt)
 		cmdq_dump_summary(client, pkt);
 		cmdq_util_helper->dump_unlock();
 
-		if (cnt == 1 && cmdq_hw_trace)
+		if (cnt == 1 && cmdq_hw_trace && !cmdq_is_hw_trace_thread(client->chan))
 			cmdq_util_hw_trace_dump(cmdq_util_get_hw_id(
 				(u32)cmdq_mbox_get_base_pa(client->chan)),
 				cmdq_util_get_bit_feature() &
