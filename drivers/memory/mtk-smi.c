@@ -23,6 +23,11 @@
 
 #include <linux/kthread.h>
 #include <linux/of_address.h>
+
+#if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+#include "mmevent_function.h"
+#endif
+
 #define MMSYS_HW_DCM_1ST_DIS_SET0 (0x124)
 
 /* mt8173 */
@@ -276,6 +281,21 @@ static unsigned int init_power_on_num;
 #define MAX_PD_CTRL_NUM	(8)
 static struct mtk_smi_pd *smi_pd_ctrl[MAX_PD_CTRL_NUM];
 static unsigned int smi_pd_ctrl_num;
+
+#if IS_ENABLED(CONFIG_MTK_SMI_DEBUG) && IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+#define SMI_MME_LOG_SIZE	(160 * 1024)
+
+void smi_mme_init(void)
+{
+	MME_REGISTER_BUFFER(MME_MODULE_MMSYS, "SMI",
+				MME_BUFFER_INDEX_2, SMI_MME_LOG_SIZE);
+}
+
+#define SMI_MME_INFO(fmt, arg...) MME_INFO(MME_MODULE_MMSYS, MME_BUFFER_INDEX_2, fmt, ##arg)
+#else
+void smi_mme_init(void) {}
+#define SMI_MME_INFO(fmt, arg...)
+#endif
 
 static void power_reset_imp(struct mtk_smi_pd *smi_pd)
 {
@@ -3551,12 +3571,16 @@ static int __maybe_unused mtk_smi_larb_resume(struct device *dev)
 	if (log_level & 1 << log_config_bit)
 		pr_info("[SMI]larb:%d callback get ref_count:%d\n",
 			larb->larbid, atomic_read(&larb->smi.ref_count));
+	SMI_MME_INFO("larb:%d is to enable clk in callback get new ref_count:%d\n",
+		larb->larbid, atomic_read(&larb->smi.ref_count));
 	if (atomic_read(&larb->smi.ref_count) != 1)
 		return 0;
 
 	clk_start = ktime_get();
 	ret = mtk_smi_clk_enable(&larb->smi);
 	clk_end = ktime_get();
+	SMI_MME_INFO("larb:%d has enabled clk in callback get new ref_count:%d\n",
+		larb->larbid, atomic_read(&larb->smi.ref_count));
 	if (ret < 0) {
 		dev_err(dev, "Failed to enable clock(%d).\n", ret);
 		return ret;
@@ -3799,6 +3823,8 @@ static int __maybe_unused mtk_smi_larb_suspend(struct device *dev)
 	if (log_level & 1 << log_config_bit)
 		pr_info("[SMI]larb:%d callback put ref_count:%d\n",
 			larb->larbid, atomic_read(&larb->smi.ref_count));
+	SMI_MME_INFO("larb:%d is to disable clk in callback put new ref_count:%d\n",
+		larb->larbid, atomic_read(&larb->smi.ref_count));
 	if (atomic_read(&larb->smi.ref_count) != 0)
 		return 0;
 	if (atomic_read(&larb->smi.ref_count)) {
@@ -3817,6 +3843,8 @@ static int __maybe_unused mtk_smi_larb_suspend(struct device *dev)
 		larb_gen->sleep_ctrl(dev, true);
 
 	mtk_smi_clk_disable(&larb->smi);
+	SMI_MME_INFO("larb:%d has disabled clk in callback put new ref_count:%d\n",
+		larb->larbid, atomic_read(&larb->smi.ref_count));
 	return 0;
 }
 
@@ -5070,6 +5098,8 @@ static int __maybe_unused mtk_smi_common_resume(struct device *dev)
 	if (log_level & 1 << log_config_bit)
 		pr_info("[SMI]comm:%d callback get ref_count:%d\n",
 			common->commid, atomic_read(&common->ref_count));
+	SMI_MME_INFO("common:%d is to enable clk in callback get old ref_count:%d\n",
+		common->commid, atomic_read(&common->ref_count));
 	if (atomic_read(&common->ref_count) != 1)
 		return 0;
 
@@ -5080,6 +5110,8 @@ static int __maybe_unused mtk_smi_common_resume(struct device *dev)
 		dev_err(common->dev, "Failed to enable clock(%d).\n", ret);
 		return ret;
 	}
+	SMI_MME_INFO("common:%d has enabled clk in callback get new ref_count:%d\n",
+		common->commid, atomic_read(&common->ref_count));
 
 	if ((common->plat->gen == MTK_SMI_GEN2 || common->plat->gen == MTK_SMI_GEN3)
 		&& bus_sel)
@@ -5136,6 +5168,8 @@ static int __maybe_unused mtk_smi_common_suspend(struct device *dev)
 	if (log_level & 1 << log_config_bit)
 		pr_info("[SMI]comm:%d callback put ref_count:%d\n",
 			common->commid, atomic_read(&common->ref_count));
+	SMI_MME_INFO("common:%d is to disable clk in callback put old ref_count:%d\n",
+		common->commid, atomic_read(&common->ref_count));
 	if (atomic_read(&common->ref_count) != 0)
 		return 0;
 
@@ -5145,6 +5179,8 @@ static int __maybe_unused mtk_smi_common_suspend(struct device *dev)
 	}
 
 	mtk_smi_clk_disable(common);
+	SMI_MME_INFO("common:%d has disabled clk in callback put new ref_count:%d\n",
+		common->commid, atomic_read(&common->ref_count));
 
 	if (atomic_read(&common->ref_count)) {
 		dev_notice(dev, "Error: comm(%d) ref count=%d on suspend\n",
@@ -5534,6 +5570,7 @@ static struct platform_driver * const smidrivers[] = {
 
 static int __init mtk_smi_init(void)
 {
+	smi_mme_init();
 	return platform_register_drivers(smidrivers, ARRAY_SIZE(smidrivers));
 }
 module_init(mtk_smi_init);
