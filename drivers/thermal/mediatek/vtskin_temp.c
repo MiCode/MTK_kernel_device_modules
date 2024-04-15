@@ -14,6 +14,7 @@
 #include <linux/thermal.h>
 #include "vtskin_temp.h"
 #include <linux/math64.h>
+#include <linux/timer.h>
 
 static int vtskin_get_temp(struct thermal_zone_device *tz, int *temp)
 {
@@ -24,6 +25,8 @@ static int vtskin_get_temp(struct thermal_zone_device *tz, int *temp)
 	long long vtskin = 0, coef;
 	int tz_temp, i, ret;
 	char *sensor_name;
+	ktime_t last_time, now_time;
+	int last_temp;
 
 	if (skin_param[skin_tz->id].ref_num == 0) {
 		*temp = THERMAL_TEMP_INVALID;
@@ -45,11 +48,39 @@ static int vtskin_get_temp(struct thermal_zone_device *tz, int *temp)
 			return -EINVAL;
 		}
 
-		ret = tzd->ops->get_temp(tzd, &tz_temp);
-		if (ret < 0) {
-			dev_err(skin_data->dev, "%s get_temp fail %d\n", sensor_name, ret);
-			*temp = THERMAL_TEMP_INVALID;
-			return -EINVAL;
+		if (skin_param[skin_tz->id].operation != OP_COEF) {
+			ret = tzd->ops->get_temp(tzd, &tz_temp);
+			if (ret < 0) {
+				dev_err(skin_data->dev, "%s get_temp fail %d\n", sensor_name, ret);
+				*temp = THERMAL_TEMP_INVALID;
+				return -EINVAL;
+			}
+		} else {
+			/*
+			 * If the time interval since the last temperature report is within 200ms,
+			 * then report the previous temperature information. We assume that
+			 * all vtskin utilize the same reference sensors in one thermal policy.
+			 * Because of that, only one vtskin data(skin_param[0]) is used and checked,
+			 * while the others are redundant but kept just for the data structure consistency.
+			 */
+			last_time = skin_param[0].vtskin_ref[i].record_time;
+			last_temp = skin_param[0].vtskin_ref[i].record_temp;
+			now_time = ktime_get();
+			if ((last_temp != THERMAL_TEMP_INVALID) &&
+				(last_temp != 0) &&
+				(last_time != 0) &&
+				((unsigned long long)ktime_us_delta(now_time, last_time) < 200000) )
+				tz_temp = last_temp;
+			else {
+				ret = tzd->ops->get_temp(tzd, &tz_temp);
+				if (ret < 0) {
+					dev_err(skin_data->dev, "%s get_temp fail %d\n", sensor_name, ret);
+					*temp = THERMAL_TEMP_INVALID;
+					return -EINVAL;
+				}
+				skin_param[0].vtskin_ref[i].record_temp = tz_temp;
+				skin_param[0].vtskin_ref[i].record_time = ktime_get();
+			}
 		}
 
 		if (skin_param[skin_tz->id].operation == OP_MAX) {
