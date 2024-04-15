@@ -209,7 +209,6 @@ enum {
 	SUPPLY_SEQ_VOW_DIG_CFG,
 	SUPPLY_SEQ_VOW_CIC_CFG,
 #endif
-	SUPPLY_SEQ_SCP_REQ_2,
 };
 
 enum {
