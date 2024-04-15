@@ -1681,6 +1681,7 @@
 		interrupt-names = "fault_handling_interrupt",
 				"error_recovery_interrupt";
 		pmic-reg = <0x1696>;
+		vcore-volt = <&mt6316_8 0x14a4>;
 	};
 
 	/* Trustonic Mobicore SW IRQ number 171 = 32 + 139 */
