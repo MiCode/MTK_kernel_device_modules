@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2015 MediaTek Inc.
+# Copyright (C) 2024 MediaTek Inc.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -45,6 +45,8 @@ else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6877)),)
 mtk_ppm_v3-objs += mtk_ppm_platform_6877.o mtk_ppm_cobra_algo_6877.o mtk_ppm_power_data_6877.o
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6893)),)
 mtk_ppm_v3-objs += mtk_ppm_platform_6893.o mtk_ppm_cobra_algo_6893.o mtk_ppm_power_data_6893.o
+else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6781)),)
+mtk_ppm_v3-objs += mtk_ppm_platform_6781.o mtk_ppm_cobra_algo_6781.o mtk_ppm_power_data_6781.o
 endif
 
 else

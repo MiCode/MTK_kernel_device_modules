@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2022 MediaTek Inc.
+ * Copyright (c) 2024 MediaTek Inc.
  */
 
 #ifndef __MT_COMMON_PPM_PLATFORM_H__
@@ -20,6 +20,8 @@
 #include <mtk_ppm_platform_6877.h>
 #elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
 #include <mtk_ppm_platform_6893.h>
+#elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_6781)
+#include <mtk_ppm_platform_6781.h>
 #endif
 
 #endif
