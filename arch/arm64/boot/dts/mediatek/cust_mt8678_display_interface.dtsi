@@ -141,8 +141,6 @@
 };
 
 &edp_tx {
-	pinctrl-names = "default";
-	pinctrl-0 = <&edp_gpio_def_cfg>;
 	status = "disabled";
 	max-lane-count = <4>;
 	max-linkrate-mhz = <8100>;
