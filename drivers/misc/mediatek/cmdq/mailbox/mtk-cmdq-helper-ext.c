@@ -1349,7 +1349,10 @@ static void cmdq_pkt_destroy_work(struct work_struct *work_item)
 {
 	struct cmdq_pkt *pkt =
 		container_of(work_item, struct cmdq_pkt, destroy_work);
-	u64 start = sched_clock(), diff;
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	u64 start = sched_clock(), end[3];
+	u32 end_cnt = 0;
+#endif
 	struct cmdq_client *cl = pkt->cl;
 	s32 hwid, thd;
 
@@ -1361,7 +1364,13 @@ static void cmdq_pkt_destroy_work(struct work_struct *work_item)
 	} else
 		cmdq_trace_begin("%s pkt:%p", __func__, pkt);
 	cmdq_log("%s pkt:%p ", __func__, pkt);
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
 	cmdq_pkt_free_buf(pkt);
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
 	kfree(pkt->flush_item);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 #ifdef CMDQ_SECURE_SUPPORT
@@ -1370,16 +1379,23 @@ static void cmdq_pkt_destroy_work(struct work_struct *work_item)
 #endif
 #endif
 	kfree(pkt);
-	diff = sched_clock() - start;
-	if (diff >= 4000000) /* 4 ms*/
-		cmdq_msg("%s cost time %llu ms ", __func__, div_u64(diff, 1000000));
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt] = sched_clock();
+	if (end[end_cnt] - start >= 4000000) /* 4 ms*/
+		cmdq_msg("%s cost time %llu trace:%llu free buf:%llu kfree:%llu ms",
+			__func__, end[end_cnt] - start, end[0] - start,
+			end[1] - end[0], end[2] - end[1]);
+#endif
 	cmdq_trace_end();
 }
 
 void cmdq_pkt_destroy_no_wq(struct cmdq_pkt *pkt)
 {
 	struct cmdq_client *client = pkt->cl;
-	u64 start = sched_clock(), diff;
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	u64 start = sched_clock(), end[3];
+	u32 end_cnt = 0;
+#endif
 	s32 hwid, thd;
 
 	cmdq_log("%s pkt:%p ", __func__, pkt);
@@ -1406,8 +1422,14 @@ void cmdq_pkt_destroy_no_wq(struct cmdq_pkt *pkt)
 		mutex_unlock(&client->chan_mutex);
 
 	pkt->task_alive = false;
-
+	cmdq_set_thrd_pkt_id(pkt, false);
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
 	cmdq_pkt_free_buf(pkt);
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
 	kfree(pkt->flush_item);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 #ifdef CMDQ_SECURE_SUPPORT
@@ -1416,10 +1438,15 @@ void cmdq_pkt_destroy_no_wq(struct cmdq_pkt *pkt)
 #endif
 #endif
 	kfree(pkt);
+	cmdq_set_pkt_size(client, false);
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt] = sched_clock();
 
-	diff = sched_clock() - start;
-	if (diff >= 4000000) /* 4 ms*/
-		cmdq_msg("%s cost time %llu ms ", __func__, div_u64(diff, 1000000));
+	if (end[end_cnt] - start >= 4000000) /* 4 ms*/
+		cmdq_msg("%s cost time %llu trace:%llu free buf:%llu kfree:%llu ms",
+			__func__, end[end_cnt] - start, end[0] - start,
+			end[1] - end[0], end[2] - end[1]);
+#endif
 	cmdq_trace_end();
 }
 EXPORT_SYMBOL(cmdq_pkt_destroy_no_wq);
@@ -3346,6 +3373,10 @@ done:
 s32 cmdq_pkt_flush_async(struct cmdq_pkt *pkt,
 	cmdq_async_flush_cb cb, void *data)
 {
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	u64 start = sched_clock(), end[5];
+	u32 end_cnt = 0;
+#endif
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 #if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	struct cmdq_flush_item *item;
@@ -3355,7 +3386,6 @@ s32 cmdq_pkt_flush_async(struct cmdq_pkt *pkt,
 #endif
 	struct cmdq_client *client = pkt->cl;
 	s32 err;
-	u64 start = sched_clock(), diff;
 
 	if (!client) {
 		cmdq_err("client is NULL");
@@ -3383,11 +3413,15 @@ s32 cmdq_pkt_flush_async(struct cmdq_pkt *pkt,
 	if (IS_ERR(item))
 		return -ENOMEM;
 #endif
-
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
 	err = cmdq_pkt_finalize(pkt);
 	if (err < 0)
 		return err;
-
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
 	if (pkt->create_instr_cnt == (pkt->cmd_buf_size / CMDQ_INST_SIZE)) {
 		cmdq_err("pkt is non-cmd");
 		return -EINVAL;
@@ -3410,7 +3444,9 @@ s32 cmdq_pkt_flush_async(struct cmdq_pkt *pkt,
 			cmdq_err("inst is NULL,offset:%zu cmd_size:%zu buf_size:%zu buf_cnt:%u",
 				pkt->pause_offset, pkt->cmd_buf_size, pkt->buf_size, pkt->buf_cnt);
 	}
-
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 	item->cb = cb;
 	item->data = data;
@@ -3428,7 +3464,9 @@ s32 cmdq_pkt_flush_async(struct cmdq_pkt *pkt,
 	pkt->cb.cb = cb;
 	pkt->cb.data = data;
 #endif
-
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
 	mutex_lock(&client->chan_mutex);
 	err = mbox_send_message(client->chan, pkt);
 	if (!pkt->task_alloc) {
@@ -3442,10 +3480,13 @@ s32 cmdq_pkt_flush_async(struct cmdq_pkt *pkt,
 	/* We can send next packet immediately, so just call txdone. */
 	mbox_client_txdone(client->chan, 0);
 	mutex_unlock(&client->chan_mutex);
-
-	diff = sched_clock() - start;
-	if (diff >= 4000000) /* 4 ms*/
-		cmdq_msg("%s cost time %llu ms ", __func__, div_u64(diff, 1000000));
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt] = sched_clock();
+	if (end[end_cnt] - start >= 4000000) /* 4 ms*/
+		cmdq_msg("%s cost time %llu alloc item:%llu finalize:%llu inst:%llu cb:%llu mbox:%llu ms",
+			__func__, end[end_cnt] - start, end[0] - start, end[1] - end[0],
+			end[2] - end[1], end[3] - end[2], end[4] - end[3]);
+#endif
 
 	return err;
 }
