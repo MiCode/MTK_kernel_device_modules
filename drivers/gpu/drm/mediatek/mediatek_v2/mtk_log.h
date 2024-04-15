@@ -13,6 +13,10 @@
 #include <aee.h>
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+#include "mmevent_function.h"
+#endif
+
 extern unsigned long long mutex_time_start;
 extern unsigned long long mutex_time_end;
 extern long long mutex_time_period;
@@ -51,15 +55,81 @@ enum DPREC_LOGGER_PR_TYPE {
 
 int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 
+#if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+#define DDP_EXTEND_MSG(fmt, arg...) \
+	MME_EXTEND_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_2, fmt, ##arg)
+
+#define DDPINFO(fmt, arg...)                                               \
+	do {                                                                   \
+		MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_2, fmt, ##arg);      \
+		if (g_mobile_log)                                              \
+			pr_info("[DISP]" pr_fmt(fmt), ##arg);     \
+	} while (0)
+
+#define DDPDBG(fmt, arg...)                                                    \
+	do {                                                                   \
+		if (!g_detail_log)                                             \
+			break;                                                 \
+		MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_2, fmt, ##arg);      \
+		if (g_mobile_log)                                              \
+			pr_info("[DISP]" pr_fmt(fmt), ##arg);     \
+	} while (0)
+
+#define DDPDBG_BWM(fmt, arg...)                                                    \
+	do {                                                                   \
+		if (!g_ovl_bwm_debug)                                             \
+			break;                                                 \
+		MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_2, fmt, ##arg);      \
+		if (g_mobile_log)                                              \
+			pr_info("[DISP]" pr_fmt(fmt), ##arg);     \
+	} while (0)
+
+#define DDP_PROFILE(fmt, arg...)                                               \
+	do {                                                                   \
+		if (!g_profile_log)                                            \
+			break;                                                 \
+		MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_2, fmt, ##arg);      \
+		if (g_mobile_log)                                              \
+			pr_info("[DISP]" pr_fmt(fmt), ##arg);     \
+	} while (0)
+
+#define DDPMSG(fmt, arg...)                                                    \
+	do {                                                                   \
+		MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_2, fmt, ##arg);      \
+		pr_info("[DISP]" pr_fmt(fmt), ##arg);             \
+	} while (0)
+
+#define DDPDUMP(fmt, arg...)                                                   \
+	do {                                                                   \
+		MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_3, fmt, ##arg);      \
+		if (g_mobile_log)                                              \
+			pr_info("[DISP]" pr_fmt(fmt), ##arg);     \
+	} while (0)
+
+#define DDPFENCE(fmt, arg...)                                                  \
+	do {                                                                   \
+		MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_1, fmt, ##arg);      \
+		if (g_fence_log)                                               \
+			pr_info("[DISP]" pr_fmt(fmt), ##arg);     \
+	} while (0)
+
+#define DDPPR_ERR(fmt, arg...)                                                 \
+	do {                                                                   \
+		MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_0, fmt, ##arg);      \
+		pr_err("[DISP][E]" pr_fmt(fmt), ##arg);              \
+	} while (0)
+
+#define DDPIRQ(fmt, arg...)                                                    \
+	MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_4, fmt, ##arg)
+
+#else
+
 #define DDPINFO(fmt, arg...)                                                   \
 	do {                                                                   \
 		mtk_dprec_logger_pr(DPREC_LOGGER_DEBUG, fmt, ##arg);           \
 		if (g_mobile_log)                                              \
 			pr_info("[DISP]" pr_fmt(fmt), ##arg);     \
 	} while (0)
-
-#define DDPFUNC(fmt, arg...)		\
-	pr_info("[DISP][%s line:%d]"pr_fmt(fmt), __func__, __LINE__, ##arg)
 
 #define DDPDBG(fmt, arg...)                                                    \
 	do {                                                                   \
@@ -94,6 +164,12 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 		pr_info("[DISP]" pr_fmt(fmt), ##arg);             \
 	} while (0)
 
+#define DDP_EXTEND_MSG(fmt, arg...) \
+	do { \
+		mtk_dprec_logger_pr(DPREC_LOGGER_DEBUG, fmt, ##arg);           \
+		pr_info("[DISP]" pr_fmt(fmt), ##arg);             \
+	} while (0)
+
 #define DDPDUMP(fmt, arg...)                                                   \
 	do {                                                                   \
 		mtk_dprec_logger_pr(DPREC_LOGGER_DUMP, fmt, ##arg);            \
@@ -119,6 +195,10 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 		if (g_irq_log)                                                 \
 			mtk_dprec_logger_pr(DPREC_LOGGER_DEBUG, fmt, ##arg);   \
 	} while (0)
+#endif
+
+#define DDPFUNC(fmt, arg...)		\
+	pr_info("[DISP][%s line:%d]"pr_fmt(fmt), __func__, __LINE__, ##arg)
 
 #define DDP_COMMIT_LOCK(lock, name, line)                                       \
 	do {                                                                   \

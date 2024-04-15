@@ -53,6 +53,10 @@
 #include <clk-fmeter.h>
 #include <linux/pm_domain.h>
 
+#if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+#include "mmevent_function.h"
+#endif
+
 #define DISP_REG_CONFIG_MMSYS_CG_SET(idx) (0x104 + 0x10 * (idx))
 #define DISP_REG_CONFIG_MMSYS_CG_CLR(idx) (0x108 + 0x10 * (idx))
 #define DISP_REG_CONFIG_DISP_FAKE_ENG_EN(idx) (0x200 + 0x20 * (idx))
@@ -322,6 +326,40 @@ static unsigned long long get_current_time_us(void)
 	return (t.tv_sec & 0xFFF) * 1000000 + DO_COMMON_DIV(t.tv_nsec, NSEC_PER_USEC);
 }
 
+#if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+void dump_disp_opt(char *buf, int buf_size, int *dump_size)
+{
+	struct mtk_drm_private *priv;
+
+	if (IS_ERR_OR_NULL(drm_dev)) {
+		DDPMSG("%s, invalid drm dev\n", __func__);
+		return;
+	}
+
+	priv = drm_dev->dev_private;
+	if (IS_ERR_OR_NULL(priv)) {
+		DDPMSG("%s, invalid priv\n", __func__);
+		return;
+	}
+	*dump_size = mtk_drm_helper_get_opt_list(priv->helper_opt, buf, buf_size);
+}
+
+static void init_mme_buffer(void)
+{
+	MME_REGISTER_DUMP_FUNC(MME_MODULE_DISP, dump_disp_opt);
+	MME_REGISTER_BUFFER(MME_MODULE_DISP, "DISP_ERR",
+			MME_BUFFER_INDEX_0, ERROR_BUFFER_COUNT * LOGGER_BUFFER_SIZE);
+	MME_REGISTER_BUFFER(MME_MODULE_DISP, "DISP_FENCE",
+			MME_BUFFER_INDEX_1, FENCE_BUFFER_COUNT * LOGGER_BUFFER_SIZE);
+	MME_REGISTER_BUFFER(MME_MODULE_DISP, "DISP_DBG",
+			MME_BUFFER_INDEX_2, DBG_BUFFER_SIZE);
+	MME_REGISTER_BUFFER(MME_MODULE_DISP, "DISP_DUMP",
+			MME_BUFFER_INDEX_3, DUMP_BUFFER_COUNT * LOGGER_BUFFER_SIZE);
+	MME_REGISTER_BUFFER(MME_MODULE_DISP, "DISP_IRQ",
+			MME_BUFFER_INDEX_4, IRQ_BUFFER_SIZE);
+}
+#endif
+
 static char *_logger_pr_type_spy(enum DPREC_LOGGER_PR_TYPE type)
 {
 	switch (type) {
@@ -531,6 +569,10 @@ void mtk_dprec_snapshot(void)
 	unsigned int buf_id = 0;
 	static bool called;
 	int i;
+
+#if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+	return;
+#endif
 
 	if (called || !logger_enable)
 		return;
@@ -5586,8 +5628,14 @@ void disp_dbg_probe(void)
 			S_IFREG | 0644,	d_folder, NULL, &disp_lfr_params_fops);
 	}
 #endif
-	if (logger_enable)
+	if(logger_enable) {
+#if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+		init_mme_buffer();
+#else
 		init_log_buffer();
+#endif
+	}
+
 
 	drm_mmp_init();
 

@@ -3492,6 +3492,7 @@ static void mml_addon_module_connect(struct drm_crtc *crtc, unsigned int ddp_mod
 		DDPPR_ERR("%s:%d output_comp is NULL\n", __func__, __LINE__);
 		return;
 	}
+	DDPINFO("%s +\n", __func__);
 
 	c->config_type.type = ADDON_CONNECT;
 	c->config_type.module = addon_module->module;
@@ -3529,6 +3530,7 @@ static void mml_addon_module_connect(struct drm_crtc *crtc, unsigned int ddp_mod
 			mtk_addon_connect_before(crtc, ddp_mode, m[i], addon_config, cmdq_handle);
 		}
 	}
+	DDPINFO("%s -\n", __func__);
 }
 
 static void mml_addon_module_disconnect(struct drm_crtc *crtc,
@@ -4391,6 +4393,7 @@ _mtk_crtc_lye_addon_module_connect(
 	int pipe;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 
+	DDPINFO("%s +\n", __func__);
 	if (lye_state->rpo_lye ||
 		priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6761 ||
@@ -4494,8 +4497,10 @@ _mtk_crtc_lye_addon_module_connect(
 
 	}
 
-	if (!mtk_crtc->is_force_mml_scen) /* TODO: need this check for mml ? */
+	if (!mtk_crtc->is_force_mml_scen) { /* TODO: need this check for mml ? */
+		DDPINFO("%s -\n", __func__);
 		return;
+	}
 
 	/* TODO: ir or dl should be exclusive */
 	if (lye_state->mml_ir_lye) {
@@ -4527,6 +4532,7 @@ _mtk_crtc_lye_addon_module_connect(
 					 &addon_config, cmdq_handle);
 		CRTC_MMP_MARK(0, mml_dbg, lye_state->mml_dl_lye, 0x4000000 | MMP_ADDON_CONNECT);
 	}
+	DDPINFO("%s -\n", __func__);
 }
 
 static void
@@ -4543,7 +4549,7 @@ _mtk_crtc_atmoic_addon_module_connect(
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VDS_PATH_SWITCH) &&
 	    priv->need_vds_path_switch)
 		return;
-
+	DDPINFO("%s +\n", __func__);
 	_mtk_crtc_wb_addon_module_connect(
 				   crtc, ddp_mode, cmdq_handle);
 
@@ -4618,6 +4624,7 @@ _mtk_crtc_atmoic_addon_module_connect(
 				DDPPR_ERR("%s:%d Not exist dual pipe comp!\n", __func__, __LINE__);
 		}
 	}
+	DDPINFO("%s -\n", __func__);
 }
 
 void mtk_crtc_cwb_path_disconnect(struct drm_crtc *crtc)

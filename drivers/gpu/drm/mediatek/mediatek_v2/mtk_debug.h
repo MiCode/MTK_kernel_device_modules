@@ -25,6 +25,16 @@
 	  DUMP_BUFFER_COUNT + STATUS_BUFFER_COUNT) *                           \
 		 LOGGER_BUFFER_SIZE)
 
+#if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+#if IS_ENABLED(CONFIG_MT_ENG_BUILD) || !IS_ENABLED(CONFIG_MTK_GMO_RAM_OPTIMIZE)
+#define DBG_BUFFER_SIZE (1.5 * 1024 * 1024)
+#define IRQ_BUFFER_SIZE (240 * 1024)
+#else
+#define DBG_BUFFER_SIZE 0
+#define IRQ_BUFFER_SIZE 0
+#endif
+#endif
+
 #define POLLING_RDMA_OUTPUT_LINE_ENABLE
 #if IS_ENABLED(POLLING_RDMA_OUTPUT_LINE_ENABLE)
 extern void mtk_mux_set_quick_switch_chk_cb(void (*callback) (void));

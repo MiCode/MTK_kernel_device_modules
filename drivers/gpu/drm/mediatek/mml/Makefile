@@ -29,6 +29,10 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2 \
              -I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3 \
              -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-vcodec
 
+ifneq ($(filter y m, $(CONFIG_MTK_MME_SUPPORT)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mme
+endif
+
 obj-$(CONFIG_MTK_MML_LEGACY) := mtk-mml.o
 obj-$(CONFIG_MTK_MML) := mtk-mml.o
 
