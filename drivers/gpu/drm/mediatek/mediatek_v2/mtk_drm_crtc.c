@@ -3082,9 +3082,7 @@ int mtk_crtc_user_cmd_impl(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 
 	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
 		if (is_ccorr_type &&
-			((ccorr_data->path_order == 1) ||
-			((primary_data->disp_ccorr_linear & 0x1) &&
-			(ccorr_data->path_order == 0))) && cmd == 0) {
+			(ccorr_data->is_linear == 1) && cmd == 0) {
 			ccorr_config = params;
 			if (ccorr_config->silky_bright_flag == 1 &&
 				ccorr_config->FinalBacklight != sb_backlight) {

@@ -91,6 +91,7 @@ static bool debug_dump_clarity_regs;
 #define DISP_AAL_INTSTA                         (0x00c)
 #define DISP_AAL_STATUS                         (0x010)
 #define DISP_AAL_CFG                            (0x020)
+#define AAL_RELAY_MODE BIT(0)
 #define FLD_RELAY_MODE			REG_FLD_MSB_LSB(0, 0)
 #define FLD_AAL_ENGINE_EN		REG_FLD_MSB_LSB(1, 1)
 #define FLD_AAL_HIST_EN			REG_FLD_MSB_LSB(2, 2)
@@ -3108,10 +3109,11 @@ static void disp_aal_bypass(struct mtk_ddp_comp *comp, int bypass,
 	if (bypass == 1) {
 		if (primary_data->relay_state == 0) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_AAL_CFG, 0x1, 0x1);
+				comp->regs_pa + DISP_AAL_CFG, AAL_RELAY_MODE, AAL_RELAY_MODE);
 			if (comp->mtk_crtc->is_dual_pipe && companion)
 				cmdq_pkt_write(handle, companion->cmdq_base,
-					companion->regs_pa + DISP_AAL_CFG, 0x1, 0x1);
+					companion->regs_pa + DISP_AAL_CFG,
+					AAL_RELAY_MODE, AAL_RELAY_MODE);
 		}
 		primary_data->relay_state |= (1 << caller);
 		disp_aal_set_interrupt(comp, !bypass, handle);
@@ -3119,17 +3121,15 @@ static void disp_aal_bypass(struct mtk_ddp_comp *comp, int bypass,
 		if (primary_data->relay_state != 0) {
 			primary_data->relay_state &= ~(1 << caller);
 			if (primary_data->relay_state == 0) {
+				// unrelay & Enable AAL Histogram
 				cmdq_pkt_write(handle, comp->cmdq_base,
-					comp->regs_pa + DISP_AAL_CFG, 0x0, 0x1);
-				// Enable AAL Histogram
-				cmdq_pkt_write(handle, comp->cmdq_base,
-					comp->regs_pa + DISP_AAL_CFG, 0x6, 0x7);
+					comp->regs_pa + DISP_AAL_CFG,
+					0x6, (0x3 << 1) | AAL_RELAY_MODE);
 				if (comp->mtk_crtc->is_dual_pipe && companion) {
+					// unrelay & Enable AAL Histogram
 					cmdq_pkt_write(handle, companion->cmdq_base,
-						companion->regs_pa + DISP_AAL_CFG, 0x0, 0x1);
-					// Enable AAL Histogram
-					cmdq_pkt_write(handle, companion->cmdq_base,
-						companion->regs_pa + DISP_AAL_CFG, 0x6, 0x7);
+						companion->regs_pa + DISP_AAL_CFG,
+						0x6, (0x3 << 1) | AAL_RELAY_MODE);
 				}
 				disp_aal_set_interrupt(comp, !bypass, handle);
 			}

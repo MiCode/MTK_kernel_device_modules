@@ -214,13 +214,14 @@
 #define DISP_TDSHP_SHADOW_CTRL         (0x724)
 
 #define DISP_TDSHP_EN BIT(0)
+#define TDSHP_RELAY_MODE BIT(0)
 
 static inline struct mtk_disp_tdshp *comp_to_tdshp(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_disp_tdshp, ddp_comp);
 }
 
-static int disp_tdshp_write_reg(struct mtk_ddp_comp *comp,
+static int disp_tdshp_write_tdshp_reg(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int lock)
 {
 	struct mtk_disp_tdshp *tdshp_data = comp_to_tdshp(comp);
@@ -477,7 +478,7 @@ thshp_write_reg_unlock:
 	return ret;
 }
 
-static int disp_tdshp_set_reg(struct mtk_ddp_comp *comp,
+static int disp_tdshp_update_param(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, struct DISP_TDSHP_REG *user_tdshp_regs)
 {
 	struct mtk_disp_tdshp *tdshp_data = comp_to_tdshp(comp);
@@ -506,13 +507,13 @@ static int disp_tdshp_set_reg(struct mtk_ddp_comp *comp,
 		primary_data->tdshp_regs = tdshp_regs;
 
 		pr_notice("%s: Set module(%d) lut\n", __func__, comp->id);
-		ret = disp_tdshp_write_reg(comp, handle, 0);
+		ret = disp_tdshp_write_tdshp_reg(comp, handle, 0);
 
 		if (!primary_data->tdshp_reg_valid) {
 			primary_data->relay_state &= ~(0x1 << PQ_FEATURE_DEFAULT);
 			if (primary_data->relay_state == 0) {
 				cmdq_pkt_write(handle, comp->cmdq_base,
-					comp->regs_pa + DISP_TDSHP_CFG, 0x0, 0x1);
+					comp->regs_pa + DISP_TDSHP_CFG, 0x0, TDSHP_RELAY_MODE);
 				DDPINFO("%s, set tdshp unrelay\n", __func__);
 			}
 
@@ -556,14 +557,14 @@ static int disp_tdshp_cfg_set_reg(struct mtk_ddp_comp *comp,
 	struct DISP_TDSHP_REG *config = data;
 	struct mtk_disp_tdshp *tdshp = comp_to_tdshp(comp);
 
-	if (disp_tdshp_set_reg(comp, handle, config) < 0) {
+	if (disp_tdshp_update_param(comp, handle, config) < 0) {
 		DDPPR_ERR("%s: failed\n", __func__);
 		return -EFAULT;
 	}
 	if (comp->mtk_crtc->is_dual_pipe) {
 		struct mtk_ddp_comp *comp_tdshp1 = tdshp->companion;
 
-		if (disp_tdshp_set_reg(comp_tdshp1, handle, config) < 0) {
+		if (disp_tdshp_update_param(comp_tdshp1, handle, config) < 0) {
 			DDPPR_ERR("%s: comp_tdshp1 failed\n", __func__);
 			return -EFAULT;
 		}
@@ -746,10 +747,10 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 	}
 
 	if (primary_data->relay_state == 0)
-		disp_tdshp_write_reg(comp, handle, 0);
+		disp_tdshp_write_tdshp_reg(comp, handle, 0);
 	else
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_TDSHP_CFG, 0x1, 0x1);
+			comp->regs_pa + DISP_TDSHP_CFG, TDSHP_RELAY_MODE, TDSHP_RELAY_MODE);
 
 	primary_data->tdshp_size.height = cfg->h;
 	primary_data->tdshp_size.width = cfg->w;
@@ -774,14 +775,15 @@ static void disp_tdshp_bypass(struct mtk_ddp_comp *comp, int bypass,
 	if (bypass == 1) {
 		if (primary_data->relay_state == 0) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_TDSHP_CFG, 0x1, 0x1);
+				comp->regs_pa + DISP_TDSHP_CFG, TDSHP_RELAY_MODE, TDSHP_RELAY_MODE);
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_TDSHP_00, (0x1 << 31), (0x1 << 31));
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_TDSHP_CTRL, 0xfffffffd, ~0);
 			if (comp->mtk_crtc->is_dual_pipe && companion) {
 				cmdq_pkt_write(handle, companion->cmdq_base,
-					companion->regs_pa + DISP_TDSHP_CFG, 0x1, 0x1);
+					companion->regs_pa + DISP_TDSHP_CFG,
+					TDSHP_RELAY_MODE, TDSHP_RELAY_MODE);
 				cmdq_pkt_write(handle, companion->cmdq_base,
 					companion->regs_pa + DISP_TDSHP_00, (0x1 << 31), (0x1 << 31));
 				cmdq_pkt_write(handle, companion->cmdq_base,
@@ -794,10 +796,11 @@ static void disp_tdshp_bypass(struct mtk_ddp_comp *comp, int bypass,
 			primary_data->relay_state &= ~ (0x1 << caller);
 			if (primary_data->relay_state) {
 				cmdq_pkt_write(handle, comp->cmdq_base,
-					comp->regs_pa + DISP_TDSHP_CFG, 0x0, 0x1);
+					comp->regs_pa + DISP_TDSHP_CFG, 0x0, TDSHP_RELAY_MODE);
 				if (comp->mtk_crtc->is_dual_pipe && companion)
 					cmdq_pkt_write(handle, companion->cmdq_base,
-						companion->regs_pa + DISP_TDSHP_CFG, 0x0, 0x1);
+						companion->regs_pa + DISP_TDSHP_CFG,
+						0x0, TDSHP_RELAY_MODE);
 			}
 		}
 	}

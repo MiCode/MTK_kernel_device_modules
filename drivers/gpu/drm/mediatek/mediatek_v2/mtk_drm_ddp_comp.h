@@ -1582,4 +1582,6 @@ struct mtk_ddp_comp *mtk_ddp_comp_last_in_dual_pipe(struct mtk_drm_crtc *mtk_crt
 	enum mtk_ddp_comp_type comp_type);
 int mtk_ddp_comp_locate_in_cur_crtc_path(struct mtk_drm_crtc *mtk_crtc, enum mtk_ddp_comp_id id,
 	bool *is_right_pipe, int *comp_order);
+int mtk_ddp_comp_get_total_num_by_type(struct mtk_drm_crtc *mtk_crtc,
+	enum mtk_ddp_comp_type comp_type);
 #endif /* MTK_DRM_DDP_COMP_H */

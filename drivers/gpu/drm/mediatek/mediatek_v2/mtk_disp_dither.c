@@ -37,6 +37,7 @@
 
 #define DISP_DITHER_CLR_DET	BIT(0)
 #define DISP_DITHER_CLR_FLAG	BIT(4)
+#define DITHER_RELAY_MODE BIT(0)
 
 enum COLOR_IOCTL_CMD {
 	BYPASS_DITHER = 0,
@@ -321,7 +322,8 @@ static void disp_dither_config(struct mtk_ddp_comp *comp,
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_REG_DITHER_CFG,
-		enable << 1 | ((primary_data->relay_state != 0) || !enable), 0x3);
+		enable << 1 | ((primary_data->relay_state != 0) || !enable),
+		(0x1 << 1) | DITHER_RELAY_MODE);
 
 	if (dither_data->set_partial_update != 1)
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -356,6 +358,7 @@ static void disp_dither_init_primary_data(struct mtk_ddp_comp *comp)
 	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
 	struct mtk_ddp_comp *gamma_comp;
 	struct mtk_disp_gamma *gamma_data = NULL;
+	int total_num = 0;
 
 	if (dither_data->is_right_pipe) {
 		kfree(primary_data->pure_clr_param);
@@ -372,7 +375,14 @@ static void disp_dither_init_primary_data(struct mtk_ddp_comp *comp)
 	primary_data->pure_detect_wq =
 		create_singlethread_workqueue("pure_detect_wq");
 	INIT_WORK(&primary_data->work_data.pure_detect_task, disp_dither_pure_detect_work);
+	total_num = mtk_ddp_comp_get_total_num_by_type(comp->mtk_crtc, MTK_DISP_DITHER);
 	primary_data->relay_state = 0x0 << PQ_FEATURE_DEFAULT;
+	// if current crtc has two dither: first is for pq, second is for pc,
+	// relay first dither hw to avoid loss of accuracy for pc
+	DDPINFO("%s: comp: %s, path_order: %d, total_num: %d\n",
+		__func__, mtk_dump_comp_str(comp), dither_data->path_order, total_num);
+	if ((dither_data->path_order == 0) && (total_num == 2))
+		primary_data->relay_state = 0x1 << PQ_FEATURE_DEFAULT;
 }
 
 static void disp_dither_first_cfg(struct mtk_ddp_comp *comp,
@@ -417,10 +427,12 @@ static void disp_dither_bypass(struct mtk_ddp_comp *comp, int bypass,
 	if (bypass == 1) {
 		if (primary_data->relay_state == 0) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_REG_DITHER_CFG, 0x1, 0x1);
+				comp->regs_pa + DISP_REG_DITHER_CFG,
+				DITHER_RELAY_MODE, DITHER_RELAY_MODE);
 			if (comp->mtk_crtc->is_dual_pipe && companion)
 				cmdq_pkt_write(handle, companion->cmdq_base,
-					companion->regs_pa + DISP_REG_DITHER_CFG, 0x1, 0x1);
+					companion->regs_pa + DISP_REG_DITHER_CFG,
+					DITHER_RELAY_MODE, DITHER_RELAY_MODE);
 		}
 		primary_data->relay_state |= (0x1 << caller);
 	} else {
@@ -428,10 +440,11 @@ static void disp_dither_bypass(struct mtk_ddp_comp *comp, int bypass,
 			primary_data->relay_state &= ~(1 << caller);
 			if (primary_data->relay_state == 0) {
 				cmdq_pkt_write(handle, comp->cmdq_base,
-					comp->regs_pa + DISP_REG_DITHER_CFG, 0x0, 0x1);
+					comp->regs_pa + DISP_REG_DITHER_CFG, 0x0, DITHER_RELAY_MODE);
 				if (comp->mtk_crtc->is_dual_pipe && companion)
 					cmdq_pkt_write(handle, companion->cmdq_base,
-						companion->regs_pa + DISP_REG_DITHER_CFG, 0x0, 0x1);
+						companion->regs_pa + DISP_REG_DITHER_CFG,
+						0x0, DITHER_RELAY_MODE);
 			}
 		}
 	}
@@ -1015,9 +1028,14 @@ void disp_dither_set_bypass(struct drm_crtc *crtc, int bypass)
 
 void disp_dither_set_color_detect(struct drm_crtc *crtc, int enable)
 {
+	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			mtk_crtc, MTK_DISP_DITHER, 0);
+	int num = mtk_ddp_comp_get_total_num_by_type(mtk_crtc, MTK_DISP_DITHER);
+	int index = 0;
+
+	if (num == 2)
+		index = 1;
+	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_DITHER, index);
 
 	mtk_crtc_user_cmd(crtc, comp, SET_COLOR_DETECT, &enable);
 	mtk_crtc_user_cmd(crtc, comp, SET_INTERRUPT, &enable);

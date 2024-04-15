@@ -156,18 +156,6 @@ enum DISP_COLOR_USER_CMD {
 	WRITE_REG = 0,
 	PQ_SET_WINDOW,
 };
-struct DISP_PQ_DC_PARAM dc_param_init = {
-param:
-	{1, 1, 0, 0, 0, 0, 0, 0, 0, 0x0A,
-	 0x30, 0x40, 0x06, 0x12, 40, 0x40, 0x80, 0x40, 0x40, 1,
-	 0x80, 0x60, 0x80, 0x10, 0x34, 0x40, 0x40, 1, 0x80, 0xa,
-	 0x19, 0x00, 0x20, 0, 0, 1, 2, 1, 80, 1}
-};
-struct DISP_PQ_DS_PARAM ds_param_init = {
-param:
-	{1, -4, 1024, -4, 1024, 1, 400, 200, 1600, 800, 128, 8,
-	 4, 12, 16, 8, 24, -8, -4, -12, 0, 0, 0}
-};
 
 /* initialize index */
 struct DISPLAY_PQ_T color_index_init = {
@@ -325,15 +313,6 @@ static void disp_color_set_window(struct mtk_ddp_comp *comp,
 		comp->regs_pa + DISP_COLOR_WIN_X_MAIN, split_window_x, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_WIN_Y_MAIN, split_window_y, ~0);
-}
-
-struct DISPLAY_PQ_T *get_Color_index(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_color_primary *primary_data =
-		comp_to_color(comp)->primary_data;
-
-	primary_data->legacy_color_cust = true;
-	return &primary_data->color_index;
 }
 
 void disp_color_on_init(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -927,7 +906,7 @@ static void disp_color_config(struct mtk_ddp_comp *comp,
 	if (primary_data->relay_state != 0) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_CFG_MAIN,
-			(0x1 << 7) | (0x1 << 13), (0x1 << 7) | (0x1 << 13));
+			COLOR_BYPASS_ALL | (0x1 << 13), COLOR_BYPASS_ALL | (0x1 << 13));
 		mutex_unlock(&primary_data->data_lock);
 		return;
 	}
@@ -943,16 +922,18 @@ static void disp_color_config(struct mtk_ddp_comp *comp,
 int disp_color_act_set_pqindex(struct mtk_ddp_comp *comp, void *data)
 {
 	int ret = 0;
-	struct DISPLAY_PQ_T *pq_index;
+	struct mtk_disp_color_primary *primary_data =
+		comp_to_color(comp)->primary_data;
+	struct DISPLAY_PQ_T *pq_index = &primary_data->color_index;
 
 	DDPINFO("%s...", __func__);
 
-	pq_index = get_Color_index(comp);
 	memcpy(pq_index, (struct DISPLAY_PQ_T *)data,
 		sizeof(struct DISPLAY_PQ_T));
 
 	return ret;
 }
+
 
 int disp_color_cfg_set_color_reg(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
@@ -1134,7 +1115,6 @@ static void disp_color_init_primary_data(struct mtk_ddp_comp *comp)
 		return;
 	}
 
-	primary_data->legacy_color_cust = false;
 	primary_data->color_param.u4SHPGain = 2;
 	primary_data->color_param.u4SatGain = 4;
 	for (i = 0; i < PQ_HUE_ADJ_PHASE_CNT; i++)
