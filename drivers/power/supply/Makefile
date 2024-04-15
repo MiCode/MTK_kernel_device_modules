@@ -30,9 +30,9 @@ obj-$(CONFIG_GAUGE_BQ28Z610)      += k6985v1_64_alpha/
 endif
 mtk_battery_manager-objs := mtk-battery-manager.o mtk_battery_interface.o
 mt6357_battery-objs := mt6357-gauge.o mtk_battery_coulomb_service.o mtk_battery.o mtk_battery_algo.o mtk_battery_daemon.o mtk_battery_interface.o
-obj-$(CONFIG_BATTERY_MT6357) += mtk_battery_manager.o mt6357_battery.o
+obj-$(CONFIG_BATTERY_MT6357) += mt6357_battery.o mtk_battery_manager.o
 mt6358_battery-objs := mt6358-gauge.o mtk_battery_coulomb_service.o mtk_battery.o mtk_battery_algo.o mtk_battery_daemon.o mtk_battery_interface.o
-obj-$(CONFIG_BATTERY_MT6358) += mtk_battery_manager.o mt6358_battery.o
+obj-$(CONFIG_BATTERY_MT6358) += mt6358_battery.o mtk_battery_manager.o
 mt6359p_battery-objs := mt6359p-gauge.o mtk_battery_coulomb_service.o mtk_battery.o mtk_battery_algo.o mtk_battery_daemon.o mtk_battery_interface.o
 obj-$(CONFIG_BATTERY_MT6359P) += mtk_battery_manager.o mt6359p_battery.o
 mt6375-battery-objs := mt6375-gauge.o mtk_battery_coulomb_service.o mtk_battery.o mtk_battery_algo.o mtk_battery_daemon.o mtk_battery_interface.o
