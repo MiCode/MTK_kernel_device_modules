@@ -453,6 +453,53 @@ aliases {
 			mediatek,smi-id = <0>;
 			iommus = <&iommu M4U_PORT_DISP_WDMA0>;
 		};
+
+		iommu: m4u@10205000 {
+			cell-index = <0>;
+			compatible = "mediatek,mt6765-m4u";
+			reg = <0 0x10205000 0 0x1000>;
+			mediatek,larbs = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb3>;
+			interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH 0>;
+			#iommu-cells = <1>;
+		};
+
+		mtk_iommu_debug {
+			compatible = "mediatek,mt6765-iommu-debug";
+		};
+
+		secure_m4u {
+			compatible = "mediatek,secure_m4u";
+			mediatek,mm_m4u = <&iommu>;
+			interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH 0>; /* sec mm m4u */
+			iommus = <&iommu M4U_PORT_VENC_RCPU>,
+			<&iommu M4U_PORT_DISP_2L_OVL0_LARB0>;
+		};
+
+		mtkheap-region-prot {
+			compatible = "mediatek,dmaheap-mtk-sec-region";
+			heap-name = "mtk_prot_region";
+			trusted-mem-type = <1>;
+			region-heap-align-name = "mtk_prot_region-aligned";
+			iommus = <&iommu M4U_PORT_DISP_OVL0>;
+		};
+
+		mtkheap_region_svp: mtkheap-region-svp {
+			compatible = "mediatek,dmaheap-mtk-sec-region";
+			heap-name = "mtk_svp_region";
+			trusted-mem-type = <0>;
+			region-heap-align-name = "mtk_svp_region-aligned";
+			iommus = <&iommu M4U_PORT_DISP_OVL0>;
+			status = "disabled";
+		};
+
+		mtkheap_region_wfd: mtkheap-region-wfd {
+			compatible = "mediatek,dmaheap-mtk-sec-region";
+			heap-name = "mtk_wfd_region";
+			trusted-mem-type = <2>;
+			region-heap-align-name = "mtk_wfd_region-aligned";
+			iommus = <&iommu M4U_PORT_DISP_OVL0>;
+			status = "disabled";
+		};
 	};
 
 	/* chosen */
@@ -1716,19 +1763,6 @@ initcall_debug=1 pelt=8 clk_ignore_unused=1";
 	mcucfg_mp0_counter@10200000 {
 		compatible = "mediatek,mcucfg_mp0_counter";
 		reg = <0 0x10200000 0 0x4000>;
-	};
-
-	iommu: m4u@10205000  {
-		cell-index = <0>;
-		compatible = "mediatek,mt6765-m4u";
-		reg = <0 0x10205000 0 0x1000>;
-		mediatek,larbs = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb3>;
-		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH 0>;
-		#iommu-cells = <1>;
-	};
-
-	mtk_iommu_debug {
-		compatible = "mediatek,mt6765-iommu-debug";
 	};
 
 	devapc@10207000 {
