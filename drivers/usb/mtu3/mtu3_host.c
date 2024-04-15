@@ -349,6 +349,44 @@ int ssusb_host_suspend(struct ssusb_mtk *ssusb)
 	return 0;
 }
 
+int ssusb_host_u3_resume(struct ssusb_mtk *ssusb)
+{
+	void __iomem *ibase = ssusb->ippc_base;
+	int num_u3p = ssusb->u3_ports;
+	u32 value;
+	int i;
+
+	/* power on u3 ports */
+	for (i = 0; i < num_u3p; i++) {
+		value = mtu3_readl(ibase, SSUSB_U3_CTRL(i));
+		/* resume u3phy since power issue. */
+		value &= ~(SSUSB_U3_PORT_PDN | SSUSB_U3_PORT_DIS);
+		mtu3_writel(ibase, SSUSB_U3_CTRL(i), value);
+	}
+
+	dev_info(ssusb->dev, "power on u3 ports\n");
+	return 0;
+}
+
+int ssusb_host_u3_suspend(struct ssusb_mtk *ssusb)
+{
+	void __iomem *ibase = ssusb->ippc_base;
+	int num_u3p = ssusb->u3_ports;
+	u32 value;
+	int i;
+
+	/* power down u3 ports */
+	for (i = 0; i < num_u3p; i++) {
+		value = mtu3_readl(ibase, SSUSB_U3_CTRL(i));
+		/* disable u3phy since power issue. */
+		value |= SSUSB_U3_PORT_PDN | SSUSB_U3_PORT_DIS;
+		mtu3_writel(ibase, SSUSB_U3_CTRL(i), value);
+	}
+
+	dev_info(ssusb->dev, "power down u3 ports\n");
+	return 0;
+}
+
 static void ssusb_host_setup(struct ssusb_mtk *ssusb)
 {
 	host_ports_num_get(ssusb);

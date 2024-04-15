@@ -108,18 +108,6 @@ enum usb_audio_device_speed {
 	USB_AUDIO_DEVICE_SPEED_ENUM_MAX_VAL = INT_MAX,
 };
 
-enum ssusb_offload_mode {
-	SSUSB_OFFLOAD_MODE_NONE = 0,
-	SSUSB_OFFLOAD_MODE_D,
-	SSUSB_OFFLOAD_MODE_S,
-};
-
-/* struct ssusb_offload */
-struct ssusb_offload {
-	struct device *dev;
-	int	(*get_mode)(struct device *dev);
-};
-
 struct mem_info_xhci {
 	bool adv_lowpwr;
 	unsigned int sram_version;
@@ -284,6 +272,7 @@ struct usb_offload_dev {
 	bool adsp_inited;
 	bool connected;
 	bool opened;
+	enum usb_device_speed speed;
 	bool adsp_exception;
 	bool adsp_ready;
 	struct ssusb_offload *ssusb_offload_notify;

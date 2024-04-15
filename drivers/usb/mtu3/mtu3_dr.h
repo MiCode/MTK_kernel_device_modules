@@ -20,6 +20,8 @@ int ssusb_host_enable(struct ssusb_mtk *ssusb);
 int ssusb_host_disable(struct ssusb_mtk *ssusb);
 int ssusb_host_resume(struct ssusb_mtk *ssusb, bool p0_skipped);
 int ssusb_host_suspend(struct ssusb_mtk *ssusb);
+int ssusb_host_u3_resume(struct ssusb_mtk *ssusb);
+int ssusb_host_u3_suspend(struct ssusb_mtk *ssusb);
 void ssusb_wakeup_set(struct ssusb_mtk *ssusb, bool enable);
 
 #else
@@ -56,6 +58,16 @@ static inline int ssusb_host_resume(struct ssusb_mtk *ssusb, bool p0_skipped)
 }
 
 static inline int ssusb_host_suspend(struct ssusb_mtk *ssusb)
+{
+	return 0;
+}
+
+static inline int ssusb_host_u3_resume(struct ssusb_mtk *ssusb)
+{
+	return 0;
+}
+
+static inline int ssusb_host_u3_suspend(struct ssusb_mtk *ssusb)
 {
 	return 0;
 }

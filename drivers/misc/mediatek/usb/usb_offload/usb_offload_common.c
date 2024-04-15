@@ -44,6 +44,9 @@
 #include "xhci.h"
 #include "xhci-mtk.h"
 #endif
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3)
+#include "mtu3.h"
+#endif
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 #include <adsp_helper.h>
 #include "audio_messenger_ipi.h"
@@ -413,6 +416,7 @@ static void sound_usb_connect(struct snd_usb_audio *chip)
 	uodev->adsp_inited = false;
 	uodev->connected = true;
 	uodev->opened = false;
+	uodev->speed = USB_SPEED_UNKNOWN;
 	uodev->adsp_exception = false;
 
 	node_xhci_host = of_parse_phandle(uodev->dev->of_node, "xhci-host", 0);
@@ -450,6 +454,7 @@ static void sound_usb_disconnect(struct snd_usb_audio *chip)
 	uodev->adsp_inited = false;
 	uodev->connected = false;
 	uodev->opened = false;
+	uodev->speed = USB_SPEED_UNKNOWN;
 	uodev->adsp_exception = false;
 
 	if (chip == USB_AUDIO_IFACE_UNUSED)
@@ -2591,6 +2596,7 @@ int usb_offload_cleanup(void)
 	uodev->rx_streaming = false;
 	uodev->adsp_inited = false;
 	uodev->opened = false;
+	uodev->speed = USB_SPEED_UNKNOWN;
 
 	msg.status = USB_AUDIO_STREAM_REQ_STOP;
 	msg.status_valid = 1;
@@ -2695,6 +2701,7 @@ static int usb_offload_open(struct inode *ip, struct file *fp)
 
 				USB_OFFLOAD_INFO("Single UAC - SUPPORT USB OFFLOAD!!\n");
 				uodev->opened = true;
+				uodev->speed = udev->speed;
 				mutex_unlock(&uodev->dev_lock);
 				return 0;
 			}
@@ -2978,13 +2985,16 @@ int xhci_mtk_ssusb_offload_get_mode(struct device *dev)
 		return SSUSB_OFFLOAD_MODE_NONE;
 
 	is_in_advanced = mtk_offload_is_advlowpwr(uodev);
-	USB_OFFLOAD_DBG("is_streaming:%d, is_in_advanced:%d\n",
-		uodev->is_streaming, is_in_advanced);
+	USB_OFFLOAD_DBG("is_streaming:%d, is_in_advanced:%d, %s\n",
+		uodev->is_streaming, is_in_advanced, usb_speed_string(uodev->speed));
 
 	/* we only release APSRC request in advanced mode by
 	 * notifying SSUSB_OFFLOAD_MODE_S to mtu3 driver
 	 */
-	return is_in_advanced ? SSUSB_OFFLOAD_MODE_S : SSUSB_OFFLOAD_MODE_D;
+	if (uodev->speed < USB_SPEED_SUPER)
+		return is_in_advanced ? SSUSB_OFFLOAD_MODE_S : SSUSB_OFFLOAD_MODE_D;
+	else
+		return is_in_advanced ? SSUSB_OFFLOAD_MODE_S_SS : SSUSB_OFFLOAD_MODE_D_SS;
 }
 
 static void usb_offload_link_mtu3(struct device *uo_dev)
@@ -3051,6 +3061,7 @@ static int usb_offload_probe(struct platform_device *pdev)
 	uodev->adsp_inited = false;
 	uodev->connected = false;
 	uodev->opened = false;
+	uodev->speed = USB_SPEED_UNKNOWN;
 	uodev->xhci = NULL;
 
 	buf_seg = NULL;
