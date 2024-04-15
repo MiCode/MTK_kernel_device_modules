@@ -7443,13 +7443,6 @@ static void mtk_crtc_dc_config_color_matrix(struct drm_crtc *crtc,
 					ccorr_matrix, mode, false, linear);
 				if (set != 0)
 					continue;
-				if (mtk_crtc->is_dual_pipe) {
-					ccorr_data = comp_to_ccorr(comp);
-					set = disp_ccorr_set_color_matrix(ccorr_data->companion,
-					cmdq_handle, ccorr_matrix, mode, false, linear);
-				}
-				if (!set)
-					break;
 			}
 		}
 
@@ -15428,15 +15421,6 @@ static void mtk_crtc_dl_config_color_matrix(struct drm_crtc *crtc,
 					ccorr_config->featureFlag, linear);
 			if (set != 0)
 				continue;
-			if (mtk_crtc->is_dual_pipe) {
-				ccorr_data = comp_to_ccorr(comp);
-				set = disp_ccorr_set_color_matrix(ccorr_data->companion,
-						cmdq_handle,
-						ccorr_config->color_matrix, ccorr_config->mode,
-						ccorr_config->featureFlag, linear);
-			}
-			if (!set)
-				break;
 		}
 	}
 

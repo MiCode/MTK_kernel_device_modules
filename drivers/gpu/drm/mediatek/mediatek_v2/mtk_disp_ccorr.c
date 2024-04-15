@@ -65,6 +65,9 @@ static struct drm_device *g_drm_dev;
 static int disp_ccorr_write_coef_reg(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int lock);
 
+static void disp_ccorr_bypass(struct mtk_ddp_comp *comp, int bypass,
+	int caller, struct cmdq_pkt *handle);
+
 inline struct mtk_disp_ccorr *comp_to_ccorr(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_disp_ccorr, ddp_comp);
@@ -209,18 +212,6 @@ static int disp_ccorr_write_coef_reg(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_CCORR_COLOR_OFFSET_2,
 			(ccorr->offset[2] & CCORR_COLOR_OFFSET_MASK), ~0);
-
-		if (primary_data->ccorr_hw_valid == 0) {
-			primary_data->relay_state &= ~(0x1 << PQ_FEATURE_DEFAULT);
-			if (primary_data->relay_state == 0)
-				SET_VAL_MASK(cfg_val, cfg_mask, 0, CCORR_CFG_RELAY_MODE);
-
-			if (!comp->mtk_crtc->is_dual_pipe)
-				primary_data->ccorr_hw_valid = 1;
-			else if (ccorr_data->is_right_pipe)
-				primary_data->ccorr_hw_valid = 1;
-		}
-
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_CCORR_CFG, cfg_val, cfg_mask);
 	}
@@ -444,6 +435,8 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	primary_data->disp_ccorr_without_gamma = ccorr_without_gamma;
 
 	disp_ccorr_write_coef_reg(comp, handle, 0);
+	if (comp->mtk_crtc->is_dual_pipe)
+		disp_ccorr_write_coef_reg(ccorr_data->companion, handle, 0);
 
 	for (i = 0; i < 3; i++) {
 		for (j = 0; j < 3; j++) {
@@ -470,6 +463,11 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		primary_data->disp_ccorr_without_gamma, need_refresh);
 
 	mutex_unlock(&primary_data->data_lock);
+
+	if (primary_data->ccorr_hw_valid == 0) {
+		disp_ccorr_bypass(comp, 0, PQ_FEATURE_DEFAULT, handle);
+		primary_data->ccorr_hw_valid = 1;
+	}
 
 	if (need_refresh == true && comp->mtk_crtc != NULL)
 		mtk_crtc_check_trigger(comp->mtk_crtc, true, false);
@@ -639,7 +637,14 @@ int disp_ccorr_set_RGB_gain(struct mtk_ddp_comp *comp,
 
 	DDPINFO("%s: r[%d], g[%d], b[%d]", __func__, r, g, b);
 	ret = disp_ccorr_write_coef_reg(comp, handle, 0);
+	if (comp->mtk_crtc->is_dual_pipe)
+		ret = disp_ccorr_write_coef_reg(ccorr_data->companion, handle, 0);
 	mutex_unlock(&primary_data->data_lock);
+
+	if (primary_data->ccorr_hw_valid == 0) {
+		disp_ccorr_bypass(comp, 0, PQ_FEATURE_DEFAULT, handle);
+		primary_data->ccorr_hw_valid = 1;
+	}
 
 	return ret;
 }
@@ -691,6 +696,11 @@ int disp_ccorr_cfg_set_ccorr(struct mtk_ddp_comp *comp,
 			DDPPR_ERR("DISP_IOCTL_SET_CCORR: failed\n");
 			return -EFAULT;
 		}
+	}
+
+	if (primary_data->ccorr_hw_valid == 0) {
+		disp_ccorr_bypass(comp, 0, PQ_FEATURE_DEFAULT, handle);
+		primary_data->ccorr_hw_valid = 1;
 	}
 
 	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
@@ -1170,13 +1180,6 @@ static void disp_ccorr_config(struct mtk_ddp_comp *comp,
 	pr_notice("%s, compId: %d, ccorr_hw_valid: %d\n", __func__, comp->id, primary_data->ccorr_hw_valid);
 
 	mutex_lock(&primary_data->data_lock);
-	if (primary_data->relay_state != 0) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_CCORR_CFG, 0x3, (0x1 << 1) | CCORR_RELAY_MODE);
-		mutex_unlock(&primary_data->data_lock);
-		return;
-	}
-
 	if (primary_data->ccorr_hw_valid == 1) {
 		primary_data->disp_ccorr_without_gamma = CCORR_INVERSE_GAMMA;
 		if (ccorr_data->is_linear != 1)
@@ -1184,6 +1187,10 @@ static void disp_ccorr_config(struct mtk_ddp_comp *comp,
 
 		disp_ccorr_write_coef_reg(comp, handle, 0);
 	}
+
+	if (primary_data->relay_state != 0)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_CCORR_CFG, 0x3, (0x1 << 1) | CCORR_RELAY_MODE);
 	mutex_unlock(&primary_data->data_lock);
 }
 

@@ -638,29 +638,29 @@ static void disp_gamma_config(struct mtk_ddp_comp *comp,
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_GAMMA_CFG, 0, STALL_CG_ON);
-	if (primary_data->relay_state != 0) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_GAMMA_CFG, GAMMA_RELAY_MODE, GAMMA_RELAY_MODE);
-		return;
-	}
 
 	mutex_lock(&primary_data->data_lock);
-	if (pq_data->new_persist_property[DISP_PQ_GAMMA_SILKY_BRIGHTNESS] ||
-		gamma->primary_data->hwc_ctl_silky_brightness_support)
-		disp_gamma_write_gain_reg(comp, handle, 0);
+	if (atomic_read(&primary_data->gamma_sram_hw_init) != 0) {
+		if (pq_data->new_persist_property[DISP_PQ_GAMMA_SILKY_BRIGHTNESS] ||
+			gamma->primary_data->hwc_ctl_silky_brightness_support)
+			disp_gamma_write_gain_reg(comp, handle, 0);
 
-	if (gamma->primary_data->data_mode != HW_12BIT_MODE_IN_8BIT &&
-			gamma->primary_data->data_mode != HW_12BIT_MODE_IN_10BIT) {
-		disp_gamma_write_lut_reg(comp, handle, 0, &gamma->primary_data->gamma_lut_cur);
-		mutex_unlock(&primary_data->data_lock);
-		return;
+		if (gamma->primary_data->data_mode != HW_12BIT_MODE_IN_8BIT &&
+				gamma->primary_data->data_mode != HW_12BIT_MODE_IN_10BIT) {
+			disp_gamma_write_lut_reg(comp, handle, 0, &gamma->primary_data->gamma_lut_cur);
+		} else {
+			if (primary_data->need_refinalize) {
+				disp_gamma_write_sram(comp, GAMMA_RESUME);
+				primary_data->need_refinalize = false;
+			}
+			disp_gamma_flip_sram(comp, handle);
+		}
 	}
 
-	if (primary_data->need_refinalize) {
-		disp_gamma_write_sram(comp, GAMMA_RESUME);
-		primary_data->need_refinalize = false;
-	}
-	disp_gamma_flip_sram(comp, handle);
+	if (primary_data->relay_state != 0)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_GAMMA_CFG, GAMMA_RELAY_MODE, GAMMA_RELAY_MODE);
+
 	mutex_unlock(&primary_data->data_lock);
 }
 

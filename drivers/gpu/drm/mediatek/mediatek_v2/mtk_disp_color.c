@@ -400,14 +400,6 @@ static void disp_color_write_hw_reg(struct mtk_ddp_comp *comp,
 		/* disable wide_gamut */
 	}
 
-	if (!primary_data->color_reg_valid) {
-		primary_data->relay_state &= ~(0x1 << PQ_FEATURE_DEFAULT);
-		if (primary_data->relay_state == 0) {
-			SET_VAL_MASK(value, mask, 0, FLD_ALLBP);
-			DDPINFO("%s, set color unrelay\n", __func__);
-		}
-	}
-
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_CFG_MAIN,
 		value, mask);
@@ -903,19 +895,16 @@ static void disp_color_config(struct mtk_ddp_comp *comp,
 	disp_color_on_init(comp, handle);
 	// config hal parameter if needed
 	mutex_lock(&primary_data->data_lock);
-	if (primary_data->relay_state != 0) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_CFG_MAIN,
-			COLOR_BYPASS_ALL | (0x1 << 13), COLOR_BYPASS_ALL | (0x1 << 13));
-		mutex_unlock(&primary_data->data_lock);
-		return;
-	}
-
 	if (primary_data->color_reg_valid) {
 		disp_color_write_hw_reg(comp, &primary_data->color_reg, handle);
 		if (drecolor->drecolor_sel)
 			disp_color_write_drecolor_hw_reg(comp, handle, &drecolor->drecolor_reg);
 	}
+
+	if (primary_data->relay_state != 0)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_COLOR_CFG_MAIN,
+			COLOR_BYPASS_ALL | (0x1 << 13), COLOR_BYPASS_ALL | (0x1 << 13));
 	mutex_unlock(&primary_data->data_lock);
 }
 
@@ -933,7 +922,6 @@ int disp_color_act_set_pqindex(struct mtk_ddp_comp *comp, void *data)
 
 	return ret;
 }
-
 
 int disp_color_cfg_set_color_reg(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
@@ -960,11 +948,12 @@ int disp_color_cfg_set_color_reg(struct mtk_ddp_comp *comp,
 		ret = -EINVAL;
 		DDPINFO("%s: data is NULL", __func__);
 	}
-
-	if (primary_data->color_reg_valid == 0)
-		primary_data->color_reg_valid = 1;
-
 	mutex_unlock(&primary_data->data_lock);
+
+	if (!primary_data->color_reg_valid) {
+		disp_color_bypass(comp, 0, PQ_FEATURE_DEFAULT, handle);
+		primary_data->color_reg_valid = 1;
+	}
 
 	return ret;
 }

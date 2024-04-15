@@ -813,19 +813,20 @@ static void disp_c3d_config(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_SHADOW_CTL, 0x0, 0x1);
 
 	mutex_lock(&primary_data->data_lock);
-	if (primary_data->relay_state != 0) {
+	if (atomic_read(&primary_data->c3d_sram_hw_init) == 1) {
+		disp_c3d_write_with_mask(comp->regs + C3D_SRAM_CFG,
+			(0 << 6)|(0 << 5)|(1 << 4), (0x7 << 4));
+		disp_c3d_write_sram(comp, C3D_RESUME);
+		atomic_set(&c3d_data->c3d_force_sram_apb, 0);
+		disp_c3d_set_1dlut(comp, handle, 0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + C3D_CFG, 0x3, C3D_ENGINE_EN | C3D_RELAY_MODE);
-		mutex_unlock(&primary_data->data_lock);
-		return;
+			comp->regs_pa + C3D_CFG, 0x2, C3D_ENGINE_EN | C3D_RELAY_MODE);
 	}
 
-	disp_c3d_write_with_mask(comp->regs + C3D_SRAM_CFG,
-		(0 << 6)|(0 << 5)|(1 << 4), (0x7 << 4));
-	disp_c3d_write_sram(comp, C3D_RESUME);
-	atomic_set(&c3d_data->c3d_force_sram_apb, 0);
-	disp_c3d_set_1dlut(comp, handle, 0);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_CFG, 0x2, C3D_ENGINE_EN | C3D_RELAY_MODE);
+	if (primary_data->relay_state != 0)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + C3D_CFG, 0x3, C3D_ENGINE_EN | C3D_RELAY_MODE);
+
 	mutex_unlock(&primary_data->data_lock);
 }
 
