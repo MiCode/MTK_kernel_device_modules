@@ -393,6 +393,9 @@ static int ufs_mtk_setup_ref_clk(struct ufs_hba *hba, bool on)
 	struct arm_smccc_res res;
 	ktime_t timeout, time_checked;
 	u32 value;
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
+	void __iomem *ufscfg_ao_base;
+#endif
 
 	if (host->ref_clk_enabled == on)
 		return 0;
@@ -411,6 +414,16 @@ static int ufs_mtk_setup_ref_clk(struct ufs_hba *hba, bool on)
 	 * is writed done before read it.
 	 */
 	mb();
+
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
+	/* Read UFSCFG_AO reg to detect bus hang*/
+	if (host->ip_ver == IP_VER_MT6991) {
+		ufscfg_ao_base = ioremap(0x168A0000, 0x1000);
+		value = readl(ufscfg_ao_base + 0x180);
+		if (value != 0x10)
+			BUG_ON(1);
+	}
+#endif
 
 	/* Wait for ack */
 	timeout = ktime_add_us(ktime_get(), REFCLK_REQ_TIMEOUT_US);
