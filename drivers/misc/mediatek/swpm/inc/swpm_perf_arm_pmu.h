@@ -38,5 +38,6 @@ extern unsigned int swpm_arm_dsu_pmu_get_type(void);
 extern int swpm_arm_dsu_pmu_set_type(unsigned int type);
 extern void swpm_arm_ai_pmu_set(unsigned int type);
 extern unsigned int swpm_arm_ai_pmu_get(void);
+extern unsigned long long swpm_pmu_get_count(unsigned int evt_id, unsigned int cpu);
 
 #endif
