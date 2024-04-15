@@ -2423,7 +2423,7 @@ static s32 wrot_post(struct mml_comp *comp, struct mml_task *task,
 	/* accmulate data size and use max pixel */
 	cache->total_datasize += wrot_frm->datasize;
 	dvfs_cache_sz(cache, wrot_frm->max_size.width / wrot->data->px_per_tick,
-		wrot_frm->max_size.height, 0);
+		wrot_frm->max_size.height, 0, 0);
 	dvfs_cache_log(cache, comp, "wrot");
 
 	wrot_backup_crc(comp, task, ccfg);

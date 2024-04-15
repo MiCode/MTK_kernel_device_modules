@@ -638,7 +638,7 @@ static s32 rsz_post(struct mml_comp *comp, struct mml_task *task, struct mml_com
 	struct rsz_frame_data *rsz_frm = rsz_frm_data(ccfg);
 
 	dvfs_cache_sz(cache, rsz_frm->max_size.width / rsz->data->px_per_tick,
-		rsz_frm->max_size.height, rsz_frm->line_bubble);
+		rsz_frm->max_size.height, rsz_frm->line_bubble, 0);
 	dvfs_cache_log(cache, comp, "rsz");
 
 	return 0;

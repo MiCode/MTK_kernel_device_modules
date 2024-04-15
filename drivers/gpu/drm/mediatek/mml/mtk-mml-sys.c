@@ -2103,7 +2103,7 @@ static s32 dl_post(struct mml_comp *comp, struct mml_task *task,
 			u32 w = dl_frm->max_size.width / sys->data->px_per_tick;
 
 			dvfs_cache_sz(cache, w, dl_frm->max_size.height,
-				cfg->dl_out[ccfg->pipe].left);
+				cfg->dl_out[ccfg->pipe].left, 0);
 			dvfs_cache_log(cache, comp, dl_frm->name);
 		}
 	}

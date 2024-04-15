@@ -926,7 +926,7 @@ static s32 rdma_config_tile(struct mml_comp *comp, struct mml_task *task,
 		   (mf_offset_h_1 << 16) + mf_offset_w_1, write_sec);
 
 	/* qos accumulate tile pixel */
-	rdma_frm->pixel_acc += mf_src_w * mf_src_h;
+	rdma_frm->pixel_acc += mf_src_w;
 
 	/* calculate qos for later use */
 	plane = MML_FMT_PLANE(src->format);
@@ -977,7 +977,7 @@ static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 	 * it is ok for rdma to directly assign and accumulate in wrot.
 	 */
 	cache->total_datasize += rdma_frm->datasize;
-	dvfs_cache_sz(cache, rdma_frm->pixel_acc / rdma->data->px_per_tick, src->height, 0);
+	dvfs_cache_sz(cache, rdma_frm->pixel_acc / rdma->data->px_per_tick, src->height, 0, 0);
 	dvfs_cache_log(cache, comp, "rdma2");
 
 	return 0;
