@@ -32,7 +32,7 @@
 #define MAGT_GET_CPU_LOADING              _IOR('r', 0, struct cpu_info)
 #define MAGT_GET_PERF_INDEX               _IOR('r', 1, struct cpu_info)
 #define MAGT_SET_TARGET_FPS               _IOW('g', 2, struct target_fps_info)
-#define MAGT_SET_DEP_LIST                 _IOW('g', 3, struct dep_list_info)
+//#define MAGT_SET_DEP_LIST                 _IOW('g', 3, struct dep_list_info)
 #define MAGT_GET_FPSGO_SUPPORT            _IOWR('g', 4, struct fpsgo_pid_support)
 #define MAGT_GET_FPSGO_STATUS             _IOWR('g', 5, struct fpsgo_render_status)//TODO
 #define MAGT_GET_FPSGO_CRITICAL_THREAD_BG _IOWR('g', 6, struct fpsgo_bg_info)
@@ -40,6 +40,13 @@
 #define MAGT_GET_FPSGO_THREAD_LOADING     _IOWR('g', 8, struct fpsgo_thread_loading)
 #define MAGT_GET_FPSGO_RENDER_PERFIDX     _IOWR('g', 9, struct fpsgo_render_perf)
 #define MAGT_NOTIFY_THREAD_STATUS         _IOW('g', 10, struct thread_status_info)
+#define MAGT_SET_DEP_LIST_V3              _IOW('g', 11, struct dep_list_info_V3)
+
+struct thread_param {
+	int32_t tid;
+	int32_t priority;
+	int32_t preempt_time;
+};
 
 struct cpu_time {
 	u64 time;
@@ -57,9 +64,9 @@ struct target_fps_info {
 	__u32 num;
 };
 
-struct dep_list_info {
+struct dep_list_info_V3 {
 	__u32 pid;
-	__u32 user_dep_arr[MAGT_DEP_LIST_NUM];
+	struct thread_param user_dep_arr[MAGT_DEP_LIST_NUM];
 	__u32 user_dep_num;
 };
 

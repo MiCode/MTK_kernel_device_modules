@@ -225,7 +225,7 @@ EXPORT_SYMBOL(get_perf_index);
 
 /*--------------------XGF SET DEPLIST------------------------*/
 int (*magt2fpsgo_notify_dep_list_fp)(int pid,
-		int *user_dep_arr,
+		void *user_dep_arr,
 		int user_dep_num);
 EXPORT_SYMBOL(magt2fpsgo_notify_dep_list_fp);
 
@@ -258,14 +258,13 @@ static long magt_ioctl(struct file *filp,
 	struct cpu_info *ciUM, *ciKM = &ci;
 	struct target_fps_info *tfiKM = NULL, *tfiUM = NULL;
 	struct target_fps_info tfi;
-	struct dep_list_info *dliKM = NULL, *dliUM = NULL;
-	struct dep_list_info dli;
 	unsigned long query_mask = 0;
 	struct thread_status_info *tsiKM = NULL, *tsiUM = NULL;
 	struct thread_status_info tsi;
 
 	switch (cmd) {
 	case MAGT_GET_CPU_LOADING:
+	{
 		ret = get_cpu_loading(ciKM);
 		if (ret < 0)
 			goto ret_ioctl;
@@ -273,8 +272,9 @@ static long magt_ioctl(struct file *filp,
 		perfctl_copy_to_user(ciUM, ciKM,
 			sizeof(struct cpu_info));
 		break;
-
+	}
 	case MAGT_GET_PERF_INDEX:
+	{
 		ret = get_perf_index(ciKM);
 		if (ret < 0)
 			goto ret_ioctl;
@@ -282,8 +282,9 @@ static long magt_ioctl(struct file *filp,
 		perfctl_copy_to_user(ciUM, ciKM,
 			sizeof(struct cpu_info));
 		break;
-
+	}
 	case MAGT_SET_TARGET_FPS:
+	{
 		if (!magt2fpsgo_notify_target_fps_fp) {
 			ret = -EAGAIN;
 			goto ret_ioctl;
@@ -305,30 +306,34 @@ static long magt_ioctl(struct file *filp,
 		ret = magt2fpsgo_notify_target_fps_fp(tfiKM->pid_arr,
 			tfiKM->tid_arr, tfiKM->tfps_arr, tfiKM->num);
 		break;
+	}
 
-	case MAGT_SET_DEP_LIST:
+	case MAGT_SET_DEP_LIST_V3:
+	{
+		struct dep_list_info_V3 *dliUM;
+		struct dep_list_info_V3 dli;
 		if (!magt2fpsgo_notify_dep_list_fp) {
 			ret = -EAGAIN;
 			goto ret_ioctl;
 		}
 
-		dliUM = (struct dep_list_info *)arg;
-		dliKM = &dli;
+		dliUM = (struct dep_list_info_V3 *)arg;
 
-		if (perfctl_copy_from_user(dliKM, dliUM,
-				sizeof(struct dep_list_info))) {
+		if (perfctl_copy_from_user(&dli, dliUM,
+				sizeof(struct dep_list_info_V3))) {
 			ret = -EFAULT;
 			goto ret_ioctl;
 		}
 
-		if (dliKM->user_dep_num > MAGT_DEP_LIST_NUM ) {
+		if (dli.user_dep_num > MAGT_DEP_LIST_NUM ) {
 			ret = -EINVAL;
 			goto ret_ioctl;
 		}
 
-		ret = magt2fpsgo_notify_dep_list_fp(dliKM->pid,
-			dliKM->user_dep_arr, dliKM->user_dep_num);
+		ret = magt2fpsgo_notify_dep_list_fp(dli.pid,
+			dli.user_dep_arr, dli.user_dep_num);
 		break;
+	}
 	case MAGT_GET_FPSGO_SUPPORT:
 	{
 		struct fpsgo_pid_support pid_support;
