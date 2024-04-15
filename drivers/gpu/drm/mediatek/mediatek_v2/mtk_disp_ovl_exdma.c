@@ -1798,7 +1798,15 @@ static int mtk_ovl_yuv_matrix_convert(enum mtk_drm_dataspace plane_ds)
 		break;
 
 	case MTK_DRM_DATASPACE_STANDARD_BT709:
-		ret = OVL_CON_MTX_BT709_FULL_TO_RGB;
+		switch (plane_ds & MTK_DRM_DATASPACE_RANGE_MASK) {
+		case MTK_DRM_DATASPACE_RANGE_UNSPECIFIED:
+		case MTK_DRM_DATASPACE_RANGE_LIMITED:
+			ret = OVL_CON_MTX_BT709_TO_RGB;
+			break;
+		default:
+			ret = OVL_CON_MTX_BT709_FULL_TO_RGB;
+			break;
+		}
 		break;
 	case MTK_DRM_DATASPACE_STANDARD_DCI_P3:
 		ret = OVL_CON_MTX_P3_FULL_TO_RGB;
