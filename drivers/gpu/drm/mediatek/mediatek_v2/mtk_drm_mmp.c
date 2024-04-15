@@ -355,10 +355,13 @@ void init_crtc_mmp_event(void)
 		g_CRTC_MMP_Events[i].bdg_gce_irq = mmprofile_register_event(
 			crtc_mmp_root, "bdg_gce_irq");
 		/*vdo ltpo*/
-		g_CRTC_MMP_Events[i].active_frame =
-			mmprofile_register_event(crtc_mmp_root, "active_frame");
-		g_CRTC_MMP_Events[i].normal_frame =
-			mmprofile_register_event(crtc_mmp_root, "normal_frame");
+		g_CRTC_MMP_Events[i].dsi_real_sof =
+			mmprofile_register_event(crtc_mmp_root, "dsi_real_sof");
+		g_CRTC_MMP_Events[i].dsi_ltpo_vsync =
+			mmprofile_register_event(crtc_mmp_root, "dsi_ltpo_vsync");
+		g_CRTC_MMP_Events[i].arp_te =
+			mmprofile_register_event(crtc_mmp_root, "arp_te");
+
 
 	}
 }
