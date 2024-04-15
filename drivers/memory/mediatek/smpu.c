@@ -126,9 +126,11 @@ char *smpu_clear_md_violation(void)
 					dump_reg[i].offset - parser_shift,
 					dump_reg[i].value);
 		}
-		ret2 = smpu->vio_msg;
-		if( (dump_reg[0].value > 0x2) || (dump_reg[9].value > 0x2 ))
+
+		if( (dump_reg[0].value > 0x2) || (dump_reg[9].value > 0x2 )){
+			ret2 = smpu->vio_msg;
 			pr_info("%s: %s", __func__, smpu->vio_msg);
+		}
 	}
 
 	/*
