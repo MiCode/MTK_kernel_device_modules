@@ -401,7 +401,7 @@ static int panel_ata_check(struct drm_panel *panel)
 }
 
 static struct mtk_panel_params ext_params = {
-	.pll_clk = 526,
+	.pll_clk = 525,
 };
 
 static struct mtk_panel_funcs ext_funcs = {
