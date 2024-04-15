@@ -170,8 +170,7 @@ static void apu_qos_timer_start(void)
 	}
 
 	/* setup timer */
-	timer_setup(&counter->qos_timer, qos_timer_func, jiffies +
-			msecs_to_jiffies(DEFAUTL_QOS_POLLING_TIME));
+	timer_setup(&counter->qos_timer, qos_timer_func, 0);
 	mod_timer(&counter->qos_timer, jiffies +
 			msecs_to_jiffies(DEFAUTL_QOS_POLLING_TIME));
 
