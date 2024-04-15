@@ -3105,17 +3105,20 @@ initcall_debug=1 pelt=8 clk_ignore_unused=1";
 			clock-names = "ref";
 			mediatek,usb-special-phy-settings;
 			#phy-cells = <1>;
+			nvmem-cells = <&u2_phy_data>;
+			nvmem-cell-names = "intr_cal";
+			nvmem-cell-masks = <0x1f>;
 			status = "okay";
 		};
 	};
 
 	usb_meta: usb_meta {
-		compatible = "mediatek,usb_meta";
+		compatible = "mediatek,usb-meta";
 		udc = <&usb>;
 	};
 
-	usb_boost: usb_boost_manager {
-		compatible = "mediatek,usb_boost", "mediatek,mt6765-usb_boost";
+	usb_boost: usb-boost-manager {
+		compatible = "mediatek,usb-boost", "mediatek,mt6765-usb-boost";
 		interconnects = <&dvfsrc MT6873_MASTER_DBGIF &dvfsrc MT6873_SLAVE_DDR_EMI>;
 		interconnect-names = "icc-bw";
 		required-opps = <&dvfsrc_freq_opp0>;
