@@ -17216,7 +17216,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		sleep-en = <1>;
 		hub-en = <1>;
 		baudrate = <24000000>;
-		flavor-bin = "1";
+		flavor-bin = "2g2a";
 		bk-rs-en = <1>;
 		uart-irq-en = <1>;
 		interrupts = <GIC_SPI 824 IRQ_TYPE_LEVEL_HIGH 0>;
