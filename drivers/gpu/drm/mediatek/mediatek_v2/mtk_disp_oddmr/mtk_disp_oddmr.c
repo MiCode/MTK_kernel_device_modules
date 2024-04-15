@@ -33,6 +33,9 @@
 #include "mtk_disp_oddmr_parse_data.h"
 #include "mtk_disp_oddmr_tuning.h"
 
+#include "scp.h"
+
+
 /* ODDMR TOP */
 #define DISP_ODDMR_TOP_CTR_1 0x0004
 #define DISP_ODDMR_TOP_CTR_2 0x0008
@@ -728,6 +731,11 @@ static DECLARE_WAIT_QUEUE_HEAD(g_oddmr_hrt_wq);
 static DEFINE_SPINLOCK(g_oddmr_clock_lock);
 static DEFINE_SPINLOCK(g_oddmr_timing_lock);
 static DEFINE_MUTEX(g_dbi_data_lock);
+
+typedef phys_addr_t (*scp_get_reserve_mem_phys_by_id)(enum scp_reserve_mem_id_t id);
+typedef phys_addr_t (*scp_get_reserve_mem_virt_by_id)(enum scp_reserve_mem_id_t id);
+typedef phys_addr_t (*scp_get_reserve_mem_size_by_id)(enum scp_reserve_mem_id_t id);
+
 
 static void mtk_oddmr_od_hsk_force_clk(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
 static void mtk_oddmr_od_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
@@ -7316,6 +7324,184 @@ void mtk_oddmr_scp_status(bool enable)
 }
 EXPORT_SYMBOL(mtk_oddmr_scp_status);
 
+#define share_lifecycle_offset (0x10000)
+bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt, void *get_size)
+{
+#if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
+
+	scp_get_reserve_mem_phys_by_id get_mem_phys = get_phys;
+	scp_get_reserve_mem_virt_by_id get_mem_virt = get_virt;
+	scp_get_reserve_mem_size_by_id get_mem_size = get_size;
+	struct mtk_drm_dbi_share_info *share_mem;
+	unsigned int width, height, scale_factor_h, scale_factor_v;
+	unsigned int *tmp_addr;
+	unsigned int *tmp_addr1;
+	unsigned int i;
+	void *table_addr;
+	unsigned int j;
+
+	if(!g_oddmr_priv->dbi_data.support_scp)
+		return false;
+
+	DDPMSG("%s: dbi-scp :%d scp rsv mem 0x%llx(0x%llx), size 0x%llx\n", __func__, SCP_DBI_MEM_ID,
+	get_mem_virt(SCP_DBI_MEM_ID), get_mem_phys(SCP_DBI_MEM_ID),
+	get_mem_size(SCP_DBI_MEM_ID));
+
+	share_mem = (struct mtk_drm_dbi_share_info *)get_mem_virt(SCP_DBI_MEM_ID);
+	share_mem->unused_offset = sizeof(struct mtk_drm_dbi_share_info);
+
+	if (g_oddmr_priv->dbi_state >= ODDMR_INIT_DONE)
+		share_mem->dbi_init_done = 1;
+	else
+		share_mem->dbi_init_done = 0;
+	share_mem->dbi_hw_enable = g_oddmr_priv->dbi_enable;
+
+	share_mem->counting_info.size = 0;
+
+	DDPMSG("dbi-scp %d/%d\n", share_mem->dbi_init_done, share_mem->dbi_hw_enable);
+
+	if (share_mem->dbi_init_done) {
+		width = g_oddmr_priv->dbi_cfg_info.basic_info.panel_width;
+		height = g_oddmr_priv->dbi_cfg_info.basic_info.panel_height;
+		scale_factor_h = g_oddmr_priv->dbi_cfg_info.basic_info.partial_update_scale_factor_h;
+		scale_factor_v = g_oddmr_priv->dbi_cfg_info.basic_info.partial_update_scale_factor_v;
+
+		share_mem->panel_width = width;
+		share_mem->panel_height = height;
+
+		share_mem->lifecycle_addr_pa= share_lifecycle_offset + get_mem_phys(SCP_DBI_MEM_ID);
+		share_mem->lifecycle_addr_va= share_lifecycle_offset + get_mem_virt(SCP_DBI_MEM_ID);
+
+		share_mem->pic_addr_pa[0] = share_mem->lifecycle_addr_pa +
+			width*height*4*3/scale_factor_h/scale_factor_v;
+		share_mem->pic_addr_va[0] = share_mem->lifecycle_addr_va +
+			width*height*4*3/scale_factor_h/scale_factor_v;
+
+		share_mem->pic_addr_pa[1] = share_mem->pic_addr_pa[0] + width*height*3;
+		share_mem->pic_addr_va[1] = share_mem->pic_addr_va[0] + width*height*3;
+
+		share_mem->table_addr_pa = share_mem->pic_addr_pa[1] + width*height*3;
+		share_mem->table_addr_va = share_mem->pic_addr_va[1] + width*height*3;
+	}
+
+	share_mem->backup.backup_offset_pa = get_mem_phys(SCP_DBI_MEM_ID) + share_mem->unused_offset;
+	tmp_addr = (unsigned int *)(get_mem_virt(SCP_DBI_MEM_ID) + share_mem->unused_offset);
+
+	if (share_mem->dbi_hw_enable) {
+		//backup table
+		table_addr = (void *)(get_mem_virt(SCP_DBI_MEM_ID) +
+			(share_mem->table_addr_pa - get_mem_phys(SCP_DBI_MEM_ID)));
+
+		DDPMSG("dbi-scp table_addr (0x%llx)\n", (unsigned long long)table_addr);
+		if (atomic_read(&g_oddmr_priv->dbi_data.cur_table_idx)) {
+			memcpy(table_addr,
+				g_oddmr_priv->dbi_data.dbi_table[0]->kvaddr,
+				g_oddmr_priv->dbi_data.table_size);
+		} else {
+			memcpy(table_addr,
+				g_oddmr_priv->dbi_data.dbi_table[1]->kvaddr,
+				g_oddmr_priv->dbi_data.table_size);
+		}
+
+		//top
+		i = 0;
+		*(tmp_addr+(i++)) = DISP_ODDMR_TOP_CTR_1;
+		*(tmp_addr+(i++)) = DISP_ODDMR_TOP_CTR_2;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_TOP_CTR_3;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_ODDMR_OUTP_EN;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_ODDMR_FRAME_WIDTH;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_ODDMR_FRAME_HEIGHT;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_ODDMR_OUTP_IN_HSIZE;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_ODDMR_OUTP_IN_VSIZE;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_ODDMR_OUTP_OUT_HSIZE;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_ODDMR_OUTP_OUT_VSIZE;
+		*(tmp_addr+(i++)) = DISP_ODDMR_TOP_CLK_GATING;
+		//smi
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_SMI_SB_FLG_DBI;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_UDMA_DBI_CTRL21;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_UDMA_DBI_CTRL22;
+
+		//static change config
+		if (atomic_read(&g_oddmr_priv->dbi_data.cur_table_idx)){
+			memcpy(tmp_addr+i,
+				g_oddmr_priv->dbi_cfg_info_tb1.static_cfg.reg_offset,
+				g_oddmr_priv->dbi_cfg_info_tb1.static_cfg.reg_num * sizeof(unsigned int));
+				i += g_oddmr_priv->dbi_cfg_info_tb1.static_cfg.reg_num;
+
+			memcpy(tmp_addr+i,
+				g_oddmr_priv->dbi_cfg_info_tb1.fps_dbv_change_cfg.reg_offset,
+				g_oddmr_priv->dbi_cfg_info_tb1.fps_dbv_change_cfg.reg_num * sizeof(unsigned int));
+				i += g_oddmr_priv->dbi_cfg_info_tb1.fps_dbv_change_cfg.reg_num;
+		} else {
+			memcpy(tmp_addr+i,
+				g_oddmr_priv->dbi_cfg_info.static_cfg.reg_offset,
+				g_oddmr_priv->dbi_cfg_info.static_cfg.reg_num * sizeof(unsigned int));
+				i += g_oddmr_priv->dbi_cfg_info.static_cfg.reg_num;
+			memcpy(tmp_addr+i,
+				g_oddmr_priv->dbi_cfg_info.fps_dbv_change_cfg.reg_offset,
+				g_oddmr_priv->dbi_cfg_info.fps_dbv_change_cfg.reg_num * sizeof(unsigned int));
+				i += g_oddmr_priv->dbi_cfg_info.fps_dbv_change_cfg.reg_num;
+		}
+
+		//partiful update
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_ODDMR_FRAME_WIDTH;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_DMR_REAL_FRAME_WIDTH;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_DMR_FRAME_WIDTH;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_DBI_SCL_HSIZE;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_ODDMR_OUTP_IN_HSIZE;
+
+		//dbv table
+		memcpy(tmp_addr+i,
+			g_oddmr_priv->dbi_cfg_info.dbv_change_cfg.reg_offset,
+			g_oddmr_priv->dbi_cfg_info.dbv_change_cfg.reg_num * sizeof(unsigned int));
+			i += g_oddmr_priv->dbi_cfg_info.dbv_change_cfg.reg_num;
+
+		//dbi enable
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_DMR_EN;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_DMR_UDMA_EN;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_TOP_DMR_BYPASS;
+		*(tmp_addr+(i++)) = 0x084;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_UDMA_DBI_CTRL30;
+
+		//remap
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_SPR_SHADOW_CTRL;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_SPR_REMAP_GAIN;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_SPR_REMAP_EN;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_TOP_OD_S2R_BYPASS;
+
+		share_mem->backup.size = i;
+		share_mem->unused_offset += i * sizeof(unsigned int);
+
+		share_mem->backup.backup_value_pa = get_mem_phys(SCP_DBI_MEM_ID) + share_mem->unused_offset;
+		tmp_addr1 = (unsigned int *)(get_mem_virt(SCP_DBI_MEM_ID) + share_mem->unused_offset);
+
+		share_mem->unused_offset += share_mem->backup.size * sizeof(unsigned int);
+		for(i = 0;i < share_mem->backup.size; i++) {
+			*(tmp_addr1 + i) = mtk_oddmr_read(default_comp,*(tmp_addr + i));
+			DDPMSG("dbi-scp rg backup 0x%x/0x%x\n", *(tmp_addr + i), *(tmp_addr1 + i));
+		}
+	}
+
+	if (g_oddmr_priv->dbi_data.load_scp_param) {
+		DDPMSG("dbi-scp scp_param_size %d\n", g_oddmr_priv->dbi_data.scp_param_size);
+		share_mem->counting_info.size = g_oddmr_priv->dbi_data.scp_param_size;
+		share_mem->counting_info.addr_pa = get_mem_phys(SCP_DBI_MEM_ID) + share_mem->unused_offset;
+		tmp_addr1 = (unsigned int *)(get_mem_virt(SCP_DBI_MEM_ID) + share_mem->unused_offset);
+		memcpy(tmp_addr1,
+			g_oddmr_priv->dbi_data.scp_param,
+			g_oddmr_priv->dbi_data.scp_param_size);
+		share_mem->unused_offset += g_oddmr_priv->dbi_data.scp_param_size;
+	}
+
+	DDPMSG("dbi-scp hw enable %d/%d\n", share_mem->dbi_hw_enable, share_mem->unused_offset);
+	return true;
+#else
+	return false;
+#endif
+}
+EXPORT_SYMBOL(mtk_drm_dbi_backup);
+
+
 static void mtk_oddmr_dbi_change_remap_gain(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *pkg, uint32_t cur_max_time)
 {
@@ -8180,6 +8366,23 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 		gain_ratio = params;
 		atomic_set(&g_oddmr_priv->dbi_data.gain_ratio, *gain_ratio);
 		break;
+	case PQ_DBI_LOAD_SCP_PARAM:
+		ret = 0;
+		DDPMSG("%s, PQ_DBI_LOAD_SCP_PARAM\n", __func__);
+		if(!g_oddmr_priv->dbi_data.load_scp_param){
+			ptr = vmalloc(size);
+			if (!ptr) {
+				DDPMSG("%s:%d, param buffer alloc fail\n", __func__, __LINE__);
+				return -1;
+			}
+			memcpy(ptr, params, size);
+			g_oddmr_priv->dbi_data.scp_param_size = size;
+			g_oddmr_priv->dbi_data.scp_param = ptr;
+			g_oddmr_priv->dbi_data.load_scp_param =1;
+			DDPMSG("PQ_DBI_LOAD_SCP_PARAM %d size\n", size);
+		} else
+			return -1;
+		break;
 	default:
 		break;
 	}
@@ -8675,6 +8878,7 @@ static int mtk_disp_oddmr_probe(struct platform_device *pdev)
 	int ret;
 	struct sched_param param = {.sched_priority = 85 };
 	struct cpumask mask;
+	int ret_scp;
 
 	DDPMSG("%s+\n", __func__);
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
@@ -8783,6 +8987,13 @@ static int mtk_disp_oddmr_probe(struct platform_device *pdev)
 	priv->od_data.od_sram_table_idx[0] = -1;
 	priv->od_data.od_sram_table_idx[1] = -1;
 
+	ret_scp = of_property_read_u32(dev->of_node, "dbi-support-scp-aod", &priv->dbi_data.support_scp);
+	if ((!ret_scp) && priv->dbi_data.support_scp)
+		DDPMSG("%s support scp-aod\n", __func__);
+	else {
+		DDPMSG("%s do not support scp-aod\n", __func__);
+		priv->dbi_data.support_scp = 0;
+	}
 
 	atomic_set(&priv->dbi_data.cur_table_idx, 0);
 	atomic_set(&priv->dbi_data.update_table_idx, 0);
