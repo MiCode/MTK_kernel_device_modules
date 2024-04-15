@@ -1245,6 +1245,7 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 	struct scp_domain *scpd = container_of(genpd, struct scp_domain, genpd);
 	struct scp *scp = scpd->scp;
 	struct regmap *hwv_regmap;
+	struct regmap *cksys2_regmap;
 	u32 val = 0;
 	int ret = 0;
 	int tmp;
@@ -1254,6 +1255,9 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 		hwv_regmap = scpd->hwv_regmap;
 	else
 		hwv_regmap = scp->hwv_regmap;
+
+	if (scpd->cksys2_regmap)
+		cksys2_regmap = scpd->cksys2_regmap;
 
 	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_WAIT_VCP)) {
 		/* wait until vcp is ready, check 0x1c00091c[1] = 1 */
@@ -1266,6 +1270,13 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 	ret = scpsys_clk_enable(scpd->lp_clk, MAX_CLKS);
 	if (ret)
 		goto err_lp_clk;
+
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_HWV_CHK_MUX_OPT)) {
+		/* chk mux is on */
+		regmap_read(cksys2_regmap, scpd->data->hwv_debug_mux_ofs_opt, &val);
+		if ((val & BIT(scpd->data->hwv_debug_mux_shift_opt)) == 0)
+			goto err_mux_off;
+	}
 
 	/* wait for irq status idle */
 	ret = readx_poll_timeout_atomic(mtk_hwv_is_done, scpd, tmp, tmp > 0,
@@ -1312,6 +1323,9 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 
 	return 0;
 
+err_mux_off:
+	regmap_read(cksys2_regmap, scpd->data->hwv_debug_mux_ofs_opt, &val);
+	dev_err(scp->dev, "Mux is off %s(%x)\n", genpd->name, val);
 err_vcp_ready:
 	dev_notice(scp->dev, "Failed to vcp ready timeout %s\n", genpd->name);
 err_regulator:
@@ -1750,6 +1764,11 @@ struct scp *init_scp(struct platform_device *pdev,
 		scpd->scp = scp;
 
 		scpd->data = data;
+
+		/* get cksys2 regmap from dts node */
+		ret = mtk_pd_get_regmap(pdev, &scpd->cksys2_regmap, "cksys2-regmap");
+		if (ret)
+			return ERR_PTR(ret);
 
 		ret = init_basic_clks(pdev, scpd->clk, data->basic_clk_name);
 		if (ret)

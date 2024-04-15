@@ -670,7 +670,9 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 13,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.hwv_debug_mux_ofs_opt = 0x174,
+		.hwv_debug_mux_shift_opt = 21,
+		.caps = MTK_SCPD_HWV_OPS | default_cap | MTK_SCPD_HWV_CHK_MUX_OPT,
 	},
 	[MT6991_POWER_DOMAIN_CAM_RAWA] = {
 		.name = "cam-rawa",
