@@ -2163,7 +2163,7 @@ cpus {
 
 		scp_dvfs {
 			compatible = "mediatek,scp-dvfs";
-                        scp-dvfs-disable;
+			scp-dvfs-disable = <0>;
 			clocks = <&topckgen_clk CLK_TOP_SCP_SEL>,
 				<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
 				<&topckgen_clk CLK_TOP_UNIVPLL_D5>,
@@ -2207,12 +2207,13 @@ cpus {
 			sshub-vsram-supply = <&mt6359p_vsram_others_sshub_ldo>;
 
 			do-ulposc-cali;
-			fmeter_clksys = <&topckgen_clk>;
-			ulposc_clksys = <&apmixedsys_clk>;
-			scp_clk_ctrl = <&scp_clk_ctrl>;
+			fmeter-clksys = <&topckgen_clk>;
+			ulposc-clksys = <&apmixedsys_clk>;
+			scp-clk-ctrl = <&scp_clk_ctrl>;
 			scp-clk-hw-ver = "v1";
 			ulposc-cali-ver = "v1";
 			ulposc-cali-num = <3>;
+			ulposc-cali-alg-ver = <0>;
 			ulposc-cali-target = <196 280 360>;
 			ulposc-cali-config =
 				/* con0		con1		con2 */
@@ -2221,6 +2222,13 @@ cpus {
 				<0x52eb40	0x2900		0x43>;
 			clk-dbg-ver = "v1";
 			ccf-fmeter-support;
+			fmeter-args-u2-cali =
+				/* fm_id	fm_type */
+				< 36		1>; /* OSC2_SYNC_CK (i.e. D2) */
+			fmeter-args-u2-result =
+				/* fm_id	fm_type */
+				< 36		1>; /* OSC2_CK */
+			scp-dvfs-flag = "enable"; /* enable/disable */
 		};
 
 		adsp_common: adsp_common@10800000 {
