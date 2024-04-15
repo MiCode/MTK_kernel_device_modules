@@ -62,18 +62,11 @@ static int mbraink_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 
-static long handleMemoryDdrInfo(unsigned long arg)
+static long handleMemoryDdrInfo(unsigned long arg, void *mbraink_data)
 {
 	long ret = 0;
-	struct mbraink_memory_ddrInfo *pMemoryDdrInfo = NULL;
-
-	pMemoryDdrInfo =
-		vmalloc(sizeof(struct mbraink_memory_ddrInfo));
-
-	if (pMemoryDdrInfo == NULL) {
-		pr_notice("Can't allocate memoryDdrInfo!\n");
-		return -EPERM;
-	}
+	struct mbraink_memory_ddrInfo *pMemoryDdrInfo =
+		(struct mbraink_memory_ddrInfo *)(mbraink_data);
 
 	memset(pMemoryDdrInfo,
 			0,
@@ -81,30 +74,30 @@ static long handleMemoryDdrInfo(unsigned long arg)
 	ret = mbraink_memory_getDdrInfo(pMemoryDdrInfo);
 	if (ret == 0) {
 		if (copy_to_user((struct mbraink_memory_ddrInfo *)arg,
-						pMemoryDdrInfo,
-						sizeof(struct mbraink_memory_ddrInfo))) {
+				pMemoryDdrInfo,
+				sizeof(struct mbraink_memory_ddrInfo))) {
 			pr_notice("Copy memory ddr Info to UserSpace error!\n");
 			ret = -EPERM;
 		}
 	}
-	vfree(pMemoryDdrInfo);
 
 	return ret;
 }
 
-static long handleIdleRatioInfo(unsigned long arg)
+static long handleIdleRatioInfo(unsigned long arg, void *mbraink_data)
 {
 	long ret = 0;
-	struct mbraink_audio_idleRatioInfo audioIdleRatioInfo;
+	struct mbraink_audio_idleRatioInfo *audioIdleRatioInfo =
+		(struct mbraink_audio_idleRatioInfo *)(mbraink_data);
 
-	memset(&audioIdleRatioInfo,
-			0,
-			sizeof(struct mbraink_audio_idleRatioInfo));
-	ret = mbraink_audio_getIdleRatioInfo(&audioIdleRatioInfo);
+	memset(audioIdleRatioInfo,
+		0,
+		sizeof(struct mbraink_audio_idleRatioInfo));
+	ret = mbraink_audio_getIdleRatioInfo(audioIdleRatioInfo);
 	if (ret == 0) {
 		if (copy_to_user((struct mbraink_audio_idleRatioInfo *)arg,
-						&audioIdleRatioInfo,
-						sizeof(struct mbraink_audio_idleRatioInfo))) {
+				audioIdleRatioInfo,
+				sizeof(struct mbraink_audio_idleRatioInfo))) {
 			pr_notice("Copy audio idle ratio info from UserSpace Err!\n");
 			ret = -EPERM;
 		}
@@ -112,55 +105,48 @@ static long handleIdleRatioInfo(unsigned long arg)
 	return ret;
 }
 
-static long handleVcoreInfo(unsigned long arg)
+static long handleVcoreInfo(unsigned long arg, void *mbraink_data)
 {
 	long ret = 0;
-	struct mbraink_power_vcoreInfo *pPowerVcoreInfo = NULL;
-
-	pPowerVcoreInfo =
-		vmalloc(sizeof(struct mbraink_power_vcoreInfo));
-
-	if (pPowerVcoreInfo == NULL) {
-		pr_notice("Can't allocate Power Vc Info!\n");
-		return -EPERM;
-	}
+	struct mbraink_power_vcoreInfo *pPowerVcoreInfo =
+		(struct mbraink_power_vcoreInfo *)(mbraink_data);
 
 	memset(pPowerVcoreInfo,
-			0,
-			sizeof(struct mbraink_power_vcoreInfo));
+		0,
+		sizeof(struct mbraink_power_vcoreInfo));
 	ret = mbraink_power_getVcoreInfo(pPowerVcoreInfo);
 	if (ret == 0) {
 		if (copy_to_user((struct mbraink_power_vcoreInfo *)arg,
-						pPowerVcoreInfo,
-						sizeof(struct mbraink_power_vcoreInfo))) {
+				pPowerVcoreInfo,
+				sizeof(struct mbraink_power_vcoreInfo))) {
 			pr_notice("Copy vcore info from UserSpace Err!\n");
 			ret = -EPERM;
 		}
 	}
-	vfree(pPowerVcoreInfo);
 
 	return ret;
 }
 
-static long handleFeatureEn(unsigned long arg)
+static long handleFeatureEn(unsigned long arg, void *mbraink_data)
 {
 	long ret = 0;
-	struct mbraink_feature_en featureEnInfo;
+	struct mbraink_feature_en *featureEnInfo =
+		(struct mbraink_feature_en *)(mbraink_data);
 
-	memset(&featureEnInfo,
-			0,
-			sizeof(struct mbraink_feature_en));
+	memset(featureEnInfo,
+		0,
+		sizeof(struct mbraink_feature_en));
 
-	if (copy_from_user(&featureEnInfo,
+	if (copy_from_user(featureEnInfo,
 			 (char *)arg,
 			 sizeof(struct mbraink_feature_en))) {
 		pr_notice("Data get feature en from UserSpace Err!\n");
 		return -EPERM;
 	}
 
-	if (mbraink_priv.feature_en != featureEnInfo.feature_en) {
+	if (mbraink_priv.feature_en != featureEnInfo->feature_en) {
 		pr_notice("mbraink feature enable.\n");
-		if ((featureEnInfo.feature_en &
+		if ((featureEnInfo->feature_en &
 				MBRAINK_FEATURE_GPU_EN)
 					== MBRAINK_FEATURE_GPU_EN) {
 			pr_notice("mbraink feature enable gpu.\n");
@@ -172,7 +158,7 @@ static long handleFeatureEn(unsigned long arg)
 					MBRAINK_FEATURE_GPU_EN;
 		}
 
-		if ((featureEnInfo.feature_en &
+		if ((featureEnInfo->feature_en &
 				MBRAINK_FEATURE_AUDIO_EN)
 					== MBRAINK_FEATURE_AUDIO_EN) {
 			pr_notice("mbraink feature enable audio.\n");
@@ -184,7 +170,7 @@ static long handleFeatureEn(unsigned long arg)
 					MBRAINK_FEATURE_AUDIO_EN;
 		}
 		pr_notice("mbraink en set (%d) to (%d)\n",
-					featureEnInfo.feature_en,
+					featureEnInfo->feature_en,
 					mbraink_priv.feature_en);
 	} else {
 		pr_notice("mbraink feature enabled before.\n");
@@ -193,16 +179,17 @@ static long handleFeatureEn(unsigned long arg)
 	return ret;
 }
 
-static long handlePmuEn(unsigned long arg)
+static long handlePmuEn(unsigned long arg, void *mbraink_data)
 {
 	long ret = 0;
-	struct mbraink_pmu_en pmuEnInfo;
+	struct mbraink_pmu_en *pmuEnInfo =
+		(struct mbraink_pmu_en *)(mbraink_data);
 
-	memset(&pmuEnInfo,
-			0,
-			sizeof(struct mbraink_pmu_en));
+	memset(pmuEnInfo,
+		0,
+		sizeof(struct mbraink_pmu_en));
 
-	if (copy_from_user(&pmuEnInfo,
+	if (copy_from_user(pmuEnInfo,
 			 (char *)arg,
 			 sizeof(struct mbraink_pmu_en))) {
 		pr_notice("Data get pmu en from UserSpace Err!\n");
@@ -210,9 +197,9 @@ static long handlePmuEn(unsigned long arg)
 	}
 
 	mutex_lock(&pmu_lock);
-	if (mbraink_priv.pmu_en != pmuEnInfo.pmu_en) {
+	if (mbraink_priv.pmu_en != pmuEnInfo->pmu_en) {
 		pr_notice("mbraink pmu_en enable.\n");
-		if ((pmuEnInfo.pmu_en & MBRAINK_PMU_INST_SPEC_EN) == MBRAINK_PMU_INST_SPEC_EN) {
+		if ((pmuEnInfo->pmu_en & MBRAINK_PMU_INST_SPEC_EN) == MBRAINK_PMU_INST_SPEC_EN) {
 			pr_notice("mbraink feature enable pmu inst spec.\n");
 			ret = mbraink_enable_pmu_inst_spec(true);
 			if (ret)
@@ -229,7 +216,7 @@ static long handlePmuEn(unsigned long arg)
 		}
 
 		pr_notice("mbraink en set (%d) to (%d)\n",
-					pmuEnInfo.pmu_en,
+					pmuEnInfo->pmu_en,
 					mbraink_priv.pmu_en);
 	} else {
 		pr_notice("mbraink pmu_en enabled before.\n");
@@ -239,22 +226,23 @@ static long handlePmuEn(unsigned long arg)
 	return ret;
 }
 
-static long handlePmuInfo(unsigned long arg)
+static long handlePmuInfo(unsigned long arg, void *mbraink_data)
 {
 	long ret = 0;
-	struct mbraink_pmu_info pmuInfo;
+	struct mbraink_pmu_info *pmuInfo =
+		(struct mbraink_pmu_info *)(mbraink_data);
 
 	pr_notice("mbraink %s\n", __func__);
-	memset(&pmuInfo,
-			0,
-			sizeof(struct mbraink_pmu_info));
+	memset(pmuInfo,
+		0,
+		sizeof(struct mbraink_pmu_info));
 
 	mutex_lock(&pmu_lock);
-	ret = mbraink_get_pmu_inst_spec(&pmuInfo);
+	ret = mbraink_get_pmu_inst_spec(pmuInfo);
 	if (ret == 0) {
 		if (copy_to_user((struct mbraink_pmu_info *)arg,
-						&pmuInfo,
-						sizeof(pmuInfo))) {
+				pmuInfo,
+				sizeof(struct mbraink_pmu_info))) {
 			pr_notice("Copy pmu Info to UserSpace error!\n");
 			ret = -EPERM;
 		}
@@ -264,26 +252,27 @@ static long handlePmuInfo(unsigned long arg)
 	return ret;
 }
 
-static long handleMdvInfo(unsigned long arg)
+static long handleMdvInfo(unsigned long arg, void *mbraink_data)
 {
 	long ret = 0;
-	struct mbraink_memory_mdvInfo memory_mdv_info;
+	struct mbraink_memory_mdvInfo *memory_mdv_info =
+		(struct mbraink_memory_mdvInfo *)(mbraink_data);
 
-	memset(&memory_mdv_info,
-			0,
-			sizeof(struct mbraink_memory_mdvInfo));
+	memset(memory_mdv_info,
+		0,
+		sizeof(struct mbraink_memory_mdvInfo));
 
-	if (copy_from_user(&memory_mdv_info,
-				(struct mbraink_memory_mdvInfo *) arg,
-				sizeof(memory_mdv_info))) {
+	if (copy_from_user(memory_mdv_info,
+			(struct mbraink_memory_mdvInfo *) arg,
+			sizeof(struct mbraink_memory_mdvInfo))) {
 		pr_notice("Data write memory mdv info from UserSpace Err!\n");
 		return -EPERM;
 	}
-	ret = mbraink_memory_getMdvInfo(&memory_mdv_info);
+	ret = mbraink_memory_getMdvInfo(memory_mdv_info);
 	if (ret == 0) {
 		if (copy_to_user((struct mbraink_memory_mdvInfo *) arg,
-					&memory_mdv_info,
-					sizeof(memory_mdv_info))) {
+				memory_mdv_info,
+				sizeof(struct mbraink_memory_mdvInfo))) {
 			pr_notice("Copy memory_mdv_info to UserSpace error!\n");
 			return -EPERM;
 		}
@@ -291,21 +280,22 @@ static long handleMdvInfo(unsigned long arg)
 	return ret;
 }
 
-static long handlePmicVoltageInfo(unsigned long arg)
+static long handlePmicVoltageInfo(unsigned long arg, void *mbraink_data)
 {
 	long ret = 0;
-	struct mbraink_pmic_voltage_info pmicVoltageInfo;
+	struct mbraink_pmic_voltage_info *pmicVoltageInfo =
+		(struct mbraink_pmic_voltage_info *)(mbraink_data);
 
 	pr_notice("mbraink %s\n", __func__);
-	memset(&pmicVoltageInfo,
-			0,
-			sizeof(struct mbraink_pmic_voltage_info));
+	memset(pmicVoltageInfo,
+		0,
+		sizeof(struct mbraink_pmic_voltage_info));
 
-	ret = mbraink_power_get_pmic_voltage_info(&pmicVoltageInfo);
+	ret = mbraink_power_get_pmic_voltage_info(pmicVoltageInfo);
 	if (ret == 0) {
 		if (copy_to_user((struct mbraink_pmic_voltage_info *)arg,
-						&pmicVoltageInfo,
-						sizeof(pmicVoltageInfo))) {
+				pmicVoltageInfo,
+				sizeof(struct mbraink_pmic_voltage_info))) {
 			pr_notice("Copy pmic voltage info to UserSpace error!\n");
 			ret = -EPERM;
 		}
@@ -314,21 +304,22 @@ static long handlePmicVoltageInfo(unsigned long arg)
 	return ret;
 }
 
-static long handleMmdvfsInfo(unsigned long arg)
+static long handleMmdvfsInfo(unsigned long arg, void *mbraink_data)
 {
 	long ret = 0;
-	struct mbraink_mmdvfs_info mmdvfsInfo;
+	struct mbraink_mmdvfs_info *mmdvfsInfo =
+		(struct mbraink_mmdvfs_info *)(mbraink_data);
 
 	pr_notice("mbraink %s\n", __func__);
-	memset(&mmdvfsInfo,
-			0,
-			sizeof(struct mbraink_mmdvfs_info));
+	memset(mmdvfsInfo,
+		0,
+		sizeof(struct mbraink_mmdvfs_info));
 
-	ret = mbraink_power_get_mmdvfs_info(&mmdvfsInfo);
+	ret = mbraink_power_get_mmdvfs_info(mmdvfsInfo);
 	if (ret == 0) {
 		if (copy_to_user((struct mbraink_mmdvfs_info *)arg,
-						&mmdvfsInfo,
-						sizeof(mmdvfsInfo))) {
+				mmdvfsInfo,
+				sizeof(struct mbraink_mmdvfs_info))) {
 			pr_notice("Copy mmdvfs info to UserSpace error!\n");
 			ret = -EPERM;
 		}
@@ -337,692 +328,1071 @@ static long handleMmdvfsInfo(unsigned long arg)
 	return ret;
 }
 
-static long mbraink_ioctl(struct file *filp,
-							unsigned int cmd,
-							unsigned long arg)
+static long handle_spmpower_info(unsigned long arg)
 {
 	int n = 0;
 	long ret = 0;
 
+	n = mbraink_get_power_info(mbraink_priv.power_buffer, MAX_BUF_SZ, CURRENT_DATA);
+	if (n <= 0) {
+		pr_notice("mbraink_get_power_info return failed, err %d\n", n);
+	} else {
+		mutex_lock(&power_lock);
+
+		if (mbraink_priv.suspend_power_info_en[0] == '1') {
+			if (mbraink_priv.suspend_power_buffer[0] != '\0'
+				&& mbraink_priv.suspend_power_data_size != 0) {
+				memcpy(mbraink_priv.power_buffer+n,
+					mbraink_priv.suspend_power_buffer,
+					mbraink_priv.suspend_power_data_size+1);
+				n = n + mbraink_priv.suspend_power_data_size;
+			}
+			mbraink_priv.suspend_power_buffer[0] = '\0';
+			mbraink_priv.suspend_power_data_size = 0;
+
+			if (mbraink_priv.resume_power_buffer[0] != '\0'
+				 && mbraink_priv.resume_power_data_size != 0) {
+				memcpy(mbraink_priv.power_buffer+n,
+					mbraink_priv.resume_power_buffer,
+					mbraink_priv.resume_power_data_size+1);
+				n = n + mbraink_priv.resume_power_data_size;
+			}
+			mbraink_priv.resume_power_buffer[0] = '\0';
+			mbraink_priv.resume_power_data_size = 0;
+		}
+
+		if (copy_to_user((char *)arg, mbraink_priv.power_buffer, n+1)) {
+			pr_notice("Copy Power_info to UserSpace error!\n");
+			mutex_unlock(&power_lock);
+			return -EPERM;
+		}
+		mutex_unlock(&power_lock);
+	}
+	return ret;
+}
+
+static long handle_video_info(unsigned long arg, void *mbraink_data)
+{
+	char *buffer = (char *)(mbraink_data);
+	int n = 0;
+	long ret = 0;
+
+	n = mbraink_get_video_info(buffer);
+	if (n <= 0) {
+		pr_notice("mbraink_get_video_info return failed, err %d\n", n);
+	} else if (copy_to_user((char *)arg, buffer, n+1)) {
+		pr_notice("Copy Video_info to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_supend_power_en(unsigned long arg)
+{
+	long ret = 0;
+
+	mutex_lock(&power_lock);
+	if (copy_from_user(mbraink_priv.suspend_power_info_en,
+			(char *)arg,
+			sizeof(mbraink_priv.suspend_power_info_en))) {
+		pr_notice("Data write suspend_power_en from UserSpace Err!\n");
+		mutex_unlock(&power_lock);
+		return -EPERM;
+	}
+	pr_info("[MBK_INFO] mbraink_priv.suspend_power_info_en = %c\n",
+		mbraink_priv.suspend_power_info_en[0]);
+	mutex_unlock(&power_lock);
+
+	return ret;
+}
+
+static long handle_process_stat(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_process_stat_data *process_stat_buffer =
+		(struct mbraink_process_stat_data *)(mbraink_data);
+	long ret = 0;
+
+	pid_t pid = 1;
+
+	if (copy_from_user(process_stat_buffer,
+			(struct mbraink_process_stat_data *)arg,
+			sizeof(struct mbraink_process_stat_data))) {
+		pr_notice("copy process info from user Err!\n");
+		return -EPERM;
+	}
+
+	if (process_stat_buffer->pid > PID_MAX_DEFAULT) {
+		pr_notice("process state: Invalid pid %u\n",
+			process_stat_buffer->pid);
+		return -EINVAL;
+	}
+	pid = process_stat_buffer->pid;
+
+	mbraink_get_process_stat_info(pid, process_stat_buffer);
+
+	if (copy_to_user((struct mbraink_process_stat_data *)arg,
+			process_stat_buffer,
+			sizeof(struct mbraink_process_stat_data))) {
+		pr_notice("Copy process_info to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_process_memory(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_process_memory_data *process_memory_buffer =
+		(struct mbraink_process_memory_data *)(mbraink_data);
+	long ret = 0;
+	pid_t pid = 1;
+	unsigned int current_cnt = 0;
+
+	if (copy_from_user(process_memory_buffer,
+			(struct mbraink_process_memory_data *)arg,
+			sizeof(struct mbraink_process_memory_data))) {
+		pr_notice("copy process memory info from user Err!\n");
+		return -EPERM;
+	}
+
+	if (process_memory_buffer->pid > PID_MAX_DEFAULT ||
+		process_memory_buffer->pid_count > PID_MAX_DEFAULT) {
+		pr_notice("process memory: Invalid pid_idx %u or pid_count %u\n",
+			process_memory_buffer->pid, process_memory_buffer->pid_count);
+		return -EINVAL;
+	}
+	pid = process_memory_buffer->pid;
+	current_cnt = process_memory_buffer->current_cnt;
+
+	mbraink_get_process_memory_info(pid, current_cnt, process_memory_buffer);
+
+	if (copy_to_user((struct mbraink_process_memory_data *)arg,
+			process_memory_buffer,
+			sizeof(struct mbraink_process_memory_data))) {
+		pr_notice("Copy process_memory_info to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_process_monitor_list(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_monitor_processlist *monitor_processlist_buffer =
+		(struct mbraink_monitor_processlist *)(mbraink_data);
+	unsigned short monitor_process_count = 0;
+	long ret = 0;
+
+	if (copy_from_user(monitor_processlist_buffer,
+			(struct mbraink_monitor_processlist *)arg,
+			sizeof(struct mbraink_monitor_processlist))) {
+		pr_notice("copy mbraink_monitor_processlist from user Err!\n");
+		return -EPERM;
+	}
+
+	if (monitor_processlist_buffer->monitor_process_count > MAX_MONITOR_PROCESS_NUM) {
+		pr_notice("Invalid monitor_process_count!\n");
+		monitor_processlist_buffer->monitor_process_count =
+								MAX_MONITOR_PROCESS_NUM;
+	}
+
+	monitor_process_count =
+		monitor_processlist_buffer->monitor_process_count;
+
+	mbraink_processname_to_pid(monitor_process_count,
+				monitor_processlist_buffer, 0);
+	return ret;
+}
+
+static long handle_thread_stat(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_thread_stat_data *thread_stat_buffer =
+		(struct mbraink_thread_stat_data *)(mbraink_data);
+	long ret = 0;
+	pid_t pid_idx = 0, tid = 0;
+
+	if (copy_from_user(thread_stat_buffer,
+			(struct mbraink_thread_stat_data *)arg,
+			sizeof(struct mbraink_thread_stat_data))) {
+		pr_notice("copy thread_stat_info data from user Err!\n");
+		return -EPERM;
+	}
+
+	if (thread_stat_buffer->pid_idx > PID_MAX_DEFAULT ||
+			thread_stat_buffer->tid > PID_MAX_DEFAULT) {
+		pr_notice("Invalid pid_idx %u or tid %u!\n",
+			thread_stat_buffer->pid_idx, thread_stat_buffer->tid);
+		return -EINVAL;
+	}
+	pid_idx = thread_stat_buffer->pid_idx;
+	tid = thread_stat_buffer->tid;
+
+	mbraink_get_thread_stat_info(pid_idx, tid, thread_stat_buffer);
+
+	if (copy_to_user((struct mbraink_thread_stat_data *)arg,
+			thread_stat_buffer,
+			sizeof(struct mbraink_thread_stat_data))) {
+		pr_notice("Copy thread_stat_info to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_trace_process(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_tracing_pid_data *tracing_pid_buffer =
+		(struct mbraink_tracing_pid_data *)(mbraink_data);
+	long ret = 0;
+	unsigned short tracing_idx = 0;
+
+	if (copy_from_user(tracing_pid_buffer,
+			(struct mbraink_tracing_pid_data *)arg,
+			sizeof(struct mbraink_tracing_pid_data))) {
+		pr_notice("copy tracing_pid_buffer data from user Err!\n");
+		return -EPERM;
+	}
+
+	if (tracing_pid_buffer->tracing_idx > MAX_TRACE_NUM) {
+		pr_notice("invalid tracing_idx %u !\n", tracing_pid_buffer->tracing_idx);
+		return -EINVAL;
+	}
+	tracing_idx = tracing_pid_buffer->tracing_idx;
+
+	mbraink_get_tracing_pid_info(tracing_idx, tracing_pid_buffer);
+
+	if (copy_to_user((struct mbraink_tracing_pid_data *)arg,
+			tracing_pid_buffer,
+			sizeof(struct mbraink_tracing_pid_data))) {
+		pr_notice("Copy tracing_pid_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_cpufreq_notify(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_cpufreq_notify_struct_data *pcpufreq_notify_buffer =
+		(struct mbraink_cpufreq_notify_struct_data *)(mbraink_data);
+	unsigned short notify_cluster_idx = 0;
+	unsigned short notify_idx = 0;
+	long ret = 0;
+
+	if (copy_from_user(pcpufreq_notify_buffer,
+			(struct mbraink_cpufreq_notify_struct_data *)arg,
+			sizeof(struct mbraink_cpufreq_notify_struct_data))) {
+		pr_notice("Copy cpufreq_notify_buffer from user Err!\n");
+		return -EPERM;
+	}
+
+	if (pcpufreq_notify_buffer->notify_cluster_idx > CPU_CLUSTER_SZ ||
+		pcpufreq_notify_buffer->notify_idx > CPUFREQ_NOTIFY_SZ) {
+		pr_notice("invalid notify_cluster_idx %u or notify_idx %u !\n",
+			pcpufreq_notify_buffer->notify_cluster_idx,
+			pcpufreq_notify_buffer->notify_idx);
+		return -EINVAL;
+	}
+	notify_cluster_idx = pcpufreq_notify_buffer->notify_cluster_idx;
+	notify_idx = pcpufreq_notify_buffer->notify_idx;
+	mbraink_get_cpufreq_notifier_info(notify_cluster_idx,
+					notify_idx,
+					pcpufreq_notify_buffer);
+	if (copy_to_user((struct mbraink_cpufreq_notify_struct_data *)arg,
+			pcpufreq_notify_buffer,
+			sizeof(struct mbraink_cpufreq_notify_struct_data))) {
+		pr_notice("Copy cpufreq_notify_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+unsigned long handle_battery_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_battery_data *battery_buffer =
+		(struct mbraink_battery_data *)(mbraink_data);
+	long ret = 0;
+
+	memset(battery_buffer,
+		0,
+		sizeof(struct mbraink_battery_data));
+	mbraink_get_battery_info(battery_buffer, 0);
+	if (copy_to_user((struct mbraink_battery_data *) arg,
+			battery_buffer,
+			sizeof(struct mbraink_battery_data))) {
+		pr_notice("Copy battery_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_wakeup_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_power_wakeup_data *power_wakeup_data =
+		(struct mbraink_power_wakeup_data *)(mbraink_data);
+	long ret = 0;
+
+	if (copy_from_user(power_wakeup_data,
+			(struct mbraink_power_wakeup_data *) arg,
+			sizeof(struct mbraink_power_wakeup_data))) {
+		pr_notice("Data write power_wakeup_data from UserSpace Err!\n");
+		return -EPERM;
+	}
+	mbraink_get_power_wakeup_info(power_wakeup_data);
+	if (copy_to_user((struct mbraink_power_wakeup_data *) arg,
+			power_wakeup_data,
+			sizeof(struct mbraink_power_wakeup_data))) {
+		pr_notice("Copy power_wakeup_data to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_power_spm_raw(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_power_spm_raw *power_spm_buffer =
+		(struct mbraink_power_spm_raw *)(mbraink_data);
+	long ret = 0;
+
+	if (copy_from_user(power_spm_buffer,
+			(struct mbraink_power_spm_raw *) arg,
+			sizeof(struct mbraink_power_spm_raw))) {
+		pr_notice("Data write power_spm_buffer from UserSpace Err!\n");
+		return -EPERM;
+	}
+	mbraink_power_get_spm_info(power_spm_buffer);
+	if (copy_to_user((struct mbraink_power_spm_raw *) arg,
+			power_spm_buffer,
+			sizeof(struct mbraink_power_spm_raw))) {
+		pr_notice("Copy power_spm_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_modem_info(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_modem_raw *modem_buffer =
+		(struct mbraink_modem_raw *)(mbraink_data);
+
+	if (copy_from_user(modem_buffer,
+			(struct mbraink_modem_raw *) arg,
+			sizeof(struct mbraink_modem_raw))) {
+		pr_notice("Data write modem_buffer from UserSpace Err!\n");
+		return -EPERM;
+	}
+	mbraink_power_get_modem_info(modem_buffer);
+
+	if (copy_to_user((struct mbraink_modem_raw *) arg,
+			modem_buffer,
+			sizeof(struct mbraink_modem_raw))) {
+		pr_notice("Copy modem_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_monitor_binder_process(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_monitor_processlist *monitor_binder_processlist_buffer =
+		(struct mbraink_monitor_processlist *)(mbraink_data);
+	unsigned short monitor_binder_process_count = 0;
+
+	if (copy_from_user(monitor_binder_processlist_buffer,
+			(struct mbraink_monitor_processlist *) arg,
+			sizeof(struct mbraink_monitor_processlist))) {
+		pr_notice("copy monitor_binder_processlist from user Err!\n");
+		return -EPERM;
+	}
+
+	monitor_binder_process_count =
+		monitor_binder_processlist_buffer->monitor_process_count;
+	if (monitor_binder_process_count > MAX_MONITOR_PROCESS_NUM) {
+		pr_notice("Invalid monitor_binder_process_count!\n");
+		monitor_binder_process_count = MAX_MONITOR_PROCESS_NUM;
+		monitor_binder_processlist_buffer->monitor_process_count =
+							MAX_MONITOR_PROCESS_NUM;
+	}
+
+	mbraink_processname_to_pid(monitor_binder_process_count,
+				monitor_binder_processlist_buffer, 1);
+	return ret;
+}
+
+static long handle_trace_binder(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_binder_trace_data *binder_trace_buffer =
+		(struct mbraink_binder_trace_data *)(mbraink_data);
+	unsigned short tracing_idx = 0;
+	long ret = 0;
+
+	if (copy_from_user(binder_trace_buffer,
+			(struct mbraink_binder_trace_data *) arg,
+			sizeof(struct mbraink_binder_trace_data))) {
+		pr_notice("copy binder_trace_buffer data from user Err!\n");
+		return -EPERM;
+	}
+
+	if (binder_trace_buffer->tracing_idx > MAX_BINDER_TRACE_NUM) {
+		pr_notice("invalid binder tracing_idx %u !\n",
+			binder_trace_buffer->tracing_idx);
+		return -EINVAL;
+	}
+
+	tracing_idx = binder_trace_buffer->tracing_idx;
+
+	mbraink_get_binder_trace_info(tracing_idx, binder_trace_buffer);
+
+	if (copy_to_user((struct mbraink_binder_trace_data *) arg,
+			binder_trace_buffer, sizeof(struct mbraink_binder_trace_data))) {
+		pr_notice("%s: Copy binder_trace_buffer to UserSpace error!\n",
+			__func__);
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_vcore_voting_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_voting_struct_data *mbraink_vcorefs_src =
+		(struct mbraink_voting_struct_data *)(mbraink_data);
+	long ret = 0;
+
+	mbraink_power_get_voting_info(mbraink_vcorefs_src);
+
+	if (copy_to_user((struct mbraink_voting_struct_data *) arg,
+			mbraink_vcorefs_src, sizeof(struct mbraink_voting_struct_data))) {
+		pr_notice("%s: Copy mbraink_vcorefs_src to UserSpace error!\n",
+			__func__);
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_power_spm_l2_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_power_spm_l2_info *power_spm_l2_buffer =
+		(struct mbraink_power_spm_l2_info *)(mbraink_data);
+	long ret = 0;
+
+	if (copy_from_user(power_spm_l2_buffer,
+			(struct mbraink_power_spm_l2_info *) arg,
+			sizeof(struct mbraink_power_spm_l2_info))) {
+		pr_notice("Data write power_spm_l2_buffer from UserSpace Err!\n");
+		return -EPERM;
+	}
+	mbraink_power_get_spm_l2_info(power_spm_l2_buffer);
+	if (copy_to_user((struct mbraink_power_spm_l2_info *) arg,
+			power_spm_l2_buffer,
+			sizeof(struct mbraink_power_spm_l2_info))) {
+		pr_notice("Copy power_spm_l2_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_power_scp_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_power_scp_info *power_scp_buffer =
+		(struct mbraink_power_scp_info *)(mbraink_data);
+	long ret = 0;
+
+	memset(power_scp_buffer,
+		0,
+		sizeof(struct mbraink_power_scp_info));
+	mbraink_power_get_scp_info(power_scp_buffer);
+	if (copy_to_user((struct mbraink_power_scp_info *) arg,
+			power_scp_buffer,
+			sizeof(struct mbraink_power_scp_info))) {
+		pr_notice("Copy power_scp_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_power_spmi_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_spmi_struct_data *power_spmi_buffer =
+		(struct mbraink_spmi_struct_data *)(mbraink_data);
+	long ret = 0;
+
+	memset(power_spmi_buffer,
+		0,
+		sizeof(struct mbraink_spmi_struct_data));
+	ret = mbraink_power_get_spmi_info(power_spmi_buffer);
+	if (copy_to_user((struct mbraink_spmi_struct_data *) arg,
+			power_spmi_buffer,
+			sizeof(struct mbraink_spmi_struct_data))) {
+		pr_notice("Copy power_spmi_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_power_uvlo_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_uvlo_struct_data *power_uvlo_buffer =
+		(struct mbraink_uvlo_struct_data *)(mbraink_data);
+	long ret = 0;
+
+	memset(power_uvlo_buffer,
+		0,
+		sizeof(struct mbraink_uvlo_struct_data));
+	ret = mbraink_power_get_uvlo_info(power_uvlo_buffer);
+	if (copy_to_user((struct mbraink_uvlo_struct_data *) arg,
+			power_uvlo_buffer,
+			sizeof(struct mbraink_uvlo_struct_data))) {
+		pr_notice("Copy power_uvlo_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_gpu_opp_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_gpu_opp_info *gpu_opp_info_buffer =
+		(struct mbraink_gpu_opp_info *)(mbraink_data);
+	long ret = 0;
+
+	memset(gpu_opp_info_buffer,
+		0x00,
+		sizeof(struct mbraink_gpu_opp_info));
+	mbraink_gpu_getOppInfo(gpu_opp_info_buffer);
+	if (copy_to_user((struct mbraink_gpu_opp_info *) arg,
+			gpu_opp_info_buffer,
+			sizeof(struct mbraink_gpu_opp_info))) {
+		pr_notice("Copy gpu_opp_info_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_gpu_state_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_gpu_state_info *gpu_state_info_buffer =
+		(struct mbraink_gpu_state_info *)(mbraink_data);
+	long ret = 0;
+
+	memset(gpu_state_info_buffer,
+		0x00,
+		sizeof(struct mbraink_gpu_state_info));
+	mbraink_gpu_getStateInfo(gpu_state_info_buffer);
+	if (copy_to_user((struct mbraink_gpu_state_info *) arg,
+			gpu_state_info_buffer,
+			sizeof(struct mbraink_gpu_state_info))) {
+		pr_notice("Copy gpu_state_info_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_gpu_loading_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_gpu_loading_info *gpu_loading_info_buffer =
+		(struct mbraink_gpu_loading_info *)(mbraink_data);
+	long ret = 0;
+
+	memset(gpu_loading_info_buffer,
+		0x00,
+		sizeof(struct mbraink_gpu_loading_info));
+	mbraink_gpu_getLoadingInfo(gpu_loading_info_buffer);
+	if (copy_to_user((struct mbraink_gpu_loading_info *) arg,
+			gpu_loading_info_buffer,
+			sizeof(struct mbraink_gpu_loading_info))) {
+		pr_notice("Copy gpu_loading_info_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_power_mode_en(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_operation_mode_info *operation_mode =
+		(struct mbraink_operation_mode_info *)(mbraink_data);
+	long ret = 0;
+
+	memset(operation_mode,
+		0x00,
+		sizeof(struct mbraink_operation_mode_info));
+
+	if (copy_from_user(operation_mode,
+			(struct mbraink_operation_mode_info *) arg,
+			sizeof(struct mbraink_operation_mode_info))) {
+		pr_notice("Data write operation_mode from UserSpace Err!\n");
+		return -EPERM;
+	}
+
+	mbraink_gpu_setOpMode(operation_mode->opMode);
+	return ret;
+}
+
+static long handle_gnss_lp_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_gnss2mbr_lp_data *gnss_lp_buffer =
+		(struct mbraink_gnss2mbr_lp_data *)(mbraink_data);
+	long ret = 0;
+
+	memset(gnss_lp_buffer, 0, sizeof(struct mbraink_gnss2mbr_lp_data));
+
+	mbraink_get_gnss_lp_data(gnss_lp_buffer);
+	if (copy_to_user((struct mbraink_gnss2mbr_lp_data *) arg,
+			gnss_lp_buffer,
+			sizeof(struct mbraink_gnss2mbr_lp_data))) {
+		pr_notice("Copy gnss_lp_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_gnss_mcu_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_gnss2mbr_mcu_data *gnss_mcu_buffer =
+		(struct mbraink_gnss2mbr_mcu_data *)(mbraink_data);
+	long ret = 0;
+
+	memset(gnss_mcu_buffer, 0, sizeof(struct mbraink_gnss2mbr_mcu_data));
+
+	mbraink_get_gnss_mcu_data(gnss_mcu_buffer);
+	if (copy_to_user((struct mbraink_gnss2mbr_mcu_data *) arg,
+			gnss_mcu_buffer,
+			sizeof(struct mbraink_gnss2mbr_mcu_data))) {
+		pr_notice("Copy gnss_mcu_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_wifi_rate_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_wifi2mbr_lls_rate_data *wifi_rate_buf =
+		(struct mbraink_wifi2mbr_lls_rate_data *)(mbraink_data);
+	long ret = 0;
+
+	if (copy_from_user(wifi_rate_buf,
+			(struct mbraink_wifi2mbr_lls_rate_data *) arg,
+			sizeof(struct mbraink_wifi2mbr_lls_rate_data))) {
+		pr_notice("copy mbraink_wifi2mbr_lls_rate_data data from user Err!\n");
+		return -EPERM;
+	}
+
+	mbraink_get_wifi_rate_data(wifi_rate_buf->idx, wifi_rate_buf);
+	if (copy_to_user((struct mbraink_wifi2mbr_lls_rate_data *) arg,
+			wifi_rate_buf, sizeof(struct mbraink_wifi2mbr_lls_rate_data))) {
+		pr_notice("Copy wifi_rate_buf to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_wifi_radio_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_wifi2mbr_lls_radio_data *wifi_radio_buf =
+		(struct mbraink_wifi2mbr_lls_radio_data *)(mbraink_data);
+	long ret = 0;
+
+	mbraink_get_wifi_radio_data(wifi_radio_buf);
+	if (copy_to_user((struct mbraink_wifi2mbr_lls_radio_data *) arg,
+			wifi_radio_buf, sizeof(struct mbraink_wifi2mbr_lls_radio_data))) {
+		pr_notice("Copy wifi_radio_buf to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_wifi_ac_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_wifi2mbr_lls_ac_data *wifi_ac_buf =
+		(struct mbraink_wifi2mbr_lls_ac_data *)(mbraink_data);
+	long ret = 0;
+
+	mbraink_get_wifi_ac_data(wifi_ac_buf);
+	if (copy_to_user((struct mbraink_wifi2mbr_lls_ac_data *) arg,
+			wifi_ac_buf, sizeof(struct mbraink_wifi2mbr_lls_ac_data))) {
+		pr_notice("Copy wifi_ac_buf to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_wifi_lp_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_wifi2mbr_lp_ratio_data *wifi_lp_buf =
+		(struct mbraink_wifi2mbr_lp_ratio_data *)(mbraink_data);
+	long ret = 0;
+
+	mbraink_get_wifi_lp_data(wifi_lp_buf);
+	if (copy_to_user((struct mbraink_wifi2mbr_lp_ratio_data *) arg,
+			wifi_lp_buf, sizeof(struct mbraink_wifi2mbr_lp_ratio_data))) {
+		pr_notice("Copy wifi_lp_buf to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long mbraink_ioctl(struct file *filp,
+							unsigned int cmd,
+							unsigned long arg)
+{
+	long ret = 0;
+	void *mbraink_data = NULL;
+
 	switch (cmd) {
 	case RO_POWER:
 	{
-		n = mbraink_get_power_info(mbraink_priv.power_buffer, MAX_BUF_SZ, CURRENT_DATA);
-		if (n <= 0) {
-			pr_notice("mbraink_get_power_info return failed, err %d\n", n);
-		} else {
-			mutex_lock(&power_lock);
-
-			if (mbraink_priv.suspend_power_info_en[0] == '1') {
-				if (mbraink_priv.suspend_power_buffer[0] != '\0'
-				    && mbraink_priv.suspend_power_data_size != 0) {
-					memcpy(mbraink_priv.power_buffer+n,
-						mbraink_priv.suspend_power_buffer,
-						mbraink_priv.suspend_power_data_size+1);
-					n = n + mbraink_priv.suspend_power_data_size;
-				}
-				mbraink_priv.suspend_power_buffer[0] = '\0';
-				mbraink_priv.suspend_power_data_size = 0;
-
-				if (mbraink_priv.resume_power_buffer[0] != '\0'
-				    && mbraink_priv.resume_power_data_size != 0) {
-					memcpy(mbraink_priv.power_buffer+n,
-						mbraink_priv.resume_power_buffer,
-						mbraink_priv.resume_power_data_size+1);
-					n = n + mbraink_priv.resume_power_data_size;
-				}
-				mbraink_priv.resume_power_buffer[0] = '\0';
-				mbraink_priv.resume_power_data_size = 0;
-			}
-
-			if (copy_to_user((char *)arg, mbraink_priv.power_buffer, n+1)) {
-				pr_notice("Copy Power_info to UserSpace error!\n");
-				mutex_unlock(&power_lock);
-				return -EPERM;
-			}
-			mutex_unlock(&power_lock);
-		}
+		ret = handle_spmpower_info(arg);
 		break;
 	}
 	case RO_VIDEO:
 	{
-		char buffer[(MAX_BUF_SZ/8)];
+		mbraink_data = kmalloc(128 * sizeof(char), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_video_info(arg, mbraink_data);
+		kfree(mbraink_data);
 
-		n = mbraink_get_video_info(buffer);
-		if (n <= 0) {
-			pr_notice("mbraink_get_video_info return failed, err %d\n", n);
-		} else if (copy_to_user((char *)arg, buffer, sizeof(buffer))) {
-			pr_notice("Copy Video_info to UserSpace error!\n");
-			return -EPERM;
-		}
 		break;
 	}
 	case WO_SUSPEND_POWER_EN:
 	{
-		mutex_lock(&power_lock);
-		if (copy_from_user(mbraink_priv.suspend_power_info_en,
-					 (char *)arg,
-					 sizeof(mbraink_priv.suspend_power_info_en))) {
-			pr_notice("Data write suspend_power_en from UserSpace Err!\n");
-			mutex_unlock(&power_lock);
-			return -EPERM;
-		}
-		pr_info("[MBK_INFO] mbraink_priv.suspend_power_info_en = %c\n",
-				mbraink_priv.suspend_power_info_en[0]);
-		mutex_unlock(&power_lock);
+		ret = handle_supend_power_en(arg);
 		break;
 	}
 	case RO_PROCESS_STAT:
 	{
-		struct mbraink_process_stat_data process_stat_buffer;
-
-		pid_t pid = 1;
-
-		if (copy_from_user(&process_stat_buffer,
-					(struct mbraink_process_stat_data *)arg,
-					sizeof(process_stat_buffer))) {
-			pr_notice("copy process info from user Err!\n");
-			return -EPERM;
-		}
-
-		if (process_stat_buffer.pid > PID_MAX_DEFAULT) {
-			pr_notice("process state: Invalid pid %u\n",
-				process_stat_buffer.pid);
-			return -EINVAL;
-		}
-		pid = process_stat_buffer.pid;
-
-		mbraink_get_process_stat_info(pid, &process_stat_buffer);
-
-		if (copy_to_user((struct mbraink_process_stat_data *)arg,
-					&process_stat_buffer,
-					sizeof(process_stat_buffer))) {
-			pr_notice("Copy process_info to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_process_stat_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_process_stat(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_PROCESS_MEMORY:
 	{
-		struct mbraink_process_memory_data process_memory_buffer;
-
-		pid_t pid = 1;
-		unsigned int current_cnt = 0;
-
-		if (copy_from_user(&process_memory_buffer,
-					(struct mbraink_process_memory_data *)arg,
-					sizeof(process_memory_buffer))) {
-			pr_notice("copy process memory info from user Err!\n");
-			return -EPERM;
-		}
-
-		if (process_memory_buffer.pid > PID_MAX_DEFAULT ||
-			process_memory_buffer.pid_count > PID_MAX_DEFAULT) {
-			pr_notice("process memory: Invalid pid_idx %u or pid_count %u\n",
-				process_memory_buffer.pid, process_memory_buffer.pid_count);
-			return -EINVAL;
-		}
-		pid = process_memory_buffer.pid;
-		current_cnt = process_memory_buffer.current_cnt;
-
-		mbraink_get_process_memory_info(pid, current_cnt, &process_memory_buffer);
-
-		if (copy_to_user((struct mbraink_process_memory_data *)arg,
-					&process_memory_buffer,
-					sizeof(process_memory_buffer))) {
-			pr_notice("Copy process_memory_info to UserSpace error!\n");
-				return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_process_memory_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_process_memory(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case WO_MONITOR_PROCESS:
 	{
-		struct mbraink_monitor_processlist monitor_processlist_buffer;
-		unsigned short monitor_process_count = 0;
-
-		if (copy_from_user(&monitor_processlist_buffer,
-					(struct mbraink_monitor_processlist *)arg,
-					sizeof(monitor_processlist_buffer))) {
-			pr_notice("copy mbraink_monitor_processlist from user Err!\n");
-			return -EPERM;
-		}
-
-		if (monitor_processlist_buffer.monitor_process_count > MAX_MONITOR_PROCESS_NUM) {
-			pr_notice("Invalid monitor_process_count!\n");
-			monitor_processlist_buffer.monitor_process_count =
-							MAX_MONITOR_PROCESS_NUM;
-		}
-
-		monitor_process_count =
-			monitor_processlist_buffer.monitor_process_count;
-
-		mbraink_processname_to_pid(monitor_process_count,
-					&monitor_processlist_buffer, 0);
+		mbraink_data = kmalloc(sizeof(struct mbraink_monitor_processlist), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_process_monitor_list(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_THREAD_STAT:
 	{
-		struct mbraink_thread_stat_data thread_stat_buffer;
-
-		pid_t pid_idx = 0, tid = 0;
-
-		if (copy_from_user(&thread_stat_buffer,
-					(struct mbraink_thread_stat_data *)arg,
-					sizeof(thread_stat_buffer))) {
-			pr_notice("copy thread_stat_info data from user Err!\n");
-			return -EPERM;
-		}
-
-		if (thread_stat_buffer.pid_idx > PID_MAX_DEFAULT ||
-			thread_stat_buffer.tid > PID_MAX_DEFAULT) {
-			pr_notice("Invalid pid_idx %u or tid %u!\n",
-				thread_stat_buffer.pid_idx, thread_stat_buffer.tid);
-			return -EINVAL;
-		}
-		pid_idx = thread_stat_buffer.pid_idx;
-		tid = thread_stat_buffer.tid;
-
-		mbraink_get_thread_stat_info(pid_idx, tid, &thread_stat_buffer);
-
-		if (copy_to_user((struct mbraink_thread_stat_data *)arg,
-					&thread_stat_buffer,
-					sizeof(thread_stat_buffer))) {
-			pr_notice("Copy thread_stat_info to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_thread_stat_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_thread_stat(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_TRACE_PROCESS:
 	{
-		struct mbraink_tracing_pid_data tracing_pid_buffer;
-
-		unsigned short tracing_idx = 0;
-
-		if (copy_from_user(&tracing_pid_buffer,
-					(struct mbraink_tracing_pid_data *)arg,
-					sizeof(tracing_pid_buffer))) {
-			pr_notice("copy tracing_pid_buffer data from user Err!\n");
-			return -EPERM;
-		}
-
-		if (tracing_pid_buffer.tracing_idx > MAX_TRACE_NUM) {
-			pr_notice("invalid tracing_idx %u !\n",
-				tracing_pid_buffer.tracing_idx);
-			return -EINVAL;
-		}
-		tracing_idx = tracing_pid_buffer.tracing_idx;
-
-		mbraink_get_tracing_pid_info(tracing_idx, &tracing_pid_buffer);
-
-		if (copy_to_user((struct mbraink_tracing_pid_data *)arg,
-					&tracing_pid_buffer,
-					sizeof(tracing_pid_buffer))) {
-			pr_notice("Copy tracing_pid_buffer to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_tracing_pid_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_trace_process(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_CPUFREQ_NOTIFY:
 	{
-		struct mbraink_cpufreq_notify_struct_data *pcpufreq_notify_buffer;
-		unsigned short notify_cluster_idx = 0;
-		unsigned short notify_idx = 0;
-
-		pcpufreq_notify_buffer =
-			vmalloc(sizeof(struct mbraink_cpufreq_notify_struct_data));
-
-		if (pcpufreq_notify_buffer == NULL) {
-			pr_notice("Can't allocate cpufreq_notify_buffer!\n");
-			return -EPERM;
-		}
-
-		if (copy_from_user(pcpufreq_notify_buffer,
-					(struct mbraink_cpufreq_notify_struct_data *)arg,
-					sizeof(struct mbraink_cpufreq_notify_struct_data))) {
-			pr_notice("Copy cpufreq_notify_buffer from user Err!\n");
-			vfree(pcpufreq_notify_buffer);
-			return -EPERM;
-		}
-
-		if (pcpufreq_notify_buffer->notify_cluster_idx > CPU_CLUSTER_SZ ||
-			pcpufreq_notify_buffer->notify_idx > CPUFREQ_NOTIFY_SZ) {
-			pr_notice("invalid notify_cluster_idx %u or notify_idx %u !\n",
-				pcpufreq_notify_buffer->notify_cluster_idx,
-				pcpufreq_notify_buffer->notify_idx);
-			vfree(pcpufreq_notify_buffer);
-			return -EINVAL;
-		}
-		notify_cluster_idx = pcpufreq_notify_buffer->notify_cluster_idx;
-		notify_idx = pcpufreq_notify_buffer->notify_idx;
-		mbraink_get_cpufreq_notifier_info(notify_cluster_idx,
-									notify_idx,
-									pcpufreq_notify_buffer);
-		if (copy_to_user((struct mbraink_cpufreq_notify_struct_data *)arg,
-					pcpufreq_notify_buffer,
-					sizeof(struct mbraink_cpufreq_notify_struct_data))) {
-			pr_notice("Copy cpufreq_notify_buffer to UserSpace error!\n");
-			vfree(pcpufreq_notify_buffer);
-			return -EPERM;
-		}
-		vfree(pcpufreq_notify_buffer);
+		mbraink_data = kmalloc(sizeof(struct mbraink_cpufreq_notify_struct_data),
+					GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_cpufreq_notify(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 
 	case RO_MEMORY_DDR_INFO:
 	{
-		ret = handleMemoryDdrInfo(arg);
+		mbraink_data = kmalloc(sizeof(struct mbraink_memory_ddrInfo), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handleMemoryDdrInfo(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 
 	case RO_IDLE_RATIO:
 	{
-		ret = handleIdleRatioInfo(arg);
+		mbraink_data = kmalloc(sizeof(struct mbraink_audio_idleRatioInfo), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handleIdleRatioInfo(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 
 	case RO_VCORE_INFO:
 	{
-		ret = handleVcoreInfo(arg);
+		mbraink_data = kmalloc(sizeof(struct mbraink_power_vcoreInfo), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handleVcoreInfo(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 
 	case RO_BATTERY_INFO:
 	{
-		struct mbraink_battery_data battery_buffer;
-
-		memset(&battery_buffer,
-				0,
-				sizeof(struct mbraink_battery_data));
-		mbraink_get_battery_info(&battery_buffer, 0);
-		if (copy_to_user((struct mbraink_battery_data *) arg,
-					&battery_buffer,
-					sizeof(battery_buffer))) {
-			pr_notice("Copy battery_buffer to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_battery_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_battery_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case WO_FEATURE_EN:
 	{
-		ret = handleFeatureEn(arg);
+		mbraink_data = kmalloc(sizeof(struct mbraink_feature_en), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handleFeatureEn(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_WAKEUP_INFO:
 	{
-		struct mbraink_power_wakeup_data power_wakeup_data;
-
-		if (copy_from_user(&power_wakeup_data,
-					(struct mbraink_power_wakeup_data *) arg,
-					sizeof(power_wakeup_data))) {
-			pr_notice("Data write power_wakeup_data from UserSpace Err!\n");
-			return -EPERM;
-		}
-		mbraink_get_power_wakeup_info(&power_wakeup_data);
-		if (copy_to_user((struct mbraink_power_wakeup_data *) arg,
-					&power_wakeup_data,
-					sizeof(power_wakeup_data))) {
-			pr_notice("Copy power_wakeup_data to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_power_wakeup_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_wakeup_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case WO_PMU_EN:
 	{
-		ret = handlePmuEn(arg);
+		mbraink_data = kmalloc(sizeof(struct mbraink_pmu_en), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handlePmuEn(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_PMU_INFO:
 	{
-		ret = handlePmuInfo(arg);
+		mbraink_data = kmalloc(sizeof(struct mbraink_pmu_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handlePmuInfo(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_POWER_SPM_RAW:
 	{
-		struct mbraink_power_spm_raw power_spm_buffer;
-
-		if (copy_from_user(&power_spm_buffer,
-					(struct mbraink_power_spm_raw *) arg,
-					sizeof(power_spm_buffer))) {
-			pr_notice("Data write power_spm_buffer from UserSpace Err!\n");
-			return -EPERM;
-		}
-		mbraink_power_get_spm_info(&power_spm_buffer);
-		if (copy_to_user((struct mbraink_power_spm_raw *) arg,
-					&power_spm_buffer,
-					sizeof(power_spm_buffer))) {
-			pr_notice("Copy power_spm_buffer to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_power_spm_raw), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_power_spm_raw(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_MODEM_INFO:
 	{
-		struct mbraink_modem_raw modem_buffer;
-
-		if (copy_from_user(&modem_buffer,
-					(struct mbraink_modem_raw *) arg,
-					sizeof(modem_buffer))) {
-			pr_notice("Data write modem_buffer from UserSpace Err!\n");
-			return -EPERM;
-		}
-		mbraink_power_get_modem_info(&modem_buffer);
-
-		if (copy_to_user((struct mbraink_modem_raw *) arg,
-					&modem_buffer,
-					sizeof(modem_buffer))) {
-			pr_notice("Copy modem_buffer to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_modem_raw), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_modem_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_MEMORY_MDV_INFO:
 	{
-		ret = handleMdvInfo(arg);
+		mbraink_data = kmalloc(sizeof(struct mbraink_memory_mdvInfo), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handleMdvInfo(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case WO_MONITOR_BINDER_PROCESS:
 	{
-		struct mbraink_monitor_processlist monitor_binder_processlist_buffer;
-		unsigned short monitor_binder_process_count = 0;
-
-		if (copy_from_user(&monitor_binder_processlist_buffer,
-				(struct mbraink_monitor_processlist *) arg,
-				sizeof(monitor_binder_processlist_buffer))) {
-			pr_notice("copy monitor_binder_processlist from user Err!\n");
-			return -EPERM;
-		}
-
-		monitor_binder_process_count =
-			monitor_binder_processlist_buffer.monitor_process_count;
-		if (monitor_binder_process_count > MAX_MONITOR_PROCESS_NUM) {
-			pr_notice("Invalid monitor_binder_process_count!\n");
-			monitor_binder_process_count = MAX_MONITOR_PROCESS_NUM;
-			monitor_binder_processlist_buffer.monitor_process_count =
-								MAX_MONITOR_PROCESS_NUM;
-		}
-
-		mbraink_processname_to_pid(monitor_binder_process_count,
-					&monitor_binder_processlist_buffer, 1);
+		mbraink_data = kmalloc(sizeof(struct mbraink_monitor_processlist), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_monitor_binder_process(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_TRACE_BINDER:
 	{
-		struct mbraink_binder_trace_data binder_trace_buffer;
-		unsigned short tracing_idx = 0;
-
-		if (copy_from_user(&binder_trace_buffer,
-			(struct mbraink_binder_trace_data *) arg,
-			sizeof(binder_trace_buffer))) {
-			pr_notice("copy binder_trace_buffer data from user Err!\n");
-			return -EPERM;
-		}
-
-		if (binder_trace_buffer.tracing_idx > MAX_BINDER_TRACE_NUM) {
-			pr_notice("invalid binder tracing_idx %u !\n",
-				binder_trace_buffer.tracing_idx);
-			return -EINVAL;
-		}
-
-		tracing_idx = binder_trace_buffer.tracing_idx;
-
-		mbraink_get_binder_trace_info(tracing_idx, &binder_trace_buffer);
-
-		if (copy_to_user((struct mbraink_binder_trace_data *) arg,
-				&binder_trace_buffer, sizeof(binder_trace_buffer))) {
-			pr_notice("%s: Copy binder_trace_buffer to UserSpace error!\n",
-				__func__);
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_binder_trace_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_trace_binder(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_VCORE_VOTE:
 	{
-		struct mbraink_voting_struct_data mbraink_vcorefs_src;
-
-		mbraink_power_get_voting_info(&mbraink_vcorefs_src);
-
-		if (copy_to_user((struct mbraink_voting_struct_data *) arg,
-				&mbraink_vcorefs_src, sizeof(mbraink_vcorefs_src))) {
-			pr_notice("%s: Copy mbraink_vcorefs_src to UserSpace error!\n",
-				__func__);
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_voting_struct_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_vcore_voting_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_POWER_SPM_L2_INFO:
 	{
-		struct mbraink_power_spm_l2_info power_spm_l2_buffer;
-
-		if (copy_from_user(&power_spm_l2_buffer,
-					(struct mbraink_power_spm_l2_info *) arg,
-					sizeof(power_spm_l2_buffer))) {
-			pr_notice("Data write power_spm_l2_buffer from UserSpace Err!\n");
-			return -EPERM;
-		}
-		mbraink_power_get_spm_l2_info(&power_spm_l2_buffer);
-		if (copy_to_user((struct mbraink_power_spm_l2_info *) arg,
-					&power_spm_l2_buffer,
-					sizeof(power_spm_l2_buffer))) {
-			pr_notice("Copy power_spm_l2_buffer to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_power_spm_l2_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_power_spm_l2_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_POWER_SCP_INFO:
 	{
-		struct mbraink_power_scp_info power_scp_buffer;
-
-		memset(&power_scp_buffer,
-				0,
-				sizeof(struct mbraink_power_scp_info));
-		mbraink_power_get_scp_info(&power_scp_buffer);
-		if (copy_to_user((struct mbraink_power_scp_info *) arg,
-					&power_scp_buffer,
-					sizeof(power_scp_buffer))) {
-			pr_notice("Copy power_scp_buffer to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_power_scp_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_power_scp_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_POWER_SPMI_INFO:
 	{
-		struct mbraink_spmi_struct_data power_spmi_buffer;
-
-		memset(&power_spmi_buffer,
-				0,
-				sizeof(struct mbraink_spmi_struct_data));
-		ret = mbraink_power_get_spmi_info(&power_spmi_buffer);
-		if (copy_to_user((struct mbraink_spmi_struct_data *) arg,
-					&power_spmi_buffer,
-					sizeof(power_spmi_buffer))) {
-			pr_notice("Copy power_spmi_buffer to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_spmi_struct_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_power_spmi_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_POWER_UVLO_INFO:
 	{
-		struct mbraink_uvlo_struct_data power_uvlo_buffer;
-
-		memset(&power_uvlo_buffer,
-				0,
-				sizeof(struct mbraink_uvlo_struct_data));
-		ret = mbraink_power_get_uvlo_info(&power_uvlo_buffer);
-		if (copy_to_user((struct mbraink_uvlo_struct_data *) arg,
-					&power_uvlo_buffer,
-					sizeof(power_uvlo_buffer))) {
-			pr_notice("Copy power_uvlo_buffer to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_uvlo_struct_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_power_uvlo_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_GPU_OPP_INFO:
 	{
-		struct mbraink_gpu_opp_info gpu_opp_info_buffer;
-
-		memset(&gpu_opp_info_buffer,
-				0x00,
-				sizeof(gpu_opp_info_buffer));
-		mbraink_gpu_getOppInfo(&gpu_opp_info_buffer);
-		if (copy_to_user((struct mbraink_gpu_opp_info *) arg,
-					&gpu_opp_info_buffer,
-					sizeof(gpu_opp_info_buffer))) {
-			pr_notice("Copy gpu_opp_info_buffer to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_gpu_opp_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_gpu_opp_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_GPU_STATE_INFO:
 	{
-		struct mbraink_gpu_state_info gpu_state_info_buffer;
-
-		memset(&gpu_state_info_buffer,
-				0x00,
-				sizeof(gpu_state_info_buffer));
-		mbraink_gpu_getStateInfo(&gpu_state_info_buffer);
-		if (copy_to_user((struct mbraink_gpu_state_info *) arg,
-					&gpu_state_info_buffer,
-					sizeof(gpu_state_info_buffer))) {
-			pr_notice("Copy gpu_state_info_buffer to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_gpu_state_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_gpu_state_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_GPU_LOADING_INFO:
 	{
-		struct mbraink_gpu_loading_info gpu_loading_info_buffer;
-
-		memset(&gpu_loading_info_buffer,
-				0x00,
-				sizeof(gpu_loading_info_buffer));
-		mbraink_gpu_getLoadingInfo(&gpu_loading_info_buffer);
-		if (copy_to_user((struct mbraink_gpu_loading_info *) arg,
-					&gpu_loading_info_buffer,
-					sizeof(gpu_loading_info_buffer))) {
-			pr_notice("Copy gpu_loading_info_buffer to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_gpu_loading_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_gpu_loading_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_PMIC_VOLTAGE_INFO:
 	{
-		ret = handlePmicVoltageInfo(arg);
+		mbraink_data = kmalloc(sizeof(struct mbraink_pmic_voltage_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handlePmicVoltageInfo(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case WO_OPERATION_MODE_INFO:
 	{
-		struct mbraink_operation_mode_info operation_mode;
-
-		memset(&operation_mode,
-				0x00,
-				sizeof(operation_mode));
-
-		if (copy_from_user(&operation_mode,
-					(struct mbraink_operation_mode_info *) arg,
-					sizeof(operation_mode))) {
-			pr_notice("Data write operation_mode from UserSpace Err!\n");
-			return -EPERM;
-		}
-
-		mbraink_gpu_setOpMode(operation_mode.opMode);
+		mbraink_data = kmalloc(sizeof(struct mbraink_operation_mode_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_power_mode_en(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_GNSS_LP:
 	{
-		struct mbraink_gnss2mbr_lp_data gnss_lp_buffer;
-
-		memset(&gnss_lp_buffer, 0, sizeof(struct mbraink_gnss2mbr_lp_data));
-
-		mbraink_get_gnss_lp_data(&gnss_lp_buffer);
-		if (copy_to_user((struct mbraink_gnss2mbr_lp_data *) arg,
-					&gnss_lp_buffer,
-					sizeof(gnss_lp_buffer))) {
-			pr_notice("Copy gnss_lp_buffer to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_gnss2mbr_lp_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_gnss_lp_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_GNSS_MCU:
 	{
-		struct mbraink_gnss2mbr_mcu_data gnss_mcu_buffer;
-
-		memset(&gnss_mcu_buffer, 0, sizeof(struct mbraink_gnss2mbr_mcu_data));
-
-		mbraink_get_gnss_mcu_data(&gnss_mcu_buffer);
-		if (copy_to_user((struct mbraink_gnss2mbr_mcu_data *) arg,
-					&gnss_mcu_buffer,
-					sizeof(gnss_mcu_buffer))) {
-			pr_notice("Copy gnss_mcu_buffer to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_gnss2mbr_mcu_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_gnss_mcu_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_MMDVFS_INFO:
 	{
-		ret = handleMmdvfsInfo(arg);
+		mbraink_data = kmalloc(sizeof(struct mbraink_mmdvfs_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handleMmdvfsInfo(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_WIFI_RATE_INFO:
 	{
-		struct mbraink_wifi2mbr_lls_rate_data wifi_rate_buf;
-
-		if (copy_from_user(&wifi_rate_buf,
-			(struct mbraink_wifi2mbr_lls_rate_data *) arg,
-			sizeof(struct mbraink_wifi2mbr_lls_rate_data))) {
-			pr_notice("copy mbraink_wifi2mbr_lls_rate_data data from user Err!\n");
-			return -EPERM;
-		}
-
-		mbraink_get_wifi_rate_data(wifi_rate_buf.idx, &wifi_rate_buf);
-		if (copy_to_user((struct mbraink_wifi2mbr_lls_rate_data *) arg,
-			&wifi_rate_buf, sizeof(wifi_rate_buf))) {
-			pr_notice("Copy wifi_rate_buf to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_wifi2mbr_lls_rate_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_wifi_rate_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_WIFI_RADIO_INFO:
 	{
-		struct mbraink_wifi2mbr_lls_radio_data wifi_radio_buf;
-
-		mbraink_get_wifi_radio_data(&wifi_radio_buf);
-		if (copy_to_user((struct mbraink_wifi2mbr_lls_radio_data *) arg,
-			&wifi_radio_buf, sizeof(wifi_radio_buf))) {
-			pr_notice("Copy wifi_radio_buf to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_wifi2mbr_lls_radio_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_wifi_radio_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_WIFI_AC_INFO:
 	{
-		struct mbraink_wifi2mbr_lls_ac_data wifi_ac_buf;
-
-		mbraink_get_wifi_ac_data(&wifi_ac_buf);
-		if (copy_to_user((struct mbraink_wifi2mbr_lls_ac_data *) arg,
-			&wifi_ac_buf, sizeof(wifi_ac_buf))) {
-			pr_notice("Copy wifi_ac_buf to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_wifi2mbr_lls_ac_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_wifi_ac_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	case RO_WIFI_LP_INFO:
 	{
-		struct mbraink_wifi2mbr_lp_ratio_data wifi_lp_buf;
-
-		mbraink_get_wifi_lp_data(&wifi_lp_buf);
-		if (copy_to_user((struct mbraink_wifi2mbr_lp_ratio_data *) arg,
-			&wifi_lp_buf, sizeof(wifi_lp_buf))) {
-			pr_notice("Copy wifi_lp_buf to UserSpace error!\n");
-			return -EPERM;
-		}
+		mbraink_data = kmalloc(sizeof(struct mbraink_wifi2mbr_lp_ratio_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_wifi_lp_info(arg, mbraink_data);
+		kfree(mbraink_data);
 		break;
 	}
 	default:
-		pr_notice("illegal ioctl number %u.\n", cmd);
+		pr_notice("%s:illegal ioctl number %u.\n", __func__, cmd);
 		return -EINVAL;
 	}
 
 	return ret;
+End:
+	pr_info("%s: kmalloc failed\n", __func__);
+	return -ENOMEM;
 }
 
 #if IS_ENABLED(CONFIG_COMPAT)
