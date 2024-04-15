@@ -18509,7 +18509,6 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	mtk_crtc->is_dual_pipe = false;
 	mtk_crtc->is_force_mml_scen = mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_PQ);
 	mtk_crtc->mml_prefer_dc = !mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_IR);
-	mtk_crtc->mml_decouple2 = mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_DECOUPLE2);
 	mtk_crtc->slbc_state = SLBC_UNREGISTER;
 	mtk_crtc->mml_ir_sram.data.type = TP_BUFFER;
 	mtk_crtc->mml_ir_sram.data.uid = UID_DISP;

@@ -140,6 +140,10 @@ struct lcm_fps_ctx_t lcm_fps_ctx[MAX_CRTC];
 static int manual_shift;
 static bool no_shift;
 
+static int mml_hw_caps;
+static int mml_mode_caps;
+
+
 #ifdef DRM_OVL_SELF_PATTERN
 struct drm_crtc *test_crtc;
 void *test_va;
@@ -6166,6 +6170,7 @@ static const struct mtk_mmsys_driver_data mt6991_mmsys_driver_data = {
 	.respective_ostdl = true,
 	.ovl_exdma_rule = true,
 	.real_srt_ostdl = true,
+	.skip_trans = true,
 };
 
 static const struct mtk_mmsys_driver_data mt6897_mmsys_driver_data = {
@@ -8600,6 +8605,22 @@ int mtk_drm_fm_lcm_auto_test(struct drm_device *dev, void *data,
 }
 #endif
 
+int mtk_drm_get_mml_mode_caps(void)
+{
+	return mml_mode_caps;
+}
+int mtk_drm_get_mml_hw_caps(void)
+{
+	return mml_hw_caps;
+}
+
+void mtk_drm_set_mml_caps(int hw_caps, int mode_caps)
+{
+	mml_hw_caps = hw_caps;
+	mml_mode_caps = mode_caps;
+	DDPMSG("%s,hw:0x%x,mode:0x%x", __func__, mml_hw_caps, mml_mode_caps);
+}
+
 static int mtk_drm_mml_ctrl_caps(struct mtk_drm_mml_caps_info *mml_caps, struct drm_device *dev)
 {
 	struct mtk_drm_private *priv = dev->dev_private;
@@ -8644,6 +8665,8 @@ static int mtk_drm_mml_ctrl_caps(struct mtk_drm_mml_caps_info *mml_caps, struct 
 		mml_caps->mode_caps |= MTK_MML_DISP_DECOUPLE2_LAYER;
 	if (mode_caps & BIT(MML_MODE_MDP_DECOUPLE))
 		mml_caps->mode_caps |= MTK_MML_DISP_MDP_LAYER;
+
+	mtk_drm_set_mml_caps(mml_caps->hw_caps, mml_caps->mode_caps);
 
 	return 0;
 }

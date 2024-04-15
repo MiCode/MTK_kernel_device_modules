@@ -46,6 +46,8 @@
 int skip_mdp;
 module_param(skip_mdp, int, 0644);
 
+int bypass_skip_trans;
+module_param(bypass_skip_trans, int, 0644);
 
 extern unsigned int g_mml_mode;
 
@@ -3218,6 +3220,9 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_drm_private *priv = drm_dev->dev_private;
 	int fun_lye = 0;
+	int mml_decouple2 = 0;
+
+	mml_decouple2 = (mtk_drm_get_mml_mode_caps() & MTK_MML_DISP_DECOUPLE2_LAYER?1:0);
 
 	if (get_layering_opt(LYE_OPT_SPHRT))
 		idx = 0;
@@ -3372,7 +3377,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 
 		if (mtk_has_layer_cap(layer_info, MTK_MML_DISP_MDP_LAYER)) {
 			layer_info->layer_caps &= ~MTK_MML_DISP_MDP_LAYER;
-			layer_info->layer_caps |= query_transition_mode(mtk_crtc->mml_decouple2);
+			layer_info->layer_caps |= query_transition_mode(mml_decouple2);
 		}
 
 		if (mtk_has_layer_cap(layer_info, MTK_MML_DISP_DIRECT_DECOUPLE_LAYER) &&
@@ -4190,6 +4195,37 @@ static void resizing_rule(struct drm_device *dev,
 	mtk_rollback_all_resize_layer_to_GPU(disp_info, HRT_PRIMARY);
 }
 
+static enum MTK_LAYERING_CAPS mml_mode_mapping(enum mml_mode mode)
+{
+	enum MTK_LAYERING_CAPS ret = MTK_MML_DISP_NOT_SUPPORT;
+
+	switch (mode) {
+	case MML_MODE_NOT_SUPPORT:
+			ret = MTK_MML_DISP_NOT_SUPPORT;
+		break;
+	case MML_MODE_DIRECT_LINK:
+			ret = MTK_MML_DISP_DIRECT_LINK_LAYER;
+		break;
+	case MML_MODE_RACING:
+			ret = MTK_MML_DISP_DIRECT_DECOUPLE_LAYER;
+		break;
+	case MML_MODE_MML_DECOUPLE:
+			ret = MTK_MML_DISP_DECOUPLE_LAYER;
+		break;
+	case MML_MODE_MDP_DECOUPLE:
+			ret = MTK_MML_DISP_MDP_LAYER;
+		break;
+	case MML_MODE_MML_DECOUPLE2:
+			ret = MTK_MML_DISP_DECOUPLE2_LAYER;
+		break;
+	case MML_MODE_UNKNOWN:
+	default:
+			ret = MTK_MML_DISP_NOT_SUPPORT;
+		break;
+	}
+	return ret;
+}
+
 static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc *crtc,
 					struct mml_frame_info *mml_info, const u32 line_time_ns,
 					enum mml_mode query_mode)
@@ -4200,6 +4236,9 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 	struct mtk_drm_private *priv = NULL;
 	struct drm_crtc *crtcx = NULL;
 	struct mml_drm_ctx *mml_ctx = NULL;
+	int mml_decouple2 = 0;
+
+	mml_decouple2 = (mtk_drm_get_mml_mode_caps() & MTK_MML_DISP_DECOUPLE2_LAYER?1:0);
 
 	if (!dev || !crtc) {
 		DDPMSG("%s !dev, !crtc\n", __func__);
@@ -4221,7 +4260,7 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 
 	if (unlikely(g_mml_mode != MML_MODE_UNKNOWN)) {
 		mode = g_mml_mode;
-		goto mode_mapping;
+		return mml_mode_mapping(mode);
 	}
 
 	mml_info->act_time = mml_info->dest[0].compose.height * line_time_ns;
@@ -4241,7 +4280,7 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 		DDPDBG("%s,%d, mode:%d\n", __func__, __LINE__, mml_info->mode);
 	}
 
-	if (mtk_crtc->mml_decouple2) {
+	if (mml_decouple2) {
 		mml_info->mode = query_mode;
 		DDPDBG("%s,%d, mode:%d\n", __func__, __LINE__, mml_info->mode);
 	}
@@ -4260,31 +4299,7 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 	} else
 		return ret;
 
-mode_mapping:
-	switch (mode) {
-	case MML_MODE_NOT_SUPPORT:
-		ret = MTK_MML_DISP_NOT_SUPPORT;
-		break;
-	case MML_MODE_DIRECT_LINK:
-		ret = MTK_MML_DISP_DIRECT_LINK_LAYER;
-		break;
-	case MML_MODE_RACING:
-		ret = MTK_MML_DISP_DIRECT_DECOUPLE_LAYER;
-		break;
-	case MML_MODE_MML_DECOUPLE:
-		ret = MTK_MML_DISP_DECOUPLE_LAYER;
-		break;
-	case MML_MODE_MDP_DECOUPLE:
-		ret = MTK_MML_DISP_MDP_LAYER;
-		break;
-	case MML_MODE_MML_DECOUPLE2:
-		ret = MTK_MML_DISP_DECOUPLE2_LAYER;
-		break;
-	case MML_MODE_UNKNOWN:
-	default:
-		ret = MTK_MML_DISP_NOT_SUPPORT;
-		break;
-	}
+	ret = mml_mode_mapping(mode);
 
 	return ret;
 }
@@ -4296,17 +4311,28 @@ static void check_is_mml_layer(const int disp_idx,
 	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct drm_mtk_layer_config *c = NULL;
-	int i = 0;
+	int i = 0, j = 0;
 	enum MTK_LAYERING_CAPS mml_capacity = DISP_MML_CAPS_MASK;
 	struct mtk_drm_private *priv = NULL;
 	struct mml_frame_info *mml_info = NULL;
+	struct mml_frame_info *multi_mml_info[disp_info->layer_num[disp_idx]];
+	struct mml_drm_ctx *mml_ctx = NULL;
 	struct mtk_ddp_comp *output_comp = NULL;
 	u32 ns = 0;
 	u32 mml_ovl_layers = 0;
 	u8 down_scale_cnt = 0;
 	bool mml_dc_layers = false;
+	u8 mml_cnt = 0;
 	enum mml_mode query_mode = MML_MODE_UNKNOWN;
 	int bk_mml_dl_idx = disp_info->layer_num[disp_idx];
+	struct mtk_panel_params *panel_ext = NULL;
+	unsigned int real_te_duration = 0;
+	unsigned int duration = 0;
+	int mml_multi_layer = 0;
+	int mml_decouple2 = 0;
+
+	mml_decouple2 = (mtk_drm_get_mml_mode_caps() & MTK_MML_DISP_DECOUPLE2_LAYER?1:0);
+	mml_multi_layer =  (mtk_drm_get_mml_hw_caps() & MML_HW_MULTI_LAYER?1:0);
 
 	if (!dev || !disp_info)
 		return;
@@ -4325,9 +4351,27 @@ static void check_is_mml_layer(const int disp_idx,
 	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
 		c = &disp_info->input_config[disp_idx][i];
 		if (MTK_MML_OVL_LAYER & c->layer_caps) {
-			if (i < 32)
+			if (i < 32) {
 				mml_ovl_layers |= (1 << i);
-			else{
+				if (mml_multi_layer) {
+					mml_cnt = hweight32(mml_ovl_layers);
+					int idx = mml_cnt - 1;
+
+					multi_mml_info[idx] = &(disp_info->mml_cfg[disp_idx][i]);
+					if (!output_comp) {
+						/* Check line time and slbc state once per HRT */
+						mutex_lock(&priv->commit.lock);
+						output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+						if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI))
+							mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_LINE_TIME_NS, &ns);
+
+						mutex_unlock(&priv->commit.lock);
+					}
+
+					multi_mml_info[idx]->act_time =
+						multi_mml_info[idx]->dest[0].compose.height * ns;
+				}
+			} else {
 				DDPMSG("disp can't handle layer_idx%d as mml layer\n", i);
 				c->layer_caps &= ~MTK_MML_OVL_LAYER;
 				return;
@@ -4336,12 +4380,21 @@ static void check_is_mml_layer(const int disp_idx,
 				down_scale_cnt++;
 
 			if (disp_info->disp_idx != 0)
-				c->layer_caps = query_transition_mode(mtk_crtc->mml_decouple2);
+				c->layer_caps = query_transition_mode(mml_decouple2);
 		}
 	}
 
 	if (disp_info->disp_idx != 0)
 		return;
+
+	if (priv->data->skip_trans && !bypass_skip_trans) {
+		duration = 1000000 / drm_mode_vrefresh(&crtc->state->adjusted_mode);
+		panel_ext = mtk_drm_get_lcm_ext_params(crtc);
+		if (panel_ext && panel_ext->real_te_duration)
+			real_te_duration = panel_ext->real_te_duration;
+
+		DDPDBG("%s,duartion:%d,real_te:%d\n", __func__, duration, real_te_duration);
+	}
 
 	if ((down_scale_cnt > 1) && !(mtk_crtc->is_mml_dl ||
 			mtk_crtc->is_mml || l_rule_info->bk_mml_dl_lye)) {
@@ -4354,9 +4407,14 @@ static void check_is_mml_layer(const int disp_idx,
 			c = &disp_info->input_config[disp_idx][i];
 			c->layer_caps |= dc_cap;
 			DDPINFO("MML down scale layer(%d) caps(%u)\n", i, dc_cap);
-			dc_cap = query_transition_mode(mtk_crtc->mml_decouple2);
+			dc_cap = query_transition_mode(mml_decouple2);
 		}
 		return;
+	}
+
+	if ((mml_multi_layer) && (mml_cnt > 0)) {
+		mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
+		mml_drm_query_multi_layer(mml_ctx, multi_mml_info[0], mml_cnt, duration);
 	}
 
 	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
@@ -4373,7 +4431,7 @@ static void check_is_mml_layer(const int disp_idx,
 		if (!mml_info)
 			continue;
 
-		if (!output_comp) {
+		if (!output_comp && !mml_multi_layer) {
 			/* Check line time and slbc state once per HRT */
 			mutex_lock(&priv->commit.lock);
 			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
@@ -4389,14 +4447,22 @@ static void check_is_mml_layer(const int disp_idx,
 			mutex_unlock(&priv->commit.lock);
 		}
 
-		if (mtk_crtc->mml_decouple2) {
+		if (mml_decouple2) {
 			if (mml_capacity & MTK_MML_DISP_DIRECT_LINK_LAYER)
 				query_mode = MML_MODE_UNKNOWN;
 			else
 				query_mode = MML_MODE_MML_DECOUPLE2;
 		}
 
-		c->layer_caps |= query_MML(dev, crtc, mml_info, ns, query_mode);
+		if (mml_multi_layer) {
+			if (j < mml_cnt) {
+				DDPINFO("L%d,m:%d\n", i, multi_mml_info[j]->mode);
+				c->layer_caps |= mml_mode_mapping(multi_mml_info[j]->mode);
+				j ++;
+			} else
+				c->layer_caps |= MTK_MML_DISP_NOT_SUPPORT;
+		} else
+			c->layer_caps |= query_MML(dev, crtc, mml_info, ns, query_mode);
 
 		if (MML_FMT_IS_YUV(disp_info->mml_cfg[disp_idx][i].src.format))
 			c->layer_caps |= MTK_DISP_SRC_YUV_LAYER;
@@ -4411,7 +4477,7 @@ static void check_is_mml_layer(const int disp_idx,
 			}
 		}
 
-		if (!mtk_crtc->mml_decouple2) {
+		if (!mml_decouple2) {
 			/* If more than 1 MML layer, support only IR+GPU, DC+MDP */
 			if (mtk_has_layer_cap(c, DISP_MML_CAPS_MASK)) {
 				if (mml_capacity & c->layer_caps) {
@@ -4431,8 +4497,7 @@ static void check_is_mml_layer(const int disp_idx,
 					    (mml_capacity ? mml_capacity : MTK_MML_DISP_NOT_SUPPORT);
 				}
 			}
-		} else {
-			// dl dc2 / dc dc2 dc2
+		} else if (!mml_multi_layer) {
 			if (mtk_has_layer_cap(c, DISP_MML_CAPS_MASK)) {
 				if (mml_capacity & c->layer_caps) {
 					if (mtk_has_layer_cap(c, MTK_MML_DISP_DIRECT_LINK_LAYER))
@@ -4458,8 +4523,14 @@ static void check_is_mml_layer(const int disp_idx,
 		    (kref_read(&mtk_crtc->mml_ir_sram.ref) ||
 		     (mtk_crtc->mml_link_state == MML_IR_IDLE) ||
 		     mtk_crtc->is_mml_dl || l_rule_info->bk_mml_dl_lye)) {
+
+			if (!bypass_skip_trans && (real_te_duration > duration)) {
+				DDPMSG("skip trans %d->%d\n", real_te_duration, duration);
+				continue;
+			}
+
 			c->layer_caps &= ~MTK_MML_DISP_DECOUPLE_LAYER;
-			c->layer_caps |= query_transition_mode(mtk_crtc->mml_decouple2);
+			c->layer_caps |= query_transition_mode(mml_decouple2);
 			disp_info->disp_caps[disp_idx] |= MTK_NEED_REPAINT;
 			DDPINFO("Use 0x%x for %s-DC transition\n", c->layer_caps,
 				mtk_crtc->is_mml_dl ? "DL" : "IR");
