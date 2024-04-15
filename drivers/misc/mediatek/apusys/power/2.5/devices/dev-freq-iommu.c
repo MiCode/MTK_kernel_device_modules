@@ -93,7 +93,7 @@ static int iommu_devfreq_curFreq(struct device *dev, unsigned long *freq)
 	}
 
 	if (!*freq)
-		advfs_err(dev, "[%s] fail, return %luMHz", __func__, TOMHZ(*freq));
+		advfs_warn(dev, "[%s] fail, return %luMHz", __func__, TOMHZ(*freq));
 	return 0;
 }
 
@@ -264,8 +264,15 @@ static const struct apu_plat_data mt688x_iommu_data = {
 	.plat_ops_name = "mt68xx_platops",
 };
 
+static const struct apu_plat_data mt6877_iommu_data = {
+	.user = APUIOMMU,
+	.clkgp_name = "mt6877_iommu",
+	.plat_ops_name = "mt68xx_platops",
+};
+
 static const struct of_device_id iommu_devfreq_of_match[] = {
 	{ .compatible = "mtk688x,apuiommu", .data = &mt688x_iommu_data},
+	{ .compatible = "mtk6877,apuiommu", .data = &mt6877_iommu_data},
 	{ },
 };
 

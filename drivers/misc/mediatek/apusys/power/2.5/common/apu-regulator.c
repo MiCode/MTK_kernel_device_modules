@@ -564,6 +564,7 @@ static const struct apu_regulator_array apu_rgul_gps[] = {
 	{ .name = "mt688x_conn", .argul_gp = &mt688x_conn_rgul_gp },
 	{ .name = "mt6873_mdla", .argul_gp = &mt6873_mdla_rgul_gp },
 	{ .name = "mt688x_mdla", .argul_gp = &mt688x_mdla_rgul_gp },
+	{ .name = "mt6877_conn", .argul_gp = &mt6853_conn_rgul_gp },
 };
 
 struct apu_regulator_gp *regulator_apu_gp_get(struct apu_dev *ad, const char *name)

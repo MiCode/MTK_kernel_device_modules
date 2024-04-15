@@ -97,7 +97,7 @@ static int devfreq_curFreq(struct device *dev, unsigned long *freq)
 	}
 
 	if (!*freq)
-		advfs_err(dev, "[%s] fail, return %luMHz", __func__, TOMHZ(*freq));
+		advfs_warn(dev, "[%s] fail, return %luMHz", __func__, TOMHZ(*freq));
 	return 0;
 }
 
@@ -315,6 +315,26 @@ static const struct apu_plat_data mt688x_vpu2_data = {
 	.plat_ops_name = "mt68xx_platops",
 };
 
+static const struct apu_plat_data mt6877_vpu_data = {
+	.user = VPU,
+	.clkgp_name = "mt6877_vpu",
+	.plat_ops_name = "mt68xx_platops",
+};
+
+static const struct apu_plat_data mt6877_vpu0_data = {
+	.user = VPU0,
+	.bypass_target = 1,
+	.clkgp_name = "mt6877_vpu0",
+	.plat_ops_name = "mt68xx_platops",
+};
+
+static const struct apu_plat_data mt6877_vpu1_data = {
+	.user = VPU1,
+	.bypass_target = 1,
+	.clkgp_name = "mt6877_vpu1",
+	.plat_ops_name = "mt68xx_platops",
+};
+
 static const struct of_device_id vpu_devfreq_of_match[] = {
 	{ .compatible = "mtk68x3,apuvpu", .data = &mt68x3_vpu_data },
 	{ .compatible = "mtk68x3,apuvpu0", .data = &mt68x3_vpu0_data },
@@ -322,6 +342,12 @@ static const struct of_device_id vpu_devfreq_of_match[] = {
 	{ .compatible = "mtk688x,apuvpu0", .data = &mt688x_vpu0_data },
 	{ .compatible = "mtk688x,apuvpu1", .data = &mt688x_vpu1_data },
 	{ .compatible = "mtk688x,apuvpu2", .data = &mt688x_vpu2_data },
+	{ .compatible = "mtk688x,apuvpu0", .data = &mt688x_vpu0_data },
+	{ .compatible = "mtk688x,apuvpu1", .data = &mt688x_vpu1_data },
+	{ .compatible = "mtk688x,apuvpu2", .data = &mt688x_vpu2_data },
+	{ .compatible = "mtk6877,apuvpu", .data = &mt6877_vpu_data },
+	{ .compatible = "mtk6877,apuvpu0", .data = &mt6877_vpu0_data },
+	{ .compatible = "mtk6877,apuvpu1", .data = &mt6877_vpu1_data },
 	{ },
 };
 

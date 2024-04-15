@@ -232,6 +232,7 @@ static int agov_event_handler(struct devfreq *df,
 
 struct devfreq_governor agov_passive_pe = {
 	.name = APUGOV_PASSIVE_PE,
+	.attrs = DEVFREQ_GOV_ATTR_POLLING_INTERVAL,
 	.get_target_freq = agov_get_target_freq,
 	.event_handler = agov_event_handler,
 };

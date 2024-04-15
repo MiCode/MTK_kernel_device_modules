@@ -29,6 +29,8 @@ struct apu_plat_data {
 };
 
 #define VB_MTD_INTPL "vb_intpl"
+#define VB_MTD_LEN   16
+
 enum EFUSE_CONTENT {
 	EFUSE_SEG = 0,
 	EFUSE_BIN = 1,

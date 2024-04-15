@@ -139,6 +139,9 @@ int apu_gov_setup(struct apu_dev *ad, void *data)
 	gov_data = (struct apu_gov_data *)ad->df->data;
 	get_datas(gov_data, &parent_gov, NULL, NULL);
 
+	/* cp df->max_state, freq_table to profile */
+	ad->df->profile->max_state = ad->df->max_state;
+	ad->df->profile->freq_table = ad->df->freq_table;
 	gov_data->max_opp = ad->df->profile->max_state - 1;
 
 	/*
@@ -152,7 +155,7 @@ int apu_gov_setup(struct apu_dev *ad, void *data)
 	else
 		gov_data->threshold_opp = -EINVAL;
 
-	if (apu_data->child_volt_limit && ad->child_opp_limit != -EINVAL)
+	if (apu_data->child_volt_limit && ad->child_opp_limit == -EINVAL)
 		gov_data->child_opp_limit = apu_volt2opp(ad, apu_data->child_volt_limit);
 	else if (ad->child_opp_limit >= 0)
 		gov_data->child_opp_limit = ad->child_opp_limit;

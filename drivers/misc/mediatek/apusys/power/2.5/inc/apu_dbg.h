@@ -42,7 +42,7 @@ extern struct delayed_work pw_info_work;
 /**
  * struct apu_dbg_clk - associate a clk with a notifier
  * @clk: struct clk * to associate the notifier with
- * @notifier_head: a blocking_notifier_head for this clk
+ * @aclk_gp: struct apu_clk_gp * for registering
  * @node: linked list pointers
  *
  * A list of struct clk_notifier is maintained by the notifier code.
@@ -53,6 +53,7 @@ extern struct delayed_work pw_info_work;
 struct apu_dbg_clk {
 	const char *name;
 	struct clk	*clk;
+	struct apu_clk_gp *aclk_gp;
 	struct list_head node;
 };
 
@@ -83,6 +84,7 @@ struct apu_dbg {
 	struct list_head clk_list;
 	struct list_head reg_list;
 	struct list_head cg_list;
+	int use_atf_clk;
 
 	/* global parameters */
 	enum LOG_LEVEL log_lvl;

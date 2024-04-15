@@ -100,6 +100,7 @@ struct apu_clk_ops {
 	int		(*cg_status)(struct apu_clk_gp *aclk, u32 *result);
 	ulong	(*get_rate)(struct apu_clk_gp *aclk);
 	int		(*set_rate)(struct apu_clk_gp *aclk, unsigned long rate);
+	int		(*acc_init)(struct apu_clk_gp *aclk); /* for mt6877 */
 };
 
 struct apu_clk_gp {
@@ -114,13 +115,73 @@ struct apu_clk_gp {
 	/* the clk_hw/ops for this apu composite clk */
 	struct apu_clk_ops	*ops;
 
+	/* only use for mt6877 */
+	unsigned int pll_sel;
+	phys_addr_t pll_phyaddr;
+	void __iomem *pll_regs;
+	unsigned div2:1; /* div need or not */
+
+
 	unsigned fhctl:1;	/* freq hopping or not */
+
 };
 
 struct apu_clk_array {
 	char *name;
 	struct apu_clk_gp *aclk_gp;
 };
+
+/* only for mt6877 */
+enum MTK_APUPWR_SMC_OP {
+	MTK_APUPWR_SMC_OP_ACC_INIT = 0,
+	MTK_APUPWR_SMC_OP_ACC_TOGGLE,
+	MTK_APUPWR_SMC_OP_ACC_SET_PARENT,
+	MTK_APUPWR_SMC_OP_PLL_SET_RATE,
+	MTK_APUPWR_SMC_OP_FMETER_CTL,
+	MTK_APUPWR_SMC_OP_NUM
+};
+
+/* use for tell atf park acc to SOC */
+#define DVFS_FREQ_ACC_SOC   3
+
+/* only for mt6877 */
+#define FMETER_PLL			1
+#define FMETER_ACC			2
+#define FMETER_STEP1		1
+#define FMETER_STEP2		2
+#define FMETER_STEP3		3
+#define FM_PLL1_CK			0
+#define FM_PLL2_CK			1
+#define FM_PLL3_CK			2
+#define FM_PLL4_CK			3
+#define FM_ACC0             0x0
+#define FM_ACC1             0x1
+#define FM_ACC2             0x10
+#define FM_ACC4             0x40
+#define FM_ACC5             0x44
+#define FM_ACC7             0x68
+
+#define ACC_CONFG_SET0      0x000
+#define ACC_CONFG_SET1      0x004
+#define ACC_CONFG_SET2      0x008
+#define ACC_CONFG_SET4      0x010
+#define ACC_CONFG_SET5      0x014
+#define ACC_CONFG_SET7      0x01C
+
+#define ACC_CONFG_CLR0      0x040
+#define ACC_CONFG_CLR1      0x044
+#define ACC_CONFG_CLR2      0x048
+#define ACC_CONFG_CLR4      0x050
+#define ACC_CONFG_CLR5      0x054
+#define ACC_CONFG_CLR7      0x05C
+
+#define ACC_FM_CONFG_SET    0x0C0
+#define ACC_FM_CONFG_CLR    0x0C4
+#define ACC_FM_SEL          0x0C8
+#define ACC_FM_CNT          0x0CC
+
+#define APU_PLL4H_FQMTR_CON0 0x200
+#define APU_PLL4H_FQMTR_CON1 0x204
 
 struct apu_clk_gp *clk_apu_get_clkgp(struct apu_dev *ad, const char *name);
 void clk_apu_show_clk_info(struct apu_clk *dst, bool only_active);

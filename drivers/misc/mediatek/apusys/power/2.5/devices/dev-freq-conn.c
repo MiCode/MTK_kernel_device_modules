@@ -95,7 +95,7 @@ static int con_devfreq_curFreq(struct device *dev, unsigned long *freq)
 	}
 
 	if (!*freq)
-		advfs_err(dev, "[%s] fail, return %luMHz", __func__, TOMHZ(*freq));
+		advfs_warn(dev, "[%s] fail, return %luMHz", __func__, TOMHZ(*freq));
 	return 0;
 }
 
@@ -327,10 +327,19 @@ static const struct apu_plat_data mt688x_conn_data = {
 	.threshold_volt = 800000, /* threshold of voting parent */
 };
 
+static const struct apu_plat_data mt6877_conn_data = {
+	.user = APUCONN,
+	.clkgp_name = "mt6877_conn",
+	.rgulgp_name = "mt6853_conn",
+	.plat_ops_name = "mt68xx_platops",
+	.threshold_volt = 750000, /* threshold of voting parent */
+};
+
 static const struct of_device_id con_devfreq_of_match[] = {
 	{ .compatible = "mtk6873,apucon", .data = &mt6873_conn_data},
 	{ .compatible = "mtk6853,apucon", .data = &mt6853_conn_data},
 	{ .compatible = "mtk688x,apucon", .data = &mt688x_conn_data},
+	{ .compatible = "mtk6877,apucon", .data = &mt6877_conn_data},
 	{ },
 };
 
@@ -345,4 +354,3 @@ struct platform_driver con_devfreq_driver = {
 		.of_match_table = con_devfreq_of_match,
 	},
 };
-

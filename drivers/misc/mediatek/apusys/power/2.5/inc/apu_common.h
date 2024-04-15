@@ -50,4 +50,5 @@ int apu_volt2boost(struct apu_dev *ad, int volt);
 int apu_get_recommend_freq_volt(struct device *dev, unsigned long *freq,
 				unsigned long *volt, int flag);
 void apu_dump_opp_table(struct apu_dev *ad, const char *fun_name, int dir);
+const int apu_dev2_domain(enum DVFS_USER user);
 #endif

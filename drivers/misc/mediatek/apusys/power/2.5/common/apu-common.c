@@ -20,12 +20,63 @@ static bool _valid_ad(struct apu_dev *ad)
 {
 	if (IS_ERR(ad) || !ad->df ||
 	    !ad->df->profile || !ad->df->profile->max_state) {
+		if (IS_ERR(ad))
+			apower_warn(ad->dev, "IS_ERR(ad)\n");
+
+		if (!ad->df)
+			apower_warn(ad->dev, "!ad->df\n");
+
+		if (!ad->df->profile)
+			apower_warn(ad->dev, "!ad->df->profile\n");
+
+		if (!ad->df->profile->max_state)
+			apower_warn(ad->dev, "!ad->df->profile->max_state\n");
+
 		apower_warn(ad->dev, "%ps: Invalid input.\n",
 			   __builtin_return_address(0));
 		return false;
 	}
 	return true;
 }
+
+/**
+ * apu_dev2_domain() - return volt domain by user
+ * @user:	apu dvfs user.
+ *
+ * only use for mt6877
+ */
+const int apu_dev2_domain(enum DVFS_USER user)
+{
+	enum DVFS_VOLTAGE_DOMAIN {
+		V_VPU0 = 0,
+		V_VPU1,
+		V_MDLA0,
+		V_APU_CONN,
+		V_TOP_IOMMU,
+		V_VCORE,
+		APUSYS_BUCK_DOMAIN_NUM,
+	};
+
+	static const int domain[] = {
+		[VPU] = V_VPU0,
+		[VPU0] = V_VPU0,
+		[VPU1] = V_VPU1,
+		[MDLA] = V_MDLA0,
+		[MDLA0] = V_MDLA0,
+		[APUIOMMU] = V_TOP_IOMMU,
+		[APUCONN] = V_APU_CONN,
+	};
+
+	if (user < 0 ||
+		((user != VPU0) && (user != VPU1) && (user != VPU) &&
+		 (user != MDLA0) && (user != MDLA) &&
+		 (user != APUIOMMU) && (user != APUCONN)))
+		return -ENODEV;
+
+	return domain[user];
+}
+
+
 /**
  * apu_dev_string() - return string of dvfs user
  * @user:	apu dvfs user.

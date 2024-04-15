@@ -156,36 +156,6 @@ static int _apupw_set_freq_range(struct apu_dev *ad, ulong min, ulong max)
 	return ret;
 }
 
-static int _apupw_default_freq_range(struct apu_dev *ad)
-{
-	int ret = 0;
-
-	/*
-	 * Protect against theoretical sysfs writes between
-	 * device_add and dev_pm_qos_add_request
-	 */
-	if (!dev_pm_qos_request_active(&ad->df->user_max_freq_req))
-		return -EINVAL;
-	if (!dev_pm_qos_request_active(&ad->df->user_min_freq_req))
-		return -EAGAIN;
-
-	/* Change qos min freq to fix freq */
-	ret = dev_pm_qos_update_request(&ad->df->user_min_freq_req,
-					TOKHZ(ad->df->scaling_min_freq));
-	if (ret < 0)
-		return ret;
-
-	/* Change qos max freq to fix freq */
-	ret = dev_pm_qos_update_request(&ad->df->user_max_freq_req,
-					TOKHZ(ad->df->scaling_max_freq));
-	pr_info("[%s] [%s] restore default max/min %luMhz/%luMhz, ret = %d\n",
-		apu_dev_name(ad->dev), __func__,
-		TOMHZ(ad->df->scaling_max_freq),
-		TOMHZ(ad->df->scaling_min_freq), ret);
-
-	return ret;
-}
-
 enum LOG_LEVEL apupw_dbg_get_loglvl(void)
 {
 	return apupw_dbg.log_lvl;
@@ -224,10 +194,18 @@ void apupw_dbg_power_info(struct work_struct *work)
 
 	n_pos += snprintf((buffer + n_pos), (sizeof(buffer) - n_pos - 1), "]f[");
 
-	/* search the list of dbg_clk_list for this clk */
-	list_for_each_entry_reverse(dbg_clk, &apupw_dbg.clk_list, node)
-		n_pos += snprintf((buffer + n_pos), (LOG_LEN - n_pos),
+	if (!apupw_dbg.use_atf_clk) {
+		/* search the list of dbg_clk_list for this clk */
+		list_for_each_entry_reverse(dbg_clk, &apupw_dbg.clk_list, node)
+			n_pos += snprintf((buffer + n_pos), (LOG_LEN - n_pos),
 				"%lu,", TOMHZ(clk_get_rate(dbg_clk->clk)));
+	} else {
+		/* search the list of dbg_clk_list for this clk */
+		list_for_each_entry_reverse(dbg_clk, &apupw_dbg.clk_list, node) {
+			n_pos += snprintf((buffer + n_pos), (LOG_LEN - n_pos),
+				"%lu,", TOMHZ(dbg_clk->aclk_gp->ops->get_rate(dbg_clk->aclk_gp)));
+		}
+	}
 
 	n_pos += snprintf((buffer + n_pos), (LOG_LEN - n_pos),
 			"]r[%lx,%lx,", apu_spm_wakeup_value(), apu_rpc_rdy_value());
@@ -288,6 +266,38 @@ static void apupw_dbg_unregister_cg(void)
 		list_del(&dbg_cg->node);
 		kfree(dbg_cg);
 	}
+}
+
+static int apupw_dbg_register_apuclk(const char *name, struct apu_clk_gp *aclk_gp)
+{
+	struct apu_dbg_clk *dbg_clk = NULL;
+	int ret = -ENOMEM;
+
+	if (IS_ERR_OR_NULL(aclk_gp) || !name)
+		return -EINVAL;
+
+	if (list_empty(&apupw_dbg.clk_list))
+		goto allocate;
+
+	/* search the list of dbg_clk_list for this clk */
+	list_for_each_entry(dbg_clk, &apupw_dbg.clk_list, node)
+		if (dbg_clk->aclk_gp == aclk_gp) {
+			ret = 0;
+			goto out;
+		}
+
+allocate:
+	/* if clk wasn't in the dbg_clk_list, allocate new dbg_clk */
+	dbg_clk = kzalloc(sizeof(*dbg_clk), GFP_KERNEL);
+	if (!dbg_clk)
+		goto out;
+	dbg_clk->aclk_gp = aclk_gp;
+	dbg_clk->name = name;
+	apupw_dbg.use_atf_clk = 1;
+	list_add(&dbg_clk->node, &apupw_dbg.clk_list);
+	ret = 0;
+out:
+	return ret;
 }
 
 static int apupw_dbg_register_clk(const char *name, struct clk *clk)
@@ -528,25 +538,20 @@ static int apupw_dbg_dvfs(u8 param, int argc, int *args)
 {
 	enum DVFS_USER user;
 	struct apu_dev *ad = NULL;
-	int ret = 0;
 
 	pr_info("[%s] @@test%d lock opp=%d\n", __func__, argc, (int)(args[0]));
 	for (user = MDLA; user < APUSYS_POWER_USER_NUM; user++) {
-		ad = _apupw_valid_df(user);
-		if (!ad)
+		ad = _apupw_valid_leaf_df(user);
+		if (IS_ERR_OR_NULL(ad))
 			continue;
+
 		if (args[0] >= 0)
-			ret = _apupw_set_freq_range(ad, TOKHZ(apu_opp2freq(ad, args[0])),
-						    TOKHZ(apu_opp2freq(ad, args[0])));
+			apu_device_set_opp(user, args[0]);
 		else
-			ret = _apupw_default_freq_range(ad);
+			apu_device_set_opp(user, (ad->df->profile->max_state - 1));
 	}
 
-	/* only ret < 0 is fail, since dev_pm_qos_update_request will return 1 when pass */
-	if (ret < 0)
-		pr_info("[%s] @@test%d lock opp=%d fail, ret %d\n",
-			__func__, argc, (int)(args[0]), ret);
-	return ret;
+	return 0;
 }
 
 static int apupw_dbg_dump_table(struct seq_file *s)
@@ -791,6 +796,7 @@ int apupw_dbg_register_nodes(struct device *dev)
 	int idx = 0, ret = 0, i = 0;
 	u64 phyaddr = 0, offset = 0;
 	struct clk *clk;
+	struct apu_clk_gp *aclk_gp;
 	unsigned int psize;
 	const __be32 *paddr = NULL;
 	void __iomem *cgaddr = NULL;
@@ -823,6 +829,20 @@ int apupw_dbg_register_nodes(struct device *dev)
 		}
 
 		ret = apupw_dbg_register_clk(name, clk);
+		if (ret)
+			goto out;
+	}
+
+	of_property_for_each_string(dev->of_node, "atf-clock-names",
+				    prop, name) {
+		aclk_gp = clk_apu_get_clkgp(NULL, name);
+		if (IS_ERR_OR_NULL(aclk_gp)) {
+			ret = PTR_ERR(aclk_gp);
+			apower_err(dev, "Get [%s] clock node fail, ret = %d\n", name, ret);
+			goto out;
+		}
+
+		ret = apupw_dbg_register_apuclk(name, aclk_gp);
 		if (ret)
 			goto out;
 	}

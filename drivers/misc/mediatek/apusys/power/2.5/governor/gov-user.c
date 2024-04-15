@@ -62,6 +62,7 @@ static int ausr_event_handler(struct devfreq *df,
 
 struct devfreq_governor agov_userspace = {
 	.name = APUGOV_USR,
+	.attrs = DEVFREQ_GOV_ATTR_POLLING_INTERVAL,
 	.get_target_freq = ausr_get_target_freq,
 	.event_handler = ausr_event_handler,
 };

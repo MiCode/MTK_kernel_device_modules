@@ -97,7 +97,7 @@ static int devfreq_curFreq(struct device *dev, unsigned long *freq)
 	}
 
 	if (!*freq)
-		advfs_err(dev, "[%s] fail, return %luMHz", __func__, TOMHZ(*freq));
+		advfs_warn(dev, "[%s] fail, return %luMHz", __func__, TOMHZ(*freq));
 	return 0;
 }
 
@@ -289,6 +289,19 @@ static const struct apu_plat_data mt6873_mdla0_data = {
 	.plat_ops_name = "mt68xx_platops",
 };
 
+static const struct apu_plat_data mt6877_mdla_data = {
+	.user = MDLA,
+	.clkgp_name = "mt6877_mdla",
+	.plat_ops_name = "mt68xx_platops",
+};
+
+static const struct apu_plat_data mt6877_mdla0_data = {
+	.user = MDLA0,
+	.bypass_target = 1,
+	.clkgp_name = "mt6877_mdla0",
+	.plat_ops_name = "mt68xx_platops",
+};
+
 static const struct apu_plat_data mt688x_mdla_data = {
 	.user = MDLA,
 	.clkgp_name = "mt688x_mdla",
@@ -316,6 +329,8 @@ static const struct of_device_id mdla_devfreq_of_match[] = {
 	{ .compatible = "mtk688x,apumdla", .data = &mt688x_mdla_data },
 	{ .compatible = "mtk688x,apumdla0", .data = &mt688x_mdla0_data },
 	{ .compatible = "mtk688x,apumdla1", .data = &mt688x_mdla1_data },
+	{ .compatible = "mtk6877,apumdla", .data = &mt6877_mdla_data },
+	{ .compatible = "mtk6877,apumdla0", .data = &mt6877_mdla0_data },
 	{ },
 };
 
