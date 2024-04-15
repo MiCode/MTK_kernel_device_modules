@@ -880,9 +880,6 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 
 	fpsgo_thread_lock(&f_render->thr_mlock);
 
-	if(get_ux_general_policy())
-		fpsgo_boost_non_hwui_policy(f_render, 0);
-
 	ret = fpsgo_com_refetch_buffer(f_render, pid, identifier, 0);
 	if (!ret)
 		goto exit;
@@ -914,6 +911,11 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 	case NON_VSYNC_ALIGNED_TYPE:
 		fpsgo_comp2fstb_prepare_calculate_target_fps(pid, f_render->buffer_id,
 			enqueue_end_time);
+
+		//reset vip if ux scrolling
+		if(get_ux_general_policy() && f_render->sbe_control_flag)
+			fpsgo_boost_non_hwui_policy(f_render, 0);
+
 		fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
 			&raw_runtime, &running_time, &enq_running_time,
 			0, f_render->t_enqueue_end,
@@ -938,7 +940,8 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 		fpsgo_comp2fbt_frame_start(f_render,
 				enqueue_end_time);
 
-		if (get_ux_general_policy())
+		//set vip if ux scrolling
+		if (get_ux_general_policy() && f_render->sbe_control_flag)
 			fpsgo_boost_non_hwui_policy(f_render, 1);
 
 		fpsgo_comp2fstb_queue_time_update(pid,
