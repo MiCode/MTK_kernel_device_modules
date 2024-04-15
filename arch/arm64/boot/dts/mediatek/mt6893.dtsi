@@ -1005,6 +1005,45 @@ cpus {
 		big-down-time = <750>;
 		};
 
+		ccu: ccu@1a101000 {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible = "mediatek,ccu";
+			power-domains = <&scpsys MT6893_POWER_DOMAIN_CAM>;
+			dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
+			iommus = <&iommu1 M4U_PORT_L13_CAM_CCUI_MDP>,
+				<&iommu1 M4U_PORT_L13_CAM_CCUO_MDP>;
+			reg = <0 0x1a101000 0 0x1000>;
+			ccu_version = <6893>;
+			interrupts = <GIC_SPI 329 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&topckgen_clk CLK_TOP_CCU_SEL>,
+				<&camsys_main_clk CLK_CAM_M_CAM>,
+				<&camsys_main_clk CLK_CAM_M_LARB13>,
+				<&camsys_main_clk CLK_CAM_M_CCU0>;
+			clock-names = "TOP_CCU_CLK",
+				"CCU_CLK_CAM_CAM",
+				"CCU_CLK_CAM_LARB13",
+				"CCU_CLK_CAM_CCU0";
+			mediatek,larbs = <&smi_larb13>;
+			mediatek,ccu1 = <&ccu1>;
+			interconnects =
+				<&mmqos SLAVE_LARB(21) &mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L13_CAM_CCUI_MDP) &mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L13_CAM_CCUO_MDP) &mmqos SLAVE_COMMON(1)>;
+			interconnect-names ="ccu_g",
+				"ccu_i",
+				"ccu_o";
+			operating-points-v2 = <&opp_table_ccu>;
+			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		};
+
+		ccu1: ccu1@1a181000 {
+			compatible = "mediatek,ccu1";
+			dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
+			iommus = <&iommu1 M4U_PORT_L14_CAM_CCUI_DISP>,
+				<&iommu1 M4U_PORT_L14_CAM_CCUO_DISP>;
+		};
+
                 infracfg-ao@10001000 {
                 	compatible = "mediatek,infracfg_ao";
                 	reg = <0 0x10001000 0 0x1000>;
@@ -6467,45 +6506,6 @@ cpus {
 			compatible = "mediatek,mt8192-camsys_rawc", "syscon";
 			reg = <0 0x1a08f000 0 0x1000>;
 			#clock-cells = <1>;
-		};
-
-		ccu: ccu@1a101000 {
-			#address-cells = <2>;
-			#size-cells = <2>;
-			compatible = "mediatek,ccu";
-			power-domains = <&scpsys MT6893_POWER_DOMAIN_CAM>;
-			dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
-			iommus = <&iommu1 M4U_PORT_L13_CAM_CCUI_MDP>,
-				<&iommu1 M4U_PORT_L13_CAM_CCUO_MDP>;
-			reg = <0 0x1a101000 0 0x1000>;
-			ccu_version = <6893>;
-			interrupts = <GIC_SPI 329 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&topckgen_clk CLK_TOP_CCU_SEL>,
-				<&camsys_main_clk CLK_CAM_M_CAM>,
-				<&camsys_main_clk CLK_CAM_M_LARB13>,
-				<&camsys_main_clk CLK_CAM_M_CCU0>;
-			clock-names = "TOP_CCU_CLK",
-				"CCU_CLK_CAM_CAM",
-				"CCU_CLK_CAM_LARB13",
-				"CCU_CLK_CAM_CCU0";
-			mediatek,larbs = <&smi_larb13>;
-			mediatek,ccu1 = <&ccu1>;
-			interconnects =
-				<&mmqos SLAVE_LARB(21) &mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_PORT_L13_CAM_CCUI_MDP) &mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_PORT_L13_CAM_CCUO_MDP) &mmqos SLAVE_COMMON(1)>;
-			interconnect-names ="ccu_g",
-				"ccu_i",
-				"ccu_o";
-			operating-points-v2 = <&opp_table_ccu>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-		};
-
-		ccu1: ccu1@1a181000 {
-			compatible = "mediatek,ccu1";
-			dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
-			iommus = <&iommu1 M4U_PORT_L13_CAM_CCUI_MDP>,
-				<&iommu1 M4U_PORT_L13_CAM_CCUO_MDP>;
 		};
 		
 		ipesys_clk: syscon@1b000000 {
