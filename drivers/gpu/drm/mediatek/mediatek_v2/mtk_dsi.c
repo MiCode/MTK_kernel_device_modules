@@ -13157,6 +13157,10 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 					__func__, ret);
 		}
 		dsi->output_en = true;
+		if (dsi->panel) {
+			dsi->panel->prepared = true;
+			dsi->panel->enabled = true;
+		}
 		dsi->clk_refcnt = 1;
 		if (dsi->ext && dsi->ext->is_connected == -1)
 			dsi->ext->is_connected = panel_connection_from_atag() & BIT(alias);
