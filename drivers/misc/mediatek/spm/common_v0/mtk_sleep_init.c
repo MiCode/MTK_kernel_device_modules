@@ -35,8 +35,8 @@ static int __init mtk_sleep_init(void)
 	spm_logger_init();
 	spm_drv_init = !ret;
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
-	ccci_set_spm_mdsrc_cb(&spm_ap_mdsrc_req);
-	ccci_set_spm_md_sleep_cb(&spm_is_md1_sleep);
+	//ccci_set_spm_mdsrc_cb(&spm_ap_mdsrc_req);
+	//ccci_set_spm_md_sleep_cb(&spm_is_md1_sleep);
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_MDPM_LEGACY)

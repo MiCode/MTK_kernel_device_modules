@@ -130,6 +130,7 @@ obj-$(CONFIG_MTK_CPUHOTPLUG) += cpuhotplug/
 obj-$(CONFIG_MTK_HPS_V3) += hps_v3/
 obj-$(CONFIG_MEDIATEK_CPUIDLE) += cpuidle/
 obj-$(CONFIG_MTK_SPM) += spm/
+obj-$(CONFIG_MTK_SPM_V0) += spm/
 obj-$(CONFIG_MTK_POWER_GS_LEGACY) += power_gs_v1/
 obj-$(CONFIG_MTK_VIDEOCODEC_DRIVER) += videocodec/
 obj-$(CONFIG_MTK_LEGACY_THERMAL) += thermal/

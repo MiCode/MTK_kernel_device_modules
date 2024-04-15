@@ -266,9 +266,6 @@ bool spm_resource_req_init(void)
 	}
 	spm_node = GET_MTK_SPM_DTS_NODE();
 
-	if (spm_node)
-		spm_resource_parse_req_console(spm_node);
-
 	return true;
 }
 

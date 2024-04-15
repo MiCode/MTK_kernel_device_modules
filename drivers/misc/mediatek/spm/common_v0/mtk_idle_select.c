@@ -168,9 +168,7 @@ int mtk_idle_select(int cpu)
 	/* If kernel didn't enter system running state,
 	 *  idle task can't enter mtk idle.
 	 */
-	if (!((system_state == SYSTEM_RUNNING) &&
-		(mtk_idle_plat_bootblock_check() == MTK_IDLE_PLAT_READY))
-	) {
+	if (!(system_state == SYSTEM_RUNNING)) {
 		if (system_state < SYSTEM_RUNNING) {
 			pr_info("[name:spm&]Power/swap %s %s %d\n",
 				__func__, LOG_STR, system_state);

@@ -262,13 +262,14 @@ unsigned int __spm_output_wake_reason(
 			spm_read(SPM_SW_FLAG),
 			spm_read(SPM_SW_RSV_2),
 			spm_read(SPM_SRC_REQ));
-
+/*
 		log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_OUT_SZ - log_size,
 			"wlk_cntcv_l = 0x%x, wlk_cntcv_h = 0x%x, 26M_off_pct = %d\n",
 			_golden_read_reg(WORLD_CLK_CNTCV_L),
 			_golden_read_reg(WORLD_CLK_CNTCV_H),
 			spm_26M_off_pct);
+*/
 	} else
 		log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_OUT_SZ - log_size,
@@ -306,8 +307,8 @@ u32 __spm_get_wake_period(int pwake_time, unsigned int last_wr)
 
 	if (pwake_time < 0) {
 		/* use FG to get the period of 1% battery decrease */
-		period = get_dynamic_period(last_wr != WR_PCM_TIMER
-				? 1 : 0, SPM_WAKE_PERIOD, 1);
+		period = 5401; //get_dynamic_period(last_wr != WR_PCM_TIMER
+				//? 1 : 0, SPM_WAKE_PERIOD, 1);
 		if (period <= 0) {
 			pr_info("[name:spm&][SPM] CANNOT GET PERIOD FROM FUEL GAUGE\n");
 			period = SPM_WAKE_PERIOD;

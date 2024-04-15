@@ -38,7 +38,7 @@ static inline unsigned int virq_to_hwirq(unsigned int virq)
  ***************************************************/
 
 /* edge_trigger_irq_list is defined in header file 'mtk_spm_irq_edge.h' */
-#include <mtk_spm_irq_edge.h>
+#include "mtk_spm_irq_edge.h"
 
 #define IRQ_NUMBER (sizeof(list)/sizeof(struct edge_trigger_irq_list))
 static u32 edge_trig_irqs[IRQ_NUMBER];
@@ -156,7 +156,7 @@ static irqreturn_t spm_irq0_handler(int irq, void *dev_id)
 		pr_info("[SPM] IRQ0 (ISRS_SW_INT1) HANDLER SHOULD NOT BE EXECUTED (0x%x)\n",
 			isr);
 		#if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
-		spm_vcorefs_dump_dvfs_regs(NULL);
+		//spm_vcorefs_dump_dvfs_regs(NULL);
 		#endif
 		return IRQ_HANDLED;
 	}

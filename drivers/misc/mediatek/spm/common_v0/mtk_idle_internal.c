@@ -15,8 +15,8 @@
 #endif
 #include "mtk_idle.h"
 #include "mtk_idle_internal.h"
-#include "mtk-clkbuf-dcxo.h"
-#include "mtk_clkbuf_ctl.h"
+//#include "mtk-clkbuf-dcxo.h"
+//#include "mtk_clkbuf_ctl.h"
 
 #include "mtk_spm_internal.h"
 #if IS_ENABLED(CONFIG_MTK_UFS_SUPPORT)
@@ -66,21 +66,19 @@ EXPORT_SYMBOL(spm_set_by_flightmode);
 u32 clk_buf_bblpm_enter_cond(void)
 {
 	u32 bblpm_cond = 0;
+	//if (!clk_buf_is_init_done()) {
+		//bblpm_cond |= BBLPM_COND_SKIP;
+		//return bblpm_cond;
+	//}
 
-	if (!clk_buf_is_init_done()) {
-		bblpm_cond |= BBLPM_COND_SKIP;
-		return bblpm_cond;
-	}
+	//if (!spm_flightmode)
+		//bblpm_cond |= BBLPM_COND_CEL;
 
-	if (!spm_flightmode)
-		bblpm_cond |= BBLPM_COND_CEL;
+	//if (mtk_spm_read_register(SPM_PWRSTA) & (1 << 1))
+		//bblpm_cond |= BBLPM_COND_WCN;
 
-	if (mtk_spm_read_register(SPM_PWRSTA) & (1 << 1))
-		bblpm_cond |= BBLPM_COND_WCN;
-
-	if (clk_buf_get_xo_en_sta("XO_NFC") == 1)
-		bblpm_cond |= BBLPM_COND_NFC;
-
+	//if (clk_buf_get_xo_en_sta("XO_NFC") == 1)
+		//bblpm_cond |= BBLPM_COND_NFC;
 	return bblpm_cond;
 }
 EXPORT_SYMBOL(clk_buf_bblpm_enter_cond);
@@ -203,9 +201,6 @@ int mtk_idle_enter(
 		idle_type != IDLE_TYPE_SO3 &&
 		idle_type != IDLE_TYPE_SO)
 		return -1;
-
-	if (mtk_idle_resource_pre_process())
-		idle_type = IDLE_TYPE_DP;
 
 	mtk_idle_ratio_calc_start(idle_type, cpu);
 
