@@ -2694,7 +2694,7 @@ cpus {
 			    <&infracfg_ao_clk CLK_IFRAO_AP_DMA_PS>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
-
+			mediatek,control-rs-stop;
 		};
 
 		i2c11: i2c@1101a000 {
@@ -2706,7 +2706,7 @@ cpus {
 
 			clock-names = "main", "dma";
 			clock-div = <1>;
-
+			mediatek,control-rs-stop;
 		};
 
 		i2c12: i2c@1101b000 {
@@ -2718,7 +2718,7 @@ cpus {
 
 			clock-names = "main", "dma";
 			clock-div = <1>;
-
+			mediatek,control-rs-stop;
 		};
 
 		i2c13: i2c@11007000 {
@@ -2730,7 +2730,7 @@ cpus {
 
 			clock-names = "main", "dma";
 			clock-div = <1>;
-
+			mediatek,control-rs-stop;
 		};
 
 		spi4: spi@11018000 {
@@ -3107,6 +3107,7 @@ cpus {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA_PS>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		imp_iic_wrap_e_clk: syscon@11cb2000 {
@@ -3124,6 +3125,7 @@ cpus {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA_PS>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c8: i2c@11d04000 {
@@ -3135,6 +3137,7 @@ cpus {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA_PS>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c9: i2c@11cb1000 {
@@ -3146,6 +3149,7 @@ cpus {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA_PS>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		imp_iic_wrap_s_clk: syscon@11d05000 {
@@ -3163,6 +3167,7 @@ cpus {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA_PS>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c2: i2c@11d01000 {
@@ -3174,6 +3179,7 @@ cpus {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA_PS>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c4: i2c@11d02000 {
@@ -3185,6 +3191,7 @@ cpus {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA_PS>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c5: i2c@11f00000 {
@@ -3196,6 +3203,7 @@ cpus {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA_PS>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		imp_iic_wrap_w: imp_iic_wrap_w@11e01000 {
@@ -3254,6 +3262,7 @@ cpus {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA_PS>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c6: i2c@11f01000 {
@@ -3265,6 +3274,7 @@ cpus {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA_PS>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 			/*
 			#address-cells = <1>;
 			#size-cells = <0>;
