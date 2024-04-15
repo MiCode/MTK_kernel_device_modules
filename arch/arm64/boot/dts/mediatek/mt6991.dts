@@ -9217,15 +9217,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L35_P3_OVL_RDMA6)
-					 &mmqos SLAVE_COMMON(0)>,
+					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L35_P3_OVL_RDMA6)
-					 &mmqos SLAVE_COMMON(0)>,
+					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L35_P3_OVL_RDMA6)
-					 &mmqos SLAVE_COMMON(0)>,
+					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L35_P1_OVL_RDMA6_HDR)
-					 &mmqos SLAVE_COMMON(0)>,
+					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L35_P10_OVL_RDMA6_STASH)
-					 &mmqos SLAVE_COMMON(0)>;
+					 &mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "DDP_COMPONENT_OVL1_EXDMA6_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA6_fbdc_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA6_hrt_qos",
@@ -9243,15 +9243,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L34_P3_OVL_RDMA7)
-					 &mmqos SLAVE_COMMON(0)>,
+					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L34_P3_OVL_RDMA7)
-					 &mmqos SLAVE_COMMON(0)>,
+					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L34_P3_OVL_RDMA7)
-					 &mmqos SLAVE_COMMON(0)>,
+					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L34_P1_OVL_RDMA7_HDR)
-					 &mmqos SLAVE_COMMON(0)>,
+					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L34_P9_OVL_RDMA7_STASH)
-					 &mmqos SLAVE_COMMON(0)>;
+					 &mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "DDP_COMPONENT_OVL1_EXDMA7_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA7_fbdc_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA7_hrt_qos",
