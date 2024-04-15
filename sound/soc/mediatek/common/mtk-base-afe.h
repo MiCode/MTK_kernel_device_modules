@@ -10,6 +10,7 @@
 #define _MTK_BASE_AFE_H_
 
 #define MTK_STREAM_NUM (SNDRV_PCM_STREAM_LAST + 1)
+#define MAX_NAME_LEN 256
 
 enum {
 	MTK_AFE_RATE_8K,
@@ -255,6 +256,9 @@ struct mtk_base_afe_memif {
 	int use_scp_share_mem;
 	int fast_palyback;
 
+	int pid;
+	int tid;
+	char process_name[MAX_NAME_LEN];
 };
 
 struct mtk_base_afe_irq {
