@@ -28,7 +28,7 @@
 #include <clk-fmeter.h>
 #include "mtk-smi-dbg.h"
 
-#include "mtk_dpc.h"
+#include "mtk_dpc_v2.h"
 #include "mtk_dpc_mmp.h"
 #include "mtk_dpc_internal.h"
 
@@ -1965,13 +1965,13 @@ static struct mtk_dpc mt6991_dpc_driver_data = {
 	.mml_ch_bw_set = mt6991_mml_ch_bw_set,
 };
 
-static const struct of_device_id mtk_dpc_driver_dt_match[] = {
+static const struct of_device_id mtk_dpc_driver_v2_dt_match[] = {
 	{.compatible = "mediatek,mt6989-disp-dpc", .data = &mt6989_dpc_driver_data},
 	{.compatible = "mediatek,mt6878-disp-dpc", .data = &mt6878_dpc_driver_data},
-	{.compatible = "mediatek,mt6991-disp-dpc", .data = &mt6991_dpc_driver_data},
+	{.compatible = "mediatek,mt6991-disp-dpc-v2", .data = &mt6991_dpc_driver_data},
 	{},
 };
-MODULE_DEVICE_TABLE(of, mtk_dpc_driver_dt_match);
+MODULE_DEVICE_TABLE(of, mtk_dpc_driver_v2_dt_match);
 
 static int mtk_dpc_probe(struct platform_device *pdev)
 {
@@ -1985,7 +1985,7 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 	if (!priv)
 		return -ENOMEM;
 
-	of_id = of_match_device(mtk_dpc_driver_dt_match, dev);
+	of_id = of_match_device(mtk_dpc_driver_v2_dt_match, dev);
 	if (!of_id) {
 		DPCERR("DPC device match failed\n");
 		return -EPROBE_DEFER;
@@ -2080,7 +2080,7 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 		writel(0x2, dpc_base + DISP_REG_DPC_DEBUG_SEL);	/* mtcmos_debug */
 	}
 
-	mtk_vidle_register(&funcs);
+	mtk_vidle_register(&funcs, DPC_VER2);
 	mml_dpc_register(&funcs);
 	mdp_dpc_register(&funcs);
 	mtk_vdisp_dpc_register(&funcs);
@@ -2103,21 +2103,21 @@ static void mtk_dpc_shutdown(struct platform_device *pdev)
 	priv->skip_force_power = true;
 }
 
-struct platform_driver mtk_dpc_driver = {
+struct platform_driver mtk_dpc_driver_v2 = {
 	.probe = mtk_dpc_probe,
 	.remove = mtk_dpc_remove,
 	.shutdown = mtk_dpc_shutdown,
 	.driver = {
-		.name = "mediatek-disp-dpc",
+		.name = "mediatek-disp-dpc-v2",
 		.owner = THIS_MODULE,
-		.of_match_table = mtk_dpc_driver_dt_match,
+		.of_match_table = mtk_dpc_driver_v2_dt_match,
 	},
 };
 
 static int __init mtk_dpc_init(void)
 {
 	DPCFUNC("+");
-	platform_driver_register(&mtk_dpc_driver);
+	platform_driver_register(&mtk_dpc_driver_v2);
 	DPCFUNC("-");
 	return 0;
 }
@@ -2131,5 +2131,5 @@ module_init(mtk_dpc_init);
 module_exit(mtk_dpc_exit);
 
 MODULE_AUTHOR("William Yang <William-tw.Yang@mediatek.com>");
-MODULE_DESCRIPTION("MTK Display Power Controller");
+MODULE_DESCRIPTION("MTK Display Power Controller V2.0");
 MODULE_LICENSE("GPL");

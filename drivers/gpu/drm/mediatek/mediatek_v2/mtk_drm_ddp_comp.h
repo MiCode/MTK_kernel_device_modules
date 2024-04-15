@@ -1027,6 +1027,7 @@ enum mtk_ddp_io_cmd {
 	BYPASS_SPR2RGB,
 	DSI_LTPO_VDO_SET,
 	DSI_LTPO_VDO_UPDATE,
+	DSI_GET_PANEL_VBLANK_PERIOD_US,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {
