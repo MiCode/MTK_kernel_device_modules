@@ -3071,9 +3071,11 @@
 		state = <0>;
 	};
 
-	eem_fsm: eem_fsm@1100b000 {
+	eem_fsm: eem-fsm@1100b000 {
 		compatible = "mediatek,eem_fsm";
 		reg = <0 0x1100b000 0 0x1000>;
+		nvmem = <&efuse>;
+		nvmem-names = "mtk_efuse";
 		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH 0>;
 		eem-status = <1>;
 		eem-initmon-little = <0xf>;
