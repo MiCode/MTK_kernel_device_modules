@@ -139,7 +139,7 @@ static void lcm_mdelay(unsigned int ms)
 		usleep_range(ms * 1000 - 100, ms * 1000);
 }
 
-#if defined(CONFIG_RT5081_PMU_DSV) || defined(CONFIG_MT6370_PMU_DSV)
+#if defined(CONFIG_RT5081_PMU_DSV) || defined(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 static struct regulator *disp_bias_pos;
 static struct regulator *disp_bias_neg;
 
@@ -155,14 +155,14 @@ static int lcm_panel_bias_regulator_init(void)
 	disp_bias_pos = regulator_get(NULL, "dsv_pos");
 	if (IS_ERR(disp_bias_pos)) { /* handle return value */
 		ret = PTR_ERR(disp_bias_pos);
-		dev_info("get dsv_pos fail, error: %d\n", ret);
+		pr_err("get dsv_pos fail, error: %d\n", ret);
 		return ret;
 	}
 
 	disp_bias_neg = regulator_get(NULL, "dsv_neg");
 	if (IS_ERR(disp_bias_neg)) { /* handle return value */
 		ret = PTR_ERR(disp_bias_neg);
-		dev_info("get dsv_neg fail, error: %d\n", ret);
+		pr_err("get dsv_neg fail, error: %d\n", ret);
 		return ret;
 	}
 
@@ -181,23 +181,23 @@ static int lcm_panel_bias_enable(void)
 	/* set voltage with min & max*/
 	ret = regulator_set_voltage(disp_bias_pos, 5400000, 5400000);
 	if (ret < 0)
-		dev_info("set voltage disp_bias_pos fail, ret = %d\n", ret);
+		pr_err("set voltage disp_bias_pos fail, ret = %d\n", ret);
 	retval |= ret;
 
 	ret = regulator_set_voltage(disp_bias_neg, 5400000, 5400000);
 	if (ret < 0)
-		dev_info("set voltage disp_bias_neg fail, ret = %d\n", ret);
+		pr_err("set voltage disp_bias_neg fail, ret = %d\n", ret);
 	retval |= ret;
 
 	/* enable regulator */
 	ret = regulator_enable(disp_bias_pos);
 	if (ret < 0)
-		dev_info("enable regulator disp_bias_pos fail, ret = %d\n", ret);
+		pr_err("enable regulator disp_bias_pos fail, ret = %d\n", ret);
 	retval |= ret;
 
 	ret = regulator_enable(disp_bias_neg);
 	if (ret < 0)
-		dev_info("enable regulator disp_bias_neg fail, ret = %d\n", ret);
+		pr_err("enable regulator disp_bias_neg fail, ret = %d\n", ret);
 	retval |= ret;
 
 	return retval;
@@ -212,12 +212,12 @@ static int lcm_panel_bias_disable(void)
 
 	ret = regulator_disable(disp_bias_neg);
 	if (ret < 0)
-		dev_info("disable regulator disp_bias_neg fail, ret = %d\n", ret);
+		pr_err("disable regulator disp_bias_neg fail, ret = %d\n", ret);
 	retval |= ret;
 
 	ret = regulator_disable(disp_bias_pos);
 	if (ret < 0)
-		dev_info("disable regulator disp_bias_pos fail, ret = %d\n", ret);
+		pr_err("disable regulator disp_bias_pos fail, ret = %d\n", ret);
 	retval |= ret;
 
 	return retval;
@@ -635,7 +635,7 @@ static int lcm_unprepare(struct drm_panel *panel)
 
 	ctx->error = 0;
 	ctx->prepared = false;
-#if defined(CONFIG_RT5081_PMU_DSV) || defined(CONFIG_MT6370_PMU_DSV)
+#if defined(CONFIG_RT5081_PMU_DSV) || defined(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 	lcm_panel_bias_disable();
 #else
 	ctx->reset_gpio =
@@ -684,7 +684,7 @@ static int lcm_prepare(struct drm_panel *panel)
 	if (ctx->prepared)
 		return 0;
 
-#if defined(CONFIG_RT5081_PMU_DSV) || defined(CONFIG_MT6370_PMU_DSV)
+#if defined(CONFIG_RT5081_PMU_DSV) || defined(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 	lcm_panel_bias_enable();
 #else
 	if (ctx->gate_ic == 0) {
