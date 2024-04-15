@@ -10,6 +10,14 @@
 #include <dt-bindings/pinctrl/mt6853-pinfunc.h>
 #include <dt-bindings/clock/mt6873-clk.h>
 
+&mtkheap_region_svp {
+	status = "ok";
+};
+
+&mtkheap_region_wfd {
+	status = "ok";
+};
+
 &gpio_usage_mapping {
 	GPIO_FDD_BAND_SUPPORT_DETECT_1ST_PIN = <&pio 37 0>;
 	GPIO_FDD_BAND_SUPPORT_DETECT_2ND_PIN = <&pio 38 0>;

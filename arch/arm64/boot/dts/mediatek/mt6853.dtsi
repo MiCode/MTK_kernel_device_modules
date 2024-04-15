@@ -981,6 +981,7 @@
 		#size-cells = <2>;
 		compatible = "simple-bus";
 		ranges;
+		dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 
 		cpufreq_hw: cpufreq@0011bc00 {
 			compatible = "mediatek,cpufreq-hw";
@@ -3341,6 +3342,38 @@
 
 		mtk_iommu_debug {
 			compatible = "mediatek,mt6853-iommu-debug";
+		};
+
+		iommu_test {
+			compatible = "mediatek,ktf-iommu-test";
+			mediatek,larb = <&smi_larb0>;
+			iommus = <&iommu0 M4U_PORT_L0_OVL_RDMA0>;
+		};
+
+		mtkheap-region-prot {
+			compatible = "mediatek,dmaheap-mtk-sec-region";
+			heap-name = "mtk_prot_region";
+			trusted-mem-type = <1>;
+			region-heap-align-name = "mtk_prot_region-aligned";
+			iommus = <&iommu0 M4U_PORT_L0_DISP_POSTMASK0>;
+		};
+
+		mtkheap_region_svp: mtkheap-region-svp {
+			compatible = "mediatek,dmaheap-mtk-sec-region";
+			heap-name = "mtk_svp_region";
+			trusted-mem-type = <0>;
+			region-heap-align-name = "mtk_svp_region-aligned";
+			iommus = <&iommu0 M4U_PORT_L0_DISP_POSTMASK0>;
+			status = "disabled";
+		};
+
+		mtkheap_region_wfd: mtkheap-region-wfd {
+			compatible = "mediatek,dmaheap-mtk-sec-region";
+			heap-name = "mtk_wfd_region";
+			trusted-mem-type = <2>;
+			region-heap-align-name = "mtk_wfd_region-aligned";
+			iommus = <&iommu0 M4U_PORT_L0_DISP_POSTMASK0>;
+			status = "disabled";
 		};
 
 		larb1: smi_larb1@14004000 {
