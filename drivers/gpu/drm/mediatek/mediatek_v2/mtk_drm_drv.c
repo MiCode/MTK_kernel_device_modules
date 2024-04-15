@@ -8427,6 +8427,13 @@ static int mtk_drm_mml_ctrl_caps(struct mtk_drm_mml_caps_info *mml_caps, struct 
 		return -EINVAL;
 	}
 
+	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6761 ||
+		priv->data->mmsys_id == MMSYS_MT6877) {
+		mml_caps->mode_caps = MTK_MML_DISP_MDP_LAYER;
+		return 0;
+	}
+
 	mml_pdev = mml_get_plat_device(plat_dev);
 	if (!mml_pdev) {
 		DDPMSG("%s mml_get_plat_device open fail\n", __func__);
