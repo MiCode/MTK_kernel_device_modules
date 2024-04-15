@@ -151,12 +151,15 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		g_shared_status->stress_test == STRESS_TRAVERSE ? "Traverse" :
 		g_shared_status->stress_test == STRESS_MAX_MIN ? "Max_Min" : "Off");
 	seq_printf(m,
-		"%-16s AgingMargin: %s, AVSMargin: %s, GPM1.0: %s, GPM3.0: %s\n",
+		"%-16s AgingMargin: %s, AVSMargin: %s, GPM1.0: %s, GPM3.0: %s, DFD: %s\n",
 		"[MFGSYS Config]",
 		g_shared_status->aging_margin ? "On" : "Off",
 		g_shared_status->avs_margin ? "On" : "Off",
 		g_shared_status->gpm1_mode ? "On" : "Off",
-		g_shared_status->gpm3_mode ? "On" : "Off");
+		g_shared_status->gpm3_mode ? "On" : "Off",
+		(g_shared_status->dfd_mode == GPU_DFD6_0 ? "6.0" :
+		(g_shared_status->dfd_mode == GPU_DFD3_6 ? "3.6" :
+		(g_shared_status->dfd_mode == GPU_DFD2_0 ? "2.0" : "Off"))));
 	seq_printf(m,
 		"%-16s Temperature: %d'C, GPUTemperComp: %d/%d, STACKTemperComp: %d/%d\n",
 		"[MFGSYS Config]",
