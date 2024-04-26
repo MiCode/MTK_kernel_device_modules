@@ -374,3 +374,11 @@ config NEBULA_SND_PASSTHROUGH
 	  that can be used with other platforms
 	  Select Y if you have such device.
 	  If unsure select "N".
+
+config SND_SOC_MTK_AUTO_AUDIO
+	tristate "ASoC audio driver support for Mediatek auto boards"
+	help
+	  This adds ASoC audio driver for Mediatek auto boards
+          that can be used with other platforms
+	  Select Y if you have such device.
+	  If unsure select "N".
