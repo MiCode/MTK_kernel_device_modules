@@ -73,6 +73,9 @@
 #define PA2_RG_USB20_PLL_BW_MASK	(0x7)
 #define PA2_RG_USB20_PLL_BW_OFET	(19)
 
+#define PA2_RG_U2_CLKREF_REV	BIT(3)
+#define PA2_RG_U2_CLKREF_REV_1		GENMASK(12, 11)
+
 #define U3P_USBPHYACR5		0x014
 #define PA5_RG_U2_HSTX_SRCAL_EN	BIT(15)
 #define PA5_RG_U2_HSTX_SRCTRL		GENMASK(14, 12)
@@ -236,6 +239,9 @@
 #define U3P_U3_PHYD_CDR1		0x05c
 #define P3D_RG_CDR_BIR_LTD1		GENMASK(28, 24)
 #define P3D_RG_CDR_BIR_LTD0		GENMASK(12, 8)
+
+#define U3P_U3_PHYD_EQ_EYE3		0xdc
+#define P3D_RG_EQ_LEQ_SHIFT		GENMASK(26, 24)
 
 #define U3P_U3_PHYD_RXDET1		0x128
 #define P3D_RG_RXDET_STB2_SET		GENMASK(17, 9)
@@ -420,6 +426,8 @@ struct mtk_phy_instance {
 	int rev6;
 	int pll_bw;
 	int bgr_div;
+	int fsrxlvl;
+	int eq_leq_shift;
 	bool bc12_en;
 	/* u2 eye diagram for host */
 	int eye_src_host;
@@ -1816,6 +1824,10 @@ static void phy_parse_property(struct mtk_tphy *tphy,
 				&instance->pll_bw);
 	device_property_read_u32(dev, "mediatek,bgr-div",
 				&instance->bgr_div);
+	device_property_read_u32(dev, "mediatek,fsrxlvl",
+				&instance->fsrxlvl);
+	device_property_read_u32(dev, "mediatek,eq-leq-shift",
+				&instance->eq_leq_shift);
 	instance->usb_special_phy_settings = device_property_read_bool(dev,
 				"mediatek,usb-special-phy-settings");
 	dev_dbg(dev, "bc12:%d, src:%d, vrt:%d, term:%d, intr:%d, disc:%d\n",
@@ -1826,7 +1838,19 @@ static void phy_parse_property(struct mtk_tphy *tphy,
 	dev_dbg(dev, "rx_sqth:%d\n", instance->rx_sqth);
 	dev_dbg(dev, "rev4:%d, rev6:%d\n", instance->rev4, instance->rev6);
 	dev_dbg(dev, "pll-bw:%d, bgr-div:%d\n", instance->pll_bw, instance->bgr_div);
+	dev_dbg(dev, "fsrxlvl:%d, eq-leq-shift:%d\n", instance->fsrxlvl, instance->eq_leq_shift);
 	dev_dbg(dev, "usb-special-phy-settings:%d\n", instance->usb_special_phy_settings);
+}
+
+static void u3_phy_props_set(struct mtk_tphy *tphy,
+			     struct mtk_phy_instance *instance)
+{
+	struct u3phy_banks *u3_banks = &instance->u3_banks;
+
+	if (instance->eq_leq_shift) {
+		mtk_phy_update_field(u3_banks->phyd + U3P_U3_PHYD_EQ_EYE3,
+				P3D_RG_EQ_LEQ_SHIFT, instance->eq_leq_shift);
+	}
 }
 
 static void u2_phy_props_set(struct mtk_tphy *tphy,
@@ -1835,6 +1859,7 @@ static void u2_phy_props_set(struct mtk_tphy *tphy,
 	struct u2phy_banks *u2_banks = &instance->u2_banks;
 	void __iomem *com = u2_banks->com;
 	struct device *dev = &instance->phy->dev;
+	struct device_node *np = dev->parent->of_node;
 
 	dev_info(dev, "bc12:%d, src:%d, vrt:%d, term:%d, intr:%d\n",
 		instance->bc12_en, instance->eye_src,
@@ -1876,10 +1901,6 @@ static void u2_phy_props_set(struct mtk_tphy *tphy,
 		mtk_phy_update_field(com + U3P_USBPHYACR6, PA6_RG_U2_PRE_EMP,
 				     instance->pre_emphasis);
 
-	if (instance->rx_sqth)
-		mtk_phy_update_field(com + U3P_USBPHYACR6, PA6_RG_U2_SQTH,
-				     instance->rx_sqth);
-
 	if (instance->rev4)
 		mtk_phy_update_field(com + U3P_USBPHYACR6, PA6_RG_U2_PHY_REV4,
 				     instance->rev4);
@@ -1895,6 +1916,36 @@ static void u2_phy_props_set(struct mtk_tphy *tphy,
 	if (instance->bgr_div)
 		mtk_phy_update_field(com + U3P_USBPHYACR0, PA0_RG_USB20_BGR_DIV,
 				    instance->bgr_div);
+
+	if (instance->fsrxlvl) {
+		mtk_phy_update_field(com + U3P_USBPHYACR2, PA2_RG_U2_CLKREF_REV,
+				instance->fsrxlvl);
+	}
+
+	if (instance->rx_sqth) {
+		if(of_device_is_compatible(np, "mediatek,mt6781-tphy")) {
+			/* for mt6781 only */
+			/* USBPHY_CLR32(0x18, (0x1<<28)); */
+			mtk_phy_clear_bits(com + U3P_USBPHYACR6, PA6_RG_U2_PHY_REV4);
+		}
+
+		if(of_device_is_compatible(np, "mediatek,mt6781-tphy") ||
+				of_device_is_compatible(np, "mediatek,mt6833-tphy")) {
+			/* for mt6781 && mt6833 */
+			/* USBPHY_CLR32(0x18, (0xf<<0)); */
+			mtk_phy_clear_bits(com + U3P_USBPHYACR6, PA6_RG_U2_SQTH);
+		}
+
+		mtk_phy_update_field(com + U3P_USBPHYACR6, PA6_RG_U2_SQTH,
+				     instance->rx_sqth);
+	}
+
+	if(of_device_is_compatible(np, "mediatek,mt6853-tphy")) {
+		/* for mt6853 only */
+		/* u3phywrite32(U3D_USBPHYACR2, 11, (0x3<<11), 0x3); */
+		mtk_phy_update_field(com + U3P_USBPHYACR2,
+				PA2_RG_U2_CLKREF_REV_1, 0x3);
+	}
 }
 
 static void u2_phy_host_props_set(struct mtk_tphy *tphy,
@@ -2233,6 +2284,7 @@ static int mtk_phy_power_on(struct phy *phy)
 		u2_phy_props_set(tphy, instance);
 	} else if (instance->type == PHY_TYPE_USB3) {
 		u3_phy_instance_power_on(tphy, instance);
+		u3_phy_props_set(tphy, instance);
 	} else if (instance->type == PHY_TYPE_PCIE) {
 		pcie_phy_instance_power_on(tphy, instance);
 	}
