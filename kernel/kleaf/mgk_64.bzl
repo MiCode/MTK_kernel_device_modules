@@ -1358,10 +1358,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/tee/gud/600/MobiCoreDriver/mcDrvModule-ffa.ko")
         mgk_64_device_modules.append("drivers/tee/gud/600/TlcTui/t-base-tui.ko")
 
-        mgk_64_common_eng_modules.append("drivers/pwm/pwm-mtk-disp.ko")
-        mgk_64_common_userdebug_modules.append("drivers/pwm/pwm-mtk-disp.ko")
-        mgk_64_common_user_modules.append("drivers/pwm/pwm-mtk-disp.ko")
-
         mgk_64_device_modules.append("drivers/misc/mediatek/qos/mtk_qos_legacy.ko")
 
         mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/mediatek_v2/mtk_aod_scp.ko")
@@ -2027,9 +2023,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/tee/gud/600/MobiCoreDriver/mcDrvModule-ffa.ko")
         mgk_64_device_modules.append("drivers/tee/gud/600/TlcTui/t-base-tui.ko")
 
-        mgk_64_common_eng_modules.append("drivers/pwm/pwm-mtk-disp.ko")
-        mgk_64_common_userdebug_modules.append("drivers/pwm/pwm-mtk-disp.ko")
-        mgk_64_common_user_modules.append("drivers/pwm/pwm-mtk-disp.ko")
         mgk_64_common_eng_modules.append("drivers/mfd/mt6360-core.ko")
         mgk_64_common_userdebug_modules.append("drivers/mfd/mt6360-core.ko")
         mgk_64_common_user_modules.append("drivers/mfd/mt6360-core.ko")
@@ -2365,9 +2358,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v1/emiisu.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v1/emictrl.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi-dummy.ko")
-        mgk_64_common_eng_modules.append("drivers/pwm/pwm-mtk-disp.ko")
-        mgk_64_common_userdebug_modules.append("drivers/pwm/pwm-mtk-disp.ko")
-        mgk_64_common_user_modules.append("drivers/pwm/pwm-mtk-disp.ko")
 
         mgk_64_common_eng_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_userdebug_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
