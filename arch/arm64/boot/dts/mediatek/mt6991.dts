@@ -7968,6 +7968,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			gpufreq-wrapper-supply = <&gpufreq_wrapper>;
 		};
 
+		sram@00100000 {
+			compatible = "pkvm,protected-region";
+			reg = <0x0 0x00100000 0 0x12000>;
+		};
+
 		devapc@14401000 {
 			compatible = "mediatek,mt6991-devapc";
 			reg = <0 0x14401000 0 0x1000>, /* apinfra_io pd */
