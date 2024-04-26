@@ -449,6 +449,15 @@ static int mtk_compr_offload_free(struct snd_soc_component *component,
 		mtk_adsp_genpool_free_sharemem_ring(&dsp->dsp_mem[ID], ID);
 	afe_offload_block.state = OFFLOAD_STATE_INIT;
 	afe_offload_codec_info.has_video = false;
+	/* send video info */
+	mtk_scp_ipi_send(get_dspscene_by_dspdaiid(ID),
+			 AUDIO_IPI_MSG_ONLY,
+			 AUDIO_IPI_MSG_BYPASS_ACK,
+			 OFFLOAD_VIDEO_INFO,
+			 afe_offload_codec_info.has_video,
+			 afe_offload_codec_info.has_video,
+			 NULL);
+	pr_debug("%s afe_offload_codec_info.has_video = %d\n", __func__, afe_offload_codec_info.has_video);
 #ifdef use_wake_lock
 	mtk_compr_offload_int_wakelock(false);
 #endif
