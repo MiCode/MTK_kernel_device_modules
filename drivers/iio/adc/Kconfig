@@ -44,7 +44,7 @@ config MEDIATEK_MT6360_AUXADC
 	  Charger and Battery Current, Voltage and
 	  Terperature
   
-config MEDIATEK_MT6370_ADC
+config DEVICE_MODULES_MEDIATEK_MT6370_ADC
 	tristate "MediaTek MT6370 ADC driver"
 	depends on DEVICE_MODULES_MFD_MT6370
 	help
