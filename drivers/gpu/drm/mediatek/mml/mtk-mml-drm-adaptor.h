@@ -43,6 +43,7 @@ enum mml_query_mode_reason {
 	mml_query_alpha,
 	mml_query_min_size,	/* 20 */
 	mml_query_dc_off,
+	mml_query_tp,
 	mml_query_not_support,
 };
 
@@ -111,6 +112,7 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *dctx,
  * @infos:	Frame info array which describe frame process by mml. The result mode will
  *		fill back into infos[i].mode variable.
  * @cnt:	Size of array.
+ * @duration_ns:	Time limit to all frame.
  *
  * Return:	True if query success. False if any error happen.
  *

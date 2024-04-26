@@ -526,7 +526,6 @@ struct mml_frame_config {
 	u16 layer_h;
 	u16 panel_w;
 	u16 panel_h;
-	u32 disp_hrt;
 
 	/* dvfs and qos */
 	u32 duration;

@@ -42,6 +42,7 @@
 struct mml_mmp_events_t {
 	mmp_event mml;
 	mmp_event query_mode;
+	mmp_event query_layer;
 	mmp_event submit;
 	mmp_event submit_info;
 	mmp_event config;

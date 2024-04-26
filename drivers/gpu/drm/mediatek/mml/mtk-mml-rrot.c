@@ -1212,13 +1212,13 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	gmcif_con = BIT(0) |		/* COMMAND_DIV */
 		    GENMASK(7, 4) |	/* READ_REQUEST_TYPE */
 		    GENMASK(9, 8) |	/* WRITE_REQUEST_TYPE */
-		    BIT(16);		/* PRE_ULTRA_EN */
+		    BIT(17);		/* PRE_ULTRA_EN always */
 	/* racing case also enable urgent/ultra to not blocking disp */
 	if (unlikely(mml_rdma_urgent)) {
 		if (mml_rdma_urgent == 1)
-			gmcif_con ^= BIT(16) | BIT(15) | BIT(13); /* URGENT_EN/ULTRA_EN: always */
+			gmcif_con ^= BIT(15) | BIT(13); /* URGENT_EN/ULTRA_EN: always */
 		else if (mml_rdma_urgent == 2)
-			gmcif_con ^= BIT(16) | BIT(13);	/* ULTRA_EN: always */
+			gmcif_con ^= BIT(13);	/* ULTRA_EN: always */
 		else
 			gmcif_con |= BIT(14) | BIT(12);	/* URGENT_EN */
 		if (cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK)
