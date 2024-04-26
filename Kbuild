@@ -110,4 +110,6 @@ obj-y += drivers/pci/controller/
 
 obj-y += drivers/media/virtio/
 
+obj-y += drivers/video/backlight/
+
 endif
