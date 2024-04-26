@@ -62,11 +62,6 @@ static void handle_enc_init_msg(struct mtk_vcodec_dev *dev, struct venc_vcu_inst
 	vcu->init_done = true;
 	vcu->inst_addr = msg->vcu_inst_addr;
 	vcu->vsi = (void *)((__u64)vcp_get_reserve_mem_virt_ex(VENC_MEM_ID) + inst_offset);
-
-	dev->tf_info = (struct mtk_tf_info *)
-		((__u64)vcp_get_reserve_mem_virt_ex(VENC_MEM_ID) + VENC_TF_INFO_OFFSET);
-	dev->vio_info = (struct mtk_vio_info *)
-		((__u64)dev->tf_info + sizeof(struct mtk_tf_info));
 }
 
 static void handle_query_cap_ack_msg(struct venc_vcu_ipi_query_cap_ack *msg)
@@ -541,12 +536,18 @@ int vcp_enc_ipi_handler(void *arg)
 		if (msg->msg_id == VCU_IPIMSG_ENC_MEM_ALLOC) {
 			shem_msg = (struct venc_vcu_ipi_mem_op *)obj->share_buf;
 			if (shem_msg->mem.type == MEM_TYPE_FOR_SHM) {
+				struct venc_common_vsi *venc_com_vsi;
+
 				handle_venc_mem_alloc((void *)shem_msg);
 				shem_msg->vcp_addr[0] = (__u32)VCP_PACK_IOVA(
 					vcp_get_reserve_mem_phys_ex(VENC_SET_PROP_MEM_ID));
 				shem_msg->vcp_addr[1] = (__u32)VCP_PACK_IOVA(
 					vcp_get_reserve_mem_phys_ex(VENC_VCP_LOG_INFO_ID));
 				dev->com_vsi = (void *)vcp_get_reserve_mem_virt_ex(VENC_MEM_ID);
+				venc_com_vsi = (struct venc_common_vsi *)dev->com_vsi;
+				dev->tf_info = (struct mtk_tf_info *)&venc_com_vsi->tf_info;
+				dev->vio_info = (struct mtk_vio_info *)&venc_com_vsi->vio_info;
+
 				shem_msg->msg_id = AP_IPIMSG_ENC_MEM_ALLOC_DONE;
 				ret = mtk_ipi_send(vcp_get_ipidev(VENC_FEATURE_ID), IPI_OUT_VENC_0, IPI_SEND_WAIT, obj,
 					PIN_OUT_SIZE_VENC, 100);

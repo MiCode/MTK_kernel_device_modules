@@ -648,6 +648,8 @@ struct venc_vsi {
 
 struct venc_common_vsi {
 	__u8 config_data[VENC_CONFIG_LENGTH];
+	struct mtk_tf_info tf_info;
+	struct mtk_vio_info vio_info;
 };
 
 #endif /* _VENC_IPI_MSG_H_ */
