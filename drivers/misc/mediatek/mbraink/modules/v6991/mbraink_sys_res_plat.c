@@ -33,19 +33,19 @@ static unsigned int sys_res_last_suspend_diff_buffer_index;
 static unsigned int sys_res_last_diff_buffer_index;
 
 struct mbraink_sys_res_group_info sys_res_group_info[NR_SPM_GRP] = {
-	{0, 0,  0, 30},
-	{0, 0,  0, 30},
-	{0, 0,  0, 30},
-	{0, 0,  0, 30},
-	{0, 0,  0, 30},
-	{0, 0,  0, 30},
-	{0, 0,  0, 30},
-	{0, 0,  0, 30},
-	{0, 0,  0, 30},
-	{0, 0,  0, 30},
-	{0, 0,  0, 30},
-	{0, 0,  0, 30},
-	{0, 0,  0, 30},
+	{0, 0,  0, 20},
+	{0, 0,  0, 20},
+	{0, 0,  0, 20},
+	{0, 0,  0, 20},
+	{0, 0,  0, 20},
+	{0, 0,  0, 20},
+	{0, 0,  0, 20},
+	{0, 0,  0, 20},
+	{0, 0,  0, 20},
+	{0, 0,  0, 20},
+	{0, 0,  0, 20},
+	{0, 0,  0, 20},
+	{0, 0,  0, 20},
 };
 
 static struct mbriank_sys_res_mapping sys_res_mapping[] = {
