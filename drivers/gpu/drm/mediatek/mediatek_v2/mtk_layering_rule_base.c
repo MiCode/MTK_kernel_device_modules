@@ -646,6 +646,10 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 
 static void check_gles_change(struct debug_gles_range *dbg_gles, const int line, const bool print)
 {
+
+	if (!mtk_disp_get_logger_enable())
+		return;
+
 	if (dbg_gles->head != layering_info.gles_head[0] ||
 	    dbg_gles->tail != layering_info.gles_tail[0]) {
 		dbg_gles->head = layering_info.gles_head[0];
@@ -656,6 +660,7 @@ static void check_gles_change(struct debug_gles_range *dbg_gles, const int line,
 	}
 	if (print && dbg_gles->written)
 		DDPINFO("%s:%s\n", __func__, dbg_gles->msg);
+
 }
 
 static void dump_disp_trace(struct drm_mtk_layering_info *disp_info)
