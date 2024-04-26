@@ -1736,6 +1736,21 @@ int is_system_heap_dmabuf(const struct dma_buf *dmabuf)
 }
 EXPORT_SYMBOL_GPL(is_system_heap_dmabuf);
 
+int is_uncached_dmabuf(const struct dma_buf *dmabuf)
+{
+	struct system_heap_buffer *buffer;
+
+	if (IS_ERR_OR_NULL(dmabuf))
+		return 0;
+
+	buffer = dmabuf->priv;
+	if (IS_ERR_OR_NULL(buffer))
+		return 0;
+
+	return buffer->uncached;
+}
+EXPORT_SYMBOL_GPL(is_uncached_dmabuf);
+
 hang_dump_cb hang_dump_proc;
 EXPORT_SYMBOL_GPL(hang_dump_proc);
 
