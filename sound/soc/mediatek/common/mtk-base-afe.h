@@ -216,9 +216,7 @@ struct mtk_base_afe {
 			  int dai_id, unsigned int rate);
 	int (*get_memif_pbuf_size)(struct snd_pcm_substream *substream);
 
-#if !IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
 	void *sram;
-#endif
 	int (*request_dram_resource)(struct device *dev);
 	int (*release_dram_resource)(struct device *dev);
 

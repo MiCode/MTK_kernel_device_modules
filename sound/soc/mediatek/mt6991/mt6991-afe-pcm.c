@@ -51,6 +51,7 @@
 #include <linux/nebula/hvcall.h>
 #include <linux/irq.h>
 static int hwirq;
+#define SMC_HYP_SECURE_ID 1
 #endif
 
 /* FORCE_FPGA_ENABLE_IRQ use irq in fpga */
@@ -1736,8 +1737,10 @@ static int mt6991_passthrough_shm_set(struct snd_kcontrol *kcontrol,
 	int ret;
 	int memif_id = 0;
 
-	if (shm->pcm_id >= MT6991_MEMIF_NUM)
+	if (shm->pcm_id >= MT6991_MEMIF_NUM) {
 		pr_info("%s(), shm->pcm_id = %d is invalid\n", __func__, shm->pcm_id);
+		return -EINVAL;
+	}
 
 	memif_id = virtio_id_memif_index_mapping[shm->pcm_id];
 	if (!(memif_id >= 0 && memif_id < MT6991_MEMIF_NUM))
@@ -6339,8 +6342,9 @@ static irqreturn_t mt6991_afe_irq_handler(int irq_id, void *dev)
 	}
 #else
 	struct arm_smccc_res res;
+	unsigned long r7 = SMC_HYP_SECURE_ID << 16;
 
-	arm_smccc_smc(SMC_SC_NBL_VHM_REQ, 0x90000000, hwirq, 0, 0, 0, 0, 0, &res);
+	arm_smccc_smc(SMC_SC_NBL_VHM_REQ, 0x90000000, hwirq, 0, 0, 0, 0, r7, &res);
 	mcu_en = 1;
 
 	status = res.a0;//regmap_read(afe->regmap, AFE_IRQ_MCU_STATUS, &status);
@@ -6350,8 +6354,8 @@ static irqreturn_t mt6991_afe_irq_handler(int irq_id, void *dev)
 	if (status_mcu == 0) {
 		dev_info(afe->dev, "%s(), irq status err, ret %d, status 0x%x, mcu_en 0x%x\n",
 			__func__, ret, status, mcu_en);
-		arm_smccc_smc(SMC_SC_NBL_VHM_REQ, 0x90000001, hwirq, AFE_IRQ_STATUS_BITS, 0, 0, 0,
-				0, &res);
+		arm_smccc_smc(SMC_SC_NBL_VHM_REQ, 0x90000001, hwirq, AFE_IRQ_STATUS_BITS,
+				res.a1, res.a2, 0, r7, &res);
 		return IRQ_HANDLED;
 	}
 #endif
@@ -6400,8 +6404,8 @@ static irqreturn_t mt6991_afe_irq_handler(int irq_id, void *dev)
 		}
 	}
 #else
-	arm_smccc_smc(SMC_SC_NBL_VHM_REQ, 0x90000001, hwirq, AFE_IRQ_STATUS_BITS, 0, 0, 0,
-				  0, &res);
+	arm_smccc_smc(SMC_SC_NBL_VHM_REQ, 0x90000001, hwirq, AFE_IRQ_STATUS_BITS, res.a1,
+			res.a2, 0, r7, &res);
 #endif
 	return IRQ_HANDLED;
 }
