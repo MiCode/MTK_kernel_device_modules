@@ -12,7 +12,6 @@
 /**************************************************
  * Definition
  **************************************************/
-#define GPUFREQ_UNREFERENCED(param)     ((void)(param))
 #define GPUFREQ_DEBUG_ENABLE            (0)
 #define GPUFREQ_TRACE_ENABLE            (0)
 #define GPUFREQ_FORCE_WDT_ENABLE        (0)
@@ -25,6 +24,15 @@
 #define GPUFREQ_MAX_REG_NUM             (70)
 #define GPUFREQ_MAX_GPM3_NUM            (20)
 #define GPUFREQ_DUMP_INFRA_SIZE         (8192)
+#define GPUFREQ_UNREFERENCED(param)     ((void)(param))
+#define GPUFREQ_PROFILE_TYPE_STRING(type) \
+	( \
+		type == PROF_PWR_ON ? __stringify(PWR_ON) : \
+		type == PROF_PWR_OFF ? __stringify(PWR_OFF) : \
+		type == PROF_ACTIVE ? __stringify(ACTIVE) : \
+		type == PROF_SLEEP ? __stringify(SLEEP) : \
+		type == PROF_DVFS ? __stringify(DVFS) : "UNKNOWN" \
+	)
 
 /**************************************************
  * GPUFREQ Log Setting
@@ -135,6 +143,7 @@ enum gpufreq_config_target {
 	CONFIG_PTP3             = 17,
 	CONFIG_MFG2_BEFORE_OFF  = 18,
 	CONFIG_DEVAPC_HANDLE    = 19,
+	CONFIG_GPU_PROFILING    = 20,
 };
 
 enum gpufreq_config_value {
@@ -148,6 +157,7 @@ enum gpufreq_config_value {
 	STRESS_TRAVERSE    = 5,
 	STRESS_MAX_MIN     = 6,
 	PTP3_SAFE_MARGIN   = 7,
+	DATA_UPDATE        = 8,
 };
 
 enum gpufreq_chip_type {
@@ -225,6 +235,33 @@ enum gpufreq_dfd_mode {
 	GPU_DFD2_0      = 1,
 	GPU_DFD3_6      = 2,
 	GPU_DFD6_0      = 3,
+};
+
+enum gpufreq_profile_type {
+	PROF_PWR_ON   = 0,
+	PROF_PWR_OFF  = 1,
+	PROF_ACTIVE   = 2,
+	PROF_SLEEP    = 3,
+	PROF_DVFS     = 4,
+	PROF_TYPE_NUM = 5,
+};
+
+enum gpufreq_profile_index {
+	PROF_IDX_START = 0,
+	PROF_IDX_END   = 1,
+	PROF_IDX_COUNT = 2,
+	PROF_IDX_ONCE  = 3,
+	PROF_IDX_TOTAL = 4,
+	PROF_IDX_AVG   = 5,
+	PROF_IDX_MAX   = 6,
+	PROF_IDX_MIN   = 7,
+	PROF_IDX_NUM   = 8,
+};
+
+enum gpufreq_profile_op {
+	PROF_OP_START  = 0,
+	PROF_OP_END    = 1,
+	PROF_OP_RESULT = 2,
 };
 
 /**************************************************
@@ -433,7 +470,7 @@ struct gpufreq_shared_status {
 	unsigned int temper_comp_mode;
 	unsigned int ht_temper_comp_mode;
 	unsigned int power_tracker_mode;
-	struct gpufreq_reg_info reg_mfgsys[GPUFREQ_MAX_REG_NUM];
+	unsigned long long profile_time[PROF_TYPE_NUM][PROF_IDX_NUM];
 	struct gpufreq_reg_info reg_stack_sel;
 	struct gpufreq_reg_info reg_top_delsel;
 	struct gpufreq_reg_info reg_stack_delsel;
