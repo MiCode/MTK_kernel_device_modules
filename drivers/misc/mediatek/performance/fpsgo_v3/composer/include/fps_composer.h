@@ -99,6 +99,7 @@ void fpsgo_ctrl2comp_acquire(int p_pid, int c_pid, int c_tid,
 void fpsgo_ctrl2comp_set_app_meta_fps(int tgid, int fps, unsigned long long ts);
 int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask, unsigned long long ts,
 	int start, char *specific_name, int num);
+void fpsgo_ctrl2comp_hint_buffer_count(int pid, int count, int max_count);
 int switch_ui_ctrl(int pid, int set_ctrl);
 int fpsgo_get_fpsgo_is_boosting(void);
 int register_get_fpsgo_is_boosting(fpsgo_notify_is_boost_cb func_cb);

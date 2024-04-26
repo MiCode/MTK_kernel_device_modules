@@ -55,6 +55,7 @@ enum FPSGO_NOTIFIER_PUSH_TYPE {
 	FPSGO_NOTIFIER_VSYNC_PERIOD         = 0x0d,
 	FPSGO_NOTIFIER_FRAME_HINT			= 0x10,
 	FPSGO_NOTIFIER_SBE_POLICY			= 0x11,
+	FPSGO_NOTIFIER_SBE_BUFFER_COUNT     = 0x12,
 
 };
 
@@ -375,6 +376,16 @@ static void fpsgo_notifier_wq_cb_hint_frame(int qudeq,
 
 }
 
+static void fpsgo_notifier_wq_cb_hint_buffer(int pid, int count, int max_count)
+{
+	if (!fpsgo_is_enable())
+		return;
+
+	FPSGO_LOGI("[FPSGO_CB] uxbuffer pid %d, cur_count %d, max_count %d\n",
+			pid, count, max_count);
+	fpsgo_ctrl2comp_hint_buffer_count(pid, count, max_count);
+}
+
 static void fpsgo_notifier_wq_cb_magt_target_fps(struct fpsgo_magt_target_fps *iter)
 {
 	if (!iter || !fpsgo_is_enable())
@@ -481,6 +492,9 @@ static void fpsgo_notifier_wq_cb(void)
 				vpPush->name, vpPush->mask,
 				vpPush->cur_ts, vpPush->qudeq_cmd,
 				vpPush->specific_name, vpPush->num);
+		break;
+	case FPSGO_NOTIFIER_SBE_BUFFER_COUNT:
+		fpsgo_notifier_wq_cb_hint_buffer(vpPush->pid, vpPush->num, vpPush->mode);
 		break;
 	case FPSGO_NOTIFIER_MAGT_TARGET_FPS:
 		fpsgo_notifier_wq_cb_magt_target_fps(vpPush->magt_tfps_hint);
@@ -1020,6 +1034,36 @@ int fpsgo_notify_sbe_policy(int pid, char *name, unsigned long mask,
 	return 0;
 }
 
+int fpsgo_notify_ux_buffer_count(int pid, int count, int maxCount)
+{
+	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush;
+
+	if (!fpsgo_is_enable())
+		return -EINVAL;
+
+	vpPush =
+		(struct FPSGO_NOTIFIER_PUSH_TAG *)
+		fpsgo_alloc_atomic(sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+	if (!vpPush) {
+		FPSGO_LOGE("[FPSGO_CTRL] OOM\n");
+		return -ENOMEM;
+	}
+
+	if (!kfpsgo_tsk) {
+		FPSGO_LOGE("[FPSGO_CTRL] NULL WorkQueue\n");
+		fpsgo_free(vpPush, sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+		return -ENOMEM;
+	}
+
+	vpPush->ePushType = FPSGO_NOTIFIER_SBE_BUFFER_COUNT;
+	vpPush->pid = pid;
+	vpPush->num = count;
+	vpPush->mode = maxCount;
+	fpsgo_queue_work(vpPush);
+
+	return 0;
+}
+
 int fpsgo_notify_magt_target_fps(int *pid_arr, int *tid_arr,
 	int *tfps_arr, int num)
 {
@@ -1432,6 +1476,7 @@ static int __init fpsgo_init(void)
 	fpsgo_notify_sbe_rescue_fp = fpsgo_notify_sbe_rescue;
 	fpsgo_notify_frame_hint_fp = fpsgo_notify_frame_hint;
 	fpsgo_notify_sbe_policy_fp = fpsgo_notify_sbe_policy;
+	fpsgo_notify_ux_buffer_count_fp = fpsgo_notify_ux_buffer_count;
 
 	fpsgo_get_fps_fp = fpsgo_get_fps;
 	fpsgo_get_cmd_fp = fpsgo_get_cmd;

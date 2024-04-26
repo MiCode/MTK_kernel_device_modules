@@ -453,6 +453,10 @@ struct render_info {
 	int sbe_dy_enhance_f;
 	int sbe_rescuing_frame_id;
 	unsigned long long rescue_start_time;
+	int cur_buffer_count;
+	int max_buffer_count;
+	int buffer_count_filter;
+	struct ux_rescue_check *ux_rchk;
 
 	/*fbt*/
 	int linger;
