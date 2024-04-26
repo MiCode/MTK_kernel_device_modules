@@ -93,7 +93,7 @@ DECL_TCPC_TIMEOUT(PD_TIMER_SRC_RECOVER, 900 - CONFIG_USB_PD_SAFE0V_DELAY),
 DECL_TCPC_TIMEOUT(PD_TIMER_CK_NOT_SUPPORTED, 40),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_SINK_TX, 16, 20),
 #if CONFIG_USB_PD_REV30_PPS_SOURCE
-DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_SOURCE_PPS_TIMEOUT, 12000, 15000),
+DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_SOURCE_PPS_TOUT, 12000, 15000),
 #endif	/* CONFIG_USB_PD_REV30_PPS_SOURCE */
 #endif	/* CONFIG_USB_PD_REV30 */
 /* tPSHardReset + tSafe0V = 35 + 650 */
@@ -105,9 +105,9 @@ DECL_TCPC_TIMEOUT(PD_TIMER_HARD_RESET_SAFE5V, 1275),
 #if CONFIG_USB_PD_SAFE0V_DELAY
 DECL_TCPC_TIMEOUT(PD_TIMER_VSAFE0V_DELAY, CONFIG_USB_PD_SAFE0V_DELAY),
 #endif	/* CONFIG_USB_PD_SAFE0V_DELAY */
-#if CONFIG_USB_PD_SAFE0V_TIMEOUT
-DECL_TCPC_TIMEOUT(PD_TIMER_VSAFE0V_TOUT, CONFIG_USB_PD_SAFE0V_TIMEOUT),
-#endif	/* CONFIG_USB_PD_SAFE0V_TIMEOUT */
+#if CONFIG_USB_PD_SAFE0V_TOUT
+DECL_TCPC_TIMEOUT(PD_TIMER_VSAFE0V_TOUT, CONFIG_USB_PD_SAFE0V_TOUT),
+#endif	/* CONFIG_USB_PD_SAFE0V_TOUT */
 #if CONFIG_USB_PD_SAFE5V_DELAY
 DECL_TCPC_TIMEOUT(PD_TIMER_VSAFE5V_DELAY, CONFIG_USB_PD_SAFE5V_DELAY),
 #endif	/* CONFIG_USB_PD_SAFE5V_DELAY */
@@ -137,9 +137,7 @@ DECL_TCPC_TIMEOUT(PD_TIMER_PE_IDLE_TOUT, 10),
 /* TYPEC_RT_TIMER (out of spec) */
 DECL_TCPC_TIMEOUT(TYPEC_RT_TIMER_SAFE0V_DELAY, 35),
 DECL_TCPC_TIMEOUT(TYPEC_RT_TIMER_SAFE0V_TOUT, 650),
-DECL_TCPC_TIMEOUT(TYPEC_RT_TIMER_ROLE_SWAP_START, 20),
-DECL_TCPC_TIMEOUT(TYPEC_RT_TIMER_ROLE_SWAP_STOP,
-	CONFIG_TYPEC_CAP_ROLE_SWAP_TOUT),
+DECL_TCPC_TIMEOUT(TYPEC_RT_TIMER_ROLE_SWAP_STOP, 2000),
 DECL_TCPC_TIMEOUT(TYPEC_RT_TIMER_STATE_CHANGE, 50),
 DECL_TCPC_TIMEOUT(TYPEC_RT_TIMER_DISCHARGE, CONFIG_TYPEC_CAP_DISCHARGE_TOUT),
 DECL_TCPC_TIMEOUT(TYPEC_RT_TIMER_LOW_POWER_MODE, 500),
@@ -156,6 +154,7 @@ DECL_TCPC_TIMEOUT_RANGE(TYPEC_TIMER_ERROR_RECOVERY, 25, 25),
 
 /* TYPEC_TRY_TIMER */
 DECL_TCPC_TIMEOUT_RANGE(TYPEC_TRY_TIMER_DRP_TRY, 75, 150),
+DECL_TCPC_TIMEOUT_RANGE(TYPEC_TRY_TIMER_TRY_TOUT, 550, 1100),
 /* TYPEC_DEBOUNCE_TIMER */
 DECL_TCPC_TIMEOUT_RANGE(TYPEC_TIMER_CCDEBOUNCE, 100, 200),
 DECL_TCPC_TIMEOUT_RANGE(TYPEC_TIMER_PDDEBOUNCE, 10, 10),
@@ -194,7 +193,7 @@ static inline void on_pe_timer_timeout(
 		break;
 #endif	/* CONFIG_USB_PD_SAFE0V_DELAY */
 
-#if CONFIG_USB_PD_SAFE0V_TIMEOUT
+#if CONFIG_USB_PD_SAFE0V_TOUT
 	case PD_TIMER_VSAFE0V_TOUT:
 		tcpci_lock_typec(tcpc);
 		TCPC_INFO("VSafe0V TOUT (%d)\n", tcpc->vbus_level);
@@ -202,7 +201,7 @@ static inline void on_pe_timer_timeout(
 		tcpci_unlock_typec(tcpc);
 		pd_put_vbus_safe0v_event(tcpc, !ret);
 		break;
-#endif	/* CONFIG_USB_PD_SAFE0V_TIMEOUT */
+#endif	/* CONFIG_USB_PD_SAFE0V_TOUT */
 
 #if CONFIG_USB_PD_SAFE5V_DELAY
 	case PD_TIMER_VSAFE5V_DELAY:
@@ -300,7 +299,7 @@ bool tcpc_is_timer_active(struct tcpc_device *tcpc, int start, int end)
 
 	mutex_lock(&tcpc->timer_lock);
 	for (i = start; i < end; i++) {
-		if (hrtimer_active(&tcpc->tcpc_timer[i].alarm.timer)) {
+		if (hrtimer_is_queued(&tcpc->tcpc_timer[i].alarm.timer)) {
 			ret = true;
 			break;
 		}
@@ -316,6 +315,7 @@ static inline void tcpc_reset_timer_range(
 	int i;
 
 	for (i = start; i < end; i++)
+		/* the timer was canceled */
 		if (alarm_try_to_cancel(&tcpc->tcpc_timer[i].alarm) == 1)
 			atomic_dec_if_positive(&tcpc->suspend_pending);
 }
@@ -353,6 +353,7 @@ void tcpc_enable_timer(struct tcpc_device *tcpc, uint32_t timer_id)
 	r =  tout / USEC_PER_SEC;
 	mod = tout % USEC_PER_SEC;
 
+	/* the timer was not canceled */
 	if (alarm_try_to_cancel(&tcpc->tcpc_timer[timer_id].alarm) != 1)
 		atomic_inc(&tcpc->suspend_pending);
 	alarm_start_relative(&tcpc->tcpc_timer[timer_id].alarm,
@@ -360,16 +361,21 @@ void tcpc_enable_timer(struct tcpc_device *tcpc, uint32_t timer_id)
 	mutex_unlock(&tcpc->timer_lock);
 }
 
-void tcpc_disable_timer(struct tcpc_device *tcpc, uint32_t timer_id)
+int tcpc_disable_timer(struct tcpc_device *tcpc, uint32_t timer_id)
 {
+	int ret = 0;
+
 	if (timer_id >= PD_TIMER_NR) {
 		PD_BUG_ON(1);
-		return;
+		return ret;
 	}
 	mutex_lock(&tcpc->timer_lock);
-	if (alarm_try_to_cancel(&tcpc->tcpc_timer[timer_id].alarm) == 1)
+	ret = alarm_try_to_cancel(&tcpc->tcpc_timer[timer_id].alarm);
+	/* the timer was canceled */
+	if (ret == 1)
 		atomic_dec_if_positive(&tcpc->suspend_pending);
 	mutex_unlock(&tcpc->timer_lock);
+	return ret;
 }
 
 void tcpc_restart_timer(struct tcpc_device *tcpc, uint32_t timer_id)

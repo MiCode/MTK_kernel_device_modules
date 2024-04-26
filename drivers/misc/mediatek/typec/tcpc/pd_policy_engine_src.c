@@ -34,12 +34,11 @@ void pe_src_discovery_entry(struct pd_port *pd_port)
 	 */
 
 	pd_port->pe_data.pd_connected = false;
+	pd_init_spec_revision(pd_port);
 
-#if CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID
 	if (pd_is_discover_cable(pd_port) &&
 	    !pd_port->pe_data.cable_discovered_state)
 		pd_enable_timer(pd_port, PD_TIMER_DISCOVER_ID);
-#endif	/* CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID */
 
 	pd_enable_timer(pd_port, PD_TIMER_SOURCE_CAPABILITY);
 }
@@ -138,10 +137,9 @@ void pe_src_get_sink_cap_exit(struct pd_port *pd_port)
 	pd_dpm_dr_inform_sink_cap(pd_port);
 }
 
-void pe_src_wait_new_capabilities_entry(
-			struct pd_port *pd_port)
+void pe_src_wait_new_capabilities_entry(struct pd_port *pd_port)
 {
-	/* Wait for new Source Capabilities */
+	tcpci_notify_wait_new_cap(pd_port->tcpc);
 }
 
 void pe_src_send_soft_reset_entry(struct pd_port *pd_port)
@@ -159,9 +157,6 @@ void pe_src_soft_reset_entry(struct pd_port *pd_port)
  Source Startup Structured VDM Discover Identity State Diagram (TODO)
  */
 
-#if CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID
-
-#if CONFIG_PD_SRC_RESET_CABLE
 void pe_src_cbl_send_soft_reset_entry(struct pd_port *pd_port)
 {
 	PE_STATE_WAIT_RESPONSE(pd_port);
@@ -170,13 +165,12 @@ void pe_src_cbl_send_soft_reset_entry(struct pd_port *pd_port)
 
 	pd_send_cable_soft_reset(pd_port);
 }
-#endif	/* CONFIG_PD_SRC_RESET_CABLE */
 
 void pe_src_vdm_identity_request_entry(struct pd_port *pd_port)
 {
 	pd_set_rx_enable(pd_port, PD_RX_CAP_PE_DISCOVER_CABLE);
 
-	pd_port->pe_data.discover_id_counter++;
+	pd_port->pe_data.discover_cable_id_counter++;
 	pd_send_vdm_discover_id(pd_port, TCPC_TX_SOP_PRIME);
 }
 
@@ -189,9 +183,6 @@ void pe_src_vdm_identity_naked_entry(struct pd_port *pd_port)
 {
 	pd_dpm_inform_cable_id(pd_port, false, true);
 }
-
-#endif	/* CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID */
-
 
 #if CONFIG_USB_PD_REV30
 

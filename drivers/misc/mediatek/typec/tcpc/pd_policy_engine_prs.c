@@ -85,9 +85,7 @@ void pe_prs_snk_src_assert_rp_entry(struct pd_port *pd_port)
 
 void pe_prs_snk_src_source_on_entry(struct pd_port *pd_port)
 {
-#if CONFIG_USB_PD_RESET_CABLE
 	dpm_reaction_set(pd_port, DPM_REACTION_CAP_RESET_CABLE);
-#endif	/* CONFIG_USB_PD_RESET_CABLE */
 
 	pd_dpm_dynamic_enable_vconn(pd_port);
 	pd_dpm_prs_enable_power_source(pd_port, true);

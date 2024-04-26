@@ -38,7 +38,7 @@ enum {
 	PD_TIMER_CK_NOT_SUPPORTED,
 	PD_TIMER_SINK_TX,
 #if CONFIG_USB_PD_REV30_PPS_SOURCE
-	PD_TIMER_SOURCE_PPS_TIMEOUT,
+	PD_TIMER_SOURCE_PPS_TOUT,
 #endif	/* CONFIG_USB_PD_REV30_PPS_SOURCE */
 #endif	/* CONFIG_USB_PD_REV30 */
 	PD_TIMER_HARD_RESET_SAFE0V,
@@ -48,9 +48,9 @@ enum {
 #if CONFIG_USB_PD_SAFE0V_DELAY
 	PD_TIMER_VSAFE0V_DELAY,
 #endif	/* CONFIG_USB_PD_SAFE0V_DELAY */
-#if CONFIG_USB_PD_SAFE0V_TIMEOUT
+#if CONFIG_USB_PD_SAFE0V_TOUT
 	PD_TIMER_VSAFE0V_TOUT,
-#endif	/* CONFIG_USB_PD_SAFE0V_TIMEOUT */
+#endif	/* CONFIG_USB_PD_SAFE0V_TOUT */
 #if CONFIG_USB_PD_SAFE5V_DELAY
 	PD_TIMER_VSAFE5V_DELAY,
 #endif	/* CONFIG_USB_PD_SAFE5V_DELAY */
@@ -86,7 +86,6 @@ enum {
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 	TYPEC_RT_TIMER_SAFE0V_DELAY = TYPEC_RT_TIMER_START_ID,
 	TYPEC_RT_TIMER_SAFE0V_TOUT,
-	TYPEC_RT_TIMER_ROLE_SWAP_START,
 	TYPEC_RT_TIMER_ROLE_SWAP_STOP,
 	TYPEC_RT_TIMER_STATE_CHANGE,
 	TYPEC_RT_TIMER_DISCHARGE,
@@ -105,6 +104,7 @@ enum {
 /* TYPEC_TRY_TIMER */
 	TYPEC_TRY_TIMER_START_ID,
 	TYPEC_TRY_TIMER_DRP_TRY = TYPEC_TRY_TIMER_START_ID,
+	TYPEC_TRY_TIMER_TRY_TOUT,
 /* TYPEC_DEBOUNCE_TIMER */
 	TYPEC_TIMER_START_ID,
 	TYPEC_TIMER_CCDEBOUNCE = TYPEC_TIMER_START_ID,
@@ -123,7 +123,7 @@ enum {
 extern void tcpc_enable_lpm_timer(struct tcpc_device *tcpc, bool en);
 extern bool tcpc_is_timer_active(struct tcpc_device *tcpc, int start, int end);
 extern void tcpc_enable_timer(struct tcpc_device *tcpc, uint32_t timer_id);
-extern void tcpc_disable_timer(struct tcpc_device *tcpc, uint32_t timer_id);
+extern int tcpc_disable_timer(struct tcpc_device *tcpc, uint32_t timer_id);
 extern void tcpc_restart_timer(struct tcpc_device *tcpc, uint32_t timer_id);
 extern void tcpc_reset_pe_timer(struct tcpc_device *tcpc);
 extern void tcpc_reset_typec_debounce_timer(struct tcpc_device *tcpc);

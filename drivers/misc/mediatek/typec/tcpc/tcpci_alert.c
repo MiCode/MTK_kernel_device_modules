@@ -462,7 +462,6 @@ int tcpci_report_usb_port_attached(struct tcpc_device *tcpc)
 		return 0;
 #endif	/* CONFIG_USB_PD_DISABLE_PE */
 
-	/* MTK Only */
 	if (tcpc->pd_inited_flag)
 		pd_put_cc_attached_event(tcpc, tcpc->typec_attach_new);
 #endif /* CONFIG_USB_POWER_DLEIVERY */
@@ -475,7 +474,6 @@ int tcpci_report_usb_port_detached(struct tcpc_device *tcpc)
 	TCPC_INFO("usb_port_detached\n");
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
-	/* MTK Only */
 	if (tcpc->pd_inited_flag)
 		pd_put_cc_detached_event(tcpc);
 	else {

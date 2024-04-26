@@ -217,10 +217,8 @@ static const char *const tcp_dpm_evt_name[] = {
 
 	"cvdm",
 
-#if CONFIG_USB_PD_DFP_READY_DISCOVER_ID
 	"disc_cable_svids",
 	"disc_cable_modes",
-#endif /* CONFIG_USB_PD_DFP_READY_DISCOVER_ID */
 
 	/* TCP_DPM_EVT_IMMEDIATELY */
 	"hard_reset",
@@ -512,27 +510,21 @@ bool pd_process_tx_failed_discard(struct pd_port *pd_port, uint8_t msg)
 
 /*---------------------------------------------------------------------------*/
 
-#if CONFIG_USB_PD_RESET_CABLE
 static inline bool pd_process_cable_ctrl_msg_accept(
 	struct pd_port *pd_port, struct pd_event *pd_event)
 {
 	switch (pd_port->pe_state_curr) {
-#if CONFIG_PD_SRC_RESET_CABLE
 	case PE_SRC_CBL_SEND_SOFT_RESET:
 		vdm_put_dpm_discover_cable_id_event(pd_port);
 		return false;
-#endif	/* CONFIG_PD_SRC_RESET_CABLE */
 
-#if CONFIG_PD_DFP_RESET_CABLE
 	case PE_DFP_CBL_SEND_SOFT_RESET:
 		pe_transit_ready_state(pd_port);
 		return true;
-#endif	/* CONFIG_PD_DFP_RESET_CABLE */
 	}
 
 	return false;
 }
-#endif	/* CONFIG_USB_PD_RESET_CABLE */
 
 static inline bool pd_process_event_cable(
 	struct pd_port *pd_port, struct pd_event *pd_event)
@@ -540,10 +532,8 @@ static inline bool pd_process_event_cable(
 	bool ret = false;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
-#if CONFIG_USB_PD_RESET_CABLE
 	if (pd_event->msg == PD_CTRL_ACCEPT)
 		ret = pd_process_cable_ctrl_msg_accept(pd_port, pd_event);
-#endif	/* CONFIG_USB_PD_RESET_CABLE */
 
 	if (!ret)
 		PE_DBG("Ignore not SOP Ctrl Msg\n");
@@ -715,13 +705,11 @@ static inline void pe_translate_pd_msg_event(struct pd_port *pd_port,
 	if (PD_HEADER_EXT(msg_hdr))
 		pd_event->event_type = PD_EVT_EXT_MSG;
 
-#if CONFIG_USB_PD_REV30_SYNC_SPEC_REV
 	if (pd_msg->frame_type == TCPC_TX_SOP_PRIME &&
 	    !pd_event_ctrl_msg_match(pd_event, PD_CTRL_GOOD_CRC)) {
 		pd_sync_sop_prime_spec_revision(
 			pd_port, PD_HEADER_REV(msg_hdr));
 	}
-#endif /* CONFIG_USB_PD_REV30_SYNC_SPEC_REV */
 #endif	/* CONFIG_USB_PD_REV30 */
 }
 

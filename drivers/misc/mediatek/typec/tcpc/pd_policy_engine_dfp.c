@@ -33,7 +33,7 @@ void pe_dfp_ufp_vdm_identity_naked_entry(struct pd_port *pd_port)
 
 void pe_dfp_cbl_vdm_identity_request_entry(struct pd_port *pd_port)
 {
-	pd_port->pe_data.discover_id_counter++;
+	pd_port->pe_data.discover_cable_id_counter++;
 	pd_send_vdm_discover_id(pd_port, TCPC_TX_SOP_PRIME);
 }
 
@@ -164,8 +164,6 @@ void pe_dfp_vdm_attention_request_entry(struct pd_port *pd_port)
  * [PD2.0] Figure 8-83 DFP Cable Soft Reset or Cable Reset State Diagram
  */
 
-#if CONFIG_PD_DFP_RESET_CABLE
-
 void pe_dfp_cbl_send_soft_reset_entry(struct pd_port *pd_port)
 {
 	PE_STATE_WAIT_MSG_OR_TX_FAILED(pd_port);
@@ -177,8 +175,6 @@ void pe_dfp_cbl_send_cable_reset_entry(struct pd_port *pd_port)
 {
 	/* TODO : we don't do cable reset now */
 }
-
-#endif	/* CONFIG_PD_DFP_RESET_CABLE */
 
 /*
  * [PD2.0] Display Port

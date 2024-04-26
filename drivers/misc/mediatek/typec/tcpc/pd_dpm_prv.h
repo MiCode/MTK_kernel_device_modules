@@ -245,7 +245,8 @@ static inline bool svdm_dfp_inform_exit_mode(
 		goto out;
 
 	if (svid_data->ops && svid_data->ops->dfp_inform_exit_mode)
-		ret = svid_data->ops->dfp_inform_exit_mode(pd_port, svid_data, ops);
+		ret = svid_data->ops->dfp_inform_exit_mode(
+						pd_port, svid_data, ops);
 out:
 	return ret;
 }

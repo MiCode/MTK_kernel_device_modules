@@ -431,11 +431,9 @@ static inline bool pd_process_timer_msg(
 		}
 		break;
 
-#if CONFIG_USB_PD_DFP_READY_DISCOVER_ID
 	case PD_TIMER_DISCOVER_ID:
 		vdm_put_dpm_discover_cable_id_event(pd_port);
 		break;
-#endif	/* CONFIG_USB_PD_DFP_READY_DISCOVER_ID */
 #if CONFIG_USB_PD_REV30
 	case PD_TIMER_CK_NOT_SUPPORTED:
 		return PE_MAKE_STATE_TRANSIT_SINGLE(
@@ -456,7 +454,8 @@ static inline bool pd_process_timer_msg(
 		if (pd_port->request_apdo) {
 			pd_put_deferred_tcp_event(tcpc, &tcp_event);
 			pd_restart_timer(pd_port, PD_TIMER_PPS_REQUEST);
-		}
+		} else
+			pm_relax(&tcpc->dev);
 		break;
 #endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
 #endif	/* CONFIG_USB_PD_REV30 */

@@ -317,12 +317,10 @@ static inline bool pd_process_hw_msg_tx_failed(
 		}
 	}
 
-#if CONFIG_PD_SRC_RESET_CABLE
 	if (pd_port->pe_state_curr == PE_SRC_CBL_SEND_SOFT_RESET) {
 		PE_TRANSIT_STATE(pd_port, PE_SRC_SEND_CAPABILITIES);
 		return true;
 	}
-#endif	/*  CONFIG_PD_SRC_RESET_CABLE */
 
 	return pd_process_tx_failed_discard(pd_port, pd_event->msg);
 }
@@ -379,26 +377,20 @@ static inline bool pd_process_pe_msg(
 static inline bool pd_process_timer_msg_source_start(
 	struct pd_port *pd_port, struct pd_event *pd_event)
 {
-#if CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID
 	if (pd_is_discover_cable(pd_port) &&
 	    !pd_port->pe_data.cable_discovered_state) {
-#if CONFIG_PD_SRC_RESET_CABLE
 		if (pd_is_reset_cable(pd_port)) {
 			PE_TRANSIT_STATE(pd_port, PE_SRC_CBL_SEND_SOFT_RESET);
 			return true;
 		}
-#endif	/* CONFIG_PD_SRC_RESET_CABLE */
 
 		if (vdm_put_dpm_discover_cable_id_event(pd_port))
 			return false;
 	}
-#endif	/* CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID */
 
 	switch (pd_port->pe_state_curr) {
 	case PE_SRC_STARTUP:
-#if CONFIG_PD_SRC_RESET_CABLE
 	case PE_SRC_CBL_SEND_SOFT_RESET:
-#endif	/* CONFIG_PD_SRC_RESET_CABLE */
 		PE_TRANSIT_STATE(pd_port, PE_SRC_SEND_CAPABILITIES);
 		return true;
 	}
@@ -440,11 +432,9 @@ static inline bool pd_process_timer_msg(
 	case PD_TIMER_SOURCE_CAPABILITY:
 		return pd_process_timer_msg_source_cap(pd_port, pd_event);
 
-#if CONFIG_PD_SRC_RESET_CABLE
 	case PD_TIMER_SENDER_RESPONSE:
 		return PE_MAKE_STATE_TRANSIT_SINGLE(
 			PE_SRC_CBL_SEND_SOFT_RESET, PE_SRC_SEND_CAPABILITIES);
-#endif	/*  CONFIG_PD_SRC_RESET_CABLE */
 
 	case PD_TIMER_PS_HARD_RESET:
 		return PE_MAKE_STATE_TRANSIT(PD_TIMER_PS_HARD_RESET);
@@ -460,11 +450,9 @@ static inline bool pd_process_timer_msg(
 			pd_dpm_src_transition_power(pd_port);
 		break;
 
-#if CONFIG_PD_DISCOVER_CABLE_ID
 	case PD_TIMER_DISCOVER_ID:
 		vdm_put_dpm_discover_cable_id_event(pd_port);
 		break;
-#endif	/* CONFIG_PD_DISCOVER_CABLE_ID */
 
 	case PD_TIMER_SRC_RECOVER:
 		pd_dpm_source_vbus(pd_port, true);

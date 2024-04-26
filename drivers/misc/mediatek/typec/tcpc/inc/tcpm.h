@@ -141,6 +141,7 @@ enum {
 	TCP_NOTIFY_DR_SWAP,
 	TCP_NOTIFY_VCONN_SWAP,
 	TCP_NOTIFY_HARD_RESET_STATE,
+	TCP_NOTIFY_WAIT_NEW_CAP,
 	TCP_NOTIFY_ALERT,
 	TCP_NOTIFY_STATUS,
 	TCP_NOTIFY_REQUEST_BAT_INFO,
@@ -410,7 +411,7 @@ enum tcpc_cc_voltage_status {
 };
 
 enum tcpm_vbus_level {
-	TCPC_VBUS_SAFE0V,	/* < 0.8V */
+	TCPC_VBUS_SAFE0V,	/* <= 0.8V */
 	TCPC_VBUS_INVALID,	/* > 0.8V */
 	TCPC_VBUS_VALID,	/* > 4V */
 };
@@ -554,7 +555,7 @@ enum tcp_dpm_return_code {
 	TCP_DPM_RET_DENIED_SAME_ROLE,
 	TCP_DPM_RET_DENIED_INVALID_REQUEST,
 	TCP_DPM_RET_DENIED_REPEAT_REQUEST,
-	TCP_DPM_RET_DENIED_WRONG_DATA_ROLE,
+	TCP_DPM_RET_DENIED_WRONG_ROLE,
 	TCP_DPM_RET_DENIED_PD_REV,
 	TCP_DPM_RET_DENIED_IN_MODAL_OPERATION,
 #if CONFIG_USB_PD_VCONN_SAFE5V_ONLY
@@ -645,10 +646,8 @@ enum TCP_DPM_EVT_ID {
 
 	TCP_DPM_EVT_CVDM,
 
-#if CONFIG_USB_PD_DFP_READY_DISCOVER_ID
 	TCP_DPM_EVT_DISCOVER_CABLE_SVIDS,
 	TCP_DPM_EVT_DISCOVER_CABLE_MODES,
-#endif	/* CONFIG_USB_PD_DFP_READY_DISCOVER_ID */
 
 	TCP_DPM_EVT_IMMEDIATELY,
 	TCP_DPM_EVT_HARD_RESET = TCP_DPM_EVT_IMMEDIATELY,
@@ -888,6 +887,8 @@ extern uint8_t tcpm_inquire_typec_role(struct tcpc_device *tcpc);
 extern uint8_t tcpm_inquire_typec_role_def(struct tcpc_device *tcpc);
 extern bool tcpm_inquire_floating_ground(struct tcpc_device *tcpc);
 extern uint8_t tcpm_inquire_typec_local_rp(struct tcpc_device *tcpc);
+extern void tcpm_inquire_sink_vbus(struct tcpc_device *tcpc,
+				   int *mv, int *ma, uint8_t *type);
 
 extern int tcpm_typec_set_usb_sink_curr(
 	struct tcpc_device *tcpc, int curr);
@@ -1340,6 +1341,11 @@ static inline bool tcpm_inquire_floating_ground(struct tcpc_device *tcpc)
 static inline uint8_t tcpm_inquire_typec_local_rp(struct tcpc_device *tcpc)
 {
 	return 0;
+}
+
+static inline void tcpm_inquire_sink_vbus(struct tcpc_device *tcpc,
+					  int *mv, int *ma, uint8_t *type)
+{
 }
 
 static inline int tcpm_typec_set_wake_lock(

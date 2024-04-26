@@ -455,6 +455,8 @@ bool pd_put_deferred_tcp_event(
 
 	switch (tcp_event->event_id) {
 	case TCP_DPM_EVT_DISCOVER_CABLE_ID:
+	case TCP_DPM_EVT_DISCOVER_CABLE_SVIDS:
+	case TCP_DPM_EVT_DISCOVER_CABLE_MODES:
 	case TCP_DPM_EVT_CABLE_SOFTRESET:
 		dpm_reaction_set(pd_port,
 			DPM_REACTION_DYNAMIC_VCONN |
@@ -900,14 +902,14 @@ void pd_put_vbus_safe0v_event(struct tcpc_device *tcpc, bool safe0v)
 #if CONFIG_USB_PD_SAFE0V_DELAY
 	tcpc_disable_timer(tcpc, PD_TIMER_VSAFE0V_DELAY);
 #endif	/* CONFIG_USB_PD_SAFE0V_DELAY */
-#if CONFIG_USB_PD_SAFE0V_TIMEOUT
+#if CONFIG_USB_PD_SAFE0V_TOUT
 	tcpc_disable_timer(tcpc, PD_TIMER_VSAFE0V_TOUT);
-#endif	/* CONFIG_USB_PD_SAFE0V_TIMEOUT */
+#endif	/* CONFIG_USB_PD_SAFE0V_TOUT */
 
 	mutex_lock(&tcpc->access_lock);
-#if CONFIG_USB_PD_SAFE0V_TIMEOUT
+#if CONFIG_USB_PD_SAFE0V_TOUT
 	tcpci_enable_force_discharge(tcpc, false, 0);
-#endif	/* CONFIG_USB_PD_SAFE0V_TIMEOUT */
+#endif	/* CONFIG_USB_PD_SAFE0V_TOUT */
 	if (tcpc->pd_wait_vbus_once == PD_WAIT_VBUS_SAFE0V_ONCE && safe0v) {
 		tcpc->pd_wait_vbus_once = PD_WAIT_VBUS_DISABLE;
 		__pd_put_hw_event(tcpc, PD_HW_VBUS_SAFE0V);
@@ -981,14 +983,14 @@ void pd_notify_pe_wait_vbus_once(struct pd_port *pd_port, int wait_evt)
 			break;
 		}
 
-#if CONFIG_USB_PD_SAFE0V_TIMEOUT
+#if CONFIG_USB_PD_SAFE0V_TOUT
 		if (!as_sink) {
 			mutex_lock(&tcpc->access_lock);
 			tcpci_enable_force_discharge(tcpc, true, 0);
 			mutex_unlock(&tcpc->access_lock);
 		}
 		tcpc_enable_timer(tcpc, PD_TIMER_VSAFE0V_TOUT);
-#endif	/* CONFIG_USB_PD_SAFE0V_TIMEOUT */
+#endif	/* CONFIG_USB_PD_SAFE0V_TOUT */
 
 		break;
 	}
@@ -1011,27 +1013,6 @@ void pd_notify_pe_error_recovery(struct pd_port *pd_port)
 	tcpc_typec_error_recovery(tcpc);
 	tcpci_unlock_typec(tcpc);
 }
-
-#if CONFIG_USB_PD_RECV_HRESET_COUNTER
-void pd_notify_pe_over_recv_hreset(struct pd_port *pd_port)
-{
-	struct tcpc_device *tcpc = pd_port->tcpc;
-
-	mutex_lock(&tcpc->access_lock);
-	tcpc->pd_wait_hard_reset_complete = false;
-	tcpc->pd_wait_pr_swap_complete = false;
-	mutex_unlock(&tcpc->access_lock);
-
-	disable_irq(chip->irq);
-	tcpci_lock_typec(tcpc);
-	tcpci_init(tcpc, true);
-	tcpci_set_cc(tcpc, TYPEC_CC_OPEN);
-	tcpci_unlock_typec(tcpc);
-	tcpci_set_rx_enable(tcpc, PD_RX_CAP_PE_IDLE);
-	tcpc_enable_timer(tcpc, TYPEC_TIMER_ERROR_RECOVERY);
-	enable_irq_wake(chip->irq);
-}
-#endif	/* CONFIG_USB_PD_RECV_HRESET_COUNTER */
 
 void pd_notify_pe_transit_to_default(struct pd_port *pd_port)
 {
@@ -1119,10 +1100,24 @@ void pd_notify_pe_cancel_pr_swap(struct pd_port *pd_port)
 void pd_noitfy_pe_bist_mode(struct pd_port *pd_port, uint8_t mode)
 {
 	struct tcpc_device *tcpc = pd_port->tcpc;
+	bool noti = false;
 
 	mutex_lock(&tcpc->access_lock);
-	tcpc->pd_bist_mode = mode;
+	if (tcpc->pd_bist_mode != mode) {
+		tcpc->pd_bist_mode = mode;
+		noti = true;
+	}
 	mutex_unlock(&tcpc->access_lock);
+
+	if (!noti)
+		return;
+
+	if (mode == PD_BIST_MODE_DISABLE)
+		tcpci_sink_vbus(tcpc, TCP_VBUS_CTRL_REQUEST, pd_port->request_v,
+				pd_port->request_i);
+	else
+		tcpci_sink_vbus(tcpc, TCP_VBUS_CTRL_REQUEST, TCPC_VBUS_SINK_0V,
+				0);
 }
 
 bool pd_is_pe_wait_pd_transmit_done(struct pd_port *pd_port)
@@ -1179,7 +1174,6 @@ void pd_notify_pe_snk_explicit_contract(struct pd_port *pd_port)
 
 void pd_notify_pe_src_explicit_contract(struct pd_port *pd_port)
 {
-	uint8_t pull = TYPEC_CC_RP_3_0;
 	struct pe_data *pe_data = &pd_port->pe_data;
 	struct tcpc_device *tcpc = pd_port->tcpc;
 
@@ -1203,11 +1197,9 @@ void pd_notify_pe_src_explicit_contract(struct pd_port *pd_port)
 	}
 #endif	/* CONFIG_USB_PD_REV30 */
 
-	if (pull) {
-		tcpci_lock_typec(tcpc);
-		tcpci_set_cc(tcpc, pull);
-		tcpci_unlock_typec(tcpc);
-	}
+	tcpci_lock_typec(tcpc);
+	tcpci_set_cc(tcpc, TYPEC_CC_RP_3_0);
+	tcpci_unlock_typec(tcpc);
 }
 
 #if CONFIG_USB_PD_DIRECT_CHARGE

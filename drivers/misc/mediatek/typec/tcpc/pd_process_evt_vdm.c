@@ -99,14 +99,11 @@ static const struct vdm_state_transition pe_vdm_state_reactions[] = {
 		PE_DFP_CVDM_SEND
 	),
 
-#if CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID
 	VDM_CABLE_CMD_REACTION(CMD_DISCOVER_IDENT,
 		0,
 		PE_SRC_VDM_IDENTITY_REQUEST
 	),
-#endif /* CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID */
 
-#if CONFIG_USB_PD_DFP_READY_DISCOVER_ID
 	VDM_CABLE_CMD_REACTION(CMD_DISCOVER_IDENT,
 		0,
 		PE_DFP_CBL_VDM_IDENTITY_REQUEST
@@ -119,7 +116,6 @@ static const struct vdm_state_transition pe_vdm_state_reactions[] = {
 		0,
 		PE_DFP_CBL_VDM_MODES_REQUEST
 	),
-#endif /* CONFIG_USB_PD_DFP_READY_DISCOVER_ID */
 };
 
 static inline bool pd_vdm_state_transit_rx(struct pd_port *pd_port,
@@ -318,24 +314,16 @@ static inline bool pd_make_vdm_state_transit_nak(struct pd_port *pd_port)
 
 /* Discover Cable ID */
 
-#if CONFIG_PD_DISCOVER_CABLE_ID
 DECL_PE_STATE_TRANSITION(PD_DPM_MSG_DISCOVER_CABLE_ID) = {
-#if CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID
 	{ PE_SRC_STARTUP, PE_SRC_VDM_IDENTITY_REQUEST },
 	{ PE_SRC_DISCOVERY, PE_SRC_VDM_IDENTITY_REQUEST },
-#endif
 
-#if CONFIG_USB_PD_DFP_READY_DISCOVER_ID
 	{ PE_SRC_READY, PE_DFP_CBL_VDM_IDENTITY_REQUEST },
 	{ PE_SNK_READY, PE_DFP_CBL_VDM_IDENTITY_REQUEST },
-#endif	/* CONFIG_USB_PD_DFP_READY_DISCOVER_ID */
 
-#if CONFIG_PD_SRC_RESET_CABLE
 	{ PE_SRC_CBL_SEND_SOFT_RESET, PE_SRC_VDM_IDENTITY_REQUEST },
-#endif	/* CONFIG_PD_SRC_RESET_CABLE */
 };
 DECL_PE_STATE_REACTION(PD_DPM_MSG_DISCOVER_CABLE_ID);
-#endif	/* CONFIG_PD_DISCOVER_CABLE_ID */
 
 /*
  * [BLOCK] Process Ctrl MSG
@@ -391,8 +379,8 @@ static inline bool pd_process_ctrl_msg(
 		break;
 	}
 
-	if (pe_data->vdm_state_flags
-		& VDM_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC) {
+	if (pe_data->vdm_state_flags &
+		VDM_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC) {
 		pe_transit_ready_state(pd_port);
 		return true;
 	}
@@ -570,10 +558,10 @@ static inline bool pd_process_data_msg(
 	if (!PD_VDO_SVDM(vdm_hdr))
 		return pd_process_uvdm(pd_port, pd_event);
 
-#if CONFIG_USB_PD_REV30_SYNC_SPEC_REV
+#if CONFIG_USB_PD_REV30
 	pd_sync_svdm_ver_min(pd_port, pd_msg->frame_type,
 			     PD_VDO_VER_MIN(vdm_hdr));
-#endif /* CONFIG_USB_PD_REV30_SYNC_SPEC_REV */
+#endif	/* CONFIG_USB_PD_REV30 */
 
 	/* From Port Partner, copy curr_state from pd_state */
 	if (PD_VDO_CMDT(vdm_hdr) == CMDT_INIT) {
@@ -705,10 +693,8 @@ const uint8_t tcp_vdm_evt_init_state[] = {
 
 	PE_DFP_CVDM_SEND, /* TCP_DPM_EVT_CVDM */
 
-#if CONFIG_USB_PD_DFP_READY_DISCOVER_ID
 	PE_DFP_CBL_VDM_SVIDS_REQUEST, /* TCP_DPM_EVT_DISCOVER_CABLE_SVIDS */
 	PE_DFP_CBL_VDM_MODES_REQUEST, /* TCP_DPM_EVT_DISCOVER_CABLE_MODES */
-#endif	/* CONFIG_USB_PD_DFP_READY_DISCOVER_ID */
 };
 
 static inline bool pd_process_tcp_cable_id_event(
@@ -716,18 +702,14 @@ static inline bool pd_process_tcp_cable_id_event(
 {
 	bool ret;
 	int tcp_ret;
-#if CONFIG_PD_DISCOVER_CABLE_ID
+
 	if (pd_is_cable_communication_available(pd_port)) {
 		ret = PE_MAKE_STATE_TRANSIT(PD_DPM_MSG_DISCOVER_CABLE_ID);
 		tcp_ret = ret ? TCP_DPM_RET_SENT : TCP_DPM_RET_DENIED_NOT_READY;
 	} else {
 		ret = false;
-		tcp_ret = TCP_DPM_RET_DENIED_WRONG_DATA_ROLE;
+		tcp_ret = TCP_DPM_RET_DENIED_WRONG_ROLE;
 	}
-#else
-	ret = false;
-	tcp_ret = TCP_DPM_RET_DENIED_UNKNOWN;
-#endif	/* CONFIG_PD_DISCOVER_CABLE_ID */
 
 	pd_notify_tcp_event_1st_result(pd_port, tcp_ret);
 	return ret;
@@ -853,7 +835,7 @@ static inline bool pd_process_tcp_msg(
 
 	if (!pd_check_tcp_msg_valid(pd_port, new_state)) {
 		pd_notify_tcp_event_1st_result(
-			pd_port, TCP_DPM_RET_DENIED_WRONG_DATA_ROLE);
+			pd_port, TCP_DPM_RET_DENIED_WRONG_ROLE);
 		PE_DBG("skip vdm_request, WRONG DATA ROLE\n");
 		return false;
 	}
