@@ -23,7 +23,11 @@
 #include "mtk_drm_mmp.h"
 #include "mtk_drm_gem.h"
 #include "mtk_drm_fb.h"
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
+#include "mtk_drm_dp/mtk_drm_dp_api.h"
+#else
 #include "mtk_dp_api.h"
+#endif
 #include "mtk_disp_dsc.h"
 #include "platform/mtk_drm_platform.h"
 #define MIN(X, Y) ((X) <= (Y) ? (X) : (Y))
