@@ -332,6 +332,7 @@ static unsigned long long get_current_time_us(void)
 void dump_disp_opt(char *buf, int buf_size, int *dump_size)
 {
 	struct mtk_drm_private *priv;
+	int size_count = 0;
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
 		DDPMSG("%s, invalid drm dev\n", __func__);
@@ -343,7 +344,20 @@ void dump_disp_opt(char *buf, int buf_size, int *dump_size)
 		DDPMSG("%s, invalid priv\n", __func__);
 		return;
 	}
-	*dump_size = mtk_drm_helper_get_opt_list(priv->helper_opt, buf, buf_size);
+	size_count += mtk_drm_primary_display_get_debug_state(priv, buf, buf_size);
+	if (buf_size - size_count > 0)
+		size_count += mtk_drm_dump_wk_lock(priv, buf + size_count, buf_size - size_count);
+	else
+		DDPMSG("%s, out of buffer\n", __func__);
+	if (buf_size - size_count > 0)
+		size_count += mtk_drm_helper_get_opt_list(priv->helper_opt, buf + size_count, buf_size - size_count);
+	else
+		DDPMSG("%s, out of buffer\n", __func__);
+	if (buf_size - size_count > 0)
+		size_count += mtk_drm_dump_vblank_config_rec(priv, buf + size_count, buf_size - size_count);
+	else
+		DDPMSG("%s, out of buffer\n", __func__);
+	*dump_size = size_count;
 }
 
 static void init_mme_buffer(void)
