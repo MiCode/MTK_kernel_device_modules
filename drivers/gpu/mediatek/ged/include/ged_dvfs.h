@@ -189,6 +189,7 @@ unsigned int ged_gpu_apo_support(void);
 unsigned long long ged_get_apo_thr_ns(void);
 void ged_set_apo_thr_ns(unsigned long long apo_thr_ns);
 unsigned long long ged_get_apo_wakeup_ns(void);
+void ged_set_apo_wakeup_ns_nolock(unsigned long long apo_wakeup_ns);
 void ged_set_apo_wakeup_ns(unsigned long long apo_wakeup_ns);
 unsigned long long ged_get_apo_lp_thr_ns(void);
 void ged_set_apo_lp_thr_ns(unsigned long long apo_lp_thr_ns);
@@ -227,6 +228,8 @@ void ged_set_apo_autosuspend_delay_ms_ref_idletime_nolock(long long idle_time);
 void ged_set_apo_autosuspend_delay_ms_ref_idletime(long long idle_time);
 void ged_set_apo_autosuspend_delay_ms_nolock(unsigned int apo_autosuspend_delay_ms);
 void ged_set_apo_autosuspend_delay_ms(unsigned int apo_autosuspend_delay_ms);
+bool ged_gpu_is_heavy(void);
+
 //#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 // for autosuspend_stress
 int ged_get_autosuspend_stress(void);
