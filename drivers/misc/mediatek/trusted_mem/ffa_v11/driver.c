@@ -699,28 +699,28 @@ struct ffa_notify_bitmaps {
 	u64 arch_map;
 };
 
-static int ffa_notification_get(u32 flags, struct ffa_notify_bitmaps *notify)
-{
-	ffa_value_t ret;
-	u16 src_id = NOTIFICATIONS_VM_ID;
-	u16 cpu_id = smp_processor_id();
-	u32 rec_vcpu_ids = PACK_NOTIFICATION_GET_RECEIVER_INFO(cpu_id, src_id);
-
-	invoke_ffa_fn((ffa_value_t){
-		  .a0 = FFA_NOTIFICATION_GET, .a1 = rec_vcpu_ids, .a2 = flags,
-		  }, &ret);
-
-	if (ret.a0 == FFA_ERROR)
-		return ffa_to_linux_errno((int)ret.a2);
-	else if (ret.a0 != FFA_SUCCESS)
-		return -EINVAL; /* Something else went wrong. */
-
-	notify->sp_map = PACK_NOTIFICATION_BITMAP(ret.a2, ret.a3);
-	notify->vm_map = PACK_NOTIFICATION_BITMAP(ret.a4, ret.a5);
-	notify->arch_map = PACK_NOTIFICATION_BITMAP(ret.a6, ret.a7);
-
-	return 0;
-}
+//static int ffa_notification_get(u32 flags, struct ffa_notify_bitmaps *notify)
+//{
+//	ffa_value_t ret;
+//	u16 src_id = NOTIFICATIONS_VM_ID;
+//	u16 cpu_id = smp_processor_id();
+//	u32 rec_vcpu_ids = PACK_NOTIFICATION_GET_RECEIVER_INFO(cpu_id, src_id);
+//
+//	invoke_ffa_fn((ffa_value_t){
+//		  .a0 = FFA_NOTIFICATION_GET, .a1 = rec_vcpu_ids, .a2 = flags,
+//		  }, &ret);
+//
+//	if (ret.a0 == FFA_ERROR)
+//		return ffa_to_linux_errno((int)ret.a2);
+//	else if (ret.a0 != FFA_SUCCESS)
+//		return -EINVAL; /* Something else went wrong. */
+//
+//	notify->sp_map = PACK_NOTIFICATION_BITMAP(ret.a2, ret.a3);
+//	notify->vm_map = PACK_NOTIFICATION_BITMAP(ret.a4, ret.a5);
+//	notify->arch_map = PACK_NOTIFICATION_BITMAP(ret.a6, ret.a7);
+//
+//	return 0;
+//}
 
 struct ffa_dev_part_info {
 	ffa_sched_recv_cb callback;
@@ -746,60 +746,61 @@ static void __do_sched_recv_cb(u16 part_id, u16 vcpu, bool is_per_vcpu)
 
 static void ffa_notification_info_get(bool is_64b)
 {
-	int idx, list, max_ids, lists_cnt, ids_processed, ids_count[MAX_IDS_64];
-	ffa_value_t ret;
-	u64 id_list;
-
-	do {
-		invoke_ffa_fn((ffa_value_t){
-			  .a0 = FFA_FN_NATIVE(NOTIFICATION_INFO_GET),
-			  }, &ret);
-
-		if (ret.a0 != FFA_FN_NATIVE(SUCCESS)) {
-			if (ret.a2 != FFA_RET_NO_DATA)
-				pr_debug("Notification Info fetch failed: 0x%lx (0x%lx)",
-				       ret.a0, ret.a2);
-			return;
-		}
-
-		ids_processed = 0;
-		lists_cnt = FIELD_GET(NOTIFICATION_INFO_GET_ID_COUNT, ret.a2);
-		if (is_64b) {
-			max_ids = MAX_IDS_64;
-			id_list = FIELD_GET(ID_LIST_MASK_64, ret.a2);
-		} else {
-			max_ids = MAX_IDS_32;
-			id_list = FIELD_GET(ID_LIST_MASK_32, ret.a2);
-		}
-
-		for (idx = 0; idx < lists_cnt; idx++, id_list >>= 2)
-			ids_count[idx] = (id_list & 0x3) + 1;
-
-		/* Process IDs */
-		for (list = 0; list < lists_cnt; list++) {
-			u16 vcpu_id, part_id, *packed_id_list = (u16 *)&ret.a3;
-
-			if (ids_processed >= max_ids - 1)
-				break;
-
-			part_id = packed_id_list[ids_processed++];
-
-			if (!ids_count[list]) { /* Global Notification */
-				__do_sched_recv_cb(part_id, 0, false);
-				continue;
-			}
-
-			/* Per vCPU Notification */
-			for (idx = 0; idx < ids_count[list]; idx++) {
-				if (ids_processed >= max_ids - 1)
-					break;
-
-				vcpu_id = packed_id_list[++ids_processed];
-
-				__do_sched_recv_cb(part_id, vcpu_id, true);
-			}
-		}
-	} while (ret.a2 & NOTIFICATION_INFO_GET_MORE_PEND_MASK);
+//	int idx, list, max_ids, lists_cnt, ids_processed, ids_count[MAX_IDS_64];
+//	ffa_value_t ret;
+//	u64 id_list;
+//
+//	do {
+//		invoke_ffa_fn((ffa_value_t){
+//			  .a0 = FFA_FN_NATIVE(NOTIFICATION_INFO_GET),
+//			  }, &ret);
+//
+//		if (ret.a0 != FFA_FN_NATIVE(SUCCESS)) {
+//			if (ret.a2 != FFA_RET_NO_DATA)
+//				pr_debug("Notification Info fetch failed: 0x%lx (0x%lx)",
+//				       ret.a0, ret.a2);
+//			return;
+//		}
+//
+//		ids_processed = 0;
+//		lists_cnt = FIELD_GET(NOTIFICATION_INFO_GET_ID_COUNT, ret.a2);
+//		if (is_64b) {
+//			max_ids = MAX_IDS_64;
+//			id_list = FIELD_GET(ID_LIST_MASK_64, ret.a2);
+//		} else {
+//			max_ids = MAX_IDS_32;
+//			id_list = FIELD_GET(ID_LIST_MASK_32, ret.a2);
+//		}
+//
+//		for (idx = 0; idx < lists_cnt; idx++, id_list >>= 2)
+//			ids_count[idx] = (id_list & 0x3) + 1;
+//
+//		/* Process IDs */
+//		for (list = 0; list < lists_cnt; list++) {
+//			u16 vcpu_id, part_id, *packed_id_list = (u16 *)&ret.a3;
+//
+//			if (ids_processed >= max_ids - 1)
+//				break;
+//
+//			part_id = packed_id_list[ids_processed++];
+//
+//			if (!ids_count[list]) { /* Global Notification */
+//				__do_sched_recv_cb(part_id, 0, false);
+//				continue;
+//			}
+//
+//			/* Per vCPU Notification */
+//			for (idx = 0; idx < ids_count[list]; idx++) {
+//				if (ids_processed >= max_ids - 1)
+//					break;
+//
+//				vcpu_id = packed_id_list[++ids_processed];
+//
+//				__do_sched_recv_cb(part_id, vcpu_id, true);
+//			}
+//		}
+//	} while (ret.a2 & NOTIFICATION_INFO_GET_MORE_PEND_MASK);
+	__do_sched_recv_cb(0, 0, false);
 }
 
 static int ffa_run(struct ffa_device *dev, u16 vcpu)
@@ -1093,15 +1094,18 @@ static void handle_notif_callbacks(u64 bitmap, enum notify_type type)
 
 static void notif_pcpu_irq_work_fn(struct work_struct *work)
 {
-	int rc;
-	struct ffa_notify_bitmaps bitmaps;
-
-	rc = ffa_notification_get(SECURE_PARTITION_BITMAP |
-				  SPM_FRAMEWORK_BITMAP, &bitmaps);
-	if (rc) {
-		pr_err("Failed to retrieve notifications with %d!\n", rc);
-		return;
-	}
+//	int rc;
+//	struct ffa_notify_bitmaps bitmaps;
+//
+//	rc = ffa_notification_get(SECURE_PARTITION_BITMAP |
+//				  SPM_FRAMEWORK_BITMAP, &bitmaps);
+//	if (rc) {
+//		pr_info("Failed to retrieve notifications with %d!\n", rc);
+//		return;
+//	}
+//
+	/* HACK: assume notification bit0 set from SP to normal world driver. */
+	struct ffa_notify_bitmaps bitmaps = { 2, 0, 0 };
 
 	handle_notif_callbacks(bitmaps.vm_map, NON_SECURE_VM);
 	handle_notif_callbacks(bitmaps.sp_map, SECURE_PARTITION);
