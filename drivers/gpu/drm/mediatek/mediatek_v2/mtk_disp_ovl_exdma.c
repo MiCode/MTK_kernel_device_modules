@@ -2171,9 +2171,9 @@ static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pk
 		return;
 	}
 
-	hdr_roi_stall = (24 * 100 + hdr_fifo_l) / l_time;
-	roi_stall = (24 * 100 + fifo_l) / l_time;
-	gmc_stall = 24 * 100 / l_time;
+	hdr_roi_stall = (125 * 100 + hdr_fifo_l * 10) / l_time / 10;
+	roi_stall = (125 * 100 + fifo_l * 10) / l_time / 10;
+	gmc_stall = 125 * 100 / l_time / 10;
 	DDPDBG("%s, l_time=%d, fifo_l=%d, hdr_fifo_l=%d, hdr_roi_stall=%d, roi_stall=%d, gmc_stall=%d\n",
 		__func__, l_time, fifo_l, hdr_fifo_l, hdr_roi_stall, roi_stall, gmc_stall);
 
