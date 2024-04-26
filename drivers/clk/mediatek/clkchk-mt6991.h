@@ -274,4 +274,6 @@ extern void set_subsys_reg_dump_mt6991(enum chk_sys_id id[]);
 extern void get_subsys_reg_dump_mt6991(void);
 extern u32 get_mt6991_reg_value(u32 id, u32 ofs);
 extern int pdchk_pd_is_on(int pd_id);
+extern void clkchk_debug_dump_mt6991(enum chk_sys_id id[],
+		char *exception_name, bool trigger_vcp_dump, bool trigger_bugon);
 #endif	/* __DRV_CLKCHK_MT6991_H */

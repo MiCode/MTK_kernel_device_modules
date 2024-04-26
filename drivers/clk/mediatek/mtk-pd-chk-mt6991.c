@@ -29,6 +29,7 @@
 static DEFINE_SPINLOCK(pwr_trace_lock);
 static unsigned int pwr_event[EVT_LEN];
 static unsigned int evt_cnt, suspend_cnt;
+static bool pdchk_bug_on_flag = true;
 
 static void trace_power_event(unsigned int id, unsigned int pwr_sta)
 {
@@ -1029,19 +1030,10 @@ static enum chk_sys_id debug_dump_id[] = {
 
 static void debug_dump(unsigned int id, unsigned int pwr_sta)
 {
-	const struct fmeter_clk *fclks;
 	int i, parent_id = PD_NULL;
 
 	if (id > MT6991_CHK_PD_NUM)
 		return;
-
-	fclks = mt_get_fmeter_clks();
-
-	set_subsys_reg_dump_mt6991(debug_dump_id);
-
-	get_subsys_reg_dump_mt6991();
-
-	clkchk_chk_pm_state();
 
 	for (i = 0; i < ARRAY_SIZE(mtk_subsys_check); i++) {
 		if (mtk_subsys_check[i].pd_id == id) {
@@ -1059,21 +1051,10 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 			print_subsys_reg_mt6991(mtk_subsys_check[i].chk_id);
 	}
 
-	dump_power_event();
-
-	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
-		if (fclks->type != SUBSYS)
-			pr_notice("[%s] %d khz\n", fclks->name,
-				mt_get_fmeter_freq(fclks->id, fclks->type));
-	}
-
-	/* vcp no need to vote mminfra */
 	if (pwr_sta)
-		vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "scpsys_hwv_on");
+		clkchk_debug_dump_mt6991(debug_dump_id, "scpsys_hwv_on", pdchk_bug_on_flag, pdchk_bug_on_flag);
 	else
-		vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "scpsys_hwv_off");
-
-	BUG_ON(1);
+		clkchk_debug_dump_mt6991(debug_dump_id, "scpsys_hwv_off", pdchk_bug_on_flag, pdchk_bug_on_flag);
 }
 
 static enum chk_sys_id log_dump_id[] = {
@@ -1325,6 +1306,16 @@ static bool get_mtcmos_sw_state(struct generic_pm_domain *pd)
 	return scpd->is_on;
 }
 
+static void verify_debug_flow(struct clk_event_data *clkd)
+{
+	pdchk_bug_on_flag = false;
+	/* power on timeout */
+	debug_dump(clkd->id, PD_PWR_ON);
+	/* power off timeout */
+	debug_dump(clkd->id, PD_PWR_OFF);
+	pdchk_bug_on_flag = true;
+}
+
 /*
  * init functions
  */
@@ -1347,6 +1338,7 @@ static struct pdchk_ops pdchk_mt6991_ops = {
 	.check_mm_hwv_irq_sta = check_mm_hwv_irq_sta,
 	.get_pd_name = get_pd_name,
 	.get_mtcmos_sw_state = get_mtcmos_sw_state,
+	.verify_debug_flow = verify_debug_flow,
 };
 
 static int pd_chk_mt6991_probe(struct platform_device *pdev)
@@ -1355,6 +1347,7 @@ static int pd_chk_mt6991_probe(struct platform_device *pdev)
 
 	pdchk_common_init(&pdchk_mt6991_ops);
 	pdchk_hwv_irq_init(pdev);
+	set_pdchk_notify();
 
 	return 0;
 }

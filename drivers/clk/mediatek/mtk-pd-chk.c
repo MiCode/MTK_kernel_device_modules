@@ -16,6 +16,7 @@
 #include <linux/types.h>
 
 #include "mtk-pd-chk.h"
+#include "clk-mtk.h"
 #include "mt-plat/aee.h"
 
 #define TAG			"[pdchk] "
@@ -37,6 +38,7 @@ static bool bug_on_stat;
 static atomic_t check_enabled;
 static int hwv_irq;
 static int hfrp_hwv_irq;
+static struct notifier_block mtk_pdchk_notifier;
 
 static bool is_in_pd_list(unsigned int id)
 {
@@ -625,4 +627,60 @@ void pdchk_hwv_irq_init(struct platform_device *pdev)
 	}
 }
 EXPORT_SYMBOL(pdchk_hwv_irq_init);
+
+static void pdchk_verify_debug_flow(struct clk_event_data *clkd)
+{
+	if (pdchk_ops == NULL || pdchk_ops->verify_debug_flow == NULL)
+		return;
+
+	return pdchk_ops->verify_debug_flow(clkd);
+}
+
+static int pdchk_evt_handling(struct notifier_block *nb,
+			unsigned long flags, void *data)
+{
+	struct clk_event_data *clkd;
+
+	if (!data)
+		return NOTIFY_OK;
+
+	clkd = (struct clk_event_data *)data;
+
+	switch (clkd->event_type) {
+	case CLK_EVT_HWV_CG_TIMEOUT:
+	case CLK_EVT_HWV_CG_CHK_PWR:
+	case CLK_EVT_LONG_BUS_LATENCY:
+	case CLK_EVT_HWV_PLL_TIMEOUT:
+	case CLK_EVT_CLK_TRACE:
+	case CLK_EVT_TRIGGER_TRACE_DUMP:
+	case CLK_EVT_IPI_CG_TIMEOUT:
+	case CLK_EVT_SET_PARENT_TIMEOUT:
+	case CLK_EVT_BYPASS_PLL:
+	case CLK_EVT_SET_PARENT_ERR:
+	case CLK_EVT_MMINFRA_HWV_TIMEOUT:
+	case CLK_EVT_CHECK_APMIXED_STAT:
+		break;
+	case CLK_EVT_DEBUG_FLOW_VERIFY:
+		pdchk_verify_debug_flow(clkd);
+		break;
+	default:
+		pr_notice("cannot get flags identify\n");
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+int set_pdchk_notify(void)
+{
+	int r = 0;
+
+	mtk_pdchk_notifier.notifier_call = pdchk_evt_handling;
+	r = register_mtk_clk_notifier(&mtk_pdchk_notifier);
+	if (r)
+		pr_err("pd-chk notifier register err(%d)\n", r);
+
+	return r;
+}
+EXPORT_SYMBOL(set_pdchk_notify);
 
