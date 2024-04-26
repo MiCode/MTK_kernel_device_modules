@@ -860,6 +860,34 @@ static const struct dev_pm_ops flt_pm_ops = {
 	.suspend_noirq = flt_suspend_cb,
 };
 
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
+static void flt_set_chip_ver(void)
+{
+	struct device_node *node;
+	struct tag_chipid *chip_id = NULL;
+	int len;
+
+	node = of_find_node_by_path("/chosen");
+	if (!node)
+		node = of_find_node_by_path("/chosen@0");
+	if (node) {
+		chip_id = (struct tag_chipid *)of_get_property(node, "atag,chipid", &len);
+		if (!chip_id)
+			pr_info("could not found atag,chipid in chosen\n");
+	} else {
+		pr_info("chosen node not found in device tree\n");
+	}
+	if (chip_id)
+		flt_set_chip_sw_ver(chip_id->sw_ver);
+}
+
 static int platform_flt_probe(struct platform_device *pdev)
 {
 	int ret = 0, retval = 0;
@@ -881,6 +909,7 @@ flt_exit:
 	pr_info("FLT flt_mode=%u version=%u", flt_mode, version);
 	flt_set_mode(flt_mode);
 	flt_set_version(version);
+	flt_set_chip_ver();
 	return 0;
 }
 
