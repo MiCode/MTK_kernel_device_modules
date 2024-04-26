@@ -363,6 +363,16 @@ static void lpm_sys_res_log(unsigned int scene)
 	}
 
 	time = lpm_sys_res_get_detail(sys_res_record, time_type, 0);
+
+	/* suspend may be aborted, no need to print log */
+	if (time == 0) {
+		sys_res_log_size += scnprintf(
+			sys_res_log_buf + sys_res_log_size,
+			LOG_BUF_OUT_SZ - sys_res_log_size,
+			"[name:spm&][SPM] suspend aborted skip sys_res log\n");
+		goto SKIP_LOG;
+	}
+
 	sys_res_log_size += scnprintf(
 				sys_res_log_buf + sys_res_log_size,
 				LOG_BUF_OUT_SZ - sys_res_log_size,
@@ -424,6 +434,7 @@ static void lpm_sys_res_log(unsigned int scene)
 				LOG_BUF_OUT_SZ - sys_res_log_size,
 				"]; ");
 	}
+SKIP_LOG:
 	pr_info("[name:spm&][SPM] %s", sys_res_log_buf);
 	spin_unlock_irqrestore(&sys_res_lock, flag);
 }
