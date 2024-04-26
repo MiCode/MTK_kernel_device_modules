@@ -811,8 +811,9 @@ int __init mrdump_mini_init(const struct mrdump_params *mparams)
 			offsetof(struct mrdump_mini_elf_header, misc));
 
 	if (mrdump_cblock) {
-		mrdump_mini_add_misc_pa((unsigned long)mrdump_cblock,
-				mparams->cb_addr, mparams->cb_size,
+		vaddr = round_down((unsigned long)mrdump_cblock, PAGE_SIZE);
+		size = round_up(mparams->cb_size, PAGE_SIZE);
+		mrdump_mini_add_misc_pa(vaddr, mparams->cb_addr, size,
 				0, MRDUMP_MINI_MISC_LOAD);
 #ifndef MODULE
 		mrdump_mini_add_kallsyms();
