@@ -121,7 +121,6 @@ struct apu_clk_gp {
 	void __iomem *pll_regs;
 	unsigned div2:1; /* div need or not */
 
-
 	unsigned fhctl:1;	/* freq hopping or not */
 
 };

@@ -29,12 +29,22 @@ struct apu_plat_data {
 };
 
 #define VB_MTD_INTPL "vb_intpl"
+#define VB_MTD_3P2L  "vb_3p2l"
 #define VB_MTD_LEN   16
+
+/* HV 0.775v */
+#define VVPU_BIN_HIGHV_OPP 0
+/* MV 0.65v */
+#define VVPU_BIN_MIDV_OPP  3
+/* HV 0.575v */
+#define VVPU_BIN_LOWV_OPP  5
 
 enum EFUSE_CONTENT {
 	EFUSE_SEG = 0,
 	EFUSE_BIN = 1,
 	EFUSE_RAISE = 2,
+	EFUSE_BIN_H,
+	EFUSE_BIN_M,
 	EFUSE_CNT_MAX,
 };
 

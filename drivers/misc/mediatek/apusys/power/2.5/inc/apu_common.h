@@ -42,6 +42,7 @@ int apu_del_devfreq(struct apu_dev *ad);
 int apu_boost2opp(struct apu_dev *ad, int boost);
 int apu_boost2freq(struct apu_dev *ad, int boost);
 int apu_opp2freq(struct apu_dev *ad, int opp);
+unsigned long apu_opp2volt(struct apu_dev *ad, int opp);
 int apu_opp2boost(struct apu_dev *ad, int opp);
 int apu_freq2opp(struct apu_dev *ad, unsigned long freq);
 int apu_freq2boost(struct apu_dev *ad, unsigned long freq);
@@ -51,4 +52,6 @@ int apu_get_recommend_freq_volt(struct device *dev, unsigned long *freq,
 				unsigned long *volt, int flag);
 void apu_dump_opp_table(struct apu_dev *ad, const char *fun_name, int dir);
 const int apu_dev2_domain(enum DVFS_USER user);
+unsigned long apu_opp2freq_n_df(struct apu_dev *ad, int opp);
+unsigned long apu_opp2volt_n_df(struct apu_dev *ad, int opp);
 #endif

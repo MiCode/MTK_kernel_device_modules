@@ -86,63 +86,47 @@ void apupw_dbg_dvfs_tag_update(char *gov_name, const char *p_name,
 
 void apupw_dbg_rpc_tag_update(struct apu_dev *ad)
 {
-#ifdef ENABLE_TRACE
-	u32 result[2]; /* suppse max 2 cgs on 1 engine */
+	u32 result[3];
 	struct apupwr_tag_rpc *rpc = &pw_tag.rpc;
-
-	pr_info("[%s] cg numbers %u  array size %lu\n",
-			__func__, ad->aclk->cg->clk_num, sizeof(result));
 
 	if (IS_ERR_OR_NULL(ad->aclk) || IS_ERR_OR_NULL(ad->aclk->cg))
 		return;
 
-	pr_info("[%s] %d\n",__func__, __LINE__);
-	if (ad->aclk->cg->clk_num > sizeof(result)) {
+	if (ad->aclk->cg->clk_num > (sizeof(result)/sizeof(u32))) {
 		pr_info("[%s] cg numbers %u > array size %lu\n",
 				__func__, ad->aclk->cg->clk_num, sizeof(result));
 		return;
 	}
 
-	pr_info("[%s] %d\n",__func__, __LINE__);
 	ad->aclk->ops->cg_status(ad->aclk, result);
 	rpc->rpc_intf_rdy = apu_rpc_rdy_value();
 
-	pr_info("[%s] %d\n",__func__, __LINE__);
 	switch (ad->user) {
 	case APUCONN:
-	pr_info("[%s] %d\n",__func__, __LINE__);
 		rpc->spm_wakeup = apu_spm_wakeup_value();
 		rpc->vcore_cg_stat = result[0];
 		rpc->conn_cg_stat = result[1];
 		break;
 	case MDLA0:
-	pr_info("[%s] %d\n",__func__, __LINE__);
 		rpc->mdla0_cg_stat = result[0];
 		break;
 	case MDLA1:
-	pr_info("[%s] %d\n",__func__, __LINE__);
 		rpc->mdla1_cg_stat = result[0];
 		break;
 	case VPU0:
-	pr_info("[%s] %d\n",__func__, __LINE__);
 		rpc->vpu0_cg_stat = result[0];
 		break;
 	case VPU1:
-	pr_info("[%s] %d\n",__func__, __LINE__);
 		rpc->vpu1_cg_stat = result[0];
 		break;
 	case VPU2:
-	pr_info("[%s] %d\n",__func__, __LINE__);
 		rpc->vpu2_cg_stat = result[0];
 		break;
 	default:
 		return;
 	}
 
-	pr_info("[%s] %d\n",__func__, __LINE__);
 	trace_apupwr_rpc(rpc);
-	pr_info("[%s] %d\n",__func__, __LINE__);
-#endif
 }
 
 struct apupwr_tag *apupw_get_tag(void)
