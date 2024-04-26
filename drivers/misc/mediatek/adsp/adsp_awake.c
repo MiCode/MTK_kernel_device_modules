@@ -22,6 +22,61 @@
 #define AP_AWAKE_LOCK_MASK          (0x1 << AP_AWAKE_LOCK_BIT)
 #define AP_AWAKE_UNLOCK_MASK        (0x1 << AP_AWAKE_UNLOCK_BIT)
 
+struct adsp_sysevent_ctrl {
+	struct adsp_priv *pdata;
+	struct mutex lock;
+};
+
+static struct adsp_sysevent_ctrl sysevent_ctrls[ADSP_CORE_TOTAL];
+
+static int adsp_send_sys_event(struct adsp_sysevent_ctrl *ctrl,
+				u32 event, bool wait)
+{
+	ktime_t start_time;
+	s64     time_ipc_us;
+
+	if (mutex_trylock(&ctrl->lock) == 0) {
+		pr_info("%s(), mutex_trylock busy", __func__);
+		return ADSP_IPI_BUSY;
+	}
+
+	if (adsp_mt_check_swirq(ctrl->pdata->id)) {
+		mutex_unlock(&ctrl->lock);
+		return ADSP_IPI_BUSY;
+	}
+
+	adsp_copy_to_sharedmem(ctrl->pdata, ADSP_SHAREDMEM_WAKELOCK,
+				&event, sizeof(event));
+
+	adsp_mt_set_swirq(ctrl->pdata->id);
+
+	if (wait) {
+		start_time = ktime_get();
+		while (adsp_mt_check_swirq(ctrl->pdata->id)) {
+			time_ipc_us = ktime_us_delta(ktime_get(), start_time);
+			if (time_ipc_us > 1000) /* 1 ms */
+				break;
+		}
+	}
+
+	mutex_unlock(&ctrl->lock);
+	return ADSP_IPI_DONE;
+}
+
+int adsp_awake_init(struct adsp_priv *pdata)
+{
+	struct adsp_sysevent_ctrl *ctrl;
+
+	if (!pdata)
+		return -EINVAL;
+
+	ctrl = &sysevent_ctrls[pdata->id];
+	ctrl->pdata = pdata;
+	mutex_init(&ctrl->lock);
+
+	return 0;
+}
+
 int adsp_pre_wake_lock(u32 cid)
 {
 	unsigned long flags;
@@ -113,25 +168,27 @@ int adsp_awake_lock(u32 cid)
 	int msg = AP_AWAKE_LOCK_MASK;
 	int ret = ADSP_IPI_BUSY;
 
-	if (cid >= get_adsp_core_total()) {
-		ret = -EINVAL;
-		goto ERROR;
+	if (cid >= get_adsp_core_total())
+		return -EINVAL;
+
+	if (!is_adsp_ready(cid) || !adsp_feature_is_active(cid))
+		return -ENODEV;
+
+	if (adspsys->desc->version == 1)
+		ret = adsp_send_sys_event(&sysevent_ctrls[cid],
+					AP_AWAKE_LOCK_MASK, true);
+	else {
+		ret = adsp_push_message(ADSP_IPI_DVFS_WAKE, &msg, sizeof(u32), WAIT_MS, cid);
+		if (ret)
+			goto ERROR;
+
+		return ADSP_IPI_DONE;
 	}
-
-	if (!is_adsp_ready(cid) || !adsp_feature_is_active(cid)) {
-		ret = -ENODEV;
-		goto ERROR;
-	}
-
-	ret = adsp_push_message(ADSP_IPI_DVFS_WAKE, &msg, sizeof(u32), WAIT_MS, cid);
-
-	if (ret)
-		goto ERROR;
-
-	return ADSP_IPI_DONE;
 
 ERROR:
-	pr_info("%s, lock fail, ret = %d", __func__, ret);
+	if (ret)
+		pr_info("%s, lock fail, ret = %d", __func__, ret);
+
 	return ret;
 }
 
@@ -146,25 +203,26 @@ int adsp_awake_unlock(u32 cid)
 	int msg = AP_AWAKE_UNLOCK_MASK;
 	int ret = ADSP_IPI_BUSY;
 
-	if (cid >= get_adsp_core_total()) {
-		ret = -EINVAL;
-		goto ERROR;
+	if (cid >= get_adsp_core_total())
+		return -EINVAL;
+
+	if (!is_adsp_ready(cid) || !adsp_feature_is_active(cid))
+		return -ENODEV;
+	if (adspsys->desc->version == 1)
+		ret = adsp_send_sys_event(&sysevent_ctrls[cid],
+					AP_AWAKE_UNLOCK_MASK, true);
+	else {
+		ret = adsp_push_message(ADSP_IPI_DVFS_WAKE, &msg, sizeof(u32), WAIT_MS, cid);
+		if (ret)
+			goto ERROR;
+
+		return ADSP_IPI_DONE;
 	}
-
-	if (!is_adsp_ready(cid) || !adsp_feature_is_active(cid)) {
-		ret = -ENODEV;
-		goto ERROR;
-	}
-
-	ret = adsp_push_message(ADSP_IPI_DVFS_WAKE, &msg, sizeof(u32), WAIT_MS, cid);
-
-	if (ret)
-		goto ERROR;
-
-	return ADSP_IPI_DONE;
 
 ERROR:
-	pr_info("%s, unlock fail, ret = %d", __func__, ret);
+	if (ret)
+		pr_info("%s, unlock fail", __func__);
+
 	return ret;
 }
 

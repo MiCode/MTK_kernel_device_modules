@@ -627,6 +627,10 @@ int adsp_reset(void)
 	for (cid = 0; cid < get_adsp_core_total(); cid++) {
 		pdata = adsp_cores[cid];
 
+		/* v1: adsp mpu info reinit */
+		if (adspsys->desc->version == 1)
+			adsp_update_mpu_memory_info(pdata);
+
 		reinit_completion(&pdata->done);
 		adsp_core_start(cid);
 		ret = wait_for_completion_timeout(&pdata->done, HZ);
@@ -713,7 +717,7 @@ static int adsp_system_init(void)
 	if (ret)
 		pr_warn("[ADSP] failed to register PM notifier %d\n", ret);
 #endif
-	if (likely(adspsys->dev)) {
+	if (likely(adspsys->dev) && adspsys->dev->pm_domain) {
 		ret = dev_pm_genpd_add_notifier(adspsys->dev, &adsp_pd_notifier_block);
 		if (ret)
 			pr_warn("[ADSP] failed to register pd notifier %d\n", ret);
