@@ -1199,21 +1199,6 @@ int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 			if (atomic_read(&hub_uart_data->wakeup_state) == 0) {
 				/* clear wakeup */
 				mtk8250_set_wakeup_irq(hub_uart_data, false);
-				/*modify INB word*/
-				up = mtk8250_get_up_from_tty(tty);
-				if (up) {
-					/*modify INB word*/
-					serial_out(up, MTK_UART_FEATURE_SEL, 1);
-					xoff = serial_in(up, MTK_UART_XOFF1);
-					serial_out(up, MTK_UART_INB_WORD, xoff);
-					serial_out(up, MTK_UART_FEATURE_SEL, 0);
-					/* modify rx threshold*/
-					uart_fcr = serial_in(up, MTK_UART_FCR_RD);
-					if (hub_uart_data->support_rtff && ((uart_fcr
-						& UART_FCR_R_TRIG_MASK) != UART_FCR_R_TRIG_11))
-						mtk8250_set_rx_threshold(up,
-							UART_FCR_R_TRIG_11, RXTRIG_THRESHOLD);
-				}
 				/*set rx res*/
 				#if defined(KERNEL_mtk_uart_set_rx_res_status)
 					KERNEL_mtk_uart_set_rx_res_status(1);
@@ -1244,6 +1229,21 @@ int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 						#endif
 					}
 				#endif
+
+				up = mtk8250_get_up_from_tty(tty);
+				if (up) {
+					/*modify INB word*/
+					serial_out(up, MTK_UART_FEATURE_SEL, 1);
+					xoff = serial_in(up, MTK_UART_XOFF1);
+					serial_out(up, MTK_UART_INB_WORD, xoff);
+					serial_out(up, MTK_UART_FEATURE_SEL, 0);
+					/* modify rx threshold*/
+					uart_fcr = serial_in(up, MTK_UART_FCR_RD);
+					if (hub_uart_data->support_rtff && ((uart_fcr
+						& UART_FCR_R_TRIG_MASK) != UART_FCR_R_TRIG_11))
+						mtk8250_set_rx_threshold(up,
+							UART_FCR_R_TRIG_11, RXTRIG_THRESHOLD);
+				}
 				atomic_set(&hub_uart_data->wakeup_state, 1);
 				pr_info("[%s]: atomic_set wakeup_state 1,rx_state[%d], INB[0x%x]\n"
 					, __func__, rx_state, xoff);
