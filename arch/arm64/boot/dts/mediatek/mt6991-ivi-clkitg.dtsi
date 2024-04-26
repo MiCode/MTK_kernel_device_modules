@@ -9,7 +9,5 @@
 	bring-up@e0 {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0xe0>;
-		clocks = <&ivi_cksys2_clk CLK_CK2_DVO_SEL>,
-			<&ivi_cksys2_clk CLK_CK2_DVO_FAVT_SEL>;
 	};
 };

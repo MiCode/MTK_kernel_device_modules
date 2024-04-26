@@ -24,7 +24,9 @@
 			<&ivi_cksys_clk CLK_CK_GMAC_RMII_SEL_V0>,
 			<&ivi_cksys_clk CLK_CK_GMAC_RMII_SEL_V1>,
 			<&ivi_cksys_clk CLK_CK_GMAC_62P4M_PTP_SEL_V0>,
-			<&ivi_cksys_clk CLK_CK_GMAC_62P4M_PTP_SEL_V1>;
+			<&ivi_cksys_clk CLK_CK_GMAC_62P4M_PTP_SEL_V1>,
+			<&ivi_cksys2_clk CLK_CK2_DVO_SEL>,
+			<&ivi_cksys2_clk CLK_CK2_DVO_FAVT_SEL>;
 	};
 	disable-unused-pd-peri-ether@e5 {
 		compatible = "mediatek,scpsys-disable-unused";
