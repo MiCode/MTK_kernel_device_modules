@@ -1974,7 +1974,8 @@ static int hw_logger_probe(struct platform_device *pdev)
 
 		ret = devm_request_threaded_irq(dev,
 			hw_logger_irq_number,
-			NULL, apu_logtop_irq_handler, IRQF_ONESHOT,
+			NULL, apu_logtop_irq_handler,
+			irq_get_trigger_type(hw_logger_irq_number) | IRQF_ONESHOT,
 			pdev->name, NULL);
 		if (ret) {
 			HWLOGR_ERR("failed to request IRQ (%d)\n", ret);
