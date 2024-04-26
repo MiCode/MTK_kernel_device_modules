@@ -124,7 +124,7 @@ def main(**args):
         file_text.append("ARCH=arm")
         file_text.append("NDK_TRIPLE=arm-linux-androideabi31")
     file_text.append("LLD_COMPILER_RT=\"-fuse-ld=lld --rtlib=compiler-rt\"")
-    file_text.append("NDK_DIR=${ROOT_DIR}/prebuilts/ndk-r23")
+    file_text.append("NDK_DIR=${ROOT_DIR}/prebuilts/ndk-r26")
     file_text.append("USERCFLAGS=\"--target=${NDK_TRIPLE} \"")
     file_text.append("USERCFLAGS+=\"--sysroot=${NDK_DIR}/toolchains/llvm/prebuilt/linux-x86_64/sysroot \"")
     file_text.append("USERCFLAGS+=\"-Wno-unused-function \"")
@@ -239,6 +239,7 @@ def main(**args):
     file_text.append("export GKI_USERCFLAGS=${USERCFLAGS} GKI_USERLDFLAGS=${USERLDFLAGS}")
     file_text.append("export GKI_HOSTCFLAGS=${HOSTCFLAGS}")
     file_text.append("export GKI_HOSTLDFLAGS=${HOSTLDFLAGS}")
+    file_text.append("export GKI_DEVICE_MODULES_DIR=${DEVICE_MODULES_DIR}")
 
     gen_build_config_mtk = '%s.mtk' % (gen_build_config)
     file_handle = open(gen_build_config_mtk, 'w')
