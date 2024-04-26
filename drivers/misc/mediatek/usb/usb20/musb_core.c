@@ -2980,7 +2980,9 @@ module_param(dpidle_status, int, 0644);
 static int dpidle_debug;
 module_param(dpidle_debug, int, 0644);
 
+#ifndef FPGA_PLATFORM
 static DEFINE_SPINLOCK(usb_hal_dpidle_lock);
+#endif
 
 #define DPIDLE_TIMER_INTERVAL_MS 30
 
@@ -3012,6 +3014,7 @@ static void issue_dpidle_timer(void)
 
 static bool (*spm_resource_req_fptr)(unsigned int user, unsigned int req_mask);
 
+#ifndef FPGA_PLATFORM
 static void spm_resource_req_usb(unsigned int user, unsigned int req_mask)
 {
 	if (spm_resource_req_fptr) {
@@ -3020,6 +3023,7 @@ static void spm_resource_req_usb(unsigned int user, unsigned int req_mask)
 	} else
 		DBG(0, "spm_resource_req() function not ready!!!\n");
 }
+#endif
 
 void register_spm_resource_req_func(bool (*spm_resource_req_func)(unsigned int user,
 								unsigned int req_mask))
@@ -3028,6 +3032,7 @@ void register_spm_resource_req_func(bool (*spm_resource_req_func)(unsigned int u
 }
 EXPORT_SYMBOL(register_spm_resource_req_func);
 
+#ifndef FPGA_PLATFORM
 static void usb_spm_dpidle_request(int mode)
 {
 	unsigned long flags;
@@ -3100,6 +3105,7 @@ static void usb_spm_dpidle_request(int mode)
 
 	spin_unlock_irqrestore(&usb_hal_dpidle_lock, flags);
 }
+#endif
 
 /* default value 0 */
 static int usb_rdy;
