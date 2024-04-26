@@ -154,7 +154,7 @@ void mtk_cpu_overutilized(void *data, int cpu, int *overutilized)
 	}
 
 	if (cpumask_weight(perf_domain_span(pd)) == 1 &&
-		capacity_orig_of(cpu) == SCHED_CAPACITY_SCALE) {
+		topology_cluster_id(cpu) == get_sys_max_cap_cluster()) {
 		*overutilized = 0;
 		rcu_read_unlock();
 		return;

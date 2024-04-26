@@ -257,6 +257,7 @@ extern int (*is_dpt_support_driver_hook) (void);
 extern void (*set_v_driver_hook)(int v);
 #define for_each_collab_type(collab_type) for (collab_type = 0; collab_type < nr_collab_type; collab_type++)
 int collab_type_0_ret_function(void);
+extern int get_sys_max_cap_cluster(void);
 
 #define DPT_CALL_UPDATE_WL_TBL 0
 #define DPT_CALL_UPDATE_CURR_COLLAB_STATE 1

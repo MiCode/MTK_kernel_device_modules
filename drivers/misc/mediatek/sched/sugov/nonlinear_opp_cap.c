@@ -441,13 +441,31 @@ void init_curr_collab_struct(void)
 	change_dpt_support_driver_hook(dpt_default_status);
 }
 
+int sys_max_cap_cluster;
+int get_sys_max_cap_cluster(void)
+{
+	return sys_max_cap_cluster;
+}
+EXPORT_SYMBOL_GPL(get_sys_max_cap_cluster);
+
+void init_sys_max_cap_cpu(void)
+{
+	unsigned int cpu, sys_max_cap = 0;
+
+	for_each_possible_cpu(cpu)
+		if (capacity_orig_of(cpu) > sys_max_cap) {
+			sys_max_cap = capacity_orig_of(cpu);
+			sys_max_cap_cluster = topology_cluster_id(cpu);
+		}
+}
+
 #define is_bit_set(value, bit) (((value) & (1 << (bit))) != 0)
 #define USING_LAST_STATE -1
 void update_curr_collab_state(bool *is_cpu_to_update_thermal)
 {
 	int collab_type = 0, curr_state = 0;
 	int cpu = 0;
-	unsigned long cap;
+	unsigned long cap, sys_max_cap = 0, __sys_max_cap_cluster;
 	bool need_update_capacity_orig = false;
 	int wl = get_em_wl();
 
@@ -495,8 +513,14 @@ void update_curr_collab_state(bool *is_cpu_to_update_thermal)
 
 				WRITE_ONCE(per_cpu(cpu_scale, cpu), cap);
 				cpu_rq(cpu)->cpu_capacity_orig = arch_scale_cpu_capacity(cpu);
+
+				if (capacity_orig_of(cpu) > sys_max_cap) {
+					sys_max_cap = capacity_orig_of(cpu);
+					__sys_max_cap_cluster = topology_cluster_id(cpu);
+				}
 			}
 			*is_cpu_to_update_thermal = true;
+			sys_max_cap_cluster = __sys_max_cap_cluster;
 		} else
 			spin_unlock(&update_dpt_lock);
 	}
@@ -1625,6 +1649,7 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	nr_wl = mtk_mapping.total_type;
 #endif
+	init_sys_max_cap_cpu();
 
 	ret = init_dpt_io();
 	if (ret)
