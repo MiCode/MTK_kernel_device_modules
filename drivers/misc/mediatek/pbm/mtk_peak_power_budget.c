@@ -13,8 +13,10 @@
 #include <linux/seq_file.h>
 #include <linux/proc_fs.h>
 #include <linux/spinlock.h>
+#include <linux/timer.h>
 #include "mtk_battery_oc_throttling.h"
 #include "mtk_low_battery_throttling.h"
+#include "mtk_peak_power_budget_mbrain.h"
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
 #if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
 #include <include/gpueb_ipi.h>
@@ -22,6 +24,8 @@
 
 #define CREATE_TRACE_POINTS
 #include "mtk_peak_power_budget_trace.h"
+#include "mtk_cg_peak_power_throttling_table.h"
+#include "mtk_cg_peak_power_throttling_core.h"
 
 #define STR_SIZE 512
 #define MAX_VALUE 0x7FFF
@@ -33,7 +37,6 @@
 #define BAT_PATH_DEFAULT_RAC 50
 #define PPB_IPI_TIMEOUT_MS    3000U
 #define PPB_IPI_DATA_LEN (sizeof(struct ppb_ipi_data) / sizeof(int))
-
 
 static bool mt_ppb_debug;
 static spinlock_t ppb_lock;
@@ -48,6 +51,8 @@ static struct notifier_block ppb_nb;
 static int channel_id;
 static unsigned int ack_data;
 #endif
+struct xpu_dbg_t last_mbrain_xpu_dbg;
+static ppb_mbrain_func cb_func;
 
 struct tag_bootmode {
 	u32 size;
@@ -71,13 +76,9 @@ struct ppb ppb = {
 	.loading_apu = 0,
 	.loading_dram = MAX_POWER_DRAM,
 	.vsys_budget = 0,
-	.hpt_vsys_budget = 0,
+	.vsys_budget_noerr = 0,
 	.cg_budget_thd = 0,
 	.cg_budget_cnt = 0,
-};
-
-struct hpt hpt_data = {
-	.vsys_budget = 0,
 };
 
 struct ppb ppb_manual = {
@@ -88,7 +89,7 @@ struct ppb ppb_manual = {
 	.loading_apu = 0,
 	.loading_dram = 0,
 	.vsys_budget = 0,
-	.hpt_vsys_budget = 0,
+	.vsys_budget_noerr = 0,
 	.cg_budget_thd = 0,
 	.cg_budget_cnt = 0,
 };
@@ -167,7 +168,7 @@ static void __used ppb_write_sram(unsigned int val, int offset)
 
 static int dbg_read(void __iomem *reg_base, int offset)
 {
-	if (IS_ERR(reg_base)) {
+	if (!reg_base) {
 		pr_info("reg_base error %p, offset %d\n", reg_base, offset);
 		return 0;
 	}
@@ -199,7 +200,7 @@ static void __used hpt_ctrl_write(unsigned int val, int offset)
 
 static void ppb_allocate_budget_manager(void)
 {
-	int ppb_vsys_budget = 0, remain_budget = 0, hpt_vsys_budget = 0;
+	int vsys_budget_noerr = 0, remain_budget = 0, vsys_budget = 0;
 	int flash, audio, camera, display, apu, dram;
 
 	if (ppb_ctrl.manual_mode == 1) {
@@ -209,11 +210,11 @@ static void ppb_allocate_budget_manager(void)
 		display = ppb_manual.loading_display;
 		apu = ppb_manual.loading_apu;
 		dram = ppb_manual.loading_dram;
-		ppb_vsys_budget = ppb_manual.vsys_budget;
-		remain_budget = ppb_vsys_budget - (flash + audio + camera + display + dram);
+		vsys_budget = ppb_manual.vsys_budget;
+		remain_budget = vsys_budget - (flash + audio + camera + display + dram);
 		remain_budget = (remain_budget > 0) ? remain_budget : 0;
 		ppb_manual.remain_budget = remain_budget;
-		hpt_vsys_budget = ppb_manual.hpt_vsys_budget;
+		vsys_budget_noerr = ppb_manual.vsys_budget_noerr;
 	} else {
 		flash = ppb.loading_flash;
 		audio = ppb.loading_audio;
@@ -221,11 +222,11 @@ static void ppb_allocate_budget_manager(void)
 		display = ppb.loading_display;
 		apu = ppb.loading_apu;
 		dram = ppb.loading_dram;
-		ppb_vsys_budget = ppb.vsys_budget;
-		remain_budget = ppb_vsys_budget - (flash + audio + camera + display + dram);
+		vsys_budget = pb.sys_power;
+		remain_budget = vsys_budget - (flash + audio + camera + display + dram);
 		remain_budget = (remain_budget > 0) ? remain_budget : 0;
 		ppb.remain_budget = remain_budget;
-		hpt_vsys_budget = hpt_data.vsys_budget;
+		vsys_budget_noerr = pb.sys_power_noerr;
 	}
 
 	ppb_write_sram(remain_budget, PPB_VSYS_PWR);
@@ -236,11 +237,11 @@ static void ppb_allocate_budget_manager(void)
 	ppb_write_sram(display, PPB_DISPLAY_PWR);
 	ppb_write_sram(dram, PPB_DRAM_PWR);
 	ppb_write_sram(0, PPB_APU_PWR_ACK);
-	ppb_write_sram(hpt_vsys_budget, HPT_VSYS_PWR);
+	ppb_write_sram(vsys_budget_noerr, PPB_VSYS_PWR_NOERR);
 
 	if (mt_ppb_debug)
-		pr_info("(P_BGT/S_BGT/R_BGT)=%u,%u,%u (FLASH/AUD/CAM/DISP/APU/DRAM)=%u,%u,%u,%u,%u,%u\n",
-			hpt_vsys_budget, ppb_vsys_budget, remain_budget, flash, audio, camera, display, apu, dram);
+		pr_info("(P_BGT/H_BGT/R_BGT)=%u,%u,%u (FLASH/AUD/CAM/DISP/APU/DRAM)=%u,%u,%u,%u,%u,%u\n",
+			vsys_budget_noerr, vsys_budget, remain_budget, flash, audio, camera, display, apu, dram);
 	trace_peak_power_budget(&ppb);
 }
 
@@ -680,7 +681,7 @@ static void bat_handler(struct work_struct *work)
 	union power_supply_propval val;
 	static int last_soc = MAX_VALUE, last_temp = MAX_VALUE;
 	unsigned int temp_stage;
-	int ret = 0, soc, temp, ppb_sys_power, volt, qmax;
+	int ret = 0, soc, temp, volt, qmax;
 	bool loop;
 
 	if (!pb.psy)
@@ -742,28 +743,33 @@ static void bat_handler(struct work_struct *work)
 
 	if (temp != last_temp || soc != last_soc) {
 		volt = soc_to_ocv(soc * 100, 0, pb.soc_err);
-		pb.ppb_ocv = volt / 10;
+		pb.ocv = volt / 10;
 		if (pb.version >= 2)
-			pb.cur_rdc = soc_to_rdc(soc * 100 - pb.soc_err, 0) / 10 + pb.circuit_rdc + pb.aging_rdc;
-		ppb_sys_power = get_sys_power_budget(pb.ppb_ocv, pb.cur_rdc, pb.cur_rac, pb.ocp, pb.uvlo);
-		last_temp = temp;
-		last_soc = soc;
+			pb.cur_rdc = soc_to_rdc(soc * 100, 0) / 10 + pb.circuit_rdc + pb.aging_rdc;
+		pb.sys_power = get_sys_power_budget(pb.ocv, pb.cur_rdc, pb.cur_rac, pb.ocp, pb.uvlo);
+
 		volt = soc_to_ocv(soc * 100, 0, 0);
 		if (pb.version >= 2)
 			pb.cur_rdc = soc_to_rdc(soc * 100, 0) / 10 + pb.circuit_rdc + pb.aging_rdc;
 
-		pb.hpt_ocv = volt / 10;
-		pb.hpt_sys_power = get_sys_power_budget(pb.hpt_ocv, pb.cur_rdc, pb.cur_rac, pb.ocp, pb.uvlo);
-		hpt_data.vsys_budget = pb.hpt_sys_power;
-		kicker_ppb_request_power(KR_BUDGET, ppb_sys_power);
+		pb.ocv_noerr = volt / 10;
+		pb.sys_power_noerr = get_sys_power_budget(pb.ocv_noerr, pb.cur_rdc, pb.cur_rac, pb.ocp, pb.uvlo);
+		pb.soc = soc;
+		pb.temp = temp;
+		kicker_ppb_request_power(KR_BUDGET, pb.sys_power);
 #if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
 		notify_gpueb();
 #endif
-		if (mt_ppb_debug)
-			pr_info("%s: vsys-er[p=%d v=%d] vsys[p=%d v=%d] soc=%d C,A_R=%d,%d T[Rdc,Rac]=%d,%d temp,s=%d,%d\n",
-				__func__, ppb_sys_power, pb.ppb_ocv, hpt_data.vsys_budget,
-				pb.hpt_ocv, soc, pb.circuit_rdc, pb.aging_rdc, pb.cur_rdc,
-				pb.cur_rac, temp, pb.temp_cur_stage);
+		pr_info("%s: vsys-er[p=%d v=%d] vsys[p=%d v=%d] soc=%d C,A_R=%d,%d T[Rdc,Rac]=%d,%d temp,s=%d,%d\n",
+			__func__, pb.sys_power, pb.ocv, pb.sys_power_noerr,
+			pb.ocv_noerr, soc, pb.circuit_rdc, pb.aging_rdc, pb.cur_rdc,
+			pb.cur_rac, temp, pb.temp_cur_stage);
+
+		if (pb.sys_power_noerr <= 55000 && soc != last_soc && cb_func)
+			cb_func();
+
+		last_temp = temp;
+		last_soc = soc;
 	}
 }
 
@@ -1176,7 +1182,7 @@ static ssize_t mt_ppb_manual_mode_proc_write
 {
 	char desc[64], cmd[21];
 	unsigned int len = 0;
-	int vsys_budget, hpt_vsys_budget, manual_mode = 0;
+	int vsys_budget_noerr, vsys_budget, manual_mode = 0;
 	int loading_flash, loading_audio, loading_camera;
 	int loading_display, loading_apu, loading_dram;
 
@@ -1185,7 +1191,7 @@ static ssize_t mt_ppb_manual_mode_proc_write
 		return 0;
 	desc[len] = '\0';
 
-	if (sscanf(desc, "%20s %d %d %d %d %d %d %d %d %d", cmd, &manual_mode, &hpt_vsys_budget,
+	if (sscanf(desc, "%20s %d %d %d %d %d %d %d %d %d", cmd, &manual_mode, &vsys_budget_noerr,
 		&vsys_budget, &loading_flash, &loading_audio, &loading_camera, &loading_display,
 		&loading_apu, &loading_dram) != 10) {
 		pr_notice("parameter number not correct\n");
@@ -1197,8 +1203,8 @@ static ssize_t mt_ppb_manual_mode_proc_write
 
 	if (manual_mode == 1) {
 		ppb_ctrl.manual_mode = manual_mode;
+		ppb_manual.vsys_budget_noerr = vsys_budget_noerr;
 		ppb_manual.vsys_budget = vsys_budget;
-		ppb_manual.hpt_vsys_budget = hpt_vsys_budget;
 		ppb_manual.loading_flash = loading_flash;
 		ppb_manual.loading_audio = loading_audio;
 		ppb_manual.loading_camera = loading_camera;
@@ -1214,6 +1220,94 @@ static ssize_t mt_ppb_manual_mode_proc_write
 
 	return count;
 }
+
+static int get_xpu_debug_info(struct xpu_dbg_t *data)
+{
+	unsigned int val;
+
+	if (!data)
+		return -EINVAL;
+
+	val = dbg_read(cpu_dbg_base, 1);
+	data->cpub_len = (val >> 16) & 0x3FF;
+	data->cpub_cnt = val & 0xFFFF;
+	val = dbg_read(cpu_dbg_base, 2);
+	data->cpub_th_t = val;
+	val = dbg_read(cpu_dbg_base, 5);
+	data->cpum_len = (val >> 16) & 0x3FF;
+	data->cpum_cnt = val & 0xFFFF;
+	val = dbg_read(cpu_dbg_base, 6);
+	data->cpum_th_t = val;
+	val = dbg_read(gpu_dbg_base, 0);
+	data->gpu_len = (val >> 16) & 0x3FF;
+	data->gpu_cnt = val & 0xFFFF;
+	val = dbg_read(gpu_dbg_base, 1);
+	data->gpu_th_t = val;
+
+	return 0;
+}
+
+int get_ppb_mbrain_data(struct ppb_mbrain_data *data)
+{
+	struct xpu_dbg_t dbg_data;
+	int ppb_pwr, md_pwr, wifi_pwr;
+	static ktime_t last_ktime;
+	ktime_t ktime;
+
+	if (!data)
+		return -EINVAL;
+
+	get_xpu_debug_info(&dbg_data);
+
+	ktime = ktime_get();
+	data->duration = ktime_us_delta(ktime, last_ktime);
+	data->kernel_time = ktime_to_us(ktime);
+	last_ktime = ktime;
+	data->soc = pb.soc;
+	data->temp = pb.temp;
+	data->soc_rdc = pb.cur_rdc;
+	data->soc_rac = pb.cur_rac;
+	data->hpt_bat_budget = pb.sys_power;
+	ppb_pwr = ppb_read_sram(PPB_VSYS_PWR);
+	md_pwr = ppb_read_sram(PPB_MD_PWR);
+	wifi_pwr = ppb_read_sram(PPB_WIFI_PWR);
+	data->hpt_cg_budget = ppb_pwr - md_pwr - wifi_pwr;
+	data->hpt_cpub_thr_cnt = dbg_data.cpub_cnt - last_mbrain_xpu_dbg.cpub_cnt;
+	data->hpt_cpub_thr_time = dbg_data.cpub_th_t - last_mbrain_xpu_dbg.cpub_th_t;
+	data->hpt_cpum_thr_cnt = dbg_data.cpum_cnt - last_mbrain_xpu_dbg.cpum_cnt;
+	data->hpt_cpum_thr_time = dbg_data.cpum_th_t - last_mbrain_xpu_dbg.cpum_th_t;
+	data->hpt_gpu_thr_cnt = dbg_data.gpu_cnt - last_mbrain_xpu_dbg.gpu_cnt;
+	data->hpt_gpu_thr_time = dbg_data.gpu_th_t - last_mbrain_xpu_dbg.gpu_th_t;
+	data->hpt_cpum_sf = cgppt_get_cpu_m_scaling_factor();
+	data->hpt_cpub_sf = cgppt_get_cpu_b_scaling_factor();
+	data->hpt_gpu_sf = cgppt_get_gpu_scaling_factor();
+	data->ppb_c_combo0 = 0;
+	data->ppb_combo = cgppt_get_combo_idx();
+	data->ppb_g_combo0 = 0;
+	data->ppb_cg_budget = cgppt_get_cg_budget();
+
+	memcpy(&last_mbrain_xpu_dbg, &dbg_data, sizeof(struct xpu_dbg_t));
+
+	return 0;
+}
+EXPORT_SYMBOL(get_ppb_mbrain_data);
+
+int register_ppb_mbrian_cb(ppb_mbrain_func func_p)
+{
+	if (!func_p)
+		return -EINVAL;
+
+	cb_func = func_p;
+	return 0;
+}
+EXPORT_SYMBOL(register_ppb_mbrian_cb);
+
+int unregister_ppb_mbrian_cb(void)
+{
+	cb_func = NULL;
+	return 0;
+}
+EXPORT_SYMBOL(unregister_ppb_mbrian_cb);
 
 static int mt_ppb_stop_proc_show(struct seq_file *m, void *v)
 {
@@ -1427,7 +1521,7 @@ static int mt_hpt_debug_proc_show(struct seq_file *m, void *v)
 {
 	seq_printf(m, "(SF_EN/VSYS_BUDGET/DELAY)=%u,%u,%u\n",
 		ppb_read_sram(HPT_SF_ENABLE),
-		ppb_read_sram(HPT_VSYS_PWR),
+		ppb_read_sram(PPB_VSYS_PWR_NOERR),
 		ppb_read_sram(HPT_DELAY_TIME));
 
 	seq_printf(m, "(CPUB_SF_L1:L2/CPUM_SF_L1:L2/GPU_SF_L1:L2)=%u:%u/%u:%u/%u:%u\n",
@@ -1445,7 +1539,7 @@ static int mt_hpt_dump_proc_show(struct seq_file *m, void *v)
 {
 	seq_printf(m, "%u, %u\n",
 		ppb_read_sram(HPT_SF_ENABLE),
-		ppb_read_sram(HPT_VSYS_PWR));
+		ppb_read_sram(PPB_VSYS_PWR_NOERR));
 
 	return 0;
 }
@@ -1579,27 +1673,13 @@ static ssize_t mt_hpt_sf_setting_proc_write
 
 static int mt_xpu_dbg_dump_proc_show(struct seq_file *m, void *v)
 {
-	unsigned int val, cpub_len, cpum_len, gpu_len, cpub_cnt, cpum_cnt, gpu_cnt,
-		cpub_th_t, cpum_th_t, gpu_th_t;
+	struct xpu_dbg_t dbg_data;
 
-	val = dbg_read(cpu_dbg_base, 1);
-	cpub_len = (val >> 16) & 0x3FF;
-	cpub_cnt = val & 0xFFFF;
-	val = dbg_read(cpu_dbg_base, 2);
-	cpub_th_t = val;
-	val = dbg_read(cpu_dbg_base, 5);
-	cpum_len = (val >> 16) & 0x3FF;
-	cpum_cnt = val & 0xFFFF;
-	val = dbg_read(cpu_dbg_base, 6);
-	cpum_th_t = val;
-	val = dbg_read(gpu_dbg_base, 0);
-	gpu_len = (val >> 16) & 0x3FF;
-	gpu_cnt = val & 0xFFFF;
-	val = dbg_read(gpu_dbg_base, 1);
-	gpu_th_t = val;
+	get_xpu_debug_info(&dbg_data);
 
-	seq_printf(m, "%u, %u, %u, %u, %u, %u, %u, %u, %u\n", cpub_len, cpub_cnt,
-		cpub_th_t, cpum_len, cpum_cnt, cpum_th_t, gpu_len, gpu_cnt, gpu_th_t);
+	seq_printf(m, "%u, %u, %u, %u, %u, %u, %u, %u, %u\n", dbg_data.cpub_len, dbg_data.cpub_cnt,
+		dbg_data.cpub_th_t, dbg_data.cpum_len, dbg_data.cpum_cnt, dbg_data.cpum_th_t,
+		dbg_data.gpu_len, dbg_data.gpu_cnt, dbg_data.gpu_th_t);
 
 
 	return 0;
