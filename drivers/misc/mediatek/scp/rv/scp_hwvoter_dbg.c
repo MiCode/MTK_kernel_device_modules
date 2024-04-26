@@ -85,7 +85,7 @@ static ssize_t scp_hw_voter_dbg_proc_write(
 				IPI_SEND_WAIT,
 				&ipi_data,
 				PIN_OUT_SIZE_SCP_HWVOTER_DEBUG,
-				500);
+				100);
 		if (ret != IPI_ACTION_DONE)
 			pr_notice("[%s]: SCP send IPI failed - %d\n",
 				__func__, ret);
@@ -114,7 +114,7 @@ static ssize_t scp_hw_voter_dbg_proc_write(
 			IPI_SEND_WAIT,
 			&ipi_data,
 			PIN_OUT_SIZE_SCP_HWVOTER_DEBUG,
-			500);
+			100);
 	if (ret != IPI_ACTION_DONE)
 		pr_notice("[%s]: SCP send IPI failed - %d\n",
 			__func__, ret);

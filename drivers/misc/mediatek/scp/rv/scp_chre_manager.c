@@ -161,7 +161,7 @@ static ssize_t scp_chre_manager_write(struct file *filp,
 			IPI_SEND_WAIT,		//blocking mode
 			&msg,
 			PIN_OUT_SIZE_HOST_SCP_CHRE,
-			500);
+			100);
 
 	if (ret != IPI_ACTION_DONE)
 		pr_notice("[SCP] %s: ipi failed, ret = %d\n", __func__, ret);
