@@ -176,6 +176,9 @@
 #define CMDQ_SYNC_TOKEN_MSS				665
 #define CMDQ_SYNC_TOKEN_MSF				666
 
+#define CMDQ_SYNC_TOKEN_HISTOGRAM_MDP_WAIT		694
+#define CMDQ_SYNC_TOKEN_HISTOGRAM_MDP_SET		695
+
 /* GPR access tokens (for HW register backup)
  * There are 15 32-bit GPR, 3 GPR form a set
  * (64-bit for address, 32-bit for value)
