@@ -70,6 +70,11 @@ bool task_may_not_preempt(struct task_struct *task, int cpu)
 		(task == cpu_ksoftirqd ||
 		 task_thread_info(task)->preempt_count & SOFTIRQ_MASK));
 }
+#else
+static inline bool task_may_not_preempt(struct task_struct *task, int cpu)
+{
+	return false;
+}
 #endif /* CONFIG_RT_SOFTINT_OPTIMIZATION */
 
 #if IS_ENABLED(CONFIG_SMP)
