@@ -4944,6 +4944,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0x200 0x00000003 16>;
 			clear-md = <0x1fc 0x80000000 1>;
 			smc-clear = <1>;
+			bypass-r-axi = <0x400 0x401>; /* for bypass MTE read */
 		};
 
 		emi-fake-eng@1026c000 {
