@@ -9344,6 +9344,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DP_INTF},
 	{.compatible = "mediatek,mt6991-dp-intf",
 	 .data = (void *)MTK_DP_INTF},
+	{.compatible = "mediatek,mt6991-edp-dvo",
+	 .data = (void *)MTK_DISP_DVO},
 	{.compatible = "mediatek,mt6897-dp-intf",
 	 .data = (void *)MTK_DP_INTF},
 	{.compatible = "mediatek,mt6895-dp-intf",
@@ -10295,6 +10297,7 @@ SKIP_OVLSYS_CONFIG:
 		    || comp_type == MTK_DISP_Y2R || comp_type == MTK_DISP_INLINE_ROTATE
 		    || comp_type == MTK_DISP_DLI_ASYNC || comp_type == MTK_DISP_DLO_ASYNC
 		    || comp_type == MTK_DISP_R2Y
+		    || comp_type == MTK_DISP_DVO
 		) {
 			dev_info(dev, "Adding component match for %s, comp_id:%d\n",
 				 node->full_name, comp_id);
@@ -10612,6 +10615,10 @@ static struct platform_driver *const mtk_drm_drivers[] = {
 	&mtk_disp_oddmr_driver,
 	&mtk_disp_dsc_driver,
 	&mtk_dp_tx_driver,
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT)
+	&mtk_dp_phy_driver,
+	&mtk_dvo_driver,
+#endif
 	&mtk_disp_y2r_driver,
 	&mtk_disp_r2y_driver,
 	&mtk_disp_inlinerotate_driver,

@@ -7038,6 +7038,7 @@ bool mtk_crtc_is_frame_trigger_mode(struct drm_crtc *crtc)
 		return mtk_dsi_is_cmd_mode(priv->ddp_comp[comp->id]);
 
 	if (comp->id == DDP_COMPONENT_DP_INTF0 ||
+		comp->id == DDP_COMPONENT_DISP_DVO ||
 		comp->id == DDP_COMPONENT_DPI0 ||
 		comp->id == DDP_COMPONENT_DPI1) {
 		return false;
@@ -7104,6 +7105,8 @@ int get_comp_wait_event(struct mtk_drm_crtc *mtk_crtc,
 			return mtk_crtc->gce_obj.event[EVENT_CMD_EOF];
 
 	} else if (comp->id == DDP_COMPONENT_DP_INTF0) {
+		return mtk_crtc->gce_obj.event[EVENT_VDO_EOF];
+	}  else if (comp->id == DDP_COMPONENT_DISP_DVO) {
 		return mtk_crtc->gce_obj.event[EVENT_VDO_EOF];
 	} else if (comp->id == DDP_COMPONENT_WDMA0) {
 		return mtk_crtc->gce_obj.event[EVENT_WDMA0_EOF];
@@ -10039,7 +10042,10 @@ skip_prete:
 				GCE_DO(wfe, EVENT_VDO_EOF);
 
 		} else {
-			GCE_DO(wfe, EVENT_CMD_EOF);
+			if (output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DISP_DVO)
+				GCE_DO(wfe, EVENT_VDO_EOF);
+			else
+				GCE_DO(wfe, EVENT_CMD_EOF);
 		}
 
 		/* sw workaround to fix gce hw bug */

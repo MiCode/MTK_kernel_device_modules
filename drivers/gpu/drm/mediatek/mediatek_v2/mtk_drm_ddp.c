@@ -7356,6 +7356,8 @@ static const unsigned int mt6991_mutex_sof[DDP_MUTEX_SOF_MAX] = {
 			MT6991_MUTEX_SOF_DPI0 | MT6991_MUTEX_EOF_DPI0,
 		[DDP_MUTEX_SOF_DPI1] =
 			MT6991_MUTEX_SOF_DPI1 | MT6991_MUTEX_EOF_DPI1,
+		[DDP_MUTEX_SOF_DVO] =
+			MT6991_MUTEX_SOF_DVO | MT6991_MUTEX_EOF_DVO,
 };
 
 static const unsigned int mt6991_mutex_ovlsys_sof[DDP_MUTEX_SOF_MAX] = {
@@ -7370,6 +7372,8 @@ static const unsigned int mt6991_mutex_ovlsys_sof[DDP_MUTEX_SOF_MAX] = {
 			MT6991_MUTEX_OVLSYS_SOF_DPI0 | MT6991_MUTEX_OVLSYS_EOF_DPI0,
 		[DDP_MUTEX_SOF_DPI1] =
 			MT6991_MUTEX_OVLSYS_SOF_DPI1 | MT6991_MUTEX_OVLSYS_EOF_DPI1,
+		[DDP_MUTEX_SOF_DVO] =
+			MT6991_MUTEX_OVLSYS_SOF_DVO | MT6991_MUTEX_OVLSYS_EOF_DVO,
 };
 static const unsigned int mt6897_mutex_sof[DDP_MUTEX_SOF_MAX] = {
 		[DDP_MUTEX_SOF_SINGLE_MODE] = MT6897_MUTEX_SOF_SINGLE_MODE,
@@ -30127,6 +30131,8 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 			val = DDP_MUTEX_SOF_DPI1;
 	} else if (id == DDP_COMPONENT_DPI1)
 		val = DDP_MUTEX_SOF_DPI1;
+	else if (id == DDP_COMPONENT_DISP_DVO)
+		val = DDP_MUTEX_SOF_DVO;
 
 	DDPINFO("%s, id:%s, val:0x%x\n", __func__, mtk_dump_comp_str_id(id),
 	       ddp->data->mutex_sof[val]);
@@ -30260,6 +30266,12 @@ void mtk_disp_mutex_add_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 		else
 			reg = DDP_MUTEX_SOF_DPI1;
 		break;
+	case DDP_COMPONENT_DISP_DVO:
+		if (is_cmd_mode)
+			reg = DDP_MUTEX_SOF_SINGLE_MODE;
+		else
+			reg = DDP_MUTEX_SOF_DVO;
+		break;
 	default:
 		if (ddp->data->mutex_mod[id] > 0) {
 			if (ddp->data->mutex_mod[id] <= BIT(31)) {
@@ -30357,6 +30369,7 @@ void mtk_disp_mutex_remove_comp(struct mtk_disp_mutex *mutex,
 	case DDP_COMPONENT_DPI0:
 	case DDP_COMPONENT_DP_INTF0:
 	case DDP_COMPONENT_DPI1:
+	case DDP_COMPONENT_DISP_DVO:
 		writel_relaxed(
 			MUTEX_SOF_SINGLE_MODE,
 			reg_addr + DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
@@ -30451,6 +30464,7 @@ void mtk_disp_mutex_remove_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 	case DDP_COMPONENT_DPI0:
 	case DDP_COMPONENT_DP_INTF0:
 	case DDP_COMPONENT_DPI1:
+	case DDP_COMPONENT_DISP_DVO:
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 			       regs_pa +
 				       DISP_REG_MUTEX_SOF(ddp->data, mutex->id),
