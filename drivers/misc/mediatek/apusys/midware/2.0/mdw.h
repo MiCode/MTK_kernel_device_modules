@@ -131,8 +131,8 @@ enum mdw_queue_type {
 struct mdw_mem {
 	/* in */
 	enum mdw_mem_type type;
-	unsigned int size;
-	unsigned int align;
+	uint64_t size;
+	uint64_t align;
 	uint64_t flags;
 	uint32_t buf_type;
 
@@ -148,7 +148,7 @@ struct mdw_mem {
 	/* map */
 	uint64_t device_va;
 	uint64_t device_iova;
-	uint32_t dva_size;
+	uint64_t dva_size;
 	struct mdw_mem_map *map;
 
 	/* control */
@@ -524,7 +524,7 @@ void mdw_mem_all_print(struct mdw_fpriv *mpriv);
 void mdw_mem_put(struct mdw_fpriv *mpriv, struct mdw_mem *m);
 struct mdw_mem *mdw_mem_get(struct mdw_fpriv *mpriv, int handle);
 struct mdw_mem *mdw_mem_alloc(struct mdw_fpriv *mpriv, enum mdw_mem_type type,
-	uint32_t size, uint32_t align, uint64_t flags, bool need_handle);
+	uint64_t size, uint64_t align, uint64_t flags, bool need_handle);
 void mdw_mem_free(struct mdw_fpriv *mpriv, struct mdw_mem *m);
 long mdw_mem_set_name(struct mdw_mem *m, const char *buf);
 int mdw_mem_map(struct mdw_fpriv *mpriv, struct mdw_mem *m);

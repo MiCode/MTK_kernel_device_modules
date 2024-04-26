@@ -55,7 +55,7 @@ int mdw_rvs_get_vlm(uint32_t req_size, bool force,
 	return ret;
 }
 
-int mdw_rvs_get_vlm_property(uint64_t *start, uint32_t *size)
+int mdw_rvs_get_vlm_property(uint64_t *start, uint64_t *size)
 {
 	return reviser_get_resource_vlm((unsigned int *)start,
 		(unsigned int *)size);

@@ -12,7 +12,7 @@ int mdw_mem_pool_create(struct mdw_fpriv *mpriv, struct mdw_mem_pool *pool,
 	enum mdw_mem_type type,	uint32_t size, uint32_t align, uint64_t flags);
 void mdw_mem_pool_destroy(struct mdw_mem_pool *pool);
 
-struct mdw_mem *mdw_mem_pool_alloc(struct mdw_mem_pool *pool, uint32_t size,
+struct mdw_mem *mdw_mem_pool_alloc(struct mdw_mem_pool *pool, uint64_t size,
 	uint32_t align);
 void mdw_mem_pool_free(struct mdw_mem *m);
 

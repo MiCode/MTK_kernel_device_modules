@@ -16,7 +16,7 @@
 
 struct mdw_mem_aram {
 	dma_addr_t dma_addr;
-	uint32_t dma_size;
+	uint64_t dma_size;
 	uint64_t addr;
 	uint32_t sid;
 	struct mdw_mem *m;
@@ -144,7 +144,7 @@ static void mdw_mem_aram_unmap_dma(struct dma_buf_attachment *attach,
 
 static void mdw_mem_aram_unprepare(struct mdw_mem_aram *am)
 {
-	mdw_mem_debug("type(%u)sid(%u)m(0x%llx/0x%x)\n",
+	mdw_mem_debug("type(%u)sid(%u)m(0x%llx/0x%llx)\n",
 		am->m->type, am->sid, am->dma_addr, am->dma_size);
 
 	switch (am->m->type) {
@@ -154,7 +154,7 @@ static void mdw_mem_aram_unprepare(struct mdw_mem_aram *am)
 	case MDW_MEM_TYPE_SYSTEM_ISP:
 	case MDW_MEM_TYPE_SYSTEM_APU:
 		if (mdw_apu_mem_free(am->sid))
-			mdw_mem_debug("free apumem type(%u)sid(%u)m(0x%llx/0x%x) fail\n",
+			mdw_mem_debug("free apumem type(%u)sid(%u)m(0x%llx/0x%llx) fail\n",
 				am->m->type, am->sid,
 				am->dma_addr, am->dma_size);
 		break;
@@ -190,7 +190,7 @@ static int mdw_mem_aram_prepare(struct mdw_fpriv *mpriv,
 {
 	int ret = 0;
 
-	mdw_mem_debug("type(%u)size(0x%x)\n", am->m->type, am->m->size);
+	mdw_mem_debug("type(%u)size(0x%llx)\n", am->m->type, am->m->size);
 	switch (am->m->type) {
 	case MDW_MEM_TYPE_VLM:
 	case MDW_MEM_TYPE_LOCAL:
@@ -198,9 +198,9 @@ static int mdw_mem_aram_prepare(struct mdw_fpriv *mpriv,
 	case MDW_MEM_TYPE_SYSTEM_ISP:
 	case MDW_MEM_TYPE_SYSTEM_APU:
 		ret = mdw_apu_mem_alloc(am->m->type,
-			am->m->size, &am->addr, &am->sid);
+			(uint32_t)am->m->size, &am->addr, &am->sid);
 		if (ret) {
-			mdw_drv_err("alloc apuram(%u/%u) fail(%d)\n",
+			mdw_drv_err("alloc apuram(%u/%llu) fail(%d)\n",
 				am->m->type, am->m->size, ret);
 		} else {
 			am->dma_size = am->m->size;

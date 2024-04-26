@@ -16,8 +16,8 @@
 #include "apummu_export.h"
 
 #define mdw_mem_pool_show(m) \
-	mdw_mem_debug("mem_pool(0x%llx/0x%llx/%d/0x%llx/%d/0x%llx/0x%x/0x%llx" \
-	"/0x%x/%u/0x%llx/%d/%p)(%d)\n", \
+	mdw_mem_debug("mem_pool(0x%llx/0x%llx/%d/0x%llx/%d/0x%llx/0x%llx/0x%llx" \
+	"/0x%llx/%llu/0x%llx/%d/%p)(%d)\n", \
 	(uint64_t)m->mpriv, (uint64_t)m, m->handle, (uint64_t)m->dbuf, \
 	m->type, (uint64_t)m->vaddr, m->size, \
 	m->device_va, m->dva_size, m->align, m->flags, m->need_handle, \
@@ -96,9 +96,9 @@ out:
 /* removes a memory chunk from pool, and free it */
 static void mdw_mem_pool_chunk_del(struct mdw_mem *m)
 {
-	uint32_t size = m->size;
+	uint64_t size = m->size;
 
-	mdw_trace_begin("apumdw:pool_chunk_del|size:%u", size);
+	mdw_trace_begin("apumdw:pool_chunk_del|size:%llu", size);
 	list_del(&m->p_chunk);
 	mdw_mem_debug("free chunk: pool: 0x%llx, mem: 0x%llx",
 		(uint64_t)m->pool, (uint64_t)m);
@@ -236,7 +236,7 @@ static struct mdw_mem *mdw_mem_pool_ent_create(struct mdw_mem_pool *pool)
 }
 
 /* alloc memory from pool, and alloc/add its mdw_mem struct to pool->list */
-struct mdw_mem *mdw_mem_pool_alloc(struct mdw_mem_pool *pool, uint32_t size,
+struct mdw_mem *mdw_mem_pool_alloc(struct mdw_mem_pool *pool, uint64_t size,
 	uint32_t align)
 {
 	struct mdw_mem *m = NULL;
@@ -248,7 +248,7 @@ struct mdw_mem *mdw_mem_pool_alloc(struct mdw_mem_pool *pool, uint32_t size,
 	if (!pool || !size)
 		return NULL;
 
-	mdw_trace_begin("apumdw:pool_alloc|size:%u align:%u",
+	mdw_trace_begin("apumdw:pool_alloc|size:%llu align:%u",
 		size, align);
 
 	/* create mem struct */
@@ -286,7 +286,7 @@ retry:
 	mutex_unlock(&pool->m_mtx);
 
 	if (!m->vaddr) {
-		mdw_drv_err("alloc (%p,%d,%d,%d) fail\n",
+		mdw_drv_err("alloc (%p,%d,%llu,%d) fail\n",
 			pool, m->type, size, align);
 		goto err_alloc;
 	}
@@ -306,7 +306,7 @@ err_alloc:
 
 out:
 	if (m) {
-		mdw_mem_debug("pool: 0x%llx, mem: 0x%llx, size: %d, align: %d, kva: 0x%llx, iova: 0x%llx",
+		mdw_mem_debug("pool: 0x%llx, mem: 0x%llx, size: %llu, align: %d, kva: 0x%llx, iova: 0x%llx",
 			(uint64_t)pool, (uint64_t)m, size, align,
 			(uint64_t)m->vaddr, (uint64_t)m->device_va);
 	}
@@ -335,7 +335,7 @@ void mdw_mem_pool_free(struct mdw_mem *m)
 	mdw_trace_begin("apumdw:pool_free|size:%u align:%u",
 		size, align);
 
-	mdw_mem_debug("pool: 0x%llx, mem: 0x%llx, size: %d, kva: 0x%llx, iova: 0x%llx",
+	mdw_mem_debug("pool: 0x%llx, mem: 0x%llx, size: %llu, kva: 0x%llx, iova: 0x%llx",
 		(uint64_t)pool, (uint64_t)m, m->size,
 		(uint64_t)m->vaddr, (uint64_t)m->device_va);
 
@@ -360,7 +360,7 @@ int mdw_mem_pool_flush(struct mdw_mem *m)
 	if (m->flags ^ F_MDW_MEM_CACHEABLE)
 		return 0;
 
-	mdw_trace_begin("apumdw:pool_flush|size:%u", m->dva_size);
+	mdw_trace_begin("apumdw:pool_flush|size:%llu", m->dva_size);
 	/* TODO: cacheable command buffer */
 	mdw_drv_err("cacheable buffer: pool: 0x%llx, mem: 0x%llx",
 		(uint64_t)m->pool, (uint64_t)m);
@@ -378,7 +378,7 @@ int mdw_mem_pool_invalidate(struct mdw_mem *m)
 	if (m->flags ^ F_MDW_MEM_CACHEABLE)
 		return 0;
 
-	mdw_trace_begin("apumdw:pool_invalidate|size:%u", m->dva_size);
+	mdw_trace_begin("apumdw:pool_invalidate|size:%llu", m->dva_size);
 	/* TODO: cacheable command buffer */
 	mdw_drv_err("cacheable buffer: pool: 0x%llx, mem: 0x%llx",
 		(uint64_t)m->pool, (uint64_t)m);

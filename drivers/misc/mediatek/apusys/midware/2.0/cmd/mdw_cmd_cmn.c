@@ -39,7 +39,7 @@ void mdw_cmd_cmdbuf_out(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 
 	/* flush cmdbufs and execinfos */
 	if (mdw_mem_invalidate(mpriv, c->cmdbufs))
-		mdw_drv_warn("s(0x%llx)c(0x%llx) invalidate cmdbufs(%u) fail\n",
+		mdw_drv_warn("s(0x%llx)c(0x%llx) invalidate cmdbufs(%llu) fail\n",
 			(uint64_t)mpriv, c->kid, c->cmdbufs->size);
 
 	for (i = 0; i < c->num_subcmds; i++) {
@@ -52,7 +52,7 @@ void mdw_cmd_cmdbuf_out(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 
 			/* cmdbuf copy out */
 			if (ksubcmd->cmdbufs[j].direction != MDW_CB_IN) {
-				mdw_trace_begin("apumdw:cbs_copy_out|cb:%u-%u size:%u type:%u",
+				mdw_trace_begin("apumdw:cbs_copy_out|cb:%u-%u size:%llu type:%u",
 					i, j, ksubcmd->ori_cbs[j]->size, ksubcmd->info->type);
 				memcpy(ksubcmd->ori_cbs[j]->vaddr,
 					(void *)ksubcmd->kvaddrs[j],
@@ -149,7 +149,7 @@ int mdw_cmd_get_cmdbufs(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 			/* check mem boundary */
 			if (m->vaddr == NULL ||
 				ksubcmd->cmdbufs[j].size != m->size) {
-				mdw_drv_err("sc(0x%llx-%u) cb#%u invalid range(%p/%u/%u)\n",
+				mdw_drv_err("sc(0x%llx-%u) cb#%u invalid range(%p/%u/%llu)\n",
 					c->kid, i, j, m->vaddr,
 					ksubcmd->cmdbufs[j].size,
 					m->size);
@@ -224,7 +224,7 @@ int mdw_cmd_get_cmdbufs(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 flush_cmdbuf:
 	/* flush cmdbufs */
 	if (mdw_mem_flush(mpriv, c->cmdbufs))
-		mdw_drv_warn("s(0x%llx) c(0x%llx) flush cmdbufs(%u) fail\n",
+		mdw_drv_warn("s(0x%llx) c(0x%llx) flush cmdbufs(%llu) fail\n",
 			(uint64_t)mpriv, c->kid, c->cmdbufs->size);
 
 	ret = 0;
@@ -602,7 +602,7 @@ void mdw_cmd_unvoke_map(struct mdw_cmd *c)
 
 	list_for_each_entry_safe(cm_invoke, tmp, &c->map_invokes, c_node) {
 		list_del(&cm_invoke->c_node);
-		mdw_cmd_debug("s(0x%llx)c(0x%llx) unvoke m(0x%llx/%u)\n",
+		mdw_cmd_debug("s(0x%llx)c(0x%llx) unvoke m(0x%llx/%llu)\n",
 			(uint64_t)c->mpriv, (uint64_t)c,
 			cm_invoke->map->m->device_va,
 			cm_invoke->map->m->dva_size);
@@ -632,7 +632,7 @@ int mdw_cmd_invoke_map(struct mdw_cmd *c, struct mdw_mem_map *map)
 	map->get(map);
 	cm_invoke->map = map;
 	list_add_tail(&cm_invoke->c_node, &c->map_invokes);
-	mdw_cmd_debug("s(0x%llx)c(0x%llx) invoke m(0x%llx/%u)\n",
+	mdw_cmd_debug("s(0x%llx)c(0x%llx) invoke m(0x%llx/%llu)\n",
 		(uint64_t)c->mpriv, (uint64_t)c, map->m->device_va, map->m->dva_size);
 
 	return 0;
@@ -707,7 +707,7 @@ int mdw_cmd_sanity_check(struct mdw_cmd *c)
 
 	if (c->exec_infos->size != sizeof(struct mdw_cmd_exec_info) +
 		c->num_subcmds * sizeof(struct mdw_subcmd_exec_info)) {
-		mdw_drv_err("s(0x%llx)cmd invalid(0x%llx/0x%llx) einfo(%u/%lu)\n",
+		mdw_drv_err("s(0x%llx)cmd invalid(0x%llx/0x%llx) einfo(%llu/%lu)\n",
 			(uint64_t)c->mpriv, c->uid, c->kid,
 			c->exec_infos->size,
 			sizeof(struct mdw_cmd_exec_info) +
