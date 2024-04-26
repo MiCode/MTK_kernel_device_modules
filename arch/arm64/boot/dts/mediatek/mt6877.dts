@@ -8257,6 +8257,13 @@
 		compatible = "mediatek,mt-soc-offload-common";
 	};
 
+	speech_usip_mem: speech-usip-mem {
+		compatible = "mediatek,speech-usip-mem";
+		adsp-phone-call-enh-enable = <0x1>;
+		adsp-phone-call-hwif = <0x0>;
+		adsp-ble-phone-call-enable = <0x0>;
+	};
+
 	btcvsd_snd: mtk-btcvsd-snd@18830000 {
 		compatible = "mediatek,mtk-btcvsd-snd";
 		reg=<0 0x18830000 0 0x2000>, /*PKV_PHYSICAL_BASE*/
