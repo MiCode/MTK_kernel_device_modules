@@ -7205,6 +7205,10 @@
 		interconnect-names = "apu-bw";
 	};
 
+	apusys_debug: apusys_debug {
+		compatible = "mediatek,mt6877-debug";
+	};
+
 	edma0: edma0@19025000 {
 		compatible = "mtk,edma-sub-v30";
 		reg = <0x0 0x19025000 0x0 0x1000>;
