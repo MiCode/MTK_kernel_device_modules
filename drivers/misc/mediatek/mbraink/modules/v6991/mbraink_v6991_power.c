@@ -10,6 +10,7 @@
 #include <linux/regulator/consumer.h>
 #include <mtk_low_battery_throttling.h>
 #include <mtk_battery_oc_throttling.h>
+#include <mtk_peak_power_budget_mbrain.h>
 #include <mtk-mmdvfs-debug.h>
 #include <mbraink_modules_ops_def.h>
 #include "mbraink_v6991_power.h"
@@ -864,6 +865,65 @@ void pt2mbrain_hint_battery_oc_throttle(struct battery_oc_mbrain bat_oc_mbrain)
 	mbraink_netlink_send_msg(netlink_buf);
 }
 
+void pt2mbrain_ppb_notify_func(void)
+{
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
+	int pos = 0;
+
+	n = snprintf(netlink_buf + pos,
+			NETLINK_EVENT_MESSAGE_SIZE - pos,
+			"%s",
+			NETLINK_EVENT_PPB_NOTIFY);
+
+	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+		return;
+	mbraink_netlink_send_msg(netlink_buf);
+}
+
+static int mbraink_v6991_power_get_power_throttle_hw_info(struct mbraink_power_throttle_hw_data *power_throttle_hw_data)
+{
+	int ret = 0;
+	struct ppb_mbrain_data *res_ppb_mbrain_data = NULL;
+
+	res_ppb_mbrain_data = kmalloc(sizeof(struct ppb_mbrain_data), GFP_KERNEL);
+	if (!res_ppb_mbrain_data) {
+		ret = -1;
+		goto End;
+	}
+
+	ret = get_ppb_mbrain_data(res_ppb_mbrain_data);
+
+	power_throttle_hw_data->kernel_time = res_ppb_mbrain_data->kernel_time;
+	power_throttle_hw_data->duration = res_ppb_mbrain_data->duration;
+	power_throttle_hw_data->soc = res_ppb_mbrain_data->soc;
+	power_throttle_hw_data->temp = res_ppb_mbrain_data->temp;
+	power_throttle_hw_data->soc_rdc = res_ppb_mbrain_data->soc_rdc;
+	power_throttle_hw_data->soc_rac = res_ppb_mbrain_data->soc_rac;
+	power_throttle_hw_data->hpt_bat_budget = res_ppb_mbrain_data->hpt_bat_budget;
+	power_throttle_hw_data->hpt_cg_budget = res_ppb_mbrain_data->hpt_cg_budget;
+	power_throttle_hw_data->ppb_cg_budget = res_ppb_mbrain_data->ppb_cg_budget;
+	power_throttle_hw_data->hpt_cpub_thr_cnt = res_ppb_mbrain_data->hpt_cpub_thr_cnt;
+	power_throttle_hw_data->hpt_cpub_thr_time = res_ppb_mbrain_data->hpt_cpub_thr_time;
+	power_throttle_hw_data->hpt_cpum_thr_cnt = res_ppb_mbrain_data->hpt_cpum_thr_cnt;
+	power_throttle_hw_data->hpt_cpum_thr_time = res_ppb_mbrain_data->hpt_cpum_thr_time;
+	power_throttle_hw_data->hpt_gpu_thr_cnt = res_ppb_mbrain_data->hpt_gpu_thr_cnt;
+	power_throttle_hw_data->hpt_gpu_thr_time = res_ppb_mbrain_data->hpt_gpu_thr_time;
+	power_throttle_hw_data->hpt_cpub_sf = res_ppb_mbrain_data->hpt_cpub_sf;
+	power_throttle_hw_data->hpt_cpum_sf = res_ppb_mbrain_data->hpt_cpum_sf;
+	power_throttle_hw_data->hpt_gpu_sf = res_ppb_mbrain_data->hpt_gpu_sf;
+	power_throttle_hw_data->ppb_combo = res_ppb_mbrain_data->ppb_combo;
+	power_throttle_hw_data->ppb_c_combo0 = res_ppb_mbrain_data->ppb_c_combo0;
+	power_throttle_hw_data->ppb_g_combo0 = res_ppb_mbrain_data->ppb_g_combo0;
+	power_throttle_hw_data->ppb_g_flavor = res_ppb_mbrain_data->ppb_g_flavor;
+
+End:
+	if (res_ppb_mbrain_data != NULL)
+		kfree(res_ppb_mbrain_data);
+
+	return ret;
+}
+
 static struct mbraink_power_ops mbraink_v6991_power_ops = {
 	.getVotingInfo = mbraink_v6991_power_get_voting_info,
 	.getPowerInfo = NULL,
@@ -880,6 +940,7 @@ static struct mbraink_power_ops mbraink_v6991_power_ops = {
 	.suspendprepare = mbraink_v6991_power_suspend_prepare,
 	.postsuspend = mbraink_v6991_power_post_suspend,
 	.getMmdvfsInfo = mbraink_v6991_power_get_mmdfvs_info,
+	.getPowerThrottleHwInfo = mbraink_v6991_power_get_power_throttle_hw_info,
 };
 
 int mbraink_v6991_power_init(void)
@@ -890,12 +951,17 @@ int mbraink_v6991_power_init(void)
 	mbraink_v6991_power_sys_res_init();
 	ret = register_low_battery_mbrain_cb(pt2mbrain_hint_low_battery_volt_throttle);
 	if (ret != 0) {
-		pr_info("low battery callback failed by: %d", ret);
+		pr_info("register low battery callback failed by: %d", ret);
 		return ret;
 	}
 	ret = register_battery_oc_mbrain_cb(pt2mbrain_hint_battery_oc_throttle);
 	if (ret != 0) {
-		pr_info("battery oc callback failed by: %d", ret);
+		pr_info("register battery oc callback failed by: %d", ret);
+		return ret;
+	}
+	ret = register_ppb_mbrian_cb(pt2mbrain_ppb_notify_func);
+	if (ret != 0) {
+		pr_info("register ppb callback failed by: %d", ret);
 		return ret;
 	}
 
@@ -908,6 +974,11 @@ int mbraink_v6991_power_deinit(void)
 
 	ret = unregister_mbraink_power_ops();
 	mbraink_v6991_power_sys_res_deinit();
+	ret = unregister_ppb_mbrian_cb();
+	if (ret != 0) {
+		pr_info("ppb unregister callback failed by: %d", ret);
+		return ret;
+	}
 	return ret;
 }
 

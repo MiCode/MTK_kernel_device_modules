@@ -40,4 +40,6 @@ void mbraink_power_post_suspend(void);
 
 int mbraink_power_get_mmdvfs_info(struct mbraink_mmdvfs_info *mmdvfsInfo);
 
+int mbraink_power_get_power_throttle_hw_info(struct mbraink_power_throttle_hw_data *power_throttle_hw_data);
+
 #endif /*end of MBRAINK_POWER_H*/

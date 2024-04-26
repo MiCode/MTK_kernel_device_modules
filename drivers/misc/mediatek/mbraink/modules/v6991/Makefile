@@ -69,6 +69,9 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm/
+
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/qos/
 
 

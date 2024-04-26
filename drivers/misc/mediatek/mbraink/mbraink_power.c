@@ -26,6 +26,7 @@ int mbraink_power_init(void)
 	_mbraink_power_ops.suspendprepare = NULL;
 	_mbraink_power_ops.postsuspend = NULL;
 	_mbraink_power_ops.getMmdvfsInfo = NULL;
+	_mbraink_power_ops.getPowerThrottleHwInfo = NULL;
 	return 0;
 }
 
@@ -46,6 +47,7 @@ int mbraink_power_deinit(void)
 	_mbraink_power_ops.suspendprepare = NULL;
 	_mbraink_power_ops.postsuspend = NULL;
 	_mbraink_power_ops.getMmdvfsInfo = NULL;
+	_mbraink_power_ops.getPowerThrottleHwInfo = NULL;
 	return 0;
 }
 
@@ -71,6 +73,7 @@ int register_mbraink_power_ops(struct mbraink_power_ops *ops)
 	_mbraink_power_ops.suspendprepare = ops->suspendprepare;
 	_mbraink_power_ops.postsuspend = ops->postsuspend;
 	_mbraink_power_ops.getMmdvfsInfo = ops->getMmdvfsInfo;
+	_mbraink_power_ops.getPowerThrottleHwInfo = ops->getPowerThrottleHwInfo;
 
 	return 0;
 }
@@ -95,6 +98,7 @@ int unregister_mbraink_power_ops(void)
 	_mbraink_power_ops.suspendprepare = NULL;
 	_mbraink_power_ops.postsuspend = NULL;
 	_mbraink_power_ops.getMmdvfsInfo = NULL;
+	_mbraink_power_ops.getPowerThrottleHwInfo = NULL;
 	return 0;
 }
 EXPORT_SYMBOL(unregister_mbraink_power_ops);
@@ -323,6 +327,23 @@ int mbraink_power_get_mmdvfs_info(struct mbraink_mmdvfs_info *mmdvfsInfo)
 		ret = _mbraink_power_ops.getMmdvfsInfo(mmdvfsInfo);
 	else
 		pr_info("%s: Do not support ioctl get power mmdvfs info query.\n", __func__);
+
+	return ret;
+}
+
+int mbraink_power_get_power_throttle_hw_info(struct mbraink_power_throttle_hw_data *power_throttle_hw_data)
+{
+	int ret = 0;
+
+	if (power_throttle_hw_data == NULL) {
+		pr_info("%s: power throttle hw info is null.\n", __func__);
+		return -1;
+	}
+
+	if (_mbraink_power_ops.getPowerThrottleHwInfo)
+		ret = _mbraink_power_ops.getPowerThrottleHwInfo(power_throttle_hw_data);
+	else
+		pr_info("%s: Do not support ioctl get power throttle hw info query.\n", __func__);
 
 	return ret;
 }
