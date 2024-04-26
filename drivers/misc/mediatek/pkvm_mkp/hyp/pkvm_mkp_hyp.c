@@ -7,6 +7,7 @@
 #include <asm/kvm_mmu.h>
 #include <asm/kvm_pkvm_module.h>
 #include <asm/io.h>
+#include <linux/arm-smccc.h>
 #include "lib/malloc.h"
 #include "hvcfunc.h"
 #include "policy.h"
@@ -44,6 +45,7 @@ void handle__mkp_hyp_hvc(struct kvm_cpu_context *ctx)
 	DECLARE_REG(u64, x5, ctx, 6);
 	DECLARE_REG(u64, x6, ctx, 7);
 	DECLARE_REG(u64, x7, ctx, 8);
+	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
 
 	ret = mkp_hvc_handler(x0, x1, x2, x3, x4, x5, x6, x7);
 

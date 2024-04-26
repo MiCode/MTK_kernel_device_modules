@@ -16,8 +16,8 @@ int mkp_set_mapping_ro_hvc_call(uint32_t policy, uint32_t handle)
 
 	mkp_hvc_fast_call_id = MKP_HVC_CALL_ID(policy, HVC_FUNC_SET_MAPPING_RO);
 	res = mkp_el2_mod_call(hvc_number, mkp_hvc_fast_call_id, handle);
-	MKP_DEBUG("%s:%d hvc_id:0x%x, policy:%d res:0x%lx 0x%lx 0x%lx 0x%lx\n", __func__, __LINE__,
-		mkp_hvc_fast_call_id, policy, res.a0, res.a1, res.a2, res.a3);
+	MKP_DEBUG("%s:%d hvc_num: %d, hvc_id:0x%x, policy:%d res:0x%lx 0x%lx 0x%lx 0x%lx\n", __func__, __LINE__,
+		hvc_number, mkp_hvc_fast_call_id, policy, res.a0, res.a1, res.a2, res.a3);
 
 	return res.a1 ? -1 : 0;
 }
@@ -42,8 +42,8 @@ int mkp_set_mapping_nx_hvc_call(uint32_t policy, uint32_t handle)
 
 	mkp_hvc_fast_call_id = MKP_HVC_CALL_ID(policy, HVC_FUNC_SET_MAPPING_NX);
 	res = mkp_el2_mod_call(hvc_number, mkp_hvc_fast_call_id, handle);
-	MKP_DEBUG("%s:%d hvc_id:0x%x, policy:%d res:0x%lx 0x%lx 0x%lx 0x%lx\n", __func__, __LINE__,
-		mkp_hvc_fast_call_id, policy, res.a0, res.a1, res.a2, res.a3);
+	MKP_DEBUG("%s:%d hvc_num: %d, hvc_id:0x%x, policy:%d res:0x%lx 0x%lx 0x%lx 0x%lx\n", __func__, __LINE__,
+		hvc_number, mkp_hvc_fast_call_id, policy, res.a0, res.a1, res.a2, res.a3);
 
 	return res.a1 ? -1 : 0;
 }

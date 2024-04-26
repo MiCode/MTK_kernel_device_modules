@@ -46,7 +46,7 @@ static int sbrk(size_t nr_bytes)
 	// donate pages
 	nr_pages = nr_bytes >> PAGE_SHIFT;
 	start_pfn = heap_phys_end >> PAGE_SHIFT;
-	ret = module_ops->host_donate_hyp(start_pfn, nr_pages);
+	ret = module_ops->host_donate_hyp(start_pfn, nr_pages, 0);
 
 	if (ret)
 		return -1;
