@@ -105,6 +105,13 @@ struct mtk_drm_async_cb {
 	struct list_head link;
 };
 
+struct mtk_iwb_cb_data {
+	struct cmdq_pkt			*cmdq_handle;
+	struct drm_crtc			*crtc;
+	struct mtk_ddp_comp		*comp;
+	struct mtk_ddp_comp		*comp_dual;
+};
+
 enum mtk_drm_async_user_id {
 	USER_TRIG_LOOP = 0xf001,
 	USER_HW_BLOCK,

@@ -94,6 +94,8 @@ void init_drm_mmp_event(void)
 		mmprofile_register_event(g_DRM_MMP_Events.aal, "AAL1");
 	g_DRM_MMP_Events.pmqos =
 		mmprofile_register_event(g_DRM_MMP_Events.drm, "PMQOS");
+	g_DRM_MMP_Events.ostdl =
+		mmprofile_register_event(g_DRM_MMP_Events.drm, "OSTDL");
 	g_DRM_MMP_Events.hrt_bw =
 		mmprofile_register_event(g_DRM_MMP_Events.drm, "HRT_BW");
 	g_DRM_MMP_Events.mutex_lock =
