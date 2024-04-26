@@ -58,12 +58,14 @@
 #define SERDES_INITED_IN_LK_NODE_NAME			"inited-in-lk"
 #define SERDES_DES_I2C_ADDR_NODE_NAME			"des-i2c-addr"
 #define SERDES_BL_I2C_ADDR_NODE_NAME			"bl-i2c-addr"
+#define SERDES_BL_DUMMY_I2C_ADDR_NODE_NAME		"bl-dummy-i2c-addr"
 #define SERDES_SUPER_FRAME_NODE_NAME			"ser-super-frame"
 #define DES_COMPATIBLE_CMD_NODE_NAME			"comp-cmd"
 #define DES_COMPATIBLE_EXP_NODE_NAME			"comp-exp"
 #define DES_COMPATIBLE_SETTING_NODE_NAME		"comp-setting"
 
 #define MAX_COMPATIBLE_NUM						8
+#define DES_DUMMY_IIC_ADDR						0x79
 enum SLAVE_TYPE {
 	SER,
 	DEF_DES,
@@ -108,6 +110,7 @@ struct deserializer {
 
 	u8 des_iic_addr;
 	u8 bl_iic_addr;
+	u8 bl_dummy_iic_addr;
 
 	u32 des_init_cmd_num;
 	struct serdes_cmd *des_init_cmd;
@@ -195,6 +198,7 @@ static int serdes_get_des_iic_addr_from_dts(struct device_node *node)
 
 	return read_value;
 }
+
 static int serdes_get_bl_iic_addr_from_dts(struct device_node *node)
 {
 	int ret;
@@ -205,7 +209,24 @@ static int serdes_get_bl_iic_addr_from_dts(struct device_node *node)
 
 	ret = of_property_read_u32(node, SERDES_BL_I2C_ADDR_NODE_NAME, &read_value);
 	if (ret) {
-		pr_info("error: read eeprom iic addr error!\n");
+		pr_info("error: read bl iic addr error!\n");
+		return -1;
+	}
+
+	return read_value;
+}
+
+static int serdes_get_bl_dummy_iic_addr_from_dts(struct device_node *node)
+{
+	int ret;
+	u32 read_value;
+
+	if (!node)
+		return -1;
+
+	ret = of_property_read_u32(node, SERDES_BL_DUMMY_I2C_ADDR_NODE_NAME, &read_value);
+	if (ret) {
+		pr_info("error: read bl dummy iic addr error!\n");
 		return -1;
 	}
 
@@ -857,7 +878,6 @@ int serdes_bl_off(struct serdes *ser_des)
 	return ret;
 }
 
-//after pre-init serdes, it must be access eeprom by ser
 static void serdes_init_ser(struct serdes *ser_des)
 {
 	int i;
@@ -918,6 +938,18 @@ static void serdes_get_comp_setting_by_send_comp_cmd(struct serdes *ser_des)
 	if (ser_des->comp_setting_cmd_num) {
 		for (i = 0; i < ser_des->comp_setting_cmd_num; i++) {
 			client = i2c_new_dummy_device(ser_des->ser_client->adapter, ser_des->comp_setting_cmd[i].addr);
+			if (IS_ERR(client)) {
+				pr_info("%s: create client[0x%x] fail, used dummy client[0x%x]!\n",
+					__func__, ser_des->comp_setting_cmd[i].addr, DES_DUMMY_IIC_ADDR);
+				client = i2c_new_dummy_device(ser_des->ser_client->adapter, DES_DUMMY_IIC_ADDR);
+				if (IS_ERR(client)) {
+					cmd_ret = 0xFFFF;
+					pr_info("%s: used dummy client error, used default setting\n", __func__);
+					break;
+				}
+				client->addr = ser_des->comp_setting_cmd[i].addr;
+			}
+
 			if (ser_des->comp_setting_cmd[i].rw == 1) {
 				mutex_lock(&i2c_access);
 				ret = i2c_master_send(client,
@@ -1096,6 +1128,13 @@ static int serdes_get_general_info_from_dts(struct serdes *ser_des)
 		//return -1;
 	}
 	pr_info("default bl iic addr = 0x%x\n", ser_des->desdef->bl_iic_addr);
+
+	ser_des->desdef->bl_dummy_iic_addr = serdes_get_bl_dummy_iic_addr_from_dts(ser_des->desdef->des_node);
+	if (ser_des->desdef->bl_dummy_iic_addr == 0xFF) {
+		pr_info("no need dummy iic\n");
+		//return -1;
+	} else
+		pr_info("default need dummy iic addr = 0x%x\n", ser_des->desdef->bl_dummy_iic_addr);
 
 	serdes_get_super_frame_from_dts(ser_des);
 	pr_info("super frame = 0x%x\n", ser_des->super_frame);
@@ -1441,27 +1480,120 @@ static int serdes_iic_driver_probe(struct i2c_client *client)
 	serdes_get_general_info_from_dts(max96789);
 	serdes_get_serdes_info_from_dts(max96789);
 
-	if (max96789->desdef->des_iic_addr != 0 && max96789->desdef->des_iic_addr != 0xFF)
+	if (max96789->desdef->des_iic_addr != 0 && max96789->desdef->des_iic_addr != 0xFF) {
 		max96789->desdef->des_client = i2c_new_dummy_device(client->adapter,
 			max96789->desdef->des_iic_addr);
-	if (max96789->desdef->bl_iic_addr != 0 && max96789->desdef->bl_iic_addr != 0xFF)
-		max96789->desdef->bl_client = i2c_new_dummy_device(client->adapter,
-			max96789->desdef->bl_iic_addr);
+		if (IS_ERR(max96789->desdef->des_client)) {
+			pr_info("%s: get desdef client fail[0x%x->0x%lx]!\n", __func__,
+				max96789->desdef->des_iic_addr,
+				PTR_ERR(max96789->desdef->des_client));
+			return -1;
+		}
+	}
+	if (max96789->desdef->bl_iic_addr != 0 && max96789->desdef->bl_iic_addr != 0xFF) {
+		if (max96789->desdef->bl_dummy_iic_addr != 0 && max96789->desdef->bl_dummy_iic_addr != 0xFF) {
+			max96789->desdef->bl_client = i2c_new_dummy_device(client->adapter,
+				max96789->desdef->bl_dummy_iic_addr);
+			if (IS_ERR(max96789->desdef->bl_client)) {
+				pr_info("%s: get desdef bl client fail[0x%x->0x%lx]!\n", __func__,
+					max96789->desdef->bl_dummy_iic_addr,
+					PTR_ERR(max96789->desdef->bl_client));
+				return -1;
+			}
+			max96789->desdef->bl_client->addr = max96789->desdef->bl_iic_addr;
+			pr_info("%s:bl_addr=0x%x, bl_client=0x%p, dummy from 0x%x\n", __func__,
+				max96789->desdef->bl_iic_addr, max96789->desdef->bl_client,
+				max96789->desdef->bl_dummy_iic_addr);
+		} else {
+			max96789->desdef->bl_client = i2c_new_dummy_device(client->adapter,
+				max96789->desdef->bl_iic_addr);
+			if (IS_ERR(max96789->desdef->bl_client)) {
+				pr_info("%s: get desdef bl client fail[0x%x->0x%lx]!\n", __func__,
+					max96789->desdef->bl_iic_addr,
+					PTR_ERR(max96789->desdef->bl_client));
+				return -1;
+			}
+			pr_info("%s:bl_addr=0x%x, bl_client=0x%p\n", __func__,
+				max96789->desdef->bl_iic_addr, max96789->desdef->bl_client);
+		}
+	}
 
 	if (max96789->super_frame) {
-		if (max96789->desa->des_iic_addr != 0 && max96789->desa->des_iic_addr != 0xFF)
+		if (max96789->desa->des_iic_addr != 0 && max96789->desa->des_iic_addr != 0xFF) {
 			max96789->desa->des_client = i2c_new_dummy_device(client->adapter,
 				max96789->desa->des_iic_addr);
-		if (max96789->desa->bl_iic_addr != 0 && max96789->desa->bl_iic_addr != 0xFF)
-			max96789->desa->bl_client = i2c_new_dummy_device(client->adapter,
-				max96789->desa->bl_iic_addr);
+			if (IS_ERR(max96789->desa->des_client)) {
+				pr_info("%s: get desa client fail[0x%x->0x%lx]!\n", __func__,
+					max96789->desa->des_iic_addr,
+					PTR_ERR(max96789->desa->des_client));
+				return -1;
+			}
+		}
+		if (max96789->desa->bl_iic_addr != 0 && max96789->desa->bl_iic_addr != 0xFF) {
+			if (max96789->desa->bl_dummy_iic_addr != 0 && max96789->desa->bl_dummy_iic_addr != 0xFF) {
+				max96789->desa->bl_client = i2c_new_dummy_device(client->adapter,
+					max96789->desa->bl_dummy_iic_addr);
+				if (IS_ERR(max96789->desa->bl_client)) {
+					pr_info("%s: get desa bl client fail[0x%x->0x%lx]!\n", __func__,
+						max96789->desa->bl_dummy_iic_addr,
+						PTR_ERR(max96789->desa->bl_client));
+					return -1;
+				}
+				max96789->desa->bl_client->addr = max96789->desa->bl_iic_addr;
+				pr_info("%s:desa bl_addr=0x%x, bl_client=0x%p, dummy from 0x%x\n", __func__,
+					max96789->desa->bl_iic_addr, max96789->desa->bl_client,
+					max96789->desa->bl_dummy_iic_addr);
+			} else {
+				max96789->desa->bl_client = i2c_new_dummy_device(client->adapter,
+					max96789->desa->bl_iic_addr);
+				if (IS_ERR(max96789->desa->bl_client)) {
+					pr_info("%s: get desa bl client fail[0x%x->0x%lx]!\n", __func__,
+						max96789->desa->bl_iic_addr,
+						PTR_ERR(max96789->desa->bl_client));
+					return -1;
+				}
+				pr_info("%s:desa bl_addr=0x%x, bl_client=0x%p\n", __func__,
+					max96789->desa->bl_iic_addr, max96789->desa->bl_client);
+			}
+		}
 
-		if (max96789->desb->des_iic_addr != 0 && max96789->desb->des_iic_addr != 0xFF)
+		if (max96789->desb->des_iic_addr != 0 && max96789->desb->des_iic_addr != 0xFF) {
 			max96789->desb->des_client = i2c_new_dummy_device(client->adapter,
 				max96789->desb->des_iic_addr);
-		if (max96789->desb->bl_iic_addr != 0 && max96789->desb->bl_iic_addr != 0xFF)
-			max96789->desb->bl_client = i2c_new_dummy_device(client->adapter,
-				max96789->desb->bl_iic_addr);
+			if (IS_ERR(max96789->desb->des_client)) {
+				pr_info("%s: get desb client fail[0x%x->0x%lx]!\n", __func__,
+					max96789->desb->des_iic_addr,
+					PTR_ERR(max96789->desb->des_client));
+				return -1;
+			}
+		}
+		if (max96789->desb->bl_iic_addr != 0 && max96789->desb->bl_iic_addr != 0xFF) {
+			if (max96789->desb->bl_dummy_iic_addr != 0 && max96789->desb->bl_dummy_iic_addr != 0xFF) {
+				max96789->desb->bl_client = i2c_new_dummy_device(client->adapter,
+					max96789->desb->bl_dummy_iic_addr);
+				if (IS_ERR(max96789->desb->bl_client)) {
+					pr_info("%s: get desb bl client fail[0x%x->0x%lx]!\n", __func__,
+						max96789->desb->bl_dummy_iic_addr,
+						PTR_ERR(max96789->desb->bl_client));
+					return -1;
+				}
+				max96789->desb->bl_client->addr = max96789->desb->bl_iic_addr;
+				pr_info("%s:desb bl_addr=0x%x, bl_client=0x%p, dummy from 0x%x\n", __func__,
+					max96789->desb->bl_iic_addr, max96789->desb->bl_client,
+					max96789->desb->bl_dummy_iic_addr);
+			} else {
+				max96789->desb->bl_client = i2c_new_dummy_device(client->adapter,
+					max96789->desb->bl_iic_addr);
+				if (IS_ERR(max96789->desb->bl_client)) {
+					pr_info("%s: get desb bl client fail[0x%x->0x%lx]!\n", __func__,
+						max96789->desb->bl_iic_addr,
+						PTR_ERR(max96789->desb->bl_client));
+					return -1;
+				}
+				pr_info("%s:desb bl_addr=0x%x, bl_client=0x%p\n", __func__,
+					max96789->desb->bl_iic_addr, max96789->desb->bl_client);
+			}
+		}
 	}
 
 	if (max96789->inited_in_lk) {
