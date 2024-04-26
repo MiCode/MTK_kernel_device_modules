@@ -4360,6 +4360,7 @@ static void check_is_mml_layer(const int disp_idx,
 	struct mtk_panel_params *panel_ext = NULL;
 	unsigned int real_te_duration = 0;
 	unsigned int duration = 0;
+	unsigned int mml_duration = 0;
 	int mml_multi_layer = 0;
 	int mml_decouple2 = 0;
 
@@ -4422,11 +4423,18 @@ static void check_is_mml_layer(const int disp_idx,
 
 	if (priv->data->skip_trans && !bypass_skip_trans) {
 		duration = 1000000 / drm_mode_vrefresh(&crtc->state->adjusted_mode);
+		mml_duration = duration - disp_info->exec_reserved_time;
+		if (mml_duration <= 0) {
+			mml_duration = 0;
+			DDPMSG("%s,%d,duartion:%d,exec_reserved_time:%d\n", __func__, __LINE__,
+				duration, disp_info->exec_reserved_time);
+		}
 		panel_ext = mtk_drm_get_lcm_ext_params(crtc);
 		if (panel_ext && panel_ext->real_te_duration)
 			real_te_duration = panel_ext->real_te_duration;
 
-		DDPDBG("%s,duartion:%d,real_te:%d\n", __func__, duration, real_te_duration);
+		DDPINFO("%s,te:%d,duration:%d,reserved:%d\n", __func__,
+			real_te_duration, duration, disp_info->exec_reserved_time);
 	}
 
 	if ((down_scale_cnt > 1) && !(mtk_crtc->is_mml_dl ||
@@ -4447,7 +4455,7 @@ static void check_is_mml_layer(const int disp_idx,
 
 	if ((mml_multi_layer) && (mml_cnt > 0)) {
 		mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
-		mml_drm_query_multi_layer(mml_ctx, multi_mml_info[0], mml_cnt, duration);
+		mml_drm_query_multi_layer(mml_ctx, multi_mml_info[0], mml_cnt, mml_duration);
 	}
 
 	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
