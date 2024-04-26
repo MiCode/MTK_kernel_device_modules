@@ -456,7 +456,7 @@ static const struct scp_domain_data scp_domain_mt6991_spm_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 0,
-		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_IRQ_SAVE | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_IRQ_SAVE | default_cap | MTK_SCPD_INFRA_REQ_OPT,
 	},
 	[MT6991_POWER_DOMAIN_SSR] = {
 		.name = "ssrsys",
@@ -468,7 +468,7 @@ static const struct scp_domain_data scp_domain_mt6991_spm_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 1,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | default_cap | MTK_SCPD_INFRA_REQ_OPT,
 	},
 };
 
