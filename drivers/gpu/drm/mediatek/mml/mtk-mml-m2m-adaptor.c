@@ -1405,6 +1405,8 @@ static struct mml_m2m_ctx *m2m_ctx_create(struct mml_dev *mml)
 
 	ctx->ctx.task_ops = &m2m_task_ops;
 	ctx->ctx.cfg_ops = &m2m_config_ops;
+	mutex_init(&ctx->q_mutex);
+	kref_init(&ctx->ref);
 
 	return ctx;
 }
@@ -1474,14 +1476,11 @@ static int mml_m2m_open(struct file *file)
 	ctx->fh.ctrl_handler = &ctx->ctrl_handler;
 	v4l2_fh_add(&ctx->fh);
 
-	mutex_init(&ctx->q_mutex);
-	kref_init(&ctx->ref);
-
 	ctx->m2m_ctx = v4l2_m2m_ctx_init(v4l2_dev->m2m_dev, ctx, m2m_queue_init);
 	if (IS_ERR(ctx->m2m_ctx)) {
 		mml_err("Failed to initialize m2m context");
 		ret = PTR_ERR(ctx->m2m_ctx);
-		goto err_release_handler;
+		goto err_free_handler;
 	}
 	ctx->fh.m2m_ctx = ctx->m2m_ctx;
 
@@ -1506,7 +1505,7 @@ static int mml_m2m_open(struct file *file)
 
 err_release_m2m_ctx:
 	v4l2_m2m_ctx_release(ctx->m2m_ctx);
-err_release_handler:
+err_free_handler:
 	v4l2_ctrl_handler_free(&ctx->ctrl_handler);
 	v4l2_fh_del(&ctx->fh);
 err_exit_fh:

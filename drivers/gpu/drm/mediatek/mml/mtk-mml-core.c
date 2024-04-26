@@ -638,7 +638,7 @@ static void get_frame_str(char *frame, size_t sz, const struct mml_frame_data *d
 		frame[0] = '\0';
 }
 
-const char *dump_ovlid(enum mml_mode mode, enum mml_layer_id ovlsys_id)
+static const char *ovlid_str(enum mml_mode mode, enum mml_layer_id ovlsys_id)
 {
 	if (mode != MML_MODE_DIRECT_LINK)
 		return "";
@@ -655,7 +655,7 @@ const char *dump_ovlid(enum mml_mode mode, enum mml_layer_id ovlsys_id)
 	return "";
 }
 
-static void dump_inout(struct mml_task *task)
+static void dump_task(struct mml_task *task)
 {
 	const struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_dest *dest;
@@ -678,7 +678,7 @@ static void dump_inout(struct mml_task *task)
 		task->job.jobid,
 		cfg->info.mode,
 		cfg->disp_vdo ? "vdo" : "cmd",
-		dump_ovlid(cfg->info.mode, cfg->info.ovlsys_id),
+		ovlid_str(cfg->info.mode, cfg->info.ovlsys_id),
 		cfg->info.act_time);
 	if (cfg->info.dest[0].pq_config.en_region_pq) {
 		get_frame_str(frame, sizeof(frame), &cfg->info.seg_map);
@@ -753,7 +753,7 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 	mml_err("dump %d task %p pipe %u config %p job %u mode %u",
 		cnt, task, pipe, cfg, task->job.jobid, cfg->info.mode);
 	/* print info for this task */
-	dump_inout(task);
+	dump_task(task);
 
 	if (cfg->dual) {
 		mml_err("dump another pipe thread status for dual:");
@@ -2140,10 +2140,9 @@ static void core_config_task(struct mml_task *task)
 
 	/* topology */
 	if (task->state == MML_TASK_INITIAL) {
-		dump_inout(task);
-
 		/* topology will fill in path instance */
 		err = topology_select_path(cfg);
+		dump_task(task);
 		if (err < 0) {
 			mml_err("%s select path fail %d", __func__, err);
 			goto done;
