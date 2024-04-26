@@ -2007,6 +2007,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("sound/soc/codecs/mt6681-accdet.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/mediatek_v2/mtk_aod_scp.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko")
+        mgk_64_device_modules.append("drivers/mmc/host/mtk-mmc-swcqhci.ko")
 
 
     if "mt6768_overlay_ref.config" in DEFCONFIG_OVERLAYS:
