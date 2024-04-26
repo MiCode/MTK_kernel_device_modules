@@ -571,6 +571,7 @@ static uint32_t sync_vio_dbg(int slave_type, uint32_t shift_bit)
 		for (i = 0; i < vio_sta_size; i++) {
 			reg = mtk_devapc_pd_get(slave_type, VIO_STA, i);
 			pr_info(PFX "sync failed, VIO_STA_%d: 0x%x\n", i, readl(reg));
+			writel(readl(reg), reg);
 		}
 
 		reg = mtk_devapc_pd_get(slave_type, APC_CON, 0);
