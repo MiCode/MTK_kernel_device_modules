@@ -3348,7 +3348,7 @@ void mtk_crtc_ddp_unprepare(struct mtk_drm_crtc *mtk_crtc)
 struct drm_framebuffer *mtk_drm_framebuffer_lookup(struct drm_device *dev,
 	unsigned int id);
 #ifdef MTK_DRM_ADVANCE
-static struct mtk_ddp_comp *
+struct mtk_ddp_comp *
 mtk_crtc_get_plane_comp(struct drm_crtc *crtc,
 			struct mtk_plane_state *plane_state)
 {
@@ -11508,6 +11508,7 @@ void mtk_crtc_all_layer_off(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq
 			DDPMSG("keep first layer for OVLs\n");
 		else
 			keep_first_layer = false;
+		DDPINFO("%s %d comp->id:%d", __func__, __LINE__, comp->id);
 	}
 
 	if (mtk_crtc->is_dual_pipe) {
@@ -14534,6 +14535,37 @@ static void update_frame_weight(struct drm_crtc *crtc,
 	mutex_unlock(&mtk_drm->lyeblob_list_mutex);
 }
 
+static void mtk_drm_check_plane_for_se(struct drm_crtc *crtc)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_plane_comp_state *comp_state;
+	int i = 0;
+	int lye_id;
+
+	mtk_crtc->sideband_layer = -1;
+	mtk_crtc->static_plane.index = 0;
+
+	for (i = 0; i < mtk_crtc->layer_nr; i++) {
+		struct drm_plane *plane = &mtk_crtc->planes[i].base;
+		struct mtk_plane_state *plane_state;
+
+		plane_state = to_mtk_plane_state(plane->state);
+		comp_state = &(plane_state->comp_state);
+		lye_id = plane_state->comp_state.lye_id;
+
+		if (plane_state->prop_val[PLANE_PROP_MODE] == MTK_PLANE_SIDEBAND) {
+			if ((plane_state->comp_state.comp_id == DDP_COMPONENT_OVL1_2L) ||
+				(plane_state->comp_state.comp_id == DDP_COMPONENT_OVL3_2L))
+				mtk_crtc->sideband_layer = lye_id + 2;
+			else
+				mtk_crtc->sideband_layer = lye_id;
+
+			DDPINFO("%s, sideband com %d, ly %d\n", __func__,
+				plane_state->comp_state.comp_id, mtk_crtc->sideband_layer);
+		}
+	}
+}
+
 static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 				      struct drm_atomic_state *atomic_state)
 {
@@ -14624,7 +14656,9 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 			mtk_crtc_hw_block_ready(crtc);
 		}
 	}
-
+#if IS_ENABLED(CONFIG_MTK_SE_SUPPORT)
+	mtk_drm_check_plane_for_se(crtc);
+#endif
 	if (mtk_crtc->ddp_mode == DDP_NO_USE) {
 		CRTC_MMP_MARK(index, atomic_begin, 0, 0);
 		goto end;
@@ -15178,6 +15212,48 @@ void mtk_drm_crtc_discrete_update(struct drm_crtc *crtc,
 	}
 }
 
+static void mtk_drm_plane_for_se(struct drm_crtc *crtc, struct drm_plane *plane,
+	struct mtk_plane_state *plane_state)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	int index = mtk_crtc->static_plane.index++;
+	int layer_id = 0, comp_id = 0;
+	int crtc_index = drm_crtc_index(crtc);
+
+	memcpy((void *)&mtk_crtc->static_plane.state[index],
+		(void *)plane_state, sizeof(struct mtk_plane_state));
+
+	if (mtk_crtc->sideband_layer >= 0) {
+		if (plane_state->pending.prop_val[PLANE_PROP_MODE] == MTK_PLANE_SIDEBAND) {
+			layer_id = plane_state->comp_state.lye_id;
+			comp_id = plane_state->comp_state.comp_id;
+			memcpy((void *)plane_state, (void *)&mtk_crtc->se_plane[0].state,
+				sizeof(struct mtk_plane_state));
+			plane_state->comp_state.lye_id = layer_id;
+			plane_state->comp_state.comp_id = comp_id;
+			DDPINFO("crtc%d memcpy layer %d, comp_id %d\n",
+				crtc_index, layer_id, comp_id);
+		}
+		return;
+	}
+
+	if (!mtk_crtc->se_panel)
+		return;
+
+	layer_id = plane_state->comp_state.lye_id;
+	if ((layer_id >= 0) && (layer_id < MTK_FB_SE_NUM) &&
+		mtk_crtc->se_plane[layer_id].state.pending.enable) {
+		memcpy((void *)plane_state, (void *)&mtk_crtc->se_plane[layer_id].state,
+			sizeof(struct mtk_plane_state));
+		plane_state->comp_state.lye_id = layer_id;
+	} else
+		plane_state->pending.enable = false;
+
+	DDPINFO("%s+ comp_id:%d, en:%d, lye_id:%d\n",
+		__func__, plane_state->comp_state.comp_id,
+		plane_state->pending.enable, plane_state->comp_state.lye_id);
+}
+
 void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 			       struct mtk_plane_state *plane_state)
 {
@@ -15191,13 +15267,29 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 	unsigned int h = crtc->state->adjusted_mode.hdisplay;
 	unsigned int last_fence, cur_fence, sub;
 	dma_addr_t addr;
+
+	if (plane_state->pending.enable &&
+	    plane_state->pending.format != DRM_FORMAT_C8)
+		sub = 1;
+	else
+		sub = 0;
 #endif
 	struct cmdq_pkt *cmdq_handle = state->cmdq_handle;
 
 	if (comp)
-		DDPINFO("%s plane:%d first_comp:%s plane_comp:%s\n", __func__,
-			plane->index, mtk_dump_comp_str_id(comp->id),
-			mtk_dump_comp_str_id(plane_state->comp_state.comp_id));
+		DDPINFO("%s plane:%d first:%s plane:%s enable %d dual %d blank %d\n",
+			__func__,
+			plane->index,
+			mtk_dump_comp_str_id(comp->id),
+			mtk_dump_comp_str_id(plane_state->comp_state.comp_id),
+			plane_state->pending.enable,
+			mtk_crtc->is_dual_pipe,
+			comp->blank_mode);
+
+#if IS_ENABLED(CONFIG_MTK_SE_SUPPORT)
+	mtk_drm_plane_for_se(crtc, plane, plane_state);
+#endif
+
 	if (plane_state->pending.enable) {
 		u32 tgt_comp = 0;
 		u8 tgt_layer = 0;
@@ -15294,11 +15386,6 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, addr,
 			       cur_fence, ~0);
 
-	if (plane_state->pending.enable &&
-	    plane_state->pending.format != DRM_FORMAT_C8)
-		sub = 1;
-	else
-		sub = 0;
 	addr = mtk_get_gce_backup_slot_pa(mtk_crtc,
 		DISP_SLOT_SUBTRACTOR_WHEN_FREE(mtk_get_plane_slot_idx(mtk_crtc, plane_index)));
 	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, addr, sub, ~0);
@@ -18610,6 +18697,16 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		return -ENOMEM;
 	}
 	mtk_pq_data_init(mtk_crtc);
+
+#if IS_ENABLED(CONFIG_MTK_SE_SUPPORT)
+	/*surfaceengine*/
+	mtk_crtc->se_panel = 0;
+	mtk_crtc->sideband_layer = -1;
+	mtk_crtc->se_state = DISP_SE_IDLE;
+	for (i = 0; i < MTK_FB_SE_NUM; i++)
+		mtk_crtc->se_plane[i].panel_id = -1;
+	/*end surfaceengine*/
+#endif
 
 	if (priv->data->mmsys_id == MMSYS_MT6985 ||
 		priv->data->mmsys_id == MMSYS_MT6989 ||

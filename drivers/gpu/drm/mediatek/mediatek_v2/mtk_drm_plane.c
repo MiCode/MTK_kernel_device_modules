@@ -165,6 +165,7 @@ static struct mtk_drm_property mtk_plane_property[PLANE_PROP_MAX] = {
 	{DRM_MODE_PROP_ATOMIC, "DIRTY_ROI_Y", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "DIRTY_ROI_W", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "DIRTY_ROI_H", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "MODE", 0, UINT_MAX, 0},
 };
 
 static void mtk_plane_reset(struct drm_plane *plane)

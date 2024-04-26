@@ -461,6 +461,10 @@ struct DISP_AAL_TRIG_STATE {
 #define DRM_MTK_SUPPORT_COLOR_TRANSFORM    0x2D
 #define DRM_MTK_PQ_PROXY_IOCTL 0x37
 
+#define DRM_MTK_SET_OVL_LAYER	0x4A
+#define DRM_MTK_MAP_DMA_BUF	0x4B
+#define DRM_MTK_UNMAP_DMA_BUF	0x4C
+
 #define DRM_MTK_HDMI_GET_DEV_INFO	0x3A
 #define DRM_MTK_HDMI_AUDIO_ENABLE	0x3B
 #define DRM_MTK_HDMI_AUDIO_CONFIG	0x3C
@@ -752,6 +756,51 @@ enum MTK_DRM_CHIST_CALLER {
 	MTK_DRM_CHIST_CALLER_UNKONW
 };
 
+enum MTK_PLANE_MODE {
+	MTK_PLANE_HWC,
+	MTK_PLANE_SIDEBAND,
+};
+
+enum MTK_PANEL_ID {
+	MTK_PANEL_DSI0_0,
+	MTK_PANEL_DSI0_1,
+	MTK_PANEL_DSI1_0,
+	MTK_PANEL_DSI1_1,
+	MTK_PANEL_DPI_0,
+	MTK_PANEL_DPI_1,
+	MTK_PANEL_DPI_2,
+};
+
+enum MTK_FB_USER_TYPE {
+	MTK_USER_NORMAL,
+	MTK_USER_AVM,
+};
+
+struct mtk_drm_layer_info {
+	enum MTK_PANEL_ID panel_id;
+	unsigned int layer_id;
+	unsigned int layer_en;
+	unsigned int src_x;
+	unsigned int src_y;
+	unsigned int src_w;
+	unsigned int src_h;
+	unsigned int src_pitch;
+	unsigned int crop_w;
+	unsigned int crop_h;
+	unsigned int tgt_x;
+	unsigned int tgt_y;
+	unsigned int tgt_w;
+	unsigned int tgt_h;
+	unsigned int src_format;
+	unsigned long long pts;
+
+	void *src_vaddr;
+	uint64_t src_mvaddr;
+	int dma_fd;
+	bool compress;
+	enum MTK_FB_USER_TYPE user_type;
+};
+
 struct mtk_drm_disp_caps_info {
 	unsigned int hw_ver;
 	unsigned int disp_feature_flag;
@@ -846,11 +895,18 @@ struct mtk_drm_crtc_caps {
 	unsigned int rpo_support_num;
 };
 
+#define MTK_PANEL_NUM 5
+
 struct drm_mtk_session_info {
 	unsigned int session_id;
 	unsigned int vsyncFPS;
 	unsigned int physicalWidthUm;
 	unsigned int physicalHeightUm;
+	unsigned int physical_width;
+	unsigned int physical_height;
+	unsigned int crop_width[MTK_PANEL_NUM];
+	unsigned int crop_height[MTK_PANEL_NUM];
+	int rotate;
 };
 
 enum drm_disp_ccorr_id_t {
@@ -1720,6 +1776,10 @@ struct mtk_pixel_type_fence {
 	unsigned int secure;
 };
 
+struct mtk_drm_dma_buf {
+	__s32 fd;
+	__u64 mva;
+};
 
 #define DRM_IOCTL_MTK_GEM_CREATE	DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_MTK_GEM_CREATE, struct drm_mtk_gem_create)
@@ -1840,6 +1900,17 @@ struct mtk_pixel_type_fence {
 
 #define DRM_IOCTL_MTK_DUMMY_CMD_ON DRM_IOWR(DRM_COMMAND_BASE + \
 			DRM_MTK_DUMMY_CMD_ON, unsigned int)
+
+#define DRM_IOCTL_MTK_SET_OVL_LAYER    DRM_IOWR(DRM_COMMAND_BASE + \
+					DRM_MTK_SET_OVL_LAYER, \
+					struct mtk_drm_layer_info)
+
+#define DRM_IOCTL_MTK_MAP_DMA_BUF    DRM_IOWR(DRM_COMMAND_BASE + \
+					DRM_MTK_MAP_DMA_BUF, \
+					struct mtk_drm_dma_buf)
+
+#define DRM_IOCTL_MTK_UNMAP_DMA_BUF    DRM_IOWR(DRM_COMMAND_BASE + \
+					DRM_MTK_UNMAP_DMA_BUF, int)
 
 /* AAL IOCTL */
 #define AAL_HIST_BIN            33	/* [0..32] */

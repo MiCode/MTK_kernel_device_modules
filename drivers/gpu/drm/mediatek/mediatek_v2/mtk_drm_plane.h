@@ -120,6 +120,7 @@ enum MTK_PLANE_PROP {
 	PLANE_PROP_DIRTY_ROI_Y,
 	PLANE_PROP_DIRTY_ROI_W,
 	PLANE_PROP_DIRTY_ROI_H,
+	PLANE_PROP_MODE,
 	PLANE_PROP_MAX,
 };
 
@@ -158,6 +159,7 @@ struct mtk_plane_pending_state {
 	struct mml_submit *mml_cfg;
 	uint64_t prop_val[PLANE_PROP_MAX];
 	unsigned int pq_loop_type;	/* 0 = none, 1 = DL in, 2 = DL out and DL in */
+	uint64_t pts;
 };
 
 struct mtk_plane_input_config {
