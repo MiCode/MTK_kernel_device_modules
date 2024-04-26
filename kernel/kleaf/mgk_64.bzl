@@ -2733,6 +2733,13 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-debug.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mm-fake-engine.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-imax.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp_status.ko")
+        mgk_64_device_modules.remove("drivers/soc/mediatek/mtk-mmdvfs-v3.ko")
+        mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6989.ko")
+        mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6989.ko")
+        mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6991.ko")
+        mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6991.ko")
 
     if "mt6853_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_device_modules.append("drivers/pinctrl/mediatek/pinctrl-mt6853.ko")
