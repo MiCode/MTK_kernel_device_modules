@@ -212,7 +212,7 @@
 			    cgroup.memory=nosocket,nokmem \
 			    disable_dma32=on \
 			    transparent_hugepage=never \
-			    kvm-arm.protected_modules=pkvm_mtk_smc_handler.ko";
+			    kvm-arm.protected_modules=pkvm_mtk_smc_handler";
 			    mkp_panic="on";
 		kaslr-seed = <0 0>;
 	};
