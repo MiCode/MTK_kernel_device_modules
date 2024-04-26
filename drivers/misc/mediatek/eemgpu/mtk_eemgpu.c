@@ -1147,7 +1147,7 @@ static void get_volt_table_in_thread(struct eemg_det *det)
 					gpu_vb_volt))),
 					ndet->ops->eemg_2_pmic(ndet,
 					ndet->VMIN), ndet->ops->eemg_2_pmic(
-					ndet, VMAX_VAL_GPU)) + low_temp_offset
+					ndet, ndet->VMAX-ndet->DVTFIXED)) + low_temp_offset
 					), ndet->volt_tbl_orig[i] +
 					ndet->volt_clamp + t_clamp);
 			else
@@ -1156,7 +1156,7 @@ static void get_volt_table_in_thread(struct eemg_det *det)
 					(ndet->volt_tbl[i] + ndet->volt_offset +
 					ndet->volt_aging[i]) + rm_dvtfix_offset),
 					ndet->ops->eemg_2_pmic(ndet, ndet->VMIN),
-					ndet->ops->eemg_2_pmic(ndet, VMAX_VAL_GPU)
+					ndet->ops->eemg_2_pmic(ndet, ndet->VMAX-ndet->DVTFIXED)
 					) + low_temp_offset), ndet->volt_tbl_orig[i] +
 					ndet->volt_clamp + t_clamp);
 
@@ -1399,6 +1399,12 @@ static void eemg_init_det(struct eemg_det *det, struct eemg_devinfo *devinfo,
 		ret = of_property_read_u32(np, "max_freq_khz",
 			&det->max_freq_khz);
 		ret = of_property_read_u32(np, "loo_role", &det->loo_role);
+		ret = of_property_read_u32(np, "VCO", &det->VCO);
+		ret = of_property_read_u32(np, "pmic_base", &det->pmic_base);
+		ret = of_property_read_u32(np, "pmic_step", &det->pmic_step);
+		ret = of_property_read_u32(np, "high_temp_off", &efuse_mask);
+		det->high_temp_off=efuse_mask;
+		eemg_debug("high_temp_off:%d",det->high_temp_off);
 		ret = of_property_read_u32(np, "DVTFIXED", &det->DVTFIXED);
 		of_property_read_u32_index(np, "VMIN", 0, &efuse_offset);
 		of_property_read_u32_index(np, "VMIN", 1, &efuse_mask);
@@ -1763,7 +1769,9 @@ static void read_volt_from_VOP(struct eemg_det *det)
 
 static inline void handle_init02_isr(struct eemg_det *det)
 {
+#if DUMP_DATA_TO_DE
 	unsigned int i;
+#endif
 
 	FUNC_ENTER(FUNC_LV_LOCAL);
 
@@ -1865,7 +1873,9 @@ static inline void handle_init_err_isr(struct eemg_det *det)
 
 static inline void handle_mon_mode_isr(struct eemg_det *det)
 {
+#if DUMP_DATA_TO_DE
 	unsigned int i;
+#endif
 #ifdef CONFIG_THERMAL
 #ifdef CONFIG_EEMG_AEE_RR_REC
 	unsigned long long temp_long;
@@ -2243,12 +2253,6 @@ static int eemg_probe(struct platform_device *pdev)
 		return 0;
 	}
 
-#if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
-	if (mt_gpufreq_not_ready()) {
-		eemg_error("Check gpu status for EEMGPU\n");
-		return EPROBE_DEFER;
-	}
-#endif
 	/* Setup IO addresses */
 	eemg_base = of_iomap(node, 0);
 	eemg_debug("[EEMG] eemg_base = 0x%p\n", eemg_base);
