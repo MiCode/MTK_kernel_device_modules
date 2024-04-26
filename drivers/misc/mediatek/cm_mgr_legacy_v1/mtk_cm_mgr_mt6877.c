@@ -39,6 +39,7 @@
 #endif /* CONFIG_MTK_DVFSRC */
 #include "mtk_cm_mgr_mt6877.h"
 #include "mtk_cm_mgr_common.h"
+#include <mtk_cpufreq_api.h>
 
 /* #define CREATE_TRACE_POINTS */
 /* #include "mtk_cm_mgr_events_mt6877.h" */
@@ -54,6 +55,16 @@ static struct cm_mgr_hook local_hk;
 static unsigned int prev_freq_idx[CM_MGR_CPU_CLUSTER];
 static unsigned int prev_freq[CM_MGR_CPU_CLUSTER];
 
+#ifdef USE_CM_USER_MODE
+unsigned int cm_user_mode;
+unsigned int cm_user_active;
+#endif
+
+int cm_mgr_dram_opp_base = -1;
+#ifdef USE_STEP_PERF_OPP
+int cm_mgr_dram_perf_opp = 2;
+int cm_mgr_dram_step_opp = 2;
+#endif
 static int cm_mgr_init_done;
 static int cm_mgr_idx = -1;
 spinlock_t cm_mgr_lock;
@@ -143,7 +154,7 @@ void cm_mgr_perf_platform_set_status_mt6877(int enable)
 	}
 
 	/* set dsu mode */
-	//mt_cpufreq_update_cci_mode(enable, 2);
+	mt_cpufreq_update_cci_mode(enable, 2);
 
 	if (enable) {
 		if (!cm_mgr_get_perf_enable())
@@ -154,17 +165,21 @@ void cm_mgr_perf_platform_set_status_mt6877(int enable)
 		perf_now = ktime_get();
 
 		if (cm_mgr_get_dram_opp_base() == -1) {
-			//cm_mgr_dram_opp_base = get_cur_ddr_opp();
+		#if IS_ENABLED(CONFIG_MTK_DVFSRC)
+			cm_mgr_dram_opp_base = mtk_dvfsrc_query_opp_info(MTK_DVFSRC_CURR_DRAM_OPP);
+		#else
+			cm_mgr_dram_opp_base = 0;
+		#endif /* CONFIG_MTK_DVFSRC */
 
-			//if (cm_mgr_dram_perf_opp < 0)
-				//cm_mgr_dram_opp = 0;
-			//else if (cm_mgr_dram_opp_base > cm_mgr_dram_perf_opp) {
-				//if (cm_mgr_dram_step_opp < 0)
-					//cm_mgr_dram_step_opp = 0;
-				//cm_mgr_dram_opp = cm_mgr_dram_step_opp;
+			if (cm_mgr_dram_perf_opp < 0)
+				cm_mgr_dram_opp = 0;
+			else if (cm_mgr_dram_opp_base > cm_mgr_dram_perf_opp) {
+				if (cm_mgr_dram_step_opp < 0)
+					cm_mgr_dram_step_opp = 0;
+				cm_mgr_dram_opp = cm_mgr_dram_step_opp;
 
-			//} else
-				//cm_mgr_dram_opp = 0;
+			} else
+				cm_mgr_dram_opp = 0;
 			cm_mgr_dram_opp = 0;
 			cm_mgr_set_dram_opp_base(cm_mgr_get_num_perf());
 			icc_set_bw(cm_mgr_get_bw_path(), 0,
@@ -204,9 +219,9 @@ void cm_mgr_perf_platform_set_status_mt6877(int enable)
 				debounce_times_perf_down_local_get() /
 				debounce_times_perf_down_get();
 
-			//if ((cm_mgr_dram_perf_opp >= 0) &&
-				//(cm_mgr_dram_opp < cm_mgr_dram_step_opp))
-				//cm_mgr_dram_opp = cm_mgr_dram_step_opp;
+			if ((cm_mgr_dram_perf_opp >= 0) &&
+				(cm_mgr_dram_opp < cm_mgr_dram_step_opp))
+				cm_mgr_dram_opp = cm_mgr_dram_step_opp;
 
 			icc_set_bw(cm_mgr_get_bw_path(), 0,
 					cm_mgr_perfs[cm_mgr_dram_opp]);
@@ -239,7 +254,7 @@ void cm_mgr_perf_platform_set_force_status(int enable)
 	}
 
 	/* set dsu mode */
-	//mt_cpufreq_update_cci_mode(enable, 2);
+	mt_cpufreq_update_cci_mode(enable, 2);
 
 	if (enable) {
 		if (!cm_mgr_get_perf_enable())
@@ -343,6 +358,85 @@ void check_cm_mgr_status_mt6877(unsigned int cluster, unsigned int freq,
 		(prev_freq_idx[CM_MGR_CPU_CLUSTER - 1]);
 }
 EXPORT_SYMBOL_GPL(check_cm_mgr_status_mt6877);
+
+#ifdef USE_CM_USER_MODE
+void cm_mgr_user_mode_set(unsigned int mode)
+{
+	/* reset to default if active before*/
+	if (cm_user_active && !mode)
+		cm_mgr_user_mode_cmd(1, NULL, 0, 0);
+
+	if (((0x1 << cm_mgr_idx) & mode) != 0)
+		cm_user_active = 1;
+	else
+		cm_user_active = 0;
+
+	cm_user_mode = mode;
+
+	pr_info("#@# %s(%d) cm_user_mode: %d active:%d (mode=%d idx=%d)\n",
+		__func__, __LINE__, cm_user_mode, cm_user_active, mode, cm_mgr_idx);
+}
+
+void cm_mgr_user_mode_cmd(int reset, char *cmd, unsigned int val_1,
+							unsigned int val_2)
+{
+	int i;
+
+	if (reset) {
+		if (cm_mgr_idx == CM_MGR_LP4) {
+			for (i = 0; i < CM_MGR_EMI_OPP; i++) {
+				cpu_power_ratio_up[i] = cpu_power_ratio_up0[i];
+				cpu_power_ratio_down[i] = cpu_power_ratio_down0[i];
+				debounce_times_down_adb[i] = debounce_times_down_adb0[i];
+			}
+		} else if (cm_mgr_idx == CM_MGR_LP5) {
+			for (i = 0; i < CM_MGR_EMI_OPP; i++) {
+				cpu_power_ratio_up[i] = cpu_power_ratio_up1[i];
+				cpu_power_ratio_down[i] = cpu_power_ratio_down1[i];
+				debounce_times_down_adb[i] = debounce_times_down_adb1[i];
+			}
+		} else {
+			pr_info("#@# %s(%d) cm_mgr_idx: %d unknown\n",
+					__func__, __LINE__, cm_mgr_idx);
+		}
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
+		for (i = 0; i < CM_MGR_EMI_OPP; i++) {
+			cm_mgr_to_sspm_command(IPI_CM_MGR_CPU_POWER_RATIO_UP,
+				i << 16 | cpu_power_ratio_up[i]);
+			cm_mgr_to_sspm_command(IPI_CM_MGR_CPU_POWER_RATIO_DOWN,
+				i << 16 | cpu_power_ratio_down[i]);
+			cm_mgr_to_sspm_command(IPI_CM_MGR_DEBOUNCE_DOWN,
+				i << 16 | debounce_times_down_adb[i]);
+		}
+#endif
+	} else {
+		if (!strcmp(cmd, "cpu_power_ratio_up")) {
+			if (val_1 < CM_MGR_EMI_OPP)
+				cpu_power_ratio_up[val_1] = val_2;
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
+			cm_mgr_to_sspm_command(IPI_CM_MGR_CPU_POWER_RATIO_UP,
+				val_1 << 16 | val_2);
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+		} else if (!strcmp(cmd, "cpu_power_ratio_down")) {
+			if (val_1 < CM_MGR_EMI_OPP)
+				cpu_power_ratio_down[val_1] = val_2;
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
+			cm_mgr_to_sspm_command(IPI_CM_MGR_CPU_POWER_RATIO_DOWN,
+				val_1 << 16 | val_2);
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+		} else if (!strcmp(cmd, "debounce_times_down_adb")) {
+			if (val_1 < CM_MGR_EMI_OPP)
+				debounce_times_down_adb[val_1] = val_2;
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
+			cm_mgr_to_sspm_command(IPI_CM_MGR_DEBOUNCE_DOWN,
+				val_1 << 16 | val_2);
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+		} else {
+			pr_info("cmd:%s not support for user mode\n", cmd);
+		}
+	}
+}
+#endif /* USE_CM_USER_MODE */
 
 void cm_mgr_ddr_setting_init(void)
 {

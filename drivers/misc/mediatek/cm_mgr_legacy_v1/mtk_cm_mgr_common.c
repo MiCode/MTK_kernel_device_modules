@@ -98,11 +98,18 @@ int cm_mgr_sspm_enable = 1;
 int cm_mgr_sspm_enable = 1;
 #endif /* CONFIG_MTK_TINYSYS_SSPM_V1 && defined(USE_CM_MGR_AT_SSPM) */
 unsigned int *cpu_power_ratio_down;
+EXPORT_SYMBOL(cpu_power_ratio_down);
 unsigned int *cpu_power_ratio_up;
+EXPORT_SYMBOL(cpu_power_ratio_up);
 unsigned int *vcore_power_ratio_down;
+EXPORT_SYMBOL(vcore_power_ratio_down);
 unsigned int *vcore_power_ratio_up;
+EXPORT_SYMBOL(vcore_power_ratio_up);
 unsigned int *debounce_times_down_adb;
+EXPORT_SYMBOL(debounce_times_down_adb);
 unsigned int *debounce_times_up_adb;
+EXPORT_SYMBOL(debounce_times_up_adb);
+
 #if IS_ENABLED(CONFIG_MTK_CM_MGR_MT6877)
 static int debounce_times_perf_down = 5;
 #else
@@ -698,6 +705,18 @@ static ssize_t dbg_cm_mgr_show(struct kobject *kobj,
 	len += cm_mgr_print("cm_mgr_dram_opp_floor %d\n",
 			    cm_mgr_dram_opp_floor);
 #endif
+#ifdef USE_CM_USER_MODE
+	len += cm_mgr_print("cm_user_mode %d\n",
+			cm_user_mode);
+	len += cm_mgr_print("cm_user_active %d\n",
+			cm_user_active);
+#endif
+#ifdef USE_STEP_PERF_OPP
+	len += cm_mgr_print("cm_mgr_dram_perf_opp %d\n",
+			cm_mgr_dram_perf_opp);
+	len += cm_mgr_print("cm_mgr_dram_step_opp %d\n",
+			cm_mgr_dram_step_opp);
+#endif /* USE_STEP_PERF_OPP */
 	len += cm_mgr_print("\n");
 
 	len += dbg_cm_mgr_platform_show(buff);
@@ -719,6 +738,22 @@ static ssize_t dbg_cm_mgr_store(struct  kobject *kobj,
 		ret = -EPERM;
 		goto out;
 	}
+
+#ifdef USE_CM_USER_MODE
+	if (!strcmp(cmd, "cm_user_mode")) {
+		cm_mgr_user_mode_set(val_1);
+		goto out;
+	}
+
+	if (cm_user_mode) {
+		if (cm_user_active)
+			cm_mgr_user_mode_cmd(0, cmd, val_1, val_2);
+		else
+			pr_info("skip cmd:%s for cm_user_mode: %d, active: %d\n",
+				cmd, cm_user_mode, cm_user_active);
+		goto out;
+	}
+#endif
 
 	if (!strcmp(cmd, "cm_mgr_enable")) {
 		cm_mgr_enable = val_1;
@@ -884,6 +919,14 @@ static ssize_t dbg_cm_mgr_store(struct  kobject *kobj,
 		cm_mgr_dram_opp_floor = val_1;
 		cm_mgr_to_sspm_command(IPI_CM_MGR_DRAM_OPP_FLOOR, val_1);
 #endif
+#ifdef USE_STEP_PERF_OPP
+	} else if (!strcmp(cmd, "cm_mgr_dram_perf_opp")) {
+		cm_mgr_dram_perf_opp = val_1;
+	} else if (!strcmp(cmd, "cm_mgr_dram_step_opp")) {
+		if (val_1 < 0)
+			val_1 = 0;
+		cm_mgr_dram_step_opp = val_1;
+#endif /* USE_STEP_PERF_OPP */
 	} else {
 		dbg_cm_mgr_platform_write(ret, cmd, val_1, val_2);
 	}
