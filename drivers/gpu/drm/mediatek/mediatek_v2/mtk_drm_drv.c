@@ -3675,6 +3675,11 @@ static const struct mtk_addon_module_data mt6991_addon_wdma0_data[] = {
 	{DISP_WDMA0_v6, ADDON_AFTER, DDP_COMPONENT_SPLITTER0_OUT_CB9},
 };
 
+static const struct mtk_addon_module_data mt6989_addon_ovl_ufbc_wdma0_data[] = {
+	/* Leroy IWB */
+	{DISP_OVLSYS_UFBC_WDMA0, ADDON_AFTER, DDP_COMPONENT_OVL2_2L},
+};
+
 static const struct mtk_addon_module_data mt6897_addon_wdma0_data[] = {
 	{DISP_WDMA0_v4, ADDON_AFTER, DDP_COMPONENT_PANEL0_COMP_OUT_CB0},
 };
@@ -4087,6 +4092,11 @@ static const struct mtk_addon_scenario_data mt6989_addon_main[ADDON_SCN_NR] = {
 	[DSC_COMP] = {
 		.module_num = ARRAY_SIZE(addon_dsc0_data),
 		.module_data = addon_dsc0_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[IDLE_WDMA_WRITE_BACK] = {
+		.module_num = ARRAY_SIZE(mt6989_addon_ovl_ufbc_wdma0_data),
+		.module_data = mt6989_addon_ovl_ufbc_wdma0_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 };

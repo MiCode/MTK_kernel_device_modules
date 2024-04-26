@@ -146,6 +146,26 @@ static const int disp_wdma2_path_v2[] = {
 	DDP_COMPONENT_WDMA2,
 };
 
+static const int disp_ufbc_wdma1_path[] = {
+	DDP_COMPONENT_PQ0_OUT_CB3,
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB3,
+	DDP_COMPONENT_COMP0_OUT_CB5,
+	DDP_COMPONENT_MERGE0_OUT_CB3,
+	DDP_COMPONENT_UFBC_WDMA1,
+};
+
+static const int disp_ovlsys_ufbc_wdma0_path[] = {
+	DDP_COMPONENT_OVLSYS_UFBC_WDMA0,
+};
+
+static const int disp_ufbc_wdma1_path_1[] = {
+	DDP_COMPONENT_PQ1_OUT_CB3,
+	DDP_COMPONENT_PANEL1_COMP_OUT_CB3,
+	DDP_COMPONENT_COMP1_OUT_CB5,
+	DDP_COMPONENT_MERGE1_OUT_CB3,
+	DDP_COMPONENT_UFBC_WDMA3,
+};
+
 static const int mml_rsz_path[] = {
 	DDP_COMPONENT_MML_MML0, DDP_COMPONENT_MML_MUTEX0,
 	DDP_COMPONENT_MML_DLI0,
@@ -349,9 +369,21 @@ static const struct mtk_addon_path_data addon_module_path[ADDON_MODULE_NUM] = {
 				.path = disp_ovlsys_wdma0_path_v2,
 				.path_len = ARRAY_SIZE(disp_ovlsys_wdma0_path_v2),
 			},
+		[DISP_OVLSYS_UFBC_WDMA0] = {
+				.path = disp_ovlsys_ufbc_wdma0_path,
+				.path_len = ARRAY_SIZE(disp_ovlsys_ufbc_wdma0_path),
+			},
 		[DISP_WDMA2_v2] = {
 				.path = disp_wdma2_path_v2,
 				.path_len = ARRAY_SIZE(disp_wdma2_path_v2),
+			},
+		[DISP_UFBC_WDMA1] = {
+				.path = disp_ufbc_wdma1_path,
+				.path_len = ARRAY_SIZE(disp_ufbc_wdma1_path),
+			},
+		[DISP_UFBC_WDMA1_1] = {
+				.path = disp_ufbc_wdma1_path_1,
+				.path_len = ARRAY_SIZE(disp_ufbc_wdma1_path_1),
 			},
 		[DISP_MML_IR_PQ] = {
 				.path = disp_mml_rsz_path,
