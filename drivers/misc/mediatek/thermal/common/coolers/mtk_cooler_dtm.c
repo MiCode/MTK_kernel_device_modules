@@ -342,13 +342,12 @@ static int clvpu_opp_proc_open(struct inode *inode, struct file *file)
 	return single_open(file, clvpu_opp_proc_read, pde_data(inode));
 }
 
-static const struct file_operations clvpu_opp_fops = {
-	.owner = THIS_MODULE,
-	.open = clvpu_opp_proc_open,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.write = clvpu_opp_proc_write,
-	.release = single_release,
+static const struct proc_ops clvpu_opp_fops = {
+	.proc_open = clvpu_opp_proc_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_write = clvpu_opp_proc_write,
+	.proc_release = single_release,
 };
 
 static void thermal_vpu_init(void)
@@ -421,13 +420,12 @@ static int clmdla_opp_proc_open(struct inode *inode, struct file *file)
 	return single_open(file, clmdla_opp_proc_read, pde_data(inode));
 }
 
-static const struct file_operations clmdla_opp_fops = {
-	.owner = THIS_MODULE,
-	.open = clmdla_opp_proc_open,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.write = clmdla_opp_proc_write,
-	.release = single_release,
+static const struct proc_ops clmdla_opp_fops = {
+	.proc_open = clmdla_opp_proc_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_write = clmdla_opp_proc_write,
+	.proc_release = single_release,
 };
 
 static void thermal_mdla_init(void)
