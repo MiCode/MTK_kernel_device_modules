@@ -15071,6 +15071,11 @@ void mtk_drm_crtc_discrete_update(struct drm_crtc *crtc,
 	int i, j;
 	bool is_frame_mode = false;
 
+	if (idx > 1) {
+		DDPPR_ERR("%s, invalid parameter idx=%d\n", __func__, idx);
+		return;
+	}
+
 	is_frame_mode = mtk_crtc_is_frame_trigger_mode(crtc);
 
 	if (idx != 0) {
@@ -15091,7 +15096,7 @@ void mtk_drm_crtc_discrete_update(struct drm_crtc *crtc,
 			mtk_ddp_comp_discrete_config(comp, idx, state, pending_handle);
 
 		mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, comp->id,
-					is_frame_mode, pending_handle, 1);
+					is_frame_mode, pending_handle, idx);
 	}
 	//discrete path need re-trigger by itself after plane 0
 	if (idx != 0 && mtk_crtc->pending_handle) {
