@@ -2724,6 +2724,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-fmeter-mt6893.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6893.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-mt6893-pg.ko")
+        mgk_64_platform_device_modules.update({"drivers/interconnect/mediatek/mmqos-mt6833.ko":"mt6833"})
 
     if "mt6853_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_device_modules.append("drivers/pinctrl/mediatek/pinctrl-mt6853.ko")
