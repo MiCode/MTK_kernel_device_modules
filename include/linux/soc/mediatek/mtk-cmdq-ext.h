@@ -149,6 +149,7 @@ extern int error_irq_bug_on;
 extern int cmdq_ut_count;
 extern int cmdq_ut_sleep_time;
 extern int cmdq_proc_debug_off;
+extern int cmdq_print_debug;
 
 #define CMDQ_REG_SHIFT_ADDR(addr) (((addr) + gce_mminfra) >> gce_shift_bit)
 #define CMDQ_REG_REVERT_ADDR(addr) (((addr) << gce_shift_bit) - gce_mminfra)
@@ -683,7 +684,7 @@ char *cmdq_pkt_parse_buf(struct cmdq_pkt *pkt, u32 *size_out, void **raw_out, u3
 void cmdq_pkt_set_err_cb(struct cmdq_pkt *pkt,
 	cmdq_async_flush_cb cb, void *data);
 
-void cmdq_dump_buffer_size_seq(struct seq_file *seq);
+char *cmdq_dump_buffer_size_seq(char *buf_start, char *buf_end);
 
 int cmdq_helper_init(void);
 

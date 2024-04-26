@@ -198,6 +198,10 @@ int cmdq_ut_sleep_time;
 EXPORT_SYMBOL(cmdq_ut_sleep_time);
 module_param(cmdq_ut_sleep_time, int, 0644);
 
+int cmdq_print_debug;
+EXPORT_SYMBOL(cmdq_print_debug);
+module_param(cmdq_print_debug, int, 0644);
+
 int cmdq_proc_debug_off;
 EXPORT_SYMBOL(cmdq_proc_debug_off);
 module_param(cmdq_proc_debug_off, int, 0644);
@@ -719,13 +723,10 @@ void cmdq_mbox_dump_gce_req(struct mbox_chan *chan)
 }
 EXPORT_SYMBOL(cmdq_mbox_dump_gce_req);
 
-void cmdq_dump_pkt_usage(u32 hwid, struct seq_file *seq)
+char *cmdq_dump_pkt_usage(u32 hwid, char *buf_start, char *buf_end)
 {
 	struct cmdq *cmdq;
 	uint i, j;
-
-	if(hwid >= 2 || !cmdq_dump_buf_size)
-		return;
 
 	cmdq = g_cmdq[hwid];
 
@@ -733,11 +734,14 @@ void cmdq_dump_pkt_usage(u32 hwid, struct seq_file *seq)
 		for (j = 0; j < CMDQ_THRD_PKT_ARR_MAX; j++) {
 			if(cmdq->thread[i].pkt_id_arr[j][CMDQ_PKT_ID_CNT] ||
 				cmdq->thread[i].pkt_id_arr[j][CMDQ_PKT_BUFFER_CNT])
-				seq_printf(seq, "hwid %d thrd:%d id:%d [%u][%u]\n", hwid, i, j,
+				buf_start += scnprintf(buf_start, buf_end - buf_start,
+					"hwid %d thrd:%d id:%d [%u][%u]\n", hwid, i, j,
 					cmdq->thread[i].pkt_id_arr[j][CMDQ_PKT_ID_CNT],
 					cmdq->thread[i].pkt_id_arr[j][CMDQ_PKT_BUFFER_CNT]);
 		}
 	}
+
+	return buf_start;
 }
 EXPORT_SYMBOL(cmdq_dump_pkt_usage);
 
@@ -3216,11 +3220,14 @@ static int cmdq_probe(struct platform_device *pdev)
 	of_property_read_u32(dev->of_node, "error-irq-bug-on", &error_irq_bug_on);
 	of_property_read_u32(dev->of_node, "cmdq-pwr-log", &cmdq_pwr_log);
 	of_property_read_u32(dev->of_node, "cmdq-proc-debug-off", &cmdq_proc_debug_off);
+	of_property_read_u32(dev->of_node, "cmdq-print-debug", &cmdq_print_debug);
 
-	cmdq_msg("dump_buf_size %d error irq %d cmdq_tfa_read_dbg:%d ",
+	cmdq_msg("dump_buf_size %d error irq %d tfa_read_dbg:%d proc_debug_off:%d print_debug:%d",
 		cmdq_dump_buf_size,
 		error_irq_bug_on,
-		cmdq_tfa_read_dbg);
+		cmdq_tfa_read_dbg,
+		cmdq_proc_debug_off,
+		cmdq_print_debug);
 	cmdq_proc_create();
 
 	if (of_property_read_bool(dev->of_node, "gce-fast-mtcmos")) {
@@ -3415,6 +3422,9 @@ static int cmdq_probe(struct platform_device *pdev)
 			cmdq->mminfra_ao_base = ioremap(mminfra_ao_pa, 0x1000);
 		}
 	}
+
+	if (cmdq->hwid == 0 && cmdq_print_debug)
+		cmdq_util_reserved_memory_lookup(dev);
 
 	return 0;
 }
