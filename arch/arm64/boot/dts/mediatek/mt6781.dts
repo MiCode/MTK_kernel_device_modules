@@ -3542,9 +3542,9 @@
 		clocks = <&infracfg_ao INFRACFG_AO_ICUSB_CG>,
 			<&topckgen TOP_MUX_USB_TOP>,
 			<&topckgen TOP_UNIVPLL_D5_D2>;
-		clock-names = "usb0",
-			"usb0_clk_top_sel",
-			"usb0_clk_univpll5_d2";
+		clock-names = "sys_clk",
+			"ref_clk",
+			"src_clk";
 		mode = <2>;
 		multipoint = <1>;
 		num_eps = <16>;
@@ -3553,10 +3553,12 @@
 		phys = <&u2port0 PHY_TYPE_USB2>;
 		dr_mode = "otg";
 		usb-role-switch;
+		cdp-block;
+		usb_phy_offset = <0x300>;
 	};
 
 	u2phy0: usb-phy@11210000 {
-		compatible = "mediatek,generic-tphy-v1";
+		compatible = "mediatek,generic-tphy-v1","mediatek,mt6781-tphy";
 		reg = <0 0x11ca0000 0 0x0300>;
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -3574,6 +3576,20 @@
 			nvmem-cell-masks = <0x1f>;
 			status = "okay";
 		};
+	};
+
+	usb_meta: usb_meta {
+		compatible = "mediatek,usb-meta";
+		udc = <&usb>;
+	};
+
+	usb_boost: usb-boost-manager {
+		compatible = "mediatek,usb-boost", "mediatek,mt6781-usb-boost";
+		interconnects = <&dvfsrc MT6873_MASTER_USB &dvfsrc MT6873_SLAVE_DDR_EMI>;
+		interconnect-names = "icc-bw";
+		required-opps = <&dvfsrc_freq_opp0>;
+		usb-audio;
+		small-core = <1250000>;
 	};
 
 	infra_dbgsystop_cpu0@0e000000 {
