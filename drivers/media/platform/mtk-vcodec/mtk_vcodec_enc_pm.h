@@ -27,6 +27,7 @@ void mtk_vcodec_enc_smi_pwr_ctrl_register(struct mtk_vcodec_dev *dev);
 void mtk_vcodec_enc_smi_pwr_ctrl_unregister(struct mtk_vcodec_dev *dev);
 
 void mtk_venc_translation_fault_callback_setting(struct mtk_vcodec_dev *dev);
+void mtk_venc_violation_fault_callback_setting(struct mtk_vcodec_dev *dev);
 extern void mtk_venc_do_gettimeofday(struct timespec64 *tv);
 
 #endif /* _MTK_VCODEC_ENC_PM_H_ */

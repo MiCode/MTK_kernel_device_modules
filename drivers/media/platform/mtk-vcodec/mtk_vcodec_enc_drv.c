@@ -614,6 +614,9 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	mtk_venc_translation_fault_callback_setting(dev);
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_EMI) && !IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
+	mtk_venc_violation_fault_callback_setting(dev);
+#endif
 	mtk_prepare_venc_dvfs(dev);
 	mtk_prepare_venc_emi_bw(dev);
 	dev->pm_notifier.notifier_call = mtk_vcodec_enc_suspend_notifier;

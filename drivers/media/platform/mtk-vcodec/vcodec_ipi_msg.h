@@ -163,6 +163,10 @@ struct mtk_tf_info {
 	__u32	has_tf;
 };
 
+struct mtk_vio_info {
+	__u32	has_vio;
+};
+
 struct mtk_smi_pwr_ctrl_info {
 	__u32	type;
 	__u32	hw_id;
