@@ -33,6 +33,7 @@ enum RECORD_TYPE {
 enum DSI_INDEX {
 	PM_DSI0 = 0,
 	PM_DSI1 = 1,
+	PM_DSI2 = 2,
 	PM_DSI_MAX = 0XFF,
 };
 

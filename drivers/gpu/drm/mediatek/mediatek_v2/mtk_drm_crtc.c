@@ -1667,6 +1667,7 @@ void mtk_crtc_change_output_mode(struct drm_crtc *crtc, int aod_en)
 	switch (comp->id) {
 	case DDP_COMPONENT_DSI0:
 	case DDP_COMPONENT_DSI1:
+	case DDP_COMPONENT_DSI2:
 		mtk_ddp_comp_io_cmd(comp, NULL, DSI_CHANGE_MODE, &aod_en);
 		break;
 	default:
@@ -5429,9 +5430,11 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	if (priv->data->has_smi_limitation && lyeblob_ids) {
 		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
-		if (output_comp && ((output_comp->id == DDP_COMPONENT_DSI0) ||
-				(output_comp->id == DDP_COMPONENT_DSI1))
-				&& !(mtk_dsi_is_cmd_mode(output_comp)))
+		if (output_comp &&
+		    ((output_comp->id == DDP_COMPONENT_DSI0) ||
+		     (output_comp->id == DDP_COMPONENT_DSI1) ||
+		     (output_comp->id == DDP_COMPONENT_DSI2)) &&
+		     !(mtk_dsi_is_cmd_mode(output_comp)))
 			mtk_ddp_comp_io_cmd(output_comp, NULL,
 				DSI_GET_MODE_BY_MAX_VREFRESH, &mode);
 		if (mode)
@@ -7103,7 +7106,9 @@ bool mtk_crtc_is_mem_mode(struct drm_crtc *crtc)
 int get_comp_wait_event(struct mtk_drm_crtc *mtk_crtc,
 			struct mtk_ddp_comp *comp)
 {
-	if (comp->id == DDP_COMPONENT_DSI0 || comp->id == DDP_COMPONENT_DSI1) {
+	if (comp->id == DDP_COMPONENT_DSI0 ||
+	    comp->id == DDP_COMPONENT_DSI1 ||
+	    comp->id == DDP_COMPONENT_DSI2) {
 		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
 			return mtk_crtc->gce_obj.event[EVENT_STREAM_EOF];
 		else
@@ -18671,6 +18676,8 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	else if (pipe == 2)
 		mtk_crtc->layer_nr = MEMORY_INPUT_LAYER_NR;
 	else if (pipe == 3)
+		mtk_crtc->layer_nr = SP_INPUT_LAYER_NR;
+	else
 		mtk_crtc->layer_nr = SP_INPUT_LAYER_NR;
 
 	mutex_init(&mtk_crtc->lock);
