@@ -4386,6 +4386,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		vcp-sem-dbg-offset = <0x1c>;
 	};
 
+	smi_pd_cam_mraw: smi-pd-cam-mraw {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_cam_sub_comm0 &smi_cam_sub_comm2>;
+		mediatek,suspend-check-port = <0x18 0x10>;
+		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MRAW>;
+		suspend-check;
+	};
+
 	smi_dbg: smi-dbg {
 		compatible = "mediatek,mtk-smi-dbg";
 		mediatek-larb-supply = <&smi_larb0 &smi_larb1 &smi_larb20 &smi_larb21 &smi_larb32
