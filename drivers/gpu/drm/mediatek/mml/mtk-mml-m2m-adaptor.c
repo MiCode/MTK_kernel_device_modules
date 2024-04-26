@@ -1536,17 +1536,20 @@ static void m2m_ctx_destroy(struct kref *kref)
 
 static int mml_m2m_release(struct file *file)
 {
-	struct mml_m2m_ctx *ctx = fh_to_ctx(file->private_data);
+	struct v4l2_fh *fh = file->private_data;
+	struct mml_m2m_ctx *ctx = fh_to_ctx(fh);
 	struct mml_v4l2_dev *v4l2_dev = mml_get_v4l2_dev(video_drvdata(file));
 
-	mutex_lock(&v4l2_dev->m2m_mutex);
-	v4l2_m2m_ctx_release(ctx->m2m_ctx);
-	v4l2_ctrl_handler_free(&ctx->ctrl_handler);
-	v4l2_fh_del(&ctx->fh);
-	v4l2_fh_exit(&ctx->fh);
-	mutex_unlock(&v4l2_dev->m2m_mutex);
+	if (fh) {
+		mutex_lock(&v4l2_dev->m2m_mutex);
+		v4l2_m2m_ctx_release(ctx->m2m_ctx);
+		v4l2_ctrl_handler_free(&ctx->ctrl_handler);
+		v4l2_fh_del(&ctx->fh);
+		v4l2_fh_exit(&ctx->fh);
+		mutex_unlock(&v4l2_dev->m2m_mutex);
 
-	kref_put(&ctx->ref, m2m_ctx_destroy);
+		kref_put(&ctx->ref, m2m_ctx_destroy);
+	}
 	return 0;
 }
 
