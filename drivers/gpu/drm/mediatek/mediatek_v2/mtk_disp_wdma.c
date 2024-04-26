@@ -1653,7 +1653,6 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 	resource_size_t mmsys_reg = priv->config_regs_pa;
 
-
 	comp->fb = addon_config->addon_wdma_config.fb;
 	if (!comp->fb) {
 		DDPPR_ERR("%s fb is empty, CRTC%d\n", __func__, crtc_idx);
@@ -1675,16 +1674,16 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 		return;
 	}
 
-	if (wdma->info_data->is_support_ufbc) {
-		mtk_ufbc_wdma_config(comp, addon_config, handle);
-		goto golden_setting;
-	}
-
 	// WDMA bandwidth setting
 	mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
 						   &bw_base);
 	DDPINFO("%s WDMA config iommu, CRTC%d\n", __func__, crtc_idx);
 	mtk_ddp_comp_iommu_enable(comp, handle);
+
+	if (wdma->info_data->is_support_ufbc) {
+		mtk_ufbc_wdma_config(comp, addon_config, handle);
+		goto golden_setting;
+	}
 
 	write_dst_addr(comp, handle, 0, addr);
 
@@ -2262,6 +2261,7 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
 			break;
+		DDPINFO("%s, comp:%d, respective_otstdl:%d\n", __func__, comp->id, priv->data->respective_ostdl);
 		if (priv->data->respective_ostdl) {
 			if (!IS_ERR(comp->hrt_qos_req))
 				__mtk_disp_set_module_hrt(comp->hrt_qos_req, 1306,
@@ -2272,10 +2272,70 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		ret = WDMA_REQ_HRT;
 		break;
 	}
+	//tempory solution: only for ufbc
+	case PMQOS_UPDATE_BW: {
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
+		unsigned int force_update = 0; /* force_update repeat last qos BW */
+		unsigned int update_pending = 0;
+		struct mtk_drm_private *priv;
+		struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
+
+		if (!wdma->info_data->is_support_ufbc)
+			break;
+
+		priv = comp->mtk_crtc->base.dev->dev_private;
+
+		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
+			break;
+
+		mtk_crtc = comp->mtk_crtc;
+		crtc = &mtk_crtc->base;
+
+		/* process FBDC */
+		/* qos BW only has one port for one device, no need to separate */
+		//__mtk_disp_set_module_srt(comp->fbdc_qos_req, comp->id, comp->fbdc_bw,
+		//			    DISP_BW_FBDC_MODE);
+
+		if (params) {
+			force_update = *(unsigned int *)params;
+			/* tricky way use variable force update */
+			update_pending = (force_update == DISP_BW_UPDATE_PENDING);
+			force_update = (force_update == DISP_BW_FORCE_UPDATE) ? 1 : 0;
+		}
+
+		if (!force_update && !update_pending) {
+			mtk_crtc->total_srt += comp->qos_bw;
+			if (!IS_ERR_OR_NULL(comp->qos_req_other))
+				mtk_crtc->total_srt += comp->qos_bw_other;
+		}
+
+		/* process normal */
+		if (!force_update && comp->last_qos_bw == comp->qos_bw) {
+			if (IS_ERR(comp->qos_req_other) ||
+			    (comp->last_qos_bw_other == comp->qos_bw_other))
+				break;
+			goto other;
+		}
+		__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw, 0,
+					  DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
+		comp->last_qos_bw = comp->qos_bw;
+		comp->last_hrt_bw = comp->hrt_bw;
+other:
+		if (!IS_ERR_OR_NULL(comp->qos_req_other)) {
+			__mtk_disp_set_module_srt(comp->qos_req_other,
+						  comp->id, comp->qos_bw_other, 0,
+						  DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
+			comp->last_qos_bw_other = comp->qos_bw_other;
+			comp->last_hrt_bw_other = comp->hrt_bw_other;
+		}
+		DDPINFO("update wdma %s qos %u %u, peak %u %u\n", mtk_dump_comp_str(comp),
+			comp->qos_bw, comp->qos_bw_other, comp->hrt_bw, comp->hrt_bw_other);
+		break;
+	}
 	default:
 		break;
 	}
-
 	return 0;
 }
 
@@ -2307,6 +2367,11 @@ static int mtk_disp_wdma_bind(struct device *dev, struct device *master,
 	}
 	if (mtk_drm_helper_get_opt(private->helper_opt,
 			MTK_DRM_OPT_MMQOS_SUPPORT)) {
+		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf), &priv->ddp_comp, "qos");
+		priv->ddp_comp.qos_req = of_mtk_icc_get(dev, buf);
+		if (!IS_ERR(priv->ddp_comp.qos_req))
+			DDPMSG("%s, %s create success, dev:%s\n", __func__, buf, dev_name(dev));
+
 		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
 				&priv->ddp_comp, "hrt_qos");
 		priv->ddp_comp.hrt_qos_req = of_mtk_icc_get(dev, buf);
