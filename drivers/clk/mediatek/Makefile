@@ -8,6 +8,15 @@ obj-$(CONFIG_DEVICE_MODULES_COMMON_CLK_MEDIATEK) += clk-common.o
 clk-common-$(CONFIG_DEVICE_MODULES_COMMON_CLK_MEDIATEK) += clk-mtk.o clk-pll.o clk-gate.o clk-apmixed.o clk-cpumux.o reset.o clk-mux.o clkchk.o clk-fmeter.o mtk-pd-chk.o clkdbg.o
 obj-$(CONFIG_DEVICE_MODULES_COMMON_CLK_MEDIATEK) += clk-disable-unused.o
 
+ifneq ($(wildcard $(srctree)/$(src)/clk-mt6781.c),)
+obj-$(CONFIG_COMMON_CLK_MT6781) += clk-mt6781.o
+obj-$(CONFIG_COMMON_CLK_MT6781) += clk-bringup.o
+obj-$(CONFIG_COMMON_CLK_MT6781) += clkdbg-mt6781.o
+obj-$(CONFIG_COMMON_CLK_MT6781) += clk-chk-mt6781.o
+clk-chk-mt6781-$(CONFIG_COMMON_CLK_MT6781) += clkchk-mt6781.o
+obj-$(CONFIG_COMMON_CLK_MT6781) += clk-mt6781-pg.o
+endif
+
 ifneq ($(wildcard $(srctree)/$(src)/clk-mt6853.c),)
 obj-$(CONFIG_COMMON_CLK_MT6853) += clk-mt6853.o
 obj-$(CONFIG_COMMON_CLK_MT6853_APU0) += clk-mt6853-apu0.o
