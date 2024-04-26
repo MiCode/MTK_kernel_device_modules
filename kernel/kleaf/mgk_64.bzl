@@ -370,6 +370,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/irtx/mtk_irtx_pwm.ko",
     "drivers/misc/mediatek/ise_lpm/ise_lpm.ko",
     "drivers/misc/mediatek/jpeg/jpeg-driver.ko",
+    "drivers/misc/mediatek/ktchbst/ktchbst.ko",
     "drivers/misc/mediatek/lens/ois/bu63169/bu63169.ko",
     "drivers/misc/mediatek/lens/vcm/proprietary/main2/main2af.ko",
     "drivers/misc/mediatek/lens/vcm/proprietary/main3/main3af.ko",
