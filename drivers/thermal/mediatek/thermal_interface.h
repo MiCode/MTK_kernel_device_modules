@@ -89,7 +89,7 @@
 #define CPU_MAX_TEMP_TCM_OFFSET         (0xF4)
 #define CPU_LIMIT_OPP_TCM_OFFSET        (0x124)
 #define UTC_COUNT_TCM_OFFSET            (0x134)
-
+#define CPU_LIMIT_ARBITER_TCM_OFFSET    (0x1E0)
 /*monitor Tj*/
 /*LVTS1~LVTS16, 0x178~0x184 reserved*/
 #define MONITOR_TJ_LVTS_TCM_OFFSET      (0x138)

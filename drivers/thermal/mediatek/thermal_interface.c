@@ -917,7 +917,7 @@ static ssize_t cpu_info_show(struct kobject *kobj,
 
 
 	if (tm_data.is_cputcm)
-		len += snprintf(buf + len, PAGE_SIZE - len, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+		len += snprintf(buf + len, PAGE_SIZE - len, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
 			therm_intf_read_cputcm_s32(CPU_MIN_OPP_HINT_TCM_OFFSET),
 			therm_intf_read_cputcm_s32(CPU_MIN_OPP_HINT_TCM_OFFSET + 4),
 			therm_intf_read_cputcm_s32(CPU_MIN_OPP_HINT_TCM_OFFSET + 8),
@@ -929,7 +929,10 @@ static ssize_t cpu_info_show(struct kobject *kobj,
 			therm_intf_read_cputcm(CPU_CUR_FREQ_TCM_OFFSET + 8),
 			therm_intf_read_cputcm_s32(CPU_MAX_TEMP_TCM_OFFSET),
 			therm_intf_read_cputcm_s32(CPU_MAX_TEMP_TCM_OFFSET + 4),
-			therm_intf_read_cputcm_s32(CPU_MAX_TEMP_TCM_OFFSET + 8));
+			therm_intf_read_cputcm_s32(CPU_MAX_TEMP_TCM_OFFSET + 8),
+			therm_intf_read_cputcm(CPU_LIMIT_ARBITER_TCM_OFFSET),
+			therm_intf_read_cputcm(CPU_LIMIT_ARBITER_TCM_OFFSET + 4),
+			therm_intf_read_cputcm(CPU_LIMIT_ARBITER_TCM_OFFSET + 8));
 	else
 		len += snprintf(buf + len, PAGE_SIZE - len, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
 			therm_intf_read_csram_s32(CPU_MIN_OPP_HINT_OFFSET),
