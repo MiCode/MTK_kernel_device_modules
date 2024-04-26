@@ -1019,12 +1019,12 @@ static void rrot_config_stash(struct mml_comp *comp, struct mml_task *task,
 	u32 leading_pixels;
 
 	u32 prefetch_line_cnt[4] = {0};
-	u32 con1, con2;
+	u32 stash_con, con1, con2;
 
 	if (!mml_stash_en(cfg->info.mode))
 		goto done;
 
-	leading_pixels = round_up(w * h * fps * rrot_stash_leading / 1000, 1000000) / 1000000;
+	leading_pixels = (u32)round_up((u64)w * h * fps * rrot_stash_leading / 1000, 1000000) / 1000000;
 
 	if (MML_FMT_COMPRESS(task->config->info.src.format)) {
 		u32 block_w, bin_hor, bin_ver;
@@ -1111,10 +1111,13 @@ done:
 		con2 = (prefetch_line_cnt[2] << 16) | prefetch_line_cnt[3];
 
 	/* enable stash port urgent/ultra/pre-ultra, monitor normal threshold */
-	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_0, 0x5f000000, U32_MAX);
+	stash_con = 0x7f000000;	/* bit[29:26] always on, urgent/ultra/preultra */
+
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_0, stash_con, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_1, con1, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_2, con2, U32_MAX);
-	mml_msg("rrot stash con %#010x %#010x", con1, con2);
+	mml_msg("rrot stash con %#010x line cnt %#010x %#010x fps %u leading px %u",
+		stash_con, con1, con2, fps, leading_pixels);
 }
 
 static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
@@ -1212,11 +1215,9 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	/* racing case also enable urgent/ultra to not blocking disp */
 	if (unlikely(mml_rdma_urgent)) {
 		if (mml_rdma_urgent == 1)
-			gmcif_con ^= BIT(16) | BIT(15);	/* URGENT_EN: always */
+			gmcif_con ^= BIT(16) | BIT(15) | BIT(13); /* URGENT_EN/ULTRA_EN: always */
 		else if (mml_rdma_urgent == 2)
 			gmcif_con ^= BIT(16) | BIT(13);	/* ULTRA_EN: always */
-		else if (mml_rdma_urgent == 2)
-			gmcif_con ^= BIT(16) | BIT(15) | BIT(13); /* URGENT_EN/ULTRA_EN: always */
 		else
 			gmcif_con |= BIT(14) | BIT(12);	/* URGENT_EN */
 		if (cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK)
@@ -2316,16 +2317,15 @@ static u32 rrot_qos_stash_bw_get(struct mml_task *task, struct mml_comp_config *
 		stash_bw = stash_cmd_num * 16 * 1000 / acttime;
 
 	} else if (MML_FMT_IS_RGB(format)) {
-		if (rotate == MML_ROT_0 || rotate == MML_ROT_180)
+		if (rotate == MML_ROT_0 || rotate == MML_ROT_180) {
 			stash_cmd_num = mml_color_get_y_size(format, w, h, src->y_stride) / pgsz;
-		else {
-			u32 cmd_per_slice = h * w / pgsz;
+		} else {
 			u32 slice_num = w / 32;
 
-			stash_cmd_num = cmd_per_slice * slice_num;
+			stash_cmd_num = h * slice_num;
 		}
 
-		stash_bw = stash_cmd_num * 1000 / acttime;
+		stash_bw = stash_cmd_num * 16 * 1000 / acttime;
 
 	} else if (format == MML_FMT_YV12) {
 		u32 plane_y, plane_yv;
@@ -2347,7 +2347,7 @@ static u32 rrot_qos_stash_bw_get(struct mml_task *task, struct mml_comp_config *
 		}
 
 		stash_cmd_num = plane_y + plane_yv * 2;
-		stash_bw = stash_cmd_num * 1000 / acttime;
+		stash_bw = stash_cmd_num * 16 * 1000 / acttime;
 	}
 
 	rrot_frm->stash_bw = stash_bw;
