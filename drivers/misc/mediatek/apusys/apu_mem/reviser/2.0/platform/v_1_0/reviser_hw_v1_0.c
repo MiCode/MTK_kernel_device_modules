@@ -984,3 +984,33 @@ int reviser_check_int_valid(void *drvinfo)
 
 	return ret;
 }
+
+int reviser_init_ip(void)
+{
+	int ret = 0;
+	struct arm_smccc_res res;
+
+#if APUSYS_SECURE
+	arm_smccc_smc(MTK_SIP_APUSYS_CONTROL,
+			MTK_APUSYS_KERNEL_OP_REVISER_INIT_IP,
+			0, 0, 0, 0, 0, 0, &res);
+	ret = res.a0;
+
+	if (ret) {
+		if (ret == -EIO)
+			LOG_ERR("Unsupported secure monitor call\n");
+		else
+			LOG_ERR("Init IP fail\n");
+
+		return -1;
+	}
+
+#else
+	LOG_ERR("APUSYS_SECURE is not enable\n");
+	return -1;
+#endif
+
+	LOG_DEBUG("Init IP\n");
+
+	return ret;
+}

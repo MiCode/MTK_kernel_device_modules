@@ -33,4 +33,5 @@ int reviser_boundary_init(void *drvinfo, uint8_t boundary);
 int reviser_enable_interrupt(void *drvinfo, uint8_t enable);
 
 int reviser_check_int_valid(void *drvinfo);
+int reviser_init_ip(void);
 #endif

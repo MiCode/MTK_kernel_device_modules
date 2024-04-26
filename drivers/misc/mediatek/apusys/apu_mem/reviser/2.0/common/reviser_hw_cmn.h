@@ -27,6 +27,7 @@ struct reviser_hw_ops {
 
 	int (*isr_cb)(void *drvinfo);
 	int (*set_int)(void *drvinfo, uint8_t enable);
+	int (*init_ip)(void);
 };
 
 #endif
