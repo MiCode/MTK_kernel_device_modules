@@ -7724,7 +7724,7 @@ cpus {
 			ccorr-num-per-pipe = <1>;
 			ccorr-linear-per-pipe = <0x01>;
 			ccorr-prim-force-linear = <0x0>;
-			ccorr-linear = <0>;
+			ccorr-linear = <1>;
 		};
 
 		disp_aal0: disp-aal0@14009000 {
@@ -7736,6 +7736,7 @@ cpus {
 			aal-dre3 = <&mdp_aal4>;
 			mtk-aal-support = <1>;
 			mtk-dre30-support = <0>;
+			mtk-cabc-no-support = <1>;
 		};
 
 		disp_gamma0: disp-gamma0@1400a000 {
@@ -7969,6 +7970,7 @@ cpus {
 			aal-dre3 = <&mdp_aal5>;
 			mtk-aal-support = <1>;
 			mtk-dre30-support = <0>;
+			mtk-cabc-no-support = <1>;
 		};
 
 		disp_gamma1: disp-gamma1@1410a000 {
