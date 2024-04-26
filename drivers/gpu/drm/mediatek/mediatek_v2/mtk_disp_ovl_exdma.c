@@ -3666,7 +3666,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	case PMQOS_SET_HRT_BW: {
 		u32 bw_val = *(unsigned int *)params;
 		struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
-		unsigned int phy_id = 0, usage_ovl_fmt = 0;
+		unsigned int phy_id = 0, usage_ovl_fmt = 0, usage_ovl_compr = 0;
 		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
@@ -3682,6 +3682,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 			phy_id = ovl->data->ovl_phy_mapping(comp);
 
 		usage_ovl_fmt = mtk_crtc->usage_ovl_fmt[phy_id];
+		usage_ovl_compr = mtk_crtc->usage_ovl_compr[phy_id];
 
 		if (!usage_ovl_fmt)
 			break;
@@ -3699,13 +3700,18 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		comp->last_hrt_bw = bw_val;
 
 		if (!IS_ERR(comp->hdr_qos_req))
-			__mtk_disp_set_module_hrt(comp->hdr_qos_req, bw_val / 32,
-				priv->data->respective_ostdl);
+			if (usage_ovl_compr)
+				__mtk_disp_set_module_hrt(comp->hdr_qos_req, bw_val / 32,
+					priv->data->respective_ostdl);
 
-		if (!IS_ERR(comp->stash_qos_req))
-			__mtk_disp_set_module_hrt(comp->stash_qos_req, bw_val / 256,
-				priv->data->respective_ostdl);
-
+		if (!IS_ERR(comp->stash_qos_req)) {
+			if (usage_ovl_compr)
+				__mtk_disp_set_module_hrt(comp->stash_qos_req, bw_val * 2 / 256,
+					priv->data->respective_ostdl);
+			else
+				__mtk_disp_set_module_hrt(comp->stash_qos_req, bw_val / 256,
+					priv->data->respective_ostdl);
+		}
 		ret = OVL_REQ_HRT;
 		break;
 	}
