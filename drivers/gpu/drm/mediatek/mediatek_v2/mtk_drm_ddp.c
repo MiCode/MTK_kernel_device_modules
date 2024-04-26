@@ -30346,11 +30346,9 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 	struct mtk_drm_crtc *mtk_crtc0 = NULL;
 	int i;
 	int temp;
-#ifndef DRM_BYPASS_PQ
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_ddp_comp *comp = NULL;
 	int j;
-#endif
 
 	if (IS_ERR_OR_NULL(ddp))
 		return IRQ_NONE;
