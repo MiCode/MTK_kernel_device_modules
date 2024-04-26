@@ -2589,8 +2589,6 @@ int mtk_pcie_enable_cfg_dump(int port)
 
 	pcie_port->dump_cfg = true;
 
-	dev_info(pcie_port->dev, "port%d config space dump enabled\n", pcie_port->port_num);
-
 	return 0;
 }
 EXPORT_SYMBOL(mtk_pcie_enable_cfg_dump);
@@ -2611,8 +2609,6 @@ int mtk_pcie_disable_cfg_dump(int port)
 		return -ENODEV;
 
 	pcie_port->dump_cfg = false;
-
-	dev_info(pcie_port->dev, "port%d config space dump disabled\n", pcie_port->port_num);
 
 	return 0;
 }
