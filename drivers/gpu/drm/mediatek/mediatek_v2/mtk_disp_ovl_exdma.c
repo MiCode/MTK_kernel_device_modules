@@ -2609,28 +2609,14 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 					frame_idx, alloc_id, key, idx, temp_bw, temp_bw_old);
 		}
 
-		if (pending->mml_mode != MML_MODE_RACING) {
-#ifdef IF_ZERO
-			if (pending->prop_val[PLANE_PROP_COMPRESS])
-				comp->fbdc_bw += temp_bw;
-			else
-				comp->qos_bw += temp_bw;
-#else
-			/* so far only report one qos BW, no need to separate FBDC or normal BW */
-			if (!IS_ERR(comp->qos_req_other)) {
-				if (lye_idx % 2) {
-					comp->qos_bw_other += temp_bw;
-					comp->hrt_bw_other = temp_peak_bw;
-				} else {
-					comp->qos_bw += temp_bw;
-					comp->hrt_bw = temp_peak_bw;
-				}
-			} else {
-				comp->qos_bw += temp_bw;
-				comp->hrt_bw = temp_peak_bw;
-			}
-#endif
+		/* if source is not from memory, no need to report module hrt and srt */
+		if ((layer_src & LSRC_PQ) || (layer_src & LSRC_COLOR) ||
+		    (pending->mml_mode == MML_MODE_RACING)) {
+			temp_bw = 0;
+			temp_peak_bw = 0;
 		}
+		comp->qos_bw = temp_bw;
+		comp->hrt_bw = temp_peak_bw;
 	}
 
 	if (comp && comp->bind_comp && comp->bind_comp->funcs
