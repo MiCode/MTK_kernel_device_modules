@@ -16,7 +16,6 @@ mgk_module_ext_outs = [
     "drivers/hwtracing/coresight/coresight-tmc.ko",
     "drivers/iio/buffer/industrialio-triggered-buffer.ko",
     "drivers/iio/buffer/kfifo_buf.ko",
-    "drivers/iio/adc/mt6370-adc.ko",
     "drivers/leds/leds-pwm.ko",
     "drivers/media/v4l2-core/v4l2-flash-led-class.ko",
     "drivers/net/ethernet/microchip/lan743x.ko",
