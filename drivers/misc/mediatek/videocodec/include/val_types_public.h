@@ -8,7 +8,7 @@
 
 /* #include <sys/types.h> */
 /* #include <linux/ion.h> */
-
+#include <linux/types.h>
 /* /< support max 16 return register values when HW done */
 #define IRQ_STATUS_MAX_NUM 16
 
@@ -448,15 +448,24 @@ struct VAL_STRSTR_T {
  *  u4IrqStatus		[IN/OUT] The value of return registers when HW done
  */
 struct VAL_ISR_T {
-	void *pvHandle;
-	unsigned int u4HandleSize;
+	union {
+		void *pvHandle;
+		uint64_t pvHandle_64;
+	};
+	uint32_t u4HandleSize;
 	enum VAL_DRIVER_TYPE_T eDriverType;
-	void *pvIsrFunction;
-	void *pvReserved;
-	unsigned int u4ReservedSize;
-	unsigned int u4TimeoutMs;
-	unsigned int u4IrqStatusNum;
-	unsigned int u4IrqStatus[IRQ_STATUS_MAX_NUM];
+	union {
+		void *pvIsrFunction;
+		uint64_t pvIsrFunction_64;
+	};
+	union {
+		void *pvReserved;
+		uint64_t pvReserved_64;
+	};
+	uint32_t u4ReservedSize;
+	uint32_t u4TimeoutMs;
+	uint32_t u4IrqStatusNum;
+	uint32_t u4IrqStatus[IRQ_STATUS_MAX_NUM];
 };
 
 /**
@@ -476,12 +485,21 @@ struct VAL_ISR_T {
  *MTK_SEC_VIDEO_PATH_SUPPORT
  */
 struct VAL_HW_LOCK_T {
-	void *pvHandle;
-	unsigned int u4HandleSize;
-	void *pvLock;
-	unsigned int u4TimeoutMs;
-	void *pvReserved;
-	unsigned int u4ReservedSize;
+	union {
+		void *pvHandle;
+		uint64_t pvHandle_64;
+	};
+	uint64_t u4HandleSize;
+	union {
+		void *pvLock;
+		uint64_t pvLock_64;
+	};
+	uint64_t u4TimeoutMs;
+	union {
+		void *pvReserved;
+		uint64_t pvReserved_64;
+	};
+	uint64_t u4ReservedSize;
 	enum VAL_DRIVER_TYPE_T eDriverType;
 	char bSecureInst;
 };
@@ -642,21 +660,24 @@ struct VAL_BufInfo {
 /* for DirectLink Meta Mode - */
 
 struct VAL_FRAME_INFO_T {
-	void *handle; /* driver handle */
+	union {
+		void *handle;
+		uint64_t handle_64;
+	}; /* driver handle */
 	enum VAL_DRIVER_TYPE_T driver_type;
-	unsigned int input_size; /* input bitstream bytes */
-	unsigned int frame_width;
-	unsigned int frame_height; /* field pic has half height */
+	uint32_t input_size; /* input bitstream bytes */
+	uint32_t frame_width;
+	uint32_t frame_height; /* field pic has half height */
 	/* 0: intra, 1: inter 1 ref, 2: inter 2 ref, 3: copy */
-	unsigned int frame_type;
-	unsigned int is_compressed; /* is output buffer compressed */
+	uint32_t frame_type;
+	uint32_t is_compressed; /* is output buffer compressed */
 };
 
 struct VAL_MEM_INFO_T {
-	VAL_UINT64_T iova;
-	VAL_ULONG_T len;
-	int shared_fd;
-	unsigned int cnt;
+	uint64_t iova;
+	uint32_t len;
+	int32_t shared_fd;
+	uint32_t cnt;
 };
 
 struct VAL_FD_TO_SEC_HANDLE {

@@ -128,8 +128,8 @@ static long vcodec_get_mva_allocation(struct device *dev,
 
 	pr_debug("%s +\n", __func__);
 	user_data_addr = (unsigned char *)arg;
-	ret = copy_from_user(&rMemObj, user_data_addr,
-				sizeof(struct VAL_MEM_INFO_T));
+	ret = (long)copy_from_user(&rMemObj, user_data_addr,
+				(unsigned long)sizeof(struct VAL_MEM_INFO_T));
 	if (ret) {
 		pr_debug("%s, copy_from_user failed: %lu\n",
 			__func__, ret);
@@ -148,9 +148,12 @@ static long vcodec_get_mva_allocation(struct device *dev,
 	}
 	pr_debug("[%s][%d] iova = %llx, cnt = %d, fd: rMemObj.shared_fd: %d\n",
 		__func__, __LINE__, rMemObj.iova, rMemObj.cnt, rMemObj.shared_fd);
-	if (copy_to_user((void *)arg, &rMemObj, sizeof(struct VAL_MEM_INFO_T))) {
-		pr_info("Copy to user error\n");
-		return -EFAULT;
+	ret = (long)copy_to_user(user_data_addr, &rMemObj,
+		(unsigned long)sizeof(struct VAL_MEM_INFO_T));
+	if (ret != 0L) {
+		pr_info("[VCODEC]%s(%d) Copy data to user failed!\n",
+			__func__, __LINE__);
+		return -EINVAL;
 	}
 	pr_debug("%s -\n", __func__);
 	return 0;
@@ -686,6 +689,9 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 					unsigned long arg)
 {
 	long ret = 0;
+	unsigned int flush_dma_direction;
+	struct mtk_vcodec_queue *vcodec_queue =
+		(struct mtk_vcodec_queue *)file->private_data;
 
 	pr_debug("%s: %u\n", __func__, cmd);
 	switch (cmd) {
@@ -717,30 +723,23 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 	}
 	break;
 	case VCODEC_LOCKHW:
+	{
+		ret = vcodec_lockhw(arg);
+		if (ret) {
+			pr_info("[ERROR] VCODEC_LOCKHW failed! %lu\n",
+					ret);
+			return ret;
+		}
+	}
+	break;
 	case VCODEC_UNLOCKHW:
 	{
-		struct VAL_HW_LOCK_T hw_lock_data;
-		unsigned char *user_data_addr = NULL;
-
-		user_data_addr = (unsigned char *)arg;
-
-		ret = (long)copy_from_user(&hw_lock_data, user_data_addr,
-			(unsigned long)sizeof(struct VAL_HW_LOCK_T));
-		if (ret != 0L) {
-			pr_info("[videocodec] %s(%d) Copy data from user failed!\n",
-			__func__, __LINE__);
-			return -EINVAL;
+		ret = vcodec_unlockhw(arg);
+		if (ret) {
+			pr_info("[ERROR] VCODEC_UNLOCKHW failed! %lu\n",
+					ret);
+			return ret;
 		}
-		ret = file->f_op->unlocked_ioctl(file, cmd,
-				(unsigned long)&hw_lock_data);
-		ret = (long)copy_to_user(user_data_addr, &hw_lock_data,
-			(unsigned long)sizeof(struct VAL_HW_LOCK_T));
-		if (ret != 0L) {
-			pr_info("[videocodec] %s(%d) Copy data to user failed!\n",
-			__func__, __LINE__);
-			return -EINVAL;
-		}
-		return ret;
 	}
 	break;
 
@@ -774,49 +773,18 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 
 	case VCODEC_WAITISR:
 	{
-		struct VAL_ISR_T isr_data;
-		unsigned char *user_data_addr = NULL;
-
-		user_data_addr = (unsigned char *)arg;
-
-		ret = (long)copy_from_user(&isr_data, user_data_addr,
-			(unsigned long)sizeof(struct VAL_ISR_T));
-		if (ret != 0L) {
-			pr_info("[videocodec] %s(%d) Copy data from user failed!\n",
-			__func__, __LINE__);
-			return -EINVAL;
+		ret = vcodec_waitisr(arg);
+		if (ret) {
+			pr_info("[ERROR] VCODEC_WAITISR failed! %lu\n",
+					ret);
+			return ret;
 		}
-		ret = file->f_op->unlocked_ioctl(file, VCODEC_WAITISR,
-				(unsigned long)&isr_data);
-		ret = (long)copy_to_user(user_data_addr, &isr_data,
-			(unsigned long)sizeof(struct VAL_ISR_T));
-		if (ret != 0L) {
-			pr_info("[videocodec] %s(%d) Copy data to user failed!\n",
-			__func__, __LINE__);
-			return -EINVAL;
-		}
-		return ret;
 	}
 	break;
 
 	case VCODEC_SET_FRAME_INFO:
 	{
-		struct VAL_FRAME_INFO_T frame_info_data;
-		unsigned char *user_data_addr = NULL;
-
-		user_data_addr = (unsigned char *)arg;
-
-		ret = (long)copy_from_user(&frame_info_data, user_data_addr,
-			(unsigned long)sizeof(struct VAL_FRAME_INFO_T));
-		if (ret != 0L) {
-			pr_info("[videocodec] %s(%d) Copy data from user failed!\n",
-			__func__, __LINE__);
-			return -EINVAL;
-		}
-		ret = file->f_op->unlocked_ioctl(file, VCODEC_SET_FRAME_INFO,
-				(unsigned long)&frame_info_data);
-		ret = (long)copy_to_user(user_data_addr, &frame_info_data,
-			(unsigned long)sizeof(struct VAL_FRAME_INFO_T));
+		ret = file->f_op->unlocked_ioctl(file, VCODEC_SET_FRAME_INFO, arg);
 		if (ret != 0L) {
 			pr_info("[videocodec] %s(%d) Copy data to user failed!\n",
 			__func__, __LINE__);
@@ -827,50 +795,28 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 
 	case VCODEC_MVA_ALLOCATION:
 	{
-		struct VAL_MEM_INFO_T mem_info_data;
-		unsigned char *user_data_addr = NULL;
-
-		user_data_addr = (unsigned char *)arg;
-		ret = (long)copy_from_user(&mem_info_data, user_data_addr,
-			(unsigned long)sizeof(struct VAL_MEM_INFO_T));
-		if (ret != 0L) {
-			pr_info("[videocodec] %s(%d) Copy data from user failed!\n",
-			__func__, __LINE__);
-			return -EINVAL;
+		mutex_lock(&vcodec_queue->dev_lock);
+		ret =  vcodec_get_mva_allocation(gVCodecDev->dev, arg, vcodec_queue);
+		mutex_unlock(&vcodec_queue->dev_lock);
+		if (ret) {
+			pr_info("%s:%d [ERROR] VCODEC_MVA_ALLOCATION failed! %lu\n",
+				__func__, __LINE__, ret);
+			return ret;
 		}
-		ret = file->f_op->unlocked_ioctl(file, VCODEC_MVA_ALLOCATION,
-				(unsigned long)&mem_info_data);
-		ret = (long)copy_to_user(user_data_addr, &mem_info_data,
-			(unsigned long)sizeof(struct VAL_MEM_INFO_T));
-		if (ret != 0L) {
-			pr_info("[videocodec] %s(%d) Copy data to user failed!\n",
-			__func__, __LINE__);
-			return -EINVAL;
-		}
+		pr_info("%s:%d VCODEC_MVA_ALLOCATION succeed! %lu\n",
+			__func__, __LINE__, ret);
 	}
 	break;
 
 	case VCODEC_MVA_FREE:
 	{
-		struct VAL_MEM_INFO_T mem_info_data;
-		unsigned char *user_data_addr = NULL;
-
-		user_data_addr = (unsigned char *)arg;
-		ret = (long)copy_from_user(&mem_info_data, user_data_addr,
-			(unsigned long)sizeof(struct VAL_MEM_INFO_T));
-		if (ret != 0L) {
-			pr_info("[videocodec] %s(%d) Copy data from user failed!\n",
-			__func__, __LINE__);
-			return -EINVAL;
-		}
-		ret = file->f_op->unlocked_ioctl(file, VCODEC_MVA_FREE,
-				(unsigned long)&mem_info_data);
-		ret = (long)copy_to_user(user_data_addr, &mem_info_data,
-			(unsigned long)sizeof(struct VAL_MEM_INFO_T));
-		if (ret != 0L) {
-			pr_info("[videocodec] %s(%d) Copy data to user failed!\n",
-			__func__, __LINE__);
-			return -EINVAL;
+		mutex_lock(&vcodec_queue->dev_lock);
+		ret = vcodec_get_mva_free(gVCodecDev->dev, arg, vcodec_queue);
+		mutex_unlock(&vcodec_queue->dev_lock);
+		if (ret) {
+			pr_debug("%s: %d [ERROR] VCODEC_MVA_FREE failed! %lu\n",
+				__func__, __LINE__, ret);
+			return ret;
 		}
 	}
 	break;
@@ -878,52 +824,25 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 	case VCODEC_CACHE_FLUSH_BUFF:
 	case VCODEC_CACHE_INVALIDATE_BUFF:
 	{
-		struct VAL_MEM_INFO_T mem_info_data;
-		unsigned char *user_data_addr = NULL;
-
-		user_data_addr = (unsigned char *)arg;
-
-		ret = (long)copy_from_user(&mem_info_data, user_data_addr,
-			(unsigned long)sizeof(struct VAL_MEM_INFO_T));
-		if (ret != 0L) {
-			pr_info("[videocodec] %s(%d) Copy data from user failed!\n",
-			__func__, __LINE__);
-			return -EINVAL;
-		}
-		ret = file->f_op->unlocked_ioctl(file, VCODEC_CACHE_FLUSH_BUFF,
-				(unsigned long)&mem_info_data);
-		ret = (long)copy_to_user(user_data_addr, &mem_info_data,
-			(unsigned long)sizeof(struct VAL_MEM_INFO_T));
-		if (ret != 0L) {
-			pr_info("[videocodec] %s(%d) Copy data to user failed!\n",
-			__func__, __LINE__);
-			return -EINVAL;
+		flush_dma_direction =
+			((cmd == VCODEC_CACHE_FLUSH_BUFF) ? DMA_TO_DEVICE : DMA_FROM_DEVICE);
+		ret = vcodec_cache_flush_buff(gVCodecDev->dev, arg, flush_dma_direction);
+		if (ret) {
+			pr_debug("%s: %d [ERROR] VCODEC_CACHE_FLUSH_BUFF failed! %lu\n",
+				__func__, __LINE__,ret);
+			return ret;
 		}
 	}
 	break;
 
 	case VCODEC_GET_SECURE_HANDLE:
 	{
-		struct VAL_MEM_INFO_T mem_info_data;
-		unsigned char *user_data_addr = NULL;
-
-		user_data_addr = (unsigned char *)arg;
-
-		ret = (long)copy_from_user(&mem_info_data, user_data_addr,
-			(unsigned long)sizeof(struct VAL_MEM_INFO_T));
-		if (ret != 0L) {
-			pr_info("[videocodec] %s(%d) Copy data from user failed!\n",
-			__func__, __LINE__);
-			return -EINVAL;
-		}
-		ret = file->f_op->unlocked_ioctl(file, VCODEC_GET_SECURE_HANDLE,
-				(unsigned long)&mem_info_data);
-		ret = (long)copy_to_user(user_data_addr, &mem_info_data,
-			(unsigned long)sizeof(struct VAL_MEM_INFO_T));
-		if (ret != 0L) {
-			pr_info("[videocodec] %s(%d) Copy data to user failed!\n",
-			__func__, __LINE__);
-			return -EINVAL;
+		ret = vcodec_get_secure_handle(gVCodecDev->dev, arg);
+		pr_info("%s: %d [INFO] VCODEC_GET_SECURE_HANDLE", __func__, __LINE__);
+		if (ret) {
+			pr_debug("%s: %d [ERROR] VCODEC_GET_SECURE_HANDLE failed! %lu\n",
+				__func__, __LINE__, ret);
+			return ret;
 		}
 	}
 	break;

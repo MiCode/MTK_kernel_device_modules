@@ -171,7 +171,7 @@ int mtk_vcodec_free_buffer(struct mtk_vcodec_queue *vcodec_queue,
 	mutex_lock(&vcodec_queue->mmap_lock);
 	num_buf = vcodec_queue->num_buffers;
 
-	pr_debug("Free buffer iova = %llx, len %lu queue_num = %d\n",
+	pr_debug("Free buffer iova = %llx, len %d queue_num = %d\n",
 		mem_buff_data->iova, mem_buff_data->len, num_buf);
 	if (num_buf != 0U) {
 		for (i = 0; i < num_buf; i++) {
@@ -217,7 +217,7 @@ int mtk_vcodec_free_buffer(struct mtk_vcodec_queue *vcodec_queue,
 	mutex_unlock(&vcodec_queue->mmap_lock);
 
 	if (ret != 0)
-		pr_info("Can not free memory sec_iova %llx len %lu!\n",
+		pr_info("Can not free memory sec_iova %llx len %d!\n",
 			mem_buff_data->iova, mem_buff_data->len);
 
 	return ret;
