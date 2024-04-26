@@ -1841,6 +1841,15 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		readl_relaxed(port->base + PCIE_RES_STATUS),
 		readl_relaxed(port->base + PHY_ERR_DEBUG_LANE0));
 
+	/* Capature PCIe L1P2 issue for debug */
+	if (val & PCIE_AER_EVT) {
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0xc, 0xc, 0xc, 0xc));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x45, 0x47, 0x48, 0x49));
+		val = readl_relaxed(port->base + PCIE_DEBUG_MONITOR);
+		if (val == 0x9e10acae)
+			panic("Capature PCIe L1P2 issue , trigger panic\n");
+	}
+
 	/* Clear LTSSM record info after dump */
 	writel_relaxed(PCIE_LTSSM_STATE_CLEAR, port->base + PCIE_LTSSM_STATUS_REG);
 	/* Clear AXI info after dump */
