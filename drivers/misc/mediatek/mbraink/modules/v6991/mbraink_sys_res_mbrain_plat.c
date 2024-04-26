@@ -29,6 +29,7 @@ static int group_release[NR_SPM_GRP] = {
 	MBRAINK_NOT_RELEASE,
 	MBRAINK_NOT_RELEASE,
 	MBRAINK_NOT_RELEASE,
+	MBRAINK_NOT_RELEASE,
 };
 
 struct mbraink_sys_res_mbrain_header header;

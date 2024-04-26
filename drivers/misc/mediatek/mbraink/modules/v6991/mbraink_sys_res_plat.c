@@ -45,6 +45,7 @@ struct mbraink_sys_res_group_info sys_res_group_info[NR_SPM_GRP] = {
 	{0, 0,  0, 30},
 	{0, 0,  0, 30},
 	{0, 0,  0, 30},
+	{0, 0,  0, 30},
 };
 
 static struct mbriank_sys_res_mapping sys_res_mapping[] = {
@@ -115,6 +116,12 @@ static void get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_
 
 	group_info = &(grouplist_info[RC_REQ]);
 	ret = get_res_group_info(SWPM_PSP_MAIN_RES_RC_REQ, &(group_info->sys_index),
+		&(group_info->sig_table_index), &(group_info->group_num));
+	if (ret)
+		pr_info("get_res_group_info fail (%d)\n", ret);
+
+	group_info = &(grouplist_info[PLL_EN]);
+	ret = get_res_group_info(SWPM_PSP_MAIN_RES_PLL_EN, &(group_info->sys_index),
 		&(group_info->sig_table_index), &(group_info->group_num));
 	if (ret)
 		pr_info("get_res_group_info fail (%d)\n", ret);
