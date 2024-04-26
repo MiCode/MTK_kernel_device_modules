@@ -289,7 +289,7 @@ extern void get_most_powerful_pd_and_util_Th(void);
 #define EAS_DPT_CTRL				_IOW('g', 60,  int)
 
 
-extern void update_curr_collab_state(void);
+extern void update_curr_collab_state(bool *is_cpu_to_update_thermal);
 #if IS_ENABLED(CONFIG_MTK_NEWIDLE_BALANCE)
 extern void mtk_sched_newidle_balance(void *data, struct rq *this_rq,
 		struct rq_flags *rf, int *pulled_task, int *done);
@@ -350,7 +350,7 @@ extern void sched_pause_init(void);
 #else
 #define cpu_paused(cpu) 0
 #endif
-
+#define DPT_TURN_ON (is_dpt_support_driver_hook != NULL && is_dpt_support_driver_hook())
 extern int set_target_margin(int gearid, int margin);
 extern int set_turn_point_freq(int gearid, unsigned long turn_freq);
 extern int set_util_est_ctrl(bool enable);
