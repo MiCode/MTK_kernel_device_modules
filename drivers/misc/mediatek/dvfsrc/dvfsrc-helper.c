@@ -903,6 +903,33 @@ static const struct dvfsrc_debug_data mt6833_data = {
 	.num_opp_desc = ARRAY_SIZE(dvfsrc_opp_mt6833_desc),
 };
 
+static struct dvfsrc_opp dvfsrc_opp_mt6781[] = {
+	{0, 0, 0, 0},
+	{0, 1, 0, 0},
+	{0, 2, 0, 0},
+	{0, 3, 0, 0},
+	{1, 1, 0, 0},
+	{1, 2, 0, 0},
+	{1, 3, 0, 0},
+	{1, 4, 0, 0},
+	{2, 1, 0, 0},
+	{2, 2, 0, 0},
+	{2, 3, 0, 0},
+	{2, 4, 0, 0},
+	{2, 5, 0, 0},
+};
+
+static struct dvfsrc_opp_desc dvfsrc_opp_mt6781_desc[] = {
+	MT_DVFSRC_OPP(3, 6, dvfsrc_opp_mt6781),
+};
+
+static const struct dvfsrc_debug_data mt6781_data = {
+	.version = 0x6781,
+	.config = &mt6873_dvfsrc_config,
+	.opps_desc = dvfsrc_opp_mt6781_desc,
+	.num_opp_desc = ARRAY_SIZE(dvfsrc_opp_mt6781_desc),
+};
+
 static struct dvfsrc_opp dvfsrc_opp_mt6877_lp4[] = {
 	{0, 0, 0, 0},
 	{1, 0, 0, 0},

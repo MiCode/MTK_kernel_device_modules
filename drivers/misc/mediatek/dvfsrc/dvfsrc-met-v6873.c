@@ -303,6 +303,8 @@ static int dvfsrc_emi_mon_gear(struct mtk_dvfsrc_met *dvfs)
 		return 0;
 
 	total_bw_status = dvfsrc_met_read(dvfs, DVFSRC_DEBUG_STA_2);
+	if (dvfs->dvd->version == 0x6781)
+		total_bw_status = total_bw_status & ~(0x3c);
 	for (i = max_idx; i >= 0 ; i--) {
 		if (total_bw_status & GENMASK(i, i)) {
 			idx = i;

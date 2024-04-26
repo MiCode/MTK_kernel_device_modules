@@ -1885,6 +1885,26 @@ static const struct dvfsrc_soc_data mt6833_data = {
 #endif
 };
 
+static const struct dvfsrc_opp dvfsrc_opp_mt6781[] = {
+	{0, 0}, {0, 1}, {0, 2}, {0, 3},
+	{1, 1}, {1, 2}, {1, 3}, {1, 4},
+	{2, 1}, {2, 2}, {2, 3}, {2, 4}, {2, 5},
+};
+
+static const struct dvfsrc_opp_desc dvfsrc_opp_mt6781_desc[] = {
+	DVFSRC_OPP_DESC(dvfsrc_opp_mt6781),
+};
+
+static const struct dvfsrc_soc_data mt6781_data = {
+	DVFSRC_MT6873_SERIES_OPS,
+	.opps_desc = dvfsrc_opp_mt6781_desc,
+	.num_opp_desc = ARRAY_SIZE(dvfsrc_opp_mt6781_desc),
+	.regs = mt6873_regs,
+#ifdef DVFSRC_FORCE_OPP_SUPPORT
+	.set_force_opp_level = mt6873_set_force_opp_level,
+#endif
+};
+
 static const struct dvfsrc_opp dvfsrc_opp_mt6877_lp4[] = {
 	{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0},
 	{0, 1}, {1, 1}, {2, 1}, {3, 1},	{4, 1},
@@ -2271,6 +2291,9 @@ static const struct of_device_id mtk_dvfsrc_of_match[] = {
 		.compatible = "mediatek,mt8678-dvfsrc",
 		.data = &mt6991_data,
 	}, {
+		.compatible = "mediatek,mt6781-dvfsrc",
+		.data = &mt6781_data,
+	},{
 		/* sentinel */
 	},
 };
