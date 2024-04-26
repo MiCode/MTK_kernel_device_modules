@@ -1005,7 +1005,7 @@ initcall_debug=1 pelt=8 clk_ignore_unused=1";
 		wifi_mem: wifi-reserve-memory {
 			compatible = "shared-dma-pool";
 			no-map;
-			size = <0 0x300000>;
+			size = <0 0x410000>;
 			alignment = <0 0x1000000>;
 			alloc-ranges = <0 0x40000000 0 0x80000000>;
 		};
