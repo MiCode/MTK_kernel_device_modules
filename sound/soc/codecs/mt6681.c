@@ -17568,8 +17568,8 @@ static void keylock_reset(struct mt6681_priv *priv)
 	regmap_write(priv->regmap, MT6681_TSBG_PMU_CON2, 0x0);
 	regmap_write(priv->regmap, MT6681_STRUP_ELR_3, 0x1);
 
-	regmap_write(priv->regmap, MT6681_LDO_VAUD18_MULTI_SW_0, 0x0);
-	regmap_write(priv->regmap, MT6681_LDO_VAUD18_MULTI_SW_1, 0x0);
+	// regmap_write(priv->regmap, MT6681_LDO_VAUD18_MULTI_SW_0, 0x0);
+	// regmap_write(priv->regmap, MT6681_LDO_VAUD18_MULTI_SW_1, 0x0);
 }
 
 int mt6681_get_adda_hifi_mode(struct snd_soc_component *cmpnt, bool isDL)
@@ -18836,8 +18836,8 @@ static int mt6681_codec_init_reg(struct mt6681_priv *priv)
 #endif
 
 	/* disable sw control vaud18 en1, en2, we only use en0 to control ldo */
-	regmap_write(priv->regmap, MT6681_LDO_VAUD18_MULTI_SW_0, 0x0);
-	regmap_write(priv->regmap, MT6681_LDO_VAUD18_MULTI_SW_1, 0x0);
+	// regmap_write(priv->regmap, MT6681_LDO_VAUD18_MULTI_SW_0, 0x0);
+	// regmap_write(priv->regmap, MT6681_LDO_VAUD18_MULTI_SW_1, 0x0);
 	keylock_set(priv);
 	scp_wake_release(adap);
 	return 0;
