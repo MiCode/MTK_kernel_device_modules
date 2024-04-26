@@ -975,7 +975,7 @@ mgk_64_platform_device_modules = {
     "drivers/soc/mediatek/devapc/device-apc-mt6989.ko": "mt6989",
     "drivers/soc/mediatek/devapc/device-apc-mt6991.ko": "mt6991",
     "drivers/soc/mediatek/mtk-pm-domains.ko": "mt8188",
-    "drivers/soc/mediatek/mtk-scpsys-bringup.ko": "mt6781 mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt8192 mt8188",
+    "drivers/soc/mediatek/mtk-scpsys-bringup.ko": "mt6761 mt6765 mt6768 mt6781 mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt8192 mt8188",
     "drivers/soc/mediatek/mtk-scpsys-mt6886.ko": "mt6886",
     "drivers/soc/mediatek/mtk-scpsys-mt6897.ko": "mt6897",
     "drivers/soc/mediatek/mtk-scpsys-mt6983.ko": "mt6983",
