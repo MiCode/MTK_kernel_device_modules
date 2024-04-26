@@ -18758,7 +18758,8 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_WCG;
 	}
 
-	if (priv->data->mmsys_id == MMSYS_MT6991)
+	if (priv->data->mmsys_id == MMSYS_MT6991 ||
+	    priv->data->mmsys_id == MMSYS_MT6989)
 		mtk_crtc->crtc_caps.rpo_support_num = 1;
 
 	if (check_comp_in_crtc(path_data, MTK_DISP_CCORR) &&
