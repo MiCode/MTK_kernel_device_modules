@@ -84,6 +84,8 @@ obj-y += drivers/input/touchscreen/
 
 obj-y += drivers/gpu/drm/panel/
 
+obj-y += drivers/gpu/drm/bridge/
+
 obj-y += drivers/gpu/mediatek/
 
 obj-y += drivers/media/platform/

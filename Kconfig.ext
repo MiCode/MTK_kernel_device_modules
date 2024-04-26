@@ -84,6 +84,8 @@ source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/panel/Kconfig"
 
+source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/bridge/Kconfig"
+
 source "$(KCONFIG_EXT_PREFIX)drivers/gpu/mediatek/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/media/platform/Kconfig"
