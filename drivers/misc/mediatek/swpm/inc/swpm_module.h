@@ -78,6 +78,7 @@ enum swpm_cmd_type {
 	USB_CMD_TYPE,
 	DISP_CMD_TYPE,
 	MML_CMD_TYPE,
+	ISP_CMD_TYPE,
 
 	NR_SWPM_CMD_TYPE,
 };

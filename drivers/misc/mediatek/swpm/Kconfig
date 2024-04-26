@@ -172,3 +172,11 @@ config MTK_SWPM_MT6991
 	  Set Y to select this feature for specific platform-mt6991.
 	  If unsure, set N to disable.
 
+config MTK_SWPM_ISP
+	tristate "Meditaek Software ISP Power Model funtionality"
+	depends on MTK_SWPM_MODULE
+	help
+	  Wrapper between ISP driver and ISP SWPM.
+	  Set Y to enable this feature.
+	  If unsure, set N to disable.
+	  Default is N to disable ISP SWPM wrapper.

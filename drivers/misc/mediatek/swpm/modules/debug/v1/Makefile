@@ -10,3 +10,7 @@ ccflags-y += -I$(srctree)/$(src)
 obj-$(CONFIG_MTK_SWPM_MODULE) += ${MTK_SWPM_DBG_COMMON_NAME}.o
 ${MTK_SWPM_DBG_COMMON_NAME}-objs += swpm_dbg_fs_common.o
 ${MTK_SWPM_DBG_COMMON_NAME}-objs += $(SWPM_MODULE_DEBUG_COMMON)
+
+MTK_SWPM_ISP_WRAPPER_NAME=mtk-swpm-isp-wrapper
+obj-$(CONFIG_MTK_SWPM_MODULE) += ${MTK_SWPM_ISP_WRAPPER_NAME}.o
+${MTK_SWPM_ISP_WRAPPER_NAME}-objs += subsys/swpm_isp_wrapper.o
