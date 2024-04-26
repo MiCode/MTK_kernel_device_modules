@@ -188,10 +188,10 @@ int mtk_vcodec_free_buffer(struct mtk_vcodec_queue *vcodec_queue,
 			if (mem_buff_data->iova == vcodec_buf->iova &&
 				mem_buff_data->len == vcodec_buf->size &&
 				atomic_read(&vcodec_buf->ref_cnt) == 1) {
-				pr_debug("Free buffer index = %d iova = %llx, queue_num = %d\n",
-					i, mem_buff_data->iova, num_buf);
-				pr_debug("[%s] iova = %llx size = %d mem_priv = %lx, useAlloc:%d\n",
-				__func__, vcodec_buf->iova, (unsigned int)vcodec_buf->size,
+				pr_debug("Free buffer index = %d iova = %x, queue_num = %d\n",
+					i, (unsigned int)mem_buff_data->iova, num_buf);
+				pr_debug("[%s] iova = %x size = %d mem_priv = %lx, useAlloc:%d\n",
+				__func__, (unsigned int)vcodec_buf->iova, (unsigned int)vcodec_buf->size,
 				(unsigned long)vcodec_buf->mem_priv, vcodec_buf->useAlloc);
 
 				/* decrease file count */
