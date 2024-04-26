@@ -1126,8 +1126,6 @@ s32 mml_sys_pw_enable(struct mml_comp *comp)
 	struct mml_sys *sys = comp_to_sys(comp);
 	bool pwon = comp->pw_cnt == 0;
 
-	if (pwon)
-		mml_dpc_mtcmos_auto(comp->sysid, false);
 	ret = mml_comp_pw_enable(comp);
 	if (!ret && pwon) {
 		ret = clk_prepare_enable(sys->clk_sys_26m);
@@ -1142,19 +1140,10 @@ s32 mml_sys_pw_disable(struct mml_comp *comp)
 {
 	int ret;
 	struct mml_sys *sys = comp_to_sys(comp);
-	bool pwoff = comp->pw_cnt == 1;
 
-	if (pwoff) {
+	if (comp->pw_cnt == 1)
 		clk_disable_unprepare(sys->clk_sys_26m);
-		mml_dpc_mtcmos_auto(comp->sysid, false);
-	}
-
 	ret = mml_comp_pw_disable(comp);
-
-	if (pwoff) {
-		/* default set to hw mode */
-		mml_dpc_mtcmos_auto(comp->sysid, true);
-	}
 
 	return ret;
 }

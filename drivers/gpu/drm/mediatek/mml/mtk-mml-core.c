@@ -811,18 +811,12 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 	if (cfg->info.mode == MML_MODE_DIRECT_LINK && cfg->dpc) {
 		/* keep and release pw off until next DT */
 		mml_msg_dpc("%s dpc auto for DL", __func__);
-		mml_dpc_mtcmos_auto(path->mmlsys->sysid, true);
-		if (path->mmlsys2)
-			mml_dpc_mtcmos_auto(path->mmlsys2->sysid, true);
 	} else if (mml_isdc(cfg->info.mode) || !cfg->dpc) {
 		mml_msg_dpc("%s dpc exception flow enable for mode %u", __func__, cfg->info.mode);
 		mml_dpc_exc_keep_task(task, path);
 		mml_dpc_dc_enable(cfg->mml, path->mmlsys->sysid, true);
-		mml_dpc_mtcmos_auto(path->mmlsys->sysid, false);
-		if (path->mmlsys2) {
+		if (path->mmlsys2)
 			mml_dpc_dc_enable(cfg->mml, path->mmlsys2->sysid, true);
-			mml_dpc_mtcmos_auto(path->mmlsys2->sysid, false);
-		}
 	} else {
 		mml_msg_dpc("%s dpc exception flow enable", __func__);
 		mml_dpc_exc_keep_task(task, path);

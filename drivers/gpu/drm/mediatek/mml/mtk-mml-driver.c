@@ -1046,10 +1046,10 @@ void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task)
 		mml_msg_dpc("%s scenario in, dpc start", __func__);
 		mml_clock_lock(mml);
 		call_hw_op(path->mmlsys, mminfra_pw_enable);
+		mml_dpc_exc_keep(mml, path->mmlsys->sysid);
 		call_hw_op(path->mmlsys, pw_enable);
 		if (path->mmlsys2)
 			call_hw_op(path->mmlsys2, pw_enable);
-		mml_dpc_exc_keep(mml, path->mmlsys->sysid);
 		mml_mmp(dpc_cfg, MMPROFILE_FLAG_START, 1, 0);
 		mml_dpc_exc_release(mml, path->mmlsys->sysid);
 		call_hw_op(path->mmlsys, mminfra_pw_disable);
@@ -1177,6 +1177,7 @@ void mml_dpc_dc_enable(struct mml_dev *mml, u32 sysid, bool dcen)
 	}
 
 	mml_dpc_group_enable(!dcen);
+	mml_dpc_mtcmos_auto(sysid, !dcen);
 }
 
 void mml_pw_set_kick_cb(struct mml_dev *mml,
@@ -1260,8 +1261,6 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 
 			if (cfg->panel_w > dest->data.width)
 				hrt_bw = (u32)((u64)hrt_bw * cfg->panel_w / dest->data.width);
-			if (!MML_FMT_COMPRESS(cfg->info.src.format) && cfg->rrot_dual)
-				hrt_bw *= 2;
 
 			if (mtk_mml_hrt_mode == MML_HRT_LIMIT && hrt_bw < mml_hrt_bound) {
 				srt_bw = 0;
