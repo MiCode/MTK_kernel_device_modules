@@ -112,7 +112,6 @@ static int lpm_s2idle_state_enter(struct cpuidle_device *dev,
 static int lpm_cpuidle_state_enter(struct cpuidle_device *dev,
 			   struct cpuidle_driver *drv, int idx)
 {
-	pr_info("[DEBUG] idle_enter :%d",idx);
 	return lpm_state_enter(lpm_state_cpuidle, dev, drv, idx);
 }
 
