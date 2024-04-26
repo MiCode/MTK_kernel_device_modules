@@ -31,7 +31,6 @@
 #include "fps_composer.h"
 #include "xgf.h"
 #include "mtk_drm_arr.h"
-#include "powerhal_cpu_ctrl.h"
 #include "fbt_cpu_ux.h"
 #include "fpsgo_frame_info.h"
 
@@ -51,27 +50,12 @@ enum FPSGO_NOTIFIER_PUSH_TYPE {
 	FPSGO_NOTIFIER_SBE_RESCUE           = 0x07,
 	FPSGO_NOTIFIER_ACQUIRE              = 0x08,
 	FPSGO_NOTIFIER_BUFFER_QUOTA         = 0x09,
-	FPSGO_NOTIFIER_ADPF_HINT            = 0x0a,
 	FPSGO_NOTIFIER_MAGT_TARGET_FPS      = 0x0b,
 	FPSGO_NOTIFIER_MAGT_DEP_LIST        = 0x0c,
 	FPSGO_NOTIFIER_VSYNC_PERIOD         = 0x0d,
 	FPSGO_NOTIFIER_FRAME_HINT			= 0x10,
 	FPSGO_NOTIFIER_SBE_POLICY			= 0x11,
 
-};
-
-struct fpsgo_adpf_session {
-	int cmd;
-	int sid;
-	int tgid;
-	int uid;
-	int dep_task_arr[ADPF_MAX_THREAD];
-	int dep_task_num;
-	unsigned long long workload_tcpu_arr[ADPF_MAX_THREAD];
-	unsigned long long workload_ts_arr[ADPF_MAX_THREAD];
-	int workload_num;
-	int used;
-	unsigned long long target_time;
 };
 
 struct fpsgo_magt_target_fps {
@@ -140,7 +124,6 @@ struct FPSGO_NOTIFIER_PUSH_TAG {
 	unsigned long long tv_ts;
 	unsigned long long que_end_sys_time_ns;
 
-	struct fpsgo_adpf_session adpf_hint;
 	struct fpsgo_magt_target_fps *magt_tfps_hint;
 	struct fpsgo_magt_dep_list *magt_dep_hint;
 };
@@ -392,52 +375,6 @@ static void fpsgo_notifier_wq_cb_hint_frame(int qudeq,
 
 }
 
-static void fpsgo_notifier_wq_cb_adpf_hint(struct fpsgo_adpf_session *session)
-{
-	unsigned long long local_key = 0xFF;
-	unsigned long long tmp_tgid;
-
-	if (!session || !fpsgo_is_enable())
-		return;
-
-	tmp_tgid = session->tgid;
-	local_key = (local_key & session->sid) | (tmp_tgid << 8);
-	switch (session->cmd) {
-	case ADPF_CREATE_HINT_SESSION:
-		fpsgo_ctrl2comp_adpf_create_session(session->tgid, session->tgid,
-			local_key, session->dep_task_arr, session->dep_task_num,
-			session->target_time);
-		break;
-	case ADPF_UPDATE_TARGET_WORK_DURATION:
-		fpsgo_ctrl2comp_set_target_time(session->tgid, session->tgid,
-			local_key, session->target_time);
-		break;
-	case ADPF_REPORT_ACTUAL_WORK_DURATION:
-		fpsgo_ctrl2comp_report_workload(session->tgid, session->tgid,
-			local_key, session->workload_tcpu_arr,
-			session->workload_ts_arr, session->workload_num);
-		break;
-	case ADPF_PAUSE:
-		fpsgo_ctrl2comp_adpf_pause(session->tgid, local_key);
-		break;
-	case ADPF_RESUME:
-		fpsgo_ctrl2comp_adpf_resume(session->tgid, local_key);
-		break;
-	case ADPF_CLOSE:
-		fpsgo_ctrl2comp_adpf_close(session->tgid, session->tgid, local_key);
-		break;
-	case ADPF_SENT_HINT:
-		break;
-	case ADPF_SET_THREADS:
-		fpsgo_ctrl2comp_adpf_set_dep_list(session->tgid, session->tgid,
-			local_key, session->dep_task_arr, session->dep_task_num);
-		break;
-	default:
-		FPSGO_LOGE("[FPSGO_CB] %s unknown cmd:%d\n", __func__, session->cmd);
-		break;
-	}
-}
-
 static void fpsgo_notifier_wq_cb_magt_target_fps(struct fpsgo_magt_target_fps *iter)
 {
 	if (!iter || !fpsgo_is_enable())
@@ -544,9 +481,6 @@ static void fpsgo_notifier_wq_cb(void)
 				vpPush->name, vpPush->mask,
 				vpPush->cur_ts, vpPush->qudeq_cmd,
 				vpPush->specific_name, vpPush->num);
-		break;
-	case FPSGO_NOTIFIER_ADPF_HINT:
-		fpsgo_notifier_wq_cb_adpf_hint(&vpPush->adpf_hint);
 		break;
 	case FPSGO_NOTIFIER_MAGT_TARGET_FPS:
 		fpsgo_notifier_wq_cb_magt_target_fps(vpPush->magt_tfps_hint);
@@ -1086,53 +1020,6 @@ int fpsgo_notify_sbe_policy(int pid, char *name, unsigned long mask,
 	return 0;
 }
 
-int fpsgo_notify_adpf_hint(struct _SESSION *session)
-{
-	int i = 0;
-	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush = NULL;
-
-	if (!session)
-		return -EFAULT;
-
-	if (!kfpsgo_tsk)
-		return -ENOMEM;
-
-	vpPush = fpsgo_alloc_atomic(sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
-	if (!vpPush)
-		return -ENOMEM;
-
-	vpPush->adpf_hint.cmd = session->cmd;
-	vpPush->adpf_hint.sid = session->sid;
-	vpPush->adpf_hint.tgid = session->tgid;
-	vpPush->adpf_hint.uid = session->uid;
-
-	if (session->threadIds_size <= ADPF_MAX_THREAD &&
-		session->threadIds_size >= 0)
-		vpPush->adpf_hint.dep_task_num = session->threadIds_size;
-	else
-		vpPush->adpf_hint.dep_task_num = 0;
-	for (i = 0; i < vpPush->adpf_hint.dep_task_num; i++)
-		vpPush->adpf_hint.dep_task_arr[i] = session->threadIds[i];
-
-	if (session->work_duration_size <= ADPF_MAX_THREAD &&
-		session->work_duration_size >= 0)
-		vpPush->adpf_hint.workload_num = session->work_duration_size;
-	else
-		vpPush->adpf_hint.workload_num = 0;
-	for (i = 0; i < vpPush->adpf_hint.workload_num; i++) {
-		vpPush->adpf_hint.workload_tcpu_arr[i] = session->workDuration[i]->durationNanos;
-		vpPush->adpf_hint.workload_ts_arr[i] = session->workDuration[i]->timeStampNanos;
-	}
-
-	vpPush->adpf_hint.used = session->used;
-	vpPush->adpf_hint.target_time = session->durationNanos;
-	vpPush->ePushType = FPSGO_NOTIFIER_ADPF_HINT;
-
-	fpsgo_queue_work(vpPush);
-
-	return 0;
-}
-
 int fpsgo_notify_magt_target_fps(int *pid_arr, int *tid_arr,
 	int *tfps_arr, int num)
 {
@@ -1566,8 +1453,6 @@ static int __init fpsgo_init(void)
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	drm_register_fps_chg_callback(dfrc_fps_limit_cb);
 #endif
-
-	adpf_register_callback(fpsgo_notify_adpf_hint);
 
 	return 0;
 }
