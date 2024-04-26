@@ -2405,7 +2405,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v1/emiisu.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v1/emictrl.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi-dummy.ko")
-
+        mgk_64_device_modules.append("drivers/misc/mediatek/smi/mtk-smi-bwc.ko")
         mgk_64_common_eng_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_userdebug_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_user_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
