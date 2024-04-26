@@ -672,14 +672,6 @@ EXPORT_SYMBOL(clk_chk_dev_pm_ops);
  * for clock exception event handling
  */
 
-static void clkchk_get_bus_reg(void)
-{
-	if (clkchk_ops == NULL || clkchk_ops->get_bus_reg == NULL)
-		return;
-
-	clkchk_ops->get_bus_reg();
-}
-
 static void clkchk_dump_bus_reg(struct regmap *regmap, u32 ofs)
 {
 	if (clkchk_ops == NULL || clkchk_ops->dump_bus_reg == NULL)
@@ -764,9 +756,6 @@ static int clkchk_evt_handling(struct notifier_block *nb,
 	case CLK_EVT_HWV_CG_CHK_PWR:
 		if (clkchk_is_cg_chk_pwr_on())
 			clkchk_cg_chk(clkd->name);
-		break;
-	case CLK_EVT_LONG_BUS_LATENCY:
-		clkchk_get_bus_reg();
 		break;
 	case CLK_EVT_HWV_PLL_TIMEOUT:
 		clkchk_dump_pll_reg(true);

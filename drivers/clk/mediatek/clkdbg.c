@@ -27,6 +27,7 @@
 #include <linux/version.h>
 
 #include "clk-fmeter.h"
+#include "clk-mtk.h"
 #include "clkdbg.h"
 #include "mtk-pd-chk.h"
 #define CLKDBG_PM_DOMAIN	1
@@ -494,6 +495,9 @@ void prepare_enable_provider(const char *pvd)
 		if (allpvd || (pvdck->provider_name != NULL &&
 				strcmp(pvd, pvdck->provider_name) == 0)) {
 
+			if (!clkchk_pvdck_is_prepared(pvdck) && !clkchk_pvdck_is_enabled(pvdck))
+				continue;
+
 			mdelay(10);
 			pr_dbg("prepare_enable_provider: %s\n", pvdck->ck_name);
 
@@ -516,7 +520,9 @@ void disable_unprepare_provider(const char *pvd)
 
 	for (; pvdck->ck != NULL; pvdck++) {
 		if (allpvd || (pvdck->provider_name != NULL &&
-						strcmp(pvd, pvdck->provider_name) == 0)) {
+				strcmp(pvd, pvdck->provider_name) == 0)) {
+			if (!clkchk_pvdck_is_prepared(pvdck) && !clkchk_pvdck_is_enabled(pvdck))
+				continue;
 
 			mdelay(10);
 			pr_dbg("disable_unprepare_provider: %s\n", pvdck->ck_name);
@@ -664,6 +670,41 @@ static int clkdbg_test_task(struct seq_file *s, void *v)
 		seq_puts(s, "Create task failed\n");
 
 	return 0;
+}
+
+static int clkdbg_clk_notify(struct seq_file *s, void *v)
+{
+	char cmd[sizeof(last_cmd)];
+	char *c = cmd;
+	char *ign;
+	char *notify_str;
+	char *notify_val_str;
+	unsigned int notify_id = 0;
+	unsigned int notify_val = 0xFFFF;
+	int r;
+
+	// Use strscpy instead of strncpy
+	strscpy(cmd, last_cmd, sizeof(cmd));
+	cmd[sizeof(cmd) - 1UL] = '\0';
+
+	ign = strsep(&c, " ");
+	notify_str = strsep(&c, " ");
+	notify_val_str = strsep(&c, " ");
+
+	if (notify_val_str == NULL)
+		return 0;
+
+	r = kstrtouint(notify_str, 0, &notify_id);
+
+	if (notify_val_str != NULL)
+		r = kstrtouint(notify_val_str, 0, &notify_val);
+
+	seq_printf(s, "clk_notify(%d %d): %d: ", notify_id, notify_val, r);
+
+	r = mtk_clk_notify(NULL, NULL, "notify test", 0, notify_val, 0, notify_id);
+	seq_printf(s, "%d\n", r);
+
+	return r;
 }
 
 #if IS_ENABLED(CONFIG_MTK_CLKMGR_DEBUG)
@@ -1084,6 +1125,8 @@ static int clkdbg_pm_runtime_get_sync(struct seq_file *s, void *v)
 	char *ign;
 	char *dev_name;
 	struct device *dev;
+	unsigned int idx = 0;
+	int r = 0;
 
 	strncpy(cmd, last_cmd, sizeof(cmd));
 	cmd[sizeof(cmd) - 1UL] = '\0';
@@ -1101,6 +1144,21 @@ static int clkdbg_pm_runtime_get_sync(struct seq_file *s, void *v)
 		int r = pm_runtime_get_sync(dev);
 
 		seq_printf(s, "%d\n", r);
+	} else if (!strcmp(dev_name, "all")) {
+		do {
+			const char *pd_name = pdchk_get_pd_name(idx);
+
+			if (!pd_name)
+				break;
+
+			dev = dev_from_name(pd_name);
+
+			pr_dbg("pm_runtime_get_sync_all: %s\n", pd_name);
+			r = pm_runtime_get_sync(dev);
+			if (r != 0)
+				pr_dbg("pm_runtime_get_sync(): %d\n", r);
+			idx++;
+		} while (1);
 	} else {
 		seq_puts(s, "NULL\n");
 	}
@@ -1115,6 +1173,8 @@ static int clkdbg_pm_runtime_put_sync(struct seq_file *s, void *v)
 	char *ign;
 	char *dev_name;
 	struct device *dev;
+	unsigned int idx = 0;
+	int r = 0;
 
 	strncpy(cmd, last_cmd, sizeof(cmd));
 	cmd[sizeof(cmd) - 1UL] = '\0';
@@ -1132,6 +1192,21 @@ static int clkdbg_pm_runtime_put_sync(struct seq_file *s, void *v)
 		int r = pm_runtime_put_sync(dev);
 
 		seq_printf(s, "%d\n", r);
+	} else if (!strcmp(dev_name, "all")) {
+		do {
+			const char *pd_name = pdchk_get_pd_name(idx);
+
+			if (!pd_name)
+				break;
+
+			dev = dev_from_name(pd_name);
+
+			pr_dbg("pm_runtime_put_sync_all: %s\n", pd_name);
+			r = pm_runtime_put_sync(dev);
+			if (r != 0)
+				pr_dbg("pm_runtime_put_sync(): %d\n", r);
+			idx++;
+		} while (1);
 	} else {
 		seq_puts(s, "NULL\n");
 	}
@@ -1491,6 +1566,7 @@ static const struct cmd_fn common_cmds[] = {
 	CMDFN("unreg_pdrv", clkdbg_unreg_pdrv),
 #endif /* CLKDBG_PM_DOMAIN */
 	CMDFN("test_task", clkdbg_test_task),
+	CMDFN("clk_notify", clkdbg_clk_notify),
 	CMDFN("cmds", clkdbg_cmds),
 	{}
 };

@@ -5,7 +5,7 @@ ccflags-y += \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM) \
 
 obj-$(CONFIG_DEVICE_MODULES_COMMON_CLK_MEDIATEK) += clk-common.o
-clk-common-$(CONFIG_DEVICE_MODULES_COMMON_CLK_MEDIATEK) += clk-mtk.o clk-pll.o clk-gate.o clk-apmixed.o clk-cpumux.o reset.o clk-mux.o clkchk.o clk-fmeter.o mtk-pd-chk.o clkdbg.o
+clk-common-$(CONFIG_DEVICE_MODULES_COMMON_CLK_MEDIATEK) += clk-mtk.o clk-pll.o clk-gate.o clk-mux.o clkchk.o clk-fmeter.o mtk-pd-chk.o clkdbg.o
 obj-$(CONFIG_DEVICE_MODULES_COMMON_CLK_MEDIATEK) += clk-disable-unused.o
 
 ifneq ($(wildcard $(srctree)/$(src)/clk-mt6781.c),)
@@ -163,7 +163,7 @@ obj-$(CONFIG_COMMON_CLK_MT6989_VLP) += clk-mt6989-vlp.o
 obj-$(CONFIG_COMMON_CLK_MT6989_VCODEC) += clk-mt6989-vcodec.o
 endif
 ifneq ($(wildcard $(srctree)/$(src)/clk-mt6991.c),)
-obj-$(CONFIG_COMMON_CLK_MT6991) += clk-mt6991.o clk-bringup.o
+obj-$(CONFIG_COMMON_CLK_MT6991) += clk-mt6991.o
 obj-$(CONFIG_COMMON_CLK_MT6991_ADSP) += clk-mt6991-adsp.o
 obj-$(CONFIG_COMMON_CLK_MT6991_BUS) += clk-mt6991-bus.o
 obj-$(CONFIG_COMMON_CLK_MT6991_CAM) += clk-mt6991-cam.o

@@ -422,13 +422,14 @@ static bool pdchk_suspend_allow(unsigned int id)
 }
 #endif
 
-static const char *pdchk_get_pd_name(int idx)
+const char *pdchk_get_pd_name(int idx)
 {
 	if (pdchk_ops == NULL || pdchk_ops->get_pd_name == NULL)
 		return NULL;
 
 	return pdchk_ops->get_pd_name(idx);
 }
+EXPORT_SYMBOL_GPL(pdchk_get_pd_name);
 
 static int set_genpd_notify(void)
 {
