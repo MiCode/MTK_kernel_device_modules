@@ -525,6 +525,24 @@ static const struct mfd_cell mt6359p_devs[] = {
 		.name = "mt-pmic",
 		.of_compatible = "mediatek,mt63xx-debug",
 	}, {
+		.name = "mtk_ts_pmic",
+		.of_compatible = "mediatek,mtk_ts_pmic"
+	}, {
+		.name = "mt6359vcore",
+		.of_compatible = "mediatek,mt6359vcore"
+	}, {
+		.name = "mt6359vproc ",
+		.of_compatible = "mediatek,mt6359vproc"
+	}, {
+		.name = "mt6359vgpu",
+		.of_compatible = "mediatek,mt6359vgpu"
+	}, {
+		.name = "mt6359tsx",
+		.of_compatible = "mediatek,mt6359tsx"
+	}, {
+		.name = "mt6359dcxo",
+		.of_compatible = "mediatek,mt6359dcxo"
+	},{
 		.name = "mt6359p-accdet",
 		.of_compatible = "mediatek,mt6359p-accdet",
 		.num_resources = ARRAY_SIZE(mt6359p_accdet_resources),

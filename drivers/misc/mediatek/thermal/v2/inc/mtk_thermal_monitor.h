@@ -8,6 +8,7 @@
 
 #include <linux/thermal.h>
 
+;
 /*
  *  MTK_THERMAL_WRAPPER_BYPASS = 1 (use original Linux Thermal API)
  *  MTK_THERMAL_WRAPPER_BYPASS = 0 (use MTK Thermal API Monitor)
@@ -31,7 +32,7 @@ struct thermal_cooling_device_ops_extra {
 
 extern
 struct thermal_zone_device *mtk_thermal_zone_device_register_wrapper
-(char *type, struct thermal_trip *trips, int num_trip, void *devdata,
+(char *type, int trips, void *devdata,
 const struct thermal_zone_device_ops *ops,
 int tc1, int tc2, int passive_delay, int polling_delay);
 
@@ -109,7 +110,7 @@ extern struct proc_dir_entry *mtk_thermal_get_proc_drv_therm_dir_entry(void);
 /* This API function is implemented in mediatek/kernel/drivers/leds/leds.c */
 #if IS_ENABLED(CONFIG_LEDS_MTK_DISP) || IS_ENABLED(CONFIG_LEDS_MTK_PWM) \
 	|| IS_ENABLED(CONFIG_LEDS_MTK_I2C)
-extern int setMaxBrightness(int connector_id, int percent, bool enable);
+extern int setMaxBrightness(char *name, int percent, bool enable);
 #else
 extern int setMaxbrightness(int max_level, int enable);
 #endif
