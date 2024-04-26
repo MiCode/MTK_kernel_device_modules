@@ -34,6 +34,8 @@
 #include "apmcupm_scmi_v2.h"
 #include "pmsr_v3.h"
 
+#define ACC_RESULTS cfg.acc_results
+
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 static struct scmi_tinysys_info_st *tinfo;
 static int scmi_apmcupm_id;
@@ -72,11 +74,22 @@ static void pmsr_cfg_init(void)
 	cfg.err = 0;
 	cfg.test = 0;
 	cfg.prof_cnt = 0;
+	cfg.pmsr_sig_count = 0;
+	cfg.share_buf = NULL;
+	cfg.pmsr_tool_share_results = NULL;
 
-	for (i = 0 ; i < SET_CH_MAX; i++) {
+	for (i = 0 ; i < PMSR_MET_CH; i++) {
 		cfg.ch[i].dpmsr_id = 0xFFFFFFFF;
 		cfg.ch[i].signal_id = 0xFFFFFFFF; /* default disabled */
 	}
+
+	for (i = 0 ; i < PMSR_MAX_SIG_CH; i++) {
+		cfg.pmsr_signal_id[i] = 0xFFFFFFFF;
+		ACC_RESULTS.results[i] = 0;
+	}
+	ACC_RESULTS.time_stamp = 0;
+	ACC_RESULTS.winlen = 0;
+	ACC_RESULTS.acc_num = 0;
 
 	for (i = 0 ; i < cfg.dpmsr_count; i++) {
 		cfg.dpmsr[i].seltype = DEFAULT_SELTYPE;
@@ -118,12 +131,48 @@ static int pmsr_ipi_init(void)
 	return ret;
 }
 
+static int pmsr_get_sspm_sram(void)
+{
+	unsigned int user_info =
+				(APMCU_SET_UID(APMCU_SCMI_UID_PMSR) |
+				APMCU_SET_UUID(APMCU_SCMI_UUID_PMSR) |
+				APMCU_SET_MG);
+	int ret;
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	struct scmi_tinysys_status pmsr_tool_rvalue;
+
+	pmsr_scmi_set_data.user_info =
+			(user_info | APMCU_SET_ACT(PMSR_TOOL_ACT_GET_SRAM));
+
+	/* SCMI GET interface return sspm sram address */
+	ret = scmi_tinysys_common_get(tinfo->ph, scmi_apmcupm_id,
+			pmsr_scmi_set_data.user_info, &pmsr_tool_rvalue);
+	if (ret) {
+		cfg.err |= (1 << PMSR_TOOL_ACT_GET_SRAM);
+	} else {
+		cfg.share_buf =
+			(struct pmsr_tool_mon_results *)sspm_sbuf_get(pmsr_tool_rvalue.r1);
+		cfg.pmsr_tool_buffer_max_space = pmsr_tool_rvalue.r2;
+		cfg.pmsr_tool_share_results =
+			(struct pmsr_tool_results *)sspm_sbuf_get(pmsr_tool_rvalue.r3);
+	}
+	pmsr_tool_last_time_stamp =
+		kcalloc(cfg.pmsr_tool_buffer_max_space, sizeof(unsigned int), GFP_KERNEL);
+	if (!pmsr_tool_last_time_stamp)
+		pr_notice("pmsr tool last time stamp fail\n");
+#endif
+
+	return 0;
+}
+
 static void pmsr_tool_send_forcereq(struct work_struct *work)
 {
 	unsigned int read_idx;
 	unsigned int oldest_idx;
 	struct pmsr_tool_mon_results *pmsr_tool_val;
 	int ret;
+	unsigned int i;
 	unsigned int user_info =
 			(APMCU_SET_UID(APMCU_SCMI_UID_PMSR) |
 			APMCU_SET_UUID(APMCU_SCMI_UUID_PMSR) |
@@ -152,7 +201,7 @@ static void pmsr_tool_send_forcereq(struct work_struct *work)
 
 			pr_notice("[%u] dpmsr %u(%u): %u, %u, %u, %u, %u, %u, %u, %u\n",
 				pmsr_tool_val->time_stamp, cfg.dpmsr_count-1,
-				cfg.pmsr_tool_share_results->winlen,
+				pmsr_tool_val->winlen,
 				pmsr_tool_val->results[0],
 				pmsr_tool_val->results[1],
 				pmsr_tool_val->results[2],
@@ -163,6 +212,14 @@ static void pmsr_tool_send_forcereq(struct work_struct *work)
 				pmsr_tool_val->results[7]);
 
 			pmsr_tool_last_idx = read_idx;
+
+			for (i = 0; i < PMSR_MAX_SIG_CH; i++)
+				ACC_RESULTS.results[i] += pmsr_tool_val->results[i];
+
+			ACC_RESULTS.time_stamp = pmsr_tool_val->time_stamp;
+			ACC_RESULTS.winlen += pmsr_tool_val->winlen;
+			ACC_RESULTS.acc_num++;
+
 		}
 	}
 #endif
@@ -189,6 +246,8 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 				APMCU_SET_MG);
 	int ret;
 	int i;
+	unsigned int index;
+	struct pmsr_tool_mon_results *pmsr_tool_val;
 
 	if (!userbuf || !v)
 		return -EINVAL;
@@ -206,8 +265,22 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 
 	if ((void *)v == (void *)&cfg.enable) {
 		if (cfg.enable == true) {
+			/* pmsr get sspm sram address */
+			pmsr_get_sspm_sram();
+
+			if (!cfg.pmsr_tool_share_results || !cfg.share_buf)
+				return -EFAULT;
+
+			index = cfg.pmsr_tool_share_results->oldest_idx;
+			pmsr_tool_val = &cfg.share_buf[index];
+
+			for (i = 0 ; i < cfg.pmsr_sig_count; i++) {
+				if (cfg.pmsr_signal_id[i] != 0xFFFFFFFF)
+					pmsr_tool_val->results[i] = cfg.pmsr_signal_id[i];
+			}
+
 			/* pass the channel setting */
-			for (i = 0 ; i < SET_CH_MAX; i++) {
+			for (i = 0 ; i < PMSR_MET_CH; i++) {
 				if (cfg.ch[i].dpmsr_id == 0xFFFFFFFF)
 					continue;
 
@@ -351,6 +424,9 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 	} else if ((void *)v == (void *)&cfg.test) {
 		if (cfg.test == 1) {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+			if (!cfg.pmsr_tool_share_results || !cfg.share_buf)
+				return -EFAULT;
+
 			pmsr_scmi_set_data.user_info =
 				(user_info | APMCU_SET_ACT(PMSR_TOOL_ACT_TEST));
 			ret = scmi_tinysys_common_set(tinfo->ph, scmi_apmcupm_id,
@@ -369,7 +445,7 @@ static const struct proc_ops remote_data_fops = {
 	.proc_write = remote_data_write,
 };
 
-static char dbgbuf[1024] = {0};
+static char dbgbuf[4096] = {0};
 #define log2buf(p, s, fmt, args...) \
 	(p += scnprintf(p, sizeof(s) - strlen(s), fmt, ##args))
 #undef log
@@ -392,7 +468,8 @@ static ssize_t local_ipi_read(struct file *fp, char __user *userbuf,
 	    cfg.pmsr_window_len, cfg.pmsr_window_len);
 	log("sample_rate %u (0x%x)\n",
 	    cfg.pmsr_sample_rate, cfg.pmsr_sample_rate);
-	for (i = 0; i < SET_CH_MAX; i++) {
+
+	for (i = 0; i < PMSR_MET_CH; i++) {
 		if (cfg.ch[i].dpmsr_id < cfg.dpmsr_count)
 			log("ch%d: dpmsr %u id %u\n",
 			    i,
@@ -400,6 +477,15 @@ static ssize_t local_ipi_read(struct file *fp, char __user *userbuf,
 			    cfg.ch[i].signal_id);
 		else
 			log("ch%d: off\n", i);
+	}
+
+	for (i = 0; i < PMSR_MAX_SIG_CH; i++) {
+		if (cfg.pmsr_signal_id[i] != 0xFFFFFFFF)
+			log("sig%d: %u\n",
+			    i,
+			    cfg.pmsr_signal_id[i]);
+		else
+			continue;
 	}
 	for (i = 0; i < cfg.dpmsr_count; i++) {
 		log("dpmsr %u seltype %u montype %u (%s) signum %u en %u\n",
@@ -460,7 +546,7 @@ static ssize_t local_sram_read(struct file *fp, char __user *userbuf,
 			if (pmsr_tool_val->time_stamp != pmsr_tool_last_time_stamp[read_idx]) {
 				log("[%u] dpmsr %u(%u): ",
 					pmsr_tool_val->time_stamp, cfg.dpmsr_count-1,
-					cfg.pmsr_tool_share_results->winlen);
+					pmsr_tool_val->winlen);
 
 				log("%u, %u, %u, %u, %u, %u, %u, %u\n",
 					pmsr_tool_val->results[0],
@@ -505,6 +591,55 @@ static const struct proc_ops local_sram_fops = {
 	.proc_write = local_sram_write,
 };
 
+static ssize_t local_signal_read(struct file *filp, char __user *userbuf,
+				size_t count, loff_t *f_pos)
+{
+	unsigned int i;
+	int len = 0;
+	char *p = dbgbuf;
+
+	p[0] = '\0';
+
+	log("[%u] dpmsr %u(%llu): ",
+		ACC_RESULTS.time_stamp, cfg.dpmsr_count-1, ACC_RESULTS.winlen);
+
+	for (i = 0; i < PMSR_MAX_SIG_CH - 1; i++)
+		log("%llu, ", ACC_RESULTS.results[i]);
+
+	log("%llu in %u\n", ACC_RESULTS.results[PMSR_MAX_SIG_CH - 1], ACC_RESULTS.acc_num);
+	len = p - dbgbuf;
+	return simple_read_from_buffer(userbuf, count, f_pos, dbgbuf, len);
+}
+
+static ssize_t local_signal_write(struct file *fp, const char *userbuf,
+			       size_t count, loff_t *f_pos)
+{
+	int ret = -EINVAL;
+	unsigned int v = 0;
+
+	if (!userbuf)
+		return -EINVAL;
+
+	if (count >= MTK_PMSR_BUF_WRITESZ)
+		return -EINVAL;
+
+	if (kstrtou32_from_user(userbuf, count, 10, &v))
+		return -EFAULT;
+
+	if (cfg.pmsr_sig_count < PMSR_MAX_SIG_CH) {
+		cfg.pmsr_signal_id[cfg.pmsr_sig_count] = v;
+		ret = count;
+		cfg.pmsr_sig_count++;
+	}
+
+	return ret;
+}
+
+static const struct proc_ops local_signal_fops = {
+	.proc_read = local_signal_read,
+	.proc_write = local_signal_write,
+};
+
 static struct proc_dir_entry *pmsr_droot;
 
 static int pmsr_procfs_init(void)
@@ -532,8 +667,9 @@ static int pmsr_procfs_init(void)
 				 (void *) &(cfg.enable));
 		proc_create_data("test", 0644, pmsr_droot, &remote_data_fops,
 				 (void *) &(cfg.test));
+		proc_create("signal", 0644, pmsr_droot, &local_signal_fops);
 
-		for (i = 0 ; i < SET_CH_MAX; i++) {
+		for (i = 0 ; i < PMSR_MET_CH; i++) {
 			ch = proc_mkdir(ch_name[i], pmsr_droot);
 
 			if (ch) {
@@ -615,41 +751,6 @@ static int __init pmsr_parsing_nodes(void)
 	return 0;
 }
 
-static int pmsr_get_sspm_sram(void)
-{
-	unsigned int user_info =
-				(APMCU_SET_UID(APMCU_SCMI_UID_PMSR) |
-				APMCU_SET_UUID(APMCU_SCMI_UUID_PMSR) |
-				APMCU_SET_MG);
-	int ret;
-
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
-	struct scmi_tinysys_status pmsr_tool_rvalue;
-
-	pmsr_scmi_set_data.user_info =
-			(user_info | APMCU_SET_ACT(PMSR_TOOL_ACT_GET_SRAM));
-
-	/* SCMI GET interface return sspm sram address */
-	ret = scmi_tinysys_common_get(tinfo->ph, scmi_apmcupm_id,
-			pmsr_scmi_set_data.user_info, &pmsr_tool_rvalue);
-	if (ret)
-		cfg.err |= (1 << PMSR_TOOL_ACT_GET_SRAM);
-	else {
-		cfg.share_buf =
-			(struct pmsr_tool_mon_results *)sspm_sbuf_get(pmsr_tool_rvalue.r1);
-		cfg.pmsr_tool_buffer_max_space = pmsr_tool_rvalue.r2;
-		cfg.pmsr_tool_share_results =
-			(struct pmsr_tool_results *)sspm_sbuf_get(pmsr_tool_rvalue.r3);
-	}
-	pmsr_tool_last_time_stamp =
-		kcalloc(cfg.pmsr_tool_buffer_max_space, sizeof(unsigned int), GFP_KERNEL);
-	if (!pmsr_tool_last_time_stamp)
-		pr_notice("pmsr tool last time stamp fail\n");
-#endif
-
-	return 0;
-}
-
 static int __init pmsr_init(void)
 {
 
@@ -669,9 +770,6 @@ static int __init pmsr_init(void)
 
 	/* register ipi for AP2SSPM communication */
 	pmsr_ipi_init();
-
-	/* pmsr get sspm sram address */
-	pmsr_get_sspm_sram();
 
 	hrtimer_init(&pmsr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	pmsr_timer.function = pmsr_timer_handle;
@@ -696,6 +794,7 @@ static void __exit pmsr_exit(void)
 	pmsr_procfs_exit();
 	kfree(cfg.dpmsr);
 	hrtimer_try_to_cancel(&pmsr_timer);
+	kfree(pmsr_tool_last_time_stamp);
 
 	flush_workqueue(pmsr_tool_forcereq);
 	destroy_workqueue(pmsr_tool_forcereq);

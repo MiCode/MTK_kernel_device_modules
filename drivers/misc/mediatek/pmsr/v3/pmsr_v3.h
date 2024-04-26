@@ -28,7 +28,8 @@
 #define WINDOW_LEN_NORMAL		(PMSR_PERIOD_MS * 0xD)
 #define GET_EVENT_RATIO_SPEED(x)	((x)/(WINDOW_LEN_SPEED/1000))
 #define GET_EVENT_RATIO_NORMAL(x)	((x)/(WINDOW_LEN_NORMAL/1000))
-#define SET_CH_MAX 8
+#define PMSR_MET_CH 8
+#define PMSR_MAX_SIG_CH 150
 #define MTK_PMSR_BUF_WRITESZ 512
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
@@ -66,23 +67,32 @@ struct pmsr_dpmsr_cfg {
 };
 
 struct pmsr_tool_mon_results {
-	unsigned int results[SET_CH_MAX];
+	unsigned int results[PMSR_MAX_SIG_CH];
 	unsigned int time_stamp;
+	unsigned int winlen;
+};
+
+struct pmsr_tool_mon_results_acc {
+	uint64_t results[PMSR_MAX_SIG_CH];
+	unsigned int time_stamp;
+	uint64_t winlen;
+	unsigned int acc_num;
 };
 
 struct pmsr_tool_results {
 	unsigned int oldest_idx;
-	unsigned int winlen;
 };
 
 struct pmsr_cfg {
 	struct pmsr_dpmsr_cfg *dpmsr;
-	struct pmsr_channel ch[SET_CH_MAX];	/* channel 0~3 config */
+	struct pmsr_channel ch[PMSR_MET_CH];	/* channel 0~3 config */
+	unsigned int pmsr_signal_id[PMSR_MAX_SIG_CH];
 	unsigned int pmsr_speed_mode;		/* 0: normal, 1: high speed */
 	unsigned int pmsr_window_len;
 	unsigned int clean_records;
 	unsigned int pmsr_sample_rate;
 	unsigned int dpmsr_count;
+	unsigned int pmsr_sig_count;
 	bool enable;
 	unsigned int err;
 	unsigned int test;
@@ -91,6 +101,7 @@ struct pmsr_cfg {
 	struct pmsr_tool_mon_results *share_buf;
 	unsigned int pmsr_tool_buffer_max_space;
 	struct pmsr_tool_results *pmsr_tool_share_results;
+	struct pmsr_tool_mon_results_acc acc_results;
 #endif
 	/* pmsr_window_len
 	 *	0: will be automatically updated for current speed mode
