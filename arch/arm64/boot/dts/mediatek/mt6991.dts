@@ -12110,9 +12110,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMSV>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_A_CON_1_CAMSV>,
-					<&cksys_gp2_clk CLK_CK2_CAM_SEL>,
-					<&cksys_gp2_clk CLK_CK2_CAMTM_SEL>;
+					<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_A_CON_1_CAMSV>;
 			clock-names = "cam_main_cam_cgpdn",
 					"cam_main_larb14_con",
 					"cam_main_camsv_top_con",
@@ -12120,9 +12118,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"cam_main_cam2mm1_gals_con",
 					"cam_main_cam2sys_gals_con",
 					"cam_main_cam2mm2_gals_con",
-					"cam_main_camsv_a_con",
-					"topckgen_top_cam_sel",
-					"topckgen_top_camtm_sel";
+					"cam_main_camsv_a_con";
 			mediatek,smmu-dma-axid =
 					<SMMU_L14_P0_CAMSV_A_CQI_E1>,
 					<SMMU_L14_P1_CAMSV_A0_WDMA>,
@@ -12181,9 +12177,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMSV>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_B_CON_1_CAMSV>,
-					<&cksys_gp2_clk CLK_CK2_CAM_SEL>,
-					<&cksys_gp2_clk CLK_CK2_CAMTM_SEL>;
+					<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_B_CON_1_CAMSV>;
 			clock-names = "cam_main_cam_cgpdn",
 					"cam_main_larb13_con",
 					"cam_main_camsv_top_con",
@@ -12191,9 +12185,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"cam_main_cam2mm1_gals_con",
 					"cam_main_cam2sys_gals_con",
 					"cam_main_cam2mm2_gals_con",
-					"cam_main_camsv_b_con",
-					"topckgen_top_cam_sel",
-					"topckgen_top_camtm_sel";
+					"cam_main_camsv_b_con";
 			mediatek,smmu-dma-axid =
 					<SMMU_L13_P0_CAMSV_B_CQI_E1>,
 					<SMMU_L13_P1_CAMSV_B0_WDMA>,
@@ -12252,9 +12244,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMSV>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_C_CON_1_CAMSV>,
-					<&cksys_gp2_clk CLK_CK2_CAM_SEL>,
-					<&cksys_gp2_clk CLK_CK2_CAMTM_SEL>;
+					<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_C_CON_1_CAMSV>;
 			clock-names = "cam_main_cam_cgpdn",
 					"cam_main_larb29_con",
 					"cam_main_camsv_top_con",
@@ -12262,9 +12252,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"cam_main_cam2mm1_gals_con",
 					"cam_main_cam2sys_gals_con",
 					"cam_main_cam2mm2_gals_con",
-					"cam_main_camsv_c_con",
-					"topckgen_top_cam_sel",
-					"topckgen_top_camtm_sel";
+					"cam_main_camsv_c_con";
 			mediatek,smmu-dma-axid =
 					<SMMU_L29_P0_CAMSV_C_CQI_E1>,
 					<SMMU_L29_P4_CAMSV_C_WDMA>;
@@ -12304,9 +12292,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMSV>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_D_CON_1_CAMSV>,
-					<&cksys_gp2_clk CLK_CK2_CAM_SEL>,
-					<&cksys_gp2_clk CLK_CK2_CAMTM_SEL>;
+					<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_D_CON_1_CAMSV>;
 			clock-names = "cam_main_cam_cgpdn",
 					"cam_main_larb29_con",
 					"cam_main_camsv_top_con",
@@ -12314,9 +12300,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"cam_main_cam2mm1_gals_con",
 					"cam_main_cam2sys_gals_con",
 					"cam_main_cam2mm2_gals_con",
-					"cam_main_camsv_d_con",
-					"topckgen_top_cam_sel",
-					"topckgen_top_camtm_sel";
+					"cam_main_camsv_d_con";
 			mediatek,smmu-dma-axid =
 					<SMMU_L29_P1_CAMSV_D_CQI_E1>,
 					<SMMU_L29_P5_CAMSV_D_WDMA>;
@@ -12356,9 +12340,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMSV>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_E_CON_1_CAMSV>,
-					<&cksys_gp2_clk CLK_CK2_CAM_SEL>,
-					<&cksys_gp2_clk CLK_CK2_CAMTM_SEL>;
+					<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_E_CON_1_CAMSV>;
 			clock-names = "cam_main_cam_cgpdn",
 					"cam_main_larb29_con",
 					"cam_main_camsv_top_con",
@@ -12366,9 +12348,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"cam_main_cam2mm1_gals_con",
 					"cam_main_cam2sys_gals_con",
 					"cam_main_cam2mm2_gals_con",
-					"cam_main_camsv_e_con",
-					"topckgen_top_cam_sel",
-					"topckgen_top_camtm_sel";
+					"cam_main_camsv_e_con";
 			mediatek,smmu-dma-axid =
 					<SMMU_L29_P2_CAMSV_E_CQI_E1>,
 					<SMMU_L29_P6_CAMSV_E_WDMA>;
@@ -12408,9 +12388,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMSV>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_CON_1_CAMSV>,
-					<&cksys_gp2_clk CLK_CK2_CAM_SEL>,
-					<&cksys_gp2_clk CLK_CK2_CAMTM_SEL>;
+					<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_CON_1_CAMSV>;
 			clock-names = "cam_main_cam_cgpdn",
 					"cam_main_larb29_con",
 					"cam_main_camsv_top_con",
@@ -12418,9 +12396,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"cam_main_cam2mm1_gals_con",
 					"cam_main_cam2sys_gals_con",
 					"cam_main_cam2mm2_gals_con",
-					"cam_main_camsv_f_con",
-					"topckgen_top_cam_sel",
-					"topckgen_top_camtm_sel";
+					"cam_main_camsv_f_con";
 			mediatek,smmu-dma-axid =
 					<SMMU_L29_P3_CAMSV_F_CQI_E1>,
 					<SMMU_L29_P7_CAMSV_F_WDMA>;
@@ -12451,26 +12427,18 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS>,
 					<&camsys_mraw_clk CLK_CAM_MR_LARBX_PDAF>,
 					<&camsys_mraw_clk CLK_CAM_MR_GALS_PDAF>,
 					<&camsys_mraw_clk CLK_CAM_MR_CAMTG_PDAF>,
-					<&camsys_mraw_clk CLK_CAM_MR_MRAW0_PDAF>,
-					<&cksys_gp2_clk CLK_CK2_CAM_SEL>,
-					<&cksys_gp2_clk CLK_CK2_CAMTM_SEL>;
+					<&camsys_mraw_clk CLK_CAM_MR_MRAW0_PDAF>;
 			clock-names = "cam_main_cam_cgpdn",
 					"cam_main_mraw_cg_con",
 					"cam_main_cam2mm0_gals_con",
 					"cam_main_cam2mm1_gals_con",
-					"cam_main_cam2sys_gals_con",
-					"cam_main_cam2mm2_gals_con",
 					"camsys_mraw_larbx",
 					"camsys_mraw_gals",
 					"camsys_mraw_camtg",
-					"camsys_main_mraw0",
-					"topckgen_top_cam_sel",
-					"topckgen_top_camtm_sel";
+					"camsys_main_mraw0";
 			mediatek,smmu-dma-axid =
 					<SMMU_L25_P0_CQI_M1>,
 					<SMMU_L25_P1_IMGO_M1>;
@@ -12501,26 +12469,18 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS>,
 					<&camsys_mraw_clk CLK_CAM_MR_LARBX_PDAF>,
 					<&camsys_mraw_clk CLK_CAM_MR_GALS_PDAF>,
 					<&camsys_mraw_clk CLK_CAM_MR_CAMTG_PDAF>,
-					<&camsys_mraw_clk CLK_CAM_MR_MRAW1_PDAF>,
-					<&cksys_gp2_clk CLK_CK2_CAM_SEL>,
-					<&cksys_gp2_clk CLK_CK2_CAMTM_SEL>;
+					<&camsys_mraw_clk CLK_CAM_MR_MRAW1_PDAF>;
 			clock-names = "cam_main_cam_cgpdn",
 					"cam_main_mraw_cg_con",
 					"cam_main_cam2mm0_gals_con",
 					"cam_main_cam2mm1_gals_con",
-					"cam_main_cam2sys_gals_con",
-					"cam_main_cam2mm2_gals_con",
 					"camsys_mraw_larbx",
 					"camsys_mraw_gals",
 					"camsys_mraw_camtg",
-					"camsys_main_mraw1",
-					"topckgen_top_cam_sel",
-					"topckgen_top_camtm_sel";
+					"camsys_main_mraw1";
 			mediatek,smmu-dma-axid =
 					<SMMU_L26_P0_CQI_M1>,
 					<SMMU_L26_P1_IMGO_M1>;
@@ -12551,26 +12511,18 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS>,
 					<&camsys_mraw_clk CLK_CAM_MR_LARBX_PDAF>,
 					<&camsys_mraw_clk CLK_CAM_MR_GALS_PDAF>,
 					<&camsys_mraw_clk CLK_CAM_MR_CAMTG_PDAF>,
-					<&camsys_mraw_clk CLK_CAM_MR_MRAW2_PDAF>,
-					<&cksys_gp2_clk CLK_CK2_CAM_SEL>,
-					<&cksys_gp2_clk CLK_CK2_CAMTM_SEL>;
+					<&camsys_mraw_clk CLK_CAM_MR_MRAW2_PDAF>;
 			clock-names = "cam_main_cam_cgpdn",
 					"cam_main_mraw_cg_con",
 					"cam_main_cam2mm0_gals_con",
 					"cam_main_cam2mm1_gals_con",
-					"cam_main_cam2sys_gals_con",
-					"cam_main_cam2mm2_gals_con",
 					"camsys_mraw_larbx",
 					"camsys_mraw_gals",
 					"camsys_mraw_camtg",
-					"camsys_main_mraw2",
-					"topckgen_top_cam_sel",
-					"topckgen_top_camtm_sel";
+					"camsys_main_mraw2";
 			mediatek,smmu-dma-axid =
 					<SMMU_L25_P2_CQI_M1>,
 					<SMMU_L25_P3_IMGO_M1>;
@@ -12601,26 +12553,18 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS>,
 					<&camsys_mraw_clk CLK_CAM_MR_LARBX_PDAF>,
 					<&camsys_mraw_clk CLK_CAM_MR_GALS_PDAF>,
 					<&camsys_mraw_clk CLK_CAM_MR_CAMTG_PDAF>,
-					<&camsys_mraw_clk CLK_CAM_MR_MRAW3_PDAF>,
-					<&cksys_gp2_clk CLK_CK2_CAM_SEL>,
-					<&cksys_gp2_clk CLK_CK2_CAMTM_SEL>;
+					<&camsys_mraw_clk CLK_CAM_MR_MRAW3_PDAF>;
 			clock-names = "cam_main_cam_cgpdn",
 					"cam_main_mraw_cg_con",
 					"cam_main_cam2mm0_gals_con",
 					"cam_main_cam2mm1_gals_con",
-					"cam_main_cam2sys_gals_con",
-					"cam_main_cam2mm2_gals_con",
 					"camsys_mraw_larbx",
 					"camsys_mraw_gals",
 					"camsys_mraw_camtg",
-					"camsys_main_mraw3",
-					"topckgen_top_cam_sel",
-					"topckgen_top_camtm_sel";
+					"camsys_main_mraw3";
 			mediatek,smmu-dma-axid =
 					<SMMU_L26_P2_CQI_M1>,
 					<SMMU_L26_P3_IMGO_M1>;
