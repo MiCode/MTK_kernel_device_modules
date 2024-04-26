@@ -809,7 +809,8 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 		port->full_debug_dump = true;
 		mtk_pcie_dump_link_info(port->port_num);
 		port->full_debug_dump = false;
-		if (!port->soft_off)
+		/* only thinmodem not return error when soft on */
+		if (!port->soft_off || !port->port_num)
 			return err;
 	} else {
 		dev_info(port->dev, "PCIe linkup success ...\n");
