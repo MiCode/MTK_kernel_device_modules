@@ -4235,6 +4235,58 @@ static enum MTK_LAYERING_CAPS mml_mode_mapping(enum mml_mode mode)
 	return ret;
 }
 
+static enum mml_mode query_mml_mode(struct drm_device *dev, struct drm_crtc *crtc,
+					enum mml_mode query_mode)
+{
+	enum mml_mode mode = MML_MODE_UNKNOWN;
+	enum MTK_LAYERING_CAPS ret = MTK_MML_DISP_NOT_SUPPORT;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+	struct drm_crtc *crtcx = NULL;
+	struct mml_drm_ctx *mml_ctx = NULL;
+	int mml_decouple2 = 0;
+	int reason = 0;
+
+	priv = dev->dev_private;
+	mtk_crtc = to_mtk_crtc(crtc);
+
+	mml_decouple2 = (mtk_drm_get_mml_mode_caps() & MTK_MML_DISP_DECOUPLE2_LAYER?1:0);
+
+	if (mml_decouple2) {
+		mode = query_mode;
+		reason = query_mode;
+	}
+
+	/* set to DC if another display is on */
+	drm_for_each_crtc(crtcx, dev) {
+		if (crtcx && (drm_crtc_index(crtcx) != 0)) {
+			struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtcx);
+
+			if (mtk_crtc->wk_lock->active) {
+				reason |= 1 << 4;
+				goto decouple;
+			}
+		}
+	}
+
+	if (mtk_crtc->mml_prefer_dc) {
+		reason |= 1 << 8;
+		goto decouple;
+	}
+
+	if (mtk_crtc_is_frame_trigger_mode(crtc) && (!mtk_crtc->mml_cmd_ir) &&
+			!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_SUPPORT_CMD_MODE)) {
+			reason |= 1 << 12;
+			goto decouple;
+	}
+	DDPDBG("%s,mode:%d,reason:0x%x\n", __func__, mode, reason);
+
+	return mode;
+decouple:
+	DDPDBG("%s,mode:%d,reason:0x%x\n", __func__, mode, reason);
+	return MML_MODE_MML_DECOUPLE;
+}
+
 static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc *crtc,
 					struct mml_frame_info *mml_info, const u32 line_time_ns,
 					enum mml_mode query_mode)
@@ -4245,9 +4297,6 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 	struct mtk_drm_private *priv = NULL;
 	struct drm_crtc *crtcx = NULL;
 	struct mml_drm_ctx *mml_ctx = NULL;
-	int mml_decouple2 = 0;
-
-	mml_decouple2 = (mtk_drm_get_mml_mode_caps() & MTK_MML_DISP_DECOUPLE2_LAYER?1:0);
 
 	if (!dev || !crtc) {
 		DDPMSG("%s !dev, !crtc\n", __func__);
@@ -4273,33 +4322,7 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 	}
 
 	mml_info->act_time = mml_info->dest[0].compose.height * line_time_ns;
-
-	/* set to DC if another display is on */
-	drm_for_each_crtc(crtcx, dev) {
-		if (crtcx && (drm_crtc_index(crtcx) != 0)) {
-			struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtcx);
-
-			if (mtk_crtc->wk_lock->active)
-				mml_info->mode = MML_MODE_MML_DECOUPLE;
-		}
-	}
-
-	if (mtk_crtc->mml_prefer_dc) {
-		mml_info->mode = MML_MODE_MML_DECOUPLE;
-		DDPDBG("%s,%d, mode:%d\n", __func__, __LINE__, mml_info->mode);
-	}
-
-	if (mml_decouple2) {
-		mml_info->mode = query_mode;
-		DDPDBG("%s,%d, mode:%d\n", __func__, __LINE__, mml_info->mode);
-	}
-
-
-	if (mtk_crtc_is_frame_trigger_mode(crtc) && (!mtk_crtc->mml_cmd_ir) &&
-		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_SUPPORT_CMD_MODE)) {
-		mml_info->mode = MML_MODE_MML_DECOUPLE;
-		DDPDBG("%s, %d, mode:%d\n", __func__, __LINE__, mml_info->mode);
-	}
+	mml_info->mode = query_mml_mode(dev, crtc, query_mode);
 
 	mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
 	if (mml_ctx != NULL) {
@@ -4371,7 +4394,7 @@ static void check_is_mml_layer(const int disp_idx,
 
 					mutex_unlock(&priv->commit.lock);
 				}
-
+				multi_mml_info[mml_cnt]->mode = query_mml_mode(dev, crtc, MML_MODE_UNKNOWN);
 				multi_mml_info[mml_cnt]->act_time =
 					multi_mml_info[mml_cnt]->dest[0].compose.height * ns;
 
