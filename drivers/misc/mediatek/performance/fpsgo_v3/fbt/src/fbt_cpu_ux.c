@@ -1332,6 +1332,9 @@ void enqueue_ux_scroll_info(int type, unsigned long long start_ts, struct render
 	list_length = get_ux_list_length(&thr->scroll_list);
 	if (list_length == 0) {
 		for (size_t i = 0; i < HWUI_MAX_FRAME_SAME_TIME; i++) {
+			if (thr->tmp_hwui_frame_info_arr[i])
+				continue;
+
 			struct hwui_frame_info *frame = kmem_cache_alloc(hwui_frame_info_cachep, GFP_KERNEL);
 
 			if (!frame)//allocate memory failed
