@@ -1624,7 +1624,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/backlight_cooling.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/board_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/charger_cooling.ko")
-        mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
+        if "drivers/thermal/mediatek/md_cooling_all.ko" in mgk_64_device_modules:
+            mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/pmic_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/soc_temp_lvts.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_interface.ko")
