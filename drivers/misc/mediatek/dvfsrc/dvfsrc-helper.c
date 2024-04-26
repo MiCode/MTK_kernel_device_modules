@@ -101,6 +101,10 @@ static void dvfsrc_setup_opp_table(struct mtk_dvfsrc *dvfsrc)
 		dev_info(dvfsrc->dev, "dvfsrc vopp[%d] = %d\n",
 			i, dvfsrc->vopp_uv_tlb[i]);
 
+	for (i = 0; i < dvfsrc->opp_desc->num_dram_opp; i++)
+		dev_info(dvfsrc->dev, "dvfsrc dopp[%d] = %d\n",
+			i, dvfsrc->dopp_kbps_tlb[i]);
+
 	for (i = 0; i < dvfsrc->opp_desc->num_opp; i++) {
 		opp = &dvfsrc->opp_desc->opps[i];
 		opp->vcore_uv = dvfsrc->vopp_uv_tlb[opp->vcore_opp];
@@ -1411,6 +1415,9 @@ static const struct of_device_id dvfsrc_helper_of_match[] = {
 		.compatible = "mediatek,mt6833-dvfsrc",
 		.data = &mt6833_data,
 	}, {
+		.compatible = "mediatek,mt6781-dvfsrc",
+		.data = &mt6781_data,
+	},{
 		.compatible = "mediatek,mt6877-dvfsrc",
 		.data = &mt6877_data,
 	}, {

@@ -2836,6 +2836,7 @@ def get_overlay_modules_list():
     if "mt6781_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_device_modules.append("drivers/regulator/mt6358-regulator.ko")
         mgk_64_device_modules.append("drivers/regulator/mtk-pmic-oc-debug.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/dvfsrc/dvfsrc-opp-mt6781.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/bridge/mtk_mbraink_bridge.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/mtk_mbraink.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/modules/v6989/mtk_mbraink_v6989.ko")
