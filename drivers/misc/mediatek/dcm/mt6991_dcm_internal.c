@@ -70,7 +70,10 @@ static int dcm_infra(int on)
 
 static int dcm_mcusys(int on)
 {
-	dcm_mcusys_par_wrap_mcu_bkr_ldcm(on);
+	if (mtk_dcm_get_chipid() == 0)
+		A0_dcm_mcusys_par_wrap_mcu_bkr_ldcm(on);
+	else
+		B0_dcm_mcusys_par_wrap_mcu_bkr_ldcm(on);
 	dcm_mcusys_par_wrap_mcu_misc_dcm(on);
 	return 0;
 }
@@ -157,9 +160,9 @@ static int dcm_mcusys_stall(int on)
 static int dcm_peri(int on)
 {
 	if (mtk_dcm_get_chipid() == 0)
-		dcm_peri_ao_bcrm_peri_bus_dcm_E1(on);
+		A0_dcm_peri_ao_bcrm_peri_bus_dcm(on);
 	else
-		dcm_peri_ao_bcrm_peri_bus_dcm_E2(on);
+		B0_dcm_peri_ao_bcrm_peri_bus_dcm(on);
 	return 0;
 }
 
@@ -189,8 +192,10 @@ static int dcm_infra_is_on(void)
 static int dcm_mcusys_is_on(void)
 {
 	int ret = 1;
-
-	ret &= dcm_mcusys_par_wrap_mcu_bkr_ldcm_is_on();
+	if (mtk_dcm_get_chipid() == 0)
+		ret &= A0_dcm_mcusys_par_wrap_mcu_bkr_ldcm_is_on();
+	else
+		ret &= B0_dcm_mcusys_par_wrap_mcu_bkr_ldcm_is_on();
 	ret &= dcm_mcusys_par_wrap_mcu_misc_dcm_is_on();
 
 	return ret;
@@ -318,9 +323,9 @@ static int dcm_peri_is_on(void)
 	int ret = 1;
 
 	if (mtk_dcm_get_chipid() == 0)
-		ret &= dcm_peri_ao_bcrm_peri_bus_dcm_is_on_E1();
+		ret &= A0_dcm_peri_ao_bcrm_peri_bus_dcm_is_on();
 	else
-		ret &= dcm_peri_ao_bcrm_peri_bus_dcm_is_on_E2();
+		ret &= B0_dcm_peri_ao_bcrm_peri_bus_dcm_is_on();
 
 	return ret;
 }
@@ -372,15 +377,15 @@ void dcm_dump_regs(void)
 	REG_DUMP(MCUSYS_PAR_WRAP_NON_SEC_QDCM_CONFIG3);
 	REG_DUMP(VDNR_DCM_TOP_APINFRA_MEM_INTF_PAR_BUS_u_APINFRA_MEM_INTF_PAR_BUS_CTRL_0);
 	if (mtk_dcm_get_chipid() == 0) {
-		REG_DUMP(E1_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_0);
-		REG_DUMP(E1_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_1);
-		REG_DUMP(E1_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_2);
-		REG_DUMP(E1_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_3);
+		REG_DUMP(A0_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_0);
+		REG_DUMP(A0_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_1);
+		REG_DUMP(A0_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_2);
+		REG_DUMP(A0_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_3);
 	} else {
-		REG_DUMP(E2_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_0);
-		REG_DUMP(E2_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_1);
-		REG_DUMP(E2_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_2);
-		REG_DUMP(E2_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_3);
+		REG_DUMP(B0_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_0);
+		REG_DUMP(B0_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_1);
+		REG_DUMP(B0_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_2);
+		REG_DUMP(B0_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_3);
 	}
 	REG_DUMP(VDNR_DCM_TOP_VLP_PAR_BUS_TOP_u_VLP_PAR_BUS_TOP_CTRL_0);
 }
