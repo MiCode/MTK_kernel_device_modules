@@ -11563,7 +11563,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<GIC_SPI 526 IRQ_TYPE_LEVEL_HIGH 0>; // qof
 			interrupt-names = "adlrd_rdone", "adlrd", "qoftop";
 			operating-points-v2 = <&opp_table_cam>;
-			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_CAMRAWA>,
+			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_SENINF_CAM_SENINF>,
+					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAMTG_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_ADLRD_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_ADLWR_CAMRAWA>,
@@ -11576,7 +11577,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMRAWA>,
 				    <&mmdvfs_mux MMDVFS_USER_CAM>;
-			clock-names = "camsys_cam_cgpdn",
+			clock-names = "clk_cam_seninf",
+				"camsys_cam_cgpdn",
 				"camsys_camtg_cgpdn",
 				"camsys_adlrd_cgpdn",
 				"camsys_adlwr_cgpdn",
