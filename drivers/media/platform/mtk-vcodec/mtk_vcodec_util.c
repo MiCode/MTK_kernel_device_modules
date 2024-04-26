@@ -904,6 +904,85 @@ void v4l_fill_mtk_fmtdesc(struct v4l2_fmtdesc *fmt)
 }
 EXPORT_SYMBOL_GPL(v4l_fill_mtk_fmtdesc);
 
+long mtk_vcodec_dma_attach_map(struct device *dev, struct dma_buf *dmabuf,
+	struct dma_buf_attachment **att_ptr, struct sg_table **sgt_ptr, dma_addr_t *addr_ptr,
+	enum dma_data_direction direction, const char *debug_str, int debug_line)
+{
+	struct dma_buf_attachment *buf_att = NULL;
+	struct sg_table *sgt = NULL;
+	dma_addr_t dma_addr = 0;
+	long ret = 0;
+
+	if (debug_str == NULL)
+		debug_str = __func__;
+
+	/* initialize */
+	if (att_ptr != NULL)
+		*att_ptr = NULL;
+	if (sgt_ptr != NULL)
+		*sgt_ptr = NULL;
+	if (addr_ptr != NULL)
+		*addr_ptr = 0;
+
+	if (dev == NULL || IS_ERR_OR_NULL(dmabuf) || direction >= DMA_NONE) {
+		mtk_v4l2_err("%s %d: invalid dev %lx, dmabuf %ld, direction %d",
+			debug_str, debug_line, (unsigned long)dev, PTR_ERR(dmabuf), direction);
+		return -EINVAL;
+	}
+
+	buf_att = dma_buf_attach(dmabuf, dev);
+	if (IS_ERR_OR_NULL(buf_att)) {
+		mtk_v4l2_err("%s %d: attach fail ret %ld", debug_str, debug_line, PTR_ERR(buf_att));
+		if (IS_ERR(buf_att))
+			ret = PTR_ERR(buf_att);
+		else
+			ret = -EFAULT;
+		goto dma_attach_map_err;
+	}
+	sgt = dma_buf_map_attachment_unlocked(buf_att, direction);
+	if (IS_ERR_OR_NULL(sgt)) {
+		mtk_v4l2_err("%s %d: map fail ret %ld", debug_str, debug_line, PTR_ERR(sgt));
+		if (IS_ERR(sgt))
+			ret = PTR_ERR(sgt);
+		else
+			ret = -EFAULT;
+		goto dma_attach_map_err_map_fail;
+	}
+	dma_addr = sg_dma_address(sgt->sgl);
+
+	if (att_ptr != NULL)
+		*att_ptr = buf_att;
+	if (sgt_ptr != NULL)
+		*sgt_ptr = sgt;
+	if (addr_ptr != NULL)
+		*addr_ptr = dma_addr;
+
+	if (ret || sgt_ptr == NULL)
+		dma_buf_unmap_attachment_unlocked(buf_att, sgt, direction);
+dma_attach_map_err_map_fail:
+	if (ret || att_ptr == NULL)
+		dma_buf_detach(dmabuf, buf_att);
+dma_attach_map_err:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_dma_attach_map);
+
+void mtk_vcodec_dma_unmap_detach(struct dma_buf *dmabuf,
+	struct dma_buf_attachment **att_ptr, struct sg_table **sgt_ptr, enum dma_data_direction direction)
+{
+	if (sgt_ptr != NULL && !IS_ERR_OR_NULL(*sgt_ptr) &&
+	    att_ptr != NULL && !IS_ERR_OR_NULL(*att_ptr) && direction < DMA_NONE)
+		dma_buf_unmap_attachment_unlocked(*att_ptr, *sgt_ptr, direction);
+	if (!IS_ERR_OR_NULL(dmabuf) && att_ptr != NULL && !IS_ERR_OR_NULL(*att_ptr))
+		dma_buf_detach(dmabuf, *att_ptr);
+
+	if (att_ptr != NULL)
+		*att_ptr = NULL;
+	if (sgt_ptr != NULL)
+		*sgt_ptr = NULL;
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_dma_unmap_detach);
+
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 #define VCP_CACHE_LINE 128
 int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
@@ -913,8 +992,7 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	struct dma_buf *dbuf;
 	dma_addr_t dma_addr;
 	__u32 alloc_len;
-	int ret = 0;
-	void *ret_ptr = NULL;
+	long ret = 0;
 
 	if (mem == NULL || dev == NULL || attach == NULL || sgt == NULL) {
 		mtk_v4l2_err("Invalid arguments, mem=0x%lx, dev=0x%lx, attach=0x%lx, sgt=0x%lx",
@@ -973,7 +1051,7 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 		O_RDWR | O_CLOEXEC, DMA_HEAP_VALID_HEAP_FLAGS);
 	if (IS_ERR_OR_NULL(dbuf)) {
 		mtk_v4l2_err("buffer alloc fail");
-		ret_ptr = (void *)dbuf;
+		ret = PTR_ERR(dbuf);
 		goto alloc_mem_err;
 	}
 
@@ -982,25 +1060,11 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	else
 		mtk_dma_buf_set_name(dbuf, "venc_working");
 
-	*attach = dma_buf_attach(dbuf, dev);
-	if (IS_ERR_OR_NULL(*attach)) {
-		mtk_v4l2_err("attach fail, return");
-		ret_ptr = (void *)*attach;
-		goto alloc_mem_err_attach_fail;
-	}
-	*sgt = dma_buf_map_attachment_unlocked(*attach, DMA_BIDIRECTIONAL);
-	if (IS_ERR_OR_NULL(*sgt)) {
-		mtk_v4l2_err("map failed, detach and return");
-		ret_ptr = (void *)*sgt;
-		goto alloc_mem_err_map_fail;
-	}
-
-	dma_addr = sg_dma_address((*sgt)->sgl);
-	if (dbuf == NULL || dma_addr == 0) {
+	ret = mtk_vcodec_dma_attach_map(dev, dbuf, attach, sgt, &dma_addr, DMA_BIDIRECTIONAL, __func__, __LINE__);
+	if (ret || dma_addr == 0) {
 		mtk_v4l2_err("alloc failed, va 0x%llx pa 0x%llx iova 0x%llx len %d type %u",
 			(__u64)dbuf, (__u64)dma_addr, (__u64)dma_addr, mem->len, mem->type);
-		ret = -EPERM;
-		goto alloc_mem_err_after_map_done;
+		goto alloc_mem_err_attach_map_fail;
 	}
 	mem->va = (__u64)dbuf;
 	mem->pa = (__u64)dma_addr;
@@ -1010,42 +1074,26 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 
 	return 0;
 
-alloc_mem_err_after_map_done:
-	dma_buf_unmap_attachment_unlocked(*attach, *sgt, DMA_BIDIRECTIONAL);
-	*sgt = NULL;
-alloc_mem_err_map_fail:
-	dma_buf_detach(dbuf, *attach);
-	*attach = NULL;
-alloc_mem_err_attach_fail:
+alloc_mem_err_attach_map_fail:
 	dma_heap_buffer_free(dbuf);
 alloc_mem_err:
-	if (ret_ptr && IS_ERR(ret_ptr))
-		ret = PTR_ERR(ret_ptr);
-	else if (ret == 0)
+	if (ret == 0)
 		ret = -EPERM;
-	return ret;
+	return (int)ret;
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_alloc_mem);
 
 int mtk_vcodec_free_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	struct dma_buf_attachment *attach, struct sg_table *sgt)
 {
-	if (mem == NULL || IS_ERR_OR_NULL((void *)mem->va) ||
-	    dev == NULL || IS_ERR_OR_NULL(attach) || IS_ERR_OR_NULL(sgt)) {
+	if (mem == NULL || IS_ERR_OR_NULL((void *)mem->va)) {
 		mtk_v4l2_err("Invalid arguments, mem=0x%lx, dev=0x%lx, attach=0x%lx, sgt=0x%lx",
 			(unsigned long)mem, (unsigned long)dev, (unsigned long)attach, (unsigned long)sgt);
 		return -EINVAL;
 	}
 
-	if (mem->type == MEM_TYPE_FOR_SW ||
-		mem->type == MEM_TYPE_FOR_HW ||
-		mem->type == MEM_TYPE_FOR_UBE_HW ||
-		mem->type == MEM_TYPE_FOR_SEC_SW ||
-		mem->type == MEM_TYPE_FOR_SEC_HW ||
-		mem->type == MEM_TYPE_FOR_SEC_UBE_HW ||
-		mem->type == MEM_TYPE_FOR_SEC_WFD_HW) {
-		dma_buf_unmap_attachment_unlocked(attach, sgt, DMA_BIDIRECTIONAL);
-		dma_buf_detach((struct dma_buf *)mem->va, attach);
+	if (mem->type < MEM_TYPE_MAX && mem->type != MEM_TYPE_FOR_SHM) {
+		mtk_vcodec_dma_unmap_detach((struct dma_buf *)mem->va, &attach, &sgt, DMA_BIDIRECTIONAL);
 		dma_heap_buffer_free((struct dma_buf *)mem->va);
 	} else {
 		mtk_v4l2_err("wrong type %d\n", mem->type);
@@ -1158,12 +1206,11 @@ int mtk_vcodec_vp_mode_buf_prepare(struct mtk_vcodec_dev *dev, int bitdepth)
 		/* mapping va */
 		memset(&map, 0, sizeof(struct iosys_map));
 		dmabuf = (struct dma_buf *)src_buf->mem.va;
-		ret = dma_buf_vmap_unlocked(dmabuf, &map);
-		va = ret ? NULL : map.vaddr;
-		if (va == NULL) {
+		if (dma_buf_vmap_unlocked(dmabuf, &map)) {
 			mtk_v4l2_err("vp mode src_buf[%d][%d] dma vmap failed", idx, i);
 			goto err_out;
 		}
+		va = map.vaddr;
 
 		/* fill working buffer */
 		copy_times = src_buf->mem.len / pattern_len;
