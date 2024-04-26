@@ -544,6 +544,7 @@ int vcp_enc_ipi_handler(void *arg)
 					vcp_get_reserve_mem_phys_ex(VENC_SET_PROP_MEM_ID));
 				shem_msg->vcp_addr[1] = (__u32)VCP_PACK_IOVA(
 					vcp_get_reserve_mem_phys_ex(VENC_VCP_LOG_INFO_ID));
+				dev->com_vsi = (void *)vcp_get_reserve_mem_virt_ex(VENC_MEM_ID);
 				shem_msg->msg_id = AP_IPIMSG_ENC_MEM_ALLOC_DONE;
 				ret = mtk_ipi_send(vcp_get_ipidev(VENC_FEATURE_ID), IPI_OUT_VENC_0, IPI_SEND_WAIT, obj,
 					PIN_OUT_SIZE_VENC, 100);
@@ -613,6 +614,7 @@ int vcp_enc_ipi_handler(void *arg)
 		case VCU_IPIMSG_ENC_DEINIT_DONE:
 		case VCU_IPIMSG_ENC_BACKUP_DONE:
 		case VCU_IPIMSG_ENC_RESUME_DONE:
+		case VCU_IPIMSG_ENC_SET_CONFIG_DONE:
 return_venc_ipi_ack:
 			vcu->signaled = true;
 			wake_up(&vcu->wq_hd);
@@ -1628,6 +1630,22 @@ void set_venc_vcp_data(struct venc_inst *inst, enum vcp_reserve_mem_id_t id, voi
 		memcpy(string_va, (char *)string, string_len + 1);
 }
 
+
+static int venc_set_config_data(struct venc_inst *inst)
+{
+	struct venc_ap_ipi_msg_indp msg;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_id = AP_IPIMSG_ENC_SET_CONFIG;
+	msg.ap_inst_addr = (uintptr_t)&inst->vcu_inst;
+	msg.ctx_id = inst->ctx->id;
+	venc_vcp_set_vcu(&inst->vcu_inst);
+	mtk_v4l2_debug(0, "venc_set_config_data");
+
+	return venc_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
+}
+
+
 int vcp_enc_set_param(struct venc_inst *inst,
 					  enum venc_set_param_type id,
 					  struct venc_enc_param *enc_param)
@@ -1928,12 +1946,6 @@ static int venc_vcp_set_param(unsigned long handle,
 				sizeof(struct mtk_venc_vui_info));
 		}
 
-		if (enc_prm->config_data) {
-			memcpy(&inst->vsi->config.config_data,
-				enc_prm->config_data,
-				sizeof(__u8)*VENC_CONFIG_LENGTH);
-		}
-
 		inst->vsi->config.slice_header_spacing =
 			enc_prm->slice_header_spacing;
 		inst->vsi->config.mlvec_mode =
@@ -2018,6 +2030,16 @@ static int venc_vcp_set_param(unsigned long handle,
 		memcpy(&inst->vsi->config.frame_qp_range, enc_prm->frame_qp_range,
 			sizeof(struct mtk_venc_frame_qp_range));
 		ret = vcp_enc_set_param(inst, type, enc_prm);
+		break;
+	case VENC_SET_PARAM_CONFIG:
+		if (enc_prm->config_data) {
+			struct venc_common_vsi *venc_com_vsi;
+
+			venc_com_vsi = (struct venc_common_vsi *)inst->ctx->dev->com_vsi;
+			memcpy(venc_com_vsi->config_data, enc_prm->config_data,
+			sizeof(__u8)*VENC_CONFIG_LENGTH);
+			ret = venc_set_config_data(inst);
+		}
 		break;
 	default:
 		if (inst->vsi == NULL)
