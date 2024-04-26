@@ -21,3 +21,15 @@ config MTK_QOS_LEGACY
 	When enabling this option, BW Limiter and BW Bound Detector
 	will be enabled and set EMI hardware.
 	If unsure, say N.
+
+config MTK_QOS_BOUND_LEGACY
+	bool "Enable QoS Bound Feature for Legacy MTK Chips"
+	help
+	  Enable this option to activate the QoS Bound feature on
+	  legacy MTK chips.
+	  This feature is essential for managing bandwidth and
+	  ensuring the Quality of Service on these older platforms by
+	  enforcing bandwidth limitations and detecting bandwidth bounds.
+	  It is recommended to enable this option if you are working with
+	  legacy chips to utilize the full capabilities of the QoS system.
+	  If unsure, say N.

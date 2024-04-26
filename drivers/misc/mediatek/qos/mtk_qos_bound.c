@@ -10,7 +10,7 @@
 #include "mtk_qos_ipi.h"
 #include "mtk_qos_common.h"
 
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V2) || IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
 #include <sspm_define.h>
 #include <sspm_reservedmem.h>
 #include <sspm_reservedmem_define.h>
@@ -41,18 +41,6 @@ int is_qos_bound_enabled(void)
 
 void qos_bound_enable(int enable)
 {
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V2)
-	struct qos_ipi_data qos_ipi_d;
-
-	if (!is_mtk_qos_enable())
-		return;
-
-	qos_ipi_d.cmd = QOS_IPI_QOS_BOUND_ENABLE;
-	qos_ipi_d.u.qos_bound_enable.enable = enable;
-	bound = (struct qos_bound *)
-			sspm_sbuf_get(qos_ipi_to_sspm_command(&qos_ipi_d, 2));
-	smp_mb(); /* init bound before flag enabled */
-#elif defined(MTK_SCMI)
 	struct qos_ipi_data qos_ipi_d;
 	int ack;
 
@@ -61,8 +49,14 @@ void qos_bound_enable(int enable)
 
 	qos_ipi_d.cmd = QOS_IPI_QOS_BOUND_ENABLE;
 	qos_ipi_d.u.qos_bound_enable.enable = enable;
+
+#if defined(MTK_SCMI)
 	ack = qos_ipi_to_sspm_scmi_command(qos_ipi_d.cmd,
 			qos_ipi_d.u.qos_bound_enable.enable, 0, 0, QOS_IPI_SCMI_GET);
+#else
+	ack = qos_ipi_to_sspm_command(&qos_ipi_d, 2);
+#endif
+
 	if (!ack || ack == -1) {
 		pr_info("get qos sspm address fail\n");
 		return;
@@ -73,7 +67,7 @@ void qos_bound_enable(int enable)
 		return;
 	}
 	smp_mb(); /* init bound before flag enabled */
-#endif
+
 	if (bound->ver == QOS_BOUND_VER_TAG) {
 		qos_bound_apu = (unsigned short *)(bound);
 		qos_bound_apu += (sizeof(struct qos_bound)/sizeof(unsigned short));
@@ -86,6 +80,10 @@ void qos_bound_enable(int enable)
 				bound->ver, bound->apu_num);
 		qos_bound_enabled = false;
 	}
+#if IS_ENABLED(CONFIG_MTK_QOS_BOUND_LEGACY)
+	qos_bound_enabled = enable;
+#endif
+	pr_info("mtk_qos: qos_bound_enabled=%d\n",qos_bound_enabled);
 }
 
 int is_qos_bound_stress_enabled(void)
