@@ -2121,7 +2121,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 					"power_on", 2, perf_string, true);
 		/* 1. power on mtcmos & init apsrc*/
-		mtk_drm_top_clk_prepare_enable(crtc->dev);
+		mtk_drm_top_clk_prepare_enable(crtc);
 
 		mtk_crtc_default_path_rst(crtc);
 
