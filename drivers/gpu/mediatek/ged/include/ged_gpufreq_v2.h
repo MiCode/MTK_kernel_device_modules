@@ -33,6 +33,8 @@ unsigned int ged_get_dynamic_power(unsigned int freq, unsigned int volt);
 
 int ged_get_cur_limit_idx_ceil(void);
 int ged_get_cur_limit_idx_floor(void);
+int ged_is_fix_dvfs(void);
+
 unsigned int ged_get_cur_limiter_ceil(void);
 unsigned int ged_get_cur_limiter_floor(void);
 int ged_set_limit_ceil(int limiter, int ceil);
