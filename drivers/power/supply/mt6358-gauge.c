@@ -1031,6 +1031,53 @@ void enable_dwa(struct mtk_gauge *gauge, bool enable)
 	}
 }
 
+static int convert_current(struct mtk_gauge *gauge, unsigned int regval)
+{
+	unsigned short uvalue16 = 0;
+	int dvalue, retval;
+	long long temp_value = 0;
+	bool is_charging = true;
+
+	uvalue16 = (unsigned short) regval;
+	dvalue   = (unsigned int) uvalue16;
+	if (dvalue == 0) {
+		temp_value = (long long) dvalue;
+		is_charging = false;
+	} else if (dvalue > 32767) {
+		/* > 0x8000 */
+		temp_value = (long long) (dvalue - 65535);
+		temp_value = temp_value - (temp_value * 2);
+		is_charging = false;
+	} else {
+		temp_value = (long long) dvalue;
+	}
+
+	temp_value = temp_value * UNIT_FGCURRENT;
+#if defined(__LP64__) || defined(_LP64)
+	do_div(temp_value, 100000);
+#else
+	temp_value = div_s64(temp_value, 100000);
+#endif
+	retval = (unsigned int) temp_value;
+
+	if (gauge->hw_status.r_fg_value != DEFAULT_R_FG)
+		retval = (retval * DEFAULT_R_FG / gauge->hw_status.r_fg_value);
+
+	bm_debug(gauge->gm, "[%s] 0x%x 0x%x 0x%x 0x%x 0x%x %d\n",
+		__func__,
+		regval, uvalue16, dvalue, (int)temp_value,
+		retval, is_charging);
+
+	if (is_charging == false) {
+		bm_err(gauge->gm, "[%s], is_charging=%d\n", __func__, is_charging);
+		retval = retval - (retval * 2);
+	}
+
+	retval = ((retval * gauge->gm->fg_cust_data.car_tune_value) / 1000);
+
+	return retval;
+}
+
 void iavg_check(struct mtk_gauge *gauge_dev, int *offset_less, int *iavg_less)
 {
 	unsigned int iavg_reg = 0, offset_reg = 0;
@@ -1051,8 +1098,9 @@ void iavg_check(struct mtk_gauge *gauge_dev, int *offset_less, int *iavg_less)
 	regmap_read(gauge_dev->regmap, RG_FGADC_CUR_CON3, &iavg_reg);
 	regmap_read(gauge_dev->regmap, RG_FGADC_OFFSET_CON0, &offset_reg);
 
-	cic2 = reg_to_current(gauge_dev, iavg_reg);
-	offset = reg_to_current(gauge_dev, offset_reg);
+	cic2 = convert_current(gauge_dev, iavg_reg);
+	gauge_dev->fg_hw_info.current_2 = cic2;
+	offset = convert_current(gauge_dev, offset_reg);
 
 	/* iavg */
 	regmap_read(gauge_dev->regmap, RG_FGADC_IAVG_CON1, &valid_bit);
@@ -1629,10 +1677,15 @@ static signed int fg_set_iavg_intr(struct mtk_gauge *gauge_dev, void *data)
 	gauge_dev->hw_status.iavg_lt = iavg_lt;
 
 	/* iavg_ht */
-	fg_iavg_reg_ht = iavg_ht * 1000 * 1000;
+	fg_iavg_reg_ht = iavg_ht * 100 * 1000 * 1000;
 	if (gauge_dev->hw_status.r_fg_value != DEFAULT_R_FG)
-		fg_iavg_reg_ht = fg_iavg_reg_ht *
-			gauge_dev->hw_status.r_fg_value;
+#if defined(__LP64__) || defined(_LP64)
+		fg_iavg_reg_ht = (fg_iavg_reg_ht *
+			gauge_dev->hw_status.r_fg_value) / DEFAULT_R_FG;
+#else
+		fg_iavg_reg_ht = div_s64(fg_iavg_reg_ht * gauge_dev->hw_status.r_fg_value,
+			DEFAULT_R_FG);
+#endif
 
 	if (fg_iavg_reg_ht < 0) {
 		sign_bit_ht = 1;
@@ -1654,11 +1707,16 @@ static signed int fg_set_iavg_intr(struct mtk_gauge *gauge_dev, void *data)
 
 
 	/* iavg_lt */
-	fg_iavg_reg_lt = iavg_lt * 1000 * 1000;
+	fg_iavg_reg_lt = iavg_lt * 100 * 1000 * 1000;
 
 	if (gauge_dev->hw_status.r_fg_value != DEFAULT_R_FG)
-		fg_iavg_reg_lt = fg_iavg_reg_lt *
-			gauge_dev->hw_status.r_fg_value;
+#if defined(__LP64__) || defined(_LP64)
+		fg_iavg_reg_lt = (fg_iavg_reg_lt *
+			gauge_dev->hw_status.r_fg_value) / DEFAULT_R_FG;
+#else
+		fg_iavg_reg_lt = div_s64(fg_iavg_reg_lt * gauge_dev->hw_status.r_fg_value,
+			DEFAULT_R_FG);
+#endif
 
 	if (fg_iavg_reg_lt < 0) {
 		sign_bit_lt = 1;
