@@ -14,6 +14,7 @@ extern int slbc_ceil(enum slc_ach_uid uid, unsigned int ceil);
 extern int slbc_total_ceil(unsigned int ceil);
 extern int slbc_window(unsigned int window);
 extern int slbc_disable_dcc(bool disable);
+extern int slbc_disable_slc(bool disable);
 extern int slbc_cg_priority(bool gpu_first);
 extern int slbc_get_cache_size(enum slc_ach_uid uid);
 extern int slbc_get_cache_hit_rate(enum slc_ach_uid uid);
@@ -26,6 +27,7 @@ __weak int slbc_ceil(enum slc_ach_uid uid, unsigned int ceil) { return -EDISABLE
 __weak int slbc_total_ceil(unsigned int ceil) { return -EDISABLED; }
 __weak int slbc_window(unsigned int window) { return -EDISABLED; }
 __weak int slbc_disable_dcc(bool disable) { return -EDISABLED; }
+__weak int slbc_disable_slc(bool disable) { return -EDISABLED; }
 __weak int slbc_cg_priority(bool gpu_first) { return -EDISABLED; }
 __weak int slbc_get_cache_size(enum slc_ach_uid uid) { return -EDISABLED; }
 __weak int slbc_get_cache_hit_rate(enum slc_ach_uid uid) { return -EDISABLED; }

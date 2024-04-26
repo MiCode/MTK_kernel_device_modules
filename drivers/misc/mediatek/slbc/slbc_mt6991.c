@@ -1458,6 +1458,18 @@ int slbc_disable_dcc(bool disable)
 	return 0;
 }
 
+int slbc_disable_slc(bool disable)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	slc_disable = (int)disable;
+	pr_info("slc disable %d\n", slc_disable);
+
+	return slbc_sspm_slc_disable(slc_disable);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
+}
+
 int slbc_get_cache_size(enum slc_ach_uid uid)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
@@ -2069,6 +2081,7 @@ static struct slbc_common_ops common_ops = {
 	.slbc_window = slbc_window,
 	.slbc_cg_priority = slbc_cg_priority,
 	.slbc_disable_dcc = slbc_disable_dcc,
+	.slbc_disable_slc = slbc_disable_slc,
 	.slbc_get_cache_size = slbc_get_cache_size,
 	.slbc_get_cache_hit_rate = slbc_get_cache_hit_rate,
 	.slbc_get_cache_hit_bw = slbc_get_cache_hit_bw,

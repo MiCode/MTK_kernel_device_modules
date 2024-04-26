@@ -108,6 +108,7 @@ struct slbc_common_ops {
 	int (*slbc_window)(unsigned int window);
 	int (*slbc_cg_priority)(bool gpu_first);
 	int (*slbc_disable_dcc)(bool disable);
+	int (*slbc_disable_slc)(bool disable);
 	int (*slbc_get_cache_size)(enum slc_ach_uid uid);
 	int (*slbc_get_cache_hit_rate)(enum slc_ach_uid uid);
 	int (*slbc_get_cache_hit_bw)(enum slc_ach_uid uid);
