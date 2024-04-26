@@ -326,6 +326,7 @@ struct mtk_msi_set {
  * @dvfs_req_en: pcie wait request to reply ack when pcie exit from P2 state
  * @peri_reset_en: clear peri pcie reset to open pcie phy & mac
  * @dump_cfg: dump info when access config space
+ * @full_debug_dump: dump full debug probe
  * @rpm: pcie runtime suspend property
  * @eint_irq: eint irq for runtime suspend wakeup source
  * @irq: PCIe controller interrupt number
@@ -364,6 +365,7 @@ struct mtk_pcie_port {
 	bool peri_reset_en;
 	bool soft_off;
 	bool dump_cfg;
+	bool full_debug_dump;
 	bool skip_suspend;
 	bool rpm;
 	int eint_irq;
@@ -788,7 +790,9 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 	if (err) {
 		val = readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG);
 		dev_info(port->dev, "PCIe link down, ltssm reg val: %#x\n", val);
-		port->phy->ops->calibrate(port->phy);
+		port->full_debug_dump = true;
+		mtk_pcie_dump_link_info(port->port_num);
+		port->full_debug_dump = false;
 		if (!port->soft_off)
 			return err;
 	} else {
@@ -1763,7 +1767,7 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 
 	/* Dump the debug table probe when AER event occurs */
 	val = readl_relaxed(port->base + PCIE_INT_STATUS_REG);
-	if (val & PCIE_AER_EVT) {
+	if ((val & PCIE_AER_EVT) || port->full_debug_dump) {
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x0, 0x0, 0x0, 0x0));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x0a, 0x0b, 0x15, 0x16));
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x1, 0x1, 0x1, 0x1));
@@ -1773,6 +1777,8 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x80, 0x81, 0x82, 0x87));
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x3, 0x3, 0x3, 0x3));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x00, 0x01, 0x07, 0x16));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x0b, 0x0c, 0x0d, 0x0e));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x15, 0x1a, 0x00, 0x00));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x51, 0x52, 0x54, 0x55));
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x4, 0x4, 0x4, 0x4));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0xc9, 0xca, 0xcb, 0xcd));
@@ -1783,6 +1789,7 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x45, 0x47, 0x48, 0x49));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x4a, 0x4b, 0x4c, 0x4d));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x46, 0x51, 0x52, 0x0));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x5c, 0x5d, 0x5e, 0x0));
 	}
 
 	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, phy err=%#x\n",
@@ -1946,7 +1953,7 @@ u32 mtk_pcie_dump_link_info(int port)
 	if (val & PCIE_ERR_RST_EVT)
 		ret_val |= BIT(10);
 
-	if (val & PCIE_AER_EVT) {
+	if ((val & PCIE_AER_EVT) || pcie_port->full_debug_dump) {
 		pcie_port->phy->ops->calibrate(pcie_port->phy);
 		writel_relaxed(PCIE_AER_EVT,
 			       pcie_port->base + PCIE_INT_STATUS_REG);
