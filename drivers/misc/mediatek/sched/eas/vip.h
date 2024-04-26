@@ -43,11 +43,15 @@ enum vip_group {
 	VIP_GROUP_NUM
 };
 
+#define TGID_SLOT_EXCEED -2
+#define TGID_NOT_FOUND -1
+#define TGID_SET_SUCCESS 0
+
 extern void set_task_vvip_and_throttle(int pid, unsigned int throttle_time);
 extern void set_task_priority_based_vip_and_throttle(int pid, int prio, unsigned int throttle_time);
 extern void set_task_basic_vip_and_throttle(int pid, unsigned int throttle_time);
-extern void set_tgid_vip(int tgid);
-extern void unset_tgid_vip(int tgid);
+extern int set_tgid_vip(int tgid);
+extern int unset_tgid_vip(int tgid);
 extern void turn_on_tgid_vip(void);
 extern void turn_off_tgid_vip(void);
 extern int show_tgid(int slot_id);

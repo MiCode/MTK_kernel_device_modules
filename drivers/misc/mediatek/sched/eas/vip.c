@@ -759,36 +759,55 @@ int show_tgid(int slot_id)
 }
 EXPORT_SYMBOL_GPL(show_tgid);
 
-void set_tgid_vip(int tgid)
+int set_tgid_vip(int tgid)
 {
-	int slot_id = 0, done = 0;
+	int slot_id = 0, set_state;
+
+	rcu_read_lock();
+	if (find_task_by_vpid(tgid) == NULL) {
+		rcu_read_unlock();
+		set_state = TGID_NOT_FOUND;
+		goto out;
+	}
+	rcu_read_unlock();
 
 	for (slot_id = 0; slot_id < NUM_MAXIMUM_TGID; slot_id++) {
 		if (tgid_vip_arr[slot_id] == -1) {
 			tgid_vip_arr[slot_id] = tgid;
-			done = 1;
-			break;
+			set_state = TGID_SET_SUCCESS;
+			goto out;
 		}
 	}
 
+	set_state = TGID_SLOT_EXCEED;
+
+out:
 	if (trace_sched_set_vip_enabled())
-		trace_sched_set_vip(tgid, done, "tgid", WORKER_VIP, VIP_TIME_LIMIT_DEFAULT, slot_id);
+		trace_sched_set_vip(tgid, set_state, "tgid", WORKER_VIP, VIP_TIME_LIMIT_DEFAULT, slot_id);
+
+	return set_state;
 }
 EXPORT_SYMBOL_GPL(set_tgid_vip);
 
-void unset_tgid_vip(int tgid)
+int unset_tgid_vip(int tgid)
 {
-	int slot_id = 0, done = 0;
+	int slot_id = 0, unset_state;
 
 	for (slot_id = 0; slot_id < NUM_MAXIMUM_TGID; slot_id++) {
 		if (tgid_vip_arr[slot_id] == tgid) {
 			tgid_vip_arr[slot_id] = -1;
-			done = 1;
+			unset_state = TGID_SET_SUCCESS;
+			goto out;
 		}
 	}
 
+	unset_state = TGID_SLOT_EXCEED;
+
+out:
 	if (trace_sched_unset_vip_enabled())
-		trace_sched_unset_vip(tgid, done, "tgid", slot_id);
+		trace_sched_unset_vip(tgid, unset_state, "tgid", slot_id);
+
+	return unset_state;
 }
 EXPORT_SYMBOL_GPL(unset_tgid_vip);
 
