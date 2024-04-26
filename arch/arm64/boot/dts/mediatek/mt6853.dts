@@ -907,6 +907,20 @@
 		};
 	};
 
+	usb_meta: usb-meta {
+		compatible = "mediatek,usb-meta";
+		udc = <&ssusb>;
+	};
+
+	usb_boost: usb-boost-manager {
+		compatible = "mediatek,usb-boost", "mediatek,mt6853-usb-boost";
+		interconnects = <&dvfsrc MT6873_MASTER_USB &dvfsrc MT6873_SLAVE_DDR_EMI>;
+		interconnect-names = "icc-bw";
+		required-opps = <&dvfsrc_freq_opp0>;
+		usb-audio;
+		small-core = <1250000>;
+	};
+
 	pd_adapter: pd_adapter {
 		compatible = "mediatek,pd_adapter";
 		boot_mode = <&chosen>;

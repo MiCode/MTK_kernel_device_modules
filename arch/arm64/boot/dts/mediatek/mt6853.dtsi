@@ -2408,6 +2408,9 @@
 			mediatek,clk-mgr;
 			mediatek,usb3-drd;
 			usb-role-switch;
+			mediatek,gen2cp-unsupported;
+			mediatek,smc-req;
+			usb3-u1gou2-disable;
 
 			usb_host: xhci0@11200000 {
 				compatible = "mediatek,mtk-xhci";
@@ -2660,6 +2663,14 @@
 			apu_pod26: apu_efuse3 {
 				reg = <0x344 0x4>;
 			};
+
+			u3_phy_data: u3_phy_data {
+				reg = <0x1ac 0x4>;
+			};
+
+			u2_phy_data: u2_phy_data {
+				reg = <0x1b0 0x4>;
+			};
 		};
 
 		regulator_vibrator {
@@ -2795,7 +2806,7 @@
 		};
 
 		u3phy: usb0-phy@11e40000 {
-			compatible = "mediatek,generic-tphy-v2";
+			compatible = "mediatek,generic-tphy-v2","mediatek,mt6853-tphy";
 			clocks = <&clk26m>;
 			clock-names = "u3phya_ref";
 			#address-cells = <2>;
@@ -2805,11 +2816,32 @@
 			u2port0: usb2-phy0@11e40000 {
 				reg = <0 0x11e40000 0 0x700>;
 				#phy-cells = <1>;
+				mediatek,eye-vrt = <6>; /* 0~7 */
+				mediatek,eye-term = <6>; /* 0~7 */
+				mediatek,rev6 = <1>; /* 0~3 */
+				mediatek,discth = <7>; /* 0~8 */
+				mediatek,eye-vrt-host = <6>; /* 0~7 */
+				mediatek,eye-term-host = <6>; /* 0~7 */
+				mediatek,rev6-host = <1>; /* 0~3 */
+				mediatek,disc-host = <7>; /* 0~8 */
+				mediatek,rx-sqth = <2>;
+				mediatek,rev4 = <1>;
+				mediatek,eq-leq-shift = <1>;
+				nvmem-cells = <&u2_phy_data>;
+				nvmem-cell-names = "intr_cal";
+				nvmem-cell-masks = <0x1f>;
+				mediatek,set-efuse-v1;
+				status = "okay";
 			};
 
 			u3port0: usb3-phy0@11e40700 {
 				reg = <0 0x11e40700 0 0x900>;
 				#phy-cells = <1>;
+				nvmem-cells = <&u3_phy_data>, <&u3_phy_data>, <&u3_phy_data>;
+				nvmem-cell-names = "iext_intr_ctrl", "rx_impsel", "tx_impsel";
+				nvmem-cell-masks = <0x3f0000 0x1f00 0x1f>;
+				mediatek,set-efuse-v1;
+				status = "okay";
 			};
 		};
 
