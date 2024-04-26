@@ -6411,7 +6411,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>,
 				<&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA_AO>;
 			ao-ctrl-by-mminfra;
-			cmdq-log-perf-off;
 			dma-mask-bit = <35>;
 			support-gce-vm;
 			support-spr3-timer;
@@ -6425,6 +6424,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			cmdq-dump-hw-trace = <1>;
 			hw-trace-built-in;
 			hw-trace-vm;
+			cmdq-print-debug = <1>;
 		};
 
 		gce_sec: gce-mbox-sec@300c0000 {
@@ -6463,7 +6463,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>,
 				<&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA_AO>;
 			ao-ctrl-by-mminfra;
-			cmdq-log-perf-off;
 			dma-mask-bit = <35>;
 			support-gce-vm;
 			support-spr3-timer;
@@ -6479,6 +6478,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			cmdq-dump-hw-trace = <1>;
 			hw-trace-built-in;
 			hw-trace-vm;
+			cmdq-print-debug = <1>;
 		};
 
 		gce_m_sec: gce-mbox-m-sec@30140000 {
