@@ -80,6 +80,9 @@
 #define SLBC_UID_USED2                  0xC0
 #define SLBC_SCMI_RET4                  0xC4
 #define SLBC_SCMI_RET_VAL               0xC8
+#define SLBC_TOTAL_CEIL                 0xCC
+#define SLBC_CG_PRIORITY                0xD0
+#define SLBC_DCC_COUNT                  0xD4
 
 /* SLBC_UID_USED */
 #define SLBC_UID_USED_STA_LSB           SLBC_BIT(0)
