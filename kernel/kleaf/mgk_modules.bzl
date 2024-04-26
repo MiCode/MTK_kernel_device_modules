@@ -26,6 +26,8 @@ mgk_module_ext_outs = [
     "drivers/tee/tee.ko",
     "drivers/thermal/thermal-generic-adc.ko",
     "drivers/usb/phy/phy-generic.ko",
+    "net/wireless/cfg80211.ko",
+    "net/mac80211/mac80211.ko",
 ]
 
 mgk_module_eng_outs = mgk_module_ext_outs + [
