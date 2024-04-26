@@ -2295,12 +2295,17 @@ static int disp_aal_write_cabc_to_reg(struct mtk_ddp_comp *comp,
 {
 	int i;
 	const int *gain;
+	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	uint32_t cabc_gainlmt_tbl_00;
 
 	AALFLOW_LOG("\n");
+	if(aal_data->primary_data->aal_fo->mtk_cabc_no_support) {
+		pr_notice("mtk_cabc_no_support is true\n");
+		return 0;
+	}
 	if (priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
 		priv->data->mmsys_id == MMSYS_MT6761)
@@ -4002,6 +4007,13 @@ static int disp_aal_probe(struct platform_device *pdev)
 		AALERR("comp_id: %d, mtk_aal_support = %d\n",
 			comp_id, priv->primary_data->aal_fo->mtk_aal_support);
 		priv->primary_data->aal_fo->mtk_aal_support = 0;
+	}
+
+	if (of_property_read_u32(dev->of_node, "mtk-cabc-no-support",
+		&priv->primary_data->aal_fo->mtk_cabc_no_support)) {
+		AALERR("comp_id: %d, mtk-cabc-no-support = %d\n",
+			comp_id, priv->primary_data->aal_fo->mtk_cabc_no_support);
+		priv->primary_data->aal_fo->mtk_cabc_no_support = 0;
 	}
 
 	if (of_property_read_u32(dev->of_node, "mtk-dre30-support",
