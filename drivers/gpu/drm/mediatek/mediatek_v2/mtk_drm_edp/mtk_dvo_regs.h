@@ -167,6 +167,6 @@
 
 #define DVO_BUF_SODI_HIGHT		0x230
 #define DVO_BUF_SODI_LOW		0x234
-
+#define DVO_DISP_BUF_MASK		0xFFFFFFFF
 
 #endif /* __MTK_DPI_REGS_H */

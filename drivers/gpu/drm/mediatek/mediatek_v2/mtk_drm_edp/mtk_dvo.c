@@ -31,6 +31,27 @@
 #include "../mtk_drm_crtc.h"
 #include "../mtk_drm_ddp_comp.h"
 
+/* DVO INPUT default value is 1T2P */
+#define MTK_DVO_INPUT_MODE				2
+/* DVO OUTPUT value is 1T4P*/
+#define MTK_DVO_OUTPUT_MODE				4
+/* 1 unit = 2 group data = 2 * 1T4P = 8P */
+#define MTK_DISP_BUF_SRAM_UNIT_SIZE		8
+#define MTK_DISP_LINE_BUF_DVO_US		40
+
+#define MTK_BLANKING_RATIO				(5 / 4)
+
+#define MTK_DVO_EDP_MAX_CLK				297
+#define MTK_DVO_MAX_HACTIVE				3840
+
+#define TWAIT_SLEEP						(6 / 5)
+#define TWAKE_UP						5
+#define PREULTRA_HIGH_US				26
+#define PREULTRA_LOW_US					25
+#define ULTRA_HIGH_US					25
+#define ULTRA_LOW_US					23
+#define URGENT_HIGH_US					12
+#define URGENT_LOW_US					11
 
 enum mtk_dvo_out_bit_num {
 	MTK_DVO_OUT_BIT_NUM_8BITS,
@@ -69,24 +90,6 @@ enum TVDPLL_CLK {
 	TVDPLL_D16 = 16,
 };
 
-enum mtk_dvo_golden_setting_level {
-	MTK_DVO_FHD_60FPS_1920 = 0,
-	MTK_DVO_FHD_60FPS_2180,
-	MTK_DVO_FHD_60FPS_2400,
-	MTK_DVO_FHD_60FPS_2520,
-	MTK_DVO_FHD_90FPS,
-	MTK_DVO_FHD_120FPS,
-	MTK_DVO_WQHD_60FPS,
-	MTK_DVO_WQHD_120FPS,
-	MTK_DVO_8K_60FPS,
-	MTK_DVO_GSL_MAX,
-};
-
-struct mtk_dvo_gs_info {
-	u32 dvo_buf_sodi_high;
-	u32 dvo_buf_sodi_low;
-};
-
 struct mtk_dvo {
 	struct mtk_ddp_comp ddp_comp;
 	struct drm_encoder encoder;
@@ -113,7 +116,6 @@ struct mtk_dvo {
 	struct pinctrl_state *pins_dvo;
 	u32 output_fmt;
 	int refcount;
-	enum mtk_dvo_golden_setting_level gs_level;
 };
 
 static inline struct mtk_dvo *bridge_to_dvo(struct drm_bridge *b)
@@ -196,10 +198,6 @@ static int irq_vdesa;
 static int irq_underflowsa;
 static int irq_tl;
 
-static struct mtk_dvo_gs_info mtk_dvo_gs[MTK_DVO_GSL_MAX] = {
-	[MTK_DVO_FHD_60FPS_1920] = {6880, 511},
-};
-
 static void mtk_dvo_mask(struct mtk_dvo *dvo, u32 offset, u32 val, u32 mask)
 {
 	u32 tmp = readl(dvo->regs + offset) & ~mask;
@@ -272,39 +270,65 @@ static void mtk_dvo_trailing_blank_setting(struct mtk_dvo *dvo)
 	mtk_dvo_mask(dvo, DVO_TGEN_OUTPUT_DELAY_LINE, 0x20, EXT_TG_DLY_LINE_MASK);
 }
 
-static void mtk_dvo_get_gs_level(struct mtk_dvo *dvo)
+static void mtk_dvo_sodi_setting(struct mtk_dvo *dvo, struct drm_display_mode *mode)
 {
-	struct drm_display_mode *mode = &dvo->mode;
-	enum mtk_dvo_golden_setting_level *gsl = &dvo->gs_level;
+	u32 mmsys_clk = 273;
+	u64 data_rate;
+	u64 fill_rate_rem ,consume_rate_rem;
+	u64 fill_rate , consume_rate;
+	u64 dvo_fifo_size, fifo_size, total_bit;
+	u64 sodi_high_rem ,sodi_low_rem, tmp;
+	u64 sodi_high, sodi_low;
 
-	if (mode->hdisplay == 1920 && mode->vdisplay == 1080)
-		*gsl = MTK_DVO_FHD_60FPS_1920;
-	else
-		*gsl = MTK_DVO_FHD_60FPS_1920;
+	mmsys_clk = mtk_drm_get_mmclk(&dvo->ddp_comp.mtk_crtc->base, __func__) / 1000000;
+	if (!mmsys_clk) {
+		pr_info("[eDPTX] mmclk is zero, use default value\n");
+		mmsys_clk = 273;
+	}
+	dev_info(dvo->dev, "[eDPTX] get mmclk from display %d\n", mmsys_clk);
 
-	pr_info("[eDPTX] %s gs_level %d\n",
-		__func__, dvo->gs_level);
-}
+	fill_rate = ((u64)mmsys_clk * MTK_DVO_INPUT_MODE * 30) / (32 * MTK_DISP_BUF_SRAM_UNIT_SIZE);
+	fill_rate = div64_u64_rem(mmsys_clk * MTK_DVO_INPUT_MODE * 30,
+						(u64)32 * MTK_DISP_BUF_SRAM_UNIT_SIZE, &fill_rate_rem);
 
-static void mtk_dvo_golden_setting(struct mtk_dvo *dvo)
-{
-	struct mtk_dvo_gs_info *gs_info = NULL;
+	data_rate = (u64)mode->hdisplay * mode->vdisplay *
+				((u64)mode->clock * 1000 / (mode->htotal * mode->vtotal));
+	consume_rate = div64_u64_rem((data_rate * 30 * MTK_BLANKING_RATIO),
+						(u64)(8 * 32 * 1000000), &consume_rate_rem);
+	dev_info(dvo->dev, "[eDPTX] data_rate:%llu consume_rate_rem: %llu", data_rate, consume_rate_rem);
+	total_bit = (u64)MTK_DVO_EDP_MAX_CLK * MTK_DVO_OUTPUT_MODE * 30 * MTK_DISP_LINE_BUF_DVO_US;
 
-	if (dvo->gs_level >= MTK_DVO_GSL_MAX) {
-		pr_info("[eDPTX] %s invalid gs_level %d\n",
-			__func__, dvo->gs_level);
-		return;
+	fifo_size = total_bit / (MTK_DISP_BUF_SRAM_UNIT_SIZE * 30);
+
+	/* 3 is dvo supports MSO mode, it adds three more line buffers */
+	dvo_fifo_size = fifo_size + (( MTK_DVO_MAX_HACTIVE / MTK_DISP_BUF_SRAM_UNIT_SIZE) * 3 );
+
+	/* 1 is to round up */
+	sodi_high_rem = (u64)fill_rate_rem * (8 * 32 * 1000000);
+	tmp = (u64)consume_rate_rem * (32 * MTK_DISP_BUF_SRAM_UNIT_SIZE);
+
+	if (sodi_high_rem < tmp) {
+		u64 total = (u64)8 * 32 * 1000000 * 32 * MTK_DISP_BUF_SRAM_UNIT_SIZE;
+
+		fill_rate -= 1;
+		sodi_high_rem = (total + sodi_high_rem - tmp) * 32 * 6 / total;
+	} else {
+		u64 total = (u64)8 * 32 * 1000000 * 32 * MTK_DISP_BUF_SRAM_UNIT_SIZE;
+
+		sodi_high_rem = (sodi_high_rem - tmp) * 32 * 6 / total;
 	}
 
-	gs_info = &mtk_dvo_gs[dvo->gs_level];
+	/* sodi_high = ((dvo_fifo_size * 30) / 32 ) - (fill_rate - consume_rate) * TWAIT_SLEEP  + 1; */
+	sodi_high = ((dvo_fifo_size * 30 * 5) - (32 * 6 * (fill_rate - consume_rate)) -
+				sodi_high_rem + 5 * 32 - 1) / (5 * 32);
+	sodi_low_rem = (consume_rate_rem * (ULTRA_LOW_US + TWAKE_UP) + (u64)(8 * 32 * 1000000) - 1)
+					/ (u64)(8 * 32 * 1000000);
+	sodi_low = consume_rate * (ULTRA_LOW_US + TWAKE_UP) + sodi_low_rem;
 
-	pr_info("[eDPTX] %s gs_level %d sodi %d %d\n",
-		__func__, dvo->gs_level,
-		gs_info->dvo_buf_sodi_high,
-		gs_info->dvo_buf_sodi_low);
+	dev_info(dvo->dev, "[eDPTX] SODI high:%llu SOHI low: %llu", sodi_high, sodi_low);
 
-	mtk_dvo_mask(dvo, DVO_BUF_SODI_HIGHT, gs_info->dvo_buf_sodi_high, 0xffffffff);
-	mtk_dvo_mask(dvo, DVO_BUF_SODI_LOW, gs_info->dvo_buf_sodi_low, 0xffffffff);
+	mtk_dvo_mask(dvo, DVO_BUF_SODI_HIGHT, sodi_high, DVO_DISP_BUF_MASK);
+	mtk_dvo_mask(dvo, DVO_BUF_SODI_LOW, sodi_low, DVO_DISP_BUF_MASK);
 }
 
 static void mtk_dvo_shadow_ctrl(struct mtk_dvo *dvo)
@@ -537,8 +561,7 @@ static int mtk_dvo_set_display_mode(struct mtk_dvo *dvo,
 	mtk_dvo_buffer_ctrl(dvo);
 	mtk_dvo_trailing_blank_setting(dvo);
 
-	mtk_dvo_get_gs_level(dvo);
-	mtk_dvo_golden_setting(dvo);
+	mtk_dvo_sodi_setting(dvo, mode);
 
 	if (dvo->conf->pixels_per_iter)
 		mtk_dvo_shadow_ctrl(dvo);
