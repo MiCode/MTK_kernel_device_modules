@@ -403,7 +403,7 @@ static int disp_gamma_cfg_set_12bit_gammalut(struct mtk_ddp_comp *comp,
 		}
 	}
 
-	disp_gamma_flush_sram(comp, GAMMA_USERSPACE);
+	ret = disp_gamma_flush_sram(comp, GAMMA_USERSPACE);
 	disp_gamma_flip_sram(comp, handle);
 	if (comp->mtk_crtc->is_dual_pipe && companion)
 		disp_gamma_flip_sram(companion, handle);
