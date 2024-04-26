@@ -17,15 +17,35 @@
 #include <linux/power_supply.h>
 #include <linux/regulator/driver.h>
 #include <linux/workqueue.h>
+#include <linux/regmap.h>
+
+#include "charger_class.h"
 #include "mtk_charger.h"
+#include "mtk_chg_type_det.h"
 
-#define M_TO_U(val)		((val) * 1000)
-#define U_TO_M(val)		((val) / 1000)
+extern unsigned int dbg_log_level;
+#define mt_dbg(dev, fmt, ...)						\
+	do {								\
+		switch (dbg_log_level) {				\
+		case 0:							\
+			break;						\
+		case 1:							\
+			dev_info_ratelimited(dev, fmt, ##__VA_ARGS__);	\
+			break;						\
+		case 2:							\
+		default:						\
+			dev_info(dev, fmt, ##__VA_ARGS__);		\
+			break;						\
+		}							\
+	} while(0)
 
-#define ADC_CONV_TIME_US	2200
-#define ADC_VBAT_SCALE		1000
-#define ADC_TO_VBAT_RAW(vbat)	((vbat) / ADC_VBAT_SCALE)
-#define ADC_FROM_VBAT_RAW(raw)	((raw) * ADC_VBAT_SCALE)
+#define M_TO_U(val)			((val) * 1000)
+#define U_TO_M(val)			((val) / 1000)
+
+#define ADC_CONV_TIME_US		2200
+#define ADC_VBAT_SCALE			1000
+#define ADC_TO_VBAT_RAW(vbat)		((vbat) / ADC_VBAT_SCALE)
+#define ADC_FROM_VBAT_RAW(raw)		((raw) * ADC_VBAT_SCALE)
 
 #define MT6379_REG_CORE_CTRL0		(0x01)
 #define MT6379_REG_RST1			(0x02)
@@ -64,7 +84,7 @@
 #define MT6379_REG_CHG_STAT		(0x121)
 #define MT6379_REG_CHG_HD_DIG2		(0x126)
 #define MT6379_REG_CHG_HD_TOP1		(0x129)
-#define MT6379_REG_CHG_HD_BOBU5		(0x12E)
+#define MT6379_REG_CHG_HD_BUBO5		(0x12E)
 #define MT6379_REG_CHG_HD_PP7		(0x135)
 #define MT6379_REG_CHG_HD_TRIM6		(0x140)
 #define MT6379_REG_CHG_BYPASS_IQ	(0x149)
@@ -86,7 +106,6 @@
 #define MT6379_REG_FGADC_SYS_INFO_CON0	(0x7F9)
 
 #define MT6379_CHG_RAMPUP_COMP_MSK	GENMASK(7, 6)
-#define MT6379_CHG_RAMPUP_COMP_SFT	6
 #define MT6379_CHG_IEOC_FLOW_RB_MSK	BIT(4)
 
 enum mt6379_charger_reg_field {
@@ -185,6 +204,21 @@ enum mt6379_adc_chan {
 	ADC_CHAN_VBATMON2,
 	ADC_CHAN_ZCV,
 	ADC_CHAN_MAX
+};
+
+static const char *const mt6379_adc_chan_names[] = {
+	[ADC_CHAN_VBATMON] = "vbatmon",
+	[ADC_CHAN_CHGVIN] "chg-vin",
+	[ADC_CHAN_USBDP] = "usb-dp",
+	[ADC_CHAN_VSYS] = "vsys",
+	[ADC_CHAN_VBAT] = "vbat",
+	[ADC_CHAN_IBUS] = "ibus",
+	[ADC_CHAN_IBAT] = "ibat",
+	[ADC_CHAN_USBDM] = "usb-dm",
+	[ADC_CHAN_TEMPJC] = "temp-jc",
+	[ADC_CHAN_SBU2] = "sbu2",
+	[ADC_CHAN_VBATMON2] = "vbatmon2",
+	[ADC_CHAN_ZCV] = "zcv",
 };
 
 /* irq index */

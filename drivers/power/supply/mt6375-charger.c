@@ -25,6 +25,7 @@
 
 #include "charger_class.h"
 #include "mtk_charger.h"
+#include "mtk_chg_type_det.h"
 
 static bool dbg_log_en;
 module_param(dbg_log_en, bool, 0644);
@@ -1074,12 +1075,15 @@ static void mt6375_chg_bc12_work_func(struct work_struct *work)
 	struct mt6375_chg_platform_data *pdata = dev_get_platdata(ddata->dev);
 	bool bc12_ctrl = !(pdata->nr_port > 1), bc12_en = false, rpt_psy = true;
 	int ret = 0, attach = ATTACH_TYPE_NONE, active_idx = 0;
+	const char *attach_name;
 	u32 val = 0;
 
 	mutex_lock(&ddata->attach_lock);
 	active_idx = ddata->active_idx;
 	attach = atomic_read(&ddata->attach[active_idx]);
-	mt_dbg(ddata->dev, "attach=%d\n", attach);
+	attach_name = get_attach_type_name(attach);
+	dev_info_ratelimited(ddata->dev, "%s, active_idx: %d, attach: %d(%s)\n",
+			     __func__, active_idx, attach, attach_name);
 
 	if (attach > ATTACH_TYPE_NONE && pdata->boot_mode == 5) {
 		/* skip bc12 to speed up ADVMETA_BOOT */
@@ -1106,12 +1110,14 @@ static void mt6375_chg_bc12_work_func(struct work_struct *work)
 			rpt_psy = false;
 			goto out;
 		}
+
 		ret = mt6375_chg_field_get(ddata, F_PORT_STAT, &val);
 		if (ret < 0) {
 			dev_err(ddata->dev, "failed to get port stat\n");
 			rpt_psy = false;
 			goto out;
 		}
+
 		break;
 	case ATTACH_TYPE_PD_SDP:
 		val = PORT_STAT_SDP;
@@ -1123,8 +1129,8 @@ static void mt6375_chg_bc12_work_func(struct work_struct *work)
 		val = PORT_STAT_UNKNOWN_TA;
 		break;
 	default:
-		dev_info(ddata->dev,
-			 "%s: using tradtional bc12 flow!\n", __func__);
+		dev_info_ratelimited(ddata->dev, "%s, Invalid attach_type: %d!\n",
+				     __func__, attach);
 		break;
 	}
 
@@ -1132,7 +1138,7 @@ static void mt6375_chg_bc12_work_func(struct work_struct *work)
 	case PORT_STAT_NOINFO:
 		bc12_ctrl = false;
 		rpt_psy = false;
-		dev_info(ddata->dev, "%s no info\n", __func__);
+		dev_info_ratelimited(ddata->dev, "%s, No bc12 port info\n", __func__);
 		goto out;
 	case PORT_STAT_APPLE_5W:
 	case PORT_STAT_APPLE_10W:
@@ -1161,20 +1167,23 @@ static void mt6375_chg_bc12_work_func(struct work_struct *work)
 	default:
 		bc12_ctrl = false;
 		rpt_psy = false;
-		dev_info(ddata->dev, "Unknown port stat %d\n", val);
+		dev_info_ratelimited(ddata->dev, "%s, Unknown port stat(%d)\n", __func__, val);
 		goto out;
 	}
-	mt_dbg(ddata->dev, "port stat = %s\n", mt6375_port_stat_names[val]);
 out:
 	mutex_unlock(&ddata->attach_lock);
 	if (bc12_ctrl) {
 		mt6375_chg_check_dpdm_ov(ddata, attach);
 		if (mt6375_chg_enable_bc12(ddata, bc12_en) < 0)
-			dev_notice(ddata->dev, "failed to set bc12 = %d\n",
-					       bc12_en);
+			dev_info(ddata->dev, "%s, Failed to set bc12 = %d\n", __func__, bc12_en);
 	}
-	if (rpt_psy)
+	if (rpt_psy) {
+		dev_info_ratelimited(ddata->dev,
+				     "%s power_supply_changed, port stat: %d(%s), attach: %d(%s)\n",
+				     __func__, val, mt6375_port_stat_names[val],
+				     attach, attach_name);
 		power_supply_changed(ddata->psy);
+	}
 }
 
 static enum power_supply_usb_type mt6375_chg_psy_usb_types[] = {
@@ -2842,8 +2851,7 @@ static int mt6375_chg_init_multi_ports(struct mt6375_chg_data *ddata)
 	DDATA_DEVM_KCALLOC(psy_usb_type);
 	DDATA_DEVM_KCALLOC(attach);
 	DDATA_DEVM_KCALLOC(bc12_dn);
-	if (!ddata->psy_type || !ddata->psy_usb_type || !ddata->attach ||
-	    !ddata->bc12_dn)
+	if (!ddata->psy_type || !ddata->psy_usb_type || !ddata->attach || !ddata->bc12_dn)
 		return -ENOMEM;
 
 	ddata->active_idx = 0;
