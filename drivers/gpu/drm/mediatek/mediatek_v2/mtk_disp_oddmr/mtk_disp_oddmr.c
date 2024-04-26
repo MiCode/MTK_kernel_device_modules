@@ -785,7 +785,8 @@ static int mtk_oddmr_dbi_fps_lookup(unsigned int fps, struct mtk_drm_dbi_cfg_inf
 		unsigned int *fps_node);
 static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 		struct cmdq_pkt *handle);
-
+static void mtk_oddmr_dmr_change_remap_gain(struct mtk_ddp_comp *comp,
+		struct cmdq_pkt *pkg);
 static void mtk_oddmr_dbi_change_remap_gain(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *pkg, uint32_t cur_max_time);
 static void mtk_oddmr_remap_set_enable(struct mtk_ddp_comp *comp,
@@ -2211,8 +2212,15 @@ static void mtk_oddmr_remap_config(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *handle)
 {
 	int remap_enable;
+	struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
 
 	ODDMRAPI_LOG("+\n");
+
+	remap_enable = atomic_read(&g_oddmr_priv->dmr_data.remap_enable);
+	if (remap_enable) {
+		mtk_oddmr_dmr_change_remap_gain(comp, handle);
+		mtk_oddmr_remap_set_enable(comp, handle, true);
+	}
 
 	remap_enable = atomic_read(&g_oddmr_priv->dbi_data.remap_enable);
 
@@ -4486,6 +4494,8 @@ static void mtk_oddmr_dmr_bl_chg(uint32_t bl_level, struct cmdq_pkt *handle)
 	uint32_t dbv_table_idx = 0;
 	uint32_t fps_table_idx = 0;
 	dma_addr_t addr = 0;
+	uint32_t remap_enable;
+
 	if (g_oddmr_priv->dmr_state >= ODDMR_INIT_DONE) {
 		ODDMRAPI_LOG("+\n");
 		mtk_oddmr_dmr_dbv_lookup(bl_level, &g_oddmr_priv->dmr_cfg_info, &dbv_table_idx, &dbv_node);
@@ -4510,6 +4520,9 @@ static void mtk_oddmr_dmr_bl_chg(uint32_t bl_level, struct cmdq_pkt *handle)
 			}
 			atomic_set(&g_oddmr_priv->dmr_data.cur_dbv_table_idx, dbv_table_idx);
 		}
+		remap_enable = atomic_read(&g_oddmr_priv->dmr_data.remap_enable);
+		if (remap_enable == 1)
+			mtk_oddmr_dmr_change_remap_gain(default_comp, handle);
 		ODDMRFLOW_LOG("dmr gain config: dbv_node:%d, fps_node:%d\n", dbv_node, fps_node);
 		ODDMRFLOW_LOG("dmr table cfg: dbv_table:%d, fps_table:%d\n", dbv_table_idx, fps_table_idx);
 	}
@@ -4840,6 +4853,9 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	case COMP_ODDMR_CFG:
 	{
 		bool sec_on = *(bool *)params;
+		struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
+		struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+		int remap_enable;
 
 		static int dmr_enable;
 		static int dbi_enable;
@@ -4850,6 +4866,17 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if(dmr_enable != g_oddmr_priv->dmr_enable) {
 			mtk_oddmr_set_dmr_enable_dual(NULL, g_oddmr_priv->dmr_enable, handle);
 			dmr_enable = g_oddmr_priv->dmr_enable;
+
+			if (dmr_enable) {
+				atomic_set(&g_oddmr_priv->dmr_data.remap_enable, 1);
+				mtk_oddmr_dmr_change_remap_gain(comp, handle);
+				mtk_oddmr_remap_set_enable(comp, handle, true);
+			} else {
+				atomic_set(&g_oddmr_priv->dmr_data.remap_enable, 0);
+				remap_enable = atomic_read(&g_oddmr_priv->dbi_data.remap_enable);
+				if (remap_enable == 0)
+					mtk_oddmr_remap_set_enable(comp, handle, false);
+			}
 		}
 
 		if(dbi_enable != g_oddmr_priv->dbi_enable) {
@@ -6332,6 +6359,78 @@ static int mtk_oddmr_get_dmr_cfg_data(struct mtk_drm_dmr_cfg_info *cfg_info)
 		index++;
 	}
 
+	if(dmr_cfg_data->fps_dbv_node.remap_reduce_offset_num) {
+		ODDMRLOW_LOG("dmr copy remap node: %d", dmr_cfg_data->fps_dbv_node.remap_reduce_offset_num);
+		size = sizeof(uint32_t) * dmr_cfg_data->fps_dbv_node.remap_reduce_offset_num;
+		data[index] = vmalloc(size);
+		if (!data[index]) {
+			DDPINFO("%s:%d, param buffer alloc fail\n",
+			__func__, __LINE__);
+			goto fail;
+		}
+		if (copy_from_user(data[index],
+			dmr_cfg_data->fps_dbv_node.remap_reduce_offset_node, size)) {
+			DDPINFO("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			goto fail;
+		}
+		dmr_cfg_data->fps_dbv_node.remap_reduce_offset_node = (uint32_t *)data[index];
+		index++;
+	}
+
+	if(dmr_cfg_data->fps_dbv_node.remap_reduce_offset_num) {
+		ODDMRLOW_LOG("dmr copy remap node: %d", dmr_cfg_data->fps_dbv_node.remap_reduce_offset_num);
+		size = sizeof(uint32_t) * dmr_cfg_data->fps_dbv_node.remap_reduce_offset_num;
+		data[index] = vmalloc(size);
+		if (!data[index]) {
+			DDPINFO("%s:%d, param buffer alloc fail\n",
+				__func__, __LINE__);
+			goto fail;
+		}
+		if (copy_from_user(data[index],
+			dmr_cfg_data->fps_dbv_node.remap_reduce_offset_value, size)) {
+			DDPINFO("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			goto fail;
+		}
+		dmr_cfg_data->fps_dbv_node.remap_reduce_offset_value = (uint32_t *)data[index];
+		index++;
+	}
+
+	if(dmr_cfg_data->fps_dbv_node.remap_dbv_gain_num) {
+		ODDMRLOW_LOG("dmr copy remap dbv node: %d", dmr_cfg_data->fps_dbv_node.remap_dbv_gain_num);
+		size = sizeof(uint32_t) * dmr_cfg_data->fps_dbv_node.remap_dbv_gain_num;
+		data[index] = vmalloc(size);
+		if (!data[index]) {
+			DDPINFO("%s:%d, param buffer alloc fail\n",
+				__func__, __LINE__);
+			goto fail;
+		}
+		if (copy_from_user(data[index],
+			dmr_cfg_data->fps_dbv_node.remap_dbv_gain_node, size)) {
+			DDPINFO("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			goto fail;
+		}
+		dmr_cfg_data->fps_dbv_node.remap_dbv_gain_node = (uint32_t *)data[index];
+		index++;
+	}
+
+	if(dmr_cfg_data->fps_dbv_node.remap_dbv_gain_num) {
+		ODDMRLOW_LOG("dmr copy remap dbv node: %d", dmr_cfg_data->fps_dbv_node.remap_dbv_gain_num);
+		size = sizeof(uint32_t) * dmr_cfg_data->fps_dbv_node.remap_dbv_gain_num;
+		data[index] = vmalloc(size);
+		if (!data[index]) {
+			DDPINFO("%s:%d, param buffer alloc fail\n",
+				__func__, __LINE__);
+			goto fail;
+		}
+		if (copy_from_user(data[index],
+			dmr_cfg_data->fps_dbv_node.remap_dbv_gain_value, size)) {
+			DDPINFO("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			goto fail;
+		}
+		dmr_cfg_data->fps_dbv_node.remap_dbv_gain_value = (uint32_t *)data[index];
+		index++;
+	}
+
 	if(dmr_cfg_data->fps_dbv_change_cfg.reg_num){
 		size = sizeof(uint32_t) * dmr_cfg_data->fps_dbv_change_cfg.reg_num;
 		data[index] = vmalloc(size);
@@ -7511,6 +7610,51 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt, v
 }
 EXPORT_SYMBOL(mtk_drm_dbi_backup);
 
+static void mtk_oddmr_dmr_change_remap_gain(struct mtk_ddp_comp *comp,
+		struct cmdq_pkt *pkg)
+{
+	uint32_t frac_bit = 0;
+	struct mtk_drm_dmr_cfg_info *dmr_cfg_data = &g_oddmr_priv->dmr_cfg_info;
+	struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
+	uint32_t cur_dbv;
+	uint32_t cur_offset;
+	uint32_t cur_dbv_gain;
+	uint32_t remap_gain_target_code;
+	unsigned long flags;
+	uint32_t dmr_remap_gain;
+	uint32_t dbi_remap_gain;
+	int dbi_remap_enable;
+
+	if (g_oddmr_priv->dmr_state >= ODDMR_INIT_DONE) {
+		ODDMRLOW_LOG("cur_offset %u\n", dmr_cfg_data->fps_dbv_node.remap_reduce_offset_value);
+		ODDMRLOW_LOG("remap_gain_target_code %u\n", dmr_cfg_data->fps_dbv_node.remap_gain_target_code);
+
+		spin_lock_irqsave(&g_oddmr_timing_lock, flags);
+		cur_dbv = g_oddmr_current_timing.bl_level;
+		spin_unlock_irqrestore(&g_oddmr_timing_lock, flags);
+
+		cur_offset = dmr_cfg_data->fps_dbv_node.remap_reduce_offset_value[0];
+		cur_dbv_gain = mtk_oddmr_dbi_alpha_blend_int(dmr_cfg_data->fps_dbv_node.remap_dbv_gain_num,
+			dmr_cfg_data->fps_dbv_node.remap_dbv_gain_node,
+			dmr_cfg_data->fps_dbv_node.remap_dbv_gain_value, cur_dbv, frac_bit);
+
+		remap_gain_target_code = (dmr_cfg_data->fps_dbv_node.remap_gain_target_code<<16);
+		dmr_remap_gain = MIN((((remap_gain_target_code - (cur_offset * cur_dbv_gain)) / 255) >> 4), 4096);
+		ODDMRLOW_LOG("dmr remap gain:0x%x, remap offset:0x%x, remap DBV gain:0x%x remap target code:0x%x\n",
+			dmr_remap_gain, cur_offset, cur_dbv_gain, remap_gain_target_code);
+
+		if (oddmr_priv->data->dmr_version == MTK_DMR_V2) {
+			atomic_set(&oddmr_priv->dmr_data.remap_gain, dmr_remap_gain);
+			dbi_remap_enable = atomic_read(&oddmr_priv->dbi_data.remap_enable);
+			if (dbi_remap_enable == 1)
+				dbi_remap_gain = atomic_read(&oddmr_priv->dbi_data.remap_gain);
+			else
+				dbi_remap_gain = 4096;
+			mtk_oddmr_write(comp, (dmr_remap_gain * dbi_remap_gain / 4096),
+				MT6991_DISP_ODDMR_REG_SPR_REMAP_GAIN, pkg);
+		}
+	}
+}
 
 static void mtk_oddmr_dbi_change_remap_gain(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *pkg, uint32_t cur_max_time)

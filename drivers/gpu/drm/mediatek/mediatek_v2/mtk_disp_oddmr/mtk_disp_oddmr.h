@@ -300,6 +300,7 @@ struct mtk_disp_oddmr_dbi_data {
 	unsigned int cur_max_time;
 	atomic_t max_time_set_done;
 	atomic_t remap_enable;
+	atomic_t remap_gain;
 	atomic_t gain_ratio;
 	unsigned int scp_param_size;
 	unsigned int load_scp_param;
@@ -314,6 +315,8 @@ struct mtk_disp_oddmr_dmr_data {
 	atomic_t cur_dbv_table_idx;
 	atomic_t cur_fps_table_idx;
 	struct mtk_drm_gem_obj *mura_table[DMR_DBV_TABLE_MAX][DMR_FPS_TABLE_MAX];
+	atomic_t remap_enable;
+	atomic_t remap_gain;
 };
 
 struct mtk_disp_oddmr_cfg {
