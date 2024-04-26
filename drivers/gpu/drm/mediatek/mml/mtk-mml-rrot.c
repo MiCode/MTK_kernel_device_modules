@@ -97,6 +97,7 @@
 #define RROT_CHKS_EXTR			0x300
 #define RROT_CHKS_ROTO			0x318
 #define RROT_DEBUG_CON			0x380
+#define RROT_DUMMY_REG			0x38c
 #define RROT_MON_STA_0			0x400
 #define RROT_DISPLAY_RACING_EN		0x630
 #define RROT_SRC_BASE_0			0xf00
@@ -115,7 +116,7 @@
 #define RROT_AFBC_PAYLOAD_OST		0xf50
 
 /* RROT debug monitor register count */
-#define RROT_MON_COUNT 38
+#define RROT_MON_COUNT 39
 #define RROT_HYFBC_MON_COUNT 4
 static u32 hyfbc_setting[RROT_HYFBC_MON_COUNT] = {0x6000, 0x18000, 0x3c000, 0x3e000};
 
@@ -1290,6 +1291,9 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		((cfg->alpharot || cfg->alpharsz) << 25),
 		U32_MAX);
 
+	cmdq_pkt_write(pkt, NULL, base_pa + RROT_DUMMY_REG,
+		task->job.jobid, U32_MAX);
+
 	if (rrot_frm->blk_10bit)
 		ufo_jump = MML_FMT_10BIT_JUMP(src->format);
 	else
@@ -2438,6 +2442,21 @@ static void rrot_debug_dump(struct mml_comp *comp)
 
 	mml_err("rrot component %u %s dump:", comp->id, comp->name ? comp->name : "");
 
+	value[0] = readl(base + RROT_SRC_CON);
+	value[1] = readl(base + RROT_DUMMY_REG);
+	value[2] = readl(base + RROT_SRC_BASE_0_MSB);
+	value[3] = readl(base + RROT_SRC_BASE_0);
+	value[4] = readl(base + RROT_SRC_BASE_1_MSB);
+	value[5] = readl(base + RROT_SRC_BASE_1);
+	value[6] = readl(base + RROT_SRC_BASE_2_MSB);
+	value[7] = readl(base + RROT_SRC_BASE_2);
+
+	mml_err("shadow RROT_SRC_CON %#010x RROT_DUMMY_REG %#010x", value[0], value[1]);
+	mml_err("shadow RROT_SRC     BASE_0 %#03x%08x     BASE_1 %#03x%08x     BASE_2 %#03x%08x",
+		value[2], value[3],
+		value[4], value[5],
+		value[6], value[7]);
+
 	/* Enable shadow read working */
 	shadow_ctrl = readl(base + RROT_SHADOW_CTRL);
 	shadow_ctrl |= 0x4;
@@ -2544,6 +2563,9 @@ static void rrot_debug_dump(struct mml_comp *comp)
 	}
 	mml_err("RROT_MON_STA_36 %#010x RROT_MON_STA_37 %#010x",
 		value[36], value[37]);
+
+	value[38] = readl(base + RROT_DUMMY_REG);
+	mml_err("RROT_DUMMY_REG %#010x", value[38]);
 
 	for (i = 0; i < RROT_HYFBC_MON_COUNT; i++) {
 		writel(hyfbc_setting[i], base + RROT_DEBUG_CON);
