@@ -236,6 +236,7 @@ void ged_eb_dvfs_trace_dump(void)
 	u32 time_diff = 0;
 	GED_DVFS_COMMIT_TYPE eCommitType;
 	static int apply_lb_async;
+	int top_freq_diff = 0, sc_freq_diff = 0;
 
 	//struct GpuUtilization_Ex util_ex;
 
@@ -260,8 +261,14 @@ void ged_eb_dvfs_trace_dump(void)
 		trace_tracing_mark_write(5566, "gpu_freq",
 			(long long) ged_get_cur_stack_freq() / 1000);
 
+		sc_freq_diff = ged_get_cur_stack_out_freq() > 0 ?
+			ged_get_cur_stack_out_freq() - ged_get_cur_real_stack_freq() : 0;
+		top_freq_diff = ged_get_cur_top_out_freq() > 0 ?
+			ged_get_cur_top_out_freq() - ged_get_cur_top_freq() : 0;
+
 		trace_GPU_DVFS__Frequency(ged_get_cur_stack_freq() / 1000,
-			ged_get_cur_real_stack_freq() / 1000, ged_get_cur_top_freq() / 1000);
+			ged_get_cur_real_stack_freq() / 1000, ged_get_cur_top_freq() / 1000,
+			sc_freq_diff / 1000, top_freq_diff / 1000);
 
 		trace_tracing_mark_write(5566, "gpu_freq_ceil",
 			ged_get_freq_by_idx(ui32CeilingID) / 1000);

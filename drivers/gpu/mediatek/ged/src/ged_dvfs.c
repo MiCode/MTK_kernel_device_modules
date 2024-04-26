@@ -1200,6 +1200,7 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 	int ui32CurFreqID, ui32CeilingID, ui32FloorID, ui32MinWorkingFreqID;
 	unsigned int cur_freq = 0;
 	enum gpu_dvfs_policy_state policy_state;
+	int top_freq_diff = 0, sc_freq_diff = 0;
 
 	ui32CurFreqID = ged_get_cur_oppidx();
 
@@ -1266,9 +1267,16 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 		trace_tracing_mark_write(5566, "gpu_freq",
 			(long long) div_u64(ged_get_cur_stack_freq(), 1000));
 
+		sc_freq_diff = ged_get_cur_stack_out_freq() > 0 ?
+			ged_get_cur_stack_out_freq() - ged_get_cur_real_stack_freq() : 0;
+		top_freq_diff = ged_get_cur_top_out_freq() > 0 ?
+			ged_get_cur_top_out_freq() - ged_get_cur_top_freq() : 0;
+
 		trace_GPU_DVFS__Frequency(div_u64(ged_get_cur_stack_freq(), 1000),
 			div_u64(ged_get_cur_real_stack_freq(), 1000),
-			div_u64(ged_get_cur_top_freq(), 1000));
+			div_u64(ged_get_cur_top_freq(), 1000),
+			div_s64(sc_freq_diff, 1000),
+			div_s64(top_freq_diff, 1000));
 
 		trace_tracing_mark_write(5566, "gpu_freq_ceil",
 			(long long) div_u64(ged_get_freq_by_idx(ui32CeilingID), 1000));
@@ -1302,6 +1310,7 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	unsigned int cur_freq = 0;
 	enum gpu_dvfs_policy_state policy_state;
 	int ret = GED_OK;
+	int top_freq_diff = 0, sc_freq_diff = 0;
 
 	ui32CurFreqID = ged_get_cur_oppidx();
 	newTopFreq = ged_get_top_freq_by_virt_opp(topNewFreqID);
@@ -1392,8 +1401,14 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	trace_tracing_mark_write(5566, "gpu_freq",
 		(long long) div_u64(ged_get_cur_stack_freq(), 1000));
 
+	sc_freq_diff = ged_get_cur_stack_out_freq() > 0 ?
+		ged_get_cur_stack_out_freq() - ged_get_cur_real_stack_freq() : 0;
+	top_freq_diff = ged_get_cur_top_out_freq() > 0 ?
+		ged_get_cur_top_out_freq() - ged_get_cur_top_freq() : 0;
+
 	trace_GPU_DVFS__Frequency(div_u64(ged_get_cur_stack_freq(), 1000),
-		div_u64(ged_get_cur_real_stack_freq(), 1000), div_u64(ged_get_cur_top_freq(), 1000));
+		div_u64(ged_get_cur_real_stack_freq(), 1000), div_u64(ged_get_cur_top_freq(), 1000),
+		div_s64(sc_freq_diff, 1000), div_s64(top_freq_diff, 1000));
 
 	trace_tracing_mark_write(5566, "gpu_freq_ceil",
 		(long long) div_u64(ged_get_freq_by_idx(ui32CeilingID), 1000));
