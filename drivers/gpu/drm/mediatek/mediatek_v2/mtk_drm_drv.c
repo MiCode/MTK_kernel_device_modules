@@ -10401,13 +10401,19 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 {
 	struct mtk_drm_private *private = platform_get_drvdata(pdev);
 	struct drm_device *drm = private->drm;
+	int ret = 0;
 
 	if (drm) {
 		/* skip all next atomic commit */
 		atomic_set(&private->kernel_pm.status, KERNEL_SHUTDOWN);
 		DDPMSG("%s status(%d)\n", __func__, atomic_read(&private->kernel_pm.status));
 		mtk_drm_pm_ctrl(private, DISP_PM_GET);
+		ret = mtk_vidle_force_power_ctrl_by_cpu(true);
 		drm_atomic_helper_shutdown(drm);
+		if (!ret)
+			ret = mtk_vidle_force_power_ctrl_by_cpu(false);
+		else if (ret < 0)
+			DDPMSG("%s ret[%d]", __func__, ret);
 		mtk_drm_pm_ctrl(private, DISP_PM_PUT);
 	}
 }
