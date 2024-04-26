@@ -14,6 +14,8 @@ static const char * const props[] = {DES_I2C_ADDR, BL_I2C_ADDR, DES_LINKA_I2C_AD
 						DES_LINKB_I2C_ADDR, DES_LINKB_BL_I2C_ADDR};
 static const char * const init_cmds[] = {SERDES_INIT_LINKA_CMD, DES_LINKA_INIT_CMD, SERDES_INIT_LINKB_CMD,
 								DES_LINKB_INIT_CMD, SER_SUPERFRAME_INIT_CMD};
+static const char * const dp_mst_init_cmds[] = {SERDES_INIT_LINKA_CMD, DES_LINKA_INIT_CMD, SERDES_INIT_LINKB_CMD,
+								DES_LINKB_INIT_CMD, DP_MST_INIT_CMD};
 
 static DEFINE_MUTEX(edp_i2c_access);
 
@@ -132,6 +134,14 @@ static int max96851_create_i2c_client(struct max96851_bridge *max_bridge)
 	} else if (max_bridge->dual_link_support) {
 		pr_info("[MAX96851] dual link support\n");
 	} else if (max_bridge->is_support_mst) {
+		addr = (u16)max_bridge->linka_i2c_addr;
+		max_bridge->max96752_linka_i2c = i2c_new_dummy_device(max_bridge->max96851_i2c->adapter, addr);
+		addr = (u16)max_bridge->linka_bl_addr;
+		max_bridge->max96752_linka_bl_i2c = i2c_new_dummy_device(max_bridge->max96851_i2c->adapter, addr);
+		addr = (u16)max_bridge->linkb_i2c_addr;
+		max_bridge->max96752_linkb_i2c = i2c_new_dummy_device(max_bridge->max96851_i2c->adapter, addr);
+		addr = (u16)max_bridge->linkb_bl_addr;
+		max_bridge->max96752_linkb_bl_i2c = i2c_new_dummy_device(max_bridge->max96851_i2c->adapter, addr);
 		pr_info("[MAX96851] DP MST support\n");
 	}
 
@@ -772,10 +782,73 @@ static int get_dual_link_setting_from_dts(struct max96851_bridge *max_bridge, st
 	return 0;
 }
 
+static int parse_dp_mst_setting(struct max96851_bridge *max_bridge, struct device_node *dp_mst_setting_np)
+{
+	int ret = 0;
+
+	for (int i = 0; i < ARRAY_SIZE(props); i++) {
+		ret = parse_data_by_prop_from_dts(dp_mst_setting_np, props[i], &max_bridge->des_i2c_addr + i);
+		if (ret) {
+			pr_info("[MAX96851] failed to parse %s property\n", props[i]);
+			return ret;
+		}
+	}
+
+	pr_info("[MAX96851] des-i2c-addr:0x%x bl-i2c-addr:0x%x\n", max_bridge->des_i2c_addr, max_bridge->bl_i2c_addr);
+	pr_info("[MAX96851] des-linka-i2c-addr:0x%x des-linka-bl-i2c-addr:0x%x\n", max_bridge->linka_i2c_addr,
+			max_bridge->linka_bl_addr);
+	pr_info("[MAX96851] des-linkb-i2c-addr:0x%x des-linkb-bl-i2c-addr:0x%x\n", max_bridge->linkb_i2c_addr,
+			max_bridge->linkb_bl_addr);
+
+	/* Parse init commands */
+
+	for (int i = 0; i < ARRAY_SIZE(dp_mst_init_cmds); i++) {
+		ret = parse_init_cmd_by_prop_from_dts(max_bridge, dp_mst_setting_np, dp_mst_init_cmds[i],
+					&max_bridge->mst_serdes_init_linka_cmd + i);
+		if (ret) {
+			pr_info("[MAX96851] failed to parse %s property\n", dp_mst_init_cmds[i]);
+			return ret;
+		}
+	}
+
+	if (max_bridge->is_support_touch) {
+		ret = parse_init_cmd_by_prop_from_dts(max_bridge, dp_mst_setting_np,
+										MAX96851_DP_MST_TOUCH_INIT_CMD,
+								&max_bridge->dp_mst_touch_init_cmd);
+		if (ret) {
+			pr_info("[MAX96851] failed to parse %s property\n", MAX96851_DP_MST_TOUCH_INIT_CMD);
+			return ret;
+		}
+	}
+
+	/* Parse backlight settings */
+	ret = get_bl_on_off_cmd_info_from_dts(max_bridge, dp_mst_setting_np);
+	if (ret) {
+		pr_info("[MAX96851] Failed to parse superframe backlight setting\n");
+		return ret;
+	}
+
+	return 0;
+}
+
 static int get_mst_setting_from_dts(struct max96851_bridge *max_bridge,
 										struct device_node *panel_setting_np)
 {
-	return 0;
+	struct device_node *dp_mst_setting_np;
+	int ret = 0;
+
+	dp_mst_setting_np = of_get_child_by_name(panel_setting_np, MAX96851_DP_MST_SETTING);
+	if (!dp_mst_setting_np) {
+		pr_info("%s: No dp mst setting node found!\n", __func__);
+		return -EINVAL;
+	}
+
+	ret = parse_dp_mst_setting(max_bridge, dp_mst_setting_np);
+	if (ret)
+		pr_info("%s: Failed to parse multi view setting from DTS!\n", __func__);
+
+	of_node_put(dp_mst_setting_np);
+	return ret;
 }
 
 static int get_serdes_setting_from_dts(struct max96851_bridge *max_bridge)
@@ -830,6 +903,8 @@ static int get_serdes_setting_from_dts(struct max96851_bridge *max_bridge)
 			return ret;
 	} else if (max_bridge->is_support_mst) {
 		/* parse mst setting */
+		if (!max_bridge->is_dp)
+			return -EINVAL;
 		ret = get_mst_setting_from_dts(max_bridge, panel_setting_np);
 		if (ret)
 			return ret;
@@ -887,9 +962,12 @@ static int turn_on_off_bl(struct max96851_bridge *max_bridge, bool enable, u8 ty
 			client = max_bridge->max96752_linkb_bl_i2c;
 	} else if(max_bridge->dual_link_support) {
 		client = max_bridge->bl_i2c;
-	} else if (max_bridge->is_support_mst)
-		client = max_bridge->bl_i2c;
-	else
+	} else if (max_bridge->is_support_mst) {
+		if (type == 0x1)
+			client = max_bridge->max96752_linka_bl_i2c;
+		else if (type == 0x2)
+			client = max_bridge->max96752_linkb_bl_i2c;
+	} else
 		client = max_bridge->bl_i2c;
 
 	pr_info("[MAX96851] %s enable: %d\n", __func__, enable);
@@ -948,7 +1026,7 @@ static void serdes_init_by_superframe(struct max96851_bridge *max_bridge)
 	/* ser to init superframe */
 	ser_init_loop(max_bridge, &max_bridge->ser_superframe_init_cmd);
 
-	/* serdes to init superframe */
+	/* serdes to init superframe touch */
 	serdes_init_loop(max_bridge, &max_bridge->serdes_superframe_touch_init_cmd);
 
 	dev_info(max_bridge->dev, "%s-\n", __func__);
@@ -965,6 +1043,25 @@ static void serdes_init_by_mst(struct max96851_bridge *max_bridge)
 {
 	dev_info(max_bridge->dev, "%s+\n", __func__);
 
+	/* serdes to init linka */
+	serdes_init_loop(max_bridge, &max_bridge->mst_serdes_init_linka_cmd);
+
+	/*des to init linka */
+	serdes_init_loop(max_bridge, &max_bridge->mst_des_linka_init_cmd);
+
+	/*serdes to init linkb */
+	serdes_init_loop(max_bridge, &max_bridge->mst_serdes_init_linkb_cmd);
+
+	/* des to init linkb */
+	serdes_init_loop(max_bridge, &max_bridge->mst_des_linkb_init_cmd);
+
+	/* ser to init dp mst */
+	ser_init_loop(max_bridge, &max_bridge->dp_mst_init_cmd);
+
+	/* serdes to init dp mst touch */
+	if (max_bridge->is_support_touch)
+		serdes_init_loop(max_bridge, &max_bridge->dp_mst_touch_init_cmd);
+
 	dev_info(max_bridge->dev, "%s-\n", __func__);
 }
 
@@ -975,8 +1072,14 @@ static void max96851_pre_enable(struct drm_bridge *bridge)
 
 	pr_info("[MAX96851] Serdes DP: %d %s+\n", max_bridge->is_dp, __func__);
 
-	if (max_bridge->prepared)
+	spin_lock(&max_bridge->enable_index_lock);
+
+	if (max_bridge->prepared || max_bridge->serdes_enable_index)
 		return;
+
+	max_bridge->serdes_enable_index++;
+
+	spin_unlock(&max_bridge->enable_index_lock);
 	/* reset serdes */
 	reset_ser(max_bridge);
 
@@ -1011,9 +1114,10 @@ static void max96851_enable(struct drm_bridge *bridge)
 		turn_on_off_bl(max_bridge, true, 0x02);
 	} else if(max_bridge->dual_link_support) {
 		turn_on_off_bl(max_bridge, true, 0x0);
-	} else if (max_bridge->is_support_mst)
-		turn_on_off_bl(max_bridge, true, 0x0);
-	else
+	} else if (max_bridge->is_support_mst) {
+		turn_on_off_bl(max_bridge, true, 0x01);
+		turn_on_off_bl(max_bridge, true, 0x02);
+	} else
 		turn_on_off_bl(max_bridge, true, 0x0);
 
 	max_bridge->enabled = true;
@@ -1027,8 +1131,13 @@ static void max96851_disable(struct drm_bridge *bridge)
 
 	pr_info("[MAX96851] Serdes DP: %d %s+\n", max_bridge->is_dp, __func__);
 
-	if (!max_bridge->enabled && !max_bridge->prepared)
+	spin_lock(&max_bridge->enable_index_lock);
+
+	if (!max_bridge->enabled || !max_bridge->prepared || !max_bridge->serdes_enable_index)
 		return ;
+
+	max_bridge->serdes_enable_index--;
+	spin_unlock(&max_bridge->enable_index_lock);
 
 	/* turn off backlight */
 	if (max_bridge->superframe_support) {
@@ -1086,9 +1195,27 @@ static int max96851_bridge_attach(struct drm_bridge *bridge,
 static int max96851_bridge_get_modes(struct drm_bridge *bridge,
 			 struct drm_connector *connector)
 {
-	pr_info("[MAX96851] %s+\n", __func__);
-	pr_info("[MAX96851] %s-\n", __func__);
-	return 0;
+	struct max96851_bridge *max_bridge = bridge_to_max96851(bridge);
+
+	pr_info("[MAX96851] %s\n", __func__);
+
+	if (max_bridge->is_support_mst) {
+		if (connector->name)
+			pr_info("[MAX96851] get mst mode from %s panel\n", connector->name);
+		else {
+			pr_info("[MAX96851] connector name is null\n");
+			return -EINVAL;
+		}
+
+		if (!strncmp(connector->name, "DP-1", 4))
+			return drm_panel_get_modes(max_bridge->panel1, connector);
+		else if (!strncmp(connector->name, "DP-2", 4))
+			return drm_panel_get_modes(max_bridge->panel2, connector);
+		else
+			return -EINVAL;
+	}
+
+	return drm_panel_get_modes(max_bridge->panel1, connector);
 }
 
 static const struct drm_bridge_funcs max96851_bridge_funcs = {
@@ -1103,7 +1230,6 @@ static int max96851_probe(struct i2c_client *client)
 {
 	struct device *dev = &client->dev;
 	struct drm_bridge *panel_bridge = NULL;
-	struct drm_panel *panel = NULL;
 	struct max96851_bridge *max_bridge = NULL;
 	int ret;
 
@@ -1113,15 +1239,15 @@ static int max96851_probe(struct i2c_client *client)
 	if (!max_bridge)
 		return -ENOMEM;
 
-	ret = drm_of_find_panel_or_bridge(dev->of_node, 1, 0, &panel, NULL);
-	if (!panel) {
+	ret = drm_of_find_panel_or_bridge(dev->of_node, 1, 0, &max_bridge->panel1, NULL);
+	if (!max_bridge->panel1) {
 		pr_info("[MAX96851] Failed to find panel %d\n", ret);
 		return -EPROBE_DEFER;
 	}
 
-	dev_info(dev, "[MAX96851] Found panel node: %pOF\n", panel->dev->of_node);
+	dev_info(dev, "[MAX96851] Found panel node: %pOF\n", max_bridge->panel1->dev->of_node);
 
-	panel_bridge = devm_drm_panel_bridge_add(dev, panel);
+	panel_bridge = devm_drm_panel_bridge_add(dev, max_bridge->panel1);
 	if (IS_ERR(panel_bridge)) {
 		dev_info(dev, "[MAX96851] Failed to create panel bridge\n");
 		return PTR_ERR(panel_bridge);
@@ -1147,6 +1273,17 @@ static int max96851_probe(struct i2c_client *client)
 		return ret;
 	}
 
+	if (max_bridge->is_support_mst) {
+		ret = drm_of_find_panel_or_bridge(dev->of_node, 3, 0, &max_bridge->panel2, NULL);
+		if (!max_bridge->panel2) {
+			pr_info("[MAX96851] Failed to find panel2 %d\n", ret);
+			return -EPROBE_DEFER;
+		}
+		dev_info(dev, "[MAX96851] Found panel2 node: %pOF\n", max_bridge->panel2->dev->of_node);
+		max_bridge->serdes_enable_index = 0;
+		spin_lock_init(&max_bridge->enable_index_lock);
+	}
+
 	ret = max96851_create_i2c_client(max_bridge);
 	if (ret) {
 		dev_info(dev, "[MAX96851] create i2c client failed\n");
@@ -1159,13 +1296,9 @@ static int max96851_probe(struct i2c_client *client)
 		max_bridge->bridge.type = DRM_MODE_CONNECTOR_eDP;
 
 	max_bridge->bridge.funcs = &max96851_bridge_funcs;
+	max_bridge->bridge.ops = DRM_BRIDGE_OP_MODES;
 	max_bridge->bridge.of_node = dev->of_node;
 	drm_bridge_add(&max_bridge->bridge);
-
-	if (max_bridge->is_dp) {
-		max96851_pre_enable(&max_bridge->bridge);
-		max96851_enable(&max_bridge->bridge);
-	}
 
 	dev_info(dev, "[MAX96851] %s-\n", __func__);
 
