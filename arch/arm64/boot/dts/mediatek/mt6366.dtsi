@@ -397,4 +397,16 @@
 		base = <0x580>;
 		dcxo-switch;
 	};
+	mt6358keys: mt6358keys {
+		compatible = "mediatek,mt6358-keys";
+		mediatek,long-press-mode = <1>;
+		power-off-time-sec = <0>;
+		power {
+			linux,keycodes = <116>;
+			wakeup-source;
+		};
+		home {
+			linux,keycodes = <115>;
+		};
+	};
 };/* End of main_pmic */
