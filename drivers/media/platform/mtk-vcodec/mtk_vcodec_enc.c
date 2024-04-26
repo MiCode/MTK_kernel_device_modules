@@ -2015,12 +2015,25 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		if (!ctx->has_first_input) {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-			if (!ctx->enc_params.svp_mode) {
-				if (ctx->dev->support_acp && mtk_venc_input_acp_enable &&
+			if (!ctx->enc_params.svp_mode && ctx->dev->support_acp) {
+				bool is_cached = false;
+
+				if (vq->memory == VB2_MEMORY_DMABUF) {
+					struct dma_buf *dmabuf = dma_buf_get(buf->m.planes[0].m.fd);
+
+					if (!IS_ERR_OR_NULL(dmabuf)) {
+						is_cached = !is_uncached_dmabuf(dmabuf);
+						dma_buf_put(dmabuf);
+					}
+				}
+				if (!is_cached)
+					mtk_v4l2_debug(2, "[%d] src_vq use uncached heap or vq->memory %d not DMABUF",
+						ctx->id, vq->memory);
+				if (mtk_venc_input_acp_enable && is_cached &&
 				    !(buf->flags & V4L2_BUF_FLAG_NO_CACHE_CLEAN) &&
 				    vcp_get_io_device_ex(VCP_IOMMU_ACP_CODEC)) {
 					vq->dev = vcp_get_io_device_ex(VCP_IOMMU_ACP_CODEC);
-					mtk_v4l2_debug(4, "[%d] src_vq use VCP_IOMMU_ACP_CODEC domain %p",
+					mtk_v4l2_debug(2, "[%d] src_vq use VCP_IOMMU_ACP_CODEC domain %p",
 						ctx->id, vq->dev);
 				} else if (vq->dev != ctx->dev->smmu_dev) {
 					vq->dev = ctx->dev->smmu_dev;
