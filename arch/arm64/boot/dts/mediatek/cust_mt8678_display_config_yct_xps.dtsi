@@ -11,6 +11,10 @@
 	status = "okay";
 };
 
+&dispsys_config {
+	enable-secondary-path = <1>;
+};
+
 &dp_tx {
 	status = "okay";
 };
