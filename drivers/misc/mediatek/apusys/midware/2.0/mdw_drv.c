@@ -74,6 +74,7 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 	INIT_LIST_HEAD(&mpriv->ch_list);
 	atomic_set(&mpriv->active_cmds, 0);
 	idr_init(&mpriv->cmds);
+	INIT_LIST_HEAD(&mpriv->cmds_list);
 	atomic_set(&mpriv->exec_seqno, 0);
 
 	mpriv->get = mdw_drv_priv_get;
@@ -90,7 +91,8 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 	}
 
 	/* get normal power budget */
-	mdw_dev->dev_funcs->pb_get(MDW_POWERPOLICY_DEFAULT, MDW_PB_DEBOUNCE_MS);
+	if (mdw_dev->uapi_ver > 3)
+		mdw_dev->dev_funcs->pb_get(MDW_POWERPOLICY_DEFAULT, MDW_PB_DEBOUNCE_MS);
 
 	ret = mdw_mem_pool_create(mpriv, &mpriv->cmd_buf_pool,
 		MDW_MEM_TYPE_MAIN, MDW_MEM_POOL_CHUNK_SIZE,
@@ -157,7 +159,7 @@ static int mdw_platform_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	/* get parameter from dts */
-	of_property_read_u32(pdev->dev.of_node, "version", &mdev->mdw_ver);
+	of_property_read_u32(pdev->dev.of_node, "uapi-ver", &mdev->uapi_ver);
 	of_property_read_u32(pdev->dev.of_node, "dsp_mask", &mdev->dsp_mask);
 	of_property_read_u32(pdev->dev.of_node, "dla_mask", &mdev->dla_mask);
 	of_property_read_u32(pdev->dev.of_node, "dma_mask", &mdev->dma_mask);
@@ -183,6 +185,8 @@ static int mdw_platform_probe(struct platform_device *pdev)
 		goto deinit_dbg;
 
 	mdw_cmd_history_init(mdev);
+
+	mdev->support_power_fast_on_off = false;
 
 	pr_info("%s +\n", __func__);
 
@@ -250,7 +254,7 @@ static int mdw_rpmsg_probe(struct rpmsg_device *rpdev)
 		return -ENOMEM;
 
 	/* get parameter from dts */
-	of_property_read_u32(rpdev->dev.of_node, "version", &mdev->mdw_ver);
+	of_property_read_u32(rpdev->dev.of_node, "uapi-ver", &mdev->uapi_ver);
 	of_property_read_u32(rpdev->dev.of_node, "dsp_mask", &mdev->dsp_mask);
 	of_property_read_u32(rpdev->dev.of_node, "dla_mask", &mdev->dla_mask);
 	of_property_read_u32(rpdev->dev.of_node, "dma_mask", &mdev->dma_mask);

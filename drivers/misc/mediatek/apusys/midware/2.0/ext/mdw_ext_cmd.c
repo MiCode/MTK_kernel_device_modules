@@ -30,6 +30,9 @@ void mdw_ext_cmd_get_id(struct mdw_cmd *c)
 	int ret = 0;
 	char comm[16];
 
+	if (c->mpriv->mdev->uapi_ver < 4)
+		return;
+
 	mdw_ext_lock();
 	if (c->ext_id) {
 		mdwext_drv_warn("c(0x%llx) ext_id(0x%llx) already exist\n", c->kid, c->ext_id);
@@ -53,6 +56,9 @@ out:
 
 void mdw_ext_cmd_put_id(struct mdw_cmd *c)
 {
+	if (c->mpriv->mdev->uapi_ver < 4)
+		return;
+
 	mdwext_cmd_debug("c(0x%llx) extid(0x%llx) tgid(%d/%d)\n",
 		c->kid, c->ext_id, task_tgid_nr(current), c->tgid);
 
@@ -80,6 +86,11 @@ static int mdw_ext_cmd_ioctl_run(union mdw_ext_cmd_args *args)
 		goto unlock_extlock;
 	}
 
+	/* check support */
+	if (c->mpriv->mdev->uapi_ver < 4) {
+		mdwext_drv_warn("no support mdw ext\n");
+		goto unlock_extlock;
+	}
 	/* check cmd */
 	if (c->ext_id != args->in.ext_id) {
 		mdwext_drv_err("c(0x%llx) extid not available(0x%llx/0x%llx)\n",
@@ -105,7 +116,7 @@ static int mdw_ext_cmd_ioctl_run(union mdw_ext_cmd_args *args)
 	memset(&c_args, 0, sizeof(c_args));
 	c_args.in.op = MDW_CMD_IOCTL_RUN_STALE;
 	c_args.in.id = c->id;
-	ret = mdw_cmd_ioctl_run(c->mpriv, &c_args);
+	ret = mdw_cmd_ioctl_run_v4(c->mpriv, &c_args);
 	if (ret) {
 		mdwext_drv_err("c(0x%llx) extid(0x%llx) trigger fail(%d)\n", c->kid, c->ext_id, ret);
 		mdw_cmd_put(c);

@@ -65,7 +65,7 @@ static int mdw_mem_aram_attach(struct dma_buf *dbuf,
 			(uint64_t)m->mpriv);
 		am->dma_addr = am->addr;
 	} else {
-		ret = mdw_rvs_mem_map((uint64_t)m->mpriv, am->sid, &am->dma_addr);
+		ret = mdw_apu_mem_map((uint64_t)m->mpriv, am->sid, &am->dma_addr);
 		if (ret) {
 			mdw_drv_err("apumem(0x%llx/%u) map fail\n",
 				(uint64_t)m->mpriv, am->sid);
@@ -115,7 +115,7 @@ static void mdw_mem_aram_detach(struct dma_buf *dbuf,
 		mdw_mem_debug("s(0x%llx) bypass vlm unmap\n",
 			(uint64_t)m->mpriv);
 	} else {
-		ret = mdw_rvs_mem_unmap((uint64_t)m->mpriv, am->sid);
+		ret = mdw_apu_mem_unmap((uint64_t)m->mpriv, am->sid);
 		if (ret) {
 			mdw_drv_warn("s(0x%llx) unmap sid(%u) fail\n",
 				(uint64_t)m->mpriv, am->sid);
@@ -153,7 +153,7 @@ static void mdw_mem_aram_unprepare(struct mdw_mem_aram *am)
 	case MDW_MEM_TYPE_SYSTEM:
 	case MDW_MEM_TYPE_SYSTEM_ISP:
 	case MDW_MEM_TYPE_SYSTEM_APU:
-		if (mdw_rvs_mem_free(am->sid))
+		if (mdw_apu_mem_free(am->sid))
 			mdw_mem_debug("free apumem type(%u)sid(%u)m(0x%llx/0x%x) fail\n",
 				am->m->type, am->sid,
 				am->dma_addr, am->dma_size);
@@ -197,7 +197,7 @@ static int mdw_mem_aram_prepare(struct mdw_fpriv *mpriv,
 	case MDW_MEM_TYPE_SYSTEM:
 	case MDW_MEM_TYPE_SYSTEM_ISP:
 	case MDW_MEM_TYPE_SYSTEM_APU:
-		ret = mdw_rvs_mem_alloc(am->m->type,
+		ret = mdw_apu_mem_alloc(am->m->type,
 			am->m->size, &am->addr, &am->sid);
 		if (ret) {
 			mdw_drv_err("alloc apuram(%u/%u) fail(%d)\n",
@@ -233,7 +233,7 @@ static int mdw_mem_aram_bind(void *session, struct mdw_mem *m)
 		return 0;
 	}
 
-	return mdw_rvs_mem_import((uint64_t)session, am->sid);
+	return mdw_apu_mem_import((uint64_t)session, am->sid);
 }
 
 static void mdw_mem_aram_unbind(void *session, struct mdw_mem *m)
@@ -253,7 +253,7 @@ static void mdw_mem_aram_unbind(void *session, struct mdw_mem *m)
 		return;
 	}
 
-	mdw_rvs_mem_unimport((uint64_t)session, am->sid);
+	mdw_apu_mem_unimport((uint64_t)session, am->sid);
 }
 
 int mdw_mem_aram_alloc(struct mdw_mem *m)

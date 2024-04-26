@@ -17,6 +17,8 @@
 #include "mdw_trace.h"
 #include "mdw_mem_pool.h"
 #include "apummu_export.h"
+#include "apu_mem_export.h"
+#include "apu_mem_def.h"
 
 #define mdw_mem_show(m) \
 	mdw_mem_debug("mem(0x%llx/0x%llx/%d/0x%llx/%d/0x%llx/0x%x/0x%llx" \
@@ -412,14 +414,18 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 		goto unmap_dbuf;
 	}
 
+	if (mpriv->mdev->uapi_ver < 4) {
+		m->device_va = m->device_iova;
+		goto skip_iova2eva;
+	}
 	/* handle iova to eva */
 	mdw_trace_begin("apummu:iova2eva|iova:0x%llx,size:%u btype(%d)",
 		m->device_iova, m->dva_size, m->buf_type);
-	ret = apummu_iova2eva(m->buf_type, (uint64_t)m->mpriv, m->device_iova, m->dva_size, &eva);
+	ret = apu_mem_map_iova(m->buf_type, (uint64_t)m->mpriv, m->device_iova, m->dva_size, &eva);
 	mdw_trace_end();
 
 	if (ret) {
-		mdw_drv_err("apummu iova2eva fail s(0x%llx)\n", (uint64_t)m->mpriv);
+		mdw_drv_err("apu_mem_map_iova fail s(0x%llx) ret(%d)\n", (uint64_t)m->mpriv, ret);
 		is_apummu = true;
 		ret = -EINVAL;
 		goto unmap_dbuf;
@@ -436,6 +442,7 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 	}
 	mdw_mem_debug("iova2eva pass s(0x%llx)\n", (uint64_t)m->mpriv);
 
+skip_iova2eva:
 	map->m = m;
 	m->map = map;
 	kref_init(&map->map_ref);
@@ -589,16 +596,19 @@ int mdw_mem_map(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 		m->map->put(m->map);
 		goto out;
 	} else {
+		if (mpriv->mdev->uapi_ver < 4)
+			goto skip_iova2eva;
 		/* handle iova2eva */
 		mdw_trace_begin("apummu:iova2eva|iova:0x%llx,size:%u btype(%d)",
 			m->device_iova, m->dva_size, m->buf_type);
-		ret = apummu_iova2eva(m->buf_type, (uint64_t)mpriv, m->device_iova,
+		ret = apu_mem_map_iova(m->buf_type, (uint64_t)mpriv, m->device_iova,
 				m->dva_size, &eva);
 		mdw_trace_end();
 		if (ret) {
-			mdw_drv_err("apummu iova2eva fail s(0x%llx)\n", (uint64_t)mpriv);
+			mdw_drv_err("apu_mem_map_iova fail s(0x%llx) ret(%d),\n", (uint64_t)mpriv, ret);
 			ret = -EINVAL;
 			goto out;
+			ret = 0;
 		}
 
 		/* check eva */
@@ -609,8 +619,9 @@ int mdw_mem_map(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 			goto out;
 		}
 		mdw_mem_debug("iova2eva pass s(0x%llx)\n", (uint64_t)mpriv);
-	}
 
+	}
+skip_iova2eva:
 	/* handle invoke */
 	m_invoke = mdw_mem_invoke_find(mpriv, m);
 	mdw_flw_debug("0x%llx\n", (uint64_t)m_invoke);
