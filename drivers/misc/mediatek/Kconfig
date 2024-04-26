@@ -308,6 +308,7 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mbraink/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/i3c_i2c_wrap/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/pcie/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/carevent/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/vhost_dmabuf_phys/Kconfig"
 endmenu # Other Peripheral
 
 menu "Performance"
