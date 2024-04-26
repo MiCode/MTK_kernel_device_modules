@@ -804,7 +804,6 @@ static void vcp_A_set_ready(void)
 #if VCP_BOOT_TIME_OUT_MONITOR
 static void vcp_wait_ready_timeout(struct timer_list *t)
 {
-	int ret = 0;
 #if VCP_RECOVERY_SUPPORT
 	if (vcp_timeout_times < 10)
 		vcp_send_reset_wq(RESET_TYPE_TIMEOUT);
@@ -813,11 +812,6 @@ static void vcp_wait_ready_timeout(struct timer_list *t)
 #endif
 	vcp_timeout_times++;
 	pr_notice("[VCP] vcp_timeout_times=%x\n", vcp_timeout_times);
-	ret = vcp_turn_mminfra_on();
-	if (ret < 0)
-		return;
-	vcp_dump_last_regs(mmup_enable_count());
-	vcp_turn_mminfra_off();
 }
 #endif
 
