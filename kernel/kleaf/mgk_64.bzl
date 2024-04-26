@@ -917,6 +917,7 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6768.ko": "mt6768",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6991.ko": "mt6991",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6877.ko": "mt6877",
+    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6833.ko": "mt6833",
     "drivers/soc/mediatek/mtk-scpsys-mt6765.ko": "mt6765",
     "drivers/soc/mediatek/mtk-scpsys-mt6768.ko": "mt6768",
     "drivers/soc/mediatek/mtk-scpsys-mt6761.ko": "mt6761",
@@ -2725,6 +2726,10 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6893.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-mt6893-pg.ko")
         mgk_64_platform_device_modules.update({"drivers/interconnect/mediatek/mmqos-mt6833.ko":"mt6833"})
+
+        mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-debug.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mm-fake-engine.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-imax.ko")
 
     if "mt6853_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_device_modules.append("drivers/pinctrl/mediatek/pinctrl-mt6853.ko")
