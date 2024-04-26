@@ -3281,7 +3281,10 @@ void mtk_dsi_set_backlight(struct mtk_dsi *dsi)
 			DDPDBG("%s, DISP_PQ_CCORR_SILKY_BRIGHTNESS[%d]\n", __func__,
 			pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]);
 
-		mtk_drm_setbacklight_at_te(&mtk_crtc->base, csc_bl[index], 0, (0X1<<SET_BACKLIGHT_LEVEL));
+		if (dsi->driver_data && dsi->driver_data->support_bl_at_te)
+			mtk_drm_setbacklight_at_te(&mtk_crtc->base, csc_bl[index], 0, (0X1<<SET_BACKLIGHT_LEVEL));
+		else
+			mtk_drm_setbacklight(&mtk_crtc->base, csc_bl[index], 0, (0X1<<SET_BACKLIGHT_LEVEL), 0);
 
 		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_AAL, 0);
 		if (comp)
@@ -12769,6 +12772,7 @@ static const struct mtk_dsi_driver_data mt6991_dsi_driver_data = {
 	.dsi_ltpo_vdo_con = 0x1A8,
 	.dsi_ltpo_vdo_sq0 = 0x1AC,
 	.support_512byte_rx = 1,
+	.support_bl_at_te = 1,
 };
 
 static const struct mtk_dsi_driver_data mt6897_dsi_driver_data = {
