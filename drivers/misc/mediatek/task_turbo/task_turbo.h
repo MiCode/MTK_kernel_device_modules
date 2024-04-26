@@ -82,6 +82,7 @@ extern void turn_off_tgid_vip(void);
 extern int get_cam_hal_pid_for_task_turbo(void);
 extern int get_cam_server_pid_for_task_turbo(void);
 extern bool get_cam_status_for_task_turbo(void);
+extern int (*task_turbo_enforce_ct_to_vip_fp)(int val, int caller_id);
 
 /*
  * Nice levels are multiplicative, with a gentle 10% change for every

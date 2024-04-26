@@ -2357,6 +2357,8 @@ static int __init init_task_turbo(void)
 	if (ret)
 		pr_info("%s: init input handler failed, returned %d\n", TAG, ret);
 
+	task_turbo_enforce_ct_to_vip_fp = enforce_ct_to_vip;
+
 failed:
 	if (ret)
 		pr_err("register hooks failed, ret %d line %d\n", ret, ret_erri_line);
