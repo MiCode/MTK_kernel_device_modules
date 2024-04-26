@@ -78,12 +78,14 @@ struct mtk_vdisp {
 	void __iomem *vdisp_ao_merge_irq;
 	void __iomem *vdisp_ao_cg_con;
 	void __iomem *hwccf_base;
+	void __iomem *pwr_ack_wait_con;
 	struct notifier_block rgu_nb;
 	struct notifier_block pd_nb;
 	enum disp_pd_id pd_id;
 	int clk_num;
 	struct clk **clks;
 	int pm_ret;
+	u32 pwr_ack_wait_time;
 };
 static struct device *g_dev[DISP_PD_NUM];
 static void __iomem *g_vlp_base;
@@ -355,6 +357,10 @@ static int genpd_event_notifier(struct notifier_block *nb,
 				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML0, false);
 		}
 
+		/* modify power wait ack time */
+		if (priv->pwr_ack_wait_con)
+			writel(priv->pwr_ack_wait_time, priv->pwr_ack_wait_con);
+
 		atomic_inc(&g_mtcmos_cnt);
 		mutex_unlock(&g_mtcmos_cnt_lock);
 		break;
@@ -558,6 +564,21 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 		priv->hwccf_base = devm_ioremap(dev, res->start, resource_size(res));
 		if (!priv->hwccf_base) {
 			VDISPERR("fail to ioremap hwccf_base: 0x%pa", &res->start);
+			return -EINVAL;
+		}
+	}
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pwr_ack_wait_con");
+	if (res) {
+		priv->pwr_ack_wait_con = devm_ioremap(dev, res->start, resource_size(res));
+		if (!priv->pwr_ack_wait_con) {
+			VDISPERR("fail to ioremap pwr_ack_wait_con: 0x%pa", &res->start);
+			return -EINVAL;
+		}
+
+		ret = of_property_read_u32(dev->of_node, "pwr-ack-wait-time", &priv->pwr_ack_wait_time);
+		if (ret) {
+			VDISPERR("pwr-ack-wait-time property read fail(%d)", ret);
 			return -EINVAL;
 		}
 	}
