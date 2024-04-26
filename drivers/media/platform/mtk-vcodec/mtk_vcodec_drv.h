@@ -844,6 +844,7 @@ struct mtk_vcodec_dev {
 	struct video_device *vfd_dec;
 	struct video_device *vfd_enc;
 	struct iommu_domain *io_domain;
+	struct mtk_chipid chip_id;
 	unsigned int support_acp;
 
 	const char *platform;

@@ -190,6 +190,42 @@ EXPORT_SYMBOL_GPL(support_svp_region);
 int support_wfd_region;
 EXPORT_SYMBOL_GPL(support_wfd_region);
 
+int mtk_vcodec_get_chipid(struct mtk_chipid *chip_id)
+{
+	struct device_node *node;
+	int len;
+	char ver_name[20] = {0};
+
+	node = of_find_node_by_path("/chosen");
+	if (!node)
+		node = of_find_node_by_path("/chosen@0");
+	if (!node) {
+		mtk_v4l2_err("chosen node not found in device tree");
+		return -ENODEV;
+	}
+
+	chip_id = (struct mtk_chipid *)of_get_property(node, "atag,chipid", &len);
+	if (!chip_id) {
+		mtk_v4l2_err("atag,chipid found in chosen node");
+		return -ENODEV;
+	}
+
+	switch (chip_id->sw_ver) {
+	case MTK_CHIP_SW_VER_E1:
+		snprintf(ver_name, sizeof(ver_name), "E1");
+		break;
+	case MTK_CHIP_SW_VER_E2:
+		snprintf(ver_name, sizeof(ver_name), "E2");
+		break;
+	default:
+		snprintf(ver_name, sizeof(ver_name), "ver not support");
+	}
+
+	mtk_v4l2_debug(0, "chip sw version: %s(0x%x)", ver_name, chip_id->sw_ver);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_get_chipid);
+
 bool mtk_vcodec_is_vcp(int type)
 {
 	if (type > MTK_INST_ENCODER || type < MTK_INST_DECODER)
