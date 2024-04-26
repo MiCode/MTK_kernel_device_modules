@@ -2063,7 +2063,7 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 				buf->length, mtkbuf, vb->timestamp);
 		}
 	} else {
-		if (buf->reserved == 0xFFFFFFFF)
+		if (buf->reserved == 0xFFFFFFFF || buf->reserved == 0)
 			mtkbuf->general_user_fd = -1;
 		else
 			mtkbuf->general_user_fd = (int)buf->reserved;
