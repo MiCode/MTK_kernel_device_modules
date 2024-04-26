@@ -5095,7 +5095,7 @@ static void WPE_add_device_link(struct platform_device *pDev)
 				continue;
 				}
 
-			if (of_property_read_u32(larb_node, "mediatek,smi-id", &larb_id))
+			if (of_property_read_u32(larb_node, "mediatek,larb-id", &larb_id))
 				LOG_INF(" WPE Error: get larb id from DTS fail!!\n");
 			else
 				LOG_INF("WPE %s gets larb_id=%d\n",
