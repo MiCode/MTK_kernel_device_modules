@@ -3360,7 +3360,8 @@ static int mt_usb_wakeup_init(struct musb *musb)
 		else if (of_device_is_compatible(node, "mediatek,mt6789-usb20"))
 			uwk_vers = 2;
 		else if (of_device_is_compatible(node, "mediatek,mt6768-usb20") ||
-				of_device_is_compatible(node, "mediatek,mt6761-usb20"))
+				of_device_is_compatible(node, "mediatek,mt6761-usb20") ||
+				of_device_is_compatible(node, "mediatek,mt6781-usb20"))
 			uwk_vers = 3;
 		else if (of_device_is_compatible(node, "mediatek,mt6765-usb20"))
 			uwk_vers = 4;
@@ -4841,6 +4842,7 @@ static const struct of_device_id apusb_of_ids[] = {
 	{.compatible = "mediatek,mt6765-usb20",},
 	{.compatible = "mediatek,mt6761-usb20",},
 	{.compatible = "mediatek,mt6739-usb20",},
+	{.compatible = "mediatek,mt6781-usb20",},
 	{},
 };
 MODULE_DEVICE_TABLE(of, apusb_of_ids);
