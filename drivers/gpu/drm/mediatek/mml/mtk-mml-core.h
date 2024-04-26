@@ -98,10 +98,10 @@ void mml_save_log_record(const char *fmt, ...);
 void mml_print_log_record(struct seq_file *seq);
 
 #define _mml_save_log(fmt, args...) do { \
-	struct timespec64 curr_time; \
-	ktime_get_boottime_ts64(&curr_time); \
+	struct timespec64 _curr_time; \
+	ktime_get_boottime_ts64(&_curr_time); \
 	mml_save_log_record("[%5lld.%06llu]" fmt, \
-		curr_time.tv_sec, div_u64(curr_time.tv_nsec, 1000), ##args); \
+		_curr_time.tv_sec, div_u64(_curr_time.tv_nsec, 1000), ##args); \
 } while (0)
 
 #define _mml_log(fmt, args...) do { \

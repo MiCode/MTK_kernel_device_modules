@@ -1262,7 +1262,7 @@ static void tp_select_path(struct mml_topology_cache *cache,
 		scene = mode_rr_dispatch[scene];
 
 		/* dual rrot if necessary */
-		dual = mml_rrot_single == 1;
+		dual = mml_rrot_single == 2;
 		if (dual)
 			scene = mode_rr_dispatch[scene];
 	}

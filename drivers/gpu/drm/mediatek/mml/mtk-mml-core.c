@@ -1274,16 +1274,18 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 	mutex_lock(&tp->qos_mutex);
 
 	ktime_get_real_ts64(&curr_time);
-	mml_msg_qos("task dvfs end %p pipe %u cur %2u.%03llu end %2u.%03llu clt id %hhu",
-		task, pipe,
-		(u32)curr_time.tv_sec, div_u64(curr_time.tv_nsec, 1000000),
-		(u32)task->end_time.tv_sec, div_u64(task->end_time.tv_nsec, 1000000),
-		cfg->path[pipe]->clt_id);
 
 	if (timespec64_compare(&curr_time, &task->end_time) > 0) {
 		overdue = true;
 		mml_trace_tag_start(MML_TTAG_OVERDUE);
 	}
+
+	mml_msg_qos("task dvfs end %p pipe %u cur %2u.%03llu end %2u.%03llu clt id %hhu%s",
+		task, pipe,
+		(u32)curr_time.tv_sec, div_u64(curr_time.tv_nsec, 1000000),
+		(u32)task->end_time.tv_sec, div_u64(task->end_time.tv_nsec, 1000000),
+		cfg->path[pipe]->clt_id,
+		overdue ? " overdue" : "");
 
 	if (list_empty(&task->pipe[pipe].entry_clt)) {
 		/* task may already removed from other config (thread),
