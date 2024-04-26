@@ -56,3 +56,23 @@ config DEVICE_MODULES_MMC_MTK_MMC_WP
 	  If you set write protect on eMMC, say Y or M here.
 	  If unsure, say N.
 
+config DEVICE_MODULES_MMC_MTK_SW_CQHCI
+	tristate "Sofeware Command Queue Host Controller Interface support"
+	help
+		Some mmc host maybe not have CQHCI hardware.
+		This selects the Softeware Command Queue Host Controller Interface,
+		which will get better performance but will consume more CPU time.
+
+		If you want, say Y or M here.
+
+		If unsure, say N.
+
+config DEVICE_MODULES_MMC_MTK_SW_CQHCI_DEBUG
+	bool "SW CQHCI debugfor userdebug and eng load"
+	depends on MMC_MTK_SW_CQHCI
+	help
+		control SW CQHCI debug. Record more logs
+		for some seldom issue. It is only enabled
+		on userdebug and eng load.
+
+		If unsure, say N.
