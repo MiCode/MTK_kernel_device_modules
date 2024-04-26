@@ -38,9 +38,33 @@ struct emi_slb {
 
 };
 
+int slb_violation_cb_num;
+struct mtk_slb_violation_cb slb_violation_cb_array[SLB_VIOLATION_CB_MAX];
+
 /* global pointer for exported functions */
 static struct emi_slb *global_emi_slb;
 unsigned int mpu_base_clear;
+
+int mtk_slb_violation_register_callback(mtk_slb_violation_callback_t fn, void *cb_data)
+{
+	if (slb_violation_cb_num >= SLB_VIOLATION_CB_MAX)
+		return -1;
+
+	slb_violation_cb_array[slb_violation_cb_num].fault_fn = fn;
+	slb_violation_cb_array[slb_violation_cb_num].fault_data = cb_data;
+	++slb_violation_cb_num;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_slb_violation_register_callback);
+
+static void mtk_slb_violation_execute_callback(void)
+{
+	int i;
+
+	for (i = 0; i < slb_violation_cb_num; ++i)
+		slb_violation_cb_array[i].fault_fn(slb_violation_cb_array[i].fault_data);
+}
 
 static void set_regs(
 	struct reg_info_t *reg_list, unsigned int reg_cnt,
@@ -143,6 +167,8 @@ static irqreturn_t emislb_violation_irq(int irq, void *dev_id)
 		slb->in_msg_dump = 1;
 		schedule_work(&emislb_work);
 	}
+
+	mtk_slb_violation_execute_callback();
 
 	return IRQ_HANDLED;
 }
@@ -271,6 +297,8 @@ static int emislb_probe(struct platform_device *pdev)
 	}
 //irq end
 	devm_kfree(&pdev->dev, dump_list);
+
+	slb_violation_cb_num = 0;
 
 	return 0;
 }
