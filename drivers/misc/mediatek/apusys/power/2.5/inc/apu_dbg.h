@@ -100,6 +100,7 @@ struct apu_dbg {
 	int poll_interval;
 };
 
+int apupw_thermal_limit(enum DVFS_USER user, int limit_ceiling_opp);
 int apupw_dbg_register_nodes(struct device *dev);
 void apupw_dbg_release_nodes(void);
 void apupw_dbg_power_info(struct work_struct *work);
