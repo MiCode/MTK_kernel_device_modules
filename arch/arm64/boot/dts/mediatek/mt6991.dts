@@ -10446,6 +10446,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			apu-mdw-rpmsg {
 				compatible = "mediatek,apu-mdw-rpmsg";
 				mtk,rpmsg-name = "apu-mdw-rpmsg";
+				uapi-ver = <5>;
 			};
 			apu-apummu {
 				compatible = "mediatek,apu-apummu-rpmsg";
