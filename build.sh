@@ -29,6 +29,7 @@ KLEAF_DIST_TARGET=//${DEVICE_MODULES_DIR}:${PROJECT}_${build_scope}_dist.${MODE}
 KLEAF_OUT=("--output_user_root=${OUT_DIR} --output_base=${OUT_DIR}/bazel/output_user_root/output_base")
 KLEAF_ARGS=("${DEBUG_ARGS} ${SANDBOX_ARGS} \
 	--experimental_writable_outputs \
+	--noenable_bzlmod \
 	--//build/bazel_mgk_rules:kernel_version=${KERNEL_VERSION_NUM}")
 
 set -x
