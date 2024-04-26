@@ -54,6 +54,10 @@
 #define DISP_REG_MDP_RDMA_MF_SRC_SIZE 0x070
 #define DISP_REG_MDP_RDMA_MF_CLIP_SIZE 0x078
 #define DISP_REG_MDP_RDMA_SF_BKGD_SIZE_IN_BYTE 0x090
+#define DISP_REG_MDP_RDMA_PREFETCH_CON 0x0a8
+#define PREFETCH_DISABLE BIT(31)
+#define AUTO_PREFETCH_NEXT BIT(30)
+
 #define DISP_REG_MDP_RDMA_TRANSFORM_0 0x200
 #define TRANS_EN BIT(16)
 #define BT601F_TO_RGB (0x4 << 23)
@@ -231,6 +235,8 @@ static void mtk_mdp_rdma_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 	if (data && data->sodi_config)
 		data->sodi_config(comp->mtk_crtc->base.dev, comp->id, handle, &en);
 
+	mtk_ddp_write_mask(comp, PREFETCH_DISABLE,
+		DISP_REG_MDP_RDMA_PREFETCH_CON, PREFETCH_DISABLE, handle);
 	mtk_ddp_write(comp, 0, DISP_REG_MDP_RDMA_INT_ENABLE, handle);
 	mtk_ddp_write_mask(comp, 0,
 		DISP_REG_MDP_RDMA_EN, ROT_ENABLE, handle);
@@ -480,6 +486,8 @@ static void mtk_mdp_rdma_layer_config_core(struct mtk_ddp_comp *comp,
 	struct mtk_disp_mdp_rdma *mdp_rdma = comp_to_mdp_rdma(comp);
 	struct mtk_plane_pending_state *pending = &state->pending;
 	struct drm_framebuffer *fb = state->base.fb;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
 	dma_addr_t addr = pending->addr;
 	unsigned int fmt = pending->format;
 	unsigned int pitch = pending->pitch;
@@ -488,7 +496,8 @@ static void mtk_mdp_rdma_layer_config_core(struct mtk_ddp_comp *comp,
 	unsigned int src_x = pending->src_x;
 	dma_addr_t uv_addr;
 	unsigned int uv_offset, uv_pitch, offset;
-	unsigned int con = 0;
+	unsigned int con = 0, prefetch_line_cnt;
+	unsigned int fps;
 
 	con = mdp_rdma_fmt_convert(fmt);
 	con |= UNIFORM_CONFIG;
@@ -498,13 +507,18 @@ static void mtk_mdp_rdma_layer_config_core(struct mtk_ddp_comp *comp,
 		DDPPR_ERR("[discrete] plane idx=%d, but cfg_h=%d\n",
 					idx, mdp_rdma->cfg_h);
 
+	fps = mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps > 0 ?
+		mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps :
+		drm_mode_vrefresh(&crtc->state->adjusted_mode);
+
 	offset = src_x * mtk_drm_format_plane_cpp(fmt, 0);
+	prefetch_line_cnt = ((height * fps * 125 / 10 / 1000000) + 1) & 0xff;
 
 	DDPINFO("[discrete] comp:%s, idx:%d, en:%d, already_cfg_h:%d, hnd:0x%lx\n",
 		mtk_dump_comp_str_id(comp->id), idx, pending->enable,
 		mdp_rdma->cfg_h, (unsigned long)handle);
-	DDPINFO("[discrete] addr:0x%lx, off:%d, pitch:%d, WxH:%dx%d, fmt:0x%x, con:0x%x\n",
-		(unsigned long)addr, offset, pitch, width, height, fmt, con);
+	DDPINFO("[discrete] addr:0x%lx, off:%d, pitch:%d, WxH:%dx%d, LC:%d, fps=%d, fmt:0x%x, con:0x%x\n",
+		(unsigned long)addr, offset, pitch, width, height, prefetch_line_cnt, fps, fmt, con);
 
 	mdp_rdma->cfg_h += height;
 
@@ -574,6 +588,11 @@ static void mtk_mdp_rdma_layer_config_core(struct mtk_ddp_comp *comp,
 			comp->regs_pa + DISP_REG_MDP_RDMA_TRANSFORM_0,
 			0, ~0);
 	}
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_REG_MDP_RDMA_PREFETCH_CON,
+		(prefetch_line_cnt | AUTO_PREFETCH_NEXT),
+		(0xff | AUTO_PREFETCH_NEXT | PREFETCH_DISABLE));
 }
 
 static void mtk_mdp_rdma_discrete_config(struct mtk_ddp_comp *comp,
