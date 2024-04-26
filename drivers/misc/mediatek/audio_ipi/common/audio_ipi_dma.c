@@ -1319,6 +1319,9 @@ static int hal_dma_push(
 	if (msg_queue == NULL || p_ipi_msg == NULL || p_idx_msg == NULL)
 		return -EFAULT;
 
+	if (msg_queue->tmp_buf_d2k == NULL)
+		return -EFAULT;
+
 	if (sizeof(struct ipi_msg_t) >= MAX_DSP_DMA_WRITE_SIZE)
 		return -EFAULT;
 
@@ -1358,8 +1361,8 @@ static int hal_dma_push(
 		msg_queue->idx_w = 0;
 
 	memcpy((void *)&msg_queue->msg[*p_idx_msg],
-	       p_ipi_msg,
-	       sizeof(struct ipi_msg_t));
+		p_ipi_msg,
+		sizeof(struct ipi_msg_t));
 
 	audio_ringbuf_copy_from_linear_impl(
 		&msg_queue->dma_data,
@@ -1416,6 +1419,11 @@ static int hal_dma_front(
 	if (msg_queue == NULL || pp_ipi_msg == NULL || p_idx_msg == NULL) {
 		pr_info("NULL!! msg_queue: %p, pp_ipi_msg: %p, p_idx_msg: %p",
 			msg_queue, pp_ipi_msg, p_idx_msg);
+		return -EFAULT;
+	}
+
+	if (msg_queue->tmp_buf_k2h == NULL) {
+		pr_info("NULL!! msg_queue->tmp_buf_k2h: %p", msg_queue->tmp_buf_k2h);
 		return -EFAULT;
 	}
 
@@ -1482,6 +1490,13 @@ static int hal_dma_init_msg_queue(struct hal_dma_queue_t *msg_queue,
 			msg_queue->dma_data.read = msg_queue->dma_data.base;
 			msg_queue->dma_data.write = msg_queue->dma_data.base;
 		}
+
+		if (msg_queue->tmp_buf_d2k == NULL)
+			msg_queue->tmp_buf_d2k = vmalloc(MAX_DSP_DMA_WRITE_SIZE);
+
+		if (msg_queue->tmp_buf_k2h == NULL)
+			msg_queue->tmp_buf_k2h = vmalloc(MAX_DSP_DMA_WRITE_SIZE);
+
 		return 0;
 	}
 
@@ -1619,6 +1634,10 @@ size_t audio_ipi_dma_msg_read(void __user *buf, size_t count)
 		return 0;
 	}
 
+	if (msg_queue->tmp_buf_k2h == NULL) {
+		pr_info("arg!! %p, return", msg_queue->tmp_buf_k2h);
+		return 0;
+	}
 
 	/* wait until element pushed */
 	retval = hal_dma_get_queue_msg(msg_queue, &p_ipi_msg, &idx_msg);
