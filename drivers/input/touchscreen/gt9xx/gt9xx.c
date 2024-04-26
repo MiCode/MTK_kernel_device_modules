@@ -1998,7 +1998,7 @@ static int gtp_probe(struct i2c_client *client)
 	if (ts->pdata->auto_update) {
 		ret = gup_init_update_proc(ts);
 		if (ret < 0)
-			dev_dbg(&client->dev, "Failed create update thread\n");*/
+			dev_dbg(&client->dev, "Failed create update thread\n");
 	}
 #endif
 	ret = gtp_request_input_dev(ts);
