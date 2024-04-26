@@ -23,7 +23,7 @@
 #define LOG_INF(format, args...)                                               \
 	pr_info(DRIVER_NAME " [%s] " format, __func__, ##args)
 
-#define VL53L4_NAME				"laser"
+#define VL53L4_NAME				"vl53l4"
 
 #define VL53L4_CTRL_DELAY_US			5000
 
