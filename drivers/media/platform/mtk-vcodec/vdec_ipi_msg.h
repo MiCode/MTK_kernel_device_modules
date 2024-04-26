@@ -34,6 +34,13 @@ enum vdec_src_chg_type {
 	VDEC_COLOR_ASPECT_CHANGED   = (1 << 7),
 };
 
+enum vdec_fb_flag_type {
+	VDEC_FB_NO_FLAGS            = (0 << 0),
+	VDEC_FB_EOS                 = (1 << 0),
+	VDEC_FB_NO_GENERATED        = (1 << 1),
+	VDEC_FB_CROP_CHANGED        = (1 << 2),
+};
+
 enum vdec_ipi_msg_status {
 	VDEC_IPI_MSG_STATUS_OK      = 0,
 	VDEC_IPI_MSG_STATUS_FAIL    = -1,
@@ -431,7 +438,7 @@ struct vdec_fb_entry {
 	__u64 timestamp;
 	__u16 field;
 	__u16 frame_type;
-	__u32 reserved;
+	__u32 flags;
 };
 
 /**

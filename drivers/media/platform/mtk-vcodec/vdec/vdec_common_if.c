@@ -402,11 +402,13 @@ get_fb:
 
 	if (disp_list) {
 		fb->status |= FB_ST_DISPLAY;
-		if (list->fb_list[list->read_idx].reserved)
+		if (list->fb_list[list->read_idx].flags & VDEC_FB_NO_GENERATED)
 			fb->status |= FB_ST_NO_GENERATED;
+		if (list->fb_list[list->read_idx].flags & VDEC_FB_CROP_CHANGED)
+			fb->status |= FB_ST_CROP_CHANGED;
 	} else {
 		fb->status |= FB_ST_FREE;
-		if (list->fb_list[list->read_idx].reserved)
+		if (list->fb_list[list->read_idx].flags & VDEC_FB_EOS)
 			fb->status |= FB_ST_EOS;
 	}
 

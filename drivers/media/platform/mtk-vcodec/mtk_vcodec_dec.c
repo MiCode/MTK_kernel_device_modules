@@ -917,14 +917,17 @@ static struct vb2_buffer *get_display_buffer(struct mtk_vcodec_ctx *ctx,
 		mutex_unlock(&ctx->buf_lock);
 		return NULL;
 	}
+	dstbuf = container_of(disp_frame_buffer, struct mtk_video_dec_buf, frame_buffer);
 
 	if (disp_frame_buffer->status & FB_ST_NO_GENERATED) {
 		no_output = true;
 		disp_frame_buffer->status &= ~FB_ST_NO_GENERATED;
 	}
+	if (disp_frame_buffer->status & FB_ST_CROP_CHANGED) {
+		dstbuf->flags |= CROP_CHANGED;
+		disp_frame_buffer->status &= ~FB_ST_CROP_CHANGED;
+	}
 
-	dstbuf = container_of(disp_frame_buffer, struct mtk_video_dec_buf,
-						  frame_buffer);
 	num_planes = dstbuf->vb.vb2_buf.num_planes;
 	if (dstbuf->used) {
 		for (i = 0; i < num_planes; i++)
@@ -2138,7 +2141,7 @@ static void mtk_vdec_worker(struct work_struct *work)
 	mtk_vcodec_unsupport = ((src_chg & VDEC_HW_NOT_SUPPORT) != 0) ?
 						   true : false;
 	if ((src_chg & VDEC_CROP_CHANGED) &&
-		(!ctx->output_async) && dst_buf_info != NULL)
+	    (!ctx->output_async) && dst_buf_info != NULL)
 		dst_buf_info->flags |= CROP_CHANGED;
 
 	if (src_chg & VDEC_COLOR_ASPECT_CHANGED)
