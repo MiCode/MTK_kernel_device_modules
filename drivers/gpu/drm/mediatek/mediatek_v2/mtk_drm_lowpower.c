@@ -1334,7 +1334,7 @@ void mtk_drm_idlemgr_kick(const char *source, struct drm_crtc *crtc,
 
 	/* get lock to protect idlemgr_last_kick_time and is_idle */
 	if (need_lock)
-		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 
 	if (idlemgr_ctx->is_idle) {
 		DDPINFO("[LP] kick idle from [%s]\n", source);
@@ -1350,7 +1350,7 @@ void mtk_drm_idlemgr_kick(const char *source, struct drm_crtc *crtc,
 	idlemgr_ctx->idlemgr_last_kick_time = sched_clock();
 
 	if (need_lock)
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 }
 
 unsigned int mtk_drm_set_idlemgr(struct drm_crtc *crtc, unsigned int flag,
