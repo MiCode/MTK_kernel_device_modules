@@ -696,7 +696,7 @@ void ufs_mtk_ahb_dump(struct ufs_hba *hba)
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	u32 val = ufshcd_readl(hba, REG_UFS_MMIO_DBG_AHB);
 
-	if (host->ip_ver < IP_VER_MT6899)
+	if (host->ip_ver < IP_VER_MT6899 || host->legacy_ip_ver)
 		return;
 
 	dev_info(hba->dev, "=== INPUT ===\n");
@@ -728,7 +728,7 @@ void ufs_mtk_axi_dump(struct ufs_hba *hba)
 	u64 sel_val[13] = {0};
 	u32 i, val, reg;
 
-	if (host->ip_ver < IP_VER_MT6897)
+	if (host->ip_ver < IP_VER_MT6897 || host->legacy_ip_ver)
 		return;
 
 	reg = REG_UFS_MMIO_DBG_AXIM;
