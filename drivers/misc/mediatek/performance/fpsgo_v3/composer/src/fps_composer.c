@@ -66,7 +66,7 @@ static DEFINE_MUTEX(recycle_lock);
 static DEFINE_MUTEX(fpsgo_com_policy_cmd_lock);
 static DEFINE_MUTEX(fpsgo_boost_cb_lock);
 static DEFINE_MUTEX(fpsgo_boost_lock);
-static DEFINE_MUTEX(adpf_hint_lock);
+static DEFINE_MUTEX(user_hint_lock);
 static DEFINE_MUTEX(fpsgo_frame_info_cb_lock);
 
 static fpsgo_notify_is_boost_cb notify_fpsgo_boost_cb_list[MAX_FPSGO_CB_NUM];
@@ -1635,7 +1635,7 @@ out:
 	return ret;
 }
 
-static void fpsgo_adpf_boost(int render_tid, unsigned long long buffer_id,
+static void fpsgo_user_boost(int render_tid, unsigned long long buffer_id,
 	unsigned long long tcpu, unsigned long long ts, int skip)
 {
 	struct render_info *iter = NULL;
@@ -1663,7 +1663,7 @@ out:
 	fpsgo_com_notify_fpsgo_is_boost(1);
 }
 
-static void fpsgo_adpf_deboost(int render_tid, unsigned long long buffer_id)
+static void fpsgo_user_deboost(int render_tid, unsigned long long buffer_id)
 {
 	struct render_info *iter = NULL;
 
@@ -1687,21 +1687,17 @@ int fpsgo_ctrl2comp_set_target_time(int tgid, int render_tid,
 	if (!target_time)
 		return -EINVAL;
 
-	mutex_lock(&adpf_hint_lock);
+	mutex_lock(&user_hint_lock);
 
-	fpsgo_systrace_c_fbt(render_tid, buffer_id,
-		target_time, "adpf_update_target_work_duration");
-	ret = fpsgo_comp2fstb_adpf_set_target_time(tgid, render_tid, buffer_id, target_time, 0);
-	xgf_trace("[comp][%d][0x%llx] %s ret:%d", render_tid, buffer_id, __func__, ret);
-	fpsgo_systrace_c_fbt(render_tid, buffer_id,
-		0, "adpf_update_target_work_duration");
+	ret = fpsgo_other2fstb_set_target_time(tgid, render_tid, buffer_id, target_time, 0);
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, (int)target_time, "user_set_target_time");
 
-	mutex_unlock(&adpf_hint_lock);
+	mutex_unlock(&user_hint_lock);
 
 	return ret;
 }
 
-int fpsgo_ctrl2comp_adpf_set_dep_list(int tgid, int render_tid,
+int fpsgo_ctrl2comp_set_dep_list(int tgid, int render_tid,
 	unsigned long long buffer_id, int *dep_arr, int dep_num)
 {
 	int ret = 0;
@@ -1709,59 +1705,53 @@ int fpsgo_ctrl2comp_adpf_set_dep_list(int tgid, int render_tid,
 	if (!dep_arr)
 		return -EFAULT;
 
-	mutex_lock(&adpf_hint_lock);
+	mutex_lock(&user_hint_lock);
 
-	fpsgo_systrace_c_fbt(render_tid, buffer_id, dep_num, "adpf_set_threads");
-	ret = fpsgo_comp2xgf_adpf_set_dep_list(tgid, render_tid, buffer_id, dep_arr, dep_num, 0);
-	xgf_trace("[comp][%d][0x%llx] %s ret:%d", render_tid, buffer_id, __func__, ret);
-	fpsgo_systrace_c_fbt(render_tid, buffer_id, 0, "adpf_set_threads");
+	ret = fpsgo_other2xgf_set_critical_tasks(tgid, render_tid, buffer_id, dep_arr, dep_num, 0);
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, dep_num, "user_set_critical_threads");
 
-	mutex_unlock(&adpf_hint_lock);
+	mutex_unlock(&user_hint_lock);
 
 	return ret;
 }
 
-void fpsgo_ctrl2comp_adpf_resume(int render_tid, unsigned long long buffer_id)
+void fpsgo_ctrl2comp_control_resume(int render_tid, unsigned long long buffer_id)
 {
 	unsigned long long ts = fpsgo_get_time();
 
-	mutex_lock(&adpf_hint_lock);
-	fpsgo_systrace_c_fbt(render_tid, buffer_id, 1, "adpf_resume");
-	fpsgo_adpf_boost(render_tid, buffer_id, 0, ts, 1);
-	fpsgo_systrace_c_fbt(render_tid, buffer_id, 0, "adpf_resume");
-	mutex_unlock(&adpf_hint_lock);
+	mutex_lock(&user_hint_lock);
+	fpsgo_user_boost(render_tid, buffer_id, 0, ts, 1);
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, 1, "user_control_resume");
+	mutex_unlock(&user_hint_lock);
 }
 
-void fpsgo_ctrl2comp_adpf_pause(int render_tid, unsigned long long buffer_id)
+void fpsgo_ctrl2comp_control_pause(int render_tid, unsigned long long buffer_id)
 {
-	mutex_lock(&adpf_hint_lock);
-	fpsgo_systrace_c_fbt(render_tid, buffer_id, 1, "adpf_pause");
-	fpsgo_adpf_deboost(render_tid, buffer_id);
-	fpsgo_systrace_c_fbt(render_tid, buffer_id, 0, "adpf_pause");
-	mutex_unlock(&adpf_hint_lock);
+	mutex_lock(&user_hint_lock);
+	fpsgo_user_deboost(render_tid, buffer_id);
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, 1, "user_control_pause");
+	mutex_unlock(&user_hint_lock);
 }
 
-void fpsgo_ctrl2comp_adpf_close(int tgid, int render_tid, unsigned long long buffer_id)
+void fpsgo_ctrl2comp_user_close(int tgid, int render_tid, unsigned long long buffer_id)
 {
-	mutex_lock(&adpf_hint_lock);
+	mutex_lock(&user_hint_lock);
 
-	fpsgo_systrace_c_fbt(render_tid, buffer_id, 1, "adpf_close");
+	fpsgo_other2xgf_set_critical_tasks(tgid, render_tid, buffer_id, NULL, 0, -1);
+	fpsgo_other2fstb_set_target_time(tgid, render_tid, buffer_id, 0, -1);
 
-	fpsgo_comp2xgf_adpf_set_dep_list(tgid, render_tid, buffer_id, NULL, 0, -1);
-	fpsgo_comp2fstb_adpf_set_target_time(tgid, render_tid, buffer_id, 0, -1);
-
-	fpsgo_adpf_deboost(render_tid, buffer_id);
+	fpsgo_user_deboost(render_tid, buffer_id);
 
 	fpsgo_render_tree_lock(__func__);
 	fpsgo_delete_render_info(render_tid, buffer_id, buffer_id);
 	fpsgo_render_tree_unlock(__func__);
 
-	fpsgo_systrace_c_fbt(render_tid, buffer_id, 0, "adpf_close");
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, 1, "user_close");
 
-	mutex_unlock(&adpf_hint_lock);
+	mutex_unlock(&user_hint_lock);
 }
 
-int fpsgo_ctrl2comp_adpf_create_session(int tgid, int render_tid, unsigned long long buffer_id,
+int fpsgo_ctrl2comp_user_create(int tgid, int render_tid, unsigned long long buffer_id,
 	int *dep_arr, int dep_num, unsigned long long target_time)
 {
 	int ret = 0;
@@ -1773,17 +1763,15 @@ int fpsgo_ctrl2comp_adpf_create_session(int tgid, int render_tid, unsigned long 
 	if (!target_time)
 		return -EINVAL;
 
-	mutex_lock(&adpf_hint_lock);
+	mutex_lock(&user_hint_lock);
 
-	fpsgo_systrace_c_fbt(render_tid, buffer_id, 1, "adpf_create_session");
-
-	ret = fpsgo_comp2xgf_adpf_set_dep_list(tgid, render_tid, buffer_id, dep_arr, dep_num, 1);
+	ret = fpsgo_other2xgf_set_critical_tasks(tgid, render_tid, buffer_id, dep_arr, dep_num, 1);
 	if (ret)
 		goto out;
 
-	ret = fpsgo_comp2fstb_adpf_set_target_time(tgid, render_tid, buffer_id, target_time, 1);
+	ret = fpsgo_other2fstb_set_target_time(tgid, render_tid, buffer_id, target_time, 1);
 	if (ret) {
-		fpsgo_comp2xgf_adpf_set_dep_list(tgid, render_tid, buffer_id, NULL, 0, -1);
+		fpsgo_other2xgf_set_critical_tasks(tgid, render_tid, buffer_id, NULL, 0, -1);
 		goto out;
 	}
 
@@ -1795,20 +1783,20 @@ int fpsgo_ctrl2comp_adpf_create_session(int tgid, int render_tid, unsigned long 
 		iter->buffer_id = buffer_id;
 		iter->api = NATIVE_WINDOW_API_EGL;
 		iter->frame_type = NON_VSYNC_ALIGNED_TYPE;
-		set_bit(ADPF_TYPE, &local_master_type);
+		set_bit(USER_TYPE, &local_master_type);
 		iter->master_type = local_master_type;
 		if (!iter->p_blc)
 			fpsgo_base2fbt_node_init(iter);
 		fpsgo_thread_unlock(&iter->thr_mlock);
 	} else {
-		fpsgo_comp2xgf_adpf_set_dep_list(tgid, render_tid, buffer_id, NULL, 0, -1);
-		fpsgo_comp2fstb_adpf_set_target_time(tgid, render_tid, buffer_id, 0, -1);
+		fpsgo_other2xgf_set_critical_tasks(tgid, render_tid, buffer_id, NULL, 0, -1);
+		fpsgo_other2fstb_set_target_time(tgid, render_tid, buffer_id, 0, -1);
 	}
 	fpsgo_render_tree_unlock(__func__);
 
 out:
-	fpsgo_systrace_c_fbt(render_tid, buffer_id, 0, "adpf_create_session");
-	mutex_unlock(&adpf_hint_lock);
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, ret, "user_create");
+	mutex_unlock(&user_hint_lock);
 	return ret;
 }
 
@@ -1820,16 +1808,14 @@ int fpsgo_ctrl2comp_report_workload(int tgid, int render_tid, unsigned long long
 	unsigned long long local_tcpu = 0;
 	unsigned long long local_ts = 0;
 
-	mutex_lock(&adpf_hint_lock);
-
-	fpsgo_systrace_c_fbt(render_tid, buffer_id, 1, "adpf_report_actual_work_duration");
+	mutex_lock(&user_hint_lock);
 
 	if (num > 1) {
 		for (i = 0; i < num; i++) {
 			if (local_ts < ts_arr[i])
 				local_ts = ts_arr[i];
 			local_tcpu += tcpu_arr[i];
-			xgf_trace("[adpf][xgf][%d][0x%llx] | %dth t_cpu:%llu ts:%llu",
+			xgf_trace("[user][xgf][%d][0x%llx] | %dth t_cpu:%llu ts:%llu",
 				render_tid, buffer_id, i, tcpu_arr[i], ts_arr[i]);
 		}
 	} else if (num == 1) {
@@ -1839,15 +1825,15 @@ int fpsgo_ctrl2comp_report_workload(int tgid, int render_tid, unsigned long long
 		ret = -EINVAL;
 		goto out;
 	}
-	xgf_trace("[adpf][xgf][%d][0x%llx] | local_tcpu:%llu local_ts:%llu",
+	xgf_trace("[user][xgf][%d][0x%llx] | local_tcpu:%llu local_ts:%llu",
 		render_tid, buffer_id, local_tcpu, local_ts);
 
 	local_ts = fpsgo_get_time();
-	fpsgo_adpf_boost(render_tid, buffer_id, local_tcpu, local_ts, 0);
+	fpsgo_user_boost(render_tid, buffer_id, local_tcpu, local_ts, 0);
 
 out:
-	fpsgo_systrace_c_fbt(render_tid, buffer_id, 0, "adpf_report_actual_work_duration");
-	mutex_unlock(&adpf_hint_lock);
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, local_tcpu, "user_report_workload");
+	mutex_unlock(&user_hint_lock);
 	return ret;
 }
 

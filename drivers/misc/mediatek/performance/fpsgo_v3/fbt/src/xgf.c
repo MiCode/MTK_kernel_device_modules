@@ -723,7 +723,7 @@ static void xgf_reset_render_dep_list(struct xgf_render_if *render, int type)
 
 	switch (type) {
 	case FPSGO_TYPE:
-	case ADPF_TYPE:
+	case USER_TYPE:
 	case KTF_TYPE:
 		while (!RB_EMPTY_ROOT(&render->dep_list)) {
 			iter = rb_entry(render->dep_list.rb_node,
@@ -755,7 +755,7 @@ static struct xgf_dep *xgf_add_dep_task(int tid,
 
 	switch (type) {
 	case FPSGO_TYPE:
-	case ADPF_TYPE:
+	case USER_TYPE:
 	case KTF_TYPE:
 		r = &render->dep_list;
 		p = &render->dep_list.rb_node;
@@ -795,7 +795,7 @@ static struct xgf_dep *xgf_add_dep_task(int tid,
 
 	switch (type) {
 	case FPSGO_TYPE:
-	case ADPF_TYPE:
+	case USER_TYPE:
 	case KTF_TYPE:
 		render->dep_list_size++;
 		break;
@@ -829,7 +829,7 @@ static void xgf_del_pid2prev_dep(struct xgf_render_if *render, int type, int tid
 
 	switch (type) {
 	case FPSGO_TYPE:
-	case ADPF_TYPE:
+	case USER_TYPE:
 	case KTF_TYPE:
 		rb_erase(&iter->rb_node, &render->dep_list);
 		render->dep_list_size--;
@@ -1171,7 +1171,7 @@ int fpsgo_comp2xgf_do_recycle(void)
 	}
 
 	hlist_for_each_entry_safe(r_iter, r_t, &xgf_render_if_list, hlist) {
-		if (test_bit(ADPF_TYPE, &r_iter->master_type))
+		if (test_bit(USER_TYPE, &r_iter->master_type))
 			continue;
 
 		diff = now_ts - r_iter->cur_queue_end_ts;
@@ -1758,7 +1758,7 @@ out:
 	return ret;
 }
 
-int fpsgo_comp2xgf_adpf_set_dep_list(int tgid, int rtid, unsigned long long bufID,
+int fpsgo_other2xgf_set_critical_tasks(int tgid, int rtid, unsigned long long bufID,
 	int *dep_arr, int dep_num, int op)
 {
 	int i;
@@ -1776,18 +1776,18 @@ int fpsgo_comp2xgf_adpf_set_dep_list(int tgid, int rtid, unsigned long long bufI
 		goto out;
 	}
 
-	set_bit(ADPF_TYPE, &local_master_type);
+	set_bit(USER_TYPE, &local_master_type);
 	r_iter = xgf_get_render_if(rtid, bufID, local_master_type, ts, op);
 	if (!r_iter)
 		goto malloc_err;
 	r_iter->tgid = tgid;
 
-	xgf_reset_render_dep_list(r_iter, ADPF_TYPE);
+	xgf_reset_render_dep_list(r_iter, USER_TYPE);
 	for (i = 0; i < dep_num; i++) {
-		xd = xgf_add_dep_task(dep_arr[i], r_iter, ADPF_TYPE, 1);
+		xd = xgf_add_dep_task(dep_arr[i], r_iter, USER_TYPE, 1);
 		if (!xd)
 			goto malloc_err;
-		xgf_trace("[adpf][xgf][%d][0x%llx] | create dep_task[%d]:%d",
+		xgf_trace("[user][xgf][%d][0x%llx] | create dep_task[%d]:%d",
 			rtid, bufID, i, dep_arr[i]);
 	}
 

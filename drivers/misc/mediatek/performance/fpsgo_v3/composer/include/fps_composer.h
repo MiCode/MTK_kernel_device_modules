@@ -106,16 +106,16 @@ int unregister_get_fpsgo_is_boosting(fpsgo_notify_is_boost_cb func_cb);
 int fpsgo_com2other_notify_fpsgo_is_boosting(int boost);
 void fpsgo_com_notify_fpsgo_is_boost(int enable);
 
-int fpsgo_ctrl2comp_adpf_create_session(int tgid, int render_tid, unsigned long long buffer_id,
+int fpsgo_ctrl2comp_user_create(int tgid, int render_tid, unsigned long long buffer_id,
 	int *dep_arr, int dep_num, unsigned long long target_time);
 int fpsgo_ctrl2comp_report_workload(int tgid, int render_tid, unsigned long long buffer_id,
 	unsigned long long *tcpu_arr, unsigned long long *ts_arr, int num);
-void fpsgo_ctrl2comp_adpf_resume(int render_tid, unsigned long long buffer_id);
-void fpsgo_ctrl2comp_adpf_pause(int render_tid, unsigned long long buffer_id);
-void fpsgo_ctrl2comp_adpf_close(int tgid, int render_tid, unsigned long long buffer_id);
+void fpsgo_ctrl2comp_control_resume(int render_tid, unsigned long long buffer_id);
+void fpsgo_ctrl2comp_control_pause(int render_tid, unsigned long long buffer_id);
+void fpsgo_ctrl2comp_user_close(int tgid, int render_tid, unsigned long long buffer_id);
 int fpsgo_ctrl2comp_set_target_time(int tgid, int render_tid, unsigned long long buffer_id,
 	unsigned long long target_time);
-int fpsgo_ctrl2comp_adpf_set_dep_list(int tgid, int render_tid, unsigned long long buffer_id,
+int fpsgo_ctrl2comp_set_dep_list(int tgid, int render_tid, unsigned long long buffer_id,
 	int *dep_arr, int dep_num);
 int notify_fpsgo_touch_latency_ko_ready(void);
 
