@@ -3509,22 +3509,23 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				mtk_crtc->last_aee_trigger_ts = aee_now_ts;
 			}
 
-			if ((dsi_underrun_trigger == 1 && dsi->encoder.crtc) && trigger_aee) {
+			if (dsi_underrun_trigger == 1 && trigger_aee) {
 #if IS_ENABLED(CONFIG_MTK_DRAMC)
 				DDPMSG("DDR: %u Mbps\n", mtk_dramc_get_data_rate());
 #endif
-				mtk_dprec_snapshot();
+				if (dsi->encoder.crtc) {
+					mtk_dprec_snapshot();
+					mtk_drm_crtc_mini_analysis(dsi->encoder.crtc);
+					dsi_underrun_trigger = 0;
+					mtk_crtc->last_aee_trigger_ts = aee_now_ts;
+				}
 				mtk_vidle_dpc_analysis();
-				mtk_drm_crtc_mini_analysis(dsi->encoder.crtc);
 
 				//printing status of mmqos and mmdvfs and smi info
 				wake_up_process(mtk_crtc->smi_info_dump_thread);
 				atomic_set(&mtk_crtc->smi_info_dump_event, 1);
 				mmqos_hrt_dump();
 				mmdvfs_debug_status_dump(NULL);
-
-				dsi_underrun_trigger = 0;
-				mtk_crtc->last_aee_trigger_ts = aee_now_ts;
 			}
 
 			/* could dump SMI register while dsi not attached to CRTC */
