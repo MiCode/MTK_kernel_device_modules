@@ -4468,30 +4468,7 @@ transparent_hugepage=never clk_ignore_unused=1";
 			<&iommu M4U_PORT_CAM_DPE_RDMA>,
 			<&iommu M4U_PORT_CAM_DPE_WDMA>,
 			<&iommu M4U_PORT_CAM_RSC_RDMA>,
-			<&iommu M4U_PORT_CAM_RSC_WDMA>,
-
-			/* LARB3 */
-			<&iommu M4U_PORT_CAM_IMGO>,
-			<&iommu M4U_PORT_CAM_RRZO>,
-			<&iommu M4U_PORT_CAM_AAO>,
-			<&iommu M4U_PORT_CAM_AFO>,
-			<&iommu M4U_PORT_CAM_LSCI0>,
-			<&iommu M4U_PORT_CAM_LSCI1>,
-			<&iommu M4U_PORT_CAM_PDO>,
-			<&iommu M4U_PORT_CAM_BPCI>,
-			<&iommu M4U_PORT_CAM_LCSO>,
-			<&iommu M4U_PORT_CAM_RSSO_A>,
-			<&iommu M4U_PORT_CAM_RSSO_B>,
-			<&iommu M4U_PORT_CAM_UFEO>,
-			<&iommu M4U_PORT_CAM_SOC0>,
-			<&iommu M4U_PORT_CAM_SOC1>,
-			<&iommu M4U_PORT_CAM_SOC2>,
-			<&iommu M4U_PORT_CAM_CCUI>,
-			<&iommu M4U_PORT_CAM_CCUO>,
-			<&iommu M4U_PORT_CAM_CACI>,
-			<&iommu M4U_PORT_CAM_RAWI_A>,
-			<&iommu M4U_PORT_CAM_RAWI_B>,
-			<&iommu M4U_PORT_CAM_CCUG>;
+			<&iommu M4U_PORT_CAM_RSC_WDMA>;
 	};
 
 	camsys1: camsysisp@1a000000  {
