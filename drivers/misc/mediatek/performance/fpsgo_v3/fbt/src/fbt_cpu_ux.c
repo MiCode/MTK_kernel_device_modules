@@ -428,27 +428,24 @@ void fbt_ux_frame_end(struct render_info *thr, unsigned long long frameid,
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
 		targettime, "[ux]target_time");
 
+	fpsgo_get_fbt_mlock(__func__);
 	if (ux_general_policy) {
 		s_info = fpsgo_search_and_add_sbe_info(thr->tgid, 0);
 
-		if (!s_info) {
+		if (s_info) {
+			fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
+			if (s_info->ux_scrolling) {
+				fbt_get_dep_list(thr);
+				fpsgo_set_deplist_policy(thr, FPSGO_TASK_VIP);
+			}
+		} else {
 			fpsgo_main_trace("%d: not find sbe_info ", __func__);
-			goto label;
 		}
-
-		fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
-
-		if(s_info->ux_scrolling){
-			fpsgo_get_fbt_mlock(__func__);
-			if (fbt_get_dep_list(thr))
-				fpsgo_main_trace("[%d] fail get dep-list", thr->pid);
-			fpsgo_put_fbt_mlock(__func__);
-
-			fpsgo_set_deplist_policy(thr, FPSGO_TASK_VIP);
-		}
+	} else if (fbt_get_dep_list(thr)) {
+		fpsgo_main_trace("[%d] fail get dep-list", thr->pid);
 	}
+	fpsgo_put_fbt_mlock(__func__);
 
-label:
 	fpsgo_get_blc_mlock(__func__);
 	if (thr->p_blc) {
 		thr->p_blc->dep_num = thr->dep_valid_size;
