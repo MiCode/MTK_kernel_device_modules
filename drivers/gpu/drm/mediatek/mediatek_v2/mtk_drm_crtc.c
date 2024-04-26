@@ -13488,6 +13488,10 @@ void mtk_crtc_disable_secure_state(struct drm_crtc *crtc)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_ddp_comp *comp = NULL;
 	u32 idx = drm_crtc_index(crtc);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+
+	if (priv->usage[idx] == DISP_DISABLE)
+		return;
 
 	comp = mtk_ddp_comp_request_output(mtk_crtc);
 
