@@ -1535,6 +1535,8 @@ static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 
 	if (user >= DISP_VIDLE_USER_CRTC)
 		udelay(50);
+	else if (user == 5)
+		mtk_disp_vlp_vote(VOTE_SET, DISP_VIDLE_USER_MML1);
 
 	return ret;
 }
