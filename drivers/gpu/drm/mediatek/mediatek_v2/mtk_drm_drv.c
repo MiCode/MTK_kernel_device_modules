@@ -8535,6 +8535,7 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 		atomic_set(&private->crtc_rel_present[i], 0);
 	}
 	atomic_set(&private->rollback_all, 0);
+	mtk_drm_svp_init(drm);
 
 	DDPINFO("%s-\n", __func__);
 
