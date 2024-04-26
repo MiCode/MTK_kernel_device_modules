@@ -381,6 +381,34 @@ static void ccci_md_exception_handshake(int timeout)
 	md_cd_ee_handshake(md, timeout);
 }
 
+#if IS_ENABLED(CONFIG_MTK_EMI)
+static void ccci_get_vioinfo_clear_md_violation(void)
+{
+	char *vio_msg = NULL;
+	struct ccci_fsm_ctl *ctl = ccci_fsm_entries;
+	const char *vio_msg_head = "\n[SMPU]";
+
+	vio_msg = smpu_clear_md_violation();
+
+	if (!vio_msg) {
+		CCCI_ERROR_LOG(0, FSM, "%s: msg is null\n", __func__);
+		return;
+	}
+	if (strncmp(vio_msg, vio_msg_head, strlen(vio_msg_head)) != 0) {
+		CCCI_ERROR_LOG(0, FSM,
+			"%s: The string magic check fail, vio_msg: %s\n", __func__, vio_msg);
+		return;
+	}
+	CCCI_NORMAL_LOG(0, FSM, "%s: %s\n", __func__, vio_msg);
+	if (ctl) {
+		memset(ctl->ee_ctl.ex_smpu_string, 0x0,
+			sizeof(ctl->ee_ctl.ex_smpu_string));
+		scnprintf(&ctl->ee_ctl.ex_smpu_string[0],
+			MD_EX_MPU_STR_LEN, "%s\n", vio_msg);
+	}
+}
+#endif
+
 void fsm_md_normal_ee_handler(struct ccci_fsm_ctl *ctl)
 {
 	struct ccci_fsm_event *event = NULL;
@@ -397,7 +425,7 @@ void fsm_md_normal_ee_handler(struct ccci_fsm_ctl *ctl)
 #if IS_ENABLED(CONFIG_MTK_EMI)
 	CCCI_NORMAL_LOG(0, FSM, "normal_ee_handler mtk_clear_md_violation\n");
 	mtk_clear_md_violation();
-	smpu_clear_md_violation();
+	ccci_get_vioinfo_clear_md_violation();
 #endif
 	count = 0;
 	while (count < MD_EX_REC_OK_TIMEOUT/EVENT_POLL_INTEVAL) {
