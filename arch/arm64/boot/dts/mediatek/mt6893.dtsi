@@ -88,8 +88,8 @@
 		8250.nr_uarts=2 \
 		initcall_debug=1 \
 		loglevel=8 \
-		rcupdate.rcu_expedited=1 swiotlb=noforce kfence.sample_interval=0 \
-		firmware_class.path=/vendor/firmware page_owner=on \
+		rcupdate.rcu_expedited=1 swiotlb=noforce transparent_hugepage=never \
+		firmware_class.path=/vendor/firmware \
 		loop.max_part=7 snd-usb-audio.use_vmalloc=0 \
 		allow_mismatched_32bit_el0 fake_cpu_32bit_el0_mask=0x70";
 		kaslr-seed = <0 0>;
