@@ -111,4 +111,5 @@ extern void cm_mgr_unregister_hook(struct cm_mgr_hook *hook);
 extern void cm_mgr_set_dram_opp_ceiling(int opp);
 extern void cm_mgr_set_dram_opp_floor(int opp);
 
+extern void force_use_bcpu_weight(void);
 #endif	/* __MTK_CM_MGR_H__ */
