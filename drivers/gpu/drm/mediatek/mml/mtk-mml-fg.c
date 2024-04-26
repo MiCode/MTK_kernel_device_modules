@@ -17,6 +17,9 @@
 
 #define REG_NOT_SUPPORT 0xfff
 
+bool mml_pq_en_hw_ar;
+module_param(mml_pq_en_hw_ar, bool, 0644);
+
 enum mml_fg_reg_index {
 	FG_TRIGGER,
 	FG_STATUS,
@@ -419,9 +422,13 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 	dma_addr_t fg_table_pa[FG_BUF_NUM] = {0};
 	u8 en_hw_ar = fg->data->hw_ar ? 1 : 0;
 
+	if (mml_pq_debug_mode & MML_PQ_FG_HW_AR_DBG)
+		en_hw_ar = mml_pq_en_hw_ar;
+
 	mml_pq_trace_ex_begin("%s %d", __func__, cfg->info.mode);
-	mml_pq_msg("%s engine_id[%d] en_fg[%d] width[%d] height[%d]", __func__, comp->id,
-		dest->pq_config.en_fg, crop->r.width, crop->r.height);
+	mml_pq_msg("%s engine_id[%d] en_fg[%d] width[%d] height[%d] en_hw_ar[%d]",
+		__func__, comp->id, dest->pq_config.en_fg,
+		crop->r.width, crop->r.height, en_hw_ar);
 
 	if (relay_mode) {
 		cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CTRL_0], 1, U32_MAX);
@@ -638,10 +645,13 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	dma_addr_t fg_table_pa[FG_BUF_NUM];
 	u8 en_hw_ar = fg->data->hw_ar ? 1 : 0;
 
+	if (mml_pq_debug_mode & MML_PQ_FG_HW_AR_DBG)
+		en_hw_ar = mml_pq_en_hw_ar;
+
 	mml_pq_trace_ex_begin("%s %d", __func__, cfg->info.mode);
 
-	mml_pq_msg("%s engine_id[%d] en_fg[%d]", __func__, comp->id,
-		dest->pq_config.en_fg);
+	mml_pq_msg("%s engine_id[%d] en_fg[%d] en_hw_ar[%d]", __func__, comp->id,
+		dest->pq_config.en_fg, en_hw_ar);
 
 	if (!dest->pq_config.en_fg)
 		goto exit;
