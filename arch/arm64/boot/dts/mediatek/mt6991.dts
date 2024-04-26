@@ -15009,6 +15009,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				sub-id = <6>;
 			};
 			pcie {
+				perms = <0x3ffff>;
 				xo-buf = "BB2";
 				sub-id = <7>;
 			};
