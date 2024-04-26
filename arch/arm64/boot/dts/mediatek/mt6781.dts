@@ -1387,7 +1387,7 @@
 	};
 
 	dramc@10220000 {
-		compatible = "mediatek,dramc";
+		compatible = "mediatek,common-dramc";
 		reg = <0 0x10220000 0 0x2000>,
 			<0 0x10230000 0 0x2000>,
 			<0 0x10224000 0 0x1000>,
@@ -1395,7 +1395,29 @@
 			<0 0x10228000 0 0x2000>,
 			<0 0x10238000 0 0x2000>,
 			<0 0x10226000 0 0x1000>,
-			<0 0x10236000 0 0x1000>;
+			<0 0x10236000 0 0x1000>,
+			<0 0x10006000 0 0x1000>; /* Sleep Base */
+		mr4-version = <1>;
+		mr4-rg = <0x0090 0x0000ffff 0>;
+		fmeter-version = <0>;
+		crystal-freq = <52>;
+		pll-id = <0x0510 0x80000000 31>;
+		shu-lv = <0x00e4 0x00000006 1>;
+		shu-of = <0x500>;
+		sdmpcw = <0x0d9c 0xffff0000 16>,
+			 <0x0d94 0xffff0000 16>;
+		prediv = <0x0da8 0x000c0000 18>,
+			 <0x0da0 0x000c0000 18>;
+		posdiv = <0x0da8 0x00000007 0>,
+			 <0x0da0 0x00000007 0>;
+		ckdiv4 = <0x0d18 0x08000000 27>,
+			 <0x0d18 0x08000000 27>;
+		ardqrev-b0 = <0x0c38 0x00000001 31>,
+			 <0x0c38 0x00000001 31>;
+		phypllddr-400en = <0x0d84 0x00000001 8>,
+			 <0x0d84 0x00000001 8>;
+		ckmul2 = <0x0d90 0x0000ffff 0>,
+			 <0x0d90 0x0000ffff 0>;
 	};
 
 	ddrphy@1001e000 {
