@@ -712,6 +712,10 @@ SND_SOC_DAILINK_DEFS(dspa2dp,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_a2dp_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspulproc,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_ulproc_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
 #endif
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
 SND_SOC_DAILINK_DEFS(vow,
@@ -1314,6 +1318,11 @@ static struct snd_soc_dai_link mt6877_mt6359_dai_links[] = {
 		.name = "DSP_Playback_A2DP",
 		.stream_name = "DSP_Playback_A2DP",
 		SND_SOC_DAILINK_REG(dspa2dp),
+	},
+	{
+		.name = "DSP_Capture_Process",
+		.stream_name = "DSP_Capture_Process",
+		SND_SOC_DAILINK_REG(dspulproc),
 	},
 #endif
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
