@@ -46,3 +46,11 @@ config VHOST_DMABUF
 
 	  To compile as a module, choose M, the module will be called
 	  acrn. If unsure, say N.
+
+config GRT_HYPERVISOR
+	tristate "hypervisor driver config"
+	help
+	  This config enable hypervisor driver for hypervisor project, GRT_HYPERVISOR
+	  can be used to distinguish hypervisor yocto OS and yocto OS. This config
+	  is used in vhost OS(hypervisor yocto OS), default is n, to compile driver
+	  as a module, choose M here.
