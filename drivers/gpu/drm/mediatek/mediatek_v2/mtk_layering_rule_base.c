@@ -4355,33 +4355,34 @@ static void check_is_mml_layer(const int disp_idx,
 	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
 		c = &disp_info->input_config[disp_idx][i];
 		if (MTK_MML_OVL_LAYER & c->layer_caps) {
-			if (i < 32) {
-				mml_ovl_layers |= (1 << i);
-				if (mml_multi_layer) {
-					mml_cnt = hweight32(mml_ovl_layers);
-					int idx = mml_cnt - 1;
+			if (mml_multi_layer) {
+				multi_mml_info[mml_cnt] = &(disp_info->mml_cfg[disp_idx][i]);
+				if (!output_comp) {
+					/* Check line time and slbc state once per HRT */
+					mutex_lock(&priv->commit.lock);
+					output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+					if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI))
+						mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_LINE_TIME_NS, &ns);
 
-					multi_mml_info[idx] = &(disp_info->mml_cfg[disp_idx][i]);
-					if (!output_comp) {
-						/* Check line time and slbc state once per HRT */
-						mutex_lock(&priv->commit.lock);
-						output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-						if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI))
-							mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_LINE_TIME_NS, &ns);
-
-						mutex_unlock(&priv->commit.lock);
-					}
-
-					multi_mml_info[idx]->act_time =
-						multi_mml_info[idx]->dest[0].compose.height * ns;
+					mutex_unlock(&priv->commit.lock);
 				}
+
+				multi_mml_info[mml_cnt]->act_time =
+					multi_mml_info[mml_cnt]->dest[0].compose.height * ns;
+
+				mml_cnt++;
 			} else {
-				DDPMSG("disp can't handle layer_idx%d as mml layer\n", i);
-				c->layer_caps &= ~MTK_MML_OVL_LAYER;
-				return;
+				if (i < 32)
+					mml_ovl_layers |= (1 << i);
+				else {
+					DDPMSG("disp can't handle layer_idx%d as mml layer\n", i);
+					c->layer_caps &= ~MTK_MML_OVL_LAYER;
+					return;
+				}
+
+				if (calc_mml_rsz_ratio(&(disp_info->mml_cfg[disp_idx][i])) > 100)
+					down_scale_cnt++;
 			}
-			if (calc_mml_rsz_ratio(&(disp_info->mml_cfg[disp_idx][i])) > 100)
-				down_scale_cnt++;
 
 			if (disp_info->disp_idx != 0)
 				c->layer_caps = query_transition_mode(mml_decouple2);
