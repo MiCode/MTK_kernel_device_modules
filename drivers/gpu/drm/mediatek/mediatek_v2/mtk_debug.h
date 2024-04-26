@@ -96,6 +96,7 @@ int mtkfb_force_partial_height(void);
 
 int mtk_ddic_dsi_send_cmd(struct mtk_ddic_dsi_msg *cmd_msg, bool blocking);
 int mtk_ddic_dsi_read_cmd(struct mtk_ddic_dsi_msg *cmd_msg);
+bool mtk_disp_get_logger_enable(void);
 #endif
 
 enum mtk_drm_mml_dbg {
