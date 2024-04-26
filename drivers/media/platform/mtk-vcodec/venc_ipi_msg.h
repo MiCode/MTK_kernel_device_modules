@@ -15,6 +15,7 @@
 #define MTK_MAX_ENC_CODECS_SUPPORT       (64)
 #define VENC_MAX_FB_NUM              VIDEO_MAX_FRAME
 #define VENC_MAX_BS_NUM              VIDEO_MAX_FRAME
+#define VENC_CONFIG_LENGTH               (512)
 
 /**
  * enum venc_ipi_msg_id - message id between AP and VCU
@@ -141,6 +142,7 @@ enum venc_set_param_type {
 	VENC_SET_PARAM_FRAME_QP_RANGE,
 	VENC_SET_PARAM_ADJUST_CHROMQA_QP,
 	VENC_SET_PARAM_MBRC_TKSPD,
+	VENC_SET_PARAM_CONFIG,
 };
 
 #define VENC_MSG_AP_SEND_PREFIX	\
@@ -541,6 +543,7 @@ struct venc_vcu_config {
 	__s32 ifrm_q_ltr;
 	__s32 pfrm_q_ltr;
 	__s32 bfrm_q_ltr;
+	__u8 config_data[VENC_CONFIG_LENGTH];
 	struct mtk_venc_visual_quality visual_quality;
 	struct mtk_venc_init_qp init_qp;
 	struct mtk_venc_frame_qp_range frame_qp_range;

@@ -425,6 +425,7 @@ struct mtk_enc_params {
 	int             pfrm_q_ltr;
 	int             bfrm_q_ltr;
 	unsigned int    mlvec_mode;
+	char            *config_data;
 	struct mtk_venc_visual_quality visual_quality;
 	struct mtk_venc_init_qp init_qp;
 	struct mtk_venc_frame_qp_range frame_qp_range;
@@ -519,6 +520,7 @@ struct venc_enc_param {
 	int pfrm_q_ltr;
 	int bfrm_q_ltr;
 	unsigned int mlvec_mode;
+	char *config_data;
 	struct mtk_venc_visual_quality *visual_quality;
 	struct mtk_venc_init_qp *init_qp;
 	struct mtk_venc_frame_qp_range *frame_qp_range;

@@ -1793,6 +1793,9 @@ int vcp_enc_set_param(struct venc_inst *inst,
 	case VENC_SET_PARAM_FRAME_QP_RANGE:
 		out.data_item = 0; // passed via vsi
 		break;
+	case VENC_SET_PARAM_CONFIG:
+		out.data_item = 0; // passed via vsi
+		break;
 	default:
 		mtk_vcodec_err(inst, "id %d not supported", id);
 		return -EINVAL;
@@ -1923,6 +1926,12 @@ static int venc_vcp_set_param(unsigned long handle,
 			memcpy(&inst->vsi->config.vui_info,
 				enc_prm->vui_info,
 				sizeof(struct mtk_venc_vui_info));
+		}
+
+		if (enc_prm->config_data) {
+			memcpy(&inst->vsi->config.config_data,
+				enc_prm->config_data,
+				sizeof(__u8)*VENC_CONFIG_LENGTH);
 		}
 
 		inst->vsi->config.slice_header_spacing =
