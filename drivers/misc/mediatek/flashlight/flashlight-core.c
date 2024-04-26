@@ -669,6 +669,7 @@ static void pt_oc_callback(enum BATTERY_OC_LEVEL_TAG level, void *data)
 /******************************************************************************
  * Thermal operations
  *****************************************************************************/
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_THERMAL)
 static int flashlight_cooling_get_max_state(
 					struct thermal_cooling_device *cdev,
 					unsigned long *state)
@@ -728,7 +729,7 @@ static struct thermal_cooling_device_ops flashlight_cooling_ops = {
 	.get_cur_state		= flashlight_cooling_get_cur_state,
 	.set_cur_state		= flashlight_cooling_set_cur_state,
 };
-
+#endif
 /******************************************************************************
  * File operations
  *****************************************************************************/
@@ -1821,9 +1822,12 @@ static int fl_parse_dt(struct device *dev)
 
 static int flashlight_probe(struct platform_device *pdev)
 {
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_THERMAL)
 	struct flashlight_cooling_device *flash_cdev;
+#endif
 	pr_debug("Probe start\n");
 
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_THERMAL)
 	flash_cdev = devm_kzalloc(&pdev->dev, sizeof(*flash_cdev), GFP_KERNEL);
 	if (flash_cdev == NULL)
 		return -ENOMEM;
@@ -1837,7 +1841,7 @@ static int flashlight_probe(struct platform_device *pdev)
 		pr_info("register thermal failed\n");
 
 	platform_set_drvdata(pdev, flash_cdev);
-
+#endif
 	/* allocate char device number */
 	if (alloc_chrdev_region(&flashlight_devno, 0, 1, FLASHLIGHT_DEVNAME)) {
 		pr_info("Failed to allocate char device region\n");
@@ -1958,13 +1962,15 @@ err_allocate_chrdev:
 
 static int flashlight_remove(struct platform_device *pdev)
 {
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_THERMAL)
 	struct flashlight_cooling_device *f_cdev;
-
+#endif
 	fl_uninit();
 
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_THERMAL)
 	f_cdev = (struct flashlight_cooling_device *)platform_get_drvdata(pdev);
 	thermal_cooling_device_unregister(f_cdev->cdev);
-
+#endif
 	/* remove device file */
 	device_remove_file(flashlight_device, &dev_attr_flashlight_torch);
 	device_remove_file(flashlight_device, &dev_attr_flashlight_sw_disable);

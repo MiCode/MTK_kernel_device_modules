@@ -204,3 +204,13 @@ config MTK_FLASHLIGHT_PPB
 	  PPB is used to collect the power consumption of the flashlight,
 	  some platforms do not support it,for those unsupported platforms,
 	  please set its config to not set.
+
+config MTK_FLASHLIGHT_THERMAL
+	bool "Mediatek flashlight config for controlling the cooling device API switch"
+	depends on MTK_FLASHLIGHT
+	help
+	  This is a config for controlling the cooling device API switch.
+
+	  THERMAL can reduce the flashlight current to achieve a cooling effect,
+	  when the device overheats,some platforms do not support it,
+	  for those unsupported platforms,please set its config to not set.

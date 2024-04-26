@@ -124,12 +124,14 @@ struct flashlight_dev_arg {
 	int arg;
 };
 
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_THERMAL)
 #define FLASHLIGHT_COOLER_MAX_STATE 4
 struct flashlight_cooling_device {
 	unsigned long target_state;
 	unsigned long max_state;
 	struct thermal_cooling_device *cdev;
 };
+#endif
 
 /* device operations */
 struct flashlight_operations {
