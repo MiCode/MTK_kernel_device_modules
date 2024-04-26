@@ -160,18 +160,21 @@ static int panel_edp_get_modes(struct drm_panel *panel,
 	if (!mode)
 		return 0;
 
-	if (edp->is_dp)
-		ret = get_panel_name_and_mode(edp->panel_name, edp->panel_mode, true);
-	else
-		ret = get_panel_name_and_mode(edp->panel_name, edp->panel_mode, false);
+	if (!edp->use_default) {
+		if (edp->is_dp)
+			ret = get_panel_name_and_mode(edp->panel_name, edp->panel_mode, true);
+		else
+			ret = get_panel_name_and_mode(edp->panel_name, edp->panel_mode, false);
 
-	if (ret)
-		pr_info("%s get panel name or mode failed, use default setting\n", edp->debug_str);
-	dev_info(edp->dev, "%s panel name: %s, panel mode: %s\n", edp->debug_str, edp->panel_name, edp->panel_mode);
+		if (ret)
+			pr_info("%s get panel name or mode failed, use default setting\n", edp->debug_str);
+		dev_info(edp->dev, "%s panel name: %s, panel mode: %s\n",
+			edp->debug_str, edp->panel_name, edp->panel_mode);
 
-	ret  = parse_timing_mode(edp, edp->panel_name, edp->panel_mode);
-	if (ret)
-		pr_info("%s parse timing mode error\n", edp->debug_str);
+		ret  = parse_timing_mode(edp, edp->panel_name, edp->panel_mode);
+		if (ret)
+			pr_info("%s parse timing mode error\n", edp->debug_str);
+	}
 
 	drm_display_mode_from_videomode(&edp->video_mode, mode);
 	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
@@ -199,12 +202,21 @@ static int panel_edp_parse_dt(struct panel_edp *edp)
 	const char *panel_name = NULL;
 	const char *panel_mode = NULL;
 	int ret;
+	u32 read_value;
 
-	edp->is_dp = of_device_is_compatible(np, "panel-serdes-dp") ? true : false;
-	if (edp->is_dp)
-		strscpy(edp->debug_str, DEBUG_DP_INFO, 16);
-	else
-		strscpy(edp->debug_str, DEBUG_EDP_INFO, 16);
+	if (of_device_is_compatible(np, "panel-serdes-dp")) {
+		edp->is_dp = true;
+		strscpy(edp->debug_str, DEBUG_DP_INFO, 32);
+	} else if (of_device_is_compatible(np, "panel-serdes-dp-mst1")) {
+		edp->is_dp = true;
+		strscpy(edp->debug_str, DEBUG_DP_MST1_INFO, 32);
+	} else {
+		edp->is_dp = false;
+		strscpy(edp->debug_str, DEBUG_EDP_INFO, 32);
+	}
+
+	ret = of_property_read_u32(np, USE_DEFAULT_SETTING, &read_value);
+	edp->use_default = (!ret) ? !!read_value : false;
 
 	panel_name = of_get_property(np, PANEL_NAME, NULL);
 	if (!panel_name) {
@@ -299,8 +311,12 @@ static int panel_edp_probe(struct platform_device *pdev)
 	 */
 
 	/* Register the panel. */
-	drm_panel_init(&edp->panel, edp->dev, &panel_edp_funcs,
-				DRM_MODE_CONNECTOR_eDP);
+	if (edp->is_dp)
+		drm_panel_init(&edp->panel, edp->dev, &panel_edp_funcs,
+					DRM_MODE_CONNECTOR_DisplayPort);
+	else
+		drm_panel_init(&edp->panel, edp->dev, &panel_edp_funcs,
+					DRM_MODE_CONNECTOR_eDP);
 
 	drm_panel_add(&edp->panel);
 
@@ -324,6 +340,7 @@ static int panel_edp_remove(struct platform_device *pdev)
 static const struct of_device_id panel_edp_of_table[] = {
 	{ .compatible = "panel-edp", },
 	{ .compatible = "panel-serdes-dp", },
+	{ .compatible = "panel-serdes-dp-mst1", },
 	{ /* Sentinel */ },
 };
 
