@@ -211,6 +211,7 @@
 #define CMD_TYPE1_HS_FLD_HFP_BLANKING_NULL_EN REG_FLD_MSB_LSB(17, 17)
 
 #define DSI_HSTX_CKL_WC(data)	(data->dsi_hstx_ckl_wc ? data->dsi_hstx_ckl_wc : 0x64)
+#define DSI_CMDQ_CON 0x60
 
 #define DSI_RX_DATA0(data)	(0x74 + data->reg_30_ofs)
 #define DSI_RX_DATA1(data)	(0x78 + data->reg_30_ofs)
@@ -220,7 +221,13 @@
 #define DSI_RACK(data)	(0x84 + data->reg_30_ofs)
 #define RACK BIT(0)
 
-#define DSI_MEM_CONTI(data)	(data->dsi_mem_conti ? data->dsi_mem_conti : 0x90)
+#define DSI_RX_TRIG_STA 0x88
+#define RX_POINTER REG_FLD_MSB_LSB(19, 8)
+
+#define DSI_RX_CON 0x08C
+#define RX_DATA_SRAM_MODE BIT(0)
+
+#define DSI_MEM_CONTI(data)     (data->dsi_mem_conti ? data->dsi_mem_conti : 0x90)
 #define DSI_WMEM_CONTI 0x3C
 
 #define DSI_TIME_CON0(data)	(data->dsi_time_con ? data->dsi_time_con : 0xA0)
@@ -338,6 +345,9 @@
 #define DSI_BUF_ULTRA_LOW(data)		(DSI_BUF_CON0(data) + 0x30)
 #define DSI_BUF_URGENT_HIGH(data)	(DSI_BUF_CON0(data) + 0x34)
 #define DSI_BUF_URGENT_LOW(data)	(DSI_BUF_CON0(data) + 0x38)
+
+#define DSI_CMDQ 0xD00
+
 
 #define CONFIG (0xff << 0)
 #define SHORT_PACKET 0
@@ -6592,9 +6602,25 @@ int mtk_dsi_analysis(struct mtk_ddp_comp *comp)
 	return 0;
 }
 
+static void mtk_dsi_set_rx_sram_mode(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, unsigned int enable)
+{
+	u32 val = enable ? RX_DATA_SRAM_MODE : 0;
+
+	if (handle)
+		mtk_ddp_write(comp, val, DSI_RX_CON, handle);
+	else
+		writel(val, comp->regs + DSI_RX_CON);
+}
+
 static void mtk_dsi_ddp_config(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
+	struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
+
+	if (dsi && dsi->driver_data && dsi->driver_data->support_512byte_rx)
+		mtk_dsi_set_rx_sram_mode(comp, handle, 1);
+
 	mtk_dsi_set_targetline(comp, handle, (unsigned int)cfg->h);
 }
 
@@ -9186,9 +9212,10 @@ static ssize_t _mtk_dsi_host_transfer(struct mtk_dsi *dsi,
 				     const struct mipi_dsi_msg *msg)
 {
 	u32 recv_cnt, i;
-	u8 read_data[16];
-	void *src_addr;
 	u8 irq_flag;
+	void *src_addr;
+	#define RX_NUM 512
+	u8 read_data[RX_NUM];
 
 	if (readl(dsi->regs + DSI_MODE_CTRL(dsi->driver_data)) & MODE)
 		irq_flag = VM_CMD_DONE_INT_EN;
@@ -9201,6 +9228,7 @@ static ssize_t _mtk_dsi_host_transfer(struct mtk_dsi *dsi,
 		.tx_len = 0x1,
 		.type = MIPI_DSI_SET_MAXIMUM_RETURN_PACKET_SIZE,
 		};
+		DDPDBG("%s, %d, RX sram mode [%d]\n", __func__, __LINE__, readl(dsi->regs + DSI_RX_CON));
 
 		if (mtk_dsi_host_send_cmd(dsi, &set_rd_msg, irq_flag) < 0)
 			DDPPR_ERR("RX mtk_dsi_host_send_cmd fail\n");
@@ -9229,28 +9257,45 @@ static ssize_t _mtk_dsi_host_transfer(struct mtk_dsi *dsi,
 		return -EINVAL;
 	}
 
-	for (i = 0; i < 16; i++)
-		*(read_data + i) = readb(dsi->regs + DSI_RX_DATA0(dsi->driver_data) + i);
+	if (dsi && dsi->driver_data && dsi->driver_data->support_512byte_rx) {
+		recv_cnt = DISP_REG_GET_FIELD(RX_POINTER, dsi->regs + DSI_RX_TRIG_STA);
+		DDPDBG("%s, %d, DSI RX recv_cnt[%d]\n", __func__, __LINE__, recv_cnt);
 
-	recv_cnt = mtk_dsi_recv_cnt(read_data[0], read_data);
+		if (recv_cnt < RX_NUM) {
+			/* set cmdq page */
+			writel(0x00030000, dsi->regs + DSI_CMDQ_CON);
 
-	if (recv_cnt > 2)
-		src_addr = &read_data[4];
-	else
-		src_addr = &read_data[1];
+			for (i = 0; i < recv_cnt; i++) {
+				read_data[i] = readb(dsi->regs + DSI_CMDQ + 0x1FF - i);
+				DDPDBG("%s, %d, RX[%d] = [%d]\n",
+				__func__, __LINE__,
+				i, readb(dsi->regs + DSI_CMDQ + 0x1FF - i));
+			}
+			memcpy(msg->rx_buf, read_data, recv_cnt);
+		}
+	} else {
+		for (i = 0; i < 16; i++)
+			*(read_data + i) = readb(dsi->regs + DSI_RX_DATA0(dsi->driver_data) + i);
 
-	if (recv_cnt > 10)
-		recv_cnt = 10;
+		recv_cnt = mtk_dsi_recv_cnt(read_data[0], read_data);
 
-	if (recv_cnt > msg->rx_len)
-		recv_cnt = msg->rx_len;
+		if (recv_cnt > 2)
+			src_addr = &read_data[4];
+		else
+			src_addr = &read_data[1];
 
-	if (recv_cnt)
-		memcpy(msg->rx_buf, src_addr, recv_cnt);
+		if (recv_cnt > 10)
+			recv_cnt = 10;
 
-	DDPINFO("dsi get %d byte data from the panel address(0x%x)\n", recv_cnt,
-		*((u8 *)(msg->tx_buf)));
+		if (recv_cnt > msg->rx_len)
+			recv_cnt = msg->rx_len;
 
+		if (recv_cnt)
+			memcpy(msg->rx_buf, src_addr, recv_cnt);
+
+		DDPINFO("dsi get %d byte data from the panel address(0x%x)\n", recv_cnt,
+			*((u8 *)(msg->tx_buf)));
+	}
 	return recv_cnt;
 }
 
@@ -12723,6 +12768,7 @@ static const struct mtk_dsi_driver_data mt6991_dsi_driver_data = {
 	.dsi_phy_syncon = 0x1D8,
 	.dsi_ltpo_vdo_con = 0x1A8,
 	.dsi_ltpo_vdo_sq0 = 0x1AC,
+	.support_512byte_rx = 1,
 };
 
 static const struct mtk_dsi_driver_data mt6897_dsi_driver_data = {
