@@ -7085,7 +7085,7 @@ cpus {
 				"l11_img_mfb_wdma1";
 			mdp-opp = <&opp_table_mdp>;
 			isp-opp = <&opp_table_img>;
-			operating-points-v2 = <&opp_table_mdp>;
+			operating-points-v2 = <&opp_table_mdp>, <&opp_table_img>;
 			mdp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			isp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			dre30_hist_sram_start = /bits/ 16 <1536>;
