@@ -618,7 +618,8 @@ static int mtk_ovl_blender_first_layer_mt6991(struct mtk_ddp_comp *comp)
 	DDPDBG("%s %s\n", __func__, mtk_dump_comp_str(comp));
 
 	if (comp->id == DDP_COMPONENT_OVL0_BLENDER1 ||
-		comp->id == DDP_COMPONENT_OVL1_BLENDER5)
+		comp->id == DDP_COMPONENT_OVL1_BLENDER5 ||
+		comp->id == DDP_COMPONENT_OVL1_BLENDER8)
 		return 1;
 	else
 		return 0;
