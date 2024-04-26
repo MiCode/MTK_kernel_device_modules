@@ -5912,6 +5912,8 @@ void mtk_ovl_set_aod_scp_hrt(void)
 	bw_base = mtk_drm_primary_frame_bw(crtc);
 	memset(mtk_crtc->usage_ovl_fmt, 0,
 				sizeof(mtk_crtc->usage_ovl_fmt));
+	memset(mtk_crtc->usage_ovl_compr, 0,
+				sizeof(mtk_crtc->usage_ovl_compr));
 	for (i = 0; i < OVL_LAYER_NR; i++)
 		mtk_crtc->usage_ovl_fmt[i] = 4;
 

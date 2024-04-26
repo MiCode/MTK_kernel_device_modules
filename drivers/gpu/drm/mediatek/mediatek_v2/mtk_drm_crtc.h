@@ -1129,6 +1129,7 @@ struct mtk_drm_crtc {
 	struct mtk_vblank_config_rec *vblank_rec;
 
 	unsigned int usage_ovl_fmt[OVL_LAYER_NR]; // for mt6989 hrt by larb
+	unsigned int usage_ovl_compr[OVL_LAYER_NR];
 
 	struct mtk_ddp_comp *last_blender;
 
