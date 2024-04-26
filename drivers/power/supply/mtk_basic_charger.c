@@ -84,11 +84,11 @@ static void select_cv(struct mtk_charger *info)
 static bool is_typec_adapter(struct mtk_charger *info)
 {
 	int rp;
+	int cap_type;
 
-	if (info->select_adapter_idx != PD || !info->select_adapter)
-		return false;
-	rp = adapter_dev_get_property(info->select_adapter, TYPEC_RP_LEVEL);
-	if (info->ta_status[info->select_adapter_idx] != TA_HARD_RESET &&
+	rp = adapter_dev_get_property(info->adapter_dev[PD], TYPEC_RP_LEVEL);
+	cap_type = adapter_dev_get_property(info->adapter_dev[PD], CAP_TYPE);
+	if (cap_type == TA_DETECT_FAIL &&
 			rp != 500 &&
 			info->chr_type != POWER_SUPPLY_TYPE_USB &&
 			info->chr_type != POWER_SUPPLY_TYPE_USB_CDP)

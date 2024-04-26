@@ -2998,7 +2998,7 @@ static void kpoc_power_off_check(struct mtk_charger *info)
 	if (boot_mode == 8 || boot_mode == 9) {
 		vbus = get_vbus(info);
 		if (vbus >= 0 && vbus < 2500 && !mtk_is_charger_on(info) &&
-			info->ta_status[info->select_adapter_idx] != TA_HARD_RESET) {
+			!info->ta_hardreset) {
 			chr_err("Unplug Charger/USB in KPOC mode, vbus=%d, shutdown\n", vbus);
 			while (1) {
 				if (counter >= 20000) {
@@ -3145,9 +3145,8 @@ static int charger_routine_thread(void *arg)
 		check_battery_exist(info);
 		check_dynamic_mivr(info);
 		charger_check_status(info);
-		kpoc_power_off_check(info);
 		mtk_check_ta_status(info);
-
+		kpoc_power_off_check(info);
 
 		if (!info->cs_hw_disable)
 			chr_err("Vbat=%d vbat2=%d vbats=%d vbus:%d ibus:%d I=%d I2=%d T=%d uisoc:%d type:%s>%s idx:%d ta_stat:%d swchg_ibat:%d cv:%d cmd_pp:%d\n",
@@ -3806,6 +3805,7 @@ int notify_adapter_event(struct notifier_block *notifier,
 
 	ta_nb = container_of(notifier, struct info_notifier_block, nb);
 	pinfo = ta_nb->info;
+	pinfo->ta_hardreset = false;
 	index = ta_nb - pinfo->ta_nb;
 	chr_err("%s %lu, %d\n", __func__, evt, index);
 	boot_mode = pinfo->bootmode;
@@ -3843,6 +3843,7 @@ int notify_adapter_event(struct notifier_block *notifier,
 		mutex_lock(&pinfo->ta_lock);
 		chr_err("TA Notify Hard Reset\n");
 		pinfo->ta_status[index] = TA_HARD_RESET;
+		pinfo->ta_hardreset = true;
 		mutex_unlock(&pinfo->ta_lock);
 		_wake_up_charger(pinfo);
 		/* PD is ready */
@@ -3875,8 +3876,7 @@ int notify_adapter_event(struct notifier_block *notifier,
 	}
 	chr_debug("%s: evt: pd:%d, ufcs:%d\n", __func__,
 	pinfo->ta_status[PD], pinfo->ta_status[UFCS]);
-		/* adapter_control */
-	mtk_check_ta_status(pinfo);
+
 	if (report_psy)
 		power_supply_changed(pinfo->psy1);
 	return NOTIFY_DONE;
