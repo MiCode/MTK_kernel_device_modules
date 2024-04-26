@@ -426,7 +426,7 @@ static int mtk_pcie_config_read(struct pci_bus *bus, unsigned int devfn,
 	if (port->soft_off)
 		return 0;
 
-	if (port->dump_cfg) {
+	if (port->dump_cfg && bus->number) {
 		dev_info(port->dev, "Dump config access, bus:%#x,devfn:%#x, where:%#x, size:%#x\n",
 			 bus->number, devfn, where, size);
 		dump_stack();
@@ -445,7 +445,7 @@ static int mtk_pcie_config_write(struct pci_bus *bus, unsigned int devfn,
 	if (port->soft_off)
 		return 0;
 
-	if (port->dump_cfg) {
+	if (port->dump_cfg && bus->number) {
 		dev_info(port->dev, "Dump config access, bus:%#x,devfn:%#x, where:%#x, size:%#x, val:%#x\n",
 			 bus->number, devfn, where, size, val);
 		dump_stack();
@@ -2405,7 +2405,7 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 		return 0;
 
 	if (port->suspend_mode == LINK_STATE_L12) {
-		dev_info(port->dev, "pcie LTSSM=%#x, pcie L1SS_pm=%#x\n",
+		dev_info(port->dev, "Suspend PCIe LTSSM=%#x, PCIe L1SS_pm=%#x\n",
 			 readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 			 readl_relaxed(port->base + PCIE_ISTATUS_PM));
 
@@ -2467,8 +2467,8 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 	if (port->suspend_mode == LINK_STATE_L12) {
 		port->data->clkbuf_control(port, true);
 
-		/* Wait 400us for BBCK2 switch SW Mode ready */
-		udelay(400);
+		/* Wait 450us for BBCK2 switch SW Mode ready */
+		udelay(450);
 
 		err = mtk_pcie_hw_control_vote(port->port_num, false, 0);
 		if (err)
@@ -2481,6 +2481,13 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 			if (err)
 				return err;
 		}
+
+		dev_info(port->dev, "Resume PCIe LTSSM=%#x, PCIe L1SS_pm=%#x\n",
+			 readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
+			 readl_relaxed(port->base + PCIE_ISTATUS_PM));
+
+		/* Clear LTSSM record info after dump */
+		writel_relaxed(PCIE_LTSSM_STATE_CLEAR, port->base + PCIE_LTSSM_STATUS_REG);
 	} else {
 		if (port->port_num == 1 && port->skip_suspend) {
 			port->skip_suspend = false;
@@ -2761,8 +2768,8 @@ static int mtk_pcie_suspend_l12_6991(struct mtk_pcie_port *port)
 	if (err)
 		dev_info(port->dev, "Fail to bind BBCK2 with BBCK1\n");
 
-	/* Wait 400us for BBCK2 bind ready */
-	udelay(400);
+	/* Wait 450us for BBCK2 bind ready */
+	udelay(450);
 
 	/* Enable Bypass BBCK2 */
 	val = readl_relaxed(port->pextpcfg + PEXTP_REQ_CTRL);
