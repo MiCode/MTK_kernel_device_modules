@@ -1119,7 +1119,7 @@ static int pmic_lbat_service_probe(struct platform_device *pdev)
 {
 	struct device_node *np;
 	struct mt6397_chip *chip;
-	int ret, irq;
+	int ret, irq, shift_amount;
 	unsigned int val;
 	const char *r_ratio_node_name;
 
@@ -1147,13 +1147,28 @@ static int pmic_lbat_service_probe(struct platform_device *pdev)
 		return ret;
 
 	/* Selects debounce as 8 */
-	val = DEF_DEBT_MAX_SEL << (ffs(lbat_regs->debt_max.mask) - 1);
+	shift_amount = ffs(lbat_regs->debt_max.mask) - 1;
+	if (shift_amount < 0) {
+		dev_notice(&pdev->dev, "Invalid max mask value: mask cannot be 0\n");
+		return -EINVAL;
+	}
+	val = DEF_DEBT_MAX_SEL << shift_amount;
 	__regmap_update_bits(regmap, &lbat_regs->debt_max, val);
 	/* Selects debounce as 1 */
-	val = DEF_DEBT_MIN_SEL << (ffs(lbat_regs->debt_min.mask) - 1);
+	shift_amount = ffs(lbat_regs->debt_min.mask) - 1;
+	if (shift_amount < 0) {
+		dev_notice(&pdev->dev, "Invalid min mask value: mask cannot be 0\n");
+		return -EINVAL;
+	}
+	val = DEF_DEBT_MIN_SEL << shift_amount;
 	__regmap_update_bits(regmap, &lbat_regs->debt_min, val);
 	/* Set LBAT_PRD as 15ms */
-	val = DEF_DET_PRD_SEL << (ffs(lbat_regs->det_prd.mask) - 1);
+	shift_amount = ffs(lbat_regs->det_prd.mask) - 1;
+	if (shift_amount < 0) {
+		dev_notice(&pdev->dev, "Invalid prd mask value: mask cannot be 0\n");
+		return -EINVAL;
+	}
+	val = DEF_DET_PRD_SEL << shift_amount;
 	__regmap_update_bits(regmap, &lbat_regs->det_prd, val);
 
 	/* get LBAT r_ratio */
