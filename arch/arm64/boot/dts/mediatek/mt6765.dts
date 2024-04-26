@@ -4613,7 +4613,7 @@ pwrap: pwrap@1000d000 {
 	battery_manager: battery-manager {
 		compatible = "mediatek,battery manager";
 		gauge1 = <&mtk_gauge>;
-		charger = <&mt6370_chg>;
+		charger = <&mtk_charger_type>;
 		bootmode = <&chosen>;
 	};
 
