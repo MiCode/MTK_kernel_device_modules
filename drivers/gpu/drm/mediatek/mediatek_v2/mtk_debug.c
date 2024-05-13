@@ -5950,7 +5950,7 @@ void mtk_ovl_set_aod_scp_hrt(void)
 				sizeof(mtk_crtc->usage_ovl_fmt));
 	memset(mtk_crtc->usage_ovl_compr, 0,
 				sizeof(mtk_crtc->usage_ovl_compr));
-	for (i = 0; i < OVL_LAYER_NR; i++)
+	for (i = 0; i < MAX_LAYER_NR; i++)
 		mtk_crtc->usage_ovl_fmt[i] = 4;
 
 	for_each_comp_in_cur_crtc_path(ovl_comp, mtk_crtc, i, j) {
