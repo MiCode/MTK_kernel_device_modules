@@ -26,6 +26,7 @@
 #include "mtk_peak_power_budget_trace.h"
 #include "mtk_cg_peak_power_throttling_table.h"
 #include "mtk_cg_peak_power_throttling_core.h"
+#include "mtk_peak_power_budget_cgppt.h"
 
 #define STR_SIZE 1024
 #define MAX_VALUE 0x7FFF
@@ -56,6 +57,7 @@ static unsigned int ack_data;
 struct xpu_dbg_t last_mbrain_xpu_dbg, last_klog_xpu_dbg;
 static ppb_mbrain_func cb_func;
 static struct timer_list ppb_dbg_timer;
+struct ppb_cgppt_dbg_operation *cgppt_dbg_ops;
 
 struct tag_bootmode {
 	u32 size;
@@ -96,41 +98,6 @@ struct ppb ppb_manual = {
 	.cg_budget_thd = 0,
 	.cg_budget_cnt = 0,
 };
-
-int __weak cgppt_get_cpu_m_scaling_factor(void)
-{
-	return 0;
-}
-
-int __weak cgppt_get_cpu_b_scaling_factor(void)
-{
-	return 0;
-}
-
-int __weak cgppt_get_gpu_scaling_factor(void)
-{
-	return 0;
-}
-
-int __weak cgppt_get_combo_idx(void)
-{
-	return 0;
-}
-
-int __weak cgppt_get_cg_budget(void)
-{
-	return 0;
-}
-
-int __weak cgppt_get_cpu_combo_usage_count(int idx)
-{
-	return 0;
-}
-
-int __weak cgppt_get_gpu_combo_usage_count(int idx)
-{
-	return 0;
-}
 
 int ppb_set_wifi_pwr_addr(unsigned int val)
 {
@@ -316,7 +283,7 @@ static void ppb_print_dbg_log(struct timer_list *timer)
 	static ktime_t l_ktime;
 	ktime_t ktime;
 	unsigned int cpub_cnt, cpub_th_t, cpum_cnt, cpum_th_t, gpu_cnt, gpu_th_t;
-	int cpub_sf, cpum_sf, gpu_sf, cg_pwr, combo, cb_cnt, i, offset, ret;
+	int cpub_sf = 0, cpum_sf = 0, gpu_sf = 0, cg_pwr = 0, combo = 0, cb_cnt = 0, i, offset, ret;
 	char str[STR_SIZE];
 
 	if (!ppb_ctrl.ppb_drv_done)
@@ -335,11 +302,20 @@ static void ppb_print_dbg_log(struct timer_list *timer)
 	gpu_cnt = dbg_data.gpu_cnt - last_klog_xpu_dbg.gpu_cnt;
 	gpu_th_t = dbg_data.gpu_th_t - last_klog_xpu_dbg.gpu_th_t;
 
-	cpub_sf = cgppt_get_cpu_b_scaling_factor();
-	cpum_sf = cgppt_get_cpu_m_scaling_factor();
-	gpu_sf = cgppt_get_gpu_scaling_factor();
-	cg_pwr = cgppt_get_cg_budget();
-	combo = cgppt_get_combo_idx();
+	if (cgppt_dbg_ops && cgppt_dbg_ops->get_cpub_sf)
+		cpub_sf = cgppt_dbg_ops->get_cpub_sf();
+
+	if (cgppt_dbg_ops && cgppt_dbg_ops->get_cpum_sf)
+		cpum_sf = cgppt_dbg_ops->get_cpum_sf();
+
+	if (cgppt_dbg_ops && cgppt_dbg_ops->get_gpu_sf)
+		gpu_sf = cgppt_dbg_ops->get_gpu_sf();
+
+	if (cgppt_dbg_ops && cgppt_dbg_ops->get_cg_bgt)
+		cg_pwr = cgppt_dbg_ops->get_cg_bgt();
+
+	if (cgppt_dbg_ops && cgppt_dbg_ops->get_combo)
+		combo = cgppt_dbg_ops->get_combo();
 
 	offset = 0;
 	ret = snprintf(str + offset, STR_SIZE - offset,
@@ -351,7 +327,9 @@ static void ppb_print_dbg_log(struct timer_list *timer)
 		offset = offset + ret;
 
 	for (i = 0; i < CPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT; i++) {
-		cb_cnt = cgppt_get_cpu_combo_usage_count(i);
+		if (cgppt_dbg_ops && cgppt_dbg_ops->get_cpucb_cnt)
+			cb_cnt = cgppt_dbg_ops->get_cpucb_cnt(i);
+
 		ret = snprintf(str + offset, STR_SIZE - offset, "%d ", cb_cnt);
 		if (ret < 0)
 			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
@@ -366,7 +344,9 @@ static void ppb_print_dbg_log(struct timer_list *timer)
 			offset = offset + ret;
 
 	for (i = 0; i < GPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT; i++) {
-		cb_cnt = cgppt_get_gpu_combo_usage_count(i);
+		if (cgppt_dbg_ops && cgppt_dbg_ops->get_gpucb_cnt)
+			cb_cnt = cgppt_dbg_ops->get_gpucb_cnt(i);
+
 		ret = snprintf(str + offset, STR_SIZE - offset, "%d ", cb_cnt);
 		if (ret < 0)
 			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
@@ -376,7 +356,7 @@ static void ppb_print_dbg_log(struct timer_list *timer)
 
 	ret = snprintf(str + offset, STR_SIZE - offset,
 		")] sf[cb(%d):%d,%d cm(%d):%d,%d g(%d):%d,%d]",
-		cpub_sf, cpub_cnt, cpub_th_t, cpub_sf, cpum_cnt, cpum_th_t, gpu_sf, gpu_cnt, gpu_th_t);
+		cpub_sf, cpub_cnt, cpub_th_t, cpum_sf, cpum_cnt, cpum_th_t, gpu_sf, gpu_cnt, gpu_th_t);
 	if (ret < 0)
 		pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 	else
@@ -1189,14 +1169,17 @@ static int __used read_power_budget_dts(struct platform_device *pdev)
 		pb.ocp, pb.uvlo, pb.temp_max_stage);
 	if (ret < 0)
 		pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+	else
+		offset += ret;
 
 	for (i = 0; i <= pb.temp_max_stage; i++) {
-		offset += snprintf(str + offset, STR_SIZE - offset, "[%d](rdc, rac)=(%d, %d)",
+		ret = snprintf(str + offset, STR_SIZE - offset, "[%d](rdc, rac)=(%d, %d)",
 			i, pb.rdc[i], pb.rac[i]);
 		if (ret < 0) {
 			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 			break;
-		}
+		} else
+			offset += ret;
 	}
 	pr_info("%s\n", str);
 
@@ -1402,18 +1385,38 @@ int get_ppb_mbrain_data(struct ppb_mbrain_data *data)
 	data->hpt_cpum_thr_time = dbg_data.cpum_th_t - last_mbrain_xpu_dbg.cpum_th_t;
 	data->hpt_gpu_thr_cnt = dbg_data.gpu_cnt - last_mbrain_xpu_dbg.gpu_cnt;
 	data->hpt_gpu_thr_time = dbg_data.gpu_th_t - last_mbrain_xpu_dbg.gpu_th_t;
-	data->hpt_cpum_sf = cgppt_get_cpu_m_scaling_factor();
-	data->hpt_cpub_sf = cgppt_get_cpu_b_scaling_factor();
-	data->hpt_gpu_sf = cgppt_get_gpu_scaling_factor();
-	data->ppb_c_combo0 = 0;
-	data->ppb_combo = cgppt_get_combo_idx();
-	data->ppb_g_combo0 = 0;
-	data->ppb_cg_budget = cgppt_get_cg_budget();
+	if (cgppt_dbg_ops && cgppt_dbg_ops->get_cpub_sf)
+		data->hpt_cpub_sf = cgppt_dbg_ops->get_cpub_sf();
 
+	if (cgppt_dbg_ops && cgppt_dbg_ops->get_cpum_sf)
+		data->hpt_cpum_sf = cgppt_dbg_ops->get_cpum_sf();
+
+	if (cgppt_dbg_ops && cgppt_dbg_ops->get_gpu_sf)
+		data->hpt_gpu_sf = cgppt_dbg_ops->get_gpu_sf();
+
+	if (cgppt_dbg_ops && cgppt_dbg_ops->get_cg_bgt)
+		data->ppb_cg_budget = cgppt_dbg_ops->get_cg_bgt();
+
+	if (cgppt_dbg_ops && cgppt_dbg_ops->get_combo)
+		data->ppb_combo = cgppt_dbg_ops->get_combo();
+
+	data->ppb_c_combo0 = 0;
+	data->ppb_g_combo0 = 0;
 	memcpy(&last_mbrain_xpu_dbg, &dbg_data, sizeof(struct xpu_dbg_t));
+
 	return 0;
 }
 EXPORT_SYMBOL(get_ppb_mbrain_data);
+
+int register_ppb_cgppt_cb(struct ppb_cgppt_dbg_operation *ops)
+{
+	if (!ops)
+		return -EINVAL;
+
+	cgppt_dbg_ops = ops;
+	return 0;
+}
+EXPORT_SYMBOL(register_ppb_cgppt_cb);
 
 int register_ppb_mbrian_cb(ppb_mbrain_func func_p)
 {
