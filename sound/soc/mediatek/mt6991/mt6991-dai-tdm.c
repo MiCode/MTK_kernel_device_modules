@@ -76,12 +76,10 @@ static unsigned int get_tdm_channel_bck(snd_pcm_format_t format)
 	       TDM_CHANNEL_BCK_16 : TDM_CHANNEL_BCK_32;
 }
 
-static unsigned int get_tdm_lrck_width(snd_pcm_format_t format) __maybe_unused;
 static unsigned int get_tdm_lrck_width(snd_pcm_format_t format)
 {
 	return snd_pcm_format_physical_width(format) - 1;
 }
-static unsigned int get_tdm_ch(unsigned int ch) __maybe_unused;
 static unsigned int get_tdm_ch(unsigned int ch)
 {
 	switch (ch) {
@@ -585,9 +583,15 @@ static int mtk_dai_tdm_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* calculate bck */
-	tdm_priv->bck_rate = rate *
-			     2 *
-			     snd_pcm_format_physical_width(format);
+	if (tdm_id == MT6991_DAI_TDM_DPTX) {
+		tdm_priv->bck_rate = rate *
+				     2 *
+				     snd_pcm_format_physical_width(format);
+	} else {
+		tdm_priv->bck_rate = rate *
+				     channels *
+				     snd_pcm_format_physical_width(format);
+	}
 
 	if (tdm_priv->bck_rate > tdm_priv->mclk_rate)
 		AUDIO_AEE("bck_rate > mclk_rate rate");
@@ -606,13 +610,25 @@ static int mtk_dai_tdm_hw_params(struct snd_pcm_substream *substream,
 	tdm_con |= 0 << DELAY_DATA_SFT;
 	tdm_con |= 1 << LEFT_ALIGN_SFT;
 	tdm_con |= get_tdm_wlen(format) << WLEN_SFT;
-	/* for mt6991 use 0 = 2ch for 4 pin,
-	 * before mt6991 use get_tdm_ch(channels) << CHANNEL_NUM_SFT (n ch for 1pin);
-	 */
-	tdm_con |= 0 << CHANNEL_NUM_SFT;
+
+	if (tdm_id == MT6991_DAI_TDM_DPTX) {
+		/* for mt6991 use 0 = 2ch for 4 pin */
+		tdm_con |= 0 << CHANNEL_NUM_SFT;
+	} else {
+		/* for auto n ch = 1pin */
+		tdm_con |= get_tdm_ch(channels) << CHANNEL_NUM_SFT;
+	}
+
 	tdm_con |= get_tdm_channel_bck(format) << CHANNEL_BCK_CYCLES_SFT;
-	/* for mt6991 use 1T LRCK, before mt6991 use get_tdm_lrck_width(format) << LRCK_TDM_WIDTH_SFT; */
-	tdm_con |= 0 << LRCK_TDM_WIDTH_SFT;
+
+	if (tdm_id == MT6991_DAI_TDM_DPTX) {
+		/* for mt6991 use 1T LRCK */
+		tdm_con |= 0 << LRCK_TDM_WIDTH_SFT;
+	} else {
+		/* for auto n ch = 1pin */
+		tdm_con |= get_tdm_lrck_width(format) << LRCK_TDM_WIDTH_SFT;
+	}
+
 	regmap_write(afe->regmap, AFE_TDM_CON1, tdm_con);
 
 	/* set dptx */
