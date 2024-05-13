@@ -1,18 +1,16 @@
 # SPDX-License-Identifier: GPL-2.0
 # Copyright (C) 2020 MediaTek Inc.
 
-ifeq ($(filter $(CONFIG_MTK_CAM_CAL_ISP4_T), m y), $(CONFIG_MTK_CAM_CAL_ISP4_T))
+obj-$(CONFIG_MTK_CAM_CAL_ISP3_Z) += src/
+obj-$(CONFIG_MTK_CAM_CAL_ISP3_M) += src/
 obj-$(CONFIG_MTK_CAM_CAL_ISP4_T) += src/
-endif
-
-ifeq ($(filter $(CONFIG_MTK_CAM_CAL_ISP4_C), m y), $(CONFIG_MTK_CAM_CAL_ISP4_C))
 obj-$(CONFIG_MTK_CAM_CAL_ISP4_C) += src/
-endif
-
-ifeq ($(CONFIG_MTK_CAM_CAL), m)
 obj-$(CONFIG_MTK_CAM_CAL) += src/
-endif
-
-ifeq ($(filter $(CONFIG_MTK_CAM_CAL_ISP6S_MON), m), $(CONFIG_MTK_CAM_CAL_ISP6S_MON))
 obj-$(CONFIG_MTK_CAM_CAL_ISP6S_MON) += src/
-endif
+
+$(info imgsensor CONFIG_MTK_CAM_CAL_ISP3_Z = $(CONFIG_MTK_CAM_CAL_ISP3_Z))
+$(info imgsensor CONFIG_MTK_CAM_CAL_ISP3_M = $(CONFIG_MTK_CAM_CAL_ISP3_M))
+$(info imgsensor CONFIG_MTK_CAM_CAL_ISP4_T = $(CONFIG_MTK_CAM_CAL_ISP4_T))
+$(info imgsensor CONFIG_MTK_CAM_CAL_ISP4_C = $(CONFIG_MTK_CAM_CAL_ISP4_C))
+$(info imgsensor CONFIG_MTK_CAM_CAL = $(CONFIG_MTK_CAM_CAL))
+$(info imgsensor CONFIG_MTK_CAM_CAL_ISP6S_MON = $(CONFIG_MTK_CAM_CAL_ISP6S_MON))
