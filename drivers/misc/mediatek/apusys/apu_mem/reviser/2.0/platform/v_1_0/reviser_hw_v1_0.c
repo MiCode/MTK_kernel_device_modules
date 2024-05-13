@@ -23,6 +23,13 @@
 
 #define REG_DEBUG 0
 
+static uint32_t rvr_v10_vlm_remap_table_base;
+static uint32_t rvr_v10_vlm_remap_ctx_src;
+static uint32_t rvr_v10_vlm_remap_ctx_src_ofst;
+static uint32_t rvr_v10_vlm_remap_ctx_dst;
+static uint32_t rvr_v10_vlm_remap_ctx_dst_ofst;
+static uint32_t rvr_v10_remap_table_src_max;
+static uint32_t rvr_v10_remap_table_dst_max;
 
 
 static uint32_t _reviser_ctrl_reg_read(void *drvinfo, uint32_t offset);
@@ -310,8 +317,8 @@ void reviser_print_remap_table(void *drvinfo, void *s_file)
 	for (i = 0; i < VLM_REMAP_TABLE_MAX; i++) {
 		valid = reg[i] >> VLM_REMAP_VALID_OFFSET;
 		ID = (reg[i] & VLM_REMAP_CTX_ID) >> VLM_REMAP_CTX_ID_OFFSET;
-		src = (reg[i] & VLM_REMAP_CTX_SRC) >> VLM_REMAP_CTX_SRC_OFFSET;
-		dst = (reg[i] & VLM_REMAP_CTX_DST) >> VLM_REMAP_CTX_DST_OFFSET;
+		src = (reg[i] & rvr_v10_vlm_remap_ctx_src) >> rvr_v10_vlm_remap_ctx_src_ofst;
+		dst = (reg[i] & rvr_v10_vlm_remap_ctx_dst) >> rvr_v10_vlm_remap_ctx_dst_ofst;
 
 		LOG_CON(s, "[%02d]: valid[%d] ID[%02d] src[%02d] dst[%02d]\n",
 				i, valid, ID, src, dst);
@@ -342,7 +349,7 @@ void reviser_print_default_iova(void *drvinfo, void *s_file)
 		LOG_ERR("Can Not Read when power disable\n");
 		return;
 	}
-	reg = _reviser_ctrl_reg_read(rdv, VLM_DEFAULT_MVA);
+	reg = _reviser_ctrl_reg_read(rdv, VLM_DEFAULT_MVA(rvr_v10_vlm_remap_table_base));
 
 	LOG_CON(s, "=============================\n");
 	LOG_CON(s, " reviser driver default iova\n");
@@ -504,13 +511,13 @@ static void  _reviser_set_remap_table(void *drvinfo,
 	_reviser_reg_set(rdv->rsc.ctrl.base,
 			offset, (ID << VLM_REMAP_CTX_ID_OFFSET));
 	_reviser_reg_clr(rdv->rsc.ctrl.base,
-			offset, VLM_REMAP_CTX_SRC);
+			offset, rvr_v10_vlm_remap_ctx_src);
 	_reviser_reg_set(rdv->rsc.ctrl.base,
-			offset, (src_page << VLM_REMAP_CTX_SRC_OFFSET));
+			offset, (src_page << rvr_v10_vlm_remap_ctx_src_ofst));
 	_reviser_reg_clr(rdv->rsc.ctrl.base,
-			offset, VLM_REMAP_CTX_DST);
+			offset, rvr_v10_vlm_remap_ctx_dst);
 	_reviser_reg_set(rdv->rsc.ctrl.base,
-			offset, (dst_page << VLM_REMAP_CTX_DST_OFFSET));
+			offset, (dst_page << rvr_v10_vlm_remap_ctx_dst_ofst));
 
 	if (valid)
 		_reviser_reg_set(rdv->rsc.ctrl.base,
@@ -529,8 +536,8 @@ static uint32_t  _reviser_get_remap_table_reg(
 	//}
 
 	value = value | (ID << VLM_REMAP_CTX_ID_OFFSET);
-	value = value | (src_page << VLM_REMAP_CTX_SRC_OFFSET);
-	value = value | (dst_page << VLM_REMAP_CTX_DST_OFFSET);
+	value = value | (src_page << rvr_v10_vlm_remap_ctx_src_ofst);
+	value = value | (dst_page << rvr_v10_vlm_remap_ctx_dst_ofst);
 
 	//LOG_INFO("value %.8x\n", value);
 
@@ -575,7 +582,7 @@ int reviser_set_remap_table(void *drvinfo,
 
 	DEBUG_TAG;
 
-	if (index > VLM_REMAP_TABLE_DST_MAX) {
+	if (index > rvr_v10_remap_table_dst_max) {
 		LOG_ERR("invalid index (out of range) %d\n",
 				index);
 		return -EINVAL;
@@ -585,13 +592,13 @@ int reviser_set_remap_table(void *drvinfo,
 				ID);
 		return -EINVAL;
 	}
-	if (src_page > VLM_REMAP_TABLE_SRC_MAX) {
+	if (src_page > rvr_v10_remap_table_src_max) {
 		LOG_ERR("invalid src page (out of range) %d\n",
 				src_page);
 		return -EINVAL;
 	}
 
-	if (dst_page > VLM_REMAP_TABLE_DST_MAX) {
+	if (dst_page > rvr_v10_remap_table_dst_max) {
 		LOG_ERR("invalid dst page (out of range) %d\n",
 				dst_page);
 		return -EINVAL;
@@ -866,7 +873,8 @@ int reviser_set_default_iova(void *drvinfo)
 			iova, 0, 0, 0, 0, 0, &res);
 	ret = res.a0;
 	if (ret) {
-		LOG_ERR("Set IOVA Fail\n");
+		LOG_ERR("Set IOVA Fail, ret = %d, iova = 0x%x\n",
+			ret, iova);
 		return -1;
 	}
 
@@ -1013,4 +1021,18 @@ int reviser_init_ip(void)
 	LOG_DEBUG("Init IP\n");
 
 	return ret;
+}
+
+void reviser_hw_init_v10(uint32_t vlm_remap_table_base, uint32_t vlm_remap_ctx_src,
+	uint32_t vlm_remap_ctx_src_ofst,uint32_t vlm_remap_ctx_dst,
+	uint32_t vlm_remap_ctx_dst_ofst, uint32_t remap_table_src_max,
+	uint32_t remap_table_dst_max)
+{
+	rvr_v10_vlm_remap_table_base = vlm_remap_table_base;
+	rvr_v10_vlm_remap_ctx_src = vlm_remap_ctx_src;
+	rvr_v10_vlm_remap_ctx_src_ofst = vlm_remap_ctx_src_ofst;
+	rvr_v10_vlm_remap_ctx_dst = vlm_remap_ctx_dst;
+	rvr_v10_vlm_remap_ctx_dst_ofst = vlm_remap_ctx_dst_ofst;
+	rvr_v10_remap_table_src_max = remap_table_src_max;
+	rvr_v10_remap_table_dst_max = remap_table_dst_max;
 }
