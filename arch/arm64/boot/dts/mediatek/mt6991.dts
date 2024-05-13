@@ -10295,7 +10295,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupts = <GIC_SPI 851 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 850 IRQ_TYPE_LEVEL_HIGH 0>; /*new rxq1 irq: 722 850 882*/
 			mediatek,dpmaif-ver = <3>;
-			mediatek,dpmaif-cap = <0x0000004a>;
+			mediatek,dpmaif-cap = <0x0000014a>;
 			mediatek,plat-info = <6991>;
 			clocks = <&apifrbus_ao_mem_reg_clk CLK_IFR_MEM_DPMAIF_MAIN_CCCI>,
 				<&apifrbus_ao_mem_reg_clk CLK_IFR_MEM_DPMAIF_26M_CCCI>;
