@@ -5202,10 +5202,10 @@ int mtk_vcodec_dec_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_EXECUTE_ON_WRITE;
 	cfg.name = "VDEC set compressed more";
-	cfg.min = V4L2_VDEC_UFO_DEFAULT;
-	cfg.max = V4L2_VDEC_UFO_OFF;
+	cfg.min = V4L2_VDEC_COMPRESSED_DEFAULT;
+	cfg.max = V4L2_VDEC_COMPRESSED_OFF;
 	cfg.step = 1;
-	cfg.def = V4L2_VDEC_UFO_DEFAULT;
+	cfg.def = V4L2_VDEC_COMPRESSED_DEFAULT;
 	cfg.ops = ops;
 	mtk_vcodec_dec_custom_ctrls_check(handler, &cfg, NULL);
 

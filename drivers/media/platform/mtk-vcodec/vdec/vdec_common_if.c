@@ -747,15 +747,9 @@ static int vdec_set_param(unsigned long h_vdec,
 	case SET_PARAM_CONTAINER_FRAMERATE:
 	case SET_PARAM_DISABLE_DEBLOCK:
 	case SET_PARAM_VDEC_LINECOUNT_THRESHOLD:
+	case SET_PARAM_COMPRESSED_MODE:
 		vcu_dec_set_param(&inst->vcu, (unsigned int)type, in, 1U);
 		break;
-	case SET_PARAM_COMPRESSED_MODE: {
-		unsigned long param = 0;
-
-		param = ((unsigned long)(in) == V4L2_VDEC_UFO_ON) ? 1 : 0;
-		vcu_dec_set_param(&inst->vcu, (unsigned int)type, (void *)&param, 1U);
-		break;
-	}
 	case SET_PARAM_CRC_PATH:
 		if (inst->vsi == NULL)
 			return -EINVAL;

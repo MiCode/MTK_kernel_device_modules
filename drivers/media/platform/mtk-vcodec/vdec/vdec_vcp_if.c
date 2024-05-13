@@ -1747,7 +1747,7 @@ static int vdec_vcp_set_param(unsigned long h_vdec,
 		vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
 		break;
 	case SET_PARAM_COMPRESSED_MODE:
-		msg.data[0] = ((__u32)(*param_ptr) == V4L2_VDEC_UFO_ON) ? 1 : 0;
+		msg.data[0] = (__u32)(*param_ptr);
 		vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
 		break;
 	case SET_PARAM_CRC_PATH:
