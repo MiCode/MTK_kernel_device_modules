@@ -2060,6 +2060,7 @@ static int update_ppm_eff(void)
 
 				val = div64_u64(turn_point * 100,
 					prev_cluster->ppm_data.ppm_tbl[0].capacity);
+				val = val > 80?80:val;
 				set_up_thres(prev_cluster, val);
 			}
 
@@ -2145,6 +2146,7 @@ static int ppm_data_init(struct cluster_data *cluster)
 
 			val = div64_u64(turn_point * 100,
 				prev_cluster->ppm_data.ppm_tbl[0].capacity);
+			val = val > 80?80:val;
 			set_up_thres(prev_cluster, val);
 		}
 
