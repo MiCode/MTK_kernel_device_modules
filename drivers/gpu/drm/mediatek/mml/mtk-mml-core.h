@@ -300,6 +300,9 @@ struct mml_path_node {
 struct mml_frame_info_cache {
 	u32 pixels;
 	u32 duration;
+	u32 remain;
+	u8 dl_opp;
+	u8 dc_opp;
 };
 
 struct mml_topology_info {

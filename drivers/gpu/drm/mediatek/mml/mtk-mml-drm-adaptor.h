@@ -44,6 +44,7 @@ enum mml_query_mode_reason {
 	mml_query_min_size,	/* 20 */
 	mml_query_dc_off,
 	mml_query_tp,
+	mml_query_lowpower,
 	mml_query_not_support,
 };
 
