@@ -674,6 +674,11 @@ void mtk_vdec_prepare_vcp_dvfs_data(struct mtk_vcodec_ctx *ctx, unsigned long *i
 
 	vsi_data = inst_handle->vsi;
 
+	if (IS_ERR_OR_NULL(vsi_data)) {
+		mtk_v4l2_err("[VDVFS][%d] vsi is err or null", ctx->id);
+		return;
+	}
+
 	inst = get_inst(ctx);
 	if (!inst)
 		add_inst(ctx);
