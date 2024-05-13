@@ -329,19 +329,12 @@ void mtk_pmqos_clr(enum ISP_CAM_TYPE_ENUM module)
 
 unsigned int mtk_dfs_get_cur_freq(void)
 {
-	unsigned long freq = 0;
-	int volt = regulator_get_voltage(mmdvfsRegulator);
-	struct dev_pm_opp *opp =
-		dev_pm_opp_find_freq_ceil_by_volt(mmdvfsDev, volt);
+	/* dev_pm_opp_find_freq_ceil_by_volt is not supported since kernel-6.1.
+	 * So, phase-out this function.
+	 */
+	LOG_NOTICE("Query freq is not supported. Force return 0 Hz.\n");
 
-	if (IS_ERR(opp))
-		LOG_NOTICE("Error get current freq fail\n");
-	else {
-		freq = dev_pm_opp_get_freq(opp);
-		dev_pm_opp_put(opp);
-	}
-
-	return (unsigned int)freq;
+	return 0;
 }
 
 #define mtk_dfs_clr()	do { \
