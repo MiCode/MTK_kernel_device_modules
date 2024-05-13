@@ -612,16 +612,16 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x400245, 0x00 },   /* AK7709_C0_245_SDOUT2F_OUT_DATA_SEL */
 	{ 0x400246, 0x00 },   /* AK7709_C0_246_SDOUT2G_OUT_DATA_SEL */
 	{ 0x400247, 0x00 },   /* AK7709_C0_247_SDOUT2H_OUT_DATA_SEL */
-	{ 0x400248, 0x34 },   /* AK7709_C0_248_SDOUT3A_OUT_DATA_SEL */
-	{ 0x400249, 0x35 },   /* AK7709_C0_249_SDOUT3B_OUT_DATA_SEL */
+	{ 0x400248, 0x36 },   /* AK7709_C0_248_SDOUT3A_OUT_DATA_SEL */
+	{ 0x400249, 0x37 },   /* AK7709_C0_249_SDOUT3B_OUT_DATA_SEL */
 	{ 0x40024A, 0x00 },   /* AK7709_C0_24A_SDOUT3C_OUT_DATA_SEL */
 	{ 0x40024B, 0x00 },   /* AK7709_C0_24B_SDOUT3D_OUT_DATA_SEL */
 	{ 0x40024C, 0x00 },   /* AK7709_C0_24C_SDOUT3E_OUT_DATA_SEL */
 	{ 0x40024D, 0x00 },   /* AK7709_C0_24D_SDOUT3F_OUT_DATA_SEL */
 	{ 0x40024E, 0x00 },   /* AK7709_C0_24E_SDOUT3G_OUT_DATA_SEL */
 	{ 0x40024F, 0x00 },   /* AK7709_C0_24F_SDOUT3H_OUT_DATA_SEL */
-	{ 0x400250, 0x36 },   /* AK7709_C0_250_SDOUT4A_OUT_DATA_SEL */
-	{ 0x400251, 0x37 },   /* AK7709_C0_251_SDOUT4B_OUT_DATA_SEL */
+	{ 0x400250, 0x34 },   /* AK7709_C0_250_SDOUT4A_OUT_DATA_SEL */
+	{ 0x400251, 0x35 },   /* AK7709_C0_251_SDOUT4B_OUT_DATA_SEL */
 	{ 0x400252, 0x00 },   /* AK7709_C0_252_SDOUT4C_OUT_DATA_SEL */
 	{ 0x400253, 0x00 },   /* AK7709_C0_253_SDOUT4D_OUT_DATA_SEL */
 	{ 0x400254, 0x00 },   /* AK7709_C0_254_SDOUT4E_OUT_DATA_SEL */
@@ -1721,6 +1721,35 @@ static const struct soc_enum ak7709_sd_clock_enum[] = {
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(sd_fs_texts), sd_fs_texts),
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(sd_bick_texts), sd_bick_texts),
 };
+
+static int get_chipID(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value  *ucontrol)
+{
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct ak7709_priv *ak7709 = snd_soc_component_get_drvdata(component);
+
+	int i;
+	unsigned int value;
+
+	struct {
+		unsigned int val;
+		const int def;
+	} devid[] = {
+		{0, 0x09},
+		{0, 0x77},
+	};
+
+	for (i = 0; i < ARRAY_SIZE(devid); i++)
+		devid[i].val = snd_soc_component_read(component, AK7709_C0_400_DEVICE_ID1 + i);
+
+	value = (u16)devid[1].val + ((u16)devid[0].val << 8);
+
+	dev_info(ak7709->dev, "ak7709 chipID(0x%04x) %s\n", value, __func__);
+
+	ucontrol->value.enumerated.item[0] = value;
+
+	return 0;
+}
 
 static int setPLLOut(
 struct snd_soc_component *component)
@@ -6854,6 +6883,9 @@ struct snd_ctl_elem_value  *ucontrol)
 
 
 static const struct snd_kcontrol_new ak7709_snd_controls[] = {
+	SOC_SINGLE_EXT("AK7709 ID", SND_SOC_NOPM, 0, 0xFFFF, 0,
+		get_chipID, NULL),
+
 	SOC_ENUM_EXT("AK7709 PLL Input Clock", clockset_enum[0],
 		get_pllinput, set_pllinput),
 	SOC_ENUM_EXT("AK7709 XTI Frequency", clockset_enum[1],
@@ -52595,8 +52627,10 @@ static int ak7709_init_reg(struct snd_soc_component *component)
 		}
 
 		akdbgprt("%s()  Device ID = 0x%02x\n", __func__, devid[i].val);
-		if (devid[i].val != devid[i].def)
+		if (devid[i].val != devid[i].def) {
 			dev_info(ak7709->dev, "%s() This is not AK7709 dev", __func__);
+			return -EIO;
+		}
 	}
 
 	ak7709->device_id = (u16)devid[1].val + ((u16)devid[0].val << 8);
