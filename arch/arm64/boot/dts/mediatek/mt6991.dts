@@ -5418,6 +5418,58 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clock-source-type = "univpll";
 		};
 
+		vhost_spi: vhost-spi@0 {
+			compatible = "grt,vhost-spi";
+		};
+
+		spi0_virtio: spi0-virtio@0 {
+			compatible = "mediatek,virtio-spi";
+			id = <0>;
+			status = "disabled";
+		};
+
+		spi1_virtio: spi0-virtio@1 {
+			compatible = "mediatek,virtio-spi";
+			id = <1>;
+			status = "disabled";
+		};
+
+		spi2_virtio: spi0-virtio@2 {
+			compatible = "mediatek,virtio-spi";
+			id = <2>;
+			status = "disabled";
+		};
+
+		spi3_virtio: spi0-virtio@3 {
+			compatible = "mediatek,virtio-spi";
+			id = <3>;
+			status = "disabled";
+		};
+
+		spi4_virtio: spi0-virtio@4 {
+			compatible = "mediatek,virtio-spi";
+			id = <4>;
+			status = "disabled";
+		};
+
+		spi5_virtio: spi0-virtio@5 {
+			compatible = "mediatek,virtio-spi";
+			id = <5>;
+			status = "disabled";
+		};
+
+		spi6_virtio: spi0-virtio@6 {
+			compatible = "mediatek,virtio-spi";
+			id = <6>;
+			status = "disabled";
+		};
+
+		spi7_virtio: spi0-virtio@7 {
+			compatible = "mediatek,virtio-spi";
+			id = <7>;
+			status = "disabled";
+		};
+
 		i2c0: i2c@13130000 {
 			compatible = "mediatek,mt6989-i2c";
 			reg = <0 0x13130000 0 0x20000>,
