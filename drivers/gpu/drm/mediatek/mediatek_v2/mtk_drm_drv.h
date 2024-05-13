@@ -75,6 +75,7 @@ struct mtk_mmsys_driver_data {
 			unsigned int crtc_id, bool enable);
 	const struct mtk_fake_eng_data *fake_eng_data;
 	bool bypass_infra_ddr_control;
+	bool use_infra_mem_res;
 	bool has_smi_limitation;
 	bool doze_ctrl_pmic;
 	bool can_compress_rgb565;
