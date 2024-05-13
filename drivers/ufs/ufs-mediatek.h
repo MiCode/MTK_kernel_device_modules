@@ -290,11 +290,6 @@ struct ufs_mtk_host {
 #ifdef CONFIG_PM_SLEEP
 	struct hrtimer rq_timer;
 #endif
-
-#ifdef CONFIG_MTK_UFS_DEBUG_BUILD
-	/* clk debug */
-	struct notifier_block clk_notifier;
-#endif
 	struct device *phy_dev;
 
 	/* RPMB */
