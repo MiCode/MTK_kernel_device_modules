@@ -235,6 +235,8 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 	unsigned int gov_cpu = policy->cpu;
 	int gearid = topology_cluster_id(gov_cpu);
 	unsigned int freq_thermal = 0;
+	struct sugov_rq_data *sugov_data_ptr;
+	bool dsu_idle_ctrl = is_dsu_idle_enable();
 
 	for_each_cpu(cpu_idx, policy->related_cpus)
 		freq_state.cpu_freq[cpu_idx] = policy->cached_target_freq;
@@ -246,12 +248,26 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 		}
 		cpu = cpumask_first(&pd_cpumask[i]);
 		max_freq_in_gear = 0;
-		for_each_cpu(cpu_idx, &pd_cpumask[i])
-			if (freq_state.cpu_freq[cpu_idx] > max_freq_in_gear &&
-				cpu_active(cpu_idx) &&
-				!available_idle_cpu(cpu_idx))
-				max_freq_in_gear = freq_state.cpu_freq[cpu_idx];
-
+		for_each_cpu(cpu_idx, &pd_cpumask[i]) {
+			if(dsu_idle_ctrl) {
+				if (freq_state.cpu_freq[cpu_idx] > max_freq_in_gear &&
+					cpu_active(cpu_idx) &&
+					!available_idle_cpu(cpu_idx))
+					max_freq_in_gear = freq_state.cpu_freq[cpu_idx];
+			} else {
+				if (cpumask_weight(&pd_cpumask[i]) == 1 && available_idle_cpu(cpu)) {
+					sugov_data_ptr = &per_cpu(rq_data, cpu)->sugov_data;
+					if (READ_ONCE(sugov_data_ptr->enq_ing) == 0) {
+						freq_state.dsu_freq_vote[i] = 0;
+						WRITE_ONCE(sugov_data_ptr->enq_update_dsu_freq, true);
+						goto skip_single_idle_cpu;
+					}
+				}
+				if (freq_state.cpu_freq[cpu_idx] > max_freq_in_gear &&
+					cpu_active(cpu_idx))
+					max_freq_in_gear = freq_state.cpu_freq[cpu_idx];
+			}
+		}
 		freq_state.dsu_freq_vote[i]
 			= dsu_freq_agg(cpu, max_freq_in_gear, false, wl, &dsu_target_freq);
 
@@ -260,9 +276,9 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 		if(dsu_target_freq > freq_thermal)
 			dsu_target_freq = freq_thermal;
 #endif
-
+skip_single_idle_cpu:
 		if (trace_sugov_ext_dsu_freq_vote_enabled())
-			trace_sugov_ext_dsu_freq_vote(wl, i,
+			trace_sugov_ext_dsu_freq_vote(wl, i, dsu_idle_ctrl,
 					max_freq_in_gear, freq_state.dsu_freq_vote[i], freq_thermal);
 	}
 
@@ -1794,6 +1810,7 @@ EXPORT_SYMBOL_GPL(get_curr_cap);
 static void cpufreq_update_target_freq(struct cpufreq_policy *policy, unsigned int target_freq)
 {
 	unsigned int cpu = policy->cpu;
+	bool dsu_idle_ctrl = is_dsu_idle_enable();
 
 	irq_log_store();
 
@@ -1821,8 +1838,8 @@ static void cpufreq_update_target_freq(struct cpufreq_policy *policy, unsigned i
 
 			c->sb_ch = -1;
 			if (trace_sugov_ext_dsu_freq_vote_enabled())
-				trace_sugov_ext_dsu_freq_vote(UINT_MAX,
-					topology_cluster_id(cpu), target_freq, UINT_MAX, 0);
+				trace_sugov_ext_dsu_freq_vote(UINT_MAX, topology_cluster_id(cpu),
+						dsu_idle_ctrl, target_freq, UINT_MAX, 0);
 		}
 	}
 

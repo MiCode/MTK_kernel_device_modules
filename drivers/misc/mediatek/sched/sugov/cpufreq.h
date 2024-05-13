@@ -216,6 +216,7 @@ extern void set_eas_dsu_ctrl(bool set);
 extern void set_dsu_ctrl(bool set);
 extern struct cpu_dsu_freq_state *get_dsu_freq_state(void);
 bool enq_force_update_freq(struct sugov_policy *sg_policy);
+extern bool is_dsu_idle_enable(void);
 
 /* adaptive margin */
 extern int am_support;

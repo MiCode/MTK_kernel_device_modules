@@ -43,6 +43,7 @@
 
 #define IOWAIT_BOOST_MIN	(SCHED_CAPACITY_SCALE / 8)
 #define DEFAULT_RUNNABLE_BOOST	true
+#define DEFAULT_DSU_IDLE		true
 
 struct sugov_cpu {
 	struct update_util_data	update_util;
@@ -100,6 +101,27 @@ bool is_runnable_boost_enable(void)
 	return runnable_boost_enable;
 }
 EXPORT_SYMBOL(is_runnable_boost_enable);
+
+/* dsu_idle ctrl */
+static bool dsu_idle_enable = DEFAULT_DSU_IDLE;
+
+void set_dsu_idle_enable(bool dsu_idle_ctrl)
+{
+	dsu_idle_enable = dsu_idle_ctrl;
+}
+EXPORT_SYMBOL(set_dsu_idle_enable);
+
+void unset_dsu_idle_enable(void)
+{
+	dsu_idle_enable = DEFAULT_DSU_IDLE;
+}
+EXPORT_SYMBOL(unset_dsu_idle_enable);
+
+bool is_dsu_idle_enable(void)
+{
+	return dsu_idle_enable;
+}
+EXPORT_SYMBOL(is_dsu_idle_enable);
 
 /************************ Governor internals ***********************/
 

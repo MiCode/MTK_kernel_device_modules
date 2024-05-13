@@ -812,6 +812,16 @@ static long eas_ioctl_impl(struct file *filp,
 		else
 			pr_info("dpt ctrl hook is not ready!!!\n");
 		break;
+	case EAS_SET_DSU_IDLE:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		set_dsu_idle_enable(val);
+		break;
+	case EAS_UNSET_DSU_IDLE:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		unset_dsu_idle_enable();
+		break;
 #endif
 	case EAS_RUNNABLE_BOOST_SET:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
