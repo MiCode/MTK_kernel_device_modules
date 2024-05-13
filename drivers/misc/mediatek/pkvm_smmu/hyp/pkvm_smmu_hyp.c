@@ -30,6 +30,7 @@ extern const struct pkvm_module_ops *pkvm_smmu_ops;
 #define CALL_FROM_OPS(fn, ...) pkvm_smmu_ops->fn(__VA_ARGS__)
 #define __pkvm_hyp_donate_host(x, y) CALL_FROM_OPS(hyp_donate_host, x, y)
 #define __pkvm_host_donate_hyp(x, y) CALL_FROM_OPS(host_donate_hyp, x, y, false)
+#define hyp_phys_to_virt(x) CALL_FROM_OPS(hyp_va, x)
 #ifdef kern_hyp_va
 #undef kern_hyp_va
 #endif
@@ -138,8 +139,8 @@ static bool get_target_smmu_hw_semaphore(smmu_device_t *source_smmu_dev)
 
 	power_status = true;
 	smmu_id = source_smmu_dev->smmu_id;
-	arm_smccc_1_1_smc((MTK_SIP_HYP_SMMU_CONTROL | MTK_SMC_GZ_PREFIX),
-			  HYP_SMMU_PM_GET, smmu_id, 0, 0, 0, 0, 0, &smc_res);
+	arm_smccc_1_1_smc((MTK_SIP_HYP_SMMU_CONTROL), HYP_SMMU_PM_GET, smmu_id,
+			  0, 0, 0, 0, 0, &smc_res);
 	power_status = smc_res.a0;
 	return power_status;
 }
@@ -151,9 +152,10 @@ static void put_target_smmu_hw_semaphore(smmu_device_t *source_smmu_dev)
 	unsigned int smmu_id;
 
 	smmu_id = source_smmu_dev->smmu_id;
-	arm_smccc_1_1_smc((MTK_SIP_HYP_SMMU_CONTROL | MTK_SMC_GZ_PREFIX),
-			  HYP_SMMU_PM_PUT, smmu_id, 0, 0, 0, 0, 0, &smc_res);
+	arm_smccc_1_1_smc((MTK_SIP_HYP_SMMU_CONTROL), HYP_SMMU_PM_PUT, smmu_id,
+			  0, 0, 0, 0, 0, &smc_res);
 }
+
 /* check smmu el1 cmdq enable status */
 bool el1_smmu_cmdq_enable(smmu_device_t *smmu_dev)
 {
@@ -236,6 +238,7 @@ void mtk_smmu_share(struct kvm_cpu_context *ctx)
 	smmu_device_t *smmu_dev = NULL;
 	uint64_t **share_addr;
 
+	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
 	smmu_id = ctx->regs.regs[1];
 	type = ctx->regs.regs[2];
 	for (subsys_smmu = 0; subsys_smmu < smmu_devices_count; subsys_smmu++) {
@@ -306,6 +309,7 @@ int mtk_smmu_secure_v2(struct kvm_cpu_context *ctx)
 	void *pglist_pa;
 	int ret = 0;
 
+	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
 	pglist_pfn = ctx->regs.regs[1];
 	count = ctx->regs.regs[3];
 	pglist_pa = (void *)(pglist_pfn << ONE_PAGE_OFFSET);
@@ -320,7 +324,7 @@ int mtk_smmu_secure_v2(struct kvm_cpu_context *ctx)
 				 (phys_addr_t)pglist_pa)) +
 			 ONE_PAGE_SIZE));
 		if (ret)
-			pkvm_smmu_ops->pkvm_print_str(
+			pkvm_smmu_ops->puts(
 				"mtk_smmu_secure_v2 : pin mem fail");
 		smmu_lazy_free();
 		for (i = 0; i < count; i++) {
@@ -343,7 +347,7 @@ int mtk_smmu_secure_v2(struct kvm_cpu_context *ctx)
 		}
 		mtk_smmu_sync();
 	} else {
-		pkvm_smmu_ops->pkvm_print_str("mtk_smmu_secure_v2 : share mem fail");
+		pkvm_smmu_ops->puts("mtk_smmu_secure_v2 : share mem fail");
 	}
 	pkvm_smmu_ops->unpin_shared_mem(
 		(void *)(pkvm_smmu_ops->hyp_va((phys_addr_t)pglist_pa)),
@@ -352,7 +356,7 @@ int mtk_smmu_secure_v2(struct kvm_cpu_context *ctx)
 	ret = pkvm_smmu_ops->host_unshare_hyp(pglist_pfn);
 
 	if (ret)
-		pkvm_smmu_ops->pkvm_print_str(
+		pkvm_smmu_ops->puts(
 			"mtk_smmu_secure_v2 : host_unshare_hyp kernel pa fail");
 	cpu_reg(ctx, 1) = ret;
 	return ret;
@@ -369,6 +373,7 @@ int mtk_smmu_unsecure_v2(struct kvm_cpu_context *ctx)
 	void *pglist_pa;
 	int ret = 0;
 
+	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
 	pglist_pfn = ctx->regs.regs[1];
 	count = ctx->regs.regs[3];
 	pglist_pa = (void *)(pglist_pfn << ONE_PAGE_OFFSET);
@@ -382,7 +387,7 @@ int mtk_smmu_unsecure_v2(struct kvm_cpu_context *ctx)
 				 (phys_addr_t)pglist_pa)) +
 			 ONE_PAGE_SIZE));
 		if (ret)
-			pkvm_smmu_ops->pkvm_print_str(
+			pkvm_smmu_ops->puts(
 				"mtk_smmu_unsecure_v2 : pin mem fail");
 		/* VM0,VM1 map to default mode */
 		/*   retrieve the page from protected VM back to linux VM
@@ -406,7 +411,7 @@ int mtk_smmu_unsecure_v2(struct kvm_cpu_context *ctx)
 		smmu_merge_s2_table();
 		mtk_smmu_sync();
 	} else {
-		pkvm_smmu_ops->pkvm_print_str("mtk_smmu_unsecure_v2 : share mem fail");
+		pkvm_smmu_ops->puts("mtk_smmu_unsecure_v2 : share mem fail");
 	}
 	pkvm_smmu_ops->unpin_shared_mem(
 		(void *)(pkvm_smmu_ops->hyp_va((phys_addr_t)pglist_pa)),
@@ -415,7 +420,7 @@ int mtk_smmu_unsecure_v2(struct kvm_cpu_context *ctx)
 	ret = pkvm_smmu_ops->host_unshare_hyp(pglist_pfn);
 
 	if (ret)
-		pkvm_smmu_ops->pkvm_print_str(
+		pkvm_smmu_ops->puts(
 			"mtk_smmu_unsecure_v2 : host_unshare_hyp kernel pa fail");
 	cpu_reg(ctx, 1) = ret;
 	return ret;
@@ -529,7 +534,6 @@ unsigned long smmu_debug_dump_reg(uint8_t smmu_type, uint32_t reg)
 				       GATOS_ADDR,	GATOS_PAR };
 	unsigned int smmu_id, subsys_smmu;
 	int i, array_length = ARRAY_SIZE(bit64_reg_array);
-		    //    (sizeof(bit64_reg_array) / sizeof(bit64_reg_array[0]));
 
 	smmu_device_t *smmu_dev = NULL;
 
@@ -564,6 +568,7 @@ void mtk_smmu_host_debug(struct kvm_cpu_context *ctx)
 	uint32_t reg, fault_ipa, debug_parameter;
 	uint64_t debug_info = 0;
 
+	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
 	fault_ipa = ctx->regs.regs[1];
 	debug_parameter = ctx->regs.regs[2];
 	sid = debug_parameter & 0xff;
@@ -590,7 +595,7 @@ void mtk_smmu_host_debug(struct kvm_cpu_context *ctx)
 		debug_info = INVALID_ACTION_ID_BIT;
 		break;
 	}
-	cpu_reg(ctx, 0) = debug_info;
+	cpu_reg(ctx, 1) = debug_info;
 }
 
 void add_smmu_device(struct kvm_cpu_context *ctx)
@@ -599,6 +604,7 @@ void add_smmu_device(struct kvm_cpu_context *ctx)
 	u64 pfn, smmu_size;
 	int ret;
 
+	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
 	smmu_dev = (smmu_device_t *)malloc(sizeof(smmu_device_t));
 	smmu_dev->smmu_id = ctx->regs.regs[4];
 	smmu_dev->smmuv3 =
@@ -613,14 +619,12 @@ void add_smmu_device(struct kvm_cpu_context *ctx)
 	/* Change permission into execute only, to make permission fault trap */
 	pfn = smmu_dev->reg_base_pa_addr >> ONE_PAGE_OFFSET;
 	smmu_size = smmu_dev->reg_size >> ONE_PAGE_OFFSET;
-	ret = pkvm_smmu_ops->host_stage2_mod_prot(pfn, KVM_PGTABLE_PROT_X,
-						  smmu_size);
+	ret = pkvm_smmu_ops->host_donate_hyp(pfn, smmu_size, true);
 	if (ret)
 		pkvm_smmu_ops->puts(
 			"add_smmu_device : host_stage2_mod_prot : fail");
-	ret = pkvm_smmu_ops->create_private_mapping(
-		smmu_dev->reg_base_pa_addr, smmu_dev->reg_size, PAGE_HYP_DEVICE,
-		&smmu_dev->reg_base_va_addr);
+	smmu_dev->reg_base_va_addr =
+		hyp_phys_to_virt(smmu_dev->reg_base_pa_addr);
 	if (ret)
 		pkvm_smmu_ops->puts(
 			"add_smmu_device : create_private_mapping : fail");
@@ -940,7 +944,6 @@ static int mmio_write(struct user_pt_regs *regs, smmu_device_t *smmu_dev,
 		/* 64 bit access */
 		reg_val = (unsigned long)regs->regs[reg];
 		if (reg_offset == CMDQ_BASE) {
-			pkvm_smmu_ops->pkvm_print_str("trap!");
 			write_smmu_cmdq_base_addr(smmu_dev, reg_val);
 			goto done;
 		} else if (reg_offset == STRTAB_BASE) {
@@ -1071,6 +1074,7 @@ void setup_vm(struct kvm_cpu_context *ctx)
 	unsigned long mem_base, mem_size;
 
 	ops = ctx->regs.regs[1];
+	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
 
 	switch (ops) {
 	case DEFAULT_VMID:
@@ -1151,6 +1155,7 @@ void mtk_iommu_init(struct kvm_cpu_context *ctx)
 	uint64_t pglist_pfn;
 	void *pmm_page;
 
+	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
 	pglist_pfn = ctx->regs.regs[1];
 	ret = pkvm_smmu_ops->host_share_hyp(pglist_pfn);
 
@@ -1224,7 +1229,7 @@ static int mtk_iommu_host_dabt_handler(struct user_pt_regs *regs, u64 esr,
 	smmu_device_t *smmu_dev;
 	bool is_write;
 	size_t off;
-	u64 elr_el1, far;
+	u64 far;
 
 	far = read_sysreg_el2(SYS_FAR);
 	addr |= far & FAR_MASK;
@@ -1243,8 +1248,9 @@ static int mtk_iommu_host_dabt_handler(struct user_pt_regs *regs, u64 esr,
 		mmio_read(regs, smmu_dev, esr, off);
 
 	/* PC + 4  to escape the dabt exception */
-	elr_el1 = read_sysreg_el2(SYS_ELR);
-	write_sysreg_el2(read_sysreg_el2(SYS_ELR) + 4, SYS_ELR);
+	/* kvm_iommu_host_dabt_handler will do this stuff */
+	// elr_el1 = read_sysreg_el2(SYS_ELR);
+	// write_sysreg_el2(read_sysreg_el2(SYS_ELR) + 4, SYS_ELR);
 
 	return 0;
 }
@@ -1282,7 +1288,7 @@ static int mtk_smmu_detach_dev(struct kvm_hyp_iommu *iommu, struct kvm_hyp_iommu
 
 bool mtk_smmu_dabt_handler(struct kvm_cpu_context *host_ctxt, u64 esr, u64 addr)
 {
-	pkvm_smmu_ops->pkvm_print_str("mtk_smmu_dabt_handler : here");
+	mtk_iommu_host_dabt_handler(&host_ctxt->regs, esr, addr);
 	return true;
 }
 
@@ -1317,7 +1323,5 @@ struct kvm_iommu_ops smmu_ops = {
 int smmu_hyp_init(const struct pkvm_module_ops *ops)
 {
 	pkvm_smmu_ops = ops;
-	pkvm_smmu_ops->register_host_perm_fault_handler(
-		mtk_iommu_host_dabt_handler);
 	return 0;
 }

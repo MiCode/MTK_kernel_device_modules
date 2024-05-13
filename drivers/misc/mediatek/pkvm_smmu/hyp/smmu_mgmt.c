@@ -16,6 +16,7 @@
 #include <linux/arm-smccc.h>
 #include "malloc.h"
 #define CARVEDOUT_OUT_OF_DRAM_RANGE 0
+#define TFA_SMMU_INFO_DUMP 0
 
 struct smmu_vm_locked {
 	struct smmu_vm *vm;
@@ -263,9 +264,11 @@ void smmu_dump_vm_stage2(uint16_t vmid)
 			"Skip page table dump, due to This vm use 4KB granule mapping");
 		return;
 	}
-	arm_smccc_1_1_smc((MTK_SIP_HYP_SMMU_CONTROL | MTK_SMC_GZ_PREFIX),
-			  HYP_SMMU_S2_PGTABLE_DUMP, 0, vmid, 0, 0, 0, 0,
-			  &smc_res);
+	if (TFA_SMMU_INFO_DUMP)
+		arm_smccc_1_1_smc((MTK_SIP_HYP_SMMU_CONTROL |
+				   MTK_SMC_GZ_PREFIX),
+				  HYP_SMMU_S2_PGTABLE_DUMP, 0, vmid, 0, 0, 0, 0,
+				  &smc_res);
 }
 
 uint64_t hypmmu_lookup_entry(uint64_t ipa, int *valid, uint16_t vmid)
@@ -273,7 +276,7 @@ uint64_t hypmmu_lookup_entry(uint64_t ipa, int *valid, uint16_t vmid)
 	struct smmu_vm *vm;
 	uint64_t pte;
 
-	/*according vmid to get pte info */
+	/* according vmid to get pte info */
 	vm = get_vm(vmid);
 	pte = stage2_pte(&vm->ptable, ipa);
 	*valid = pte & PTE_VALID_BIT;
@@ -468,9 +471,11 @@ static void provide_vm_ttbr_to_tfa(void)
 
 	normal_vm_ttbr_pa = get_vm(0)->ptable.root;
 	protect_vm_ttbr_pa = get_vm(1)->ptable.root;
-	arm_smccc_1_1_smc((MTK_SIP_HYP_SMMU_CONTROL | MTK_SMC_GZ_PREFIX),
-			  HYP_SMMU_S2_TTBR_INFO, 0, normal_vm_ttbr_pa,
-			  protect_vm_ttbr_pa, 0, 0, 0, &smc_res);
+	if (TFA_SMMU_INFO_DUMP)
+		arm_smccc_1_1_smc((MTK_SIP_HYP_SMMU_CONTROL |
+				   MTK_SMC_GZ_PREFIX),
+				  HYP_SMMU_S2_TTBR_INFO, 0, normal_vm_ttbr_pa,
+				  protect_vm_ttbr_pa, 0, 0, 0, &smc_res);
 }
 
 void smmu_vms_identity_map(void)
@@ -634,8 +639,10 @@ void dump_ste(void)
 {
 	struct arm_smccc_res smc_res;
 
-	arm_smccc_1_1_smc((MTK_SIP_HYP_SMMU_CONTROL | MTK_SMC_GZ_PREFIX),
-			  HYP_SMMU_GLOBAL_STE_DUMP, 0, 0, 0, 0, 0, 0, &smc_res);
+	if (TFA_SMMU_INFO_DUMP)
+		arm_smccc_1_1_smc(
+			(MTK_SIP_HYP_SMMU_CONTROL | MTK_SMC_GZ_PREFIX),
+			HYP_SMMU_GLOBAL_STE_DUMP, 0, 0, 0, 0, 0, 0, &smc_res);
 }
 
 void smmu_configure_streams(void)
@@ -705,10 +712,12 @@ static void provide_global_ste_to_tfa(void)
 {
 	struct arm_smccc_res smc_res;
 
-	arm_smccc_1_1_smc((MTK_SIP_HYP_SMMU_CONTROL | MTK_SMC_GZ_PREFIX),
-			  HYP_SMMU_GLOBAL_STE_BASE_INFO, 0,
-			  smmu_get_global_ste_pa(), GLOBAL_STE_SIZE, 0, 0, 0,
-			  &smc_res);
+	if (TFA_SMMU_INFO_DUMP)
+		arm_smccc_1_1_smc((MTK_SIP_HYP_SMMU_CONTROL |
+				   MTK_SMC_GZ_PREFIX),
+				  HYP_SMMU_GLOBAL_STE_BASE_INFO, 0,
+				  smmu_get_global_ste_pa(), GLOBAL_STE_SIZE, 0,
+				  0, 0, &smc_res);
 }
 
 void smmu_mem_init(uint level)

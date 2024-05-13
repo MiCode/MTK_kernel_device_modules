@@ -12,6 +12,7 @@
 #include <asm/kvm_host.h>
 #include <crypto/sha2.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
+#include "../include/pkvm_mgmt/pkvm_mgmt.h"
 #include "pkvm_smmu_host.h"
 
 int __kvm_nvhe_smmu_hyp_init(const struct pkvm_module_ops *ops);
@@ -561,32 +562,28 @@ void smmu_setup_hvc(void)
 		__kvm_nvhe_mtk_iommu_init, pkvm_module_token);
 }
 
-#define MTK_SIP_HYP_SMMU_CONTROL 0xC2000831
-void store_hvc_to_hash_table(char *func_name, int hvc_num)
-{
-	struct arm_smccc_res res;
-	uint8_t digest[SHA256_DIGEST_SIZE];
-	uint64_t des[SHA256_DIGEST_SIZE / 8];
-
-	sha256((uint8_t *)func_name, strlen(func_name), (uint8_t *)digest);
-	memcpy(des, digest, sizeof(des));
-	arm_smccc_smc(MTK_SIP_PKVM_CONTROL, 1, des[0], des[1], des[2], des[3], hvc_num, 0, &res);
-}
-
 void smmu_host_hvc(void)
 {
+	struct arm_smccc_res res;
+
 	smmu_s2_protect_mapping = pkvm_register_el2_mod_call(
 		__kvm_nvhe_mtk_smmu_secure_v2, pkvm_module_token);
-	store_hvc_to_hash_table("mtk_smmu_secure_v2", smmu_s2_protect_mapping);
+	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC, SMC_ID_MTK_PKVM_SMMU_SEC_MAP,
+			  0, 0, 0, 0, 0, &res);
 	smmu_s2_protect_unmapping = pkvm_register_el2_mod_call(
 		__kvm_nvhe_mtk_smmu_unsecure_v2, pkvm_module_token);
-	store_hvc_to_hash_table("mtk_smmu_unsecure_v2", smmu_s2_protect_unmapping);
+	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
+			  SMC_ID_MTK_PKVM_SMMU_SEC_UNMAP, 0, 0, 0, 0, 0, &res);
 	smmu_share = pkvm_register_el2_mod_call(__kvm_nvhe_mtk_smmu_share,
 						pkvm_module_token);
-	store_hvc_to_hash_table("mtk_smmu_share", smmu_share);
+	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
+			  SMC_ID_MTK_PKVM_SMMU_MEM_SHARE, smmu_share, 0, 0, 0,
+			  0, &res);
 	smmu_host_debug = pkvm_register_el2_mod_call(
 		__kvm_nvhe_mtk_smmu_host_debug, pkvm_module_token);
-	store_hvc_to_hash_table("mtk_smmu_host_debug", smmu_host_debug);
+	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
+			  SMC_ID_MTK_PKVM_SMMU_DEBUG_DUMP, smmu_host_debug, 0,
+			  0, 0, 0, &res);
 }
 
 void smmu_alloc_memory(struct mpt *mpt, unsigned long long target_page_counts,
@@ -692,6 +689,7 @@ static int __init smmu_nvhe_init(void)
 	unsigned int vm_num;
 	unsigned long long target_page_counts;
 	unsigned long pfn;
+	struct kvm_hyp_memcache atomic_mc;
 	struct mpt *mpt = NULL;
 
 	if (!is_protected_kvm_enabled()) {
@@ -738,7 +736,7 @@ static int __init smmu_nvhe_init(void)
 	pr_info("%s: register kvm_smmu_v3_ops\n", __func__);
 	kvm_iommu_register_driver(&kvm_smmu_v3_ops);
 	pr_info("%s: register kvm_smmu_v3_ops done\n", __func__);
-	ret = kvm_iommu_init_hyp(ksym_ref_addr_nvhe(smmu_ops), 0);
+	ret = kvm_iommu_init_hyp(ksym_ref_addr_nvhe(smmu_ops), &atomic_mc, 0);
 	return 0;
 free_mem:
 	pr_info("%s: free_mpool_mem start\n", __func__);
