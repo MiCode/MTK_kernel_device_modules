@@ -149,6 +149,7 @@ struct mtk_btcvsd_snd {
 	u8 rx_packet_buf[BTCVSD_RX_BUF_SIZE];
 	u8 disable_write_silence;
 	u8 write_tx:1;
+	u8 irq_first_burst:1;
 
 	enum BT_SCO_BAND band;
 };
@@ -237,19 +238,22 @@ static void mtk_btcvsd_snd_set_state(struct mtk_btcvsd_snd *bt,
 			disable_irq(bt->irq_id);
 			mtk_btcvsd_snd_irq_disable(bt);
 			bt->irq_disabled = 1;
+			bt->irq_first_burst = 0;
 		}
 	} else {
 		if (bt->irq_disabled) {
 			enable_irq(bt->irq_id);
 			mtk_btcvsd_snd_irq_enable(bt);
 			bt->irq_disabled = 0;
+			bt->irq_first_burst = 1;
 		}
 	}
 	dev_dbg(bt->dev,
-		"%s(), stream %d, state %d->%d, tx->state %d, rx->state %d, irq_disabled %d->%d\n"
+		"%s(), stream %d, state %d->%d, tx->state %d, rx->state %d, irq_disabled %d->%d, irq_first_burst %d\n"
 		, __func__,
 		bt_stream->stream, pre_state, state, bt->tx->state,
-		bt->rx->state, pre_irq_disabled, bt->irq_disabled);
+		bt->rx->state, pre_irq_disabled, bt->irq_disabled,
+		bt->irq_first_burst);
 }
 
 static int mtk_btcvsd_mblock_init(struct tfa_mblock_t *mblock_info)
@@ -451,8 +455,12 @@ static int mtk_btcvsd_read_from_bt(struct mtk_btcvsd_snd *bt,
 	unsigned long flags;
 	unsigned long connsys_addr_rx, ap_addr_rx;
 
-	if (bt->bypass_bt_access)
+	if (bt->bypass_bt_access || bt->irq_first_burst) {
+		/* bt irq burst 1st time or BT_SCO==off, skip the rx data */
+		dev_warn(bt->dev, "%s(), bypass %d, 1st isr %d\n",
+			 __func__, bt->bypass_bt_access, bt->irq_first_burst);
 		return -EIO;
+	}
 
 	connsys_addr_rx = *bt->bt_reg_pkt_r;
 	ap_addr_rx = (unsigned long)bt->bt_sram_bank2_base +
@@ -600,7 +608,8 @@ static irqreturn_t mtk_btcvsd_snd_irq_handler(int irq_id, void *dev)
 	struct arm_smccc_res res;
 
 	if (__ratelimit(&_rs))
-		dev_info(bt->dev, "%s(), irq_id=%d\n", __func__, irq_id);
+		dev_info(bt->dev, "%s(), irq_id=%d, irq_first_burst %d\n",
+			__func__, irq_id, bt->irq_first_burst);
 
 	bt->write_tx = 0;
 
@@ -768,6 +777,8 @@ static irqreturn_t mtk_btcvsd_snd_irq_handler(int irq_id, void *dev)
 		wake_up_interruptible(&bt->tx_wait);
 		snd_pcm_period_elapsed(bt->tx->substream);
 	}
+	if (bt->irq_first_burst)
+		bt->irq_first_burst = 0;
 
 	return IRQ_HANDLED;
 irq_handler_exit:
@@ -782,8 +793,9 @@ irq_handler_exit:
 		*bt->bt_reg_ctl |= BT_CVSD_TX_UNDERFLOW;
 		*bt->bt_reg_ctl &= ~BT_CVSD_CLEAR;
 	}
-	dev_warn(bt->dev, "%s(), irq_handler_exit, bt_reg_ctl = 0x%x\n",
-		 __func__, *bt->bt_reg_ctl);
+	dev_warn(bt->dev,
+		 "%s(), irq_handler_exit, bt_reg_ctl = 0x%x, irq_first_burst = %d\n",
+		 __func__, *bt->bt_reg_ctl, bt->irq_first_burst);
 
 	return IRQ_HANDLED;
 }
