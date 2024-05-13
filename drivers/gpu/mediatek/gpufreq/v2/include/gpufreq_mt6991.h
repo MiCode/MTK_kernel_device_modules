@@ -105,7 +105,8 @@ struct gpufreq_core_mask_info g_core_mask_table[SHADER_CORE_NUM] = {
 #define GPU_DYN_REF_POWER                   (1102)          /* mW  */
 #define GPU_DYN_REF_POWER_FREQ              (1360000)       /* KHz */
 #define GPU_DYN_REF_POWER_VOLT              (90000)         /* mV x 100 */
-#define STACK_DYN_REF_POWER                 (30514)         /* mW  */
+#define STACK_DYN_REF_POWER_A0              (30514)         /* mW  */
+#define STACK_DYN_REF_POWER_B0              (28652)         /* mW  */
 #define STACK_DYN_REF_POWER_FREQ            (1800000)       /* KHz */
 #define STACK_DYN_REF_POWER_VOLT            (100000)        /* mV x 100 */
 

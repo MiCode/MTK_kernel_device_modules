@@ -208,9 +208,14 @@ unsigned int __gpufreq_get_dyn_pgpu(unsigned int freq, unsigned int volt)
 /* API: get dynamic Power of STACK */
 unsigned int __gpufreq_get_dyn_pstack(unsigned int freq, unsigned int volt)
 {
-	unsigned long long p_dynamic = STACK_DYN_REF_POWER;
+	unsigned long long p_dynamic = 0;
 	unsigned int ref_freq = STACK_DYN_REF_POWER_FREQ;
 	unsigned int ref_volt = STACK_DYN_REF_POWER_VOLT;
+
+	if (g_eco_version == MT6991_B0)
+		p_dynamic = STACK_DYN_REF_POWER_B0;
+	else
+		p_dynamic = STACK_DYN_REF_POWER_A0;
 
 	p_dynamic = p_dynamic *
 		((freq * 100000ULL) / ref_freq) *
