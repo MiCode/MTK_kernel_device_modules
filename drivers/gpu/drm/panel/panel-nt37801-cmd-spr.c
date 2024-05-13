@@ -994,6 +994,7 @@ static struct mtk_panel_params ext_params = {
 	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
 	.corner_pattern_tp_size = sizeof(nt37801_cmd_120hz_top_pattern_l),
 	.corner_pattern_lt_addr = (void *)nt37801_cmd_120hz_top_pattern_l,
+	.corner_pattern_size_per_line = (void *)nt37801_cmd_120hz_top_pattern_l_size_per_line,
 #else
 	.corner_pattern_height = ROUND_CORNER_H_TOP_PUTEST,
 	.corner_pattern_height_bot = ROUND_CORNER_H_BOT_PUTEST,
@@ -1174,6 +1175,7 @@ static struct mtk_panel_params ext_params_90hz = {
 	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
 	.corner_pattern_tp_size = sizeof(nt37801_cmd_120hz_top_pattern_l),
 	.corner_pattern_lt_addr = (void *)nt37801_cmd_120hz_top_pattern_l,
+	.corner_pattern_size_per_line = (void *)nt37801_cmd_120hz_top_pattern_l_size_per_line,
 #else
 	.corner_pattern_height = ROUND_CORNER_H_TOP_PUTEST,
 	.corner_pattern_height_bot = ROUND_CORNER_H_BOT_PUTEST,
@@ -1353,6 +1355,7 @@ static struct mtk_panel_params ext_params_60hz = {
 	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
 	.corner_pattern_tp_size = sizeof(nt37801_cmd_120hz_top_pattern_l),
 	.corner_pattern_lt_addr = (void *)nt37801_cmd_120hz_top_pattern_l,
+	.corner_pattern_size_per_line = (void *)nt37801_cmd_120hz_top_pattern_l_size_per_line,
 #else
 	.corner_pattern_height = ROUND_CORNER_H_TOP_PUTEST,
 	.corner_pattern_height_bot = ROUND_CORNER_H_BOT_PUTEST,
