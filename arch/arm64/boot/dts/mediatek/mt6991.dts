@@ -187,6 +187,12 @@
 		ulposc-result-fmeter-id = <63>;
 	};
 
+	camfe: camfe {
+		compatible = "mediatek,mt8678-cam-fe";
+		mtk,smmu-shared = <&mm_smmu_cam>;
+		status = "disabled";
+	};
+
 	cache-parity {
 		compatible = "mediatek,mt6985-cache-parity";
 		ecc-irq-support = <1>;
