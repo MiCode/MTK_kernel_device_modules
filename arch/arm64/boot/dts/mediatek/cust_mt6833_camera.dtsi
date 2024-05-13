@@ -445,7 +445,7 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-	mtk_camera_eeprom2:camera_eeprom4@51 {
+	mtk_camera_eeprom2:camera-eeprom4@51 {
 		compatible = "mediatek,camera_eeprom";
 		reg = <0x51>;
 		status = "okay";
@@ -457,12 +457,12 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-	mtk_camera_eeprom1:camera_eeprom1@51 {
+	mtk_camera_eeprom1:camera-eeprom1@51 {
 		compatible = "mediatek,camera_eeprom";
 		reg = <0x51>;
 		status = "okay";
 	};
-	mtk_camera_eeprom4:camera_eeprom2@50 {
+	mtk_camera_eeprom4:camera-eeprom2@50 {
 		compatible = "mediatek,camera_eeprom";
 		reg = <0x50>;
 		status = "okay";
@@ -474,7 +474,7 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-	mtk_camera_eeprom0:camera_eeprom0@50 {
+	mtk_camera_eeprom0:camera-eeprom0@50 {
 		compatible = "mediatek,camera_eeprom";
 		reg = <0x50>;
 		status = "okay";
