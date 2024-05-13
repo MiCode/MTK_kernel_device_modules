@@ -1015,7 +1015,7 @@ void fpsgo_ux_scrolling_end(struct render_info *thr)
 			&& ((thr->pid != global_sbe_dy_enhance_max_pid
 			&& thr->sbe_dy_enhance_f > global_sbe_dy_enhance)
 			|| thr->pid == global_sbe_dy_enhance_max_pid))
-		fbt_ux_set_perf(thr->pid, thr->sbe_dy_enhance_f);
+		fbt_set_global_sbe_dy_enhance(thr->pid, thr->sbe_dy_enhance_f);
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_dy_enhance_f, "[ux]sbe_dy_enhance_f");
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "[ux]sbe_dy_enhance_f");
 }
@@ -1160,50 +1160,6 @@ static struct ux_scroll_info *get_latest_ux_scroll_info(struct render_info *thr)
 	return list_first_entry_or_null(&(thr->scroll_list), struct ux_scroll_info, queue_list);
 }
 
-static int check_buffer_count_before_rescue(struct render_info *thr,
-		int rescue_type, unsigned long long frame_id)
-{
-	unsigned long long target_time = 0;
-	unsigned long long delay_check_time = 0;
-	struct ux_scroll_info *last_scroll = NULL;
-	struct ux_rescue_check *rescue_check = NULL;
-
-	// get latest scrolling worker
-	last_scroll = get_latest_ux_scroll_info(thr);
-
-	if (!last_scroll)
-		return 0;
-
-	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
-			thr->cur_buffer_count, "[ux]rescue_filter");
-	target_time = thr->boost_info.target_time;
-	//target_time max thinking is 10hz, incase overflow
-	// 100000000ns = 100ms * 1000 000, 100ms = 1s / 10hz
-	if (target_time > 0 && target_time <= 100000000) {
-		unsigned long long half_t = (target_time >> 1);
-
-		rescue_check = thr->ux_rchk;
-
-		if (!rescue_check)
-			return 0;
-
-		rescue_check->frameID = frame_id;
-		rescue_check->rescue_type = rescue_type;
-		rescue_check->pid = thr->pid;
-		delay_check_time = (thr->cur_buffer_count
-				- SBE_BUFFER_FILTER_THREASHOLD) * target_time - half_t;
-		last_scroll->rescue_filter_buffer_time =
-				(thr->cur_buffer_count - 1) * target_time - half_t;
-
-		FPSGO_LOGI("[FBT-UX]%d frame:%lld d_time:%lld r_type:%d",
-				thr->pid, frame_id, delay_check_time, rescue_type);
-
-		hrtimer_start(&(rescue_check->timer), ns_to_ktime(delay_check_time), HRTIMER_MODE_REL);
-	}
-	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "[ux]rescue_filter");
-	return 1;
-}
-
 void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		int rescue_type, unsigned long long rescue_target, unsigned long long frame_id)
 {
@@ -1220,8 +1176,12 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 				&& thr->cur_buffer_count > SBE_BUFFER_FILTER_THREASHOLD
 				&& (rescue_type & RESCUE_TYPE_OI) == 0
 				&& (rescue_type & RESCUE_RUNNING) == 0
-				&& check_buffer_count_before_rescue(thr, rescue_type, frame_id))
+				&& (rescue_type & RESCUE_TYPE_SECOND_RESCUE) == 0) {
+			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
+					thr->cur_buffer_count, "[ux]rescue_filter");
+			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "[ux]rescue_filter");
 			goto leave;
+		}
 
 		thr->sbe_rescuing_frame_id = frame_id;
 
@@ -1245,7 +1205,7 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 
 
 		//if sbe mark second rescue, then rescue again
-		if (thr->boost_info.sbe_rescue != 0 && ((rescue_type & RESCUE_TYPE_SECOND_RESCUE) == 0))
+		if (thr->boost_info.sbe_rescue != 0)
 			goto leave;
 		thr->boost_info.sbe_rescue = 1;
 
