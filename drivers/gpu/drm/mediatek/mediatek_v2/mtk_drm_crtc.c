@@ -4061,15 +4061,22 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 
 	mtk_crtc = to_mtk_crtc(crtc);
 	priv = crtc->dev->dev_private;
+	/* For Assert layer */
 	if (mtk_crtc && mtk_drm_dal_enable()) {
 		DDPINFO("%s: need handle dal layer\n", __func__);
 		if (priv && priv->data->mmsys_id == MMSYS_MT6991)
 			mtk_crtc->usage_ovl_fmt[6] = 2;
+		if (priv && priv->data->mmsys_id == MMSYS_MT6989)
+			mtk_crtc->usage_ovl_fmt[5] = 2;
 	}
 
-	if (mtk_crtc->crtc_blank)
+	/* For TUI layer */
+	if (mtk_crtc->crtc_blank) {
 		if (priv && priv->data->mmsys_id == MMSYS_MT6991)
 			mtk_crtc->usage_ovl_fmt[3] = 4;
+		if (priv && priv->data->mmsys_id == MMSYS_MT6989)
+			mtk_crtc->usage_ovl_fmt[2] = 4;
+	}
 
 	if (mtk_crtc && mtk_disp_get_logger_enable()) {
 		written = scnprintf(dbg_msg, 512, "%s usage_ovl_fmt = ", __func__);
