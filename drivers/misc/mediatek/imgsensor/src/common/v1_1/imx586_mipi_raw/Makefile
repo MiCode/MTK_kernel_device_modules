@@ -12,3 +12,7 @@ endif
 ifneq (,$(filter $(CONFIG_MTK_IMGSENSOR_ISP6S_MON), m y))
 imgsensor_isp6s_mon-objs += $(IMGSENSOR_SUBDRV_OBJ)
 endif
+
+ifneq (,$(filter $(CONFIG_MTK_IMGSENSOR_ISP6S_MOU), m y))
+imgsensor_isp6s_mou-objs += $(IMGSENSOR_SUBDRV_OBJ)
+endif

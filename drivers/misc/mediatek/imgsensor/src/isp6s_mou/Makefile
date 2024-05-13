@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 # Copyright (C) 2020 MediaTek Inc.
 
-MTK_PLATFORM := isp6s_mon
+MTK_PLATFORM := isp6s_mou
 
 MTK_SENSOR_PROJECT :=
 MTK_DERIVED_PLATFORM :=
@@ -17,17 +17,17 @@ subdir-ccflags-y += -I$(IMGSENSOR_DRIVER_PATH)/common/$(COMMON_VERSION) \
 
 subdir-ccflags-y += -DNO_I2C_MTK -DNO_CLK_METER -DSENINF_USE_RPM -DDFS_CTRL_BY_OPP
 
-obj-$(CONFIG_MTK_IMGSENSOR_ISP6S_MON) += imgsensor_isp6s_mon.o
-imgsensor_isp6s_mon-objs :=
-imgsensor_isp6s_mon-objs += ../common/$(COMMON_VERSION)/imgsensor.o
-imgsensor_isp6s_mon-objs += ../common/$(COMMON_VERSION)/imgsensor_hw.o
-imgsensor_isp6s_mon-objs += ../common/$(COMMON_VERSION)/imgsensor_i2c.o
-imgsensor_isp6s_mon-objs += ../common/$(COMMON_VERSION)/imgsensor_legacy.o
-imgsensor_isp6s_mon-objs += ../common/$(COMMON_VERSION)/imgsensor_proc.o
-imgsensor_isp6s_mon-objs += ../common/$(COMMON_VERSION)/imgsensor_pwr_seq.o
-imgsensor_isp6s_mon-objs += ../common/$(COMMON_VERSION)/imgsensor_sensor_list.o
-imgsensor_isp6s_mon-objs += ../common/$(COMMON_VERSION)/seninf_clk.o
-imgsensor_isp6s_mon-objs += ../common/$(COMMON_VERSION)/seninf.o
+obj-$(CONFIG_MTK_IMGSENSOR_ISP6S_MOU) += imgsensor_isp6s_mou.o
+imgsensor_isp6s_mou-objs :=
+imgsensor_isp6s_mou-objs += ../common/$(COMMON_VERSION)/imgsensor.o
+imgsensor_isp6s_mou-objs += ../common/$(COMMON_VERSION)/imgsensor_hw.o
+imgsensor_isp6s_mou-objs += ../common/$(COMMON_VERSION)/imgsensor_i2c.o
+imgsensor_isp6s_mou-objs += ../common/$(COMMON_VERSION)/imgsensor_legacy.o
+imgsensor_isp6s_mou-objs += ../common/$(COMMON_VERSION)/imgsensor_proc.o
+imgsensor_isp6s_mou-objs += ../common/$(COMMON_VERSION)/imgsensor_pwr_seq.o
+imgsensor_isp6s_mou-objs += ../common/$(COMMON_VERSION)/imgsensor_sensor_list.o
+imgsensor_isp6s_mou-objs += ../common/$(COMMON_VERSION)/seninf_clk.o
+imgsensor_isp6s_mou-objs += ../common/$(COMMON_VERSION)/seninf.o
 
 # for adding sensor driver
 define add_subdrv
@@ -51,7 +51,6 @@ else
 project_drv += $(1)
 endif
 endef
-
 
 $(foreach drv,$(subst $\",,$(CONFIG_CUSTOM_KERNEL_IMGSENSOR)),$(eval $(call FILTER_DRV,$(drv))))
 
@@ -99,9 +98,31 @@ subdir-ccflags-y         += -I$(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/camera_hw
 endif
 
 subdir-ccflags-y		+= -I$(IMGSENSOR_DRIVER_PATH)/common/$(COMMON_VERSION)/camera_hw
-subdir-ccflags-y        += -DNEED_LATE_INITCALL
 
 #seninf
+ifeq (,$(wildcard $(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/camera_project/$(MTK_SENSOR_PROJECT)/camera_hw))
+subdir-ccflags-y += -I$(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/camera_hw
+$(eval $(call add_subdrv,camera_hw))
+ifneq ($(project_drv),)
+$(eval $(call add_subdrv,camera_project/$(MTK_SENSOR_PROJECT)/camera_hw))
+endif
+else
+$(eval $(call add_subdrv,camera_project/$(MTK_SENSOR_PROJECT)/camera_hw))
+subdir-ccflags-y += -I$(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/camera_project/$(MTK_SENSOR_PROJECT)/camera_hw
+subdir-ccflags-y += -I$(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/camera_hw
+endif
+
+
+
+
+
+
+
+
+
+
+
+
 ifneq (,$(wildcard $(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/seninf_$(MTK_DERIVED_PLATFORM)))
 subdir-ccflags-y += -I$(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/seninf_$(MTK_DERIVED_PLATFORM)
 $(eval $(call add_subdrv,seninf_$(MTK_DERIVED_PLATFORM)))
@@ -109,7 +130,10 @@ else
 $(eval $(call add_subdrv,seninf))
 endif
 
-$(info imgsensor_isp6s_mon-objs : $(imgsensor_isp6s_mon-objs))
-$(info imgsensor_isp6s_mon subdir-ccflags-y : $(subdir-ccflags-y))
+$(info imgsensor_isp6s_mou-objs : $(imgsensor_isp6s_mou-objs))
+$(info imgsensor_isp6s_mou subdir-ccflags-y : $(subdir-ccflags-y))
 
 
+ifeq ($(ARCH_MTK_PROJECT), k6853v1_64_6360_alpha)
+subdir-ccflags-y += -DNEED_LATE_INITCALL
+endif
