@@ -284,7 +284,7 @@ void ufs_rpmb_vh_compl_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 
 		/* Dump RPMB frame start from nonce to the end */
 		print_hex_dump(KERN_DEBUG, "tail", DUMP_PREFIX_OFFSET,
-			16, 8, buf + 484, 32, false);
+			16, 8, buf + 484, 28, false);
 	}
 
 }
