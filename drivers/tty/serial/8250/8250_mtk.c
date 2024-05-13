@@ -266,6 +266,7 @@ void uarthub_drv_callbacks_register(struct uarthub_drv_cbs *cbs)
 	uarthub_drv_cbs.inband_is_tx_complete = cbs->inband_is_tx_complete;
 	uarthub_drv_cbs.inband_enable_ctrl = cbs->inband_enable_ctrl;
 	uarthub_drv_cbs.inband_is_support = cbs->inband_is_support;
+	uarthub_drv_cbs.bt_on_count_inc = cbs->bt_on_count_inc;
 }
 EXPORT_SYMBOL(uarthub_drv_callbacks_register);
 
@@ -733,6 +734,15 @@ int mtk8250_uart_hub_inband_is_support(void)
 		return -1;
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_inband_is_support);
+
+int mtk8250_uart_hub_bt_on_count_inc(void)
+{
+	if (uarthub_drv_cbs.bt_on_count_inc)
+		return uarthub_drv_cbs.bt_on_count_inc();
+	else
+		return -1;
+}
+EXPORT_SYMBOL(mtk8250_uart_hub_bt_on_count_inc);
 
 int mtk8250_uart_hub_is_txrx_idle(int rx)
 {
