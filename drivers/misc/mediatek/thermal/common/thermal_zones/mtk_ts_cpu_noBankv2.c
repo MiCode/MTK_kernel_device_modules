@@ -1187,7 +1187,10 @@ static ssize_t tscpu_write
 		/* avoid thermal reboot after unbinding coolers
 		 * during HT stress
 		 */
-
+#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
+		if (tscpu_g_curr_temp > 85000)
+			apthermolmt_set_general_cpu_power_limit(500);
+#endif
 		down(&sem_mutex);
 		tscpu_dprintk("%s tscpu_unregister_thermal\n", __func__);
 		tscpu_unregister_thermal();
@@ -1377,7 +1380,9 @@ static ssize_t tscpu_write
 
 		tscpu_register_thermal();
 		up(&sem_mutex);
-
+#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
+		apthermolmt_set_general_cpu_power_limit(0);
+#endif
 		proc_write_flag = 1;
 		kfree(ptr_mtktscpu_data);
 		return count;

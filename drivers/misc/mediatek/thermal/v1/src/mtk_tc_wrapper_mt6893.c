@@ -425,6 +425,7 @@ int get_immediate_tslvts1_1_wrap(void)
 
 	return curr_temp;
 }
+EXPORT_SYMBOL(get_immediate_tslvts1_1_wrap);
 
 int get_immediate_tslvts2_0_wrap(void)
 {
