@@ -83,6 +83,7 @@
 #define SLBC_TOTAL_CEIL                 0xCC
 #define SLBC_CG_PRIORITY                0xD0
 #define SLBC_DCC_COUNT                  0xD4
+#define SLBC_DCC_CTRL                   0xD8
 
 /* SLBC_UID_USED */
 #define SLBC_UID_USED_STA_LSB           SLBC_BIT(0)
