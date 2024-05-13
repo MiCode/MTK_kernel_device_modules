@@ -14325,13 +14325,13 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			mtk,img-frm-sync = <&img_frm_sync>;
 			mboxes = <&gce_m 21 3000 CMDQ_THR_PRIO_1>;
 			dvsdoneasyncshot = <CMDQ_EVENT_CAM_DPE_DVS_CMQ_EVENT>;
-			clocks = <&cksys_gp2_clk CLK_CK2_DPE_SEL>,
+			clocks =
 				<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
 				<&camsys_ipe_clk CLK_CAMSYS_IPE_DPE_CAMERA_P2>,
 				<&camsys_ipe_clk CLK_CAMSYS_IPE_FUS_CAMERA_P2>,
 				<&camsys_ipe_clk CLK_CAMSYS_IPE_DHZE_CAMERA_P2>,
 				<&camsys_ipe_clk CLK_CAMSYS_IPE_GALS_CAMERA_P2>;
-			clock-names = "CLK_CK2_DPE_SEL",
+			clock-names =
 			"CLK_CAM_MAIN_CAM",
 			"CLK_CAMSYS_IPE_DPE",
 			"CLK_CAMSYS_IPE_FUS",
@@ -14368,13 +14368,13 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			mediatek,cam-bwr = <&cam_bwr>;
 			mboxes = <&gce_m 21 3000 CMDQ_THR_PRIO_1>;
 			dvpdoneasyncshot = <CMDQ_EVENT_CAM_DPE_DVP_CMQ_EVENT>;
-			clocks = <&cksys_gp2_clk CLK_CK2_DPE_SEL>,
+			clocks =
 				<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
 				<&camsys_ipe_clk CLK_CAMSYS_IPE_DPE_CAMERA_P2>,
 				<&camsys_ipe_clk CLK_CAMSYS_IPE_FUS_CAMERA_P2>,
 				<&camsys_ipe_clk CLK_CAMSYS_IPE_DHZE_CAMERA_P2>,
 				<&camsys_ipe_clk CLK_CAMSYS_IPE_GALS_CAMERA_P2>;
-			clock-names = "CLK_CK2_DPE_SEL",
+			clock-names =
 			"CLK_CAM_MAIN_CAM",
 			"CLK_CAMSYS_IPE_DPE",
 			"CLK_CAMSYS_IPE_FUS",
@@ -14412,13 +14412,13 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			mediatek,cam-bwr = <&cam_bwr>;
 			mboxes = <&gce_m 21 3000 CMDQ_THR_PRIO_1>;
 			dvgfdoneasyncshot = <CMDQ_EVENT_CAM_DPE_DVFG_CMQ_EVENT>;
-			clocks = <&cksys_gp2_clk CLK_CK2_DPE_SEL>,
+			clocks =
 				<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
 				<&camsys_ipe_clk CLK_CAMSYS_IPE_DPE_CAMERA_P2>,
 				<&camsys_ipe_clk CLK_CAMSYS_IPE_FUS_CAMERA_P2>,
 				<&camsys_ipe_clk CLK_CAMSYS_IPE_DHZE_CAMERA_P2>,
 				<&camsys_ipe_clk CLK_CAMSYS_IPE_GALS_CAMERA_P2>;
-			clock-names = "CLK_CK2_DPE_SEL",
+			clock-names =
 			"CLK_CAM_MAIN_CAM",
 			"CLK_CAMSYS_IPE_DPE",
 			"CLK_CAMSYS_IPE_FUS",
