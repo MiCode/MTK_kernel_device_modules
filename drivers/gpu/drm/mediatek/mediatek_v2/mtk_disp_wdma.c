@@ -2263,8 +2263,24 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		break;
 	}
 	case PMQOS_SET_HRT_BW: {
-		unsigned int bw = 1306;
 		struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
+		unsigned long long bw;
+		int hact;
+		int vtotal;
+		int vact;
+		int vrefresh;
+		u32 bpp = 3;
+
+		/* for the case not initialize yet, return 1 avoid treat as error */
+		if (!(mtk_crtc && mtk_crtc->base.state))
+			return 1;
+
+		hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
+		vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
+		vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
+		vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
+		bw = (unsigned long long)div_u64(vact * hact * vrefresh * bpp, 1000);
+		bw = div_u64(bw, 1000) * 2;
 
 		if (!wdma || !mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
