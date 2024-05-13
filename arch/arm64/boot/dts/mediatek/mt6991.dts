@@ -8176,6 +8176,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<GIC_SPI 478 IRQ_TYPE_LEVEL_HIGH 0>, /* mminfra irq */
 				<GIC_SPI 794 IRQ_TYPE_LEVEL_HIGH 0>, /* mmup irq */
 				<GIC_SPI 613 IRQ_TYPE_LEVEL_HIGH 0>; /* gpu irq */
+			exception {
+				excep1 {
+					excep-name = "debugsys";
+					excep-type = <0>;
+					slave-type = <0>;
+					reg-base = <0x14411000>;
+				};
+			};
 		};
 
 		dispsys_config: dispsys-config@32000000 {
