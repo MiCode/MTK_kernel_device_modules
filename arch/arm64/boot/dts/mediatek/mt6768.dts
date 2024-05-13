@@ -104,6 +104,7 @@ aliases {
 
 			fbt_cpu_mask = <255 192 63 63>;
 			sbe-resceue-enable = <1>;
+			boost-dram = <1>;
 		};
 
 		disp_pwm: disp_pwm0@1100e000 {
