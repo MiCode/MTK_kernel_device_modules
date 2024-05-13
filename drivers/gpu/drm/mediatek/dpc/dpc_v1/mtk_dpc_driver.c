@@ -57,8 +57,6 @@ int dbg_vidle_timeout;
 module_param(dbg_vidle_timeout, int, 0644);
 int dbg_vdisp_level;
 module_param(dbg_vdisp_level, int, 0644);
-int dbg_vlp_backtrace;
-module_param(dbg_vlp_backtrace, int, 0644);
 
 #define DPC_DEBUG_RTFF_CNT 10
 static void __iomem *debug_rtff[DPC_DEBUG_RTFF_CNT];
@@ -103,7 +101,6 @@ static unsigned int g_te_duration; //us
 static unsigned int g_vb_duration; //us
 static unsigned int g_vdisp_level;
 static DEFINE_MUTEX(dvfs_lock);
-static unsigned int g_vlp_backtrace;
 
 static const char *mtk_dpc_vidle_cap_name[DPC_VIDLE_CAP_COUNT] = {
 	"MTCMOS_OFF",
@@ -2971,11 +2968,8 @@ irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 				mtk_update_dpc_state(DPC_VIDLE_DISP1_MASK, true);
 		}
 
-		if (dbg_mtcmos_off && (status & DISP_DPC_INT_DISP1_ON)) {
-			mtk_update_dpc_state(DPC_VIDLE_DISP1_MASK |
-				DPC_VIDLE_MMINFRA_MASK, false);
-			g_vlp_backtrace = 1;
-		}
+		if (dbg_mtcmos_off && (status & DISP_DPC_INT_DISP1_ON))
+			mtk_update_dpc_state(DPC_VIDLE_DISP1_MASK, false);
 	}
 
 	if (unlikely(dbg_check_reg) && g_priv->mmsys_id == MMSYS_MT6989 &&
@@ -3380,11 +3374,8 @@ static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 	}
 	spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 
-	g_vlp_backtrace = 0;
 	mtk_disp_vlp_vote_by_cpu(VOTE_SET, user);
 	udelay(50);
-	if (dbg_vlp_backtrace)
-		WARN_ON(g_vlp_backtrace);
 	return 0;
 }
 
