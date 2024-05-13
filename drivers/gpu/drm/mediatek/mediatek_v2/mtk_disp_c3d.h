@@ -69,8 +69,6 @@ struct mtk_disp_c3d_primary {
 	struct DISP_C3D_REG_17BIN c3d_reg;
 	unsigned int c3d_sram_cfg[DISP_C3D_SRAM_SIZE_17BIN];
 	unsigned int c3d_lut1d[DISP_C3D_1DLUT_SIZE];
-	struct wakeup_source *c3d_wake_lock;
-	bool c3d_wake_locked;
 	bool set_lut_flag;
 	bool update_sram_ignore;
 	bool skip_update_sram;

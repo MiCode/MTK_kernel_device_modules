@@ -45,7 +45,6 @@ struct mtk_disp_gamma_primary {
 	struct mutex clk_lock;
 	struct mutex data_lock;
 	struct cmdq_pkt *sram_pkt;
-	struct wakeup_source *gamma_wake_lock;
 
 	atomic_t clock_on;
 	atomic_t sof_filp;
@@ -54,7 +53,6 @@ struct mtk_disp_gamma_primary {
 	unsigned int table_config_sel;
 	unsigned int table_out_sel;
 	bool hwc_ctl_silky_brightness_support;
-	bool gamma_wake_locked;
 	bool need_refinalize;
 	atomic_t gamma_sram_hw_init;
 	unsigned int relay_state;

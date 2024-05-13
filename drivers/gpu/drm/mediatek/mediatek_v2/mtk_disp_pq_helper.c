@@ -108,34 +108,6 @@ static bool mtk_drm_get_resource_from_dts(struct resource *res, const char *node
 	return true;
 }
 
-void disp_pq_wake_get(unsigned int cmd, struct pq_common_data *pq_data)
-{
-	s32 ref;
-
-	mutex_lock(&pq_data->wake_mutex);
-	ref = atomic_inc_return(&pq_data->wake_ref);
-	DDPDBG("%s cmd %d ref %d\n", __func__, cmd, ref);
-	if (ref == 1)
-		__pm_stay_awake(pq_data->wake_lock);
-	mutex_unlock(&pq_data->wake_mutex);
-	if (ref < 0)
-		DDPPR_ERR("%s  get invalid cnt %d\n", __func__, ref);
-}
-
-void disp_pq_wake_put(unsigned int cmd, struct pq_common_data *pq_data)
-{
-	s32 ref;
-
-	mutex_lock(&pq_data->wake_mutex);
-	ref = atomic_dec_return(&pq_data->wake_ref);
-	DDPDBG("%s cmd %d ref %d\n", __func__, cmd, ref);
-	if (!ref)
-		__pm_relax(pq_data->wake_lock);
-	mutex_unlock(&pq_data->wake_mutex);
-	if (ref < 0)
-		DDPPR_ERR("%s  put invalid cnt %d\n", __func__, ref);
-}
-
 void disp_pq_path_sel_set(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
 {
 #ifndef DRM_BYPASS_PQ
@@ -348,7 +320,18 @@ int disp_pq_proxy_virtual_hw_read(struct drm_crtc *crtc, void *data)
 static void frame_cmdq_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
+	struct drm_crtc *crtc = cb_data->crtc;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	bool need_wait_done = (bool)cb_data->misc;
+	struct pq_common_data *pq_data = mtk_crtc->pq_data;
+	int index = drm_crtc_index(crtc);
 
+	if (need_wait_done) {
+		atomic_set(&pq_data->cfg_done, 1);
+		wake_up_interruptible(&pq_data->cfg_done_wq);
+		CRTC_MMP_MARK(index, pq_frame_config, (unsigned long)cb_data->cmdq_handle, 0xF000000F);
+		DDPINFO("%s cfg_done wakeup\n", __func__);
+	}
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
 	kfree(cb_data);
 }
@@ -589,10 +572,9 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 
 	if (copy_from_user(kdata, (void __user *)params->data, params->size) != 0)
 		goto err;
-	if (disp_pq_is_cmd_need_pm(cmd)) {
-		disp_pq_wake_get(cmd, to_mtk_crtc(crtc)->pq_data);
+	if (disp_pq_is_cmd_need_pm(cmd))
 		pm_ret = mtk_vidle_pq_power_get(__func__);
-	}
+
 	if (pq_type == MTK_DISP_VIRTUAL_TYPE) {
 		ret = disp_pq_proxy_virtual_type_impl(crtc, dev, cmd, kdata, file_priv);
 	} else {
@@ -609,7 +591,6 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 	if (disp_pq_is_cmd_need_pm(cmd)) {
 		if (!pm_ret)
 			mtk_vidle_pq_power_put(__func__);
-		disp_pq_wake_put(cmd, to_mtk_crtc(crtc)->pq_data);
 	}
 	if (cmd > PQ_GET_CMD_START) {
 		if (copy_to_user((void __user *)params->data, kdata,  params->size) != 0)
@@ -626,6 +607,22 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 err:
 	if (kdata != stack_kdata) {
 		kfree(kdata);
+	}
+	return ret;
+}
+
+bool is_pq_frame_cfg_need_wait_done(struct mtk_drm_pq_param *requests, unsigned int cmds_len)
+{
+	bool ret = false;
+	int index;
+
+	for (index = 0; index < cmds_len; index++) {
+		unsigned int cmd = requests[index].cmd & 0xffff;
+
+		if (cmd == PQ_C3D_SET_LUT || cmd == PQ_GAMMA_SET_12BIT_GAMMALUT) {
+			ret = true;
+			break;
+		}
 	}
 	return ret;
 }
@@ -667,10 +664,12 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 	struct mtk_ddp_comp *comp;
 	struct mtk_drm_pq_param requests[REQUEST_MAX_COUNT];
 	unsigned int check_trigger = params->check_trigger;
-	unsigned int i, j;
+	unsigned int i, j, k;
 	int index = drm_crtc_index(crtc);
 	bool is_atomic_commit = cmdq_handle;
 	int pm_ret = 0;
+	struct pq_common_data *pq_data = mtk_crtc->pq_data;
+	bool need_wait_done = false;
 
 	DDPDBG("%s:%d ++, crtc index:%d\n", __func__, __LINE__, index);
 	mtk_drm_trace_begin("disp_pq_helper_frame_config");
@@ -708,14 +707,28 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 	/* Record Vblank start timestamp */
 	mtk_vblank_config_rec_start(mtk_crtc, pq_cmdq_handle, PQ_HELPER_CONFIG);
 
-	/* call comp frame config */
-	disp_pq_wake_get(~0, to_mtk_crtc(crtc)->pq_data);
-	pm_ret = mtk_vidle_pq_power_get(__func__);
-	for (index = 0; index < cmds_len; index++) {
-		unsigned int pq_type = requests[index].cmd >> 16;
-		unsigned int cmd = requests[index].cmd & 0xffff;
+	if (is_pq_frame_cfg_need_wait_done(requests, cmds_len) && pq_data) {
+		int ret;
 
-		if (pq_type >= MTK_DISP_PQ_TYPE_MAX || !requests[index].size)
+		need_wait_done = true;
+		CRTC_MMP_MARK(index, pq_frame_config, (unsigned long)pq_cmdq_handle, atomic_read(&pq_data->cfg_done));
+		DDPINFO("%s wait cfg_done %d!\n", __func__, atomic_read(&pq_data->cfg_done));
+		ret = wait_event_interruptible_timeout(pq_data->cfg_done_wq,
+				atomic_cmpxchg(&pq_data->cfg_done, 1, 0) == 1, msecs_to_jiffies(1000));
+		CRTC_MMP_MARK(index, pq_frame_config, (unsigned long)pq_cmdq_handle,
+				0xF0000000 | atomic_read(&pq_data->cfg_done));
+		DDPINFO("%s cfg_done wakeup %d %d\n", __func__, ret, atomic_read(&pq_data->cfg_done));
+		atomic_set(&pq_data->cfg_done, 0);
+	}
+
+	/* call comp frame config */
+	pm_ret = mtk_vidle_pq_power_get(__func__);
+
+	for (k = 0; k < cmds_len; k++) {
+		unsigned int pq_type = requests[k].cmd >> 16;
+		unsigned int cmd = requests[k].cmd & 0xffff;
+
+		if (pq_type >= MTK_DISP_PQ_TYPE_MAX || !requests[k].size)
 			continue;
 
 		if (cmd != PQ_AAL_SET_PARAM && cmd != PQ_COLOR_DRECOLOR_SET_PARAM &&
@@ -728,22 +741,22 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 				char stack_kdata[128];
 				char *kdata = NULL;
 
-				if (requests[index].size <= sizeof(stack_kdata))
+				if (requests[k].size <= sizeof(stack_kdata))
 					kdata = stack_kdata;
 				else
-					kdata = kmalloc(requests[index].size, GFP_KERNEL);
+					kdata = kmalloc(requests[k].size, GFP_KERNEL);
 
 				if (!kdata) {
 					DDPPR_ERR("%s:%d, kdata alloc failed comp:%d,%d\n",
 							__func__, __LINE__, comp->id, cmd);
 					continue;
 				}
-				if (copy_from_user(kdata, (void __user *)requests[index].data,
-						requests[index].size) == 0) {
+				if (copy_from_user(kdata, (void __user *)requests[k].data,
+						requests[k].size) == 0) {
 					mtk_drm_trace_begin("frame_config(compId: %d)", comp->id);
 
 					if (mtk_ddp_comp_pq_frame_config(comp, pq_cmdq_handle,
-							cmd, kdata, requests[index].size) < 0)
+							cmd, kdata, requests[k].size) < 0)
 						DDPPR_ERR("%s:%d, config failed, comp:%d,%d\n",
 							__func__, __LINE__, comp->id, cmd);
 
@@ -757,7 +770,6 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 	}
 	if (!pm_ret)
 		mtk_vidle_pq_power_put(__func__);
-	disp_pq_wake_put(~0, to_mtk_crtc(crtc)->pq_data);
 
 	/* atomic commit will flush in crtc */
 	if (!is_atomic_commit) {
@@ -765,11 +777,19 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 		if (!cb_data) {
 			DDPPR_ERR("cb data creation failed\n");
 			cmdq_pkt_destroy(pq_cmdq_handle);
+			if (need_wait_done) {
+				need_wait_done = false;
+				atomic_set(&pq_data->cfg_done, 1);
+				wake_up_interruptible(&pq_data->cfg_done_wq);
+			}
+			CRTC_MMP_MARK(index, pq_frame_config, (unsigned long)pq_cmdq_handle, 0xE0000001);
 			return -1;
 		}
 
 		cb_data->crtc = crtc;
 		cb_data->cmdq_handle = pq_cmdq_handle;
+		cb_data->misc = need_wait_done;
+
 		if (user_lock)
 			DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
@@ -783,6 +803,12 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 			kfree(cb_data);
 			if (user_lock)
 				DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+			if (need_wait_done) {
+				need_wait_done = false;
+				atomic_set(&pq_data->cfg_done, 1);
+				wake_up_interruptible(&pq_data->cfg_done_wq);
+			}
+			CRTC_MMP_MARK(index, pq_frame_config, (unsigned long)pq_cmdq_handle, 0xE0000002);
 			return -1;
 		}
 
@@ -792,7 +818,13 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 		mtk_drm_trace_begin("flush+check_trigger");
 		if (cmdq_pkt_flush_threaded(pq_cmdq_handle, frame_cmdq_cb, cb_data) < 0) {
 			DDPPR_ERR("failed to flush %s\n", __func__);
+			if (need_wait_done) {
+				need_wait_done = false;
+				atomic_set(&pq_data->cfg_done, 1);
+				wake_up_interruptible(&pq_data->cfg_done_wq);
+			}
 			kfree(cb_data);
+			CRTC_MMP_MARK(index, pq_frame_config, (unsigned long)pq_cmdq_handle, 0xE0000003);
 		} else if (check_trigger)
 			mtk_crtc_check_trigger(mtk_crtc, check_trigger == CHECK_TRIGGER_DELAY
 						|| mtk_crtc->msync2.msync_frame_status, !user_lock);

@@ -125,28 +125,6 @@ static bool disp_gamma_clock_is_on(struct mtk_ddp_comp *comp)
 	return false;
 }
 
-static void disp_gamma_lock_wake_lock(struct mtk_ddp_comp *comp, bool lock)
-{
-	struct mtk_disp_gamma *gamma_data = comp_to_gamma(comp);
-	struct mtk_disp_gamma_primary *primary_data = gamma_data->primary_data;
-
-	if (lock) {
-		if (!primary_data->gamma_wake_locked) {
-			__pm_stay_awake(primary_data->gamma_wake_lock);
-			primary_data->gamma_wake_locked = true;
-		} else  {
-			DDPPR_ERR("%s: try lock twice\n", __func__);
-		}
-	} else {
-		if (primary_data->gamma_wake_locked) {
-			__pm_relax(primary_data->gamma_wake_lock);
-			primary_data->gamma_wake_locked = false;
-		} else {
-			DDPPR_ERR("%s: try unlock twice\n", __func__);
-		}
-	}
-}
-
 static void disp_gamma_bypass(struct mtk_ddp_comp *comp, int bypass,
 	int caller, struct cmdq_pkt *handle)
 {
@@ -196,7 +174,7 @@ static int disp_gamma_write_sram(struct mtk_ddp_comp *comp,
 	struct cmdq_reuse *reuse_lut;
 
 	if (!gamma_12b_lut) {
-		DDPINFO("%s: gamma_12b_lut null\n", __func__);
+		DDPPR_ERR("%s: gamma_12b_lut null\n", __func__);
 		return -EFAULT;
 	}
 
@@ -204,7 +182,7 @@ static int disp_gamma_write_sram(struct mtk_ddp_comp *comp,
 		mutex_lock(&gamma->primary_data->data_lock);
 
 	if (gamma_12b_lut->hw_id == DISP_GAMMA_TOTAL) {
-		DDPINFO("%s: table not initialized\n", __func__);
+		DDPPR_ERR("%s: table not initialized\n", __func__);
 		ret = -EFAULT;
 		goto gamma_write_lut_unlock;
 	}
@@ -222,9 +200,9 @@ static int disp_gamma_write_sram(struct mtk_ddp_comp *comp,
 	reuse_lut = gamma->reuse_gamma_lut;
 	handle = primary_data->sram_pkt;
 
-	DDPINFO("handle: %d\n", handle == NULL ? 0 : 1);
 	if (handle == NULL) {
 		ret = -EFAULT;
+		DDPPR_ERR("%s: handle null\n", __func__);
 		goto gamma_write_lut_unlock;
 	}
 	handle->no_pool = true;
@@ -311,7 +289,6 @@ static bool disp_gamma_flush_sram(struct mtk_ddp_comp *comp, int cmd_type)
 	else
 		client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 
-	disp_gamma_lock_wake_lock(comp, true);
 	cmdq_mbox_enable(client->chan);
 	CRTC_MMP_MARK(0, gamma_ioctl, comp->id, (unsigned long)cmdq_handle);
 
@@ -331,8 +308,6 @@ static bool disp_gamma_flush_sram(struct mtk_ddp_comp *comp, int cmd_type)
 	default:
 		DDPPR_ERR("%s, invalid cmd_type:%d\n", __func__, cmd_type);
 	}
-
-	disp_gamma_lock_wake_lock(comp, false);
 
 	return true;
 }
