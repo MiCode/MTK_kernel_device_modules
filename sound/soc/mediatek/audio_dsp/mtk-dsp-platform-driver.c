@@ -24,6 +24,9 @@
 
 #include <mt-plat/mtk_irq_mon.h>
 #include <linux/tracepoint.h>
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_VHOST_ADSP)
+#include "mtk-dsp-platform-driver-auto.h"
+#endif
 
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 #define CREATE_TRACE_POINTS
@@ -37,7 +40,6 @@
 #endif
 
 static DEFINE_MUTEX(adsp_wakelock_lock);
-
 #define IPIMSG_SHARE_MEM (1024)
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
 #define DSP_IRQ_LOOP_COUNT (16)
@@ -897,7 +899,7 @@ SYNC_READINDEX:
 	return pcm_remap_ptr_bytes;
 }
 
-static snd_pcm_uframes_t mtk_dsphw_pcm_pointer
+snd_pcm_uframes_t mtk_dsphw_pcm_pointer
 			 (struct snd_soc_component *component,
 			  struct snd_pcm_substream *substream)
 {
@@ -957,7 +959,11 @@ static bool mtk_dsp_check_exception(struct mtk_base_dsp *dsp,
 		pr_info("%s() %s adsp reset\n", __func__, task_name);
 		RingBuf_Reset(&dsp->dsp_mem[id].ring_buf);
 		dsp->dsp_mem[id].underflowed = true;
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_VHOST_ADSP)
+		guest_adsp_irq_notify(0, get_dspscene_by_dspdaiid(id), 1);
+#else
 		snd_pcm_period_elapsed(dsp->dsp_mem[id].substream);
+#endif
 		return true;
 	}
 
@@ -965,7 +971,11 @@ static bool mtk_dsp_check_exception(struct mtk_base_dsp *dsp,
 	if (ipi_msg && ipi_msg->param2 == ADSP_DL_CONSUME_UNDERFLOW) {
 		pr_info("%s() %s adsp underflow\n", __func__, task_name);
 		dsp->dsp_mem[id].underflowed = true;
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_VHOST_ADSP)
+		guest_adsp_irq_notify(0, get_dspscene_by_dspdaiid(id), 1);
+#else
 		snd_pcm_period_elapsed(dsp->dsp_mem[id].substream);
+#endif
 		return true;
 	}
 
@@ -1027,7 +1037,11 @@ static void mtk_dsp_dl_consume_handler(struct mtk_base_dsp *dsp,
 #endif
 	/* notify subsream */
 	irq_log_store();
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_VHOST_ADSP)
+	guest_adsp_irq_notify(0, get_dspscene_by_dspdaiid(id), 0);
+#else
 	snd_pcm_period_elapsed(dsp->dsp_mem[id].substream);
+#endif
 	irq_log_store();
 }
 
@@ -1094,7 +1108,11 @@ static void mtk_dsp_ul_handler(struct mtk_base_dsp *dsp,
 #endif
 
 	/* notify subsream */
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_VHOST_ADSP)
+	guest_adsp_irq_notify(1, get_dspscene_by_dspdaiid(id), 0);
+#else
 	snd_pcm_period_elapsed(dsp->dsp_mem[id].substream);
+#endif
 DSP_IRQ_HANDLER_ERR:
 	return;
 }
@@ -1324,6 +1342,13 @@ static int mtk_dsp_pcm_hw_params(struct snd_soc_component *component,
 		pr_info("%s ret = %d\n", __func__, ret);
 		return -1;
 	}
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_VHOST_ADSP)
+	guest_adsp_task_share_dram_notify(get_dspscene_by_dspdaiid(id),
+		MEM_TYPE_RING, dsp->dsp_mem[id].dsp_ring_share_buf.phy_addr,
+		dsp->dsp_mem[id].dsp_ring_share_buf.size);
+#endif
+
 
 #ifdef DEBUG_VERBOSE
 	dump_audio_dsp_dram(&dsp_mem->msg_atod_share_buf);
@@ -1755,8 +1780,17 @@ void audio_irq_handler(int irq, void *data, int core_id)
 			pr_info("-%s flag[%llx] task_id[%d] task_value[%lu]\n",
 				__func__, *pdtoa, task_id, task_value);
 #endif
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_VHOST_ADSP)
+			if (task_id >= 0) {
+				if (is_guest_audio_task(task_id))
+					guest_adsp_irq_handler(dsp, core_id, task_id, 0);
+				else
+					mtk_dsp_dl_consume_handler(dsp, NULL, task_id);
+			}
+#else
 			if (task_id >= 0 && !dsp->dsp_mem[task_id].underflowed)
 				mtk_dsp_dl_consume_handler(dsp, NULL, task_id);
+#endif
 		}
 		loop_count--;
 	} while (*pdtoa && task_value && loop_count > 0);
@@ -1864,7 +1898,9 @@ static int mtk_dsp_probe(struct snd_soc_component *component)
 				      1);
 	if (ret)
 		pr_info("%s add_component dsp_latency_num err ret = %d\n", __func__, ret);
-
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_VHOST_ADSP)
+	vadsp_probe(component);
+#endif
 	for (id = 0; id < AUDIO_TASK_DAI_NUM; id++) {
 		spin_lock_init(&dsp->dsp_mem[id].ringbuf_lock);
 
