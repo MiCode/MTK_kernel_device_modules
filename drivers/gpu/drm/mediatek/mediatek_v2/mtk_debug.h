@@ -30,8 +30,8 @@
 #define DBG_BUFFER_SIZE (1.5 * 1024 * 1024)
 #define IRQ_BUFFER_SIZE (240 * 1024)
 #else
-#define DBG_BUFFER_SIZE 0
-#define IRQ_BUFFER_SIZE 0
+#define DBG_BUFFER_SIZE (20 * 256)
+#define IRQ_BUFFER_SIZE (10 * 256)
 #endif
 #endif
 
