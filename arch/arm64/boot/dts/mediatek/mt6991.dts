@@ -4472,6 +4472,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					&smi_ccu_sub_comm1 &smi_ccu_sub_comm0>;
 		dbg-version = <2>;
 		hwccf-support;
+		vcodec-skip-smi-chk;
 		vcodec-pwr-sta-rg = <0x31a0a05c>;  /* vcp gpr for mt6991 vcodec dbg dump*/
 		vcodec-pwr-chk-id = <MTK_SMI_VDEC0_SMI MTK_SMI_VDEC1_SMI MTK_SMI_VENC0_SMI
 						MTK_SMI_VENC1_SMI MTK_SMI_VENC2_SMI>;
