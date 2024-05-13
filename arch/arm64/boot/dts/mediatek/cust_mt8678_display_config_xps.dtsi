@@ -70,3 +70,7 @@
 &panel_edp {
 	status = "okay";
 };
+
+&panel_dp_mst_one {
+	status = "okay";
+};
