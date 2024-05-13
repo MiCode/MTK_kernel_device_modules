@@ -14423,6 +14423,10 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			dvfsrc-mb {
 				compatible = "mediatek,dvfsrc-mb";
 			};
+
+			dvfsrc-debugfs {
+				compatible = "mediatek,mt6991-dvfsrc-debugfs";
+			};
 		};
 
 	scp: scp@1c800000 {
