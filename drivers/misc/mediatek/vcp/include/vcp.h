@@ -64,8 +64,8 @@ enum {
 //	IPI_IN_VCP_RAM_DUMP_0          =  6,
 //	IPI_OUT_VCP_CONNSYS            =  7,
 //	IPI_IN_VCP_CONNSYS             =  8,
-	IPI_OUT_MMDVFS_MMUP            =  9,
-	IPI_IN_MMDVFS_MMUP             = 10,
+	IPI_OUT_MMDVFS_VCP             =  9,
+	IPI_IN_MMDVFS_VCP              = 10,
 	IPI_OUT_MMQOS                  = 11,
 	IPI_IN_MMQOS                   = 12,
 	IPI_OUT_MMDEBUG                = 13,
@@ -88,8 +88,8 @@ enum {
 	IPI_OUT_LOGGER_CTRL_1          = 30,
 	IPI_IN_LOGGER_CTRL_1           = 31,
 	IPI_OUT_VCPCTL_0               = 32,
-	IPI_OUT_MMDVFS_VCP             = 33,
-	IPI_IN_MMDVFS_VCP              = 34,
+	IPI_OUT_MMDVFS_MMUP            = 33,
+	IPI_IN_MMDVFS_MMUP             = 34,
 
 	VCP_IPI_COUNT
 };
@@ -127,10 +127,10 @@ enum vcp_reserve_mem_id_t {
 	VDEC_VCP_LOG_INFO_ID,
 	VENC_VCP_LOG_INFO_ID,
 	GCE_MEM_ID,
-	MMDVFS_MMUP_MEM_ID,
+	MMDVFS_VCP_MEM_ID,
 	MMQOS_MEM_ID,
 	VCP_SECURE_DUMP_ID,
-	MMDVFS_VCP_MEM_ID,
+	MMDVFS_MMUP_MEM_ID,
 	NUMS_MEM_ID,
 };
 
