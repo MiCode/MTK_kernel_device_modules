@@ -29,7 +29,6 @@
 //#include <mt-plat/mtk_boot.h>
 
 #include "mtk_idle_module.h"
-/* External weak functions: implemented in clkbuf and thermal module */
 uint32_t __attribute__((weak)) clk_buf_bblpm_enter_cond(void) { return -1; }
 
 /***********************************************************
@@ -84,8 +83,6 @@ void ufs_cb_after_idle(void)
 #endif
 }
 
-
-
 /*****************************************************
  *  mtk idle notification
  *****************************************************/
@@ -93,17 +90,9 @@ int mtk_idle_notifier_register(struct notifier_block *n)
 {
 	int ret = 0;
 	int index = 0;
-	#if IS_ENABLED(CONFIG_KALLSYMS)
-	char namebuf[128] = {0};
 
-	sprint_symbol(namebuf, (unsigned long)n->notifier_call);
-	pr_info("Power/swap [mt_idle_ntf] <%02d>%08lx (%s)\n",
-		index++, (unsigned long)n->notifier_call, namebuf);
-	#else
 	pr_info("Power/swap [mt_idle_ntf] <%02d>%08lx\n",
 			index++, (unsigned long)n->notifier_call);
-	#endif
-
 	ret = mtk_idle_module_notifier_register(n);
 
 	return ret;
