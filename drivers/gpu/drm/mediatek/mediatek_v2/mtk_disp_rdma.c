@@ -716,7 +716,8 @@ void mtk_rdma_cal_golden_setting(struct mtk_ddp_comp *comp,
 		gs[GS_RDMA_FIFO_UNDERFLOW_EN] = 0;
 	} else {
 		gs[GS_RDMA_FIFO_SIZE] = fifo_size;
-		gs[GS_RDMA_FIFO_UNDERFLOW_EN] = 1;
+		if (!rdma->data->disable_underflow)
+			gs[GS_RDMA_FIFO_UNDERFLOW_EN] = 1;
 	}
 
 	/* DISP_RDMA_MEM_GMC_SETTING_2 */
@@ -1864,6 +1865,7 @@ static const struct mtk_disp_rdma_data mt6885_rdma_driver_data = {
 	.has_greq_urg_num = true,
 	.is_support_34bits = false,
 	.dsi_buffer = false,
+	.disable_underflow = true,
 };
 
 static const struct mtk_disp_rdma_data mt6877_rdma_driver_data = {
