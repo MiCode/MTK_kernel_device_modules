@@ -177,10 +177,10 @@ struct util_rq {
 };
 
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
-extern void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq,
-			struct cpumask *cpumask, unsigned long *next_freq, int wl);
+extern void mtk_map_util_freq(void *data, unsigned long util,
+			struct cpumask *cpumask, unsigned long *next_freq);
 #else
-#define mtk_map_util_freq(data, util, freq, cap, next_freq, wl)
+#define mtk_map_util_freq(data, util, cap, next_freq)
 #endif /* CONFIG_NONLINEAR_FREQ_CTL */
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
