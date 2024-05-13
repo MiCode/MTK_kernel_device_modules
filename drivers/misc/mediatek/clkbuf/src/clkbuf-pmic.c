@@ -581,6 +581,41 @@ static int set_capid_pre2(void *data, int capid)
 	return ret;
 }
 
+static int set_capid_lv1(void *data, int capid)
+{
+	struct plat_xodata *pd;
+	struct common_regs *com_regs;
+	struct clkbuf_hw hw;
+	struct reg_t reg;
+	int ret = 0;
+
+	pd = (struct plat_xodata *)data;
+	if (!pd)
+		return -EREG_NOT_SUPPORT;
+
+	com_regs = pd->common_regs;
+	if (!com_regs)
+		return -EREG_NOT_SUPPORT;
+
+	hw = pd->hw;
+
+	reg = com_regs->_cofst_fpm;
+	ret |= pmic_write(&hw, &reg, 0);
+
+	reg = com_regs->_cdac_fpm;
+	ret |= pmic_write(&hw, &reg, capid);
+
+	reg = com_regs->_idac_fpm;
+	ret |= pmic_write(&hw, &reg, 2);
+
+	ret |= pmic_write(&hw, &reg, 0);
+	mdelay(1);
+	ret |= pmic_write(&hw, &reg, 1);
+	mdelay(5);
+
+	return ret;
+}
+
 static int get_capid(void *data, u32 *capid)
 {
 	int ret = 0;
@@ -1001,6 +1036,13 @@ static int __set_pmic_common_hdlr(void *data, int cmd, int arg, int perms)
 		if (ret)
 			goto WRITE_FAIL;
 		break;
+
+	case SET_CAPID_LV1: // = 0x5000,
+		ret = set_capid_lv1(data, arg);
+		if (ret)
+			goto WRITE_FAIL;
+		break;
+
 	case SET_CAPID: // = 0x4000,
 		ret |= set_capid_pre1(data);
 		ret |= set_capid_pre2(data, arg);
@@ -1161,6 +1203,8 @@ static struct clkbuf_operation clkbuf_ops_lv1 = {
 	.dump_pmic_debug_regs = __dump_pmic_debug_regs,
 	.get_xo_cmd_hdlr = __get_xo_cmd_hdlr_lv1,
 	.set_xo_cmd_hdlr = __set_xo_cmd_hdlr_lv1,
+	.set_pmic_common_hdlr = __set_pmic_common_hdlr,
+	.get_pmic_common_hdlr = __get_pmic_common_hdlr,
 };
 
 static struct clkbuf_hdlr pmic_hdlr_v1 = {
@@ -1179,6 +1223,11 @@ static struct clkbuf_hdlr pmic_hdlr_lv1 = {
 	.data = &mt6358_data,
 };
 
+static struct clkbuf_hdlr pmic_hdlr_lv1_tb = {
+	.ops = &clkbuf_ops_lv1,
+	.data = &mt6358_tb_data,
+};
+
 static struct clkbuf_hdlr pmic_hdlr_lv2 = {
 	.ops = &clkbuf_ops_lv1,
 	.data = &mt6359p_data,
@@ -1187,6 +1236,12 @@ static struct clkbuf_hdlr pmic_hdlr_lv2 = {
 static struct match_pmic mt6358_match_pmic = {
 	.name = "mediatek,mt6358-clkbuf",
 	.hdlr = &pmic_hdlr_lv1,
+	.init = &pmic_init_lv1,
+};
+
+static struct match_pmic mt6358_tb_match_pmic = {
+	.name = "mediatek,mt6358-tb-clkbuf",
+	.hdlr = &pmic_hdlr_lv1_tb,
 	.init = &pmic_init_lv1,
 };
 
@@ -1210,6 +1265,7 @@ static struct match_pmic mt6359p_match_pmic = {
 
 static struct match_pmic *matches_pmic[] = {
 	&mt6358_match_pmic,
+	&mt6358_tb_match_pmic,
 	&mt6685_match_pmic,
 	&mt6685_tb_match_pmic,
 	&mt6359p_match_pmic,

@@ -23,6 +23,7 @@ enum CLKBUF_DBG_TB_CMD_ID {
 	SET_CAPID_PRE_1 = 0x1000,
 	SET_CAPID_PRE_2 = 0x2000,
 	SET_CAPID = 0x4000,
+	SET_CAPID_LV1 = 0x5000,
 	SET_HEATER = 0x8000,
 };
 
@@ -50,6 +51,8 @@ struct common_regs {
 	struct reg_t _pmrc_en_l;
 	struct reg_t _pmrc_en_h;
 	struct reg_t _cdac_fpm;
+	struct reg_t _cofst_fpm;
+	struct reg_t _idac_fpm;
 	struct reg_t _aac_fpm_swen;
 	struct reg_t _heater_sel;
 };
@@ -67,6 +70,7 @@ extern struct plat_xodata mt6685_data;
 extern struct plat_xodata mt6685_tb_data;
 extern struct plat_xodata mt6377_data;
 extern struct plat_xodata mt6358_data;
+extern struct plat_xodata mt6358_tb_data;
 extern struct plat_xodata mt6359p_data;
 
 #endif /* CLKBUF_DCXO_6685P_H */
