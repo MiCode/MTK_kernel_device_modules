@@ -106,7 +106,7 @@ static struct pwr_ctrl *get_pwrctrl(int idle_type)
 		idle_type == IDLE_TYPE_SO3 ? &pwrctrl_so3 :
 		idle_type == IDLE_TYPE_SO ? &pwrctrl_so : NULL;
 }
-/*
+
 static void mtk_idle_gs_dump(int idle_type)
 {
 	#if defined(MTK_IDLE_GS_DUMP_READY)
@@ -116,7 +116,6 @@ static void mtk_idle_gs_dump(int idle_type)
 		mt_power_gs_dump_sodi3(GS_ALL);
 	#endif
 }
-*/
 
 /********************************************************************
  * dp/so3/so trigger wfi
@@ -162,8 +161,8 @@ int mtk_idle_trigger_wfi(int idle_type, unsigned int idle_flag, int cpu)
 	};
 
 	/* Dump low power golden setting */
-	//if (idle_flag & MTK_IDLE_LOG_DUMP_LP_GS)
-		//mtk_idle_gs_dump(idle_type);
+	if (idle_flag & MTK_IDLE_LOG_DUMP_LP_GS)
+		mtk_idle_gs_dump(idle_type);
 
 	pwrctrl = get_pwrctrl(idle_type);
 
