@@ -637,13 +637,14 @@
 	};
 
 	topckgen: topckgen@10000000 {
-		compatible = "mediatek,topckgen", "syscon";
+		compatible = "mediatek,topckgen","mediatek,mt6781-topckgen", "syscon";
 		reg = <0 0x10000000 0 0x1000>;
 		#clock-cells = <1>;
 	};
 
 	infracfg_ao: infracfg_ao@10001000 {
-		compatible = "mediatek,common-infracfg_ao", "mediatek,infracfg_ao", "syscon";
+		compatible = "mediatek,common-infracfg_ao", "mediatek,mt6781-infracfg_ao",
+			"mediatek,infracfg_ao", "syscon";
 		reg = <0 0x10001000 0 0x1000>;
 		#clock-cells = <1>;
 
@@ -700,8 +701,8 @@
 	};
 
 	vdec_gcon: vdec_gcon@1602f000 {
-		compatible = "mediatek,vdec_gcon",
-				"mediatek,mt6833-vdec_gcon", "syscon";
+		compatible = "mediatek,vdec_gcon","mediatek,mt6833-vdec_gcon",
+				"mediatek,mt6781-vdec_gcon", "syscon";
 		reg = <0 0x1602f000 0 0x1000>;
 		pwr-regmap = <&sleep>;
 		#clock-cells = <1>;
@@ -726,10 +727,11 @@
 	};
 
 	ipesys: ipesys@1c000000 {
-		compatible = "mediatek,ipesys", "syscon";
+		compatible = "mediatek,ipesys","mediatek,mt6781-ipesys", "syscon";
 		reg = <0 0x1c000000 0 0x1000>;
 		#clock-cells=<1>;
 	};
+
 
 	cache_parity {
 		compatible = "mediatek,mt6785-cache-parity";
@@ -1067,7 +1069,7 @@
 	};
 
 	apmixed: apmixed@1000c000 {
-		compatible = "mediatek,apmixed", "syscon";
+		compatible = "mediatek,apmixed", "mediatek,mt6781-apmixed", "syscon";
 		reg = <0 0x1000c000 0 0x1000>;
 		#clock-cells = <1>;
 	};
@@ -1794,19 +1796,9 @@
 		};
 
 		mdpsys_config: mdpsys_config@1b000000 {
-			compatible = "mediatek,mt6781-mdpsys", "mediatek,mdpsys_config", "syscon";
+			compatible = "mediatek,mdpsys", "mediatek,mdpsys_config","mediatek,mt6781-mdpsys", "syscon";
 			reg = <0 0x1b000000 0 0x1000>;
 			#clock-cells=<1>;
-			clocks = <&mdpsys_config CLK_MDP_IMG_DL_ASYNC0>,
-				<&mdpsys_config CLK_MDP_IMG_DL_ASYNC1>,
-				<&mdpsys_config CLK_MDP_IMG_DL_RELAY0_ASYNC0>,
-				<&mdpsys_config CLK_MDP_IMG_DL_RELAY1_ASYNC1>,
-				<&mdpsys_config CLK_MDP_APB_BUS>;
-			clock-names = "MDP_IMG_DL_ASYNC0",
-				"MDP_IMG_DL_ASYNC1",
-				"MDP_IMG_DL_RELAY0_ASYNC0",
-				"MDP_IMG_DL_RELAY1_ASYNC1",
-				"MDP_APB_BUS";
 		};
 
 		iommu0: m4u@14016000 {
@@ -1984,10 +1976,11 @@
 		};
 
 		imgsys1: imgsys1@15020000 {
-				compatible = "mediatek,imgsys1", "syscon";
+				compatible = "mediatek,imgsys1", "mediatek,mt6781-imgsys1","syscon";
 				reg = <0 0x15020000 0 0x1000>;
 				#clock-cells = <1>;
 		};
+
 
 		dip_a0@15021000 {
 				compatible = "mediatek,dip1";
@@ -2066,7 +2059,7 @@
 		};
 
 		imgsys2: imgsys2@15820000 {
-				compatible = "mediatek,imgsys2", "syscon";
+				compatible = "mediatek,imgsys2", "mediatek,mt6781-imgsys2","syscon";
 				reg = <0 0x15820000 0 0x1000>;
 				#clock-cells = <1>;
 		};
@@ -3337,10 +3330,11 @@
 	};
 
 	audio: audio@11210000 {
-		compatible = "mediatek,audio", "syscon";
+		compatible = "mediatek,audio", "mediatek,mt6781-audio","syscon";
 		reg = <0 0x11210000 0 0x2000>;
 		#clock-cells = <1>;
 	};
+
 
 	afe: mt6781-afe-pcm@11210000 {
 		compatible = "mediatek,mt6781-sound";
@@ -4450,8 +4444,8 @@
 		mediatek,commons-supply = <&smi_disp_common>;
 		mmqos-state = <0x7>;
 		mmqos-log-level = <0>;
-		//clocks = <&topckgen CLK_TOP_DISP_SEL>;
-		//clock-names = "mm";
+		clocks = <&topckgen TOP_MUX_DISP>;
+		clock-names = "mm";
 		interconnects = <&dvfsrc MT6873_MASTER_MMSYS &dvfsrc MT6873_SLAVE_DDR_EMI>,
 			<&dvfsrc MT6873_MASTER_HRT_MMSYS &dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
 		interconnect-names = "icc-bw", "icc-hrt-bw";
@@ -4725,7 +4719,7 @@
 	};
 
 	vdec_gcon_clk: vdec_gcon@16010000 {
-		compatible = "mediatek,vdec_gcon";
+		compatible = "mediatek,vdec_gcon", "mediatek,mt6781-vdec_gcon";
 		reg = <0 0x16010000 0 0x8000>;
 	};
 
@@ -4735,8 +4729,8 @@
 	};
 
 	venc_gcon: venc_gcon@17000000 {
-		compatible = "mediatek,venc_gcon",
-				"mediatek,mt6833-venc_gcon", "syscon";
+		compatible = "mediatek,venc_gcon","mediatek,mt6833-venc_gcon",
+				"mediatek,mt6781-venc_gcon", "syscon";
 		reg = <0 0x17000000 0 0x10000>;
 		pwr-regmap = <&sleep>;
 		#clock-cells = <1>;
@@ -5515,7 +5509,6 @@
 #include "mediatek/mt6366.dtsi"
 #include "mediatek/cust_mt6781_msdc.dtsi"
 #include "mediatek/mt6370.dtsi"
-#include "mediatek/mt6781-clkitg.dtsi"
 #include "mediatek/rt5133_for_6781.dtsi"
 #ifdef CONFIG_MTK_ENABLE_GENIEZONE
 #include "mediatek/trusty.dtsi"
