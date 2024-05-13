@@ -148,10 +148,10 @@ static void lcm_mdelay(unsigned int ms)
 		usleep_range(ms * 1000 - 100, ms * 1000);
 }
 
+#if !IS_ENABLED(CONFIG_RT4831A_I2C)
 #if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 static struct regulator *disp_bias_pos;
 static struct regulator *disp_bias_neg;
-
 
 static int lcm_panel_bias_regulator_init(void)
 {
@@ -232,6 +232,7 @@ static int lcm_panel_bias_disable(void)
 
 	return retval;
 }
+#endif
 #endif
 
 static void lcm_panel_init(struct lcm *ctx)
@@ -426,7 +427,7 @@ static int lcm_unprepare(struct drm_panel *panel)
 	}
 	gpiod_set_value(ctx->reset_gpio, 0);
 	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
-
+#if !IS_ENABLED(CONFIG_RT4831A_I2C)
 #if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 	lcm_panel_bias_disable();
 #else
@@ -454,6 +455,7 @@ static int lcm_unprepare(struct drm_panel *panel)
 		devm_gpiod_put(ctx->dev, ctx->bias_pos);
 	}
 #endif
+#endif
 
 	return 0;
 }
@@ -466,7 +468,7 @@ static int lcm_prepare(struct drm_panel *panel)
 	pr_info("%s\n", __func__);
 	if (ctx->prepared)
 		return 0;
-
+#if !IS_ENABLED(CONFIG_RT4831A_I2C)
 #if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 	lcm_panel_bias_enable();
 #else
@@ -495,6 +497,7 @@ static int lcm_prepare(struct drm_panel *panel)
 		gpiod_set_value(ctx->bias_neg, 1);
 		devm_gpiod_put(ctx->dev, ctx->bias_neg);
 	}
+#endif
 #endif
 
 	lcm_panel_init(ctx);
@@ -789,7 +792,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	}
 	devm_gpiod_put(dev, ctx->reset_gpio);
 
-#ifndef CONFIG_RT4831A_I2C
+#if !IS_ENABLED(CONFIG_RT4831A_I2C)
 #if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 	lcm_panel_bias_enable();
 #else

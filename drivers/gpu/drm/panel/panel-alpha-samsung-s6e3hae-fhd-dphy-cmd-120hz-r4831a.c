@@ -424,10 +424,13 @@ static int s6e3hae_lcm_unprepare(struct drm_panel *panel)
 			devm_gpiod_get_index(ctx->dev, "bias", 0, GPIOD_OUT_HIGH);
 		gpiod_set_value(ctx->bias_pos, 0);
 		devm_gpiod_put(ctx->dev, ctx->bias_pos);
-	} else if (ctx->gate_ic == 4831) {
+	}
+#if IS_ENABLED(CONFIG_RT4831A_I2C)
+	else if (ctx->gate_ic == 4831) {
 		_gate_ic_i2c_panel_bias_enable(0);
 		_gate_ic_Power_off();
 	}
+#endif
 	ctx->error = 0;
 	ctx->prepared = false;
 
@@ -463,10 +466,13 @@ static int s6e3hae_lcm_prepare(struct drm_panel *panel)
 			devm_gpiod_get_index(ctx->dev, "bias", 1, GPIOD_OUT_HIGH);
 		gpiod_set_value(ctx->bias_neg, 1);
 		devm_gpiod_put(ctx->dev, ctx->bias_neg);
-	} else if (ctx->gate_ic == 4831) {
+	}
+#if IS_ENABLED(CONFIG_RT4831A_I2C)
+	else if (ctx->gate_ic == 4831) {
 		_gate_ic_Power_on();
 		_gate_ic_i2c_panel_bias_enable(1);
 	}
+#endif
 #ifndef BYPASSI2C
 	_lcm_i2c_write_bytes(0x0, 0xf);
 	_lcm_i2c_write_bytes(0x1, 0xf);

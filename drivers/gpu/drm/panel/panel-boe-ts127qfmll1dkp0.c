@@ -712,8 +712,10 @@ static int boe_disable(struct drm_panel *panel)
 		backlight_update_status(ctx->backlight);
 	}
 
+#if IS_ENABLED(CONFIG_RT4831A_I2C)
 	if (ctx->gate_ic == 4831)
 		_gate_ic_backlight_set(0x0);
+#endif
 
 #if RT4831A_SUPPORT
 	lcd_bl_set_led_brightness(0x0);
@@ -751,13 +753,14 @@ static int boe_unprepare(struct drm_panel *panel)
 	 * gpiod_set_value(ctx->hwen, 0);
 	 * devm_gpiod_put(ctx->dev, ctx->hwen);
 	 */
-
+#if IS_ENABLED(CONFIG_RT4831A_I2C)
 	if (ctx->gate_ic == 4831) {
 		pr_info("%s, line=%d\n", __func__, __LINE__);
 		/*this is rt4831a*/
 		_gate_ic_i2c_panel_bias_enable(0);
 		_gate_ic_Power_off();
 	}
+#endif
 
 	ctx->error = 0;
 	ctx->prepared = false;
@@ -777,6 +780,7 @@ static int boe_prepare(struct drm_panel *panel)
 		return 0;
 	pr_info("%s, line=%d\n", __func__, __LINE__);
 
+#if IS_ENABLED(CONFIG_RT4831A_I2C)
 	if (ctx->gate_ic == 4831) {
 		pr_info("%s, line=%d\n", __func__, __LINE__);
 		_gate_ic_Power_on();
@@ -784,6 +788,7 @@ static int boe_prepare(struct drm_panel *panel)
 		_gate_ic_i2c_panel_bias_enable(1);
 		pr_info("%s, line=%d\n", __func__, __LINE__);
 	}
+#endif
 
 	/*
 	 * ctx->hwen = devm_gpiod_get(ctx->dev, "pm-enable", GPIOD_OUT_HIGH);
@@ -832,10 +837,12 @@ static int boe_enable(struct drm_panel *panel)
 	}
 	pr_info("%s, line=%d\n", __func__, __LINE__);
 
+#if IS_ENABLED(CONFIG_RT4831A_I2C)
 	if (ctx->gate_ic == 4831) {
 		pr_info("%s, line=%d\n", __func__, __LINE__);
 		_gate_ic_backlight_set(0xFFF);
 	}
+#endif
 
 #if RT4831A_SUPPORT
 	lcd_bl_set_led_brightness(0xFF7);
