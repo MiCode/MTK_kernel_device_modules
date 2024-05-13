@@ -35,6 +35,9 @@
 #include <linux/ratelimit.h>
 #include <soc/mediatek/smi.h>
 #include <soc/mediatek/dramc.h>
+#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
+#include <uapi/linux/sched/types.h>
+#endif
 
 #include "mtk_drm_ddp_comp.h"
 #include "mtk_drm_crtc.h"
@@ -12617,6 +12620,120 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
+static int mtk_dsi_hotplug_kthread(void *data)
+{
+	struct sched_param param = {.sched_priority = 87};
+	struct mtk_dsi *dsi = (struct mtk_dsi *)data;
+	struct drm_crtc *crtc = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct cmdq_pkt *cmdq_handle = NULL;
+	struct mtk_panel_ext *panel_ext = NULL;
+	int status = 0, last_status = 0;
+	int i = 0;
+
+	sched_setscheduler(current, SCHED_RR, &param);
+
+	if (!dsi){
+		pr_info("%s invalid dsi stop thread\n", __func__);
+		return -EINVAL;
+	}
+	panel_ext = dsi->ext;
+	if (!panel_ext->funcs->get_link_status) {
+		pr_info("%s invalid get link status funcs stop thread\n", __func__);
+		return -EINVAL;
+	}
+	last_status = panel_ext->funcs->get_link_status(dsi->panel);
+	while(1) {
+		msleep(2000);
+		if (!dsi->output_en) {
+			pr_info("%s: wait dsi enable\n", __func__);
+			continue;
+		}
+		if (!crtc) {
+			crtc = dsi->encoder.crtc;
+			if (!crtc) {
+				pr_info("%s invalid crtc, continue\n", __func__);
+				continue;
+			}
+		}
+		if (!mtk_crtc) {
+			mtk_crtc = to_mtk_crtc(crtc);
+			if (!mtk_crtc) {
+				pr_info("%s invalid mtk_crtc, continue\n", __func__);
+				continue;
+			}
+		}
+
+		status = panel_ext->funcs->get_link_status(dsi->panel);
+		pr_info("%s: status=0x%x, last_status=0x%x\n", __func__, status, last_status);
+
+		if (((last_status != status) && (status & 0x3)) ||
+			(((status & (1 << 0)) && !(status & (1 << 2)))
+			|| ((status & (1 << 1)) && !(status & (1 << 3))))) {
+
+			mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
+
+			/* stop MML IR & DL before display disable */
+			if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
+				mtk_crtc_pkt_create(&cmdq_handle, crtc, mtk_crtc->gce_obj.client[CLIENT_CFG]);
+				mtk_crtc_mml_racing_stop_sync(crtc, cmdq_handle,
+							      mtk_crtc_is_frame_trigger_mode(crtc) ? true : false);
+				/* flush cmdq with stop_vdo_mode before it set DSI_START to 0 */
+			}
+
+			//mtk_output_dsi_disable(dsi, cmdq_handle, true);
+			mtk_dsi_encoder_disable(&dsi->encoder);
+			mtk_drm_crtc_disable(crtc, true);
+
+			/* unset and disable MML DL layer */
+			for (i = 0; i < mtk_crtc->layer_nr; i++) {
+				struct drm_plane *plane = &mtk_crtc->planes[i].base;
+				struct mtk_plane_state *plane_state;
+
+				plane_state = to_mtk_plane_state(plane->state);
+				if (plane_state->comp_state.layer_caps & MTK_MML_DISP_DIRECT_LINK_LAYER) {
+					plane_state->comp_state.layer_caps &= ~MTK_MML_DISP_DIRECT_LINK_LAYER;
+					plane_state->pending.mml_mode = 0;
+					plane_state->pending.enable = 0;
+					DDPINFO("%s unset & disable mml DL layer %d\n", __func__, i);
+				}
+			}
+
+			mtk_drm_crtc_enable(crtc);
+
+			/* resubmit MML IR && since MML DL layer disable already, no need to resubmit */
+			if (mtk_crtc->is_mml) {
+				if (!kref_read(&mtk_crtc->mml_ir_sram.ref))
+					mtk_crtc_alloc_sram(mtk_crtc, mtk_crtc->mml_ir_sram.expiry_hrt_idx);
+				mtk_crtc_mml_racing_resubmit(crtc, NULL);
+			}
+			//mtk_output_dsi_enable(dsi, true);
+			mtk_dsi_encoder_enable(&dsi->encoder);
+
+			mtk_crtc_hw_block_ready(crtc);
+			if (mtk_crtc_is_frame_trigger_mode(crtc)) {
+				struct cmdq_pkt *cmdq_handle;
+
+				mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
+					mtk_crtc->gce_obj.client[CLIENT_CFG]);
+
+				cmdq_pkt_set_event(cmdq_handle,
+					mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+				cmdq_pkt_set_event(cmdq_handle,
+					mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+				cmdq_pkt_set_event(cmdq_handle,
+					mtk_crtc->gce_obj.event[EVENT_ESD_EOF]);
+			}
+			last_status = panel_ext->funcs->get_link_status(dsi->panel);
+		}
+		if (kthread_should_stop())
+			break;
+	}
+	return 0;
+}
+#endif
+
 static const struct mtk_ddp_comp_funcs mtk_dsi_funcs = {
 	.config = mtk_dsi_ddp_config,
 	.first_cfg = mtk_dsi_first_cfg,
@@ -13381,6 +13498,10 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 
 		goto error;
 	}
+#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
+	dsi->hotplug_task = kthread_create(mtk_dsi_hotplug_kthread, dsi, "hotplug");
+	//wake_up_process(dsi->hotplug_task);
+#endif
 
 	DDPINFO("%s-\n", __func__);
 	return ret;
@@ -13394,6 +13515,9 @@ static int mtk_dsi_remove(struct platform_device *pdev)
 {
 	struct mtk_dsi *dsi = platform_get_drvdata(pdev);
 
+#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
+	kthread_stop(dsi->hotplug_task);
+#endif
 	mtk_output_dsi_disable(dsi, NULL, false);
 	component_del(&pdev->dev, &mtk_dsi_component_ops);
 
