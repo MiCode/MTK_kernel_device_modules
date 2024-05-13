@@ -127,6 +127,44 @@ void xhci_mtk_apply_quirk(struct usb_device *udev)
 	udev->quirks = usb_detect_static_quirks(udev, mtk_usb_quirk_list);
 }
 
+static void xhci_usb_snd_clear_packet_size(struct urb *urb)
+{
+	struct device *dev;
+	struct usb_interface *intf;
+	struct snd_usb_audio *chip;
+	struct snd_usb_endpoint *ep, *en;
+	struct snd_urb_ctx *ctx;
+	unsigned int i, j;
+
+	dev = &urb->dev->dev;
+	if (!dev)
+		return;
+
+	intf = to_usb_interface(dev);
+	if (!intf)
+		return;
+
+	chip = usb_get_intfdata(intf);
+	if (!chip)
+		return;
+
+	if (!(chip->quirk_flags & QUIRK_FLAG_PLAYBACK_FIRST))
+		return;
+
+	dev_info(dev, "%s clear urb ctx packet_size\n", __func__);
+
+	list_for_each_entry_safe(ep, en, &chip->ep_list, list) {
+		for (i = 0; i < MAX_URBS; i++) {
+			ctx = &ep->urb[i];
+			if (!ctx)
+				continue;
+			/* set default urb ctx packet_size */
+			for (j = 0; j < MAX_PACKS_HS; j++)
+				ctx->packet_size[j] = 0;
+		}
+	}
+}
+
 static void xhci_trace_ep0_urb(void *data, struct urb *urb)
 {
 	struct device *hcd_dev = (struct device *)data;
@@ -153,6 +191,7 @@ static void xhci_trace_ep0_urb(void *data, struct urb *urb)
 		if (config && config->desc.bNumInterfaces > 0)
 			intf_desc = &config->intf_cache[0]->altsetting->desc;
 		if (intf_desc && intf_desc->bInterfaceClass == USB_CLASS_AUDIO) {
+			xhci_usb_snd_clear_packet_size(urb);
 			dev_dbg(hcd_dev, "delay 5ms for UAC device\n");
 			mdelay(5);
 			return;
