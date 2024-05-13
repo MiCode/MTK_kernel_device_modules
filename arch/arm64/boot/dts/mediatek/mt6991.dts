@@ -11115,7 +11115,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&cksys_gp2_clk CLK_CK2_SENINF3_SEL>,
 				<&cksys_gp2_clk CLK_CK2_SENINF4_SEL>,
 				<&cksys_gp2_clk CLK_CK2_SENINF5_SEL>,
-				<&cksys_gp2_clk CLK_CK2_CAMTM_SEL>,
+				//<&cksys_gp2_clk CLK_CK2_CAMTM_SEL>,
 				<&cksys_clk CLK_CK_OSC_D4>,
 				<&cksys_gp2_clk CLK_CK2_UNIVPLL2_D4_D2>,
 				<&cksys_gp2_clk CLK_CK2_MAINPLL2_D6>,
@@ -11135,7 +11135,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"clk_top_seninf3",
 				"clk_top_seninf4",
 				"clk_top_seninf5",
-				"clk_top_camtm",
+				//"clk_top_camtm", // already en by hw when cam_vcore en
 				"clk_top_aov_step0",
 				"clk_top_ap_step0",
 				"clk_top_ap_step1",
