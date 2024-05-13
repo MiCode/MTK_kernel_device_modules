@@ -2585,6 +2585,8 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 	if (!mtk_crtc->enabled) {
 		/* 1. power on mtcmos */
 		mtk_drm_top_clk_prepare_enable(crtc);
+		mtk_crtc_gce_event_config(crtc);
+		mtk_crtc_vdisp_ao_config(crtc);
 
 		/*APSRC control*/
 		mtk_crtc_v_idle_apsrc_control(crtc, NULL, false, false, crtc_id, true);
@@ -2602,8 +2604,6 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 			mtk_dump_analysis(comp);
 	}
-	mtk_crtc_gce_event_config(crtc);
-	mtk_crtc_vdisp_ao_config(crtc);
 
 	/* send LCM CMD */
 	is_frame_mode = mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base);
