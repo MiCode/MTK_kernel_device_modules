@@ -1289,6 +1289,13 @@ static int smi_mt6991_vcodec_get_if_in_use(void *v)
 	}
 
 	pwr_status = readl_relaxed(data->pwr_sta_rg);
+
+	if (data->skip_smi_chk) {
+		pr_notice("%s: skip check, pwr_status=%#x\n", __func__, pwr_status);
+		gsmi->hw_sema_ops->hw_sema_ctrl(SMI_DBG_MASTER_AP, false);
+		return 0;
+	}
+
 	for (i = 0; i < data->id_nr; i++)
 		gsmi->v2.user_pwr_stat[data->id_list[i]] = (pwr_status >> (data->id_list[i])) & 0x1;
 
@@ -1441,6 +1448,8 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 		vcodec_dbg_data.id_nr = of_property_count_u32_elems(dev->of_node,
 									"vcodec-pwr-chk-id");
 		vcodec_dbg_data.id_list = kcalloc(vcodec_dbg_data.id_nr, sizeof(u32), GFP_KERNEL);
+		if (of_property_read_bool(dev->of_node, "vcodec-skip-smi-chk"))
+			vcodec_dbg_data.skip_smi_chk = true;
 		for (i = 0; i < vcodec_dbg_data.id_nr; i++)
 			of_property_read_u32_index(dev->of_node, "vcodec-pwr-chk-id",
 								i, &vcodec_dbg_data.id_list[i]);
