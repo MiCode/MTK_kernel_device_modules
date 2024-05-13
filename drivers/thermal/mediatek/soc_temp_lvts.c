@@ -1464,6 +1464,10 @@ static int lvts_register_irq_handler(struct lvts_data *lvts_data)
 	lvts_data->irq_bitmap = irq_bitmap;
 
 	for (i = 0; i < lvts_data->num_domain; i++) {
+		if(lvts_data->ap_domain_no_irq)
+			if (i == 0)
+				continue;
+
 		ret = devm_request_irq(dev, lvts_data->domain[i].irq_num,
 			irq_handler, IRQF_TRIGGER_HIGH, "mtk_lvts", lvts_data);
 
@@ -6805,6 +6809,7 @@ static struct lvts_data mt6991_lvts_data = {
 	.support_shutdown = true,
 	.gpu_power_ctrl_id = MT6991_LVTS_GPU_CTRL0,
 	.mcu_sensor_id_remap = true,
+	.ap_domain_no_irq = true,
 };
 
 /*==================================================
