@@ -901,7 +901,7 @@ static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
 			pause_end = postmask->roi_height + overhead_v * 2 -
 						(panel_ext->corner_pattern_height_bot - tmp_bot);
 			DDPDBG("%s, tmp_top: %d, tmp_bot: %d\n", __func__, tmp_top, tmp_bot);
-			DDPINFO("%s, addr: 0x%pa, size: %d, pause start: %d, pause end: %d\n",
+			DDPDBG("%s, addr: 0x%pa, size: %d, pause start: %d, pause end: %d\n",
 				__func__, &addr, size, pause_start, pause_end);
 		}
 
