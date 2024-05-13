@@ -1180,10 +1180,10 @@ static const struct reg_default ak7709_reg[] = {
 
 	{ 0x420329, 0x03 },   /* AK7709_C2_329_DMIC_POWERMNG */
 	{ 0x42032A, 0x03 },   /* AK7709_C2_32A_DMIC_IF */
-	{ 0x42032B, 0x30 },   /* AK7709_C2_32B_DMIC1_LCH_VOL */
-	{ 0x42032C, 0x30 },   /* AK7709_C2_32C_DMIC1_RCH_VOL */
-	{ 0x42032D, 0x30 },   /* AK7709_C2_32D_DMIC2_LCH_VOL */
-	{ 0x42032E, 0x30 },   /* AK7709_C2_32E_DMIC2_RCH_VOL */
+	{ 0x42032B, 0x24 },   /* AK7709_C2_32B_DMIC1_LCH_VOL */
+	{ 0x42032C, 0x24 },   /* AK7709_C2_32C_DMIC1_RCH_VOL */
+	{ 0x42032D, 0x24 },   /* AK7709_C2_32D_DMIC2_LCH_VOL */
+	{ 0x42032E, 0x24 },   /* AK7709_C2_32E_DMIC2_RCH_VOL */
 };
 
 static int PLLInFsTab[] = {
