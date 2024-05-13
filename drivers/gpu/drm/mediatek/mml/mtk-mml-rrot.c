@@ -2358,6 +2358,8 @@ static u32 rrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 	mml_msg("%s bw %u bin %u acttime %u cmd num %u dual %d",
 		__func__, stash_bw, bin_hor, acttime, stash_cmd_num, cfg->rrot_dual);
 
+	rrot_frm->stash_bw = max_t(u32, MML_QOS_MIN_STASH_BW, rrot_frm->stash_bw);
+
 done:
 	*srt_bw_out = rrot_frm->stash_bw;
 	*hrt_bw_out = rrot_frm->stash_bw;
