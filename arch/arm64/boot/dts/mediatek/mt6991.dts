@@ -10616,9 +10616,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				mtk,rpmsg-name = "apu_top_3_rpmsg";
 			};
 			apu-mdw-rpmsg {
-				compatible = "mediatek,apu-mdw-rpmsg";
+				compatible = "mediatek,apu-mdw-rpmsg-v5";
 				mtk,rpmsg-name = "apu-mdw-rpmsg";
-				uapi-ver = <5>;
+				version = <5>;
 			};
 			apu-apummu {
 				compatible = "mediatek,apu-apummu-rpmsg";
