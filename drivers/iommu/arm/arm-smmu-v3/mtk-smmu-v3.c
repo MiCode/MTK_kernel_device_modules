@@ -19,7 +19,10 @@
 #include <asm/barrier.h>
 #include <asm/ptrace.h>
 #include <dt-bindings/memory/mtk-memory-port.h>
-
+#if IS_ENABLED(CONFIG_MTK_PKVM_SMMU)
+#include <asm/kvm_pkvm_module.h>
+#include "../../../misc/mediatek/include/pkvm_mgmt/pkvm_mgmt.h"
+#endif
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
 #include "iommu_debug.h"
 #endif
@@ -1931,6 +1934,27 @@ bool hyp_smmu_debug_value_error(uint64_t hyp_smmu_ret_val)
 	return true;
 }
 
+/* Get debug info from PKVM SMMU */
+static bool get_pkvm_smmu_debug_info(u32 fault_ipa_32, u32 debug_parameter,
+				     uint64_t *ret_val)
+{
+#if IS_ENABLED(CONFIG_MTK_PKVM_SMMU)
+	struct arm_smccc_res res;
+	uint64_t hvc_id;
+
+	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_SMMU_DEBUG_DUMP, 0, 0, 0, 0, 0, 0,
+			  &res);
+	hvc_id = res.a1;
+	if (hvc_id != 0) {
+		*ret_val = pkvm_el2_mod_call(hvc_id, fault_ipa_32,
+					     debug_parameter);
+		return SMC_SMMU_SUCCESS;
+	}
+	pr_debug("%s hyp smmu debug hvc is invalid\n", __func__);
+#endif
+	return SMC_SMMU_FAIL;
+}
+
 static int hyp_smmu_debug_smc(u32 action_id, u32 ste_row, u64 reg,
 			      u32 smmu_type, u32 sid, u32 fault_ipa_32,
 			      uint64_t *ret_val)
@@ -1941,12 +1965,19 @@ static int hyp_smmu_debug_smc(u32 action_id, u32 ste_row, u64 reg,
 	debug_parameter = HYP_PMM_SMMU_DEBUG_PARA(action_id, ste_row, reg,
 						  smmu_type, sid);
 	/* smc return value is res.a0, which size could be 64 bit */
-	arm_smccc_smc(HYP_PMM_SMMU_CONTROL, fault_ipa_32, debug_parameter, 0, 0,
-		      0, 0, 0, &res);
-	if (hyp_smmu_debug_value_error(res.a0))
+	if (is_protected_kvm_enabled()) {
+		if (get_pkvm_smmu_debug_info(fault_ipa_32, debug_parameter,
+					     ret_val))
+			return SMC_SMMU_FAIL;
+	} else {
+		arm_smccc_smc(HYP_PMM_SMMU_CONTROL, fault_ipa_32,
+			      debug_parameter, 0, 0, 0, 0, 0, &res);
+		*ret_val = res.a0;
+	}
+
+	if (hyp_smmu_debug_value_error(*ret_val))
 		return SMC_SMMU_FAIL;
 
-	*ret_val = res.a0;
 	return SMC_SMMU_SUCCESS;
 }
 
@@ -2367,6 +2398,29 @@ void mtk_free_io_pgtable_ops(struct io_pgtable_ops *ops)
 	fns->free(iop);
 }
 
+void mtk_smmu_share_mem_to_hyp(struct arm_smmu_device *smmu,
+			       unsigned int mem_type)
+{
+#if IS_ENABLED(CONFIG_MTK_PKVM_SMMU)
+	int smmu_id;
+	uint64_t hvc_id;
+	struct arm_smccc_res res;
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+
+	if (is_protected_kvm_enabled()) {
+		smmu_id = data->plat_data->smmu_type;
+		arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_SMMU_MEM_SHARE, 0, 0, 0, 0, 0,
+				  0, &res);
+		hvc_id = res.a1;
+		if (hvc_id != 0) {
+			dev_info(smmu->dev, "Share smmu memory to hyp, mem_type: %u\n", mem_type);
+			pkvm_el2_mod_call(hvc_id, smmu_id, mem_type);
+		} else
+			dev_info(smmu->dev, "%s hvc is invalid\n", __func__);
+	}
+#endif
+}
+
 static const struct arm_smmu_impl mtk_smmu_impl = {
 	.device_group = mtk_smmu_device_group,
 	.delay_hw_init = mtk_delay_hw_init,
@@ -2394,6 +2448,7 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 	.skip_sync_timeout = mtk_smmu_skip_sync_timeout,
 	.alloc_io_pgtable_ops = mtk_alloc_io_pgtable_ops,
 	.free_io_pgtable_ops = mtk_free_io_pgtable_ops,
+	.smmu_mem_share = mtk_smmu_share_mem_to_hyp,
 };
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP

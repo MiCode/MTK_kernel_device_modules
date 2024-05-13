@@ -27,7 +27,10 @@
 #include <asm/kvm_pkvm_module.h>
 #include "../../../misc/mediatek/include/pkvm_mgmt/pkvm_mgmt.h"
 #endif
-
+#if IS_ENABLED(CONFIG_MTK_PKVM_SMMU)
+#include <asm/kvm_pkvm_module.h>
+#include "../../../misc/mediatek/include/pkvm_mgmt/pkvm_mgmt.h"
+#endif
 #include <public/trusted_mem_api.h>
 #include "page_pool.h"
 #include "mtk_heap_priv.h"
@@ -1279,6 +1282,35 @@ static struct page *alloc_largest_available(unsigned long size,
 	return NULL;
 }
 
+/* According to lock, map those scatter list page into mtk pkvm smmu page table with related
+ * permission.
+ */
+static void pkvm_smmu_mapping(struct page *pmm_page, u8 pmm_attr,
+			      uint32_t tmp_count, int lock)
+{
+#if IS_ENABLED(CONFIG_MTK_PKVM_SMMU)
+	struct arm_smccc_res res;
+	uint32_t smc_id;
+	int ret;
+
+	if (lock == 1)
+		arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_SMMU_SEC_MAP, 0, 0, 0, 0, 0,
+				  0, &res);
+	else
+		arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_SMMU_SEC_UNMAP, 0, 0, 0, 0, 0,
+				  0, &res);
+	smc_id = res.a1;
+	if (smc_id != 0) {
+		ret = pkvm_el2_mod_call(smc_id, page_to_pfn(pmm_page), pmm_attr,
+					tmp_count);
+
+		if (ret != 0)
+			pr_info("smc_id=%#x smmu_ret=%x\n", smc_id, ret);
+	} else
+		pr_info("%s hvc is invalid\n", __func__);
+#endif
+}
+
 static void pkvm_tmem_mapping(struct page *pmm_page, u8 pmm_attr,
 			uint32_t tmp_count, int lock)
 {
@@ -1314,15 +1346,10 @@ static int mtee_common_buffer_v2(struct ssheap_buf_info *ssheap, u8 pmm_attr,
 	uint32_t tmp_count = 0;
 	int count = 0;
 
-	/* pkvm smmu vendro moudle is not ready, so do nothing */
-	if (is_pkvm_enabled())
-		return 0;
-
 	if (!ssheap || !ssheap->pmm_page) {
 		pr_err("ssheap info not ready!\n");
 		return -EINVAL;
 	}
-
 	count = ssheap->elems;
 	pmm_page = ssheap->pmm_page;
 	list_for_each_entry_safe(pmm_page, tmp_page, &ssheap->pmm_msg_list,
@@ -1333,6 +1360,7 @@ static int mtee_common_buffer_v2(struct ssheap_buf_info *ssheap, u8 pmm_attr,
 				(uint32_t)(count % PMM_MSG_ENTRIES_PER_PAGE);
 
 		if (is_pkvm_enabled()) {
+			pkvm_smmu_mapping(pmm_page, pmm_attr, tmp_count, lock);
 			pkvm_tmem_mapping(pmm_page, pmm_attr, tmp_count, lock);
 		} else {
 			struct arm_smccc_res smc_res;
