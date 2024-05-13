@@ -3824,6 +3824,15 @@
 		_vgpu-supply = <&mt_pmic_vgpu_buck_reg>;
 		_vsram_gpu-supply = <&mt_pmic_vsram_gpu_ldo_reg>;
 #endif
+		nvmem-cells = <&efuse_segment>;
+		nvmem-cell-names = "efuse_segment_cell";
+	};
+
+	gpufreq_wrapper: gpufreq_wrapper {
+		compatible = "mediatek,gpufreq_wrapper";
+		gpufreq-version = <2>;
+		dual-buck = <0>;
+		gpueb-support = <0>;
 	};
 
 	ged: ged {
