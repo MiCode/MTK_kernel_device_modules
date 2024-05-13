@@ -3309,12 +3309,10 @@ int mtk_drm_dp_get_cap(struct drm_device *dev, void *data,
 
 	if (g_mtk_dp->dp_ready)
 		*dp_cap = g_mtk_dp->info.audio_caps;
+	else
+		*dp_cap = 0;
 
-	if (*dp_cap == 0)
-		*dp_cap = ((DP_CHANNEL_2 << DP_CAPABILITY_CHANNEL_SFT)
-			| (DP_SAMPLERATE_192 << DP_CAPABILITY_SAMPLERATE_SFT)
-			| (DP_BITWIDTH_24 << DP_CAPABILITY_BITWIDTH_SFT));
-
+	//DPTXMSG("Get capability: 0x%x\n", *dp_cap);
 	return 0;
 
 }
