@@ -4,7 +4,7 @@
  * Author: Ming-Fan Chen <ming-fan.chen@mediatek.com>
  */
 #include <dt-bindings/interconnect/mtk,mmqos.h>
-#include <dt-bindings/interconnect/mtk,mt6873-emi.h>
+#include <dt-bindings/interconnect/mtk,emi.h>
 #include <dt-bindings/memory/mt6833-larb-port.h>
 #include <linux/module.h>
 #include <linux/of_platform.h>
