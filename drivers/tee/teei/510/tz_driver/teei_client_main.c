@@ -377,7 +377,7 @@ int handle_switch_core(int cpu)
 #endif
 	current_cpu_id = switch_to_cpu_id;
 
-	IMSG_PRINTK("change cpu id from %d(0x%lx) to %d(0x%lx)\n",
+	IMSG_PRINTK("change cpu id from %d(0x%x) to %d(0x%x)\n",
 			cpu, teei_cpu_id[cpu],
 			switch_to_cpu_id, teei_cpu_id[switch_to_cpu_id]);
 
