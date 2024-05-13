@@ -848,7 +848,7 @@ static void start_devapc(void)
 	void __iomem *pd_vio_shift_sta_reg;
 	void __iomem *pd_apc_con_reg;
 	uint32_t vio_shift_sta;
-	int slave_type, i, vio_idx, index;
+	int slave_type, i, vio_idx, tmp_vio_idx, index;
 	uint32_t retry = RETRY_COUNT;
 
 	ndevices = mtk_devapc_ctx->soc->ndevices;
@@ -900,7 +900,7 @@ static void start_devapc(void)
 					"retry", retry);
 
 				index = i;
-				mtk_devapc_dump_vio_dbg(slave_type, &vio_idx,
+				mtk_devapc_dump_vio_dbg(slave_type, &tmp_vio_idx,
 						&index);
 
 				if (--retry)
