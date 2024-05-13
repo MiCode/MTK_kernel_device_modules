@@ -3170,8 +3170,8 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		_vcore-supply = <&mt_pmic_vcore_buck_reg>;
 
-		mediatek,support_hopping = "clk_mmpll_ck";
-		mediatek,hopping_clk_mmpll_ck = <454000000 436000000
+		mediatek,support-hopping = "clk_mmpll_ck";
+		mediatek,hopping-clk_mmpll_ck = <454000000 436000000
 			436000000>;
 		mediatek,action = <1>;
 
