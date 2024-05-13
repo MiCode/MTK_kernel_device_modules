@@ -265,6 +265,9 @@ unsigned long pd_get_util_cpufreq(struct energy_env *eenv,
 	freq = map_util_freq(max_util, pd_get_opp_freq(cpumask_first(pd_cpus), 0), scale_cpu);
 #endif
 
+	/* final freq aware outside min_freq ctrl*/
+	freq = max(freq, per_cpu(min_freq, cpumask_first(pd_cpus)));
+
 	return freq;
 }
 EXPORT_SYMBOL_GPL(pd_get_util_cpufreq);
@@ -924,15 +927,11 @@ unsigned long calc_pwr_eff_v2(struct energy_env *eenv, int cpu, unsigned long ma
 		unsigned long pd_freq, struct cpumask *cpus, unsigned long extern_volt)
 {
 	unsigned long pwr_eff;
-	unsigned long floor_freq;
 	unsigned long output[6] = {0};
 	int temp = get_cpu_temp(cpu)/1000;
 
-	floor_freq = per_cpu(min_freq, cpu);
-
 	pwr_eff = get_cpu_pwr_eff(cpu, pd_freq, false, eenv->wl,
-			eenv->val_s, false, DPT_CALL_CALC_PWR_EFF,
-			floor_freq, temp, extern_volt, output);
+			eenv->val_s, false, DPT_CALL_CALC_PWR_EFF, temp, extern_volt, output);
 
 	if (trace_sched_calc_pwr_eff_enabled())
 		trace_sched_calc_pwr_eff(cpu, max_util, (int) output[0], (int) output[5],
@@ -950,17 +949,15 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 	unsigned long gear_max_util = -1;
 	unsigned long dsu_volt = -1, pd_volt = -1, gear_volt = -1, extern_volt = -1;
 	int dst_idx, shared_buck_mode;
-	unsigned long pd_freq = 0, gear_freq, floor_freq, scale_cpu;
+	unsigned long pd_freq = 0, gear_freq, scale_cpu;
 
-	floor_freq = per_cpu(min_freq, pd_idx);
 	scale_cpu = arch_scale_cpu_capacity(pd_idx);
 
 	pd_freq = pd_get_util_cpufreq(eenv, cpus, max_util,
 			eenv->pds_cpu_cap[pd_idx], scale_cpu);
 
 	if (eenv->wl_support && is_dsu_pwr_triggered) {
-		dsu_volt = update_dsu_status(eenv, false,
-					pd_freq, floor_freq, pd_idx, dst_cpu);
+		dsu_volt = update_dsu_status(eenv, false, pd_freq, pd_idx, dst_cpu);
 
 		if (share_buck.gear_idx != eenv->gear_idx)
 			dsu_volt = 0;
@@ -970,14 +967,13 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 
 	if (!cpumask_equal(cpus, get_gear_cpumask(eenv->gear_idx))) {
 		/* dvfs Vin/Vout */
-		pd_volt = pd_get_volt_wFloor_Freq(pd_idx, pd_freq, false, eenv->wl, floor_freq);
+		pd_volt = pd_get_freq_volt(pd_idx, pd_freq, false, eenv->wl);
 
 		dst_idx = (dst_cpu >= 0) ? 1 : 0;
 		gear_max_util = eenv->gear_max_util[eenv->gear_idx][dst_idx];
 		gear_freq = pd_get_util_cpufreq(eenv, cpus, gear_max_util,
 				eenv->pds_cpu_cap[pd_idx], scale_cpu);
-		gear_volt = pd_get_volt_wFloor_Freq(pd_idx, gear_freq, false, eenv->wl,
-				floor_freq);
+		gear_volt = pd_get_freq_volt(pd_idx, gear_freq, false, eenv->wl);
 
 		if (gear_volt-pd_volt < volt_diff) {
 			extern_volt = max(gear_volt, dsu_volt);
