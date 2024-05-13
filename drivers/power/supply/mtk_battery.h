@@ -1458,7 +1458,6 @@ extern void fg_bat_temp_int_internal(struct mtk_battery *gm);
 extern void disable_all_irq(struct mtk_battery *gm);
 
 /*mtk_battery_daemon.c*/
-extern int gauge_get_pmic_vbus(void);
 extern void wake_up_bat_irq_controller(struct irq_controller *irq_ctrl, int flags);
 /*mtk_battery_daemon.c end*/
 
