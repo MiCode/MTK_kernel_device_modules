@@ -30,7 +30,7 @@ static int update_parent(struct apu_gov_data *gov_data)
 		   req->value, gov_data->threshold_opp, parent_gov->child_opp_limit);
 
 	if (gov_data->threshold_opp < 0 || parent_gov->child_opp_limit < 0) {
-		advfs_err(ad->dev, "[%s] wrong threshold/child_limit\n", __func__);
+		advfs_warn(ad->dev, "[%s] wrong threshold/child_limit\n", __func__);
 		return -EINVAL;
 	}
 	/* Lock parent's mutex, update child's opp and get max of them */
@@ -59,7 +59,7 @@ static int update_parent(struct apu_gov_data *gov_data)
 
 	ret = update_devfreq(gov_data->parent);
 	if (ret < 0 && ret != -EPROBE_DEFER)
-		advfs_err(ad->dev, "[%s] update \"%s\" freq fail, ret %d\n",
+		advfs_warn(ad->dev, "[%s] update \"%s\" freq fail, ret %d\n",
 			  __func__, apu_dev_name(gov_data->parent->dev.parent), ret);
 out:
 	mutex_unlock(&parent_gov->this->lock);
