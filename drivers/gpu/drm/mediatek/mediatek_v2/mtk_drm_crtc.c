@@ -318,6 +318,58 @@ static unsigned int dual_comp_blender_map_mt6991(unsigned int comp_id)
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+static void mtk_drm_crtc_init_bind_comp(struct mtk_drm_crtc *mtk_crtc)
+{
+	unsigned int i, j;
+	struct mtk_ddp_comp *comp;
+	struct mtk_ddp_comp *next_comp;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+
+	DDPINFO("%s crtc %d +\n", __func__, drm_crtc_index(&mtk_crtc->base));
+
+	for_each_comp_in_crtc_path_bound(comp, mtk_crtc, i, j, 1) {
+		next_comp = mtk_crtc_get_comp(crtc, mtk_crtc->ddp_mode, i, j + 1);
+
+		if ((mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA) &&
+		     !mtk_crtc->first_exdma) {
+			mtk_crtc->first_exdma = comp;
+			DDPINFO("%s, find first exdma %s\n",
+				__func__,
+				mtk_dump_comp_str(comp));
+		}
+
+		if (next_comp &&
+		    (mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA) &&
+		    (mtk_ddp_comp_get_type(next_comp->id) == MTK_OVL_BLENDER)) {
+			comp->bind_comp = next_comp;
+			DDPINFO("%s, %s blender comp %s\n",
+				__func__,
+				mtk_dump_comp_str(comp),
+				mtk_dump_comp_str(next_comp));
+			if (!mtk_crtc->first_blender) {
+				mtk_crtc->first_blender = next_comp;
+				DDPINFO("%s, find first blender %s\n",
+					__func__,
+					mtk_dump_comp_str(next_comp));
+			}
+		}
+	}
+
+	if (!mtk_crtc->first_exdma)
+		DDPMSG("%s, there is no exdma in crtc %d\n",
+			__func__,
+			drm_crtc_index(&mtk_crtc->base));
+
+	if (!mtk_crtc->first_blender)
+		DDPMSG("%s, there is no blender in crtc %d\n",
+			__func__,
+			drm_crtc_index(&mtk_crtc->base));
+
+	DDPINFO("%s crtc %d -\n", __func__, drm_crtc_index(&mtk_crtc->base));
+}
+#endif
+
 void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp, unsigned int plane_index, struct cmdq_pkt *cmdq_handle)
 {
@@ -9836,6 +9888,13 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 		return;
 	}
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	if (!mtk_crtc->gce_obj.client[CLIENT_TRIG_LOOP]) {
+		DDPMSG("%s CRTC%d has no triger loop client\n", __func__, crtc_id);
+		return;
+	}
+#endif
+
 	mtk_crtc->trig_loop_cmdq_handle = cmdq_pkt_create(
 		mtk_crtc->gce_obj.client[CLIENT_TRIG_LOOP]);
 	cmdq_handle = mtk_crtc->trig_loop_cmdq_handle;
@@ -10247,6 +10306,13 @@ void mtk_crtc_stop_trig_loop(struct drm_crtc *crtc)
 		DDPDBG("%s: trig_loop already stopped\n", __func__);
 		return;
 	}
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	if (!mtk_crtc->gce_obj.client[CLIENT_TRIG_LOOP]) {
+		DDPMSG("%s CRTC%d has no triger loop client\n", __func__, drm_crtc_index(crtc));
+		return;
+	}
+#endif
 
 	cmdq_mbox_stop(mtk_crtc->gce_obj.client[CLIENT_TRIG_LOOP]);
 	cmdq_pkt_destroy(mtk_crtc->trig_loop_cmdq_handle);
@@ -19189,6 +19255,11 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			MTK_DRM_OPT_VBLANK_CONFIG_REC))) {
 		mtk_vblank_config_rec_init(&mtk_crtc->base);
 	}
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	if (priv->data->ovl_exdma_rule)
+		mtk_drm_crtc_init_bind_comp(mtk_crtc);
+#endif
 
 	DDPMSG("%s-CRTC%d create successfully\n", __func__,
 		priv->num_pipes - 1);

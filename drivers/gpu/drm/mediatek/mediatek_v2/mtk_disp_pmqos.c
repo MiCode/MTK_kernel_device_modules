@@ -40,7 +40,11 @@ module_param_array(debug_channel_bw, int, NULL, 0644);
 int debug_ostdl;
 module_param(debug_ostdl, int, 0644);
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#define CRTC_NUM		7
+#else
 #define CRTC_NUM		4
+#endif
 static struct drm_crtc *dev_crtc;
 /* add for mm qos */
 static u8 vdisp_opp = U8_MAX;

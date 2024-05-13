@@ -34,7 +34,11 @@
 #include "mtk_disp_pq_helper.h"
 
 #if IS_ENABLED(CONFIG_ARM64)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#define MAX_CRTC 7
+#else
 #define MAX_CRTC 4
+#endif
 #define OVL_LAYER_NR 15L
 #define MAX_LAYER_NR 20
 #else
@@ -1165,6 +1169,11 @@ struct mtk_drm_crtc {
 	unsigned int usage_ovl_compr[MAX_LAYER_NR];
 
 	struct mtk_ddp_comp *last_blender;
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	struct mtk_ddp_comp *first_exdma;
+	struct mtk_ddp_comp *first_blender;
+#endif
 
 	wait_queue_head_t esd_notice_wq;
 	atomic_t esd_notice_status;

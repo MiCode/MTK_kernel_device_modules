@@ -610,6 +610,7 @@ static void mtk_ovl_blender_unprepare(struct mtk_ddp_comp *comp)
 	mtk_ddp_comp_clk_unprepare(comp);
 }
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 static int mtk_ovl_blender_first_layer_mt6991(struct mtk_ddp_comp *comp)
 {
 	DDPDBG("%s %s\n", __func__, mtk_dump_comp_str(comp));
@@ -621,6 +622,19 @@ static int mtk_ovl_blender_first_layer_mt6991(struct mtk_ddp_comp *comp)
 	else
 		return 0;
 }
+#else
+static int mtk_ovl_blender_first_layer_mt6991(struct mtk_ddp_comp *comp)
+{
+	struct mtk_ddp_comp *first_blender = comp->mtk_crtc->first_blender;
+
+	DDPDBG("%s %s\n", __func__, mtk_dump_comp_str(comp));
+
+	if (first_blender && (first_blender->id == comp->id))
+		return 1;
+	else
+		return 0;
+}
+#endif
 
 static void mtk_ovl_blender_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			    enum mtk_ddp_comp_id prev,

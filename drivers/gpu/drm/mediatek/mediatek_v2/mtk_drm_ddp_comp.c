@@ -676,7 +676,11 @@ static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 	{DDP_COMPONENT_OVLSYS_DLO_ASYNC4, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_OVLSYS_DLO_ASYNC5, MTK_DISP_VIRTUAL, -1, NULL, 0},
 /* 280 */	{DDP_COMPONENT_OVLSYS_DLO_ASYNC6, MTK_DISP_VIRTUAL, -1, NULL, 0},
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	{DDP_COMPONENT_OVLSYS_DLO_ASYNC7, MTK_DISP_VIRTUAL, 15, NULL, 0},
+#else
 	{DDP_COMPONENT_OVLSYS_DLO_ASYNC7, MTK_DISP_DLO_ASYNC, 15, NULL, 0},
+#endif
 	{DDP_COMPONENT_OVLSYS_DLO_ASYNC8, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_OVLSYS_DLO_ASYNC9, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_OVLSYS_DLO_ASYNC10, MTK_DISP_VIRTUAL, -1, NULL, 0},
@@ -940,9 +944,15 @@ static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC3, MTK_DISP_DLO_ASYNC, 24, NULL, 0},
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC4, MTK_DISP_DLO_ASYNC, 25, NULL, 0},
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC5, MTK_DISP_DLO_ASYNC, 26, NULL, 0},
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC6, MTK_DISP_VIRTUAL, 27, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC7, MTK_DISP_VIRTUAL, 28, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC8, MTK_DISP_VIRTUAL, 29, NULL, 0},
+#else
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC6, MTK_DISP_DLO_ASYNC, 27, NULL, 0},
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC7, MTK_DISP_DLO_ASYNC, 28, NULL, 0},
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC8, MTK_DISP_DLO_ASYNC, 29, NULL, 0},
+#endif
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC9, MTK_DISP_DLO_ASYNC, 30, NULL, 0},
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC10, MTK_DISP_VIRTUAL, 31, NULL, 0},
 /* 550 */	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC11, MTK_DISP_VIRTUAL, -1, NULL, 0},
@@ -1456,7 +1466,20 @@ unsigned int mtk_drm_find_possible_crtc_by_comp(struct drm_device *drm,
 	} else if (mtk_drm_find_comp_in_ddp(
 			ddp_comp, private->data->fourth_path_data_discrete) == true) {
 		ret = BIT(3);
-	} else {
+	}
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	else if (mtk_drm_find_comp_in_ddp(
+			   ddp_comp, private->data->fifth_path_data) == true) {
+		ret = BIT(4);
+	} else if (mtk_drm_find_comp_in_ddp(
+			   ddp_comp, private->data->sixth_path_data) == true) {
+		ret = BIT(5);
+	} else if (mtk_drm_find_comp_in_ddp(
+			   ddp_comp, private->data->seventh_path_data) == true) {
+		ret = BIT(6);
+	}
+#endif
+	else {
 		DRM_INFO("Failed to find comp in ddp table\n");
 		ret = 0;
 	}
