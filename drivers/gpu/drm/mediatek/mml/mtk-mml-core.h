@@ -801,7 +801,7 @@ struct mml_comp_hw_ops {
 	s32 (*clk_disable)(struct mml_comp *comp, bool dpc);
 	u32 (*qos_datasize_get)(struct mml_task *task,
 				struct mml_comp_config *ccfg);
-	u32 (*qos_stash_bw_get)(struct mml_task *task,
+	u32 (*qos_stash_bw_get)(struct mml_comp *comp, struct mml_task *task,
 				struct mml_comp_config *ccfg,
 				u32 *srt_bw, u32 *hrt_bw);
 	u32 (*qos_format_get)(struct mml_task *task,
@@ -831,8 +831,8 @@ struct mml_comp {
 	s32 pw_cnt;
 	s32 mminfra_pw_cnt;
 	s32 clk_cnt;
-	u32 cur_bw;
-	u32 cur_peak;
+	u32 srt_bw;
+	u32 hrt_bw;
 	struct icc_path *icc_path;
 	struct icc_path *icc_dpc_path;
 	struct icc_path *icc_stash_path;

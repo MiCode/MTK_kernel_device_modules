@@ -2304,8 +2304,8 @@ u32 rdma_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg)
 	return rdma_frm->datasize;
 }
 
-static u32 rdma_qos_stash_bw_get(struct mml_task *task, struct mml_comp_config *ccfg,
-	u32 *srt_bw_out, u32 *hrt_bw_out)
+static u32 rdma_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg, u32 *srt_bw_out, u32 *hrt_bw_out)
 {
 	/* stash command for every 4KB size, 4K to 1 stash (1 burst), 1 burst = 16bytes, thus
 	 * stash_bw = normal_bw / 4K * 16
