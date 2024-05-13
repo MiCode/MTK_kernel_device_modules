@@ -149,7 +149,11 @@ int mml_err_cnt;
 module_param(mml_err_cnt, int, 0644);
 
 /* control bits see mtk-mml-core.h enum mml_log_buf_setting */
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 int mml_log_rec = mml_logbuf_msg | mml_logbuf_log | mml_logbuf_krn;
+#else
+int mml_log_rec = mml_logbuf_krn;
+#endif
 EXPORT_SYMBOL(mml_log_rec);
 module_param(mml_log_rec, int, 0644);
 
