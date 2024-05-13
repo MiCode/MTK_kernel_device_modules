@@ -484,9 +484,9 @@ static void lbat_list_add(struct lbat_thd_t *thd, struct list_head *lbat_list)
 		}
 		/* dump LBAT register input */
 		__regmap_read(regmap, &lbat_regs->volt_max, &lbat_thd_input);
-		pr_info("[%s] add thd %d\n", __func__, cur_hv_ptr->thd_volt);
-		pr_info("[%s] addr: 0x%x, write: %d, read back: %d\n", __func__,
-			 lbat_regs->volt_min.addr, VOLT_TO_RAW(cur_hv_ptr->thd_volt), lbat_thd_input);
+		pr_info("[%s] add thd %d, addr: 0x%x, write: %d, read back: %d\n",
+			 __func__, cur_hv_ptr->thd_volt, lbat_regs->volt_min.addr,
+			 VOLT_TO_RAW(cur_hv_ptr->thd_volt), lbat_thd_input);
 	} else if (lbat_list == &lbat_lv_list) {
 		list_sort(NULL, &lbat_lv_list, lv_list_cmp);
 		thd = list_first_entry(&lbat_lv_list, struct lbat_thd_t, list);
@@ -500,9 +500,9 @@ static void lbat_list_add(struct lbat_thd_t *thd, struct list_head *lbat_list)
 		}
 		/* dump LBAT register input */
 		__regmap_read(regmap, &lbat_regs->volt_min, &lbat_thd_input);
-		pr_info("[%s] add thd %d\n", __func__, cur_lv_ptr->thd_volt);
-		pr_info("[%s] addr: 0x%x, write: %d, read back: %d\n", __func__,
-			 lbat_regs->volt_min.addr, VOLT_TO_RAW(cur_lv_ptr->thd_volt), lbat_thd_input);
+		pr_info("[%s] add thd %d, addr: 0x%x, write: %d, read back: %d\n",
+			 __func__, cur_lv_ptr->thd_volt, lbat_regs->volt_min.addr,
+			 VOLT_TO_RAW(cur_lv_ptr->thd_volt), lbat_thd_input);
 	}
 	thd->is_dirty = false;
 #if LBAT_SERVICE_DBG

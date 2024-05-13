@@ -233,6 +233,7 @@ static void mt6316_buck_phase_init(struct mt6316_chip *chip)
 	if (ret != 0) {
 		dev_err(chip->dev, "Failed to get mt6316 buck phase: %d\n", ret);
 	} else {
+		val &= MT6316_PMIC_RG_4PH_CONFIG_MASK;
 		dev_info(chip->dev, "S%d RG_4PH_CONFIG:%d\n", chip->slave_id, val);
 
 		if (chip->slave_id == MT6316_SLAVE_ID_6)
