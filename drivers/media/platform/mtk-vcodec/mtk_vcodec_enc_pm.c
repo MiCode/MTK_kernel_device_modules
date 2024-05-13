@@ -410,6 +410,15 @@ static int mtk_venc_smi_pwr_ctrl(struct mtk_vcodec_dev *dev,
 		struct mtk_smi_pwr_ctrl_info info;
 		int ret;
 
+		if (type == MTK_SMI_GET_IF_IN_USE) {
+			if (atomic_read(&dev->smi_dump_ref_cnt)) {
+				atomic_inc(&dev->smi_ctrl_get_ref_cnt[hw_id]);
+				return 1;
+			}
+			return 0;
+		} else if (type == MTK_SMI_PUT && atomic_add_unless(&dev->smi_ctrl_get_ref_cnt[hw_id], -1, 0))
+			return 0;
+
 		info.type = type;
 		info.hw_id = hw_id;
 		ret = venc_if_get_param(&dev->dev_ctx, GET_PARAM_VENC_PWR_CTRL, (void *)&info);
@@ -443,6 +452,11 @@ static int mtk_venc_core0_smi_put(void *data)
 	return mtk_venc_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_PUT, MTK_VENC_CORE_0);
 }
 
+static int mtk_venc_core0_smi_get_if_in_use(void *data)
+{
+	return mtk_venc_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_GET_IF_IN_USE, MTK_VENC_CORE_0);
+}
+
 static int mtk_venc_core1_smi_get(void *data)
 {
 	return mtk_venc_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_GET, MTK_VENC_CORE_1);
@@ -451,6 +465,11 @@ static int mtk_venc_core1_smi_get(void *data)
 static int mtk_venc_core1_smi_put(void *data)
 {
 	return mtk_venc_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_PUT, MTK_VENC_CORE_1);
+}
+
+static int mtk_venc_core1_smi_get_if_in_use(void *data)
+{
+	return mtk_venc_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_GET_IF_IN_USE, MTK_VENC_CORE_1);
 }
 
 static int mtk_venc_core2_smi_get(void *data)
@@ -463,24 +482,32 @@ static int mtk_venc_core2_smi_put(void *data)
 	return mtk_venc_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_PUT, MTK_VENC_CORE_2);
 }
 
+static int mtk_venc_core2_smi_get_if_in_use(void *data)
+{
+	return mtk_venc_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_GET_IF_IN_USE, MTK_VENC_CORE_2);
+}
+
 static struct smi_user_pwr_ctrl venc_pwr_ctrl[MTK_VENC_HW_NUM] = {
 	{
 		.name = "venc_core0",
 		.smi_user_id = MTK_SMI_VENC0,
 		.smi_user_get = mtk_venc_core0_smi_get,
 		.smi_user_put = mtk_venc_core0_smi_put,
+		.smi_user_get_if_in_use = mtk_venc_core0_smi_get_if_in_use,
 	},
 	{
 		.name = "venc_core1",
 		.smi_user_id = MTK_SMI_VENC1,
 		.smi_user_get = mtk_venc_core1_smi_get,
 		.smi_user_put = mtk_venc_core1_smi_put,
+		.smi_user_get_if_in_use = mtk_venc_core1_smi_get_if_in_use,
 	},
 	{
 		.name = "venc_core2",
 		.smi_user_id = MTK_SMI_VENC2,
 		.smi_user_get = mtk_venc_core2_smi_get,
 		.smi_user_put = mtk_venc_core2_smi_put,
+		.smi_user_get_if_in_use = mtk_venc_core2_smi_get_if_in_use,
 	},
 };
 

@@ -495,6 +495,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 		sema_init(&dev->enc_sem[i], 1);
 		spin_lock_init(&dev->enc_power_lock[i]);
 		dev->enc_is_power_on[i] = false;
+		atomic_set(&dev->smi_ctrl_get_ref_cnt[i], 0);
 	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, "venc-slb-cpu-used-perf", &slb_cpu_used_pref);
@@ -505,6 +506,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	pr_info("after get venc-slb-cpu-used-perf %d\n", slb_cpu_used_pref);
 
 	atomic_set(&dev->larb_ref_cnt, 0);
+	atomic_set(&dev->smi_dump_ref_cnt, 0);
 
 	ret = of_property_read_u32(pdev->dev.of_node, "venc-slb-extra", &slb_extra);
 	if (ret != 0)

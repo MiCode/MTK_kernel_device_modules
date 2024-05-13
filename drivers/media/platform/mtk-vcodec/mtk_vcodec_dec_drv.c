@@ -545,8 +545,10 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 		dev->dec_is_power_on[i] = false;
 		atomic_set(&dev->dec_hw_active[i], 0);
 		atomic_set(&dev->dec_clk_ref_cnt[i], 0);
+		atomic_set(&dev->smi_ctrl_get_ref_cnt[i], 0);
 	}
 	atomic_set(&dev->larb_ref_cnt, 0);
+	atomic_set(&dev->smi_dump_ref_cnt, 0);
 	mutex_init(&dev->ctx_mutex);
 	mutex_init(&dev->dev_mutex);
 	mutex_init(&dev->ipi_mutex);
