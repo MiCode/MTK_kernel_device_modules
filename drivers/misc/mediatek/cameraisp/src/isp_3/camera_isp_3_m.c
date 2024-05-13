@@ -55,9 +55,9 @@ static u32 PMQoS_BW_value[ISP_PASS1_PATH_TYPE_AMOUNT][_rt_dma_max_];
 #if IS_ENABLED(CONFIG_MTK_CMDQ_V3)
 #include <cmdq_core.h>
 #endif
-#ifdef P2_HELP
+
 #include <cmdq_helper_ext.h>
-#endif
+
 #if IS_ENABLED(CONFIG_COMPAT)
 /* 64 bit */
 #include <linux/compat.h>
@@ -13491,13 +13491,11 @@ static signed int __init ISP_Init(void)
 
 	/*      */
 	/* Register ISP callback */
-#ifdef P2_HELP
 #ifndef EP_CODE_MARK_CMDQ
 	log_inf("register isp callback for MDP");
 	cmdqCoreRegisterCB(mdp_get_group_isp(), ISP_MDPClockOnCallback,
 			   ISP_MDPDumpCallback, ISP_MDPResetCallback,
 			   ISP_MDPClockOffCallback);
-#endif
 #endif
 
 #ifdef _MAGIC_NUM_ERR_HANDLING_
@@ -13527,13 +13525,11 @@ static void __exit ISP_Exit(void)
 	platform_driver_unregister(&IspDriver);
 	/*      */
 	/* Unregister ISP callback */
-#ifdef P2_HELP
 #ifndef EP_CODE_MARK_CMDQ
 	cmdqCoreRegisterCB(mdp_get_group_isp(), NULL, NULL, NULL, NULL);
 	/* Un-Register GCE callback */
 	log_inf("Un-register isp callback for GCE");
 	cmdqCoreRegisterDebugRegDumpCB(NULL, NULL);
-#endif
 #endif
 	/*      */
 	/* Un-Register M4U callback dump */
