@@ -70,6 +70,14 @@ static int mvpu_loglvl_sec;
 #define MVPU_ADDR_ALIGN  128
 #define MVPU_MPU_SIZE   4096
 
+enum {
+	APUSYS_MVPU_LOG_ERR  = 0,
+	APUSYS_MVPU_LOG_WRN  = 1,
+	APUSYS_MVPU_LOG_INFO = 2,
+	APUSYS_MVPU_LOG_DBG  = 3,
+	APUSYS_MVPU_LOG_ALL  = 4,
+};
+
 enum buffer_attr {
 	BUF_NORMAL = 0,
 	BUF_KERNEL,
@@ -325,9 +333,11 @@ int check_batch_flow(void *session,
 						uint32_t *kreg_kva,
 						uint32_t knl_num);
 
-int mvpu_load_img(struct device *dev);
+int mvpu20_load_img(struct device *dev);
 
-int mvpu_sec_init(struct device *dev);
+int mvpu20_sec_init(struct device *dev);
+
+int mvpu20_sec_sysfs_init(struct kobject *root_dir);
 
 #endif
 

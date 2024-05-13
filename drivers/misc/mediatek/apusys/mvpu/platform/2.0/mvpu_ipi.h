@@ -19,25 +19,9 @@
 #define mvpu_aee_warn(key, format, args...)
 #endif
 
-
-enum MVPU_IPI_TYPE {
-	MVPU_LOG_LEVEL,
-
-	/* uP to kernel */
-	MVPU_IPI_MICROP_MSG
-};
-
-
-enum MVPU_IPI_DIR_TYPE {
-	MVPU_IPI_READ,
-	MVPU_IPI_WRITE,
-};
-
-
-int mvpu_ipi_send(int type_0, u64 val);
-int mvpu_ipi_recv(int type_0, u64 *val);
-int mvpu_ipi_init(void);
-void mvpu_ipi_deinit(void);
+int mvpu20_ipi_init(void);
+void mvpu20_ipi_deinit(void);
+int mvpu20_ipi_send(uint32_t type, uint32_t dir, uint64_t *val);
 
 #endif /* __MVPU_IPI_H__ */
 

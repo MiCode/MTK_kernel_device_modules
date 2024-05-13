@@ -16,7 +16,7 @@
 #include "apu_config.h"
 #include "sw_logger.h"
 #include "hw_logger.h"
-#include "mvpu_plat_device.h"
+#include "mvpu_config.h"
 
 void apu_config_user_ptr_init(const struct mtk_apu *apu)
 {
