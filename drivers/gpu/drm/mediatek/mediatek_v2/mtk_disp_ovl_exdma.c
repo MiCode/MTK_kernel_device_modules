@@ -3714,18 +3714,24 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 			priv->data->respective_ostdl);
 		comp->last_hrt_bw = bw_val;
 
-		if (!IS_ERR(comp->hdr_qos_req))
-			if (usage_ovl_compr) {
-				hdr_bw_val = bw_val ? ((bw_val > 32) ? (bw_val / 32) : 1) : 0;
-				__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, hdr_bw_val,
-					priv->data->respective_ostdl);
-			}
+		if (!IS_ERR(comp->hdr_qos_req)) {
+			if (bw_val)
+				if (usage_ovl_compr)
+					hdr_bw_val = (bw_val > 32) ? (bw_val / 32) : 1;
+
+			__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, hdr_bw_val,
+				priv->data->respective_ostdl);
+		}
 
 		if (!IS_ERR(comp->stash_qos_req)) {
-			if (usage_ovl_compr)
-				stash_bw_val = bw_val ? ((bw_val > 128) ? (bw_val / 128) : 1) : 0;
-			else
-				stash_bw_val = bw_val ? ((bw_val > 256) ? (bw_val / 256) : 1) : 0;
+			if (bw_val) {
+				if (usage_ovl_compr)
+					stash_bw_val = bw_val * 2 / 256;
+				else
+					stash_bw_val = bw_val / 256;
+
+				stash_bw_val = stash_bw_val > 17 ? stash_bw_val : 17; //set low bound
+			}
 			__mtk_disp_set_module_hrt(comp->stash_qos_req, comp->id, stash_bw_val,
 					priv->data->respective_ostdl);
 		}
