@@ -3204,6 +3204,7 @@ static int dpmaif_init_register(struct device *dev)
 static void dpmaif_traffic_monitor_func(struct timer_list *t)
 {
 	int i, q_state = 0;
+	uint64_t now = local_clock();
 
 	if (3 < DPMAIF_TXQ_NUM) {
 		q_state = (dpmaif_ctl->txq[0].started << 0) |
@@ -3228,7 +3229,7 @@ static void dpmaif_traffic_monitor_func(struct timer_list *t)
 			dpmaif_ctl->tx_tfc_pkgs[3]);
 
 		CCCI_NORMAL_LOG(0, TAG,
-			"dpmaif-txq pos: w/r/rel=(%d,%d,%d)(%d,%d,%d)(%d,%d,%d)(%d,%d,%d), tx_busy=%d,%d,%d,%d, last_isr=%llx,%llx,%llx,%llx\n",
+			"dpmaif-txq pos: w/r/rel=(%d,%d,%d)(%d,%d,%d)(%d,%d,%d)(%d,%d,%d), tx_busy=%d,%d,%d,%d, last_isr=%llx,%llx,%llx,%llx, now=%06u.%04u\n",
 			atomic_read(&dpmaif_ctl->txq[0].drb_wr_idx),
 			atomic_read(&dpmaif_ctl->txq[0].drb_rd_idx),
 			atomic_read(&dpmaif_ctl->txq[0].drb_rel_rd_idx),
@@ -3248,7 +3249,8 @@ static void dpmaif_traffic_monitor_func(struct timer_list *t)
 			dpmaif_ctl->tx_done_last_start_time[0],
 			dpmaif_ctl->tx_done_last_start_time[1],
 			dpmaif_ctl->tx_done_last_start_time[2],
-			dpmaif_ctl->tx_done_last_start_time[3]);
+			dpmaif_ctl->tx_done_last_start_time[3],
+			(unsigned int)(now/1000000000), (unsigned int)((now%1000000000)/100000));
 	}
 
 	for (i = 0; i < dpmaif_ctl->real_rxq_num; i++) {
