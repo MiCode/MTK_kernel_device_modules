@@ -295,7 +295,7 @@ static unsigned long translate_fd(struct op_meta *meta,
 	}
 
 	dev = mdpsys_con_ctx.mmu_dev;
-	if (handle->secData.is_secure)
+	if (handle->secData.is_secure && mdpsys_con_ctx.mmu_dev_sec)
 		dev = mdpsys_con_ctx.mmu_dev_sec;
 	if (!dev) {
 		CMDQ_ERR("%s mmu_dev not ready\n", __func__);
