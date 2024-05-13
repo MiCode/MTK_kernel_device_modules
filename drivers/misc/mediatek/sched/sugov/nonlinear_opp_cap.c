@@ -2303,13 +2303,12 @@ void mtk_map_util_freq(void *data, unsigned long util, struct cpumask *cpumask,
 		return;
 	}
 
-	util = (util * util_scale) >> SCHED_CAPACITY_SHIFT;
 	if (turn_point_util[cpu] &&
-		util > turn_point_util[cpu])
+		orig_util >= turn_point_util[cpu])
 		util = max(turn_point_util[cpu], orig_util * target_margin[cpu]
 					>> SCHED_CAPACITY_SHIFT);
 	else if (turn_point_util[cpu] &&
-		util < turn_point_util[cpu])
+		orig_util < turn_point_util[cpu])
 		util = min(turn_point_util[cpu], orig_util * target_margin_low[cpu]
 					>> SCHED_CAPACITY_SHIFT);
 
