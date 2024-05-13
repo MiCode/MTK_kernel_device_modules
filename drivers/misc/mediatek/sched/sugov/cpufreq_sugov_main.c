@@ -1291,6 +1291,11 @@ static int __init cpufreq_mtk_init(void)
 	if (ret)
 		pr_info("init_opp_cap_info failed\n");
 
+	ret = register_trace_android_rvh_update_cpu_capacity(
+			hook_update_cpu_capacity, NULL);
+	if (ret)
+		pr_info("register android_rvh_update_cpu_capacity failed\n");
+
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
 	ret = register_trace_android_vh_cpufreq_fast_switch(mtk_cpufreq_fast_switch, NULL);
 	if (ret)

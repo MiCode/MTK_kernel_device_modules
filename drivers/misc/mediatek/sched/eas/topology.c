@@ -11,19 +11,11 @@
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include <sugov/cpufreq.h>
+#include "eas_trace.h"
+#include "sugov/cpufreq.h"
+
 
 MODULE_LICENSE("GPL");
-/*
- *  max_freq_scale:
- *	max cpu frequency limit
- *	range: 0~SCHED_CAPACITY_SCALE
- *  min_freq:
- *	min cpu frequency limit
- *	unit: frequency
- */
-DEFINE_PER_CPU(unsigned long, max_freq_scale) = SCHED_CAPACITY_SCALE;
-DEFINE_PER_CPU(unsigned long, min_freq_scale) = 0;
-DEFINE_PER_CPU(unsigned long, min_freq) = 0;
 
 #if IS_ENABLED(CONFIG_MTK_EAS)
 static struct notifier_block *freq_limit_max_notifier, *freq_limit_min_notifier;
@@ -108,17 +100,6 @@ void mtk_freq_limit_notifier_register(void)
 			cpufreq_cpu_put(policy);
 		}
 	}
-}
-
-void mtk_update_cpu_capacity(void *data, int cpu, unsigned long *capacity)
-{
-	unsigned long cap_ceiling, capacity_orig = capacity_orig_of(cpu);
-
-	cap_ceiling = min_t(unsigned long, *capacity, get_cpu_gear_uclamp_max_capacity(cpu));
-	*capacity = clamp_t(unsigned long, cap_ceiling,
-		READ_ONCE(per_cpu(min_freq_scale, cpu)), READ_ONCE(per_cpu(max_freq_scale, cpu)));
-	*capacity = min_t(unsigned long, *capacity, capacity_orig - READ_ONCE(per_cpu(thermal_pressure, cpu)));
-
 }
 
 unsigned long cpu_cap_ceiling(int cpu)

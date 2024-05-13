@@ -2259,7 +2259,6 @@ TRACE_EVENT(sched_update_thermal_pressure_capacity,
 		__entry->wl)
 );
 
-
 #endif /* _TRACE_SCHEDULER_H */
 
 #undef TRACE_INCLUDE_PATH
