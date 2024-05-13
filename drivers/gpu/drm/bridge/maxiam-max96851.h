@@ -32,6 +32,8 @@
 #include <linux/init.h>
 #include <linux/spinlock.h>
 
+#define SERDES_DEBUG						0
+
 #define I2C_WRITE							0x1
 #define PANEL_NAME_SIZE						64
 #define DEVICE_IDENTIFIER_ADDR				0x0D
@@ -90,7 +92,7 @@ struct serdes_cmd_info {
 	u8 *obj;
 	u16 *addr;
 	u8 *data;
-	u8 *delay_ms;
+	u16 *delay_ms;
 	u16 length;
 };
 
