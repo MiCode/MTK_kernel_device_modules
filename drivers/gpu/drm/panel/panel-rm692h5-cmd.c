@@ -609,6 +609,23 @@ static int mode_switch(struct drm_panel *panel,
 }
 
 #if defined(CONFIG_MTK_PANEL_EXT)
+static int panel_ext_reset(struct drm_panel *panel, int on)
+{
+	struct lcm *ctx = panel_to_lcm(panel);
+
+	ctx->reset_gpio =
+		devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
+	if (IS_ERR(ctx->reset_gpio)) {
+		pr_info("%s: cannot get reset_gpio %ld\n",
+			__func__, PTR_ERR(ctx->reset_gpio));
+		return PTR_ERR(ctx->reset_gpio);
+	}
+	gpiod_set_value(ctx->reset_gpio, on);
+	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
+
+	return 0;
+}
+
 static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 				 unsigned int level)
 {
@@ -619,6 +636,9 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 	push_table_cmdq(dsi, cb, handle, cmd_set_backlight_pre_set,
 		sizeof(cmd_set_backlight_pre_set) / sizeof(struct LCD_setting_table), 1);
 	push_table_cmdq(dsi, cb, handle, cmd_bl_level, sizeof(cmd_bl_level) / sizeof(struct LCD_setting_table), 1);
+
+	init_setting_fhd_120hz_dv3[INIT_CODE_BACKLIGHT_INDEX_DV3].para_list[1] = cmd_bl_level[0].para_list[1];
+	init_setting_fhd_120hz_dv3[INIT_CODE_BACKLIGHT_INDEX_DV3].para_list[2] = cmd_bl_level[0].para_list[2];
 
 	return 0;
 }
@@ -674,8 +694,8 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	//120hz 360TE
 	[FHD_120_360TE] = {
 	.pll_clk = MIPI_DATA_RATE_120HZ / 2,
-	.cust_esd_check = 0,
-	.esd_check_enable = 0,
+	.cust_esd_check = CUST_ESD_CHECK,
+	.esd_check_enable = ESD_CHECK_ENABLE,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0B,
 		.count = 1,
@@ -754,8 +774,8 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	//90hz
 	[FHD_90_360TE] = {
 	.pll_clk = MIPI_DATA_RATE_120HZ / 2,
-	.cust_esd_check = 0,
-	.esd_check_enable = 0,
+	.cust_esd_check = CUST_ESD_CHECK,
+	.esd_check_enable = ESD_CHECK_ENABLE,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0B,
 		.count = 1,
@@ -834,8 +854,8 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	//72hz
 	[FHD_72_360TE] = {
 		.pll_clk = MIPI_DATA_RATE_120HZ / 2,
-		.cust_esd_check = 0,
-		.esd_check_enable = 0,
+		.cust_esd_check = CUST_ESD_CHECK,
+		.esd_check_enable = ESD_CHECK_ENABLE,
 		.lcm_esd_check_table[0] = {
 			.cmd = 0x0B,
 			.count = 1,
@@ -914,8 +934,8 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	//60hz
 	[FHD_60_360TE] = {
 	.pll_clk = MIPI_DATA_RATE_120HZ / 2,
-	.cust_esd_check = 0,
-	.esd_check_enable = 0,
+	.cust_esd_check = CUST_ESD_CHECK,
+	.esd_check_enable = ESD_CHECK_ENABLE,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0B,
 		.count = 1,
@@ -994,8 +1014,8 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	//120hz
 	[FHD_120] = {
 	.pll_clk = MIPI_DATA_RATE_120HZ / 2,
-	.cust_esd_check = 0,
-	.esd_check_enable = 0,
+	.cust_esd_check = CUST_ESD_CHECK,
+	.esd_check_enable = ESD_CHECK_ENABLE,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0B,
 		.count = 1,
@@ -1067,8 +1087,8 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	//90hz
 	[FHD_90] = {
 	.pll_clk = MIPI_DATA_RATE_120HZ / 2,
-	.cust_esd_check = 0,
-	.esd_check_enable = 0,
+	.cust_esd_check = CUST_ESD_CHECK,
+	.esd_check_enable = ESD_CHECK_ENABLE,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0B,
 		.count = 1,
@@ -1140,8 +1160,8 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	//60hz
 	[FHD_60] = {
 	.pll_clk = MIPI_DATA_RATE_120HZ / 2,
-	.cust_esd_check = 0,
-	.esd_check_enable = 0,
+	.cust_esd_check = CUST_ESD_CHECK,
+	.esd_check_enable = ESD_CHECK_ENABLE,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0B,
 		.count = 1,
@@ -1220,6 +1240,7 @@ static enum RES_SWITCH_TYPE mtk_get_res_switch_type(void)
 #endif
 
 static struct mtk_panel_funcs ext_funcs = {
+	.reset = panel_ext_reset,
 	.set_backlight_cmdq = lcm_setbacklight_cmdq,
 	.ext_param_set = mtk_panel_ext_param_set,
 	.ext_param_get = mtk_panel_ext_param_get,
