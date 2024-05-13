@@ -4262,29 +4262,25 @@
 			"TOP_MAINPLL_D3";	/* 11 */
 	};
 
-	mmqos: mmqos {
-		compatible = "mediatek,mmqos";
-		larb_groups = <0 1 2 4 7 9 11 13 14 16 17 19 20>;
-		larb0 = <8 7 8 8>;
-		larb1 = <7 8 8 9 8>;
-		larb2 = <7 7 7 7 8>;
-		larb4 = <6 7 8 7 7 7 7 7 7 6 6 7 8 9>;
-		larb7 = <7 8 8 8 7 7 7 7 7 7 7 7 8>;
-		larb9 = <7 7 7 7 7 7 8 8 8 8 7 7 8 9 8 6 6 7
-			7 7 7 7 7 7 8 8 8 8 7>;
-		larb11 = <7 7 7 7 7 7 8 8 8 8 7 7 8 9 8 6 6 7
-			7 7 7 7 7 7 8 8 8 8 7>;
-		larb13 = <7 8 8 8 8 8 8 8 8 7 8 7>;
-		larb14 = <7 8 8 8 7 8>;
-		larb16 = <8 8 7 7 8 7 7 7 8 8 8 8 8 8 8 8 7>;
-		larb17 = <8 8 7 7 8 7 7 7 8 8 8 8 8 8 8 8 7>;
-		larb19 = <7 8 7 8>;
-		larb20 = <7 7 8 8 6 7>;
-		/* include SMI common CCU */
-		cam_larb = <13 14 16 17>;
-		max_ostd_larb = <0 1>;
-		max_ostd = <40>;
-		comm_freq = <0>;
+	mmqos-wrapper {
+		compatible = "mediatek,mt6781-mmqos-wrapper";
+	};
+
+	mmqos: interconnect {
+		compatible = "mediatek,mt6781-mmqos";
+		#mtk-interconnect-cells = <1>;
+		mediatek,larbs-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb4
+					&smi_larb7 &smi_larb9 &smi_larb11 &smi_larb13
+					&smi_larb14 &smi_larb16 &smi_larb17 &smi_larb19
+					&smi_larb20>;
+		mediatek,commons-supply = <&smi_common>;
+		mmqos-state = <0x7>;
+		mmqos-log-level = <0>;
+		/*temp as clk not ported: clocks = <&topckgen CLK_TOP_MMINFRA_SEL>; */
+		/*temp as clk not ported: clock-names = "mm"; */
+		interconnects = <&dvfsrc MT6873_MASTER_MMSYS &dvfsrc MT6873_SLAVE_DDR_EMI>,
+			<&dvfsrc MT6873_MASTER_HRT_MMSYS &dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
+		interconnect-names = "icc-bw", "icc-hrt-bw";
 	};
 
 	disp_ovl0: disp_ovl0@14005000 {
