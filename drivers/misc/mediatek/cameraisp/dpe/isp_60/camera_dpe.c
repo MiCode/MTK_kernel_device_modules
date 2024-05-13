@@ -37,6 +37,7 @@
 #include <media/v4l2-device.h>
 #include <media/videobuf2-v4l2.h>
 #include <media/v4l2-ioctl.h>
+#include <linux/completion.h>
 #define KERNEL_DMA_BUFFER
 #ifdef KERNEL_DMA_BUFFER
 #include <media/videobuf2-memops.h>
@@ -249,6 +250,8 @@ const struct ISR_TABLE DPE_IRQ_CB_TBL[DPE_IRQ_TYPE_AMOUNT] = {
  *
  */
 /*  */
+struct completion DPEinit_done;
+
 typedef void (*tasklet_cb)(unsigned long);
 struct Tasklet_table {
 	tasklet_cb tkt_cb;
@@ -268,6 +271,7 @@ struct wakeup_source DPE_wake_lock;
 #endif
 static DEFINE_MUTEX(gDpeMutex);
 static DEFINE_MUTEX(gDpeDequeMutex);
+static DEFINE_MUTEX(MutexDPERef);
 #if IS_ENABLED(CONFIG_OF)
 struct DPE_device {
 	void __iomem *regs;
@@ -1294,7 +1298,8 @@ signed int dpe_enque_cb(struct frame *frames, void *req)
 					_req->m_pDpeConfig[
 					ucnt].Dpe_DVSSettings.engHeight);
 				}
-				if ((frames[f+t].data != NULL) && (&_req->m_pDpeConfig[ucnt] != NULL)) {
+				if ((frames[f+t].data != NULL) && (&_req->m_pDpeConfig[ucnt] != NULL)
+					&& (f+t) < MAX_FRAMES_PER_REQUEST) {
 					memcpy(frames[f+t].data,
 					&_req->m_pDpeConfig[ucnt],
 					sizeof(struct DPE_Config));
@@ -3041,14 +3046,15 @@ static void DPE_EnableClock(bool En)
 			/* enable_clock(MT_CG_IMAGE_FD, "CAMERA"); */
 			enable_clock(MT_CG_IMAGE_LARB2_SMI, "CAMERA");
 #endif	/* #if !defined(CONFIG_MTK_LEGACY) && defined(CONFIG_COMMON_CLK)  */
+			spin_lock(&(DPEInfo.SpinLockDPE));
+			g_u4EnableClockCount++;
+			spin_unlock(&(DPEInfo.SpinLockDPE));
 			break;
 		default:
+			g_u4EnableClockCount++;
 			spin_unlock(&(DPEInfo.SpinLockDPE));
 			break;
 		}
-		spin_lock(&(DPEInfo.SpinLockDPE));
-		g_u4EnableClockCount++;
-		spin_unlock(&(DPEInfo.SpinLockDPE));
 		//dma_set_mask_and_coherent(gdev, DMA_BIT_MASK(34));
 #if IS_ENABLED(CONFIG_MTK_IOMMU_V2)
 		spin_lock(&(DPEInfo.SpinLockDPE));
@@ -4134,7 +4140,8 @@ static signed int DPE_open(struct inode *pInode, struct file *pFile)
 	struct DPE_USER_INFO_STRUCT *pUserInfo;
 	LOG_INF("- E. UserCount: %d.", DPEInfo.UserCount);
 	/*  */
-	spin_lock(&(DPEInfo.SpinLockDPERef));
+	// spin_lock(&(DPEInfo.SpinLockDPERef));
+	mutex_lock(&(MutexDPERef));
 	pFile->private_data = NULL;
 	pFile->private_data = kmalloc(sizeof(struct DPE_USER_INFO_STRUCT),
 								GFP_ATOMIC);
@@ -4143,6 +4150,8 @@ static signed int DPE_open(struct inode *pInode, struct file *pFile)
 								current->comm,
 						current->pid, current->tgid);
 		Ret = -ENOMEM;
+		mutex_unlock(&(MutexDPERef));
+		goto EXIT;
 	} else {
 		pUserInfo = (struct DPE_USER_INFO_STRUCT *) pFile->private_data;
 		pUserInfo->Pid = DPEInfo.UserCount;
@@ -4151,14 +4160,23 @@ static signed int DPE_open(struct inode *pInode, struct file *pFile)
 	/*  */
 	if (DPEInfo.UserCount > 0) {
 		DPEInfo.UserCount++;
-		spin_unlock(&(DPEInfo.SpinLockDPERef));
+		// spin_unlock(&(DPEInfo.SpinLockDPERef));
+		mutex_unlock(&(MutexDPERef));
 		LOG_DBG("Cur Usr(%d), (proc, pid, tgid)=(%s, %d, %d), exist",
 			DPEInfo.UserCount, current->comm, current->pid,
 								current->tgid);
+		spin_lock(&(DPEInfo.SpinLockDPE));
+		if (g_u4EnableClockCount == 0) {
+			LOG_INF("wait for clock/power enable: %d", g_u4EnableClockCount);
+			spin_unlock(&(DPEInfo.SpinLockDPE));
+			wait_for_completion(&DPEinit_done);
+		} else
+			spin_unlock(&(DPEInfo.SpinLockDPE));
+
 		goto EXIT;
 	} else {
 		DPEInfo.UserCount++;
-		spin_unlock(&(DPEInfo.SpinLockDPERef));
+		// spin_unlock(&(DPEInfo.SpinLockDPERef));
 		/* do wait queue head init when re-enter in camera */
 		/*  */
 		for (i = 0; i < _SUPPORT_MAX_DPE_REQUEST_RING_SIZE_; i++) {
@@ -4191,6 +4209,7 @@ static signed int DPE_open(struct inode *pInode, struct file *pFile)
 		/*  */
 		dpe_register_requests_isp6(&dpe_reqs, sizeof(struct DPE_Config));
 		dpe_set_engine_ops_isp6(&dpe_reqs, &dpe_ops);
+		mutex_unlock(&(MutexDPERef));
 		LOG_DBG("Cur Usr(%d), (proc, pid, tgid)=(%s, %d, %d), 1st user",
 			DPEInfo.UserCount, current->comm, current->pid,
 								current->tgid);
@@ -4199,7 +4218,10 @@ static signed int DPE_open(struct inode *pInode, struct file *pFile)
 	DPE_EnableClock(MTRUE);
 	cmdq_mbox_enable(dpe_clt->chan);
 	g_SuspendCnt = 0;
+	spin_lock(&(DPEInfo.SpinLockDPE));
 	LOG_INF("DPE open g_u4EnableClockCount: %d", g_u4EnableClockCount);
+	spin_unlock(&(DPEInfo.SpinLockDPE));
+	complete_all(&DPEinit_done);
 	/*  */
 /*#define KERNEL_LOG*/
 #ifdef KERNEL_LOG
@@ -4226,26 +4248,32 @@ static signed int DPE_release(struct inode *pInode, struct file *pFile)
 		pFile->private_data = NULL;
 	}
 	/*  */
-	spin_lock(&(DPEInfo.SpinLockDPERef));
+	// spin_lock(&(DPEInfo.SpinLockDPERef));
+	mutex_lock(&(MutexDPERef));
 	DPEInfo.UserCount--;
 	if (DPEInfo.UserCount > 0) {
-		spin_unlock(&(DPEInfo.SpinLockDPERef));
+		// spin_unlock(&(DPEInfo.SpinLockDPERef));
 		LOG_DBG("Cur UsrCnt(%d), (proc, pid, tgid)=(%s, %d, %d), exist",
 			DPEInfo.UserCount, current->comm, current->pid,
 								current->tgid);
+		mutex_unlock(&(MutexDPERef));
 		goto EXIT;
 	} else {
-		spin_unlock(&(DPEInfo.SpinLockDPERef));
+		// spin_unlock(&(DPEInfo.SpinLockDPERef));
+		reinit_completion(&DPEinit_done);
 		dpe_unregister_requests_isp6(&dpe_reqs);
 	}
 	/*  */
 	LOG_INF("Curr UsrCnt(%d), (process, pid, tgid)=(%s, %d, %d), last user",
 		DPEInfo.UserCount, current->comm, current->pid, current->tgid);
+	mutex_unlock(&(MutexDPERef));
 
 	cmdq_mbox_disable(dpe_clt->chan);
 	/* Disable clock. */
 	DPE_EnableClock(MFALSE);
+	spin_lock(&(DPEInfo.SpinLockDPE));
 	LOG_DBG("DPE release g_u4EnableClockCount: %d", g_u4EnableClockCount);
+	spin_unlock(&(DPEInfo.SpinLockDPE));
 	/*  */
 EXIT:
 	LOG_INF("- X. UserCount: %d.", DPEInfo.UserCount);
@@ -4876,6 +4904,7 @@ if (DPE_dev->irq > 0) {
 		for (n = 0; n < DPE_IRQ_TYPE_AMOUNT; n++)
 			spin_lock_init(&(DPEInfo.SpinLockIrq[n]));
 		/*  */
+		init_completion(&DPEinit_done);
 		init_waitqueue_head(&DPEInfo.WaitQueueHead);
 		INIT_WORK(&DPEInfo.ScheduleDpeWork, DPE_ScheduleWork);
 		DPEInfo.wkqueue = create_singlethread_workqueue("DPE-CMDQ-WQ");
