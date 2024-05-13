@@ -91,6 +91,24 @@ static void __dump_mfg_pwr_sta(void)
 		readl(MFG_RPC_MFG37_PWR_CON));
 }
 
+static void __ghpm_enable(void)
+{
+	if (g_mfg_mt6991_e2_con == MFG_MT6991_A0)
+		writel(readl(MFG_GHPM_CFG0_CON) | GHPM_EN, MFG_GHPM_CFG0_CON);
+	else
+		writel(readl(MFG_RPCTOP_DUMMY_REG_2) | GHPM_EN_FOR_MT6991_B0,
+			MFG_RPCTOP_DUMMY_REG_2);
+}
+
+static void __ghpm_disable(void)
+{
+	if (g_mfg_mt6991_e2_con == MFG_MT6991_A0)
+		writel(readl(MFG_GHPM_CFG0_CON) & ~GHPM_EN, MFG_GHPM_CFG0_CON);
+	else
+		writel(readl(MFG_RPCTOP_DUMMY_REG_2) & ~GHPM_EN_FOR_MT6991_B0,
+			MFG_RPCTOP_DUMMY_REG_2);
+}
+
 static int __trigger_ghpm_on(void)
 {
 	int i;
@@ -123,12 +141,10 @@ static int __trigger_ghpm_on(void)
 	}
 
 	/* Trigger GHPM on sequence */
-	if (g_mfg_mt6991_e2_con == MFG_MT6991_A0)
-		writel(readl(MFG_GHPM_CFG0_CON) | GHPM_EN, MFG_GHPM_CFG0_CON);
+	__ghpm_enable();
 	writel(readl(MFG_GHPM_CFG0_CON) & ~ON_SEQ_TRI, MFG_GHPM_CFG0_CON);
 	writel(readl(MFG_GHPM_CFG0_CON) | ON_SEQ_TRI, MFG_GHPM_CFG0_CON);
-	if (g_mfg_mt6991_e2_con == MFG_MT6991_A0)
-		writel(readl(MFG_GHPM_CFG0_CON) & ~GHPM_EN, MFG_GHPM_CFG0_CON);
+	__ghpm_disable();
 
 	atomic_set(&g_progress_status, POWER_ON_IN_PROGRESS);
 	gpueb_pr_debug(GHPM_TAG, "ghpm trigger on done");
@@ -344,6 +360,7 @@ static void __dump_ghpm_info(void)
 {
 	gpueb_pr_err(GHPM_TAG, "MFG_GHPM_RO0_CON=0x%x", readl(MFG_GHPM_RO0_CON));
 	gpueb_pr_err(GHPM_TAG, "MFG_GHPM_RO1_CON=0x%x", readl(MFG_GHPM_RO1_CON));
+	gpueb_pr_err(GHPM_TAG, "MFG_GHPM_RO2_CON=0x%x", readl(MFG_GHPM_RO2_CON));
 	gpueb_pr_err(GHPM_TAG, "MFG_RPC_MFG0_PWR_CON=0x%x", readl(MFG_RPC_MFG0_PWR_CON));
 	gpueb_pr_err(GHPM_TAG, "g_progress_status=%d, g_power_count=%d",
 		atomic_read(&g_progress_status), atomic_read(&g_power_count));
