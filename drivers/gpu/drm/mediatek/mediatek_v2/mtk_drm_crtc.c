@@ -16657,7 +16657,8 @@ static void mtk_crtc_validate_roi(struct drm_crtc *crtc,
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_SPR ||
-			mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR))
+			mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR ||
+			mtk_ddp_comp_get_type(comp->id) == MTK_DSI))
 			mtk_ddp_comp_io_cmd(comp, NULL, GET_VALID_PARTIAL_ROI, partial_roi);
 
 	spr_params = &mtk_crtc->panel_ext->params->spr_params;

@@ -11225,6 +11225,33 @@ static void mtk_dsi_get_panels_info(struct mtk_dsi *dsi, struct mtk_drm_panels_i
 	}
 }
 
+static void mtk_cal_dsi_valid_partial_roi(struct mtk_ddp_comp *comp,
+				struct mtk_rect *partial_roi)
+{
+	unsigned int roi_x = partial_roi->x;
+	unsigned int roi_y = partial_roi->y;
+	unsigned int roi_w = partial_roi->width;
+	unsigned int roi_h = partial_roi->height;
+
+	if (comp->mtk_crtc->panel_ext && comp->mtk_crtc->panel_ext->params
+		&& comp->mtk_crtc->panel_ext->funcs
+		&& comp->mtk_crtc->panel_ext->funcs->lcm_valid_roi) {
+		DDPDBG("%s line: %d roi_x:%d roi_y:%d roi_w:%d roi_h:%d\n",
+			__func__, __LINE__, roi_x, roi_y, roi_w, roi_h);
+
+		comp->mtk_crtc->panel_ext->funcs->lcm_valid_roi(
+				comp->mtk_crtc->panel_ext->params, &roi_x, &roi_y, &roi_w, &roi_h);
+
+		DDPDBG("%s line: %d validate roi_x:%d roi_y:%d roi_w:%d roi_h:%d\n",
+			__func__, __LINE__, roi_x, roi_y, roi_w, roi_h);
+
+		partial_roi->x = roi_x;
+		partial_roi->y = roi_y;
+		partial_roi->width = roi_w;
+		partial_roi->height = roi_h;
+	}
+}
+
 static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			  enum mtk_ddp_io_cmd cmd, void *params)
 {
@@ -12474,6 +12501,14 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		vfp = mode->vsync_start - mode->vdisplay;
 		*dur_vblank = 1000000000UL / fps / vtotal * vfp / 1000;
+	}
+		break;
+	case GET_VALID_PARTIAL_ROI:
+	{
+		struct mtk_rect *partial_roi = NULL;
+
+		partial_roi = (struct mtk_rect *)params;
+		mtk_cal_dsi_valid_partial_roi(comp, partial_roi);
 	}
 		break;
 	default:
