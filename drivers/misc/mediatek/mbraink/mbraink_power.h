@@ -42,4 +42,6 @@ int mbraink_power_get_mmdvfs_info(struct mbraink_mmdvfs_info *mmdvfsInfo);
 
 int mbraink_power_get_power_throttle_hw_info(struct mbraink_power_throttle_hw_data *power_throttle_hw_data);
 
+int mbraink_power_get_lpmstate_info(struct mbraink_lpm_state_data *lpmStateInfo);
+
 #endif /*end of MBRAINK_POWER_H*/

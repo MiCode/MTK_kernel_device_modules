@@ -27,6 +27,7 @@ int mbraink_power_init(void)
 	_mbraink_power_ops.postsuspend = NULL;
 	_mbraink_power_ops.getMmdvfsInfo = NULL;
 	_mbraink_power_ops.getPowerThrottleHwInfo = NULL;
+	_mbraink_power_ops.getLpmStateInfo = NULL;
 	return 0;
 }
 
@@ -48,6 +49,7 @@ int mbraink_power_deinit(void)
 	_mbraink_power_ops.postsuspend = NULL;
 	_mbraink_power_ops.getMmdvfsInfo = NULL;
 	_mbraink_power_ops.getPowerThrottleHwInfo = NULL;
+	_mbraink_power_ops.getLpmStateInfo = NULL;
 	return 0;
 }
 
@@ -74,7 +76,7 @@ int register_mbraink_power_ops(struct mbraink_power_ops *ops)
 	_mbraink_power_ops.postsuspend = ops->postsuspend;
 	_mbraink_power_ops.getMmdvfsInfo = ops->getMmdvfsInfo;
 	_mbraink_power_ops.getPowerThrottleHwInfo = ops->getPowerThrottleHwInfo;
-
+	_mbraink_power_ops.getLpmStateInfo = ops->getLpmStateInfo;
 	return 0;
 }
 EXPORT_SYMBOL(register_mbraink_power_ops);
@@ -99,6 +101,7 @@ int unregister_mbraink_power_ops(void)
 	_mbraink_power_ops.postsuspend = NULL;
 	_mbraink_power_ops.getMmdvfsInfo = NULL;
 	_mbraink_power_ops.getPowerThrottleHwInfo = NULL;
+	_mbraink_power_ops.getLpmStateInfo = NULL;
 	return 0;
 }
 EXPORT_SYMBOL(unregister_mbraink_power_ops);
@@ -347,3 +350,21 @@ int mbraink_power_get_power_throttle_hw_info(struct mbraink_power_throttle_hw_da
 
 	return ret;
 }
+
+int mbraink_power_get_lpmstate_info(struct mbraink_lpm_state_data *lpmStateInfo)
+{
+	int ret = 0;
+
+	if (lpmStateInfo == NULL) {
+		pr_info("%s: power lpm state is null.\n", __func__);
+		return -1;
+	}
+
+	if (_mbraink_power_ops.getLpmStateInfo)
+		ret = _mbraink_power_ops.getLpmStateInfo(lpmStateInfo);
+	else
+		pr_info("%s: Do not support ioctl get power lpm state info query.\n", __func__);
+
+	return ret;
+}
+

@@ -53,6 +53,14 @@ unsigned int g_md_last_read_blk_idx;
 unsigned int g_md_read_count;
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE)
+#include <lpm_dbg_common_v2.h>
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE)
+void lpm_get_suspend_event_info(struct lpm_dbg_lp_info *info);
+#endif
+
 static int mbraink_v6991_power_getVcoreInfo(struct mbraink_power_vcoreInfo *pmbrainkPowerVcoreInfo)
 {
 	int ret = 0;
@@ -924,6 +932,35 @@ End:
 	return ret;
 }
 
+static int mbraink_v6991_power_get_lpmstate_info(struct mbraink_lpm_state_data *lpmStateInfo)
+{
+	int ret = 0;
+	struct lpm_dbg_lp_info lpm_info;
+	int state_size = 0;
+	int i = 0;
+
+	pr_info("(%s)(%d)", __func__, __LINE__);
+	if (lpmStateInfo == NULL)
+		return -1;
+
+	memset(&lpm_info, 0x00, sizeof(struct lpm_dbg_lp_info));
+	lpm_get_suspend_event_info(&lpm_info);
+
+	lpmStateInfo->state_num = NUM_SPM_STAT;
+
+	if (NUM_SPM_STAT > MAX_LPM_STATE_NUM)
+		state_size = MAX_LPM_STATE_NUM;
+	else
+		state_size = NUM_SPM_STAT;
+
+	for (i = 0; i < state_size; i++) {
+		lpmStateInfo->lpm_state_info[i].count = lpm_info.record[i].count;
+		lpmStateInfo->lpm_state_info[i].duration = lpm_info.record[i].duration;
+	}
+
+	return ret;
+}
+
 static struct mbraink_power_ops mbraink_v6991_power_ops = {
 	.getVotingInfo = mbraink_v6991_power_get_voting_info,
 	.getPowerInfo = NULL,
@@ -941,6 +978,7 @@ static struct mbraink_power_ops mbraink_v6991_power_ops = {
 	.postsuspend = mbraink_v6991_power_post_suspend,
 	.getMmdvfsInfo = mbraink_v6991_power_get_mmdfvs_info,
 	.getPowerThrottleHwInfo = mbraink_v6991_power_get_power_throttle_hw_info,
+	.getLpmStateInfo = mbraink_v6991_power_get_lpmstate_info,
 };
 
 int mbraink_v6991_power_init(void)

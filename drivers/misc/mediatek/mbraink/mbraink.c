@@ -1028,6 +1028,27 @@ static long handle_wifi_lp_info(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handleLpmStateInfo(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_lpm_state_data *pLpmStateData =
+		(struct mbraink_lpm_state_data *)(mbraink_data);
+
+	memset(pLpmStateData, 0x00, sizeof(struct mbraink_lpm_state_data));
+	ret = mbraink_power_get_lpmstate_info(pLpmStateData);
+
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_lpm_state_data *)arg,
+						pLpmStateData,
+						sizeof(struct mbraink_lpm_state_data))) {
+			pr_notice("Copy lpm state info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -1395,6 +1416,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handlePowerThrottleInfo(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_LPM_STATE_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_lpm_state_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handleLpmStateInfo(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}
