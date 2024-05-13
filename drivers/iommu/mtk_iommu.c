@@ -226,7 +226,7 @@
 #define SHARE_PGTABLE			BIT(23)
 #define PGTABLE_PA_35_EN		BIT(24)
 #define HAS_EMI_PM			BIT(25)
-
+#define LEGACY_MULTI_LARB		BIT(26)
 #define POWER_ON_STA		1
 #define POWER_OFF_STA		0
 
@@ -1999,6 +1999,8 @@ static struct iommu_device *mtk_iommu_probe_device(struct device *dev)
 
 	data = dev_iommu_priv_get(dev);
 
+	if (MTK_IOMMU_HAS_FLAG(data->plat_data, LEGACY_MULTI_LARB))
+		return &data->iommu;
 	/*
 	 * The device that connects with each a larb is a independent HW.
 	 * All the ports in each a device should be in the same larbs.
@@ -3765,7 +3767,8 @@ static const struct mtk_iommu_plat_data mt6886_data_apu0 = {
 static const struct mtk_iommu_plat_data mt6893_data_iommu0 = {
 	.m4u_plat        = M4U_MT6893,
 	.flags           = NOT_STD_AXI_MODE | HAS_SUB_COMM | OUT_ORDER_WR_EN | WR_THROT_EN |
-			   HAS_BCLK | IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE | IOMMU_SEC_EN,
+			   HAS_BCLK | IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE |
+			   IOMMU_SEC_EN | LEGACY_MULTI_LARB,
 	/* not use larbid_remap */
 	.larbid_remap    = {{0}, {1}, {4, 5}, {7}, {2}, {9, 11, 19, 20},
 			    {0, 14, 16}, {0, 13, 18, 17}},
@@ -3781,7 +3784,7 @@ static const struct mtk_iommu_plat_data mt6893_data_iommu1 = {
 	.m4u_plat        = M4U_MT6893,
 	.flags           = NOT_STD_AXI_MODE | HAS_SUB_COMM | OUT_ORDER_WR_EN |
 			   WR_THROT_EN | HAS_BCLK | IOVA_34_EN | GET_DOM_ID_LEGACY |
-			   SHARE_PGTABLE | IOMMU_SEC_EN,
+			   SHARE_PGTABLE | IOMMU_SEC_EN | LEGACY_MULTI_LARB,
 	/* not use larbid_remap */
 	.larbid_remap    = {{0}, {1}, {4, 5}, {7}, {2}, {9, 11, 19, 20},
 			    {0, 14, 16}, {0, 13, 18, 17}},
