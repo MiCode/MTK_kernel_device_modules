@@ -62,6 +62,7 @@ apusys-objs += midware/$(APUSYS_VERSION_MIDWARE)/mdw_mem.o
 apusys-objs += midware/$(APUSYS_VERSION_MIDWARE)/mdw_mem_dma.o
 apusys-objs += midware/$(APUSYS_VERSION_MIDWARE)/mdw_mem_aram.o
 apusys-objs += midware/$(APUSYS_VERSION_MIDWARE)/mdw_mem_pool.o
+apusys-objs += midware/$(APUSYS_VERSION_MIDWARE)/mdw_cmd.o
 apusys-objs += midware/$(APUSYS_VERSION_MIDWARE)/cmd/mdw_cmd_v2.o
 apusys-objs += midware/$(APUSYS_VERSION_MIDWARE)/cmd/mdw_cmd_v3.o
 apusys-objs += midware/$(APUSYS_VERSION_MIDWARE)/cmd/mdw_cmd_v4.o

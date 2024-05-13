@@ -13,11 +13,9 @@ static int mdw_util_info(struct mdw_fpriv *mpriv, uint32_t type, uint64_t val)
 
 	switch (type) {
 	case MDW_UTIL_INFO_POWERPOLICY:
-		if (mdev->uapi_ver < 4)
-			break;
 		/* only performance mode can be set by user */
-		if (val == MDW_POWERPOLICY_PERFORMANCE)
-			ret = mdev->dev_funcs->pb_get(MDW_POWERPOLICY_PERFORMANCE, MDW_PB_DEBOUNCE_MS);
+		if (val == MDW_POWERPOLICY_PERFORMANCE && mdev->plat_funcs->pb_get != NULL)
+			ret = mdev->plat_funcs->pb_get(MDW_POWERPOLICY_PERFORMANCE, MDW_PB_DEBOUNCE_MS);
 		break;
 
 	default:
@@ -47,7 +45,7 @@ int mdw_util_ioctl(struct mdw_fpriv *mpriv, void *data)
 		break;
 
 	case MDW_UTIL_IOCTL_SETPOWER:
-		ret = mdev->dev_funcs->set_power(mdev, in->power.dev_type,
+		ret = mdev->plat_funcs->set_power(mdev, in->power.dev_type,
 			in->power.core_idx, in->power.boost);
 		break;
 
@@ -78,7 +76,7 @@ int mdw_util_ioctl(struct mdw_fpriv *mpriv, void *data)
 			ret = -EFAULT;
 			goto free_ucmd;
 		}
-		ret = mdev->dev_funcs->ucmd(mdev, in->ucmd.dev_type,
+		ret = mdev->plat_funcs->ucmd(mdev, in->ucmd.dev_type,
 			mem_ucmd, in->ucmd.size);
 		if (ret) {
 			mdw_drv_err("dev(%d) ucmd fail\n", in->ucmd.dev_type);

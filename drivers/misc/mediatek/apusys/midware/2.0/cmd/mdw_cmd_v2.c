@@ -10,6 +10,7 @@
 
 #include "mdw_trace.h"
 #include "mdw_cmn.h"
+#include "mdw_cmd.h"
 #include "mdw_mem.h"
 #include "mdw_mem_pool.h"
 #include "rv/mdw_rv_tag.h"
@@ -23,7 +24,7 @@ static int mdw_cmd_run(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 	mutex_lock(&c->mtx);
 
 	c->start_ts = sched_clock();
-	ret = mdev->dev_funcs->run_cmd(mpriv, c);
+	ret = mdev->plat_funcs->run_cmd(mpriv, c);
 	if (ret) {
 		mdw_drv_err("s(0x%llx) run cmd(0x%llx) fail(%d)\n",
 			(uint64_t) c->mpriv, c->kid, ret);
@@ -51,7 +52,7 @@ static void mdw_cmd_delete_v2(struct mdw_cmd *c)
 	mdw_cmd_cmdbuf_out(mpriv, c);
 	mdw_cmd_delete_infos(c->mpriv, c);
 	list_del(&c->u_item);
-	mdw_cmd_mpriv_release(c->mpriv);
+	mpriv->mdev->plat_funcs->release_cmd(mpriv);
 	mutex_unlock(&mpriv->mtx);
 	mdw_mem_put(c->mpriv, c->exec_infos);
 	dma_fence_signal(f);
@@ -304,7 +305,6 @@ delete_cmd:
 out:
 	return ret;
 }
-
 int mdw_cmd_ioctl_v2(struct mdw_fpriv *mpriv, void *data)
 {
 	union mdw_cmd_args *args = (union mdw_cmd_args *)data;
@@ -324,4 +324,13 @@ int mdw_cmd_ioctl_v2(struct mdw_fpriv *mpriv, void *data)
 	mdw_flw_debug("done\n");
 
 	return ret;
+}
+
+void mdw_cmd_mpriv_release_without_stale(struct mdw_fpriv *mpriv)
+{
+	if (!atomic_read(&mpriv->active) &&
+		list_empty_careful(&mpriv->cmds_list)) {
+		mdw_flw_debug("s(0x%llx) release mem\n", (uint64_t)mpriv);
+		mdw_mem_mpriv_release(mpriv);
+	}
 }

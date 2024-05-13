@@ -3,6 +3,7 @@
  * Copyright (c) 2021 MediaTek Inc.
  */
 
+#include "mdw_cmd.h"
 #include "mdw_cmn.h"
 #include "mdw_rv.h"
 #include "mdw_rv_tag.h"
@@ -70,6 +71,28 @@ static int mdw_rv_late_init(struct mdw_device *mdev)
 	int ret = 0;
 
 	mdw_rv_tag_init();
+
+	/* init rv device */
+	ret = mdw_rv_dev_init(mdev);
+	if (ret || !mdev->dev_specific) {
+		mdw_drv_err("init mdw rvdev fail(%d)\n", ret);
+		goto dev_deinit;
+	}
+
+	goto out;
+
+dev_deinit:
+	mdw_rv_dev_deinit(mdev);
+out:
+	return ret;
+}
+
+static int mdw_rv_late_init_v4(struct mdw_device *mdev)
+{
+	int ret = 0;
+
+	mdw_rv_tag_init();
+	mdw_rv_pb_init(mdev);
 
 	/* init rv device */
 	ret = mdw_rv_dev_init(mdev);
@@ -168,12 +191,49 @@ static void mdw_rv_cp_execinfo(struct mdw_cmd *c)
 	mdw_rv_dev_cp_execinfo(mrdev, c);
 }
 
-static const struct mdw_dev_func mdw_rv_func = {
+const struct mdw_plat_func rv_plat_drv_v2 = {
 	.sw_init = mdw_rv_sw_init,
 	.sw_deinit = mdw_rv_sw_deinit,
 	.late_init = mdw_rv_late_init,
 	.late_deinit = mdw_rv_late_deinit,
+	.prepare_cmd = mdw_cmd_ioctl_v2,
+	.get_cmdbuf = mdw_cmd_get_cmdbufs,
 	.run_cmd = mdw_rv_run_cmd,
+	.release_cmd = mdw_cmd_mpriv_release_without_stale,
+	.set_power = mdw_rv_set_power,
+	.ucmd = mdw_rv_ucmd,
+	.set_param = mdw_rv_set_param,
+	.get_info = mdw_rv_get_info,
+	.register_device = mdw_rv_register_device,
+	.unregister_device = mdw_rv_unregister_device,
+};
+
+const struct mdw_plat_func rv_plat_drv_v3 = {
+	.sw_init = mdw_rv_sw_init,
+	.sw_deinit = mdw_rv_sw_deinit,
+	.late_init = mdw_rv_late_init,
+	.late_deinit = mdw_rv_late_deinit,
+	.prepare_cmd = mdw_cmd_ioctl_v3,
+	.get_cmdbuf = mdw_cmd_get_cmdbufs,
+	.run_cmd = mdw_rv_run_cmd,
+	.release_cmd = mdw_cmd_mpriv_release,
+	.set_power = mdw_rv_set_power,
+	.ucmd = mdw_rv_ucmd,
+	.set_param = mdw_rv_set_param,
+	.get_info = mdw_rv_get_info,
+	.register_device = mdw_rv_register_device,
+	.unregister_device = mdw_rv_unregister_device,
+};
+
+const struct mdw_plat_func rv_plat_drv_v4 = {
+	.sw_init = mdw_rv_sw_init,
+	.sw_deinit = mdw_rv_sw_deinit,
+	.late_init = mdw_rv_late_init_v4,
+	.late_deinit = mdw_rv_late_deinit,
+	.prepare_cmd = mdw_cmd_ioctl_v4,
+	.get_cmdbuf = mdw_cmd_get_cmdbufs_with_apummu,
+	.run_cmd = mdw_rv_run_cmd,
+	.release_cmd = mdw_cmd_mpriv_release,
 	.set_power = mdw_rv_set_power,
 	.ucmd = mdw_rv_ucmd,
 	.set_param = mdw_rv_set_param,
@@ -187,10 +247,3 @@ static const struct mdw_dev_func mdw_rv_func = {
 	.pb_get = mdw_rv_pb_get,
 	.pb_put = mdw_rv_pb_put,
 };
-
-void mdw_rv_set_func(struct mdw_device *mdev)
-{
-	mdw_rv_pb_init(mdev);
-
-	mdev->dev_funcs = &mdw_rv_func;
-}

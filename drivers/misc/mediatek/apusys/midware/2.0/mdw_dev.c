@@ -6,6 +6,7 @@
 #include <linux/slab.h>
 
 #include "mdw_cmn.h"
+#include "mdw_cmd.h"
 
 
 static void mdw_dev_clear_cmd_func(struct work_struct *wk)
@@ -24,12 +25,12 @@ static void mdw_dev_clear_cmd_func(struct work_struct *wk)
 	mutex_unlock(&mdev->c_mtx);
 }
 
-int mdw_dev_init(struct mdw_device *mdev)
+int mdw_dev_init(struct device *dev, struct mdw_device *mdev)
 {
 	int ret = -ENODEV;
 
 	mdw_drv_info("mdw dev init type(%d-%u)\n",
-		mdev->driver_type, mdev->uapi_ver);
+		mdev->driver_type, mdev->mdw_ver);
 
 	INIT_LIST_HEAD(&mdev->d_cmds);
 	mutex_init(&mdev->c_mtx);
@@ -41,29 +42,23 @@ int mdw_dev_init(struct mdw_device *mdev)
 	mutex_init(&mdev->power_mtx);
 	mutex_init(&mdev->h_mtx);
 
-	switch (mdev->driver_type) {
-	case MDW_DRIVER_TYPE_PLATFORM:
-		mdw_ap_set_func(mdev);
-		break;
-	case MDW_DRIVER_TYPE_RPMSG:
-		mdw_rv_set_func(mdev);
-		break;
-	default:
-		ret = -EINVAL;
-		break;
+	mdev->plat_funcs = (struct mdw_plat_func *)of_device_get_match_data(dev);
+	if (!mdev->plat_funcs) {
+		pr_info("of_device_get_match_data fail\n");
+		return -EINVAL;
 	}
 
-	if (mdev->dev_funcs)
-		ret = mdev->dev_funcs->late_init(mdev);
+	if (mdev->plat_funcs)
+		ret = mdev->plat_funcs->late_init(mdev);
 
 	return ret;
 }
 
 void mdw_dev_deinit(struct mdw_device *mdev)
 {
-	if (mdev->dev_funcs) {
-		mdev->dev_funcs->late_deinit(mdev);
-		mdev->dev_funcs = NULL;
+	if (mdev->plat_funcs) {
+		mdev->plat_funcs->late_deinit(mdev);
+		mdev->plat_funcs = NULL;
 	}
 }
 
@@ -123,7 +118,7 @@ int apusys_register_device(struct apusys_device *adev)
 		return -ENODEV;
 	}
 
-	if (!mdw_dev->dev_funcs) {
+	if (!mdw_dev->plat_funcs) {
 		pr_info("[apusys] apu mdw not inited\n");
 		return -ENODEV;
 	}
@@ -137,7 +132,7 @@ int apusys_register_device(struct apusys_device *adev)
 	if (!mdw_dev->adevs[type])
 		mdw_dev->adevs[type] = adev;
 
-	return mdw_dev->dev_funcs->register_device(adev);
+	return mdw_dev->plat_funcs->register_device(adev);
 }
 
 int apusys_unregister_device(struct apusys_device *adev)
@@ -147,10 +142,10 @@ int apusys_unregister_device(struct apusys_device *adev)
 		return -ENODEV;
 	}
 
-	if (!mdw_dev->dev_funcs) {
+	if (!mdw_dev->plat_funcs) {
 		pr_info("[apusys] apu mdw not inited\n");
 		return -ENODEV;
 	}
 
-	return mdw_dev->dev_funcs->unregister_device(adev);
+	return mdw_dev->plat_funcs->unregister_device(adev);
 }

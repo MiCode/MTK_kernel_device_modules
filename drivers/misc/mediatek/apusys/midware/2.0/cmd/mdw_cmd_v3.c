@@ -10,6 +10,7 @@
 
 #include "mdw_trace.h"
 #include "mdw_cmn.h"
+#include "mdw_cmd.h"
 #include "mdw_mem.h"
 #include "mdw_mem_pool.h"
 #include "rv/mdw_rv_tag.h"
@@ -23,7 +24,7 @@ static int mdw_cmd_run(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 	mdw_cmd_show(c, mdw_cmd_debug);
 
 	c->start_ts = sched_clock();
-	ret = mdev->dev_funcs->run_cmd(mpriv, c);
+	ret = mdev->plat_funcs->run_cmd(mpriv, c);
 	if (ret) {
 		mdw_drv_err("s(0x%llx) run cmd(0x%llx) fail(%d)\n",
 			(uint64_t) c->mpriv, c->kid, ret);
@@ -103,7 +104,7 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 
 	/* check mpriv to clean cmd */
 	mutex_lock(&mpriv->mtx);
-	mdw_cmd_mpriv_release(mpriv);
+	mpriv->mdev->plat_funcs->release_cmd(mpriv);
 	mutex_unlock(&mpriv->mtx);
 
 	/* put cmd execution ref */
@@ -408,7 +409,6 @@ out:
 
 	return ret;
 }
-
 int mdw_cmd_ioctl_v3(struct mdw_fpriv *mpriv, void *data)
 {
 	union mdw_cmd_args *args = (union mdw_cmd_args *)data;

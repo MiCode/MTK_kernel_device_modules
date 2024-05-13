@@ -4,6 +4,7 @@
  */
 
 #include <linux/bitmap.h>
+#include "mdw_cmd.h"
 #include "mdw_cmn.h"
 #include "mdw_ap.h"
 #include "mdw_ap_tag.h"
@@ -201,12 +202,15 @@ static uint32_t mdw_ap_get_info(struct mdw_device *mdev,
 	return ret;
 }
 
-static const struct mdw_dev_func mdw_ap_func = {
+const struct mdw_plat_func ap_plat_drv_v1 = {
 	.sw_init = mdw_ap_sw_init,
 	.sw_deinit = mdw_ap_sw_deinit,
 	.late_init = mdw_ap_late_init,
 	.late_deinit = mdw_ap_late_deinit,
+	.prepare_cmd = mdw_cmd_ioctl_v2,
+	.get_cmdbuf = mdw_cmd_get_cmdbufs,
 	.run_cmd = mdw_ap_run_cmd,
+	.release_cmd = mdw_cmd_mpriv_release_without_stale,
 	.set_power = mdw_ap_set_power,
 	.ucmd = mdw_ap_ucmd,
 	.set_param = mdw_ap_set_param,
@@ -214,8 +218,3 @@ static const struct mdw_dev_func mdw_ap_func = {
 	.register_device = mdw_rsc_register_device,
 	.unregister_device = mdw_rsc_unregister_device,
 };
-
-void mdw_ap_set_func(struct mdw_device *mdev)
-{
-	mdev->dev_funcs = &mdw_ap_func;
-}

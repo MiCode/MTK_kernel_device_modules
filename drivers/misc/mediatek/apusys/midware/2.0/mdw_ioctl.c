@@ -8,22 +8,7 @@
 
 #include "mdw_ioctl.h"
 #include "mdw_cmn.h"
-
-static int mdw_ioctl_cmd(struct mdw_fpriv *mpriv, void *kdata)
-{
-	int ret = 0;
-
-	if (mpriv->mdev->uapi_ver == 2)
-		ret = mdw_cmd_ioctl_v2(mpriv, kdata);
-	else if (mpriv->mdev->uapi_ver == 3)
-		ret = mdw_cmd_ioctl_v3(mpriv, kdata);
-	else if (mpriv->mdev->uapi_ver >= 4)
-		ret = mdw_cmd_ioctl_v4(mpriv, kdata);
-	else
-		ret = -EINVAL;
-
-	return ret;
-}
+#include "mdw_cmd.h"
 
 long mdw_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
@@ -60,7 +45,7 @@ long mdw_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		ret = mdw_mem_ioctl(mpriv, kdata);
 		break;
 	case APU_MDW_IOCTL_CMD:
-		ret = mdw_ioctl_cmd(mpriv, kdata);
+		ret = mdw_cmd_ioctl(mpriv, kdata);
 		break;
 	case APU_MDW_IOCTL_UTIL:
 		ret = mdw_util_ioctl(mpriv, kdata);

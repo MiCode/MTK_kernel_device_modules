@@ -7,6 +7,7 @@
 #include "mdw_ext_cmn.h"
 #include "mdw_ext_ioctl.h"
 #include "mdw_ext_export.h"
+#include "mdw_cmd.h"
 
 #define MDWEXT_IDKID2EXTID(id, kid) (((0xffffffff & (uint64_t)(task_tgid_nr(current))) << 32) \
 	| ((0xffff & kid) << 16) | (0xffff & id))
@@ -29,9 +30,6 @@ void mdw_ext_cmd_get_id(struct mdw_cmd *c)
 {
 	int ret = 0;
 	char comm[16];
-
-	if (c->mpriv->mdev->uapi_ver < 4)
-		return;
 
 	mdw_ext_lock();
 	if (c->ext_id) {
@@ -56,7 +54,7 @@ out:
 
 void mdw_ext_cmd_put_id(struct mdw_cmd *c)
 {
-	if (c->mpriv->mdev->uapi_ver < 4)
+	if (c->mpriv->mdev->mdw_ver < 4)
 		return;
 
 	mdwext_cmd_debug("c(0x%llx) extid(0x%llx) tgid(%d/%d)\n",
@@ -87,7 +85,7 @@ static int mdw_ext_cmd_ioctl_run(union mdw_ext_cmd_args *args)
 	}
 
 	/* check support */
-	if (c->mpriv->mdev->uapi_ver < 4) {
+	if (c->mpriv->mdev->mdw_ver < 4) {
 		mdwext_drv_warn("no support mdw ext\n");
 		goto unlock_extlock;
 	}
@@ -116,7 +114,7 @@ static int mdw_ext_cmd_ioctl_run(union mdw_ext_cmd_args *args)
 	memset(&c_args, 0, sizeof(c_args));
 	c_args.in.op = MDW_CMD_IOCTL_RUN_STALE;
 	c_args.in.id = c->id;
-	ret = mdw_cmd_ioctl_run_v4(c->mpriv, &c_args);
+	ret = mdw_cmd_ioctl(c->mpriv, &c_args);
 	if (ret) {
 		mdwext_drv_err("c(0x%llx) extid(0x%llx) trigger fail(%d)\n", c->kid, c->ext_id, ret);
 		mdw_cmd_put(c);
