@@ -2845,7 +2845,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/ssc/debug/v1/mtk-ssc-dbg-v1.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ssc/debug/v2/mtk-ssc-dbg-v2.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ssc/mtk-ssc.ko")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
 
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6878.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6886.ko")
