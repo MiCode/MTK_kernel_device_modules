@@ -365,6 +365,7 @@ struct fpsgo_boost_attr {
 	int quota_v2_diff_clamp_min_by_pid;
 	int quota_v2_diff_clamp_max_by_pid;
 	int limit_min_cap_target_t_by_pid;
+	int target_time_up_bound_by_pid;
 
 	/* Minus idle time*/
 	int aa_b_minus_idle_t_by_pid;

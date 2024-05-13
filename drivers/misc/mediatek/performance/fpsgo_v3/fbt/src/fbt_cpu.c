@@ -317,6 +317,7 @@ static int rl_learning_rate_p;
 static int rl_learning_rate_n;
 static int rl_expect_fps_margin;
 static int rl_ko_is_ready;
+static int target_time_up_bound;
 static int cpumask_heavy;
 static int cpumask_second;
 static int cpumask_others;
@@ -2666,6 +2667,7 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	render_attr->quota_v2_diff_clamp_min_by_pid = quota_v2_diff_clamp_min;
 	render_attr->quota_v2_diff_clamp_max_by_pid = quota_v2_diff_clamp_max;
 	render_attr->limit_min_cap_target_t_by_pid = limit_min_cap_target_t;
+	render_attr->target_time_up_bound_by_pid = target_time_up_bound;
 	render_attr->aa_b_minus_idle_t_by_pid = aa_b_minus_idle_time;
 	render_attr->limit_cfreq2cap_by_pid = limit_cfreq2cap;
 	render_attr->limit_rfreq2cap_by_pid = limit_rfreq2cap;
@@ -2855,6 +2857,9 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	if (pid_attr.limit_min_cap_target_t_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->limit_min_cap_target_t_by_pid =
 			pid_attr.limit_min_cap_target_t_by_pid;
+	if (pid_attr.target_time_up_bound_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->target_time_up_bound_by_pid =
+			pid_attr.target_time_up_bound_by_pid;
 	if (pid_attr.powerRL_enable_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->powerRL_enable_by_pid = pid_attr.powerRL_enable_by_pid;
 	if (pid_attr.powerRL_FPS_margin_by_pid != BY_PID_DEFAULT_VAL)
@@ -4689,7 +4694,8 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 	int target_fps_margin, unsigned long long last_target_t_ns, unsigned long long t_q2q_ns,
 	unsigned long long t_queue_end, unsigned long long next_vsync,
 	int expected_fps_margin, int learning_rate_p, int learning_rate_n, int quota_clamp_max,
-	int quota_diff_clamp_min, int quota_diff_clamp_max, int limit_min_cap_final,
+	int quota_diff_clamp_min, int quota_diff_clamp_max,
+	int limit_min_cap_final, int target_time_up_bound_final,
 	int separate_aa_active, long aa_n, long aa_b,
 	long aa_m, int limit_cap, int limit_cap_b, int limit_cap_m, int rl_l2q_enable_final,
 	unsigned long long expected_l2q_ns_final, unsigned long long l2q_ts, int is_logic_head_alive,
@@ -4775,8 +4781,15 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 			}
 		}
 out:
-		if (!ret && out_target_t_ns)
+		if (!ret && out_target_t_ns) {
 			*out_target_t_ns = rl_target_t;
+			if (target_time_up_bound_final &&
+				*out_target_t_ns > target_time_up_bound_final * target_t / 100) {
+				fpsgo_main_trace("[%s] target_t_ns upper bounded. target_t_ns=%llu, bound=%llu",
+					__func__, *out_target_t_ns, target_time_up_bound_final * target_t / 100);
+				*out_target_t_ns = target_time_up_bound_final * target_t / 100;
+			}
+		}
 		fpsgo_systrace_c_fbt(pid, buffer_id, rl_target_t, "target_t_ns");
 		fpsgo_systrace_c_fbt(pid, buffer_id, rl_target_fpks, "expected_fpks");
 	}
@@ -4902,6 +4915,7 @@ static int fbt_boost_policy(
 	int quota_v2_diff_clamp_min_final;
 	int quota_v2_diff_clamp_max_final;
 	int limit_min_cap_target_t_final;
+	int target_time_up_bound_final = 0;
 	int limit_cap_b = 100, limit_cap_m = 100;
 	int limit_util = 1024, limit_util_b = 1024, limit_util_m = 1024;
 	unsigned long long logical_head_time_ns = 0;
@@ -4933,6 +4947,10 @@ static int fbt_boost_policy(
 	limit_min_cap_target_t_final = thread_info->attr.limit_min_cap_target_t_by_pid;
 	powerRL_enable_final = thread_info->attr.powerRL_enable_by_pid;
 	powerRL_FPS_margin_final = thread_info->attr.powerRL_FPS_margin_by_pid;
+	if (!cooler_on)
+		target_time_up_bound_final = thread_info->attr.target_time_up_bound_by_pid;
+
+
 
 	cur_ts = fpsgo_get_time();
 
@@ -5014,7 +5032,7 @@ static int fbt_boost_policy(
 		thread_info->Q2Q_time, ts, next_vsync, expected_fps_margin_final,
 		rl_learning_rate_p, rl_learning_rate_n, quota_v2_clamp_max,
 		quota_v2_diff_clamp_min_final, quota_v2_diff_clamp_max_final,
-		limit_min_cap_final,  separate_aa_final,
+		limit_min_cap_final, target_time_up_bound_final, separate_aa_final,
 		filtered_aa_n, filtered_aa_b, filtered_aa_m,
 		limit_max_cap, limit_cap_b, limit_cap_m,
 		rl_l2q_enable, rl_l2q_exp_ns, l2q_ns, is_logic_head_alive,
@@ -7700,6 +7718,11 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 			boost_attr->limit_min_cap_target_t_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->limit_min_cap_target_t_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "target_time_up_bound")) {
+		if ((val <= 1000 && val >= 0) && action == 's')
+			boost_attr->target_time_up_bound_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->target_time_up_bound_by_pid = BY_PID_DEFAULT_VAL;
 	} else if (!strcmp(cmd, "powerRL_enable")) {
 		if ((val == 0 || val == 1) && action == 's')
 			boost_attr->powerRL_enable_by_pid = val;
@@ -9250,6 +9273,10 @@ FBT_SYSFS_READ(rl_l2q_enable, fbt_mlock, rl_l2q_enable);
 FBT_SYSFS_WRITE_VALUE(rl_l2q_enable, fbt_mlock, rl_l2q_enable, 0, 1);
 static KOBJ_ATTR_RW(rl_l2q_enable);
 
+FBT_SYSFS_READ(target_time_up_bound, fbt_mlock, target_time_up_bound);
+FBT_SYSFS_WRITE_VALUE(target_time_up_bound, fbt_mlock, target_time_up_bound, 0, 1000);
+static KOBJ_ATTR_RW(target_time_up_bound);
+
 FBT_SYSFS_READ(user_vsync_fpks, fbt_mlock, user_vsync_fpks);
 FBT_SYSFS_WRITE_VALUE(user_vsync_fpks, fbt_mlock, user_vsync_fpks, 0, 144000);
 static KOBJ_ATTR_RW(user_vsync_fpks);
@@ -9393,6 +9420,7 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_rl_l2q_enable);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_rl_l2q_exp_us);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_rl_l2q_exp_times);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_target_time_up_bound);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_user_vsync_fpks);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_enable);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_FPS_margin);
@@ -9552,6 +9580,7 @@ int __init fbt_cpu_init(void)
 	rl_l2q_exp_us = 0;
 	rl_l2q_enable = 0;
 	rl_l2q_exp_times = DEFAULT_FPSGO_EXP_L2Q_MULTIPLE_TIMES;
+	target_time_up_bound = 0;
 
 	// powerRL related
 	powerRL_enable = fbt_get_default_powerRL_enable();
@@ -9660,6 +9689,7 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_rl_l2q_enable);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_rl_l2q_exp_us);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_rl_l2q_exp_times);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_target_time_up_bound);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_user_vsync_fpks);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_enable);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_FPS_margin);
