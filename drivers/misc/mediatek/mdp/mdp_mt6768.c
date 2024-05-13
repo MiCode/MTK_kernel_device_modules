@@ -5,6 +5,7 @@
 
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
+#include <linux/pm_runtime.h>
 
 #include "cmdq_reg.h"
 #include "mdp_common.h"
@@ -37,7 +38,7 @@ struct device *larb0;
 int gCmdqRdmaPrebuiltSupport;
 /* support register MSB */
 int gMdpRegMSBSupport;
-#if IS_ENABLED(CONFIG_MTK_SMI)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 static atomic_t mdp_smi_clk_usage;
 #endif
 
@@ -1173,7 +1174,7 @@ struct device *cmdq_mdp_get_larb_device(void)
 
 static void mdp_enable_larb(bool enable, struct device *larb)
 {
-#if IS_ENABLED(CONFIG_MTK_SMI)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 	s32 mdp_clk_usage;
 
 	if (!larb) {
@@ -1181,27 +1182,31 @@ static void mdp_enable_larb(bool enable, struct device *larb)
 		return;
 	}
 
-	if (enable) {
-		int ret = 0;
+	int ret = 0;
 
+	if (enable) {
 		mdp_clk_usage = atomic_inc_return(&mdp_smi_clk_usage);
 
 		if (mdp_clk_usage == 1) {
-			ret = mtk_smi_larb_get(larb);
+			ret = pm_runtime_resume_and_get(larb);
+
 			if (ret)
-				CMDQ_ERR("%s enable larb fail ret:%d\n", __func__, ret);
-			CMDQ_LOG_CLOCK("%s enable, mdp_smi_clk_usage:%d\n",
-				__func__, mdp_clk_usage);
+				CMDQ_ERR("%s enable fail ret:%d\n", __func__, ret);
 		}
+		CMDQ_LOG_CLOCK("%s enable, mdp_smi_clk_usage:%d\n",
+			__func__, mdp_clk_usage);
 	} else {
 
 		mdp_clk_usage = atomic_dec_return(&mdp_smi_clk_usage);
 
 		if (mdp_clk_usage == 0) {
-			mtk_smi_larb_put(larb);
-			CMDQ_LOG_CLOCK("%s disable, mdp_smi_clk_usage:%d\n",
-				__func__, mdp_clk_usage);
+			ret = pm_runtime_put_sync(larb);
+
+			if (ret)
+				CMDQ_ERR("%s disable fail ret:%d\n", __func__, ret);
 		}
+		CMDQ_LOG_CLOCK("%s disable, mdp_smi_clk_usage:%d\n",
+			__func__, mdp_clk_usage);
 	}
 #endif
 }
