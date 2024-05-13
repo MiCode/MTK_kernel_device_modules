@@ -75,6 +75,8 @@
 
 #define MAX_GPU_FENCE_RECORD_DATA 8
 
+#define MAX_VCPU_RECORD_LENGTH 1024
+
 enum mbraink_op_mode {
 	mbraink_op_mode_normal = 0,
 	mbraink_op_mode_sbe = 1,
@@ -524,6 +526,25 @@ struct mbraink_lpm_state_info {
 struct mbraink_lpm_state_data {
 	u16 state_num;
 	struct mbraink_lpm_state_info lpm_state_info[MAX_LPM_STATE_NUM];
+};
+
+struct trace_vcpu_rec {
+	u64 vmid : 2;
+#define TRACE_YOCTO_VMID      0
+#define TRACE_ANDROID_VMID    1
+	u64 vcpu : 5;
+	u64 pcpu : 5;
+	u64 flag : 2;
+	u64 timestamp : 50;
+};
+
+struct nbl_trace_buf_trans {
+	u32 trans_type;
+	u32 length;
+	u64 current_time;
+	u64 cntcvt;
+	u64 cntfrq;
+	struct trace_vcpu_rec vcpu_data[MAX_VCPU_RECORD_LENGTH];
 };
 
 #endif
