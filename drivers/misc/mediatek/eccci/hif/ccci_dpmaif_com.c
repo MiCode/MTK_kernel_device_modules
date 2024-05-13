@@ -1948,17 +1948,6 @@ static inline unsigned int dpmaif_txq_release_buffer(struct dpmaif_tx_queue *txq
 
 		if (cur_drb->dtyp == DES_DTYP_PD) {
 			cur_drb_skb = ((struct dpmaif_drb_skb *)(txq->drb_skb_base) + cur_idx);
-
-			if (g_debug_flags & DEBUG_TX_DONE_SKB) {
-				struct debug_tx_done_skb_hdr hdr;
-
-				hdr.type = TYPE_TX_DONE_SKB_ID;
-				hdr.qidx = txq->index;
-				hdr.time = (unsigned int)(local_clock() >> 16);
-				hdr.rel = cur_idx;
-				ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
-			}
-
 			if (cur_drb_skb->skb == NULL) {
 				CCCI_ERROR_LOG(0, TAG,
 					"[%s] error: drb%d skb is NULL; cur_idx: %u; txq pos: w/r/rel=(%u, %u, %u)\n",
@@ -1987,6 +1976,16 @@ static inline unsigned int dpmaif_txq_release_buffer(struct dpmaif_tx_queue *txq
 			}
 
 			cur_drb_skb->skb = NULL;
+
+			if (g_debug_flags & DEBUG_TX_DONE_SKB) {
+				struct debug_tx_done_skb_hdr hdr;
+
+				hdr.type = TYPE_TX_DONE_SKB_ID;
+				hdr.qidx = txq->index;
+				hdr.time = (unsigned int)(local_clock() >> 16);
+				hdr.rel = cur_idx;
+				ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
+			}
 
 #if DPMAIF_TRAFFIC_MONITOR_INTERVAL
 			dpmaif_ctl->tx_tfc_pkgs[txq->index]++;
@@ -2049,6 +2048,19 @@ static inline int dpmaif_txq_drb_release(struct dpmaif_tx_queue *txq)
 	int real_rel_cnt = 0;
 
 	rel_cnt = dpmaif_get_txq_drb_release_cnt(txq);
+
+	if (g_debug_flags & DEBUG_TX_START) {
+		struct debug_tx_start_hdr hdr;
+
+		hdr.type = TYPE_TX_START_ID;
+		hdr.qidx = txq->index;
+		hdr.time = (unsigned int)(local_clock() >> 16);
+		hdr.drb_rel = atomic_read(&txq->drb_rel_rd_idx);
+		hdr.rel_cnt = rel_cnt;
+
+		ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
+	}
+
 	if (rel_cnt) {
 		real_rel_cnt = dpmaif_txq_release_buffer(txq, rel_cnt);
 
