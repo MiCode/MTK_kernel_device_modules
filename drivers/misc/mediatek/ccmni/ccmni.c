@@ -101,7 +101,7 @@ static unsigned long g_init_rps_value;
 #define DEV_CLOSE               0
 #define MAX_MTU                 3000
 static unsigned long timeout_flush_num, clear_flush_num;
-
+static u64 g_cur_dl_speed = 0xFFFFFFFFFFFFFFFF;
 static u32 g_tcp_is_need_gro = 1;
 /*
  * Register the sysctl to set tcp_pacing_shift.
@@ -160,6 +160,12 @@ void set_ccmni_rps(unsigned long value)
 	}
 }
 EXPORT_SYMBOL(set_ccmni_rps);
+
+void ccmni_set_cur_speed(u64 cur_dl_speed)
+{
+	g_cur_dl_speed = cur_dl_speed;
+}
+EXPORT_SYMBOL(ccmni_set_cur_speed);
 
 void ccmni_set_tcp_is_need_gro(u32 tcp_is_need_gro)
 {
@@ -250,7 +256,8 @@ static int is_skb_gro(struct sk_buff *skb)
 		return g_tcp_is_need_gro;
 	} else if (protocol == IPPROTO_UDP) {
 		/* UDP always do GRO */
-		return 1;
+		if (g_cur_dl_speed > 300000000LL) //>300Mbps
+			return 1;
 	}
 
 	return 0;

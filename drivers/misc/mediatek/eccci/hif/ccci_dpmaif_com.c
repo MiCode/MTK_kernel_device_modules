@@ -2865,6 +2865,9 @@ static int dpmaif_stop(unsigned char hif_id)
 
 static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 {
+	if (dpmaif_ctl->capability & MODEM_CAP_LIM_UDP_GRO)
+		ccmni_set_cur_speed(total_dl_speed);
+
 	if ((g_debug_flags & DEBUG_UL_DL_TPUT) &&
 			(total_ul_speed || total_dl_speed)) {
 		struct debug_ul_dl_tput_hdr hdr = {0};

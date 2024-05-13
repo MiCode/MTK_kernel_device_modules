@@ -422,6 +422,7 @@ enum {
 	MODEM_CAP_2RXQ = (1 << 5),
 	MODEM_CAP_USE_RESV_MEM = (1 << 6),
 	MODEM_CAP_USE_MAX_BAT = (1 << 7),
+	MODEM_CAP_LIM_UDP_GRO = (1 << 8),
 	/*bit16-bit31:
 	 *for modem capability only
 	 *related with ccmni driver
