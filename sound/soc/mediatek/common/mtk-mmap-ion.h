@@ -18,6 +18,8 @@ int mtk_get_mmap_ul_fd(void);
 void mtk_get_mmap_dl_buffer(unsigned long *phy_addr, void **vir_addr);
 void mtk_get_mmap_ul_buffer(unsigned long *phy_addr, void **vir_addr);
 
+void mtk_clean_mmap_dl_buffer(struct device *dev);
+
 int mtk_exporter_init(struct device *dev);
 
 #endif

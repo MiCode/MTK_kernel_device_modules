@@ -1905,6 +1905,24 @@ static int mt6991_swcodec_vip_set(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int mt6991_mmap_clean_get(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = 0;
+	return 0;
+}
+
+static int mt6991_mmap_clean_set(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+
+	mtk_clean_mmap_dl_buffer(afe->dev);
+
+	return 0;
+}
+
 static const char *const off_on_function[] = {"Off", "On"};
 
 static const struct soc_enum mt6991_pcm_type_enum[] = {
@@ -2089,6 +2107,10 @@ static const struct snd_kcontrol_new mt6991_pcm_kcontrols[] = {
 		       mt6991_audio_vip_get, mt6991_audio_vip_set),
 	SOC_SINGLE_EXT("SWCODEC_VIP", SND_SOC_NOPM, 0, 0x3fffff, 0,
 		       mt6991_swcodec_vip_get, mt6991_swcodec_vip_set),
+	SOC_SINGLE_EXT("aaudio_clean_buffer",
+		       SND_SOC_NOPM, 0, 0xffffffff, 0,
+		       mt6991_mmap_clean_get,
+		       mt6991_mmap_clean_set),
 #if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
 	SND_SOC_BYTES_EXT("use_dram_only", MT6991_MEMIF_NUM,
 		      mt6991_use_dram_only_get, NULL),
