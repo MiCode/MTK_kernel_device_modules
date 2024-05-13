@@ -1743,10 +1743,11 @@
 			iommus = <&iommu0 M4U_PORT_L4_VDEC_MC_EXT>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			mediatek,mailbox-gce = <&gce_mbox>;
-			mediatek,dec_gce_th_num = <1>; /* VDEC GCE HW THREAD NUM*/
-			mediatek,enc_gce_th_num = <1>; /* VDEC GCE HW THREAD NUM*/
+			mediatek,dec-gce-th-num = <1>; /* VDEC GCE HW THREAD NUM*/
+			mediatek,enc-gce-th-num = <2>; /* VDEC GCE HW THREAD NUM*/
 			mboxes = <&gce_mbox 7 0 CMDQ_THR_PRIO_1>,
 				<&gce_mbox 12 0 CMDQ_THR_PRIO_1>,
+				<&gce_mbox 23 0 CMDQ_THR_PRIO_1>,
 				<&gce_mbox_sec 12 0 CMDQ_THR_PRIO_1>;
 			gce-event-names = "venc_eof",
 				"venc_cmdq_pause_done",
@@ -1787,7 +1788,8 @@
 				<&gce_mbox CMDQ_EVENT_SPEC_EVENT_2>,
 				<&gce_mbox CMDQ_EVENT_SPEC_EVENT_3>,
 				<&gce_mbox CMDQ_EVENT_GCE_CNT_OP_THRESHOLD>;
-
+			gce-norm-token = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_VENC_WAIT>;
+			gce-sec-token = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_VENC_SET>;
 			gce-gpr = <GCE_GPR_R10>, <GCE_GPR_R11>;
 		};
 
@@ -1815,6 +1817,7 @@
 			compatible = "mediatek,mt6877-vcodec-dec";
 			mediatek,platform = "platform:mt6877";
 			mediatek,ipm = <1>;
+			svp-mtee = <1>;
 			reg = <0 0x16000000 0 0x1000>,		/* VDEC_BASE */
 				 <0 0x1602f000 0 0x1000>,		/* VDEC_SYS */
 				 <0 0x16020000 0 0x400>,		/* VDEC_VLD */
@@ -3303,6 +3306,11 @@
 
 	irq_nfc: irq_nfc {
 		compatible = "mediatek,irq_nfc-eint";
+	};
+
+	drm_wv: drm_wv {
+		compatible = "mediatek,drm_wv";
+		status = "okay";
 	};
 
 	mtee_svp: mtee_svp {
@@ -7220,7 +7228,7 @@
 		iris-recognition-size = <0 0x10000000>;
 		2d_fr-size = <0 0>;
 		tui-size = <0 0x4000000>;
-		wfd-size = <0 0x4000000>;
+		wfd-region-based-size = <0 0x4000000>;
 		prot-region-based-size = <0 0x8000000>;
 		ta-elf-size = <0 0x1000000>;
 		ta-stack-heap-size = <0 0x6000000>;
