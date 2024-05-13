@@ -982,7 +982,6 @@ firmware_class.path=/vendor/firmware clk_ignore_unused=1";
 			      "mediatek,toprgu",
 			      "syscon", "simple-mfd";
 		reg = <0 0x10007000 0 0x1000>;
-		interrupts = <GIC_SPI 83 IRQ_TYPE_NONE 0>;
 		mediatek,rg_dfd_timeout = <0xa0>;
 		#reset-cells = <1>;
 		reboot-mode {
@@ -1079,7 +1078,7 @@ firmware_class.path=/vendor/firmware clk_ignore_unused=1";
 		interrupts = <GIC_SPI 115 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
-	regulator_vibrator {
+	regulator-vibrator {
 		compatible = "regulator-vibrator";
 		label = "vibrator";
 		min-volt = <2300000>;
