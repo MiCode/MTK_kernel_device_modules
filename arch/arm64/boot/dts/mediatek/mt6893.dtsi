@@ -4027,7 +4027,7 @@ cpus {
 		};
 
 		mdp_smi_subcom1: mdp-smi-subcom1@1f024000 {
-			compatible = "ediatek,mdp_smi_subcom1",
+			compatible = "mediatek,mdp_smi_subcom1",
 				     "mediatek,mt6893-smi-common",
 					 "mediatek,smi-common";
 			reg = <0 0x1f024000 0 0x3000>;
