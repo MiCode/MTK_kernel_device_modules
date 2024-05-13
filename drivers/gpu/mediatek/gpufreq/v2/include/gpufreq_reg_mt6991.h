@@ -213,9 +213,6 @@
 #define MFG_VCORE_BUS_AW_TRACKER_ID            (g_mfg_vcore_bus_trk_base + 0x900)  /* 0x4B900900 */
 #define MFG_VCORE_BUS_AW_TRACKER_L             (g_mfg_vcore_bus_trk_base + 0xA00)  /* 0x4B900A00 */
 
-#define MCUSYS_PAR_WRAP_BASE                   (0x0C000000)
-#define MCUSYS_PAR_WRAP_ACP_GALS_DBG           (g_mcusys_par_wrap_base + 0xB2C)    /* 0x0C000B2C */
-
 #define CKSYS_BASE                             (0x10000000)
 #define CKSYS_CLK_CFG_6                        (g_cksys_base + 0x070)              /* 0x10000070 */
 
@@ -228,28 +225,6 @@
 #define NTH_EMI_AO_DEBUG_CTRL_BASE             (0x10416000)
 #define NTH_EMI_AO_BUS_U_DEBUG_CTRL0           (g_nth_emi_ao_debug_ctrl + 0x000)   /* 0x10416000 */
 
-#define NTH_EMICFG_BASE                        (0x10425000)
-#define NTH_MFG_ACP_DVM_GALS_MST_DBG           (g_nth_emicfg_base + 0x804)         /* 0x10425804 */
-#define NTH_MFG_ACP_GALS_SLV_DBG               (g_nth_emicfg_base + 0x814)         /* 0x10425814 */
-#define NTH_APU_ACP_GALS_SLV_DBG               (g_nth_emicfg_base + 0x81C)         /* 0x1042581C */
-#define NTH_APU_EMI1_GALS_SLV_DBG              (g_nth_emicfg_base + 0x840)         /* 0x10425840 */
-#define NTH_APU_EMI0_GALS_SLV_DBG              (g_nth_emicfg_base + 0x844)         /* 0x10425844 */
-#define NTH_MFG_EMI1_GALS_SLV_DBG              (g_nth_emicfg_base + 0x848)         /* 0x10425848 */
-#define NTH_MFG_EMI0_GALS_SLV_DBG              (g_nth_emicfg_base + 0x84C)         /* 0x1042584C */
-
-#define EMI_BASE                               (0x10469000)
-#define EMI_URGENT_CNT                         (g_emi_base + 0x81C)                /* 0x1046981C */
-#define EMI_MD_LAT_HRT_URGENT_CNT              (g_emi_base + 0x860)                /* 0x10469860 */
-#define EMI_MD_HRT_URGENT_CNT                  (g_emi_base + 0x864)                /* 0x10469864 */
-#define EMI_DISP_HRT_URGENT_CNT                (g_emi_base + 0x868)                /* 0x10469868 */
-#define EMI_CAM_HRT_URGENT_CNT                 (g_emi_base + 0x86C)                /* 0x1046986C */
-#define EMI_MDMCU_HRT_URGENT_CNT               (g_emi_base + 0x870)                /* 0x10469870 */
-#define EMI_MD_WR_LAT_HRT_URGENT_CNT           (g_emi_base + 0x9A4)                /* 0x104699A4 */
-#define EMI_MDMCU_LOW_LAT_URGENT_CNT           (g_emi_base + 0xCC0)                /* 0x10469CC0 */
-#define EMI_MDMCU_HIGH_LAT_URGENT_CNT          (g_emi_base + 0xCC4)                /* 0x10469CC4 */
-#define EMI_MDMCU_LOW_WR_LAT_URGENT_CNT        (g_emi_base + 0xCC8)                /* 0x10469CC8 */
-#define EMI_MDMCU_HIGH_WR_LAT_URGENT_CNT       (g_emi_base + 0xCCC)                /* 0x10469CCC */
-
 #define STH_EMICFG_AO_MEM_BASE                 (0x10504000)
 #define STH_AO_SLEEP_PROT_START                (g_sth_emicfg_ao_mem_base + 0x000)  /* 0x10504000 */
 #define STH_AO_GLITCH_PROT_START               (g_sth_emicfg_ao_mem_base + 0x084)  /* 0x10504084 */
@@ -258,28 +233,6 @@
 
 #define STH_EMI_AO_DEBUG_CTRL_BASE             (0x10516000)
 #define STH_EMI_AO_BUS_U_DEBUG_CTRL0           (g_sth_emi_ao_debug_ctrl + 0x000)   /* 0x10516000 */
-
-#define STH_EMICFG_BASE                        (0x10525000)
-#define STH_MFG_ACP_DVM_GALS_MST_DBG           (g_sth_emicfg_base + 0x804)         /* 0x10525804 */
-#define STH_MFG_ACP_GALS_SLV_DBG               (g_sth_emicfg_base + 0x814)         /* 0x10525814 */
-#define STH_APU_ACP_GALS_SLV_DBG               (g_sth_emicfg_base + 0x81C)         /* 0x1052581C */
-#define STH_APU_EMI1_GALS_SLV_DBG              (g_sth_emicfg_base + 0x840)         /* 0x10525840 */
-#define STH_APU_EMI0_GALS_SLV_DBG              (g_sth_emicfg_base + 0x844)         /* 0x10525844 */
-#define STH_MFG_EMI1_GALS_SLV_DBG              (g_sth_emicfg_base + 0x848)         /* 0x10525848 */
-#define STH_MFG_EMI0_GALS_SLV_DBG              (g_sth_emicfg_base + 0x84C)         /* 0x1052584C */
-
-#define SUB_EMI_BASE                           (0x10569000)
-#define SUB_EMI_URGENT_CNT                     (g_sub_emi_base + 0x81C)            /* 0x1056981C */
-#define SUB_EMI_MD_LAT_HRT_URGENT_CNT          (g_sub_emi_base + 0x860)            /* 0x10569860 */
-#define SUB_EMI_MD_HRT_URGENT_CNT              (g_sub_emi_base + 0x864)            /* 0x10569864 */
-#define SUB_EMI_DISP_HRT_URGENT_CNT            (g_sub_emi_base + 0x868)            /* 0x10569868 */
-#define SUB_EMI_CAM_HRT_URGENT_CNT             (g_sub_emi_base + 0x86C)            /* 0x1056986C */
-#define SUB_EMI_MDMCU_HRT_URGENT_CNT           (g_sub_emi_base + 0x870)            /* 0x10569870 */
-#define SUB_EMI_MD_WR_LAT_HRT_URGENT_CNT       (g_sub_emi_base + 0x9A4)            /* 0x105699A4 */
-#define SUB_EMI_MDMCU_LOW_LAT_URGENT_CNT       (g_sub_emi_base + 0xCC0)            /* 0x10569CC0 */
-#define SUB_EMI_MDMCU_HIGH_LAT_URGENT_CNT      (g_sub_emi_base + 0xCC4)            /* 0x10569CC4 */
-#define SUB_EMI_MDMCU_LOW_WR_LAT_URGENT_CNT    (g_sub_emi_base + 0xCC8)            /* 0x10569CC8 */
-#define SUB_EMI_MDMCU_HIGH_WR_LAT_URGENT_CNT   (g_sub_emi_base + 0xCCC)            /* 0x10569CCC */
 
 #define SEMI_MI32_SMI_BASE                     (0x10621000)
 #define SEMI_MI32_SMI_DEBUG_S0                 (g_semi_mi32_smi + 0x400)           /* 0x10621400 */
@@ -312,25 +265,26 @@
 #define INFRA_AO_DEBUG_CTRL_BASE               (0x10644000)
 #define INFRA_AO_BUS0_U_DEBUG_CTRL0            (g_infra_ao_debug_ctrl + 0x000)     /* 0x10644000 */
 
-#define EMI_INFRA_AO_BCRM_BASE                 (0x10645000)
-#define VDNR_PWR_PROT_EMI_INFRA_BUS_SPM_CTRL_5 (g_emi_infra_ao_bcrm_base + 0x048)  /* 0x10645048 */
-
 #define EMI_INFRA_AO_MEM_REG_BASE              (0x10646000)
-#define EMI_SLEEP_PROT_START                   (g_emi_infra_ao_mem_base + 0x000)   /* 0x10646000 */
-#define EMI_GLITCH_PROT_START                  (g_emi_infra_ao_mem_base + 0x084)   /* 0x10646084 */
-#define M6M7_IDLE_BIT_EN_0                     (g_emi_infra_ao_mem_base + 0x228)   /* 0x10646228 */
-#define M6M7_IDLE_BIT_EN_1                     (g_emi_infra_ao_mem_base + 0x22C)   /* 0x1064622C */
-#define EMI_SLPPROT_EN_SET                     (g_emi_infra_ao_mem_base + 0xB08)   /* 0x10646B08 */
+#define EMI_IFR_AO_SLEEP_PROT_START            (g_emi_infra_ao_mem_base + 0x000)   /* 0x10646000 */
+#define EMI_IFR_AO_GLITCH_PROT_START           (g_emi_infra_ao_mem_base + 0x084)   /* 0x10646084 */
+#define EMI_IFR_AO_M6M7_IDLE_BIT_EN_0          (g_emi_infra_ao_mem_base + 0x228)   /* 0x10646228 */
+#define EMI_IFR_AO_M6M7_IDLE_BIT_EN_1          (g_emi_infra_ao_mem_base + 0x22C)   /* 0x1064622C */
+#define EMI_IFR_AO_SLPPROT_EN_SET              (g_emi_infra_ao_mem_base + 0xB08)   /* 0x10646B08 */
 
 #define EMI_INFRACFG_REG_BASE                  (0x10648000)
-#define IFR_EMI_M7_STH_GALS_SLV_DBG            (g_emi_infra_cfg_base + 0x824)      /* 0x10648824 */
-#define IFR_EMI_M7_NTH_GALS_SLV_DBG            (g_emi_infra_cfg_base + 0x828)      /* 0x10648828 */
-#define IFR_EMI_M6_STH_GALS_SLV_DBG            (g_emi_infra_cfg_base + 0x82C)      /* 0x1064882C */
-#define IFR_EMI_M6_NTH_GALS_SLV_DBG            (g_emi_infra_cfg_base + 0x830)      /* 0x10648830 */
-#define MFG_EMI1_STH_GALS_SLV_DBG              (g_emi_infra_cfg_base + 0x83C)      /* 0x1064883C */
-#define MFG_EMI1_NTH_GALS_SLV_DBG              (g_emi_infra_cfg_base + 0x840)      /* 0x10648840 */
-#define MFG_EMI0_STH_GALS_SLV_DBG              (g_emi_infra_cfg_base + 0x844)      /* 0x10648844 */
-#define MFG_EMI0_NTH_GALS_SLV_DBG              (g_emi_infra_cfg_base + 0x848)      /* 0x10648848 */
+#define EMI_IFR_MFG_ACP_DVM_GALS_MST_DBG       (g_emi_infra_cfg_base + 0x804)      /* 0x10648804 */
+#define EMI_IFR_MFG_ACP_GALS_MST_DBG           (g_emi_infra_cfg_base + 0x814)      /* 0x10648814 */
+#define EMI_IFR_M7_STH_GALS_SLV_DBG            (g_emi_infra_cfg_base + 0x824)      /* 0x10648824 */
+#define EMI_IFR_M7_NTH_GALS_SLV_DBG            (g_emi_infra_cfg_base + 0x828)      /* 0x10648828 */
+#define EMI_IFR_M6_STH_GALS_SLV_DBG            (g_emi_infra_cfg_base + 0x82C)      /* 0x1064882C */
+#define EMI_IFR_M6_NTH_GALS_SLV_DBG            (g_emi_infra_cfg_base + 0x830)      /* 0x10648830 */
+#define EMI_IFR_APU_M1_NOC_GALS_SLV_DBG        (g_emi_infra_cfg_base + 0x834)      /* 0x10648834 */
+#define EMI_IFR_APU_M0_NOC_GALS_SLV_DBG        (g_emi_infra_cfg_base + 0x838)      /* 0x10648838 */
+#define EMI_IFR_STH_MFG_EMI1_GALS_SLV_DBG      (g_emi_infra_cfg_base + 0x83C)      /* 0x1064883C */
+#define EMI_IFR_NTH_MFG_EMI1_GALS_SLV_DBG      (g_emi_infra_cfg_base + 0x840)      /* 0x10648840 */
+#define EMI_IFR_STH_MFG_EMI0_GALS_SLV_DBG      (g_emi_infra_cfg_base + 0x844)      /* 0x10648844 */
+#define EMI_IFR_NTH_MFG_EMI0_GALS_SLV_DBG      (g_emi_infra_cfg_base + 0x848)      /* 0x10648848 */
 
 #define SPM_BASE                               (0x1C004000)
 #define SPM_SPM2GPUPM_CON                      (g_sleep + 0x0410)                  /* 0x1C004410 */
