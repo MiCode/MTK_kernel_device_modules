@@ -261,6 +261,10 @@ enum ADSP_MI_SELECT {
 #define GPU1_PD_START				(0xC00000)
 #define GPU1_PD_END				(0xC63FFF)
 
+/* For Debugsys */
+#define DEBUGSYS_VIO_BIT			(0x2)
+#define DEBUGSYS_VIO_BUS_ID_MASK		(0x003FFFF0)
+
 static const struct mtk_device_info mt6991_devices_apinfra_io[] = {
 	/* sys_idx, ctrl_idx, vio_idx, device, vio_irq */
 	/* 0 */

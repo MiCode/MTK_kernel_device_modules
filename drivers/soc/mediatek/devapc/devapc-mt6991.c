@@ -12,6 +12,15 @@
 
 #include "devapc-mt6991.h"
 
+#define EXCEPTION_NODE_NAME    "exception"
+
+#define DEVAPC_EXCEP_NAME_LEN	(32)
+
+enum DEVAPC_EXCEP_HANDLER_TYPE {
+	DEVAPC_EXCEP_HANDLER_DEBUGSYS,
+	DEVAPC_EXCEP_HANDLER_MAX,
+};
+
 struct tag_chipid {
 	uint32_t size;
 	uint32_t hw_code;
@@ -20,7 +29,24 @@ struct tag_chipid {
 	uint32_t sw_ver;
 };
 
+struct devapc_excep_entry {
+	char name[DEVAPC_EXCEP_NAME_LEN];
+	int excep_type;
+	int slave_type;
+	void __iomem *base;
+};
+
+typedef bool (*devpapc_excep_cb_t)(struct devapc_excep_entry *excep);
+
+struct devapc_excep_info {
+	uint32_t entry_cnt;
+	devpapc_excep_cb_t excep_type_callback[DEVAPC_EXCEP_HANDLER_MAX];
+	struct devapc_excep_entry excep_list[DEVAPC_EXCEP_HANDLER_MAX];
+};
+
 static int g_sw_ver = 1;
+
+static struct devapc_excep_info excep_info;
 
 static struct mtk_device_num mtk6991_devices_num[] = {
 	{
@@ -833,6 +859,62 @@ static uint32_t mt6991_shift_group_get(int slave_type, uint32_t vio_idx)
 	return 31;
 }
 
+static bool apinfra_vio_callback(int slave_type)
+{
+	bool ret = false;
+	int i;
+	struct devapc_excep_entry *excep = NULL;
+
+	for (i = 0; i < excep_info.entry_cnt; i++) {
+		if (excep_info.excep_list[i].slave_type != slave_type)
+			continue;
+		excep = &excep_info.excep_list[i];
+
+		ret = excep_info.excep_type_callback[excep->excep_type](excep);
+
+		if (ret)
+			break;
+	}
+
+	return ret;
+}
+
+static bool devapc_excep_debugsys_callback(struct devapc_excep_entry *excep)
+{
+	bool ret = false;
+	uint32_t w_vio_info, r_vio_info, bus_id;
+	const char *vio_master;
+
+	if (excep == NULL)
+		return false;
+
+	w_vio_info = readl(excep->base);
+	r_vio_info = readl(excep->base + 4);
+
+	if (w_vio_info & DEBUGSYS_VIO_BIT) {
+		pr_info(PFX "Write Violation\n");
+		bus_id = (w_vio_info & DEBUGSYS_VIO_BUS_ID_MASK) >> 4;
+		writel(0x0, excep->base);
+		ret = true;
+	} else if (r_vio_info & DEBUGSYS_VIO_BIT) {
+		pr_info(PFX "Read Violation\n");
+		bus_id = (r_vio_info & DEBUGSYS_VIO_BUS_ID_MASK) >> 4;
+		writel(0x0, excep->base+4);
+		ret = true;
+	}
+
+	if (ret) {
+		vio_master = infra_mi_tracer1_trans(bus_id);
+		pr_info(PFX "%s %s %s %s\n",
+				"Violation - master:", vio_master,
+				"access violation slave:",
+				"DEBUGSYS_APB_S");
+		pr_info(PFX "Device APC Violation Issue/%s", vio_master);
+	}
+
+	return ret;
+}
+
 void devapc_catch_illegal_range(phys_addr_t phys_addr, size_t size)
 {
 	phys_addr_t test_pa = 0x17a54c50;
@@ -1003,6 +1085,11 @@ static const struct dev_pm_ops devapc_dev_pm_ops = {
 	.resume_noirq = devapc_resume_noirq,
 };
 
+static struct devapc_excep_callbacks apinfra_excep_handler = {
+	.type = DEVAPC_TYPE_INFRA,
+	.handle_excep = apinfra_vio_callback,
+};
+
 static int devapc_get_chipid(void)
 {
 	struct tag_chipid *chip_id;
@@ -1028,6 +1115,66 @@ static int devapc_get_chipid(void)
 	return 0;
 }
 
+static void register_devapc_excep(struct platform_device *pdev)
+{
+	int ret;
+	uint32_t value;
+	struct device_node *np;
+	struct device_node *excep_node;
+	struct device_node *child;
+	struct devapc_excep_entry *excep;
+	const char *str;
+
+	np = pdev->dev.of_node;
+	excep_node = of_get_child_by_name(np, EXCEPTION_NODE_NAME);
+	if (!excep_node) {
+		pr_info(PFX"fail to parse exception from dev.\n");
+		return;
+	}
+
+	for_each_child_of_node(excep_node, child) {
+		if (excep_info.entry_cnt >= DEVAPC_EXCEP_HANDLER_MAX) {
+			pr_info(PFX"entry cnt over limite\n");
+			break;
+		}
+
+		excep = &excep_info.excep_list[excep_info.entry_cnt];
+
+		ret = of_property_read_string(child, "excep-name", &str);
+		if (ret) {
+			pr_info(PFX "fail to parse excep-name from node.\n");
+			return;
+		}
+		strscpy(excep->name, str, DEVAPC_EXCEP_NAME_LEN);
+
+		ret = of_property_read_u32(child, "excep-type", &value);
+		if ((ret != 0) || (value >= DEVAPC_EXCEP_HANDLER_MAX)) {
+			pr_info(PFX "fail to parse excep-type from node.\n");
+			return;
+		}
+		excep->excep_type = value;
+
+		ret = of_property_read_u32(child, "slave-type", &value);
+		if ((ret != 0) || (value >= SLAVE_TYPE_NUM)) {
+			pr_info(PFX "fail to parse slave-type from node.\n");
+			return;
+		}
+		excep->slave_type = value;
+
+		ret = of_property_read_u32(child, "reg-base", &value);
+		if (ret) {
+			pr_info(PFX "fail to parse reg-base from node.\n");
+			return;
+		}
+		excep->base  = ioremap(value, 8);
+		excep_info.entry_cnt++;
+	}
+
+	excep_info.excep_type_callback[DEVAPC_EXCEP_HANDLER_DEBUGSYS] = devapc_excep_debugsys_callback;
+
+	register_devapc_exception_callback(&apinfra_excep_handler);
+}
+
 static int mt6991_devapc_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -1037,6 +1184,7 @@ static int mt6991_devapc_probe(struct platform_device *pdev)
 	if (g_sw_ver != 0) {
 		mt6991_data.device_info[SLAVE_TYPE_PERI_PAR] = mt6991_devices_peri_par_b0;
 		mtk6991_devices_num[SLAVE_TYPE_PERI_PAR].vio_slave_num = ARRAY_SIZE(mt6991_devices_peri_par_b0);
+		register_devapc_excep(pdev);
 	}
 
 	return mtk_devapc_probe(pdev, (struct mtk_devapc_soc *)&mt6991_data);
