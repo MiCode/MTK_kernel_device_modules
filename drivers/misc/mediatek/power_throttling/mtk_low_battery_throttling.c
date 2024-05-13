@@ -371,7 +371,8 @@ void exec_throttle(unsigned int level, enum LOW_BATTERY_USER_TAG user, unsigned 
 
 	low_bat_thl_data->thl_cnt[user][level] += 1;
 
-	pr_info("[%s] low_battery_level = %d\n", __func__, level);
+	pr_info("[%s] user=%d, low_battery_level=%d, volt=%d\n",
+		__func__, user, level, thd_volt);
 }
 
 static int __used decide_and_throttle(enum LOW_BATTERY_USER_TAG user,
@@ -383,7 +384,6 @@ static int __used decide_and_throttle(enum LOW_BATTERY_USER_TAG user,
 		MIN_LBAT_VOLT+30, MIN_LBAT_VOLT+20, MIN_LBAT_VOLT+10};
 	int temp_cur_stage = 0;
 
-	pr_info("%s: user=%d, input=%d\n", __func__, user, input);
 	if (!low_bat_thl_data) {
 		pr_info("[%s] Failed to create low_bat_thl_data\n", __func__);
 		return -ENODATA;
