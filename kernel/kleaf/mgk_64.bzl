@@ -2727,6 +2727,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"sound/soc/mediatek/common_int/mtk-soc-tdm-capture.ko":"mt6765"})
         mgk_64_platform_device_modules.update({"sound/soc/mediatek/common_int/mtk-soc-pcm-hp-impedance.ko":"mt6765"})
         mgk_64_platform_device_modules.update({"sound/soc/mediatek/common_int/mtk-soc-machine.ko":"mt6765"})
+        mgk_64_device_modules.remove("drivers/misc/mediatek/performance/mtk_perf_ioctl_magt.ko")
         mgk_64_device_modules.append("drivers/mmc/host/mtk-mmc-swcqhci.ko")
 
     if "mt6833_overlay.config" in DEFCONFIG_OVERLAYS:
