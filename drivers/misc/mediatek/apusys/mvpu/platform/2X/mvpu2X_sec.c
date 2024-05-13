@@ -28,10 +28,10 @@
 
 #include "mvpu_plat.h"
 #include "mvpu_sysfs.h"
-#include "mvpu_ipi.h"
-#include "mvpu_cmd_data.h"
+#include "mvpu2X_ipi.h"
+#include "mvpu2X_cmd_data.h"
 #include "mvpu_driver.h"
-#include "mvpu_sec.h"
+#include "mvpu2X_sec.h"
 
 //#define FULL_RP_INFO
 
@@ -2051,7 +2051,7 @@ END:
 	return ret;
 }
 
-int mvpu20_load_img(struct device *dev)
+int mvpu2X_load_img(struct device *dev)
 {
 	int ret = 0;
 #ifndef MVPU_ALGO_IMG_DISABLE
@@ -2126,7 +2126,7 @@ END:
 	return ret;
 }
 
-int mvpu20_sec_init(struct device *dev)
+int mvpu2X_sec_init(struct device *dev)
 {
 	int ret = 0;
 	uint32_t session_id = 0;
@@ -2219,7 +2219,7 @@ static struct kobj_attribute get_mvpu_img = {
 	.store = mvpu_img_store,
 };
 
-int mvpu20_sec_sysfs_init(struct kobject *root_dir)
+int mvpu2X_sec_sysfs_init(struct kobject *root_dir)
 {
 	return sysfs_create_file(root_dir, &get_mvpu_img.attr);
 }

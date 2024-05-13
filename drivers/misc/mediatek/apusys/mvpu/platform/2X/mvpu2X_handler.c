@@ -8,19 +8,19 @@
 #include "apusys_device.h"
 
 #include "mvpu_plat.h"
-#include "mvpu_handler.h"
-#include "mvpu_valid.h"
-#include "mvpu_sec.h"
+#include "mvpu2X_handler.h"
+#include "mvpu2X_valid.h"
+#include "mvpu2X_sec.h"
 
 struct mutex mvpu_pool_lock;
 
-void mvpu20_handler_lite_init(void)
+void mvpu2X_handler_lite_init(void)
 {
 	mutex_init(&mvpu_pool_lock);
 }
 
 
-int mvpu20_handler_lite(int type, void *hnd, struct apusys_device *dev)
+int mvpu2X_handler_lite(int type, void *hnd, struct apusys_device *dev)
 {
 	int ret = 0;
 

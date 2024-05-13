@@ -3,8 +3,8 @@
  * Copyright (c) 2020 MediaTek Inc.
  */
 
-#ifndef __MVPU_CMD_DATA_H__
-#define __MVPU_CMD_DATA_H__
+#ifndef __MVPU2X_CMD_DATA_H__
+#define __MVPU2X_CMD_DATA_H__
 
 #define MVPU_PE_NUM  64
 #define MVPU_DUP_BUF_SIZE  (2 * MVPU_PE_NUM)
@@ -39,6 +39,9 @@ enum MVPU_SEC_LEVEL {
 	SEC_LVL_END,
 };
 #endif
+
+#define MVPU_REQ_FEATURE_HSE_ENABLE     (1ULL << 0)
+#define MVPU_REQ_FEATURE_OSGB_LIMITED   (1ULL << 1)
 
 struct BundleHeader {
 	union {
@@ -139,4 +142,4 @@ struct mvpu_request {
 	uint32_t glsu_idx_mode_table_size;
 } __packed;
 
-#endif /* __MVPU_CMD_DATA_H__ */
+#endif /* __MVPU2X_CMD_DATA_H__ */

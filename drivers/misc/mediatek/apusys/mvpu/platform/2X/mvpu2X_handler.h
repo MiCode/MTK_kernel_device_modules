@@ -2,8 +2,8 @@
 /*
  * Copyright (c) 2020 MediaTek Inc.
  */
-#ifndef __MVPU_HANDLER_H__
-#define __MVPU_HANDLER_H__
+#ifndef __MVPU2X_HANDLER_H__
+#define __MVPU2X_HANDLER_H__
 
 #include <linux/mutex.h>
 #include <linux/kernel.h>
@@ -11,7 +11,7 @@
 
 extern struct mutex mvpu_pool_lock;
 
-void mvpu20_handler_lite_init(void);
-int mvpu20_handler_lite(int type, void *hnd, struct apusys_device *dev);
+void mvpu2X_handler_lite_init(void);
+int mvpu2X_handler_lite(int type, void *hnd, struct apusys_device *dev);
 
-#endif /* __MVPU_HANDLER_H__ */
+#endif /* __MVPU2X_HANDLER_H__ */
