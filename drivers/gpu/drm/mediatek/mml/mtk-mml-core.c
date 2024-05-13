@@ -768,11 +768,11 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 	}
 
 	mml_clock_lock(cfg->mml);
+	mml_dpc_exc_keep_task(task, path);
 	call_hw_op(path->mmlsys, mminfra_pw_enable);
 	call_hw_op(path->mmlsys, pw_enable);
 	if (path->mmlsys2)
 		call_hw_op(path->mmlsys2, pw_enable);
-	mml_dpc_exc_keep_task(task, path);
 	mml_clock_unlock(cfg->mml);
 
 	for (i = 0; i < path->node_cnt; i++) {
@@ -902,8 +902,6 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
-	/* make sure whole clock and dpc sw operation in except range */
-	mml_dpc_exc_keep_task(task, path);
 
 	if (cfg->info.mode == MML_MODE_DIRECT_LINK && cfg->dpc) {
 		/* no restore operation for dl w/ mml_dpc on */
@@ -924,7 +922,6 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 		call_hw_op(path->mmlsys2, pw_disable);
 	call_hw_op(path->mmlsys, pw_disable);
 
-	mml_dpc_exc_release_task(task, path);
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "cmdq", pipe);
@@ -1609,13 +1606,14 @@ static void core_taskdone(struct work_struct *work)
 
 	mml_core_mminfra_enable(cfg->mml, 0, path->mmlsys);
 
-	/* remove task in qos list and setup next */
+	/* make sure whole dvfs, clock, power and dpc sw operation in except range */
 	mml_dpc_exc_keep_task(task, path);
+
+	/* remove task in qos list and setup next */
 	if (task->pkts[0])
 		mml_core_dvfs_end(task, 0);
 	if (cfg->dual && task->pkts[1])
 		mml_core_dvfs_end(task, 1);
-	mml_dpc_exc_release_task(task, path);
 
 	if (mml_hw_perf && task->pkts[0]) {
 		perf = cmdq_pkt_get_perf_ret(task->pkts[0]);
@@ -1636,6 +1634,7 @@ static void core_taskdone(struct work_struct *work)
 		core_disable(task, 0);
 	if (task->pipe[1].en.clk)
 		core_disable(task, 1);
+	mml_dpc_exc_release_task(task, path);
 	mml_core_mminfra_disable(cfg->mml, 0, path->mmlsys);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
@@ -1920,7 +1919,9 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 	mml_trace_ex_begin("%s", __func__);
 
 	mml_core_mminfra_enable(cfg->mml, pipe, path->mmlsys);
+	mml_dpc_exc_keep_task(task, path);
 	core_enable(task, pipe);
+	mml_dpc_exc_release_task(task, path);
 
 	/* before flush, wait buffer fence being signaled */
 	task->wait_fence_time[pipe] = sched_clock();
