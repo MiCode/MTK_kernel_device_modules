@@ -15213,7 +15213,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			<11 1  2>,/* IPI_OUT_MMQOS */
 			<15 1  4>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
 			<16 1 18>,/* IPI_OUT_VENC_0 */
-			<33 1  2>,/* IPI_OUT_MMDVFS_VCP */
+			< 9 1  2>,/* IPI_OUT_MMDVFS_VCP */
 			<22 2  6>,/* IPI_OUT_LOGGER_CTRL_0 */
 			< 2 2  2>,/* IPI_OUT_C_SLEEP_0 */
 			< 3 2  3>,/* IPI_OUT_TEST_0 */
@@ -15333,7 +15333,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		mbox-count = <2>;
 		/* id, mbox, send_size*/
 		send-table =
-			< 9 0  2>,/* IPI_OUT_MMDVFS_MMUP */
+			<33 0  2>,/* IPI_OUT_MMDVFS_MMUP */
 			<13 0  2>,/* IPI_OUT_MMDEBUG */
 			<30 1  6>,/* IPI_OUT_LOGGER_CTRL_1 */
 			<20 1  2>,/* IPI_OUT_C_SLEEP_1 */
