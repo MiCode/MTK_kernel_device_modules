@@ -538,6 +538,33 @@ err_refcount:
 	return ret;
 }
 
+static void mtk_dpi_set_golden_setting(struct mtk_dpi *dpi, u32 hsize, u32 vsize)
+{
+	u32 dp_buf_sodi_high = 5255;
+	u32 dp_buf_sodi_low = 3899;
+
+	unsigned int rw_times = 0;
+
+	DDPMSG("%s hsizexvsize %dx%d sodi_high %d sodi_low %d\n",
+		__func__,
+		hsize, vsize,
+		dp_buf_sodi_high,
+		dp_buf_sodi_low);
+
+	mtk_dpi_mask(dpi, DPI_BUF_SODI_HIGH, dp_buf_sodi_high, 0xffffffff);
+
+	mtk_dpi_mask(dpi, DPI_BUF_SODI_LOW, dp_buf_sodi_low, 0xffffffff);
+
+	if (hsize & 0x3)
+		rw_times = ((hsize >> 2) + 1) * vsize;
+	else
+		rw_times = (hsize >> 2) * vsize;
+
+	mtk_dpi_mask(dpi, DPI_BUF_RW_TIMES, rw_times, 0xffffffff);
+	mtk_dpi_mask(dpi, DPI_BUF_CON0, BUF_BUF_EN, BUF_BUF_EN);
+	mtk_dpi_mask(dpi, DPI_BUF_CON0, BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK, BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK);
+}
+
 static int mtk_dpi_set_display_mode(struct mtk_dpi *dpi,
 				    struct drm_display_mode *mode)
 {
@@ -658,6 +685,8 @@ static int mtk_dpi_set_display_mode(struct mtk_dpi *dpi,
 	}
 	mtk_dpi_sw_reset(dpi, true);
 	mtk_dpi_config_pol(dpi, &dpi_pol);
+
+	mtk_dpi_set_golden_setting(dpi, vm.hactive, vm.vactive);
 
 	mtk_dpi_config_hsync(dpi, &hsync);
 	mtk_dpi_config_vsync_lodd(dpi, &vsync_lodd);
