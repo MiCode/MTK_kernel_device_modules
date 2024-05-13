@@ -200,5 +200,6 @@ int mtk_dsi_porch_setting(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 void mtk_dsi_porch_config(struct mtk_dsi *dsi, struct cmdq_pkt *handle);
 int mtk_drm_dummy_cmd_on_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *file_priv);
+unsigned long long mtk_get_cur_backlight(struct drm_crtc *crtc);
 
 #endif
