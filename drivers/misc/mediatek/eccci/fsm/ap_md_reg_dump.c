@@ -177,6 +177,8 @@ void legacy_md_dump_register(struct ccci_modem *md)
 			__func__, ap_platform);
 	switch(ap_platform) {
 	case 6761:
+		md_dump_register_for_mt6761(md);
+		break;
 	case 6765:
 		md_dump_register_for_mt6765(md);
 		break;

@@ -47,6 +47,7 @@ extern void md_cd_lock_modem_clock_src(int locked);
 size_t mdreg_write32(size_t reg_id, size_t value);
 
 // md gen93 that dump md register in kernel
+extern void md_dump_register_for_mt6761(struct ccci_modem *md);
 extern void md_dump_register_for_mt6765(struct ccci_modem *md);
 extern void md_dump_register_for_mt6768(struct ccci_modem *md);
 
