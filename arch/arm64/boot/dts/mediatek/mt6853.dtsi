@@ -3479,12 +3479,14 @@
 		iommu0: iommu@14016000 {
 			compatible = "mediatek,mt6853-m4u";
 			reg = <0 0x14016000 0 0x1000>;
-			interrupts = <GIC_SPI 271 IRQ_TYPE_LEVEL_HIGH 0>;
+			iommu_id = <0>;
+			iommu_type = "mm";
 			mediatek,larbs = <&smi_larb0 &smi_larb1 &smi_larb2
 					  &smi_larb4 &smi_larb7
 					  &smi_larb9 &smi_larb11 &smi_larb13
 					  &smi_larb14 &smi_larb16 &smi_larb17
 					  &smi_larb18 &smi_larb19 &smi_larb20>;
+			interrupts = <GIC_SPI 271 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6853_POWER_DOMAIN_DISP>;
 			clocks = <&mmsys_config_clk CLK_MM_SMI_IOMMU>;
 			clock-names = "bclk";
@@ -4033,9 +4035,13 @@
 		iommu1: iommu@19010000 {
 			compatible = "mediatek,mt6873-apu-iommu";
 			reg = <0 0x19010000 0 0x1000>;
+			iommu_id = <0>;
+			iommu_type = "apu";
 			mediatek,apu_power = <&apusys_power>;
 			interrupts = <GIC_SPI 395 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6853_POWER_DOMAIN_APU>;
+			clocks = <&apu_conn_clk CLK_APUC_IOMMU_0>;
+			clock-names = "bclk";
 			#iommu-cells = <1>;
 		};
 
