@@ -3862,7 +3862,7 @@
 
 	mfgcfg: mfgcfg@13fbf000 {
 		compatible = "mediatek,mfgcfg",
-			"mediatek,mt6781-mfgsys", "syscon",
+			"mediatek,mt6781-mfgcfg", "syscon",
 			"mediatek,g3d_config";
 		reg = <0 0x13fbf000 0 0x1000>;
 		pwr-regmap = <&sleep>;
