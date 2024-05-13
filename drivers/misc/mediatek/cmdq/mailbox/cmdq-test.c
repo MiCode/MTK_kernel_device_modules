@@ -929,13 +929,14 @@ static void cmdq_test_err_irq(struct cmdq_test *test)
 	cmdq_pkt_destroy(pkt);
 }
 
-static void cmdq_test_devapc_vio(struct cmdq_test *test)
+static void cmdq_test_devapc_vio(struct cmdq_test *test, const u32 address)
 {
 	struct cmdq_pkt *pkt;
 	int ret;
 
 	pkt = cmdq_pkt_create(test->clt);
-	cmdq_pkt_read(pkt, NULL, 0x0, CMDQ_THR_SPR_IDX3);
+	cmdq_pkt_read(pkt, NULL, address, CMDQ_THR_SPR_IDX3);
+	cmdq_dump_pkt(pkt, 0, true);
 	ret = cmdq_pkt_flush(pkt);
 	cmdq_pkt_destroy(pkt);
 
@@ -1559,7 +1560,8 @@ static void cmdq_test_sec_reg(struct cmdq_test *test)
 }
 
 static void
-cmdq_test_trigger(struct cmdq_test *test, enum CMDQ_SECURE_STATE_ENUM sec, const s32 id)
+cmdq_test_trigger(struct cmdq_test *test, enum CMDQ_SECURE_STATE_ENUM sec,
+	const s32 id, const u32 address)
 {
 	if (sec < CMDQ_MTEE_STATE || sec > CMDQ_TEE_STATE) {
 		cmdq_err("invalid input");
@@ -1650,7 +1652,7 @@ cmdq_test_trigger(struct cmdq_test *test, enum CMDQ_SECURE_STATE_ENUM sec, const
 		cmdq_test_err_irq(test);
 		break;
 	case 13:
-		cmdq_test_devapc_vio(test);
+		cmdq_test_devapc_vio(test, address);
 		break;
 	case 14:
 		cmdq_test_mbox_polling(test, sec, true, true);
@@ -1727,7 +1729,7 @@ cmdq_test_write(struct file *filp, const char *buf, size_t count, loff_t *offp)
 	struct cmdq_test *test = (struct cmdq_test *)filp->f_inode->i_private;
 	char		str[MAX_SCAN] = {0};
 	s32		sec, id = 0;
-	u32		len;
+	u32		len, address;
 
 	len = (count < MAX_SCAN - 1) ? count : (MAX_SCAN - 1);
 	if (copy_from_user(str, buf, len)) {
@@ -1736,14 +1738,14 @@ cmdq_test_write(struct file *filp, const char *buf, size_t count, loff_t *offp)
 	}
 	str[len] = '\0';
 
-	if (sscanf(str, "%d %d", &sec, &id) != 2) {
+	if (sscanf(str, "%d %d %x", &sec, &id, &address) < 2) {
 		cmdq_err("sscanf failed str:%s sec:%d id:%d", str, sec, id);
 		return count;
 	}
-	cmdq_msg("test:%p len:%d sec:%d id:%d str:%s", test, len, sec, id, str);
+	cmdq_msg("test:%p len:%d sec:%d id:%d addr:%d str:%s", test, len, sec, id, address, str);
 
 	mutex_lock(&test->lock);
-	cmdq_test_trigger(test, sec, id);
+	cmdq_test_trigger(test, sec, id, address);
 	mutex_unlock(&test->lock);
 	return count;
 }
