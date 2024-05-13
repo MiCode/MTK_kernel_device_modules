@@ -1681,6 +1681,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6768.ko":"mt6768"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6768-pg.ko":"mt6768"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/pd-chk-mt6768.ko":"mt6768"})
+        mgk_64_platform_device_modules.update({"drivers/power/supply/mm8013.ko":"mt6768"})
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6991.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6991.ko")
 
