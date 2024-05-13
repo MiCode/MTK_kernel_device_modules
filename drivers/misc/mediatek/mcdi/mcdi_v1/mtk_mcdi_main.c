@@ -32,7 +32,7 @@
 #include "mtk_mcdi_reg.h"
 #include "mtk_mcdi_state.h"
 #include "mtk_mcdi_api.h"
-#if IS_ENABLED(CONFIG_MTK_SPM)
+#if IS_ENABLED(CONFIG_MTK_SPM) || IS_ENABLED(CONFIG_MTK_SPM_V0)
 #include "mtk_idle_internal.h"
 #include "mtk_idle_profile.h"
 #endif
@@ -532,7 +532,7 @@ void mcdi_heart_beat_log_dump(void)
 	struct mcdi_feature_status feature_stat;
 
 	spin_lock_irqsave(&mcdi_heart_beat_spin_lock, flags);
-#if IS_ENABLED(CONFIG_MTK_SPM)
+#if IS_ENABLED(CONFIG_MTK_SPM) || IS_ENABLED(CONFIG_MTK_SPM_V0)
 	mcdi_heart_beat_log_curr = idle_get_current_time_ms();
 #endif
 	if (mcdi_heart_beat_log_prev == 0)
@@ -680,7 +680,7 @@ int mcdi_enter(int cpu)
 		mcdi_cnt_cpu[cpu]++;
 
 		break;
-#if IS_ENABLED(CONFIG_MTK_SPM)
+#if IS_ENABLED(CONFIG_MTK_SPM) || IS_ENABLED(CONFIG_MTK_SPM_V0)
 	case MCDI_STATE_SODI:
 		soidle_enter(cpu);
 

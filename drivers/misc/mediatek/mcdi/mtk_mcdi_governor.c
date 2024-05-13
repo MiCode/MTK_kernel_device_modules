@@ -471,7 +471,7 @@ int any_core_deepidle_sodi_check(int cpu)
 		return state;
 
 	any_core_cpu_cond_inc(LAST_CORE_CNT);
-#if IS_ENABLED(CONFIG_MTK_SPM)
+#if IS_ENABLED(CONFIG_MTK_SPM) || IS_ENABLED(CONFIG_MTK_SPM_V0)
 	/* Check other deepidle/SODI criteria */
 	mtk_idle_state = mtk_idle_select(cpu);
 #endif
