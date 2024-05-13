@@ -247,6 +247,7 @@ struct lvts_data {
 	bool dump_wo_pause;
 	bool support_shutdown;
 	int  gpu_power_ctrl_id;
+	bool mcu_sensor_id_remap;
 };
 
 struct soc_temp_tz {
@@ -269,6 +270,15 @@ struct lvts_match_data {
 struct lvts_id {
 	unsigned int hw_version;
 	char	chip[32];
+};
+
+/* For E1/E2/... chip discrimination */
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
 };
 
 /*==================================================
