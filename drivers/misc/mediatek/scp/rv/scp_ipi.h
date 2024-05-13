@@ -27,4 +27,9 @@ extern struct scp_ipi_wrapper scp_ipi_legacy_id[1];
 
 extern enum scp_ipi_status scp_legacy_ipi_init(void);
 
+struct mtk_pin_dump {
+	int last_seq;
+	int count;
+};
+
 #endif

@@ -203,6 +203,9 @@ extern struct mtk_ipi_device scp_ipidev;
 extern struct mtk_mbox_pin_send *scp_mbox_pin_send;
 extern struct mtk_mbox_pin_recv *scp_mbox_pin_recv;
 
+/* An API to dump scp ipi timeout info */
+extern void scp_plat_ipi_timeout_cb(int ipi_id);
+
 /* An  API to check scp wdt irq pending or not*/
 extern int scp_wdt_pending_check(unsigned int num);
 

@@ -195,6 +195,15 @@ struct scp_ipi_irq scp_ipi_irqs[] = {
 };
 #define IRQ_NUMBER  (sizeof(scp_ipi_irqs)/sizeof(struct scp_ipi_irq))
 
+struct mtk_pin_dump scp_pin_dump[SCP_IPI_COUNT] = {
+	[0 ... SCP_IPI_COUNT-1] = {
+		.last_seq = -1,
+		.count = -1,
+	}
+};
+
+static unsigned int scp_ipi_dump_timout = 100;
+
 static int scp_resume_cb(struct device *dev)
 {
 	int i = 0;
@@ -3494,3 +3503,41 @@ module_exit(scp_exit);
 MODULE_DESCRIPTION("MEDIATEK Module SCP driver");
 MODULE_AUTHOR("Mediatek");
 MODULE_LICENSE("GPL");
+
+/*
+ * ipi dump scp function
+ */
+static void scp_dump_function(void)
+{
+	scp_dump_last_regs();
+	scp_show_last_regs();
+	sap_dump_last_regs();
+	sap_show_last_regs();
+
+	/* dump scp related resource information */
+	scp_reousrce_dump();
+	print_clk_registers();
+}
+
+void scp_plat_ipi_timeout_cb(int ipi_id)
+{
+	unsigned long flags = 0;
+	struct mtk_ipi_chan_table *chan;
+
+	chan = &scp_ipidev.table[ipi_id];
+
+	spin_lock_irqsave(&scp_ipidev.lock_monitor, flags);
+	pr_info("[SCP] ipi timeoutcb id: %d, seq: %d\n", ipi_id, chan->ipi_seqno);
+	if (scp_pin_dump[ipi_id].last_seq == chan->ipi_seqno) {
+		scp_pin_dump[ipi_id].count++;
+	} else {
+		scp_pin_dump[ipi_id].last_seq = chan->ipi_seqno;
+		scp_pin_dump[ipi_id].count = 1;
+	}
+
+	if (scp_pin_dump[ipi_id].count > SCP_IPI_DUMP_TIMEOUT) {
+		scp_dump_function();
+		scp_pin_dump[ipi_id].count = 0;
+	}
+	spin_unlock_irqrestore(&scp_ipidev.lock_monitor, flags);
+}
