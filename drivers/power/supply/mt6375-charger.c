@@ -823,6 +823,7 @@ out:
 
 static int mt6375_get_chg_status(struct mt6375_chg_data *ddata)
 {
+	const char *attach_name;
 	int ret = 0, attach;
 	u32 stat;
 	bool chg_en = false;
@@ -833,15 +834,23 @@ static int mt6375_get_chg_status(struct mt6375_chg_data *ddata)
 	if (!attach)
 		return POWER_SUPPLY_STATUS_NOT_CHARGING;
 
+	attach_name = get_attach_type_name(attach);
+
 	ret = mt6375_chg_is_enabled(ddata, &chg_en);
 	if (ret < 0)
 		return ret;
+
 	ret = mt6375_chg_field_get(ddata, F_IC_STAT, &stat);
 	if (ret < 0)
 		return ret;
+
+	dev_info_ratelimited(ddata->dev, "%s, attach: %d(%s), ic_stat: %d, chg_en: %d\n",
+			     __func__, attach, attach_name, stat, chg_en);
+
 	switch (stat) {
 	case CHG_STAT_OTG:
 		return POWER_SUPPLY_STATUS_DISCHARGING;
+	case CHG_STAT_SLEEP:
 	case CHG_STAT_VBUS_RDY:
 	case CHG_STAT_TRICKLE:
 	case CHG_STAT_PRE:
@@ -854,7 +863,6 @@ static int mt6375_get_chg_status(struct mt6375_chg_data *ddata)
 			return POWER_SUPPLY_STATUS_NOT_CHARGING;
 	case CHG_STAT_DONE:
 		return POWER_SUPPLY_STATUS_FULL;
-	case CHG_STAT_SLEEP:
 	case CHG_STAT_FAULT:
 		return POWER_SUPPLY_STATUS_NOT_CHARGING;
 	default:
@@ -1242,100 +1250,105 @@ static int mt6375_chg_get_property(struct power_supply *psy,
 	switch (psp) {
 	case POWER_SUPPLY_PROP_MANUFACTURER:
 		val->strval = MT6375_MANUFACTURER;
-		break;
+		return 0;
 	case POWER_SUPPLY_PROP_ONLINE:
 		mutex_lock(&ddata->attach_lock);
 		val->intval = atomic_read(&ddata->attach[ddata->active_idx]);
 		mutex_unlock(&ddata->attach_lock);
-		break;
+		return 0;
 	case POWER_SUPPLY_PROP_STATUS:
 		ret = mt6375_get_chg_status(ddata);
 		if (ret < 0)
 			return ret;
 		val->intval = ret;
-		break;
+		return 0;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
 		mutex_lock(&ddata->pe_lock);
 		ret = mt6375_chg_field_get(ddata, F_CC, &val->intval);
 		mutex_unlock(&ddata->pe_lock);
-		break;
+		return ret;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
 		mutex_lock(&ddata->cv_lock);
 		ret = mt6375_chg_field_get(ddata, F_CV, &val->intval);
 		mutex_unlock(&ddata->cv_lock);
-		break;
+		return ret;
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
 		mutex_lock(&ddata->pe_lock);
 		ret = mt6375_chg_field_get(ddata, F_IAICR, &val->intval);
 		mutex_unlock(&ddata->pe_lock);
-		break;
+		return ret;
 	case POWER_SUPPLY_PROP_INPUT_VOLTAGE_LIMIT:
 		mutex_lock(&ddata->pe_lock);
 		ret = mt6375_chg_field_get(ddata, F_VMIVR, &val->intval);
 		mutex_unlock(&ddata->pe_lock);
-		break;
+		return ret;
 	case POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT:
-		ret = mt6375_chg_field_get(ddata, F_IEOC, &val->intval);
-		break;
+		return mt6375_chg_field_get(ddata, F_IEOC, &val->intval);
 	case POWER_SUPPLY_PROP_USB_TYPE:
 		mutex_lock(&ddata->attach_lock);
 		val->intval = ddata->psy_usb_type[ddata->active_idx];
 		mutex_unlock(&ddata->attach_lock);
-		break;
+		return 0;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
-		if (ddata->psy_usb_type[ddata->active_idx] == POWER_SUPPLY_USB_TYPE_SDP)
-			val->intval = 500000;
-		else if (ddata->psy_usb_type[ddata->active_idx] == POWER_SUPPLY_USB_TYPE_DCP)
-			val->intval = 3225000;
-		else if (ddata->psy_usb_type[ddata->active_idx] == POWER_SUPPLY_USB_TYPE_CDP)
-			val->intval = 1500000;
-		else
-			val->intval = 500000;
-		break;
+		switch (ddata->psy_usb_type[ddata->active_idx]) {
+		case POWER_SUPPLY_USB_TYPE_DCP:
+			val->intval = 3225000;	/* 3225 mA */
+			return 0;
+		case POWER_SUPPLY_USB_TYPE_CDP:
+			val->intval = 1500000;	/* 1500 mA */
+			return 0;
+		case POWER_SUPPLY_USB_TYPE_SDP:
+		default:
+			val->intval = 500000;	/* 500 mA */
+			return 0;
+		}
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		if (ddata->psy_usb_type[ddata->active_idx] == POWER_SUPPLY_USB_TYPE_DCP)
 			val->intval = 22000000;
 		else
 			val->intval = 5000000;
-		break;
+
+		return 0;
 	case POWER_SUPPLY_PROP_TYPE:
 		mutex_lock(&ddata->attach_lock);
 		val->intval = ddata->psy_desc.type;
 		mutex_unlock(&ddata->attach_lock);
-		break;
+		return 0;
 	case POWER_SUPPLY_PROP_CALIBRATE:
 		mutex_lock(&ddata->cv_lock);
 		ret = mt6375_chg_field_get(ddata, F_VBAT_MON_EN, &_val);
 		if (_val) {
-			ret = -EBUSY;
 			dev_notice(ddata->dev, "vbat_mon is enabled\n");
 			mutex_unlock(&ddata->cv_lock);
-			break;
+			return -EBUSY;
 		}
+
 		ret = mt6375_chg_field_set(ddata, F_VBAT_MON_EN, 1);
 		if (ret < 0) {
 			dev_notice(ddata->dev, "failed to enable vbat monitor\n");
 			mutex_unlock(&ddata->cv_lock);
-			break;
+			return ret;
 		}
+
 		usleep_range(ADC_CONV_TIME_US * 2, ADC_CONV_TIME_US * 3);
+
 		ret = regmap_bulk_read(ddata->rmap, MT6375_REG_VBAT_MON_RPT, &data, 2);
 		if (ret < 0)
 			dev_notice(ddata->dev, "failed to get vbat monitor report\n");
 		else
 			val->intval = ADC_FROM_VBAT_RAW(be16_to_cpu(data));
+
 		if (mt6375_chg_field_set(ddata, F_VBAT_MON_EN, 0) < 0)
 			dev_notice(ddata->dev, "failed to disable vbat monitor\n");
+
 		mutex_unlock(&ddata->cv_lock);
-		break;
+		return ret;
 	case POWER_SUPPLY_PROP_ENERGY_EMPTY:
 		val->intval = ddata->vbat0_flag;
-		break;
+		return 0;
 	default:
-		ret = -EINVAL;
-		break;
+		return -EINVAL;
 	}
-	return ret;
 }
 
 static int mt6375_chg_set_property(struct power_supply *psy,
@@ -1350,39 +1363,34 @@ static int mt6375_chg_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_ONLINE:
 		mt6375_chg_attach_pre_process(ddata, ATTACH_TRIG_TYPEC,
 					      val->intval);
-		break;
+		return 0;
 	case POWER_SUPPLY_PROP_STATUS:
-		ret = mt6375_chg_enable_charging(ddata, val->intval);
-		break;
+		return mt6375_chg_enable_charging(ddata, val->intval);
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
 		mutex_lock(&ddata->pe_lock);
 		ret = mt6375_chg_field_set(ddata, F_CC, val->intval);
 		mutex_unlock(&ddata->pe_lock);
-		break;
+		return ret;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
-		ret = mt6375_chg_set_cv(ddata, val->intval);
-		break;
+		return mt6375_chg_set_cv(ddata, val->intval);
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
 		mutex_lock(&ddata->pe_lock);
 		ret = mt6375_chg_field_set(ddata, F_IAICR, val->intval);
 		mutex_unlock(&ddata->pe_lock);
-		break;
+		return ret;
 	case POWER_SUPPLY_PROP_INPUT_VOLTAGE_LIMIT:
 		mutex_lock(&ddata->pe_lock);
 		ret = mt6375_chg_field_set(ddata, F_VMIVR, val->intval);
 		mutex_unlock(&ddata->pe_lock);
-		break;
+		return ret;
 	case POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT:
-		ret = mt6375_chg_field_set(ddata, F_IEOC, val->intval);
-		break;
+		return mt6375_chg_field_set(ddata, F_IEOC, val->intval);
 	case POWER_SUPPLY_PROP_ENERGY_EMPTY:
 		ddata->vbat0_flag = val->intval;
-		break;
+		return 0;
 	default:
-		ret = -EINVAL;
-		break;
+		return -EINVAL;
 	}
-	return ret;
 }
 
 static char *mt6375_psy_supplied_to[] = {

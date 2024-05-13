@@ -2662,9 +2662,7 @@ static int hw_info_set(struct mtk_gauge *gauge_dev, struct mtk_gauge_sysfs_field
 
 		gauge_status->iavg_intr_flag = 1;
 		iavg_th = get_iavg_gap(gauge_dev->gm);
-
 		ret = fg_set_iavg_intr(gauge_dev, &iavg_th);
-		wakeup_fg_algo(gauge_dev->gm, FG_INTR_IAVG);
 	} else if (is_iavg_valid == 0) {
 		gauge_status->iavg_intr_flag = 0;
 		disable_gauge_irq(gauge_dev, FG_IAVG_H_IRQ);
@@ -2672,6 +2670,7 @@ static int hw_info_set(struct mtk_gauge *gauge_dev, struct mtk_gauge_sysfs_field
 		bm_debug(gauge_dev->gm, "[read_fg_hw_info] BAT%d double check first fg_set_iavg_intr:%d, %d\n",
 			 bat_idx + 1, is_iavg_valid, gauge_status->iavg_intr_flag);
 	}
+
 	bm_debug(gauge_dev->gm, "[read_fg_hw_info] BAT%d third check first fg_set_iavg_intr:%d, %d\n",
 		 bat_idx + 1, is_iavg_valid, gauge_status->iavg_intr_flag);
 
