@@ -451,11 +451,10 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 	if (dst_cpu >= 0)
 		busy_time = min(eenv->pds_cap[pd_idx], busy_time + eenv->task_busy_time);
 
-	if (eenv->wl_support && is_dsu_pwr_triggered(eenv->wl)) {
-		if (!pd_freq)
-			pd_freq = pd_get_util_cpufreq(eenv, pd_cpus, pd_max_util,
-					eenv->pds_cpu_cap[pd_idx], scale_cpu);
+	pd_freq = pd_get_util_cpufreq(eenv, pd_cpus, pd_max_util,
+			eenv->pds_cpu_cap[pd_idx], scale_cpu);
 
+	if (eenv->wl_support && is_dsu_pwr_triggered(eenv->wl)) {
 		dsu_volt = update_dsu_status(eenv, false,
 					pd_freq, floor_freq, pd_idx, dst_cpu);
 
@@ -468,9 +467,6 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 	/* dvfs power overhead */
 	if (!cpumask_equal(pd_cpus, get_gear_cpumask(eenv->gear_idx))) {
 		/* dvfs Vin/Vout */
-		if (!pd_freq)
-			pd_freq = pd_get_util_cpufreq(eenv, pd_cpus, pd_max_util,
-					eenv->pds_cpu_cap[pd_idx], scale_cpu);
 		pd_volt = pd_get_volt_wFloor_Freq(pd_idx, pd_freq, false, eenv->wl,
 				floor_freq);
 
@@ -483,20 +479,20 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 
 		if (gear_volt-pd_volt < volt_diff) {
 			extern_volt = max(gear_volt, dsu_volt);
-			energy =  mtk_em_cpu_energy(pd->em_pd, pd_max_util, busy_time,
-					eenv->pds_cpu_cap[pd_idx], eenv, extern_volt);
+			energy =  mtk_em_cpu_energy(pd->em_pd, pd_freq, busy_time,
+					scale_cpu, eenv, extern_volt);
 			shared_buck_mode = 1;
 		} else {
 			extern_volt = 0;
-			energy =  mtk_em_cpu_energy(pd->em_pd, pd_max_util, busy_time,
-					eenv->pds_cpu_cap[pd_idx], eenv, extern_volt);
+			energy =  mtk_em_cpu_energy(pd->em_pd, pd_freq, busy_time,
+					scale_cpu, eenv, extern_volt);
 			energy = energy * max(gear_volt, dsu_volt) / pd_volt;
 			shared_buck_mode = 2;
 		}
 	} else {
 		extern_volt = dsu_volt;
-		energy =  mtk_em_cpu_energy(pd->em_pd, pd_max_util, busy_time,
-				eenv->pds_cpu_cap[pd_idx], eenv, extern_volt);
+		energy =  mtk_em_cpu_energy(pd->em_pd, pd_freq, busy_time,
+				scale_cpu, eenv, extern_volt);
 		shared_buck_mode = 0;
 	}
 

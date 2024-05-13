@@ -254,16 +254,15 @@ unsigned long pd_get_util_cpufreq(struct energy_env *eenv,
 		struct cpumask *pd_cpus, unsigned long max_util,
 		unsigned long allowed_cpu_cap, unsigned long scale_cpu)
 {
-	unsigned long freq, arch_max_freq;
+	unsigned long freq;
 
-	arch_max_freq = pd_get_opp_freq(cpumask_first(pd_cpus), 0);
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
 	mtk_map_util_freq(NULL, max_util, pd_cpus,
 		&freq);
 #else
 	max_util = map_util_perf(max_util);
 	max_util = min(max_util, allowed_cpu_cap);
-	freq = map_util_freq(max_util, arch_max_freq, scale_cpu);
+	freq = map_util_freq(max_util, pd_get_opp_freq(cpumask_first(pd_cpus), 0), scale_cpu);
 #endif
 
 	return freq;
@@ -397,11 +396,11 @@ unsigned long estimate_energy(struct em_perf_domain *pd,
  * a capacity state satisfying the max utilization of the domain.
  */
 unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
-		unsigned long max_util, unsigned long sum_util,
-		unsigned long allowed_cpu_cap, struct energy_env *eenv,
+		unsigned long pd_freq, unsigned long sum_util,
+		unsigned long scale_cpu, struct energy_env *eenv,
 		unsigned long extern_volt)
 {
-	unsigned long freq, scale_cpu;
+	unsigned long freq;
 	int cpu, opp = -1;
 	struct cpumask *pd_cpus = to_cpumask(pd->cpus);
 
@@ -414,11 +413,7 @@ unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
 	 * frequency, like schedutil.
 	 */
 	cpu = cpumask_first(pd_cpus);
-	scale_cpu = arch_scale_cpu_capacity(cpu);
-
-	freq = pd_get_util_cpufreq(eenv, pd_cpus, max_util,
-			allowed_cpu_cap, scale_cpu);
-	freq = max(freq, per_cpu(min_freq, cpu));
+	freq = max(pd_freq, per_cpu(min_freq, cpu));
 
 	opp = pd_get_efficient_state_opp(pd, cpu, freq, eenv->wl);
 
@@ -926,15 +921,13 @@ unsigned long calc_pwr_eff(int wl, int cpu, unsigned long cpu_util, int *val_s)
 
 __always_inline
 unsigned long calc_pwr_eff_v2(struct energy_env *eenv, int cpu, unsigned long max_util,
-		struct cpumask *cpus, unsigned long extern_volt)
+		unsigned long pd_freq, struct cpumask *cpus, unsigned long extern_volt)
 {
 	unsigned long pwr_eff;
-	unsigned long pd_freq, floor_freq;
+	unsigned long floor_freq;
 	unsigned long output[6] = {0};
 	int temp = get_cpu_temp(cpu)/1000;
 
-	pd_freq = pd_get_util_cpufreq(eenv, cpus, max_util,
-			eenv->pds_cpu_cap[cpu], arch_scale_cpu_capacity(cpu));
 	floor_freq = per_cpu(min_freq, cpu);
 
 	pwr_eff = get_cpu_pwr_eff(cpu, pd_freq, false, eenv->wl,
@@ -962,11 +955,10 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 	floor_freq = per_cpu(min_freq, pd_idx);
 	scale_cpu = arch_scale_cpu_capacity(pd_idx);
 
-	if (eenv->wl_support && is_dsu_pwr_triggered) {
-		if (!pd_freq)
-			pd_freq = pd_get_util_cpufreq(eenv, cpus, max_util,
-					eenv->pds_cpu_cap[pd_idx], scale_cpu);
+	pd_freq = pd_get_util_cpufreq(eenv, cpus, max_util,
+			eenv->pds_cpu_cap[pd_idx], scale_cpu);
 
+	if (eenv->wl_support && is_dsu_pwr_triggered) {
 		dsu_volt = update_dsu_status(eenv, false,
 					pd_freq, floor_freq, pd_idx, dst_cpu);
 
@@ -978,10 +970,6 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 
 	if (!cpumask_equal(cpus, get_gear_cpumask(eenv->gear_idx))) {
 		/* dvfs Vin/Vout */
-		if (!pd_freq)
-			pd_freq = pd_get_util_cpufreq(eenv, cpus, max_util,
-					eenv->pds_cpu_cap[pd_idx], scale_cpu);
-
 		pd_volt = pd_get_volt_wFloor_Freq(pd_idx, pd_freq, false, eenv->wl, floor_freq);
 
 		dst_idx = (dst_cpu >= 0) ? 1 : 0;
@@ -993,19 +981,19 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 
 		if (gear_volt-pd_volt < volt_diff) {
 			extern_volt = max(gear_volt, dsu_volt);
-			pwr_eff = calc_pwr_eff_v2(eenv, dst_cpu, max_util,
+			pwr_eff = calc_pwr_eff_v2(eenv, dst_cpu, max_util, pd_freq,
 					cpus, extern_volt);
 			shared_buck_mode = 1;
 		} else {
 			extern_volt = 0;
-			pwr_eff = calc_pwr_eff_v2(eenv, dst_cpu, max_util,
+			pwr_eff = calc_pwr_eff_v2(eenv, dst_cpu, max_util, pd_freq,
 					cpus, extern_volt);
 			pwr_eff = pwr_eff * gear_volt / pd_volt;
 			shared_buck_mode = 2;
 		}
 	} else {
 		extern_volt = dsu_volt;
-		pwr_eff = calc_pwr_eff_v2(eenv, dst_cpu, max_util,
+		pwr_eff = calc_pwr_eff_v2(eenv, dst_cpu, max_util, pd_freq,
 				cpus, extern_volt);
 		shared_buck_mode = 0;
 	}
