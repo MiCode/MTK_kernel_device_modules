@@ -63,6 +63,7 @@ struct uarthub_drv_cbs uarthub_drv_export_cbs = {
 	.get_host_bt_awake_sta = uarthub_core_get_host_bt_awake_sta,
 	.get_cmm_bt_awake_sta = uarthub_core_get_cmm_bt_awake_sta,
 	.get_bt_awake_sta = uarthub_core_get_bt_awake_sta,
+	.bt_on_count_inc = uarthub_core_bt_on_count_inc,
 	.inband_set_esc_sta = uarthub_core_inband_set_esc_sta,
 	.inband_trigger_ctrl = uarthub_core_inband_trigger_ctrl,
 	.inband_is_tx_complete = uarthub_core_inband_is_tx_complete,

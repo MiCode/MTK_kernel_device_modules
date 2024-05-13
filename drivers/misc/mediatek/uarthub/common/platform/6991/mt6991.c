@@ -190,6 +190,7 @@ struct uarthub_core_ops_struct mt6991_plat_core_data = {
 	.uarthub_plat_get_host_bt_awake_sta = uarthub_get_host_bt_awake_sta_mt6991,
 	.uarthub_plat_get_cmm_bt_awake_sta = uarthub_get_cmm_bt_awake_sta_mt6991,
 	.uarthub_plat_get_bt_awake_sta = uarthub_get_bt_awake_sta_mt6991,
+	.uarthub_plat_bt_on_count_inc = uarthub_bt_on_count_inc_mt6991,
 };
 
 int uarthub_is_apb_bus_clk_enable_mt6991(void)
@@ -907,8 +908,6 @@ int uarthub_uarthub_open_mt6991(void)
 	uarthub_dump_uartip_debug_info_mt6991(__func__, NULL);
 #endif
 #endif
-
-	uarthub_bt_on_count_inc_mt6991();
 
 	return 0;
 }
@@ -2253,5 +2252,5 @@ int uarthub_bt_on_count_inc_mt6991(void)
 		count++;
 
 	UARTHUB_REG_WRITE_MASK(DEV0_RESERVE_ADDR, count, 0xFF);
-	return 0;
+	return count;
 }

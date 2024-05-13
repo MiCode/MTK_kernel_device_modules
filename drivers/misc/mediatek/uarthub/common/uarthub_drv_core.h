@@ -238,6 +238,7 @@ typedef int(*UARTHUB_PLAT_CLEAR_HOST_AWAKE_STA) (int dev_index);
 typedef int(*UARTHUB_PLAT_GET_HOST_BT_AWAKE_STA) (int dev_index);
 typedef int(*UARTHUB_PLAT_GET_CMM_BT_AWAKE_STA) (void);
 typedef int(*UARTHUB_PLAT_GET_BT_AWAKE_STA) (void);
+typedef int(*UARTHUB_PLAT_BT_ON_COUNT_INC) (void);
 
 typedef int(*UARTHUB_PLAT_INBAND_ENABLE_CTRL) (int enable);
 typedef int(*UARTHUB_PLAT_INBAND_IRQ_MASK_CTRL) (int mask);
@@ -298,6 +299,7 @@ struct uarthub_core_ops_struct {
 	UARTHUB_PLAT_GET_HOST_BT_AWAKE_STA uarthub_plat_get_host_bt_awake_sta;
 	UARTHUB_PLAT_GET_CMM_BT_AWAKE_STA uarthub_plat_get_cmm_bt_awake_sta;
 	UARTHUB_PLAT_GET_BT_AWAKE_STA uarthub_plat_get_bt_awake_sta;
+	UARTHUB_PLAT_BT_ON_COUNT_INC uarthub_plat_bt_on_count_inc;
 
 	UARTHUB_PLAT_INBAND_ENABLE_CTRL uarthub_plat_inband_enable_ctrl;
 	UARTHUB_PLAT_INBAND_IRQ_MASK_CTRL uarthub_plat_inband_irq_mask_ctrl;
@@ -411,6 +413,7 @@ int uarthub_core_clear_host_awake_sta(int dev_index);
 int uarthub_core_get_host_bt_awake_sta(int dev_index);
 int uarthub_core_get_cmm_bt_awake_sta(void);
 int uarthub_core_get_bt_awake_sta(void);
+int uarthub_core_bt_on_count_inc(void);
 
 int uarthub_core_irq_register_cb(UARTHUB_CORE_IRQ_CB irq_callback);
 int uarthub_core_inband_irq_register_cb(UARTHUB_CORE_INBAND_IRQ_CB inband_irq_callback);

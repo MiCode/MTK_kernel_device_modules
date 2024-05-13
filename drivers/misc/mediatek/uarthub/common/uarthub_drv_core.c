@@ -1883,6 +1883,31 @@ int uarthub_core_get_bt_awake_sta(void)
 	return state;
 }
 
+int uarthub_core_bt_on_count_inc(void)
+{
+	int count = 0;
+
+	if (g_uarthub_disable == 1)
+		return 0;
+
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_bt_on_count_inc == NULL)
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+
+	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
+		pr_notice("[%s] apb bus clk disable\n", __func__);
+		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
+	}
+
+	count = g_plat_ic_core_ops->uarthub_plat_bt_on_count_inc();
+
+#if UARTHUB_DEBUG_LOG
+	pr_info("[%s] bt_on_count=[%d]\n", __func__, count);
+#endif
+
+	return count;
+}
+
 static void debug_info_worker_handler(struct work_struct *work)
 {
 	struct debug_info_ctrl *queue = container_of(work, struct debug_info_ctrl, debug_info_work);
