@@ -28,6 +28,7 @@
 #include <linux/kmemleak.h>
 #include <linux/time.h>
 #include <linux/math64.h>
+#include "mtk-mmdvfs-debug.h"
 
 #ifndef DRM_CMDQ_DISABLE
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
@@ -117,6 +118,7 @@ static unsigned int sb_backlight;
 
 struct timespec64 atomic_flush_tval;
 struct timespec64 rdma_sof_tval;
+static void mmqos_hrt_dump(void);
 
 bool hdr_en;
 static const char * const crtc_gce_client_str[] = {
@@ -7282,6 +7284,34 @@ static int _mtk_crtc_cmdq_retrig(void *data)
 		atomic_set(&mtk_crtc->cmdq_trig, 0);
 
 		mtk_crtc_clear_wait_event(crtc);
+
+		if (kthread_should_stop())
+			break;
+	}
+
+	return 0;
+}
+
+static int _mtk_crtc_cmdq_smi_info_dump(void *data)
+{
+	struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *) data;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct sched_param param = {.sched_priority = 94 };
+	int ret;
+
+	sched_setscheduler(current, SCHED_RR, &param);
+
+	atomic_set(&mtk_crtc->smi_info_dump_event, 0);
+	while (1) {
+		ret = wait_event_interruptible(mtk_crtc->smi_info_dump_wq,
+			atomic_read(&mtk_crtc->smi_info_dump_event));
+		if (ret < 0)
+			DDPPR_ERR("wait %s fail, ret=%d\n", __func__, ret);
+
+		mtk_smi_dbg_hang_detect("disp_underrun");
+		mmqos_hrt_dump();
+		mmdvfs_debug_status_dump(NULL);
+		atomic_set(&mtk_crtc->smi_info_dump_event, 0);
 
 		if (kthread_should_stop())
 			break;
@@ -19121,6 +19151,14 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	init_waitqueue_head(&mtk_crtc->mode_switch_wq);
 	init_waitqueue_head(&mtk_crtc->mode_switch_end_wq);
 	wake_up_process(mtk_crtc->mode_switch_task);
+
+	/*thread of dump SMI log (SMI larb, sub common, common: OSTDL, bw throttle)*/
+	init_waitqueue_head(&mtk_crtc->smi_info_dump_wq);
+	atomic_set(&(mtk_crtc->smi_info_dump_event), 0);
+	mtk_crtc->smi_info_dump_thread =
+		kthread_create(_mtk_crtc_cmdq_smi_info_dump,
+				mtk_crtc, "smi_info_dump_thread");
+	wake_up_process(mtk_crtc->smi_info_dump_thread);
 
 	if (output_comp && mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_DUAL_TE))

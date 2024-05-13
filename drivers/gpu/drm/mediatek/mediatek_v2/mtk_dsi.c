@@ -3548,6 +3548,10 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 					mtk_drm_crtc_mini_analysis(dsi->encoder.crtc);
 
 				mtk_vidle_dpc_analysis();
+
+				//printing status of mmqos and mmdvfs and smi info
+				atomic_set(&mtk_crtc->smi_info_dump_event, 1);
+				wake_up_interruptible(&mtk_crtc->smi_info_dump_wq);
 			}
 
 			/* could dump SMI register while dsi not attached to CRTC */
