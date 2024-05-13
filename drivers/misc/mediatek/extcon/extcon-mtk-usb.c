@@ -15,6 +15,7 @@
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/regulator/consumer.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/slab.h>
 #include <linux/usb/role.h>
 #include <linux/workqueue.h>
@@ -724,6 +725,57 @@ static void mtk_usb_extcon_shutdown(struct platform_device *pdev)
 	mtk_usb_extcon_set_vbus(extcon, false);
 }
 
+static int __maybe_unused mtk_usb_extcon_suspend(struct device *dev)
+{
+	struct mtk_extcon_info *extcon = dev_get_drvdata(dev);
+
+	if (device_may_wakeup(dev)) {
+		if (extcon->id_gpiod)
+			enable_irq_wake(extcon->id_irq);
+		if (extcon->vbus_gpiod)
+			enable_irq_wake(extcon->vbus_irq);
+		return 0;
+	}
+
+	if (extcon->id_gpiod)
+		disable_irq(extcon->id_irq);
+	if (extcon->vbus_gpiod)
+		disable_irq(extcon->vbus_irq);
+
+	pinctrl_pm_select_sleep_state(dev);
+
+	return 0;
+}
+
+static int __maybe_unused mtk_usb_extcon_resume(struct device *dev)
+{
+	struct mtk_extcon_info *extcon = dev_get_drvdata(dev);
+
+	if (device_may_wakeup(dev)) {
+		if (extcon->id_gpiod)
+			disable_irq_wake(extcon->id_irq);
+		if (extcon->vbus_gpiod)
+			disable_irq_wake(extcon->vbus_irq);
+		return 0;
+	}
+
+	pinctrl_pm_select_default_state(dev);
+
+	if (extcon->id_gpiod)
+		enable_irq(extcon->id_irq);
+	if (extcon->vbus_gpiod)
+		enable_irq(extcon->vbus_irq);
+
+	if (extcon->id_gpiod || extcon->vbus_gpiod)
+		queue_delayed_work(system_power_efficient_wq,
+				   &extcon->wq_detcable, 0);
+
+	return 0;
+}
+
+static SIMPLE_DEV_PM_OPS(mtk_usb_extcon_pm_ops,
+			mtk_usb_extcon_suspend, mtk_usb_extcon_resume);
+
 static const struct of_device_id mtk_usb_extcon_of_match[] = {
 	{ .compatible = "mediatek,extcon-usb", },
 	{ },
@@ -736,6 +788,7 @@ static struct platform_driver mtk_usb_extcon_driver = {
 	.shutdown	= mtk_usb_extcon_shutdown,
 	.driver		= {
 		.name	= "mtk-extcon-usb",
+		.pm	= &mtk_usb_extcon_pm_ops,
 		.of_match_table = mtk_usb_extcon_of_match,
 	},
 };
