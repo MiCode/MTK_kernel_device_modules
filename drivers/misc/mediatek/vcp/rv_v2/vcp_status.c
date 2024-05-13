@@ -34,7 +34,7 @@ EXPORT_SYMBOL_GPL(mmup_enable_count_ex);
 bool is_mmup_enable_ex(void)
 {
 	if (!vcp_fp || !vcp_fp->is_mmup_enable)
-		return 1;
+		return false;
 
 	return vcp_fp->is_mmup_enable();
 }
