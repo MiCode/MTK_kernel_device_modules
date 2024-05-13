@@ -31,6 +31,8 @@
 #define RG_XTP_PCIE_MODE		BIT(3)
 #define RG_XTP_PHY_CLKREQ_N_IN		GENMASK(13, 12)
 #define PEXTP_DIG_GLB_30		0x30
+#define RG_XTP_FRC_CKBH_GLB_CKDET	GENMASK(11, 8)
+#define FRC_CKBH_GLB_CKDET_EN		0xf
 #define RG_XTP_CKBG_STAL_STB_T_SEL	GENMASK(25, 16)
 #define CKBG_STAL_STB_T_SEL_TO_0	0x0
 #define PEXTP_DIG_GLB_38		0x38
@@ -183,6 +185,8 @@
 #define CKM_BIAS_WAIT_PRD_TO_4US	0x4
 #define XTP_CKM_DA_REG_3C		0x3C
 #define RG_CKM_PADCK_REQ		GENMASK(13, 12)
+#define RG_CKM_PROBE_SEL		GENMASK(19, 17)
+#define XTP_CKM_DA_REG_44		0x44
 #define XTP_CKM_DA_REG_D4		0xD4
 #define RG_CKM_CKTX_IMPSEL_PMOS		GENMASK(19, 16)
 #define RG_CKM_CKTX_IMPSEL_NMOS		GENMASK(23, 20)
@@ -430,9 +434,15 @@ static int mtk_pcie_monitor_phy(struct phy *phy)
 	tbl[1] = readl_relaxed(sif + PEXTP_ANA_GLB_54_REG);
 	mtk_phy_update_field(sif + PEXTP_ANA_GLB_14_REG, GLB_TPLL0_DEBUG_SEL, 0x7);
 	tbl[2] = readl_relaxed(sif + PEXTP_ANA_GLB_50_REG);
-
 	dev_info(pcie_phy->dev, "ANA_GLB_50 = %#x, ANA_GLB_54 = %#x, PHY Kband = %#x\n",
 		 tbl[0], tbl[1], tbl[2]);
+
+	if (pcie_phy->ckm_base) {
+		mtk_phy_update_field(pcie_phy->ckm_base + XTP_CKM_DA_REG_3C,
+				     RG_CKM_PROBE_SEL, 0x3);
+		tbl[0] = readl_relaxed(pcie_phy->ckm_base + XTP_CKM_DA_REG_44);
+		dev_info(pcie_phy->dev, "CKM probe: 3b'011 = %#x\n", tbl[0]);
+	}
 
 	return 0;
 }
@@ -917,6 +927,11 @@ static int mtk_pcie_phy_init_6991(struct phy *phy)
 		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_GLB_30,
 				     RG_XTP_CKBG_STAL_STB_T_SEL,
 				     CKBG_STAL_STB_T_SEL_TO_0);
+
+		/* Force ckdet signal for RC mode */
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_GLB_30,
+				     RG_XTP_FRC_CKBH_GLB_CKDET,
+				     FRC_CKBH_GLB_CKDET_EN);
 
 		/* not bypass pipe reset, pipe reset will reset TPLL */
 		mtk_phy_clear_bits(pcie_phy->sif_base + PEXTP_DIG_GLB_20, RG_XTP_BYPASS_PIPE_RST_RC);
