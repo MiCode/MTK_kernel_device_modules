@@ -612,11 +612,11 @@ static void mtk_ovl_blender_unprepare(struct mtk_ddp_comp *comp)
 
 static int mtk_ovl_blender_first_layer_mt6991(struct mtk_ddp_comp *comp)
 {
+	struct mtk_ddp_comp *firt_blender = comp->mtk_crtc->first_blender;
+
 	DDPDBG("%s %s\n", __func__, mtk_dump_comp_str(comp));
 
-	if (comp->id == DDP_COMPONENT_OVL0_BLENDER1 ||
-		comp->id == DDP_COMPONENT_OVL1_BLENDER5 ||
-		comp->id == DDP_COMPONENT_OVL1_BLENDER8)
+	if (firt_blender && (firt_blender->id == comp->id))
 		return 1;
 	else
 		return 0;
@@ -630,7 +630,13 @@ static void mtk_ovl_blender_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 
 	if (comp->funcs->first_layer)
 		crtc_first_layer = comp->funcs->first_layer(comp);
-	DDPINFO("%s,%d, prev %d, next %d, %d\n", __func__, __LINE__, prev, next, comp->id);
+
+	DDPINFO("%s,%d, prev %s -> cur %s -> next %s crtc_first_layer %d\n",
+		__func__, __LINE__,
+		mtk_dump_comp_str_id(prev),
+		mtk_dump_comp_str_id(comp->id),
+		mtk_dump_comp_str_id(next),
+		crtc_first_layer);
 
 	if (handle == NULL)
 		writel_relaxed(0, comp->regs + DISP_REG_OVL_BLD_DATAPATH_CON);
