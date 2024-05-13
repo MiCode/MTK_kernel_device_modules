@@ -1298,6 +1298,9 @@ static void mtk_i3c_init_hw(struct mtk_i3c_master *i3c)
 	writel(I3C_DMA_RST_CLR, i3c->pdmabase + OFFSET_RST);
 	mtk_i3c_writel(i3c, I3C_RST_CLR, OFFSET_SOFTRESET);
 
+	mtk_i3c_writel(i3c, mtk_i3c_readl(i3c, OFFSET_DEBUGCTRL) & (~I3C_DBGCRL_BUS_ERR),
+		OFFSET_DEBUGCTRL);
+
 	mtk_i3c_writel(i3c, I3C_IOCFG_PUSH_PULL, OFFSET_IO_CONFIG);
 	mtk_i3c_writel(i3c, I3C_DELAY_LEN, OFFSET_DELAY_LEN);
 }
