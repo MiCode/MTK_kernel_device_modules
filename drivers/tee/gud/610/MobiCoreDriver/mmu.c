@@ -361,8 +361,8 @@ static int tee_mmu_free(struct tee_mmu *mmu)
 				unpin_user_page(pte_page(pte));
 #endif
 			}
-
-			mmu->pages_locked -= nr_pages;
+			if (mmu->pages_locked > nr_pages)
+				mmu->pages_locked -= nr_pages;
 		}
 
 		mc_dev_devel("free PTE #%lu", i);
@@ -661,13 +661,9 @@ static struct tee_mmu *mmu_create_instance(struct mm_struct *mm,
 
 			/* check if we could lock all pages. */
 			if (gup_ret != nr_pages) {
+				mmu->pages_locked += gup_ret;
 				mc_dev_err((int)gup_ret,
 					   "failed to get user pages");
-#if KERNEL_VERSION(4, 15, 0) > LINUX_VERSION_CODE
-				release_pages(pages, gup_ret, 0);
-#else
-				release_pages(pages, gup_ret);
-#endif
 				ret = -EINVAL;
 				goto end;
 			}
@@ -794,7 +790,18 @@ static struct tee_mmu *mmu_create_instance(struct mm_struct *mm,
 
 end:
 	if (ret) {
-		kfree(all_pages);
+		if (all_pages) {
+#if KERNEL_VERSION(4, 15, 0) > LINUX_VERSION_CODE
+			release_pages(all_pages, mmu->pages_locked, 0);
+#else
+			release_pages(all_pages, mmu->pages_locked);
+#endif
+			kfree(all_pages);
+		}
+
+		mmu->pages_locked = 0;
+		/* set tee_mmu_free not to read pte */
+		mmu->user = 0;
 		tee_mmu_free(mmu);
 		return ERR_PTR(ret);
 	}
