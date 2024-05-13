@@ -1244,7 +1244,7 @@ unsigned long long mtk_dpintf_get_frame_hrt_bw_base(
 	int vtotal;
 	int vact;
 	int vrefresh;
-	u32 bpp = 3;
+	u32 bpp = 4;
 
 	/* for the case dpintf not initialize yet, return 1 avoid treat as error */
 	if (!(mtk_crtc && mtk_crtc->base.state))
@@ -1254,9 +1254,10 @@ unsigned long long mtk_dpintf_get_frame_hrt_bw_base(
 	vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
 	vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
 	vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
-	bw_base = (unsigned long long)div_u64(vact * hact * vrefresh * 4, 1000);
+	bw_base = (unsigned long long)div_u64(vact * hact * vrefresh * bpp, 1000);
 	bw_base = div_u64(bw_base * vtotal, vact);
 	bw_base = div_u64(bw_base, 1000);
+	bw_base = (bw_base * 15) / 10;
 
 	if (dp_intf_bw != bw_base) {
 		dp_intf_bw = bw_base;
@@ -1273,7 +1274,7 @@ static unsigned long long mtk_dpintf_get_frame_hrt_bw_base_by_mode(
 	unsigned int vtotal;
 	unsigned int vact;
 	unsigned int vrefresh;
-	u32 bpp = 3;
+	u32 bpp = 4;
 
 	/* for the case dpintf not initialize yet, return 1 avoid treat as error */
 	if (!(mtk_crtc && mtk_crtc->avail_modes))
@@ -1283,12 +1284,13 @@ static unsigned long long mtk_dpintf_get_frame_hrt_bw_base_by_mode(
 	vtotal = mtk_crtc->avail_modes->vtotal;
 	vact = mtk_crtc->avail_modes->vdisplay;
 	vrefresh = drm_mode_vrefresh(mtk_crtc->avail_modes);
-	base_bw = (unsigned long long)div_u64(vact * hact * vrefresh * 4, 1000);
+	base_bw = (unsigned long long)div_u64(vact * hact * vrefresh * bpp, 1000);
 	base_bw = div_u64(base_bw * vtotal, vact);
 	base_bw = div_u64(base_bw, 1000);
+	base_bw = (base_bw * 15) / 10;
+
 	if (dp_intf_bw != base_bw) {
 		dp_intf_bw = base_bw;
-		DDPDBG("%s Frame Bw:%llu, bpp:%d\n", __func__, base_bw, bpp);
 		DPTXMSG("%s Frame Bw:%llu, bpp:%d\n", __func__, base_bw, bpp);
 	}
 
