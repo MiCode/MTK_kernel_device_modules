@@ -187,6 +187,12 @@
 #define LTPO_VDO_SQ0_ALL_NUM0 REG_FLD_MSB_LSB(15, 8)
 #define LTPO_VDO_SQ0_ACT_NUM0 REG_FLD_MSB_LSB(23, 16)
 
+#define DSI_EXT_SOURCE	(0x58)
+#define EXT_TE_SEL (0xf << 4)
+#define DSI0_TE (0 << 4)
+#define DSI1_TE (1 << 4)
+#define DSI2_TE (2 << 4)
+
 #define DSI_HSA_WC(data)	(0x50 + data->reg_30_ofs)
 #define DSI_HBP_WC(data)	(0x54 + data->reg_30_ofs)
 #define DSI_HFP_WC(data)	(0x58 + data->reg_30_ofs)
@@ -2362,6 +2368,18 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 	writel(val, dsi->regs + DSI_PSCTRL(dsi->driver_data));
 
 	writel(size, dsi->regs + DSI_SIZE_CON(dsi->driver_data));
+
+	if (priv && (priv->data->mmsys_id == MMSYS_MT6991) &&
+		mtk_dsi_is_cmd_mode(comp)) {
+		if (comp->id == DDP_COMPONENT_DSI0)
+			value = DSI0_TE;
+		else if (comp->id == DDP_COMPONENT_DSI1)
+			value = DSI1_TE;
+		else if (comp->id == DDP_COMPONENT_DSI2)
+			value = DSI2_TE;
+
+		mtk_dsi_mask(dsi, DSI_EXT_SOURCE, EXT_TE_SEL, value);
+	}
 }
 
 static u8 _lanes_to_val(u32 lanes)
