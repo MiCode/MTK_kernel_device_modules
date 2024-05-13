@@ -1093,8 +1093,6 @@ static void max96851_pre_enable(struct drm_bridge *bridge)
 	max_bridge->serdes_enable_index++;
 
 	spin_unlock(&max_bridge->enable_index_lock);
-	/* reset serdes */
-	reset_ser(max_bridge);
 
 	/* device identifier  0xC4: Without HDCP 0xC5: With HDCP */
 	dev_id = max96851_read_byte(max_bridge->max96851_i2c, DEVICE_IDENTIFIER_ADDR);
