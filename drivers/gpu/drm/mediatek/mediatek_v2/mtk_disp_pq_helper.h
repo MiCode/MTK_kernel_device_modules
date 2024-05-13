@@ -60,6 +60,7 @@ int disp_pq_proxy_virtual_sw_write(struct drm_crtc *crtc, void *data);
 int disp_pq_proxy_virtual_sw_read(struct drm_crtc *crtc, void *data);
 int disp_pq_proxy_virtual_hw_read(struct drm_crtc *crtc, void *data);
 int disp_pq_proxy_virtual_hw_write(struct drm_crtc *crtc, void *data);
+int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data);
 void disp_pq_path_sel_set(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
 
 #endif /* _MTK_DISP_PQ_HELPER_H_ */
