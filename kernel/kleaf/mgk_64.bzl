@@ -3006,6 +3006,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/modules/v6991/mtk_mbraink_v6991.ko")
         mgk_64_device_modules.remove("drivers/spmi/spmi-mtk-mpu.ko")
         mgk_64_device_modules.remove("drivers/spmi/spmi-mtk-pmif.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/gate_ic/rt4831a_drv.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v1/mtk_dpc_v1.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v1/mtk_vdisp_v1.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v2/mtk_dpc_v2.ko")
