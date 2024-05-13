@@ -37,7 +37,7 @@ do { \
 
 static kuid_t uid = KUIDT_INIT(0);
 static kgid_t gid = KGIDT_INIT(1000);
-static DEFINE_SEMAPHORE(sem_mutex);
+static DEFINE_SEMAPHORE(sem_mutex, 1);
 
 static int kernelmode;
 static unsigned int interval; /* seconds, 0 : no auto polling */
@@ -46,6 +46,7 @@ static int trip_temp[10] = { 125000, 110000, 100000, 90000, 80000,
 				70000, 65000, 60000, 55000, 50000 };
 
 static int g_THERMAL_TRIP[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static struct thermal_trip trips[10];
 static char g_bind0[20] = "mtktscharger2-rst";
 static char g_bind1[20] = "";
 static char g_bind2[20] = "";
@@ -254,20 +255,6 @@ struct thermal_zone_device *thermal, enum thermal_device_mode mode)
 	return 0;
 }
 
-static int mtktscharger2_get_trip_type(
-struct thermal_zone_device *thermal, int trip, enum thermal_trip_type *type)
-{
-	*type = g_THERMAL_TRIP[trip];
-	return 0;
-}
-
-static int mtktscharger2_get_trip_temp(
-struct thermal_zone_device *thermal, int trip,
-	int *temp)
-{
-	*temp = trip_temp[trip];
-	return 0;
-}
 
 static int mtktscharger2_get_crit_temp(
 struct thermal_zone_device *thermal, int *temperature)
@@ -282,8 +269,6 @@ static struct thermal_zone_device_ops mtktscharger2_dev_ops = {
 	.unbind = mtktscharger2_unbind,
 	.get_temp = mtktscharger2_get_temp,
 	.change_mode = mtktscharger2_change_mode,
-	.get_trip_type = mtktscharger2_get_trip_type,
-	.get_trip_temp = mtktscharger2_get_trip_temp,
 	.get_crit_temp = mtktscharger2_get_crit_temp,
 };
 
@@ -292,7 +277,9 @@ static int mtktscharger2_register_thermal(void)
 	mtktscharger2_dprintk("%s\n", __func__);
 
 	/* trips : trip 0~2 */
-	thz_dev = mtk_thermal_zone_device_register("mtktscharger2", num_trip,
+	thz_dev = mtk_thermal_zone_device_register("mtktscharger2",
+				trips,
+				num_trip,
 				NULL, /* name: mtktscharger2 ??? */
 				&mtktscharger2_dev_ops, 0, 0, 0,
 				interval * 1000);
@@ -562,11 +549,16 @@ static const struct proc_ops mtktscharger2_fops = {
 static int mtktscharger2_pdrv_probe(struct platform_device *pdev)
 {
 	int err = 0;
+	int i = 0;
 	struct proc_dir_entry *entry = NULL;
 	struct proc_dir_entry *mtktscharger2_dir = NULL;
 
 	mtktscharger2_dprintk_always("%s\n", __func__);
 	charger_type = get_charger_type();
+	for (i = 0; i < num_trip; i++) {
+		trips[i].temperature = trip_temp[i];
+		trips[i].type = g_THERMAL_TRIP[i];
+	}
 /*check if support dual charger*/
 	if (charger_type == 0)
 		return 0;
