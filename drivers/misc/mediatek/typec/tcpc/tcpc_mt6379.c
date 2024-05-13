@@ -147,6 +147,7 @@
 #define MT6379_MSK_AUTOIDLE_TOUT	GENMASK(2, 0)
 #define MT6379_MSK_AUTOIDLE_EN	BIT(3)
 #define MT6379_MSK_SHIPPING_OFF	BIT(5)
+#define MT6379_MSK_INTN_SELECT	BIT(7)
 
 #define MT6379_VAL_AUTOIDLE_6P4_MS	0
 /* MT6379_REG_SYSCTRL2: 0x90 */
@@ -1516,6 +1517,12 @@ static int mt6379_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 	/* Disable bleed dischg for IQ about 2mA consumption */
 	mt6379_clr_bits(ddata, TCPC_V10_REG_POWER_CTRL,
 			TCPC_V10_REG_BLEED_DISC_EN);
+
+	/* Set Low Power LDO to 2V */
+	mt6379_write8(ddata, MT6379_REG_LPWRCTRL3, 0xD8);
+
+	/* Sync IRQ to 3M path */
+	mt6379_set_bits(ddata, MT6379_REG_SYSCTRL1, MT6379_MSK_INTN_SELECT);
 
 	/* AUTOIDLE enable, TIMEOUT = 6.4ms */
 	mt6379_update_bits(ddata, MT6379_REG_SYSCTRL1,
