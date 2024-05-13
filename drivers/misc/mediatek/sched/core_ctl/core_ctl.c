@@ -2047,23 +2047,6 @@ static int update_ppm_eff(void)
 			struct cluster_data *prev_cluster = &cluster_state[cid - 1];
 			unsigned int turn_point = 0;
 
-			turn_point = find_turn_point(prev_cluster, cluster, false);
-			/*
-			 * If the turn-point can't be figure out.
-			 * Use max capacity of BLCPU as turn-point
-			 */
-			if (!turn_point)
-				turn_point = prev_cluster->ppm_data.ppm_tbl[0].capacity;
-
-			if (turn_point) {
-				unsigned int val = 0;
-
-				val = div64_u64(turn_point * 100,
-					prev_cluster->ppm_data.ppm_tbl[0].capacity);
-				val = val > 80?80:val;
-				set_up_thres(prev_cluster, val);
-			}
-
 			/* thermal case */
 			turn_point = find_turn_point(prev_cluster, cluster, true);
 			if (!turn_point)
@@ -2132,23 +2115,6 @@ static int ppm_data_init(struct cluster_data *cluster)
 	if (cid == AB_CLUSTER_ID) {
 		struct cluster_data *prev_cluster = &cluster_state[cid - 1];
 		unsigned int turn_point = 0;
-
-		turn_point = find_turn_point(prev_cluster, cluster, false);
-		/*
-		 * If the turn-point can't be figure out.
-		 * Use max capacity of BLCPU as turn-point
-		 */
-		if (!turn_point)
-			turn_point = prev_cluster->ppm_data.ppm_tbl[0].capacity;
-
-		if (turn_point) {
-			unsigned int val = 0;
-
-			val = div64_u64(turn_point * 100,
-				prev_cluster->ppm_data.ppm_tbl[0].capacity);
-			val = val > 80?80:val;
-			set_up_thres(prev_cluster, val);
-		}
 
 		/* thermal case */
 		turn_point = find_turn_point(prev_cluster, cluster, true);
