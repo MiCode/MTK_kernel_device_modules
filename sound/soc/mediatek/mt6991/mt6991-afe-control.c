@@ -335,13 +335,15 @@ void mt6991_aud_update_power_scenario(void)
 	    audio_data.output_device != AUDIO_OUTPUT_INVALID) {
 		audio_data.user_case = AUDIO_USER_TALKING;
 		// TODO hardcode for VOIP
-		ul_ch = 4;
+		ul_ch = 3;
 		dl_ch = 2;
 		ul_hifi = mt6681_get_adda_hifi_mode(codec_component, false)
 			  ? AUDIO_ADDA_UL_HIFI : AUDIO_ADDA_UL_LP;
 		if (audio_data.output_device == AUDIO_OUTPUT_HEADPHONE)
 			dl_hifi = mt6681_get_adda_hifi_mode(codec_component, true)
 				  ? AUDIO_ADDA_DL_HIFI : AUDIO_ADDA_DL_LP;
+		else
+			audio_data.output_device = AUDIO_OUTPUT_RECEIVER;
 		audio_data.sample_rate = AUDIO_RATE_48K;
 
 	} else if (audio_data.input_device != AUDIO_INPUT_INVALID) {
@@ -397,6 +399,7 @@ bool check_swpm_data_valid(struct audio_swpm_data data)
 		{0, 1, 3, 0, 1, 4, 2, 0, 0},
 		{0, 1, 3, 0, 1, 2, 2, 0, 0},
 		{0, 1, 3, 0, 2, 2, 2, 0, 0},
+		{0, 3, 1, 52, 32, 2, 50, 0, 0}
 	};
 	int i = 0;
 
@@ -424,17 +427,30 @@ void *mt6991_aud_get_power_scenario(void)
 {
 	struct audio_swpm_data default_state;
 
-	// default value
-	default_state.adda_mode = 0;
-	default_state.afe_on = AUDIO_AFE_ON;
-	default_state.user_case = AUDIO_USER_PLAYBACK;
-	default_state.output_device = AUDIO_OUTPUT_SPEAKER;
-	default_state.input_device = AUDIO_INPUT_INVALID;
-	default_state.adda_mode = AUDIO_ADDA_INVALID;
-	default_state.sample_rate = AUDIO_RATE_48K;
-	default_state.channel_num = AUDIO_CHANNEL_DL_4;
-	default_state.D0_ratio = 100;
-	default_state.freq_clock = 26;
+	// default value for playback
+	if (local_audio_data.user_case != AUDIO_USER_TALKING) {
+		default_state.adda_mode = 0;
+		default_state.afe_on = AUDIO_AFE_ON;
+		default_state.user_case = AUDIO_USER_PLAYBACK;
+		default_state.output_device = AUDIO_OUTPUT_SPEAKER;
+		default_state.input_device = AUDIO_INPUT_INVALID;
+		default_state.adda_mode = AUDIO_ADDA_INVALID;
+		default_state.sample_rate = AUDIO_RATE_48K;
+		default_state.channel_num = AUDIO_CHANNEL_DL_4;
+		default_state.D0_ratio = 100;
+		default_state.freq_clock = 26;
+	} else {
+		default_state.adda_mode = 0;
+		default_state.afe_on = AUDIO_AFE_ON;
+		default_state.user_case = AUDIO_USER_TALKING;
+		default_state.output_device = AUDIO_OUTPUT_RECEIVER;
+		default_state.input_device = AUDIO_INPUT_BUILTIN_MIC_THREE + (AUDIO_INPUT_ADC_3 << 4);
+		default_state.adda_mode = AUDIO_ADDA_UL_HIFI << 4;
+		default_state.sample_rate = AUDIO_RATE_48K;
+		default_state.channel_num = AUDIO_CHANNEL_DL_2 + (AUDIO_CHANNEL_UL_3 << 4);
+		default_state.D0_ratio = 100;
+		default_state.freq_clock = 26;
+	}
 
 	if (local_audio_data.afe_on != AUDIO_AFE_OFF && check_swpm_data_valid(local_audio_data) == false)
 		local_audio_data = default_state;
