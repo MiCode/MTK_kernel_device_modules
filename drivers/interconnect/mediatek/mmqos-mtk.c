@@ -2570,13 +2570,39 @@ static int mmqos_dbg_ftrace_thread(void *data)
 				"w", "venc", MASK_16(readl(MEM_SMI_VENC_COMM1_CHN1_BW)), 1, 1);
 
 			trace_mmqos__comm_port_ostdl(
-				"r", "venc", 0, RSH_16(readl(MEM_SMI_VENC_COMM0_OSTDL)));
+				"w", "venc", 0, 0, MASK_8(readl(MEM_SMI_VENC_COMM0_OSTDL)));
 			trace_mmqos__comm_port_ostdl(
-				"w", "venc", 0, MASK_16(readl(MEM_SMI_VENC_COMM0_OSTDL)));
+				"r", "venc", 0, 0, MASK_8(RSH_8(readl(MEM_SMI_VENC_COMM0_OSTDL))));
 			trace_mmqos__comm_port_ostdl(
-				"r", "venc", 1, RSH_16(readl(MEM_SMI_VENC_COMM1_OSTDL)));
+				"w", "venc", 0, 1, MASK_8(RSH_16(readl(MEM_SMI_VENC_COMM0_OSTDL))));
 			trace_mmqos__comm_port_ostdl(
-				"w", "venc", 1, MASK_16(readl(MEM_SMI_VENC_COMM1_OSTDL)));
+				"r", "venc", 0, 1, MASK_8(RSH_8(RSH_16(readl(MEM_SMI_VENC_COMM0_OSTDL)))));
+			trace_mmqos__comm_port_ostdl(
+				"w", "venc", 1, 0, MASK_8(readl(MEM_SMI_VENC_COMM1_OSTDL)));
+			trace_mmqos__comm_port_ostdl(
+				"r", "venc", 1, 0, MASK_8(RSH_8(readl(MEM_SMI_VENC_COMM1_OSTDL))));
+			trace_mmqos__comm_port_ostdl(
+				"w", "venc", 1, 1, MASK_8(RSH_16(readl(MEM_SMI_VENC_COMM1_OSTDL))));
+			trace_mmqos__comm_port_ostdl(
+				"r", "venc", 1, 1, MASK_8(RSH_8(RSH_16(readl(MEM_SMI_VENC_COMM1_OSTDL)))));
+			if (mmqos_state & VDEC_COMM_PORT_OSTDL) {
+				trace_mmqos__comm_port_ostdl(
+					"w", "vdec", 0, 0, MASK_8(readl(MEM_SMI_VDEC_COMM0_OSTDL)));
+				trace_mmqos__comm_port_ostdl(
+					"r", "vdec", 0, 0, MASK_8(RSH_8(readl(MEM_SMI_VDEC_COMM0_OSTDL))));
+				trace_mmqos__comm_port_ostdl(
+					"w", "vdec", 0, 1, MASK_8(RSH_16(readl(MEM_SMI_VDEC_COMM0_OSTDL))));
+				trace_mmqos__comm_port_ostdl(
+					"r", "vdec", 0, 1, MASK_8(RSH_8(RSH_16(readl(MEM_SMI_VDEC_COMM0_OSTDL)))));
+				trace_mmqos__comm_port_ostdl(
+					"w", "vdec", 1, 0, MASK_8(readl(MEM_SMI_VDEC_COMM1_OSTDL)));
+				trace_mmqos__comm_port_ostdl(
+					"r", "vdec", 1, 0, MASK_8(RSH_8(readl(MEM_SMI_VDEC_COMM1_OSTDL))));
+				trace_mmqos__comm_port_ostdl(
+					"w", "vdec", 1, 1, MASK_8(RSH_16(readl(MEM_SMI_VDEC_COMM1_OSTDL))));
+				trace_mmqos__comm_port_ostdl(
+					"r", "vdec", 1, 1, MASK_8(RSH_8(RSH_16(readl(MEM_SMI_VDEC_COMM1_OSTDL)))));
+			}
 
 			mmqos_update_vdec_ostdl_trace("VDEC_larb4", 4,
 				readl(MEM_SMI_VDEC_LARB4_OSTDL0_3), 0);

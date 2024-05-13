@@ -72,6 +72,8 @@ static inline void *mmqos_get_vcp_base(phys_addr_t *pa)
 #define MEM_SMI_VDEC_LARB6_OSTDL20_23	(MEM_BASE + 0xcc)
 #define MEM_SMI_VDEC_LARB6_OSTDL24_27	(MEM_BASE + 0xd0)
 #define MEM_SMI_VDEC_LARB6_OSTDL28_31	(MEM_BASE + 0xd4)
+#define MEM_SMI_VDEC_COMM0_OSTDL	(MEM_BASE + 0xd8)
+#define MEM_SMI_VDEC_COMM1_OSTDL	(MEM_BASE + 0xdc)
 
 #endif
 
