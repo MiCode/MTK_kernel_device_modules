@@ -14,11 +14,11 @@
 ccflags-y += \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/			\
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/ppm_v3/		\
-	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ppm_v3/inc/			\
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ppm_v3/inc/		\
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/upower/		\
-	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/spm/			\
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/spm/		\
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/		\
-	-I$(srctree)/include/linux/					\
+	-I$(srctree)/include/linux/						\
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcdi/include/		\
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_v2/inc/		\
 	-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/			\
@@ -97,6 +97,16 @@ mediatek_eem-y += common_v4/mtk_eem_platform.o
 mediatek_eem-y += common_v4/mtk_eem_internal.o
 mediatek_eem-y += common_v4/mtk_eem_api.o
 mediatek_eem-y += common_v4/mtk_aee_rr.o
+
+else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6877)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eem_v2/mtk_eem_6877/inc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v2/inc
+obj-$(CONFIG_MTK_PTPOD_LEGACY) += mediatek_eem.o
+mediatek_eem-y += mtk_eem_6877/mtk_eem.o
+mediatek_eem-y += mtk_eem_6877/mtk_eem_platform.o
+mediatek_eem-y += mtk_eem_6877/mtk_eem_internal.o
+obj-$(CONFIG_MTK_PTPOD_LEGACY) += mtk_picachu.o
+mtk_picachu-y += mtk_eem_6877/mtk_picachu.o
 
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6893)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v1/inc/

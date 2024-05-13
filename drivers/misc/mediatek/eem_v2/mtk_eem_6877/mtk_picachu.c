@@ -41,7 +41,7 @@
 #define PICACHU_MEM_RESERVED_KEY "mediatek,PICACHU"
 #endif
 
-#define DEBUG
+#define PICACHU_RESERVED_DEBUG
 
 /*
  * Little cluster: L = 2, CCI = 2
@@ -56,38 +56,43 @@
 
 #define picachu_pr_notice(fmt, args...)	pr_notice(TAG fmt, ##args)
 
-#define picachu_read(addr)		__raw_readl((void __iomem *)(addr))
+// #define picachu_read(addr)		__raw_readl((void __iomem *)(addr))
+#define picachu_read(addr)		ioread32((void __iomem *)(addr))
 #define picachu_write(addr, val)	mt_reg_sync_writel(val, addr)
 
 #define PROC_FOPS_RW(name)					\
-	static int name ## _proc_open(struct inode *inode,	\
+	static int name ## _proc_open(				\
+		struct inode *inode,				\
 		struct file *file)				\
 	{							\
-		return single_open(file, name ## _proc_show,	\
-			PDE_DATA(inode));			\
+		return single_open(				\
+			file,					\
+			name ## _proc_show,			\
+			pde_data(inode));			\
 	}							\
-	static const struct file_operations name ## _proc_fops = {	\
-		.owner          = THIS_MODULE,				\
-		.open           = name ## _proc_open,			\
-		.read           = seq_read,				\
-		.llseek         = seq_lseek,				\
-		.release        = single_release,			\
-		.write          = name ## _proc_write,			\
+	static const struct proc_ops name ## _proc_fops = {	\
+		.proc_open	= name ## _proc_open,			\
+		.proc_read	= seq_read,				\
+		.proc_lseek	= seq_lseek,				\
+		.proc_release	= single_release,			\
+		.proc_write	= name ## _proc_write,			\
 	}
 
 #define PROC_FOPS_RO(name)					\
-	static int name ## _proc_open(struct inode *inode,	\
+	static int name ## _proc_open(				\
+		struct inode *inode,				\
 		struct file *file)				\
 	{							\
-		return single_open(file, name ## _proc_show,	\
-			PDE_DATA(inode));			\
+		return single_open(				\
+			file,					\
+			name ## _proc_show,			\
+			pde_data(inode));			\
 	}							\
-	static const struct file_operations name ## _proc_fops = {	\
-		.owner          = THIS_MODULE,				\
-		.open           = name ## _proc_open,			\
-		.read           = seq_read,				\
-		.llseek         = seq_lseek,				\
-		.release        = single_release,			\
+	static const struct proc_ops name ## _proc_fops = {	\
+		.proc_open	= name ## _proc_open,			\
+		.proc_read	= seq_read,				\
+		.proc_lseek	= seq_lseek,				\
+		.proc_release	= single_release,			\
 	}
 
 #define PROC_ENTRY(name)	{__stringify(name), &name ## _proc_fops}
@@ -130,7 +135,7 @@ struct picachu_proc {
 
 struct pentry {
 	const char *name;
-	const struct file_operations *fops;
+	const struct proc_ops *fops;
 };
 
 enum mt_picachu_vproc_id {
@@ -153,7 +158,7 @@ static phys_addr_t picachu_mem_base_virt;
 static phys_addr_t picachu_mem_size;
 
 
-static void _cheak_aee_parameter(void);
+/* static void _check_aee_parameter(void); */
 
 static void dump_picachu_info(struct seq_file *m, struct picachu_info *info)
 {
@@ -188,17 +193,17 @@ static void dump_picachu_info(struct seq_file *m, struct picachu_info *info)
 				(*vf_tbl_det)[x].pi_vf_num);
 			for (y = 0; y < NR_FREQ; y++)
 				seq_printf(m, "%u ",
-				    (*vf_tbl_det)[x].pi_volt_tbl[y]);
+				(*vf_tbl_det)[x].pi_volt_tbl[y]);
 			seq_puts(m, "\n");
 			for (y = 0; y < NR_FREQ; y++)
 				seq_printf(m, "%u ",
-				    (*vf_tbl_det)[x].pi_freq_tbl[y]);
+				(*vf_tbl_det)[x].pi_freq_tbl[y]);
 			seq_puts(m, "\n");
 		}
 	}
 
-#ifdef DEBUG
-	_cheak_aee_parameter();
+#ifdef PICACHU_RESERVED_DEBUG
+	/* _check_aee_parameter(); */
 #endif
 }
 
@@ -268,7 +273,7 @@ static int create_procfs(void)
 phys_addr_t picachu_reserve_mem_get_phys(unsigned int id)
 {
 	if (id >= NUMS_MEM_ID) {
-		pr_info("[picachu] no reserve memory for 0x%x", id);
+		pr_info("[PICACHU] no reserve memory for 0x%x", id);
 		return 0;
 	} else
 		return picachu_reserve_mblock[id].start_phys;
@@ -279,7 +284,7 @@ EXPORT_SYMBOL_GPL(picachu_reserve_mem_get_phys);
 phys_addr_t picachu_reserve_mem_get_virt(unsigned int id)
 {
 	if (id >= NUMS_MEM_ID) {
-		pr_info("[picachu] no reserve memory for 0x%x", id);
+		pr_info("[PICACHU] no reserve memory for 0x%x", id);
 		return 0;
 	} else
 		return picachu_reserve_mblock[id].start_virt;
@@ -290,7 +295,7 @@ EXPORT_SYMBOL_GPL(picachu_reserve_mem_get_virt);
 phys_addr_t picachu_reserve_mem_get_size(unsigned int id)
 {
 	if (id >= NUMS_MEM_ID) {
-		pr_info("[picachu] no reserve memory for 0x%x", id);
+		pr_info("[PICACHU] no reserve memory for 0x%x", id);
 		return 0;
 	} else
 		return picachu_reserve_mblock[id].size;
@@ -299,18 +304,147 @@ EXPORT_SYMBOL_GPL(picachu_reserve_mem_get_size);
 
 
 #if IS_ENABLED(CONFIG_OF_RESERVED_MEM)
+
+#if defined(MODULE)
+static int picachu_assign_memory_block(void)
+{
+	unsigned int id;
+	phys_addr_t accumlate_memory_size = 0;
+
+	WARN_ON(!(picachu_mem_base_phys && picachu_mem_size));
+
+	for (id = 0; id < NUMS_MEM_ID; id++) {
+		picachu_reserve_mblock[id].start_phys = picachu_mem_base_phys +
+							accumlate_memory_size;
+		accumlate_memory_size += picachu_reserve_mblock[id].size;
+
+		pr_info("[PICACHU][reserve_mem:%d]: ", id);
+		pr_info("phys:0x%llx - 0x%llx (0x%llx)\n",
+			picachu_reserve_mblock[id].start_phys,
+			picachu_reserve_mblock[id].start_phys +
+				picachu_reserve_mblock[id].size,
+			picachu_reserve_mblock[id].size);
+	}
+
+	accumlate_memory_size = 0;
+	for (id = 0; id < NUMS_MEM_ID; id++) {
+		picachu_reserve_mblock[id].start_virt = picachu_mem_base_phys +
+			accumlate_memory_size;
+		accumlate_memory_size += picachu_reserve_mblock[id].size;
+	}
+
+#ifdef PICACHU_RESERVED_DEBUG
+	for (id = 0; id < NUMS_MEM_ID; id++) {
+		pr_info("[PICACHU][reserve_mem:%d] ", id);
+		pr_info("phys:0x%llx,virt:0x%llx,size:0x%llx\n",
+			(unsigned long long)picachu_reserve_mem_get_phys(id),
+			(unsigned long long)picachu_reserve_mem_get_virt(id),
+			(unsigned long long)picachu_reserve_mem_get_size(id));
+	}
+#endif
+
+	return 0;
+}
+
+static int picachu_map_memory_region(void)
+{
+	struct device_node *rmem_node;
+	struct reserved_mem *rmem;
+	unsigned int id;
+	/* Get reserved memory */
+	rmem_node = of_find_compatible_node(NULL, NULL, PICACHU_MEM_RESERVED_KEY);
+	if (!rmem_node) {
+		pr_info("[PICACHU] no node for reserved memory\n");
+		for (id = 0; id < NUMS_MEM_ID; id++) {
+			picachu_reserve_mblock[id].start_phys = 0x0;
+			picachu_reserve_mblock[id].start_virt = 0x0;
+		}
+		return 0;
+	}
+
+	rmem = of_reserved_mem_lookup(rmem_node);
+	if (!rmem) {
+		pr_info("[PICACHU] cannot lookup reserved memory\n");
+		return -EINVAL;
+	}
+
+	picachu_mem_base_phys = (phys_addr_t) rmem->base;
+	picachu_mem_size = (phys_addr_t) rmem->size;
+
+	WARN_ON(!(picachu_mem_base_phys && picachu_mem_size));
+
+	/* Mapping the PICACHU's SRAM address /
+	 * DMEM (Data Extended Memory) memory address /
+	 * Working buffer memory address to
+	 * kernel virtual address.
+	 */
+	picachu_mem_base_virt = (phys_addr_t)(uintptr_t)
+		ioremap_wc(picachu_mem_base_phys, picachu_mem_size);
+
+	if (!picachu_mem_base_virt)
+		return -ENOMEM;
+
+	pr_info("[PICACHU]reserve_mem: virt:0x%llx - 0x%llx (0x%llx)\n",
+		(unsigned long long)picachu_mem_base_virt,
+		(unsigned long long)picachu_mem_base_virt +
+		(unsigned long long)picachu_mem_size,
+		(unsigned long long)picachu_mem_size);
+
+	if (picachu_assign_memory_block()) {
+		pr_info("[PICACHU] assign phys, virt address and size Failed\n");
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+#else	/* MODULE */
+
+static int __init picachu_reserve_mem_of_init(struct reserved_mem *rmem)
+{
+	unsigned int id;
+	phys_addr_t accumlate_memory_size = 0;
+
+	picachu_mem_base_phys = (phys_addr_t) rmem->base;
+	picachu_mem_size = (phys_addr_t) rmem->size;
+
+	pr_info("[PICACHU] phys:0x%llx - 0x%llx (0x%llx)\n",
+		(unsigned long long)rmem->base,
+		(unsigned long long)rmem->base + (unsigned long long)rmem->size,
+		(unsigned long long)rmem->size);
+	accumlate_memory_size = 0;
+	for (id = 0; id < NUMS_MEM_ID; id++) {
+		picachu_reserve_mblock[id].start_phys = picachu_mem_base_phys +
+							accumlate_memory_size;
+		accumlate_memory_size += picachu_reserve_mblock[id].size;
+
+		pr_info("[PICACHU][reserve_mem:%d]: ", id);
+		pr_info("phys:0x%llx - 0x%llx (0x%llx)\n",
+			picachu_reserve_mblock[id].start_phys,
+			picachu_reserve_mblock[id].start_phys +
+				picachu_reserve_mblock[id].size,
+			picachu_reserve_mblock[id].size);
+	}
+
+	return 0;
+}
+
+RESERVEDMEM_OF_DECLARE(picachu_reservedmem,
+	PICACHU_MEM_RESERVED_KEY,
+	picachu_reserve_mem_of_init);
+
 static int _picachu_reserve_memory_init(void)
 {
 	unsigned int id;
 	phys_addr_t accumlate_memory_size;
 
 	if (NUMS_MEM_ID == 0) {
-		pr_info("[picachu] NUMS_MEM_ID is NULL\n");
+		pr_info("[PICACHU] NUMS_MEM_ID is NULL\n");
 		return 0;
 	}
 
 	if (picachu_mem_base_phys == 0) {
-		pr_info("[picachu] picachu_mem_base_phys is NULL\n");
+		pr_info("[PICACHU] picachu_mem_base_phys is NULL\n");
 		return -1;
 	}
 
@@ -318,7 +452,7 @@ static int _picachu_reserve_memory_init(void)
 	picachu_mem_base_virt = (phys_addr_t)(uintptr_t)
 			ioremap_wc(picachu_mem_base_phys, picachu_mem_size);
 
-	pr_info("[picachu]reserve mem: virt:0x%llx - 0x%llx (0x%llx)\n",
+	pr_info("[PICACHU]reserve_mem: virt:0x%llx - 0x%llx (0x%llx)\n",
 			(unsigned long long)picachu_mem_base_virt,
 			(unsigned long long)picachu_mem_base_virt +
 			(unsigned long long)picachu_mem_size,
@@ -335,9 +469,9 @@ static int _picachu_reserve_memory_init(void)
 
 	WARN_ON(accumlate_memory_size > picachu_mem_size);
 
-#ifdef DEBUG
+#ifdef PICACHU_RESERVED_DEBUG
 	for (id = 0; id < NUMS_MEM_ID; id++) {
-		pr_info("[picachu][mem_reserve-%d] ", id);
+		pr_info("[PICACHU][reserve_mem:%d] ", id);
 		pr_info("phys:0x%llx,virt:0x%llx,size:0x%llx\n",
 			(unsigned long long)picachu_reserve_mem_get_phys(id),
 			(unsigned long long)picachu_reserve_mem_get_virt(id),
@@ -348,129 +482,113 @@ static int _picachu_reserve_memory_init(void)
 	return 0;
 }
 
-static int __init picachu_reserve_mem_of_init(struct reserved_mem *rmem)
-{
-	unsigned int id;
-	phys_addr_t accumlate_memory_size = 0;
+#endif	/* CONFIG_OF_RESERVED_MEM */
 
-	picachu_mem_base_phys = (phys_addr_t) rmem->base;
-	picachu_mem_size = (phys_addr_t) rmem->size;
+//static void _check_aee_parameter(void)
+//{
+//	void __iomem *addr_ptr = NULL;
+//	unsigned int val = 0;
+//	unsigned char sig = 0;
+//	unsigned char efuse_major_ver = 0;
+//	unsigned char efuse_mirror_ver = 0;
+//	unsigned char db_major_ver = 0;
+//	unsigned char db_mirror_ver = 0;
 
-	pr_info("[picachu] phys:0x%llx - 0x%llx (0x%llx)\n",
-		(unsigned long long)rmem->base,
-		(unsigned long long)rmem->base + (unsigned long long)rmem->size,
-		(unsigned long long)rmem->size);
-	accumlate_memory_size = 0;
-	for (id = 0; id < NUMS_MEM_ID; id++) {
-		picachu_reserve_mblock[id].start_phys = picachu_mem_base_phys +
-							accumlate_memory_size;
-		accumlate_memory_size += picachu_reserve_mblock[id].size;
+//	addr_ptr = (void __iomem *)picachu_reserve_mem_get_virt(PICACHU_AEE_ID);
+//	if (addr_ptr) {
+//		val = picachu_read(addr_ptr);
+//		/* Get signature */
+//		sig = val >> PICACHU_SIGNATURE_SHIFT_BIT;
+//		sig = sig & 0xff;
+//		if (sig == PICACHU_SIG) {
+//			val = val & 0x00FFFFFF;
+//			if (val & (0x1 << 0)) {
+//				aee_kernel_exception("PICACHU",
+//					"Error: picachu is disable via DOE");
+//				pr_info("[PICACHU] Error: picachu is disable via DOE");
+//			}
+//			if (val & (0x1 << 1)) {
+//				aee_kernel_exception("PICACHU",
+//					"Error: picachu para image not found");
+//				pr_info("[PICACHU] Error: picachu para image not found");
+//			}
+//			if (val & (0x1 << 2)) {
+//				aee_kernel_exception("PICACHU", "Error: use safe efuse");
+//				pr_info("[PICACHU] Error: use safe efuse");
+//			}
+//		} else {
+//			aee_kernel_exception("PICACHU", "Error: sig = %d", sig);
+//			pr_info("[PICACHU] Error: sig = %d", sig);
+//		}
 
-		pr_info("[picachu][reserve_mem:%d]: ", id);
-		pr_info("phys:0x%llx - 0x%llx (0x%llx)\n",
-			picachu_reserve_mblock[id].start_phys,
-			picachu_reserve_mblock[id].start_phys +
-				picachu_reserve_mblock[id].size,
-			picachu_reserve_mblock[id].size);
-	}
+//		val = picachu_read(addr_ptr + 0x4);
+//		efuse_major_ver = (val & 0x000000FF);
+//		efuse_mirror_ver = (val & 0x0000FF00) >> 8;
+//		db_major_ver = (val & 0x00FF0000) >> 16;
+//		db_mirror_ver = (val & 0xFF000000) >> 24;
 
-	return 0;
-}
-RESERVEDMEM_OF_DECLARE(picachu_reservedmem,
-	PICACHU_MEM_RESERVED_KEY,
-	picachu_reserve_mem_of_init);
+//		pr_info("[PICACHU]fuse_major_ver=%d, efuse_mirror_ver=%d, db_major_ver=%d, db_mirror_ver=%d\n",
+//			efuse_major_ver,
+//			efuse_mirror_ver,
+//			db_major_ver,
+//			db_mirror_ver);
 
+//		if (efuse_major_ver > db_major_ver) {
+//			aee_kernel_exception("PICACHU",
+//			"Error:efuse_major_ver=%d > db_major_ver=%d, need to update DB",
+//			efuse_major_ver,
+//			db_major_ver);
+//			pr_info("[PICACHU] Error:efuse_major_ver=%d > db_major_ver=%d, need to update DB",
+//			efuse_major_ver,
+//			db_major_ver);
+//		}
 
-static void _cheak_aee_parameter(void)
-{
-	void __iomem *addr_ptr = NULL;
-	unsigned int val = 0;
-	unsigned char sig = 0;
-	unsigned char efuse_major_ver = 0;
-	unsigned char efuse_mirror_ver = 0;
-	unsigned char db_major_ver = 0;
-	unsigned char db_mirror_ver = 0;
-
-	addr_ptr = (void __iomem *)picachu_reserve_mem_get_virt(PICACHU_AEE_ID);
-	if (addr_ptr) {
-		val = picachu_read(addr_ptr);
-		/* Get signature */
-		sig = val >> PICACHU_SIGNATURE_SHIFT_BIT;
-		sig = sig & 0xff;
-		if (sig == PICACHU_SIG) {
-			val = val & 0x00FFFFFF;
-			if (val & (0x1 << 0)) {
-				aee_kernel_exception("PICACHU",
-					"Error: picachu is disable via DOE");
-				pr_info("[PICACHU] Error: picachu is disable via DOE");
-			}
-			if (val & (0x1 << 1)) {
-				aee_kernel_exception("PICACHU",
-					"Error: picachu para image not found");
-				pr_info("[PICACHU] Error: picachu para image not found");
-			}
-			if (val & (0x1 << 2)) {
-				aee_kernel_exception("PICACHU", "Error: use safe efuse");
-				pr_info("[PICACHU] Error: use safe efuse");
-			}
-		} else {
-			aee_kernel_exception("PICACHU", "Error: sig = %d", sig);
-			pr_info("[PICACHU] Error: sig = %d", sig);
-		}
-
-		val = picachu_read(addr_ptr + 0x4);
-		efuse_major_ver = (val & 0x000000FF);
-		efuse_mirror_ver = (val & 0x0000FF00) >> 8;
-		db_major_ver = (val & 0x00FF0000) >> 16;
-		db_mirror_ver = (val & 0xFF000000) >> 24;
-
-		pr_info("[PICACHU]fuse_major_ver=%d, efuse_mirror_ver=%d, db_major_ver=%d, db_mirror_ver=%d\n",
-			efuse_major_ver,
-			efuse_mirror_ver,
-			db_major_ver,
-			db_mirror_ver);
-
-		if (efuse_major_ver > db_major_ver) {
-			aee_kernel_exception("PICACHU",
-			"Error:efuse_major_ver=%d > db_major_ver=%d, need to update DB",
-			efuse_major_ver,
-			db_major_ver);
-			pr_info("[PICACHU] Error:efuse_major_ver=%d > db_major_ver=%d, need to update DB",
-			efuse_major_ver,
-			db_major_ver);
-		}
-
-		if (efuse_mirror_ver > db_mirror_ver) {
-			aee_kernel_warning("PICACHU",
-			"Warning:efuse_mirror_ver=%d > db_mirror_ver=%d",
-			efuse_mirror_ver,
-			db_mirror_ver);
-			pr_info("PICACHU Warning:efuse_mirror_ver=%d > db_mirror_ver=%d",
-			efuse_mirror_ver,
-			db_mirror_ver);
-		}
-	}
-}
+//		if (efuse_mirror_ver > db_mirror_ver) {
+//			aee_kernel_warning("PICACHU",
+//			"Warning:efuse_mirror_ver=%d > db_mirror_ver=%d",
+//			efuse_mirror_ver,
+//			db_mirror_ver);
+//			pr_info("PICACHU Warning:efuse_mirror_ver=%d > db_mirror_ver=%d",
+//			efuse_mirror_ver,
+//			db_mirror_ver);
+//		}
+//	}
+//}
 #endif
-
 
 static int __init picachu_init(void)
 {
-	create_procfs();
+	int ret = 0;
+
+	ret = create_procfs();
+	if (ret) {
+		pr_info("[PICACHU]create_procfs failed: %d\n", ret);
+		return ret;
+	}
 
 #if IS_ENABLED(CONFIG_OF_RESERVED_MEM)
-	_picachu_reserve_memory_init();
-	_cheak_aee_parameter();
+#if defined(MODULE)
+	ret = picachu_map_memory_region();
+#else
+	ret = _picachu_reserve_memory_init();
 #endif
-
-	return 0;
+	if (ret) {
+		pr_info("[PICACHU]%s():%d Reserved Memory Failed\n", __func__, __LINE__);
+		return -ENOMEM;
 }
+#endif
+	// _check_aee_parameter();
 
+	return ret;
+}
 
 static void __exit picachu_exit(void)
 {
-
+	pr_info("[PICACHU] picachu module exit.\n");
 }
-subsys_initcall(picachu_init);
+
+module_init(picachu_init);
+module_exit(picachu_exit);
+
 MODULE_DESCRIPTION("MediaTek Picachu Driver v0.1");
 MODULE_LICENSE("GPL");
