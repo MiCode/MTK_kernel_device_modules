@@ -25,12 +25,14 @@ static struct device_node *node;
 static unsigned int peak_bw;
 static int plat_gcc_enable;
 static int plat_sbe_rescue_enable;
+static int plat_dram_boost_enable;
 static int plat_ux_scroll_general_policy;
 static int plat_smart_launch_enable;
 static int plat_cpu_limit;
 
 static int generate_cpu_mask(void);
 static int generate_sbe_rescue_enable(void);
+static int generate_dram_boost_enable(void);
 static int generate_ux_scroll_general_policy(void);
 static int generate_smart_launch_enable(void);
 static int platform_fpsgo_probe(struct platform_device *pdev)
@@ -65,6 +67,7 @@ static int platform_fpsgo_probe(struct platform_device *pdev)
 
 	generate_cpu_mask();
 	generate_sbe_rescue_enable();
+	generate_dram_boost_enable();
 	generate_ux_scroll_general_policy();
 	generate_smart_launch_enable();
 
@@ -117,10 +120,22 @@ void fbt_set_boost_value(unsigned int base_blc)
 	fpsgo_systrace_c_fbt_debug(-100, 0, base_blc, "TA_cap");
 }
 
+void fbt_notify_CM_limit(int reach_limit)
+{
+#if IS_ENABLED(CONFIG_MTK_CM_MGR) || IS_ENABLED(CONFIG_MTK_CM_MGR_LEGACY)
+	cm_mgr_perf_set_status(reach_limit);
+	fpsgo_systrace_c_fbt_debug(-100, 0, reach_limit, "notify_cm");
+#endif
+}
+
 void fbt_clear_boost_value(void)
 {
 	fpsgo_sentcmd(FPSGO_SET_BOOST_TA, -1, -1);
 	fpsgo_systrace_c_fbt_debug(-100, 0, 0, "TA_cap");
+
+	if (plat_dram_boost_enable) {
+		fbt_notify_CM_limit(0);
+	}
 }
 
 void fbt_set_per_task_cap(int pid, unsigned int min_blc,
@@ -248,7 +263,7 @@ static int generate_sbe_rescue_enable(void)
 	int ret = 0, retval = 0;
 
 	ret = of_property_read_u32(node,
-		 "sbe-resceue-enable", &retval);
+				"sbe-resceue-enable", &retval);
 	if (!ret)
 		plat_sbe_rescue_enable = retval;
 	else
@@ -257,12 +272,27 @@ static int generate_sbe_rescue_enable(void)
 	return ret;
 }
 
+static int generate_dram_boost_enable(void)
+{
+	int ret = 0, retval = 0;
+
+	ret = of_property_read_u32(node,
+				"boost-dram", &retval);
+	if (!ret)
+		plat_dram_boost_enable = retval;
+	else
+		FPSGO_LOGE("%s unable to get boost-dram\n", __func__);
+
+	return ret;
+}
+
+
 static int generate_smart_launch_enable(void)
 {
 	int ret = 0, retval = 0;
 
 	ret = of_property_read_u32(node,
-		 "ux-smart-launch-enable", &retval);
+		"ux-smart-launch-enable", &retval);
 	if (!ret)
 		plat_smart_launch_enable = retval;
 	else
@@ -389,6 +419,11 @@ int fbt_get_default_gcc_enable(void)
 int fbt_get_default_sbe_rescue_enable(void)
 {
 	return plat_sbe_rescue_enable;
+}
+
+int fbt_get_default_dram_boost_enable(void)
+{
+	return plat_dram_boost_enable;
 }
 
 int fbt_get_default_powerRL_enable(void)
