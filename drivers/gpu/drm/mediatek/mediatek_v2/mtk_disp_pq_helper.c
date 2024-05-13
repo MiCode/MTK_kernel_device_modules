@@ -532,6 +532,7 @@ bool disp_pq_is_cmd_need_pm(enum mtk_pq_frame_cfg_cmd cmd)
 	case PQ_DBI_GET_FPS:
 	case PQ_DBI_GET_SCP:
 	case PQ_VIRTUAL_GET_PIXEL_TYPE_BY_FENCE:
+	case PQ_DBI_GET_SCP_LIFECYCLE:
 		ret = false;
 		break;
 	default:
