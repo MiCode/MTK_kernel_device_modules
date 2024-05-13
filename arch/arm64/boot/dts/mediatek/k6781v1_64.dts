@@ -151,13 +151,12 @@
 /* GPS GPIO standardization end */
 
 &mt6370 {
-	mt6370,intr_gpio_num = <4>; /* direct defined GPIO num */
-	mt6370,intr_gpio = <&pio 4 0x0>;
+	interrupt-parent = <&pio>;
+	interrupts = <4 IRQ_TYPE_LEVEL_LOW 4 0>;
 };
 
 &mt6370_typec {
-	mt6370pd,intr_gpio_num = <83>; /* direct defined GPIO num */
-	mt6370pd-intr-gpios = <&pio 83 0x0>;
+	mt6370pd-intr-gpios = <&pio 83 0>;
 };
 
 &i2c2 {
