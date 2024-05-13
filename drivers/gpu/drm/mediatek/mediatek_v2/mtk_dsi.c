@@ -3242,16 +3242,16 @@ static void mtk_dsi_ulps_exit_end(struct mtk_dsi *dsi)
 	mtk_dsi_reset_engine(dsi);
 }
 
-static unsigned int dsi_underrun_trigger = 1;
+static unsigned int dsi_underrun_called;
 unsigned int check_dsi_underrun_event(void)
 {
-	return !dsi_underrun_trigger;
+	return dsi_underrun_called;
 }
 
 void clear_dsi_underrun_event(void)
 {
 	DDPMSG("%s, do clear underrun event\n", __func__);
-	dsi_underrun_trigger = 1;
+	dsi_underrun_called = 0;
 }
 
 unsigned long long mtk_get_cur_backlight(struct drm_crtc *crtc)
@@ -3520,55 +3520,38 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	status &= irq_mask;
 	if (status) {
 		writel(~status, dsi->regs + DSI_INTSTA);
-		if ((status & BUFFER_UNDERRUN_INT_FLAG)
-			&& (&mtk_crtc->force_high_step) != NULL
-			&& (atomic_read(&mtk_crtc->force_high_step) == 0)) {
+		if ((status & BUFFER_UNDERRUN_INT_FLAG)	&& (atomic_read(&mtk_crtc->force_high_step) == 0)) {
 			unsigned long long aee_now_ts = sched_clock();
-			int trigger_aee = 0;
-			int en = 0;
-#if IS_ENABLED(CONFIG_ARM64)
-			u32 arch_timer_cnt = (u32)arch_timer_read_counter();
-#endif
-			++underrun_cnt;
+			bool aee_cooldown = mtk_crtc->last_aee_trigger_ts == 0 ||
+					    (aee_now_ts - mtk_crtc->last_aee_trigger_ts > TIGGER_INTERVAL_S(10));
+			int underrun_int_en = 0;
+
 			dump_cur_pos(mtk_crtc);
 
-			if (mtk_crtc->last_aee_trigger_ts == 0 ||
-				(aee_now_ts - mtk_crtc->last_aee_trigger_ts
-				> TIGGER_INTERVAL_S(10)))
-				trigger_aee = 1;
-
-			if ((dsi_underrun_trigger == 1 &&
-				mtk_drm_helper_get_opt(priv->helper_opt,
-				MTK_DRM_OPT_DSI_UNDERRUN_AEE)) && trigger_aee) {
-#if IS_ENABLED(CONFIG_ARM64)
-				DDPAEE_FATAL("[IRQ] %s:buffer underrun. TS: 0x%08x\n",
-					mtk_dump_comp_str(comp),
-					arch_timer_cnt);
-#else
-				DDPAEE("[IRQ] %s:buffer underrun\n",
-					mtk_dump_comp_str(comp));
-#endif
-				mtk_crtc->last_aee_trigger_ts = aee_now_ts;
-			}
-
-			if (dsi_underrun_trigger == 1 && trigger_aee) {
+			if (aee_cooldown && !dsi_underrun_called) {
+				dsi_underrun_called = 1;
 #if IS_ENABLED(CONFIG_MTK_DRAMC)
 				DDPMSG("DDR: %u Mbps\n", mtk_dramc_get_data_rate());
 #endif
-				if (dsi->encoder.crtc) {
-					mtk_dprec_snapshot();
-					mtk_drm_crtc_mini_analysis(dsi->encoder.crtc);
-					dsi_underrun_trigger = 0;
-					mtk_crtc->last_aee_trigger_ts = aee_now_ts;
+				if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE)) {
+#if IS_ENABLED(CONFIG_ARM64)
+					DDPAEE_FATAL("[IRQ] %s:buffer underrun. TS: 0x%08x\n",
+						mtk_dump_comp_str(comp), (u32)arch_timer_read_counter());
+#else
+					DDPAEE("[IRQ] %s:buffer underrun\n", mtk_dump_comp_str(comp));
+#endif
 				}
+
+				mtk_dprec_snapshot();
+
+				if (dsi->encoder.crtc)
+					mtk_drm_crtc_mini_analysis(dsi->encoder.crtc);
+
 				mtk_vidle_dpc_analysis();
-				mtk_drm_crtc_mini_analysis(dsi->encoder.crtc);
-				dsi_underrun_trigger = 0;
-				mtk_crtc->last_aee_trigger_ts = aee_now_ts;
 			}
 
 			/* could dump SMI register while dsi not attached to CRTC */
-			if (trigger_aee && ((dsi->driver_data &&
+			if (aee_cooldown && ((dsi->driver_data &&
 			    !dsi->driver_data->smi_dbg_disable) ||
 			    mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE)))
 				mtk_smi_dbg_hang_detect("dsi-underrun");
@@ -3584,12 +3567,12 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				DDPPR_ERR(pr_fmt("[IRQ] %s: buffer underrun\n"),
 					mtk_dump_comp_str(comp));
 
+			mtk_vidle_force_power_ctrl_by_cpu(true);
 			if (mtk_crtc)
 				atomic_set(&mtk_crtc->force_high_step, 1);
 
-			/* disable dsi underrun irq*/
-			en = 0;
-			mtk_ddp_comp_io_cmd(comp, NULL, IRQ_UNDERRUN, &en);
+			mtk_ddp_comp_io_cmd(comp, NULL, IRQ_UNDERRUN, &underrun_int_en);
+			++underrun_cnt;
 		}
 
 		//if (status & INP_UNFINISH_INT_EN)
