@@ -16,7 +16,7 @@
 
 #include "../mtk_drm_ddp_comp.h"
 
-#define CON_ENC_SST_TMP 0
+#define ENABLE_SERDES_MST 1
 
 #define DP_ENCODER_NUM 2
 #define DP_PAYLOAD_MAX	8
@@ -878,6 +878,7 @@ struct mtk_dp {
 	const struct mtk_dp_data *data;
 	struct drm_connector *conn;
 	struct drm_encoder *enc;
+	struct drm_bridge *next_bridge;
 	int id;
 	struct edid *edid;
 	struct drm_dp_aux aux;

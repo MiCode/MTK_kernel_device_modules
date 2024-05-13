@@ -502,7 +502,7 @@ static void mtk_dp_mst_drv_fec_enable(struct mtk_dp *mtk_dp, const u8 enable)
  * mtk_dp_mst_drv_stream_enable() - start to output video & audio streams
  */
 static void mtk_dp_mst_drv_stream_enable(struct mtk_dp *mtk_dp,
-					 struct mtk_drm_dp_mst_topology_mgr *mgr)
+					 unsigned long vcpi_mask, int max_payloads)
 {
 	enum dp_stream_id stream_id;
 	enum dp_encoder_id encoder_id;
@@ -511,7 +511,7 @@ static void mtk_dp_mst_drv_stream_enable(struct mtk_dp *mtk_dp,
 	enum audio_len len = WL_24BIT;
 	u8 div = 0x4;
 
-	mtk_dp_mst_hal_stream_enable(mtk_dp, mgr->vcpi_mask, mgr->max_payloads);
+	mtk_dp_mst_hal_stream_enable(mtk_dp, vcpi_mask, max_payloads);
 
 	for (stream_id = DP_STREAM_ID_0; stream_id < DP_STREAM_MAX; stream_id++) {
 		encoder_id = (enum dp_encoder_id)stream_id;
@@ -603,7 +603,7 @@ static void mtk_dp_mst_drv_update_vcp_table(struct mtk_dp *mtk_dp,
 			continue;
 #if DP_DRM_COMMON //to check
 		payload = drm_atomic_get_mst_payload_state(state,
-							   mtk_dp->mst_connector[encoder_id]->port);
+							   mtk_dp->mtk_connector[encoder_id]->port);
 
 		start_slot = payload->vc_start_slot;
 		end_slot = start_slot + payload->time_slots;
@@ -938,7 +938,7 @@ static void mtk_dp_mst_drv_allocate_stream(struct mtk_dp *mtk_dp,
 				     (mgr->pbn_div * 63));
 
 	DP_MSG("===stream Enable===\n\n");
-	mtk_dp_mst_drv_stream_enable(mtk_dp, mgr);
+	mtk_dp_mst_drv_stream_enable(mtk_dp, mgr->vcpi_mask, mgr->max_payloads);
 }
 
 /**
@@ -968,6 +968,353 @@ static void mtk_dp_mst_drv_clear_vcpi(struct mtk_dp *mtk_dp,
 	ret = drm_dp_dpcd_write(&mtk_dp->aux, DPCD_001C0, temp_value, 0x3);
 	DP_MSG("Clear DPCD_001C0 ~ DPCD_001C2, result %d\n", ret);
 }
+
+#if ENABLE_SERDES_MST
+struct mtk_drm_dp_payload payload[DP_STREAM_MAX];
+static void mtk_dp_mst_update_vcp_table(struct mtk_dp *mtk_dp)
+{
+	enum dp_encoder_id encoder_id = 0;
+	u16 start_slot, end_slot;
+	int payload_idx;
+
+	mtk_dp_mst_hal_reset_payload(mtk_dp);
+
+	for (payload_idx = 0; payload_idx < DP_STREAM_MAX; payload_idx++) {
+		start_slot = payload[payload_idx].start_slot;
+		end_slot = start_slot + payload[payload_idx].num_slots;
+
+		mtk_dp_mst_hal_set_mtp_size(mtk_dp, encoder_id, payload[payload_idx].num_slots);
+
+		DP_MSG("Start allocate VCPI %d, start slot %d, end slot %d\n",
+		       payload[payload_idx].vcpi, start_slot, end_slot - 1);
+		/* reg_vc_payload_timeslot */
+		if (payload[payload_idx].vcpi < 1 || payload[payload_idx].vcpi > DP_STREAM_MAX) {
+			DP_ERR("Invalid VCPI, vcpi %d\n", payload[payload_idx].vcpi);
+		} else if ((start_slot > 64) || (end_slot > 64)) {
+			DP_ERR("Invalid slot region, start_slot %d, end_slot %d\n",
+			       start_slot, end_slot);
+		} else {
+			mtk_dp_mst_hal_set_timeslot(mtk_dp, encoder_id
+						, start_slot, end_slot, payload[payload_idx].vcpi);
+			mtk_dp_mst_hal_set_id_buf(mtk_dp, encoder_id, payload[payload_idx].vcpi);
+		}
+		encoder_id++;
+	}
+
+	mtk_dp_mst_hal_vcp_table_update(mtk_dp);
+}
+
+static int mtk_dp_mst_dpcd_write_payload(struct mtk_dp *mtk_dp,
+					 int id, u8 start_slot, u8 num_slots)
+{
+	u8 payload_alloc[3], status;
+	int ret;
+	int retries = 0;
+
+	drm_dp_dpcd_writeb(&mtk_dp->aux, DP_PAYLOAD_TABLE_UPDATE_STATUS,
+			   DP_PAYLOAD_TABLE_UPDATED);
+
+	payload_alloc[0] = id;
+	payload_alloc[1] = start_slot;
+	payload_alloc[2] = num_slots;
+
+	ret = drm_dp_dpcd_write(&mtk_dp->aux, DP_PAYLOAD_ALLOCATE_SET, payload_alloc, 3);
+	if (ret != 3) {
+		DP_MSG("failed to write payload allocation %d\n", ret);
+		goto fail;
+	}
+
+retry:
+	ret = drm_dp_dpcd_readb(&mtk_dp->aux, DP_PAYLOAD_TABLE_UPDATE_STATUS, &status);
+	if (ret < 0) {
+		DP_MSG("failed to read payload table status %d\n", ret);
+		goto fail;
+	}
+
+	if (!(status & DP_PAYLOAD_TABLE_UPDATED)) {
+		retries++;
+		if (retries < 20) {
+			usleep_range(10000, 20000);
+			goto retry;
+		}
+		DP_MSG("status not set after read payload table status %d\n",
+		       status);
+		ret = -EINVAL;
+		goto fail;
+	}
+	ret = 0;
+fail:
+	return ret;
+}
+
+static int mtk_dp_mst_do_get_act_status(struct mtk_dp *mtk_dp)
+{
+	int ret;
+	u8 status;
+
+	ret = drm_dp_dpcd_read(&mtk_dp->aux, DP_PAYLOAD_TABLE_UPDATE_STATUS, &status, 1);
+	if (ret == 0)
+		return ret;
+
+	return status;
+}
+
+static int mtk_dp_mst_check_act_status(struct mtk_dp *mtk_dp)
+{
+	const int timeout_ms = 3000;
+	int status, i;
+
+	for (i = 0; i < timeout_ms; i += 200) {
+		msleep(200);
+		status = mtk_dp_mst_do_get_act_status(mtk_dp);
+
+		if (status & DP_PAYLOAD_ACT_HANDLED || status < 0)
+			break;
+	}
+
+	if (i > timeout_ms && status >= 0) {
+		DP_ERR("Failed to get ACT after %dms, last status: %02x\n",
+		       timeout_ms, status);
+		return -1;
+	} else if (status < 0) {
+		/* Failure here isn't unexpected - the hub may have just been unplugged */
+		DP_ERR("Failed to read payload table status: %d\n", status);
+		return status;
+	}
+
+	return status;
+}
+
+static void mtk_dp_mst_update_payload(struct mtk_dp *mtk_dp)
+{
+	int status = 0;
+	int counter = 5;
+	int payload_idx;
+
+	DP_MSG("===DPCD_001C0===\n\n");
+
+	for (payload_idx = 0; payload_idx < DP_STREAM_MAX; payload_idx++)
+		mtk_dp_mst_dpcd_write_payload
+		(mtk_dp,
+		payload_idx + 1,
+		payload[payload_idx].start_slot,
+		payload[payload_idx].num_slots);
+
+	mtk_dp_mst_update_vcp_table(mtk_dp);
+
+	do {
+		mtk_dp_mst_hal_trigger_act(mtk_dp);
+		DP_MSG("===trigger ACT===\n\n");
+
+		status = mtk_dp_mst_check_act_status(mtk_dp);
+
+		DP_MSG("DPCD_0020C status %x\n", status);
+		if (counter-- <= 0)
+			break;
+	} while (!((status & DP_PAYLOAD_ACT_HANDLED) && (status > 0)));
+}
+
+int mtk_dp_mst_calc_pbn_mode(struct mtk_dp *mtk_dp, int clock, int bpp, bool dsc)
+{
+	u32 pbn;
+
+	if (dsc)
+		pbn = (clock / 8) * (bpp / 16);
+	else
+		pbn = (clock / 8) * bpp;
+
+	if (mtk_dp->is_mst_fec_en) {
+		pbn = (pbn * 1030);
+		DP_DBG("Add %u\n", pbn);
+	} else {
+		pbn = (pbn * 1006);
+	}
+
+	pbn = (pbn / 54) * 64;
+	pbn = (pbn + (1000000 - 1)) / 1000000;
+
+	return pbn + 1; // roundup
+}
+
+union dp_pps pps_user[DP_ENCODER_ID_MAX]; //to check
+static int mtk_dp_mst_choose_timing(struct mtk_dp *mtk_dp,
+				    enum dp_stream_id stream_id,
+					  u8 res, u8 color_depth, u8 is_dsc)
+{
+	u32 pixel_clock;
+	u32 allocate_pbn;
+	u32 htt, vtt;
+	u8  bpp =  mtk_dp_color_get_bpp(mtk_dp->stream_info[stream_id].color_format, color_depth);
+
+	mtk_dp_mst_drv_timing_getting(mtk_dp, stream_id,
+				      &mtk_dp->info[stream_id].dp_output_timing);
+	if (mtk_dp->dsc_enable) {
+		//Calculate pixel clock for Compressed timing
+		//According formula of eDP simulation
+		//Compressed HDE = CEIL(MSA_HDE * bpp/12/8)*4
+		u8 dsc_bpp = ((pps_user[stream_id].pps_raw[4] & 0x3) << 4) |
+					(pps_user[stream_id].pps_raw[5]  >> 4); //1/16;
+		u16 MSAHDE = mtk_dp->info[stream_id].dp_output_timing.hde;
+		u16 MSAHBP = mtk_dp->info[stream_id].dp_output_timing.hbp;
+		u16 MSAHFP = mtk_dp->info[stream_id].dp_output_timing.hfp;
+		u16 MSAHSW = mtk_dp->info[stream_id].dp_output_timing.hsw;
+		u16 DSCHDE = ((MSAHDE * dsc_bpp + (12 * 8 - 1)) / (12 * 8)) * 4;
+
+		htt = DSCHDE + MSAHBP + MSAHFP + MSAHSW;
+	} else {
+		htt = mtk_dp->info[stream_id].dp_output_timing.htt;
+	}
+
+	vtt = mtk_dp->info[stream_id].dp_output_timing.vtt;
+	pixel_clock = htt * vtt * mtk_dp->info[stream_id].dp_output_timing.frame_rate;
+
+	/* unit: kBps, 640_480x30 fps = 12.6MBps, 7680_4320x120 fps = 4,226.8 MBps */
+	pixel_clock = (pixel_clock + (1000 - 1)) / 1000;
+
+	allocate_pbn = mtk_dp_mst_calc_pbn_mode(mtk_dp, pixel_clock, bpp, is_dsc);
+
+	DP_MSG("htt %d, vtt %d, frame_rate %d, bpp %d, pixel_clock %d\n",
+	       htt, vtt, mtk_dp->info[stream_id].dp_output_timing.frame_rate,
+		bpp, pixel_clock);
+
+	mtk_dp->stream_info[stream_id].final_timing = SINK_1920_1080;
+	DP_MSG("require PBN %d\n", allocate_pbn);
+
+	return allocate_pbn;
+}
+
+static u8 mtk_dp_mst_find_vcpi_slots(struct mtk_dp *mtk_dp, int pbn_div, const int pbn_allocating)
+{
+	int slots = 0;
+
+	slots = (pbn_allocating / pbn_div) + 1; //DIV_ROUND_UP(pbn, mgr->pbn_div);
+
+	/* max. time slots - one slot for MTP header */
+	if (slots > 63) {
+		DP_MSG("error, slots:%d > 63\n", slots);
+		return 0;
+	}
+
+	DP_MSG("Slots before fine-tune %d\n", slots);
+
+	switch (mtk_dp->training_info.link_lane_count) {
+	case DP_1LANE:
+		slots += (4 - (slots % 4));
+		break;
+	case DP_2LANE:
+		slots += (2 - (slots % 2));
+		break;
+	case DP_4LANE:
+		slots++;
+		break;
+	}
+
+	//mdr_dptx_mst_GetReqSlotForAudioSymbol(dpTx_ID, dpOutStreamID, &slots);
+
+	if (slots < 1 || slots > 63) {
+		DP_ERR("Un-expected slots %d\n", slots);
+		return 0;
+	}
+
+	DP_MSG("Slots after fine-tune %d\n", slots);
+	return (u8)slots;
+}
+
+static int mtk_dp_mst_get_vc_payload_bw(int link_rate, int link_lane_count)
+{
+	if (link_rate == 0 || link_lane_count == 0)
+		DP_ERR("invalid link rate/lane count: (%d / %d)\n",
+		       link_rate, link_lane_count);
+
+	/* See DP v2.0 2.6.4.2, VCPayload_Bandwidth_for_OneTimeSlotPer_MTP_Allocation */
+	return link_rate * link_lane_count / 54000;
+}
+
+static int mtk_dp_mst_allocate_vcpi(struct mtk_dp *mtk_dp, const u8 is_enable)
+{
+	int allocate_pbn;
+	u32 slots;
+	int payload_idx;
+	int lane_count;
+	int link_rate;
+	int pbn_div;
+
+	lane_count = mtk_dp->training_info.link_lane_count & 0xf;
+	link_rate = mtk_dp->training_info.link_rate * 27000;
+
+	pbn_div = mtk_dp_mst_get_vc_payload_bw(link_rate, lane_count);
+
+	for (payload_idx = 0; payload_idx < DP_STREAM_MAX; payload_idx++) {
+		if (is_enable) {
+			if (payload_idx >= DP_STREAM_MAX) {
+				DP_MSG("Return! All streams have been allocated !\n");
+				return 0;
+			}
+
+			allocate_pbn = mtk_dp_mst_choose_timing
+				(mtk_dp,
+				payload_idx,
+				mtk_dp->stream_info[payload_idx].ideal_timing,
+				mtk_dp->stream_info[payload_idx].color_depth,
+				mtk_dp->stream_info[payload_idx].is_dsc);
+
+			if (allocate_pbn < 0) {
+				DP_MSG("Return! allocate_pbn fail!\n");
+				return 0;
+			}
+
+			slots = mtk_dp_mst_find_vcpi_slots(mtk_dp, pbn_div, allocate_pbn);
+
+			allocate_pbn = pbn_div * slots;
+
+			DP_DBG("Slots %d, PBN %d, pbn_div %d\n",
+			       slots, allocate_pbn, pbn_div);
+
+			if (payload_idx == 0) {
+				payload[payload_idx].start_slot = 1;
+				payload[payload_idx].vcpi = 1;
+			} else if (payload_idx == 1) {
+				payload[payload_idx].start_slot = 32;
+				payload[payload_idx].vcpi = 2;
+			}
+
+			payload[payload_idx].num_slots = slots;
+		}
+	}
+	return 0;
+}
+
+static void mtk_dp_mst_allocate_stream(struct mtk_dp *mtk_dp, bool is_enable)
+{
+	DP_MSG("===allocate vcpi===\n\n");
+	if (mtk_dp->training_info.sink_count > DP_STREAM_MAX)
+		mtk_dp->training_info.sink_count = DP_STREAM_MAX;
+
+	mtk_dp_mst_allocate_vcpi(mtk_dp, is_enable);
+
+	DP_MSG("===stream Enable===\n\n");
+	mtk_dp_mst_drv_stream_enable(mtk_dp, 0x3, DP_STREAM_MAX);
+}
+
+void mtk_dp_mst_payload_handler(struct mtk_dp *mtk_dp)
+{
+	if (!mtk_dp->mst_enable) {
+		DP_ERR("connected device does not support MST, return !\n");
+		return;
+	}
+
+	if (!mtk_dp->is_mst_start) {
+		DP_ERR("unexpected code flow\n");
+		return;
+	}
+
+	/* allocate vcpi */
+	mtk_dp_mst_allocate_stream(mtk_dp, true);
+
+	/* update payload, after update vcpi */
+	mtk_dp_mst_update_payload(mtk_dp);
+}
+#endif
 
 u8 *mtk_dp_mst_drv_send_remote_i2c_read
 	(struct mtk_drm_dp_mst_branch *mstb,
@@ -1211,19 +1558,11 @@ void mtk_dp_mst_drv_start(struct mtk_dp *mtk_dp, struct mtk_drm_dp_mst_topology_
 	}
 
 	mtk_dp->is_mst_start = true;
-
-	DP_MSG("[MST] set mst and discover the topology go1\n");
 	/*set mst and discover the topology*/
-
-	// to check DRM drm_dp_mst_topology_mgr_set_mst(&mtk_dp->mgr, true);
-	DP_MSG("[MST] set mst and discover the topology go2\n");
 	mtk_drm_dp_mst_topology_mgr_set_mst(mgr, true);
-	DP_MSG("[MST] set mst and discover the topology go3\n");
 
 	mtk_dp_mst_hal_tx_enable(mtk_dp, true);
-	DP_MSG("[MST] set mst and discover the topology go4\n");
 	mtk_dp_mst_hal_mst_config(mtk_dp);
-	DP_MSG("[MST] set mst and discover the topology go5\n");
 }
 
 /**
@@ -1231,20 +1570,14 @@ void mtk_dp_mst_drv_start(struct mtk_dp *mtk_dp, struct mtk_drm_dp_mst_topology_
  */
 void mtk_dp_mst_drv_stop(struct mtk_dp *mtk_dp, struct mtk_drm_dp_mst_topology_mgr *mgr)
 {
-	//if (mtk_dp->is_mst_start == false) {
-		//DP_ERR("Unexpected flow, call MST Stop w/o MST Start\n");
-		//return;
-	//}
-	//else {
-		mtk_dp->is_mst_start = false;
-		DP_MSG("MST stop\n");
-	//}
+	mtk_dp->is_mst_start = false;
+	DP_MSG("MST stop\n");
 
 	mtk_dp_mst_drv_fec_enable(mtk_dp, false);
 
 	/* de-allocate vcpi */
 	mtk_dp_mst_drv_clear_vcpi(mtk_dp, mgr);
-	mtk_dp_mst_drv_stream_enable(mtk_dp, mgr);
+	mtk_dp_mst_drv_stream_enable(mtk_dp, mgr->vcpi_mask, mgr->max_payloads);
 
 	/* disable MST output (transmitter/MST TX) */
 	mtk_dp_mst_hal_tx_enable(mtk_dp, false);
@@ -1269,6 +1602,52 @@ void mtk_dp_mst_drv_stop(struct mtk_dp *mtk_dp, struct mtk_drm_dp_mst_topology_m
 
 	mtk_dp->mst_enable = false;
 }
+
+#if ENABLE_SERDES_MST
+void mtk_dp_mst_init(struct mtk_dp *mtk_dp)
+{
+	/* dptx global variable init */
+	mtk_dp_mst_drv_init_variable(mtk_dp);
+
+	mtk_dp_mst_hal_tx_init(mtk_dp);
+}
+
+void mtk_dp_mst_start(struct mtk_dp *mtk_dp)
+{
+	mtk_dp->is_mst_start = true;
+
+	mtk_dp_mst_hal_tx_enable(mtk_dp, true);
+	mtk_dp_mst_hal_mst_config(mtk_dp);
+}
+
+void mtk_dp_mst_stop(struct mtk_dp *mtk_dp)
+{
+	u8 temp_value[0x3] = {0x0, 0x0, 0x3F};
+	u8 ret = 0;
+
+	mtk_dp->is_mst_start = false;
+	DP_MSG("MST stop\n");
+
+	mtk_dp_mst_drv_fec_enable(mtk_dp, false);
+
+	/* de-allocate vcpi */
+	/* clear DPCD_001C0 ~ DPCD_001C2 */
+	ret = drm_dp_dpcd_write(&mtk_dp->aux, DPCD_001C0, temp_value, 0x3);
+	DP_MSG("Clear DPCD_001C0 ~ DPCD_001C2, result %d\n", ret);
+
+	mtk_dp_mst_drv_stream_enable(mtk_dp, 0x3, DP_STREAM_MAX);
+
+	/* disable MST output (transmitter/MST TX) */
+	mtk_dp_mst_hal_tx_enable(mtk_dp, false);
+
+	mtk_dp_mst_hal_tx_init(mtk_dp);
+
+	/* DPTx global variable reset */
+	mtk_dp_mst_drv_init_variable(mtk_dp);
+
+	mtk_dp->mst_enable = false;
+}
+#endif
 
 void mtk_dp_mst_drv_video_mute_all(struct mtk_dp *mtk_dp)
 {
@@ -1306,14 +1685,18 @@ void mtk_dp_mst_drv_reset(struct mtk_dp *mtk_dp,
 	}
 
 	//if (is_plug) {
+#if ENABLE_SERDES_MST
+		mtk_dp_mst_stop(mtk_dp);
+#else
 		mtk_dp_mst_drv_stop(mtk_dp, &mtk_dp->mtk_mgr);
+#endif
 		mtk_dp_mst_drv_video_mute_all(mtk_dp);
 		mtk_dp_mst_drv_audio_mute_all(mtk_dp);
 		mtk_dp->state = DP_STATE_INITIAL;
 		mtk_dp->mst_enable = 1;
 	//} else {
 		//mtk_dp_mst_drv_update_payload(mgr);
-		//mtk_dp_mst_drv_stream_enable(mgr);
+		//mtk_dp_mst_drv_stream_enable(mgr->vcpi_mask, mgr->max_payloads);
 	//}
 }
 
@@ -1359,7 +1742,11 @@ u8 mtk_dp_mst_drv_handler(struct mtk_dp *mtk_dp)
 	    mtk_dp->training_state != DP_TRAINING_STATE_NORMAL) {
 		mtk_dp->mst_enable = true;
 		DP_ERR("lose lock!!!traininig state %x\n\n", mtk_dp->training_state);
+#if ENABLE_SERDES_MST
+		mtk_dp_mst_stop(mtk_dp);
+#else
 		mtk_dp_mst_drv_stop(mtk_dp, &mtk_dp->mtk_mgr);
+#endif
 		mtk_dp_mst_drv_video_mute_all(mtk_dp);
 		mtk_dp_mst_drv_audio_mute_all(mtk_dp);
 		mtk_dp->state = DP_STATE_INITIAL;
@@ -1371,12 +1758,15 @@ u8 mtk_dp_mst_drv_handler(struct mtk_dp *mtk_dp)
 			DP_MSG("===MST Enable===\n\n");
 			mtk_dp_mst_drv_video_mute_all(mtk_dp);
 			mtk_dp_mst_drv_audio_mute_all(mtk_dp);
-		#if DPTX_MST_HDCP_ENABLE
+#if DPTX_MST_HDCP_ENABLE
 			mtk_dptx_hdcp13_enable_encrypt(false);
 			mtk_dptx_hdcp23_enable_encrypt(false);
-		#endif
-
+#endif
+#if ENABLE_SERDES_MST
+			mtk_dp_mst_init(mtk_dp);
+#else
 			mtk_dp_mst_drv_init(mtk_dp);
+#endif
 			mtk_dp->state = DP_STATE_IDLE;
 		}
 		break;
@@ -1384,7 +1774,11 @@ u8 mtk_dp_mst_drv_handler(struct mtk_dp *mtk_dp)
 	case DP_STATE_IDLE: //wait DP Tx training done
 		if (mtk_dp->training_state == DP_TRAINING_STATE_NORMAL) {
 			DP_MSG("===MST Start===\n\n");
+#if ENABLE_SERDES_MST
+			mtk_dp_mst_start(mtk_dp);
+#else
 			mtk_dp_mst_drv_start(mtk_dp, &mtk_dp->mtk_mgr);
+#endif
 			mtk_dp->state = DP_STATE_PREPARE;
 		}
 		break;
@@ -1393,8 +1787,11 @@ u8 mtk_dp_mst_drv_handler(struct mtk_dp *mtk_dp)
 		DP_DBG("===MST Prepare===\n\n");
 		if (mtk_dp->video_enable) {
 			mtk_dp_mst_drv_fec_handler(mtk_dp);
-
+#if ENABLE_SERDES_MST
+			mtk_dp_mst_payload_handler(mtk_dp);
+#else
 			mtk_dp_mst_drv_payload_handler(mtk_dp, &mtk_dp->mtk_mgr);
+#endif
 			mtk_dp_mst_drv_encoder_reset_all(mtk_dp);
 
 #if DPTX_MST_HDCP_ENABLE
@@ -1457,7 +1854,11 @@ u8 mtk_dp_mst_drv_handler(struct mtk_dp *mtk_dp)
 
 		if (mtk_dp->training_state != DP_TRAINING_STATE_NORMAL) {
 			DP_MSG("[MST] DPTX Link Status Change!%d\r\n", mtk_dp->training_state);
+#if ENABLE_SERDES_MST
+			mtk_dp_mst_stop(mtk_dp);
+#else
 			mtk_dp_mst_drv_stop(mtk_dp, &mtk_dp->mtk_mgr);
+#endif
 			mtk_dp_mst_drv_video_mute_all(mtk_dp);
 			mtk_dp_mst_drv_audio_mute_all(mtk_dp);
 			mtk_dp->state = DP_STATE_INITIAL;
