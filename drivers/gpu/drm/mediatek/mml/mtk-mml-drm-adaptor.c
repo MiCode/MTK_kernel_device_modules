@@ -360,10 +360,15 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 				mml_msg("[drm]%s dc not support remain %u need %u",
 					__func__, remain[mml_sys_frame],
 					info_cache[mml_layer_cnt].duration);
-				mode = MML_MODE_NOT_SUPPORT;
+				mode = MML_MODE_MML_DECOUPLE2;
+			} else if (remain[mml_sys_frame] < remain[mml_sys_tile]) {
+				mml_msg("[drm]%s balance to dc2", __func__);
+				mode = MML_MODE_MML_DECOUPLE2;
 			} else
 				remain[mml_sys_frame] -= info_cache[mml_layer_cnt].duration;
-		} else if (mode == MML_MODE_MML_DECOUPLE2) {
+		}
+
+		if (mode == MML_MODE_MML_DECOUPLE2) {
 			if (remain[mml_sys_tile] < info_cache[mml_layer_cnt].duration) {
 				mode = MML_MODE_NOT_SUPPORT;
 				mml_msg("[drm]%s dc2 not support remain %u need %u",
