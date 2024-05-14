@@ -3010,7 +3010,7 @@ cpus {
 		};
 
 		ufshci: ufshci@11270000 {
-			compatible = "mediatek,mt8183-ufshci";
+			compatible = "mediatek,mt8183-ufshci-perf";
 			reg = <0 0x11270000 0 0x2300>;
 			interrupts = <GIC_SPI 105 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&infracfg_ao_clk CLK_IFRAO_UFS>,
