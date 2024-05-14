@@ -1744,6 +1744,8 @@ static int __init hangdet_init(void)
 
 static void __exit hangdet_exit(void)
 {
+	int i = 0;
+
 #if IS_ENABLED(CONFIG_ARM64)
 	unregister_kprobe(&kp_hrtimer_start_range_ns);
 	unregister_kprobe(&kp_clockevents_exchange_device);
@@ -1754,7 +1756,14 @@ static void __exit hangdet_exit(void)
 #endif
 #endif
 	unregister_pm_notifier(&wdt_pm_nb);
-	kthread_stop((struct task_struct *)wk_tsk);
+
+	for (i = 0; i < CPU_NR; i++) {
+		if (IS_ERR(wk_tsk[i]))
+			pr_debug("[wdk] wk_task[%d] is NULL\n", i);
+		else
+			kthread_stop(wk_tsk[i]);
+	}
+
 	aee_reboot_hook_exit();
 	kfree(hwt_irq_info);
 	timer_list_debug_exit();
