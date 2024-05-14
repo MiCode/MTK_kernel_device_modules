@@ -34,7 +34,7 @@
 #define wla_south_read_raw(offset, msk)		(reg_read_raw(wla_south_base+offset, msk))
 
 #define WLA_MON_CH_BUF		(16)
-#define WLA_MON_STATUS_BUF	(4)
+#define WLA_MON_STATUS_BUF	(6)
 struct wla_mon_ch_setting {
 	unsigned int sig_sel;
 	unsigned int bit_sel;
@@ -57,6 +57,15 @@ struct wla_monitor {
 	unsigned int sta_hw_max;
 };
 
+/* For E1/E2/... chip discrimination */
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
 extern void __iomem *wla_north_base;
 extern void __iomem *wla_south_base;
 
@@ -71,6 +80,12 @@ void wla_set_group_strategy(unsigned int group, unsigned int strategy);
 int wla_get_group_strategy(unsigned int group, unsigned int *strategy);
 void wla_set_group_ignore_urg(unsigned int group, unsigned int ignore_urgent);
 int wla_get_group_ignore_urg(unsigned int group, unsigned int *ignore_urgent);
+void wla_set_dbg_latch_sel(unsigned int lat, unsigned int sel);
+int wla_get_dbg_latch_sel(unsigned int lat, unsigned int *sel);
+unsigned int wla_get_dbg_latch_hw_max(void);
+void wla_set_dbg_latch_sta_mux(unsigned int stat_n, unsigned int mux);
+int wla_get_dbg_latch_sta_mux(unsigned int stat_n, unsigned int *mux);
+unsigned int wla_get_dbg_latch_sta_hw_max(void);
 
 void wla_mon_ch_sel(unsigned int ch, struct wla_mon_ch_setting *ch_set);
 int wla_mon_get_ch_sel(unsigned int ch, struct wla_mon_ch_setting *ch_set);

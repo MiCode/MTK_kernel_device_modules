@@ -27,6 +27,16 @@
 	_n.type = _type;\
 	WLA_MON_OP(_n.op, &_n); })
 
+#define WLA_DBG_LATCH_OP(op, _priv) ({\
+	op.fs_read = wla_dbg_latch_read;\
+	op.fs_write = wla_dbg_latch_write;\
+	op.priv = _priv; })
+
+#define WLA_DBG_LATCH_NODE_INIT(_n, _name, _type) ({\
+	_n.name = _name;\
+	_n.type = _type;\
+	WLA_DBG_LATCH_OP(_n.op, &_n); })
+
 enum {
 	TYPE_MASTER_SEL,
 	TYPE_DEBOUNCE,
@@ -45,8 +55,16 @@ enum {
 	NF_TYPE_MON_MAX
 };
 
+enum {
+	TYPE_LAT_SEL,
+	TYPE_LAT_STA_MUX,
+
+	NF_TYPE_DBG_LATCH_MAX
+};
+
 static struct wla_sysfs_handle wla_entry_dbg_group;
 static struct wla_sysfs_handle wla_entry_dbg_monitor;
+static struct wla_sysfs_handle wla_dbg_latch;
 
 static struct WLA_DBG_NODE master_sel;
 static struct WLA_DBG_NODE debounce;
@@ -57,6 +75,9 @@ static struct WLA_DBG_NODE start;
 static struct WLA_DBG_NODE ch_cnt;
 static struct WLA_DBG_NODE mon_sel;
 static struct WLA_DBG_NODE status_sel;
+
+static struct WLA_DBG_NODE lat_sel;
+static struct WLA_DBG_NODE lat_sta_mux;
 
 static ssize_t wla_mon_read(char *ToUserBuf,
 					    size_t sz, void *priv)
@@ -283,6 +304,90 @@ static ssize_t wla_group_write(char *FromUserBuf,
 	return sz;
 }
 
+static ssize_t wla_dbg_latch_read(char *ToUserBuf,
+					    size_t sz, void *priv)
+{
+	char *p = ToUserBuf;
+	struct WLA_DBG_NODE *node =
+			(struct WLA_DBG_NODE *)priv;
+	unsigned int idx, num;
+	int ret;
+
+	if (!p || !node)
+		return -EINVAL;
+
+	switch (node->type) {
+	case TYPE_LAT_SEL: {
+		unsigned int sel;
+
+		num = wla_get_dbg_latch_hw_max();
+		for (idx = 0; idx < num; idx++) {
+			ret = wla_get_dbg_latch_sel(idx, &sel);
+			if (!ret)
+				wla_dbg_log("latch_%d_sel = 0x%x\n", idx, sel);
+			else
+				wla_dbg_log("read fail\n");
+		}
+		break;
+	}
+	case TYPE_LAT_STA_MUX: {
+		unsigned int mux;
+
+		num = wla_get_dbg_latch_sta_hw_max();
+		for (idx = 1; idx <= num; idx++) {
+			ret =  wla_get_dbg_latch_sta_mux(idx, &mux);
+			if (!ret)
+				wla_dbg_log("sta_%d mux = 0x%x\n", idx, mux);
+			else
+				wla_dbg_log("read fail\n");
+		}
+		break;
+	}
+	default:
+		wla_dbg_log("unknown command\n");
+		break;
+	}
+
+	return p - ToUserBuf;
+}
+
+static ssize_t wla_dbg_latch_write(char *FromUserBuf,
+					  size_t sz, void *priv)
+{
+	struct WLA_DBG_NODE *node =
+				(struct WLA_DBG_NODE *)priv;
+	unsigned int para1;
+
+	if (!FromUserBuf || !node)
+		return -EINVAL;
+
+	switch (node->type) {
+	case TYPE_LAT_SEL: {
+		/* para1: latch num */
+		unsigned int sel;
+
+		if (sscanf(FromUserBuf, "%d %x", &para1, &sel) != 2)
+			return -EINVAL;
+		wla_set_dbg_latch_sel(para1, sel);
+		break;
+	}
+	case TYPE_LAT_STA_MUX: {
+		/* para1: status_n */
+		unsigned int mux;
+
+		if (sscanf(FromUserBuf, "%d %x", &para1, &mux) != 2)
+			return -EINVAL;
+		wla_set_dbg_latch_sta_mux(para1, mux);
+		break;
+	}
+	default:
+		pr_info("unknown command\n");
+		break;
+	}
+
+	return sz;
+}
+
 static ssize_t wla_stdby_en_write(char *FromUserBuf, size_t sz, void *priv)
 {
 	unsigned int enable;
@@ -398,6 +503,24 @@ static int __init wla_fs_init(void)
 					&wla_entry_dbg_monitor,
 					&status_sel.handle);
 
+	wla_dbg_sysfs_sub_entry_add("dbg_latch", WLA_DBG_SYS_FS_MODE,
+				NULL, &wla_dbg_latch);
+
+	WLA_DBG_LATCH_NODE_INIT(lat_sel, "lat_sel",
+				    TYPE_LAT_SEL);
+	wla_dbg_sysfs_sub_entry_node_add(lat_sel.name,
+					WLA_DBG_SYS_FS_MODE,
+					&lat_sel.op,
+					&wla_dbg_latch,
+					&lat_sel.handle);
+
+	WLA_DBG_LATCH_NODE_INIT(lat_sta_mux, "lat_sta_mux",
+				    TYPE_LAT_STA_MUX);
+	wla_dbg_sysfs_sub_entry_node_add(lat_sta_mux.name,
+					WLA_DBG_SYS_FS_MODE,
+					&lat_sta_mux.op,
+					&wla_dbg_latch,
+					&lat_sta_mux.handle);
 	return 0;
 }
 
