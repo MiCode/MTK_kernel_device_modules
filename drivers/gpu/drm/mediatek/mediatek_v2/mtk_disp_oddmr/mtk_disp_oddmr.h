@@ -34,9 +34,13 @@
 #define DMR_FPS_TABLE_MAX 4
 #define DBI_GET_RAW_TYPE_FRAME_NUM (10)
 
+#define MAX_BIN_NUM	7
+#define MAX_BINSET_NUM 3
+
 enum ODDMR_STATE {
 	ODDMR_INVALID = 0,
 	ODDMR_LOAD_PARTS,
+	ODDMR_RELOAD,
 	ODDMR_LOAD_DONE,
 	ODDMR_INIT_DONE,
 	ODDMR_TABLE_UPDATING,
@@ -201,6 +205,19 @@ struct mtk_drm_dmr_cfg_info {
 	struct mtk_drm_oddmr_partial_update_params dmr_pu_info;
 };
 
+struct mtk_drm_oddmr_binset_info {
+	unsigned int dbv_interval_num;
+	unsigned int *dbv_interval_node; //1024 1520 2048:{0~1024, 1024~1520, 1520~2048, >2048}
+	unsigned int *dbv_interval_bin_idx; // 0 1 2 -1
+};
+
+struct mtk_drm_oddmr_binset_cfg_info {
+	unsigned int binfile_num;
+	unsigned int binset_num;
+	struct mtk_drm_dmr_basic_info basic_info;
+	struct mtk_drm_oddmr_binset_info binset_list[MAX_BINSET_NUM];
+};
+
 struct mtk_drm_dbi_cfg_info {
 	struct mtk_drm_dmr_basic_info basic_info;
 	struct mtk_drm_dmr_static_cfg static_cfg;
@@ -343,6 +360,9 @@ struct mtk_disp_oddmr_dmr_data {
 	atomic_t slice_size;
 	atomic_t slice_height;
 	atomic_t is_compression_mode;
+	atomic_t dmr_bin_num;
+	atomic_t cur_binset_idx;
+	atomic_t cur_bin_idx;
 };
 
 struct mtk_disp_oddmr_cfg {
@@ -413,6 +433,8 @@ struct mtk_disp_oddmr {
 	enum ODDMR_STATE dmr_state;
 	enum ODDMR_STATE dbi_state;
 	struct mtk_drm_dmr_cfg_info dmr_cfg_info;
+	struct mtk_drm_dmr_cfg_info dmr_multi_bin[MAX_BIN_NUM];
+	struct mtk_drm_oddmr_binset_cfg_info dmr_binset_cfg_info;
 	struct mtk_drm_dbi_cfg_info dbi_cfg_info;
 	struct mtk_drm_dbi_cfg_info dbi_cfg_info_tb1;
 	uint32_t od_user_gain;
