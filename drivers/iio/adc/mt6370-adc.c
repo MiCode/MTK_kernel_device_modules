@@ -62,7 +62,7 @@ static int mt6370_adc_read_channel(struct mt6370_adc_data *priv, int chan,
 				   unsigned long addr, int *val)
 {
 	unsigned int reg_val;
-	__be16 be_val;
+	__be16 be_val = 0;
 	int ret;
 
 	mutex_lock(&priv->adc_lock);
@@ -218,8 +218,16 @@ static const char * const mt6370_channel_labels[MT6370_CHAN_MAX] = {
 	[MT6370_CHAN_TEMP_JC] = "temp_jc",
 };
 
+static int mt6370_adc_read_label(struct iio_dev *indio_dev,
+				 struct iio_chan_spec const *chan, char *label)
+{
+	return sysfs_emit(label, "%s\n",
+			  chan->channel >= 0 ? mt6370_channel_labels[chan->channel] : "INVALID");
+}
+
 static const struct iio_info mt6370_adc_iio_info = {
 	.read_raw = mt6370_adc_read_raw,
+	.read_label = mt6370_adc_read_label,
 };
 
 #define MT6370_ADC_CHAN(_idx, _type, _addr, _extra_info) {	\

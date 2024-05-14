@@ -36,6 +36,26 @@
 #define ADC_POLL_TIME_US	100
 #define ADC_POLL_TIMEOUT_US	1000
 
+static const char * const mt6375_adc_labels[MT6375_ADC_MAX_CHANNEL] = {
+	[MT6375_ADC_VBATMON]		= "vbatmon",
+	[MT6375_ADC_CHGVIN]		= "chg-vin",
+	[MT6375_ADC_USBDP]		= "usb-dp",
+	[MT6375_ADC_VSYS]		= "vsys",
+	[MT6375_ADC_VBAT]		= "vbat",
+	[MT6375_ADC_IBUS]		= "ibus",
+	[MT6375_ADC_IBAT]		= "ibat",
+	[MT6375_ADC_USBDM]		= "usb-dm",
+	[MT6375_ADC_TEMPJC]		= "temp-jc",
+	[MT6375_ADC_VREFTS]		= "vref-ts",
+	[MT6375_ADC_TS]			= "ts",
+	[MT6375_ADC_PDVBUS]		= "pd-vbus",
+	[MT6375_ADC_CC1]		= "cc1",
+	[MT6375_ADC_CC2]		= "cc2",
+	[MT6375_ADC_SBU1]		= "sbu1",
+	[MT6375_ADC_SBU2]		= "sbu2",
+	[MT6375_ADC_FGCIC1]		= "fg-cic1",
+};
+
 struct mt6375_priv {
 	struct device *dev;
 	struct regmap *regmap;
@@ -44,8 +64,8 @@ struct mt6375_priv {
 
 static int mt6375_adc_read_channel(struct mt6375_priv *priv, int chan, int *val)
 {
-	__be16 be_val;
 	unsigned int addr = MT6375_REG_ADC_MONRPTH, regval;
+	__be16 be_val = 0;
 	int ret;
 
 	mutex_lock(&priv->lock);
@@ -144,8 +164,16 @@ static int mt6375_adc_read_raw(struct iio_dev *indio_dev, struct iio_chan_spec c
 	return -EINVAL;
 }
 
+static int mt6375_adc_read_label(struct iio_dev *indio_dev,
+				 struct iio_chan_spec const *chan, char *label)
+{
+	return sysfs_emit(label, "%s\n",
+			  chan->channel >= 0 ? mt6375_adc_labels[chan->channel] : "INVALID");
+}
+
 static const struct iio_info mt6375_iio_info = {
 	.read_raw = mt6375_adc_read_raw,
+	.read_label = mt6375_adc_read_label,
 };
 
 #define MT6375_ADC_CHAN(_idx, _type) {				\

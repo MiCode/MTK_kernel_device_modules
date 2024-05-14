@@ -74,7 +74,7 @@ static int mt6379_adc_read_channel(struct mt6379_priv *priv, int chan, int *val)
 {
 	u32 regval, vbatmon_en_stat = 0;
 	int ret, retry_cnt = 1;
-	__be16 be_val;
+	__be16 be_val = 0;
 
 	mutex_lock(&priv->lock);
 	pm_stay_awake(priv->dev);
@@ -220,7 +220,8 @@ static int mt6379_adc_read_raw(struct iio_dev *indio_dev, struct iio_chan_spec c
 static int mt6379_adc_read_label(struct iio_dev *indio_dev,
 				 struct iio_chan_spec const *chan, char *label)
 {
-	return sysfs_emit(label, "%s\n", mt6379_adc_labels[chan->channel]);
+	return sysfs_emit(label, "%s\n",
+			  chan->channel >= 0 ? mt6379_adc_labels[chan->channel] : "INVALID");
 }
 
 static const struct iio_info mt6379_iio_info = {
@@ -303,7 +304,7 @@ out:
 
 static inline int mt6379_adc_reset(struct mt6379_priv *priv)
 {
-	__be16 be_val;
+	__be16 be_val = 0;
 	int ret;
 
 	ret = regmap_write_bits(priv->regmap, MT6379_REG_ADC_CONFG1,
