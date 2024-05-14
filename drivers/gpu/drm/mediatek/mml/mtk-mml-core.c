@@ -1111,7 +1111,7 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 	struct mml_path_client *path_clt = core_get_path_clt(task, pipe);
 	struct mml_task_pipe *task_pipe_tmp;
 	struct timespec64 curr_time, dvfs_end_time;
-	u32 throughput, tput_up;
+	u32 throughput, tput_up, max_freq;
 	u32 max_pixel = cfg->cache[pipe].max_tput_pixel;
 	u64 duration = 0;
 	u64 boost_time = 0;
@@ -1119,6 +1119,11 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 
 	if (unlikely(!path_clt)) {
 		mml_err("%s core_get_path_clt return null", __func__);
+		return;
+	}
+
+	if (unlikely(!tp)) {
+		mml_err("%s mml_topology_get_cache return null", __func__);
 		return;
 	}
 
@@ -1173,6 +1178,9 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 			&task->end_time, &task->submit_time);
 	}
 
+	max_freq = mml_qos_max_freq(cfg->path[pipe], tp);
+	task->pipe[pipe].throughput = min_t(u32, task->pipe[pipe].throughput, max_freq);
+
 	if (unlikely(mml_qos & MML_QOS_FORCE_CLOCK_MASK))
 		task->pipe[pipe].throughput = mml_qos_force_clk;
 
@@ -1184,11 +1192,7 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 		}
 	} else {
 		/* there is no time for this task, use max throughput */
-		if (unlikely(!tp)) {
-			mml_err("%s mml_topology_get_cache return null", __func__);
-			goto done;
-		}
-		task->pipe[pipe].throughput = mml_qos_max_freq(cfg->path[pipe], tp);
+		task->pipe[pipe].throughput = max_freq;
 		/* make sure end time >= submit time to ensure
 		 * next task calculate correct duration
 		 */
