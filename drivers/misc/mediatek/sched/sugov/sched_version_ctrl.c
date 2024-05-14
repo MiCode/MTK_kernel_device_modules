@@ -23,12 +23,14 @@ bool _rt_aggre_preempt_enable;
 bool _post_init_util_ctl;
 bool _percore_l3_bw;
 bool _dsu_pwr_enable;
+bool _legacy_api_support;
 
 int init_sched_ctrl(void)
 {
 	struct device_node *eas_node;
 	int sched_ctrl = 0;
 	int ret = 0;
+	int legacy_api_support = 0;
 
 	eas_node = of_find_node_by_name(NULL, "eas-info");
 	if (eas_node == NULL) {
@@ -37,6 +39,14 @@ int init_sched_ctrl(void)
 		ret = of_property_read_u32(eas_node, "version", &sched_ctrl);
 		if (ret < 0)
 			pr_info("no share_buck err_code=%d %s\n", ret,  __func__);
+
+		_legacy_api_support = false;
+		ret = of_property_read_u32(eas_node, "legacy-api-support", &legacy_api_support);
+		if (ret < 0)
+			pr_info("no legacy-api-support err_code=%d %s\n", ret,  __func__);
+		if (legacy_api_support)
+			_legacy_api_support = true;
+		pr_info("legacy_api_support = %d %s\n", _legacy_api_support,  __func__);
 	}
 	switch(sched_ctrl) {
 	case EAS_5_5:
@@ -106,6 +116,12 @@ int init_sched_ctrl(void)
 	}
 	return 0;
 }
+
+bool legacy_api_support_get(void)
+{
+	return _legacy_api_support;
+}
+EXPORT_SYMBOL_GPL(legacy_api_support_get);
 
 bool sched_vip_enable_get(void)
 {

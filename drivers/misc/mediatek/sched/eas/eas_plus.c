@@ -355,7 +355,7 @@ unsigned long estimate_energy(struct em_perf_domain *pd,
 	energy = get_cpu_power(mtk_em, get_lkg, false, eenv->wl,
 		eenv->val_s, false, DPT_CALL_MTK_EM_CPU_ENERGY,
 		this_cpu, cpu_temp, opp, cpus->bits[0],
-		data, output);
+		data, output, pd, freq);
 
 	if (get_lkg) {
 		for_each_cpu_and(cpu, pd_cpus, cpu_online_mask) {

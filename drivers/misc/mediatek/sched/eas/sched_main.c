@@ -977,15 +977,6 @@ static int __init mtk_scheduler_init(void)
 	/* build cpu_array for hints-based gear search*/
 	init_cpu_array();
 	build_cpu_array();
-
-#if !IS_ENABLED(CONFIG_ARM64)
-	ret = parse_dt_topology_arm();
-	if (ret) {
-		pr_info("parse_dt_topology fail on arm32, returned %d\n", ret);
-		return ret;
-	}
-#endif
-
 	init_gear_hints();
 
 	init_updown_migration();
@@ -1188,7 +1179,11 @@ static void __exit mtk_scheduler_exit(void)
 	free_cpu_array();
 }
 
+#if IS_BUILTIN(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
+late_initcall(mtk_scheduler_init);
+#else
 module_init(mtk_scheduler_init);
+#endif
 module_exit(mtk_scheduler_exit);
 
 MODULE_LICENSE("GPL");
