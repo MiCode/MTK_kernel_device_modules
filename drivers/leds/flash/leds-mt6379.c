@@ -651,7 +651,11 @@ static int mt6379_init_flash_properties(struct device *dev,
 	mtflash->idx = src;
 
 	imax = MT6379_ITOR_MINUA;
-	fwnode_property_read_u32(fwnode, "led-max-microamp", &imax);
+	ret = fwnode_property_read_u32(fwnode, "led-max-microamp", &imax);
+	if (ret) {
+		dev_info(dev, "read led-max-microamp property failed\n");
+		return ret;
+	}
 
 	imax = clamp_val(imax, MT6379_ITOR_MINUA, MT6379_ITOR_MAXUA);
 	imax = rounddown(imax - MT6379_ITOR_MINUA, MT6379_ITOR_STEPUA);
@@ -664,7 +668,11 @@ static int mt6379_init_flash_properties(struct device *dev,
 	flash->ops = &mt6379_flash_ops;
 
 	imax = MT6379_ISTRB_MINUA;
-	fwnode_property_read_u32(fwnode, "flash-max-microamp", &imax);
+	ret = fwnode_property_read_u32(fwnode, "flash-max-microamp", &imax);
+	if (ret) {
+		dev_info(dev, "read flash-max-microamp failed\n");
+		return ret;
+	}
 
 	imax = clamp_val(imax, MT6379_ISTRB_MINUA, MT6379_ISTRB_MAXUA);
 	imax = rounddown(imax - MT6379_ISTRB_MINUA, MT6379_ISTRB_STEPUA);
@@ -769,7 +777,7 @@ static int mt6379_flash_probe(struct platform_device *pdev)
 	count = 0;
 	fwnode_for_each_available_child_node(fwnode, child) {
 		struct mt6379_flash *mtflash;
-		struct led_init_data init_data;
+		struct led_init_data init_data = {};
 		struct v4l2_flash_config v4l2_config = {};
 
 		mtflash = data->mtflash + count;
