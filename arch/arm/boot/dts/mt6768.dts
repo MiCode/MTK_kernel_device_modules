@@ -96,6 +96,11 @@ aliases {
 			/* use_cpu_to_dram_map_new = "enable"; */
 		};
 
+		eas_info: eas-info {
+			compatible = "mediatek,eas-info";
+			legacy-api-support = <1>;
+		};
+
 		fpsgo: fpsgo {
 			compatible = "mediatek,fpsgo";
 			interconnects = <&dvfsrc MT6873_MASTER_MCU_1 &dvfsrc MT6873_SLAVE_DDR_EMI>;
