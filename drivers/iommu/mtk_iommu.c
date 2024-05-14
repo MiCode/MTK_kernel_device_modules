@@ -3813,7 +3813,8 @@ static const struct mtk_iommu_plat_data mt6893_data_iommu2 = {
 
 static const struct mtk_iommu_plat_data mt6893_data_iommu3 = {
 	.m4u_plat        = M4U_MT6893,
-	.flags           = LINK_WITH_APU | SHARE_PGTABLE | PM_OPS_SKIP,
+	.flags           = LINK_WITH_APU | IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE |
+			   PM_OPS_SKIP,
 	.iommu_id	 = APU_IOMMU1,
 	.iommu_type      = APU_IOMMU,
 	.normal_dom	 = 0,
