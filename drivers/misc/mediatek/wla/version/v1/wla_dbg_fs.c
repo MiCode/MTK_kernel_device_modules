@@ -119,7 +119,7 @@ static ssize_t wla_mon_read(char *ToUserBuf,
 		break;
 	}
 	case TYPE_MON_SEL: {
-		struct wla_mon_ch_setting ch_set;
+		struct wla_mon_ch_setting ch_set = {0};
 
 		num = wla_mon_get_ch_hw_max();
 		for (idx = 0; idx < num; idx++) {
