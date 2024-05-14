@@ -15333,7 +15333,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		send-table =
 			< 0 0 18>,/* IPI_OUT_VDEC_1 */
 			<11 1  2>,/* IPI_OUT_MMQOS */
-			<15 1  4>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
+			<15 1  8>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
 			<16 1 18>,/* IPI_OUT_VENC_0 */
 			< 9 1  2>,/* IPI_OUT_MMDVFS_VCP */
 			<22 2  6>,/* IPI_OUT_LOGGER_CTRL_0 */
@@ -15346,7 +15346,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		recv-table =
 			< 1 0 18 0>,/* IPI_IN_VDEC_1 */
 			<12 1  2 0>,/* IPI_IN_MMQOS */
-			<15 1  4 1>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
+			<15 1  8 1>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
 			<17 1 18 0>,/* IPI_IN_VENC_0 */
 			<10 1  2 0>,/* IPI_IN_MMDVFS_VCP */
 			< 5 2  1 0>,/* IPI_IN_VCP_READY_0 */
