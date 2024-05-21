@@ -182,7 +182,12 @@ static const struct scp_domain_data scp_domain_data_MT6781[] = {
 		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.basic_clk_name = {"cam"},
 		.subsys_clk_prefix = "cam",
-		.caps = MTK_SCPD_BYPASS_INIT_ON,
+		.bp_table = {
+			BUS_PROT_IGN(IFR_TYPE, 0x02A8, 0x02AC, 0x0250, 0x0258,
+				CAM_PROT_STEP1_0_MASK),
+			BUS_PROT_IGN(IFR_TYPE, 0x02A8, 0x02AC, 0x0250, 0x0258,
+				CAM_PROT_STEP2_0_MASK),
+		},
 	},
 
 	[MT6781_POWER_DOMAIN_CAM_RAWA] = {
@@ -191,7 +196,6 @@ static const struct scp_domain_data scp_domain_data_MT6781[] = {
 		.ctl_offs = 0x360,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_BYPASS_INIT_ON,
 	},
 
 	[MT6781_POWER_DOMAIN_CAM_RAWB] = {
@@ -200,7 +204,6 @@ static const struct scp_domain_data scp_domain_data_MT6781[] = {
 		.ctl_offs = 0x364,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_BYPASS_INIT_ON,
 	},
 
 	[MT6781_POWER_DOMAIN_MFG0] = {
@@ -241,8 +244,8 @@ static const struct scp_domain_data scp_domain_data_MT6781[] = {
 
 	[MT6781_POWER_DOMAIN_CSI] = {
 		.name = "csi",
-		.sta_mask = BIT(30),
-		.ctl_offs = 0x0E78,
+		.sta_mask = BIT(6),
+		.ctl_offs = 0x318,
 		.caps = MTK_SCPD_BYPASS_INIT_ON,
 	},
 };
