@@ -226,7 +226,7 @@ static const struct of_device_id of_smi_bwc_match_tbl[] = {
 };
 
 struct smi_driver_t {
-	spinlock_t		lock;
+	struct mutex	lock_mutex;
 	enum MTK_SMI_BWC_SCEN	scen;
 	s32			table[SMI_BWC_SCEN_CNT];
 };
@@ -351,8 +351,7 @@ static s32 smi_bwc_conf(const struct MTK_SMI_BWC_CONF *conf)
 		return -EINVAL;
 	}
 
-	spin_lock(&(smi_drv.lock));
-
+	mutex_lock(&(smi_drv.lock_mutex));
 	if (!conf->b_on) {
 		if (smi_drv.table[conf->scen] <= 0)
 			SMIWRN(0, "ioctl=%s:OFF not in pairs\n",
@@ -369,7 +368,7 @@ static s32 smi_bwc_conf(const struct MTK_SMI_BWC_CONF *conf)
 	if (smi_scen_map[i] == smi_scen_map[smi_drv.scen])
 		same += 1;
 	smi_drv.scen = (i > 0 ? i : 0);
-	spin_unlock(&(smi_drv.lock));
+	mutex_unlock(&(smi_drv.lock_mutex));
 
 #ifdef MMDVFS_HOOK
 	{
@@ -433,18 +432,18 @@ static long smi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	if (!file->f_op || !file->f_op->unlocked_ioctl)
 		return -ENOTTY;
 
-	spin_lock(&(smi_drv.lock));
+	mutex_lock(&(smi_drv.lock_mutex));
 	if (!smi->probe) {
 		ret = smi_dev_probe();
 		if (ret) {
-			spin_unlock(&(smi_drv.lock));
+			mutex_unlock(&(smi_drv.lock_mutex));
 			SMIDBG("cannot probe smi dev info.\n");
 			return -ENXIO;
 		}
 
 		smi->probe = true;
 	}
-	spin_unlock(&(smi_drv.lock));
+	mutex_unlock(&(smi_drv.lock_mutex));
 
 	switch (cmd) {
 	case MTK_IOC_SMI_BWC_CONF:
@@ -792,7 +791,7 @@ static int smi_bwc_probe(struct platform_device *pdev)
 	if (IS_ERR(device))
 		SMIERR("Create device failed: %ld\n", PTR_ERR(device));
 
-	spin_lock_init(&(smi_drv.lock));
+	mutex_init(&smi_drv.lock_mutex);
 	smi_drv.scen = SMI_BWC_SCEN_NORMAL;
 	memset(&smi_drv.table, 0, sizeof(smi_drv.table));
 	smi_drv.table[smi_drv.scen] += 1;
