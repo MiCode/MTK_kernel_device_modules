@@ -2845,7 +2845,6 @@
 		_vsram_gpu-supply = <&mt6359p_vsram_md_reg>;
 		nvmem-cells = <&efuse_segment>;
 		nvmem-cell-names = "efuse_segment_cell";
-		fhctl-supply = <&fhctl>;
 		gpufreq_wrapper-supply = <&gpufreq_wrapper>;
 	};
 
