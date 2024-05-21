@@ -607,6 +607,14 @@ static void mtk_atomic_disp_rsz_roi(struct drm_device *dev,
 	bool rsz_enable[MAX_CRTC] = {false};
 	struct mtk_plane_comp_state comp_state[MAX_CRTC][OVL_LAYER_NR];
 
+	for_each_old_crtc_in_state(old_state, crtc, old_crtc_state, i) {
+		struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
+		struct mtk_crtc_state *old_mtk_crtc_state = to_mtk_crtc_state(old_crtc_state);
+
+		if(old_mtk_crtc_state->prop_val[CRTC_PROP_LYE_IDX] >= state->prop_val[CRTC_PROP_LYE_IDX])
+			return;
+	}
+
 	for_each_old_crtc_in_state(old_state, crtc, old_crtc_state, j) {
 		struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 

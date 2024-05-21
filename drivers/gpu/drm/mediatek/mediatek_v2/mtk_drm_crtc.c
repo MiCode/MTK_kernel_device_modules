@@ -555,6 +555,32 @@ void mtk_drm_crtc_exdma_ovl_path_out(struct mtk_drm_crtc *mtk_crtc,
 	mtk_crtc->last_blender = NULL;
 }
 
+void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk_crtc)
+{
+	unsigned int addr_begin, addr_end, offset, i = 0;
+	int crtc_id = drm_crtc_index(&mtk_crtc->base);
+
+	mtk_ddp_exdma_mout_reset_MT6991(MTK_OVL_EXDMA, &offset, &addr_begin,
+		&addr_end, crtc_id);
+
+		for (i = addr_begin; i <= addr_end; i = i + offset) {
+			if (crtc_id == 0) {
+				if (mtk_crtc->crtc_blank)
+					if (i == mtk_crtc->tui_ovl_stat.cb_reg)
+						continue;
+				if (mtk_drm_dal_enable() && i == 0xE98)
+					continue;
+				writel_relaxed(0, mtk_crtc->ovlsys0_regs + i);
+			} else if (crtc_id == 1) {
+				writel_relaxed(0, mtk_crtc->ovlsys1_regs + i);
+			} else if (crtc_id == 2) {
+				writel_relaxed(0, mtk_crtc->ovlsys1_regs + i);
+			} else if (crtc_id == 3) {
+				writel_relaxed(0, mtk_crtc->ovlsys1_regs + i);
+			}
+		}
+}
+
 void mtk_drm_crtc_exdma_path_setting_reset(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *cmdq_handle)
 {
@@ -4707,12 +4733,6 @@ void _mtk_crtc_atmoic_addon_module_connect(
 	if (lye_state->rpo_lye || lye_state->mml_ir_lye || lye_state->mml_dl_lye)
 		mtk_ddp_clean_ovl_pq_crossbar(mtk_crtc, cmdq_handle);
 
-	if (priv->data->ovl_exdma_rule && lye_state->mml_dl_lye)
-		mtk_drm_crtc_exdma_path_setting_reset(mtk_crtc, cmdq_handle);
-
-	if (priv->data->ovl_exdma_rule && lye_state->rpo_lye)
-		mtk_drm_crtc_exdma_path_setting_reset(mtk_crtc, cmdq_handle);
-
 	_mtk_crtc_lye_addon_module_connect(
 			crtc, ddp_mode, lye_state, cmdq_handle);
 
@@ -4958,6 +4978,7 @@ static void mtk_crtc_atomic_ddp_config(struct drm_crtc *crtc,
 	struct mtk_lye_ddp_state *lye_state, *old_lye_state;
 	struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	lye_state = &state->lye_state;
 	old_lye_state = &old_crtc_state->lye_state;
@@ -4965,6 +4986,11 @@ static void mtk_crtc_atomic_ddp_config(struct drm_crtc *crtc,
 	/* TODO: how to skip same configuration */
 	_mtk_crtc_atmoic_addon_module_disconnect(crtc, mtk_crtc->ddp_mode,
 						 old_lye_state, cmdq_handle);
+
+	if (priv->data->ovl_exdma_rule && (lye_state->rpo_lye || lye_state->mml_dl_lye) &&
+	(old_crtc_state->prop_val[CRTC_PROP_LYE_IDX] < state->prop_val[CRTC_PROP_LYE_IDX]))
+		mtk_drm_crtc_exdma_path_setting_reset(mtk_crtc, cmdq_handle);
+
 	_mtk_crtc_atmoic_addon_module_connect(crtc, mtk_crtc->ddp_mode,
 					      lye_state, cmdq_handle);
 }

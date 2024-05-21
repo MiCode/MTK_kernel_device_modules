@@ -745,6 +745,11 @@ static void mtk_ovl_exdma_all_layer_off(struct mtk_ddp_comp *comp,
 		}
 	}
 
+	if (comp && comp->bind_comp && comp->bind_comp->funcs && comp->bind_comp->funcs->stop) {
+		DDPINFO("%s+ %s bind stop\n", __func__, mtk_dump_comp_str(comp));
+		comp->bind_comp->funcs->layer_off(comp->bind_comp, 0, 0, handle);
+	}
+
 	/*
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_REG_OVL_EN,
