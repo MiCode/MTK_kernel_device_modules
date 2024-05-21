@@ -1288,6 +1288,8 @@ static struct mtk_panel_funcs ext_funcs = {
 	.get_res_switch_type = mtk_get_res_switch_type,
 #endif
 	.mode_switch = mode_switch,
+	/* Not real backlight cmd in AOD, just for QC purpose */
+	.set_aod_light_mode = lcm_setbacklight_cmdq,
 	.lcm_update_roi = lcm_update_roi,
 	.lcm_update_roi_cmdq = lcm_update_roi_cmdq,
 	.lcm_valid_roi = rm692h5_lcm_valid_roi,
