@@ -3367,9 +3367,9 @@ static void ged_timer_base_dvfs_margin(int i32MarginValue)
 	g_tb_dvfs_margin_value_min = g_tb_dvfs_margin_value_min_cmd;
 
 	if (margin_step == 0)
-		g_tb_dvfs_margin_step = margin_step;
-	else
 		g_tb_dvfs_margin_step = GED_DVFS_TIMER_BASED_DVFS_MARGIN_STEP;
+	else
+		g_tb_dvfs_margin_step = margin_step;
 
 	mutex_unlock(&gsDVFSLock);
 }
@@ -3387,6 +3387,16 @@ int ged_dvfs_get_tb_dvfs_margin_cur(void)
 unsigned int ged_dvfs_get_tb_dvfs_margin_mode(void)
 {
 	return g_tb_dvfs_margin_mode;
+}
+
+int ged_dvfs_get_margin_value_min_cmd(void)
+{
+	return g_tb_dvfs_margin_value_min_cmd;
+}
+
+int ged_dvfs_get_margin_step(void)
+{
+	return g_tb_dvfs_margin_step;
 }
 
 static void ged_dvfs_loading_mode(int i32MarginValue)
@@ -3456,6 +3466,7 @@ static void ged_set_eb_dvfs_init_value(void)
 		ged_eb_dvfs_task(EB_ASYNC_RATIO_ENABLE, tmp_sysram_val);
 	// set api boost initial value
 	ged_eb_dvfs_task(EB_UPDATE_API_BOOST, 0);
+	ged_eb_dvfs_task(EB_DBG_CMD, 0);
 }
 
 static void ged_set_fastdvfs_mode(unsigned int u32ModeValue)
@@ -3959,6 +3970,11 @@ int ged_dvfs_get_lb_async_perf_diff(void)
 void ged_dvfs_set_lb_async_perf_diff(int perfDiffTH)
 {
 	g_lb_async_perf_diff_th = 100 + perfDiffTH;
+}
+
+int ged_dvfs_get_lb_win_size_cmd(void)
+{
+	return g_loading_slide_window_size_cmd;
 }
 
 static enum hrtimer_restart gpu_mewtwo_timer_cb(struct hrtimer *timer)

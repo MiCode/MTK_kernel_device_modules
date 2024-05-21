@@ -429,6 +429,9 @@ static ssize_t loading_base_dvfs_step_store(struct kobject *kobj,
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
 				mtk_loading_base_dvfs_step(i32Value);
+
+			ged_eb_dvfs_task(EB_DBG_CMD, 0);
+			ged_eb_dvfs_task(EB_REINIT, 0);
 		}
 	}
 
@@ -469,6 +472,9 @@ static ssize_t timer_base_dvfs_margin_store(struct kobject *kobj,
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
 				mtk_timer_base_dvfs_margin(i32Value);
+
+			ged_eb_dvfs_task(EB_DBG_CMD, 0);
+			ged_eb_dvfs_task(EB_REINIT, 0);
 		}
 	}
 
@@ -683,6 +689,35 @@ static ssize_t eb_dvfs_policy_show(struct kobject *kobj,
 				"Debug count: %u\n",ipi_data->u.set_para.arg[4]);
 	}
 
+	/* 0:fallback_time, 1:fallback_mode, 2:fallback_win_size*/
+	ipi_data->cmd = GPUFDVFS_IPI_GET_FB_TUNE_PARAM;
+	ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+
+	if (ret) {
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"TUNE_PARAM-- fallback_time: %u  fallback_mode: %u  fallback_win_size: %u\n",
+				ipi_data->u.set_para.arg[0],
+				ipi_data->u.set_para.arg[1],
+				ipi_data->u.set_para.arg[2]);
+	}
+
+	/* 0:ultra_low_step_size, 1:ultra_high_step_size, 2:lb_target_mode,
+	 * 3:lb_stride_size, 4:loading_win_size_cmd
+	 */
+	ipi_data->cmd = GPUFDVFS_IPI_GET_LB_TUNE_PARAM;
+	ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+
+	if (ret) {
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"TUNE_PARAM-- ultra_low_step_size: %u  ultra_high_step_size: %u\n",
+				ipi_data->u.set_para.arg[0],
+				ipi_data->u.set_para.arg[1]);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"TUNE_PARAM-- lb_target_mode: %u  lb_stride_size: %u  loading_win_size_cmd: %u\n",
+				ipi_data->u.set_para.arg[2],
+				ipi_data->u.set_para.arg[3],
+				ipi_data->u.set_para.arg[4]);
+	}
 
 	return pos;
 }
@@ -1658,18 +1693,28 @@ static ssize_t loading_stride_size_store(struct kobject *kobj,
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
-				if (i32Value < 200 && i32Value > 0) {
-					if (i32Value < 100) {
-						g_loading_target_mode = 0;
-						g_loading_stride_size = i32Value;
-					} else if (i32Value < 200 && i32Value > 100) {
-						g_loading_target_mode = 1;
-						g_loading_stride_size = i32Value % 100;
-					}
+				if (i32Value < 100) {
+					g_loading_target_mode = 0;
+					g_loading_stride_size = i32Value;
+				} else if (i32Value < 200 && i32Value > 100) {
+					g_loading_target_mode = 1;
+					g_loading_stride_size = i32Value % 100;
+				} else if (i32Value < 300 && i32Value > 200) {
+					g_loading_target_mode = 2;
+					g_loading_stride_size = i32Value % 100;
+				} else if (i32Value < 400 && i32Value > 300) {
+					g_loading_target_mode = 3;
+					g_loading_stride_size = i32Value % 100;
+				} else if (i32Value < 500 && i32Value > 400) {
+					g_loading_target_mode = 4;
+					g_loading_stride_size = i32Value % 100;
 				} else {
 					g_loading_target_mode = 0;
 					g_loading_stride_size = GED_DEFAULT_SLIDE_STRIDE_SIZE;
 				}
+
+				ged_eb_dvfs_task(EB_DBG_CMD, 0);
+				ged_eb_dvfs_task(EB_REINIT, 0);
 			}
 		}
 	}
@@ -1716,6 +1761,8 @@ static ssize_t fallback_timing_store(struct kobject *kobj,
 					g_frame_target_mode = GED_DEFAULT_FRAME_TARGET_MODE;
 					g_frame_target_time = GED_DEFAULT_FRAME_TARGET_TIME;
 				}
+				ged_eb_dvfs_task(EB_DBG_CMD, 0);
+				ged_eb_dvfs_task(EB_REINIT, 0);
 			}
 		}
 	}
@@ -1760,10 +1807,16 @@ static ssize_t fallback_interval_store(struct kobject *kobj,
 						g_fallback_mode = 2;
 						g_fallback_time = i32Value%100;
 					}
+					if (i32Value > 300 && i32Value < 400) {
+						g_fallback_mode = 3;
+						g_fallback_time = i32Value%100;
+					}
 				} else {
 					g_fallback_mode = GED_DEFAULT_FALLBACK_MODE;
 					g_fallback_time = GED_DEFAULT_FALLBACK_TIME;
 				}
+				ged_eb_dvfs_task(EB_DBG_CMD, 0);
+				ged_eb_dvfs_task(EB_REINIT, 0);
 			}
 		}
 	}
@@ -1797,6 +1850,9 @@ static ssize_t fallback_window_size_store(struct kobject *kobj,
 					g_fallback_window_size = i32Value;
 				else
 					g_fallback_window_size = GED_DEFAULT_FALLBACK_WINDOW_SIZE;
+
+				ged_eb_dvfs_task(EB_DBG_CMD, 0);
+				ged_eb_dvfs_task(EB_REINIT, 0);
 			}
 		}
 	}
@@ -2012,6 +2068,9 @@ static ssize_t loading_window_size_store(struct kobject *kobj,
 			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
 				if (i32Value > 0 && i32Value < 256)
 					ged_dvfs_set_slide_window_size(i32Value);
+
+				ged_eb_dvfs_task(EB_DBG_CMD, 0);
+				ged_eb_dvfs_task(EB_REINIT, 0);
 			}
 		}
 	}

@@ -285,6 +285,8 @@ extern int (*mtk_get_timer_base_dvfs_margin_fp)(void);
 extern void (*ged_kpi_fastdvfs_update_dcs_fp)(void);
 int ged_dvfs_get_tb_dvfs_margin_cur(void);
 unsigned int ged_dvfs_get_tb_dvfs_margin_mode(void);
+int ged_dvfs_get_margin_value_min_cmd(void);
+int ged_dvfs_get_margin_step(void);
 void set_api_sync_flag(int flag);
 int get_api_sync_flag(void);
 void ged_reset_api_sync_ts(void);
@@ -350,6 +352,7 @@ int ged_dvfs_get_async_perf_model(void);
 void ged_dvfs_set_lb_async_perf_diff(int perfDiffTH);
 int ged_dvfs_get_lb_async_perf_diff(void);
 void ged_dvfs_write_sysram_virtual_commit_idx(int top_idx, int stack_idx);
+int ged_dvfs_get_lb_win_size_cmd(void);
 
 /* MBrain */
 //GPU freq part:
