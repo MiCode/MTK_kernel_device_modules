@@ -54,6 +54,14 @@ config MTK_IMGSENSOR_ISP6S_MOU
 		To compile this driver as a module, choose M here: the
 		module will be called imgsensor_isp6s_mou.
 
+config MTK_IMGSENSOR_ISP6S_LAG
+	  tristate "MediaTek image sensor support"
+	  help
+		This is a driver for the MediaTek
+		image sensors.
+		To compile this driver as a module, choose M here: the
+		module will be called imgsensor_isp6s_lag.
+
 config CUSTOM_KERNEL_IMGSENSOR
 	string "Custom image sensor driver"
 	help
