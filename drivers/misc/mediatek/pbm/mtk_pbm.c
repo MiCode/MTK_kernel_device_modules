@@ -367,7 +367,7 @@ static bool pbm_func_enable_check(void)
 	struct pbm *pwrctrl = &pbm_ctrl;
 
 	if (!pwrctrl->pbm_drv_done) {
-		pr_info("pwrctrl->pbm_drv_done: %d\n", pwrctrl->pbm_drv_done);
+		pr_info_ratelimited("pwrctrl->pbm_drv_done: %d\n", pwrctrl->pbm_drv_done);
 		return false;
 	}
 
