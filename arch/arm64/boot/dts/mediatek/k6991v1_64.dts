@@ -124,7 +124,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 	pinctrl-names = "lcd_bias_enp1_gpio", "lcd_bias_enp0_gpio",
 		"lcd_bias_enn1_gpio", "lcd_bias_enn0_gpio",
 		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
-		"mode_te_te", "lcm_led_en1_gpio", "lcm_led_en0_gpio";
+		"mode_te_te", "lcm_led_en1_gpio", "lcm_led_en0_gpio",
+		"mode_te_te1";
 	pinctrl-0 = <&mtkfb_pins_lcd_bias_enp1>;
 	pinctrl-1 = <&mtkfb_pins_lcd_bias_enp0>;
 	pinctrl-2 = <&mtkfb_pins_lcd_bias_enn1>;
@@ -140,7 +141,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &dispsys_config {
-	pinctrl-names = "mode_te_te";
+	pinctrl-names = "mode_te_te", "mode_te_te1";
 	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
 	pinctrl-1 = <&mtkfb_pins_lcm_dsi1_te>;
 
