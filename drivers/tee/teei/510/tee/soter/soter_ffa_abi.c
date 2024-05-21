@@ -136,10 +136,6 @@ static void soter_release(struct tee_context *ctx)
 void soter_scatterlist_convert(struct scatterlist *s, unsigned long page_link,
 				unsigned int length, unsigned int offset)
 {
-	unsigned long pa = 0;
-
-	pa = (unsigned long)page_to_phys((struct page *)page_link);
-
 	sg_init_marker(s, 1);
 	sg_set_page(s, (struct page *)page_link, length, offset);
 }
