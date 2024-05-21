@@ -10,6 +10,7 @@
 #include <linux/slab.h>
 #include <linux/sched/clock.h>
 #include <linux/soc/mediatek/mtk-mbox.h>
+#include <linux/of.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/mbox.h>
@@ -745,7 +746,8 @@ int mtk_mbox_probe(struct platform_device *pdev, struct mtk_mbox_device *mbdev,
 	int ret;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
-
+	unsigned int m_attri = 0xFFFFFFFF;
+	unsigned long mbox_flag = IRQF_NO_SUSPEND | IRQF_TRIGGER_NONE;
 	minfo = &(mbdev->info_table[mbox]);
 
 	if (pdev) {
@@ -804,13 +806,22 @@ int mtk_mbox_probe(struct platform_device *pdev, struct mtk_mbox_device *mbdev,
 			goto mtk_mbox_probe_fail;
 		}
 
+		ret = of_property_read_u32_index(pdev->dev.of_node,
+				"mbox-attr",
+				mbox,
+				&m_attri);
+		if (ret == 0) {
+			mbox_flag = (unsigned long)m_attri;
+			pr_notice("MBOX %d mbox-attri: 0x%lx\n", mbox, mbox_flag);
+		}
+
 		minfo->enable = true;
 		minfo->id = mbox;
 		minfo->mbdev = mbdev;
 		spin_lock_init(&minfo->mbox_lock);
 
 		ret = request_irq(minfo->irq_num, mtk_mbox_isr,
-				IRQF_NO_SUSPEND | IRQF_TRIGGER_NONE, mbdev->name, (void *) minfo);
+				mbox_flag, mbdev->name, (void *) minfo);
 		if (ret) {
 			pr_err("MBOX %d request irq Failed\n", mbox);
 			goto mtk_mbox_probe_fail;
