@@ -230,7 +230,7 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 	char *p = ToUser;
 	int i;
 	int32_t core_vol_num, xpu_ip_num;
-	int data_update_count;
+	int data_update_count = 0;
 
 	struct ip_stats *xpu_ip_stats_ptr = NULL;
 	struct vol_duration *core_duration_ptr = NULL;
@@ -315,7 +315,7 @@ static ssize_t swpm_sp_ddr_idx_read(char *ToUser, size_t sz, void *priv)
 	char *p = ToUser;
 	int i, j;
 	int32_t ddr_freq_num, ddr_bc_ip_num;
-	int data_update_count;
+	int data_update_count = 0;
 	struct ddr_act_times *ddr_act_times_ptr = NULL;
 	struct ddr_sr_pd_times *ddr_sr_pd_times_ptr = NULL;
 	struct ddr_ip_bc_stats *ddr_ip_stats_ptr = NULL;
@@ -394,7 +394,7 @@ static ssize_t swpm_sp_spm_sig_read(char *ToUser, size_t sz, void *priv)
 {
 	char *p = ToUser;
 	int i, grp_id = 0, prev_id;
-	int data_update_count;
+	int data_update_count = 0;
 	struct res_sig_stats *spm_res_sig_stats_ptr;
 	struct res_sig *spm_res_sig_ptr;
 
