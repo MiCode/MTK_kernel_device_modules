@@ -365,6 +365,9 @@ static void fpsgo_com_receive_jank_detection(int jank, int pid)
 
 	fpsgo_systrace_c_fbt(pid, 0, jank, "jank_detection_hint_ori");
 
+	if (!composer_wq)
+		return;
+
 	hint = kmalloc(sizeof(struct jank_detection_hint), GFP_ATOMIC);
 	if (!hint)
 		return;
@@ -372,10 +375,8 @@ static void fpsgo_com_receive_jank_detection(int jank, int pid)
 	hint->jank = jank;
 	hint->pid = pid;
 
-	if (composer_wq) {
-		INIT_WORK(&hint->sWork, fpsgo_com_do_jank_detection_hint);
-		queue_work(composer_wq, &hint->sWork);
-	}
+	INIT_WORK(&hint->sWork, fpsgo_com_do_jank_detection_hint);
+	queue_work(composer_wq, &hint->sWork);
 }
 
 static void fpsgo_com_get_l2q_time(int pid, unsigned long long buf_id, int tgid,
