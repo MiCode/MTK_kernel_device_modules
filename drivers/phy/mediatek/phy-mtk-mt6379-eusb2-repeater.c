@@ -399,12 +399,12 @@ static void eusb2_host_prop_set(struct eusb2_repeater *rptr)
 
 static void eusb2_efuse_prop_set(struct eusb2_repeater *rptr)
 {
-	u32 value1;
-	u32 value2;
-	u32 value3;
-	u32 osc;
-	u32 fs_cr;
-	u32 ls_cr;
+	u32 value1 = 0;
+	u32 value2 = 0;
+	u32 value3 = 0;
+	u32 osc = 0;
+	u32 fs_cr = 0;
+	u32 ls_cr = 0;
 
 	/* eUSB2 efuse */
 	regmap_read(rptr->regmap, EUSB_RSV_81, &value1);
@@ -664,7 +664,7 @@ static void cover_val_to_str(u32 val, u8 width, char *str)
 static int proc_vrt_sel_show(struct seq_file *s, void *unused)
 {
 	struct eusb2_repeater *rptr = s->private;
-	u32 tmp;
+	u32 tmp = 0;
 	char str[16];
 
 	regmap_read(rptr->regmap, rptr->base + PHYA_U2_CR0_0, &tmp);
@@ -717,7 +717,7 @@ static const struct proc_ops proc_vrt_sel_fops = {
 static int proc_discth_show(struct seq_file *s, void *unused)
 {
 	struct eusb2_repeater *rptr = s->private;
-	u32 tmp;
+	u32 tmp = 0;
 	char str[16];
 
 	regmap_read(rptr->regmap, rptr->base + PHYA_U2_CR2_0, &tmp);
@@ -770,7 +770,7 @@ static const struct proc_ops proc_discth_fops = {
 static int proc_rx_sqth_show(struct seq_file *s, void *unused)
 {
 	struct eusb2_repeater *rptr = s->private;
-	u32 tmp;
+	u32 tmp = 0;
 	char str[16];
 
 	regmap_read(rptr->regmap, rptr->base + PHYA_U2_CR2_0, &tmp);
@@ -823,7 +823,7 @@ static const struct proc_ops proc_rx_sqth_fops = {
 static int proc_pre_emphasis_show(struct seq_file *s, void *unused)
 {
 	struct eusb2_repeater *rptr = s->private;
-	u32 tmp;
+	u32 tmp = 0;
 	char str[16];
 
 	regmap_read(rptr->regmap, rptr->base + PHYA_U2_CR2_3, &tmp);
@@ -876,7 +876,7 @@ static const struct proc_ops proc_pre_emphasis_fops = {
 static int proc_equalization_show(struct seq_file *s, void *unused)
 {
 	struct eusb2_repeater *rptr = s->private;
-	u32 tmp;
+	u32 tmp = 0;
 	char str[16];
 
 	regmap_read(rptr->regmap, rptr->base + PHYA_U2_CR2_3, &tmp);
@@ -929,7 +929,7 @@ static const struct proc_ops proc_equalization_fops = {
 static int proc_intr_ofs_show(struct seq_file *s, void *unused)
 {
 	struct eusb2_repeater *rptr = s->private;
-	u32 tmp;
+	u32 tmp = 0;
 	char str[16];
 
 	regmap_read(rptr->regmap, rptr->base + PHYA_U2_CR0_1, &tmp);
@@ -999,7 +999,7 @@ static const struct proc_ops proc_intr_ofs_fops = {
 static int proc_term_ofs_show(struct seq_file *s, void *unused)
 {
 	struct eusb2_repeater *rptr = s->private;
-	u32 tmp;
+	u32 tmp = 0;
 	char str[16];
 
 	regmap_read(rptr->regmap, rptr->base + PHYA_U2_CR2_2, &tmp);
