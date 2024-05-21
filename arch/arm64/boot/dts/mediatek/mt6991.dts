@@ -10888,7 +10888,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,ipm = <2>;
 			mediatek,slc = <1>;
 			support-acp = <1>;
-			//enable-acp-by-sw-ver = <1>;
+			enable-acp-by-sw-ver = <1>;
 			reg = <0 0x36000000 0 0x1000>,	/* VDEC_BASE */
 				<0 0x3602f000 0 0x1000>,	/* VDEC_SYS */
 				<0 0x36020000 0 0x1000>,	/* VDEC_VLD */
@@ -11030,7 +11030,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,platform = "platform:mt6991";
 			mediatek,ipm = <2>;
 			support-acp = <1>;
-			//enable-acp-by-sw-ver = <1>;
+			enable-acp-by-sw-ver = <1>;
 			reg = <0 0x38020000 0 0x6000>,
 				<0 0x38820000 0 0x6000>,
 				<0 0x38c20000 0 0x6000>;
