@@ -692,7 +692,6 @@ static void set_channel_bw_to_hw(void)
 	start_write_bw();
 	for (i = 0 ; i < MAX_REG_VALUE_NUM; i++)
 		write_register(APMCU_ON_BW_OFFSET(i), on_reg_value[i]);
-
 	if (mmqos_state & VMMRC_ENABLE) {
 		for (i = 0 ; i < MAX_REG_VALUE_NUM; i++)
 			write_register(APMCU_OFF_BW_OFFSET(i), off_reg_value[i]);
@@ -2412,6 +2411,15 @@ static int mmqos_update_vdec_ostdl_trace(char *node_name, u32 larb_id, u32 value
 	return 0;
 }
 
+void mmqos_set_met(bool enable)
+{
+	if (enable)
+		ftrace_ena |= (1 << MMQOS_PROFILE_MET);
+	else
+		ftrace_ena &= ~(1 << MMQOS_PROFILE_MET);
+}
+EXPORT_SYMBOL_GPL(mmqos_set_met);
+
 bool mmqos_met_enabled(void)
 {
 	return ftrace_ena & (1 << MMQOS_PROFILE_MET);
@@ -2665,7 +2673,7 @@ static int mmqos_dbg_ftrace_thread(void *data)
 	return 0;
 }
 
-static int mmqos_debug_set_ftrace(const char *val,
+int mmqos_debug_set_ftrace(const char *val,
 	const struct kernel_param *kp)
 {
 	static struct task_struct *kthr;
@@ -2705,6 +2713,7 @@ static int mmqos_debug_set_ftrace(const char *val,
 	mutex_unlock(&gmmqos->bw_lock);
 	return 0;
 }
+EXPORT_SYMBOL_GPL(mmqos_debug_set_ftrace);
 
 module_param(log_level, uint, 0644);
 MODULE_PARM_DESC(log_level, "mmqos log level");
