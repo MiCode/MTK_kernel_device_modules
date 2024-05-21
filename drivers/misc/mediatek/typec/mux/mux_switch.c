@@ -236,6 +236,7 @@ static int mtk_typec_switch_set(struct typec_switch_dev *sw,
 			      enum typec_orientation orientation)
 {
 	struct typec_mux_switch *mux_sw = typec_switch_get_drvdata(sw);
+	struct device_node *np = mux_sw->dev->of_node;
 	struct mtk_typec_switch *typec_sw;
 	int ret = 0;
 
@@ -246,6 +247,21 @@ static int mtk_typec_switch_set(struct typec_switch_dev *sw,
 		return ret;
 
 	mutex_lock(&switch_lock);
+	if(of_property_read_bool(np, "mediatek,inverse-orientation")) {
+		switch (orientation) {
+		case TYPEC_ORIENTATION_NONE:
+			break;
+		case TYPEC_ORIENTATION_NORMAL:
+			orientation = TYPEC_ORIENTATION_REVERSE;
+			break;
+		case TYPEC_ORIENTATION_REVERSE:
+			orientation = TYPEC_ORIENTATION_NORMAL;
+			break;
+		default:
+			break;
+		}
+		dev_info(mux_sw->dev, "%s inverse orientation %d\n", __func__, orientation);
+	}
 
 	list_for_each_entry(typec_sw, &switch_list, list) {
 		if (!IS_ERR_OR_NULL(typec_sw->sw))
