@@ -2447,7 +2447,8 @@ static int mt6379_parse_dt(struct mt6379_tcpc_data *ddata)
 
 	memcpy(desc, &def_tcpc_desc, sizeof(*desc));
 
-	device_property_read_string(dev, "tcpc,name", &desc->name);
+	if (device_property_read_string(dev, "tcpc,name", &desc->name))
+		desc->name = "type_c_port0";
 
 	if ((!device_property_read_u32(dev, "tcpc,role-def", &val) ||
 	     !device_property_read_u32(dev, "tcpc,role_def", &val)) &&
