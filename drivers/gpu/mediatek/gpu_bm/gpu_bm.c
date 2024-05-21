@@ -210,7 +210,7 @@ static void _MTKGPUQoS_setupFW(phys_addr_t phyaddr, size_t size)
 
 void MTKGPUQoS_mode(int seg_flag)
 {
-	unsigned int loading;
+	unsigned int loading = 0;
 
 	mtk_get_gpu_loading(&loading);
 
