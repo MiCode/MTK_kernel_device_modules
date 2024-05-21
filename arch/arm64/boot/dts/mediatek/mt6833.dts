@@ -64,7 +64,7 @@
 			firmware_class.path=/vendor/firmware \
 			androidboot.hardware=mt6833 \
 			transparent_hugepage=never \
-			initcall_debug=1 pelt=8";
+			initcall_debug=1";
 		kaslr-seed = <0 0>;
 	};
 
@@ -2164,8 +2164,8 @@
 		interconnect-names = "fpsgo-perf-bw";
 		required-opps = <&dvfsrc_freq_opp0>;
 
-		fbt_cpu_mask = <255 192 63 63>;
-		sbe_resceue_enable = <1>;
+		fbt-cpu-mask = <255 192 63 63>;
+		sbe-resceue-enable = <1>;
 	};
 
 	disp_pwm: disp_pwm0@1100e000 {
