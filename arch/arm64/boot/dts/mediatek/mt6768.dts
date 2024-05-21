@@ -1820,6 +1820,14 @@ transparent_hugepage=never";
 		iommus = <&iommu M4U_PORT_DISP_OVL0>;
 	};
 
+	mtkheap_region_tui: mtkheap-region-tui {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_tui_region";
+		trusted-mem-type = <8>;
+		region-heap-align-name = "mtk_tui_region-aligned";
+		iommus = <&iommu M4U_PORT_DISP_OVL0>;
+	};
+
 	mtk_dmabufheap_debug0: dmaheap_test0{
 			compatible = "mediatek, mtk_dmabufheap, iommu0";
 			iommus = <&iommu M4U_PORT_DISP_WDMA0>;
