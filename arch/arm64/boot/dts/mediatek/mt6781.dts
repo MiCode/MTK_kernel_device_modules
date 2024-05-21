@@ -3726,6 +3726,11 @@
 		usb-role-switch;
 		cdp-block;
 		usb_phy_offset = <0x300>;
+		port {
+			musb_drd_switch: endpoint@0 {
+				remote-endpoint = <&usb_role>;
+			};
+		};
 	};
 
 	u2phy0: usb-phy@11210000 {
@@ -5383,8 +5388,17 @@
 	extcon_usb: extcon_usb {
 		compatible = "mediatek,extcon-usb";
 		charger = <&mt6370_chg>;
-		dev-conn = <&usb>;
+		tcpc = "type_c_port0";
+		vbus-supply = <&otg_vbus>;
+		vbus-voltage = <5000000>;
+		vbus-current = <1800000>;
 		mediatek,bypss-typec-sink = <1>;
+		mediatek,u2;
+		port {
+			usb_role: endpoint@0 {
+				remote-endpoint = <&musb_drd_switch>;
+			};
+		};
 	};
 
 	rt-pd-manager {
