@@ -3873,8 +3873,8 @@ cpus {
 			compatible = "mediatek,mmdvfs-debug";
 			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			disp-dev = <&dispsys_config>;
-			force-step0 = <1>;
-			release-step0 = <1>;
+			force-step0 = <1>;	/* 0:opp0,  1:opp1, ... */
+			release-step0 = <1>;	/* 0:disable,  1:enable */
 		};
 
 		mmdvfs {
@@ -4103,18 +4103,17 @@ cpus {
 			compatible = "mediatek,mt6893-mmqos";
 			#mtk-interconnect-cells = <1>;
 			mediatek,larbs-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb3
-					  &smi_larb4 &smi_larb5 &smi_larb7 &smi_larb8 &smi_larb9
-					  &smi_larb11 &smi_larb13 &smi_larb14 &smi_larb15
-					  &smi_larb16 &smi_larb17 &smi_larb18 &smi_larb19
-					  &smi_larb20>;
+				&smi_larb4 &smi_larb5 &smi_larb7 &smi_larb8 &smi_larb9
+				&smi_larb11 &smi_larb13 &smi_larb14 &smi_larb15
+				&smi_larb16 &smi_larb17 &smi_larb18 &smi_larb19
+				&smi_larb20>;
 			mediatek,commons-supply = <&smi_common>, <&mdp_smi_common>;
 			mmqos-state = <0x7>;
 			mmqos-log-level = <0>;
 			clocks = <&topckgen_clk CLK_TOP_DISP_SEL>, <&topckgen_clk CLK_TOP_MDP_SEL>;
 			clock-names = "mm", "mdp";
 			interconnects = <&dvfsrc MT6873_MASTER_MMSYS &dvfsrc MT6873_SLAVE_DDR_EMI>,
-					<&dvfsrc MT6873_MASTER_HRT_MMSYS
-					 &dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
+				<&dvfsrc MT6873_MASTER_HRT_MMSYS &dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
 			interconnect-names = "icc-bw", "icc-hrt-bw";
 		};
 
@@ -7331,7 +7330,12 @@ cpus {
 				&smi_larb4 &smi_larb5 &smi_larb7 &smi_larb8 &smi_larb9 &smi_larb11
 				&smi_larb13 &smi_larb14 &smi_larb15 &smi_larb16 &smi_larb17
 				&smi_larb18 &smi_larb19 &smi_larb20>;
-			mediatek-common-supply = <&smi_common>;
+			mediatek-common-supply = <&smi_common
+				&mdp_smi_common &sysram_smi_common
+				&disp_smi_subcom &disp_smi_subcom1
+				&mdp_smi_subcom &mdp_smi_subcom1
+				&cam_smi_5x1_sub_comm &cam_smi_2x1_sub_comm0
+				&cam_smi_2x1_sub_comm1 &ipe_smi_2x1_sub_comm>;
 		};
 
 		smi_larb2: smi-larb2@1f003000 {
