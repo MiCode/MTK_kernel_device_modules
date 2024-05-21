@@ -453,8 +453,10 @@ static int main3_vcm_power_off(struct main3_vcm_device *main3_vcm)
 	if (ret > 0) {
 		LOG_INF("interrupting, ret = %d\n", ret);
 		return ret;
+	} else {
+		// continue to power off
+		LOG_INF("delay power off feature end\n");
 	}
-	LOG_INF("delay power off feature end\n");
 
 	ret = main3_vcm_release(main3_vcm);
 	if (ret < 0) {
@@ -660,7 +662,12 @@ static long main3_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, v
 		LOG_INF("active mode, current pos:%d\n", main3_vcm->focus->val);
 
 		register_setting(client, g_vcmconfig.vcm_config.resume_table, 8);
-		main3_vcm_set_position(main3_vcm, main3_vcm->focus->val);
+		ret = main3_vcm_set_position(main3_vcm, main3_vcm->focus->val);
+		if (ret < 0) {
+			LOG_INF("%s I2C failure: %d\n",
+				__func__, ret);
+			return ret;
+		}
 	}
 	break;
 	case VCM_IOC_POWER_OFF:
