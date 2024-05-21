@@ -546,6 +546,10 @@ static int mt6379_init_proprietary_properties(struct fwnode_handle *fwnode,
 		sizeof(mtflash->dev_id.name));
 
 	mtflash->dev_id.decouple = 0;
+
+	if (mtflash->dev_id.channel < 0 ||
+			 mtflash->dev_id.channel >= MT6379_FLASH_MAX_LED)
+		return -EINVAL;
 	mt6379_flash_class[mtflash->dev_id.channel] = &mtflash->flash;
 
 	if (flashlight_dev_register_by_device_id(&mtflash->dev_id, &mt6379_ops))
