@@ -235,7 +235,7 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <744>;
-			cpu-idle-states = <&cpuoff_l &mcusysoff_l
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_vcore &s2idle>;
 		};
 
@@ -245,7 +245,7 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <744>;
-			cpu-idle-states = <&cpuoff_l &mcusysoff_l
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_vcore &s2idle>;
 		};
 
@@ -255,7 +255,7 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <744>;
-			cpu-idle-states = <&cpuoff_l &mcusysoff_l
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_vcore &s2idle>;
 		};
 
@@ -265,7 +265,7 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <744>;
-			cpu-idle-states = <&cpuoff_l &mcusysoff_l
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_vcore &s2idle>;
 		};
 
@@ -275,7 +275,7 @@
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <1024>;
-			cpu-idle-states = <&cpuoff_m &mcusysoff_m
+			cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
 						&system_vcore &s2idle>;
 		};
 
@@ -285,7 +285,7 @@
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <1024>;
-			cpu-idle-states = <&cpuoff_m &mcusysoff_m
+			cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
 						&system_vcore &s2idle>;
 		};
 
@@ -295,7 +295,7 @@
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <1024>;
-			cpu-idle-states = <&cpuoff_m &mcusysoff_m
+			cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
 						&system_vcore &s2idle>;
 		};
 
@@ -305,7 +305,7 @@
 			performance-domains = <&performance 2>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <971>;
-			cpu-idle-states = <&cpuoff_b &mcusysoff_b
+			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 						&system_vcore &s2idle>;
 		};
 
