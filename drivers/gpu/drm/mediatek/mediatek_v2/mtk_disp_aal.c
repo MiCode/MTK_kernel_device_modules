@@ -968,8 +968,6 @@ static void disp_aal_single_pipe_hist_update(struct mtk_ddp_comp *comp, unsigned
 	CRTC_MMP_MARK(0, aal_dre20_rh, comp->id, 2);
 	if (spin_trylock_irqsave(&aal_data->primary_data->hist_lock, flags)) {
 		read_success = disp_aal_read_ghist(comp);
-		if (read_success)
-			atomic_set(&aal_data->hw_hist_ready, 0);
 		spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 		if (read_success == true) {
 			atomic_set(&aal_data->dre20_hist_is_ready, 1);
@@ -1486,12 +1484,15 @@ static void disp_aal_on_start_of_frame(struct mtk_ddp_comp *comp)
 				atomic_read(&aal1_data->dre20_hist_is_ready)) {
 				atomic_set(&aal_data->hist_available, 1);
 				atomic_set(&aal1_data->hist_available, 1);
+				atomic_set(&aal_data->hw_hist_ready, 0);
+				atomic_set(&aal1_data->hw_hist_ready, 0);
 				AALIRQ_LOG("wake up dre2\n");
 				wake_up_interruptible(&aal_data->primary_data->hist_wq);
 			}
 		} else {
 			if (atomic_read(&aal_data->dre20_hist_is_ready)) {
 				atomic_set(&aal_data->hist_available, 1);
+				atomic_set(&aal_data->hw_hist_ready, 0);
 				AALIRQ_LOG("wake up dre2\n");
 				wake_up_interruptible(&aal_data->primary_data->hist_wq);
 			}
