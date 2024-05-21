@@ -297,11 +297,12 @@ static int lpm_cpuidle_prepare(struct cpuidle_driver *drv, int index)
 	unsigned int model_flags = 0;
 	unsigned long flags;
 	const int cpuid = smp_processor_id();
-	struct cpuidle_state *target_state = &drv->states[index];
+	struct cpuidle_state *target_state;
 
 	if (index < 0)
 		return -1;
 
+	target_state = &drv->states[index];
 	lpmmods = this_cpu_ptr(&lpm_mods);
 
 	if (lpmmods && lpmmods->mod[index])
@@ -348,11 +349,12 @@ static void lpm_cpuidle_resume(struct cpuidle_driver *drv, int index, int ret)
 	unsigned int model_flags = 0;
 	unsigned long flags;
 	const int cpuid = smp_processor_id();
-	struct cpuidle_state *target_state = &drv->states[index];
+	struct cpuidle_state *target_state;
 
 	if (index < 0)
 		return;
 
+	target_state = &drv->states[index];
 	lpmmods = this_cpu_ptr(&lpm_mods);
 
 	if (lpmmods && lpmmods->mod[index])

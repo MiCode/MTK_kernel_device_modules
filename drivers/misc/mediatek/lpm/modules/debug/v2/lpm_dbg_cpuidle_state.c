@@ -13,6 +13,7 @@
 
 #define MTK_CPUIDLE_DRIVE_STATE_GET	(0)
 #define MTK_CPUIDLE_DRIVE_STATE_SET	(1)
+#define CLUSTER_ID_BASE			(10)
 #define ALL_CPU_ID			(100)
 #define RESET_ALL			(-1)
 #define STRESS_VAL			(10)
@@ -221,6 +222,9 @@ static int idle_proc_state_param_setting(int cpu, unsigned int state_idx, unsign
 	unsigned int cpu_mask;
 	int i = 0, reset = 0;
 	struct MTK_CPUIDLE_DRV_INFO drv_info;
+
+	if (nr_cpu_ids > CLUSTER_ID_BASE)
+		return -EINVAL;
 
 	cpu_mask = 0;
 
@@ -451,9 +455,9 @@ static int lpm_topology_init(void)
 
 	for_each_present_cpu(cpu) {
 		cluster_id = cpu_topology[cpu].cluster_id;
-		topology[cluster_id]->id = (cluster_id + 1) * 10;
+		topology[cluster_id]->id = (cluster_id + 1) * CLUSTER_ID_BASE;
 		topology[cluster_id]->cpu_mask |= (1 << cpu);
-		topology[cluster_num]->id |= ALL_CPU_ID;
+		topology[cluster_num]->id = ALL_CPU_ID;
 		topology[cluster_num]->cpu_mask |= (1 << cpu);
 	}
 
