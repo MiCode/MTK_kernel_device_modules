@@ -6381,7 +6381,10 @@ int mtk_oddmr_linear_interpolation(int x, int x1, int y1, int x2, int y2)
 
 	if(x1 == x2)
 		return y1;
-	y = (100 * y1 + 100 * (y2 - y1)*(x - x1)/(x2 - x1))/100;
+	y = (100 * (long long) y1 +
+		100 * ((long long) y2 - (long long) y1) *
+		((long long) x - (long long) x1) /
+		((long long) x2 - (long long) x1)) / 100;
 	return y;
 }
 
