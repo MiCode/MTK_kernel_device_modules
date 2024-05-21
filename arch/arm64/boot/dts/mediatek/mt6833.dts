@@ -5758,6 +5758,13 @@
 		vbat_threshold = <4150>;
 	};
 
+	battery_manager: battery-manager {
+		compatible = "mediatek,battery manager";
+		gauge1 = <&mtk_gauge>;
+		charger = <&mt6360_chg>;
+		bootmode = <&chosen>;
+	};
+
 	charger: charger {
 		compatible = "mediatek,charger";
 		gauge = <&mtk_gauge>;
@@ -6801,6 +6808,7 @@
 &mtk_gauge {
 	charger = <&mt6360_chg>;
 };
+
 #include "mediatek/bat_setting/mt6833_battery_prop.dtsi"
 
 &spmi {
