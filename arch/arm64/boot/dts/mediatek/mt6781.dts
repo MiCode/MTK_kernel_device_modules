@@ -476,6 +476,16 @@
 			<&cpu4>, <&cpu5>, <&cpu6>, <&cpu7>;
 	};
 
+	fpsgo: fpsgo {
+		compatible = "mediatek,fpsgo";
+		interconnects = <&dvfsrc MT6873_MASTER_MCUSYS &dvfsrc MT6873_SLAVE_DDR_EMI>;
+		interconnect-names = "fpsgo-perf-bw";
+		required-opps = <&dvfsrc_freq_opp0>;
+
+		fbt-cpu-mask = <255 192 63 63>;
+		sbe-resceue-enable = <1>;
+	};
+
 	mcucfg_mp0_counter {
 		compatible = "mediatek,mcucfg_mp0_counter";
 		reg_mp0_counter_base = <&mcucfg>;
