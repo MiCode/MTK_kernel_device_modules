@@ -760,7 +760,7 @@ int bat_cycle_intr_threshold_set(struct mtk_gauge *gauge,
 
 int fgauge_get_time(struct mtk_gauge *gauge_dev, unsigned int *ptime)
 {
-	unsigned int time_31_16, time_15_00, ret_time;
+	unsigned int time_31_16 = 0, time_15_00, ret_time;
 	long long time = 0;
 
 	pre_gauge_update(gauge_dev);
@@ -1470,7 +1470,7 @@ static int read_hw_ocv_6357_plug_in(struct mtk_gauge *gauge)
 	signed int adc_rdy = 0;
 	signed int adc_result_reg = 0;
 	signed int adc_result = 0;
-	int sel;
+	int sel = 0;
 
 	/* 6357 no need to switch SWCHR_POWER_PATH, only 56 57 */
 	regmap_read(gauge->regmap, MT6357_AUXADC_ADC_RDY_BAT_PLUGIN_PCHR_ADDR,
@@ -1517,7 +1517,7 @@ static int read_hw_ocv_6357_power_on(struct mtk_gauge *gauge)
 	signed int adc_result_rdy = 0;
 	signed int adc_result_reg = 0;
 	signed int adc_result = 0;
-	int sel;
+	int sel = 0;
 
 	regmap_read(gauge->regmap, MT6357_AUXADC_ADC_RDY_PWRON_PCHR_ADDR,
 		&adc_result_rdy);
@@ -2751,6 +2751,10 @@ static long adc_cali_ioctl(
 	struct mtk_battery *gm;
 
 	gm = get_mtk_battery();
+	if(gm == NULL){
+		pr_info("Failed to get mtk_battery");
+		return -ENODEV;
+	}
 	mutex_lock(&gm->gauge->fg_mutex);
 	user_data_addr = (int *)arg;
 	ret = copy_from_user(adc_in_data, user_data_addr, sizeof(adc_in_data));
