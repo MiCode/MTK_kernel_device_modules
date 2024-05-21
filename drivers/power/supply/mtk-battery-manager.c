@@ -1044,8 +1044,8 @@ static int bm_update_psy_property(struct mtk_battery *gm, enum bm_psy_prop prop)
 		ret_val = battery_get_int_property(gm, BAT_PROP_TEMPERATURE);
 		break;
 	case QMAX_DESIGN:
-		ret_val = gm->fg_table_cust_data.fg_profile[0].fg_profile[
-			gm->fg_table_cust_data.fg_profile[0].size - 1].mah;
+		ret_val = gm->fg_table_cust_data.fg_profile[
+				gm->battery_id].q_max * 10;
 		break;
 	case QMAX:
 		ret_val = gm->daemon_data.qmxa_t_0ma;
@@ -1165,7 +1165,7 @@ static int bs_psy_get_property(struct power_supply *psy,
 			if(!bm->gm2->bat_plug_out)
 				qmax += bm_update_psy_property(bm->gm2, QMAX_DESIGN);
 
-		val->intval = bs_data->bat_capacity / 100 * qmax * 100;
+		val->intval = bs_data->bat_capacity * qmax;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 
@@ -1458,6 +1458,8 @@ void bm_battery_service_init(struct mtk_battery_manager *bm)
 	bm->gm1->fixed_uisoc = 0xffff;
 	if (bm->gm_no == 2)
 		bm->gm2->fixed_uisoc = 0xffff;
+
+	mtk_battery_external_power_changed(bm->bs_data.psy);
 }
 
 void mtk_bm_send_to_user(struct mtk_battery_manager *bm, u32 pid,
