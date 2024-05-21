@@ -24,6 +24,7 @@
 		spi-max-frequency = <1000000>;
 
 		goodix,avdd-name = "vtouch";
+		gt9896s,power-voltage = <2800000>;
 		vtouch-supply = <&mt_pmic_vio28_ldo_reg>;
 		goodix,irq-gpio = <&pio 15 0x0>;
 		goodix,reset-gpio = <&pio 16 0x0>;
