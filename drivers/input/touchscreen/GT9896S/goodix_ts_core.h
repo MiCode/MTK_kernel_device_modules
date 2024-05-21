@@ -142,6 +142,7 @@ struct gt9896s_ts_board_data {
 	unsigned int reset_gpio;
 	unsigned int irq_gpio;
 	int irq;
+	int power_voltage;
 	unsigned int  irq_flags;
 
 	unsigned int power_on_delay_us;
