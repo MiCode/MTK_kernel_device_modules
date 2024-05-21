@@ -480,7 +480,7 @@ int apu_infra_lock(struct mtk_apu *apu, uint32_t op, enum apu_infra_bit_id id)
 
 	while ((ioread32(apu->apu_infra_hwsem) & BIT(id)) != BIT(id)) {
 
-		if (timeout >= 0 && timeout_cnt++ >= timeout) {
+		if (timeout_cnt++ >= timeout) {
 			dev_info(dev, "%s apu_infra_hwsem :0x%08x\n", __func__, ioread32(apu->apu_infra_hwsem));
 			return -EBUSY;
 		}
@@ -1267,14 +1267,7 @@ static int mt6991_rproc_init(struct mtk_apu *apu)
 	mt6991_apu_pwr_wake_lock(apu, APU_IPI_INIT);
 #endif
 
-	if (apu->platdata->flags & F_FPGA_EP) {
-		/* TODO: change pwr_on_polling_dbg_mode to false to reduce latency */
-		apu->pwr_on_polling_dbg_mode = false;
-	} else {
-		/* TODO: change pwr_on_polling_dbg_mode to false to reduce latency */
-		apu->pwr_on_polling_dbg_mode = false;
-	}
-
+	apu->pwr_on_polling_dbg_mode = false;
 	apu->ce_dbg_polling_dump_mode = false;
 	apu->apusys_rv_trace_on = false;
 
@@ -1301,7 +1294,7 @@ static int mt6991_rproc_exit(struct mtk_apu *apu)
 
 const struct mtk_apu_platdata mt6991_platdata = {
 	.flags		= F_AUTO_BOOT | F_FAST_ON_OFF | F_APU_IPI_UT_SUPPORT |
-					F_TCM_WA | F_SMMU_SUPPORT | F_APUSYS_RV_TAG_SUPPORT | F_DEBUG_LOG_ON |
+					F_TCM_WA | F_SMMU_SUPPORT | F_APUSYS_RV_TAG_SUPPORT |
 					F_INFRA_WA | F_PRELOAD_FIRMWARE | F_SECURE_BOOT | F_SECURE_COREDUMP |
 					F_CE_EXCEPTION_ON | F_EXCEPTION_KE,
 	.ops		= {
