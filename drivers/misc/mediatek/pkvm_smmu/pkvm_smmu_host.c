@@ -556,8 +556,10 @@ void smmu_setup_hvc(void)
 {
 	add_smmu_device_handler = pkvm_register_el2_mod_call(
 		__kvm_nvhe_add_smmu_device, pkvm_module_token);
+
 	smmu_vm_info_probe_handler = pkvm_register_el2_mod_call(
 		__kvm_nvhe_setup_vm, pkvm_module_token);
+
 	mtk_iommu_init_handler = pkvm_register_el2_mod_call(
 		__kvm_nvhe_mtk_iommu_init, pkvm_module_token);
 }
@@ -570,15 +572,18 @@ void smmu_host_hvc(void)
 		__kvm_nvhe_mtk_smmu_secure_v2, pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC, SMC_ID_MTK_PKVM_SMMU_SEC_MAP,
 			  0, 0, 0, 0, 0, &res);
+
 	smmu_s2_protect_unmapping = pkvm_register_el2_mod_call(
 		__kvm_nvhe_mtk_smmu_unsecure_v2, pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
 			  SMC_ID_MTK_PKVM_SMMU_SEC_UNMAP, 0, 0, 0, 0, 0, &res);
+
 	smmu_share = pkvm_register_el2_mod_call(__kvm_nvhe_mtk_smmu_share,
 						pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
 			  SMC_ID_MTK_PKVM_SMMU_MEM_SHARE, smmu_share, 0, 0, 0,
 			  0, &res);
+
 	smmu_host_debug = pkvm_register_el2_mod_call(
 		__kvm_nvhe_mtk_smmu_host_debug, pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
@@ -670,7 +675,14 @@ unsigned long smmu_mpool_mem_allocate(struct mpt *mpt,
 
 static int mtk_kvm_arm_smmu_v3_init(void)
 {
-	return 0;
+	int ret;
+	struct kvm_hyp_memcache atomic_mc = {};
+
+	ret = kvm_iommu_init_hyp(ksym_ref_addr_nvhe(smmu_ops), &atomic_mc, 0);
+	if (ret)
+		pr_info("kvm_iommu_init_hyp ret=%d\n", ret);
+
+	return ret;
 }
 
 pkvm_handle_t mtk_kvm_arm_smmu_v3_id(struct device *dev)
@@ -689,7 +701,6 @@ static int __init smmu_nvhe_init(void)
 	unsigned int vm_num;
 	unsigned long long target_page_counts;
 	unsigned long pfn;
-	struct kvm_hyp_memcache atomic_mc;
 	struct mpt *mpt = NULL;
 
 	if (!is_protected_kvm_enabled()) {
@@ -734,9 +745,10 @@ static int __init smmu_nvhe_init(void)
 	/* register hvc for host intact with hypervisor smmu */
 	smmu_host_hvc();
 	pr_info("%s: register kvm_smmu_v3_ops\n", __func__);
-	kvm_iommu_register_driver(&kvm_smmu_v3_ops);
-	pr_info("%s: register kvm_smmu_v3_ops done\n", __func__);
-	ret = kvm_iommu_init_hyp(ksym_ref_addr_nvhe(smmu_ops), &atomic_mc, 0);
+	ret = kvm_iommu_register_driver(&kvm_smmu_v3_ops);
+	if (ret)
+		pr_info("%s: register kvm_smmu_v3_ops fail\n", __func__);
+
 	return 0;
 free_mem:
 	pr_info("%s: free_mpool_mem start\n", __func__);
