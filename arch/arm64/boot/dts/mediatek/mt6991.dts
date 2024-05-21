@@ -6153,6 +6153,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,polling-scdlfps-time = <0x21>;
 			mediatek,ux-exit-lfps-gen2 = <0x44>;
 			mediatek,hwrscs-vers = <2>;
+			mediatek,syscon-wakeup = <&usbwkcfg_ao_clk 0x200 105>;
+			wakeup-source;
 			mediatek,clkgate = <&usbcfg_ao_clk 0x13>;
 			mediatek,usb-mbist = <&usbcfg_ao_mbist_clk>;
 			mediatek,usb-ao-cfg = <&usbwkcfg_ao_clk>;
