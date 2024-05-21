@@ -3741,10 +3741,7 @@ static enum drm_mode_status mtk_dp_conn_mode_valid(struct drm_connector *conn,
 	if (0x1fff > 0 && mode->vdisplay > 0x1fff)
 		return MODE_VIRTUAL_Y;
 
-	if (mode->hdisplay == 1920 && mode->vdisplay == 1080)
-		return MODE_OK;
-	else
-		return MODE_BAD_VSCAN;
+	return MODE_OK;
 }
 
 static const struct drm_connector_helper_funcs mtk_dp_connector_helper_funcs = {
