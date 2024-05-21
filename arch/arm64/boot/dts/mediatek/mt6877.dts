@@ -6219,13 +6219,13 @@
 
 	mmqos: interconnect {
 		compatible = "mediatek,mt6877-mmqos";
-		#interconnect-cells = <1>;
+		#mtk-interconnect-cells = <1>;
 		mediatek,larbs-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb4
 				  &smi_larb7 &smi_larb9 &smi_larb11 &smi_larb13
 				  &smi_larb14 &smi_larb16 &smi_larb17 &smi_larb18
 				  &smi_larb19 &smi_larb20>;
 		mediatek,commons-supply = <&smi_common>;
-		mmqos-state = <0x7>;
+		mmqos-state = <0x4>;
 		mmqos-log-level = <0>;
 		clocks = <&topckgen_clk CLK_TOP_DISP0_SEL>;
 		clock-names = "mm";
