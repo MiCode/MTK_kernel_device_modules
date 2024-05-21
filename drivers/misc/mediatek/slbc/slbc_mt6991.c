@@ -1219,7 +1219,7 @@ int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *data)
 	slbc_get_gid_by_req(uid, gid);
 	ret = slbc_check_uid_gid(uid, *gid);
 	if (ret) {
-		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, ret, "uid:%d or gid:%d unrecognized", uid, gid);
+		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, ret, "uid:%d or gid:%d unrecognized", uid, *gid);
 		return ret;
 	}
 
@@ -1240,7 +1240,7 @@ int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *data)
 		mutex_unlock(&slbc_req_lock);
 
 		if (ret) {
-			SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, ret, "ach scmi req fail, uid:%d, gid:%d", uid, gid);
+			SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, ret, "ach scmi req fail, uid:%d, gid:%d", uid, *gid);
 			return ret;
 		}
 	}
@@ -1854,21 +1854,25 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 		slbc_slot_used = val_1;
 		slbc_sram_write(SLBC_SLOT_USED, slbc_slot_used);
 	} else if (!strcmp(cmd, "test_slb_request")) {
-		test_d.uid = val_1;
-		test_d.type  = TP_BUFFER;
+		if (ret >= 3) {
+			test_d.uid = val_1;
+			test_d.type  = TP_BUFFER;
 #ifdef SLBC_CB
-		test_d.timeout = val_2;
+			test_d.timeout = val_2;
 #endif /* SLBC_CB */
-		ret = slbc_request(&test_d);
+			ret = slbc_request(&test_d);
+		}
 	} else if (!strcmp(cmd, "test_slb_release")) {
 		test_d.uid = val_1;
 		test_d.type  = TP_BUFFER;
 		ret = slbc_release(&test_d);
 	} else if (!strcmp(cmd, "slbc_gid_request")) {
-		temp = val_2;
-		test_gid_d.dma_size = val_3;
-		test_gid_d.sign = SLC_DATA_MAGIC;
-		slbc_gid_request(val_1, &temp, &test_gid_d);
+		if (ret >= 3) {
+			temp = val_2;
+			test_gid_d.dma_size = val_3;
+			test_gid_d.sign = SLC_DATA_MAGIC;
+			slbc_gid_request(val_1, &temp, &test_gid_d);
+		}
 	} else if (!strcmp(cmd, "slbc_gid_release")) {
 		slbc_gid_release(val_1, val_2);
 	} else if (!strcmp(cmd, "slbc_validate")) {
