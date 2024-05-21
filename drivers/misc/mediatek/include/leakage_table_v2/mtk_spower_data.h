@@ -22,7 +22,7 @@ struct spower_raw_t {
 
 #if IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6765)
 #include "mtk_spower_data_6765.h"
-#elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6833)
+#elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_6833)
 #include "mtk_spower_data_6833.h"
 #elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6739)
 #include "mtk_spower_data_6739.h"
