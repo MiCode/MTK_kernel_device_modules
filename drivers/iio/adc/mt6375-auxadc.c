@@ -778,26 +778,45 @@ static irqreturn_t auxadc_irq_thread(int irq, void *data)
 
 static int auxadc_add_irq_chip(struct mt6375_priv *priv)
 {
+	u32 val, state_reg, clear_reg, mask_reg;
 	int i, ret;
-	u32 val;
 
 
 	for (i = 0; i < NUM_IRQ_REG; i++) {
-		ret = regmap_read(priv->regmap, rg_xlate(priv, HK_TOP_INT_CON0 + i * 3), &val);
-		dev_notice(priv->dev, "[clr] irq%d en: 0x%x\n", i, val);
-
-		ret = regmap_write(priv->regmap, rg_xlate(priv, HK_TOP_INT_CON0_CLR + i * 3), 0xFF);
+		state_reg = rg_xlate(priv, HK_TOP_INT_CON0 + i * 3);
+		ret = regmap_read(priv->regmap, state_reg, &val);
 		if (ret) {
-			dev_err(priv->dev, "Failed to disable irq con [%d]\n", i);
+			dev_info(priv->dev, "%s, Failed to read irq con%d (0x%03X)\n",
+				 __func__, i, state_reg);
 			return ret;
 		}
 
-		ret = regmap_read(priv->regmap, rg_xlate(priv, HK_TOP_INT_MASK_CON0 + i * 3), &val);
-		dev_notice(priv->dev, "[mask] irq%d en: 0x%x\n", i, val);
-		ret = regmap_write(priv->regmap, rg_xlate(priv, HK_TOP_INT_MASK_CON0 + i * 3), 0);
+		dev_info(priv->dev, "%s, [before clr] irq con%d (0x%03X) val: 0x%02X\n",
+			 __func__, i, state_reg, val);
 
+		clear_reg = rg_xlate(priv, HK_TOP_INT_CON0_CLR + i * 3);
+		ret = regmap_write(priv->regmap, clear_reg, 0xFF);
 		if (ret) {
-			dev_err(priv->dev, "Failed to init irq mask [%d]\n", i);
+			dev_info(priv->dev, "%s, Failed to clear irq con%d (0x%03X)\n",
+				 __func__, i, clear_reg);
+			return ret;
+		}
+
+		mask_reg = rg_xlate(priv, HK_TOP_INT_MASK_CON0 + i * 3);
+		ret = regmap_read(priv->regmap, mask_reg, &val);
+		if (ret) {
+			dev_info(priv->dev, "%s, Failed to read irq con%d mask (0x%03X)\n",
+				 __func__, i, mask_reg);
+			return ret;
+		}
+
+		dev_info(priv->dev, "%s, irq con%d mask (0x%03X) val: 0x%x\n",
+			 __func__, i, mask_reg, val);
+
+		ret = regmap_write(priv->regmap, mask_reg, 0);
+		if (ret) {
+			dev_info(priv->dev, "%s, Failed to init irq con%d mask (0x%03X)\n",
+				 __func__, i, mask_reg);
 			return ret;
 		}
 	}
