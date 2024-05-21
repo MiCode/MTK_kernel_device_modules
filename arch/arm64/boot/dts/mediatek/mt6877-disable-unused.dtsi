@@ -273,8 +273,6 @@
 			<&topckgen_clk CLK_TOP_MEM_SUB_SEL>,
 			<&topckgen_clk CLK_TOP_AES_MSDCFDE_SEL>,
 			<&topckgen_clk CLK_TOP_UFS_MBIST_SEL>,
-			<&topckgen_clk CLK_TOP_MFG_INTERNAL2_SEL>,
-			<&topckgen_clk CLK_TOP_MFG_INTERNAL1_SEL>,
 			<&topckgen_clk CLK_TOP_AP2CONN_HOST_SEL>,
 			<&topckgen_clk CLK_TOP_MSDC_NEW_RX_SEL>;
 	};
