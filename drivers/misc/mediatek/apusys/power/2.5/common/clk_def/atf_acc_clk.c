@@ -10,6 +10,18 @@ static int mt6877_clk_en;
 static struct mutex mt6877_clk_lock;
 static unsigned long vcore_frq;
 
+static void _dump_pll(struct apu_clk_gp *aclk)
+{
+	char buf[32];
+
+	memset(buf, 0, 32);
+	snprintf(buf, 32, "PLL%d 0x%llx:", aclk->pll_sel, aclk->pll_phyaddr);
+	print_hex_dump(KERN_ERR, buf, DUMP_PREFIX_OFFSET,
+			   16, 4, (aclk->pll_regs), 0x50, 1);
+	snprintf(buf, 32, "PLL%d 0x%llx:", aclk->pll_sel, aclk->pll_phyaddr + APU_PLL4H_FQMTR_CON0);
+	print_hex_dump(KERN_ERR, buf, DUMP_PREFIX_OFFSET,
+			   16, 4, (aclk->pll_regs + APU_PLL4H_FQMTR_CON0), 0x10, 1);
+}
 static unsigned long mt6877_clk_get_rate(struct apu_clk_gp *aclk)
 {
 	unsigned long freq = 0;
@@ -40,6 +52,7 @@ static unsigned long mt6877_clk_get_rate(struct apu_clk_gp *aclk)
 			MTK_APUPWR_SMC_OP_FMETER_CTL,
 			FMETER_PLL, FMETER_STEP1, aclk->pll_sel, 0, 0, 0, &res);
 	if (res.a0) {
+		_dump_pll(aclk);
 		aclk_err(aclk->dev, "Step1 Fail in pll_sel:%u\n", aclk->pll_sel);
 		goto out;
 	}
@@ -49,6 +62,7 @@ static unsigned long mt6877_clk_get_rate(struct apu_clk_gp *aclk)
 						val, !(val & 0x10UL),
 						POLL_INTERVAL, PLL_POLL_TIMEOUT);
 	if (ret) {
+		_dump_pll(aclk);
 		aclk_err(aclk->dev, "Step2 timeout! [PLL%d]con0: 0x%x, con1: 0x%x\n",
 				aclk->pll_sel, val, apu_readl(aclk->pll_regs + APU_PLL4H_FQMTR_CON1));
 		goto out;
@@ -57,12 +71,12 @@ static unsigned long mt6877_clk_get_rate(struct apu_clk_gp *aclk)
 	freq = apu_readl(aclk->pll_regs + APU_PLL4H_FQMTR_CON1) & 0xFFFF;
 	freq = (((freq * 26000)) / (256 * 1000)) * 1000000;
 
-
 	/* step3. wait frequency meter finish */
 	arm_smccc_smc(MTK_SIP_APUPWR_CONTROL,
 			MTK_APUPWR_SMC_OP_FMETER_CTL,
 			FMETER_PLL, FMETER_STEP3, aclk->pll_sel, 0, 0, 0, &res);
 	if (res.a0) {
+		_dump_pll(aclk);
 		aclk_err(aclk->dev, "step3 Fail in pll_sel:%u\n", aclk->pll_sel);
 		goto out;
 	}
@@ -133,6 +147,7 @@ static int mt6877_clk_set_rate(struct apu_clk_gp *aclk, unsigned long rate)
 				(size_t)dom, 0, 0, 0, &res);
 
 		if (res.a0) {
+			_dump_pll(aclk);
 			aclk_err(aclk->dev, "[%s] fail set %lu ret:%lu\n",
 						__func__, rate, res.a0);
 			res.a0 = EINVAL;
