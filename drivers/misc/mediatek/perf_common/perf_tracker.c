@@ -82,9 +82,13 @@ u64 get_cpu_stall(int cpu, u32 offset)
 			return count;
 		count = __raw_readl(stall_tcm_base + offset + (cpu * 0x4));
 	} else {
+	#if IS_ENABLED(CONFIG_MTK_QOS_FRAMEWORK)
+		return qos_sram_read(CM_STALL_RATIO_ID_0 + cpu);
+	#else
 		if (IS_ERR_OR_NULL((void *)csram_base))
 			return count;
 		count = __raw_readl(csram_base + offset + (cpu * 0x4));
+	#endif
 	}
 	return count;
 }
