@@ -8,6 +8,11 @@
 
 #include <linux/pci.h>
 
+enum pcie_port_number {
+	PCIE_PORT_NUM_0,
+	PCIE_PORT_NUM_1
+};
+
 enum pin_state {
 	PCIE_PINMUX_INIT,
 	PCIE_PINMUX_DEFAULT,
