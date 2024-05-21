@@ -382,7 +382,9 @@ void adsp_aed_worker(struct work_struct *ws)
 	adsp_register_feature(SYSTEM_FEATURE_ID);
 	adsp_extern_notify_chain(ADSP_EVENT_STOP);
 
+#if !IS_ENABLED(CONFIG_MTK_ADSP_V0)
 	adsp_bus_monitor_dump();
+#endif
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 	/* exception dump */
