@@ -4995,7 +4995,7 @@ static void mtk_crtc_atomic_ddp_config(struct drm_crtc *crtc,
 					      lye_state, cmdq_handle);
 }
 
-static void mtk_crtc_free_ddpblob_ids(struct drm_crtc *crtc,
+static void __nocfi mtk_crtc_free_ddpblob_ids(struct drm_crtc *crtc,
 				struct mtk_drm_lyeblob_ids *lyeblob_ids)
 {
 	struct drm_device *dev = crtc->dev;
