@@ -272,7 +272,7 @@ int eyemon_scan(struct ufs_hba *hba, int lane, int host_device,
 	mv_per_step = max_voltage_offset * 10 * 100 / max_voltage_step;
 
 	/* Mediatek host EOM mv_per_step always = 6mV */
-	if ((host->ip_ver >= IP_VER_MT6991) && (host_device == HOST_EYE))
+	if ((host->ip_ver >= IP_VER_MT6991_A0) && (host_device == HOST_EYE))
 		mv_per_step = 600;
 
 	EYEMON_PRINTF(out, *size, "[UFS] max timing steps: %d\n",
