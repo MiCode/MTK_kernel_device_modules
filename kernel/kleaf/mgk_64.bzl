@@ -2745,7 +2745,6 @@ def get_overlay_modules_list():
         #mgk_64_device_modules.append("drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_mt6833.ko")
         mgk_64_device_modules.remove("drivers/char/rpmb/rpmb.ko")
         mgk_64_device_modules.remove("drivers/char/rpmb/rpmb-mtk.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/mmstat/trace_mmstat.ko")
         mgk_64_device_modules.remove("drivers/iommu/arm/arm-smmu-v3/arm_smmu_v3.ko")
         mgk_64_device_modules.remove("drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-lmu.ko")
         mgk_64_device_modules.remove("drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-pmu.ko")
