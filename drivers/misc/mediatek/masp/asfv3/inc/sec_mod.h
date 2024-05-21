@@ -37,6 +37,7 @@ extern void sec_core_exit(void);
 #define NUM_SBC_PUBK_HASH           8
 #define NUM_CRYPTO_SEED          16
 #define NUM_RID 4
+#define NUM_SOC_ID_IN_BYTES           32
 
 /*device information data*/
 struct masp_tag {
@@ -50,6 +51,7 @@ struct masp_tag {
 	/*rom_info.m_SEC_KEY.crypto_seed */
 	unsigned char crypto_seed[NUM_CRYPTO_SEED];
 	unsigned int sbc_pubk_hash[NUM_SBC_PUBK_HASH];
+	unsigned char soc_id[NUM_SOC_ID_IN_BYTES];
 };
 
 #endif				/* SECMOD_H */
