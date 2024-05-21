@@ -33,7 +33,6 @@
 #include <linux/pm_runtime.h>
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
-#include <linux/cpuidle.h>
 //#include <mt-plat/sync_write.h>
 //#include <mt-plat/aee.h>
 #include <linux/delay.h>
@@ -1062,10 +1061,8 @@ static int vcp_pm_event(struct notifier_block *notifier
 				vcp_wait_suspend_resume(0);
 
 #if VCP_RECOVERY_SUPPORT
-				cpuidle_pause_and_lock();
 				is_suspending = false;
 				waitCnt = vcp_wait_ready_sync();
-				cpuidle_resume_and_unlock();
 #endif
 			} else {
 				/* shutdown flow */
