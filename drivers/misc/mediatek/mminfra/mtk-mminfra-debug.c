@@ -847,6 +847,8 @@ static void mminfra_gals_dump_v3(void)
 			len += ret;
 		}
 		ret = snprintf(buf + len, LINK_MAX - len, "%c", '\0');
+		if (ret < 0)
+			pr_notice("%s: ret:%d buf size:%d\n", __func__, ret, LINK_MAX - len);
 		dev_info(dev, "%s\n", buf);
 	}
 	/* TODO: snoc gals dump */
