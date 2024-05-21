@@ -178,8 +178,10 @@ static int dump_buffer(struct adsp_exception_control *ctrl, int coredump_id)
 		ret = wait_for_completion_timeout(&ctrl->done, 10 * HZ);
 
 		/* if not release buf, return EBUSY */
-		if (ctrl->buf_backup)
+		if (ctrl->buf_backup) {
+			pr_debug("%s, buffer hasn't released, ret(%d)", __func__, ret);
 			return -EBUSY;
+		}
 	}
 
 	total = 8 * sizeof(struct adsp_mem_header)

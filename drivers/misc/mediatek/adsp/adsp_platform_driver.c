@@ -190,7 +190,7 @@ int adsp_core0_resume(void)
 		ret = wait_for_completion_timeout(&pdata->done, 2 * HZ);
 
 		if (get_adsp_state(pdata) != ADSP_RUNNING) {
-			pr_warn("%s, can't going to resume\n", __func__);
+			pr_warn("%s, can't going to resume, ret(%d)\n", __func__, ret);
 			adsp_mbox_dump();
 			adsp_aed_dispatch(EXCEP_KERNEL, pdata);
 			return -ETIME;
@@ -272,7 +272,7 @@ int adsp_core1_resume(void)
 		ret = wait_for_completion_timeout(&pdata->done, 2 * HZ);
 
 		if (get_adsp_state(pdata) != ADSP_RUNNING) {
-			pr_warn("%s, can't going to resume\n", __func__);
+			pr_warn("%s, can't going to resume, ret(%d)\n", __func__, ret);
 			adsp_mbox_dump();
 			adsp_aed_dispatch(EXCEP_KERNEL, pdata);
 			return -ETIME;
@@ -307,8 +307,6 @@ int adsp_logger_init_message(uint32_t id, void *info, uint32_t size)
 
 	_adsp_deregister_feature(id, ADSP_LOGGER_FEATURE_ID, 0);
 
-	if (ret != ADSP_IPI_DONE)
-		pr_info("[ADSP]logger initial fail, ipi ret=%d\n", ret);
 	return ret;
 }
 
@@ -327,6 +325,8 @@ void adsp_logger_init0_cb(struct work_struct *ws)
 	info[7] = adsp_get_reserve_mem_size(ADSP_L2SRAM_CTRL_MEM_ID);
 
 	ret = adsp_logger_init_message(ADSP_A_ID, (void *)info, sizeof(info));
+	if (ret != ADSP_OK)
+		pr_info("%s(), fail ret=%d\n", __func__, ret);
 }
 
 void adsp_logger_init1_cb(struct work_struct *ws)
@@ -344,7 +344,8 @@ void adsp_logger_init1_cb(struct work_struct *ws)
 	info[7] = adsp_get_reserve_mem_size(ADSP_L2SRAM_CTRL_MEM_ID);
 
 	ret = adsp_logger_init_message(ADSP_B_ID, (void *)info, sizeof(info));
-
+	if (ret != ADSP_OK)
+		pr_info("%s(), fail ret=%d\n", __func__, ret);
 }
 
 static struct slbc_data slb_data = {
