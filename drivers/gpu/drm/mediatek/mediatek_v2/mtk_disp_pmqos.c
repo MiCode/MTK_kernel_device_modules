@@ -340,11 +340,58 @@ static unsigned int mtk_disp_larb_hrt_bw_MT6989(struct mtk_drm_crtc *mtk_crtc,
 	return mtk_disp_getMaxBW(subcomm_bw_sum, max_sub_comm, total_bw);
 }
 
-static unsigned int mtk_disp_larb_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc,
-						unsigned int total_bw, unsigned int bw_base)
+unsigned int mtk_disp_get_channel_idx_MT6991(enum CHANNEL_TYPE type, unsigned int i)
+{
+	unsigned int idx = 0;
+
+	switch (type) {
+	case CHANNEL_SRT_READ:
+		idx = i * 4;//0,4,8,12
+		break;
+	case CHANNEL_SRT_WRITE:
+		idx = i * 4 + 1;//1,5,9,13
+		break;
+	case CHANNEL_HRT_READ:
+		idx = i * 4 + 2;//2,6,10,14
+		break;
+	case CHANNEL_HRT_WRITE:
+		idx = i * 4 + 3;//3,7,11,15
+		break;
+	}
+
+	return idx;
+}
+
+void mtk_disp_set_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw, int i)
+{
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned int crtc_idx = drm_crtc_index(crtc);
+	unsigned int total = 0, j, idx;
+
+	if (debug_channel_bw[i])
+		bw = debug_channel_bw[i];
+
+	if (priv && priv->req_hrt_channel_bw[crtc_idx][i] == bw)
+		return;
+
+	priv->req_hrt_channel_bw[crtc_idx][i] = bw;
+
+	for (j = 0; j < MAX_CRTC; j++)
+		total += priv->req_hrt_channel_bw[j][i];
+
+	idx = priv->data->get_channel_idx(CHANNEL_HRT_READ, i);
+	mtk_vidle_channel_bw_set(total, idx);
+	DRM_MMP_MARK(channel_bw, total, i);
+
+	DDPINFO("%s, CRTC%d chan[%d] bw=%u, total=%u\n",
+						__func__, crtc_idx, i, bw, total);
+}
+
+void mtk_disp_update_channel_hrt_MT6991(struct mtk_drm_crtc *mtk_crtc,
+						unsigned int bw_base, unsigned int channel_bw[])
 {
 	int i = 0;
-	int max_sub_comm = 4; // 6991 sub common num
 	int max_ovl_phy_layer = 12; // 6991 phy ovl layer num
 	unsigned int subcomm_bw_sum[4] = {0};
 	struct drm_crtc *crtc = &mtk_crtc->base;
@@ -352,6 +399,10 @@ static unsigned int mtk_disp_larb_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc,
 	unsigned int crtc_idx = drm_crtc_index(crtc);
 	unsigned int compr_ratio = 90;
 	int oddmr_hrt = 0;
+
+
+	if (!mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[DDP_FIRST_PATH])
+		return;
 
 	/* sub_comm0: exdma2(0) + exdma7(5) + 1_exdma5(11) + (1_exdma8)(14)
 	 * sub_comm1: exdma3(1) + exdma6(4) + 1_exdma4(10) + (1_exdma9)(15)
@@ -376,58 +427,21 @@ static unsigned int mtk_disp_larb_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc,
 		}
 	}
 
-	// need check if crtc0;
-	if (priv->data->mmsys_id == MMSYS_MT6991) {
+	if (crtc_idx == 0) {
 		mtk_oddmr_hrt_cal_notify(&oddmr_hrt);
 		subcomm_bw_sum[2] += bw_base * oddmr_hrt / 400;
 	}
 
-	/* hrt_channel_bw_sum[0]: comm0_ch0: sub_comm0
-	 * hrt_channel_bw_sum[1]: comm0_ch1: sub_comm1
-	 * hrt_channel_bw_sum[2]: comm1_ch0: sub_comm3
-	 * hrt_channel_bw_sum[3]: comm1_ch1: sub_comm2
+	//TODO: consider discrete path
+	/* channel_bw[0]: comm0_ch0: sub_comm0
+	 * channel_bw[1]: comm0_ch1: sub_comm1
+	 * channel_bw[2]: comm1_ch0: sub_comm3
+	 * channel_bw[3]: comm1_ch1: sub_comm2
 	 */
-	//TODO: decouple chan_hrt_bw from mtk_disp_larb_hrt_bw
-	priv->hrt_channel_bw_sum[crtc_idx][0] = subcomm_bw_sum[0];
-	priv->hrt_channel_bw_sum[crtc_idx][1] = subcomm_bw_sum[1];
-	priv->hrt_channel_bw_sum[crtc_idx][2] = subcomm_bw_sum[3];
-	priv->hrt_channel_bw_sum[crtc_idx][3] = subcomm_bw_sum[2];
-
-
-	// to do need change to all display sum
-	return mtk_disp_getMaxBW(subcomm_bw_sum, max_sub_comm, total_bw);
-}
-
-static void mtk_disp_channel_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
-{
-	int i, j;
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
-	unsigned int crtc_idx = drm_crtc_index(crtc);
-	unsigned int channel_sum = 0;
-
-	for (i = 0; i < BW_CHANNEL_NR; i++) {
-		for (j = 0; j < MAX_CRTC; j++)
-			channel_sum += priv->hrt_channel_bw_sum[j][i];
-		if (debug_channel_bw[i])
-			channel_sum = debug_channel_bw[i];
-		mtk_vidle_channel_bw_set(channel_sum, 2 + (i * 4)); //2, 6, 10, 14
-		DDPINFO("%s, total hrt bw %d\n", __func__, channel_sum);
-
-		priv->last_hrt_channel_bw_sum[crtc_idx][i] = priv->hrt_channel_bw_sum[crtc_idx][i];
-		channel_sum = 0;
-	}
-}
-
-static void mtk_disp_clear_channel_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
-{
-	int i;
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
-	unsigned int crtc_idx = drm_crtc_index(crtc);
-
-	for (i = 0; i < BW_CHANNEL_NR; i++)
-		priv->hrt_channel_bw_sum[crtc_idx][i] = 0;
+	channel_bw[0] = subcomm_bw_sum[0];
+	channel_bw[1] = subcomm_bw_sum[1];
+	channel_bw[2] = subcomm_bw_sum[3];
+	channel_bw[3] = subcomm_bw_sum[2];
 }
 
 static void mtk_disp_channel_srt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
@@ -659,30 +673,9 @@ unsigned int mtk_disp_get_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc)
 			tmp = mtk_disp_larb_hrt_bw_MT6989(mtk_crtc, MAX_MMCLK, bw_base);
 		else
 			tmp = bw_base;
-	} else if (priv->data->mmsys_id == MMSYS_MT6991) {
-		if (bw_base != MAX_MMCLK)
-			tmp = mtk_disp_larb_hrt_bw_MT6991(mtk_crtc, MAX_MMCLK, bw_base);
-		else
-			tmp = bw_base;
 	}
 	return tmp;
 }
-
-bool mtk_disp_check_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc)
-{
-	int i = 0;
-	bool check_flag = false;
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
-	unsigned int crtc_idx = drm_crtc_index(crtc);
-
-	for (i = 0; i < BW_CHANNEL_NR; i++)
-		if (priv->last_hrt_channel_bw_sum[crtc_idx][i] !=
-				priv->hrt_channel_bw_sum[crtc_idx][i])
-			check_flag = true;
-	return check_flag;
-}
-
 
 void mtk_disp_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc)
 {
@@ -929,22 +922,13 @@ int mtk_disp_set_per_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 					tmp1 = mtk_disp_larb_hrt_bw_MT6989(mtk_crtc, total, bw_base);
 				else
 					tmp1 = bw;
-			} else if (priv->data->mmsys_id == MMSYS_MT6991) {
-				if (bw != MAX_MMCLK)
-					tmp1 = mtk_disp_larb_hrt_bw_MT6991(mtk_crtc, total, bw_base);
-				else
-					tmp1 = bw;
 			}
-		} else {
+		} else
 			tmp1 = bw;
-			mtk_disp_clear_channel_hrt_bw_MT6991(mtk_crtc);
-		}
 
 		mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(tmp1));
 
 		mtk_vidle_dvfs_bw_set(tmp1);
-		if (priv->data->mmsys_id == MMSYS_MT6991)
-			mtk_disp_channel_hrt_bw_MT6991(mtk_crtc);
 		DDPINFO("%s, CRTC%d larb bw=%u bw_base=%d\n",
 			__func__, crtc_idx, tmp1, bw_base);
 	}
@@ -956,7 +940,7 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 {
 	struct mtk_drm_crtc *mtk_crtc;
 	struct drm_display_mode *mode;
-	unsigned int bw = 0, bw_base = 0;
+	unsigned int bw = 0, bw_base = 0, i;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	dev_crtc = crtc;
@@ -970,13 +954,22 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 	/* FIXME: this value is zero when booting, will be assigned in exdma_layer_config */
 	if (priv->data->mmsys_id == MMSYS_MT6991)
 		mtk_crtc->usage_ovl_fmt[1] = 4;
-	if (priv->data->mmsys_id == MMSYS_MT6989)
+	else if (priv->data->mmsys_id == MMSYS_MT6989)
 		mtk_crtc->usage_ovl_fmt[0] = 4;
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_BY_LARB) &&
-		(priv->data->mmsys_id == MMSYS_MT6989 ||
-		priv->data->mmsys_id == MMSYS_MT6991))
+		priv->data->mmsys_id == MMSYS_MT6989)
 		mtk_disp_set_per_larb_hrt_bw(mtk_crtc, bw);
+
+	if (priv->data->update_channel_hrt) {
+		unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
+
+		priv->data->update_channel_hrt(mtk_crtc, bw, channel_hrt);
+		DDPINFO("%s channel[%u][%u][%u][%u]", __func__,
+			channel_hrt[0], channel_hrt[1], channel_hrt[2], channel_hrt[3]);
+		for (i = 0; i < BW_CHANNEL_NR; i++)
+			mtk_disp_set_channel_hrt_bw(mtk_crtc, channel_hrt[i], i);
+	}
 
 	if (priv->data->respective_ostdl) {
 		bw_base = mtk_drm_primary_frame_bw(crtc);
@@ -1117,6 +1110,7 @@ int mtk_disp_hrt_cond_init(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_drm_private *priv;
+	unsigned int i;
 
 	dev_crtc = crtc;
 	mtk_crtc = to_mtk_crtc(dev_crtc);
@@ -1137,6 +1131,8 @@ int mtk_disp_hrt_cond_init(struct drm_crtc *crtc)
 	mtk_crtc->qos_ctx->last_hrt_req = 0;
 	mtk_crtc->qos_ctx->last_mmclk_req_idx = 0;
 	mtk_crtc->qos_ctx->last_larb_hrt_req = 0;
+	for (i = 0; i < BW_CHANNEL_NR ; i++)
+		mtk_crtc->qos_ctx->last_channel_req[i] = 0;
 
 	if (drm_crtc_index(crtc) == 0 && mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_MMQOS_SUPPORT))
