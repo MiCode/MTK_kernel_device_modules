@@ -4175,18 +4175,19 @@ static int update_quota(struct fbt_boost_info *boost_info, int target_fps,
 		boost_info->quota_cnt += 1;
 	}
 	boost_info->quota_cur_idx = new_idx;
-	boost_info->quota_cnt = clamp(boost_info->quota_cnt, 0, QUOTA_MAX_SIZE);
+	boost_info->quota_cnt = clamp(boost_info->quota_cnt, 1, QUOTA_MAX_SIZE);
 
 	/* remove outlier */
 	avg = boost_info->quota / boost_info->quota_cnt;
 	boost_info->enq_avg = boost_info->enq_sum / boost_info->quota_cnt;
 	boost_info->deq_avg = boost_info->deq_sum / boost_info->quota_cnt;
 
-	if (first_idx <= new_idx)
+	if (first_idx <= new_idx) {
+		new_idx = clamp(new_idx, first_idx, QUOTA_MAX_SIZE-1);
 		for (i = first_idx; i <= new_idx; i++)
 			std_square += (long long)(boost_info->quota_raw[i] - avg) *
 			(long long)(boost_info->quota_raw[i] - avg);
-	else {
+	} else {
 		for (i = first_idx; i < QUOTA_MAX_SIZE; i++)
 			std_square += (long long)(boost_info->quota_raw[i] - avg) *
 			(long long)(boost_info->quota_raw[i] - avg);
@@ -4622,6 +4623,8 @@ void fbt_get_l2q_ns(struct render_info *iter, unsigned long long cur_queue_end_t
 
 	// Get Frame N's L2Q time.
 	index = iter->l2q_index;
+	if (index < 0 || index >= MAX_SF_BUFFER_SIZE)
+		return;
 
 	if (logical_head_time_ns)
 		*logical_head_time_ns = iter->l2q_info[index].logic_head_fixed_ts;
@@ -4630,10 +4633,9 @@ void fbt_get_l2q_ns(struct render_info *iter, unsigned long long cur_queue_end_t
 	if (is_logic_head_alive)
 		*is_logic_head_alive = iter->l2q_info[index].is_logic_head_alive;
 
-	if (index != -1)
-		fpsgo_main_trace("[%s] queue_end_n-1=%llu, cur_q=%llu, l2q=%llu",
-			__func__, iter->l2q_info[index].queue_end_ns, cur_queue_end_ts,
-			iter->l2q_info[index].l2q_ts);
+	fpsgo_main_trace("[%s] queue_end_n-1=%llu, cur_q=%llu, l2q=%llu",
+		__func__, iter->l2q_info[index].queue_end_ns, cur_queue_end_ts,
+		iter->l2q_info[index].l2q_ts);
 }
 
 unsigned int fbt_get_expected_fpks(int pid, unsigned long long bufID,
@@ -9402,40 +9404,42 @@ static KOBJ_ATTR_RW(powerRL_voltage);
 
 void fbt_init_cpu_loading_info(void)
 {
-	int i = 0, err_exit = 0;
+	int i = 0;
 	unsigned long lock_flag;
-	unsigned int **cpu_obv_cl_ptr;
-	unsigned int **cpu_cl_iso_ptr;
+	unsigned int **cpu_obv_cl_ptr = NULL;
+	unsigned int **cpu_cl_iso_ptr = NULL;
 
 	cpu_obv_cl_ptr = kcalloc(LOADING_CNT, sizeof(unsigned int *), GFP_ATOMIC);
 	cpu_cl_iso_ptr = kcalloc(LOADING_CNT, sizeof(unsigned int *), GFP_ATOMIC);
+	if (!cpu_obv_cl_ptr || !cpu_cl_iso_ptr)
+		goto out;
 
 	for (i = 0; i < LOADING_CNT; i++) {
 		cpu_obv_cl_ptr[i] = kcalloc(cluster_num, sizeof(unsigned int), GFP_ATOMIC);
 		cpu_cl_iso_ptr[i] = kcalloc(cluster_num, sizeof(unsigned int), GFP_ATOMIC);
 		if (!cpu_obv_cl_ptr[i] || !cpu_cl_iso_ptr[i]) {
-			err_exit = 1;
 			FPSGO_LOGE("ERROR OOM\n");
-			break;
+			goto malloc_err;
 		}
 	}
-	if (err_exit) {
-		for (i = 0; i < LOADING_CNT; i++) {
-			kfree(cpu_obv_cl_ptr[i]);
-			kfree(cpu_cl_iso_ptr[i]);
-		}
-	}
+
 	spin_lock_irqsave(&loading_slock, lock_flag);
 	lastest_idx = 0;
 	last_cb_ts = 0;
-	if (!err_exit) {
-		for (i = 0; i < LOADING_CNT; i++) {
-			lastest_obv_cl[i] = cpu_obv_cl_ptr[i];
-			lastest_is_cl_isolated[i] = cpu_cl_iso_ptr[i];
-		}
+	for (i = 0; i < LOADING_CNT; i++) {
+		lastest_obv_cl[i] = cpu_obv_cl_ptr[i];
+		lastest_is_cl_isolated[i] = cpu_cl_iso_ptr[i];
 	}
 	spin_unlock_irqrestore(&loading_slock, lock_flag);
+	goto out;
 
+malloc_err:
+	for (i = 0; i < LOADING_CNT; i++) {
+		kfree(cpu_obv_cl_ptr[i]);
+		kfree(cpu_cl_iso_ptr[i]);
+	}
+
+out:
 	kfree(cpu_obv_cl_ptr);
 	kfree(cpu_cl_iso_ptr);
 }

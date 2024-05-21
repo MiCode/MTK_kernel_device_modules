@@ -1476,9 +1476,11 @@ int fpsgo_comp2fstb_get_logic_head(int pid, unsigned long long bufID, int tgid,
 			prev_queue_end_ts, pprev_queue_end_ts, dequeue_start_ts, logic_head_ts, has_logic_head);
 	}
 	mutex_unlock(&fstb_ko_lock);
-out:
+
 	fpsgo_main_trace("[%s] ret=%d, logic_head_ts=%llu, q_ts=%llu", __func__, get_logic_ret,
 		*logic_head_ts, cur_queue_end);
+
+out:
 	return get_logic_ret;
 }
 
