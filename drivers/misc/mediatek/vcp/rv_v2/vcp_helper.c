@@ -2744,7 +2744,7 @@ static int vcp_device_probe(struct platform_device *pdev)
 
 	vcp_power_devs = dev;
 
-	vcp_ao = of_property_read_bool(node, "vcp-ao-feature");
+	vcp_ao = of_property_read_bool(pdev->dev.of_node, "vcp-ao-feature");
 	pr_info("[VCP] vcp-ao %s", vcp_ao ? "support":"non-support");
 	if (!vcp_ao) {
 		pm_runtime_irq_safe(vcp_power_devs);
