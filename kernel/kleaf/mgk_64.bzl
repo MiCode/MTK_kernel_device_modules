@@ -161,6 +161,7 @@ mgk_64_device_modules = [
     "drivers/gpu/drm/panel/k6989v1_64_alpha/panel-ili7838e-dv2-spr-cmd.ko",
     "drivers/gpu/drm/panel/panel-ili7838e-dv3-alpha-cmd.ko",
     "drivers/gpu/drm/panel/panel-rm692h5-cmd.ko",
+    "drivers/gpu/drm/panel/k6991v1_64_alpha/panel-rm692h5-alpha-cmd-spr.ko",
     "drivers/gpu/drm/panel/k6985v1_64/td2204-wqhd-amb678zy01-s6e3hc3-cmd.ko",
     "drivers/gpu/drm/panel/mediatek-cust-panel-sample.ko",
     "drivers/gpu/drm/panel/mediatek-drm-gateic.ko",
