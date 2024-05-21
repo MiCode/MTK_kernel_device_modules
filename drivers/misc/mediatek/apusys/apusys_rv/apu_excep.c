@@ -519,16 +519,14 @@ static void __apu_coredump_work_func(struct mtk_apu *apu)
 	/* since exception is triggered, so bypass power off timeout check */
 	apu->bypass_pwr_off_chk = true;
 
-	apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
-
 	if ((apu->platdata->flags & F_EXCEPTION_KE) && !apu->disable_ke) {
-		dev_info(dev, "%s: wait aee_kernel_exception to generate db\n", __func__);
-		msleep(APU_KE_DELAY_MS);
 		panic("APUSYS_RV timeout: APUSYS_RV\n");
 	} else {
 		dev_info(dev, "%s: bypass KE due to %s%s\n", __func__,
 			(apu->platdata->flags & F_EXCEPTION_KE) ? "":"F_EXCEPTION_KE not enabled",
 			!apu->disable_ke ? "":"disabled by cmd");
+
+		apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
 	}
 
 	apu->bypass_aee = true;
