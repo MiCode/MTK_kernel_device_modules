@@ -1630,6 +1630,8 @@ static int drv3_setting_hw_reset_func(void)
 
 	ret = of_property_read_u32(dpmaif_ctl->dev->of_node, "hw-reset-ver",
 			&hw_reset_ver);
+	if (ret)
+		CCCI_ERROR_LOG(-1, TAG, "[%s] of_property_read_u32() fail: %d\n", __func__, ret);
 
 	if (hw_reset_ver == 1) {
 		node = of_find_compatible_node(NULL, NULL, "mediatek,infracfg");
@@ -1744,7 +1746,7 @@ fun_exit:
 	if (dpmaif_ctl->support_2rxq)
 		spin_unlock(&g_add_pit_cnt_lro_lock);
 
-	return 0;
+	return ret;
 }
 
 static int drv3_init_rxq_cb(void)
