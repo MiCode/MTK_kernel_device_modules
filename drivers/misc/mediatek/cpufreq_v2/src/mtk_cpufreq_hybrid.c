@@ -391,8 +391,10 @@ int Ripi_cpu_dvfs_thread(void *data)
 				if (p->idx_opp_tbl != j ||
 				(p->idx_opp_ppm_limit != previous_limit) ||
 				(p->idx_opp_ppm_base != previous_base)) {
+
 					previous_limit = p->idx_opp_ppm_limit;
 					previous_base = p->idx_opp_ppm_base;
+#ifndef POLICY_FREQ_LIMIT_CHECK
 					freqs.old = cpu_dvfs_get_cur_freq(p);
 					freqs.new =
 					cpu_dvfs_get_freq_by_idx(p, j);
@@ -402,6 +404,7 @@ int Ripi_cpu_dvfs_thread(void *data)
 					p->mt_policy, &freqs);
 					cpufreq_freq_transition_end(
 					p->mt_policy, &freqs, 0);
+#endif
 				}
 			}
 		}
