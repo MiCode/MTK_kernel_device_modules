@@ -78,10 +78,9 @@ unsigned int mtk_disp_get_channel_idx_MT6991(enum CHANNEL_TYPE type, unsigned in
 void mtk_disp_set_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw, int i);
 int mtk_disp_set_per_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw);
 bool mtk_disp_check_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc);
-
 void mtk_disp_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc);
-
 void mtk_disp_clear_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc);
+void mtk_disp_total_srt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw);
 
 void mtk_disp_hrt_repaint_blocking(const unsigned int hrt_idx);
 #endif

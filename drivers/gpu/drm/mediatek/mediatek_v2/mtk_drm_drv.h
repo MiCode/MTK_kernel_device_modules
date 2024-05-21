@@ -286,6 +286,7 @@ struct mtk_drm_private {
 	unsigned int seg_id;
 
 	unsigned int srt_channel_bw_sum[MAX_CRTC][BW_CHANNEL_NR];
+	unsigned int total_srt[MAX_CRTC];
 };
 
 struct mtk_drm_property {

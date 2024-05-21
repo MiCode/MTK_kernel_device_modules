@@ -11068,7 +11068,7 @@ void mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc)
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
 			PMQOS_UPDATE_BW, NULL);
 	mtk_crtc_tui_ovl_bw(crtc);
-	mtk_vidle_srt_bw_set(mtk_crtc->total_srt);
+	mtk_disp_total_srt_bw(mtk_crtc, mtk_crtc->total_srt);
 	mtk_disp_channel_srt_bw(mtk_crtc);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
@@ -11853,7 +11853,7 @@ skip:
 		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
 		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
 	}
-	mtk_vidle_srt_bw_set(mtk_crtc->total_srt);
+	mtk_disp_total_srt_bw(mtk_crtc, mtk_crtc->total_srt);
 	mtk_disp_channel_srt_bw(mtk_crtc);
 
 	/* 5. Set HRT BW to 0 */
@@ -17444,7 +17444,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 			}
 		}
 		mtk_crtc_tui_ovl_bw(crtc);
-		mtk_vidle_srt_bw_set(mtk_crtc->total_srt);
+		mtk_disp_total_srt_bw(mtk_crtc, mtk_crtc->total_srt);
 		mtk_disp_channel_srt_bw(mtk_crtc);
 	}
 
