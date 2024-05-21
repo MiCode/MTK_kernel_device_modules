@@ -574,7 +574,7 @@ int enforce_ct_to_vip(int val, int caller_id)
 		MAX_TYPE
 	};
 
-	if (caller_id >= MAX_TYPE)
+	if (caller_id < 0 || caller_id >= MAX_TYPE)
 		return -EINVAL;
 
 	val = (val > 0) ? 1 : 0;
@@ -584,8 +584,9 @@ int enforce_ct_to_vip(int val, int caller_id)
 	else
 		enforced_qualified_mask &= ~(1U << caller_id);
 
-	snprintf(desc, sizeof(desc), "%s %s=%d, enforced_qualified_mask=%llu"
-			, caller_id_desc[caller_id], __func__, val, enforced_qualified_mask);
+	if (snprintf(desc, sizeof(desc), "%s %s=%d, enforced_qualified_mask=%llu"
+			, caller_id_desc[caller_id], __func__, val, enforced_qualified_mask) < 0)
+		strscpy(desc, "snprintf error", sizeof(desc));
 
 	tmp_mask = enforced_qualified_mask;
 	mutex_unlock(&enforced_qualified_lock);
