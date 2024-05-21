@@ -8,7 +8,7 @@
 #include <linux/module.h>
 #include <linux/spinlock.h>
 
-#include "mt-plat/mtk_ccci_common.h" /* exec_ccci_kern_func_by_md_id */
+#include "mt-plat/mtk_ccci_common.h" /* exec_ccci_kern_func */
 
 #if IS_ENABLED(CONFIG_MTK_WATCHDOG) && IS_ENABLED(CONFIG_MTK_WD_KICKER)
 #include "mt-plat/mtk_wd_api.h" /* ap wdt related definitons */
