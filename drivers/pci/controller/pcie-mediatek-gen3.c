@@ -275,6 +275,9 @@
 #define LIBER_BBCK2_BIND		0x281
 #define LIBER_BBCK2_UNBIND		0x280
 
+/* pmrc register */
+#define PMRC_BBCK2_STA			0x41c
+
 enum mtk_pcie_suspend_link_state {
 	LINK_STATE_L12 = 0,
 	LINK_STATE_L2,
@@ -319,6 +322,7 @@ struct mtk_msi_set {
  * @base: IO mapped register base
  * @pextpcfg: pextpcfg_ao(pcie HW MTCMOS) IO mapped register base
  * @vlpcfg: vlpcfg(bus protect ready) IO mapped register base
+ * @pmrc: pmrc(BBCK2 control) IO mapped register base
  * @reg_base: physical register base
  * @mac_reset: MAC reset control
  * @phy_reset: PHY reset control
@@ -355,6 +359,7 @@ struct mtk_pcie_port {
 	void __iomem *base;
 	void __iomem *pextpcfg;
 	void __iomem *vlpcfg;
+	void __iomem *pmrc;
 	phys_addr_t reg_base;
 	struct reset_control *mac_reset;
 	struct reset_control *phy_reset;
@@ -548,6 +553,8 @@ static void mtk_pcie_enable_msi(struct mtk_pcie_port *port)
  */
 static void mtk_pcie_dump_pextp_info(struct mtk_pcie_port *port)
 {
+	int val = 0;
+
 	if (!port || !port->pextpcfg)
 		return;
 
@@ -563,14 +570,18 @@ static void mtk_pcie_dump_pextp_info(struct mtk_pcie_port *port)
 		return;
 	}
 
-	dev_info(port->dev, "V2:Modem HW MODE:%#x, RC HW MODE:%#x, EP HW MODE:%#x, Clock gate:%#x, REQ_STA:%#x, REQ_CTRL:%#x, Sleep protect:%#x\n",
+	if (port->pmrc)
+		val = readl_relaxed(port->pmrc + PMRC_BBCK2_STA);
+
+	dev_info(port->dev, "V2:Modem HW MODE:%#x, RC HW MODE:%#x, EP HW MODE:%#x, Clock gate:%#x, REQ_STA:%#x, REQ_CTRL:%#x, Sleep protect:%#x, pmrc regs:%#x\n",
 		readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_4),
 		readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_6),
 		readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_8),
 		readl_relaxed(port->pextpcfg + PCIE_PEXTP_CG_0),
 		readl_relaxed(port->pextpcfg + PEXTP_RES_REQ_STA),
 		readl_relaxed(port->pextpcfg + PEXTP_REQ_CTRL),
-		readl_relaxed(port->pextpcfg + PEXTP_SLPPROT_RDY));
+		readl_relaxed(port->pextpcfg + PEXTP_SLPPROT_RDY),
+		val);
 }
 
 static void mtk_pcie_save_restore_l1ss(struct mtk_pcie_port *port, bool save)
@@ -689,9 +700,6 @@ static void mtk_pcie_clkbuf_force_26m(struct mtk_pcie_port *port, bool enable)
 		val |= PCIE_26M_REQ_FORCE_ON;
 		writel_relaxed(val, port->pextpcfg + PEXTP_REQ_CTRL);
 		mtk_pcie_clkbuf_force_bbck2(port, enable);
-		val &= ~PCIE_26M_REQ_FORCE_ON;
-		writel_relaxed(val, port->pextpcfg + PEXTP_REQ_CTRL);
-		return;
 	}
 
 	if (enable)
@@ -1377,6 +1385,17 @@ static int mtk_pcie_parse_port(struct mtk_pcie_port *port)
 		}
 	}
 
+	node = of_parse_phandle(dev->of_node, "pmrc", 0);
+	if (node) {
+		port->pmrc = of_iomap(node, 1);
+		of_node_put(node);
+		if (IS_ERR(port->pmrc)) {
+			ret = PTR_ERR(port->pmrc);
+			port->pmrc = NULL;
+			return ret;
+		}
+	}
+
 	port->suspend_mode = LINK_STATE_L2;
 	ret = of_property_read_bool(dev->of_node, "mediatek,suspend-mode-l12");
 	if (ret)
@@ -1649,6 +1668,9 @@ err_probe:
 	if (port->vlpcfg)
 		iounmap(port->vlpcfg);
 
+	if (port->pmrc)
+		iounmap(port->pmrc);
+
 	if (mtk_pcie_pinmux_select(port->port_num, PCIE_PINMUX_PD))
 		pinctrl_pm_select_sleep_state(&pdev->dev);
 
@@ -1677,6 +1699,9 @@ static int mtk_pcie_remove(struct platform_device *pdev)
 
 	if (port->vlpcfg)
 		iounmap(port->vlpcfg);
+
+	if (port->pmrc)
+		iounmap(port->pmrc);
 
 	err = pinctrl_pm_select_sleep_state(&pdev->dev);
 	if (err) {
