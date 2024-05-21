@@ -2310,6 +2310,7 @@ static int mt6379_charger_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	cdata->fsw_control = true;
 	mt6379_charger_check_pwr_rdy(cdata);
 	return 0;
 }

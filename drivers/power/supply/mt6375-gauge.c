@@ -1013,16 +1013,16 @@ static unsigned int instant_current_for_car_tune(struct mtk_gauge *gauge)
 static int calculate_car_tune(struct mtk_gauge *gauge)
 {
 	struct mt6375_priv *priv = container_of(gauge, struct mt6375_priv, gauge);
-	int cali_car_tune;
-	long long sum_all = 0;
-	unsigned long long temp_sum = 0;
-	int avg_cnt = 0;
-	int i;
+	long long sum_all = 0, Temp_Value1 = 0, current_from_ADC = 0;
+	unsigned long long temp_sum = 0, Temp_Value2 = 0;
+	int i, cali_car_tune = 0, avg_cnt = 0;
 	unsigned int uvalue32 = 0;
 	signed int dvalue = 0;
-	long long Temp_Value1 = 0;
-	unsigned long long Temp_Value2 = 0;
-	long long current_from_ADC = 0;
+
+	if (!gauge->gm) {
+		dev_info(priv->dev, "%s, gm has not initialized\n", __func__);
+		return 0;
+	}
 
 	bm_err(gauge->gm, "%s, meta_current=%d,\n", __func__, gauge->hw_status.meta_current);
 	if (gauge->hw_status.meta_current != 0) {
@@ -2236,9 +2236,15 @@ static int gauge_initialized_set(struct mtk_gauge *gauge, struct mtk_gauge_sysfs
 static int reset_fg_rtc_set(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_info *attr,
 			    int val)
 {
-	int temp_value;
+	struct mt6375_priv *priv = container_of(gauge, struct mt6375_priv, gauge);
 	u8 spare0_reg, after_rst_spare0_reg;
 	u8 spare3_reg, after_rst_spare3_reg;
+	int temp_value;
+
+	if (!gauge->gm) {
+		dev_info(priv->dev, "%s, gm has not initialized\n", __func__);
+		return 0;
+	}
 
 	/* read spare0 */
 	spare0_reg = get_rtc_spare0_fg_value(gauge);
@@ -2472,8 +2478,8 @@ static int zcv_get(struct mtk_gauge *gauge_dev, struct mtk_gauge_sysfs_field_inf
 
 static int get_charger_zcv(struct mtk_gauge *gauge_dev)
 {
+	union power_supply_propval val = { .intval = 0 };
 	struct power_supply *chg_psy;
-	union power_supply_propval val;
 	int ret = 0;
 
 	chg_psy = power_supply_get_by_name("mtk-master-charger");
@@ -2721,10 +2727,16 @@ static int rtc_ui_soc_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_
 
 static int rtc_ui_soc_set(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_info *attr, int val)
 {
+	struct mt6375_priv *priv = container_of(gauge, struct mt6375_priv, gauge);
 	u8 spare3_reg = get_rtc_spare_fg_value(gauge);
 	int spare3_reg_valid = 0;
 	int new_spare3_reg = 0;
 	int latest_spare3_reg = 0;
+
+	if (!gauge->gm) {
+		dev_info(priv->dev, "%s, gm has not initialized\n", __func__);
+		return 1;
+	}
 
 	spare3_reg_valid = (spare3_reg & 0x80);
 	new_spare3_reg = spare3_reg_valid + val;
@@ -3812,13 +3824,12 @@ static const struct file_operations adc_cali_fops = {
 
 static int adc_cali_cdev_init(struct mtk_battery *gm, struct platform_device *pdev)
 {
-	struct class_device *class_dev = NULL;
 	struct mtk_gauge *gauge = gm->gauge;
 	struct mt6375_priv *priv = container_of(gauge, struct mt6375_priv, gauge);
+	struct class_device *class_dev = NULL;
 	int ret = 0;
 
-	if (gm)
-		mutex_init(&gm->gauge->fg_mutex);
+	mutex_init(&gauge->fg_mutex);
 
 	ret = alloc_chrdev_region(&bat_cali_devno, 0, 1, BAT_CALI_DEVNAME);
 	if (ret)

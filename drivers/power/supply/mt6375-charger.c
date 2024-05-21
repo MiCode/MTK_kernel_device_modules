@@ -778,15 +778,18 @@ static int mt6375_chg_is_enabled(struct mt6375_chg_data *ddata, bool *en)
 
 static int mt6375_chg_is_charge_done(struct mt6375_chg_data *ddata, bool *done)
 {
-	int ret;
 	union power_supply_propval val;
+	int ret = 0;
 
-	ret = power_supply_get_property(ddata->psy, POWER_SUPPLY_PROP_STATUS,
-					&val);
-	if (ret < 0)
-		return ret;
-	*done = (val.intval == POWER_SUPPLY_STATUS_FULL);
-	return 0;
+	val.intval = POWER_SUPPLY_STATUS_UNKNOWN;
+	ret = power_supply_get_property(ddata->psy, POWER_SUPPLY_PROP_STATUS, &val);
+	if (ret) {
+		*done = false;
+		dev_info(ddata->dev, "%s, Failed to get charger status\n", __func__);
+	} else
+		*done = (val.intval == POWER_SUPPLY_STATUS_FULL);
+
+	return ret;
 }
 
 static int mt6375_chg_set_cv(struct mt6375_chg_data *ddata, u32 mV)

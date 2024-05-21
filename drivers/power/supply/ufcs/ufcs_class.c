@@ -262,8 +262,8 @@ struct ufcs_port {
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *dentry;
 	struct mutex logbuffer_lock;	/* log buffer access lock */
-	int logbuffer_head;
-	int logbuffer_tail;
+	unsigned int logbuffer_head;
+	unsigned int logbuffer_tail;
 	u8 *logbuffer[LOG_BUFFER_ENTRIES];
 #endif
 };
@@ -355,21 +355,19 @@ static inline u32 put_refuse_msg(u32 rxmsg_id, u32 type, u32 cmd, u32 reason)
 
 static bool ufcs_log_full(struct ufcs_port *port)
 {
-	return port->logbuffer_tail ==
-		(port->logbuffer_head + 1) % LOG_BUFFER_ENTRIES;
+	return port->logbuffer_tail == (port->logbuffer_head + 1) % LOG_BUFFER_ENTRIES;
 }
 
 __printf(2, 0)
 static void _ufcs_log(struct ufcs_port *port, const char *fmt, va_list args)
 {
-	char tmpbuffer[LOG_BUFFER_ENTRY_SIZE];
+	char tmpbuffer[LOG_BUFFER_ENTRY_SIZE] = { 0 };
 	u64 ts_nsec = local_clock();
 	unsigned long rem_nsec;
 
 	mutex_lock(&port->logbuffer_lock);
 	if (!port->logbuffer[port->logbuffer_head]) {
-		port->logbuffer[port->logbuffer_head] =
-				kzalloc(LOG_BUFFER_ENTRY_SIZE, GFP_KERNEL);
+		port->logbuffer[port->logbuffer_head] = kzalloc(LOG_BUFFER_ENTRY_SIZE, GFP_KERNEL);
 		if (!port->logbuffer[port->logbuffer_head]) {
 			mutex_unlock(&port->logbuffer_lock);
 			return;
@@ -383,16 +381,13 @@ static void _ufcs_log(struct ufcs_port *port, const char *fmt, va_list args)
 		strscpy(tmpbuffer, "overflow", LOG_BUFFER_ENTRY_SIZE);
 	}
 
-	if (port->logbuffer_head < 0 ||
-	    port->logbuffer_head >= LOG_BUFFER_ENTRIES) {
-		dev_warn(&port->dev,
-			 "Bad log buffer index %d\n", port->logbuffer_head);
+	if (port->logbuffer_head >= LOG_BUFFER_ENTRIES) {
+		dev_info(&port->dev, "Bad log buffer index %d\n", port->logbuffer_head);
 		goto abort;
 	}
 
 	if (!port->logbuffer[port->logbuffer_head]) {
-		dev_warn(&port->dev,
-			 "Log buffer index %d is NULL\n", port->logbuffer_head);
+		dev_info(&port->dev, "Log buffer index %d is NULL\n", port->logbuffer_head);
 		goto abort;
 	}
 
@@ -403,6 +398,7 @@ static void _ufcs_log(struct ufcs_port *port, const char *fmt, va_list args)
 		  tmpbuffer);
 	if (dbg_log_en)
 		pr_notice("%s\n", port->logbuffer[port->logbuffer_head]);
+
 	port->logbuffer_head = (port->logbuffer_head + 1) % LOG_BUFFER_ENTRIES;
 
 abort:
@@ -453,16 +449,19 @@ static void ufcs_log_source_caps(struct ufcs_port *port)
 static int ufcs_debug_show(struct seq_file *s, void *v)
 {
 	struct ufcs_port *port = (struct ufcs_port *)s->private;
-	int tail;
+	unsigned int tail;
 
 	mutex_lock(&port->logbuffer_lock);
+
 	tail = port->logbuffer_tail;
-	while (tail != port->logbuffer_head) {
+	while (tail != port->logbuffer_head && tail < LOG_BUFFER_ENTRY_SIZE) {
 		seq_printf(s, "%s\n", port->logbuffer[tail]);
 		tail = (tail + 1) % LOG_BUFFER_ENTRIES;
 	}
+
 	if (!seq_has_overflowed(s))
 		port->logbuffer_tail = tail;
+
 	mutex_unlock(&port->logbuffer_lock);
 
 	return 0;
@@ -1794,7 +1793,7 @@ static void ufcs_state_machine_work(struct kthread_work *work)
 	port->state_machine_running = true;
 
 	/* If we were queued due to a delayed state change, update it now */
-	if (port->delayed_state) {
+	if (port->delayed_state != INVALID_STATE) {
 		ufcs_log(port, "state change %s -> %s [delayed %ld ms]", ufcs_states[port->state],
 			 ufcs_states[port->delayed_state], port->delayed_ms);
 
@@ -1806,7 +1805,7 @@ static void ufcs_state_machine_work(struct kthread_work *work)
 	do {
 		prev_state = port->state;
 		run_state_machine(port);
-	} while (port->state != prev_state && !port->delayed_state);
+	} while (port->state != prev_state && port->delayed_state == INVALID_STATE);
 
 	port->state_machine_running = false;
 	mutex_unlock(&port->lock);
@@ -2082,6 +2081,8 @@ static ssize_t ufcs_test_store(struct device *dev, struct device_attribute *attr
 	char *temp_buf = (char *)buf;
 	char *token = strsep(&temp_buf, " ");
 
+	if (!token)
+		return -EINVAL;
 	ret = kstrtouint(token, 10, &dpm_req);
 	if (ret)
 		return ret;
@@ -2114,7 +2115,7 @@ static ssize_t ufcs_test_store(struct device *dev, struct device_attribute *attr
 		break;
 	case UFCS_DPM_VDM:
 		ufcs_log(port, "vdm is todo item");
-		return count;
+		break;
 	default:
 		ufcs_log(port, "unknown dpm req:%d", dpm_req);
 		return -EINVAL;
