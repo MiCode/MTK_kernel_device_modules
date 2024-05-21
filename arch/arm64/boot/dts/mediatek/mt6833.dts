@@ -5110,7 +5110,7 @@
 		reg-names = "pmif", "pmifmpu", "spmimst";
 		interrupts = <GIC_SPI 221 IRQ_TYPE_LEVEL_HIGH 0>;
 		interrupt-names = "pmif_irq";
-		irq_event_en = <0x0 0x0 0x0 0x0 0x0>;
+		irq_event_en = <0x0 0x0 0x80000000 0x00180000 0x0>;
 		clocks = <&infracfg_ao_clk CLK_IFRAO_PMIC_AP>,
 			<&infracfg_ao_clk CLK_IFRAO_PMIC_TMR>,
 			<&topckgen_clk CLK_TOP_PWRAP_ULPOSC_SEL>,
@@ -6816,6 +6816,7 @@
 #include "mediatek/bat_setting/mt6833_battery_prop.dtsi"
 
 &spmi {
+grpid = <11>;
 	mt6315_3: mt6315@3 {
 		compatible = "mediatek,mt6315", "mtk,spmi-pmic";
 		reg = <0x3 0 0xb 1>;
