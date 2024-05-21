@@ -167,16 +167,15 @@ unsigned int __spm_output_wake_reason(
 	unsigned int wr = WR_UNKNOWN;
 	unsigned int spm_26M_off_pct = 0;
 
-	log_buf = vmalloc(LOG_BUF_OUT_SZ);
+	log_buf = kzalloc(LOG_BUF_OUT_SZ, GFP_ATOMIC);
 	if (!log_buf)
 		return -1;
-	buf = vmalloc(LOG_BUF_SIZE);
+	buf = kzalloc(LOG_BUF_SIZE, GFP_ATOMIC);
 	if (!buf) {
-		vfree(log_buf);
+		kfree(log_buf);
 		return -1;
 	}
-	memset(log_buf, 0, LOG_BUF_OUT_SZ);
-	memset(buf, 0, LOG_BUF_SIZE);
+
 	if (wakesta->assert_pc != 0) {
 		/* add size check for vcoredvfs */
 		aee_sram_printk("PCM ASSERT AT 0x%x (%s), r13 = 0x%x, ",
@@ -196,8 +195,8 @@ unsigned int __spm_output_wake_reason(
 			wakesta->debug_flag, wakesta->debug_flag1);
 
 		pr_info("[name:spm&]%s", log_buf);
-				vfree(log_buf);
-		vfree(buf);
+		kfree(log_buf);
+		kfree(buf);
 		return WR_PCM_ASSERT;
 	}
 
@@ -287,8 +286,8 @@ unsigned int __spm_output_wake_reason(
 		aee_sram_printk("%s", log_buf);
 		pr_info("[name:spm&][SPM] %s", log_buf);
 	}
-	vfree(log_buf);
-	vfree(buf);
+	kfree(log_buf);
+	kfree(buf);
 	return wr;
 }
 
