@@ -609,7 +609,6 @@ int mdw_mem_map(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 			mdw_drv_err("apu_mem_map_iova fail s(0x%llx) ret(%d),\n", (uint64_t)mpriv, ret);
 			ret = -EINVAL;
 			goto out;
-			ret = 0;
 		}
 
 		/* check eva */
