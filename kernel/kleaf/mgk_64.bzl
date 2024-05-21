@@ -739,7 +739,7 @@ mgk_64_device_modules = [
 
 mgk_64_platform_device_modules = {
     # keep sorted
-    "drivers/clk/mediatek/clk-bringup.ko": "mt6781 mt6833 mt6853 mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt8192 mt8188",
+    "drivers/clk/mediatek/clk-bringup.ko": "mt6781 mt6833 mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt8192 mt8188",
     "drivers/clk/mediatek/clk-chk-mt6886.ko": "mt6886",
     "drivers/clk/mediatek/clk-chk-mt6897.ko": "mt6897",
     "drivers/clk/mediatek/clk-mt6893-apu0.ko": "mt6893",
