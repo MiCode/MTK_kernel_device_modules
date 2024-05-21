@@ -28,8 +28,6 @@ int (*powerhal_adpf_sent_hint_fp)(unsigned int sid, int hint);
 EXPORT_SYMBOL_GPL(powerhal_adpf_sent_hint_fp);
 int (*powerhal_adpf_set_threads_fp)(unsigned int sid, int *threadIds, int threadIds_size);
 EXPORT_SYMBOL_GPL(powerhal_adpf_set_threads_fp);
-void (*boost_get_cmd_fp)(int *cmd, int *value);
-EXPORT_SYMBOL_GPL(boost_get_cmd_fp);
 
 // DSU
 int (*powerhal_dsu_sport_mode_fp)(unsigned int mode);
@@ -195,38 +193,12 @@ static long device_ioctl(struct file *filp,
 	struct _POWERHAL_PACKAGE *t_msgKM = NULL,
 			*t_msgUM = (struct _POWERHAL_PACKAGE *)arg;
 	struct _POWERHAL_PACKAGE t_smsgKM;
-	int _cmd = -1;
-	int _value = -1;
-	struct _CPU_CTRL_PACKAGE *t_msgKM_boost = NULL,
-			*t_msgUM_boost = (struct _CPU_CTRL_PACKAGE *)arg;
-	struct _CPU_CTRL_PACKAGE t_smsgKM_boost;
 
 	t_msgKM = &t_smsgKM;
 
 	pr_debug(TAG "cmd: %d\n", cmd);
 
 	switch (cmd) {
-	case NOTIFY_BOOST:
-		t_msgKM_boost = &t_smsgKM_boost;
-
-		if (perfctl_copy_from_user(t_msgKM_boost, t_msgUM_boost,
-				sizeof(struct _CPU_CTRL_PACKAGE))) {
-			ret = -EFAULT;
-			goto ret_ioctl;
-		}
-
-		if (boost_get_cmd_fp) {
-			boost_get_cmd_fp(&_cmd, &_value);
-			t_msgKM_boost->cmd = _cmd;
-			t_msgKM_boost->value = _value;
-		}
-
-		if (perfctl_copy_to_user(t_msgUM_boost, t_msgKM_boost,
-				sizeof(struct _CPU_CTRL_PACKAGE))) {
-			ret = -EFAULT;
-			goto ret_ioctl;
-		}
-		break;
 	case DSU_CCI_SPORT_MODE:
 		if (perfctl_copy_from_user(t_msgKM, t_msgUM,
 			sizeof(struct _POWERHAL_PACKAGE))) {
