@@ -2360,7 +2360,7 @@ static int mt6375_parse_dt(struct mt6375_tcpc_data *ddata)
 	struct tcpc_desc *desc = ddata->desc;
 	struct device *dev = ddata->dev;
 	u32 val;
-	int i;
+	int i, ret;
 	const struct {
 		const char *name;
 		const char *legacy_name;
@@ -2393,7 +2393,9 @@ static int mt6375_parse_dt(struct mt6375_tcpc_data *ddata)
 
 	memcpy(desc, &def_tcpc_desc, sizeof(*desc));
 
-	device_property_read_string(dev, "tcpc,name", &desc->name);
+	ret = device_property_read_string(dev, "tcpc,name", &desc->name);
+	if (ret)
+		dev_info(dev, "%s, No tcpc,name node, use default name: type_c_port0\n", __func__);
 
 	if ((!device_property_read_u32(dev, "tcpc,role-def", &val) ||
 	     !device_property_read_u32(dev, "tcpc,role_def", &val)) &&
