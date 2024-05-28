@@ -1795,7 +1795,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				last_fbt_weight = weight;
 				DDPDBG_BWM("GPUC: fbt layer frame_idx:%u key:%llu\n",
 					frame_idx, key_value);
-				DDPDBG_BWM("GPUC: ratio:%u weight:%d\n",
+				DDPDBG_BWM("GPUC: ratio:%u weight:%lu\n",
 					fbt_layer_compress_ratio_tb[i].peak_ratio, weight);
 
 				if (disp_info->disp_caps[HRT_PRIMARY] & MTK_GLES_FBT_UNCHANGED) {
@@ -1808,11 +1808,11 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				index = (fbt_layer_compress_ratio_tb[i].peak_ratio*256)/(1000*16);
 				if (index) {
 					weight = div_u64(weight*10000, emi_eff_tb[index-1]);
-					DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%d\n",
+					DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%lu\n",
 						__LINE__, index, emi_eff_tb[index-1], weight);
 				} else {
 					weight = div_u64(weight*10000, emi_eff_tb[0]);
-					DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%d\n",
+					DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%lu\n",
 							__LINE__, index, emi_eff_tb[0], weight);
 				}
 				return weight * bpp;
@@ -1859,7 +1859,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 					weight *= peak_ratio;
 
 				do_div(weight, 1000);
-				DDPDBG_BWM("BWM: unchgd f_idx:%u allocid:%llu ratio:%u weight:%d\n",
+				DDPDBG_BWM("BWM: unchgd f_idx:%u allocid:%llu ratio:%u weight:%lu\n",
 					frame_idx, layer_info->buffer_alloc_id,
 					peak_ratio, weight);
 
@@ -1867,11 +1867,11 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				index = (peak_ratio * 256) / (1000 * 16);
 				if (index) {
 					weight = div_u64(weight*10000, emi_eff_tb[index-1]);
-					DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%d\n",
+					DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%lu\n",
 						__LINE__, index, emi_eff_tb[index-1], weight);
 				} else {
 					weight = div_u64(weight*10000, emi_eff_tb[0]);
-					DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%d\n",
+					DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%lu\n",
 						__LINE__, index, emi_eff_tb[0], weight);
 				}
 				layer_info->layer_caps |= MTK_DISP_UNCHANGED_RATIO_VALID;
@@ -1905,18 +1905,18 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 					weight *= peak_ratio;
 
 				do_div(weight, 1000);
-				DDPDBG_BWM("BWM:fidx:%u allocid:%llu key:%llu ratio:%u weight:%d\n",
+				DDPDBG_BWM("BWM:fidx:%u allocid:%llu key:%llu ratio:%u weight:%lu\n",
 					frame_idx, layer_info->buffer_alloc_id, key_value,
 					peak_ratio, weight);
 
 				index = (peak_ratio * 256) / (1000 * 16);
 				if (index) {
 					weight = div_u64(weight*10000, emi_eff_tb[index-1]);
-					DDPDBG("%d BWM:index:%u eff:%u weight:%d\n",
+					DDPDBG("%d BWM:index:%u eff:%u weight:%lu\n",
 						__LINE__, index, emi_eff_tb[index-1], weight);
 				} else {
 					weight = div_u64(weight*10000, emi_eff_tb[0]);
-					DDPDBG("%d BWM:index:%u eff:%u weight:%d\n",
+					DDPDBG("%d BWM:index:%u eff:%u weight:%lu\n",
 						__LINE__, index, emi_eff_tb[0], weight);
 				}
 				layer_info->layer_caps |= MTK_DISP_UNCHANGED_RATIO_VALID;
@@ -4359,7 +4359,7 @@ static void check_is_mml_layer(const int disp_idx,
 	enum MTK_LAYERING_CAPS mml_capacity = DISP_MML_CAPS_MASK;
 	struct mtk_drm_private *priv = NULL;
 	struct mml_frame_info *mml_info = NULL;
-	struct mml_frame_info *multi_mml_info[disp_info->layer_num[disp_idx]];
+	struct mml_frame_info **multi_mml_info = NULL;
 	struct mml_drm_ctx *mml_ctx = NULL;
 	struct mtk_ddp_comp *output_comp = NULL;
 	u32 ns = 0;
@@ -4368,11 +4368,11 @@ static void check_is_mml_layer(const int disp_idx,
 	bool mml_dc_layers = false;
 	u8 mml_cnt = 0;
 	enum mml_mode query_mode = MML_MODE_UNKNOWN;
-	int bk_mml_dl_idx = disp_info->layer_num[disp_idx];
+	int bk_mml_dl_idx = 0;
 	struct mtk_panel_params *panel_ext = NULL;
 	unsigned int real_te_duration = 0;
 	unsigned int duration = 0;
-	unsigned int mml_duration = 0;
+	unsigned int mml_duration = 0, fps = 0;
 	int mml_multi_layer = 0;
 	int mml_decouple2 = 0;
 
@@ -4382,10 +4382,20 @@ static void check_is_mml_layer(const int disp_idx,
 	if (!dev || !disp_info)
 		return;
 
-	if (disp_idx >= LYE_CRTC || disp_info->disp_idx < 0) {
-		DDPPR_ERR("%s[%d]:disp_idx:%d\n", __func__, __LINE__, disp_info->disp_idx);
+	if (disp_idx >= LYE_CRTC || disp_idx < 0) {
+		DDPPR_ERR("%s[%d]:disp_idx:%d\n", __func__, __LINE__, disp_idx);
 		return;
 	}
+
+	if (disp_info->layer_num[disp_idx] > 0) {
+		multi_mml_info = vzalloc(sizeof(struct mml_frame_info *) * disp_info->layer_num[disp_idx]);
+		if (!multi_mml_info) {
+			DDPPR_ERR("%s multi_mml_info alloc failed\n", __func__);
+			return;
+		}
+	}
+
+	bk_mml_dl_idx = disp_info->layer_num[disp_idx];
 
 	drm_for_each_crtc(crtc, dev)
 		if (drm_crtc_index(crtc) == disp_info->disp_idx)
@@ -4418,6 +4428,7 @@ static void check_is_mml_layer(const int disp_idx,
 				else {
 					DDPMSG("disp can't handle layer_idx%d as mml layer\n", i);
 					c->layer_caps &= ~MTK_MML_OVL_LAYER;
+					vfree(multi_mml_info);
 					return;
 				}
 
@@ -4430,11 +4441,18 @@ static void check_is_mml_layer(const int disp_idx,
 		}
 	}
 
-	if (disp_info->disp_idx != 0)
+	if (disp_info->disp_idx != 0) {
+		vfree(multi_mml_info);
 		return;
+	}
 
 	if (priv->data->skip_trans && !bypass_skip_trans) {
-		duration = 1000000 / drm_mode_vrefresh(&crtc->state->adjusted_mode);
+		fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+		if (fps == 0) {
+			DDPPR_ERR("%s invalid vrefresh %u\n", __func__, fps);
+			fps = 60;
+		}
+		duration = 1000000 / fps;
 		mml_duration = duration - disp_info->exec_reserved_time;
 		if (mml_duration <= 0) {
 			mml_duration = 0;
@@ -4462,11 +4480,17 @@ static void check_is_mml_layer(const int disp_idx,
 			DDPINFO("MML down scale layer(%d) caps(%u)\n", i, dc_cap);
 			dc_cap = query_transition_mode(mml_decouple2);
 		}
+		vfree(multi_mml_info);
 		return;
 	}
 
 	if ((mml_multi_layer) && (mml_cnt > 0)) {
 		mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
+		if (!mml_ctx) {
+			DDPPR_ERR("%s !mml_ctx\n", __func__);
+			vfree(multi_mml_info);
+			return;
+		}
 		mml_drm_query_multi_layer(mml_ctx, multi_mml_info[0], mml_cnt, mml_duration);
 	}
 
@@ -4675,6 +4699,7 @@ static void check_is_mml_layer(const int disp_idx,
 			disp_info->gles_tail[disp_idx] = -1;
 		}
 	}
+	vfree(multi_mml_info);
 }
 
 static int get_crtc_num(
@@ -4876,7 +4901,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 		l_rule_ops->fbdc_pre_calculate(&layering_info);
 
 	/* Initial HRT conditions */
-	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6885)
+	if (priv && (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6885))
 		l_rule_ops->scenario_decision(dev, scn_decision_flag, scale_num);
 
 	/* Layer Grouping */
@@ -4997,7 +5022,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	check_layering_result(&layering_info);
 
 	/* adjust scenario after dispatch gles range */
-	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6885) {
+	if (priv && (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6885)) {
 		scale_num = get_scale_cnt(&layering_info);
 		l_rule_ops->scenario_decision(dev, scn_decision_flag, scale_num);
 	}
