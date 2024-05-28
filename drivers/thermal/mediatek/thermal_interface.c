@@ -548,6 +548,30 @@ int set_cold_interrupt_enable_addr(int val)
 }
 EXPORT_SYMBOL(set_cold_interrupt_enable_addr);
 
+int set_gpu_pre_throttle(int temp)
+{
+	if (!tm_data.sw_ready)
+		return -ENODEV;
+
+	therm_intf_write_csram(temp, GPU_PRE_THROTTLE_TEMP_OFFSET);
+
+	return 0;
+}
+EXPORT_SYMBOL(set_gpu_pre_throttle);
+
+int get_gpu_pre_throttle_temp(void)
+{
+	int temp = 0xFFFF;
+
+	if (!tm_data.sw_ready)
+		return temp;
+
+	temp = therm_intf_read_csram_s32(GPU_PRE_THROTTLE_TEMP_OFFSET);
+
+	return temp;
+}
+EXPORT_SYMBOL(get_gpu_pre_throttle_temp);
+
 static ssize_t headroom_info_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
@@ -1941,6 +1965,40 @@ static ssize_t thermal_hint_store(struct kobject *kobj,
 	return -EINVAL;
 }
 
+static ssize_t gpu_pre_throttle_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE - len, "%d,%d\n",
+		therm_intf_read_csram_s32(GPU_PRE_THROTTLE_TEMP_OFFSET),
+		therm_intf_read_csram_s32(GPU_PRE_THROTTLE_OPP_OFFSET));
+
+	return len;
+}
+
+static ssize_t gpu_pre_throttle_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char cmd[20];
+	int temp,opp;
+
+	if (sscanf(buf, "%16s %d %d ", cmd, &temp, &opp)
+		== 3) {
+		if (strncmp(cmd, "gpu_pre_throttle", 16) == 0) {
+			// therm_intf_write_csram(temp, GPU_PRE_THROTTLE_TEMP_OFFSET);
+			set_gpu_pre_throttle(temp);
+			therm_intf_write_csram(opp, GPU_PRE_THROTTLE_OPP_OFFSET);
+
+			return count;
+		}
+	}
+
+	pr_info("[gpu_pre_throttle] invalid input\n");
+
+	return -EINVAL;
+}
+
 static struct kobj_attribute ttj_attr = __ATTR_RW(ttj);
 static struct kobj_attribute power_budget_attr = __ATTR_RW(power_budget);
 static struct kobj_attribute cpu_info_attr = __ATTR_RO(cpu_info);
@@ -1980,6 +2038,7 @@ static struct kobj_attribute lvts_info1_attr = __ATTR_RO(lvts_info1);
 static struct kobj_attribute lvts_info2_attr = __ATTR_RO(lvts_info2);
 static struct kobj_attribute lvts_info3_attr = __ATTR_RO(lvts_info3);
 static struct kobj_attribute thermal_hint_attr = __ATTR_RW(thermal_hint);
+static struct kobj_attribute gpu_pre_throttle_attr = __ATTR_RW(gpu_pre_throttle);
 
 
 
@@ -2022,6 +2081,7 @@ static struct attribute *thermal_attrs[] = {
 	&lvts_info2_attr.attr,
 	&lvts_info3_attr.attr,
 	&thermal_hint_attr.attr,
+	&gpu_pre_throttle_attr.attr,
 	NULL
 };
 static struct attribute_group thermal_attr_group = {
