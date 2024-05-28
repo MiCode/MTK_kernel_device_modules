@@ -2494,8 +2494,6 @@ static void mtk_dsi_cmd_type1_hs(struct mtk_dsi *dsi)
 {
 	if (dsi->ext->params->is_cphy)
 		mtk_dsi_mask(dsi, DSI_CMD_TYPE1_HS(dsi->driver_data), CMD_CPHY_6BYTE_EN, 0);
-	else
-		mtk_dsi_mask(dsi, DSI_CMD_TYPE1_HS(dsi->driver_data), 0xffffffff, 0x00040000);
 }
 
 static int mtk_dsi_calculate_rw_times(struct mtk_dsi *dsi,
@@ -10642,9 +10640,11 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 		priv = mtk_crtc->base.dev->dev_private;
 
 	if (mtk_crtc &&
-		(dsi->ext && dsi->ext->params))
+		(dsi->ext && dsi->ext->params)) {
+		dsi->dummy_cmd_en = dsi->ext->params->cmd_null_pkt_en;
 		DDPINFO("%s, mode_change_index:0x%x, cmd_null_pkt_en:%d\n", __func__,
 			mtk_crtc->mode_change_index, dsi->ext->params->cmd_null_pkt_en);
+	}
 
 	if (IS_ERR_OR_NULL(priv)
 		|| (!(mtk_crtc->mode_change_index & MODE_DSI_CLK)
