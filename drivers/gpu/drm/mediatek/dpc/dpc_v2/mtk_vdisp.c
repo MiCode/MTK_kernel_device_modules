@@ -329,7 +329,7 @@ static int genpd_event_notifier(struct notifier_block *nb,
 			  unsigned long event, void *data)
 {
 	struct mtk_vdisp *priv = container_of(nb, struct mtk_vdisp, pd_nb);
-	int i = 0;
+	int i = 0, err = 0;
 
 	switch (event) {
 	case GENPD_NOTIFY_PRE_ON:
@@ -365,8 +365,13 @@ static int genpd_event_notifier(struct notifier_block *nb,
 		mutex_unlock(&g_mtcmos_cnt_lock);
 		break;
 	case GENPD_NOTIFY_ON:
-		for (i = 0; i < priv->clk_num; i++)
-			clk_prepare_enable(priv->clks[i]);
+		for (i = 0; i < priv->clk_num; i++) {
+			err = clk_prepare_enable(priv->clks[i]);
+			if (err) {
+				VDISPERR("failed to enable clk(%d): %d", i, err);
+				break;
+			}
+		}
 
 		/* clr vdisp_ao bus prot */
 		if (priv->mmpc_bus_prot_gp1)
@@ -622,7 +627,11 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 			}
 			priv->clks[i] = clk;
 
-			clk_prepare_enable(priv->clks[i]);
+			ret = clk_prepare_enable(priv->clks[i]);
+			if (ret) {
+				VDISPERR("failed to enable pd(%d) clk(%d): %d", pd_id, i, ret);
+				return ret;
+			}
 			VDISPDBG("pd(%d) clk(%d) enable", pd_id, i);
 		}
 	}
