@@ -37,6 +37,12 @@
 		};
 	};
 
+	nebula_log:nebula-log {
+			compatible = "android,nebula-log-v1";
+			status = "disabled";
+	};
+
+
 	nebula:nebula {
 		compatible = "android,nebula-smc-v1";
 		ranges;
