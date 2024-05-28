@@ -310,7 +310,7 @@ void set_rtc_spare_fg_value(struct mtk_gauge *gauge, u8 val)
 }
 
 static int fgauge_set_info(struct mtk_gauge *gauge,
-	enum gauge_property ginfo, unsigned int value)
+	enum gauge_property ginfo, int value)
 {
 	int value_mask = 0;
 	int sign_bit = 0;
