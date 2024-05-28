@@ -6610,7 +6610,7 @@ static int mt6991_afe_runtime_suspend(struct device *dev)
 				       (value & AUDIO_ENGEN_MON_SFT) == 0,
 				       20,
 				       1 * 1000 * 1000);
-	dev_dbg_ratelimited(afe->dev, "%s() read_poll ret %d\n", __func__, ret);
+
 	if (ret)
 		dev_info(afe->dev, "%s(), ret %d\n", __func__, ret);
 
