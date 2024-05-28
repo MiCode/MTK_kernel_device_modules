@@ -2784,7 +2784,8 @@ static long usb_offload_ioctl(struct file *fp,
 				&xhci_mem->xhci_sram_addr, &xhci_mem->xhci_sram_size);
 
 			/* create secondary interrupter */
-			uodev->ir_2nd = xhci_create_secondary_interrupter_(uodev->xhci->main_hcd, 1);
+			uodev->ir_2nd = xhci_create_secondary_interrupter_(uodev->xhci->main_hcd,
+				1, USB_OFFLOAD_XHCI_INTR_TARGET);
 			if (!uodev->ir_2nd) {
 				USB_OFFLOAD_ERR("error allocating 2nd interrupter\n");
 				kfree(xhci_mem);
