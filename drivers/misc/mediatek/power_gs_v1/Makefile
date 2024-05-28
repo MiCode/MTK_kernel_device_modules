@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2017 MediaTek Inc.
+# Copyright (C) 2024 MediaTek Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -49,3 +49,15 @@ mtk_power_gs_v1-y += plat_k65/mtk_power_gs_compare.o
 mtk_power_gs_v1-y += plat_k65/mtk_power_gs_dump_pmic.o
 endif
 
+ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6893)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/power_gs_v1/plat_k6893/
+mtk_power_gs_v1-y += plat_k6893/mtk_power_gs_6359_array.o
+mtk_power_gs_v1-y += plat_k6893/mtk_power_gs_6315_1_array.o
+mtk_power_gs_v1-y += plat_k6893/mtk_power_gs_6315_2_array.o
+mtk_power_gs_v1-y += plat_k6893/mtk_power_gs_6315_3_array.o
+mtk_power_gs_v1-y += plat_k6893/mtk_cg_array.o
+mtk_power_gs_v1-y += plat_k6893/mtk_dcm_array.o
+mtk_power_gs_v1-y += plat_k6893/mtk_power_gs_sp.o
+mtk_power_gs_v1-y += plat_k6893/mtk_power_gs_compare.o
+mtk_power_gs_v1-y += plat_k6893/mtk_power_gs_dump_pmic.o
+endif
