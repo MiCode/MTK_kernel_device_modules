@@ -81,7 +81,10 @@ static struct gpuppm_limit_info g_limit_table[] = {
 	LIMITOP(LIMIT_APIBOOST, "APIBOOST", GPUPPM_PRIO_3,
 		GPUPPM_DEFAULT_IDX, LIMIT_ENABLE,
 		GPUPPM_DEFAULT_IDX, LIMIT_ENABLE),
-	LIMITOP(LIMIT_FPSGO, "FPSGO", GPUPPM_PRIO_2,
+	LIMITOP(LIMIT_POWERHAL, "POWERHAL", GPUPPM_PRIO_2,
+		GPUPPM_DEFAULT_IDX, LIMIT_ENABLE,
+		GPUPPM_DEFAULT_IDX, LIMIT_ENABLE),
+	LIMITOP(LIMIT_FIXCMD, "FIXCMD", GPUPPM_PRIO_2,
 		GPUPPM_DEFAULT_IDX, LIMIT_ENABLE,
 		GPUPPM_DEFAULT_IDX, LIMIT_ENABLE),
 };
@@ -366,7 +369,12 @@ static int __gpuppm_convert_limit_to_idx(enum gpufreq_target target, enum gpuppm
 		*ceiling_idx = ceiling_info;
 		*floor_idx = floor_info;
 		break;
-	case LIMIT_FPSGO:
+	case LIMIT_POWERHAL:
+		/* limit info: OPP index */
+		*ceiling_idx = ceiling_info;
+		*floor_idx = floor_info;
+		break;
+	case LIMIT_FIXCMD:
 		/* limit info: OPP index */
 		*ceiling_idx = ceiling_info;
 		*floor_idx = floor_info;
