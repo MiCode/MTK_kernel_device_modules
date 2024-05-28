@@ -114,7 +114,6 @@ long fpsgo_sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 		retval = -EINVAL;
 		goto out_put_task;
 	}
-	retval = -EPERM;
 
 	retval = set_cpus_allowed_ptr(p, in_mask);
 out_put_task:
@@ -2772,6 +2771,7 @@ int fpsgo_get_lr_pair(unsigned long long sf_buffer_id,
 	struct FSTB_FRAME_L2Q_INFO *cur_l2q_info;
 	int i = 0, buf_index = -1, ret = 0;
 	unsigned long long now_ktime_ns, now_queue_end_ns = 0;
+	unsigned long long null_ret = 0;
 
 	now_ktime_ns = fpsgo_get_time();
 
@@ -2811,7 +2811,11 @@ int fpsgo_get_lr_pair(unsigned long long sf_buffer_id,
 		*now_ts = now_ktime_ns;
 
 	fpsgo_main_trace("[%s] sf_buf_id=%llu, idx=%d, queue_ts=%llu, l2q_ns=%llu, is_logic_alive=%d, now_ts=%llu",
-		__func__, sf_buffer_id, buf_index, *cur_queue_ts, *l2q_ns, *is_logic_head_alive, *now_ts);
+		__func__, sf_buffer_id, buf_index,
+		cur_queue_ts ? *cur_queue_ts : null_ret,
+		l2q_ns ? *l2q_ns : null_ret,
+		is_logic_head_alive ? *is_logic_head_alive : (unsigned int)null_ret,
+		now_ts ? *now_ts : null_ret);
 
 out:
 	fpsgo_render_tree_unlock(__func__);
@@ -2828,8 +2832,8 @@ int fpsgo_ctrl2base_get_render_frame_info(int max_num, unsigned long mask,
 	int bg_num = 0;
 	int *bg_tid_arr = NULL;
 	unsigned long long *bg_loading_arr = NULL;
-	struct render_frame_info *f_iter = NULL;
-	struct render_info *r_iter = NULL;
+	struct render_frame_info *f_iter;
+	struct render_info *r_iter;
 	struct rb_node *rbn = NULL;
 
 	fpsgo_render_tree_lock(__func__);

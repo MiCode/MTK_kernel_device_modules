@@ -21,7 +21,7 @@ static void fpsgo_do_adpf_hint(struct work_struct *work)
 
 	iter = container_of(work, struct fpsgo_adpf_session, sWork);
 
-	local_key = (local_key & iter->sid) | (iter->tgid << 8);
+	local_key = (local_key & iter->sid) | ((unsigned long long)iter->tgid << 8);
 	switch (iter->cmd) {
 	case ADPF_CREATE_HINT_SESSION:
 		fpsgo_ctrl2comp_user_create(iter->tgid, iter->tgid, local_key,

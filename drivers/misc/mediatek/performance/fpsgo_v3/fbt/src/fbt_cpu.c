@@ -4182,8 +4182,9 @@ static int update_quota(struct fbt_boost_info *boost_info, int target_fps,
 	boost_info->enq_avg = boost_info->enq_sum / boost_info->quota_cnt;
 	boost_info->deq_avg = boost_info->deq_sum / boost_info->quota_cnt;
 
+	first_idx = clamp(first_idx, 0, QUOTA_MAX_SIZE-1);
+	new_idx = clamp(new_idx, 0, QUOTA_MAX_SIZE-1);
 	if (first_idx <= new_idx) {
-		new_idx = clamp(new_idx, first_idx, QUOTA_MAX_SIZE-1);
 		for (i = first_idx; i <= new_idx; i++)
 			std_square += (long long)(boost_info->quota_raw[i] - avg) *
 			(long long)(boost_info->quota_raw[i] - avg);
@@ -4482,7 +4483,7 @@ static int fbt_get_filter_frame_aa(int ff_active, int separate_cap_active,
 		return filter_ret;
 
 	fpsgo_systrace_c_fbt(pid, buffer_id, aa_b, "before_filter_b");
-	filter_ret = fbt_filter_frame(aa_b, target_fps, &(ff_obj->filter_frames_count_b),
+	fbt_filter_frame(aa_b, target_fps, &(ff_obj->filter_frames_count_b),
 		&(ff_obj->filter_index_b), (ff_obj->filter_loading_b),
 		filter_aa_b, pid, buffer_id, ff_window_size, ff_kmin);
 	fpsgo_systrace_c_fbt(pid, buffer_id, *filter_aa_b, "after_filter_b");

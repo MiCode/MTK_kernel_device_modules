@@ -1248,10 +1248,11 @@ void fpsgo_force_switch_enable(int enable)
 	fpsgo_switch_enable(enable?1:0);
 }
 
-static void fpsgo_notify_cpufreq_cap(int first_cpu_id, int last_cpu_id)
+static void fpsgo_notify_cpufreq_cap(unsigned int first_cpu_id, unsigned int last_cpu_id)
 {
-	int cpu, cluster = 0;
+	int cluster = 0;
 	int max_capacity = 0, tmp_capacity = 0;
+	unsigned int cpu;
 	struct cpufreq_policy *policy = NULL;
 
 	for_each_possible_cpu(cpu) {
@@ -1326,9 +1327,10 @@ struct tracepoints_table {
 	bool registered;
 };
 
+#define MAX_NR_CPUS CONFIG_MAX_NR_CPUS
 static void fpsgo_cpu_frequency_tracer(void *ignore, unsigned int frequency, unsigned int cpu_id)
 {
-	int first_cpu_id, last_cpu_id;
+	unsigned int first_cpu_id, last_cpu_id;
 	struct cpufreq_policy *policy = NULL;
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
@@ -1350,6 +1352,8 @@ static void fpsgo_cpu_frequency_tracer(void *ignore, unsigned int frequency, uns
 
 	first_cpu_id = cpumask_first(policy->related_cpus);
 	last_cpu_id = cpumask_last(policy->related_cpus);
+	first_cpu_id = clamp(first_cpu_id, 0, MAX_NR_CPUS - 1);
+	last_cpu_id = clamp(last_cpu_id, 0, MAX_NR_CPUS - 1);
 	cpufreq_cpu_put(policy);
 	fpsgo_notify_cpufreq_cap(first_cpu_id, last_cpu_id);
 
