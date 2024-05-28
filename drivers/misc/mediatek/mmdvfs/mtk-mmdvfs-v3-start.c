@@ -42,6 +42,8 @@ static int mmdvfs_v3_start_probe(struct platform_device *pdev)
 	MMDVFS_DBG("is called!!!!!!");
 	kthr = kthread_run(
 		mmdvfs_v3_start_thread, NULL, "mmdvfs-v3_start");
+	if (IS_ERR(kthr))
+		MMDVFS_DBG("create kthread mmdvfs_v3_start_thread failed");
 
 	return 0;
 }
