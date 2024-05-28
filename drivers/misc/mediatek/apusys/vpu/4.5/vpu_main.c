@@ -622,15 +622,11 @@ static int vpu_iomem_dts(struct platform_device *pdev,
 static int vpu_init_dev_mem(struct platform_device *pdev,
 	struct vpu_device *vd)
 {
-	struct resource *res;
 	dma_addr_t iova = 0;
 	int ret = 0;
 	struct vpu_mem_ops *mops = vd_mops(vd);
 	struct vpu_config *cfg = vd_cfg(vd);
 	struct device *dev = vd->dev;
-
-	/* registers */
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 
 	if (vpu_iomem_dts(pdev, "reg", 0, &vd->reg) ||
 		vpu_iomem_dts(pdev, "dmem", 1, &vd->dmem) ||
