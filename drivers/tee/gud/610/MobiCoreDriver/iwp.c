@@ -244,8 +244,10 @@ static int iwp_cmd(struct iwp_session *iwp_session, u32 id,
 		tee_uuid_to_mcuuid(uuid, &cuuid);
 		cmd_info->uuid_str[0] = ' ';
 		for (i = 0; i < sizeof(*uuid); i++) {
-			snprintf(&cmd_info->uuid_str[1 + i * 2], 3, "%02x",
+			ret = snprintf(&cmd_info->uuid_str[1 + i * 2], 3, "%02x",
 				 cuuid.value[i]);
+			if (ret < 0)
+				return ret;
 		}
 	} else if (id == SID_CANCEL_OPERATION) {
 		struct interworld_session *iws = slot_to_iws(iwp_session->slot);
@@ -1089,6 +1091,7 @@ static inline int show_log_entry(struct kasnprintf_buf *buf,
 	const char *state_str = "unknown";
 	const char *value_str = value_to_string(cmd_info->result.value);
 	char value[16];
+	int ret;
 
 	switch (cmd_info->state) {
 	case UNUSED:
@@ -1109,7 +1112,9 @@ static inline int show_log_entry(struct kasnprintf_buf *buf,
 	}
 
 	if (!value_str) {
-		snprintf(value, sizeof(value), "%08x", cmd_info->result.value);
+		ret = snprintf(value, sizeof(value), "%08x", cmd_info->result.value);
+		if (ret < 0)
+			return ret;
 		value_str = value;
 	}
 
