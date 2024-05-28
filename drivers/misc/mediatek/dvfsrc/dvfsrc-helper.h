@@ -78,11 +78,13 @@ struct dvfsrc_debug_data {
 	u32 num_opp_desc;
 	u32 version;
 	u32 dump_flag;
+	u32 emi_opp_req_enmode;
 	struct dvfsrc_opp_desc *opps_desc;
 	const struct dvfsrc_config *config;
 	const struct dvfsrc_qos_config *qos;
 	bool spm_stamp_en;
 	bool ceiling_support;
+	bool qos_mm_mode_en;
 };
 
 struct mtk_dvfsrc {
@@ -117,6 +119,7 @@ struct mtk_dvfsrc {
 	u32 vcore_range_step;
 	u32 vcore_range_min_uV;
 	u32 qos_mode;
+	u32 qos_mm_mode;
 	u32 vcore_avs_enable;
 	u8 ceil_ddr_opp[CEILING_ITEM_MAX];
 	bool ceil_ddr_support;

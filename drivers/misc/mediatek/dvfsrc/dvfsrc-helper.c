@@ -191,6 +191,9 @@ static int dvfsrc_query_info(u32 id)
 		ret = dvfsrc->opp_desc->num_vcore_opp - (opp->vcore_opp + 1);
 		ret = dvfsrc_query_sw_req_vcore_opp(dvfsrc, ret);
 		break;
+	case MTK_DVFSRC_CURR_EMI_OPP:
+		ret = dvfsrc->opp_desc->num_emi_opp - (opp->emi_opp + 1);
+		break;
 	}
 
 	return ret;
@@ -425,6 +428,11 @@ static char *dvfsrc_dump_info(struct mtk_dvfsrc *dvfsrc,
 	p += snprintf(p, buff_end - p, "%-15s: %d\n",
 			"CURR_DRAM_OPP",
 			mtk_dvfsrc_query_opp_info(MTK_DVFSRC_CURR_DRAM_OPP));
+	if (dvfsrc->dvd->dump_flag & DVFSRC_EMI_DUMP_FLAG) {
+		p += snprintf(p, buff_end - p, "%-15s: %d\n",
+			"CURR_EMI_OPP",
+			mtk_dvfsrc_query_opp_info(MTK_DVFSRC_CURR_EMI_OPP));
+	}
 	p += snprintf(p, buff_end - p, "\n");
 
 	return p;
@@ -1320,6 +1328,8 @@ static const struct dvfsrc_debug_data mt6991_data = {
 	.opps_desc = dvfsrc_opp_common_desc,
 	.num_opp_desc = 0,
 	.ceiling_support = true,
+	.qos_mm_mode_en = true,
+	.emi_opp_req_enmode = 1,
 	.dump_flag = DVFSRC_EMI_DUMP_FLAG,
 };
 
@@ -1530,13 +1540,13 @@ static int mtk_dvfsrc_helper_probe(struct platform_device *pdev)
 	mtk_dvfsrc_regmap_debug_setting(dvfsrc);
 	register_dvfsrc_opp_handler(dvfsrc_query_info);
 	dvfsrc_debug_notifier_register(dvfsrc);
-	dvfsrc_register_sysfs(dev);
-	register_dvfsrc_debug_handler(dvfsrc_query_debug_info);
 	if (dvfsrc->dvd->ceiling_support) {
 		dvfsrc->ceil_ddr_support = of_property_read_bool(np, "ceil-ddr-support");
 		if (dvfsrc->ceil_ddr_support)
 			register_dvfsrc_ceiling_opp_handler(mtk_dvfsrc_ceiling_opp);
 	}
+	dvfsrc_register_sysfs(dev);
+	register_dvfsrc_debug_handler(dvfsrc_query_debug_info);
 	return 0;
 }
 

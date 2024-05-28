@@ -76,6 +76,7 @@ struct dvfsrc_soc_data {
 	u32 force_ver;
 	bool dis_ddr_check;
 	bool mem_res_req_en;
+	bool emi_ddr_bw_en;
 	const struct dvfsrc_opp_desc *opps_desc;
 	int (*get_target_level)(struct mtk_dvfsrc *dvfsrc);
 	int (*get_current_level)(struct mtk_dvfsrc *dvfsrc);
@@ -315,6 +316,7 @@ enum dvfsrc_regs {
 	DVFSRC_DEFAULT_OPP_6,
 	DVFSRC_DEFAULT_OPP_7,
 	DVFSRC_DEFAULT_OPP_8,
+	DVFSRC_SW_EMI_BW,
 };
 
 static const int mt8183_regs[] = {
@@ -427,6 +429,7 @@ static const int mt6991_regs[] = {
 	[DVFSRC_DEFAULT_OPP_6] =    0x82C,
 	[DVFSRC_DEFAULT_OPP_7] =    0x830,
 	[DVFSRC_DEFAULT_OPP_8] =    0x834,
+	[DVFSRC_SW_EMI_BW]     =    0x60c,
 };
 
 static const int mt6765_regs[] = {
@@ -1010,6 +1013,9 @@ static void mt6991_set_dram_bw(struct mtk_dvfsrc *dvfsrc, u64 bw)
 
 	bw = min_t(u64, bw, 0xFFFF);
 	dvfsrc_write(dvfsrc, DVFSRC_SW_BW, bw);
+
+	if (dvfsrc->dvd->emi_ddr_bw_en)
+		dvfsrc_write(dvfsrc, DVFSRC_SW_EMI_BW, bw);
 }
 
 static void mt6991_set_dram_peak_bw(struct mtk_dvfsrc *dvfsrc, u64 bw)
@@ -2201,6 +2207,7 @@ static const struct dvfsrc_soc_data mt6991_data = {
 	.query_opp_count = mt6991_get_opp_count,
 	.dis_ddr_check = true,
 	.mem_res_req_en = true,
+	.emi_ddr_bw_en = true,
 };
 
 static const struct dvfsrc_soc_data mt6765_data = {
