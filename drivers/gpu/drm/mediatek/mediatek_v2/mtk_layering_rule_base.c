@@ -4500,22 +4500,31 @@ static void check_is_mml_layer(const int disp_idx,
 			mutex_unlock(&priv->commit.lock);
 		}
 
-		if (mml_decouple2) {
-			if (mml_capacity & MTK_MML_DISP_DIRECT_LINK_LAYER)
-				query_mode = MML_MODE_UNKNOWN;
-			else
-				query_mode = MML_MODE_MML_DECOUPLE2;
-		}
-
 		if (mml_multi_layer) {
+			if (unlikely(mtk_crtc->mml_debug & DISP_MML_DBG_LOG))
+				print_mml_frame_info(*mml_info);
+
+			if (unlikely(g_mml_mode != MML_MODE_UNKNOWN)) {
+				c->layer_caps |= mml_mode_mapping(g_mml_mode);
+				continue;
+			}
+
 			if (j < mml_cnt) {
 				DDPINFO("%s,L%d,m:%d\n", __func__, i, multi_mml_info[j]->mode);
 				c->layer_caps |= mml_mode_mapping(multi_mml_info[j]->mode);
 				j ++;
 			} else
 				c->layer_caps |= MTK_MML_DISP_NOT_SUPPORT;
-		} else
+		} else {
+			if (mml_decouple2) {
+				if (mml_capacity & MTK_MML_DISP_DIRECT_LINK_LAYER)
+					query_mode = MML_MODE_UNKNOWN;
+				else
+					query_mode = MML_MODE_MML_DECOUPLE2;
+			}
+
 			c->layer_caps |= query_MML(dev, crtc, mml_info, ns, query_mode);
+		}
 
 		if (MML_FMT_IS_YUV(disp_info->mml_cfg[disp_idx][i].src.format))
 			c->layer_caps |= MTK_DISP_SRC_YUV_LAYER;

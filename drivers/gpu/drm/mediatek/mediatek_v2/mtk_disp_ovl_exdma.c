@@ -2357,9 +2357,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 	Ln_CLRFMT |= fmt_ex << 8;
 
 	/*MML DL out is alwayer YUV*/
-	if (pending->mml_mode == MML_MODE_DIRECT_LINK &&
-	    (comp->id == DDP_COMPONENT_OVL_EXDMA0 || comp->id == DDP_COMPONENT_OVL_EXDMA1 ||
-	     comp->id == DDP_COMPONENT_OVL1_EXDMA0 || comp->id == DDP_COMPONENT_OVL1_EXDMA1)) {
+	if (pending->mml_mode == MML_MODE_DIRECT_LINK) {
 		con |= REG_FLD_VAL(L_CON_FLD_MTX_AUTO_DIS, 1);
 		con |= REG_FLD_VAL(L_CON_FLD_MTX_EN, 1);
 	}
