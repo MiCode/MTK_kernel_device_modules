@@ -3256,6 +3256,23 @@ static s32 mtk_dsi_wait_idle(struct mtk_dsi *dsi, u32 irq_flag,
 	return mtk_dsi_wait_for_irq_done(dsi, irq_flag, timeout);
 }
 
+static void mtk_dsi_power_keep_gce(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_handle, bool keep)
+{
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+
+	if (!dsi || !cmdq_handle)
+		return;
+	mtk_crtc = dsi->ddp_comp.mtk_crtc;
+	if ((drm_crtc_index(&mtk_crtc->base) != 0) || !mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
+		return;
+
+	if (keep)
+		mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DDIC_CMDQ, cmdq_handle,
+						 mtk_get_gpr(&dsi->ddp_comp, cmdq_handle));
+	else
+		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DDIC_CMDQ, cmdq_handle);
+}
+
 static void init_dsi_wq(struct mtk_dsi *dsi)
 {
 	init_waitqueue_head(&dsi->enter_ulps_done.wq);
@@ -6134,6 +6151,8 @@ int mtk_dsi_read_gce(struct mtk_ddp_comp *comp, void *handle,
 		return -EAGAIN;
 	}
 
+	mtk_dsi_power_keep_gce(dsi, handle, true);
+
 	if (dsi->slave_dsi) {
 		cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
 				dsi->slave_dsi->ddp_comp.regs_pa + DSI_CON_CTRL(dsi->driver_data),
@@ -6183,6 +6202,9 @@ int mtk_dsi_read_gce(struct mtk_ddp_comp *comp, void *handle,
 				dsi->slave_dsi->ddp_comp.regs_pa + DSI_CON_CTRL(dsi->driver_data),
 				DSI_DUAL_EN, DSI_DUAL_EN);
 	}
+
+	mtk_dsi_power_keep_gce(dsi, handle, false);
+
 	return 0;
 }
 
@@ -7559,6 +7581,7 @@ static void mtk_dsi_cmdq_pack_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 
 	DDPINFO("%s +,\n", __func__);
 
+	mtk_dsi_power_keep_gce(dsi, handle, true);
 	mtk_dsi_poll_for_idle(dsi, handle);
 
 	if (dsi->driver_data->require_phy_reset)
@@ -7684,6 +7707,8 @@ static void mtk_dsi_cmdq_pack_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 		mtk_ddp_write_mask(comp, 0, DSI_TXRX_CTRL(dsi->driver_data), DIS_EOT,
 				handle);
 
+	mtk_dsi_power_keep_gce(dsi, handle, false);
+
 	DDPINFO("%s -,\n", __func__);
 }
 
@@ -7702,6 +7727,7 @@ static void mtk_dsi_cmdq_grp_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
 	const u32 reg_cmdq_ofs = dsi->driver_data->reg_cmdq0_ofs;
 
+	mtk_dsi_power_keep_gce(dsi, handle, true);
 	mtk_dsi_poll_for_idle(dsi, handle);
 	mtk_ddp_write_mask(comp, DIS_EOT, DSI_TXRX_CTRL(dsi->driver_data), DIS_EOT, handle);
 
@@ -7822,6 +7848,7 @@ static void mtk_dsi_cmdq_grp_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 	*/
 	mtk_ddp_write_mask(comp, 0, DSI_TXRX_CTRL(dsi->driver_data), DIS_EOT, handle);
 
+	mtk_dsi_power_keep_gce(dsi, handle, false);
 	DDPINFO("set cmdqaddr %x, val:%d, mask %x\n", DSI_CMDQ_SIZE(dsi->driver_data),
 			total_cmdq_size,
 			CMDQ_SIZE);
@@ -7852,6 +7879,7 @@ void mipi_dsi_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 		break;
 	}
 
+	mtk_dsi_power_keep_gce(dsi, handle, true);
 	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 		mtk_dsi_poll_for_idle(dsi, handle);
 		mtk_dsi_cmdq_gce(dsi, handle, &msg);
@@ -7907,6 +7935,8 @@ void mipi_dsi_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 			dsi->ddp_comp.regs_pa + DSI_INTSTA,
 			VM_CMD_DONE_INT_EN, VM_CMD_DONE_INT_EN);
 	}
+
+	mtk_dsi_power_keep_gce(dsi, handle, false);
 }
 
 void mipi_dsi_dcs_write_gce_dyn(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
@@ -7934,6 +7964,7 @@ void mipi_dsi_dcs_write_gce_dyn(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 		break;
 	}
 
+	mtk_dsi_power_keep_gce(dsi, handle, true);
 	mtk_dsi_poll_for_idle(dsi, handle);
 	mtk_dsi_cmdq_gce(dsi, handle, &msg);
 
@@ -7949,6 +7980,7 @@ void mipi_dsi_dcs_write_gce_dyn(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 		dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 
 	mtk_dsi_poll_for_idle(dsi, handle);
+	mtk_dsi_power_keep_gce(dsi, handle, false);
 }
 
 void mipi_dsi_dcs_write_gce2(struct mtk_dsi *dsi, struct cmdq_pkt *dummy,
@@ -7985,6 +8017,7 @@ void mipi_dsi_dcs_write_gce2(struct mtk_dsi *dsi, struct cmdq_pkt *dummy,
 		mtk_crtc_pkt_create(&handle, &mtk_crtc->base,
 			mtk_crtc->gce_obj.client[CLIENT_CFG]);
 
+		mtk_dsi_power_keep_gce(dsi, handle, true);
 		mtk_dsi_poll_for_idle(dsi, handle);
 
 		mtk_dsi_cmdq_gce(dsi, handle, &msg);
@@ -8002,6 +8035,7 @@ void mipi_dsi_dcs_write_gce2(struct mtk_dsi *dsi, struct cmdq_pkt *dummy,
 			dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 
 		mtk_dsi_poll_for_idle(dsi, handle);
+		mtk_dsi_power_keep_gce(dsi, handle, false);
 	} else {
 		mtk_crtc_pkt_create(&handle, &mtk_crtc->base,
 			mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
@@ -8047,6 +8081,7 @@ void mipi_dsi_dcs_grp_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 {
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
 
+	mtk_dsi_power_keep_gce(dsi, handle, true);
 	/* wait DSI idle */
 	if (!mtk_dsi_is_cmd_mode(comp)) {
 		_mtk_dsi_set_mode(comp, handle, CMD_MODE);
@@ -8077,6 +8112,8 @@ void mipi_dsi_dcs_grp_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 		mtk_disp_mutex_trigger(comp->mtk_crtc->mutex[0], handle);
 		mtk_dsi_trigger(comp, handle);
 	}
+
+	mtk_dsi_power_keep_gce(dsi, handle, false);
 }
 
 static void _mtk_mipi_dsi_write_gce(struct mtk_dsi *dsi,
@@ -8176,6 +8213,7 @@ int mtk_mipi_dsi_write_gce(struct mtk_dsi *dsi,
 	msg.channel = cmd_msg->channel;
 	msg.flags = cmd_msg->flags;
 
+	mtk_dsi_power_keep_gce(dsi, handle, true);
 	if (dsi_mode == 0) { /* CMD mode HS/LP */
 		/* Record Vblank start timestamp */
 		mtk_vblank_config_rec_start(mtk_crtc, handle, WRITE_DDIC);
@@ -8294,6 +8332,7 @@ int mtk_mipi_dsi_write_gce(struct mtk_dsi *dsi,
 		mtk_dsi_trigger(comp, handle);
 	}
 
+	mtk_dsi_power_keep_gce(dsi, handle, false);
 	DDPMSG("%s -\n", __func__);
 	return 0;
 }
@@ -8338,6 +8377,7 @@ int mtk_dsi_ddic_handler_write_by_gce(struct mtk_dsi *dsi,
 		return -EINVAL;
 	}
 
+	mtk_dsi_power_keep_gce(dsi, handle, true);
 	if (dsi_mode == 0) { /* CMD mode HS/LP */
 		mtk_dsi_poll_for_idle(dsi, handle);
 
@@ -8424,6 +8464,8 @@ int mtk_dsi_ddic_handler_write_by_gce(struct mtk_dsi *dsi,
 		mtk_disp_mutex_trigger(comp->mtk_crtc->mutex[0], handle);
 		mtk_dsi_trigger(comp, handle);
 	}
+
+	mtk_dsi_power_keep_gce(dsi, handle, false);
 
 	return 0;
 }
@@ -8539,6 +8581,7 @@ static int mtk_dsi_ddic_handler_grp_write_by_gce(struct mtk_dsi *dsi,
 	struct mipi_dsi_msg *msg = NULL;
 	int ret = 0;
 
+	mtk_dsi_power_keep_gce(dsi, handle, true);
 	if (dsi_mode != 0) {//vdo mode
 		//mtk_dsi_stop_vdo_mode(dsi, handle);
 		_mtk_dsi_set_mode(comp, handle, CMD_MODE);
@@ -8627,6 +8670,8 @@ static int mtk_dsi_ddic_handler_grp_write_by_gce(struct mtk_dsi *dsi,
 		mtk_disp_mutex_trigger(comp->mtk_crtc->mutex[0], handle);
 		mtk_dsi_trigger(comp, handle);
 	}
+
+	mtk_dsi_power_keep_gce(dsi, handle, false);
 	DDPDBG("%s-- finished total_cmdq_size:%u, ret:%d\n",
 		__func__, total_cmdq_size, ret);
 	return ret;
@@ -8672,6 +8717,7 @@ static void _mtk_mipi_dsi_read_gce(struct mtk_dsi *dsi,
 	else
 		t1.Data1 = 0;
 
+	mtk_dsi_power_keep_gce(dsi, handle, true);
 	if (dsi->driver_data->require_phy_reset)
 		mtk_dsi_runtime_phy_reset_gce(dsi, handle);
 
@@ -8726,6 +8772,8 @@ static void _mtk_mipi_dsi_read_gce(struct mtk_dsi *dsi,
 				dsi->slave_dsi->ddp_comp.regs_pa + DSI_CON_CTRL(dsi->driver_data),
 				DSI_DUAL_EN, DSI_DUAL_EN);
 	}
+
+	mtk_dsi_power_keep_gce(dsi, handle, false);
 }
 
 static unsigned int read_ddic_chk_sta;
