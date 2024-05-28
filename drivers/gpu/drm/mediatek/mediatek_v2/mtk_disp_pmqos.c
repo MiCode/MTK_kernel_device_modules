@@ -829,11 +829,6 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	} else if (!priv->data->respective_ostdl)
 		mtk_disp_set_module_hrt(mtk_crtc, bw);
 
-	if (ret == RDMA_REQ_HRT)
-		tmp = mtk_drm_primary_frame_bw(crtc);
-	else if (ret == MDP_RDMA_REQ_HRT)
-		return 0;
-
 	/* skip same HRT BW */
 	if (priv->req_hrt[crtc_idx] == tmp)
 		return 0;
