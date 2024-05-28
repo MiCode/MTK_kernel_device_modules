@@ -584,7 +584,7 @@ void fpsgo_ux_doframe_end(struct render_info *thr, unsigned long long frame_id,
 		ts = fpsgo_get_time();
 
 		//try enable buffer count filter
-		if (frame->rescue
+		if ((frame->rescue || (rescue_type & RESCUE_TRAVERSAL_OVER_VSYNC) != 0)
 				&& thr->buffer_count_filter == 0) {
 			//check if rescue more, if rescue, but buffer count is 3 or more
 			if (thr->cur_buffer_count > SBE_BUFFER_FILTER_THREASHOLD)
@@ -1712,6 +1712,9 @@ void fbt_init_ux(struct render_info *info)
 
 void fbt_del_ux(struct render_info *info)
 {
+	if (!info)
+		return;
+
 	if (ux_general_policy)
 		fpsgo_reset_deplist_task_priority(info);
 
@@ -1730,6 +1733,9 @@ void fbt_del_ux(struct render_info *info)
 			kfree(info->ux_rchk);
 		}
 	}
+	//reset sbe tag when render del
+	fpsgo_systrace_c_fbt(info->pid, 0, 0, "sbe_set_ctrl");
+
 	list_del(&(info->scroll_list));
 }
 
