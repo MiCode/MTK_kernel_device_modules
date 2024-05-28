@@ -41,7 +41,7 @@ int get_panel_name_and_mode(char *panel_name, char *panel_mode, bool is_dp)
 }
 EXPORT_SYMBOL(get_panel_name_and_mode);
 
-static u8 max96851_read_byte(struct i2c_client *client,
+static u8 serdes_read_byte(struct i2c_client *client,
 								u16 addr)
 {
 	u8 buf;
@@ -72,7 +72,7 @@ static u8 max96851_read_byte(struct i2c_client *client,
 	return buf;
 }
 
-static int max96851_write_byte(struct i2c_client *client, u16 addr,
+static int serdes_write_byte(struct i2c_client *client, u16 addr,
 								unsigned char val)
 {
 	char write_data[3] = { 0 };
@@ -163,7 +163,7 @@ static void ser_init_loop(struct max96851_bridge *max_bridge, struct serdes_cmd_
 	int i, ret;
 
 	for (i = 0; i < cmd_data->length; i++) {
-		ret = max96851_write_byte(max_bridge->max96851_i2c, cmd_data->addr[i], cmd_data->data[i]);
+		ret = serdes_write_byte(max_bridge->max96851_i2c, cmd_data->addr[i], cmd_data->data[i]);
 		if (ret) {
 			pr_info("[MAX96851] Write ser command failed, addr=0x%x data=0x%x ret: %d\n",
 					cmd_data->addr[i], cmd_data->data[i], ret);
@@ -183,7 +183,7 @@ static void des_init_loop(struct max96851_bridge *max_bridge, struct serdes_cmd_
 	int i, ret;
 
 	for (i = 0; i < cmd_data->length; i++) {
-		ret = max96851_write_byte(max_bridge->max96752_i2c, cmd_data->addr[i], cmd_data->data[i]);
+		ret = serdes_write_byte(max_bridge->max96752_i2c, cmd_data->addr[i], cmd_data->data[i]);
 		if (ret) {
 			pr_info("[MAX96851] Write des command failed, addr=0x%x data=0x%x ret: %d\n",
 					cmd_data->addr[i], cmd_data->data[i], ret);
@@ -222,7 +222,7 @@ static void serdes_init_loop(struct max96851_bridge *max_bridge, struct serdes_c
 			pr_info("[MAX96851] Invalid obj id: %d\n", cmd_data->obj[i]);
 			return;
 		}
-		ret = max96851_write_byte(client, cmd_data->addr[i], cmd_data->data[i]);
+		ret = serdes_write_byte(client, cmd_data->addr[i], cmd_data->data[i]);
 		if (ret) {
 			pr_info("[MAX96851] Write seres command failed, addr=0x%x data=0x%x ret: %d\n",
 					cmd_data->addr[i], cmd_data->data[i], ret);
@@ -637,6 +637,9 @@ static void get_general_info_from_dts(struct max96851_bridge *max_bridge)
 	u32 read_value = 0;
 	int ret;
 
+	ret = of_property_read_u32(np, SERDES_SUPPORT_HOTPLUG, &read_value);
+	max_bridge->is_support_hotplug = (!ret) ? !!read_value : false;
+
 	ret = of_property_read_u32(np, SERDES_SUPER_FRAME, &read_value);
 	max_bridge->superframe_support = (!ret) ? !!read_value : false;
 
@@ -652,6 +655,8 @@ static void get_general_info_from_dts(struct max96851_bridge *max_bridge)
 	pr_info("[MAX96851] ser-super-frame: %d ser-dual-link: %d ser-dp-mst: %d support-touch: %d\n",
 			max_bridge->superframe_support, max_bridge->dual_link_support,
 			max_bridge->is_support_mst, max_bridge->is_support_touch);
+
+	pr_info("[%s] is_support_hotplug: %d\n", SERDES_DEBUG_INFO, max_bridge->is_support_hotplug);
 }
 
 static int get_panel_feature_info_from_dts(struct max96851_bridge *max_bridge)
@@ -837,7 +842,7 @@ static int parse_dp_mst_setting(struct max96851_bridge *max_bridge, struct devic
 	/* Parse backlight settings */
 	ret = get_bl_on_off_cmd_info_from_dts(max_bridge, dp_mst_setting_np);
 	if (ret) {
-		pr_info("[MAX96851] Failed to parse superframe backlight setting\n");
+		pr_info("[MAX96851] Failed to parse DP MST backlight setting\n");
 		return ret;
 	}
 
@@ -1078,6 +1083,175 @@ static void serdes_init_by_mst(struct max96851_bridge *max_bridge)
 	dev_info(max_bridge->dev, "[MAX96851] %s-\n", __func__);
 }
 
+static int check_des_cable_status(struct i2c_client *des_client)
+{
+	u8 serdes_cable_state_change = 0x0;
+	int ret = 0;
+
+	serdes_cable_state_change = serdes_read_byte(des_client, DES_REG_0x06ff_HOTPLUG_DETECT);
+	if (serdes_cable_state_change != DES_HOTPLUG_CHECK_VALUE) {
+		ret = serdes_write_byte(des_client, DES_REG_0x06ff_HOTPLUG_DETECT,
+								DES_HOTPLUG_CHECK_VALUE);
+		if (ret)
+			pr_info("[%s] [%s]: write hotplug check value failed %d\n", SERDES_DEBUG_INFO, __func__, ret);
+
+		return 1;
+	}
+
+	return 0;
+}
+
+static void serdes_link_status_handler(struct max96851_bridge *max_bridge)
+{
+	int ret = 0;
+	u8 linka_status = 0x0, linkb_status = 0x0;
+
+	linka_status = serdes_read_byte(max_bridge->max96851_i2c, SER_REG_0x2A_LINKA_CTRL);
+	linkb_status = serdes_read_byte(max_bridge->max96851_i2c, SER_REG_0x34_LINKB_CTRL);
+	pr_info("[%s] DP %d %s: linka_status:0x%x linkb_status:0x%x\n", SERDES_DEBUG_INFO,
+			max_bridge->is_dp, __func__,linka_status, linkb_status);
+
+	if (max_bridge->dual_link_support) {
+		if (linka_status & SER_CMSL_LINKA_LOCKED)
+			ret = check_des_cable_status(max_bridge->max96752_linka_i2c);
+		if (linkb_status & SER_CMSL_LINKB_LOCKED)
+			ret = check_des_cable_status(max_bridge->max96752_linkb_i2c);
+	} else if (max_bridge->superframe_support) {
+		if (linka_status & SER_CMSL_LINKA_LOCKED) {
+			ret = check_des_cable_status(max_bridge->max96752_linka_i2c);
+			if (ret) {
+				serdes_init_loop(max_bridge, &max_bridge->serdes_init_linka_cmd);
+				serdes_init_loop(max_bridge, &max_bridge->des_linka_init_cmd);
+				turn_on_off_bl(max_bridge, true, 0x01);
+			}
+		}
+		if (linkb_status & SER_CMSL_LINKB_LOCKED) {
+			ret = check_des_cable_status(max_bridge->max96752_linka_i2c);
+			if (ret) {
+				serdes_init_loop(max_bridge, &max_bridge->serdes_init_linkb_cmd);
+				serdes_init_loop(max_bridge, &max_bridge->des_linkb_init_cmd);
+				turn_on_off_bl(max_bridge, true, 0x02);
+			}
+		}
+	} else if (max_bridge->is_support_mst) {
+		if (linka_status & SER_CMSL_LINKA_LOCKED) {
+			ret = check_des_cable_status(max_bridge->max96752_linka_i2c);
+			if (ret) {
+				serdes_init_loop(max_bridge, &max_bridge->mst_serdes_init_linka_cmd);
+				serdes_init_loop(max_bridge, &max_bridge->mst_des_linka_init_cmd);
+				turn_on_off_bl(max_bridge, true, 0x01);
+			}
+		}
+		if (linkb_status & SER_CMSL_LINKB_LOCKED) {
+			ret = check_des_cable_status(max_bridge->max96752_linka_i2c);
+			if (ret) {
+				serdes_init_loop(max_bridge, &max_bridge->mst_serdes_init_linkb_cmd);
+				serdes_init_loop(max_bridge, &max_bridge->mst_des_linkb_init_cmd);
+				turn_on_off_bl(max_bridge, true, 0x02);
+			}
+		}
+	} else {
+		if ((linka_status & SER_CMSL_LINKA_LOCKED) ||
+			(linkb_status & SER_CMSL_LINKB_LOCKED)) {
+			ret = check_des_cable_status(max_bridge->max96752_i2c);
+			if (ret) {
+				msleep(500);
+				des_init_loop(max_bridge, &max_bridge->signal_des_init_cmd);
+				turn_on_off_bl(max_bridge, true, 0x0);
+			}
+		}
+	}
+}
+
+static void serdes_init_by_dts(struct max96851_bridge *max_bridge)
+{
+	if (max_bridge->superframe_support)
+		serdes_init_by_superframe(max_bridge);
+	else if(max_bridge->dual_link_support)
+		serdes_init_by_dual_link(max_bridge);
+	else if (max_bridge->is_support_mst)
+		serdes_init_by_mst(max_bridge);
+	else
+		serdes_init_by_signal(max_bridge);
+}
+
+static int serdes_hotplug_kthread(void *data)
+{
+	struct max96851_bridge *max_bridge = (struct max96851_bridge *)data;
+
+	/* Wait for hotplug event */
+	while (!kthread_should_stop()) {
+		if (max_bridge->irq_num > 0) {
+			wait_event_interruptible(max_bridge->waitq, atomic_read(&max_bridge->hotplug_event));
+			atomic_set(&max_bridge->hotplug_event, 0);
+			disable_irq(max_bridge->irq_num);
+		} else {
+			/* polling mode for hotplug */
+			wait_event_interruptible(max_bridge->waitq, atomic_read(&max_bridge->hotplug_event));
+			msleep(SERDES_POLL_TIMEOUT_MS);
+		}
+
+		/* some deserializer device require buffering time to start */
+		msleep(2000);
+
+		serdes_link_status_handler(max_bridge);
+
+		if (max_bridge->irq_num > 0)
+			enable_irq(max_bridge->irq_num);
+	}
+
+	return 0;
+}
+
+static void serdes_init_wait_queue(struct max96851_bridge *max_bridge)
+{
+	atomic_set(&max_bridge->hotplug_event, 0);
+	init_waitqueue_head(&max_bridge->waitq);
+	max_bridge->serdes_hotplug_task = kthread_run(serdes_hotplug_kthread,
+						(void *)max_bridge, "serdes_hotplug");
+}
+
+static irqreturn_t serdes_interrupt_handler(int irq, void *data)
+{
+	struct max96851_bridge *max_bridge = (struct max96851_bridge *)data;
+
+	atomic_set(&max_bridge->hotplug_event, 1);
+	wake_up_interruptible(&max_bridge->waitq);
+	return IRQ_HANDLED;
+}
+
+static int hotplug_by_interrupt(struct max96851_bridge *max_bridge)
+{
+	int ret = 0;
+
+	ret = request_irq(max_bridge->irq_num, serdes_interrupt_handler,
+					IRQF_TRIGGER_RISING, "serdes_irq", max_bridge);
+	if (ret) {
+		pr_info("[%s] %s: request irq failed %d\n", SERDES_DEBUG_INFO, __func__, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int serdes_hotplug_handler(struct max96851_bridge *max_bridge)
+{
+	int ret = 0;
+
+	pr_info("[%s] %s+\n", SERDES_DEBUG_INFO, __func__);
+
+	serdes_init_wait_queue(max_bridge);
+	if (max_bridge->irq_num > 0) {
+		pr_info("[%s] %s DP %d:irq mode\n", SERDES_DEBUG_INFO, __func__, max_bridge->is_dp);
+		ret = hotplug_by_interrupt(max_bridge);
+	} else
+		pr_info("[%s] %s DP %d:polling mode\n", SERDES_DEBUG_INFO, __func__, max_bridge->is_dp);
+
+	pr_info("[%s] %s-\n", SERDES_DEBUG_INFO, __func__);
+
+	return ret;
+}
+
 static void max96851_pre_enable(struct drm_bridge *bridge)
 {
 	struct max96851_bridge *max_bridge = bridge_to_max96851(bridge);
@@ -1085,19 +1259,24 @@ static void max96851_pre_enable(struct drm_bridge *bridge)
 
 	pr_info("[MAX96851] Serdes DP: %d %s+\n", max_bridge->is_dp, __func__);
 
-	spin_lock(&max_bridge->enable_index_lock);
+	if (max_bridge->prepared)
+		return ;
 
-	if (max_bridge->prepared || max_bridge->serdes_enable_index)
-		return;
-
-	max_bridge->serdes_enable_index++;
-
-	spin_unlock(&max_bridge->enable_index_lock);
+	reset_ser(max_bridge);
 
 	/* device identifier  0xC4: Without HDCP 0xC5: With HDCP */
-	dev_id = max96851_read_byte(max_bridge->max96851_i2c, DEVICE_IDENTIFIER_ADDR);
+	dev_id = serdes_read_byte(max_bridge->max96851_i2c, DEVICE_IDENTIFIER_ADDR);
 	pr_notice("[MAX96851] Device Identifier = 0x02%x\n", dev_id);
 
+	serdes_init_by_dts(max_bridge);
+
+	if (max_bridge->is_support_hotplug) {
+		if (max_bridge->irq_num <= 0)
+			atomic_set(&max_bridge->hotplug_event, 1);
+			wake_up_interruptible(&max_bridge->waitq);
+	}
+
+	max_bridge->prepared = true;
 	pr_info("[MAX96851] Serdes DP: %d %s-\n", max_bridge->is_dp, __func__);
 }
 
@@ -1133,30 +1312,39 @@ static void max96851_disable(struct drm_bridge *bridge)
 
 	pr_info("[MAX96851] Serdes DP: %d %s+\n", max_bridge->is_dp, __func__);
 
-	spin_lock(&max_bridge->enable_index_lock);
-
-	if (!max_bridge->enabled || !max_bridge->prepared || !max_bridge->serdes_enable_index)
-		return ;
-
-	max_bridge->serdes_enable_index--;
-	spin_unlock(&max_bridge->enable_index_lock);
-
 	/* turn off backlight */
 	if (max_bridge->superframe_support) {
 		turn_on_off_bl(max_bridge, false, 0x01);
 		turn_on_off_bl(max_bridge, false, 0x02);
 	} else if(max_bridge->dual_link_support) {
 		turn_on_off_bl(max_bridge, false, 0x0);
-	} else if (max_bridge->is_support_mst)
+	} else if (max_bridge->is_support_mst) {
+		turn_on_off_bl(max_bridge, false, 0x01);
+		turn_on_off_bl(max_bridge, false, 0x02);
+	} else
 		turn_on_off_bl(max_bridge, false, 0x0);
-	else
-		turn_on_off_bl(max_bridge, false, 0x0);
+
+	max_bridge->enabled = false;
+
+	pr_info("[MAX96851] Serdes DP: %d %s-\n", max_bridge->is_dp, __func__);
+}
+
+static void max96851_post_disbale(struct drm_bridge *bridge)
+{
+	struct max96851_bridge *max_bridge = bridge_to_max96851(bridge);
+
+	pr_info("[MAX96851] Serdes DP: %d %s+\n", max_bridge->is_dp, __func__);
+
+
+	if (max_bridge->is_support_hotplug) {
+		if (max_bridge->irq_num <= 0)
+			atomic_set(&max_bridge->hotplug_event, 0);
+			wake_up_interruptible(&max_bridge->waitq);
+	}
 
 	gpiod_set_value(max_bridge->gpio_rst_n, 0);
-	msleep(20);
 
 	max_bridge->prepared = false;
-	max_bridge->enabled = false;
 
 	pr_info("[MAX96851] Serdes DP: %d %s-\n", max_bridge->is_dp, __func__);
 }
@@ -1189,15 +1377,17 @@ static int max96851_bridge_attach(struct drm_bridge *bridge,
 		return -ENODEV;
 	}
 
-	/* init sereds */
-	if (max_bridge->superframe_support)
-		serdes_init_by_superframe(max_bridge);
-	else if(max_bridge->dual_link_support)
-		serdes_init_by_dual_link(max_bridge);
-	else if (max_bridge->is_support_mst)
-		serdes_init_by_mst(max_bridge);
-	else
-		serdes_init_by_signal(max_bridge);
+	/* SerDes irq or poll mode for hotplug */
+	if (max_bridge->is_support_hotplug) {
+		max_bridge->irq_num = irq_of_parse_and_map(dev->of_node, 0);
+		if (max_bridge->irq_num <= 0)
+			pr_info("[%s] %s: get irq failed, use polling mode\n", SERDES_DEBUG_INFO, __func__);
+
+		serdes_hotplug_handler(max_bridge);
+	}
+
+	if (max_bridge->is_dp)
+		serdes_init_by_dts(max_bridge);
 
 	pr_info("[MAX96851] Serdes DP: %d %s-\n", max_bridge->is_dp, __func__);
 
@@ -1234,6 +1424,7 @@ static const struct drm_bridge_funcs max96851_bridge_funcs = {
 	.pre_enable = max96851_pre_enable,
 	.enable = max96851_enable,
 	.disable = max96851_disable,
+	.post_disable = max96851_post_disbale,
 	.attach = max96851_bridge_attach,
 	.get_modes = max96851_bridge_get_modes,
 };
@@ -1274,9 +1465,9 @@ static int max96851_probe(struct i2c_client *client)
 		return ret;
 	}
 
+	max_bridge->dev = dev;
 	i2c_set_clientdata(client, max_bridge);
 	max_bridge->client = client;
-	max_bridge->dev = dev;
 	max_bridge->max96851_i2c = client;
 
 	ret = max96851_dt_parse(max_bridge, dev);
@@ -1312,6 +1503,12 @@ static int max96851_probe(struct i2c_client *client)
 	max_bridge->bridge.of_node = dev->of_node;
 	drm_bridge_add(&max_bridge->bridge);
 
+	max_bridge->boot_from_lk = false;
+	if (max_bridge->boot_from_lk) {
+		max_bridge->prepared = true;
+		max_bridge->enabled = true;
+	}
+
 	dev_info(dev, "[MAX96851] %s-\n", __func__);
 
 	return 0;
@@ -1320,6 +1517,12 @@ static int max96851_probe(struct i2c_client *client)
 static void max96851_remove(struct i2c_client *client)
 {
 	struct max96851_bridge *max_bridge = i2c_get_clientdata(client);
+
+	if (max_bridge->is_support_hotplug) {
+		if (max_bridge->irq_num > 0)
+			free_irq(max_bridge->irq_num, &client);
+		kthread_stop(max_bridge->serdes_hotplug_task);
+	}
 
 	i2c_unregister_device(max_bridge->max96752_i2c);
 	i2c_unregister_device(max_bridge->bl_i2c);
@@ -1363,5 +1566,5 @@ static struct i2c_driver max96851_edp_driver = {
 module_i2c_driver(max96851_edp_driver);
 
 MODULE_AUTHOR("Jacky Hu <jie-h.hu@mediatek.com>");
-MODULE_DESCRIPTION("max96851 SerDes driver");
+MODULE_DESCRIPTION("MAXIAM96851 SerDes Driver");
 MODULE_LICENSE("GPL");
