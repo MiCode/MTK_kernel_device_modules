@@ -713,24 +713,34 @@ static int vdec_set_param(unsigned long h_vdec,
 		vcu_dec_set_frame_buffer(&inst->vcu, in);
 		break;
 	case SET_PARAM_SET_FIXED_MAX_OUTPUT_BUFFER:
+		if (inst->vsi == NULL)
+			return -EINVAL;
 		inst->vsi->dec_params.fixed_max_frame_size_width = (__u32)(*param_ptr);
 		inst->vsi->dec_params.fixed_max_frame_size_height = (__u32)(*(param_ptr + 1));
 		inst->vsi->dec_params.fixed_max_frame_buffer_mode = (__u32)(*(param_ptr + 2));
 		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_FIXED_MAX_FRAME_SIZE;
 		break;
 	case SET_PARAM_DECODE_MODE:
+		if (inst->vsi == NULL)
+			return -EINVAL;
 		inst->vsi->dec_params.decode_mode = (__u32)(*param_ptr);
 		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_DECODE_MODE;
 		break;
 	case SET_PARAM_WAIT_KEY_FRAME:
+		if (inst->vsi == NULL)
+			return -EINVAL;
 		inst->vsi->dec_params.wait_key_frame = (__u32)(*param_ptr);
 		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_WAIT_KEY_FRAME;
 		break;
 	case SET_PARAM_DECODE_ERROR_HANDLE_MODE:
+		if (inst->vsi == NULL)
+			return -EINVAL;
 		inst->vsi->dec_params.decode_error_handle_mode = (__u32)(*param_ptr);
 		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE;
 		break;
 	case SET_PARAM_OPERATING_RATE:
+		if (inst->vsi == NULL)
+			return -EINVAL;
 		inst->vsi->dec_params.operating_rate = (__u32)(*param_ptr);
 		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_OPERATING_RATE;
 		break;
@@ -825,6 +835,8 @@ static int vdec_set_param(unsigned long h_vdec,
 	}
 	case SET_PARAM_TOTAL_FRAME_BUFQ_COUNT:
 		// SET_PARAM_TOTAL_FRAME_BUFQ_COUNT for SW DEC(VDEC_DRV_DECODER_MTK_SOFTWARE=1)
+		if (inst->vsi == NULL)
+			return -EINVAL;
 		if (inst->vsi->codec_type == 1)
 			ret = vcu_dec_set_param(&inst->vcu, (unsigned int)type, in, 1U);
 		break;
