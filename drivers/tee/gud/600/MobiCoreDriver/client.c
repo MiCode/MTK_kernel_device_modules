@@ -682,6 +682,80 @@ int client_waitnotif_session(struct tee_client *client, u32 session_id,
 	return ret;
 }
 
+int client_get_session_state(struct tee_client *client, u32 session_id)
+{
+	struct tee_session *session;
+	int ret;
+
+	/* Find/get session */
+	session = client_get_session(client, session_id);
+	if (!session)
+		return -ENXIO;
+
+	ret = session_get_state(session);
+
+	/* Put session */
+	session_put(session);
+	mc_dev_devel("session %x, exit with %d", session_id, ret);
+	return ret;
+}
+
+int client_is_wait_cancelled(struct tee_client *client, u32 session_id,
+			     int *cancelled_status)
+{
+	struct tee_session *session;
+
+	/* Find/get session */
+	session = client_get_session(client, session_id);
+	if (!session)
+		return -ENXIO;
+
+	*cancelled_status = session->is_cancelled;
+	/* Put session */
+	session_put(session);
+	mc_dev_devel("Cancel state %d for session %x",
+		     *cancelled_status, session_id);
+	return 0;
+}
+
+int client_set_wait_cancelled(struct tee_client *client, u32 session_id)
+{
+	struct tee_session *session;
+
+	mc_dev_devel("Cancel wait in session %x", session_id);
+
+	/* Find/get session */
+	session = client_get_session(client, session_id);
+	if (!session)
+		return -ENXIO;
+
+	if (session->is_cancelled) {
+		mc_dev_err(-EINVAL, "unexpected cancel on already cancelled session %x",
+			   session_id);
+	}
+	session->is_cancelled = true;
+	/* Put session */
+	session_put(session);
+	return 0;
+}
+
+int client_unset_wait_cancelled(struct tee_client *client, u32 session_id)
+{
+	struct tee_session *session;
+
+	mc_dev_devel("Cancel disable for session %x", session_id);
+
+	/* Find/get session */
+	session = client_get_session(client, session_id);
+	if (!session)
+		return -ENXIO;
+
+	session->is_cancelled = false;
+	/* Put session */
+	session_put(session);
+	return 0;
+}
+
 /*
  * Read session exit/termination code
  */

@@ -527,6 +527,8 @@ struct tee_session *session_create(struct tee_client *client,
 		mcp_session_init(&session->mcp_session);
 	}
 
+	session->is_cancelled = false;
+
 	client_get(client);
 	session->client = client;
 	kref_init(&session->kref);
@@ -582,6 +584,22 @@ static void session_release(struct kref *kref)
 int session_put(struct tee_session *session)
 {
 	return kref_put(&session->kref, session_release);
+}
+
+/*
+ * Simply return current nq session state as defined in
+ * enum nq_notif_state (nq.h)
+ */
+int session_get_state(struct tee_session *session)
+{
+	int ret = 0;
+
+	if (session->is_gp)
+		ret = session->iwp_session.nq_session.state;
+	else
+		ret = session->mcp_session.nq_session.state;
+
+	return ret;
 }
 
 static int wsm_debug_structs(struct kasnprintf_buf *buf, struct tee_wsm *wsm,

@@ -298,38 +298,78 @@ struct tee_mmu *vlx_be_set_mmu(struct protocol_be_map *map,
 	return map->mmu;
 }
 
-/* Call the FE server */
+/* Enable usage of vrpc_call with timeout feature
+ * (recommended by may not exist on ALL old BSP)
+ */
+// #define SUPPORT_VRPC_CALL_TIMEOUT when available
 
+/* Maximum number to vrpc_call retries...
+ * Warning, with vrpc_call_timeout(), each call is 5sec timeout
+ * So 4 retries will mean blocking SYS domain 20 sec in this loop
+ * (all this code section called under mutex).
+ */
+#define MAX_RETRY 4
+#define VRPC_CALL_5_SEC_TIMEOUT (5 * HZ)
+
+/* Call the FE server */
 static void vlx_call_fe(struct protocol_fe *pfe, atomic_t call_vm_instance_no)
 {
 	struct tee_vlx_fe *vlx_fe = container_of(pfe, struct tee_vlx_fe, pfe);
 	struct vrpc_t *vrpc = vlx_fe->be2fe_vrpc;
 	struct be2fe_data *data = vlx_fe->pfe.be2fe_data;
 	vrpc_size_t size;
-	int ret;
+	int ret = 0, retries = 0;
 
 	for (;;) {
-		/* Detect VM restarts */
+		/* Detect VM restarts case */
 		if (atomic_read(&pfe->vm_instance_no) !=
 		    atomic_read(&call_vm_instance_no)) {
-			mc_dev_info("VRPC FE instance changed, cancel call");
+			mc_dev_err(-ENODEV, "VRPC FE instance changed, drop call!");
 			return;
 		}
 
 		data->cmd = vlx_fe->pfe.be2fe_data->cmd;
-
 		size = sizeof(*data);
-		if (!vrpc_call(vrpc, &size))
+
+#ifdef SUPPORT_VRPC_CALL_TIMEOUT
+		// HV call to FE with 5sec timeout
+		ret = vrpc_call_timeout(vrpc, &size, VRPC_CALL_5_SEC_TIMEOUT);
+#else
+		ret = vrpc_call(vrpc, &size);
+#endif
+		if (ret == 0)
 			break;
 
-		mc_dev_err(-ENODEV, "Lost VRPC FE server. Reopen.");
-		vrpc_close(vrpc);
-		ret = vrpc_client_open(vrpc, NULL, NULL);
-		if (ret) {
-			mc_dev_err(ret, "VRPC FE client open has failed!");
+		retries++;
+		if (retries > MAX_RETRY) {
+			mc_dev_err(ret,
+				   "Too many vrpc_call() failed (try n°%d), drop call!",
+				   retries);
 			break;
+
+		// ETIME: no answer from FE server within a limited time,
+		// but the HV connection is still online.
+		} else if (ret == -ETIME) {
+			mc_dev_err(ret,
+				   "VRPC FE server runs into TIMEOUT (try n°%d), re-try.",
+				   retries);
+
+		// Any other errors: connection between BE and FE must be
+		// disconnected/reconnected...
+		} else {
+			mc_dev_err(ret,
+				   "Lost VRPC FE server (tentative n°%d), re-open.",
+				   retries);
+			vrpc_close(vrpc);
+			ret = vrpc_client_open(vrpc, NULL, NULL);
+			if (ret) {
+				mc_dev_err(ret,
+					   "VRPC FE client open has failed! (try n°%d)",
+					   retries);
+				break;
+			}
+			mc_dev_devel("Re-establish VRPC FE link.");
 		}
-		mc_dev_devel("Re-establish VRPC FE link.");
 	}
 
 	vlx_fe->pfe.be2fe_data->cmd = TEE_BE_NONE;
@@ -470,7 +510,8 @@ static vrpc_size_t vlx_be_callback(void *cookie, vrpc_size_t size)
 	if (size != sizeof(*vlx_fe->pfe.fe2be_data))
 		return 0;
 
-	mc_dev_devel("FE -> BE command %u id %u", vlx_fe->pfe.fe2be_data->cmd,
+	mc_dev_devel("FE -> BE command %u id %u",
+		     vlx_fe->pfe.fe2be_data->cmd,
 		     vlx_fe->pfe.fe2be_data->id);
 
 	vlx_fe->pfe.fe2be_data->otherend_ret =

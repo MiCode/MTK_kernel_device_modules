@@ -204,15 +204,70 @@ static void protocol_be_mc_wait_worker(struct work_struct *work)
 	struct mc_wait_work *wait_work =
 		container_of(work, struct mc_wait_work, work);
 	struct protocol_fe *pfe = wait_work->pfe;
-	int ret;
+	int ret = 0;
+	int session_state, wait_cancelled;
+
+	ret = client_is_wait_cancelled(pfe->client, wait_work->session_id,
+				       &wait_cancelled);
+	if (ret < 0) {
+		mc_dev_err(ret, "Cannot find cancellation state in session 0x%x",
+			   wait_work->session_id);
+		goto bypass_waitnotif_session;
+	}
+
+	if (wait_cancelled) {
+		/* Cancellation is being handled, remove the flag */
+		ret = client_unset_wait_cancelled(pfe->client,
+						  wait_work->session_id);
+
+		/* mcp_wait has been cancelled by FE */
+		mc_dev_devel("1st be_mc_wait_worker for session %x canceled!",
+			     wait_work->session_id);
+
+		session_state = client_get_session_state(wait_work->pfe->client,
+							 wait_work->session_id);
+
+		if (session_state < NQ_NOTIF_CONSUMED) {
+		/* in this case it means the previous be_mc_wait_worker
+		 * is still waiting... just "cancel" silently the 2nd
+		 *  be_mc_wait_worker
+		 */
+			mc_dev_warn("2nd be_mc_wait_worker for session %x silently closed",
+				    wait_work->session_id);
+			return;
+		}
+
+		if (session_state == NQ_NOTIF_CONSUMED) {
+		/* in this case it means the previous be_mc_wait_worker
+		 * got the answer, but if we reach this point it means
+		 * FE canceled the wait before getting the notification...
+		 * no need of a mcp_wait(), directly return
+		 * TEE_MC_WAIT_DONE
+		 */
+			mc_dev_warn("2nd be_mc_wait_worker for session %x is already done",
+				    wait_work->session_id);
+			goto bypass_waitnotif_session;
+		}
+
+		if (session_state == NQ_NOTIF_DEAD) {
+		/* in this case it means the previous be_mc_wait_worker has
+		 * itself been canceled by a SYS Suspend/Resume
+		 * In this condition, we just want to wait again...
+		 */
+			mc_dev_warn("2nd be_mc_wait_worker for session %x is waiting...",
+				    wait_work->session_id);
+		}
+	}
 
 	ret = client_waitnotif_session(wait_work->pfe->client,
 				       wait_work->session_id,
 				       wait_work->timeout);
 
+bypass_waitnotif_session:
 	/* Send return code */
 	mc_dev_devel("MC wait session done %x, ret %d",
 		     wait_work->session_id, ret);
+
 	protocol_be_get(pfe);
 	/* In */
 	pfe->be2fe_data->cmd_ret = ret;
@@ -245,6 +300,17 @@ static int protocol_be_mc_wait(struct protocol_fe *pfe)
 	INIT_WORK(&wait_work->work, protocol_be_mc_wait_worker);
 	schedule_work(&wait_work->work);
 	return 0;
+}
+
+static int protocol_be_mc_wait_canceled(struct protocol_fe *pfe)
+{
+	int ret;
+
+	ret = client_set_wait_cancelled(pfe->client,
+					pfe->fe2be_data->session_id);
+	mc_dev_devel("MC wait session canceled %x",
+		     pfe->fe2be_data->session_id);
+	return ret;
 }
 
 static int protocol_be_mc_map(struct protocol_fe *pfe)
@@ -695,6 +761,9 @@ int protocol_be_dispatch(struct protocol_fe *pfe)
 		break;
 	case TEE_MC_WAIT:
 		ret = protocol_be_mc_wait(pfe);
+		break;
+	case TEE_MC_WAIT_CANCELLED:
+		ret = protocol_be_mc_wait_canceled(pfe);
 		break;
 	case TEE_MC_MAP:
 		ret = protocol_be_mc_map(pfe);
