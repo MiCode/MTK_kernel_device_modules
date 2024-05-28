@@ -6943,6 +6943,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mutex-ids = <MML0_RDMA0 0 MML0_RROT0 1>;
 			clocks = <&mdpsys_config_clk CLK_MDP_MDP_MUTEX0_MML>;
 			clock-names = "mutex0";
+			sof-event = /bits/ 16 <CMDQ_EVENT_MML0_STREAM_SOF0>;
 		};
 
 		mml0_rdma0: mml0-rdma0@3e050000 {
@@ -7374,6 +7375,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mutex-ids = <MML1_RDMA0 0 MML1_RROT0 1>;
 			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_MUTEX0_MML>;
 			clock-names = "mutex0";
+			sof-event = /bits/ 16 <CMDQ_EVENT_MML1_STREAM_SOF0>;
 		};
 
 		mml1_rdma0: mml1-rdma0@3e450000 {
