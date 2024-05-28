@@ -2157,6 +2157,8 @@ struct xhci_interrupter *
 xhci_create_secondary_interrupter_(struct usb_hcd *hcd, int num_seg);
 void xhci_remove_secondary_interrupter_(struct usb_hcd
 				*hcd, struct xhci_interrupter *ir);
+void xhci_skip_sec_intr_events(struct xhci_hcd *xhci,
+		struct xhci_ring *ring, struct xhci_interrupter *ir);
 void xhci_link_segments_(struct xhci_segment *prev,
 		struct xhci_segment *next,
 		enum xhci_ring_type type, bool chain_links);
@@ -2253,6 +2255,8 @@ void inc_deq(struct xhci_hcd *xhci, struct xhci_ring *ring);
 unsigned int count_trbs(u64 addr, u64 len);
 int xhci_stop_endpoint_sync_(struct xhci_hcd *xhci, struct xhci_virt_ep *ep,
 			int suspend, gfp_t gfp_flags);
+void xhci_update_erst_dequeue(struct xhci_hcd *xhci,
+			struct xhci_interrupter *ir, bool clear_ehb);
 
 /* xHCI roothub code */
 void xhci_set_link_state(struct xhci_hcd *xhci, struct xhci_port *port,
