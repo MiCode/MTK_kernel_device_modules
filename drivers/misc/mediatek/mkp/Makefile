@@ -17,6 +17,7 @@ ccflags-y += -DDEBUG_MKP_ENABLED
 endif
 
 subdir-ccflags-y += -I$(srctree)/drivers/android/ # use debug_kinfo
+subdir-ccflags-y += -Wno-unused-but-set-variable
 
 ccflags-y += -I$(srctree)/$(src)              # needed for trace events
 ccflags-y += -DTEXT_OFFSET=$(TEXT_OFFSET)
