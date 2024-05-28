@@ -44,6 +44,9 @@
 #define PEXTP_DIG_GLB_70		0x70
 #define RG_XTP_PIPE_UPDT		BIT(4)
 #define RG_XTP_PIPE_TX_SWING		BIT(22)
+#define PEXTP_DIG_GLB_74		0x74
+#define RG_XTP_FRC_GLB_LDO		GENMASK(9, 8)
+#define FRC_GLB_LDO_ENABLE		0x3
 #define PEXTP_DIG_GLB_A4		0xa4
 #define RG_XTP_FRC_TX_SWING		BIT(1)
 #define PEXTP_DIG_GLB_D0		0xd0
@@ -945,6 +948,11 @@ static int mtk_pcie_phy_init_6991(struct phy *phy)
 		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_GLB_30,
 				     RG_XTP_CKBG_STAL_STB_T_SEL,
 				     CKBG_STAL_STB_T_SEL_TO_0);
+
+		/* Force glb ldo mtcoms enable */
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_GLB_74,
+				     RG_XTP_FRC_GLB_LDO,
+				     FRC_GLB_LDO_ENABLE);
 
 		/* not bypass pipe reset, pipe reset will reset TPLL */
 		mtk_phy_clear_bits(pcie_phy->sif_base + PEXTP_DIG_GLB_20, RG_XTP_BYPASS_PIPE_RST_RC);
