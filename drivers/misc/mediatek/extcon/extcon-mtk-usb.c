@@ -298,6 +298,43 @@ static ssize_t vbus_limit_cur_store(struct device *dev,
 
 static DEVICE_ATTR_RW(vbus_limit_cur);
 
+static ssize_t vbus_switch_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	struct mtk_extcon_info *extcon = dev_get_drvdata(dev);
+	struct regulator *vbus = extcon->vbus;
+
+	if (!vbus)
+		return sprintf(buf, "0");
+	else
+		return sprintf(buf, "%d\n", extcon->vbus_on);
+}
+
+static ssize_t vbus_switch_store(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t count)
+{
+	struct mtk_extcon_info *extcon = dev_get_drvdata(dev);
+	struct regulator *vbus = extcon->vbus;
+	int is_on = 0;
+
+	/* Check whether we have vbus instance */
+	if (!vbus) {
+		dev_info(dev, "No vbus instance\n");
+		return -EOPNOTSUPP;
+	}
+	if ((kstrtoint(buf, 10, &is_on) != 0) || (is_on != 1  && is_on != 0)) {
+		dev_info(dev, "Invalid input\n");
+		return -EINVAL;
+	}
+
+	mtk_usb_extcon_set_vbus(extcon, is_on);
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(vbus_switch);
+
 static int mtk_usb_extcon_vbus_init(struct mtk_extcon_info *extcon)
 {
 	int ret = 0;
@@ -339,6 +376,10 @@ static int mtk_usb_extcon_vbus_init(struct mtk_extcon_info *extcon)
 		if (ret)
 			dev_info(dev, "failed to create vbus currnet limit control node\n");
 	}
+
+	ret = device_create_file(dev, &dev_attr_vbus_switch);
+	if (ret)
+		dev_info(dev, "failed to create vbus switch node\n");
 
 fail:
 	return ret;
