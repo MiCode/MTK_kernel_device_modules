@@ -11711,9 +11711,8 @@ void mtk_crtc_stop_ddp(struct mtk_drm_crtc *mtk_crtc,
 	}
 
 	/*EXDMA2 is not on the list of main path. Need extra stop*/
-	if(priv->data->mmsys_id == MMSYS_MT6991) {
+	if(priv->data->mmsys_id == MMSYS_MT6991 && crtc_idx == 0)
 		mtk_ddp_comp_stop(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],cmdq_handle);
-	}
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (only_output && !mtk_ddp_comp_is_output(comp))
