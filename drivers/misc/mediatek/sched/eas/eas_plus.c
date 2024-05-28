@@ -984,7 +984,7 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 			extern_volt = 0;
 			pwr_eff = calc_pwr_eff_v2(eenv, dst_cpu, max_util, pd_freq,
 					cpus, extern_volt);
-			pwr_eff = pwr_eff * gear_volt / pd_volt;
+			pwr_eff = ((pd_volt) ? (pwr_eff * gear_volt / pd_volt) : pwr_eff);
 			shared_buck_mode = 2;
 		}
 	} else {
