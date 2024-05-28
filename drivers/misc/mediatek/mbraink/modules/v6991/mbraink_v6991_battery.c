@@ -16,6 +16,7 @@ static void mbraink_v6991_get_battery_info(struct mbraink_battery_data *battery_
 	int ret;
 	union power_supply_propval prop;
 
+	memset(&prop, 0x00, sizeof(prop));
 	if (drv_data.bat1_psy != NULL && !IS_ERR(drv_data.bat1_psy)) {
 		battery_buffer->timestamp = timestamp;
 

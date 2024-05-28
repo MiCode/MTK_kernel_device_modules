@@ -746,6 +746,7 @@ static int mbraink_v6989_power_get_power_throttle_hw_info(struct mbraink_power_t
 		goto End;
 	}
 
+	memset(res_ppb_mbrain_data, 0x00, sizeof(struct ppb_mbrain_data));
 	ret = get_ppb_mbrain_data(res_ppb_mbrain_data);
 
 	power_throttle_hw_data->kernel_time = res_ppb_mbrain_data->kernel_time;
