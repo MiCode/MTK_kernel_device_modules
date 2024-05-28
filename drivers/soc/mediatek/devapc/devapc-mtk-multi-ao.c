@@ -369,11 +369,8 @@ static void print_slave_vio_mask_sta(int slave_type)
 {
 	struct mtk_devapc_vio_info *vio_info = mtk_devapc_ctx->soc->vio_info;
 	uint32_t slave_type_num = mtk_devapc_ctx->soc->slave_type_num;
-	const struct mtk_device_num *ndevices;
 	void __iomem *pd_vio_shift_sta_reg;
 	int i;
-
-	ndevices = mtk_devapc_ctx->soc->ndevices;
 
 	if (slave_type < slave_type_num) {
 		pd_vio_shift_sta_reg = mtk_devapc_pd_get(slave_type,
@@ -796,7 +793,6 @@ static bool mtk_devapc_dump_vio_dbg(int slave_type, int *vio_idx, int *index)
 {
 	const struct mtk_device_info **device_info;
 	const struct mtk_device_num *ndevices;
-	void __iomem *pd_vio_shift_sta_reg;
 	uint32_t shift_bit;
 	int i;
 
@@ -807,8 +803,6 @@ static bool mtk_devapc_dump_vio_dbg(int slave_type, int *vio_idx, int *index)
 
 	device_info = mtk_devapc_ctx->soc->device_info;
 	ndevices = mtk_devapc_ctx->soc->ndevices;
-
-	pd_vio_shift_sta_reg = mtk_devapc_pd_get(slave_type, VIO_SHIFT_STA, 0);
 
 	for (i = 0; i < ndevices[slave_type].vio_slave_num; i++) {
 		if (!device_info[slave_type][i].enable_vio_irq)
@@ -929,7 +923,6 @@ static void devapc_extra_handler(int slave_type, const char *vio_master,
 				 uint32_t vio_index, uint32_t vio_addr,
 				 enum devapc_vio_type vio_type)
 {
-	const struct mtk_device_info **device_info;
 	struct mtk_devapc_dbg_status *dbg_stat;
 	struct mtk_devapc_vio_info *vio_info;
 	struct devapc_vio_callbacks *viocb;
@@ -937,7 +930,6 @@ static void devapc_extra_handler(int slave_type, const char *vio_master,
 	enum infra_subsys_id id;
 	uint32_t ret_cb = 0;
 
-	device_info = mtk_devapc_ctx->soc->device_info;
 	dbg_stat = mtk_devapc_ctx->soc->dbg_stat;
 	vio_info = mtk_devapc_ctx->soc->vio_info;
 
