@@ -255,16 +255,7 @@ static void dbg_error_flag_irq_work(struct work_struct *w)
 				DEF_LOG("%s: err_flag irq systimer_h is 0x%x.\n",
 					__func__, dbg_error_flag.err_flag_str[i].err_flag_irq_systimer_h);
 
-				if (dbg_error_flag.err_flag_str[i].err_flag_irq_status_0 &&
-					dbg_error_flag.err_flag_str[i].err_flag_irq_status_1) {
-
-					blocking_notifier_call_chain(&dbg_error_flag_dump_list,
-						dbg_error_flag.err_flag_str[i].err_flag_irq_status_0, NULL);
-					blocking_notifier_call_chain(&dbg_error_flag_dump_list,
-						dbg_error_flag.err_flag_str[i].err_flag_irq_status_1, NULL);
-					unmask_status = dbg_error_flag.err_flag_str[i].err_flag_irq_status_0;
-					unmask_status = dbg_error_flag.err_flag_str[i].err_flag_irq_status_1;
-				} else if (dbg_error_flag.err_flag_str[i].err_flag_irq_status_0) {
+				if (dbg_error_flag.err_flag_str[i].err_flag_irq_status_0) {
 					blocking_notifier_call_chain(&dbg_error_flag_dump_list,
 					dbg_error_flag.err_flag_str[i].err_flag_irq_status_0, NULL);
 					unmask_status = dbg_error_flag.err_flag_str[i].err_flag_irq_status_0;
@@ -310,7 +301,7 @@ static void dbg_error_flag_irq_work(struct work_struct *w)
 
 				enable_irq(dbg_error_flag.err_flag_str[i].irq);
 
-			} else if (num_error_flag < 1 && dbg_error_flag.err_flag_str[i].err_flag_stage) {
+			} else if (num_error_flag <= 1 && dbg_error_flag.err_flag_str[i].err_flag_stage) {
 				err_flag_type = 0;
 
 				DEF_LOG("%s: err_flag stage is 0x%x.\n",
