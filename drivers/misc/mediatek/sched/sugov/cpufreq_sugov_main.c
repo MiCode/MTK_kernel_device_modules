@@ -96,7 +96,7 @@ void unset_runnable_boost_enable(void)
 }
 EXPORT_SYMBOL(unset_runnable_boost_enable);
 
-bool is_runnable_boost_enable(void)
+inline bool is_runnable_boost_enable(void)
 {
 	return runnable_boost_enable;
 }
