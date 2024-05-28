@@ -33,3 +33,11 @@ config DMABUF_HEAPS_DEBUG
 	  This debug tool can be use to dump dmabuf usage for users
 	  If you want use it, say Y if you are not using GKI
 	  say m and add ko into your system for GKI.
+
+config DMABUF_LEGACY_TEST
+	tristate "DMA-BUF test legacy"
+	help
+	  Choose this option to skip dmabuf secure test.
+	  This config is for legacy chip to skip new chip only case.
+	  If you are sure the chip not support the dmabuf secure test, say Y to
+	  skip the case. If in doubt, say N.
