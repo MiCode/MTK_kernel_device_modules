@@ -47,11 +47,14 @@ extern unsigned int dbg_log_level;
 #define ADC_TO_VBAT_RAW(vbat)		((vbat) / ADC_VBAT_SCALE)
 #define ADC_FROM_VBAT_RAW(raw)		((raw) * ADC_VBAT_SCALE)
 
+#define MT6379_REG_DEV_INFO		(0x00)
 #define MT6379_REG_CORE_CTRL0		(0x01)
 #define MT6379_REG_RST1			(0x02)
 #define MT6379_REG_RST_PAS_CODE1	(0x04)
-#define MT6379_REG_TM_PAS_CODE1		(0x07)
 #define MT6379_REG_CORE_CTRL2		(0x06)
+#define MT6379_REG_TM_PAS_CODE1		(0x07)
+#define MT6379_REG_VDDA_SUPPLY		(0x11)
+#define MT6379_REG_BB_VOUT_SEL		(0x43)
 #define MT6379_REG_CHG_STAT0		(0x70)
 #define MT6379_REG_CHG_STAT1		(0x71)
 #define MT6379_REG_CHG_STAT2		(0x72)
@@ -105,6 +108,7 @@ extern unsigned int dbg_log_level;
 
 #define MT6379_REG_FGADC_SYS_INFO_CON0	(0x7F9)
 
+#define MT6379_CHIP_REV_MSK		GENMASK(3, 0)
 #define MT6379_CHG_RAMPUP_COMP_MSK	GENMASK(7, 6)
 #define MT6379_CHG_IEOC_FLOW_RB_MSK	BIT(4)
 
@@ -351,6 +355,15 @@ struct mt6379_charger_data {
 	bool *bc12_dn;
 };
 
+enum mt6379_chip_rev {
+	MT6379_CHIP_REV_E0 = 0,
+	MT6379_CHIP_REV_E1,
+	MT6379_CHIP_REV_E2,
+	MT6379_CHIP_REV_E3,
+	MT6379_CHIP_REV_E4,
+	MT6379_CHIP_REV_MAX
+};
+
 extern int mt6379_charger_init_chgdev(struct mt6379_charger_data *cdata);
 extern int mt6379_charger_field_set(struct mt6379_charger_data *cdata,
 				    enum mt6379_charger_reg_field fd, unsigned int val);
@@ -385,5 +398,23 @@ out:
 	return ret;
 }
 
+static inline enum mt6379_chip_rev mt6379_charger_get_chip_rev(struct mt6379_charger_data *cdata)
+{
+	enum mt6379_chip_rev rev = MT6379_CHIP_REV_E4;
+	int ret;
+	u32 val;
+
+	ret = regmap_read(cdata->rmap, MT6379_REG_DEV_INFO, &val);
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to get dev_info, use default rev%d\n",
+			 __func__, rev);
+		return rev;
+	}
+
+	val = FIELD_GET(MT6379_CHIP_REV_MSK, val);
+	rev = val < MT6379_CHIP_REV_MAX ? (enum mt6379_chip_rev)val : rev;
+
+	return rev;
+}
 
 #endif /* __LINUX_MT6379_CHARGER_H */
