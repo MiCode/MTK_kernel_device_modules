@@ -460,14 +460,10 @@ static int set_genpd_notify(void)
 			pa.args[0] = pd_idx;
 			pa.args_count = 1;
 
-			if (pdchk_get_pd_name(i) != NULL)
-				r = snprintf(pd_dev_name, DEVN_LEN, "%s", pdchk_get_pd_name(i));
+			if (pdchk_get_pd_name(i))
+				snprintf(pd_dev_name, DEVN_LEN, "%s", pdchk_get_pd_name(i));
 			else
-				r = snprintf(pd_dev_name, DEVN_LEN, "power-domain-chk-%d", i);
-			if (r) {
-				pr_info("%s snprintf error(%d)\n", __func__, r);
-					return r;
-			}
+				snprintf(pd_dev_name, DEVN_LEN, "power-domain-chk-%d", i);
 			pd_pdev[i] = platform_device_alloc(pd_dev_name, 0);
 
 			if (!pd_pdev[i]) {
