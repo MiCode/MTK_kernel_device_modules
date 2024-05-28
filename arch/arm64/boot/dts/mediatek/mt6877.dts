@@ -1672,13 +1672,19 @@
 				 <&ipesys_clk CLK_IPE_LARB20>;
 			clock-names = "aie",
 				 "FDVT_CLK_IPE_LARB20";
-			mboxes = <&gce_mbox 14 0 CMDQ_THR_PRIO_1>;
+			mboxes = <&gce_mbox 14 0 CMDQ_THR_PRIO_1>,
+						<&gce_mbox_sec 11 0 CMDQ_THR_PRIO_1>;
 			iommus = <&iommu0 M4U_PORT_L20_IPE_FDVT_RDA>,
 				 <&iommu0 M4U_PORT_L20_IPE_FDVT_RDB>,
 				 <&iommu0 M4U_PORT_L20_IPE_FDVT_WRA>,
 				 <&iommu0 M4U_PORT_L20_IPE_FDVT_WRB>;
 			fdvt_frame_done = <CMDQ_EVENT_FDVT_DONE>;
 			mediatek,larb = <&smi_larb20>;
+		};
+
+		mtk_iommu_fake_aie@0 {
+			compatible = "mediatek,mtk_iommu_fake_aie";
+			iommus = <&iommu0 M4U_PORT_L1_DISP_FAKE1>;
 		};
 
 		mdpsys_config: mdpsys_config@1f000000 {
@@ -4433,8 +4439,8 @@
 		mmsys_config = <&mmsys_config_clk>;
 		mediatek,gce-subsys = <99>, <SUBSYS_1400XXXX>;
 		mboxes = <&gce_mbox 23 0 CMDQ_THR_PRIO_1>,
-			 <&gce_mbox 22 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
-			 <&gce_mbox_sec 11 0 CMDQ_THR_PRIO_1>;
+			 <&gce_mbox 22 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+			 // <&gce_mbox_sec 11 0 CMDQ_THR_PRIO_1>;
 		token_user0 = /bits/ 16 <CMDQ_SYNC_TOKEN_USER_0>;
 		token_gpr_set4 = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_4>;
 	};
