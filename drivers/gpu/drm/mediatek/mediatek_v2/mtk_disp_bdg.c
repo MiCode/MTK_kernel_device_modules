@@ -126,20 +126,20 @@ static void clk_buf_disp_ctrl(bool enable, struct mtk_dsi *dsi)
 
 	pinctrll = devm_pinctrl_get(dev);
 	if (IS_ERR(pinctrll)) {
-		DDPMSG("get pmic 26m gpios for bdg fail %d\n", pinctrll);
+		DDPMSG("get pmic 26m gpios for bdg fail, pinctrll\n");
 		return;
 	}
 	if (enable) {
 		pState_pull_up = pinctrl_lookup_state(pinctrll, "6382-pmic-26m-gpio-ctl1");
 		if (IS_ERR(pState_pull_up)) {
-			DDPMSG("get pmic 26m gpios state error %d\n", pState_pull_up);
+			DDPMSG("get pmic 26m gpios state error, pState_pull_up\n");
 			return;
 		}
 		pinctrl_select_state(pinctrll, pState_pull_up);
 	} else {
 		pState_pull_down = pinctrl_lookup_state(pinctrll, "6382-pmic-26m-gpio-ctl0");
 		if (IS_ERR(pState_pull_down)) {
-			DDPMSG("get pmic 26m gpios state error %d\n", pState_pull_down);
+			DDPMSG("get pmic 26m gpios state error, pState_pull_down\n");
 			return;
 		}
 		pinctrl_select_state(pinctrll, pState_pull_down);
@@ -1693,7 +1693,7 @@ int bdg_tx_buf_rw_set(enum DISP_BDG_ENUM module,
 	}
 
 	DDPINFO(
-		"%s, mode=0x%x, tmp=%d, width=%d, height=%d, rw_times=%d\n",
+		"%s, mode=0x%lx, tmp=%d, width=%d, height=%d, rw_times=%d\n",
 		__func__, dsi->mode_flags, tmp, width, height, rw_times);
 
 	for (i = DSI_MODULE_BEGIN(module); i <= DSI_MODULE_END(module); i++) {
@@ -1953,7 +1953,7 @@ int bdg_dsi_dump_reg(enum DISP_BDG_ENUM module)
 		DDPMSG("===== mt6382 DSI%d REGS =====\n", i);
 
 		for (k = 0; k < 0x210; k += 16) {
-			DDPMSG("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x\n",
+			DDPMSG("0x%08lx: 0x%08x 0x%08x 0x%08x 0x%08x\n",
 				(k + dsi_base_addr),
 				mtk_spi_read(dsi_base_addr + k),
 				mtk_spi_read(dsi_base_addr + k + 0x4),
@@ -1963,7 +1963,7 @@ int bdg_dsi_dump_reg(enum DISP_BDG_ENUM module)
 
 		DDPMSG(" ===== mt6382 DSI%d CMD REGS =====\n", i);
 		for (k = 0; k < 32; k += 16) { /* only dump first 32 bytes cmd */
-			DDPMSG("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x\n",
+			DDPMSG("0x%08lx: 0x%08x 0x%08x 0x%08x 0x%08x\n",
 				(k + 0xd00 + dsi_base_addr),
 				mtk_spi_read((dsi_base_addr + 0xd00 + k)),
 				mtk_spi_read((dsi_base_addr + 0xd00 + k + 0x4)),
@@ -1973,7 +1973,7 @@ int bdg_dsi_dump_reg(enum DISP_BDG_ENUM module)
 
 		DDPMSG("===== mt6382 MIPI%d REGS ======\n", i);
 		for (k = 0; k < 0x200; k += 16) {
-			DDPMSG("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x\n",
+			DDPMSG("0x%08lx: 0x%08x 0x%08x 0x%08x 0x%08x\n",
 				(k + mipi_base_addr),
 				mtk_spi_read(mipi_base_addr + k),
 				mtk_spi_read(mipi_base_addr + k + 0x4),
@@ -1984,7 +1984,7 @@ int bdg_dsi_dump_reg(enum DISP_BDG_ENUM module)
 		if (dsc_en) {
 			DDPMSG("====== mt6382 DSC%d REGS ======\n", i);
 			for (k = 0; k < sizeof(struct BDG_DISP_DSC_REGS); k += 16) {
-				DDPMSG("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x\n",
+				DDPMSG("0x%08lx: 0x%08x 0x%08x 0x%08x 0x%08x\n",
 					(k + dsc_base_addr),
 					mtk_spi_read(dsc_base_addr + k),
 					mtk_spi_read(dsc_base_addr + k + 0x4),
@@ -3562,7 +3562,7 @@ void dbg_set_cmdq_V2(enum DISP_BDG_ENUM module, void *cmdq,
 		set_para = cmd;
 		goto_addr = (goto_addr & (~0x3UL));
 
-		DDPMSG("[%s][%d]goto_addr=0x%x, mask_para=0x%x, set_para=0x%x\n",
+		DDPMSG("[%s][%d]goto_addr=0x%lx, mask_para=0x%lx, set_para=0x%lx\n",
 			__func__, __LINE__, goto_addr, mask_para, set_para);
 
 		BDG_MASKREG32(cmdq, goto_addr, mask_para, set_para);
@@ -3573,7 +3573,7 @@ void dbg_set_cmdq_V2(enum DISP_BDG_ENUM module, void *cmdq,
 			set_para = (unsigned long)para_list[i];
 			goto_addr = (goto_addr & (~0x3UL));
 
-			DDPMSG("[%s][%d]i=%d, goto_addr=0x%x, mask_para=0x%x, set_para=0x%x\n",
+			DDPMSG("[%s][%d]i=%d, goto_addr=0x%lx, mask_para=0x%lx, set_para=0x%lx\n",
 				__func__, __LINE__, i, goto_addr, mask_para, set_para);
 
 			BDG_MASKREG32(cmdq, goto_addr, mask_para, set_para);
