@@ -11,6 +11,36 @@
 #include <linux/types.h>
 #include <linux/tracepoint.h>
 
+TRACE_EVENT(sched_runnable_boost,
+	TP_PROTO(bool is_runnable_boost_enable, int boost, unsigned long rq_util_avg,
+		unsigned long rq_util_est, unsigned long rq_load, unsigned long cpu_util_next),
+	TP_ARGS(is_runnable_boost_enable, boost, rq_util_avg, rq_util_est, rq_load, cpu_util_next),
+	TP_STRUCT__entry(
+		__field(bool, is_runnable_boost_enable)
+		__field(int, boost)
+		__field(unsigned long, rq_util_avg)
+		__field(unsigned long, rq_util_est)
+		__field(unsigned long, rq_load)
+		__field(unsigned long, cpu_util_next)
+	),
+	TP_fast_assign(
+		__entry->is_runnable_boost_enable = is_runnable_boost_enable;
+		__entry->boost = boost;
+		__entry->rq_util_avg = rq_util_avg;
+		__entry->rq_util_est = rq_util_est;
+		__entry->rq_load = rq_load;
+		__entry->cpu_util_next = cpu_util_next;
+	),
+	TP_printk("is_runnable_boost_enable=%d boost=%d rq_util_avg=%lu rq_util_est=%lu rq_load=%lu cpu_util_next=%lu",
+		__entry->is_runnable_boost_enable,
+		__entry->boost,
+		__entry->rq_util_avg,
+		__entry->rq_util_est,
+		__entry->rq_load,
+		__entry->cpu_util_next
+	)
+);
+
 TRACE_EVENT(sugov_ext_act_sbb,
 	TP_PROTO(int flag, int pid,
 		int set, int success, int gear_id,
