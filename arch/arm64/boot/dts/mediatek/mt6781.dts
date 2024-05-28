@@ -4897,19 +4897,8 @@
 		compatible = "mediatek,flashlight_core";
 	};
 
-	flashlights_mt6370: flashlights_mt6370 {
-		compatible = "mediatek,flashlights_mt6370";
-		decouple = <1>;
-		channel@1 {
-			type = <0>;
-			ct = <0>;
-			part = <0>;
-		};
-		channel@2 {
-			type = <0>;
-			ct = <1>;
-			part = <0>;
-		};
+	mtk_composite_v4l2_1: mtk_composite_v4l2_1 {
+		compatible = "mediatek,mtk_composite_v4l2_1";
 	};
 
 	camera_af_hw_node: camera_af_hw_node {
@@ -5171,10 +5160,6 @@
 	};
 
 	subpmic_pmu_eint: mt6370_pmu_eint {
-	};
-
-	mtk_composite_v4l2_1: mtk_composite_v4l2_1 {
-		compatible = "mediatek,mtk_composite_v4l2_1";
 	};
 
 	gps: gps@18c00000 {
