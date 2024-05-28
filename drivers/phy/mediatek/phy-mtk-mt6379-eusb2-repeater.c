@@ -74,9 +74,7 @@
 #define RG_USB20_HS_PE_MASK		0x7
 
 #define PHYA_EU2_CR0_0			0x20
-#define RG_EUSB20_TXLDO_VREF_SEL	GENMASK(2,0)
-#define RG_EUSB20_TXLDO_VREF_SEL_SHIFT	0
-#define RG_EUSB20_TXLDO_VREF_SEL_MASK	0x7
+#define RG_EUSB20_TXLDO_VREF_SEL	BIT(2)
 
 #define PHYA_EU2_CR1_0			0x24
 #define RG_EUSB20_FS_CR			GENMASK(2,0)
@@ -121,7 +119,7 @@
 #define RG_INIT_SW_SEL_SHIFT		6
 #define RG_INIT_SW_SEL_MASK		0x1
 
-#define PHYD_COM_CR2_2			0x90
+#define PHYD_COM_CR2_2			0x8A
 #define RG_EUSB_DISC_INT_DIS		BIT(0)
 #define RG_EUSB_DISC_INT_DIS_SHIFT	0
 #define RG_EUSB_DISC_INT_DIS_MASK	0x1
@@ -617,10 +615,10 @@ static int eusb2_repeater_power_on(struct phy *phy)
 		regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR1_3, RG_EUSB20_FSRX_HYS_SEL,
 			rptr->eusb20_fsrx_hys_sel << RG_EUSB20_FSRX_HYS_SEL_SHIFT);
 	} else if ((chip_rev & MT6379_CHIP_REV_MASK) >= 0x3) {
-		if (rptr->submode == PHY_MODE_RESUME_DEV) {
+		if (rptr->submode == PHY_MODE_SUSPEND_DEV) {
 			/* device connected */
 			return 0;
-		} else if (rptr->submode == PHY_MODE_RESUME_NO_DEV) {
+		} else if (rptr->submode == PHY_MODE_SUSPEND_NO_DEV) {
 			dev_info(rptr->dev, "OTG gender LP mode\n");
 			/* OTG gender LP mode */
 			/* RG_USB20_HSTX_SRCTRL[1] 1'b0 */
@@ -748,7 +746,7 @@ static int eusb2_repeater_power_on(struct phy *phy)
 
 			/* E3 patch */
 			regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR0_0,
-				RG_EUSB20_TXLDO_VREF_SEL, 0x7 << RG_EUSB20_TXLDO_VREF_SEL_SHIFT);
+				RG_EUSB20_TXLDO_VREF_SEL, RG_EUSB20_TXLDO_VREF_SEL);
 			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_2,
 				RG_EUSB_DISC_INT_DIS, RG_EUSB_DISC_INT_DIS);
 			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_2,

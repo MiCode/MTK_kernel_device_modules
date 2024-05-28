@@ -373,6 +373,7 @@ struct ssusb_mtk {
 	bool utmi_8bit;
 	bool smc_req;
 	bool host_dev;
+	enum mtu3_power_state state;
 };
 
 /**

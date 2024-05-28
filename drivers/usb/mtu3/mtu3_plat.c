@@ -30,8 +30,6 @@
 #define PHY_MODE_DPPULLUP_CLR 6
 #define PHY_MODE_SUSPEND_DEV 9
 #define PHY_MODE_SUSPEND_NO_DEV 10
-#define PHY_MODE_RESUME_DEV 11
-#define PHY_MODE_RESUME_NO_DEV 12
 
 #define VS_VOTER_EN_LO 0x0
 #define VS_VOTER_EN_LO_SET 0x1
@@ -222,6 +220,9 @@ static void ssusb_smc_request(struct ssusb_mtk *ssusb,
 void ssusb_set_power_state(struct ssusb_mtk *ssusb,
 	enum mtu3_power_state state)
 {
+	if (state == MTU3_STATE_SUSPEND || state == MTU3_STATE_RESUME)
+		ssusb->state = state;
+
 	if (ssusb->plat_type == PLAT_FPGA ||
 	   (!ssusb->smc_req && !ssusb->hwrscs_vers))
 		return;
@@ -1478,6 +1479,11 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 	if (ssusb->clk_mgr && !ssusb->is_host)
 		return 0;
 
+	if (mtu3_readl(ssusb->mac_base, U3D_USB20_OPSTATE) == 0x21)
+		ssusb->host_dev = false;
+	else
+		ssusb->host_dev = true;
+
 	ssusb->offload_mode = ssusb_offload_get_mode();
 
 	dev_info(ssusb->dev, "%s offload_mode %d\n", __func__, ssusb->offload_mode);
@@ -1589,11 +1595,11 @@ static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 	if (ssusb->host_dev) {
 		dev_info(ssusb->dev, "%s device connected\n", __func__);
 		phy_set_mode_ext(ssusb->phys[0], PHY_MODE_USB_HOST,
-		PHY_MODE_RESUME_DEV);
+		PHY_MODE_SUSPEND_DEV);
 	} else {
 		dev_info(ssusb->dev, "%s no device connected\n", __func__);
 		phy_set_mode_ext(ssusb->phys[0], PHY_MODE_USB_HOST,
-		PHY_MODE_RESUME_NO_DEV);
+		PHY_MODE_SUSPEND_NO_DEV);
 	}
 
 	ret = ssusb_phy_power_on(ssusb);

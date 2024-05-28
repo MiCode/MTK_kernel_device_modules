@@ -242,6 +242,11 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 	/* switch port to off first */
 	switch (current_role) {
 	case USB_ROLE_HOST:
+		if (ssusb->state == MTU3_STATE_SUSPEND) {
+			/* wait for host resume complete */
+			dev_info(ssusb->dev, "wait for host resume complete\n");
+			mdelay(100);
+		}
 		ssusb->is_host = false;
 		ssusb->host_dev = false;
 		ssusb_set_vbus(otg_sx, 0);
