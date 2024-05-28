@@ -595,5 +595,6 @@ irqreturn_t mtu3_ep0_isr(struct mtu3 *mtu);
 extern const struct usb_ep_ops mtu3_ep0_ops;
 
 int get_dp_switch_status(struct ssusb_mtk *ssusb);
+void ssusb_parse_toggle_vbus(struct ssusb_mtk *ssusb, struct device_node *nd);
 
 #endif
