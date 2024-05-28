@@ -894,9 +894,9 @@ static int mbraink_v6991_power_get_power_throttle_hw_info(struct mbraink_power_t
 	int ret = 0;
 	struct ppb_mbrain_data *res_ppb_mbrain_data = NULL;
 
-	res_ppb_mbrain_data = kmalloc(sizeof(struct ppb_mbrain_data), GFP_KERNEL);
+	res_ppb_mbrain_data = kzalloc(sizeof(struct ppb_mbrain_data), GFP_KERNEL);
 	if (!res_ppb_mbrain_data) {
-		ret = -1;
+		ret = -ENOMEM;
 		goto End;
 	}
 
