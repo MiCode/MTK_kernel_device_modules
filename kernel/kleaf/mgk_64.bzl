@@ -948,6 +948,7 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/lpm/modules/debug/mt6991/mtk-lpm-dbg-mt6991.ko": "mt6991",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6761.ko": "mt6761",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6765.ko": "mt6765",
+    "drivers/misc/mediatek/mdp/mdp_drv_mt6781.ko": "mt6781",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6853.ko": "mt6853",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6833.ko": "mt6833",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6886.ko": "mt6886",
