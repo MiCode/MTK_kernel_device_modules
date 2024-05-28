@@ -87,13 +87,16 @@ int ssmr_query_total_sec_heap_count(void)
 {
 	int i;
 	int total_heap_count = 0;
+	int ret;
 
 	for (i = 0; i < __MAX_NR_SSMR_FEATURES; i++) {
 		if (!strncmp(_ssmr_feats[i].enable, "on", 2)) {
 			_ssmr_heap_info[total_heap_count].heap_id = i;
-			snprintf(_ssmr_heap_info[total_heap_count].heap_name,
+			ret = snprintf(_ssmr_heap_info[total_heap_count].heap_name,
 				 NAME_SIZE, "ion_%s_heap",
 				 _ssmr_feats[i].feat_name);
+			if (ret)
+				pr_debug("snprintf fail\n");
 			total_heap_count++;
 		}
 	}
