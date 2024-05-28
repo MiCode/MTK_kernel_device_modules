@@ -22,6 +22,9 @@ static void apu_timesync_work_func(struct work_struct *work)
 	timesync_stamp = sched_clock();
 	ret = apu_ipi_send(apu, APU_IPI_TIMESYNC, &timesync_stamp, sizeof(u64),
 			   0);
+	if (ret)
+		dev_info(apu->dev, "%s: apu_ipi_send fail(%d)\n", __func__, ret);
+
 	pr_info("%s %d\n", __func__, __LINE__);
 }
 

@@ -14,8 +14,7 @@
 #define _apusys_rv_trace_begin(format, args...) \
 	{ \
 		char buf[256]; \
-		int len; \
-		len = snprintf(buf, sizeof(buf), \
+		(void)snprintf(buf, sizeof(buf), \
 			format "%s", args); \
 		trace_tag_begin(buf); \
 	}

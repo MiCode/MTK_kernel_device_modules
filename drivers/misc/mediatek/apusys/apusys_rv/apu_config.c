@@ -20,7 +20,6 @@
 
 void apu_config_user_ptr_init(const struct mtk_apu *apu)
 {
-	struct device *dev;
 	struct config_v1 *config;
 	struct config_v1_entry_table *entry_table;
 
@@ -28,7 +27,6 @@ void apu_config_user_ptr_init(const struct mtk_apu *apu)
 		pr_info("%s: error\n", __func__);
 		return;
 	}
-	dev = apu->dev;
 
 	config = apu->conf_buf;
 
