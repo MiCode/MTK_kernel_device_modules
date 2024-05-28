@@ -543,12 +543,19 @@ static irqreturn_t mtk_rtc_irq_handler_thread(int irq, void *data)
 	bool pwron_alm = false;
 #ifdef SUPPORT_PWR_OFF_ALARM
 	bool pwron_alarm = false;
-	struct rtc_time nowtm, tm;
+	struct rtc_time nowtm = { 0 };
+	struct rtc_time tm = { 0 };
 #endif
 	u32 irqsta, irqen;
 	int ret;
 
 	mutex_lock(&rtc->lock);
+
+	if (rtc->rtc_dev == NULL) {
+		mutex_unlock(&rtc->lock);
+		return IRQ_NONE;
+	}
+
 	ret = regmap_read(rtc->regmap, rtc->addr_base + RTC_IRQ_STA, &irqsta);
 	if ((ret >= 0) && (irqsta & RTC_IRQ_STA_AL)) {
 		rtc_update_irq(rtc->rtc_dev, 1, RTC_IRQF | RTC_AF);
@@ -621,12 +628,14 @@ static irqreturn_t mtk_rtc_irq_handler_thread(int irq, void *data)
 #endif
 	mutex_unlock(&rtc->lock);
 out:
-	if (rtc->rtc_dev != NULL)
+	if (rtc->rtc_dev != NULL) {
 		rtc_update_irq(rtc->rtc_dev, 1, RTC_IRQF | RTC_AF);
 
-	if (rtc_show_alarm)
-		dev_notice(rtc->rtc_dev->dev.parent, "%s time is up\n",
-					pwron_alm ? "power-on" : "alarm");
+		if (rtc_show_alarm)
+			dev_notice(rtc->rtc_dev->dev.parent, "%s time is up\n",
+						pwron_alm ? "power-on" : "alarm");
+	}
+
 	return IRQ_HANDLED;
 }
 
@@ -968,7 +977,7 @@ static int mtk_rtc_ioctl(struct device *dev, unsigned int cmd, unsigned long arg
 {
 	void __user *uarg = (void __user *) arg;
 	int err = 0;
-	struct rtc_wkalrm alm;
+	struct rtc_wkalrm alm = { 0 };
 
 	switch (cmd) {
 	case RTC_POFF_ALM_SET:
@@ -1205,7 +1214,7 @@ static void mtk_rtc_lpsd(struct device *dev)
 	reg = RTC_BBPU_KEY | RTC_BBPU_CLR | RTC_BBPU_PWREN;
 	ret = regmap_write(rtc->regmap, rtc->addr_base + RTC_BBPU, reg);
 	if (ret == 0)
-		ret = mtk_rtc_write_trigger(rtc);
+		mtk_rtc_write_trigger(rtc);
 
 	mtk_rtc_spar_alarm_clear_wait(dev);
 
