@@ -471,6 +471,26 @@ struct msdc_infra_check {
 	u32 infra_ack_paddr;
 };
 
+struct msdc_clock_set {
+	u8 set_type;
+#define MSDC_CLK_SET_V1		(1)
+#define MSDC_CLK_SET_V2		(2)
+#define MSDC_CLK_SET_MULTI	(3)
+#define support_clk_set(x)	((x) != 0)
+	bool need_gate_cg;
+};
+
+//please refer to tag_chipid
+struct mmc_tag_chipid {
+#define CHIP_VER_E1	(0)
+#define CHIP_VER_E2	(1)
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
 struct mtk_mmc_compatible {
 	u8 clk_div_bits;
 	bool recheck_sdio_irq;
@@ -481,10 +501,10 @@ struct mtk_mmc_compatible {
 	bool busy_check;
 	struct stop_clock_type stop_clk_set;
 	struct msdc_infra_check infra_check;
+	struct msdc_clock_set clock_set;
 	bool enhance_rx;
 	bool support_64g;
 	bool use_internal_cd;
-	bool need_gate_cg;
 	u8 new_tx_ver;
 #define MSDC_NEW_TX_V1		(1)
 #define MSDC_NEW_TX_V2		(2)
@@ -601,6 +621,7 @@ struct msdc_host {
 	u32 data_timeout_cont; /* data continuous timeout */
 	u32 req_vcore;
 	u32 ocr_volt;
+	u32 sw_ver;
 	struct regulator *dvfsrc_vcore_power;
 	bool use_cmd_intr;
 	bool sdcard_aggressive_pm;
