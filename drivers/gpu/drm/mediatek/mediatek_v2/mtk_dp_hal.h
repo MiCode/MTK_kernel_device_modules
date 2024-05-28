@@ -271,7 +271,7 @@ void mhal_DPTx_SWInterruptEnable(struct mtk_dp *mtk_dp, bool enable);
 void mhal_DPTx_HPDInterruptClr(struct mtk_dp *mtk_dp, BYTE bstatus);
 void mhal_DPTx_HPDInterruptEnable(struct mtk_dp *mtk_dp, bool enable);
 void mhal_DPTx_HPDDetectSetting(struct mtk_dp *mtk_dp);
-void mhal_DPTx_PHYSetting(struct mtk_dp *mtk_dp);
+void mhal_DPTx_PHYSetting(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT);
 void mhal_DPTx_AuxSetting(struct mtk_dp *mtk_dp);
 void mhal_DPTx_AdjustPHYSetting(struct mtk_dp *mtk_dp, BYTE c0, BYTE cp1);
 void mhal_DPTx_DigitalSetting(struct mtk_dp *mtk_dp);

@@ -2487,50 +2487,86 @@ void mhal_DPTx_phy_param_init(struct mtk_dp *mtk_dp, UINT32 *buffer, UINT32 size
 	}
 }
 
-void mhal_DPTx_hw_phy_set_param(struct mtk_dp *mtk_dp)
+void mhal_DPTx_hw_phy_set_param(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 {
 	//UINT32 value = 0;
 	UINT8 i;
+	UINT32 usb_info;
+	UINT32 usb_info_bit19;
+	UINT32 usb_info_bit18;
+	void *base;
+
 	UINT32 phy_param[6] = {0x221C1814, 0x24241e18, 0x0000302A,	//c0
 			       0x0E080400, 0x000c0600, 0x00000006	//cp1
 			      };
 
+	//phy threshold refine
+	msPhyWrite4ByteMask(mtk_dp, 0x8, 0x00 , BIT(0)|BIT(1));
+	msPhyWrite4ByteMask(mtk_dp, 0xc, 0x10 , BIT(4)|BIT(5)|BIT(6));
+
 	/*4Lane issue*/
 	msPhyWriteByteMask(mtk_dp, 0x0614, BIT(0), BIT(0));
-	mdelay(30);
 	msPhyWrite4ByteMask(mtk_dp, 0x0700, 0x0, BIT(20));
-	mdelay(30);
-	for (i = 1; i <= 4; i++) {
-		msPhyWrite2Byte(mtk_dp, 0x0100 * i, 0x3000);
-		mdelay(30);
+
+	//////////////////// Debug for usb C RG
+	base = ioremap(0x1002D600, 0x100);
+	usb_info=readl(base + 0x0);
+	// Extract the 19th bit of the USB info
+	usb_info_bit19 = (usb_info >> 19) & 0x1; // Shift right by 19 bits and mask the LSB
+	usb_info_bit18 = (usb_info >> 18) & 0x1; // Shift right by 18 bits and mask the LSB
+	// Print the result
+	DPTXMSG("USB Info Bit 19(normal:0,flipped:1): %d\n", usb_info_bit19);
+	DPTXMSG("USB Info Bit 18(2 lane:0,4 lane:1): %d\n", usb_info_bit18);
+	//////////////////// inter-lane skew improvement
+
+	DPTXMSG("DPTX MAX LANE COUNT: %d\n", MAX_LANECOUNT);
+	if (MAX_LANECOUNT == 4){
+		for (i = 1; i <= 4; i++)
+			msPhyWrite4ByteMask(mtk_dp, 0x0100 * i, BIT(12)|BIT(13) ,BIT(12)|BIT(13));
+	} else {
+		msPhyWrite4ByteMask(mtk_dp, 0x0100, BIT(12) ,BIT(12)|BIT(13));
+		msPhyWrite4ByteMask(mtk_dp, 0x0200, BIT(12) ,BIT(12)|BIT(13));
 	}
-	//msPhyWriteByte(mtk_dp, 0x01A0, 0x47);
-	msPhyWriteByte(mtk_dp, 0x01A0, 0x46);
-	mdelay(25);
-	//msPhyWriteByte(mtk_dp, 0x02A0, 0x47);
-	msPhyWriteByte(mtk_dp, 0x02A0, 0x46);
-	mdelay(25);
-	msPhyWriteByte(mtk_dp, 0x03A0, 0x47);
-	udelay(25);
-	msPhyWriteByte(mtk_dp, 0x04A0, 0x47);
-	udelay(25);
+	// SW Patch 4.4
+	msPhyWrite4Byte(mtk_dp, 0x1138,0x110E0C0A);
+	msPhyWrite4Byte(mtk_dp, 0x1238,0x110E0C0A);
+	msPhyWrite4Byte(mtk_dp, 0x1338,0x110E0C0A);
+	msPhyWrite4Byte(mtk_dp, 0x1438,0x110E0C0A);
+
+	msPhyWrite4Byte(mtk_dp, 0x113C,0x1212110E);
+	msPhyWrite4Byte(mtk_dp, 0x123C,0x1212110E);
+	msPhyWrite4Byte(mtk_dp, 0x133C,0x1212110E);
+	msPhyWrite4Byte(mtk_dp, 0x143C,0x1212110E);
+
+	msPhyWrite4Byte(mtk_dp, 0x1140,0x00001815);
+	msPhyWrite4Byte(mtk_dp, 0x1240,0x00001815);
+	msPhyWrite4Byte(mtk_dp, 0x1340,0x00001815);
+	msPhyWrite4Byte(mtk_dp, 0x1440,0x00001815);
+
+	msPhyWrite4Byte(mtk_dp, 0x1144,0x07040200);
+	msPhyWrite4Byte(mtk_dp, 0x1244,0x07040200);
+	msPhyWrite4Byte(mtk_dp, 0x1344,0x07040200);
+	msPhyWrite4Byte(mtk_dp, 0x1444,0x07040200);
+
+	msPhyWrite4Byte(mtk_dp, 0x1148,0x00060300);
+	msPhyWrite4Byte(mtk_dp, 0x1248,0x00060300);
+	msPhyWrite4Byte(mtk_dp, 0x1348,0x00060300);
+	msPhyWrite4Byte(mtk_dp, 0x1448,0x00060300);
+
+	msPhyWrite4Byte(mtk_dp, 0x114C,0x00000003);
+	msPhyWrite4Byte(mtk_dp, 0x124C,0x00000003);
+	msPhyWrite4Byte(mtk_dp, 0x134C,0x00000003);
+	msPhyWrite4Byte(mtk_dp, 0x144C,0x00000003);
 
 	mhal_DPTx_phy_param_init(mtk_dp, phy_param, ARRAY_SIZE(phy_param));
 }
 
-void mhal_DPTx_PHYSetting(struct mtk_dp *mtk_dp)
+void mhal_DPTx_PHYSetting(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 {
 	if (mtk_dp->priv && mtk_dp->priv->data &&
 			mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+		mhal_DPTx_hw_phy_set_param(mtk_dp, MAX_LANECOUNT);
 		mhal_DPTx_phyd_power_on(mtk_dp);
-		mhal_DPTx_hw_phy_set_param(mtk_dp);
-
-		msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
-				0x1 << FORCE_PWR_STATE_EN_FLDMASK_POS, FORCE_PWR_STATE_EN_FLDMASK);
-		msPhyWrite4Byte(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_BIT_RATE, 0x0);
-		msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
-				0x3 << FORCE_PWR_STATE_EN_FLDMASK_POS, FORCE_PWR_STATE_EN_FLDMASK);
-		udelay(100);
 	} else {
 		uint32_t value = 0;
 		uint8_t mask = 0x3F;
@@ -2923,11 +2959,29 @@ void mhal_DPTx_SetAuxSwap(struct mtk_dp *mtk_dp, bool enable)
 	DPTXFUNC();
 
 	if (enable) {
+		// aux swap
 		msWrite4ByteMask(mtk_dp, REG_360C_AUX_TX_P0, 0, BIT(15));
 		msWrite4ByteMask(mtk_dp, REG_3680_AUX_TX_P0, 0, BIT(0));
+		if (mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+			// Phy porting guide (inter-lane skew improvement)
+			msPhyWriteByte(mtk_dp, 0x01A0, 0x46);
+			msPhyWriteByte(mtk_dp, 0x02A0, 0x46);
+			msPhyWriteByte(mtk_dp, 0x03A0, 0x47);
+			msPhyWriteByte(mtk_dp, 0x04A0, 0x47);
+		}
+		DPTXMSG("set normal plug setting");
 	} else {
+		// aux swap
 		msWrite4ByteMask(mtk_dp, REG_360C_AUX_TX_P0, BIT(15), BIT(15));
 		msWrite4ByteMask(mtk_dp, REG_3680_AUX_TX_P0, BIT(0), BIT(0));
+		if (mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+			// Phy porting guide (inter-lane skew improvement)
+			msPhyWriteByte(mtk_dp, 0x01A0, 0x47);
+			msPhyWriteByte(mtk_dp, 0x02A0, 0x47);
+			msPhyWriteByte(mtk_dp, 0x03A0, 0x46);
+			msPhyWriteByte(mtk_dp, 0x04A0, 0x46);
+		}
+		DPTXMSG("set flipped plug setting");
 	}
 }
 
