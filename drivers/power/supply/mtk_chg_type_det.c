@@ -287,12 +287,9 @@ static int mtk_ctd_probe(struct platform_device *pdev)
 			str = "primary_chg";
 		}
 
-#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
-		mci->bc12_psy[i] = devm_power_supply_get_by_phandle(&pdev->dev,
-							"bc12");
-#else
+
 		mci->bc12_psy[i] = power_supply_get_by_name("primary_chg");
-#endif
+
 		if (!mci->bc12_psy[i]) {
 			dev_notice(&pdev->dev, "Failed to get charger psy, charger psy is not ready\n");
 			return -EPROBE_DEFER;

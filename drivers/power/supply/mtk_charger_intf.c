@@ -363,12 +363,9 @@ bool is_charger_exist(struct mtk_charger *info)
 	if (chg_psy == NULL || IS_ERR(chg_psy)) {
 		chr_err("%s retry to get chg_psy\n", __func__);
 
-#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
-		chg_psy = devm_power_supply_get_by_phandle(&info->pdev->dev,
-						       "charger");
-#else
+
 		chg_psy = power_supply_get_by_name("primary_chg");
-#endif
+
 		info->chg_psy = chg_psy;
 	}
 
@@ -398,12 +395,9 @@ int get_charger_type(struct mtk_charger *info)
 
 	if (bc12_psy == NULL || IS_ERR(bc12_psy)) {
 		chr_err("%s retry to get bc12_psy\n", __func__);
-#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
-		bc12_psy = devm_power_supply_get_by_phandle(&info->pdev->dev,
-						       "charger");
-#else
+
 		bc12_psy = power_supply_get_by_name("primary_chg");
-#endif
+
 		info->bc12_psy = bc12_psy;
 	}
 
@@ -445,12 +439,9 @@ int get_usb_type(struct mtk_charger *info)
 
 	if (bc12_psy == NULL || IS_ERR(bc12_psy)) {
 		chr_err("%s retry to get bc12_psy\n", __func__);
-#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
-		bc12_psy = devm_power_supply_get_by_phandle(&info->pdev->dev,
-						       "charger");
-#else
+
 		bc12_psy = power_supply_get_by_name("primary_chg");
-#endif
+
 		info->bc12_psy = bc12_psy;
 	}
 	if (bc12_psy == NULL || IS_ERR(bc12_psy)) {
