@@ -5987,15 +5987,15 @@
 	audio_sram@11212000 {
 		compatible = "mediatek,audio_sram";
 		reg = <0 0x11212000 0 0xd000>;
-		prefer_mode = <0>;
-		mode_size = <0x9c00 0xd000>;
-		block_size = <0x1000>;
+		prefer-mode = <0>;
+		mode-size = <0x9c00 0xd000>;
+		block-size = <0x1000>;
 	};
 
-	snd_scp_ultra: snd_scp_ultra {
-		compatible = "mediatek,snd_scp_ultra";
-		scp_ultra_dl_memif_id = <0x7>;
-		scp_ultra_ul_memif_id = <0xf>;
+	snd_scp_ultra: snd-scp-ultra {
+		compatible = "mediatek,snd-scp-ultra";
+		scp-ultra-dl-memif-id = <0x7>;
+		scp-ultra-ul-memif-id = <0xf>;
 	};
 
 	btcvsd_snd: mtk-btcvsd-snd@18050000 {
