@@ -676,7 +676,7 @@ void mtk_layering_rule_init(struct drm_device *dev)
 		const struct mtk_addon_scenario_data *addon_data;
 		const struct mtk_addon_module_data *module_data;
 		const struct mtk_addon_path_data *path_data;
-		struct mtk_ddp_comp *comp;
+		struct mtk_ddp_comp *comp = NULL;
 		int i;
 
 		addon_data = mtk_addon_get_scenario_data(__func__, private->crtc[0], ONE_SCALING);
