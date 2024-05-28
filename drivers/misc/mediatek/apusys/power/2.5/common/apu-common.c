@@ -20,20 +20,28 @@ static bool _valid_ad(struct apu_dev *ad)
 {
 	if (IS_ERR(ad) || !ad->df ||
 	    !ad->df->profile || !ad->df->profile->max_state) {
-		if (IS_ERR(ad))
+		if (IS_ERR(ad)) {
 			apower_warn(ad->dev, "IS_ERR(ad)\n");
+			goto _dump;
+		}
 
-		if (!ad->df)
+		if (!ad->df) {
 			apower_warn(ad->dev, "!ad->df\n");
+			goto _dump;
+		}
 
-		if (!ad->df->profile)
+		if (!ad->df->profile) {
 			apower_warn(ad->dev, "!ad->df->profile\n");
+			goto _dump;
+		}
 
 		if (!ad->df->profile->max_state)
 			apower_warn(ad->dev, "!ad->df->profile->max_state\n");
 
+_dump:
 		apower_warn(ad->dev, "%ps: Invalid input.\n",
 			   __builtin_return_address(0));
+
 		return false;
 	}
 	return true;
@@ -67,10 +75,9 @@ const int apu_dev2_domain(enum DVFS_USER user)
 		[APUCONN] = V_APU_CONN,
 	};
 
-	if (user < 0 ||
-		((user != VPU0) && (user != VPU1) && (user != VPU) &&
+	if ((user != VPU0) && (user != VPU1) && (user != VPU) &&
 		 (user != MDLA0) && (user != MDLA) &&
-		 (user != APUIOMMU) && (user != APUCONN)))
+		 (user != APUIOMMU) && (user != APUCONN))
 		return -ENODEV;
 
 	return domain[user];
@@ -104,7 +111,7 @@ const char *apu_dev_string(enum DVFS_USER user)
 		[APUVB]   = "APUVB",
 	};
 
-	if (user < 0 || user >= ARRAY_SIZE(names))
+	if (user >= ARRAY_SIZE(names))
 		return NULL;
 
 	return names[user];
@@ -207,8 +214,12 @@ enum DVFS_USER apu_dev_user(const char *name)
 int apu_add_devfreq(struct apu_dev *ad)
 {
 
-	if (!ad || ad->user < 0 || ad->user > APUSYS_POWER_USER_NUM) {
-		apower_err(ad->dev, "%s: Invalid parameters.\n", __func__);
+	if (!ad)
+		return -EINVAL;
+
+	if (ad->user < 0 || ad->user > APUSYS_POWER_USER_NUM) {
+		if (ad->dev)
+			apower_err(ad->dev, "%s: Invalid parameters.\n", __func__);
 		return -EINVAL;
 	}
 

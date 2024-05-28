@@ -994,19 +994,28 @@ static int apu_misc_init(struct apu_dev *ad)
 	int boost, opp;
 	ulong freq = 0, volt = 0;
 
-	if (ad->user == APUCONN)
+	if (ad->user == APUCONN) {
 		ret = apu_rpc_init_done(ad);
+		if (ret)
+			goto out;
+
+	}
 
 	/* for mt6877 init ACC, which is located in vcore ao domain */
-	if (!IS_ERR_OR_NULL(ad->aclk->ops->acc_init))
-		ad->aclk->ops->acc_init(ad->aclk);
+	if (!IS_ERR_OR_NULL(ad->aclk->ops->acc_init)) {
+		ret = ad->aclk->ops->acc_init(ad->aclk);
+		if (ret)
+			goto out;
+	}
 
 	for (;;) {
 		if (apupw_dbg_get_loglvl() < VERBOSE_LVL)
 			break;
 		if (IS_ERR(dev_pm_opp_find_freq_ceil(ad->dev, &freq)))
 			break;
-		apu_get_recommend_freq_volt(ad->dev, &freq, &volt, 0);
+		ret = apu_get_recommend_freq_volt(ad->dev, &freq, &volt, 0);
+		if (ret)
+			break;
 		opp = apu_freq2opp(ad, freq);
 		boost = apu_opp2boost(ad, opp);
 		aprobe_info(ad->dev, "[%s] opp/boost/freq/volt %d/%d/%lu/%lu\n",
@@ -1029,6 +1038,7 @@ static int apu_misc_init(struct apu_dev *ad)
 				   __func__, apu_opp2freq(ad, opp));
 		freq++;
 	}
+out:
 	return ret;
 }
 
