@@ -146,7 +146,7 @@ static int hw_semaphore_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct hw_semaphore *hw_sema;
-	u32 base_tmp, tmp, i, master_num, offset;
+	u32 base_tmp, tmp = 0, i, master_num, offset;
 
 	dev_notice(dev, "%s: start to probe\n", __func__);
 

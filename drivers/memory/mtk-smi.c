@@ -4770,10 +4770,6 @@ static const struct mtk_smi_common_plat mtk_smi_common_gen2 = {
 	.gen = MTK_SMI_GEN2,
 };
 
-static const struct mtk_smi_common_plat mtk_smi_common_gen3 = {
-	.gen = MTK_SMI_GEN3,
-};
-
 static const struct mtk_smi_common_plat mtk_smi_common_mt6779 = {
 	.gen		= MTK_SMI_GEN2,
 	.has_gals	= true,
@@ -5190,8 +5186,11 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, common);
 
-	if (of_parse_phandle(dev->of_node, "mediatek,cmdq", 0))
+	if (of_parse_phandle(dev->of_node, "mediatek,cmdq", 0)) {
 		kthr = kthread_run(smi_cmdq, dev, __func__);
+		if (IS_ERR(kthr))
+			pr_notice("Failed to create mediatek,cmdq kthread\n");
+	}
 
 	if (of_property_read_bool(dev->of_node, "skip-rpm-cb"))
 		common->skip_rpm_cb = true;
