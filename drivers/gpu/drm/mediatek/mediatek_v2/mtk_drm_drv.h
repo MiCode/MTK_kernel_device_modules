@@ -132,7 +132,6 @@ enum MTK_CONNECTOR_PROP {
 	CONNECTOR_PROP_MAX,
 };
 
-
 struct mtk_connector_state {
 	struct drm_connector_state base;
 
@@ -161,6 +160,17 @@ struct lateinit_task {
 	struct kthread_work work;
 };
 
+#define A0_CHIP	0
+#define B0_CHIP	1
+
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
 struct mtk_drm_private {
 	struct drm_device *drm;
 	struct device *dma_dev;
@@ -179,6 +189,8 @@ struct mtk_drm_private {
 	unsigned int req_hrt[MAX_CRTC];
 	unsigned int req_hrt_channel_bw[MAX_CRTC][BW_CHANNEL_NR];
 	unsigned int num_pipes;
+
+	unsigned int sw_ver;
 
 	unsigned int session_id[MAX_SESSION_COUNT];
 	unsigned int num_sessions;
