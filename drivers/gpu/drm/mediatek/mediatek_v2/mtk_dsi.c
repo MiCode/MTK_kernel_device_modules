@@ -13525,6 +13525,12 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 			goto error;
 	}
 
+	dev_info(dev, "DSI_STATE_DGB6-9[%u %u %u %u]\n",
+		readl(dsi->regs + DSI_STATE_DBG6(dsi->driver_data)),
+		readl(dsi->regs + DSI_STATE_DBG7(dsi->driver_data)),
+		readl(dsi->regs + DSI_STATE_DBG8(dsi->driver_data)),
+		readl(dsi->regs + DSI_STATE_DBG9(dsi->driver_data)));
+
 	dsi->phy = devm_phy_get(dev, "dphy");
 	if (IS_ERR(dsi->phy)) {
 		ret = PTR_ERR(dsi->phy);
