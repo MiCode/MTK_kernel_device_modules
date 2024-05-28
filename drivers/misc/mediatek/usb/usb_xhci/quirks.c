@@ -130,7 +130,6 @@ void xhci_mtk_apply_quirk(struct usb_device *udev)
 static void xhci_usb_snd_clear_packet_size(struct urb *urb)
 {
 	struct device *dev;
-	struct usb_interface *intf;
 	struct snd_usb_audio *chip;
 	struct snd_usb_endpoint *ep, *en;
 	struct snd_urb_ctx *ctx;
@@ -140,11 +139,7 @@ static void xhci_usb_snd_clear_packet_size(struct urb *urb)
 	if (!dev)
 		return;
 
-	intf = to_usb_interface(dev);
-	if (!intf)
-		return;
-
-	chip = usb_get_intfdata(intf);
+	chip = usb_get_intfdata(to_usb_interface(dev));
 	if (!chip)
 		return;
 
