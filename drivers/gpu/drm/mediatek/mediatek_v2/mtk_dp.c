@@ -229,6 +229,16 @@ int notify_uevent_user(struct notify_dev *sdev, int state)
 
 	return 0;
 }
+void dptx_shutdown(void)
+{
+	int ret;
+
+	g_mtk_dp->shutdown = 1;
+	DPTXMSG("unprepare dptx shutdown\n");
+	ret = pm_runtime_put_sync(g_mtk_dp->dev);
+	if (ret < 0)
+		DRM_ERROR("Failed to disable power domain: %d\n", ret);
+}
 
 void dptx_dump_reg(void)
 {
@@ -1513,7 +1523,7 @@ void mdrv_DPTx_StopSentSDP(struct mtk_dp *mtk_dp)
 int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 {
 	int ret = DPTX_NOERR;
-
+	int pm_ret;
 	if (mtk_dp->training_info.bCableStateChange) {
 		bool ubCurrentHPD = mhal_DPTx_GetHPDPinLevel(mtk_dp);
 
@@ -1555,7 +1565,12 @@ int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 			DPTXMSG("unprepare dp clks\n");
 			mtk_dp_intf_unprepare_clk();
 			DPTXMSG("Power OFF %d", mtk_dp->bPowerOn);
-			pm_runtime_put_sync(mtk_dp->dev);
+			if(mtk_dp->shutdown == 0) {
+				pm_ret = pm_runtime_put_sync(mtk_dp->dev);
+				if (pm_ret < 0)
+					DRM_ERROR("Failed to disable power domain: %d\n", pm_ret);
+			} else
+				DPTXMSG("thread dptx_shutdown\n");
 			if (mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
 				if (mtk_dp->priv->dpc_dev)
 					pm_runtime_put_sync(mtk_dp->priv->dpc_dev);

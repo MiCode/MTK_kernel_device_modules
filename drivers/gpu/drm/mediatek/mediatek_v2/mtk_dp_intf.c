@@ -804,6 +804,12 @@ static void mtk_dp_intf_unprepare(struct mtk_ddp_comp *comp)
 
 	/* disable dp intf clk */
 	if (dp_intf != NULL) {
+		mtk_crtc = dp_intf->ddp_comp.mtk_crtc;
+		if(mtk_crtc) {
+			priv = mtk_crtc->base.dev->dev_private;
+			if(atomic_read(&priv->kernel_pm.status) == KERNEL_SHUTDOWN)
+				dptx_shutdown();
+		}
 		clk_disable_unprepare(dp_intf->hf_fmm_ck);
 		clk_disable_unprepare(dp_intf->hf_fdp_ck);
 		mtk_crtc = dp_intf->ddp_comp.mtk_crtc;
