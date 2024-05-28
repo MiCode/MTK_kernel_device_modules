@@ -1309,8 +1309,10 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 		if (cksys2_regmap) {
 			/* chk mux is on */
 			regmap_read(cksys2_regmap, scpd->data->chk_data.hwv_debug_mux_ofs_opt, &val);
-			if ((val & scpd->data->chk_data.hwv_debug_mux_shift_opt) == 0)
+			if ((val & scpd->data->chk_data.hwv_debug_mux_shift_opt) == 0) {
+				ret = -EINVAL;
 				goto err_mux_off;
+			}
 		}
 	}
 
@@ -1327,8 +1329,10 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 		if ((val & BIT(scpd->data->hwv_shift)) == 0)
 			break;
 
-		if (i > MTK_POLL_HWV_PREPARE_CNT)
+		if (i > MTK_POLL_HWV_PREPARE_CNT) {
+			ret = -ETIMEDOUT;
 			goto err_hwv_vote;
+		}
 		i++;
 		udelay(MTK_POLL_HWV_PREPARE_US);
 	} while (1);
