@@ -398,7 +398,7 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 	}
 
 	if (eenv->wl_support) {
-		unsigned int output[6], val[MAX_NR_CPUS];
+		unsigned int output[6] = {0}, val[MAX_NR_CPUS];
 
 		if (is_dsu_pwr_triggered(eenv->wl)) {
 			eenv_dsu_init(eenv->android_vendor_data1, false, eenv->wl,
