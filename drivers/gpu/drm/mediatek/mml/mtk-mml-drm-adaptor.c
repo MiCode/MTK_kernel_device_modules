@@ -308,7 +308,7 @@ enum mml_mode mml_drm_query_frame(struct mml_drm_ctx *dctx, struct mml_frame_inf
 
 not_support:
 	mml_mmp2(query_mode, MMPROFILE_FLAG_PULSE,
-		info->mode, MML_MODE_NOT_SUPPORT, 0, reason);
+		info->mode, (MML_MODE_NOT_SUPPORT & 0xffff), 0, reason);
 	mml_msg("[drm]query mode not support reason %d", (s32)reason);
 	return MML_MODE_NOT_SUPPORT;
 }

@@ -270,8 +270,12 @@ u32 mml_topology_get_mode_caps(void)
 		else
 			/* enable mdp decouple bit if no mml dc2 support */
 			modes = BIT(MML_MODE_MML_DECOUPLE) | BIT(MML_MODE_MDP_DECOUPLE);
-		if (tp_node->op->support_couple)
-			modes |= BIT(tp_node->op->support_couple());
+		if (tp_node->op->support_couple) {
+			enum mml_mode m = tp_node->op->support_couple();
+
+			if (m >= 0)
+				modes |= BIT(m);
+		}
 
 		ip = tp_node->ip;
 	}
@@ -1264,6 +1268,12 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 		return;
 	}
 
+	/* this task must done right now, skip all compare */
+	if (unlikely(!tp)) {
+		mml_err("%s mml_topology_get_cache return null", __func__);
+		return;
+	}
+
 	mml_trace_ex_begin("%s", __func__);
 	mutex_lock(&tp->qos_mutex);
 
@@ -1326,11 +1336,6 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 		}
 
 		if (timespec64_compare(&curr_time, &task_pipe_cur->task->end_time) >= 0) {
-			/* this task must done right now, skip all compare */
-			if (unlikely(!tp)) {
-				mml_err("%s mml_topology_get_cache return null", __func__);
-				goto done;
-			}
 			throughput = mml_qos_max_freq(cfg->path[pipe], tp);
 			goto done;
 		}

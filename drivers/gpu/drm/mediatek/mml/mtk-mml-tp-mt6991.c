@@ -1559,6 +1559,9 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 	if (unlikely(mml_path_mode))
 		return mml_path_mode;
 
+	if (unlikely(!tp))
+		goto not_support;
+
 	/* for alpha support */
 	if (info->alpha) {
 		*reason = mml_query_alpha;

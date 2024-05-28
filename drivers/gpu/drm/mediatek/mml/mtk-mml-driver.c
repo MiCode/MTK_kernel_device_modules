@@ -386,10 +386,14 @@ void mml_qos_init(struct mml_dev *mml, struct platform_device *pdev, u32 sysid)
 u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid)
 {
 	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
-	struct mml_sys_qos *sysqos = &tp->qos[sysid];
+	struct mml_sys_qos *sysqos;
 	u32 tput = 0, i;
 	int volt;
 
+	if (unlikely(!tp))
+		return 0;
+
+	sysqos = &tp->qos[sysid];
 	if (!sysqos->reg && !sysqos->dvfs_clk)
 		return 0;
 
