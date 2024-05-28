@@ -741,9 +741,9 @@ static int mtk_ovl_blender_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 	case IRQ_LEVEL_NORMAL: {
 		unsigned int inten;
 
-		inten = REG_FLD_VAL(FRAME_DONE, 1) |
-				REG_FLD_VAL(ABNORMAL_SOF, 1) |
-				REG_FLD_VAL(OVL_START_INTEN, 1);
+		//inten = REG_FLD_VAL(FRAME_DONE, 1) |
+		//		REG_FLD_VAL(ABNORMAL_SOF, 1) |
+		//		REG_FLD_VAL(OVL_START_INTEN, 1);
 		inten = 0; /* remove me after irq handling done */
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_OVL_BLD_INTSTA, 0,
@@ -1290,7 +1290,7 @@ static int mtk_disp_ovl_blender_probe(struct platform_device *pdev)
 
 	ranges = of_get_property(dev->of_node, "dma-ranges", &len);
 	if (ranges && priv->data && priv->data->is_support_34bits)
-		dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
+		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
 
 	writel(0, priv->ddp_comp.regs + DISP_REG_OVL_BLD_INTSTA);
 	writel(0, priv->ddp_comp.regs + DISP_REG_OVL_BLD_INTEN);
