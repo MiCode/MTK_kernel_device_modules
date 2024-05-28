@@ -282,9 +282,6 @@ enum over_thres_type is_task_over_thres(struct task_struct *p)
 static DEFINE_SPINLOCK(deferrable_lock);
 static void sched_avg_deferred_func(struct work_struct *work)
 {
-	u64 start_time = 0;
-
-	start_time = sched_clock();
 	over_thresh_chg_notify();
 	printk_deferred_once("core_clt reset\n");
 }
@@ -334,7 +331,6 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 	u64 curr_time = sched_clock();
 	s64 diff;
 	u64 dn_tmp_avg = 0, up_tmp_avg = 0;
-	u32 cpumask = 0;
 	bool clk_faulty = 0;
 	unsigned long flags;
 	int cpu = 0;
@@ -378,7 +374,6 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 
 		if ((s64) (curr_time - cpu_over_thres->dn_last_update_time < 0)) {
 			clk_faulty = 1;
-			cpumask |= 1 << cpu;
 			spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
 			break;
 		}
