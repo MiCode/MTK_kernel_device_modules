@@ -18,6 +18,8 @@
 #define USB2_PORT 2
 #define USB3_PORT 3
 
+#define SSUSB_SUSPEND_RESUME_TIMEOUT (HZ/5) /* 200ms */
+
 static inline struct ssusb_mtk *otg_sx_to_ssusb(struct otg_switch_mtk *otg_sx)
 {
 	return container_of(otg_sx, struct ssusb_mtk, otg_switch);
@@ -237,16 +239,18 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 
 	mtu3_dbg_trace(ssusb->dev, "set role : %s", usb_role_string(desired_role));
 
+	while (time_before(jiffies, jiffies + SSUSB_SUSPEND_RESUME_TIMEOUT)) {
+		if (!ssusb->is_suspended)
+			break;
+		dev_info(ssusb->dev, "wait for suspend/resume complete\n");
+		msleep(20);
+	}
+
 	pm_runtime_get_sync(ssusb->dev);
 
 	/* switch port to off first */
 	switch (current_role) {
 	case USB_ROLE_HOST:
-		if (ssusb->state == MTU3_STATE_SUSPEND) {
-			/* wait for host resume complete */
-			dev_info(ssusb->dev, "wait for host resume complete\n");
-			mdelay(100);
-		}
 		ssusb->is_host = false;
 		ssusb->host_dev = false;
 		ssusb_set_vbus(otg_sx, 0);

@@ -220,9 +220,6 @@ static void ssusb_smc_request(struct ssusb_mtk *ssusb,
 void ssusb_set_power_state(struct ssusb_mtk *ssusb,
 	enum mtu3_power_state state)
 {
-	if (state == MTU3_STATE_SUSPEND || state == MTU3_STATE_RESUME)
-		ssusb->state = state;
-
 	if (ssusb->plat_type == PLAT_FPGA ||
 	   (!ssusb->smc_req && !ssusb->hwrscs_vers))
 		return;
@@ -1479,7 +1476,9 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 	if (ssusb->clk_mgr && !ssusb->is_host)
 		return 0;
 
-	if (mtu3_readl(ssusb->mac_base, U3D_USB20_OPSTATE) == 0x21)
+	ssusb->is_suspended = true;
+
+	if (mtu3_readl(ssusb->mac_base, U3D_USB20_OPSTATE) == OPM_A_WRCON)
 		ssusb->host_dev = false;
 	else
 		ssusb->host_dev = true;
@@ -1493,13 +1492,13 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 		ssusb_host_u3_suspend(ssusb);
 		fallthrough;
 	case SSUSB_OFFLOAD_MODE_D_SS:
-		return 0;
+		goto suspend;
 	case SSUSB_OFFLOAD_MODE_S:
 		ssusb_host_u3_suspend(ssusb);
 		fallthrough;
 	case SSUSB_OFFLOAD_MODE_S_SS:
 		ssusb_set_power_state(ssusb, MTU3_STATE_OFFLOAD);
-		return 0;
+		goto suspend;
 	default:
 		break;
 	}
@@ -1525,7 +1524,8 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 		ssusb_host_suspend(ssusb);
 		break;
 	default:
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err;
 	}
 
 	ret = wait_for_ip_sleep(ssusb);
@@ -1545,6 +1545,7 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 	ssusb_phy_power_off(ssusb);
 	clk_bulk_disable_unprepare(BULK_CLKS_CNT, ssusb->clks);
 	ssusb_wakeup_set(ssusb, true);
+suspend:
 	return 0;
 
 sleep_err:
@@ -1554,13 +1555,14 @@ sleep_err:
 		ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_HOST);
 	}
 err:
+	ssusb->is_suspended = false;
 	return ret;
 }
 
 static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 {
 	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
-	int ret;
+	int ret = 0;
 
 	dev_info(ssusb->dev, "%s event %d\n", __func__, msg.event);
 
@@ -1576,13 +1578,13 @@ static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 		ssusb_host_u3_resume(ssusb);
 		fallthrough;
 	case SSUSB_OFFLOAD_MODE_D_SS:
-		return 0;
+		goto resume;
 	case SSUSB_OFFLOAD_MODE_S:
 		ssusb_host_u3_resume(ssusb);
 		fallthrough;
 	case SSUSB_OFFLOAD_MODE_S_SS:
 		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_ON);
-		return 0;
+		goto resume;
 	default:
 		break;
 	}
@@ -1609,7 +1611,8 @@ static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 	ret = resume_ip_and_ports(ssusb, msg);
 
 	ssusb_set_power_state(ssusb, MTU3_STATE_RESUME);
-
+resume:
+	ssusb->is_suspended = false;
 	return ret;
 phy_err:
 	clk_bulk_disable_unprepare(BULK_CLKS_CNT, ssusb->clks);
