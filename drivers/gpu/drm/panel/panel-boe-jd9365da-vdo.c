@@ -287,13 +287,9 @@ static int lcm_unprepare(struct drm_panel *panel)
 	lcm_dcs_write_seq_static(ctx, MIPI_DCS_ENTER_SLEEP_MODE);
 	msleep(150);
 
-	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->reset_gpio, 0);
-	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 
-	ctx->power_gpio = devm_gpiod_get(ctx->dev, "power", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->power_gpio, 0);
-	devm_gpiod_put(ctx->dev, ctx->power_gpio);
 
 	ctx->error = 0;
 	ctx->prepared = false;
@@ -310,24 +306,18 @@ static int lcm_prepare(struct drm_panel *panel)
 	if (ctx->prepared)
 		return 0;
 
-	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->reset_gpio, 0);
-	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 	msleep(20);
 
-	ctx->power_gpio = devm_gpiod_get(ctx->dev, "power", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->power_gpio, 1);
-	devm_gpiod_put(ctx->dev, ctx->power_gpio);
 	msleep(20);
 
-	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->reset_gpio, 1);
 	msleep(20);
 	gpiod_set_value(ctx->reset_gpio, 0);
 	msleep(20);
 	gpiod_set_value(ctx->reset_gpio, 1);
 	msleep(20);
-	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 
 #ifndef BYPASSI2C
 	_lcm_i2c_write_bytes(0x0, 0xf);
@@ -431,10 +421,7 @@ static int panel_ext_reset(struct drm_panel *panel, int on)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 
-	ctx->reset_gpio =
-		devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->reset_gpio, on);
-	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 
 	return 0;
 }
@@ -575,7 +562,6 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 			 PTR_ERR(ctx->reset_gpio));
 		return PTR_ERR(ctx->reset_gpio);
 	}
-	devm_gpiod_put(dev, ctx->reset_gpio);
 
 	ctx->power_gpio = devm_gpiod_get(dev, "power", GPIOD_OUT_HIGH);
 	if (IS_ERR(ctx->power_gpio)) {
@@ -583,7 +569,6 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 			 PTR_ERR(ctx->power_gpio));
 		return PTR_ERR(ctx->power_gpio);
 	}
-	devm_gpiod_put(dev, ctx->power_gpio);
 
 	ctx->prepared = true;
 	ctx->enabled = true;
