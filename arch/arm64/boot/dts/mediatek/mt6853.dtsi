@@ -2372,7 +2372,7 @@
 		};
 
 		pwm_leds {
-			compatible = "pwm-leds";
+			compatible = "mediatek,pwm-leds";
 
 			backlight {
 				label = "lcd-backlight";
