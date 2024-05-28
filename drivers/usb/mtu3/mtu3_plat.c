@@ -28,6 +28,10 @@
 
 #define PHY_MODE_DPPULLUP_SET 5
 #define PHY_MODE_DPPULLUP_CLR 6
+#define PHY_MODE_SUSPEND_DEV 9
+#define PHY_MODE_SUSPEND_NO_DEV 10
+#define PHY_MODE_RESUME_DEV 11
+#define PHY_MODE_RESUME_NO_DEV 12
 
 #define VS_VOTER_EN_LO 0x0
 #define VS_VOTER_EN_LO_SET 0x1
@@ -1520,6 +1524,16 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 	if (ret)
 		goto sleep_err;
 
+	if (ssusb->host_dev) {
+		dev_info(ssusb->dev, "%s device connected\n", __func__);
+		phy_set_mode_ext(ssusb->phys[0], PHY_MODE_USB_HOST,
+		PHY_MODE_SUSPEND_DEV);
+	} else {
+		dev_info(ssusb->dev, "%s no device connected\n", __func__);
+		phy_set_mode_ext(ssusb->phys[0], PHY_MODE_USB_HOST,
+		PHY_MODE_SUSPEND_NO_DEV);
+	}
+
 	ssusb_phy_power_off(ssusb);
 	clk_bulk_disable_unprepare(BULK_CLKS_CNT, ssusb->clks);
 	ssusb_wakeup_set(ssusb, true);
@@ -1569,6 +1583,16 @@ static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 	ret = clk_bulk_prepare_enable(BULK_CLKS_CNT, ssusb->clks);
 	if (ret)
 		goto clks_err;
+
+	if (ssusb->host_dev) {
+		dev_info(ssusb->dev, "%s device connected\n", __func__);
+		phy_set_mode_ext(ssusb->phys[0], PHY_MODE_USB_HOST,
+		PHY_MODE_RESUME_DEV);
+	} else {
+		dev_info(ssusb->dev, "%s no device connected\n", __func__);
+		phy_set_mode_ext(ssusb->phys[0], PHY_MODE_USB_HOST,
+		PHY_MODE_RESUME_NO_DEV);
+	}
 
 	ret = ssusb_phy_power_on(ssusb);
 	if (ret)

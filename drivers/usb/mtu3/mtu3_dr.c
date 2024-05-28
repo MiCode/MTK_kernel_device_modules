@@ -243,6 +243,7 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 	switch (current_role) {
 	case USB_ROLE_HOST:
 		ssusb->is_host = false;
+		ssusb->host_dev = false;
 		ssusb_set_vbus(otg_sx, 0);
 		/* wait for host device remove done, e.g. usb audio */
 		mdelay(100);
@@ -710,12 +711,43 @@ static ssize_t u3_lpm_show(struct device *dev,
 }
 static DEVICE_ATTR_RW(u3_lpm);
 
+static ssize_t host_dev_store(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
+	int dev_conn;
+
+	if (kstrtoint(buf, 10, &dev_conn))
+		return -EINVAL;
+
+	if (dev_conn != 0 && dev_conn != 1)
+		return -EINVAL;
+
+	ssusb->host_dev = (dev_conn == 1) ? true : false;
+
+	dev_info(dev, "host_dev %d\n", ssusb->host_dev);
+
+	return count;
+}
+
+static ssize_t host_dev_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", ssusb->host_dev ? 1 : 0);
+}
+static DEVICE_ATTR_RW(host_dev);
+
 static struct attribute *ssusb_dr_attrs[] = {
 	&dev_attr_mode.attr,
 	&dev_attr_role_mode.attr,
 	&dev_attr_max_speed.attr,
 	&dev_attr_saving.attr,
 	&dev_attr_u3_lpm.attr,
+	&dev_attr_host_dev.attr,
 	NULL
 };
 

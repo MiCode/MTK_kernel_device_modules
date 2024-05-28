@@ -372,6 +372,7 @@ struct ssusb_mtk {
 	u32 polling_scdlfps_time;
 	bool utmi_8bit;
 	bool smc_req;
+	bool host_dev;
 };
 
 /**
