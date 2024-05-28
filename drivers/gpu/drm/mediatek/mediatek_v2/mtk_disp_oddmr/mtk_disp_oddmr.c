@@ -2355,8 +2355,6 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 	unsigned int dbv_node = 0;
 	unsigned int fps_table_idx = 0;
 	unsigned int fps_node = 0;
-	unsigned int dbi_fps_node = 0;
-	unsigned int dbi_dbv_node = 0;
 	dma_addr_t addr = 0;
 	uint32_t value = 0, mask = 0;
 	unsigned int cur_dbv;
@@ -2461,7 +2459,7 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 
 			mtk_oddmr_dmr_static_cfg(comp, handle, &dmr_cfg_data->static_cfg);
 			mtk_oddmr_dmr_gain_cfg(comp,
-				handle, dbi_dbv_node, dbi_fps_node, dmr_cfg_data);
+				handle, dbv_node, fps_node, dmr_cfg_data);
 			//set dmr table
 			addr = g_oddmr_priv->dmr_data.mura_table[dbv_table_idx][fps_table_idx]->dma_addr;
 			if (oddmr_priv->data->dmr_version == MTK_DMR_V2) {
