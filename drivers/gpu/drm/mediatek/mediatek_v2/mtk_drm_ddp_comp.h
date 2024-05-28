@@ -1208,6 +1208,7 @@ struct mtk_ddp_comp {
 	u32 hrt_bw_other;
 	u32 last_hrt_bw;
 	u32 last_hrt_bw_other;
+	bool last_compr;
 	bool in_scaling_path;
 	struct mtk_ddp_comp *bind_comp;
 	int pm_ret;
