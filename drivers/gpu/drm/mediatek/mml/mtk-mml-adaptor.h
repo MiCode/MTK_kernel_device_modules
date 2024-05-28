@@ -19,7 +19,7 @@ struct mml_ctx {
 	const struct mml_config_ops *cfg_ops;
 	atomic_t job_serial;
 	atomic_t config_serial;
-	struct workqueue_struct *wq_config[MML_PIPE_CNT];
+	struct kthread_worker *kt_config[MML_PIPE_CNT];
 	struct workqueue_struct *wq_destroy;
 	struct kthread_worker *kt_done;
 	bool kt_priority;
