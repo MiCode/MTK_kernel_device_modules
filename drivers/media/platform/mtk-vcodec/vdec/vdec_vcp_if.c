@@ -167,6 +167,7 @@ static int vdec_vcp_ipi_send(struct vdec_inst *inst, void *msg, int len,
 	bool *vcu_in_ipi;
 	bool is_res = false;
 	int ipi_wait_type = IPI_SEND_WAIT;
+	struct mtk_ipi_device *ipidev;
 	struct vdec_ap_ipi_cmd *msg_cmd = (struct vdec_ap_ipi_cmd *)msg;
 	struct vdec_ap_ipi_cmd_indp *msg_indp = (struct vdec_ap_ipi_cmd_indp *)msg;
 	bool use_msg_indp = (is_ack || msg_cmd->msg_id == AP_IPIMSG_DEC_INIT ||
@@ -262,8 +263,14 @@ static int vdec_vcp_ipi_send(struct vdec_inst *inst, void *msg, int len,
 
 	mtk_v4l2_debug(2, "[%d] id %d len %d msg 0x%x is_ack %d %d",
 		inst->ctx->id, obj.id, obj.len, msg_cmd->msg_id, is_ack, *msg_signaled);
+
+	ipidev = vcp_get_ipidev(VDEC_FEATURE_ID);
+	if (!ipidev) {
+		mtk_vcodec_err(inst, "[%d] vcp_get_ipidev(VDEC_FEATURE_ID) get NULL", inst->ctx->id);
+		goto ipi_err_wait_and_unlock;
+	}
 	vcodec_trace_begin("mtk_ipi_send(msg 0x%x is_ack %d)", msg_cmd->msg_id, is_ack);
-	ret = mtk_ipi_send(vcp_get_ipidev(VDEC_FEATURE_ID), IPI_OUT_VDEC_1, ipi_wait_type, &obj,
+	ret = mtk_ipi_send(ipidev, IPI_OUT_VDEC_1, ipi_wait_type, &obj,
 		ipi_size, IPI_SEND_TIMEOUT_MS);
 
 	if (ret != IPI_ACTION_DONE) {
@@ -277,57 +284,56 @@ static int vdec_vcp_ipi_send(struct vdec_inst *inst, void *msg, int len,
 		return 0;
 	}
 
-	if (!is_ack) {
-		*vcu_in_ipi = true;
+	// if (!is_ack)
+
+	*vcu_in_ipi = true;
 wait_ack:
-		/* wait for VCP's ACK */
-		if (msg_cmd->msg_id == AP_IPIMSG_DEC_START &&
-		    mtk_vcodec_is_state(inst->ctx, MTK_STATE_INIT)) {
-			timeout = msecs_to_jiffies(IPI_FIRST_DEC_START_TIMEOUT_MS);
-		} else {
-			timeout = msecs_to_jiffies(IPI_TIMEOUT_MS);
-		}
-
-		if (ipi_wait_type == IPI_SEND_POLLING) {
-			ret = IPI_TIMEOUT_MS * 1000;
-			while ((*msg_signaled) == false) {
-				udelay(IPI_POLLING_INTERVAL_US);
-				ret -= IPI_POLLING_INTERVAL_US;
-				if (ret < 0) {
-					ret = 0;
-					break;
-				}
-			}
-		} else
-			ret = wait_event_timeout(*msg_wq, *msg_signaled, timeout);
-		*vcu_in_ipi = false;
-		*msg_signaled = false;
-
-		if (ret == 0) {
-			mtk_vcodec_err(inst, "wait vcp ipi %X ack time out! %d %d",
-				msg_cmd->msg_id, ret, inst->vcu.failure);
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-			dump_vcp_irq_status();
-#endif
-			goto ipi_err_wait_and_unlock;
-		} else if (-ERESTARTSYS == ret) {
-			mtk_vcodec_err(inst, "wait vcp ipi %X ack ret %d RESTARTSYS retry! (%d)",
-				msg_cmd->msg_id, ret, inst->vcu.failure);
-			goto wait_ack;
-		} else if (ret < 0) {
-			mtk_vcodec_err(inst, "wait vcp ipi %X ack fail ret %d! (%d)",
-				msg_cmd->msg_id, ret, inst->vcu.failure);
-		} else if (inst->vcu.abort) {
-			mtk_vcodec_err(inst, "wait vcp ipi %X ack abort ret %d! (%d)",
-				msg_cmd->msg_id, ret, inst->vcu.failure);
-			goto ipi_err_wait_and_unlock;
-		}
-
-		vcodec_trace_end();
+	/* wait for VCP's ACK */
+	if (msg_cmd->msg_id == AP_IPIMSG_DEC_START &&
+	    mtk_vcodec_is_state(inst->ctx, MTK_STATE_INIT)) {
+		timeout = msecs_to_jiffies(IPI_FIRST_DEC_START_TIMEOUT_MS);
+	} else {
+		timeout = msecs_to_jiffies(IPI_TIMEOUT_MS);
 	}
+
+	if (ipi_wait_type == IPI_SEND_POLLING) {
+		ret = IPI_TIMEOUT_MS * 1000;
+		while ((*msg_signaled) == false) {
+			udelay(IPI_POLLING_INTERVAL_US);
+			ret -= IPI_POLLING_INTERVAL_US;
+			if (ret < 0) {
+				ret = 0;
+				break;
+			}
+		}
+	} else
+		ret = wait_event_timeout(*msg_wq, *msg_signaled, timeout);
+	*vcu_in_ipi = false;
+	*msg_signaled = false;
+
+	if (ret == 0) {
+		mtk_vcodec_err(inst, "wait vcp ipi %X ack time out! %d %d",
+			msg_cmd->msg_id, ret, inst->vcu.failure);
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+		dump_vcp_irq_status();
+#endif
+		goto ipi_err_wait_and_unlock;
+	} else if (-ERESTARTSYS == ret) {
+		mtk_vcodec_err(inst, "wait vcp ipi %X ack ret %d RESTARTSYS retry! (%d)",
+			msg_cmd->msg_id, ret, inst->vcu.failure);
+		goto wait_ack;
+	} else if (ret < 0) {
+		mtk_vcodec_err(inst, "wait vcp ipi %X ack fail ret %d! (%d)",
+			msg_cmd->msg_id, ret, inst->vcu.failure);
+	} else if (inst->vcu.abort) {
+		mtk_vcodec_err(inst, "wait vcp ipi %X ack abort ret %d! (%d)",
+			msg_cmd->msg_id, ret, inst->vcu.failure);
+		goto ipi_err_wait_and_unlock;
+	}
+	vcodec_trace_end();
 	mutex_unlock(msg_mutex);
 
-	if (!is_ack && !is_res)
+	if (!is_res)
 		return inst->vcu.failure;
 
 	return 0;
@@ -720,6 +726,7 @@ int vcp_dec_ipi_handler(void *arg)
 		if (msg->msg_id == VCU_IPIMSG_DEC_MEM_ALLOC) {
 			shem_msg = (struct vdec_vcu_ipi_mem_op *)obj->share_buf;
 			if (shem_msg->mem.type == MEM_TYPE_FOR_SHM) {
+				struct mtk_ipi_device *ipidev;
 				struct vdec_common_vsi *vdec_com_vsi;
 
 				handle_vdec_mem_alloc((void *)shem_msg);
@@ -737,11 +744,15 @@ int vcp_dec_ipi_handler(void *arg)
 					vdec_com_vsi->vp_mode_info.enable_smmu);
 
 				shem_msg->msg_id = AP_IPIMSG_DEC_MEM_ALLOC_DONE;
-				ret = mtk_ipi_send(vcp_get_ipidev(VDEC_FEATURE_ID), IPI_OUT_VDEC_1, IPI_SEND_WAIT, obj,
-					PIN_OUT_SIZE_VDEC, 100);
-				if (ret != IPI_ACTION_DONE)
-					mtk_v4l2_err("mtk_ipi_send (msg_id %X) fail %d",
-						msg->msg_id, ret);
+				ipidev = vcp_get_ipidev(VDEC_FEATURE_ID);
+				if (!ipidev)
+					mtk_v4l2_err("[%d] vcp_get_ipidev(VDEC_FEATURE_ID) get NULL", shem_msg->ctx_id);
+				else {
+					ret = mtk_ipi_send(ipidev, IPI_OUT_VDEC_1, IPI_SEND_WAIT, obj,
+						PIN_OUT_SIZE_VDEC, 100);
+					if (ret != IPI_ACTION_DONE)
+						mtk_v4l2_err("mtk_ipi_send (msg_id %X) fail %d", msg->msg_id, ret);
+				}
 				vdec_vcp_free_mq_node(dev, mq_node);
 				continue;
 			}
@@ -1240,6 +1251,7 @@ void vdec_vcp_probe(struct mtk_vcodec_dev *dev)
 {
 	int ret, i;
 	struct mtk_vcodec_msg_node *mq_node;
+	struct mtk_ipi_device *ipidev;
 
 	mtk_v4l2_debug_enter();
 	INIT_LIST_HEAD(&dev->mq.head);
@@ -1256,10 +1268,14 @@ void vdec_vcp_probe(struct mtk_vcodec_dev *dev)
 	if (!VCU_FPTR(vcu_load_firmware))
 		mtk_vcodec_vcp |= 1 << MTK_INST_DECODER;
 
-	ret = mtk_ipi_register(vcp_get_ipidev(VDEC_FEATURE_ID), IPI_IN_VDEC_1,
-		vdec_vcp_ipi_isr, dev, &dev->dec_ipi_data);
-	if (ret)
-		mtk_v4l2_debug(0, " ipi_register, ret %d\n", ret);
+	ipidev = vcp_get_ipidev(VDEC_FEATURE_ID);
+	if (!ipidev)
+		mtk_v4l2_err("vcp_get_ipidev(VDEC_FEATURE_ID) get NULL, can't register ipi");
+	else {
+		ret = mtk_ipi_register(ipidev, IPI_IN_VDEC_1, vdec_vcp_ipi_isr, dev, &dev->dec_ipi_data);
+		if (ret)
+			mtk_v4l2_debug(0, " ipi_register, ret %d\n", ret);
+	}
 
 	kthread_run(vcp_dec_ipi_handler, dev, "vdec_ipi_recv");
 
