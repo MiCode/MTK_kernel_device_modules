@@ -603,6 +603,7 @@ static const struct drm_display_mode mode_30 = {
 	.vtotal = FRAME_HEIGHT + 10 + 2 + 16,
 };
 
+#if defined(SUPER_LOW_DISPLAY_MODE)
 static const struct drm_display_mode mode_24 = {
 	.clock = 119307,
 	.hdisplay = FRAME_WIDTH,
@@ -626,6 +627,7 @@ static const struct drm_display_mode mode_10 = {
 	.vsync_end = FRAME_HEIGHT + 10 + 2,
 	.vtotal = FRAME_HEIGHT + 10 + 2 + 16,
 };
+#endif
 
 static const struct drm_display_mode fhd_default_mode = {
 	.clock = FHD_CLK_DEF,
@@ -675,6 +677,7 @@ static const struct drm_display_mode fhd_mode_30 = {
 	.vtotal = FHD_FRAME_HEIGHT + FHD_VFP + FHD_VSA + FHD_VBP,
 };
 
+#if defined(SUPER_LOW_DISPLAY_MODE)
 static const struct drm_display_mode fhd_mode_24 = {
 	.clock = FHD_CLK_24,
 	.hdisplay = FHD_FRAME_WIDTH,
@@ -698,6 +701,7 @@ static const struct drm_display_mode fhd_mode_10 = {
 	.vsync_end = FHD_FRAME_HEIGHT + FHD_VFP + FHD_VSA,
 	.vtotal = FHD_FRAME_HEIGHT + FHD_VFP + FHD_VSA + FHD_VBP,
 };
+#endif
 
 enum SWITCH_MODE_DELAY switch_mode_delay_table[DISPLAY_MODE_NUM][DISPLAY_MODE_NUM] = {
 	/*DISPLAY_MODE_0 ... DISPLAY_MODE_11*/
@@ -1696,15 +1700,19 @@ static int lcm_get_modes(struct drm_panel *panel, struct drm_connector *connecto
 	struct drm_display_mode *mode1;
 	struct drm_display_mode *mode2;
 	struct drm_display_mode *mode3;
+#if defined(SUPER_LOW_DISPLAY_MODE)
 	struct drm_display_mode *mode4;
 	struct drm_display_mode *mode5;
+#endif
 
 	struct drm_display_mode *fhd_mode;
 	struct drm_display_mode *fhd_mode1;
 	struct drm_display_mode *fhd_mode2;
 	struct drm_display_mode *fhd_mode3;
+#if defined(SUPER_LOW_DISPLAY_MODE)
 	struct drm_display_mode *fhd_mode4;
 	struct drm_display_mode *fhd_mode5;
+#endif
 
 	mode = drm_mode_duplicate(connector->dev, &default_mode);
 	if (!mode) {
@@ -1750,6 +1758,7 @@ static int lcm_get_modes(struct drm_panel *panel, struct drm_connector *connecto
 	mode3->type = DRM_MODE_TYPE_DRIVER;
 	drm_mode_probed_add(connector, mode3);
 
+#if defined(SUPER_LOW_DISPLAY_MODE)
 	mode4 = drm_mode_duplicate(connector->dev, &mode_24);
 	if (!mode4) {
 		dev_err(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
@@ -1773,6 +1782,7 @@ static int lcm_get_modes(struct drm_panel *panel, struct drm_connector *connecto
 	drm_mode_set_name(mode5);
 	mode5->type = DRM_MODE_TYPE_DRIVER;
 	drm_mode_probed_add(connector, mode5);
+#endif
 
 	fhd_mode = drm_mode_duplicate(connector->dev, &fhd_default_mode);
 	if (!fhd_mode) {
@@ -1821,7 +1831,7 @@ static int lcm_get_modes(struct drm_panel *panel, struct drm_connector *connecto
 	drm_mode_set_name(fhd_mode3);
 	fhd_mode3->type = DRM_MODE_TYPE_DRIVER;
 	drm_mode_probed_add(connector, fhd_mode3);
-
+#if defined(SUPER_LOW_DISPLAY_MODE)
 	fhd_mode4 = drm_mode_duplicate(connector->dev, &fhd_mode_24);
 	if (!fhd_mode4) {
 		dev_err(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
@@ -1845,7 +1855,7 @@ static int lcm_get_modes(struct drm_panel *panel, struct drm_connector *connecto
 	drm_mode_set_name(fhd_mode5);
 	fhd_mode5->type = DRM_MODE_TYPE_DRIVER;
 	drm_mode_probed_add(connector, fhd_mode5);
-
+#endif
 	connector->display_info.width_mm = 64;
 	connector->display_info.height_mm = 129;
 
