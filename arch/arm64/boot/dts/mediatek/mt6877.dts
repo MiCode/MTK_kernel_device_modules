@@ -7038,7 +7038,6 @@
 		mdp-color-frame-done = <CMDQ_EVENT_MDP_COLOR0_FRAME_DONE>;
 		mdp-aal1-frame-done = <CMDQ_EVENT_MDP_AAL1_FRAME_DONE>;
 		mdp-aal-frame-done = <CMDQ_EVENT_MDP_AAL0_FRAME_DONE>;
-		dre30-hist-sram-start = <1536>;
 		interconnects =
 			<&mmqos MASTER_LARB_PORT(M4U_PORT_L2_MDP_RDMA0)
 				&mmqos SLAVE_COMMON(0)>,
@@ -7136,7 +7135,10 @@
 		isp-opp = <&opp_table_img>;
 		mdp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		isp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-
+		dre30-hist-sram-start = /bits/ 16 <1536>;
+		pq-rb-thread-id = /bits/ 16 <22>;
+		pq-rb-event-lock = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_MDP_WAIT>;
+		pq-rb-event-unlock = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_MDP_SET>;
 	};
 
 	mdp_rdma1: mdp_rdma1@1f004000 {
