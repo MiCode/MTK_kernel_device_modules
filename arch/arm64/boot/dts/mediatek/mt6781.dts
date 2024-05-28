@@ -1222,7 +1222,7 @@
 	};
 
 	/* Microtrust SW IRQ number 88(120) ~ 93(125) */
-	utos {
+	utos: utos {
 		compatible = "microtrust,utos";
 		interrupts = <GIC_SPI 88 IRQ_TYPE_EDGE_RISING 0>,
 		<GIC_SPI 89 IRQ_TYPE_EDGE_RISING 0>;
