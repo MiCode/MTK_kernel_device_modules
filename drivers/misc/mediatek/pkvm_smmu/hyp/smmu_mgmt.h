@@ -99,6 +99,7 @@ struct smmu_vm {
 	uint8_t identity_unmap_idx;
 	struct ipa_range identity_unmap[SMMU_MAP_UNMAP_REGION_NUM];
 	uint8_t ipa_granule;
+	struct ipa_range vm_ipa_range;
 };
 
 struct smmu_hyp_vms {
