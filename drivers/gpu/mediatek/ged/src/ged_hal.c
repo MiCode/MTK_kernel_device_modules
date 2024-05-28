@@ -628,8 +628,10 @@ static ssize_t eb_dvfs_policy_show(struct kobject *kobj,
 	ipi_data = (struct fdvfs_ipi_data *)ged_alloc_atomic(
 		sizeof(struct fdvfs_ipi_data));
 
-	if (!ipi_data)
+	if (!ipi_data) {
 		GED_LOGE("ged_alloc_atomic fail!\n");
+		return pos;
+	}
 
 	memset(ipi_data, 0, sizeof(struct fdvfs_ipi_data));
 

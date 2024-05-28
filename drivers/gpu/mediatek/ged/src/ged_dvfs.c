@@ -2246,7 +2246,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 
 		if (t_gpu > t_gpu_target_hd) {   // previous frame overdued
 			// adjust margin
-			temp = div_u64((gx_fb_dvfs_margin*(t_gpu-t_gpu_target_hd)), t_gpu_target_hd);
+			temp = div_u64(((u64)gx_fb_dvfs_margin*(t_gpu-t_gpu_target_hd)), t_gpu_target_hd);
 			if (temp < dvfs_min_margin_inc_step)
 				temp = dvfs_min_margin_inc_step;
 			gx_fb_dvfs_margin += temp;
@@ -2733,7 +2733,7 @@ static bool ged_dvfs_policy(
 				ged_update_margin_by_fps(t_gpu_target);
 				// overwrite t_gpu_target_hd in perf mode
 				if (g_tb_dvfs_margin_mode & DYNAMIC_TB_PERF_MODE_MASK)
-					t_gpu_target_hd = div_u64(t_gpu_target
+					t_gpu_target_hd = div_u64((u64)t_gpu_target
 						* (100 - g_tb_dvfs_margin_value_min), 100);
 
 				// margin modifying
