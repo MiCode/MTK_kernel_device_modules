@@ -13,7 +13,11 @@
  * Definition
  **************************************************/
 #define GPUFREQ_UNREFERENCED(param)     ((void)(param))
+#if IS_ENABLED(CONFIG_MTK_GPU_MT6877_SUPPORT)
+#define GPUFREQ_DEBUG_ENABLE            (1)
+#else
 #define GPUFREQ_DEBUG_ENABLE            (0)
+#endif
 #define GPUFREQ_TRACE_ENABLE            (0)
 #define GPUFREQ_FORCE_WDT_ENABLE        (0)
 #define GPUFERQ_TAG                     "[GPU/FREQ]"
