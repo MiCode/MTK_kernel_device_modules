@@ -908,7 +908,7 @@ static enum UT_RET_STATE mem_create_run_thread(enum TRUSTED_MEM_TYPE mem_type)
 		mem_kthread[mem_type][idx] =
 			kthread_run(mem_thread_alloc_test,
 				    (void *)&thread_param[mem_type][idx],
-				    thread_param[mem_type][idx].name);
+				    "%s", thread_param[mem_type][idx].name);
 		if (IS_ERR(mem_kthread[mem_type][idx]))
 			ASSERT_NOTNULL(NULL, "create kthread");
 		thread_param[mem_type][idx].running = true;
