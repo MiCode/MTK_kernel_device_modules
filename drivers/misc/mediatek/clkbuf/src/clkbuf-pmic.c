@@ -1399,7 +1399,6 @@ struct clkbuf_dts *parse_pmic_dts(struct clkbuf_dts *array,
 int clkbuf_pmic_init(struct clkbuf_dts *array, struct device *dev)
 {
 	struct match_pmic **match_pmic = matches_pmic;
-	struct clkbuf_hdlr *hdlr;
 	struct clkbuf_hw hw;
 	int i;
 	int nums = array->nums;
@@ -1408,7 +1407,6 @@ int clkbuf_pmic_init(struct clkbuf_dts *array, struct device *dev)
 	CLKBUF_DBG("\n");
 
 	for (i = 0; i < nums; i++, array++) {
-		hdlr = array->hdlr;
 		/*each init function should make sure array->hw is not null*/
 		hw = array->hw;
 		/*only need one PMIC obj, no need loop all obj*/

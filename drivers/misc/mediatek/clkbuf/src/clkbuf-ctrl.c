@@ -188,6 +188,10 @@ static struct clkbuf_dts *parse_dt(struct platform_device *pdev)
 
 	clkbuf_node = pdev->dev.of_node;
 	match = of_match_node(pdev->dev.driver->of_match_table, clkbuf_node);
+	if (!match) {
+		CLKBUF_ERR("CLKBUF probe fail\n");
+		return ERR_PTR(-ENODEV);
+	}
 
 	nums += count_pmic_node(clkbuf_node);
 
@@ -199,8 +203,8 @@ static struct clkbuf_dts *parse_dt(struct platform_device *pdev)
 	array = kzalloc(size, GFP_KERNEL);
 
 	if (!array) {
-		CLKBUF_DBG("-ENOMEM\n");
-		return NULL;
+		CLKBUF_ERR("-ENOMEM\n");
+		return ERR_PTR(-ENOMEM);
 	}
 
 	head = array;
@@ -226,8 +230,8 @@ static int clkbuf_probe(struct platform_device *pdev)
 	CLKBUF_DBG("\n");
 
 	array = parse_dt(pdev);
-	if (!array)
-		return -ENOMEM;
+	if (IS_ERR(array))
+		return PTR_ERR(array);
 
 	while (*init_call != NULL) {
 		(*init_call)(array, dev);
@@ -243,7 +247,7 @@ static int clkbuf_probe(struct platform_device *pdev)
 			CLKBUF_DBG("array<%lx>, index: %d, type:%d, nums:%d, perms:<%x>\n",
 				(unsigned long)array, i, array->hw.hw_type, array->nums, array->perms);
 
-			return -1;
+			return -EINVAL;
 		}
 	}
 	/* set _inited is the last step */
