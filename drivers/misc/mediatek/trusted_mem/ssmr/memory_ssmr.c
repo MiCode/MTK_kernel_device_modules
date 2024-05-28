@@ -104,12 +104,15 @@ int ssmr_query_heap_info(int heap_index, char *heap_name)
 {
 	int heap_id = 0;
 	int i;
+	int ret;
 
 	for (i = 0; i < __MAX_NR_SSMR_FEATURES; i++) {
 		if (i == heap_index) {
 			heap_id = _ssmr_heap_info[i].heap_id;
-			snprintf(heap_name, NAME_SIZE, "%s",
+			ret =snprintf(heap_name, NAME_SIZE, "%s",
 				 _ssmr_heap_info[i].heap_name);
+			if (ret)
+				pr_debug("snprintf fail\n");
 			return heap_id;
 		}
 	}
