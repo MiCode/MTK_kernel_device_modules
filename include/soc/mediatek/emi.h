@@ -114,7 +114,6 @@ void mtk_emidbg_dump(void);
 
 /* mtk emiisu api */
 void mtk_emiisu_record_off(void);
-void mtk_emiisu_record_on(void);
 
 /* mtk emimpu api */
 #if IS_ENABLED(CONFIG_MTK_EMI_LEGACY)

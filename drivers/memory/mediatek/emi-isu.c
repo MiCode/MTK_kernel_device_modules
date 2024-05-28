@@ -46,25 +46,6 @@ void mtk_emiisu_record_off(void)
 }
 EXPORT_SYMBOL(mtk_emiisu_record_off);
 
-void mtk_emiisu_record_on(void)
-{
-	struct emi_isu *isu;
-
-	if (!global_emi_isu)
-		return;
-
-	isu = global_emi_isu;
-
-	if (!(isu->con_addr))
-		return;
-
-	writel(0xDECDDECDU, isu->con_addr);
-	pr_info("%s: Turn on EMIISU dump\n", __func__);
-
-	dsb(sy);
-}
-EXPORT_SYMBOL(mtk_emiisu_record_on);
-
 static ssize_t emiisu_ctrl_show(struct device_driver *driver, char *buf)
 {
 	struct emi_isu *isu;
