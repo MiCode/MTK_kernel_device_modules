@@ -142,26 +142,29 @@ static int agov_event_handler(struct devfreq *df,
 		break;
 
 	case DEVFREQ_GOV_SUSPEND:
-		get_datas(gov_data, &parent_gov, &ad, &dev);
+		if (df->dev.parent->power.runtime_status == RPM_SUSPENDING) {
+			get_datas(gov_data, &parent_gov, &ad, &dev);
 
-		/* cancel devfreq work queue */
-		devfreq_monitor_suspend(df);
+			/* cancel devfreq work queue */
+			devfreq_monitor_suspend(df);
 
-		/* restore to default opp */
-		gov_data->req.value = gov_data->max_opp;
-		apu_dump_list(gov_data);
+			/* restore to default opp */
+			gov_data->req.value = gov_data->max_opp;
+			apu_dump_list(gov_data);
 
-		/* only allow leaf to update parent's opp */
-		if (!gov_data->depth) {
-			mutex_lock_nested(&gov_data->this->lock, gov_data->depth);
-			list_sort(NULL, &gov_data->head, apu_cmp);
-			update_parent(gov_data);
-			mutex_unlock(&gov_data->this->lock);
+			/* only allow leaf to update parent's opp */
+			if (!gov_data->depth) {
+				mutex_lock_nested(&gov_data->this->lock, gov_data->depth);
+				list_sort(NULL, &gov_data->head, apu_cmp);
+				update_parent(gov_data);
+				mutex_unlock(&gov_data->this->lock);
+			}
 		}
 		break;
 
 	case DEVFREQ_GOV_RESUME:
-		devfreq_monitor_resume(df);
+		if (df->dev.parent->power.runtime_status == RPM_RESUMING)
+			devfreq_monitor_resume(df);
 		break;
 
 	default:

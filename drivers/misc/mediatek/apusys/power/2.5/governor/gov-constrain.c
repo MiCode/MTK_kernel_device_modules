@@ -143,20 +143,22 @@ static int aconstrain_event_handler(struct devfreq *df,
 						 DEVFREQ_TRANSITION_NOTIFIER);
 		break;
 	case DEVFREQ_GOV_SUSPEND:
-		get_datas(gov_data, &parent_gov, &ad, &dev);
+		if (df->dev.parent->power.runtime_status == RPM_SUSPENDING) {
+			get_datas(gov_data, &parent_gov, &ad, &dev);
 
-		/* restore req to default opp */
-		gov_data->req.value = gov_data->max_opp;
-		apu_dump_list(gov_data);
+			/* restore req to default opp */
+			gov_data->req.value = gov_data->max_opp;
+			apu_dump_list(gov_data);
 
-		/* restore parent's req as default opp */
-		if (!IS_ERR_OR_NULL(parent_gov)) {
-			mutex_lock_nested(&parent_gov->this->lock, parent_gov->depth);
-			gov_data->req_parent.value = parent_gov->max_opp;
-			apu_dump_list(parent_gov);
-			list_sort(NULL, &parent_gov->head, apu_cmp);
-			ret = update_devfreq(gov_data->parent);
-			mutex_unlock(&parent_gov->this->lock);
+			/* restore parent's req as default opp */
+			if (!IS_ERR_OR_NULL(parent_gov)) {
+				mutex_lock_nested(&parent_gov->this->lock, parent_gov->depth);
+				gov_data->req_parent.value = parent_gov->max_opp;
+				apu_dump_list(parent_gov);
+				list_sort(NULL, &parent_gov->head, apu_cmp);
+				ret = update_devfreq(gov_data->parent);
+				mutex_unlock(&parent_gov->this->lock);
+			}
 		}
 		break;
 	case DEVFREQ_GOV_UPDATE_INTERVAL:
