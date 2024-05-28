@@ -55,7 +55,9 @@
 #define REG_UFS_MMIO_DBG_AXIM       0x1FC
 #define REG_UFS_EXTREG              0x2100
 #define REG_UFS_MPHYCTRL            0x2200
+#define REG_UFS_AXI_W_ULTRA_THR     0x220C
 #define REG_UFS_MTK_IP_VER          0x2240
+#define REG_UFS_MTK_OCS_ERR_STATUS  0x2244
 #define REG_UFS_MTK_STATUS          0x2248
 /* UPIU Monitor */
 #define REG_UFS_NOPOUT_MON          0x2280
@@ -159,6 +161,18 @@ enum {
 };
 
 /*
+ * Vendor specific reset control
+ */
+enum {
+	SW_RST_TARGET_UFSHCI        = 0x1,
+	SW_RST_TARGET_UNIPRO        = 0x2,
+	SW_RST_TARGET_UFSCPT        = 0x4,
+	SW_RST_TARGET_MPHY          = 0x8,
+};
+
+#define DOORBELL_CLR_TOUT_US		(1000 * 1000) /* 1 sec */
+
+/*
  * VS_DEBUGCLOCKENABLE
  */
 enum {
@@ -195,6 +209,7 @@ enum ufs_mtk_host_caps {
 
 	UFS_MTK_CAP_MCQ_BROKEN_RTC             = 1 << 10,
 	UFS_MTK_CAP_MPHY_DUMP                  = 1 << 11,
+	UFS_MTK_CAP_UFSHCI_PERF_HURISTIC       = 1 << 12,
 };
 
 struct ufs_mtk_crypt_cfg {
@@ -312,6 +327,12 @@ struct ufs_mtk_host {
 	int cpuhp_state;
 	struct hlist_node cpuhp_node;
 	bool legacy_ip_ver;
+
+	/* For perf heuristic integration */
+	u32 ufs_mtk_qcmd_r_cmd_cnt;  // cnt is for read/write cmd handling
+	u32 ufs_mtk_qcmd_w_cmd_cnt;
+	struct work_struct err_handle_work; // mtk specific err handling work
+	bool read_write_hw_err;  // boolean flag to capture hw error
 };
 
 #define UFSHCD_MAX_TAG	256
