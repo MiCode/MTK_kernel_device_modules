@@ -588,8 +588,8 @@ mtk_compute_energy(struct energy_env *eenv, struct perf_domain *pd,
 	/* calc indirect DSU share_buck */
 
 	if (is_dsu_pwr_triggered(eenv->wl)) {
-		if (dsu_freq_changed(eenv->android_vendor_data1) && !(shared_gear(eenv->gear_idx))
-				&& share_buck.gear_idx != -1) {
+		if ((share_buck.gear_idx != -1) && !(shared_gear(eenv->gear_idx))
+				&& dsu_freq_changed(eenv->android_vendor_data1)) {
 			struct root_domain *rd = this_rq()->rd;
 			struct perf_domain *pd_ptr, *share_buck_pd = 0;
 
@@ -636,15 +636,17 @@ calc_sharebuck_done:
 		dst_idx = 0;
 	}
 
-	gear_idx = eenv->gear_idx;
-	eenv->gear_idx = share_buck.gear_idx;
-	pd_idx = cpumask_first(share_buck.cpus);
-	share_buck_freq = pd_get_util_cpufreq(eenv, pd_cpus,
-			eenv->gear_max_util[share_buck.gear_idx][dst_idx],
-			eenv->pds_cpu_cap[pd_idx], arch_scale_cpu_capacity(pd_idx));
-	dsu_extern_volt = pd_get_freq_volt(cpumask_first(share_buck.cpus),
-			share_buck_freq, false, eenv->wl);
-	eenv->gear_idx = gear_idx;
+	if ((share_buck.gear_idx != -1)) {
+		gear_idx = eenv->gear_idx;
+		eenv->gear_idx = share_buck.gear_idx;
+		pd_idx = cpumask_first(share_buck.cpus);
+		share_buck_freq = pd_get_util_cpufreq(eenv, pd_cpus,
+				eenv->gear_max_util[share_buck.gear_idx][dst_idx],
+				eenv->pds_cpu_cap[pd_idx], arch_scale_cpu_capacity(pd_idx));
+		dsu_extern_volt = pd_get_freq_volt(cpumask_first(share_buck.cpus),
+				share_buck_freq, false, eenv->wl);
+		eenv->gear_idx = gear_idx;
+	}
 
 	if (PERCORE_L3_BW)
 		total_util = eenv->cpu_max_util[eenv->dst_cpu][0];
