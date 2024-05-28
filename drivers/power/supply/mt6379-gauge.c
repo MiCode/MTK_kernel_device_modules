@@ -473,6 +473,7 @@ struct mt6379_fg_info_data {
 	long long bat_vol_get_t1;
 
 	struct class *bat_cali_class;
+	struct device *cdev_dev;
 	int bat_cali_major;
 	dev_t bat_cali_devno;
 	struct cdev bat_cali_cdev;
@@ -484,7 +485,7 @@ struct mt6379_gauge_desc {
 	char *psy_desc_name;
 	char *mtk_gauge_name;
 	char *gauge_path_name;
-	char *cdev_gauge_name;
+	const char *cdev_gauge_name;
 };
 
 struct mt6379_priv {
@@ -1814,6 +1815,10 @@ static int read_hw_ocv_6379_power_on(struct mtk_gauge *gauge)
 
 	ret = regmap_raw_read(gauge->regmap, rg[bat_idx][MT6379_REG_AUXADC_ADC_OUT_PWRON_PCHR],
 			      &regval, sizeof(regval));
+	if (ret) {
+		dev_info(priv->dev, "%s, Failed to read BAT%d PWRON_PCHR\n", __func__, bat_idx + 1);
+		return ret;
+	}
 
 	adc_result_rdy = regval & AUXADC_ADC_RDY_PWRON_PCHR_MASK;
 	adc_result_reg = regval & AUXADC_ADC_OUT_PWRON_PCHR_MASK;
@@ -1855,9 +1860,15 @@ static int read_hw_ocv_6379_before_chgin(struct mtk_gauge *gauge)
 	const unsigned int bat_idx = priv->desc->bat_idx;
 	unsigned int sel = 0;
 	u16 regval = 0;
+	int ret;
 
-	regmap_raw_read(gauge->regmap, rg[bat_idx][MT6379_REG_AUXADC_ADC_OUT_WAKEUP_PCHR],
-			&regval, sizeof(regval));
+	ret = regmap_raw_read(gauge->regmap, rg[bat_idx][MT6379_REG_AUXADC_ADC_OUT_WAKEUP_PCHR],
+			      &regval, sizeof(regval));
+	if (ret) {
+		dev_info(priv->dev, "%s, Failed to read BAT%d WAKEUP_PCHR\n",
+			 __func__, bat_idx + 1);
+		return ret;
+	}
 
 	adc_result_rdy = regval & AUXADC_ADC_RDY_WAKEUP_PCHR_MASK;
 	adc_result_reg = regval & AUXADC_ADC_OUT_WAKEUP_PCHR_MASK;
@@ -1884,11 +1895,15 @@ static int read_hw_ocv_6379_power_on_rdy(struct mtk_gauge *gauge)
 {
 	struct mt6379_priv *priv = container_of(gauge, struct mt6379_priv, gauge);
 	const unsigned int bat_idx = priv->desc->bat_idx;
-	int pon_rdy = 0;
+	int pon_rdy = 0, ret;
 	u16 regval = 0;
 
-	regmap_raw_read(gauge->regmap, rg[bat_idx][MT6379_REG_AUXADC_ADC_OUT_PWRON_PCHR],
-			&regval, sizeof(regval));
+	ret = regmap_raw_read(gauge->regmap, rg[bat_idx][MT6379_REG_AUXADC_ADC_OUT_PWRON_PCHR],
+			      &regval, sizeof(regval));
+	if (ret) {
+		dev_info(priv->dev, "%s, Failed to read BAT%d PWRON_PCHR\n", __func__, bat_idx + 1);
+		return ret;
+	}
 
 	pon_rdy = (regval & AUXADC_ADC_RDY_PWRON_PCHR_MASK) ? 1 : 0;
 
@@ -2354,8 +2369,9 @@ static int average_current_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_f
 	*data = gauge->fg_hw_info.current_avg;
 
 	gauge->fg_hw_info.current_avg_valid = iavg_vld;
-	bm_debug(gauge->gm, "[fg_get_current_iavg] BAT%d current_avg:%d valid:%d\n",
-		 bat_idx + 1, *data, iavg_vld);
+	bm_debug(gauge->gm,
+		 "[fg_get_current_iavg] BAT%d current_avg:%d valid:%d is_bat_charging:%d\n",
+		 bat_idx + 1, *data, iavg_vld, is_bat_charging);
 
 	return 0;
 }
@@ -4530,7 +4546,6 @@ static int adc_cali_cdev_init(struct mtk_battery *gm, struct platform_device *pd
 	struct mtk_gauge *gauge = gm->gauge;
 	struct mt6379_priv *priv = container_of(gauge, struct mt6379_priv, gauge);
 	const unsigned int bat_idx = priv->desc->bat_idx;
-	struct class_device *class_dev = NULL;
 	int ret = 0;
 
 	mutex_init(&gauge->fg_mutex);
@@ -4550,9 +4565,15 @@ static int adc_cali_cdev_init(struct mtk_battery *gm, struct platform_device *pd
 
 	priv->fg_info.bat_cali_major = MAJOR(priv->fg_info.bat_cali_devno);
 	priv->fg_info.bat_cali_class = class_create(priv->desc->cdev_gauge_name);
-	class_dev = (struct class_device *)device_create(priv->fg_info.bat_cali_class, NULL,
-							 priv->fg_info.bat_cali_devno, NULL,
-							 priv->desc->cdev_gauge_name);
+	priv->fg_info.cdev_dev = device_create(priv->fg_info.bat_cali_class, NULL,
+						priv->fg_info.bat_cali_devno, NULL,
+						"%s", priv->desc->cdev_gauge_name);
+	if (IS_ERR(priv->fg_info.cdev_dev)) {
+		dev_info(priv->dev, "%s, Failed to create BAT%d cdev_dev\n",
+			 __func__, bat_idx + 1);
+		cdev_del(&priv->fg_info.bat_cali_cdev);
+		return PTR_ERR(priv->fg_info.cdev_dev);
+	}
 
 	return 0;
 }
