@@ -16603,10 +16603,16 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		battery2-path-rac-t1 = <65>;
 		battery2-path-rac-t2 = <65>;
 		battery2-path-rac-t3 = <65>;
-		max-temperature-stage = <3>;
 		temperature-threshold = <25 10 0>;
 		system-ocp = <15000>;
 		system-uvlo = <2400>;
+
+		bat0-aging-threshold = <500 1000>;
+		bat0-aging-multiples = <0 0>;
+		bat1-aging-threshold = <500 1000>;
+		bat1-aging-multiples = <0 0>;
+		bat2-aging-threshold = <500 1000>;
+		bat2-aging-multiples = <0 0>;
 
 		bat-ocv-table-num = <0>;
 
@@ -17035,32 +17041,44 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		compatible = "mediatek,low_battery_throttling";
 		lvsys-thd-enable = <1>;
 		vbat-thd-enable = <1>;
-		thd-volts-l = <
+		bat0-thd-volts-l = <
 			3400 3100 2900
 			3400 3100 2900
 			4400 3400 3100
 			4900 4800 4400>;
-		thd-volts-h = <
+		bat0-thd-volts-h = <
 			3500 3400 3100
 			3500 3400 3100
 			4500 4400 3400
 			5000 4900 4800>;
-		thd-volts-l-2s = <
+		bat1-thd-volts-l = <
 			3400 3100 2900
 			3400 3100 2900
 			4400 3400 3100
 			4900 4800 4400>;
-		thd-volts-h-2s = <
+		bat1-thd-volts-h = <
 			3500 3400 3100
 			3500 3400 3100
 			4500 4400 3400
 			5000 4900 4800>;
 		lvsys-thd-volt-l = <2900>;
 		lvsys-thd-volt-h = <3100>;
-		temperature-max-stage = <3>;
 		temperature-stage-threshold = <25 10 0>;
-		lbat1-max-throttle-level = <3>;
-		lbat1-throttle-level = <0 1 2 3>,
+
+		bat0-aging-threshold = <500 1000>;
+		bat0-aging-volts-t0 =  <0 0>;
+		bat0-aging-volts-t1 =  <0 0>;
+		bat0-aging-volts-t2 =  <0 0>;
+		bat0-aging-volts-t3 =  <0 0>;
+		bat1-aging-threshold = <500 1000>;
+		bat1-aging-volts-t0 =  <0 0>;
+		bat1-aging-volts-t1 =  <0 0>;
+		bat1-aging-volts-t2 =  <0 0>;
+		bat1-aging-volts-t3 =  <0 0>;
+
+		pt-shutdown-enable = <1>;
+
+		throttle-level = <0 1 2 3>,
 					<0 1 2 3>,
 					<0 1 2 3>,
 					<0 1 2 3>;
