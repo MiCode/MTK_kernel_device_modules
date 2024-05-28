@@ -99,19 +99,17 @@ static bool mmp_trace_log_on;
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define mmp_aee(string, args...) do {	\
 	char disp_name[100];						\
-	snprintf(disp_name, 100, "[MMP]"string, ##args); \
-	aee_kernel_warning_api(__FILE__, __LINE__, \
-		DB_OPT_DEFAULT | DB_OPT_MMPROFILE_BUFFER | \
-		DB_OPT_DISPLAY_HANG_DUMP | DB_OPT_DUMP_DISPLAY, \
-		disp_name, "[MMP] error"string, ##args);		\
+	if (snprintf(disp_name, 100, "[MMP]"string, ##args) > 0)        \
+		aee_kernel_warning_api(__FILE__, __LINE__,              \
+			DB_OPT_DEFAULT | DB_OPT_MMPROFILE_BUFFER |      \
+			DB_OPT_DISPLAY_HANG_DUMP | DB_OPT_DUMP_DISPLAY, \
+			disp_name, "[MMP] error"string, ##args);        \
 	pr_info("MMP error: "string, ##args);				\
 } while (0)
 
 #else /* !CONFIG_MTK_AEE_FEATURE */
 #define mmp_aee(string, args...)                                               \
 	do {                                                                   \
-		char str[200];                                                 \
-		snprintf(str, 199, "MMP:" string, ##args);                     \
 		pr_err("[DDP Error]" string, ##args);                          \
 	} while (0)
 #endif /* CONFIG_MTK_AEE_FEATURE */

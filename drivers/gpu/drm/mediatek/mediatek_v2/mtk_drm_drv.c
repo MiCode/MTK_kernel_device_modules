@@ -9200,7 +9200,7 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 	state->pending.prop_val[PLANE_PROP_COMPRESS] = layer_info->compress;
 	state->base.alpha = 0xff << 8;
 
-	DDPINFO("%s line:%d panel_id:%d en:%d, (%d %d %d %d w%d h%d) fmt:%d picth:%d addr:0x%llx, compress:%d",
+	DDPINFO("%s line:%d panel_id:%d en:%d, (%d %d %d %d w%d h%d) fmt:%d picth:%d addr:0x%llx, compress:%llu",
 		__func__, __LINE__, se_plane->panel_id, state->pending.enable, state->pending.src_x,
 		state->pending.src_y, state->pending.dst_x, state->pending.dst_y, state->pending.width,
 		state->pending.height, state->pending.format, state->pending.pitch, state->pending.addr,
@@ -9700,7 +9700,7 @@ long mtk_drm_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 	unsigned int nr = DRM_IOCTL_NR(cmd);
 	struct drm_file *file_priv = filp->private_data;
 	drm_ioctl_compat_t *fn;
-	long ret;
+	int ret;
 
 #ifdef CONFIG_MTK_HDMI_SUPPORT
 	if (file_priv)
@@ -10732,6 +10732,10 @@ struct device *mtk_drm_get_pd_device(struct device *dev, const char *id)
 	struct device *pd_dev;
 
 	index = of_property_match_string(dev->of_node, "pd-names", id);
+	if (index < 0) {
+		DDPPR_ERR("can't match %s device node\n", id);
+		return NULL;
+	}
 	np = of_parse_phandle(dev->of_node, "pd-others", index);
 	if (!np) {
 		DDPPR_ERR("can't find %s device node\n", id);

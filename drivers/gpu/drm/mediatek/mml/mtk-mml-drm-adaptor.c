@@ -140,6 +140,11 @@ bool mml_drm_query_hw_support(const struct mml_frame_info *info)
 		goto not_support;
 	}
 
+	if (info->dest_cnt > MML_MAX_OUTPUTS) {
+		mml_msg("[drm]info with issue, dest_cnt exceeds MML_MAX_OUTPUTS.");
+		goto not_support;
+	}
+
 	for (i = 0; i < info->dest_cnt; i++) {
 		const struct mml_frame_dest *dest = &info->dest[i];
 		u32 destw = dest->data.width;

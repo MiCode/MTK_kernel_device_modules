@@ -638,8 +638,8 @@ static void mtk_dsi_dphy_timconfig_v2(struct mtk_dsi *dsi, void *handle)
 	struct mtk_dsi_phy_timcon *phy_timcon = NULL;
 	u32 lpx, hs_prpr = 0, hs_zero = 0, hs_trail = 0;
 	u32 clk_zero = 0, clk_trail = 0;
-	u32 da_hs_prep, da_hs_zero, da_hs_trail, da_hs_exit, da_hs_sync;
-	u32 clk_hs_prep, clk_hs_zero, clk_hs_trail, clk_hs_post, clk_hs_exit, clk_hs_prpr;
+	u32 da_hs_prep = 0, da_hs_zero = 0, da_hs_trail = 0, da_hs_exit = 0, da_hs_sync = 0;
+	u32 clk_hs_prep = 0, clk_hs_zero = 0, clk_hs_trail = 0, clk_hs_post = 0, clk_hs_exit = 0, clk_hs_prpr = 0;
 	u32 ta_go, ta_get, ta_sure;
 	u32 cont_det = 0;
 	u32 ui = 0, cycle_time = 0;
@@ -1473,9 +1473,10 @@ static void mtk_dsi_runtime_phy_reset_gce(struct mtk_dsi *dsi, struct cmdq_pkt *
 {
 	struct mtk_ddp_comp *comp;
 
-	if (dsi == NULL)
+	if (!dsi || !dsi->driver_data) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
 		return;
-
+	}
 	if (handle == NULL) {
 		mtk_dsi_runtime_phy_reset(dsi);
 		return;
@@ -2346,7 +2347,7 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 	if (mtk_crtc && mtk_crtc->base.dev)
 		priv = mtk_crtc->base.dev->dev_private;
 	/* scaling path */
-	if (mtk_crtc->scaling_ctx.scaling_en) {
+	if (mtk_crtc && mtk_crtc->scaling_ctx.scaling_en) {
 		width = mtk_crtc_get_width_by_comp(__func__, &mtk_crtc->base, comp, false);
 		if (dsi->set_partial_update != 1)
 			height = mtk_crtc_get_height_by_comp(__func__, &mtk_crtc->base,
@@ -3309,6 +3310,10 @@ static int wait_dsi_wq(struct t_condition_wq *wq, int timeout)
 
 static void mtk_dsi_ulps_enter_end(struct mtk_dsi *dsi, struct mtk_drm_private *priv)
 {
+	if (!dsi || !dsi->driver_data) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return;
+	}
 	/* reset related setting */
 	mtk_dsi_mask(dsi, DSI_INTEN, SLEEPIN_ULPS_DONE_INT_FLAG, 0);
 
@@ -3327,6 +3332,10 @@ static void mtk_dsi_ulps_enter_end(struct mtk_dsi *dsi, struct mtk_drm_private *
 
 static void mtk_dsi_ulps_exit_end(struct mtk_dsi *dsi)
 {
+	if (!dsi || !dsi->driver_data) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return;
+	}
 	/* reset related setting */
 	mtk_dsi_mask(dsi, DSI_INTEN, SLEEPOUT_DONE_INT_FLAG, 0);
 	mtk_dsi_mask(dsi, DSI_PHY_LD0CON(dsi->driver_data), LDX_ULPM_AS_L0, 0);
@@ -3684,7 +3693,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				wakeup_dsi_wq(&dsi->exit_ulps_done);
 			} else {
 				mtk_dsi_ulps_exit_end(dsi);
-				if (mtk_dsi_is_cmd_mode(comp))
+				if (mtk_dsi_is_cmd_mode(comp) && dsi->driver_data)
 					mtk_dsi_mask(dsi, DSI_TXRX_CTRL(dsi->driver_data), (EXT_TE_EN | HSTX_CKLP_EN),
 								(EXT_TE_EN | HSTX_CKLP_EN));
 				mtk_dsi_set_mode(dsi);
@@ -4031,15 +4040,26 @@ static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi, bool async)
 {
 	int wake_up_prd = (dsi->data_rate * 1000) / (1024 * 8) + 1; /* 1 ms */
 	int ret = 0;
-	struct mtk_drm_crtc *mtk_crtc = dsi->is_slave ?
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+
+	if (!dsi) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return;
+	}
+	mtk_crtc = dsi->is_slave ?
 		dsi->master_dsi->ddp_comp.mtk_crtc
 		:dsi->ddp_comp.mtk_crtc;
-	struct mtk_drm_private *priv = NULL;
 
 	if (mtk_crtc && mtk_crtc->base.dev)
 		priv = mtk_crtc->base.dev->dev_private;
 	else if (dsi->encoder.dev)
 		priv = dsi->encoder.dev->dev_private;
+
+	if (!priv || !dsi->driver_data) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return;
+	}
 
 	dsi->ulps_wakeup_prd = wake_up_prd;
 
@@ -7029,9 +7049,20 @@ static void mtk_dsi_enter_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
 static void mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
 {
 	int ret;
-	struct mtk_panel_ext *ext = mtk_dsi_get_panel_ext(&dsi->ddp_comp);
-	struct mtk_drm_crtc *mtk_crtc =	dsi->is_slave ?
-			dsi->master_dsi->ddp_comp.mtk_crtc : dsi->ddp_comp.mtk_crtc;
+	struct mtk_panel_ext *ext = NULL;
+	struct mtk_drm_crtc *mtk_crtc =	NULL;
+
+	if (!dsi || !dsi->driver_data) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return;
+	}
+
+	mtk_crtc = dsi->is_slave ?
+				dsi->master_dsi->ddp_comp.mtk_crtc : dsi->ddp_comp.mtk_crtc;
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return;
+	}
 
 	ret = mtk_dsi_poweron(dsi);
 
@@ -7048,6 +7079,11 @@ static void mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
 		mtk_dsi_tx_buf_rw(dsi);
 	} else {
 		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+			ext = mtk_dsi_get_panel_ext(&dsi->ddp_comp);
+			if (!ext) {
+				DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+				return;
+			}
 			// cmd mode
 			if (ext->params->lp_perline_en) {
 			// LP mode per line  => enables DSI wait data every line in command mode
@@ -9404,6 +9440,11 @@ static ssize_t _mtk_dsi_host_transfer(struct mtk_dsi *dsi,
 	void *src_addr;
 	#define RX_NUM 512
 	u8 read_data[RX_NUM];
+
+	if (!dsi || !dsi->driver_data || !msg) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return -EINVAL;
+	}
 
 	if (readl(dsi->regs + DSI_MODE_CTRL(dsi->driver_data)) & MODE)
 		irq_flag = VM_CMD_DONE_INT_EN;
