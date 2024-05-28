@@ -88,7 +88,6 @@ GED_ERROR ged_gpufreq_init(void)
 {
 	int i, j, k = 0;
 	int min_freq, freq_scale = 0;
-	unsigned int core_num = 0;
 	const struct gpufreq_opp_info *opp_table;
 	const struct gpufreq_opp_info *opp_top_table;
 	struct gpufreq_core_mask_info *core_mask_table;
@@ -312,8 +311,6 @@ GED_ERROR ged_gpufreq_init(void)
 		for (i = g_working_oppnum ; i < g_virtual_oppnum; i++) {
 			j = (i - g_working_oppnum) / g_oppnum_eachmask + 1;
 			k = (i - g_working_oppnum) % g_oppnum_eachmask;
-
-			freq_scale = min_freq * g_mask_table[j].num / g_max_core_num;
 
 			g_virtual_top_table[i].freq =
 				gpufreq_get_freq_by_idx(TARGET_GPU, i - g_oppnum_eachmask);
@@ -739,7 +736,7 @@ int ged_is_fix_dvfs(void)
 	dvfs_state = gpufreq_get_dvfs_state();
 
 	if (dvfs_state & DVFS_FIX_OPP || dvfs_state & DVFS_FIX_FREQ_VOLT)
-		return dvfs_state & DVFS_FIX_OPP | dvfs_state & DVFS_FIX_FREQ_VOLT;
+		return (dvfs_state & DVFS_FIX_OPP) | (dvfs_state & DVFS_FIX_FREQ_VOLT);
 
 	cur_floor =  gpufreq_get_cur_limit_idx(TARGET_DEFAULT, GPUPPM_FLOOR);
 	cur_ceil =  gpufreq_get_cur_limit_idx(TARGET_DEFAULT, GPUPPM_CEILING);
@@ -794,7 +791,7 @@ int ged_gpufreq_commit(int oppidx, int commit_type, int *bCommited)
 	int oppidx_cur = 0;
 	int mask_idx = 0;
 	int freqScaleUpFlag = false;
-	unsigned int freq = 0, core_mask_tar = 0, core_num_tar = 0;
+	unsigned int core_mask_tar = 0, core_num_tar = 0;
 	unsigned int ud_mask_bit = 0;
 
 	g_cur_oppidx = oppidx;
@@ -894,7 +891,7 @@ int ged_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx, int commit_type, i
 	int oppidx_cur = 0;
 	int mask_idx = 0;
 	int freqScaleUpFlag = false;
-	unsigned int freq = 0, core_mask_tar = 0, core_num_tar = 0;
+	unsigned int core_mask_tar = 0, core_num_tar = 0;
 	unsigned int ud_mask_bit = 0;
 
 	if (gpu_oppidx < 0 || stack_oppidx < 0) {
@@ -1030,3 +1027,4 @@ unsigned int ged_gpufreq_get_dcs_sysram(void)
 
 	return dcs_enable_sysram_val;
 }
+

@@ -81,7 +81,7 @@ struct ged_last_timer {
 static struct ged_last_timer g_ged_last_timer;
 
 #if defined(MTK_GPU_EB_SUPPORT)
-#define FDVFS_IPI_ATTR "ipi_dev:%p, ch:%d, DATA_LEN: %d, TIMEOUT: %d(ms)"
+#define FDVFS_IPI_ATTR "ipi_dev:%p, ch:%d, DATA_LEN: %lu, TIMEOUT: %d(ms)"
 #define EB_DVFS_FALLBACK 5566
 #define EB_DVFS_DUMP_TH 0x800
 
@@ -502,7 +502,7 @@ int ged_to_fdvfs_command(unsigned int cmd, struct fdvfs_ipi_data *ipi_data)
 			FASTDVFS_IPI_TIMEOUT);
 
 		if (ret != 0) {
-			GPUFDVFS_LOGI("(%d), cmd: %d, ret: %d, data: %p,"FDVFS_IPI_ATTR"\n",
+			GPUFDVFS_LOGI("(%d), cmd: %u, ret: %d, data: %p,"FDVFS_IPI_ATTR"\n",
 				__LINE__, cmd, ret, ipi_data,
 				get_gpueb_ipidev(),
 				g_fast_dvfs_ipi_channel,
@@ -573,7 +573,6 @@ void mtk_gpueb_dvfs_commit(unsigned long ulNewFreqID,
 {
 	int ret = 0;
 
-	struct fdvfs_ipi_data ipi_data;
 	static unsigned long ulPreFreqID = -1;
 
 	if (ulNewFreqID != ulPreFreqID) {
@@ -587,6 +586,8 @@ void mtk_gpueb_dvfs_commit(unsigned long ulNewFreqID,
 			0);
 */
 #else
+		struct fdvfs_ipi_data ipi_data;
+
 		ipi_data.u.set_para.arg[0] = ulNewFreqID;
 		ipi_data.u.set_para.arg[1] = eCommitType;
 		ipi_data.u.set_para.arg[2] = 0;
@@ -613,7 +614,6 @@ void mtk_gpueb_dvfs_dcs_commit(unsigned int platform_freq_idx,
 		GED_DVFS_COMMIT_TYPE eCommitType,
 		unsigned int virtual_freq_in_MHz)
 {
-	struct fdvfs_ipi_data ipi_data;
 	static unsigned int pre_platform_freq_idx = -1;
 	static unsigned int pre_virtual_freq_in_MHz = -1;
 
@@ -629,6 +629,8 @@ void mtk_gpueb_dvfs_dcs_commit(unsigned int platform_freq_idx,
 			virtual_freq_in_MHz);
 */
 #else
+		struct fdvfs_ipi_data ipi_data;
+
 		ipi_data.u.set_para.arg[0] = platform_freq_idx;
 		ipi_data.u.set_para.arg[1] = eCommitType;
 		ipi_data.u.set_para.arg[2] = virtual_freq_in_MHz;
@@ -720,7 +722,6 @@ int mtk_gpueb_dvfs_set_taget_frame_time(unsigned int target_frame_time,
 	unsigned int target_margin)
 {
 	int ret = 0;
-	struct fdvfs_ipi_data ipi_data;
 	static unsigned int pre_target_frame_time;
 	static unsigned int pre_target_margin;
 
@@ -737,6 +738,8 @@ int mtk_gpueb_dvfs_set_taget_frame_time(unsigned int target_frame_time,
 			target_margin);
 */
 #else
+		struct fdvfs_ipi_data ipi_data;
+
 		ipi_data.u.set_para.arg[0] = target_frame_time;
 		ipi_data.u.set_para.arg[1] = target_margin;
 
@@ -834,6 +837,9 @@ void mtk_gpueb_dvfs_get_mode(struct fdvfs_ipi_data *ipi_data)
 	unsigned int cmd = ipi_data->cmd;
 
 	ret = ged_to_fdvfs_command(cmd, ipi_data);
+
+	if (ret)
+		GED_LOGD("%s err:%d\n", __func__, ret);
 }
 EXPORT_SYMBOL(mtk_gpueb_dvfs_get_mode);
 
@@ -865,6 +871,9 @@ void mtk_gpueb_set_power_state(enum ged_gpu_power_state power_state)
 
 	ipi_data.u.set_para.arg[0] = power_state;
 	ret = ged_to_fdvfs_command(GPUFDVFS_IPI_SET_POWER_STATE, &ipi_data);
+
+	if (ret)
+		GED_LOGD("%s err:%d\n", __func__, ret);
 }
 EXPORT_SYMBOL(mtk_gpueb_set_power_state);
 
@@ -877,9 +886,10 @@ unsigned int is_fdvfs_enable(void)
 unsigned int mtk_gpueb_dvfs_get_cur_freq(void)
 {
 	int ret = 0;
-	struct fdvfs_ipi_data ipi_data;
+/*	struct fdvfs_ipi_data ipi_data;
 
-	//ret = ged_to_fdvfs_command(GPUFDVFS_IPI_GET_CURR_FREQ, &ipi_data);
+	ret = ged_to_fdvfs_command(GPUFDVFS_IPI_GET_CURR_FREQ, &ipi_data);
+*/
 
 	return (ret > 0) ? ret:0xFFFF;
 }
@@ -888,9 +898,10 @@ EXPORT_SYMBOL(mtk_gpueb_dvfs_get_cur_freq);
 unsigned int mtk_gpueb_dvfs_get_frame_loading(void)
 {
 	int ret = 0;
-	struct fdvfs_ipi_data ipi_data;
+/*	struct fdvfs_ipi_data ipi_data;
 
-	//ret = ged_to_fdvfs_command(GPUFDVFS_IPI_GET_FRAME_LOADING, &ipi_data);
+	ret = ged_to_fdvfs_command(GPUFDVFS_IPI_GET_FRAME_LOADING, &ipi_data);
+*/
 
 	return (ret > 0) ? ret:0xFFFF;
 }
@@ -903,6 +914,9 @@ static void mtk_gpueb_dvfs_reinit(unsigned int type)
 
 	ipi_data.u.set_para.arg[0] = type;
 	ret = ged_to_fdvfs_command(GPUFDVFS_IPI_SET_DVFS_REINIT, &ipi_data);
+
+	if (ret)
+		GED_LOGD("%s err:%d\n", __func__, ret);
 }
 
 int mtk_gpueb_sysram_batch_read(int max_read_count,
@@ -1090,9 +1104,6 @@ static void ged_eb_dvfs_udpate_gpu_time(void)
 	info_sysram.last_tgpu_uncompleted /= 1000;
 	info_sysram.last_tgpu_uncompleted_target /= 1000;
 
-	u64 soc_timer_eb = 0;
-	u32 soc_timer_eb_hi = 0;
-
 	// get frame info in loading-based
 	ret_bq_state = ged_kpi_eb_dvfs_get_time(&info_kpi);
 
@@ -1149,9 +1160,6 @@ static void ged_eb_dvfs_udpate_gpu_time(void)
 static void ged_eb_dvfs_udpate_gpu_uncomplete_time(void)
 {
 	struct ged_sysram_info info_sysram;
-	int t_gpu_uncomplete_eb = 0;
-	int t_gpu_target_eb_uncomplete = 0;
-	unsigned int gpu_completed_counteb = 0;
 
 	// get tgpu uncompleted time in loading-based
 	ged_kpi_update_sysram_uncompleted_tgpu(&info_sysram);
@@ -1301,11 +1309,10 @@ int ged_eb_dvfs_task(enum ged_eb_dvfs_task_index index, int value)
 
 static int fastdvfs_proc_show(struct seq_file *m, void *v)
 {
-	char show_string[256];
+/*	char show_string[256];
 	unsigned int ui32FastDVFSMode = 0;
 
 	if (g_is_fulltrace_enable == 1) {
-/*
 		seq_puts(m, "\n#### Frequency ####\n");
 
 		scnprintf(show_string, 256, "Current gpu freq       : %d\n",
@@ -1351,8 +1358,9 @@ static int fastdvfs_proc_show(struct seq_file *m, void *v)
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_FRAME_DONE_INTERVAL));
 		seq_puts(m, show_string);
 		seq_puts(m, "\n\n\n");
-*/
+
 	}
+*/
 
 	return 0;
 }
@@ -1488,6 +1496,8 @@ static void __iomem *_gpu_fastdvfs_of_ioremap(const char *node_name)
 		mapped_addr = of_iomap(node, 0);
 		GPUFDVFS_LOGI("@%d mapped_addr: %p\n", __LINE__, mapped_addr);
 		rc = of_address_to_resource(node, 0, &res);
+		if (rc)
+			GPUFDVFS_LOGI("Cannot get physical memory addr");
 		sysram_size = resource_size(&res);
 
 		of_node_put(node);
@@ -1562,7 +1572,7 @@ void fdvfs_init(void)
 				WQ_FREEZABLE | WQ_MEM_RECLAIM);
 	}
 
-	GPUFDVFS_LOGI("succeed to register channel: (%d)(%d), ipi_size: %u\n",
+	GPUFDVFS_LOGI("succeed to register channel: (%d)(%d), ipi_size: %lu\n",
 		g_fast_dvfs_ipi_channel,
 		g_fdvfs_event_ipi_channel,
 		FDVFS_IPI_DATA_LEN);

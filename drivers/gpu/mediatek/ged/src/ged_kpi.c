@@ -339,7 +339,6 @@ bool g_invalid_fps;
 #define GED_KPI_SWITCH_LB_THRESHOLD 0
 #define GED_KPI_MAX_SWITCH_COUNT 8
 /* static int display_fps = GED_KPI_MAX_FPS; */
-static int target_fps_4_main_head = 60;
 static long long vsync_period = GED_KPI_SEC_DIVIDER / GED_KPI_MAX_FPS;
 static GED_LOG_BUF_HANDLE ghLogBuf_KPI;
 static struct workqueue_struct *g_psWorkQueue;
@@ -1363,7 +1362,6 @@ static void ged_kpi_set_fallback_mode(struct GED_KPI_HEAD *psHead)
 	static unsigned int diff_times;
 	static struct GED_KPI_HEAD *candidate_head;
 	int isSmallFrame = 0;
-	int his_lb_num = 0;
 	bool is_offscreen = false;
 	unsigned int t_gpu_real_pipe_ratio = 0;
 
@@ -1534,8 +1532,6 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 	struct GED_KPI *psKPI = NULL;
 	struct list_head *psListEntry, *psListEntryTemp;
 	struct list_head *psList;
-
-	enum gpu_dvfs_policy_state policy_state;
 	/* ================== */
 
 	u64 ulID;
@@ -1546,7 +1542,6 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 
 	int gpu_freq_pre, t_gpu, t_gpu_target, target_fps_margin;
 	unsigned int force_fallback;
-	unsigned long long soc_timer = 0;
 
 	GED_LOGD("ts type = %d, pid = %d, wnd = %llu, frame = %lu",
 		psTimeStamp->eTimeStampType,
@@ -2605,10 +2600,7 @@ static GED_BOOL ged_kpi_update_sysram_uncompleted_fcn(void *pvoid, void *pvParam
 	struct list_head *psListEntry, *psListEntryTemp;
 	struct list_head *psList = &psHead->sList;
 	long long t_gpu_uncomplete = 0;
-	unsigned long long current_timestamp;
 	int i = 0;
-
-	current_timestamp = ged_get_time();
 
 	spin_lock(&psHead->sListLock);
 	list_for_each_prev_safe(psListEntry, psListEntryTemp, psList) {
@@ -2976,9 +2968,7 @@ static GED_BOOL ged_kpi_find_riskyBQ_func(unsigned long ulID,
 		long long t_gpu_latest = 0;
 		long long t_gpu_latest_uncompleted = 0;
 		int t_gpu_target;
-		int uncomplete_flag;
-		unsigned long long risk_completed, risk_uncompleted,
-			max_risk_completed, max_risk_uncompleted;
+		unsigned long long risk_completed, risk_uncompleted;
 		int i = 0;
 
 		// aggregate GPU completed count
