@@ -50,7 +50,7 @@ bool mtk_smc_handler(struct user_pt_regs *ctxt)
 	u64 smc_id = ctxt->regs[0] & ~ARM_SMCCC_CALL_HINTS;
 	u64 smc_key_id;
 	int hvc_id;
-	int i = 0;
+	size_t i = 0;
 
 	for (i = 0; i < ARRAY_SIZE(el2_smc_id_list); i++) {
 		if (smc_id == el2_smc_id_list[i])
