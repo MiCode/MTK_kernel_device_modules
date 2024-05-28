@@ -199,11 +199,12 @@ bool mme_register_buffer(unsigned int module, char *module_buf_name, unsigned in
 	char module_aee_name[256];
 	unsigned long flags = 0;
 	unsigned int module_buf_size = buffer_size;
+	int ret;
 
 	DEFINE_SPINLOCK(t_spinlock);
 
 	if (module >= MME_MODULE_MAX || type >= MME_BUFFER_INDEX_MAX ||
-		module_buf_size > MAX_MODULE_BUFFER_SIZE) {
+		module_buf_size > MAX_MODULE_BUFFER_SIZE || !module_buf_name) {
 		MMEERR("register fail, module:%d, type:%d, module_buf_size:%d, module_buf_name:%s",
 				module, type, module_buf_size, module_buf_name);
 		return false;
@@ -259,7 +260,12 @@ bool mme_register_buffer(unsigned int module, char *module_buf_name, unsigned in
 		va = (unsigned long)p_mme_ring_buffer[module][type];
 		pa = __pa_nodebug(va);
 
-		snprintf(module_aee_name, sizeof(module_aee_name), "MME_%s", module_buf_name);
+		ret = snprintf(module_aee_name, sizeof(module_aee_name), "MME_%s", module_buf_name);
+		if (ret < 0 || ret >= (sizeof(module_aee_name)-1)) {
+			MMEERR("module aee name snprintf error, ret:%d", ret);
+			spin_unlock_irqrestore(&g_register_spinlock, flags);
+			return false;
+		}
 		mrdump_mini_add_extra_file(va, pa, mme_globals[module].buffer_bytes[type], module_aee_name);
 #endif
 	}
@@ -356,7 +362,9 @@ static void mme_scale_buffer(unsigned int module, unsigned int scale_value)
 	mme_log_pause();
 	for (type = 0; type < MME_BUFFER_INDEX_MAX; type++) {
 		memcpy(module_buf_name, mme_globals[module].module_buffer_name[type],
-				MME_MODULE_NAME_LEN);
+				MME_MODULE_NAME_LEN - 1);
+		module_buf_name[MME_MODULE_NAME_LEN - 1] = '\0';
+
 		if (mme_globals[module].buffer_bytes[type] != 0) {
 			unsigned int new_buffer_size = mme_globals[module].buffer_bytes[type] *
 											scale_value;
@@ -558,6 +566,7 @@ static void get_pid_info(struct mme_unit_t *p_ring_buffer, unsigned int buffer_u
 	unsigned int code_region_num = 0, unit_size = 0, index=0, flag_error_token = 0;
 	unsigned int pid, pid_index, i, data_size = 0;
 	char *p_str;
+	int ret;
 
 	for (index = 0; index < buffer_units;) {
 		if (!(is_valid_index(index, p_ring_buffer, buffer_units))) {
@@ -584,26 +593,26 @@ static void get_pid_info(struct mme_unit_t *p_ring_buffer, unsigned int buffer_u
 			if (p_pid_buffer[pid_index].pid == pid)
 				break;
 		}
-		if (pid_index == *p_pid_count) {
-			if (*p_pid_count < MAX_PID_COUNT) {
-				struct task_struct *task;
-				unsigned int cpu;
+		if (pid_index == *p_pid_count && *p_pid_count < MAX_PID_COUNT) {
+			struct task_struct *task;
+			unsigned int cpu;
 
-				p_pid_buffer[pid_index].pid = pid;
-				if (pid == 0) {
-					for_each_possible_cpu(cpu) {
-						sprintf(p_pid_buffer[pid_index].name, "swapper/%d", cpu);
-						break;
+			p_pid_buffer[pid_index].pid = pid;
+			if (pid == 0) {
+				for_each_possible_cpu(cpu) {
+					ret = sprintf(p_pid_buffer[pid_index].name, "swapper/%d", cpu);
+					if (ret < 0)
+						MMEERR("pid buf name sprintf error,ret:%d", ret);
+					break;
 					}
-				} else {
-					task = find_task_by_vpid(pid);
-					if (task != NULL)
-						get_task_comm(p_pid_buffer[pid_index].name, task);
-				}
-
-				MMEINFO("pid:%d, pid_name:%s", pid, p_pid_buffer[pid_index].name);
-				*p_pid_count += 1;
+			} else {
+				task = find_task_by_vpid(pid);
+				if (task != NULL)
+					get_task_comm(p_pid_buffer[pid_index].name, task);
 			}
+
+			MMEINFO("pid:%d, pid_name:%s", pid, p_pid_buffer[pid_index].name);
+			*p_pid_count += 1;
 		}
 
 		p +=  MME_PID_SIZE; // PID
