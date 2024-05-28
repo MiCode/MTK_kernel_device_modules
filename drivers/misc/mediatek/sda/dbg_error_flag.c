@@ -234,7 +234,7 @@ static void dbg_error_flag_irq_work(struct work_struct *w)
 	unsigned int num_error_flag, i;
 	unsigned int unmask_status = 0;
 	struct arm_smccc_res res;
-	unsigned int err_flag_type;
+	unsigned int err_flag_type = 0;
 
 	num_error_flag = dbg_error_flag.nr_error_flag;
 
@@ -368,7 +368,7 @@ static irqreturn_t dbg_error_flag_isr(int irq, void *dev_id)
 	unsigned int status = 0;
 	unsigned int num_error_flag, i;
 	struct arm_smccc_res res;
-	unsigned int err_flag_type;
+	unsigned int err_flag_type = 0;
 
 	disable_irq_nosync(irq);
 
