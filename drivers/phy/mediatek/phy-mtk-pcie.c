@@ -466,21 +466,36 @@ static int mtk_pcie_efuse_read_for_lane(struct mtk_pcie_phy *pcie_phy,
 	char efuse_id[16];
 	int ret;
 
-	snprintf(efuse_id, sizeof(efuse_id), "tx_ln%d_pmos", lane);
+	ret = snprintf(efuse_id, sizeof(efuse_id), "tx_ln%d_pmos", lane);
+	if (ret < 0) {
+		dev_info(dev, "Failed to snprintf tx_ln_pmos\n");
+		return ret;
+	}
+
 	ret = nvmem_cell_read_variable_le_u32(dev, efuse_id, &efuse->tx_pmos);
 	if (ret) {
 		dev_info(dev, "Failed to read %s\n", efuse_id);
 		return ret;
 	}
 
-	snprintf(efuse_id, sizeof(efuse_id), "tx_ln%d_nmos", lane);
+	ret = snprintf(efuse_id, sizeof(efuse_id), "tx_ln%d_nmos", lane);
+	if (ret < 0) {
+		dev_info(dev, "Failed to snprintf tx_ln_nmos\n");
+		return ret;
+	}
+
 	ret = nvmem_cell_read_variable_le_u32(dev, efuse_id, &efuse->tx_nmos);
 	if (ret) {
 		dev_info(dev, "Failed to read %s\n", efuse_id);
 		return ret;
 	}
 
-	snprintf(efuse_id, sizeof(efuse_id), "rx_ln%d", lane);
+	ret = snprintf(efuse_id, sizeof(efuse_id), "rx_ln%d", lane);
+	if (ret < 0) {
+		dev_info(dev, "Failed to snprintf rx_ln\n");
+		return ret;
+	}
+
 	ret = nvmem_cell_read_variable_le_u32(dev, efuse_id, &efuse->rx_data);
 	if (ret) {
 		dev_info(dev, "Failed to read %s\n", efuse_id);
