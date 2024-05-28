@@ -432,9 +432,8 @@ static int recv_from_rx_list(struct sk_buff_head *rx_list, unsigned int ccmni_id
 	return ccmni_rx_callback(ccmni_idx, skb, NULL);
 }
 
-static int ccmni_data_handle_list(int status, unsigned int ccmni_idx)
+static void ccmni_data_handle_list(int status, unsigned int ccmni_idx)
 {
-	int ret = 0;
 	unsigned long flags;
 	struct sk_buff *skb = NULL;
 	struct ccmni_instance *ccmni = NULL;
@@ -453,8 +452,6 @@ static int ccmni_data_handle_list(int status, unsigned int ccmni_idx)
 			dev_kfree_skb_any(skb);
 		spin_unlock_irqrestore(&ccmni->rx_list.lock, flags);
 	}
-
-	return ret;
 }
 
 static int ccmni_queue_recv_skb(unsigned int ccmni_idx, struct sk_buff *skb)
@@ -542,7 +539,7 @@ static int ccmni_close(struct net_device *dev)
 	struct ccmni_instance *ccmni =
 		(struct ccmni_instance *)netdev_priv(dev);
 	struct ccmni_instance *ccmni_tmp = NULL;
-	int usage_cnt = 0, ret = 0;
+	int usage_cnt = 0;
 
 	if (unlikely(ccmni->index >= CCMNI_INTERFACE_NUM || ccmni_ctl_blk == NULL)) {
 		pr_info("invalid CCMNI%d or ccmni_ctl_blk\n", ccmni->index);
@@ -569,7 +566,7 @@ static int ccmni_close(struct net_device *dev)
 	if (unlikely(ccmni_ctl_blk->ccci_cfg->md_ability & MODEM_CAP_NAPI))
 		napi_disable(ccmni->napi);
 
-	ret = ccmni_data_handle_list(DEV_CLOSE, ccmni->index);
+	ccmni_data_handle_list(DEV_CLOSE, ccmni->index);
 	netdev_info(dev, "%s_Close:cnt=(%d, %d)\n",
 		    dev->name, atomic_read(&ccmni->usage),
 		    atomic_read(&ccmni_tmp->usage));
@@ -599,7 +596,7 @@ static unsigned int ccmni_flush_dev_queue(unsigned int ccmni_idx)
 	ret = napi_gro_list_flush(ccmni);
 	spin_unlock_bh(ccmni->spinlock);
 
-	return 0;
+	return ret;
 }
 
 static int ccmni_stop_dev_queue(unsigned int ccmni_idx, unsigned int que_idx)
@@ -981,10 +978,7 @@ static int ccmni_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 		netdev_info(dev, "%s SIOPUSHPENDING called\n", ccmni->dev->name);
 		cancel_delayed_work(&ccmni->pkt_queue_work);
 		flush_delayed_work(&ccmni->pkt_queue_work);
-		if (ccmni_data_handle_list(DEV_OPEN, ccmni->index))
-			netdev_info(dev,
-				"%s is failed to handle port list\n",
-				ccmni->dev->name);
+		ccmni_data_handle_list(DEV_OPEN, ccmni->index);
 		break;
 
 	case SIOCSNETTYPE:
@@ -1087,8 +1081,7 @@ static void get_queued_pkts(struct work_struct *work)
 		pr_info("invalid CCMNI%d when getting queued pkts\n", ccmni->index);
 		return;
 	}
-	if (ccmni_data_handle_list(DEV_OPEN, ccmni->index))
-		pr_info("%s is failed to handle port list\n", ccmni->dev->name);
+	ccmni_data_handle_list(DEV_OPEN, ccmni->index);
 }
 
 /********************ccmni driver register  ccci function********************/
