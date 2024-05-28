@@ -2624,7 +2624,9 @@ static int mtk_i2c_probe(struct platform_device *pdev)
 		return ret;
 	}
 	mtk_i2c_init_hw(i2c);
+#ifndef CONFIG_MTK_SENTRY_MODE
 	mtk_i2c_clock_disable(i2c);
+#endif
 
 	ret = devm_request_irq(&pdev->dev, irq, mtk_i2c_irq,
 			       IRQF_NO_SUSPEND | IRQF_TRIGGER_NONE,
