@@ -634,6 +634,11 @@ static inline u32 engine_id_to_sys(u32 id)
 	return mml_sys_tile;
 }
 
+static inline bool scene_is_front_rsz(enum topology_scenario scene)
+{
+	return scene >= PATH_MML1_DL && scene <= PATH_MML1_DL2_HDR;
+}
+
 enum cmdq_clt_usage {
 	MML_CLT_PIPE0,
 	MML_CLT_PIPE1,
@@ -1304,6 +1309,7 @@ static void tp_select_path(struct mml_topology_cache *cache,
 
 	cfg->rrot_dual = dual;
 	cfg->merge2p = scene == PATH_MML1_DL2_NOPQ;
+	cfg->rsz_front = scene_is_front_rsz(scene);
 
 	*path = &cache->paths[scene];
 }

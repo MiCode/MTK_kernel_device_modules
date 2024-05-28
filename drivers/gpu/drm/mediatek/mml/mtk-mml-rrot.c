@@ -476,6 +476,9 @@ static void calc_binning_rot(struct mml_frame_config *cfg, struct mml_comp_confi
 		}
 	}
 
+	/* overwrite downstream pq size since rrot may binning/rotate */
+	cfg->frame_in_hdr = cfg->rsz_front ? cfg->frame_out[0] : cfg->frame_tile_sz;
+
 	if (cfg->bin_x || cfg->bin_y) {
 		for (i = 0; i < cfg->info.dest_cnt; i++) {
 			crop = &cfg->frame_in_crop[i];
