@@ -2317,7 +2317,7 @@ static ssize_t FG_daemon_disable_store(
 
 int get_battery_current_now(struct mtk_battery *gm)
 {
-	int ret, curr_now;
+	int ret, curr_now = 0;
 
 	ret = gauge_get_property(gm, GAUGE_PROP_BATTERY_CURRENT,
 		&curr_now);
@@ -2996,8 +2996,10 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 	int int_value;
 	static int badcmd;
 
-	if (gm == NULL)
+	if (gm == NULL) {
 		bm_err(gm, "[%s]gm is NULL\n", __func__);
+		return;
+	}
 
 	msg = nl_data;
 //	ret_msg->nl_cmd = msg->nl_cmd;
@@ -3119,12 +3121,13 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 		unsigned int ptim_bat_vol = 0;
 		signed int ptim_R_curr = 0, ptim_before = 0, curr = 0;
 		struct power_supply *psy_gauge;
-		union power_supply_propval ptim_val;
+		union power_supply_propval ptim_val = {0};
 
 		psy_gauge = gm->gauge->psy;
 
 		if (psy_gauge == NULL) {
 			bm_err(gm, "[%s]psy is not rdy\n", __func__);
+			psy_gauge = gm->gauge->psy;
 		}
 
 		if (gm->init_flag == 1 || gm->bat_plug_out == 1) {
@@ -3132,17 +3135,16 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 				POWER_SUPPLY_PROP_CURRENT_MAX, &ptim_val);
 			ptim_before = ptim_val.intval;
 
+			ptim_R_curr = curr;
+
 			ptim_bat_vol = gauge_get_int_property(gm,
 				GAUGE_PROP_PTIM_BATTERY_VOLTAGE);
 
 			curr = get_battery_current_now(gm);
 
-			if (psy_gauge != NULL) {
-				power_supply_get_property(psy_gauge,
-					POWER_SUPPLY_PROP_CURRENT_MAX, &ptim_val);
-				ptim_R_curr = -1 * ptim_val.intval;
-			} else
-				ptim_R_curr = curr;
+			power_supply_get_property(psy_gauge,
+				POWER_SUPPLY_PROP_CURRENT_MAX, &ptim_val);
+			ptim_R_curr = -1 * ptim_val.intval;
 
 			bm_err(gm, "[K]PTIM inscur:%d PTIM V:%d I:[bef:%d af:%d]\n",
 				curr, ptim_bat_vol, ptim_before,
@@ -4882,6 +4884,8 @@ void fg_update_sw_low_battery_check(unsigned int thd)
 	int version = 0;
 
 	gm = get_mtk_battery();
+	if (gm == NULL)
+		return;
 
 	fg_cust_data = &gm->fg_cust_data;
 

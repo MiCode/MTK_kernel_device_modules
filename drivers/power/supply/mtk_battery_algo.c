@@ -24,12 +24,16 @@ void set_fg_time(struct mtk_battery *gm, int _time)
 	struct timespec64 tmp_time_now, end_time;
 	ktime_t ktime, time_now;
 
-	time_now = ktime_get_boottime();
-	tmp_time_now = ktime_to_timespec64(time_now);
-	end_time.tv_sec = tmp_time_now.tv_sec + _time;
+	if (_time != 0 && _time > 0) {
+		time_now = ktime_get_boottime();
+		tmp_time_now = ktime_to_timespec64(time_now);
+		end_time.tv_sec = tmp_time_now.tv_sec + _time;
+		end_time.tv_nsec = tmp_time_now.tv_nsec;
 
-	ktime = ktime_set(end_time.tv_sec, end_time.tv_nsec);
-	alarm_start(&gm->tracking_timer, ktime);
+		ktime = ktime_set(end_time.tv_sec, end_time.tv_nsec);
+		alarm_start(&gm->tracking_timer, ktime);
+	} else
+		alarm_cancel(&gm->tracking_timer);
 }
 
 int get_d0_c_soc_cust(struct mtk_battery *gm, int value)
@@ -58,7 +62,7 @@ int get_ptim_vbat(struct mtk_battery *gm)
 int get_ptim_i(struct mtk_battery *gm)
 {
 	struct power_supply *psy;
-	union power_supply_propval val;
+	union power_supply_propval val = {0};
 
 	psy = gm->gauge->psy;
 
@@ -77,7 +81,7 @@ void get_hw_info(struct mtk_battery *gm)
 int get_charger_exist(void)
 {
 	struct power_supply *psy;
-	union power_supply_propval val;
+	union power_supply_propval val = {0};
 	int ret;
 
 	psy = power_supply_get_by_name("ac");
@@ -472,6 +476,11 @@ void fg_construct_battery_profile_by_qmax(struct mtk_battery *gm,
 	pdata = &gm->fg_cust_data;
 	profile_p = fg_get_profile(gm, table_index);
 
+	if (profile_p == NULL) {
+		bm_debug(gm, "[%s] can not construct table by qmax\n", __func__);
+		return;
+	}
+
 	if (table_index == ptable->temperature_tb0) {
 		algo->qmax_t_0ma = qmax;
 
@@ -503,6 +512,11 @@ void fg_construct_battery_profile_by_vboot(struct mtk_battery *gm,
 	ptable = &gm->fg_table_cust_data;
 	pdata = &gm->fg_cust_data;
 	profile_p = fg_get_profile(gm, table_index);
+
+	if (profile_p == NULL) {
+		bm_err(gm, "[%s] can not construct table by vboot\n", __func__);
+		return;
+	}
 
 	for (j = 0; j < 100; j++)
 		if (profile_p[j].voltage < _vboot)
@@ -799,6 +813,10 @@ void fgr_dump_table(struct mtk_battery *gm, int idx)
 	int i;
 
 	profile_p = fg_get_profile(gm, idx);
+	if (profile_p == NULL) {
+		bm_err(gm, "[%s] get table fail !\n", __func__);
+		return;
+	}
 
 	bm_err(gm, "[%s]table idx:%d (i,mah,voltage,resistance,percentage)\n",
 		__func__,
@@ -1306,93 +1324,97 @@ void fgr_int_end_flow(struct mtk_battery *gm, unsigned int intr_no)
 	int curr_temp, vbat;
 	char intr_name[32];
 	struct mtk_battery_algo *algo;
+	int ret = 0;
 
 	algo = &gm->algo;
 	switch (intr_no) {
 	case FG_INTR_0:
-		sprintf(intr_name, "FG_INTR_INIT");
+		ret = sprintf(intr_name, "FG_INTR_INIT");
 		break;
 	case FG_INTR_TIMER_UPDATE:
-		sprintf(intr_name, "FG_INTR_TIMER_UPDATE");
+		ret = sprintf(intr_name, "FG_INTR_TIMER_UPDATE");
 		break;
 	case FG_INTR_BAT_CYCLE:
-		sprintf(intr_name, "FG_INTR_BAT_CYCLE");
+		ret = sprintf(intr_name, "FG_INTR_BAT_CYCLE");
 		break;
 	case FG_INTR_CHARGER_OUT:
-		sprintf(intr_name, "FG_INTR_CHARGER_OUT");
+		ret = sprintf(intr_name, "FG_INTR_CHARGER_OUT");
 		break;
 	case FG_INTR_CHARGER_IN:
-		sprintf(intr_name, "FG_INTR_CHARGER_IN");
+		ret = sprintf(intr_name, "FG_INTR_CHARGER_IN");
 		break;
 	case FG_INTR_FG_TIME:
-		sprintf(intr_name, "FG_INTR_FG_TIME");
+		ret = sprintf(intr_name, "FG_INTR_FG_TIME");
 		break;
 	case FG_INTR_BAT_INT1_HT:
-		sprintf(intr_name, "FG_INTR_COULOMB_HT");
+		ret = sprintf(intr_name, "FG_INTR_COULOMB_HT");
 		break;
 	case FG_INTR_BAT_INT1_LT:
-		sprintf(intr_name, "FG_INTR_COULOMB_LT");
+		ret = sprintf(intr_name, "FG_INTR_COULOMB_LT");
 		break;
 	case FG_INTR_BAT_INT2_HT:
-		sprintf(intr_name, "FG_INTR_UISOC_HT");
+		ret = sprintf(intr_name, "FG_INTR_UISOC_HT");
 		break;
 	case FG_INTR_BAT_INT2_LT:
-		sprintf(intr_name, "FG_INTR_UISOC_LT");
+		ret = sprintf(intr_name, "FG_INTR_UISOC_LT");
 		break;
 	case FG_INTR_BAT_TMP_HT:
-		sprintf(intr_name, "FG_INTR_BAT_TEMP_HT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_TEMP_HT");
 		break;
 	case FG_INTR_BAT_TMP_LT:
-		sprintf(intr_name, "FG_INTR_BAT_TEMP_LT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_TEMP_LT");
 		break;
 	case FG_INTR_BAT_TIME_INT:
-		sprintf(intr_name, "FG_INTR_BAT_TIME_INT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_TIME_INT");
 		break;
 	case FG_INTR_NAG_C_DLTV:
-		sprintf(intr_name, "FG_INTR_NAFG_VOLTAGE");
+		ret = sprintf(intr_name, "FG_INTR_NAFG_VOLTAGE");
 		break;
 	case FG_INTR_FG_ZCV:
-		sprintf(intr_name, "FG_INTR_FG_ZCV");
+		ret = sprintf(intr_name, "FG_INTR_FG_ZCV");
 		break;
 	case FG_INTR_SHUTDOWN:
-		sprintf(intr_name, "FG_INTR_SHUTDOWN");
+		ret = sprintf(intr_name, "FG_INTR_SHUTDOWN");
 		break;
 	case FG_INTR_RESET_NVRAM:
-		sprintf(intr_name, "FG_INTR_RESET_NVRAM");
+		ret = sprintf(intr_name, "FG_INTR_RESET_NVRAM");
 		break;
 	case FG_INTR_BAT_PLUGOUT:
-		sprintf(intr_name, "FG_INTR_BAT_PLUGOUT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_PLUGOUT");
 		break;
 	case FG_INTR_IAVG:
-		sprintf(intr_name, "FG_INTR_IAVG");
+		ret = sprintf(intr_name, "FG_INTR_IAVG");
 		break;
 	case FG_INTR_VBAT2_L:
-		sprintf(intr_name, "FG_INTR_VBAT2_L");
+		ret = sprintf(intr_name, "FG_INTR_VBAT2_L");
 		break;
 	case FG_INTR_VBAT2_H:
-		sprintf(intr_name, "FG_INTR_VBAT2_H");
+		ret = sprintf(intr_name, "FG_INTR_VBAT2_H");
 		break;
 	case FG_INTR_CHR_FULL:
-		sprintf(intr_name, "FG_INTR_CHR_FULL");
+		ret = sprintf(intr_name, "FG_INTR_CHR_FULL");
 		break;
 	case FG_INTR_DLPT_SD:
-		sprintf(intr_name, "FG_INTR_DLPT_SD");
+		ret = sprintf(intr_name, "FG_INTR_DLPT_SD");
 		break;
 	case FG_INTR_BAT_TMP_C_HT:
-		sprintf(intr_name, "FG_INTR_BAT_TMP_C_HT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_TMP_C_HT");
 		break;
 	case FG_INTR_BAT_TMP_C_LT:
-		sprintf(intr_name, "FG_INTR_BAT_TMP_C_LT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_TMP_C_LT");
 		break;
 	case FG_INTR_BAT_INT1_CHECK:
-		sprintf(intr_name, "FG_INTR_COULOMB_C");
+		ret = sprintf(intr_name, "FG_INTR_COULOMB_C");
 		break;
 	default:
-		sprintf(intr_name, "FG_INTR_UNKNOWN");
+		ret = sprintf(intr_name, "FG_INTR_UNKNOWN");
 		bm_err(gm, "[Intr_Number_to_Name] unknown intr %d\n",
 			intr_no);
 		break;
 	}
+
+	if (ret < 0)
+		bm_err(gm, "[%s] something wrong\n", __func__);
 
 	algo->car = gauge_get_int_property(gm, GAUGE_PROP_COULOMB);
 	get_hw_info(gm);
@@ -1645,7 +1667,11 @@ void fgr_time_handler(struct mtk_battery *gm)
 				algo->low_tracking_enable = 0;
 			}
 		}
-	} else
+	}
+
+	if (algo->low_tracking_enable)
+		set_fg_time(gm, gm->fg_cust_data.discharge_tracking_time);
+	else
 		set_fg_time(gm, 0);
 }
 
