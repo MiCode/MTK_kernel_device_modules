@@ -1269,7 +1269,7 @@ static void flt_android_rvh_tick_entry(void *unused, struct rq *rq)
 	flt_update_task_ravg(rq->curr, rq, TASK_UPDATE, wallclock, 0);
 }
 
-static void flt_android_rvh_schedule(void *unused,
+void flt_android_rvh_schedule(void *unused,
 		struct task_struct *prev, struct task_struct *next, struct rq *rq)
 {
 	u64 wallclock;
@@ -1299,11 +1299,6 @@ static void flt_register_kernel_hooks(void)
 		flt_android_rvh_try_to_wake_up, NULL);
 	if (ret)
 		pr_info("register try_to_wake_up hooks failed, returned %d\n", ret);
-
-	ret = register_trace_android_rvh_schedule(
-		flt_android_rvh_schedule, NULL);
-	if (ret)
-		pr_info("register schedule hooks failed, returned %d\n", ret);
 
 	ret = register_trace_android_rvh_set_task_cpu(
 		flt_android_rvh_set_task_cpu, NULL);
