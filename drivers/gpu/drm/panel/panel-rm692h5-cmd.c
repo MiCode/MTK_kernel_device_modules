@@ -693,7 +693,6 @@ static int lcm_update_roi(struct drm_panel *panel,
 	struct LCD_setting_table roi_x_setting[] = TO_ROI_SETTING(0x2A, x, w);
 	struct LCD_setting_table roi_y_setting[] = TO_ROI_SETTING(0x2B, y, h);
 
-	//set TE scan line: display total line - slice height + 8 = 2368
 	push_table(ctx, roi_x_setting, ARRAY_SIZE(roi_x_setting), 0);
 	push_table(ctx, roi_y_setting, ARRAY_SIZE(roi_y_setting), 0);
 	lcm_info("(x,y,w,h): (%d,%d,%d,%d)\n", x, y, w, h);
@@ -731,7 +730,7 @@ static void rm692h5_lcm_valid_roi(struct mtk_panel_params *ext_param,
 
 	unsigned int roi_y = *y, roi_h = *h;
 	unsigned int slice_height = ext_param->dsc_params.slice_height;
-	unsigned int lil_te1_line = 380;
+	unsigned int lil_te1_line = 520;
 	unsigned int lil_te2_line = 1560;
 	unsigned int inteval = 399;
 	int line_diff;
