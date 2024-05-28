@@ -1076,19 +1076,25 @@ ERR:
 static int start_clkdbg_test_task(void)
 {
 	char thread_name[THREAD_LEN];
+	int ret = 0;
 
-	if (clkdbg_thread_cnt > THREAD_NUM)
+	if (clkdbg_thread_cnt >= THREAD_NUM)
 		return 0;
 
 	if (clkdbg_test_thread[clkdbg_thread_cnt]) {
-		pr_info("clkdbg_thread is already running\n");
+		pr_info("%s clkdbg_thread is already running\n", __func__);
 		return -EBUSY;
 	}
 
-	snprintf(thread_name, THREAD_LEN, "clkdbg_thread_%d", clkdbg_thread_cnt);
+	ret = snprintf(thread_name, THREAD_LEN, "clkdbg_thread_%d", clkdbg_thread_cnt);
+	if (ret) {
+		pr_info("%s snprintf error(%d)\n", __func__, ret);
+		return ret;
+	}
+
 	clkdbg_test_thread[clkdbg_thread_cnt] = kthread_run(clkdbg_thread_fn, NULL, thread_name);
 	if (IS_ERR(clkdbg_test_thread[clkdbg_thread_cnt])) {
-		pr_info("Failed to start clkdbg_thread(%d)\n", clkdbg_thread_cnt);
+		pr_info("%s Failed to start clkdbg_thread(%d)\n", __func__, clkdbg_thread_cnt);
 		return PTR_ERR(clkdbg_test_thread[clkdbg_thread_cnt]);
 	}
 	clkdbg_thread_cnt++;

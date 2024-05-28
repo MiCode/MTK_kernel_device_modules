@@ -1292,7 +1292,7 @@ static void check_mm_hwv_irq_sta(void)
 
 static const char *get_pd_name(int idx)
 {
-	if (idx < MT6991_CHK_PD_NUM)
+	if (idx >= 0 && idx < MT6991_CHK_PD_NUM)
 		return mt6991_chk_pd_name[idx];
 
 	return NULL;

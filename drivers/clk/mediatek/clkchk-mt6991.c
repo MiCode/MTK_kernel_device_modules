@@ -3268,7 +3268,7 @@ void set_subsys_reg_dump_mt6991(enum chk_sys_id id[])
 	const struct regname *rns = &rn[0];
 	int i, j;
 
-	for (i = 0; i < ARRAY_SIZE(rn) && rns->base != NULL; i++, rns++) {
+	for (i = 0; i < ARRAY_SIZE(rn) - 1 && rns->base != NULL; i++, rns++) {
 		reg_dump_addr[i] = 0;
 		reg_dump_val[i] = 0;
 		reg_dump_valid[i] = false;
@@ -3301,7 +3301,7 @@ void get_subsys_reg_dump_mt6991(void)
 	const struct regname *rns = &rn[0];
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(rn) && rns->base != NULL; i++, rns++) {
+	for (i = 0; i < ARRAY_SIZE(rn) - 1 && rns->base != NULL; i++, rns++) {
 		if (reg_dump_valid[i])
 			pr_info("%-18s: [0x%08x] = 0x%08x\n",
 					rns->name, reg_dump_addr[i], reg_dump_val[i]);
@@ -3330,7 +3330,7 @@ void print_subsys_reg_mt6991(enum chk_sys_id id)
 
 	rb_dump = &rb[id];
 
-	for (i = 0; i < ARRAY_SIZE(rn) && rns->base != NULL; i++, rns++) {
+	for (i = 0; i < ARRAY_SIZE(rn) - 1 && rns->base != NULL; i++, rns++) {
 		if (!is_valid_reg(ADDR(rns)))
 			continue;
 
@@ -3391,7 +3391,7 @@ int chk_pm_state(void)
 
 	set_subsys_reg_dump_mt6991(pm_dump_id);
 
-	for (i = 0; i < ARRAY_SIZE(rn) && rns->base != NULL; i++, rns++) {
+	for (i = 0; i < ARRAY_SIZE(rn) - 1 && rns->base != NULL; i++, rns++) {
 		/* check pm_debug0 only */
 		if ((reg_dump_valid[i] == 0) || ((PHYSADDR(rns) & 0xF) != 0x4))
 			continue;
@@ -3764,7 +3764,7 @@ static void external_dump(void)
 
 static void cg_timeout_handle(struct regmap *regmap, u32 id, u32 shift)
 {
-	u32 val;
+	u32 val = 0;
 	int i;
 
 	dump_hwv_history(regmap, id);
