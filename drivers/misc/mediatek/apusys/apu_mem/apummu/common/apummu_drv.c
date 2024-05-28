@@ -379,7 +379,11 @@ static int apummu_probe(struct platform_device *pdev)
 	dev_set_drvdata(dev, adv);
 
 	// add for VLM DRAM 4-16G
-	dma_set_mask_and_coherent(adv->dev, DMA_BIT_MASK(34));
+	ret = dma_set_mask_and_coherent(adv->dev, DMA_BIT_MASK(34));
+	if (ret) {
+		AMMU_LOG_ERR("dma_set_mask_and_coherent fail\n");
+		goto out;
+	}
 
 	adv->init_done = false;
 

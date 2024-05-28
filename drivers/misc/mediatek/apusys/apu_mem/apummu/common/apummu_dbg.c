@@ -225,11 +225,12 @@ static ssize_t apummu_dbg_write_kernel(struct file *file, const char __user *use
 			break;
 
 		// ret = apummu_map_mem(session, type, &addr);
-		addr_encode_and_write_stable(0, session, addr, size, &eva);
-		AMMU_LOG_INFO("Input addr = 0x%llx, EVA = 0x%llx\n",
-				addr, eva);
+		ret = addr_encode_and_write_stable(0, session, addr, size, &eva);
 		if (ret)
 			break;
+
+		AMMU_LOG_INFO("Input addr = 0x%llx, EVA = 0x%llx\n",
+				addr, eva);
 		break;
 	case AMMU_UNMAP_AND_FREE: // 5
 		ret = apummu_unmap_mem(session, type);
