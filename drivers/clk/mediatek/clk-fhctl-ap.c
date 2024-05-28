@@ -314,7 +314,6 @@ static int ap_init_v1(struct pll_dts *array, struct match *match)
 	struct fh_pll_domain *domain;
 	unsigned int fh_id = array->fh_id;
 	struct fh_pll_regs *regs;
-	struct fh_pll_data *data;
 
 	FHDBG("array<%lx>,%s %s, id<%d>\n",
 			(unsigned long)array,
@@ -336,7 +335,6 @@ static int ap_init_v1(struct pll_dts *array, struct match *match)
 	/* do HW init */
 	domain = priv_data->domain;
 	regs = &domain->regs[fh_id];
-	data = &domain->data[fh_id];
 
 	fh_set_clr_field(regs->reg_clk_con, BIT(fh_id), 1);
 	fh_set_clr_field(regs->reg_rst_con, BIT(fh_id), 0);
