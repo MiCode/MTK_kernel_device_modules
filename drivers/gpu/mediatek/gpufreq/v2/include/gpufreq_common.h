@@ -47,6 +47,9 @@
 #ifndef MIN
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #endif
+#ifndef ARRAY_ASSIGN
+#define ARRAY_ASSIGN(dst, src, len)     (memcpy(dst, src, sizeof((dst)[0]) * len))
+#endif
 
 /**************************************************
  * Shader Present Setting

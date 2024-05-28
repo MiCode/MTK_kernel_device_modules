@@ -113,14 +113,13 @@ struct gpufreq_core_mask_info g_core_mask_table[SHADER_CORE_NUM] = {
 /**************************************************
  * Bus Tracker Setting
  **************************************************/
-#define NUM_BUS_INFO                        (10)
-#define BUS_TRACKER_OP(_info, _count, _type, _timestamp, _addr, _id, _log) \
+#define BUS_TRACKER_OP(_info, _count, _type, _timestamp, _log, _id, _addr) \
 	{ \
-		strscpy(_info.type, _type, 20); \
+		_info.type = _type; \
 		_info.timestamp = _timestamp; \
-		_info.addr = _addr; \
-		_info.id = _id; \
 		_info.log = _log; \
+		_info.id = _id; \
+		_info.addr = _addr; \
 		_count++; \
 	}
 
@@ -130,17 +129,6 @@ struct gpufreq_core_mask_info g_core_mask_table[SHADER_CORE_NUM] = {
 enum gpufreq_eco_version {
 	MT6991_A0 = 0,
 	MT6991_B0,
-};
-
-/**************************************************
- * Structure
- **************************************************/
-struct gpufreq_bus_tracker_info {
-	char type[20];
-	unsigned long long timestamp;
-	unsigned int addr;
-	unsigned int id;
-	unsigned int log;
 };
 
 #endif /* __GPUFREQ_MT6991_H__ */

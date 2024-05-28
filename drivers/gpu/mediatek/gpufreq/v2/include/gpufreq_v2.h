@@ -23,6 +23,7 @@
 #define GPUFREQ_MAX_ADJ_NUM             (10)
 #define GPUFREQ_MAX_REG_NUM             (70)
 #define GPUFREQ_MAX_GPM3_NUM            (20)
+#define GPUFREQ_MAX_BUSTRK_NUM          (10)
 #define GPUFREQ_DUMP_INFRA_SIZE         (8192)
 #define GPUFREQ_UNREFERENCED(param)     ((void)(param))
 #define GPUFREQ_PROFILE_TYPE_STRING(type) \
@@ -32,6 +33,15 @@
 		type == PROF_ACTIVE ? __stringify(ACTIVE) : \
 		type == PROF_SLEEP ? __stringify(SLEEP) : \
 		type == PROF_DVFS ? __stringify(DVFS) : "UNKNOWN" \
+	)
+#define GPUFREQ_BUS_TRACKER_TYPE_STRING(type) \
+	( \
+		type == BUS_VCORE_AR ? __stringify(VCORE_AR) : \
+		type == BUS_VCORE_AW ? __stringify(VCORE_AW) : \
+		type == BUS_VGPU_AR ? __stringify(VGPU_AR) : \
+		type == BUS_VGPU_AW ? __stringify(VGPU_AW) : \
+		type == BUS_GPUEB_AR ? __stringify(GPUEB_AR) : \
+		type == BUS_GPUEB_AW ? __stringify(GPUEB_AW) : "UNKNOWN" \
 	)
 
 /**************************************************
@@ -264,6 +274,15 @@ enum gpufreq_profile_op {
 	PROF_OP_RESULT = 2,
 };
 
+enum gpufreq_bus_tracker_type {
+	BUS_VCORE_AR = 0,
+	BUS_VCORE_AW = 1,
+	BUS_VGPU_AR  = 2,
+	BUS_VGPU_AW  = 3,
+	BUS_GPUEB_AR = 4,
+	BUS_GPUEB_AW = 5,
+};
+
 /**************************************************
  * Structure
  **************************************************/
@@ -390,6 +409,14 @@ struct gpu_ptp3_info {
 	unsigned int sw_fc;
 };
 
+struct gpufreq_bus_tracker_info {
+	enum gpufreq_bus_tracker_type type;
+	unsigned long long timestamp;
+	unsigned int log;
+	unsigned int id;
+	unsigned int addr;
+};
+
 /**************************************************
  * Shared Status
  **************************************************/
@@ -488,6 +515,8 @@ struct gpufreq_shared_status {
 	struct gpufreq_gpm3_info gpm3_table[GPUFREQ_MAX_GPM3_NUM];
 	struct gpufreq_ptp3_shared_status ptp3_status;
 	struct gpu_ptp3_info ptp3_info;
+	struct gpufreq_bus_tracker_info bus_slv_error[GPUFREQ_MAX_BUSTRK_NUM];
+	struct gpufreq_bus_tracker_info bus_slv_timeout[GPUFREQ_MAX_BUSTRK_NUM];
 };
 
 /**************************************************
