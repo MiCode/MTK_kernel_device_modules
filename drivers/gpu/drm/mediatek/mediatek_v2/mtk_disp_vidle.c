@@ -423,6 +423,7 @@ int mtk_vidle_update_dt_v2(void *_crtc)
 	struct drm_crtc *crtc = NULL;
 	struct mtk_panel_params *panel_ext = NULL;
 	unsigned int duration = 0;
+	unsigned int fps = 0;
 
 	if (!mtk_disp_vidle_flag.vidle_en) {
 		DDPMSG("%s, %d\n", __func__, __LINE__);
@@ -443,8 +444,10 @@ int mtk_vidle_update_dt_v2(void *_crtc)
 	panel_ext = mtk_drm_get_lcm_ext_params(crtc);
 	if (panel_ext && panel_ext->real_te_duration && panel_ext->real_te_duration != 0)
 		duration = panel_ext->real_te_duration;
-	else if (crtc->state)
-		duration = 1000000 / drm_mode_vrefresh(&crtc->state->adjusted_mode);
+	else if (crtc->state) {
+		fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+		duration = (fps == 0) ? 0 : (1000000 / fps);
+	}
 
 	if (duration == 0) {
 		DDPMSG("duration is not set\n");
