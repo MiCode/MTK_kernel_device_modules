@@ -269,8 +269,7 @@ void fsm_ee_message_handler(struct ccci_fsm_ee *ee_ctl, struct sk_buff *skb)
 			/* Keep exception info package from MD*/
 			if (ee_ctl->ops->set_ee_pkg)
 				ee_ctl->ops->set_ee_pkg(ee_ctl,
-				skb_pull(skb, sizeof(struct ccci_header)),
-				skb->len - sizeof(struct ccci_header));
+				skb_pull(skb, sizeof(struct ccci_header)), skb->len);
 
 			fsm_append_event(ctl,
 				CCCI_EVENT_MD_EX_REC_OK, NULL, 0);
