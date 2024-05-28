@@ -1027,6 +1027,7 @@ cpus {
 				"CCU_CLK_CAM_CCU0";
 			mediatek,larbs = <&smi_larb13>;
 			mediatek,ccu1 = <&ccu1>;
+			mmqos-supply = <&mmqos>;
 			interconnects =
 				<&mmqos SLAVE_LARB(21) &mmqos SLAVE_COMMON(1)>,
 				<&mmqos MASTER_LARB_PORT(M4U_PORT_L13_CAM_CCUI_MDP) &mmqos SLAVE_COMMON(1)>,
