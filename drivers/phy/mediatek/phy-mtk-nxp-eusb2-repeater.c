@@ -302,8 +302,8 @@ static void eusb2_rptr_prop_set(struct eusb2_repeater *rptr)
 
 static bool eusb2_repeater_getcid(struct eusb2_repeater *rptr)
 {
-	u8 cid[2];
 	u16 val;
+	int ret;
 
 
 	/* Enable rptr */
@@ -319,19 +319,20 @@ static bool eusb2_repeater_getcid(struct eusb2_repeater *rptr)
 	}
 
 	/* Read CHIP id, it should be 0x22 and 0x32 */
-	cid[0] = i2c_smbus_read_byte_data(rptr->i2c, CHIP_ID_0);
-	if (cid[0] < 0) {
+	ret = i2c_smbus_read_byte_data(rptr->i2c, CHIP_ID_0);
+	if (ret < 0) {
+		dev_info(rptr->dev, "NXP Repeater i2c read chip id fail.\n");
+		return false;
+	}
+	val = (u8)ret << 8;
+
+	ret = i2c_smbus_read_byte_data(rptr->i2c, CHIP_ID_1);
+	if (ret < 0) {
 		dev_info(rptr->dev, "NXP Repeater i2c read chip id fail.\n");
 		return false;
 	}
 
-	cid[1] = i2c_smbus_read_byte_data(rptr->i2c, CHIP_ID_1);
-	if (cid[1] < 0) {
-		dev_info(rptr->dev, "NXP Repeater i2c read chip id fail.\n");
-		return false;
-	}
-
-	val = (cid[1] << 8) + cid[0];
+	val += (u8)ret;
 
 	if (val != NXP_REPEATER_CID) {
 		dev_info(rptr->dev, "NXP Repeater CID is wrong: 0x%x\n", val);
