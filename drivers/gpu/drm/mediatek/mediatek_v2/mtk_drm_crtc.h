@@ -209,8 +209,19 @@ enum DISP_VBLANK_REC_JOB_TYPE {
 #define DISP_SLOT_VBLANK_REC(n)		\
 	(DISP_SLOT_LAYER_PEAK_RATIO(MAX_FRAME_RATIO_NUMBER * MAX_LAYER_RATIO_NUMBER) + 0x4 + (0x4 * (n)))
 
+#define DISP_SLOT_LAYER_PRE_AVG_RATIO(n)                                          \
+	(DISP_SLOT_VBLANK_REC(MAX_DISP_VBLANK_REC_THREAD * (MAX_DISP_VBLANK_REC_JOB + 2)) \
+	+ 0x4 + (0x8 * (n)))
+#define DISP_SLOT_LAYER_PRE_PEAK_RATIO(n)                                          \
+	(DISP_SLOT_LAYER_PRE_AVG_RATIO(n) + 0x4)
+#define DISP_SLOT_EXT_LAYER_PRE_AVG_RATIO(n)                                          \
+	(DISP_SLOT_LAYER_PRE_PEAK_RATIO(MAX_LAYER_RATIO_NUMBER) + 0x4 + (0x8 * (n)))
+#define DISP_SLOT_EXT_LAYER_PRE_PEAK_RATIO(n)                                          \
+	(DISP_SLOT_EXT_LAYER_PRE_AVG_RATIO(n) + 0x4)
+
+
 #define DISP_SLOT_SIZE            \
-	(DISP_SLOT_VBLANK_REC(MAX_DISP_VBLANK_REC_THREAD * (MAX_DISP_VBLANK_REC_JOB + 2)) + 0x4)
+	(DISP_SLOT_EXT_LAYER_PRE_PEAK_RATIO(0x18) + 0x4)
 
 #if DISP_SLOT_SIZE > CMDQ_BUF_ALLOC_SIZE
 #error "DISP_SLOT_SIZE exceed CMDQ_BUF_ALLOC_SIZE"
@@ -579,6 +590,7 @@ enum MTK_CRTC_COLOR_FMT {
 	EXPR(CLIENT_SEC_CFG)                                                   \
 	EXPR(CLIENT_PQ_EOF)                                                        \
 	EXPR(CLIENT_PQ)                                                    \
+	EXPR(CLIENT_BWM_LOOP)                                                    \
 	EXPR(CLIENT_TYPE_MAX)
 
 enum CRTC_GCE_CLIENT_TYPE { DECLARE_GCE_CLIENT(DECLARE_NUM) };
@@ -620,6 +632,7 @@ enum CRTC_GCE_EVENT_TYPE {
 	EVENT_UFBC_WDMA1_EOF,
 	EVENT_UFBC_WDMA3_EOF,
 	EVENT_OVLSYS_UFBC_WDMA0_EOF,
+	EVENT_MUTEX0_SOF,
 	EVENT_TYPE_MAX,
 };
 
@@ -981,6 +994,7 @@ struct mtk_drm_crtc {
 	struct cmdq_pkt *trig_loop_cmdq_handle;
 	struct cmdq_pkt *sodi_loop_cmdq_handle;
 	struct cmdq_pkt *event_loop_cmdq_handle;
+	struct cmdq_pkt *bwm_loop_cmdq_handle;
 	struct mtk_drm_plane *planes;
 	unsigned int layer_nr;
 	bool pending_planes;
@@ -1402,6 +1416,9 @@ unsigned int mtk_drm_primary_display_get_debug_state(
 bool mtk_crtc_with_trigger_loop(struct drm_crtc *crtc);
 void mtk_crtc_stop_trig_loop(struct drm_crtc *crtc);
 void mtk_crtc_start_trig_loop(struct drm_crtc *crtc);
+
+void mtk_crtc_stop_bwm_ratio_loop(struct drm_crtc *crtc);
+void mtk_crtc_start_bwm_ratio_loop(struct drm_crtc *crtc);
 
 bool mtk_crtc_with_sodi_loop(struct drm_crtc *crtc);
 void mtk_crtc_stop_sodi_loop(struct drm_crtc *crtc);

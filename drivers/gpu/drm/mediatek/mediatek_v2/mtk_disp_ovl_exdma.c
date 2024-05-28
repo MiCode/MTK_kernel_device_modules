@@ -988,7 +988,10 @@ static void mtk_ovl_exdma_config(struct mtk_ddp_comp *comp,
 			fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
 
 		if (cfg->w <= 1080) {
-			if (fps <= 60) {
+			if (fps == 30) {
+				bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 4);
+				ovl_win_size = 5;
+			} else if (fps == 60) {
 				bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 8);
 				ovl_win_size = 9;
 			} else {
@@ -996,7 +999,10 @@ static void mtk_ovl_exdma_config(struct mtk_ddp_comp *comp,
 				ovl_win_size = 18;
 			}
 		} else {
-			if (fps <= 60) {
+			if (fps == 30) {
+				bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 5);
+				ovl_win_size = 6;
+			} else if (fps == 60) {
 				bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 11);
 				ovl_win_size = 12;
 			} else {
@@ -3201,19 +3207,31 @@ static void mtk_ovl_exdma_addon_config(struct mtk_ddp_comp *comp,
 				fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
 
 			if (config->rsz_src_roi.width <= 1080) {
-				if (fps <= 60) {
-					bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 8);
+				if (fps == 30) {
+					bw_monitor_config |=
+						REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 4);
+					ovl_win_size = 5;
+				} else if (fps == 60) {
+					bw_monitor_config |=
+						REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 8);
 					ovl_win_size = 9;
 				} else {
-					bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 17);
+					bw_monitor_config |=
+						REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 17);
 					ovl_win_size = 18;
 				}
 			} else {
-				if (fps <= 60) {
-					bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 11);
+				if (fps == 30) {
+					bw_monitor_config |=
+						REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 5);
+					ovl_win_size = 6;
+				} else if (fps == 60) {
+					bw_monitor_config |=
+						REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 11);
 					ovl_win_size = 12;
 				} else {
-					bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 23);
+					bw_monitor_config |=
+						REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 23);
 					ovl_win_size = 24;
 				}
 			}
