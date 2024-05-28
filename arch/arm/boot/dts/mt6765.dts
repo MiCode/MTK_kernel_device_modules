@@ -1182,6 +1182,11 @@ initcall_debug=1 pelt=8 clk_ignore_unused=1";
 		reg = <0 0x00110100 0 0x800>;
 	};
 
+	power_gs {
+		compatible = "mediatek,power_gs";
+		pmic = <&main_pmic>;
+	};
+
 	scpsys: power-controller@10006000 {
 		compatible = "mediatek,mt6765-scpsys", "syscon";
 		reg =	<0 0x10006000 0 0x1000>; /* spm */
