@@ -203,7 +203,7 @@ static int _pe4_is_algo_ready(struct chg_alg_device *alg)
 		break;
 	case PE4_INIT:
 	case PE4_HW_READY:
-		uisoc = pe4_hal_get_uisoc(alg);
+		// uisoc = pe4_hal_get_uisoc(alg);
 		ret = pe4_hal_is_adapter_ready(alg);
 		ret_value = ret;
 		if (ret == ALG_READY) {
@@ -499,11 +499,11 @@ int mtk_pe40_pd_request(struct chg_alg_device *alg,
 {
 	unsigned int oldmA = 3000000;
 	unsigned int oldmivr = 4600;
-	int ret;
-	int mivr;
-	int adapter_mv, adapter_ma;
+	int ret = 0;
+	int mivr = 0;
+	int adapter_mv = 0, adapter_ma = 0;
 	struct mtk_pe40 *pe40;
-	struct pe4_pps_status ta_status;
+	struct pe4_pps_status ta_status = {0};
 
 #ifdef PE4_DUAL_CHARGER_IN_PARALLEL
 	bool chg2_enable = false;
@@ -549,8 +549,11 @@ int mtk_pe40_pd_request(struct chg_alg_device *alg,
 	}
 
 	ret = pe4_hal_set_adapter_cap(alg, adapter_mv, *adapter_ibus);
+	if (ret < 0)
+		return ret;
 	ret = pe40_hal_get_adapter_output(alg, &ta_status);
-
+	if (ret < 0)
+		return ret;
 	if (ta_status.output_ma < 500 && *adapter_ibus >= 1000) {
 		*adapter_ibus -= 500;
 		ret = pe4_hal_set_adapter_cap(alg, adapter_mv, *adapter_ibus);
@@ -1568,7 +1571,7 @@ static int _pe4_start_algo(struct chg_alg_device *alg)
 			ret_value = ALG_INIT_FAIL;
 			break;
 		case PE4_HW_READY:
-			uisoc = pe4_hal_get_uisoc(alg);
+			// uisoc = pe4_hal_get_uisoc(alg);
 			ret = pe4_hal_is_adapter_ready(alg);
 			ret_value = ret;
 			if (ret == ALG_READY) {

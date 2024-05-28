@@ -474,8 +474,8 @@ int hvbp_hal_reset_vbusovp_alarm(struct chg_alg_device *alg,
 static int hvbp_get_tbat(struct hvbp_hal *hal)
 {
 	int ret = 0;
-	int tmp_ret;
-	union power_supply_propval prop;
+	int tmp_ret = 0;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy;
 
 	bat_psy = power_supply_get_by_name("battery");
@@ -522,10 +522,10 @@ int hvbp_hal_get_adc(struct chg_alg_device *alg, enum chg_idx chgidx,
 
 int hvbp_hal_get_soc(struct chg_alg_device *alg, u32 *soc)
 {
-	int ret;
-	int ret_tmp;
+	int ret = 0;
+	int ret_tmp = 0;
 	struct power_supply *bat_psy;
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	//struct hvbp_hal *hal = chg_alg_dev_get_drv_hal_data(alg);
 
 	bat_psy = power_supply_get_by_name("battery");

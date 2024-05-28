@@ -474,7 +474,7 @@ int pe5p_hal_reset_vbusovp_alarm(struct chg_alg_device *alg,
 static int pe5p_get_tbat(struct pe5p_hal *hal)
 {
 	int ret = 0;
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy = NULL;
 
 	bat_psy = power_supply_get_by_name("battery");
@@ -520,14 +520,14 @@ int pe5p_hal_get_adc(struct chg_alg_device *alg, enum chg_idx chgidx,
 
 int pe5p_hal_get_soc(struct chg_alg_device *alg, u32 *soc)
 {
-	int ret;
-	int ret_tmp;
+	int ret = 0;
+	int ret_tmp = 0;
 	struct power_supply *bat_psy;
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	//struct pe5p_hal *hal = chg_alg_dev_get_drv_hal_data(alg);
 
 	bat_psy = power_supply_get_by_name("battery");
-	if (IS_ERR_OR_NULL(bat_psy)) {
+	if (bat_psy == NULL || IS_ERR(bat_psy)) {
 		PE5P_ERR("%s Couldn't get bat_psy\n", __func__);
 		ret = 50;
 	} else {
@@ -555,6 +555,8 @@ int pe5p_hal_is_adapter_ready(struct chg_alg_device *alg)
 	}
 
 	hal = chg_alg_dev_get_drv_hal_data(alg);
+
+	chg_psy = power_supply_get_by_name("mtk-master-charger");
 	if (chg_psy == NULL || IS_ERR(chg_psy))
 		pr_notice("%s Couldn't get chg_psy\n", __func__);
 	else {

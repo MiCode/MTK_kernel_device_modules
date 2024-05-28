@@ -1276,7 +1276,11 @@ static int pe50_calculate_rcable_by_swchg(struct pe50_algo_info *info)
 		return ret;
 	}
 
-	pe50_hal_enable_charging(info->alg, CHG1, true);
+	ret = pe50_hal_enable_charging(info->alg, CHG1, true);
+	if (ret < 0) {
+		PE50_ERR("enable charging fail %d\n", ret);
+		return ret;
+	}
 
 	ret = pe50_set_ta_cap_cv(info, 8000, 1000);
 	if (ret < 0) {
@@ -3944,11 +3948,14 @@ static inline void pe50_parse_dt_u32(struct device_node *np, void *desc,
 				     int prop_cnt)
 {
 	int i;
+	int ret = 0;
 
 	for (i = 0; i < prop_cnt; i++) {
 		if (unlikely(!props[i].name))
 			continue;
-		of_property_read_u32(np, props[i].name, desc + props[i].offset);
+		ret = of_property_read_u32(np, props[i].name, desc + props[i].offset);
+		if (ret < 0)
+			return;
 	}
 }
 
@@ -3957,12 +3964,15 @@ static inline void pe50_parse_dt_u32_arr(struct device_node *np, void *desc,
 					 int prop_cnt)
 {
 	int i;
+	int ret = 0;
 
 	for (i = 0; i < prop_cnt; i++) {
 		if (unlikely(!props[i].name))
 			continue;
-		of_property_read_u32_array(np, props[i].name,
+		ret = of_property_read_u32_array(np, props[i].name,
 					   desc + props[i].offset, props[i].sz);
+		if (ret < 0)
+			return;
 	}
 }
 
