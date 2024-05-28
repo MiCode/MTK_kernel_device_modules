@@ -764,11 +764,12 @@ static u32 mtk_pcie_phy_dbg_read_bus(void __iomem *phy_base, u32 lane_num, u32 b
 }
 
 /* For lane margin PHY dump */
-static void mtk_pcie_multi_lanes_dump(struct mtk_pcie_info *pcie_smt, u32 port, u32 lane_num)
+static int mtk_pcie_multi_lanes_dump(struct mtk_pcie_info *pcie_smt, u32 port, u32 lane_num)
 {
 	void __iomem *pcie_phy_sif = pcie_smt->regs[port];
 	u32 used_length = 0, val = 0;
 	u32 pln[45] = {0};
+	int ret_val = 0;
 
 	mtk_pcie_phy_dbg_set_partition(pcie_phy_sif, 0x4);
 	pln[0] = lane_num;
@@ -864,7 +865,7 @@ static void mtk_pcie_multi_lanes_dump(struct mtk_pcie_info *pcie_smt, u32 port, 
 	pr_info("[%s, %d] used_length=%d, pcie_smt->max_lane[port]=%d\n",
 		__func__, __LINE__, used_length, pcie_smt->max_lane[port]);
 
-	snprintf(pcie_smt->response + used_length, MAX_BUF_SZ - used_length,
+	ret_val = snprintf(pcie_smt->response + used_length, MAX_BUF_SZ - used_length,
 		 "\nLane%d:cdr_en:%#x\nafe_en:%#x\ncdr_lck2ref:%#x\ncdr_track:%#x\n"
 		 "aeq_en:%#x\ndrv_en:%#x\nser_en:%#x\ndata_en:%#x\ncal_ckon:%#x\n"
 		 "sgdt_out:%#x\ncdr_dig_sta:%#x\ncdr_kband_state:%#x\ncal_kband_done:%#x\n"
@@ -881,13 +882,20 @@ static void mtk_pcie_multi_lanes_dump(struct mtk_pcie_info *pcie_smt, u32 port, 
 		 pln[28], pln[29], pln[30], pln[31], pln[32], pln[33], pln[34],
 		 pln[35], pln[36], pln[37], pln[38], pln[39], pln[40], pln[41],
 		 pln[42], pln[43], pln[44]);
+	if (ret_val < 0)
+		pr_info("[%s, %d] snprintf encoding error\n", __func__, __LINE__);
+
+	return ret_val;
 }
+
+
 
 /* For lane margin PHY dump */
 static int mtk_pcie_lanemargin_phy_dump(struct mtk_pcie_info *pcie_smt, u32 port)
 {
 	void __iomem *pcie_phy_sif = pcie_smt->regs[port];
 	int used_length = 0;
+	int ret_val = 0;
 	u32 glb[10] = {0};
 	u32 val = 0;
 	u32 i = 0;
@@ -896,8 +904,19 @@ static int mtk_pcie_lanemargin_phy_dump(struct mtk_pcie_info *pcie_smt, u32 port
 
 	used_length = strlen(pcie_smt->response);
 	pr_info("[%s, %d] used_length=%d\n", __func__, __LINE__, used_length);
-	snprintf(pcie_smt->response + used_length, MAX_BUF_SZ - used_length, "\nleft:%d\nright:%d\nup:%d\ndown:%d\n",
-		 pcie_smt->eye[0], pcie_smt->eye[1], pcie_smt->eye[2], pcie_smt->eye[3]);
+
+	if (used_length >= MAX_BUF_SZ) {
+		pr_info("[%s, %d] Buffer overflow risk, increase macro size.\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	ret_val = snprintf(pcie_smt->response + used_length, MAX_BUF_SZ - used_length,
+			   "\nleft:%d\nright:%d\nup:%d\ndown:%d\n",
+			   pcie_smt->eye[0], pcie_smt->eye[1], pcie_smt->eye[2], pcie_smt->eye[3]);
+	if (ret_val < 0) {
+		pr_info("[%s, %d] snprintf encoding error\n", __func__, __LINE__);
+		return ret_val;
+	}
 
 	//PHY GLB DA/AD Interface
 	mtk_pcie_phy_dbg_set_partition(pcie_phy_sif, 0x4);
@@ -919,15 +938,22 @@ static int mtk_pcie_lanemargin_phy_dump(struct mtk_pcie_info *pcie_smt, u32 port
 
 	used_length = strlen(pcie_smt->response);
 	pr_info("[%s, %d] used_length=%d\n", __func__, __LINE__, used_length);
-	snprintf(pcie_smt->response + used_length, MAX_BUF_SZ - used_length,
+	ret_val = snprintf(pcie_smt->response + used_length, MAX_BUF_SZ - used_length,
 		 "\ndummy:%#x\nbias_en:%#x\nckdet_en:%#x\ntpll0_en:%#x\n"
 		 "tpll1_en:%#x\nckdet_out:%#x\ntpll0_dig_mon:%#x\n"
 		 "tpll0_kband_cplt:%#x\ntpll1_kband_cplt:%#x\ntpll1_dig_mon:%#x\n",
 		 glb[0], glb[1], glb[2], glb[3], glb[4],
 		 glb[5], glb[6], glb[7], glb[8], glb[9]);
+	if (ret_val < 0) {
+		pr_info("[%s, %d] snprintf encoding error\n", __func__, __LINE__);
+		return ret_val;
+	}
 
-	for (i = 0; i < pcie_smt->test_lane[port]; i++)
-		mtk_pcie_multi_lanes_dump(pcie_smt, port, i);
+	for (i = 0; i < pcie_smt->test_lane[port]; i++) {
+		ret_val = mtk_pcie_multi_lanes_dump(pcie_smt, port, i);
+		if (ret_val < 0)
+			return ret_val;
+	}
 
 	used_length = strlen(pcie_smt->response);
 	pr_info("PCIe%d PHY dump:length=%d, info:%s\n", port, used_length, pcie_smt->response);
@@ -1252,8 +1278,11 @@ static ssize_t cli_store(struct kobject *kobj, struct kobj_attribute *attr,
 	char *ch;
 
 	ch = kmalloc(n, GFP_KERNEL);
+	if (!ch)
+		return -ENOMEM;
+
 	memcpy(ch, buf, n);
-	if (ch[n-1] == '\n')
+	if (n > 0 && ch[n-1] == '\n')
 		ch[n-1] = '\0';
 
 	ret = mtk_pcie_test_ctrl(ch);
@@ -1380,7 +1409,17 @@ err_init:
 
 static void mtk_pcie_phy_power_off(struct mtk_pcie_info *smt_info, int port)
 {
-	struct phy *pcie_phy = smt_info->phys[port];
+	struct phy *pcie_phy;
+
+	if (!smt_info)
+		return;
+
+	if (port < 0 || port >= ARRAY_SIZE(smt_info->phys)) {
+		pr_info("PCIe%d platform device not found!\n", port);
+		return;
+	}
+
+	pcie_phy = smt_info->phys[port];
 
 	clk_bulk_disable_unprepare(smt_info->num_clks[port],
 				   smt_info->clks[port]);
@@ -1479,7 +1518,7 @@ static int __init mtk_pcie_test_init(void)
 	}
 
 	pcie_smt->f_class = class_create(pcie_smt->name);
-	device_create(pcie_smt->f_class, NULL, dev_ctx->dev, NULL, pcie_smt->name);
+	device_create(pcie_smt->f_class, NULL, dev_ctx->dev, NULL, (const char *)pcie_smt->name);
 
 	/* sysfs support */
 	pcie_smt->pcie_test_kobj = kobject_create_and_add(PCIE_SYSFS_NAME, NULL);
