@@ -122,6 +122,7 @@ struct cpumask find_min_num_vip_cpus(struct perf_domain *pd, struct task_struct 
 	struct cpumask allowed_cpu_mask_for_slow, *pd_cpumask;
 	int cluster;
 
+	cpumask_clear(&vip_candidate);
 	/* Remain this to prevent from crucial error. */
 	if (!pd_ptr) {
 		failed = true;
@@ -1302,9 +1303,6 @@ void vip_push_runnable(struct rq *src_rq)
 	struct rq *dst_rq;
 
 	if (in_interrupt())
-		goto put_task;
-
-	if (task_to_pushed == NULL)
 		goto put_task;
 
 	if (cpumask_weight(task_to_pushed->cpus_ptr) <= 1)
