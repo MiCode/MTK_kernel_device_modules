@@ -571,12 +571,12 @@ void smmu_host_hvc(void)
 	smmu_s2_protect_mapping = pkvm_register_el2_mod_call(
 		__kvm_nvhe_mtk_smmu_secure_v2, pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC, SMC_ID_MTK_PKVM_SMMU_SEC_MAP,
-			  0, 0, 0, 0, 0, &res);
+			  smmu_s2_protect_mapping, 0, 0, 0, 0, &res);
 
 	smmu_s2_protect_unmapping = pkvm_register_el2_mod_call(
 		__kvm_nvhe_mtk_smmu_unsecure_v2, pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
-			  SMC_ID_MTK_PKVM_SMMU_SEC_UNMAP, 0, 0, 0, 0, 0, &res);
+			  SMC_ID_MTK_PKVM_SMMU_SEC_UNMAP, smmu_s2_protect_unmapping, 0, 0, 0, 0, &res);
 
 	smmu_share = pkvm_register_el2_mod_call(__kvm_nvhe_mtk_smmu_share,
 						pkvm_module_token);

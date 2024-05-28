@@ -35,25 +35,25 @@ static int __init test_nvhe_init(void)
 	if (ret < 0)
 		return ret;
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC, SMC_ID_MTK_PKVM_TMEM_REGION_PROTECT,
-				0, 0, 0, 0, 0, &res);
+				ret, 0, 0, 0, 0, &res);
 
 	ret = pkvm_register_el2_mod_call(__kvm_nvhe_hyp_region_unprotect, token);
 	if (ret < 0)
 		return ret;
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC, SMC_ID_MTK_PKVM_TMEM_REGION_UNPROTECT,
-				0, 0, 0, 0, 0, &res);
+				ret, 0, 0, 0, 0, &res);
 
 	ret = pkvm_register_el2_mod_call(__kvm_nvhe_hyp_page_protect, token);
 	if (ret < 0)
 		return ret;
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC, SMC_ID_MTK_PKVM_TMEM_PAGE_PROTECT,
-				0, 0, 0, 0, 0, &res);
+				ret, 0, 0, 0, 0, &res);
 
 	ret = pkvm_register_el2_mod_call(__kvm_nvhe_hyp_page_unprotect, token);
 	if (ret < 0)
 		return ret;
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC, SMC_ID_MTK_PKVM_TMEM_PAGE_UNPROTECT,
-				0, 0, 0, 0, 0, &res);
+				ret, 0, 0, 0, 0, &res);
 
 	return 0;
 }
