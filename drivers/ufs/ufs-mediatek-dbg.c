@@ -5,6 +5,7 @@
  *	Stanley Chu <stanley.chu@mediatek.com>
  */
 #include <linux/atomic.h>
+#include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
@@ -1722,6 +1723,131 @@ static void lookup_tracepoints(struct tracepoint *tp, void *ignore)
 			interests[i].tp = tp;
 	}
 }
+
+static void ufs_mtk_scsi_unblock_requests(struct ufs_hba *hba)
+{
+	if (atomic_dec_and_test(&hba->scsi_block_reqs_cnt))
+		scsi_unblock_requests(hba->host);
+}
+
+static void ufs_mtk_scsi_block_requests(struct ufs_hba *hba)
+{
+	if (atomic_inc_return(&hba->scsi_block_reqs_cnt) == 1)
+		scsi_block_requests(hba->host);
+}
+
+static u32 ufs_mtk_pending_cmds(struct ufs_hba *hba)
+{
+	const struct scsi_device *sdev;
+	u32 pending = 0;
+
+	lockdep_assert_held(hba->host->host_lock);
+	__shost_for_each_device(sdev, hba->host)
+		pending += sbitmap_weight(&sdev->budget_map);
+
+	return pending;
+}
+
+static int ufs_mtk_wait_for_doorbell_clr(struct ufs_hba *hba,
+					u64 wait_timeout_us)
+{
+	unsigned long flags;
+	int ret = 0;
+	u32 tm_doorbell;
+	u32 tr_pending;
+	bool timeout = false, do_last_check = false;
+	ktime_t start;
+
+	ufshcd_hold(hba);
+	spin_lock_irqsave(hba->host->host_lock, flags);
+	/*
+	 * Wait for all the outstanding tasks/transfer requests.
+	 * Verify by checking the doorbell registers are clear.
+	 */
+	start = ktime_get();
+	do {
+		if (hba->ufshcd_state != UFSHCD_STATE_OPERATIONAL) {
+			ret = -EBUSY;
+			goto out;
+		}
+
+		tm_doorbell = ufshcd_readl(hba, REG_UTP_TASK_REQ_DOOR_BELL);
+		tr_pending = ufs_mtk_pending_cmds(hba);
+		if (!tm_doorbell && !tr_pending) {
+			timeout = false;
+			break;
+		} else if (do_last_check) {
+			break;
+		}
+
+		spin_unlock_irqrestore(hba->host->host_lock, flags);
+		schedule();
+		if (ktime_to_us(ktime_sub(ktime_get(), start)) >
+		    wait_timeout_us) {
+			timeout = true;
+			/*
+			 * We might have scheduled out for long time so make
+			 * sure to check if doorbells are cleared by this time
+			 * or not.
+			 */
+			do_last_check = true;
+		}
+		spin_lock_irqsave(hba->host->host_lock, flags);
+	} while (tm_doorbell || tr_pending);
+
+	if (timeout) {
+		dev_err(hba->dev,
+			"%s: timedout waiting dbr to clr (tm=0x%x, tr=0x%x)\n",
+			__func__, tm_doorbell, tr_pending);
+		ret = -EBUSY;
+	}
+out:
+	spin_unlock_irqrestore(hba->host->host_lock, flags);
+	ufshcd_release(hba);
+	return ret;
+}
+
+/*
+ * Ref-clk start calibration may have jiter, block requests and enter ah8
+ */
+int ufs_mtk_cali_hold(void)
+{
+	struct ufs_hba *hba = ufshba;
+	u64 timeout = 1000 * 1000; /* 1 sec */;
+	int ret = 0;
+
+	pm_runtime_get_sync(&hba->ufs_device_wlun->sdev_gendev);
+	ufs_mtk_scsi_block_requests(hba);
+
+	if (ufs_mtk_wait_for_doorbell_clr(hba, timeout)) {
+		dev_err(hba->dev, "%s: wait doorbell clr timeout!\n",
+				__func__);
+		ret = 1;
+	}
+
+	mdelay(15);
+
+	dev_info(hba->dev, "%s: UFS Block Request ret = %d\n", __func__, ret);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_cali_hold);
+
+/*
+ * Ref-clk calibration end, unblock requests
+ */
+int ufs_mtk_cali_release(void)
+{
+	struct ufs_hba *hba = ufshba;
+
+	ufs_mtk_scsi_unblock_requests(hba);
+	pm_runtime_put(&hba->ufs_device_wlun->sdev_gendev);
+
+	dev_info(hba->dev, "%s: UFS Unblock Request Success!\n", __func__);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_cali_release);
 
 int ufs_mtk_dbg_cmd_hist_enable(void)
 {
