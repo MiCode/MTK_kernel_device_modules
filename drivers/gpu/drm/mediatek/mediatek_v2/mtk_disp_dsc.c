@@ -68,6 +68,9 @@
 	#define CFG_FLD_SLICE_WIDTH	REG_FLD_MSB_LSB(15, 0)
 
 #define DISP_REG_DSC_SLICE_H		0x0024
+	#define SLICE_HEIGHT_M1			REG_FLD_MSB_LSB(15, 0)
+	#define SLICE_NUM_M1			REG_FLD_MSB_LSB(29, 16)
+	#define SLICE_WIDTH_MOD3		REG_FLD_MSB_LSB(31, 30)
 
 #define DISP_REG_DSC_CHUNK_SIZE		0x0028
 
@@ -1699,10 +1702,11 @@ static int mtk_dsc_set_partial_update(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
 	struct mtk_disp_dsc *dsc = comp_to_dsc(comp);
-	unsigned int slice_width, slice_height;
+	unsigned int slice_height;
 	struct mtk_panel_dsc_params *dsc_params;
 	struct mtk_panel_spr_params *spr_params;
 	unsigned int pic_height_ext_num;
+	uint32_t value = 0, mask = 0;
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
 
@@ -1716,7 +1720,6 @@ static int mtk_dsc_set_partial_update(struct mtk_ddp_comp *comp,
 		dsc_params = &comp->mtk_crtc->panel_ext->params->dsc_params_spr_in;
 	else
 		dsc_params = &comp->mtk_crtc->panel_ext->params->dsc_params;
-	slice_width = dsc_params->slice_width;
 	slice_height = dsc_params->slice_height;
 
 	if (dsc->set_partial_update == 1) {
@@ -1728,11 +1731,9 @@ static int mtk_dsc_set_partial_update(struct mtk_ddp_comp *comp,
 			(dsc->roi_height - 1),
 			DISP_REG_DSC_PIC_H, handle);
 
-		mtk_ddp_write_relaxed(comp,
-			(slice_width % 3) << 30 |
-			(pic_height_ext_num - 1) << 16 |
-			(slice_height - 1),
-			DISP_REG_DSC_SLICE_H, handle);
+		SET_VAL_MASK(value, mask, (slice_height - 1), SLICE_HEIGHT_M1);
+		SET_VAL_MASK(value, mask, (pic_height_ext_num - 1), SLICE_NUM_M1);
+		mtk_ddp_write_mask(comp, value, DISP_REG_DSC_SLICE_H, mask, handle);
 	} else {
 		pic_height_ext_num =
 			(full_height + slice_height - 1) / slice_height;
@@ -1742,11 +1743,9 @@ static int mtk_dsc_set_partial_update(struct mtk_ddp_comp *comp,
 			(full_height - 1),
 			DISP_REG_DSC_PIC_H, handle);
 
-		mtk_ddp_write_relaxed(comp,
-			(slice_width % 3) << 30 |
-			(pic_height_ext_num - 1) << 16 |
-			(slice_height - 1),
-			DISP_REG_DSC_SLICE_H, handle);
+		SET_VAL_MASK(value, mask, (slice_height - 1), SLICE_HEIGHT_M1);
+		SET_VAL_MASK(value, mask, (pic_height_ext_num - 1), SLICE_NUM_M1);
+		mtk_ddp_write_mask(comp, value, DISP_REG_DSC_SLICE_H, mask, handle);
 	}
 
 	return 0;
