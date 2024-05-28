@@ -111,10 +111,13 @@ static void (*p_bootprof_write_log_cb)(char *str, size_t str_len);
 
 void register_bootprof_write_log(void (*fn)(char *str, size_t str_len))
 {
-	if (!enabled || fn == NULL) {
-		p_bootprof_write_log_cb = NULL;
-		return;
+	scoped_guard(spinlock, &bootprof_lock) {
+		if (!enabled || fn == NULL) {
+			p_bootprof_write_log_cb = NULL;
+			return;
+		}
 	}
+
 	if (reg_cnt != 0)
 		return;
 
@@ -503,7 +506,12 @@ mt_bootprof_write(struct file *filp, const char *ubuf, size_t cnt, loff_t *data)
 	buf[copy_size] = 0;
 	bootprof_log_boot(buf);
 #if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
-	if (p_bootprof_write_log_cb != NULL && enabled)
+	scoped_guard(spinlock, &bootprof_lock) {
+		if (!enabled)
+			return cnt;
+	}
+
+	if (p_bootprof_write_log_cb != NULL)
 		p_bootprof_write_log_cb(buf, copy_size);
 #endif
 
