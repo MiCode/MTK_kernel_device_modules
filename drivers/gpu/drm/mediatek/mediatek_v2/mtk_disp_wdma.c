@@ -1660,7 +1660,7 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 {
 	unsigned int size = 0;
 	unsigned int con = 0;
-	unsigned int bw_base;
+	unsigned long long bw_base;
 	dma_addr_t addr = 0;
 	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
 	struct mtk_wdma_cfg_info *cfg_info = &wdma->cfg_info;
@@ -1703,7 +1703,7 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 		vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
 		vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
 		vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
-		bw_base = (unsigned long long)div_u64(vact * hact * vrefresh * bpp, 1000);
+		bw_base = div_u64((unsigned long long)vact * hact * vrefresh * bpp, 1000);
 		bw_base = div_u64(bw_base, 1000) * 2;
 	}
 	mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
