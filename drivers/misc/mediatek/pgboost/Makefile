@@ -17,6 +17,7 @@
 ccflags-y += -I$(src)              	# needed for trace events
 ccflags-y += -I$(srctree)/mm
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pgboost
+subdir-ccflags-y += -Wno-unused-but-set-variable
 obj-$(CONFIG_MTK_PGBOOST) += pgboost.o
 pgboost-objs += src/pgboost.o
 pgboost-objs += src/ksym.o
