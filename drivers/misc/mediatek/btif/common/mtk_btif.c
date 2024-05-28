@@ -753,7 +753,7 @@ static ssize_t driver_flag_set(struct device_driver *drv,
 	long x = 0;
 	long y = 0;
 	long z = 0;
-	int result = 0;
+	int result;
 	char *p_token = NULL;
 	char *p_delimiter = " \t";
 #ifdef BTIF_FLAG_SET_ENABLE_ALL_FUNC
@@ -3080,7 +3080,7 @@ static void btif_log_buf_dmp_out_work(struct work_struct *work)
 	struct _btif_log_queue_t_ *p_log_que = container_of(work,
 		struct _btif_log_queue_t_, dump_work);
 	struct _btif_log_buf_t_ *p_log_buf = NULL;
-	unsigned char *p_buf = NULL;
+	unsigned char *p_buf;
 	unsigned int len = 0;
 	unsigned int pkt_count = 0;
 	unsigned char *p_dir = NULL;
