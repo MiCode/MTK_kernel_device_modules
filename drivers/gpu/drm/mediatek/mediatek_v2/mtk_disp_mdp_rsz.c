@@ -450,7 +450,7 @@ static void mtk_rsz_algo_init(struct rsz_fw_out *out,
 	cal_param->tap_adapt_fallback_ratio = 0;
 	cal_param->tap_adapt_slope = 8;
 	cal_param->signal_enhance_mode = 1;
-	out->etc_ctrl              = 0x34220000;
+	out->etc_ctrl              = 0x14220000;
 	out->etc_switch_max_min1   = 0x23012ac0;
 	out->etc_switch_max_min2   = 0x1e232800;
 	out->etc_ring              = 0x05260c17;
@@ -474,13 +474,14 @@ static void mtk_rsz_fw(struct rsz_fw_in *in, struct rsz_fw_out *out,
 	out->vert_cubic_trunc = 0;
 	cal_param.yuv_422_t_yuv_444 = 0;
 	cal_param.tap_adapt_en = 1;
+	cal_param.hori_tbl = cal_param.hori_alpha_tbl = 9;
+	cal_param.vert_tbl = cal_param.vert_alpha_tbl = 9;
 	if (is_hor) {
 		in->out_width = out_len;
 		in->crop.r.width = in_len;
 		in->crop.r.left = in->crop.x_sub_px = in->crop.w_sub_px = 0;
 		out->hori_algo = 0;
 		mtk_rsz_algo_config(in, out, true, &cal_param);
-		cal_param.hori_tbl = cal_param.hori_alpha_tbl = 9;
 		mtk_rsz_algo_auto_align(in, out, true, &cal_param);
 		mtk_rsz_algo_ofst_check(out, &cal_param, true);
 	} else {
@@ -489,14 +490,8 @@ static void mtk_rsz_fw(struct rsz_fw_in *in, struct rsz_fw_out *out,
 		in->crop.r.top = in->crop.y_sub_px = in->crop.h_sub_px = 0;
 		out->vert_algo = 0;
 		mtk_rsz_algo_config(in, out, false, &cal_param);
-		cal_param.vert_tbl = cal_param.vert_alpha_tbl = 9;
 		mtk_rsz_algo_auto_align(in, out, false, &cal_param);
 		mtk_rsz_algo_ofst_check(out, &cal_param, false);
-	}
-
-	if (is_hor && out->vert_first == 0) {
-		cal_param.tap_adapt_en = 0;
-		cal_param.signal_enhance_mode = 0;
 	}
 
 	cal_param.hori_cubic_trunc_en = 0;
