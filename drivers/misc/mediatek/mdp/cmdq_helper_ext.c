@@ -515,6 +515,15 @@ static u32 cmdq_core_interpret_wpr_address_data_register(
 	return reg_id;
 }
 
+#define mdp_snprintf(reqLen, textBuf, bufLen, string, args...) \
+do { \
+	reqLen = snprintf(textBuf, bufLen, string, ##args); \
+	if (reqLen < 0) { \
+		CMDQ_LOG("snprintf failed.\n"); \
+		reqLen = 0; \
+	} \
+} while (0)
+
 s32 cmdq_core_interpret_instruction(char *textBuf, s32 bufLen,
 	const u32 op, const u32 arg_a, const u32 arg_b)
 {
@@ -529,10 +538,10 @@ s32 cmdq_core_interpret_instruction(char *textBuf, s32 bufLen,
 	case CMDQ_CODE_MOVE:
 		if (1 & (arg_a >> 23)) {
 			reg_id = ((arg_a >> 16) & 0x1f) + CMDQ_GPR_V3_OFFSET;
-			reqLen = snprintf(textBuf, bufLen,
+			mdp_snprintf(reqLen, textBuf, bufLen,
 				"MOVE:0x%08x to Reg%d\n", arg_b, reg_id);
 		} else {
-			reqLen = snprintf(textBuf, bufLen,
+			mdp_snprintf(reqLen, textBuf, bufLen,
 				"Set MASK:0x%08x\n", arg_b);
 		}
 		break;
@@ -542,7 +551,7 @@ s32 cmdq_core_interpret_instruction(char *textBuf, s32 bufLen,
 	case CMDQ_CODE_READ_S:
 	case CMDQ_CODE_WRITE_S:
 	case CMDQ_CODE_WRITE_S_W_MASK:
-		reqLen = snprintf(textBuf, bufLen, "%s: ",
+		mdp_snprintf(reqLen, textBuf, bufLen, "%s: ",
 			cmdq_core_parse_op(op));
 		bufLen -= reqLen;
 		textBuf += reqLen;
@@ -564,9 +573,9 @@ s32 cmdq_core_interpret_instruction(char *textBuf, s32 bufLen,
 		if (arg_value_type != 0) {
 			reg_id = cmdq_core_interpret_wpr_value_data_register(
 				op, arg_value);
-			reqLen = snprintf(textBuf, bufLen, "Reg%d, ", reg_id);
+			mdp_snprintf(reqLen, textBuf, bufLen, "Reg%d, ", reg_id);
 		} else {
-			reqLen = snprintf(textBuf, bufLen, "0x%08x, ",
+			mdp_snprintf(reqLen, textBuf, bufLen, "0x%08x, ",
 				arg_value);
 		}
 		bufLen -= reqLen;
@@ -576,13 +585,13 @@ s32 cmdq_core_interpret_instruction(char *textBuf, s32 bufLen,
 		if (arg_addr_type != 0) {
 			reg_id = cmdq_core_interpret_wpr_address_data_register(
 				op, arg_addr);
-			reqLen = snprintf(textBuf, bufLen, "Reg%d, ", reg_id);
+			mdp_snprintf(reqLen, textBuf, bufLen, "Reg%d, ", reg_id);
 			bufLen -= reqLen;
 			textBuf += reqLen;
 		} else {
 			reg_addr = cmdq_core_subsys_to_reg_addr(arg_addr);
 
-			reqLen = snprintf(textBuf, bufLen,
+			mdp_snprintf(reqLen, textBuf, bufLen,
 				"addr:0x%08x [%s], ", reg_addr & addr_mask,
 				cmdq_get_func()->parseModule(reg_addr));
 			bufLen -= reqLen;
@@ -596,27 +605,27 @@ s32 cmdq_core_interpret_instruction(char *textBuf, s32 bufLen,
 			use_mask = 1;
 		else if (op == CMDQ_CODE_READ_S || op == CMDQ_CODE_WRITE_S)
 			use_mask = 0;
-		reqLen = snprintf(textBuf, bufLen, "use_mask:%d\n", use_mask);
+		mdp_snprintf(reqLen, textBuf, bufLen, "use_mask:%d\n", use_mask);
 		break;
 	case CMDQ_CODE_JUMP:
 		if (arg_a) {
 			if (arg_a & (1 << 22)) {
 				/* jump by register */
-				reqLen = snprintf(textBuf, bufLen,
+				mdp_snprintf(reqLen, textBuf, bufLen,
 					"JUMP(register): Reg%d\n", arg_b);
 			} else {
 				/* absolute */
-				reqLen = snprintf(textBuf, bufLen,
+				mdp_snprintf(reqLen, textBuf, bufLen,
 					"JUMP(absolute):0x%08x\n", arg_b);
 			}
 		} else {
 			/* relative */
 			if ((s32) arg_b >= 0) {
-				reqLen = snprintf(textBuf, bufLen,
+				mdp_snprintf(reqLen, textBuf, bufLen,
 					"JUMP(relative):+%d\n",
 					(s32)CMDQ_REG_REVERT_ADDR(arg_b));
 			} else {
-				reqLen = snprintf(textBuf, bufLen,
+				mdp_snprintf(reqLen, textBuf, bufLen,
 					"JUMP(relative):%d\n",
 					(s32)CMDQ_REG_REVERT_ADDR(arg_b));
 			}
@@ -624,21 +633,21 @@ s32 cmdq_core_interpret_instruction(char *textBuf, s32 bufLen,
 		break;
 	case CMDQ_CODE_WFE:
 		if (arg_b == 0x80008001) {
-			reqLen = snprintf(textBuf, bufLen,
+			mdp_snprintf(reqLen, textBuf, bufLen,
 				"Wait And Clear Event:%s\n",
 				cmdq_core_get_event_name(arg_a));
 		} else if (arg_b == 0x80000000) {
-			reqLen = snprintf(textBuf, bufLen, "Clear Event:%s\n",
+			mdp_snprintf(reqLen, textBuf, bufLen, "Clear Event:%s\n",
 				cmdq_core_get_event_name(arg_a));
 		} else if (arg_b == 0x80010000) {
-			reqLen = snprintf(textBuf, bufLen, "Set Event:%s\n",
+			mdp_snprintf(reqLen, textBuf, bufLen, "Set Event:%s\n",
 				cmdq_core_get_event_name(arg_a));
 		} else if (arg_b == 0x00008001) {
-			reqLen = snprintf(textBuf, bufLen,
+			mdp_snprintf(reqLen, textBuf, bufLen,
 				"Wait No Clear Event:%s\n",
 				cmdq_core_get_event_name(arg_a));
 		} else {
-			reqLen = snprintf(textBuf, bufLen,
+			mdp_snprintf(reqLen, textBuf, bufLen,
 				"SYNC:%s, upd:%d op:%d val:%d wait:%d wop:%d val:%d\n",
 				cmdq_core_get_event_name(arg_a),
 				(arg_b >> 31) & 0x1,
@@ -650,17 +659,17 @@ s32 cmdq_core_interpret_instruction(char *textBuf, s32 bufLen,
 		break;
 	case CMDQ_CODE_EOC:
 		if (arg_a == 0 && arg_b == 0x00000001) {
-			reqLen = snprintf(textBuf, bufLen, "EOC\n");
+			mdp_snprintf(reqLen, textBuf, bufLen, "EOC\n");
 		} else {
-			reqLen = snprintf(textBuf, bufLen, "MARKER:");
+			mdp_snprintf(reqLen, textBuf, bufLen, "MARKER:");
 			bufLen -= reqLen;
 			textBuf += reqLen;
 			if (arg_b == 0x00100000) {
-				reqLen = snprintf(textBuf, bufLen, " Disable");
+				mdp_snprintf(reqLen, textBuf, bufLen, " Disable");
 			} else if (arg_b == 0x00130000) {
-				reqLen = snprintf(textBuf, bufLen, " Enable");
+				mdp_snprintf(reqLen, textBuf, bufLen, " Enable");
 			} else {
-				reqLen = snprintf(textBuf, bufLen,
+				mdp_snprintf(reqLen, textBuf, bufLen,
 					"no_suspnd:%d no_inc:%d m:%d m_en:%d prefetch:%d irq:%d\n",
 						(arg_a & (1 << 21)) > 0,
 						(arg_a & (1 << 16)) > 0,
@@ -678,18 +687,18 @@ s32 cmdq_core_interpret_instruction(char *textBuf, s32 bufLen,
 			const u32 s_op =
 				(arg_a & CMDQ_ARG_A_SUBSYS_MASK) >> subsys_bit;
 
-			reqLen = snprintf(textBuf, bufLen, "%s: ",
+			mdp_snprintf(reqLen, textBuf, bufLen, "%s: ",
 				cmdq_core_parse_op(op));
 			bufLen -= reqLen;
 			textBuf += reqLen;
 
-			reqLen = snprintf(textBuf, bufLen, "Reg%d = ",
+			mdp_snprintf(reqLen, textBuf, bufLen, "Reg%d = ",
 				(arg_a & 0xFFFF));
 			bufLen -= reqLen;
 			textBuf += reqLen;
 
 			if (s_op == CMDQ_LOGIC_ASSIGN) {
-				reqLen = snprintf(textBuf, bufLen, "0x%08x\n",
+				mdp_snprintf(reqLen, textBuf, bufLen, "0x%08x\n",
 					arg_b);
 				bufLen -= reqLen;
 				textBuf += reqLen;
@@ -698,10 +707,10 @@ s32 cmdq_core_interpret_instruction(char *textBuf, s32 bufLen,
 				const u32 arg_b_i = (arg_b >> 16) & 0xFFFF;
 
 				if (arg_b_type != 0)
-					reqLen = snprintf(textBuf, bufLen,
+					mdp_snprintf(reqLen, textBuf, bufLen,
 						"~Reg%d\n", arg_b_i);
 				else
-					reqLen = snprintf(textBuf, bufLen,
+					mdp_snprintf(reqLen, textBuf, bufLen,
 						"~%d\n", arg_b_i);
 
 				bufLen -= reqLen;
@@ -714,25 +723,27 @@ s32 cmdq_core_interpret_instruction(char *textBuf, s32 bufLen,
 
 				/* arg_b_i */
 				if (arg_b_type != 0) {
-					reqLen = snprintf(textBuf, bufLen,
+					mdp_snprintf(reqLen, textBuf, bufLen,
 						"Reg%d ", arg_b_i);
 				} else {
-					reqLen = snprintf(textBuf, bufLen,
+					mdp_snprintf(reqLen, textBuf, bufLen,
 						"%d ", arg_b_i);
 				}
 				bufLen -= reqLen;
 				textBuf += reqLen;
 				/* operator */
-				reqLen = snprintf(textBuf, bufLen, "%s ",
+				mdp_snprintf(reqLen, textBuf, bufLen, "%s ",
 					cmdq_core_parse_logic_sop(s_op));
+				if (unlikely(reqLen < 0))
+					reqLen = 0;
 				bufLen -= reqLen;
 				textBuf += reqLen;
 				/* arg_c_i */
 				if (arg_c_type != 0) {
-					reqLen = snprintf(textBuf, bufLen,
+					mdp_snprintf(reqLen, textBuf, bufLen,
 						"Reg%d\n", arg_c_i);
 				} else {
-					reqLen = snprintf(textBuf, bufLen,
+					mdp_snprintf(reqLen, textBuf, bufLen,
 						"%d\n", (u32)CMDQ_REG_REVERT_ADDR(
 						arg_c_i));
 				}
@@ -755,32 +766,32 @@ s32 cmdq_core_interpret_instruction(char *textBuf, s32 bufLen,
 			const u32 arg_b_type = arg_a & (1 << 22);
 			const u32 arg_c_type = arg_a & (1 << 21);
 
-			reqLen = snprintf(textBuf, bufLen, "%s: if (",
+			mdp_snprintf(reqLen, textBuf, bufLen, "%s: if (",
 				cmdq_core_parse_op(op));
 			bufLen -= reqLen;
 			textBuf += reqLen;
 
 			/* arg_b_i */
 			if (arg_b_type != 0) {
-				reqLen = snprintf(textBuf, bufLen, "Reg%d ",
+				mdp_snprintf(reqLen, textBuf, bufLen, "Reg%d ",
 					arg_b_i);
 			} else {
-				reqLen = snprintf(textBuf, bufLen, "%d ",
+				mdp_snprintf(reqLen, textBuf, bufLen, "%d ",
 					arg_b_i);
 			}
 			bufLen -= reqLen;
 			textBuf += reqLen;
 			/* operator */
-			reqLen = snprintf(textBuf, bufLen, "%s ",
+			mdp_snprintf(reqLen, textBuf, bufLen, "%s ",
 				cmdq_core_parse_jump_c_sop(s_op));
 			bufLen -= reqLen;
 			textBuf += reqLen;
 			/* arg_c_i */
 			if (arg_c_type != 0) {
-				reqLen = snprintf(textBuf, bufLen,
+				mdp_snprintf(reqLen, textBuf, bufLen,
 					"Reg%d) jump ", arg_c_i);
 			} else {
-				reqLen = snprintf(textBuf, bufLen,
+				mdp_snprintf(reqLen, textBuf, bufLen,
 					"%d) jump ", (u32)CMDQ_REG_REVERT_ADDR(
 					arg_c_i));
 			}
@@ -788,10 +799,10 @@ s32 cmdq_core_interpret_instruction(char *textBuf, s32 bufLen,
 			textBuf += reqLen;
 			/* jump to */
 			if (arg_a_type != 0) {
-				reqLen = snprintf(textBuf, bufLen,
+				mdp_snprintf(reqLen, textBuf, bufLen,
 					"Reg%d\n", arg_a_i);
 			} else {
-				reqLen = snprintf(textBuf, bufLen,
+				mdp_snprintf(reqLen, textBuf, bufLen,
 					"+%d\n", arg_a_i);
 			}
 			bufLen -= reqLen;
@@ -799,7 +810,7 @@ s32 cmdq_core_interpret_instruction(char *textBuf, s32 bufLen,
 		}
 		break;
 	default:
-		reqLen = snprintf(textBuf, bufLen,
+		mdp_snprintf(reqLen, textBuf, bufLen,
 			"UNDEFINED (0x%02x 0x%08x%08x)\n",
 			op, arg_a, arg_b);
 		break;
