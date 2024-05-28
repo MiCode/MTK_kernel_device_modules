@@ -2367,11 +2367,13 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 	unsigned int crop_height;
 	unsigned int overhead_v;
 	unsigned int comp_overhead_v;
-	unsigned int slice_size, slice_height;
+	unsigned int slice_size = atomic_read(&g_oddmr_priv->dmr_data.slice_size);
+	unsigned int slice_height = atomic_read(&g_oddmr_priv->dmr_data.slice_height);
 	unsigned int dmr_y_ini, dmr_y_offset = 0;
 	unsigned int dmr_udma_height, dmr_input_height; //pixel base
-	unsigned int is_compression_mode;
-	unsigned int cur_bin_idx;
+	unsigned int is_compression_mode =
+		atomic_read(&g_oddmr_priv->dmr_data.is_compression_mode);
+	unsigned int cur_bin_idx = atomic_read(&g_oddmr_priv->dmr_data.cur_bin_idx);
 
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 				&comp->mtk_crtc->base, comp, true);
@@ -5649,7 +5651,8 @@ static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 					mtk_ddp_comp_io_cmd(output_comp, NULL,
 						DSI_GET_LINE_TIME_NS, &dsi_line_time);
 				dsi_line_time /= 1000;
-				stash_lead_cnt = (24 + dsi_line_time - 1) / dsi_line_time;
+				if (dsi_line_time > 0)
+					stash_lead_cnt = (24 + dsi_line_time - 1) / dsi_line_time;
 				reg_val = (1 << 8) | stash_lead_cnt;
 				mtk_oddmr_write(comp, reg_val,
 					MT6991_DISP_ODDMR_UDMA_DMR_CTRL30, handle);
@@ -5730,7 +5733,8 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 					mtk_ddp_comp_io_cmd(output_comp, NULL,
 						DSI_GET_LINE_TIME_NS, &dsi_line_time);
 				dsi_line_time /= 1000;
-				stash_lead_cnt = (24 + dsi_line_time - 1) / dsi_line_time;
+				if (dsi_line_time > 0)
+					stash_lead_cnt = (24 + dsi_line_time - 1) / dsi_line_time;
 				reg_val = (1 << 8) | stash_lead_cnt;
 				mtk_oddmr_write(comp, reg_val,
 					MT6991_DISP_ODDMR_UDMA_DBI_CTRL30, handle);
@@ -7766,7 +7770,7 @@ fail:
 
 static int mtk_oddmr_dmr_binset_init (struct mtk_drm_oddmr_binset_cfg_info *binset_cfg_info)
 {
-	void *data[20] = {0};
+	void *data[66] = {0};
 	int index = 0;
 	int size;
 	int i = 0;
@@ -8314,9 +8318,6 @@ static void mtk_oddmr_dmr_change_remap_gain(struct mtk_ddp_comp *comp,
 	}
 
 	if (g_oddmr_priv->dmr_state >= ODDMR_INIT_DONE) {
-		ODDMRLOW_LOG("cur_offset %u\n", dmr_cfg_data->fps_dbv_node.remap_reduce_offset_value);
-		ODDMRLOW_LOG("remap_gain_target_code %u\n", dmr_cfg_data->fps_dbv_node.remap_gain_target_code);
-
 		spin_lock_irqsave(&g_oddmr_timing_lock, flags);
 		cur_dbv = g_oddmr_current_timing.bl_level;
 		spin_unlock_irqrestore(&g_oddmr_timing_lock, flags);
@@ -9248,7 +9249,7 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 			g_oddmr_priv->dbi_data.scp_lifecycle =
 				(void *)(share_lifecycle_offset + get_mem_virt(SCP_DBI_MEM_ID));
 
-			DDPMSG("%s, get semaphore %xll\n", __func__, (unsigned long)(*((void **)params)));
+			DDPMSG("%s, get semaphore %llx\n", __func__, (unsigned long)(*((void **)params)));
 			if (copy_to_user(*((void **)params),
 				g_oddmr_priv->dbi_data.scp_lifecycle, g_oddmr_priv->dbi_data.scp_lifecycle_size)) {
 				DDPPR_ERR("%s:%d, copy_to_user fail\n", __func__, __LINE__);
@@ -9378,11 +9379,13 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 
 	// DMR V2 partial update
 	struct mtk_drm_dmr_cfg_info *dmr_cfg_data = NULL;
-	unsigned int slice_size, slice_height;
+	unsigned int slice_size = atomic_read(&g_oddmr_priv->dmr_data.slice_size);
+	unsigned int slice_height = atomic_read(&g_oddmr_priv->dmr_data.slice_height);
 	unsigned int dmr_y_ini, dmr_y_offset = 0;
 	unsigned int dmr_udma_height, dmr_input_height; //pixel base
-	unsigned int is_compression_mode;
-	unsigned int cur_bin_idx;
+	unsigned int is_compression_mode =
+		atomic_read(&g_oddmr_priv->dmr_data.is_compression_mode);
+	unsigned int cur_bin_idx = atomic_read(&g_oddmr_priv->dmr_data.cur_bin_idx);
 
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 		__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
