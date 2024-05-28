@@ -108,6 +108,9 @@ endif
 ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6765.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6765.o
 endif
+ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6781.c),)
+obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6781.o
+endif
 ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6853.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6853.o
 endif
@@ -257,6 +260,20 @@ mdp_drv_mt6761-objs := mdp_mt6761.o\
 	mdp_dpc.o
 
 mdp_drv_mt6765-objs := mdp_mt6765.o\
+	mdp_driver.o \
+	mdp_ioctl_ex.o \
+	mdp_common.o \
+	cmdq_record.o \
+	cmdq_virtual.o \
+	cmdq_device.o \
+	mdp_event_common.o \
+	cmdq_subsys_common.o \
+	cmdq_helper_ext.o \
+	cmdq_mmp.o \
+	mdp_fence.o \
+	mdp_dpc.o
+
+mdp_drv_mt6781-objs := mdp_mt6781.o\
 	mdp_driver.o \
 	mdp_ioctl_ex.o \
 	mdp_common.o \
