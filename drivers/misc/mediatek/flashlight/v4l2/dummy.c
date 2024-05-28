@@ -580,7 +580,7 @@ static int dummy_set_driver(int set)
 	}
 	//mutex_unlock(&dummy_mutex);
 
-	return 0;
+	return ret;
 }
 
 static ssize_t dummy_strobe_store(struct flashlight_arg arg)
@@ -632,7 +632,7 @@ static int dummy_parse_dt(struct dummy_flash *flash)
 					"part", &flash->flash_dev_id[i].part))
 			goto err_node_put;
 		snprintf(flash->flash_dev_id[i].name, FLASHLIGHT_NAME_SIZE,
-				flash->subdev_led[i].name);
+				"%s", flash->subdev_led[i].name);
 		flash->flash_dev_id[i].channel = i;
 		flash->flash_dev_id[i].decouple = decouple;
 

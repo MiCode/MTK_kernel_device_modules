@@ -725,7 +725,7 @@ static int lm3643_cooling_set_cur_state(int channel, unsigned long state)
 					flash->target_current[channel]);
 	}
 
-	return 0;
+	return ret;
 }
 
 static int lm3643_ioctl(unsigned int cmd, unsigned long arg)
@@ -802,7 +802,7 @@ static int lm3643_set_driver(int set)
 	}
 	mutex_unlock(&lm3643_mutex);
 
-	return 0;
+	return ret;
 }
 
 static ssize_t lm3643_strobe_store(struct flashlight_arg arg)
@@ -870,7 +870,7 @@ static int lm3643_parse_dt(struct lm3643_flash *flash)
 					"part", &flash->flash_dev_id[i].part))
 			goto err_node_put;
 		ret = snprintf(flash->flash_dev_id[i].name,
-				FLASHLIGHT_NAME_SIZE,
+				FLASHLIGHT_NAME_SIZE, "%s",
 				flash->subdev_led[i].name);
 		if (ret < 0)
 			pr_info("snprintf failed\n");
