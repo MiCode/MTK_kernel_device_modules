@@ -256,7 +256,7 @@ bool xhci_mtk_skip_hid_urb(struct xhci_hcd *xhci, struct urb *urb)
 	struct usb_interface_descriptor intf_desc;
 	struct usb_endpoint_descriptor ep_desc;
 	struct hid_ep_info *hid;
-	int dir;
+	int dir, ret;
 	bool skip = false, giveback;
 
 	if (hid_disable_offload)
@@ -296,7 +296,9 @@ FORCE_SKIP:
 		giveback = !list_empty(&hid->payload_list);
 		hid_dump_ep(hid, "<AP Enqueue>");
 		hid_ep_unlock(hid, "<AP Enqueue>");
-		usb_hcd_link_urb_to_ep(bus_to_hcd(urb->dev->bus), urb);
+		ret = usb_hcd_link_urb_to_ep(bus_to_hcd(urb->dev->bus), urb);
+		if (unlikely(ret))
+			hid_err("link urb error:%d\n", ret);
 
 		if (giveback)
 			queue_delayed_work(giveback_wq, &hid->giveback_work, msecs_to_jiffies(3));
