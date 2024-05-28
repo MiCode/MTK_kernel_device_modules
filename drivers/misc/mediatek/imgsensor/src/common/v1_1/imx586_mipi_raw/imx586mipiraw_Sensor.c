@@ -3176,6 +3176,11 @@ static void custom3_setting(void)
 		if (!imx586_is_seamless)
 			write_cmos_sensor_8(0x3621, 0x00);
 		else {
+			if (imx586_size_to_write >= (_I2C_BUF_SIZE - 1)) {
+				pr_debug("size_to_write too much %d\n",
+					imx586_size_to_write);
+				return;
+			}
 			imx586_i2c_data[imx586_size_to_write++] = 0x3621;
 			imx586_i2c_data[imx586_size_to_write++] = 0x0;
 		}
@@ -3213,6 +3218,11 @@ static void custom4_setting(void)
 		if (!imx586_is_seamless)
 			write_cmos_sensor_8(0x3621, 0x00);
 		else {
+			if (imx586_size_to_write >= (_I2C_BUF_SIZE - 1)) {
+				pr_debug("size_to_write too much %d\n",
+					imx586_size_to_write);
+				return;
+			}
 			imx586_i2c_data[imx586_size_to_write++] = 0x3621;
 			imx586_i2c_data[imx586_size_to_write++] = 0x0;
 		}
