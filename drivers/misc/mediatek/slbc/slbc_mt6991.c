@@ -1852,25 +1852,30 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 		slbc_slot_used = val_1;
 		slbc_sram_write(SLBC_SLOT_USED, slbc_slot_used);
 	} else if (!strcmp(cmd, "test_slb_request")) {
-		if (ret >= 3) {
-			test_d.uid = val_1;
-			test_d.type  = TP_BUFFER;
-#ifdef SLBC_CB
-			test_d.timeout = val_2;
-#endif /* SLBC_CB */
-			ret = slbc_request(&test_d);
+		if (val_1 <= UID_ZERO || val_1 >= UID_MAX) {
+			ret = -EPERM;
+			goto out;
 		}
+		test_d.uid = val_1;
+		test_d.type  = TP_BUFFER;
+#ifdef SLBC_CB
+		test_d.timeout = val_2;
+#endif /* SLBC_CB */
+		ret = slbc_request(&test_d);
 	} else if (!strcmp(cmd, "test_slb_release")) {
 		test_d.uid = val_1;
 		test_d.type  = TP_BUFFER;
 		ret = slbc_release(&test_d);
 	} else if (!strcmp(cmd, "slbc_gid_request")) {
-		if (ret >= 3) {
-			temp = val_2;
-			test_gid_d.dma_size = val_3;
-			test_gid_d.sign = SLC_DATA_MAGIC;
-			slbc_gid_request(val_1, &temp, &test_gid_d);
+		if (val_1 <= UID_ZERO || val_1 >= UID_MAX ||
+				val_2 >= GID_MAX) {
+			ret = -EPERM;
+			goto out;
 		}
+		temp = val_2;
+		test_gid_d.dma_size = val_3;
+		test_gid_d.sign = SLC_DATA_MAGIC;
+		slbc_gid_request(val_1, &temp, &test_gid_d);
 	} else if (!strcmp(cmd, "slbc_gid_release")) {
 		slbc_gid_release(val_1, val_2);
 	} else if (!strcmp(cmd, "slbc_validate")) {
