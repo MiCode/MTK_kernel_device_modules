@@ -8512,7 +8512,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&gce 10 0 CMDQ_THR_PRIO_1>,
 				<&gce 11 0 CMDQ_THR_PRIO_1>,
 				<&gce 12 0 CMDQ_THR_PRIO_1>,
-				<&gce 22 0 CMDQ_THR_PRIO_1>;
+				<&gce 22 0 CMDQ_THR_PRIO_1>,
+				<&gce 29 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_HIGHEST>;
 				// <&gce_sec 8 0 CMDQ_THR_PRIO_3>,
 				// <&gce_sec 9 0 CMDQ_THR_PRIO_3>,
 				// <&gce_sec 9 0 CMDQ_THR_PRIO_3>;
@@ -8530,7 +8531,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"CLIENT_PQ_EOF0",
 				"CLIENT_PQ0",
 				"CLIENT_PQ_EOF1",
-				"CLIENT_PQ1";
+				"CLIENT_PQ1",
+				"CLIENT_BWM_LOOP0";
 				// "CLIENT_SEC_CFG0",
 				// "CLIENT_SEC_CFG1",
 				// "CLIENT_SEC_CFG2";
@@ -8592,7 +8594,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"disp_y2r_eof3",
 				"disp_aal0_eof",
 				"disp_aal1_eof",
-				"mml_disp_done_event";
+				"mml_disp_done_event",
+				"disp_mutex0_sof0";
 
 			gce-events =
 				<&gce CMDQ_EVENT_DISP1_STREAM_DONE_ENG_EVENT0>,
@@ -8645,7 +8648,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&gce CMDQ_EVENT_DISP0_FRAME_DONE_SEL1>,
 				<&gce CMDQ_EVENT_DISP0_FRAME_DONE_SEL2>,
 				<&gce CMDQ_EVENT_DISP0_FRAME_DONE_SEL3>,
-				<&gce CMDQ_SYNC_TOKEN_MML_DISP_DONE_EVENT>;
+				<&gce CMDQ_SYNC_TOKEN_MML_DISP_DONE_EVENT>,
+				<&gce CMDQ_EVENT_DISP1_STREAM_SOF0>;
 
 			helper-name = "MTK_DRM_OPT_STAGE",
 				"MTK_DRM_OPT_USE_CMDQ",
