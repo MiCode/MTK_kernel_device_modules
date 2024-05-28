@@ -1215,10 +1215,6 @@ static struct T_STAMP m_T_STAMP = {0};
 #define __tcmfunc
 
 
-struct siginfo info;
-struct task_struct *t;
-
-
 #endif /* ISP_KERNEL_MOTIFY_SIGNAL_TEST */
 
 /******************************************************************************
@@ -13487,7 +13483,7 @@ static signed int __init ISP_Init(void)
 	}
 	/* mark the     pages reserved , FOR MMAP */
 	for (i = 0; i < RT_BUF_TBL_NPAGES * PAGE_SIZE; i += PAGE_SIZE)
-		SetPageReserved(virt_to_page(((unsigned long)pTbl_RTBuf) + i));
+		SetPageReserved(virt_to_page((void *)(((unsigned long)pTbl_RTBuf) + i)));
 
 	/*      */
 	/* Register ISP callback */
@@ -13539,7 +13535,7 @@ static void __exit ISP_Exit(void)
 #endif
 	/* unreserve the pages */
 	for (i = 0; i < RT_BUF_TBL_NPAGES * PAGE_SIZE; i += PAGE_SIZE)
-		SetPageReserved(virt_to_page(((unsigned long)pTbl_RTBuf) + i));
+		SetPageReserved(virt_to_page((void *)(((unsigned long)pTbl_RTBuf) + i)));
 
 
 	/* free the     memory areas */
