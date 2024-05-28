@@ -35,6 +35,8 @@ int smmu_host_debug;
 static int smmu_vm_info_probe_handler;
 /* SMMU init function */
 static int mtk_iommu_init_handler;
+/* SMMU finalise */
+static int smmu_finalise_handler;
 
 unsigned int smmu_device_num;
 
@@ -562,6 +564,10 @@ void smmu_setup_hvc(void)
 
 	mtk_iommu_init_handler = pkvm_register_el2_mod_call(
 		__kvm_nvhe_mtk_iommu_init, pkvm_module_token);
+
+	smmu_finalise_handler = pkvm_register_el2_mod_call(
+		__kvm_nvhe_smmu_finalise, pkvm_module_token);
+
 }
 
 void smmu_host_hvc(void)
@@ -678,9 +684,18 @@ static int mtk_kvm_arm_smmu_v3_init(void)
 	int ret;
 	struct kvm_hyp_memcache atomic_mc = {};
 
+	ret = topup_hyp_memcache(&atomic_mc, 100, 0);
+	if (ret)
+		pr_info("topup_hyp_memcache failed ret=%d\n", ret);
+
 	ret = kvm_iommu_init_hyp(ksym_ref_addr_nvhe(smmu_ops), &atomic_mc, 0);
 	if (ret)
 		pr_info("kvm_iommu_init_hyp ret=%d\n", ret);
+
+
+	ret = pkvm_el2_mod_call(smmu_finalise_handler);
+	if (ret)
+		pr_info("smmu_finalise_handler ret=%d\n", ret);
 
 	return ret;
 }

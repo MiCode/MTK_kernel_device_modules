@@ -10,4 +10,5 @@ void __kvm_nvhe_pctrl_setup(struct kvm_cpu_context *ctx);
 void __kvm_nvhe_mtk_smmu_host_debug(struct kvm_cpu_context *ctx);
 void __kvm_nvhe_setup_vm(struct kvm_cpu_context *ctx);
 void __kvm_nvhe_mtk_iommu_init(struct kvm_cpu_context *ctx);
+void __kvm_nvhe_smmu_finalise(struct kvm_cpu_context *ctx);
 extern struct kvm_iommu_ops kvm_nvhe_sym(smmu_ops);
