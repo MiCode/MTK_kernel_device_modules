@@ -432,7 +432,7 @@ u32 cmdq_mbox_get_tpr(void *chan)
 	unsigned long flags;
 	void *base = cmdq->base;
 	u32 dbg3;
-	u64 dbg[5];
+	u64 dbg[5] = {0};
 
 	if (!cmdq_tfa_read_dbg && !base) {
 		cmdq_util_msg("no cmdq dbg since no base");
@@ -2244,8 +2244,8 @@ void cmdq_dump_core(struct mbox_chan *chan)
 	cmdq_mtcmos_by_fast(cmdq, false);
 
 	cmdq_util_user_msg(chan,
-		"irq:%#x loaded:%#x cycle:%#x thd timer:%#x mask:%#x en:%#x",
-		irq, loaded, cycle, thd_timer, tpr_mask, tpr_en);
+		"irq:%#x loaded:%#x cycle:%#x thd timer:%#x mask:%#x en:%#x bus_gctl:%#x",
+		irq, loaded, cycle, thd_timer, tpr_mask, tpr_en, bus_gctl);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 	cmdq_chan_dump_dbg(chan);
 #endif
@@ -2356,8 +2356,8 @@ void cmdq_thread_dump(struct mbox_chan *chan, struct cmdq_pkt *cl_pkt,
 		"thd:%u timeout:0x%x pc:%pa(%p) inst:%#018llx end:%pa cnt:%#x token:%#010x",
 		thread->idx, timeout_ms, &curr_pa, curr_va, inst, &end_pa, cnt, wait_token);
 	cmdq_util_user_msg(chan,
-		"rst:%#x en:%#x suspend:%#x status:%#x irq:%x en:%#x cfg:%#x",
-		warn_rst, en, suspend, status, irq, irq_en, cfg);
+		"rst:%#x en:%#x suspend:%#x status:%#x irq:%x en:%#x cfg:%#x prefetch:%#x",
+		warn_rst, en, suspend, status, irq, irq_en, cfg, prefetch);
 	cmdq_thread_dump_spr(thread);
 
 	if (pkt) {
@@ -3174,6 +3174,9 @@ static int cmdq_probe(struct platform_device *pdev)
 
 	init_waitqueue_head(&cmdq->err_irq_wq);
 	kthr = kthread_run(cmdq_irq_handler_thread, cmdq, "cmdq_irq_thread");
+
+	if (IS_ERR(kthr))
+		cmdq_err("Unable  to run kthread err %ld", PTR_ERR(kthr));
 
 	gce_shift_bit = plat_data->shift;
 	gce_mminfra = plat_data->mminfra;
@@ -4136,19 +4139,9 @@ s32 cmdq_task_get_pkt_from_thread(struct mbox_chan *chan,
 	struct cmdq_thread *thread;
 	struct cmdq_task *task;
 	u32 pkt_num = 0;
-	u32 tmp_num = 0;
 	unsigned long flags;
 
 	if (!chan || !pkt_list_out || !pkt_count_out) {
-		if (chan) {
-			thread = chan->con_priv;
-			list_for_each_entry(task, &thread->task_busy_list,
-				list_entry) {
-				tmp_num++;
-			}
-
-		}
-
 		if (pkt_count_out)
 			*pkt_count_out = pkt_num;
 
