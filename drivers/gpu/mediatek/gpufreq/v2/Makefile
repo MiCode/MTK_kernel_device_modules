@@ -24,7 +24,8 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/aed/
 
 ccflags-y += \
 	-Wno-unused-variable \
-	-Wno-unused-function
+	-Wno-unused-function \
+	-Wno-unused-but-set-variable
 
 mtk_gpufreq_wrapper-y := \
 	gpufreq_v2.o \
