@@ -1091,8 +1091,9 @@ cpus {
 			interconnect-names = "fpsgo-perf-bw";
 			required-opps = <&dvfsrc_freq_opp0>;
 
-			fbt_cpu_mask = <255 128 15 127>;
+			fbt-cpu-mask = <255 128 15 127 240 112>;
 			sbe-resceue-enable = <1>;
+			boost-dram = <2>;
 		};
 
 		mcupm: mcupm@10300000 {
