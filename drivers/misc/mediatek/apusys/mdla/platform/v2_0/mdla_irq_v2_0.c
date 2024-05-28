@@ -276,9 +276,7 @@ static void mdla_irq_sw_sched(struct mdla_dev *mdla_device)
 	u32 status, core_id, cdma4 = 0, irq_status = 0;
 	const struct mdla_util_io_ops *io = mdla_util_io_ops_get();
 	u64 smp_cmd_id = 0;
-	u64 ts;
 
-	ts = sched_clock();
 	core_id = mdla_device->mdla_id;
 
 	/* clear intp0 to avoid irq fire twice */

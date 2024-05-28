@@ -215,7 +215,7 @@ int mdla_drv_create_device_node(struct device *dev)
 
 	/* 5. Set DMA mask */
 	ret = dma_get_mask(mdlactl_device);
-	if (ret < 0 || ret != DMA_BIT_MASK(32)) {
+	if (ret < 0) {
 		ret = dma_set_mask_and_coherent(mdlactl_device,
 						DMA_BIT_MASK(32));
 		if (ret)
