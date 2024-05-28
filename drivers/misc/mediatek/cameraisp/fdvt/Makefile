@@ -1,6 +1,8 @@
 
 MTK_CUSTOM_PATH  := $(DEVICE_MODULES_PATH)/drivers/misc/mediatek
 
+$(info FDVT Tina: Drv use folder: $(DEVICE_MODULES_PATH))
+
 ifneq (, $(filter $(strip $(CONFIG_MTK_CAMERA_FD_VERSION40)),m y))
   $(info FDVT LBJ: Drv use 4.0 folder)
   MTKCAM_FDVT_VERSION := 4.0
