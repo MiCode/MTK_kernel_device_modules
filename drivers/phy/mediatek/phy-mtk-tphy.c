@@ -530,9 +530,8 @@ static const struct  proc_ops proc_sib_fops = {
 
 static void cover_val_to_str(u32 val, u8 width, char *str)
 {
-	int i, temp;
+	int i;
 
-	temp = val;
 	str[width] = '\0';
 	for (i = (width - 1); i >= 0; i--) {
 		if (val % 2)
