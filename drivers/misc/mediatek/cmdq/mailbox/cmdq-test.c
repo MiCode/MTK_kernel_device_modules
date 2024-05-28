@@ -385,7 +385,7 @@ void cmdq_test_mbox_polling(
 	writel(0, (void *)va);
 
 	for (i = 0; i < CMDQ_TEST_CNT && pttn[i]; i++) {
-		if (timeout > 0)
+		if (timeout)
 			writel(0x80000000, (void *)CMDQ_TPR_MASK(test->gce.va));
 
 		pkt[i] = cmdq_pkt_create(clt);
@@ -533,9 +533,6 @@ static void cmdq_test_mbox_loop(struct cmdq_test *test)
 		(void *)CMDQ_SYNC_TOKEN_UPD(test->gce.va));
 
 	ret = cmdq_pkt_flush_async(pkt, NULL, 0);
-	if (ret < 0)
-		cmdq_err("flush task fail: %d", ret);
-
 	while (test->iter < CMDQ_TEST_CNT) {
 		cmdq_msg("loop thrd-idx:%u pkt:%p iter:%u",
 			thread->idx, pkt, test->iter);
@@ -647,7 +644,6 @@ static void cmdq_test_mbox_write_dma(
 
 	cmdq_pkt_flush(pkt);
 	cmdq_pkt_destroy(pkt);
-	cmdq_mbox_buf_free(clt, dma_va, dma_pa);
 }
 
 static void cmdq_test_mbox_write_dma_cpr(

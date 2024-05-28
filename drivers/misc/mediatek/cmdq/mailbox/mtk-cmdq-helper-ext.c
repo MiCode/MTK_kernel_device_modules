@@ -2375,6 +2375,7 @@ s32 cmdq_pkt_poll_sleep(struct cmdq_pkt *pkt, u32 value,
 	u32 addr, u32 mask)
 {
 	s32 err;
+	u8 use_mask = 0;
 	const u16 reg_idx = CMDQ_THR_SPR_IDX1;
 
 	if (mask != 0xffffffff) {
@@ -2382,6 +2383,7 @@ s32 cmdq_pkt_poll_sleep(struct cmdq_pkt *pkt, u32 value,
 			CMDQ_GET_ARG_B(~mask), 0, 0, 0, 0, 0, CMDQ_CODE_MASK);
 		if (err != 0)
 			return err;
+		use_mask = 1;
 	}
 
 	cmdq_pkt_assign_command(pkt, reg_idx, (dma_addr_t)addr | CMDQ_ADDR_LOW_BIT);
@@ -2432,10 +2434,7 @@ s32 cmdq_pkt_sleep_reuse(struct cmdq_pkt *pkt, u32 tick, u16 reg_gpr,
 	u64 *inst;
 
 	if (spr3_timer) {
-		s32 thread_id = !cl ? cmdq_mbox_chan_id(cl->chan) : -1;
-
-		if (thread_id < 0)
-			return -EPERM;
+		s32 thread_id = cmdq_mbox_chan_id(cl->chan);
 
 		tpr_en = 1 << thread_id;
 		event = (u16)CMDQ_EVENT_SPR_TIMER + (u16)thread_id;
@@ -2751,12 +2750,14 @@ EXPORT_SYMBOL(cmdq_hw_trace_check_inst);
 static bool cmdq_pkt_hw_trace_event(struct cmdq_pkt *pkt, const u16 event)
 {
 	struct cmdq_client *client;
+	struct cmdq_thread *thread;
 	u32 hwid;
 
 	if (!pkt || !pkt->cl || !cmdq_hw_trace)
 		return false;
 
 	client = (struct cmdq_client *)pkt->cl;
+	thread = (struct cmdq_thread *)client->chan->con_priv;
 	hwid = cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(client->chan));
 	if (hw_trace_built_in[hwid])
 		return false;
@@ -4380,10 +4381,6 @@ int cmdq_helper_init(void)
 		"cmdq_pkt_destroy_wq");
 
 	kthr = kthread_run(cmdq_record_buffer_usage, NULL, "cmdq_buffer_usage");
-
-	if (IS_ERR(kthr))
-		cmdq_err("Unable  to run kthread err %ld", PTR_ERR(kthr));
-
 	mutex_init(&buffer_size_mutex);
 	mutex_init(&pkt_size_mutex);
 
