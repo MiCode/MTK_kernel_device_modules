@@ -782,6 +782,8 @@ struct mml_comp_config_ops {
 		    struct mml_comp_config *ccfg, u32 idx);
 	s32 (*mutex)(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg);
+	s32 (*wait_sof)(struct mml_comp *comp, struct mml_task *task,
+		    struct mml_comp_config *ccfg, u32 idx);
 	s32 (*wait)(struct mml_comp *comp, struct mml_task *task,
 		    struct mml_comp_config *ccfg, u32 idx);
 	void (*reset)(struct mml_comp *comp, struct mml_task *task,

@@ -81,6 +81,7 @@ struct mml_mmp_events_t {
 	mmp_event command1;
 	mmp_event mutex_mod;
 	mmp_event mutex_en;
+	mmp_event mutex_dis;
 
 	/* events for clock */
 	mmp_event clock;
