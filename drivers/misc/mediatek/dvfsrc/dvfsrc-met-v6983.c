@@ -331,10 +331,9 @@ static unsigned int *dvfsrc_get_src_req(struct mtk_dvfsrc_met *dvfs)
 
 static int dvfsrc_get_ddr_ratio(struct mtk_dvfsrc_met *dvfs)
 {
-	int dram_opp;
+	// int dram_opp;
 
-	dram_opp = mtk_dvfsrc_query_opp_info(MTK_DVFSRC_CURR_DRAM_OPP);
-
+	// dram_opp = mtk_dvfsrc_query_opp_info(MTK_DVFSRC_CURR_DRAM_OPP);
 	return 0;
 }
 
