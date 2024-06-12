@@ -3068,63 +3068,6 @@ static void __gpufreq_init_acp(void)
 	writel(val, g_infracfg_ao + 0x290);
 }
 
-/*
- * VGPU slew rate calculation
- * false : falling rate
- * true : rising rate
- */
-static unsigned int __calculate_vgpu_sfchg_rate(bool isRising)
-{
-	unsigned int sfchg_rate_vgpu;
-
-	/* [MT6358] RG_BUCK_VGPU_SFCHG_RRATE and RG_BUCK_VGPU_SFCHG_FRATE
-	 * Rising soft change rate
-	 * Ref clock = 26MHz (0.038us)
-	 * Step = ( code + 1 ) * 0.038 us
-	 */
-
-	if (isRising) {
-		/* sfchg_rate_reg is 19, (19+1)*0.038 = 0.76us */
-		sfchg_rate_vgpu = 1;
-	} else {
-		/* sfchg_rate_reg is 39, (39+1)*0.038 = 1.52us */
-		sfchg_rate_vgpu = 2;
-	}
-
-	GPUFREQ_LOGD("isRising = %d, sfchg_rate_vgpu = %d\n",
-			isRising, sfchg_rate_vgpu);
-
-	return sfchg_rate_vgpu;
-}
-
-/*
- * VSRAM slew rate calculation
- * false : falling rate
- * true : rising rate
- */
-static unsigned int __calculate_vsram_sfchg_rate(bool isRising)
-{
-	unsigned int sfchg_rate_vsram;
-
-	/* [MT6358] RG_LDO_VSRAM_GPU_SFCHG_RRATE and RG_LDO_VSRAM_GPU_SFCHG_FRATE
-	 *    7'd4 : 0.19us
-	 *    7'd8 : 0.34us
-	 *    7'd11 : 0.46us
-	 *    7'd17 : 0.69us
-	 *    7'd23 : 0.92us
-	 *    7'd25 : 1us
-	 */
-
-	/* sfchg_rate_reg is 7 for rising, (7+1)*0.038 = 0.304us */
-	/* sfchg_rate_reg is 15 for falling, (15+1)*0.038 = 0.608us */
-	sfchg_rate_vsram = 1;
-
-	GPUFREQ_LOGD("isRising = %d, sfchg_rate_vsram = %d\n",
-			isRising, sfchg_rate_vsram);
-
-	return sfchg_rate_vsram;
-}
-
 static int __gpufreq_init_pmic(struct platform_device *pdev)
 {
 	int ret = GPUFREQ_SUCCESS;
@@ -3148,41 +3091,6 @@ static int __gpufreq_init_pmic(struct platform_device *pdev)
 		GPUFREQ_LOGE("cannot get VSRAM_GPU\n");
 		return PTR_ERR(g_pmic->reg_vsram_gpu);
 	}
-
-	/* setup PMIC init value */
-	g_vgpu_sfchg_rrate = __calculate_vgpu_sfchg_rate(true);
-	g_vgpu_sfchg_frate = __calculate_vgpu_sfchg_rate(false);
-	g_vsram_sfchg_rrate = __calculate_vsram_sfchg_rate(true);
-	g_vsram_sfchg_frate = __calculate_vsram_sfchg_rate(false);
-
-	/* set VSRAM_GPU */
-	regulator_set_voltage(g_pmic->reg_vsram_gpu, VSRAM_MAX_VOLT * 10, VSRAM_MAX_VOLT * 10 + 125);
-	/* set VGPU */
-	regulator_set_voltage(g_pmic->reg_vgpu, VGPU_MAX_VOLT * 10, VGPU_MAX_VOLT * 10 + 125);
-
-	/* enable bucks (VGPU && VSRAM_GPU) enforcement */
-	if (regulator_enable(g_pmic->reg_vsram_gpu))
-		GPUFREQ_LOGE("enable VSRAM_GPU failed\n");
-	if (regulator_enable(g_pmic->reg_vgpu))
-		GPUFREQ_LOGE("enable VGPU failed\n");
-
-	GPUFREQ_LOGI("VGPU sfchg raising rate: %d us, VGPU sfchg falling rate: %d us, \t"
-			"VSRAM_GPU sfchg raising rate: %d us, VSRAM_GPU sfchg falling rate: %d us\n"
-			, g_vgpu_sfchg_rrate, g_vgpu_sfchg_frate,
-			g_vsram_sfchg_rrate, g_vsram_sfchg_frate);
-
-	GPUFREQ_LOGI("VGPU is enabled = %d (%d mV), VSRAM_GPU is enabled = %d (%d mV)\n",
-			regulator_is_enabled(g_pmic->reg_vgpu),
-			(regulator_get_voltage(g_pmic->reg_vgpu) / 1000),
-			regulator_is_enabled(g_pmic->reg_vsram_gpu),
-			(regulator_get_voltage(g_pmic->reg_vsram_gpu) / 1000));
-
-	udelay(80);
-
-	if (regulator_disable(g_pmic->reg_vgpu))
-		GPUFREQ_LOGE("disable VGPU failed\n");
-	if (regulator_disable(g_pmic->reg_vsram_gpu))
-		GPUFREQ_LOGE("disable VSRAM_GPU failed\n");
 
 	return ret;
 }
