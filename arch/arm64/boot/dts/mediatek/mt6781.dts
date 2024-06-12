@@ -3796,6 +3796,7 @@
 		/* SW mode: 0, Half-HW mode: 1, HW mode: 2 */
 		mediatek,refclk_ctrl = <1>;
 
+		bootmode = <&chosen>;
 		mediatek,ufs-disable-ah8;
 	};
 
