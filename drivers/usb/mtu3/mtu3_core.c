@@ -78,8 +78,7 @@ static void mtu3_vbus_draw_work(struct work_struct *data)
 	union power_supply_propval val;
 	int ret;
 
-	val.intval = mtu->is_active &&	!(mtu->vbus_draw > USB_SELF_POWER_VBUS_MAX_DRAW) &&
-			!mtu3_is_usb_pd(mtu);
+	val.intval = mtu->is_active &&	!(mtu->vbus_draw > USB_SELF_POWER_VBUS_MAX_DRAW);
 
 	if (mtu->is_power_limit != val.intval) {
 		ret = power_supply_set_property(mtu->usb_psy,

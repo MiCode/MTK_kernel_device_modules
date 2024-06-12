@@ -255,12 +255,14 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 		ssusb->host_dev = false;
 		ssusb_set_vbus(otg_sx, 0);
 		/* wait for host device remove done, e.g. usb audio */
-		mdelay(100);
+		mdelay(50);
 		/* unregister host driver */
 		ssusb_host_register(ssusb, false);
 		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_OFF);
 		ssusb_host_disable(ssusb);
 		switch_port_to_off(ssusb);
+		/* wait for hw to complete host off */
+		mdelay(50);
 		break;
 	case USB_ROLE_DEVICE:
 		spin_lock_irqsave(&mtu->lock, flags);
