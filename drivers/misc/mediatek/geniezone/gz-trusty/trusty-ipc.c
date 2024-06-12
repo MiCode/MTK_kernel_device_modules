@@ -1639,7 +1639,7 @@ static int _create_cdev_node(struct device *parent,
 	}
 
 	/* Create a device node */
-	cdn->dev = device_create(tipc_class, parent, devt, NULL, name);
+	cdn->dev = device_create(tipc_class, parent, devt, NULL, "%s", name);
 
 	if (IS_ERR(cdn->dev)) {
 		ret = PTR_ERR(cdn->dev);
@@ -1944,7 +1944,7 @@ static void _rxvq_cb(struct virtqueue *rxvq)
 {
 	unsigned int len;
 	struct tipc_msg_buf *mb;
-	unsigned int msg_cnt = 0;
+	unsigned int __maybe_unused msg_cnt = 0;
 	struct tipc_virtio_dev *vds = rxvq->vdev->priv;
 
 	while ((mb = virtqueue_get_buf(rxvq, &len)) != NULL) {

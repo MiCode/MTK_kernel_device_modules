@@ -102,7 +102,7 @@ static void ffa_mem_list_dump(void)
 {
 	struct ffa_mem_list_head *list_head;
 	struct ffa_mem_list_head *iterator;
-	struct ffa_mem_record_table *mem_record;
+	struct ffa_mem_record_table __maybe_unused *mem_record;
 
 	list_head = ffa_mem_list_lock();
 	for (iterator = list_head->next; iterator != list_head; iterator = iterator->next) {

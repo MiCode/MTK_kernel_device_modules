@@ -106,7 +106,7 @@ static ssize_t gz_test_store(struct device *dev,
 {
 	char tmp[50];
 	char c;
-	struct task_struct *th;
+	struct task_struct __maybe_unused *th;
 
 	if (n <= 0 || n > 50) {
 		KREE_DEBUG("err: n > 50\n");
@@ -182,7 +182,8 @@ static void remove_files(void)
 }
 
 /*********** test case implementations *************/
-static const char echo_srv_name[] = "com.mediatek.geniezone.srv.echo";
+static const char __maybe_unused echo_srv_name[] =
+		"com.mediatek.geniezone.srv.echo";
 #define APP_NAME2 "com.mediatek.gz.srv.sync-ut"
 
 static int get_gz_version(void *args)
@@ -737,7 +738,7 @@ static TZ_RESULT _reg_shmem_from_userspace(
 
 	struct MTIOMMU_PIN_RANGE_T *pin = NULL;
 	uint64_t *map_p = NULL;
-	int numOfPA = 0;
+	int __maybe_unused numOfPA  = 0;
 	KREE_SHAREDMEM_PARAM shm_param = {0};
 
 	KREE_DEBUG("[%s][%d] runs.\n", __func__, __LINE__);
