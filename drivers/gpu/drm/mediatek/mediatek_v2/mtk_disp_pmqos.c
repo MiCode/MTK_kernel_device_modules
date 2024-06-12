@@ -227,7 +227,7 @@ int __mtk_disp_set_module_srt(struct icc_path *request, int comp_id,
 				unsigned int bandwidth, unsigned int peak_bw, unsigned int bw_mode,
 				bool real_srt_ostdl)
 {
-	DDPDBG("%s set %s/%d bw = %u peak %u, srt_ostdl %d\n", __func__,
+	DDPQOS("%s set %s/%d bw = %u peak %u, srt_ostdl %d\n", __func__,
 			mtk_dump_comp_str_id(comp_id), comp_id, bandwidth, peak_bw, real_srt_ostdl);
 	if (real_srt_ostdl != true)
 		bandwidth = bandwidth * 133 / 100;
@@ -243,6 +243,9 @@ void __mtk_disp_set_module_hrt(struct icc_path *request, int comp_id,
 				unsigned int bandwidth, bool respective_ostdl)
 {
 	unsigned int icc = MBps_to_icc(bandwidth);
+
+	DDPQOS("%s set %s/%d peak %u\n", __func__,
+			mtk_dump_comp_str_id(comp_id), comp_id, bandwidth);
 
 	if (bandwidth > 0 && respective_ostdl != true)
 		icc = MTK_MMQOS_MAX_BW;
@@ -843,7 +846,8 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 			mtk_crtc->qos_ctx->last_larb_hrt_req = tmp1;
 			DDPINFO("%s, CRTC%d HRT bw=%u total=%u larb bw=%u ovl_num=%d bw_base=%d\n",
 				__func__, crtc_idx, tmp, total, tmp1, ovl_num, bw_base);
-		}
+		} else
+			DDPINFO("set CRTC %d HRT bw %u %u\n", crtc_idx, tmp, total);
 	} else
 		DDPINFO("set CRTC %d HRT bw %u %u\n", crtc_idx, tmp, total);
 
