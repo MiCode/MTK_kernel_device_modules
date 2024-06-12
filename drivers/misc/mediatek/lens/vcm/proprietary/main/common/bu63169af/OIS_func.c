@@ -25,11 +25,8 @@ short int func_PROGRAM_DOWNLOAD(void)
 
 	if ((sts & 0x0004) == 0x0004) {
 		/* ==> RHM_HT 2013/07/10        Added */
-		unsigned short int u16_dat;
 
-		u16_dat = I2C_OIS_mem__read(_M_FIRMVER);
-
-		DEBUG_printf(("Firm Ver :      %4d\n\n", u16_dat));
+		DEBUG_printf(("Firm Ver :      %4d\n\n", I2C_OIS_mem__read(_M_FIRMVER)));
 
 		/* <== RHM_HT 2013/07/10        Added */
 
@@ -53,13 +50,9 @@ void func_COEF_DOWNLOAD(unsigned short int u16_coef_type)
 	download(1, u16_coef_type); /* COEF Download */
 
 	{
-		unsigned short int u16_dat;
-
 		/* Coef type */
-		u16_dat = I2C_OIS_mem__read(_M_CEFTYP);
-
 		DEBUG_printf(
-			("COEF     M[0x%02x] 0x%04X\n", _M_CEFTYP, u16_dat));
+			("COEF     M[0x%02x] 0x%04X\n", _M_CEFTYP, I2C_OIS_mem__read(_M_CEFTYP)));
 	}
 	/* Get default Integ_input and KgnTG value */
 	INTG__INPUT = I2C_OIS_mem__read(0x38);
