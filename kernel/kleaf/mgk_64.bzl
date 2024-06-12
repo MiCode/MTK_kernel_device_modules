@@ -3134,6 +3134,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/tee/teei/510/isee-ffa.ko")
 
         mgk_64_device_modules.append("drivers/regulator/mt6362-regulator.ko")
+        mgk_64_device_modules.append("drivers/leds/leds-mt6362.ko")
         mgk_64_device_modules.append("drivers/mfd/mt6362-core.ko")
         mgk_64_device_modules.remove("drivers/iommu/arm/arm-smmu-v3/arm_smmu_v3.ko")
         mgk_64_device_modules.remove("drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-lmu.ko")
