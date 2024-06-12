@@ -2175,6 +2175,9 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko")
         mgk_64_device_modules.append("drivers/mmc/host/mtk-mmc-swcqhci.ko")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps")
+        mgk_64_common_eng_modules.remove("drivers/perf/arm_dsu_pmu.ko")
+        mgk_64_common_userdebug_modules.remove("drivers/perf/arm_dsu_pmu.ko")
+        mgk_64_common_user_modules.remove("drivers/perf/arm_dsu_pmu.ko")
 
 
     if "mt6768_overlay_ref.config" in DEFCONFIG_OVERLAYS:
