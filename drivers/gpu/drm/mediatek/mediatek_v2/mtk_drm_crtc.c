@@ -8498,7 +8498,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 			if (!is_force_high_step &&
 				(*(display_compress_ratio_table[i].average_ratio) == 0 ||
 				*(display_compress_ratio_table[i].peak_ratio)) == 0)
-				DDPPR_ERR("%s ratio is 0,i:%d,idx:%d,key value:%d\n", __func__,
+				DDPPR_ERR("%s ratio is 0,i:%d,idx:%d,key value:%lld\n", __func__,
 				i, index, display_compress_ratio_table[i].key_value);
 			else {
 				normal_layer_compress_ratio_tb[index].frame_idx =
@@ -8621,7 +8621,7 @@ void mtk_crtc_start_bwm_ratio_loop(struct drm_crtc *crtc)
 
 	DDPDBG_BWM("%s +\n", __func__);
 	if (crtc_id) {
-		DDPDBG("%s:%d invalid crtc:%ld\n",
+		DDPDBG("%s:%d invalid crtc:%d\n",
 			__func__, __LINE__, crtc_id);
 		return;
 	}
@@ -18152,7 +18152,7 @@ static void mtk_crtc_get_output_comp_name(struct mtk_drm_crtc *mtk_crtc,
 static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 				    int buf_len, int event_id)
 {
-	int crtc_id, len;
+	int crtc_id = 0, len = 0;
 	char output_comp[20];
 
 	/* TODO: remove hardcode comp event */

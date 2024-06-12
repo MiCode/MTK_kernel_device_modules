@@ -4038,7 +4038,7 @@ static void mtk_dsi_enter_ulps(struct mtk_dsi *dsi, bool async)
 
 static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi, bool async)
 {
-	int wake_up_prd = (dsi->data_rate * 1000) / (1024 * 8) + 1; /* 1 ms */
+	int wake_up_prd = 0;
 	int ret = 0;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_drm_private *priv = NULL;
@@ -4047,6 +4047,8 @@ static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi, bool async)
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
 		return;
 	}
+	wake_up_prd = (dsi->data_rate * 1000) / (1024 * 8) + 1; /* 1 ms */
+
 	mtk_crtc = dsi->is_slave ?
 		dsi->master_dsi->ddp_comp.mtk_crtc
 		:dsi->ddp_comp.mtk_crtc;
@@ -5392,7 +5394,7 @@ SKIP_WAIT_FRAME_DONE:
 	if (dsi->slave_dsi)
 		mtk_dsi_dual_enable(dsi, false);
 
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
+	if (priv && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 			priv->data->mmsys_id == MMSYS_MT6991 && crtc_idx == 0)
 		mtk_crtc_stop_bwm_ratio_loop(crtc);
 
