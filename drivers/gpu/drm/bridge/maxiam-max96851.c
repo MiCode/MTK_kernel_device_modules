@@ -383,7 +383,7 @@ err:
 static int excute_feature_verify_cmd(struct max96851_bridge *max_bridge, struct feature_cmd feature_cmd)
 {
 	struct i2c_client *client = NULL;
-	int ret = 0, i = 0, j = 0;
+	int ret = 0, i = 0;
 	u8 value[32] = {0};
 
 	client = i2c_new_dummy_device(max_bridge->max96851_i2c->adapter, feature_cmd.i2c_addr);
@@ -403,8 +403,8 @@ static int excute_feature_verify_cmd(struct max96851_bridge *max_bridge, struct 
 
 	/* verify the received data */
 	for (i = 0; i < feature_cmd.cmd_length; i += 2) {
-		pr_info("[MAX96851] value:%x mask:%x verify:%x\n",value[j],feature_cmd.data[i],feature_cmd.data[i+1]);
-		if ((value[j++] & feature_cmd.data[i]) != feature_cmd.data[i+1]) {
+		pr_info("[MAX96851] value:%x mask:%x verify:%x\n",value[i/2],feature_cmd.data[i],feature_cmd.data[i+1]);
+		if ((value[i/2] & feature_cmd.data[i]) != feature_cmd.data[i+1]) {
 			pr_info("[MAX96851] Received data does not match with expected value, doesn't apply this setting\n");
 			ret = -EINVAL;
 			goto err;
@@ -480,7 +480,12 @@ static int parse_feature_info_from_dts(struct max96851_bridge *max_bridge, struc
 	/* feature-handle number process */
 	for (i = 0; i < feature_handle_num; i++) {
 		memset(feature_handle_name, 0, 64);
-		sprintf(feature_handle_name, "%s%d", PANEL_FEATURE_HANDLE, i);
+		ret = sprintf(feature_handle_name, "%s%d", PANEL_FEATURE_HANDLE, i);
+		if (ret < 0) {
+			pr_info("%s: failed to sprintf feature handle name %d\n", __func__, ret);
+			return ret;
+		}
+
 		feature_handle_np = of_get_child_by_name(feature_np, feature_handle_name);
 		if (!feature_handle_np) {
 			pr_info("%s: failed to find feature handle node %s\n", __func__, feature_handle_name);
