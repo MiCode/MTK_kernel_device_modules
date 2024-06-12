@@ -217,11 +217,11 @@ EXPORT_SYMBOL(osal_restore_fs);
 void *osal_get_filp_struct(int fp_id)
 {
 	// LCOV_EXCL_START
-	int val = 0;
 	struct file *ret;
 
 	if (fp_id >= 1 && fp_id < OSAL_MAX_FP_COUNT) {
-		val = down_interruptible(&osal_fp_sem);
+		if (down_interruptible(&osal_fp_sem))
+			goto error;
 
 		ret = g_osal_fp[fp_id];
 
@@ -230,6 +230,7 @@ void *osal_get_filp_struct(int fp_id)
 		return (void *)ret;
 	}
 
+error:
 	return (struct file *)(-ENOENT);	/* No such file or directory */
 	// LCOV_EXCL_STOP
 }
@@ -240,10 +241,10 @@ loff_t osal_filp_seek_set(int fp_id, loff_t off)
 {
 	// LCOV_EXCL_START
 	loff_t offset;
-	int val = 0;
 
 	if (fp_id >= 1 && fp_id < OSAL_MAX_FP_COUNT) {
-		val = down_interruptible(&osal_fp_sem);
+		if (down_interruptible(&osal_fp_sem))
+			goto error;
 
 		offset = g_osal_fp[fp_id]->f_op->llseek(g_osal_fp[fp_id],
 							off,
@@ -254,6 +255,7 @@ loff_t osal_filp_seek_set(int fp_id, loff_t off)
 		return offset;
 	}
 
+error:
 	return OSAL_FILE_SEEK_FAIL;
 	// LCOV_EXCL_STOP
 }
@@ -263,10 +265,10 @@ loff_t osal_filp_seek_end(int fp_id, loff_t off)
 {
 	// LCOV_EXCL_START
 	loff_t offset;
-	int val = 0;
 
 	if (fp_id >= 1 && fp_id < OSAL_MAX_FP_COUNT) {
-		val = down_interruptible(&osal_fp_sem);
+		if (down_interruptible(&osal_fp_sem))
+			goto error;
 
 		offset = g_osal_fp[fp_id]->f_op->llseek(g_osal_fp[fp_id],
 							off,
@@ -277,6 +279,7 @@ loff_t osal_filp_seek_end(int fp_id, loff_t off)
 		return offset;
 	}
 
+error:
 	return OSAL_FILE_SEEK_FAIL;
 	// LCOV_EXCL_STOP
 }
@@ -286,10 +289,10 @@ loff_t osal_filp_pos(int fp_id)
 {
 	// LCOV_EXCL_START
 	loff_t offset;
-	int val = 0;
 
 	if (fp_id >= 1 && fp_id < OSAL_MAX_FP_COUNT) {
-		val = down_interruptible(&osal_fp_sem);
+		if (down_interruptible(&osal_fp_sem))
+			goto error;
 
 		offset = g_osal_fp[fp_id]->f_pos;
 
@@ -298,6 +301,7 @@ loff_t osal_filp_pos(int fp_id)
 		return offset;
 	}
 
+error:
 	return OSAL_FILE_GET_POS_FAIL;
 	// LCOV_EXCL_STOP
 }
@@ -307,10 +311,10 @@ long osal_filp_read(int fp_id, char *buf, unsigned long len)
 {
 	// LCOV_EXCL_START
 	ssize_t read_len;
-	int val = 0;
 
 	if (fp_id >= 1 && fp_id < OSAL_MAX_FP_COUNT) {
-		val = down_interruptible(&osal_fp_sem);
+		if (down_interruptible(&osal_fp_sem))
+			goto error;
 
 		read_len =
 			g_osal_fp[fp_id]->f_op->read(g_osal_fp[fp_id], buf, len,
@@ -321,6 +325,7 @@ long osal_filp_read(int fp_id, char *buf, unsigned long len)
 		return read_len;
 	}
 
+error:
 	return OSAL_FILE_READ_FAIL;
 	// LCOV_EXCL_STOP
 }
@@ -330,10 +335,10 @@ long osal_is_err(int fp_id)
 {
 	// LCOV_EXCL_START
 	bool err;
-	int val = 0;
 
 	if (fp_id >= 1 && fp_id < OSAL_MAX_FP_COUNT) {
-		val = down_interruptible(&osal_fp_sem);
+		if (down_interruptible(&osal_fp_sem))
+			goto error;
 
 		err = IS_ERR(g_osal_fp[fp_id]);
 
@@ -342,6 +347,7 @@ long osal_is_err(int fp_id)
 		return err;
 	}
 
+error:
 	/*osal_assert(0); */
 	return 1;
 	// LCOV_EXCL_STOP
