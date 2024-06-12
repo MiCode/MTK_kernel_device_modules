@@ -241,7 +241,7 @@ void smmu_merge_s2_table(void)
 	hyp_spin_unlock(&smmu_all_vm_lock);
 }
 
-void mtk_smmu_share(struct kvm_cpu_context *ctx)
+void mtk_smmu_share(struct user_pt_regs *regs)
 {
 	uint64_t region_start = 0, region_pfn, pfn_total, i;
 	uint64_t region_size = 0;
@@ -250,9 +250,9 @@ void mtk_smmu_share(struct kvm_cpu_context *ctx)
 	smmu_device_t *smmu_dev = NULL;
 	uint64_t **share_addr = NULL;
 
-	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
-	smmu_id = ctx->regs.regs[1];
-	type = ctx->regs.regs[2];
+	regs->regs[0] = SMCCC_RET_SUCCESS;
+	smmu_id = regs->regs[1];
+	type = regs->regs[2];
 	for (subsys_smmu = 0; subsys_smmu < smmu_devices_count; subsys_smmu++) {
 		smmu_dev = smmu_devices[subsys_smmu];
 		if (smmu_id != smmu_dev->smmu_id)
@@ -305,21 +305,21 @@ void mtk_smmu_share(struct kvm_cpu_context *ctx)
 /* Maintain an array to records MPU region info */
 static struct mpu_record pkvm_mpu_rec[MPU_REQ_ORIGIN_EL2_ZONE_MAX];
 
-int mtk_smmu_secure(struct kvm_cpu_context *ctx)
+int mtk_smmu_secure(struct user_pt_regs *regs)
 {
 	paddr_t region_start;
 	size_t region_size;
-	uint32_t zone_id = ctx->regs.regs[3];
+	uint32_t zone_id = regs->regs[3];
 
-	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
+	regs->regs[0] = SMCCC_RET_SUCCESS;
 
 	if (zone_id >= MPU_REQ_ORIGIN_EL2_ZONE_MAX) {
 		pkvm_smmu_ops->puts("mtk_smmu_secure : zone_id is invalid");
 		return 0;
 	}
 	/* Get the region start and size */
-	region_start = ctx->regs.regs[1];
-	region_size = ctx->regs.regs[2];
+	region_start = regs->regs[1];
+	region_size = regs->regs[2];
 	/* Store the information of region start and size into mpu_record array */
 	pkvm_mpu_rec[zone_id].addr = region_start;
 	pkvm_mpu_rec[zone_id].size = region_size;
@@ -334,14 +334,14 @@ int mtk_smmu_secure(struct kvm_cpu_context *ctx)
 	return 0;
 }
 
-int mtk_smmu_unsecure(struct kvm_cpu_context *ctx)
+int mtk_smmu_unsecure(struct user_pt_regs *regs)
 {
 	paddr_t region_start;
 	size_t region_size;
 	uint8_t vm0_default_mode, vm1_default_mode;
-	uint32_t zone_id = ctx->regs.regs[3];
+	uint32_t zone_id = regs->regs[3];
 
-	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
+	regs->regs[0] = SMCCC_RET_SUCCESS;
 
 	if (zone_id >= MPU_REQ_ORIGIN_EL2_ZONE_MAX) {
 		pkvm_smmu_ops->puts("mtk_smmu_unsecure : zone_id is invalid");
@@ -371,7 +371,7 @@ int mtk_smmu_unsecure(struct kvm_cpu_context *ctx)
  *  |____________|____________|_____________|
  *  31         28 27        24 23          0
  */
-int mtk_smmu_secure_v2(struct kvm_cpu_context *ctx)
+int mtk_smmu_secure_v2(struct user_pt_regs *regs)
 {
 	uint32_t entry, order, i;
 	uint32_t *pmm_page;
@@ -382,9 +382,9 @@ int mtk_smmu_secure_v2(struct kvm_cpu_context *ctx)
 	void *pglist_pa;
 	int ret = 0;
 
-	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
-	pglist_pfn = ctx->regs.regs[1];
-	count = ctx->regs.regs[3];
+	regs->regs[0] = SMCCC_RET_SUCCESS;
+	pglist_pfn = regs->regs[1];
+	count = regs->regs[3];
 	pglist_pa = (void *)(pglist_pfn << ONE_PAGE_OFFSET);
 	ret = pkvm_smmu_ops->host_share_hyp(pglist_pfn);
 
@@ -434,11 +434,11 @@ int mtk_smmu_secure_v2(struct kvm_cpu_context *ctx)
 	if (ret)
 		pkvm_smmu_ops->puts(
 			"mtk_smmu_secure_v2 : host_unshare_hyp kernel pa fail");
-	cpu_reg(ctx, 1) = ret;
+	regs->regs[1] = ret;
 	return ret;
 }
 
-int mtk_smmu_unsecure_v2(struct kvm_cpu_context *ctx)
+int mtk_smmu_unsecure_v2(struct user_pt_regs *regs)
 {
 	uint32_t entry, order, i;
 	uint32_t *pmm_page;
@@ -449,9 +449,9 @@ int mtk_smmu_unsecure_v2(struct kvm_cpu_context *ctx)
 	void *pglist_pa;
 	int ret = 0;
 
-	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
-	pglist_pfn = ctx->regs.regs[1];
-	count = ctx->regs.regs[3];
+	regs->regs[0] = SMCCC_RET_SUCCESS;
+	pglist_pfn = regs->regs[1];
+	count = regs->regs[3];
 	pglist_pa = (void *)(pglist_pfn << ONE_PAGE_OFFSET);
 	ret = pkvm_smmu_ops->host_share_hyp(pglist_pfn);
 	if (ret == 0) {
@@ -500,7 +500,7 @@ int mtk_smmu_unsecure_v2(struct kvm_cpu_context *ctx)
 	if (ret)
 		pkvm_smmu_ops->puts(
 			"mtk_smmu_unsecure_v2 : host_unshare_hyp kernel pa fail");
-	cpu_reg(ctx, 1) = ret;
+	regs->regs[1] = ret;
 	return ret;
 }
 
@@ -640,15 +640,15 @@ unsigned long smmu_debug_dump_reg(uint8_t smmu_type, uint32_t reg)
  *  action id   [31:27]
  * 3. this parameter layout be defines at guest driver code.
  */
-void mtk_smmu_host_debug(struct kvm_cpu_context *ctx)
+void mtk_smmu_host_debug(struct user_pt_regs *regs)
 {
 	uint8_t sid, smmu_type, action_id, ste_row;
 	uint32_t reg, fault_ipa, debug_parameter;
 	uint64_t debug_info = 0;
 
-	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
-	fault_ipa = ctx->regs.regs[1];
-	debug_parameter = ctx->regs.regs[2];
+	regs->regs[0] = SMCCC_RET_SUCCESS;
+	fault_ipa = regs->regs[1];
+	debug_parameter = regs->regs[2];
 	sid = debug_parameter & 0xff;
 	smmu_type = (debug_parameter >> 8) & 0x3;
 	reg = (debug_parameter >> 10) & 0x3ff;
@@ -673,23 +673,23 @@ void mtk_smmu_host_debug(struct kvm_cpu_context *ctx)
 		debug_info = INVALID_ACTION_ID_BIT;
 		break;
 	}
-	cpu_reg(ctx, 1) = debug_info;
+	regs->regs[1] = debug_info;
 }
 
-void add_smmu_device(struct kvm_cpu_context *ctx)
+void add_smmu_device(struct user_pt_regs *regs)
 {
 	smmu_device_t *smmu_dev = NULL;
 	u64 pfn, smmu_size;
 	int ret;
 
-	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
+	regs->regs[0] = SMCCC_RET_SUCCESS;
 	smmu_dev = (smmu_device_t *)malloc(sizeof(smmu_device_t));
 	if (!smmu_dev) {
 		pkvm_smmu_ops->puts("add_smmu_device: smmu_dev malloc failed");
 		return;
 	}
 
-	smmu_dev->smmu_id = ctx->regs.regs[4];
+	smmu_dev->smmu_id = regs->regs[4];
 	smmu_dev->smmuv3 =
 		(struct smmuv3_driver *)malloc(sizeof(struct smmuv3_driver));
 	if (!smmu_dev->smmuv3) {
@@ -698,9 +698,9 @@ void add_smmu_device(struct kvm_cpu_context *ctx)
 		return;
 	}
 
-	smmu_dev->reg_base_pa_addr = ctx->regs.regs[1];
-	smmu_dev->reg_size = ctx->regs.regs[2];
-	smmu_dev->dma_coherent = ctx->regs.regs[3];
+	smmu_dev->reg_base_pa_addr = regs->regs[1];
+	smmu_dev->reg_size = regs->regs[2];
+	smmu_dev->dma_coherent = regs->regs[3];
 	smmu_devices[smmu_devices_count] = smmu_dev;
 	hyp_spin_lock_init(&smmu_dev->cmdq_batch_lock);
 	hyp_spin_lock_init(&smmu_dev->smmuv3->cmd_queue.cmdq_issue_lock);
@@ -1160,85 +1160,85 @@ smmu_device_t *get_smmu_dev(u64 addr)
 	return NULL;
 }
 
-void setup_vm(struct kvm_cpu_context *ctx)
+void setup_vm(struct user_pt_regs *regs)
 {
 	struct smmu_hyp_vms *smmu_hyp;
 	struct smmu_vm *vm;
 	unsigned int ops, vmid, sid, map_mode, granule;
 	unsigned long mem_base, mem_size;
 
-	ops = ctx->regs.regs[1];
-	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
+	ops = regs->regs[1];
+	regs->regs[0] = SMCCC_RET_SUCCESS;
 
 	switch (ops) {
 	case DEFAULT_VMID:
 		smmu_hyp = get_vms_data();
-		vmid = ctx->regs.regs[2];
+		vmid = regs->regs[2];
 		smmu_hyp->default_vmid = vmid;
 		break;
 	case VM_NO_MAP_MBLOCK:
-		mem_base = ctx->regs.regs[2];
-		mem_size = ctx->regs.regs[3];
+		mem_base = regs->regs[2];
+		mem_size = regs->regs[3];
 		add_to_nomap_region(mem_base, mem_size);
 		break;
 	case S2_BYPASS_SID:
 		smmu_hyp = get_vms_data();
-		sid = ctx->regs.regs[2];
+		sid = regs->regs[2];
 		smmu_hyp->s2_bypass_sid[sid] = 1;
 		break;
 	case VMID:
-		vmid = ctx->regs.regs[2];
+		vmid = regs->regs[2];
 		vm = get_vm(vmid);
 		vm->vmid = vmid;
 		break;
 	case SID:
-		vmid = ctx->regs.regs[2];
-		sid = ctx->regs.regs[3];
+		vmid = regs->regs[2];
+		sid = regs->regs[3];
 		vm = get_vm(vmid);
 		vm->sids[vm->sid_num] = sid;
 		vm->sid_num++;
 		break;
 	case IDENTITY_MAP_MODE:
-		vmid = ctx->regs.regs[2];
+		vmid = regs->regs[2];
 		vm = get_vm(vmid);
-		map_mode = ctx->regs.regs[3];
+		map_mode = regs->regs[3];
 		vm->identity_map_mode = map_mode;
 		break;
 	case IDENTITY_MAP:
-		vmid = ctx->regs.regs[2];
-		mem_base = ctx->regs.regs[3];
-		mem_size = ctx->regs.regs[4];
+		vmid = regs->regs[2];
+		mem_base = regs->regs[3];
+		mem_size = regs->regs[4];
 		vm = get_vm(vmid);
 		add_to_map_region(vm, mem_base, mem_size);
 		vm->vm_ipa_range.base = mem_base;
 		vm->vm_ipa_range.size = mem_size;
 		break;
 	case IDENTITY_MAP_MBLOCK:
-		vmid = ctx->regs.regs[2];
-		mem_base = ctx->regs.regs[3];
-		mem_size = ctx->regs.regs[4];
+		vmid = regs->regs[2];
+		mem_base = regs->regs[3];
+		mem_size = regs->regs[4];
 		vm = get_vm(vmid);
 		add_to_map_region(vm, mem_base, mem_size);
 		break;
 	case IDENTITY_UNMAP:
 	case IDENTITY_UNMAP_MBLOCK:
-		vmid = ctx->regs.regs[2];
-		mem_base = ctx->regs.regs[3];
-		mem_size = ctx->regs.regs[4];
+		vmid = regs->regs[2];
+		mem_base = regs->regs[3];
+		mem_size = regs->regs[4];
 		vm = get_vm(vmid);
 		add_to_unmap_region(vm, mem_base, mem_size);
 		break;
 	case IDENTITY_MAP_MBLOCK_EXCLUSIVE:
-		vmid = ctx->regs.regs[2];
-		mem_base = ctx->regs.regs[3];
-		mem_size = ctx->regs.regs[4];
+		vmid = regs->regs[2];
+		mem_base = regs->regs[3];
+		mem_size = regs->regs[4];
 		vm = get_vm(vmid);
 		add_to_exclusive_map_region(vm->vmid, mem_base, mem_size,
 					    vm->identity_map_mode);
 		break;
 	case IPA_GRANULE:
-		vmid = ctx->regs.regs[2];
-		granule = ctx->regs.regs[3];
+		vmid = regs->regs[2];
+		granule = regs->regs[3];
 		vm = get_vm(vmid);
 		vm->ipa_granule = granule;
 		break;
@@ -1246,7 +1246,8 @@ void setup_vm(struct kvm_cpu_context *ctx)
 		break;
 	}
 }
-void mtk_iommu_init(struct kvm_cpu_context *ctx)
+
+void mtk_iommu_init(struct user_pt_regs *regs)
 {
 	struct mpt in_mpt;
 	u64 *smpt;
@@ -1257,8 +1258,8 @@ void mtk_iommu_init(struct kvm_cpu_context *ctx)
 	uint64_t pglist_pfn;
 	void *pmm_page;
 
-	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
-	pglist_pfn = ctx->regs.regs[1];
+	regs->regs[0] = SMCCC_RET_SUCCESS;
+	pglist_pfn = regs->regs[1];
 	ret = pkvm_smmu_ops->host_share_hyp(pglist_pfn);
 
 	if (ret) {
@@ -1325,7 +1326,7 @@ void mtk_iommu_init(struct kvm_cpu_context *ctx)
 	smmu_dump_all_vm_stage2();
 
 error:
-	cpu_reg(ctx, 1) = ret;
+	regs->regs[1] = ret;
 }
 
 static int mtk_iommu_host_dabt_handler(struct user_pt_regs *regs, u64 esr,
@@ -1462,12 +1463,12 @@ static void mtk_smmu_host_stage2_idmap(struct kvm_hyp_iommu_domain *domain,
 		mtk_smmu_sync();
 }
 
-void smmu_finalise(struct kvm_cpu_context *ctx)
+void smmu_finalise(struct user_pt_regs *regs)
 {
 	int ret;
 
 	ret = kvm_iommu_snapshot_host_stage2(NULL);
-	cpu_reg(ctx, 0) = ret;
+	regs->regs[0] = ret;
 }
 
 struct kvm_iommu_ops smmu_ops = {
