@@ -116,7 +116,7 @@ unsigned int get_cpu_util_pct(unsigned int cpu, bool orig)
 
 	if (sched_feat(UTIL_EST) && is_util_est_enable())
 		util = max_t(unsigned long, util,
-			READ_ONCE(cfs_rq->avg.util_est.enqueued));
+			READ_ONCE(cfs_rq->avg.util_est));
 
 	capacity = (orig == true) ? capacity_orig_of(cpu) : _capacity_of(cpu);
 	util = min_t(unsigned long, util, capacity);
@@ -174,9 +174,7 @@ static inline unsigned long task_util(struct task_struct *p)
 
 static inline unsigned long _task_util_est(struct task_struct *p)
 {
-	struct util_est ue = READ_ONCE(p->se.avg.util_est);
-
-	return max(ue.ewma, (ue.enqueued & ~UTIL_AVG_UNCHANGED));
+	return READ_ONCE(p->se.avg.util_est) & ~UTIL_AVG_UNCHANGED;
 }
 
 static inline unsigned long task_util_est(struct task_struct *p)
