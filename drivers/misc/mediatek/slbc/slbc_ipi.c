@@ -167,6 +167,27 @@ int slbc_suspend_resume_notify(int suspend)
 }
 EXPORT_SYMBOL_GPL(slbc_suspend_resume_notify);
 
+int slbc_get_sspm_ver(u32 *major_ver, u32 *minor_ver, u32 *patch_ver)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	struct slbc_ipi_data slbc_ipi_d;
+	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
+	u32 ret = 0;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = IPI_SLBC_SSPM_VER;
+	ret = slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+	*major_ver = rvalue.slbc_resv1;
+	*minor_ver = rvalue.slbc_resv2;
+	*patch_ver = rvalue.slbc_resv3;
+
+	return ret;
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
+}
+EXPORT_SYMBOL_GPL(slbc_get_sspm_ver);
+
 int slbc_table_gid_set(int gid, int quota, int pri)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)

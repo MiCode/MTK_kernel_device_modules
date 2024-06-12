@@ -71,6 +71,7 @@ enum {
 	IPI_SLBC_SETUP_SSPM_SHARED_DRAM,
 	IPI_SLBC_CG_PRIORITY_SET,
 	IPI_SLBC_DCC_CTRL_TO_AP,
+	IPI_SLBC_SSPM_VER,
 	NR_IPI_SLBC,
 };
 
@@ -97,6 +98,7 @@ extern int slbc_scmi_ctrl(void *buffer, void *ptr);
 #define SLBC_IPI_UID_GET(x)		((x) >> 16 & 0xffff)
 
 #if IS_ENABLED(CONFIG_MTK_SLBC_IPI)
+extern int slbc_get_sspm_ver(u32 *major_ver, u32 *minor_ver, u32 *patch_ver);
 extern int slbc_suspend_resume_notify(int suspend);
 extern int slbc_scmi_init(void);
 extern int slbc_sspm_slb_disable(int disable);
@@ -137,6 +139,7 @@ extern int _slbc_ach_scmi(unsigned int cmd, enum slc_ach_uid uid, int gid,
 extern int _slbc_sspm_shared_dram_scmi(unsigned int phys_addr, unsigned int mem_size);
 
 #else
+__weak int slbc_get_sspm_ver(u32 *major_ver, u32 *minor_ver, u32 *patch_ver) { return 0; }
 __weak int slbc_suspend_resume_notify(int suspend) { return 0; }
 __weak int slbc_scmi_init(void) { return 0; }
 __weak int slbc_sspm_slb_disable(int disable) { return 0; }
