@@ -131,7 +131,7 @@ static const char *bus_list[BUS_TYPE_NUM] = {
 	[VLP_TYPE] = "vlpcfg",
 };
 
-static bool scpsys_init_flag;
+static bool bypass_first_cg_off;
 static BLOCKING_NOTIFIER_HEAD(scpsys_notifier_list);
 
 static void __iomem *hwvdbg_infra_base;
@@ -751,7 +751,7 @@ static int scpsys_power_on(struct generic_pm_domain *genpd)
 	if (ret < 0)
 		goto err_sram;
 
-	if (!scpsys_init_flag)
+	if (!bypass_first_cg_off)
 		scpsys_clk_disable(scpd->subsys_lp_clk, MAX_SUBSYS_CLKS);
 
 	scpsys_clk_disable(scpd->lp_clk, MAX_CLKS);
@@ -1932,11 +1932,13 @@ int mtk_register_power_domains(struct platform_device *pdev,
 	struct genpd_onecell_data *pd_data;
 	int i, ret = 0;
 
-	scpsys_init_flag = true;
 	for (i = 0; i < num; i++) {
 		struct scp_domain *scpd = &scp->domains[i];
 		struct generic_pm_domain *genpd = &scpd->genpd;
 		bool on;
+
+		if (MTK_SCPD_CAPS(scpd, MTK_SCPD_BYPASS_CLK))
+			bypass_first_cg_off = true;
 
 		/*
 		 * Initially turn on all domains to make the domains usable
@@ -1954,9 +1956,8 @@ int mtk_register_power_domains(struct platform_device *pdev,
 		}
 
 		pm_genpd_init(genpd, NULL, !on);
+		bypass_first_cg_off = false;
 	}
-
-	scpsys_init_flag = false;
 
 	/*
 	 * We are not allowed to fail here since there is no way to unregister
