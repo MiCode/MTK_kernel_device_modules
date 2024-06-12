@@ -417,11 +417,11 @@ int adsp_core_common_init(struct adsp_priv *pdata)
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	char name[11] = {0};
 
-	ret = snprintf(name, 11, "audiodsp%d", pdata->id);
-	debugfs_create_file(name, S_IFREG | 0644, NULL, pdata, &adsp_debug_ops);
+	if (snprintf(name, 11, "audiodsp%d", pdata->id) >= 0)
+		debugfs_create_file(name, S_IFREG | 0644, NULL, pdata, &adsp_debug_ops);
 
-	ret = snprintf(name, 11, "adsptrace%d", pdata->id);
-	debugfs_create_file(name, S_IFREG | 0644, NULL, pdata, &adsp_trace_ops);
+	if (snprintf(name, 11, "adsptrace%d", pdata->id) >= 0)
+		debugfs_create_file(name, S_IFREG | 0644, NULL, pdata, &adsp_trace_ops);
 #endif
 
 	/* v1: adsp mpu info */

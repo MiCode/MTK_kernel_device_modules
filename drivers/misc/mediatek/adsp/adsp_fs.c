@@ -351,10 +351,7 @@ static ssize_t adsp_trace_write(struct file *filp, const char __user *buffer,
 	unsigned int enable = 0;
 	struct adsp_priv *pdata = filp->private_data;
 
-	if (copy_from_user(buf, buffer, min(count, sizeof(buf))))
-		return -EFAULT;
-
-	if (kstrtouint(buf, 0, &enable) != 0)
+	if (kstrtouint_from_user(buffer, count, 0, &enable) != 0)
 		return -EINVAL;
 
 	if (enable) {
