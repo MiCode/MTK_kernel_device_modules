@@ -5125,32 +5125,32 @@
 				<&iommu0 M4U_PORT_L2_MDP_RDMA1>,
 				<&iommu0 M4U_PORT_L2_MDP_WROT0>,
 				<&iommu0 M4U_PORT_L2_MDP_WROT1>;
-			dma_mask_bit = <35>;
+			dma-mask-bit = <35>;
 		};
 
 		mdp: mdp@1f000000 {
 			compatible = "mediatek,mdp";
 			reg = <0 0x1f000000 0 0x1000>;
-			thread_count = <24>;
+			thread-count = <24>;
 			mboxes = <&gce 19 0 CMDQ_THR_PRIO_1>,
 				<&gce 20 0 CMDQ_THR_PRIO_1>,
 				<&gce 21 0 CMDQ_THR_PRIO_1>,
 				<&gce 22 0 CMDQ_THR_PRIO_1>,
 				<&gce 10 0 CMDQ_THR_PRIO_1>;
-			mmsys_config = <&mdpsys_config>;
-			mm_mutex   = <&mdp_mutex>;
-			mdp_rdma0  = <&mdp_rdma0>;
-			mdp_rdma1  = <&mdp_rdma1>;
-			mdp_rsz0   = <&mdp_rsz0>;
-			mdp_rsz1   = <&mdp_rsz1>;
-			mdp_wrot0  = <&mdp_wrot0>;
-			mdp_wrot1  = <&mdp_wrot1>;
-			mdp_tdshp0 = <&mdp_tdshp0>;
-			mdp_tdshp1 = <&mdp_tdshp1>;
-			mdp_aal0   = <&mdp_aal0>;
-			mdp_aal1   = <&mdp_aal1>;
-			mdp_color0 = <&mdp_color0>;
-			mdp_hdr0   = <&mdp_hdr0>;
+			mmsys-config = <&mdpsys_config>;
+			mm-mutex   = <&mdp_mutex>;
+			mdp-rdma0  = <&mdp_rdma0>;
+			mdp-rdma1  = <&mdp_rdma1>;
+			mdp-rsz0   = <&mdp_rsz0>;
+			mdp-rsz1   = <&mdp_rsz1>;
+			mdp-wrot0  = <&mdp_wrot0>;
+			mdp-wrot1  = <&mdp_wrot1>;
+			mdp-tdshp0 = <&mdp_tdshp0>;
+			mdp-tdshp1 = <&mdp_tdshp1>;
+			mdp-aal0   = <&mdp_aal0>;
+			mdp-aal1   = <&mdp_aal1>;
+			mdp-color0 = <&mdp_color0>;
+			mdp-hdr0   = <&mdp_hdr0>;
 			mediatek,larb = <&smi_larb2>;
 			g3d_config_base = <0x13000000 0 0xffff0000>;
 			mmsys_config_base = <0x14000000 1 0xffff0000>;
@@ -5182,77 +5182,219 @@
 			camsys_base = <0x18080000 27 0xffff0000>;
 			camsys1_base = <0x180a0000 28 0xffff0000>;
 			camsys2_base = <0x180b0000 29 0xffff0000>;
-			dip_cq_thread0_frame_done =
+			dip-cq-thread0-frame-done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_0>;
-			dip_cq_thread1_frame_done =
+			dip-cq-thread1-frame-done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_1>;
-			dip_cq_thread2_frame_done =
+			dip-cq-thread2-frame-done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_2>;
-			dip_cq_thread3_frame_done =
+			dip-cq-thread3-frame-done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_3>;
-			dip_cq_thread4_frame_done =
+			dip-cq-thread4-frame-done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_4>;
-			dip_cq_thread5_frame_done =
+			dip-cq-thread5-frame-done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_5>;
-			dip_cq_thread6_frame_done =
+			dip-cq-thread6-frame-done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_6>;
-			dip_cq_thread7_frame_done =
+			dip-cq-thread7-frame-done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_7>;
-			dip_cq_thread8_frame_done =
+			dip-cq-thread8-frame_done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_8>;
-			dip_cq_thread9_frame_done =
+			dip-cq-thread9-frame_done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_9>;
-			dip_cq_thread10_frame_done =
+			dip-cq-thread10-frame-done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_10>;
-			dip_cq_thread11_frame_done =
+			dip-cq-thread11-frame-done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_11>;
-			dip_cq_thread12_frame_done =
+			dip-cq-thread12-frame-done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_12>;
-			dip_cq_thread13_frame_done =
+			dip-cq-thread13-frame-done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_13>;
-			dip_cq_thread14_frame_done =
+			dip-cq-thread14-frame_done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_14>;
-			dip_cq_thread15_frame_done =
+			dip-cq-thread15-frame-done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_15>;
-			dip_cq_thread16_frame_done =
+			dip-cq-thread16-frame-done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_16>;
-			dip_cq_thread17_frame_done =
+			dip-cq-thread17-frame-done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_17>;
-			dip_cq_thread18_frame_done =
+			dip-cq-thread18-frame_done =
 				<CMDQ_EVENT_IMG1_DIP_FRAME_DONE_P2_18>;
-			dip2_cq_thread21_frame_done =
+			dip2-cq-thread21-frame-done =
 				<CMDQ_EVENT_IMG2_MFB_DONE_LINK_MISC>;
-			dip2_cq_thread23_frame_done =
+			dip2-cq-thread23-frame-done =
 				<CMDQ_EVENT_IMG2_MSS_DONE_LINK_MISC>;
-			wpe_b_frame_done =
+			wpe-b-frame-done =
 				<CMDQ_EVENT_IMG2_WPE_A_DONE_LINK_MISC>;
-			mdp-rdma0-sof = <256>;
-			mdp-rdma1-sof = <257>;
-			mdp-aal-sof = <258>;
-			mdp-aal1-sof = <259>;
-			mdp-hdr0-sof = <260>;
-			mdp-rsz0-sof = <261>;
-			mdp-rsz1-sof = <262>;
-			mdp-wrot0-sof = <263>;
-			mdp-wrot1-sof = <264>;
-			mdp-tdshp-sof = <265>;
-			mdp-tdshp1-sof = <266>;
-			img-dl_relay-sof = <267>;
-			img-dl_relay1-sof = <268>;
-			mdp-color-sof = <269>;
-			mdp-wrot1-write-frame-done = <290>;
-			mdp-wrot0-write-frame-done = <291>;
-			mdp-tdshp1-frame-done = <294>;
-			mdp-tdshp-frame-done = <295>;
-			mdp-rsz1-frame-done = <298>;
-			mdp-rsz0-frame-done = <299>;
-			mdp-rdma1-frame-done = <302>;
-			mdp-rdma0-frame-done = <303>;
-			mdp-hdr0-frame-done = <305>;
-			mdp-color-frame-done = <306>;
-			mdp-aal1-frame-done = <309>;
-			mdp-aal-frame-done = <310>;
-			dre30_hist_sram_start = /bits/ 16 <1536>;
+			mdp-rdma0-sof = <CMDQ_EVENT_MDP_RDMA0_SOF>;
+			mdp-rdma1-sof = <CMDQ_EVENT_MDP_RDMA1_SOF>;
+			mdp-aal-sof = <CMDQ_EVENT_MDP_AAL0_SOF>;
+			mdp-aal1-sof = <CMDQ_EVENT_MDP_AAL1_SOF>;
+			mdp-hdr0-sof = <CMDQ_EVENT_MDP_HDR0_SOF>;
+			mdp-rsz0-sof = <CMDQ_EVENT_MDP_RSZ0_SOF>;
+			mdp-rsz1-sof = <CMDQ_EVENT_MDP_RSZ1_SOF>;
+			mdp-wrot0-sof = <CMDQ_EVENT_MDP_WROT0_SOF>;
+			mdp-wrot1-sof = <CMDQ_EVENT_MDP_WROT1_SOF>;
+			mdp-tdshp-sof = <CMDQ_EVENT_MDP_TDSHP0_SOF>;
+			mdp-tdshp1-sof = <CMDQ_EVENT_MDP_TDSHP1_SOF>;
+			img-dl_relay-sof = <CMDQ_EVENT_IMG_DL_RELAY0_SOF>;
+			img-dl_relay1-sof = <CMDQ_EVENT_IMG_DL_RELAY1_SOF>;
+			mdp-color-sof = <CMDQ_EVENT_MDP_COLOR0_SOF>;
+			mdp-wrot1-write-frame-done = <CMDQ_EVENT_MDP_WROT1_FRAME_DONE>;
+			mdp-wrot0-write-frame-done = <CMDQ_EVENT_MDP_WROT0_FRAME_DONE>;
+			mdp-tdshp1-frame-done = <CMDQ_EVENT_MDP_TDSHP1_FRAME_DONE>;
+			mdp-tdshp-frame-done = <CMDQ_EVENT_MDP_TDSHP0_FRAME_DONE>;
+			mdp-rsz1-frame-done = <CMDQ_EVENT_MDP_RSZ1_FRAME_DONE>;
+			mdp-rsz0-frame-done = <CMDQ_EVENT_MDP_RSZ0_FRAME_DONE>;
+			mdp-rdma1-frame-done = <CMDQ_EVENT_MDP_RDMA1_FRAME_DONE>;
+			mdp-rdma0-frame-done = <CMDQ_EVENT_MDP_RDMA0_FRAME_DONE>;
+			mdp-hdr0-frame-done = <CMDQ_EVENT_MDP_HDR0_FRAME_DONE>;
+			mdp-color-frame-done = <CMDQ_EVENT_MDP_COLOR0_FRAME_DONE>;
+			mdp-aal1-frame-done = <CMDQ_EVENT_MDP_AAL1_FRAME_DONE>;
+			mdp-aal-frame-done = <CMDQ_EVENT_MDP_AAL0_FRAME_DONE>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L2_MDP_RDMA0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L2_MDP_RDMA1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L2_MDP_WROT0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L2_MDP_WROT1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L9_IMG_IMGI_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L9_IMG_IMGBI_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L9_IMG_DMGI_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L9_IMG_DEPI_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L9_IMG_ICE_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L9_IMG_SMTI_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L9_IMG_SMTO_D2)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L9_IMG_SMTO_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L9_IMG_CRZO_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L9_IMG_IMG3O_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L9_IMG_VIPI_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L9_IMG_SMTI_D5)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L9_IMG_TIMGO_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L9_IMG_UFBC_W0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L9_IMG_UFBC_R0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_IMGI_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_IMGBI_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_DMGI_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_DEPI_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_ICE_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_SMTI_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_SMTO_D2)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_SMTO_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_CRZO_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_IMG3O_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_VIPI_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_SMTI_D5)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT( M4U_PORT_L11_IMG_TIMGO_D1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT( M4U_PORT_L11_IMG_UFBC_W0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT( M4U_PORT_L11_IMG_UFBC_R0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT( M4U_PORT_L11_IMG_WPE_RDMA1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT( M4U_PORT_L11_IMG_WPE_RDMA0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT( M4U_PORT_L11_IMG_WPE_WDMA)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT( M4U_PORT_L11_IMG_MFB_RDMA0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT( M4U_PORT_L11_IMG_MFB_RDMA1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT( M4U_PORT_L11_IMG_MFB_RDMA2)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT( M4U_PORT_L11_IMG_MFB_RDMA3)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT( M4U_PORT_L11_IMG_MFB_RDMA4)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT( M4U_PORT_L11_IMG_MFB_RDMA5)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT( M4U_PORT_L11_IMG_MFB_WDMA0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT( M4U_PORT_L11_IMG_MFB_WDMA1)
+					&mmqos SLAVE_COMMON(0)>;
+				interconnect-names =
+					"mdp_rdma0",
+					"mdp_rdma1",
+					"mdp_wrot0",
+					"mdp_wrot1",
+					"l9_img_imgi_d1",
+					"l9_img_imgbi_d1",
+					"l9_img_dmgi_d1",
+					"l9_img_depi_d1",
+					"l9_img_ice_d1",
+					"l9_img_smti_d1",
+					"l9_img_smto_d2",
+					"l9_img_smto_d1",
+					"l9_img_crzo_d1",
+					"l9_img_img3o_d1",
+					"l9_img_vipi_d1",
+					"l9_img_smti_d5",
+					"l9_img_timgo_d1",
+					"l9_img_ufbc_w0",
+					"l9_img_ufbc_r0",
+					"l11_img_imgi_d1",
+					"l11_img_imgbi_d1",
+					"l11_img_dmgi_d1",
+					"l11_img_depi_d1",
+					"l11_img_ice_d1",
+					"l11_img_smti_d1",
+					"l11_img_smto_d2",
+					"l11_img_smto_d1",
+					"l11_img_crzo_d1",
+					"l11_img_img3O_d1",
+					"l11_img_vipi_d1",
+					"l11_img_smti_d5",
+					"l11_img_timgo_d1",
+					"l11_img_ufbc_w0",
+					"l11_img_ufbc_r0",
+					"l11_img_wpe_rdma1",
+					"l11_img_wpe_rdma0",
+					"l11_img_wpe_wdma",
+					"l11_img_mfb_rdma0",
+					"l11_img_mfb_rdma1",
+					"l11_img_mfb_rdma2",
+					"l11_img_mfb_rdma3",
+					"l11_img_mfb_rdma4",
+					"l11_img_mfb_rdma5",
+					"l11_img_mfb_wdma0",
+					"l11_img_mfb_wdma1";
+			operating-points-v2 = <&opp_table_mdp>, <&opp_table_img>;
+			mdp-opp = <&opp_table_mdp>;
+			isp-opp = <&opp_table_img>;
+			mdp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			isp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			dre30-hist-sram-start = /bits/ 16 <1536>;
 		};
 
 		mdp_mutex: mdp_mutex@1f001000 {
