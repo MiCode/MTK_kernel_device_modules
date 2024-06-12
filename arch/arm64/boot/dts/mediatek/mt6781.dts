@@ -4475,6 +4475,7 @@
 		usb-role-switch;
 		cdp-block;
 		usb_phy_offset = <0x300>;
+		wakeup-source;
 		port {
 			musb_drd_switch: endpoint@0 {
 				remote-endpoint = <&usb_role>;
@@ -4496,6 +4497,8 @@
 			#phy-cells = <1>;
 			mediatek,rx-sqth = <2>;
 			mediatek,fsrxlvl = <1>;
+			mediatek,discth = <0x7>;
+			mediatek,disc-host = <0x7>;
 			nvmem-cells = <&u2_phy_data>;
 			nvmem-cell-names = "intr_cal";
 			nvmem-cell-masks = <0x1f>;
