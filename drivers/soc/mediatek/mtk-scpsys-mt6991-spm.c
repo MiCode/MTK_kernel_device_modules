@@ -76,9 +76,9 @@ static const struct scp_domain_data scp_domain_mt6991_spm_data[] = {
 		.extb_iso_offs = 0xEFC,
 		.extb_iso_bits = 0x3,
 		.bp_table = {
-			BUS_PROT_IGN(IFR_TYPE, 0x4, 0x8, 0x0, 0xC,
+			BUS_PROT(IFR_TYPE, 0x4, 0x8, 0x0, 0xC,
 				MT6991_TOP_AXI_PROT_EN_SLEEP0_MD),
-			BUS_PROT_IGN(IFR_TYPE, 0x24, 0x28, 0x20, 0x2C,
+			BUS_PROT(IFR_TYPE, 0x24, 0x28, 0x20, 0x2C,
 				MT6991_TOP_AXI_PROT_EN_SLEEP1_MD),
 		},
 		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_MD_OPS |
@@ -277,9 +277,9 @@ static const struct scp_domain_data scp_domain_mt6991_spm_hwv_data[] = {
 		.extb_iso_offs = 0xEFC,
 		.extb_iso_bits = 0x3,
 		.bp_table = {
-			BUS_PROT_IGN(IFR_TYPE, 0x4, 0x8, 0x0, 0xC,
+			BUS_PROT(IFR_TYPE, 0x4, 0x8, 0x0, 0xC,
 				MT6991_TOP_AXI_PROT_EN_SLEEP0_MD),
-			BUS_PROT_IGN(IFR_TYPE, 0x24, 0x28, 0x20, 0x2C,
+			BUS_PROT(IFR_TYPE, 0x24, 0x28, 0x20, 0x2C,
 				MT6991_TOP_AXI_PROT_EN_SLEEP1_MD),
 		},
 		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_MD_OPS |
@@ -575,9 +575,9 @@ static const struct scp_domain_data scp_domain_mt6991_pbus_unused_data[] = {
 		.extb_iso_offs = 0xEFC,
 		.extb_iso_bits = 0x3,
 		.bp_table = {
-			BUS_PROT_IGN(IFR_TYPE, 0x4, 0x8, 0x0, 0xC,
+			BUS_PROT(IFR_TYPE, 0x4, 0x8, 0x0, 0xC,
 				MT6991_TOP_AXI_PROT_EN_SLEEP0_MD),
-			BUS_PROT_IGN(IFR_TYPE, 0x24, 0x28, 0x20, 0x2C,
+			BUS_PROT(IFR_TYPE, 0x24, 0x28, 0x20, 0x2C,
 				MT6991_TOP_AXI_PROT_EN_SLEEP1_MD),
 		},
 		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_MD_OPS |
