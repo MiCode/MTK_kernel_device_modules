@@ -15,6 +15,7 @@
 #include <linux/debugfs.h>
 #include <linux/interrupt.h>
 #include <linux/rtc.h>
+#include <linux/uaccess.h>
 
 #include <linux/ftrace.h>
 
@@ -94,6 +95,17 @@ DECLARE_HASHTABLE(str_hash_table, STR_HASH_BITS);
 void add_hash_entry(unsigned long key, char *value)
 {
 	struct str_hash_entry *entry;
+	char c;
+	long ret;
+
+	if (!value)
+		return;
+
+	ret = copy_from_kernel_nofault(&c, value, sizeof(c));
+	if (ret != 0) {
+		MMEERR("invalid value:%llx,ret:%ld", (unsigned long long)value, ret);
+		return;
+	}
 
 	entry = kmalloc(sizeof(struct str_hash_entry), GFP_ATOMIC);
 	if (!entry)
@@ -534,8 +546,15 @@ static bool is_valid_addr(char *p)
 	if (p == NULL)
 		return false;
 
-	if ((sizeof(p) > sizeof(int)) && ((unsigned long long)p>>60) != 0xF)
-		return false;
+	if (sizeof(p) > sizeof(int)) {
+		unsigned long long addr = (unsigned long long)p;
+
+		if ((addr >> 60) != 0xF)
+			return false;
+
+		if ((addr & 0xFFFFFFFF) == 0x0)
+			return false;
+	}
 
 	return true;
 }
@@ -645,7 +664,7 @@ static void get_pid_info(struct mme_unit_t *p_ring_buffer, unsigned int buffer_u
 		// format
 		p_str = *((char **)p);
 		if (!is_valid_addr(p_str)) {
-			MMEERR("invalid format p_str, index:%d, p_str:%p", index, p_str);
+			MMEERR("invalid format p_str, index:%d, p_str:%llx", index, (unsigned long long)p_str);
 			index += 2;
 			continue;
 		}
@@ -675,8 +694,8 @@ static void get_pid_info(struct mme_unit_t *p_ring_buffer, unsigned int buffer_u
 			if (type == DATA_FLAG_CODE_REGION_STRING) {
 				p_str = *((char **)p);
 				if (is_valid_addr(p_str)) {
-					MMEINFO("str data addr:%p, str data:%s, len:%zu",
-							p_str, p_str, strlen(p_str));
+					MMEINFO("str data addr:%llx, str data:%s, len:%zu",
+							(unsigned long long)p_str, p_str, strlen(p_str));
 
 					if (!get_hash_value((unsigned long)p_str))
 						add_hash_entry((unsigned long)p_str, p_str);
@@ -688,7 +707,8 @@ static void get_pid_info(struct mme_unit_t *p_ring_buffer, unsigned int buffer_u
 				if (is_valid_addr(p_str))
 					type_size = _ALIGN_4_BYTES(strlen(p_str)+1);
 				else
-					MMEERR("invalid stack region addr, index:%d, p_str:%p, i:%d", index, p_str, i);
+					MMEERR("invalid stack region addr, index:%d, p_str:%llx, i:%d",
+						index, (unsigned long long)p_str, i);
 			}
 
 			data_size += type_size;
@@ -877,6 +897,7 @@ void mmevent_mrdump_buffer(unsigned long *vaddr, unsigned long *size)
 {
 	unsigned int copy_size = 0;
 
+	MMEMSG("mme mrdump begin");
 	if (!bmme_init_buffer) {
 		MMEERR("RingBuffer is not initialized");
 		return;
