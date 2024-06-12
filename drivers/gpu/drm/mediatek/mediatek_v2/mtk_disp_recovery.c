@@ -879,7 +879,7 @@ void mtk_disp_chk_recover_init(struct drm_crtc *crtc)
 	bool mode = true;
 
 	output_comp = (mtk_crtc) ? mtk_ddp_comp_request_output(mtk_crtc) : NULL;
-	if (priv->data->mmsys_id == MMSYS_MT6991)
+	if (priv->data->mmsys_id == MMSYS_MT6991 && output_comp)
 		mode = mtk_dsi_is_cmd_mode(output_comp);
 
 	/* only support ESD check for DSI output interface */
