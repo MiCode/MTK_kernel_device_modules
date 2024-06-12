@@ -865,11 +865,13 @@ void _gpufreq_clock_parking_lock(unsigned long *pFlags)
 	spin_lock_irqsave(&mt_gpufreq_clksrc_parking_lock, *pFlags);
 }
 EXPORT_SYMBOL(_gpufreq_clock_parking_lock);
+
 void _gpufreq_clock_parking_unlock(unsigned long *pFlags)
 {
 	spin_unlock_irqrestore(&mt_gpufreq_clksrc_parking_lock, *pFlags);
 }
 EXPORT_SYMBOL(_gpufreq_clock_parking_unlock);
+
 unsigned int _gpufreq_clock_parking(int clksrc)
 {
 	/*
@@ -3002,6 +3004,10 @@ static int __gpufreq_init_clk(struct platform_device *pdev)
 		GPUFREQ_LOGE("@%s: cannot get mtcmos_mfg5\n", __func__);
 		return PTR_ERR(g_clk->mtcmos_mfg5);
 	}
+
+	#if MT_GPUFREQ_SHADER_PWR_CTL_WA
+		spin_lock_init(&mt_gpufreq_clksrc_parking_lock);
+	#endif
 
 	// 0x1020E000
 	g_infracfg_base = __gpufreq_of_ioremap("mediatek,infracfg", 0);
