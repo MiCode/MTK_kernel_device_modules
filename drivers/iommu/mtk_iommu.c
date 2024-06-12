@@ -327,10 +327,6 @@ static const struct mtk_iommu_iova_region single_domain[] = {
 	{.iova_base = 0,		.size = SZ_4G},
 };
 
-static const struct mtk_iommu_iova_region single_domain_ext[] = {
-	{.iova_base = 0, .size = SZ_4G * 4},
-};
-
 static const struct mtk_iommu_iova_region mt8192_multi_dom[] = {
 	{ .iova_base = 0x0,		.size = SZ_4G},		/* disp: 0 ~ 4G */
 	#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
