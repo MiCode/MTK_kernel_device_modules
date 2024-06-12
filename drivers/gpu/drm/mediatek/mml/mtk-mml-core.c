@@ -1006,6 +1006,9 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 	enum mml_sys_id sysid;
 	u32 i;
 
+	if (unlikely(!tp))
+		return;
+
 	for (i = 0; i < ARRAY_SIZE(tp->path_clts); i++) {
 		u32 task_srt_max[mml_max_sys] = {0}, task_hrt_max[mml_max_sys] = {0};
 
