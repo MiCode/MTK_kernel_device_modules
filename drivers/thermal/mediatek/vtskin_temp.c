@@ -146,7 +146,7 @@ static int vtskin_probe(struct platform_device *pdev)
 			return ret;
 		}
 
-		ret = snprintf(skin_data->params[i].tz_name, THERMAL_NAME_LENGTH, tzdev->type);
+		ret = snprintf(skin_data->params[i].tz_name, THERMAL_NAME_LENGTH, "%s", tzdev->type);
 		if (ret < 0)
 			dev_notice(dev, "copy tz_name fail %s\n", tzdev->type);
 	}
