@@ -1503,8 +1503,6 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 		break;
 	}
 
-	ssusb_set_power_state(ssusb, MTU3_STATE_SUSPEND);
-
 	switch (ssusb->dr_mode) {
 	case USB_DR_MODE_PERIPHERAL:
 		ret = ssusb_gadget_suspend(ssusb, msg);
@@ -1543,6 +1541,7 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 	}
 
 	ssusb_phy_power_off(ssusb);
+	ssusb_set_power_state(ssusb, MTU3_STATE_SUSPEND);
 	clk_bulk_disable_unprepare(BULK_CLKS_CNT, ssusb->clks);
 	ssusb_wakeup_set(ssusb, true);
 suspend:
@@ -1594,6 +1593,8 @@ static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 	if (ret)
 		goto clks_err;
 
+	ssusb_set_power_state(ssusb, MTU3_STATE_RESUME);
+
 	if (ssusb->host_dev) {
 		dev_info(ssusb->dev, "%s device connected\n", __func__);
 		phy_set_mode_ext(ssusb->phys[0], PHY_MODE_USB_HOST,
@@ -1610,7 +1611,6 @@ static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 
 	ret = resume_ip_and_ports(ssusb, msg);
 
-	ssusb_set_power_state(ssusb, MTU3_STATE_RESUME);
 resume:
 	ssusb->is_suspended = false;
 	return ret;
