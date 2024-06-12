@@ -2492,8 +2492,7 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 		/* free DVFS when power on */
 		g_dvfs_state &= ~DVFS_POWEROFF;
 		__gpufreq_kick_pbm(1);
-	//todo set always on
-	} else if (/*power == GPU_PWR_OFF && g_gpu.power_count == 0*/ 0) {
+	} else if (power == GPU_PWR_OFF && g_gpu.power_count == 0) {
 		__gpufreq_footprint_power_step(0x06);
 		/* check all transaction complete before power off */
 		__gpufreq_check_bus_idle();
