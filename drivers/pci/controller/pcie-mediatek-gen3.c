@@ -212,6 +212,7 @@
 #define PCIE_SW_CPLTO_TIMER		GENMASK(25, 16)
 #define CPLTO_ALWAYS_EN			BIT(26)
 #define WR_CPLTO_ALWAYS_EN		BIT(27)
+#define SW_CPLTO_DATA_SEL		BIT(28)
 
 #define PCIE_ISTATUS_PENDING_ADT	0x1d4
 
@@ -3052,6 +3053,13 @@ static int mtk_pcie_pre_init_6991(struct mtk_pcie_port *port)
 	}
 
 	writel_relaxed(val, port->pextpcfg + PEXTP_CLOCK_CON);
+
+	/* wifi request response data is all zero when completion timeout */
+	if (port->port_num == 0) {
+		val = readl_relaxed(port->base + PCIE_AXI_IF_CTRL);
+		val |= SW_CPLTO_DATA_SEL;
+		writel_relaxed(val, port->base + PCIE_AXI_IF_CTRL);
+	}
 
 	/* bypass PMRC signal */
 	val = readl_relaxed(port->pextpcfg + PEXTP_REQ_CTRL);
