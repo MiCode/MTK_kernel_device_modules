@@ -35,7 +35,7 @@ static struct apu_dbg apupw_dbg = {
 static inline void _apupw_separte(struct seq_file *s, char *separate)
 {
 	seq_puts(s, "\n");
-	seq_printf(s, separate);
+	seq_printf(s, "%s", separate);
 	seq_puts(s, "\n");
 }
 
