@@ -17,67 +17,70 @@
 #define MME_RELEASE_BUFFER(module, type) \
 		mme_release_buffer(module, type)
 
-#define MME_EXTEND_ERROR(module, type, fmt, ...) \
+#define MME_EXTEND_ERROR(module, buf_index, fmt, ...) \
 	do { \
 		char buf[STRING_BUFFER_SIZE]; \
 		mme_vsprintf(buf, fmt, ##__VA_ARGS__); \
-		MME_ERROR(module, type, "%s", buf); \
+		MME_ERROR(module, buf_index, "%s", buf); \
 	} while(0)
 
-#define MME_EXTEND_WARN(module, type, fmt, ...) \
+#define MME_EXTEND_WARN(module, buf_index, fmt, ...) \
 	do { \
 		char buf[STRING_BUFFER_SIZE]; \
 		mme_vsprintf(buf, fmt, ##__VA_ARGS__); \
-		MME_WARN(module, type, "%s", buf); \
+		MME_WARN(module, buf_index, "%s", buf); \
 	} while(0)
 
-#define MME_EXTEND_INFO(module, type, fmt, ...) \
+#define MME_EXTEND_INFO(module, buf_index, fmt, ...) \
 	do { \
 		char buf[STRING_BUFFER_SIZE]; \
 		mme_vsprintf(buf, fmt, ##__VA_ARGS__); \
-		MME_INFO(module, type, "%s", buf); \
+		MME_INFO(module, buf_index, "%s", buf); \
 	} while(0)
 
-#define MME_EXTEND_DEBUG(module, type, fmt, ...) \
+#define MME_EXTEND_DEBUG(module, buf_index, fmt, ...) \
 	do { \
 		char buf[STRING_BUFFER_SIZE]; \
 		mme_vsprintf(buf, fmt, ##__VA_ARGS__); \
-		MME_DEBUG(module, type, "%s", buf); \
+		MME_DEBUG(module, buf_index, "%s", buf); \
 	} while(0)
 
-#define _MME_EXTEND_LOG(module, type, log_level, fmt, ...) \
+#define _MME_EXTEND_LOG(module, buf_index, log_level, log_type, fmt, ...) \
 	do { \
 		char buf[STRING_BUFFER_SIZE]; \
 		mme_vsprintf(buf, fmt, ##__VA_ARGS__); \
-		_MMEVENT_LOG_CHOICE_2(module, type, log_level, "%s", buf); \
+		_MMEVENT_LOG_CHOICE_2(module, buf_index, log_level, log_type, "%s", buf); \
 	} while(0)
 
-#define MME_ERROR(module, type, ...) \
-	_MMEVENT_LOG(_NUM_ARGS(__VA_ARGS__), module, type, LOG_LEVEL_ERROR, ##__VA_ARGS__)
+#define MME_LOG(module, buf_index, log_level, log_type, ...) \
+	_MMEVENT_LOG(_NUM_ARGS(__VA_ARGS__), module, buf_index, log_level, log_type, ##__VA_ARGS__)
 
-#define MME_WARN(module, type, ...) \
-	_MMEVENT_LOG(_NUM_ARGS(__VA_ARGS__), module, type, LOG_LEVEL_WARN, ##__VA_ARGS__)
+#define MME_ERROR(module, buf_index, ...) \
+	_MMEVENT_LOG(_NUM_ARGS(__VA_ARGS__), module, buf_index, LOG_LEVEL_ERROR, LOG_TYPE_BASIC, ##__VA_ARGS__)
 
-#define MME_INFO(module, type, ...) \
-	_MMEVENT_LOG(_NUM_ARGS(__VA_ARGS__), module, type, LOG_LEVEL_INFO, ##__VA_ARGS__)
+#define MME_WARN(module, buf_index, ...) \
+	_MMEVENT_LOG(_NUM_ARGS(__VA_ARGS__), module, buf_index, LOG_LEVEL_WARN, LOG_TYPE_BASIC, ##__VA_ARGS__)
 
-#define MME_DEBUG(module, type, ...) \
-	_MMEVENT_LOG(_NUM_ARGS(__VA_ARGS__), module, type, LOG_LEVEL_DEBUG, ##__VA_ARGS__)
+#define MME_INFO(module, buf_index, ...) \
+	_MMEVENT_LOG(_NUM_ARGS(__VA_ARGS__), module, buf_index, LOG_LEVEL_INFO, LOG_TYPE_BASIC, ##__VA_ARGS__)
 
-#define _MMEVENT_LOG(N, module, type, log_level, ...) \
-	_MMEVENT_LOG_CHOICE(N, module, type, log_level, ##__VA_ARGS__)
+#define MME_DEBUG(module, buf_index, ...) \
+	_MMEVENT_LOG(_NUM_ARGS(__VA_ARGS__), module, buf_index, LOG_LEVEL_DEBUG, LOG_TYPE_BASIC, ##__VA_ARGS__)
 
-#define _MMEVENT_LOG_CHOICE(N, module, type, log_level, ...) \
-	_MMEVENT_LOG_CHOICE_##N(module, type, log_level, ##__VA_ARGS__)
+#define _MMEVENT_LOG(N, module, buf_index, log_level, log_type, ...) \
+	_MMEVENT_LOG_CHOICE(N, module, buf_index, log_level, log_type, ##__VA_ARGS__)
 
-#define _MMEVENT_LOG_CHOICE_1(module, type, log_level, format) \
+#define _MMEVENT_LOG_CHOICE(N, module, buf_index, log_level, log_type, ...) \
+	_MMEVENT_LOG_CHOICE_##N(module, buf_index, log_level, log_type, ##__VA_ARGS__)
+
+#define _MMEVENT_LOG_CHOICE_1(module, type, log_level, log_type, format) \
 	do { \
 		if ((module < MME_MODULE_MAX) && (type < MME_BUFFER_INDEX_MAX) && \
 			(g_ring_buffer_units[module][type] > 0)) { \
 			unsigned int mme_format_size = sizeof(char *); \
 			unsigned long long p_mme_buf; \
 			p_mme_buf = mmevent_log((mme_format_size + MME_PID_SIZE), \
-											0, module, type, log_level); \
+									0, module, type, log_level, log_type); \
 			if (p_mme_buf) { \
 				SAVE_PROCESS(p_mme_buf); \
 				SAVE_FORMAT(p_mme_buf, format, mme_format_size); \
@@ -85,7 +88,7 @@
 		} \
 	} while(0)
 
-#define _MMEVENT_LOG_CHOICE_2(module, type, log_level, format, data1) \
+#define _MMEVENT_LOG_CHOICE_2(module, type, log_level, log_type, format, data1) \
 	do { \
 		if ((module < MME_MODULE_MAX) && (type < MME_BUFFER_INDEX_MAX) && \
 			(g_ring_buffer_units[module][type] > 0)) { \
@@ -94,7 +97,7 @@
 			unsigned long long p_mme_buf; \
 			PROCESS_DATA(data1, mme_data1_size, mme_data1_flag, mme_str_len); \
 			p_mme_buf = mmevent_log((mme_format_size + mme_data1_size + MME_PID_SIZE), \
-									mme_data1_flag, module , type, log_level); \
+								mme_data1_flag, module , type, log_level, log_type); \
 			if (p_mme_buf) { \
 				SAVE_PROCESS(p_mme_buf); \
 				SAVE_FORMAT(p_mme_buf, format, mme_format_size); \
@@ -103,7 +106,7 @@
 		} \
 	} while(0)
 
-#define _MMEVENT_LOG_PORXY(N, module, type, log_level, format, ...) \
+#define _MMEVENT_LOG_PORXY(N, module, type, log_level, log_type, format, ...) \
 	do { \
 		if ((module < MME_MODULE_MAX) && (type < MME_BUFFER_INDEX_MAX) && \
 			(g_ring_buffer_units[module][type] > 0)) { \
@@ -117,7 +120,7 @@
 				mme_log_flag |= ((unsigned long long)mme_data_flag[mme_index] << \
 								g_flag_shifts[mme_index]); \
 			} \
-			p_mme_buf = mmevent_log(mme_log_length, mme_log_flag, module, type, log_level); \
+			p_mme_buf = mmevent_log(mme_log_length, mme_log_flag, module, type, log_level, log_type); \
 			if (p_mme_buf) { \
 				SAVE_PROCESS(p_mme_buf); \
 				SAVE_FORMAT(p_mme_buf, format, mme_format_size); \
@@ -132,67 +135,67 @@
 		p += MME_PID_SIZE; \
 	} while(0)
 
-#define _MMEVENT_LOG_CHOICE_3(module, type, log_level, format, ...)  \
-		_MMEVENT_LOG_PORXY(2, module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_4(module, type, log_level, format, ...)  \
-		_MMEVENT_LOG_PORXY(3, module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_5(module, type, log_level, format, ...)  \
-		_MMEVENT_LOG_PORXY(4, module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_6(module, type, log_level, format, ...)  \
-		_MMEVENT_LOG_PORXY(5, module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_7(module, type, log_level, format, ...)  \
-		_MMEVENT_LOG_PORXY(6, module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_8(module, type, log_level, format, ...)  \
-		_MMEVENT_LOG_PORXY(7, module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_9(module, type, log_level, format, ...)  \
-		_MMEVENT_LOG_PORXY(8, module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_10(module, type, log_level, format, ...) \
-		_MMEVENT_LOG_PORXY(9, module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_11(module, type, log_level, format, ...) \
-		_MMEVENT_LOG_PORXY(10, module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_12(module, type, log_level, format, ...) \
-		_MMEVENT_LOG_PORXY(11, module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_13(module, type, log_level, format, ...) \
-		_MMEVENT_LOG_PORXY(12, module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_14(module, type, log_level, format, ...) \
-		_MMEVENT_LOG_PORXY(13, module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_15(module, type, log_level, format, ...) \
-		_MMEVENT_LOG_PORXY(14, module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_16(module, type, log_level, format, ...) \
-		_MMEVENT_LOG_PORXY(15, module, type, log_level, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_3(module, type, log_level, log_type, format, ...)  \
+		_MMEVENT_LOG_PORXY(2, module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_4(module, type, log_level, log_type, format, ...)  \
+		_MMEVENT_LOG_PORXY(3, module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_5(module, type, log_level, log_type, format, ...)  \
+		_MMEVENT_LOG_PORXY(4, module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_6(module, type, log_level, log_type, format, ...)  \
+		_MMEVENT_LOG_PORXY(5, module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_7(module, type, log_level, log_type, format, ...)  \
+		_MMEVENT_LOG_PORXY(6, module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_8(module, type, log_level, log_type, format, ...)  \
+		_MMEVENT_LOG_PORXY(7, module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_9(module, type, log_level, log_type, format, ...)  \
+		_MMEVENT_LOG_PORXY(8, module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_10(module, type, log_level, log_type, format, ...) \
+		_MMEVENT_LOG_PORXY(9, module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_11(module, type, log_level, log_type, format, ...) \
+		_MMEVENT_LOG_PORXY(10, module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_12(module, type, log_level, log_type, format, ...) \
+		_MMEVENT_LOG_PORXY(11, module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_13(module, type, log_level, log_type, format, ...) \
+		_MMEVENT_LOG_PORXY(12, module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_14(module, type, log_level, log_type, format, ...) \
+		_MMEVENT_LOG_PORXY(13, module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_15(module, type, log_level, log_type, format, ...) \
+		_MMEVENT_LOG_PORXY(14, module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_16(module, type, log_level, log_type, format, ...) \
+		_MMEVENT_LOG_PORXY(15, module, type, log_level, log_type, format, ##__VA_ARGS__)
 
-#define _MMEVENT_LOG_CHOICE_17(module, type, log_level, format, ...) \
-		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_18(module, type, log_level, format, ...) \
-		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_19(module, type, log_level, format, ...) \
-		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_20(module, type, log_level, format, ...) \
-		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_21(module, type, log_level, format, ...) \
-		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_22(module, type, log_level, format, ...) \
-		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_23(module, type, log_level, format, ...) \
-		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_24(module, type, log_level, format, ...) \
-		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_25(module, type, log_level, format, ...) \
-		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_26(module, type, log_level, format, ...) \
-		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_27(module, type, log_level, format, ...) \
-		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_28(module, type, log_level, format, ...) \
-		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_29(module, type, log_level, format, ...) \
-		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_30(module, type, log_level, format, ...) \
-		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_31(module, type, log_level, format, ...) \
-		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
-#define _MMEVENT_LOG_CHOICE_32(module, type, log_level, format, ...) \
-		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_17(module, type, log_level, log_type, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_18(module, type, log_level, log_type, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_19(module, type, log_level, log_type, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_20(module, type, log_level, log_type, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_21(module, type, log_level, log_type, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_22(module, type, log_level, log_type, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_23(module, type, log_level, log_type, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_24(module, type, log_level, log_type, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_25(module, type, log_level, log_type, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_26(module, type, log_level, log_type, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_27(module, type, log_level, log_type, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_28(module, type, log_level, log_type, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_29(module, type, log_level, log_type, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_30(module, type, log_level, log_type, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_31(module, type, log_level, log_type, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, log_type, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_32(module, type, log_level, log_type, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, log_type, format, ##__VA_ARGS__)
 
 #define MME_UNSUPPORTED_NUM_ARGS(type, ...)
 

@@ -18,6 +18,7 @@ extern "C" {
 
 #define MME_DATA_MAX 15
 #define MME_MODULE_NAME_LEN 16
+#define MME_CPU_ID_MAX 12
 
 enum mme_log_modules {
 	MME_MODULE_DISP = 0,
@@ -28,7 +29,7 @@ enum mme_log_modules {
 	MME_MODULE_MAX
 };
 
-enum mme_buffer_type {
+enum mme_buffer_index {
 	MME_BUFFER_INDEX_0,
 	MME_BUFFER_INDEX_1,
 	MME_BUFFER_INDEX_2,
@@ -44,10 +45,15 @@ enum mme_buffer_type {
 
 enum mme_log_level {
 	LOG_LEVEL_ERROR = 0,
-	LOG_LEVEL_WARN,
-	LOG_LEVEL_INFO,
-	LOG_LEVEL_DEBUG,
+	LOG_LEVEL_WARN,  // 1
+	LOG_LEVEL_INFO,  // 2
+	LOG_LEVEL_DEBUG, // 3
 	LOG_LEVEL_MAX
+};
+
+enum mme_log_type {
+	LOG_TYPE_BASIC = 0,
+	LOG_TYPE_CPU_ID
 };
 
 enum mme_invalid_flag {
@@ -148,7 +154,8 @@ extern unsigned long long mmevent_log(
 									unsigned long long flag,
 									unsigned int module,
 									unsigned int type,
-									unsigned int log_level
+									unsigned int log_level,
+									unsigned int log_type
 									);
 
 #define _ALIGN_4_BYTES(x) (((x) + 3) & ~0x03)
@@ -174,13 +181,15 @@ extern unsigned long long mmevent_log(
 #define _MME_UNIT_NUM(x) ((((x) + 7) >> 3) + MME_HEADER_UNIT_SIZE)
 
 #define FLAG_HEADER_DATA_OFFSET 58
-#define FLAG_MODULE_TOKEN_OFFSET 54
+#define FLAG_CPU_ID_OFFSET 54
 #define FLAG_UNIT_NUM_OFFSET 48
+#define FLAG_IRQ_TOKEN_OFFSET 47
 #define FLAG_LOG_LEVEL_OFFSET 45
 #define FLAG_HEADER_DATA_MASK (0x3FULL << FLAG_HEADER_DATA_OFFSET)
 #define FLAG_UNIT_NUM_MASK (0x3FULL << FLAG_UNIT_NUM_OFFSET)
-#define FLAG_MODULE_TOKEN_MASK (0xFULL << FLAG_MODULE_TOKEN_OFFSET)
-#define FLAG_LOG_LEVEL_MASK (0x7ULL << FLAG_LOG_LEVEL_OFFSET)
+#define FLAG_CPU_ID_MASK (0xFULL << FLAG_CPU_ID_OFFSET)
+#define FLAG_IRQ_TOKEN_MASK (0x1ULL << FLAG_IRQ_TOKEN_OFFSET)
+#define FLAG_LOG_LEVEL_MASK (0x3ULL << FLAG_LOG_LEVEL_OFFSET)
 #define FLAG_HEADER_DATA (0x2AULL << FLAG_HEADER_DATA_OFFSET)
 
 #define MMEINFO(fmt, arg...) \
