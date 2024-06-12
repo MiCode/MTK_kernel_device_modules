@@ -2835,6 +2835,10 @@ static const struct snd_kcontrol_new memif_ul_cm0_ch1_mix[] = {
 				    I_SRC_1_OUT_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH1", AFE_CONN040_4,
 				    I_I2SIN4_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH3", AFE_CONN040_4,
+				    I_I2SIN4_CH3, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH1", AFE_CONN040_4,
+				    I_I2SIN5_CH1, 1, 0),
 
 };
 static const struct snd_kcontrol_new memif_ul_cm0_ch2_mix[] = {
@@ -2854,6 +2858,10 @@ static const struct snd_kcontrol_new memif_ul_cm0_ch2_mix[] = {
 				    I_SRC_1_OUT_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH2", AFE_CONN041_4,
 				    I_I2SIN4_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH4", AFE_CONN041_4,
+				    I_I2SIN4_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH2", AFE_CONN041_4,
+				    I_I2SIN5_CH2, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm0_ch3_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN042_0,
@@ -2866,6 +2874,10 @@ static const struct snd_kcontrol_new memif_ul_cm0_ch3_mix[] = {
 				    I_ADDA_UL_CH4, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH3", AFE_CONN042_4,
 				    I_I2SIN4_CH3, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH1", AFE_CONN042_4,
+				    I_I2SIN5_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH3", AFE_CONN042_4,
+				    I_I2SIN5_CH3, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm0_ch4_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN043_0,
@@ -2878,6 +2890,10 @@ static const struct snd_kcontrol_new memif_ul_cm0_ch4_mix[] = {
 				    I_ADDA_UL_CH4, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH4", AFE_CONN043_4,
 				    I_I2SIN4_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH2", AFE_CONN043_4,
+				    I_I2SIN5_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH4", AFE_CONN043_4,
+				    I_I2SIN5_CH4, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm0_ch5_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN044_0,
@@ -2890,6 +2906,8 @@ static const struct snd_kcontrol_new memif_ul_cm0_ch5_mix[] = {
 				    I_ADDA_UL_CH4, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH5", AFE_CONN044_4,
 				    I_I2SIN4_CH5, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH5", AFE_CONN044_4,
+				    I_I2SIN5_CH5, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm0_ch6_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN045_0,
@@ -2902,6 +2920,8 @@ static const struct snd_kcontrol_new memif_ul_cm0_ch6_mix[] = {
 				    I_ADDA_UL_CH4, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH6", AFE_CONN045_4,
 				    I_I2SIN4_CH6, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH6", AFE_CONN045_4,
+				    I_I2SIN5_CH6, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm0_ch7_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN046_0,
@@ -2914,6 +2934,8 @@ static const struct snd_kcontrol_new memif_ul_cm0_ch7_mix[] = {
 				    I_ADDA_UL_CH4, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH7", AFE_CONN046_4,
 				    I_I2SIN4_CH7, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH7", AFE_CONN046_4,
+				    I_I2SIN5_CH7, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm0_ch8_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN047_0,
@@ -2926,6 +2948,8 @@ static const struct snd_kcontrol_new memif_ul_cm0_ch8_mix[] = {
 				    I_ADDA_UL_CH4, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH8", AFE_CONN047_4,
 				    I_I2SIN4_CH8, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH8", AFE_CONN047_4,
+				    I_I2SIN5_CH8, 1, 0),
 };
 
 static const struct snd_kcontrol_new memif_ul_cm1_ch1_mix[] = {
@@ -3977,12 +4001,27 @@ static const struct snd_soc_dapm_route mt6991_memif_routes[] = {
 
 	{"UL_CM0_CH1", "I2SIN4_CH1", "I2SIN4"},
 	{"UL_CM0_CH2", "I2SIN4_CH2", "I2SIN4"},
+	{"UL_CM0_CH1", "I2SIN4_CH3", "I2SIN4"},
+	{"UL_CM0_CH2", "I2SIN4_CH4", "I2SIN4"},
 	{"UL_CM0_CH3", "I2SIN4_CH3", "I2SIN4"},
 	{"UL_CM0_CH4", "I2SIN4_CH4", "I2SIN4"},
 	{"UL_CM0_CH5", "I2SIN4_CH5", "I2SIN4"},
 	{"UL_CM0_CH6", "I2SIN4_CH6", "I2SIN4"},
 	{"UL_CM0_CH7", "I2SIN4_CH7", "I2SIN4"},
 	{"UL_CM0_CH8", "I2SIN4_CH8", "I2SIN4"},
+
+	{"UL_CM0_CH3", "I2SIN5_CH1", "I2SIN5"},
+	{"UL_CM0_CH4", "I2SIN5_CH2", "I2SIN5"},
+
+	{"UL_CM0_CH1", "I2SIN5_CH1", "I2SIN5"},
+	{"UL_CM0_CH2", "I2SIN5_CH2", "I2SIN5"},
+	{"UL_CM0_CH3", "I2SIN5_CH3", "I2SIN5"},
+	{"UL_CM0_CH4", "I2SIN5_CH4", "I2SIN5"},
+	{"UL_CM0_CH5", "I2SIN5_CH5", "I2SIN5"},
+	{"UL_CM0_CH6", "I2SIN5_CH6", "I2SIN5"},
+	{"UL_CM0_CH7", "I2SIN5_CH7", "I2SIN5"},
+	{"UL_CM0_CH8", "I2SIN5_CH8", "I2SIN5"},
+
 
 	{"UL_CM0_CH1", NULL, "CM0_Enable"},
 	{"UL_CM0_CH2", NULL, "CM0_Enable"},
