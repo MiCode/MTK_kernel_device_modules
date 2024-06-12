@@ -88,21 +88,17 @@ static int get_apu_iova(struct sapu_mem_info *mem_info,
 
 	sapu_priv = get_sapu_private();
 	if (sapu_priv == NULL) {
-		pr_info("%s %d\n", __func__, __LINE__);
+		pr_info("%s %d: sapu_priv is NULL\n", __func__, __LINE__);
 		return -ENODEV;
 	}
 
 	pdev = sapu_priv->pdev;
 	if (pdev == NULL) {
-		pr_info("%s %d\n", __func__, __LINE__);
+		pr_info("%s %d: pdev is NULL\n", __func__, __LINE__);
 		return -ENODEV;
 	}
 
 	sapu_dev = &pdev->dev;
-	if (sapu_dev == NULL) {
-		pr_info("%s %d\n", __func__, __LINE__);
-		return -ENODEV;
-	}
 
 	mem_dmabuf = dma_buf_get(mem_info->fd);
 	if (!mem_dmabuf || IS_ERR(mem_dmabuf)) {
@@ -124,7 +120,7 @@ static int get_apu_iova(struct sapu_mem_info *mem_info,
 		}
 
 		smmu_dev = of_find_device_by_node(smmu_node);
-		if (!smmu_node) {
+		if (!smmu_dev) {
 			pr_info("%s get smmu_dev failed\n", __func__);
 			return -ENODEV;
 		}
