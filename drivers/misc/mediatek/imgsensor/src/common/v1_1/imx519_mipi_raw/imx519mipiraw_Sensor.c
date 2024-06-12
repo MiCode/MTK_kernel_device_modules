@@ -3761,7 +3761,6 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	/* unsigned long long *feature_return_para
 	 *  = (unsigned long long *) feature_para;
 	 */
-	struct SET_PD_BLOCK_INFO_T *PDAFinfo;
 	struct SENSOR_WINSIZE_INFO_STRUCT *wininfo;
 	struct SENSOR_VC_INFO_STRUCT *pvcinfo;
 	/* SET_SENSOR_AWB_GAIN *pSetSensorAWB
@@ -4002,8 +4001,6 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	case SENSOR_FEATURE_GET_PDAF_INFO:
 		LOG_INF("SENSOR_FEATURE_GET_PDAF_INFO scenarioId:%d\n",
 			(UINT16) *feature_data);
-		PDAFinfo =
-		  (struct SET_PD_BLOCK_INFO_T *)(uintptr_t)(*(feature_data+1));
 		switch (*feature_data) {
 		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
 		case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
