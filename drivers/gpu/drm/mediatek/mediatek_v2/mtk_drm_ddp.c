@@ -30234,11 +30234,13 @@ void mtk_disp_mutex_add_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 	resource_size_t regs_pa = 0;
 	resource_size_t ovlsys_regs_pa = 0;
 	unsigned int mmsys_id = 0;
-	struct mtk_drm_private *drm_priv = mtk_crtc->base.dev->dev_private;
+	struct mtk_drm_private *drm_priv;
 	unsigned int sof;
 
-	if (mtk_crtc)
+	if (mtk_crtc) {
+		drm_priv = mtk_crtc->base.dev->dev_private;
 		mmsys_id = mtk_get_mmsys_id(&mtk_crtc->base);
+	}
 	else {
 		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
 		return;
