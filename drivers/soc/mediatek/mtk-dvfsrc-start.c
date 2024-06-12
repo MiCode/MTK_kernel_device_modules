@@ -6,6 +6,7 @@
 #include <linux/module.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
+#include <linux/soc/mediatek/mtk_dvfsrc.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <linux/panic_notifier.h>
 #include <linux/kdebug.h>
@@ -13,13 +14,25 @@
 #define MTK_SIP_DVFSRC_START		0x01
 #define VCOREFS_SMC_CMD_PAUSE_ENABLE	0x21
 
+struct mtk_dvfsrc_start {
+	struct device *dev;
+};
+
+static struct mtk_dvfsrc_start *dvfsrc_drv;
+
 static int panic_pause_dvfsrc(struct notifier_block *this, unsigned long event, void *ptr)
 {
 	static atomic_t first_exception = ATOMIC_INIT(0);
 	struct arm_smccc_res ares;
 
+	if (dvfsrc_drv) {
+		mtk_dvfsrc_send_request(dvfsrc_drv->dev->parent,
+			MTK_DVFSRC_CMD_FORCEOPP_REQUEST, 0xDEAD);
+	}
+
 	if (atomic_cmpxchg(&first_exception, 0, 1) != 0)
 		return NOTIFY_DONE;
+
 	arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, VCOREFS_SMC_CMD_PAUSE_ENABLE, 1, 0, 0,
 		0, 0, 0, &ares);
 
@@ -47,7 +60,14 @@ static struct notifier_block die_blk = {
 static int mtk_dvfsrc_start_probe(struct platform_device *pdev)
 {
 	struct arm_smccc_res ares;
+	struct mtk_dvfsrc_start *dvfsrc;
 
+	dvfsrc = devm_kzalloc(&pdev->dev, sizeof(*dvfsrc), GFP_KERNEL);
+	if (!dvfsrc)
+		return -ENOMEM;
+
+	dvfsrc->dev = &pdev->dev;
+	dvfsrc_drv = dvfsrc;
 	arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_DVFSRC_START, 0, 0, 0,
 		0, 0, 0, &ares);
 	atomic_notifier_chain_register(&panic_notifier_list, &panic_blk);

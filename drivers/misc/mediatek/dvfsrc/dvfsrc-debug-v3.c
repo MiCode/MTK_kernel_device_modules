@@ -40,6 +40,7 @@ enum dvfsrc_regs {
 	DVFSRC_95MD_SCEN_BW4,
 	DVFSRC_95MD_SCEN_BW4_T,
 	DVFSRC_RSRV_4,
+	DVFSRC_RSRV_5,
 	DVFSRC_MD_DDR_FLOOR_REQUEST,
 	DVFSRC_QOS_DDR_REQUEST,
 	DVFSRC_LEVEL_LABEL_L,
@@ -165,6 +166,7 @@ static const int mt6989_regs[] = {
 	[DVFSRC_95MD_SCEN_BW0] = 0x258,
 	[DVFSRC_95MD_SCEN_BW0_T] = 0x268,
 	[DVFSRC_RSRV_4] = 0x290,
+	[DVFSRC_RSRV_5] = 0x294,
 	[DVFSRC_MD_DDR_FLOOR_REQUEST] = 0x5E4,
 	[DVFSRC_QOS_DDR_REQUEST] = 0x5E8,
 	[DVFSRC_LEVEL_LABEL_L] = 0xFC,
@@ -778,6 +780,20 @@ static char *dvfsrc_dump_mt6983_spm_cmd(struct mtk_dvfsrc *dvfsrc,
 	return p;
 }
 
+static char *dvfsrc_dump_vcore_avs_zone(struct mtk_dvfsrc *dvfsrc,
+	char *p, u32 size)
+{
+	char *buff_end = p + size;
+
+	if (!dvfsrc->regs)
+		return p;
+
+	p += snprintf(p, buff_end - p, "vcore avs temp zone: %x\n",
+			dvfsrc_read(dvfsrc, DVFSRC_RSRV_5, 0));
+
+	return p;
+}
+
 static char *dvfsrc_dump_mt6983_spm_timer_latch(struct mtk_dvfsrc *dvfsrc,
 	char *p, u32 size)
 {
@@ -1095,4 +1111,5 @@ const struct dvfsrc_config mt6989_dvfsrc_config = {
 	.query_opp_gear_info = dvfsrc_get_opp_gear_info,
 	.set_ddr_ceiling = dvfsrc_set_ceiling_ddr_opp,
 	.set_vcore_avs = dvfsrc_set_vcore_avs,
+	.dump_vcore_avs_zone = dvfsrc_dump_vcore_avs_zone,
 };

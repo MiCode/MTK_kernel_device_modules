@@ -117,6 +117,7 @@ struct mtk_dvfsrc {
 	bool dvfsrc_enable;
 #ifdef DVFSRC_FORCE_OPP_SUPPORT
 	bool opp_forced;
+	bool opp_force_lock;
 	spinlock_t force_lock;
 #endif
 	bool disable_wait_level;
@@ -672,6 +673,13 @@ static void mt6873_set_force_opp_level(struct mtk_dvfsrc *dvfsrc, u32 level)
 	int ret = 0;
 
 	spin_lock_irqsave(&dvfsrc->force_lock, flags);
+	if ((level == 0xDEAD) || (dvfsrc->opp_force_lock)) {
+		dvfsrc->opp_force_lock = true;
+		spin_unlock_irqrestore(&dvfsrc->force_lock, flags);
+		dev_info(dvfsrc->dev, "[Lock] force mode change\n");
+		return;
+	}
+
 	dvfsrc->opp_forced = true;
 	if (level > dvfsrc->curr_opps->num_opp - 1) {
 		dvfsrc_rmw(dvfsrc, DVFSRC_BASIC_CONTROL, 0, 0x1, 15);
@@ -775,6 +783,13 @@ static void mt6985_set_force_opp_level(struct mtk_dvfsrc *dvfsrc, u32 level)
 	int ret = 0;
 
 	spin_lock_irqsave(&dvfsrc->force_lock, flags);
+	if ((level == 0xDEAD) || (dvfsrc->opp_force_lock)) {
+		dvfsrc->opp_force_lock = true;
+		spin_unlock_irqrestore(&dvfsrc->force_lock, flags);
+		dev_info(dvfsrc->dev, "[Lock] force mode change\n");
+		return;
+	}
+
 	if (level > dvfsrc->curr_opps->num_opp - 1) {
 		if (dvfsrc->opp_forced) {
 			dvfsrc_rmw(dvfsrc, DVFSRC_HALT_CONTROL, 1, 0x1, 1);
@@ -826,6 +841,13 @@ static void mt6983_set_force_opp_level(struct mtk_dvfsrc *dvfsrc, u32 level)
 	int ret = 0;
 
 	spin_lock_irqsave(&dvfsrc->force_lock, flags);
+	if ((level == 0xDEAD) || (dvfsrc->opp_force_lock)) {
+		dvfsrc->opp_force_lock = true;
+		spin_unlock_irqrestore(&dvfsrc->force_lock, flags);
+		dev_info(dvfsrc->dev, "[Lock] force mode change\n");
+		return;
+	}
+
 	if (level > dvfsrc->curr_opps->num_opp - 1) {
 		dvfsrc_write(dvfsrc, DVFSRC_SW_FORCE_BW, 0x0);
 		dvfsrc_rmw(dvfsrc, DVFSRC_BASIC_CONTROL, 0, 0x1, 14);
@@ -1114,6 +1136,12 @@ static void mt6989_set_force_opp_level(struct mtk_dvfsrc *dvfsrc, u32 level)
 		return;
 
 	spin_lock_irqsave(&dvfsrc->force_lock, flags);
+	if ((level == 0xDEAD) || (dvfsrc->opp_force_lock)) {
+		dvfsrc->opp_force_lock = true;
+		spin_unlock_irqrestore(&dvfsrc->force_lock, flags);
+		dev_info(dvfsrc->dev, "[Lock] force mode change\n");
+		return;
+	}
 	if (level > dvfsrc->num_opp - 1) {
 		if (dvfsrc->opp_forced) {
 			dvfsrc_rmw(dvfsrc, DVFSRC_HALT_CONTROL, 1, 0x1, 1);
@@ -1172,6 +1200,12 @@ static void mt6768_set_force_opp_level(struct mtk_dvfsrc *dvfsrc, u32 level)
 	int ret = 0;
 
 	spin_lock_irqsave(&dvfsrc->force_lock, flags);
+	if ((level == 0xDEAD) || (dvfsrc->opp_force_lock)) {
+		dvfsrc->opp_force_lock = true;
+		spin_unlock_irqrestore(&dvfsrc->force_lock, flags);
+		dev_info(dvfsrc->dev, "[Lock] force mode change\n");
+		return;
+	}
 	dvfsrc->opp_forced = true;
 	if (level > dvfsrc->curr_opps->num_opp - 1) {
 		dvfsrc_rmw(dvfsrc, DVFSRC_BASIC_CONTROL, 0, 0x1, 15);
@@ -1287,6 +1321,12 @@ static void mt6765_set_force_opp_level(struct mtk_dvfsrc *dvfsrc, u32 level)
 	int ret = 0;
 
 	spin_lock_irqsave(&dvfsrc->force_lock, flags);
+	if ((level == 0xDEAD) || (dvfsrc->opp_force_lock)) {
+		dvfsrc->opp_force_lock = true;
+		spin_unlock_irqrestore(&dvfsrc->force_lock, flags);
+		dev_info(dvfsrc->dev, "[Lock] force mode change\n");
+		return;
+	}
 	dvfsrc->opp_forced = true;
 	if (level > dvfsrc->curr_opps->num_opp - 1) {
 		dvfsrc_rmw(dvfsrc, DVFSRC_BASIC_CONTROL, 0, 0x1, 15);
