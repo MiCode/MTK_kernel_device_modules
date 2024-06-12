@@ -102,7 +102,7 @@ static DIGIT_T mpShiftRight(DIGIT_T a[], const DIGIT_T b[],
 {
 	/* [v2.1] Modified to cope with shift > BITS_PERDIGIT */
 	size_t i, y, nw, bits;
-	DIGIT_T mask, carry, nextcarry;
+	volatile DIGIT_T mask, carry, nextcarry;
 
 	/* Do we shift whole digits? */
 	if (shift >= BITS_PER_DIGIT) {
@@ -162,7 +162,7 @@ static DIGIT_T mpShiftLeft(DIGIT_T a[], const DIGIT_T *b,
 	/* Computes a = b << shift */
 	/* [v2.1] Modified to cope with shift > BITS_PERDIGIT */
 	size_t i, y, nw, bits;
-	DIGIT_T mask, carry, nextcarry;
+	volatile DIGIT_T mask, carry, nextcarry;
 
 	/* Do we shift whole digits? */
 	if (shift >= BITS_PER_DIGIT) {
