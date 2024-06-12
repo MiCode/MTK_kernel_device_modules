@@ -25,6 +25,9 @@
 #include "mtk_disp_postmask.h"
 #include "platform/mtk_drm_platform.h"
 
+int debug_postmask_bw;
+module_param(debug_postmask_bw, int, 0644);
+
 #define POSTMASK_MASK_MAX_NUM 96
 #define POSTMASK_GRAD_MAX_NUM 192
 #define POSTMASK_DRAM_MODE
@@ -643,7 +646,9 @@ static int mtk_disp_postmask_bind(struct device *dev, struct device *master,
 {
 	struct mtk_disp_postmask *priv = dev_get_drvdata(dev);
 	struct drm_device *drm_dev = data;
+	struct mtk_drm_private *private = drm_dev->dev_private;
 	int ret;
+	char buf[50];
 
 	DDPINFO("%s\n", __func__);
 
@@ -652,6 +657,15 @@ static int mtk_disp_postmask_bind(struct device *dev, struct device *master,
 		dev_err(dev, "Failed to register component %s: %d\n",
 			dev->of_node->full_name, ret);
 		return ret;
+	}
+
+	if (mtk_drm_helper_get_opt(private->helper_opt,
+			MTK_DRM_OPT_MMQOS_SUPPORT)) {
+		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
+						&priv->ddp_comp, "hrt_qos");
+		priv->ddp_comp.hrt_qos_req = of_mtk_icc_get(dev, buf);
+		if (!IS_ERR(priv->ddp_comp.hrt_qos_req))
+			DDPMSG("%s, %s create success, dev:%s\n", __func__, buf, dev_name(dev));
 	}
 
 	return 0;
@@ -680,8 +694,17 @@ static int mtk_postmask_io_cmd(struct mtk_ddp_comp *comp,
 			       struct cmdq_pkt *handle,
 			       enum mtk_ddp_io_cmd io_cmd, void *params)
 {
-#ifdef IF_ZERO	/* enable only if irq can be handled */
+	struct mtk_drm_private *priv;
+
+	if (!(comp->mtk_crtc && comp->mtk_crtc->base.dev)) {
+		DDPINFO("%s %s %u has invalid CRTC or device\n",
+			__func__, mtk_dump_comp_str(comp), io_cmd);
+		return -INVALID;
+	}
+
+	priv = comp->mtk_crtc->base.dev->dev_private;
 	switch (io_cmd) {
+#ifdef IF_ZERO	/* enable only if irq can be handled */
 	case IRQ_LEVEL_NORMAL: {
 		unsigned int inten;
 
@@ -706,10 +729,33 @@ static int mtk_postmask_io_cmd(struct mtk_ddp_comp *comp,
 			       comp->regs_pa + DISP_POSTMASK_INTEN, 0, inten);
 		break;
 	}
+#endif
+	case PMQOS_SET_HRT_BW: {
+		u32 bw_val = *(unsigned int *)params;
+		unsigned int bpp = 1;
+
+		if (!mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_MMQOS_SUPPORT))
+			break;
+
+		if (!priv->data->respective_ostdl)
+			break;
+
+		if (IS_ERR(comp->hdr_qos_req))
+			break;
+
+		bw_val = (bw_val * bpp) >> 2;
+		if (debug_postmask_bw)
+			bw_val = debug_postmask_bw;
+
+		__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, bw_val,
+				priv->data->respective_ostdl);
+		break;
+	}
 	default:
 		break;
 	}
-#endif
+
 	return 0;
 }
 
