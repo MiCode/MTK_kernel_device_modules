@@ -244,7 +244,7 @@ void ufs_rpmb_vh_compl_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 			}
 
 			len =  min(buf_sz - bytes,  (size_t) bvec.bv_len);
-			memcpy(buf, _buf, len);
+			memcpy(buf + bytes, _buf, len);
 
 			kunmap_local(_buf);
 			_buf = NULL;
