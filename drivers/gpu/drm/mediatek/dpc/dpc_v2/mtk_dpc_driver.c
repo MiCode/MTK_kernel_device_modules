@@ -1808,6 +1808,10 @@ static void process_dbg_opt(const char *opt)
 		dpc_dt_set_update((u16)v1, v2);
 	} else if (strncmp(opt, "force_rsc:", 10) == 0) {
 		ret = sscanf(opt, "force_rsc:%u\n", &v1);
+		if (ret != 1) {
+			DPCDUMP("[Waring]force_rsc sscanf not match");
+			goto err;
+		}
 		if (v1) {
 			writel(0x000D000D, dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG);
 			writel(0x000D000D, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
@@ -1829,6 +1833,10 @@ static void process_dbg_opt(const char *opt)
 		dpc_analysis();
 	} else if (strncmp(opt, "thread:", 7) == 0) {
 		ret = sscanf(opt, "thread:%u\n", &v1);
+		if (ret != 1) {
+			DPCDUMP("[Waring]thread sscanf not match");
+			goto err;
+		}
 		if (v1 == 1) {
 			dpc_mtcmos_vote(DPC_SUBSYS_DIS0, 6, true);
 			dpc_mtcmos_vote(DPC_SUBSYS_DIS1, 6, true);
@@ -1844,6 +1852,10 @@ static void process_dbg_opt(const char *opt)
 		}
 	} else if (strncmp(opt, "rtff:", 5) == 0) {
 		ret = sscanf(opt, "rtff:%u\n", &v1);
+		if (ret != 1) {
+			DPCDUMP("[Waring]rtff sscanf not match");
+			goto err;
+		}
 		writel(v1, g_priv->rtff_pwr_con);
 	} else if (strncmp(opt, "vcore:", 6) == 0) {
 		ret = sscanf(opt, "vcore:%u\n", &v1);
