@@ -34,6 +34,8 @@ struct spower_raw_t {
 #include "mtk_spower_data_6893.h"
 #elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_6781)
 #include "mtk_spower_data_6781.h"
+#elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_6853)
+#include "mtk_spower_data_6853.h"
 #else
 #include "mtk_spower_data_plat.h"
 #endif
