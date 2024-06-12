@@ -10,6 +10,7 @@
 #include "mt6991-afe-common.h"
 #include "mt6991-interconnection.h"
 #include <linux/pm_runtime.h>
+#include "mt6991-afe-clk.h"
 
 #define HW_GAIN_0_EN_W_NAME "HW GAIN 0 Enable"
 #define HW_GAIN_1_EN_W_NAME "HW GAIN 1 Enable"
@@ -21,21 +22,29 @@
 static const struct snd_kcontrol_new mtk_hw_gain0_in_ch1_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("CONNSYS_I2S_CH1", AFE_CONN004_0,
 				    I_CONNSYS_I2S_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH1", AFE_CONN004_4,
+				    I_I2SIN4_CH1, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_hw_gain0_in_ch2_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("CONNSYS_I2S_CH2", AFE_CONN005_0,
 				    I_CONNSYS_I2S_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH2", AFE_CONN005_4,
+				    I_I2SIN4_CH2, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_hw_gain1_in_ch1_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN006_0,
 				    I_ADDA_UL_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH1", AFE_CONN006_2,
+				    I_DL24_CH1, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_hw_gain1_in_ch2_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN007_0,
 				    I_ADDA_UL_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN007_2,
+				    I_DL24_CH2, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_hw_gain2_in_ch1_mix[] = {
@@ -106,17 +115,36 @@ static int mtk_hw_gain_event(struct snd_soc_dapm_widget *w,
 				   gain_con0,
 				   GAIN_TARGET_SYNC_ON_MASK_SFT,
 				   1);
-
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+		/* auto project require 0db when hw gain enable*/
+		/* let hw gain ramp up, set cur gain to 0db */
+		regmap_update_bits(afe->regmap,
+				   gain_cur_l,
+				   AFE_GAIN_CUR_L_MASK_SFT,
+				   0x200000);
+		regmap_update_bits(afe->regmap,
+				   gain_cur_r,
+				   AFE_GAIN_CUR_R_MASK_SFT,
+				   0x200000);
+		/* set target gain to 0db */
+		regmap_update_bits(afe->regmap,
+				   gain_con1_l,
+				   GAIN_TARGET_L_MASK_SFT,
+				   0x200000);
+		regmap_update_bits(afe->regmap,
+				   gain_con1_r,
+				   GAIN_TARGET_R_MASK_SFT,
+				   0x200000);
+#else
 		/* let hw gain ramp up, set cur gain to 0 */
 		regmap_update_bits(afe->regmap,
 				   gain_cur_l,
 				   AFE_GAIN_CUR_L_MASK_SFT,
-				   0);
+				   0x0);
 		regmap_update_bits(afe->regmap,
 				   gain_cur_r,
 				   AFE_GAIN_CUR_R_MASK_SFT,
-				   0);
-
+				   0x0);
 		/* set target gain to 0 */
 		regmap_update_bits(afe->regmap,
 				   gain_con1_l,
@@ -126,6 +154,7 @@ static int mtk_hw_gain_event(struct snd_soc_dapm_widget *w,
 				   gain_con1_r,
 				   GAIN_TARGET_R_MASK_SFT,
 				   0x0);
+#endif
 		break;
 	default:
 		break;
@@ -140,8 +169,9 @@ static int mt6991_gain0_get(struct snd_kcontrol *kcontrol,
 	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 	unsigned int value = 0x0;
-
+	mt6991_afe_enable_clock(afe);
 	regmap_read(afe->regmap, AFE_GAIN0_CUR_L, &value);
+	mt6991_afe_disable_clock(afe);
 	ucontrol->value.integer.value[0] = value;
 
 	return 0;
@@ -166,6 +196,7 @@ static int mt6991_gain0_set(struct snd_kcontrol *kcontrol,
 			break;
 		}
 	}
+	mt6991_afe_enable_clock(afe);
 	regmap_update_bits(afe->regmap,
 			   AFE_GAIN0_CON1_L,
 			   GAIN_TARGET_L_MASK_SFT,
@@ -174,6 +205,7 @@ static int mt6991_gain0_set(struct snd_kcontrol *kcontrol,
 			   AFE_GAIN0_CON1_R,
 			   GAIN_TARGET_R_MASK_SFT,
 			   kHWGainMap_IPM2P[index] << GAIN_TARGET_R_SFT);
+	mt6991_afe_disable_clock(afe);
 
 	return 0;
 }
@@ -184,8 +216,9 @@ static int mt6991_gain1_get(struct snd_kcontrol *kcontrol,
 	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 	unsigned int value = 0x0;
-
-	regmap_read(afe->regmap, AFE_GAIN0_CUR_L, &value);
+	mt6991_afe_enable_clock(afe);
+	regmap_read(afe->regmap, AFE_GAIN1_CUR_L, &value);
+	mt6991_afe_disable_clock(afe);
 	ucontrol->value.integer.value[0] = value;
 
 	return 0;
@@ -207,7 +240,7 @@ static int mt6991_gain1_set(struct snd_kcontrol *kcontrol,
 			break;
 		}
 	}
-
+	mt6991_afe_enable_clock(afe);
 	regmap_update_bits(afe->regmap,
 			   AFE_GAIN1_CON1_L,
 			   GAIN_TARGET_L_MASK_SFT,
@@ -216,7 +249,7 @@ static int mt6991_gain1_set(struct snd_kcontrol *kcontrol,
 			   AFE_GAIN1_CON1_R,
 			   GAIN_TARGET_R_MASK_SFT,
 			   kHWGainMap_IPM2P[index] << GAIN_TARGET_R_SFT);
-
+	mt6991_afe_disable_clock(afe);
 	return 0;
 }
 
@@ -236,11 +269,8 @@ static int mt6991_gain_l_set(struct snd_kcontrol *kcontrol,
 		__func__, ucontrol->id.name, val, max);
 	if (val > max)
 		return 0;
-
-	pm_runtime_get_sync(afe->dev);
 	regmap_update_bits(afe->regmap, reg,
 			   GAIN_TARGET_L_MASK_SFT, val << GAIN_TARGET_L_SFT);
-	pm_runtime_put(afe->dev);
 	return 0;
 }
 
@@ -254,9 +284,7 @@ static int mt6991_gain_l_get(struct snd_kcontrol *kcontrol,
 	unsigned int val = 0x0;
 	unsigned int reg = mc->reg;
 
-	pm_runtime_get_sync(afe->dev);
 	regmap_read(afe->regmap, reg, &val);
-	pm_runtime_put(afe->dev);
 
 	dev_dbg(afe->dev,
 		"%s(), ucontrol string = %s, val = %d\n",
@@ -282,10 +310,8 @@ static int mt6991_gain_r_set(struct snd_kcontrol *kcontrol,
 	if (val > max)
 		return 0;
 
-	pm_runtime_get_sync(afe->dev);
 	regmap_update_bits(afe->regmap, reg,
 			   GAIN_TARGET_R_MASK_SFT, val << GAIN_TARGET_R_SFT);
-	pm_runtime_put(afe->dev);
 
 	return 0;
 }
@@ -303,10 +329,7 @@ static int mt6991_gain_r_get(struct snd_kcontrol *kcontrol,
 	regmap_read(afe->regmap, reg, &val);
 	dev_dbg(afe->dev, "%s(), ucontrol string = %s, val = %d\n",
 		__func__, ucontrol->id.name, val);
-
-	pm_runtime_get_sync(afe->dev);
 	ucontrol->value.integer.value[0] = val & GAIN_TARGET_R_MASK_SFT;
-	pm_runtime_put(afe->dev);
 
 	return 0;
 }
@@ -392,12 +415,18 @@ static const struct snd_soc_dapm_route mtk_dai_hw_gain_routes[] = {
 	{"HW Gain 1 Out", NULL, "HW Gain 1 Out Endpoint"},
 	{"HW Gain 2 Out", NULL, "HW Gain 2 Out Endpoint"},
 	{"HW Gain 3 Out", NULL, "HW Gain 3 Out Endpoint"},
+
+	{"HW_GAIN0_IN_CH1", "I2SIN4_CH1", "I2SIN4"},
+	{"HW_GAIN0_IN_CH2", "I2SIN4_CH2", "I2SIN4"},
+
+	{"HW_GAIN1_IN_CH1", "DL24_CH1", "DL24"},
+	{"HW_GAIN1_IN_CH2", "DL24_CH2", "DL24"},
 };
 
 static const struct snd_kcontrol_new mtk_hw_gain_controls[] = {
-	SOC_SINGLE_EXT("HW Gain 1", SND_SOC_NOPM, 0, 0xffffffff, 0,
+	SOC_SINGLE_EXT("HW Gain 0", SND_SOC_NOPM, 0, 0x8E432E, 0,
 		       mt6991_gain0_get, mt6991_gain0_set),
-	SOC_SINGLE_EXT("HW Gain 2", SND_SOC_NOPM, 0, 0xffffffff, 0,
+	SOC_SINGLE_EXT("HW Gain 1", SND_SOC_NOPM, 0, 0x8E432E, 0,
 		       mt6991_gain1_get, mt6991_gain1_set),
 	SOC_SINGLE_EXT("HW Gain 0 L", AFE_GAIN0_CON1_L,
 		   0, 0xffffffff, 0,

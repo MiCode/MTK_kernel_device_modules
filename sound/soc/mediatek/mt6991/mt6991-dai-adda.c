@@ -203,6 +203,8 @@ static const struct snd_kcontrol_new mtk_adda_dl_ch1_mix[] = {
 				    I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_GAIN0_OUT_CH1", AFE_CONN014_0,
 				    I_GAIN0_OUT_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("HW_GAIN1_OUT_CH1", AFE_CONN014_0,
+				    I_GAIN1_OUT_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("PCM_0_CAP_CH1", AFE_CONN014_4,
 				    I_PCM_0_CAP_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("PCM_1_CAP_CH1", AFE_CONN014_4,
@@ -240,6 +242,8 @@ static const struct snd_kcontrol_new mtk_adda_dl_ch2_mix[] = {
 				    I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_GAIN0_OUT_CH2", AFE_CONN015_0,
 				    I_GAIN0_OUT_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("HW_GAIN1_OUT_CH2", AFE_CONN015_0,
+				    I_GAIN1_OUT_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("PCM_0_CAP_CH1", AFE_CONN015_4,
 				    I_PCM_0_CAP_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("PCM_1_CAP_CH1", AFE_CONN015_4,
@@ -1546,6 +1550,9 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"ADDA_DL_CH2", "HW_SRC_2_OUT_CH2", "Hostless_HW_SRC_2_IN_DL"},
 	{"ADDA_DL_CH3", "HW_SRC_2_OUT_CH1", "Hostless_HW_SRC_2_IN_DL"},
 	{"ADDA_DL_CH4", "HW_SRC_2_OUT_CH2", "Hostless_HW_SRC_2_IN_DL"},
+
+	{"ADDA_DL_CH1", "HW_GAIN1_OUT_CH1", "HW Gain 1 Out"},
+	{"ADDA_DL_CH2", "HW_GAIN1_OUT_CH2", "HW Gain 1 Out"},
 
 	{"ADDA Playback", NULL, "ADDA_DL_CH1"},
 	{"ADDA Playback", NULL, "ADDA_DL_CH2"},

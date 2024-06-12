@@ -2288,12 +2288,14 @@ static const struct snd_kcontrol_new mtk_i2sout4_ch8_mix[] = {
 
 static const struct snd_kcontrol_new mtk_i2sout5_ch1_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH1", AFE_CONN124_1, I_DL_24CH_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN3_CH1", AFE_CONN124_4, I_I2SIN3_CH1, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_i2sout5_ch2_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("DL4_CH1", AFE_CONN125_1, I_DL4_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL4_CH2", AFE_CONN125_1, I_DL4_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH2", AFE_CONN125_1, I_DL_24CH_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN3_CH2", AFE_CONN124_5, I_I2SIN3_CH1, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_i2sout5_ch3_mix[] = {
@@ -2320,11 +2322,14 @@ static const struct snd_kcontrol_new mtk_i2sout5_ch6_mix[] = {
 
 static const struct snd_kcontrol_new mtk_i2sout5_ch7_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH7", AFE_CONN130_1, I_DL_24CH_CH7, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL23_CH1", AFE_CONN130_2, I_DL23_CH1, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_i2sout5_ch8_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("DL6_CH1", AFE_CONN131_1, I_DL6_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL6_CH2", AFE_CONN131_1, I_DL6_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL23_CH2", AFE_CONN131_2, I_DL23_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH1", AFE_CONN131_2, I_DL24_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL25_CH1", AFE_CONN131_2, I_DL25_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL25_CH2", AFE_CONN131_2, I_DL25_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH8", AFE_CONN131_1, I_DL_24CH_CH8, 1, 0),
@@ -2332,6 +2337,7 @@ static const struct snd_kcontrol_new mtk_i2sout5_ch8_mix[] = {
 
 static const struct snd_kcontrol_new mtk_i2sout5_ch9_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH9", AFE_CONN132_1, I_DL_24CH_CH9, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN132_2, I_DL24_CH2, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_i2sout5_ch10_mix[] = {
@@ -3928,6 +3934,12 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT5_CH4", "DL_4CH_CH1", "DL_4CH"},
 	{"I2SOUT5_CH5", "DL_4CH_CH2", "DL_4CH"},
 
+	{"I2SOUT5_CH7", "DL23_CH1", "DL23"},
+	{"I2SOUT5_CH8", "DL23_CH2", "DL23"},
+
+	{"I2SOUT5_CH8", "DL24_CH1", "DL24"},
+	{"I2SOUT5_CH9", "DL24_CH2", "DL24"},
+
 	{"I2SOUT5_CH5", "DL26_CH1", "DL26"},
 	{"I2SOUT5_CH5", "DL26_CH2", "DL26"},
 
@@ -4206,12 +4218,15 @@ static int mtk_dai_connsys_i2s_hw_params(struct snd_pcm_substream *substream,
 	unsigned int rate_reg = mt6991_rate_transform(afe->dev,
 				rate, dai->id);
 	unsigned int i2s_con = 0;
+	struct mt6991_afe_private *afe_priv = afe->platform_priv;
+	int fmi2s_gpio_mode = afe_priv->fmi2s_gpio_mode;
 
-	dev_info(afe->dev, "%s(), id %d, stream %d, rate %d\n",
+	dev_info(afe->dev, "%s(), id %d, stream %d, rate %d, fmi2s_gpio_mode %d\n",
 		 __func__,
 		 dai->id,
 		 substream->stream,
-		 rate);
+		 rate,
+		 fmi2s_gpio_mode);
 
 	/* non-inverse, i2s mode, slave, 16bits, from connsys */
 	i2s_con |= I2S_FMT_I2S << I2S_FMT_SFT;
@@ -4219,6 +4234,12 @@ static int mtk_dai_connsys_i2s_hw_params(struct snd_pcm_substream *substream,
 	i2s_con |= get_i2s_wlen(SNDRV_PCM_FORMAT_S16_LE) << I2S_WLEN_SFT;
 	i2s_con |= 0 << I2SIN_PAD_SEL_SFT;
 	regmap_write(afe->regmap, AFE_CONNSYS_I2S_CON, i2s_con);
+
+	/* choose FMI2S_IN B */
+	regmap_update_bits(afe->regmap,
+			   AUD_TOP_CFG_VLP_RG,
+			   FMI2S_IN_SEL_MASK_SFT,
+			   fmi2s_gpio_mode << FMI2S_IN_SEL_SFT);
 
 	/* use asrc */
 	regmap_update_bits(afe->regmap,
@@ -5544,6 +5565,7 @@ int mt6991_dai_i2s_register(struct mtk_base_afe *afe)
 {
 	struct mtk_base_afe_dai *dai;
 	int ret;
+	struct mt6991_afe_private *afe_priv = afe->platform_priv;
 
 	dev_info(afe->dev, "%s() successfully start\n", __func__);
 
@@ -5578,6 +5600,15 @@ int mt6991_dai_i2s_register(struct mtk_base_afe *afe)
 	if (ret) {
 		dev_info(afe->dev, "%s() fail to parse dts: %d\n", __func__, ret);
 		return ret;
+	}
+
+	/* get fmi2s gpio mode A or B */
+	ret = of_property_read_u32(afe->dev->of_node, "fmi2s-gpio-mode",
+				   &afe_priv->fmi2s_gpio_mode);
+	if (ret) {
+		dev_info(afe->dev, "%s() failed to read fmi2s_gpio_mode, default support GPIOA\n",
+			 __func__);
+		afe_priv->fmi2s_gpio_mode = 0;
 	}
 
 	return 0;
