@@ -381,7 +381,6 @@ static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attac
 	unsigned int dom_id = 0;
 	u64 tab_id = 0;
 	struct system_heap_buffer *buffer = attachment->dmabuf->priv;
-	int larb_id, port_id;
 	bool coherent = dev_is_dma_coherent(attachment->dev);
 
 	if (a->uncached)
@@ -396,14 +395,10 @@ static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attac
 		dom_id = MTK_M4U_TO_DOM(fwspec->ids[0]);
 		tab_id = MTK_M4U_TO_TAB(fwspec->ids[0]);
 		cache_data = get_iova_cache(buffer, tab_id, coherent);
-		larb_id = MTK_M4U_TO_LARB(fwspec->ids[0]);
-		port_id = MTK_M4U_TO_PORT(fwspec->ids[0]);
 	} else if (fwspec && smmu_v3_enable) {
 		tab_id = get_smmu_tab_id(attachment->dev);
 		cache_data = get_iova_cache(buffer, tab_id, coherent);
 		dom_id = 0;
-		larb_id = 0;
-		port_id = 0;
 	}
 
 	/* device with iommus attribute AND mapped before */

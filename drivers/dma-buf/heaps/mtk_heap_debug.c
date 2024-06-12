@@ -1565,7 +1565,6 @@ void dmabuf_rbtree_dump_domain(u64 tab_id, u32 dom_id)
 	u64 size = 0, total_size = 0;
 	struct dump_fd_data *fddata;
 	struct rb_root *rbroot = NULL;
-	struct seq_file *s = NULL;
 
 	fddata = dmabuf_rbtree_add_all(NULL, NULL, -1, 0);
 	if (IS_ERR_OR_NULL(fddata)) {
@@ -1573,7 +1572,6 @@ void dmabuf_rbtree_dump_domain(u64 tab_id, u32 dom_id)
 		return;
 	}
 	rbroot = &fddata->dmabuf_root;
-	s = fddata->constd.s;
 
 	for (tmp_rb = rb_first(rbroot); tmp_rb; tmp_rb = rb_next(tmp_rb)) {
 		dbg_node = rb_entry(tmp_rb, struct dmabuf_debug_node, dmabuf_node);
