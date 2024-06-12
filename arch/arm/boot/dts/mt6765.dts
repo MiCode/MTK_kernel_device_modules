@@ -69,6 +69,11 @@ aliases {
 			};
 		};
 
+		eas_info: eas-info {
+			compatible = "mediatek,eas-info";
+			legacy-api-support = <1>;
+		};
+
 		fpsgo: fpsgo {
 			compatible = "mediatek,fpsgo";
 			interconnects = <&dvfsrc MT6873_MASTER_MCUSYS &dvfsrc MT6873_SLAVE_DDR_EMI>;
