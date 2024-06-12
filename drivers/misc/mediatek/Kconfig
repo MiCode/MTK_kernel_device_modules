@@ -330,7 +330,6 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/rps/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/task_turbo/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/pgboost/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/ktchbst/Kconfig"
-source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mtk_zram/Kconfig"
 endmenu # Performance
 
 menu "Secure Boot"

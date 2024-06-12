@@ -149,7 +149,6 @@ obj-$(CONFIG_MTK_SMAP) += smap/
 obj-$(CONFIG_MTK_WLA) += wla/
 obj-$(CONFIG_MTK_SPM_CAREVENT) += carevent/
 obj-$(CONFIG_ARM) += arm_div/
-obj-$(CONFIG_MTK_ZRAM) += mtk_zram/
 obj-$(CONFIG_ROOTFS_CHECK) += rootfs_check/
 obj-$(CONFIG_MTK_PKVM_MKP) += pkvm_mkp/
 obj-$(CONFIG_MTK_PKVM_MTK_SMC_HANDLER) += pkvm_mgmt/
