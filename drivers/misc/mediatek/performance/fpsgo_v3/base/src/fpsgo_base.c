@@ -1765,7 +1765,6 @@ int fpsgo_check_thread_status(void)
 			iter->p_blc = NULL;
 			iter->dep_arr = NULL;
 			n = rb_first(&render_pid_tree);
-			fpsgo_ux_reset(iter);
 
 			if (fpsgo_base_is_finished(iter))
 				delete = 1;
