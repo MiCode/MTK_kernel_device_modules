@@ -15668,6 +15668,7 @@ static void mtk_drm_plane_for_se(struct drm_crtc *crtc, struct drm_plane *plane,
 		memcpy((void *)plane_state, (void *)&mtk_crtc->se_plane[layer_id].state,
 			sizeof(struct mtk_plane_state));
 		plane_state->comp_state.lye_id = layer_id;
+		plane_state->base = mtk_crtc->static_plane.state[index].base;
 	} else
 		plane_state->pending.enable = false;
 
