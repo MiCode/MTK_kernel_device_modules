@@ -214,11 +214,19 @@
 			default: \
 			0)
 
+#define _TYPE_OF_INT_POINTER(x) \
+	_Generic((x), \
+			u64 *: 1, \
+			u32 *: 2, \
+			default: \
+			0)
+
 #define DATA_FLAG(size)  ((size) == 4 ? DATA_FLAG_SIZE_4 : \
 						((size) == 8 ? DATA_FLAG_SIZE_8 : \
 						((size) == 1 ? DATA_FLAG_SIZE_1 : \
 						((size) == 2 ? DATA_FLAG_SIZE_2 : \
-						0))))
+						((size) == FLAG_INT_POINTER_SIZE ? DATA_FLAG_INT_POINTER : \
+						0)))))
 
 #define MME_STR_OFFSET(ptr1, ptr2) abs(((uintptr_t)(ptr1) - (uintptr_t)(ptr2)))
 
@@ -226,12 +234,14 @@
 	do { \
 		bool is_stack_str = false; \
 		bool is_str_data = _TYPE_OF_STRING(data); \
+		bool is_int_pointer_data = _TYPE_OF_INT_POINTER(data); \
 		if (is_str_data && (MME_STR_OFFSET(__func__, data) > 0x100000)) \
 			is_stack_str = true; \
 		size_data = (is_str_data ? (is_stack_str ? \
 					(_ALIGN_4_BYTES(sizeof(char *) + \
 					(str_len=strlen((char *)(unsigned long)(data))) + 1)) : \
-					sizeof(char *)): sizeof(data)); \
+					sizeof(char *)): (is_int_pointer_data ? FLAG_INT_POINTER_SIZE : \
+					 sizeof(data))); \
 		flag_data = (is_str_data ? \
 					(is_stack_str ? \
 					DATA_FLAG_STACK_REGION_STRING : DATA_FLAG_CODE_REGION_STRING) : \
@@ -246,13 +256,25 @@
 
 #define SAVE_DATA(p, data, size_data, flag_data, str_len) \
 	do { \
-		if (flag_data == DATA_FLAG_STACK_REGION_STRING) { \
+		switch (flag_data) { \
+		case DATA_FLAG_STACK_REGION_STRING: \
 			*((char **)p) = (char *)(unsigned long)(data); \
-			strscpy((char *)(p+sizeof(char *)), ((char *)(unsigned long)(data)), str_len+1); \
-		} else if (flag_data < DATA_FLAG_SIZE_8) { \
+			strscpy((char *)(p+sizeof(char *)), (char *)(unsigned long)(data), \
+					str_len+1); \
+			break; \
+		case DATA_FLAG_SIZE_1: \
+		case DATA_FLAG_SIZE_2: \
+		case DATA_FLAG_SIZE_4: \
 			*((unsigned int *)p) = (unsigned int)(unsigned long)(data); \
-		} else { \
+			break; \
+		case DATA_FLAG_INT_POINTER: \
 			*((char **)p) = (char *)(unsigned long)(data); \
+			save_int_pointer_data(p+POINTER_SIZE, (unsigned long)(data), \
+								_TYPE_OF_INT_POINTER(data)); \
+			break; \
+		default: \
+			*((char **)p) = (char *)(unsigned long)(data); \
+			break; \
 		} \
 		p += size_data; \
 	} while(0)

@@ -124,9 +124,12 @@ enum data_flag_t {
 	DATA_FLAG_SIZE_4 = 3,
 	DATA_FLAG_SIZE_8 = 4,
 	DATA_FLAG_STACK_REGION_STRING = 5,
-	DATA_FLAG_RESERVED = 6,
+	DATA_FLAG_INT_POINTER = 6,
 	DATA_FLAG_CODE_REGION_STRING = 7
 };
+
+#define FLAG_INT_POINTER_SIZE 16
+#define POINTER_SIZE 8
 
 static const int data_size_table[] = {
 	0,  // DATA_FLAG_INVALID
@@ -135,7 +138,7 @@ static const int data_size_table[] = {
 	4,  // DATA_FLAG_SIZE_4
 	8,  // DATA_FLAG_SIZE_8
 	0,  // DATA_FLAG_STACK_REGION_STRING
-	0,  // DATA_FLAG_RESERVED
+	FLAG_INT_POINTER_SIZE,  // DATA_FLAG_INT_POINTER
 	sizeof(char *) // DATA_FLAG_CODE_REGION_STRING
 };
 
@@ -157,6 +160,16 @@ extern unsigned long long mmevent_log(
 									unsigned int log_level,
 									unsigned int log_type
 									);
+
+static inline void save_int_pointer_data(unsigned long long p_buf,
+										unsigned long p_data,
+										int type)
+{
+	if (type == 1)
+		*((u64 *)p_buf) = *((u64 *)p_data);
+	else if (type == 2)
+		*((u64 *)p_buf) = (u64)*((u32 *)p_data);
+}
 
 #define _ALIGN_4_BYTES(x) (((x) + 3) & ~0x03)
 #define _ALIGN_8_BYTES(x) (((x) + 7) & ~0x07)
