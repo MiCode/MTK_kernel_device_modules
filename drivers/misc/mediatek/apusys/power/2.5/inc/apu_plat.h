@@ -30,6 +30,7 @@ struct apu_plat_data {
 
 #define VB_MTD_INTPL "vb_intpl"
 #define VB_MTD_3P2L  "vb_3p2l"
+#define VB_MTD_UB_LB "vb_ub_lb"
 #define VB_MTD_LEN   16
 
 /* HV 0.775v */
