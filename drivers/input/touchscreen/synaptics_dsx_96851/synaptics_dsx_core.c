@@ -2294,7 +2294,9 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 	unsigned char ctrl_23_offset;
 	unsigned char ctrl_28_offset;
 	unsigned char ctrl_31_offset;
+#ifdef REPORT_2D_PRESSURE
 	unsigned char ctrl_58_offset;
+#endif
 	unsigned char num_of_fingers;
 	struct synaptics_rmi4_f12_extra_data *extra_data;
 	struct synaptics_rmi4_f12_query_5 *query_5 = NULL;
@@ -2429,7 +2431,7 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 			query_5->ctrl28_is_present +
 			query_5->ctrl29_is_present +
 			query_5->ctrl30_is_present;
-
+#ifdef REPORT_2D_PRESSURE
 	ctrl_58_offset = ctrl_31_offset +
 			query_5->ctrl31_is_present +
 			query_5->ctrl32_is_present +
@@ -2458,7 +2460,7 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 			query_5->ctrl55_is_present +
 			query_5->ctrl56_is_present +
 			query_5->ctrl57_is_present;
-
+#endif
 	ctrl_23_size = 2;
 	for (subpacket = 2; subpacket <= 4; subpacket++) {
 		retval = synaptics_rmi4_f12_find_sub(rmi4_data,

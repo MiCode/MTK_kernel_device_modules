@@ -2203,7 +2203,6 @@ static ssize_t mfd_bl_level_read_proc(struct file *file, char *buffer, size_t co
 static ssize_t mfd_bl_level_write_proc(struct file *file, const char *buffer, size_t count,
 					loff_t *ppos)
 {
-	s32 ret = 0;
 	char temp[25] = {0}; /* for store special format cmd */
     unsigned int level;
 	unsigned int mode;
@@ -2217,7 +2216,7 @@ static ssize_t mfd_bl_level_write_proc(struct file *file, const char *buffer, si
 		return -EFAULT;
 	}
 	///ret = sscanf(temp, "%d %d", (char *)&level,(char *)&mode);//hc add
-	ret = sscanf(temp, "%d %d", &level, &mode);//hc add
+	sscanf(temp, "%d %d", &level, &mode);//hc add
 	mfd_set_backlight_level(level,mode);
 
 	return count;
@@ -2943,8 +2942,6 @@ static int touch_event_handler(void *unused)
 	u8  pre_touch_num = 0;
 	u8  finger = 0;
 	static u8 pre_touch;
-	static u8 pre_key;
-	u8  key_value = 0;
 	u8 *coor_data = NULL;
 	s32 input_x = 0;
 	s32 input_y = 0;
@@ -2952,6 +2949,10 @@ static int touch_event_handler(void *unused)
 	s32 id = 0;
 	s32 i  = 0;
 	s32 ret = -1;
+#ifdef CONFIG_GTP_HAVE_TOUCH_KEY
+	u8  key_value = 0;
+	static u8 pre_key;
+#endif
 #ifdef GTP_PROXIMITY
 	s32 err = 0;
 	hwm_sensor_data sensor_data;
@@ -3267,10 +3268,8 @@ if(0){
 			touch_num = 0;
 			pre_touch = 0;
 		}
-
-#endif
 		pre_key = key_value;
-
+#endif
 		GTP_DEBUG("pre_touch:%02x, finger:%02x.", pre_touch, finger);
 
 		if (touch_num) {
