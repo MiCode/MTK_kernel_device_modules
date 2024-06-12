@@ -185,10 +185,7 @@ static int ise_rpmb_unprepare_kp(struct ufs_hba *hba)
 static long ise_rpmb_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 {
 	struct ufs_hba *hba = g_hba;
-	struct ufs_mtk_host *host;
 	int ret;
-
-	host = ufshcd_get_variant(hba);
 
 	switch (cmd) {
 	case IOR_ISE_RPMB_PROGRAM_KEY:

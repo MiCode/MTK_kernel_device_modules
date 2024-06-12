@@ -497,7 +497,7 @@ int eyemon_scan(struct ufs_hba *hba, int lane, int host_device,
 		}
 		strcat(eye_row, "\n");
 
-		EYEMON_PRINTF(out, *size, eye_row);
+		EYEMON_PRINTF(out, *size, "%s", eye_row);
 		memset(eye_row, 0, sizeof(eye_row));
 
 	}
