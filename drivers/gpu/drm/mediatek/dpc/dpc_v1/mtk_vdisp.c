@@ -21,7 +21,11 @@
 
 #define VDISPERR(fmt, args...) \
 	pr_info("[vdisp][err] %s:%d " fmt "\n", __func__, __LINE__, ##args)
+/*mmsys id*/
+#define MMSYS_DEFAULT 0x6989
+#define MMSYS_MT6899  0x6899
 
+/*default register of mt6989*/
 #define SPM_MML0_PWR_CON 0xE90
 #define SPM_MML1_PWR_CON 0xE94
 #define SPM_DIS0_PWR_CON 0xE98
@@ -45,6 +49,16 @@
 #define VOTE_DELAY_US 2
 #define POLL_DELAY_US 10
 #define TIMEOUT_300MS 300000
+
+/*mt6899 private register*/
+#define SPM_MML0_PWR_CON_MT6899 0xE7C
+#define SPM_MML1_PWR_CON_MT6899 0xE80
+#define SPM_DIS0_PWR_CON_MT6899 0xE84
+#define SPM_DIS1_PWR_CON_MT6899 0xE88
+#define SPM_OVL0_PWR_CON_MT6899 0xE8C
+#define SPM_ISO_CON_STA_MT6899 0xF1C
+#define SPM_ISO_CON_SET_MT6899 0xF20
+#define SPM_ISO_CON_CLR_MT6899 0xF24
 
 /* This id is only for disp internal use */
 enum disp_pd_id {
@@ -70,6 +84,7 @@ static struct device *g_dev[DISP_PD_NUM];
 static void __iomem *g_vlp_base;
 
 static bool vcp_warmboot_support;
+static unsigned int mmsys_id;
 
 static int regulator_event_notifier(struct notifier_block *nb,
 				    unsigned long event, void *data)
@@ -79,50 +94,61 @@ static int regulator_event_notifier(struct notifier_block *nb,
 	void __iomem *addr = 0;
 
 	if (event == REGULATOR_EVENT_ENABLE) {
-		addr = priv->spm_base + SPM_ISO_CON_CLR;
+		addr = priv->spm_base + (mmsys_id == MMSYS_DEFAULT ?
+					SPM_ISO_CON_CLR : SPM_ISO_CON_CLR_MT6899);
 		writel_relaxed(SPM_VDISP_EXT_BUCK_ISO, addr);
 		writel_relaxed(SPM_AOC_VDISP_SRAM_ISO_DIN, addr);
 		writel_relaxed(SPM_AOC_VDISP_SRAM_LATCH_ENB, addr);
 
-		// addr = priv->spm_base + SPM_ISO_CON_STA;
+		//addr = priv->spm_base + (mmsys_id == MMSYS_DEFAULT ?
+		//			SPM_ISO_CON_STA : SPM_ISO_CON_STA_MT6899);
 		// pr_info("REGULATOR_EVENT_ENABLE (%#llx) ", (u64)readl(addr));
 	} else if (event == REGULATOR_EVENT_PRE_DISABLE) {
-		addr = priv->spm_base + SPM_MML0_PWR_CON;
+		addr = priv->spm_base + (mmsys_id == MMSYS_DEFAULT ?
+					SPM_MML0_PWR_CON : SPM_MML0_PWR_CON_MT6899);
 		val = readl_relaxed(addr);
 		val &= ~SPM_RTFF_SAVE_FLAG;
 		writel_relaxed(val, addr);
 
-		addr = priv->spm_base + SPM_MML1_PWR_CON;
+		addr = priv->spm_base + (mmsys_id == MMSYS_DEFAULT ?
+					SPM_MML1_PWR_CON : SPM_MML1_PWR_CON_MT6899);
 		val = readl_relaxed(addr);
 		val &= ~SPM_RTFF_SAVE_FLAG;
 		writel_relaxed(val, addr);
 
-		addr = priv->spm_base + SPM_DIS0_PWR_CON;
+		addr = priv->spm_base + (mmsys_id == MMSYS_DEFAULT ?
+					SPM_DIS0_PWR_CON : SPM_DIS0_PWR_CON_MT6899);
 		val = readl_relaxed(addr);
 		val &= ~SPM_RTFF_SAVE_FLAG;
 		writel_relaxed(val, addr);
 
-		addr = priv->spm_base + SPM_DIS1_PWR_CON;
+		addr = priv->spm_base + (mmsys_id == MMSYS_DEFAULT ?
+					SPM_DIS1_PWR_CON : SPM_DIS1_PWR_CON_MT6899);
 		val = readl_relaxed(addr);
 		val &= ~SPM_RTFF_SAVE_FLAG;
 		writel_relaxed(val, addr);
 
-		addr = priv->spm_base + SPM_OVL0_PWR_CON;
+		addr = priv->spm_base + (mmsys_id == MMSYS_DEFAULT ?
+					SPM_OVL0_PWR_CON : SPM_OVL0_PWR_CON_MT6899);
 		val = readl_relaxed(addr);
 		val &= ~SPM_RTFF_SAVE_FLAG;
 		writel_relaxed(val, addr);
 
-		addr = priv->spm_base + SPM_OVL1_PWR_CON;
-		val = readl_relaxed(addr);
-		val &= ~SPM_RTFF_SAVE_FLAG;
-		writel_relaxed(val, addr);
+		if (mmsys_id == MMSYS_DEFAULT) {
+			addr = priv->spm_base + SPM_OVL1_PWR_CON;
+			val = readl_relaxed(addr);
+			val &= ~SPM_RTFF_SAVE_FLAG;
+			writel_relaxed(val, addr);
+		}
 
-		addr = priv->spm_base + SPM_ISO_CON_SET;
+		addr = priv->spm_base + (mmsys_id == MMSYS_DEFAULT ?
+					SPM_ISO_CON_SET : SPM_ISO_CON_SET_MT6899);
 		writel_relaxed(SPM_AOC_VDISP_SRAM_LATCH_ENB, addr);
 		writel_relaxed(SPM_AOC_VDISP_SRAM_ISO_DIN, addr);
 		writel_relaxed(SPM_VDISP_EXT_BUCK_ISO, addr);
 
-		// addr = priv->spm_base + SPM_ISO_CON_STA;
+		//addr = priv->spm_base + (mmsys_id == MMSYS_DEFAULT ?
+		//			SPM_ISO_CON_STA : SPM_ISO_CON_STA_MT6899);
 		// pr_info("REGULATOR_EVENT_PRE_DISABLE (%#llx) ", (u64)readl(addr));
 	}
 
@@ -306,6 +332,11 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 		g_vlp_base = priv->vlp_base;
 	}
 
+	if (of_device_is_compatible(dev->of_node, "mediatek,mt6899-vdisp-ctrl-v1"))
+		mmsys_id = MMSYS_MT6899;
+	else
+		mmsys_id = MMSYS_DEFAULT;
+
 	if (of_find_property(dev->of_node, "dis1-shutdown-supply", NULL)) {
 		rgu = devm_regulator_get(dev, "dis1-shutdown");
 		if (!IS_ERR(rgu)) {
@@ -349,6 +380,7 @@ static int mtk_vdisp_remove(struct platform_device *pdev)
 
 static const struct of_device_id mtk_vdisp_driver_v1_dt_match[] = {
 	{.compatible = "mediatek,mt6989-vdisp-ctrl-v1"},
+	{.compatible = "mediatek,mt6899-vdisp-ctrl-v1"},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_vdisp_driver_v1_dt_match);

@@ -8,6 +8,7 @@
 
 #define MMSYS_MT6989  0x6989
 #define MMSYS_MT6878  0x6878
+#define MMSYS_MT6899  0x6899
 
 #define DPCFUNC(fmt, args...) \
 	pr_info("[dpc] %s:%d " fmt "\n", __func__, __LINE__, ##args)
@@ -55,6 +56,26 @@ extern int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 #define SPM_REQ_EMI_STATE_MT6878      BIT(25)
 #define SPM_REQ_INFRA_STATE_MT6878    BIT(26)
 #define SPM_REQ_MAINPLL_STATE_MT6878  BIT(29)
+
+/* mt6899 private registers */
+#define SPM_DIS0_PWR_CON_MT6899 0xE84
+#define SPM_DIS1_PWR_CON_MT6899 0xE88
+#define SPM_OVL0_PWR_CON_MT6899 0xE8C
+#define SPM_MML1_PWR_CON_MT6899 0xE80
+
+#define SPM_PWR_STATUS_MT6899 0xf28 /* vcore[30] mml0[31]*/
+#define SPM_PWR_FLD_DISP_VCORE_MASK_MT6899   BIT(30)
+
+#define SPM_PWR_STATUS_MSB_MT6899 0xf30 /* mml1[0] dis[1][2] ovl[3] mminfra[4] */
+#define SPM_PWR_FLD_MML1_MASK_MT6899         BIT(0)
+#define SPM_PWR_FLD_DISP1_MASK_MT6899        BIT(2)
+#define SPM_PWR_FLD_MMINFRA_MASK_MT6899      BIT(4)
+
+#define SPM_REQ_STA_4_MT6899 0x85C
+#define SPM_REQ_APSRC_STATE_MT6899    BIT(16)
+#define SPM_REQ_EMI_STATE_MT6899      BIT(18)
+#define SPM_REQ_MMINFRA_STATE_MT6899  BIT(19)
+#define SPM_REQ_MAINPLL_STATE_MT6899  BIT(22)
 
 /* common registers*/
 #define VCORE_DVFSRC_HRT_BW_MASK      0x3FF
@@ -330,6 +351,15 @@ enum dpc_idle_id {
 	DPC_IDLE_ID_WINDOW_MML,
 	DPC_IDLE_ID_WINDOW,
 	DPC_IDLE_ID_MAX,
+};
+
+enum dpc_mtcmos_id {
+	DPC_MTCMOS_ID_MML0,
+	DPC_MTCMOS_ID_MML1, //1
+	DPC_MTCMOS_ID_DIS0,
+	DPC_MTCMOS_ID_DIS1,
+	DPC_MTCMOS_ID_OVL0,
+	DPC_MTCMOS_ID_OVL1, //5
 };
 
 struct mtk_dpc_dt_usage {
