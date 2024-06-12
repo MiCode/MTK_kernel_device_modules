@@ -7,7 +7,7 @@
 
 #include "cmdq-util.h"
 
-#define MDP_THRD_MIN	5
+#define MDP_THRD_MIN	11
 
 const char *cmdq_thread_module_dispatch(phys_addr_t gce_pa, s32 thread)
 {

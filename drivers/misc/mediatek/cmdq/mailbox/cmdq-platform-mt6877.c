@@ -6,7 +6,7 @@
 #include <dt-bindings/gce/mt6877-gce.h>
 #include "cmdq-util.h"
 
-#define MDP_THRD_MIN	10
+#define MDP_THRD_MIN	19
 
 const char *cmdq_thread_module_dispatch(phys_addr_t gce_pa, s32 thread)
 {
