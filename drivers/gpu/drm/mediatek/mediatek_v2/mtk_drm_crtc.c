@@ -13426,7 +13426,7 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 				DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL_MT6991);
 
 		/*Set BYPASS_MUX_SHADOW*/
-		writel(0x000f0001, mtk_crtc->config_regs +
+		writel(0x00ff0001, mtk_crtc->config_regs +
 				DISP_REG_CONFIG_MMSYS_BYPASS_MUX_SHADOW);
 
 		if (mtk_crtc->side_config_regs) {
@@ -13434,7 +13434,7 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 					DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL_MT6991);
 
 			/*Set BYPASS_MUX_SHADOW*/
-			writel(0x000f0001, mtk_crtc->side_config_regs +
+			writel(0x00ff0001, mtk_crtc->side_config_regs +
 					DISP_REG_CONFIG_MMSYS1_BYPASS_MUX_SHADOW_MT6991);
 		}
 
