@@ -75,6 +75,32 @@ static const struct snd_soc_dai_ops mtk_dai_stub_ops = {
 	.startup = multimedia_startup,
 };
 
+static const struct snd_pcm_hardware i2s_spk_hardware = {
+	/* Random values to keep userspace happy when checking constraints */
+	.info			= SNDRV_PCM_INFO_INTERLEAVED |
+				  SNDRV_PCM_INFO_BLOCK_TRANSFER,
+	.buffer_bytes_max	= 128*1024,
+	.period_bytes_min	= PAGE_SIZE,
+	.period_bytes_max	= PAGE_SIZE*2,
+	.periods_min		= 2,
+	.periods_max		= 128,
+};
+
+static int i2s_spk_startup(struct snd_pcm_substream *substream,
+			      struct snd_soc_dai *dai)
+{
+	snd_soc_set_runtime_hwparams(substream, &i2s_spk_hardware);
+
+	snd_pcm_hw_constraint_list(substream->runtime, 0,
+				   SNDRV_PCM_HW_PARAM_RATE,
+				   &constraints_sample_rates);
+	return 0;
+}
+
+static const struct snd_soc_dai_ops mtk_dai_i2s_spk_ops = {
+	.startup = i2s_spk_startup,
+};
+
 static bool i2s2_adc2_is_started;
 
 /* i2s2 adc2 data */
@@ -718,6 +744,30 @@ static struct snd_soc_dai_driver mtk_dai_stub_dai[] = {
 			},
 		.name = MT_SOC_EXTSPKDAI_NAME,
 		.ops = &mtk_dai_stub_ops,
+	},
+	{
+		.playback = {
+
+				.stream_name = MT_SOC_SPEAKER_STREAM_NAME,
+				.rates = SNDRV_PCM_RATE_8000_192000,
+				.formats = SND_SOC_ADV_MT_FMTS,
+				.channels_min = 1,
+				.channels_max = 2,
+				.rate_min = 8000,
+				.rate_max = 192000,
+			},
+		.capture = {
+
+				.stream_name = MT_SOC_SPEAKER_STREAM_NAME,
+				.rates = SNDRV_PCM_RATE_8000_192000,
+				.formats = SND_SOC_ADV_MT_FMTS,
+				.channels_min = 1,
+				.channels_max = 2,
+				.rate_min = 8000,
+				.rate_max = 192000,
+			},
+		.name = MT_SOC_I2SSPKDAI_NAME,
+		.ops = &mtk_dai_i2s_spk_ops,
 	},
 	{
 		.playback = {
