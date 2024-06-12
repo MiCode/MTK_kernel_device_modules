@@ -1576,7 +1576,6 @@
 
 		imgsys2_config: imgsys2_config@15820000 {
 			compatible = "mediatek,imgsys2", "syscon";
-			power-domains = <&scpsys MT6877_POWER_DOMAIN_ISP1>;
 			reg = <0 0x15820000 0 0x1000>;
 		};
 
@@ -1590,7 +1589,7 @@
 			/bits/ 16 <CMDQ_EVENT_MFB_DONE_LINK_MISC>;
 			msf_token =
 			/bits/ 16 <CMDQ_SYNC_TOKEN_MSF>;
-			power-domains = <&scpsys MT6877_POWER_DOMAIN_ISP0>;
+			power-domains = <&scpsys MT6877_POWER_DOMAIN_ISP1>;
 			clocks =
 					<&imgsys2_clk CLK_IMGSYS2_LARB9>,
 					<&imgsys2_clk CLK_IMGSYS2_MSS>,
@@ -1642,7 +1641,6 @@
 		mss@15812000 {
 			compatible = "mediatek,mss";
 			reg = <0 0x15812000 0 0x1000>;
-			power-domains = <&scpsys MT6877_POWER_DOMAIN_ISP1>;
 			interrupts = <GIC_SPI 434 IRQ_TYPE_LEVEL_HIGH 0>;
 			mboxes = <&gce_mbox 17 0 CMDQ_THR_PRIO_1>;
 			mss_frame_done =
