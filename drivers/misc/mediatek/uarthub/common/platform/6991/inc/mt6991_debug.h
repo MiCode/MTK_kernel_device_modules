@@ -13,21 +13,21 @@
 		int _d0, _d1, _d2, _cmm;\
 		int _ap = 0;\
 		unsigned char _buf[256];\
-		int _len;\
-		int _len_tag;\
 		_op1(_d0, _p1, _p2, uartip, 0, _op2);\
 		_op1(_d1, _p1, _p2, uartip, 1, _op2);\
 		_op1(_d2, _p1, _p2, uartip, 2, _op2);\
 		_op1(_cmm, _p1, _p2, uartip, 3, _op2);\
 		if (_print_ap == 1)\
 			_op1(_ap, _p1, _p2, apuart, 3, _op2);\
-		_len = snprintf(_buf, sizeof(_buf),\
+		if (snprintf(_buf, sizeof(_buf),\
 			_str"=["_t"-"_t"-"_t"-"_t"-"_t"],",\
-			_d0, _d1, _d2, _cmm, _ap);\
+			_d0, _d1, _d2, _cmm, _ap) < 0)\
+			break;\
 		if (dmp_info_buf[0] == '\0') {\
-			_len_tag = snprintf(dmp_info_buf, DBG_LOG_LEN,\
+			if (snprintf(dmp_info_buf, DBG_LOG_LEN,\
 			"[%s][%s],",\
-			_def_tag, ((_tag == NULL) ? "null" : _tag));\
+			_def_tag, ((_tag == NULL) ? "null" : _tag)) < 0)\
+				break;\
 			dmp_info_buf[DBG_LOG_LEN - 1] = '\0';\
 		} \
 		strncat(dmp_info_buf, _buf, DBG_LOG_LEN);\
