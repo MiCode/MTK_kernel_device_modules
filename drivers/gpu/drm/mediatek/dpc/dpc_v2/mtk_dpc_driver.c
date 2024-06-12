@@ -1707,17 +1707,50 @@ static void process_dbg_opt(const char *opt)
 	int ret = 0;
 	u32 v1 = 0, v2 = 0, v3 = 0;
 	u32 mminfra_hangfree_val = 0;
+	u32 handshake_val = 0;
 
 	if (strncmp(opt, "cap:", 4) == 0) {
 		ret = sscanf(opt, "cap:0x%x\n", &v1);
+		if (ret != 1) {
+			DPCDUMP("[Waring] cap sscanf not match");
+			goto err;
+		}
 		DPCDUMP("cap(0x%x->0x%x)", g_priv->vidle_mask, v1);
 		g_priv->vidle_mask = v1;
 	} else if (strncmp(opt, "avs:", 4) == 0) {
-		ret = sscanf(opt, "avs:%u,%u\n", &v1, &v2);
-		if (ret != 2)
-			goto err;
-		writel(v2, MEM_VDISP_AVS_STEP(v1));
-		mmdvfs_force_step_by_vcp(2, 4 - v1);
+		handshake_val = readl(MEM_VDISP_AVS_STEP(5));
+		if (strncmp(opt + 4, "off:", 4) == 0) {
+			ret = sscanf(opt, "avs:off:%u,%u\n", &v1, &v2);
+			/* opp(v1): max 5 level; step(v2) max 32 level; v1(5) is used to toggle AVS */
+			if ((ret != 2)||(v1 < 0 || v2 < 0 || v1 > 5 || v2 >= 31)) {
+				DPCDUMP("[Waring] avs:off sscanf not match");
+				goto err;
+			}
+			/*Off avs*/
+			handshake_val |= BIT(0);
+			writel(handshake_val, MEM_VDISP_AVS_STEP(5));
+			/*Set opp and step*/
+			writel(v2, MEM_VDISP_AVS_STEP(v1));
+			mmdvfs_force_step_by_vcp(2, 4 - v1);
+		} else if (strncmp(opt + 4, "t_ag:", 5) == 0) {
+			ret = sscanf(opt, "avs:t_ag:%u\n", &v3);
+			if (ret != 1) {
+				DPCDUMP("[Waring]avs:t_ag sscanf not match");
+				goto err;
+			}
+		} else if (strncmp(opt + 4, "on", 2) == 0) {
+			/*On avs*/
+			handshake_val &= ~BIT(0);
+			writel(handshake_val, MEM_VDISP_AVS_STEP(5));
+		} else if (strncmp(opt + 4, "dbg:on", 6) == 0) {
+			/*On avs debug mode */
+			handshake_val |= BIT(1);
+			writel(handshake_val, MEM_VDISP_AVS_STEP(5));
+		} else if (strncmp(opt + 4, "dbg:off", 7) == 0) {
+			/*Off avs debug mode*/
+			handshake_val &= ~BIT(1);
+			writel(handshake_val, MEM_VDISP_AVS_STEP(5));
+		}
 	} else if (strncmp(opt, "vote:", 5) == 0) {
 		ret = sscanf(opt, "vote:%u\n", &v1);
 		if (ret != 1) {
