@@ -6,6 +6,7 @@
 #ifndef __GED_LOG_H__
 #define __GED_LOG_H__
 
+#include <linux/string_helpers.h>
 #include "ged_type.h"
 
 #if defined(__GNUC__)
@@ -70,5 +71,23 @@ extern void ged_dump_fw(void);
 #endif
 
 unsigned int is_gpu_ged_log_enable(void);
+
+//debug_node info
+#define MAX_NAME_SIZE 256
+struct cmd_info {
+	/* unit: ms */
+	int pid;
+	unsigned int value;
+	unsigned int ori_value;
+	unsigned long long ts;
+	char buffer[MAX_NAME_SIZE];
+	int user_id; //0: unexpected user, 1:sh (cmd), 2:powerhal
+};
+
+void init_cmd_info(struct cmd_info *cmd, unsigned int value);
+
+// NOTICE: do not set_cmd_info with holding lock
+void set_cmd_info(struct cmd_info *cmd, unsigned int ori_value, unsigned int value);
+ssize_t get_cmd_info_dump(char *buf, int sz, ssize_t pos, struct cmd_info *cmd);
 
 #endif

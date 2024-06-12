@@ -94,6 +94,9 @@ static unsigned int g_last_def_commit_freq_id;
 static unsigned int g_cust_upbound_freq_id;
 static unsigned int g_cust_boost_freq_id;
 
+static struct cmd_info g_cust_upbound_freq_id_info;
+static struct cmd_info g_cust_boost_freq_id_info;
+
 #define LIMITER_FPSGO 0
 #define LIMITER_APIBOOST 1
 #define ENABLE_ASYNC_RATIO 1
@@ -1283,6 +1286,23 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 			ged_get_cur_limiter_ceil());
 		trace_tracing_mark_write(5566, "limitter_floor",
 			ged_get_cur_limiter_floor());
+		if (ged_get_cur_limiter_ceil() == LIMIT_POWERHAL) {
+			trace_tracing_mark_write(5566, "limitter_ceil_pid",
+				g_cust_upbound_freq_id_info.pid);
+			trace_tracing_mark_write(5566, "limitter_ceil_id",
+				g_cust_upbound_freq_id_info.user_id);
+			trace_tracing_mark_write(5566, "limitter_ceil_cus_val",
+				g_cust_upbound_freq_id_info.value);
+		}
+
+		if (ged_get_cur_limiter_floor() == LIMIT_POWERHAL) {
+			trace_tracing_mark_write(5566, "limitter_floor_pid",
+				g_cust_boost_freq_id_info.pid);
+			trace_tracing_mark_write(5566, "limitter_floor_id",
+				g_cust_boost_freq_id_info.user_id);
+			trace_tracing_mark_write(5566, "limitter_floor_cus_val",
+				g_cust_boost_freq_id_info.value);
+		}
 		trace_tracing_mark_write(5566, "commit_type", eCommitType);
 		if (dcs_get_adjust_support() % 2 != 0)
 			trace_tracing_mark_write(5566, "preserve", g_force_disable_dcs);
@@ -1418,6 +1438,23 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 		ged_get_cur_limiter_ceil());
 	trace_tracing_mark_write(5566, "limitter_floor",
 		ged_get_cur_limiter_floor());
+	if (ged_get_cur_limiter_ceil() == LIMIT_POWERHAL) {
+		trace_tracing_mark_write(5566, "limitter_ceil_pid",
+			g_cust_upbound_freq_id_info.pid);
+		trace_tracing_mark_write(5566, "limitter_ceil_id",
+			g_cust_upbound_freq_id_info.user_id);
+		trace_tracing_mark_write(5566, "limitter_ceil_cus_val",
+			g_cust_upbound_freq_id_info.value);
+	}
+
+	if (ged_get_cur_limiter_floor() == LIMIT_POWERHAL) {
+		trace_tracing_mark_write(5566, "limitter_floor_pid",
+			g_cust_boost_freq_id_info.pid);
+		trace_tracing_mark_write(5566, "limitter_floor_id",
+			g_cust_boost_freq_id_info.user_id);
+		trace_tracing_mark_write(5566, "limitter_floor_cus_val",
+			g_cust_boost_freq_id_info.value);
+	}
 	if (eCommitType != GED_DVFS_EB_DESIRE_COMMIT)
 		trace_tracing_mark_write(5566, "commit_type", eCommitType);
 	else
@@ -3088,6 +3125,8 @@ static unsigned int ged_dvfs_get_gpu_freq_level_count(void)
 static void ged_dvfs_custom_boost_gpu_freq(unsigned int ui32FreqLevel)
 {
 	int minfreq_idx;
+	unsigned int ui32FreqLevel_ori = ui32FreqLevel;
+	char buffer[MAX_NAME_SIZE];
 
 	minfreq_idx = ged_get_min_oppidx_real();
 
@@ -3112,12 +3151,18 @@ static void ged_dvfs_custom_boost_gpu_freq(unsigned int ui32FreqLevel)
 	}
 
 	mutex_unlock(&gsDVFSLock);
+
+	set_cmd_info(&g_cust_boost_freq_id_info, ui32FreqLevel_ori, ui32FreqLevel);
+	get_cmd_info_dump(buffer, sizeof(buffer), 0, &g_cust_boost_freq_id_info);
+	GED_LOGD("set_cmd %s", buffer);
 }
 
 /* set buttom gpufreq from PowerHal by MAX_FREQ */
 static void ged_dvfs_custom_ceiling_gpu_freq(unsigned int ui32FreqLevel)
 {
 	int minfreq_idx;
+	unsigned int ui32FreqLevel_ori = ui32FreqLevel;
+	char buffer[MAX_NAME_SIZE];
 
 	minfreq_idx = ged_get_min_oppidx_real();
 
@@ -3141,6 +3186,10 @@ static void ged_dvfs_custom_ceiling_gpu_freq(unsigned int ui32FreqLevel)
 		gpu_cust_upbound_freq, GED_DVFS_CUSTOM_CEIL_COMMIT);
 
 	mutex_unlock(&gsDVFSLock);
+
+	set_cmd_info(&g_cust_upbound_freq_id_info, ui32FreqLevel_ori, ui32FreqLevel);
+	get_cmd_info_dump(buffer, sizeof(buffer), 0, &g_cust_upbound_freq_id_info);
+	GED_LOGD("set_cmd %s", buffer);
 }
 
 static unsigned int ged_dvfs_get_bottom_gpu_freq(void)
@@ -3166,6 +3215,26 @@ unsigned int ged_dvfs_get_custom_ceiling_gpu_freq(void)
 unsigned int ged_dvfs_get_custom_boost_gpu_freq(void)
 {
 	return g_cust_boost_freq_id;
+}
+
+struct cmd_info ged_dvfs_get_custom_ceiling_gpu_freq_info(void)
+{
+	return g_cust_upbound_freq_id_info;
+}
+
+struct cmd_info ged_dvfs_get_custom_boost_gpu_freq_info(void)
+{
+	return g_cust_boost_freq_id_info;
+}
+
+ssize_t ged_dvfs_get_custom_ceiling_gpu_freq_info_str(char *buf,                    int sz, ssize_t pos)
+{
+	return get_cmd_info_dump(buf, sz, pos, &g_cust_upbound_freq_id_info);
+}
+
+ssize_t ged_dvfs_get_custom_boost_gpu_freq_info_str(char *buf, int sz, ssize_t pos)
+{
+	return get_cmd_info_dump(buf, sz, pos, &g_cust_boost_freq_id_info);
 }
 
 static void ged_dvfs_margin_value(int i32MarginValue)
@@ -4003,9 +4072,11 @@ GED_ERROR ged_dvfs_system_init(void)
 	gpu_bottom_freq = ged_get_freq_by_idx(g_bottom_freq_id);
 
 	g_cust_boost_freq_id = ged_get_min_oppidx_real();
+	init_cmd_info(&g_cust_upbound_freq_id_info, ged_get_min_oppidx_real());
 	gpu_cust_boost_freq = ged_get_freq_by_idx(g_cust_boost_freq_id);
 
 	g_cust_upbound_freq_id = 0;
+	init_cmd_info(&g_cust_upbound_freq_id_info, 0);
 	gpu_cust_upbound_freq = ged_get_freq_by_idx(g_cust_upbound_freq_id);
 
 	g_policy_tar_freq = 0;
