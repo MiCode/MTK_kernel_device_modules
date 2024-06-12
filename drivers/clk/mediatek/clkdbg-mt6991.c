@@ -1078,7 +1078,7 @@ static int start_clkdbg_test_task(void)
 	char thread_name[THREAD_LEN];
 	int ret = 0;
 
-	if (clkdbg_thread_cnt >= THREAD_NUM)
+	if (clkdbg_thread_cnt >= THREAD_NUM || clkdbg_thread_cnt < 0)
 		return 0;
 
 	if (clkdbg_test_thread[clkdbg_thread_cnt]) {
@@ -1087,7 +1087,7 @@ static int start_clkdbg_test_task(void)
 	}
 
 	ret = snprintf(thread_name, THREAD_LEN, "clkdbg_thread_%d", clkdbg_thread_cnt);
-	if (ret) {
+	if (ret < 0) {
 		pr_info("%s snprintf error(%d)\n", __func__, ret);
 		return ret;
 	}
