@@ -347,7 +347,6 @@ static void mrdump_mini_build_task_info(struct pt_regs *regs)
 	int i;
 #endif
 	struct task_struct *tsk;
-	struct task_struct *previous;
 	struct aee_process_info *cur_proc;
 
 	if (!mrdump_mini_ehdr) {
@@ -376,7 +375,6 @@ static void mrdump_mini_build_task_info(struct pt_regs *regs)
 			sz = SZ_128;
 			break;
 		}
-		previous = tsk;
 		tsk = tsk->real_parent;
 	} while (tsk && (tsk->pid != 0) && (tsk->pid != 1));
 	if (!strncmp(cur_proc->process_path, symbol, sz)) {
