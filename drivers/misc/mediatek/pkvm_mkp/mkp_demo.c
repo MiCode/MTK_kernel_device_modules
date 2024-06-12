@@ -7,6 +7,7 @@
 #define pr_fmt(fmt) "MKP: " fmt
 
 #include <asm/kvm_pkvm_module.h>
+#include <asm/kvm_host.h>
 #include <asm/archrandom.h>
 #include <linux/of.h>
 #include <linux/of_reserved_mem.h>
@@ -32,6 +33,7 @@
 #include "selinux/mkp_policycap.h"
 
 #include "mkp_demo.h"
+#include "mkp_demo_host.h"
 
 #include "mkp.h"
 #include "trace_mkp.h"
@@ -44,8 +46,6 @@ DEBUG_SET_LEVEL(DEBUG_LEVEL_ERR);
 #define SUPPORT_FULL_KERNEL_CODE_2M
 #define DEFAULT_MAX_PID 32768
 
-int __kvm_nvhe_mkp_hyp_init(const struct pkvm_module_ops *ops);
-void __kvm_nvhe_handle__mkp_hyp_hvc(struct kvm_cpu_context *ctx);
 int hvc_number;
 
 struct work_struct *avc_work;
@@ -1101,14 +1101,14 @@ int __init mkp_demo_init(void)
 	}
 
 	/* load mkp el2 module */
-	ret = pkvm_load_el2_module(__kvm_nvhe_mkp_hyp_init, &token);
+	ret = pkvm_load_el2_module(kvm_nvhe_sym(mkp_hyp_init), &token);
 	if (ret) {
 		pr_info("%s:%d, ret: %d\n", __func__, __LINE__, ret);
 		return ret;
 	}
 
 	/* register hvc call  */
-	ret = pkvm_register_el2_mod_call(__kvm_nvhe_handle__mkp_hyp_hvc, token);
+	ret = pkvm_register_el2_mod_call(kvm_nvhe_sym(handle__mkp_hyp_hvc), token);
 	if (ret < 0)
 		return ret;
 

@@ -31,26 +31,26 @@ hvc_retval_t mkp_hvc_handler(u64 x0, u64 x1, u64 x2, u64 x3, u64 x4, u64 x5, u64
 /* Allow setup of essentials or not */
 static int stop_setup_essentials;
 
-void handle__mkp_hyp_hvc(struct kvm_cpu_context *ctx)
+void handle__mkp_hyp_hvc(struct user_pt_regs *regs)
 {
 	hvc_retval_t ret = {{0}};
 
 	/* Handle the call */
-	DECLARE_REG(u64, x0, ctx, 1);
-	DECLARE_REG(u64, x1, ctx, 2);
-	DECLARE_REG(u64, x2, ctx, 3);
-	DECLARE_REG(u64, x3, ctx, 4);
-	DECLARE_REG(u64, x4, ctx, 5);
-	DECLARE_REG(u64, x5, ctx, 6);
-	DECLARE_REG(u64, x6, ctx, 7);
-	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
+	DECLARE_REG(u64, x0, regs, 1);
+	DECLARE_REG(u64, x1, regs, 2);
+	DECLARE_REG(u64, x2, regs, 3);
+	DECLARE_REG(u64, x3, regs, 4);
+	DECLARE_REG(u64, x4, regs, 5);
+	DECLARE_REG(u64, x5, regs, 6);
+	DECLARE_REG(u64, x6, regs, 7);
 
+	cpu_reg(regs, 0) = SMCCC_RET_SUCCESS;
 	ret = mkp_hvc_handler(x0, x1, x2, x3, x4, x5, x6);
 
-	cpu_reg(ctx, 1) = ret.x[0];
-	cpu_reg(ctx, 2) = ret.x[1];
-	cpu_reg(ctx, 3) = ret.x[2];
-	cpu_reg(ctx, 4) = ret.x[3];
+	cpu_reg(regs, 1) = ret.x[0];
+	cpu_reg(regs, 2) = ret.x[1];
+	cpu_reg(regs, 3) = ret.x[2];
+	cpu_reg(regs, 4) = ret.x[3];
 }
 
 int mkp_hyp_prepare1(u64 start_ipa, u64 dram_size, u64 heap_start, u64 heap_size, u64 smccc_trng_available)

@@ -6,6 +6,7 @@
 #ifndef __MKP_DEMO_H
 #define __MKP_DEMO_H
 
+#include <asm/kvm_asm.h>
 #include "debug.h"
 
 struct avc_sbuf_content {
