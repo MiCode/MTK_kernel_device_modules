@@ -2098,45 +2098,6 @@ cpus {
 			compatible = "microtrust,tester-v1";
 		};
 
-		ssram1@10450000 {
-			compatible = "mmio-sram_1";
-			reg = <0x0 0x10450000 0x0 0x80>;
-
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges = <0 0x0 0x10450000 0x80>;
-
-			scmi_tx_shmem: tiny_mbox@0 {
-				compatible = "arm,scmi-tx-shmem";
-				reg = <0x0 0x80>;
-			};
-		};
-
-		ssram2@10460000 {
-			compatible = "mmio-sram_2";
-			reg = <0x0 0x10460000 0x0 0x80>;
-
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges = <0 0x0 0x10460000 0x80>;
-
-			scmi_rx_shmem: tiny_mbox@1 {
-				compatible = "arm,scmi-rx-shmem";
-				reg = <0x0 0x80>;
-			};
-		};
-
-		tinysys_mbox: tinysys_mbox@10451000 {
-			compatible = "mediatek,tinysys_mbox";
-			reg = <0 0x10451000 0 0x1000>,
-				  <0 0x10461000 0 0x1000>;
-			/* for profiling */
-			shmem = <&scmi_tx_shmem>, <&scmi_rx_shmem>;
-			interrupts = <GIC_SPI 244 IRQ_TYPE_LEVEL_HIGH 0>,
-					 <GIC_SPI 245 IRQ_TYPE_LEVEL_HIGH 0>;
-			#mbox-cells = <1>;
-		};
-
 		scp_adsp: scp_adsp@10720000 {
 			compatible = "mediatek,mt8192-scp_adsp", "syscon";
 			reg = <0 0x10720000 0 0x1000>;
