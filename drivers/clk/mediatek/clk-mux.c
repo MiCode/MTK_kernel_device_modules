@@ -713,7 +713,7 @@ static int mtk_clk_mux_determine_rate_closest(struct clk_hw *hw, struct clk_rate
 
 static int mtk_clk_mux_determine_rate(struct clk_hw *hw, struct clk_rate_request *req)
 {
-	int idx, parent_index = -1;
+	int parent_index = -1;
 	int ret = 0;
 
 	if (mux_dfs_ops != NULL && mux_dfs_ops->get_opp != NULL)
@@ -722,7 +722,6 @@ static int mtk_clk_mux_determine_rate(struct clk_hw *hw, struct clk_rate_request
 	if (parent_index >= 0) {
 		ret = mtk_clk_hwv_mux_set_parent(hw, parent_index);
 		if (!ret) {
-			idx = mtk_clk_mux_get_parent(hw);
 			req->best_parent_hw = clk_hw_get_parent_by_index(hw, parent_index);
 			if (!req->best_parent_hw)
 				return -EINVAL;
@@ -742,7 +741,7 @@ static int mtk_clk_mux_determine_rate(struct clk_hw *hw, struct clk_rate_request
 
 static int mtk_clk_mux_upd_determine_rate(struct clk_hw *hw, struct clk_rate_request *req)
 {
-	int idx, parent_index = -1;
+	int parent_index = -1;
 	int ret = 0;
 
 	if (mux_dfs_ops != NULL && mux_dfs_ops->get_opp != NULL)
@@ -751,7 +750,6 @@ static int mtk_clk_mux_upd_determine_rate(struct clk_hw *hw, struct clk_rate_req
 	if (parent_index >= 0) {
 		ret = mtk_clk_hwv_mux_upd_set_parent(hw, parent_index);
 		if (!ret) {
-			idx = mtk_clk_mux_get_parent(hw);
 			req->best_parent_hw = clk_hw_get_parent_by_index(hw, parent_index);
 			if (!req->best_parent_hw)
 				return -EINVAL;

@@ -583,12 +583,6 @@ static const struct mtk_gate_regs cam_m2_cg_regs = {
 	.sta_ofs = 0xC0,
 };
 
-static const struct mtk_gate_regs cam_m2_hwv_regs = {
-	.set_ofs = 0x0008,
-	.clr_ofs = 0x000C,
-	.sta_ofs = 0x2C04,
-};
-
 #define GATE_CAM_M0(_id, _name, _parent, _shift) {	\
 		.id = _id,				\
 		.name = _name,				\
@@ -645,19 +639,6 @@ static const struct mtk_gate_regs cam_m2_hwv_regs = {
 		.id = _id,				\
 		.name = _name,				\
 		.parent_name = _parent,			\
-	}
-
-#define GATE_HWV_CAM_M2(_id, _name, _parent, _shift) {	\
-		.id = _id,						\
-		.name = _name,						\
-		.parent_name = _parent,					\
-		.hwv_comp = "mm-hw-ccf-regmap",				\
-		.regs = &cam_m2_cg_regs,			\
-		.hwv_regs = &cam_m2_hwv_regs,		\
-		.shift = _shift,					\
-		.ops = &mtk_clk_gate_ops_hwv_inv,				\
-		.dma_ops = &mtk_clk_gate_ops_no_setclr_inv,			\
-		.flags = CLK_USE_HW_VOTER,	\
 	}
 
 static const struct mtk_gate cam_m_clks[] = {

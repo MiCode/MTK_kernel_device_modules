@@ -544,7 +544,7 @@ static int __mt_get_freq(unsigned int ID, int type)
 	void __iomem *cali0_addr = fm_base[FM_CKSYS] + CLK26CALI_0;
 	void __iomem *cali1_addr = fm_base[FM_CKSYS] + CLK26CALI_1;
 	void __iomem *prot_idle_addr = fm_base[FM_CKSYS] + CLK_PROT_IDLE_REG_0;
-	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0, clk26cali_1 = 0;
+	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0;
 	unsigned int clk_div = 1, post_div = 1;
 	unsigned long flags;
 	int output = 0, i = 0;
@@ -591,7 +591,6 @@ static int __mt_get_freq(unsigned int ID, int type)
 	clk_misc_cfg_0 = clk_readl(misc_addr);
 	clk_writel(misc_addr, (clk_misc_cfg_0 & 0x00FFFFFF) | (3 << 24));
 
-	clk26cali_1 = clk_readl(cali1_addr);
 	clk_writel(cali0_addr, 0x9000);
 	clk_writel(cali0_addr, 0x9010);
 
@@ -617,8 +616,6 @@ static int __mt_get_freq(unsigned int ID, int type)
 
 	clk_writel(dbg_addr, clk_dbg_cfg);
 	clk_writel(misc_addr, clk_misc_cfg_0);
-	/*clk_writel(CLK26CALI_0, clk26cali_0);*/
-	/*clk_writel(CLK26CALI_1, clk26cali_1);*/
 
 	clk_writel(cali0_addr, FM_RST_BITS);
 	fmeter_unlock(flags);
@@ -652,7 +649,7 @@ static int __mt_get_freq_ck2(unsigned int ID, int type)
 	void __iomem *cali0_addr = fm_base[FM_CKSYS_GP2] + CKSYS2_CLK26CALI_0;
 	void __iomem *cali1_addr = fm_base[FM_CKSYS_GP2] + CKSYS2_CLK26CALI_1;
 	void __iomem *prot_idle_addr = fm_base[FM_CKSYS_GP2] + CKSYS2_CLK_PROT_IDLE_REG_0;
-	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0, clk26cali_1 = 0;
+	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0;
 	unsigned int clk_div = 1, post_div = 1;
 	unsigned long flags;
 	int output = 0, i = 0;
@@ -699,7 +696,6 @@ static int __mt_get_freq_ck2(unsigned int ID, int type)
 	clk_misc_cfg_0 = clk_readl(misc_addr);
 	clk_writel(misc_addr, (clk_misc_cfg_0 & 0x00FFFFFF) | (3 << 24));
 
-	clk26cali_1 = clk_readl(cali1_addr);
 	clk_writel(cali0_addr, 0x9000);
 	clk_writel(cali0_addr, 0x9010);
 
@@ -735,8 +731,6 @@ static int __mt_get_freq_ck2(unsigned int ID, int type)
 
 	clk_writel(dbg_addr, clk_dbg_cfg);
 	clk_writel(misc_addr, clk_misc_cfg_0);
-	/*clk_writel(CKSYS2_CLK26CALI_0, clk26cali_0);*/
-	/*clk_writel(CKSYS2_CLK26CALI_1, clk26cali_1);*/
 
 	clk_writel(cali0_addr, FM_RST_BITS);
 	fmeter_unlock(flags);
