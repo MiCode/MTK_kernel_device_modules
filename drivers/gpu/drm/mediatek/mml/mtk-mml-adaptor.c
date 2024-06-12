@@ -573,7 +573,7 @@ int mml_ctx_init(struct mml_ctx *ctx, struct mml_dev *mml,
 		}
 	}
 	if (threads[3]) {
-		ctx->kt_config[0] = kthread_create_worker(0, "%s", threads[3]);
+		ctx->kt_config[1] = kthread_create_worker(0, "%s", threads[3]);
 		if (IS_ERR(ctx->kt_config[1])) {
 			mml_err("[adpt]fail to create config thread 1 %s err %pe",
 				threads[3], ctx->kt_config[1]);
@@ -588,14 +588,22 @@ int mml_ctx_init(struct mml_ctx *ctx, struct mml_dev *mml,
 	return 0;
 
 err:
-	if (ctx->kt_done)
+	if (ctx->kt_done) {
 		kthread_destroy_worker(ctx->kt_done);
-	if (ctx->wq_destroy)
+		ctx->kt_done = NULL;
+	}
+	if (ctx->wq_destroy) {
 		destroy_workqueue(ctx->wq_destroy);
-	if (ctx->kt_config[0])
+		ctx->wq_destroy = NULL;
+	}
+	if (ctx->kt_config[0]) {
 		kthread_destroy_worker(ctx->kt_config[0]);
-	if (ctx->kt_config[1])
+		ctx->kt_config[0] = NULL;
+	}
+	if (ctx->kt_config[1]) {
 		kthread_destroy_worker(ctx->kt_config[1]);
+		ctx->kt_config[1] = NULL;
+	}
 	return -EIO;
 }
 
@@ -619,11 +627,17 @@ void mml_ctx_deinit(struct mml_ctx *ctx)
 	}
 
 	destroy_workqueue(ctx->wq_destroy);
-	if (ctx->kt_config[0])
+	ctx->wq_destroy = NULL;
+	if (ctx->kt_config[0]) {
 		kthread_destroy_worker(ctx->kt_config[0]);
-	if (ctx->kt_config[1])
+		ctx->kt_config[0] = NULL;
+	}
+	if (ctx->kt_config[1]) {
 		kthread_destroy_worker(ctx->kt_config[1]);
+		ctx->kt_config[1] = NULL;
+	}
 	kthread_destroy_worker(ctx->kt_done);
+	ctx->kt_done = NULL;
 
 	for (i = 0; i < ARRAY_SIZE(ctx->tile_cache); i++)
 		for (j = 0; j < ARRAY_SIZE(ctx->tile_cache[i].func_list); j++)
