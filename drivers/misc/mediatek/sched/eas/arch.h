@@ -138,7 +138,7 @@ unsigned long update_dsu_status(struct energy_env *eenv, int quant,
 		unsigned int output[6];
 
 		dsu_volt = update_dsu_status_hook(eenv->android_vendor_data1, quant,
-			eenv->wl, eenv->gear_idx, freq, this_cpu, dst_cpu, output);
+			eenv->wl_dsu, eenv->gear_idx, freq, this_cpu, dst_cpu, output);
 
 		if (trace_sched_dsu_freq_enabled())
 			trace_sched_dsu_freq(eenv->gear_idx, dst_cpu, output[0], output[1],

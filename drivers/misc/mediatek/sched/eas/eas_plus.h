@@ -89,7 +89,8 @@ struct energy_env {
 
 	/* WL-based CPU+DSU ctrl */
 	unsigned int wl_support;
-	unsigned int wl;
+	unsigned int wl_cpu; /* wl for CPU */
+	unsigned int wl_dsu; /* wl for DSU */
 
 	int val_s[10];
 

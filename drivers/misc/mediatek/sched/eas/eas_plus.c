@@ -326,7 +326,7 @@ unsigned long estimate_energy(struct em_perf_domain *pd,
 	this_cpu = cpu = cpumask_first(to_cpumask(pd->cpus));
 
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
-	cap = pd_opp2cap(cpu, opp, false, eenv->wl, eenv->val_s,
+	cap = pd_opp2cap(cpu, opp, false, eenv->wl_cpu, eenv->val_s,
 			false, DPT_CALL_MTK_EM_CPU_ENERGY);
 #else
 	ps = &pd->table[pd->nr_perf_states - 1];
@@ -353,7 +353,7 @@ unsigned long estimate_energy(struct em_perf_domain *pd,
 	data[1] = extern_volt;
 	data[2] = cap;
 	data[3] = scale_cpu;
-	energy = get_cpu_power(mtk_em, get_lkg, false, eenv->wl,
+	energy = get_cpu_power(mtk_em, get_lkg, false, eenv->wl_cpu,
 		eenv->val_s, false, DPT_CALL_MTK_EM_CPU_ENERGY,
 		this_cpu, cpu_temp, opp, cpus->bits[0],
 		data, output, pd, freq);
@@ -367,7 +367,7 @@ unsigned long estimate_energy(struct em_perf_domain *pd,
 	}
 
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
-	wl = eenv->wl;
+	wl = eenv->wl_cpu;
 
 	/* for pd_opp_capacity is scaled based on maximum scale 1024, so cost = pwr_eff * 1024 */
 	if (trace_sched_em_cpu_energy_enabled()) {
@@ -419,7 +419,7 @@ unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
 	cpu = cpumask_first(pd_cpus);
 	freq = max(pd_freq, per_cpu(min_freq, cpu));
 
-	opp = pd_get_efficient_state_opp(pd, cpu, freq, eenv->wl);
+	opp = pd_get_efficient_state_opp(pd, cpu, freq, eenv->wl_cpu);
 
 	/*
 	 * The capacity of a CPU in the domain at the performance state (ps)
@@ -931,7 +931,7 @@ unsigned long calc_pwr_eff_v2(struct energy_env *eenv, int cpu, unsigned long ma
 	unsigned long output[6] = {0};
 	int temp = get_cpu_temp(cpu)/1000;
 
-	pwr_eff = get_cpu_pwr_eff(cpu, pd_freq, false, eenv->wl,
+	pwr_eff = get_cpu_pwr_eff(cpu, pd_freq, false, eenv->wl_cpu,
 			eenv->val_s, false, DPT_CALL_CALC_PWR_EFF, temp, extern_volt, output);
 
 	if (trace_sched_calc_pwr_eff_enabled())
@@ -968,13 +968,13 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 
 	if (!cpumask_equal(cpus, get_gear_cpumask(eenv->gear_idx))) {
 		/* dvfs Vin/Vout */
-		pd_volt = pd_get_freq_volt(pd_idx, pd_freq, false, eenv->wl);
+		pd_volt = pd_get_freq_volt(pd_idx, pd_freq, false, eenv->wl_cpu);
 
 		dst_idx = (dst_cpu >= 0) ? 1 : 0;
 		gear_max_util = eenv->gear_max_util[eenv->gear_idx][dst_idx];
 		gear_freq = pd_get_util_cpufreq(eenv, cpus, gear_max_util,
 				eenv->pds_cpu_cap[pd_idx], scale_cpu);
-		gear_volt = pd_get_freq_volt(pd_idx, gear_freq, false, eenv->wl);
+		gear_volt = pd_get_freq_volt(pd_idx, gear_freq, false, eenv->wl_cpu);
 
 		if (gear_volt-pd_volt < volt_diff) {
 			extern_volt = max(gear_volt, dsu_volt);
@@ -997,7 +997,7 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 
 	if (trace_sched_shared_buck_calc_pwr_eff_enabled())
 		trace_sched_shared_buck_calc_pwr_eff(dst_cpu, pd_idx, cpus,
-			eenv->wl, pwr_eff, shared_buck_mode, gear_max_util, max_util,
+			eenv->wl_cpu, pwr_eff, shared_buck_mode, gear_max_util, max_util,
 			gear_volt, pd_volt, dsu_volt, extern_volt);
 
 	return pwr_eff;
