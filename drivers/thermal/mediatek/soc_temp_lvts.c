@@ -101,6 +101,35 @@ static unsigned int g_lvts_controller_value_e[LVTS_CONTROLLER_DEBUG_NUM]
 	[NUM_LVTS_CONTROLLER_REG];
 #endif
 
+#define NUM_LVTS_DEBUG1_REG (4)
+static const unsigned int g_lvts_controller_debug1_addr[NUM_LVTS_DEBUG1_REG] = {
+	LVTSMONCTL0_0,
+	LVTS_ID_0,
+	LVTSMONIDET2_0,
+	LVTSMONIDET3_0};
+static unsigned int g_lvts_controller_debug1_value[NUM_LVTS_DEBUG1_REG];
+
+#define NUM_LVTS_DEBUG2_REG (8)
+static const unsigned int g_lvts_controller_debug2_addr[NUM_LVTS_DEBUG2_REG] = {
+	LVTSMSR0_0,
+	LVTSMSR1_0,
+	LVTSMSR2_0,
+	LVTSMSR3_0,
+	LVTSRDATA0_0,
+	LVTSRDATA1_0,
+	LVTSRDATA2_0,
+	LVTSRDATA3_0};
+static unsigned int g_lvts_controller_debug2_value[NUM_LVTS_DEBUG2_REG];
+
+#define NUM_LVTS_DEBUG3_REG (6)
+static const unsigned int g_lvts_controller_debug3_addr[NUM_LVTS_DEBUG3_REG] = {
+	LVTSATPTGT_0,
+	LVTSGSLOPE_0,
+	LVTSOVSP0_0,
+	LVTSOVSP1_0,
+	LVTSOVSP2_0,
+	LVTSOVSP3_0};
+static unsigned int g_lvts_controller_debug3_value[NUM_LVTS_DEBUG3_REG];
 
 /*==================================================
  * LVTS local common code
@@ -1396,6 +1425,63 @@ static void tc_irq_handler(struct lvts_data *lvts_data, int tc_id, char thermint
 	BUG();
 }
 
+static void lvts_debug_to_sysram(struct lvts_data *lvts_data, int tc_id)
+{
+	int i, temp;
+	void __iomem *base;
+
+	base = GET_BASE_ADDR(tc_id);
+
+	/* DEBUG1 for device id & history max MSR & Rdata */
+	for (i = 0; i < NUM_LVTS_DEBUG1_REG; i++) {
+		temp = readl(g_lvts_controller_debug1_addr[i] + base);
+		g_lvts_controller_debug1_value[i] = temp;
+	}
+	temp = ((g_lvts_controller_debug1_value[0] & 0x1FFFFF) | ((tc_id & 0x7) << 21));
+	temp |= (g_lvts_controller_debug1_value[1] << 24);
+	writel( temp, (void __iomem *)(thermal_csram_base + LVTS_DEBUG1_OFFSET));
+	writel(g_lvts_controller_debug1_value[2],
+			(void __iomem *)(thermal_csram_base + LVTS_DEBUG1_OFFSET + 4));
+	writel(g_lvts_controller_debug1_value[3],
+			(void __iomem *)(thermal_csram_base + LVTS_DEBUG1_OFFSET + 8));
+
+	/* DEBUG2 for reboot gating legacy MSR & Rdata */
+	for (i = 0; i < NUM_LVTS_DEBUG2_REG; i++) {
+		temp = readl(g_lvts_controller_debug2_addr[i] + base);
+		g_lvts_controller_debug2_value[i] = temp;
+	}
+	temp = (g_lvts_controller_debug2_value[1] & 0xFFFF) << 16 |
+				(g_lvts_controller_debug2_value[0] & 0xFFFF);
+	writel( temp, (void __iomem *)(thermal_csram_base + LVTS_DEBUG2_OFFSET));
+	temp = (g_lvts_controller_debug2_value[3] & 0xFFFF) << 16 |
+				(g_lvts_controller_debug2_value[2] & 0xFFFF);
+	writel( temp, (void __iomem *)(thermal_csram_base + LVTS_DEBUG2_OFFSET + 0x4));
+	writel(g_lvts_controller_debug2_value[4],
+			(void __iomem *)(thermal_csram_base + LVTS_DEBUG2_OFFSET + 0x8));
+	writel(g_lvts_controller_debug2_value[5],
+			(void __iomem *)(thermal_csram_base + LVTS_DEBUG2_OFFSET + 0xC));
+	writel(g_lvts_controller_debug2_value[6],
+			(void __iomem *)(thermal_csram_base + LVTS_DEBUG2_OFFSET + 0x10));
+	writel(g_lvts_controller_debug2_value[7],
+			(void __iomem *)(thermal_csram_base + LVTS_DEBUG2_OFFSET + 0x14));
+
+	/* DEBUG3 for ATP info */
+	for (i = 0; i < NUM_LVTS_DEBUG3_REG; i++) {
+		temp = readl(g_lvts_controller_debug3_addr[i] + base);
+		g_lvts_controller_debug3_value[i] = temp;
+	}
+	writel(g_lvts_controller_debug3_value[0],
+			(void __iomem *)(thermal_csram_base + LVTS_DEBUG3_OFFSET));
+	writel(g_lvts_controller_debug3_value[1],
+			(void __iomem *)(thermal_csram_base + LVTS_DEBUG3_OFFSET + 0x4));
+	temp = (g_lvts_controller_debug3_value[2] & 0xFFFF) |
+			((g_lvts_controller_debug3_value[3]&0xFFFF) << 16);
+	writel(temp, (void __iomem *)(thermal_csram_base + LVTS_DEBUG3_OFFSET + 0x8));
+	temp = (g_lvts_controller_debug3_value[4] & 0xFFFF) |
+			((g_lvts_controller_debug3_value[5]&0xFFFF) << 16);
+	writel(temp, (void __iomem *)(thermal_csram_base + LVTS_DEBUG3_OFFSET + 0xC));
+}
+
 static irqreturn_t irq_handler(int irq, void *dev_id)
 {
 	struct lvts_data *lvts_data = (struct lvts_data *) dev_id;
@@ -1406,6 +1492,7 @@ static irqreturn_t irq_handler(int irq, void *dev_id)
 	char thermintst_str[200];
 	int thermintst_str_size = sizeof(thermintst_str);
 	int thermintst_str_offset = 0;
+	unsigned int reboot_tc = lvts_data->num_tc;
 
 	if (IS_ENABLE(FEATURE_6989_SCP_OC)) {
 		for (i = 0; i < lvts_data->num_tc; i++) {
@@ -1419,6 +1506,17 @@ static irqreturn_t irq_handler(int irq, void *dev_id)
 	} else {
 		if (!lvts_data->dump_wo_pause)
 			disable_all_sensing_points(lvts_data);
+		else {
+			for (i = 0; i < lvts_data->num_tc; i++) {
+				base = GET_BASE_ADDR(i);
+				if (readl(LVTSMONINTSTS_0 + base) & THERMAL_PROTECTION_STAGE_3){
+					reboot_tc = i;
+					break;
+				}
+			}
+			if (reboot_tc < lvts_data->num_tc)
+				lvts_debug_to_sysram(lvts_data, reboot_tc);
+		}
 	}
 	for (i = 0; i < lvts_data->num_domain; i++) {
 		base = lvts_data->domain[i].base;
