@@ -8590,7 +8590,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 			if (!is_force_high_step &&
 				(*(display_compress_ratio_table[i].average_ratio) == 0 ||
 				*(display_compress_ratio_table[i].peak_ratio) == 0)) {
-				DDPAEE("bwm ratio is 0\n");
+				DDPPR_ERR("bwm ratio is 0\n");
 				DDPMSG("%s i:%d,frame_idx:%d,key value:%d avg%d peak%d\n", __func__,
 				i, normal_layer_compress_ratio_tb[i].frame_idx,
 				display_compress_ratio_table[i].key_value,
