@@ -3773,7 +3773,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 			break;
 
 		if (!priv->data->respective_ostdl) {
-			DDPPR_ERR("PMQOS_SET_HRT_BW respective_ostdl do not set 1\n");
+			DDPPR_ERR("respective_ostdl do not set\n");
 			break;
 		}
 
@@ -3783,29 +3783,30 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		usage_ovl_fmt = mtk_crtc->usage_ovl_fmt[phy_id];
 		usage_ovl_compr = mtk_crtc->usage_ovl_compr[phy_id];
 
-		if (!usage_ovl_fmt)
-			break;
-
 		bw_val = (bw_val * usage_ovl_fmt) >> 2;
 
 		if (debug_module_bw[phy_id])
 			bw_val = debug_module_bw[phy_id];
 
-		if (bw_val == comp->last_hrt_bw && usage_ovl_compr == comp->last_compr)
-			break;
-
-		__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, bw_val,
-			priv->data->respective_ostdl);
-		comp->last_hrt_bw = bw_val;
-		comp->last_compr = usage_ovl_compr;
+		if (bw_val != comp->last_hrt_bw) {
+			DDPDBG("%s/%d bw_val %u -> %u\n",
+				mtk_dump_comp_str_id(comp->id),	comp->last_hrt_bw, bw_val);
+			__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, bw_val,
+				priv->data->respective_ostdl);
+			comp->last_hrt_bw = bw_val;
+		}
 
 		if (!IS_ERR(comp->hdr_qos_req)) {
-			if (bw_val)
-				if (usage_ovl_compr)
-					hdr_bw_val = (bw_val > 32) ? (bw_val / 32) : 1;
+			if (bw_val && usage_ovl_compr)
+				hdr_bw_val = (bw_val > 32) ? (bw_val / 32) : 1;
 
-			__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, hdr_bw_val,
-				priv->data->respective_ostdl);
+			if (hdr_bw_val != comp->last_hdr_bw) {
+				DDPDBG("%s hdr_bw_val %u -> %u\n",
+					mtk_dump_comp_str_id(comp->id),	comp->last_hdr_bw, hdr_bw_val);
+				__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, hdr_bw_val,
+					priv->data->respective_ostdl);
+				comp->last_hdr_bw = hdr_bw_val;
+			}
 		}
 
 		if (!IS_ERR(comp->stash_qos_req)) {
@@ -3817,24 +3818,38 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 
 				stash_bw_val = stash_bw_val > 17 ? stash_bw_val : 17; //set low bound
 			}
-			__mtk_disp_set_module_hrt(comp->stash_qos_req, comp->id, stash_bw_val,
+
+			if (stash_bw_val != comp->last_stash_bw) {
+				DDPDBG("%s stash_bw_val %u -> %u\n",
+					mtk_dump_comp_str_id(comp->id),	comp->last_stash_bw, stash_bw_val);
+				__mtk_disp_set_module_hrt(comp->stash_qos_req, comp->id, stash_bw_val,
 					priv->data->respective_ostdl);
+				comp->last_stash_bw = stash_bw_val;
+			}
 		}
 
 		ret = OVL_REQ_HRT;
 		break;
 	}
-	case PMQOS_CLR_HRT_BW: {
+	case PMQOS_SET_HRT_BW_DELAY: {
+		u32 bw_val = *(unsigned int *)params;
 		struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
-		unsigned int phy_id = 0, usage_ovl_fmt = 0;
+		unsigned int phy_id = 0, usage_ovl_fmt = 0, usage_ovl_compr = 0;
 		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+		u32 hdr_bw_val = 0;
+		u32 stash_bw_val = 0;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
 			break;
 
 		if (!priv->data->respective_ostdl) {
-			DDPPR_ERR("PMQOS_CLR_HRT_BW respective_ostdl do not set 1\n");
+			DDPPR_ERR("respective_ostdl do not set\n");
+			break;
+		}
+
+		if (!handle) {
+			DDPPR_ERR("no cmdq handle\n");
 			break;
 		}
 
@@ -3842,25 +3857,139 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 			phy_id = ovl->data->ovl_phy_mapping(comp);
 
 		usage_ovl_fmt = mtk_crtc->usage_ovl_fmt[phy_id];
+		usage_ovl_compr = mtk_crtc->usage_ovl_compr[phy_id];
 
-		if (usage_ovl_fmt)
+		bw_val = (bw_val * usage_ovl_fmt) >> 2;
+
+		if (debug_module_bw[phy_id])
+			bw_val = debug_module_bw[phy_id];
+
+		if (bw_val > comp->last_hrt_bw) {
+			DDPDBG("%s bw_val fast up %u -> %u\n",
+					mtk_dump_comp_str_id(comp->id),	comp->last_hrt_bw, bw_val);
+			__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, bw_val,
+				priv->data->respective_ostdl);
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_BW_VAL(phy_id)),
+				NO_PENDING_HRT, ~0);
+		} else if (bw_val < comp->last_hrt_bw) {
+			DDPDBG("%s bw_val will slow down %u -> %u\n",
+				mtk_dump_comp_str_id(comp->id),	comp->last_hrt_bw, bw_val);
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_BW_VAL(phy_id)),
+				bw_val, ~0);
+		}
+		comp->last_hrt_bw = bw_val;
+
+		if (!IS_ERR(comp->hdr_qos_req)) {
+			if (bw_val && usage_ovl_compr)
+				hdr_bw_val = (bw_val > 32) ? (bw_val / 32) : 1;
+
+			if (hdr_bw_val > comp->last_hdr_bw) {
+				DDPDBG("%s hdr_bw fast up %u -> %u\n",
+					mtk_dump_comp_str_id(comp->id),	comp->last_hdr_bw, hdr_bw_val);
+				__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, hdr_bw_val,
+					priv->data->respective_ostdl);
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HDR_BW_VAL(phy_id)),
+					NO_PENDING_HRT, ~0);
+			} else if (hdr_bw_val < comp->last_hdr_bw) {
+				DDPDBG("%s hdr_bw_val will slow down %u -> %u\n",
+					mtk_dump_comp_str_id(comp->id),	comp->last_hdr_bw, hdr_bw_val);
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HDR_BW_VAL(phy_id)),
+					hdr_bw_val, ~0);
+			}
+			comp->last_hdr_bw = hdr_bw_val;
+		}
+
+		if (!IS_ERR(comp->stash_qos_req)) {
+			if (bw_val) {
+				if (usage_ovl_compr)
+					stash_bw_val = bw_val * 2 / 256;
+				else
+					stash_bw_val = bw_val / 256;
+
+				stash_bw_val = stash_bw_val > 17 ? stash_bw_val : 17; //set low bound
+			}
+
+			if (stash_bw_val > comp->last_stash_bw) {
+				DDPDBG("%s stash_bw_val fast up %u -> %u\n",
+						mtk_dump_comp_str_id(comp->id), comp->last_stash_bw, stash_bw_val);
+				__mtk_disp_set_module_hrt(comp->stash_qos_req, comp->id, stash_bw_val,
+					priv->data->respective_ostdl);
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_STASH_BW_VAL(phy_id)),
+					NO_PENDING_HRT, ~0);
+			} else if (stash_bw_val < comp->last_stash_bw) {
+				DDPDBG("%s stash_bw_val will slow down %u -> %u\n",
+						mtk_dump_comp_str_id(comp->id),	comp->last_stash_bw, stash_bw_val);
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_STASH_BW_VAL(phy_id)),
+					stash_bw_val, ~0);
+			}
+			comp->last_stash_bw = stash_bw_val;
+		}
+
+		ret = OVL_REQ_HRT;
+		break;
+	}
+	case PMQOS_SET_HRT_BW_DELAY_POST: {
+		u32 bw_val = 0;
+		struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
+		unsigned int phy_id = 0, usage_ovl_fmt = 0, usage_ovl_compr = 0;
+		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+		u32 hdr_bw_val = 0;
+		u32 stash_bw_val = 0;
+
+		if (!mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_MMQOS_SUPPORT))
 			break;
 
-		if (comp->last_hrt_bw == 0)
+		if (!priv->data->respective_ostdl) {
+			DDPPR_ERR("respective_ostdl do not set\n");
 			break;
+		}
 
-		__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, 0,
-			priv->data->respective_ostdl);
-		comp->last_hrt_bw = 0;
-		comp->last_compr = 0;
+		if (ovl->data->ovl_phy_mapping)
+			phy_id = ovl->data->ovl_phy_mapping(comp);
 
-		if (!IS_ERR(comp->hdr_qos_req))
-			__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, 0,
-				priv->data->respective_ostdl);
+		bw_val = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+			DISP_SLOT_CUR_BW_VAL(phy_id));
+		if (bw_val != NO_PENDING_HRT && bw_val <= comp->last_hrt_bw) {
+			DDPINFO("%s bw_val slow down to %u\n",
+						mtk_dump_comp_str_id(comp->id), comp->last_hrt_bw);
+			__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, comp->last_hrt_bw,
+					priv->data->respective_ostdl);
+			*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_CUR_BW_VAL(phy_id)) =	NO_PENDING_HRT;
+		}
 
-		if (!IS_ERR(comp->stash_qos_req))
-			__mtk_disp_set_module_hrt(comp->stash_qos_req, comp->id, 0,
-				priv->data->respective_ostdl);
+		if (!IS_ERR(comp->hdr_qos_req)) {
+			hdr_bw_val = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_CUR_HDR_BW_VAL(phy_id));
+			if (hdr_bw_val != NO_PENDING_HRT && hdr_bw_val <= comp->last_hdr_bw) {
+				DDPINFO("%s hdr_bw_val slow down to %u\n",
+						mtk_dump_comp_str_id(comp->id), comp->last_hdr_bw);
+				__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, comp->last_hdr_bw,
+					priv->data->respective_ostdl);
+				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+					DISP_SLOT_CUR_HDR_BW_VAL(phy_id)) =	NO_PENDING_HRT;
+			}
+		}
+
+		if (!IS_ERR(comp->stash_qos_req)) {
+			stash_bw_val = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_CUR_STASH_BW_VAL(phy_id));
+			if (stash_bw_val != NO_PENDING_HRT && stash_bw_val <= comp->last_stash_bw) {
+				DDPINFO("%s stash_bw_val slow down to %u\n",
+						mtk_dump_comp_str_id(comp->id), comp->last_stash_bw);
+				__mtk_disp_set_module_hrt(comp->stash_qos_req, comp->id, comp->last_stash_bw,
+					priv->data->respective_ostdl);
+				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+					DISP_SLOT_CUR_STASH_BW_VAL(phy_id)) = NO_PENDING_HRT;
+			}
+		}
 
 		ret = OVL_REQ_HRT;
 		break;

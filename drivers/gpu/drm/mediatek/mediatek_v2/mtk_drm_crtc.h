@@ -151,7 +151,13 @@ enum DISP_VBLANK_REC_JOB_TYPE {
 #define DISP_SLOT_CUR_LARB_HRT (DISP_SLOT_CUR_HRT_LEVEL + 0x4)
 #define DISP_SLOT_CUR_CHAN_HRT(n)                                      \
 	(DISP_SLOT_CUR_LARB_HRT + 0x4 + (0x4 * (n)))
-#define DISP_SLOT_CUR_OUTPUT_FENCE (DISP_SLOT_CUR_CHAN_HRT(BW_CHANNEL_NR))
+#define DISP_SLOT_CUR_BW_VAL(n)                                      \
+	(DISP_SLOT_CUR_CHAN_HRT(BW_CHANNEL_NR) + (0x4 * (n)))
+#define DISP_SLOT_CUR_HDR_BW_VAL(n)                                      \
+	(DISP_SLOT_CUR_BW_VAL(MAX_LAYER_NR) + (0x4 * (n)))
+#define DISP_SLOT_CUR_STASH_BW_VAL(n)                                      \
+	(DISP_SLOT_CUR_HDR_BW_VAL(MAX_LAYER_NR) + (0x4 * (n)))
+#define DISP_SLOT_CUR_OUTPUT_FENCE (DISP_SLOT_CUR_STASH_BW_VAL(MAX_LAYER_NR))
 #define DISP_SLOT_CUR_INTERFACE_FENCE (DISP_SLOT_CUR_OUTPUT_FENCE + 0x4)
 #define DISP_SLOT_OVL_STATUS						       \
 	((DISP_SLOT_CUR_INTERFACE_FENCE + 0x4))
@@ -1608,6 +1614,8 @@ int mtk_vblank_config_rec_end_cal(struct mtk_drm_crtc *mtk_crtc,
 unsigned int mtk_drm_dump_vblank_config_rec(
 	struct mtk_drm_private *priv, char *stringbuf, int buf_len);
 void mtk_crtc_default_path_rst(struct drm_crtc *crtc);
+void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc, unsigned int bw_base,
+	struct cmdq_pkt *handle, enum mtk_ddp_io_cmd event);
 
 void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp, unsigned int plane_index, struct cmdq_pkt *cmdq_handle);

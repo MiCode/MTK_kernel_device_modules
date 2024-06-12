@@ -932,7 +932,8 @@ enum mtk_ddp_io_cmd {
 	DSI_FILL_MODE_BY_CONNETOR,
 	PMQOS_SET_BW,
 	PMQOS_SET_HRT_BW,
-	PMQOS_CLR_HRT_BW,
+	PMQOS_SET_HRT_BW_DELAY,
+	PMQOS_SET_HRT_BW_DELAY_POST,
 	PMQOS_UPDATE_BW,
 	OVL_REPLACE_BOOTUP_MVA,
 	BACKUP_INFO_CMP,
@@ -1208,7 +1209,8 @@ struct mtk_ddp_comp {
 	u32 hrt_bw_other;
 	u32 last_hrt_bw;
 	u32 last_hrt_bw_other;
-	bool last_compr;
+	u32 last_hdr_bw;
+	u32 last_stash_bw;
 	bool in_scaling_path;
 	struct mtk_ddp_comp *bind_comp;
 	int pm_ret;
