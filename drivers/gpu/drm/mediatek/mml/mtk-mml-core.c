@@ -25,8 +25,6 @@
 #else
 #define MML_TRACE_MSG_LEN 896
 #endif
-#define CREATE_TRACE_POINTS
-#include "mtk-mml-trace.h"
 
 #ifndef MML_FPGA
 int mtk_mml_msg;
@@ -2602,7 +2600,17 @@ void mml_update_array(u32 comp_id, struct mml_task_reuse *reuse,
 	reuse->label_check[label_idx] = true;
 }
 
-noinline int mml_tracing_mark_write(char *fmt, ...)
+#ifdef CONFIG_TRACING
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+static noinline int tracing_mark_write(char *buf)
+{
+	trace_puts(buf);
+	return 0;
+}
+#endif
+#endif
+
+int mml_tracing_mark_write(char *fmt, ...)
 {
 #ifdef CONFIG_TRACING
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
@@ -2619,7 +2627,7 @@ noinline int mml_tracing_mark_write(char *fmt, ...)
 		return -1;
 	}
 
-	trace_puts(buf);
+	tracing_mark_write(buf);
 #endif
 #endif
 	return 0;
