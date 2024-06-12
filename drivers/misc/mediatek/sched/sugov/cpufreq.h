@@ -214,6 +214,7 @@ extern struct cpumask *get_gear_cpumask(unsigned int gear);
 extern bool is_gearless_support(void);
 /* dsu ctrl */
 extern int wl_dsu_delay_ch_cnt;
+extern int wl_cpu_delay_ch_cnt;
 extern bool get_eas_dsu_ctrl(void);
 extern void set_eas_dsu_ctrl(bool set);
 extern void set_dsu_ctrl(bool set);
