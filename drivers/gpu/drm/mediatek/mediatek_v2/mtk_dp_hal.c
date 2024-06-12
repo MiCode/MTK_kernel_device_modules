@@ -2515,8 +2515,8 @@ void mhal_DPTx_hw_phy_set_param(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 	usb_info_bit19 = (usb_info >> 19) & 0x1; // Shift right by 19 bits and mask the LSB
 	usb_info_bit18 = (usb_info >> 18) & 0x1; // Shift right by 18 bits and mask the LSB
 	// Print the result
-	DPTXMSG("USB Info Bit 19(normal:0,flipped:1): %d\n", usb_info_bit19);
-	DPTXMSG("USB Info Bit 18(2 lane:0,4 lane:1): %d\n", usb_info_bit18);
+	DPTXMSG("USB Info Bit 19(2 lane:0,4 lane:1): %d\n", usb_info_bit19);
+	DPTXMSG("USB Info Bit 18(normal:0,flipped:1): %d\n", usb_info_bit18);
 	//////////////////// inter-lane skew improvement
 
 	DPTXMSG("DPTX MAX LANE COUNT: %d\n", MAX_LANECOUNT);

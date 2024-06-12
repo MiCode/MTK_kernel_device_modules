@@ -1524,6 +1524,8 @@ int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 {
 	int ret = DPTX_NOERR;
 	int pm_ret;
+	void *base;
+
 	if (mtk_dp->training_info.bCableStateChange) {
 		bool ubCurrentHPD = mhal_DPTx_GetHPDPinLevel(mtk_dp);
 
@@ -1567,6 +1569,14 @@ int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 				mtk_dp_intf_unprepare_clk();
 			}
 			DPTXMSG("Power OFF %d", mtk_dp->bPowerOn);
+
+			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+				// control slice(mac->phy)
+				base = ioremap(0x31b50000, 0x100);
+				writel(readl(base + 0x78) & ~(1 << 0), base + 0x78); // Clear bit 0 (reset)
+				writel(readl(base + 0x78) |  (1 << 4), base + 0x78); // set bit 4 to 1 (enable)
+				iounmap(base);
+			}
 			if(mtk_dp->shutdown == 0) {
 				pm_ret = pm_runtime_put_sync(mtk_dp->dev);
 				if (pm_ret < 0)
@@ -4079,8 +4089,11 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 					}
 				}
 				pm_runtime_get_sync(g_mtk_dp->dev);
-				base = ioremap(0x31b50000, 0x1000);
-				writel(0xc2fc224d, base + 0x78);
+				// control slice(mac->phy)
+				base = ioremap(0x31b50000, 0x100);
+				writel(readl(base + 0x78) | (1 << 0), base + 0x78); // Set bit 0 to 1 (reset)
+				writel(readl(base + 0x78) & ~(1 << 4), base + 0x78); // Clear bit 4 (enable)
+				iounmap(base);
 				/* Enable 26M to enable aux */
 				mtk_dp_intf_prepare_clk();
 			} else {
