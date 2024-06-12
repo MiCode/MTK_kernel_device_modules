@@ -26,6 +26,8 @@ extern "C" {
 #include "mtk_unified_power_6893.h"
 #elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_6781)
 #include "mtk_unified_power_6781.h"
+#elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_6853)
+#include "mtk_unified_power_6853.h"
 #else
 #include "mtk_unified_power_plat.h"
 #endif
