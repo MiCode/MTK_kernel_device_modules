@@ -272,7 +272,7 @@ static void mdla_procfs_init(void)
 		return;
 	}
 
-	proc_create_single(PROCFS_CMDBUF_NAME, 0, mdla_procfs_dir, mdla_dbg_memory_show);
+	proc_create_single(PROCFS_CMDBUF_NAME, 0440, mdla_procfs_dir, mdla_dbg_memory_show);
 }
 
 void mdla_dbg_fs_setup(struct device *dev)

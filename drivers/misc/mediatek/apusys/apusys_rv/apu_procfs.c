@@ -462,7 +462,7 @@ int apu_procfs_init(struct platform_device *pdev)
 
 	if (apu->platdata->flags & F_CE_EXCEPTION_ON) {
 
-		ce_fw_sram_seqlog = proc_create("apusys_ce_fw_sram", 0444,
+		ce_fw_sram_seqlog = proc_create("apusys_ce_fw_sram", 0440,
 			procfs_root, &ce_fw_sram_file_ops);
 		ret = IS_ERR_OR_NULL(ce_fw_sram_seqlog);
 		if (ret) {
@@ -472,7 +472,7 @@ int apu_procfs_init(struct platform_device *pdev)
 		}
 	}
 
-	debug_ctrl_seqlog = proc_create("apusys_debug_ctrl", 0444,
+	debug_ctrl_seqlog = proc_create("apusys_debug_ctrl", 0440,
 		procfs_root, &debug_ctrl_file_ops);
 	ret = IS_ERR_OR_NULL(debug_ctrl_seqlog);
 	if (ret) {
