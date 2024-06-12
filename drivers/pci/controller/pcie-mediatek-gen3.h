@@ -21,6 +21,13 @@ enum pin_state {
 	PCIE_PINMUX_HIZ
 };
 
+enum cplto_range {
+	R0_50MS = 0,
+	R1_50US_100US,
+	R2_1MS_10MS,
+	R5_16MS_55MS
+};
+
 bool mtk_pcie_in_use(int port);
 int mtk_pcie_probe_port(int port);
 int mtk_pcie_remove_port(int port);
