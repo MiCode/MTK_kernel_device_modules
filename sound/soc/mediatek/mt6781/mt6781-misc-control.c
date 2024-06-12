@@ -2058,7 +2058,6 @@ static const struct snd_kcontrol_new mt6781_afe_bargein_controls[] = {
 
 int mt6781_add_misc_control(struct snd_soc_component *platform)
 {
-	dev_info(afe->dev, "%s() afe %p\n", __func__, afe);
 
 	snd_soc_add_component_controls(platform,
 				      mt6781_afe_sgen_controls,
