@@ -461,7 +461,7 @@ static long ccu_compat_ioctl(struct file *flip, unsigned int cmd,
 	compat_uptr_t uptr_Addr32;
 	compat_uint_t uint_Data32;
 
-	int err;
+	int err __maybe_unused;
 	int i;
 	/*>>>>>>>>>> debug 32/64 compat check*/
 
