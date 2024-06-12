@@ -1233,13 +1233,13 @@ static void mtk_edp_set_lanes(struct mtk_edp *mtk_edp, int lanes)
 
 static void mtk_edp_get_calibration_data(struct mtk_edp *mtk_edp)
 {
-	const struct mtk_edp_efuse_fmt *fmt;
+	const struct mtk_edp_efuse_fmt *fmt = NULL;
 	struct device *dev = mtk_edp->dev;
-	struct nvmem_cell *cell;
+	struct nvmem_cell *cell = NULL;
 	u32 *cal_data = mtk_edp->cal_data;
-	u32 *buf;
-	int i;
-	size_t len;
+	u32 *buf = NULL;
+	int i = 0;
+	size_t len = 0;
 
 	cell = nvmem_cell_get(dev, "dp_calibration_data");
 	if (IS_ERR(cell)) {
@@ -1331,17 +1331,12 @@ static void mtk_edp_video_mute(struct mtk_edp *mtk_edp, bool enable)
 			   VIDEO_MUTE_SEL_DP_ENC0_P0 |
 			   VIDEO_MUTE_SW_DP_ENC0_P0);
 
-/*
- *	arm_smccc_smc(MTK_DP_SIP_CONTROL_AARCH32,
- *			mtk_edp->data->smc_cmd, enable,
- *			0, 0, 0, 0, 0, &res);
- */
 	arm_smccc_smc(MTK_SIP_DP_CONTROL,
 		      EDP_VIDEO_UNMUTE, enable,
 		      x3, 0xFEFD, 0, 0, 0, &res);
 
-	dev_dbg(mtk_edp->dev, "smc cmd: 0x%x, p1: %s, ret: 0x%lx-0x%lx\n",
-		mtk_edp->data->smc_cmd, enable ? "enable" : "disable", res.a0, res.a1);
+	dev_info(mtk_edp->dev, "[eDPTX] smc cmd: 0x%x, p1: %s, ret: 0x%lx-0x%lx\n",
+		EDP_VIDEO_UNMUTE, enable ? "enable" : "disable", res.a0, res.a1);
 }
 
 static void mtk_dp_audio_mute(struct mtk_edp *mtk_edp, bool mute)
@@ -1749,17 +1744,21 @@ static int mtk_edp_train_eq(struct mtk_edp *mtk_edp, u8 target_lane_count)
 
 static void mtk_edp_fec_set_capabilities(struct mtk_edp *mtk_edp)
 {
-	u8 fec_capabilities;
+	u8 fec_capabilities = 0x0;
+	int ret = 0;
 
-	drm_dp_dpcd_readb(&mtk_edp->aux, DP_FEC_CAPABILITY, &fec_capabilities);
-
-	mtk_edp->has_fec = !!(fec_capabilities & DP_FEC_CAPABLE);
+	ret = drm_dp_dpcd_readb(&mtk_edp->aux, DP_FEC_CAPABILITY, &fec_capabilities);
+	if (ret < 0)
+		pr_info("[eDPTX] read FEC capability failed\n");
+	/* force disable fec
+	 * mtk_edp->has_fec = !!(fec_capabilities & DP_FEC_CAPABLE);
+	 * if (!mtk_edp->has_fec)
+	 *      return;
+	 * drm_dp_dpcd_writeb(&mtk_edp->aux, DP_FEC_CONFIGURATION,
+	 *      DP_FEC_BIT_ERROR_COUNT | DP_FEC_READY);
+	 */
 	mtk_edp->has_fec = false;
-	if (!mtk_edp->has_fec)
-		return;
-
-	drm_dp_dpcd_writeb(&mtk_edp->aux, DP_FEC_CONFIGURATION,
-			   DP_FEC_BIT_ERROR_COUNT | DP_FEC_READY);
+	return ;
 }
 
 static int mtk_edp_parse_capabilities(struct mtk_edp *mtk_edp)
@@ -2030,12 +2029,17 @@ static irqreturn_t mtk_edp_hpd_event_thread(int hpd, void *dev)
 				edp_notify_uevent_user(&edptx_notify_data,
 					DPTX_STATE_NO_DEVICE);
 		} else {
-			if (mtk_edp->train_info.cable_plugged_in)
+			if (mtk_edp->use_hpd) {
+				if (mtk_edp->train_info.cable_plugged_in)
+					edp_notify_uevent_user(&edptx_notify_data,
+						DPTX_STATE_ACTIVE);
+				else
+					edp_notify_uevent_user(&edptx_notify_data,
+						DPTX_STATE_NO_DEVICE);
+			} else {
 				edp_notify_uevent_user(&edptx_notify_data,
 					DPTX_STATE_ACTIVE);
-			else
-				edp_notify_uevent_user(&edptx_notify_data,
-					DPTX_STATE_NO_DEVICE);
+			}
 		}
 	}
 
@@ -2164,7 +2168,7 @@ static int mtk_edp_dt_parse(struct mtk_edp *mtk_edp,
 
 	ret = device_property_read_u32(dev, "max-lane-count", &lane_count);
 
-	if (lane_count < 0 || lane_count > 4 || lane_count == 3) {
+	if (lane_count == 0 || lane_count == 3 || lane_count > 4) {
 		dev_info(dev, "[eDPTX] Invalid data lane size: %d\n", lane_count);
 		return -EINVAL;
 	}
@@ -2190,7 +2194,7 @@ static int mtk_edp_dt_parse(struct mtk_edp *mtk_edp,
 	mtk_edp->use_edid = (!ret) ? !!read_value : false;
 
 	ret = of_property_read_u32(dev->of_node, MTK_EDP_MODE_COLOR_DEPTH_10BIT, &read_value);
-	mtk_edp->use_edid = (!ret) ? !!read_value : false;
+	mtk_edp->color_depth_10bit = (!ret) ? !!read_value : false;
 
 	ret = of_property_read_u32(dev->of_node, MTK_EDP_MODE_USE_HPD, &read_value);
 	mtk_edp->use_hpd = (!ret) ? !!read_value : false;
@@ -2224,6 +2228,7 @@ static enum drm_connector_status mtk_edp_bdg_detect(struct drm_bridge *bridge)
 	enum drm_connector_status ret = connector_status_disconnected;
 	bool enabled = mtk_edp->enabled;
 	u8 sink_count = 0;
+	int ret_value = 0;
 
 	pr_info("[eDPTX] %s\n", __func__);
 
@@ -2241,7 +2246,12 @@ static enum drm_connector_status mtk_edp_bdg_detect(struct drm_bridge *bridge)
 	 * function, we just need to check the HPD connection to check
 	 * whether we connect to a sink device.
 	 */
-	drm_dp_dpcd_readb(&mtk_edp->aux, DP_SINK_COUNT, &sink_count);
+	ret_value = drm_dp_dpcd_readb(&mtk_edp->aux, DP_SINK_COUNT, &sink_count);
+	if (ret_value < 0) {
+		pr_info("[eDPTX] Failed to read sink count 0x%x\n", ret);
+		return ret;
+	}
+
 	if (DP_GET_SINK_COUNT(sink_count))
 		ret = connector_status_connected;
 
@@ -2311,6 +2321,11 @@ static ssize_t mtk_edp_aux_transfer(struct drm_dp_aux *mtk_aux,
 		goto err;
 	}
 
+	if (msg == NULL) {
+		pr_info("[eDPTX] msg is null.\n");
+		goto err;
+	}
+
 	switch (msg->request) {
 	case DP_AUX_I2C_MOT:
 	case DP_AUX_I2C_WRITE:
@@ -2333,10 +2348,6 @@ static ssize_t mtk_edp_aux_transfer(struct drm_dp_aux *mtk_aux,
 		goto err;
 	}
 
-	if (msg == NULL ) {
-		pr_info("[eDPTX] msg is null.\n");
-		goto err;
-	}
 	do {
 		size_t to_access = min_t(size_t, DP_AUX_MAX_PAYLOAD_BYTES,
 					 msg->size - accessed_bytes);
@@ -2908,12 +2919,12 @@ int edptx_uevent_dev_register(struct notify_dev *sdev)
 	sdev->dev = device_create(switch_edp_class, NULL,
 			MKDEV(0, sdev->index), NULL, sdev->name);
 
-	if (sdev->dev) {
+	if (sdev->dev != NULL) {
 		pr_info("device create ok,index:0x%x\n", sdev->index);
 		ret = 0;
 	} else {
 		pr_info("device create fail,index:0x%x\n", sdev->index);
-		ret = -1;
+		return -1;
 	}
 
 	ret = device_create_file(sdev->dev, &dev_attr_state);
@@ -3137,7 +3148,7 @@ int mtk_drm_ioctl_enable_edp(struct drm_device *dev, void *data,
 	int event;
 
 	if ((edp_enable == NULL) || (mtk_edp == NULL)) {
-		dev_info(mtk_edp->dev, "IOCTL: ERROR!\n");
+		pr_info("[eDPTX] IOCTL: ERROR!\n");
 		return -EFAULT;
 	}
 
@@ -3183,8 +3194,8 @@ static int mtk_edp_suspend(struct device *dev)
 	}
 
 	mtk_edp_power_disable(mtk_edp);
-	mtk_edp_hwirq_enable(mtk_edp, false);
-
+	if (mtk_edp->use_hpd)
+		mtk_edp_hwirq_enable(mtk_edp, false);
 	pm_runtime_put_sync(dev);
 
 	dev_info(mtk_edp->dev, "[eDPTX] %s-\n", __func__);
@@ -3199,9 +3210,9 @@ static int mtk_edp_resume(struct device *dev)
 	dev_info(mtk_edp->dev, "[eDPTX] %s+\n", __func__);
 
 	pm_runtime_get_sync(dev);
-
 	mtk_edp_init_port(mtk_edp);
-	mtk_edp_hwirq_enable(mtk_edp, true);
+	if (mtk_edp->use_hpd)
+		mtk_edp_hwirq_enable(mtk_edp, true);
 	mtk_edp_power_enable(mtk_edp);
 
 	dev_info(mtk_edp->dev, "[eDPTX] %s-\n", __func__);
