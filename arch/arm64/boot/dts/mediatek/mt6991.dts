@@ -190,6 +190,43 @@
 	camfe: camfe {
 		compatible = "mediatek,mt8678-cam-fe";
 		mtk,smmu-shared = <&mm_smmu_cam>;
+		mediatek,larbs = <&smi_larb9>,
+			<&smi_larb11>,
+			<&smi_larb22>;
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
+			<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_CAMERA_P2>,
+			<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1_CAMERA_P2>,
+			<&imgsys_main_clk CLK_IMG_WPE0_CAMERA_P2>,
+			<&imgsys_main_clk CLK_IMG_WPE1_CAMERA_P2>,
+			<&imgsys_main_clk CLK_IMG_SUB_COMMON0_CAMERA_P2>,
+			<&imgsys_main_clk CLK_IMG_SUB_COMMON1_CAMERA_P2>,
+			<&imgsys_main_clk CLK_IMG_GALS_RX_WPE0_CAMERA_P2>,
+			<&imgsys_main_clk CLK_IMG_GALS_RX_WPE1_CAMERA_P2>,
+			<&imgsys_main_clk CLK_IMG26_CAMERA_P2>,
+			<&imgsys_main_clk CLK_IMG_GALS_CAMERA_P2>,
+			<&wpe1_dip1_clk CLK_WPE1_DIP1_LARB11_CAMERA_P2>,
+			<&wpe1_dip1_clk CLK_WPE1_DIP1_WPE_CAMERA_P2>,
+			<&wpe1_dip1_clk CLK_WPE1_DIP1_GALS0_CAMERA_P2>,
+			<&wpe2_dip1_clk CLK_WPE2_DIP1_LARB11_CAMERA_P2>,
+			<&wpe2_dip1_clk CLK_WPE2_DIP1_WPE_CAMERA_P2>,
+			<&wpe2_dip1_clk CLK_WPE2_DIP1_GALS0_CAMERA_P2>;
+		clock-names = "VCORE_MAIN",
+			"VCORE_SUB0",
+			"VCORE_SUB1",
+			"IMG_WPE0",
+			"IMG_WPE1",
+			"IMG_SUB_COMMON0",
+			"IMG_SUB_COMMON1",
+			"IMG_GALS_RX_WPE0",
+			"IMG_GALS_RX_WPE1",
+			"IMG26",
+			"IMG_GALS",
+			"WPE1_DIP1_LARB11",
+			"WPE1_DIP1_WPE",
+			"WPE1_DIP1_GALS0",
+			"WPE2_DIP1_LARB11",
+			"WPE2_DIP1_WPE",
+			"WPE2_DIP1_GALS0";
 		status = "disabled";
 	};
 
