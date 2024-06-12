@@ -2921,10 +2921,7 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		 */
 		/* use full frame size's peak BW request bus capability, because tiny region layer */
 		/* peak BW should be the same with full frame */
-		if (mode)
-			temp_bw = (unsigned long long)mode->vdisplay * mode->hdisplay;
-		else
-			temp_bw = (unsigned long long)pending->width * pending->height;
+		temp_bw = (unsigned long long)pending->width * pending->height;
 		temp_bw *= mtk_get_format_bpp(fmt);
 
 		if (crtc->state)
