@@ -49,6 +49,9 @@ module_param(mml_dc, int, 0644);
 int mml_hrt_overhead = 100;
 module_param(mml_hrt_overhead, int, 0644);
 
+int mml_max_layers = MML_MAX_LAYER;
+module_param(mml_max_layers, int, 0644);
+
 struct mml_drm_ctx {
 	struct mml_ctx ctx;
 	struct sync_timeline *timeline;
@@ -345,6 +348,7 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 	u32 remain[mml_max_sys] = {0};
 	u32 mml_layer_cnt = 0;
 	u32 i;
+	s32 max_layer = min(mml_max_layers, MML_MAX_LAYER);
 	bool couple_used = false;
 
 	if (!duration_us)
@@ -355,7 +359,7 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 	remain[mml_sys_tile] = duration_us -  dc_sw_reserve;
 
 	for (i = 0; i < cnt; i++) {
-		if (mml_layer_cnt >= MML_MAX_LAYER) {
+		if (mml_layer_cnt >= max_layer) {
 			infos[i].mode = MML_MODE_NOT_SUPPORT;
 			continue;
 		}
