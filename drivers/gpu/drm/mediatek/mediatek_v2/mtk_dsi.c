@@ -3590,9 +3590,10 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	struct mtk_ddp_comp *comp = NULL;
 	unsigned int irq_mask = 0;
 
-	if (IS_ERR_OR_NULL(dsi))
+	if (IS_ERR_OR_NULL(dsi) || IS_ERR_OR_NULL(dsi->driver_data)) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
 		return IRQ_NONE;
-
+	}
 	comp = &dsi->ddp_comp;
 	if (mtk_drm_top_clk_isr_get(comp) == false) {
 		DDPIRQ("%s, top clk off\n", __func__);
@@ -3699,8 +3700,8 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			}
 
 			/* could dump SMI register while dsi not attached to CRTC */
-			if (aee_cooldown && ((dsi->driver_data &&
-			    !dsi->driver_data->smi_dbg_disable) ||
+			if (aee_cooldown &&
+			    (!dsi->driver_data->smi_dbg_disable ||
 			    mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE)))
 				mtk_smi_dbg_hang_detect("dsi-underrun");
 
@@ -3734,7 +3735,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				wakeup_dsi_wq(&dsi->exit_ulps_done);
 			} else {
 				mtk_dsi_ulps_exit_end(dsi);
-				if (mtk_dsi_is_cmd_mode(comp) && dsi->driver_data)
+				if (mtk_dsi_is_cmd_mode(comp))
 					mtk_dsi_mask(dsi, DSI_TXRX_CTRL(dsi->driver_data), (EXT_TE_EN | HSTX_CKLP_EN),
 								(EXT_TE_EN | HSTX_CKLP_EN));
 				mtk_dsi_set_mode(dsi);
