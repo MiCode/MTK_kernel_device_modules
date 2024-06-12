@@ -2733,7 +2733,7 @@
 			};
 		};
 
-		regulator_vibrator {
+		regulator-vibrator {
 			compatible = "regulator-vibrator";
 			min-volt = <1200000>;
 			max-volt = <3300000>;
