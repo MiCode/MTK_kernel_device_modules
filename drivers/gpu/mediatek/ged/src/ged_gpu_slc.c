@@ -62,10 +62,8 @@ static GED_ERROR gpu_slc_sysram_init(void)
 	/* clear the buffer*/
 	memset((void *)g_counter_va, 0, g_counter_size);
 
-	GED_LOGI("[GPU_SLC]%s sysram phys_addr: 0x%llx, virt_addr: 0x%llx, size: %x",
-		__func__, g_counter_pa, g_counter_va, g_counter_size);
-	GED_LOGI("[GPU_SLC]%s slc sysram usage from 0x%llx ~ 0x%llx size: %llx",
-		__func__, res.start, res.end, resource_size(&res));
+	GED_LOGI("[GPU_SLC]%s slc sysram usage from %pa ~ %pa size: %x",
+		__func__, &(res.start), &(res.end), (unsigned int)resource_size(&res));
 
 	return GED_OK;
 }
