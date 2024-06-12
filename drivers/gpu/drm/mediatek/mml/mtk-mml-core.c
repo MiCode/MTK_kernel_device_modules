@@ -2435,7 +2435,7 @@ static s32 check_label_idx(struct mml_task_reuse *reuse,
 	return 0;
 }
 
-void add_reuse_label(u32 comp_id, struct mml_task_reuse *reuse, u16 *label_idx, u32 value)
+void mml_add_reuse_label(u32 comp_id, struct mml_task_reuse *reuse, u16 *label_idx, u32 value)
 {
 	*label_idx = reuse->label_idx;
 	reuse->labels[reuse->label_idx].val = value;
@@ -2457,7 +2457,7 @@ s32 mml_assign(u32 comp_id, struct cmdq_pkt *pkt, u16 reg_idx, u32 value,
 	cmdq_pkt_assign_command_reuse(pkt, reg_idx, value,
 		&reuse->labels[reuse->label_idx]);
 
-	add_reuse_label(comp_id, reuse, label_idx, value);
+	mml_add_reuse_label(comp_id, reuse, label_idx, value);
 	return 0;
 }
 
@@ -2475,7 +2475,7 @@ s32 mml_write(u32 comp_id, struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32
 	cmdq_pkt_write_value_addr_reuse(pkt, addr, value, mask,
 		&reuse->labels[reuse->label_idx]);
 
-	add_reuse_label(comp_id, reuse, label_idx, value);
+	mml_add_reuse_label(comp_id, reuse, label_idx, value);
 	return 0;
 }
 

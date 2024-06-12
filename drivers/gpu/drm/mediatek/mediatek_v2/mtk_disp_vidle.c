@@ -151,7 +151,7 @@ void mtk_vidle_user_power_keep_by_gce(enum mtk_vidle_voter_user user, struct cmd
 	if (disp_dpc_driver.dpc_vidle_power_keep_by_gce == NULL)
 		return;
 
-	disp_dpc_driver.dpc_vidle_power_keep_by_gce(pkt, user, gpr);
+	disp_dpc_driver.dpc_vidle_power_keep_by_gce(pkt, user, gpr, NULL);
 }
 
 void mtk_vidle_user_power_release_by_gce(enum mtk_vidle_voter_user user, struct cmdq_pkt *pkt)

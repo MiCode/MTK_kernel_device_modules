@@ -768,7 +768,7 @@ static void hdr_readback_vcp(struct mml_comp *comp, struct mml_task *task,
 		&reuse->labels[reuse->label_idx],
 		&hdr_frm->polling_reuse);
 
-	add_reuse_label(comp->id, reuse, &hdr_frm->labels[HDR_POLLGPR_0],
+	mml_add_reuse_label(comp->id, reuse, &hdr_frm->labels[HDR_POLLGPR_0],
 		task->pq_task->hdr_hist[pipe]->va_offset);
 }
 

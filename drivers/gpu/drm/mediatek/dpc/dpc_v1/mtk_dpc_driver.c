@@ -3460,7 +3460,7 @@ static void mtk_disp_vlp_vote_by_cpu(unsigned int vote_set, unsigned int thread)
 }
 
 static void dpc_vidle_power_keep_by_gce(struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user,
-				 const u16 gpr)
+				 const u16 gpr, struct cmdq_reuse *reuse)
 {
 	mtk_disp_vlp_vote_by_gce(pkt, VOTE_SET, user);
 	if (gpr)
