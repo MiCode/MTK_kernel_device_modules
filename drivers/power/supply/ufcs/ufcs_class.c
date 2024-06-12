@@ -1870,7 +1870,7 @@ struct ufcs_port *ufcs_register_port(struct device *dev, struct ufcs_dev *ufcs)
 
 	port->ufcs = ufcs;
 
-	port->wq = kthread_create_worker(0, dev_name(dev));
+	port->wq = kthread_create_worker(0, "%s", dev_name(dev));
 	if (IS_ERR(port->wq))
 		return ERR_CAST(port->wq);
 	sched_set_fifo(port->wq->task);
