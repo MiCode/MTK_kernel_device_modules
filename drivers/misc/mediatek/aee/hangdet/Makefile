@@ -14,6 +14,9 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/mrdump
 subdir-ccflags-y += -I$(srctree)/include/
 subdir-ccflags-y += -I$(srctree)/kernel/
 
+ccflags-y += \
+	-Wno-frame-address \
+
 ifeq ($(CONFIG_MTK_GCOV_KERNEL),y)
 GCOV_PROFILE := y
 endif
