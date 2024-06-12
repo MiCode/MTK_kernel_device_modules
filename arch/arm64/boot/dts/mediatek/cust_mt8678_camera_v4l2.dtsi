@@ -12,7 +12,7 @@
 
 			port {
 				seninf_csi_port_4_in: endpoint {
-					remote-endpoint = <&sensor1_out>;
+					remote-endpoint = <&sensor0_out>;
 				};
 			};
 		};
@@ -25,7 +25,7 @@
 
 			port {
 				seninf_csi_port_11_in: endpoint {
-					remote-endpoint = <&sensor0_out>;
+					remote-endpoint = <&sensor11_out>;
 				};
 			};
 		};
@@ -38,7 +38,7 @@
 
 			port {
 				seninf_csi_port_5_in: endpoint {
-					remote-endpoint = <&sensor3_out>;
+					remote-endpoint = <&sensor1_out>;
 				};
 			};
 		};
@@ -174,7 +174,7 @@
 	status = "okay";
 	clock-frequency = <1000000>;
 
-	sensor3: sensor3@52 {
+	sensor1: sensor1@52 {
 		mediatek,legacy-search;
 		compatible = "mediatek,imgsensor";
 		sensor-names = "ox08b40_mipi_raw";
@@ -196,7 +196,7 @@
 		status = "okay";
 
 		port {
-			sensor3_out: endpoint {
+			sensor1_out: endpoint {
 				remote-endpoint = <&seninf_csi_port_5_in>;
 			};
 		};
@@ -207,7 +207,7 @@
 	status = "okay";
 	clock-frequency = <1000000>;
 
-	sensor0: sensor0@52 {
+	sensor11: sensor11@52 {
 		compatible = "mediatek,imgsensor";
 		sensor-names = "max96712isx_mipi_yuv";
 		reg = <0x52>;
@@ -228,7 +228,7 @@
 		status = "disabled";
 
 		port {
-			sensor0_out: endpoint {
+			sensor11_out: endpoint {
 				remote-endpoint = <&seninf_csi_port_11_in>;
 			};
 		};
@@ -407,7 +407,7 @@
 	status = "okay";
 	clock-frequency = <1000000>;
 
-	sensor1: sensor1@52 {
+	sensor0: sensor0@52 {
 		compatible = "mediatek,imgsensor";
 		sensor-names = "max96712_mipi_yuv";
 		reg = <0x52>;
@@ -428,7 +428,7 @@
 		status = "okay";
 
 		port {
-			sensor1_out: endpoint {
+			sensor0_out: endpoint {
 				remote-endpoint = <&seninf_csi_port_4_in>;
 			};
 		};
