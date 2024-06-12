@@ -3865,6 +3865,7 @@ static int pwrap_init_cipher(struct pmic_wrapper *wrp)
 	case PWRAP_MT6873:
 	case PWRAP_MT6885:
 	case PWRAP_MT8183:
+	case PWRAP_MT8195:
 	default:
 		break;
 	}
@@ -4977,6 +4978,9 @@ static const struct of_device_id of_pwrap_match_tbl[] = {
 	}, {
 		.compatible = "mediatek,mt8183-pwrap",
 		.data = &pwrap_mt8183,
+	}, {
+		.compatible = "mediatek,mt8195-pwrap",
+		.data = &pwrap_mt8195,
 	}, {
 		.compatible = "mediatek,mt8516-pwrap",
 		.data = &pwrap_mt8516,
