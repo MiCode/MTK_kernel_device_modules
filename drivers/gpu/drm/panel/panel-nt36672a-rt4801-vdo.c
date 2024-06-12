@@ -882,9 +882,16 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 static void lcm_remove(struct mipi_dsi_device *dsi)
 {
 	struct lcm *ctx = mipi_dsi_get_drvdata(dsi);
+#if defined(CONFIG_MTK_PANEL_EXT)
+	struct mtk_panel_ctx *ext_ctx = find_panel_ctx(&ctx->panel);
+#endif
 
 	mipi_dsi_detach(dsi);
 	drm_panel_remove(&ctx->panel);
+#if defined(CONFIG_MTK_PANEL_EXT)
+	mtk_panel_detach(ext_ctx);
+	mtk_panel_remove(ext_ctx);
+#endif
 }
 
 static const struct of_device_id lcm_of_match[] = {
