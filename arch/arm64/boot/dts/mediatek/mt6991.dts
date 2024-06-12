@@ -6756,6 +6756,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			status = "disabled";
 		};
 
+		i2c_vhost: vhost-i2c {
+			status = "disabled";
+		};
+
 		mminfra-imax {
 			compatible = "mediatek,mminfra-imax";
 			reg = <0 0x32800000 0 0x1000>, /* dispsys */
