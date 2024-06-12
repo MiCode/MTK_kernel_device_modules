@@ -123,7 +123,6 @@ struct mt6375_priv {
 	struct alarm vbat0_alarm;
 	struct work_struct vbat0_work;
 	struct wakeup_source *vbat0_ws;
-	struct lock_class_key info_exist_key;
 	struct power_supply *gauge_psy;
 	struct power_supply *battery_psy;
 	const struct dev_constraint *dinfo;
@@ -132,6 +131,10 @@ struct mt6375_priv {
 	int irq;
 	int pre_uisoc;
 	u8 unmask_buf[NUM_IRQ_REG];
+
+#ifdef CONFIG_LOCKDEP
+	struct lock_class_key info_exist_key;
+#endif
 };
 
 #define VBAT0_POLL_TIME_SEC	5
@@ -604,15 +607,17 @@ static void auxadc_vbat0_poll_work(struct work_struct *work)
 {
 	struct mt6375_priv *priv = container_of(work, struct mt6375_priv, vbat0_work);
 	bool valid = false;
-	ktime_t add;
 	int ret;
+#ifdef CONFIG_MTK_GAUGE_VBAT0_DEBUG
+	ktime_t add;
+#endif
 
 	__pm_stay_awake(priv->vbat0_ws);
 	ret = auxadc_vbat_is_valid(priv, &valid);
 	if (ret < 0 || !valid) {
 		dev_info(priv->dev, "%s: restart timer\n", __func__);
-		add = ktime_set(VBAT0_POLL_TIME_SEC, 0);
 #ifdef CONFIG_MTK_GAUGE_VBAT0_DEBUG
+		add = ktime_set(VBAT0_POLL_TIME_SEC, 0);
 		alarm_forward_now(&priv->vbat0_alarm, add);
 		alarm_restart(&priv->vbat0_alarm);
 #endif
@@ -1059,12 +1064,14 @@ static int mt6375_auxadc_parse_dt(struct mt6375_priv *priv)
 	return ret;
 }
 
+#ifdef CONFIG_LOCKDEP
 static void mt6375_unregister_lockdep_key(void *data)
 {
 	struct lock_class_key *key = data;
 
 	lockdep_unregister_key(key);
 }
+#endif
 
 static const struct dev_constraint mt6379_bat1_dinfo = {
 	.bat_idx = 0,
@@ -1112,10 +1119,12 @@ static int mt6379_check_bat_cell_count(struct mt6375_priv *priv)
 
 static int mt6375_auxadc_probe(struct platform_device *pdev)
 {
-	struct mt6375_priv *priv;
 	struct iio_dev *indio_dev;
-	struct iio_dev_opaque *iio_dev_opaque;
+	struct mt6375_priv *priv;
 	int ret;
+#ifdef CONFIG_LOCKDEP
+	struct iio_dev_opaque *iio_dev_opaque;
+#endif
 
 	indio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(*priv));
 	if (!indio_dev)
@@ -1141,14 +1150,16 @@ static int mt6375_auxadc_probe(struct platform_device *pdev)
 	device_init_wakeup(&pdev->dev, true);
 	platform_set_drvdata(pdev, priv);
 	priv->vbat0_ws = wakeup_source_register(&pdev->dev, "vbat0_ws");
+
+#ifdef CONFIG_LOCKDEP
 	lockdep_register_key(&priv->info_exist_key);
 	iio_dev_opaque = to_iio_dev_opaque(indio_dev);
 	lockdep_set_class(&iio_dev_opaque->info_exist_lock, &priv->info_exist_key);
-
 	ret = devm_add_action_or_reset(&pdev->dev, mt6375_unregister_lockdep_key,
 				       &priv->info_exist_key);
 	if (ret)
 		return ret;
+#endif
 
 	ret = mt6375_auxadc_parse_dt(priv);
 	if (ret) {
