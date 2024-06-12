@@ -146,6 +146,12 @@ EXPORT_SYMBOL(register_bp_thl_md_notify);
 void exec_bp_thl_callback(enum BATTERY_PERCENT_LEVEL_TAG bp_level)
 {
 	int i;
+
+	if (!bp_thl_data) {
+		pr_info("[%s] Failed to create bp_thl_data\n", __func__);
+		return;
+	}
+
 	if (bp_thl_data->bp_thl_stop == 1) {
 		pr_info("[%s] bp_thl_data->bp_thl_stop=%d\n"
 			, __func__, bp_thl_data->bp_thl_stop);
@@ -337,7 +343,6 @@ int bp_psy_event(struct notifier_block *nb, unsigned long event, void *v)
 
 static void check_md_throttle(int soc)
 {
-	pr_info("[%s] bp_thl_data soc=%d\n", __func__, soc);
 	if (!md_bp_data->md_thl_enable)
 		return;
 
@@ -387,7 +392,8 @@ static void soc_handler(struct work_struct *work)
 		return;
 	}
 
-	check_md_throttle(soc);
+	if (soc != last_soc)
+		check_md_throttle(soc);
 
 	if (soc == last_soc && temp == last_temp) {
 		pr_info("%s:%d soc and temperature are all the same\n", __func__, __LINE__);
@@ -565,6 +571,8 @@ static int parse_soc_limit_table(struct device *dev, struct bp_thl_priv *priv)
 		goto out;
 	}
 
+	if (!hpt_ctrl_base)
+		goto out;
 	num = of_property_count_u32_elems(np, "hpt-ctrl-val");
 	if (num != (priv->temp_max_stage + 1) * (priv->soc_max_stage + 1)) {
 		pr_notice("get hpt_ctrl error %d\n", num);
@@ -635,16 +643,15 @@ static int bp_thl_probe(struct platform_device *pdev)
 	dev_set_drvdata(&pdev->dev, priv);
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "hpt_ctrl");
-	if (!res) {
+	if (!res)
 		pr_notice("Failed to get hpt_ctrl resource\n");
-		return -ENOMEM;
+	else {
+		addr = devm_ioremap_resource(&pdev->dev, res);
+		if (IS_ERR(addr))
+			pr_info("%s:%d hpt_ctrl get addr error 0x%p\n", __func__, __LINE__, addr);
+		else
+			hpt_ctrl_base = addr;
 	}
-
-	addr = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(addr))
-		pr_info("%s:%d hpt_ctrl get addr error 0x%p\n", __func__, __LINE__, addr);
-	else
-		hpt_ctrl_base = addr;
 
 	ret = parse_soc_limit_table(&pdev->dev, priv);
 	if (ret) {
