@@ -10186,7 +10186,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<&smi_larb33 SMMU_L33_P4_DISP1_ODDMR0_DBIR>,
 					<&smi_larb33 SMMU_L33_P5_DISP1_ODDMR0_ODR>,
 					<&smi_larb33 SMMU_L33_P6_DISP1_ODDMR0_ODW>;
-			//mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			mtk,smmu-shared = <&mm_smmu_disp>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L33_P0_DISP1_ODDMR0_DMRR0)
 						&mmqos SLAVE_COMMON(1)>,
