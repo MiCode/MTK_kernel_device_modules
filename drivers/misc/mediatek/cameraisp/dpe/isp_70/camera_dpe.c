@@ -1327,7 +1327,7 @@ signed int dpe_enque_cb(struct frame *frames, void *req)
 
 	/*TODO: define engine request struct */
 	struct DPE_Request *_req;
-	struct DPE_Config *pDpeConfig;
+	// struct DPE_Config *pDpeConfig;
 
 	_req = (struct DPE_Request *) req;
 	if (frames == NULL || _req == NULL)
@@ -2107,7 +2107,7 @@ signed int dpe_enque_cb(struct frame *frames, void *req)
 		memcpy(frames[f].data, &_req->m_pDpeConfig[ucnt],
 						sizeof(struct DPE_Config));
 	}
-	pDpeConfig = &_req->m_pDpeConfig[ucnt];
+	// pDpeConfig = &_req->m_pDpeConfig[ucnt];
 	ucnt++;
 
 		//LOG_ERR("[%s] request queued with  frame(%d)", __func__, f);
@@ -2134,7 +2134,8 @@ signed int dpe_deque_cb(struct frame *frames, void *req)
 	unsigned int pd_frame_num;
 	struct DPE_Request *_req;
 	struct DPE_Config *pDpeConfig;
-	int i, dvs_cnt, dvp_cnt, dvp_put, dvs_put;
+	int i, dvs_cnt, dvp_cnt;
+	// int dvp_put, dvs_put;
 	struct tee_mmu	temp_dvs;
 	struct tee_mmu	temp_dvp;
 
@@ -2176,8 +2177,8 @@ signed int dpe_deque_cb(struct frame *frames, void *req)
 	}
 	dvp_cnt = 0;
 	dvs_cnt = 0;
-	dvp_put = 0;
-	dvs_put = 0;
+	// dvp_put = 0;
+	// dvs_put = 0;
 	//spin_lock(&(DPEInfo.SpinLockFD));
 		#ifdef DPE_debug_log_en
 		LOG_INF("put fd DVS_only_en =%d, DVP_only_en =%d\n", DVS_only_en, DVP_only_en);
@@ -3630,9 +3631,9 @@ cmdq_pkt_write(handle, dpe_clt_base, DVS_CTRL00_HW, 0x00000000, 0x20000000);
 }
 signed int dpe_feedback(struct frame *frame)
 {
-	struct DPE_Config *pDpeConfig;
+	// struct DPE_Config *pDpeConfig;
 
-	pDpeConfig = (struct DPE_Config *) frame->data;
+	// pDpeConfig = (struct DPE_Config *) frame->data;
 	/* TODO: read statistics and write to the frame data */
 	// pDpeConfig->DVS_IRQ_STATUS = DPE_RD32(DVS_IRQ_STATUS_REG);
 	return 0;
@@ -3685,12 +3686,20 @@ void Get_Tile_Info(struct DPE_Config *pDpeConfig)
 	unsigned int w_width[TILE_WITH_NUM] = {0};
 	unsigned int tile_num[TILE_WITH_NUM] = {0};
 	unsigned int idx = 0, i = 0;
-	unsigned int max_width = 0, interval = 0, st_x = 0;
-	unsigned int engStart_x_L, engStart_x_R, frmHeight;
+	unsigned int max_width = 0;
+#ifndef UT_CASE
+	unsigned int interval = 0, st_x = 0;
+#endif
+#if IS_ENABLED(CONFIG_MTK_LEGACY)
+	unsigned int engStart_x_R;
+#endif
+	unsigned int engStart_x_L, frmHeight;
 	unsigned int engWidth;
 
 	engStart_x_L = pDpeConfig->Dpe_DVSSettings.l_eng_start_x;
+#if IS_ENABLED(CONFIG_MTK_LEGACY)
 	engStart_x_R = pDpeConfig->Dpe_DVSSettings.r_eng_start_x;
+#endif
 	frmHeight = pDpeConfig->Dpe_DVSSettings.frm_height;
 	engWidth = pDpeConfig->Dpe_DVSSettings.eng_width;
 #if IS_ENABLED(CONFIG_MTK_LEGACY)
@@ -3711,8 +3720,10 @@ void Get_Tile_Info(struct DPE_Config *pDpeConfig)
 			}
 		}
 
+#ifndef UT_CASE
 			interval = (pDpeConfig->Dpe_DVSSettings.dram_pxl_pitch - w_width[idx])/2;
 			st_x = ((interval%16) == 0) ? (interval) : ((interval/16)*16);
+#endif
 			//pDpeConfig->Dpe_DVSSettings.eng_start_y = 0;
 			pDpeConfig->Dpe_DVSSettings.frm_width =
 			tile_occ_width[idx] + (2*engStart_x_L);
@@ -3752,8 +3763,10 @@ void Get_Tile_Info(struct DPE_Config *pDpeConfig)
 			}
 		}
 
+#ifndef UT_CASE
 		interval = (pDpeConfig->Dpe_DVSSettings.dram_pxl_pitch - w_width[idx])/2;
 		st_x = ((interval%16) == 0) ? (interval) : ((interval/16)*16);
+#endif
 		pDpeConfig->Dpe_DVSSettings.frm_width = engWidth; //!ISP7
 		//!pDpeConfig->Dpe_DVSSettings.eng_width =
 		//!pDpeConfig->Dpe_DVSSettings.frm_width -
@@ -5272,7 +5285,7 @@ static long DPE_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 				spin_unlock_irqrestore(
 				&(DPEInfo.SpinLockIrq[DPE_IRQ_TYPE_INT_DVP_ST]),
 						       flags);
-				LOG_INF("Config DPE Request!!\n");
+				LOG_INF("Config DPE Request!! enqnum(%dd)\n", enqnum);
 				/* Use a workqueue to set CMDQ to prevent
 				 * HW CMDQ request consuming speed from being
 				 * faster than SW frame-queue update speed.
@@ -5838,13 +5851,13 @@ EXIT:
  ******************************************************************************/
 static signed int DPE_release(struct inode *pInode, struct file *pFile)
 {
-	struct DPE_USER_INFO_STRUCT *pUserInfo;
+	// struct DPE_USER_INFO_STRUCT *pUserInfo;
 	/*unsigned int Reg;*/
 	LOG_DBG("- E. UserCount: %d.", DPEInfo.UserCount);
 	/*  */
 	if (pFile->private_data != NULL) {
-		pUserInfo =
-			(struct  DPE_USER_INFO_STRUCT *) pFile->private_data;
+		// pUserInfo =
+			// (struct  DPE_USER_INFO_STRUCT *) pFile->private_data;
 		kfree(pFile->private_data);
 		pFile->private_data = NULL;
 	}
@@ -6789,6 +6802,7 @@ static struct notifier_block dpe_suspend_pm_notifier_func = {
 };
 #endif
 
+#if CHECK_SERVICE_IF_0
 static int dpe_dump_read(struct seq_file *m, void *v)
 {
 /* fix unexpected close clock issue */
@@ -6880,6 +6894,7 @@ static int dpe_dump_read(struct seq_file *m, void *v)
 #endif
 	return 0;
 }
+
 static int proc_dpe_dump_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, dpe_dump_read, NULL);
@@ -6889,6 +6904,7 @@ static const struct file_operations dpe_dump_proc_fops = {
 	.open = proc_dpe_dump_open,
 	.read = seq_read,
 };
+
 static int dpe_reg_read(struct seq_file *m, void *v)
 {
 /* fix unexpected close clock issue */
@@ -6911,6 +6927,7 @@ static int dpe_reg_read(struct seq_file *m, void *v)
 #endif
 	return 0;
 }
+
 static ssize_t dpe_reg_write(struct file *file, const char __user *buffer,
 						size_t count, loff_t *data)
 {
@@ -7028,6 +7045,7 @@ static const struct file_operations dpe_reg_proc_fops = {
 	.read = seq_read,
 	.write = dpe_reg_write,
 };
+#endif
 /**************************************************************
  *
  **************************************************************/
