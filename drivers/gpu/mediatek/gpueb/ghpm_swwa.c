@@ -188,7 +188,7 @@ static int __ghpm_swwa_ctrl(enum ghpm_state power, enum mfg0_off_state off_state
 			/* IPI to gpueb for suspend flow and then trigger ghpm off */
 			data.event = SUSPEND_POWER_OFF;
 			data.off_state = off_state;
-			data.reserve = 0; /* dummy (reserve input) */
+			data.magic = GPUEB_SLEEP_IPI_MAGIC_NUMBER;
 			ret = mtk_ipi_send(
 				get_gpueb_ipidev(),
 				g_ipi_channel,
