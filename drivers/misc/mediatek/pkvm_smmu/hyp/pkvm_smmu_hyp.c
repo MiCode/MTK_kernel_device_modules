@@ -224,6 +224,11 @@ void broadcast_vmalls12e1is(void)
 	}
 }
 
+static void mtk_smmu_sync(void)
+{
+	broadcast_vmalls12e1is();
+}
+/* Merge linux vm page table into huge page */
 void smmu_merge_s2_table(void)
 {
 	hyp_spin_lock(&smmu_all_vm_lock);
@@ -232,13 +237,8 @@ void smmu_merge_s2_table(void)
 	 * because protect vm map memory qranulity will be
 	 * the biggest one each time. e.g. granule=2MB while map 2MB
 	 */
+	mtk_smmu_sync();
 	hyp_spin_unlock(&smmu_all_vm_lock);
-}
-
-static bool mtk_smmu_sync(void)
-{
-	broadcast_vmalls12e1is();
-	return true;
 }
 
 void mtk_smmu_share(struct kvm_cpu_context *ctx)

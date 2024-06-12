@@ -15,4 +15,6 @@ void kvm_nvhe_sym(mtk_smmu_unsecure_v2)(struct kvm_cpu_context *ctx);
 /* For region base mapping */
 void kvm_nvhe_sym(mtk_smmu_secure)(struct kvm_cpu_context *ctx);
 void kvm_nvhe_sym(mtk_smmu_unsecure)(struct kvm_cpu_context *ctx);
+/* For smmu s2 page table merge */
+void kvm_nvhe_sym(smmu_merge_s2_table)(struct kvm_cpu_context *ctx);
 extern struct kvm_iommu_ops kvm_nvhe_sym(smmu_ops);
