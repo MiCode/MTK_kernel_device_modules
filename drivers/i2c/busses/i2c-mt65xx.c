@@ -1732,7 +1732,6 @@ static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 	u16 start_reg;
 	u16 control_reg;
 	u16 restart_flag = 0;
-	u16 dma_sync = 0;
 	u16 data_size = 0;
 	u16 fifo_data_len = 0;
 	u32 reg_4g_mode;
@@ -1875,12 +1874,6 @@ static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 	} else {
 		mtk_i2c_writew(i2c, msgs->len, OFFSET_TRANSFER_LEN);
 		mtk_i2c_writew(i2c, num, OFFSET_TRANSAC_LEN);
-	}
-
-	if (i2c->dev_comp->apdma_sync) {
-		dma_sync = I2C_DMA_SKIP_CONFIG | I2C_DMA_ASYNC_MODE;
-		if (i2c->op == I2C_MASTER_WRRD)
-			dma_sync |= I2C_DMA_DIR_CHANGE;
 	}
 
 	if (isDMA == true) {
