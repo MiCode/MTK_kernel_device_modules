@@ -129,6 +129,7 @@ struct mml_dev {
 	struct cmdq_client *cmdq_clts[MML_MAX_CMDQ_CLTS];
 	u8 cmdq_clt_cnt;
 
+	u32 sw_ver;
 	atomic_t drm_cnt;
 	struct mml_drm_ctx *drm_ctx;
 	atomic_t dle_cnt;
@@ -2045,6 +2046,41 @@ static const struct component_ops sys_comp_ops = {
 	.unbind = sys_unbind,
 };
 
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
+static void mml_get_chipid(struct mml_dev *mml)
+{
+	struct device_node *node;
+	struct tag_chipid *chip_id = NULL;
+	int len;
+
+	node = of_find_node_by_path("/chosen");
+	if (!node)
+		node = of_find_node_by_path("/chosen@0");
+	if (node) {
+		chip_id = (struct tag_chipid *) of_get_property(node, "atag,chipid", &len);
+		if (!chip_id)
+			mml_log("could not found atag,chipid in chosen");
+	} else {
+		mml_log("chosen node not found in device tree");
+	}
+	if (chip_id)
+		mml->sw_ver = chip_id->sw_ver;
+	mml_log("current sw version:%#x\n", mml->sw_ver);
+}
+
+u32 mml_get_chip_swver(struct mml_dev *mml)
+{
+	return mml->sw_ver;
+}
+EXPORT_SYMBOL_GPL(mml_get_chip_swver);
+
 static bool dbg_probed;
 static int mml_probe(struct platform_device *pdev)
 {
@@ -2113,6 +2149,8 @@ static int mml_probe(struct platform_device *pdev)
 	mml->v4l2_en = of_property_read_bool(dev->of_node, "v4l2-enable");
 
 	mml->tablet_ext = of_property_read_bool(dev->of_node, "tablet-ext");
+
+	mml_get_chipid(mml);
 
 	if (of_property_read_u8(dev->of_node, "racing-height", &mml->racing_height))
 		mml->racing_height = 64;	/* default height 64px */
