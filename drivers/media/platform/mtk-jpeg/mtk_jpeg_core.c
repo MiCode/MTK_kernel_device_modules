@@ -1652,8 +1652,8 @@ static irqreturn_t mtk_jpeg_enc_done(struct mtk_jpeg_dev *jpeg)
 		dst_buf->flags |= V4L2_BUF_FLAG_LAST;
 		v4l2_m2m_mark_stopped(ctx->fh.m2m_ctx);
 	}
-
-	pr_info("Enc_done:%d\n", result_size);
+	if (debug)
+		pr_info("Enc_done:%d\n", result_size);
 
 	v4l2_m2m_buf_done(src_buf, buf_state);
 	v4l2_m2m_buf_done(dst_buf, buf_state);
