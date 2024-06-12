@@ -45,6 +45,7 @@ struct fpsgo_com_policy_cmd {
 	int control_hwui_by_pid;
 	int app_cam_meta_min_fps;
 	int dep_loading_thr_by_pid;
+	int mfrc_active_by_pid;
 	unsigned long long ts;
 	struct rb_node rb_node;
 };
@@ -119,6 +120,7 @@ int fpsgo_ctrl2comp_set_target_time(int tgid, int render_tid, unsigned long long
 int fpsgo_ctrl2comp_set_dep_list(int tgid, int render_tid, unsigned long long buffer_id,
 	int *dep_arr, int dep_num);
 int notify_fpsgo_touch_latency_ko_ready(void);
+int fpsgo_com_get_mfrc_is_on(void);
 
 #endif
 
