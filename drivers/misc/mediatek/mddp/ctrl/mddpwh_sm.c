@@ -704,6 +704,7 @@ static int32_t mddpw_drv_notify_info(
 {
 	struct mddp_md_msg_t    *md_msg;
 	struct mddp_app_t       *app;
+	int32_t                 ipc_send_status = 0;
 
 	// Send WIFI Notify to MD
 	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);
@@ -727,7 +728,13 @@ static int32_t mddpw_drv_notify_info(
 	md_msg->data_len = sizeof(struct mddpw_drv_notify_info_t) +
 		wifi_notify->buf_len;
 	memcpy(&md_msg->data, wifi_notify, md_msg->data_len);
-	mddp_ipc_send_md(app, md_msg, MDFPM_USER_ID_NULL);
+	ipc_send_status = mddp_ipc_send_md(app, md_msg, MDFPM_USER_ID_NULL);
+	if (ipc_send_status != 0) {
+		// Notify error to wlan driver for maintaining their wifi status
+		MDDP_S_LOG(MDDP_LL_ERR,
+			"%s: ipc_send_status = %d\n",__func__, ipc_send_status);
+		return ipc_send_status;
+	}
 
 	return 0;
 }
