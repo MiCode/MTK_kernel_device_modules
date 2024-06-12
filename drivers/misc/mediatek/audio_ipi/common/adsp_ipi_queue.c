@@ -709,7 +709,7 @@ static int dsp_push_msg(
 
 static int dsp_pop_msg(struct dsp_msg_queue_t *msg_queue)
 {
-	struct dsp_msg_t *p_dsp_msg = NULL;
+	struct dsp_msg_t __maybe_unused *p_dsp_msg = NULL;
 
 	if (msg_queue == NULL) {
 		pr_info("NULL!! msg_queue: %p", msg_queue);
