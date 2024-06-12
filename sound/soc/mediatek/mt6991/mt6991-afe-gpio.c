@@ -213,6 +213,18 @@ static int mt6991_afe_gpio_adda_ch56_ul(struct mtk_base_afe *afe, bool enable)
 int mt6991_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 			    int dai, int uplink)
 {
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	struct mt6991_afe_private *afe_priv = afe->platform_priv;
+	struct mtk_clk_ao_attr *dai_attr;
+	bool clk_ao;
+
+	if (dai >= MT6991_DAI_I2S_IN0 && dai <= MT6991_DAI_I2S_OUT6) {
+		dai_attr = &(afe_priv->clk_ao_data[dai]);
+		clk_ao = dai_attr->apll_ao || dai_attr->mclk_ao ||
+				dai_attr->bclk_ao || dai_attr->lrck_ao;
+	}
+#endif
+
 	mutex_lock(&gpio_request_mutex);
 	switch (dai) {
 	case MT6991_DAI_ADDA:
@@ -255,13 +267,19 @@ int mt6991_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 		}
 		break;
 	case MT6991_DAI_I2S_IN5:
-	case MT6991_DAI_I2S_OUT5:
-		if (enable) {
-			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_I2SOUT5_ON);
+		if (enable)
 			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_I2SIN5_ON);
-		} else {
-			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_I2SOUT5_OFF);
+		else
 			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_I2SIN5_OFF);
+		break;
+	case MT6991_DAI_I2S_OUT5:
+		if (enable)
+			mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_I2SOUT5_ON);
+		else {
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+			if (!clk_ao)
+#endif
+				mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_I2SOUT5_OFF);
 		}
 		break;
 	case MT6991_DAI_I2S_IN6:

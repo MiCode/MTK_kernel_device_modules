@@ -600,6 +600,32 @@ static const uint32_t kHWGainMap_IPM2P[] = {
 struct snd_pcm_substream;
 struct mtk_base_irq_data;
 struct clk;
+
+struct mtk_clk_ao_attr {
+	bool apll_ao;
+	bool mclk_ao;
+	bool bclk_ao;
+	bool lrck_ao;
+	bool clk_ao_enable;
+	int ao_level;
+	int fix_lrck_rate;
+	int fix_bclk_width;
+	int fix_mclk_ratio;
+	int fix_etdm_channels;
+};
+
+enum mtk_clk_always_on_level {
+	MTK_LRCK_AO = 0x1,
+	MTK_BCLK_AO = 0x2,
+	MTK_MCLK_AO = 0x4,
+	MTK_APLL_AO = 0x8,
+};
+
+#define APLL_AO(_level)	(((_level) & MTK_APLL_AO) >> 3)
+#define MCLK_AO(_level)	(((_level) & MTK_MCLK_AO) >> 2)
+#define BCLK_AO(_level)	(((_level) & MTK_BCLK_AO) >> 1)
+#define LRLK_AO(_level)	(((_level) & MTK_LRCK_AO) >> 0)
+
 struct mt6991_compress_info {
 	int card;
 	int device;
@@ -691,7 +717,8 @@ struct mt6991_afe_private {
 	int speech_cust_param_init;
 	/* codec component */
 	struct snd_soc_component *codec_component;
-
+	/* clk always on */
+	struct mtk_clk_ao_attr clk_ao_data[MT6991_DAI_NUM];
 };
 
 struct mtk_afe_adda_priv {
@@ -811,6 +838,8 @@ int mt6991_adda_dl_gain_control(bool mute);
 
 /* audio delay*/
 void mt6991_aud_delay(unsigned long cycles);
+
+int mt6991_afe_set_clk_always_on(struct mtk_base_afe *afe, bool enable);
 
 // swpm function
 void *mt6991_aud_get_power_scenario(void);

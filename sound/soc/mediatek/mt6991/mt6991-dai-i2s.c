@@ -1968,6 +1968,21 @@ static SOC_VALUE_ENUM_SINGLE_AUTODISABLE_DECL(i2s_mux_map_enum,
 		i2s_mux_map,
 		i2s_mux_map_value);
 
+static const char *const playback_dummy_mux_map[] = {
+	"Normal", "Dummy_Widget",
+};
+
+static int playback_dummy_mux_map_value[] = {
+	0, 1,
+};
+
+static SOC_VALUE_ENUM_SINGLE_AUTODISABLE_DECL(playback_dummy_mux_map_enum,
+		SND_SOC_NOPM,
+		0,
+		1,
+		playback_dummy_mux_map,
+		playback_dummy_mux_map_value);
+
 static const struct snd_kcontrol_new i2s_in0_mux_control =
 	SOC_DAPM_ENUM("I2S IN0 Select", i2s_mux_map_enum);
 static const struct snd_kcontrol_new i2s_in1_mux_control =
@@ -1996,6 +2011,10 @@ static const struct snd_kcontrol_new i2s_out5_mux_control =
 	SOC_DAPM_ENUM("I2S OUT5 Select", i2s_mux_map_enum);
 static const struct snd_kcontrol_new i2s_out6_mux_control =
 	SOC_DAPM_ENUM("I2S OUT6 Select", i2s_mux_map_enum);
+static const struct snd_kcontrol_new playback_dummy_to_i2sout4_mux_control =
+	SOC_DAPM_ENUM("PLAYBACK DUMMY I2SOUT4 Select", playback_dummy_mux_map_enum);
+static const struct snd_kcontrol_new playback_dummy_to_i2sout5_mux_control =
+	SOC_DAPM_ENUM("PLAYBACK DUMMY I2SOUT5 Select", playback_dummy_mux_map_enum);
 
 /* interconnection */
 static const struct snd_kcontrol_new mtk_i2sout0_ch1_mix[] = {
@@ -2958,6 +2977,12 @@ static const struct snd_soc_dapm_widget mtk_dai_i2s_widgets[] = {
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_apll_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+
+	SND_SOC_DAPM_INPUT("PLAYBACK_DUMMY"),
+	SND_SOC_DAPM_MUX("PLAYBACK_DUMMY_TO_I2SOUT4_Mux",
+			 SND_SOC_NOPM, 0, 0, &playback_dummy_to_i2sout4_mux_control),
+	SND_SOC_DAPM_MUX("PLAYBACK_DUMMY_TO_I2SOUT5_Mux",
+			 SND_SOC_NOPM, 0, 0, &playback_dummy_to_i2sout5_mux_control),
 
 	/* allow i2s on without codec on */
 	SND_SOC_DAPM_OUTPUT("I2S_DUMMY_OUT"),
@@ -4196,9 +4221,13 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2S_OUT3_Mux", "Dummy_Widget", "I2SOUT3"},
 	{"I2S_DUMMY_OUT", NULL, "I2S_OUT3_Mux"},
 
+	{"I2SOUT4", NULL, "PLAYBACK_DUMMY_TO_I2SOUT4_Mux"},
+	{"PLAYBACK_DUMMY_TO_I2SOUT4_Mux", "Dummy_Widget", "PLAYBACK_DUMMY"},
 	{"I2S_OUT4_Mux", "Dummy_Widget", "I2SOUT4"},
 	{"I2S_DUMMY_OUT", NULL, "I2S_OUT4_Mux"},
 
+	{"I2SOUT5", NULL, "PLAYBACK_DUMMY_TO_I2SOUT5_Mux"},
+	{"PLAYBACK_DUMMY_TO_I2SOUT5_Mux", "Dummy_Widget", "PLAYBACK_DUMMY"},
 	{"I2S_OUT5_Mux", "Dummy_Widget", "I2SOUT5"},
 	{"I2S_DUMMY_OUT", NULL, "I2S_OUT5_Mux"},
 
@@ -5407,6 +5436,8 @@ static int etdm_parse_dt(struct mtk_base_afe *afe)
 {
 	int ret;
 	int i;
+	char prop[128];
+	unsigned int val[5];
 	struct mt6991_afe_private *afe_priv = afe->platform_priv;
 	struct mtk_afe_i2s_priv *i2s_priv = NULL;
 	unsigned int ch_num_out[I2S_OUT_NUM];
@@ -5417,6 +5448,12 @@ static int etdm_parse_dt(struct mtk_base_afe *afe)
 	unsigned int sync_in[I2S_IN_NUM];
 	unsigned int ip_mode[I2S_IN_NUM];
 	unsigned int slave_mode_in[I2S_IN_NUM];
+	struct {
+		char *name;
+		unsigned int val;
+	} of_be_table[] = {
+		{ "etdmout5", MT6991_DAI_I2S_OUT5 },
+	};
 
 	dev_dbg(afe->dev, "%s(): I2S_IN_NUM=%d, I2S_OUT_NUM=%d\n", __func__,
 		I2S_IN_NUM, I2S_OUT_NUM);
@@ -5522,6 +5559,44 @@ static int etdm_parse_dt(struct mtk_base_afe *afe)
 				i2s_priv->slave_mode);
 	}
 
+	for (i = 0; i < ARRAY_SIZE(of_be_table); i++) {
+		struct mtk_clk_ao_attr *data;
+
+		memset(val, 0, sizeof(val));
+
+		snprintf(prop, sizeof(prop), "%s-clk-always-on", of_be_table[i].name);
+		ret = of_property_read_u32_array(afe->dev->of_node, prop, &val[0], 5);
+		if (ret)
+			continue;
+
+		dev_info(afe->dev, "%s %s 0x%x %d %d %d %d",
+			 __func__, of_be_table[i].name, val[0], val[1],
+			 val[2], val[3], val[4]);
+
+		/*
+		 * level dependence is apll->mclk->bclk->lrck->gpio
+		 * 0x8 means apll always on
+		 * 0x4 means mclk always on
+		 * 0x2 means bclk always on
+		 * 0x1 means lrck always on
+		 * example1:
+		 *      set 0x8 + 0x4 = 0xc to keep mclk always on
+		 * example2:
+		 *      set 0x8 + 0x4 + 0x2 = 0xe to keep mclk && bclk  always on
+		 */
+
+		data = &afe_priv->clk_ao_data[of_be_table[i].val];
+		data->ao_level = val[0];
+		data->apll_ao = APLL_AO(data->ao_level);
+		data->mclk_ao = MCLK_AO(data->ao_level);
+		data->bclk_ao = BCLK_AO(data->ao_level);
+		data->lrck_ao = LRLK_AO(data->ao_level);
+		data->fix_lrck_rate = val[1];
+		data->fix_mclk_ratio = val[2];
+		data->fix_bclk_width = val[3];
+		data->fix_etdm_channels = val[4];
+	}
+
 	return 0;
 }
 
@@ -5560,6 +5635,343 @@ int mt6991_dai_i2s_set_priv(struct mtk_base_afe *afe)
 
 	return 0;
 }
+
+static int mt6991_dai_i2s_config(struct mtk_base_afe *afe, int i2s_id,
+				bool enable)
+{
+	struct mt6991_afe_private *afe_priv = afe->platform_priv;
+	struct mtk_afe_i2s_priv *i2s_priv = afe_priv->dai_priv[i2s_id];
+	struct mtk_clk_ao_attr *attr = &(afe_priv->clk_ao_data[i2s_id]);
+	int id = i2s_id - MT6991_DAI_I2S_IN0;
+	struct mtk_base_etdm_data etdm_data;
+	unsigned int rate = attr->fix_lrck_rate;
+	unsigned int channels = attr->fix_etdm_channels;
+	unsigned int bit_width = attr->fix_bclk_width;
+	unsigned int bck_rate = rate * channels * bit_width;
+	unsigned int mclk_rate = attr->fix_mclk_ratio * rate;
+	unsigned int wlen = (bit_width <= 16) ? 16 : 32;
+
+	int ret = 0;
+	int pad_top = 0;
+
+	dev_info(afe->dev, "%s(), bck_always_on, id %d, fs %d, wlen %d, mclk_rate %d, bck_rate %d\n",
+		 __func__,
+		 i2s_id,
+		 rate,
+		 wlen,
+		 mclk_rate,
+		 bck_rate);
+
+	if (id < 0 || id >= DAI_I2S_NUM) {
+		dev_info(afe->dev, "%s(), i2s id is invalid", __func__);
+		return -EINVAL;
+	}
+
+	/* Supports even channel only */
+	if ((channels % 2) != 0)
+		dev_info(afe->dev, "%s(), channels(%d) not even\n", __func__, channels);
+
+	etdm_data = mtk_etdm_data[id];
+
+	if (!i2s_priv) {
+		AUDIO_AEE("i2s_priv == NULL");
+		return -EINVAL;
+	}
+
+	if (is_etdm_in_pad_top(id))
+		pad_top = 0x3;
+	else
+		pad_top = 0x5;
+
+
+	switch (id) {
+	case DAI_I2SIN0:
+	case DAI_I2SIN1:
+	case DAI_I2SIN2:
+	case DAI_I2SIN3:
+	case DAI_I2SIN4:
+	case DAI_I2SIN5:
+	case DAI_I2SIN6:
+		/* ---etdm in --- */
+		mtk_regmap_update_bits(afe->regmap, etdm_data.init_count_reg,
+				       etdm_data.init_count_mask,
+				       0x5,
+				       etdm_data.init_count_shift);
+		/* 3: pad top 5: no pad top */
+		mtk_regmap_update_bits(afe->regmap, etdm_data.init_point_reg,
+				       etdm_data.init_point_mask,
+				       pad_top,
+				       etdm_data.init_point_shift);
+		mtk_regmap_update_bits(afe->regmap, etdm_data.lrck_reset_reg,
+				       etdm_data.lrck_reset_mask,
+				       0x1,
+				       etdm_data.lrck_reset_shift);
+		mtk_regmap_update_bits(afe->regmap, etdm_data.clk_source_reg,
+				       etdm_data.clk_source_mask,
+				       ETDM_CLK_SOURCE_APLL,
+				       etdm_data.clk_source_shift);
+		/* 0: manual 1: auto */
+		mtk_regmap_update_bits(afe->regmap, etdm_data.ck_en_sel_reg,
+				       etdm_data.ck_en_sel_mask,
+				       0x1,
+				       etdm_data.ck_en_sel_shift);
+		mtk_regmap_update_bits(afe->regmap, etdm_data.fs_timing_reg,
+				       etdm_data.fs_timing_mask,
+				       get_etdm_rate(rate),
+				       etdm_data.fs_timing_shift);
+		mtk_regmap_update_bits(afe->regmap, etdm_data.relatch_en_sel_reg,
+				       etdm_data.relatch_en_sel_mask,
+				       get_etdm_inconn_rate(rate),
+				       etdm_data.relatch_en_sel_shift);
+
+		mtk_regmap_update_bits(afe->regmap, etdm_data.use_afifo_reg,
+				       etdm_data.use_afifo_mask,
+				       0x0,
+				       etdm_data.use_afifo_shift);
+		mtk_regmap_update_bits(afe->regmap, etdm_data.afifo_mode_reg,
+				       etdm_data.afifo_mode_mask,
+				       0x0,
+				       etdm_data.afifo_mode_shift);
+		mtk_regmap_update_bits(afe->regmap, etdm_data.almost_end_ch_reg,
+				       etdm_data.almost_end_ch_mask,
+				       0x0,
+				       etdm_data.almost_end_ch_shift);
+		mtk_regmap_update_bits(afe->regmap, etdm_data.almost_end_bit_reg,
+				       etdm_data.almost_end_bit_mask,
+				       0x0,
+				       etdm_data.almost_end_bit_shift);
+		if (is_etdm_in_pad_top(id)) {
+			mtk_regmap_update_bits(afe->regmap, etdm_data.out2latch_time_reg,
+						etdm_data.out2latch_time_mask,
+						0x6,
+						etdm_data.out2latch_time_shift);
+		} else {
+			mtk_regmap_update_bits(afe->regmap, etdm_data.out2latch_time_reg,
+						etdm_data.out2latch_time_mask,
+						0x4,
+						etdm_data.out2latch_time_shift);
+		}
+
+		/* 5:  TDM Mode */
+		if (id == DAI_I2SIN4 || id == DAI_I2SIN5)
+			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
+							etdm_data.tdm_mode_mask,
+							0x4,
+							etdm_data.tdm_mode_shift); // DSP_A mode for multi-channel
+		else
+			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
+							etdm_data.tdm_mode_mask,
+							0x0,
+							etdm_data.tdm_mode_shift);
+
+		/* APLL */
+		mtk_regmap_update_bits(afe->regmap,
+				       etdm_data.relatch_domain_sel_reg,
+				       etdm_data.relatch_domain_sel_mask,
+				       ETDM_RELATCH_SEL_APLL,
+				       etdm_data.relatch_domain_sel_shift);
+		mtk_regmap_update_bits(afe->regmap, etdm_data.bit_length_reg,
+				       etdm_data.bit_length_mask,
+				       (bit_width - 1),
+				       etdm_data.bit_length_shift);
+		mtk_regmap_update_bits(afe->regmap, etdm_data.word_length_reg,
+				       etdm_data.word_length_mask,
+				       (wlen - 1),
+				       etdm_data.word_length_shift);
+
+		/* ---etdm cowork --- */
+		if (etdm_data.slave_mode_reg == -1 ||
+			((etdm_data.slave_mode_reg != -1) &&
+			(i2s_priv && i2s_priv->slave_mode == 0)))
+			mtk_regmap_update_bits(afe->regmap, etdm_data.cowork_reg,
+				       etdm_data.cowork_mask,
+				       etdm_data.cowork_val,
+				       etdm_data.cowork_shift);
+
+		/* i2s with pad top setting */
+		if (is_etdm_in_pad_top(id) && etdm_data.pad_top_ck_en_reg != -1) {
+			if (enable)
+				mtk_regmap_update_bits(afe->regmap, etdm_data.pad_top_ck_en_reg,
+						       etdm_data.pad_top_ck_en_mask,
+						       0x1,
+						       etdm_data.pad_top_ck_en_shift);
+			else
+				mtk_regmap_update_bits(afe->regmap, etdm_data.pad_top_ck_en_reg,
+						       etdm_data.pad_top_ck_en_mask,
+						       0x0,
+						       etdm_data.pad_top_ck_en_shift);
+
+			mtk_regmap_update_bits(afe->regmap, etdm_data.master_latch_reg,
+				       etdm_data.master_latch_mask,
+				       0x0,
+				       etdm_data.master_latch_shift);
+		}
+		break;
+	case DAI_I2SOUT0:
+	case DAI_I2SOUT1:
+	case DAI_I2SOUT2:
+	case DAI_I2SOUT3:
+	case DAI_I2SOUT4:
+	case DAI_I2SOUT5:
+	case DAI_I2SOUT6:
+		/* ---etdm out --- */
+		mtk_regmap_update_bits(afe->regmap, etdm_data.init_count_reg,
+				       etdm_data.init_count_mask,
+				       0x5,
+				       etdm_data.init_count_shift);
+		mtk_regmap_update_bits(afe->regmap, etdm_data.init_point_reg,
+				       etdm_data.init_point_mask,
+				       0x6,
+				       etdm_data.init_point_shift);
+		// clock speed > 22M need to set relatch time to avoid duplicate porint
+		if (rate * channels * ((wlen)) >= ETDM_22M_CLOCK_THRES &&
+		    (wlen - 1) >= 2) {
+			mtk_regmap_update_bits(afe->regmap, etdm_data.in2latch_time_reg,
+				       etdm_data.in2latch_time_mask,
+				       (wlen - 1) - 2,
+				       etdm_data.in2latch_time_shift);
+		} else {
+			mtk_regmap_update_bits(afe->regmap, etdm_data.in2latch_time_reg,
+				       etdm_data.in2latch_time_mask,
+				       0x6,
+				       etdm_data.in2latch_time_shift);
+		}
+		mtk_regmap_update_bits(afe->regmap, etdm_data.lrck_reset_reg,
+				       etdm_data.lrck_reset_mask,
+				       0x1,
+				       etdm_data.lrck_reset_shift);
+		mtk_regmap_update_bits(afe->regmap, etdm_data.fs_timing_reg,
+				       etdm_data.fs_timing_mask,
+				       get_etdm_rate(rate),
+				       etdm_data.fs_timing_shift);
+		mtk_regmap_update_bits(afe->regmap, etdm_data.clk_source_reg,
+				       etdm_data.clk_source_mask,
+				       ETDM_CLK_SOURCE_APLL,
+				       etdm_data.clk_source_shift);
+		mtk_regmap_update_bits(afe->regmap, etdm_data.relatch_en_sel_reg,
+				       etdm_data.relatch_en_sel_mask,
+				       get_etdm_inconn_rate(rate),
+				       etdm_data.relatch_en_sel_shift);
+
+		/* 5:  TDM Mode */
+		if (id == DAI_I2SOUT4 || id == DAI_I2SOUT5)
+			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
+					       etdm_data.tdm_mode_mask,
+					       0x4,
+					       etdm_data.tdm_mode_shift); // DSP_A mode for multi-channel
+		else
+			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
+					       etdm_data.tdm_mode_mask,
+					       0x0,
+					       etdm_data.tdm_mode_shift);
+		/* APLL */
+		mtk_regmap_update_bits(afe->regmap,
+				       etdm_data.relatch_domain_sel_reg,
+				       etdm_data.relatch_domain_sel_mask,
+				       ETDM_RELATCH_SEL_APLL,
+				       etdm_data.relatch_domain_sel_shift);
+		mtk_regmap_update_bits(afe->regmap, etdm_data.bit_length_reg,
+				       etdm_data.bit_length_mask,
+				       (bit_width - 1),
+				       etdm_data.bit_length_shift);
+		mtk_regmap_update_bits(afe->regmap, etdm_data.word_length_reg,
+				       etdm_data.word_length_mask,
+				       (wlen - 1),
+				       etdm_data.word_length_shift);
+
+		/* ---etdm cowork --- */
+		if (etdm_data.slave_mode_reg == -1 ||
+			((etdm_data.slave_mode_reg != -1) &&
+			(i2s_priv && i2s_priv->slave_mode == 0)))
+			mtk_regmap_update_bits(afe->regmap, etdm_data.cowork_reg,
+				       etdm_data.cowork_mask,
+				       etdm_data.cowork_val,
+				       etdm_data.cowork_shift);
+
+		/* i2s with pad top setting */
+		if (is_etdm_in_pad_top(id) && etdm_data.pad_top_ck_en_reg != -1) {
+			if (enable)
+				mtk_regmap_update_bits(afe->regmap, etdm_data.pad_top_ck_en_reg,
+						       etdm_data.pad_top_ck_en_mask,
+						       0x1,
+						       etdm_data.pad_top_ck_en_shift);
+			else
+				mtk_regmap_update_bits(afe->regmap, etdm_data.pad_top_ck_en_reg,
+						       etdm_data.pad_top_ck_en_mask,
+						       0x0,
+						       etdm_data.pad_top_ck_en_shift);
+
+			mtk_regmap_update_bits(afe->regmap, etdm_data.master_latch_reg,
+				       etdm_data.master_latch_mask,
+				       0x0,
+				       etdm_data.master_latch_shift);
+		}
+		break;
+	default:
+		dev_info(afe->dev, "%s(), id %d not support\n",
+			 __func__, id);
+		return -EINVAL;
+	}
+
+	/* set share i2s */
+	if (i2s_priv && i2s_priv->share_i2s_id >= 0)
+		ret = mt6991_dai_i2s_config(afe, i2s_priv->share_i2s_id, true);
+
+
+	return ret;
+}
+
+static int mt6991_dai_clk_always_on(struct mtk_base_afe *afe, int dai_id,
+				  bool enable)
+{
+	dev_info(afe->dev, "%s(), id %d, enable %d\n", __func__, dai_id, enable);
+
+	if (dai_id >= MT6991_DAI_I2S_IN0 && dai_id <= MT6991_DAI_I2S_OUT6)
+		mt6991_dai_i2s_config(afe, dai_id, enable);
+
+	return 0;
+}
+
+int mt6991_afe_set_clk_always_on(struct mtk_base_afe *afe,
+					bool enable)
+{
+	struct mt6991_afe_private *afe_priv = afe->platform_priv;
+	struct mtk_clk_ao_attr *dai_attr;
+	struct device *dev = afe->dev;
+	bool clk_ao;
+	int id;
+
+	dev_info(dev, "%s(), ++\n", __func__);
+
+	for (id = MT6991_DAI_I2S_IN0; id < MT6991_DAI_I2S_OUT6; id++) {
+		dai_attr = &afe_priv->clk_ao_data[id];
+		if (enable && dai_attr->clk_ao_enable) {
+			dev_info(dev, "%s(), dai %d clk has ao\n",
+				 __func__, id);
+			continue;
+		} else if (!enable && !dai_attr->clk_ao_enable) {
+			dev_info(dev, "%s(), dai %d clk has not ao\n",
+				 __func__, id);
+			continue;
+		}
+
+		clk_ao = dai_attr->apll_ao || dai_attr->mclk_ao ||
+			dai_attr->bclk_ao || dai_attr->lrck_ao;
+
+		if (!clk_ao)
+			continue;
+
+		if (dai_attr->bclk_ao || dai_attr->lrck_ao)
+			mt6991_dai_clk_always_on(afe, id, enable);
+
+		dai_attr->clk_ao_enable = enable;
+	}
+
+	dev_info(dev, "%s(), --\n", __func__);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mt6991_afe_set_clk_always_on);
 
 int mt6991_dai_i2s_register(struct mtk_base_afe *afe)
 {

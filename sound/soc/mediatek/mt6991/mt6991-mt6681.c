@@ -443,6 +443,10 @@ static int mt6991_mt6681_init(struct snd_soc_pcm_runtime *rtd)
 #if IS_ENABLED(CONFIG_SND_SOC_MT6681_ACCDET) && !defined(SKIP_ACCDET)
 	mt6681_accdet_init(codec_component, rtd->card);
 #endif
+
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	mt6991_afe_set_clk_always_on(afe, true);
+#endif
 	return 0;
 }
 
