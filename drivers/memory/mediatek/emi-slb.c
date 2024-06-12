@@ -47,7 +47,7 @@ unsigned int mpu_base_clear;
 
 int mtk_slb_violation_register_callback(mtk_slb_violation_callback_t fn, void *cb_data)
 {
-	if (slb_violation_cb_num >= SLB_VIOLATION_CB_MAX)
+	if (slb_violation_cb_num >= SLB_VIOLATION_CB_MAX || slb_violation_cb_num < 0)
 		return -1;
 
 	slb_violation_cb_array[slb_violation_cb_num].fault_fn = fn;
