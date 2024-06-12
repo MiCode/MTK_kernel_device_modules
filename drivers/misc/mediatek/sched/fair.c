@@ -302,7 +302,15 @@ void init_dsu_pwr_enable(void)
 
 inline bool is_dsu_pwr_concerned(int wl)
 {
-	return (wl != 4);
+	if (wl == 4)
+		return false;
+
+	if (is_dpt_support_driver_hook) {
+		if (is_dpt_support_driver_hook())
+			return false;
+	}
+
+	return true;
 }
 
 inline bool is_dsu_pwr_triggered(int wl)
