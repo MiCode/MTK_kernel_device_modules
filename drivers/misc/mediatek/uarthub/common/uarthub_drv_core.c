@@ -1022,7 +1022,7 @@ int uarthub_core_dev0_clear_rx_request(void)
 
 int uarthub_core_dev0_clear_txrx_request(void)
 {
-	int dev0_sta = 0, dev1_sta = 0, dev2_sta = 0;
+	int dev1_sta = 0, dev2_sta = 0;
 	int need_lock = 0;
 
 	if (g_uarthub_disable == 1)
@@ -1043,7 +1043,6 @@ int uarthub_core_dev0_clear_txrx_request(void)
 		return -5;
 	}
 
-	dev0_sta = g_plat_ic_core_ops->uarthub_plat_get_host_status(0);
 	dev1_sta = g_plat_ic_core_ops->uarthub_plat_get_host_status(1);
 	dev2_sta = g_plat_ic_core_ops->uarthub_plat_get_host_status(2);
 	if (dev1_sta == 0x300 && dev2_sta == dev1_sta)
