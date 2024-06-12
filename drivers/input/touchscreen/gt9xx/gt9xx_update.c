@@ -498,7 +498,7 @@ cfg_fw_err:
 static u8 gup_check_firmware_name(struct i2c_client *client,
 		u8 **path_p)
 {
-	u8 len;
+	u16 len;
 	u8 *fname;
 
 	if (!(*path_p)) {
