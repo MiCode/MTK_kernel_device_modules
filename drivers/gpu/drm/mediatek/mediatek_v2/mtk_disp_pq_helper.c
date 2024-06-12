@@ -1101,11 +1101,9 @@ int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data)
 	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
 	if (!cb_data) {
 		DDPPR_ERR("cb data creation failed\n");
+		cmdq_pkt_destroy(cmdq_handle);
 		return -1;
 	}
-
-	if (wait_config_done)
-		atomic_set(&pq_data->pq_hw_relay_cfg_done, 0);
 
 	cb_data->crtc = crtc;
 	cb_data->cmdq_handle = cmdq_handle;
@@ -1124,22 +1122,24 @@ int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data)
 	if (cmdq_pkt_flush_threaded(cmdq_handle, disp_pq_relay_cmdq_cb, cb_data) < 0) {
 		DDPPR_ERR("failed to flush %s\n", __func__);
 		kfree(cb_data);
-	}
+	} else
+		mtk_crtc_check_trigger(mtk_crtc, true, false);
 
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	while (wait_config_done) {
 		if (atomic_read(&pq_data->pq_hw_relay_cfg_done) == 0) {
 			DDPDBG("%s: wait_event_interruptible ++\n", __func__);
-			ret = wait_event_interruptible(pq_data->pq_hw_relay_cb_wq,
-				(atomic_read(&pq_data->pq_hw_relay_cfg_done) == 1));
+			ret = wait_event_interruptible_timeout(pq_data->pq_hw_relay_cb_wq,
+				(atomic_cmpxchg(&pq_data->pq_hw_relay_cfg_done, 1, 0) == 1),
+				msecs_to_jiffies(1000));
 			if (ret == -ERESTARTSYS) {
 				DDPMSG("%s: interrupted unexpected by signal\n", __func__);
 				continue;
 			}
 
 			if (ret == 0)
-				DDPDBG("%s: wait_event_interruptible --\n", __func__);
+				DDPDBG("%s: wait_event_interruptible by timeout --\n", __func__);
 		} else
 			DDPDBG("%s(%d)\n", __func__, atomic_read(&pq_data->pq_hw_relay_cfg_done));
 
