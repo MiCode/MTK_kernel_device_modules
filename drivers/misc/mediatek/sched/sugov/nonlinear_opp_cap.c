@@ -2368,9 +2368,10 @@ void mtk_map_util_freq(void *data, unsigned long util, struct cpumask *cpumask,
 		unsigned long *next_freq)
 {
 	int orig_util = util, gearid;
-	unsigned int cpu;
+	unsigned int cpu=0;
 
-	cpu = cpumask_first(cpumask);
+	if (cpumask)
+		cpu = cpumask_first(cpumask);
 	gearid = topology_cluster_id(cpu);
 
 	if (!turn_point_util[cpu] && (am_ctrl || grp_dvfs_ctrl_mode)) {
