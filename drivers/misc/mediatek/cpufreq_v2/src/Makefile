@@ -82,9 +82,8 @@ ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_V0)),)
 ccflags-y += -DUSE_SSPM_VER_V1
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v0/
 endif
-#sspm for mt6833
+#sspm for mt6833,mt6853,mt6781,mt6893
 ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_V2)),)
-#ccflags-y += -DUSE_SSPM_VER_V1
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v2/
 endif
 
@@ -124,7 +123,8 @@ CPU_DVFS-y += plat_k6893/mtk_cpufreq_platform.o
 endif
 ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6781)),)
 ccflags-y += \
-	-I$(CPUFREQ_ROOT_DIR)/src/plat_k6781/	\
-	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcupm/include
+	-DUSE_SSPM_VER_V2	\
+	-I$(CPUFREQ_ROOT_DIR)/src/plat_k6781/
+
 CPU_DVFS-y += plat_k6781/mtk_cpufreq_platform.o
 endif
