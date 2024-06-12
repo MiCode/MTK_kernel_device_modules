@@ -51,6 +51,9 @@ ktime_t adsp_exception_leave_wdt_ts;
 static u32 copy_from_iomem(void *dest, size_t destsize, const void *src,
 			   size_t srcsize, u32 offset, size_t request)
 {
+	if (srcsize == 0)
+		return 0;
+
 	/* if request == -1, offset == 0, copy full srcsize */
 	if (offset + request > srcsize)
 		request = srcsize - offset;
@@ -144,6 +147,9 @@ static u32 dump_adsp_internal_memory(void *buf, size_t size, struct adsp_priv *p
 	n += write_mem_header(buf + n, size - n, "cfg2", adspsys->cfg2_size);
 	n += copy_from_iomem(buf + n, size - n, adspsys->cfg2, adspsys->cfg2_size, 0, -1);
 
+	n += write_mem_header(buf + n, size - n, "cfg3", adspsys->cfg3_size);
+	n += copy_from_iomem(buf + n, size - n, adspsys->cfg3, adspsys->cfg3_size, 0, -1);
+
 	n += write_mem_header(buf + n, size - n, "itcm", pdata->itcm_size);
 	n += copy_from_iomem(buf + n, size - n, pdata->itcm, pdata->itcm_size, 0, -1);
 
@@ -187,6 +193,7 @@ static int dump_buffer(struct adsp_exception_control *ctrl, int coredump_id)
 	total = 8 * sizeof(struct adsp_mem_header)
 		+ adspsys->cfg_size
 		+ adspsys->cfg2_size
+		+ adspsys->cfg3_size
 		+ pdata->itcm_size
 		+ pdata->dtcm_size
 		+ pdata->sysram_size
@@ -525,6 +532,8 @@ void get_adsp_aee_buffer(unsigned long *vaddr, unsigned long *size)
 					adspsys->cfg, adspsys->cfg_size, 0, -1);
 		n += copy_from_iomem(buf + n, len - n,
 					adspsys->cfg2, adspsys->cfg2_size, 0, -1);
+		n += copy_from_iomem(buf + n, len - n,
+					adspsys->cfg3, adspsys->cfg3_size, 0, -1);
 		n += copy_from_iomem(buf + n, len - n,
 					pdata->dtcm, pdata->dtcm_size, 0, -1);
 	}

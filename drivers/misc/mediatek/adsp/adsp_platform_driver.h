@@ -103,9 +103,11 @@ struct adspsys_priv {
 	void __iomem *cfg;
 	void __iomem *cfg_secure;
 	void __iomem *cfg2;
+	void __iomem *cfg3;
 	size_t cfg_size;
 	size_t cfg_secure_size;
 	size_t cfg2_size;
+	size_t cfg3_size;
 	void __iomem *infracfg_rsv;
 
 	struct device *dev;

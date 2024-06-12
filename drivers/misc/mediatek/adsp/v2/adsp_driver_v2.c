@@ -187,6 +187,14 @@ static int adspsys_drv_probe(struct platform_device *pdev)
 	adspsys->cfg2 = devm_ioremap_resource(dev, res);
 	adspsys->cfg2_size = resource_size(res);
 
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "cfg3");
+	if (!res)
+		pr_info("%s, \"cfg3\" not support\n", __func__);
+	else {
+		adspsys->cfg3 = devm_ioremap_resource(dev, res);
+		adspsys->cfg3_size = resource_size(res);
+	}
+
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "infracfg_rsv");
 	if (!res)
 		pr_info("%s(), \"infracfg_rsv\" not support\n", __func__);
