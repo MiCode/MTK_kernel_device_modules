@@ -201,8 +201,7 @@ static ssize_t gals_dump_show(struct device *dev,
 
 static u32 find_next_offset(loff_t offset)
 {
-	u32 start, end;
-	loff_t reg_mem_offset = 0;
+	u32 start;
 	int i;
 	struct reg_dump_info *range_table;
 	struct dbg_hw_info *hw_info;
@@ -215,12 +214,9 @@ static u32 find_next_offset(loff_t offset)
 
 	for (i = 0; i < hw_info->seg_count; i++) {
 		start = range_table[i].base;
-		end = start + range_table[i].size;
 
 		if (offset < start)
 			return start - offset;
-
-		reg_mem_offset += range_table[i].size;
 	}
 
 	/* fail */
