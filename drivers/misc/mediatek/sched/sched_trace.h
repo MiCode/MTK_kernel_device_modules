@@ -301,10 +301,10 @@ TRACE_EVENT(sched_find_best_candidates,
 TRACE_EVENT(sched_target_max_spare_cpu,
 
 	TP_PROTO(const char *type, int best_cpu, int new_cpu, int replace,
-		long spare_cap, long target_max_spare_cap, int fit, int best_fit),
+		long spare_cap, long target_max_spare_cap),
 
 	TP_ARGS(type, best_cpu, new_cpu, replace,
-		spare_cap, target_max_spare_cap, fit, best_fit),
+		spare_cap, target_max_spare_cap),
 
 	TP_STRUCT__entry(
 		__string(type, type)
@@ -313,8 +313,6 @@ TRACE_EVENT(sched_target_max_spare_cpu,
 		__field(int, replace)
 		__field(long, spare_cap)
 		__field(long, target_max_spare_cap)
-		__field(int, fit)
-		__field(int, best_fit)
 		),
 
 	TP_fast_assign(
@@ -324,19 +322,15 @@ TRACE_EVENT(sched_target_max_spare_cpu,
 		__entry->replace        = replace;
 		__entry->spare_cap        = spare_cap;
 		__entry->target_max_spare_cap        = target_max_spare_cap;
-		__entry->fit            = fit;
-		__entry->best_fit        = best_fit;
 		),
 
-	TP_printk("type=%s best_cpu=%d new_cpu=%d replace=%d spare_cap=%ld target_max_spare_cap=%ld fit=%d best_fit=%d",
+	TP_printk("type=%s best_cpu=%d new_cpu=%d replace=%d spare_cap=%ld target_max_spare_cap=%ld",
 		__get_str(type),
 		__entry->best_cpu,
 		__entry->new_cpu,
 		__entry->replace,
 		__entry->spare_cap,
-		__entry->target_max_spare_cap,
-		__entry->fit,
-		__entry->best_fit)
+		__entry->target_max_spare_cap)
 );
 
 TRACE_EVENT(sched_select_task_rq,
