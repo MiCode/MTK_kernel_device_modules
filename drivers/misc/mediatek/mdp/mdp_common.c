@@ -3147,6 +3147,9 @@ static void cmdq_mdp_end_task_virtual(struct cmdqRecStruct *handle,
 			continue;
 
 		mdp_list_pmqos = (struct mdp_pmqos *)curTask->prop_addr;
+		if (!mdp_list_pmqos)
+			continue;
+
 		pmqos_list_record =
 			(struct mdp_pmqos_record *)curTask->user_private;
 
@@ -3190,6 +3193,9 @@ static void cmdq_mdp_end_task_virtual(struct cmdqRecStruct *handle,
 				continue;
 
 			mdp_list_pmqos = (struct mdp_pmqos *)curTask->prop_addr;
+			if (!mdp_list_pmqos)
+				continue;
+
 			pmqos_list_record =
 				(struct mdp_pmqos_record *)
 					curTask->user_private;
