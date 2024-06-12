@@ -144,7 +144,7 @@ static const struct hdr_data mt6985_hdr_data = {
 
 static const struct hdr_data mt6991_mmlt_hdr_data = {
 	.min_tile_width = 16,
-	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
+	.cpr = {CMDQ_CPR_MML0_PQ0_ADDR, CMDQ_CPR_MML0_PQ1_ADDR},
 	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
 	.reg_table = hdr_reg_table_mt6983,
 	.rb_mode = RB_EOF_MODE,
