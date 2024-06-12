@@ -38,10 +38,6 @@ MODULE_LICENSE("GPL");
 #define IB_SAME_CLUSTER		(0x01)
 #define IB_OVERUTILIZATION	(0x04)
 
-#ifndef CONFIG_RT_SOFTIRQ_AWARE_SCHED
-DEFINE_PER_CPU(__u32, active_softirqs);
-#endif
-
 struct cpumask __cpu_pause_mask;
 EXPORT_SYMBOL(__cpu_pause_mask);
 
