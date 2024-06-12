@@ -39,6 +39,9 @@
 
 #include "mtk_zram_drv.h"
 
+#define INIT_MAX_PENDING_ZRAM_BIO 100000
+static unsigned int max_pending_zram_bio = INIT_MAX_PENDING_ZRAM_BIO;
+
 static DEFINE_IDR(mtk_zram_index_idr);
 /* idr index must be protected */
 static DEFINE_MUTEX(zram_index_mutex);
@@ -48,8 +51,6 @@ static const char *default_compressor = "lz4";
 
 static unsigned int nr_kcompressd;
 static unsigned int nr_kcompressd_current;
-
-static unsigned int kfifo_size_per_kcompressd;
 
 struct kcompressd_para {
 	struct zram *zram;
@@ -1445,31 +1446,29 @@ static void zram_bio_write(struct zram *zram, struct bio *bio)
 static void zram_submit_bio(struct bio *bio)
 {
 	struct zram *zram = bio->bi_bdev->bd_disk->private_data;
-	int i;
+	int hid;
 
 	switch (bio_op(bio)) {
 	case REQ_OP_READ:
 		zram_bio_read(zram, bio);
 		break;
 	case REQ_OP_WRITE:
-		if (!nr_kcompressd_current || !current_is_kswapd()) {
+		if (!nr_kcompressd_current || !max_pending_zram_bio
+				|| !current_is_kswapd()) {
 			zram_bio_write(zram, bio);
 			break;
 		}
-
-		for (i = 0; i < nr_kcompressd_current; ++i) {
-			int hid = atomic_inc_return(&zram->next_hid) - 1;
-
-			if (hid >= nr_kcompressd_current)
-				atomic_set(&zram->next_hid, 0);
-			if (sizeof(bio) == kfifo_in(&zram->bio_fifo[hid], &bio, sizeof(bio))) {
-				wake_up_interruptible(&zram->kcompressd_wait[hid]);
-				break;
-			}
-		}
-
-		if (i == nr_kcompressd_current)
+		spin_lock(&zram->reclaim_lock);
+		if (zram->nr_pending > max_pending_zram_bio) {
+			spin_unlock(&zram->reclaim_lock);
 			zram_bio_write(zram, bio);
+			break;
+		}
+		bio_list_add(&zram->reclaiming_list, bio);
+		zram->nr_pending++;
+		spin_unlock(&zram->reclaim_lock);
+		for (hid = 0; hid < nr_kcompressd_current; ++hid)
+			wake_up_interruptible(&zram->kcompressd_wait[hid]);
 		break;
 	case REQ_OP_DISCARD:
 	case REQ_OP_WRITE_ZEROES:
@@ -1692,7 +1691,7 @@ static void kcompressd_try_to_sleep(struct zram *zram, int hid)
 {
 	DEFINE_WAIT(wait);
 
-	if (!kfifo_is_empty(&zram->bio_fifo[hid]))
+	if (!bio_list_empty(&zram->reclaiming_list))
 		return;
 
 	if (freezing(current) || kthread_should_stop())
@@ -1704,7 +1703,7 @@ static void kcompressd_try_to_sleep(struct zram *zram, int hid)
 	 * After a short sleep, check if it was a premature sleep. If not, then
 	 * go fully to sleep until explicitly woken up.
 	 */
-	if (!kthread_should_stop() && kfifo_is_empty(&zram->bio_fifo[hid]))
+	if (!kthread_should_stop() && bio_list_empty(&zram->reclaiming_list))
 		schedule();
 
 	finish_wait(&zram->kcompressd_wait[hid], &wait);
@@ -1734,8 +1733,14 @@ static int kcompressd(void *p)
 			continue;
 
 		psi_memstall_enter(&pflags);
-		while (sizeof(bio) == kfifo_out(&zram->bio_fifo[hid], &bio, sizeof(bio)))
+		spin_lock(&zram->reclaim_lock);
+		while ((bio = bio_list_pop(&zram->reclaiming_list))) {
+			--zram->nr_pending;
+			spin_unlock(&zram->reclaim_lock);
 			zram_bio_write(zram, bio);
+			spin_lock(&zram->reclaim_lock);
+		}
+		spin_unlock(&zram->reclaim_lock);
 		psi_memstall_leave(&pflags);
 	}
 
@@ -1745,75 +1750,6 @@ static int kcompressd(void *p)
 
 	return 0;
 }
-
-static int update_size_kfifo(int id, void *ptr, void *data)
-{
-	int hid;
-	struct zram *zram = (struct zram *)ptr;
-
-	for (hid = 0; hid < nr_kcompressd_current; hid++) {
-		if (zram->kcompressd[hid]) {
-			struct bio *bio;
-			struct kcompressd_para *para;
-
-			kthread_stop(zram->kcompressd[hid]);
-			while (sizeof(bio) == kfifo_out(&zram->bio_fifo[hid], &bio, sizeof(bio)))
-				zram_bio_write(zram, bio);
-			kfifo_free(&zram->bio_fifo[hid]);
-			if (kfifo_alloc(&zram->bio_fifo[hid],
-						sizeof(struct bio *) * kfifo_size_per_kcompressd, GFP_KERNEL))
-				return -EINVAL;
-			para = kvmalloc(sizeof(struct kcompressd_para), GFP_KERNEL);
-			if (!para) {
-				kfifo_free(&zram->bio_fifo[hid]);
-				return -EINVAL;
-			}
-			para->zram = zram;
-			para->hid = hid;
-			zram->kcompressd[hid] = kthread_run(kcompressd, para,
-						"kcompressd%d:%d", zram->disk->first_minor, hid);
-			if (IS_ERR(zram->kcompressd[hid])) {
-				pr_err("Failed to start kcompressd%d on %s\n",
-					hid, zram->disk->disk_name);
-				zram->kcompressd[hid] = NULL;
-				kfifo_free(&zram->bio_fifo[hid]);
-				kvfree(para);
-				return -EINVAL;
-			}
-		}
-	}
-	return 0;
-}
-
-static int do_size_kfifo_handler(const char *val,
-		const struct kernel_param *kp)
-{
-	int ret;
-	unsigned int current_size = kfifo_size_per_kcompressd;
-
-	ret = param_set_uint(val, kp);
-	if (ret < 0)
-		return ret;
-
-	if (current_size == kfifo_size_per_kcompressd)
-		return 0;
-
-	idr_for_each(&mtk_zram_index_idr, &update_size_kfifo, NULL);
-
-	pr_info("kswapd_thread count changed, old:%d new:%d\n",
-		current_size, kfifo_size_per_kcompressd);
-
-	return 0;
-}
-
-static const struct kernel_param_ops param_ops_change_size_kfifo = {
-	.set = &do_size_kfifo_handler,
-	.get = &param_get_uint,
-	.free = NULL,
-};
-
-module_param_cb(kfifo_size_per_kcompressd, &param_ops_change_size_kfifo,
-		&kfifo_size_per_kcompressd, 0644);
 
 static int update_nr_kcompressd(int id, void *ptr, void *data)
 {
@@ -1827,12 +1763,8 @@ static int update_nr_kcompressd(int id, void *ptr, void *data)
 		drop = nr_threads - nr_kcompressd;
 		for (hid = last_idx; hid > (last_idx - drop); hid--) {
 			if (zram->kcompressd[hid]) {
-				struct bio *bio;
 				kthread_stop(zram->kcompressd[hid]);
 				zram->kcompressd[hid] = NULL;
-				while (sizeof(bio) == kfifo_out(&zram->bio_fifo[hid], &bio, sizeof(bio)))
-					zram_bio_write(zram, bio);
-				kfifo_free(&zram->bio_fifo[hid]);
 			}
 		}
 	} else {
@@ -1841,15 +1773,9 @@ static int update_nr_kcompressd(int id, void *ptr, void *data)
 		for (hid = start_idx; hid < (start_idx + increase); hid++) {
 			struct kcompressd_para *para;
 
-			if (kfifo_alloc(&zram->bio_fifo[hid],
-						sizeof(struct bio *) * kfifo_size_per_kcompressd, GFP_KERNEL))
-				return -EINVAL;
-
 			para = kvmalloc(sizeof(struct kcompressd_para), GFP_KERNEL);
-			if (!para) {
-				kfifo_free(&zram->bio_fifo[hid]);
+			if (!para)
 				return -EINVAL;
-			}
 			para->zram = zram;
 			para->hid = hid;
 			zram->kcompressd[hid] = kthread_run(kcompressd, para,
@@ -1858,7 +1784,6 @@ static int update_nr_kcompressd(int id, void *ptr, void *data)
 				pr_err("Failed to start kcompressd%d on %s\n",
 					hid, zram->disk->disk_name);
 				zram->kcompressd[hid] = NULL;
-				kfifo_free(&zram->bio_fifo[hid]);
 				kvfree(para);
 				/*
 				 * We are out of resources. Do not start any
@@ -1903,6 +1828,24 @@ static const struct kernel_param_ops param_ops_change_nr_kcompressd = {
 
 module_param_cb(nr_kcompressd, &param_ops_change_nr_kcompressd,
 		&nr_kcompressd, 0644);
+
+static int do_max_pending_zram_bio_handler(const char *val,
+		const struct kernel_param *kp)
+{
+	int ret;
+
+	ret = param_set_uint(val, kp);
+	return ret;
+}
+
+static const struct kernel_param_ops param_ops_change_max_pending_zram_bio = {
+	.set = &do_max_pending_zram_bio_handler,
+	.get = &param_get_uint,
+	.free = NULL,
+};
+
+module_param_cb(max_pending_zram_bio, &param_ops_change_max_pending_zram_bio,
+		&max_pending_zram_bio, 0644);
 
 /*
  * Allocate and initialize new zram device. the function returns
@@ -1978,19 +1921,17 @@ static int zram_add(void)
 
 	comp_algorithm_set(zram, ZRAM_PRIMARY_COMP, default_compressor);
 
+	spin_lock_init(&zram->reclaim_lock);
+	bio_list_init(&zram->reclaiming_list);
 	for (hid = 0; hid < MAX_KCOMPRESSD_NUM; ++hid)
 		init_waitqueue_head(&zram->kcompressd_wait[hid]);
 
 	nr_kcompressd = 1;
 	nr_kcompressd_current = 1;
-	kfifo_size_per_kcompressd = INIT_KFIFO_SIZE;
-	if (kfifo_alloc(&zram->bio_fifo[0], sizeof(struct bio *) * kfifo_size_per_kcompressd, GFP_KERNEL))
-		goto out_cleanup_disk;
 	para = kvmalloc(sizeof(struct kcompressd_para), GFP_KERNEL);
-	if (!para) {
-		kfifo_free(&zram->bio_fifo[0]);
+	if (!para)
 		goto out_cleanup_disk;
-	}
+	zram->nr_pending = 0;
 	para->zram = zram;
 	para->hid = 0;
 	zram->kcompressd[0] = kthread_run(kcompressd, para, "kcompressd%d:%d",
@@ -1999,12 +1940,9 @@ static int zram_add(void)
 		pr_err("Failed to start kcompressd0 on %s\n",
 			zram->disk->disk_name);
 		zram->kcompressd[0] = NULL;
-		kfifo_free(&zram->bio_fifo[0]);
 		kvfree(para);
 		goto out_cleanup_disk;
 	}
-
-	atomic_set(&zram->next_hid, 0);
 
 	zram_debugfs_register(zram);
 	pr_info("Added device: %s\n", zram->disk->disk_name);
