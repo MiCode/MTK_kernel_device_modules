@@ -176,7 +176,7 @@ static void vm_get_host_cpu_util(void)
 				util_org = READ_ONCE(cpu_rq(cpu)->cfs.avg.util_avg);
 				if (sched_feat(UTIL_EST))
 					util_org = max_t(unsigned long, util_org,
-						READ_ONCE(cpu_rq(cpu)->cfs.avg.util_est.enqueued));
+						READ_ONCE(cpu_rq(cpu)->cfs.avg.util_est));
 				host_cpu[cpu].util = min(util_org, READ_ONCE(cpu_rq(cpu)->cpu_capacity_orig));
 			}
 			host_cpu_util_sum += host_cpu[cpu].util;

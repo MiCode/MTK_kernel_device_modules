@@ -2423,9 +2423,7 @@ static inline unsigned long task_util(struct task_struct *p)
 
 static inline unsigned long _task_util_est(struct task_struct *p)
 {
-	struct util_est ue = READ_ONCE(p->se.avg.util_est);
-
-	return max(ue.ewma, (ue.enqueued & ~UTIL_AVG_UNCHANGED));
+	return READ_ONCE(p->se.avg.util_est) & ~UTIL_AVG_UNCHANGED;
 }
 
 /* modified from k66 cpu_util() */
@@ -2448,7 +2446,7 @@ unsigned long mtk_cpu_util_next(int cpu, struct task_struct *p, int dst_cpu, int
 	if (sched_feat(UTIL_EST) && is_util_est_enable()) {
 		unsigned long util_est;
 
-		util_est = READ_ONCE(cfs_rq->avg.util_est.enqueued);
+		util_est = READ_ONCE(cfs_rq->avg.util_est);
 
 		if (dst_cpu == cpu)
 			util_est += _task_util_est(p);
@@ -2460,7 +2458,7 @@ unsigned long mtk_cpu_util_next(int cpu, struct task_struct *p, int dst_cpu, int
 
 	if (trace_sched_runnable_boost_enabled())
 		trace_sched_runnable_boost(is_runnable_boost_enable(), boost, cfs_rq->avg.util_avg,
-				cfs_rq->avg.util_est.enqueued, runnable, util);
+				cfs_rq->avg.util_est, runnable, util);
 
 	return min(util, capacity_orig_of(cpu) + 1);
 }
