@@ -982,9 +982,8 @@ static void smmu_lmu_polling(u32 smmu_type)
 		}
 		written += ret;
 
-		if (ret >= 0 || ret < sizeof(trace_buf))
-			smmu_qos_print_trace(lmu_tbu_trace_func[smmu_type][i],
-					     trace_buf);
+		smmu_qos_print_trace(lmu_tbu_trace_func[smmu_type][i],
+				     trace_buf);
 	}
 }
 
