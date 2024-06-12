@@ -548,7 +548,7 @@ static int eusb2_repeater_exit(struct phy *phy)
 static int eusb2_repeater_power_on(struct phy *phy)
 {
 	struct eusb2_repeater *rptr = phy_get_drvdata(phy);
-	unsigned int chip_rev;
+	unsigned int chip_rev = 0;
 
 	regmap_read(rptr->regmap, MT6379_REG_DEV_INFO, &chip_rev);
 	dev_info(rptr->dev, "eusb2 repeater power on chip_rev(%x) submode(%x)\n", chip_rev, rptr->submode);
@@ -762,7 +762,7 @@ static int eusb2_repeater_power_on(struct phy *phy)
 static int eusb2_repeater_power_off(struct phy *phy)
 {
 	struct eusb2_repeater *rptr = phy_get_drvdata(phy);
-	unsigned int chip_rev;
+	unsigned int chip_rev = 0;
 
 	regmap_read(rptr->regmap, MT6379_REG_DEV_INFO, &chip_rev);
 	dev_info(rptr->dev, "eusb2 repeater power off chip_rev(%x) submode(%x)\n", chip_rev, rptr->submode);
