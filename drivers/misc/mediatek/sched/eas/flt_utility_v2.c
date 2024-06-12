@@ -269,14 +269,12 @@ int FLT_FN(sched_get_gear_sum_group_eas)(int gear_id, int group_id)
 
 static int FLT_FN(get_cpu_by_wp)(int cpu)
 {
-	struct rq *rq;
 	struct flt_rq *fsrq;
 	int cpu_dmand_util = 0;
 
 	if (unlikely(!cpumask_test_cpu(cpu, cpu_possible_mask)))
 		return -1;
 
-	rq = cpu_rq(cpu);
 	fsrq = &per_cpu(flt_rq, cpu);
 
 	cpu_dmand_util = READ_ONCE(fsrq->cpu_tar_util);
@@ -313,11 +311,9 @@ static int FLT_FN(sched_get_cpu_group_eas)(int cpu_idx, int group_id)
 static int FLT_FN(get_o_util)(int cpu)
 {
 	int cpu_r = 0, grp_idx = 0, res, flt_util = 0;
-	struct rq *rq;
 	struct flt_rq *fsrq;
 	u32 util_ratio[GROUP_ID_RECORD_MAX] = {0}, grp_r[GROUP_ID_RECORD_MAX] = {0}, total = 0;
 
-	rq = cpu_rq(cpu);
 	fsrq = &per_cpu(flt_rq, cpu);
 
 	cpu_r = flt_get_cpu_r(cpu);

@@ -232,14 +232,12 @@ static int FLT_FN(get_grp_r)(int grp_id)
 
 static int FLT_FN(get_cpu_by_wp)(int cpu)
 {
-	struct rq *rq;
 	struct flt_rq *fsrq;
 	int cpu_dmand_util = 0;
 
 	if (unlikely(!cpumask_test_cpu(cpu, cpu_possible_mask)))
 		return -1;
 
-	rq = cpu_rq(cpu);
 	fsrq = &per_cpu(flt_rq, cpu);
 
 	cpu_dmand_util = READ_ONCE(fsrq->cpu_tar_util);
