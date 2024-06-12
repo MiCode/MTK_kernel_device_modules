@@ -260,15 +260,23 @@ module_param_array(debug_module_bw, int, NULL, 0644);
 	#define FLD_ELn_IGAMMA_SEL(n)	REG_FLD_MSB_LSB((n)*4 + 17, (n)*4 + 16)
 	#define FLD_ELn_GAMMA_SEL(n)	REG_FLD_MSB_LSB((n)*4 + 19, (n)*4 + 18)
 
+#define DISP_REG_OVL_L0_GUSER_EXT	(0x2FCUL)
+#define OVL_RDMA0_L0_VCSEL BIT(5)
+#define OVL_RDMA0_HDR_L0_VCSEL BIT(21)
+
 #define DISP_REG_OVL_DATAPATH_EXT_CON	(0x324UL)
 #define DISP_REG_OVL_EL_CON(n)			(0x330UL + 0x20 * (n))
 #define DISP_REG_OVL_EL_SRCKEY(n)		(0x334UL + 0x20 * (n))
 #define DISP_REG_OVL_EL_SRC_SIZE(n)		(0x078UL + 0x30 * (n))
 #define DISP_REG_OVL_EL_OFFSET(n)		(0x074UL + 0x30 * (n))
 #define DISP_REG_OVL_EL_ADDR(module, n) (0xFB0UL + (module)->data->el_addr_offset * (n))
-#define DISP_REG_OVL_EL_PITCH_MSB(n)	(0x340U + 0x20 * (n))
-#define DISP_REG_OVL_EL_PITCH(n)		(0x344U + 0x20 * (n))
+#define DISP_REG_OVL_EL_PITCH_MSB(n)	(0x340UL + 0x20 * (n))
+#define DISP_REG_OVL_EL_PITCH(n)		(0x344UL + 0x20 * (n))
 #define DISP_REG_OVL_EL_TILE(n)			(0x348UL + 0x20 * (n))
+#define DISP_REG_OVL_EL_GUSER_EXT(n)	(0x34CUL + 0x20 * (n))
+#define OVL_RDMA0_EL_VCSEL BIT(5)
+#define OVL_RDMA0_HDR_EL_VCSEL BIT(21)
+
 #define DISP_REG_OVL_EL_CLIP(n)			(0x07CUL + 0x30 * (n))
 #define DISP_REG_OVL_EL0_CLR(n)			(0x390UL + 0x4 * (n))
 #define DISP_REG_OVL_ADDR(module, n)	((module)->data->addr + 0x20 * (n))
@@ -2157,6 +2165,26 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 	}
 }
 
+static void mtk_ovl_exdma_vcsel_config(struct mtk_ddp_comp *comp, unsigned int enable,
+		struct cmdq_pkt *handle)
+{
+	unsigned int value0 = 0, mask0 = (OVL_RDMA0_L0_VCSEL | OVL_RDMA0_HDR_L0_VCSEL);
+	unsigned int value1 = 0, mask1 = (OVL_RDMA0_EL_VCSEL | OVL_RDMA0_HDR_EL_VCSEL);
+	unsigned int i;
+
+	if (enable) {
+		value0 = (OVL_RDMA0_L0_VCSEL | OVL_RDMA0_HDR_L0_VCSEL);
+		value1 = (OVL_RDMA0_EL_VCSEL | OVL_RDMA0_HDR_EL_VCSEL);
+	}
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_L0_GUSER_EXT,
+			   value0, mask0);
+
+	for (i = 0; i < 3; i++)
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_EL_GUSER_EXT(i),
+				value1, mask1);
+}
+
 static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	unsigned int vrefresh = 0;
@@ -2561,6 +2589,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 
 		mtk_ovl_exdma_layer_on(comp, lye_idx, ext_lye_idx, handle);
 		mtk_ovl_exdma_stash_config(comp, handle);
+		mtk_ovl_exdma_vcsel_config(comp, 1, handle);
 
 		/*constant color :non RDMA source*/
 		/* TODO: cause RPO abnormal */
