@@ -705,6 +705,9 @@ static void accdet_get_efuse(void)
 	}
 	pr_info("%s efuse=0x%x,auxadc_val=%dmv\n", __func__, efuseval,
 		accdet->auxadc_offset);
+
+	// Mark variables as used to prevent warnings
+	(void)ret;
 }
 
 static void accdet_get_efuse_4key(void)
@@ -744,6 +747,9 @@ static void accdet_get_efuse_4key(void)
 	pr_info("accdet key thresh: mid=%dmv,voice=%dmv,up=%dmv,down=%dmv\n",
 		accdet_dts.four_key.mid, accdet_dts.four_key.voice,
 		accdet_dts.four_key.up, accdet_dts.four_key.down);
+
+	// Mark variables as used to prevent warnings
+	(void)ret;
 }
 
 static u32 key_check(u32 v)
@@ -1569,6 +1575,10 @@ void accdet_irq_handle(void)
 		pr_notice("%s no interrupt detected!\n", __func__);
 	}
 	dump_register();
+
+	// Mark variables as used to prevent warnings
+	(void)acc_sts;
+	(void)eint_sts;
 }
 
 static irqreturn_t mtk_accdet_irq_handler_thread(int irq, void *data)
@@ -1614,6 +1624,10 @@ static irqreturn_t ex_eint_handler(int irq, void *data)
 
 	disable_irq_nosync(accdet->gpioirq);
 	ret = queue_work(accdet->eint_workqueue, &accdet->eint_work);
+
+	// Mark variables as used to prevent warnings
+	(void)ret;
+
 	return IRQ_HANDLED;
 }
 
@@ -2324,6 +2338,9 @@ static int mt6358_accdet_probe(struct platform_device *pdev)
 	atomic_set(&accdet_first, 1);
 	mod_timer(&accdet_init_timer, (jiffies + ACCDET_INIT_WAIT_TIMER));
 	pr_info("%s done!\n", __func__);
+
+	// Mark variables as used to prevent warnings
+	(void)res;
 
 	return 0;
 
