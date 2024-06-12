@@ -1667,11 +1667,15 @@ static int __maybe_unused avoid_kmemleak_false_alarm(struct pci_dev *dev,
 
 static void mtk_pcie_avoid_kmemleak_false_alarm(struct pci_host_bridge *host)
 {
+	struct pci_bus_resource *bus_res;
+
 	kmemleak_not_leak(host);
 	kmemleak_not_leak(&host->dev);
 	kmemleak_not_leak(host->bus);
 	kmemleak_not_leak(&host->bus->dev);
-	kmemleak_not_leak(&host->bus->resources);
+
+	list_for_each_entry(bus_res, &host->bus->resources, list)
+		kmemleak_not_leak(bus_res);
 
 	pci_walk_bus(host->bus, avoid_kmemleak_false_alarm, NULL);
 }
