@@ -625,7 +625,7 @@ void set_task_vvip_and_throttle(int pid, unsigned int throttle_time)
 	if (trace_sched_set_vip_enabled())
 		trace_sched_set_vip(pid, done, "vvip_throttle", VVIP, throttle_time, 0);
 }
-EXPORT_SYMBOL_GPL(set_task_vvip_and_throttle);
+EXPORT_SYMBOL(set_task_vvip_and_throttle);
 
 void set_task_vvip(int pid)
 {
@@ -671,7 +671,7 @@ void unset_task_vvip(int pid)
 		trace_sched_unset_vip(pid, done, "VVIP", 0);
 
 }
-EXPORT_SYMBOL_GPL(unset_task_vvip);
+EXPORT_SYMBOL(unset_task_vvip);
 
 /* priority based VIP interface */
 void set_task_priority_based_vip_and_throttle(int pid, int prio, unsigned int throttle_time)
@@ -696,7 +696,7 @@ void set_task_priority_based_vip_and_throttle(int pid, int prio, unsigned int th
 	if (trace_sched_set_vip_enabled())
 		trace_sched_set_vip(pid, done, "priority_based_vip_throttle", prio, throttle_time, 0);
 }
-EXPORT_SYMBOL_GPL(set_task_priority_based_vip_and_throttle);
+EXPORT_SYMBOL(set_task_priority_based_vip_and_throttle);
 
 void set_task_priority_based_vip(int pid, int prio)
 {
@@ -742,7 +742,7 @@ void unset_task_priority_based_vip(int pid)
 	if (trace_sched_unset_vip_enabled())
 		trace_sched_unset_vip(pid, done, "priority_based_vip", 0);
 }
-EXPORT_SYMBOL_GPL(unset_task_priority_based_vip);
+EXPORT_SYMBOL(unset_task_priority_based_vip);
 /* priority based VIP interface */
 
 /* TGID */
@@ -818,7 +818,7 @@ out:
 
 	return set_state;
 }
-EXPORT_SYMBOL_GPL(set_tgid_vip);
+EXPORT_SYMBOL(set_tgid_vip);
 
 int unset_tgid_vip(int tgid)
 {
@@ -840,7 +840,7 @@ out:
 
 	return unset_state;
 }
-EXPORT_SYMBOL_GPL(unset_tgid_vip);
+EXPORT_SYMBOL(unset_tgid_vip);
 
 bool is_VIP_tgid(struct task_struct *p)
 {
@@ -858,13 +858,13 @@ void turn_on_tgid_vip(void)
 {
 	tgid_vip_status = 1;
 }
-EXPORT_SYMBOL_GPL(turn_on_tgid_vip);
+EXPORT_SYMBOL(turn_on_tgid_vip);
 
 void turn_off_tgid_vip(void)
 {
 	tgid_vip_status = 0;
 }
-EXPORT_SYMBOL_GPL(turn_off_tgid_vip);
+EXPORT_SYMBOL(turn_off_tgid_vip);
 
 int tgid_vip_on(void)
 {
@@ -894,7 +894,7 @@ void set_task_basic_vip_and_throttle(int pid, unsigned int throttle_time)
 	if (trace_sched_set_vip_enabled())
 		trace_sched_set_vip(pid, done, "basic_vip_and_throttle", WORKER_VIP, throttle_time, 0);
 }
-EXPORT_SYMBOL_GPL(set_task_basic_vip_and_throttle);
+EXPORT_SYMBOL(set_task_basic_vip_and_throttle);
 
 void set_task_basic_vip(int pid)
 {
@@ -916,7 +916,7 @@ void set_task_basic_vip(int pid)
 	if (trace_sched_set_vip_enabled())
 		trace_sched_set_vip(pid, done, "basic_vip", WORKER_VIP, VIP_TIME_LIMIT_DEFAULT/1000000, 0);
 }
-EXPORT_SYMBOL_GPL(set_task_basic_vip);
+EXPORT_SYMBOL(set_task_basic_vip);
 
 void unset_task_basic_vip(int pid)
 {
@@ -939,7 +939,7 @@ void unset_task_basic_vip(int pid)
 	if (trace_sched_unset_vip_enabled())
 		trace_sched_unset_vip(pid, done, "basic_vip", 0);
 }
-EXPORT_SYMBOL_GPL(unset_task_basic_vip);
+EXPORT_SYMBOL(unset_task_basic_vip);
 /* end of basic vip interface */
 
 #define is_VIP_basic(vts) (vts->basic_vip)
