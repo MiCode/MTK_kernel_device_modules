@@ -1408,11 +1408,12 @@ static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 	int ret = VOTER_PM_DONE;
 
 	if (user & VOTER_ONLY) {
-		mtk_disp_vlp_vote(VOTE_SET, user & 0x1f);
+		mtk_disp_vlp_vote(VOTE_SET, user & DISP_VIDLE_USER_MASK);
 
 		/* skip pm_get to fix unstable DSI TE, mminfra power is held by DPC usually */
 		/* but if no power at this time, the user should call pm_get to ensure power */
-		if (((user & 0x1f) == DISP_VIDLE_USER_TOP_CLK_ISR) && !mminfra_is_power_on())
+		if (((user & DISP_VIDLE_USER_MASK) == DISP_VIDLE_USER_TOP_CLK_ISR) &&
+		     !mminfra_is_power_on())
 			return VOTER_PM_LATER;
 
 		return VOTER_ONLY;
@@ -1421,7 +1422,7 @@ static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 	if (dpc_pm_ctrl(true))
 		return VOTER_PM_FAILED;
 
-	mtk_disp_vlp_vote(VOTE_SET, user & 0x1f);
+	mtk_disp_vlp_vote(VOTE_SET, user & DISP_VIDLE_USER_MASK);
 
 	if (user >= DISP_VIDLE_USER_CRTC)
 		udelay(post_vlp_delay);
@@ -1433,7 +1434,7 @@ static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 
 static void dpc_vidle_power_release(const enum mtk_vidle_voter_user user)
 {
-	mtk_disp_vlp_vote(VOTE_CLR, user & 0x1f);
+	mtk_disp_vlp_vote(VOTE_CLR, user & DISP_VIDLE_USER_MASK);
 
 	if (user & VOTER_ONLY)
 		return;
