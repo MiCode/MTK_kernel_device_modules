@@ -628,7 +628,7 @@ static int apupw_dbg_dump_table(struct seq_file *s)
 					apu_freq2opp(ad, freq), apu_freq2boost(ad, freq));
 			freq += 1;
 		} while (1);
-		seq_printf(s, info);
+		seq_printf(s, "%s", info);
 		/* add separator line */
 		separate = kzalloc(len, GFP_KERNEL);
 		memset(separate, '-', len - 1);
