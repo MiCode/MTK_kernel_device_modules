@@ -97,7 +97,7 @@ struct bc_ctl_block_t {
 struct ccci_util_bc_user_ctlb {
 	struct bc_ctl_block_t *bc_dev_ptr;
 	int pending_event_cnt;
-	int has_request_rst_lock;
+	atomic_t  has_request_rst_lock;
 	int curr_w;
 	int curr_r;
 	int buff_cnt;
@@ -217,7 +217,7 @@ int get_lock_rst_user_list(char list_buff[], int size)
 	spin_lock_irqsave(&s_event_update_lock, flag);
 	list_for_each_entry(user_ctlb,
 		&s_bc_ctl_tbl[0]->user_list, node) {
-		if (user_ctlb->has_request_rst_lock) {
+		if (atomic_read(&user_ctlb->has_request_rst_lock) == 1) {
 			cpy_size = scnprintf(&list_buff[total_size],
 			size - total_size,
 			"%s,", user_ctlb->user_name);
@@ -254,7 +254,7 @@ static int ccci_util_bc_open(struct inode *inode, struct file *filp)
 
 	user_ctlb->bc_dev_ptr = s_bc_ctl_tbl[minor];
 	user_ctlb->pending_event_cnt = 0;
-	user_ctlb->has_request_rst_lock = 0;
+	atomic_set(&user_ctlb->has_request_rst_lock, 0);
 	user_ctlb->curr_w = 0;
 	user_ctlb->curr_r = 0;
 	user_ctlb->buff_cnt = EVENT_BUFF_SIZE;
@@ -290,8 +290,8 @@ static int ccci_util_bc_release(struct inode *inode, struct file *filp)
 
 	if (bc_dev->md_bit_mask & MD_BC_SUPPORT) {
 		spin_lock(&s_md1_user_lock_cnt_lock);
-		if (user_ctlb->has_request_rst_lock == 1) {
-			user_ctlb->has_request_rst_lock = 0;
+		if (atomic_read(&user_ctlb->has_request_rst_lock) == 1) {
+			atomic_set(&user_ctlb->has_request_rst_lock, 0);
 			s_md1_user_request_lock_cnt--;
 		}
 		spin_unlock(&s_md1_user_lock_cnt_lock);
@@ -432,8 +432,8 @@ static long ccci_util_bc_ioctl(struct file *filp, unsigned int cmd,
 	case CCCI_IOC_HOLD_RST_LOCK:
 		if (bc_dev->md_bit_mask & MD_BC_SUPPORT) {
 			spin_lock(&s_md1_user_lock_cnt_lock);
-			if (user_ctlb->has_request_rst_lock == 0) {
-				user_ctlb->has_request_rst_lock = 1;
+			if (atomic_read(&user_ctlb->has_request_rst_lock) == 0) {
+				atomic_set(&user_ctlb->has_request_rst_lock, 1);
 				s_md1_user_request_lock_cnt++;
 			}
 			spin_unlock(&s_md1_user_lock_cnt_lock);
@@ -443,8 +443,8 @@ static long ccci_util_bc_ioctl(struct file *filp, unsigned int cmd,
 	case CCCI_IOC_FREE_RST_LOCK:
 		if (bc_dev->md_bit_mask & MD_BC_SUPPORT) {
 			spin_lock(&s_md1_user_lock_cnt_lock);
-			if (user_ctlb->has_request_rst_lock == 1) {
-				user_ctlb->has_request_rst_lock = 0;
+			if (atomic_read(&user_ctlb->has_request_rst_lock) == 1) {
+				atomic_set(&user_ctlb->has_request_rst_lock, 0);
 				s_md1_user_request_lock_cnt--;
 			}
 			spin_unlock(&s_md1_user_lock_cnt_lock);
