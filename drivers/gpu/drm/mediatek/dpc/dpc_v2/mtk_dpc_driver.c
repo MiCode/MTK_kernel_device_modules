@@ -433,7 +433,7 @@ static void dpc2_dt_en(u16 idx, bool en, bool set_sw_trig)
 static void dpc_dt_en_all(const enum mtk_dpc_subsys subsys, u32 dt_en)
 {
 	u32 cnt, idx;
-	struct mtk_dpc_dt_usage *usage;
+	struct mtk_dpc_dt_usage *usage = NULL;
 
 	if (subsys == DPC_SUBSYS_DISP) {
 		writel(dt_en, dpc_base + DISP_REG_DPC_DISP_DT_EN);
@@ -441,6 +441,11 @@ static void dpc_dt_en_all(const enum mtk_dpc_subsys subsys, u32 dt_en)
 	} else if (subsys == DPC_SUBSYS_MML) {
 		writel(dt_en, dpc_base + DISP_REG_DPC_MML_DT_EN);
 		usage = &g_priv->mml_dt_usage[0];
+	}
+
+	if (!usage) {
+		DPCERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return;
 	}
 
 	cnt = __builtin_popcount(dt_en);
@@ -772,10 +777,10 @@ static void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool 
 	dpc_mmp(vdisp_level, MMPROFILE_FLAG_PULSE,
 		g_priv->dvfs_bw.disp_bw[DPC_TOTAL_HRT] << 16 |
 		g_priv->dvfs_bw.mml0_bw[DPC_TOTAL_HRT] + g_priv->dvfs_bw.mml1_bw[DPC_TOTAL_HRT],
-		g_priv->dvfs_bw.disp_level << 24 |
-		g_priv->dvfs_bw.mml_level << 16 |
-		g_priv->dvfs_bw.bw_level << 8 |
-		max_level);
+		((unsigned long)g_priv->dvfs_bw.disp_level) << 24 |
+		((unsigned long)g_priv->dvfs_bw.mml_level) << 16 |
+		((unsigned long)g_priv->dvfs_bw.bw_level) << 8 |
+		(unsigned long)max_level);
 
 	if (unlikely(debug_dvfs))
 		DPCFUNC("subsys(%u) level(%u,%u,%u)", subsys,
@@ -790,23 +795,23 @@ static void dpc_ch_bw_set(const enum mtk_dpc_subsys subsys, const u8 idx, const 
 	if (g_priv->mmsys_id != MMSYS_MT6991)
 		return;
 
-	if (idx > 24) {
-		DPCERR("idx %u > 24", idx);
-		return;
-	}
-
 	if (unlikely(mminfra_floor && bw_in_mb && (bw_in_mb < mminfra_floor * 16)))
 		ch_bw = mminfra_floor * 16;
 
+	if (idx >= 0 && idx < 24) {
 	/* use display voter for both display and mml, since mml voter is reserved for others */
-	value = readl(dpc_base + mt6991_ch_bw_cfg[idx].offset) & ~(0x3ff << mt6991_ch_bw_cfg[idx].shift);
-	value |= (ch_bw * 100 / g_priv->ch_bw_urate / 16) << mt6991_ch_bw_cfg[idx].shift;
+		value = readl(dpc_base + mt6991_ch_bw_cfg[idx].offset) & ~(0x3ff << mt6991_ch_bw_cfg[idx].shift);
+		value |= (ch_bw * 100 / g_priv->ch_bw_urate / 16) << mt6991_ch_bw_cfg[idx].shift;
 
-	if (unlikely(debug_dvfs))
-		DPCFUNC("subsys(%u) idx(%u) bw(%u)MB", subsys, idx, ch_bw);
+		if (unlikely(debug_dvfs))
+			DPCFUNC("subsys(%u) idx(%u) bw(%u)MB", subsys, idx, ch_bw);
 
-	writel(value, dpc_base + mt6991_ch_bw_cfg[idx].offset);
-	dpc_mmp(ch_bw, MMPROFILE_FLAG_PULSE, idx, ch_bw);
+		writel(value, dpc_base + mt6991_ch_bw_cfg[idx].offset);
+		dpc_mmp(ch_bw, MMPROFILE_FLAG_PULSE, idx, ch_bw);
+	} else {
+		DPCERR("idx %u > 24", idx);
+		return;
+	}
 }
 
 void mt6991_mml_bw_set(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_bw_type type,
@@ -899,9 +904,15 @@ static void dpc_dvfs_trigger(const char *caller)
 
 static void mt6991_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
 {
-	u32 value = (en && has_cap(DPC_CAP_MTCMOS)) ? 0x31 : 0x70;
+	u32 value = 0;
 	u32 rtff_mask = 0;
 	u8 power_on = dpc_is_power_on() | mminfra_is_power_on() << 1;
+
+	if (g_priv == NULL) {
+		DPCERR("g_priv null\n");
+		return;
+	}
+	value = (en && has_cap(DPC_CAP_MTCMOS)) ? 0x31 : 0x70;
 
 	if (power_on != 0b11) {
 		static bool called;
@@ -1011,6 +1022,11 @@ static void dpc_disp_group_enable(bool en)
 {
 	u32 value = 0;
 
+	if (g_priv == NULL) {
+		DPCERR("g_priv null\n");
+		return;
+	}
+
 	/* DDR_SRC and EMI_REQ DT is follow DISP1 */
 	value = (en && has_cap(DPC_CAP_APSRC)) ? 0x00010001 : 0x000D000D;
 	writel(value, dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG);
@@ -1044,6 +1060,11 @@ static void dpc_disp_group_enable(bool en)
 static void dpc_mml_group_enable(bool en)
 {
 	u32 value = 0;
+
+	if (g_priv == NULL) {
+		DPCERR("g_priv null\n");
+		return;
+	}
 
 	/* DDR_SRC and EMI_REQ DT is follow MML1 */
 	value = (en && has_cap(DPC_CAP_APSRC)) ? 0x00010001 : 0x000D000D;
@@ -1699,6 +1720,10 @@ static void process_dbg_opt(const char *opt)
 		mmdvfs_force_step_by_vcp(2, 4 - v1);
 	} else if (strncmp(opt, "vote:", 5) == 0) {
 		ret = sscanf(opt, "vote:%u\n", &v1);
+		if (ret != 1) {
+			DPCDUMP("[Waring]vote sscanf not match");
+			goto err;
+		}
 		if (v1 == 1)
 			writel(0xffffffff, g_priv->voter_clr_va);
 		else
@@ -1789,6 +1814,10 @@ static void process_dbg_opt(const char *opt)
 		writel(v1, g_priv->rtff_pwr_con);
 	} else if (strncmp(opt, "vcore:", 6) == 0) {
 		ret = sscanf(opt, "vcore:%u\n", &v1);
+		if (ret != 1) {
+			DPCDUMP("[Waring]vcore sscanf not match");
+			goto err;
+		}
 		if (v1)
 			writel(v1, g_priv->vcore_mode_set_va);
 		else
