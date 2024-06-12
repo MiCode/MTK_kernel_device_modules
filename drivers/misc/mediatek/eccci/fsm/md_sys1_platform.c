@@ -44,8 +44,6 @@ extern atomic_t md_ee_occurred;
 static struct regulator *vcore_reg_ref;
 unsigned int ap_plat_info;
 struct ccci_plat_val md_cd_plat_val_ptr;
-static struct regulator *vsram_ref;
-static struct regulator *vcore_ref;
 static void __iomem *dpsw_reg;
 
 struct ccci_md_regulator {
@@ -246,19 +244,43 @@ static void md_cd_get_md_bootup_status(unsigned int *buff, int length)
 	struct arm_smccc_res res = {0};
 	void __iomem *md_boot_status0;
 	void __iomem *md_boot_status1;
+	unsigned int i = 0, reg_val = 0;
+	void __iomem *md_boot_status_select;
 
-	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
-		MD_BOOT_STATUS, 0, 0, 0, 0, 0, &res);
+	if (md_cd_plat_val_ptr.md_gen > 6295) {
+		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
+			MD_BOOT_STATUS, 0, 0, 0, 0, 0, &res);
+		if (buff && (length >= 2)) {
+			buff[0] = (unsigned int)res.a1;
+			buff[1] = (unsigned int)res.a2;
+		}
+		CCCI_NOTICE_LOG(-1, TAG,
+			"[%s] AP: boot_ret=%lu, boot_status_0=%lX, boot_status_1=%lX\n",
+			__func__, res.a0, res.a1, res.a2);
+	} else if (md_cd_plat_val_ptr.md_gen == 6295) {
+		md_boot_status_select = ioremap(0x1020E700, 0x4);
+		md_boot_status0 = ioremap(0x1020E300, 0x4);
 
-	if (buff && (length >= 2)) {
-		buff[0] = (unsigned int)res.a1;
-		buff[1] = (unsigned int)res.a2;
-	}
+		if (md_boot_status_select == NULL || md_boot_status0 == NULL) {
+			CCCI_MEM_LOG_TAG(0, TAG, "md_boot_status_select md_boot_status0 ioremap failed\n");
+			iounmap(md_boot_status_select);
+			iounmap(md_boot_status0);
+			return;
+		}
 
-	CCCI_NOTICE_LOG(-1, TAG,
-		"[%s] AP: boot_ret=%lu, boot_status_0=%lX, boot_status_1=%lX\n",
-		__func__, res.a0, res.a1, res.a2);
-	if (res.a0 && md_cd_plat_val_ptr.md_gen < 6295) {
+		for(i = 0; i < 2; i++) {
+			ccci_write32(md_boot_status_select, 0, i);
+			ccci_read32(md_boot_status0, 0);	/* dummy read */
+			ccci_read32(md_boot_status0, 0);	/* dummy read */
+			reg_val = ccci_read32(md_boot_status0, 0);
+			if (buff && (length >= 2))
+				buff[i] = reg_val;
+			CCCI_NORMAL_LOG(0, TAG, "md_boot_status%d: 0x%X\n", i, reg_val);
+		}
+
+		iounmap(md_boot_status_select);
+		iounmap(md_boot_status0);
+	} else {
 		md_boot_status0 = ioremap(0x1020E300, 0x4);
 		md_boot_status1 = ioremap(0x1020E304, 0x4);
 
@@ -312,25 +334,6 @@ u32 get_expected_boot_status_val(void)
 		"%s, can not get boot_status_value from dts: MD Gen:%d (sub_ver:%d)\n",
 		__func__, md_cd_plat_val_ptr.md_gen, md_cd_plat_val_ptr.md_sub_ver);
 	return 0;
-}
-
-static void md_pmic_info_dump(void)
-{
-	if (in_interrupt())
-		CCCI_MEM_LOG_TAG(0, TAG, "In interrupt, skip dump vsram/vcore info\n");
-	else {
-		if (vsram_ref != NULL)
-			CCCI_NORMAL_LOG(-1, TAG, "[PMIC DUMP]vsram get_voltage %d uV\n",
-				regulator_get_voltage(vsram_ref));
-		else
-			CCCI_NORMAL_LOG(-1, TAG, "[PMIC DUMP]vsram_ref = NULL !\n");
-
-		if (vcore_ref != NULL)
-			CCCI_NORMAL_LOG(-1, TAG, "[PMIC DUMP]vcore_ref get_voltage %d uV\n",
-				regulator_get_voltage(vcore_ref));
-		else
-			CCCI_NORMAL_LOG(-1, TAG, "[PMIC DUMP]vcore_ref = NULL !\n");
-	}
 }
 
 /* MD team need md_regulator pmic dump, so add it as general flow */
@@ -413,7 +416,6 @@ static void md_cd_dump_debug_register(struct ccci_modem *md, bool isr_skip_dump)
 			CCCI_MEM_LOG_TAG(0, TAG, "[DPSW DUMP] reg 0x1c0013b8 = 0x%x\n",
 				ccci_read32(dpsw_reg, 0));
 	}
-	md_pmic_info_dump();
 	ccci_md_regulator_dump();
 
 	md_cd_lock_modem_clock_src(1);
@@ -466,42 +468,6 @@ static void md1_pmic_setting_init(struct platform_device *plat_dev)
 				md_reg_table[idx].reg_vol0, md_reg_table[idx].reg_vol1);
 		}
 	}
-	/* get regulator vsram*/
-	vsram_ref = devm_regulator_get_optional(&plat_dev->dev, "mt6363_vbuck4");
-	if (IS_ERR(vsram_ref)) {
-		ret = PTR_ERR(vsram_ref);
-		if (ret != -ENODEV)
-			CCCI_ERROR_LOG(-1, TAG,
-				"%s:get regulator vsram_ref fail, ret = %d\n", __func__, ret);
-		vsram_ref = NULL;
-	} else
-		CCCI_NORMAL_LOG(0, TAG,
-			"%s:get regulator vsram_ref mt6363_vbuck4 suc\n", __func__);
-
-	/* get regulator vcore*/
-	vcore_ref = devm_regulator_get_optional(&plat_dev->dev, "8_vbuck1");
-	if (IS_ERR(vcore_ref)) {
-		ret = PTR_ERR(vcore_ref);
-		if (ret != -ENODEV)
-			CCCI_ERROR_LOG(-1, TAG,
-				"%s:get regulator vcore_ref fail, ret = %d\n", __func__, ret);
-		vcore_ref = NULL;
-	} else
-		CCCI_NORMAL_LOG(0, TAG,
-			"%s:get regulator vcore_ref 8_vbuck1 suc\n", __func__);
-
-	if (vsram_ref != NULL)
-		CCCI_NORMAL_LOG(0, TAG, "[PMIC DUMP first]vsram get_voltage %d uV\n",
-			regulator_get_voltage(vsram_ref));
-	else
-		CCCI_ERROR_LOG(-1, TAG, "[PMIC DUMP first]vsram_ref is null\n");
-
-	if (vcore_ref != NULL)
-		CCCI_NORMAL_LOG(-1, TAG,
-			"[PMIC DUMP first]vcore_ref get_voltage %d uV\n",
-			regulator_get_voltage(vcore_ref));
-	else
-		CCCI_ERROR_LOG(-1, TAG, "[PMIC DUMP first]vcore_ref is null\n");
 }
 static void dpsw_io_remap(void)
 {
@@ -737,6 +703,14 @@ static int md_cd_topclkgen_off(struct ccci_modem *md)
 {
 	unsigned int reg_value;
 	int ret;
+
+	if (md_cd_plat_val_ptr.power_flow_config & (1 << TOP_CLK_GEN_ON)) {
+		CCCI_BOOTUP_LOG(0, TAG,
+			"[POWER OFF] bypass %s step\n", __func__);
+		CCCI_ERROR_LOG(0, TAG,
+			"[POWER OFF] bypass %s step\n", __func__);
+		return 0;
+	}
 
 	CCCI_BOOTUP_LOG(0, TAG, "[POWER OFF]%s start\n", __func__);
 	CCCI_NORMAL_LOG(0, TAG, "[POWER OFF]%s start\n", __func__);
@@ -997,7 +971,7 @@ static int md_cd_power_off(struct ccci_modem *md, unsigned int timeout)
 	}
 
 	/* 1. power off srclkena for gen97 */
-	if (md_cd_plat_val_ptr.md_gen == 6297 &&
+	if ((md_cd_plat_val_ptr.md_gen == 6297 || md_cd_plat_val_ptr.md_gen == 6295) &&
 	    (md_cd_plat_val_ptr.power_flow_config & (1 << SRCCLKENA_SETTING_BIT))) {
 		ret = regmap_read(md->hw_info->plat_val->infra_ao_base,
 			INFRA_AO_MD_SRCCLKENA, &reg_value);
@@ -1065,8 +1039,11 @@ static int md_start_platform(struct ccci_modem *md)
 {
 	struct arm_smccc_res res;
 
+	struct device_node *node = NULL;
+	void __iomem *sec_ao_base = NULL;
+
 	int timeout = 100; /* 100 * 20ms = 2s */
-	unsigned long ret;
+	unsigned long ret = 0xFFFF;
 #ifndef USING_PM_RUNTIME
 	int retval = 0;
 #endif
@@ -1079,26 +1056,53 @@ static int md_start_platform(struct ccci_modem *md)
 	if (ap_plat_info == 6989)
 		dpsw_io_remap();
 
-	if (md_cd_plat_val_ptr.md_gen < 6295)
-		return 0;
-
-	while (timeout > 0) {
-		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG, MD_CHECK_DONE,
-			0, 0, 0, 0, 0, &res);
-		ret = res.a0;
-		if (!ret) {
-			CCCI_ERROR_LOG(0, TAG, "BROM PASS\n");
-			break;
+	if (md_cd_plat_val_ptr.md_gen > 6295) {
+		while (timeout > 0) {
+			arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG, MD_CHECK_DONE,
+				0, 0, 0, 0, 0, &res);
+			ret = res.a0;
+			if (!ret) {
+				CCCI_ERROR_LOG(0, TAG, "BROM PASS\n");
+				break;
+			}
+			timeout--;
+			msleep(20);
 		}
-		timeout--;
-		msleep(20);
-	}
-	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
-		MD_CHECK_FLAG, 0, 0, 0, 0, 0, &res);
-	CCCI_ERROR_LOG(0, TAG,
-		"flag_1=%lu, flag_2=%lu, flag_3=%lu, flag_4=%lu\n",
-		res.a0, res.a1, res.a2, res.a3);
-	CCCI_ERROR_LOG(0, TAG, "dummy md sys clk\n");
+		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
+			MD_CHECK_FLAG, 0, 0, 0, 0, 0, &res);
+		CCCI_ERROR_LOG(0, TAG,
+			"flag_1=%lu, flag_2=%lu, flag_3=%lu, flag_4=%lu\n",
+			res.a0, res.a1, res.a2, res.a3);
+	} else if (md_cd_plat_val_ptr.md_gen == 6295) {
+		if ((md->per_md_data.config.setting&MD_SETTING_FIRST_BOOT) == 0)
+			return 0;
+
+		node = of_find_compatible_node(NULL, NULL, "mediatek,security_ao");
+		if (node) {
+			sec_ao_base = of_iomap(node, 0);
+			if (sec_ao_base == NULL) {
+				CCCI_ERROR_LOG(0, TAG, "sec_ao_base NULL\n");
+				return -1;
+			}
+		} else {
+			CCCI_ERROR_LOG(0, TAG, "sec_ao NULL\n");
+			return -1;
+		}
+
+		while (timeout > 0) {
+			if (ccci_read32(sec_ao_base, 0x824) == 0x01 &&
+				ccci_read32(sec_ao_base, 0x828) == 0x01 &&
+				ccci_read32(sec_ao_base, 0x82C) == 0x01 &&
+				ccci_read32(sec_ao_base, 0x830) == 0x01) {
+				CCCI_NORMAL_LOG(0, TAG, "BROM Pass\n");
+				ret = 0;
+				break;
+			}
+			timeout--;
+			msleep(20);
+		}
+	} else
+		return 0;
 
 	md_cd_get_md_bootup_status(NULL, 0);
 
@@ -1117,6 +1121,14 @@ static int md_cd_topclkgen_on(struct ccci_modem *md)
 {
 	unsigned int reg_value = 0;
 	int ret;
+
+	if (md_cd_plat_val_ptr.power_flow_config & (1 << TOP_CLK_GEN_ON)) {
+		CCCI_BOOTUP_LOG(0, TAG,
+			"[POWER ON] bypass %s step\n", __func__);
+		CCCI_ERROR_LOG(0, TAG,
+			"[POWER ON] bypass %s step\n", __func__);
+		return 0;
+	}
 
 	CCCI_NORMAL_LOG(0, TAG,
 		"[POWER ON]%s start\n", __func__);
@@ -1866,18 +1878,33 @@ static int md_cd_let_md_go(struct ccci_modem *md)
 	CCCI_BOOTUP_LOG(0, TAG, "[POWER ON]set MD boot slave\n");
 	CCCI_NORMAL_LOG(0, TAG, "[POWER ON]set MD boot slave\n");
 
-	/* make boot vector take effect */
-	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
-		MD_KERNEL_BOOT_UP, 0, 0, 0, 0, 0, &res);
-	CCCI_BOOTUP_LOG(0, TAG,
-		"[POWER ON]set MD boot slave done: ret=%lu, boot_status_0=%lu, boot_status_1=%lu, boot_slave = %lu\n",
-		res.a0, res.a1, res.a2, res.a3);
-	CCCI_NORMAL_LOG(0, TAG,
-		"[POWER ON]set MD boot slave done: ret=%lu, boot_status_0=%lu, boot_status_1=%lu, boot_slave = %lu\n",
-		res.a0, res.a1, res.a2, res.a3);
-
-	if (res.a0 && md_cd_plat_val_ptr.md_gen < 6295) {
+	if(md_cd_plat_val_ptr.md_gen > 6295) {
+		/* make boot vector take effect */
+		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
+			MD_KERNEL_BOOT_UP, 0, 0, 0, 0, 0, &res);
+		CCCI_BOOTUP_LOG(0, TAG,
+			"[POWER ON]set MD boot slave done: ret=%lu, boot_status_0=%lu, boot_status_1=%lu, boot_slave = %lu\n",
+			res.a0, res.a1, res.a2, res.a3);
+		CCCI_NORMAL_LOG(0, TAG,
+			"[POWER ON]set MD boot slave done: ret=%lu, boot_status_0=%lu, boot_status_1=%lu, boot_slave = %lu\n",
+			res.a0, res.a1, res.a2, res.a3);
+	} else if (md_cd_plat_val_ptr.md_gen == 6295) {
 		md_boot_slave_en = ioremap(0x20000024, 0x4);
+		if(md_boot_slave_en == NULL) {
+			CCCI_ERROR_LOG(0, TAG, "%s boot_slave_en remap fail\n", __func__);
+			return -1;
+		}
+		ccci_write32(md_boot_slave_en, 0, 1);
+		CCCI_NORMAL_LOG(0, TAG, "MD boot slave = 0x%x\n",
+			ccci_read32(md_boot_slave_en, 0));
+		iounmap(md_boot_slave_en);
+		md_cd_get_md_bootup_status(NULL, 0);
+	} else {
+		md_boot_slave_en = ioremap(0x20000024, 0x4);
+		if(md_boot_slave_en == NULL) {
+			CCCI_ERROR_LOG(0, TAG, "%s boot_slave_en remap fail\n", __func__);
+			return -1;
+		}
 		ccci_write32(md_boot_slave_en, 0, 1);
 		iounmap(md_boot_slave_en);
 		md1_post_access_md_reg(md);
@@ -2029,11 +2056,8 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 	md_cd_plat_val_ptr.topckgen_clk_base =
 			syscon_regmap_lookup_by_phandle(dev_ptr->dev.of_node,
 			"ccci-topckgen");
-	if (IS_ERR(md_cd_plat_val_ptr.topckgen_clk_base)) {
-		CCCI_ERROR_LOG(0, TAG,
-			"topckgen_clk_base fail: NULL!\n");
-		return -1;
-	}
+	if (IS_ERR(md_cd_plat_val_ptr.topckgen_clk_base))
+		CCCI_ERROR_LOG(0, TAG, "topckgen_clk_base fail: NULL!\n");
 
 /*
  * md_cd_plat_val_ptr.power_flow_config will decide use which flow:
