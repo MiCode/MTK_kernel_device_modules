@@ -127,24 +127,10 @@ struct upower_tbl *upower_get_core_tbl(unsigned int cpu)
 {
 	struct upower_tbl *ptr_tbl;
 	struct upower_tbl_info *ptr_tbl_info;
-#ifdef FIRST_CLUSTER_IS_L
-	enum upower_bank bank = UPOWER_BANK_L;
-#else
+
 	enum upower_bank bank = UPOWER_BANK_LL;
-#endif
-#ifdef FIRST_CLUSTER_IS_L
-	if (cpu < 4) /* cpu 0-3 */
-		bank = UPOWER_BANK_0;
-	else if (cpu < 8) /* cpu 4-7 */
-		bank = UPOWER_BANK_1;
-#else
-	if (cpu < 4) /* cpu 0-3 */
-		bank = UPOWER_BANK_LL;
-	else if (cpu < 8) /* cpu 4-7 */
-		bank = UPOWER_BANK_LL + 1;
-	else if (cpu < 10) /* cpu 8-9 */
-		bank = UPOWER_BANK_LL + 2;
-#endif
+
+	bank = cpu_cluster_mapping(cpu);
 
 #ifdef UPOWER_L_PLUS
 	if (cpu == UPOWER_L_PLUS_CORE)
