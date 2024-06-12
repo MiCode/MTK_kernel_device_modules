@@ -22,6 +22,8 @@
 #include <mtk_ppm_platform_6893.h>
 #elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_6781)
 #include <mtk_ppm_platform_6781.h>
+#elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_6853)
+#include <mtk_ppm_platform_6853.h>
 #endif
 
 #endif

@@ -47,6 +47,8 @@ else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6893)),)
 mtk_ppm_v3-objs += mtk_ppm_platform_6893.o mtk_ppm_cobra_algo_6893.o mtk_ppm_power_data_6893.o
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6781)),)
 mtk_ppm_v3-objs += mtk_ppm_platform_6781.o mtk_ppm_cobra_algo_6781.o mtk_ppm_power_data_6781.o
+else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6853)),)
+mtk_ppm_v3-objs += mtk_ppm_platform_6853.o mtk_ppm_cobra_algo_6853.o mtk_ppm_power_data_6853.o
 endif
 
 else
