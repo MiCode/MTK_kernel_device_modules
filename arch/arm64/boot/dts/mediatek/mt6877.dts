@@ -3263,13 +3263,13 @@
 		dvfsrc_vcore: dvfsrc-vcore {
 			regulator-name = "dvfsrc-vcore";
 			regulator-min-microvolt = <550000>;
-			regulator-max-microvolt = <725000>;
+			regulator-max-microvolt = <750000>;
 			regulator-always-on;
 		};
 		dvfsrc_vscp: dvfsrc-vscp {
 			regulator-name = "dvfsrc-vscp";
 			regulator-min-microvolt = <550000>;
-			regulator-max-microvolt = <725000>;
+			regulator-max-microvolt = <750000>;
 			regulator-always-on;
 		};
 
@@ -3300,7 +3300,7 @@
 
 		dvfsrc-helper {
 			compatible = "mediatek,dvfsrc-helper";
-			vcore-supply = <&dvfsrc_vcore>;
+			vcore-supply = <&mt6359p_vgpu11_reg>;
 			rc-vcore-supply = <&dvfsrc_vcore>;
 			rc-vscp-supply = <&dvfsrc_vscp>;
 			interconnects = <&dvfsrc MT6873_MASTER_DBGIF
