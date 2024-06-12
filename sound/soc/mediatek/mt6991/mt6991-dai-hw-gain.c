@@ -515,9 +515,9 @@ static const struct snd_soc_dapm_route mtk_dai_hw_gain_routes[] = {
 };
 
 static const struct snd_kcontrol_new mtk_hw_gain_controls[] = {
-	SOC_SINGLE_EXT("HW Gain 0", SND_SOC_NOPM, 0, 0x8E432E, 0,
-		       mt6991_gain0_get, mt6991_gain0_set),
 	SOC_SINGLE_EXT("HW Gain 1", SND_SOC_NOPM, 0, 0x8E432E, 0,
+		       mt6991_gain0_get, mt6991_gain0_set),
+	SOC_SINGLE_EXT("HW Gain 2", SND_SOC_NOPM, 0, 0x8E432E, 0,
 		       mt6991_gain1_get, mt6991_gain1_set),
 	SOC_SINGLE_EXT("HW Gain 0 L", AFE_GAIN0_CON1_L,
 		   0, 0xffffffff, 0,
