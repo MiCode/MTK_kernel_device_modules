@@ -8614,7 +8614,7 @@ static void bwm_trig_done_cb(struct cmdq_cb_data data)
 {
 	int k = 0;
 
-	CRTC_MMP_MARK((unsigned long)data.data, bwm_loop_done, 0, 1);
+	CRTC_MMP_MARK((int)data.data, bwm_loop_done, 0, 1);
 	drm_trace_tag_mark("bwm_trig_loop_done");
 }
 
@@ -18135,9 +18135,8 @@ void mtk_crtc_vblank_irq(struct drm_crtc *crtc)
 
 	mtk_crtc->vblank_time = ktime_to_timespec64(ktime);
 
-	sprintf(tag_name, "%d|HW_VSYNC|%lld",
-		DRM_TRACE_VSYNC_ID, ktime);
-	mtk_drm_trace_c("%s", tag_name);
+	if (sprintf(tag_name, "%d|HW_VSYNC|%lld", DRM_TRACE_VSYNC_ID, ktime) >= 0)
+		mtk_drm_trace_c("%s", tag_name);
 	CRTC_MMP_MARK((int) index, enable_vblank, 0, ktime);
 
 /*

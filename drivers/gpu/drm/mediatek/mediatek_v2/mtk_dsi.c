@@ -2177,9 +2177,26 @@ static bool mtk_dsi_clk_hs_state(struct mtk_dsi *dsi)
 
 static void mtk_dsi_clk_hs_mode(struct mtk_dsi *dsi, bool enter)
 {
-	struct mtk_drm_private *priv = dsi->is_slave ?
-		dsi->master_dsi->ddp_comp.mtk_crtc->base.dev->dev_private
-		: dsi->ddp_comp.mtk_crtc->base.dev->dev_private;
+	struct mtk_drm_private *priv = NULL;
+
+	if (IS_ERR_OR_NULL(dsi) || IS_ERR_OR_NULL(dsi->driver_data)) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return;
+	}
+	if (dsi->is_slave) {
+		if (dsi->master_dsi &&
+			dsi->master_dsi->ddp_comp.mtk_crtc &&
+			dsi->master_dsi->ddp_comp.mtk_crtc->base.dev)
+			priv = dsi->master_dsi->ddp_comp.mtk_crtc->base.dev->dev_private;
+	} else {
+		if (dsi->ddp_comp.mtk_crtc &&
+			dsi->ddp_comp.mtk_crtc->base.dev)
+			priv = dsi->ddp_comp.mtk_crtc->base.dev->dev_private;
+	}
+	if (!priv || !priv->data) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return;
+	}
 
 	//MIPI_TX_MT6983
 	if (priv->data->mmsys_id == MMSYS_MT6983 ||
@@ -2189,7 +2206,7 @@ static void mtk_dsi_clk_hs_mode(struct mtk_dsi *dsi, bool enter)
 		priv->data->mmsys_id == MMSYS_MT6897 ||
 		priv->data->mmsys_id == MMSYS_MT6895 ||
 		priv->data->mmsys_id == MMSYS_MT6886) {
-		if (dsi->ext && dsi->ext->params->is_cphy)
+		if (dsi->ext && dsi->ext->params && dsi->ext->params->is_cphy)
 			writel(0xAA, dsi->regs + DSI_PHY_LCPAT(dsi->driver_data));
 		else
 			writel(0x55, dsi->regs + DSI_PHY_LCPAT(dsi->driver_data));
@@ -2205,6 +2222,11 @@ static void mtk_dsi_set_mode(struct mtk_dsi *dsi)
 {
 	u32 vid_mode = CMD_MODE;
 
+	if (IS_ERR_OR_NULL(dsi) || IS_ERR_OR_NULL(dsi->driver_data)) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return;
+	}
+
 	if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO) {
 		if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_BURST)
 			vid_mode = BURST_MODE;
@@ -2218,6 +2240,11 @@ static void mtk_dsi_set_mode(struct mtk_dsi *dsi)
 
 static void mtk_dsi_set_vm_cmd(struct mtk_dsi *dsi)
 {
+	if (IS_ERR_OR_NULL(dsi) || IS_ERR_OR_NULL(dsi->driver_data)) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return;
+	}
+
 	mtk_dsi_mask(dsi, dsi->driver_data->reg_vm_cmd_con_ofs, VM_CMD_EN, VM_CMD_EN);
 	mtk_dsi_mask(dsi, dsi->driver_data->reg_vm_cmd_con_ofs, TS_VFP_EN, TS_VFP_EN);
 }
@@ -3245,6 +3272,10 @@ s32 mtk_dsi_poll_for_idle(struct mtk_dsi *dsi, struct cmdq_pkt *handle)
 static s32 mtk_dsi_wait_idle(struct mtk_dsi *dsi, u32 irq_flag,
 			     unsigned int timeout, struct cmdq_pkt *handle)
 {
+	if (IS_ERR_OR_NULL(dsi) || IS_ERR_OR_NULL(dsi->driver_data)) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return -EINVAL;
+	}
 
 	if (dsi->driver_data->poll_for_idle)
 		return dsi->driver_data->poll_for_idle(dsi, handle);
@@ -9332,6 +9363,12 @@ done:
 static ssize_t mtk_dsi_host_send_cmd(struct mtk_dsi *dsi,
 				     const struct mipi_dsi_msg *msg, u8 flag)
 {
+	if (IS_ERR_OR_NULL(dsi) || IS_ERR_OR_NULL(dsi->driver_data) ||
+		IS_ERR_OR_NULL(msg)) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
 	mtk_dsi_wait_idle(dsi, flag, 2000, NULL);
 	mtk_dsi_irq_data_clear(dsi, flag);
 	mtk_dsi_cmdq(dsi, msg);
