@@ -289,6 +289,35 @@ static struct mtk_mux ck2_muxes[] = {
 #endif
 };
 
+static const struct mtk_gate_regs mm11_cg_regs = {
+	.set_ofs = 0x114,
+	.clr_ofs = 0x118,
+	.sta_ofs = 0x110,
+};
+
+static const struct mtk_gate_regs mm11_hwv_regs = {
+	.set_ofs = 0x0018,
+	.clr_ofs = 0x001C,
+	.sta_ofs = 0x2C0C,
+};
+
+#define GATE_HWV_MM11(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "mm-hw-ccf-regmap",				\
+		.regs = &mm11_cg_regs,			\
+		.hwv_regs = &mm11_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr,			\
+		.flags = CLK_USE_HW_VOTER,	\
+	}
+
+static const struct mtk_gate mm1_clks[] = {
+	GATE_HWV_MM11(CLK_MM1_MOD6, "mm1_mod6",
+		"ck2_dvo_sel"/* parent */, 18),
+};
 
 #define MT6991_PLL_FMAX		(3800UL * MHZ)
 #define MT6991_PLL_FMIN		(1500UL * MHZ)
@@ -325,26 +354,33 @@ static struct mtk_mux ck2_muxes[] = {
 		.pcwibits = MT6991_INTEGER_BITS,			\
 	}
 
-
-static struct mtk_pll_setclr_data ck_setclr_data = {
-	.en_ofs = 0x0080,
-	.en_set_ofs = 0x0084,
-	.en_clr_ofs = 0x0088,
-	.rstb_ofs = 0x008C,
-	.rstb_set_ofs = 0x0090,
-	.rstb_clr_ofs = 0x0094,
-};
+#define IVI_PLL_FENC(_id, _name, _fenc_sta_ofs, _fenc_sta_bit,		\
+			_flags, _pd_reg, _pd_shift,			\
+			 _pcw_reg, _pcw_shift, _pcwbits) {		\
+		.id = _id,						\
+		.name = _name,						\
+		.reg = 0,						\
+		.fenc_sta_ofs = _fenc_sta_ofs,				\
+		.fenc_sta_bit = _fenc_sta_bit,				\
+		.flags = (_flags | PLL_CFLAGS | CLK_FENC_ENABLE),	\
+		.fmax = MT6991_PLL_FMAX,				\
+		.fmin = MT6991_PLL_FMIN,				\
+		.pd_reg = _pd_reg,					\
+		.pd_shift = _pd_shift,					\
+		.pcw_reg = _pcw_reg,					\
+		.pcw_shift = _pcw_shift,				\
+		.pcwbits = _pcwbits,					\
+		.pcwibits = MT6991_INTEGER_BITS,			\
+	}
 
 static const struct mtk_pll_data apmixed_plls[] = {
-	IVI_PLL_SETCLR(CLK_APMIXED_NET1PLL, "net1pll", ck_setclr_data/*base*/,
-		6, 0, 0,
+	IVI_PLL_FENC(CLK_APMIXED_NET1PLL, "net1pll",
+		0x003C/*fenc*/, 1, 0,
 		NET1PLL_CON1, 24/*pd*/,
-		0, 0, 0/*tuner*/,
 		NET1PLL_CON1, 0, 22/*pcw*/),
-	IVI_PLL_SETCLR(CLK_APMIXED_SGMIIPLL, "sgmiipll", ck_setclr_data/*base*/,
-		7, 0, 0,
+	IVI_PLL_FENC(CLK_APMIXED_SGMIIPLL, "sgmiipll",
+		0x003C/*fenc*/, 0, 0,
 		SGMIIPLL_CON1, 24/*pd*/,
-		0, 0, 0/*tuner*/,
 		SGMIIPLL_CON1, 0, 22/*pcw*/),
 };
 
@@ -458,6 +494,24 @@ static int clk_mt6991_ivi_cksys2_probe(struct platform_device *pdev)
 	return r;
 }
 
+static int clk_mt6991_ivi_mm1_cg_probe(struct platform_device *pdev)
+{
+	int r;
+	struct clk_onecell_data *clk_data;
+	struct device_node *node = pdev->dev.of_node;
+
+
+	clk_data = mtk_alloc_clk_data(CLK_MM1_IVI_NR_CLK);
+	if (!clk_data)
+		return -ENOMEM;
+
+	r = mtk_clk_register_gates(node, mm1_clks, CLK_MM1_IVI_NR_CLK, clk_data);
+	if (r)
+		return r;
+
+	return of_clk_add_provider(node, of_clk_src_onecell_get, clk_data);
+}
+
 static const struct of_device_id of_match_clk_mt6991_ivi[] = {
 	{
 		.compatible = "mediatek,mt6991-ivi-apmixedsys",
@@ -468,7 +522,10 @@ static const struct of_device_id of_match_clk_mt6991_ivi[] = {
 	},	{
 		.compatible = "mediatek,mt6991-ivi-cksys2",
 		.data = clk_mt6991_ivi_cksys2_probe,
-	}, {
+	},	{
+		.compatible = "mediatek,mt6991-ivi-mmsys1",
+		.data = &clk_mt6991_ivi_mm1_cg_probe,
+	},	{
 		/* sentinel */
 	}
 };
