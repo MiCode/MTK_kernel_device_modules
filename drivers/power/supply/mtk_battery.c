@@ -1860,6 +1860,10 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 		&(fg_cust_data->vbat2_det_voltage2), 1);
 	fg_read_dts_val(gm, np, "VBAT2_DET_VOLTAGE3",
 		&(fg_cust_data->vbat2_det_voltage3), 1);
+	gm->gauge->hw_status.vbat2_det_time =
+		fg_cust_data->vbat2_det_time;
+	gm->gauge->hw_status.vbat2_det_counter =
+		fg_cust_data->vbat2_det_counter;
 
 	/* sw fg */
 	fg_read_dts_val(gm, np, "DIFFERENCE_FGC_FGV_TH1",
@@ -2636,12 +2640,8 @@ static int uisoc_set(struct mtk_battery *gm,
 	int old_uisoc;
 	ktime_t now_time, diff;
 	struct timespec64 tmp_time;
-	struct mtk_battery_algo *algo;
-	struct fuel_gauge_table_custom_data *ptable;
 	struct fuel_gauge_custom_data *pdata;
 
-	algo = &gm->algo;
-	ptable = &gm->fg_table_cust_data;
 	pdata = &gm->fg_cust_data;
 	daemon_ui_soc = val;
 
@@ -2821,10 +2821,6 @@ static struct mtk_battery_sysfs_field_info battery_sysfs_field_tbl[] = {
 
 static struct attribute *
 	battery_sysfs_attrs[ARRAY_SIZE(battery_sysfs_field_tbl) + 1];
-
-static const struct attribute_group battery_sysfs_attr_group = {
-	.attrs = battery_sysfs_attrs,
-};
 
 static void battery_sysfs_init_attrs(void)
 {
@@ -3341,7 +3337,7 @@ int battery_init(struct platform_device *pdev)
 	INIT_WORK(&gm->sw_uisoc_timer_work, sw_uisoc_timer_work_handler);
 
 
-	kthread_run(battery_update_routine, gm, gm->gauge->name);
+	kthread_run(battery_update_routine, gm, "%s", gm->gauge->name);
 	gm->pm_nb.notifier_call = system_pm_notify;
 	ret = register_pm_notifier(&gm->pm_nb);
 	if (ret)
