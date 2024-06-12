@@ -583,7 +583,7 @@ static void case_general_submit_ut(struct mml_test *test,
 	ktime_get_real_ts64((struct timespec64 *)&task.end);
 	for (i = 0; i < utcfg->round; i++) {
 		timespec64_add_ns((struct timespec64 *)&task.end,
-			utcfg->interval * 1000000);
+			(u64)utcfg->interval * 1000000);
 		ret = mml_drm_submit(ctx, &task, NULL);
 		if (ret) {
 			mml_err("[test]%s submit failed: %d round: %u",
