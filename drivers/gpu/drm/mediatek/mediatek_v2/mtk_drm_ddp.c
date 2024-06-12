@@ -25690,11 +25690,12 @@ void mtk_gce_event_config_MT6991(struct drm_device *drm)
 #endif
 	SET_VAL_MASK(value, mask,
 		MT6991_OVLSYS0_GCE_FRAME_DONE_SEL0_WDMA1, GCE_FRAME_DONE_SEL0);
-	SET_VAL_MASK(value, mask, 0x3F, GCE_FRAME_DONE_SEL1);
+	SET_VAL_MASK(value, mask,
+		MT6991_OVLSYS0_GCE_FRAME_DONE_SEL0_WDMA0, GCE_FRAME_DONE_SEL1);
 	SET_VAL_MASK(value, mask, 0x3F, GCE_FRAME_DONE_SEL2);
 	SET_VAL_MASK(value, mask, 0x3F, GCE_FRAME_DONE_SEL3);
 	writel(value, priv->ovlsys0_regs + MT6991_OVLSYS_GCE_FRAME_DONE_SEL0);
-	writel(~0, priv->ovlsys0_regs + MT6991_OVLSYS_GCE_FRAME_DONE_SEL1);
+	writel(value, priv->ovlsys0_regs + MT6991_OVLSYS_GCE_FRAME_DONE_SEL1);
 	writel(~0, priv->ovlsys0_regs + MT6991_OVLSYS_GCE_FRAME_DONE_SEL2);
 	writel(~0, priv->ovlsys0_regs + MT6991_OVLSYS_GCE_FRAME_DONE_SEL3);
 
