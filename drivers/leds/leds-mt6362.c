@@ -11,9 +11,10 @@
 #include <linux/interrupt.h>
 #include <linux/led-class-flash.h>
 #include <media/v4l2-flash-led-class.h>
-#if IS_ENABLED(CONFIG_MTK_CHARGER)
+/*#(CONFIG_MTK_CHARGER)
 #include <charger_class.h>
 #endif
+*/
 
 #if IS_ENABLED(CONFIG_MTK_FLASHLIGHT)
 #include "flashlight-core.h"
@@ -388,9 +389,10 @@ static int mt6362_fled_strobe_set(struct led_classdev_flash *flcdev, bool state)
 	const struct led_flash_setting *fs = &flcdev->brightness;
 	struct mt6362_flash_cdev *mtcdev = (void *)flcdev;
 	int rv;
-#if IS_ENABLED(CONFIG_MTK_CHARGER)
+/*#if IS_ENABLED(CONFIG_MTK_CHARGER)
 	union charger_propval chg_propval;
 #endif
+*/
 
 	dev_info(lcdev->dev, "%s state:%d\n", __func__, state);
 	if (!(state ^ test_bit(mtcdev->idx, &data->fl_strb_flags))) {
@@ -426,13 +428,14 @@ static int mt6362_fled_strobe_set(struct led_classdev_flash *flcdev, bool state)
 			return rv;
 
 		if (!data->fl_strb_flags) {
-#if IS_ENABLED(CONFIG_MTK_CHARGER)
+/*#if IS_ENABLED(CONFIG_MTK_CHARGER)
 			chg_propval.intval = 1;
 			rv = charger_dev_set_property(data->chg_dev,
 				CHARGER_PROP_BLEED_DISCHARGE, &chg_propval);
 			if (rv)
 				return rv;
 #endif
+*/
 			rv = regmap_update_bits(data->regmap, MT6362_REG_FLEDEN,
 						MT6362_FLEDSTRBEN_MASK,
 						MT6362_FLEDSTRBEN_MASK);
@@ -452,13 +455,14 @@ static int mt6362_fled_strobe_set(struct led_classdev_flash *flcdev, bool state)
 			if (rv)
 				return rv;
 			usleep_range(400, 500);
-#if IS_ENABLED(CONFIG_MTK_CHARGER)
+/*#if IS_ENABLED(CONFIG_MTK_CHARGER)
 			chg_propval.intval = 0;
 			rv = charger_dev_set_property(data->chg_dev,
 				CHARGER_PROP_BLEED_DISCHARGE, &chg_propval);
 			if (rv)
 				return rv;
 #endif
+*/
 		}
 
 		rv = _mt6362_fled_flash_brightness_set(flcdev, fs->min);
@@ -1072,7 +1076,7 @@ static int mt6362_leds_probe(struct platform_device *pdev)
 		return rv;
 	}
 
-#if IS_ENABLED(CONFIG_MTK_CHARGER)
+/*#if IS_ENABLED(CONFIG_MTK_CHARGER)
 	data->chg_dev = get_charger_by_name("primary_chg");
 	if (!data->chg_dev) {
 		dev_err(&pdev->dev,
@@ -1080,6 +1084,7 @@ static int mt6362_leds_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 #endif
+*/
 
 	dev_info(&pdev->dev, "mt6362 probe done\n");
 	return 0;
