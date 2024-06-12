@@ -117,27 +117,21 @@ int mtk_pe_reset_ta_vchr(struct chg_alg_device *alg)
 
 static int pe_leave(struct chg_alg_device *alg, bool disable_charging)
 {
-	int ret = 0, ret_value;
-	struct mtk_pe *pe;
+	int ret = 0;
 
-	pe = dev_get_drvdata(&alg->dev);
 	pe_dbg("%s: starts\n", __func__);
 
 	/* CV point reached, disable charger */
 	ret = pe_hal_enable_charging(alg, disable_charging);
-	if (ret < 0) {
+	if (ret < 0)
 		pe_err("%s enable charging fail:%d\n",
 			__func__, ret);
-		ret_value = -EHAL;
-	}
 
 	/* Decrease TA voltage to 5V */
 	ret = mtk_pe_reset_ta_vchr(alg);
-	if (ret < 0) {
+	if (ret < 0)
 		pe_err("%s reset TA fail:%d\n",
 			__func__, ret);
-		ret_value = -EHAL;
-	}
 
 	pe_dbg("%s: OK\n", __func__);
 	return ret;
@@ -255,7 +249,8 @@ static int pe_init_ta(struct chg_alg_device *alg)
 	struct mtk_pe *pe;
 
 	pe = dev_get_drvdata(&alg->dev);
-	pe_dbg("%s: starts\n", __func__);
+	if (!pe)
+		pe_dbg("%s, pe is NULL\n", __func__);
 
 	return ret;
 }
@@ -836,7 +831,7 @@ int _pe_start_algo(struct chg_alg_device *alg)
 	__pm_relax(pe->suspend_lock);
 	mutex_unlock(&pe->access_lock);
 
-	return ret;
+	return ret_value;
 }
 
 

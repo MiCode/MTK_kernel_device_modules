@@ -3027,7 +3027,7 @@ static void charger_status_check(struct mtk_charger *info)
 {
 	union power_supply_propval online = {0}, status = {0};
 	struct power_supply *chg_psy = NULL;
-	int ret;
+	int ret = 0;
 	bool charging = true;
 
 
@@ -3751,7 +3751,7 @@ static void mtk_charger_external_power_changed(struct power_supply *psy)
 	union power_supply_propval prop2 = {0};
 	union power_supply_propval vbat0 = {0};
 	struct power_supply *chg_psy = NULL;
-	int ret;
+	int ret = 0;
 
 	info = (struct mtk_charger *)power_supply_get_drvdata(psy);
 	if (info == NULL) {

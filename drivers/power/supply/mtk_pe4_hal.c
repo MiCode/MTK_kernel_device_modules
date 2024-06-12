@@ -213,10 +213,16 @@ int pe4_hal_enable_termination(struct chg_alg_device *alg,
 		return -EINVAL;
 
 	hal = chg_alg_dev_get_drv_hal_data(alg);
-	if (chgidx == CHG1 && hal->chg1_dev != NULL)
+	if (chgidx == CHG1 && hal->chg1_dev != NULL) {
 		ret = charger_dev_enable_termination(hal->chg1_dev, enable);
-	if (chgidx == CHG2 && hal->chg2_dev != NULL)
+		if (ret < 0)
+			return ret;
+	}
+	if (chgidx == CHG2 && hal->chg2_dev != NULL) {
 		ret = charger_dev_enable_termination(hal->chg2_dev, enable);
+		if (ret < 0)
+			return ret;
+	}
 	pe4_dbg("%s idx:%d %d\n", __func__, chgidx, enable);
 	return 0;
 }
@@ -247,6 +253,11 @@ int pe4_hal_get_uisoc(struct chg_alg_device *alg)
 	} else {
 		ret = power_supply_get_property(bat_manager_psy,
 			POWER_SUPPLY_PROP_CAPACITY, &prop);
+		if (ret < 0) {
+			pr_notice("%s Couldn't get bat_capacity\n", __func__);
+			ret = 50;
+			return ret;
+		}
 		ret = prop.intval;
 	}
 
@@ -324,7 +335,6 @@ int pe4_hal_get_battery_temperature(struct chg_alg_device *alg)
 int pe4_hal_get_adapter_cap(struct chg_alg_device *alg,
 	struct pe4_power_cap *cap)
 {
-	struct mtk_pe40 *pe4;
 	struct pe40_hal *hal;
 	struct adapter_power_cap acap;
 	int i, ret;
@@ -334,7 +344,6 @@ int pe4_hal_get_adapter_cap(struct chg_alg_device *alg,
 		return -EINVAL;
 	}
 
-	pe4 = dev_get_drvdata(&alg->dev);
 	hal = chg_alg_dev_get_drv_hal_data(alg);
 
 	memset(&acap, 0, sizeof(struct adapter_power_cap));
@@ -888,10 +897,15 @@ int pe4_hal_charger_enable_chip(struct chg_alg_device *alg,
 		return -EINVAL;
 	hal = chg_alg_dev_get_drv_hal_data(alg);
 
-	if (chgidx == CHG1 && hal->chg1_dev != NULL)
+	if (chgidx == CHG1 && hal->chg1_dev != NULL) {
 		ret = charger_dev_enable_chip(hal->chg1_dev, enable);
-	else if (chgidx == CHG2 && hal->chg2_dev != NULL)
+		if (ret < 0)
+			return ret;
+	} else if (chgidx == CHG2 && hal->chg2_dev != NULL) {
 		ret = charger_dev_enable_chip(hal->chg2_dev, enable);
+		if (ret < 0)
+			return ret;
+	}
 	pe4_dbg("%s idx:%d %d %d\n", __func__, chgidx, enable,
 		hal->chg2_dev != NULL);
 	return 0;
@@ -907,11 +921,15 @@ int pe4_hal_is_charger_enable(struct chg_alg_device *alg,
 		return -EINVAL;
 
 	hal = chg_alg_dev_get_drv_hal_data(alg);
-	if (chgidx == CHG1  && hal->chg1_dev != NULL)
+	if (chgidx == CHG1  && hal->chg1_dev != NULL) {
 		ret = charger_dev_is_enabled(hal->chg1_dev, en);
-	else if (chgidx == CHG2  && hal->chg2_dev != NULL)
+		if (ret < 0)
+			return ret;
+	} else if (chgidx == CHG2  && hal->chg2_dev != NULL) {
 		ret = charger_dev_is_enabled(hal->chg2_dev, en);
-
+		if (ret < 0)
+			return ret;
+	}
 	pe4_dbg("%s idx:%d %d\n", __func__, chgidx, *en);
 	return 0;
 }
@@ -929,6 +947,7 @@ int pe4_hal_get_charging_current(struct chg_alg_device *alg,
 		charger_dev_get_charging_current(hal->chg1_dev, ua);
 	else if (chgidx == CHG2 && hal->chg2_dev != NULL)
 		charger_dev_get_charging_current(hal->chg2_dev, ua);
+
 	pe4_dbg("%s idx:%d %lu\n", __func__, chgidx, (unsigned long)*ua);
 
 	return 0;
@@ -944,10 +963,16 @@ int pe4_hal_get_min_charging_current(struct chg_alg_device *alg,
 		return -EINVAL;
 
 	hal = chg_alg_dev_get_drv_hal_data(alg);
-	if (chgidx == CHG1 && hal->chg1_dev != NULL)
+	if (chgidx == CHG1 && hal->chg1_dev != NULL) {
 		ret = charger_dev_get_min_charging_current(hal->chg1_dev, uA);
-	if (chgidx == CHG2 && hal->chg2_dev != NULL)
+		if (ret < 0)
+			return ret;
+	}
+	if (chgidx == CHG2 && hal->chg2_dev != NULL) {
 		ret = charger_dev_get_min_charging_current(hal->chg2_dev, uA);
+		if (ret < 0)
+			return ret;
+	}
 	pe4_dbg("%s idx:%d %d\n", __func__, chgidx, *uA);
 	return 0;
 }
@@ -962,10 +987,16 @@ int pe4_hal_set_eoc_current(struct chg_alg_device *alg,
 		return -EINVAL;
 	hal = chg_alg_dev_get_drv_hal_data(alg);
 
-	if (chgidx == CHG1 && hal->chg1_dev != NULL)
+	if (chgidx == CHG1 && hal->chg1_dev != NULL) {
 		ret = charger_dev_set_eoc_current(hal->chg1_dev, uA);
-	if (chgidx == CHG2 && hal->chg2_dev != NULL)
+		if (ret < 0)
+			return ret;
+	}
+	if (chgidx == CHG2 && hal->chg2_dev != NULL) {
 		ret = charger_dev_set_eoc_current(hal->chg2_dev, uA);
+		if (ret < 0)
+			return ret;
+	}
 	pe4_dbg("%s idx:%d %d\n", __func__, chgidx, uA);
 	return 0;
 }
@@ -980,10 +1011,16 @@ int pe4_hal_get_min_input_current(struct chg_alg_device *alg,
 		return -EINVAL;
 
 	hal = chg_alg_dev_get_drv_hal_data(alg);
-	if (chgidx == CHG1 && hal->chg1_dev != NULL)
+	if (chgidx == CHG1 && hal->chg1_dev != NULL) {
 		ret = charger_dev_get_min_input_current(hal->chg1_dev, uA);
-	if (chgidx == CHG2 && hal->chg2_dev != NULL)
+		if (ret < 0)
+			return ret;
+	}
+	if (chgidx == CHG2 && hal->chg2_dev != NULL) {
 		ret = charger_dev_get_min_input_current(hal->chg2_dev, uA);
+		if (ret < 0)
+			return ret;
+	}
 	pe4_dbg("%s idx:%d %d\n", __func__, chgidx, *uA);
 	return 0;
 }

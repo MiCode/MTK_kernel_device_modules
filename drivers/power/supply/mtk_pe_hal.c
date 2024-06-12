@@ -222,13 +222,11 @@ int pe_hal_enable_charging(struct chg_alg_device *alg, bool enable)
 int pe_hal_set_mivr(struct chg_alg_device *alg, enum chg_idx chgidx, int uV)
 {
 	int ret = 0;
-	struct mtk_pe *pe;
 	struct pe_hal *hal;
 
 	if (alg == NULL)
 		return -EINVAL;
 
-	pe = dev_get_drvdata(&alg->dev);
 	hal = chg_alg_dev_get_drv_hal_data(alg);
 
 	ret = charger_dev_set_mivr(hal->chg1_dev, uV);
