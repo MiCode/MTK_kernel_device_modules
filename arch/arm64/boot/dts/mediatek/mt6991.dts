@@ -6157,7 +6157,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		ssusb: usb0@16701000 {
-			compatible = "mediatek,mtu3";
+			compatible = "mediatek,mt6991-mtu3", "mediatek,mtu3";
 			reg = <0 0x16701000 0 0x2e00>,
 				<0 0x16703e00 0 0x0100>;
 			reg-names = "mac", "ippc";
