@@ -339,7 +339,6 @@ static void mmc_mtk_bio_ctx_count_usage(struct mmc_mtk_bio_context *ctx,
 void mmc_mtk_biolog_check(struct mmc_host *mmc, unsigned long req_mask)
 {
 	struct mmc_mtk_bio_context *ctx;
-	struct mtk_btag_trace *tr = NULL;
 	__u64 end_time, period_time;
 	unsigned long flags;
 	bool is_sd;
@@ -370,7 +369,7 @@ void mmc_mtk_biolog_check(struct mmc_host *mmc, unsigned long req_mask)
 		ctx->period_end_t = end_time;
 		ctx->workload.period = period_time;
 		mmc_mtk_bio_context_eval(ctx);
-		tr = mmc_mtk_bio_print_trace(ctx);
+		mmc_mtk_bio_print_trace(ctx);
 		ctx->period_start_t = end_time;
 		ctx->period_end_t = 0;
 		ctx->period_usage = 0;
