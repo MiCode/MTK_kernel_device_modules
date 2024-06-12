@@ -1174,12 +1174,10 @@ s32 cmdq_task_reset(struct cmdqRecStruct *handle)
 
 s32 cmdq_task_set_secure(struct cmdqRecStruct *handle, const bool is_secure)
 {
-	bool reset;
 
 	if (handle == NULL)
 		return -EFAULT;
 
-	reset = handle->secData.is_secure != is_secure;
 	handle->secData.is_secure = is_secure;
 
 	if (handle->finalized) {
@@ -2985,10 +2983,8 @@ s32 cmdq_op_if(struct cmdqRecStruct *handle, CMDQ_VARIABLE arg_b,
 		return -EFAULT;
 
 	do {
-		u32 old_logic_pos;
 
 		logic_pos  = handle->pkt->cmd_buf_size;
-		old_logic_pos = logic_pos;
 
 		/* append conditional jump instruction */
 		status = cmdq_append_jump_c_command(handle, arg_b,
@@ -3137,11 +3133,9 @@ s32 cmdq_op_while(struct cmdqRecStruct *handle, CMDQ_VARIABLE arg_b,
 		return -EFAULT;
 
 	do {
-		u32 old_logic_pos;
 
 		/* keep index of logic cmd */
 		logic_pos = handle->pkt->cmd_buf_size;
-		old_logic_pos = logic_pos;
 
 		/* append conditional jump instruction */
 		status = cmdq_append_jump_c_command(handle, arg_b,
