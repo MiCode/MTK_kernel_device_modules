@@ -290,7 +290,67 @@ void mtk_smmu_share(struct kvm_cpu_context *ctx)
 		pkvm_smmu_ops->puts(
 			"mtk_smmu_share : mtk_smmu_share hyp va by hyp_va fail");
 }
+/* Maintain an array to records MPU region info */
+static struct mpu_record pkvm_mpu_rec[MPU_REQ_ORIGIN_EL2_ZONE_MAX];
 
+int mtk_smmu_secure(struct kvm_cpu_context *ctx)
+{
+	paddr_t region_start;
+	size_t region_size;
+	uint32_t zone_id = ctx->regs.regs[3];
+
+	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
+
+	if (zone_id >= MPU_REQ_ORIGIN_EL2_ZONE_MAX) {
+		pkvm_smmu_ops->puts("mtk_smmu_secure : zone_id is invalid");
+		return 0;
+	}
+	/* Get the region start and size */
+	region_start = ctx->regs.regs[1];
+	region_size = ctx->regs.regs[2];
+	/* Store the information of region start and size into mpu_record array */
+	pkvm_mpu_rec[zone_id].addr = region_start;
+	pkvm_mpu_rec[zone_id].size = region_size;
+	/* Unamp the region from normal VM and map those memory into protected VM */
+	hyp_spin_lock(&smmu_all_vm_lock);
+	smmu_lazy_free();
+	smmu_vm_unmap(0, region_start, region_size);
+	smmu_vm_map(1, region_start, region_size,
+		    MM_MODE_R | MM_MODE_W | MM_MODE_X);
+	hyp_spin_unlock(&smmu_all_vm_lock);
+
+	return 0;
+}
+
+int mtk_smmu_unsecure(struct kvm_cpu_context *ctx)
+{
+	paddr_t region_start;
+	size_t region_size;
+	uint8_t vm0_default_mode, vm1_default_mode;
+	uint32_t zone_id = ctx->regs.regs[3];
+
+	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
+
+	if (zone_id >= MPU_REQ_ORIGIN_EL2_ZONE_MAX) {
+		pkvm_smmu_ops->puts("mtk_smmu_unsecure : zone_id is invalid");
+		return 0;
+	}
+	/* TODO: to support dts default attr */
+	vm0_default_mode = MM_MODE_R | MM_MODE_W | MM_MODE_X;
+	vm1_default_mode = MM_MODE_R;
+
+	/* Get region information from mpu_record array */
+	region_start = pkvm_mpu_rec[zone_id].addr;
+	region_size = pkvm_mpu_rec[zone_id].size;
+	/* Map the region into normal VM and change those memory permission in protected VM */
+	hyp_spin_lock(&smmu_all_vm_lock);
+	smmu_lazy_free();
+	smmu_vm_map(0, region_start, region_size, vm0_default_mode);
+	smmu_vm_map(1, region_start, region_size, vm1_default_mode);
+	hyp_spin_unlock(&smmu_all_vm_lock);
+
+	return 0;
+}
 /*
  *  PMM_MSG_ENTRY format
  *  page number = PA >> PAGE_SHIFT
@@ -327,13 +387,15 @@ int mtk_smmu_secure_v2(struct kvm_cpu_context *ctx)
 		if (ret)
 			pkvm_smmu_ops->puts(
 				"mtk_smmu_secure_v2 : pin mem fail");
-		smmu_lazy_free();
+
 		for (i = 0; i < count; i++) {
 			entry = pmm_page[i];
+			if (entry == 0)
+				break;
 			order = GET_PMM_ENTRY_ORDER(entry);
 			pfn = GET_PMM_ENTRY_PFN(entry);
 			paddr = (pfn << ONE_PAGE_OFFSET);
-			size = ((1U << order) * PAGE_SIZE);
+			size = (PAGE_SIZE << order);
 			/*   isolate the page from Linux, and let it be accessible in protected VM
 			 *    ___________________________
 			 *   | Linux        | Protected  |
@@ -341,6 +403,7 @@ int mtk_smmu_secure_v2(struct kvm_cpu_context *ctx)
 			 *   |___________________________|
 			 */
 			hyp_spin_lock(&smmu_all_vm_lock);
+			smmu_lazy_free();
 			smmu_vm_unmap(0, paddr, size);
 			smmu_vm_map(1, paddr, size,
 				    MM_MODE_R | MM_MODE_W | MM_MODE_X);
@@ -399,17 +462,19 @@ int mtk_smmu_unsecure_v2(struct kvm_cpu_context *ctx)
 		 */
 		for (i = 0; i < count; i++) {
 			entry = pmm_page[i];
+			if (entry == 0)
+				break;
 			order = GET_PMM_ENTRY_ORDER(entry);
 			pfn = GET_PMM_ENTRY_PFN(entry);
 			paddr = (pfn << ONE_PAGE_OFFSET);
-			size = ((1U << order) * PAGE_SIZE);
+			size = (PAGE_SIZE << order);
 			hyp_spin_lock(&smmu_all_vm_lock);
+			smmu_lazy_free();
 			smmu_vm_map(0, paddr, size,
 				    MM_MODE_R | MM_MODE_W | MM_MODE_X);
 			smmu_vm_map(1, paddr, size, MM_MODE_R);
 			hyp_spin_unlock(&smmu_all_vm_lock);
 		}
-		smmu_merge_s2_table();
 		mtk_smmu_sync();
 	} else {
 		pkvm_smmu_ops->puts("mtk_smmu_unsecure_v2 : share mem fail");
