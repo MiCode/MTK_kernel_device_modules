@@ -69,7 +69,6 @@ static int iReadRegI2C(struct i2c_client *client,
 static int custom_read_region(struct i2c_client *client,
 			      u32 addr, u8 *data, u16 i2c_id, u32 size)
 {
-	u8 *buff = data;
 	u32 size_to_read = size;
 
 	int ret = 0;
@@ -86,7 +85,6 @@ static int custom_read_region(struct i2c_client *client,
 			break;
 		}
 		addr++;
-		buff++;
 		size_to_read--;
 		ret++;
 	}

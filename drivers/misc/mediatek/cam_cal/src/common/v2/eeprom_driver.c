@@ -390,7 +390,7 @@ static inline int eeprom_driver_register(struct i2c_client *client,
 	}
 
 	device_create(pinst->pclass, NULL, pinst->dev_no, NULL,
-		      device_drv_name);
+		      "%s", device_drv_name);
 
 	pinst->pi2c_client = client;
 	mutex_init(&pinst->eeprom_mutex);
