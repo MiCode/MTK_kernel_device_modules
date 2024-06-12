@@ -228,8 +228,9 @@ static void mtk_smmu_sync(void)
 {
 	broadcast_vmalls12e1is();
 }
+
 /* Merge linux vm page table into huge page */
-void smmu_merge_s2_table(void)
+void smmu_merge_s2_table(struct user_pt_regs *regs)
 {
 	hyp_spin_lock(&smmu_all_vm_lock);
 	smmu_vm_defragment(0);
@@ -239,6 +240,7 @@ void smmu_merge_s2_table(void)
 	 */
 	mtk_smmu_sync();
 	hyp_spin_unlock(&smmu_all_vm_lock);
+	regs->regs[0] = SMCCC_RET_SUCCESS;
 }
 
 void mtk_smmu_share(struct user_pt_regs *regs)
@@ -305,7 +307,7 @@ void mtk_smmu_share(struct user_pt_regs *regs)
 /* Maintain an array to records MPU region info */
 static struct mpu_record pkvm_mpu_rec[MPU_REQ_ORIGIN_EL2_ZONE_MAX];
 
-int mtk_smmu_secure(struct user_pt_regs *regs)
+void mtk_smmu_secure(struct user_pt_regs *regs)
 {
 	paddr_t region_start;
 	size_t region_size;
@@ -315,7 +317,7 @@ int mtk_smmu_secure(struct user_pt_regs *regs)
 
 	if (zone_id >= MPU_REQ_ORIGIN_EL2_ZONE_MAX) {
 		pkvm_smmu_ops->puts("mtk_smmu_secure : zone_id is invalid");
-		return 0;
+		return;
 	}
 	/* Get the region start and size */
 	region_start = regs->regs[1];
@@ -330,11 +332,9 @@ int mtk_smmu_secure(struct user_pt_regs *regs)
 	smmu_vm_map(1, region_start, region_size,
 		    MM_MODE_R | MM_MODE_W | MM_MODE_X);
 	hyp_spin_unlock(&smmu_all_vm_lock);
-
-	return 0;
 }
 
-int mtk_smmu_unsecure(struct user_pt_regs *regs)
+void mtk_smmu_unsecure(struct user_pt_regs *regs)
 {
 	paddr_t region_start;
 	size_t region_size;
@@ -345,7 +345,7 @@ int mtk_smmu_unsecure(struct user_pt_regs *regs)
 
 	if (zone_id >= MPU_REQ_ORIGIN_EL2_ZONE_MAX) {
 		pkvm_smmu_ops->puts("mtk_smmu_unsecure : zone_id is invalid");
-		return 0;
+		return;
 	}
 	/* TODO: to support dts default attr */
 	vm0_default_mode = MM_MODE_R | MM_MODE_W | MM_MODE_X;
@@ -360,8 +360,6 @@ int mtk_smmu_unsecure(struct user_pt_regs *regs)
 	smmu_vm_map(0, region_start, region_size, vm0_default_mode);
 	smmu_vm_map(1, region_start, region_size, vm1_default_mode);
 	hyp_spin_unlock(&smmu_all_vm_lock);
-
-	return 0;
 }
 /*
  *  PMM_MSG_ENTRY format
@@ -371,7 +369,7 @@ int mtk_smmu_unsecure(struct user_pt_regs *regs)
  *  |____________|____________|_____________|
  *  31         28 27        24 23          0
  */
-int mtk_smmu_secure_v2(struct user_pt_regs *regs)
+void mtk_smmu_secure_v2(struct user_pt_regs *regs)
 {
 	uint32_t entry, order, i;
 	uint32_t *pmm_page;
@@ -435,10 +433,9 @@ int mtk_smmu_secure_v2(struct user_pt_regs *regs)
 		pkvm_smmu_ops->puts(
 			"mtk_smmu_secure_v2 : host_unshare_hyp kernel pa fail");
 	regs->regs[1] = ret;
-	return ret;
 }
 
-int mtk_smmu_unsecure_v2(struct user_pt_regs *regs)
+void mtk_smmu_unsecure_v2(struct user_pt_regs *regs)
 {
 	uint32_t entry, order, i;
 	uint32_t *pmm_page;
@@ -501,7 +498,6 @@ int mtk_smmu_unsecure_v2(struct user_pt_regs *regs)
 		pkvm_smmu_ops->puts(
 			"mtk_smmu_unsecure_v2 : host_unshare_hyp kernel pa fail");
 	regs->regs[1] = ret;
-	return ret;
 }
 
 void flush_dcache_range(void *ptr, uint32_t size)
