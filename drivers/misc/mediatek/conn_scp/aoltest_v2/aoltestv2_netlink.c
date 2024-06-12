@@ -135,10 +135,6 @@ static struct genl_ops aoltest_gnl_ops_array[] = {
 
 };
 
-static const struct genl_multicast_group g_mcgrps = {
-	.name = "AOL_TEST",
-};
-
 static struct aoltestv2_netlink_ctx g_aoltest_netlink_ctx = {
 	.gnl_family = {
 		.id = GENL_ID_GENERATE,
