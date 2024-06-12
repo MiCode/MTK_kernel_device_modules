@@ -19,6 +19,7 @@
 #include <linux/vmalloc.h>
 #include <linux/sched/clock.h>
 #include <linux/sched.h>
+#include <linux/kmemleak.h>
 #include <asm/div64.h>
 #include <mt-plat/fpsgo_common.h>
 #include "../fbt/include/fbt_cpu.h"
@@ -789,11 +790,27 @@ static void switch_fstb_active(void)
 	enable_fstb_timer();
 }
 
+static int is_exceed_max_fstb_frame_info_num(void)
+{
+	int num = 0;
+	struct FSTB_FRAME_INFO *iter = NULL;
+	struct hlist_node *h = NULL;
+
+	hlist_for_each_entry_safe(iter, h, &fstb_frame_infos, hlist) {
+		num++;
+	}
+
+	return (num > FPSGO_MAX_RENDER_INFO_SIZE);
+}
+
 static struct FSTB_FRAME_INFO *add_new_frame_info(int pid, unsigned long long bufID,
 	int hwui_flag, unsigned long master_type)
 {
 	struct task_struct *tsk = NULL, *gtsk = NULL;
 	struct FSTB_FRAME_INFO *new_frame_info;
+
+	if (is_exceed_max_fstb_frame_info_num())
+		return NULL;
 
 	new_frame_info = vmalloc(sizeof(*new_frame_info));
 	if (new_frame_info == NULL)
@@ -846,6 +863,8 @@ static struct FSTB_FRAME_INFO *add_new_frame_info(int pid, unsigned long long bu
 		new_frame_info->proc_name[0] = '\0';
 		new_frame_info->proc_id = 0;
 	}
+
+	kmemleak_not_leak(new_frame_info);
 
 out:
 	return new_frame_info;
