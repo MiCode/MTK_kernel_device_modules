@@ -1,4 +1,5 @@
 c CONFIG_MODULE_SIG_PROTECT
+f mm/vmalloc.c
 s acc_alloc
 s acc_alloc_inst
 s acc_complete_in
