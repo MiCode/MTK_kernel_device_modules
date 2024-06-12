@@ -287,12 +287,16 @@ module_param_array(debug_module_bw, int, NULL, 0644);
 #define EL2_STASH_EN BIT(6)
 
 #define DISP_REG_OVL_STASH_CFG1			(0xAE4UL)
-#define STASH_LINE_IGNORE			REG_FLD_MSB_LSB(7, 0)
-#define STASH_GMC_LINE_STALL		REG_FLD_MSB_LSB(15, 8)
-#define STASH_ROI_LINE_STALL		REG_FLD_MSB_LSB(23, 16)
-#define STASH_HDR_ROI_LINE_STALL	REG_FLD_MSB_LSB(31, 24)
+#define STASH_LINE_IGNORE				REG_FLD_MSB_LSB(7, 0)
+#define STASH_GMC_LINE_STALL			REG_FLD_MSB_LSB(15, 8)
+#define STASH_ROI_LINE_STALL			REG_FLD_MSB_LSB(23, 16)
+#define STASH_HDR_ROI_LINE_STALL		REG_FLD_MSB_LSB(31, 24)
 
 #define DISP_REG_OVL_STASH_CFG2			(0xAE8UL)
+#define STASH_ULTRA_MAN					BIT(16)
+#define STASH_ULTRA						BIT(18)
+#define STASH_HDR_ULTRA_MAN				BIT(20)
+#define STASH_HDR_ULTRA					BIT(22)
 
 /* OVL Bandwidth monitor */
 #define DISP_REG_OVL_BURST_MON_CFG		(0x97CUL)
@@ -2259,6 +2263,10 @@ static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pk
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_STASH_CFG0,
 			   (L0_STASH_EN | EL0_STASH_EN | EL1_STASH_EN | EL2_STASH_EN),
 			   (L0_STASH_EN | EL0_STASH_EN | EL1_STASH_EN | EL2_STASH_EN));
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_STASH_CFG2,
+			   (STASH_ULTRA_MAN | STASH_ULTRA | STASH_HDR_ULTRA_MAN | STASH_HDR_ULTRA),
+			   (STASH_ULTRA_MAN | STASH_ULTRA | STASH_HDR_ULTRA_MAN | STASH_HDR_ULTRA));
 }
 
 static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
@@ -3376,13 +3384,6 @@ void mtk_ovl_exdma_cal_golden_setting(bool cfg_dc,
 	gs[GS_OVL_BLOCK_EXT_ULTRA] = (!is_dc) ? 0 : 1;
 	gs[GS_OVL_BLOCK_EXT_PRE_ULTRA] = (!is_dc) ? 0 : 1;
 
-	if (data->stash_en)
-		gs[GS_OVL_STASH_EN] = data->stash_en;
-	else
-		gs[GS_OVL_STASH_EN] = 0;
-
-	gs[GS_OVL_STASH_CFG] = (data->stash_cfg) ? (data->stash_cfg) : 0;
-
 }
 
 static int mtk_ovl_exdma_golden_setting(struct mtk_ddp_comp *comp,
@@ -3470,19 +3471,6 @@ static int mtk_ovl_exdma_golden_setting(struct mtk_ddp_comp *comp,
 		 (gs[GS_OVL_BLOCK_EXT_PRE_ULTRA] << 19);
 	cmdq_pkt_write(handle, comp->cmdq_base, baddr + DISP_REG_OVL_EN_CON,
 		       regval, 0x3 << 18);
-
-	/* OVL_STASH_EN */
-	regval = gs[GS_OVL_STASH_EN];
-	if (regval) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-		       baddr + DISP_REG_OVL_STASH_CFG0, regval, ~0);
-	}
-
-	regval = gs[GS_OVL_STASH_CFG];
-	if (regval) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-		       baddr + DISP_REG_OVL_STASH_CFG1, regval, ~0);
-	}
 
 	return 0;
 }
@@ -4051,6 +4039,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		struct mtk_ddp_fb_info *fb_info =
 			(struct mtk_ddp_fb_info *)params;
 
+		mtk_ovl_exdma_stash_config(comp, handle);
 		mtk_ovl_replace_bootup_mva(comp, handle, params, fb_info);
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
 			priv->data->mmsys_id == MMSYS_MT6991)
@@ -4272,6 +4261,8 @@ void mtk_ovl_exdma_dump_golden_setting(struct mtk_ddp_comp *comp)
 	DDPDUMP("OVL_STASH_CFG0:0x%08x\n", value);
 	value = readl(DISP_REG_OVL_STASH_CFG1 + baddr);
 	DDPDUMP("OVL_STASH_CFG1:0x%08x\n", value);
+	value = readl(DISP_REG_OVL_STASH_CFG2 + baddr);
+	DDPDUMP("OVL_STASH_CFG2:0x%08x\n", value);
 
 }
 
