@@ -2014,7 +2014,7 @@ int smi_comm_set(const char *val, const struct kernel_param *kp)
 	int offset, value;
 
 	result = sscanf(val, "%d %x %x", &comm_id, &offset, &value);
-	if (result != 3 || comm_id < 0 || comm_id >= MTK_SMI_NR_MAX) {
+	if (result != 3 || comm_id >= MTK_SMI_NR_MAX) {
 		pr_notice("SMI comm%d offset:%#x value:%#x set fail\n",
 				comm_id, offset, value);
 		return result;
@@ -2048,10 +2048,10 @@ int smi_larb_clear(const char *val, const struct kernel_param *kp)
 		return result;
 	}
 
-	if (larb_id >= ARRAY_SIZE(smi->larb) && larb_id < MTK_SMI_NR_MAX) {
+	if (larb_id >= ARRAY_SIZE(smi->larb)) {
 		for (i = 0; i < ARRAY_SIZE(smi->larb); i++)
-			if (smi->larb[larb_id].dev)
-				mtk_smi_clear_larb_set_value(smi->larb[larb_id].dev);
+			if (smi->larb[i].dev)
+				mtk_smi_clear_larb_set_value(smi->larb[i].dev);
 	} else {
 		if (!smi->larb[larb_id].dev) {
 			pr_notice("%s: can not find larb%d\n", __func__, larb_id);
@@ -2081,10 +2081,10 @@ int smi_comm_clear(const char *val, const struct kernel_param *kp)
 		return result;
 	}
 
-	if (comm_id >= ARRAY_SIZE(smi->comm) && comm_id < MTK_SMI_NR_MAX) {
+	if (comm_id >= ARRAY_SIZE(smi->comm)) {
 		for (i = 0; i < ARRAY_SIZE(smi->comm); i++)
-			if (smi->comm[comm_id].dev)
-				mtk_smi_clear_comm_set_value(smi->comm[comm_id].dev);
+			if (smi->comm[i].dev)
+				mtk_smi_clear_comm_set_value(smi->comm[i].dev);
 	} else {
 		if (!smi->comm[comm_id].dev) {
 			pr_notice("%s: can not find comm%d\n", __func__, comm_id);
