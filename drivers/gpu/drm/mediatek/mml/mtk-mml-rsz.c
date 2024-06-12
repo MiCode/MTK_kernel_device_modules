@@ -845,9 +845,6 @@ static const struct component_ops mml_comp_ops = {
 	.unbind = mml_unbind,
 };
 
-static const struct mtk_ddp_comp_funcs ddp_comp_funcs = {
-};
-
 static struct mml_comp_rsz *dbg_probed_components[6];
 static int dbg_probed_count;
 

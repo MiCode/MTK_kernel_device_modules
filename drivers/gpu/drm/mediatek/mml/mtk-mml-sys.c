@@ -90,6 +90,7 @@ struct mml_data {
 	void (*aid_sel)(struct mml_comp *comp, struct mml_task *task,
 		struct mml_comp_config *ccfg);
 	const struct mml_comp_hw_ops *hw_ops;
+	const struct mml_comp_debug_ops *debug_ops;
 	u8 gpr[MML_PIPE_CNT];
 	enum mml_aidsel_mode aidsel_mode;
 	u8 px_per_tick;
@@ -1282,8 +1283,10 @@ static const struct mml_comp_hw_ops sys_hw_ops_mminfra = {
 	.clk_disable = &mml_sys_comp_clk_disable,
 };
 
+#ifdef MML_FPGA
 static const struct mml_comp_hw_ops sys_hw_ops_fpga = {
 };
+#endif
 
 static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 			 struct mml_comp *comp)
@@ -1442,7 +1445,7 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 	of_property_read_u16(dev->of_node, "ready-sel", &sys->inline_ready_sel);
 
 	comp->config_ops = &sys_config_ops;
-	comp->debug_ops = &sys_debug_ops;
+	comp->debug_ops = sys->data->debug_ops;
 
 
 #ifndef MML_FPGA
@@ -2579,6 +2582,7 @@ static const struct mml_data mt6893_mml_data = {
 	},
 	.aid_sel = sys_config_aid_sel,
 	.hw_ops = &sys_hw_ops,
+	.debug_ops = &sys_debug_ops,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.sysid = mml_sys_frame,
 };
@@ -2596,6 +2600,7 @@ static const struct mml_data mt6983_mml_data = {
 	},
 	.aid_sel = sys_config_aid_sel,
 	.hw_ops = &sys_hw_ops,
+	.debug_ops = &sys_debug_ops,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.sysid = mml_sys_frame,
 };
@@ -2608,6 +2613,7 @@ static const struct mml_data mt6879_mml_data = {
 	},
 	.aid_sel = sys_config_aid_sel,
 	.hw_ops = &sys_hw_ops,
+	.debug_ops = &sys_debug_ops,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.sysid = mml_sys_frame,
 };
@@ -2625,6 +2631,7 @@ static const struct mml_data mt6985_mml_data = {
 	},
 	.aid_sel = sys_config_aid_sel_engine,
 	.hw_ops = &sys_hw_ops,
+	.debug_ops = &sys_debug_ops,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.aidsel_mode = MML_AIDSEL_ENGINE,
 	.set_mml_uid = true,
@@ -2644,6 +2651,7 @@ static const struct mml_data mt6897_mml_data = {
 	},
 	.aid_sel = sys_config_aid_sel_engine,
 	.hw_ops = &sys_hw_ops,
+	.debug_ops = &sys_debug_ops,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.aidsel_mode = MML_AIDSEL_ENGINE,
 	.sysid = mml_sys_frame,
@@ -2663,6 +2671,7 @@ static const struct mml_data mt6989_mml_data = {
 	},
 	.aid_sel = sys_config_aid_sel_bits,
 	.hw_ops = &sys_hw_ops_mminfra,
+	.debug_ops = &sys_debug_ops,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.px_per_tick = 2,
 	.aidsel_mode = MML_AIDSEL_ENGINEBITS,
@@ -2679,6 +2688,7 @@ static const struct mml_data mt6991_mmlt_data = {
 	},
 	.aid_sel = sys_config_aid_sel_bits_sys,
 	.hw_ops = &sys_hw_ops_mminfra,
+	.debug_ops = &sys_debug_ops_mt6991,
 	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
 	.px_per_tick = 2,
 	.aidsel_mode = MML_AIDSEL_ENGINEBITS,
@@ -2701,6 +2711,7 @@ static const struct mml_data mt6991_mmlf_data = {
 	},
 	.aid_sel = sys_config_aid_sel_bits_sys,
 	.hw_ops = &sys_hw_ops_mminfra,
+	.debug_ops = &sys_debug_ops_mt6991,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.px_per_tick = 2,
 	.aidsel_mode = MML_AIDSEL_ENGINEBITS,

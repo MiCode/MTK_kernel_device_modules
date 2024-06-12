@@ -1113,9 +1113,6 @@ static const struct component_ops mml_comp_ops = {
 	.unbind = mml_unbind,
 };
 
-static const struct mtk_ddp_comp_funcs ddp_comp_funcs = {
-};
-
 static struct mml_comp_tdshp *dbg_probed_components[4];
 static int dbg_probed_count;
 
@@ -1247,7 +1244,6 @@ static void tdshp_hist_work(struct work_struct *work_item)
 	struct mml_comp *comp = NULL;
 	struct cmdq_pkt *pkt = NULL;
 	struct cmdq_operand lop, rop;
-	struct mml_pq_task *pq_task = NULL;
 
 	const u16 idx_val = CMDQ_THR_SPR_IDX2;
 	u16 idx_out = 0;
@@ -1270,8 +1266,6 @@ static void tdshp_hist_work(struct work_struct *work_item)
 	base_pa = comp->base_pa;
 	pkt = tdshp->hist_pkts[pipe];
 	idx_out = tdshp->data->cpr[tdshp->pipe];
-	pq_task = tdshp->pq_task;
-
 
 	mml_pq_ir_log("%s job_id[%d] eng_id[%d] cmd_buf_size[%zu] hist_cmd_done[%d]",
 		__func__, tdshp->jobid, comp->id,
@@ -1356,9 +1350,7 @@ tdshp_hist_cmd_done:
 		tdshp->hist_pkts[0], tdshp->hist_pkts[1], comp->id,
 		pkt->cmd_buf_size, tdshp->hist_cmd_done,
 		pkt->no_irq);
-
 }
-
 
 static int probe(struct platform_device *pdev)
 {

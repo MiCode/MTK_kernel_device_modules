@@ -120,9 +120,9 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 throughput, u32 tput_up);
 void mml_comp_qos_clear(struct mml_comp *comp, bool dpc);
 
-s32 mml_dpc_task_cnt_get(struct mml_task *task, bool addon_task);
-void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task);
-void mml_dpc_task_cnt_dec(struct mml_task *task, bool addon_task);
+s32 mml_dpc_task_cnt_get(struct mml_task *task);
+void mml_dpc_task_cnt_inc(struct mml_task *task);
+void mml_dpc_task_cnt_dec(struct mml_task *task);
 void mml_dpc_exc_keep(struct mml_dev *mml, u32 sysid);
 void mml_dpc_exc_release(struct mml_dev *mml, u32 sysid);
 void mml_dpc_exc_keep_task(struct mml_task *task, const struct mml_topology_path *path);

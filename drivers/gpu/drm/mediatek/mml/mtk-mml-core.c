@@ -1689,7 +1689,7 @@ static void core_taskdone(struct work_struct *work)
 	core_buffer_unmap(task);
 
 	if (cfg->dpc && cfg->info.mode != MML_MODE_DDP_ADDON)
-		mml_dpc_task_cnt_dec(task, false);
+		mml_dpc_task_cnt_dec(task);
 
 	if (unlikely(cfg->task_ops->frame_err && !task->pkts[0] &&
 		(!cfg->dual || !task->pkts[1])))
@@ -2070,7 +2070,7 @@ static void core_config_pipe(struct mml_task *task, u32 pipe)
 	task->config_pipe_time[pipe] = sched_clock();
 
 	if (cfg->dpc && cfg->info.mode != MML_MODE_DDP_ADDON)
-		mml_dpc_task_cnt_inc(task, false);
+		mml_dpc_task_cnt_inc(task);
 
 	if (cfg->dpc) {
 		cmdq_check_thread_complete(tp_clt->chan);
@@ -2128,7 +2128,7 @@ static void core_config_pipe(struct mml_task *task, u32 pipe)
 		__func__, task, task->job.jobid, pipe, task->pkts[pipe]);
 exit:
 	if (cfg->dpc && cfg->info.mode != MML_MODE_DDP_ADDON && err < 0)
-		mml_dpc_task_cnt_dec(task, false);
+		mml_dpc_task_cnt_dec(task);
 
 	mml_trace_ex_end();
 }

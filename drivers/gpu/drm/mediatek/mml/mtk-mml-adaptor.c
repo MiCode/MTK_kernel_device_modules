@@ -554,7 +554,7 @@ int mml_ctx_init(struct mml_ctx *ctx, struct mml_dev *mml,
 	const char * const threads[])
 {
 	/* create taskdone kthread first cause it is more easy for fail case */
-	ctx->kt_done = kthread_create_worker(0, threads[0]);
+	ctx->kt_done = kthread_create_worker(0, "%s", threads[0]);
 	if (IS_ERR(ctx->kt_done)) {
 		mml_err("[adpt]fail to create kthread worker %d",
 			(s32)PTR_ERR(ctx->kt_done));
@@ -562,9 +562,9 @@ int mml_ctx_init(struct mml_ctx *ctx, struct mml_dev *mml,
 		goto err;
 
 	}
-	ctx->wq_destroy = alloc_ordered_workqueue(threads[1], 0);
+	ctx->wq_destroy = alloc_ordered_workqueue("%s", 0, threads[1]);
 	if (threads[2]) {
-		ctx->kt_config[0] = kthread_create_worker(0, threads[2]);
+		ctx->kt_config[0] = kthread_create_worker(0, "%s", threads[2]);
 		if (IS_ERR(ctx->kt_config[0])) {
 			mml_err("[adpt]fail to create config thread 0 %s err %pe",
 				threads[2], ctx->kt_config[0]);
@@ -573,7 +573,7 @@ int mml_ctx_init(struct mml_ctx *ctx, struct mml_dev *mml,
 		}
 	}
 	if (threads[3]) {
-		ctx->kt_config[0] = kthread_create_worker(0, threads[3]);
+		ctx->kt_config[0] = kthread_create_worker(0, "%s", threads[3]);
 		if (IS_ERR(ctx->kt_config[1])) {
 			mml_err("[adpt]fail to create config thread 1 %s err %pe",
 				threads[3], ctx->kt_config[1]);
