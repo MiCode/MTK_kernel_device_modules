@@ -69,7 +69,8 @@ enum POWER_DOMAIN_ID {
 	PD_CAM_RMSC,	/*15*/
 	PD_CAM_MAIN,
 	PD_CAM_VCORE,
-	PD_NUM			/*18*/
+	PD_CAM_CCU,
+	PD_NUM			/*19*/
 };
 
 struct vmm_notifier_data {
@@ -84,6 +85,7 @@ struct vmm_notifier_data {
 static struct vmm_notifier_data global_data[PD_NUM];
 struct mutex ctrl_mutex;
 static int vmm_user_counter;
+struct device *pm_domain_devs[PD_NUM];
 
 static void vmm_notifier_timeout_debug_dump(void)
 {
@@ -173,12 +175,53 @@ static int mtk_camera_pd_callback(struct notifier_block *nb,
 
 	return ret;
 }
+
+static int vmm_pm_runtime_enable(struct device *dev, u32 pd_id)
+{
+	int ret;
+	int pm_domain_cnt;
+	s32 err = 0;
+	struct vmm_notifier_data *data;
+
+	if (pd_id >= PD_NUM) {
+		ISP_LOGI("pd_id = %d. overflow\n", pd_id);
+		return 0;
+	}
+
+	data = &global_data[pd_id];
+	pm_domain_cnt = of_count_phandle_with_args(dev->of_node,
+				"power-domains",
+				"#power-domain-cells");
+	dev = dev_pm_domain_attach_by_id(dev, 0);
+	if (dev == NULL) {
+		ISP_LOGI("dev is null! id=%d\n", pd_id);
+		return 0;
+	}
+	if (IS_ERR(dev)) {
+		err = PTR_ERR(dev) ? : -ENODATA;
+		ISP_LOGI("failed to get vmm. error: %d.pd_id=%d\n", err, pd_id);
+		return 0;
+	}
+
+	pm_domain_devs[pd_id] = dev;
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0)
+		ISP_LOGE("vmm get sync fail pd_id=%d, ret=%d!!\n", pd_id, ret);
+
+	vmm_locked_buck_ctrl(true);
+	data->notifier.notifier_call = mtk_camera_pd_callback;
+	data->pd_id = pd_id;
+	ret = dev_pm_genpd_add_notifier(dev, &data->notifier);
+	if (ret)
+		ISP_LOGE("vmm gen pd add notifier fail(%d)\n", ret);
+	return 0;
+}
+
 static int vmm_notifier_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct device *dev = &pdev->dev;
 	u32 pd_id;
-	struct vmm_notifier_data *data;
 
 	ret = of_property_read_u32(dev->of_node, "pd-id", &pd_id);
 	if (ret) {
@@ -190,18 +233,10 @@ static int vmm_notifier_probe(struct platform_device *pdev)
 		ISP_LOGE("vmm invalid pd_id in dts(%u)", pd_id);
 		return -ENODEV;
 	}
-	data = &global_data[pd_id];
 
-	ISP_LOGI("[%s][%d] pd_id[%d] start\n", __func__, __LINE__, pd_id);
+	vmm_pm_runtime_enable(dev, pd_id);
 
-	vmm_locked_buck_ctrl(true);
-	pm_runtime_enable(dev);
-	data->notifier.notifier_call = mtk_camera_pd_callback;
-	data->pd_id = pd_id;
-	ret = dev_pm_genpd_add_notifier(dev, &data->notifier);
-	if (ret)
-		ISP_LOGE("vmm gen pd add notifier fail(%d)\n", ret);
-	ISP_LOGI("[%s][%d] pd_id[%d] end\n", __func__, __LINE__, pd_id);
+	ISP_LOGI("[%s][%d] pd_id[%d] vmm_vnter[%d] end\n", __func__, __LINE__, pd_id, vmm_user_counter);
 	return 0;
 }
 
@@ -223,17 +258,32 @@ static struct platform_driver drv_vmm_notifier = {
 static int __init mtk_vmm_notifier_init(void)
 {
 	s32 status;
+	int id = 0;
+	int ret;
 
 	mutex_init(&ctrl_mutex);
 	ISP_LOGI("[%s][%d] start\n", __func__, __LINE__);
+	vmm_user_counter = 0;
 	vmm_locked_buck_ctrl(true);
 	status = platform_driver_register(&drv_vmm_notifier);
 	if (status) {
 		pr_notice("Failed to register VMM dbg driver(%d)\n", status);
 		return -ENODEV;
 	}
+
+	for (id = 0; id < PD_NUM; id++) {
+		if (pm_domain_devs[id] == NULL) {
+			ISP_LOGI("pm_domain_devs[%d] is null\n", id);
+			continue;
+		}
+		ret = pm_runtime_put_sync(pm_domain_devs[id]);
+		if (ret < 0)
+			ISP_LOGI("fail to put_sync id=%d, ret=%d!!!\n", id, ret);
+	}
 	vmm_locked_buck_ctrl(false);
-	ISP_LOGI("[%s][%d] end\n", __func__, __LINE__);
+	mutex_lock(&ctrl_mutex);
+	ISP_LOGI("[%s][%d] end, vmm_user_counter=%d\n", __func__, __LINE__, vmm_user_counter);
+	mutex_unlock(&ctrl_mutex);
 
 	return 0;
 }
