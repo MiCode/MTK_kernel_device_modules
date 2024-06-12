@@ -83,15 +83,6 @@ static int mt6685_audclk_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "%s done\n", __func__);
 	return 0;
 }
-static const struct clk_chip_data mt6685_audclk_data = {
-	.reg_num = 128,
-	.base = MT6685_DCXO_EXTBUF5_CW0,
-};
-static const struct of_device_id mt6338_of_match[] = {
-	{.compatible = "mediatek,mt6338_snd",},
-	{},
-};
-
 static const struct of_device_id mt6685_audclk_of_match[] = {
 	{.compatible = "mediatek,mt6685-audclk",},
 	{/* sentinel */},
