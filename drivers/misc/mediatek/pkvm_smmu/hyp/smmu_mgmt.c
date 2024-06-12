@@ -511,6 +511,24 @@ void add_to_exclusive_map_region(uint16_t vmid, uint64_t base, uint64_t size,
 	e->mode = mode;
 	vms->idt_exclusive_map_idx++;
 }
+/* Check memory address belongs to the VM */
+bool address_vm_range_check(struct smmu_vm *vm, uint64_t base, uint64_t end)
+{
+	int idx;
+
+	if (!vm)
+		return false;
+
+	for (idx = 0; idx < vm->identity_map_idx; idx++) {
+		if (base < vm->identity_map[idx].base)
+			continue;
+		else if (end > (vm->identity_map[idx].base + vm->identity_map[idx].size))
+			continue;
+		else
+			return true;
+	}
+	return false;
+}
 
 void add_to_map_region(struct smmu_vm *vm, uint64_t base, uint64_t size)
 {

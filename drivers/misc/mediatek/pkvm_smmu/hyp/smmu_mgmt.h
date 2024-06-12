@@ -190,3 +190,4 @@ uint64_t stage2_pte(struct mm_ptable_b *t, uint64_t ipa);
 void mm_vm_defrag(struct mm_ptable_b *t, struct mpool *ppool);
 unsigned long ptable_s2_ipa_info_get(struct mm_ptable_b *t, uint64_t ipa);
 int platform_mblock_query(const char *name, uint64_t *base, uint64_t *size);
+bool address_vm_range_check(struct smmu_vm *vm, uint64_t base, uint64_t size);
