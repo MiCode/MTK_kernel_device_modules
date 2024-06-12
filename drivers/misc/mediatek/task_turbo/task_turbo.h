@@ -43,14 +43,6 @@ enum rwsem_waiter_type {
 	RWSEM_WAITING_FOR_READ
 };
 
-enum {
-	DEBUG_NODE,
-	FPSGO,
-	UX,
-	VIDEO,
-	MAX_TYPE
-};
-
 struct rwsem_waiter {
 	struct list_head list;
 	struct task_struct *task;
