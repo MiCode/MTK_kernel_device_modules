@@ -4044,6 +4044,11 @@
 #define GTC_TX_LCK_ACQ_SEND_NUM_AUX_TX_P0_FLDMASK_POS                     0
 #define GTC_TX_LCK_ACQ_SEND_NUM_AUX_TX_P0_FLDMASK_LEN                     5
 
+#define REG_36F4_AUX_TX_P0              (0x36F4)
+#define IDLE_TO_PRECHARGE_DATA_ONE_EN_AUX_TX_P0_FLDMASK                   0x1
+#define IDLE_TO_PRECHARGE_DATA_ONE_EN_AUX_TX_P0_FLDMASK_POS               0
+#define IDLE_TO_PRECHARGE_DATA_ONE_EN_AUX_TX_P0_FLDMASK_LEN               1
+
 #define REG_3700_AUX_TX_P0              (0x3700)
 #define AUX_PHYWAKE_MODE_AUX_TX_P0_FLDMASK                                0x1
 #define AUX_PHYWAKE_MODE_AUX_TX_P0_FLDMASK_POS                            0

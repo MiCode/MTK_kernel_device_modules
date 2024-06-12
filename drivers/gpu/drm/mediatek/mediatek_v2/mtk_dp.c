@@ -493,6 +493,7 @@ void mdrv_DPTx_InitVariable(struct mtk_dp *mtk_dp)
 	mtk_dp->has_dsc   = false;
 	mtk_dp->has_fec   = false;
 	mtk_dp->dsc_enable = false;
+	mtk_dp->fake_comeplete_irq = false;
 
 	if (!mtk_dp->training_info.set_max_linkrate)
 		mdrv_DPTx_CheckMaxLinkRate(mtk_dp);
