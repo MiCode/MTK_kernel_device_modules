@@ -34,7 +34,8 @@
 #include "mtk_disp_oddmr_tuning.h"
 
 #include "scp.h"
-
+#include <linux/iommu.h>
+#include <mtk-smmu-v3.h>
 
 /* ODDMR TOP */
 #define DISP_ODDMR_TOP_CTR_1 0x0004
@@ -8386,7 +8387,8 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 	void *get_size, unsigned int curr_fps, unsigned int curr_bl)
 {
 #if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
-
+	struct iommu_domain *domain;
+	int ret = 0;
 	get_mem_phys = get_phys;
 	get_mem_virt = get_virt;
 	get_mem_size = get_size;
@@ -8397,6 +8399,7 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 	unsigned int i;
 	void *table_addr;
 	unsigned int j;
+	static bool mem_maped;
 
 	if(!g_oddmr_priv->dbi_data.support_scp)
 		return false;
@@ -8446,6 +8449,22 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 
 		share_mem->table_addr_pa = share_mem->pic_addr_pa[1] + width*height*3;
 		share_mem->table_addr_va = share_mem->pic_addr_va[1] + width*height*3;
+
+		if (!mem_maped) {
+			domain = iommu_get_domain_for_dev(mtk_smmu_get_shared_device(default_comp->dev));
+			if (domain == NULL) {
+				DDPPR_ERR("%s, iommu_get_domain fail\n", __func__);
+				return false;
+			}
+			ret = iommu_map(domain, share_mem->pic_addr_pa[0], share_mem->pic_addr_pa[0],
+				ROUNDUP(width*height*3*2 + width*height*4*3/16, PAGE_SIZE),
+				IOMMU_READ | IOMMU_WRITE, GFP_KERNEL);
+			if (ret < 0) {
+				DDPPR_ERR("%s, iommu_map fail\n", __func__);
+				return false;
+			}
+			mem_maped = true;
+		}
 	}
 
 	share_mem->backup.backup_offset_pa = get_mem_phys(SCP_DBI_MEM_ID) + share_mem->unused_offset;
