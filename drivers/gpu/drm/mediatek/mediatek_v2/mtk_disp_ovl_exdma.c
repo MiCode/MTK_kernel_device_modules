@@ -4298,6 +4298,8 @@ int mtk_ovl_exdma_dump(struct mtk_ddp_comp *comp)
 			continue;
 		mtk_serial_dump_reg(baddr, offset, 4);
 	}
+	mtk_cust_dump_reg(baddr, 0x940, 0x950, 0x954, 0x958);
+	mtk_cust_dump_reg(baddr, 0x960, 0x970, 0x974, 0x978);
 	mtk_cust_dump_reg(baddr, 0xF40, 0xF44, 0xF48, 0xF4C);
 	mtk_cust_dump_reg(baddr, 0xFF0, 0xFF4, 0xFF8, 0xFFC);
 

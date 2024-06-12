@@ -132,7 +132,7 @@ bool msync2_is_on;
 unsigned int atomic_fps;
 static unsigned int msync_fps_record[MSYNC20_AVG_FPS_FRAME_NUM];
 #define MT6991_GCE_D_PA (0x300c0000)
-#define MT6991_MAX_EXDMA_NUM 8
+
 struct cmdq_instruction {
 	u16 arg_c:16;
 	u16 arg_b:16;
@@ -164,6 +164,9 @@ struct layer_compress_ratio_item
 unchanged_compress_ratio_table[MAX_LAYER_RATIO_NUMBER];
 struct layer_compress_ratio_item
 fbt_compress_ratio_table[MAX_FRAME_RATIO_NUMBER];
+#define MT6991_MAX_EXDMA_NUM 8
+#define BWM_CAPS_MASK (MTK_HWC_UNCHANGED_LAYER |          \
+			MTK_HWC_INACTIVE_LAYER | MTK_HWC_UNCHANGED_FBT_LAYER)
 
 unsigned int default_emi_eff = 8611;
 unsigned int emi_eff_tb[MAX_EMI_EFF_LEVEL] = {
@@ -8312,11 +8315,13 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 					comp->regs_pa + DISP_REG_OVL_ELX_BURST_ACC(ext_lye_id-1),
 					CMDQ_THR_SPR_IDX1);
 			}
+			cmdq_pkt_assign_command(state->cmdq_handle, CMDQ_THR_SPR_IDX3,
+				avg_inter_value);
 
 			lop.reg = true;
 			lop.idx = CMDQ_THR_SPR_IDX1;
-			rop.reg = false;
-			rop.value = avg_inter_value;
+			rop.reg = true;
+			rop.idx = CMDQ_THR_SPR_IDX3;
 			cmdq_pkt_logic_command(state->cmdq_handle,
 				CMDQ_LOGIC_MULTIPLY, CMDQ_THR_SPR_IDX1, &lop, &rop);
 
@@ -8335,8 +8340,8 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 
 				lop.reg = true;
 				lop.idx = CMDQ_THR_SPR_IDX2;
-				rop.reg = false;
-				rop.value = avg_inter_value;
+				rop.reg = true;
+				rop.idx = CMDQ_THR_SPR_IDX3;
 				cmdq_pkt_logic_command(state->cmdq_handle,
 					CMDQ_LOGIC_MULTIPLY, CMDQ_THR_SPR_IDX2, &lop, &rop);
 
@@ -8374,10 +8379,13 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 					CMDQ_THR_SPR_IDX1);
 			}
 
+			cmdq_pkt_assign_command(state->cmdq_handle, CMDQ_THR_SPR_IDX3,
+				peak_inter_value);
+
 			lop.reg = true;
 			lop.idx = CMDQ_THR_SPR_IDX1;
-			rop.reg = false;
-			rop.value = peak_inter_value;
+			rop.reg = true;
+			rop.idx = CMDQ_THR_SPR_IDX3;
 			cmdq_pkt_logic_command(state->cmdq_handle,
 				CMDQ_LOGIC_MULTIPLY, CMDQ_THR_SPR_IDX1, &lop, &rop);
 
@@ -8396,8 +8404,8 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 
 				lop.reg = true;
 				lop.idx = CMDQ_THR_SPR_IDX2;
-				rop.reg = false;
-				rop.value = peak_inter_value;
+				rop.reg = true;
+				rop.idx = CMDQ_THR_SPR_IDX3;
 				cmdq_pkt_logic_command(state->cmdq_handle,
 						CMDQ_LOGIC_MULTIPLY, CMDQ_THR_SPR_IDX2, &lop, &rop);
 
@@ -8435,10 +8443,13 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 					CMDQ_THR_SPR_IDX1);
 			}
 
+			cmdq_pkt_assign_command(state->cmdq_handle, CMDQ_THR_SPR_IDX3,
+				avg_inter_value);
+
 			lop.reg = true;
 			lop.idx = CMDQ_THR_SPR_IDX1;
-			rop.reg = false;
-			rop.value = avg_inter_value;
+			rop.reg = true;
+			rop.idx = CMDQ_THR_SPR_IDX3;
 			cmdq_pkt_logic_command(state->cmdq_handle,
 				CMDQ_LOGIC_MULTIPLY, CMDQ_THR_SPR_IDX1, &lop, &rop);
 
@@ -8457,8 +8468,8 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 
 				lop.reg = true;
 				lop.idx = CMDQ_THR_SPR_IDX2;
-				rop.reg = false;
-				rop.value = avg_inter_value;
+				rop.reg = true;
+				rop.idx = CMDQ_THR_SPR_IDX3;
 				cmdq_pkt_logic_command(state->cmdq_handle,
 					CMDQ_LOGIC_MULTIPLY, CMDQ_THR_SPR_IDX2, &lop, &rop);
 
@@ -8494,10 +8505,13 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 					CMDQ_THR_SPR_IDX1);
 			}
 
+			cmdq_pkt_assign_command(state->cmdq_handle, CMDQ_THR_SPR_IDX3,
+				peak_inter_value);
+
 			lop.reg = true;
 			lop.idx = CMDQ_THR_SPR_IDX1;
-			rop.reg = false;
-			rop.value = peak_inter_value;
+			rop.reg = true;
+			rop.idx = CMDQ_THR_SPR_IDX3;
 			cmdq_pkt_logic_command(state->cmdq_handle,
 				CMDQ_LOGIC_MULTIPLY, CMDQ_THR_SPR_IDX1, &lop, &rop);
 
@@ -8516,8 +8530,8 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 
 				lop.reg = true;
 				lop.idx = CMDQ_THR_SPR_IDX2;
-				rop.reg = false;
-				rop.value = peak_inter_value;
+				rop.reg = true;
+				rop.idx = CMDQ_THR_SPR_IDX3;
 				cmdq_pkt_logic_command(state->cmdq_handle,
 						CMDQ_LOGIC_MULTIPLY, CMDQ_THR_SPR_IDX2, &lop, &rop);
 
@@ -8545,7 +8559,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 	unsigned int frame_idx)
 {
-	unsigned int i = 0;
+	unsigned int i = 0, j = 0;
 	bool is_force_high_step = atomic_read(&mtk_crtc->force_high_step);
 
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
@@ -8575,37 +8589,42 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 			(display_compress_ratio_table[i].peak_ratio != NULL)) {
 			if (!is_force_high_step &&
 				(*(display_compress_ratio_table[i].average_ratio) == 0 ||
-				*(display_compress_ratio_table[i].peak_ratio)) == 0)
-				DDPPR_ERR("%s ratio is 0,i:%d,idx:%d,key value:%lld\n", __func__,
-				i, index, display_compress_ratio_table[i].key_value);
-			else {
-				normal_layer_compress_ratio_tb[index].frame_idx =
-					display_compress_ratio_table[i].frame_idx;
-				normal_layer_compress_ratio_tb[index].key_value =
-					display_compress_ratio_table[i].key_value;
-				normal_layer_compress_ratio_tb[index].average_ratio =
-					*(display_compress_ratio_table[i].average_ratio);
-				normal_layer_compress_ratio_tb[index].peak_ratio =
-					*(display_compress_ratio_table[i].peak_ratio);
-				normal_layer_compress_ratio_tb[index].valid =
-					display_compress_ratio_table[i].valid;
-				normal_layer_compress_ratio_tb[index].active =
-					display_compress_ratio_table[i].active;
-
-				unchanged_compress_ratio_table[i].frame_idx =
-					display_compress_ratio_table[i].frame_idx;
-				unchanged_compress_ratio_table[i].key_value =
-					normal_layer_compress_ratio_tb[index].key_value -
-					normal_layer_compress_ratio_tb[index].frame_idx;
-				unchanged_compress_ratio_table[i].average_ratio =
-					*(display_compress_ratio_table[i].average_ratio);
-				unchanged_compress_ratio_table[i].peak_ratio =
-					*(display_compress_ratio_table[i].peak_ratio);
-				unchanged_compress_ratio_table[i].valid =
-					display_compress_ratio_table[i].valid;
-				unchanged_compress_ratio_table[i].active =
-					display_compress_ratio_table[i].active;
+				*(display_compress_ratio_table[i].peak_ratio) == 0)) {
+				DDPAEE("bwm ratio is 0\n");
+				DDPMSG("%s i:%d,frame_idx:%d,key value:%d avg%d peak%d\n", __func__,
+				i, normal_layer_compress_ratio_tb[i].frame_idx,
+				display_compress_ratio_table[i].key_value,
+				*(display_compress_ratio_table[i].average_ratio),
+				*(display_compress_ratio_table[i].peak_ratio));
+				mtk_drm_crtc_dump(&mtk_crtc->base);
+				mtk_drm_crtc_analysis(&mtk_crtc->base);
 			}
+			normal_layer_compress_ratio_tb[index].frame_idx =
+				display_compress_ratio_table[i].frame_idx;
+			normal_layer_compress_ratio_tb[index].key_value =
+				display_compress_ratio_table[i].key_value;
+			normal_layer_compress_ratio_tb[index].average_ratio =
+				*(display_compress_ratio_table[i].average_ratio);
+			normal_layer_compress_ratio_tb[index].peak_ratio =
+				*(display_compress_ratio_table[i].peak_ratio);
+			normal_layer_compress_ratio_tb[index].valid =
+				display_compress_ratio_table[i].valid;
+			normal_layer_compress_ratio_tb[index].active =
+				display_compress_ratio_table[i].active;
+
+			unchanged_compress_ratio_table[i].frame_idx =
+				display_compress_ratio_table[i].frame_idx;
+			unchanged_compress_ratio_table[i].key_value =
+				normal_layer_compress_ratio_tb[index].key_value -
+				normal_layer_compress_ratio_tb[index].frame_idx;
+			unchanged_compress_ratio_table[i].average_ratio =
+				*(display_compress_ratio_table[i].average_ratio);
+			unchanged_compress_ratio_table[i].peak_ratio =
+				*(display_compress_ratio_table[i].peak_ratio);
+			unchanged_compress_ratio_table[i].valid =
+				display_compress_ratio_table[i].valid;
+			unchanged_compress_ratio_table[i].active =
+				display_compress_ratio_table[i].active;
 		}
 	}
 
@@ -8679,8 +8698,19 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 static void bwm_trig_done_cb(struct cmdq_cb_data data)
 {
 	int k = 0;
+	unsigned int *avg = NULL;
+	unsigned int *peak = NULL;
+	struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *)data.data;
 
-	CRTC_MMP_MARK((int)data.data, bwm_loop_done, 0, 1);
+	for (k = 0;k < 7;k++) {
+		avg =
+			(unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
+			DISP_SLOT_LAYER_PRE_AVG_RATIO(k)));
+		peak =
+			(unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
+			DISP_SLOT_LAYER_PRE_PEAK_RATIO(k)));
+		CRTC_MMP_MARK(0, bwm_loop_done, *avg, *peak);
+	}
 	drm_trace_tag_mark("bwm_trig_loop_done");
 }
 
@@ -8768,7 +8798,7 @@ void mtk_crtc_start_bwm_ratio_loop(struct drm_crtc *crtc)
 		break;
 	}
 	cmdq_pkt_finalize_loop(bwm_handle);
-	ret = cmdq_pkt_flush_async(bwm_handle, bwm_trig_done_cb, (void *)crtc_id);
+	ret = cmdq_pkt_flush_async(bwm_handle, bwm_trig_done_cb, (void *)mtk_crtc);
 }
 
 void mtk_crtc_stop_bwm_ratio_loop(struct drm_crtc *crtc)
@@ -8792,6 +8822,25 @@ void mtk_crtc_stop_bwm_ratio_loop(struct drm_crtc *crtc)
 	cmdq_mbox_stop(mtk_crtc->gce_obj.client[CLIENT_BWM_LOOP]);
 	cmdq_pkt_destroy(mtk_crtc->bwm_loop_cmdq_handle);
 	mtk_crtc->bwm_loop_cmdq_handle = NULL;
+}
+
+void update_layer_cap_for_bwm(struct drm_crtc *crtc,
+				struct drm_crtc_state *old_crtc_state,
+				unsigned int partial_enable)
+{
+	struct drm_plane *plane = NULL;
+	unsigned int plane_mask = 0;
+
+	plane_mask = old_crtc_state->plane_mask;
+
+	if (partial_enable == 1) {
+		drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
+			struct mtk_plane_state *plane_state =
+				to_mtk_plane_state(plane->state);
+			if (plane_state->comp_state.layer_caps & BWM_CAPS_MASK)
+				plane_state->comp_state.layer_caps &= ~BWM_CAPS_MASK;
+		}
+	}
 }
 
 #endif
@@ -17340,6 +17389,9 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		state->ovl_partial_dirty = 0;
 	else
 		state->ovl_partial_dirty = 1;
+
+	/* bwm skip ratio get if enable SISO PU */
+	update_layer_cap_for_bwm(crtc, old_crtc_state, partial_enable);
 
 	/* skip if ovl partial dirty is disable and equal to old */
 	if (!state->ovl_partial_dirty &&
