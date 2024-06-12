@@ -1480,8 +1480,8 @@ static int __gpufreq_volt_scale_gpu(
 	udelay(250);
 	g_gpu.cur_volt = __gpufreq_get_real_vgpu();
 	if (unlikely(g_gpu.cur_volt < vgpu_new))
-		__gpufreq_abort("inconsistent scaled Vgpu, cur_volt: %d, target_volt: %d",
-			g_gpu.cur_volt, vgpu_new);
+		__gpufreq_abort("inconsistent scaled Vgpu, cur_volt: %d, target_volt: %d, vgpu_old: %d",
+			g_gpu.cur_volt, vgpu_new, vgpu_old);
 	/*Legacy has fixed Vsram = 87500. so not updating the vsram */
 	/* todo: GED log buffer (gpufreq_pr_logbuf) */
 	GPUFREQ_LOGD("Updated Vgpu: %d, Vsram: %d",
@@ -1743,6 +1743,7 @@ static void __gpufreq_measure_power(void)
 	struct gpufreq_opp_info *working_table = g_gpu.working_table;
 	int opp_num = g_gpu.opp_num;
 
+	mutex_lock(&gpufreq_lock);
 	for (i = 0; i < opp_num; i++) {
 		freq = working_table[i].freq;
 		volt = working_table[i].volt;
@@ -1753,6 +1754,7 @@ static void __gpufreq_measure_power(void)
 		GPUFREQ_LOGD("GPU[%02d] power: %d (dynamic: %d, leakage: %d)",
 			i, p_total, p_dynamic, p_leakage);
 	}
+	mutex_unlock(&gpufreq_lock);
 }
 /* API: resume dvfs to free run */
 static void __gpufreq_resume_dvfs(void)
