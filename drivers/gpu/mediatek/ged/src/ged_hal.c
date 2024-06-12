@@ -1325,8 +1325,8 @@ static ssize_t whitebox_power_force_state_show(struct kobject *kobj,
 	state20_3 = stat_mcu_store[20][3];
 
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"stat_mcu_store[6][3]=%d, stat_mcu_store[7][3]=%d, stat_mcu_store[20][3]=%d\n",
-					state6_3, state7_3, state20_3);
+				"stat_mcu_store[6][3]=%d, stat_mcu_store[7][3]=%d, stat_mcu_store[20][3]=%d, force_state=%d\n",
+					state6_3, state7_3, state20_3, force_state);
 
 	return pos;
 }
