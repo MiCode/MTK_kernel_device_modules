@@ -440,7 +440,7 @@ static void __gpufreq_update_gpu_working_table(void)
 			i, g_gpu.working_table[i].freq, g_gpu.working_table[i].volt,
 			g_gpu.working_table[i].vsram, g_gpu.working_table[i].margin);
 	}
-	mutex_lock(&gpufreq_lock);
+	mutex_unlock(&gpufreq_lock);
 }
 
 /*
