@@ -553,9 +553,9 @@ static s32 aal_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 		func->l_tile_loss = 0;
 		func->r_tile_loss = 0;
 	}
-	func->in_min_width = max(min(aal->data->min_hist_width,
-				     (u32)func->full_size_x_in),
-				 aal->data->min_tile_width);
+	if (!aal_frm->relay_mode)
+		func->in_min_width = max(min(aal->data->min_hist_width, (u32)func->full_size_x_in),
+			aal->data->min_tile_width);
 
 	return 0;
 }

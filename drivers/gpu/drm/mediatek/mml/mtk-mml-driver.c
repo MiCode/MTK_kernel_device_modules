@@ -1364,15 +1364,21 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 void mml_comp_qos_clear(struct mml_comp *comp, bool dpc)
 {
 #ifndef MML_FPGA
-	if (dpc)
+	if (dpc) {
 		mtk_icc_set_bw(comp->icc_dpc_path, 0, 0);
-	else
+		if (comp->icc_dpc_stash_path)
+			mtk_icc_set_bw(comp->icc_dpc_stash_path, 0, 0);
+	} else {
 		mtk_icc_set_bw(comp->icc_path, 0, 0);
+		if (comp->icc_stash_path)
+			mtk_icc_set_bw(comp->icc_stash_path, 0, 0);
+	}
 #endif
 	comp->srt_bw = 0;
 	comp->hrt_bw = 0;
 
-	mml_msg_qos("%s comp %u %s qos bw clear", __func__, comp->id, comp->name);
+	mml_msg_qos("%s comp %u %s qos bw clear%s",
+		__func__, comp->id, comp->name, dpc ? " dpc" : "");
 }
 
 static const struct mml_comp_hw_ops mml_hw_ops = {
