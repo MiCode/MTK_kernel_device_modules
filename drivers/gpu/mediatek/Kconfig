@@ -201,6 +201,15 @@ config MTK_GPU_MT6897_SUPPORT
 	  and set N to disable.
 	  It is additional config to separate platforms.
 
+config MTK_GPU_MT6899_SUPPORT
+	tristate "Specify Mediatek GPU Platform is mt6899"
+	depends on MTK_GPU_SUPPORT
+	help
+	  Select MediaTek GPU Platform is mt6899.
+	  Set Y or M to select this feature for specific platform-mt6899,
+	  and set N to disable.
+	  It is additional config to separate platforms.
+
 config MTK_GPU_MT6983_SUPPORT
 	tristate "Specify Mediatek GPU Platform is mt6983"
 	depends on MTK_GPU_SUPPORT
