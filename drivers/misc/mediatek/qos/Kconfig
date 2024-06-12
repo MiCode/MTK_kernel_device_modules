@@ -14,6 +14,14 @@ config MTK_QOS_MT6893
 	  will be enabled and set EMI hardware.
 	  If unsure, say N.
 
+config MTK_QOS_MT6877
+	tristate "MTK QOS for MT6877"
+	help
+		This kernel config can be used to enable MTK QOS MT6877.
+		When enabling this option, BW Limiter and BW Bound Detector
+		will be enabled and set EMI hardware.
+		If unsure, say N.
+
 config MTK_QOS_MT6833
 	tristate "MTK QOS for MT6833"
 	help
