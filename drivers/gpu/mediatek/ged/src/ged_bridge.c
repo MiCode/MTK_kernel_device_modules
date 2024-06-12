@@ -259,6 +259,13 @@ int ged_bridge_hint_frame_info(
 	struct GED_BRIDGE_IN_HINT_FRAME_INFO *HintFrameInfoIn,
 	struct GED_BRIDGE_OUT_HINT_FRAME_INFO *HintFrameInfoOut)
 {
+	GED_LOGD("HintFrameInfoIn %llu,%d,%d,%d--%u,%d,%d--%llu,%d--%d,%d,%d,%d",
+			(unsigned long long)HintFrameInfoIn->BBQ_id, HintFrameInfoIn->target_fps,
+			HintFrameInfoIn->target_fps_margin, HintFrameInfoIn->enable, HintFrameInfoIn->cmd,
+			HintFrameInfoIn->pid, HintFrameInfoIn->tid, (unsigned long long)HintFrameInfoIn->core,
+			HintFrameInfoIn->by_mask, HintFrameInfoIn->reserved1, HintFrameInfoIn->reserved2,
+			HintFrameInfoIn->reserved3, HintFrameInfoIn->reserved4);
+
 	if (HintFrameInfoIn->cmd == GED_FRAME_INFO_TARGET_FPS && HintFrameInfoIn->target_fps)
 		ged_kpi_set_target_FPS_api(HintFrameInfoIn->BBQ_id, HintFrameInfoIn->target_fps,
 			HintFrameInfoIn->target_fps_margin);
