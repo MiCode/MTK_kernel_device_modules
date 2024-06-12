@@ -1340,7 +1340,7 @@ static void mtk_battery_external_power_changed(struct power_supply *psy)
 
 	struct power_supply *chg_psy = NULL;
 	struct power_supply *dv2_chg_psy = NULL;
-	int ret;
+	int ret = 0;
 
 	bm = psy->drv_data;
 	bs_data = &bm->bs_data;
@@ -1375,7 +1375,7 @@ static void mtk_battery_external_power_changed(struct power_supply *psy)
 		ret = power_supply_get_property(chg_psy,
 			POWER_SUPPLY_PROP_ENERGY_EMPTY, &vbat0);
 
-		if (!online.intval) {
+		if (!online.intval || ret < 0) {
 			bs_data->bat_status = POWER_SUPPLY_STATUS_DISCHARGING;
 		} else {
 			if (status.intval == POWER_SUPPLY_STATUS_NOT_CHARGING) {
@@ -1681,8 +1681,6 @@ static void mtk_battery_manager_handler(struct mtk_battery_manager *bm, void *nl
 
 void mtk_bm_netlink_handler(struct sk_buff *skb)
 {
-	u32 pid;
-	kuid_t uid;
 	int seq;
 	void *data;
 	struct nlmsghdr *nlh;
@@ -1694,8 +1692,6 @@ void mtk_bm_netlink_handler(struct sk_buff *skb)
 		bm = get_mtk_battery_manager();
 
 	nlh = (struct nlmsghdr *)skb->data;
-	pid = NETLINK_CREDS(skb)->pid;
-	uid = NETLINK_CREDS(skb)->uid;
 	seq = nlh->nlmsg_seq;
 
 	data = NLMSG_DATA(nlh);
