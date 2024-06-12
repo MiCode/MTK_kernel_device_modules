@@ -1095,8 +1095,6 @@ static void ged_eb_dvfs_udpate_gpu_time(void)
 	struct ged_sysram_info info_sysram;
 	GED_ERROR ret_bq_state;
 	int t_gpu_complete_eb = 0;
-	int t_gpu_uncomplete_eb = 0;
-	int t_gpu_target_eb_uncomplete = 0;
 	int t_gpu_target_eb_complete = 0;
 	unsigned int gpu_completed_counteb = 0;
 
@@ -1111,16 +1109,12 @@ static void ged_eb_dvfs_udpate_gpu_time(void)
 	// update frame info in loading-based
 	if (ret_bq_state == GED_OK) {
 		t_gpu_complete_eb = (int) info_kpi.completed_bq.t_gpu;
-		t_gpu_uncomplete_eb = (int) info_kpi.uncompleted_bq.t_gpu;
 		t_gpu_target_eb_complete = info_kpi.completed_bq.t_gpu_target;
-		t_gpu_target_eb_uncomplete = info_kpi.uncompleted_bq.t_gpu_target;
 		gpu_completed_counteb = info_kpi.total_gpu_completed_count;
 	} else {
 		//no complete time when bq_state is not ready
 		t_gpu_complete_eb = 0;
-		t_gpu_uncomplete_eb = (int) info_kpi.uncompleted_bq.t_gpu;
 		t_gpu_target_eb_complete = 0;
-		t_gpu_target_eb_uncomplete = info_kpi.uncompleted_bq.t_gpu_target;
 		gpu_completed_counteb = 0;
 	}
 	/* update info in sysram */
