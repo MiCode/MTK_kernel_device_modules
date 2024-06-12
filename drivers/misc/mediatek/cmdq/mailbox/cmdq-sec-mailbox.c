@@ -23,6 +23,7 @@
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
 #include "cmdq_sec_mtee.h"
 #endif
+#include "cmdq_sec_pkvm.h"
 
 #ifdef CMDQ_GP_SUPPORT
 #include "cmdq-sec-gp.h"
@@ -67,6 +68,10 @@ struct cmdq_sec_context {
 	void *mtee_iwc_ex2;
 	struct cmdq_sec_mtee_context mtee;
 #endif
+	void *pkvm_iwc_msg;
+	void *pkvm_iwc_ex1;
+	void *pkvm_iwc_ex2;
+	struct cmdq_sec_pkvm_context pkvm;
 #endif
 };
 
@@ -189,6 +194,13 @@ static s32
 cmdq_sec_task_submit(struct cmdq_sec *cmdq, struct cmdq_sec_task *task,
 	const u32 iwc_cmd, const u32 thrd_idx, void *data, bool mtee);
 
+static bool pkvm_enabled;
+
+static bool is_pkvm_enabled(void)
+{
+	return pkvm_enabled;
+}
+
 /* operator API */
 static inline void
 cmdq_sec_setup_tee_context_base(struct cmdq_sec_context *context)
@@ -198,7 +210,8 @@ cmdq_sec_setup_tee_context_base(struct cmdq_sec_context *context)
 #endif
 
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
-	cmdq_sec_mtee_setup_context(&context->mtee);
+	if (!is_pkvm_enabled())
+		cmdq_sec_mtee_setup_context(&context->mtee);
 #endif
 }
 
@@ -214,9 +227,13 @@ cmdq_sec_init_context_base(struct cmdq_sec_context *context)
 #endif
 
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
-	status = cmdq_sec_mtee_open_session(
-		&context->mtee, context->mtee_iwc_msg);
+	if (!is_pkvm_enabled())
+		status = cmdq_sec_mtee_open_session(
+			&context->mtee, context->mtee_iwc_msg);
 #endif
+	else
+		status = cmdq_sec_pkvm_open_session();
+
 	return status;
 }
 
@@ -832,19 +849,35 @@ static s32 cmdq_sec_session_init(struct cmdq_sec_context *context)
 #endif
 
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
-		if (!context->mtee_iwc_msg ||
-			!context->mtee_iwc_ex1 || !context->mtee_iwc_ex2) {
-			err = cmdq_sec_mtee_allocate_wsm(&context->mtee,
-				&context->mtee_iwc_msg,
-				sizeof(struct iwcCmdqMessage_t),
-				&context->mtee_iwc_ex1,
-				sizeof(struct iwcCmdqMessageEx_t),
-				&context->mtee_iwc_ex2,
-				sizeof(struct iwcCmdqMessageEx2_t));
-			if (err)
-				break;
+		if (!is_pkvm_enabled()) {
+			if (!context->mtee_iwc_msg ||
+				!context->mtee_iwc_ex1 || !context->mtee_iwc_ex2) {
+				err = cmdq_sec_mtee_allocate_wsm(&context->mtee,
+					&context->mtee_iwc_msg,
+					sizeof(struct iwcCmdqMessage_t),
+					&context->mtee_iwc_ex1,
+					sizeof(struct iwcCmdqMessageEx_t),
+					&context->mtee_iwc_ex2,
+					sizeof(struct iwcCmdqMessageEx2_t));
+				if (err)
+					break;
+			}
 		}
 #endif
+		else {
+			if (!context->pkvm_iwc_msg ||
+				!context->pkvm_iwc_ex1 || !context->pkvm_iwc_ex2) {
+				err = cmdq_sec_pkvm_allocate_wsm(&context->pkvm,
+					&context->pkvm_iwc_msg,
+					sizeof(struct iwcCmdqMessage_t),
+					&context->pkvm_iwc_ex1,
+					sizeof(struct iwcCmdqMessageEx_t),
+					&context->pkvm_iwc_ex2,
+					sizeof(struct iwcCmdqMessageEx2_t));
+				if (err)
+					break;
+			}
+		}
 
 		context->state = IWC_WSM_ALLOCATED;
 		break;
@@ -871,7 +904,7 @@ static s32 cmdq_sec_fill_iwc_msg(struct cmdq_sec_context *context,
 	struct cmdq_sec_data *data =
 		(struct cmdq_sec_data *)task->pkt->sec_data;
 	struct cmdq_pkt_buffer *buf, *last;
-	u32 size = CMDQ_CMD_BUFFER_SIZE, max_size, offset = 0, *instr;
+	u32 size = CMDQ_CMD_BUFFER_SIZE, offset = 0, *instr;
 	u32 i;
 
 	if (!data->mtee) {
@@ -881,12 +914,21 @@ static s32 cmdq_sec_fill_iwc_msg(struct cmdq_sec_context *context,
 	}
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
 	else {
-		iwc_msg =
-			(struct iwcCmdqMessage_t *)context->mtee_iwc_msg;
-		iwc_msg_ex1 =
-			(struct iwcCmdqMessageEx_t *)context->mtee_iwc_ex1;
-		iwc_msg_ex2 =
-			(struct iwcCmdqMessageEx2_t *)context->mtee_iwc_ex2;
+		if (!is_pkvm_enabled()) {
+			iwc_msg =
+				(struct iwcCmdqMessage_t *)context->mtee_iwc_msg;
+			iwc_msg_ex1 =
+				(struct iwcCmdqMessageEx_t *)context->mtee_iwc_ex1;
+			iwc_msg_ex2 =
+				(struct iwcCmdqMessageEx2_t *)context->mtee_iwc_ex2;
+		} else {
+			iwc_msg =
+				(struct iwcCmdqMessage_t *)context->pkvm_iwc_msg;
+			iwc_msg_ex1 =
+				(struct iwcCmdqMessageEx_t *)context->pkvm_iwc_ex1;
+			iwc_msg_ex2 =
+				(struct iwcCmdqMessageEx2_t *)context->pkvm_iwc_ex2;
+		}
 	}
 #endif
 
@@ -900,11 +942,15 @@ static s32 cmdq_sec_fill_iwc_msg(struct cmdq_sec_context *context,
 		CMDQ_MIN_SECURE_THREAD_ID + CMDQ_MAX_SECURE_THREAD_COUNT)
 		return -EINVAL;
 
-	max_size = cmdq_tz_cmd_block_size[thrd_idx - CMDQ_MIN_SECURE_THREAD_ID];
-	if (max_size < task->pkt->cmd_buf_size + 4 * CMDQ_INST_SIZE) {
-		cmdq_err("task:%p size:%zu > %u",
-			task, task->pkt->cmd_buf_size, max_size);
-		return -EFAULT;
+	if (!is_pkvm_enabled()) {
+		u32 max_size;
+
+		max_size = cmdq_tz_cmd_block_size[thrd_idx - CMDQ_MIN_SECURE_THREAD_ID];
+		if (max_size < task->pkt->cmd_buf_size + 4 * CMDQ_INST_SIZE) {
+			cmdq_err("task:%p size:%zu > %u",
+				task, task->pkt->cmd_buf_size, max_size);
+			return -EFAULT;
+		}
 	}
 
 	iwc_msg->command.thread = thrd_idx;
@@ -996,13 +1042,19 @@ static s32 cmdq_sec_session_send(struct cmdq_sec_context *context,
 	bool mem_ex1, mem_ex2;
 	u64 cost;
 	struct iwcCmdqMessage_t *iwc_msg = NULL;
+	u32 scenario_aee = 0;
 
 	if (!mtee)
 		iwc_msg = (struct iwcCmdqMessage_t *)context->iwc_msg;
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
-	else
-		iwc_msg = (struct iwcCmdqMessage_t *)context->mtee_iwc_msg;
+	else {
+		if (!is_pkvm_enabled())
+			iwc_msg = (struct iwcCmdqMessage_t *)context->mtee_iwc_msg;
 #endif
+		else
+			iwc_msg = (struct iwcCmdqMessage_t *)context->pkvm_iwc_msg;
+	}
+
 	if (iwc_msg == NULL) {
 		cmdq_err("Skip with mtee %d because iwc_msg is NULL.", mtee);
 		return -EFAULT;
@@ -1080,11 +1132,20 @@ static s32 cmdq_sec_session_send(struct cmdq_sec_context *context,
 #endif
 	}
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
-	else
-		err = cmdq_sec_mtee_execute_session(
-			&context->mtee, iwc_cmd, 3000,
-			mem_ex1, mem_ex2);
+	else {
+		if (!is_pkvm_enabled())
+			err = cmdq_sec_mtee_execute_session(
+				&context->mtee, iwc_cmd, 3000,
+				mem_ex1, mem_ex2);
 #endif
+		else {
+			scenario_aee = task ? task->scenario : 0;
+			scenario_aee = scenario_aee | (cmdq->cancel.throwAEE ? BIT(15) : 0);
+			err = cmdq_sec_pkvm_execute_session(
+				&context->pkvm, iwc_cmd, 3000, thrd_idx,
+				task ? task->waitCookie : 0, scenario_aee);
+		}
+	}
 
 	cmdq->sec_done = sched_clock();
 	cost = div_u64(cmdq->sec_done - cmdq->sec_invoke, 1000000);
@@ -1281,9 +1342,12 @@ cmdq_sec_task_submit(struct cmdq_sec *cmdq, struct cmdq_sec_task *task,
 			}
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
 			else {
-				err = cmdq_sec_session_reply(iwc_cmd,
-					cmdq->context->mtee_iwc_msg,
-					data, task);
+				if (!is_pkvm_enabled())
+					err = cmdq_sec_session_reply(iwc_cmd,
+						cmdq->context->mtee_iwc_msg,
+						data, task);
+				else
+					err = cmdq_sec_pkvm_get_reply(&cmdq->context->pkvm);
 			}
 #endif
 		}
@@ -1291,7 +1355,7 @@ cmdq_sec_task_submit(struct cmdq_sec *cmdq, struct cmdq_sec_task *task,
 
 	if (err)
 		cmdq_util_err(
-			"sec invoke err:%d pkt:%p thread:%u dispatch:%s gce:%#lx",
+			"sec invoke err:%d pkt:%p thread:%d dispatch:%s gce:%#lx",
 			err, pkt, thrd_idx, dispatch,
 			(unsigned long)cmdq->base_pa);
 
@@ -1450,7 +1514,7 @@ static void cmdq_sec_task_exec_work(struct work_struct *work_item)
 		container_of(task->thread->chan->mbox, struct cmdq_sec, mbox);
 	struct cmdq_sec_data *data;
 	unsigned long flags;
-	s32 err, max_task;
+	s32 err;
 
 	cmdq_log("%s gce:%#lx task:%p pkt:%p thread:%u",
 		__func__, (unsigned long)cmdq->base_pa, task, task->pkt,
@@ -1462,27 +1526,31 @@ static void cmdq_sec_task_exec_work(struct work_struct *work_item)
 	mutex_lock(&cmdq->exec_lock);
 	spin_lock_irqsave(&task->thread->chan->lock, flags);
 
-	max_task = cmdq_max_task_in_secure_thread[
-		task->thread->idx - CMDQ_MIN_SECURE_THREAD_ID];
-	if (task->thread->task_cnt >= max_task) {
-		struct cmdq_cb_data cb_data;
+	if (!is_pkvm_enabled()) {
+		s32 max_task;
 
-		cmdq_err("task_cnt:%u cannot more than %u task:%p thrd-idx:%u",
-			task->thread->task_cnt, max_task,
-			task, task->thread->idx);
-		spin_unlock_irqrestore(&task->thread->chan->lock, flags);
+		max_task = cmdq_max_task_in_secure_thread[
+			task->thread->idx - CMDQ_MIN_SECURE_THREAD_ID];
+		if (task->thread->task_cnt >= max_task) {
+			struct cmdq_cb_data cb_data;
 
-		cb_data.err = -EMSGSIZE;
-		cb_data.data = task->pkt->err_cb.data;
-		if (task->pkt->err_cb.cb)
-			task->pkt->err_cb.cb(cb_data);
+			cmdq_err("task_cnt:%u cannot more than %u task:%p thrd-idx:%u",
+				task->thread->task_cnt, max_task,
+				task, task->thread->idx);
+			spin_unlock_irqrestore(&task->thread->chan->lock, flags);
 
-		cb_data.data = task->pkt->cb.data;
-		if (task->pkt->cb.cb)
-			task->pkt->cb.cb(cb_data);
+			cb_data.err = -EMSGSIZE;
+			cb_data.data = task->pkt->err_cb.data;
+			if (task->pkt->err_cb.cb)
+				task->pkt->err_cb.cb(cb_data);
 
-		mutex_unlock(&cmdq->exec_lock);
-		return;
+			cb_data.data = task->pkt->cb.data;
+			if (task->pkt->cb.cb)
+				task->pkt->cb.cb(cb_data);
+
+			mutex_unlock(&cmdq->exec_lock);
+			return;
+		}
 	}
 
 	if (list_empty(&task->thread->task_list)) {
@@ -1816,6 +1884,8 @@ static int cmdq_sec_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct resource *res;
 	s32 i, err;
+	const char *pkvm_status = NULL;
+	struct device_node *pkvm_node;
 #if defined(CMDQ_SECURE_MTEE_SUPPORT)
 	struct platform_device *gz_pdev;
 	struct device_node *gz_node;
@@ -1826,31 +1896,40 @@ static int cmdq_sec_probe(struct platform_device *pdev)
 
 	cmdq_msg("%s", __func__);
 
+	pkvm_node = of_find_node_by_name(NULL, "pkvm");
+	if (pkvm_node) {
+		of_property_read_string(pkvm_node, "status", &pkvm_status);
+		if (!strncmp(pkvm_status, "okay", sizeof("okay")))
+			pkvm_enabled = true;
+	}
+	cmdq_msg("%s: pkvm enabled:%d", __func__, pkvm_enabled);
+
 #if defined(CMDQ_SECURE_MTEE_SUPPORT)
-	gz_node = of_find_compatible_node(NULL, NULL, "mediatek,trusty-mtee-v1");
-	if (!gz_node) {
-		cmdq_err("failed to get android,trusty-virtio-v1");
-		goto cmdq_sec_probe_mtee_end;
-	}
+	if (!pkvm_enabled) {
+		gz_node = of_find_compatible_node(NULL, NULL, "mediatek,trusty-mtee-v1");
+		if (!gz_node) {
+			cmdq_err("failed to get android,trusty-virtio-v1");
+			goto cmdq_sec_probe_mtee_end;
+		}
 
-	gz_pdev = of_find_device_by_node(gz_node);
-	if (!gz_pdev) {
-		cmdq_err("failed to find gz node");
-		goto cmdq_sec_probe_mtee_end;
-	}
+		gz_pdev = of_find_device_by_node(gz_node);
+		if (!gz_pdev) {
+			cmdq_err("failed to find gz node");
+			goto cmdq_sec_probe_mtee_end;
+		}
 
-	link = device_link_add(dev, &gz_pdev->dev, dl_flags);
-	if (!link) {
-		cmdq_err("failed to create device link with trusty");
-		return -EINVAL;
+		link = device_link_add(dev, &gz_pdev->dev, dl_flags);
+		if (!link) {
+			cmdq_err("failed to create device link with trusty");
+			return -EINVAL;
+		}
+		if (link->status == DL_STATE_DORMANT) {
+			cmdq_err("link status %x", link->status);
+			return -EPROBE_DEFER;
+		}
+		cmdq_msg("Link consumer %s to supplier %s gz_node:%p flags:%#x",
+			dev_name(dev), dev_name(&gz_pdev->dev), gz_node, dl_flags);
 	}
-	if (link->status == DL_STATE_DORMANT) {
-		cmdq_err("link status %x", link->status);
-		return -EPROBE_DEFER;
-	}
-
-	cmdq_msg("Link consumer %s to supplier %s gz_node:%p flags:%#x",
-		dev_name(dev), dev_name(&gz_pdev->dev), gz_node, dl_flags);
 cmdq_sec_probe_mtee_end:
 #endif /* defined(CMDQ_SECURE_MTEE_SUPPORT) */
 

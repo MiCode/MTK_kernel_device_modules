@@ -3041,6 +3041,7 @@ static void cmdq_pkt_err_irq_dump(struct cmdq_pkt *pkt)
 #if !IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	struct page *page;
 #endif
+	struct cmdq_thread *thread = (struct cmdq_thread *)client->chan->con_priv;
 
 	cmdq_msg("%s pkt:%p", __func__, pkt);
 
@@ -3056,6 +3057,7 @@ static void cmdq_pkt_err_irq_dump(struct cmdq_pkt *pkt)
 	cmdq_util_user_err(client ? client->chan : NULL,
 		"pkt:%lx thread:%d pc:%lx",
 		(unsigned long)pkt, thread_id, (unsigned long)pc);
+	cmdq_thread_dump_spr(thread);
 
 	if (pc) {
 		list_for_each_entry(buf, &pkt->buf, list_entry) {

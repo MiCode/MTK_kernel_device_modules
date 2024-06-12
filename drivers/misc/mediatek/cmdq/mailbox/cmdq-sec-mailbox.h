@@ -33,6 +33,7 @@
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
 #include "cmdq_sec_mtee.h"
 #endif
+#include "cmdq_sec_pkvm.h"
 
 /*
  * inter-world communication state
@@ -64,13 +65,26 @@ s32 cmdq_sec_mtee_allocate_wsm(struct cmdq_sec_mtee_context *tee,
 	void **wsm_buffer, u32 size, void **wsm_buf_ex, u32 size_ex,
 	void **wsm_buf_ex2, u32 size_ex2);
 s32 cmdq_sec_mtee_free_wsm(
-	struct cmdq_sec_mtee_context *tee, void **wsm_buffer);
+	struct cmdq_sec_mtee_context *tee, void **wsm_buffer,
+	void **wsm_buf_ex, void **wsm_buf_ex2);
 s32 cmdq_sec_mtee_open_session(
 	struct cmdq_sec_mtee_context *tee, void *wsm_buffer);
 s32 cmdq_sec_mtee_close_session(struct cmdq_sec_mtee_context *tee);
 s32 cmdq_sec_mtee_execute_session(struct cmdq_sec_mtee_context *tee,
 	u32 cmd, s32 timeout_ms, bool share_mem_ex, bool share_mem_ex2);
 #endif
+s32 cmdq_sec_pkvm_allocate_shared_memory(struct cmdq_sec_pkvm_context *tee,
+	const dma_addr_t MVABase, const u32 size);
+s32 cmdq_sec_pkvm_execute_session(struct cmdq_sec_pkvm_context *tee,
+	u32 cmd, s32 timeout_ms, u32 thread_idx, u32 wait_cookie, s32 scenario);
+s32 cmdq_sec_pkvm_open_session(void);
+s32 cmdq_sec_pkvm_allocate_wsm(struct cmdq_sec_pkvm_context *tee,
+	void **wsm_buffer, u32 size, void **wsm_buf_ex, u32 size_ex,
+	void **wsm_buf_ex2, u32 size_ex2);
+s32 cmdq_sec_pkvm_free_wsm(
+	struct cmdq_sec_pkvm_context *tee, void **wsm_buffer,
+	void **wsm_buf_ex, void **wsm_buf_ex2);
+s32 cmdq_sec_pkvm_get_reply(struct cmdq_sec_pkvm_context *tee);
 
 #if IS_ENABLED(CONFIG_MMPROFILE)
 void cmdq_sec_mmp_wait(struct mbox_chan *chan, void *pkt);

@@ -121,19 +121,26 @@ s32 cmdq_sec_mtee_allocate_wsm(struct cmdq_sec_mtee_context *tee,
 }
 
 s32 cmdq_sec_mtee_free_wsm(struct cmdq_sec_mtee_context *tee,
-	void **wsm_buffer)
+	void **wsm_buffer, void **wsm_buf_ex, void **wsm_buf_ex2)
 {
 	if (!cmdq_mtee) {
 		cmdq_msg("%s cmdq_mtee:%d not support", __func__, cmdq_mtee);
 		return 0;
 	}
 
-	if (!wsm_buffer)
+	if (!wsm_buffer || !wsm_buf_ex || !wsm_buf_ex2)
 		return -EINVAL;
 
 	KREE_UnregisterSharedmem(tee->wsm_pHandle, tee->wsm_handle);
 	kfree(*wsm_buffer);
 	*wsm_buffer = NULL;
+
+	kfree(*wsm_buf_ex);
+	*wsm_buf_ex = NULL;
+
+	kfree(*wsm_buf_ex2);
+	*wsm_buf_ex2 = NULL;
+
 	return 0;
 }
 

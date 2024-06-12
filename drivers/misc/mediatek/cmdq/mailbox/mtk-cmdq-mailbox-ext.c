@@ -697,7 +697,12 @@ static void cmdq_mtcmos_by_fast(struct cmdq *cmdq, bool on)
 
 void cmdq_mbox_mtcmos_by_fast(void *cmdq_mbox, bool on)
 {
-	struct cmdq *cmdq = cmdq_mbox;
+	struct cmdq *cmdq;
+
+	if (cmdq_mbox)
+		cmdq = cmdq_mbox;
+	else
+		cmdq = g_cmdq[1];
 
 	cmdq_mtcmos_by_fast(cmdq, on);
 }
