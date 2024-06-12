@@ -1680,12 +1680,17 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 	bool AM_enabled = adaptive_margin_enabled[cpu];
 	unsigned int sugov_margin = AM_enabled ? get_adaptive_margin(cpu) : SCHED_CAPACITY_SCALE;
 	unsigned long capacity_orig_thermal, capacity_orig = capacity_orig_of(cpu);
-	int fit, uclamp_max_fits;
+	int fit, uclamp_max_fits, uclamp_involve;
 
-	uclamp_min = clamp((uclamp_min * sugov_margin) >> SCHED_FIXEDPOINT_SHIFT,
+
+	uclamp_min = clamp((uclamp_min * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
 		0UL, (unsigned long) SCHED_CAPACITY_SCALE);
-	uclamp_max = clamp((uclamp_max * sugov_margin) >> SCHED_FIXEDPOINT_SHIFT,
+	uclamp_max = clamp((uclamp_max * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
 		0UL, (unsigned long) SCHED_CAPACITY_SCALE);
+
+	uclamp_involve = mtk_uclamp_involve(uclamp_min, uclamp_max, true);
+	if (uclamp_involve)
+		sugov_margin = DEFAULT_MARGIN;
 
 	/* ceiling shouldn't affect capacity since updown_migration is not enabled,  */
 	if (!updown_migration_enable)
@@ -1710,7 +1715,7 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 
 	if (trace_sched_fits_cap_ceiling_enabled())
 		trace_sched_fits_cap_ceiling(fit, cpu, util, uclamp_min, uclamp_max, capacity, ceiling, sugov_margin,
-			sched_capacity_down_margin[cpu], sched_capacity_up_margin[cpu], AM_enabled);
+			sched_capacity_down_margin[cpu], sched_capacity_up_margin[cpu], AM_enabled, uclamp_involve);
 
 	return fit;
 }
@@ -1732,8 +1737,16 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 	bool AM_enabled = adaptive_margin_enabled[cpu];
 	unsigned int sugov_margin = AM_enabled ? get_adaptive_margin(cpu) : SCHED_CAPACITY_SCALE;
 	unsigned long capacity_orig_thermal, capacity_orig = capacity_orig_of(cpu);
-	int fit, uclamp_max_fits;
+	int fit, uclamp_max_fits, uclamp_involve;
 
+	uclamp_min = clamp((uclamp_min * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
+		0UL, (unsigned long) SCHED_CAPACITY_SCALE);
+	uclamp_max = clamp((uclamp_max * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
+		0UL, (unsigned long) SCHED_CAPACITY_SCALE);
+
+	uclamp_involve = mtk_uclamp_involve(uclamp_min, uclamp_max, true);
+	if (uclamp_involve)
+		sugov_margin = DEFAULT_MARGIN;
 	/* Whether PELT fit after considering up-down migration ? */
 	fit = fits_capacity(util, capacity, sugov_margin);
 
@@ -1749,7 +1762,6 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 		fit = -1;
 
 	return fit;
-
 }
 #endif /* CONFIG_MTK_SCHED_UPDOWN_MIGRATE */
 

@@ -289,6 +289,49 @@ skip_single_idle_cpu:
 #endif
 }
 
+
+/* Check wheather uclamp will influence OPP to determind uclamp set.
+ * uclamp_min/max: uclamp_min/max after multiply by margin
+ */
+unsigned long sys_second_min_cap = UINT_MAX, sys_second_max_cap = 0;
+int mtk_uclamp_involve(unsigned long uclamp_min, unsigned long uclamp_max, int is_multiply_by_margin)
+{
+	if (!is_multiply_by_margin) {
+		uclamp_min = clamp((uclamp_min * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
+			0UL, (unsigned long) SCHED_CAPACITY_SCALE);
+		uclamp_max = clamp((uclamp_max * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
+			0UL, (unsigned long) SCHED_CAPACITY_SCALE);
+	}
+
+	if ((uclamp_min >= sys_second_min_cap) || (uclamp_max <= sys_second_max_cap))
+		return true;
+
+	return false;
+}
+EXPORT_SYMBOL_GPL(mtk_uclamp_involve);
+
+void init_uclamp_involve(void)
+{
+	unsigned int gear_idx = 0;
+
+	for (; gear_idx < pd_count; gear_idx++) {
+		unsigned int cpu = cpumask_first(&pd_cpumask[gear_idx]);
+		unsigned int min_opp = pd_util2opp(cpu, 0, 0, 0, NULL, true, DPT_CALL_INIT_UCLAMP_INVOLVE);
+		unsigned long second_min_cap = pd_opp2cap(cpu, min_opp - 1, false, 0, NULL, true,
+			DPT_CALL_INIT_UCLAMP_INVOLVE);
+		unsigned long second_max_cap = pd_opp2cap(cpu, 1, false, 0, NULL, true, DPT_CALL_INIT_UCLAMP_INVOLVE);
+
+		if (second_min_cap < sys_second_min_cap)
+			sys_second_min_cap = second_min_cap;
+
+		if (second_max_cap > sys_second_max_cap)
+			sys_second_max_cap = second_max_cap;
+	}
+
+	pr_info("%s, sys_second_min_cap=%lu sys_second_max_cap=%lu\n",
+		__func__, sys_second_min_cap, sys_second_max_cap);
+}
+
 int wl_delay_ch_cnt = 1; // change counter
 static int nr_wl = 1;
 static int wl_curr;
@@ -1570,7 +1613,7 @@ int init_dpt_io(void)
 		return -EINVAL;
 	}
 
-	if (!dpt_sram_base) {
+	if (!collab_type_0_sram_base) {
 		pr_info("collab_type_0-info failed\n");
 		return -EIO;
 	}
@@ -1779,6 +1822,8 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	init_adaptive_margin();
 
 	register_fpsgo_sugov_hooks();
+
+	init_uclamp_involve();
 
 	return ret;
 }
