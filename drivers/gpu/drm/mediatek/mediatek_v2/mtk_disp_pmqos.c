@@ -40,6 +40,9 @@ module_param_array(debug_channel_bw, int, NULL, 0644);
 int debug_ostdl;
 module_param(debug_ostdl, int, 0644);
 
+int debug_deteriorate;
+module_param(debug_deteriorate, int, 0644);
+
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 #define CRTC_NUM		7
 #else
@@ -215,6 +218,11 @@ int __mtk_disp_pmqos_slot_look_up(int comp_id, int mode)
 	return -EINVAL;
 }
 
+void mtk_disp_clr_debug_deteriorate(void)
+{
+	debug_deteriorate = 0;
+}
+
 int __mtk_disp_set_module_srt(struct icc_path *request, int comp_id,
 				unsigned int bandwidth, unsigned int peak_bw, unsigned int bw_mode,
 				bool real_srt_ostdl)
@@ -238,6 +246,8 @@ void __mtk_disp_set_module_hrt(struct icc_path *request, int comp_id,
 
 	if (bandwidth > 0 && respective_ostdl != true)
 		icc = MTK_MMQOS_MAX_BW;
+	else if (debug_deteriorate)
+		icc = 0;
 
 	mtk_icc_set_bw(request, 0, icc);
 	if (debug_ostdl)
@@ -389,6 +399,9 @@ void mtk_disp_set_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw,
 
 	for (j = 0; j < MAX_CRTC; j++)
 		total += priv->req_hrt_channel_bw[j][i];
+
+	if (debug_deteriorate)
+		total = 0;
 
 	idx = priv->data->get_channel_idx(CHANNEL_HRT_READ, i);
 	mtk_vidle_channel_bw_set(total, idx);
@@ -774,6 +787,9 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	if (bw == MAX_MMCLK) {
 		DDPMSG("%s,total:%d->65535\n", __func__, total);
 		total = 65535;
+	} else if (debug_deteriorate) {
+		DDPMSG("%s,total:%d->0\n", __func__, total);
+		total = 0;
 	}
 
 #ifdef CONFIG_MTK_FB_MMDVFS_SUPPORT
