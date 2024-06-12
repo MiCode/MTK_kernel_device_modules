@@ -184,7 +184,6 @@ static int amms_probe(struct platform_device *pdev)
 
 	struct device_node *node;
 	int amms_irq_num;
-	struct device *amms_dev;
 
 	amms_irq_num = platform_get_irq(pdev, 0);
 
@@ -199,8 +198,6 @@ static int amms_probe(struct platform_device *pdev)
 		pr_info("%s, amms not exist\n", __func__);
 		return -EINVAL;
 	}
-
-	amms_dev = &pdev->dev;
 
 	if (devm_request_threaded_irq(
 	&pdev->dev, amms_irq_num, NULL, amms_handler,
