@@ -497,6 +497,18 @@ static s32 command_make(struct mml_task *task, u32 pipe)
 			ret = -ENOMEM;
 			goto err;
 		}
+
+		reuse->label_mods = kcalloc(cache->label_cnt, sizeof(*reuse->label_mods), GFP_KERNEL);
+		if (!reuse->label_mods) {
+			ret = -ENOMEM;
+			goto err;
+		}
+
+		reuse->label_check = kcalloc(cache->label_cnt, sizeof(*reuse->label_check), GFP_KERNEL);
+		if (!reuse->label_check) {
+			ret = -ENOMEM;
+			goto err;
+		}
 	}
 
 	/* call all component init and frame op, include mmlsys and mutex */
@@ -598,7 +610,11 @@ static s32 command_reuse(struct mml_task *task, u32 pipe)
 	struct mml_pipe_cache *cache = &task->config->cache[pipe];
 	struct mml_comp_config *ccfg = cache->cfg;
 	struct mml_comp *comp;
-	u32 i;
+	u32 label_cnt, i;
+
+	label_cnt = task->reuse[pipe].label_idx;
+	if (label_cnt)
+		memset(task->reuse[pipe].label_check, 0, sizeof(bool) * label_cnt);
 
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
@@ -616,6 +632,14 @@ static s32 command_reuse(struct mml_task *task, u32 pipe)
 		task->reuse[pipe].label_idx);
 	/* make sure this pkt not jump to others */
 	cmdq_pkt_refinalize(task->pkts[pipe]);
+
+	for (i = 0; i < label_cnt; i++) {
+		if (!task->reuse[pipe].label_check[i])
+			mml_msg("[warn]job %u not update reuse idx %u mod %u offset %#x",
+				task->job.jobid, i,
+				task->reuse[pipe].label_mods[i],
+				task->reuse[pipe].labels[i].offset);
+	}
 
 	return 0;
 }
@@ -2279,8 +2303,11 @@ void mml_core_destroy_task(struct mml_task *task)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(task->reuse); i++)
+	for (i = 0; i < ARRAY_SIZE(task->reuse); i++) {
 		kfree(task->reuse[i].labels);
+		kfree(task->reuse[i].label_mods);
+		kfree(task->reuse[i].label_check);
+	}
 	for (i = 0; i < ARRAY_SIZE(task->pkts); i++) {
 		if (task->pkts[i])
 			cmdq_pkt_destroy(task->pkts[i]);
@@ -2406,14 +2433,15 @@ static s32 check_label_idx(struct mml_task_reuse *reuse,
 	return 0;
 }
 
-void add_reuse_label(struct mml_task_reuse *reuse, u16 *label_idx, u32 value)
+void add_reuse_label(u32 comp_id, struct mml_task_reuse *reuse, u16 *label_idx, u32 value)
 {
 	*label_idx = reuse->label_idx;
 	reuse->labels[reuse->label_idx].val = value;
+	reuse->label_mods[reuse->label_idx] = comp_id;
 	reuse->label_idx++;
 }
 
-s32 mml_assign(struct cmdq_pkt *pkt, u16 reg_idx, u32 value,
+s32 mml_assign(u32 comp_id, struct cmdq_pkt *pkt, u16 reg_idx, u32 value,
 	       struct mml_task_reuse *reuse,
 	       struct mml_pipe_cache *cache,
 	       u16 *label_idx)
@@ -2427,11 +2455,11 @@ s32 mml_assign(struct cmdq_pkt *pkt, u16 reg_idx, u32 value,
 	cmdq_pkt_assign_command_reuse(pkt, reg_idx, value,
 		&reuse->labels[reuse->label_idx]);
 
-	add_reuse_label(reuse, label_idx, value);
+	add_reuse_label(comp_id, reuse, label_idx, value);
 	return 0;
 }
 
-s32 mml_write(struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32 mask,
+s32 mml_write(u32 comp_id, struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32 mask,
 	      struct mml_task_reuse *reuse,
 	      struct mml_pipe_cache *cache,
 	      u16 *label_idx)
@@ -2445,13 +2473,37 @@ s32 mml_write(struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32 mask,
 	cmdq_pkt_write_value_addr_reuse(pkt, addr, value, mask,
 		&reuse->labels[reuse->label_idx]);
 
-	add_reuse_label(reuse, label_idx, value);
+	add_reuse_label(comp_id, reuse, label_idx, value);
 	return 0;
 }
 
-void mml_update(struct mml_task_reuse *reuse, u16 label_idx, u32 value)
+void mml_update(u32 comp_id, struct mml_task_reuse *reuse, u16 label_idx, u32 value)
 {
+	if (label_idx >= reuse->label_idx)
+		mml_err("%s label idx %u/%u mod %u overflow value %#x",
+			__func__, label_idx, reuse->label_idx, comp_id, value);
+
+	if (comp_id != reuse->label_mods[label_idx])
+		mml_err("%s label idx %u/%u mod %u %u module overwrite value %#x",
+			__func__, label_idx, reuse->label_mods[label_idx], comp_id,
+			reuse->label_mods[label_idx], value);
+
 	reuse->labels[label_idx].val = value;
+	reuse->label_check[label_idx] = true;
+}
+
+void mml_reuse_touch(u32 comp_id, struct mml_task_reuse *reuse, u16 label_idx)
+{
+	if (label_idx >= reuse->label_idx)
+		mml_err("%s label idx %u/%u mod %u overflow",
+			__func__, label_idx, reuse->label_idx, comp_id);
+
+	if (comp_id != reuse->label_mods[label_idx])
+		mml_err("%s label idx %u/%u mod %u %u module overwrite",
+			__func__, label_idx, reuse->label_mods[label_idx], comp_id,
+			reuse->label_mods[label_idx]);
+
+	reuse->label_check[label_idx] = true;
 }
 
 static s32 mml_reuse_add_offset(struct mml_task_reuse *reuse,
@@ -2516,7 +2568,7 @@ inc:
 	return 0;
 }
 
-s32 mml_write_array(struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32 mask,
+s32 mml_write_array(u32 comp_id, struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32 mask,
 	struct mml_task_reuse *reuse, struct mml_pipe_cache *cache,
 	struct mml_reuse_array *reuses)
 {
@@ -2525,7 +2577,7 @@ s32 mml_write_array(struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32 mask,
 	if (!cache->label_cnt)
 		return cmdq_pkt_write_value_addr(pkt, addr, value, mask);
 
-	ret = mml_write(pkt, addr, value, mask, reuse, cache,
+	ret = mml_write(comp_id, pkt, addr, value, mask, reuse, cache,
 		&reuses->offs[reuses->idx].label_idx);
 
 	if (ret < 0)
@@ -2533,13 +2585,20 @@ s32 mml_write_array(struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32 mask,
 	return mml_reuse_add_offset(reuse, reuses);
 }
 
-void mml_update_array(struct mml_task_reuse *reuse,
+void mml_update_array(u32 comp_id, struct mml_task_reuse *reuse,
 	struct mml_reuse_array *reuses, u32 reuse_idx, u32 off_idx, u32 value)
 {
-	struct cmdq_reuse *label = &reuse->labels[reuses->offs[reuse_idx].label_idx];
+	u32 label_idx = reuses->offs[reuse_idx].label_idx;
+	struct cmdq_reuse *label = &reuse->labels[label_idx];
 	u64 *va = label->va + reuses->offs[reuse_idx].offset * off_idx;
 
+	if (comp_id != reuse->label_mods[label_idx])
+		mml_err("%s label idx %u/%u mod %u %u module overwrite value %#x",
+			__func__, label_idx, comp_id, reuse->label_mods[label_idx],
+			reuse->label_idx, value);
+
 	*va = (*va & GENMASK_ULL(63, 32)) | value;
+	reuse->label_check[label_idx] = true;
 }
 
 noinline int mml_tracing_mark_write(char *fmt, ...)

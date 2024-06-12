@@ -762,11 +762,11 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 		task->pq_task->read_status.aal_comp);
 
 	if (is_config)
-		mml_write(pkt, base_pa + aal->data->reg_table[AAL_INTSTA],
+		mml_write(comp->id, pkt, base_pa + aal->data->reg_table[AAL_INTSTA],
 			0x0, U32_MAX, reuse, cache,
 			&aal_frm->labels[0]);
 	else
-		mml_update(reuse, aal_frm->labels[0], 0x0);
+		mml_update(comp->id, reuse, aal_frm->labels[0], 0x0);
 
 	if (task->pq_task->read_status.aal_comp == MML_PQ_HIST_IDLE) {
 
@@ -823,19 +823,19 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			aal->mmlsys_comp = task->config->path[0]->mmlsys;
 
 			if (is_config)
-				mml_write(pkt, base_pa + aal->data->reg_table[AAL_INTEN],
+				mml_write(comp->id, pkt, base_pa + aal->data->reg_table[AAL_INTEN],
 					0x2, U32_MAX, reuse, cache,
 					&aal_frm->labels[1]);
 			else
-				mml_update(reuse, aal_frm->labels[1], 0x2);
+				mml_update(comp->id, reuse, aal_frm->labels[1], 0x2);
 		}
 		if (is_config)
-			mml_write(pkt, base_pa + aal->data->reg_table[AAL_SRAM_CFG],
+			mml_write(comp->id, pkt, base_pa + aal->data->reg_table[AAL_SRAM_CFG],
 				aal->hist_sram_idx << 6 | aal->hist_read_idx << 5 |
 				1 << 4,	0x7 << 4, reuse, cache,
 				&aal_frm->labels[2]);
 		else
-			mml_update(reuse, aal_frm->labels[2], aal->hist_sram_idx << 6 |
+			mml_update(comp->id, reuse, aal_frm->labels[2], aal->hist_sram_idx << 6 |
 				aal->hist_read_idx << 5 | 1 << 4);
 
 		mml_pq_msg("%s: hist_sram_idx write to [%d], hist_read_idx change to[%d]",
@@ -853,18 +853,18 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 
 		if (aal_get_rb_mode(aal) == RB_EOF_MODE) {
 			if (is_config)
-				mml_write(pkt, base_pa + aal->data->reg_table[AAL_INTEN],
+				mml_write(comp->id, pkt, base_pa + aal->data->reg_table[AAL_INTEN],
 					0x0, U32_MAX, reuse, cache,
 					&aal_frm->labels[1]);
 			else
-				mml_update(reuse, aal_frm->labels[1], 0x0);
+				mml_update(comp->id, reuse, aal_frm->labels[1], 0x0);
 		}
 		if (is_config)
-			mml_write(pkt, base_pa + aal->data->reg_table[AAL_SRAM_CFG],
+			mml_write(comp->id, pkt, base_pa + aal->data->reg_table[AAL_SRAM_CFG],
 				aal->hist_sram_idx << 6 | 1 << 4,
 				0x5 << 4, reuse, cache, &aal_frm->labels[2]);
 		else
-			mml_update(reuse, aal_frm->labels[2], aal->hist_sram_idx << 6 | 1 << 4);
+			mml_update(comp->id, reuse, aal_frm->labels[2], aal->hist_sram_idx << 6 | 1 << 4);
 	}
 
 	mml_pq_msg("%s: hist_sram_idx write to [%d], hist_read_idx[%d]",
@@ -948,11 +948,11 @@ static void aal_write_curve(struct mml_comp *comp, struct mml_task *task,
 	mml_lock_wake_lock(aal->mml, false);
 
 	if (is_config)
-		mml_write(pkt, base_pa + aal->data->reg_table[AAL_SRAM_CFG],
+		mml_write(comp->id, pkt, base_pa + aal->data->reg_table[AAL_SRAM_CFG],
 			!aal->curve_sram_idx << 10 | aal->curve_sram_idx << 9 | 1 << 8,
 			0x7 << 8, reuse, cache, &aal_frm->labels[3]);
 	else
-		mml_update(reuse, aal_frm->labels[3], !aal->curve_sram_idx << 10 |
+		mml_update(comp->id, reuse, aal_frm->labels[3], !aal->curve_sram_idx << 10 |
 			aal->curve_sram_idx << 9 | 1 << 8);
 }
 
@@ -1063,7 +1063,7 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 			base_pa + aal->data->reg_table[AAL_SRAM_STATUS],
 			(0x1 << aal->data->curve_ready_bit), gpr);
 		for (i = 0; i < AAL_CURVE_NUM; i++, addr += 4)
-			mml_write_array(pkt, base_pa + aal->data->reg_table[AAL_SRAM_RW_IF_1],
+			mml_write_array(comp->id, pkt, base_pa + aal->data->reg_table[AAL_SRAM_RW_IF_1],
 				curve[i], U32_MAX, reuse, cache, &aal_frm->reuse_curve);
 	} else if ((mode == MML_MODE_DDP_ADDON || mode == MML_MODE_DIRECT_LINK) &&
 		!aal->data->is_linear)
@@ -1387,9 +1387,9 @@ static void aal_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 	 */
 	cmdq_pkt_assign_command(pkt, idx_addr, dre30_hist_sram_start);
 
-	mml_assign(pkt, idx_out, (u32)pa,
+	mml_assign(comp->id, pkt, idx_out, (u32)pa,
 		reuse, cache, &aal_frm->labels[AAL_POLLGPR_0]);
-	mml_assign(pkt, idx_out + 1, (u32)DO_SHIFT_RIGHT(pa, 32),
+	mml_assign(comp->id, pkt, idx_out + 1, (u32)DO_SHIFT_RIGHT(pa, 32),
 		reuse, cache, &aal_frm->labels[AAL_POLLGPR_1]);
 
 
@@ -1527,7 +1527,7 @@ static void aal_readback_vcp(struct mml_comp *comp, struct mml_task *task,
 		&reuse->labels[reuse->label_idx],
 		&aal_frm->polling_reuse);
 
-	add_reuse_label(reuse, &aal_frm->labels[AAL_POLLGPR_0],
+	add_reuse_label(comp->id, reuse, &aal_frm->labels[AAL_POLLGPR_0],
 		task->pq_task->aal_hist[pipe]->va_offset);
 
 	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%pad] pkt[%p] offset[%d]",
@@ -1615,7 +1615,7 @@ static s32 aal_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2) {
 		for (i = 0; i < aal_frm->reuse_curve.idx; i++)
 			for (j = 0; j < aal_frm->reuse_curve.offs[i].cnt; j++, idx++)
-				mml_update_array(reuse, &aal_frm->reuse_curve, i, j, curve[idx]);
+				mml_update_array(comp->id, reuse, &aal_frm->reuse_curve, i, j, curve[idx]);
 	} else if (mode == MML_MODE_DIRECT_LINK && !aal->data->is_linear)
 		aal_write_curve(comp, task, ccfg, curve, false);
 
@@ -1673,7 +1673,7 @@ static s32 aal_config_repost(struct mml_comp *comp, struct mml_task *task,
 		mml_pq_get_vcp_buf_offset(task, MML_PQ_AAL0+pipe,
 			task->pq_task->aal_hist[pipe]);
 
-		mml_update(reuse, aal_frm->labels[AAL_POLLGPR_0],
+		mml_update(comp->id, reuse, aal_frm->labels[AAL_POLLGPR_0],
 			cmdq_pkt_vcp_reuse_val(engine,
 			task->pq_task->aal_hist[pipe]->va_offset,
 			AAL_HIST_NUM + AAL_DUAL_INFO_NUM));
@@ -1694,9 +1694,9 @@ static s32 aal_config_repost(struct mml_comp *comp, struct mml_task *task,
 			goto comp_config_put;
 		}
 
-		mml_update(reuse, aal_frm->labels[AAL_POLLGPR_0],
+		mml_update(comp->id, reuse, aal_frm->labels[AAL_POLLGPR_0],
 			(u32)task->pq_task->aal_hist[pipe]->pa);
-		mml_update(reuse, aal_frm->labels[AAL_POLLGPR_1],
+		mml_update(comp->id, reuse, aal_frm->labels[AAL_POLLGPR_1],
 			(u32)DO_SHIFT_RIGHT(task->pq_task->aal_hist[pipe]->pa, 32));
 
 		begin_pa = cmdq_pkt_get_pa_by_offset(pkt, aal_frm->begin_offset);

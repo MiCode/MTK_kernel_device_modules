@@ -490,9 +490,15 @@ dup_command:
 
 	task->reuse[pipe].labels = kcalloc(cfg->cache[pipe].label_cnt,
 		sizeof(*task->reuse[pipe].labels), GFP_KERNEL);
-	if (task->reuse[pipe].labels) {
+	task->reuse[pipe].label_mods = kcalloc(cfg->cache[pipe].label_cnt,
+		sizeof(*task->reuse[pipe].label_mods), GFP_KERNEL);
+	task->reuse[pipe].label_check = kcalloc(cfg->cache[pipe].label_cnt,
+		sizeof(*task->reuse[pipe].label_check), GFP_KERNEL);
+	if (task->reuse[pipe].labels && task->reuse[pipe].label_mods) {
 		memcpy(task->reuse[pipe].labels, src->reuse[pipe].labels,
 			sizeof(*task->reuse[pipe].labels) * cfg->cache[pipe].label_cnt);
+		memcpy(task->reuse[pipe].label_mods, src->reuse[pipe].label_mods,
+			sizeof(*task->reuse[pipe].label_mods) * cfg->cache[pipe].label_cnt);
 		task->reuse[pipe].label_idx = src->reuse[pipe].label_idx;
 		cmdq_reuse_refresh(task->pkts[pipe], task->reuse[pipe].labels,
 			task->reuse[pipe].label_idx);
