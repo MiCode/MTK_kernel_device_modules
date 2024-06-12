@@ -8497,7 +8497,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 			if (!is_force_high_step &&
 				(*(display_compress_ratio_table[i].average_ratio) == 0 ||
 				*(display_compress_ratio_table[i].peak_ratio)) == 0)
-				DDPAEE("%s ratio is 0,i:%d,idx:%d,key value:%d\n", __func__,
+				DDPPR_ERR("%s ratio is 0,i:%d,idx:%d,key value:%d\n", __func__,
 				i, index, display_compress_ratio_table[i].key_value);
 			else {
 				normal_layer_compress_ratio_tb[index].frame_idx =
