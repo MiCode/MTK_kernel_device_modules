@@ -197,7 +197,7 @@ static unsigned int check_mux_pdn(unsigned int ID)
 
 static int __mt_get_freq(unsigned int ID, int type)
 {
-	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0, clk26cali_1 = 0;
+	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0;
 	unsigned long flags;
 	int output = 0, i = 0;
 
@@ -224,7 +224,6 @@ static int __mt_get_freq(unsigned int ID, int type)
 	clk_misc_cfg_0 = clk_readl(CLK_MISC_CFG_0);
 	clk_writel(CLK_MISC_CFG_0, (clk_misc_cfg_0 & 0x00FFFFFF) | (3 << 24));
 
-	clk26cali_1 = clk_readl(CLK26CALI_1);
 	clk_writel(CLK26CALI_0, 0x0000);
 	clk_writel(CLK26CALI_0, 0x1000);
 	clk_writel(CLK26CALI_0, 0x1010);
@@ -245,7 +244,6 @@ static int __mt_get_freq(unsigned int ID, int type)
 	clk_writel(CLK_DBG_CFG, clk_dbg_cfg);
 	clk_writel(CLK_MISC_CFG_0, clk_misc_cfg_0);
 	/*clk_writel(CLK26CALI_0, clk26cali_0);*/
-	/*clk_writel(CLK26CALI_1, clk26cali_1);*/
 
 	clk_writel(CLK26CALI_0, 0x0000);
 	fmeter_unlock(flags);
