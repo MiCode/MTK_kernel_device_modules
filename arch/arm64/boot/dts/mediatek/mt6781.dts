@@ -2565,21 +2565,21 @@
 				dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
 				interconnects =
 					<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_MFB_RDMA0)
-						&mmqos SLAVE_COMMON(1)>,
+						&mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_MFB_RDMA1)
-						&mmqos SLAVE_COMMON(1)>,
+						&mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_MFB_RDMA2)
-						&mmqos SLAVE_COMMON(1)>,
+						&mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_MFB_RDMA3)
-						&mmqos SLAVE_COMMON(1)>,
+						&mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_MFB_RDMA4)
-						&mmqos SLAVE_COMMON(1)>,
+						&mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_MFB_RDMA5)
-						&mmqos SLAVE_COMMON(1)>,
+						&mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_MFB_WDMA0)
-						&mmqos SLAVE_COMMON(1)>,
+						&mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(M4U_PORT_L11_IMG_MFB_WDMA1)
-						&mmqos SLAVE_COMMON(1)>;
+						&mmqos SLAVE_COMMON(0)>;
 				interconnect-names =
 					"mfb_qos_rdma0",
 					"mfb_qos_rdma1",
@@ -2607,7 +2607,7 @@
 				reg = <0 0x15812000 0 0x1000>;
 				interrupts = <GIC_SPI 236 IRQ_TYPE_LEVEL_HIGH 0>;
 				mboxes = <&gce_mbox 17 0 CMDQ_THR_PRIO_1>;
-				mss_frame_don =
+				mss_frame_done =
 				/bits/ 16 <CMDQ_EVENT_GCE_IMG2_EVENT23>;
 				mss_token =
 				/bits/ 16 <CMDQ_SYNC_TOKEN_MSS>;
