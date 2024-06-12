@@ -8,6 +8,7 @@ config DEVICE_MODULES_SND_SOC_ALL_CODECS
 	imply DEVICE_MODULES_SND_SOC_MT6351
 	imply DEVICE_MODULES_SND_SOC_MT6358
 	imply DEVICE_MODULES_SND_SOC_MT6359
+	imply DEVICE_MODULES_SND_SOC_MT6366
 	imply DEVICE_MODULES_SND_SOC_MT6359P
 	imply SND_SOC_MT6368
 	imply DEVICE_MODULES_SND_SOC_HDMI_CODEC
@@ -150,6 +151,14 @@ config SND_SOC_MT6357_ACCDET
 	  ACCDET means Accessory Detection technology, MediaTek develop it
 	  for ASoC codec soc-jack detection mechanism.
 	  Select N if you don't have jack on board.
+
+config DEVICE_MODULES_SND_SOC_MT6366
+	tristate "MediaTek MT6366 Codec driver"
+	help
+	  MediaTek MT6366 is a audio codec which contain
+	  three ADC for uplink path(MICs), and
+	  three DAC for downlink path(handset,
+	  headset, lineout)
 
 config SND_SOC_MT6368
 	tristate "MediaTek MT6368 Codec driver"

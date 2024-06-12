@@ -6640,7 +6640,7 @@ static int get_hp_current_calibrate_val(struct mt6358_priv *priv)
 	unsigned short efuse_val = 0;
 	int value, sign;
 
-#if defined(CONFIG_SND_SOC_MT6366)
+#if defined(CONFIG_DEVICE_MODULES_SND_SOC_MT6366)
 	/* 3. set EFUSE addr */
 	/* HPDET_COMP[6:0] @ efuse bit 1880 ~ 1886 */
 	/* HPDET_COMP_SIGN @ efuse bit 1887 */
@@ -7744,7 +7744,7 @@ static int mt6358_parse_dt(struct mt6358_priv *priv)
 #endif
 
 	/* get pmic regulator handler */
-	priv->reg_vaud28 = devm_regulator_get_optional(dev, "reg_vaud28");
+	priv->reg_vaud28 = devm_regulator_get_optional(dev, "reg-vaud28");
 	ret = IS_ERR(priv->reg_vaud28);
 	if (ret) {
 		ret = PTR_ERR(priv->reg_vaud28);
