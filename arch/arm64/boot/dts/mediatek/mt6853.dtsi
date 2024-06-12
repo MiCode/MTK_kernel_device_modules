@@ -1616,7 +1616,7 @@
 		};
 
 		cqdma: cq_dma@10212000 {
-			compatible = "mediatek,mt6765-cqdma";
+			compatible = "mediatek,cqdma";
 			reg = <0 0x10212000 0 0x80>,
 			      <0 0x10212100 0 0x80>,
 			      <0 0x10212200 0 0x80>,
@@ -1625,8 +1625,12 @@
 			      <GIC_SPI 155 IRQ_TYPE_LEVEL_HIGH 0>,
 			      <GIC_SPI 156 IRQ_TYPE_LEVEL_HIGH 0>,
 			      <GIC_SPI 157 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&infracfg_ao_clk CLK_IFRAO_CQ_DMA>;
+			clock-names = "cqdma";
 			dma-channels = <4>;
 			dma-channel-mask = <63>;
+			dma-requests = <10>;
+			#dma-cells = <1>;
 		};
 
 		apdma: dma-controller@10217a80 {
