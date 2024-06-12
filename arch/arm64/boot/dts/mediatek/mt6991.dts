@@ -8595,7 +8595,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"disp_gpio_te1",
 				"disp_gpio_te2",
 				"disp_dsi0_targetline0",
-//				"disp_ovlsys_wdma0_eof0",
+				"disp_ovlsys_wdma0_eof0",
 				"disp_token_disp_v_idle_power_on0",
 				"disp_token_disp_check_trigger_merge0",
 				"dpc_disp1_prete",
@@ -8649,7 +8649,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&gce CMDQ_EVENT_DSI1_TE_I_DSI1_TE_I>,
 				<&gce CMDQ_EVENT_DSI2_TE_I_DSI2_TE_I>,
 				<&gce CMDQ_EVENT_DISP1_DISP_DSI0_ENG_EVENT2>,
-//				<&gce CMDQ_EVENT_OVL0_DISP_WDMA2_FRAME_DONE>,
+				<&gce CMDQ_EVENT_OVL0_FRAME_DONE_SEL1>,
 				<&gce CMDQ_SYNC_TOKEN_VIDLE_POWER_ON>,
 				<&gce CMDQ_SYNC_TOKEN_CHECK_TRIGGER_MERGE>,
 				<&gce CMDQ_EVENT_DPC_DT_DONE6_0_MERGE>,
@@ -9364,10 +9364,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			fifo-size-uv-2plane = <318>;
 			fifo-size-3plane = <633>;
 			fifo-size-uv-3plane = <157>;
-			mediatek,larb = <&smi_larb21>;
+			mediatek,larb = <&smi_larb21 SMMU_L21_P8_DISP_WDMA0>;
 			mediatek,smi-id = <21>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L21_P8_DISP_WDMA0)
+					 &mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "DDP_COMPONENT_OVLSYS_WDMA0_hrt_qos";
 		};
 
 		ovl_wdma1: disp-wdma2@32a00000 {
