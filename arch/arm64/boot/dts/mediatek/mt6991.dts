@@ -2399,13 +2399,15 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"EMI_MON,QOS_B,HR_BW,SW_R1,SW_R2,",
 				"SW_R3,MD,MD2,ADSP,DSS,MAXBW_RECORD";
 			node-103 = "SSPM_VCORE_DVFS__VCORE_DETAIL",
-				"SW_R3,SW_R4,SW_R7";
+				"SW_R3,SW_R4,SW_R5,SW_R7,E_QOS";
 			node-104 = "SSPM_VCORE_DVFS__MISC_DETAIL",
 				"PS_B0,PS_B1,PS_B2,PS_B3,",
 				"PS_B4,PS_B5,PS_MMPC,PS_B6,",
 				"PS_TOTAL,MD_SCE,MD_STA,EMI_LEVEL,",
 				"HR_MMPC,HR_IB,HR_MB,HR_BASE,",
-				"CEIL_MISC,DSS_EMI_LEVEL,RSV_1,RSV_2";
+				"CEIL_MISC,DSS_EMI_LEVEL,RSV_1,RSV_2,",
+				"PSE_B0,PSE_B1,PSE_B2,PSE_B3,",
+				"PSE_B4,PSE_TOTAL";
 			node-105 = "SSPM_SWPM_GPU__STATE_RATIO",
 				"gpueb_active,gpueb_idle,gpueb_off,",
 				"top_active,top_idle_1,top_idle_2,top_off,",
@@ -2419,7 +2421,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-107 = "SSPM_VCORE_DVFS__VCORE",
 				"SW_R3";
 			node-108 = "SSPM_VCORE_DVFS__OPP",
-				"FREQ,VOLT";
+				"datarate,VOLT";
 			node-109 = "SSPM_VCORE_DVFS__MISC",
 				"PS_B0,PS_B1,PS_B2,PS_B3,",
 				"PS_B4,PS_B5,PS_MMPC,PS_B6,",
