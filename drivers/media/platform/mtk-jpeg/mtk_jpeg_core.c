@@ -34,6 +34,8 @@
 #include "mtk_jpeg_dec_parse.h"
 #include "mtk-smmu-v3.h"
 
+#include <linux/dma-buf.h>
+
 static struct mtk_jpeg_fmt mtk_jpeg_enc_formats[] = {
 	{
 		.fourcc		= V4L2_PIX_FMT_JPEG,
@@ -1121,6 +1123,28 @@ static int mtk_jpeg_buf_prepare(struct vb2_buffer *vb)
 	return 0;
 }
 
+static void mtk_jpeg_buf_finish(struct vb2_buffer *vb)
+{
+	struct mtk_jpeg_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
+
+	if (vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE &&
+		vb->planes[0].bytesused > 0) {
+		struct dma_buf_attachment *buf_att;
+		struct sg_table *sgt;
+
+		buf_att = dma_buf_attach(vb->planes[0].dbuf,
+			ctx->jpeg->smmu_dev);
+
+		sgt = dma_buf_map_attachment(buf_att, DMA_TO_DEVICE);
+		dma_buf_begin_cpu_access_partial(vb->planes[0].dbuf,
+			DMA_FROM_DEVICE, vb->planes[0].data_offset,
+			vb->planes[0].bytesused);
+		dma_buf_unmap_attachment(buf_att, sgt, DMA_TO_DEVICE);
+		dma_buf_detach(vb->planes[0].dbuf, buf_att);
+	}
+
+}
+
 static bool mtk_jpeg_check_resolution_change(struct mtk_jpeg_ctx *ctx,
 					     struct mtk_jpeg_dec_param *param)
 {
@@ -1195,9 +1219,7 @@ static void mtk_jpeg_enc_buf_queue(struct vb2_buffer *vb)
 	if (V4L2_TYPE_IS_CAPTURE(vb->vb2_queue->type) &&
 		vb2_is_streaming(vb->vb2_queue) &&
 		v4l2_m2m_dst_buf_is_last(ctx->fh.m2m_ctx)) {
-		struct mtk_jpeg_q_data *q_data;
 
-		q_data = mtk_jpeg_get_q_data(ctx, vb->vb2_queue->type);
 		vbuf->field = V4L2_FIELD_NONE;
 		v4l2_m2m_last_buffer_done(ctx->fh.m2m_ctx, vbuf);
 		v4l2_dbg(0, debug, &jpeg->v4l2_dev, "last cap buf done\n");
@@ -1222,9 +1244,7 @@ static void mtk_jpeg_dec_buf_queue(struct vb2_buffer *vb)
 	if (V4L2_TYPE_IS_CAPTURE(vb->vb2_queue->type) &&
 		vb2_is_streaming(vb->vb2_queue) &&
 		v4l2_m2m_dst_buf_is_last(ctx->fh.m2m_ctx)) {
-		struct mtk_jpeg_q_data *q_data;
 
-		q_data = mtk_jpeg_get_q_data(ctx, vb->vb2_queue->type);
 		vbuf->field = V4L2_FIELD_NONE;
 		v4l2_m2m_last_buffer_done(ctx->fh.m2m_ctx, vbuf);
 		v4l2_dbg(0, debug, &jpeg->v4l2_dev, "last cap buf done\n");
@@ -1309,6 +1329,7 @@ static const struct vb2_ops mtk_jpeg_dec_qops = {
 	.buf_queue          = mtk_jpeg_dec_buf_queue,
 	.wait_prepare       = vb2_ops_wait_prepare,
 	.wait_finish        = vb2_ops_wait_finish,
+	//.buf_finish         = mtk_jpeg_buf_finish,
 	.stop_streaming     = mtk_jpeg_dec_stop_streaming,
 };
 
@@ -1318,6 +1339,7 @@ static const struct vb2_ops mtk_jpeg_enc_qops = {
 	.buf_queue          = mtk_jpeg_enc_buf_queue,
 	.wait_prepare       = vb2_ops_wait_prepare,
 	.wait_finish        = vb2_ops_wait_finish,
+	.buf_finish         = mtk_jpeg_buf_finish,
 	.stop_streaming     = mtk_jpeg_enc_stop_streaming,
 };
 
@@ -1630,6 +1652,8 @@ static irqreturn_t mtk_jpeg_enc_done(struct mtk_jpeg_dev *jpeg)
 		dst_buf->flags |= V4L2_BUF_FLAG_LAST;
 		v4l2_m2m_mark_stopped(ctx->fh.m2m_ctx);
 	}
+
+	pr_info("Enc_done:%d\n", result_size);
 
 	v4l2_m2m_buf_done(src_buf, buf_state);
 	v4l2_m2m_buf_done(dst_buf, buf_state);
@@ -2341,3 +2365,4 @@ module_platform_driver(mtk_jpeg_driver);
 
 MODULE_DESCRIPTION("MediaTek JPEG codec driver");
 MODULE_LICENSE("GPL v2");
+MODULE_IMPORT_NS(DMA_BUF);
