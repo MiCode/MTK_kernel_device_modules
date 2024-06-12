@@ -187,6 +187,8 @@ struct fbt_thread_blc {
 	unsigned int blc;
 	unsigned int blc_b;
 	unsigned int blc_m;
+	int tp_set;
+	int b_vip_set;
 	int dep_num;
 	struct fpsgo_loading dep[MAX_DEP_NUM];
 	struct list_head entry;
