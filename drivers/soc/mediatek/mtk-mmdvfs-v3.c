@@ -52,6 +52,9 @@ static phys_addr_t mmdvfs_vcp_iova;
 static phys_addr_t mmdvfs_vcp_pa;
 static void *mmdvfs_vcp_va;
 
+static bool mmdvfs_mmup_sram;
+static void __iomem *mmdvfs_mmup_sram_va;
+
 static bool mmup_ena;
 #define MMDVFS_HFRP_FEATURE_ID (mmup_ena ? MMDVFS_MMUP_FEATURE_ID : MMDVFS_VCP_FEATURE_ID)
 
@@ -142,6 +145,18 @@ void *mmdvfs_get_vcp_base(phys_addr_t *pa)
 	return mmdvfs_vcp_va;
 }
 EXPORT_SYMBOL_GPL(mmdvfs_get_vcp_base);
+
+bool mmdvfs_get_mmup_sram_enable(void)
+{
+	return mmdvfs_mmup_sram;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_get_mmup_sram_enable);
+
+void __iomem *mmdvfs_get_mmup_sram(void)
+{
+	return mmdvfs_mmup_sram_va;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_get_mmup_sram);
 
 bool mmdvfs_get_mmup_enable(void)
 {
@@ -1703,6 +1718,8 @@ static void mmdvfs_fmeter_dump(void)
 
 static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned long action, void *data)
 {
+	static bool sram_init;
+
 	switch (action) {
 	case VCP_EVENT_READY:
 		cb_timestamp[2] = sched_clock();
@@ -1713,6 +1730,13 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 			dpc_fp(true, mmdvfs_vcp_stop);
 		mmdvfs_vcp_stop = false;
 		mmdvfs_vcp_ipi_send(FUNC_MMDVFSRC_INIT, MAX_OPP, MAX_OPP, NULL);
+		if (mmdvfs_mmup_sram && unlikely(!sram_init)) {
+			mmdvfs_mmup_sram_va = vcp_get_sram_virt_ex() + readl(MEM_SRAM_OFFSET);
+			sram_init = true;
+			MMDVFS_ERR("sram_init:%d virt:%#lx offset:%#x va:%#lx",
+				sram_init, (unsigned long)(void *)vcp_get_sram_virt_ex(),
+				readl(MEM_SRAM_OFFSET), (unsigned long)(void *)mmdvfs_mmup_sram_va);
+		}
 		mutex_lock(&mmdvfs_vcp_cb_mutex);
 		mmdvfs_vcp_cb_ready = true;
 		mutex_unlock(&mmdvfs_vcp_cb_mutex);
@@ -2350,8 +2374,9 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 	mmdvfs_free_run = of_property_read_bool(node, "mediatek,free-run");
 	of_property_read_s32(node, "mediatek,dpsw-thres", &dpsw_thr);
 	mmdvfs_restore_step = of_property_read_bool(node, "mediatek,restore-step");
-	MMDVFS_DBG("version:%d swrgo:%d free_run:%d dpsw_thr:%d restore_step:%d",
-		mmdvfs_mux_version, mmdvfs_swrgo, mmdvfs_free_run, dpsw_thr, mmdvfs_restore_step);
+	mmdvfs_mmup_sram = of_property_read_bool(node, "mediatek,mmup-sram");
+	MMDVFS_DBG("version:%d swrgo:%d free_run:%d dpsw_thr:%d restore_step:%d mmup_sram:%d",
+		mmdvfs_mux_version, mmdvfs_swrgo, mmdvfs_free_run, dpsw_thr, mmdvfs_restore_step, mmdvfs_mmup_sram);
 
 	larb = of_parse_phandle(pdev->dev.of_node, "mediatek,vdec-larb", 0);
 	if (larb) {

@@ -10,6 +10,8 @@
 #if IS_ENABLED(CONFIG_MTK_MMDVFS) && IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 void *mmdvfs_get_mmup_base(phys_addr_t *pa);
 void *mmdvfs_get_vcp_base(phys_addr_t *pa);
+bool mmdvfs_get_mmup_sram_enable(void);
+void __iomem *mmdvfs_get_mmup_sram(void);
 bool mmdvfs_get_mmup_enable(void);
 bool mmdvfs_is_init_done(void);
 #else
@@ -25,6 +27,8 @@ static inline void *mmdvfs_get_vcp_base(phys_addr_t *pa)
 		*pa = 0;
 	return NULL;
 }
+static inline bool mmdvfs_get_mmup_sram_enable(void) { return false; }
+static inline void __iomem *mmdvfs_get_mmup_sram(void) { return NULL; }
 static inline bool mmdvfs_get_mmup_enable(void) { return false; }
 static inline bool mmdvfs_is_init_done(void) { return false; }
 #endif
@@ -137,5 +141,86 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 #define MEM_REC_USR_ID(x)	(MEM_BASE + 0xECC + MEM_REC_USR_OBJ * 0x4 * (x))
 #define MEM_REC_USR_OPP(x)	(MEM_BASE + 0xED0 + MEM_REC_USR_OBJ * 0x4 * (x))
 
+#define MEM_SRAM_OFFSET		(MEM_BASE + 0xFFC)
+#define SRAM_BASE		mmdvfs_get_mmup_sram()
+
+#define SRAM_OBJ_CNT		(3)
+#define SRAM_PWR_CNT		(4)
+#define SRAM_REC_CNT		(8)
+#define SRAM_MUX_CNT		(16)
+
+enum {
+	SRAM_USR_SMI, /* VMMRC */
+	SRAM_USR_DPC, /* VDISPRC */
+	SRAM_USR_VDE,
+	SRAM_USR_VEN,
+	SRAM_USR_VCP,
+	SRAM_USR_CAMSV,
+	SRAM_USR_NUM = 2
+};
+
+/* USR : SRAM_OBJ_CNT * SRAM_USR_NUM * SRAM_REC_CNT = 48  */
+#define SRAM_REC_CNT_USR(x)	(SRAM_BASE + 4 * (0 + (x))) // SRAM_USR_NUM(2)
+#define SRAM_USR_SEC(x, y)	(SRAM_BASE + 4 * (2 + SRAM_OBJ_CNT * ((x) + (y) * SRAM_USR_NUM) + 0))
+#define SRAM_USR_USEC(x, y)	(SRAM_BASE + 4 * (2 + SRAM_OBJ_CNT * ((x) + (y) * SRAM_USR_NUM) + 1))
+#define SRAM_USR_VAL(x, y)	(SRAM_BASE + 4 * (2 + SRAM_OBJ_CNT * ((x) + (y) * SRAM_USR_NUM) + 2))
+
+/* set_mux : SRAM_OBJ_CNT * SRAM_REC_CNT = 24 */
+#define SRAM_REC_CNT_MUX	(SRAM_BASE + 4 * (50))
+#define SRAM_MUX_SEC(y)		(SRAM_BASE + 4 * (51 + SRAM_OBJ_CNT * (y) + 0))
+#define SRAM_MUX_USEC(y)	(SRAM_BASE + 4 * (51 + SRAM_OBJ_CNT * (y) + 1))
+#define SRAM_MUX_VAL(y)		(SRAM_BASE + 4 * (51 + SRAM_OBJ_CNT * (y) + 2))
+
+/* PWR : SRAM_OBJ_CNT * SRAM_PWR_CNT * SRAM_REC_CNT = 96 */
+#define SRAM_REC_CNT_PWR(x)	(SRAM_BASE + 4 * (75 + (x)))
+#define SRAM_PWR_SEC(x, y)	(SRAM_BASE + 4 * (79 + SRAM_OBJ_CNT * ((x) + (y) * SRAM_PWR_CNT) + 0))
+#define SRAM_PWR_USEC(x, y)	(SRAM_BASE + 4 * (79 + SRAM_OBJ_CNT * ((x) + (y) * SRAM_PWR_CNT) + 1))
+#define SRAM_PWR_VAL(x, y)	(SRAM_BASE + 4 * (79 + SRAM_OBJ_CNT * ((x) + (y) * SRAM_PWR_CNT) + 2))
+
+/* set_parent : SRAM_OBJ_CNT * SRAM_PWR_CNT * SRAM_REC_CNT = 96 */
+#define SRAM_REC_CNT_CLK(x)	(SRAM_BASE + 4 * (175 + (x)))
+#define SRAM_CLK_SEC(x, y)	(SRAM_BASE + 4 * (179 + SRAM_OBJ_CNT * ((x) + (y) * SRAM_PWR_CNT) + 0))
+#define SRAM_CLK_USEC(x, y)	(SRAM_BASE + 4 * (179 + SRAM_OBJ_CNT * ((x) + (y) * SRAM_PWR_CNT) + 1))
+#define SRAM_CLK_VAL(x, y)	(SRAM_BASE + 4 * (179 + SRAM_OBJ_CNT * ((x) + (y) * SRAM_PWR_CNT) + 2))
+
+/* set_rate : SRAM_OBJ_CNT * SRAM_REC_CNT = 24 */
+#define SRAM_REC_CNT_RATE	(SRAM_BASE + 4 * (275))
+#define SRAM_RATE_SEC(y)	(SRAM_BASE + 4 * (276 + SRAM_OBJ_CNT * (y) + 0))
+#define SRAM_RATE_USEC(y)	(SRAM_BASE + 4 * (276 + SRAM_OBJ_CNT * (y) + 1))
+#define SRAM_RATE_VAL(y)	(SRAM_BASE + 4 * (276 + SRAM_OBJ_CNT * (y) + 2))
+
+/* CEIL : SRAM_OBJ_CNT * SRAM_REC_CNT = 24 */
+#define SRAM_REC_CNT_CEIL	(SRAM_BASE + 4 * (300))
+#define SRAM_CEIL_SEC(y)	(SRAM_BASE + 4 * (301 + SRAM_OBJ_CNT * (y) + 0))
+#define SRAM_CEIL_USEC(y)	(SRAM_BASE + 4 * (301 + SRAM_OBJ_CNT * (y) + 1))
+#define SRAM_CEIL_VAL(y)	(SRAM_BASE + 4 * (301 + SRAM_OBJ_CNT * (y) + 2))
+
+/* VMM : SRAM_OBJ_CNT * SRAM_REC_CNT = 24 */
+#define SRAM_REC_CNT_VMM	(SRAM_BASE + 4 * (325))
+#define SRAM_VMM_SEC(y)		(SRAM_BASE + 4 * (326 + SRAM_OBJ_CNT * (y) + 0))
+#define SRAM_VMM_USEC(y)	(SRAM_BASE + 4 * (326 + SRAM_OBJ_CNT * (y) + 1))
+#define SRAM_VMM_VAL(y)		(SRAM_BASE + 4 * (326 + SRAM_OBJ_CNT * (y) + 2))
+
+/* VDISP : SRAM_OBJ_CNT * SRAM_REC_CNT = 24 */
+#define SRAM_REC_CNT_VDISP	(SRAM_BASE + 4 * (350))
+#define SRAM_VDISP_SEC(y)	(SRAM_BASE + 4 * (351 + SRAM_OBJ_CNT * (y) + 0))
+#define SRAM_VDISP_USEC(y)	(SRAM_BASE + 4 * (351 + SRAM_OBJ_CNT * (y) + 1))
+#define SRAM_VDISP_VAL(y)	(SRAM_BASE + 4 * (351 + SRAM_OBJ_CNT * (y) + 2))
+
+#define SRAM_MUX_MIN(x)		(SRAM_BASE + 4 * (375 + (x))) // SRAM_MUX_CNT(16)
+#define SRAM_PWR_GEAR(x)	(SRAM_BASE + 4 * (391 + (x))) // SRAM_PWR_CNT
+#define SRAM_VMM_CEIL		(SRAM_BASE + 4 * (394))
+
+// next : 395
+
+/* mbrain : u64(2) * SRAM_PWR_CNT * OPP_NUM(8) = 64 */
+#define SRAM_PWR_TOTAL(x, y)	(SRAM_BASE + 4 * (570 + 2 * ((y) + (x) * 8)))
+
+/* mux_cb : mt6991 only */
+#define SRAM_MUX_CB_SEC		(SRAM_BASE + 4 * (635))
+#define SRAM_MUX_CB_USEC	(SRAM_BASE + 4 * (636))
+#define SRAM_MUX_CB_END_SEC	(SRAM_BASE + 4 * (637))
+#define SRAM_MUX_CB_END_USEC	(SRAM_BASE + 4 * (638))
+#define SRAM_MUX_CB_MUX_OPP	(SRAM_BASE + 4 * (639))
 #endif
 
