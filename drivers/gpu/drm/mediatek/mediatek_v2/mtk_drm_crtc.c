@@ -5467,12 +5467,14 @@ unsigned int mtk_drm_primary_frame_bw(struct drm_crtc *crtc)
 	}
 	priv = crtc->dev->dev_private;
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT) &&
 			drm_crtc_index(crtc) != 0) {
 		DDPPR_ERR("%s no support CRTC%u", __func__,
 			drm_crtc_index(crtc));
 		crtc = priv->crtc[0];
 	}
+#endif
 
 	if (unlikely(crtc == NULL)) {
 		DDPPR_ERR("%s %d NULL crtc\n", __func__, __LINE__);
