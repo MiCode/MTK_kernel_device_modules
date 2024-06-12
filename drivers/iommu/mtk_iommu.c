@@ -3631,6 +3631,19 @@ static const struct mtk_iommu_plat_data mt6853_data = {
 			 {0, 14, 16}, {0, 13, 18, 17}},
 };
 
+static const struct mtk_iommu_plat_data mt6853_data_apu = {
+	.m4u_plat        = M4U_MT6853,
+	.flags           = LINK_WITH_APU | IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE,
+	.iommu_id	 = APU_IOMMU0,
+	.iommu_type      = APU_IOMMU,
+	.normal_dom	 = 0,
+	.inv_sel_reg	 = REG_MMU_INV_SEL_GEN2,
+	.iova_region	 = mt6873_multi_dom,
+	/* not use larbid_remap */
+	.larbid_remap    = {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}},
+	.iova_region_nr  = ARRAY_SIZE(mt6873_multi_dom),
+};
+
 static const struct mtk_iommu_plat_data mt6855_data_disp = {
 	.m4u_plat	= M4U_MT6855,
 	.flags          = HAS_SUB_COMM | OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
@@ -4208,6 +4221,7 @@ static const struct of_device_id mtk_iommu_of_ids[] = {
 	{ .compatible = "mediatek,mt6781-m4u", .data = &mt6781_data},
 	{ .compatible = "mediatek,mt6833-m4u", .data = &mt6833_data},
 	{ .compatible = "mediatek,mt6853-m4u", .data = &mt6853_data},
+	{ .compatible = "mediatek,mt6853-apu-iommu", .data = &mt6853_data_apu},
 	{ .compatible = "mediatek,mt6855-disp-iommu", .data = &mt6855_data_disp},
 	{ .compatible = "mediatek,mt6873-m4u", .data = &mt6873_data},
 	{ .compatible = "mediatek,mt6873-apu-iommu", .data = &mt6873_data_apu},
