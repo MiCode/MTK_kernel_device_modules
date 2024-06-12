@@ -426,6 +426,7 @@ static void __gpufreq_update_gpu_working_table(void)
 {
 	int i = 0, j = 0;
 
+	mutex_lock(&gpufreq_lock);
 	for (i = 0; i < g_gpu.opp_num; i++) {
 		j = i + g_gpu.segment_upbound;
 		g_gpu.working_table[i].freq = g_gpu.signed_table[j].freq;
@@ -439,6 +440,7 @@ static void __gpufreq_update_gpu_working_table(void)
 			i, g_gpu.working_table[i].freq, g_gpu.working_table[i].volt,
 			g_gpu.working_table[i].vsram, g_gpu.working_table[i].margin);
 	}
+	mutex_lock(&gpufreq_lock);
 }
 
 /*
@@ -2016,6 +2018,7 @@ static void __gpufreq_measure_power(void)
 	struct gpufreq_opp_info *working_table = g_gpu.working_table;
 	int opp_num = g_gpu.opp_num;
 
+	mutex_lock(&gpufreq_lock);
 	for (i = 0; i < opp_num; i++) {
 		freq = working_table[i].freq;
 		volt = working_table[i].volt;
@@ -2030,6 +2033,7 @@ static void __gpufreq_measure_power(void)
 		GPUFREQ_LOGD("GPU[%02d] power: %d (dynamic: %d, leakage: %d)",
 			i, p_total, p_dynamic, p_leakage);
 	}
+	mutex_unlock(&gpufreq_lock);
 }
 
 /* API: resume dvfs to free run */
