@@ -1518,7 +1518,7 @@ static int __init mtk_pcie_test_init(void)
 	}
 
 	pcie_smt->f_class = class_create(pcie_smt->name);
-	device_create(pcie_smt->f_class, NULL, dev_ctx->dev, NULL, (const char *)pcie_smt->name);
+	device_create(pcie_smt->f_class, NULL, dev_ctx->dev, NULL, "%s", pcie_smt->name);
 
 	/* sysfs support */
 	pcie_smt->pcie_test_kobj = kobject_create_and_add(PCIE_SYSFS_NAME, NULL);
