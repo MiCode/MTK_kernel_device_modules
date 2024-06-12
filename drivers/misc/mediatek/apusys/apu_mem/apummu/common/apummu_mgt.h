@@ -56,6 +56,20 @@ struct apummu_session_tbl {
 	struct list_head list;
 };
 
+struct apummu_tbl {
+	struct list_head g_stable_head;
+	struct kref session_tbl_cnt;
+	struct mutex table_lock;
+	struct mutex DRAM_FB_lock;
+	uint16_t subcmd_refcnt;
+	uint8_t alloc_subcmd_refcnt;
+	bool is_VLM_info_IPI_sent; // to set VLM DRAM FB or clean setting
+	bool is_SLB_set;
+	bool is_work_canceled;
+	bool is_free_job_set;
+	bool is_SLB_alloc; // Since SLB state might not sync with APU
+};
+
 int ammu_DRAM_FB_alloc(uint64_t session, uint32_t vlm_size, uint32_t subcmd_num);
 int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session,
 			uint64_t iova, uint32_t buf_size, uint64_t *eva);

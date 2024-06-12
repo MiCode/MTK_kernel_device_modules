@@ -87,4 +87,7 @@ enum {
 	APUMMU_RX_CBFC_AEE = 3,
 	APUMMU_RX_LAST = 4,
 };
+
+extern struct apummu_tbl g_ammu_table_set;
+
 #endif

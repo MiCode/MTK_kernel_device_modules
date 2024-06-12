@@ -29,6 +29,8 @@
 #include "apu.h"
 #include "apu_config.h"
 
+#include "slbc_ops.h"
+
 /* import apummu header */
 #include "apummu_drv.h"
 #include "apummu_cmn.h"
@@ -50,6 +52,7 @@ static struct class *apummu_class;
 struct apummu_dev_info *g_adv;
 static struct task_struct *mem_task;
 static struct apusys_core_info *g_apusys;
+static int apummu_suspend_release_flag;
 
 /* function declaration */
 static int apummu_open(struct inode *, struct file *);
@@ -447,12 +450,75 @@ static int apummu_remove(struct platform_device *pdev)
 }
 
 
+static int apusys_apummu_resume(struct device *dev)
+{
+	int ret = 0;
+	// SLB data init
+	struct slbc_data slb_data = {
+		.uid = UID_APU,
+		.type = TP_BUFFER,
+	};
+
+	mutex_lock(&g_ammu_table_set.table_lock);
+	if (g_adv->plat.is_general_SLB_support)
+		if (!g_ammu_table_set.is_SLB_alloc
+			&& apummu_suspend_release_flag) {
+			ret = slbc_request(&slb_data);
+			if (ret) {
+				AMMU_LOG_ERR("general SLB alloc fail in resume...\n");
+				apusys_ammu_exception("Alloc SLB fail in resume\n");
+				goto out;
+			}
+
+			g_ammu_table_set.is_SLB_alloc = true;
+			apummu_suspend_release_flag = false;
+		}
+
+out:
+	mutex_unlock(&g_ammu_table_set.table_lock);
+	return ret;
+}
+
+static int apusys_apummu_suspend(struct device *dev)
+{
+	int ret = 0;
+	// SLB data init
+	struct slbc_data slb_data = {
+		.uid = UID_APU,
+		.type = TP_BUFFER,
+	};
+
+	mutex_lock(&g_ammu_table_set.table_lock);
+	if (g_adv->plat.is_general_SLB_support)
+		if (g_ammu_table_set.is_SLB_alloc) {
+			ret = slbc_release(&slb_data);
+			if (ret) {
+				AMMU_LOG_ERR("general SLB free fail in suspend...\n");
+				apusys_ammu_exception("Free SLB fail in suspend\n");
+				goto out;
+			}
+
+			apummu_suspend_release_flag = true;
+			g_ammu_table_set.is_SLB_alloc = false;
+		}
+
+out:
+	mutex_unlock(&g_ammu_table_set.table_lock);
+	return ret;
+}
+
+static const struct dev_pm_ops apusys_apummu_pm_cb = {
+	.resume  = apusys_apummu_resume,
+	.suspend = apusys_apummu_suspend,
+};
+
 static struct platform_driver apummu_driver = {
 	.probe = apummu_probe,
 	.remove = apummu_remove,
 	.driver = {
 		.name = APUSYS_DRV_NAME,
 		.owner = THIS_MODULE,
+		.pm = &apusys_apummu_pm_cb,
 	},
 };
 
@@ -555,6 +621,8 @@ int apummu_init(struct apusys_core_info *info)
 		AMMU_LOG_ERR("failed to register RX_RMPSG driver");
 		goto out;
 	}
+
+	apummu_suspend_release_flag = false;
 
 out:
 	return ret;
