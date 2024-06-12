@@ -97,6 +97,8 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/sched_cus:sched_cus",
     "//vendor/mediatek/kernel_modules/sched_int:sched_int",
     "//vendor/mediatek/kernel_modules/mtkcam/img_frm_sync:mtk-img-frm-sync",
+    "//vendor/mediatek/kernel_modules/task_turbo_int:task_turbo_int",
+    "//vendor/mediatek/kernel_modules/task_turbo_int:task_turbo_cus",
 ]
 
 mgk_64_kleaf_eng_modules = [
