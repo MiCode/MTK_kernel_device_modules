@@ -221,17 +221,6 @@ static int vl53l4_power_on(struct vl53l4_device *vl53l4)
 	return 0;
 }
 
-static int vl53l4_set_ctrl(struct v4l2_ctrl *ctrl)
-{
-	/* struct vl53l4_device *vl53l4 = to_vl53l4_ois(ctrl); */
-
-	return 0;
-}
-
-static const struct v4l2_ctrl_ops vl53l4_ois_ctrl_ops = {
-	.s_ctrl = vl53l4_set_ctrl,
-};
-
 static int vl53l4_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
 	int ret;
@@ -594,7 +583,6 @@ static void vl53l4_subdev_cleanup(struct vl53l4_device *vl53l4)
 static int vl53l4_init_controls(struct vl53l4_device *vl53l4)
 {
 	struct v4l2_ctrl_handler *hdl = &vl53l4->ctrls;
-	/* const struct v4l2_ctrl_ops *ops = &vl53l4_ois_ctrl_ops; */
 
 	v4l2_ctrl_handler_init(hdl, 1);
 

@@ -1640,6 +1640,10 @@ static irqreturn_t pda_irqhandle(signed int Irq, void *DeviceId)
 	++g_PDA0_IRQCount;
 	if (g_PDA0_IRQCount > g_reasonable_IRQCount) {
 		PDA_devs[0].HWstatus = -29;
+		LOG_INF("Irq abnormal, rsn: %d, pda0: %d, stat_rg: %d\n",
+			g_reasonable_IRQCount,
+			g_PDA0_IRQCount,
+			nPdaStatus);
 		pda_nontransaction_reset(0);
 	}
 #endif
@@ -1676,6 +1680,10 @@ static irqreturn_t pda2_irqhandle(signed int Irq, void *DeviceId)
 	++g_PDA1_IRQCount;
 	if (g_PDA1_IRQCount > g_reasonable_IRQCount) {
 		PDA_devs[1].HWstatus = -29;
+		LOG_INF("Irq abnormal, rsn: %d, pda1: %d, stat_rg: %d\n",
+			g_reasonable_IRQCount,
+			g_PDA1_IRQCount,
+			nPdaStatus);
 		pda_nontransaction_reset(1);
 	}
 #endif
@@ -2365,8 +2373,11 @@ static int PDA_probe(struct platform_device *pdev)
 	larbs = of_count_phandle_with_args(
 				pdev->dev.of_node, "mediatek,larbs", NULL);
 	LOG_INF("larb_num:%d\n", larbs);
-	for (i = 0; i < larbs; i++)
+	for (i = 0; i < larbs; i++) {
 		larb1 = pda_init_larb(pdev, i);
+		if (larb1 == NULL)
+			LOG_INF("larb%d is NULL\n", i);
+	}
 
 #if IS_ENABLED(CONFIG_OF)
 	g_dev1 = &pdev->dev;
@@ -2504,8 +2515,11 @@ static int PDA2_probe(struct platform_device *pdev)
 	larbs = of_count_phandle_with_args(
 				pdev->dev.of_node, "mediatek,larbs", NULL);
 	LOG_INF("larb_num:%d\n", larbs);
-	for (i = 0; i < larbs; i++)
+	for (i = 0; i < larbs; i++) {
 		larb2 = pda_init_larb(pdev, i);
+		if (larb2 == NULL)
+			LOG_INF("larb%d is NULL\n", i);
+	}
 
 #if IS_ENABLED(CONFIG_OF)
 	g_dev2 = &pdev->dev;

@@ -144,17 +144,6 @@ fail:
 	return ret;
 }
 
-static int bu63169_set_ctrl(struct v4l2_ctrl *ctrl)
-{
-	/* struct bu63169_device *bu63169 = to_bu63169_ois(ctrl); */
-
-	return 0;
-}
-
-static const struct v4l2_ctrl_ops bu63169_ois_ctrl_ops = {
-	.s_ctrl = bu63169_set_ctrl,
-};
-
 static int bu63169_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
 	int ret;
@@ -243,7 +232,6 @@ static void bu63169_subdev_cleanup(struct bu63169_device *bu63169)
 static int bu63169_init_controls(struct bu63169_device *bu63169)
 {
 	struct v4l2_ctrl_handler *hdl = &bu63169->ctrls;
-	/* const struct v4l2_ctrl_ops *ops = &bu63169_ois_ctrl_ops; */
 
 	v4l2_ctrl_handler_init(hdl, 1);
 

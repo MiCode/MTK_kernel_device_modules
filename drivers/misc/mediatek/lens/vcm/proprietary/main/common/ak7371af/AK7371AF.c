@@ -116,10 +116,8 @@ static int initAF(void)
 
 	if (*g_pAF_Opened == 1) {
 
-		int ret = 0;
-
 		/* 00:active mode , 10:Standby mode , x1:Sleep mode */
-		ret = s4AF_WriteReg(0x02, 0x00);
+		s4AF_WriteReg(0x02, 0x00);
 
 		spin_lock(g_pAF_SpinLock);
 		*g_pAF_Opened = 2;
