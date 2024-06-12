@@ -1348,6 +1348,8 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	if (cfg->dpc) {
 		task->dpc_srt_bw[comp->sysid] += comp->srt_bw;
 		task->dpc_hrt_bw[comp->sysid] += comp->hrt_bw;
+		task->dpc_srt_write_bw[comp->sysid] += stash_srt_bw;
+		task->dpc_hrt_write_bw[comp->sysid] += stash_hrt_bw;
 	}
 
 	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, (comp->srt_bw << 16) | comp->hrt_bw);
