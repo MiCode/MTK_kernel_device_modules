@@ -1125,6 +1125,24 @@ static long handle_cpu_loading_info(unsigned long arg, void *mbraink_data)
 }
 #endif
 
+static long handle_ufs_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_ufs_info *ufs_info_buffer =
+		(struct mbraink_ufs_info *)(mbraink_data);
+	long ret = 0;
+
+	memset(ufs_info_buffer, 0, sizeof(struct mbraink_ufs_info));
+
+	mbraink_get_ufs_info(ufs_info_buffer);
+	if (copy_to_user((struct mbraink_ufs_info *) arg,
+			ufs_info_buffer,
+			sizeof(struct mbraink_ufs_info))) {
+		pr_notice("Copy ufs_info_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -1516,6 +1534,17 @@ static long mbraink_ioctl(struct file *filp,
 #endif
 		break;
 	}
+	case RO_UFS_INFO:
+	{
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
+		mbraink_data = kmalloc(sizeof(struct mbraink_ufs_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_ufs_info(arg, mbraink_data);
+		kfree(mbraink_data);
+#endif
+		break;
+	}
 
 	default:
 		pr_notice("%s:illegal ioctl number %u.\n", __func__, cmd);
@@ -1825,7 +1854,6 @@ static ssize_t mbraink_gpu_store(struct device *dev,
 
 	if (command == 5)
 		mbraink_gpu_setOpMode((int)value);
-
 
 	return count;
 }

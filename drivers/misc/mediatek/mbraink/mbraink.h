@@ -60,6 +60,8 @@
 #define POWER_THROTTLE_HW_INFO	'G'
 #define LPM_STATE_INFO			'H'
 #define AUTO_CPULOAD_INFO		'I'
+#define UFS_INFO				'J'
+
 
 /*Mbrain Delegate IOCTL List*/
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
@@ -157,6 +159,10 @@
 
 #define RO_AUTO_CPULOAD_INFO	_IOR(IOC_MAGIC, AUTO_CPULOAD_INFO, \
 								struct nbl_trace_buf_trans*)
+
+#define RO_UFS_INFO	_IOR(IOC_MAGIC, UFS_INFO, \
+								struct mbraink_ufs_info*)
+
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1

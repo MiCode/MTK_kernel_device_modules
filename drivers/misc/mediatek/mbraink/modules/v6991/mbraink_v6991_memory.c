@@ -6,11 +6,16 @@
 #include <linux/module.h>
 #include <linux/fs.h>
 #include <linux/slab.h>
+
+#include <linux/of_platform.h>
+#include <linux/platform_device.h>
 #include <mbraink_modules_ops_def.h>
 #include "mbraink_v6991_memory.h"
 
 #include <swpm_module_psp.h>
 #include <dvfsrc-mb.h>
+
+struct device *mbraink_v6991_device;
 
 static int mbraink_v6991_memory_getDdrInfo(struct mbraink_memory_ddrInfo *pMemoryDdrInfo)
 {
@@ -109,6 +114,36 @@ End:
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
+
+int ufs2mbrain_event_notify(struct ufs_mbrain_event *event)
+{
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
+
+	if (!event) {
+		pr_info("[%s] event is null\n", __func__);
+		return -1;
+	}
+
+	n = snprintf(netlink_buf, NETLINK_EVENT_MESSAGE_SIZE,
+		"%s:%d:%d:%llu:%d:%d:%d",
+		NETLINK_EVENT_UFS_NOTIFY,
+		(unsigned int)event->ver,
+		(unsigned int)event->data->event,
+		(unsigned long long)event->data->mb_ts,
+		(unsigned int)event->data->reg_val,
+		(unsigned int)event->data->gear_rx,
+		(unsigned int)event->data->gear_tx
+	);
+
+	mbraink_netlink_send_msg(netlink_buf);
+
+	return 0;
+}
+
+#endif
+
 static int mbraink_v6991_memory_getMdvInfo(struct mbraink_memory_mdvInfo  *pMemoryMdv)
 {
 	int ret = 0;
@@ -139,24 +174,102 @@ End:
 	return ret;
 }
 
-static struct mbraink_memory_ops mbraink_v6991_memory_ops = {
-	.getDdrInfo = mbraink_v6991_memory_getDdrInfo,
-	.getMdvInfo = mbraink_v6991_memory_getMdvInfo,
-};
-
-int mbraink_v6991_memory_init(void)
+static int mbraink_v6991_get_ufs_info(struct mbraink_ufs_info  *ufs_info)
 {
 	int ret = 0;
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
+	struct ufs_mbrain_dev_info mb_dev_info;
+	struct device_node *phy_node = NULL;
+	struct platform_device *phy_pdev = NULL;
+#endif
 
-	ret = register_mbraink_memory_ops(&mbraink_v6991_memory_ops);
+	if (ufs_info == NULL) {
+		ret = -1;
+		goto End;
+	}
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
+
+	if (mbraink_v6991_device) {
+		memset(&mb_dev_info, 0, sizeof(struct ufs_mbrain_dev_info));
+		phy_node = of_parse_phandle(mbraink_v6991_device->of_node, "ufsnotify", 0);
+		if (phy_node) {
+			phy_pdev = of_find_device_by_node(phy_node);
+			if (phy_pdev) {
+				ret = ufs_mb_get_info(phy_pdev, &mb_dev_info);
+				if (ret == 0) {
+					if (mb_dev_info.model)
+						memcpy(ufs_info->model,
+						    mb_dev_info.model, SCSI_MODEL_LEN);
+
+					if (mb_dev_info.rev)
+						memcpy(ufs_info->rev,
+						    mb_dev_info.rev, SCSI_REV_LEN);
+				}
+			}
+		}
+	}
+#endif
+
+End:
 	return ret;
 }
 
-int mbraink_v6991_memory_deinit(void)
+static struct mbraink_memory_ops mbraink_v6991_memory_ops = {
+	.getDdrInfo = mbraink_v6991_memory_getDdrInfo,
+	.getMdvInfo = mbraink_v6991_memory_getMdvInfo,
+	.get_ufs_info = mbraink_v6991_get_ufs_info,
+};
+
+int mbraink_v6991_memory_init(struct device *dev)
 {
 	int ret = 0;
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
+	struct device_node *phy_node = NULL;
+	struct platform_device *phy_pdev = NULL;
+#endif
+
+	ret = register_mbraink_memory_ops(&mbraink_v6991_memory_ops);
+
+	if (dev) {
+		mbraink_v6991_device = dev;
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
+		phy_node = of_parse_phandle(dev->of_node, "ufsnotify", 0);
+		if (phy_node) {
+			phy_pdev = of_find_device_by_node(phy_node);
+			if (phy_pdev)
+				ufs_mb_register(phy_pdev, ufs2mbrain_event_notify);
+		}
+#endif
+	} else
+		pr_notice("memory init dev is NULL");
+
+	return ret;
+}
+
+int mbraink_v6991_memory_deinit(struct device *dev)
+{
+	int ret = 0;
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
+	struct device_node *phy_node = NULL;
+	struct platform_device *phy_pdev = NULL;
+#endif
 
 	ret = unregister_mbraink_memory_ops();
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
+	if (dev) {
+		phy_node = of_parse_phandle(dev->of_node, "ufsnotify", 0);
+		if (phy_node) {
+			phy_pdev = of_find_device_by_node(phy_node);
+			if (phy_pdev)
+				ufs_mb_unregister(phy_pdev);
+		}
+	}
+#endif
+	mbraink_v6991_device = NULL;
+
 	return ret;
 }
 

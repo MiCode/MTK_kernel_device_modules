@@ -11,6 +11,7 @@
 struct mbraink_memory_ops {
 	int (*getDdrInfo)(struct mbraink_memory_ddrInfo *pMemoryDdrInfo);
 	int (*getMdvInfo)(struct mbraink_memory_mdvInfo *pMemoryMdv);
+	int (*get_ufs_info)(struct mbraink_ufs_info *ufs_info);
 };
 int register_mbraink_memory_ops(struct mbraink_memory_ops *ops);
 int unregister_mbraink_memory_ops(void);
