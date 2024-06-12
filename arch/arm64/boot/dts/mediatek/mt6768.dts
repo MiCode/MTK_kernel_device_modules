@@ -3708,8 +3708,13 @@ transparent_hugepage=never";
 			"PWR";
 		operating-points-v2 = <&gpu_mali_opp>;
 		ged-supply = <&ged>;
+		gpu-frame-base-optimize = <1>;
 	};
 
+	gpu_dvfs_prefence: gpu-prefence {
+		compatible = "mediatek,gpu_prefence";
+		dvfs-prefence-enable = <1>;
+	};
 	gpufreq: gpufreq {
 		compatible = "mediatek,gpufreq";
 		clocks =
