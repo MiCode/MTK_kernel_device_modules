@@ -187,7 +187,8 @@
 #define PCIE_MSI_GRPX_PER_SET_OFFSET	4
 #define PCIE_MSI_GRP3_SET_OFFSET	0xDE0
 
-#define PCIE_RES_STATUS                 0xd28
+#define PCIE_RES_STATUS			0xd28
+#define ALL_RES_ACK			0xef
 
 #define PCIE_AXI0_ERR_ADDR_L		0xe00
 #define PCIE_AXI0_ERR_INFO		0xe08
@@ -2909,17 +2910,59 @@ static int mtk_pcie_suspend_l12_6991(struct mtk_pcie_port *port)
 	val |= RG_PCIE26M_BYPASS;
 	writel_relaxed(val, port->pextpcfg + PEXTP_REQ_CTRL);
 
+	/* force mac sleep to 0 when switch lowpower clk */
+	val = readl_relaxed(port->base + PCIE_MISC_CTRL_REG);
+	val |= PCIE_MAC_SLP_DIS;
+	writel_relaxed(val, port->base + PCIE_MISC_CTRL_REG);
+
+	err = readl_poll_timeout(port->base + PCIE_RES_STATUS, val,
+				 ((val & ALL_RES_ACK) == ALL_RES_ACK),
+				 20, 1000);
+	if (err)
+		dev_info(port->dev, "Polling resource ack fail\n");
+
+	/* PCIe lowpower clock sel to 32K */
+	val = readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON);
+	val |= P0_LOWPOWER_CK_SEL;
+	writel_relaxed(val, port->pextpcfg + PEXTP_CLOCK_CON);
+	dev_info(port->dev, "Switch clock sel to %x\n", val);
+
+	val = readl_relaxed(port->base + PCIE_MISC_CTRL_REG);
+	val &= ~PCIE_MAC_SLP_DIS;
+	writel_relaxed(val, port->base + PCIE_MISC_CTRL_REG);
+
 	return 0;
 }
 
 static int mtk_pcie_resume_l12_6991(struct mtk_pcie_port *port)
 {
 	int err;
+	u32 val;
 
 	/* Unbinding of BBCK1 and BBCK2 */
 	err = clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, LIBER_BBCK2_UNBIND);
 	if (err)
 		dev_info(port->dev, "Fail to unbind BBCK2 with BBCK1\n");
+
+	val = readl_relaxed(port->base + PCIE_MISC_CTRL_REG);
+	val |= PCIE_MAC_SLP_DIS;
+	writel_relaxed(val, port->base + PCIE_MISC_CTRL_REG);
+
+	err = readl_poll_timeout(port->base + PCIE_RES_STATUS, val,
+				 ((val & ALL_RES_ACK) == ALL_RES_ACK),
+				 20, 1000);
+	if (err)
+		dev_info(port->dev, "Polling resource ack fail\n");
+
+	/* PCIe lowpower clock sel to 26M */
+	val = readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON);
+	val &= ~P0_LOWPOWER_CK_SEL;
+	writel_relaxed(val, port->pextpcfg + PEXTP_CLOCK_CON);
+	dev_info(port->dev, "Switch clock sel to %x\n", val);
+
+	val = readl_relaxed(port->base + PCIE_MISC_CTRL_REG);
+	val &= ~PCIE_MAC_SLP_DIS;
+	writel_relaxed(val, port->base + PCIE_MISC_CTRL_REG);
 
 	return 0;
 }
