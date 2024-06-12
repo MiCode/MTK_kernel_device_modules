@@ -6893,6 +6893,14 @@
 				//<0x1c013010 0x4>,
 		};
 
+		fm: fm@18000000 {
+			compatible = "mediatek,fm";
+			family-id = <0x6983>;
+			host-id = <0x6899>;
+			conn-id = <0x0205>;
+			interrupts = <GIC_SPI 434 IRQ_TYPE_LEVEL_HIGH 0>;
+		};
+
 		mtk-iommu-debug {
 			compatible = "mediatek,mt6899-iommu-debug";
 		};
