@@ -650,7 +650,7 @@
 	};
 
 	qos@0011bb80 {
-		compatible = "mediatek,mt6873-qos";
+		compatible = "mediatek,mt6893-qos";
 		reg = <0 0x0011bb80 0 0x80>;
 	};
 
