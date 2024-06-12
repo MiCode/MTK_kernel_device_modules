@@ -56,14 +56,18 @@ static u8 serdes_read_byte(struct i2c_client *client,
 	ret = i2c_master_send(client, read_data, 2);
 	if (ret <= 0) {
 		mutex_unlock(&edp_i2c_access);
+#if SERDES_DEBUG
 		pr_info("[MAX96851] Failed to send i2c command, ret = %d\n", ret);
+#endif
 		return ret;
 	}
 
 	ret = i2c_master_recv(client, &buf, 1);
 	if (ret <= 0) {
 		mutex_unlock(&edp_i2c_access);
+#if SERDES_DEBUG
 		pr_info("[MAX96851] Failed to recv i2c data, ret = %d\n", ret);
+#endif
 		return -1;
 	}
 
@@ -92,7 +96,9 @@ static int serdes_write_byte(struct i2c_client *client, u16 addr,
 	ret = i2c_master_send(client, write_data, 3);
 	if (ret <= 0) {
 		mutex_unlock(&edp_i2c_access);
+#if SERDES_DEBUG
 		pr_info("[MAX96851] I2C write fail, addr:0x%x val:0x%x ret:%d\n", addr, val, ret);
+#endif
 		return ret;
 	}
 
