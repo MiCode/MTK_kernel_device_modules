@@ -422,7 +422,7 @@ static int fast_dvfs_eb_event_handler(unsigned int id, void *prdata, void *data,
 	struct GED_EB_EVENT *psEBEvent =
 		&(eb_notify[((eb_notify_index++) % MAX_EB_NOTIFY_CNT)]);
 
-	unsigned int cmd = 0, dbg_data_len = 0;
+	unsigned int cmd = 0;
 	struct fastdvfs_event_data *event_data = NULL;
 
 	if (eb_notify_index >= MAX_EB_NOTIFY_CNT)
@@ -432,12 +432,13 @@ static int fast_dvfs_eb_event_handler(unsigned int id, void *prdata, void *data,
 		event_data = (struct fastdvfs_event_data *) data;
 		cmd = event_data->cmd;
 		if (cmd == GPUFDVFS_IPI_EVENT_DEBUG_DATA) {
-			dbg_data_len = event_data->u.set_para.arg[0];
-			if (dbg_data_len == EB_DVFS_FALLBACK) {
+			if (event_data->u.set_para.arg[0] == EB_DVFS_FALLBACK) {
 				ged_eb_dvfs_trace_dump();
 				ged_set_backup_timer_timeout(ged_get_fallback_time());
 				ged_cancel_backup_timer();
-			} else if (sysram_size >= EB_DVFS_DUMP_TH) {
+			}
+			if (event_data->u.set_para.arg[1] == EB_DVFS_FALLBACK &&
+				sysram_size >= EB_DVFS_DUMP_TH) {
 				ged_eb_sysram_debug_data_write();
 			}
 			return 0;
