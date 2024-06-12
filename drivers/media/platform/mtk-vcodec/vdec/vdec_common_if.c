@@ -591,25 +591,17 @@ static int vdec_get_param(unsigned long h_vdec,
 
 	case GET_PARAM_DISP_FRAME_BUFFER:
 	{
-		struct vdec_fb *pfb;
-
 		if (inst->vsi == NULL)
 			return -EINVAL;
 		vdec_get_fb(inst, &inst->vsi->list_disp, true, out);
-
-		pfb = *((struct vdec_fb **)out);
 		break;
 	}
 
 	case GET_PARAM_FREE_FRAME_BUFFER:
 	{
-		struct vdec_fb *pfb;
-
 		if (inst->vsi == NULL)
 			return -EINVAL;
 		vdec_get_fb(inst, &inst->vsi->list_free, false, out);
-
-		pfb = *((struct vdec_fb **)out);
 		break;
 	}
 

@@ -34,11 +34,10 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 	const int tp_item_num = 4;
 	const int bw_item_num = 3;
 	struct platform_device *pdev;
-	int i, j, larb_cnt, ret;
+	int i, j, ret;
 	u32 nmin = 0, nmax = 0, cnt = 0;
 
 	pdev = dev->plat_dev;
-	larb_cnt = 0;
 
 	ret = of_property_read_s32(pdev->dev.of_node, "throughput-op-rate-thresh", &nmax);
 	if (ret)
@@ -592,7 +591,6 @@ void mtk_vdec_pmqos_end_frame(struct mtk_vcodec_ctx *ctx)
 {
 	int i;
 	struct mtk_vcodec_dev *dev = 0;
-	u64 target_bw = 0;
 
 	dev = ctx->dev;
 
@@ -601,8 +599,6 @@ void mtk_vdec_pmqos_end_frame(struct mtk_vcodec_ctx *ctx)
 		return;
 
 	for (i = 0; i < dev->vdec_larb_cnt; i++) {
-		target_bw = 0;
-
 		if (dev->vdec_larb_bw[i].larb_type < VCODEC_LARB_SUM) {
 			mtk_icc_set_bw(dev->vdec_qos_req[i], 0, 0);
 			mtk_v4l2_debug(8, "[VDEC] set larb %u bw", dev->vdec_larb_bw[i].larb_id);

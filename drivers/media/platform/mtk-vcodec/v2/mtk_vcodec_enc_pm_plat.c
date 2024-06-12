@@ -47,13 +47,12 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 	const int tp_item_num = 6;
 	const int cfg_item_num = 4;
 	const int bw_item_num = 3;
-	int i, larb_cnt, ret;
+	int i, ret;
 	struct platform_device *pdev;
 	u32 nmin, nmax;
 	s32 offset;
 
 	pdev = dev->plat_dev;
-	larb_cnt = 0;
 
 	ret = of_property_read_s32(pdev->dev.of_node, "throughput-op-rate-thresh", &nmax);
 	if (ret)
@@ -300,7 +299,6 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 	struct dev_pm_opp *opp = 0;
 	unsigned long freq = 0;
 	int i = 0, venc_req = 0, flag = 0;
-	bool tput_ret;
 	struct platform_device *pdev = 0;
 
 	pdev = dev->plat_dev;
@@ -357,7 +355,7 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 		dev_pm_opp_put(opp);
 	}
 
-	tput_ret = mtk_enc_tput_init(dev);
+	mtk_enc_tput_init(dev);
 #endif
 }
 
