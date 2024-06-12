@@ -419,7 +419,7 @@ static unsigned int scp_crash_dump(enum scp_core_id id)
 {
 	unsigned int scp_dump_size;
 	unsigned int scp_awake_fail_flag;
-	uint32_t dram_start = 0;
+	//uint32_t dram_start = 0;
 	uint32_t dram_size = 0;
 #if SCP_RESERVED_MEM && IS_ENABLED(CONFIG_OF_RESERVED_MEM) && SCP_SECURE_DUMP_MEASURE
 	int idx;
@@ -546,7 +546,7 @@ static unsigned int scp_crash_dump(enum scp_core_id id)
 		if ((int)(scp_region_info_copy.ap_dram_size) <= 0) {
 			pr_notice("[scp] ap_dram_size <=0\n");
 		} else {
-			dram_start = scp_region_info_copy.ap_dram_start;
+			//dram_start = scp_region_info_copy.ap_dram_start;
 			dram_size = scp_region_info_copy.ap_dram_size;
 			scp_dump_size += roundup(dram_size, 4);
 		}
@@ -571,7 +571,7 @@ static unsigned int scp_crash_dump(enum scp_core_id id)
 	if ((int)(scp_region_info_copy.ap_dram_size) <= 0) {
 		pr_notice("[scp] ap_dram_size <=0\n");
 	} else {
-		dram_start = scp_region_info_copy.ap_dram_start;
+		//dram_start = scp_region_info_copy.ap_dram_start;
 		dram_size = scp_region_info_copy.ap_dram_size;
 		/* copy dram data*/
 		memcpy((void *)get_MDUMP_addr(MDUMP_DRAM),
@@ -817,7 +817,7 @@ struct bin_attribute bin_attr_scp_dump = {
  */
 int scp_excep_init(void)
 {
-	int dram_size = 0;
+	//int dram_size = 0;
 	int i;
 	int size_limit = sizeof(reg_save_list) / sizeof(struct reg_save_st);
 
@@ -832,8 +832,10 @@ int scp_excep_init(void)
 		return -1;
 
 	/* support L1C or not? */
+    /*
 	if ((int)(scp_region_info->ap_dram_size) > 0)
 		dram_size = scp_region_info->ap_dram_size;
+    */
 
 #if SCP_RESERVED_MEM && IS_ENABLED(CONFIG_OF_RESERVED_MEM)
 	if (scpreg.secure_dump) {

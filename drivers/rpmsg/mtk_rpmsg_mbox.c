@@ -23,7 +23,6 @@ int mtk_mbox_send(struct mtk_rpmsg_endpoint *mept,
 		unsigned int len, unsigned int wait)
 {
 
-	struct mtk_rpmsg_device *mdev;
 	struct mtk_mbox_device *mbdev;
 	unsigned int status;
 	unsigned long flags;
@@ -32,7 +31,6 @@ int mtk_mbox_send(struct mtk_rpmsg_endpoint *mept,
 	if (WARN_ON(len > mchan->send_slot_size) || WARN_ON(!buf))
 		return -EINVAL;
 
-	mdev = mept->mdev;
 	mbdev = mept->mdev->mbdev;
 
 	spin_lock_irqsave(&mchan->channel_lock, flags);
