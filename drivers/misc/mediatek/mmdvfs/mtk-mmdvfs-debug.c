@@ -26,6 +26,7 @@
 #include "mtk-mmdvfs-v3-memory.h"
 #include "mtk-mmdvfs-ftrace.h"
 #include "mtk-mmdvfs-debug.h"
+#include "mtk-mmdebug-vcp.h"
 #include "clk-mtk.h"
 
 #ifndef MAX_OPP
@@ -85,6 +86,7 @@ struct mmdvfs_debug {
 	void __iomem *clk_base;
 	struct notifier_block smi_dbg_nb;
 	struct notifier_block fmeter_nb;
+	struct notifier_block mmdebug_nb;
 	struct work_struct	work;
 	struct workqueue_struct *workq;
 
@@ -771,6 +773,12 @@ static int mmdvfs_debug_smi_cb(struct notifier_block *nb, unsigned long action, 
 	return 0;
 }
 
+static int mmdvfs_debug_mmdebug_cb(struct notifier_block *nb, unsigned long action, void *data)
+{
+	mmdvfs_debug_status_dump(NULL);
+	return 0;
+}
+
 static int mmdvfs_debug_parse_ver1(void)
 {
 	struct regulator *reg;
@@ -986,6 +994,8 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	mtk_smi_dbg_register_notifier(&g_mmdvfs->smi_dbg_nb);
 	g_mmdvfs->fmeter_nb.notifier_call = mmdvfs_debug_smi_cb;
 	mtk_mmdvfs_fmeter_register_notifier(&g_mmdvfs->fmeter_nb);
+	g_mmdvfs->mmdebug_nb.notifier_call = mmdvfs_debug_mmdebug_cb;
+	mtk_mmdebug_status_dump_register_notifier(&g_mmdvfs->mmdebug_nb);
 
 	g_mmdvfs->vote_step = 0xff;
 	of_property_read_u32(g_mmdvfs->dev->of_node, "vote-step", &g_mmdvfs->vote_step);
