@@ -309,6 +309,7 @@ struct ssusb_mtk {
 	struct mtu3 *u3d;
 	void __iomem *mac_base;
 	void __iomem *ippc_base;
+	void __iomem *host_base;
 	struct phy **phys;
 	int num_phys;
 	int wakeup_irq;
@@ -374,6 +375,7 @@ struct ssusb_mtk {
 	bool smc_req;
 	bool host_dev;
 	bool is_suspended;
+	enum usb_device_speed host_dev_speed;
 };
 
 /**
@@ -564,6 +566,7 @@ void ssusb_set_txdeemph(struct ssusb_mtk *ssusb);
 void ssusb_set_noise_still_tr(struct ssusb_mtk *ssusb);
 void ssusb_vsvoter_set(struct ssusb_mtk *ssusb);
 void ssusb_vsvoter_clr(struct ssusb_mtk *ssusb);
+enum usb_device_speed ssusb_host_get_speed(struct ssusb_mtk *ssusb);
 struct usb_request *mtu3_alloc_request(struct usb_ep *ep, gfp_t gfp_flags);
 void mtu3_free_request(struct usb_ep *ep, struct usb_request *req);
 void mtu3_req_complete(struct mtu3_ep *mep,
