@@ -911,6 +911,17 @@
 		};
 	};
 
+	mobicore: mobicore {
+		compatible = "trustonic,mobicore";
+		interrupts = <GIC_SPI 83 IRQ_TYPE_EDGE_RISING 0>;
+	};
+
+	tee_sanity {
+		compatible = "mediatek,tee_sanity";
+		interrupts = <GIC_SPI 84 IRQ_TYPE_EDGE_RISING 0>;
+	};
+
+
 	usb_meta: usb-meta {
 		compatible = "mediatek,usb-meta";
 		udc = <&ssusb>;
