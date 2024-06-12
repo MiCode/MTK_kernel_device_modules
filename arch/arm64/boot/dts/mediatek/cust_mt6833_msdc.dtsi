@@ -16,10 +16,12 @@
 	pinctrl-2 = <&mmc0_pins_pull_down>;
 	bus-width = <8>;
 	max-frequency = <200000000>;
+	ocr-voltage = <0x00030000>;
 	cap-mmc-highspeed;
+	mmc-ddr-1_8v;
 	mmc-hs200-1_8v;
 	mmc-hs400-1_8v;
-	//cap-mmc-hw-reset;
+	cap-mmc-hw-reset;
 	no-sdio;
 	no-sd;
 	hs400-ds-delay = <0x12814>;
@@ -28,6 +30,8 @@
 	supports-cqe;
 	dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 	req-vcore = <650000>;
+	dump-gpio-start = <65>;
+	dump-gpio-end = <76>;
 };
 
 &mmc1 {
@@ -46,12 +50,17 @@
 	sd-uhs-sdr50;
 	sd-uhs-sdr104;
 	sd-uhs-ddr50;
+	sdcard-aggressive-pm;
 	cd-debounce-delay-ms = <0>;
 	cd-gpios = <&pio 4 GPIO_ACTIVE_LOW>;
 	vmmc-supply = <&mt_pmic_vmch_ldo_reg>;
 	vqmmc-supply = <&mt_pmic_vmc_ldo_reg>;
 	no-mmc;
 	no-sdio;
+	dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+	req-vcore = <700000>;
+	dump-gpio-start = <125>;
+	dump-gpio-end = <130>;
 };
 
 &pio {
@@ -69,21 +78,28 @@
 			input-enable;
 			drive-strength = <4>;
 			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+			input-schmitt-enable = <1>;
 		};
 		pins_clk {
+			input-enable;
 			pinmux = <PINMUX_GPIO66__FUNC_MSDC0_CLK>;
 			drive-strength = <4>;
 			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+			input-schmitt-enable = <1>;
 		};
 		pins_ds {
+			input-enable;
 			pinmux = <PINMUX_GPIO65__FUNC_MSDC0_DSL>;
 			drive-strength = <4>;
 			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+			input-schmitt-enable = <1>;
 		};
 		pins_rst {
+			input-enable;
 			pinmux = <PINMUX_GPIO68__FUNC_MSDC0_RSTB>;
 			drive-strength = <4>;
 			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+			input-schmitt-enable = <1>;
 		};
 	};
 	mmc0_pins_uhs: mmc0@0{
@@ -100,21 +116,28 @@
 			input-enable;
 			drive-strength = <4>;
 			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+			input-schmitt-enable = <1>;
 		};
 		pins_clk {
+			input-enable;
 			pinmux = <PINMUX_GPIO66__FUNC_MSDC0_CLK>;
 			drive-strength = <4>;
 			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+			input-schmitt-enable = <1>;
 		};
 		pins_ds {
+			input-enable;
 			pinmux = <PINMUX_GPIO65__FUNC_MSDC0_DSL>;
 			drive-strength = <4>;
 			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+			input-schmitt-enable = <1>;
 		};
 		pins_rst {
+			input-enable;
 			pinmux = <PINMUX_GPIO68__FUNC_MSDC0_RSTB>;
 			drive-strength = <4>;
-			bias-pull-up = <MTK_PUPD_SET_R1R0_00>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+			input-schmitt-enable = <1>;
 		};
 	};
 	mmc0_pins_pull_down: mmc0@1{
@@ -131,21 +154,28 @@
 			input-enable;
 			drive-strength = <4>;
 			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+			input-schmitt-enable = <1>;
 		};
 		pins_clk {
+			input-enable;
 			pinmux = <PINMUX_GPIO66__FUNC_MSDC0_CLK>;
 			drive-strength = <4>;
 			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+			input-schmitt-enable = <1>;
 		};
 		pins_ds {
+			input-enable;
 			pinmux = <PINMUX_GPIO65__FUNC_MSDC0_DSL>;
 			drive-strength = <4>;
 			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+			input-schmitt-enable = <1>;
 		};
 		pins_rst {
+			input-enable;
 			pinmux = <PINMUX_GPIO68__FUNC_MSDC0_RSTB>;
 			drive-strength = <4>;
 			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+			input-schmitt-enable = <1>;
 		};
 	};
 	mmc1_pins_default: mmc1default {
@@ -158,11 +188,20 @@
 			input-enable;
 			drive-strength = <1>;
 			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+			input-schmitt-enable = <1>;
 		};
 		pins_clk {
+			input-enable;
 			pinmux = <PINMUX_GPIO125__FUNC_MSDC1_CLK>;
 			drive-strength = <1>;
 			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+			input-schmitt-enable = <1>;
+		};
+		pins_insert {
+			input-enable;
+			pinmux = <PINMUX_GPIO3__FUNC_GPIO3>;
+			bias-pull-up;
+			input-schmitt-enable = <1>;
 		};
 	};
 
@@ -176,11 +215,14 @@
 			input-enable;
 			drive-strength = <3>;
 			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+			input-schmitt-enable = <1>;
 		};
 		pins_clk {
+			input-enable;
 			pinmux = <PINMUX_GPIO125__FUNC_MSDC1_CLK>;
 			drive-strength = <3>;
 			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+			input-schmitt-enable = <1>;
 		};
 	};
 	mmc1_pins_pull_down: mmc1@1{
@@ -193,11 +235,14 @@
 			input-enable;
 			drive-strength = <1>;
 			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+			input-schmitt-enable = <1>;
 		};
 		pins_clk {
+			input-enable;
 			pinmux = <PINMUX_GPIO125__FUNC_MSDC1_CLK>;
 			drive-strength = <1>;
 			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+			input-schmitt-enable = <1>;
 		};
 	};
 };
