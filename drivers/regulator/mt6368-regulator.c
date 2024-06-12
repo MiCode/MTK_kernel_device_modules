@@ -20,6 +20,7 @@
 #define MT6368_REGULATOR_MODE_FCCM	1
 #define MT6368_REGULATOR_MODE_LP	2
 #define MT6368_REGULATOR_MODE_ULP	3
+#define MT6368_LDO_LINEAR_ENABLE	0
 
 #define DEFAULT_DELAY_MS		10
 
@@ -81,6 +82,7 @@ struct mt6368_regulator_info {
 	.modeset_mask = BIT(modeset_bit),			\
 }
 
+#if MT6368_LDO_LINEAR_ENABLE
 #define MT6368_LDO_LINEAR(_name, min, max, step, volt_ranges,	\
 			  _enable_reg, en_bit, _vsel_reg,	\
 			  _vsel_mask, _lp_mode_reg, lp_bit)	\
@@ -106,6 +108,7 @@ struct mt6368_regulator_info {
 	.lp_mode_reg = _lp_mode_reg,				\
 	.lp_mode_mask = BIT(lp_bit),				\
 }
+#endif
 
 #define MT6368_LDO(_name, _volt_table, _enable_reg, en_bit,	\
 		   _vsel_reg, _vsel_mask, _vocal_reg,		\
@@ -357,6 +360,7 @@ static const struct regulator_ops mt6368_buck_ops = {
 	.get_mode = mt6368_regulator_get_mode,
 };
 
+#if MT6368_LDO_LINEAR_ENABLE
 static const struct regulator_ops mt6368_volt_range_ops = {
 	.list_voltage = regulator_list_voltage_linear_range,
 	.map_voltage = regulator_map_voltage_linear_range,
@@ -369,6 +373,7 @@ static const struct regulator_ops mt6368_volt_range_ops = {
 	.set_mode = mt6368_regulator_set_mode,
 	.get_mode = mt6368_regulator_get_mode,
 };
+#endif
 
 static const struct regulator_ops mt6368_volt_table_ops = {
 	.list_voltage = regulator_list_voltage_table,
