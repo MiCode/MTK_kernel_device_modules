@@ -333,7 +333,7 @@ out:
 static inline int pd_get_cap_pdo(struct mtk_pd_adapter_info *info,
 				 int active_idx, struct adapter_power_cap *cap)
 {
-	struct tcpm_remote_power_cap pd_cap;
+	struct tcpm_remote_power_cap pd_cap = {0};
 	int ret = 0, i = 0, j = 0;
 
 	ret = tcpm_get_remote_power_cap(info->tcpc[active_idx], &pd_cap);
@@ -384,7 +384,7 @@ static int pd_get_cap(struct adapter_device *dev, enum adapter_cap_type type,
 
 	ret = tcpm_dpm_pd_get_source_cap_ext(info->tcpc[active_idx],
 					     NULL, &src_cap_ext);
-	if (ret == TCP_DPM_RET_SUCCESS)
+	if (ret == (int) TCP_DPM_RET_SUCCESS)
 		cap->pdp = src_cap_ext.source_pdp;
 
 	if (type == MTK_PD_APDO)
@@ -716,6 +716,8 @@ static int mtk_pd_adapter_probe(struct platform_device *pdev)
 
 	return 0;
 out:
+	if (!info->tcpc)
+		ret = -ENODEV;
 	mtk_pd_adapter_remove_helper(info);
 
 	return ret;

@@ -359,6 +359,9 @@ static ssize_t mtk_2p_charger_registers_show(struct device *dev,
 	int ret;
 
 	idx = snprintf(buf, PAGE_SIZE, "%s:\n", "mtk_2p_charger");
+	if (idx < 0)
+		return 0;
+
 	for (addr = 0x0; addr <= 0x20; addr++) {
 		ret = regmap_read(sc->regmap, addr, &val);
 		if (ret == 0) {
@@ -391,6 +394,8 @@ static DEVICE_ATTR_RW(mtk_2p_charger_registers);
 
 static void mtk_2p_charger_create_device_node(struct device *dev)
 {
+	if (!dev)
+		return;
 	device_create_file(dev, &dev_attr_mtk_2p_charger_registers);
 }
 
@@ -510,6 +515,8 @@ static int mtk_2p_charger_register_interrupt(struct mtk_2p_charger_chip *sc)
 		return ret;
 	}
 
+	if (sc->role < 0)
+		return -1;
 	ret = devm_request_threaded_irq(sc->dev, sc->irq, NULL,
 					mtk_2p_charger_irq_handler,
 					IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
@@ -663,14 +670,16 @@ static int mtk_2p_charger_init_setting(struct charger_device *chg_dev)
 	struct mtk_2p_charger_chip *sc = dev_get_drvdata(&(chg_dev->dev));
 	int ret = 0;
 
-	if (sc->disable_cs)
-		return -1;
-
 	if (!sc) {
 		dev_info(&(chg_dev->dev), "mtk_2p_charger init failed\n");
 		sc->disable_cs = 1;
 		return -1;
 	}
+
+	if (sc->disable_cs)
+		return -1;
+
+
 
 	/* disable auto BSM mode : for WA */
 	mtk_2p_charger_field_write(sc, AUTO_BSM_DIS, 1);

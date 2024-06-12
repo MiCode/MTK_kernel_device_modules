@@ -151,7 +151,6 @@ int pd_hal_is_adapter_ready(struct chg_alg_device *alg)
 
 int pd_hal_get_adapter_cap(struct chg_alg_device *alg, struct pd_power_cap *cap)
 {
-	struct mtk_pd *pd;
 	struct pd_hal *hal;
 	struct adapter_power_cap acap = {0};
 	int i, ret;
@@ -161,7 +160,6 @@ int pd_hal_get_adapter_cap(struct chg_alg_device *alg, struct pd_power_cap *cap)
 		return -EINVAL;
 	}
 
-	pd = dev_get_drvdata(&alg->dev);
 	hal = chg_alg_dev_get_drv_hal_data(alg);
 
 	ret = adapter_dev_get_cap(hal->adapter, MTK_PD, &acap);
@@ -471,11 +469,15 @@ int pd_hal_is_charger_enable(struct chg_alg_device *alg,
 		return -EINVAL;
 
 	hal = chg_alg_dev_get_drv_hal_data(alg);
-	if (chgidx == CHG1  && hal->chg1_dev != NULL)
+	if (chgidx == CHG1  && hal->chg1_dev != NULL) {
 		ret = charger_dev_is_enabled(hal->chg1_dev, en);
-	else if (chgidx == CHG2  && hal->chg2_dev != NULL)
+		if (ret < 0)
+			return ret;
+	} else if (chgidx == CHG2  && hal->chg2_dev != NULL) {
 		ret = charger_dev_is_enabled(hal->chg2_dev, en);
-
+		if (ret < 0)
+			return ret;
+	}
 	pd_dbg("%s idx:%d %d\n", __func__, chgidx, *en);
 	return 0;
 }

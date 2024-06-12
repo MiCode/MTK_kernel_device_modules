@@ -454,7 +454,7 @@ static int pchr_do_algorithm(struct mtk_charger *info)
 {
 	struct charger_data *pdata;
 	bool is_basic = true;
-	int ret;
+	int ret = 0;
 	struct pcharger_data *algo_data = info->algo.algo_data;
 
 	charger_dev_kick_wdt(info->chg1_dev);
@@ -489,7 +489,7 @@ static int pchr_do_algorithm(struct mtk_charger *info)
 	}
 
 	charger_dev_dump_registers(info->chg1_dev);
-	return 0;
+	return ret;
 }
 
 static void mtk_pulse_charger_parse_dt(struct mtk_charger *info,

@@ -153,6 +153,8 @@ int get_cs_side_battery_voltage(struct mtk_charger *info, int *vbat)
 	} else {
 		tmp_ret = power_supply_get_property(bat_psy,
 			POWER_SUPPLY_PROP_VOLTAGE_NOW, &prop);
+		if (tmp_ret < 0)
+			chr_debug("%s: %d\n", __func__, tmp_ret);
 		*vbat = prop.intval / 1000;
 		ret = FROM_CHG_IC;
 	}
@@ -183,6 +185,8 @@ int get_battery_temperature(struct mtk_charger *info)
 	} else {
 		tmp_ret = power_supply_get_property(bat_psy,
 			POWER_SUPPLY_PROP_TEMP, &prop);
+		if (tmp_ret < 0)
+			chr_debug("%s: %d\n", __func__, tmp_ret);
 		ret = prop.intval / 10;
 	}
 
@@ -212,6 +216,8 @@ int get_battery_current(struct mtk_charger *info)
 	} else {
 		tmp_ret = power_supply_get_property(bat_psy,
 			POWER_SUPPLY_PROP_CURRENT_NOW, &prop);
+		if (tmp_ret < 0)
+			chr_debug("%s: %d\n", __func__, tmp_ret);
 		ret = prop.intval / 1000;
 	}
 
@@ -245,6 +251,8 @@ int get_cs_side_battery_current(struct mtk_charger *info, int *ibat)
 	} else {
 		tmp_ret = power_supply_get_property(bat_psy,
 			POWER_SUPPLY_PROP_CURRENT_NOW, &prop);
+		if (tmp_ret < 0)
+			chr_debug("%s: %d\n", __func__, tmp_ret);
 		*ibat = prop.intval / 1000;
 		ret = FROM_CHG_IC;
 	}
@@ -342,6 +350,8 @@ bool is_battery_exist(struct mtk_charger *info)
 	} else {
 		tmp_ret = power_supply_get_property(bat_psy,
 			POWER_SUPPLY_PROP_PRESENT, &prop);
+		if (tmp_ret < 0)
+			chr_debug("%s: %d\n", __func__, tmp_ret);
 		ret = prop.intval;
 	}
 
@@ -374,6 +384,8 @@ bool is_charger_exist(struct mtk_charger *info)
 	} else {
 		tmp_ret = power_supply_get_property(chg_psy,
 			POWER_SUPPLY_PROP_ONLINE, &prop);
+		if (tmp_ret < 0)
+			chr_debug("%s: %d\n", __func__, tmp_ret);
 		ret = prop.intval;
 	}
 
@@ -405,12 +417,16 @@ int get_charger_type(struct mtk_charger *info)
 	} else {
 		ret = power_supply_get_property(bc12_psy,
 			POWER_SUPPLY_PROP_ONLINE, &prop);
-
+		if (ret < 0)
+			chr_debug("%s: %d\n", __func__, ret);
 		ret = power_supply_get_property(bc12_psy,
 			POWER_SUPPLY_PROP_TYPE, &prop2);
-
+		if (ret < 0)
+			chr_debug("%s: %d\n", __func__, ret);
 		ret = power_supply_get_property(bc12_psy,
 			POWER_SUPPLY_PROP_USB_TYPE, &prop3);
+		if (ret < 0)
+			chr_debug("%s: %d\n", __func__, ret);
 
 		if (prop.intval == 0 ||
 		    (prop2.intval == POWER_SUPPLY_TYPE_USB &&
