@@ -3088,8 +3088,8 @@ static int en_l_vbat_set(struct mtk_gauge *gauge,
 	regmap_update_bits(gauge->regmap,
 		PMIC_AUXADC_LBAT2_DET_MIN_ADDR,
 		PMIC_AUXADC_LBAT2_DET_MIN_MASK
-		<< PMIC_AUXADC_LBAT2_IRQ_EN_MIN_SHIFT,
-		val << PMIC_AUXADC_LBAT2_IRQ_EN_MIN_SHIFT);
+		<< PMIC_AUXADC_LBAT2_DET_MIN_SHIFT,
+		val << PMIC_AUXADC_LBAT2_DET_MIN_SHIFT);
 
 	gauge->vbat_l_en = val;
 	enable_lbat2_en(gauge);
