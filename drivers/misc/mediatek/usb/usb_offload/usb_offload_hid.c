@@ -182,7 +182,7 @@ static bool is_hid_urb(struct urb *urb, struct usb_interface_descriptor *intf_de
 	struct usb_host_endpoint *ep;
 	struct usb_device *dev;
 	struct usb_host_interface *intf;
-	int intf_num, i, dir;
+	int intf_num, i;
 	bool found_hid_req = false;
 
 	if (!urb || !urb->dev || urb->setup_packet)
@@ -194,8 +194,6 @@ static bool is_hid_urb(struct urb *urb, struct usb_interface_descriptor *intf_de
 
 	if (!actconfig)
 		return found_hid_req;
-
-	dir = usb_endpoint_dir_in(&urb->ep->desc);
 
 	intf_num = actconfig->desc.bNumInterfaces;
 	for (i = 0; i < intf_num; i++) {
@@ -759,7 +757,6 @@ error:
 int usb_offload_hid_start(void)
 {
 	struct hid_ep_info *hid;
-	struct usb_hcd *hcd;
 	struct xhci_ep_ctx *out_ep_ctx;
 	struct xhci_ring *ring;
 	struct usb_offload_buffer *buf;
@@ -781,7 +778,6 @@ int usb_offload_hid_start(void)
 		need_offload = test_bit(HID_NEED_OFFLOAD, &hid->sync_flag) &&
 					!test_bit(HID_DSP_RUNNING, &hid->sync_flag);
 		if (need_offload) {
-			hcd = bus_to_hcd(hid->urb->dev->bus);
 			out_ep_ctx = xhci_get_hid_ep_ctx(hid, false);
 			if (unlikely(!out_ep_ctx)) {
 				hid_ep_unlock(hid, "<AP Suspend>");
