@@ -1075,11 +1075,30 @@ void mtk_can_migrate_task(void *data, struct task_struct *p,
 {
 	bool latency_sensitive;
 	struct cpumask eff_mask;
+	int src_cpu = task_cpu(p), num_vip_src, num_vip_dst;
 
 	if (!get_eas_hook())
 		return;
 
-	if (READ_ONCE(cpu_rq(task_cpu(p))->rd->overutilized)) {
+	if (cpu_paused(dst_cpu)) {
+		*can_migrate = false;
+		return;
+	}
+
+	if (task_is_vip(p, VVIP)) {
+		num_vip_src = num_vip_in_cpu(src_cpu, VVIP);
+		num_vip_dst = num_vip_in_cpu(dst_cpu, VVIP);
+		if (num_vip_src-1 < num_vip_dst) {
+			*can_migrate = 0;
+			return;
+		} else if ((num_vip_src-1 == num_vip_dst) &&
+			(capacity_orig_of(src_cpu) > capacity_orig_of(dst_cpu))) {
+			*can_migrate = 0;
+			return;
+		}
+	}
+
+	if (READ_ONCE(cpu_rq(src_cpu)->rd->overutilized)) {
 		*can_migrate = 1;
 		return;
 	}
