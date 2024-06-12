@@ -240,6 +240,7 @@ void smmu_merge_s2_table(struct user_pt_regs *regs)
 	mtk_smmu_sync();
 	hyp_spin_unlock(&smmu_all_vm_lock);
 	regs->regs[0] = SMCCC_RET_SUCCESS;
+	regs->regs[1] = 0;
 }
 
 void mtk_smmu_share(struct user_pt_regs *regs)

@@ -688,12 +688,15 @@ unsigned long smmu_mpool_mem_allocate(struct mpt *mpt,
 		pr_info("%s: alloc page fail\n", __func__);
 		return 0;
 	}
+
 	mpt = (struct mpt *)addr;
 	mpt->mem_block_num = 0;
+
 	if (target_page_counts == 0)
 		return 0;
+
 	pr_info("%s: target_page_counts %#llx\n", __func__, target_page_counts);
-	target_page_counts = 0x4240;
+
 	while (acc_page_num < target_page_counts) {
 		if (mpt->mem_block_num >= IOMMU_DRIVER_MEM_PFN_MAX) {
 			pr_info("%s: mpt->mem_block_num: %#x over IOMMU_DRIVER_MEM_PFN_MAX: %#x. Target_page_counts %#llx but, only allocated %#llx pages\n",
