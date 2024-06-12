@@ -6,14 +6,15 @@
 #ifndef _UFS_MEDIATEK_H
 #define _UFS_MEDIATEK_H
 
-#include "linux/spinlock_types.h"
 #include <linux/bitops.h>
-#include <linux/pm_qos.h>
-#include <linux/of_device.h>
 #include <linux/cdev.h>
+#include <linux/of_device.h>
+#include <linux/pm_qos.h>
+#include <linux/spinlock_types.h>
 #include <ufs/ufs.h>
-#include <ufs/ufshci.h>
 #include <ufs/ufshcd.h>
+#include <ufs/ufshci.h>
+
 #include "ufs-mediatek-rpmb.h"
 
 /*
@@ -255,6 +256,7 @@ enum rpmb_key_state {
 
 struct tag_ufs {
 	enum rpmb_key_state rpmb_r2_kst;  /* RPMB Region 2 Key State*/
+	enum rpmb_key_state rpmb_r3_kst;  /* RPMB Region 3 Key State*/
 };
 
 struct ufs_mtk_mcq_intr_info {

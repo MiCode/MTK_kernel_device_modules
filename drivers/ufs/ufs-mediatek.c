@@ -1609,8 +1609,11 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 			"atag,ufs", NULL);
 	if (!atag)
 		dev_err(hba->dev, "cannot find atag,ufs");
-	else
+	else {
 		host->atag = atag;
+		dev_info(hba->dev, "atag,rpmb region 2 key state=%d", atag->rpmb_r2_kst);
+		dev_info(hba->dev, "atag,rpmb region 3 key state=%d", atag->rpmb_r3_kst);
+	}
 
 	id = of_match_device(ufs_mtk_of_match, dev);
 	if (!id) {
