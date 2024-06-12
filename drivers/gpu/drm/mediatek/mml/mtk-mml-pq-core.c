@@ -523,7 +523,6 @@ void mml_pq_get_readback_buffer(struct mml_task *task, u8 pipe,
 	struct cmdq_client *clt = task->config->path[pipe]->clt;
 	struct mml_pq_readback_buffer *temp_buffer = NULL;
 	int is_buf_limit_exceed = 0;
-
 	mml_pq_msg("%s job_id[%d]", __func__, task->job.jobid);
 
 	mutex_lock(&rb_buf_list_mutex);
@@ -546,7 +545,8 @@ void mml_pq_get_readback_buffer(struct mml_task *task, u8 pipe,
 		INIT_LIST_HEAD(&temp_buffer->buffer_list);
 		buffer_num++;
 		is_buf_limit_exceed = check_pq_buf_limit(buffer_num, RB_BUF_LIMIT);
-
+		if (is_buf_limit_exceed)
+			mml_pq_err("%s buffer pool size exceed", __func__);
 		*hist = temp_buffer;
 		mml_pq_rb_msg("%s aal reallocate jobid[%d] va[%p] pa[%pad]", __func__,
 			task->job.jobid, temp_buffer->va, &temp_buffer->pa);
@@ -596,7 +596,6 @@ void get_dma_buffer(struct mml_task *task, u8 pipe,
 	struct mml_pq_dma_buffer *temp_buffer = NULL;
 	struct mutex *list_lock = NULL;
 	int is_buf_limit_exceed = 0;
-
 	mml_pq_msg("%s job_id[%d]", __func__, task->job.jobid);
 
 	/* set mutex & buf_list */
@@ -628,8 +627,9 @@ void get_dma_buffer(struct mml_task *task, u8 pipe,
 		}
 		INIT_LIST_HEAD(&temp_buffer->buffer_list);
 		dma_buf_num++;
-
-		is_buf_limit_exceed = check_pq_buf_limit(buffer_num, DMA_BUF_LIMIT);
+		is_buf_limit_exceed = check_pq_buf_limit(dma_buf_num, DMA_BUF_LIMIT);
+		if (is_buf_limit_exceed)
+			mml_pq_err("%s buffer pool size exceed", __func__);
 		*buf = temp_buffer;
 	}
 
@@ -672,7 +672,7 @@ void put_dma_buffer(struct mml_task *task, u8 pipe,
 	if (list_lock)
 		mutex_lock(list_lock);
 
-	is_buf_limit_exceed = check_pq_buf_limit(buffer_num, DMA_BUF_LIMIT);
+	is_buf_limit_exceed = check_pq_buf_limit(dma_buf_num, DMA_BUF_LIMIT);
 	if (is_buf_limit_exceed) {
 		dma_free_noncoherent(dev, size, (*buf)->va, (*buf)->pa, DMA_TO_DEVICE);
 		kfree(*buf);
@@ -1914,7 +1914,6 @@ static int mml_pq_tile_init_ioctl(unsigned long data)
 {
 	struct mml_pq_chan *chan = &pq_mbox->tile_init_chan;
 	struct mml_pq_sub_task *new_sub_task = NULL;
-	struct mml_pq_task *new_pq_task = NULL;
 	struct mml_pq_tile_init_job *job;
 	struct mml_pq_tile_init_job *user_job;
 	u32 new_job_id;
@@ -1955,7 +1954,6 @@ static int mml_pq_tile_init_ioctl(unsigned long data)
 		return -ERESTARTSYS;
 	}
 
-	new_pq_task = from_tile_init(new_sub_task);
 	new_job_id = new_sub_task->job_id;
 
 	ret = copy_to_user(&user_job->new_job_id, &new_job_id, sizeof(u32));
@@ -2223,7 +2221,6 @@ static int mml_pq_comp_config_ioctl(unsigned long data)
 {
 	struct mml_pq_chan *chan = &pq_mbox->comp_config_chan;
 	struct mml_pq_sub_task *new_sub_task = NULL;
-	struct mml_pq_task *new_pq_task = NULL;
 	struct mml_pq_comp_config_job *job;
 	struct mml_pq_comp_config_job *user_job;
 	u32 new_job_id;
@@ -2266,7 +2263,6 @@ static int mml_pq_comp_config_ioctl(unsigned long data)
 		return -ERESTARTSYS;
 	}
 
-	new_pq_task = from_comp_config(new_sub_task);
 	new_job_id = new_sub_task->job_id;
 
 	ret = copy_to_user(&user_job->new_job_id, &new_job_id, sizeof(u32));
@@ -3159,7 +3155,7 @@ static void create_ut_task(const char *case_name)
 	mml_pq_log("[mml] %s: after++ ut_task_cnt[%d]\n", __func__, ut_task_cnt);
 	mml_pq_log("[mml] created mml_task for PQ UT [%lld.%lu]\n",
 		task->end_time.tv_sec, task->end_time.tv_nsec);
-	thr = kthread_run(run_ut_task_threaded, task, case_name);
+	thr = kthread_run(run_ut_task_threaded, task, "ut-%s", case_name);
 	if (IS_ERR(thr)) {
 		mml_pq_err("create thread failed, thread:%s\n", case_name);
 		destroy_ut_task(task);
