@@ -178,6 +178,33 @@ static void ipi_usage_cnt_update(struct mtk_apu *apu, u32 id, int diff)
 
 extern int apu_deepidle_power_on_aputop(struct mtk_apu *apu);
 
+#if IS_ENABLED(CONFIG_VHOST_APU)
+unsigned int virtio_csum;
+uint32_t virtio_send_bufer_da;
+uint32_t virtio_recv_bufer_da;
+
+struct vhost_apu_platform_fp *vhost_apu_platform;
+
+void vhost_apu_set_fp(struct vhost_apu_platform_fp *apu_platform)
+{
+	if (!apu_platform) {
+		pr_info("%s apu_platform is NULL ", __func__);
+		return;
+	}
+	vhost_apu_platform = apu_platform;
+}
+EXPORT_SYMBOL(vhost_apu_set_fp);
+
+int vhost_apu_ipi_send(struct apu_mbox_hdr hdr)
+{
+	virtio_csum = hdr.csum;
+	virtio_send_bufer_da = hdr.virtio_send_bufer_da;
+	virtio_recv_bufer_da = hdr.virtio_recv_bufer_da;
+	apu_ipi_send(g_apu, hdr.id, NULL, hdr.len, 0);
+}
+EXPORT_SYMBOL(vhost_apu_ipi_send);
+
+#endif
 int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 		 u32 wait_ms)
 {
@@ -192,10 +219,25 @@ int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 
 	ktime_get_ts64(&ts);
 
+#if IS_ENABLED(CONFIG_VHOST_APU)
+	mutex_lock(&apu->send_lock);
+	uint32_t curr_vm_id = 0;
+
+	curr_vm_id = (id >> 16);
+	id = (id & 0xFFFF);
+
+	if (curr_vm_id == 0) {
+		if ((!apu) || (id <= APU_IPI_INIT) ||
+			(id >= APU_IPI_MAX) || (id == APU_IPI_NS_SERVICE) ||
+			(len > APU_SHARE_BUFFER_SIZE) || (!data))
+			return -EINVAL;
+	}
+#else
 	if ((!apu) || (id <= APU_IPI_INIT) ||
 	    (id >= APU_IPI_MAX) || (id == APU_IPI_NS_SERVICE) ||
 	    (len > APU_SHARE_BUFFER_SIZE) || (!data))
 		return -EINVAL;
+#endif
 
 	dev = apu->dev;
 	ipi = &apu->ipi_desc[id];
@@ -204,9 +246,34 @@ int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 	if ((apu->platdata->flags & F_FAST_ON_OFF) == 0)
 		if (!pm_runtime_enabled(dev)) {
 			dev_info(dev, "%s: rpm disabled, ipi=%d\n", __func__, id);
+#if IS_ENABLED(CONFIG_VHOST_APU)
+			mutex_unlock(&apu->send_lock);
+#endif
 			return -EBUSY;
 		}
 
+#if IS_ENABLED(CONFIG_VHOST_APU)
+	if ((apu->platdata->flags & F_FAST_ON_OFF) &&
+		ipi_attrs[id].direction == IPI_HOST_INITIATE &&
+		apu->ipi_pwr_ref_cnt[id] == 0 && curr_vm_id == 0) {
+		dev_info(dev, "%s: host initiated ipi(%d) not power on\n",
+			__func__, id);
+		mutex_unlock(&apu->send_lock);
+		return -EINVAL;
+	}
+
+	if (ipi_attrs[id].direction == IPI_HOST_INITIATE &&
+	    apu->ipi_inbound_locked == IPI_LOCKED && !bypass_check(id) &&
+		curr_vm_id == 0) {
+		/* remove to reduce log */
+		/*
+		 * apu_ipi_info_ratelimited(dev, "%s: ipi locked, ipi=%d\n",
+		 *	__func__, id);
+		 */
+		mutex_unlock(&apu->send_lock);
+		return -EAGAIN;
+	}
+#else
 	if ((apu->platdata->flags & F_FAST_ON_OFF) &&
 		ipi_attrs[id].direction == IPI_HOST_INITIATE &&
 		apu->ipi_pwr_ref_cnt[id] == 0) {
@@ -227,6 +294,7 @@ int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 		mutex_unlock(&apu->send_lock);
 		return -EAGAIN;
 	}
+#endif
 
 	/* re-init inbox mask everytime for aoc */
 	apu_mbox_inbox_init(apu);
@@ -256,10 +324,39 @@ int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 	/* copy message payload to share buffer, need to do cache flush if
 	 * the buffer is cacheable. currently not
 	 */
+#if IS_ENABLED(CONFIG_VHOST_APU)
+	if (curr_vm_id == 0)
+		memcpy_toio(apu->send_buf, data, len);
+#else
 	memcpy_toio(apu->send_buf, data, len);
+#endif
 
 	hdr.id = id;
 	hdr.len = len;
+#if IS_ENABLED(CONFIG_VHOST_APU)
+	hdr.vm_id = curr_vm_id;
+	if (curr_vm_id > 0) {
+		hdr.csum = virtio_csum;
+		hdr.virtio_send_bufer_da = virtio_send_bufer_da;
+		hdr.virtio_recv_bufer_da = virtio_recv_bufer_da;
+		virtio_csum = 0;
+	} else {
+		hdr.csum = calculate_csum(data, len);
+	}
+
+	hdr.serial_no = tx_serial_no++;
+
+	if (curr_vm_id > 0)
+		user_id = 0;
+	else if (len >= 4)
+		user_id = ((uint32_t *) data)[len/4 - 1];
+
+	/* only vm 0 need to do ipi_send_pre */
+	if ((hw_ops->ipi_send_pre) && (!hdr.vm_id)) {
+		hw_ops->ipi_send_pre(apu, id,
+			ipi_attrs[id].direction == IPI_HOST_INITIATE);
+	}
+#else
 	hdr.csum = calculate_csum(data, len);
 	hdr.serial_no = tx_serial_no++;
 
@@ -269,6 +366,7 @@ int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 	if (hw_ops->ipi_send_pre)
 		hw_ops->ipi_send_pre(apu, id,
 			ipi_attrs[id].direction == IPI_HOST_INITIATE);
+#endif
 
 	apu_mbox_write_inbox(apu, &hdr);
 
@@ -311,7 +409,9 @@ unlock_mutex:
 		 "%s: ipi_id=%d, len=%d, csum=%x, serial_no=%d, user_id=0x%x, elapse=%lld\n",
 		 __func__, id, len, hdr.csum, hdr.serial_no, user_id,
 		 timespec64_to_ns(&ts));
-
+#if IS_ENABLED(CONFIG_VHOST_APU)
+	dev_info(dev, "curr_vm_id = %d\n", curr_vm_id);
+#endif
 	return ret;
 }
 
@@ -454,6 +554,9 @@ static irqreturn_t apu_ipi_handler(int irq, void *priv)
 	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
 	struct apu_ipi_desc *ipi;
 	uint32_t user_id = 0;
+#if IS_ENABLED(CONFIG_VHOST_APU)
+	uint32_t vm_id = 0;
+#endif
 
 	id = apu->hdr.id;
 	len = apu->hdr.len;
@@ -471,6 +574,19 @@ static irqreturn_t apu_ipi_handler(int irq, void *priv)
 	ktime_get_ts64(&t2);
 	t_diff = timespec64_sub(t2, t1);
 	t_mtx_lock_ns = timespec64_to_ns(&t_diff);
+#if IS_ENABLED(CONFIG_VHOST_APU)
+	vm_id = apu->hdr.vm_id;
+
+	if (vm_id != 0 && vhost_apu_platform != NULL) {
+		vhost_apu_platform->vhost_apu_handler(apu->hdr, vm_id);
+		apu_mbox_ack_outbox(apu);
+		ipi_usage_cnt_update(apu, id, -1);
+		mutex_unlock(&apu->ipi_desc[id].lock);
+		apu->ipi_id_ack[id] = true;
+		wake_up(&apu->ack_wq);
+		goto out;
+	}
+#endif
 
 	handler = apu->ipi_desc[id].handler;
 	if (!handler) {
@@ -550,7 +666,9 @@ irqreturn_t apu_ipi_int_handler(int irq, void *priv)
 	ipi_top_handler_t top_handler;
 	int ret;
 	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
-
+#if IS_ENABLED(CONFIG_VHOST_APU)
+	uint32_t vm_id = 0;
+#endif
 	status = ioread32(apu->apu_mbox + 0xc4);
 	if (status != ((1 << APU_MBOX_HDR_SLOTS) - 1))
 		dev_info(dev, "WARN abnormal isr call(0x%x)\n", status);
@@ -582,6 +700,11 @@ irqreturn_t apu_ipi_int_handler(int irq, void *priv)
 		apusys_rv_aee_warn("APUSYS_RV", "IPI rx_serial_no unmatch");
 	}
 	rx_serial_no++;
+#if IS_ENABLED(CONFIG_VHOST_APU)
+	vm_id = apu->hdr.vm_id;
+	if (vm_id != 0)
+		return IRQ_WAKE_THREAD;
+#endif
 
 	if (finish)
 		goto done;
