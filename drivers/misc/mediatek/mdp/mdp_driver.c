@@ -1165,6 +1165,7 @@ void mdp_mme_init(void)
 static int cmdq_probe(struct platform_device *pDevice)
 {
 	int status;
+	struct device *object;
 
 	/* mdp mme log init */
 	mdp_mme_init();
@@ -1204,10 +1205,15 @@ static int cmdq_probe(struct platform_device *pDevice)
 	status = cdev_add(gMdpCDev, gMdpDevNo, 1);
 
 	gMDPClass = class_create(MDP_DRIVER_DEVICE_NAME);
+	object = device_create(gMDPClass, NULL, gMdpDevNo, NULL,
+		MDP_DRIVER_DEVICE_NAME);
+	if (IS_ERR(object)) {
+		CMDQ_ERR("Failed to create device %s(%pe)\n",
+			MDP_DRIVER_DEVICE_NAME, object);
+		return PTR_ERR(object);
+	}
 
 	/* mtk-cmdq-mailbox will register the irq */
-
-	/* proc debug access point */
 
 	mdp_limit_dev_create(pDevice);
 
