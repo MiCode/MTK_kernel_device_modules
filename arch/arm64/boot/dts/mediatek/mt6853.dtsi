@@ -62,8 +62,8 @@
 	chosen: chosen {
 		bootargs = "console=tty0 root=/dev/ram vmalloc=400M \
 		rcupdate.rcu_expedited=1 swiotlb=noforce \
-		8250.nr_uarts=2 \
-		firmware_class.path=/vendor/firmware page_owner=on \
+		8250.nr_uarts=2 transparent_hugepage=never \
+		firmware_class.path=/vendor/firmware \
 		loop.max_part=7 console=ttyS0,921600n1";
 		kaslr-seed = <0 0>;
 	};
