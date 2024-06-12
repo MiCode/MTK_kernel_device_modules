@@ -774,7 +774,8 @@ static int mtk_oddmr_od_set_partial_update(struct mtk_ddp_comp *comp,
 static void mtk_oddmr_dmr_gain_cfg(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *pkg, unsigned int dbv_node, unsigned int fps_node,
 		struct mtk_drm_dmr_cfg_info *cfg_info);
-
+static void mtk_oddmr_tuning_cfg(struct mtk_ddp_comp *comp,
+		struct cmdq_pkt *pkg, struct mtk_drm_oddmr_reg_tuning *tuning_info);
 static void mtk_oddmr_set_dmr_enable_dual(struct mtk_ddp_comp *comp, uint32_t enable,
 		struct cmdq_pkt *handle);
 static void mtk_oddmr_dmr_common_init(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
@@ -785,9 +786,6 @@ static int mtk_oddmr_dmr_fps_lookup(unsigned int fps, struct mtk_drm_dmr_cfg_inf
 	unsigned int *fps_table_idx, unsigned int *fps_node);
 static void mtk_oddmr_dmr_static_cfg(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *pkg, struct mtk_drm_dmr_static_cfg *static_cfg_data);
-static void mtk_oddmr_dmr_gain_cfg(struct mtk_ddp_comp *comp,
-		struct cmdq_pkt *pkg, unsigned int dbv_node, unsigned int fps_node,
-		struct mtk_drm_dmr_cfg_info *cfg_info);
 static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 		struct cmdq_pkt *handle);
 
@@ -918,6 +916,41 @@ static inline void mtk_oddmr_write_mask(struct mtk_ddp_comp *comp, unsigned int 
 				comp->regs_pa + offset, value, mask);
 	} else {
 		mtk_oddmr_write_mask_cpu(comp, value, offset, mask);
+	}
+}
+
+//config register with absolute PA address, value and mask.
+static inline void mtk_oddmr_register_write_mask_cpu(struct mtk_ddp_comp *comp,
+		unsigned int addr, unsigned int value, unsigned int mask)
+{
+	unsigned int tmp;
+	void __iomem *offset = 0;
+
+	if ((addr % 4) != 0) {
+		DDPPR_ERR("%s: invalid addr 0x%x\n",
+				__func__, addr);
+		return;
+	}
+
+	tmp = readl(offset + addr);
+	tmp = (tmp & ~mask) | (value & mask);
+	writel(tmp, (offset + addr));
+}
+
+static inline void mtk_oddmr_register_write_mask(struct mtk_ddp_comp *comp,
+		unsigned int addr, unsigned int value, unsigned int mask, void *handle)
+{
+	if ((addr % 4) != 0) {
+		DDPPR_ERR("%s: invalid addr 0x%x\n",
+				__func__, addr);
+		return;
+	}
+
+	if (handle != NULL) {
+		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
+				addr, value, mask);
+	} else {
+		mtk_oddmr_write_mask_cpu(comp, addr, value, mask);
 	}
 }
 
@@ -2372,6 +2405,7 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 	unsigned int is_compression_mode =
 		atomic_read(&g_oddmr_priv->dmr_data.is_compression_mode);
 	unsigned int cur_bin_idx = atomic_read(&g_oddmr_priv->dmr_data.cur_bin_idx);
+	unsigned int reg_tuning_en = 0;
 
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 				&comp->mtk_crtc->base, comp, true);
@@ -2562,6 +2596,9 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 		}
 		mtk_oddmr_set_dmr_enable(comp, g_oddmr_priv->dmr_enable, handle);
 	}
+	reg_tuning_en = atomic_read(&g_oddmr_priv->reg_tuning_en);
+	if (reg_tuning_en == 1)
+		mtk_oddmr_tuning_cfg(comp, handle, &g_oddmr_priv->oddmr_reg_tuning_info);
 }
 
 static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp,
@@ -4638,6 +4675,7 @@ static void mtk_oddmr_dmr_timing_chg_dual(struct mtk_oddmr_timing *timing, struc
 	dma_addr_t addr = 0;
 	struct mtk_drm_dmr_cfg_info *dmr_cfg_info = &g_oddmr_priv->dmr_cfg_info;
 	unsigned int cur_bin_idx;
+	unsigned int reg_tuning_en = 0;
 
 	if (g_oddmr_priv->data->dmr_version == MTK_DMR_V2) {
 		cur_bin_idx = atomic_read(&g_oddmr_priv->dmr_data.cur_bin_idx);
@@ -4677,6 +4715,10 @@ static void mtk_oddmr_dmr_timing_chg_dual(struct mtk_oddmr_timing *timing, struc
 		ODDMRFLOW_LOG("dmr gain config: dbv_node:%d, fps_node:%d\n", dbv_node, fps_node);
 		ODDMRFLOW_LOG("dmr table cfg: dbv_table:%d, fps_table:%d\n", dbv_table_idx, fps_table_idx);
 	}
+
+	reg_tuning_en = atomic_read(&g_oddmr_priv->reg_tuning_en);
+	if (reg_tuning_en == 1)
+		mtk_oddmr_tuning_cfg(default_comp, handle, &g_oddmr_priv->oddmr_reg_tuning_info);
 }
 
 static void mtk_oddmr_od_flip(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -4876,6 +4918,7 @@ static void mtk_oddmr_dmr_bl_chg(uint32_t bl_level, struct cmdq_pkt *handle)
 	unsigned int cur_binset_idx;
 	struct mtk_drm_dmr_cfg_info *dmr_cfg_info = &g_oddmr_priv->dmr_cfg_info;
 	unsigned int cur_bin_idx;
+	unsigned int reg_tuning_en = 0;
 
 	if (g_oddmr_priv->dmr_state >= ODDMR_INIT_DONE) {
 		ODDMRAPI_LOG("+\n");
@@ -4920,6 +4963,9 @@ static void mtk_oddmr_dmr_bl_chg(uint32_t bl_level, struct cmdq_pkt *handle)
 		ODDMRFLOW_LOG("dmr gain config: dbv_node:%d, fps_node:%d\n", dbv_node, fps_node);
 		ODDMRFLOW_LOG("dmr table cfg: dbv_table:%d, fps_table:%d\n", dbv_table_idx, fps_table_idx);
 	}
+	reg_tuning_en = atomic_read(&g_oddmr_priv->reg_tuning_en);
+	if (reg_tuning_en == 1)
+		mtk_oddmr_tuning_cfg(default_comp, handle, &g_oddmr_priv->oddmr_reg_tuning_info);
 }
 
 static void mtk_oddmr_dbi_bl_chg(uint32_t bl_level, struct cmdq_pkt *handle)
@@ -5272,6 +5318,7 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		unsigned int cur_dbv;
 		unsigned long flags;
 		unsigned int cur_binset_idx;
+		unsigned int reg_tuning_en = 0;
 
 		static int dmr_enable;
 		static int dbi_enable;
@@ -5305,6 +5352,9 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 					mtk_oddmr_remap_set_enable(comp, handle, false);
 			}
 		}
+		reg_tuning_en = atomic_read(&g_oddmr_priv->reg_tuning_en);
+		if (reg_tuning_en == 1)
+			mtk_oddmr_tuning_cfg(comp, handle, &g_oddmr_priv->oddmr_reg_tuning_info);
 
 		if(dbi_enable != g_oddmr_priv->dbi_enable) {
 			mtk_oddmr_dbi_config(default_comp,handle);
@@ -6569,6 +6619,25 @@ static void mtk_oddmr_dmr_gain_cfg(struct mtk_ddp_comp *comp,
 		}
 	} else
 		ODDMRFLOW_LOG("dmr static config data error\n");
+}
+
+static void mtk_oddmr_tuning_cfg(struct mtk_ddp_comp *comp,
+		struct cmdq_pkt *pkg, struct mtk_drm_oddmr_reg_tuning *tuning_info)
+{
+	uint32_t cnt;
+	int i;
+
+	ODDMRAPI_LOG("+\n");
+	if (tuning_info && tuning_info->reg_num && tuning_info->reg_addr
+		&& tuning_info->reg_value && tuning_info->reg_mask) {
+		cnt = tuning_info->reg_num;
+		for (i = 0; i < cnt; i++) {
+			if(tuning_info->reg_mask[i])
+				mtk_oddmr_register_write_mask(comp, tuning_info->reg_addr[i],
+					tuning_info->reg_value[i], tuning_info->reg_mask[i], pkg);
+		}
+	} else
+		DDPPR_ERR("oddmr tuning config error\n");
 }
 
 static void mtk_oddmr_dbi_gain_cfg(struct mtk_ddp_comp *comp,
@@ -8015,6 +8084,116 @@ static int mtk_oddmr_dmr_init(struct mtk_drm_dmr_cfg_info *cfg_info)
 	return ret;
 }
 
+static int mtk_oddmr_reg_tuning_init (struct mtk_drm_oddmr_reg_tuning *tuning_reg_info)
+{
+	void *data[20] = {0};
+	int index = 0;
+	int size;
+	int i = 0;
+	struct mtk_drm_oddmr_reg_tuning *reg_tuning_info = &g_oddmr_priv->oddmr_reg_tuning_info;
+	unsigned int reg_tuning_en = 0;
+
+	ODDMRAPI_LOG("+\n");
+	if (default_comp == NULL || g_oddmr_priv == NULL || default_comp->mtk_crtc == NULL) {
+		DDPPR_ERR("oddmr comp is NULL\n");
+		return -1;
+	}
+	if(!tuning_reg_info){
+		DDPPR_ERR("dmr gain config info is NULL\n");
+		return -1;
+	}
+
+	reg_tuning_en = atomic_read(&g_oddmr_priv->reg_tuning_en);
+	if(reg_tuning_en == 1){
+		ODDMRLOW_LOG("oddmr re-load tuning register\n");
+		if (reg_tuning_info->reg_value)
+			vfree(reg_tuning_info->reg_value);
+		if (reg_tuning_info->reg_addr)
+			vfree(reg_tuning_info->reg_addr);
+		if (reg_tuning_info->reg_mask)
+			vfree(reg_tuning_info->reg_mask);
+	}
+
+	memcpy(reg_tuning_info, tuning_reg_info, sizeof(struct mtk_drm_oddmr_reg_tuning));
+	ODDMRLOW_LOG("tuning register num %d\n", reg_tuning_info->reg_num);
+
+	if(reg_tuning_info->reg_num) {
+		size = sizeof(uint32_t) * tuning_reg_info->reg_num;
+		data[index] = vmalloc(size);
+		if (!data[index]) {
+			DDPPR_ERR("%s:%d, param buffer alloc fail\n", __func__, __LINE__);
+			return -1;
+		}
+		if (copy_from_user(data[index],	tuning_reg_info->reg_value, size)) {
+			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			return -1;
+		}
+		reg_tuning_info->reg_value = (uint32_t *)data[index];
+		index++;
+
+		data[index] = vmalloc(size);
+		if (!data[index]) {
+			DDPPR_ERR("%s:%d, param buffer alloc fail\n", __func__, __LINE__);
+			return -1;
+		}
+		if (copy_from_user(data[index], tuning_reg_info->reg_addr, size)) {
+			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			return -1;
+		}
+		reg_tuning_info->reg_addr = (uint32_t *)data[index];
+		index++;
+
+		data[index] = vmalloc(size);
+		if (!data[index]) {
+			DDPPR_ERR("%s:%d, param buffer alloc fail\n", __func__, __LINE__);
+			return -1;
+		}
+		if (copy_from_user(data[index], tuning_reg_info->reg_mask, size)) {
+			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			return -1;
+		}
+		reg_tuning_info->reg_mask = (uint32_t *)data[index];
+		index++;
+	}
+
+	return 0;
+}
+
+static int mtk_oddmr_reg_tuning_enable(struct drm_device *dev, bool en)
+{
+	int ret = 0, enable = en;
+
+	ODDMRAPI_LOG("%d\n", enable);
+	if (default_comp == NULL || g_oddmr_priv == NULL) {
+		DDPPR_ERR("oddmr comp is NULL\n");
+		return -1;
+	}
+	//if (g_oddmr_priv->dmr_state < ODDMR_INIT_DONE) {
+	//	DDPPR_ERR("can not enable, state %d\n", g_oddmr_priv->dmr_state);
+	//	return -EFAULT;
+	//}
+	mtk_drm_idlemgr_kick(__func__,
+		&default_comp->mtk_crtc->base, 1);
+	ret = mtk_oddmr_acquire_clock();
+	if (ret == 0)
+		mtk_oddmr_release_clock();
+	else {
+		DDPPR_ERR("clock not on %d\n", ret);
+		return ret;
+	}
+
+	atomic_set(&g_oddmr_priv->reg_tuning_en, en);
+	atomic_set(&g_oddmr_dmr_hrt_done, 2);
+	drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, default_comp->mtk_crtc->base.dev);
+	ret = wait_event_interruptible_timeout(g_oddmr_hrt_wq,
+			atomic_read(&g_oddmr_dmr_hrt_done) == 1, msecs_to_jiffies(200));
+	if (ret <= 0) {
+		atomic_set(&g_oddmr_dmr_hrt_done, 0);
+		DDPPR_ERR("enable %d repaint timeout %d\n", enable, ret);
+		ret = -EAGAIN;
+	}
+	return ret;
+}
 
 uint32_t mtk_oddmr_dbi_alpha_blend_int(uint32_t list_num, uint32_t *list_node,
 	uint32_t *list_value, uint32_t target, uint32_t frac_bit)
@@ -9113,6 +9292,16 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 				mtk_oddmr_dmr_config(comp, NULL);
 		}
 		DDPMSG("%s, PQ_DMR_BINSET_CHG\n", __func__);
+		break;
+	case PQ_ODDMR_REG_TUNING_ENABLE:
+		ret = 0;
+		atomic_set(&g_oddmr_priv->reg_tuning_en, *(unsigned int *)params);
+		//mtk_oddmr_reg_tuning_enable(NULL, *params);
+		DDPMSG("%s, PQ_ODDMR_REG_TUNING_ENABLE\n", __func__);
+		break;
+	case PQ_ODDMR_REG_TUNING_INIT:
+		ret = mtk_oddmr_reg_tuning_init(params);
+		DDPMSG("%s, PQ_ODDMR_REG_TUNING_INIT\n", __func__);
 		break;
 	case PQ_DBI_LOAD_PARAM:
 		ret = mtk_oddmr_dbi_init(params);

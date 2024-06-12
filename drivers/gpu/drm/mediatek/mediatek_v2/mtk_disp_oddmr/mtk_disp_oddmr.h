@@ -134,6 +134,13 @@ struct mtk_drm_dmr_static_cfg {
 	unsigned int *reg_value;
 };
 
+struct mtk_drm_oddmr_reg_tuning {
+	unsigned int reg_num;
+	unsigned int *reg_addr;
+	unsigned int *reg_mask;
+	unsigned int *reg_value;
+};
+
 struct mtk_drm_dmr_table_index {
 	unsigned int DBV_table_num;
 	unsigned int FPS_table_num;
@@ -401,6 +408,7 @@ struct mtk_disp_oddmr {
 	int od_force_off;
 	int dmr_enable_req;
 	int dmr_enable;
+	atomic_t reg_tuning_en;
 	int dbi_enable_req;
 	int dbi_enable;
 	unsigned int spr_enable;
@@ -435,6 +443,7 @@ struct mtk_disp_oddmr {
 	struct mtk_drm_dmr_cfg_info dmr_cfg_info;
 	struct mtk_drm_dmr_cfg_info dmr_multi_bin[MAX_BIN_NUM];
 	struct mtk_drm_oddmr_binset_cfg_info dmr_binset_cfg_info;
+	struct mtk_drm_oddmr_reg_tuning oddmr_reg_tuning_info;
 	struct mtk_drm_dbi_cfg_info dbi_cfg_info;
 	struct mtk_drm_dbi_cfg_info dbi_cfg_info_tb1;
 	uint32_t od_user_gain;
