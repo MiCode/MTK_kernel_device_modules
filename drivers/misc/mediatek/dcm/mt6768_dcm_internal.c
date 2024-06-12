@@ -50,10 +50,6 @@ short is_dcm_bringup(void)
  * following is implementation per DCM module.
  * 1. per-DCM function is 1-argu with ON/OFF/MODE option.
  *****************************************/
-int dcm_topckg(int on)
-{
-	return 0;
-}
 
 void dcm_infracfg_ao_emi_indiv(int on)
 {
@@ -72,11 +68,6 @@ int dcm_infra(int on)
 	dcm_infracfg_ao_audio_bus(on);
 	dcm_infracfg_ao_icusb_bus(on);
 
-	return 0;
-}
-
-int dcm_peri(int on)
-{
 	return 0;
 }
 
@@ -114,11 +105,6 @@ int dcm_big_core_preset(void)
 	return 0;
 }
 
-int dcm_big_core(int on)
-{
-	return 0;
-}
-
 int dcm_stall_preset(int on)
 {
 	return 0;
@@ -128,21 +114,6 @@ int dcm_stall(int on)
 {
 	dcm_mp_cpusys_top_core_stall_dcm(on);
 	dcm_mp_cpusys_top_fcm_stall_dcm(on);
-	return 0;
-}
-
-int dcm_gic_sync(int on)
-{
-	return 0;
-}
-
-int dcm_last_core(int on)
-{
-	return 0;
-}
-
-int dcm_rgu(int on)
-{
 	return 0;
 }
 
@@ -168,22 +139,12 @@ int dcm_emi(int on)
 	return 0;
 }
 
-int dcm_lpdma(int on)
-{
-	return 0;
-}
-
 int dcm_pwrap(int on)
 {
 	return 0;
 }
 
 int dcm_mcsi_preset(int on)
-{
-	return 0;
-}
-
-int dcm_mcsi(int on)
 {
 	return 0;
 }
@@ -263,7 +224,7 @@ static int dcm_armcore_is_on(void)
 	ret &= dcm_mp_cpusys_top_bus_pll_div_dcm_is_on();
 	ret &= dcm_mp_cpusys_top_cpu_pll_div_0_dcm_is_on();
 	ret &= dcm_mp_cpusys_top_cpu_pll_div_1_dcm_is_on();
-	ret &= dcm_mp_cpusys_top_cpu_pll_div_2_dcm_is_on();
+	// ret &= dcm_mp_cpusys_top_cpu_pll_div_2_dcm_is_on();
 
 	return ret;
 }
@@ -292,14 +253,6 @@ static int dcm_infra_is_on(void)
 	ret &= dcm_infracfg_ao_peri_bus_is_on();
 	ret &= dcm_infracfg_ao_audio_bus_is_on();
 	ret &= dcm_infracfg_ao_icusb_bus_is_on();
-
-	return ret;
-}
-
-//need to review
-static int dcm_peri_is_on(void)
-{
-	int ret = 1;
 
 	return ret;
 }
@@ -346,55 +299,6 @@ static int dcm_stall_is_on(void)
 	return ret;
 }
 
-static int dcm_big_core_is_on(void)
-{
-	int ret = 1;
-
-	return ret;
-}
-
-static int dcm_gic_sync_is_on(void)
-{
-	int ret = 1;
-
-	return ret;
-}
-
-static int dcm_last_core_is_on(void)
-{
-	int ret = 1;
-
-	return ret;
-}
-
-static int dcm_rgu_is_on(void)
-{
-	int ret = 1;
-
-	return ret;
-}
-
-static int dcm_topckg_is_on(void)
-{
-	int ret = 1;
-
-	return ret;
-}
-
-static int dcm_lpdma_is_on(void)
-{
-	int ret = 1;
-
-	return ret;
-}
-
-static int dcm_mcsi_is_on(void)
-{
-	int ret = 1;
-
-	return ret;
-}
-
 static struct DCM dcm_array[] = {
 	{
 	 .typeid = ARMCORE_DCM_TYPE,
@@ -416,13 +320,6 @@ static struct DCM dcm_array[] = {
 	 .func = (DCM_FUNC) dcm_infra,
 	 .is_on_func = dcm_infra_is_on,
 	 .default_state = INFRA_DCM_ON,
-	 },
-	{
-	 .typeid = PERI_DCM_TYPE,
-	 .name = "PERI_DCM",
-	 .func = (DCM_FUNC) dcm_peri,
-	 .is_on_func = dcm_peri_is_on,
-	 .default_state = PERI_DCM_ON,
 	 },
 	{
 	 .typeid = EMI_DCM_TYPE,
@@ -451,55 +348,6 @@ static struct DCM dcm_array[] = {
 	 .func = (DCM_FUNC) dcm_stall,
 	 .is_on_func = dcm_stall_is_on,
 	 .default_state = STALL_DCM_ON,
-	 },
-	{
-	 .typeid = BIG_CORE_DCM_TYPE,
-	 .name = "BIG_CORE_DCM",
-	 .func = (DCM_FUNC) dcm_big_core,
-	 .is_on_func = dcm_big_core_is_on,
-	 .default_state = BIG_CORE_DCM_ON,
-	 },
-	{
-	 .typeid = GIC_SYNC_DCM_TYPE,
-	 .name = "GIC_SYNC_DCM",
-	 .func = (DCM_FUNC) dcm_gic_sync,
-	 .is_on_func = dcm_gic_sync_is_on,
-	 .default_state = GIC_SYNC_DCM_ON,
-	 },
-	{
-	 .typeid = LAST_CORE_DCM_TYPE,
-	 .name = "LAST_CORE_DCM",
-	 .func = (DCM_FUNC) dcm_last_core,
-	 .is_on_func = dcm_last_core_is_on,
-	 .default_state = LAST_CORE_DCM_ON,
-	 },
-	{
-	 .typeid = RGU_DCM_TYPE,
-	 .name = "RGU_CORE_DCM",
-	 .func = (DCM_FUNC) dcm_rgu,
-	 .is_on_func = dcm_rgu_is_on,
-	 .default_state = RGU_DCM_ON,
-	 },
-	{
-	 .typeid = TOPCKG_DCM_TYPE,
-	 .name = "TOPCKG_DCM",
-	 .func = (DCM_FUNC) dcm_topckg,
-	 .is_on_func = dcm_topckg_is_on,
-	 .default_state = TOPCKG_DCM_ON,
-	 },
-	{
-	 .typeid = LPDMA_DCM_TYPE,
-	 .name = "LPDMA_DCM",
-	 .func = (DCM_FUNC) dcm_lpdma,
-	 .is_on_func = dcm_lpdma_is_on,
-	 .default_state = LPDMA_DCM_ON,
-	 },
-	{
-	 .typeid = MCSI_DCM_TYPE,
-	 .name = "MCSI_DCM",
-	 .func = (DCM_FUNC) dcm_mcsi,
-	 .is_on_func = dcm_mcsi_is_on,
-	 .default_state = MCSI_DCM_ON,
 	 },
 	/* Keep this NULL element for array traverse */
 	{0},
