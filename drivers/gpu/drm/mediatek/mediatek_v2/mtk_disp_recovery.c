@@ -550,6 +550,7 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
 			mtk_crtc->gce_obj.client[CLIENT_CFG]);
 
+		CRTC_MMP_MARK(index, set_dirty, ESD_RECOVERY, (unsigned long)cmdq_handle);
 		cmdq_pkt_set_event(cmdq_handle,
 			mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
 		cmdq_pkt_set_event(cmdq_handle,

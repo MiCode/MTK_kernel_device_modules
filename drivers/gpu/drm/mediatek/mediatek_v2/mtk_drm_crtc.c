@@ -2524,6 +2524,7 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 				mtk_get_gce_backup_slot_pa(mtk_crtc,
 				DISP_SLOT_PANEL_SPR_EN), 2, ~0);
+		CRTC_MMP_MARK(0, set_dirty, SWITCH_SPR, (unsigned long)cmdq_handle);
 		cmdq_pkt_set_event(cmdq_handle,
 			mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
 
@@ -7777,9 +7778,11 @@ void mtk_crtc_dc_prim_path_update(struct drm_crtc *crtc)
 
 	/* support DC with color matrix no more */
 	/* mtk_crtc_dc_config_color_matrix(crtc, cmdq_handle);*/
-	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
+	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+		CRTC_MMP_MARK(0, set_dirty, DC_PRIM_PATH, (unsigned long)cmdq_handle);
 		cmdq_pkt_set_event(cmdq_handle,
 				   mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+	}
 
 	cb_data->crtc = crtc;
 	cb_data->cmdq_handle = cmdq_handle;
@@ -9813,9 +9816,11 @@ static void cmdq_pkt_switch_panel_spr_enable(struct cmdq_pkt *cmdq_handle,
 				 mtk_get_gce_backup_slot_pa(mtk_crtc,
 				DISP_SLOT_PANEL_SPR_EN), 0, ~0);
 	if(params_lcm != NULL &&
-		params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE2)
+		params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE2) {
+		CRTC_MMP_MARK(0, set_dirty, SPR_ENABLE, (unsigned long)cmdq_handle);
 		cmdq_pkt_set_event(cmdq_handle,
 				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+	}
 
 	/* this is end of whole condition, thus condition
 	 * FALSE part should jump here
@@ -9890,9 +9895,11 @@ static void cmdq_pkt_switch_panel_spr_disable(struct cmdq_pkt *cmdq_handle,
 				 mtk_get_gce_backup_slot_pa(mtk_crtc,
 				DISP_SLOT_PANEL_SPR_EN), 0, ~0);
 	if(params_lcm != NULL &&
-		params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE2)
+		params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE2) {
+		CRTC_MMP_MARK(0, set_dirty, SPR_DISABLE, (unsigned long)cmdq_handle);
 		cmdq_pkt_set_event(cmdq_handle,
 				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+	}
 
 	/* this is end of whole condition, thus condition
 	 * FALSE part should jump here
@@ -11317,6 +11324,7 @@ static void set_dirty_cmdq_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
 
+	CRTC_MMP_MARK(0, set_dirty, SET_DIRTY_DONE, (unsigned long)cb_data->cmdq_handle);
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
 	kfree(cb_data);
 }
@@ -11351,6 +11359,7 @@ void mtk_crtc_set_dirty(struct mtk_drm_crtc *mtk_crtc)
 		return;
 	}
 
+	CRTC_MMP_MARK(0, set_dirty, SET_DIRTY, (unsigned long)cmdq_handle);
 	cmdq_pkt_set_event(cmdq_handle,
 		mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
 
@@ -12616,8 +12625,10 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	/* 11. set dirty for cmd mode */
 	if (mtk_crtc_is_frame_trigger_mode(crtc) &&
 		!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE] &&
-		!mtk_state->doze_changed && !mtk_crtc->skip_frame)
+		!mtk_state->doze_changed && !mtk_crtc->skip_frame) {
+		CRTC_MMP_MARK(0, set_dirty, CRTC_ENABLE, __LINE__);
 		mtk_crtc_set_dirty(mtk_crtc);
+	}
 
 	/* 12. set vblank*/
 	drm_crtc_vblank_on(crtc);
@@ -13518,8 +13529,10 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 	cmdq_pkt_flush(cmdq_handle);
 	cmdq_pkt_destroy(cmdq_handle);
 
-	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
+	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+		CRTC_MMP_MARK(0, set_dirty, FIRST_ENABLE_DDP_CONFIG, __LINE__);
 		mtk_crtc_set_dirty(mtk_crtc);
+	}
 }
 
 void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
@@ -15645,6 +15658,7 @@ void mtk_drm_crtc_discrete_update(struct drm_crtc *crtc,
 			client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 			mtk_crtc_pkt_create(&pending_handle, crtc, client);
 
+			CRTC_MMP_MARK(0, set_dirty, DISCRETE_UPDATE, __LINE__);
 			cmdq_pkt_set_event(pending_handle,
 				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
 
@@ -16560,9 +16574,11 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			/* skip trigger when racing with mml */
 		} else {
 			/* DL with trigger loop */
-			if (!mtk_crtc->path_data->is_discrete_path)
+			if (!mtk_crtc->path_data->is_discrete_path) {
+				CRTC_MMP_MARK(0, set_dirty, GCE_FLUSH, (unsigned long)cmdq_handle);
 				cmdq_pkt_set_event(cmdq_handle,
 					   mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+			}
 		}
 	} else {
 		/* DL without trigger loop */
@@ -20349,9 +20365,11 @@ static int __mtk_crtc_composition_wb(
 	mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
 	mtk_crtc_create_wb_path_cmdq(crtc, cmdq_handle, mtk_crtc->ddp_mode, 0,
 				     cfg);
-	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
+	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+		CRTC_MMP_MARK(0, set_dirty, COMPOSITION_WB, (unsigned long)cmdq_handle);
 		cmdq_pkt_set_event(cmdq_handle,
 				   mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+	}
 	if (gce_event > 0) {
 		cmdq_pkt_clear_event(cmdq_handle, gce_event);
 		cmdq_pkt_wait_no_clear(cmdq_handle, gce_event);
@@ -20442,9 +20460,11 @@ static void __mtk_crtc_prim_path_switch(struct drm_crtc *crtc,
 	mtk_crtc_config_wb_path_cmdq(crtc, cmdq_handle, next_path_idx,
 				     ddp_mode);
 
-	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
+	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+		CRTC_MMP_MARK(0, set_dirty, PRIM_PATH, (unsigned long)cmdq_handle);
 		cmdq_pkt_set_event(cmdq_handle,
 				   mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+	}
 
 	cmdq_pkt_flush(cmdq_handle);
 	cmdq_pkt_destroy(cmdq_handle);

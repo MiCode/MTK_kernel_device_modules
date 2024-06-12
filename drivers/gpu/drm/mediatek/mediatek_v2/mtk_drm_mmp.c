@@ -381,6 +381,8 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "leave_V_idle");
 		g_CRTC_MMP_Events[i].pause_vidle = mmprofile_register_event(
 			crtc_mmp_root, "pause_V_idle");
+		g_CRTC_MMP_Events[i].set_dirty = mmprofile_register_event(
+			crtc_mmp_root, "set_dirty");
 	}
 }
 void drm_mmp_init(void)

@@ -6040,6 +6040,7 @@ static int mtk_oddmr_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 	}
 	case ODDMR_CMD_EOF_CHECK_TRIGGER:
 	{
+		CRTC_MMP_MARK(0, set_dirty, ODDMR_CHECK_TRIGGER, __LINE__);
 		cmdq_pkt_set_event(handle, comp->mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
 		break;
 	}
