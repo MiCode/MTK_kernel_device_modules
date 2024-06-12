@@ -234,7 +234,7 @@
 			reg = <0x0000>;
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <744>;
+			capacity-dmips-mhz = <714>;
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_vcore &s2idle>;
 		};
@@ -244,7 +244,7 @@
 			reg = <0x0100>;
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <744>;
+			capacity-dmips-mhz = <714>;
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_vcore &s2idle>;
 		};
@@ -254,7 +254,7 @@
 			reg = <0x0200>;
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <744>;
+			capacity-dmips-mhz = <714>;
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_vcore &s2idle>;
 		};
@@ -264,7 +264,7 @@
 			reg = <0x0300>;
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <744>;
+			capacity-dmips-mhz = <714>;
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_vcore &s2idle>;
 		};
@@ -304,7 +304,7 @@
 			reg = <0x0700>;
 			performance-domains = <&performance 2>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <971>;
+			capacity-dmips-mhz = <937>;
 			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 						&system_vcore &s2idle>;
 		};
