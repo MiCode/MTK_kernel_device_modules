@@ -964,7 +964,7 @@ static const struct mtk_device_info mt6991_devices_apinfra_big4[] = {
 	{-1, -1, 185, "Decode_error", true},
 	{-1, -1, 186, "Decode_error", true},
 	{-1, -1, 187, "Decode_error", true},
-	{-1, -1, 188, "Decode_error", true},
+	{-1, -1, 188, "Decode_error", false},
 	{-1, -1, 189, "Decode_error", true},
 
 	/* 190 */
