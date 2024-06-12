@@ -132,17 +132,25 @@ static void hw_dvm_to_vmid_0_1(void)
 }
 
 /* get smmu hw semaphore to make sure smmu hw power keep on */
-static bool get_target_smmu_hw_semaphore(smmu_device_t *source_smmu_dev)
+static int get_target_smmu_hw_semaphore(smmu_device_t *source_smmu_dev)
 {
-	bool power_status;
+	/* power_status==0 => power on; !=0 => power off */
+	unsigned int power_status = -1;
 	struct arm_smccc_res smc_res;
-	unsigned int smmu_id;
+	unsigned int smmu_id, sip_id;
 
-	power_status = true;
+	sip_id = MTK_SIP_HYP_SMMU_CONTROL;
 	smmu_id = source_smmu_dev->smmu_id;
-	arm_smccc_1_1_smc((MTK_SIP_HYP_SMMU_CONTROL), HYP_SMMU_PM_GET, smmu_id,
-			  0, 0, 0, 0, 0, &smc_res);
+	arm_smccc_1_1_smc(sip_id, HYP_SMMU_PM_GET, smmu_id, 0, 0, 0, 0, 0,
+			  &smc_res);
+
 	power_status = smc_res.a0;
+	if (power_status == sip_id) {
+		pkvm_smmu_ops->puts("smc fail because not support");
+		WARN_ON(1);
+		return -1;
+	}
+
 	return power_status;
 }
 
@@ -150,11 +158,12 @@ static bool get_target_smmu_hw_semaphore(smmu_device_t *source_smmu_dev)
 static void put_target_smmu_hw_semaphore(smmu_device_t *source_smmu_dev)
 {
 	struct arm_smccc_res smc_res;
-	unsigned int smmu_id;
+	unsigned int smmu_id, sip_id;
 
+	sip_id = MTK_SIP_HYP_SMMU_CONTROL;
 	smmu_id = source_smmu_dev->smmu_id;
-	arm_smccc_1_1_smc((MTK_SIP_HYP_SMMU_CONTROL), HYP_SMMU_PM_PUT, smmu_id,
-			  0, 0, 0, 0, 0, &smc_res);
+	arm_smccc_1_1_smc(sip_id, HYP_SMMU_PM_PUT, smmu_id, 0, 0, 0, 0, 0,
+			  &smc_res);
 }
 
 /* check smmu el1 cmdq enable status */
@@ -169,6 +178,7 @@ static void broadcast_cmd_to_all_smmu(uint64_t *cmd0, uint64_t *cmd1)
 	unsigned int subsys_smmu;
 	smmu_device_t *smmu_dev;
 	uint64_t cmd_sync[CMD_SIZE_DW];
+	int ret = 0;
 
 	smmu_dev = NULL;
 	construct_cmd_sync(cmd_sync);
@@ -181,7 +191,8 @@ static void broadcast_cmd_to_all_smmu(uint64_t *cmd0, uint64_t *cmd1)
 		if (!el1_smmu_cmdq_enable(smmu_dev))
 			continue;
 		hyp_spin_lock(&smmu_dev->cmdq_batch_lock);
-		if (get_target_smmu_hw_semaphore(smmu_dev) == SMMU_POWER_ON) {
+		ret = get_target_smmu_hw_semaphore(smmu_dev);
+		if (ret == SMMU_POWER_ON) {
 			/* cmd0 for linux-vm */
 			if (!smmuv3_issue_cmd(smmu_dev, cmd0))
 				pkvm_smmu_ops->puts("issue cmd0 fail");
@@ -232,12 +243,12 @@ static bool mtk_smmu_sync(void)
 
 void mtk_smmu_share(struct kvm_cpu_context *ctx)
 {
-	uint64_t region_start, region_pfn, pfn_total, i;
-	uint64_t region_size;
+	uint64_t region_start = 0, region_pfn, pfn_total, i;
+	uint64_t region_size = 0;
 	int ret_share;
 	uint32_t smmu_id, type, subsys_smmu;
 	smmu_device_t *smmu_dev = NULL;
-	uint64_t **share_addr;
+	uint64_t **share_addr = NULL;
 
 	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
 	smmu_id = ctx->regs.regs[1];
@@ -262,8 +273,10 @@ void mtk_smmu_share(struct kvm_cpu_context *ctx)
 		}
 	}
 
-	if (share_addr == NULL)
+	if (share_addr == NULL) {
 		pkvm_smmu_ops->puts("mtk_smmu_share : Can't find smmu device");
+		return;
+	}
 	region_pfn = region_start >> PAGE_SHIFT;
 	pfn_total = region_size >> PAGE_SHIFT;
 	for (i = 0; i < pfn_total; i++) {
@@ -520,7 +533,7 @@ static paddr_t get_smmu_contig_mpool_pa(smmu_device_t *dev, unsigned int type)
 		pa = smmu_get_global_ste_pa();
 		break;
 	case GET_CMDQ:
-		if (index >= 0 && index < SMMU_ID_NUM)
+		if (index < SMMU_ID_NUM)
 			pa = smmu_get_cmdq_buf_pa(index);
 		break;
 	default:
