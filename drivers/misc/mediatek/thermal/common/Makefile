@@ -11,8 +11,7 @@
 # GNU General Public License for more details.
 #
 
-ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/inc
-ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v1/inc
+
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include/
