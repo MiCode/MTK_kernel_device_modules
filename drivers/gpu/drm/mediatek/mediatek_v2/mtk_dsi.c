@@ -219,7 +219,6 @@
 #define CMD_TYPE1_HS_FLD_HFP_BLANKING_NULL_EN REG_FLD_MSB_LSB(17, 17)
 
 #define DSI_HSTX_CKL_WC(data)	(data->dsi_hstx_ckl_wc ? data->dsi_hstx_ckl_wc : 0x64)
-#define DSI_CMDQ_CON 0x60
 
 #define DSI_RX_DATA0(data)	(0x74 + data->reg_30_ofs)
 #define DSI_RX_DATA1(data)	(0x78 + data->reg_30_ofs)
@@ -229,10 +228,10 @@
 #define DSI_RACK(data)	(0x84 + data->reg_30_ofs)
 #define RACK BIT(0)
 
-#define DSI_RX_TRIG_STA 0x88
+#define DSI_RX_TRIG_STA(data)	(data->dsi_rx_trig_sta ? data->dsi_rx_trig_sta : 0x88)
 #define RX_POINTER REG_FLD_MSB_LSB(19, 8)
 
-#define DSI_RX_CON 0x08C
+#define DSI_RX_CON(data)	(data->dsi_rx_con ? data->dsi_rx_con : 0x8C)
 #define RX_DATA_SRAM_MODE BIT(0)
 
 #define DSI_MEM_CONTI(data)     (data->dsi_mem_conti ? data->dsi_mem_conti : 0x90)
@@ -353,8 +352,6 @@
 #define DSI_BUF_ULTRA_LOW(data)		(DSI_BUF_CON0(data) + 0x30)
 #define DSI_BUF_URGENT_HIGH(data)	(DSI_BUF_CON0(data) + 0x34)
 #define DSI_BUF_URGENT_LOW(data)	(DSI_BUF_CON0(data) + 0x38)
-
-#define DSI_CMDQ 0xD00
 
 #define CONFIG (0xff << 0)
 #define SHORT_PACKET 0
@@ -6770,11 +6767,12 @@ static void mtk_dsi_set_rx_sram_mode(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, unsigned int enable)
 {
 	u32 val = enable ? RX_DATA_SRAM_MODE : 0;
+	struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
 
 	if (handle)
-		mtk_ddp_write(comp, val, DSI_RX_CON, handle);
+		mtk_ddp_write(comp, val, DSI_RX_CON(dsi->driver_data), handle);
 	else
-		writel(val, comp->regs + DSI_RX_CON);
+		writel(val, comp->regs + DSI_RX_CON(dsi->driver_data));
 }
 
 static void mtk_dsi_ddp_config(struct mtk_ddp_comp *comp,
@@ -9440,7 +9438,7 @@ static ssize_t _mtk_dsi_host_transfer(struct mtk_dsi *dsi,
 	u32 recv_cnt, i;
 	u8 irq_flag;
 	void *src_addr;
-	#define RX_NUM 512
+#define RX_NUM 512
 	u8 read_data[RX_NUM];
 
 	if (!dsi || !dsi->driver_data || !msg) {
@@ -9459,7 +9457,6 @@ static ssize_t _mtk_dsi_host_transfer(struct mtk_dsi *dsi,
 		.tx_len = 0x1,
 		.type = MIPI_DSI_SET_MAXIMUM_RETURN_PACKET_SIZE,
 		};
-		DDPDBG("%s, %d, RX sram mode [%d]\n", __func__, __LINE__, readl(dsi->regs + DSI_RX_CON));
 
 		if (mtk_dsi_host_send_cmd(dsi, &set_rd_msg, irq_flag) < 0)
 			DDPPR_ERR("RX mtk_dsi_host_send_cmd fail\n");
@@ -9489,21 +9486,46 @@ static ssize_t _mtk_dsi_host_transfer(struct mtk_dsi *dsi,
 	}
 
 	if (dsi && dsi->driver_data && dsi->driver_data->support_512byte_rx) {
-		recv_cnt = DISP_REG_GET_FIELD(RX_POINTER, dsi->regs + DSI_RX_TRIG_STA);
-		DDPDBG("%s, %d, DSI RX recv_cnt[%d]\n", __func__, __LINE__, recv_cnt);
+		void __iomem *dsi_cmdq;
+		u32 j;
 
-		if (recv_cnt < RX_NUM) {
-			/* set cmdq page */
-			writel(0x00030000, dsi->regs + DSI_CMDQ_CON);
+		recv_cnt = DISP_REG_GET_FIELD(RX_POINTER,
+			dsi->regs + DSI_RX_TRIG_STA(dsi->driver_data));
 
-			for (i = 0; i < recv_cnt; i++) {
-				read_data[i] = readb(dsi->regs + DSI_CMDQ + 0x1FF - i);
-				DDPDBG("%s, %d, RX[%d] = [%d]\n",
-				__func__, __LINE__,
-				i, readb(dsi->regs + DSI_CMDQ + 0x1FF - i));
-			}
-			memcpy(msg->rx_buf, read_data, recv_cnt);
+		dsi_cmdq = dsi->regs + dsi->driver_data->reg_cmdq0_ofs;
+
+		if (recv_cnt > RX_NUM) {
+			DDPPR_ERR("%s, DSI RX recv_cnt=%d over max value(%d)\n",
+				__func__, recv_cnt, RX_NUM);
+			return -EINVAL;
 		}
+
+		/* set cmdq page */
+		writel(0x00030000, dsi->regs + DSI_CMDQ_SIZE(dsi->driver_data));
+
+		for (i = 0; i < ((recv_cnt + 3) / 4); i++) {
+			j = i * 4;
+			read_data[j] = readb(dsi_cmdq + 0x1FF - (j + 3));
+			read_data[j + 1] = readb(dsi_cmdq + 0x1FF - (j + 2));
+			read_data[j + 2] = readb(dsi_cmdq + 0x1FF - (j + 1));
+			read_data[j + 3] = readb(dsi_cmdq + 0x1FF - j);
+			DDPDBG("%s, RX[%d]=0x%x, RX[%d]=0x%x, RX[%d]=0x%x, RX[%d]=0x%x\n",
+				__func__,
+				j, read_data[j], j + 1, read_data[j + 1],
+				j + 2, read_data[j + 2], j + 3, read_data[j + 3]);
+		}
+
+		writel(0x00000000, dsi->regs + DSI_CMDQ_SIZE(dsi->driver_data));
+
+		recv_cnt = mtk_dsi_recv_cnt(read_data[0], read_data);
+
+		if (recv_cnt > 2)
+			src_addr = &read_data[4];
+		else
+			src_addr = &read_data[1];
+
+		if (recv_cnt)
+			memcpy(msg->rx_buf, src_addr, recv_cnt);
 	} else {
 		for (i = 0; i < 16; i++)
 			*(read_data + i) = readb(dsi->regs + DSI_RX_DATA0(dsi->driver_data) + i);
@@ -13007,6 +13029,7 @@ const struct mtk_dsi_driver_data mt6765_dsi_driver_data = {
 	.dsi_buffer = false,
 	.max_vfp = 0,
 };
+
 const struct mtk_dsi_driver_data mt6768_dsi_driver_data = {
 	.reg_cmdq0_ofs = 0x200,
 	.reg_cmdq1_ofs = 0x204,
@@ -13145,17 +13168,17 @@ static const struct mtk_dsi_driver_data mt6991_dsi_driver_data = {
 	.n_verion = VER_N3,
 	.require_phy_reset = true,
 	.reg_phy_base = 0x600,
-	.reg_20_ofs = 0x20,
-	.reg_30_ofs = 0x30,
-	.reg_40_ofs = 0x40,
+	.reg_20_ofs = 0x020,
+	.reg_30_ofs = 0x030,
+	.reg_40_ofs = 0x040,
 	.reg_100_ofs = 0x100,
-	.dsi_size_con = 0x2c,
+	.dsi_size_con = 0x02c,
 	.dsi_vfp_early_stop = 0x170,
 	.dsi_lfr_con = 0x1A0,
 	.dsi_cmdq_size = 0x44,
 	.dsi_type1_hs = 0x50,
 	.dsi_hstx_ckl_wc = 0x100,
-	.dsi_mem_conti = 0x48,
+	.dsi_mem_conti = 0x048,
 	.dsi_time_con = 0x200,
 	.dsi_reserved = 0x3f8,
 	.dsi_state_dbg6 = 0x274,
@@ -13167,8 +13190,10 @@ static const struct mtk_dsi_driver_data mt6991_dsi_driver_data = {
 	.dsi_phy_syncon = 0x1D8,
 	.dsi_ltpo_vdo_con = 0x1A8,
 	.dsi_ltpo_vdo_sq0 = 0x1AC,
-	.support_512byte_rx = 0,
 	.support_bl_at_te = 1,
+	.support_512byte_rx = 1,
+	.dsi_rx_trig_sta = 0x0B8,
+	.dsi_rx_con = 0x0A0,
 };
 
 static const struct mtk_dsi_driver_data mt6897_dsi_driver_data = {
