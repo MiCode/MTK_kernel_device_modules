@@ -2814,6 +2814,12 @@ static int boot_zcv_get(struct mtk_gauge *gauge_dev,
 	return 0;
 }
 
+static int battery_cic2_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_info *attr,
+			    int *val)
+{
+	return 0;
+}
+
 static int initial_set(struct mtk_gauge *gauge,
 	struct mtk_gauge_sysfs_field_info *attr, int val)
 {
@@ -3713,6 +3719,8 @@ static struct mtk_gauge_sysfs_field_info mt6358_sysfs_field_tbl[] = {
 		GAUGE_PROP_MONITOR_SOFF_VALIDTIME),
 	GAUGE_SYSFS_INFO_FIELD_RW(
 		info_con0_soc, GAUGE_PROP_CON0_SOC),
+	GAUGE_SYSFS_INFO_FIELD_RW(info_con1_uisoc, GAUGE_PROP_CON1_UISOC),
+	GAUGE_SYSFS_INFO_FIELD_RW(info_con1_vaild, GAUGE_PROP_CON1_VAILD),
 	GAUGE_SYSFS_INFO_FIELD_RW(
 		info_shutdown_car, GAUGE_PROP_SHUTDOWN_CAR),
 	GAUGE_SYSFS_INFO_FIELD_RW(
@@ -3727,6 +3735,7 @@ static struct mtk_gauge_sysfs_field_info mt6358_sysfs_field_tbl[] = {
 		bat_temp_froze_en_set, GAUGE_PROP_BAT_TEMP_FROZE_EN),
 	GAUGE_SYSFS_FIELD_RO(battery_voltage_cali, GAUGE_PROP_BAT_EOC),
 	GAUGE_SYSFS_FIELD_RO(regmap_type_get, GAUGE_PROP_REGMAP_TYPE),
+	GAUGE_SYSFS_FIELD_RO(battery_cic2_get, GAUGE_PROP_CIC2),
 };
 
 static struct attribute *mt6358_sysfs_attrs[GAUGE_PROP_MAX + 1];
