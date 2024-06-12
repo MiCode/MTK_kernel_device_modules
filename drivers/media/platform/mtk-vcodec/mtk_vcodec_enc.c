@@ -1742,18 +1742,21 @@ static int vidioc_venc_s_fmt_cap(struct file *file, void *priv,
 		q_data->sizeimage[i] = plane_fmt->sizeimage;
 	}
 
+	mutex_lock(&ctx->init_lock);
 	if (mtk_vcodec_is_state(ctx, MTK_STATE_FREE)) {
 		ret = venc_if_init(ctx, q_data->fmt->fourcc);
 		if (ret) {
 			mtk_v4l2_err("venc_if_init failed=%d, codec type=%s(0x%x)",
 				ret, FOURCC_STR(q_data->fmt->fourcc), q_data->fmt->fourcc);
 			mtk_venc_error_handle(ctx);
+			mutex_unlock(&ctx->init_lock);
 			return -EBUSY;
 		}
 		mtk_vcodec_set_state_from(ctx, MTK_STATE_INIT, MTK_STATE_FREE);
 	}
 	// format change, trigger encode header
 	mtk_vcodec_set_state_from(ctx, MTK_STATE_INIT, MTK_STATE_STOP);
+	mutex_unlock(&ctx->init_lock);
 
 	return 0;
 }
