@@ -3835,7 +3835,8 @@
 		wpe_a@15811000 {
 			compatible = "mediatek,wpe_a";
 			reg = <0 0x15811000 0 0x1000>;
-			mediatek,larb = <&smi_larb11>, <&smi_larb9>;
+			power-domains = <&scpsys MT6853_POWER_DOMAIN_ISP2>;
+			mediatek,larb = <&smi_larb11>;
 			clocks =
 				<&imgsys2_clk CLK_IMGSYS2_LARB9>,
 				<&imgsys2_clk CLK_IMGSYS2_WPE>;
