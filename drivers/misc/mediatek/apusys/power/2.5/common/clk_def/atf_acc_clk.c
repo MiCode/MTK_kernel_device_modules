@@ -206,6 +206,7 @@ static int mt6877_clk_enable(struct apu_clk_gp *aclk)
 					aclk_info(aclk->dev, "domain@%d, enabled FAIL, ret = %lu\n",
 								dom, res.a0);
 					ret = res.a0;
+					mutex_unlock(&mt6877_clk_lock);
 					goto out;
 				}
 				ret = res.a0;
@@ -255,6 +256,7 @@ static void mt6877_clk_disable(struct apu_clk_gp *aclk)
 				if (res.a0) {
 					aclk_err(aclk->dev, "domain@%d, disable FAIL, ret = %lu\n",
 								dom, res.a0);
+					mutex_unlock(&mt6877_clk_lock);
 					goto out;
 				}
 
@@ -266,6 +268,7 @@ static void mt6877_clk_disable(struct apu_clk_gp *aclk)
 				if (res.a0) {
 					aclk_err(aclk->dev, "domain@%d, set_parent SOC FAIL, ret = %lu\n",
 								dom, res.a0);
+					mutex_unlock(&mt6877_clk_lock);
 					goto out;
 				}
 			}
