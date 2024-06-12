@@ -366,7 +366,10 @@ static void print_uint_array(const char *tag, const unsigned int *arr, int lengt
 			offset += snprintf(buf + offset, sizeof(buf) - offset, "%u ", arr[i]);
 		}
 		if ((i + 1) % elements_per_line == 0 || i == length - 1) {
-			buf[offset - 1] = '\0';  // Replace the last space with a newline character
+			if (offset > 0)
+				buf[offset-1] = '\0';  // Replace the last space with a newline character
+			else
+				buf[0] = '\0';  // Replace the last space with a newline character
 			AALDUMP_LOG("%s\n", buf);
 			offset = 0;  // Reset the offset
 			start = i;
@@ -1524,8 +1527,10 @@ static int disp_aal_sof_kthread(void *data)
 			AALFLOW_LOG("wait_event_interruptible\n");
 			ret = wait_event_interruptible(aal_data->primary_data->sof_irq_wq,
 					atomic_read(&aal_data->primary_data->sof_irq_available) == 1);
-			AALFLOW_LOG("sof_irq_available = 1, waken up, ret = %d\n", ret);
-			disp_aal_sof_handle_by_cpu(comp);
+			if (ret == 0) {
+				AALFLOW_LOG("sof_irq_available = 1, waken up, ret = %d\n", ret);
+				disp_aal_sof_handle_by_cpu(comp);
+			}
 		} else
 			AALFLOW_LOG("sof_irq_available = 0\n");
 		atomic_set(&aal_data->primary_data->sof_irq_available, 0);
@@ -2428,6 +2433,8 @@ static void disp_aal_wait_hist(struct mtk_ddp_comp *comp)
 					(atomic_read(&aal1_data->hist_available) == 1) &&
 					comp->mtk_crtc->enabled &&
 					!atomic_read(&aal_data->primary_data->should_stop));
+			if (ret == -ERESTARTSYS)
+				DDPMSG("%s: interrupted unexpected by signal\n", __func__);
 		}
 		AALFLOW_LOG("aal0 and aal1 hist_available = 1, waken up, ret = %d\n", ret);
 	} else if (atomic_read(&aal_data->hist_available) == 0) {
@@ -2436,6 +2443,8 @@ static void disp_aal_wait_hist(struct mtk_ddp_comp *comp)
 				atomic_read(&aal_data->hist_available) == 1 &&
 				comp->mtk_crtc->enabled &&
 				!atomic_read(&aal_data->primary_data->should_stop));
+		if (ret == -ERESTARTSYS)
+			DDPMSG("%s: interrupted unexpected by signal\n", __func__);
 		AALFLOW_LOG("hist_available = 1, waken up, ret = %d\n", ret);
 	} else
 		AALFLOW_LOG("hist_available = 0\n");
@@ -3021,10 +3030,9 @@ static void disp_aal_primary_data_init(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	struct mtk_disp_aal *companion_aal_data = comp_to_aal(aal_data->companion);
-	char thread_name[20] = {0};
+	char thread_name[20] = "aal_sof_0";
 	struct sched_param param = {.sched_priority = 85 };
 	struct cpumask mask;
-	int len = 0;
 
 	if (aal_data->is_right_pipe) {
 		kfree(aal_data->primary_data);
@@ -3106,9 +3114,7 @@ static void disp_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	INIT_WORK(&aal_data->primary_data->refresh_task.task, disp_aal_refresh_trigger);
 
 	// start thread for aal sof
-	len = sprintf(thread_name, "aal_sof_%d", comp->id);
-	if (len < 0)
-		strscpy(thread_name, "aal_sof_0", sizeof(thread_name));
+	sprintf(thread_name, "aal_sof_%d", comp->id);
 	aal_data->primary_data->sof_irq_event_task = kthread_create(disp_aal_sof_kthread, comp, thread_name);
 
 	cpumask_setall(&mask);
@@ -3499,7 +3505,9 @@ void disp_aal_first_cfg(struct mtk_ddp_comp *comp,
 		aal_data->primary_data->fps = drm_mode_vrefresh(mode);
 		DDPMSG("%s: first config set fps: %d\n", __func__, aal_data->primary_data->fps);
 	}
-	if (aal_data->primary_data->aal_fo->mtk_dre30_support)
+	if ((aal_data != NULL) && (aal_data->primary_data != NULL) &&
+			(aal_data->primary_data->aal_fo != NULL) &&
+			(aal_data->primary_data->aal_fo->mtk_dre30_support))
 		disp_aal_init_dre3_curve(comp);
 
 	disp_aal_config(comp, cfg, handle);

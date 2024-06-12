@@ -435,7 +435,7 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	primary_data->disp_ccorr_without_gamma = ccorr_without_gamma;
 
 	disp_ccorr_write_coef_reg(comp, handle, 0);
-	if (comp->mtk_crtc->is_dual_pipe)
+	if ((comp->mtk_crtc != NULL) && (comp->mtk_crtc->is_dual_pipe))
 		disp_ccorr_write_coef_reg(ccorr_data->companion, handle, 0);
 
 	for (i = 0; i < 3; i++) {
