@@ -37,6 +37,7 @@
 #define MAX_BIN_NUM	7
 #define MAX_BINSET_NUM 32
 #define DMR_LINE_BUFFER 19
+#define MAX_PID_LENGTH 256
 
 enum ODDMR_STATE {
 	ODDMR_INVALID = 0,
@@ -203,6 +204,11 @@ struct mtk_drm_oddmr_dbv_chg_cfg {
 	unsigned int *reg_value;
 };
 
+struct mtk_drm_oddmr_panel_ID {
+	uint32_t data_byte_num;
+	uint8_t data[MAX_PID_LENGTH];
+};
+
 struct mtk_drm_dmr_cfg_info {
 	struct mtk_drm_dmr_basic_info basic_info;
 	struct mtk_drm_dmr_static_cfg static_cfg;
@@ -211,6 +217,7 @@ struct mtk_drm_dmr_cfg_info {
 	struct mtk_drm_dmr_table_index table_index;
 	struct mtk_drm_dmr_table_content table_content;
 	struct mtk_drm_oddmr_partial_update_params dmr_pu_info;
+	struct mtk_drm_oddmr_panel_ID panel_id;
 };
 
 struct mtk_drm_oddmr_binset_info {
@@ -224,6 +231,7 @@ struct mtk_drm_oddmr_binset_cfg_info {
 	unsigned int binset_num;
 	struct mtk_drm_dmr_basic_info basic_info;
 	struct mtk_drm_oddmr_binset_info binset_list[MAX_BINSET_NUM];
+	struct mtk_drm_oddmr_panel_ID panel_id;
 };
 
 struct mtk_drm_dbi_cfg_info {
