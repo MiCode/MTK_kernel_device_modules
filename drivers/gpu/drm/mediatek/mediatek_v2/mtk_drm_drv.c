@@ -7119,7 +7119,7 @@ bool mtk_drm_top_clk_isr_get(struct mtk_ddp_comp *comp)
 		atomic_inc(&top_isr_ref);
 		if (g_dpc_dev) {
 			comp->pm_ret = mtk_vidle_user_power_keep(DISP_VIDLE_USER_TOP_CLK_ISR);
-			if (comp->pm_ret == 2) {
+			if (comp->pm_ret == VOTER_PM_LATER) {
 				DRM_MMP_EVENT_START(top_clk, comp->id, 0);
 				ret = pm_runtime_resume_and_get(g_dpc_dev);
 				if (unlikely(ret)) {
@@ -7152,7 +7152,7 @@ void mtk_drm_top_clk_isr_put(struct mtk_ddp_comp *comp)
 		}
 		atomic_dec(&top_isr_ref);
 		if (g_dpc_dev) {
-			if (comp->pm_ret == 2) {
+			if (comp->pm_ret == VOTER_PM_LATER) {
 				pm_runtime_put(g_dpc_dev);
 				comp->pm_ret = 0;
 			}

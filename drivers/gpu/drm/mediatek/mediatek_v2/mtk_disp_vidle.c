@@ -47,6 +47,8 @@ struct mtk_disp_vidle {
 	u32 channel_bw;
 	enum mtk_dpc_version dpc_version;
 	enum mtk_vdisp_version vdisp_version;
+	int pm_ret_crtc;	/* for DISP_VIDLE_USER_CRTC only, already locked by crtc_lock */
+	int pm_ret_pq;		/* for DISP_VIDLE_USER_PQ only, protected by pq ref cnt */
 };
 
 static struct mtk_disp_vidle vidle_data = {
@@ -61,6 +63,7 @@ static struct mtk_disp_vidle vidle_data = {
 	.channel_bw = U32_MAX,
 	.dpc_version = DPC_VER_CNT,
 	.vdisp_version = VDISP_VER_CNT,
+	.pm_ret_crtc = 0,
 };
 
 void mtk_vidle_flag_init(void *_crtc)
@@ -182,14 +185,24 @@ int mtk_vidle_force_power_ctrl_by_cpu(bool power_on)
 
 int mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user)
 {
+	int pm_ret = 0;
+
 	if (disp_dpc_driver.dpc_vidle_power_keep == NULL || vidle_data.drm_priv == NULL)
 		return 0;
 
-	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN ||
-	    atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) == 0)
-		return -1;
+	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN)
+		pm_ret = -1;
+	else if (atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) == 0)
+		pm_ret = disp_dpc_driver.dpc_vidle_power_keep(user | VOTER_ONLY);
+	else
+		pm_ret = disp_dpc_driver.dpc_vidle_power_keep(user);
 
-	return disp_dpc_driver.dpc_vidle_power_keep(user);
+	if (user == DISP_VIDLE_USER_CRTC)
+		vidle_data.pm_ret_crtc = pm_ret;
+	else if (user == DISP_VIDLE_USER_PQ)
+		vidle_data.pm_ret_pq = pm_ret;
+
+	return pm_ret;
 }
 
 void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user)
@@ -197,9 +210,12 @@ void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user)
 	if (disp_dpc_driver.dpc_vidle_power_release == NULL || vidle_data.drm_priv == NULL)
 		return;
 
-	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN ||
-	    atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) == 0)
+	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN)
 		return;
+
+	if ((user == DISP_VIDLE_USER_CRTC && vidle_data.pm_ret_crtc == VOTER_ONLY) ||
+	    (user == DISP_VIDLE_USER_PQ && vidle_data.pm_ret_pq == VOTER_ONLY))
+		user |= VOTER_ONLY;
 
 	disp_dpc_driver.dpc_vidle_power_release(user);
 }

@@ -12818,9 +12818,9 @@ static void mtk_drm_crtc_wk_lock(struct drm_crtc *crtc, bool get,
 		atomic_dec(&priv->kernel_pm.wakelock_cnt);
 	}
 
-	DDPMSG("CRTC%d %s wakelock %s %d\n",
+	DDPMSG("CRTC%d %s wakelock %s %d cnt(%u)\n",
 		drm_crtc_index(crtc), (get ? "hold" : "release"),
-		func, line);
+		func, line, atomic_read(&priv->kernel_pm.wakelock_cnt));
 }
 
 unsigned int mtk_drm_dump_wk_lock(
@@ -13033,6 +13033,9 @@ void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 		vdisp_func.genpd_put();
 		vdisp_func.genpd_put = NULL;
 		mtk_dump_mminfra_ck(priv);
+
+		if (atomic_read(&priv->kernel_pm.wakelock_cnt) == 1)
+			atomic_set(&priv->kernel_pm.wakelock_cnt, 0);
 	}
 
 	CRTC_MMP_EVENT_START((int) index, resume,

@@ -35,6 +35,13 @@ enum mtk_vidle_voter_user {
 	DISP_VIDLE_FORCE_KEEP = 31,
 };
 
+enum mtk_vidle_voter_status {
+	VOTER_PM_FAILED = -1,
+	VOTER_PM_DONE = 0,
+	VOTER_PM_LATER,
+	VOTER_ONLY = 0x1000,
+};
+
 enum mtk_panel_type {
 	PANEL_TYPE_CMD,
 	PANEL_TYPE_VDO,
