@@ -47,4 +47,8 @@
 #define CLK_APMIXED_SGMIIPLL				1
 #define CLK_APMIXED_IVI_NR_CLK				2
 
+/* DISPSYS1_CONFIG */
+#define CLK_MM1_MOD6				0
+#define CLK_MM1_IVI_NR_CLK				1
+
 #endif /* _DT_BINDINGS_CLK_MT6991_IVI_H */
