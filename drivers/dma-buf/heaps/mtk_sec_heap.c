@@ -25,11 +25,11 @@
 #include <linux/vmalloc.h>
 #if IS_ENABLED(CONFIG_MTK_PKVM_TMEM)
 #include <asm/kvm_pkvm_module.h>
-#include "../../../misc/mediatek/include/pkvm_mgmt/pkvm_mgmt.h"
+#include <pkvm_mgmt/pkvm_mgmt.h>
 #endif
 #if IS_ENABLED(CONFIG_MTK_PKVM_SMMU)
 #include <asm/kvm_pkvm_module.h>
-#include "../../../misc/mediatek/include/pkvm_mgmt/pkvm_mgmt.h"
+#include <pkvm_mgmt/pkvm_mgmt.h>
 #endif
 #include <public/trusted_mem_api.h>
 #include "page_pool.h"
@@ -1289,23 +1289,31 @@ static void pkvm_smmu_mapping(struct page *pmm_page, u8 pmm_attr,
 			      uint32_t tmp_count, int lock)
 {
 #if IS_ENABLED(CONFIG_MTK_PKVM_SMMU)
+	static uint32_t hvc_id_map;
+	static uint32_t hvc_id_unmap;
 	struct arm_smccc_res res;
-	uint32_t smc_id;
+	uint32_t hvc_id;
 	int ret;
 
-	if (lock == 1)
-		arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_SMMU_SEC_MAP, 0, 0, 0, 0, 0,
-				  0, &res);
-	else
-		arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_SMMU_SEC_UNMAP, 0, 0, 0, 0, 0,
-				  0, &res);
-	smc_id = res.a1;
-	if (smc_id != 0) {
-		ret = pkvm_el2_mod_call(smc_id, page_to_pfn(pmm_page), pmm_attr,
+	if (!hvc_id_map) {
+		arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_SMMU_SEC_MAP,
+			0, 0, 0, 0, 0, 0, &res);
+		hvc_id_map = res.a1;
+	}
+
+	if (!hvc_id_unmap) {
+		arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_SMMU_SEC_UNMAP,
+			0, 0, 0, 0, 0, 0, &res);
+		hvc_id_unmap = res.a1;
+	}
+
+	hvc_id = (lock == 1) ? hvc_id_map : hvc_id_unmap;
+	if (hvc_id != 0) {
+		ret = pkvm_el2_mod_call(hvc_id, page_to_pfn(pmm_page), pmm_attr,
 					tmp_count);
 
 		if (ret != 0)
-			pr_info("smc_id=%#x smmu_ret=%x\n", smc_id, ret);
+			pr_info("hvc_id=%#x smmu_ret=%x\n", hvc_id, ret);
 	} else
 		pr_info("%s hvc is invalid\n", __func__);
 #endif
