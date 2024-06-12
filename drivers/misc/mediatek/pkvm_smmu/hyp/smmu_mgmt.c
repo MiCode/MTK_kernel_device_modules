@@ -226,12 +226,12 @@ paddr_t smmu_get_global_ste_pa(void)
 	return global_ste_pa;
 }
 
-void *smmu_get_cmdq_buf(int idx)
+void *smmu_get_cmdq_buf(unsigned int idx)
 {
 	return smmu_cmdqs[idx];
 }
 
-paddr_t smmu_get_cmdq_buf_pa(int idx)
+paddr_t smmu_get_cmdq_buf_pa(unsigned int idx)
 {
 	return mpool_va_to_pa(smmu_cmdqs[idx]);
 }
