@@ -582,9 +582,10 @@ static ssize_t target_fps_vsync_show(struct kobject *kobj,
 
 	ged_kpi_hint_frame_info(&infoOut);
 	length = scnprintf(buf + pos, PAGE_SIZE - pos,
-			"main_head BQ_ID:%llu FPS_V:%d FPS_gpu:%d\n",
+			"main_head BQ_ID:%llu FPS_V:%d FPS_gpu:%d  (%d, %d)\n",
 			(unsigned long long)infoOut.mainHead_BQ_ID,
-			infoOut.mainHead_fps_v, infoOut.mainHead_fps_gpu);
+			infoOut.mainHead_fps_v, infoOut.mainHead_fps_gpu,
+			prom_enable, g_target_fps_vsync);
 	pos += length;
 
 	return pos;

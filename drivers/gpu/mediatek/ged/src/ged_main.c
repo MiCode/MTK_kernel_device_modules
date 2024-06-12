@@ -148,6 +148,8 @@ unsigned int g_ged_efuse_id;
 unsigned int g_ged_apo_support;
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 unsigned int g_ged_frame_base_optimize;
+int prom_enable;
+int g_target_fps_vsync;
 unsigned long g_desire_freq;
 unsigned long g_desire_freq_stack, g_desire_freq_top;
 unsigned int g_ged_pre_fence_chk;
@@ -726,6 +728,9 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 		goto ERROR;
 	}
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
+
+	prom_enable = 0;
+	g_target_fps_vsync = 0;
 
 	err = check_frame_base_optimize();
 	if (unlikely(err != GED_OK)) {

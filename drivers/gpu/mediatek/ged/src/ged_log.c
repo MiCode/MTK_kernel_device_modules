@@ -1275,8 +1275,8 @@ void init_cmd_info(struct cmd_info *cmd, unsigned int value)
 void set_cmd_info(struct cmd_info *cmd, unsigned int ori_value, unsigned int value)
 {
 	cmd->pid = current->tgid;
-	cmd->value = ori_value;
-	cmd->ori_value = value;
+	cmd->value = value;
+	cmd->ori_value = ori_value;
 	cmd->ts = ged_get_time();
 	cmd->user_id = sys_get_process_name_by_pid(cmd->pid, cmd->buffer, MAX_NAME_SIZE);
 }
