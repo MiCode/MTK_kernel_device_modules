@@ -1094,8 +1094,7 @@ void vcp_crash_log_move_to_buf(enum vcp_core_id vcp_id)
 	/* read log from vcp buffer */
 	ret = 0;
 	if (vcp_last_logger) {
-		ret += snprintf(vcp_last_logger, strlen(crash_message),
-			crash_message);
+		ret += snprintf(vcp_last_logger, strlen(crash_message), "%s", crash_message);
 		ret--;
 		while ((log_start_idx != log_end_idx) &&
 			ret <= (length + strlen(crash_message))) {
