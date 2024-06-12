@@ -19,7 +19,6 @@
 #include "mtk_ccci_common.h"
 
 static u32 cnted_share_mem[SHARE_MEM_SIZE];
-static u32 rfhw_sel;
 static int mt_mdpm_debug;
 
 static struct md_power_status mdpm_power_sta;
@@ -69,7 +68,9 @@ EXPORT_SYMBOL(init_md_section_level);
 int get_md1_power(enum mdpm_power_type power_type, bool need_update)
 {
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
+#ifndef GET_MD_SCEANRIO_BY_SHARE_MEMORY
 	u32 share_reg;
+#endif
 	enum md_scenario scenario;
 	int scenario_power, tx_power;
 
@@ -95,7 +96,9 @@ int get_md1_power(enum mdpm_power_type power_type, bool need_update)
 		return MAX_MD1_POWER;
 	}
 
+#ifndef GET_MD_SCEANRIO_BY_SHARE_MEMORY
 	share_reg = get_md1_status_reg();
+#endif
 	if (dbm_share_mem == NULL)
 		return MAX_MD1_POWER;
 
@@ -356,32 +359,6 @@ static u32 check_shm_version(u32 *share_mem)
 	}
 
 	return mdpm_version_check;
-}
-
-static u32 get_rfhw(u32 *share_mem)
-{
-	u32 rfhw_version;
-	static u32 rfhw_check;
-	static bool rfhw_updated;
-
-	if (rfhw_updated == 1)
-		return rfhw_sel;
-	else if (rfhw_check == RF_HW_INIT) {
-		mdpm_shm_read(share_mem, M_RF_HW, &rfhw_check,
-			RF_HW_VALID_MASK, RF_HW_VALID_SHIFT);
-	}
-
-	if (rfhw_check == RF_HW_VALID) {
-		mdpm_shm_read(share_mem, M_RF_HW, &rfhw_version,
-				RF_HW_VERSION_MASK, RF_HW_VERSION_SHIFT);
-		if (rfhw_version >= 0 && rfhw_version < RF_HW_NUM) {
-			rfhw_updated = 1;
-			return rfhw_version;
-		} else if (1)
-			pr_notice("wrong rfhw_version %d\n", rfhw_version);
-	}
-
-	return rfhw_sel;
 }
 
 void init_version_check(u32 *share_mem)
@@ -723,7 +700,7 @@ int get_md1_tx_power(enum md_scenario scenario, u32 *share_mem,
 	enum mdpm_power_type power_type,
 	struct md_power_status *mdpm_pwr_sta)
 {
-	int i, rf_ret, tx_power, tx_power_max, usedBytes = 0;
+	int i, tx_power, tx_power_max, usedBytes = 0;
 	enum tx_rat_type rat;
 	struct md_power_status mdpm_power_s_tmp;
 	char log_buffer[128];
@@ -735,9 +712,7 @@ int get_md1_tx_power(enum md_scenario scenario, u32 *share_mem,
 		return 0;
 	}
 
-	if (check_shm_version(share_mem) == VERSION_VALID)
-		rf_ret = get_rfhw(share_mem);
-	else
+	if (check_shm_version(share_mem) != VERSION_VALID)
 		return 0;
 
 	if (mt_mdpm_debug == 2)
