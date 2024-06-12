@@ -2483,16 +2483,14 @@ static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
 		aal_data->primary_data->hist.srcHeight = aal_data->primary_data->size.height;
 	}
 
-	if (aal_data->primary_data->aal_fo->mtk_dre30_support
-		&& aal_data->primary_data->dre30_enabled)
-		aal_data->primary_data->hist.dre30_hist = hist->dre30_hist;
-
 	// set AAL_SERVICE_FORCE_UPDATE avoid backlight drop on AALService
 	if (atomic_read(&aal_data->primary_data->hal_force_update) == 1) {
 		aal_data->primary_data->hist.serviceFlags |= AAL_SERVICE_FORCE_UPDATE;
 		atomic_set(&aal_data->primary_data->hal_force_update, 0);
 	}
 
+	// dre30_hist ptr should be always from userspace, valid or not
+	aal_data->primary_data->hist.dre30_hist = hist->dre30_hist;
 	memcpy(hist, &aal_data->primary_data->hist, sizeof(aal_data->primary_data->hist));
 	spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 
