@@ -219,12 +219,8 @@ static bool xhci_mtk_is_usb_audio(struct urb *urb)
 
 static void xhci_trace_ep_urb_enqueue(void *data, struct urb *urb)
 {
-	struct device *hcd_dev = (struct device *)data;
-
-	if (!urb || !urb->setup_packet || !urb->dev) {
-		dev_dbg_ratelimited(hcd_dev, "%s urb/setup pkt/device can't be NULL\n", __func__);
+	if (!urb || !urb->setup_packet || !urb->dev)
 		return;
-	}
 
 	if (xhci_mtk_is_usb_audio(urb)) {
 		/* apply clear packet size */
