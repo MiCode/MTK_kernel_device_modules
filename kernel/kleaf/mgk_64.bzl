@@ -3253,6 +3253,13 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/cm_mgr_legacy_v1/mtk_cm_mgr_mt6853.ko":"mt6853"})
         mgk_64_device_modules.append("drivers/misc/mediatek/cm_mgr_legacy_v1/mtk_cm_mgr.ko")
 
+        mgk_64_device_modules.append("drivers/misc/mediatek/leakage_table_v2/mediatek_static_power.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/ppm_v3/mtk_ppm_v3.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/cpuhotplug/mtk_cpuhp.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/cpufreq_v2/src/CPU_DVFS.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/cpufreq_v2/src/plat_k6853/mtk_cpufreq_utils.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/upower/Upower.ko")
+
     if "mt6781_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps")
         mgk_64_device_modules.append("drivers/regulator/mt6358-regulator.ko")
