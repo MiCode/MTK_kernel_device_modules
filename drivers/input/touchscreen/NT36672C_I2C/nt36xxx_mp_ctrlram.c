@@ -350,7 +350,7 @@ static int32_t nvt_save_rawdata_to_csv(int32_t *rawdata, uint8_t x_ch,
 	int32_t y = 0;
 	int32_t iArrayIndex = 0;
 	char *fbufp = NULL;
-	uint32_t output_len = 0;
+	/* uint32_t output_len = 0; */
 
 #if TOUCH_KEY_NUM > 0
 	int32_t k = 0;
@@ -386,11 +386,13 @@ static int32_t nvt_save_rawdata_to_csv(int32_t *rawdata, uint8_t x_ch,
 	sprintf(fbufp + y_ch * x_ch * 7 + y_ch * 2 + Key_Channel * 7, "\r\n");
 #endif /* #if TOUCH_KEY_NUM > 0 */
 
-#if TOUCH_KEY_NUM > 0
-	output_len = y_ch * x_ch * 7 + y_ch * 2 + Key_Channel * 7 + 2;
-#else
-	output_len = y_ch * x_ch * 7 + y_ch * 2;
-#endif /* #if TOUCH_KEY_NUM > 0 */
+/*
+ *#if TOUCH_KEY_NUM > 0
+ *	output_len = y_ch * x_ch * 7 + y_ch * 2 + Key_Channel * 7 + 2;
+ *#else
+ *	output_len = y_ch * x_ch * 7 + y_ch * 2;
+ *#endif //#if TOUCH_KEY_NUM > 0
+ */
 
 	kfree(fbufp);
 	fbufp = NULL;
