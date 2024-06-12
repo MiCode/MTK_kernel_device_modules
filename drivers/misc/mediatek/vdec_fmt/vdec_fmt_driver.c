@@ -1105,7 +1105,7 @@ static int vdec_fmt_probe(struct platform_device *pdev)
 		device_create(fmt->fmt_class,
 					NULL,
 					fmt->fmt_devno,
-					NULL, fmt->fmtname);
+					NULL, "%s", fmt->fmtname);
 	if (IS_ERR_OR_NULL(fmt->fmt_device) == true) {
 		ret = (int)PTR_ERR(fmt->fmt_device);
 		fmt_err("device_create fail (ret=%d)", ret);
