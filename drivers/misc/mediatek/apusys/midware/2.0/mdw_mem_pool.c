@@ -166,7 +166,6 @@ out:
 static void mdw_mem_pool_release(struct kref *ref)
 {
 	struct mdw_mem_pool *pool;
-	struct mdw_fpriv *mpriv;
 	struct mdw_mem *m = NULL, *tmp = NULL;
 
 	pool = container_of(ref, struct mdw_mem_pool, m_ref);
@@ -175,8 +174,6 @@ static void mdw_mem_pool_release(struct kref *ref)
 
 	mdw_trace_begin("apumdw:pool_release|size:%u align:%u",
 		pool->chunk_size, pool->align);
-
-	mpriv = pool->mpriv;
 
 	/* release all allocated memories */
 	list_for_each_entry_safe(m, tmp, &pool->m_list, d_node) {

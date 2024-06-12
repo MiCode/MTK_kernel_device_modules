@@ -15,9 +15,8 @@ extern u8 cfg_apusys_trace;
 #define _mdw_trace_begin(format, args...) \
 	{ \
 		char buf[256]; \
-		int len; \
 		if (cfg_apusys_trace) { \
-			len = snprintf(buf, sizeof(buf), \
+			snprintf(buf, sizeof(buf), \
 				format "%s", args); \
 			trace_tag_begin(buf); \
 		} \
