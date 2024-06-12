@@ -11567,47 +11567,57 @@ static int __mtk_check_trigger(struct mtk_drm_crtc *mtk_crtc)
 
 	if (!mtk_crtc->enabled) {
 		CRTC_MMP_EVENT_END(index, check_trigger, 0, 1);
-		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
-
-		return 0;
+		goto out_unlock;
 	}
 
 	mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
 
-	if (mtk_crtc_is_frame_trigger_mode(crtc)) {
-		if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params
-			&& mtk_crtc->panel_ext->params->real_te_duration)
-			te_duration = mtk_crtc->panel_ext->params->real_te_duration;
-		else
-			te_duration = 1000000 / drm_mode_vrefresh(&crtc->state->adjusted_mode);
+	if (!mtk_crtc_is_frame_trigger_mode(crtc))
+		goto do_set_dirty;
 
-		last_te_time = mtk_crtc->pf_time;
-		cur_time = ktime_get();
-		if (cur_time > last_te_time) {
-			pass_time = (cur_time - last_te_time) / 1000;  //ns to us
+	last_te_time = mtk_crtc->pf_time;
+	cur_time = ktime_get();
+	if (last_te_time >= cur_time)
+		goto do_set_dirty;
 
-			if (te_duration > pass_time)
-				next_te_duration = te_duration - pass_time;
+	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params
+		&& mtk_crtc->panel_ext->params->real_te_duration)
+		te_duration = mtk_crtc->panel_ext->params->real_te_duration;
+	else
+		te_duration = 1000000 / drm_mode_vrefresh(&crtc->state->adjusted_mode);
 
-			if (next_te_duration > 1000) {
-				DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-				CRTC_MMP_MARK(index, check_trigger, next_te_duration, 1);
-				usleep_range(next_te_duration - 1000 , next_te_duration - 900);
-				DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
-			}
+	pass_time = (cur_time - last_te_time) / 1000;  //ns to us
+	if (te_duration > pass_time)
+		next_te_duration = te_duration - pass_time;
+
+	if (next_te_duration > 1000) {
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, next_te_duration, mtk_crtc->enabled);
+		CRTC_MMP_MARK(index, check_trigger, next_te_duration, 1);
+
+		usleep_range(next_te_duration - 1000 , next_te_duration - 900);
+
+		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, next_te_duration, mtk_crtc->enabled);
+		CRTC_MMP_MARK(index, check_trigger, next_te_duration, 0);
+
+		/* Must double check, if crtc is disabled, gce mbox will be disabled too */
+		if (!mtk_crtc->enabled) {
+			CRTC_MMP_EVENT_END(index, check_trigger, 0, 2);
+			goto out_unlock;
 		}
+		mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
 	}
 
-	CRTC_MMP_MARK(index, check_trigger, next_te_duration, 0);
+do_set_dirty:
 	mtk_state = to_mtk_crtc_state(crtc->state);
 	if (!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE] ||
-		(mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE] &&
-		atomic_read(&mtk_crtc->already_config))) {
+	    (mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE] && atomic_read(&mtk_crtc->already_config)))
 		mtk_crtc_set_dirty(mtk_crtc);
-	} else
+	else
 		DDPINFO("%s skip mtk_crtc_set_dirty\n", __func__);
 
 	CRTC_MMP_EVENT_END(index, check_trigger, 0, 0);
+
+out_unlock:
 	drm_trace_tag_end("check_trigger");
 	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 
