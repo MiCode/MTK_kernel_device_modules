@@ -15,11 +15,9 @@ extern u8 apummu_apusys_trace;
 #define _ammu_trace_begin(format, args...) \
 	{ \
 		char buf[256]; \
-		int len; \
 		if (apummu_apusys_trace) { \
-			len = snprintf(buf, sizeof(buf), \
-				format "%s", args); \
-			trace_tag_begin(buf); \
+			if (snprintf(buf, sizeof(buf), format "%s", args) >= 0) \
+				trace_tag_begin(buf); \
 		} \
 	}
 

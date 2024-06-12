@@ -769,7 +769,10 @@ int apu_cmd_qos_end(uint64_t cmd_id, uint64_t sub_cmd_id,
 	struct cmd_qos *cmd_qos = NULL, *pos;
 	struct qos_bound *qos_info = NULL;
 	int core;
-	int bw = 0, total_bw = 0, total_count = 0;
+	int bw = 0;
+#ifdef PREEMPTION
+	int total_bw = 0, total_count = 0;
+#endif
 #ifndef MNOC_QOS_DEBOUNCE
 	int i;
 #endif
@@ -812,8 +815,10 @@ int apu_cmd_qos_end(uint64_t cmd_id, uint64_t sub_cmd_id,
 	/* update all cmd qos info */
 	update_cmd_qos_list_locked(qos_info);
 
+#ifdef PREEMPTION
 	total_bw = cmd_qos->total_bw;
 	total_count = cmd_qos->count;
+#endif
 
 	/* deque cmd to counter's list */
 	bw = deque_cmd_qos(cmd_qos);

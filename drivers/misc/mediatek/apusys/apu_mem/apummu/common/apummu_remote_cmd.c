@@ -34,7 +34,6 @@ int apummu_remote_check_reply(void *reply)
 
 int apummu_remote_set_op(void *drvinfo, uint32_t *argv, uint32_t argc)
 {
-	struct apummu_dev_info *adv = NULL;
 	struct apummu_msg req, reply;
 	uint32_t i = 0;
 	int ret = 0;
@@ -50,8 +49,6 @@ int apummu_remote_set_op(void *drvinfo, uint32_t *argv, uint32_t argc)
 		AMMU_LOG_ERR("invalid argc %d / %d\n", argc, max_data);
 		return -EINVAL;
 	}
-
-	adv = (struct apummu_dev_info *)drvinfo;
 
 	req.cmd = APUMMU_CMD_DBG_OP;
 	req.option = APUMMU_OPTION_SET;
@@ -78,7 +75,6 @@ out:
 int apummu_remote_send_stable(void *drvinfo, uint64_t session, uint32_t ammu_stable_addr,
 					uint32_t SRAM_req_size, uint32_t table_size)
 {
-	struct apummu_dev_info *adv = NULL;
 	struct apummu_msg req, reply;
 	uint32_t op;
 	int ret = 0, widx = 0;
@@ -87,8 +83,6 @@ int apummu_remote_send_stable(void *drvinfo, uint64_t session, uint32_t ammu_sta
 		AMMU_LOG_ERR("invalid argument\n");
 		return -EINVAL;
 	}
-
-	adv = (struct apummu_dev_info *)drvinfo;
 
 	req.cmd = APUMMU_CMD_DBG_OP;
 	req.option = APUMMU_OPTION_SET;
@@ -176,7 +170,6 @@ out:
 
 int apummu_remote_set_hw_default_iova(void *drvinfo, uint32_t ctx, uint64_t iova)
 {
-	struct apummu_dev_info *adv = NULL;
 	struct apummu_msg req, reply;
 	int ret = 0;
 	int widx = 0;
@@ -190,8 +183,6 @@ int apummu_remote_set_hw_default_iova(void *drvinfo, uint32_t ctx, uint64_t iova
 		AMMU_LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	adv = (struct apummu_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct apummu_msg));
 	memset(&reply, 0, sizeof(struct apummu_msg));
@@ -271,7 +262,6 @@ out:
 int apummu_remote_mem_add_pool(void *drvinfo, uint32_t type,
 	uint64_t in_addr, uint32_t size, uint32_t start_idx)
 {
-	struct apummu_dev_info *adv = NULL;
 	struct apummu_msg req, reply;
 	int ret = 0, widx = 0;
 	uint32_t mem_op = 0;
@@ -285,8 +275,6 @@ int apummu_remote_mem_add_pool(void *drvinfo, uint32_t type,
 		AMMU_LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	adv = (struct apummu_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct apummu_msg));
 	memset(&reply, 0, sizeof(struct apummu_msg));

@@ -20,7 +20,6 @@
 
 void reviser_print_rvr_exception(void *drvinfo, void *s_file)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct seq_file *s = (struct seq_file *)s_file;
 
 	DEBUG_TAG;
@@ -29,9 +28,6 @@ void reviser_print_rvr_exception(void *drvinfo, void *s_file)
 		LOG_ERR("invalid argument\n");
 		return;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
-
 
 	reviser_remote_print_hw_exception(drvinfo);
 
@@ -45,7 +41,6 @@ void reviser_print_rvr_exception(void *drvinfo, void *s_file)
 
 void reviser_print_rvr_boundary(void *drvinfo, void *s_file)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct seq_file *s = (struct seq_file *)s_file;
 
 	DEBUG_TAG;
@@ -54,8 +49,6 @@ void reviser_print_rvr_boundary(void *drvinfo, void *s_file)
 		LOG_ERR("invalid argument\n");
 		return;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	reviser_remote_print_hw_boundary(drvinfo);
 	LOG_CON(s, "=============================\n");
@@ -67,7 +60,6 @@ void reviser_print_rvr_boundary(void *drvinfo, void *s_file)
 
 void reviser_print_rvr_context_ID(void *drvinfo, void *s_file)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct seq_file *s = (struct seq_file *)s_file;
 
 	DEBUG_TAG;
@@ -76,8 +68,6 @@ void reviser_print_rvr_context_ID(void *drvinfo, void *s_file)
 		LOG_ERR("invalid argument\n");
 		return;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	reviser_remote_print_hw_ctx(drvinfo);
 
@@ -90,7 +80,6 @@ void reviser_print_rvr_context_ID(void *drvinfo, void *s_file)
 
 void reviser_print_rvr_remap_table(void *drvinfo, void *s_file)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct seq_file *s = (struct seq_file *)s_file;
 
 	DEBUG_TAG;
@@ -99,8 +88,6 @@ void reviser_print_rvr_remap_table(void *drvinfo, void *s_file)
 		LOG_ERR("invalid argument\n");
 		return;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	reviser_remote_print_hw_rmp_table(drvinfo);
 	LOG_CON(s, "=============================\n");
@@ -112,7 +99,6 @@ void reviser_print_rvr_remap_table(void *drvinfo, void *s_file)
 
 void reviser_print_rvr_default_iova(void *drvinfo, void *s_file)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct seq_file *s = (struct seq_file *)s_file;
 
 	DEBUG_TAG;
@@ -122,18 +108,9 @@ void reviser_print_rvr_default_iova(void *drvinfo, void *s_file)
 		return;
 	}
 
-	rdv = (struct reviser_dev_info *)drvinfo;
-
 	reviser_remote_print_hw_default_iova(drvinfo);
 	LOG_CON(s, "=============================\n");
 	LOG_CON(s, " reviser default iova\n");
 	LOG_CON(s, "-----------------------------\n");
 	LOG_CON(s, "=============================\n");
 }
-
-
-
-
-
-
-

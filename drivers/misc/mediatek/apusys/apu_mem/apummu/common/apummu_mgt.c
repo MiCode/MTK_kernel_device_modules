@@ -971,8 +971,6 @@ void ammu_session_table_check_SLB(uint32_t type)
 /* Init lust head, lock */
 void apummu_mgt_init(void)
 {
-	char wq_name[] = "ammu_dram_free";
-
 	g_ammu_table_set.is_VLM_info_IPI_sent = false;
 	g_ammu_table_set.is_SLB_set = false;
 	g_ammu_table_set.is_work_canceled = true;
@@ -982,7 +980,7 @@ void apummu_mgt_init(void)
 	mutex_init(&g_ammu_table_set.DRAM_FB_lock);
 
 	INIT_DELAYED_WORK(&DRAM_free_work, ammu_DRAM_free_work);
-	ammu_workq = alloc_ordered_workqueue(wq_name, WQ_MEM_RECLAIM);
+	ammu_workq = alloc_ordered_workqueue("ammu_dram_free", WQ_MEM_RECLAIM);
 }
 
 /* apummu_mgt_destroy session table set */
