@@ -5722,7 +5722,10 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
 
 		bw_base = mtk_drm_primary_frame_bw(crtc);
+		CRTC_MMP_MARK(0, atomic_begin, (unsigned long)cmdq_handle, __LINE__);
 		priv->data->update_channel_hrt(mtk_crtc, bw_base, channel_hrt);
+		CRTC_MMP_MARK(0, atomic_begin, (unsigned long)cmdq_handle, __LINE__);
+
 		for (i = 0 ; i < BW_CHANNEL_NR ; i++) {
 			if (channel_hrt[i] > mtk_crtc->qos_ctx->last_channel_req[i]) {
 				DDPINFO("mtk_disp_set_channel_hrt_bw[%u] = %u\n", i, channel_hrt[i]);
@@ -5750,9 +5753,13 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 			mtk_disp_set_module_hrt(mtk_crtc, bw_base, cmdq_handle, PMQOS_SET_HRT_BW);
 	}
 
+	CRTC_MMP_MARK(0, atomic_begin, (unsigned long)cmdq_handle, __LINE__);
+
 	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 		       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HRT_IDX),
 		       crtc_state->prop_val[CRTC_PROP_LYE_IDX], ~0);
+
+	CRTC_MMP_MARK(0, atomic_begin, (unsigned long)cmdq_handle, __LINE__);
 
 	if (opt_mmdvfs && is_force_high_step) {
 		unsigned int step_size = mtk_drm_get_mmclk_step_size();
@@ -5766,6 +5773,7 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 
 		if (mtk_crtc->force_high_enabled > 0) {
 			mtk_drm_set_mmclk(crtc, step_size - 1, false, __func__);
+			CRTC_MMP_MARK(0, atomic_begin, (unsigned long)cmdq_handle, __LINE__);
 		} else {
 			en = 1;
 			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
@@ -5777,6 +5785,7 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 			}
 			atomic_set(&mtk_crtc->force_high_step, 0);
 			mtk_vidle_force_power_ctrl_by_cpu(false);
+			CRTC_MMP_MARK(0, atomic_begin, (unsigned long)cmdq_handle, __LINE__);
 		}
 	} else {
 		if (mtk_crtc->force_high_enabled != 0) {
@@ -15261,7 +15270,8 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 				/* only create CMDQ handle for WDMA blank output */
 				mtk_crtc_state->cmdq_handle =
 					mtk_crtc_gce_commit_begin(crtc, old_crtc_state, mtk_crtc_state, true);
-				CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, 0);
+				CRTC_MMP_MARK(index, atomic_begin,
+					(unsigned long)mtk_crtc_state->cmdq_handle, __LINE__);
 				drm_trace_tag_mark("atomic_begin");
 			}
 			goto end;
@@ -15326,11 +15336,12 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 
 	mtk_crtc_state->cmdq_handle =
 		mtk_crtc_gce_commit_begin(crtc, old_crtc_state, mtk_crtc_state, true);
-	CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, 0);
+	CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, __LINE__);
 	drm_trace_tag_mark("atomic_begin");
 
 	/* set backlight value from HWC */
 	mtk_drm_set_backlight(mtk_crtc);
+	CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, __LINE__);
 
 #ifndef DRM_CMDQ_DISABLE
 	if (atomic_read(&priv->need_recover)) {
@@ -15362,6 +15373,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 		(crtc_idx == 0)) {
 		mtk_drm_ovl_bw_monitor_ratio_get(crtc, atomic_state);
+		CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, __LINE__);
 	}
 #endif
 
@@ -15425,8 +15437,10 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	}
 
 	if (priv->data->ovl_exdma_rule &&
-		(old_mtk_state->prop_val[CRTC_PROP_LYE_IDX] < mtk_crtc_state->prop_val[CRTC_PROP_LYE_IDX]))
+		(old_mtk_state->prop_val[CRTC_PROP_LYE_IDX] < mtk_crtc_state->prop_val[CRTC_PROP_LYE_IDX])) {
 		mtk_drm_crtc_exdma_path_setting_reset(mtk_crtc, mtk_crtc_state->cmdq_handle);
+		CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, __LINE__);
+	}
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		mtk_ddp_comp_config_begin(comp, mtk_crtc_state->cmdq_handle, j);
@@ -15441,8 +15455,12 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	if (mtk_crtc->fake_layer.fake_layer_mask)
 		update_frame_weight(crtc, mtk_crtc_state);
 
+	CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, __LINE__);
+
 	mtk_crtc_update_ddp_state(crtc, old_crtc_state, mtk_crtc_state,
 				  mtk_crtc_state->cmdq_handle);
+
+	CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, __LINE__);
 
 	if (priv->data->mmsys_id == MMSYS_MT6989 || priv->data->mmsys_id == MMSYS_MT6991) {
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
