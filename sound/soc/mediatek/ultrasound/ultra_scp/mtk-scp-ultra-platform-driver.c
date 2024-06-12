@@ -297,10 +297,9 @@ static int mtk_scp_ultra_dump_set(struct snd_kcontrol *kcontrol,
 	struct mtk_base_scp_ultra_dump *ultra_dump = &scp_ultra->ultra_dump;
 	//struct mtk_base_scp_ultra_mem *ultra_mem = &scp_ultra->ultra_mem;
 	struct mtk_base_afe *afe = get_afe_base();
-	static int ctrl_val;
+
 	int timeout = 0;
 	int payload[3];
-	bool ret_val;
 
 	dev_dbg(scp_ultra->dev, "%s(), value = %ld, dump_flag = %d\n",
 				__func__,
@@ -309,7 +308,6 @@ static int mtk_scp_ultra_dump_set(struct snd_kcontrol *kcontrol,
 
 	if (ultra_dump->dump_flag == false &&
 		ucontrol->value.integer.value[0] > 0) {
-		ctrl_val = ucontrol->value.integer.value[0];
 		ultra_dump->dump_flag = true;
 		pcm_dump_switch = true;
 
@@ -317,7 +315,7 @@ static int mtk_scp_ultra_dump_set(struct snd_kcontrol *kcontrol,
 		payload[1] = ultra_dump->dump_resv_mem.phy_addr;
 		payload[2] = ultra_dump->dump_flag;
 
-		ret_val = ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_PCMDUMP_ON,
+		ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_PCMDUMP_ON,
 					 true,
 					 3,
 					 &payload[0],
@@ -334,7 +332,7 @@ static int mtk_scp_ultra_dump_set(struct snd_kcontrol *kcontrol,
 				ultra_ipi_wait = false;
 		}
 
-		ret_val = ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_PCMDUMP_OFF,
+		ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_PCMDUMP_OFF,
 					 true,
 					 0,
 					 NULL,
@@ -342,8 +340,6 @@ static int mtk_scp_ultra_dump_set(struct snd_kcontrol *kcontrol,
 		/* scp ultra dump buffer use dram */
 		if (afe->release_dram_resource)
 			afe->release_dram_resource(afe->dev);
-
-		ctrl_val = ucontrol->value.integer.value[0];
 	}
 	return 0;
 }

@@ -46,7 +46,6 @@ static const struct snd_pcm_hardware scp_ultra_hardware = {
 
 static int scp_ultra_pcm_dev_probe(struct platform_device *pdev)
 {
-	struct device *dev;
 	struct mtk_base_scp_ultra *scp_ultra;
 	int ret = 0;
 
@@ -74,7 +73,6 @@ static int scp_ultra_pcm_dev_probe(struct platform_device *pdev)
 	scp_ultra->ultra_mem.ultra_ul_memif_id = -1;
 	scp_ultra->ultra_mem.ultra_dl_memif_id = -1;
 	scp_ultra->usnd_state = SCP_ULTRA_STATE_OFF;
-	dev = scp_ultra->dev;
 
 	platform_set_drvdata(pdev, scp_ultra);
 	pm_runtime_enable(&pdev->dev);
