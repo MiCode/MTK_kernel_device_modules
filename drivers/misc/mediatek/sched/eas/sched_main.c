@@ -101,7 +101,6 @@ static void sched_task_uclamp_hook(void *data, struct sched_entity *se)
 
 	if (trace_sched_task_uclamp_enabled()) {
 		struct task_struct *p;
-		struct sched_avg *sa;
 		struct uclamp_se *uc_min_req, *uc_max_req;
 		unsigned long util;
 
@@ -109,7 +108,6 @@ static void sched_task_uclamp_hook(void *data, struct sched_entity *se)
 			return;
 
 		p = container_of(se, struct task_struct, se);
-		sa = &se->avg;
 		util = READ_ONCE(se->avg.util_est);
 		util = max(util, READ_ONCE(se->avg.util_avg));
 		uc_min_req = &p->uclamp_req[UCLAMP_MIN];
