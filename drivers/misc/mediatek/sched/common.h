@@ -66,6 +66,8 @@ struct task_turbo_t {
 	unsigned short inherit_cnt:14;
 	short nice_backup;
 	atomic_t inherit_types;
+	int vip_prio_backup;
+	unsigned int throttle_time_backup;
 };
 
 struct flt_task_struct {
