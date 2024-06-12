@@ -132,17 +132,18 @@ MODULE_PARM_DESC(apu_pbm_func_sel, "trigger apu pbm func by parameter");
 
 static int soc_pbm_request(int budget)
 {
+#if UPDATE_APU_MBOX
 	uint64_t t, nanosec_rem;
 	uint32_t curr_us = 0;
-
+#endif
 	soc_apu_budget = budget;
 	kicker_ppb_request_power(KR_APU, budget);
 
+#if UPDATE_APU_MBOX
 	t = sched_clock();
 	nanosec_rem = do_div(t, 1000000000);
 	curr_us = (uint32_t)(nanosec_rem / 1000);
 
-#if UPDATE_APU_MBOX
 	iowrite32(curr_us, APU_PBM_MONITOR);
 	pr_debug("%s apu_pbm_monitor:%d(mW) curr_us:%u\n",
 			__func__, budget, ioread32(APU_PBM_MONITOR));
