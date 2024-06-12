@@ -72,6 +72,14 @@ phys_addr_t vcp_get_reserve_mem_size_ex(enum vcp_reserve_mem_id_t id)
 }
 EXPORT_SYMBOL_GPL(vcp_get_reserve_mem_size_ex);
 
+void __iomem *vcp_get_sram_virt_ex(void)
+{
+	if (!vcp_fp || !vcp_fp->vcp_get_sram_virt)
+		return NULL;
+	return vcp_fp->vcp_get_sram_virt();
+}
+EXPORT_SYMBOL_GPL(vcp_get_sram_virt_ex);
+
 int vcp_register_feature_ex(enum feature_id id)
 {
 	if (!vcp_fp || !vcp_fp->vcp_register_feature)

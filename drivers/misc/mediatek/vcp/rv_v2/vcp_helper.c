@@ -240,6 +240,7 @@ struct vcp_status_fp vcp_helper_fp = {
 	.vcp_get_reserve_mem_phys   = vcp_get_reserve_mem_phys,
 	.vcp_get_reserve_mem_virt   = vcp_get_reserve_mem_virt,
 	.vcp_get_reserve_mem_size   = vcp_get_reserve_mem_size,
+	.vcp_get_sram_virt          = vcp_get_sram_virt,
 	.vcp_register_feature       = vcp_register_feature,
 	.vcp_deregister_feature     = vcp_deregister_feature,
 	.is_vcp_ready               = is_vcp_ready,
@@ -1840,6 +1841,11 @@ phys_addr_t vcp_get_reserve_mem_size(enum vcp_reserve_mem_id_t id)
 
 	pr_notice("[VCP] no reserve memory for %d", id);
 	return 0;
+}
+
+void __iomem *vcp_get_sram_virt(void)
+{
+	return vcpreg.sram;
 }
 
 #if VCP_RESERVED_MEM && defined(CONFIG_OF)
