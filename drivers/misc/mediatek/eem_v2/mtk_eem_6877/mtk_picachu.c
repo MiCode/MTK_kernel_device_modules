@@ -512,7 +512,7 @@ static void _check_aee_parameter(void)
 				pr_info("[PICACHU] Error: picachu para image not found");
 			}
 			if (val & (0x1 << 2)) {
-				aee_kernel_exception("PICACHU", "Error: use safe efuse");
+				// aee_kernel_exception("PICACHU", "Error: use safe efuse");
 				pr_info("[PICACHU] Error: use safe efuse");
 			}
 		} else {
@@ -533,20 +533,24 @@ static void _check_aee_parameter(void)
 			db_mirror_ver);
 
 		if (efuse_major_ver > db_major_ver) {
+/*
 			aee_kernel_exception("PICACHU",
 			"Error:efuse_major_ver=%d > db_major_ver=%d, need to update DB",
 			efuse_major_ver,
 			db_major_ver);
+*/
 			pr_info("[PICACHU] Error:efuse_major_ver=%d > db_major_ver=%d, need to update DB",
 			efuse_major_ver,
 			db_major_ver);
 		}
 
 		if (efuse_mirror_ver > db_mirror_ver) {
+/*
 			aee_kernel_warning("PICACHU",
 			"Warning:efuse_mirror_ver=%d > db_mirror_ver=%d",
 			efuse_mirror_ver,
 			db_mirror_ver);
+*/
 			pr_info("PICACHU Warning:efuse_mirror_ver=%d > db_mirror_ver=%d",
 			efuse_mirror_ver,
 			db_mirror_ver);
