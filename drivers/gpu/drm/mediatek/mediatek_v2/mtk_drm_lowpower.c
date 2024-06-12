@@ -2471,6 +2471,16 @@ bool mtk_drm_idlemgr_wb_is_entered(struct mtk_drm_crtc *mtk_crtc)
 	return mtk_crtc->idlemgr->idlemgr_ctx->wb_entered;
 }
 
+bool mtk_drm_idlemgr_wb_is_using(struct mtk_drm_crtc *mtk_crtc)
+{
+	unsigned int *wb_status;
+
+	wb_status = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_IDLEMGR_BY_WB_STATUS);
+	if (*wb_status == MTK_DRM_IDLEMGR_BY_WB_USING)
+		return true;
+	return false;
+}
+
 void mtk_drm_idlemgr_wb_capture(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle,
 		struct mtk_ddp_comp **comp, struct mtk_ddp_comp **comp_dual)
 {
