@@ -351,7 +351,7 @@ static void xhci_mtk_procfs_init(struct xhci_hcd_mtk *mtk)
 		return;
 	}
 
-	mtk->testmode_file = proc_create_data(PROC_TEST_MODE, 0644,
+	mtk->testmode_file = proc_create_data(PROC_TEST_MODE, 0640,
 		root, &testmode_fops, mtk);
 	if (!mtk->testmode_file) {
 		dev_info(mtk->dev, "%s: fail to create testmode node\n",
