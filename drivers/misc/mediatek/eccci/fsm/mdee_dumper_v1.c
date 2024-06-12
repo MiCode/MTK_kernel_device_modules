@@ -391,7 +391,7 @@ err_exit:
 static void mdee_dumper_info_prepare_v1(struct ccci_fsm_ee *mdee)
 {
 	struct ex_log_t *ex_info = NULL;
-	int ee_type, ee_case;
+	int ee_type;
 	struct mdee_dumper_v1 *dumper = mdee->dumper_obj;
 	struct debug_info_t *debug_info = &dumper->debug_info;
 	struct ccci_smem_region *mdss_dbg =
@@ -414,7 +414,6 @@ static void mdee_dumper_info_prepare_v1(struct ccci_fsm_ee *mdee)
 			return;
 		}
 	}
-	ee_case = dumper->more_info;
 
 	memset(debug_info, 0, sizeof(struct debug_info_t));/* need review */
 	ee_type = ex_info->header.ex_type;
@@ -472,7 +471,7 @@ static void mdee_dumper_info_prepare_v1(struct ccci_fsm_ee *mdee)
 		debug_info->name = "ASSERT";
 		scnprintf(debug_info->assert.file_name,
 			sizeof(debug_info->assert.file_name),
-			ex_info->content.assert.filename);
+			"%s", ex_info->content.assert.filename);
 		debug_info->assert.line_num =
 			ex_info->content.assert.linenumber;
 		debug_info->assert.parameters[0] =
@@ -520,7 +519,7 @@ static void mdee_dumper_info_prepare_v1(struct ccci_fsm_ee *mdee)
 		debug_info->name = "ASSERT DUMP";
 		scnprintf(debug_info->assert.file_name,
 			sizeof(debug_info->assert.file_name),
-			ex_info->content.assert.filename);
+			"%s", ex_info->content.assert.filename);
 		debug_info->assert.line_num =
 			ex_info->content.assert.linenumber;
 		break;
@@ -529,12 +528,12 @@ static void mdee_dumper_info_prepare_v1(struct ccci_fsm_ee *mdee)
 		debug_info->name = "MD DMD ASSERT";
 		scnprintf(debug_info->dsp_assert.file_name,
 			sizeof(debug_info->dsp_assert.file_name),
-			ex_info->content.assert.filename);
+			"%s", ex_info->content.assert.filename);
 		debug_info->dsp_assert.line_num =
 			ex_info->content.assert.linenumber;
 		scnprintf(debug_info->dsp_assert.execution_unit,
 			sizeof(debug_info->dsp_assert.execution_unit),
-			ex_info->envinfo.execution_unit);
+			"%s", ex_info->envinfo.execution_unit);
 		debug_info->dsp_assert.parameters[0] =
 			ex_info->content.assert.parameters[0];
 		debug_info->dsp_assert.parameters[1] =
@@ -547,7 +546,7 @@ static void mdee_dumper_info_prepare_v1(struct ccci_fsm_ee *mdee)
 		debug_info->name = "MD DMD Exception";
 		scnprintf(debug_info->dsp_exception.execution_unit,
 			sizeof(debug_info->dsp_exception.execution_unit),
-			ex_info->envinfo.execution_unit);
+			"%s", ex_info->envinfo.execution_unit);
 		debug_info->dsp_exception.code1 =
 			ex_info->content.fatalerr.error_code.code1;
 		break;
@@ -556,7 +555,7 @@ static void mdee_dumper_info_prepare_v1(struct ccci_fsm_ee *mdee)
 		debug_info->name = "MD DMD FATAL ERROR";
 		scnprintf(debug_info->dsp_fatal_err.execution_unit,
 			sizeof(debug_info->dsp_fatal_err.execution_unit),
-			ex_info->envinfo.execution_unit);
+			"%s", ex_info->envinfo.execution_unit);
 		debug_info->dsp_fatal_err.err_code[0] =
 			ex_info->content.fatalerr.error_code.code1;
 		debug_info->dsp_fatal_err.err_code[1] =

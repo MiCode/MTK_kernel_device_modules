@@ -1475,7 +1475,7 @@ static inline void proxy_dispatch_queue_status(struct port_proxy *proxy_p,
 	int hif, int qno, int dir, unsigned int state)
 {
 	struct port_t *port = NULL;
-	int match = 0, matched = 0;
+	int match = 0;
 
 	if (hif < 0 || hif >= CCCI_HIF_NUM || qno >= MAX_QUEUE_NUM || qno < 0) {
 		CCCI_ERROR_LOG(0, CORE,
@@ -1509,7 +1509,6 @@ static inline void proxy_dispatch_queue_status(struct port_proxy *proxy_p,
 			match = qno == port->rxq_index;
 		if (match && port->ops && port->ops->queue_state_notify) {
 			port->ops->queue_state_notify(port, dir, qno, state);
-			matched = 1;
 		}
 	}
 }

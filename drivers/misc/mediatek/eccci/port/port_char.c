@@ -129,7 +129,6 @@ EXPORT_SYMBOL(ccci_c2k_set_usb_callback);
 
 static int c2k_req_push_to_usb(struct port_t *port, struct sk_buff *skb)
 {
-	struct ccci_header *ccci_h = NULL;
 	int read_len, read_count, ret = 0;
 	int c2k_ch_id;
 	int ppp_rx_ch = CCCI_C2K_PPP_RX;
@@ -146,7 +145,6 @@ static int c2k_req_push_to_usb(struct port_t *port, struct sk_buff *skb)
 	}
 
 	/* calculate available data */
-	ccci_h = (struct ccci_header *)skb->data;
 	read_len = skb->len - sizeof(struct ccci_header);
 	/* remove CCCI header */
 	skb_pull(skb, sizeof(struct ccci_header));
