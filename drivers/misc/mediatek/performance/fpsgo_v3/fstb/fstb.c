@@ -2523,7 +2523,6 @@ static ssize_t set_render_max_fps_store(struct kobject *kobj,
 {
 	char *acBuffer = NULL;
 	int arg;
-	int ret = 0;
 
 	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
 	if (!acBuffer)
@@ -2536,9 +2535,9 @@ static ssize_t set_render_max_fps_store(struct kobject *kobj,
 			fpsgo_systrace_c_fstb_man(arg > 0 ? arg : -arg,
 				0, arg > 0, "force_max_fps");
 			if (arg > 0)
-				ret = switch_thread_max_fps(arg, 1);
+				switch_thread_max_fps(arg, 1);
 			else
-				ret = switch_thread_max_fps(-arg, 0);
+				switch_thread_max_fps(-arg, 0);
 		}
 	}
 
