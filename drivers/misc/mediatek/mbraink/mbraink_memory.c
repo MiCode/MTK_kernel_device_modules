@@ -83,6 +83,6 @@ int mbraink_memory_getMdvInfo(struct mbraink_memory_mdvInfo  *pMemoryMdv)
 	else
 		pr_info("%s: Do not support ioctl getMdv query.\n", __func__);
 
-	return 0;
+	return ret;
 }
 

@@ -2,6 +2,7 @@
 MTK_MBRAINK_FOLDER=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mbraink/
 ccflags-y += -I$(MTK_MBRAINK_FOLDER)
 subdir-ccflags-y += -I$(MTK_MBRAINK_FOLDER)
+subdir-ccflags-y += -Wno-frame-address
 
 ccflags-y += -I$(srctree)/drivers/android/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/qos/

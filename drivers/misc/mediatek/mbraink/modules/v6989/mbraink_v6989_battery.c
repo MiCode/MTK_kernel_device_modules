@@ -12,26 +12,25 @@ struct battery_drv_data drv_data;
 static void mbraink_v6989_get_battery_info(struct mbraink_battery_data *battery_buffer,
 			      long long timestamp)
 {
-	int ret;
 	union power_supply_propval prop;
 
 	memset(&prop, 0x00, sizeof(prop));
 	if (drv_data.bat1_psy != NULL && !IS_ERR(drv_data.bat1_psy)) {
 		battery_buffer->timestamp = timestamp;
 
-		ret = power_supply_get_property(drv_data.bat1_psy,
+		power_supply_get_property(drv_data.bat1_psy,
 			POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN, &prop);
 		battery_buffer->qmaxt = prop.intval;
 
-		ret = power_supply_get_property(drv_data.bat1_psy,
+		power_supply_get_property(drv_data.bat1_psy,
 			POWER_SUPPLY_PROP_ENERGY_FULL, &prop);
 		battery_buffer->quse = prop.intval;
 
-		ret = power_supply_get_property(drv_data.bat1_psy,
+		power_supply_get_property(drv_data.bat1_psy,
 			POWER_SUPPLY_PROP_ENERGY_NOW, &prop);
 		battery_buffer->precise_soc = prop.intval;
 
-		ret = power_supply_get_property(drv_data.bat1_psy,
+		power_supply_get_property(drv_data.bat1_psy,
 			POWER_SUPPLY_PROP_CAPACITY_LEVEL, &prop);
 		battery_buffer->precise_uisoc = prop.intval;
 

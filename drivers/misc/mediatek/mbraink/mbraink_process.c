@@ -119,7 +119,6 @@ void mbraink_get_process_stat_info(pid_t current_pid,
 {
 	struct task_struct *t = NULL;
 	u64 stime = 0, utime = 0, cutime = 0, cstime = 0;
-	int ret = 0;
 	u64 process_jiffies = 0;
 	int priority = 0;
 	const struct cred *cred = NULL;
@@ -159,7 +158,6 @@ void mbraink_get_process_stat_info(pid_t current_pid,
 			process_stat_buffer->pid_count++;
 			put_cred(cred);
 		} else {
-			ret = -1;
 			process_stat_buffer->pid = (unsigned short)(t->pid);
 			put_cred(cred);
 			break;
@@ -177,7 +175,7 @@ void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,
 	struct task_struct *t = NULL;
 	struct task_struct *s = NULL;
 	struct pid *parent_pid = NULL;
-	u64 stime = 0, utime = 0, cutime = 0, cstime = 0;
+	u64 stime = 0, utime = 0;
 	int ret = 0;
 	u64 thread_jiffies = 0;
 	int priority = 0;
@@ -231,8 +229,6 @@ void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,
 					continue;
 
 				stime = utime = 0;
-				cutime = s->signal->cutime;
-				cstime = s->signal->cstime;
 				task_cputime_adjusted(s, &utime, &stime);
 				/***********************************************
 				 *cutime and cstime is to wait for child process
@@ -1009,7 +1005,6 @@ void mbraink_get_tracing_pid_info(unsigned short current_idx,
 				struct mbraink_tracing_pid_data *tracing_pid_buffer)
 {
 	int i = 0;
-	int ret = 0;
 	unsigned long flags;
 	unsigned short tracing_count = 0;
 
@@ -1046,7 +1041,6 @@ void mbraink_get_tracing_pid_info(unsigned short current_idx,
 				memset(&mbraink_tracing_pidlist_data[i], 0,
 					sizeof(struct mbraink_tracing_pidlist));
 			} else {
-				ret = -1;
 				tracing_pid_buffer->tracing_idx = i;
 				break;
 			}
@@ -1061,7 +1055,6 @@ void mbraink_get_binder_trace_info(unsigned short current_idx,
 				struct mbraink_binder_trace_data *binder_trace_buffer)
 {
 	int i = 0;
-	int ret = 0;
 	unsigned long flags;
 	unsigned short tracing_cnt = 0;
 
@@ -1086,7 +1079,6 @@ void mbraink_get_binder_trace_info(unsigned short current_idx,
 				binder_trace_buffer->tracing_count++;
 				mbraink_binder_tracelist_data[i].dirty = false;
 			} else {
-				ret = -1;
 				binder_trace_buffer->tracing_idx = i;
 				break;
 			}
