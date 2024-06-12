@@ -318,7 +318,6 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_select_rq_mask);
 	unsigned int cpu, pd_idx;
 	struct perf_domain *pd_ptr = pd;
-	unsigned long pd_base_freq[MAX_NR_CPUS] = {0};
 
 	eenv_task_busy_time(eenv, p, prev_cpu);
 
@@ -330,6 +329,8 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 		eenv->gear_max_util[cpu][1] =  -1;
 		eenv->pds_cpu_cap[cpu] = -1;
 		eenv->pds_cap[cpu] = -1;
+		eenv->pd_base_max_util[cpu] = 0;
+		eenv->pd_base_freq[cpu] = 0;
 	}
 
 	eenv->wl_support = get_eas_dsu_ctrl();
@@ -375,7 +376,8 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 			max_util = eenv_pd_max_util(eenv, cpus, p, -1);
 			pd_freq = pd_get_util_cpufreq(eenv, cpus, max_util,
 					eenv->pds_cpu_cap[pd_idx], arch_scale_cpu_capacity(pd_idx));
-			pd_base_freq[pd_idx] = max(pd_freq, per_cpu(min_freq, pd_idx));
+			eenv->pd_base_freq[pd_idx] = max(pd_freq, per_cpu(min_freq, pd_idx));
+			eenv->pd_base_max_util[pd_idx] = max_util;
 		}
 	}
 
@@ -403,7 +405,7 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 
 		if (is_dsu_pwr_triggered(eenv->wl)) {
 			eenv_dsu_init(eenv->android_vendor_data1, false, eenv->wl,
-					PERCORE_L3_BW, cpu_active_mask->bits[0], pd_base_freq,
+					PERCORE_L3_BW, cpu_active_mask->bits[0], eenv->pd_base_freq,
 					val, output);
 		}
 
@@ -451,8 +453,12 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 	if (dst_cpu >= 0)
 		busy_time = min(eenv->pds_cap[pd_idx], busy_time + eenv->task_busy_time);
 
-	pd_freq = pd_get_util_cpufreq(eenv, pd_cpus, pd_max_util,
-			eenv->pds_cpu_cap[pd_idx], scale_cpu);
+	if (pd_max_util == eenv->pd_base_max_util[pd_idx]) {
+		pd_freq = eenv->pd_base_freq[pd_idx];
+	} else {
+		pd_freq = pd_get_util_cpufreq(eenv, pd_cpus, pd_max_util,
+				eenv->pds_cpu_cap[pd_idx], scale_cpu);
+	}
 
 	if (eenv->wl_support && is_dsu_pwr_triggered(eenv->wl)) {
 		dsu_volt = update_dsu_status(eenv, false, pd_freq, pd_idx, dst_cpu);
@@ -641,9 +647,13 @@ calc_sharebuck_done:
 		gear_idx = eenv->gear_idx;
 		eenv->gear_idx = share_buck.gear_idx;
 		pd_idx = cpumask_first(share_buck.cpus);
-		share_buck_freq = pd_get_util_cpufreq(eenv, pd_cpus,
-				eenv->gear_max_util[share_buck.gear_idx][dst_idx],
-				eenv->pds_cpu_cap[pd_idx], arch_scale_cpu_capacity(pd_idx));
+		if (eenv->gear_max_util[share_buck.gear_idx][dst_idx] == eenv->pd_base_max_util[pd_idx]) {
+			share_buck_freq = eenv->pd_base_freq[pd_idx];
+		} else {
+			share_buck_freq = pd_get_util_cpufreq(eenv, pd_cpus,
+					eenv->gear_max_util[share_buck.gear_idx][dst_idx],
+					eenv->pds_cpu_cap[pd_idx], arch_scale_cpu_capacity(pd_idx));
+		}
 		dsu_extern_volt = pd_get_freq_volt(cpumask_first(share_buck.cpus),
 				share_buck_freq, false, eenv->wl);
 		eenv->gear_idx = gear_idx;
