@@ -1893,8 +1893,16 @@ static s32 mml_test_fill_frame_dumpout(void *frame_buf, u32 size)
 {
 #if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 	void *mml = mml_test_get_mml(main_test->pdev);
-	struct mml_frm_dump_data *frm = mml_dump_read_data_lock(mml);
+	struct mml_frm_dump_data *frm = NULL;
 	bool ret = true;
+
+	if (!mml) {
+		mml_err("[test]%s mml is NULL", __func__);
+		ret = false;
+		goto done;
+	}
+
+	frm = mml_dump_read_data_lock(mml);
 
 	if (!frm->size) {
 		mml_log("[test]%s no frame dump data to use", __func__);
@@ -2574,11 +2582,19 @@ static void process_ut_cmd(const char *cmd, u32 mmlid)
 		mml_msg("[ut]%s checking %s", __func__, temp);
 
 		if (strlen(cmd) > param_len && strncmp(cmd + param_len, ":0x", 3) == 0) {
-			snprintf(scan_buf, ARRAY_SIZE(scan_buf) - 1, "%s:%%i", ut_params[i]);
+			ret = snprintf(scan_buf, ARRAY_SIZE(scan_buf) - 1, "%s:%%i", ut_params[i]);
+			if (ret < 0) {
+				mml_err("[ut]%s scan_buf snprintf error", __func__);
+				break;
+			}
 			ret = sscanf(cmd, scan_buf, &val);
 			mml_msg("[ut]scan %s %#010x idx %u ret %d", scan_buf, val, i, ret);
 		} else {
-			snprintf(scan_buf, ARRAY_SIZE(scan_buf) - 1, "%s:%%u", ut_params[i]);
+			ret = snprintf(scan_buf, ARRAY_SIZE(scan_buf) - 1, "%s:%%u", ut_params[i]);
+			if (ret < 0) {
+				mml_err("[ut]%s scan_buf snprintf error", __func__);
+				break;
+			}
 			ret = sscanf(cmd, scan_buf, &val);
 			mml_msg("[ut]scan %s %u idx %u ret %d", scan_buf, val, i, ret);
 		}
@@ -2817,6 +2833,11 @@ static ssize_t ut_write(struct file *filp, const char __user *buf, size_t size, 
 	cur.fd_out1 = user_case.fd_out1;
 	cur.size_out1 = user_case.size_out1;
 	cur.mmlid = user_case.mmlid;
+
+	if (user_case.mmlid >= mml_max_sys || user_case.mmlid < 0) {
+		mml_err("[test] invalid user_case.mmlid:%d", user_case.mmlid);
+		return 0;
+	}
 
 	case_general_submit_ut(test, &cur, &mml_ut_cfg[user_case.mmlid], ut_setup);
 
