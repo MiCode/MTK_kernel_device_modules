@@ -394,6 +394,16 @@
 				regulator-enable-ramp-delay = <60>;
 		};
 	};	/* End of mt6358regulator */
+	mt6358codec: mt6358codec {
+			compatible = "mediatek,mt6358-sound";
+			mediatek,dmic-mode = <0>;
+			mediatek,mic-type = <1>;
+			io-channels = <&pmic_auxadc AUXADC_HPOFS_CAL>;
+			io-channel-names = "pmic_hpofs_cal";
+			nvmem = <&pmic_efuse>;
+			nvmem-names = "pmic-hp-efuse";
+			reg-vaud28-supply = <&mt_pmic_vaud28_ldo_reg>;
+		};
 	mt6358_rtc: mt6358_rtc {
 		compatible = "mediatek,mt6358-rtc";
 		bootmode = <&chosen>;

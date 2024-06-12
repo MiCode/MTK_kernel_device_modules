@@ -303,6 +303,21 @@
 
 #endif
 
+&i2c6 {
+	mt6660: mt6660@34 {
+		compatible = "mediatek,mt6660";
+		#sound-dai-cells = <0>;
+		reg = <0x34>;
+		status = "okay";
+	};
+};
+
+&sound {
+	mediatek,speaker-codec {
+		sound-dai = <&mt6660>;
+	};
+};
+
 
 #include <k6781v1_64/cust.dtsi>
 #include "mediatek/cust_mt6781_camera.dtsi"
