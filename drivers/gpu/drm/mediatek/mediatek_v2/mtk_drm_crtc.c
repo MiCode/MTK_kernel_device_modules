@@ -17286,7 +17286,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	mtk_ddp_comp_partial_update(dsc_comp, cmdq_handle, partial_roi, partial_enable);
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-		if ((mtk_ddp_comp_get_type(comp->id) != MTK_DISP_RSZ) ||
+		if ((mtk_ddp_comp_get_type(comp->id) != MTK_DISP_RSZ) &&
 			(mtk_ddp_comp_get_type(comp->id) != MTK_DISP_MDP_RSZ))
 			mtk_ddp_comp_partial_update(comp, cmdq_handle, partial_roi, partial_enable);
 	}
