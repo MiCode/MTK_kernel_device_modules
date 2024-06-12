@@ -28,6 +28,7 @@
 
 #define GET_SWINF(x)	(((x) >> 1) & 0x7)
 #define GET_SWINF_ERR(x)	(((x) >> 18) & 0x1)
+#define GET_SPMI_NACK_SLVID(x)	(((x) >> 8) & 0xf)
 
 #define PMIF_CMD_REG_0		0
 #define PMIF_CMD_REG		1
@@ -51,6 +52,9 @@
 
 #define PMIF_IRQDESC(name) { #name, pmif_##name##_irq_handler, -1}
 
+#define MT6316_PMIC_HWCID_L_ADDR                                        (0x208)
+#define MT6316_PMIC_HWCID_L_MASK                                        (0xff)
+#define MT6316_PMIC_HWCID_L_SHIFT                                       (0)
 #define MT6316_PMIC_RG_SPMI_DBGMUX_OUT_L_ADDR                           (0x42b)
 #define MT6316_PMIC_RG_SPMI_DBGMUX_OUT_L_MASK                           (0xff)
 #define MT6316_PMIC_RG_SPMI_DBGMUX_OUT_L_SHIFT                          (0)
@@ -374,6 +378,12 @@ enum {
 	IRQ_PMIF_SWINF_ACC_ERR_4_V2 = 27,
 	IRQ_PMIF_SWINF_ACC_ERR_5_V2 = 28,
 };
+
+enum {
+	MT6316_E3 = 0,
+	MT6316_E4 = 1,
+};
+
 static struct spmi_dev spmidev[16];
 static struct spmi_nack_monitor_pair nack_monitor_list[MAX_MONITOR_LIST_SIZE];
 static int nack_monitor_list_size;
@@ -487,6 +497,19 @@ static bool in_spmi_nack_monitor_list(u32 spmi_nack)
 	}
 	pr_notice("%s Not in SPMI NACK monitor list\n", __func__);
 	return false;
+}
+
+static int mt6316_revision_check(struct pmif *arb, unsigned int slvid)
+{
+	u8 rdata = 0;
+
+	arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL,
+		slvid, MT6316_PMIC_HWCID_L_ADDR, &rdata, 1);
+
+	if (rdata == 0x30)
+		return MT6316_E4;
+	else
+		return MT6316_E3;
 }
 
 unsigned long long get_current_time_ms(void)
@@ -777,6 +800,19 @@ static struct pmif mt6xxx_pmif_arb[] = {
 		.read_cmd = pmif_spmi_read_cmd,
 		.write_cmd = pmif_spmi_write_cmd,
 		.caps = 2,
+	},
+};
+
+static struct pmif mt6989_pmif_arb[] = {
+	{
+		.regs = mt6xxx_regs,
+		.spmimst_regs = mt6853_spmi_regs,
+		.soc_chan = 2,
+		.mstid = SPMI_MASTER_1,
+		.pmifid = PMIF_PMIFID_SPMI0,
+		.read_cmd = pmif_spmi_read_cmd,
+		.write_cmd = pmif_spmi_write_cmd,
+		.caps = 3,
 	},
 };
 
@@ -1351,7 +1387,7 @@ static void dump_spmip_pmic_dbg_rg(struct pmif *arb, unsigned int slvid)
 static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 {
 	struct pmif *arb = data;
-	int flag = 0;
+	int flag = 0, assert_flag = 0;
 	unsigned int spmi_nack = 0, spmi_p_nack = 0, spmi_nack_data = 0, spmi_p_nack_data = 0;
 	unsigned int spmi_rcs_nack = 0, spmi_debug_nack = 0, spmi_mst_nack = 0,
 		spmi_p_rcs_nack = 0, spmi_p_debug_nack = 0, spmi_p_mst_nack = 0,
@@ -1384,11 +1420,25 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 		pr_notice("%s spmi transaction fail (Write) irq triggered", __func__);
 		pr_notice("SPMI_REC0 m/p:0x%x/0x%x SPMI_REC1 m/p 0x%x/0x%x\n",
 			spmi_nack, spmi_p_nack, spmi_nack_data, spmi_p_nack_data);
-		if (((spmi_nack & 0x0f00) == 0x0f00) || ((spmi_p_nack & 0x0f00) == 0x0f00)) {
-			pr_notice("%s, Avoid trigger AEE event while writing slvid:0xf for SWRGO project\n", __func__);
-			flag = 0;
+		if (arb->caps == 3) {
+			if (spmi_nack & 0xD8) {
+				flag = 1;
+			} else {
+				if ((GET_SPMI_NACK_SLVID(spmi_p_nack)) == 0xf) {
+					pr_notice("%s, Avoid trigger AEE event while writing slvid:0xf for SWRGO project\n", __func__);
+					flag = 0;
+				} else {
+					flag = 1;
+				}
+			}
 		} else {
-			flag = 1;
+			if (spmi_nack & 0xD8) {
+				flag = 1;
+				assert_flag = 1;
+			} else {
+				flag = 1;
+				assert_flag = (mt6316_revision_check(arb, GET_SPMI_NACK_SLVID(spmi_p_nack)) == MT6316_E4) ? 1 : 0;
+			}
 		}
 	}
 	if ((spmi_rcs_nack & 0xC0000) || (spmi_p_rcs_nack & 0xC0000)) {
@@ -1408,19 +1458,30 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	}
 	// Read fail nack, causing parity error
 	if ((spmi_nack & 0x20) || (spmi_p_nack & 0x20)) {
-		if (spmi_nack & 0x20) {
-			flag = (in_spmi_nack_monitor_list(spmi_nack)) ? 1 : 0;
+		if (arb->caps == 3) {
+			if (spmi_nack & 0x20) {
+				flag = (in_spmi_nack_monitor_list(spmi_nack)) ? 1 : 0;
+			} else {
+				if ((GET_SPMI_NACK_SLVID(spmi_p_nack)) == 0xf) {
+					pr_notice("%s, Avoid trigger AEE event while writing slvid:0xf for SWRGO project\n", __func__);
+					flag = 0;
+				} else {
+					flag = 1;
+				}
+			}
 		} else {
-			dump_spmip_pmic_dbg_rg(arb, (spmi_p_nack & 0x0f00)>>8);
-			flag = 1;
+			if (spmi_nack & 0x20) {
+				flag = (in_spmi_nack_monitor_list(spmi_nack)) ? 1 : 0;
+				assert_flag = (in_spmi_nack_monitor_list(spmi_nack)) ? 1 : 0;
+			} else {
+				dump_spmip_pmic_dbg_rg(arb, (spmi_p_nack & 0x0f00)>>8);
+				flag = 1;
+				assert_flag = (mt6316_revision_check(arb, GET_SPMI_NACK_SLVID(spmi_p_nack)) == MT6316_E4) ? 1 : 0;
+			}
 		}
 		pr_notice("%s spmi transaction fail (Read) irq triggered", __func__);
 		pr_notice("SPMI_REC0 m/p:0x%x/0x%x SPMI_REC1 m/p 0x%x/0x%x\n",
 			spmi_nack, spmi_p_nack, spmi_nack_data, spmi_p_nack_data);
-		if (((spmi_nack & 0x0f00) == 0x0f00) || ((spmi_p_nack & 0x0f00) == 0x0f00)) {
-			pr_notice("%s, Avoid trigger AEE event while reading slvid:0xf for SWRGO project\n", __func__);
-			flag = 0;
-		}
 	}
 	/* SPMI WDT IRQ triggered */
 	if (spmi_wdt_rec || spmi_p_wdt_rec) {
@@ -1456,10 +1517,15 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 		mtk_spmi_writel(arb->spmimst_base[0], arb, 0x7, SPMI_REC_CTRL);
 		mtk_spmi_writel(arb->spmimst_base[1], arb, 0x7, SPMI_REC_CTRL);
 		pr_notice("%s SPMI_WDT_IRQ is cleared\n", __func__);
-	} else
+	} else {
 		pr_notice("%s IRQ not cleared\n", __func__);
+		mtk_spmi_writel(arb->spmimst_base[0], arb, 0x7, SPMI_REC_CTRL);
+		mtk_spmi_writel(arb->spmimst_base[1], arb, 0x7, SPMI_REC_CTRL);
+		pr_notice("%s Force clear IRQ\n", __func__);
+	}
 
-
+	if (assert_flag)
+		BUG_ON(1);
 
 	mutex_unlock(&arb->pmif_m_mutex);
 	__pm_relax(arb->pmif_m_Thread_lock);
@@ -1968,7 +2034,7 @@ static const struct of_device_id mtk_spmi_match_table[] = {
 		.data = &mt6xxx_pmif_arb,
 	}, {
 		.compatible = "mediatek,mt6989-spmi",
-		.data = &mt6xxx_pmif_arb,
+		.data = &mt6989_pmif_arb,
 	}, {
 		.compatible = "mediatek,mt6991-spmi",
 		.data = &mt6xxx_pmif_arb,
