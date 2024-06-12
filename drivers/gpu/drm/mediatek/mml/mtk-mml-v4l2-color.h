@@ -49,7 +49,11 @@ static const struct mml_m2m_format mml_m2m_formats[] = {
 		.pixelformat	= V4L2_PIX_FMT_NV12_HYFBC,
 		.mml_color	= MML_FMT_NV12_HYFBC,
 		.depth		= { 12 },
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 		.row_depth	= { 8 },
+#else
+		.row_depth	= { 12 },
+#endif
 		.num_planes	= 1,
 		.walign		= 5,
 		.halign		= 4,
@@ -60,7 +64,11 @@ static const struct mml_m2m_format mml_m2m_formats[] = {
 		.pixelformat	= V4L2_PIX_FMT_P010_HYFBC,
 		.mml_color	= MML_FMT_P010_HYFBC,
 		.depth		= { 18 },
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 		.row_depth	= { 12 },
+#else
+		.row_depth	= { 18 },
+#endif
 		.num_planes	= 1,
 		.walign		= 5,
 		.halign		= 4,
