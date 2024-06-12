@@ -800,8 +800,8 @@ static int disp_chist_cfg_set_config(struct mtk_ddp_comp *comp,
 {
 	struct drm_mtk_chist_config *config = data;
 	struct mtk_disp_chist *chist_data = comp_to_chist(comp);
-	unsigned int crtc_id = config->device_id >> 16 & 0xffff;
-	unsigned int chist_id = config->device_id & 0xffff;
+	unsigned int crtc_id = 0;
+	unsigned int chist_id = 0;
 	unsigned int cur_crtc_id = 0;
 	unsigned int cur_chist_id = 0;
 	int i = 0;
@@ -824,6 +824,8 @@ static int disp_chist_cfg_set_config(struct mtk_ddp_comp *comp,
 		return 0;
 	}
 
+	crtc_id = config->device_id >> 16 & 0xffff;
+	chist_id = config->device_id & 0xffff;
 	cur_crtc_id = comp->mtk_crtc->base.base.id;
 	cur_chist_id = chist_data->path_order;
 	if (crtc_id != cur_crtc_id || chist_id != cur_chist_id) {
@@ -890,7 +892,7 @@ static int disp_chist_bind(struct device *dev, struct device *master,
 {
 	struct mtk_disp_chist *priv = dev_get_drvdata(dev);
 	struct drm_device *drm_dev = data;
-	int ret;
+	int ret = -1;
 
 	DDPINFO("%s\n", __func__);
 
@@ -981,7 +983,8 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 	struct mtk_drm_private *priv = NULL;
 	int max_bins = 0;
 	unsigned int i = 0;
-	unsigned int cur_present_fence;
+	unsigned int *p_present_fence = NULL;
+	unsigned int cur_present_fence = 0;
 	static unsigned int last_present_fence;
 	struct mtk_disp_chist *data = comp_to_chist(comp);
 	struct mtk_disp_chist_primary *prim_data = data->primary_data;
@@ -1040,8 +1043,11 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 
 	mutex_unlock(&prim_data->data_lock);
 	mutex_unlock(&prim_data->clk_lock);
-	cur_present_fence = *(unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
+	p_present_fence = (unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_PRESENT_FENCE(0)));
+	if (p_present_fence != NULL) {
+		cur_present_fence = *p_present_fence;
+	}
 	if (cur_present_fence != 0) {
 		// 2nd trigger of Frame N, the hist info is already for Content N
 		if (last_present_fence == cur_present_fence)
