@@ -18,7 +18,6 @@
 #define assert(x)
 #define SRC_CLK_FRQ 124800000
 #define UART_PORT 0
-// #define PAGE_SIZE 4096
 
 typedef unsigned int uint32_t;
 typedef struct hvc_retval {
@@ -27,7 +26,7 @@ typedef struct hvc_retval {
 
 // TODO: suppoosed to declared in handle.h
 const struct pkvm_module_ops *module_ops;
-hvc_retval_t mkp_hvc_handler(u64 x0, u64 x1, u64 x2, u64 x3, u64 x4, u64 x5, u64 x6, u64 x7);
+hvc_retval_t mkp_hvc_handler(u64 x0, u64 x1, u64 x2, u64 x3, u64 x4, u64 x5, u64 x6);
 
 /* Allow setup of essentials or not */
 static int stop_setup_essentials;
@@ -44,10 +43,9 @@ void handle__mkp_hyp_hvc(struct kvm_cpu_context *ctx)
 	DECLARE_REG(u64, x4, ctx, 5);
 	DECLARE_REG(u64, x5, ctx, 6);
 	DECLARE_REG(u64, x6, ctx, 7);
-	DECLARE_REG(u64, x7, ctx, 8);
 	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
 
-	ret = mkp_hvc_handler(x0, x1, x2, x3, x4, x5, x6, x7);
+	ret = mkp_hvc_handler(x0, x1, x2, x3, x4, x5, x6);
 
 	cpu_reg(ctx, 1) = ret.x[0];
 	cpu_reg(ctx, 2) = ret.x[1];
@@ -55,7 +53,7 @@ void handle__mkp_hyp_hvc(struct kvm_cpu_context *ctx)
 	cpu_reg(ctx, 4) = ret.x[3];
 }
 
-int mkp_hyp_prepare(u64 dram_size, u64 heap_start, u64 heap_size, u64 smccc_trng_available)
+int mkp_hyp_prepare1(u64 start_ipa, u64 dram_size, u64 heap_start, u64 heap_size, u64 smccc_trng_available)
 {
 	int ret = 0;
 
@@ -65,12 +63,23 @@ int mkp_hyp_prepare(u64 dram_size, u64 heap_start, u64 heap_size, u64 smccc_trng
 	 */
 	stop_setup_essentials = 1;
 	ret = malloc_init((struct pkvm_module_ops *)module_ops, heap_start, heap_size);
-	init_handle_manipulation(dram_size, smccc_trng_available);
+	if (ret)
+		return ret;
+
+	init_handle_manipulation(start_ipa, dram_size, smccc_trng_available);
 
 	return 0;
 }
 
-hvc_retval_t mkp_hvc_handler(u64 x0, u64 x1, u64 x2, u64 x3, u64 x4, u64 x5, u64 x6, u64 x7)
+int mkp_hyp_prepare2(u64 fixaddr_top, u64 fixaddr_real_start)
+{
+	FIX_END = fixaddr_top;
+	FIX_START = fixaddr_real_start;
+
+	return 0;
+}
+
+hvc_retval_t mkp_hvc_handler(u64 x0, u64 x1, u64 x2, u64 x3, u64 x4, u64 x5, u64 x6)
 {
 	hvc_retval_t ret = {{0}};
 	sharebuf_update_t update_ret;
@@ -81,8 +90,11 @@ hvc_retval_t mkp_hvc_handler(u64 x0, u64 x1, u64 x2, u64 x3, u64 x4, u64 x5, u64
 	policy = POLICY_ID((u32)x0);
 
 	switch(func) {
-	case HVC_FUNC_MKP_HYP_PREPARE:
-		ret.x[0] = mkp_hyp_prepare(x1, x2, x3, x4);
+	case HVC_FUNC_MKP_HYP_PREPARE1:
+		ret.x[0] = mkp_hyp_prepare1(x1, x2, x3, x4, x5);
+		break;
+	case HVC_FUNC_MKP_HYP_PREPARE2:
+		ret.x[0] = mkp_hyp_prepare2(x1, x2);
 		break;
 	case HVC_FUNC_NEW_POLICY:
 		if (policy != 0) {
@@ -175,7 +187,7 @@ int mkp_hyp_init(const struct pkvm_module_ops *ops)
 	module_ops = (const struct pkvm_module_ops *)ops;
 	initialize_policy_table();
 	init_sharebuf_manipulation();
-	// trace_hyp_printk("[MKP] MKP EL2 init done");
+	ops->puts("pkvm_mkp el2 init done");
 
 	return 0;
 }

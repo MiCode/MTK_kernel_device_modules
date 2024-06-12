@@ -266,7 +266,7 @@ int validate_handle(struct handle_object *obj, enum mkp_policy_id policy, u32 ch
 	return 0;
 }
 
-void init_handle_manipulation(u64 dram_size, u64 smccc_trng_available)
+void init_handle_manipulation(u64 start_ipa, u64 dram_size, u64 smccc_trng_available)
 {
 	int i;
 	hash_bucket_t *bucket;
@@ -289,6 +289,7 @@ void init_handle_manipulation(u64 dram_size, u64 smccc_trng_available)
 	}
 
 	/* Get maintainable IPA range */
+	HANDLE_IPA_START = start_ipa;
 	HANDLE_IPA_END = HANDLE_IPA_START + platform_dram_size;
 	//trace_hyp_printk("[MKP] init_handle_manipulation:%d - (0x%llx..0x%llx)",
 	//	__LINE__, HANDLE_IPA_START, HANDLE_IPA_END);
@@ -502,7 +503,7 @@ int destroy_handle(u32 handle, enum mkp_policy_id policy)
 {
 	struct handle_object *handle_obj = NULL;
 	int ret = 0;
-	int err_line = 0;
+	// int err_line = 0;
 
 	/* Take out the handle */
 	handle_obj = del_from_handle_htab(handle);
@@ -512,7 +513,7 @@ int destroy_handle(u32 handle, enum mkp_policy_id policy)
 	/* Do validation */
 	ret = validate_handle(handle_obj, policy, HANDLE_PERMANENT, true);
 	if (ret != 0) {
-		err_line = __LINE__;
+		// err_line = __LINE__;
 		goto err;
 	}
 
@@ -520,7 +521,7 @@ int destroy_handle(u32 handle, enum mkp_policy_id policy)
 	if (handle_obj->attrset != 0) {
 		ret = reset_to_s2_mapping_attrs(handle_obj);
 		if (ret != 0) {
-			err_line = __LINE__;
+			// err_line = __LINE__;
 			goto err;
 		}
 	}

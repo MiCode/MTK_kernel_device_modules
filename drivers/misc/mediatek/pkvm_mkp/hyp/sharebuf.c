@@ -375,14 +375,14 @@ static sharebuf_update_t __update_sharebuf_n_args(u32 policy, u32 handle, u64 in
 	hyp_spinlock_t *lock;
 	u64 *sharebuf_ptr = 0, *fixmap_ptr;
 	u64 i;
-	int ret = 0, err_line = 0;
+	int ret = 0;
 	sharebuf_update_t update_ret = {0, -1};
 
 	/* Before operation, we need to pick the sharebuf_object */
 	sharebuf_obj = pick_sharebuf_object(handle);
 
 	if (!sharebuf_obj) {
-		err_line = __LINE__;
+		// err_line = __LINE__;
 		update_ret.value = ERR_INVALID_HANDLE;
 		goto out;
 	}
@@ -393,26 +393,26 @@ static sharebuf_update_t __update_sharebuf_n_args(u32 policy, u32 handle, u64 in
 	/* Do validation */
 	ret = validate_handle(handle_obj, policy, /* Nothing to check */0, false);
 	if (ret) {
-		err_line = __LINE__;
+		// err_line = __LINE__;
 		update_ret.value = ERR_INVALID_HANDLE;
 		goto out;
 	}
 
 	/* sanity check (TBD) */
 	if (!handle_obj->start) {
-		err_line = __LINE__;
+		// err_line = __LINE__;
 		update_ret.value = ERR_INVALID_IPA;
 		goto out;
 	}
 
 	if (round_up(sharebuf_obj->content_size, sizeof(args[0])) != sizeof(args[0]) * nr_args) {
-		err_line = __LINE__;
+		// err_line = __LINE__;
 		update_ret.value = ERR_INVALID_CONTENT;
 		goto out;
 	}
 
 	if (to_apply_sb_set(handle_obj->attrset)) {
-		err_line = __LINE__;
+		// err_line = __LINE__;
 		update_ret.value = ERR_INVALID_SHAREBUF;
 		goto out;
 	}
@@ -434,13 +434,13 @@ static sharebuf_update_t __update_sharebuf_n_args(u32 policy, u32 handle, u64 in
 			module_ops->fixmap_unmap();
 			update_ret.index = index;
 		} else {
-			err_line = __LINE__;
+			// err_line = __LINE__;
 			update_ret.value = ERR_INVALID_PARAM;
 		}
 	} else if (check_sb_entry_disordered(policy)) {
 		update_ret = __update_disordered_sharebuf_n_args(sharebuf_obj, index, args, nr_args);
 		if (update_ret.value) {
-			err_line = __LINE__;
+			// err_line = __LINE__;
 			update_ret.value = ERR_INVALID_PARAM;
 		}
 	}

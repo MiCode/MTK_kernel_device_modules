@@ -96,7 +96,7 @@ static inline u32 sb_set_is_applied(u32 curr_attr)
 	return (curr_attr | ATTR_SB_SET);
 }
 
-void init_handle_manipulation(u64 dram_size, u64 smccc_trng_available);
+void init_handle_manipulation(u64 start_ipa, u64 dram_size, u64 smccc_trng_available);
 
 typedef struct hash_bucket {
 	struct handle_object *hList;
