@@ -102,8 +102,6 @@ static int mtk_cpuidle_stress_task(void *arg)
 static void mtk_cpuidle_stress_start(void)
 {
 	int i;
-	char name[20] = {0};
-	int ret = 0;
 
 	if (mtk_cpuidle_ctrl.stress_en)
 		return;
@@ -111,9 +109,9 @@ static void mtk_cpuidle_stress_start(void)
 	mtk_cpuidle_ctrl.stress_en = true;
 
 	for_each_online_cpu(i) {
-		ret = scnprintf(name, sizeof(name), "mtk_cpupm_stress_%d", i);
 		stress_tsk[i] =
-			kthread_create(mtk_cpuidle_stress_task, NULL, name);
+			kthread_create(mtk_cpuidle_stress_task, NULL,
+				"mtk_cpupm_stress_%d", i);
 
 		if (!IS_ERR(stress_tsk[i])) {
 			kthread_bind(stress_tsk[i], i);

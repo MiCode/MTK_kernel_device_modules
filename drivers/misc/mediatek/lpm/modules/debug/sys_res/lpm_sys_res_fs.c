@@ -225,15 +225,13 @@ static const struct mtk_lp_sysfs_op lpm_sys_res_suspend_threshold_fops = {
 };
 int lpm_sys_res_fs_init(void)
 {
-	int ret;
-
-	ret = mtk_lpm_sysfs_sub_entry_add(LPM_SYS_RES_NAME, 0644, NULL,
+	mtk_lpm_sysfs_sub_entry_add(LPM_SYS_RES_NAME, 0644, NULL,
 					&lpm_entry_sys_res);
 
-	ret = mtk_lpm_sysfs_sub_entry_add("suspend", 0644, &lpm_entry_sys_res,
+	mtk_lpm_sysfs_sub_entry_add("suspend", 0644, &lpm_entry_sys_res,
 					&lpm_entry_sys_res_suspend);
 
-	ret = mtk_lpm_sysfs_sub_entry_add("common", 0644, &lpm_entry_sys_res,
+	mtk_lpm_sysfs_sub_entry_add("common", 0644, &lpm_entry_sys_res,
 					&lpm_entry_sys_res_common);
 
 	mtk_lpm_sysfs_sub_entry_node_add("stat", 0444, &lpm_sys_res_suspend_stat_fops,
