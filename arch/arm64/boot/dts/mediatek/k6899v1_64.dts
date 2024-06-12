@@ -72,6 +72,27 @@ initcall_debug=1";
 		};
 	};
 };
+
+&connfem {
+/* Enable epa_elna node to support Wifi & BT ePA/eLNA FEM on customer load */
+#if 0
+	epa-elna {
+		parts = <&wlan7207h &wlan7207c>;
+		wifi {
+			flags-0 {
+				open-loop;
+			};
+		};
+		bt {
+			flags-0 {
+				/* choose one of: epa-elna/epa/elna/bypass */
+				epa-elna;
+			};
+		};
+	};
+#endif
+};
+
 #if 0
 &mtk_leds {
 	compatible = "mediatek,i2c-leds";
@@ -398,36 +419,7 @@ initcall_debug=1";
 	};
 };
 #endif
-&connfem {
-	/* Support Wifi & BT ePA/eLNA FEM on customer load */
-	epa-elna {
-		parts = <&qm42639 &qm45639>;
 
-		common {
-			flags-0 {
-				rx-mode = [35];
-				fe-ant-cnt = [82];
-				fe-main-bt-share-lp2g = [80];
-				fe-conn-spdt = [83];
-				fe-reserved = [86];
-			};
-		};
-
-		wifi {
-			flags-0 {
-				epa-option = [aa];
-				/* open-loop; */
-			};
-		};
-
-		bt {
-			flags-0 {
-				/* choose one of: epa-elna/epa/elna/bypass */
-				epa-elna;
-			};
-		};
-	};
-};
 #if 0
 /* GPS GPIO standardization start */
 &pio {
@@ -655,9 +647,11 @@ initcall_debug=1";
 	flavor-bin = "dx3";
 };
 
-#include "mediatek/cust_k6989_connfem.dtsi"
 #include "mediatek/cust_mt6989_touch_1080x2400_mult.dtsi"
 #include "mediatek/cust_mt6989_camera_v4l2.dtsi"
 
 #endif
+
+#include "mediatek/cust_k6899_connfem.dtsi"
+
 /*End of this file, DO NOT ADD ANYTHING HERE*/

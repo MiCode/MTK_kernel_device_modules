@@ -7250,6 +7250,10 @@
 			iommus = <&mdp_iommu M4U_PORT_L41_VIDEO_UP0>;
 		};
 	};
+
+	connfem: connfem {
+		compatible = "mediatek,connfem";
+	};
 };
 
 &i2c5 {
@@ -7534,6 +7538,7 @@
 };
 
 #include "mediatek/trusty.dtsi"
+#include "mediatek/cust_mt6899_connfem.dtsi"
 
 &i2c5 {
 	rt5133: rt5133@18 {

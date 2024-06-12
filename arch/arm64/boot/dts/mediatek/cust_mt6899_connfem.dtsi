@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (c) 2020 MediaTek Inc.
+ */
+/* Connsys FEM Start */
+&connfem {
+	/* FEM ID */
+	nofem: nofem {
+		vid = <0>;
+		pid = <0>;
+	};
+};
+
+/* Connsys FEM End */
