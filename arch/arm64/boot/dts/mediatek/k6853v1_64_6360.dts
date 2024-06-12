@@ -875,6 +875,11 @@
 				pin-assignment,mode-e;
 			};
 		};
+		port {
+			tcpc_typec_usb: endpoint@0 {
+				remote-endpoint = <&ssusb_mux>;
+			};
+		};
 	};
 };
 
