@@ -419,6 +419,7 @@ static long handle_process_stat(unsigned long arg, void *mbraink_data)
 	long ret = 0;
 
 	pid_t pid = 1;
+	unsigned int current_cnt = 0;
 
 	if (copy_from_user(process_stat_buffer,
 			(struct mbraink_process_stat_data *)arg,
@@ -433,8 +434,9 @@ static long handle_process_stat(unsigned long arg, void *mbraink_data)
 		return -EINVAL;
 	}
 	pid = process_stat_buffer->pid;
+	current_cnt = process_stat_buffer->current_cnt;
 
-	mbraink_get_process_stat_info(pid, process_stat_buffer);
+	mbraink_get_process_stat_info(pid, current_cnt, process_stat_buffer);
 
 	if (copy_to_user((struct mbraink_process_stat_data *)arg,
 			process_stat_buffer,
@@ -514,6 +516,7 @@ static long handle_thread_stat(unsigned long arg, void *mbraink_data)
 		(struct mbraink_thread_stat_data *)(mbraink_data);
 	long ret = 0;
 	pid_t pid_idx = 0, tid = 0;
+	unsigned int current_cnt = 0;
 
 	if (copy_from_user(thread_stat_buffer,
 			(struct mbraink_thread_stat_data *)arg,
@@ -530,8 +533,9 @@ static long handle_thread_stat(unsigned long arg, void *mbraink_data)
 	}
 	pid_idx = thread_stat_buffer->pid_idx;
 	tid = thread_stat_buffer->tid;
+	current_cnt = thread_stat_buffer->current_cnt;
 
-	mbraink_get_thread_stat_info(pid_idx, tid, thread_stat_buffer);
+	mbraink_get_thread_stat_info(pid_idx, tid, current_cnt, thread_stat_buffer);
 
 	if (copy_to_user((struct mbraink_thread_stat_data *)arg,
 			thread_stat_buffer,
