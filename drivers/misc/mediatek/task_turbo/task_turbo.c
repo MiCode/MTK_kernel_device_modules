@@ -32,6 +32,7 @@
 #include <trace/hooks/sys.h>
 
 #include <task_turbo.h>
+#include <eas/vip.h>
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
 #include <fstb.h>
 #endif
@@ -1197,6 +1198,10 @@ static void probe_android_rvh_select_task_rq_fair(void *ignore, struct task_stru
 							int prev_cpu, int sd_flag,
 							int wake_flags, int *target_cpu)
 {
+	/* skip if p is vip */
+	if (get_vip_task_prio(p) != NOT_VIP)
+		return;
+
 	*target_cpu = select_turbo_cpu(p);
 }
 
@@ -1638,6 +1643,8 @@ static inline void set_scheduler_tuning(struct task_struct *task)
 
 	/* trigger renice for turbo task */
 	set_user_nice(task, 0xbeef);
+	if (tt_vip_enable)
+		set_task_vvip_and_throttle(task_pid_nr(task), 60);
 
 	trace_sched_turbo_nice_set(task, NICE_TO_PRIO(cur_nice), task->prio);
 }
@@ -1650,6 +1657,7 @@ static inline void unset_scheduler_tuning(struct task_struct *task)
 		return;
 
 	set_user_nice(task, 0xbeee);
+	unset_task_vvip(task_pid_nr(task));
 
 	trace_sched_turbo_nice_set(task, cur_prio, task->prio);
 }
