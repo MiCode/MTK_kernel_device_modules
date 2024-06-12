@@ -149,6 +149,11 @@ static void dwxgmac2_rx_queue_routing(struct mac_device_info *hw,
 		{ XGMAC_MCBCQ, XGMAC_MCBCQ_SHIFT },
 	};
 
+	if (packet < 1 || packet > ARRAY_SIZE(dwxgmac2_route_possibilities)) {
+		pr_err("Error: packet is out of valid range\n");
+		return;
+	}
+
 	value = readl(ioaddr + XGMAC_RXQ_CTRL1);
 
 	/* routing configuration */

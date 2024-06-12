@@ -320,6 +320,10 @@ static ssize_t stmmac_show(struct device *dev,
 	int buf_len = (int)PAGE_SIZE;
 	struct phy_device *phy_dev = of_phy_find_device(priv->plat->phy_node);
 
+	if (!phy_dev) {
+		dev_err(dev, "phy_dev is NULL");
+		return -ENODEV;
+	}
 	len += snprintf(buf + len, buf_len - len,
 			"stmmac debug commands: in hexadecimal notation\n");
 	len += snprintf(buf + len, buf_len - len,
@@ -358,6 +362,11 @@ static ssize_t stmmac_store(struct device *dev,
 	int reg, data, devid, origin, i, reg_addr, phy_addr, dev_addr;
 	struct phy_device *phy_dev = of_phy_find_device(priv->plat->phy_node);
 	struct mediatek_dwmac_plat_data *priv_plat = priv->plat->bsp_priv;
+
+	if (!phy_dev) {
+		dev_err(dev, "phy_dev is NULL");
+		return -ENODEV;
+	}
 
 	if (!strncmp(buf, "er", 2) &&
 	    (sscanf(buf + 2, "%x %x", &reg, &data) == 2)) {
@@ -610,7 +619,7 @@ static ssize_t stmmac_store(struct device *dev,
 	} else if (!strncmp(buf, "dump_mac", 8)) {
 		for (i = 0; i < 0x1300 / 0x10 + 1; i++) {
 			pr_info("%08x:\t%08x\t%08x\t%08x\t%08x\t\n",
-				reg + i * 16,
+				i * 16,
 				readl(priv->ioaddr + i * 0x10),
 				readl(priv->ioaddr + i * 0x10 + 0x4),
 				readl(priv->ioaddr + i * 0x10 + 0x8),

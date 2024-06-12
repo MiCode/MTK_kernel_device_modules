@@ -448,8 +448,11 @@ static int rtl821x_resume(struct phy_device *phydev)
 	struct rtl821x_priv *priv = phydev->priv;
 	int ret;
 
-	if (!phydev->wol_enabled)
-		clk_prepare_enable(priv->clk);
+	if (!phydev->wol_enabled) {
+		ret = clk_prepare_enable(priv->clk);
+		if (ret)
+			return ret;
+	}
 
 	ret = genphy_resume(phydev);
 	if (ret < 0)

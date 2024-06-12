@@ -2914,7 +2914,7 @@ static int stmmac_get_hw_features(struct stmmac_priv *priv)
  */
 static void stmmac_check_ether_addr(struct stmmac_priv *priv)
 {
-	u8 addr[ETH_ALEN];
+	u8 addr[ETH_ALEN] = {0};
 
 	if (!is_valid_ether_addr(priv->dev->dev_addr)) {
 		stmmac_get_umac_addr(priv, priv->hw, addr, 0);
@@ -3291,13 +3291,16 @@ static void stmmac_safety_feat_configuration(struct stmmac_priv *priv)
 static int stmmac_fpe_start_wq(struct stmmac_priv *priv)
 {
 	char *name;
-
+	int ret;
 	clear_bit(__FPE_TASK_SCHED, &priv->fpe_task_state);
 	clear_bit(__FPE_REMOVING,  &priv->fpe_task_state);
 
 	name = priv->wq_name;
-	sprintf(name, "%s-fpe", priv->dev->name);
-
+	ret = sprintf(name, "%s-fpe", priv->dev->name);
+	if (ret < 0) {
+		netdev_err(priv->dev, "Error formatting workqueue name\n");
+		return -EINVAL;
+	}
 	priv->fpe_wq = create_singlethread_workqueue(name);
 	if (!priv->fpe_wq) {
 		netdev_err(priv->dev, "%s: Failed to create workqueue\n", name);
@@ -3538,7 +3541,11 @@ static int stmmac_request_irq_multi_msi(struct net_device *dev)
 
 	/* For common interrupt */
 	int_name = priv->int_name_mac;
-	sprintf(int_name, "%s:%s", dev->name, "mac");
+	ret = sprintf(int_name, "%s:%s", dev->name, "mac");
+	if (ret < 0 ) {
+		netdev_err(priv->dev, "%s: Error formatting name\n",
+			   dev->name);
+	}
 	ret = request_irq(dev->irq, stmmac_mac_interrupt,
 			  0, int_name, dev);
 	if (unlikely(ret < 0)) {
