@@ -6791,6 +6791,9 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 		if (priv->dsi_phy0_dev && (!pm_runtime_enabled(priv->dsi_phy0_dev)))
 			pm_runtime_enable(priv->dsi_phy0_dev);
 
+		if (priv->dsi_phy1_dev && (!pm_runtime_enabled(priv->dsi_phy1_dev)))
+			pm_runtime_enable(priv->dsi_phy1_dev);
+
 		if (priv->dpc_dev && (!pm_runtime_enabled(priv->dpc_dev)))
 			pm_runtime_enable(priv->dpc_dev);
 
@@ -6818,12 +6821,23 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 
 		if (priv->dsi_phy0_dev)
 			pm_runtime_disable(priv->dsi_phy0_dev);
+
+		if (priv->dsi_phy1_dev)
+			pm_runtime_disable(priv->dsi_phy1_dev);
 		break;
 	case DISP_PM_GET:
 		if (priv->dsi_phy0_dev) {
 			ret = pm_runtime_resume_and_get(priv->dsi_phy0_dev);
 			if (unlikely(ret)) {
-				DDPMSG("request dsi phy power failed\n");
+				DDPMSG("request dsi phy0 power failed\n");
+				return ret;
+			}
+		}
+
+		if (priv->dsi_phy1_dev) {
+			ret = pm_runtime_resume_and_get(priv->dsi_phy1_dev);
+			if (unlikely(ret)) {
+				DDPMSG("request dsi phy1 power failed\n");
 				return ret;
 			}
 		}
@@ -6861,6 +6875,9 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 
 		if (priv->dsi_phy0_dev)
 			pm_runtime_put_sync(priv->dsi_phy0_dev);
+
+		if (priv->dsi_phy1_dev)
+			pm_runtime_put_sync(priv->dsi_phy1_dev);
 		break;
 	case DISP_PM_PUT_SYNC:
 		if (priv->side_ovlsys_dev)
@@ -6880,9 +6897,14 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 
 		if (priv->dsi_phy0_dev)
 			pm_runtime_put_sync(priv->dsi_phy0_dev);
+
+		if (priv->dsi_phy1_dev)
+			pm_runtime_put_sync(priv->dsi_phy1_dev);
 		break;
 	case DISP_PM_CHECK:
 		if (priv->dsi_phy0_dev && pm_runtime_get_if_in_use(priv->dsi_phy0_dev) <= 0)
+			return -1;
+		if (priv->dsi_phy1_dev && pm_runtime_get_if_in_use(priv->dsi_phy1_dev) <= 0)
 			return -1;
 		if (priv->dpc_dev && pm_runtime_get_if_in_use(priv->dpc_dev) <= 0)
 			goto err_dpc_dev;
@@ -6913,6 +6935,8 @@ err_mmsys:
 err_dpc_dev:
 	if (priv->dsi_phy0_dev)
 		pm_runtime_put_sync(priv->dsi_phy0_dev);
+	if (priv->dsi_phy1_dev)
+		pm_runtime_put_sync(priv->dsi_phy1_dev);
 	return -1;
 }
 
@@ -11129,6 +11153,7 @@ SKIP_OVLSYS_CONFIG:
 		DDPMSG("register_pm_notifier failed %d", ret);
 
 	private->dsi_phy0_dev = mtk_drm_get_pd_device(dev, "dsi_phy0");
+	private->dsi_phy1_dev = mtk_drm_get_pd_device(dev, "dsi_phy1");
 
 	private->dpc_dev = mtk_drm_get_pd_device(dev, "mminfra_in_dpc");
 	if (private->dpc_dev) {
