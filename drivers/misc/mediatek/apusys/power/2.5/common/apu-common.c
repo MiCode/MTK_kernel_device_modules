@@ -217,7 +217,7 @@ int apu_add_devfreq(struct apu_dev *ad)
 	if (!ad)
 		return -EINVAL;
 
-	if (ad->user < 0 || ad->user > APUSYS_POWER_USER_NUM) {
+	if (ad->user > APUSYS_POWER_USER_NUM) {
 		if (ad->dev)
 			apower_err(ad->dev, "%s: Invalid parameters.\n", __func__);
 		return -EINVAL;
