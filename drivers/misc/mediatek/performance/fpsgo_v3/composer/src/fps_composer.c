@@ -1330,6 +1330,9 @@ void fpsgo_ctrl2comp_hint_frame_dep_task(int rtid, unsigned long long identifier
 	case 1:
 		local_action = XGF_DEL_DEP;
 		break;
+	case 2:
+		local_action = XGF_ADD_DEP_NO_LLF;
+		break;
 	default:
 		return;
 	}

@@ -29,7 +29,7 @@
 #define RESCUE_TYPE_SECOND_RESCUE         (1 << 8)
 #define RESCUE_TYPE_BUFFER_FOUNT_FITLER   (1 << 9)
 #define RESCUE_TYPE_PRE_ANIMATION         (1 << 10)
-#define RESCUE_TYPE_BUFFER                (1 << 11)
+#define RESCUE_TYPE_ENABLE_MARGIN         (1 << 11)
 
 extern void set_task_basic_vip(int pid);
 extern void unset_task_basic_vip(int pid);
@@ -72,6 +72,7 @@ struct ux_scroll_info {
 	int rescue_frame_oi_count;
 	unsigned long long rescue_frame_time_count;
 	int rescue_frame_count;
+	int rescue_with_perf_mode;
 	int *score;
 
 	unsigned long long last_frame_ID;
