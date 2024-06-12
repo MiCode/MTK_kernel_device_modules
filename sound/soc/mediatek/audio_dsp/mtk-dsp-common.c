@@ -527,7 +527,9 @@ int afe_pcm_ipi_to_dsp(int command, struct snd_pcm_substream *substream,
 	struct mtk_base_dsp_mem *dsp_memif;
 	struct mtk_base_afe_memif *memif = &afe->memif[dai->id];
 	int task_id = get_taskid_by_afe_daiid(dai->id);
+#ifdef DEBUG_VERBOSE
 	const char *task_name;
+#endif
 
 	if (task_id < 0 || task_id >= AUDIO_TASK_DAI_NUM)
 		return -1;
@@ -536,8 +538,8 @@ int afe_pcm_ipi_to_dsp(int command, struct snd_pcm_substream *substream,
 	    get_task_attr(task_id, ADSP_TASK_ATTR_DEFAULT) <= 0)
 		return -1;
 
-	task_name = get_str_by_dsp_dai_id(task_id);
 #ifdef DEBUG_VERBOSE
+	task_name = get_str_by_dsp_dai_id(task_id);
 	pr_info("%s(), %s send cmd 0x%x\n", __func__, task_name, command);
 #endif
 	dsp_memif = (struct mtk_base_dsp_mem *)&dsp->dsp_mem[task_id];

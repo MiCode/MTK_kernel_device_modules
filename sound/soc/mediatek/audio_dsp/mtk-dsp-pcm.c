@@ -207,7 +207,6 @@ static int dsp_pcm_dev_probe(struct platform_device *pdev)
 {
 	struct mtk_base_dsp *dsp;
 	int ret = 0;
-	struct device *dev;
 
 	dsp = devm_kzalloc(&pdev->dev, sizeof(struct mtk_base_dsp), GFP_KERNEL);
 	if (!dsp)
@@ -218,7 +217,6 @@ static int dsp_pcm_dev_probe(struct platform_device *pdev)
 	dsp->mtk_dsp_hardware = &audio_dsp_hardware;
 
 	dsp->dev = &pdev->dev;
-	dev = dsp->dev;
 
 	dsp->request_dram_resource = dsp_dram_request;
 	dsp->release_dram_resource = dsp_dram_release;
