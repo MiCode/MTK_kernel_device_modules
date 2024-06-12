@@ -49,11 +49,11 @@ void mbraink_auto_cpuload_deinit(void)
 		iounmap(tc->buf);
 }
 
-int mbraink_auto_vcpu_reader(struct nbl_trace *tc, struct nbl_trace_buf_trans *vcpu_loading_buf)
+int mbraink_auto_vcpu_reader(struct nbl_trace *tc, struct nbl_trace_buf_trans *vcpu_loading_buf, void *vcpu_data_buffer)
 {
 	struct trace_vcpu_ringbuf_hdr *rb_hdr = &tc->buf->exec.rb_hdr;
-	int raw_record_length = MAX_VCPU_RECORD_LENGTH;
-	void *vcpu_data_buf = vcpu_loading_buf->vcpu_data;
+	int raw_record_length = vcpu_loading_buf->length;
+	void *vcpu_data_buf = vcpu_data_buffer;
 	u8 *buf;
 	struct timespec64 ts;
 	u64 rd, wr, time_in_ms, cntvct, freq;
@@ -95,17 +95,17 @@ end:
 	vcpu_loading_buf->current_time = ts.tv_sec * 1000000LL + ts.tv_nsec / 1000LL;
 
 	pr_notice("%s: read HV cpu loading data. data length %d\n", __func__, vcpu_loading_buf->length);
-	return len;
+	return 0;
 }
 
-int mbraink_auto_get_vcpu_record(struct nbl_trace_buf_trans *vcpu_loading_buf)
+int mbraink_auto_get_vcpu_record(struct nbl_trace_buf_trans *vcpu_loading_buf, void *vcpu_data_buffer)
 {
 	struct nbl_trace *tc = &g_nbl_trace;
 
 	if (tc->buf && vcpu_loading_buf)
-		return mbraink_auto_vcpu_reader(tc, vcpu_loading_buf);
+		return mbraink_auto_vcpu_reader(tc, vcpu_loading_buf, vcpu_data_buffer);
 	pr_info("%s: trace buffer not initialized!\n", __func__);
-	return 0;
+	return -1;
 }
 
 int mbraink_auto_set_vcpu_record(int enable)
@@ -117,8 +117,8 @@ int mbraink_auto_set_vcpu_record(int enable)
 		rb_hdr = &tc->buf->exec.rb_hdr;
 		rb_hdr->write_pos = 0;
 		rb_hdr->enable = enable;
-		return 1;
+		return 0;
 	}
 	pr_info("%s: trace buffer not initialized!\n", __func__);
-	return 0;
+	return -1;
 }

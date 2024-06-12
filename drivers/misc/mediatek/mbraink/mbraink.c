@@ -1080,17 +1080,43 @@ static long handle_cpu_loading_info(unsigned long arg, void *mbraink_data)
 		}
 		case 2:
 		{
-			mbraink_auto_get_vcpu_record(cpu_loading_buf);
-			if (copy_to_user((struct nbl_trace_buf_trans *)arg,
-					cpu_loading_buf, sizeof(struct nbl_trace_buf_trans))) {
-				pr_notice("Copy cpu_loading_buf to UserSpace error!\n");
-				return -EPERM;
+			if (cpu_loading_buf->length == 0) {
+				pr_notice("length is 0. no need do anything\n");
+			} else {
+				void *vcpu_buffer = vmalloc(cpu_loading_buf->length *
+								sizeof(struct trace_vcpu_rec));
+
+				if (vcpu_buffer == NULL)
+					return -ENOMEM;
+				ret = mbraink_auto_get_vcpu_record(cpu_loading_buf, vcpu_buffer);
+
+				if (copy_to_user((struct nbl_trace_buf_trans *)arg,
+						cpu_loading_buf,
+						sizeof(struct nbl_trace_buf_trans))) {
+					pr_notice("Copy cpu_loading_buf to user error!\n");
+					vfree(vcpu_buffer);
+					return -EPERM;
+				}
+				if (copy_to_user(cpu_loading_buf->vcpu_data,
+						vcpu_buffer,
+						cpu_loading_buf->length *
+						sizeof(struct trace_vcpu_rec))) {
+					pr_notice("Copy vcpu_data to user error!\n");
+					vfree(vcpu_buffer);
+					return -EPERM;
+				}
+
+				vfree(vcpu_buffer);
 			}
 			break;
 		}
+		default:
+		{
+			pr_info("unknown vcpu type %d\n", cpu_loading_buf->trans_type);
+			ret = -1;
+		}
 		}
 	}
-
 	return ret;
 }
 #endif
@@ -1478,11 +1504,11 @@ static long mbraink_ioctl(struct file *filp,
 	case RO_AUTO_CPULOAD_INFO:
 	{
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
-		mbraink_data = vmalloc(sizeof(struct nbl_trace_buf_trans));
+		mbraink_data = kmalloc(sizeof(struct nbl_trace_buf_trans), GFP_KERNEL);
 		if (!mbraink_data)
 			goto End;
 		ret = handle_cpu_loading_info(arg, mbraink_data);
-		vfree(mbraink_data);
+		kfree(mbraink_data);
 #endif
 		break;
 	}

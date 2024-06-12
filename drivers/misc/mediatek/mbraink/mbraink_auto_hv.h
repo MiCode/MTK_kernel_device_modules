@@ -68,15 +68,6 @@ struct trace_vcpu_accum {
 	uint64_t cur_tick;
 };
 
-/*
- * ring buffer vmo layout:
- *  --------------------------------------------------------------
- * | struct trace_vcpu_ringbuf_hdr | rec[0] | rec[1] | ...... | rec[n] |
- *  --------------------------------------------------------------
- *                            | <-             size            -> |
- * | <-      hdr_size      -> |
- *                            | <-           write_pos         -> |
- */
 struct trace_vcpu_ringbuf_hdr {
 	uint64_t magic;
 #define NBL_TRACE_MAGIC  0x5472616365637075 // Tracecpu
@@ -97,6 +88,29 @@ struct trace_vcpu_exec {
 	struct trace_vcpu_rec recs[];
 };
 
+struct trace_irq_delay_ringbuf_hdr {
+	uint64_t write_pos;
+	uint64_t read_pos;
+	size_t hdr_size;
+	size_t size;
+	size_t rec_size;
+	uint32_t rec_cnt;
+	bool enable;
+	uint8_t reserved[3];
+};
+
+struct trace_irq_rec {
+	uint64_t flag : 1;
+	uint64_t vector : 13;
+	uint64_t timestamp : 50;
+};
+
+#define TRACE_VCPU_IRQ_DELAY_MAX_RECS       10240
+struct trace_irq_delay {
+	struct trace_irq_delay_ringbuf_hdr rb_hdr;
+	struct trace_irq_rec rec[TRACE_VCPU_IRQ_DELAY_MAX_RECS];
+};
+
 //tracing pcpu's attributes
 struct trace_pcpu_attr {
 	// vmid , yocto: 0,  android: 1, nebula: 2
@@ -107,6 +121,22 @@ struct trace_pcpu_attr {
 #define NON_VM_CPU_ID   0xff
 	//thread priority of vcpu
 	uint64_t vcpu_thread_priority : 8;
+};
+
+struct trace_vcpu_thread_delay_header {
+	uint64_t enter_timestamp;
+	uint64_t current_delay_time;
+	uint64_t max_delay_time;
+	uint64_t min_delay_time;
+	uint64_t total_delay_time;
+	uint64_t thread_id;
+	uint64_t run_times;
+	uint64_t bRun;
+};
+
+struct trace_vcpu_thread_delay{
+	struct trace_vcpu_thread_delay_header delay[TRACE_NEBULA_VMID][NBL_TRACE_VCPU_CNT];
+	bool enable;
 };
 
 //begin nbl_trace top part
@@ -129,14 +159,32 @@ struct nbl_trace_top {
 	bool read_done;
 	bool enable;
 };
-//end nbl_trace top part
+
+struct vcpu_rec {
+	// For the case that vcpu-pcpu pairs would be changed in run-time.
+	uint64_t pcpu : 5;
+	uint64_t flag : 1;
+	// vcpu entry/exit time measured in arm generic timer ticks
+	uint64_t ticks : 58;
+};
+
+#define VCPU_EXEC_REC_CNT     80000
+struct vcpu_exec {
+	bool enable;
+	uint32_t write_pos[NBL_TRACE_VM_CNT][NBL_TRACE_VCPU_CNT];
+	struct vcpu_rec recs[NBL_TRACE_VM_CNT][NBL_TRACE_VCPU_CNT][VCPU_EXEC_REC_CNT];
+};
 
 struct nbl_trace_buf {
+	uint32_t ktrace_rb_off;
 	struct trace_irq_count irq_c;
 	struct trace_vcpu_exit exit;
 	struct trace_vcpu_accum accum;
+	struct trace_vcpu_thread_delay vcpu_thread;
+	struct trace_irq_delay irq_delay;
 	struct trace_pcpu_attr pcpu_attr[NBL_TRACE_VCPU_CNT];
 	struct nbl_trace_top top_info;
+	struct vcpu_exec vcpu;
 	// NOTE: exec MUST be the last one.
 	// TODO: refine to remove this limitation
 	struct trace_vcpu_exec exec;
@@ -152,9 +200,11 @@ int mbraink_auto_cpuload_init(void);
 void mbraink_auto_cpuload_deinit(void);
 
 int vcpu_exec_get_rec_cnt(struct trace_vcpu_ringbuf_hdr *rb_hdr);
-int mbraink_auto_vcpu_reader(struct nbl_trace *tc, struct nbl_trace_buf_trans *vcpu_loading_buf);
-
-int mbraink_auto_get_vcpu_record(struct nbl_trace_buf_trans *vcpu_loading_buf);
+int mbraink_auto_vcpu_reader(struct nbl_trace *tc,
+				struct nbl_trace_buf_trans *vcpu_loading_buf,
+				void *vcpu_data_buffer);
+int mbraink_auto_get_vcpu_record(struct nbl_trace_buf_trans *vcpu_loading_buf,
+				void *vcpu_data_buffer);
 int mbraink_auto_set_vcpu_record(int enable);
 
 #endif  // MBRAINK_AUTO_CPULOAD_H
