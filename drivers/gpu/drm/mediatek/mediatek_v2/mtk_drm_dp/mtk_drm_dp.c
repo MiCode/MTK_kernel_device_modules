@@ -519,7 +519,7 @@ int mtk_dp_uevent_dev_register(struct notify_dev *sdev)
 		ret = mtk_dp_create_switch_class();
 
 		if (ret == 0) {
-			DP_MSG("create switch class success\n");
+			DP_DBG("create switch class success\n");
 		} else {
 			DP_ERR("create switch class fail\n");
 			return ret;
@@ -531,7 +531,7 @@ int mtk_dp_uevent_dev_register(struct notify_dev *sdev)
 				  MKDEV(0, sdev->index), NULL, sdev->name);
 
 	if (sdev->dev) {
-		DP_MSG("device create ok, index:0x%x\n", sdev->index);
+		DP_DBG("device create ok, index:0x%x\n", sdev->index);
 		ret = 0;
 	} else {
 		DP_ERR("device create fail, index:0x%x\n", sdev->index);
@@ -601,7 +601,7 @@ unsigned long mtk_dp_atf_call(unsigned int cmd, unsigned int para)
 	arm_smccc_smc(MTK_DP_SIP_CONTROL_AARCH32, cmd, para,
 		      x3, 0xFEFD, 0, 0, 0, &res);
 
-	DP_MSG("%s, cmd:0x%x, p1:0x%x, ret:0x%lx-0x%lx",
+	DP_DBG("%s, cmd:0x%x, p1:0x%x, ret:0x%lx-0x%lx",
 	       __func__, cmd, para, res.a0, res.a1);
 	return res.a1;
 #else
@@ -958,7 +958,7 @@ bool mtk_dp_aux_write_bytes(struct mtk_dp *mtk_dp, u8 cmd,
 		retry_limit--;
 		if (reply_status) {
 			usleep_range(50, 51);
-			DP_FUNC("Retry Num:%d\n", retry_limit);
+			DP_DBG("Retry Num:%d\n", retry_limit);
 		} else {
 			return true;
 		}
@@ -1029,7 +1029,7 @@ bool mtk_dp_aux_read_bytes(struct mtk_dp *mtk_dp, u8 cmd,
 						 dpcd_addr, length, data);
 		if (reply_status) {
 			usleep_range(50, 51);
-			DP_FUNC("Retry Num:%d\n", retry_limit);
+			DP_DBG("Retry Num:%d\n", retry_limit);
 		} else {
 			return true;
 		}
@@ -1197,7 +1197,7 @@ void mtk_dp_aux_setting(struct mtk_dp *mtk_dp)
 static void mtk_dp_aux_init(struct mtk_dp *mtk_dp)
 {
 	drm_dp_aux_init(&mtk_dp->aux);
-	DP_MSG("aux hw_mutex:0x%lx\n", (unsigned long)&mtk_dp->aux.hw_mutex);
+	DP_DBG("aux hw_mutex:0x%lx\n", (unsigned long)&mtk_dp->aux.hw_mutex);
 
 	mtk_dp->aux.name = kasprintf(GFP_KERNEL, "DPDDC-MTK");
 	mtk_dp->aux.transfer = mtk_dp_aux_transfer;
@@ -1215,7 +1215,7 @@ void mtk_dp_fec_init_setting(struct mtk_dp *mtk_dp)
 
 void mtk_dp_fec_enable(struct mtk_dp *mtk_dp, bool enable)
 {
-	DP_FUNC("Fec enable:%d\n", enable);
+	DP_FUNC("FEC enable:%d\n", enable);
 
 	if (enable)
 		WRITE_BYTE_MASK(mtk_dp, REG_3540_DP_TRANS_P0, BIT(0), BIT(0));
@@ -1225,7 +1225,7 @@ void mtk_dp_fec_enable(struct mtk_dp *mtk_dp, bool enable)
 
 void mtk_dp_fec_ready(struct mtk_dp *mtk_dp, u8 err_cnt_sel)
 {
-	u8 i, data[3] = {0};
+	u8 data[3] = {0};
 
 	drm_dp_dpcd_read(&mtk_dp->aux, 0x90, data, 0x1);
 
@@ -1242,8 +1242,8 @@ void mtk_dp_fec_ready(struct mtk_dp *mtk_dp, u8 err_cnt_sel)
 		data[0] = (err_cnt_sel << 1) | 0x1;     /* FEC Ready */
 		drm_dp_dpcd_write(&mtk_dp->aux, 0x120, data, 0x1);
 		drm_dp_dpcd_read(&mtk_dp->aux, 0x280, data, 0x3);
-		for (i = 0; i < 3; i++)
-			DP_MSG("FEC status & error Count:0x%x\n", data[i]);
+		DP_MSG("FEC status & error Count:0x%x, 0x%x, 0x%x\n",
+			data[0], data[1], data[2]);
 	}
 
 	DP_MSG("SINK has_fec:%d\n", mtk_dp->has_fec);
@@ -2446,7 +2446,7 @@ void mtk_dp_audio_sample_arrange(struct mtk_dp *mtk_dp,
 		WRITE_4BYTE_MASK(mtk_dp,
 				 REG_3370_DP_ENCODER1_P0 + 4 + reg_offset, 0, GENMASK(11, 0));
 	}
-	DP_MSG("Htt:%d, hde:%d, link_rate:%d, pixcel_rate:%llu\n",
+	DP_MSG("audio sample arrange, Htt:%d, hde:%d, link_rate:%d, pixcel_rate:%llu\n",
 	       mtk_dp->info[encoder_id].dp_output_timing.htt,
 	      mtk_dp->info[encoder_id].dp_output_timing.hde,
 		mtk_dp->training_info.link_rate,
@@ -2900,7 +2900,7 @@ void mtk_dp_dsc_enable(struct mtk_dp *mtk_dp, const enum dp_encoder_id encoder_i
 {
 	u32 reg_offset = DP_REG_OFFSET(encoder_id);
 
-	DP_FUNC();
+	DP_FUNC("DSC enable:%d\n", enable);
 
 	mtk_dp->dsc_enable = enable;
 
@@ -3075,8 +3075,6 @@ void mtk_dp_phy_set_rate_param(struct mtk_dp *mtk_dp, enum dp_link_rate val)
 
 void mtk_dp_set_rate(struct mtk_dp *mtk_dp, int value)
 {
-	DP_FUNC();
-
 	/* power off TPLL and Lane */
 	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
 			    0x1 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
@@ -3475,6 +3473,8 @@ void mtk_dp_ssc_set_param(struct mtk_dp *mtk_dp, u8 ssc_delta)
 
 void mtk_dp_ssc_enable(struct mtk_dp *mtk_dp, u8 enable, u8 ssc_delta)
 {
+	DP_MSG("SSC enable:%d\n", enable);
+
 	/* power off TPLL and Lane; */
 	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
 			    0x1 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
@@ -3494,8 +3494,6 @@ void mtk_dp_ssc_enable(struct mtk_dp *mtk_dp, u8 enable, u8 ssc_delta)
 	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
 			    0x3 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
 	usleep_range(100, 101);
-
-	DP_MSG("SSC enable:%d\n", enable);
 }
 
 bool mtk_dp_ssc_check(struct mtk_dp *mtk_dp, u8 *p_enable)
@@ -3793,7 +3791,7 @@ bool mtk_dp_swingt_set_pre_emphasis(struct mtk_dp *mtk_dp,
 	enum dp_swing_num swing_level,
 	enum dp_preemphasis_num pre_emphasis_level)
 {
-	DP_MSG("lane:%d, set Swing:0x%x, Emp:0x%x\n",
+	DP_DBG("lane:%d, set Swing:0x%x, Emp:0x%x\n",
 	       lane_num, swing_level, pre_emphasis_level);
 
 	switch (lane_num) {
@@ -3934,8 +3932,6 @@ void mtk_dp_set_lane_count(struct mtk_dp *mtk_dp, const enum dp_lane_count lane_
 	const u8 value = lane_count >> 1;
 	enum dp_encoder_id encoder_id;
 	u32 reg_offset;
-
-	DP_FUNC();
 
 	if (value == 0) {
 		WRITE_BYTE_MASK(mtk_dp, REG_35F0_DP_TRANS_P0, 0, BIT(3) | BIT(2));
@@ -4250,8 +4246,6 @@ void mtk_dp_stop_sent_sdp(struct mtk_dp *mtk_dp, const enum dp_encoder_id encode
 
 	mtk_dp_spkg_vsc_ext_vesa(mtk_dp, encoder_id, false, 0x00, NULL);
 	mtk_dp_spkg_vsc_ext_cea(mtk_dp, encoder_id, false, 0x00, NULL);
-
-	DP_FUNC();
 }
 
 u8 mtk_dp_get_sink_count(struct mtk_dp *mtk_dp)
@@ -4828,7 +4822,6 @@ void mtk_dp_init_variable(struct mtk_dp *mtk_dp)
 {
 	enum dp_encoder_id encoder_id;
 
-	DP_FUNC();
 	mtk_dp->training_info.dp_version = DP_VER_14;
 	mtk_dp->training_info.max_link_rate = DP_SUPPORT_MAX_LINKRATE;
 	mtk_dp->training_info.max_link_lane_count = DP_SUPPORT_MAX_LANECOUNT;
@@ -4916,8 +4909,6 @@ void mtk_dp_digital_setting(struct mtk_dp *mtk_dp, const enum dp_encoder_id enco
 {
 	u32 reg_offset = DP_REG_OFFSET(encoder_id);
 
-	DP_FUNC();
-
 	mtk_dp_spkg_asp_hb32(mtk_dp, encoder_id, false, DP_SDP_ASP_HB3_AU02CH, 0x0);
 	/* Mengkun suggest: disable reg_sdp_down_cnt_new_mode */
 	WRITE_BYTE_MASK(mtk_dp, REG_304C_DP_ENCODER0_P0 + reg_offset, 0,
@@ -4946,8 +4937,6 @@ void mtk_dp_digital_setting(struct mtk_dp *mtk_dp, const enum dp_encoder_id enco
 
 void mtk_dp_digital_sw_reset(struct mtk_dp *mtk_dp)
 {
-	DP_FUNC();
-
 	WRITE_BYTE_MASK(mtk_dp, REG_340C_DP_TRANS_P0 + 1, BIT(5), BIT(5));
 	mdelay(1);
 	WRITE_BYTE_MASK(mtk_dp, REG_340C_DP_TRANS_P0 + 1, 0, BIT(5));
@@ -5130,8 +5119,6 @@ static bool mtk_dp_encoder_mode_fixup(struct drm_encoder *encoder,
 {
 	struct mtk_dp *mtk_dp = encoder_to_dp(encoder);
 
-	DP_FUNC();
-
 	if (!mtk_dp) {
 		DP_ERR("can not find the mtk dp by the encoder");
 		return false;
@@ -5147,8 +5134,6 @@ static void mtk_dp_encoder_mode_set(struct drm_encoder *encoder,
 	struct mtk_dp *mtk_dp = encoder_to_dp(encoder);
 	int i;
 
-	DP_FUNC();
-
 	if (!mtk_dp) {
 		DP_ERR("can not find the mtk dp by the encoder");
 		return;
@@ -5158,7 +5143,7 @@ static void mtk_dp_encoder_mode_set(struct drm_encoder *encoder,
 		if (mtk_dp->mtk_connector[i] && mtk_dp->mtk_connector[i]->encoder == encoder) {
 			drm_mode_copy(&mtk_dp->mode[i], adjusted);
 
-			DP_MSG("Htt:%d, Vtt:%d, Hact:%d, Vact:%d, fps:%d, clk:%d\n",
+			DP_MSG("mode set, Htt:%d, Vtt:%d, Hact:%d, Vact:%d, fps:%d, clk:%d\n",
 			       mtk_dp->mode[i].htotal, mtk_dp->mode[i].vtotal,
 			mtk_dp->mode[i].hdisplay, mtk_dp->mode[i].vdisplay,
 			drm_mode_vrefresh(&mtk_dp->mode[i]), mtk_dp->mode[i].clock);
@@ -5225,8 +5210,6 @@ static enum drm_connector_status mtk_dp_connector_detect
 	enum drm_connector_status ret = connector_status_disconnected;
 	u8 sink_count = 0;
 
-	DP_FUNC();
-
 	mtk_connector = container_of(connector, struct mtk_dp_connector, connector);
 	mtk_dp = mtk_connector->mtk_dp;
 
@@ -5250,7 +5233,7 @@ static enum drm_connector_status mtk_dp_connector_detect
 			ret = connector_status_connected;
 	}
 
-	DP_MSG("connector_status:%d", ret);
+	DP_MSG("detect, connector status:%d", ret);
 	return ret;
 }
 
@@ -6192,8 +6175,6 @@ int mtk_dp_handle(struct mtk_dp *mtk_dp)
 	int ret = DP_RET_NOERR;
 	enum dp_encoder_id encoder_id = 0;
 
-	DP_FUNC("go");
-
 	if (!mtk_dp->dp_ready)
 		return DP_RET_NOERR;
 
@@ -6222,10 +6203,9 @@ int mtk_dp_handle(struct mtk_dp *mtk_dp)
 		break;
 
 	case DP_STATE_PREPARE:
-		DP_MSG("pattern_gen:%d, video_enable:%d\n",
-		       mtk_dp->info[0].pattern_gen, mtk_dp->video_enable); /* todo */
-		DP_MSG("audio_enable:%d, audio_cap:%d\n",
-		       mtk_dp->audio_enable, mtk_dp->info[0].audio_cap);
+		DP_MSG("pattern_gen:%d, video_enable:%d, audio_enable:%d, audio_cap:%d\n",
+		       mtk_dp->info[0].pattern_gen, mtk_dp->video_enable,
+			   mtk_dp->audio_enable, mtk_dp->info[0].audio_cap);
 
 		if (mtk_dp->info[0].pattern_gen) {
 			mtk_dp->video_enable = true;
@@ -6283,8 +6263,6 @@ static void mtk_dp_main_handle(struct work_struct *data)
 	struct mtk_dp *mtk_dp = container_of(data, struct mtk_dp, dp_work);
 	u64 starttime = get_system_time();
 
-	DP_FUNC("go");
-
 	do {
 		if (get_time_diff(starttime) > 5000000000ULL) {
 			DP_ERR("Handle time over 5s\n");
@@ -6306,8 +6284,6 @@ static void mtk_dp_main_handle(struct work_struct *data)
 				break;
 		}
 	} while (!mtk_dp_done(mtk_dp));
-
-	DP_FUNC("end");
 }
 
 static int mtk_dp_create_workqueue(struct mtk_dp *mtk_dp)
@@ -6349,7 +6325,7 @@ static int mtk_dp_dt_parse_pdata(struct mtk_dp *mtk_dp,
 	ret = of_property_read_u32_array(dev->of_node, "dptx,phy_params",
 					 phy_params_dts, ARRAY_SIZE(phy_params_dts));
 	if (ret) {
-		DP_MSG("get phy_params fail, use default val, ret:%d\n", ret);
+		DP_DBG("get phy_params fail, use default val, ret:%d\n", ret);
 		mtk_dp_phy_param_init(mtk_dp,
 				      phy_params_int, ARRAY_SIZE(phy_params_int));
 	} else {
@@ -6364,7 +6340,7 @@ static int mtk_dp_dt_parse_pdata(struct mtk_dp *mtk_dp,
 #if ATTACH_BRIDGE
 	ret = drm_of_find_panel_or_bridge(dev->of_node, 2, 0, NULL, &mtk_dp->next_bridge);
 	if (!mtk_dp->next_bridge) {
-		DP_ERR("Can not find next_bridge %d\n", ret);
+		DP_DBG("Can not find next_bridge %d\n", ret);
 		return -EPROBE_DEFER;
 	}
 	DP_MSG("Found next bridge node: %pOF\n", mtk_dp->next_bridge->of_node);
@@ -6488,8 +6464,6 @@ int mtk_drm_dp_get_info(struct drm_device *dev,
 		DP_ERR("%s, dp not initial\n", __func__);
 		return 0;
 	}
-
-	DP_FUNC();
 
 	info->physicalWidthUm = 900;
 	info->physicalHeightUm = 1000;
@@ -6618,8 +6592,6 @@ static int mtk_dp_bind(struct device *dev, struct device *master, void *data)
 	struct drm_device *drm_dev = data;
 	int ret;
 
-	DP_FUNC("start");
-
 	mtk_dp->drm_dev = drm_dev;
 
 	ret = mtk_ddp_comp_register(drm_dev, &mtk_dp->ddp_comp);
@@ -6638,7 +6610,6 @@ static int mtk_dp_bind(struct device *dev, struct device *master, void *data)
 static void mtk_dp_unbind(struct device *dev, struct device *master,
 			  void *data)
 {
-	DP_FUNC();
 }
 
 static const struct component_ops mtk_dp_component_ops = {
@@ -6655,7 +6626,7 @@ static int mtk_drm_dp_probe(struct platform_device *pdev)
 	int irq_num = 0;
 	void *base;
 
-	DP_FUNC();
+	DP_DBG("probe start");
 
 	mtk_dp = devm_kmalloc(dev, sizeof(*mtk_dp), GFP_KERNEL | __GFP_ZERO);
 	if (!mtk_dp)
