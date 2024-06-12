@@ -23,6 +23,14 @@ config MTK_CAMERA_FD_ISP6S
 	  Enable to detect faces on images.
 	  Disable if it is not supported or
 	  not wanted.
+config MTK_CAMERA_FD_ISP6S_V1
+	tristate "[FD] Face Detection"
+	depends on MTK_CAMERA_ISP_SUPPORT
+	help
+	  Face Detection.
+	  Enable to detect faces on images.
+	  Disable if it is not supported or
+	  not wanted.
 config MTK_CAM_SECURE_FD_SUPPORT
 	tristate "[FD] Secure Face Detection"
 	depends on MTK_CAMERA_ISP_SUPPORT
