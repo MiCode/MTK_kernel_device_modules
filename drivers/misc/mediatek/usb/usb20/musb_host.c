@@ -1841,8 +1841,9 @@ void musb_host_tx(struct musb *musb, u8 epnum)
 	u32 status = 0;
 	void __iomem *mbase = musb->mregs;
 	struct dma_channel *dma;
+#ifdef NEVER
 	bool transfer_pending = false;
-
+#endif
 #if IS_ENABLED(CONFIG_MTK_MUSB_QMU_SUPPORT)
 	if (qh && qh->is_use_qmu)
 		return;
@@ -2051,7 +2052,9 @@ void musb_host_tx(struct musb *musb, u8 epnum)
 			if (!done) {
 				offset = qh->offset;
 				length = urb->transfer_buffer_length - offset;
+#ifdef NEVER
 				transfer_pending = true;
+#endif
 			}
 		}
 	}
@@ -2680,7 +2683,10 @@ static int
 static int musb_schedule(struct musb *musb, struct musb_qh *qh, int is_in)
 {
 	int idle = 0;
-	int epnum, hw_end = 0;
+	int hw_end = 0;
+#if !IS_ENABLED(CONFIG_MTK_MUSB_QMU_SUPPORT)
+	int epnum = 0;
+#endif
 	struct musb_hw_ep *hw_ep = NULL;
 	struct list_head *head = NULL;
 	/* u8                   toggle; */
@@ -2708,7 +2714,7 @@ static int musb_schedule(struct musb *musb, struct musb_qh *qh, int is_in)
 		else
 			group_type = EP_GROUP_B;
 
-		epnum = hw_end = ep_group_match(musb, qh, is_in, group_type);
+		hw_end = ep_group_match(musb, qh, is_in, group_type);
 		if (!hw_end) {
 			DBG(0, "musb::error!not find a ep for the urb\r\n");
 			return -ENOSPC;

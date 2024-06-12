@@ -4816,6 +4816,8 @@ int musb_remove(struct platform_device *pdev)
 		int ret;
 
 		ret = dma_set_mask(dev, *dev->parent->dma_mask);
+		if(ret)
+			DBG(0, "DMA set fail!\n");
 	}
 #endif
 	return 0;
