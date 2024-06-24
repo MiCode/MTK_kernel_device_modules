@@ -1570,9 +1570,9 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 	if (info->alpha) {
 		*reason = mml_query_alpha;
 		if (!MML_FMT_ALPHA(info->src.format) ||
-		    info->src.width <= 9 ||
+		    info->src.width <= 32 ||
 		    info->dest_cnt != 1 ||
-		    info->dest[0].crop.r.width <= 9 ||
+		    info->dest[0].crop.r.width <= 32 ||
 		    info->dest[0].compose.width <= 9)
 			goto not_support;
 		if (mml_isdc(info->mode))
