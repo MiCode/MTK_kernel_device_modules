@@ -131,3 +131,11 @@ config MTK_SYS_RES_DBG_SUPPORT
 	  MediaTek system resource debug information dump.
 	  Select "m" if you want to enable.
 	  Select "n" if unsure.
+
+config MTK_SUSPEND_DEBUG
+	bool "Meditaek Suspend debug config"
+	help
+	  Select MTK_SUSPEND_DEBUG for
+	  Mediatek suspend debug enable.
+	  Select "y" if you want to enable suspend debug features.
+	  Select "n" if unsure.
