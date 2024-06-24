@@ -84,7 +84,7 @@ int adsp_pre_wake_lock(u32 cid)
 	struct adsp_priv *pdata;
 
 	if (!adsp_is_pre_lock_support())
-		return -1;
+		return -ENOLCK;
 
 	if (adsp_is_ipic_support())
 		cid = ADSP_A_ID;
@@ -112,14 +112,20 @@ int adsp_pre_wake_lock(u32 cid)
 		adsp_mt_set_swirq(cid);
 
 	/* polling adsp status */
-	while (!check_core_active(cid) && --retry)
-		usleep_range(20, 50);
+	while (!check_core_active(cid) && --retry) {
+		if (!in_interrupt())
+			usleep_range(20, 50);
+		else
+			retry = 1;
+	}
 
 	if (retry == 0) {
 		pr_warn("%s cannot wakeup adsp, hifi_status: %x, retry: %d\n",
 			__func__, check_core_active(cid), retry);
-		adsp_check_adsppll_freq(ADSPPLLDIV);
-		adsp_pow_clk_dump();
+		if (!in_interrupt()) {
+			adsp_check_adsppll_freq(ADSPPLLDIV);
+			adsp_pow_clk_dump();
+		}
 		return -ETIME;
 	}
 

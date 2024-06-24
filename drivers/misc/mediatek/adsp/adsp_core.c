@@ -256,6 +256,9 @@ enum adsp_ipi_status adsp_send_message(enum adsp_ipi_id id, void *buf,
 
 	ret = adsp_mbox_send(pdata->send_mbox, &msg, wait);
 
+	if ((id == ADSP_IPI_DVFS_SUSPEND) && (ret != MBOX_DONE))
+		set_adsp_state(pdata, ADSP_RUNNING);
+
 	if (ret == MBOX_DONE)
 		retval = ADSP_IPI_DONE;
 	else if (ret == MBOX_PIN_BUSY)

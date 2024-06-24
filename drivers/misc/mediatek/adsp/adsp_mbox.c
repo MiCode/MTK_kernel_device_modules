@@ -151,7 +151,12 @@ int adsp_mbox_send(struct mtk_mbox_pin_send *pin_send, void *msg,
 		result = MBOX_CONFIG_ERR;
 		goto EXIT_MUTEX;
 	}
-	adsp_pre_wake_lock((u32)cid);
+
+	result = adsp_pre_wake_lock((u32)cid);
+	if (result != 0 && result != -ENOLCK) {
+		result = MBOX_PIN_BUSY;
+		goto EXIT;
+	}
 
 	if (mtk_mbox_check_send_irq(mbdev, pin_send->mbox,
 				    pin_send->pin_index)) {
@@ -206,6 +211,14 @@ int adsp_mbox_send_irq(struct mtk_mbox_pin_send *pin_send, unsigned int wait)
 	s64 time_ipc_us;
 	unsigned long flags = 0;
 	int msg[4] = {0};
+	int cid;
+
+	cid = mbox_pin_send_num_to_core(pin_send->mbox);
+	result = adsp_pre_wake_lock((u32)cid);
+	if (result != 0 && result != -ENOLCK) {
+		result = MBOX_PIN_BUSY;
+		goto EXIT_WAKELOCK;
+	}
 
 	spin_lock_irqsave(&pin_send->pin_lock, flags);
 
@@ -234,6 +247,8 @@ int adsp_mbox_send_irq(struct mtk_mbox_pin_send *pin_send, unsigned int wait)
 	}
 EXIT:
 	spin_unlock_irqrestore(&pin_send->pin_lock, flags);
+EXIT_WAKELOCK:
+	adsp_pre_wake_unlock((u32)cid);
 	return result;
 }
 
