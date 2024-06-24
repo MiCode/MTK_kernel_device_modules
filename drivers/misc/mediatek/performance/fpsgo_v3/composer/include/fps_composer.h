@@ -45,6 +45,7 @@ struct fpsgo_com_policy_cmd {
 	int control_hwui_by_pid;
 	int app_cam_meta_min_fps;
 	int dep_loading_thr_by_pid;
+	int cam_bypass_window_ms_by_pid;
 	int mfrc_active_by_pid;
 	unsigned long long ts;
 	struct rb_node rb_node;

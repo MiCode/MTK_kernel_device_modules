@@ -64,6 +64,8 @@ static int fpsgo_touch_latency_ko_ready;
 static int mfrc_active;
 static int mfrc_by_pass_frame_num = 2;
 
+static int cam_bypass_window_ms;
+
 static void fpsgo_com_notify_to_do_recycle(struct work_struct *work);
 static DECLARE_WORK(do_recycle_work, fpsgo_com_notify_to_do_recycle);
 static DEFINE_MUTEX(recycle_lock);
@@ -411,7 +413,8 @@ static void fpsgo_com_delete_policy_cmd(struct fpsgo_com_policy_cmd *iter)
 			iter->control_api_mask_by_pid == BY_PID_DEFAULT_VAL &&
 			iter->control_hwui_by_pid == BY_PID_DEFAULT_VAL &&
 			iter->app_cam_meta_min_fps == BY_PID_DEFAULT_VAL &&
-			iter->dep_loading_thr_by_pid == BY_PID_DEFAULT_VAL) {
+			iter->dep_loading_thr_by_pid == BY_PID_DEFAULT_VAL &&
+			iter->cam_bypass_window_ms_by_pid == BY_PID_DEFAULT_VAL) {
 			min_iter = iter;
 			goto delete;
 		} else
@@ -472,6 +475,7 @@ static struct fpsgo_com_policy_cmd *fpsgo_com_get_policy_cmd(int tgid,
 	iter->control_hwui_by_pid = BY_PID_DEFAULT_VAL;
 	iter->app_cam_meta_min_fps = BY_PID_DEFAULT_VAL;
 	iter->dep_loading_thr_by_pid = BY_PID_DEFAULT_VAL;
+	iter->cam_bypass_window_ms_by_pid = BY_PID_DEFAULT_VAL;
 	iter->ts = ts;
 
 	rb_link_node(&iter->rb_node, parent, p);
@@ -501,6 +505,8 @@ static void fpsgo_com_set_policy_cmd(int cmd, int value, int tgid,
 			iter->dep_loading_thr_by_pid = value;
 		else if (cmd == 4)
 			iter->mfrc_active_by_pid = value;
+		else if (cmd == 5)
+			iter->cam_bypass_window_ms_by_pid = value;
 
 		if (!op)
 			fpsgo_com_delete_policy_cmd(iter);
@@ -658,30 +664,40 @@ static void fpsgo_com_check_bypass_closed_loop(struct render_info *iter)
 {
 	int local_loading = 0;
 	int loading_thr;
+	int window_ms;
 	struct fpsgo_com_policy_cmd *policy_iter = NULL;
-
-	iter->bypass_closed_loop = 0;
 
 	mutex_lock(&fpsgo_com_policy_cmd_lock);
 	policy_iter = fpsgo_com_get_policy_cmd(iter->tgid, 0, 0);
 	loading_thr = policy_iter ? policy_iter->dep_loading_thr_by_pid : -1;
+	window_ms = policy_iter ? policy_iter->cam_bypass_window_ms_by_pid : cam_bypass_window_ms;
 	mutex_unlock(&fpsgo_com_policy_cmd_lock);
 
 	if (loading_thr < 0)
 		return;
 
 	if (iter->running_time > 0 && iter->Q2Q_time > 0) {
-		local_loading = (int)div64_u64(iter->running_time * 100, iter->Q2Q_time);
-		if (local_loading < loading_thr)
-			iter->bypass_closed_loop = 1;
+		iter->sum_cpu_time_us += iter->running_time >> 10;
+		iter->sum_q2q_time_us += iter->Q2Q_time >> 10;
+		if (!iter->sum_reset_ts)
+			iter->sum_reset_ts = iter->t_enqueue_end;
+
+		if (iter->t_enqueue_end - iter->sum_reset_ts >= window_ms * NSEC_PER_MSEC) {
+			if (iter->sum_cpu_time_us > 0 && iter->sum_q2q_time_us > 0)
+				local_loading = (int)div64_u64(iter->sum_cpu_time_us * 100, iter->sum_q2q_time_us);
+			iter->bypass_closed_loop = local_loading < loading_thr;
+			iter->sum_cpu_time_us = 0;
+			iter->sum_q2q_time_us = 0;
+			iter->sum_reset_ts = iter->t_enqueue_end;
+		}
 	}
 
 	fpsgo_systrace_c_fbt(iter->pid, iter->buffer_id,
 		iter->bypass_closed_loop, "bypass_closed_loop");
-	fpsgo_main_trace("[comp][%d][0x%llx] run:%llu q2q:%llu thr:%d bypass_closed_loop:%d",
+	fpsgo_main_trace("[comp][%d][0x%llx] run:%llu(%llu) q2q:%llu(%llu) thr:%d(%d) bypass:%d ts:%llu",
 		iter->pid, iter->buffer_id,
-		iter->running_time, iter->Q2Q_time,
-		loading_thr, iter->bypass_closed_loop);
+		iter->running_time, iter->sum_cpu_time_us, iter->Q2Q_time, iter->sum_q2q_time_us,
+		loading_thr, window_ms, iter->bypass_closed_loop, iter->sum_reset_ts);
 }
 
 static void fpsgo_com_determine_cam_object(struct render_info *iter)
@@ -2230,6 +2246,10 @@ FPSGO_COM_SYSFS_READ(mfrc_active, 1, mfrc_active);
 FPSGO_COM_SYSFS_WRITE_VALUE(mfrc_active, mfrc_active, 0, 1);
 static KOBJ_ATTR_RW(mfrc_active);
 
+FPSGO_COM_SYSFS_READ(cam_bypass_window_ms, 1, cam_bypass_window_ms);
+FPSGO_COM_SYSFS_WRITE_VALUE(cam_bypass_window_ms, cam_bypass_window_ms, 0, 60000);
+static KOBJ_ATTR_RW(cam_bypass_window_ms);
+
 FPSGO_COM_SYSFS_WRITE_POLICY_CMD(bypass_non_SF_by_pid, 0, 0, 1);
 static KOBJ_ATTR_WO(bypass_non_SF_by_pid);
 
@@ -2244,6 +2264,9 @@ static KOBJ_ATTR_WO(dep_loading_thr_by_pid);
 
 FPSGO_COM_SYSFS_WRITE_POLICY_CMD(mfrc_active_by_pid, 4, 0, 1);
 static KOBJ_ATTR_WO(mfrc_active_by_pid);
+
+FPSGO_COM_SYSFS_WRITE_POLICY_CMD(cam_bypass_window_ms_by_pid, 5, 0, 60000);
+static KOBJ_ATTR_WO(cam_bypass_window_ms_by_pid);
 
 static ssize_t fpsgo_com_policy_cmd_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -2268,7 +2291,7 @@ static ssize_t fpsgo_com_policy_cmd_show(struct kobject *kobj,
 		iter = rb_entry(rbn, struct fpsgo_com_policy_cmd, rb_node);
 		length = scnprintf(temp + pos,
 			FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-			"%dth\ttgid:%d\tbypass_non_SF:%d\tcontrol_api_mask:%d\tcontrol_hwui:%d\tapp_min_fps:%d\tdep_loading_thr_by_pid:%d\tmfrc%d\tts:%llu\n",
+			"%dth\ttgid:%d\tbypass_non_SF:%d\tcontrol_api_mask:%d\tcontrol_hwui:%d\tapp_min_fps:%d\tdep_loading_thr_by_pid:%d(%d)\tmfrc%d\tts:%llu\n",
 			i,
 			iter->tgid,
 			iter->bypass_non_SF_by_pid,
@@ -2276,6 +2299,7 @@ static ssize_t fpsgo_com_policy_cmd_show(struct kobject *kobj,
 			iter->control_hwui_by_pid,
 			iter->app_cam_meta_min_fps,
 			iter->dep_loading_thr_by_pid,
+			iter->cam_bypass_window_ms_by_pid,
 			iter->mfrc_active_by_pid,
 			iter->ts);
 		pos += length;
@@ -2581,6 +2605,8 @@ void __exit fpsgo_composer_exit(void)
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_is_fpsgo_boosting);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_mfrc_active);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_mfrc_active_by_pid);
+	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_cam_bypass_window_ms);
+	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_cam_bypass_window_ms_by_pid);
 
 	fpsgo_sysfs_remove_dir(&comp_kobj);
 }
@@ -2614,6 +2640,8 @@ int __init fpsgo_composer_init(void)
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_is_fpsgo_boosting);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_mfrc_active);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_mfrc_active_by_pid);
+		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_cam_bypass_window_ms);
+		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_cam_bypass_window_ms_by_pid);
 	}
 
 	return 0;

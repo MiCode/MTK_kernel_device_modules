@@ -485,6 +485,9 @@ struct render_info {
 	struct mutex thr_mlock;
 
 	int bypass_closed_loop;
+	unsigned long long sum_cpu_time_us;
+	unsigned long long sum_q2q_time_us;
+	unsigned long long sum_reset_ts;
 
 	/* boost policy */
 	struct fpsgo_boost_attr attr;
