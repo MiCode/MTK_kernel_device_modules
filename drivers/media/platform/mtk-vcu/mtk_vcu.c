@@ -2563,9 +2563,9 @@ static long mtk_vcu_free(
 		(unsigned long)sizeof(struct mem_obj));
 	if ((ret != 0L) ||
 		(mem_buff_data.iova == 0UL &&
-		mem_buff_data.va == 0UL)) {
-		pr_info("[VCU] %s(%d) Free buf failed on cmd %d!\n",
-			__func__, __LINE__, cmd);
+		mem_buff_data.va == 0UL && cmd != VCU_SECURE_HANDLE_FREE)) { //secure handle iova and va always is 0
+		pr_info("[VCU] %s(%d) Free buf failed on cmd %d! ret: %ld, iova: %llu, va: %llu\n",
+			__func__, __LINE__, cmd, ret, mem_buff_data.iova, mem_buff_data.va);
 		return -EINVAL;
 	}
 
