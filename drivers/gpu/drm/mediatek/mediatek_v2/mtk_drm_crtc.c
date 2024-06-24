@@ -351,7 +351,6 @@ static unsigned int dual_comp_blender_map_mt6991(unsigned int comp_id)
 	return ret;
 }
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 static void mtk_drm_crtc_init_bind_comp(struct mtk_drm_crtc *mtk_crtc)
 {
 	unsigned int i, j;
@@ -401,7 +400,6 @@ static void mtk_drm_crtc_init_bind_comp(struct mtk_drm_crtc *mtk_crtc)
 
 	DDPINFO("%s crtc %d -\n", __func__, drm_crtc_index(&mtk_crtc->base));
 }
-#endif
 
 void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp, unsigned int plane_index, struct cmdq_pkt *cmdq_handle)
@@ -456,23 +454,8 @@ void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 	blender_comp = priv->ddp_comp[next_blender];
 	comp->bind_comp = blender_comp;
 
-	/**
-	 * if (blender_comp->funcs && blender_comp->funcs->connect) {
-	 *	if (plane_index != 0)
-	 *		blender_comp->funcs->connect(blender_comp, cmdq_handle, next_blender,
-	 *								next_blender + 1);
-	 *	else
-	 *		blender_comp->funcs->connect(blender_comp, cmdq_handle, 0,
-	 *								next_blender + 1);
-	 * }
-	 */
-
 	mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, comp->id,
 				false, cmdq_handle, 0);
-	/**
-	 * mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, blender_comp->id,
-	 *			false, cmdq_handle, 0);
-	 */
 
 	mtk_crtc->last_blender = blender_comp;
 }
@@ -20029,10 +20012,8 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		mtk_vblank_config_rec_init(&mtk_crtc->base);
 	}
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	if (priv->data->ovl_exdma_rule)
 		mtk_drm_crtc_init_bind_comp(mtk_crtc);
-#endif
 
 	DDPMSG("%s-CRTC%d create successfully\n", __func__,
 		priv->num_pipes - 1);
