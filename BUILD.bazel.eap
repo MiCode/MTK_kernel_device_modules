@@ -30,7 +30,10 @@ kleaf_modules = [
 
 filegroup(
     name = "{}_sources".format(name),
-    srcs = glob(["**/*defconfig"]),
+    srcs = glob([
+       "arch/arm64/configs/*",
+       "kernel/configs/**",
+    ]),
 )
 
 mgk_build_config(
