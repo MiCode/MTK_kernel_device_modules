@@ -5452,6 +5452,7 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	}
 		break;
 	case PMQOS_SET_HRT_BW:
+	case PMQOS_SET_HRT_BW_DELAY:
 	{
 		int od_enable, dmr_enable, dbi_enable, sec_on;
 		u32 bw_val = *(unsigned int *)params;

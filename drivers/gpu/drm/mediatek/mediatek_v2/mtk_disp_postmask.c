@@ -730,7 +730,9 @@ static int mtk_postmask_io_cmd(struct mtk_ddp_comp *comp,
 		break;
 	}
 #endif
-	case PMQOS_SET_HRT_BW: {
+	case PMQOS_SET_HRT_BW:
+	case PMQOS_SET_HRT_BW_DELAY:
+	{
 		u32 bw_val = *(unsigned int *)params;
 		unsigned int bpp = 1;
 
