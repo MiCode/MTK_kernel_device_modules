@@ -129,13 +129,7 @@ static void check_subcomm_status(void)
 
 static s32 mtk_vdisp_get_power_cnt(void)
 {
-	s32 ret;
-
-	mutex_lock(&g_mtcmos_cnt_lock);
-	ret = atomic_read(&g_mtcmos_cnt);
-	mutex_unlock(&g_mtcmos_cnt_lock);
-
-	return ret;
+	return atomic_read(&g_mtcmos_cnt);
 }
 
 static s32 mtk_vdisp_poll_power_cnt(s32 val)
@@ -144,7 +138,7 @@ static s32 mtk_vdisp_poll_power_cnt(s32 val)
 
 	ret = readx_poll_timeout(mtk_vdisp_get_power_cnt, , tmp, tmp == val, 100, TIMEOUT_300MS);
 	if (ret < 0)
-		VDISPERR("poll power cnt timeout");
+		VDISPERR("poll power cnt timeout, mtcmos_mask(%#x)", atomic_read(&g_mtcmos_cnt));
 
 	return ret;
 }
@@ -391,7 +385,7 @@ static int genpd_event_notifier(struct notifier_block *nb,
 		if (priv->pwr_ack_wait_con)
 			writel(priv->pwr_ack_wait_time, priv->pwr_ack_wait_con);
 
-		atomic_inc(&g_mtcmos_cnt);
+		atomic_or(BIT(priv->pd_id), &g_mtcmos_cnt);
 		mutex_unlock(&g_mtcmos_cnt_lock);
 		break;
 	case GENPD_NOTIFY_ON:
@@ -466,7 +460,7 @@ static int genpd_event_notifier(struct notifier_block *nb,
 	case GENPD_NOTIFY_OFF:
 		mutex_lock(&g_mtcmos_cnt_lock);
 
-		if (atomic_read(&g_mtcmos_cnt) == 1)
+		if (atomic_read(&g_mtcmos_cnt) == BIT(DISP_PD_DISP_VCORE))
 			vdisp_hwccf_ctrl(priv, false);
 
 		if (disp_dpc_driver.dpc_vidle_power_release && !priv->pm_ret)
@@ -478,7 +472,7 @@ static int genpd_event_notifier(struct notifier_block *nb,
 			vdisp_set_aod_scp_semaphore(0); //protect AOD SCP flow
 			__pm_relax(g_vdisp_wake_lock);
 		}
-		atomic_dec(&g_mtcmos_cnt);
+		atomic_and(~BIT(priv->pd_id), &g_mtcmos_cnt);
 		mutex_unlock(&g_mtcmos_cnt_lock);
 		break;
 	default:
