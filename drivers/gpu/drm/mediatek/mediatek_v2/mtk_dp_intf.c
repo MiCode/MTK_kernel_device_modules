@@ -761,8 +761,6 @@ static void mtk_dp_intf_start(struct mtk_ddp_comp *comp,
 
 static void mtk_dp_intf_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
-	mtk_ddp_write_mask(comp, 0x0, DP_EN, DP_CONTROLLER_EN, handle);
-
 	//mtk_dp_video_trigger(video_mute<<16 | 0);
 	irq_intsa = 0;
 	irq_vdesa = 0;
@@ -821,6 +819,8 @@ static void mtk_dp_intf_unprepare(struct mtk_ddp_comp *comp)
 
 	DPTXFUNC();
 	mtk_dp_poweroff();
+	udelay(1000);
+	mtk_ddp_write_mask(comp, 0x0, DP_EN, DP_CONTROLLER_EN, NULL);
 	dp_intf = comp_to_dp_intf(comp);
 
 	/* disable dp intf clk */
