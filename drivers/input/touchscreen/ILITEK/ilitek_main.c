@@ -1613,98 +1613,7 @@ static int __maybe_unused ilitek_update_thread(void *arg)
 	return 0;
 }
 
-void ilitek_suspend(void)
-{
-	tp_msg("\n");
 
-	ts->esd_skip = true;
-	if (ts->esd_check && ts->esd_workq)
-		cancel_delayed_work_sync(&ts->esd_work);
-
-	if (ts->operation_protection || atomic_read(&ts->firmware_updating)) {
-		tp_msg("operation_protection or firmware_updating return\n");
-		return;
-	}
-
-	if (ts->gesture_status) {
-		ts->wake_irq_enabled = (enable_irq_wake(ts->irq) == 0);
-
-		if (ts->low_power_status == Low_Power_Idle) {
-			mutex_lock(&ts->ilitek_mutex);
-			if (api_set_idle(ts->dev, true) < 0)
-				tp_err("enable Idle mode failed\n");
-			mutex_unlock(&ts->ilitek_mutex);
-		}
-	} else {
-		/*
-		if (ts->low_power_status == Low_Power_Sleep) {
-			mutex_lock(&ts->ilitek_mutex);
-			if (api_protocol_set_cmd(ts->dev, SET_IC_SLEEP,
-						 NULL) < 0)
-				tp_err("set tp sleep failed\n");
-			mutex_unlock(&ts->ilitek_mutex);
-		}
-		*/
-		ilitek_irq_disable();
-	}
-
-	ts->system_suspend = true;
-}
-
-void ilitek_resume(void)
-{
-	tp_msg("\n");
-
-	if (ts->operation_protection || atomic_read(&ts->firmware_updating)) {
-		tp_msg("operation_protection or firmware_updating return\n");
-		return;
-	}
-
-	if (ts->gesture_status) {
-		ilitek_irq_disable();
-
-		if (ts->low_power_status == Low_Power_Idle) {
-			mutex_lock(&ts->ilitek_mutex);
-			if (api_set_idle(ts->dev, false) < 0)
-				tp_err("disable Idle mode err\n");
-			mutex_unlock(&ts->ilitek_mutex);
-		}
-
-		if (ts->gesture_status == Gesture_Double_Click)
-			finger_state = 0;
-
-		if (ts->wake_irq_enabled) {
-			disable_irq_wake(ts->irq);
-			ts->wake_irq_enabled = false;
-		}
-	} else {
-		/*
-		 * If ILITEK_SLEEP is defined and FW support wakeup command,
-		 * the reset can be mark.
-
-		ilitek_reset(ts->dev->reset_time);
-
-		if (ts->low_power_status == Low_Power_Sleep) {
-			mutex_lock(&ts->ilitek_mutex);
-			if (api_protocol_set_cmd(ts->dev, SET_IC_WAKE,
-						 NULL) < 0)
-				tp_err("0x31 set wake up err\n");
-			mutex_unlock(&ts->ilitek_mutex);
-		}
-		*/
-	}
-
-	ts->esd_skip = false;
-	if (ts->esd_check && ts->esd_workq)
-		queue_delayed_work(ts->esd_workq, &ts->esd_work, ts->esd_delay);
-
-	ilitek_touch_release_all_point();
-	ilitek_check_key_release(0, 0, 0);
-
-	ts->system_suspend = false;
-
-	ilitek_irq_enable();
-}
 
 #if ILITEK_PLAT == ILITEK_PLAT_ALLWIN
 int ilitek_suspend_allwin(struct i2c_client *client, pm_message_t mesg)
@@ -1950,10 +1859,16 @@ static int __maybe_unused ilitek_alloc_dma(void)
 	tpd->dev->dev.coherent_dma_mask = DMA_BIT_MASK(32);
 	I2CDMABuf_va = (u8 *) dma_alloc_coherent(&tpd->dev->dev, ILITEK_DMA_SIZE, &I2CDMABuf_pa, GFP_KERNEL);
 	if (!I2CDMABuf_va) {
+		tp_msg("alloc dma fail\n");
+		return -ENOMEM;
+		/*
+		 *As for the latest kernel not support the first para is NULL,
+		 *remove it!
 		I2CDMABuf_va = (u8 *) dma_alloc_coherent(NULL, ILITEK_DMA_SIZE, &I2CDMABuf_pa, GFP_KERNEL);
 		if (!I2CDMABuf_va) {
 			return -ENOMEM;
 		}
+		*/
 	}
 	memset(I2CDMABuf_va, 0, ILITEK_DMA_SIZE);
 #endif
@@ -2000,8 +1915,9 @@ static int __maybe_unused ilitek_power_on(bool status)
 			return error;
 		}
 	} else {
-		if (ts->vdd && (error = regulator_disable(ts->vdd)) < 0) {
-			tp_err("TOUCH regulator_disable vdd fail\n");
+		error = regulator_disable(tpd->reg);
+		if (tpd->reg && (error < 0)) {
+			tp_err("[ILITEK]TOUCH regulator_disable vTOUCH fail\n");
 			return error;
 		}
 		if (ts->vdd_i2c &&
@@ -2019,6 +1935,108 @@ static int __maybe_unused ilitek_power_on(bool status)
 #endif
 
 	return 0;
+}
+
+void ilitek_suspend(void)
+{
+	tp_msg("\n");
+
+	ts->esd_skip = true;
+	if (ts->esd_check && ts->esd_workq)
+		cancel_delayed_work_sync(&ts->esd_work);
+
+	if (ts->operation_protection || atomic_read(&ts->firmware_updating)) {
+		tp_msg("operation_protection or firmware_updating return\n");
+		return;
+	}
+
+	if (ts->gesture_status) {
+		ts->wake_irq_enabled = (enable_irq_wake(ts->irq) == 0);
+
+		if (ts->low_power_status == Low_Power_Idle) {
+			mutex_lock(&ts->ilitek_mutex);
+			if (api_set_idle(ts->dev, true) < 0)
+				tp_err("enable Idle mode failed\n");
+			mutex_unlock(&ts->ilitek_mutex);
+		}
+	} else {
+
+		if (ts->low_power_status == Low_Power_Sleep) {
+			mutex_lock(&ts->ilitek_mutex);
+			if (api_protocol_set_cmd(ts->dev, SET_IC_SLEEP,
+						 NULL) < 0)
+				tp_err("set tp sleep failed\n");
+			mutex_unlock(&ts->ilitek_mutex);
+		}
+		ilitek_irq_disable();
+
+		ts->irq_gpio = -ENODEV;
+		ts->reset_gpio = -ENODEV;
+		ilitek_get_gpio_num();
+
+		tpd_gpio_output(ts->irq_gpio, 0);
+		tpd_gpio_output(ts->reset_gpio, 0);
+
+		ilitek_power_on(false);
+	}
+
+	ts->system_suspend = true;
+}
+
+void ilitek_resume(void)
+{
+	tp_msg("\n");
+	ilitek_power_on(true);
+	if (ts->operation_protection || atomic_read(&ts->firmware_updating)) {
+		tp_msg("operation_protection or firmware_updating return\n");
+		return;
+	}
+
+	if (ts->gesture_status) {
+		ilitek_irq_disable();
+
+		if (ts->low_power_status == Low_Power_Idle) {
+			mutex_lock(&ts->ilitek_mutex);
+			if (api_set_idle(ts->dev, false) < 0)
+				tp_err("disable Idle mode err\n");
+			mutex_unlock(&ts->ilitek_mutex);
+		}
+
+		if (ts->gesture_status == Gesture_Double_Click)
+			finger_state = 0;
+
+		if (ts->wake_irq_enabled) {
+			disable_irq_wake(ts->irq);
+			ts->wake_irq_enabled = false;
+		}
+	} else {
+		/*
+		 * If ILITEK_SLEEP is defined and FW support wakeup command,
+		 * the reset can be mark.
+		 */
+
+		ilitek_reset(ts->dev->reset_time);
+
+		if (ts->low_power_status == Low_Power_Sleep) {
+			mutex_lock(&ts->ilitek_mutex);
+			if (api_protocol_set_cmd(ts->dev, SET_IC_WAKE,
+						 NULL) < 0)
+				tp_err("0x31 set wake up err\n");
+			mutex_unlock(&ts->ilitek_mutex);
+		}
+
+	}
+
+	ts->esd_skip = false;
+	if (ts->esd_check && ts->esd_workq)
+		queue_delayed_work(ts->esd_workq, &ts->esd_work, ts->esd_delay);
+
+	ilitek_touch_release_all_point();
+	ilitek_check_key_release(0, 0, 0);
+
+	ts->system_suspend = false;
+
+	ilitek_irq_enable();
 }
 
 static int __maybe_unused ilitek_request_regulator(struct ilitek_ts_data *ts)
