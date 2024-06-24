@@ -3482,7 +3482,6 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_ext_dp[] = {
 	DDP_COMPONENT_COMP0_OUT_CB7,
 	DDP_COMPONENT_MERGE0_OUT_CB1,
 	DDP_COMPONENT_DP_INTF0,
-	DDP_COMPONENT_DPTX,
 };
 
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_secondary[] = {
@@ -10596,8 +10595,10 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_DPTX},
 	{.compatible = "mediatek,mt6989-dp_tx",
 	 .data = (void *)MTK_DISP_DPTX},
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	{.compatible = "mediatek,mt6991-dp_tx",
 	 .data = (void *)MTK_DISP_DPTX},
+#endif
 	{.compatible = "mediatek,mt6895-dp_tx",
 	 .data = (void *)MTK_DISP_DPTX},
 	{.compatible = "mediatek,mt6897-dp_tx",
