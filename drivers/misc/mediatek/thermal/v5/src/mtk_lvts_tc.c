@@ -692,8 +692,8 @@ void lvts_device_read_count_RC_N_resume(void)
 {
 	/* Resistor-Capacitor Calibration */
 	/* count_RC_N: count RC now */
-	int i, j, offset, num_ts, s_index;
-	unsigned int data;
+	int i, j, offset, num_ts, s_index __maybe_unused;
+	unsigned int data __maybe_unused;
 	char buffer[512];
 
 	for (i = 0; i < ARRAY_SIZE(lvts_tscpu_g_tc); i++) {
