@@ -2676,6 +2676,8 @@ static const struct snd_kcontrol_new memif_ul7_ch1_mix[] = {
 					I_I2SIN2_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH1", AFE_CONN032_4,
 				    I_I2SIN4_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH3", AFE_CONN032_4,
+				    I_I2SIN4_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH1", AFE_CONN032_4,
 				    I_I2SIN5_CH1, 1, 0),
 };
@@ -2701,6 +2703,8 @@ static const struct snd_kcontrol_new memif_ul7_ch2_mix[] = {
 					I_I2SIN2_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH2", AFE_CONN033_4,
 				    I_I2SIN4_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH4", AFE_CONN033_4,
+				    I_I2SIN4_CH4, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH2", AFE_CONN033_4,
 				    I_I2SIN5_CH2, 1, 0),
 };
@@ -4041,6 +4045,8 @@ static const struct snd_soc_dapm_route mt6991_memif_routes[] = {
 	{"UL7_CH2", "I2SIN2_CH2", "I2SIN2"},
 	{"UL7_CH1", "I2SIN4_CH1", "I2SIN4"},
 	{"UL7_CH2", "I2SIN4_CH2", "I2SIN4"},
+	{"UL7_CH1", "I2SIN4_CH3", "I2SIN4"},
+	{"UL7_CH2", "I2SIN4_CH4", "I2SIN4"},
 	{"UL7_CH1", "HW_GAIN0_OUT_CH1", "HW Gain 0 Out"},
 	{"UL7_CH2", "HW_GAIN0_OUT_CH2", "HW Gain 0 Out"},
 	{"UL7_CH1", "I2SIN5_CH1", "I2SIN5"},
