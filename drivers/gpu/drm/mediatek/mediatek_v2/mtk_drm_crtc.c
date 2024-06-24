@@ -79,6 +79,9 @@
 
 #include <soc/mediatek/mmqos.h>
 
+int debug_trigger_loop;
+module_param(debug_trigger_loop, int, 0644);
+
 static struct mtk_drm_property mtk_crtc_property[CRTC_PROP_MAX] = {
 	{DRM_MODE_PROP_ATOMIC, "OVERLAP_LAYER_NUM", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "LAYERING_IDX", 0, ULONG_MAX, 0},
@@ -10414,6 +10417,8 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 		 */
 		GCE_DO(wait_no_clear, EVENT_STREAM_BLOCK);
 		GCE_DO(wfe, EVENT_STREAM_DIRTY);
+		if (debug_trigger_loop & BIT(0))
+			mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 4);
 
 		if (mtk_crtc->pre_te_cfg.merge_trigger_en && !mtk_crtc->pre_te_cfg.prefetch_te_en) {
 			rop.reg = false;
@@ -10423,9 +10428,14 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 				DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE), var1);
 			GCE_IF(lop, R_CMDQ_NOT_EQUAL, rop);
 			GCE_DO(clear_event, EVENT_STREAM_EOF);
+			if (debug_trigger_loop & BIT(1))
+				mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 5);
 			GCE_FI;
-		} else
+		} else {
 			GCE_DO(clear_event, EVENT_STREAM_EOF);
+			if (debug_trigger_loop & BIT(1))
+				mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 5);
+		}
 
 		if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 			GCE_DO(wfe, EVENT_CABC_EOF);
@@ -10476,6 +10486,8 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 					GCE_DO(clear_event, EVENT_SYNC_TOKEN_CHECK_TRIGGER_MERGE);
 					GCE_DO(wfe, EVENT_SYNC_TOKEN_CHECK_TRIGGER_MERGE);
 					GCE_DO(clear_event, EVENT_STREAM_EOF);
+					if (debug_trigger_loop & BIT(1))
+						mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 5);
 				}
 				GCE_FI;
 			}
@@ -10557,8 +10569,11 @@ skip_prete:
 			}
 
 
-			if (mtk_crtc->pre_te_cfg.merge_trigger_en == true)
+			if (mtk_crtc->pre_te_cfg.merge_trigger_en == true) {
 				GCE_DO(clear_event, EVENT_STREAM_DIRTY);
+				if (debug_trigger_loop & BIT(2))
+					mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 4);
+			}
 
 			mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[0], cmdq_handle,
 						   mtk_crtc->gce_obj.base);
@@ -10566,6 +10581,8 @@ skip_prete:
 
 		mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle, MTK_TRIG_FLAG_TRIGGER);
 
+		if (debug_trigger_loop & BIT(3))
+			mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
 		GCE_DO(wfe, EVENT_CMD_EOF);
 
 		mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle, MTK_TRIG_FLAG_EOF);
