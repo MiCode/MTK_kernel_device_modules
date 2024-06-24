@@ -108,8 +108,13 @@ ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6765)),)
 CPU_DVFS-y += plat_k6765/mtk_cpufreq_platform.o
 endif
 ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6833)),)
-ccflags-y += -I$(CPUFREQ_ROOT_DIR)/src/plat_k6833 \
-			 -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcupm/include
+ccflags-y += \
+	-I$(CPUFREQ_ROOT_DIR)/src/plat_k6833 \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcupm/include
+
+ifeq ($(findstring k6833v1_64_33m,$(PROJECT_DTB_NAMES)),k6833v1_64_33m)
+subdir-ccflags-y = -DMTK_5GCM_PROJECT
+endif
 CPU_DVFS-y += plat_k6833/mtk_cpufreq_platform.o
 endif
 ifneq ($(strip $(CONFIG_MEDIATEK_CPU_DVFS_MT6761)),)
