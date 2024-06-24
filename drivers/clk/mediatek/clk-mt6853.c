@@ -1196,11 +1196,10 @@ static const char * const apll_i2s9_mck_parents[] = {
 
 static const struct mtk_mux top_muxes[] = {
 	/* CLK_CFG_0 */
-	MUX_GATE_CLR_SET_UPD(CLK_TOP_AXI_SEL/* dts */, "axi_sel",
+	MUX_CLR_SET_UPD(CLK_TOP_AXI_SEL/* dts */, "axi_sel",
 		axi_parents/* parent */, CLK_CFG_0, CLK_CFG_0_SET,
 		CLK_CFG_0_CLR/* set parent */, 0/* lsb */, 3/* width */,
-		INV_BIT/* pdn */, CLK_CFG_UPDATE/* upd ofs */,
-		TOP_MUX_AXI_SHIFT/* upd shift */),
+		CLK_CFG_UPDATE/* upd ofs */,TOP_MUX_AXI_SHIFT/* upd shift */),
 	MUX_GATE_CLR_SET_UPD(CLK_TOP_SPM_SEL/* dts */, "spm_sel",
 		spm_parents/* parent */, CLK_CFG_0, CLK_CFG_0_SET,
 		CLK_CFG_0_CLR/* set parent */, 8/* lsb */, 2/* width */,
