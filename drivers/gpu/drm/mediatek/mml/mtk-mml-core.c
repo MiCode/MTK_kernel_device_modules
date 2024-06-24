@@ -53,6 +53,9 @@ module_param(mml_pkt_dump, int, 0644);
 int mml_pkt_dump_p;
 module_param(mml_pkt_dump_p, int, 0644);
 
+int mml_pkt_dump_m = 1;
+module_param(mml_pkt_dump_m, int, 0644);
+
 int mml_comp_dump;
 module_param(mml_comp_dump, int, 0644);
 
@@ -2144,7 +2147,7 @@ static void core_config_pipe(struct mml_task *task, u32 pipe)
 		core_taskdone_check(task);
 	}
 
-	if (mml_pkt_dump && pipe == mml_pkt_dump_p) {
+	if (mml_pkt_dump && pipe == mml_pkt_dump_p && cfg->info.mode == mml_pkt_dump_m) {
 		mml_clock_lock(cfg->mml);
 
 		if (mml_pkt_dump == 1)
