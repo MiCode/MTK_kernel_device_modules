@@ -2000,6 +2000,82 @@
 			reg = <0 0x0d100000 0 0x100000>;
 		};
 
+		ccifdriver:ccifdriver@10209000 {
+			compatible = "mediatek,ccci_ccif";
+			reg = <0 0x10209000 0 0x1000>, /*AP_CCIF_BASE*/
+				<0 0x1020a000 0 0x1000>; /*MD_CCIF_BASE*/
+			mediatek,sram-size = <512>;
+			/* ccif hw reset version */
+			mediatek,ccif-hw-reset-ver = <1>;
+			/* ccif hw reset bit */
+			mediatek,ccif-hw-reset-bit = <18>;
+			/* DTS/GIC_ID: CCIF0 289/321; CCIF0 290/322 */
+			interrupts = <GIC_SPI 289 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 290 IRQ_TYPE_LEVEL_HIGH 0>;
+#if 0
+			clocks = <&infracfg_ao_clk CLK_IFRAO_CCIF_AP>,
+				<&infracfg_ao_clk CLK_IFRAO_CCIF_MD>,
+				<&infracfg_ao_clk CLK_IFRAO_CCIF1_AP>,
+				<&infracfg_ao_clk CLK_IFRAO_CCIF1_MD>,
+				<&infracfg_ao_clk CLK_IFRAO_CCIF4_MD>,
+				<&infracfg_ao_clk CLK_IFRAO_CCIF5_MD>;
+#endif
+			clock-names = "infra-ccif-ap",
+				"infra-ccif-md",
+				"infra-ccif1-ap",
+				"infra-ccif1-md",
+				"infra-ccif4-md",
+				"infra-ccif5-md";
+		};
+
+		mddriver:mddriver {
+			compatible = "mediatek,mddriver";
+			/* bit0~3: CLDMA|CCIF|DPMAIF */
+			mediatek,mdhif-type = <6>;
+			mediatek,ap-plat-info = <6897>;
+			mediatek,md-generation = <6299>;
+			/* 0x44: epon offset;*/
+			/* 0x06: once a value[1] exist, means in l2sram */
+			/* value[1] not exist means in mddbgsys. the value(6) has no meaningful */
+			mediatek,offset-epon-md1 = <0x64 0x06>;
+			mediatek,cldma-capability = <14>;
+			mediatek,boot-status-value = <0x54430012>;
+			/* bit0:srcclkena|bit1:srclken-o1-on|bit2:revert-sequencer*/
+			/* bit3:pll-setting|bit4:md1-disable-sequencer */
+			mediatek,power-flow-config = <0x2>;
+			/* srclken-o1 set value |= 1<<12 */
+			mediatek,srclken-o1 = <0x1000>;
+			reg = <0 0x0d180000 0 0x2000>; /* l2sram base address */
+			/* DTS/GIC_ID: MDWDT 304/336/; CCIF0 289/321; CCIF0 290/322 */
+			interrupts = <GIC_SPI 304 IRQ_TYPE_LEVEL_HIGH  0>,
+					<GIC_SPI 289 IRQ_TYPE_LEVEL_HIGH  0>,
+					<GIC_SPI 290 IRQ_TYPE_LEVEL_HIGH  0>;
+#if 0
+			power-domains = <&scpsys MT6897_POWER_DOMAIN_MD>;
+			ccci-infracfg = <&infracfg_ao_clk>;
+			ccci-topckgen = <&topckgen_clk>;
+			ccci-spmsleep = <&apccci_mdo1>;
+#endif
+		};
+
+		md_auxadc:md-auxadc {
+			compatible = "mediatek,md_auxadc";
+			/* io-channels = <&auxadc 6>;*/
+			io-channel-names = "md-channel";
+		};
+
+		ccci_scp:ccci-scp {
+			compatible = "mediatek,ccci_md_scp";
+			reg = <0 0x1023c000 0 0x1000>, /*AP_CCIF2_BASE*/
+			      <0 0x1023d000 0 0x1000>; /*MD_CCIF2_BASE*/
+#if 0
+			clocks = <&infracfg_ao_clk CLK_IFRAO_CCIF2_AP>,
+				 <&infracfg_ao_clk CLK_IFRAO_CCIF2_MD>;
+#endif
+			clock-names = "infra-ccif2-ap",
+				"infra-ccif2-md";
+		};
+
 		dpmaif:dpmaif@10014000 {
 			compatible = "mediatek,dpmaif";
 			reg = <0 0x10014000 0 0x1000>, /*AO_UL*/
@@ -7760,3 +7836,19 @@
 		};
 	};
 };
+
+#if 0
+&mddriver {
+	/* for md pmic voltage setting*/
+	md-vmodem-supply = <&mt6363_vbuck2>;
+	md-vmodem = <800000 800000>;
+	md-vsram-supply = <&mt6363_vsram_modem>;
+	md-vsram = <800000 800000>;
+	md-vdigrf-supply = <&mt6363_vbuck1>;
+	md-vdigrf = <700000 700000>;
+};
+
+&md_auxadc {
+	io-channels = <&pmic_adc (ADC_PURES_OPEN_MASK | AUXADC_VIN1)>;
+};
+#endif
