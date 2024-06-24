@@ -7584,15 +7584,15 @@
 		scp_dvfs: scp-dvfs {
 			compatible = "mediatek,scp-dvfs";
 			/* scp_dvfs driver enable(0)/disable(1) */
-			scp-dvfs-disable = <1>;
+			scp-dvfs-disable = <0>;
 			/* dvfs function enable/disable */
-			scp-dvfs-flag = "disable";
+			scp-dvfs-flag = "enable";
 
-			// clocks = <&vlp_cksys_clk CLK_VLP_CK_SCP_SEL>,
-			// <&topckgen_clk CLK_TOP_TCK_26M_MX9>; /* 26M */
+			clocks = <&vlp_cksys_clk CLK_VLP_CK_SCP_SEL>,
+			<&topckgen_clk CLK_TOP_TCK_26M_MX9>; /* 26M */
 
-			// clock-names = "clk_mux",
-			// "clk_pll_0";
+			clock-names = "clk_mux",
+			"clk_pll_0";
 
 			scp-core-online-mask = <0x5>;
 			vlp-support;
@@ -7604,11 +7604,11 @@
 			< 750000	750000	0xff		0xfff		800  0	0x0>;
 
 			scp-clk-ctrl = <&scp_clk_ctrl>;
-			// fmeter-clksys = <&vlp_cksys_clk>;
-			// ulposc-clksys = <&vlp_cksys_clk>;
+			fmeter-clksys = <&vlp_cksys_clk>;
+			ulposc-clksys = <&vlp_cksys_clk>;
 
-			// do-ulposc-cali;
-			// ccf-fmeter-support;
+			do-ulposc-cali;
+			ccf-fmeter-support;
 			scp-clk-hw-ver = "v1";
 			ulposc-cali-ver = "v2";
 			ulposc-cali-alg-ver = <2>;
