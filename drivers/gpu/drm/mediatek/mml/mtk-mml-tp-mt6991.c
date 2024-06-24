@@ -1391,7 +1391,8 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 		dest->pq_config.en_dre ||
 		dest->pq_config.en_region_pq ||
 		dest->pq_config.en_fg ||
-		dest->pq_config.en_c3d) {
+		dest->pq_config.en_c3d ||
+		dest->pq_config.en_sharp) {
 		*reason = mml_query_pqen;
 		goto decouple;
 	}
