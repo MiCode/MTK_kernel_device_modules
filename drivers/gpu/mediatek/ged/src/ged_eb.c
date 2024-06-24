@@ -93,6 +93,7 @@ struct GED_EB_EVENT eb_notify[MAX_EB_NOTIFY_CNT];
 int eb_notify_index;
 
 static struct work_struct sg_notify_ged_ready_work;
+#define EB_CLOCK 26 //uinit:MHz
 
 static void ged_eb_work_cb(struct work_struct *psWork)
 {
@@ -113,12 +114,17 @@ static void ged_eb_work_cb(struct work_struct *psWork)
 	case GPUFDVFS_IPI_EVENT_CLK_CHANGE:
 		GPUFDVFS_LOGD("%s@%d top clock:%d(KHz)\n",
 				__func__, __LINE__, psEBEvent->freq_new);
-		mtk_notify_gpu_freq_change(0, psEBEvent->freq_new);
-		if (eb_policy_dts_flag && ged_get_cur_oppidx() < ged_get_min_stack_oppidx()
-			&& dcs_get_cur_core_num() != dcs_get_max_core_num()) {
-			mutex_lock(&gsPolicyLock);
-			ged_kpi_fastdvfs_update_dcs();
-			mutex_unlock(&gsPolicyLock);
+		/*check top freq is reasonable*/
+		if (psEBEvent->freq_new < ged_get_top_freq_by_virt_opp(ged_get_min_oppidx_real()) - (EB_CLOCK*1000*2)){
+			trace_tracing_mark_write(5566, "unreasonable_top_freq",psEBEvent->freq_new);
+		} else {
+			mtk_notify_gpu_freq_change(0, psEBEvent->freq_new);
+			if (eb_policy_dts_flag && ged_get_cur_oppidx() < ged_get_min_stack_oppidx()
+				&& dcs_get_cur_core_num() != dcs_get_max_core_num()) {
+				mutex_lock(&gsPolicyLock);
+				ged_kpi_fastdvfs_update_dcs();
+				mutex_unlock(&gsPolicyLock);
+			}
 		}
 		break;
 	case GPUFDVFS_IPI_EVENT_DEBUG_MODE_ON:
