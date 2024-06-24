@@ -8666,10 +8666,17 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 {
 	unsigned int i = 0, j = 0;
 	bool is_force_high_step = atomic_read(&mtk_crtc->force_high_step);
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
-		if (display_compress_ratio_table[i].key_value)
+		if (display_compress_ratio_table[i].key_value) {
 			display_compress_ratio_table[i].valid = 1;
+			if (display_compress_ratio_table[i].frame_idx != frame_idx) {
+				DDPINFO("%s frame idx compare fail, table:%d cb:%d\n", __func__,
+					display_compress_ratio_table[i].frame_idx, frame_idx);
+				return;
+			}
+		}
 	}
 
 	if (display_fbt_compress_ratio_table.key_value)
@@ -8694,10 +8701,10 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 			(display_compress_ratio_table[i].peak_ratio != NULL)) {
 			if (!is_force_high_step &&
 				(*(display_compress_ratio_table[i].average_ratio) == 0 ||
-				*(display_compress_ratio_table[i].peak_ratio) == 0)) {
-				DDPPR_ERR("bwm ratio is 0\n");
-				DDPMSG("%s i:%d,frame_idx:%d,key value:%lld avg%d peak%d\n", __func__,
-				i, normal_layer_compress_ratio_tb[i].frame_idx,
+				*(display_compress_ratio_table[i].peak_ratio) == 0) &&
+				priv->data->mmsys_id == MMSYS_MT6991) {
+				DDPMSG("%s ratio is 0, i:%d,frame_idx:%d,key value:%d avg%d peak%d\n",
+				__func__, i, display_compress_ratio_table[i].frame_idx,
 				display_compress_ratio_table[i].key_value,
 				*(display_compress_ratio_table[i].average_ratio),
 				*(display_compress_ratio_table[i].peak_ratio));
@@ -8757,7 +8764,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 
 	DDPDBG_BWM("BWMT===== normal_layer_compress_ratio_tb =====\n");
 	DDPDBG_BWM("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
-	for (i = 0; i < 60; i++) {
+	for (i = 0; i < MAX_FRAME_RATIO_NUMBER*MAX_LAYER_RATIO_NUMBER; i++) {
 		if (normal_layer_compress_ratio_tb[i].key_value)
 			DDPDBG_BWM("BWMT===== %4d     %u     %llu     %u    %u     %u    %u =====\n", i,
 				normal_layer_compress_ratio_tb[i].frame_idx,
@@ -8770,7 +8777,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 
 	DDPDBG_BWM("BWMT===== fbt_layer_compress_ratio_tb =====\n");
 	DDPDBG_BWM("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
-	for (i = 0; i < 5; i++) {
+	for (i = 0; i < MAX_FRAME_RATIO_NUMBER; i++) {
 		if (fbt_layer_compress_ratio_tb[i].key_value)
 			DDPDBG_BWM("BWMT===== %4d     %u     %llu     %u    %u     %u    %u =====\n", i,
 				fbt_layer_compress_ratio_tb[i].frame_idx,

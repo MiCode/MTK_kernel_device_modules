@@ -1001,7 +1001,7 @@ static void mtk_ovl_exdma_config(struct mtk_ddp_comp *comp,
 		else
 			fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
 
-		if (cfg->w <= 1080) {
+		if (crtc->state->adjusted_mode.hdisplay <= 1080) {
 			if (fps == 30) {
 				bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 4);
 				ovl_win_size = 5;
@@ -3247,7 +3247,7 @@ static void mtk_ovl_exdma_addon_config(struct mtk_ddp_comp *comp,
 			else
 				fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
 
-			if (config->rsz_src_roi.width <= 1080) {
+			if (crtc->state->adjusted_mode.hdisplay <= 1080) {
 				if (fps == 30) {
 					bw_monitor_config |=
 						REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 4);
