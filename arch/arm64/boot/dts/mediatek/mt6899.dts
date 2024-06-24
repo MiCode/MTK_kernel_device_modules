@@ -1533,6 +1533,21 @@
 		};
 	};
 
+	gpio_keys: gpio-keys {
+		compatible = "gpio-keys";
+		status = "okay";
+		pinctrl-names = "default";
+		pinctrl-0 = <&key_gpio_default>;
+		volumedown {
+			label = "Volume_Down";
+			linux,code = <114>;
+			linux,input-type = <1>;
+			gpios = <&pio 32 1>;
+			wakeup-source;
+			debounce-interval = <30>;
+		};
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <2>;
@@ -8383,6 +8398,18 @@
 #include "mediatek/cust_mt6899_connfem.dtsi"
 #include "mediatek/mt6899-clkitg.dtsi"
 #include "mediatek/mt6899-disable-unused.dtsi"
+
+/* KEY GPIO standardization start */
+&pio{
+	key_gpio_default:key-default {
+		pins-cmd1-dat {
+			pinmux = <PINMUX_GPIO32__FUNC_GPIO32>;
+			input-enable;
+			bias-pull-up;
+		};
+	};
+};
+/* KEY GPIO standardization end */
 
 &i2c5 {
 	rt5133: rt5133@18 {
