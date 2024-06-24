@@ -177,7 +177,7 @@ struct aoltest_netlink_ctx g_aoltest_netlink_ctx = {
 	.seqnum = 0,
 };
 
-struct aoltest_netlink_ctx *g_ctx = &g_aoltest_netlink_ctx;
+static struct aoltest_netlink_ctx *g_ctx = &g_aoltest_netlink_ctx;
 static bool g_already_bind;
 
 /*******************************************************************************/
