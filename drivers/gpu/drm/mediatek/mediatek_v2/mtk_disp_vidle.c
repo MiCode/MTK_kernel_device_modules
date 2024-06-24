@@ -626,18 +626,7 @@ static void mtk_vidle_enable_v1(bool en, void *_drm_priv)
 
 	if (en == mtk_vidle_is_ff_enabled())
 		return;
-	atomic_set(&g_ff_enabled, en);
 
-	if (_drm_priv) {
-		struct mtk_drm_private *drm_priv = _drm_priv;
-
-		if (drm_priv->dpc_dev) {
-			if (en)
-				pm_runtime_put_sync(drm_priv->dpc_dev);
-			else
-				pm_runtime_get_sync(drm_priv->dpc_dev);
-		}
-	}
 	disp_dpc_driver.dpc_enable(en);
 	if (!en && vidle_paused) {
 		CRTC_MMP_EVENT_END(0, pause_vidle,
@@ -697,18 +686,24 @@ void mtk_vidle_set_panel_type(enum mtk_panel_type type)
 void mtk_vidle_hrt_bw_set(const u32 bw_in_mb)
 {
 	vidle_data.hrt_bw = bw_in_mb;
-	if (disp_dpc_driver.dpc_hrt_bw_set)
-		disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, true);
-	else
+	if (disp_dpc_driver.dpc_hrt_bw_set) {
+		if (vidle_data.dpc_version == DPC_VER1)
+			disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, !atomic_read(&g_ff_enabled));
+		else
+			disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, true);
+	} else
 		DDPINFO("%s NOT SET:%d\n", __func__, bw_in_mb);
 
 }
 void mtk_vidle_srt_bw_set(const u32 bw_in_mb)
 {
 	vidle_data.srt_bw = bw_in_mb;
-	if (disp_dpc_driver.dpc_srt_bw_set)
-		disp_dpc_driver.dpc_srt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, true);
-	else
+	if (disp_dpc_driver.dpc_srt_bw_set) {
+		if (vidle_data.dpc_version == DPC_VER1)
+			disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, !atomic_read(&g_ff_enabled));
+		else
+			disp_dpc_driver.dpc_srt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, true);
+	} else
 		DDPINFO("%s NOT SET:%d\n", __func__, bw_in_mb);
 }
 void mtk_vidle_dvfs_set(const u8 level)
@@ -734,16 +729,7 @@ void mtk_vidle_channel_bw_set(const u32 bw_in_mb, const u32 idx)
 
 }
 
-static void mtk_vidle_config_ff_v1(bool en)
-{
-	if (en && !mtk_disp_vidle_flag.vidle_en)
-		return;
-
-	if (disp_dpc_driver.dpc_config)
-		disp_dpc_driver.dpc_config(DPC_SUBSYS_DISP, en);
-}
-
-static void mtk_vidle_config_ff_v2(bool en)
+void mtk_vidle_config_ff(bool en)
 {
 	if (!disp_dpc_driver.dpc_config)
 		return;
@@ -754,14 +740,6 @@ static void mtk_vidle_config_ff_v2(bool en)
 	disp_dpc_driver.dpc_config(DPC_SUBSYS_DISP, en);
 
 	atomic_set(&g_ff_enabled, en);
-}
-
-void mtk_vidle_config_ff(bool en)
-{
-	if (vidle_data.dpc_version == DPC_VER1)
-		return mtk_vidle_config_ff_v1(en);
-	else
-		return mtk_vidle_config_ff_v2(en);
 }
 
 void mtk_vidle_dpc_analysis(void)

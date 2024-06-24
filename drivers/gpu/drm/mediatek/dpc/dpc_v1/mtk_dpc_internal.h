@@ -286,6 +286,13 @@ extern int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 #define DPC_VIDLE_WINDOW_MASK      BIT(9)
 #define DPC_VIDLE_VDISP_MASK       BIT(10)
 
+enum dpc_state_source {
+	DPC_STATE_OF_TIMER,
+	DPC_STATE_OF_GROUPS,
+	DPC_STATE_OF_MTCMOS_DISP,
+	DPC_STATE_OF_MTCMOS_MML,
+};
+
 enum mtk_dpc_vidle_mode {
 	DPC_VIDLE_INACTIVE_MODE,
 	DPC_VIDLE_HW_AUTO_MODE,

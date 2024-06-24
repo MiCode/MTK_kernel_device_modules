@@ -1701,12 +1701,14 @@ static void mtk_atomic_mml(struct drm_device *dev,
 			CRTC_MMP_MARK((int)drm_crtc_index(crtc), enter_vidle,
 				mtk_crtc->mml_link_state, new_mode);
 			mtk_vidle_enable(true, priv);
+			CRTC_MMP_MARK(drm_crtc_index(crtc), enter_vidle, 0xd1, mtk_crtc->mml_link_state);
 			mtk_vidle_config_ff(true);
 		} else if ((mtk_crtc->mml_link_state == MML_STOP_LINKING ||
 			   mtk_crtc->mml_link_state == MML_STOP_DC) &&
 			   mtk_vidle_is_ff_enabled()) {
 			CRTC_MMP_MARK((int)drm_crtc_index(crtc), leave_vidle,
 				mtk_crtc->mml_link_state, new_mode);
+			CRTC_MMP_MARK(drm_crtc_index(crtc), leave_vidle, 0xd1, mtk_crtc->mml_link_state);
 			mtk_vidle_config_ff(false);
 			mtk_vidle_enable(false, priv);
 		}
@@ -7036,11 +7038,18 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 
 			mtk_vidle_enable(true, priv);
 			/* turn on ff only when crtc0 exsit */
-			if (drm_crtc_index(crtc) == 0)
+			if (drm_crtc_index(crtc) == 0) {
+				CRTC_MMP_MARK(drm_crtc_index(crtc), enter_vidle,
+					(0xc10c | 0x10000000), atomic_read(&top_clk_ref));
 				mtk_vidle_config_ff(true);
-			else
+			} else {
+				CRTC_MMP_MARK(drm_crtc_index(crtc), leave_vidle,
+					(0xc10c | 0x20000000), atomic_read(&top_clk_ref));
 				mtk_vidle_config_ff(false);
+			}
 		} else if (atomic_read(&top_clk_ref) > 1) {
+			CRTC_MMP_MARK(drm_crtc_index(crtc), leave_vidle,
+				(0xc10c | 0x30000000), atomic_read(&top_clk_ref));
 			mtk_vidle_config_ff(false);
 		}
 
@@ -7049,11 +7058,12 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 			DDPFENCE("%s:%d power_state = true\n", __func__, __LINE__);
 			priv->power_state = true;
 
-			CRTC_MMP_MARK(0, leave_vidle, 0xc10c, atomic_read(&top_clk_ref));
 			mtk_crtc = to_mtk_crtc(priv->crtc[0]);
 			if (mtk_crtc &&
 				mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DECOUPLE_MODE))
 				mtk_crtc->is_mml_dc = false;
+			CRTC_MMP_MARK(drm_crtc_index(crtc), leave_vidle,
+				(0xc10c | 0x40000000), atomic_read(&top_clk_ref));
 			mtk_vidle_config_ff(false);
 			mtk_vidle_enable(mtk_vidle_is_ff_enabled(), priv);
 		}
@@ -7096,11 +7106,13 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm)
 
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
-			CRTC_MMP_MARK(0, leave_vidle, 0xc10c0ff, atomic_read(&top_clk_ref));
+			CRTC_MMP_MARK(0, leave_vidle,
+				(0xc10c0ff | 0x10000000), atomic_read(&top_clk_ref));
 			mtk_vidle_config_ff(false);
 			mtk_vidle_enable(false, priv);
 		} else {
-			CRTC_MMP_MARK(0, leave_vidle, 0xc10c0ff, atomic_read(&top_clk_ref));
+			CRTC_MMP_MARK(0, leave_vidle,
+				(0xc10c0ff | 0x20000000), atomic_read(&top_clk_ref));
 			mtk_crtc = to_mtk_crtc(priv->crtc[0]);
 			if (mtk_crtc &&
 				mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DECOUPLE_MODE))
@@ -7784,6 +7796,7 @@ int mtk_drm_disp_test_show(struct drm_crtc *crtc, bool enable)
 	} else {
 		mtk_ddp_comp_layer_config(ovl_comp, layer_id, plane_state, cmdq_handle);
 	}
+	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
 
 #ifndef DRM_CMDQ_DISABLE
 	mtk_crtc_gce_flush(crtc, NULL, cmdq_handle, cmdq_handle);
@@ -9112,6 +9125,7 @@ static int mtk_drm_se_plane_config(struct mtk_drm_crtc *mtk_crtc)
 		mtk_crtc->se_state = DISP_SE_STOPPED;
 	}
 
+	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
 	ret = mtk_crtc_gce_flush(&mtk_crtc->base, NULL, cmdq_handle, cmdq_handle);
 	if (!ret) {
 		cmdq_pkt_wait_complete(cmdq_handle);
