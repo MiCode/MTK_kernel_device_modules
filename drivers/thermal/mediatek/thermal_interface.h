@@ -233,6 +233,8 @@ extern void cm_thermal_hint_register(ThermalHintFuncPtr func);
 extern void cm_thermal_hint_unregister(void);
 extern int set_gpu_pre_throttle(int temp);
 extern int get_gpu_pre_throttle_temp(void);
+extern int set_gpu_pre_throttle_opp(int opp);
+extern int get_gpu_pre_throttle_opp(void);
 
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
