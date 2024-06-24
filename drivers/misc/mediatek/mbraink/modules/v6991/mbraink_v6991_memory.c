@@ -137,7 +137,10 @@ int ufs2mbrain_event_notify(struct ufs_mbrain_event *event)
 		(unsigned int)event->data->gear_tx
 	);
 
-	mbraink_netlink_send_msg(netlink_buf);
+	if (n < 0 || n > NETLINK_EVENT_MESSAGE_SIZE)
+		pr_info("%s : snprintf error n = %d\n", __func__, n);
+	else
+		mbraink_netlink_send_msg(netlink_buf);
 
 	return 0;
 }
