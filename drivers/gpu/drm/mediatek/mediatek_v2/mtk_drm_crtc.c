@@ -7616,6 +7616,7 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 	struct cmdq_client *cl;
 	dma_addr_t trig_pc;
 	u64 *inst;
+	static DEFINE_RATELIMIT_STATE(timeout_rate, 30 * HZ, 1);
 #endif
 
 	if (!crtc) {
@@ -7637,6 +7638,10 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 
 	DDPPR_ERR("%s cmdq timeout, crtc id:%d\n", __func__,
 		drm_crtc_index(crtc));
+
+	if (!__ratelimit(&timeout_rate))
+		return;
+
 	mtk_drm_crtc_analysis(crtc);
 	mtk_drm_crtc_dump(crtc);
 
@@ -7670,6 +7675,16 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 #endif
 }
 
+int mtk_crtc_cmdq_timeout_aee_cb(struct cmdq_cb_data data)
+{
+	static DEFINE_RATELIMIT_STATE(aee_rate, 30 * HZ, 1);
+
+	if (__ratelimit(&aee_rate))
+		return CMDQ_AEE_WARN;
+
+	return CMDQ_NO_AEE;
+}
+
 void mtk_crtc_pkt_create(struct cmdq_pkt **cmdq_handle, struct drm_crtc *crtc,
 	struct cmdq_client *cl)
 {
@@ -7681,6 +7696,7 @@ void mtk_crtc_pkt_create(struct cmdq_pkt **cmdq_handle, struct drm_crtc *crtc,
 	}
 
 	(*cmdq_handle)->err_cb.cb = mtk_crtc_cmdq_timeout_cb;
+	(*cmdq_handle)->aee_cb = mtk_crtc_cmdq_timeout_aee_cb;
 	(*cmdq_handle)->err_cb.data = crtc;
 }
 
