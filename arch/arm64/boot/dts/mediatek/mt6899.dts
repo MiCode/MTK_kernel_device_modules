@@ -1355,6 +1355,28 @@
 		clock-names = "clk_name";
 	};
 
+	mminfra_debug: mminfra-debug@1e837000 {
+		compatible = "mediatek,mminfra-debug";
+		reg = <0 0x1e837000 0 0x90>;
+		power-domains = <&scpsys MT6899_POWER_DOMAIN_MM_INFRA>;
+		interrupts = <GIC_SPI 662 IRQ_TYPE_LEVEL_HIGH 0>;
+		mminfra-bkrs = <0>;
+		mminfra-gals-sel = <5 14 15 16 17 18 19 33>;
+		bkrs-reg = <0x1e800250>;
+		vlp-base = <0x1c000000>;
+		spm-base = <0x1c001000>;
+		mm-voter-base = <0x1ec45130>;
+		mm-mtcmos-base = <0x1c001e90>;
+		mm-mtcmos-mask = <0xc0000000>;
+		mminfra-ao-base;
+		init-clk-on;
+		mediatek,vcp-supply = <&vcp>;
+		vcp-gipc;
+		no-sleep-pd-cb;
+		skip-apsrc;
+		mm-pwr-ver = <1>;
+	};
+
 	mtk_leds: mtk-leds {
 		backlight {
 			label = "lcd-backlight";
