@@ -5,3 +5,13 @@ config MTK_PTPOD_LEGACY
 	  by efuse data and get the temperature from thermal to make up the voltage.
 	  Select "y" if you want to enable this features.
 	  Select "n" if unsure.
+
+config MTK_PTPOD_ENG_DEBUG
+	bool "Enable certain PTPOD debug nodes for eng build"
+	depends on MTK_PTPOD_LEGACY
+	help
+		Certain debug nodes are intended for engineering builds (eng load) only.
+                Enabling them in userdebug or user builds may pose security risks.
+		Therefore, it is recommended to enable this option only in eng builds.
+		Select "y" if you want to enable these features.
+		Select "n" if unsure.
