@@ -15,7 +15,7 @@
 
 #define cpu_reg(ctxt, r)    ((ctxt)->regs[r])
 
-static const struct pkvm_module_ops *tmem_ops;
+const struct pkvm_module_ops *tmem_ops;
 
 int hyp_tmem_init(const struct pkvm_module_ops *ops)
 {

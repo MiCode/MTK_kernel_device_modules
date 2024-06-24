@@ -9,6 +9,18 @@
 
 #include "hyp_pmm.h"
 
+#ifdef memset
+#undef memset
+#endif
+
+extern const struct pkvm_module_ops *tmem_ops;
+#define CALL_FROM_OPS(fn, ...) tmem_ops->fn(__VA_ARGS__)
+
+void *memset(void *dst, int c, size_t count)
+{
+	return CALL_FROM_OPS(memset, dst, c, count);
+}
+
 /* record for MPU addr/size */
 struct mpu_record {
 	uint64_t addr;
@@ -97,6 +109,7 @@ static int PKVM_MPU_ShareMemProtRequest(enum MPU_REQ_ORIGIN_ZONE_ID zone_id,
 {
 	uint64_t rc;
 	struct mpu_record *rec = &pkvm_mpu_rec[zone_id];
+	uint64_t region_pfn_start, region_pfn_total, i;
 
 	if (is_enable) {
 		tmem_ops->puts("pkvm_tmem: host_donate_hyp\n");
@@ -120,6 +133,31 @@ static int PKVM_MPU_ShareMemProtRequest(enum MPU_REQ_ORIGIN_ZONE_ID zone_id,
 		if (rc) {
 			tmem_ops->puts("failed to Disable MPU protection\n");
 			return TZ_RESULT_ERROR_GENERIC;
+		}
+
+		region_pfn_start = rec->addr >> PAGE_SHIFT;
+		region_pfn_total = rec->size >> PAGE_SHIFT;
+		for (i = 0; i < region_pfn_total; i++) {
+			rc = tmem_ops->host_share_hyp(region_pfn_start + i);
+			if (rc) {
+				tmem_ops->puts("failed to host_share_hyp\n");
+				return TZ_RESULT_ERROR_GENERIC;
+			}
+		}
+		tmem_ops->pin_shared_mem(((void *)tmem_ops->hyp_va((phys_addr_t)rec->addr)),
+			((void *)tmem_ops->hyp_va((phys_addr_t)rec->addr)) + rec->size);
+		/*
+		 * clear secure memory content
+		 */
+		memset(((void *)tmem_ops->hyp_va((phys_addr_t)rec->addr)), 0, rec->size);
+		tmem_ops->unpin_shared_mem(((void *)tmem_ops->hyp_va((phys_addr_t)rec->addr)),
+			((void *)tmem_ops->hyp_va((phys_addr_t)rec->addr) + rec->size));
+		for (i = 0; i < region_pfn_total; i++) {
+			rc = tmem_ops->host_unshare_hyp(region_pfn_start + i);
+			if (rc) {
+				tmem_ops->puts("failed to host_unshare_hyp\n");
+				return TZ_RESULT_ERROR_GENERIC;
+			}
 		}
 	}
 
