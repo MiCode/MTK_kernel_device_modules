@@ -219,6 +219,7 @@ struct mtk_jpeg_ctx {
 	u8 restart_interval;
 	struct v4l2_ctrl_handler ctrl_hdl;
 	u32 dst_offset;
+	bool early_eos;
 };
 
 #endif /* _MTK_JPEG_CORE_H */
