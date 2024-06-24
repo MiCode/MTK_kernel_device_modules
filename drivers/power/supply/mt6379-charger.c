@@ -241,8 +241,6 @@ static const struct mt6379_charger_field mt6379_charger_fields[F_MAX] = {
 	MT6379_CHARGER_FIELD(F_ID_RUPSEL, MT6379_REG_USBID_CTRL1, 5, 6),
 	MT6379_CHARGER_FIELD(F_USBID_EN, MT6379_REG_USBID_CTRL1, 7, 7),
 	MT6379_CHARGER_FIELD(F_USBID_FLOATING, MT6379_REG_USBID_CTRL2, 1, 1),
-	MT6379_CHARGER_FIELD(F_BC12_VBUS_EN_OPT, MT6379_REG_BC12_FUNC, 2, 2),
-	MT6379_CHARGER_FIELD(F_SPEC_TA_EN, MT6379_REG_BC12_FUNC, 6, 6),
 	MT6379_CHARGER_FIELD(F_BC12_EN, MT6379_REG_BC12_FUNC, 7, 7),
 	MT6379_CHARGER_FIELD(F_PORT_STAT, MT6379_REG_BC12_STAT, 0, 3),
 	MT6379_CHARGER_FIELD(F_MANUAL_MODE, MT6379_REG_DPDM_CTRL1, 7, 7),
@@ -1274,7 +1272,6 @@ static void mt6379_charger_bc12_work_func(struct work_struct *work)
 							 bc12_work);
 	struct mt6379_charger_platform_data *pdata = dev_get_platdata(cdata->dev);
 	bool bc12_ctrl = !(pdata->nr_port > 1), bc12_en = false, rpt_psy = true;
-	bool bc12_en_toggle = false;
 	int ret = 0, attach = ATTACH_TYPE_NONE, active_idx = 0;
 	const char *attach_name;
 	u32 val = 0;
@@ -1343,7 +1340,7 @@ static void mt6379_charger_bc12_work_func(struct work_struct *work)
 
 	switch (val) {
 	case PORT_STAT_NOINFO:
-		bc12_en_toggle = true;
+		bc12_ctrl = false;
 		rpt_psy = false;
 		mt_dbg(cdata->dev, "%s, No bc12 port info\n", __func__);
 		goto out;
@@ -1352,7 +1349,6 @@ static void mt6379_charger_bc12_work_func(struct work_struct *work)
 	case PORT_STAT_APPLE_12W:
 	case PORT_STAT_SS_TA:
 	case PORT_STAT_DCP:
-		bc12_en = true;
 		cdata->psy_desc.type = POWER_SUPPLY_TYPE_USB_DCP;
 		cdata->psy_type[active_idx] = POWER_SUPPLY_TYPE_USB_DCP;
 		cdata->psy_usb_type[active_idx] = POWER_SUPPLY_USB_TYPE_DCP;
@@ -1388,17 +1384,12 @@ static void mt6379_charger_bc12_work_func(struct work_struct *work)
 
 out:
 	mutex_unlock(&cdata->attach_lock);
-	if (!bc12_ctrl)
-		goto out_no_bc12_ctrl;
-	// mt6379_charger_check_dpdm_ov(cdata, attach);
-	if (mt6379_charger_enable_bc12(cdata, bc12_en) < 0)
-		dev_info(cdata->dev, "%s, Failed to set bc12 = %d\n",
-				     __func__, bc12_en);
-	if (bc12_en_toggle)
-		if (mt6379_charger_enable_bc12(cdata, !bc12_en) < 0)
-			dev_info(cdata->dev, "%s, Failed to set bc12 = %d\n",
-					     __func__, !bc12_en);
-out_no_bc12_ctrl:
+	if (bc12_ctrl) {
+		// mt6379_charger_check_dpdm_ov(cdata, attach);
+		if (mt6379_charger_enable_bc12(cdata, bc12_en) < 0)
+			dev_info(cdata->dev, "%s, Failed to set bc12 = %d\n", __func__, bc12_en);
+	}
+
 	if (rpt_psy) {
 		mt_dbg(cdata->dev, "%s power_supply_changed, port stat: %d(%s), attach: %d(%s)\n",
 		       __func__, val, mt6379_port_stat_names[val], attach, attach_name);
@@ -1602,18 +1593,6 @@ static int mt6379_charger_init_setting(struct mt6379_charger_data *cdata)
 	ret = mt6379_charger_field_set(cdata, F_BC12_EN, 0);
 	if (ret) {
 		dev_info(dev, "%s, Failed to disable bc12\n", __func__);
-		return ret;
-	}
-
-	ret = mt6379_charger_field_set(cdata, F_SPEC_TA_EN, 1);
-	if (ret) {
-		dev_info(dev, "%s, Failed to enable spec_ta_en\n", __func__);
-		return ret;
-	}
-
-	ret = mt6379_charger_field_set(cdata, F_BC12_VBUS_EN_OPT, 1);
-	if (ret) {
-		dev_info(dev, "%s, Failed to enable bc12_vbus_en_opt\n", __func__);
 		return ret;
 	}
 
