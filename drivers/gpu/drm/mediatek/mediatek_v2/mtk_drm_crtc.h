@@ -1200,6 +1200,7 @@ struct mtk_drm_crtc {
 
 	unsigned int total_srt;
 
+	unsigned int aod_scp_spr_switch;
 	unsigned int spr_is_on;
 	wait_queue_head_t spr_switch_wait_queue;
 	atomic_t spr_switching;
@@ -1600,7 +1601,7 @@ void mtk_crtc_exec_atf_prebuilt_instr(struct mtk_drm_crtc *mtk_crtc,
 
 unsigned int mtk_get_cur_spr_type(struct drm_crtc *crtc);
 
-int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en);
+int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en, unsigned int need_lock);
 
 int mtk_vblank_config_rec_init(struct drm_crtc *crtc);
 dma_addr_t mtk_vblank_config_rec_get_slot_pa(struct mtk_drm_crtc *mtk_crtc,

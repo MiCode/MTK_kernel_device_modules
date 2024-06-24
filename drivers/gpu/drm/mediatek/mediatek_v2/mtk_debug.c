@@ -787,9 +787,9 @@ int mtkfb_set_spr_status(unsigned int en)
 	}
 
 	if (en)
-		ret = mtk_drm_switch_spr(crtc, 1);
+		ret = mtk_drm_switch_spr(crtc, 1, 1);
 	else
-		ret = mtk_drm_switch_spr(crtc, 0);
+		ret = mtk_drm_switch_spr(crtc, 0, 1);
 
 	return ret;
 }
