@@ -199,6 +199,12 @@ static void mtk_dpi_sw_reset(struct mtk_dpi *dpi, bool reset)
 static void mtk_dpi_enable(struct mtk_dpi *dpi)
 {
 	dev_info(dpi->dev, "enable dpi go");
+
+	mtk_dpi_mask(dpi, DPI_INTSTA, 0, 0xf);
+
+	mtk_dpi_mask(dpi, DPI_INTEN, INT_VSYNC_EN, (INT_UNDERFLOW_EN |
+						   INT_VDE_EN |
+						   INT_VSYNC_EN));
 	mtk_dpi_mask(dpi, DPI_EN, EN, EN);
 	//mtk_dpi_mask(dpi, DP_PATTERN_CTRL0, DP_PATTERN_EN, DP_PATTERN_EN);
 	//mtk_dpi_mask(dpi, DP_PATTERN_CTRL0, DP_PATTERN_COLOR_BAR, DP_PATTERN_COLOR_BAR);
@@ -1310,6 +1316,27 @@ static const struct mtk_ddp_comp_funcs mtk_dp_intf_funcs = {
 	.io_cmd = mtk_dpintf_io_cmd,
 };
 
+static irqreturn_t mtk_dp_intf_irq_status(int irq, void *dev_id)
+{
+	struct mtk_dpi *dpi = dev_id;
+	u32 status = 0;
+	struct mtk_drm_crtc *mtk_crtc = dpi->ddp_comp.mtk_crtc;
+
+	status = readl(dpi->regs + DPI_INTSTA);
+
+	status &= 0xf;
+	if (status) {
+		mtk_dpi_mask(dpi, DPI_INTSTA, 0, status);
+		if (status & INT_VSYNC_STA)
+			mtk_crtc_vblank_irq(&mtk_crtc->base);
+
+		if (status & INT_UNDERFLOW_STA)
+			DDPMSG("[E]%s dpintf underflow!\n", __func__);
+	}
+
+	return IRQ_HANDLED;
+}
+
 /*  dp intf ddp comp functions end */
 
 static int mtk_dpi_probe(struct platform_device *pdev)
@@ -1402,6 +1429,16 @@ static int mtk_dpi_probe(struct platform_device *pdev)
 	dpi->irq = platform_get_irq(pdev, 0);
 	if (dpi->irq < 0)
 		return dpi->irq;
+
+	irq_set_status_flags(dpi->irq, IRQ_TYPE_LEVEL_HIGH);
+	ret = devm_request_irq(
+		&pdev->dev, dpi->irq, mtk_dp_intf_irq_status,
+		IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(&pdev->dev), dpi);
+	if (ret) {
+		dev_info(&pdev->dev, "failed to request mediatek dp intf irq\n");
+		ret = -EPROBE_DEFER;
+		return ret;
+	}
 
 	platform_set_drvdata(pdev, dpi);
 
