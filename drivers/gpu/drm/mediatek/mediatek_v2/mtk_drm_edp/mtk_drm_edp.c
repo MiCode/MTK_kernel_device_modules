@@ -1322,14 +1322,17 @@ static void mtk_edp_training_set_scramble(struct mtk_edp *mtk_edp, bool enable)
 static void mtk_edp_video_mute(struct mtk_edp *mtk_edp, bool enable)
 {
 	struct arm_smccc_res res;
-	u32 val = VIDEO_MUTE_SEL_DP_ENC0_P0 |
-		  (enable ? VIDEO_MUTE_SW_DP_ENC0_P0 : 0);
 	u32 x3 = (EDP_VIDEO_UNMUTE << 16) | enable;
 
-	mtk_edp_update_bits(mtk_edp, MTK_DP_ENC0_P0_3000,
-			   val,
-			   VIDEO_MUTE_SEL_DP_ENC0_P0 |
-			   VIDEO_MUTE_SW_DP_ENC0_P0);
+/*  use secure mute and MTK_DP_ENC0_P0_3000 use default mute value
+ *	u32 val = VIDEO_MUTE_SEL_DP_ENC0_P0 |
+ *			(enable ? VIDEO_MUTE_SW_DP_ENC0_P0 : 0);
+ *
+ *	mtk_edp_update_bits(mtk_edp, MTK_DP_ENC0_P0_3000,
+ *			   val,
+ *			   VIDEO_MUTE_SEL_DP_ENC0_P0 |
+ *		   VIDEO_MUTE_SW_DP_ENC0_P0);
+ */
 
 	arm_smccc_smc(MTK_SIP_DP_CONTROL,
 		      EDP_VIDEO_UNMUTE, enable,
