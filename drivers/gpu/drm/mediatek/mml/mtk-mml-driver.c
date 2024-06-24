@@ -920,7 +920,7 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 	return 0;
 }
 
-s32 mml_comp_pw_enable(struct mml_comp *comp)
+s32 mml_comp_pw_enable(struct mml_comp *comp, const s8 mode)
 {
 	int ret = 0;
 
@@ -949,7 +949,7 @@ s32 mml_comp_pw_enable(struct mml_comp *comp)
 	return ret;
 }
 
-s32 mml_comp_pw_disable(struct mml_comp *comp)
+s32 mml_comp_pw_disable(struct mml_comp *comp, const s8 mode)
 {
 	comp->pw_cnt--;
 	if (comp->pw_cnt > 0)
@@ -1066,9 +1066,9 @@ void mml_dpc_task_cnt_inc(struct mml_task *task)
 		mml_clock_lock(mml);
 		call_hw_op(path->mmlsys, mminfra_pw_enable);
 		mml_dpc_exc_keep(mml, path->mmlsys->sysid);
-		call_hw_op(path->mmlsys, pw_enable);
+		call_hw_op(path->mmlsys, pw_enable, task->config->info.mode);
 		if (path->mmlsys2)
-			call_hw_op(path->mmlsys2, pw_enable);
+			call_hw_op(path->mmlsys2, pw_enable, task->config->info.mode);
 		mml_mmp(dpc_cfg, MMPROFILE_FLAG_START, 1, 0);
 		mml_dpc_exc_release(mml, path->mmlsys->sysid);
 		call_hw_op(path->mmlsys, mminfra_pw_disable);
@@ -1096,8 +1096,9 @@ void mml_dpc_task_cnt_dec(struct mml_task *task)
 		mml_dpc_exc_keep(mml, path->mmlsys->sysid);
 		mml_mmp(dpc_cfg, MMPROFILE_FLAG_END, 0, 0);
 		if (path->mmlsys2)
-			call_hw_op(path->mmlsys2, pw_disable);
-		call_hw_op(path->mmlsys, pw_disable);
+			call_hw_op(path->mmlsys2, pw_disable,
+				task->config->info.mode);
+		call_hw_op(path->mmlsys, pw_disable, task->config->info.mode);
 		mml_dpc_exc_release(mml, path->mmlsys->sysid);
 		call_hw_op(path->mmlsys, mminfra_pw_disable);
 		mml_clock_unlock(mml);

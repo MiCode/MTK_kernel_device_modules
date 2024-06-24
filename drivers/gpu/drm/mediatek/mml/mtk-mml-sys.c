@@ -1139,13 +1139,19 @@ static const struct mml_comp_debug_ops sys_debug_ops_mt6991 = {
 	.reset = &sys_reset_current,
 };
 
-s32 mml_sys_pw_enable(struct mml_comp *comp)
+s32 mml_sys_pw_enable(struct mml_comp *comp, const s8 mode)
 {
 	int ret;
 	struct mml_sys *sys = comp_to_sys(comp);
 	bool pwon = comp->pw_cnt == 0;
 
-	ret = mml_comp_pw_enable(comp);
+	ret = mml_comp_pw_enable(comp, mode);
+
+	if (mode == MML_MODE_DIRECT_LINK ||
+		mode == MML_MODE_RACING ||
+		mode == MML_MODE_DDP_ADDON)
+		mml_dpc_mtcmos_auto(comp->sysid, true, mode);
+
 	if (!ret && pwon) {
 		ret = clk_prepare_enable(sys->clk_sys_26m);
 		if (ret)
@@ -1155,7 +1161,7 @@ s32 mml_sys_pw_enable(struct mml_comp *comp)
 	return ret;
 }
 
-s32 mml_sys_pw_disable(struct mml_comp *comp)
+s32 mml_sys_pw_disable(struct mml_comp *comp, const s8 mode)
 {
 	int ret;
 	struct mml_sys *sys = comp_to_sys(comp);
@@ -1164,7 +1170,12 @@ s32 mml_sys_pw_disable(struct mml_comp *comp)
 	if (pwoff)
 		clk_disable_unprepare(sys->clk_sys_26m);
 
-	ret = mml_comp_pw_disable(comp);
+	if (mode == MML_MODE_DIRECT_LINK ||
+		mode == MML_MODE_RACING ||
+		mode == MML_MODE_DDP_ADDON)
+		mml_dpc_mtcmos_auto(comp->sysid, false, mode);
+
+	ret = mml_comp_pw_disable(comp, mode);
 
 	return ret;
 }
@@ -1560,7 +1571,7 @@ static void sys_ddp_disable_locked(const struct mml_topology_path *path,
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
 
 	if (path->mmlsys) {
-		call_hw_op(path->mmlsys, pw_disable);
+		call_hw_op(path->mmlsys, pw_disable, task->config->info.mode);
 		call_hw_op(path->mmlsys, mminfra_pw_disable);
 	}
 	mml_trace_ex_end();
@@ -1616,7 +1627,7 @@ static void sys_ddp_enable(struct mml_sys *sys, struct mml_task *task, u32 pipe)
 
 	if (path->mmlsys) {
 		call_hw_op(path->mmlsys, mminfra_pw_enable);
-		call_hw_op(path->mmlsys, pw_enable);
+		call_hw_op(path->mmlsys, pw_enable, task->config->info.mode);
 	}
 
 	mml_trace_ex_end();
