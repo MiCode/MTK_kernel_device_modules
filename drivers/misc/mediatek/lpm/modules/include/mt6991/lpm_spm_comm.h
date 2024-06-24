@@ -63,6 +63,16 @@ struct lpm_spm_wake_status {
 	u32 sw_rsv_4; /* SPM_SW_RSV_4 */
 	u32 sw_rsv_5; /* SPM_SW_RSV_5 */
 	u32 sw_rsv_6; /* SPM_SW_RSV_6 */
+	u32 comm_clk_mon_0;	/* SPM_SRAM_COMM_CLK_MON_0 */
+	u32 comm_clk_mon_1;	/* SPM_SRAM_COMM_CLK_MON_1 */
+	u32 comm_clk_mon_2;	/* SPM_SRAM_COMM_CLK_MON_2 */
+	u32 comm_vlp_mon_0;	/* SPM_SRAM_COMM_VLP_MON_0 */
+	u32 comm_clksys2_mon_0;	/* SPM_SRAM_COMM_CLKSYS2_MON_0 */
+	u32 lp_clk_mon_0;	/* SPM_SRAM_LP_CLK_MON_0 */
+	u32 lp_clk_mon_1;	/* SPM_SRAM_LP_CLK_MON_1 */
+	u32 lp_clk_mon_2;	/* SPM_SRAM_LP_CLK_MON_2 */
+	u32 lp_vlp_mon_0;	/* SPM_SRAM_LP_VLP_MON_0 */
+	u32 lp_clksys2_mon_0;	/* SPM_SRAM_LP_CLKSYS2_MON_0 */
 };
 
 /*

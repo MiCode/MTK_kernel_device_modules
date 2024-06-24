@@ -754,6 +754,16 @@
 #define SPM_SRAM_D7X_APSRC_CNT         (SPM_SRAM_BASE + 0x7F00)
 #define SPM_SRAM_D7X_INFRA_CNT         (SPM_SRAM_BASE + 0x7F04)
 #define SPM_SRAM_D7X_VCORE_CNT         (SPM_SRAM_BASE + 0x7F08)
+#define SPM_SRAM_COMM_CLK_MON_0        (SPM_SRAM_BASE + 0x7F9C)
+#define SPM_SRAM_COMM_CLK_MON_1        (SPM_SRAM_BASE + 0x7FA0)
+#define SPM_SRAM_COMM_CLK_MON_2        (SPM_SRAM_BASE + 0x7FA4)
+#define SPM_SRAM_COMM_VLP_MON_0        (SPM_SRAM_BASE + 0x7FA8)
+#define SPM_SRAM_COMM_CLKSYS2_MON_0    (SPM_SRAM_BASE + 0x7FAC)
+#define SPM_SRAM_LP_CLK_MON_0          (SPM_SRAM_BASE + 0x7FB0)
+#define SPM_SRAM_LP_CLK_MON_1          (SPM_SRAM_BASE + 0x7FB4)
+#define SPM_SRAM_LP_CLK_MON_2          (SPM_SRAM_BASE + 0x7FB8)
+#define SPM_SRAM_LP_VLP_MON_0          (SPM_SRAM_BASE + 0x7FBC)
+#define SPM_SRAM_LP_CLKSYS2_MON_0      (SPM_SRAM_BASE + 0x7FC0)
 
 /* POWERON_CONFIG_EN (0x1C004000+0x0) */
 #define BCLK_CG_EN_LSB                      (1U << 0)       /* 1b */
