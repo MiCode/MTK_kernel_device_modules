@@ -411,6 +411,11 @@ static int genpd_event_notifier(struct notifier_block *nb,
 		if (priv->vdisp_ao_cg_con)
 			writel(BIT(16), priv->vdisp_ao_cg_con + 0x8);
 
+		/* hold the platform resources ASAP, to avoid timing issue */
+		if (disp_dpc_driver.dpc_group_enable)
+			if (priv->pd_id == DISP_PD_DISP_VCORE)
+				disp_dpc_driver.dpc_group_enable(DPC_SUBSYS_DISP, false);
+
 		if (disp_dpc_driver.dpc_mtcmos_auto) {
 			if (priv->pd_id == DISP_PD_MML1)
 				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML1, DPC_MTCMOS_AUTO);

@@ -975,6 +975,7 @@ void dpc_mtcmos_auto(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_mtcmos
 
 static void dpc_disp_group_enable(bool en)
 {
+	int ret = 0;
 	u32 value = 0;
 
 	if (g_priv == NULL) {
@@ -999,6 +1000,19 @@ static void dpc_disp_group_enable(bool en)
 	writel(value, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
 
 	if (g_priv->mmsys_id == MMSYS_MT6991) {
+		/* check mminfra voter bit and polling power on */
+		if (!en) {
+			ret = readl_poll_timeout_atomic(g_priv->mminfra_voter,
+							value, value & BIT(6), 1, 100);
+			if (ret < 0)
+				DPCERR("vote mminfra voter timeout");
+
+			ret = readl_poll_timeout_atomic(g_priv->mminfra_chk,
+							value, value & BIT(1), 10, 700);
+			if (ret < 0)
+				DPCERR("wait mminfra power timeout");
+		}
+
 		/* dsi pll auto */
 		value = (en && has_cap(DPC_CAP_DSI)) ? 0x11 : 0x1;
 		writel(value, dpc_base + DISP_DPC_MIPI_SODI5_EN);
@@ -1342,6 +1356,7 @@ static int dpc_res_init(struct mtk_dpc *priv)
 		/* use for gced, modify for access mmup inside mminfra */
 		priv->voter_set_pa -= 0x800000;
 		priv->voter_clr_pa -= 0x800000;
+		priv->mminfra_voter = ioremap(0x31a80130, 0x4);
 	}
 
 	return IS_ERR_OR_NULL(dpc_base);
@@ -1919,7 +1934,7 @@ static struct mtk_dpc mt6991_dpc_driver_data = {
 	.total_srt_unit = 64,
 	.total_hrt_unit = 64,
 	.srt_emi_efficiency = 13715,			// multiply (1.33 * 33/32(TCU)) = 1.3715
-	.hrt_emi_efficiency = 8242,			// divide (0.85 * 33/32(TCU)) = *100/82.4242
+	.hrt_emi_efficiency = 8242,			// divide 0.85 * 33/32(TCU) = *100/82.4242
 	.ch_bw_urate = 70,				// divide 0.7
 };
 
