@@ -52576,25 +52576,33 @@ struct snd_soc_dai_driver ak7709_dai[] = {
 	},
 };
 
-static int ak7709EnableCtrlIF(struct snd_soc_component *component)
+static int ak7709EnableCtrlIF(struct ak7709_priv *ak7709)
 {
 	size_t wlen;
 	int rc;
-	struct ak7709_priv *ak7709 = snd_soc_component_get_drvdata(component);
 
 #ifndef AK7709_I2C_IF
 	wlen = (size_t)ARRAY_SIZE(gDummyCommand);
-	rc = ak7709_writes(component, gDummyCommand, wlen);
+	rc = spi_write(ak7709->spi, gDummyCommand, wlen);
 	if (rc < 0) {
 		dev_info(ak7709->dev, "%s Write gDummyCommand CMD Error!\n", __func__);
 		return rc;
 	}
+	wlen = (size_t)ARRAY_SIZE(gEnableIFCommand);
+	rc = spi_write(ak7709->spi, gEnableIFCommand, wlen);
+	if (rc < 0) {
+		dev_info(ak7709->dev, "%s Write gEnableIFCommand CMD Error!\n", __func__);
+		return rc;
+	}
+#else
+	wlen = (size_t)ARRAY_SIZE(gEnableIFCommand);
+	rc = i2c_master_send(ak7709->i2c, gEnableIFCommand, wlen);
+	if (rc < 0) {
+		dev_info(ak7709->dev, "%s Write gEnableIFCommand CMD Error!\n", __func__);
+		return rc;
+	}
 #endif
 
-	wlen = (size_t)ARRAY_SIZE(gEnableIFCommand);
-	rc = ak7709_writes(component, gEnableIFCommand, wlen);
-	if (rc < 0)
-		dev_info(ak7709->dev, "%s Write gEnableIFCommand CMD Error!\n", __func__);
 
 	return rc;
 }
@@ -52602,38 +52610,7 @@ static int ak7709EnableCtrlIF(struct snd_soc_component *component)
 static int ak7709_init_reg(struct snd_soc_component *component)
 {
 	struct ak7709_priv *ak7709 = snd_soc_component_get_drvdata(component);
-	int i;
-	int rc;
-
-	struct {
-		unsigned int val;
-		const int def;
-	} devid[] = {
-		{0, 0x09},
-		{0, 0x77},
-	};
-
-	rc = ak7709EnableCtrlIF(component);
-	if (rc < 0) {
-		dev_info(ak7709->dev, "%s() Enable Ctrl Error!\n", __func__);
-		return rc;
-	}
-
-	for (i = 0; i < ARRAY_SIZE(devid); i++) {
-		devid[i].val = snd_soc_component_read(component, AK7709_C0_400_DEVICE_ID1 + i);
-		if (devid[i].val > 0xFF) {
-			dev_info(ak7709->dev, "%s() Read ID Error!\n", __func__);
-			return -EIO;
-		}
-
-		akdbgprt("%s()  Device ID = 0x%02x\n", __func__, devid[i].val);
-		if (devid[i].val != devid[i].def) {
-			dev_info(ak7709->dev, "%s() This is not AK7709 dev", __func__);
-			return -EIO;
-		}
-	}
-
-	ak7709->device_id = (u16)devid[1].val + ((u16)devid[0].val << 8);
+	int i, rc;
 
 	/* default setting for ak7709 */
 	for (i = 0; i < ARRAY_SIZE(ak7709_reg); i++) {
@@ -52682,16 +52659,6 @@ static int ak7709_init_reg(struct snd_soc_component *component)
 	return 0;
 }
 
-static int ak7709_ext_reset(struct ak7709_priv *ak7709)
-{
-	if (ak7709 && gpio_is_valid(ak7709->pdn_gpio)) {
-		gpio_direction_output(ak7709->pdn_gpio, 0);
-		mdelay(10);
-		gpio_direction_output(ak7709->pdn_gpio, 1);
-		mdelay(5);
-	}
-	return 0;
-}
 
 static int ak7709_parse_dt(struct ak7709_priv *ak7709)
 {
@@ -52720,29 +52687,23 @@ static int ak7709_parse_dt(struct ak7709_priv *ak7709)
 	return 0;
 }
 
+static int ak7709_ext_reset(struct ak7709_priv *ak7709)
+{
+	if (ak7709 && gpio_is_valid(ak7709->pdn_gpio)) {
+		gpio_direction_output(ak7709->pdn_gpio, 0);
+		mdelay(10);
+		gpio_direction_output(ak7709->pdn_gpio, 1);
+		mdelay(5);
+	}
+
+	return 0;
+}
+
 static int ak7709_probe(struct snd_soc_component *component)
 {
 	struct ak7709_priv *ak7709 = snd_soc_component_get_drvdata(component);
-	int ret = 0;
 
 	ak7709->component = component;
-
-	ret = ak7709_parse_dt(ak7709);
-	if (ret < 0) {
-		dev_info(ak7709->dev, "%s() gpio parse dts failed\n", __func__);
-		ak7709->pdn_gpio = -1;
-		// return ret;
-	}
-
-	if (ak7709->pdn_gpio > 0) {
-		ret = gpio_request(ak7709->pdn_gpio, "ak7709 pdn");
-		if (ret) {
-			dev_info(ak7709->dev, "%s() gpio request failed, ret:%d\n", __func__, ret);
-			// return ret;
-		}
-	}
-	/* Power up! */
-	ak7709_ext_reset(ak7709);
 
 	ak7709_init_reg(component);
 
@@ -52756,7 +52717,6 @@ static int ak7709_probe(struct snd_soc_component *component)
 static void ak7709_remove(struct snd_soc_component *component)
 {
 	struct ak7709_priv *ak7709 = snd_soc_component_get_drvdata(component);
-
 
 	ak7709_set_bias_level(component, SND_SOC_BIAS_OFF);
 
@@ -52788,16 +52748,9 @@ static int ak7709_resume(struct snd_soc_component *component)
 {
 	struct ak7709_priv *ak7709 = snd_soc_component_get_drvdata(component);
 
-	if (ak7709->pdn_gpio != -1) {
-		gpio_set_value(ak7709->pdn_gpio, GPO_PDN_LOW);
-		dev_info(ak7709->dev, "%s() External PDN[OFF]\n", __func__);
-		mdelay(1);
-		gpio_set_value(ak7709->pdn_gpio, GPO_PDN_HIGH);
-		dev_info(ak7709->dev, "%s() External PDN[ON]\n", __func__);
-		mdelay(1);
-	}
+	ak7709_ext_reset(ak7709);
 
-	ak7709EnableCtrlIF(component);
+	ak7709EnableCtrlIF(ak7709);
 
 	regcache_cache_only(ak7709->regmap, false);
 	regcache_sync(ak7709->regmap);
@@ -52897,6 +52850,13 @@ static int ak7709_i2c_probe(struct i2c_client *i2c,
 {
 	struct ak7709_priv *ak7709;
 	int i, ret;
+	struct {
+		unsigned int val;
+		const int def;
+	} devid[] = {
+		{0, 0x09},
+		{0, 0x77},
+	};
 
 	ak7709 = devm_kzalloc(&i2c->dev, sizeof(struct ak7709_priv),
 				GFP_KERNEL);
@@ -52917,6 +52877,41 @@ static int ak7709_i2c_probe(struct i2c_client *i2c,
 
 	ak7709->control_type = SND_SOC_I2C;
 	ak7709->i2c = i2c;
+
+	ret = ak7709_parse_dt(ak7709);
+	if (ret) {
+		dev_info(ak7709->dev, "%s() gpio parse dts failed\n", __func__);
+		ak7709->pdn_gpio = -1;
+		// return ret;
+	}
+
+	if (ak7709->pdn_gpio > 0) {
+		ret = gpio_request(ak7709->pdn_gpio, "ak7709 pdn");
+		if (ret) {
+			dev_info(ak7709->dev, "%s() gpio request failed, ret:%d\n", __func__, ret);
+			// return ret;
+		}
+	}
+	/* power up*/
+	ak7709_ext_reset(ak7709);
+	ret = ak7709EnableCtrlIF(ak7709);
+	if (ret) {
+		dev_info(&ak7709->dev, "%s() ak7709 enable ctrl interface failed: %d\n", __func__, ret);
+		return ret;
+	}
+	/* read ak7709 chipid */
+	for (i = 0; i < ARRAY_SIZE(devid); i++) {
+		devid[i].val = regmap_read(ak7709->regmap, AK7709_C0_400_DEVICE_ID1 + i, &devid[i].val);
+		if (devid[i].val > 0xFF) {
+			dev_info(ak7709->dev, "%s() Read ID Error!\n", __func__);
+			return -EIO;
+		}
+
+		if (devid[i].val != devid[i].def) {
+			dev_info(ak7709->dev, "%s() This is not AK7709 dev", __func__);
+			return -EIO;
+		}
+	}
 
 	for (i = 0 ; i < AIF_PORT_NUM ; i++)
 		ak7709->tdmmode[i] = TDM_MODE_TDM;
@@ -52964,6 +52959,13 @@ static int ak7709_spi_probe(struct spi_device *spi)
 {
 	struct ak7709_priv *ak7709;
 	int i, ret;
+	struct {
+		unsigned int val;
+		const int def;
+	} devid[] = {
+		{0, 0x09},
+		{0, 0x77},
+	};
 
 	ak7709 = devm_kzalloc(&spi->dev, sizeof(struct ak7709_priv),
 				GFP_KERNEL);
@@ -52984,6 +52986,41 @@ static int ak7709_spi_probe(struct spi_device *spi)
 
 	ak7709->control_type = SND_SOC_SPI;
 	ak7709->spi = spi;
+
+	ret = ak7709_parse_dt(ak7709);
+	if (ret) {
+		dev_info(ak7709->dev, "%s() gpio parse dts failed\n", __func__);
+		ak7709->pdn_gpio = -1;
+		// return ret;
+	}
+
+	if (ak7709->pdn_gpio > 0) {
+		ret = gpio_request(ak7709->pdn_gpio, "ak7709 pdn");
+		if (ret) {
+			dev_info(ak7709->dev, "%s() gpio request failed, ret:%d\n", __func__, ret);
+			// return ret;
+		}
+	}
+	/* power up*/
+	ak7709_ext_reset(ak7709);
+	ret = ak7709EnableCtrlIF(ak7709);
+	if (ret) {
+		dev_info(ak7709->dev, "%s() ak7709 enable ctrl interface failed: %d\n", __func__, ret);
+		return ret;
+	}
+	/* read ak7709 chipid */
+	for (i = 0; i < ARRAY_SIZE(devid); i++) {
+		ret = regmap_read(ak7709->regmap, AK7709_C0_400_DEVICE_ID1 + i, &devid[i].val);
+		if (ret < 0 || devid[i].val > 0xFF) {
+			dev_info(ak7709->dev, "%s() Read ID Error!\n", __func__);
+			return -EIO;
+		}
+
+		if (devid[i].val != devid[i].def) {
+			dev_info(ak7709->dev, "%s() This is not AK7709 dev", __func__);
+			return -EIO;
+		}
+	}
 
 	for (i = 0 ; i < AIF_PORT_NUM ; i++)
 		ak7709->tdmmode[i] = TDM_MODE_TDM;
