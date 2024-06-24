@@ -171,6 +171,7 @@ struct cmdq_sec {
 	struct iwcCmdqCancelTask_t	cancel;
 	struct cmdq_mmp_event		mmp;
 	struct mutex mbox_mutex;
+	spinlock_t		pkvm_lock;
 };
 static atomic_t cmdq_path_res = ATOMIC_INIT(0);
 static atomic_t cmdq_path_res_mtee = ATOMIC_INIT(0);
@@ -1886,6 +1887,7 @@ static int cmdq_sec_probe(struct platform_device *pdev)
 	s32 i, err;
 	const char *pkvm_status = NULL;
 	struct device_node *pkvm_node;
+	unsigned long flags;
 #if defined(CMDQ_SECURE_MTEE_SUPPORT)
 	struct platform_device *gz_pdev;
 	struct device_node *gz_node;
@@ -1896,16 +1898,26 @@ static int cmdq_sec_probe(struct platform_device *pdev)
 
 	cmdq_msg("%s", __func__);
 
+	cmdq = devm_kzalloc(&pdev->dev, sizeof(*cmdq), GFP_KERNEL);
+	if (!cmdq)
+		return -ENOMEM;
+
+	spin_lock_init(&cmdq->pkvm_lock);
+
+	spin_lock_irqsave(&cmdq->pkvm_lock, flags);
 	pkvm_node = of_find_node_by_name(NULL, "pkvm");
 	if (pkvm_node) {
 		of_property_read_string(pkvm_node, "status", &pkvm_status);
 		if (!strncmp(pkvm_status, "okay", sizeof("okay")))
 			pkvm_enabled = true;
 	}
+	spin_unlock_irqrestore(&cmdq->pkvm_lock, flags);
 	cmdq_msg("%s: pkvm enabled:%d", __func__, pkvm_enabled);
 
 #if defined(CMDQ_SECURE_MTEE_SUPPORT)
 	if (!pkvm_enabled) {
+		cmdq_util_pkvm_disable();
+
 		gz_node = of_find_compatible_node(NULL, NULL, "mediatek,trusty-mtee-v1");
 		if (!gz_node) {
 			cmdq_err("failed to get android,trusty-virtio-v1");
@@ -1932,10 +1944,6 @@ static int cmdq_sec_probe(struct platform_device *pdev)
 	}
 cmdq_sec_probe_mtee_end:
 #endif /* defined(CMDQ_SECURE_MTEE_SUPPORT) */
-
-	cmdq = devm_kzalloc(&pdev->dev, sizeof(*cmdq), GFP_KERNEL);
-	if (!cmdq)
-		return -ENOMEM;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	cmdq->base_pa = res->start;

@@ -807,6 +807,17 @@ void cmdq_util_disp_smc_cmd(u32 crtc_idx, u32 cmd)
 }
 EXPORT_SYMBOL(cmdq_util_disp_smc_cmd);
 
+void cmdq_util_pkvm_disable(void)
+{
+	struct arm_smccc_res res;
+
+	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[1], true);
+	arm_smccc_smc(MTK_SIP_CMDQ_CONTROL, CMD_CMDQ_TL_PKVM_DISABLE,
+		0, 0, 0, 0, 0, 0, &res);
+	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[1], false);
+}
+EXPORT_SYMBOL(cmdq_util_pkvm_disable);
+
 void cmdq_util_prebuilt_init(const u16 mod)
 {
 	struct arm_smccc_res res;
