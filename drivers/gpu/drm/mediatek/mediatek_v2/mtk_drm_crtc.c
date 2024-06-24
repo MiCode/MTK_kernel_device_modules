@@ -3489,6 +3489,39 @@ void mtk_crtc_ddp_unprepare(struct mtk_drm_crtc *mtk_crtc)
 			mtk_drm_set_mmclk(&mtk_crtc->base, -1, false, __func__);
 	}
 }
+
+unsigned int mtk_crtc_get_plane_comp_id(struct mtk_crtc_state *state,
+		unsigned int plane_index)
+{
+	unsigned int comp_id = 0;
+
+	if ((state->lye_state.rpo_lye & (1 << plane_index)))
+		comp_id = DDP_COMPONENT_OVL_EXDMA2;
+	else if ((state->lye_state.mml_dl_lye & (1 << plane_index)) ||
+		(state->lye_state.mml_ir_lye & (1 << plane_index)))
+		comp_id = DDP_COMPONENT_OVL_EXDMA0;
+	else {
+		u32 fun_lye = 0;
+		int i = 0;
+
+		for (i = 0; i < plane_index; i++) {
+			if ((state->lye_state.rpo_lye & (1 << plane_index)))
+				fun_lye++;
+			else if ((state->lye_state.mml_dl_lye & (1 << plane_index)) ||
+				(state->lye_state.mml_ir_lye & (1 << plane_index)))
+				fun_lye++;
+		}
+		comp_id = (DDP_COMPONENT_OVL_EXDMA3 + plane_index - fun_lye);
+	}
+
+	DDPINFO("%s comp[%d %s] plane_index[%u] lye info[%08x %08x %08x]\n", __func__,
+		comp_id, mtk_dump_comp_str_id(comp_id), plane_index,
+		state->lye_state.rpo_lye, state->lye_state.mml_dl_lye,
+		state->lye_state.mml_ir_lye);
+
+	return comp_id;
+}
+
 struct drm_framebuffer *mtk_drm_framebuffer_lookup(struct drm_device *dev,
 	unsigned int id);
 #ifdef MTK_DRM_ADVANCE
@@ -3541,10 +3574,19 @@ mtk_crtc_get_plane_comp(struct drm_crtc *crtc,
 	struct drm_crtc_state *crtc_state = crtc->state;
 	struct mtk_crtc_state *state = to_mtk_crtc_state(crtc_state);
 	int i = 0, j = 0;
+	unsigned int plane_index = 0;
+
+	if (plane_state->base.plane)
+		plane_index = to_crtc_plane_index(plane_state->base.plane->index);
 
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-	if (plane_state->comp_state.comp_id == 0)
-		return mtk_crtc_get_comp(crtc, mtk_crtc->ddp_mode, 0, 0);
+	if (plane_state->comp_state.comp_id == 0) {
+		if (priv->data->ovl_exdma_rule)
+			plane_state->comp_state.comp_id =
+				mtk_crtc_get_plane_comp_id(state, plane_index);
+		else
+			return mtk_crtc_get_comp(crtc, mtk_crtc->ddp_mode, 0, 0);
+	}
 #else
 	if (plane_state->comp_state.comp_id == 0)
 		return mtk_crtc_get_comp_with_index(mtk_crtc, plane_state);
@@ -3559,9 +3601,13 @@ mtk_crtc_get_plane_comp(struct drm_crtc *crtc,
 		return priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2];
 	}
 
-	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
-		if (comp->id == plane_state->comp_state.comp_id)
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+		if (comp->id == plane_state->comp_state.comp_id) {
+			DDPINFO("%s Match comp[%d %s]", __func__, comp->id,
+				mtk_dump_comp_str_id(comp->id));
 			return comp;
+		}
+	}
 
 	return comp;
 }
@@ -11423,6 +11469,8 @@ void __mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc, struct cmdq
 	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
 	struct mtk_ddp_comp *comp;
 	unsigned int i;
+	unsigned int plane_index = 0;
+
 
 	for (i = 0; i < mtk_crtc->layer_nr; i++) {
 		struct drm_plane *plane = &mtk_crtc->planes[i].base;
@@ -11446,6 +11494,12 @@ void __mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc, struct cmdq
 				mtk_crtc_state->rsz_param[0].out_len,
 				mtk_crtc_state->rsz_param[1].out_len);
 			continue;
+		}
+
+		if (plane_state->comp_state.comp_id == 0 && priv->data->ovl_exdma_rule) {
+			plane_index = to_crtc_plane_index(plane_state->base.plane->index);
+			plane_state->comp_state.comp_id =
+				mtk_crtc_get_plane_comp_id(mtk_crtc_state, plane_index);
 		}
 
 		if (plane_state->comp_state.comp_id)
@@ -16082,9 +16136,9 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 	struct cmdq_pkt *cmdq_handle = state->cmdq_handle;
 
 	if (comp)
-		DDPINFO("%s plane:%d first:%s plane:%s enable %d dual %d blank %d\n",
+		DDPINFO("%s plane:%d %p first:%s plane:%s enable %d dual %d blank %d\n",
 			__func__,
-			plane->index,
+			plane->index, plane,
 			mtk_dump_comp_str_id(comp->id),
 			mtk_dump_comp_str_id(plane_state->comp_state.comp_id),
 			plane_state->pending.enable,
