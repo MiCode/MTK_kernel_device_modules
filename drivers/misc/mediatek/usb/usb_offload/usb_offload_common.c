@@ -737,8 +737,10 @@ static void uaudio_disconnect_cb(struct snd_usb_audio *chip)
 		ret = send_disconnect_ipi_msg_to_adsp();
 		/* wait response */
 		USB_OFFLOAD_INFO("send_disconnect_ipi_msg_to_adsp msg, ret: %d\n", ret);
-
-		memory_cleanup();
+		if (ret)
+			USB_OFFLOAD_INFO("adsp error, skip memory cleanup\n");
+		else
+			memory_cleanup();
 		atomic_set(&dev->in_use, 0);
 		mutex_lock(&uodev->dev_lock);
 	}
@@ -2627,8 +2629,10 @@ int usb_offload_cleanup(void)
 	ret = send_disconnect_ipi_msg_to_adsp();
 	/* wait response */
 	USB_OFFLOAD_INFO("send_disconnect_ipi_msg_to_adsp msg, ret: %d\n", ret);
-
-	memory_cleanup();
+	if (ret)
+		USB_OFFLOAD_INFO("adsp error, skip memory cleanup\n");
+	else
+		memory_cleanup();
 	mutex_lock(&uodev->dev_lock);
 	uaudio_dev_cleanup(&uadev[card_num]);
 	USB_OFFLOAD_INFO("uadev[%d].in_use: %d ==> 0\n",
