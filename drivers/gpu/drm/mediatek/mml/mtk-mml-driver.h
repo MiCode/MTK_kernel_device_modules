@@ -90,13 +90,14 @@ u32 mml_qos_update_sys(struct mml_dev *mml, bool dpc,
 /*
  * mml_qos_update_tput - scan throughputs in all path client and update the max one
  *
- * @mml: The mml driver instance
- * @dpc: mml using dpc or not
- * @sysid: mmlsys which want to update throughput
+ * @mml:	The mml driver instance
+ * @dpc:	mml using dpc or not
+ * @sysid:	mmlsys which want to update throughput
+ * @enable:	enable or disable dvfs
  *
  * Return: throughput upper bound from opp table
  */
-u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid);
+u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid, bool enable);
 
 s32 mml_comp_init(struct platform_device *comp_pdev, struct mml_comp *comp);
 

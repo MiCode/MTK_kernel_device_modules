@@ -52,16 +52,10 @@ struct mml_mmp_events_t {
 	mmp_event buf_map;
 	mmp_event comp_prepare;
 	mmp_event buf_prepare;
-	mmp_event tile_alloc;
-	mmp_event tile_calc;
-	mmp_event tile_calc_frame;
-	mmp_event tile_prepare_tile;
 	mmp_event command;
 	mmp_event fence;
 	mmp_event fence_timeout;
 	mmp_event wait_ready;
-	mmp_event throughput;
-	mmp_event bandwidth;
 	mmp_event flush;
 	mmp_event submit_cb;
 	mmp_event racing_enter;
@@ -79,9 +73,19 @@ struct mml_mmp_events_t {
 	/* events for command (dle and pipes) */
 	mmp_event command0;
 	mmp_event command1;
+	mmp_event tile_alloc;
+	mmp_event tile_calc;
+	mmp_event tile_calc_frame;
+	mmp_event tile_prepare_tile;
 	mmp_event mutex_mod;
 	mmp_event mutex_en;
 	mmp_event mutex_dis;
+
+	/* mmdvfs and mmqos */
+	mmp_event dvfs;
+	mmp_event throughput;
+	mmp_event bandwidth;
+	mmp_event mmdvfs;
 
 	/* events for clock */
 	mmp_event clock;
