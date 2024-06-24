@@ -328,12 +328,13 @@ enum KERN_FUNC_ID {
 	/* for PMIC to notify MD buck over current, */
 	/*called from kernel thread context */
 	ID_PMIC_INTR,
-	ID_FORCE_MD_ASSERT,	/* for EMI MPU */
+	ID_FORCE_MD_ASSERT,	/* for user */
 	ID_MD_MPU_ASSERT,	/* for EMI MPU */
 	ID_LWA_CONTROL_MSG,	/* for Wi-Fi driver */
 	ID_UPDATE_TX_POWER,	/* for SWTP */
 	ID_AP2MD_LOWPWR,	/* for AP2MD LOWPWR*/
 	ID_GET_MD_BOOT_CNT,	/* for thermal */
+	ID_SPMI_FORCE_MD_ASSERT,	/* for SPMI */
 };
 
 /* AP<->MD messages on control or system channel */
