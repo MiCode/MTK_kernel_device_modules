@@ -37,6 +37,16 @@ config MTK_AEE_HANGDET
 	  is alived. When cpu hang is detected, raise excetpion.
 	  Avoid system_server is blocked.
 
+config MTK_AEE_HANGDET_IMPROVE_PERFORMANCE
+	tristate "Improve Performance of Hang Detector"
+	depends on MTK_AEE_HANGDET
+	default no
+	help
+	  MTK_AEE_HANGDET_IMPROVE_PERFORMANCE is the kernel config of hang
+	  detector feature designed by MTK, which is intended to reduce the
+	  execution time of the hang detector during normal kicks, especially
+	  under high system performance conditions.
+
 config MTK_AVOID_TRUNCATE_COREDUMP
 	tristate "Enable AEE coredump and signal enhance patch"
 	help
