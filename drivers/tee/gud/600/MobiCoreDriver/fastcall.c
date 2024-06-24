@@ -42,11 +42,8 @@
 #define UNKNOWN_SMC -1
 
 /* Use the arch_extension sec pseudo op before switching to secure world */
-#if defined(__GNUC__) && \
-	defined(__GNUC_MINOR__) && \
-	defined(__GNUC_PATCHLEVEL__) && \
-	((__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)) \
-	>= 40502
+#ifndef CONFIG_ARM64
+#define MC_ARCH_EXTENSION_SEC
 #endif
 
 union fc_sched_init {
@@ -245,6 +242,7 @@ static inline int __smc(union fc_common *fc, const char *func)
 	ret = ffa_fastcall(fc);
 #else
 	{
+#ifdef CONFIG_ARM64
 		/* SMC expect values in x0-x7 */
 		register u64 reg0 __asm__("x0") = fc->in.cmd;
 		register u64 reg1 __asm__("x1") = fc->in.param[0];
@@ -270,6 +268,30 @@ static inline int __smc(union fc_common *fc, const char *func)
 			: "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15",
 			  "x16", "x17"
 		);
+#else /* CONFIG_ARM64 */
+		/* SMC expect values in r0-r3 */
+		register u32 reg0 __asm__("r0") = fc->in.cmd;
+		register u32 reg1 __asm__("r1") = fc->in.param[0];
+		register u32 reg2 __asm__("r2") = fc->in.param[1];
+		register u32 reg3 __asm__("r3") = fc->in.param[2];
+		register u32 reg4 __asm__("r4") = 0;
+		register u32 reg5 __asm__("r5") = 0;
+		register u32 reg6 __asm__("r6") = 0;
+		register u32 reg7 __asm__("r7") = 0;
+		__asm__ volatile (
+#ifdef MC_ARCH_EXTENSION_SEC
+			/*
+			 * This pseudo op is supported and required from
+			 * binutils 2.21 on
+			 */
+			".arch_extension sec\n"
+#endif /* MC_ARCH_EXTENSION_SEC */
+			"smc #0\n"
+			: "+r"(reg0), "+r"(reg1), "+r"(reg2), "+r"(reg3),
+			  "+r"(reg4), "+r"(reg5), "+r"(reg6), "+r"(reg7)
+		);
+
+#endif /* !CONFIG_ARM64 */
 
 		/* set response */
 		fc->out.resp     = reg0;
@@ -303,7 +325,11 @@ int fc_sched_init(phys_addr_t buffer, u32 size)
 	memset(&fc, 0, sizeof(fc));
 	fc.in.cmd = MC_FC_SCHED_INIT;
 	fc.in.buffer_low = (u32)buffer;
+#ifdef CONFIG_ARM64
 	fc.in.buffer_high = (u32)(buffer >> 32);
+#else
+	fc.in.buffer_high = 0;
+#endif
 	fc.in.size = size;
 	return smc(&fc);
 }
@@ -311,13 +337,18 @@ int fc_sched_init(phys_addr_t buffer, u32 size)
 int fc_mci_init(uintptr_t phys_addr, u32 page_count)
 {
 	union fc_mci_init fc;
+#ifdef CONFIG_ARM64
 	u32 phys_addr_high = (u32)(phys_addr >> 32);
-
+#endif
 	/* Call the INIT fastcall to setup MobiCore initialization */
 	memset(&fc, 0, sizeof(fc));
 	fc.in.cmd = MC_FC_MCI_INIT;
 	fc.in.phys_addr_low = (u32)phys_addr;
+#ifdef CONFIG_ARM64
 	fc.in.phys_addr_high = phys_addr_high;
+#else
+	fc.in.phys_addr_high = 0;
+#endif
 	fc.in.page_count = page_count;
 	return smc(&fc);
 }
@@ -357,7 +388,11 @@ int fc_trace_init(phys_addr_t buffer, u32 size)
 	memset(&fc, 0, sizeof(fc));
 	fc.in.cmd = MC_FC_MEM_TRACE;
 	fc.in.buffer_low = (u32)buffer;
+#ifdef CONFIG_ARM64
 	fc.in.buffer_high = (u32)(buffer >> 32);
+#else
+	fc.in.buffer_high = 0;
+#endif
 	fc.in.size = size;
 	return smc(&fc);
 }
@@ -445,7 +480,11 @@ static int fc_register_shm(u64 phys_addr, u32 pte_count, u64 *handle)
 	memset(&fc, 0, sizeof(fc));
 	fc.in.cmd = MC_FC_REGISTER_SHM;
 	fc.in.phys_addr_low = (u32)phys_addr;
+#ifdef CONFIG_ARM64
 	fc.in.phys_addr_high = (u32)(phys_addr >> 32);
+#else
+	fc.in.phys_addr_high = 0;
+#endif
 	fc.in.pte_count = pte_count;
 	ret = smc(&fc);
 	if (ret)
@@ -469,7 +508,11 @@ static int fc_reclaim_shm(u64 handle)
 	memset(&fc, 0, sizeof(fc));
 	fc.in.cmd = MC_FC_RECLAIM_SHM;
 	fc.in.handle_low = (u32)handle;
+#ifdef CONFIG_ARM64
 	fc.in.handle_high = (u32)(handle >> 32);
+#else
+	fc.in.handle_high = 0;
+#endif
 	ret = smc(&fc);
 	if (ret)
 		return ret;

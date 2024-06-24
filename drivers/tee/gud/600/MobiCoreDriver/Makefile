@@ -46,6 +46,7 @@ mcDrvModule-y := \
 	xen_fe.o
 
 # add our ffa modules to kernel.
+ifneq ($(filter y m,$(CONFIG_ARM64)),)
 obj-$(CONFIG_TRUSTONIC_TEE_SUPPORT) += mcDrvModule-ffa.o
 
 mcDrvModule-ffa-y := \
@@ -73,6 +74,8 @@ mcDrvModule-ffa-y := \
 	xen_be.o \
 	xen_common.o \
 	xen_fe.o
+
+endif # CONFIG_ARM64
 
 # Release mode by default
 ccflags-y += -DNDEBUG
