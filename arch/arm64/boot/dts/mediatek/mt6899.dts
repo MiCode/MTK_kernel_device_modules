@@ -7576,7 +7576,7 @@
 
 			core-0 = "enable";
 			scp-hwvoter = "enable";
-			scp-sram-size = <0x00340000>;
+			scp-sram-size = <0x00240000>;
 			core-nums = <1>;	/* core number */
 			twohart = <1>;		/* two hart arch */
 			mbox-count = <4>;
