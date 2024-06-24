@@ -432,6 +432,7 @@
 #define MAX96712A1MIPI_SENSOR_ID  0xA1
 #define MAX96712A2MIPI_SENSOR_ID  0xA2
 #define MAX96712A3MIPI_SENSOR_ID  0xA3
+#define LT7911_SENSOR_ID  0x1605
 /* CAMERA DRIVER NAME */
 #define CAMERA_HW_DEVNAME                       "kd_camera_hw"
 /* SENSOR DEVICE DRIVER NAME */
@@ -696,6 +697,7 @@
 #define SENSOR_DRVNAME_MAX96712A1_MIPI_YUV        "max96712a1_mipi_yuv"
 #define SENSOR_DRVNAME_MAX96712A2_MIPI_YUV        "max96712a2_mipi_yuv"
 #define SENSOR_DRVNAME_MAX96712A3_MIPI_YUV        "max96712a3_mipi_yuv"
+#define SENSOR_DRVNAME_LT7911_MIPI_YUV        "lt7911_mipi_yuv"
 /************************************
  * I3C SENSOR PID (TOTAL 48-BITS)
  ************************************/
