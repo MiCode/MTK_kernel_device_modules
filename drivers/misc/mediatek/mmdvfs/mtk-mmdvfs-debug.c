@@ -215,15 +215,16 @@ void mmdvfs_debug_status_dump(struct seq_file *file)
 	unsigned long flags;
 	u32 i, j, k, val;
 
+	if (!g_mmdvfs)
+		return;
 
+	spin_lock_irqsave(&g_mmdvfs->lock, flags);
 	for (i = 0; i < g_mmdvfs->clk_count; i++)
 		mmdvfs_debug_dump_line(file, "[%#010x] = %#010x", g_mmdvfs->clk_base_pa + g_mmdvfs->clk_ofs[i],
 			readl(g_mmdvfs->clk_base + g_mmdvfs->clk_ofs[i]));
 
 	/* MMDVFS_DBG_VER1 */
 	mmdvfs_debug_dump_line(file, "VER1: mux controlled by vcore regulator:");
-
-	spin_lock_irqsave(&g_mmdvfs->lock, flags);
 
 	if (g_mmdvfs->rec[g_mmdvfs->rec_cnt].sec)
 		for (i = g_mmdvfs->rec_cnt; i < ARRAY_SIZE(g_mmdvfs->rec); i++)
