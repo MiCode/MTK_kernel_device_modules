@@ -477,6 +477,24 @@ int mtk_vidle_update_dt_v1_by_type(void *_crtc, enum mtk_panel_type type)
 	return dur_frame;
 }
 
+static int mtk_vidle_update_dt_v2_by_period(unsigned int duration)
+{
+	if (!disp_dpc_driver.dpc_duration_update)
+		return -1;
+
+	if (duration == vidle_data.te_duration)
+		return duration;
+	else if (duration > vidle_data.te_duration)
+		mtk_vidle_config_ff(false);
+
+	disp_dpc_driver.dpc_duration_update(duration);
+
+	DDPMSG("%s %d -> %d\n", __func__, vidle_data.te_duration, duration);
+	vidle_data.te_duration = duration;
+
+	return duration;
+}
+
 int mtk_vidle_update_dt_v2(void *_crtc)
 {
 	struct drm_crtc *crtc = NULL;
@@ -489,7 +507,7 @@ int mtk_vidle_update_dt_v2(void *_crtc)
 		return -1;
 	}
 
-	if (_crtc == NULL || !disp_dpc_driver.dpc_duration_update) {
+	if (_crtc == NULL) {
 		DDPMSG("%s, %d\n", __func__, __LINE__);
 		return -1;
 	}
@@ -513,17 +531,7 @@ int mtk_vidle_update_dt_v2(void *_crtc)
 		return -1;
 	}
 
-	if (duration == vidle_data.te_duration)
-		return duration;
-	else if (duration > vidle_data.te_duration)
-		mtk_vidle_config_ff(false);
-
-	disp_dpc_driver.dpc_duration_update(duration);
-
-	DDPMSG("%s %d -> %d\n", __func__, vidle_data.te_duration, duration);
-	vidle_data.te_duration = duration;
-
-	return duration;
+	return mtk_vidle_update_dt_v2_by_period(duration);
 }
 
 int mtk_vidle_update_dt_by_type(void *_crtc, enum mtk_panel_type type)
@@ -585,6 +593,8 @@ int mtk_vidle_update_dt_by_period(void *_crtc, unsigned int dur_frame, unsigned 
 {
 	if (vidle_data.dpc_version == DPC_VER1)
 		return mtk_vidle_update_dt_v1_by_period(_crtc, dur_frame, dur_vblank);
+	else
+		return mtk_vidle_update_dt_v2_by_period(dur_frame);
 
 	return 0;
 }

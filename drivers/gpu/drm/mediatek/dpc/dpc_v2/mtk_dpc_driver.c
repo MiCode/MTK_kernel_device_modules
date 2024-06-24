@@ -57,6 +57,11 @@ module_param(dump_begin, uint, 0644);
 u32 dump_lines = 40;
 module_param(dump_lines, uint, 0644);
 
+int debug_force_wait;
+module_param(debug_force_wait, int, 0644);
+u32 debug_presz;
+module_param(debug_presz, uint, 0644);
+
 static void __iomem *dpc_base;
 static struct mtk_dpc *g_priv;
 
@@ -470,21 +475,26 @@ static void dpc_dt_set_update(u16 dt, u32 us)
 
 static void dpc_duration_update(const u32 us)
 {
+	u32 presz = DPC2_DT_PRESZ;
+
+	if (debug_presz)
+		presz = debug_presz;
+
 	if (g_priv->mmsys_id == MMSYS_MT6991) {
-		dpc_dt_set_update( 1, us - DPC2_DT_PRESZ - DPC2_DT_MTCMOS);
-		dpc_dt_set_update( 5, us - DPC2_DT_PRESZ - DPC2_DT_MTCMOS);
-		dpc_dt_set_update( 6, us - DPC2_DT_PRESZ);
-		dpc_dt_set_update( 9, us - DPC2_DT_PRESZ - DPC2_DT_MMINFRA);
+		dpc_dt_set_update( 1, us - presz - DPC2_DT_MTCMOS);
+		dpc_dt_set_update( 5, us - presz - DPC2_DT_MTCMOS);
+		dpc_dt_set_update( 6, us - presz);
+		dpc_dt_set_update( 9, us - presz - DPC2_DT_MMINFRA);
 		dpc_dt_set_update(12, us - DPC2_DT_INFRA);
-		dpc_dt_set_update(18, us - DPC2_DT_PRESZ - DPC2_DT_MMINFRA);
-		dpc_dt_set_update(33, us - DPC2_DT_PRESZ - DPC2_DT_MTCMOS);
+		dpc_dt_set_update(18, us - presz - DPC2_DT_MMINFRA);
+		dpc_dt_set_update(33, us - presz - DPC2_DT_MTCMOS);
 		dpc_dt_set_update(40, us - DPC2_DT_INFRA);
-		dpc_dt_set_update(46, us - DPC2_DT_PRESZ - DPC2_DT_MMINFRA);
-		dpc_dt_set_update(64, us - DPC2_DT_PRESZ - DPC2_DT_MTCMOS - DPC2_DT_DSION - DPC2_DT_VCORE);
+		dpc_dt_set_update(46, us - presz - DPC2_DT_MMINFRA);
+		dpc_dt_set_update(64, us - presz - DPC2_DT_MTCMOS - DPC2_DT_DSION - DPC2_DT_VCORE);
 		dpc_dt_set_update(61, us - DPC2_DT_INFRA);
 		dpc_dt_set_update(70, us - DPC2_DT_INFRA);
-		dpc_dt_set_update(73, us - DPC2_DT_PRESZ - DPC2_DT_MTCMOS - DPC2_DT_DSION - DPC2_DT_VCORE);
-		dpc_dt_set_update(76, us - DPC2_DT_PRESZ - DPC2_DT_MTCMOS - DPC2_DT_DSION);
+		dpc_dt_set_update(73, us - presz - DPC2_DT_MTCMOS - DPC2_DT_DSION - DPC2_DT_VCORE);
+		dpc_dt_set_update(76, us - presz - DPC2_DT_MTCMOS - DPC2_DT_DSION);
 
 		/* wa for 90 hz extra dsi te */
 		dpc_dt_set_update(7, us == 11111 ? 3000 : DPC2_DT_POSTSZ);
@@ -1201,8 +1211,13 @@ irqreturn_t mt6991_irq_handler(int irq, void *dev_id)
 	/* Panel TE */
 	if (disp_sta & BIT(18))
 		dpc_mmp(prete, MMPROFILE_FLAG_PULSE, 0, 0);
-	if (disp_sta & BIT(9))
-		dpc_mmp(prete, MMPROFILE_FLAG_PULSE, DPC2_DT_PRESZ, priv->dpc2_dt_usage[6].val);
+	if (disp_sta & BIT(9)) {
+		u32 presz = DPC2_DT_PRESZ;
+
+		if (debug_presz)
+			presz = debug_presz;
+		dpc_mmp(prete, MMPROFILE_FLAG_PULSE, presz, priv->dpc2_dt_usage[6].val);
+	}
 
 	ret = IRQ_HANDLED;
 out:
@@ -1476,7 +1491,7 @@ static void dpc_vidle_power_release(const enum mtk_vidle_voter_user user)
 
 static void dpc_clear_wfe_event(struct cmdq_pkt *pkt, enum mtk_vidle_voter_user user, int event)
 {
-	if (!has_cap(DPC_CAP_MTCMOS))
+	if (!has_cap(DPC_CAP_MTCMOS) && !debug_force_wait)
 		return;
 
 	cmdq_pkt_clear_event(pkt, event);
@@ -1774,6 +1789,14 @@ static void process_dbg_opt(const char *opt)
 			goto err;
 		}
 		dpc_dt_set_update((u16)v1, v2);
+	}  else if (strncmp(opt, "presz:", 6) == 0) {
+		ret = sscanf(opt, "presz:%u,%u\n", &v1, &v2);
+		if (ret != 2) {
+			DPCDUMP("presz:500,8333 => update dt(8333) by presz(500), unset by presz(0)");
+			goto err;
+		}
+		debug_presz = v1;
+		dpc_duration_update(v2);
 	} else if (strncmp(opt, "force_rsc:", 10) == 0) {
 		ret = sscanf(opt, "force_rsc:%u\n", &v1);
 		if (ret != 1) {
