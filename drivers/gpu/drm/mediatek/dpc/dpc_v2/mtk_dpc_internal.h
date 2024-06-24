@@ -309,6 +309,7 @@ struct mtk_dpc_mtcmos_cfg {
 	u16 thread_clr;
 	resource_size_t chk_pa;
 	void __iomem *chk_va;
+	enum mtk_dpc_mtcmos_mode mode;
 };
 
 struct mtk_dpc_channel_bw_cfg {
@@ -376,7 +377,7 @@ struct mtk_dpc {
 	struct mtk_dpc_dt_usage *mml_dt_usage;
 	struct mtk_dpc2_dt_usage *dpc2_dt_usage;
 
-	void (*set_mtcmos)(const enum mtk_dpc_subsys subsys, bool en);
+	void (*set_mtcmos)(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_mtcmos_mode mode);
 	irqreturn_t (*disp_irq_handler)(int irq, void *dev_id);
 	irqreturn_t (*mml_irq_handler)(int irq, void *dev_id);
 };

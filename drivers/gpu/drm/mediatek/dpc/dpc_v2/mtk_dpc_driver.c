@@ -62,22 +62,22 @@ static struct mtk_dpc *g_priv;
 
 static struct mtk_dpc_mtcmos_cfg mt6989_mtcmos_cfg[DPC_SUBSYS_CNT] = {
 /*	cfg     set    clr    pa va */
-	{0x300, 0x320, 0x340, 0, 0},
-	{0x400, 0x420, 0x440, 0, 0},
-	{0x500, 0x520, 0x540, 0, 0},
-	{0x600, 0x620, 0x640, 0, 0},
-	{0x700, 0x720, 0x740, 0, 0},
+	{0x300, 0x320, 0x340, 0, 0, 0},
+	{0x400, 0x420, 0x440, 0, 0, 0},
+	{0x500, 0x520, 0x540, 0, 0, 0},
+	{0x600, 0x620, 0x640, 0, 0, 0},
+	{0x700, 0x720, 0x740, 0, 0, 0},
 };
 
 static struct mtk_dpc_mtcmos_cfg mt6991_mtcmos_cfg[DPC_SUBSYS_CNT] = {
-	{0x500, 0x520, 0x540, 0, 0},
-	{0x580, 0x5A0, 0x5C0, 0, 0},
-	{0x600, 0x620, 0x640, 0, 0},
-	{0x680, 0x6A0, 0x6C0, 0, 0},
-	{0x700, 0x720, 0x740, 0, 0},
-	{0xB00, 0xB20, 0xB40, 0, 0},
-	{0xC00, 0xC20, 0xC40, 0, 0},
-	{0xD00, 0xD20, 0xD40, 0, 0},
+	{0x500, 0x520, 0x540, 0, 0, 0},
+	{0x580, 0x5A0, 0x5C0, 0, 0, 0},
+	{0x600, 0x620, 0x640, 0, 0, 0},
+	{0x680, 0x6A0, 0x6C0, 0, 0, 0},
+	{0x700, 0x720, 0x740, 0, 0, 0},
+	{0xB00, 0xB20, 0xB40, 0, 0, 0},
+	{0xC00, 0xC20, 0xC40, 0, 0, 0},
+	{0xD00, 0xD20, 0xD40, 0, 0, 0},
 };
 
 static struct mtk_dpc2_dt_usage mt6991_dt_usage[DPC2_VIDLE_CNT] = {
@@ -831,8 +831,10 @@ static void dpc_dvfs_trigger(const char *caller)
 		DPCFUNC("by %s", caller);
 }
 
-static void mt6991_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
+static void mt6991_set_mtcmos(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_mtcmos_mode mode)
 {
+	bool en = (mode == DPC_MTCMOS_AUTO ? true : false);
+	int ret = 0;
 	u32 value = 0;
 	u32 rtff_mask = 0;
 	u8 power_on = dpc_is_power_on() | mminfra_is_power_on() << 1;
@@ -841,8 +843,10 @@ static void mt6991_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
 		DPCERR("g_priv null\n");
 		return;
 	}
-	value = (en && has_cap(DPC_CAP_MTCMOS)) ? 0x31 : 0x70;
-
+	if (subsys >= DPC_SUBSYS_CNT) {
+		DPCERR("not support subsys(%u)", subsys);
+		return;
+	}
 	if (power_on != 0b11) {
 		static bool called;
 
@@ -858,41 +862,63 @@ static void mt6991_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
 	}
 	dpc_mmp(mtcmos_auto, MMPROFILE_FLAG_PULSE, subsys, en);
 
+	if (subsys == DPC_SUBSYS_DISP)
+		rtff_mask = 0xf00;
+	else if (subsys == DPC_SUBSYS_MML1)
+		rtff_mask = BIT(15);
+	else if (subsys == DPC_SUBSYS_MML0)
+		rtff_mask = BIT(14);
+
+	/* [SWITCH TO DPC AUTO MODE]
+	 *   1. unset bootup (enable rtff)
+	 *   2. enable AUTO_ONOFF_MASTER_EN
+	 * [SWITCH TO MANUAL MODE]
+	 *   1. vote thread
+	 *   2. wait until mtcmos is ON_ACT state
+	 *   3. disable AUTO_ONOFF_MASTER_EN
+	 *   4. set bootup (disable rtff)
+	 *   5. unvote thread
+	 */
+	if (mode == DPC_MTCMOS_AUTO) {
+		if (g_priv->rtff_pwr_con && has_cap(DPC_CAP_MTCMOS))
+			writel(readl(g_priv->rtff_pwr_con) & ~rtff_mask, g_priv->rtff_pwr_con);
+	} else {
+		dpc_mtcmos_vote(subsys, 5, true);
+
+		if (g_priv->mtcmos_cfg[subsys].mode == DPC_MTCMOS_AUTO) {
+			/* MTCMOS_STA [20]ON_ACT [21]OFF_IDLE [22]RUNNING */
+			ret = readl_poll_timeout_atomic(dpc_base + g_priv->mtcmos_cfg[subsys].cfg + 0x8,
+							value, value & BIT(20), 1, 200);
+			if (ret < 0)
+				DPCERR("wait subsys(%d) ON_ACT state timeout", subsys);
+		}
+	}
+
+	value = (en && has_cap(DPC_CAP_MTCMOS)) ? 0x31 : 0x70;
 	if (subsys == DPC_SUBSYS_DISP) {
 		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_DIS1].cfg);
 		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_DIS0].cfg);
 		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_OVL0].cfg);
 		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_OVL1].cfg);
-		rtff_mask = 0xf00;
 	} else if (subsys == DPC_SUBSYS_MML1) {
 		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_MML1].cfg);
-		mtk_disp_wait_pwr_ack(DPC_SUBSYS_MML1);
-		rtff_mask = BIT(15);
-		dpc2_dt_en(35, en, false);
 	} else if (subsys == DPC_SUBSYS_MML0) {
-		/* FIXME: disable mml0 mtcmos auto to fix no power issue */
-		if (en)
-			return;
 		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_MML0].cfg);
-		mtk_disp_wait_pwr_ack(DPC_SUBSYS_MML0);
-		rtff_mask = BIT(14);
-	} else {
-		DPCERR("not support subsys(%u)", subsys);
-		return;
 	}
+	g_priv->mtcmos_cfg[subsys].mode = mode;
 
-	if (!g_priv->rtff_pwr_con || !has_cap(DPC_CAP_MTCMOS))
-		return;
-	if (en)
-		writel(readl(g_priv->rtff_pwr_con) & ~rtff_mask, g_priv->rtff_pwr_con);
-	else
-		writel(readl(g_priv->rtff_pwr_con) | rtff_mask, g_priv->rtff_pwr_con);
+	if (!en) {
+		if (g_priv->rtff_pwr_con && has_cap(DPC_CAP_MTCMOS))
+			writel(readl(g_priv->rtff_pwr_con) | rtff_mask, g_priv->rtff_pwr_con);
+		dpc_mtcmos_vote(subsys, 5, false);
+	}
 
 	dpc_mmp(mtcmos_auto, MMPROFILE_FLAG_PULSE, subsys, readl(g_priv->rtff_pwr_con));
 }
 
-static void mt6989_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
+static void mt6989_set_mtcmos(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_mtcmos_mode mode)
 {
+	bool en = (mode == DPC_MTCMOS_AUTO ? true : false);
 	u32 value = (en && has_cap(DPC_CAP_MTCMOS)) ? 0x11 : 0;
 
 	if (!dpc_is_power_on()) {
@@ -935,7 +961,7 @@ static void mt6989_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
 	dpc_pm_ctrl(false);
 }
 
-void dpc_mtcmos_auto(const enum mtk_dpc_subsys subsys, const bool en)
+void dpc_mtcmos_auto(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_mtcmos_mode mode)
 {
 	unsigned long flags;
 
@@ -943,7 +969,7 @@ void dpc_mtcmos_auto(const enum mtk_dpc_subsys subsys, const bool en)
 		return;
 
 	spin_lock_irqsave(&g_priv->mtcmos_cfg_lock, flags);
-	g_priv->set_mtcmos(subsys, en);
+	g_priv->set_mtcmos(subsys, mode);
 	spin_unlock_irqrestore(&g_priv->mtcmos_cfg_lock, flags);
 }
 
@@ -1015,8 +1041,6 @@ static void dpc_mml_group_enable(bool en)
 		/* vcore off */
 		value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x180202 : 0x180e0e;
 		writel(value, dpc_base + DISP_DPC2_MML_26M_PMIC_VCORE_OFF_CFG);
-
-		dpc_mtcmos_auto(DPC_SUBSYS_MML, en);
 	}
 }
 
@@ -1024,8 +1048,10 @@ void dpc_group_enable(const u16 group, bool en)
 {
 	if (group == DPC_SUBSYS_DISP)
 		dpc_disp_group_enable(en);
-	else
+	else {
 		dpc_mml_group_enable(en);
+		dpc_mtcmos_auto(group, (enum mtk_dpc_mtcmos_mode)en);
+	}
 }
 
 static void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
@@ -1050,16 +1076,9 @@ static void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 
 	/* set resource auto or manual mode */
 	dpc_disp_group_enable(en);
-	dpc_mml_group_enable(en);
-
-	/* special case for no MML scenario, release MML pmic request */
-	if (en && has_cap(DPC_CAP_PMIC_VCORE))
-		writel(0x010101, dpc_base + DISP_DPC2_MML_26M_PMIC_VCORE_OFF_CFG);
 
 	/* set mtcmos auto or manual mode */
-	dpc_mtcmos_auto(DPC_SUBSYS_DISP, en);
-	dpc_mtcmos_auto(DPC_SUBSYS_MML1, en);
-	dpc_mtcmos_auto(DPC_SUBSYS_MML0, en);
+	dpc_mtcmos_auto(DPC_SUBSYS_DISP, (enum mtk_dpc_mtcmos_mode)en);
 
 	if (en && has_cap(DPC_CAP_MMINFRA_PLL) && !is_mminfra_ctrl_by_dpc) {
 		dpc_pm_ctrl(false);

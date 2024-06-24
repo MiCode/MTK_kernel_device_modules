@@ -43,6 +43,11 @@ enum mtk_vidle_voter_status {
 	VOTER_ONLY = 0x1000,
 };
 
+enum mtk_dpc_mtcmos_mode {
+	DPC_MTCMOS_MANUAL,
+	DPC_MTCMOS_AUTO,
+};
+
 enum mtk_panel_type {
 	PANEL_TYPE_CMD,
 	PANEL_TYPE_VDO,
@@ -106,7 +111,7 @@ struct dpc_funcs {
 	void (*dpc_group_enable)(const u16 group, bool en);
 
 	/* mtcmos auto mode control */
-	void (*dpc_mtcmos_auto)(const enum mtk_dpc_subsys subsys, const bool en);
+	void (*dpc_mtcmos_auto)(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_mtcmos_mode mode);
 
 	/* mtcmos and resource auto mode control */
 	void (*dpc_pause)(const enum mtk_dpc_subsys subsys, bool en);

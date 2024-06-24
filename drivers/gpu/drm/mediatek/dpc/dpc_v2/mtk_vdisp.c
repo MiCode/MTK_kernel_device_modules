@@ -380,11 +380,11 @@ static int genpd_event_notifier(struct notifier_block *nb,
 
 		if (disp_dpc_driver.dpc_mtcmos_auto) {
 			if (priv->pd_id == DISP_PD_DISP1)
-				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_DIS1, false);
+				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_DIS1, DPC_MTCMOS_MANUAL);
 			else if (priv->pd_id == DISP_PD_MML1)
-				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML1, false);
+				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML1, DPC_MTCMOS_MANUAL);
 			else if (priv->pd_id == DISP_PD_MML0)
-				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML0, false);
+				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML0, DPC_MTCMOS_MANUAL);
 		}
 
 		/* modify power wait ack time */
@@ -413,9 +413,9 @@ static int genpd_event_notifier(struct notifier_block *nb,
 
 		if (disp_dpc_driver.dpc_mtcmos_auto) {
 			if (priv->pd_id == DISP_PD_MML1)
-				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML1, true);
+				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML1, DPC_MTCMOS_AUTO);
 			else if (priv->pd_id == DISP_PD_MML0)
-				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML0, true);
+				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML0, DPC_MTCMOS_AUTO);
 		}
 
 		/* unvote and power off mminfra, release should be called only if keep successfully */
@@ -440,11 +440,11 @@ static int genpd_event_notifier(struct notifier_block *nb,
 
 		if (disp_dpc_driver.dpc_mtcmos_auto) {
 			if (priv->pd_id == DISP_PD_DISP1)
-				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_DIS1, false);
+				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_DIS1, DPC_MTCMOS_MANUAL);
 			else if (priv->pd_id == DISP_PD_MML1)
-				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML1, false);
+				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML1, DPC_MTCMOS_MANUAL);
 			else if (priv->pd_id == DISP_PD_MML0)
-				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML0, false);
+				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML0, DPC_MTCMOS_MANUAL);
 		}
 
 		/* enable vdisp_ao merge irq, to fix burst irq when mtcmos on */

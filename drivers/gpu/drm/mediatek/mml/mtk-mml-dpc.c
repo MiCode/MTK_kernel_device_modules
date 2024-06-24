@@ -47,24 +47,14 @@ void mml_dpc_dc_force_enable(bool en)
 	mml_dpc_funcs.dpc_dc_force_enable(en);
 }
 
-void mml_dpc_group_enable(bool en)
+void mml_dpc_group_enable(u32 sysid, bool en)
 {
 	if (mml_dpc_funcs.dpc_group_enable == NULL) {
 		mml_msg_dpc("%s dpc_group_enable not exist", __func__);
 		return;
 	}
 
-	mml_dpc_funcs.dpc_group_enable(DPC_SUBSYS_MML, en);
-}
-
-void mml_dpc_mtcmos_auto(u32 sysid, const bool en)
-{
-	if (mml_dpc_funcs.dpc_mtcmos_auto == NULL) {
-		mml_msg_dpc("%s dpc_mtcmos_auto not exist", __func__);
-		return;
-	}
-
-	mml_dpc_funcs.dpc_mtcmos_auto(mml_sysid_to_dpc_subsys(sysid), en);
+	mml_dpc_funcs.dpc_group_enable(mml_sysid_to_dpc_subsys(sysid), en);
 }
 
 void mml_dpc_config(const enum mtk_dpc_subsys subsys, bool en)
