@@ -1076,23 +1076,30 @@ static struct pmu_info *fbt_pmu_search_add(struct rb_root *pmu_info_tree, int pi
 	iter->pid = pid;
 
 	for_each_possible_cpu(cpu) {
-		if (cpu >= MAX_NR_CPUS)
-			continue;
-
 		iter->inst_event[cpu] = perf_event_create_kernel_counter(&inst_spec_event_attr, cpu, task, NULL, NULL);
-		if (IS_ERR(iter->inst_event)) {
-			FPSGO_LOGE("%s inst error", __func__);
+		if (IS_ERR(iter->inst_event[cpu])) {
+			FPSGO_LOGE("%s: Create pmu event failed", __func__);
 			put_task_struct(task);
-			kfree(iter);
-			return NULL;
+			goto FAIL;
 		}
-		perf_event_enable(iter->inst_event[cpu]);
 	}
+
 	put_task_struct(task);
+
+	for_each_possible_cpu(cpu)
+		perf_event_enable(iter->inst_event[cpu]);
 
 	rb_link_node(&iter->entry, parent, p);
 	rb_insert_color(&iter->entry, pmu_info_tree);
 	return iter;
+
+FAIL:
+	for_each_possible_cpu(cpu) {
+		if (iter->inst_event[cpu] && !IS_ERR(iter->inst_event[cpu]))
+			perf_event_release_kernel(iter->inst_event[cpu]);
+	}
+	kfree(iter);
+	return NULL;
 }
 
 void fbt_task_reset_pmu(struct rb_root *pmu_info_tree, unsigned long long ts)
@@ -1106,8 +1113,6 @@ void fbt_task_reset_pmu(struct rb_root *pmu_info_tree, unsigned long long ts)
 		iter = rb_entry(cur, struct pmu_info, entry);
 		if (iter->ts != ts) {
 			for_each_possible_cpu(cpu) {
-				if (cpu >= MAX_NR_CPUS)
-					continue;
 				perf_event_disable(iter->inst_event[cpu]);
 				perf_event_release_kernel(iter->inst_event[cpu]);
 			}
@@ -1154,11 +1159,8 @@ static unsigned long long fbt_pmu_read(struct rb_root *pmu_info_tree)
 		unsigned long long inst_cur = 0;
 
 		iter = rb_entry(cur, struct pmu_info, entry);
-		for_each_possible_cpu(cpu) {
-			if (cpu >= MAX_NR_CPUS)
-				continue;
+		for_each_possible_cpu(cpu)
 			inst_cur += perf_event_read_value(iter->inst_event[cpu], &iter->enabled, &iter->running);
-		}
 
 		iter->inst_new = inst_cur - iter->inst_prev;
 		iter->inst_prev = inst_cur;
