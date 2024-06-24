@@ -2265,7 +2265,11 @@ signed int CmdqDPEHW(struct frame *frame)
 		if (result != 0)
 			return -1;
 		pDpeConfig->DPE_MODE = 2;
+	} else {
+		LOG_ERR("Dpe_engineSelect fail(%d)\n", pDpeUserConfig->Dpe_engineSelect);
+		return -1;
 	}
+
 	if (g_isDPELogEnable)
 		DPE_DumpUserSpaceReg(pDpeConfig);
 	//cmdqRecCreate(CMDQ_SCENARIO_ISP_DPE, &handle);
