@@ -74,6 +74,21 @@ struct drm_crtc_state;
 #define MMSYS_SODI_REQ_MASK                       0xF4
 #define MMSYS_EMI_REQ_CTL                         0xF8
 
+#define OVLSYS_EXRDMA_ULTRA_SEL0                  0x40
+#define OVLSYS_EXRDMA_ULTRA_SEL1                  0x44
+#define OVLSYS_EXRDMA_PREULTRA_SEL0               0x48
+#define OVLSYS_EXRDMA_PREULTRA_SEL1               0x4C
+	#define OVL_EXDMA0_SEL       REG_FLD_MSB_LSB(2, 0)
+	#define OVL_EXDMA1_SEL       REG_FLD_MSB_LSB(6, 4)
+	#define OVL_EXDMA2_SEL       REG_FLD_MSB_LSB(10, 8)
+	#define OVL_EXDMA3_SEL       REG_FLD_MSB_LSB(14, 12)
+	#define OVL_EXDMA4_SEL       REG_FLD_MSB_LSB(18, 16)
+	#define OVL_EXDMA5_SEL       REG_FLD_MSB_LSB(22, 20)
+	#define OVL_EXDMA6_SEL       REG_FLD_MSB_LSB(26, 24)
+	#define OVL_EXDMA7_SEL       REG_FLD_MSB_LSB(30, 28)
+	#define OVL_EXDMA8_SEL       REG_FLD_MSB_LSB(2, 0)
+	#define OVL_EXDMA9_SEL       REG_FLD_MSB_LSB(6, 4)
+
 #define DISPSYS0_DDREN_ACK_CON                    0x50
 #define DISPSYS1_DDREN_ACK_CON                    0x3F4
 

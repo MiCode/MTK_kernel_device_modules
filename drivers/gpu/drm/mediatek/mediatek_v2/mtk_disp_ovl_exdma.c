@@ -2483,6 +2483,10 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			       comp->regs_pa + DISP_REG_OVL_SMI_2ND_CFG,
 			       (val << (id + 4)), (1 << (id + 4)));
 		}
+		if (fmt == DRM_FORMAT_C8)
+			cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_L_EN(ext_lye_idx), 0,
+			DISP_OVL_L_EN);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + OVL_L0_CLRFMT(0), Ln_CLRFMT,
@@ -2527,6 +2531,10 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			       comp->regs_pa + DISP_REG_OVL_SMI_2ND_CFG,
 			       (val << lye_idx), (1 << lye_idx));
 		}
+		if (fmt == DRM_FORMAT_C8)
+			cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_L_EN(0), 0,
+			DISP_OVL_L_EN);
 	}
 
 	if (priv->data->mmsys_id == MMSYS_MT6991) {

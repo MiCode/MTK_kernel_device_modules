@@ -30296,19 +30296,6 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 			ddp->data->mutex_sof[val],
 			ddp->side_regs + DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
 
-		if(mutex->id == 1 && (priv->data->mmsys_id == MMSYS_MT6991)) {
-			writel_relaxed(ddp->data->mutex_sof[val] | BIT(4),
-		       ddp->regs + DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
-			writel_relaxed(ddp->data->mutex_ovlsys_sof[val] | BIT(4),
-			       ddp->ovlsys0_regs +
-			       DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
-			writel_relaxed(
-				ddp->data->mutex_ovlsys_sof[val] | BIT(4),
-				ddp->ovlsys1_regs + DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
-			writel_relaxed(
-				ddp->data->mutex_sof[val] | BIT(4),
-				ddp->side_regs + DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
-		}
 	}
 }
 
