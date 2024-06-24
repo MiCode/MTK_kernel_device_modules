@@ -195,6 +195,7 @@ int mtk_vcodec_get_chipid(struct mtk_chipid *chip_id)
 	struct device_node *node;
 	int len;
 	char ver_name[20] = {0};
+	struct mtk_chipid *chip_id_get;
 
 	node = of_find_node_by_path("/chosen");
 	if (!node)
@@ -204,11 +205,12 @@ int mtk_vcodec_get_chipid(struct mtk_chipid *chip_id)
 		return -ENODEV;
 	}
 
-	chip_id = (struct mtk_chipid *)of_get_property(node, "atag,chipid", &len);
-	if (!chip_id) {
+	chip_id_get = (struct mtk_chipid *)of_get_property(node, "atag,chipid", &len);
+	if (!chip_id_get) {
 		mtk_v4l2_err("atag,chipid found in chosen node");
 		return -ENODEV;
 	}
+	memcpy(chip_id, chip_id_get, sizeof(struct mtk_chipid));
 
 	switch (chip_id->sw_ver) {
 	case MTK_CHIP_SW_VER_E1:
