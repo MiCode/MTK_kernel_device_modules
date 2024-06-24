@@ -3454,7 +3454,7 @@
 			<GIC_SPI 135 IRQ_TYPE_LEVEL_HIGH 0>,
 			<GIC_SPI 136 IRQ_TYPE_LEVEL_HIGH 0>,
 			<GIC_SPI 384 IRQ_TYPE_LEVEL_HIGH 0>;
-		nr_channel = <4>;
+		dma-channels = <4>;
 		clocks = <&infracfg_ao INFRACFG_AO_CQ_DMA_CG>;
 		clock-names = "cqdma";
 		dma-channel-mask = <63>;
