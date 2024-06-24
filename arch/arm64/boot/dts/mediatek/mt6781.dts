@@ -5018,7 +5018,7 @@
 		clock-num = <3>;
 		operating-points-v2 = <&opp_table_disp0>;
 		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-		interconnects = <&mmqos SLAVE_LARB(21) &mmqos SLAVE_COMMON(0)>;
+		interconnects = <&mmqos SLAVE_LARB(23) &mmqos SLAVE_COMMON(0)>;
 		interconnect-names = "disp_hrt_qos";
 		pre-define-bw = <0xffffffff>, <0>, <0>, <0>;
 
@@ -5078,6 +5078,8 @@
 		helper-name = "MTK_DRM_OPT_STAGE",
 			"MTK_DRM_OPT_USE_CMDQ",
 			"MTK_DRM_OPT_USE_M4U",
+			"MTK_DRM_OPT_MMQOS_SUPPORT",
+			"MTK_DRM_OPT_MMDVFS_SUPPORT",
 			"MTK_DRM_OPT_SODI_SUPPORT",
 			"MTK_DRM_OPT_IDLE_MGR",
 			"MTK_DRM_OPT_IDLEMGR_SWTCH_DECOUPLE",
@@ -5128,6 +5130,8 @@
 		helper-value = <0>, /*MTK_DRM_OPT_STAGE*/
 			<1>, /*MTK_DRM_OPT_USE_CMDQ*/
 			<1>, /*MTK_DRM_OPT_USE_M4U*/
+			<1>, /*MTK_DRM_OPT_MMQOS_SUPPORT*/
+			<1>, /*MTK_DRM_OPT_MMDVFS_SUPPORT*/
 			<0>, /*MTK_DRM_OPT_SODI_SUPPORT*/
 			<1>, /*MTK_DRM_OPT_IDLE_MGR*/
 			<0>, /*MTK_DRM_OPT_IDLEMGR_SWTCH_DECOUPLE*/
