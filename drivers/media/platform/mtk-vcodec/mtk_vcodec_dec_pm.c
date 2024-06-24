@@ -202,7 +202,9 @@ void mtk_vcodec_release_dec_pm(struct mtk_vcodec_dev *dev)
 	mutex_lock(&dev->dec_dvfs_mutex);
 	mutex_unlock(&dev->dec_dvfs_mutex);
 #endif
+#ifndef FPGA_PWRCLK_API_DISABLE
 	pm_runtime_disable(dev->pm.dev);
+#endif
 }
 
 void mtk_vcodec_dec_pw_on(struct mtk_vcodec_pm *pm)

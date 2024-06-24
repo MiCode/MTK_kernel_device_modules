@@ -204,7 +204,9 @@ void mtk_vcodec_release_enc_pm(struct mtk_vcodec_dev *mtkdev)
 #if ENC_EMI_BW
 	/* do nothing */
 #endif
+#ifndef FPGA_PWRCLK_API_DISABLE
 	pm_runtime_disable(mtkdev->pm.dev);
+#endif
 }
 
 void mtk_venc_deinit_ctx_pm(struct mtk_vcodec_ctx *ctx)
