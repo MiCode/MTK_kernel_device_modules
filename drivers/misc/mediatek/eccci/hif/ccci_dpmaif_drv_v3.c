@@ -1354,7 +1354,8 @@ static void drv3_dump_register(int buf_type)
 		dpmaif_ctl->pd_ul_base + NRL2_DPMAIF_UL_ADD_DESC, len);
 
 	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897 ||
-		g_plat_inf == 6989 || g_plat_inf == 6878 || g_plat_inf == 6991) {
+		g_plat_inf == 6989 || g_plat_inf == 6878 || g_plat_inf == 6991 ||
+		g_plat_inf == 6899) {
 		len = DPMAIF_AO_UL_CHNL3_STA_6985 - DPMAIF_AO_UL_CHNL0_STA_6985 + 4;
 		CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 			"dump AP DPMAIF Tx ao; ao_ul_base register -> (start addr: 0x%llX, len: %d):\n",
@@ -1553,7 +1554,7 @@ static void drv3_hw_reset_v1(void)
 	/* DPMAIF HW reset */
 	CCCI_DEBUG_LOG(0, TAG, "%s:rst dpmaif\n", __func__);
 	/* reset dpmaif hw: PD Domain */
-	if (g_plat_inf == 6989)
+	if (g_plat_inf == 6989 || g_plat_inf == 6899)
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF50, 1<<0);
 	else if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897)
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF50, 1<<14);
@@ -1569,7 +1570,7 @@ static void drv3_hw_reset_v1(void)
 	udelay(500);
 
 	/* reset dpmaif hw: AO Domain */
-	if (g_plat_inf == 6989)
+	if (g_plat_inf == 6989 || g_plat_inf == 6899)
 		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x130, 1<<2);
 	else if (g_plat_inf == 6835)
 		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x130, 1<<11);
@@ -1588,7 +1589,7 @@ static void drv3_hw_reset_v1(void)
 	udelay(500);
 
 	/* reset dpmaif clr */
-	if (g_plat_inf == 6989)
+	if (g_plat_inf == 6989 || g_plat_inf == 6899)
 		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x134, 1<<2);
 	else if (g_plat_inf == 6835)
 		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x134, 1<<11);
@@ -1608,7 +1609,7 @@ static void drv3_hw_reset_v1(void)
 	udelay(500);
 
 	/* reset dpmaif clr */
-	if (g_plat_inf == 6989)
+	if (g_plat_inf == 6989 || g_plat_inf == 6899)
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF54, 1<<0);
 	else if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897)
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF54, 1<<14);
@@ -1837,7 +1838,8 @@ int ccci_dpmaif_drv3_init(void)
 		ops.drv_dl_get_wridx = &drv3_dl_get_wridx;
 
 	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897 ||
-		g_plat_inf == 6989 || g_plat_inf == 6878 || g_plat_inf == 6991) {
+		g_plat_inf == 6989 || g_plat_inf == 6878 || g_plat_inf == 6991 ||
+		g_plat_inf == 6899) {
 		ops.drv_ul_get_rwidx = &drv3_ul_get_rwidx_6985;
 		ops.drv_ul_get_rdidx = &drv3_ul_get_rdidx_6985;
 	} else {
