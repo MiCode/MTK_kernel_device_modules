@@ -141,7 +141,7 @@
 #define MODE_CTRL_LV1_MASK		(0xFFFFFFFF)
 #define MODE_CTRL_LV1_SHIFT		(0)
 
-struct pmif_m pmif_m_v1 = {
+static struct pmif_m pmif_m_v1 = {
 	SET_REG_BY_NAME(conn_inf_en, CONN_INF_EN_V1)
 	SET_REG_BY_NAME(nfc_inf_en, NFC_INF_EN_V1)
 	SET_REG_BY_NAME(rc_inf_en, RC_INF_EN_V1)
@@ -157,7 +157,7 @@ struct pmif_m pmif_m_v1 = {
 	SET_REG_BY_NAME(slp_ctrl, SLP_PROTECT_V1)
 };
 
-struct pmif_m pmif_m_v2 = {
+static struct pmif_m pmif_m_v2 = {
 	SET_REG_BY_NAME(conn_inf_en, CONN_INF_EN_V2)
 	SET_REG_BY_NAME(nfc_inf_en, NFC_INF_EN_V2)
 	SET_REG_BY_NAME(rc_inf_en, RC_INF_EN_V2)
@@ -173,7 +173,7 @@ struct pmif_m pmif_m_v2 = {
 	SET_REG_BY_NAME(slp_ctrl, SLP_PROTECT_V2)
 };
 
-struct pmif_p pmif_p_v2 = {
+static struct pmif_p pmif_p_v2 = {
 	SET_REG_BY_NAME(conn_inf_en, CONN_INF_EN_V2)
 	SET_REG_BY_NAME(nfc_inf_en, NFC_INF_EN_V2)
 	SET_REG_BY_NAME(rc_inf_en, RC_INF_EN_V2)
@@ -189,7 +189,7 @@ struct pmif_p pmif_p_v2 = {
 	SET_REG_BY_NAME(slp_ctrl, SLP_PROTECT_V2)
 };
 
-struct pmif_m pmif_m_lv1 = {
+static struct pmif_m pmif_m_lv1 = {
 	SET_REG_BY_NAME(conn_inf_en, CONN_INF_EN_LV1)
 	SET_REG_BY_NAME(nfc_inf_en, NFC_INF_EN_LV1)
 	SET_REG_BY_NAME(rc_inf_en, RC_INF_EN_LV1)

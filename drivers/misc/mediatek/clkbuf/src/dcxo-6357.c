@@ -149,7 +149,7 @@
 
 
 /* Maybe more debug reg? */
-struct reg_t mt6357_debug_regs[] = {
+static struct reg_t mt6357_debug_regs[] = {
 	[0] =
 		DBG_REG(dcxo_cw00, DCXO_CW00, 0xFFFF, 0)
 	[1] =
@@ -172,7 +172,7 @@ struct reg_t mt6357_debug_regs[] = {
 		DBG_REG(NULL, NULL_ADDR, 0x0, 0x0)
 };
 
-struct common_regs mt6357_com_regs = {
+static struct common_regs mt6357_com_regs = {
 	.bblpm_auxout_sel = 24,
 	.mode_num = 3,
 	SET_REG_BY_NAME(static_aux_sel, XO_STATIC_AUXOUT_SEL)
@@ -182,7 +182,7 @@ struct common_regs mt6357_com_regs = {
 };
 
 /* Update aux_sel later */
-struct xo_buf_t mt6357_xo_bufs[] = {
+static struct xo_buf_t mt6357_xo_bufs[] = {
 	[0] = {
 		SET_REG_BY_NAME(xo_mode, XO_EXTBUF1_MODE)
 		SET_REG_BY_NAME(xo_en, XO_EXTBUF1_EN_M)
@@ -213,9 +213,6 @@ struct xo_buf_t mt6357_xo_bufs[] = {
 		SET_REG_BY_NAME(de_sense, RG_XO_EXTBUF4_ISET)
 		SET_REG_BY_NAME(hwbblpm_msk, XO_EXTBUF4_BBLPM_EN_MASK)
 		.xo_en_auxout_sel = 6,
-	},
-	[4] = {
-
 	},
 	[5] = {
 		SET_REG_BY_NAME(xo_mode, XO_EXTBUF6_MODE)
