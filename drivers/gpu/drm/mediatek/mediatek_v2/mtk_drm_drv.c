@@ -611,8 +611,13 @@ static void mtk_atomic_disp_rsz_roi(struct drm_device *dev,
 		struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
 		struct mtk_crtc_state *old_mtk_crtc_state = to_mtk_crtc_state(old_crtc_state);
 
-		if(old_mtk_crtc_state->prop_val[CRTC_PROP_LYE_IDX] >= state->prop_val[CRTC_PROP_LYE_IDX])
-			return;
+		if(old_mtk_crtc_state->prop_val[CRTC_PROP_LYE_IDX] == state->prop_val[CRTC_PROP_LYE_IDX]) {
+			if ((old_mtk_crtc_state->prop_val[CRTC_PROP_LYE_IDX] == 0) &&
+				((state->rsz_src_roi.width == 0) || (state->rsz_src_roi.height == 0)))
+				DDPINFO("%s[%d] cala rsz roi for lye_idx is zero\n", __func__, __LINE__);
+			else
+				return;
+		}
 	}
 
 	for_each_old_crtc_in_state(old_state, crtc, old_crtc_state, j) {
