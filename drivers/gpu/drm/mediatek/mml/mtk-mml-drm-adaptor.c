@@ -130,7 +130,7 @@ bool mml_drm_query_hw_support(const struct mml_frame_info *info)
 	}
 
 	if (info->src.modifier &&
-		(format_drm_to_mml(info->src.format, info->src.modifier) == info->src.format)) {
+		!MML_FMT_AFBC(format_drm_to_mml(info->src.format, info->src.modifier))) {
 		mml_err("[drm]invalid src afbc fmt modifier: %#010llx, format %#x",
 			info->src.modifier, info->src.format);
 		goto not_support;
