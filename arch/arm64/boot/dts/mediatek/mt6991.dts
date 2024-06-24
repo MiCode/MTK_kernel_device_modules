@@ -256,7 +256,6 @@
 			    cgroup.memory=nosocket,nokmem \
 			    disable_dma32=on \
 			    transparent_hugepage=never \
-			    androidboot.init_fatal_panic=true \
 			    kvm-arm.protected_modules=pkvm_mgmt,pkvm_tmem,pkvm_smmu";
 			    mkp_panic="on";
 		kaslr-seed = <0 0>;
