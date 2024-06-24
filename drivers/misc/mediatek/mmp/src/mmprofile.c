@@ -216,7 +216,7 @@ void mmprofile_get_dump_buffer(unsigned int start, unsigned long *p_addr,
 	unsigned int region_pos;
 	unsigned int block_pos = 0;
 	unsigned int region_base = 0;
-	unsigned int copy_size;
+	unsigned int copy_size __maybe_unused;
 	*p_addr = (unsigned long)mmprofile_dump_block;
 	*p_size = MMPROFILE_DUMP_BLOCK_SIZE;
 	if (!bmmprofile_init_buffer) {
@@ -247,7 +247,7 @@ void mmprofile_get_dump_buffer(unsigned int start, unsigned long *p_addr,
 	    (region_base + sizeof(struct mmprofile_eventinfo_t) *
 	    (mmprofile_globals.reg_event_index + 1))) {
 		/* Register table */
-		mmp_event index;
+		mmp_event index __maybe_unused;
 		struct mmprofile_regtable_t *p_regtable;
 		struct mmprofile_eventinfo_t event_info_dummy = { 0, "" };
 		unsigned int src_pos;
@@ -935,7 +935,7 @@ static long mmprofile_log_meta_int(mmp_event event, enum mmp_log_type type,
 	struct mmp_metadata_t *p_meta_data, long b_from_user)
 {
 #if IS_ENABLED(CONFIG_MTK_MMPROFILE_DEBUG)
-	unsigned long retn;
+	unsigned long retn __maybe_unused;
 	void __user *p_data;
 	struct mmprofile_meta_datablock_t *p_node = NULL;
 	unsigned long block_size;
@@ -1908,7 +1908,7 @@ static long mmprofile_ioctl(struct file *file, unsigned int cmd,
 		unsigned int meta_data_count = 0;
 		unsigned int offset = 0;
 		unsigned int index;
-		unsigned int buffer_size = 0;
+		unsigned int buffer_size __maybe_unused = 0;
 		struct mmprofile_meta_datablock_t *p_meta_data_block;
 		struct mmprofile_metadata_t __user *p_meta_data =
 			(struct mmprofile_metadata_t __user *)(arg + 8);
@@ -2038,7 +2038,7 @@ static long mmprofile_ioctl_compat(struct file *file, unsigned int cmd,
 	unsigned long arg)
 {
 	long ret = 0;
-	unsigned long retn;
+	unsigned long retn __maybe_unused;
 
 	switch (cmd) {
 	case MMP_IOC_ENABLE:
@@ -2216,7 +2216,7 @@ static long mmprofile_ioctl_compat(struct file *file, unsigned int cmd,
 		unsigned int meta_data_count = 0;
 		unsigned int offset = 0;
 		unsigned int index;
-		unsigned int buffer_size = 0;
+		unsigned int buffer_size __maybe_unused = 0;
 		struct mmprofile_meta_datablock_t *p_meta_data_block;
 		struct mmprofile_metadata_t __user *p_meta_data;
 		unsigned int __user *p_user;
