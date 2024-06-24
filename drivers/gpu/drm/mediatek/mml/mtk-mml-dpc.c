@@ -10,6 +10,9 @@
 int mml_dl_dpc = MML_DPC_PKT_VOTE;
 module_param(mml_dl_dpc, int, 0644);
 
+static struct dpc_funcs mml_dpc_funcs;
+static enum mtk_dpc_version mml_dpc_version;
+
 #define mml_sysid_to_dpc_subsys(sysid)	\
 	(sysid == mml_sys_frame ? DPC_SUBSYS_MML1 : DPC_SUBSYS_MML0)
 #define mml_sysid_to_dpc_user(sysid)	\
