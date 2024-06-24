@@ -95,7 +95,7 @@ static void ufs_mb_work(struct work_struct *work)
 		dev_info(hba->dev, "failed to notify mbrain(%d)", ret);
 
 	dev_info(hba->dev, "UIC error(%d)=0x%x @ %llu",
-		 entry->data.event,  entry->data.reg_val, entry->data.mb_ts);
+		 entry->data.event,  entry->data.val, entry->data.mb_ts);
 	dev_info(hba->dev, "Gear[%d, %d]",
 		 entry->data.gear_rx, entry->data.gear_tx);
 	entry->busy = false;
@@ -106,7 +106,7 @@ int ufs_mb_queue_error(struct ufs_hba *hba, struct ufs_mbrain_entry *entry)
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	bool success = false;
 
-	dev_info(hba->dev, "queue error");
+	dev_info(hba->dev, "mb queue error");
 
 	success = queue_work(host->mb_workq, &entry->mb_work);
 	if (!success) {

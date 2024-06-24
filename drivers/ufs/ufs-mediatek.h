@@ -325,7 +325,7 @@ struct ufs_mtk_host {
 	bool purge_active;
 
 	/* mbrain */
-	struct ufs_mbrain_entry mb_entries[UFS_EVT_DME_ERR + 1][UFS_EVENT_HIST_LENGTH];
+	struct ufs_mbrain_entry mb_entries[UFS_EVT_FATAL_ERR + 1][UFS_EVENT_HIST_LENGTH];
 	struct workqueue_struct *mb_workq;
 	ufs_mb_event_notify mb_notify;
 

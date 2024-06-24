@@ -2234,8 +2234,8 @@ static ssize_t ufs_debug_proc_write(struct file *file, const char *buf,
 		ufshcd_rpm_get_sync(hba);
 		ufshcd_hold(hba);
 		get_random_bytes(&rnd, sizeof(rnd));
-		dev_info(hba->dev, "Inject UIC error %d, val=%d\n", rnd % (UFS_EVT_DME_ERR + 1), rnd);
-		ufshcd_update_evt_hist(hba, rnd %(UFS_EVT_DME_ERR + 1) , rnd);
+		dev_info(hba->dev, "Inject UIC error %d, val=%d\n", rnd % (UFS_EVT_FATAL_ERR + 1), rnd);
+		ufshcd_update_evt_hist(hba, rnd %(UFS_EVT_FATAL_ERR + 1) , rnd);
 		ufshcd_release(hba);
 		ufshcd_rpm_put(hba);
 	}

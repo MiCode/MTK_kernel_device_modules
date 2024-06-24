@@ -132,7 +132,7 @@ int ufs2mbrain_event_notify(struct ufs_mbrain_event *event)
 		(unsigned int)event->ver,
 		(unsigned int)event->data->event,
 		(unsigned long long)event->data->mb_ts,
-		(unsigned int)event->data->reg_val,
+		(unsigned int)event->data->val,
 		(unsigned int)event->data->gear_rx,
 		(unsigned int)event->data->gear_tx
 	);
