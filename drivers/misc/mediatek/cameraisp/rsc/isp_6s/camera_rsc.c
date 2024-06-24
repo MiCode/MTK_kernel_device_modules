@@ -3391,22 +3391,24 @@ static int rsc_suspend_pm_event(struct notifier_block *notifier,
 	case PM_POST_HIBERNATION:
 		return NOTIFY_DONE;
 	case PM_SUSPEND_PREPARE: /*enter suspend*/
-		LOG_DBG("bPass1_On_In_Resume_TG1(%d)\n", bPass1_On_In_Resume_TG1);
+		LOG_INF("%s+:g_u4EnableClockCount(%d) g_SuspendCnt(%d).\n", __func__,
+					g_u4EnableClockCount, g_SuspendCnt);
 		if (g_u4EnableClockCount > 0) {
 			RSC_EnableClock(MFALSE);
 			g_SuspendCnt++;
 		}
 		bPass1_On_In_Resume_TG1 = 0;
-		LOG_INF("%s:g_u4EnableClockCount(%d) g_SuspendCnt(%d).\n", __func__,
+		LOG_INF("%s-:g_u4EnableClockCount(%d) g_SuspendCnt(%d).\n", __func__,
 					g_u4EnableClockCount, g_SuspendCnt);
 		return NOTIFY_DONE;
 	case PM_POST_SUSPEND:    /*after resume*/
-		LOG_DBG("bPass1_On_In_Resume_TG1(%d).\n", bPass1_On_In_Resume_TG1);
+		LOG_INF("%s+:g_u4EnableClockCount(%d) g_SuspendCnt(%d).\n", __func__,
+					g_u4EnableClockCount, g_SuspendCnt);
 		if (g_SuspendCnt > 0) {
 			RSC_EnableClock(MTRUE);
 			g_SuspendCnt--;
 		}
-		LOG_INF("%s:g_u4EnableClockCount(%d) g_SuspendCnt(%d).\n", __func__,
+		LOG_INF("%s-:g_u4EnableClockCount(%d) g_SuspendCnt(%d).\n", __func__,
 					g_u4EnableClockCount, g_SuspendCnt);
 		return NOTIFY_DONE;
 	}
