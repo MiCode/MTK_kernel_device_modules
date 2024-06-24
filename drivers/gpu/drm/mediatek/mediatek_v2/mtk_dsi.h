@@ -114,7 +114,7 @@ struct mtk_dsi {
 	struct mtk_dsi *master_dsi;
 	struct mtk_drm_connector_caps connector_caps;
 	uint32_t connector_caps_blob_id;
-#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
+#if IS_ENABLED(CONFIG_ENABLE_DSI_HOTPLUG)
 	struct task_struct *hotplug_task;
 #endif
 
