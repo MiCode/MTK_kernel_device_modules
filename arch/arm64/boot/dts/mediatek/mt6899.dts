@@ -8423,7 +8423,7 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 		regulators {
-			BASE {
+			rt5133_base: BASE {
 				regulator-name = "rt5133,base";
 				oc-shutdown-all = <0>;
 				pgb-shutdown-all = <0>;
@@ -8500,6 +8500,24 @@
 				pgb-ptsel = <1>;
 				soft-start-time-sel = <1>;
 			};
+		};
+	};
+};
+
+&i2c5 {
+	rt6160_bob: rt6160@75 {
+		compatible = "richtek,rt6160",
+			     "richtek,rt6160-vbb";
+		reg = <0x75>;
+		//enable-gpios = <&gpio26 2 0>;
+		regulator-name = "rt6160-buckboost";
+		regulator-min-microvolt = <2025000>;
+		regulator-max-microvolt = <5200000>;
+		regulator-always-on;
+		is-existed = <0>;
+
+		dbg {
+			compatible = "richtek,rt6160-dbg";
 		};
 	};
 };
