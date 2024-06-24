@@ -187,13 +187,15 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		ptp3_status.hbvc_freq_ctrl_support ? "On" : "Off",
 		ptp3_status.hbvc_volt_ctrl_support ? "On" : "Off");
 	seq_printf(m,
-		"%-16s BRCAST: %s, DELSEL: %s, PreOC: %s\n",
+		"%-16s BRCAST: %s, DELSEL: %s, PreOC: %s (C=%d, T=%d, F=%d)\n",
 		"[PTP3 Config]",
 		(ptp3_status.brcast_mode == BRCAST_SW_REFILLED ? "SW_REFILLED" :
 		(ptp3_status.brcast_mode == BRCAST_WITH_AUTO_DMA ? "AutoDMA" :
 		(ptp3_status.brcast_mode == BRCAST_SW_ONLY_ACK ? "SW_ONLY_ACK" : "Off"))),
 		ptp3_status.delsel_mode == HW_DELSEL ? "HW" : "SW",
-		ptp3_status.hbvc_preoc_mode ? "On" : "Off");
+		ptp3_status.hbvc_preoc_mode ? "On" : "Off",
+		g_shared_status->preoc_info.count, g_shared_status->preoc_info.throttle_time,
+		g_shared_status->preoc_info.scale_factor);
 	seq_printf(m,
 		"%-16s SES_TOP: %s, SES_ST: %s, SES_Scheduler: %s\n",
 		"[PTP3 Config]",
