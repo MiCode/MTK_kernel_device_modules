@@ -11701,7 +11701,9 @@ static void __exit mtk_drm_exit(void)
 }
 module_init(mtk_drm_init);
 module_exit(mtk_drm_exit);
-
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+MODULE_SOFTDEP("pre: panel-serdes-max96789");
+#endif
 MODULE_AUTHOR("YT SHEN <yt.shen@mediatek.com>");
 MODULE_DESCRIPTION("Mediatek SoC DRM driver");
 MODULE_IMPORT_NS(DMA_BUF);
