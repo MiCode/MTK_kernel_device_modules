@@ -82,6 +82,9 @@ static struct adsp_feature_tb feature_table[ADSP_NUM_FEATURE_ID] = {
 	[PLAYBACK14_FEATURE_ID]        = {.name = "playback14"},
 	[PLAYBACK15_FEATURE_ID]        = {.name = "playback15"},
 	[CAPTURE_MCH_FEATURE_ID]       = {.name = "capture_mch"},
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+	[HFP_CLIENT_TX_FEATURE_ID]    = {.name = "hfp_client_tx"},
+#endif
 #endif
 };
 

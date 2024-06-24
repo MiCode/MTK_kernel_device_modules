@@ -1046,6 +1046,10 @@ SND_SOC_DAILINK_DEFS(dsphfpclientrx,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_hfp_client_rx_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dsphfpclienttx,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_hfp_client_tx_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
 #endif
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
 SND_SOC_DAILINK_DEFS(dspanc,
@@ -2217,6 +2221,11 @@ static struct snd_soc_dai_link mt6991_mt6681_dai_links[] = {
 		.name = "DSP_Playback_HFP_CLIENT_RX",
 		.stream_name = "DSP_Playback_HFP_CLIENT_RX",
 		SND_SOC_DAILINK_REG(dsphfpclientrx),
+	},
+	{
+		.name = "DSP_Playback_HFP_CLIENT_TX",
+		.stream_name = "DSP_Playback_HFP_CLIENT_TX",
+		SND_SOC_DAILINK_REG(dsphfpclienttx),
 	},
 #endif
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)

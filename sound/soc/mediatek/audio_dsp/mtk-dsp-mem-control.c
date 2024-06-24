@@ -361,6 +361,17 @@ static struct audio_dsp_dram
 			.phy_addr = 0,
 		},
 };
+static struct audio_dsp_dram
+	adsp_sharemem_hfp_client_tx_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
@@ -678,6 +689,8 @@ static struct mtk_adsp_task_attr adsp_task_attr[AUDIO_TASK_DAI_NUM] = {
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
 	[AUDIO_TASK_HFP_CLIENT_RX_ADSP_ID] = {true, -1, -1, -1,
 				HFP_CLIENT_RX_FEATURE_ID, false},
+	[AUDIO_TASK_HFP_CLIENT_TX_ADSP_ID] = {true, -1, -1, -1,
+				HFP_CLIENT_TX_FEATURE_ID, false},
 #endif
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
 	[AUDIO_TASK_ANC_ADSP_ID] = {true, -1, -1, -1,
@@ -794,6 +807,8 @@ static struct audio_dsp_dram *mtk_get_adsp_sharemem_block(int audio_task_id)
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
 	case AUDIO_TASK_HFP_CLIENT_RX_ADSP_ID:
 		return adsp_sharemem_hfp_client_rx_mblock;
+	case AUDIO_TASK_HFP_CLIENT_TX_ADSP_ID:
+		return adsp_sharemem_hfp_client_tx_mblock;
 #endif
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
 	case AUDIO_TASK_ANC_ADSP_ID:

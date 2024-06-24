@@ -338,6 +338,17 @@ static struct snd_soc_dai_driver mtk_dai_dsp_driver[] = {
 				.formats = MTK_I2S_FORMATS,
 			},
 	},
+	{
+		.name = "audio_task_hfp_client_tx_dai",
+		.id = AUDIO_TASK_HFP_CLIENT_TX_ADSP_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_HFP_CLIENT_TX",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
 #endif
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
 	{

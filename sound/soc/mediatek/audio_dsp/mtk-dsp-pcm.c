@@ -80,6 +80,7 @@ static char *dsp_task_dsp_name[AUDIO_TASK_DAI_NUM] = {
 	[AUDIO_TASK_CALLUL_ID]      = "mtk-dsp-callul",
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
 	[AUDIO_TASK_HFP_CLIENT_RX_ADSP_ID]      = "mtk-dsp-hfp-client-rx",
+	[AUDIO_TASK_HFP_CLIENT_TX_ADSP_ID]      = "mtk-dsp-hfp-client-tx",
 #endif
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
 	[AUDIO_TASK_ANC_ADSP_ID]    = "mtk-dsp-anc",

@@ -1343,6 +1343,9 @@ static int mt6991_adsp_mem_get(struct snd_kcontrol *kcontrol,
 #if (IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP) && IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT))
 	case AUDIO_TASK_SUB_PLAYBACK_ID:
 #endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+	case AUDIO_TASK_HFP_CLIENT_TX_ADSP_ID:
+#endif
 		memif_num = get_dsp_task_attr(task_id,
 					      ADSP_TASK_ATTR_MEMDL);
 		break;
@@ -1433,6 +1436,7 @@ static int mt6991_adsp_mem_set(struct snd_kcontrol *kcontrol,
 	case AUDIO_TASK_KTV_ID:
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
 	case AUDIO_TASK_HFP_CLIENT_RX_ADSP_ID:
+	case AUDIO_TASK_HFP_CLIENT_TX_ADSP_ID:
 #endif
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
 	case AUDIO_TASK_ANC_ADSP_ID:
@@ -2056,6 +2060,10 @@ static const struct snd_kcontrol_new mt6991_pcm_kcontrols[] = {
 		       mt6991_adsp_mem_set),
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
 	SOC_SINGLE_EXT("adsp_hfp_client_rx_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6991_adsp_mem_get,
+		       mt6991_adsp_mem_set),
+	SOC_SINGLE_EXT("adsp_hfp_client_tx_sharemem_scenario",
 		       SND_SOC_NOPM, 0, 0x1, 0,
 		       mt6991_adsp_mem_get,
 		       mt6991_adsp_mem_set),
