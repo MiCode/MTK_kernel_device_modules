@@ -575,6 +575,11 @@ static struct clkbuf_operation clkbuf_ops_v2 = {
 #endif
 };
 
+static struct clkbuf_hdlr pmif_hdlr_v1 = {
+	.ops = &clkbuf_ops_v1,
+	.data = &pmif_data_v1,
+};
+
 static struct clkbuf_hdlr pmif_hdlr_v2 = {
 	.ops = &clkbuf_ops_v1,
 	.data = &pmif_data_v2,
@@ -627,8 +632,9 @@ static struct match_pmif mt6877_match_pmif = {
 
 static struct match_pmif mt6885_match_pmif = {
 	.name = "mediatek,mt6885-pwrap",
-	.hdlr = &pmif_hdlr_lv1,
+	.hdlr = &pmif_hdlr_v1,
 	.init = &pmif_init_v1,
+	.parse_dts = &pmif_parse_dts_v1
 };
 
 
