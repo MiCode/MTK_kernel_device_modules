@@ -1393,55 +1393,6 @@ EXPORT_SYMBOL_GPL(ufs_mtk_dbg_phy_trace);
 void ufs_mtk_dbg_phy_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
 				    enum ufs_notify_change_status status)
 {
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	u32 val;
-
-	/* clear before hibern8 enter in suspend  */
-	if (status == PRE_CHANGE && cmd == UIC_CMD_DME_HIBER_ENTER &&
-		(hba->pm_op_in_progress)) {
-
-		if (host->mphy_base) {
-			/*
-			 * in middle of ssu sleep and hibern8 enter,
-			 * clear 2 line hw status.
-			 */
-			val = readl(host->mphy_base + 0xA800) | 0x02;
-			writel(val, host->mphy_base + 0xA800);
-			writel(val, host->mphy_base + 0xA800);
-			val = val & (~0x02);
-			writel(val, host->mphy_base + 0xA800);
-
-			val = readl(host->mphy_base + 0xA900) | 0x02;
-			writel(val, host->mphy_base + 0xA900);
-			writel(val, host->mphy_base + 0xA900);
-			val = val & (~0x02);
-			writel(val, host->mphy_base + 0xA900);
-
-			val = readl(host->mphy_base + 0xA804) | 0x02;
-			writel(val, host->mphy_base + 0xA804);
-			writel(val, host->mphy_base + 0xA804);
-			val = val & (~0x02);
-			writel(val, host->mphy_base + 0xA804);
-
-			val = readl(host->mphy_base + 0xA904) | 0x02;
-			writel(val, host->mphy_base + 0xA904);
-			writel(val, host->mphy_base + 0xA904);
-			val = val & (~0x02);
-			writel(val, host->mphy_base + 0xA904);
-
-			/* check status is already clear */
-			if (readl(host->mphy_base + 0xA808) ||
-				readl(host->mphy_base + 0xA908)) {
-
-				pr_info("%s: [%d] clear fail 0x%x 0x%x\n",
-					__func__, __LINE__,
-					readl(host->mphy_base + 0xA808),
-					readl(host->mphy_base + 0xA908)
-					);
-			}
-		}
-	}
-
 	/* record burst mode mphy status after resume exit hibern8 complete */
 	if (status == POST_CHANGE && cmd == UIC_CMD_DME_HIBER_EXIT &&
 		(hba->pm_op_in_progress)) {
@@ -1805,15 +1756,23 @@ int ufs_mtk_cali_hold(void)
 	u64 timeout = 1000 * 1000; /* 1 sec */;
 	int ret = 0;
 
+	if (!hba)
+		return -EINVAL;
+
 	pm_runtime_get_sync(&hba->ufs_device_wlun->sdev_gendev);
 	ufs_mtk_scsi_block_requests(hba);
 
 	if (ufs_mtk_wait_for_doorbell_clr(hba, timeout)) {
 		dev_err(hba->dev, "%s: wait doorbell clr timeout!\n",
 				__func__);
-		ret = 1;
+		ret = -EBUSY;
 	}
 
+	/* To make sure clock scaling isn't work when ref-clk calibration ongoing */
+	queue_work(hba->clk_scaling.workq, &hba->clk_scaling.suspend_work);
+	flush_work(&hba->clk_scaling.suspend_work);
+
+	/* Make sure host enter AH8 and clock off */
 	mdelay(15);
 
 	dev_info(hba->dev, "%s: UFS Block Request ret = %d\n", __func__, ret);
@@ -1828,6 +1787,9 @@ EXPORT_SYMBOL_GPL(ufs_mtk_cali_hold);
 int ufs_mtk_cali_release(void)
 {
 	struct ufs_hba *hba = ufshba;
+
+	if (!hba)
+		return -EINVAL;
 
 	ufs_mtk_scsi_unblock_requests(hba);
 	pm_runtime_put(&hba->ufs_device_wlun->sdev_gendev);
