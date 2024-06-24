@@ -83,6 +83,9 @@
 #else
 #include "mtk_dp_api.h"
 #endif
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT)
+#include "mtk_drm_edp/mtk_drm_edp_api.h"
+#endif
 //#include "swpm_me.h"
 //#include "include/pmic_api_buck.h"
 #include <../drivers/gpu/drm/mediatek/mml/mtk-mml.h>
@@ -7944,6 +7947,38 @@ int mtk_drm_get_panel_info(struct drm_device *dev,
 	return ret;
 }
 
+static enum mtk_ddp_comp_id panel_crtc_map[] = {
+	[MTK_PANEL_DSI0] = DDP_COMPONENT_DSI0,
+	[MTK_PANEL_EDP] = DDP_COMPONENT_DISP_DVO,
+	[MTK_PANEL_DP0] = DDP_COMPONENT_DP_INTF0,
+	[MTK_PANEL_DP1] = DDP_COMPONENT_DP_INTF1,
+	[MTK_PANEL_DSI1_0] = DDP_COMPONENT_DSI1,
+	[MTK_PANEL_DSI1_1] = DDP_COMPONENT_DSI1,
+	[MTK_PANEL_DSI2] = DDP_COMPONENT_DSI2,
+};
+
+static int mtk_drm_get_crtc_id(enum MTK_PANEL_ID panel_id, struct mtk_drm_private *private)
+{
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_ddp_comp *comp;
+
+	for (int crtc_id = 0; crtc_id < MAX_CRTC; crtc_id++) {
+		mtk_crtc = to_mtk_crtc(private->crtc[crtc_id]);
+		comp = mtk_ddp_comp_request_output(mtk_crtc);
+
+		if (comp == NULL)
+			continue;
+		if (comp->id == panel_crtc_map[panel_id]) {
+			DDPINFO("panel_id:%d, output comp id:%d, crtc id:%d\n", panel_id, comp->id, crtc_id);
+			return crtc_id;
+		}
+	}
+
+	DDPMSG("%s %d get crtc id by panel id fail, return crtc id 0", __func__, __LINE__);
+
+	return 0;
+}
+
 int mtk_drm_get_info_ioctl(struct drm_device *dev, void *data,
 			   struct drm_file *file_priv)
 {
@@ -7952,7 +7987,48 @@ int mtk_drm_get_info_ioctl(struct drm_device *dev, void *data,
 	int s_type = MTK_SESSION_TYPE(info->session_id);
 
 	if (s_type == MTK_SESSION_PRIMARY) {
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 		ret = mtk_drm_get_panel_info(dev, info, 0);
+#else
+		int s_dev = MTK_SESSION_DEV(info->session_id);
+
+		DDPINFO("%s %d, s_dev:%d ", __func__, __LINE__, s_dev);
+
+		if (s_dev == MTK_PANEL_EDP) {
+			ret = mtk_drm_dvo_get_info(dev, info);
+		} else if ((s_dev == MTK_PANEL_DP0) || (s_dev == MTK_PANEL_DP1)) {
+			struct mtk_drm_private *priv = dev->dev_private;
+			int crtc_id = mtk_drm_get_crtc_id(s_dev, priv);
+			struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(priv->crtc[crtc_id]);
+			struct mtk_ddp_comp *output_comp;
+			int alias_id = 0;
+
+			if (!mtk_crtc) {
+				DDPINFO("invalid CRTC%d\n", crtc_id);
+				return -EINVAL;
+			}
+
+			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+			if (unlikely(!output_comp)) {
+				DDPINFO("%s:CRTC%d invalid output comp\n",
+					  __func__, crtc_id);
+				return -EINVAL;
+			}
+
+			alias_id = mtk_ddp_comp_get_alias(output_comp->id);
+			if (alias_id >= 0) {
+				ret = mtk_drm_dp_get_info_by_id(dev, info, alias_id);
+				DDPINFO("%s crtc_id:%d output_comp:%d alias_id:%d\n",
+					__func__, crtc_id, output_comp->id, alias_id);
+			} else {
+				DDPINFO("%d get alias fail\n", __func__);
+				return -EINVAL;
+			}
+		} else
+			ret = mtk_drm_get_panel_info(dev, info, 0);
+
+		DDPINFO("%s %d get panel w:%d h:%d\n", __func__, __LINE__, info->physical_width, info->physical_height);
+#endif
 		return ret;
 	} else if (s_type == MTK_SESSION_EXTERNAL) {
 		struct mtk_drm_private *priv = dev->dev_private;
@@ -7973,8 +8049,10 @@ int mtk_drm_get_info_ioctl(struct drm_device *dev, void *data,
 		type = mtk_ddp_comp_get_type(output_comp->id);
 		if (type == MTK_DSI)
 			ret = mtk_drm_get_panel_info(dev, info, 1);
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
 		else if (type == MTK_DP_INTF)
 			ret = mtk_drm_dp_get_info(dev, info);
+#endif
 		else {
 			DDPPR_ERR("invalid comp %s type: %d\n", mtk_dump_comp_str(output_comp), type);
 			ret = -EINVAL;
@@ -9048,38 +9126,6 @@ static int mtk_drm_se_enable(struct drm_device *dev, struct mtk_drm_crtc *mtk_cr
 	DDPMSG("%s crtc%d ret %d\n", __func__, drm_crtc_index(crtc), ret);
 
 	return ret;
-}
-
-static enum mtk_ddp_comp_id panel_crtc_map[] = {
-	[MTK_PANEL_DSI0] = DDP_COMPONENT_DSI0,
-	[MTK_PANEL_EDP] = DDP_COMPONENT_DISP_DVO,
-	[MTK_PANEL_DP0] = DDP_COMPONENT_DP_INTF0,
-	[MTK_PANEL_DP1] = DDP_COMPONENT_DP_INTF1,
-	[MTK_PANEL_DSI1_0] = DDP_COMPONENT_DSI1,
-	[MTK_PANEL_DSI1_1] = DDP_COMPONENT_DSI1,
-	[MTK_PANEL_DSI2] = DDP_COMPONENT_DSI2,
-};
-
-static int mtk_drm_get_crtc_id(enum MTK_PANEL_ID panel_id, struct mtk_drm_private *private)
-{
-	struct mtk_drm_crtc *mtk_crtc;
-	struct mtk_ddp_comp *comp;
-
-	for (int crtc_id = 0; crtc_id < MAX_CRTC; crtc_id++) {
-		mtk_crtc = to_mtk_crtc(private->crtc[crtc_id]);
-		comp = mtk_ddp_comp_request_output(mtk_crtc);
-
-		if (comp == NULL)
-			continue;
-		if (comp->id == panel_crtc_map[panel_id]) {
-			DDPINFO("panel_id:%d, output comp id:%d, crtc id:%d\n", panel_id, comp->id, crtc_id);
-			return crtc_id;
-		}
-	}
-
-	DDPMSG("%s %d get crtc id by panel id fail, return crtc id 0", __func__, __LINE__);
-
-	return 0;
 }
 
 static int mtk_drm_se_plane_config(struct mtk_drm_crtc *mtk_crtc)
