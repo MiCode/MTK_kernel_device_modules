@@ -131,13 +131,6 @@
 				remote-endpoint = <&dptx_in0>;
 			};
 		};
-
-		port@1 {
-			reg = <1>;
-			dptx_in0_out: endpoint {
-				remote-endpoint = <&serdes_dp_in>;
-			};
-		};
 	};
 };
 
@@ -149,13 +142,6 @@
 			reg = <0>;
 			disp1_dp_intf1_out: endpoint {
 				remote-endpoint = <&dptx_in1>;
-			};
-		};
-
-		port@1 {
-			reg = <1>;
-			dptx_in1_out: endpoint {
-				remote-endpoint = <&serdes_dp_mst_in1>;
 			};
 		};
 	};
@@ -184,8 +170,14 @@
 
 		port@2 {
 			reg = <2>;
+			dptx_out0: endpoint {
+				remote-endpoint = <&serdes_dp_in0>;
+			};
+		};
+		port@3 {
+			reg = <3>;
 			dptx_out1: endpoint {
-				remote-endpoint = <&serdes_dptx_in>;
+				remote-endpoint = <&serdes_dp_mst_in1>;
 			};
 		};
 	};
@@ -1253,8 +1245,8 @@
 		ports {
 			port@0 {
 				reg = <0>;
-				serdes_dp_in: endpoint {
-					remote-endpoint = <&dptx_in0_out>;
+				serdes_dp_in0: endpoint {
+					remote-endpoint = <&dptx_out0>;
 				};
 			};
 
@@ -1268,7 +1260,7 @@
 			port@2 {
 				reg = <2>;
 				serdes_dp_mst_in1: endpoint {
-					remote-endpoint = <&dptx_in1_out>;
+					remote-endpoint = <&dptx_out1>;
 				};
 			};
 
@@ -1276,13 +1268,6 @@
 				reg = <3>;
 				serdes_dp_mst_out1: endpoint {
 					remote-endpoint = <&panel_dp_mst_in1>;
-				};
-			};
-
-			port@4 {
-				reg = <4>;
-				serdes_dptx_in: endpoint {
-					remote-endpoint = <&dptx_out1>;
 				};
 			};
 		};
