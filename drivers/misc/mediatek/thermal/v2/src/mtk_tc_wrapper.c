@@ -99,6 +99,7 @@ int get_immediate_cpuL_wrap(void)
 
 	return curr_temp;
 }
+EXPORT_SYMBOL(get_immediate_cpuL_wrap);
 
 int get_immediate_cpuB_LVTS1_wrap(void)
 {
@@ -138,6 +139,7 @@ int get_immediate_gpu_wrap(void)
 	return curr_temp;
 
 }
+EXPORT_SYMBOL(get_immediate_gpu_wrap);
 
 int get_immediate_infa_wrap(void)
 {
@@ -216,9 +218,7 @@ int get_immediate_cpuB_wrap(void)
 
 	return curr_temp;
 }
-
-
-
+EXPORT_SYMBOL(get_immediate_cpuB_wrap);
 
 int get_immediate_ts0_wrap(void)
 {
@@ -409,6 +409,7 @@ int get_immediate_tslvts3_2_wrap(void)
 
 	return curr_temp;
 }
+EXPORT_SYMBOL(get_immediate_tslvts3_2_wrap);
 
 int get_immediate_tslvts3_3_wrap(void)
 {
@@ -419,6 +420,7 @@ int get_immediate_tslvts3_3_wrap(void)
 
 	return curr_temp;
 }
+EXPORT_SYMBOL(get_immediate_tslvts3_3_wrap);
 
 int get_immediate_tslvts4_0_wrap(void)
 {
