@@ -69,6 +69,12 @@ enum MDLA_IPI_MICROP_MSG_TYPE_1 {
 	MDLA_IPI_MICROP_MSG_DBG_CHECK_FAILED,
 	MDLA_IPI_MICROP_MSG_CMD_FAILED,
 
+	/* for MDLA5.5, WDEC can only be acquired by one physical core (HW constraint).
+	 * If multiple WDEC cmd be executed concurrently, MDLA driver will return -EBUSY to MDW and trigger
+	 * AEE_DB with this error type to identify the event occurs
+	 */
+	MDLA_IPI_MICROP_MSG_WDEC_RESOURCE_BUSY,
+
 	NF_MDLA_IPI_MICROP_MSG_TYPE_1
 };
 
