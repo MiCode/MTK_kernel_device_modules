@@ -309,6 +309,7 @@ static void filter_by_fbdc(struct drm_device *dev,
 {
 	unsigned int i, j;
 	struct drm_mtk_layer_config *c;
+	struct mtk_drm_private *priv = dev->dev_private;
 
 	/* primary: check fmt */
 	for (i = 0; i < disp_info->layer_num[HRT_PRIMARY]; i++) {
@@ -317,7 +318,9 @@ static void filter_by_fbdc(struct drm_device *dev,
 		if (!c->compress)
 			continue;
 
-		if (can_be_compress(dev, c->src_fmt) == 0)
+		if ((can_be_compress(dev, c->src_fmt) == 0) ||
+			(priv && disp_info->disp_idx > HRT_PRIMARY &&
+			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT)))
 			mtk_rollback_compress_layer_to_GPU(disp_info,
 							   HRT_PRIMARY, i);
 	}
