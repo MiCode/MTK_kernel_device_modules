@@ -371,7 +371,7 @@ struct mtk_disp_oddmr_dmr_data {
 	atomic_t cur_fps_node;
 	atomic_t cur_dbv_table_idx;
 	atomic_t cur_fps_table_idx;
-	struct mtk_drm_gem_obj *mura_table[DMR_DBV_TABLE_MAX][DMR_FPS_TABLE_MAX];
+	struct mtk_drm_gem_obj *mura_table[MAX_BIN_NUM][DMR_DBV_TABLE_MAX][DMR_FPS_TABLE_MAX];
 	atomic_t remap_enable;
 	atomic_t remap_gain;
 	atomic_t slice_size;
