@@ -4864,6 +4864,10 @@
 			compatible = "mediatek,mtk_composite_v4l2_1";
 		};
 
+		camera_af_hw_node: camera_af_hw_node {
+			compatible = "mediatek,camera_af_lens";
+		};
+
 		cam_smi_3x1_sub_common1: cam-smi-3x1-sub-comm1@1a00c000 {
 			compatible = "mediatek,mt6853-smi-common", "syscon",
 					"mediatek,smi-common", "mediatek,smi-sub-common";
