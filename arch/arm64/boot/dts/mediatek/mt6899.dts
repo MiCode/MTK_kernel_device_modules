@@ -509,7 +509,7 @@
 	};
 
 	bus-parity@c000900 {
-		compatible = "mediatek,bus-parity-disabled";
+		compatible = "mediatek,bus-parity";
 		reg = <0 0x0c000900 0 0x20>,       /* MST_EMI0_CH0 */
 			  <0 0x0c000920 0 0x20>,   /* MST_EMI0_CH1 */
 			  <0 0x0c000940 0 0x20>,   /* MST_EMI1_CH0 */
@@ -582,8 +582,22 @@
 		version = <650>;
 	};
 
-	dbg-error-flag-disabled {
-		compatible = "mediatek,dbg-error-flag-disabled";
+	cache-parity {
+		compatible = "mediatek,mt6985-cache-parity";
+		arm-dsu-ecc-hwirq = <48>;
+		interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 0 Fault IRQ */
+				<GIC_SPI 1 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 1 Fault IRQ */
+				<GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 2 Fault IRQ */
+				<GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 3 Fault IRQ */
+				<GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 4 Fault IRQ */
+				<GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 5 Fault IRQ */
+				<GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 6 Fault IRQ */
+				<GIC_SPI 7 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 7 Fault IRQ */
+				<GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH 0>; /* DSU Fault IRQ */
+	};
+
+	dbg-error-flag {
+		compatible = "mediatek,dbg-error-flag";
 		mediatek,error-flag = <&soc_dbg_error_flag>;
 	};
 
@@ -1007,7 +1021,7 @@
 		lastbus: lastbus@10023000 {
 			compatible = "mediatek,lastbus";
 			reg = <0 0x10023000 0 0x1000>;
-			enabled = <0>;
+			enabled = <1>;
 			sw-version = <1>;
 			timeout-ms = <200>;
 			timeout-type = <0>;
@@ -1064,8 +1078,8 @@
 			};
 		};
 
-		drm: drm-disabled@1000d000 {
-			compatible = "mediatek,dbgtop-drm-disabled";
+		drm: drm@1000d000 {
+			compatible = "mediatek,dbgtop-drm";
 			reg = <0 0x1000d000 0 0x1000>;
 			ver = <2>;
 			sec-write = <1>;
@@ -1131,7 +1145,7 @@
 		};
 
 		tracker: tracker@10208000 {
-			compatible = "mediatek,tracker-disabled";
+			compatible = "mediatek,tracker";
 			reg = <0 0x10208000 0 0x1000>;
 			timer-sep = <0>;
 			no-w-valid-chk = <1>;
@@ -1146,7 +1160,7 @@
 				tracker2 {
 					sys-name = "INFRA";
 					sys-base = <0x10314000>;
-					entry-num = <64>;
+					entry-num = <32>;
 					interrupts = <GIC_SPI 906 IRQ_TYPE_LEVEL_HIGH 0>;
 					irq-name = "infra_tracker_irq";
 				};
