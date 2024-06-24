@@ -222,6 +222,7 @@ mgk_64_device_modules = [
     "drivers/gpu/drm/panel/ocp2138_i2c.ko",
     "drivers/gpu/drm/panel/panel-boe-tv106c9mll0.ko",
     "drivers/gpu/drm/panel/panel-nt37707-c2v-arp.ko",
+    "drivers/gpu/drm/panel/panel-tianma-nt36672e-vdo-120hz-vfp-6382.ko",
     "drivers/gpu/drm/panel/k6991v1_64_alpha/panel-nt37707-boe-fhdplus-cmd.ko",
     "drivers/gpu/mediatek/ged/ged.ko",
     "drivers/gpu/mediatek/gpu_bm/mtk_gpu_qos.ko",
@@ -3055,6 +3056,10 @@ def get_overlay_modules_list():
 
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/cm_mgr_legacy_v1/mtk_cm_mgr_mt6833.ko":"mt6833"})
         mgk_64_device_modules.append("drivers/misc/mediatek/cm_mgr_legacy_v1/mtk_cm_mgr.ko")
+
+        mgk_64_device_modules.append("drivers/misc/mediatek/spi_slave_drv/spi_slave.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/cmdq/bridge/cmdq-bdg-mailbox.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/cmdq/bridge/cmdq-bdg-test.ko")
 
         mgk_64_device_modules.append("sound/soc/codecs/snd-soc-rt5509.ko")
         mgk_64_device_modules.append("sound/soc/mediatek/mt6833/snd-soc-mt6833-afe.ko")
