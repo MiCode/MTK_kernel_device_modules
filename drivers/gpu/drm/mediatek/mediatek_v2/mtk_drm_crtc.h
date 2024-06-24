@@ -1292,6 +1292,7 @@ struct mtk_cmdq_cb_data {
 	unsigned int pres_fence_idx;
 	struct drm_framebuffer *wb_fb;
 	unsigned int wb_fence_idx;
+	enum addon_scenario wb_scn;
 	unsigned int hrt_idx;
 	struct mtk_lcm_dsi_cmd_packet *ddic_packet;
 	ktime_t signal_ts;
