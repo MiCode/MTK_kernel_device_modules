@@ -13424,6 +13424,13 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			pd-id = <18>;
 		};
 
+		vmm_vde_vocre: vmm-vde-vcore {
+			compatible = "mediatek,vmm_notifier_mt6991";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VDE_VCORE0>,
+					<&hfrpsys MT6991_POWER_DOMAIN_VDE_VCORE0>;
+			#power-domain-cells = <1>;
+			pd-id = <19>;
+		};
 
 		imgsys_cmdq: imgsys-cmdq@15002000 {
 			compatible = "mediatek,imgsys-cmdq-8";
