@@ -210,11 +210,68 @@ void mbraink_v6991_get_wifi_lp_data(struct mbraink_wifi2mbr_lp_ratio_data *lp_bu
 	lp_buffer->idx = 0;
 }
 
+void mbraink_v6991_get_wifi_txtimeout_data(int current_idx,
+				struct mbraink_wifi2mbr_txtimeout_data *txtimeout_buffer)
+{
+	unsigned short len = 0;
+	enum wifi2mbr_status ret = WIFI2MBR_FAILURE;
+	struct wifi2mbr_TxTimeoutInfo tx_timeout;
+	int loop = 0;
+	int cnt = 0;
+
+	memset(txtimeout_buffer, 0, sizeof(struct mbraink_wifi2mbr_txtimeout_data));
+
+	do {
+		ret = mbraink_bridge_wifi_get_data(MBR2WIFI_TX_TIMEOUT,
+						WIFI2MBR_TAG_TXTIMEOUT,
+						(void *)(&tx_timeout), &len);
+		loop++;
+
+		if (ret == WIFI2MBR_NO_OPS)
+			break;
+		else if (ret == WIFI2MBR_FAILURE)
+			continue;
+		else if (ret == WIFI2MBR_SUCCESS) {
+			cnt = txtimeout_buffer->count;
+
+			if (cnt < MAX_WIFI_TXTIMEOUT_SZ) {
+				txtimeout_buffer->txtimeout_data[cnt].timestamp =
+								tx_timeout.timestamp;
+				txtimeout_buffer->txtimeout_data[cnt].token_id =
+								tx_timeout.token_id;
+				txtimeout_buffer->txtimeout_data[cnt].wlan_index =
+								tx_timeout.wlan_index;
+				txtimeout_buffer->txtimeout_data[cnt].bss_index =
+								tx_timeout.bss_index;
+				txtimeout_buffer->txtimeout_data[cnt].timeout_duration =
+								tx_timeout.timeout_duration;
+				txtimeout_buffer->txtimeout_data[cnt].operation_mode =
+								tx_timeout.operation_mode;
+				txtimeout_buffer->txtimeout_data[cnt].idle_slot_diff_cnt =
+								tx_timeout.idle_slot_diff_cnt;
+				txtimeout_buffer->count++;
+
+				if (cnt == MAX_WIFI_TXTIMEOUT_SZ - 1) {
+					txtimeout_buffer->idx = current_idx + txtimeout_buffer->count;
+					break;
+				}
+			}
+		} else if (ret ==  WIFI2MBR_END) {
+			txtimeout_buffer->idx = 0;
+			break;
+		}
+	} while (loop < MAX_WIFI_DATA_CNT);
+
+	if (loop == MAX_WIFI_DATA_CNT)
+		pr_info("%s: loop cnt is MAX_WIFI_DATA_CNT\n", __func__);
+}
+
 static struct mbraink_wifi_ops mbraink_v6991_wifi_ops = {
 	.get_wifi_rate_data = mbraink_v6991_get_wifi_rate_data,
 	.get_wifi_radio_data = mbraink_v6991_get_wifi_radio_data,
 	.get_wifi_ac_data = mbraink_v6991_get_wifi_ac_data,
 	.get_wifi_lp_data = mbraink_v6991_get_wifi_lp_data,
+	.get_wifi_txtimeout_data = mbraink_v6991_get_wifi_txtimeout_data,
 };
 
 int mbraink_v6991_wifi_init(void)

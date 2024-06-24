@@ -61,7 +61,7 @@
 #define LPM_STATE_INFO			'H'
 #define AUTO_CPULOAD_INFO		'I'
 #define UFS_INFO				'J'
-
+#define WIFI_TXTIMEOUT_INFO		'K'
 
 /*Mbrain Delegate IOCTL List*/
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
@@ -162,6 +162,8 @@
 
 #define RO_UFS_INFO	_IOR(IOC_MAGIC, UFS_INFO, \
 								struct mbraink_ufs_info*)
+#define RO_WIFI_TXTIMEOUT_INFO	_IOR(IOC_MAGIC, WIFI_TXTIMEOUT_INFO, \
+					struct mbraink_wifi2mbr_txtimeout_data*)
 
 
 #define SUSPEND_DATA	0

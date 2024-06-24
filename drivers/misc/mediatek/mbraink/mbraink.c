@@ -1143,6 +1143,29 @@ static long handle_ufs_info(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handle_wifi_txtimeout_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_wifi2mbr_txtimeout_data *wifi_txtimeout_buf =
+		(struct mbraink_wifi2mbr_txtimeout_data *)(mbraink_data);
+	long ret = 0;
+
+	if (copy_from_user(wifi_txtimeout_buf,
+			(struct mbraink_wifi2mbr_txtimeout_data *) arg,
+			sizeof(struct mbraink_wifi2mbr_txtimeout_data))) {
+		pr_notice("copy mbraink_wifi2mbr_txtimeout_data data from user Err!\n");
+		return -EPERM;
+	}
+
+	mbraink_get_wifi_txtimeout_data(wifi_txtimeout_buf->idx, wifi_txtimeout_buf);
+	if (copy_to_user((struct mbraink_wifi2mbr_txtimeout_data *) arg,
+			wifi_txtimeout_buf,
+			sizeof(struct mbraink_wifi2mbr_txtimeout_data))) {
+		pr_notice("Copy wifi_txtimeout_buf to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -1545,7 +1568,17 @@ static long mbraink_ioctl(struct file *filp,
 #endif
 		break;
 	}
-
+	case RO_WIFI_TXTIMEOUT_INFO:
+	{
+		mbraink_data =
+			kmalloc(sizeof(struct mbraink_wifi2mbr_txtimeout_data),
+				GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_wifi_txtimeout_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
 	default:
 		pr_notice("%s:illegal ioctl number %u.\n", __func__, cmd);
 		return -EINVAL;

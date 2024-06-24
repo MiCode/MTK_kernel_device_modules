@@ -16,6 +16,7 @@ enum wifi2mbr_status {
 enum mbr2wifi_reason {
 	MBR2WIFI_TRX_BIG_DATA,
 	MBR2WIFI_TEST_LP_RATIO,
+	MBR2WIFI_TX_TIMEOUT,
 };
 
 struct wifi2mbr_hdr {
@@ -30,6 +31,7 @@ enum wifi2mbr_tag {
 	WIFI2MBR_TAG_LLS_RADIO,
 	WIFI2MBR_TAG_LLS_AC,
 	WIFI2MBR_TAG_LP_RATIO,
+	WIFI2MBR_TAG_TXTIMEOUT,
 	WIFI2MBR_TAG_MAX
 };
 
@@ -99,6 +101,17 @@ struct wifi2mbr_lpRatioInfo {
 	unsigned int rx_time;
 	unsigned int rx_listen_time;
 	unsigned int sleep_time;
+};
+
+struct wifi2mbr_TxTimeoutInfo {
+	struct wifi2mbr_hdr hdr;
+	u64 timestamp;
+	unsigned int token_id;
+	unsigned int wlan_index;
+	unsigned int bss_index;
+	unsigned int timeout_duration;
+	unsigned int operation_mode;
+	unsigned int idle_slot_diff_cnt;
 };
 
 struct mbraink2wifi_ops {
