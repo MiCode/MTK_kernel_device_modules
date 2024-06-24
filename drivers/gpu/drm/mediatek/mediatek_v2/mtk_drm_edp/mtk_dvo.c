@@ -790,7 +790,10 @@ static int mtk_dvo_bridge_atomic_check(struct drm_bridge *bridge,
 	unsigned int out_bus_format;
 
 	out_bus_format = bridge_state->output_bus_cfg.format;
-	dvo->color_depth = display_info->bpc;
+	if (display_info->bpc)
+		dvo->color_depth = display_info->bpc;
+	else
+		dvo->color_depth = 8;
 
 	pr_info("[eDPTX] %s+ bridge_state out_bus_format:0x%04x\n", __func__, out_bus_format);
 	if (out_bus_format == MEDIA_BUS_FMT_FIXED)
