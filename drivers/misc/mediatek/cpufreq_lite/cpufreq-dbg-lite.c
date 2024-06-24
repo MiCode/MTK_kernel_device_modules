@@ -178,26 +178,6 @@ unsigned int cpufreq_get_cci_mode(void)
 	return mode;
 }
 
-void *cpufreq_get_symbol(const char *name)
-{
-	void *addr = __symbol_get(name);
-
-	if (addr)
-		__symbol_put(name);
-
-	return addr;
-}
-
-void __set_eas_dsu_ctrl(bool set)
-{
-	void (*set_eas_dsu_ctrl_sym)(bool set) = (void *)cpufreq_get_symbol("set_eas_dsu_ctrl");
-
-	if (set_eas_dsu_ctrl_sym)
-		set_eas_dsu_ctrl_sym(set);
-	else
-		pr_info("%s: set_eas_dsu_ctrl symbol not found.\n", __func__);
-}
-
 int cpufreq_set_cci_mode(unsigned int mode)
 {
 	if (mode > 1) {
@@ -211,29 +191,30 @@ int cpufreq_set_cci_mode(unsigned int mode)
 		pr_info("%s: debug mode.\n", __func__);
 		return 0;
 	}
-
+#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 	if (user_ctrl_mode)
-		__set_eas_dsu_ctrl(0);
+		set_eas_dsu_ctrl(0);
 	else
-		__set_eas_dsu_ctrl(1);
-
+		set_eas_dsu_ctrl(1);
+#endif
 	return 0;
 }
 EXPORT_SYMBOL_GPL(cpufreq_set_cci_mode);
 
 int set_dsu_ctrl_debug(unsigned int eas_ctrl_mode, bool debug_enable)
 {
+#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 	dsu_ctrl_deubg_enable = debug_enable;
 
 	if (dsu_ctrl_deubg_enable)
-		__set_eas_dsu_ctrl(eas_ctrl_mode);
+		set_eas_dsu_ctrl(eas_ctrl_mode);
 	else {
 		if (user_ctrl_mode)
-			__set_eas_dsu_ctrl(0);
+			set_eas_dsu_ctrl(0);
 		else
-			__set_eas_dsu_ctrl(1);
+			set_eas_dsu_ctrl(1);
 	}
-
+#endif
 	return 0;
 }
 EXPORT_SYMBOL_GPL(set_dsu_ctrl_debug);
