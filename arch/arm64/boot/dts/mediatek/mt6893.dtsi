@@ -1325,7 +1325,7 @@ cpus {
 		};
 
 		srclken_rc: srclken-rc@10006500 {
-			compatible = "mediatek,srclken-rc";
+			compatible = "mediatek,srclken-rc-v3";
 			reg = <0 0x10006500 0 0x100>,
 				<0 0x10006E00 0 0x100>;
 			susepnd {
@@ -8174,10 +8174,10 @@ cpus {
 		};
 
 		clock_buffer_ctrl: clkbuf-ctrl {
+			pmic-supply = <&mt6359p_clkbuf>;
 			compatible = "mediatek,mt6885-clkbuf";
 			pmic = <&mt6359p_clkbuf>;
-			pmif = <&pwrap 0>,
-			       <&spmi_bus 0>;
+			pmif = <&pwrap 0>;
 			srclken-rc = <&srclken_rc>;
 		};
 
