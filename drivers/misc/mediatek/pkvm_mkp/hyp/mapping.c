@@ -71,7 +71,7 @@ int reset_to_default_state(u64 perm, u64 start_pfn, u64 nr_pages)
 
 	/* Check if it is default state */
 	if ((perm & S2_MEM_DEFAULT_ATTR) != S2_MEM_DEFAULT_ATTR) {
-		ret = module_ops->host_stage2_mod_prot(pfn, S2_MEM_DEFAULT_ATTR, nr_pages);
+		ret = module_ops->host_stage2_mod_prot(pfn, S2_MEM_DEFAULT_ATTR, nr_pages, false);
 
 		//if (ret_final)
 		//	trace_hyp_printk("[MKP] reset_to_default_state: failed to reset property, ret: %d", ret_final);
@@ -123,7 +123,7 @@ int mkp_set_mapping_ro(u32 policy, u32 handle)
 				goto out;
 			}
 
-			ret = module_ops->host_stage2_mod_prot(pfn, perm & ~MT_WR, nr_pages);
+			ret = module_ops->host_stage2_mod_prot(pfn, perm & ~MT_WR, nr_pages, false);
 		}
 
 		/* Update attrset if applied successfully */
@@ -198,7 +198,7 @@ int mkp_set_mapping_rw(u32 policy, u32 handle)
 				goto out;
 			}
 
-			ret = module_ops->host_stage2_mod_prot(pfn, perm | MT_RW, nr_pages);
+			ret = module_ops->host_stage2_mod_prot(pfn, perm | MT_RW, nr_pages, false);
 		}
 
 		/* Update attrset if applied successfully */
@@ -257,7 +257,8 @@ int mkp_set_mapping_nx(u32 policy, u32 handle)
 				goto out;
 			}
 
-			ret = module_ops->host_stage2_mod_prot(pfn, (perm & ~MT_X) | KVM_PGTABLE_PROT_UXN, nr_pages);
+			ret = module_ops->host_stage2_mod_prot(pfn, (perm & ~MT_X) | KVM_PGTABLE_PROT_UXN, nr_pages,
+				false);
 		}
 
 		/* Update attrset if applied successfully */
@@ -316,7 +317,7 @@ int mkp_set_mapping_x(u32 policy, u32 handle)
 				goto out;
 			}
 
-			ret = module_ops->host_stage2_mod_prot(pfn, (perm & ~MT_AXN) | MT_X, nr_pages);
+			ret = module_ops->host_stage2_mod_prot(pfn, (perm & ~MT_AXN) | MT_X, nr_pages, false);
 		}
 
 		/* Update attrset if applied successfully */
@@ -448,7 +449,7 @@ int reset_to_s2_mapping_attrs(struct handle_object *obj)
 	/* Recover to original S2 mapping attrs for MT_MEM */
 	nr_pages = obj->size >> PAGE_SHIFT;
 	pfn = obj->start >> PAGE_SHIFT;
-	ret = module_ops->host_stage2_mod_prot(pfn, KVM_PGTABLE_PROT_RWX, nr_pages);
+	ret = module_ops->host_stage2_mod_prot(pfn, KVM_PGTABLE_PROT_RWX, nr_pages, false);
 	/*
 	for (i = 0; i < nr_pages; i++) {
 		ret = module_ops->host_stage2_mod_prot(pfn, KVM_PGTABLE_PROT_RWX);
