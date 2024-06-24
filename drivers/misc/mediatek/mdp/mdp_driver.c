@@ -56,30 +56,6 @@ static dev_t gMdpDevNo;
 static struct cdev *gMdpCDev;
 static struct class *gMDPClass;
 
-static int cmdq_proc_status_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, cmdq_core_print_status_seq, inode->i_private);
-}
-
-static int cmdq_proc_record_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, cmdq_core_print_record_seq, inode->i_private);
-}
-
-static const struct proc_ops cmdqDebugStatusOp = {
-	.proc_open = cmdq_proc_status_open,
-	.proc_read = seq_read,
-	.proc_lseek = seq_lseek,
-	.proc_release = single_release,
-};
-
-static const struct proc_ops cmdqDebugRecordOp = {
-	.proc_open = cmdq_proc_record_open,
-	.proc_read = seq_read,
-	.proc_lseek = seq_lseek,
-	.proc_release = single_release,
-};
-
 static int cmdq_open(struct inode *pInode, struct file *pFile)
 {
 	struct cmdqFileNodeStruct *pNode;
