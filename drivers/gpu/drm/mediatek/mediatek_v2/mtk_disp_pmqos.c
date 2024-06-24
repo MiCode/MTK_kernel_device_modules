@@ -417,7 +417,7 @@ void mtk_disp_set_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw,
 void mtk_disp_update_channel_hrt_MT6991(struct mtk_drm_crtc *mtk_crtc,
 						unsigned int bw_base, unsigned int channel_bw[])
 {
-	int i = 0;
+	int i = 0, j;
 	int max_ovl_phy_layer = 12; // 6991 phy ovl layer num
 	unsigned int subcomm_bw_sum[4] = {0};
 	struct drm_crtc *crtc = &mtk_crtc->base;
@@ -425,7 +425,7 @@ void mtk_disp_update_channel_hrt_MT6991(struct mtk_drm_crtc *mtk_crtc,
 	unsigned int crtc_idx = drm_crtc_index(crtc);
 	unsigned int compr_ratio = 90;
 	int oddmr_hrt = 0;
-
+	struct mtk_ddp_comp *comp;
 
 	if (!mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[DDP_FIRST_PATH])
 		return;
@@ -453,10 +453,10 @@ void mtk_disp_update_channel_hrt_MT6991(struct mtk_drm_crtc *mtk_crtc,
 		}
 	}
 
-	if (crtc_idx == 0) {
-		mtk_oddmr_hrt_cal_notify(&oddmr_hrt);
-		subcomm_bw_sum[2] += bw_base * oddmr_hrt / 400;
-	}
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+		mtk_ddp_comp_io_cmd(comp, NULL, ODDMR_SUM_HRT, &oddmr_hrt);
+
+	subcomm_bw_sum[2] += bw_base * oddmr_hrt / 400;
 
 	//TODO: consider discrete path
 	/* channel_bw[0]: comm0_ch0: sub_comm0
