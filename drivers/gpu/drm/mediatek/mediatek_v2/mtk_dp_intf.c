@@ -959,6 +959,8 @@ static void mtk_dp_intf_golden_setting(struct mtk_ddp_comp *comp,
 
 	mtk_ddp_write_relaxed(comp, dp_buf_urgent_high, DP_BUF_URGENT_HIGH, handle);
 	mtk_ddp_write_relaxed(comp, dp_buf_urgent_low, DP_BUF_URGENT_LOW, handle);
+
+	mtk_ddp_write_relaxed(comp, 0x1000F, DP_MUTEX_VSYNC_SETTING, handle);
 }
 
 void mhal_DPTx_VideoClock(bool enable, int resolution)
