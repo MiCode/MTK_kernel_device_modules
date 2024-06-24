@@ -219,6 +219,7 @@ mgk_64_device_modules = [
     "drivers/gpu/drm/panel/panel-aw37501-i2c.ko",
     "drivers/gpu/drm/panel/panel-nt36672c-fhdp-dsi-vdo-dsc-txd-boe.ko",
     "drivers/gpu/drm/panel/panel-nt35521_hd_dsi_vdo_truly_rt5081.ko",
+    "drivers/gpu/drm/panel/panel-nt35695_fhd_dsi_vdo_auo_rt5081_hdp.ko",
     "drivers/gpu/drm/panel/ocp2138_i2c.ko",
     "drivers/gpu/drm/panel/panel-boe-tv106c9mll0.ko",
     "drivers/gpu/drm/panel/panel-nt37707-c2v-arp.ko",
