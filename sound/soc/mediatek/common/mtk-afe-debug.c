@@ -47,9 +47,17 @@ ssize_t mtk_afe_debugfs_write(struct file *f, const char __user *buf,
 
 	memset((void *)input, 0, MAX_DEBUG_WRITE_INPUT);
 
-	if (copy_from_user(input, buf, count))
+	if (copy_from_user(input, buf, count)) {
 		dev_warn(afe->dev, "%s(), copy_from_user fail, count = %zu\n",
 			 __func__, count);
+		goto exit;
+	}
+
+	if (count > 0)
+		input[count - 1] = '\0';
+	else
+		input[0] = '\0';
+
 
 	str_begin = kstrndup(input, MAX_DEBUG_WRITE_INPUT - 1,
 			     GFP_KERNEL);
