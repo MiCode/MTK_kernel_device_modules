@@ -5154,31 +5154,46 @@
 		compatible = "mediatek,srclken-rc";
 		reg = <0 0x1000f800 0 0x100>,
 			<0 0x1000f900 0 0x1f0>;
-		mediatek,subsys-ctl = "suspend", "rf", "deep_idle",
-			"rsv", "gps", "bt",
-			"wifi", "conn_mcu", "co-ant",
-			"nfc", "ufs", "scp",
-			"rsv";
-		suspend-ctl = "XO_SOC";
-		rf-ctl = "XO_WCN";
-		deep_idle-ctl = "XO_SOC";
-		gps-ctl = "XO_CEL";
-		bt-ctl = "XO_WCN";
-		wifi-ctl = "XO_WCN";
-		conn_mcu-ctl = "XO_WCN";
-		nfc-ctl = "XO_NFC";
-
-		mediatek,enable;
+			suspend {
+					xo-buf = "XO_SOC";
+					sub-id = <1>;
+			};
+			rf {
+					xo-buf = "XO_WCN";
+					sub-id = <2>;
+			};
+			dpidle {
+					xo-buf = "XO_SOC";
+					sub-id = <3>;
+			};
+			gps {
+					xo-buf = "XO_CEL";
+					sub-id = <5>;
+			};
+			bt {
+					xo-buf = "XO_WCN";
+					sub-id = <6>;
+			};
+			wifi {
+					xo-buf = "XO_WCN";
+					sub-id = <7>;
+			};
+			coant {
+					xo-buf = "XO_WCN";
+					sub-id = <9>;
+			};
+			nfc {
+					xo-buf = "XO_NFC";
+					sub-id = <10>;
+			};
 	};
 
 	clock_buffer_ctrl: clock_buffer_ctrl {
-		compatible = "mediatek,clock_buffer_ctrl";
-		mediatek,xo-buf-hwbblpm-mask = <1 0 0 0 0 0 0>;
-		mediatek,xo-buf-hwbblpm-bypass = <0 0 0 0 0 0 0>;
-
+		pmic-supply = <&mt6359p_clkbuf>;
+		compatible = "mediatek,mt6833-clkbuf";
+		pmic = <&mt6359p_clkbuf>;
 		pmif = <&pwrap 0>;
-		srclken_rc = <&srclken_rc>;
-		mediatek,enable;
+		srclken-rc = <&srclken_rc>;
 	};
 
 	pwraph: pwraphal@10026000 {
