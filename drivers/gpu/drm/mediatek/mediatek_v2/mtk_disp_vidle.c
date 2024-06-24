@@ -16,6 +16,7 @@
 #include "mtk_drm_drv.h"
 #include "mtk_drm_crtc.h"
 #include "platform/mtk_drm_platform.h"
+#include <mt-plat/mtk_irq_mon.h>
 
 static atomic_t g_ff_enabled = ATOMIC_INIT(0);
 static bool vidle_paused;
@@ -200,10 +201,12 @@ void mtk_vidle_user_power_release_v1(enum mtk_vidle_voter_user user)
 	if (disp_dpc_driver.dpc_vidle_power_release == NULL || vidle_data.drm_priv == NULL)
 		return;
 
+	irq_log_store();
 	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN ||
 	    atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) == 0)
 		return;
 
+	irq_log_store();
 	disp_dpc_driver.dpc_vidle_power_release(user);
 }
 

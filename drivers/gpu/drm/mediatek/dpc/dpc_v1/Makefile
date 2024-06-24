@@ -11,6 +11,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc/dpc_v1 \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include \
              -I$(DEVICE_MODULES_PATH)/drivers/soc/mediatek
 
 ifneq ($(filter y m, $(CONFIG_MTK_MME_SUPPORT)),)
