@@ -982,8 +982,6 @@ static int vcp_pm_event(struct notifier_block *notifier
 				vcp_ready[i] = 0;
 			mutex_unlock(&vcp_ready_mutex);
 
-			writel(B_CORE0_SUSPEND|B_CORE1_SUSPEND, AP_R_GPR1);
-			writel(B_GIPC4_SETCLR_3 ,R_GIPC_IN_SET);
 			vcp_wait_suspend_resume(1);
 
 #if VCP_LOGGER_ENABLE
@@ -1001,6 +999,8 @@ static int vcp_pm_event(struct notifier_block *notifier
 				if (ret)
 					pr_notice("[VCP] %s: pm_runtime_put_sync %d\n"
 						, __func__, ret);
+				/* wait vcp clr rdy bit */
+				vcp_wait_rdy_bit(0);
 			}
 		}
 		is_suspending = true;
@@ -1020,10 +1020,10 @@ static int vcp_pm_event(struct notifier_block *notifier
 				if (ret)
 					pr_notice("[VCP] %s: pm_runtime_get_sync %d\n"
 						, __func__, ret);
+				/* wait vcp set rdy bit */
+				vcp_wait_rdy_bit(1);
 			}
 			if (!is_vcp_shutdown) {
-				writel(B_CORE0_RESUME|B_CORE1_RESUME, AP_R_GPR1);
-				writel(B_GIPC4_SETCLR_3 ,R_GIPC_IN_SET);
 				vcp_wait_suspend_resume(0);
 
 #if VCP_RECOVERY_SUPPORT
@@ -2216,6 +2216,18 @@ void vcp_wait_suspend_resume(bool suspend)
 {
 	int timeout = 50000; /* max wait 0.5s */
 
+	if (suspend) {
+		writel(B_CORE0_SUSPEND|B_CORE1_SUSPEND, AP_R_GPR1);
+		writel(B_GIPC4_SETCLR_3 ,R_GIPC_IN_SET);
+	} else {
+		writel(B_CORE0_RESUME|B_CORE1_RESUME, AP_R_GPR1);
+		writel(B_GIPC4_SETCLR_3 ,R_GIPC_IN_SET);
+	}
+
+	if (!readl(AP_R_GPR1))
+		pr_notice("[VCP] [%s] AP_R_GPR1 is null %x\n",
+			suspend ? "suspend" : "resume", readl(AP_R_GPR1));
+
 	while (--timeout) {
 		if (suspend && (readl(R_GPR3_CFGREG_SEC) & (VCP_AP_SUSPEND))
 			&& (readl(R_GPR3_CFGREG_SEC) & (MMUP_AP_SUSPEND)))
@@ -2231,6 +2243,23 @@ void vcp_wait_suspend_resume(bool suspend)
 			suspend ? "suspend" : "resume", readl(R_GPR3_CFGREG_SEC));
 		vcp_dump_last_regs(1);
 	}
+}
+
+void vcp_wait_rdy_bit(bool rdy)
+{
+	int timeout = 50000; /* max wait 0.5s */
+
+	while (--timeout) {
+		if (rdy && (readl(VLP_AO_RSVD7) & (READY_BIT)))
+			break;
+		else if (!rdy && !(readl(VLP_AO_RSVD7) & (READY_BIT)))
+			break;
+
+		udelay(10);
+	}
+	if (timeout <= 0)
+		pr_notice("[VCP] wait vcp %s timeout 0x%x\n",
+			rdy ? "set rdy bit" : "clr rdy bit", readl(VLP_AO_RSVD7));
 }
 
 void vcp_wait_core_stop_timeout(enum vcp_core_id core_id)
@@ -2689,7 +2718,6 @@ static void mbox_setup_pin_table(unsigned int mbox)
 static int vcp_device_probe(struct platform_device *pdev)
 {
 	int ret = 0, i = 0;
-	unsigned int temp_value;
 	struct resource *res;
 	const char *vcp_hwvoter = NULL;
 	struct device *dev = &pdev->dev;
@@ -2900,13 +2928,12 @@ static int vcp_device_probe(struct platform_device *pdev)
 		pr_notice("[VCP] bus debug num ports not found\n");
 	pr_debug("[VCP] vcpreg.bus_debug_num_ports = %d\n", vcpreg.bus_debug_num_ports);
 
-	temp_value = 0;
-	of_property_read_u32(pdev->dev.of_node, "res-req-status", &temp_value);
-	if (!temp_value)
-		pr_notice("[VCP] resource request status register not found\n");
-	else
-		vcp_res_req_status_reg = ioremap(temp_value, 4);
-	pr_debug("[VCP] vcpreg.resource request status register = %x\n", temp_value);
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_vlp_ao_rsvd7");
+	vcpreg.vcp_vlp_ao_rsvd7 = devm_ioremap_resource(dev, res);
+	if (IS_ERR((void const *) vcpreg.vcp_vlp_ao_rsvd7))
+		pr_debug("[VCP] vcpreg.vcp_vlp_ao_rsvd7 error\n");
+
+	pr_notice("[VCP] VLP_AO_RSVD7 value = 0x%x\n", readl(VLP_AO_RSVD7));
 
 	vcpreg.irq0 = platform_get_irq_byname(pdev, "wdt");
 	if (vcpreg.irq0 < 0)
