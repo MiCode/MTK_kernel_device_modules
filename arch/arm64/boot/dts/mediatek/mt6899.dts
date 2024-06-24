@@ -872,6 +872,148 @@
 		};
 	};
 
+	sleep@1c001000 {
+		compatible = "mediatek,sleep";
+		reg = <0 0x1c001000 0 0x1000>;
+		interrupts = <GIC_SPI 802 IRQ_TYPE_LEVEL_HIGH 0>;
+	};
+
+	mtk_lpm: mtk-lpm {
+		compatible = "mediatek,mtk-lpm";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+		lpm-kernel-suspend = <1>;
+		suspend-method = "disable";
+		common-sodi = <0>;
+
+		logger-enable-states = "mcusysoff_l", "mcusysoff_m", "mcusysoff_b", "system_vcore";
+
+		irq-remain = <&edge_keypad>;
+
+		resource-ctrl = <&bus26m &infra &syspll>,
+				<&dram_s0 &dram_s1 &spm_emi>,
+				<&spm_pmic &spm_vcore>;
+		constraints = <&rc_vcore &rc_bus26m &rc_syspll>;
+		lpm-gov-enable = <1>;
+		cpu-gov-info = <&cpul &cpum &cpub>;
+		cg-shift = <0>; /* cg blocking index */
+		pll-shift = <0>; /* pll blocking index */
+
+		mcusys-cnt-chk = <0>;
+
+		hwreq = "hw_cg", "peri_req";
+
+		cpupm_sysram: cpupm-sysram@11b000 {
+			compatible = "mediatek,cpupm-sysram";
+			reg = <0 0x0011b000 0 0x500>;
+		};
+
+		mcusys_ctrl: mcusys-ctrl@c040000 {
+			compatible = "mediatek,mcusys-ctrl";
+			reg = <0 0x0c040000 0 0x1000>;
+		};
+
+		lpm_sysram: lpm-sysram@11b500 {
+			compatible = "mediatek,lpm-sysram";
+			reg = <0 0x0011b500 0 0x300>;
+		};
+
+		irq-remain-list {
+			edge_keypad: edge-keypad {
+				target = <&keypad>;
+				value = <1 0 0 0x04>;
+			};
+		};
+
+		resource-ctrl-list {
+			bus26m: bus26m {
+				id = <0x00000000>;
+				value = <1>;
+			};
+			infra: infra {
+				id = <0x00000001>;
+				value = <1>;
+			};
+			syspll: syspll {
+				id = <0x00000002>;
+				value = <1>;
+			};
+			dram_s0: dram-s0 {
+				id = <0x00000003>;
+				value = <1>;
+			};
+			dram_s1: dram-s1 {
+				id = <0x00000004>;
+				value = <1>;
+			};
+			spm_vcore: spm-vcore {
+				id = <0x00000005>;
+				value = <1>;
+			};
+			spm_emi: spm-emi {
+				id = <0x00000006>;
+				value = <1>;
+			};
+			spm_pmic: spm-pmic {
+				id = <0x00000007>;
+				value = <1>;
+			};
+		};
+		constraint-list {
+			rc_syspll: rc-syspll {
+				rc-name = "syspll";
+				id = <0x00000002>;
+				value = <0>;
+				cond-info = <1>;
+			};
+			rc_bus26m: rc-bus26m {
+				rc-name = "bus26m";
+				id = <0x00000001>;
+				value = <0>;
+				cond-info = <1>;
+			};
+			rc_vcore: rc-vcore {
+				rc-name = "vcore";
+				id = <0x00000000>;
+				value = <0>;
+				cond-info = <1>;
+			};
+		};
+
+		cpu-gov-info-list {
+			cpul: cpul {
+				last-idle-state = "system-vcore";
+				hidden-state = "wfi", "cpuoff-l";
+			};
+			cpum: cpum {
+				last-idle-state = "system-vcore";
+				hidden-state = "wfi", "cpuoff-m";
+			};
+			cpub: cpub {
+				last-idle-state = "system-vcore";
+				hidden-state = "wfi", "cpuoff-b";
+			};
+		};
+
+		spm_resource_setting: spm-resource-setting {
+			compatible = "mediatek,spm-resource-setting";
+			setting-size = <11>;
+			setting-value-table =
+					<0x53504d00>,
+					<0x000004e2>,
+					<0x0000007d>,
+					<0x000010cc>,
+					<0x0000007d>,
+					<0x000010cc>,
+					<0x0000007d>,
+					<0x00000320>,
+					<0x00000000>,
+					<0x000007d0>,
+					<0x0000003c>;
+		};
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <2>;
