@@ -6031,10 +6031,12 @@ static int ISP_open(struct inode *pInode, struct file *pFile)
 	for (i = 0; i < IRQ_USER_NUM_MAX; i++) {
 		FirstUnusedIrqUserKey = 1;
 
+		spin_lock(&SpinLock_UserKey);
 		strncpy((void *)IrqUserKey_UserInfo[i].userName,
 			"DefaultUserNametoAllocMem", USERKEY_STR_LEN);
 
 		IrqUserKey_UserInfo[i].userKey = -1;
+		spin_unlock(&SpinLock_UserKey);
 	}
 
 	IspInfo.BufInfo.Read.pData = kmalloc(ISP_BUF_SIZE, GFP_ATOMIC);
@@ -6090,7 +6092,9 @@ EXIT:
 		}
 	}
 
+	spin_lock(&(IspInfo.SpinLockIspRef));
 	LOG_INF("- X. Ret: %d. UserCount: %d\n", Ret, IspInfo.UserCount);
+	spin_unlock(&(IspInfo.SpinLockIspRef));
 
 	mutex_unlock(&open_isp_mutex);
 	return Ret;
@@ -6228,10 +6232,11 @@ static int ISP_release(struct inode *pInode, struct file *pFile)
 	for (i = 0; i < IRQ_USER_NUM_MAX; i++) {
 		FirstUnusedIrqUserKey = 1;
 
+		spin_lock(&SpinLock_UserKey);
 		strncpy((void *)IrqUserKey_UserInfo[i].userName,
 			"DefaultUserNametoAllocMem", USERKEY_STR_LEN);
-
 		IrqUserKey_UserInfo[i].userKey = -1;
+		spin_unlock(&SpinLock_UserKey);
 	}
 	if (IspInfo.BufInfo.Read.pData != NULL) {
 		kfree(IspInfo.BufInfo.Read.pData);
@@ -6252,7 +6257,9 @@ static int ISP_release(struct inode *pInode, struct file *pFile)
 
 EXIT:
 
+	spin_lock(&(IspInfo.SpinLockIspRef));
 	LOG_INF("- X. UserCount: %d.", IspInfo.UserCount);
+	spin_unlock(&(IspInfo.SpinLockIspRef));
 	mutex_unlock(&open_isp_mutex);
 	return 0;
 }
