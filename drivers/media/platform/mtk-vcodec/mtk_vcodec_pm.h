@@ -142,6 +142,7 @@ enum mtk_dec_dump_addr_type {
 // The reg name should same with dts
 #define MTK_VDEC_REG_NAME_VDEC_BASE				"VDEC_BASE"
 #define MTK_VDEC_REG_NAME_VDEC_SYS				"VDEC_SYS"
+#define MTK_VDEC_REG_NAME_VDEC_UFO				"VDEC_UFO"
 #define MTK_VDEC_REG_NAME_VDEC_VLD				"VDEC_VLD"
 #define MTK_VDEC_REG_NAME_VDEC_MC				"VDEC_MC"
 #define MTK_VDEC_REG_NAME_VDEC_MV				"VDEC_MV"
@@ -170,6 +171,7 @@ enum mtk_dec_dump_addr_type {
 enum mtk_dec_dtsi_reg_idx {
 	VDEC_BASE,
 	VDEC_SYS,
+	VDEC_UFO,
 	VDEC_VLD,
 	VDEC_MC,
 	VDEC_MV,
