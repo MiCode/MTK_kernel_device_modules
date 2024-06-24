@@ -280,7 +280,7 @@ struct usb_offload_dev {
 };
 
 extern int ssusb_offload_register(struct ssusb_offload *offload);
-extern int ssusb_offload_unregister(struct device *dev);
+extern int ssusb_offload_unregister(struct ssusb_offload *offload);
 
 extern bool usb_offload_ready(void);
 

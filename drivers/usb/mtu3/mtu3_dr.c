@@ -403,6 +403,15 @@ void ssusb_set_mode(struct otg_switch_mtk *otg_sx, enum usb_role role)
 	if (ssusb->dr_mode != USB_DR_MODE_OTG)
 		return;
 
+	/*
+	 * USB offload is support but driver not prob done
+	 * Switch again after ssusb_offload_register() call
+	 */
+	if (role == USB_ROLE_HOST && ssusb->offload_support && !ssusb->offload) {
+		dev_info(ssusb->dev, "offload not ready\n");
+		return;
+	}
+
 	work_data = kzalloc(sizeof(struct dr_work_data_mtk), GFP_ATOMIC);
 	if (!work_data) {
 		dev_err(ssusb->dev, "allocate work data fail.\n");
