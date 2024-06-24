@@ -228,6 +228,7 @@ static void bootprof_log(char *str) {}
 #endif
 
 #if IS_ENABLED(CONFIG_ANDROID_USB_CONFIGFS_UEVENT)
+static bool android_fake_work_inited;
 static void android_fake_work(struct work_struct *data)
 {
 	/* fake work, workaround for init issue. */
@@ -1124,9 +1125,11 @@ android_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *c)
 	}
 
 #if IS_ENABLED(CONFIG_ANDROID_USB_CONFIGFS_UEVENT)
-	if(!list_empty(&cdev->android_opts.work.entry)) {
+	if (!list_empty(&cdev->android_opts.work.entry) &&
+				!android_fake_work_inited) {
 		pr_notice("[USB_META] init fake work.\n");
 		INIT_WORK(&cdev->android_opts.work, android_fake_work);
+		android_fake_work_inited = true;
 	}
 #endif
 
