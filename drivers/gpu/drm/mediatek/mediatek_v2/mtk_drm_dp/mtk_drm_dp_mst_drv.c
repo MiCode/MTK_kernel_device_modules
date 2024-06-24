@@ -1205,6 +1205,10 @@ static int mtk_drm_dp_mst_assign_payload_id(struct mtk_drm_dp_mst_topology_mgr *
 void mtk_drm_dp_mst_put_payload_id(struct mtk_drm_dp_mst_topology_mgr *mgr,
 				   int vcpi)
 {
+#if (DPTX_MST_DEBUG == 0x1)
+	u16 payload_index;
+#endif
+
 	if (vcpi == 0)
 		return;
 
@@ -1212,8 +1216,6 @@ void mtk_drm_dp_mst_put_payload_id(struct mtk_drm_dp_mst_topology_mgr *mgr,
 	clear_cur_bit(vcpi - 1, &mgr->vcpi_mask);
 
 #if (DPTX_MST_DEBUG == 0x1)
-	u16 payload_index;
-
 	for (payload_index = 0; payload_index < mgr->max_payloads; payload_index++) {
 		if (mtk_drm_dp->propose_vcpis[payload_index] &&
 		    mtk_drm_dp->propose_vcpis[payload_index]->vcpi == vcpi) {
@@ -1737,7 +1739,10 @@ mtk_drm_dp_mst_port_add_connector(struct mtk_drm_dp_mst_branch *mstb,
 {
 	//struct mtk_drm_dp_mst_topology_mgr *mgr = port->mgr;
 	char proppath[255];
-	//int ret;
+#if DPTX_MST_I2C_READ_ENABLE
+	u16 i = 0;
+	u8 *edid_debug;
+#endif
 
 	build_mst_prop_path(mstb, port->port_num, proppath, sizeof(proppath));
 
@@ -1746,8 +1751,6 @@ mtk_drm_dp_mst_port_add_connector(struct mtk_drm_dp_mst_branch *mstb,
 	    mtk_drm_dp_mst_is_end_device(port->pdt, port->mcs))
 		port->cached_edid = mtk_dp_mst_drv_send_remote_i2c_read(mstb, port);
 
-	u16 i = 0;
-	u8 *edid_debug;
 	/*debug edid*/
 	edid_debug = mtk_drm_dp_mst_get_edid(mstb->mgr, port);
 
@@ -2431,7 +2434,7 @@ mtk_drm_dp_send_clear_payload_id_table(struct mtk_drm_dp_mst_topology_mgr *mgr,
 
 	txmsg = kmalloc(sizeof(*txmsg), GFP_KERNEL);
 	DP_MSG("malloc for send_clear_payload_id_table at with %lu\n",
-	       txmsg, sizeof(struct mtk_drm_dp_sideband_msg_tx));
+	       sizeof(struct mtk_drm_dp_sideband_msg_tx));
 	memset(txmsg, 0, sizeof(struct mtk_drm_dp_sideband_msg_tx));
 
 	if (!txmsg)

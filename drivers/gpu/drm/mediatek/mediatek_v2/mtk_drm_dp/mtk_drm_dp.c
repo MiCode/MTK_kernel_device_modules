@@ -782,7 +782,7 @@ u8 dp_aux_read_bytes(struct mtk_dp *mtk_dp, u8 cmd,
 		if (aux_irq_status & AUX_400US_TIMEOUT_IRQ_AUX_TX_P0_FLDMASK) {
 			/* for no reply should wait at least 3200 us */
 			usleep_range(AUX_NO_REPLY_WAIT_TIME, AUX_NO_REPLY_WAIT_TIME + 1);
-			DP_MSG("(AUX Read)HW Timeout 400us irq");
+			DP_DBG("(AUX Read)HW Timeout 400us irq");
 			break;
 		}
 	}
@@ -832,7 +832,7 @@ u8 dp_aux_read_bytes(struct mtk_dp *mtk_dp, u8 cmd,
 		DP_DBG("[AUX] Read reply_cmd:%d\n", reply_cmd);
 		ret = reply_cmd;
 	} else {
-		DP_MSG("[AUX] Timeout Read reply_cmd:%d\n", reply_cmd);
+		DP_DBG("[AUX] Timeout Read reply_cmd:%d\n", reply_cmd);
 		ret = AUX_HW_FAILED;
 	}
 
@@ -897,7 +897,7 @@ u8 dp_aux_write_bytes(struct mtk_dp *mtk_dp,
 		if (aux_irq_status & AUX_400US_TIMEOUT_IRQ_AUX_TX_P0_FLDMASK) {
 			/* for no reply should wait at least 3200 us */
 			usleep_range(AUX_NO_REPLY_WAIT_TIME, AUX_NO_REPLY_WAIT_TIME + 1);
-			DP_MSG("(AUX write)HW Timeout 400us irq");
+			DP_DBG("(AUX write)HW Timeout 400us irq");
 			break;
 		}
 	}
@@ -4831,8 +4831,6 @@ void mtk_dp_init_variable(struct mtk_dp *mtk_dp)
 	mtk_dp->training_info.tps3_support = true;
 	mtk_dp->training_info.tps4_support = true;
 	mtk_dp->training_info.phy_status = HPD_INITIAL_STATE;
-	mtk_dp->training_info.cable_plug_in = false;
-	mtk_dp->training_info.cable_state_change = false;
 	mtk_dp->training_state = DP_TRAINING_STATE_STARTUP;
 	mtk_dp->training_state_pre = DP_TRAINING_STATE_STARTUP;
 	mtk_dp->state = DP_STATE_INITIAL;
@@ -4850,7 +4848,6 @@ void mtk_dp_init_variable(struct mtk_dp *mtk_dp)
 		mtk_dp->info[encoder_id].dp_output_timing.frame_rate = 60;
 	}
 	mtk_dp->power_on = false;
-	mtk_dp->video_enable = false;
 	mtk_dp->dp_ready = false;
 	mtk_dp->has_dsc   = false;
 	mtk_dp->has_fec   = false;
@@ -4982,56 +4979,6 @@ void mtk_dp_init_port(struct mtk_dp *mtk_dp)
 	mtk_dp_set_efuse_value(mtk_dp);
 }
 
-void mtk_dp_video_trigger(int res)
-{
-	if (!g_mtk_dp) {
-		DP_ERR("%s, dp not initial\n", __func__);
-		return;
-	}
-
-	DP_FUNC("%s, res:0x%x\n", __func__, res);
-
-	atomic_set(&dp_comm_event, res);
-	wake_up_interruptible(&g_mtk_dp->control_wq);
-}
-
-static int mtk_dp_control_kthread(void *data)
-{
-	struct mtk_dp *mtk_dp = data;
-	unsigned int videomute = 0;
-	unsigned int res = 0;
-	enum dp_encoder_id encoder_id = 0;
-
-	init_waitqueue_head(&mtk_dp->control_wq);
-
-	while (!kthread_should_stop()) {
-		wait_event_interruptible(mtk_dp->control_wq,
-					 atomic_read(&dp_comm_event));
-
-		videomute = atomic_read(&dp_comm_event) >> 16;
-		res = atomic_read(&dp_comm_event) & 0xff;
-		atomic_set(&dp_comm_event, 0);
-
-		if (videomute & DP_VIDEO_UNMUTE) {
-			if (!fake_cable_in && mtk_dp->state > DP_STATE_PREPARE)
-				mtk_dp->state = DP_STATE_PREPARE;
-
-			mtk_dp->video_enable = true;
-			mtk_dp->info[0].resolution = res; /* todo */
-			queue_work(mtk_dp->dp_wq, &mtk_dp->dp_work);
-
-		} else if (videomute & DP_VIDEO_MUTE) {
-			mtk_dp->video_enable = false;
-			if (!mtk_dp->dp_ready)
-				continue;
-
-			mtk_dp_video_enable(mtk_dp, encoder_id, false);
-		}
-	}
-
-	return 0;
-}
-
 void mtk_dp_vsvoter_set(struct mtk_dp *mtk_dp)
 {
 	u32 reg, msk, val;
@@ -5096,6 +5043,33 @@ static int mtk_dp_vsvoter_parse(struct mtk_dp *mtk_dp, struct device_node *node)
 	return PTR_ERR_OR_ZERO(mtk_dp->vsv);
 }
 
+void mtk_dp_disconnect_release(struct mtk_dp *mtk_dp)
+{
+	enum dp_encoder_id encoder_id;
+
+	for (encoder_id = 0; encoder_id < DP_ENCODER_ID_MAX; encoder_id++) {
+		mtk_dp_video_mute(mtk_dp, encoder_id, true);
+		mtk_dp_audio_mute(mtk_dp, encoder_id, true);
+	}
+
+	mtk_dp_init_variable(mtk_dp);
+	mtk_dp_phy_set_idle_pattern(mtk_dp, true);
+
+	if (mtk_dp->has_fec)
+		mtk_dp_fec_enable(mtk_dp, false);
+
+	for (encoder_id = 0; encoder_id < DP_ENCODER_ID_MAX; encoder_id++)
+		mtk_dp_dsc_enable(mtk_dp, encoder_id, false);
+
+	for (encoder_id = 0; encoder_id < DP_ENCODER_ID_MAX; encoder_id++)
+		mtk_dp_stop_sent_sdp(mtk_dp, encoder_id);
+
+	DP_MSG("Power OFF:%d", mtk_dp->power_on);
+	mtk_dp_analog_power_on_off(mtk_dp, false);
+
+	mtk_dp_vsvoter_clr(mtk_dp);
+}
+
 static inline struct mtk_dp *encoder_to_dp(struct drm_encoder *encoder)
 {
 	struct drm_connector *connector;
@@ -5156,6 +5130,7 @@ static void mtk_dp_encoder_mode_set(struct drm_encoder *encoder,
 static void mtk_dp_encoder_disable(struct drm_encoder *encoder)
 {
 	struct mtk_dp *mtk_dp = encoder_to_dp(encoder);
+	int i;
 
 	DP_FUNC();
 
@@ -5163,6 +5138,10 @@ static void mtk_dp_encoder_disable(struct drm_encoder *encoder)
 		DP_ERR("can not find the mtk dp by the encoder");
 		return;
 	}
+
+	mtk_dp->video_enable = false;
+	for (i = 0; i < DP_ENCODER_NUM; i++)
+		mtk_dp_video_enable(mtk_dp, i, false);
 }
 
 static void mtk_dp_encoder_enable(struct drm_encoder *encoder)
@@ -5176,7 +5155,8 @@ static void mtk_dp_encoder_enable(struct drm_encoder *encoder)
 		return;
 	}
 
-	mtk_dp_video_trigger(DP_VIDEO_UNMUTE << 16 | 5);
+	mtk_dp->video_enable = true;
+	queue_work(mtk_dp->dp_wq, &mtk_dp->dp_work);
 }
 
 static int mtk_dp_encoder_atomic_check(struct drm_encoder *encoder,
@@ -5438,6 +5418,8 @@ void mtk_dp_connect_attach_encoder(struct mtk_dp *mtk_dp)
 	int ret;
 	u8 i;
 	u8 sink_count;
+	u8 init_connector_count = 0;
+	u8 index;
 	struct drm_bridge *bridge;
 
 	DP_FUNC();
@@ -5450,22 +5432,29 @@ void mtk_dp_connect_attach_encoder(struct mtk_dp *mtk_dp)
 		sink_count = DP_ENCODER_NUM;
 #endif
 
-	for (i = 0; i < DP_ENCODER_NUM; i++) {
-		kfree(mtk_dp->mtk_connector[i]);
-		mtk_dp->mtk_connector[i] = NULL;
-	}
-
 	if (sink_count > DP_ENCODER_NUM)
 		sink_count = DP_ENCODER_NUM;
 
 	for (i = 0; i < sink_count; i++) {
-		bridge = devm_drm_of_get_bridge(mtk_dp->dev, mtk_dp->dev->of_node, i, 0);
+		if (!mtk_dp->mtk_connector[i])
+			init_connector_count++;
+	}
+
+	for (i = 0; i < DP_ENCODER_NUM; i++) {
+		if (!mtk_dp->mtk_connector[i]) {
+			index = i;
+			break;
+		}
+	}
+
+	for (i = 0; i < init_connector_count; i++) {
+		bridge = devm_drm_of_get_bridge(mtk_dp->dev, mtk_dp->dev->of_node, index, 0);
 		if (IS_ERR(bridge)) {
-			DP_MSG("can not find bridge[%d, %d]", i, 0);
+			DP_MSG("can not find bridge[%d, %d]", index, 0);
 			return;
 		}
 		if (!bridge->encoder) {
-			DP_MSG("bridge have no encoder[%d, %d]", i, 0);
+			DP_MSG("bridge have no encoder[%d, %d]", index, 0);
 			return;
 		}
 		DP_MSG("found dp_intf bridge node:%pOF\n", bridge->of_node);
@@ -5490,8 +5479,8 @@ void mtk_dp_connect_attach_encoder(struct mtk_dp *mtk_dp)
 						 mt8678_output_fmts,
 						 ARRAY_SIZE(mt8678_output_fmts));
 
-		mtk_dp->mtk_connector[i] = mtk_connector;
-		DP_MSG("init mtk connector[%d]\n", i);
+		mtk_dp->mtk_connector[index] = mtk_connector;
+		DP_MSG("init mtk connector[%d]\n", index);
 
 		drm_connector_helper_add(&mtk_connector->connector,
 					 &mtk_dp_connector_helper_funcs);
@@ -5518,6 +5507,8 @@ void mtk_dp_connect_attach_encoder(struct mtk_dp *mtk_dp)
 		}
 
 		drm_encoder_helper_add(bridge->encoder, &mtk_dp_encoder_helper_funcs);
+
+		index++;
 	}
 }
 
@@ -5599,10 +5590,11 @@ static u32 *mtk_dp_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 	struct drm_display_mode *mode = &crtc_state->adjusted_mode;
 	struct drm_display_info *display_info =
 		&conn_state->connector->display_info;
+	u32 rate;
 
 	DP_FUNC();
 
-	u32 rate = min_t(u32, drm_dp_max_link_rate(mtk_dp->rx_cap) *
+	rate = min_t(u32, drm_dp_max_link_rate(mtk_dp->rx_cap) *
 			      drm_dp_max_lane_count(mtk_dp->rx_cap),
 			 drm_dp_bw_code_to_link_rate(mtk_dp->training_info.link_rate) *
 			 mtk_dp->training_info.link_lane_count);
@@ -6327,7 +6319,7 @@ int mtk_dp_handle(struct mtk_dp *mtk_dp)
 		break;
 
 	case DP_STATE_PREPARE:
-		DP_MSG("pattern_gen:%d, video_enable:%d, audio_enable:%d, audio_cap:%d\n",
+		DP_DBG("pattern_gen:%d, video_enable:%d, audio_enable:%d, audio_cap:%d\n",
 		       mtk_dp->info[0].pattern_gen, mtk_dp->video_enable,
 			   mtk_dp->audio_enable, mtk_dp->info[0].audio_cap);
 
@@ -6337,6 +6329,7 @@ int mtk_dp_handle(struct mtk_dp *mtk_dp)
 		}
 
 		if (mtk_dp->video_enable) {
+			msleep(1000);
 			for (encoder_id = 0; encoder_id < DP_ENCODER_ID_MAX; encoder_id++) {
 				mtk_dp_video_config(mtk_dp, encoder_id);
 				mtk_dp_video_enable(mtk_dp, encoder_id, true);
@@ -6349,7 +6342,12 @@ int mtk_dp_handle(struct mtk_dp *mtk_dp)
 				/* mtk_dp_audio_mute(mtk_dp, encoder_id, false); */
 			}
 		}
-		mtk_dp->state = DP_STATE_NORMAL;
+
+		if (mtk_dp->video_enable || mtk_dp->audio_enable)
+			mtk_dp->state = DP_STATE_NORMAL;
+		else
+			ret = DP_RET_WAIT_TRIGGER;
+
 		break;
 
 	case DP_STATE_NORMAL:
@@ -6387,6 +6385,11 @@ static void mtk_dp_main_handle(struct work_struct *data)
 	struct mtk_dp *mtk_dp = container_of(data, struct mtk_dp, dp_work);
 	u64 starttime = get_system_time();
 
+	/* debounce */
+	msleep(400);
+
+	DP_MSG("handle go\n");
+
 	do {
 		if (get_time_diff(starttime) > 5000000000ULL) {
 			DP_ERR("Handle time over 5s\n");
@@ -6399,8 +6402,7 @@ static void mtk_dp_main_handle(struct work_struct *data)
 		if (mtk_dp_training_handler(mtk_dp) != DP_RET_NOERR)
 			break;
 
-		if (mtk_dp->training_info.dp_mst_cap) {
-			mtk_dp->mst_enable = true;
+		if (mtk_dp->mst_enable) {
 			if (mtk_dp_mst_drv_handler(mtk_dp) != DP_RET_NOERR)
 				break;
 		} else {
@@ -6408,19 +6410,8 @@ static void mtk_dp_main_handle(struct work_struct *data)
 				break;
 		}
 	} while (!mtk_dp_done(mtk_dp));
-}
 
-static int mtk_dp_create_workqueue(struct mtk_dp *mtk_dp)
-{
-	mtk_dp->dp_wq = create_singlethread_workqueue("mtk_dp_wq");
-	if (!mtk_dp->dp_wq) {
-		DP_ERR("Failed to create dptx workqueue\n");
-		return -ENOMEM;
-	}
-
-	INIT_WORK(&mtk_dp->dp_work, mtk_dp_main_handle);
-
-	return 0;
+	DP_MSG("handle end\n");
 }
 
 static int mtk_dp_dt_parse_pdata(struct mtk_dp *mtk_dp,
@@ -6461,14 +6452,6 @@ static int mtk_dp_dt_parse_pdata(struct mtk_dp *mtk_dp,
 	if (ret)
 		DP_MSG("failed to parse vsv property\n");
 
-#if ATTACH_BRIDGE
-	ret = drm_of_find_panel_or_bridge(dev->of_node, 2, 0, NULL, &mtk_dp->next_bridge);
-	if (!mtk_dp->next_bridge) {
-		DP_DBG("Can not find next_bridge %d\n", ret);
-		return -EPROBE_DEFER;
-	}
-	DP_MSG("Found next bridge node: %pOF\n", mtk_dp->next_bridge->of_node);
-#endif
 	return 0;
 }
 
@@ -6730,6 +6713,15 @@ static int mtk_drm_dp_probe(struct platform_device *pdev)
 	mtk_dp->uevent_to_hwc = false;
 	mtk_dp->disp_state = DP_DISP_STATE_NONE;
 
+#if ATTACH_BRIDGE
+	ret = drm_of_find_panel_or_bridge(dev->of_node, 2, 0, NULL, &mtk_dp->next_bridge);
+	if (!mtk_dp->next_bridge) {
+		DP_DBG("Can not find next_bridge %d\n", ret);
+		return -EPROBE_DEFER;
+	}
+	DP_MSG("Found next bridge node: %pOF\n", mtk_dp->next_bridge->of_node);
+#endif
+
 	pm_runtime_enable(mtk_dp->dev);
 	pm_runtime_get_sync(mtk_dp->dev);
 
@@ -6775,9 +6767,13 @@ static int mtk_drm_dp_probe(struct platform_device *pdev)
 
 	mutex_init(&dp_lock);
 	platform_set_drvdata(pdev, mtk_dp);
-	mtk_dp->control_task = kthread_run(mtk_dp_control_kthread,
-					   (void *)mtk_dp, "mtk_dp_video_trigger");
-	mtk_dp_create_workqueue(mtk_dp);
+	mtk_dp->dp_wq = create_singlethread_workqueue("mtk_dp_wq");
+	if (!mtk_dp->dp_wq) {
+		DP_ERR("Failed to create dptx workqueue\n");
+		return -ENOMEM;
+	}
+
+	INIT_WORK(&mtk_dp->dp_work, mtk_dp_main_handle);
 
 	mtk_dp_vsvoter_clr(mtk_dp);
 
@@ -6818,20 +6814,48 @@ static int mtk_dp_suspend(struct device *dev)
 {
 	struct mtk_dp *mtk_dp = dev_get_drvdata(dev);
 
-	mutex_lock(&dp_lock);
-	if (mtk_dp->power_on) {
-		mtk_dp->disp_state = DP_DISP_STATE_SUSPEND;
-		mdelay(5);
+	if (!mtk_dp) {
+		pr_info("[DP] suspend, dp not initial\n");
+		return 0;
 	}
-	mutex_unlock(&dp_lock);
 
-	DP_FUNC();
+	dev_info(mtk_dp->dev, "[DP] suspend +\n");
+
+	if (mtk_dp_hpd_get_pin_level(mtk_dp)) {
+		drm_dp_dpcd_writeb(&mtk_dp->aux, DP_SET_POWER, DP_SET_POWER_D3);
+		usleep_range(2000, 3000);
+	}
+
+	mtk_dp_hpd_interrupt_enable(mtk_dp, false);
+	mtk_dp_disconnect_release(mtk_dp);
+
+	mtk_dp->disp_state = DP_DISP_STATE_SUSPEND;
+	pm_runtime_put_sync(mtk_dp->dev);
+
+	dev_info(mtk_dp->dev, "[DP] suspend -\n");
+
 	return 0;
 }
 
 static int mtk_dp_resume(struct device *dev)
 {
-	DP_FUNC();
+	struct mtk_dp *mtk_dp = dev_get_drvdata(dev);
+
+	if (!mtk_dp) {
+		pr_info("[DP] resume, dp not initial\n");
+		return 0;
+	}
+
+	dev_info(mtk_dp->dev, "[DP] resume +\n");
+
+	pm_runtime_get_sync(dev);
+	mtk_dp->disp_state = DP_DISP_STATE_RESUME;
+
+	mtk_dp_init_port(mtk_dp);
+	mtk_dp_hpd_interrupt_enable(mtk_dp, true);
+
+	dev_info(mtk_dp->dev, "[DP] resume -\n");
+
 	return 0;
 }
 #endif
