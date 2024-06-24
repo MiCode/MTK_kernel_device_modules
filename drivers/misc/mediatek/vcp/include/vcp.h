@@ -45,6 +45,7 @@
 #define PIN_OUT_SIZE_MMQOS               2
 #define PIN_OUT_SIZE_MMDEBUG             2
 #define PIN_OUT_C_SIZE_HWVOTER           8
+#define PIN_OUT_SIZE_VDISP               1
 
 /* definition of slot size for received PINs */
 #define PIN_IN_SIZE_VDEC                18
@@ -90,6 +91,7 @@ enum {
 	IPI_OUT_VCPCTL_0               = 32,
 	IPI_OUT_MMDVFS_MMUP            = 33,
 	IPI_IN_MMDVFS_MMUP             = 34,
+	IPI_OUT_VDISP                  = 35,
 
 	VCP_IPI_COUNT
 };
@@ -151,6 +153,7 @@ enum feature_id {
 	HWCCF_FEATURE_ID,
 	HWCCF_DEBUG_FEATURE_ID,
 	IMGSYS_FEATURE_ID,
+	VDISP_FEATURE_ID,
 	NUM_FEATURE_ID,
 };
 

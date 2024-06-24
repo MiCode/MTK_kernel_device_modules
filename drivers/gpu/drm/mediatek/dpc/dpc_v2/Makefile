@@ -13,7 +13,9 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc/dpc_v2 \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi \
              -I$(DEVICE_MODULES_PATH)/drivers/soc/mediatek \
              -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek \
-             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv_v2/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include
 
 ifneq ($(filter y m, $(CONFIG_MTK_MME_SUPPORT)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mme
@@ -30,3 +32,4 @@ mtk_dpc_v2-objs += mtk_dpc_mmp.o
 
 obj-$(CONFIG_MTK_DPC) += mtk_vdisp_v2.o
 mtk_vdisp_v2-objs += mtk_vdisp.o
+mtk_vdisp_v2-objs += mtk_vdisp_avs.o

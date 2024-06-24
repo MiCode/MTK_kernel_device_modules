@@ -12790,6 +12790,10 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 		/* 1. power on mtcmos & init apsrc*/
 		mtk_drm_top_clk_prepare_enable(crtc);
 
+	/* vdisp get aging sensor value */
+	if (vdisp_func.query_aging_val && (crtc_id == 0))
+		vdisp_func.query_aging_val();
+
 	mtk_crtc_gce_event_config(crtc);
 	mtk_crtc_vdisp_ao_config(crtc);
 
