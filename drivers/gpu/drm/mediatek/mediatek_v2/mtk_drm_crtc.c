@@ -118,6 +118,10 @@ static struct mtk_drm_property mtk_crtc_property[CRTC_PROP_MAX] = {
 
 static struct cmdq_pkt *sb_cmdq_handle;
 static unsigned int sb_backlight;
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+static struct cmdq_client *g_cmdq_client[CLIENT_TYPE_MAX * 10];
+static unsigned int cmdq_client_num;
+#endif
 
 struct timespec64 atomic_flush_tval;
 struct timespec64 rdma_sof_tval;
@@ -12718,6 +12722,9 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	struct mtk_ddp_comp *output_comp = NULL;
 	int en = 1;
 	bool only_output;
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	static int cmdq_set_vio;
+#endif
 
 	if (!crtc) {
 		DDPPR_ERR("%s, crtc is NULL\n", __func__);
@@ -12761,6 +12768,20 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 
 	CRTC_MMP_EVENT_START((int) crtc_id, enable,
 			mtk_crtc->enabled, 0);
+
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	/* set client for hypervisor */
+	if (cmdq_set_vio == 0) {
+		for (i = 0; i < cmdq_client_num; i++) {
+			if (g_cmdq_client[i] != NULL) {
+				DDPMSG("set cmdq client: %d, cmdq_client_num %d\n",
+					i, cmdq_client_num);
+				vhost_cmdq_set_client((void *)g_cmdq_client[i], 0);
+			}
+		}
+		cmdq_set_vio++;
+	}
+#endif
 
 	if (mtk_crtc->enabled) {
 		CRTC_MMP_MARK(crtc_id, enable, 0, 0);
@@ -18745,6 +18766,13 @@ static void mtk_crtc_init_gce_obj(struct drm_device *drm_dev,
 		}
 		mtk_crtc->gce_obj.client[i] =
 			cmdq_mbox_create(dev, index);
+
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+		g_cmdq_client[cmdq_client_num] = mtk_crtc->gce_obj.client[i];
+		cmdq_client_num++;
+		DDPMSG("%s:vhost_cmdq_set_client:%d.index:%d cmdq_client_num:%d\n",
+			__func__, i, index, cmdq_client_num);
+#endif
 	}
 
 	/* Load CRTC GCE event */
