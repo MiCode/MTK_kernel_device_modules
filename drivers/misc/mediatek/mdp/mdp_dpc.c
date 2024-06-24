@@ -11,7 +11,7 @@
 static struct dpc_funcs mdp_dpc_funcs;
 atomic_t mdp_dpc_exc_pw_cnt;
 
-void mdp_dpc_register(const struct dpc_funcs *funcs)
+void mdp_dpc_register(const struct dpc_funcs *funcs, enum mtk_dpc_version version)
 {
 	mdp_dpc_funcs.dpc_dc_force_enable = funcs->dpc_dc_force_enable;
 	mdp_dpc_funcs.dpc_vidle_power_keep = funcs->dpc_vidle_power_keep;

@@ -29,7 +29,7 @@ static struct dpc_funcs mml_dpc_funcs;
  *
  * @funcs:	DPC driver functions.
  */
-void mml_dpc_register(const struct dpc_funcs *funcs);
+void mml_dpc_register(const struct dpc_funcs *funcs, enum mtk_dpc_version version);
 
 void mml_dpc_enable(bool en);
 void mml_dpc_dc_force_enable(bool en);

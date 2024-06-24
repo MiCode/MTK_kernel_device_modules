@@ -4117,8 +4117,8 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 	spin_lock_init(&dpc_state_lock);
 
 	mtk_vidle_register(&funcs, DPC_VER1);
-	mml_dpc_register(&funcs);
-	mdp_dpc_register(&funcs);
+	mml_dpc_register(&funcs, DPC_VER1);
+	mdp_dpc_register(&funcs, DPC_VER1);
 
 	if (priv->mmdvfs_settings_count > 0)
 		mmdvfs_rc_enable_set_fp(&mtk_dpc_mmdvfs_notifier);

@@ -21,7 +21,7 @@ module_param(mml_dl_dpc, int, 0644);
 #define mml_sysid_to_dpc_hrt_read_idx(sysid)	\
 	(sysid == mml_sys_frame ? 10 : 2)
 
-void mml_dpc_register(const struct dpc_funcs *funcs)
+void mml_dpc_register(const struct dpc_funcs *funcs, enum mtk_dpc_version version)
 {
 	mml_dpc_funcs = *funcs;
 }

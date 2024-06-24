@@ -3,8 +3,8 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 
-#ifndef __MTK_DPC_H__
-#define __MTK_DPC_H__
+#ifndef __MTK_DPC_V1_H__
+#define __MTK_DPC_V1_H__
 
 #include "mtk_dpc.h"
 
