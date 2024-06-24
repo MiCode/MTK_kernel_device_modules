@@ -4874,7 +4874,15 @@ unsigned long cmdq_get_tracing_mark(void)
 	return tracing_mark_write_addr;
 }
 
-noinline int tracing_mark_write_cmdq(char *fmt, ...)
+#if IS_ENABLED(CONFIG_TRACING) && IS_ENABLED(CONFIG_MTK_MDP_DEBUG)
+static noinline int tracing_mark_write(char *buf)
+{
+	trace_puts(buf);
+	return 0;
+}
+#endif
+
+int tracing_mark_write_cmdq(char *fmt, ...)
 {
 #if IS_ENABLED(CONFIG_TRACING) && IS_ENABLED(CONFIG_MTK_MDP_DEBUG)
 	char buf[TRACE_MDP_MSG_LEN];
@@ -4890,7 +4898,7 @@ noinline int tracing_mark_write_cmdq(char *fmt, ...)
 		return -1;
 	}
 
-	trace_puts(buf);
+	tracing_mark_write(buf);
 #endif
 	return 0;
 }
