@@ -1610,11 +1610,15 @@ int DPE_Config_DVP(struct DPE_Config *pDpeConfig,
 	pitch = ALIGN16(pDpeConfig->Dpe_DVPSettings.frmWidth) >> 4;
 	engStart_offset_Y = engStartY * (pitch << 4);
 	engStart_offset_C = engStart_offset_Y >> 1;
-	if ((occWidth % 16 != 0))
+	if ((occWidth % 16 != 0)) {
 		LOG_ERR("occ width is not 16 byte align w (%d)\n", occWidth);
+		return -1;
+	}
 	if (pDpeConfig->Dpe_is16BitMode &&
-	pDpeConfig->Dpe_DVPSettings.SubModule_EN.wmf_hf_en)
+	pDpeConfig->Dpe_DVPSettings.SubModule_EN.wmf_hf_en) {
 		LOG_ERR("WMF should not enable in 16 bit mode\n");
+		return -1;
+	}
 // If hf rounds is odd, nb_rounds can't use.
 if (pDpeConfig->Dpe_DVPSettings.SubModule_EN.asf_hf_rounds % 2)
 	pDpeConfig->Dpe_DVPSettings.SubModule_EN.asf_nb_rounds = 0;
