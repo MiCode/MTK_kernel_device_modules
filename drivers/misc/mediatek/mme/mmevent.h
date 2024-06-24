@@ -130,6 +130,8 @@ enum data_flag_t {
 
 #define FLAG_INT_POINTER_SIZE 16
 #define POINTER_SIZE 8
+#define U64_POINTER 1
+#define U32_POINTER 2
 
 static const int data_size_table[] = {
 	0,  // DATA_FLAG_INVALID
@@ -165,9 +167,9 @@ static inline void save_int_pointer_data(unsigned long long p_buf,
 										unsigned long p_data,
 										int type)
 {
-	if (type == 1)
+	if (type == U64_POINTER)
 		*((u64 *)p_buf) = *((u64 *)p_data);
-	else if (type == 2)
+	else if (type == U32_POINTER)
 		*((u64 *)p_buf) = (u64)*((u32 *)p_data);
 }
 
