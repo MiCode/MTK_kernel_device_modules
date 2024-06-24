@@ -28,6 +28,10 @@
 #include <clk-fmeter.h>
 #include "mtk-smi-dbg.h"
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+#include "vcp_status.h"
+#endif
+
 #include "mtk_dpc_v2.h"
 #include "mtk_dpc_mmp.h"
 #include "mtk_dpc_internal.h"
@@ -305,8 +309,7 @@ static inline int dpc_pm_ctrl(bool en)
 	if (en) {
 		ret = pm_runtime_resume_and_get(g_priv->pd_dev);
 		if (ret) {
-			DPCERR("get failed ret(%d) skip_force_power(%u)",
-			       ret, g_priv->skip_force_power);
+			DPCERR("get failed ret(%d) vcp_is_alive(%u)", ret, g_priv->vcp_is_alive);
 			return -1;
 		}
 
@@ -1441,7 +1444,9 @@ static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread)
 			break;
 
 		if (i > 2500) {
-			DPCERR("vlp vote bit(%u) timeout", thread);
+			DPCERR("%s by thread(%u) timeout, vcp(%u) mminfra(%u)",
+				vote_set ? "set" : "clr", thread,
+				g_priv->vcp_is_alive, mminfra_is_power_on());
 			return;
 		}
 
@@ -1465,6 +1470,11 @@ static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread)
 static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 {
 	int ret = VOTER_PM_DONE;
+
+	if (!g_priv->vcp_is_alive) {
+		DPCFUNC("by user(%u) skipped", user & DISP_VIDLE_USER_MASK);
+		return VOTER_PM_FAILED;
+	}
 
 	if (user & VOTER_ONLY) {
 		mtk_disp_vlp_vote(VOTE_SET, user & DISP_VIDLE_USER_MASK);
@@ -1491,6 +1501,11 @@ static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 
 static void dpc_vidle_power_release(const enum mtk_vidle_voter_user user)
 {
+	if (!g_priv->vcp_is_alive) {
+		DPCFUNC("by user(%u) skipped", user & DISP_VIDLE_USER_MASK);
+		return;
+	}
+
 	mtk_disp_vlp_vote(VOTE_CLR, user & DISP_VIDLE_USER_MASK);
 
 	if ((user & VOTER_ONLY) || ((user & DISP_VIDLE_USER_MASK) == DISP_VIDLE_USER_TOP_CLK_ISR))
@@ -1640,13 +1655,8 @@ static void dpc_dump(void)
 
 static int dpc_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
 {
-	unsigned long flags;
-
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
-		spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
-		g_priv->skip_force_power = true;
-		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 		if (g_priv->pd_dev) {
 			u32 force_release = 0;
 
@@ -1661,14 +1671,29 @@ static int dpc_pm_notifier(struct notifier_block *notifier, unsigned long pm_eve
 		dpc_mmp(vlp_vote, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
-		spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
-		g_priv->skip_force_power = false;
-		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 		dpc_mmp(vlp_vote, MMPROFILE_FLAG_PULSE, U32_MAX, 1);
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;
 }
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+static int dpc_vcp_notifier(struct notifier_block *nb, unsigned long vcp_event, void *unused)
+{
+	switch (vcp_event) {
+	case VCP_EVENT_READY:
+	case VCP_EVENT_STOP:
+		break;
+	case VCP_EVENT_SUSPEND:
+		g_priv->vcp_is_alive = false;
+		break;
+	case VCP_EVENT_RESUME:
+		g_priv->vcp_is_alive = true;
+		break;
+	}
+	return NOTIFY_DONE;
+}
+#endif
 
 static int dpc_smi_pwr_get(void *data)
 {
@@ -1973,6 +1998,7 @@ static struct mtk_dpc mt6991_dpc_driver_data = {
 	.srt_emi_efficiency = 13715,			// multiply (1.33 * 33/32(TCU)) = 1.3715
 	.hrt_emi_efficiency = 8242,			// divide 0.85 * 33/32(TCU) = *100/82.4242
 	.ch_bw_urate = 70,				// divide 0.7
+	.vcp_is_alive = true,
 };
 
 static const struct of_device_id mtk_dpc_driver_v2_dt_match[] = {
@@ -2047,6 +2073,11 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 		DPCERR("register_pm_notifier failed %d", ret);
 		return ret;
 	}
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+	priv->vcp_nb.notifier_call = dpc_vcp_notifier;
+	vcp_A_register_notify_ex(VDISP_FEATURE_ID, &priv->vcp_nb);
+#endif
 
 	/* enable external signal from DSI and TE */
 	writel(0x1F, dpc_base + DISP_REG_DPC_DISP_EXT_INPUT_EN);
