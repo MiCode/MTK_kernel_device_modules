@@ -4558,11 +4558,10 @@ initcall_debug=1 clk_ignore_unused=1";
 	};
 
 	pmic_clock_buffer_ctrl: pmic_clock_buffer_ctrl {
-		compatible = "mediatek,clock_buffer_ctrl";
-		mediatek,xo-buf-hwbblpm-mask = <1 0 0 0 0 0 0>;
-		mediatek,xo-buf-hwbblpm-bypass = <0 0 0 0 0 0 0>;
+		pmic-supply = <&mt6357_clkbuf>;
+		compatible = "mediatek,mt6765-clkbuf";
+		pmic = <&mt6357_clkbuf>;
 		pmif = <&pwrap 0>;
-		mediatek,enable;
 	};
 
 	battery_manager: battery-manager {
