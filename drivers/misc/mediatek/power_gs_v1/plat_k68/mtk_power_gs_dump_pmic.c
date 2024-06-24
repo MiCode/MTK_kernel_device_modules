@@ -14,7 +14,7 @@
 static char buf[DEBUG_BUF_SIZE] = { 0 };
 
 #define PMIC_NUM (1)
-static const char * const pmic_reg_name[]
+static const char * const pmic_reg_name[] __maybe_unused
   /* 6358*/
 = { "vcore"};
 static const char * const pmic_name[]

@@ -74,7 +74,7 @@ enum {
 	PN_SC89890H,
 };
 
-static const u32 bq2589x_otg_oc_threshold[] = {
+static const u32 bq2589x_otg_oc_threshold[] __maybe_unused = {
 	500000, 700000, 1100000, 1300000, 1800000, 2100000, 2400000, 3000000,
 }; /* uA */
 

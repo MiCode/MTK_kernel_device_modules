@@ -328,7 +328,7 @@ static void ta_nl_send_to_user(int pid, int seq, struct tad_nl_msg_t *reply_msg)
 static void ta_nl_data_handler(struct sk_buff *skb)
 {
 	u32 pid;
-	kuid_t uid;
+	kuid_t uid __maybe_unused;
 	int seq;
 	void *data;
 	struct nlmsghdr *nlh;

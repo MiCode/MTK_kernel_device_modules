@@ -33,7 +33,7 @@ static void startTimer(struct hrtimer *timer, int delay_ms, bool first)
 {
 	struct acc_context *obj = (struct acc_context *)container_of(timer,
 		struct acc_context, hrTimer);
-	static int count;
+	static int count __maybe_unused;
 
 	if (obj == NULL) {
 		pr_err("NULL pointer\n");

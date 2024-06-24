@@ -870,7 +870,7 @@ void mcdi_state_pause(unsigned int id, bool pause)
 void idle_refcnt_inc(void)
 {
 	unsigned long flags;
-	bool enter = false;
+	bool enter __maybe_unused = false;
 	ct_idle_exit();
 	spin_lock_irqsave(&all_cpu_idle_spin_lock, flags);
 
@@ -893,7 +893,7 @@ void idle_refcnt_dec(void)
 	unsigned long long leave_tick;
 	unsigned long long this_dur;
 	unsigned long long temp;
-	bool leave = false;
+	bool leave __maybe_unused = false;
 	ct_idle_exit();
 	spin_lock_irqsave(&all_cpu_idle_spin_lock, flags);
 
@@ -967,8 +967,8 @@ int all_cpu_idle_ratio_get(void)
 bool is_all_cpu_idle_criteria(void)
 {
 	int all_idle_ratio = 0;
-	unsigned long long start_tick = 0;
-	unsigned long long end_tick = 0;
+	unsigned long long start_tick __maybe_unused = 0;
+	unsigned long long end_tick __maybe_unused = 0;
 	unsigned long long thd_percent = 0;
 
 	thd_percent = all_cpu_idle_data.thd_percent;

@@ -32,7 +32,7 @@ EXPORT_SYMBOL(mtk_conn_md_bridge_reg);
 int mtk_conn_md_bridge_unreg(uint32 u_id)
 {
 
-	int i_ret = -1;
+	int i_ret __maybe_unused = -1;
 
 	/*delete user */
 	i_ret = conn_md_del_user(u_id);
@@ -41,7 +41,7 @@ int mtk_conn_md_bridge_unreg(uint32 u_id)
 EXPORT_SYMBOL(mtk_conn_md_bridge_unreg);
 int mtk_conn_md_bridge_send_msg(struct ipc_ilm *ilm)
 {
-	int i_ret = -1;
+	int i_ret __maybe_unused = -1;
 	/*sanity check */
 	if (NULL != ilm && NULL != ilm->local_para_ptr) {
 		/*send data */

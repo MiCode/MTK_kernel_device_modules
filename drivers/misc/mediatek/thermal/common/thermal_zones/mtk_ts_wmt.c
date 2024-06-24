@@ -524,7 +524,7 @@ static void wmt_cal_stats(struct timer_list *t)
 static int wmt_thz_bind(struct thermal_zone_device *thz_dev,
 			struct thermal_cooling_device *cool_dev)
 {
-	struct linux_thermal_ctrl_if *p_linux_if = 0;
+	struct linux_thermal_ctrl_if *p_linux_if __maybe_unused = 0;
 	int table_val = 0;
 
 	wmt_tm_dprintk("%s\n", __func__);
@@ -580,7 +580,7 @@ static int wmt_thz_bind(struct thermal_zone_device *thz_dev,
 static int wmt_thz_unbind(struct thermal_zone_device *thz_dev,
 			  struct thermal_cooling_device *cool_dev)
 {
-	struct linux_thermal_ctrl_if *p_linux_if = 0;
+	struct linux_thermal_ctrl_if *p_linux_if __maybe_unused = 0;
 	int table_val = 0;
 
 	wmt_tm_dprintk("%s\n", __func__);
@@ -1237,7 +1237,7 @@ static int wmt_wifi_algo_open(struct inode *inode, struct file *file)
 ssize_t wmt_tm_wfd_write(
 struct file *filp, const char __user *buf, size_t len, loff_t *data)
 {
-	int ret = 0;
+	int ret __maybe_unused = 0;
 	char tmp[MAX_LEN] = { 0 };
 
 	len = (len < (MAX_LEN - 1)) ? len : (MAX_LEN - 1);

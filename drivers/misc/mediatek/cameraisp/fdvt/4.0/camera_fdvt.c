@@ -1852,7 +1852,7 @@ static int FDVT_probe(struct platform_device *dev)
 	int i = 0;
 	int new_count;
 	unsigned int irq_info[3]; /* Record interrupts info from device tree */
-	struct class_device *class_dev = NULL;
+	struct class_device *class_dev __maybe_unused = NULL;
 	struct fdvt_device *tempFdvt;
 	struct device_node *node;
 	struct platform_device *pdev;

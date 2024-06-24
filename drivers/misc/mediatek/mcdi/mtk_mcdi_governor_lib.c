@@ -252,8 +252,8 @@ static bool mcdi_controller_token_get(int cpu)
 
 static void dump_multi_core_state_ftrace(int cpu)
 {
-	unsigned int on_off_stat  = 0;
-	unsigned int check_mask;
+	unsigned int on_off_stat __maybe_unused = 0;
+	unsigned int check_mask __maybe_unused;
 	unsigned int cpu_mask;
 	unsigned int cluster_mask;
 

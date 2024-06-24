@@ -305,11 +305,11 @@ static const u32 vibr_voltages[] = {
 	3300000,
 };
 
-static const u32 vrf12_voltages[] = {
+static const u32 vrf12_voltages[] __maybe_unused = {
 	1200000,
 };
 
-static const u32 vio18_voltages[] = {
+static const u32 vio18_voltages[] __maybe_unused = {
 	1800000,
 };
 
@@ -321,7 +321,7 @@ static const u32 vusb_voltages[] = {
 	3100000,
 };
 
-static const u32 vcamio_voltages[] = {
+static const u32 vcamio_voltages[] __maybe_unused = {
 	1800000,
 };
 
@@ -341,19 +341,19 @@ static const u32 vcamd_voltages[] = {
 	1800000,
 };
 
-static const u32 vcn18_voltages[] = {
+static const u32 vcn18_voltages[] __maybe_unused = {
 	1800000,
 };
 
-static const u32 vfe28_voltages[] = {
+static const u32 vfe28_voltages[] __maybe_unused = {
 	2800000,
 };
 
-static const u32 vcn28_voltages[] = {
+static const u32 vcn28_voltages[] __maybe_unused = {
 	2800000,
 };
 
-static const u32 vxo22_voltages[] = {
+static const u32 vxo22_voltages[] __maybe_unused = {
 	2200000,
 };
 
@@ -374,7 +374,7 @@ static const u32 vefuse_voltages[] = {
 	1900000,
 };
 
-static const u32 vaux18_voltages[] = {
+static const u32 vaux18_voltages[] __maybe_unused = {
 	1800000,
 };
 
@@ -387,7 +387,7 @@ static const u32 vmch_vemc_voltages[] = {
 	3300000,
 };
 
-static const u32 vbif28_voltages[] = {
+static const u32 vbif28_voltages[] __maybe_unused = {
 	2800000,
 };
 
@@ -407,15 +407,15 @@ static const u32 vcama_voltages[] = {
 	3000000,
 };
 
-static const u32 vio28_voltages[] = {
+static const u32 vio28_voltages[] __maybe_unused = {
 	2800000,
 };
 
-static const u32 va12_voltages[] = {
+static const u32 va12_voltages[] __maybe_unused = {
 	1200000,
 };
 
-static const u32 vrf18_voltages[] = {
+static const u32 vrf18_voltages[] __maybe_unused = {
 	1800000,
 };
 
@@ -433,7 +433,7 @@ static const u32 vldo28_voltages[] = {
 	3000000,
 };
 
-static const u32 vaud28_voltages[] = {
+static const u32 vaud28_voltages[] __maybe_unused = {
 	2800000,
 };
 

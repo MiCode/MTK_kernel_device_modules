@@ -1414,7 +1414,7 @@ bool ISP_chkModuleSetting(void)
 
 	unsigned int sgg_sel;
 	unsigned int eis_sel;
-	bool bmx_enable, rmx_enable;
+	bool bmx_enable, rmx_enable __maybe_unused;
 	bool hbin2_en, hbin1_en;
 	bool sgg3_en, flk_en;
 	unsigned int i;
@@ -1449,7 +1449,7 @@ bool ISP_chkModuleSetting(void)
 
 	if (cam_tg1_vf_con & 0x01) {
 		/*Check FLK setting */
-		unsigned int cam_flk_con;  /*4770 */
+		unsigned int cam_flk_con __maybe_unused;  /*4770 */
 		unsigned int cam_flk_ofst; /*4774 */
 		unsigned int cam_flk_size; /*4778 */
 		unsigned int cam_flk_num;  /*477C */
@@ -1505,11 +1505,11 @@ bool ISP_chkModuleSetting(void)
 		unsigned int af_sat_th0, af_sat_th1, af_sat_th2, af_sat_th3;
 		unsigned int TG_W;
 		unsigned int TG_H;
-		unsigned int AF_EN, AFO_D_EN, AFO_EN, EIS_EN;
+		unsigned int AF_EN, AFO_D_EN __maybe_unused, AFO_EN, EIS_EN;
 		unsigned int SGG1_EN, SGG5_EN;
 		unsigned int cam_ctrl_en_p1_dma_d; /*4014*/
 		unsigned int cam_ctrl_en_p1_dma; /*4014*/
-		unsigned int cam_tg_sen_mode, dbl_data_bus;
+		unsigned int cam_tg_sen_mode, dbl_data_bus __maybe_unused;
 		unsigned int tg_w_pxl_e, tg_w_pxl_s;
 		unsigned int tg_h_lin_e, tg_h_lin_s;
 		unsigned int cam_af_con;
@@ -1518,13 +1518,13 @@ bool ISP_chkModuleSetting(void)
 		unsigned int cam_af_vld, af_vld_ystart, af_vld_xstart;
 		unsigned int cam_af_blk_0, af_blk_ysize, af_blk_xsize;
 		unsigned int cam_af_blk_1, af_blk_ynum, af_blk_xnum;
-		unsigned int cam_bmx_crop, bmx_end_x, bmx_str_x;
-		unsigned int cam_rmx_crop, rmx_end_x, rmx_str_x;
+		unsigned int cam_bmx_crop, bmx_end_x __maybe_unused, bmx_str_x __maybe_unused;
+		unsigned int cam_rmx_crop, rmx_end_x __maybe_unused, rmx_str_x __maybe_unused;
 
 		unsigned int rrz_out_width;
 		unsigned int rrz_out_height;
 		unsigned int rrz_d_out_width;
-		unsigned int rrz_d_out_height;
+		unsigned int rrz_d_out_height __maybe_unused;
 		unsigned int scenario;
 
 		unsigned int cam_rrz_out_img;   /*47A8 */
@@ -2205,7 +2205,7 @@ EIS_EXIT:
 		unsigned int tg_h_lin_s;
 		unsigned int af_v_avg_lvl;
 		unsigned int af_v_gonly;
-		unsigned int dbl_data_bus;
+		unsigned int dbl_data_bus __maybe_unused;
 		unsigned int bmx_end_x;
 		unsigned int bmx_str_x;
 		unsigned int rmx_end_x;
@@ -3775,7 +3775,7 @@ static signed int ISP_EnableHoldReg(bool En)
 	/*      */
 	if (!spin_trylock_bh(&(IspInfo.SpinLockHold))) {
 		/* Should wait until tasklet done. */
-		signed int Timeout;
+		signed int Timeout __maybe_unused;
 		signed int IsLock = 0;
 		/*      */
 		if (IspInfo.DebugMask & ISP_DBG_TASKLET)
@@ -12479,7 +12479,7 @@ EXIT:
  ******************************************************************************/
 static signed int ISP_release(struct inode *pInode, struct file *pFile)
 {
-	struct ISP_USER_INFO_STRUCT *pUserInfo;
+	struct ISP_USER_INFO_STRUCT *pUserInfo __maybe_unused;
 	unsigned int Reg;
 	unsigned int i = 0;
 

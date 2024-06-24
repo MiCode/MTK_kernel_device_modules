@@ -72,7 +72,7 @@ static int iReadRegI2C(u8 *a_pSendData, u16 a_sizeSendData,
 
 static int custom_read_region(u32 addr, u8 *data, u16 i2c_id, u32 size)
 {
-	u8 *buff = data;
+	u8 *buff __maybe_unused = data;
 	u32 size_to_read = size;
 
 	int ret = 0;

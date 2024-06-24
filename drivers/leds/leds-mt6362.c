@@ -969,7 +969,7 @@ static int mt6362_leds_parse_dt(struct platform_device *pdev,
 		of_property_read_u32(child, "ct", &mtcdev->dev_id.ct);
 		of_property_read_u32(child, "part", &mtcdev->dev_id.part);
 		snprintf(mtcdev->dev_id.name, FLASHLIGHT_NAME_SIZE,
-				flcdev->led_cdev.name);
+				"%s", flcdev->led_cdev.name);
 		mtcdev->dev_id.channel = reg;
 		mt6362_flash_class[reg] = flcdev;
 		mtcdev->dev_id.decouple = 0;

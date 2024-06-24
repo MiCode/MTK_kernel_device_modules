@@ -80,7 +80,7 @@ void spm_twam_enable_monitor(bool en_monitor,
 	unsigned long flags;
 	struct spm_data spm_d;
 #ifdef USE_TINYSYS_SSPM_FOR_SPM
-	int ret;
+	int ret __maybe_unused;
 #endif
 
 	if (en_monitor == true) {

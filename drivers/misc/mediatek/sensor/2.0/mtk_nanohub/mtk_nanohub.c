@@ -751,7 +751,7 @@ static int mtk_nanohub_send_dram_info_to_hub(void)
 {
 	struct mtk_nanohub_device *device = mtk_nanohub_dev;
 	union SCP_SENSOR_HUB_DATA data;
-	unsigned int len = 0;
+	unsigned int len __maybe_unused = 0;
 	int err = 0, retry = 0, total = 10;
 
 	device->shub_dram_phys = scp_get_reserve_mem_phys(SENS_MEM_ID);
@@ -798,7 +798,7 @@ static int mtk_nanohub_enable_rawdata_to_hub(int sensor_id,
 static int mtk_nanohub_send_timestamp_wake_locked(void)
 {
 	union SCP_SENSOR_HUB_DATA req;
-	int len;
+	int len __maybe_unused;
 	int err = 0;
 	uint64_t now_time, arch_counter;
 
@@ -1059,7 +1059,7 @@ int mtk_nanohub_get_data_from_hub(uint8_t sensor_id,
 {
 	union SCP_SENSOR_HUB_DATA req;
 	struct data_unit_t *data_t;
-	int len = 0, err = 0;
+	int len __maybe_unused = 0, err = 0;
 
 	if (atomic_read(&power_status) == SENSOR_POWER_DOWN) {
 		pr_err("scp power down, we can not access scp\n");
@@ -1147,7 +1147,7 @@ int mtk_nanohub_set_cmd_to_hub(uint8_t sensor_id,
 		enum CUST_ACTION action, void *data)
 {
 	union SCP_SENSOR_HUB_DATA req;
-	int len = 0, err = 0;
+	int len __maybe_unused = 0, err = 0;
 	struct SCP_SENSOR_HUB_GET_RAW_DATA *pGetRawData;
 
 	req.get_data_req.sensorType = sensor_id;

@@ -74,7 +74,7 @@ struct gpio_config {
 static struct class *sensor_class;
 static int major;
 
-static const struct gpio_config gconf[] = {
+static const struct gpio_config gconf[] __maybe_unused = {
 	{ PLAT_GPIO_DEF(nreset, GPIOF_OUT_INIT_HIGH) },
 	{ PLAT_GPIO_DEF(wakeup, GPIOF_OUT_INIT_HIGH) },
 	{ PLAT_GPIO_DEF(boot0, GPIOF_OUT_INIT_LOW) },
@@ -639,7 +639,7 @@ static int nanohub_create_devices(struct nanohub_data *data)
 
 		nanohub_io_init(io, data, device_create(sensor_class, NULL,
 							MKDEV(major, i),
-							io, names[i]));
+							io, "%s", names[i]));
 		if (IS_ERR(io->dev)) {
 			ret = PTR_ERR(io->dev);
 			pr_err("nanohub: device_create failed for %s; err=%d\n",

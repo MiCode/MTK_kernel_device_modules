@@ -67,7 +67,7 @@ static int barohub_get_pressure(char *buf, int bufsize)
 {
 	struct barohub_ipi_data *obj = obj_ipi_data;
 	struct data_unit_t data;
-	uint64_t time_stamp = 0;
+	uint64_t time_stamp __maybe_unused = 0;
 	int pressure;
 	int err = 0;
 

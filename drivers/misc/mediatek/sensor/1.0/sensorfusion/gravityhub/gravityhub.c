@@ -17,7 +17,7 @@ static int grav_get_data(int *x, int *y, int *z, int *scalar, int *status)
 {
 	int err = 0;
 	struct data_unit_t data;
-	uint64_t time_stamp = 0;
+	uint64_t time_stamp __maybe_unused = 0;
 
 	err = sensor_get_data_from_hub(ID_GRAVITY, &data);
 	if (err < 0) {

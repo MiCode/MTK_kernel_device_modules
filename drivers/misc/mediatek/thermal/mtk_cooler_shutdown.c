@@ -278,7 +278,7 @@ static int _mtk_cl_sd_send_signal(void)
 {
 	struct sd_state *cl_state = (struct sd_state *) cdev->devdata;
 #if defined(MTK_COOLER_SHUTDOWN_SIGNAL)
-	unsigned long original_state;
+	unsigned long original_state __maybe_unused;
 #endif
 	/* mtk_cooler_shutdown_dprintk(
 	 * "mtk_cl_shutdown_set_cur_state() %s %d\n",

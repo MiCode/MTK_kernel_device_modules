@@ -339,7 +339,7 @@ static int mt6358_get_hpofs_auxadc(struct mt6358_priv *priv)
 }
 
 /* dl pga gain */
-static const char *const dl_pga_gain[] = {
+static const char *const dl_pga_gain[] __maybe_unused = {
 	"8Db", "7Db", "6Db", "5Db", "4Db",
 	"3Db", "2Db", "1Db", "0Db", "-1Db",
 	"-2Db", "-3Db",	"-4Db", "-5Db", "-6Db",
@@ -3893,8 +3893,8 @@ static void enable_trim_buf(struct mt6358_priv *priv, bool enable)
 }
 
 /* 1 / (10 ^ (dB / 20)) * db_denominator */
-static const int db_denominator = 8192;
-static const int db_numerator[32] = {
+static const int db_denominator __maybe_unused = 8192;
+static const int db_numerator[32] __maybe_unused = {
 	3261, 3659, 4106, 4607,
 	5169, 5799, 6507, 7301,
 	8192, 9192, 10313, 11572,
@@ -6713,7 +6713,7 @@ static void codec_write_reg(struct mt6358_priv *priv, void *arg)
 	char delim[] = " ,";
 	unsigned int reg_addr = 0;
 	unsigned int reg_value = 0;
-	int ret = 0;
+	int ret __maybe_unused = 0;
 
 	token1 = strsep(&temp, delim);
 	token2 = strsep(&temp, delim);
@@ -6759,7 +6759,7 @@ static void debug_set_debug_flag(struct file *file, void *arg)
 	char *token1 = NULL;
 	char *temp = arg;
 	char delim[] = " ,";
-	int ret = 0;
+	int ret __maybe_unused = 0;
 	unsigned int value;
 
 	token1 = strsep(&temp, delim);

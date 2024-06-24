@@ -260,7 +260,7 @@ static unsigned int spm_output_wake_reason(unsigned int ex_flag
 		, struct wake_status *wakesta)
 {
 	unsigned int wr;
-	unsigned int irq_no;
+	unsigned int irq_no __maybe_unused;
 	int i;
 
 	if (spm_sleep_count >= 0xfffffff0)

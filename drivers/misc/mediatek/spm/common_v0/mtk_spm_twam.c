@@ -79,7 +79,7 @@ void spm_twam_enable_monitor(bool en_monitor,
 	unsigned long flags;
 	struct spm_data spm_d;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
-	int ret;
+	int ret __maybe_unused;
 #endif
 
 	if (en_monitor == true) {

@@ -1,3 +1,4 @@
+ccflags-y += -Wno-frame-address
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/$(MTK_PLATFORM)/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/spm/common_v1/

@@ -40,7 +40,7 @@
 
 #define FMCLK(_t, _i, _n) { .type = _t, .id = _i, .name = _n }
 
-static const struct fmeter_clk fclks[] = {
+static const struct fmeter_clk fclks[] __maybe_unused = {
 
 	FMCLK(CKGEN,  1, "hd_faxi_ck"),
 	FMCLK(CKGEN,  2, "hf_fmem_ck"),

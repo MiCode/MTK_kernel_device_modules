@@ -855,7 +855,7 @@ static void _mt_cpufreq_set(struct cpufreq_policy *policy,
 	enum mt_cpu_dvfs_action_id action)
 {
 	unsigned int target_freq;
-	int ret = -1;
+	int ret __maybe_unused = -1;
 	int log = 0;
 
 	FUNC_ENTER(FUNC_LV_LOCAL);

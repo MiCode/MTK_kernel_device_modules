@@ -1203,7 +1203,7 @@ signed int dpe_enque_cb(struct frame *frames, void *req)
 	unsigned int Dpe_OutBuf_CONF = 0;
 	/*TODO: define engine request struct */
 	struct DPE_Request *_req;
-	struct DPE_Config *pDpeConfig;
+	struct DPE_Config *pDpeConfig __maybe_unused;
 	_req = (struct DPE_Request *) req;
 	if (frames == NULL || _req == NULL)
 		return -1;
@@ -1568,7 +1568,7 @@ void DPE_Config_DVP(struct DPE_Config *pDpeConfig,
 {
 	unsigned int frmWidth, frmHeight, engWidth, engHeight;
 	unsigned int occWidth, occHeight;
-	unsigned int engStartX, engStartY, occStartX, occStartY, pitch;
+	unsigned int engStartX, engStartY, occStartX, occStartY __maybe_unused, pitch;
 	unsigned int engStart_offset_Y, engStart_offset_C;
 	engStartX = pDpeConfig->Dpe_DVPSettings.engStart_x;
 	engStartY = pDpeConfig->Dpe_DVPSettings.engStart_y;
@@ -2474,7 +2474,7 @@ cmdq_pkt_write(handle, dpe_clt_base, DVS_CTRL00_HW, 0x00000000, 0x20000000);
 }
 signed int dpe_feedback(struct frame *frame)
 {
-	struct DPE_Config *pDpeConfig;
+	struct DPE_Config *pDpeConfig __maybe_unused;
 	pDpeConfig = (struct DPE_Config *) frame->data;
 	/* TODO: read statistics and write to the frame data */
 	// pDpeConfig->DVS_IRQ_STATUS = DPE_RD32(DVS_IRQ_STATUS_REG);
@@ -2526,7 +2526,7 @@ void Get_Tile_Info(struct DPE_Config *pDpeConfig)
 	unsigned int w_width[TILE_WITH_NUM] = {0};
 	unsigned int tile_num[TILE_WITH_NUM] = {0};
 	unsigned int idx = 0, i = 0;
-	unsigned int max_width = 0, interval = 0, st_x = 0;
+	unsigned int max_width = 0, interval = 0, st_x __maybe_unused = 0;
 	unsigned int engStart_x_L, engStart_x_R, frmHeight;
 	engStart_x_L = pDpeConfig->Dpe_DVSSettings.L_engStart_x;
 	engStart_x_R = pDpeConfig->Dpe_DVSSettings.R_engStart_x;
@@ -3427,7 +3427,7 @@ static long DPE_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 	struct DPE_CLEAR_IRQ_STRUCT ClearIrq;
 	struct DPE_Config dpe_DpeConfig;
 	struct DPE_Request dpe_DpeReq;
-	signed int enqnum;
+	signed int enqnum __maybe_unused;
 	struct DPE_USER_INFO_STRUCT *pUserInfo;
 	int enqueNum;
 	int dequeNum;
@@ -4241,7 +4241,7 @@ EXIT:
  ******************************************************************************/
 static signed int DPE_release(struct inode *pInode, struct file *pFile)
 {
-	struct DPE_USER_INFO_STRUCT *pUserInfo;
+	struct DPE_USER_INFO_STRUCT *pUserInfo __maybe_unused;
 	/*unsigned int Reg;*/
 	LOG_INF("- E. UserCount: %d.", DPEInfo.UserCount);
 	/*  */
@@ -4500,7 +4500,7 @@ EXIT:
 static int vidioc_dqbuf(struct file *file, void *priv, struct v4l2_buffer *p)
 {
 	/*struct video_device *vdev = video_devdata(file);*/
-	signed int Ret = 0;
+	signed int Ret __maybe_unused = 0;
 	struct DPE_Request ureq;
 	struct DPE_Request kreq;
 	/* size of cfgs = 3 owing to call stact limitation*/
@@ -5254,7 +5254,7 @@ static int proc_dpe_dump_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, dpe_dump_read, NULL);
 }
-static const struct file_operations dpe_dump_proc_fops = {
+static const struct file_operations dpe_dump_proc_fops __maybe_unused = {
 	.owner = THIS_MODULE,
 	.open = proc_dpe_dump_open,
 	.read = seq_read,
@@ -5390,7 +5390,7 @@ static int proc_dpe_reg_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, dpe_reg_read, NULL);
 }
-static const struct file_operations dpe_reg_proc_fops = {
+static const struct file_operations dpe_reg_proc_fops __maybe_unused = {
 	.owner = THIS_MODULE,
 	.open = proc_dpe_reg_open,
 	.read = seq_read,

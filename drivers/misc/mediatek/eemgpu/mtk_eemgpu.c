@@ -920,7 +920,7 @@ static void eemg_calculate_aging_margin(struct eemg_det *det,
 	int start_oft, int end_oft)
 {
 
-	int num_bank_freq, offset, i = 0;
+	int num_bank_freq __maybe_unused, offset, i = 0;
 
 
 	num_bank_freq = det->num_freq_tbl;
@@ -1236,7 +1236,7 @@ static int eemg_volt_thread_handler(void *data)
 	struct eemg_ctrl *ctrl = (struct eemg_ctrl *)data;
 	struct eemg_det *det = id_to_eemg_det(ctrl->det_id);
 #ifdef CONFIG_EEMG_AEE_RR_REC
-	int temp = -1;
+	int temp __maybe_unused = -1;
 #endif
 
 	FUNC_ENTER(FUNC_LV_HELP);
@@ -1325,7 +1325,7 @@ static void eemg_init_ctrl(struct eemg_ctrl *ctrl)
 	if (1) {
 		init_waitqueue_head(&ctrl->wq);
 		ctrl->thread = kthread_run(eemg_volt_thread_handler,
-				ctrl, ctrl->name);
+				ctrl, "%s", ctrl->name);
 
 		if (IS_ERR(ctrl->thread))
 			eemg_error("Create %s thread failed: %ld\n",
@@ -1344,7 +1344,7 @@ static void eemg_init_det(struct eemg_det *det, struct eemg_devinfo *devinfo,
 	struct device_node *node = pdev->dev.of_node, *np;
 	const char *domain;
 	int *val;
-	int ret, efuse_offset = 0, efuse_mask = 0, efuse = 0;
+	int ret __maybe_unused, efuse_offset = 0, efuse_mask = 0, efuse = 0;
 	unsigned long ul_mask;
 	struct eemg_det *h_det, *l_det;
 

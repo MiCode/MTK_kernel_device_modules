@@ -216,7 +216,7 @@ int nanohub_ipi_probe(struct platform_device *pdev)
 {
 	struct nanohub_ipi_data *ipi_data;
 	struct iio_dev *iio_dev;
-	enum scp_ipi_status status;
+	enum scp_ipi_status status __maybe_unused;
 
 	iio_dev = iio_device_alloc(&nanohub_ipi_pdev.dev, sizeof(struct nanohub_ipi_data));
 	if (!iio_dev)

@@ -208,7 +208,7 @@ static inline void __gpufreq_footprint_power_count(int power_count)
 static inline void __gpufreq_abort(const char *exception_string, ...)
 {
 	va_list args;
-	int cx = 0;
+	int cx __maybe_unused = 0;
 	char tmp_string[512];
 
 	va_start(args, exception_string);

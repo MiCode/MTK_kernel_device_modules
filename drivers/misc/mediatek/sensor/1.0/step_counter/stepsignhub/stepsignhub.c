@@ -220,7 +220,7 @@ static int step_counter_get_data(uint32_t *counter, int *status)
 {
 	int err = 0;
 	struct data_unit_t data;
-	uint64_t time_stamp = 0;
+	uint64_t time_stamp __maybe_unused = 0;
 
 	err = sensor_get_data_from_hub(ID_STEP_COUNTER, &data);
 	if (err < 0) {
@@ -258,7 +258,7 @@ static int floor_counter_get_data(uint32_t *counter, int *status)
 {
 	int err = 0;
 	struct data_unit_t data;
-	uint64_t time_stamp = 0;
+	uint64_t time_stamp __maybe_unused = 0;
 
 	err = sensor_get_data_from_hub(ID_FLOOR_COUNTER, &data);
 	if (err < 0) {

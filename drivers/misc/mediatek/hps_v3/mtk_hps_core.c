@@ -101,10 +101,10 @@ unsigned int hps_get_per_cpu_load(int cpu, int isReset)
 static int _hps_task_main(void *data)
 {
 	int cnt = 0;
-	void (*algo_func_ptr)(void);
+	void (*algo_func_ptr)(void)  __maybe_unused;
 
 	unsigned int cpu, first_cpu, i;
-	ktime_t enter_ktime;
+	ktime_t enter_ktime __maybe_unused;
 
 	enter_ktime = ktime_get();
 	//aee_rr_rec_hps_cb_enter_times((u64) ktime_to_ms(enter_ktime));

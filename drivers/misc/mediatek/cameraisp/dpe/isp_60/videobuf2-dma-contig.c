@@ -601,7 +601,7 @@ int vb2_dc_map_dmabuf(void *mem_priv)
 	struct vb2_dc_buf *buf = mem_priv;
 	struct sg_table *sgt;
 	unsigned long contig_size;
-	dma_addr_t iommu_pa;
+	dma_addr_t iommu_pa __maybe_unused;
 
 	if (WARN_ON(!buf->db_attach)) {
 		pr_info("trying to pin a non attached buffer\n");

@@ -176,7 +176,7 @@ static unsigned int check_mux_pdn(unsigned int ID)
 static unsigned int mt6768_get_ckgen_freq(unsigned int ID)
 {
 	int output = 0, i = 0;
-	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0, clk26cali_1 = 0;
+	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0, clk26cali_1 __maybe_unused = 0;
 
 	if (check_mux_pdn(ID)) {
 		pr_notice("ID-%d: MUX PDN, return 0.\n", ID);
@@ -218,7 +218,7 @@ static unsigned int mt6768_get_ckgen_freq(unsigned int ID)
 static unsigned int mt6768_get_abist_freq(unsigned int ID)
 {
 	int output = 0, i = 0;
-	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0, clk26cali_1 = 0;
+	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0, clk26cali_1 __maybe_unused = 0;
 
 	clk_dbg_cfg = clk_readl(CLK_DBG_CFG);
 	clk_writel(CLK_DBG_CFG, (clk_dbg_cfg & 0xFFC0FFFC)|(ID << 16));

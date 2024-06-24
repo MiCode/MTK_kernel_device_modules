@@ -321,7 +321,7 @@ static const struct snd_kcontrol_new mtk_i2s1_ch2_mix[] = {
 				    I_PCM_2_CAP_CH2, 1, 0),
 };
 
-static const struct snd_kcontrol_new mtk_i2s5_ch1_mix[] = {
+static const struct snd_kcontrol_new mtk_i2s5_ch1_mix[] __maybe_unused = {
 	SOC_DAPM_SINGLE_AUTODISABLE("DL1_CH1", AFE_CONN30, I_DL1_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL2_CH1", AFE_CONN30, I_DL2_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL3_CH1", AFE_CONN30, I_DL3_CH1, 1, 0),
@@ -340,7 +340,7 @@ static const struct snd_kcontrol_new mtk_i2s5_ch1_mix[] = {
 				    I_PCM_2_CAP_CH1, 1, 0),
 };
 
-static const struct snd_kcontrol_new mtk_i2s5_ch2_mix[] = {
+static const struct snd_kcontrol_new mtk_i2s5_ch2_mix[] __maybe_unused = {
 	SOC_DAPM_SINGLE_AUTODISABLE("DL1_CH2", AFE_CONN31, I_DL1_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL2_CH2", AFE_CONN31, I_DL2_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL3_CH2", AFE_CONN31, I_DL3_CH2, 1, 0),

@@ -277,7 +277,7 @@ void mtk_idle_post_process_by_chip(
 {
 	struct pwr_ctrl *pwrctrl;
 	struct wake_status wakesta;
-	unsigned int wr = WR_NONE;
+	unsigned int wr __maybe_unused = WR_NONE;
 
 	if (INVALID_IDLE_TYPE(idle_type))
 		return;

@@ -145,7 +145,7 @@ static void mt_power_gs_clk_compare(char *pmic_name,
 }
 int lpm_gs_clk_cmp_init(void *data)
 {
-	int i = 0, ret = 0, idx = 0;
+	int i __maybe_unused = 0, ret = 0, idx = 0;
 	struct lpm_gs_clk_info *_info;
 	struct lpm_gs_clk *const *_dcm;
 
@@ -172,7 +172,7 @@ int lpm_gs_clk_cmp_init(void *data)
 }
 int __lpm_gs_clk_cmp(unsigned int flag, unsigned int type, int user)
 {
-	int i = 0, is_found;
+	int i __maybe_unused = 0, is_found;
 	struct lpm_gs_clk_info *_info = lpm_gs_clks.info;
 	struct lpm_gs_clk *const *_dcm;
 

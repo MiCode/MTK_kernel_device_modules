@@ -40,7 +40,7 @@ static int pickup_gesture_get_data(int *probability, int *status)
 {
 	int err = 0;
 	struct data_unit_t data;
-	uint64_t time_stamp = 0;
+	uint64_t time_stamp __maybe_unused = 0;
 
 	err = sensor_get_data_from_hub(ID_PICK_UP_GESTURE, &data);
 	if (err < 0) {

@@ -74,7 +74,7 @@ int get_md1_power(enum mdpm_power_type power_type, bool need_update)
 {
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 #if defined(MD_POWER_UT) || !defined(MD_SCEANRIO_USE_SHARE_MEMORY)
-	u32 share_reg;
+	u32 share_reg __maybe_unused;
 #endif
 	u32 *share_mem;
 	enum md_scenario scenario;

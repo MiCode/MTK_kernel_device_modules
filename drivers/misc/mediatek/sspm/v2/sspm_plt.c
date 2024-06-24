@@ -95,7 +95,7 @@ static ssize_t sspm_alive_show(struct device *kobj,
 {
 
 	struct plt_ipi_data_s ipi_data;
-	int ret;
+	int ret __maybe_unused;
 
 	ipi_data.cmd = 0xDEAD;
 	sspm_plt_ackdata = 0;

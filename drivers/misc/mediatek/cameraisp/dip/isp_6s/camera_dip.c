@@ -997,7 +997,7 @@ static signed int DIP_Dump_IMGSYS_DIP_Reg(void)
 	unsigned int fifodmacmd = 0;
 	unsigned int cmdqdebugcmd = 0, cmdqdebugidx = 0;
 	unsigned int d1a_cq_en = 0;
-	void __iomem *dipRegBasAddr, *imgsysBasAddr;
+	void __iomem *dipRegBasAddr, *imgsysBasAddr __maybe_unused;
 
 	static struct DIP_DEV_NODE_MAPPING ImgsysDumpTL[3]
 	= {		{DIP_IMGSYS_CONFIG_IDX, 0x1502},
@@ -6415,7 +6415,7 @@ static int compat_get_dip_read_register_data(
 	unsigned long arg,
 	struct DIP_REG_IO_STRUCT *data)
 {
-	long ret = -1;
+	long ret __maybe_unused = -1;
 	struct compat_DIP_REG_IO_STRUCT data32 = {0, 0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
@@ -6431,7 +6431,7 @@ static int compat_put_dip_read_register_data(
 	unsigned long arg,
 	struct DIP_REG_IO_STRUCT *data)
 {
-	long ret = -1;
+	long ret __maybe_unused = -1;
 	struct compat_DIP_REG_IO_STRUCT data32 = {0, 0};
 	/*      compat_uptr_t uptr;*/
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
@@ -6448,7 +6448,7 @@ static int compat_get_dip_dump_buffer(
 	unsigned long arg,
 	struct DIP_DUMP_BUFFER_STRUCT *data)
 {
-	long ret = -1;
+	long ret __maybe_unused = -1;
 	struct compat_DIP_DUMP_BUFFER_STRUCT data32 = {0, 0, 0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
@@ -6465,7 +6465,7 @@ static int compat_get_dip_mem_info(
 	unsigned long arg,
 	struct DIP_MEM_INFO_STRUCT *data)
 {
-	long ret = -1;
+	long ret __maybe_unused = -1;
 	struct compat_DIP_MEM_INFO_STRUCT data32 = {0, 0, 0, 0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
@@ -6824,7 +6824,7 @@ EXIT:
 static signed int DIP_release(
 	struct inode *pInode, struct file *pFile)
 {
-	struct DIP_USER_INFO_STRUCT *pUserInfo;
+	struct DIP_USER_INFO_STRUCT *pUserInfo __maybe_unused;
 	unsigned int i = 0;
 
 	LOG_DBG("- E. UserCount: %d.\n", IspInfo.UserCount);
@@ -8411,7 +8411,7 @@ static signed int __init DIP_Init(void)
 {
 	signed int Ret = 0, j;
 	void *tmp;
-	struct proc_dir_entry *proc_entry;
+	struct proc_dir_entry *proc_entry __maybe_unused;
 	struct proc_dir_entry *dip_p2_dir;
 
 	int i;
@@ -8947,8 +8947,8 @@ irqreturn_t DIP_Irq_DIP_A(signed int  Irq, void *DeviceId)
 {
 	int i = 0;
 	unsigned int IrqINTStatus = 0x0;
-	unsigned int IrqCQStatus = 0x0;
-	unsigned int IrqCQLDStatus = 0x0;
+	unsigned int IrqCQStatus __maybe_unused = 0x0;
+	unsigned int IrqCQLDStatus __maybe_unused = 0x0;
 
 	/*LOG_DBG("DIP_Irq_DIP_A:%d\n", Irq);*/
 

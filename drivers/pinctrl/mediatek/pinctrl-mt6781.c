@@ -1166,7 +1166,7 @@ static const struct mtk_pin_field_calc mt6781_pin_eh_range[] = {
 	PIN_FIELD_BASE(163, 163, 6, 0x0040, 0x10, 21, 3),
 };
 
-static const struct mtk_pin_field_calc mt6781_pin_rsel_range[] = {
+static const struct mtk_pin_field_calc mt6781_pin_rsel_range[] __maybe_unused = {
 	PIN_FIELD_BASE(144, 144, 2, 0x0060, 0x10, 0, 2),
 	PIN_FIELD_BASE(145, 145, 2, 0x0060, 0x10, 4, 2),
 	PIN_FIELD_BASE(146, 146, 6, 0x00e0, 0x10, 16, 2),

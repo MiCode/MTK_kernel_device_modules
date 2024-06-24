@@ -659,7 +659,7 @@ u64 match_freq(int target_mhz, u64 *freq_list, u32 freq_cnt)
 {
 	u64 res_mhz = DEFAULT_MHZ;
 	int i;
-	u64 target64;
+	u64 target64 __maybe_unused;
 
 	if (freq_list == 0)
 		return 0;

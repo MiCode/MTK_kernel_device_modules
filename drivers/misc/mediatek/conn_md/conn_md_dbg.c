@@ -76,7 +76,7 @@ static int conn_md_dbg_write(struct file *file, const char *buffer,
 	unsigned long x = 0;
 	long y = 0;
 	long z = 0;
-	long i;
+	long i __maybe_unused;
 	char *pToken = NULL;
 	char *pDelimiter = " \t";
 

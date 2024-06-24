@@ -1245,7 +1245,7 @@ EXPORT_SYMBOL_GPL(cm_mgr_check_dts_setting);
 
 void cm_mgr_update_dram_by_cpu_opp(int cpu_opp)
 {
-	int ret = 0;
+	int ret __maybe_unused = 0;
 	int dram_opp = 0;
 
 

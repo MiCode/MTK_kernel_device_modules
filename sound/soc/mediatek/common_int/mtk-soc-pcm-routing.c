@@ -722,7 +722,7 @@ static int spk_type_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static const struct soc_enum spk_type_enum[] = {
+static const struct soc_enum spk_type_enum[] __maybe_unused = {
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(spk_type_str), spk_type_str),
 };
 

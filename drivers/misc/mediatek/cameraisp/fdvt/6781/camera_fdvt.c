@@ -4073,7 +4073,7 @@ EXIT:
  *****************************************************************************/
 static signed int FDVT_release(struct inode *pInode, struct file *pFile)
 {
-	struct FDVT_USER_INFO_STRUCT *pUserInfo;
+	struct FDVT_USER_INFO_STRUCT *pUserInfo __maybe_unused;
 	/*unsigned int Reg;*/
 
 	log_dbg("- E. user_count: %d.", fdvt_info.user_count);
@@ -4957,7 +4957,7 @@ static int proc_fdvt_dump_open(struct inode *inode, struct file *file)
 	return single_open(file, fdvt_dump_read, NULL);
 }
 
-static const struct file_operations fdvt_dump_proc_fops = {
+static const struct file_operations fdvt_dump_proc_fops __maybe_unused = {
 	.owner = THIS_MODULE,
 	.open = proc_fdvt_dump_open,
 	.read = seq_read,
@@ -5089,7 +5089,7 @@ static int proc_fdvt_reg_open(struct inode *inode, struct file *file)
 	return single_open(file, fdvt_reg_read, NULL);
 }
 
-static const struct file_operations fdvt_reg_proc_fops = {
+static const struct file_operations fdvt_reg_proc_fops __maybe_unused = {
 	.owner = THIS_MODULE,
 	.open = proc_fdvt_reg_open,
 	.read = seq_read,

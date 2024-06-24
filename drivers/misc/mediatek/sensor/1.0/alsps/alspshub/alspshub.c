@@ -715,7 +715,7 @@ static int als_get_data(int *value, int *status)
 {
 	int err = 0;
 	struct data_unit_t data;
-	uint64_t time_stamp = 0;
+	uint64_t time_stamp __maybe_unused = 0;
 
 	err = sensor_get_data_from_hub(ID_LIGHT, &data);
 	if (err) {
@@ -805,7 +805,7 @@ static int ps_get_data(int *value, int *status)
 {
 	int err = 0;
 	struct data_unit_t data;
-	uint64_t time_stamp = 0;
+	uint64_t time_stamp __maybe_unused = 0;
 
 	err = sensor_get_data_from_hub(ID_PROXIMITY, &data);
 	if (err < 0) {

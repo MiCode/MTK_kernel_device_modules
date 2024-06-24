@@ -254,7 +254,7 @@ static void mmdvfs_start_cam_monitor(int scen, int delay_hz)
 
 int mmdvfs_set_corse_step(int scenario, enum mmdvfs_voltage_enum step)
 {
-	int fine_step_opp = MMDVFS_FINE_STEP_UNREQUEST;
+	int fine_step_opp __maybe_unused = MMDVFS_FINE_STEP_UNREQUEST;
 
 	if (step == MMDVFS_VOLTAGE_HIGH)
 		fine_step_opp = MMDVFS_FINE_STEP_OPP0;

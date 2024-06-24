@@ -375,7 +375,7 @@ static int proc_armpll1_fsel_open(struct inode *inode, struct file *file)
 	return single_open(file, armpll1_fsel_read, NULL);
 }
 
-static const struct file_operations armpll1_fsel_proc_fops = {
+static const struct file_operations armpll1_fsel_proc_fops __maybe_unused = {
 	.owner = THIS_MODULE,
 	.open = proc_armpll1_fsel_open,
 	.read = seq_read,
@@ -389,7 +389,7 @@ static int proc_armpll2_fsel_open(struct inode *inode, struct file *file)
 	return single_open(file, armpll2_fsel_read, NULL);
 }
 
-static const struct file_operations armpll2_fsel_proc_fops = {
+static const struct file_operations armpll2_fsel_proc_fops __maybe_unused = {
 	.owner = THIS_MODULE,
 	.open = proc_armpll2_fsel_open,
 	.read = seq_read,
@@ -403,7 +403,7 @@ static int proc_ccipll_fsel_open(struct inode *inode, struct file *file)
 	return single_open(file, ccipll_fsel_read, NULL);
 }
 
-static const struct file_operations ccipll_fsel_proc_fops = {
+static const struct file_operations ccipll_fsel_proc_fops __maybe_unused = {
 	.owner = THIS_MODULE,
 	.open = proc_ccipll_fsel_open,
 	.read = seq_read,
@@ -417,7 +417,7 @@ static int proc_mmpll_fsel_open(struct inode *inode, struct file *file)
 	return single_open(file, mmpll_fsel_read, NULL);
 }
 
-static const struct file_operations mmpll_fsel_proc_fops = {
+static const struct file_operations mmpll_fsel_proc_fops __maybe_unused = {
 	.owner = THIS_MODULE,
 	.open = proc_mmpll_fsel_open,
 	.read = seq_read,
@@ -431,7 +431,7 @@ static int proc_gpupll_fsel_open(struct inode *inode, struct file *file)
 	return single_open(file, gpupll_fsel_read, NULL);
 }
 
-static const struct file_operations gpupll_fsel_proc_fops = {
+static const struct file_operations gpupll_fsel_proc_fops __maybe_unused = {
 	.owner = THIS_MODULE,
 	.open = proc_gpupll_fsel_open,
 	.read = seq_read,
@@ -444,7 +444,7 @@ static int proc_mm_clk_open(struct inode *inode, struct file *file)
 	return single_open(file, mm_clk_speed_dump_read, NULL);
 }
 
-static const struct file_operations mm_fops = {
+static const struct file_operations mm_fops __maybe_unused = {
 	.owner = THIS_MODULE,
 	.open = proc_mm_clk_open,
 	.read = seq_read,
@@ -455,7 +455,7 @@ static int proc_gpupll_open(struct inode *inode, struct file *file)
 	return single_open(file, gpupll_speed_dump_read, NULL);
 }
 
-static const struct file_operations gpu_fops = {
+static const struct file_operations gpu_fops __maybe_unused = {
 	.owner = THIS_MODULE,
 	.open = proc_gpupll_open,
 	.read = seq_read,
@@ -466,7 +466,7 @@ static int proc_univpll_open(struct inode *inode, struct file *file)
 	return single_open(file, univpll_speed_dump_read, NULL);
 }
 
-static const struct file_operations univ_fops = {
+static const struct file_operations univ_fops __maybe_unused = {
 	.owner = THIS_MODULE,
 	.open = proc_univpll_open,
 	.read = seq_read,
