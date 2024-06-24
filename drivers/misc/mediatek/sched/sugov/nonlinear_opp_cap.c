@@ -15,6 +15,7 @@
 #include <linux/sched/clock.h>
 #include <linux/energy_model.h>
 #include <linux/of_platform.h>
+#include <linux/cpuset.h>
 #include "common.h"
 #include "cpufreq.h"
 #include "mtk_unified_power.h"
@@ -1818,6 +1819,10 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	ret = init_pd_topology();
 	if (ret)
 		return ret;
+
+	if (legacy_api_support_get())
+		rebuild_sched_domains();
+
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	nr_wl = mtk_mapping.total_type;
 #endif
