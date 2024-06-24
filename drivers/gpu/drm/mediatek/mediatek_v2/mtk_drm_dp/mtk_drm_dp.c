@@ -5165,8 +5165,6 @@ static int mtk_dp_encoder_atomic_check(struct drm_encoder *encoder,
 {
 	struct mtk_dp *mtk_dp = encoder_to_dp(encoder);
 
-	DP_FUNC();
-
 	if (!mtk_dp) {
 		DP_ERR("can not find the mtk dp by the encoder");
 		return -1;
@@ -5342,8 +5340,6 @@ static int mtk_dp_connector_atomic_check(struct drm_connector *connector,
 	struct drm_dp_mst_topology_mgr *mgr;
 	struct drm_connector_state *conn_state;
 	struct drm_crtc_state *crtc_state;
-
-	DP_FUNC();
 
 	mtk_connector = container_of(connector, struct mtk_dp_connector, connector);
 	mgr = &mtk_connector->mtk_dp->mgr;
@@ -5567,8 +5563,6 @@ static u32 *mtk_dp_bridge_atomic_get_output_bus_fmts(struct drm_bridge *bridge,
 {
 	u32 *output_fmts;
 
-	DP_FUNC();
-
 	*num_output_fmts = 0;
 	output_fmts = kmalloc(sizeof(*output_fmts), GFP_KERNEL);
 	if (!output_fmts)
@@ -5591,8 +5585,6 @@ static u32 *mtk_dp_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 	struct drm_display_info *display_info =
 		&conn_state->connector->display_info;
 	u32 rate;
-
-	DP_FUNC();
 
 	rate = min_t(u32, drm_dp_max_link_rate(mtk_dp->rx_cap) *
 			      drm_dp_max_lane_count(mtk_dp->rx_cap),
