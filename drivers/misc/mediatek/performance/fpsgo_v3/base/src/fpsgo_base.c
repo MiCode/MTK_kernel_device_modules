@@ -44,6 +44,7 @@
 #include <linux/kernel.h>
 #include <trace/trace.h>
 #include "sched/sched.h"
+#include "eas/eas_plus.h"
 
 #define TIME_1S  1000000000ULL
 #define TRAVERSE_PERIOD  300000000000ULL
@@ -116,7 +117,7 @@ long fpsgo_sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 		goto out_put_task;
 	}
 
-	retval = set_cpus_allowed_ptr(p, in_mask);
+	retval = set_cpus_allowed_ptr_by_kernel(p, in_mask);
 out_put_task:
 	put_task_struct(p);
 	return retval;
