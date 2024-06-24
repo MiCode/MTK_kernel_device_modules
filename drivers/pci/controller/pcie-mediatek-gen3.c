@@ -252,6 +252,7 @@
 #define PCIE_CPL_TIMEOUT_64US		0x1
 #define PCIE_CPL_TIMEOUT_4MS		0x2
 #define PCIE_CPL_TIMEOUT_32MS		0x5
+#define PCIE_CPLTO_SCALE_4MS		4
 #define PCIE_CPLTO_SCALE_29MS		29
 
 #define PCIE_CONF_EXP_LNKCTL2_REG	0x10b0
@@ -922,7 +923,7 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 	writel_relaxed(val, port->base + PCIE_INT_ENABLE_REG);
 
 	/* PCIe read completion timeout is adjusted to 4ms */
-	mtk_pcie_adjust_cplto_scale(port, PCIE_CPL_TIMEOUT_4MS);
+	mtk_pcie_adjust_cplto_scale(port, PCIE_CPLTO_SCALE_4MS);
 
 	if (port->data && port->data->post_init) {
 		err = port->data->post_init(port);
