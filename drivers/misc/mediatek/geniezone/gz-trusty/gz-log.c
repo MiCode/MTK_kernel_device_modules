@@ -884,6 +884,7 @@ static int trusty_gz_log_probe(struct platform_device *pdev)
 	}
 #endif
 
+	init_waitqueue_head(&gls->gz_log_wq);
 	gls->call_notifier.notifier_call = trusty_log_call_notify;
 	ret = trusty_call_notifier_register(gls->trusty_dev,
 					       &gls->call_notifier);
@@ -900,7 +901,6 @@ static int trusty_gz_log_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "failed to register panic notifier\n");
 		goto error_panic_notifier;
 	}
-	init_waitqueue_head(&gls->gz_log_wq);
 	atomic_set(&gls->gz_log_event_count, 0);
 	atomic_set(&gls->readable, 1);
 	platform_set_drvdata(pdev, gls);
