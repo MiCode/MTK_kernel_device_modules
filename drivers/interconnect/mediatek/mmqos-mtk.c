@@ -1827,6 +1827,11 @@ void mmqos_hrt_dump(void)
 {
 	u32 larb_id = 0;
 
+	if (mmqos_state == MMQOS_DISABLE) {
+		MMQOS_DBG("mmqos not enable");
+		return;
+	}
+
 	//mmpc dvfsrc dump
 	if (mmqos_state & MMPC_ENABLE)
 		mmpc_dvfsrc_full_dump_line();
