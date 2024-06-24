@@ -71,6 +71,16 @@
 #define ESD_CHECK_ENABLE 1
 #define INIT_CODE_BACKLIGHT_INDEX_DV3 (ARRAY_SIZE(init_setting_fhd_120hz_dv3) - 5)
 
+//add for spr in start
+static unsigned int panel_visionox_rm692h5_spr_off_rc_buf_thresh[14] = {
+	896, 1792, 2688, 3584, 4480, 5376, 6272, 6720, 7168, 7616, 7744, 7872, 8000, 8064};
+static unsigned int panel_visionox_rm692h5_spr_off_range_min_qp[15] = {
+	0, 4, 5, 5, 7, 7, 7, 7, 7, 7, 9, 9, 9, 11, 17};
+static unsigned int panel_visionox_rm692h5_spr_off_range_max_qp[15] = {
+	8, 8, 9, 10, 11, 11, 11, 12, 13, 14, 15, 16, 17, 17, 19};
+static int panel_visionox_rm692h5_spr_off_range_bpg_ofs[15] = {
+	2, 0, 0, -2, -4, -6, -8, -8, -8, -10, -10, -12, -12, -12, -12};
+
 #define ROUND_CORNER_H_TOP 180
 #define ROUND_CORNER_H_BOT 180
 
