@@ -51,13 +51,10 @@
 	/* chosen */
 	chosen: chosen {
 		bootargs = "console=tty0 root=/dev/ram \
-			    loglevel=8 \
 			    8250.nr_uarts=4 \
 			    androidboot.hardware=mt6899 \
-			    initcall_debug=1 \
 			    vmalloc=400M swiotlb=noforce cma=64M \
 			    firmware_class.path=/vendor/firmware \
-			    initcall_debug=1 \
 			    maxcpus=4";
 	};
 
