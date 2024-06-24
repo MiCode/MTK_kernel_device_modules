@@ -52,6 +52,10 @@
 #define RG_XTP_TPLL_ISO_EN_STB_T_SEL	GENMASK(13, 12)
 #define TPLL_ISO_EN_STB_T_SEL_TO_3	0x3
 
+#define PEXTP_DIG_TPLL0_6C		0x106c
+#define RG_XTP_GLB_TPLL0_SDM_SSC_CTL	GENMASK(16, 15)
+#define DISABLE_SSC			0x2
+
 #define PEXTP_DIG_TPLL0_78		0x1078
 #define RG_XTP_VCO_CFIX_EN_GEN1		GENMASK(21, 20)
 #define RG_XTP_VCO_CFIX_EN_GEN2		GENMASK(23, 22)
@@ -264,6 +268,7 @@ struct mtk_pcie_phy {
 
 	bool sw_efuse_en;
 	bool short_reach_en;
+	bool disable_ssc;
 	u32 efuse_glb_intr;
 	u32 *efuse_info;
 	size_t efuse_info_len;
@@ -602,6 +607,10 @@ static int mtk_pcie_phy_probe(struct platform_device *pdev)
 	ret = of_property_read_bool(dev->of_node, "mediatek,short-reach");
 	if (ret)
 		pcie_phy->short_reach_en = true;
+
+	ret = of_property_read_bool(dev->of_node, "mediatek,disable-ssc");
+	if (ret)
+		pcie_phy->disable_ssc = true;
 
 	if (pcie_phy->data->sw_efuse_supported) {
 		/*
@@ -1066,6 +1075,10 @@ static int mtk_pcie_phy_init_6991(struct phy *phy)
 	ret = mtk_pcie_sphy3_calibrate(phy);
 	if (ret < 0)
 		return ret;
+
+	if (pcie_phy->disable_ssc)
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_TPLL0_6C,
+				     RG_XTP_GLB_TPLL0_SDM_SSC_CTL, DISABLE_SSC);
 
 	if (pcie_phy->short_reach_en)
 		return mtk_pcie_sr_init_6991(phy);
