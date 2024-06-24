@@ -6556,17 +6556,23 @@ int mtk_drm_dp_get_cap(struct drm_device *dev, void *data,
 	return 0;
 }
 
-int mtk_drm_dp_get_info(struct drm_device *dev,
-			struct drm_mtk_session_info *info)
+int mtk_drm_dp_get_info_by_id(struct drm_device *dev,
+			struct drm_mtk_session_info *info, int dp_encoder_id)
 {
 	if (!g_mtk_dp) {
 		DP_ERR("%s, dp not initial\n", __func__);
-		return 0;
+		return -EINVAL;
 	}
 
-	info->physicalWidthUm = 900;
-	info->physicalHeightUm = 1000;
-	info->vsyncFPS = g_mtk_dp->info[0].dp_output_timing.frame_rate * 100; //todo
+	if (dp_encoder_id >=  0 && dp_encoder_id < 2) {
+		info->physical_width = g_mtk_dp->mode[dp_encoder_id].hdisplay;
+		info->physical_height = g_mtk_dp->mode[dp_encoder_id].vdisplay;
+		DP_MSG("%s, physical_width:%u physical_height:%u\n",
+				__func__, info->physical_width, info->physical_height);
+	} else {
+		DP_ERR("%s, dp_encoder_id is invalid: %d\n", __func__, dp_encoder_id);
+		return -EINVAL;
+	}
 
 	return 0;
 }
