@@ -1803,6 +1803,30 @@ TRACE_EVENT(GPU_DVFS__EBRB_ASYNC_POLICY,
 
 );
 
+TRACE_EVENT(GPU_DVFS__EBRB_PREOC,
+	TP_PROTO(const unsigned int *arg),
+	TP_ARGS(arg),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, u0)__field(unsigned int, u1)__field(unsigned int, u2)__field(unsigned int, u3)
+		__field(unsigned int, u4)__field(unsigned int, u5)__field(unsigned int, u6)__field(unsigned int, u7)
+	),
+	TP_fast_assign(
+		__entry->u0 = arg[0];__entry->u1 = arg[1];__entry->u2 = arg[2];__entry->u3 = arg[3];
+		__entry->u4 = arg[4];__entry->u5 = arg[5];__entry->u6 = arg[6];__entry->u7 = arg[7];
+	),
+
+	TP_printk("u0=%u|%u|%u u1=%u|%u|%u u2=%u|%u|%u u3=%u|%u|%u u4=%u|%u|%u u5=%u|%u|%u u6=%u|%u|%u u7=%u|%u|%u",
+		(__entry->u0 >> 16) & 0xFFFF, (__entry->u0 >> 8) & 0xFF, __entry->u0 & 0xFF,
+		(__entry->u1 >> 16) & 0xFFFF, (__entry->u1 >> 8) & 0xFF, __entry->u1 & 0xFF,
+		(__entry->u2 >> 16) & 0xFFFF, (__entry->u2 >> 8) & 0xFF, __entry->u2 & 0xFF,
+		(__entry->u3 >> 16) & 0xFFFF, (__entry->u3 >> 8) & 0xFF, __entry->u3 & 0xFF,
+		(__entry->u4 >> 16) & 0xFFFF, (__entry->u4 >> 8) & 0xFF, __entry->u4 & 0xFF,
+		(__entry->u5 >> 16) & 0xFFFF, (__entry->u5 >> 8) & 0xFF, __entry->u5 & 0xFF,
+		(__entry->u6 >> 16) & 0xFFFF, (__entry->u6 >> 8) & 0xFF, __entry->u6 & 0xFF,
+		(__entry->u7 >> 16) & 0xFFFF, (__entry->u7 >> 8) & 0xFF, __entry->u7 & 0xFF)
+
+);
 
 #endif /* _TRACE_GED_H */
 
