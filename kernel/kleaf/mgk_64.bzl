@@ -224,6 +224,7 @@ mgk_64_device_modules = [
     "drivers/gpu/drm/panel/panel-nt37707-c2v-arp.ko",
     "drivers/gpu/drm/panel/panel-tianma-nt36672e-vdo-120hz-vfp-6382.ko",
     "drivers/gpu/drm/panel/k6991v1_64_alpha/panel-nt37707-boe-fhdplus-cmd.ko",
+    "drivers/gpu/drm/panel/k6991v1_64_alpha/panel-rm692k0-visionox-fhdplus-cmd.ko",
     "drivers/gpu/mediatek/ged/ged.ko",
     "drivers/gpu/mediatek/gpu_bm/mtk_gpu_qos.ko",
     "drivers/gpu/mediatek/gpueb/mtk_gpueb.ko",
