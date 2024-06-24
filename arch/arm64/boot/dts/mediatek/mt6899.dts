@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0
+﻿// SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2022 MediaTek Inc.
+ * Copyright (c) 2024 MediaTek Inc.
  */
 
 /dts-v1/;
@@ -926,6 +926,16 @@
 		md-ccif0@1020a000 {
 			compatible = "mediatek,md_ccif0";
 			reg = <0 0x1020a000 0 0x1000>;
+		};
+
+		dsi_te:dsi-te {
+			compatible = "mediatek, dsi_te-eint";
+			status = "disabled";
+		};
+
+		dsi1_te: dsi1-te {
+			compatible = "mediatek, dsi1_te-eint";
+			status = "disabled";
 		};
 
 		ap-ccif1@1020b000 {
@@ -2001,6 +2011,15 @@
 			net-spd-ver = <8>;
 			hw-reset-ver = <1>;
 			//dpmaif-infracfg = <&infra_infracfg_ao_reg_clk>;
+		};
+
+		gpio_usage_mapping:gpio {
+			compatible = "mediatek,gpio_usage_mapping";
+		};
+
+		md1_sim1_hot_plug_eint:MD1-SIM1-HOT-PLUG-EINT {
+		};
+		md1_sim2_hot_plug_eint:MD1-SIM2-HOT-PLUG-EINT {
 		};
 
 		mali: mali@13000000 {
@@ -7301,6 +7320,26 @@
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&mdp_iommu M4U_PORT_L41_VIDEO_UP0>;
 		};
+
+		keypad: kp@1c00e000 {
+			compatible = "mediatek,kp";
+			reg = <0 0x1c00e000 0 0x1000>;
+			interrupts = <GIC_SPI 133 IRQ_TYPE_EDGE_RISING 0>;
+			mediatek,key-debounce-ms = <1024>;
+			mediatek,hw-map-num = <72>;
+			mediatek,hw-init-map = <114 0 0 0 0 0 0 0 0 0 0 0 0
+						0 0 0 0 0 0 0 0 0 0 0 0 0 0
+						0 0 0 0 0 0 0 0 0 0 0 0 0 0
+						0 0 0 0 0 0 0 0 0 0 0 0 0 0
+						0 0 0 0 0 0 0 0 0 0 0 0 0 0
+						0 0 0>;
+			//clocks = <&clk26m>;
+			//clock-names = "kpd";
+		};
+
+		smart_pa: smart-pa {
+		};
+
 	};
 
 	connfem: connfem {

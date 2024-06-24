@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+﻿// SPDX-License-Identifier: (GPL-2.0 OR MIT)
 /*
  * Copyright (C) 2022 MediaTek Inc.
  */
@@ -653,5 +653,6 @@ initcall_debug=1";
 #endif
 
 #include "mediatek/cust_k6899_connfem.dtsi"
+#include <k6899v1_64/cust.dtsi>
 
 /*End of this file, DO NOT ADD ANYTHING HERE*/
