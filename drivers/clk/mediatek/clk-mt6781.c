@@ -3367,6 +3367,8 @@ static const struct of_device_id of_match_clk_mt6781[] = {
 	},{
 		.compatible = "mediatek,mt6781-imp_iic_wrap",
 		.data = mtk_imp_iic_wrap_init,
+	}, {
+		/* sentinel */
 	}
 };
 
