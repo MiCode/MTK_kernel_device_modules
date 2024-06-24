@@ -405,6 +405,13 @@ void mmdvfs_debug_status_dump(struct seq_file *file)
 
 sram_dump:
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_RST);
+	mmdvfs_vcp_cb_mutex_lock();
+	if (!mmdvfs_vcp_cb_ready_get()) {
+		mmdvfs_vcp_cb_mutex_unlock();
+		MMDVFS_DBG("cb_ready:%d", mmdvfs_vcp_cb_ready_get());
+		return;
+	}
+
 	mmdvfs_debug_dump_line(file, "VER3.5: mux controlled by vcp sram:%#lx", (unsigned long)(void *)SRAM_BASE);
 	// usr
 	for (k = 0; k < SRAM_USR_NUM; k++) {
@@ -507,6 +514,8 @@ sram_dump:
 	for (i = 0; i < SRAM_PWR_CNT - 1; i++)
 		mmdvfs_debug_dump_line(file, "pwr:%d gear:%u", i, readl(SRAM_PWR_GEAR(i)));
 	mmdvfs_debug_dump_line(file, "pwr:%d ceil:%u", i, readl(SRAM_VMM_CEIL));
+
+	mmdvfs_vcp_cb_mutex_unlock();
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_RST);
 }
 EXPORT_SYMBOL_GPL(mmdvfs_debug_status_dump);
