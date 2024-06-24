@@ -1773,6 +1773,15 @@
 					bus-status-num = <3>;
 					bus-freq-mhz = <156>;
 				};
+				monitor7 {
+					monitor-name = "debug_ctrl_ao_MM_AO";
+					base = <0x1e835000>;
+					num-ports = <26>;
+					bus-status-offset = <0xc>;
+					bus-status-num = <3>;
+					bus-freq-mhz = <688>;
+					isr-dump = <0>;
+				};
 			};
 		};
 
