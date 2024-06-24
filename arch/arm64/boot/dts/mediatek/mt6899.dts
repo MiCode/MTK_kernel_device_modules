@@ -7242,7 +7242,7 @@
 			fmeter-ck = <14>;	/* clk table fmeter f_fmmup_ck */
 			fmeter-type = <5>;	/* fmeter type */
 			mbox-count = <5>;
-			vcp-ee-enable = <0>;
+			vcp-excep-mode = <0>;
 			bus-debug-num-ports = <18>;
 			/* id, mbox, send_size*/
 			send-table =
