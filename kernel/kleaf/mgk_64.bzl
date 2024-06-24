@@ -2149,6 +2149,7 @@ def get_overlay_modules_list():
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/mdpm/mtk_mdpm.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/mdpm_v1/mtk_mdpm_v1.ko")
+        mgk_64_platform_device_modules.update({"drivers/misc/mediatek/dcm/mt6761_dcm.ko":"mt6761"})
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/widevine_drm/widevine_driver.ko")
 
