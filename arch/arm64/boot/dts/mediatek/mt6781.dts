@@ -3074,8 +3074,7 @@
 			compatible = "mediatek,mdp";
 			reg = <0 0x1b000000 0 0x1000>;
 			thread-count = <24>;
-			mboxes = <&gce_mbox_sec 10 0 CMDQ_THR_PRIO_1>,
-				<&gce_mbox 19 0 CMDQ_THR_PRIO_1>,
+			mboxes = <&gce_mbox 19 0 CMDQ_THR_PRIO_1>,
 				<&gce_mbox 20 0 CMDQ_THR_PRIO_1>,
 				<&gce_mbox 21 0 CMDQ_THR_PRIO_1>,
 				<&gce_mbox 22 0 CMDQ_THR_PRIO_1>;
@@ -3658,9 +3657,7 @@
 		mediatek,gce = <&gce_mbox>;
 		mmsys_config = <&mmsys_config>;
 		mediatek,gce-subsys = <99>, <SUBSYS_1400XXXX>;
-		mboxes = <&gce_mbox 21 0 CMDQ_THR_PRIO_1>,
-			 <&gce_mbox 22 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
-			 <&gce_mbox_sec 11 0 CMDQ_THR_PRIO_1>;
+		mboxes = <&gce_mbox_sec 11 0 CMDQ_THR_PRIO_1>;
 		token_user0 = /bits/ 16 <CMDQ_SYNC_TOKEN_USER_0>;
 		token_gpr_set4 = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_4>;
 	};
@@ -5436,7 +5433,7 @@
 	mdp_mutex: mdp_mutex@1b001000 {
 		compatible = "mediatek,mdp_mutex";
 		reg = <0 0x1b001000 0 0x1000>;
-		clocks = <&mdpsys_config CLK_MDP_MUTEX0>;
+		clocks = <&mdpsys_config_clk CLK_MDP_MUTEX0>;
 		clock-names = "MDP_MUTEX0";
 	};
 
