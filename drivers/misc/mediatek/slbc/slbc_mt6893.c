@@ -111,6 +111,13 @@ static int slbc_check_mmsram(void)
 }
 #endif /* CONFIG_MTK_SLBC_MMSRAM */
 
+static int slbc_test_bit(unsigned long nr , unsigned long *_addr)
+{
+	unsigned long addr[1] = {*_addr};
+
+	return test_bit(nr, addr);
+}
+
 static void slbc_set_sram_data(struct slbc_data *d)
 {
 #if IS_ENABLED(CONFIG_MTK_SLBC_MMSRAM)
@@ -192,13 +199,13 @@ static void slbc_deactivate_timer_fn(struct timer_list *timer)
 		struct slbc_data *d = ops->data;
 		unsigned int uid = d->uid;
 
-		if (test_bit(uid, &slbc_sid_rel_q)) {
+		if (slbc_test_bit(uid, &slbc_sid_rel_q)) {
 #ifdef SLBC_TRACE
 			trace_slbc_api((void *)__func__, slbc_uid_str[uid]);
 #endif /* SLBC_TRACE */
 			slbc_debug_log("%s: %s", __func__, slbc_uid_str[uid]);
 
-			if (test_bit(uid, &slbc_uid_used)) {
+			if (slbc_test_bit(uid, &slbc_uid_used)) {
 				ref++;
 
 				pr_info("#@# %s(%d) %s not released!\n",
@@ -309,7 +316,7 @@ int slbc_deactivate(struct slbc_data *d)
 		slbc_debug_log("%s: %s %s", __func__, slbc_uid_str[uid],
 				"done");
 
-		if (test_bit(uid, &slbc_sid_rel_q)) {
+		if (slbc_test_bit(uid, &slbc_sid_rel_q)) {
 			slbc_debug_log("%s: %s already in release_q %lx!",
 					__func__, slbc_uid_str[uid],
 					slbc_sid_rel_q);
@@ -347,7 +354,7 @@ static struct slbc_data *slbc_find_next_low_used(struct slbc_data *d_old)
 		unsigned int uid = d->uid;
 		unsigned int p = config->priority;
 
-		if (test_bit(uid, &slbc_uid_used) &&
+		if (slbc_test_bit(uid, &slbc_uid_used) &&
 				(p > p_old) &&
 				(d->slot_used & res_old)) {
 			d_used = d;
@@ -385,7 +392,7 @@ static struct slbc_data *slbc_find_next_high_req(struct slbc_data *d_old)
 		unsigned int uid = d->uid;
 		unsigned int p = config->priority;
 
-		if (test_bit(uid, &slbc_sid_req_q) &&
+		if (slbc_test_bit(uid, &slbc_sid_req_q) &&
 				(p <= p_old) &&
 				(res & res_old)) {
 			p_old = p;
@@ -494,7 +501,7 @@ static void slbc_debug_dump_data(struct slbc_data *d)
 
 	pr_info("ID %s\t", slbc_uid_str[uid]);
 
-	if (test_bit(uid, &slbc_uid_used))
+	if (slbc_test_bit(uid, &slbc_uid_used))
 		pr_info(" activate\n");
 	else
 		pr_info(" deactivate\n");
@@ -662,12 +669,12 @@ int slbc_request(struct slbc_data *d)
 	slbc_debug_log("%s: %s", __func__, slbc_uid_str[uid]);
 
 	slbc_debug_log("%s: slbc_sid_mask %lx", __func__, slbc_sid_mask);
-	if (test_bit(uid, &slbc_sid_mask)) {
+	if (slbc_test_bit(uid, &slbc_sid_mask)) {
 		ret = -EREQ_MASKED;
 		goto error;
 	}
 
-	if (test_bit(uid, &slbc_sid_req_q)) {
+	if (slbc_test_bit(uid, &slbc_sid_req_q)) {
 		slbc_debug_log("%s: %s already in request_q %lx!",
 				__func__, slbc_uid_str[uid],
 				slbc_sid_req_q);
@@ -677,7 +684,7 @@ int slbc_request(struct slbc_data *d)
 	slbc_debug_log("%s: slbc_sid_req_q %lx", __func__, slbc_sid_req_q);
 
 	slbc_debug_log("%s: slbc_uid_used %lx", __func__, slbc_uid_used);
-	if (test_bit(uid, &slbc_uid_used)) {
+	if (slbc_test_bit(uid, &slbc_uid_used)) {
 		slbc_debug_log("%s: %s already requested!",
 				__func__, slbc_uid_str[uid]);
 
@@ -872,13 +879,13 @@ int slbc_release(struct slbc_data *d)
 	slbc_debug_log("%s: %s", __func__, slbc_uid_str[uid]);
 
 	slbc_debug_log("%s: slbc_sid_mask %lx", __func__, slbc_sid_mask);
-	if (test_bit(uid, &slbc_sid_mask)) {
+	if (slbc_test_bit(uid, &slbc_sid_mask)) {
 		ret = -EREQ_MASKED;
 		goto error;
 	}
 
 	slbc_debug_log("%s: slbc_uid_used %lx", __func__, slbc_uid_used);
-	if (!test_bit(uid, &slbc_uid_used)) {
+	if (!slbc_test_bit(uid, &slbc_uid_used)) {
 		slbc_debug_log("%s: %s already released!",
 				__func__, slbc_uid_str[uid]);
 
@@ -1080,7 +1087,7 @@ static void slbc_dump_data(struct seq_file *m, struct slbc_data *d)
 
 	seq_printf(m, "ID %s\t", slbc_uid_str[uid]);
 
-	if (test_bit(uid, &slbc_uid_used))
+	if (slbc_test_bit(uid, &slbc_uid_used))
 		seq_puts(m, " activate\n");
 	else
 		seq_puts(m, " deactivate\n");
@@ -1174,7 +1181,7 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 				struct slbc_data *d = ops->data;
 				unsigned int uid = d->uid;
 
-				if (test_bit(uid, &slbc_uid_used))
+				if (slbc_test_bit(uid, &slbc_uid_used))
 					ops->deactivate(d);
 			}
 			mutex_unlock(&slbc_ops_lock);
