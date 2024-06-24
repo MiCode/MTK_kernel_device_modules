@@ -2892,6 +2892,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/clk/mediatek/pd-chk-mt6833.ko")
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-fmeter-mt6833.ko")
         mgk_64_device_modules.append("drivers/pinctrl/mediatek/pinctrl-mt6833.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/dcm/mt6833_dcm.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-mpu-v2.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-fake-eng.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi.ko")
