@@ -110,6 +110,34 @@
 	status = "okay";
 };
 
+&disp_ovl0_exdma5 {
+	interrupts = <GIC_SPI 465 IRQ_TYPE_LEVEL_HIGH 0>;
+};
+
+&disp_ovl0_exdma6 {
+	interrupts = <GIC_SPI 465 IRQ_TYPE_LEVEL_HIGH 0>;
+};
+
+&ovl_wdma0 {
+	interrupts = <GIC_SPI 465 IRQ_TYPE_LEVEL_HIGH 0>;
+};
+
+&ovl_wdma1 {
+	interrupts = <GIC_SPI 465 IRQ_TYPE_LEVEL_HIGH 0>;
+};
+
+&disp_ovl1_exdma5 {
+	interrupts = <GIC_SPI 465 IRQ_TYPE_LEVEL_HIGH 0>;
+};
+
+&disp_ovl1_exdma6 {
+	interrupts = <GIC_SPI 465 IRQ_TYPE_LEVEL_HIGH 0>;
+};
+
+&ovl1_wdma1 {
+	interrupts = <GIC_SPI 465 IRQ_TYPE_LEVEL_HIGH 0>;
+};
+
 &disp_dvo0 {
 	status = "disabled";
 	ports {
