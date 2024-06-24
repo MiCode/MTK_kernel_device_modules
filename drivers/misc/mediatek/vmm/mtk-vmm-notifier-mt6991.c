@@ -71,7 +71,8 @@ enum POWER_DOMAIN_ID {
 	PD_CAM_MAIN,
 	PD_CAM_VCORE,
 	PD_CAM_CCU,
-	PD_NUM			/*19*/
+	PD_VDE_VCORE0,
+	PD_NUM			/*20*/
 };
 
 struct vmm_notifier_data {
