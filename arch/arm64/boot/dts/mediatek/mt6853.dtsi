@@ -3998,6 +3998,7 @@
 				<4 2 66>,
 				<4 0 1>,
 				<4 0 159>;
+			svp-mtee = <1>;
 		};
 
 		vdec_gcon_clk: syscon@1602f000 {
@@ -6187,6 +6188,15 @@
 	};
 
 };
+
+	drm_wv: drm_wv {
+		compatible = "mediatek,drm_wv";
+		status = "okay";
+	};
+
+	mtee_svp: mtee_svp {
+		compatible = "medaitek,svp";
+	};
 
 &pio {
 	aud_clk_mosi_off: aud_clk_mosi_off {
