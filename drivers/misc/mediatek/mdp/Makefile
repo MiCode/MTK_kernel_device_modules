@@ -74,6 +74,7 @@ obj-$(CONFIG_MTK_MDP) += cmdq_helper_inf.o
 ifeq ($(CONFIG_MTK_MDP), y)
 obj-$(CONFIG_MTK_MDP_MT6768) += mdp_drv_mt6768.o
 obj-$(CONFIG_MTK_MDP_MT6761) += mdp_drv_mt6761.o
+obj-$(CONFIG_MTK_MDP_MT6765) += mdp_drv_mt6765.o
 else
 ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6886.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6886.o
