@@ -3406,9 +3406,7 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ovlsys_main_bringup[] = {
 	DDP_COMPONENT_OVL_EXDMA7,
 	DDP_COMPONENT_OVL0_BLENDER5,
 	DDP_COMPONENT_OVL0_OUTPROC0,
-	//DDP_COMPONENT_OVL0_OUTPROC_OUT_CB6,
 	DDP_COMPONENT_OVLSYS_DLO_ASYNC5,
-	DDP_COMPONENT_OVL_EXDMA0,
 };
 
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_main_bringup[] = {

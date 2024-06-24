@@ -1630,4 +1630,9 @@ void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk
 void mtk_crtc_gce_event_config(struct drm_crtc *crtc);
 void mtk_crtc_vdisp_ao_config(struct drm_crtc *crtc);
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,
+						  struct mtk_plane_state *plane_state);
+#endif
+
 #endif /* MTK_DRM_CRTC_H */

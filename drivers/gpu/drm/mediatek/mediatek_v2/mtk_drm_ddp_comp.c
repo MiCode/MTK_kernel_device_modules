@@ -1070,6 +1070,16 @@ bool mtk_ddp_comp_is_output_by_id(enum mtk_ddp_comp_id id)
 	return mtk_ddp_matches[id].is_output;
 }
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+bool mtk_ddp_comp_is_rdma(struct mtk_ddp_comp *comp)
+{
+	if (mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA)
+		return true;
+
+	return false;
+}
+#endif
+
 void mtk_ddp_comp_get_name(struct mtk_ddp_comp *comp, char *buf, int buf_len)
 {
 	int r;
