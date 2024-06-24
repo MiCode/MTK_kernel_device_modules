@@ -947,6 +947,7 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/cm_mgr/mtk_cm_mgr_mt6989.ko": "mt6989",
     "drivers/misc/mediatek/cm_mgr/mtk_cm_mgr_mt6991.ko": "mt6991",
     "drivers/misc/mediatek/dcm/mt6897_dcm.ko": "mt6897",
+    "drivers/misc/mediatek/dcm/mt6899_dcm.ko": "mt6899",
     "drivers/misc/mediatek/dcm/mt6985_dcm.ko": "mt6985",
     "drivers/misc/mediatek/dcm/mt6989_dcm.ko": "mt6989",
     "drivers/misc/mediatek/dcm/mt6991_dcm.ko": "mt6991",
