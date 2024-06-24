@@ -8,18 +8,14 @@
 #include <linux/module.h>
 #include <linux/workqueue.h>
 #include <linux/mutex.h>
-#include <linux/io.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/power_supply.h>
 #include "mtk_bp_thl.h"
-#include "../pbm/mtk_peak_power_budget.h"
 #define BAT_PERCENT_LIMIT 15
 #define BPCB_MAX_NUM 16
 #define MAX_VALUE 0x7FFF
 
-
-void __iomem *hpt_ctrl_base;
 static struct task_struct *bp_notify_thread;
 static bool bp_notify_flag;
 static bool bp_md_notify_flag;
@@ -33,8 +29,6 @@ static struct bp_thl_callback_table mdcb_tb[BPCB_MAX_NUM] = { {0} };
 static struct notifier_block bp_nb;
 struct bp_thl_priv {
 	int bp_thl_lv;
-	int bp_hpt;
-	int bp_hpt_ctrl_enable;
 	int bp_thl_stop;
 	int max_level;
 	int *soc_limit;
@@ -45,7 +39,6 @@ struct bp_thl_priv {
 	int temp_cur_stage;
 	int temp_max_stage;
 	int *throttle_table;
-	int *hpt_ctrl_table;
 	struct work_struct soc_work;
 	struct power_supply *psy;
 };
@@ -58,47 +51,6 @@ struct md_bp_priv {
 	unsigned int md_thl_h;
 };
 static struct md_bp_priv *md_bp_data;
-
-static int __used hpt_ctrl_read(int offset)
-{
-	void __iomem *addr = hpt_ctrl_base + offset * 4;
-
-	if (!hpt_ctrl_base) {
-		pr_info("hpt_ctrl_base error %p\n", hpt_ctrl_base);
-		return 0;
-	}
-
-	return readl(addr);
-}
-
-static void __used hpt_ctrl_write(unsigned int val, int offset)
-{
-	if (!hpt_ctrl_base) {
-		pr_info("hpt_ctrl_base error %p\n", hpt_ctrl_base);
-		return;
-	}
-
-	writel(val, (void __iomem *)(hpt_ctrl_base + offset * 4));
-}
-
-static void hpt_bp_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
-{
-	int new_hpt, old_hpt;
-
-	if (!bp_thl_data) {
-		pr_info("[%s] bp_thl not init\n", __func__);
-		return;
-	}
-
-	new_hpt = bp_thl_data->bp_hpt;
-	old_hpt = hpt_ctrl_read(HPT_CTRL);
-	if (new_hpt != old_hpt) {
-		hpt_ctrl_write(new_hpt, HPT_CTRL_SET);
-		new_hpt = ~new_hpt & 0x7;
-		hpt_ctrl_write(new_hpt, HPT_CTRL_CLR);
-		pr_info("HPT_CTRL: %d\n", hpt_ctrl_read(HPT_CTRL));
-	}
-}
 
 void register_bp_thl_notify(
 	battery_percent_callback bp_cb,
@@ -271,45 +223,6 @@ static ssize_t bp_thl_level_store(struct device *dev,
 }
 
 static DEVICE_ATTR_RW(bp_thl_level);
-
-static ssize_t hpt_ctrl_show(
-		struct device *dev, struct device_attribute *attr, char *buf)
-{
-
-	unsigned int reg = 0;
-
-	reg = hpt_ctrl_read(HPT_CTRL);
-	return sprintf(buf, "0x%x\n", reg);
-}
-
-static ssize_t hpt_ctrl_store(struct device *dev,
-					   struct device_attribute *attr,
-					   const char *buf,
-					   size_t size)
-{
-	char cmd[21];
-	unsigned int val = 0;
-
-	if (sscanf(buf, "%20s %d", cmd, &val) != 2) {
-		pr_notice("parameter number not correct\n");
-		return -EPERM;
-	}
-
-	if (strncmp(cmd, "ctrl", 4))
-		return -EINVAL;
-
-	if (val <= 7) {
-		hpt_ctrl_write(val, HPT_CTRL_SET);
-		val = ~val & 0x7;
-		hpt_ctrl_write(val, HPT_CTRL_CLR);
-	} else
-		pr_info("hpt ctrl should be 0 ~ 7\n");
-
-	return size;
-}
-
-static DEVICE_ATTR_RW(hpt_ctrl);
-
 int bp_notify_handler(void *unused)
 {
 	do {
@@ -361,7 +274,7 @@ static void soc_handler(struct work_struct *work)
 {
 	struct power_supply *psy;
 	union power_supply_propval val;
-	int ret, soc, temp, new_lv, new_hpt=7, soc_thd, temp_thd, soc_stage, temp_stage;
+	int ret, soc, temp, new_lv, soc_thd, temp_thd, soc_stage, temp_stage;
 	static int last_soc = MAX_VALUE, last_temp = MAX_VALUE;
 	bool loop;
 
@@ -441,17 +354,12 @@ static void soc_handler(struct work_struct *work)
 			}
 		}
 	} while (loop);
-
-	if (bp_thl_data->bp_hpt_ctrl_enable) {
-		new_hpt = bp_thl_data->hpt_ctrl_table[soc_stage+temp_stage*(bp_thl_data->soc_max_stage+1)];
-		bp_thl_data->bp_hpt = new_hpt;
-	}
-
 	new_lv = bp_thl_data->throttle_table[soc_stage+temp_stage*(bp_thl_data->soc_max_stage+1)];
 	if (new_lv != bp_thl_data->bp_thl_lv) {
 		bp_thl_data->bp_thl_lv = new_lv;
 		bp_notify_flag = true;
 	}
+
 	bp_thl_data->soc_cur_stage = soc_stage;
 	bp_thl_data->temp_cur_stage = temp_stage;
 	last_temp = temp;
@@ -570,24 +478,12 @@ static int parse_soc_limit_table(struct device *dev, struct bp_thl_priv *priv)
 		soc_default_setting(dev, priv);
 		goto out;
 	}
+#if SOC_DEBUG_LOG
+	pr_info("num=%d temp_max_s=%d soc_max_s=%d\n", num, priv->temp_max_stage, priv->soc_max_stage);
+	for (i = 0; i < num; i++)
+		pr_info("soc-throttle-level[%d]=%d\n", i, priv->throttle_table[i]);
+#endif
 
-	if (!hpt_ctrl_base)
-		goto out;
-	num = of_property_count_u32_elems(np, "hpt-ctrl-val");
-	if (num != (priv->temp_max_stage + 1) * (priv->soc_max_stage + 1)) {
-		pr_notice("get hpt_ctrl error %d\n", num);
-		goto out;
-	}
-
-	priv->hpt_ctrl_table = devm_kcalloc(dev, num, sizeof(*priv->hpt_ctrl_table), GFP_KERNEL);
-	if (!priv->hpt_ctrl_table)
-		return -ENOMEM;
-	ret = of_property_read_u32_array(np, "hpt-ctrl-val", priv->hpt_ctrl_table, num);
-	if (ret) {
-		pr_notice("get hpt_ctrl_table error %d\n", ret);
-		goto out;
-	}
-	priv->bp_hpt_ctrl_enable = 1;
 out:
 	return 0;
 }
@@ -629,8 +525,6 @@ static int bp_thl_probe(struct platform_device *pdev)
 	struct bp_thl_priv *priv;
 	struct md_bp_priv *md_priv;
 	int ret;
-	struct resource *res;
-	void __iomem *addr;
 
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -641,18 +535,6 @@ static int bp_thl_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	dev_set_drvdata(&pdev->dev, priv);
-
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "hpt_ctrl");
-	if (!res)
-		pr_notice("Failed to get hpt_ctrl resource\n");
-	else {
-		addr = devm_ioremap_resource(&pdev->dev, res);
-		if (IS_ERR(addr))
-			pr_info("%s:%d hpt_ctrl get addr error 0x%p\n", __func__, __LINE__, addr);
-		else
-			hpt_ctrl_base = addr;
-	}
-
 	ret = parse_soc_limit_table(&pdev->dev, priv);
 	if (ret) {
 		pr_notice("parse soc limit table fail\n");
@@ -692,13 +574,8 @@ static int bp_thl_probe(struct platform_device *pdev)
 		&dev_attr_bp_thl_stop);
 	ret |= device_create_file(&(pdev->dev),
 		&dev_attr_bp_thl_level);
-	ret |= device_create_file(&(pdev->dev),
-		&dev_attr_hpt_ctrl);
 	if (ret)
 		dev_notice(&pdev->dev, "create file error ret=%d\n", ret);
-
-	if (bp_thl_data->bp_hpt_ctrl_enable)
-		register_bp_thl_notify(&hpt_bp_cb, BATTERY_PERCENT_PRIO_HPT);
 	return 0;
 }
 

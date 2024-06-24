@@ -82,6 +82,9 @@ struct ppb {
 
 struct power_budget_t {
 	unsigned int version;
+	int hpt_max_lv;
+	int hpt_cur_lv;
+	int hpt_lv_t[10];
 	int soc;
 	int temp;
 	unsigned int soc_err;

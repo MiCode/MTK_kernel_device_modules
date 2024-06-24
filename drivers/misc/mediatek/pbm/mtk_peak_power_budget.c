@@ -16,6 +16,7 @@
 #include <linux/timer.h>
 #include "mtk_battery_oc_throttling.h"
 #include "mtk_low_battery_throttling.h"
+#include "mtk_bp_thl.h"
 #include "mtk_peak_power_budget_mbrain.h"
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
 #if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
@@ -40,10 +41,12 @@
 #define PPB_IPI_DATA_LEN (sizeof(struct ppb_ipi_data) / sizeof(int))
 #define MBRAIN_NOTIFY_BUDGET_THD    50000
 #define PPB_LOG_DURATION msecs_to_jiffies(20000)
+#define HPT_INIT_SETTING    7
 
 static bool mt_ppb_debug;
 static spinlock_t ppb_lock;
 void __iomem *ppb_sram_base;
+void __iomem *hpt_ctrl_base;
 void __iomem *gpu_dbg_base;
 void __iomem *cpu_dbg_base;
 struct fg_cus_data fg_data;
@@ -178,6 +181,28 @@ static int dbg_read(void __iomem *reg_base, int offset)
 	}
 
 	return readl(reg_base + offset * 4);
+}
+
+static int __used hpt_ctrl_read(int offset)
+{
+	void __iomem *addr = hpt_ctrl_base + offset * 4;
+
+	if (!hpt_ctrl_base) {
+		pr_info("hpt_ctrl_base error %p\n", hpt_ctrl_base);
+		return 0;
+	}
+
+	return readl(addr);
+}
+
+static void __used hpt_ctrl_write(unsigned int val, int offset)
+{
+	if (!hpt_ctrl_base) {
+		pr_info("hpt_ctrl_base error %p\n", hpt_ctrl_base);
+		return;
+	}
+
+	writel(val, (void __iomem *)(hpt_ctrl_base + offset * 4));
 }
 
 static void ppb_allocate_budget_manager(void)
@@ -1145,6 +1170,28 @@ static int __used read_power_budget_dts(struct platform_device *pdev)
 	if (pb.version >= 2) {
 		if (read_dts_val(np, "battery-circult-rdc", &pb.circuit_rdc, 1))
 			pb.circuit_rdc = BAT_CIRCUIT_DEFAULT_RDC;
+
+		if (read_dts_val(np, "soc-max-level", &pb.hpt_max_lv, 1))
+			pb.hpt_max_lv = 0;
+
+		if (pb.hpt_max_lv >= BATTERY_PERCENT_LEVEL_NUM)
+			pb.hpt_max_lv = BATTERY_PERCENT_LEVEL_NUM - 1;
+
+		pb.hpt_lv_t[0] = HPT_INIT_SETTING;
+		for (i = 1; i <= pb.hpt_max_lv; i++) {
+			ret = snprintf(str, STR_SIZE, "%s%d", "soc-hpt-ctrl-lv", i);
+			if (ret < 0) {
+				pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+				break;
+			}
+			if (read_dts_val(np, str, &pb.hpt_lv_t[i], 1))
+				pb.hpt_lv_t[i] = HPT_INIT_SETTING;
+		}
+#if SOC_DEBUG_LOG
+		pr_info("soc-hpt-ctrl-lv :~~~\n");
+		for (i = 0; i <= pb.hpt_max_lv; i++)
+			pr_info("pb.hpt_lv_t[%d]=%d\n", i, pb.hpt_lv_t[i]);
+#endif
 	} else {
 		for (i = 0; i <= pb.temp_max_stage; i++) {
 			ret = snprintf(str, STR_SIZE, "battery%d-path-rdc-t%d", fg_data.bat_type,
@@ -1709,6 +1756,45 @@ static int mt_hpt_dump_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
+static int mt_hpt_ctrl_proc_show(struct seq_file *m, void *v)
+{
+	unsigned int reg = 0;
+
+	reg = hpt_ctrl_read(HPT_CTRL);
+	seq_printf(m, "0x%x\n", reg);
+
+	return 0;
+}
+
+static ssize_t mt_hpt_ctrl_proc_write
+(struct file *file, const char __user *buffer, size_t count, loff_t *data)
+{
+	char desc[64], cmd[21];
+	unsigned int len = 0, val = 0;
+
+	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
+	if (copy_from_user(desc, buffer, len))
+		return 0;
+	desc[len] = '\0';
+
+	if (sscanf(desc, "%20s %d", cmd, &val) != 2) {
+		pr_notice("parameter number not correct\n");
+		return -EPERM;
+	}
+
+	if (strncmp(cmd, "ctrl", 4))
+		return -EINVAL;
+
+	if (val <= 7) {
+		hpt_ctrl_write(val, HPT_CTRL_SET);
+		val = ~val & 0x7;
+		hpt_ctrl_write(val, HPT_CTRL_CLR);
+	} else
+		pr_notice("hpt ctrl should be 0 ~ 7\n");
+
+	return count;
+}
+
 static int mt_hpt_sf_setting_proc_show(struct seq_file *m, void *v)
 {
 	unsigned int cpub_lv1, cpub_lv2, cpum_lv1, cpum_lv2, gpu_lv1, gpu_lv2, enable, delay;
@@ -1850,6 +1936,7 @@ PROC_FOPS_RW(ppb_cg_budget_thd);
 PROC_FOPS_RW(ppb_cg_budget_cnt);
 PROC_FOPS_RO(hpt_debug);
 PROC_FOPS_RO(hpt_dump);
+PROC_FOPS_RW(hpt_ctrl);
 PROC_FOPS_RW(hpt_sf_setting);
 PROC_FOPS_RO(xpu_dbg_dump);
 
@@ -1876,6 +1963,7 @@ static int mt_ppb_create_procfs(void)
 		PROC_ENTRY(ppb_cg_budget_cnt),
 		PROC_ENTRY(hpt_debug),
 		PROC_ENTRY(hpt_dump),
+		PROC_ENTRY(hpt_ctrl),
 		PROC_ENTRY(hpt_sf_setting),
 		PROC_ENTRY(xpu_dbg_dump),
 	};
@@ -1919,6 +2007,19 @@ static void __used get_md_dbm_info(void)
 
 }
 
+static void hpt_bp_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
+{
+	int hpt_reg;
+
+	if (level != pb.hpt_cur_lv && level < BATTERY_PERCENT_LEVEL_NUM) {
+		hpt_reg = pb.hpt_lv_t[level];
+		hpt_ctrl_write(hpt_reg, HPT_CTRL_SET);
+		hpt_reg = ~hpt_reg & 0x7;
+		hpt_ctrl_write(hpt_reg, HPT_CTRL_CLR);
+		pb.hpt_cur_lv = level;
+	}
+}
+
 static int peak_power_budget_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -1940,6 +2041,13 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 		return PTR_ERR(addr);
 
 	ppb_sram_base = addr;
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "hpt_ctrl");
+	addr = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(addr))
+		pr_info("%s:%d hpt_ctrl get addr error 0x%p\n", __func__, __LINE__, addr);
+	else
+		hpt_ctrl_base = addr;
 
 	spin_lock_init(&ppb_lock);
 
@@ -1984,6 +2092,9 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 	}
 	get_md_dbm_info();
 	ppb_set_wifi_pwr_addr_by_dts();
+
+	if (pb.hpt_max_lv)
+		register_bp_thl_notify(&hpt_bp_cb, BATTERY_PERCENT_PRIO_HPT);
 
 	timer_setup(&ppb_dbg_timer, ppb_print_dbg_log, TIMER_DEFERRABLE);
 	mod_timer(&ppb_dbg_timer, jiffies + PPB_LOG_DURATION);
