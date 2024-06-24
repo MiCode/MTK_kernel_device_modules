@@ -423,6 +423,21 @@
 		#size-cells = <2>;
 		ranges;
 
+		dpmaif_resv_cache_mem: ccci-dpmaif-cache-memory {
+			compatible = "mediatek,dpmaif-resv-cache-mem";
+			size = <0 0x00190000>; /* 1638400 Bytes for 1rxq */
+			alignment = <0 0x10000>;
+			alloc-ranges = <0 0x40000000 0 0xf0000000>;
+		};
+
+		dpmaif_resv_nocache_mem: ccci-dpmaif-nocache-memory {
+			compatible = "mediatek,dpmaif-resv-nocache-mem";
+			no-map;
+			size = <0 0x0050000>; /* 327680 Bytes */
+			alignment = <0 0x10000>;
+			alloc-ranges = <0 0x40000000 0 0xf0000000>;
+		};
+
 		ssmr_cma_mem: ssmr-reserved-cma-memory {
 			compatible = "shared-dma-pool";
 			reusable;
@@ -1959,6 +1974,33 @@
 		dbg-mdsys1@d100000 {
 			compatible = "mediatek,dbg_mdsys1";
 			reg = <0 0x0d100000 0 0x100000>;
+		};
+
+		dpmaif:dpmaif@10014000 {
+			compatible = "mediatek,dpmaif";
+			reg = <0 0x10014000 0 0x1000>, /*AO_UL*/
+				<0 0x1022d000 0 0x1000>, /*PD_UL*/
+				<0 0x1022c000 0 0x1000>, /*PD_MD_MISC*/
+				<0 0x1022e000 0 0x1000>; /*SRAM*/
+			/* rxq0 irq: 756 884 916 */
+			interrupts = <GIC_SPI 884 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 885 IRQ_TYPE_LEVEL_HIGH 0>; /* rxq1 irq: 757 885 917 */
+			mediatek,dpmaif-ver = <3>;
+			mediatek,dpmaif-cap = <0x0000004a>;
+			mediatek,plat-info = <6899>;
+			//clocks = <&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_DPMAIF_MAIN_DPMAIF>,
+			//	<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_CLDMA_BCLK_DPMAIF>,
+			//	<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_RG_MMW_DPMAIF26M_DPMAIF>;
+			clock-names = "infra-dpmaif-clk",
+				    "infra-dpmaif-blk-clk",
+				    "infra-dpmaif-rg-mmw-clk";
+			//interconnects = <&dvfsrc MT6873_MASTER_NETSYS &dvfsrc MT6873_SLAVE_DDR_EMI>;
+			interconnect-names = "icc-mdspd-bw";
+			//required-opps = <&dvfsrc_freq_opp0>,
+			//		<&dvfsrc_freq_opp1>;
+			net-spd-ver = <8>;
+			hw-reset-ver = <1>;
+			//dpmaif-infracfg = <&infra_infracfg_ao_reg_clk>;
 		};
 
 		mali: mali@13000000 {
