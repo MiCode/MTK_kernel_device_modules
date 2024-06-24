@@ -63,10 +63,14 @@
 #define INTL_EN				BIT(0)
 
 #define DVO_OUTPUT_SET	0x18
-#define OUT_NP_SEL			(0x3 << 0)
+#define DVO_OUT_1T1P_SEL    0x0
+#define DVO_OUT_1T2P_SEL    0x1
+#define DVO_OUT_1T4P_SEL    0x2
+#define OUT_NP_SEL_MASK     0x3
 
 #define BIT_SWAP			BIT(4)
 #define CH_SWAP_MASK			(0x7 << 5)
+#define CH_SWAP_SHIFT		0x5
 #define SWAP_RGB			0x00
 #define SWAP_GBR			0x01
 #define SWAP_BRG			0x02
@@ -82,6 +86,10 @@
 #define VS_MASK				BIT(18)
 #define HS_INV				BIT(19)
 #define VS_INV			BIT(20)
+#define DE_POL              BIT(19)
+#define HSYNC_POL			BIT(20)
+#define VSYNC_POL			BIT(21)
+#define CK_POL              BIT(22)
 
 #define DVO_SRC_SIZE		0x20
 #define SRC_HSIZE				0
@@ -127,7 +135,17 @@
 #define INFOQ_END_LATENCY				16
 #define INFOQ_END_LATENCY_MASK			(0xFFFF << 16)
 
+#define DVO_MATRIX_SET      0x140
+#define CSC_EN              BIT(0)
+#define MATRIX_SEL_RGB_TO_JPEG      (0x0 << 4)
+#define MATRIX_SEL_RGB_TO_BT601     (0x2 << 4)
+#define MATRIX_SEL_RGB_TO_BT709     (0x3 << 4)
+#define INT_MTX_SEL         (0x2 << 4)
+#define INT_MTX_SEL_MASK            GENMASK(8, 4)
 
+#define DVO_YUV422_SET		0x170
+#define YUV422_EN           BIT(0)
+#define VYU_MAP             BIT(8)
 
 #define DVO_BUF_CON0		0x220
 #define DISP_BUF_EN			BIT(0)
