@@ -624,7 +624,7 @@ static ssize_t ccci_dump_fops_read(struct file *file, char __user *buf,
 			left -= read_len;
 			user_info->sep_cnt2 += read_len;
 		} else
-			pr_notice("[ccci0/util]dump copy to ser fail%d[-1]\n",
+			pr_notice("[ccci0/util]dump copy to user fail%d[-1]\n",
 				ret);
 	}
 

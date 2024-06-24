@@ -24,6 +24,8 @@ enum CCCI_SECURE_REQ_ID {
 	SCP_CLK_SET_DONE,
 	CCIF_CLK_REQUEST,
 	CCIF_CLK_RELEASE,
+	MD_EMI_BUS_SET,     /* only used on mt6991 */
+	MD_EMI_BUS_CLEAR,
 };
 
 
