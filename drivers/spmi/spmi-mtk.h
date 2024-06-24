@@ -108,7 +108,7 @@ struct spmi_nack_monitor_pair {
 
 /* pmif debug API declaration */
 extern void spmi_dump_wdt_reg(void);
-extern void spmi_dump_pmif_acc_vio_reg(void);
+extern u32 spmi_dump_pmif_acc_vio_reg(void);
 extern void spmi_dump_pmic_acc_vio_reg(void);
 extern void spmi_dump_pmif_busy_reg(void);
 extern void spmi_dump_pmif_swinf_reg(void);
