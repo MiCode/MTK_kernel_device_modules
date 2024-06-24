@@ -1647,6 +1647,14 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 		cmdq_trace_end("%s pkt:%p", __func__, task->pkt);
 	}
 
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	if (task && ret) {
+		cmdq_err("[host] cmdq tf fault err: %d irq flag:%#x gce:%lx idx:%u hwid:%u pkt:%p",
+			err, irq_flag, (unsigned long)cmdq->base_pa, thread->idx, cmdq->hwid, task->pkt);
+		cmdq_task_callback(task->pkt, -EINVAL);
+	}
+#endif
+
 	if (thread->dirty) {
 		cmdq_log("task in error dump thread:%u pkt:0x%p",
 			thread->idx, task ? task->pkt : NULL);
