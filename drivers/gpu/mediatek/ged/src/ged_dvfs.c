@@ -1512,7 +1512,8 @@ static void ged_fastdvfs_update_dcs(void)
 
 		/* commit oppidx if core num is different */
 		if ((g_desire_stack_id <= real_min_opp && cur_core_num != max_core_num) ||
-			(g_desire_stack_id > real_min_opp && g_desire_stack_id != cur_virtual_opp))
+			(g_desire_stack_id > real_min_opp && g_desire_stack_id != cur_virtual_opp) ||
+			dcs_get_setting_dirty())
 			ged_dvfs_gpu_freq_dual_commit(g_desire_stack_id,
 				ged_get_freq_by_idx(g_desire_stack_id),
 				GED_DVFS_EB_DESIRE_COMMIT, g_desire_top_id);
@@ -1526,7 +1527,8 @@ static void ged_fastdvfs_update_dcs(void)
 
 		/* commit oppidx if core num is different */
 		if ((g_desire_freq_id <= real_min_opp && cur_core_num != max_core_num) ||
-			(g_desire_freq_id > real_min_opp && g_desire_freq_id != cur_virtual_opp))
+			(g_desire_freq_id > real_min_opp && g_desire_freq_id != cur_virtual_opp) ||
+			dcs_get_setting_dirty())
 			ged_dvfs_gpu_freq_commit(g_desire_freq_id,
 				ged_get_freq_by_idx(g_desire_freq_id), GED_DVFS_EB_DESIRE_COMMIT);
 	}
