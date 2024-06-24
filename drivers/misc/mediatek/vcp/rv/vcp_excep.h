@@ -44,7 +44,7 @@ extern void aed_vcp_exception_api(const int *log, int log_size,
 extern void vcp_excep_cleanup(void);
 extern uint32_t vcp_dump_size_probe(struct platform_device *pdev);
 enum { r0, r1, r2, r3, r12, lr, pc, psr};
-extern int vcp_ee_enable;
+extern int vcp_excep_mode;
 extern unsigned int vcp_reset_counts;
 extern void __iomem *vcp_res_req_status_reg;
 

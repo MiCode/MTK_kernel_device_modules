@@ -28,7 +28,7 @@ extern void aed_vcp_exception_api(const int *log, int log_size,
 		const int *phy, int phy_size, const char *detail,
 		const int db_opt);
 extern uint32_t vcp_dump_size_probe(struct platform_device *pdev);
-extern int vcp_ee_enable;
+extern int vcp_excep_mode;
 extern unsigned int vcp_reset_counts;
 extern void __iomem *vcp_res_req_status_reg;
 

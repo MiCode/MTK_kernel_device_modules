@@ -46,7 +46,7 @@ void (*vcp_do_tbufdump)(void) = NULL;
 void __iomem *vcp_res_req_status_reg;
 
 static struct mutex vcp_excep_mutex;
-int vcp_ee_enable;
+int vcp_excep_mode;
 unsigned int vcp_reset_counts = 0xFFFFFFFF;
 
 static atomic_t coredumping = ATOMIC_INIT(0);
@@ -450,7 +450,11 @@ void vcp_aed(enum VCP_RESET_TYPE type, enum vcp_core_id id)
 {
 	char *vcp_aed_title = NULL;
 
-	BUG_ON((vcp_ee_enable == 0) || (id != VCP_ID));
+	if (vcp_excep_mode == VCP_NO_EXCEP) {
+		pr_debug("[VCP]ee disable value=%d\n", vcp_excep_mode);
+		return;
+	}  else if ((vcp_excep_mode == VCP_KE_ENABLE) || (id != VCP_ID))
+		BUG_ON(1);
 
 	mutex_lock(&vcp_excep_mutex);
 

@@ -163,6 +163,13 @@ enum vcp_cmd_id {
 	VCP_DUMP_MMINFRA     = 4,
 };
 
+enum vcp_excep_mode_id {
+	VCP_NO_EXCEP         = 0,
+	VCP_KE_ENABLE        = 1,
+	VCP_EE_ENABLE        = 2,
+	VCP_EXCEP_MAX,
+};
+
 extern struct mtk_mbox_device vcp_mboxdev;
 extern struct mtk_ipi_device vcp_ipidev;
 extern struct mtk_mbox_info *vcp_mbox_info;
