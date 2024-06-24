@@ -10605,6 +10605,7 @@ skip_prete:
 
 		GCE_DO(set_event, EVENT_CABC_EOF);
 		GCE_DO(set_event, EVENT_STREAM_EOF);
+		GCE_DO(wait_no_clear, EVENT_STREAM_EOF);
 
 		if (crtc_id == 0) {
 			if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en == true) {
