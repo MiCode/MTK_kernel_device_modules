@@ -16753,10 +16753,11 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		bootmode = <&chosen>;
 		gauge = <&mtk_gauge>;
 		reg = <0 0x00117700 0 0x100>,
+			<0 0x13020170 0 0xc>,
 			<0 0x4b840c18 0 0x8>,
 			<0 0x0c220c04 0 0x20>;
 		reg-names = "ppb_sram",
-			"gpu_dbg", "cpu_dbg";
+			"hpt_ctrl", "gpu_dbg", "cpu_dbg";
 
 		ppb-version = <2>;
 		soc-error = <2500>;
@@ -16783,6 +16784,10 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		bat1-aging-multiples = <0 0>;
 		bat2-aging-threshold = <500 1000>;
 		bat2-aging-multiples = <0 0>;
+
+		soc-max-level = <2>;
+		soc-hpt-ctrl-lv1 = <7>;
+		soc-hpt-ctrl-lv2 = <0>;
 
 		bat-ocv-table-num = <0>;
 
@@ -17212,15 +17217,15 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		lvsys-thd-enable = <1>;
 		vbat-thd-enable = <1>;
 		bat0-thd-volts-l = <
-			3400 3100 2900
-			3400 3100 2900
-			4400 3400 3100
-			4900 4800 4400>;
+			3200 3000 2850
+			3300 3000 2850
+			3360 3000 2850
+			3470 3000 2850>;
 		bat0-thd-volts-h = <
-			3500 3400 3100
-			3500 3400 3100
-			4500 4400 3400
-			5000 4900 4800>;
+			3300 3200 3000
+			3400 3300 3000
+			3460 3360 3000
+			3570 3470 3000>;
 		bat1-thd-volts-l = <
 			3400 3100 2900
 			3400 3100 2900
@@ -17231,7 +17236,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			3500 3400 3100
 			4500 4400 3400
 			5000 4900 4800>;
-		lvsys-thd-volt-l = <2900>;
+		lvsys-thd-volt-l = <2850>;
 		lvsys-thd-volt-h = <3100>;
 		temperature-stage-threshold = <25 10 0>;
 
@@ -17249,9 +17254,9 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		pt-shutdown-enable = <1>;
 
 		throttle-level = <0 1 2 3>,
-					<0 1 2 3>,
-					<0 1 2 3>,
-					<0 1 2 3>;
+						<0 1 2 3>,
+						<0 1 2 3>,
+						<0 1 2 3>;
 		bootmode = <&chosen>;
 		gauge = <&mtk_gauge>;
 	};
@@ -17259,31 +17264,29 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 	cpu_power_throttling: cpu-power-throttling {
 		compatible = "mediatek,cpu-power-throttling";
 
-		lbat-max-level = <5>;
-		lbat-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
-		lbat-limit-freq-lv2 = < 1200000  1700000 1900000>;
-		lbat-limit-freq-lv3 = < 900000  900000 900000>;
-		lbat-limit-freq-lv4 = < 900000  900000 900000>;
-		lbat-limit-freq-lv5 = < 900000  900000 900000>;
+		lbat-max-level = <3>;
+		lbat-limit-freq-lv1 = < 1800000  900000 670000>;
+		lbat-limit-freq-lv2 = < 1200000  550000 670000>;
+		lbat-limit-freq-lv3 = < 330000  550000 670000>;
 
 		oc-max-level = <2>;
 		oc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
 		oc-limit-freq-lv2 = < 1200000  1700000 1900000>;
 
 		soc-max-level = <2>;
-		soc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
-		soc-limit-freq-lv2 = < 900000  900000 670000>;
+		soc-core-onoff-lv1 = < 1 1 1 1 1 1 1 1 >;
+		soc-core-onoff-lv2 = < 1 1 1 1 1 1 0 0 >;
+		soc-limit-freq-lv1 = < 2147483647  2147483647 2147483647 >;
+		soc-limit-freq-lv2 = < 1800000 900000 670000>;
 	};
 
 	gpu_power_throttling: gpu-power-throttling {
 		compatible = "mediatek,gpu-power-throttling";
 
-		lbat-max-level = <5>;
-		lbat-limit-freq-lv1 = <988000>;
-		lbat-limit-freq-lv2 = <572000>;
+		lbat-max-level = <3>;
+		lbat-limit-freq-lv1 = <338000>;
+		lbat-limit-freq-lv2 = <338000>;
 		lbat-limit-freq-lv3 = <338000>;
-		lbat-limit-freq-lv4 = <338000>;
-		lbat-limit-freq-lv5 = <338000>;
 
 		oc-max-level = <2>;
 		oc-limit-freq-lv1 = <988000>;
@@ -17297,12 +17300,10 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 	md_power_throttling: md-power-throttling {
 		compatible = "mediatek,md-power-throttling";
 
-		lbat-max-level = <5>;
+		lbat-max-level = <3>;
 		lbat-reduce-tx-lv1 = <0>;
 		lbat-reduce-tx-lv2 = <6>;
 		lbat-reduce-tx-lv3 = <6>;
-		lbat-reduce-tx-lv4 = <6>;
-		lbat-reduce-tx-lv5 = <6>;
 
 		oc-max-level = <2>;
 		oc-reduce-tx-lv1 = <0>;
@@ -17315,16 +17316,17 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 	bp_thl: bp-thl {
 		compatible = "mediatek,mtk-bp-thl";
 
-		reg = <0 0x13020170 0 0xc>;
-		reg-names = "hpt_ctrl";
-
 		max-throttle-level = <2>;
-		soc-throttle-level = < 0 1 2>;
-		hpt-ctrl-val = <7 7 0>;
+		soc-throttle-level = <0 1 1 2>, //temperature stage 0
+						<0 1 1 2>, //temperature stage 1
+						<0 1 1 2>, //temperature stage 2
+						<0 1 2 2>; //temperature stage 3
 
-		soc-max-stage = <2>;
-		soc-limit-threshold = <15 2>;
-		soc-release-threshold = <16 3>;
+		soc-max-stage = <3>;
+		soc-limit-threshold = <15 7 5>;
+
+		temperature-max-stage = <3>;
+		temperature-stage-threshold = <25 10 0>;
 
 		md-soc-throttle-l = <20>;
 		md-soc-throttle-h = <25>;
