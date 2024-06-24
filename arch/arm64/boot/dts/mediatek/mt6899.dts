@@ -57,7 +57,8 @@
 			    initcall_debug=1 \
 			    vmalloc=400M swiotlb=noforce cma=64M \
 			    firmware_class.path=/vendor/firmware \
-			    initcall_debug=1";
+			    initcall_debug=1 \
+			    maxcpus=4";
 	};
 
 	cpus {
