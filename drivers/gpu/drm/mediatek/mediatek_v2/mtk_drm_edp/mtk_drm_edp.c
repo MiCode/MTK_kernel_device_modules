@@ -2315,6 +2315,10 @@ static struct edid *mtk_edp_get_edid(struct drm_bridge *bridge,
 		drm_atomic_bridge_chain_post_disable(bridge, connector->state->state);
 	}
 
+	pr_info("[eDPTX] EDID raw data:\n");
+	print_hex_dump(KERN_NOTICE, "\t", DUMP_PREFIX_NONE, 16, 1,
+					new_edid, EDID_LENGTH * (new_edid->extensions + 1), false);
+
 	pr_info("[eDPTX] %s-\n", __func__);
 	return new_edid;
 }
@@ -3199,11 +3203,6 @@ static int mtk_edp_suspend(struct device *dev)
 	struct mtk_edp *mtk_edp = dev_get_drvdata(dev);
 
 	dev_info(mtk_edp->dev, "[eDPTX] %s+\n", __func__);
-
-	if (mtk_edp_plug_state(mtk_edp)) {
-		drm_dp_dpcd_writeb(&mtk_edp->aux, DP_SET_POWER, DP_SET_POWER_D3);
-		usleep_range(2000, 3000);
-	}
 
 	mtk_edp_power_disable(mtk_edp);
 	if (mtk_edp->use_hpd)
