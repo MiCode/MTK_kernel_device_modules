@@ -88,6 +88,23 @@ initcall_debug=1 \
 #endif
 };
 
+&i2c6 {
+	spk1: speaker_amp@5c {
+		compatible = "richtek,rt5512";
+		#sound-dai-cells = <0>;
+		reg = <0x5c>;
+		status = "okay";
+		sound-name-prefix = "Left";
+	};
+};
+
+&sound {
+	mediatek,spk-i2s = <21 20>;
+	mediatek,speaker-codec {
+		sound-dai = <&spk1>;
+	};
+};
+
 #if 0
 &mtk_leds {
 	compatible = "mediatek,i2c-leds";
@@ -608,31 +625,6 @@ initcall_debug=1 \
 	pd_vbus_upper_bound = <12000000>;
 };
 #endif
-
-&i2c6 {
-	spk1: speaker_amp@5c {
-		compatible = "richtek,rt5512";
-		#sound-dai-cells = <0>;
-		reg = <0x5c>;
-		status = "okay";
-		sound-name-prefix = "Left";
-	};
-
-	spk2: speaker_amp@5d {
-		compatible = "richtek,rt5512";
-		#sound-dai-cells = <0>;
-		reg = <0x5d>;
-		status = "okay";
-		sound-name-prefix = "Right";
-	};
-};
-
-&sound {
-	mediatek,spk-i2s = <25 24>;
-	mediatek,speaker-codec {
-		sound-dai = <&spk1>, <&spk2>;
-	};
-};
 
 &wifi {
 	flavor-bin = "dx3";
