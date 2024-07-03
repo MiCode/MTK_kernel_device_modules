@@ -10727,10 +10727,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larbs = <&smi_larb7>;
 			operating-points-v2 = <&opp_table_venc>;
 			clocks = <&venc_gcon_clk CLK_VEN1_CKE3_JPGDEC_JPGDEC>,
-				<&venc_gcon_clk CLK_VEN1_CKE4_JPGDEC_C1_JPGDEC>;
-				// <&mmdvfs_mux MMDVFS_USER_JPEGDEC>;
-			clock-names = "MT_CG_VENC_JPGDEC", "MT_CG_VENC_JPGDEC_C1";
-				// "mmdvfs_clk";
+				<&venc_gcon_clk CLK_VEN1_CKE4_JPGDEC_C1_JPGDEC>,
+				<&mmdvfs_mux MMDVFS_USER_JPEGDEC>;
+			clock-names = "MT_CG_VENC_JPGDEC", "MT_CG_VENC_JPGDEC_C1",
+				"mmdvfs_clk";
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VEN0>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			iommus = <&disp_iommu M4U_L7_P17_JPGDEC_WDMA_0_U0>,
@@ -10808,10 +10808,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupts = <GIC_SPI 791 IRQ_TYPE_LEVEL_HIGH 0>;
 			mediatek,larbs = <&smi_larb8>;
 			operating-points-v2 = <&opp_table_venc>;
-			clocks = <&venc_gcon_core1_clk CLK_VEN2_CKE3_JPGDEC_JPGDEC>;
-				// <&mmdvfs_mux MMDVFS_USER_JPEGDEC>;
-			clock-names = "MT_CG_VENC_JPGDEC_C2";
-				// "mmdvfs_clk";
+			clocks = <&venc_gcon_core1_clk CLK_VEN2_CKE3_JPGDEC_JPGDEC>,
+				<&mmdvfs_mux MMDVFS_USER_JPEGDEC>;
+			clock-names = "MT_CG_VENC_JPGDEC_C2",
+				"mmdvfs_clk";
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VEN1>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			iommus = <&mdp_iommu M4U_L8_P17_JPGDEC_WDMA_0_U0>,
