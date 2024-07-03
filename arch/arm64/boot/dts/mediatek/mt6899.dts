@@ -8214,6 +8214,12 @@
 					"mbox2",
 					"mbox3",
 					"mbox4";
+			mbox-attr =
+			<0x0>, /* mbox0 */
+			<0x0>, /* mbox1 */
+			<0x0>, /* mbox2 */
+			<0x0>, /* mbox3 */
+			<0x0>; /* mbox4 */
 
 			core-0 = "enable";
 			scp-hwvoter = "enable";
@@ -8305,7 +8311,7 @@
 			scp-dram-region = "enable";   /* enable scp dram region manage */
 			scp-protect = "enable";   /* enable scp protections */
 			secure-dump = "enable";   /* enable dump via secure world*/
-			secure-dump-size = <0x608000>;
+			secure-dump-size = <0x508000>;
 			scp-pm-notify = "enable";
 			scp-thermal-wq = "enable";
 			scp-low-pwr-dbg = "enable";
@@ -8333,7 +8339,7 @@
 					<18 0x8000 0x0>, /* scp chre to */
 					<19 0x200 0x0>;  /* low power debug */
 
-			memorydump = <0x340000>, /* l2tcm */
+			memorydump = <0x240000>, /* l2tcm */
 					<0x0c4000>, /* l1c */
 					<0x003c00>, /* regdump */
 					<0x000400>, /* trace buffer */
@@ -8354,6 +8360,9 @@
 				//<0x1c0018e4 0x4>,
 				//<0x1c0012b8 0x4>,
 				//<0x1c013010 0x4>,
+
+			/* awake timeout count plt setting */
+			awake-timeout = <10000>; /* 100 ms */
 		};
 
 		fm: fm@18000000 {
