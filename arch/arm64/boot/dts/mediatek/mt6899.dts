@@ -5070,6 +5070,54 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 	};
 
+	disp-vcore-vdisp-ctrl@0 {
+		compatible = "mediatek,mt6899-vdisp-ctrl-v1";
+		//power-domains = <&scpsys MT6899_POWER_DOMAIN_DISP_VCORE>;
+		reg = <0 0x1c000000 0 0x1000>;
+		reg-names = "VLP_BASE";
+		disp-pd-id = <0>;
+	};
+
+	disp1-vdisp-ctrl@1 {
+		compatible = "mediatek,mt6899-vdisp-ctrl-v1";
+		//power-domains = <&scpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
+		reg = <0 0x1c000000 0 0x1000>;
+		reg-names = "VLP_BASE";
+		disp-pd-id = <1>;
+	};
+
+	disp0-vdisp-ctrl@2 {
+		compatible = "mediatek,mt6899-vdisp-ctrl-v1";
+		//power-domains = <&scpsys MT6899_POWER_DOMAIN_DIS0_SHUTDOWN>;
+		reg = <0 0x1c000000 0 0x1000>;
+		reg-names = "VLP_BASE";
+		disp-pd-id = <2>;
+	};
+
+	ovl0-vdisp-ctrl@4 {
+		compatible = "mediatek,mt6899-vdisp-ctrl-v1";
+		//power-domains = <&scpsys MT6899_POWER_DOMAIN_OVL0_SHUTDOWN>;
+		reg = <0 0x1c000000 0 0x1000>;
+		reg-names = "VLP_BASE";
+		disp-pd-id = <4>;
+	};
+
+	mml1-vdisp-ctrl@5 {
+		compatible = "mediatek,mt6899-vdisp-ctrl-v1";
+		//power-domains = <&scpsys MT6899_POWER_DOMAIN_MML1_SHUTDOWN>;
+		reg = <0 0x1c000000 0 0x1000>;
+		reg-names = "VLP_BASE";
+		disp-pd-id = <5>;
+	};
+
+	mml0-vdisp-ctrl@6 {
+		compatible = "mediatek,mt6899-vdisp-ctrl-v1";
+		//power-domains = <&scpsys MT6899_POWER_DOMAIN_MML0_SHUTDOWN>;
+		reg = <0 0x1c000000 0 0x1000>;
+		reg-names = "VLP_BASE";
+		disp-pd-id = <6>;
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <2>;
@@ -8304,8 +8352,36 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		disp-dpc@14226000 {
-			compatible = "mediatek,disp_dpc";
-			reg = <0 0x14226000 0 0x1000>;
+			compatible = "mediatek,disp_dpc",
+					"mediatek,mt6899-disp-dpc-v1";
+			//power-domains = <&scpsys MT6899_POWER_DOMAIN_MM_INFRA>;
+			reg =
+				<0 0x14226000 0 0x1000>,          /* dpc base */
+				<0 0x1c000000 0 0x1000>,          /* vlp base */
+				<0 0x1c001000 0 0x1000>,          /* spm base */
+				<0 0x1ec45130 0 0x4>,             /* mminfra hwvote */
+				<0 0x1ec352b8 0 0x4>,             /* hfrp vdisp_dvfsrc debug*/
+				<0 0x1c00f000 0 0x4>,             /* vdisp dvfs en*/
+				<0 0x1c00f2a0 0 0x4>,             /* vcore dvfs debug*/
+				<0 0x1e80090c 0 0x4>;             /* mminfra*/
+			reg-names =
+				"DPC_BASE",
+				"VLP_BASE",
+				"SPM_BASE",
+				"hw_vote_status",
+				"vdisp_dvsrc_debug_sta_7",
+				"dvfsrc_en",
+				"dvfsrc_debug_sta_1",
+				"mminfra_hangfree";
+			interrupts =
+				<GIC_SPI 502 IRQ_TYPE_LEVEL_HIGH 0>, /* DPC_DISP_IRQ_BIT */
+				<GIC_SPI 503 IRQ_TYPE_LEVEL_HIGH 0>; /* DPC_MML_IRQ_BIT */
+			mboxes = <&gce 26 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+			event-ovl0-off = /bits/ 16 <CMDQ_EVENT_DPC_OVL0_MTCMOS_OFF>;
+			event-ovl0-on = /bits/ 16 <CMDQ_EVENT_DPC_OVL0_MTCMOS_ON>;
+			event-disp1-off = /bits/ 16 <CMDQ_EVENT_DPC_DISP1_MTCMOS_OFF>;
+			event-disp1-on = /bits/ 16 <CMDQ_EVENT_DPC_DISP1_MTCMOS_ON>;
+			vidle-mask = <0x0>;
 		};
 
 		ovlsys-config@14400000 {
