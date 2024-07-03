@@ -47,6 +47,7 @@ static ssize_t mt6877_debug_read_reg(char *buffer, int size, struct mtk_base_afe
 
 static const struct snd_pcm_hardware mt6877_afe_hardware = {
 	.info = (SNDRV_PCM_INFO_MMAP |
+		 SNDRV_PCM_INFO_NO_PERIOD_WAKEUP |
 		 SNDRV_PCM_INFO_INTERLEAVED |
 		 SNDRV_PCM_INFO_MMAP_VALID),
 	.formats = (SNDRV_PCM_FMTBIT_S16_LE |
