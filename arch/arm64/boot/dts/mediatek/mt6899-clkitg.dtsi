@@ -584,14 +584,6 @@
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_E_CON_1_CAMSV>;
 	};
 
-	bring-up-jpgenc@1b {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x1b>;
-		clocks =
-			<&venc_gcon_clk CLK_VEN1_CKE2_JPGENC_JPGENC>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE2_JPGENC_JPGENC>;
-	};
-
 	bring-up-pwm@1c {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x1c>;
