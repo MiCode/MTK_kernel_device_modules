@@ -14,16 +14,6 @@
 bootargs_ext = "rcu_nocbs=0-7";
 };
 
-&mtk_leds {
-	compatible = "mediatek,i2c-leds";
-
-	backlight {
-		led-mode = <6>;
-		gate-enable = <1>;
-		pwm-config = <0 1 0 0 0>;
-	};
-};
-
 &disp_aal0 {
 	mtk-dre30-support = <0>;
 };
