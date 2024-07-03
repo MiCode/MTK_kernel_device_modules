@@ -154,7 +154,7 @@ ccflags-y += -I$(APUMMU_ROOT)/$(APUMMU_COMN)
 
 # apummu boot api
 apusys-objs += $(APUMMU_COMN)/apummu_boot.o
-apusys-objs += $(APUMMU_COMN)/mt6899_boot.o
+apusys-objs += $(APUMMU_COMN)/apummu_rvbt.o
 
 apusys-objs += $(APUMMU_COMN)/apummu_drv.o
 apusys-objs += $(APUMMU_COMN)/apummu_dbg.o
