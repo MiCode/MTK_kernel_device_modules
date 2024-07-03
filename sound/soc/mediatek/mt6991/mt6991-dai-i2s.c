@@ -4475,10 +4475,14 @@ static int mtk_dai_connsys_i2s_hw_params(struct snd_pcm_substream *substream,
 	i2s_con |= I2S_FMT_I2S << I2S_FMT_SFT;
 	i2s_con |= 1 << I2S_SRC_SFT;
 	i2s_con |= get_i2s_wlen(SNDRV_PCM_FORMAT_S16_LE) << I2S_WLEN_SFT;
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	i2s_con |= 1 << I2SIN_PAD_SEL_SFT;
+#else
 	i2s_con |= 0 << I2SIN_PAD_SEL_SFT;
+#endif
 	regmap_write(afe->regmap, AFE_CONNSYS_I2S_CON, i2s_con);
 
-	/* choose FMI2S_IN B */
+	/* choose FMI2S_IN A OR B mode */
 	regmap_update_bits(afe->regmap,
 			   AUD_TOP_CFG_VLP_RG,
 			   FMI2S_IN_SEL_MASK_SFT,
@@ -4698,7 +4702,7 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 		/* 3: pad top 5: no pad top */
 		mtk_regmap_update_bits(afe->regmap, etdm_data.init_point_reg,
 				       etdm_data.init_point_mask,
-				       pad_top,
+				       (i2s_priv->slave_mode ? 0x5 : pad_top),
 				       etdm_data.init_point_shift);
 		mtk_regmap_update_bits(afe->regmap, etdm_data.lrck_reset_reg,
 				       etdm_data.lrck_reset_mask,
@@ -5561,7 +5565,7 @@ static int mt6991_dai_i2s_config(struct mtk_base_afe *afe, int i2s_id,
 		/* 3: pad top 5: no pad top */
 		mtk_regmap_update_bits(afe->regmap, etdm_data.init_point_reg,
 				       etdm_data.init_point_mask,
-				       pad_top,
+				       (i2s_priv->slave_mode ? 0x5 : pad_top),
 				       etdm_data.init_point_shift);
 		mtk_regmap_update_bits(afe->regmap, etdm_data.lrck_reset_reg,
 				       etdm_data.lrck_reset_mask,
