@@ -8,7 +8,7 @@
 
 static struct dpc_funcs mdp_dpc_funcs;
 
-void mdp_dpc_register(const struct dpc_funcs *funcs)
+void mdp_dpc_register(const struct dpc_funcs *funcs, enum mtk_dpc_version version)
 {
 	if (funcs) {
 		mdp_dpc_funcs.dpc_dc_force_enable = funcs->dpc_dc_force_enable;
