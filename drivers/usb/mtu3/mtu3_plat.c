@@ -46,6 +46,7 @@ enum ssusb_smc_request {
 enum ssusb_hwrscs_vers {
 	SSUSB_HWRECS_V1 = 1,
 	SSUSB_HWRECS_V2 = 2,
+	SSUSB_HWRECS_V3 = 3,
 };
 
 struct regmap *usb_mbist;
@@ -114,14 +115,15 @@ static void ssusb_hwrscs_req(struct ssusb_mtk *ssusb,
 			smc_req, 0, 0, 0, 0, 0, 0, &res);
 }
 
-static void ssusb_hwrscs_req_v2(struct ssusb_mtk *ssusb,
+static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 	enum mtu3_power_state state)
 {
 	struct arm_smccc_res res;
 	void __iomem *ibase = ssusb->ippc_base;
-	u32 spm_ctrl, value;
+	u32 spm_ctrl, value, spm_msk = SSUSB_SPM_REQ_MSK;
 	u32 smc_req = -1;
 	int ret;
+	bool vcore_req_support = (ssusb->hwrscs_vers == SSUSB_HWRECS_V3);
 
 
 	dev_info(ssusb->dev, "%s state = %d\n", __func__, state);
@@ -140,38 +142,44 @@ static void ssusb_hwrscs_req_v2(struct ssusb_mtk *ssusb,
 
 	spm_ctrl = mtu3_readl(ibase, U3D_SSUSB_SPM_CTRL_V2);
 
+	if (vcore_req_support)
+		spm_msk |= SSUSB_SPM_VCORE_EN;
+
+
 	/* Clear FORCE HW Request which is default on since MT6989 */
 	spm_ctrl &= ~SSUSB_SPM_FORCE_HW_REQ_MSK;
 
 	switch (state) {
 	case MTU3_STATE_POWER_OFF:
-		spm_ctrl &= ~SSUSB_SPM_REQ_MSK;
+		spm_ctrl &= ~spm_msk;
 		break;
 	case MTU3_STATE_POWER_ON:
-		spm_ctrl |= SSUSB_SPM_REQ_MSK;
+		spm_ctrl |= spm_msk;
 		break;
 	case MTU3_STATE_OFFLOAD:
-		spm_ctrl &= ~SSUSB_SPM_REQ_MSK;
-		spm_ctrl |= (SSUSB_SPM_SRCCLKENA | SSUSB_SPM_INFRE_REQ
-				| SSUSB_SPM_VRF18_REQ);
+		/* Clear req for offload scenario */
+		spm_ctrl &= SSUSB_SPM_REQ_OFFLOAD_MSK;
 		break;
 	case MTU3_STATE_RESUME:
-		spm_ctrl |= SSUSB_SPM_REQ_MSK;
+		spm_ctrl |= spm_msk;
 		smc_req = SSUSB_SMC_HWRECS_RESUME;
 		break;
 	case MTU3_STATE_SUSPEND:
-		spm_ctrl &= ~SSUSB_SPM_REQ_MSK;
+		/* Clear req for host suspend scenario */
+		spm_ctrl &= SSUSB_SPM_VCORE_EN;
 		smc_req = SSUSB_SMC_HWRECS_SUSPEND;
 		break;
 	default:
 		return;
 	}
 
+	dev_info(ssusb->dev, "%s spm_ctrl=0x%x\n", __func__, spm_ctrl);
 	/* write spm_ctrl */
 	mtu3_writel(ibase, U3D_SSUSB_SPM_CTRL_V2, spm_ctrl);
 
+	/* make sure intended configure bits received ack from SPM */
 	ret = readl_poll_timeout_atomic(ibase + U3D_SSUSB_SPM_CTRL_ACK_V2,
-		value, (spm_ctrl == (value & SSUSB_SPM_REQ_MSK)), 100, 20000);
+		value, ((spm_ctrl & spm_msk) == (value & spm_msk)), 100, 20000);
 	if (ret)
 		dev_info(ssusb->dev, "%s timeout, spm_ctrl=0x%x, value=0x%x\n",
 			__func__, spm_ctrl, value);
@@ -231,7 +239,8 @@ void ssusb_set_power_state(struct ssusb_mtk *ssusb,
 		ssusb_hwrscs_req(ssusb, state);
 		break;
 	case SSUSB_HWRECS_V2:
-		ssusb_hwrscs_req_v2(ssusb, state);
+	case SSUSB_HWRECS_V3:
+		ssusb_hwrscs_req_v2_v3(ssusb, state);
 		break;
 	default:
 		return;
