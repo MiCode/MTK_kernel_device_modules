@@ -119,8 +119,8 @@ static struct mtk_dpc2_dt_usage mt6991_dt_usage[DPC2_VIDLE_CNT] = {
 /*26*/	{0, 0x13B13B},	/* MSYNC 2.0 */
 /*27*/	{0, 0x13B13B},
 /*28*/	{0, 0x13B13B},
-/*29*/	{0, 0x13B13B},	/* RESERVED */
-/*30*/	{0, 1000},
+/*29*/	{1, 100},	/* SAFE ZONE */
+/*30*/	{0, 1000},	/* RESERVED */
 /*31*/	{0, 0x13B13B},
 /*32*/	{0, 500},						/* MML1		EOF	OFF	*/
 /*33*/	{1, DPC2_DT_TE_120 - DPC2_DT_PRESZ - DPC2_DT_MTCMOS},	/*		TE	ON	*/
@@ -552,6 +552,7 @@ static void dpc_enable(const u8 en)
 			writel(0x40, dpc_base + DISP_DPC_ON2SOF_DT_EN);
 			writel(0xf, dpc_base + DISP_DPC_ON2SOF_DSI0_SOF_COUNTER); /* should > 2T, cannot be zero */
 			writel(0x2, dpc_base + DISP_REG_DPC_DEBUG_SEL);	/* mtcmos_debug */
+			writel(0x7, dpc_base + DISP_REG_DPC_DUMMY0); /* criteria switch to DSC */
 		} else {
 			/* DT enable only 1, 3, 5, 6, 7, 12, 13, 29, 30, 31 */
 			dpc_dt_en_all(DPC_SUBSYS_DISP, 0xe00030ea);
@@ -1035,7 +1036,7 @@ static void dpc_disp_group_enable(bool en)
 		value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x21 : 0x60;
 		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_EDP].cfg);
 		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_DPTX].cfg);
-		value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x180202 : 0x180e0e;
+		value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x180000 : 0x181e1e;
 		writel(value, dpc_base + DISP_DPC2_DISP_26M_PMIC_VCORE_OFF_CFG);
 	}
 }
@@ -1067,7 +1068,7 @@ static void dpc_mml_group_enable(bool en)
 
 	if (g_priv->mmsys_id == MMSYS_MT6991) {
 		/* vcore off */
-		value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x180202 : 0x180e0e;
+		value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x180000 : 0x181e1e;
 		writel(value, dpc_base + DISP_DPC2_MML_26M_PMIC_VCORE_OFF_CFG);
 	}
 }
