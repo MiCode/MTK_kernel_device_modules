@@ -35,7 +35,7 @@
 #include "ged_async.h"
 
 #if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
-#include "thermal_interface.h"
+//#include "thermal_interface.h"
 #endif
 #define MTK_DEFER_DVFS_WORK_MS          10000
 #define MTK_DVFS_SWITCH_INTERVAL_MS     50
@@ -2567,22 +2567,23 @@ void set_api_sync_flag(int flag)
 		// pre-throttle cases
 		if ((flag & 0x0000FFFF) == 0xFFFF) {
 			// reset default
-			set_gpu_pre_throttle(0x27BC86AA);
-			set_gpu_pre_throttle_opp(0x27BC86AA);
+			//set_gpu_pre_throttle(0x27BC86AA);
+			//set_gpu_pre_throttle_opp(0x27BC86AA);
 		} else {
 			if ((flag & 0x0000FF00) > 0) {
 				// set preferred temp.
-				set_gpu_pre_throttle(((flag & 0x0000FF00)>>8)*1000);
+				//set_gpu_pre_throttle(((flag & 0x0000FF00)>>8)*1000);
 			}
 
 			if ((flag & 0x000000FF) > 0) {
 				// set preferred opp.
-				set_gpu_pre_throttle_opp((flag & 0x000000FF)-1);
+				//set_gpu_pre_throttle_opp((flag & 0x000000FF)-1);
 			}
 		}
-		GED_LOGE("%s@%d (0x%08x)new gpu_pre_throttle temp: %d / opp: %d",
-			__func__, __LINE__, (flag & 0x0000FFFF),
-			get_gpu_pre_throttle_temp(), get_gpu_pre_throttle_opp());
+		GED_LOGE("new gpu_pre_throttle temp");
+		//GED_LOGE("%s@%d (0x%08x)new gpu_pre_throttle temp: %d / opp: %d",
+		//	__func__, __LINE__, (flag & 0x0000FFFF),
+		//	get_gpu_pre_throttle_temp(), get_gpu_pre_throttle_opp());
 #endif
 	}
 }
