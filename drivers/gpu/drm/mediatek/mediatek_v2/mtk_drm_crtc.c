@@ -114,6 +114,7 @@ static struct mtk_drm_property mtk_crtc_property[CRTC_PROP_MAX] = {
 	{DRM_MODE_PROP_ATOMIC, "BL_SYNC_GAMMA_GAIN", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "DYNAMIC_WCG_OFF", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "WCG_BY_COLOR_MODE", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "STYLUS_MODE", 0, ULONG_MAX, 0}
 };
 
 static struct cmdq_pkt *sb_cmdq_handle;
@@ -9250,6 +9251,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	unsigned int *avg = NULL;
 	unsigned int *peak = NULL;
 	unsigned int reg_avg, reg_peak;
+	int crtc_state_stylus = to_mtk_crtc_state(crtc_state)->prop_val[CRTC_PROP_STYLUS];
 
 	if (unlikely(!mtk_crtc)) {
 		DDPPR_ERR("%s:%d invalid pointer mtk_crtc\n",
@@ -9291,30 +9293,31 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		}
 	}
 
-	if ((drm_crtc_index(crtc) != 2) && (priv && priv->power_state)) {
-		// only VDO mode panel use CMDQ call
-		if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
-				!cb_data->msync2_enable) {
+	if(crtc_state_stylus == 0) {
+		if ((drm_crtc_index(crtc) != 2) && (priv && priv->power_state)) {
+			// only VDO mode panel use CMDQ call
+			if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
+					!cb_data->msync2_enable) {
 #ifndef DRM_CMDQ_DISABLE
-			enum PF_TS_TYPE pf_ts_type;
-			ktime_t pf_time;
+				enum PF_TS_TYPE pf_ts_type;
+				ktime_t pf_time;
 
-			pf_time = 0;
-			pf_ts_type = mtk_crtc->pf_ts_type;
-			if (mtk_crtc->pf_time && (pf_ts_type == IRQ_RDMA_EOF ||
-				pf_ts_type == IRQ_DSI_EOF))
-				pf_time = mtk_check_preset_fence_timestamp(crtc);
-			else if (cb_data->signal_ts && pf_ts_type == IRQ_CMDQ_CB)
-				pf_time = cb_data->signal_ts;
-			else
-				DDPINFO("current pf_time is NULL\n");
+				pf_time = 0;
+				pf_ts_type = mtk_crtc->pf_ts_type;
+				if (mtk_crtc->pf_time && (pf_ts_type == IRQ_RDMA_EOF ||
+					pf_ts_type == IRQ_DSI_EOF))
+					pf_time = mtk_check_preset_fence_timestamp(crtc);
+				else if (cb_data->signal_ts && pf_ts_type == IRQ_CMDQ_CB)
+					pf_time = cb_data->signal_ts;
+				else
+					DDPINFO("current pf_time is NULL\n");
 
-			mtk_release_present_fence(session_id, cb_data->pres_fence_idx,
-				pf_time);
+				mtk_release_present_fence(session_id, cb_data->pres_fence_idx,
+					pf_time);
 #endif
+			}
 		}
 	}
-
 	if (cb_data->is_mml) {
 		atomic_set(&(mtk_crtc->wait_mml_last_job_is_flushed), 1);
 		wake_up_interruptible(&(mtk_crtc->signal_mml_last_job_is_flushed_wq));
@@ -9420,6 +9423,10 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 			if (cb_data->msync2_enable)
 				mtk_release_present_fence(session_id,
 						fence_idx, ktime_get());
+			else if (crtc_state_stylus == 1) {
+				mtk_release_present_fence(session_id,
+					fence_idx, mtk_crtc->pf_time);
+			}
 		}
 	}
 
