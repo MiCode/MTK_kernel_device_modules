@@ -7253,10 +7253,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x02ff1000 0 0x0>;
 		};
 
-		gpu_qos: gpu-qos@117800 {
+		gpu_qos: gpu-qos@13f800 {
 			compatible = "mediatek,gpu_qos";
 			qos-sysram-support = <1>;
-			reg = <0 0x117800 0 0x20>;
+			reg = <0 0x13f800 0 0x20>;
 			qos-mode = <0>;
 			qos-value = <0>;
 		};
