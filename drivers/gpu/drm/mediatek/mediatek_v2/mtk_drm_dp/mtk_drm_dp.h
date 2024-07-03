@@ -37,6 +37,9 @@ u8 mtk_dp_get_sink_count(struct mtk_dp *mtk_dp);
 struct drm_connector *mtk_dp_add_connector(struct drm_dp_mst_topology_mgr *mgr,
 					   struct drm_dp_mst_port *port, const char *path);
 
+void mtk_drm_dpi_suspend(void);
+void mtk_drm_dpi_resume(void);
+
 /*  dp tx api for debug start */
 int mtk_dp_phy_get_info(char *buffer, int size);
 /*	dp tx api for debug end */

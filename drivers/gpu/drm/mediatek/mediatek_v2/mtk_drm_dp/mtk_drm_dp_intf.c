@@ -98,7 +98,11 @@ struct mtk_dpi {
 	u32 output_fmt;
 	int refcount;
 	unsigned long long dp_intf_bw;
+	bool suspend;
 };
+
+#define MAX_DPI		2
+static struct mtk_dpi *g_mtk_dpi[MAX_DPI];
 
 static inline struct mtk_dpi *bridge_to_dpi(struct drm_bridge *b)
 {
@@ -1346,6 +1350,7 @@ static int mtk_dpi_probe(struct platform_device *pdev)
 	enum mtk_ddp_comp_id comp_id;
 	int ret;
 
+	DDPMSG("%s %s +\n", __func__, dev_name(dev));
 	dpi = devm_kzalloc(dev, sizeof(*dpi), GFP_KERNEL);
 	if (!dpi)
 		return -ENOMEM;
@@ -1456,6 +1461,13 @@ static int mtk_dpi_probe(struct platform_device *pdev)
 		return -EPROBE_DEFER;
 	}
 
+	if (comp_id == DDP_COMPONENT_DP_INTF0)
+		g_mtk_dpi[0] = dpi;
+	else if (comp_id == DDP_COMPONENT_DP_INTF1)
+		g_mtk_dpi[1] = dpi;
+
+	DDPMSG("%s %s comp %s-\n", __func__, dev_name(dev), mtk_dump_comp_str_id(comp_id));
+
 	return 0;
 }
 
@@ -1488,9 +1500,16 @@ static int mtk_dpi_suspend(struct device *dev)
 		return 0;
 	}
 
+	if (mtk_dpi->suspend) {
+		pr_info("[DPI] %s already suspend\n", __func__);
+		return 0;
+	}
+
 	dev_info(mtk_dpi->dev, "[DPI] suspend +\n");
 
 	clk_disable_unprepare(mtk_dpi->pclk);
+
+	mtk_dpi->suspend = true;
 
 	dev_info(mtk_dpi->dev, "[DPI] suspend -\n");
 
@@ -1507,6 +1526,11 @@ static int mtk_dpi_resume(struct device *dev)
 		return 0;
 	}
 
+	if (!mtk_dpi->suspend) {
+		pr_info("[DPI] %s already resume\n", __func__);
+		return 0;
+	}
+
 	dev_info(mtk_dpi->dev, "[DPI] resume +\n");
 
 	ret = clk_prepare_enable(mtk_dpi->pclk);
@@ -1514,14 +1538,58 @@ static int mtk_dpi_resume(struct device *dev)
 		dev_info(mtk_dpi->dev, "%s Failed to enable pclk:%d\n",
 			 __func__, ret);
 
+	mtk_dpi->suspend = false;
+
 	dev_info(mtk_dpi->dev, "[DPI] resume -\n");
 
 	return 0;
 }
+
+void mtk_drm_dpi_suspend(void)
+{
+	struct mtk_dpi *mtk_dpi = NULL;
+	int i = 0;
+
+	DDPMSG("%s +\n", __func__);
+
+	for (i = 0; i < MAX_DPI; i++) {
+		mtk_dpi = g_mtk_dpi[i];
+
+		if (!mtk_dpi || !mtk_dpi->dev) {
+			DDPMSG("[E][DPI] %s dp-%d not initial\n", __func__, i);
+			continue;
+		}
+
+		mtk_dpi_suspend(mtk_dpi->dev);
+	}
+
+	DDPMSG("%s -\n", __func__);
+}
+
+void mtk_drm_dpi_resume(void)
+{
+	struct mtk_dpi *mtk_dpi = NULL;
+	int i = 0;
+
+	DDPMSG("%s +\n", __func__);
+
+	for (i = 0; i < MAX_DPI; i++) {
+		mtk_dpi = g_mtk_dpi[i];
+
+		if (!mtk_dpi || !mtk_dpi->dev) {
+			DDPMSG("[E][DPI] %s dp-%d not initial\n", __func__, i);
+			continue;
+		}
+
+		mtk_dpi_resume(mtk_dpi->dev);
+	}
+
+	DDPMSG("%s -\n", __func__);
+}
 #endif
 
-static SIMPLE_DEV_PM_OPS(mtk_dpi_pm_ops,
-		mtk_dpi_suspend, mtk_dpi_resume);
+//static SIMPLE_DEV_PM_OPS(mtk_dpi_pm_ops,
+//		mtk_dpi_suspend, mtk_dpi_resume);
 
 struct platform_driver mtk_dp_intf_driver = {
 	.probe = mtk_dpi_probe,
@@ -1529,6 +1597,6 @@ struct platform_driver mtk_dp_intf_driver = {
 	.driver = {
 		.name = "mediatek-dpi",
 		.of_match_table = mtk_dpi_of_ids,
-		.pm = &mtk_dpi_pm_ops,
+//		.pm = &mtk_dpi_pm_ops,
 	},
 };

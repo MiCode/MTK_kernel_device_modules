@@ -927,6 +927,7 @@ struct mtk_dp {
 	u32 vsv_mask;
 	u32 vsv_vers;
 	bool swap_enable;
+	struct notifier_block nb;
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_DP_MST_SUPPORT)
 	bool mst_enable;

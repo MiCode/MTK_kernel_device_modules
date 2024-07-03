@@ -6572,7 +6572,7 @@ int mtk_drm_dp_get_info_by_id(struct drm_device *dev,
 		info->physical_width = g_mtk_dp->mode[dp_encoder_id].hdisplay;
 		info->physical_height = g_mtk_dp->mode[dp_encoder_id].vdisplay;
 		DP_MSG("%s, physical_width:%u physical_height:%u\n",
-				__func__, info->physical_width, info->physical_height);
+		       __func__, info->physical_width, info->physical_height);
 	} else {
 		DP_ERR("%s, dp_encoder_id is invalid: %d\n", __func__, dp_encoder_id);
 		return -EINVAL;
@@ -6694,6 +6694,29 @@ int mtk_dp_phy_get_info(char *buffer, int size)
 }
 
 /*  dp tx api for debug end */
+static int mtk_dp_suspend(struct device *dev);
+static int mtk_dp_resume(struct device *dev);
+
+static int mtk_drm_dp_notifier(struct notifier_block *notifier,
+			       unsigned long pm_event, void *unused)
+{
+	struct mtk_dp *mtk_dp = container_of(notifier, struct mtk_dp, nb);
+	struct device *dev = mtk_dp->dev;
+
+	pr_info("%s pm_event %d dev %s usage_count %d nb priority %d\n",
+		__func__, pm_event, dev_name(dev), atomic_read(&dev->power.usage_count),
+	       notifier->priority);
+
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		mtk_dp_suspend(dev);
+		return NOTIFY_OK;
+	case PM_POST_SUSPEND:
+		mtk_dp_resume(dev);
+		return NOTIFY_OK;
+	}
+	return NOTIFY_DONE;
+}
 
 static int mtk_drm_dp_probe(struct platform_device *pdev)
 {
@@ -6790,6 +6813,11 @@ static int mtk_drm_dp_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	mtk_dp->nb.notifier_call = mtk_drm_dp_notifier;
+	ret = register_pm_notifier(&mtk_dp->nb);
+	if (ret)
+		DP_ERR("register_pm_notifier failed %d", ret);
+
 	base = ioremap(0x31b50000, 0x1000);
 	writel(0xc2fc224d, base + 0x78);
 
@@ -6817,11 +6845,17 @@ static int mtk_dp_suspend(struct device *dev)
 	struct mtk_dp *mtk_dp = dev_get_drvdata(dev);
 
 	if (!mtk_dp) {
-		pr_info("[DP] suspend, dp not initial\n");
+		DP_FUNC("[DP] suspend, dp not initial\n");
 		return 0;
 	}
 
-	dev_info(mtk_dp->dev, "[DP] suspend +\n");
+	if (mtk_dp->disp_state == DP_DISP_STATE_SUSPEND) {
+		DP_FUNC("[DP] already suspend\n");
+		return 0;
+	}
+
+	DP_FUNC("%s usage_count %d +\n",
+		dev_name(dev), atomic_read(&dev->power.usage_count));
 
 	if (mtk_dp_hpd_get_pin_level(mtk_dp)) {
 		drm_dp_dpcd_writeb(&mtk_dp->aux, DP_SET_POWER, DP_SET_POWER_D3);
@@ -6831,10 +6865,13 @@ static int mtk_dp_suspend(struct device *dev)
 	mtk_dp_hpd_interrupt_enable(mtk_dp, false);
 	mtk_dp_disconnect_release(mtk_dp);
 
+	mtk_drm_dpi_suspend(); // dpintf
+
 	mtk_dp->disp_state = DP_DISP_STATE_SUSPEND;
 	pm_runtime_put_sync(mtk_dp->dev);
 
-	dev_info(mtk_dp->dev, "[DP] suspend -\n");
+	DP_FUNC("%s usage_count %d -\n",
+		dev_name(mtk_dp->dev), atomic_read(&dev->power.usage_count));
 
 	return 0;
 }
@@ -6844,21 +6881,62 @@ static int mtk_dp_resume(struct device *dev)
 	struct mtk_dp *mtk_dp = dev_get_drvdata(dev);
 
 	if (!mtk_dp) {
-		pr_info("[DP] resume, dp not initial\n");
+		DP_FUNC("[DP] resume, dp not initial\n");
 		return 0;
 	}
 
-	dev_info(mtk_dp->dev, "[DP] resume +\n");
+	if (mtk_dp->disp_state == DP_DISP_STATE_RESUME) {
+		DP_FUNC("[DP] already resume\n");
+		return 0;
+	}
+
+	DP_FUNC("%s usage_count %d +\n",
+		dev_name(dev), atomic_read(&dev->power.usage_count));
 
 	pm_runtime_get_sync(dev);
 	mtk_dp->disp_state = DP_DISP_STATE_RESUME;
 
+	mtk_drm_dpi_resume(); // dpintf
+
 	mtk_dp_init_port(mtk_dp);
 	mtk_dp_hpd_interrupt_enable(mtk_dp, true);
 
-	dev_info(mtk_dp->dev, "[DP] resume -\n");
+	DP_FUNC("%s usage_count %d -\n",
+		dev_name(mtk_dp->dev), atomic_read(&dev->power.usage_count));
 
 	return 0;
+}
+
+void mtk_drm_dp_suspend(void)
+{
+	struct mtk_dp *mtk_dp = g_mtk_dp;
+
+	if (!mtk_dp || !mtk_dp->dev) {
+		pr_info("[DP] dp not initial\n");
+		return;
+	}
+
+	DP_FUNC("+\n");
+
+	mtk_dp_suspend(mtk_dp->dev);
+
+	DP_FUNC("-\n");
+}
+
+void mtk_drm_dp_resume(void)
+{
+	struct mtk_dp *mtk_dp = g_mtk_dp;
+
+	if (!mtk_dp || !mtk_dp->dev) {
+		pr_info("[DP] dp not initial\n");
+		return;
+	}
+
+	DP_FUNC("+\n");
+
+	mtk_dp_resume(mtk_dp->dev);
+
+	DP_FUNC("-\n");
 }
 #endif
 
