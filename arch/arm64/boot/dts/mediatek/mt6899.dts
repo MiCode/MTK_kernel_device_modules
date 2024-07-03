@@ -16413,6 +16413,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 #include "mediatek/mt6899-clkitg.dtsi"
 #include "mediatek/mt6899-disable-unused.dtsi"
 
+&hypervisor {
+	status = "okay";
+};
+
 /* KEY GPIO standardization start */
 &pio{
 	key_gpio_default:key-default {
