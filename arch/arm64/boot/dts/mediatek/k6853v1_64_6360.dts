@@ -528,6 +528,11 @@
 	charger = <&mt6360_chg>;
 };
 
+&mmc1 {
+	vmmc-supply = <&mt_pmic_vmch_ldo_reg>;
+	vqmmc-supply = <&mt_pmic_vmc_ldo_reg>;
+};
+
 &extcon_usb {
 	charger = <&mt6360_chg>;
 };
@@ -548,12 +553,41 @@
 	mt6315_3: mt6315@3 {
 		compatible = "mediatek,mt6315", "mtk,spmi-pmic";
 		reg = <0x3 0 0xb 0>;
-		#address-cells = <1>;
-		#size-cells = <0>;
+
 		mt6315_3_regulator: mt6315_3-regulator {
 			compatible = "mediatek,mt6315_3-regulator";
-			interrupt-parent = <&pio>;
-			interrupts = <0 IRQ_TYPE_LEVEL_HIGH 0 0>;
+			buck-size = <3>;
+			buck1-modeset-mask = <0x3>;
+
+			mt6315_3_vbuck1: 3-vbuck1 {
+				regulator-compatible = "vbuck1";
+				regulator-name = "3_vbuck1";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1193750>;
+				regulator-enable-ramp-delay = <256>;
+				regulator-allowed-modes = <0 1 2>;
+				regulator-always-on;
+			};
+
+			mt6315_3_vbuck3: 3-vbuck3 {
+				regulator-compatible = "vbuck3";
+				regulator-name = "3_vbuck3";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1193750>;
+				regulator-enable-ramp-delay = <256>;
+				regulator-allowed-modes = <0 1 2>;
+				regulator-always-on;
+			};
+
+			mt6315_3_vbuck4: 3-vbuck4 {
+				regulator-compatible = "vbuck4";
+				regulator-name = "3_vbuck4";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1193750>;
+				regulator-enable-ramp-delay = <256>;
+				regulator-allowed-modes = <0 1 2>;
+				regulator-always-on;
+			};
 		};
 	};
 };
@@ -885,6 +919,15 @@
 
 &mtk_gauge {
 	charger = <&mt6360_chg>;
+};
+
+&mddriver {
+	md-vmodem-supply = <&mt6315_3_vbuck1>;
+	md-vmodem = <800000 800000>;
+	md-vsram-supply = <&mt6315_3_vbuck4>;
+	md-vsram = <800000 800000>;
+	md-vnr-supply = <&mt6315_3_vbuck3>;
+	md-vnr = <800000 800000>;
 };
 
 #include "mediatek/cust_mt6853_touch_1080x1920.dtsi"
