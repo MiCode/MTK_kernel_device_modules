@@ -5795,7 +5795,7 @@
 				<0 0x1a7a0000 0 0x1000>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 #if 0
-			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
+			power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_MRAW>;
 #endif
 			// mediatek-larb-supply = <&smi_larb19>;
 			iommus = <&mdp_iommu M4U_L19_P4_DVS_RD_DPE>,
@@ -5808,8 +5808,6 @@
 #if 0
 			dvsdoneasyncshot = <CMDQ_EVENT_CAM_DPE_DVS_CMQ_EVENT>;
 			clocks =
-			<&camsys_main_clk CLK_CAM_MAIN_CAM>,
-			<&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAM_DPE_CAMERA_P2>,
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19_CAMERA_P2>,
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_DPE_CAMERA_P2>,
@@ -5817,8 +5815,6 @@
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_DHZE_CAMERA_P2>,
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_GALS_CAMERA_P2>;
 			clock-names =
-			"CLK_CAM_MAIN_CON_0",
-			"CLK_CAM_MRAW_CON_0",
 			"CLK_CAM_DPE_CON_0",
 			"IPE_LARB19",
 			"CLK_CAMSYS_DPE",
@@ -5833,7 +5829,7 @@
 			reg = <0 0x1a770800 0 0x1000>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 #if 0
-			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
+			power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_MRAW>;
 #endif
 			// mediatek-larb-supply = <&smi_larb19>;
 			iommus = <&mdp_iommu M4U_L19_P4_DVS_RD_DPE>,
@@ -5846,8 +5842,6 @@
 #if 0
 			dvpdoneasyncshot = <CMDQ_EVENT_CAM_DPE_DVP_CMQ_EVENT>;
 			clocks =
-			<&camsys_main_clk CLK_CAM_MAIN_CAM>,
-			<&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAM_DPE_CAMERA_P2>,
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19_CAMERA_P2>,
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_DPE_CAMERA_P2>,
@@ -5855,8 +5849,6 @@
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_DHZE_CAMERA_P2>,
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_GALS_CAMERA_P2>;
 			clock-names =
-			"CLK_CAM_MAIN_CON_0",
-			"CLK_CAM_MRAW_CON_0",
 			"CLK_CAM_DPE_CON_0",
 			"IPE_LARB19",
 			"CLK_CAMSYS_DPE",
@@ -5872,7 +5864,7 @@
 			#size-cells = <2>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 #if 0
-			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
+			power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_MRAW>;
 #endif
 			// mediatek-larb-supply = <&smi_larb19>;
 			iommus = <&mdp_iommu M4U_L19_P4_DVS_RD_DPE>,
@@ -5885,8 +5877,6 @@
 #if 0
 			dvgfdoneasyncshot = <CMDQ_EVENT_CAM_DPE_DVFG_CMQ_EVENT>;
 			clocks =
-			<&camsys_main_clk CLK_CAM_MAIN_CAM>,
-			<&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAM_DPE_CAMERA_P2>,
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19_CAMERA_P2>,
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_DPE_CAMERA_P2>,
@@ -5894,8 +5884,6 @@
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_DHZE_CAMERA_P2>,
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_GALS_CAMERA_P2>;
 			clock-names =
-			"CLK_CAM_MAIN_CON_0",
-			"CLK_CAM_MRAW_CON_0",
 			"CLK_CAM_DPE_CON_0",
 			"IPE_LARB19",
 			"CLK_CAMSYS_DPE",
