@@ -7,6 +7,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/phy/phy.h>
+#include <dt-bindings/pinctrl/mt6899-pinfunc.h>
 
 &chosen {
 	bootargs_ext = "\
@@ -88,6 +89,56 @@ initcall_debug=1 \
 		sound-dai = <&spk1>;
 	};
 };
+
+/* usb typec mux start */
+&pio {
+
+	ps_enable: ps-enable {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO65__FUNC_GPIO65>;
+			output-high;
+		};
+	};
+
+	ps_disable: ps-disable {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO65__FUNC_GPIO65>;
+			output-low;
+		};
+	};
+
+};
+
+&mt6375_typec {
+	port {
+		tcpc_typec_usb: endpoint {
+			remote-endpoint = <&ssusb_mux>;
+		};
+	};
+};
+
+&typec_mux_switch {
+	orientation-switch;
+	mode-switch;
+	accessory;
+	port {
+		ssusb_mux: endpoint {
+			remote-endpoint = <&tcpc_typec_usb>;
+		};
+	};
+};
+
+&ps5170 {
+	pinctrl-names = "enable", "disable";
+	pinctrl-0 = <&ps_enable>;
+	pinctrl-1 = <&ps_disable>;
+	status = "okay";
+};
+
+&usb_dp_selector {
+	status = "okay";
+};
+/* usb typec mux end */
 
 #if 0
 &mtk_leds {

@@ -8094,6 +8094,19 @@
 			     <GIC_SPI 441 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
+		typec_mux_switch: typec-mux-switch {
+			compatible = "mediatek,typec_mux_switch";
+			status = "okay";
+		};
+
+		usb_dp_selector: usb-dp-selector@10005600 {
+			compatible = "mediatek,usb_dp_selector";
+			reg = <0 0x10005600 0 0x4>;
+			reg-names = "usb_dp_reg";
+			mediatek,uds-ver = <2>;
+			status = "okay";
+		};
+
 		sspm: sspm@1c300000 {
 			compatible = "mediatek,sspm";
 			reg = <0 0x1c300000 0 0x40000>,
@@ -9694,6 +9707,14 @@
 		dbg {
 			compatible = "richtek,rt6160-dbg";
 		};
+	};
+};
+
+&i2c6 {
+	ps5170: ps5170@28 {
+		compatible = "parade,ps5170";
+		reg = <0x28>;
+		status = "okay";
 	};
 };
 
