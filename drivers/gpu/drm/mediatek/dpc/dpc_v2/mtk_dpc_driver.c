@@ -313,6 +313,10 @@ static inline int dpc_pm_ctrl(bool en)
 			return -1;
 		}
 
+		/* read dummy register to make sure it's ready to use */
+		if (g_priv->mminfra_dummy)
+			(void)readl(g_priv->mminfra_dummy);
+
 		/* disable devapc power check false alarm, */
 		/* DPC address is bound by power of disp1 on 6989 */
 		if (g_priv->mminfra_hangfree)
@@ -357,8 +361,12 @@ static int mtk_disp_wait_pwr_ack(const enum mtk_dpc_subsys subsys)
 		return -1;
 	}
 
-	/* delay_us, timeout_us */
-	ret = readl_poll_timeout_atomic(g_priv->mtcmos_cfg[subsys].chk_va, value, 0xB, 1, 200);
+	/* by subsys pm */
+	// ret = readl_poll_timeout_atomic(g_priv->mtcmos_cfg[subsys].chk_va, value, 0xB, 1, 200);
+
+	/* by dpc */
+	ret = readl_poll_timeout_atomic(dpc_base + g_priv->mtcmos_cfg[subsys].cfg + 0x8,
+					value, value & BIT(20), 1, 200);
 	if (ret < 0)
 		DPCERR("wait subsys(%d) power on timeout", subsys);
 
@@ -600,6 +608,8 @@ static void dpc_enable(const u8 en)
 
 	/* enable gce event */
 	writel(en, dpc_base + DISP_REG_DPC_EVENT_EN);
+
+	g_priv->enabled = en;
 }
 
 static u8 bw_to_level(const u32 total_bw)
@@ -1342,7 +1352,7 @@ static void get_addr_byname(const char *name, void __iomem **va, resource_size_t
 
 static int dpc_res_init(struct mtk_dpc *priv)
 {
-	get_addr_byname("DPC_BASE", &dpc_base, NULL);
+	get_addr_byname("DPC_BASE", &dpc_base, &priv->dpc_pa);
 	get_addr_byname("rtff_pwr_con", &priv->rtff_pwr_con, NULL);
 	get_addr_byname("disp_sw_vote_set", &priv->voter_set_va, &priv->voter_set_pa);
 	get_addr_byname("disp_sw_vote_clr", &priv->voter_clr_va, &priv->voter_clr_pa);
@@ -1374,9 +1384,18 @@ static int dpc_res_init(struct mtk_dpc *priv)
 	get_addr_byname("vdisp_ao_cg_con", &priv->vdisp_ao_cg_con, NULL);
 
 	if (priv->mmsys_id == MMSYS_MT6991) {
+		enum mtk_dpc_subsys subsys = 0;
+
 		/* use for gced, modify for access mmup inside mminfra */
 		priv->voter_set_pa -= 0x800000;
 		priv->voter_clr_pa -= 0x800000;
+
+		/* mminfra dummy register for checking mminfra power */
+		priv->mminfra_dummy = ioremap(0x30a0040c, 0x4);
+
+		/* power check by dpc, instead of subsys_pm */
+		for (subsys = 0; subsys < DPC_SUBSYS_CNT; subsys++)
+			priv->mtcmos_cfg[subsys].chk_pa = priv->dpc_pa + priv->mtcmos_cfg[subsys].cfg + 0x8;
 	}
 
 	return IS_ERR_OR_NULL(dpc_base);
@@ -1468,34 +1487,55 @@ static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread)
 	}
 }
 
-static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
+static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user _user)
 {
 	int ret = VOTER_PM_DONE;
+	enum mtk_vidle_voter_user user = _user & DISP_VIDLE_USER_MASK;
 
 	if (!g_priv->vcp_is_alive) {
-		DPCFUNC("by user(%u) skipped", user & DISP_VIDLE_USER_MASK);
+		DPCFUNC("by user(%#x) skipped", _user);
 		return VOTER_PM_FAILED;
 	}
 
-	if (user & VOTER_ONLY) {
-		mtk_disp_vlp_vote(VOTE_SET, user & DISP_VIDLE_USER_MASK);
+	if (_user & VOTER_ONLY) {
+		mtk_disp_vlp_vote(VOTE_SET, user);
 		return VOTER_ONLY;
-	} else if ((user & DISP_VIDLE_USER_MASK) == DISP_VIDLE_USER_TOP_CLK_ISR) {
+	} else if (user == DISP_VIDLE_USER_TOP_CLK_ISR) {
 		/* skip pm_get to fix unstable DSI TE, mminfra power is held by DPC usually */
 		/* but if no power at this time, the user should call pm_get to ensure power */
-		mtk_disp_vlp_vote(VOTE_SET, user & DISP_VIDLE_USER_MASK);
+		mtk_disp_vlp_vote(VOTE_SET, user);
 		return mminfra_is_power_on() ? VOTER_ONLY : VOTER_PM_LATER;
 	}
 
 	if (dpc_pm_ctrl(true))
 		return VOTER_PM_FAILED;
 
-	mtk_disp_vlp_vote(VOTE_SET, user & DISP_VIDLE_USER_MASK);
+	mtk_disp_vlp_vote(VOTE_SET, user);
 
-	if (user >= DISP_VIDLE_USER_CRTC)
+	if (!g_priv->enabled || user < DISP_VIDLE_USER_CRTC)
+		return ret;
+
+	switch (user) {
+	case DISP_VIDLE_USER_MML1:
+		mtk_disp_wait_pwr_ack(DPC_SUBSYS_MML1);
+		break;
+	case DISP_VIDLE_USER_MML0:
+		mtk_disp_wait_pwr_ack(DPC_SUBSYS_MML0);
+		break;
+	case DISP_VIDLE_USER_CRTC:
+	case DISP_VIDLE_USER_PQ:
+	case DISP_VIDLE_USER_DISP_DPC_CFG:
+	case DISP_VIDLE_USER_DPC_DUMP:
+	case DISP_VIDLE_USER_SMI_DUMP:
+	case DISP_VIDLE_FORCE_KEEP:
+		mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS1);
+		mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS0);
+		mtk_disp_wait_pwr_ack(DPC_SUBSYS_OVL0);
+		mtk_disp_wait_pwr_ack(DPC_SUBSYS_OVL1);
+		break;
+	default:
 		udelay(post_vlp_delay);
-	else if (user == 5)
-		mtk_disp_vlp_vote(VOTE_SET, DISP_VIDLE_USER_MML1);
+	}
 
 	return ret;
 }
@@ -1529,8 +1569,26 @@ static void dpc_vidle_power_keep_by_gce(struct cmdq_pkt *pkt, const enum mtk_vid
 {
 	cmdq_pkt_write(pkt, NULL, g_priv->voter_set_pa, BIT(user), U32_MAX);
 
-	if (gpr)
-		cmdq_pkt_sleep_reuse(pkt, CMDQ_US_TO_TICK(post_vlp_delay), gpr, reuse);
+	switch (user) {
+	case DISP_VIDLE_USER_DISP_CMDQ:
+		cmdq_pkt_poll_sleep(pkt, BIT(20), g_priv->mtcmos_cfg[DPC_SUBSYS_DIS1].chk_pa, BIT(20));
+		cmdq_pkt_poll_sleep(pkt, BIT(20), g_priv->mtcmos_cfg[DPC_SUBSYS_DIS0].chk_pa, BIT(20));
+		cmdq_pkt_poll_sleep(pkt, BIT(20), g_priv->mtcmos_cfg[DPC_SUBSYS_OVL0].chk_pa, BIT(20));
+		cmdq_pkt_poll_sleep(pkt, BIT(20), g_priv->mtcmos_cfg[DPC_SUBSYS_OVL1].chk_pa, BIT(20));
+		break;
+	case DISP_VIDLE_USER_DDIC_CMDQ:
+		cmdq_pkt_poll_sleep(pkt, BIT(20), g_priv->mtcmos_cfg[DPC_SUBSYS_DIS1].chk_pa, BIT(20));
+		break;
+	case DISP_VIDLE_USER_MML1_CMDQ:
+		cmdq_pkt_poll_sleep(pkt, BIT(20), g_priv->mtcmos_cfg[DPC_SUBSYS_MML1].chk_pa, BIT(20));
+		break;
+	case DISP_VIDLE_USER_MML0_CMDQ:
+		cmdq_pkt_poll_sleep(pkt, BIT(20), g_priv->mtcmos_cfg[DPC_SUBSYS_MML0].chk_pa, BIT(20));
+		break;
+	default:
+		DPCERR("not support user %u", user);
+		return;
+	}
 }
 
 static void dpc_vidle_power_release_by_gce(struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user)

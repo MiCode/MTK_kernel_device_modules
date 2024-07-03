@@ -339,6 +339,7 @@ struct mtk_dpc {
 	int mml_irq;
 	resource_size_t dpc_pa;
 	void __iomem *mminfra_hangfree;
+	bool enabled;
 	bool vcp_is_alive;
 	bool skip_force_power;
 	spinlock_t skip_force_power_lock;
@@ -377,6 +378,7 @@ struct mtk_dpc {
 	void __iomem *rtff_pwr_con;
 	void __iomem *vdisp_ao_cg_con;
 	void __iomem *mminfra_voter;
+	void __iomem *mminfra_dummy;
 
 	struct mtk_dpc_mtcmos_cfg *mtcmos_cfg;
 	struct mtk_dpc_dt_usage *disp_dt_usage;

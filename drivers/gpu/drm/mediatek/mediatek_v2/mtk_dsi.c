@@ -3247,14 +3247,16 @@ u16 mtk_get_gpr(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct drm_crtc *crtc;
-	struct cmdq_client *client;
+	struct cmdq_client *client_dsi;
+	struct cmdq_client *client_trig_loop;
 	unsigned int mmsys_id;
 
 	if (!mtk_crtc || !handle)
 		return CMDQ_GPR_R07;
 
 	crtc = &mtk_crtc->base;
-	client = mtk_crtc->gce_obj.client[CLIENT_DSI_CFG];
+	client_dsi = mtk_crtc->gce_obj.client[CLIENT_DSI_CFG];
+	client_trig_loop = mtk_crtc->gce_obj.client[CLIENT_TRIG_LOOP];
 	mmsys_id = mtk_get_mmsys_id(crtc);
 
 	switch (mmsys_id) {
@@ -3262,19 +3264,25 @@ u16 mtk_get_gpr(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	case MMSYS_MT6985:
 	case MMSYS_MT6989:
 	case MMSYS_MT6899:
-	case MMSYS_MT6991:
 	case MMSYS_MT6897:
 	case MMSYS_MT6879:
 	case MMSYS_MT6895:
 	case MMSYS_MT6886:
 	case MMSYS_MT6835:
 	case MMSYS_MT6855:
-		if (handle->cl == (void *)client)
+		if (handle->cl == (void *)client_dsi)
 			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R03 : CMDQ_GPR_R05);
 		else
 			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R04 : CMDQ_GPR_R06);
+	case MMSYS_MT6991:
+		if (handle->cl == (void *)client_dsi)
+			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R03 : CMDQ_GPR_R05);
+		else if (handle->cl == (void *)client_trig_loop)
+			return CMDQ_GPR_R07;
+		else
+			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R04 : CMDQ_GPR_R06);
 	default:
-		if (handle->cl == (void *)client)
+		if (handle->cl == (void *)client_dsi)
 			return CMDQ_GPR_R14;
 		else
 			return CMDQ_GPR_R07;
