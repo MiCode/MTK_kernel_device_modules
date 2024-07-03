@@ -237,7 +237,7 @@ static const char *mt6899_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 			else if ((bus_id & 0x7) == 0x2)
 				return "DPMSR_AHB_M";
 			else if ((bus_id & 0x7) == 0x3)
-				return infra_mi_trans(bus_id >> 3);
+				return infra_mi_trans(bus_id >> 2);
 			else
 				return "UNKNOWN_MASTER_TO_VLP";
 		}
