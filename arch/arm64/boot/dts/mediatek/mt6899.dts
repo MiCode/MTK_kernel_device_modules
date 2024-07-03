@@ -7211,11 +7211,9 @@
 
 		apu_top_3: apu-top-3@190f0000 {
 			compatible = "mt6899,apu_top_3";
-#if 0 /* pmic node not ready */
 			vapu-supply = <&mt6368_vbuck2>;
 			vsram-supply = <&mt6363_vsram_apu>;
 			vcore-supply = <&mt6363_vbuck2>;
-#endif
 
 			reg = <0 0x1c000000 0 0x1000>,		// sys_vlp AO
 				<0 0x1c001000 0 0x1000>,	// sys_spm
@@ -9860,11 +9858,19 @@
 	regulator-always-on;
 };
 
+&mt6363_vsram_apu {
+	regulator-always-on;
+};
+
 &mt6363_vsram_digrf {
 	regulator-always-on;
 };
 
 &mt6363_vsram_mdfe {
+	regulator-always-on;
+};
+
+&mt6368_vbuck2 {
 	regulator-always-on;
 };
 
