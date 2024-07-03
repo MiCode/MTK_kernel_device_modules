@@ -3451,6 +3451,16 @@ static int vidioc_enum_fmt(struct mtk_vcodec_ctx *ctx, struct v4l2_fmtdesc *f,
 	if (mtk_vdec_formats[i].type != MTK_FMT_DEC)
 		f->flags |= V4L2_FMT_FLAG_COMPRESSED;
 
+	if (f->pixelformat == V4L2_PIX_FMT_MPEG1 ||
+		f->pixelformat == V4L2_PIX_FMT_MPEG2 ||
+		f->pixelformat == V4L2_PIX_FMT_MPEG4 ||
+		f->pixelformat == V4L2_PIX_FMT_VP8 ||
+		f->pixelformat == V4L2_PIX_FMT_H264 ||
+		f->pixelformat == V4L2_PIX_FMT_HEVC ||
+		f->pixelformat == V4L2_PIX_FMT_VP9 ||
+		f->pixelformat == V4L2_PIX_FMT_AV1)
+		f->flags |= V4L2_FMT_FLAG_DYN_RESOLUTION;
+
 	v4l_fill_mtk_fmtdesc(f);
 
 	return 0;
