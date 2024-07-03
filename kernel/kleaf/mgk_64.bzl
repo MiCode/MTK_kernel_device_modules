@@ -1021,6 +1021,7 @@ mgk_64_platform_device_modules = {
     "drivers/soc/mediatek/devapc/device-apc-mt6893.ko": "mt6893",
     "drivers/soc/mediatek/devapc/device-apc-mt6895.ko": "mt6895",
     "drivers/soc/mediatek/devapc/device-apc-mt6897.ko": "mt6897",
+    "drivers/soc/mediatek/devapc/device-apc-mt6899.ko": "mt6899",
     "drivers/soc/mediatek/devapc/device-apc-mt6983.ko": "mt6983",
     "drivers/soc/mediatek/devapc/device-apc-mt6985.ko": "mt6985",
     "drivers/soc/mediatek/devapc/device-apc-mt6989.ko": "mt6989",
@@ -1539,6 +1540,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6879.ko")
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6893.ko")
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6895.ko")
+        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6899.ko")
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6985.ko")
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6991.ko")
@@ -1920,6 +1922,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6893.ko")
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6895.ko")
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6897.ko")
+        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6899.ko")
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6983.ko")
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6985.ko")
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6989.ko")
