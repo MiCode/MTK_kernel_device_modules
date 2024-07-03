@@ -5646,6 +5646,7 @@
 			#cooling-cells = <2>;
 			ged-supply = <&ged>;
 			firmware-idle-hysteresis-time-us = <5000>;
+			gpu-frame-base-optimize = <1>;
 		};
 
 		gpu_mali_opp: opp-table0 {
@@ -5654,6 +5655,18 @@
 				opp-hz = /bits/ 64 <260000000>;
 				opp-microvolt = <500000>;
 			};
+		};
+
+		gpu_dvfs_prefence: gpu-prefence {
+			compatible = "mediatek,gpu_prefence";
+			dvfs-prefence-enable = <1>;
+		};
+
+		gpu_fdvfs: gpu-fdvfs@13f800 {
+			compatible = "mediatek,gpu_fdvfs";
+			reg = <0 0x13f800 0 0x800>;
+			fdvfs-policy-support = <0>;
+			gpu-freq-notify-support = <1>;
 		};
 
 		gpufreq: gpufreq@13fbf000 {
