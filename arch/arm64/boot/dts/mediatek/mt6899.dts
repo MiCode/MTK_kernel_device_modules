@@ -5175,6 +5175,84 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupts = <GIC_SPI 959 IRQ_TYPE_NONE 0>;
 		};
 
+		ccu_rproc: ccu_rproc@1b080000 {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible = "mediatek,ccu_rproc";
+			reg = <0 0x1b080000 0 0xd000>;
+			interrupts = <GIC_SPI 411 IRQ_TYPE_LEVEL_HIGH 0>;
+			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_CCU_AO>;
+			mediatek,larbs = <&smi_larb30>;
+			clocks =
+					<&topckgen_clk CLK_TOP_CCU_AHB_SEL>,
+					<&topckgen_clk CLK_TOP_CCUSYS_SEL>,
+					<&topckgen_clk CLK_TOP_CCUTM_SEL>,
+					<&ccu_main_clk CLK_CCU2MM0_GALS_CON_CCU>,
+					<&ccu_main_clk CLK_CCU_LARB19_CON_CCU>,
+					<&ccu_main_clk CLK_CCU2INFRA_GALS_CON_CCU>,
+					<&ccu_main_clk CLK_CCUSYS_CCU0_CON_CCU0>,
+					<&cam_vcore_r1a_clk CLK_CAMV_CV_MM0_SC_DCM_DIS_CCU>;
+			clock-names =
+					"TOP_CCU_AHB",
+					"TOP_CCUSYS",
+					"TOP_CCUTM",
+					"CCU2MM0_GALS",
+					"CCU_LARB",
+					"CCU_INFRA",
+					"CCUSYS_CCU0",
+					"CAM_VCORE_CG";
+			mediatek,ccu_rproc1 = <&ccu_rproc1>;
+			mediatek,cammainpwr = <&ccucammain>;
+			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
+			iommus = <&mdp_iommu M4U_L30_P1_CCUO>,
+				 <&mdp_iommu M4U_L30_P0_CCUI>;
+			mmqos-supply = <&mmqos>;
+			interconnects =
+			<&mmqos MASTER_LARB_PORT(M4U_L30_P1_CCUO)
+				&mmqos SLAVE_COMMON(1)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L30_P0_CCUI)
+				&mmqos SLAVE_COMMON(1)>;
+			interconnect-names =
+				"ccu_o",
+				"ccu_i";
+			secured = "yes";
+			ccu_version = <81>;
+			ccu_sramSize = <0x00010000>;
+			ccu_sramOffset = <0x00040000>;
+			ccu_dramSize = <0x00100000>;
+			ccu_dramAddr = <0x80000000>;
+			ccu_emiRegion = <20>;
+			ccu-sramcon-offset = <0x00000ed0>;
+			ccu-exch-base = <0x1b0b0000>;
+			ccu-cores = <1>;
+		};
+
+		ccucammain: ccucammain {
+			compatible = "mediatek,ccucammain";
+			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		};
+
+		ccu_rproc1: ccu_rproc1@1b180000 {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible = "mediatek,ccu_rproc1";
+			reg = <0 0x1b180000 0 0xd000>;
+			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
+			iommus = <&mdp_iommu M4U_L30_P3_CCUO2>,
+				<&mdp_iommu M4U_L30_P2_CCUI2>;
+			mmqos-supply = <&mmqos>;
+			interconnects =
+			<&mmqos MASTER_LARB_PORT(M4U_L30_P3_CCUO2)
+				&mmqos SLAVE_COMMON(1)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L30_P2_CCUI2)
+				&mmqos SLAVE_COMMON(1)>;
+			interconnect-names =
+				"ccu_o",
+				"ccu_i";
+			ccu-exch-base = <0x1b1b0000>;
+			ccu-cores = <1>;
+		};
+
 		nth-emi-mbist-pdn-apb@10205000 {
 			compatible = "mediatek,nth_emi_mbist_pdn_apb";
 			reg = <0 0x10205000 0 0x1000>;
