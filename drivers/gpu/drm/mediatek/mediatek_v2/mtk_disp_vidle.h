@@ -71,5 +71,6 @@ void mtk_vidle_channel_bw_set(const u32 bw_in_mb, const u32 idx);
 
 void mtk_vdisp_register(const struct mtk_vdisp_funcs *fp, enum mtk_vdisp_version version);
 void mtk_vidle_wait_init(void);
+int mtk_vidle_get_power_if_in_use(void);
 
 #endif

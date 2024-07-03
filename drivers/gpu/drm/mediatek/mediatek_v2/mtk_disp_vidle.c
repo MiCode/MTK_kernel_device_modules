@@ -850,3 +850,17 @@ void mtk_vdisp_register(const struct mtk_vdisp_funcs *fp, enum mtk_vdisp_version
 	vdisp_func = *fp;
 }
 EXPORT_SYMBOL(mtk_vdisp_register);
+
+int mtk_vidle_get_power_if_in_use(void)
+{
+	if (disp_helper_get_stage() != DISP_HELPER_STAGE_NORMAL)
+		return 1;
+
+	/* all disp subsys power on: return 1 */
+	if (mtk_drm_pm_ctrl(vidle_data.drm_priv, DISP_PM_CHECK) == 0)
+		return 1;
+
+	/* any disp subsys power off: return 0 */
+	return 0;
+}
+EXPORT_SYMBOL(mtk_vidle_get_power_if_in_use);

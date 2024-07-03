@@ -2960,9 +2960,10 @@ static void dpc_group_enable_v1(const u16 subsys, bool en)
 
 	spin_lock_irqsave(&dpc_lock, flags);
 	if (en && dpc_vidle_is_available() == 0) {
-		DPCERR("in-available, cap:0x%x, dur:%u-%u, panel:%d, en:%d",
-			g_priv->vidle_mask, g_te_duration, g_vb_duration,
-			g_panel_type, en);
+		/* DPCERR("in-available, cap:0x%x, dur:%u-%u, panel:%d, en:%d",
+		 *	g_priv->vidle_mask, g_te_duration, g_vb_duration,
+		 *	g_panel_type, en);
+		 */
 		goto out;
 	}
 
@@ -3009,9 +3010,10 @@ static void dpc_mtcmos_auto_v1(const enum mtk_dpc_subsys subsys, const enum mtk_
 
 	spin_lock_irqsave(&dpc_lock, flags);
 	if (en && dpc_vidle_is_available() == 0) {
-		DPCERR("in-available, cap:0x%x, dur:%u-%u, panel:%d, en:%d",
-			g_priv->vidle_mask, g_te_duration, g_vb_duration,
-			g_panel_type, en);
+		/* DPCERR("in-available, cap:0x%x, dur:%u-%u, panel:%d, en:%d",
+		 *	g_priv->vidle_mask, g_te_duration, g_vb_duration,
+		 *	g_panel_type, en);
+		 */
 		goto out;
 	}
 
@@ -4031,6 +4033,19 @@ static int dpc_smi_user_pwr_get(void *data)
 	g_priv->vidle_mask = 0;
 	return 0;
 }
+
+static int dpc_smi_user_pwr_get_if_in_use(void *data)
+{
+	int power_status = 0;
+
+	power_status = mtk_vidle_get_power_if_in_use();
+	if (power_status == 0) //power off
+		return 0;
+
+	dpc_smi_user_pwr_get(data);
+	return 1;
+}
+
 static int dpc_smi_user_pwr_put(void *data)
 {
 	if (atomic_read(&g_smi_user_cnt) == 0)
@@ -4045,12 +4060,14 @@ static int dpc_smi_user_pwr_put(void *data)
 	dpc_vidle_power_release_v1(DISP_VIDLE_USER_SMI_DUMP);
 	return 0;
 }
+
 static struct smi_user_pwr_ctrl dpc_smi_user_pwr_funcs = {
 	 .name = "disp_dpc",
 	 .data = NULL,
 	 .smi_user_id =  MTK_SMI_DISP,
 	 .smi_user_get = dpc_smi_user_pwr_get,
 	 .smi_user_put = dpc_smi_user_pwr_put,
+	 .smi_user_get_if_in_use = dpc_smi_user_pwr_get_if_in_use,
 };
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
