@@ -28,24 +28,24 @@
 
 #include "mvpu_plat.h"
 #include "mvpu_sysfs.h"
-#include "mvpu2X_ipi.h"
-#include "mvpu2X_cmd_data.h"
+#include "mvpu20_ipi.h"
+#include "mvpu20_request.h"
 #include "mvpu_driver.h"
-#include "mvpu2X_sec.h"
+#include "mvpu20_sec.h"
 
 //#define FULL_RP_INFO
 
-void set_sec_log_lvl(int log_lvl)
+void mvpu20_set_sec_log_lvl(int log_lvl)
 {
 	mvpu_loglvl_sec = log_lvl;
 }
 
-bool get_mvpu_algo_available(void)
+bool mvpu20_get_mvpu_algo_available(void)
 {
 	return mvpu_algo_available;
 }
 
-uint32_t get_ptn_total_size(void)
+uint32_t mvpu20_get_ptn_total_size(void)
 {
 	uint32_t ptn_total_size = 0;
 
@@ -62,7 +62,7 @@ uint32_t get_ptn_total_size(void)
 	return ptn_total_size;
 }
 
-uint32_t get_ptn_size(uint32_t hash)
+uint32_t mvpu20_get_ptn_size(uint32_t hash)
 {
 	uint32_t ptn_size = 0;
 	uint32_t ptn_total_num = 0;
@@ -105,7 +105,7 @@ uint32_t get_ptn_size(uint32_t hash)
 	return ptn_size;
 }
 
-bool get_ptn_hash(uint32_t hash)
+bool mvpu20_get_ptn_hash(uint32_t hash)
 {
 	uint32_t ptn_total_num = 0;
 	int i = 0;
@@ -145,7 +145,7 @@ bool get_ptn_hash(uint32_t hash)
 	return false;
 }
 
-uint32_t get_kerbin_total_size(void)
+uint32_t mvpu20_get_kerbin_total_size(void)
 {
 	uint32_t kerbin_total_size = 0;
 
@@ -162,7 +162,7 @@ uint32_t get_kerbin_total_size(void)
 	return kerbin_total_size;
 }
 
-uint32_t get_ker_img_offset(void)
+uint32_t mvpu20_get_ker_img_offset(void)
 {
 	uint32_t offset = 0;
 
@@ -179,7 +179,7 @@ uint32_t get_ker_img_offset(void)
 	return offset;
 }
 
-void get_ker_info(uint32_t hash, uint32_t *ker_bin_offset, uint32_t *ker_bin_num)
+void mvpu20_get_ker_info(uint32_t hash, uint32_t *ker_bin_offset, uint32_t *ker_bin_num)
 {
 	uint32_t ker_img_total_num = 0;
 	uint32_t shift = 0;
@@ -236,7 +236,7 @@ void get_ker_info(uint32_t hash, uint32_t *ker_bin_offset, uint32_t *ker_bin_num
 
 }
 
-void set_ker_iova(uint32_t ker_bin_offset, uint32_t ker_bin_num, uint32_t *ker_bin_each_iova)
+void mvpu20_set_ker_iova(uint32_t ker_bin_offset, uint32_t ker_bin_num, uint32_t *ker_bin_each_iova)
 {
 	uint32_t shift = 0;
 	uint32_t ker_size_offset = 0;
@@ -267,7 +267,7 @@ void set_ker_iova(uint32_t ker_bin_offset, uint32_t ker_bin_num, uint32_t *ker_b
 	}
 }
 
-void map_base_buf_id(uint32_t buf_num,
+void mvpu20_map_base_buf_id(uint32_t buf_num,
 						uint32_t *sec_chk_addr,
 						uint32_t *sec_buf_attr,
 						uint32_t rp_num,
@@ -337,7 +337,7 @@ void map_base_buf_id(uint32_t buf_num,
 	}
 }
 
-uint32_t get_saved_session_id(void *session)
+uint32_t mvpu20_get_saved_session_id(void *session)
 {
 	uint32_t cnt = 0;
 	uint32_t session_id = 0xFFFFFFFF;
@@ -359,7 +359,7 @@ uint32_t get_saved_session_id(void *session)
 	return session_id;
 }
 
-uint32_t get_avail_session_id(void)
+uint32_t mvpu20_get_avail_session_id(void)
 {
 	uint32_t cnt = 0;
 	uint32_t session_id = 0xFFFFFFFF;
@@ -389,7 +389,7 @@ uint32_t get_avail_session_id(void)
 }
 
 
-void clear_session(void *session)
+void mvpu20_clear_session(void *session)
 {
 	uint32_t session_id = 0;
 
@@ -408,7 +408,7 @@ void clear_session(void *session)
 					session_id);
 			}
 
-			free_all_hash(session_id);
+			mvpu20_free_all_hash(session_id);
 			//memset(saved_session[session_id], 0xFFFFFFFFFFFFFFFF, sizeof(uint64_t));
 			saved_session[session_id] = 0xFFFFFFFFFFFFFFFF;
 			break;
@@ -416,7 +416,7 @@ void clear_session(void *session)
 	}
 }
 
-void update_session_id(uint32_t session_id, void *session)
+void mvpu20_update_session_id(uint32_t session_id, void *session)
 {
 #ifdef MVPU_SEC_USE_OLDEST_SESSION_ID
 	sess_oldest++;
@@ -439,7 +439,7 @@ void update_session_id(uint32_t session_id, void *session)
 	}
 }
 
-uint32_t get_saved_hash_id(uint32_t session_id, uint32_t batch_name_hash)
+uint32_t mvpu20_get_saved_hash_id(uint32_t session_id, uint32_t batch_name_hash)
 {
 	uint32_t cnt = 0;
 	uint32_t hash_id = 0xFFFFFFFF;
@@ -457,7 +457,7 @@ uint32_t get_saved_hash_id(uint32_t session_id, uint32_t batch_name_hash)
 	return hash_id;
 }
 
-uint32_t get_avail_hash_id(uint32_t session_id)
+uint32_t mvpu20_get_avail_hash_id(uint32_t session_id)
 {
 	uint32_t cnt = 0;
 	uint32_t hash_id = 0xFFFFFFFF;
@@ -483,7 +483,7 @@ uint32_t get_avail_hash_id(uint32_t session_id)
 	return hash_id;
 }
 
-void clear_hash(uint32_t session_id, uint32_t hash_id)
+void mvpu20_clear_hash(uint32_t session_id, uint32_t hash_id)
 {
 	// clear old hash settings
 	if (hash_pool[session_id]->hash_list[hash_id] != 0) {
@@ -527,7 +527,7 @@ void clear_hash(uint32_t session_id, uint32_t hash_id)
 	}
 }
 
-void free_all_hash(uint32_t session_id)
+void mvpu20_free_all_hash(uint32_t session_id)
 {
 	uint32_t hash_id = 0;
 
@@ -536,13 +536,13 @@ void free_all_hash(uint32_t session_id)
 
 	for (hash_id = 0; hash_id < MAX_SAVE_HASH; hash_id++) {
 		if (hash_pool[session_id]->hash_list[hash_id] != 0)
-			clear_hash(session_id, hash_id);
+			mvpu20_clear_hash(session_id, hash_id);
 		else
 			break;
 	}
 }
 
-int update_hash_pool(void *session,
+int mvpu20_update_hash_pool(void *session,
 							bool algo_in_img,
 							uint32_t session_id,
 							uint32_t hash_id,
@@ -792,7 +792,7 @@ int update_hash_pool(void *session,
 }
 
 #ifdef FULL_RP_INFO
-int save_hash_info(uint32_t session_id,
+int mvpu20_save_hash_info(uint32_t session_id,
 						uint32_t hash_id,
 						uint32_t buf_num,
 						uint32_t rp_num,
@@ -804,7 +804,7 @@ int save_hash_info(uint32_t session_id,
 						uint32_t *target_buf_old_map,
 						uint32_t *target_buf_new_map)
 #else
-int save_hash_info(uint32_t session_id,
+int mvpu20_save_hash_info(uint32_t session_id,
 						uint32_t hash_id,
 						uint32_t buf_num,
 						uint32_t *sec_chk_addr)
@@ -900,7 +900,7 @@ int save_hash_info(uint32_t session_id,
 	return 0;
 }
 
-bool get_hash_info(void *session,
+bool mvpu20_get_hash_info(void *session,
 						uint32_t batch_name_hash,
 						uint32_t *session_id,
 						uint32_t *hash_id,
@@ -909,12 +909,12 @@ bool get_hash_info(void *session,
 	if (batch_name_hash == 0x0)
 		return false;
 
-	*session_id = get_saved_session_id(session);
+	*session_id = mvpu20_get_saved_session_id(session);
 
 	if (*session_id == 0xFFFFFFFF)
 		return false;
 
-	*hash_id = get_saved_hash_id(*session_id, batch_name_hash);
+	*hash_id = mvpu20_get_saved_hash_id(*session_id, batch_name_hash);
 
 	if (*hash_id == 0xFFFFFFFF)
 		return false;
@@ -928,7 +928,7 @@ bool get_hash_info(void *session,
 }
 
 
-int replace_img_knl(void *session,
+int mvpu20_replace_img_knl(void *session,
 					uint32_t buf_num,
 					uint32_t *sec_chk_addr,
 					uint32_t *sec_buf_attr,
@@ -1001,7 +1001,7 @@ int replace_img_knl(void *session,
 }
 
 
-bool set_rp_skip_buf(uint32_t session_id,
+bool mvpu20_set_rp_skip_buf(uint32_t session_id,
 							uint32_t hash_id,
 							uint32_t buf_num,
 							uint32_t *sec_chk_addr,
@@ -1029,7 +1029,7 @@ bool set_rp_skip_buf(uint32_t session_id,
 	return algo_all_same_buf;
 }
 
-int update_new_base_addr(bool algo_in_img,
+int mvpu20_update_new_base_addr(bool algo_in_img,
 						bool algo_in_pool,
 						uint32_t session_id,
 						uint32_t hash_id,
@@ -1136,7 +1136,7 @@ END:
 	return ret;
 }
 
-int replace_mem(uint32_t session_id,
+int mvpu20_replace_mem(uint32_t session_id,
 					uint32_t hash_id,
 					uint32_t *sec_buf_attr,
 					bool algo_in_pool,
@@ -1269,7 +1269,7 @@ int replace_mem(uint32_t session_id,
 	return ret;
 }
 
-void CopyArgToPrimem(char *dst_ptr, char *src_ptr, int src_size)
+void mvpu20_CopyArgToPrimem(char *dst_ptr, char *src_ptr, int src_size)
 {
 	char dup_buf[MVPU_DUP_BUF_SIZE] = { 0 };
 	char *src_data;
@@ -1285,7 +1285,7 @@ void CopyArgToPrimem(char *dst_ptr, char *src_ptr, int src_size)
 	}
 }
 
-void CheckPrimemArg(char *dst_ptr, int src_size)
+void mvpu20_CheckPrimemArg(char *dst_ptr, int src_size)
 {
 	int i, j;
 
@@ -1298,7 +1298,7 @@ void CheckPrimemArg(char *dst_ptr, int src_size)
 	}
 }
 
-int replace_kerarg(void *session,
+int mvpu20_replace_kerarg(void *session,
 					uint32_t session_id,
 					uint32_t hash_id,
 					uint32_t kerarg_num,
@@ -1400,7 +1400,7 @@ int replace_kerarg(void *session,
 								+ target_dst_ofst);
 
 				if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG) {
-					pr_info("[MVPU][Sec] CopyArgToPrimem buf[%d]->buf[%d], ker_ofst 0x%08x, dst_ofst (0x%08x + 0x%08x), size 0x%x\n",
+					pr_info("[MVPU][Sec] mvpu20_CopyArgToPrimem buf[%d]->buf[%d], ker_ofst 0x%08x, dst_ofst (0x%08x + 0x%08x), size 0x%x\n",
 							primem_src_buf_id[i],
 							primem_dst_buf_id[i],
 							kerarg_offset[cnt],
@@ -1409,10 +1409,10 @@ int replace_kerarg(void *session,
 							kerarg_size[cnt]);
 				}
 
-				CopyArgToPrimem(primem_ptr, kerarg_ptr, kerarg_size[cnt]);
+				mvpu20_CopyArgToPrimem(primem_ptr, kerarg_ptr, kerarg_size[cnt]);
 
 				if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_ALL)
-					CheckPrimemArg(primem_ptr, kerarg_size[cnt]);
+					mvpu20_CheckPrimemArg(primem_ptr, kerarg_size[cnt]);
 
 				break;
 			}
@@ -1428,7 +1428,7 @@ int replace_kerarg(void *session,
 	return ret;
 }
 
-void get_pool_kreg_iova(uint32_t *kreg_iova_pool,
+void mvpu20_get_pool_kreg_iova(uint32_t *kreg_iova_pool,
 						uint32_t session_id,
 						uint32_t hash_id,
 						uint32_t buf_cmd_kreg)
@@ -1437,7 +1437,7 @@ void get_pool_kreg_iova(uint32_t *kreg_iova_pool,
 				+ hash_pool[session_id]->hash_offset[hash_id][buf_cmd_kreg];
 }
 
-void region_sort(uint32_t region_num, uint32_t *region)
+void mvpu20_region_sort(uint32_t region_num, uint32_t *region)
 {
 	int i = 0, j = 0;
 	uint32_t tmp = 0;
@@ -1453,7 +1453,7 @@ void region_sort(uint32_t region_num, uint32_t *region)
 	}
 }
 
-int region_info_set(uint32_t buf_num,
+int mvpu20_region_info_set(uint32_t buf_num,
 							uint32_t *sec_chk_addr,
 							uint32_t *sec_buf_size,
 							uint32_t *sec_buf_attr,
@@ -1501,7 +1501,7 @@ int region_info_set(uint32_t buf_num,
 	}
 
 	//Sorting
-	region_sort(buf_io_total, buf_io_addr);
+	mvpu20_region_sort(buf_io_total, buf_io_addr);
 
 	if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG)
 		pr_info("[MVPU][SEC] [MPU] mapping buf_io_addr with sec_chk_addr\n");
@@ -1550,7 +1550,7 @@ int region_info_set(uint32_t buf_num,
 	return buf_io_total;
 }
 
-int region_merge(uint32_t region_num,
+int mvpu20_region_merge(uint32_t region_num,
 						uint32_t *curr_addr_list,
 						uint32_t *curr_size_list,
 						uint32_t *merged_region)
@@ -1614,7 +1614,7 @@ int region_merge(uint32_t region_num,
 	return merged_region_cnt;
 }
 
-int region_mpu_set(uint32_t session_id,
+int mvpu20_region_mpu_set(uint32_t session_id,
 						uint32_t hash_id,
 						uint32_t pmu_buff,
 						uint32_t buff_size,
@@ -1711,15 +1711,15 @@ int region_mpu_set(uint32_t session_id,
 	}
 
 	//Sorting
-	region_sort(MVPU_MPU_SEGMENT_NUMS, mpu_seg);
+	mvpu20_region_sort(MVPU_MPU_SEGMENT_NUMS, mpu_seg);
 
 	total_mpu_cnt = buf_io_cnt + 1;
 	return total_mpu_cnt;
 }
 
-int add_img_mpu(void *mvpu_cmd)
+int mvpu20_add_img_mpu(void *mvpu_cmd)
 {
-	struct mvpu_request *mvpu_req;
+	struct mvpu_request_v20 *mvpu_req;
 
 	int ret = 0;
 	int i = 0;
@@ -1727,7 +1727,7 @@ int add_img_mpu(void *mvpu_cmd)
 	if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG)
 		pr_info("[MVPU][SEC] %s\n", __func__);
 
-	mvpu_req = (struct mvpu_request *)mvpu_cmd;
+	mvpu_req = (struct mvpu_request_v20 *)mvpu_cmd;
 
 	if (mvpu_req->mpu_num > MVPU_MPU_SEGMENT_NUMS - 3) {
 		mvpu_req->mpu_num = 0;
@@ -1742,7 +1742,7 @@ int add_img_mpu(void *mvpu_cmd)
 				/MVPU_MPU_SIZE)
 				*MVPU_MPU_SIZE;
 
-		region_sort(MVPU_MPU_SEGMENT_NUMS, mvpu_req->mpu_seg);
+		mvpu20_region_sort(MVPU_MPU_SEGMENT_NUMS, mvpu_req->mpu_seg);
 		mvpu_req->mpu_num = mvpu_req->mpu_num + 2;
 	}
 
@@ -1757,7 +1757,7 @@ int add_img_mpu(void *mvpu_cmd)
 }
 
 
-int update_mpu(void *mvpu_cmd,
+int mvpu20_update_mpu(void *mvpu_cmd,
 					uint32_t session_id,
 					uint32_t hash_id,
 					uint32_t *sec_chk_addr,
@@ -1766,7 +1766,7 @@ int update_mpu(void *mvpu_cmd,
 					bool protect_phase)
 {
 	uint32_t mpu_seg[MVPU_MPU_SEGMENT_NUMS] = {0};
-	struct mvpu_request *mvpu_req;
+	struct mvpu_request_v20 *mvpu_req;
 
 	int ret = 0;
 	int i = 0;
@@ -1786,7 +1786,7 @@ int update_mpu(void *mvpu_cmd,
 	if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG)
 		pr_info("[MVPU][SEC] %s\n", __func__);
 
-	mvpu_req = (struct mvpu_request *)mvpu_cmd;
+	mvpu_req = (struct mvpu_request_v20 *)mvpu_cmd;
 	buf_num = mvpu_req->buf_num & BUF_NUM_MASK;
 
 #ifdef MVPU_SEC_CLEAR_MPU
@@ -1826,7 +1826,7 @@ int update_mpu(void *mvpu_cmd,
 		goto END;
 	}
 
-	buf_io_total = region_info_set(buf_num,
+	buf_io_total = mvpu20_region_info_set(buf_num,
 						sec_chk_addr, sec_buf_size, sec_buf_attr,
 						buf_io_addr, buf_io_size, protect_phase);
 
@@ -1838,7 +1838,7 @@ int update_mpu(void *mvpu_cmd,
 	}
 
 	buf_io_total_merged =
-			region_merge(buf_io_total, buf_io_addr, buf_io_size, buf_io_addr_merged);
+			mvpu20_region_merge(buf_io_total, buf_io_addr, buf_io_size, buf_io_addr_merged);
 
 	if (buf_io_total_merged > (MVPU_MPU_SEGMENT_NUMS - 1 - SYS_BUF_NUM)) {
 		if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG)
@@ -1853,7 +1853,7 @@ int update_mpu(void *mvpu_cmd,
 		goto END;
 	}
 
-	total_mpu_cnt = region_mpu_set(session_id, hash_id,
+	total_mpu_cnt = mvpu20_region_mpu_set(session_id, hash_id,
 						mvpu_req->pmu_buff, mvpu_req->buff_size,
 						mpu_seg, buf_io_total_merged,
 						buf_io_addr_merged, protect_phase);
@@ -1878,7 +1878,7 @@ END:
 	return ret;
 }
 
-bool mem_use_iova(uint32_t addr)
+bool mvpu20_mem_use_iova(uint32_t addr)
 {
 	if ((addr == MVPU_CMD_BUFF_ADDR) ||
 		((addr >= VIRTUAL_APUSYS_TCM_BASE) && (addr < VIRTUAL_APUSYS_TCM_BASE_END)) ||
@@ -1889,7 +1889,7 @@ bool mem_use_iova(uint32_t addr)
 	return true;
 }
 
-int check_iova(void *session,
+int mvpu20_check_iova(void *session,
 					void *cmd,
 					uint32_t desc_type,
 					uint32_t chk_num,
@@ -1905,7 +1905,7 @@ int check_iova(void *session,
 	uint32_t desc_addr_ofst = 0;
 	uint32_t desc_addr = 0;
 
-	if (mem_use_iova(chk_base) == false)
+	if (mvpu20_mem_use_iova(chk_base) == false)
 		return 0;
 
 	switch (desc_type) {
@@ -1947,7 +1947,7 @@ int check_iova(void *session,
 		for (i = 0; i < 2; i++) {
 			desc_addr = desc_ptr[desc_addr_ofst + i];
 
-			if (mem_use_iova(desc_addr) == false)
+			if (mvpu20_mem_use_iova(desc_addr) == false)
 				continue;
 
 			if (apusys_mem_validate_by_cmd(session, cmd,
@@ -1967,7 +1967,7 @@ END:
 	return ret;
 }
 
-int check_batch_flow(void *session,
+int mvpu20_check_batch_flow(void *session,
 						void *cmd,
 						uint32_t sec_level,
 						uint32_t *kreg_kva,
@@ -2011,7 +2011,7 @@ int check_batch_flow(void *session,
 			chk_base = buf_ptr[KREG_OFST_26];
 			chk_size = buf_ptr[KREG_OFST_28];
 
-			ret = check_iova(session, cmd, DESC_TYPE_NONE, 0, chk_base, chk_size);
+			ret = mvpu20_check_iova(session, cmd, DESC_TYPE_NONE, 0, chk_base, chk_size);
 			if (ret != 0) {
 				pr_info("[MVPU][Sec] [ERROR] KREG[%03d][%d] instr 0x%08x FAIL\n",
 					i, KREG_OFST_26, chk_base);
@@ -2024,7 +2024,7 @@ int check_batch_flow(void *session,
 			chk_base = buf_ptr[desc[j + 1]];
 			chk_size = 0;
 
-			ret = check_iova(session, cmd, DESC_TYPE_GLSU, chk_num, chk_base, chk_size);
+			ret = mvpu20_check_iova(session, cmd, DESC_TYPE_GLSU, chk_num, chk_base, chk_size);
 			if (ret != 0) {
 				pr_info("[MVPU][Sec] [ERROR] KREG[%03d] desc 0x%08x FAIL\n",
 					i, chk_base);
@@ -2035,7 +2035,7 @@ int check_batch_flow(void *session,
 			chk_base = buf_ptr[desc[j + 2]];
 			chk_size = 0;
 
-			ret = check_iova(session, cmd, DESC_TYPE_EDMA, chk_num, chk_base, chk_size);
+			ret = mvpu20_check_iova(session, cmd, DESC_TYPE_EDMA, chk_num, chk_base, chk_size);
 			if (ret != 0) {
 				pr_info("[MVPU][Sec] [ERROR] KREG[%03d] desc 0x%08x FAIL\n",
 					i, chk_base);
@@ -2051,7 +2051,7 @@ END:
 	return ret;
 }
 
-int mvpu2X_load_img(struct device *dev)
+int mvpu20_load_img(struct device *dev)
 {
 	int ret = 0;
 #ifndef MVPU_ALGO_IMG_DISABLE
@@ -2108,11 +2108,11 @@ int mvpu2X_load_img(struct device *dev)
 					mvpu_algo_iova);
 	}
 
-	ker_img_offset = get_ker_img_offset();
+	ker_img_offset = mvpu20_get_ker_img_offset();
 	//ker_img_iova = mvpu_algo_iova + ker_img_offset;
 
-	ptn_img_size = get_ptn_total_size();
-	knl_img_size = get_kerbin_total_size();
+	ptn_img_size = mvpu20_get_ptn_total_size();
+	knl_img_size = mvpu20_get_kerbin_total_size();
 	if ((ptn_img_size % 4 == 0) && (knl_img_size % 4 == 0)) {
 		mvpu_algo_available = true;
 	} else {
@@ -2126,7 +2126,7 @@ END:
 	return ret;
 }
 
-int mvpu2X_sec_init(struct device *dev)
+int mvpu20_sec_init(struct device *dev)
 {
 	int ret = 0;
 	uint32_t session_id = 0;
@@ -2182,12 +2182,12 @@ static ssize_t mvpu_img_show(struct kobject *kobj, struct kobj_attribute *attr,
 	int ret = 0;
 
 	if (ptn_total_size == 0)
-		ptn_total_size = get_ptn_total_size();
+		ptn_total_size = mvpu20_get_ptn_total_size();
 	else
 		pr_info("[MVPU] already get ptn_total_size: 0x%llx\n", ptn_total_size);
 
 	if (kerbin_total_size == 0)
-		kerbin_total_size = get_kerbin_total_size();
+		kerbin_total_size = mvpu20_get_kerbin_total_size();
 	else
 		pr_info("[MVPU] already get kerbin_total_size: 0x%llx\n", kerbin_total_size);
 
@@ -2219,7 +2219,7 @@ static struct kobj_attribute get_mvpu_img = {
 	.store = mvpu_img_store,
 };
 
-int mvpu2X_sec_sysfs_init(struct kobject *root_dir)
+int mvpu20_sec_sysfs_init(struct kobject *root_dir)
 {
 	return sysfs_create_file(root_dir, &get_mvpu_img.attr);
 }

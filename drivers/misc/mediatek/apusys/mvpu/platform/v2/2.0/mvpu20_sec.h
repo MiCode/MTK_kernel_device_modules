@@ -2,8 +2,8 @@
 /*
  * Copyright (c) 2020 MediaTek Inc.
  */
-#ifndef __MVPU2X_SEC_H__
-#define __MVPU2X_SEC_H__
+#ifndef __MVPU20_SEC_H__
+#define __MVPU20_SEC_H__
 #include <linux/dma-heap.h>
 #include <uapi/linux/dma-heap.h>
 #include <linux/dma-direction.h>
@@ -162,21 +162,21 @@ enum DESC_TYPE {
 };
 
 
-void set_sec_log_lvl(int log_lvl);
+void mvpu20_set_sec_log_lvl(int log_lvl);
 
 // image
-bool get_mvpu_algo_available(void);
-uint32_t get_ptn_total_size(void);
-uint32_t get_ptn_size(uint32_t hash);
-bool get_ptn_hash(uint32_t hash);
-uint32_t get_kerbin_total_size(void);
-uint32_t get_ker_img_offset(void);
+bool mvpu20_get_mvpu_algo_available(void);
+uint32_t mvpu20_get_ptn_total_size(void);
+uint32_t mvpu20_get_ptn_size(uint32_t hash);
+bool mvpu20_get_ptn_hash(uint32_t hash);
+uint32_t mvpu20_get_kerbin_total_size(void);
+uint32_t mvpu20_get_ker_img_offset(void);
 
-void get_ker_info(uint32_t hash, uint32_t *ker_bin_offset, uint32_t *ker_bin_num);
-void set_ker_iova(uint32_t ker_bin_offset, uint32_t ker_bin_num, uint32_t *ker_bin_each_iova);
+void mvpu20_get_ker_info(uint32_t hash, uint32_t *ker_bin_offset, uint32_t *ker_bin_num);
+void mvpu20_set_ker_iova(uint32_t ker_bin_offset, uint32_t ker_bin_num, uint32_t *ker_bin_each_iova);
 
 // buf map
-void map_base_buf_id(uint32_t buf_num,
+void mvpu20_map_base_buf_id(uint32_t buf_num,
 					uint32_t *sec_chk_addr,
 					uint32_t *mem_is_kernel,
 					uint32_t rp_num,
@@ -188,20 +188,20 @@ void map_base_buf_id(uint32_t buf_num,
 					uint32_t buf_cmd_next);
 
 // mem pool
-uint32_t get_saved_session_id(void *session);
-uint32_t get_avail_session_id(void);
+uint32_t mvpu20_get_saved_session_id(void *session);
+uint32_t mvpu20_get_avail_session_id(void);
 
-void clear_session(void *session);
+void mvpu20_clear_session(void *session);
 
-void update_session_id(uint32_t session_id, void *session);
+void mvpu20_update_session_id(uint32_t session_id, void *session);
 
-uint32_t get_saved_hash_id(uint32_t session_id, uint32_t batch_name_hash);
-uint32_t get_avail_hash_id(uint32_t session_id);
+uint32_t mvpu20_get_saved_hash_id(uint32_t session_id, uint32_t batch_name_hash);
+uint32_t mvpu20_get_avail_hash_id(uint32_t session_id);
 
-void clear_hash(uint32_t session_id, uint32_t hash_id);
-void free_all_hash(uint32_t session_id);
+void mvpu20_clear_hash(uint32_t session_id, uint32_t hash_id);
+void mvpu20_free_all_hash(uint32_t session_id);
 
-int update_hash_pool(void *session,
+int mvpu20_update_hash_pool(void *session,
 							bool algo_in_img,
 							uint32_t session_id,
 							uint32_t hash_id,
@@ -213,7 +213,7 @@ int update_hash_pool(void *session,
 							uint32_t *sec_buf_attr);
 
 #ifdef FULL_RP_INFO
-int save_hash_info(uint32_t session_id,
+int mvpu20_save_hash_info(uint32_t session_id,
 						uint32_t hash_id,
 						uint32_t buf_num,
 						uint32_t rp_num,
@@ -225,19 +225,19 @@ int save_hash_info(uint32_t session_id,
 						uint32_t *target_buf_old_map,
 						uint32_t *target_buf_new_map);
 #else
-int save_hash_info(uint32_t session_id,
+int mvpu20_save_hash_info(uint32_t session_id,
 						uint32_t hash_id,
 						uint32_t buf_num,
 						uint32_t *sec_chk_addr);
 #endif
 
-bool get_hash_info(void *session,
+bool mvpu20_get_hash_info(void *session,
 						uint32_t batch_name_hash,
 						uint32_t *session_id,
 						uint32_t *hash_id,
 						uint32_t buf_num);
 
-int replace_img_knl(void *session,
+int mvpu20_replace_img_knl(void *session,
 					uint32_t buf_num,
 					uint32_t *sec_chk_addr,
 					uint32_t *sec_buf_attr,
@@ -251,7 +251,7 @@ int replace_img_knl(void *session,
 					uint32_t ker_bin_num,
 					uint32_t *ker_bin_each_iova);
 
-bool set_rp_skip_buf(uint32_t session_id,
+bool mvpu20_set_rp_skip_buf(uint32_t session_id,
 						uint32_t hash_id,
 						uint32_t buf_num,
 						uint32_t *sec_chk_addr,
@@ -260,7 +260,7 @@ bool set_rp_skip_buf(uint32_t session_id,
 
 
 // replacement
-int update_new_base_addr(bool algo_in_img,
+int mvpu20_update_new_base_addr(bool algo_in_img,
 						bool algo_in_pool,
 						uint32_t session_id,
 						uint32_t hash_id,
@@ -274,7 +274,7 @@ int update_new_base_addr(bool algo_in_img,
 						uint32_t *ker_bin_each_iova,
 						void *kreg_kva);
 
-int replace_mem(uint32_t session_id,
+int mvpu20_replace_mem(uint32_t session_id,
 					uint32_t hash_id,
 					uint32_t *mem_is_kernel,
 					bool algo_in_pool,
@@ -288,7 +288,7 @@ int replace_mem(uint32_t session_id,
 					uint32_t *target_buf_new_offset,
 					void *kreg_kva);
 
-int replace_kerarg(void *session,
+int mvpu20_replace_kerarg(void *session,
 					uint32_t session_id,
 					uint32_t hash_id,
 					uint32_t kerarg_num,
@@ -303,14 +303,14 @@ int replace_kerarg(void *session,
 					uint32_t *primem_dst_offset,
 					uint32_t *primem_size);
 
-void get_pool_kreg_iova(uint32_t *kreg_iova_pool,
+void mvpu20_get_pool_kreg_iova(uint32_t *kreg_iova_pool,
 						uint32_t session_id,
 						uint32_t hash_id,
 						uint32_t buf_cmd_kreg);
 
-int add_img_mpu(void *mvpu_cmd);
+int mvpu20_add_img_mpu(void *mvpu_cmd);
 
-int update_mpu(void *mvpu_cmd,
+int mvpu20_update_mpu(void *mvpu_cmd,
 					uint32_t session_id,
 					uint32_t hash_id,
 					uint32_t *sec_chk_addr,
@@ -318,27 +318,27 @@ int update_mpu(void *mvpu_cmd,
 					uint32_t *sec_buf_attr,
 					bool protect_phase);
 
-bool mem_use_iova(uint32_t addr);
+bool mvpu20_mem_use_iova(uint32_t addr);
 
-int check_iova(void *session,
+int mvpu20_check_iova(void *session,
 					void *cmd,
 					uint32_t desc_type,
 					uint32_t chk_num,
 					uint32_t chk_base,
 					uint32_t chk_size);
 
-int check_batch_flow(void *session,
+int mvpu20_check_batch_flow(void *session,
 						void *cmd,
 						uint32_t sec_level,
 						uint32_t *kreg_kva,
 						uint32_t knl_num);
 
-int mvpu2X_load_img(struct device *dev);
+int mvpu20_load_img(struct device *dev);
 
-int mvpu2X_sec_init(struct device *dev);
+int mvpu20_sec_init(struct device *dev);
 
-int mvpu2X_sec_sysfs_init(struct kobject *root_dir);
+int mvpu20_sec_sysfs_init(struct kobject *root_dir);
 
 #endif
 
-#endif /* __MVPU2X_SEC_H__ */
+#endif /* __MVPU20_SEC_H__ */

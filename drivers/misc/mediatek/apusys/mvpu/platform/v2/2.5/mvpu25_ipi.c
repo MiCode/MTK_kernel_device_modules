@@ -12,9 +12,9 @@
 #include <linux/rpmsg.h>
 
 #include "mvpu_driver.h"
-#include "mvpu2X_cmd_data.h"
+#include "mvpu25_request.h"
 #include "mvpu_plat.h"
-#include "mvpu2X_ipi.h"
+#include "mvpu25_ipi.h"
 extern uint32_t apu_ce_sram_dump(struct device *dev);
 
 /*
@@ -47,7 +47,7 @@ struct mvpu_rpmsg_device {
 static struct mvpu_rpmsg_device mvpu_tx_rpm_dev;
 static struct mvpu_rpmsg_device mvpu_rx_rpm_dev;
 
-int mvpu2X_ipi_send(uint32_t type, uint32_t dir, uint64_t *val)
+int mvpu25_ipi_send(uint32_t type, uint32_t dir, uint64_t *val)
 {
 	struct mvpu_ipi_data ipi_data;
 	int ret = 0, rpms_ret = 0;
@@ -98,7 +98,7 @@ out:
 	return ret;
 }
 
-static int mvpu2X_rpmsg_tx_cb(struct rpmsg_device *rpdev, void *data,
+static int mvpu25_rpmsg_tx_cb(struct rpmsg_device *rpdev, void *data,
 		int len, void *priv, u32 src)
 {
 
@@ -120,7 +120,7 @@ static int mvpu2X_rpmsg_tx_cb(struct rpmsg_device *rpdev, void *data,
 	return 0;
 }
 
-static int mvpu2X_rpmsg_rx_cb(struct rpmsg_device *rpdev, void *data,
+static int mvpu25_rpmsg_rx_cb(struct rpmsg_device *rpdev, void *data,
 		int len, void *priv, u32 src)
 {
 	struct mvpu_ipi_data *d = (struct mvpu_ipi_data *)data;
@@ -215,25 +215,25 @@ static const struct of_device_id mvpu_rx_rpmsg_of_match[] = {
 	{},
 };
 
-static struct rpmsg_driver mvpu2X_rpmsg_tx_drv = {
+static struct rpmsg_driver mvpu25_rpmsg_tx_drv = {
 	.drv = {
 		.name = "mvpu-tx-rpmsg",
 		.owner = THIS_MODULE,
 		.of_match_table = mvpu_tx_rpmsg_of_match,
 	},
 	.probe = mvpu_rpmsg_tx_probe,
-	.callback = mvpu2X_rpmsg_tx_cb,
+	.callback = mvpu25_rpmsg_tx_cb,
 	.remove = mvpu_rpmsg_remove,
 };
 
-static struct rpmsg_driver mvpu2X_rpmsg_rx_drv = {
+static struct rpmsg_driver mvpu25_rpmsg_rx_drv = {
 	.drv = {
 		.name = "mvpu-rx-rpmsg",
 		.owner = THIS_MODULE,
 		.of_match_table = mvpu_rx_rpmsg_of_match,
 	},
 	.probe = mvpu_rpmsg_rx_probe,
-	.callback = mvpu2X_rpmsg_rx_cb,
+	.callback = mvpu25_rpmsg_rx_cb,
 	.remove = mvpu_rpmsg_remove,
 };
 
@@ -244,7 +244,7 @@ static struct rpmsg_driver mvpu25a_rpmsg_tx_drv = {
 		.of_match_table = mvpu_tx_rpmsg_of_match,
 	},
 	.probe = mvpu_rpmsg_tx_probe,
-	.callback = mvpu2X_rpmsg_tx_cb,
+	.callback = mvpu25_rpmsg_tx_cb,
 	.remove = mvpu_rpmsg_remove,
 };
 
@@ -259,7 +259,7 @@ static struct rpmsg_driver mvpu25a_rpmsg_rx_drv = {
 	.remove = mvpu_rpmsg_remove,
 };
 
-int mvpu2X_ipi_init(void)
+int mvpu25_ipi_init(void)
 {
 	int ret;
 
@@ -269,21 +269,21 @@ int mvpu2X_ipi_init(void)
 	init_completion(&mvpu_tx_rpm_dev.ack);
 	mutex_init(&mvpu_ipi_mtx);
 
-	ret = register_rpmsg_driver(&mvpu2X_rpmsg_rx_drv);
+	ret = register_rpmsg_driver(&mvpu25_rpmsg_rx_drv);
 	if (ret)
 		pr_info("failed to register mvpu rx rpmsg\n");
 
-	ret = register_rpmsg_driver(&mvpu2X_rpmsg_tx_drv);
+	ret = register_rpmsg_driver(&mvpu25_rpmsg_tx_drv);
 	if (ret)
 		pr_info("failed to register mvpu tx rpmsg\n");
 
 	return 0;
 }
 
-void mvpu2X_ipi_deinit(void)
+void mvpu25_ipi_deinit(void)
 {
-	unregister_rpmsg_driver(&mvpu2X_rpmsg_tx_drv);
-	unregister_rpmsg_driver(&mvpu2X_rpmsg_rx_drv);
+	unregister_rpmsg_driver(&mvpu25_rpmsg_tx_drv);
+	unregister_rpmsg_driver(&mvpu25_rpmsg_rx_drv);
 	mutex_destroy(&mvpu_ipi_mtx);
 }
 

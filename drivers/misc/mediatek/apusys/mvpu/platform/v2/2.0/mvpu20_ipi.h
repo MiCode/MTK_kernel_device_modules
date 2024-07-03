@@ -2,8 +2,8 @@
 /*
  * Copyright (c) 2019 MediaTek Inc.
  */
-#ifndef __MVPU2X_IPI_H__
-#define __MVPU2X_IPI_H__
+#ifndef __MVPU20_IPI_H__
+#define __MVPU20_IPI_H__
 
 #include <linux/types.h>
 
@@ -19,11 +19,9 @@
 #define mvpu_aee_exception(key, format, args...)
 #endif
 
-int mvpu2X_ipi_init(void);
-void mvpu2X_ipi_deinit(void);
-int mvpu2X_ipi_send(uint32_t type, uint32_t dir, uint64_t *val);
-int mvpu25a_ipi_init(void);
-void mvpu25a_ipi_deinit(void);
+int mvpu20_ipi_init(void);
+void mvpu20_ipi_deinit(void);
+int mvpu20_ipi_send(uint32_t type, uint32_t dir, uint64_t *val);
 
-#endif /* __MVPU2X_IPI_H__ */
+#endif /* __MVPU20_IPI_H__ */
 

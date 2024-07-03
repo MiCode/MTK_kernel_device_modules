@@ -324,22 +324,30 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/sw_logger/
 apusys-objs += sw_logger/sw_logger.o
 
 # mvpu
-
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/common/
-
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/platform/v2/
 apusys-objs += mvpu/common/mvpu_driver.o
 apusys-objs += mvpu/common/mvpu_plat.o
 apusys-objs += mvpu/common/mvpu_sysfs.o
 apusys-objs += mvpu/common/mvpu_config.o
 
-ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/platform/2X/mvpu2X_platdata.c),)
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/platform/2X/
-subdir-ccflags-y += -DMVPU_V2X_PLAT_DATA
-apusys-objs += mvpu/platform/2X/mvpu2X_ipi.o
-apusys-objs += mvpu/platform/2X/mvpu2X_sec.o
-apusys-objs += mvpu/platform/2X/mvpu2X_platdata.o
-apusys-objs += mvpu/platform/2X/mvpu2X_valid.o
-apusys-objs += mvpu/platform/2X/mvpu2X_handler.o
+ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/platform/v2/2.0/mvpu20_platdata.c),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/platform/v2/2.0/
+subdir-ccflags-y += -DMVPU_V20_PLAT_DATA
+apusys-objs += mvpu/platform/v2/2.0/mvpu20_ipi.o
+apusys-objs += mvpu/platform/v2/2.0/mvpu20_sec.o
+apusys-objs += mvpu/platform/v2/2.0/mvpu20_platdata.o
+apusys-objs += mvpu/platform/v2/2.0/mvpu20_valid.o
+apusys-objs += mvpu/platform/v2/2.0/mvpu20_handler.o
+endif
+ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/platform/v2/2.5/mvpu25_platdata.c),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/platform/v2/2.5/
+subdir-ccflags-y += -DMVPU_V25_PLAT_DATA
+apusys-objs += mvpu/platform/v2/2.5/mvpu25_ipi.o
+apusys-objs += mvpu/platform/v2/2.5/mvpu25_sec.o
+apusys-objs += mvpu/platform/v2/2.5/mvpu25_platdata.o
+apusys-objs += mvpu/platform/v2/2.5/mvpu25_valid.o
+apusys-objs += mvpu/platform/v2/2.5/mvpu25_handler.o
 endif
 
 # aps

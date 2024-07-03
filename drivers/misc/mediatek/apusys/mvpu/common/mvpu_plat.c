@@ -10,7 +10,8 @@
 
 #include "mvpu_plat.h"
 
-#ifndef MVPU_V2X_PLAT_DATA
+#ifndef MVPU_V20_PLAT_DATA
+#ifndef MVPU_V25_PLAT_DATA
 struct mvpu_platdata mvpu_mt6879_platdata;
 struct mvpu_platdata mvpu_mt6886_platdata;
 struct mvpu_platdata mvpu_mt6895_platdata;
@@ -21,7 +22,8 @@ struct mvpu_platdata mvpu_mt6985_platdata;
 struct mvpu_platdata mvpu_mt6989_platdata;
 struct mvpu_platdata mvpu_mt6991_platdata;
 struct mvpu_platdata mvpu_mt8139_platdata;
-#endif
+#endif // MVPU_V25_PLAT_DATA
+#endif // MVPU_V20_PLAT_DATA
 
 struct mvpu_platdata *g_mvpu_platdata;
 
@@ -105,8 +107,10 @@ int mvpu_platdata_init(struct platform_device *pdev)
 	if (of_property_read_u32(dev->of_node, "version", &dts_ver) == 0)
 		dev_info(dev, "%s: dts_ver = %d\n", __func__, dts_ver);
 
-	if (of_property_read_u32(dev->of_node, "core-num", &platdata->core_num)) {
-		dev_info(dev, "%s: get core-num fail\n", __func__);
+	if (!of_property_read_u32(dev->of_node, "core_num", &platdata->core_num)) {
+	} else if (!of_property_read_u32(dev->of_node, "core-num", &platdata->core_num)) {
+	} else {
+		dev_info(dev, "%s: get core num fail\n", __func__);
 		return -EINVAL;
 	}
 	dev_info(dev, "%s: core-num = %d\n", __func__, platdata->core_num);
