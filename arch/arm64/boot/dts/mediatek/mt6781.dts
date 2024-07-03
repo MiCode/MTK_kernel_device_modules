@@ -2242,10 +2242,10 @@
 			reg = <0 0x17010000 0 0x1000>;
 			mediatek,smi-supply = <&smi_disp_common 0>;
 			mediatek,larb-id = <7>;
-			power-domains = <&scpsys MT6781_POWER_DOMAIN_CONN>;
+			power-domains = <&scpsys MT6781_POWER_DOMAIN_VEN>;
 			clocks = <&venc_gcon VENC_GCON_LARB>,
 				 <&venc_gcon VENC_GCON_VENC>,
-				 <&venc_gcon VENC_GCON_VENC>,
+				 <&venc_gcon VENC_GCON_JPGENC>,
 				 <&venc_gcon VENC_GCON_VENC>;
 			clock-names = "apb", "smi", "gals0", "gals1";
 		};
