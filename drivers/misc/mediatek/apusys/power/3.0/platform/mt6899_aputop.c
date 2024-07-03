@@ -36,8 +36,8 @@ static const char *reg_name[APUPW_MAX_REGS] = {
 };
 
 static struct apu_power apupw = {
-	.env = AO,
-	.rcx = RPC_HW,
+	.env = MP,
+	.rcx = CE_FW,
 };
 
 static void aputop_dump_reg(enum apupw_reg idx, uint32_t offset, uint32_t size)
