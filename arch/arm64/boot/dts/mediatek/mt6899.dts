@@ -10486,6 +10486,34 @@
 			compatible = "mediatek,tfa_debug";
 		};
 
+		mmc1: mmc@11240000 {
+			compatible = "mediatek,mt6899-mmc";
+			reg = <0 0x11240000 0 0x1000>,
+				<0 0x11ec0000 0 0x1000>;
+			interrupts = <GIC_SPI 705 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&topckgen_clk CLK_TOP_MSDC30_1_SEL>,
+					<&topckgen_clk CLK_TOP_MSDC30_1_HCLK_SEL>,
+					<&pericfg_ao_clk CLK_PERAOP_MSDC1_MSDC1>,
+					<&pericfg_ao_clk CLK_PERAOP_MSDC1_F_MSDC1>,
+					<&pericfg_ao_clk CLK_PERAOP_MSDC1_H_MSDC1>;
+			clock-names = "source", "hclk", "source_cg", "axi_cg", "macro";
+			status = "disabled";
+		};
+
+		mmc2: mmc@11242000 {
+			compatible = "mediatek,mt6899-mmc";
+			reg = <0 0x11242000 0 0x1000>,
+				<0 0x11e60000 0 0x1000>;
+			interrupts = <GIC_SPI 706 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&topckgen_clk CLK_TOP_MSDC30_2_SEL>,
+					<&topckgen_clk CLK_TOP_MSDC30_2_HCLK_SEL>,
+					<&pericfg_ao_clk CLK_PERAOP_MSDC2_MSDC2>,
+					<&pericfg_ao_clk CLK_PERAOP_MSDC2_F_MSDC2>,
+					<&pericfg_ao_clk CLK_PERAOP_MSDC2_H_MSDC2>;
+			clock-names = "source", "hclk", "source_cg", "axi_cg", "macro";
+			status = "disabled";
+		};
+
 		ufsphy: ufsphy@112a0000 {
 			compatible = "mediatek,mt8183-ufsphy";
 			#phy-cells = <0>;
@@ -12410,6 +12438,7 @@
 
 #include "mediatek/mt6363.dtsi"
 #include "mediatek/mt6368.dtsi"
+#include "mediatek/cust_mt6899_msdc.dtsi"
 
 &mt6363_vbuck1 {
 	regulator-always-on;
@@ -12486,6 +12515,8 @@
 /delete-node/ &mt6363_vbuck1_sshub;
 /delete-node/ &mt6363_vbuck2_sshub;
 /delete-node/ &mt6363_vbuck4_sshub;
+/delete-node/ &mt6368_vmch_eint_low;
+/delete-node/ &mt6368_vmch;
 /* TODO: add pmic-lvsys-notify after bring up */
 
 /* AUDIO GPIO standardization start */
