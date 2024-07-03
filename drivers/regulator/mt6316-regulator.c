@@ -284,6 +284,11 @@ static struct mt6316_init_data mt6316_8_init_data = {
 	.size = MT6316_ID_8_MAX,
 };
 
+static struct mt6316_init_data mt6316_12_init_data = {
+	.id = MT6316_SLAVE_ID_12,
+	.size = MT6316_ID_12_MAX,
+};
+
 static struct mt6316_init_data mt6316_15_init_data = {
 	.id = MT6316_SLAVE_ID_15,
 	.size = MT6316_ID_15_MAX,
@@ -303,6 +308,9 @@ static const struct of_device_id mt6316_of_match[] = {
 		.compatible = "mediatek,mt6316-8-regulator",
 		.data = &mt6316_8_init_data,
 	}, {
+		.compatible = "mediatek,mt6316-12-regulator",
+		.data = &mt6316_12_init_data,
+	}, {
 		.compatible = "mediatek,mt6316-15-regulator",
 		.data = &mt6316_15_init_data,
 	}, {
@@ -315,6 +323,7 @@ static int mt6316_regulator_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *of_id;
 	struct device *dev = &pdev->dev;
+	struct device_node *np;
 	struct regmap *regmap;
 	struct mt6316_init_data *pdata;
 	struct mt6316_chip *chip;
@@ -322,7 +331,8 @@ static int mt6316_regulator_probe(struct platform_device *pdev)
 	struct regulator_dev *rdev;
 	struct device_node *node = pdev->dev.of_node;
 	u32 val = 0;
-	int i;
+	int i, j;
+	char regulator_node_name[20] = {0}, tmp[20] = {0};
 
 	regmap = dev_get_regmap(dev->parent, NULL);
 	if (!regmap)
@@ -361,10 +371,21 @@ static int mt6316_regulator_probe(struct platform_device *pdev)
 			continue;
 		}
 
-		rdev = devm_regulator_register(dev, &(mt6316_regulators + i)->desc, &config);
-		if (IS_ERR(rdev)) {
-			dev_err(dev, "failed to register %s\n", (mt6316_regulators + i)->desc.name);
-			continue;
+		for (j = 0; j < sizeof(tmp) - 1 && (mt6316_regulators + i)->desc.name[j] != '\0'; j++)
+			tmp[j] = tolower((mt6316_regulators + i)->desc.name[j]);
+		tmp[j] = '\0';
+		snprintf(regulator_node_name, sizeof(regulator_node_name),
+			 "%d-%s", chip->slave_id, tmp);
+		np = of_find_node_by_name(dev->parent->of_node, regulator_node_name);
+		/* Will not register nodes which are not defined in DTS file */
+		if (np) {
+			rdev = devm_regulator_register(dev, &(mt6316_regulators + i)->desc, &config);
+			if (IS_ERR(rdev)) {
+				dev_notice(dev, "failed to register %s\n", (mt6316_regulators + i)->desc.name);
+				continue;
+			}
+		} else {
+			dev_notice(dev, "%s dts node not found.\n", regulator_node_name);
 		}
 	}
 

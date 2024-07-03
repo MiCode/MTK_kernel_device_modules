@@ -265,7 +265,9 @@ static const struct regulator_ops mt6315_volt_range_ops = {
 
 static struct mt6315_regulator_info mt6315_regulators[] = {
 	MT_BUCK("vbuck1", VBUCK1, mt_volt_range1, 1,
-		MT6315_BUCK_TOP_ELR0, 0),
+		MT6315_BUCK_TOP_ELR0, 0x1),
+	MT_BUCK("vbuck2", VBUCK2, mt_volt_range1, 2,
+		 MT6315_BUCK_TOP_ELR2, 0x2),
 	MT_BUCK("vbuck3", VBUCK3, mt_volt_range1, 3,
 		MT6315_BUCK_TOP_ELR4, 0x4),
 	MT_BUCK("vbuck4", VBUCK4, mt_volt_range1, 4,
@@ -333,6 +335,7 @@ static int mt6315_regulator_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *of_id;
 	struct device *dev = &pdev->dev;
+	struct device_node *np;
 	struct regmap *regmap;
 	struct mt6315_init_data *pdata;
 	struct mt6315_chip *chip;
@@ -340,7 +343,8 @@ static int mt6315_regulator_probe(struct platform_device *pdev)
 	struct regulator_dev *rdev;
 	struct device_node *node = pdev->dev.of_node;
 	u32 val = 0;
-	int i;
+	int i, j;
+	char regulator_node_name[20] = {0}, tmp[20] = {0};
 
 	regmap = dev_get_regmap(dev->parent, NULL);
 	if (!regmap)
@@ -374,13 +378,24 @@ static int mt6315_regulator_probe(struct platform_device *pdev)
 	config.driver_data = pdata;
 	config.regmap = regmap;
 	for (i = 0; i < pdata->size; i++) {
-		rdev = devm_regulator_register(dev,
-					       &(mt6315_regulators + i)->desc, &config);
-		if (IS_ERR(rdev)) {
-			dev_err(dev, "failed to register %s\n",
-				(mt6315_regulators + i)->desc.name);
-			continue;
+		for (j = 0; j < sizeof(tmp) - 1 && (mt6315_regulators + i)->desc.name[j] != '\0'; j++)
+			tmp[j] = tolower((mt6315_regulators + i)->desc.name[j]);
+		tmp[j] = '\0';
+		snprintf(regulator_node_name, sizeof(regulator_node_name),
+			 "%d-%s", chip->slave_id, tmp);
+		np = of_find_node_by_name(dev->parent->of_node, regulator_node_name);
+		/* Will not register nodes which are not defined in DTS file */
+		if (np) {
+			rdev = devm_regulator_register(dev, &(mt6315_regulators + i)->desc, &config);
+			if (IS_ERR(rdev)) {
+				dev_notice(dev, "failed to register %s\n", (mt6315_regulators + i)->desc.name);
+				continue;
+			}
+		} else {
+			dev_notice(dev, "%s dts node not found.\n", regulator_node_name);
 		}
+
+
 	}
 
 	return 0;
