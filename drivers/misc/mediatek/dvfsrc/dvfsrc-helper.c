@@ -1333,6 +1333,15 @@ static const struct dvfsrc_debug_data mt6991_data = {
 	.dump_flag = DVFSRC_EMI_DUMP_FLAG,
 };
 
+static const struct dvfsrc_debug_data mt6899_data = {
+	.version = 0x6899,
+	.config = &mt6989_dvfsrc_config,
+	.opps_desc = dvfsrc_opp_common_desc,
+	.num_opp_desc = 0,
+	.ceiling_support = true,
+	.dump_flag = DVFSRC_EMI_DUMP_FLAG,
+};
+
 static struct dvfsrc_opp dvfsrc_opp_mt6768[] = {
 	{0, 0, 0, 0},
 	{1, 0, 0, 0},
@@ -1472,6 +1481,9 @@ static const struct of_device_id dvfsrc_helper_of_match[] = {
 	}, {
 		.compatible = "mediatek,mt8678-dvfsrc",
 		.data = &mt6991_data,
+	}, {
+		.compatible = "mediatek,mt6899-dvfsrc",
+		.data = &mt6899_data,
 	}, {
 		/* sentinel */
 	},
