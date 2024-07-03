@@ -6,6 +6,12 @@ config MTK_MDP
 	  and aee db. Enable performance tools which add instruction
 	  inside packet and profiling.
 
+config MTK_MDP_DUMMY
+	tristate "dummy MDP driver extension"
+	help
+	  This extension enable mdp dummy function for platforms
+	  which don't use mdp complete functions.
+
 config MTK_MDP_MT6781
 	tristate "enable MDP MT6781 driver extension"
 	help
