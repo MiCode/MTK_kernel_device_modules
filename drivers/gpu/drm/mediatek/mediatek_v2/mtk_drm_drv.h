@@ -186,6 +186,9 @@ struct mtk_drm_private {
 	struct device *dpc_dev;
 	struct device *dsi_phy0_dev;
 	struct device *dsi_phy1_dev;
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	struct device *dsi_phy2_dev;
+#endif
 
 	struct drm_crtc *crtc[MAX_CRTC];
 	unsigned int pre_defined_bw[MAX_CRTC];
