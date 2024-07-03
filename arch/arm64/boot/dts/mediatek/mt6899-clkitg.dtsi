@@ -571,15 +571,6 @@
 			<&cam_vcore_r1a_clk CLK_CAMV_CV_MM0_SC_DCM_DIS_CAM_SENINF>;
 	};
 
-	bring-up-dpmaif@11 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x11>;
-		clocks =
-			<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_CLDMA_BCLK_DPMAIF>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_DPMAIF_MAIN_DPMAIF>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_RG_MMW_DPMAIF26M_DPMAIF>;
-	};
-
 	bring-up-afe@12 {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x12>;
