@@ -11,7 +11,6 @@
 		reg = <0x0>;
 		clocks =
 			<&topckgen_clk CLK_TOP_DSP_SEL>,
-			<&topckgen_clk CLK_TOP_UART_SEL>,
 			<&topckgen_clk CLK_TOP_SPI0_BCLK_SEL>,
 			<&topckgen_clk CLK_TOP_SPI1_BCLK_SEL>,
 			<&topckgen_clk CLK_TOP_SPI2_BCLK_SEL>,
@@ -368,17 +367,6 @@
 			<&venc_gcon_clk CLK_VEN1_CKE3_JPGDEC_JPGDEC>,
 			<&venc_gcon_clk CLK_VEN1_CKE4_JPGDEC_C1_JPGDEC>,
 			<&venc_gcon_core1_clk CLK_VEN2_CKE3_JPGDEC_JPGDEC>;
-	};
-
-	bring-up-uart@9 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x9>;
-		clocks =
-			<&pericfg_ao_clk CLK_PERAOP_UART0_UART>,
-			<&pericfg_ao_clk CLK_PERAOP_UART1_UART>,
-			<&pericfg_ao_clk CLK_PERAOP_UART2_UART>,
-			<&pericfg_ao_clk CLK_PERAOP_UART3_UART>,
-			<&pericfg_ao_clk CLK_PERAOP_DMA_B_UART>;
 	};
 
 	bring-up-camera-p2@a {
