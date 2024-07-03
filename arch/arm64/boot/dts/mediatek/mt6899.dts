@@ -3979,19 +3979,19 @@
 			mediatek,dpmaif-ver = <3>;
 			mediatek,dpmaif-cap = <0x0000004a>;
 			mediatek,plat-info = <6899>;
-			//clocks = <&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_DPMAIF_MAIN_DPMAIF>,
-			//	<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_CLDMA_BCLK_DPMAIF>,
-			//	<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_RG_MMW_DPMAIF26M_DPMAIF>;
+			clocks = <&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_DPMAIF_MAIN_DPMAIF>,
+				<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_CLDMA_BCLK_DPMAIF>,
+				<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_RG_MMW_DPMAIF26M_DPMAIF>;
 			clock-names = "infra-dpmaif-clk",
 				    "infra-dpmaif-blk-clk",
 				    "infra-dpmaif-rg-mmw-clk";
-			//interconnects = <&dvfsrc MT6873_MASTER_NETSYS &dvfsrc MT6873_SLAVE_DDR_EMI>;
+			interconnects = <&dvfsrc MT6873_MASTER_NETSYS &dvfsrc MT6873_SLAVE_DDR_EMI>;
 			interconnect-names = "icc-mdspd-bw";
-			//required-opps = <&dvfsrc_freq_opp0>,
-			//		<&dvfsrc_freq_opp1>;
+			required-opps = <&dvfsrc_freq_opp0>,
+					<&dvfsrc_freq_opp1>;
 			net-spd-ver = <8>;
 			hw-reset-ver = <1>;
-			//dpmaif-infracfg = <&infra_infracfg_ao_reg_clk>;
+			dpmaif-infracfg = <&infra_infracfg_ao_reg_clk>;
 		};
 
 		gpio_usage_mapping:gpio {
