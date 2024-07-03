@@ -727,7 +727,7 @@ void trigger_vcp_dump(enum vcp_core_id core_id, char *user)
 		for (j = 0; j < NUM_FEATURE_ID; j++)
 			if (feature_table[j].enable)
 				pr_info("[VCP] Active feature id %d cnt %d\n",
-					j, feature_table[j].enable);
+					feature_table[j].feature, feature_table[j].enable);
 
 		mtk_smi_dbg_hang_detect("VCP dump");
 	}
@@ -767,7 +767,7 @@ void trigger_vcp_halt(enum vcp_core_id core_id, char *user)
 		for (j = 0; j < NUM_FEATURE_ID; j++)
 			if (feature_table[j].enable)
 				pr_info("[VCP] Active feature id %d cnt %d\n",
-					j, feature_table[j].enable);
+					feature_table[j].feature, feature_table[j].enable);
 		mtk_smi_dbg_hang_detect("VCP EE");
 	} else
 		pr_notice("[VCP] %s tigger vcp core %d halt but VCP not ready\n", user, core_id);
@@ -861,7 +861,7 @@ uint32_t vcp_wait_ready_sync(void)
 			for (j = 0; j < NUM_FEATURE_ID; j++)
 				if (feature_table[j].enable)
 					pr_info("[VCP] feat. id %d cnt %d\n",
-						j, feature_table[j].enable);
+						feature_table[j].feature, feature_table[j].enable);
 			break;
 		}
 	}

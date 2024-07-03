@@ -17,8 +17,12 @@
 
 static inline void vcp_wdt_clear(uint32_t coreid)
 {
-	coreid == 0 ? writel(B_WDT_IRQ, R_CORE0_WDT_IRQ) :
-	writel(B_WDT_IRQ, R_CORE1_WDT_IRQ);
+	if (!infra_vcp_support)
+		coreid == 0 ? writel(B_WDT_IRQ, R_CORE0_WDT_IRQ) :
+			writel(B_WDT_IRQ, R_CORE1_WDT_IRQ);
+	else
+		coreid == 0 ? writel(B_WDT_IRQ, VCP_INFRA_CORE0_WDT_IRQ) :
+			writel(B_WDT_IRQ, VCP_INFRA_CORE1_WDT_IRQ);
 }
 
 void wait_vcp_ready_to_reboot(void)
@@ -33,25 +37,41 @@ void wait_vcp_ready_to_reboot(void)
 	 * or VCP may lost INT max wait = 200ms
 	 */
 	for (retry = VCP_AWAKE_TIMEOUT; retry > 0; retry--) {
-		C0_H0 = readl(VCP_GPR_C0_H0_REBOOT);
-		if (vcpreg.twohart)
-			C0_H1 = readl(VCP_GPR_C0_H1_REBOOT);
-
-		if (vcpreg.core_nums == 2) {
-			C1_H0 = readl(VCP_GPR_C1_H0_REBOOT);
+		if (!infra_vcp_support) {
+			C0_H0 = readl(VCP_GPR_C0_H0_REBOOT);
 			if (vcpreg.twohart)
-				C1_H1 = readl(VCP_GPR_C1_H1_REBOOT);
-		}
+				C0_H1 = readl(VCP_GPR_C0_H1_REBOOT);
 
+			if (vcpreg.core_nums == 2) {
+				C1_H0 = readl(VCP_GPR_C1_H0_REBOOT);
+				if (vcpreg.twohart)
+					C1_H1 = readl(VCP_GPR_C1_H1_REBOOT);
+			}
+		} else {
+			C0_H0 = readl(VCP_INFRA_GPR_C0_H0_REBOOT);
+			if (vcpreg.twohart)
+				C0_H1 = readl(VCP_INFRA_GPR_C0_H1_REBOOT);
+
+			if (vcpreg.core_nums == 2) {
+				C1_H0 = readl(VCP_INFRA_GPR_C1_H0_REBOOT);
+				if (vcpreg.twohart)
+					C1_H1 = readl(VCP_INFRA_GPR_C1_H1_REBOOT);
+			}
+		}
 		if ((C0_H0 == CORE_RDY_TO_REBOOT) && (C0_H1 == CORE_RDY_TO_REBOOT)
 			&& (C1_H0 == CORE_RDY_TO_REBOOT) && (C1_H1 == CORE_RDY_TO_REBOOT))
 			break;
 		udelay(1);
 	}
 
-	if (retry == 0)
-		pr_notice("[VCP] wakeup timeout C0 H0:0x%lx H1:0x%lx C1 H0:0x%lx H1:0x%lx Status: 0x%x\n",
-			C0_H0, C0_H1, C1_H0, C1_H1, readl(R_CORE0_STATUS));
+	if (retry == 0) {
+		if (!infra_vcp_support)
+			pr_notice("[VCP] wakeup timeout C0 H0:0x%lx H1:0x%lx C1 H0:0x%lx H1:0x%lx Status: 0x%x\n",
+				C0_H0, C0_H1, C1_H0, C1_H1, readl(R_CORE0_STATUS));
+		else
+			pr_notice("[VCP] wakeup timeout C0 H0:0x%lx H1:0x%lx C1 H0:0x%lx H1:0x%lx Status: 0x%x\n",
+			C0_H0, C0_H1, C1_H0, C1_H1, readl(VCP_INFRA_CORE0_STATUS));
+	}
 
 	udelay(10);
 }
@@ -63,14 +83,27 @@ EXPORT_SYMBOL_GPL(wait_vcp_ready_to_reboot);
  */
 static void vcp_A_wdt_handler(struct tasklet_struct *t)
 {
-	unsigned int reg0 = readl(R_CORE0_WDT_IRQ);
-	unsigned int reg1 = vcpreg.core_nums == 2 ? readl(R_CORE1_WDT_IRQ) : 0;
+	unsigned int reg0;
+	unsigned int reg1;
 
 	pr_notice("[VCP] %s\n", __func__);
 
-	if (readl(VCP_GPR_DEBUG_HINT) & B_SERR) {
-		pr_notice("[VCP] Serror detected dump !\n");
-		/* Call debug dump */
+	if (!infra_vcp_support) {
+		reg0 = readl(R_CORE0_WDT_IRQ);
+		reg1 = vcpreg.core_nums == 2 ? readl(R_CORE1_WDT_IRQ) : 0;
+
+		if (readl(VCP_GPR_DEBUG_HINT) & B_SERR) {
+			pr_notice("[VCP] Serror detected dump !\n");
+			/* Call debug dump */
+		}
+	} else {
+		reg0 = readl(VCP_INFRA_CORE0_WDT_IRQ);
+		reg1 = vcpreg.core_nums == 2 ? readl(VCP_INFRA_CORE1_WDT_IRQ) : 0;
+
+		if (readl(VCP_INFRA_GPR_DEBUG_HINT) & B_SERR) {
+			pr_notice("[VCP] Serror detected dump !\n");
+			/* Call debug dump */
+		}
 	}
 
 	wait_vcp_ready_to_reboot();
