@@ -39,3 +39,4 @@ s __set_cpus_allowed_ptr
 s __tpstrtab_android_rvh_set_cpus_allowed_ptr
 s __traceiter_android_rvh_set_cpus_allowed_ptr
 s __tracepoint_android_rvh_set_cpus_allowed_ptr
+s __thaw_task
