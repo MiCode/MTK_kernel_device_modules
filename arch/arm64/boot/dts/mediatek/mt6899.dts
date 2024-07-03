@@ -1394,7 +1394,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		compatible = "arm,protected-memory-allocator";
 		pma-version = <2>;
 		gpr-id = <6>;
-		gmpu-table-size = <0x0>;
+		gmpu-table-size = <0x400000>;
 		protected-reserve-size = <0x200000>;
 	};
 
