@@ -691,7 +691,7 @@
 
 #endif
 
-#include "mediatek/cust_mt6899_touch_1080x2400.dtsi"
+#include "mediatek/cust_mt6899_touch_1080x2400_mult.dtsi"
 #include "mediatek/cust_k6899_connfem.dtsi"
 #include "mediatek/cust_mt6899_camera_v4l2.dtsi"
 #include <k6899v1_64/cust.dtsi>
