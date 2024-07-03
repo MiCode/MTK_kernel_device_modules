@@ -10189,6 +10189,14 @@
 		compatible = "mediatek,connfem";
 	};
 
+
+	battery_manager: battery-manager {
+		compatible = "mediatek,battery manager";
+		gauge1 = <&mtk_gauge>;
+		charger = <&mt6375_chg>;
+		bootmode = <&chosen>;
+	};
+
 	mt6363-vs-voter {
 		csi-voter = <&main_pmic 0x149d 0x1 0>; /* VS2_VOTER_EN_HI bit0 */
 	};
@@ -10508,8 +10516,8 @@
 					  "VBAT2_H", "VBAT2_L", "NAFG", "BAT_IN", "BAT_OUT", "ZCV",
 					  "FG_N_CHARGE_L", "FG_IAVG_H", "FG_IAVG_L", "BAT_TMP_H",
 					  "BAT_TMP_L";
-			//nvmem-cells = <&fg_init>, <&fg_soc>;
-			//nvmem-cell-names = "initialization", "state-of-charge";
+			nvmem-cells = <&fg_init>, <&fg_soc>;
+			nvmem-cell-names = "initialization", "state-of-charge";
 		};
 		lbat_service {
 			compatible = "mediatek,mt6375-lbat-service";
@@ -10530,6 +10538,10 @@
 		};
 	};
 };
+
+
+#include "mediatek/bat_setting/mt6899_battery_prop.dtsi"
+
 
 #include "mediatek/mt6685.dtsi"
 #include "mediatek/trusty.dtsi"
