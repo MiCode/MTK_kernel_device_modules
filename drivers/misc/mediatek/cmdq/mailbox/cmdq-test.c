@@ -437,7 +437,7 @@ void cmdq_test_mbox_polling(
 		cmdq_pkt_dump_buf(pkt[i], 0);
 		cmdq_pkt_destroy(pkt[i]);
 
-		if (timeout)
+		if (timeout > 0)
 			writel(0, (void *)CMDQ_TPR_MASK(test->gce.va));
 	}
 
