@@ -15426,6 +15426,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 	};
 
+	snd_scp_ultra: snd-scp-ultra {
+		compatible = "mediatek,snd-scp-ultra";
+		scp-ultra-dl-memif-id = <0x7>;
+		scp-ultra-ul-memif-id = <0x14>;
+	};
+
 	mml-test {
 		compatible = "mediatek,mml-test";
 		mediatek,mml = <&mmlsys1_config>;
