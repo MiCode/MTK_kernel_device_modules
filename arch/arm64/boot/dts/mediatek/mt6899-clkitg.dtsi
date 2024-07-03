@@ -698,20 +698,6 @@
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_E_CON_1_CAMSV>;
 	};
 
-	bring-up-ccci@1a {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x1a>;
-		clocks =
-			<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_CCIF1_AP_CCCI>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_CCIF1_MD_CCCI>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_CCIF_AP_CCCI>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_CCIF_MD_CCCI>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_CCIF5_MD_CCCI>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_CCIF2_AP_CCCI>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_CCIF2_MD_CCCI>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_CCIF4_MD_CCCI>;
-	};
-
 	bring-up-jpgenc@1b {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x1b>;
