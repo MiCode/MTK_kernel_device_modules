@@ -28,7 +28,6 @@
 			<&topckgen_clk CLK_TOP_ADSP_SEL>,
 			<&topckgen_clk CLK_TOP_ADPS_UARTHUB_BCLK_SEL>,
 			<&topckgen_clk CLK_TOP_DPMAIF_MAIN_SEL>,
-			<&topckgen_clk CLK_TOP_PWM_SEL>,
 			<&topckgen_clk CLK_TOP_MSDC30_2_HCLK_SEL>,
 			<&topckgen_clk CLK_TOP_SENINF0_SEL>,
 			<&topckgen_clk CLK_TOP_SENINF1_SEL>,
@@ -60,7 +59,6 @@
 			<&apmixedsys_clk CLK_APMIXED_IMGPLL>,
 			<&apmixedsys_clk CLK_APMIXED_TVDPLL>,
 			<&apmixedsys_clk CLK_APMIXED_ADSPPLL>,
-			<&vlp_cksys_clk CLK_VLP_CK_PWM_VLP_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_SSPM_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG1_SEL>,
@@ -460,18 +458,6 @@
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_C_CON_1_CAMSV>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_D_CON_1_CAMSV>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_E_CON_1_CAMSV>;
-	};
-
-	bring-up-pwm@1c {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x1c>;
-		clocks =
-			<&pericfg_ao_clk CLK_PERAOP_PWM_H_PWM>,
-			<&pericfg_ao_clk CLK_PERAOP_PWM_B_PWM>,
-			<&pericfg_ao_clk CLK_PERAOP_PWM_FB1_PWM>,
-			<&pericfg_ao_clk CLK_PERAOP_PWM_FB2_PWM>,
-			<&pericfg_ao_clk CLK_PERAOP_PWM_FB3_PWM>,
-			<&pericfg_ao_clk CLK_PERAOP_PWM_FB4_PWM>;
 	};
 
 	bring-up-ufs@1d {
