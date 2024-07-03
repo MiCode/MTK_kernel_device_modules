@@ -7899,8 +7899,6 @@
 				<&pericfg_ao_clk CLK_PERAOP_DMA_B_I2C>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
-			ch-offset-i2c = <0x100>;
-			ch-offset-scp = <0x200>;
 			scl-gpio-id = <151>;
 			sda-gpio-id = <152>;
 		};
