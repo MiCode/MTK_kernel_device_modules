@@ -1914,6 +1914,15 @@ static const struct mtk_disp_dsc_data mt6989_dsc_driver_data = {
 	.reset_after_eof = true,
 };
 
+static const struct mtk_disp_dsc_data mt6899_dsc_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = false,
+	.need_obuf_sw = true,
+	.dsi_buffer = true,
+	.shadow_ctrl_reg = 0x0228,
+	.reset_after_eof = true,
+};
+
 static const struct mtk_disp_dsc_data mt6991_dsc_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = false,
@@ -1996,6 +2005,8 @@ static const struct of_device_id mtk_disp_dsc_driver_dt_match[] = {
 	  .data = &mt6985_dsc_driver_data},
 	{ .compatible = "mediatek,mt6989-disp-dsc",
 	  .data = &mt6989_dsc_driver_data},
+	{ .compatible = "mediatek,mt6899-disp-dsc",
+	  .data = &mt6899_dsc_driver_data},
 	{ .compatible = "mediatek,mt6991-disp-dsc",
 	  .data = &mt6991_dsc_driver_data},
 	{ .compatible = "mediatek,mt6897-disp-dsc",
