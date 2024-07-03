@@ -8007,7 +8007,7 @@
 			mediatek,clk-mgr;
 			mediatek,noise-still-tr;
 			mediatek,gen1-txdeemph;
-			/* mediatek,hwrscs-vers = <2>; */
+			mediatek,hwrscs-vers = <3>;
 			usb-role-switch;
 			cdp-block;
 			port {
@@ -8029,7 +8029,6 @@
 		u3phy: usb-phy0@11c90000 {
 			compatible = "mediatek,xsphy";
 			reg = <0 0x11c93000 0 0x200>;
-			/* tx-chirpk-capable; */
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
@@ -8039,6 +8038,7 @@
 				clocks = <&clk26m>;
 				clock-names = "ref";
 				#phy-cells = <1>;
+				mediatek,lpm-parameter = <0x19 0x1e 0x1e>;
 				usb2uart;
 			};
 
@@ -8047,6 +8047,7 @@
 				clocks = <&clk26m>;
 				clock-names = "ref";
 				#phy-cells = <1>;
+				mediatek,u3-rx-fix;
 			};
 		};
 
