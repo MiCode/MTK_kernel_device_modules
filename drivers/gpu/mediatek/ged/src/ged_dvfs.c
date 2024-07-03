@@ -2568,6 +2568,7 @@ void set_api_sync_flag(int flag)
 		if ((flag & 0x0000FFFF) == 0xFFFF) {
 			// reset default
 			set_gpu_pre_throttle(0x27BC86AA);
+			set_gpu_pre_throttle_opp(0x27BC86AA);
 		} else {
 			if ((flag & 0x0000FF00) > 0) {
 				// set preferred temp.
