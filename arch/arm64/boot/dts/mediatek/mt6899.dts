@@ -6183,7 +6183,7 @@
 		};
 
 		mtkfb: mtkfb@0 {
-			ompatible = "mediatek,mtkfb";
+			compatible = "mediatek,mtkfb";
 		};
 
 		dispsys_config: dispsys-config@14000000 {
