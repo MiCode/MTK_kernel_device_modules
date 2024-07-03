@@ -31,6 +31,9 @@ struct emi_mpu {
 	unsigned int domain_cnt;
 	unsigned int addr_align;
 	unsigned int ctrl_intf;
+	#if IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
+	unsigned int bypass;
+	#endif /* CONFIG_MTK_EMI_LEGACY */
 
 	unsigned int dump_cnt;
 	unsigned int miukp_dump_cnt;
@@ -72,6 +75,9 @@ struct emi_mpu {
 	emimpu_pre_handler pre_handler;
 	emimpu_post_clear post_clear;
 	emimpu_md_handler md_handler;
+	#if IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
+	emimpu_tmem_handler tmem_handler;
+	#endif /* CONFIG_MTK_EMI_LEGACY */
 	emimpu_iommu_handler iommu_handler;
 	emimpu_isr_hook by_plat_isr_hook;
 

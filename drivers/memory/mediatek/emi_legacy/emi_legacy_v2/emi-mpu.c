@@ -176,6 +176,15 @@ static irqreturn_t emimpu_violation_irq(int irq, void *dev_id)
 			continue;
 		}
 
+		//to handle violations caused by CPU prefetch
+		if(mpu->bypass && mpu->tmem_handler) {
+			if(mpu->tmem_handler(emi_id, dump_reg, mpu->dump_cnt) == IRQ_HANDLED) {
+				pr_info("%s: tmem handler flow !!\n", __func__);
+				clear_violation(mpu, emi_id);
+				continue;
+		}
+	}
+
 		nr_vio++;
 
 		/*
@@ -527,7 +536,33 @@ int mtk_emimpu_postclear_register(emimpu_post_clear clear_func)
 EXPORT_SYMBOL(mtk_emimpu_postclear_register);
 
 /*
- * mtk_emimpu_md_handling_register - register callback for md handling
+ * mtk_emimpu_tmem_handler_register - register callback for tmem handling
+ * @tmem_handler_func:   function point for tmem handling
+ *
+ * Return 0 for success, -EINVAL or -ENOMEN for fail
+ *
+ */
+int mtk_emimpu_tmem_handler_register(emimpu_tmem_handler tmem_handler_func)
+{
+	struct emi_mpu *mpu;
+
+	mpu = global_emi_mpu;
+	if(!mpu)
+		return -EINVAL;
+
+	if(!tmem_handler_func) {
+		pr_info("%s: tmem_handling_func is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	mpu->tmem_handler = tmem_handler_func;
+	pr_info("%s: tmem_handling_func registered!!\n", __func__);
+
+	return 0;
+}
+EXPORT_SYMBOL(mtk_emimpu_tmem_handler_register);
+
+/* mtk_emimpu_md_handling_register - register callback for md handling
  * @md_handling_func:	function point for md handling
  *
  * Return 0 for success, -EINVAL for fail
@@ -853,6 +888,11 @@ static int emimpu_probe(struct platform_device *pdev)
 
 		mtk_emimpu_lock_region(rg_info, MTK_EMIMPU_LOCK);
 	}
+
+	ret = of_property_read_u32(emimpu_node, "bypass", &(mpu->bypass));
+	if (ret)
+		mpu->bypass = 0;
+	pr_info("bypass == %d\n ", mpu->bypass);
 
 	mpu->irq = irq_of_parse_and_map(emimpu_node, 0);
 	if (mpu->irq == 0) {
