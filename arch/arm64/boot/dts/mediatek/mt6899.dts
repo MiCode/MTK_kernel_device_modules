@@ -11236,6 +11236,14 @@
 			iommus = <&mdp_iommu M4U_PORT_L41_VIDEO_UP0>;
 		};
 
+		regulator_vibrator: regulator-vibrator {
+			compatible = "regulator-vibrator";
+			label = "vibrator";
+			min-volt = <2800000>;
+			max-volt = <3500000>;
+			vib-supply = <&mt6368_vibr>;
+		};
+
 		keypad: kp@1c00e000 {
 			compatible = "mediatek,kp";
 			reg = <0 0x1c00e000 0 0x1000>;
