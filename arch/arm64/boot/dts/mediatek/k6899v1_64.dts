@@ -27,52 +27,6 @@ initcall_debug=1 \
 	};
 };
 
-&dsi0 {
-	status = "okay";
-	#address-cells = <1>;
-	#size-cells = <0>;
-	panel1@0 {
-		compatible = "truly,nt35595,cmd";
-		reg = <0>;
-		//pm-enable-gpios = <&pio 163 0>;
-		//reset-gpios = <&pio 97 0>;
-		//gate-ic = <4831>;
-		//pinctrl-names = "default";
-		port {
-			panel_in1: endpoint {
-				remote-endpoint = <&dsi_out>;
-			};
-		};
-	};
-	ports {
-		port {
-			dsi_out: endpoint {
-				remote-endpoint = <&panel_in1>;
-			};
-		};
-	};
-};
-
-&connfem {
-/* Enable epa_elna node to support Wifi & BT ePA/eLNA FEM on customer load */
-#if 0
-	epa-elna {
-		parts = <&wlan7207h &wlan7207c>;
-		wifi {
-			flags-0 {
-				open-loop;
-			};
-		};
-		bt {
-			flags-0 {
-				/* choose one of: epa-elna/epa/elna/bypass */
-				epa-elna;
-			};
-		};
-	};
-#endif
-};
-
 &i2c6 {
 	spk1: speaker_amp@5c {
 		compatible = "richtek,rt5512";
@@ -140,25 +94,10 @@ initcall_debug=1 \
 };
 /* usb typec mux end */
 
-#if 0
-&mtk_leds {
-	compatible = "mediatek,i2c-leds";
-
-	backlight {
-		led-mode = <6>;
-		gate-enable = <1>;
-		pwm-config = <0 1 0 0 0>;
-	};
-};
-
-&pdc {
-	pd-vbus-upper-bound = <9000000>;
-};
-
 &pio {
 	mtkfb_pins_lcd_bias_enp1: lcd-bias-enp1-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO222__FUNC_GPIO222>;
+			pinmux = <PINMUX_GPIO131__FUNC_GPIO131>;
 			slew-rate = <1>;
 			output-high;
 		};
@@ -166,7 +105,7 @@ initcall_debug=1 \
 
 	mtkfb_pins_lcd_bias_enp0: lcd-bias-enp0-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO222__FUNC_GPIO222>;
+			pinmux = <PINMUX_GPIO131__FUNC_GPIO131>;
 			slew-rate = <1>;
 			output-low;
 		};
@@ -174,7 +113,7 @@ initcall_debug=1 \
 
 	mtkfb_pins_lcd_bias_enn1: lcd-bias-enn1-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO222__FUNC_GPIO222>;
+			pinmux = <PINMUX_GPIO131__FUNC_GPIO131>;
 			slew-rate = <1>;
 			output-high;
 		};
@@ -182,7 +121,7 @@ initcall_debug=1 \
 
 	mtkfb_pins_lcd_bias_enn0: lcd-bias-enn0-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO222__FUNC_GPIO222>;
+			pinmux = <PINMUX_GPIO131__FUNC_GPIO131>;
 			slew-rate = <1>;
 			output-low;
 		};
@@ -190,7 +129,7 @@ initcall_debug=1 \
 
 	mtkfb_pins_lcm_rst_out1_gpio: lcm-rst-out1-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO9__FUNC_GPIO9>;
+			pinmux = <PINMUX_GPIO40__FUNC_GPIO40>;
 			slew-rate = <1>;
 			output-high;
 		};
@@ -198,7 +137,7 @@ initcall_debug=1 \
 
 	mtkfb_pins_lcm_rst_out0_gpio: lcm-rst-out0-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO230__FUNC_GPIO230>;
+			pinmux = <PINMUX_GPIO41__FUNC_GPIO41>;
 			slew-rate = <1>;
 			output-low;
 		};
@@ -206,13 +145,13 @@ initcall_debug=1 \
 
 	mtkfb_pins_lcm_dsi_te: lcm-dsi-te {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO229__FUNC_DSI_TE>;
+			pinmux = <PINMUX_GPIO43__FUNC_DSI_TE>;
 		};
 	};
 
 	mtkfb_pins_lcm_led_en1: lcm-led-en1-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO215__FUNC_GPIO215>;
+			pinmux = <PINMUX_GPIO64__FUNC_GPIO64>;
 			slew-rate = <1>;
 			output-high;
 		};
@@ -220,7 +159,7 @@ initcall_debug=1 \
 
 	mtkfb_pins_lcm_led_en0: lcm-led-en0-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO215__FUNC_GPIO215>;
+			pinmux = <PINMUX_GPIO64__FUNC_GPIO64>;
 			slew-rate = <1>;
 			output-low;
 		};
@@ -228,23 +167,22 @@ initcall_debug=1 \
 
 	mtkfb_pins_lcm_dsi1_te: lcm-dsi1-te {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO10__FUNC_DSI1_TE>;
+			pinmux = <PINMUX_GPIO42__FUNC_DSI1_TE>;
 		};
 	};
 
 	mtkfb_pins_lcm_dsi_gpio: lcm-dsi-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO229__FUNC_GPIO229>;
+			pinmux = <PINMUX_GPIO43__FUNC_GPIO43>;
 		};
 	};
 
 	mtkfb_pins_lcm_dsi1_gpio: lcm-dsi1-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO10__FUNC_GPIO10>;
+			pinmux = <PINMUX_GPIO42__FUNC_GPIO42>;
 		};
 	};
 };
-
 &mtkfb {
 	pinctrl-names = "lcd_bias_enp1_gpio", "lcd_bias_enp0_gpio",
 		"lcd_bias_enn1_gpio", "lcd_bias_enn0_gpio",
@@ -270,6 +208,85 @@ initcall_debug=1 \
 	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
 	pinctrl-1 = <&mtkfb_pins_lcm_dsi1_te>;
 	status = "okay";
+};
+
+&dsi0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	panel1@0 {
+		compatible = "jdi,nt36672e,vdo,120hz,threshold";
+		reg = <0>;
+		pm-enable-gpios = <&pio 64 0>;
+		reset-gpios = <&pio 41 0>;
+		//res-switch = <2>;
+		gate-ic = <4831>;
+		//rc-enable = <1>;
+		pinctrl-names = "default";
+		port {
+			panel_in1: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+	panel2@1 {
+		compatible = "jdi,nt36672e,vdo,60hz";
+		reg = <0>;
+		pm-enable-gpios = <&pio 64 0>;
+		reset-gpios = <&pio 41 0>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel_in2: endpoint {
+				remote-endpoint = <&dsi_out2>;
+			};
+		};
+	};
+	ports {
+		port {
+			dsi_out: endpoint {
+				remote-endpoint = <&panel_in1>;
+			};
+			dsi_out2: endpoint2 {
+				remote-endpoint = <&panel_in2>;
+			};
+		};
+	};
+};
+
+&connfem {
+/* Enable epa_elna node to support Wifi & BT ePA/eLNA FEM on customer load */
+#if 0
+	epa-elna {
+		parts = <&wlan7207h &wlan7207c>;
+		wifi {
+			flags-0 {
+				open-loop;
+			};
+		};
+		bt {
+			flags-0 {
+				/* choose one of: epa-elna/epa/elna/bypass */
+				epa-elna;
+			};
+		};
+	};
+#endif
+};
+
+#if 0
+&mtk_leds {
+	compatible = "mediatek,i2c-leds";
+
+	backlight {
+		led-mode = <6>;
+		gate-enable = <1>;
+		pwm-config = <0 1 0 0 0>;
+	};
+};
+
+&pdc {
+	pd-vbus-upper-bound = <9000000>;
 };
 
 &dsi1 {
