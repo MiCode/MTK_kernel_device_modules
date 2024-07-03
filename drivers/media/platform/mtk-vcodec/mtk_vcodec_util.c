@@ -544,10 +544,10 @@ void mtk_vcodec_set_cpu_hint(struct mtk_vcodec_dev *dev, bool enable,
 			if (dev->cpu_hint_ref_cnt == 0) {
 #if 0//IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 				set_top_grp_aware(1, 0);
-				set_grp_awr_min_opp_margin(0, 0, 2048);
-				set_grp_awr_thr(0, 0, 800000);
-				set_grp_awr_min_opp_margin(1, 0, 2048);
-				set_grp_awr_thr(1, 0, 1100000);
+				set_grp_awr_min_opp_margin(0, 0, 2560);
+				set_grp_awr_thr(0, 0, 1680000);
+				set_grp_awr_min_opp_margin(1, 0, 2560);
+				set_grp_awr_thr(1, 0, 2240000);
 #endif
 			}
 		}
