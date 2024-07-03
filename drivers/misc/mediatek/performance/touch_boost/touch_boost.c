@@ -135,7 +135,11 @@ static void send_boost_cmd(int cmd, int enable)
 
 	mutex_lock(&tch2pwr_lock);
 
-	node = kmem_cache_alloc(touch_boost_cache, GFP_KERNEL);
+	if (touch_boost_cache != NULL)
+		node = kmem_cache_alloc(touch_boost_cache, GFP_KERNEL);
+	else
+		goto out;
+
 	if (node == NULL)
 		goto out;
 
