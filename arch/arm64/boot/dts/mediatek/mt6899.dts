@@ -2652,9 +2652,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,common-id = <19>;
 		master-ostd-bits = <7>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_VCORE>;
-		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_SMI>;
-		clock-names = "apb";
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_SMI>,
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>;
+		clock-names = "apb", "smi";
 	};
 
 	smi_img_vcore_sub_comm1: smi-img-vcore-sub-comm1@15782000 {
@@ -2664,9 +2665,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_mdp_common 0>;
 		mediatek,common-id = <20>;
 		master-ostd-bits = <7>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_VCORE>;
-		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1_SMI>;
-		clock-names = "apb";
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1_SMI>,
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>;
+		clock-names = "apb", "smi";
 	};
 
 	smi_img_sub_comm0: smi-img-sub-comm0@15002000 {
@@ -2750,8 +2752,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_img_sub_comm0 0>;
 		mediatek,larb-id = <11>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_DIP1>;
-		clocks = <&wpe1_dip1_clk CLK_WPE1_DIP1_LARB11_SMI>;
-		clock-names = "apb";
+		clocks = <&imgsys_main_clk CLK_IMG_WPE0_CAMERA_P2>,
+				<&wpe1_dip1_clk CLK_WPE1_DIP1_LARB11_SMI>,
+				<&wpe1_dip1_clk CLK_WPE1_DIP1_WPE_CAMERA_P2>;
+		clock-names = "apb", "smi", "gals0";
 		// is-default-ostdl;
 		// is-real-time-perm;
 		// larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
@@ -2761,11 +2765,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		compatible = "mediatek,smi_larb12",
 			"mediatek,mt6899-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x15320000 0 0x1000>;
-		mediatek,smi-supply = <&smi_img_sub_comm2 0 &smi_img_sub_comm3 0>;
+		mediatek,smi-supply = <&smi_img_sub_comm3 0 &smi_img_sub_comm2 0>;
 		mediatek,larb-id = <12>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
-		clocks = <&imgsys_main_clk CLK_IMG_LARB12_SMI>;
-		clock-names = "apb";
+		clocks = <&imgsys_main_clk CLK_IMG_IPE_CAMERA_P2>,
+			<&imgsys_main_clk CLK_IMG_LARB12_SMI>;
+		clock-names = "apb", "smi";
 		// is-default-ostdl;
 		// is-real-time-perm;
 		// larb-port-real-time-type = <1 1 1>;
@@ -2778,8 +2783,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_img_sub_comm1 0>;
 		mediatek,larb-id = <15>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_DIP1>;
-		clocks = <&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB15_SMI>;
-		clock-names = "apb";
+		clocks = <&imgsys_main_clk CLK_IMG_DIP0_CAMERA_P2>,
+				<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB15_SMI>,
+				<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_CAMERA_P2>,
+				<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB15_CAMERA_P2>;
+		clock-names = "apb", "smi", "gals", "gals1";
 		// is-default-ostdl;
 		// is-real-time-perm;
 		// larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1>;
@@ -2806,8 +2814,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_img_sub_comm1 0>;
 		mediatek,larb-id = <22>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_DIP1>;
-		clocks = <&wpe2_dip1_clk CLK_WPE2_DIP1_LARB11_SMI>;
-		clock-names = "apb";
+		clocks = <&imgsys_main_clk CLK_IMG_WPE1_CAMERA_P2>,
+				<&wpe2_dip1_clk CLK_WPE2_DIP1_LARB11_SMI>,
+				<&wpe2_dip1_clk CLK_WPE2_DIP1_WPE_CAMERA_P2>;
+		clock-names = "apb", "smi", "gals0";
 		// is-default-ostdl;
 		// is-real-time-perm;
 		// larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
@@ -2820,8 +2830,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_img_sub_comm4 0>;
 		mediatek,larb-id = <23>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_DIP1>;
-		clocks = <&wpe3_dip1_clk CLK_WPE3_DIP1_LARB11_SMI>;
-		clock-names = "apb";
+		clocks = <&imgsys_main_clk CLK_IMG_WPE2_CAMERA_P2>,
+				<&wpe3_dip1_clk CLK_WPE3_DIP1_LARB11_SMI>,
+				<&wpe3_dip1_clk CLK_WPE3_DIP1_WPE_CAMERA_P2>;
+		clock-names = "apb", "smi", "gals0";
 		// is-default-ostdl;
 		// is-real-time-perm;
 		// larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
@@ -2834,8 +2846,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_img_sub_comm0 0>;
 		mediatek,larb-id = <28>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_TRAW>;
-		clocks = <&traw_dip1_clk CLK_TRAW_DIP1_LARB28_SMI>;
-		clock-names = "apb";
+		clocks = <&imgsys_main_clk CLK_IMG_TRAW0_CAMERA_P2>,
+			<&traw_dip1_clk CLK_TRAW_DIP1_LARB28_SMI>,
+			<&traw_dip1_clk CLK_TRAW_DIP1_TRAW_CAMERA_P2>;
+		clock-names = "apb", "smi", "gals0";
 		// is-default-ostdl;
 		// is-real-time-perm;
 		// larb-port-real-time-type = <1 1 1 1 1 1 1 1>;
@@ -2965,8 +2979,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
 		mediatek,larb-id = <16>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBA>;
-		clocks =  <&camsys_rawa_clk CLK_CAM_RA_LARBX_SMI>;
-		clock-names = "apb";
+		clocks =  <&camsys_rawa_clk CLK_CAM_RA_LARBX_SMI>,
+				<&camsys_rawa_clk CLK_CAM_RA_CAM_CAMRAWA>;
+		clock-names = "apb", "smi";
 		// is-default-ostdl;
 		// is-real-time-perm;
 		// larb-port-real-time-type = <2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2>;
@@ -2979,8 +2994,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_cam_sub_comm2 0>;
 		mediatek,larb-id = <17>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBA>;
-		clocks = <&camsys_yuva_clk CLK_CAM_YA_LARBX_SMI>;
-		clock-names = "apb";
+		clocks = <&camsys_yuva_clk CLK_CAM_YA_LARBX_SMI>,
+				<&camsys_yuva_clk CLK_CAM_YA_CAM_CAMRAWA>;
+		clock-names = "apb", "smi";
 		// is-default-ostdl;
 		// is-real-time-perm;
 		// larb-port-real-time-type = <2 2 2 2 2 2 2>;
@@ -2993,8 +3009,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_cam_sub_comm2 0>;
 		mediatek,larb-id = <36>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBB>;
-		clocks = <&camsys_rawb_clk CLK_CAM_RB_LARBX_SMI>;
-		clock-names = "apb";
+		clocks = <&camsys_rawb_clk CLK_CAM_RB_LARBX_SMI>,
+				<&camsys_rawb_clk CLK_CAM_RB_CAM_CAMRAWB>;
+		clock-names = "apb", "smi";
 		// is-default-ostdl;
 		// is-real-time-perm;
 		// larb-port-real-time-type = <2 2 2 2 2 2 2>;
@@ -3007,8 +3024,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
 		mediatek,larb-id = <37>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBB>;
-		clocks = <&camsys_yuvb_clk CLK_CAM_YB_LARBX_SMI>;
-		clock-names = "apb";
+		clocks = <&camsys_yuvb_clk CLK_CAM_YB_LARBX_SMI>,
+				<&camsys_yuvb_clk CLK_CAM_YB_CAM_CAMRAWB>;
+		clock-names = "apb", "smi";
 		// is-default-ostdl;
 		// is-real-time-perm;
 		// larb-port-real-time-type = <2 2 2 2 2 2 2>;
@@ -3021,8 +3039,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
 		mediatek,larb-id = <34>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBC>;
-		clocks = <&camsys_rawc_clk CLK_CAM_RC_LARBX_SMI>;
-		clock-names = "apb";
+		clocks = <&camsys_rawc_clk CLK_CAM_RC_LARBX_SMI>,
+				<&camsys_rawc_clk CLK_CAM_RC_CAM_CAMRAWC>;
+		clock-names = "apb", "smi";
 		// is-default-ostdl;
 		// is-real-time-perm;
 		// larb-port-real-time-type = <2 2 2 2 2 2 2>;
@@ -3035,8 +3054,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_cam_sub_comm2 0>;
 		mediatek,larb-id = <35>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBC>;
-		clocks = <&camsys_yuvc_clk CLK_CAM_YC_LARBX_SMI>;
-		clock-names = "apb";
+		clocks = <&camsys_yuvc_clk CLK_CAM_YC_LARBX_SMI>,
+				<&camsys_yuvc_clk CLK_CAM_YC_CAM_CAMRAWC>;
+		clock-names = "apb", "smi";
 		// is-default-ostdl;
 		// is-real-time-perm;
 		// larb-port-real-time-type = <2 2 2 2 2 2 2>;
@@ -3049,8 +3069,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
 		mediatek,larb-id = <25>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MRAW>;
-		clocks = <&camsys_mraw_clk CLK_CAM_MR_LARBX_SMI>;
-		clock-names = "apb";
+		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW_PDAF>,
+				<&camsys_mraw_clk CLK_CAM_MR_LARBX_SMI>;
+		clock-names = "apb", "smi";
 		// is-default-ostdl;
 		// is-real-time-perm;
 		// larb-port-real-time-type = <0 0 0 0 1 1 1 1 1 1 1 0 0>;
@@ -3063,8 +3084,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_cam_sub_comm2 0>;
 		mediatek,larb-id = <26>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MRAW>;
-		clocks = <&camsys_mraw_clk CLK_CAM_MR_LARBX_SMI>;
-		clock-names = "apb";
+		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW_PDAF>,
+				<&camsys_mraw_clk CLK_CAM_MR_LARBX_SMI>;
+		clock-names = "apb", "smi";
 		// is-default-ostdl;
 		// is-real-time-perm;
 		// larb-port-real-time-type = <0 0 0 0 1 1 1 1 1 1 1 0 0>;
@@ -3077,8 +3099,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
 		mediatek,larb-id = <19>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MRAW>;
-		clocks = <&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19_SMI>;
-		clock-names = "apb";
+		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_DPE_CAMERA_P2>,
+				<&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19_SMI>;
+		clock-names = "apb", "smi";
 		// is-default-ostdl;
 		// is-real-time-perm;
 		// larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1>;
@@ -3107,6 +3130,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VDE1>;
 		skip-busy-check;
 		skip-rpm-cb;
+		skip-tcms-check;
 		// is-default-ostdl;
 		// is-real-time-perm;
 		// larb-port-real-time-type = <1 1 1 1 1 1 1 1>;
@@ -3122,6 +3146,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VDE0>;
 		skip-busy-check;
 		skip-rpm-cb;
+		skip-tcms-check;
 		// is-default-ostdl;
 		// is-real-time-perm;
 		// larb-port-real-time-type = <1 1 1 1 1 1 1 1>;
