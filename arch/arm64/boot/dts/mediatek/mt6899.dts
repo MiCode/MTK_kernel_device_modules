@@ -11144,7 +11144,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			 * [5]: step-voltage-4d1c (lowest)
 			 * [6]: step-voltage-2d1c (lowest)
 			 */
-#if 0
+
 			cdphy-dvfs-step0 = <7280 5400>, <9000 9000>, <312>, <575000 575000>;
 			cdphy-dvfs-step1 = <8000 6000>, <9000 9000>, <364>, <600000 600000>;
 			cdphy-dvfs-step2 = <8000 7280>, <9000 9000>, <416>, <650000 650000>;
@@ -11184,7 +11184,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"clk_top_ap_step2",
 				"clk_top_ap_step3";
 				//"mmdvfs_mux";
-#endif
+
 			clk-fmeter-isp {
 				fmeter-type = "CKGEN_CK2";
 				fmeter-no = <10>;
@@ -11585,10 +11585,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				};
 			};
 
-			//seninf-rproc {
-				//compatible = "mediatek,seninf-rproc";
-				//mediatek,ccu-rproc = <&ccu_rproc>;
-			//};
+			seninf-rproc {
+				compatible = "mediatek,seninf-rproc";
+				mediatek,ccu-rproc = <&ccu_rproc>;
+			};
 		};
 
 		reserved@1a3e0000 {
@@ -11628,13 +11628,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 						"inner_base_DMA", "inner_base_SCQ";
 			mediatek,camsv-id = <0>;
 			mediatek,cammux-id = <0>;
-#if 0
 			mediatek,larbs = <&smi_larb14>;
-#endif
 			mediatek,larb-node-names = "camisp-l14-1";
 			interrupts = <GIC_SPI 382 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 388 IRQ_TYPE_LEVEL_HIGH 0>;
-#if 0
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_LARB14_CAMSV>,
@@ -11652,6 +11649,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"cam_main_cam2sys_gals_con",
 					"cam_main_cam2mm2_gals_con",
 					"cam_main_camsv_a_con";
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L14_P0_CAMSV_A_CQI_E1)
 					&mmqos SLAVE_COMMON(0)>,
@@ -11696,13 +11694,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 						"inner_base_DMA", "inner_base_SCQ";
 			mediatek,camsv-id = <1>;
 			mediatek,cammux-id = <1>;
-#if 0
 			mediatek,larbs = <&smi_larb13>;
-#endif
 			mediatek,larb-node-names = "camisp-l13-1";
 			interrupts = <GIC_SPI 383 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 389 IRQ_TYPE_LEVEL_HIGH 0>;
-#if 0
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_LARB13_CAMSV>,
@@ -11720,6 +11715,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"cam_main_cam2sys_gals_con",
 					"cam_main_cam2mm2_gals_con",
 					"cam_main_camsv_b_con";
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L13_P0_CAMSV_B_CQI_E1)
 					&mmqos SLAVE_COMMON(0)>,
@@ -11764,14 +11760,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 						"inner_base_DMA", "inner_base_SCQ";
 			mediatek,camsv-id = <2>;
 			mediatek,cammux-id = <2>;
-#if 0
 			mediatek,larbs = <&smi_larb29>;
-#endif
 			interrupts = <GIC_SPI 384 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 390 IRQ_TYPE_LEVEL_HIGH 0>;
 			iommus = <&disp_iommu M4U_L29_P0_CAMSV_C_CQI_E1>,
 				<&disp_iommu M4U_L29_P4_CAMSV_C_WDMA>;
-#if 0
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_CAMSV>,
@@ -11789,6 +11782,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"cam_main_cam2sys_gals_con",
 					"cam_main_cam2mm2_gals_con",
 					"cam_main_camsv_c_con";
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L29_P0_CAMSV_C_CQI_E1)
 					&mmqos SLAVE_COMMON(0)>,
@@ -11815,14 +11809,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 						"inner_base_DMA", "inner_base_SCQ";
 			mediatek,camsv-id = <3>;
 			mediatek,cammux-id = <3>;
-#if 0
 			mediatek,larbs = <&smi_larb29>;
-#endif
 			interrupts = <GIC_SPI 385 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 391 IRQ_TYPE_LEVEL_HIGH 0>;
 			iommus = <&disp_iommu M4U_L29_P1_CAMSV_D_CQI_E1>,
 				<&disp_iommu M4U_L29_P5_CAMSV_D_WDMA>;
-#if 0
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_CAMSV>,
@@ -11840,6 +11831,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"cam_main_cam2sys_gals_con",
 					"cam_main_cam2mm2_gals_con",
 					"cam_main_camsv_d_con";
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L29_P1_CAMSV_D_CQI_E1)
 					&mmqos SLAVE_COMMON(0)>,
@@ -11866,14 +11858,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 						"inner_base_DMA", "inner_base_SCQ";
 			mediatek,camsv-id = <4>;
 			mediatek,cammux-id = <4>;
-#if 0
 			mediatek,larbs = <&smi_larb29>;
-#endif
 			interrupts = <GIC_SPI 386 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 392 IRQ_TYPE_LEVEL_HIGH 0>;
 			iommus = <&disp_iommu M4U_L29_P2_CAMSV_E_CQI_E1>,
 				<&disp_iommu M4U_L29_P6_CAMSV_E_WDMA>;
-#if 0
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_CAMSV>,
@@ -11891,6 +11880,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"cam_main_cam2sys_gals_con",
 					"cam_main_cam2mm2_gals_con",
 					"cam_main_camsv_e_con";
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L29_P2_CAMSV_E_CQI_E1)
 					&mmqos SLAVE_COMMON(0)>,
@@ -11912,13 +11902,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg-names = "base", "inner_base";
 			mediatek,mraw-id = <0>;
 			mediatek,cammux-id = <8>;
-#if 0
 			mediatek,larbs = <&smi_larb25>;
-#endif
 			interrupts = <GIC_SPI 367 IRQ_TYPE_LEVEL_HIGH 0>;
 			iommus = <&disp_iommu M4U_L25_P0_CQI_M1_MRAW0>,
 				<&disp_iommu M4U_L25_P1_IMGO_M1_MRAW0>;
-#if 0
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MRAW>;
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW_PDAF>,
@@ -11936,6 +11923,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"camsys_mraw_gals",
 					"camsys_mraw_camtg",
 					"camsys_main_mraw0";
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L25_P0_CQI_M1_MRAW0)
 					&mmqos SLAVE_COMMON(0)>,
@@ -11957,13 +11945,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg-names = "base", "inner_base";
 			mediatek,mraw-id = <1>;
 			mediatek,cammux-id = <9>;
-#if 0
 			mediatek,larbs = <&smi_larb26>;
-#endif
 			interrupts = <GIC_SPI 368 IRQ_TYPE_LEVEL_HIGH 0>;
 			iommus = <&disp_iommu M4U_L26_P0_CQI_M1_MRAW1>,
 				<&disp_iommu M4U_L26_P1_IMGO_M1_MRAW1>;
-#if 0
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MRAW>;
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW_PDAF>,
@@ -11981,6 +11966,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"camsys_mraw_gals",
 					"camsys_mraw_camtg",
 					"camsys_main_mraw1";
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L26_P0_CQI_M1_MRAW1)
 					&mmqos SLAVE_COMMON(0)>,
@@ -12002,13 +11988,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg-names = "base", "inner_base";
 			mediatek,mraw-id = <2>;
 			mediatek,cammux-id = <10>;
-#if 0
 			mediatek,larbs = <&smi_larb25>;
-#endif
 			interrupts = <GIC_SPI 369 IRQ_TYPE_LEVEL_HIGH 0>;
 			iommus = <&disp_iommu M4U_L25_P2_CQI_M1_MRAW2>,
 				<&disp_iommu M4U_L25_P3_IMGO_M1_MRAW2>;
-#if 0
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MRAW>;
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW_PDAF>,
@@ -12026,6 +12009,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"camsys_mraw_gals",
 					"camsys_mraw_camtg",
 					"camsys_main_mraw2";
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L25_P2_CQI_M1_MRAW2)
 					&mmqos SLAVE_COMMON(0)>,
@@ -12098,13 +12082,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		camisp_vcore: camisp-vcore {
 			compatible = "mediatek,mt6899-camisp-vcore";
-#if 0
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_VCORE>;
 			clocks = <&topckgen_clk CLK_TOP_CAM_SEL>,
 				<&topckgen_clk CLK_TOP_CAMTM_SEL>,
 				<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 				<&cam_vcore_r1a_clk CLK_CAMV_CV_CAMVCORE_CAMRAW>,
-			/* TODO: check if 26M can be removed */
 			<&cam_vcore_r1a_clk CLK_CAMV_CV_CAM_26M_CAMRAW>,
 			<&cam_vcore_r1a_clk CLK_CAMV_CV_CAM2MM0_SC_DCM_DIS_CAMRAW>,
 			<&cam_vcore_r1a_clk CLK_CAMV_CV_MM0_SC_DCM_DIS_CAMRAW>;
@@ -12115,7 +12097,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"camsys_v_26m",
 				"camsys_vcore_2mm0_subcomm",
 				"camsys_vcore_mm0_subcomm";
-#endif
 		};
 
 		camisp: camisp@1a000000 {
@@ -12127,15 +12108,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg-names = "base", "adlwr", "adlrd", "qof_base";
 			mediatek,ccd = <&remoteproc_ccd>;
 			mediatek,camisp-vcore = <&camisp_vcore>;
-#if 0
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
-#endif
 			interrupts = <GIC_SPI 372 IRQ_TYPE_LEVEL_HIGH 0>, // adlrd_ipui_rdone
 					<GIC_SPI 373 IRQ_TYPE_LEVEL_HIGH 0>, // adlrd
 					<GIC_SPI 379 IRQ_TYPE_LEVEL_HIGH 0>; // qof
 			interrupt-names = "adlrd_rdone", "adlrd", "qoftop";
 #if 0
 			operating-points-v2 = <&opp_table_cam>;
+#endif
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAMTG_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_ADLRD_CAMRAWA>,
@@ -12165,7 +12145,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"camsys_cam2sys_gals_cgpdn",
 				"camsys_cam2mm2_gals_cgpdn",
 				"mmdvfs_mux";
-#endif
 			mboxes = <&gce_m 24 0 CMDQ_THR_PRIO_1>;
 		};
 
@@ -12179,11 +12158,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg-names = "base", "inner_base",
 				"dmatop_base", "inner_dmatop_base","qof_base";
 			mediatek,cam-id = <0>;
-#if 0
 			mediatek,larbs = <&smi_larb16>, <&smi_larb27>;
-#endif
 			interrupts = <GIC_SPI 353 IRQ_TYPE_LEVEL_HIGH 0>;
-#if 0
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBA>;
 			clocks = <&camsys_rawa_clk CLK_CAM_RA_LARBX_CAMRAWA>,
 				<&camsys_rawa_clk CLK_CAM_RA_CAM_CAMRAWA>,
@@ -12195,7 +12171,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"camsys_rawa_camtg_cgpdn",
 					"camsys_rawa_raw2mm_gals_cgpdn",
 					"camsys_rawa_yuv2raw2mm_gals_cgpdn";
-#endif
 			iommus = <&disp_iommu M4U_L16_P0_CQI_R1>,
 					<&disp_iommu M4U_L16_P2_RAWI_R2>,
 					<&disp_iommu M4U_L16_P3_RAWI_R3>,
@@ -12259,14 +12234,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x1a848000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <0>;
-#if 0
 			clocks = <&camsys_rmsa_clk CLK_CAMSYS_RMSA_LARBX_CAMRAWA>,
 					<&camsys_rmsa_clk CLK_CAMSYS_RMSA_CAM_CAMRAWA>,
 					<&camsys_rmsa_clk CLK_CAMSYS_RMSA_CAMTG_CAMRAWA>;
 			clock-names = "camsys_rmsa_larbx_cgpdn",
 					"camsys_rmsa_cam_cgpdn",
 					"camsys_rmsa_camtg_cgpdn";
-#endif
 		};
 
 		cam-yuv-a@1a880000 {
@@ -12277,7 +12250,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x1a898000 0 0x8000>;
 			reg-names = "base", "inner_base", "dmatop_base", "inner_dmatop_base";
 			mediatek,cam-id = <0>;
-#if 0
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBA>;
 			mediatek,larbs = <&smi_larb17>;
 			clocks = <&camsys_yuva_clk CLK_CAM_YA_LARBX_CAMRAWA>,
@@ -12286,7 +12258,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clock-names = "camsys_yuva_larbx_cgpdn",
 					"camsys_yuva_cam_cgpdn",
 					"camsys_yuva_camtg_cgpdn";
-#endif
 			iommus = <&mdp_iommu M4U_L17_P0_YUVO_R1>,
 					<&mdp_iommu M4U_L17_P1_YUVO_R3>,
 					<&mdp_iommu M4U_L17_P2_YUVO_R2>,
@@ -12326,7 +12297,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				 "dmatop_base", "inner_dmatop_base", "qof_base";
 			mediatek,cam-id = <1>;
 			interrupts = <GIC_SPI 357 IRQ_TYPE_LEVEL_HIGH 0>;
-#if 0
 			mediatek,larbs = <&smi_larb36>, <&smi_larb27>;
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBB>;
 			clocks = <&camsys_rawb_clk CLK_CAM_RB_LARBX_CAMRAWB>,
@@ -12339,7 +12309,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"camsys_rawb_camtg_cgpdn",
 					"camsys_rawb_raw2mm_gals_cgpdn",
 					"camsys_rawb_yuv2raw2mm_gals_cgpdn";
-#endif
 			iommus = <&mdp_iommu M4U_L36_P0_CQI_R1>,
 					<&mdp_iommu M4U_L36_P2_RAWI_R2>,
 					<&mdp_iommu M4U_L36_P3_RAWI_R3>,
@@ -12403,14 +12372,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 						<0 0x1a948000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <1>;
-#if 0
 			clocks = <&camsys_rmsb_clk CLK_CAMSYS_RMSB_LARBX_CAMRAWB>,
 					<&camsys_rmsb_clk CLK_CAMSYS_RMSB_CAM_CAMRAWB>,
 					<&camsys_rmsb_clk CLK_CAMSYS_RMSB_CAMTG_CAMRAWB>;
 			clock-names = "camsys_rmsb_larbx_cgpdn",
 					"camsys_rmsb_cam_cgpdn",
 					"camsys_rmsb_camtg_cgpdn";
-#endif
 		};
 
 		cam-yuv-b@1a980000 {
@@ -12421,7 +12388,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x1a998000 0 0x8000>;
 			reg-names = "base", "inner_base", "dmatop_base", "inner_dmatop_base";
 			mediatek,cam-id = <1>;
-#if 0
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBB>;
 			mediatek,larbs = <&smi_larb34>;
 			clocks = <&camsys_yuvb_clk CLK_CAM_YB_LARBX_CAMRAWB>,
@@ -12430,7 +12396,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clock-names = "camsys_yuvb_larbx_cgpdn",
 					"camsys_yuvb_cam_cgpdn",
 					"camsys_yuvb_camtg_cgpdn";
-#endif
 			iommus = <&disp_iommu M4U_L34_P0_YUVO_R1>,
 					<&disp_iommu M4U_L34_P1_YUVO_R3>,
 					<&disp_iommu M4U_L34_P2_YUVO_R2>,
@@ -12470,7 +12435,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"dmatop_base", "inner_dmatop_base", "qof_base";
 			mediatek,cam-id = <2>;
 			interrupts = <GIC_SPI 361 IRQ_TYPE_LEVEL_HIGH 0>;
-#if 0
 			mediatek,larbs = <&smi_larb37>, <&smi_larb27>;
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBC>;
 			clocks = <&camsys_rawc_clk CLK_CAM_RC_LARBX_CAMRAWC>,
@@ -12483,7 +12447,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"camsys_rawc_camtg_cgpdn",
 				"camsys_rawc_raw2mm_gals_cgpdn",
 				"camsys_rawc_yuv2raw2mm_gals_cgpdn";
-#endif
 			iommus = <&disp_iommu M4U_L37_P0_CQI_R1>,
 				<&disp_iommu M4U_L37_P2_RAWI_R2>,
 				<&disp_iommu M4U_L37_P3_RAWI_R3>,
@@ -12547,14 +12510,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x1aa48000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <2>;
-#if 0
 			clocks = <&camsys_rmsc_clk CLK_CAMSYS_RMSC_LARBX_CAMRAWC>,
 					<&camsys_rmsc_clk CLK_CAMSYS_RMSC_CAM_CAMRAWC>,
 					<&camsys_rmsc_clk CLK_CAMSYS_RMSC_CAMTG_CAMRAWC>;
 			clock-names = "camsys_rmsc_larbx_cgpdn",
 					"camsys_rmsc_cam_cgpdn",
 					"camsys_rmsc_camtg_cgpdn";
-#endif
 		};
 
 		cam-yuv-c@1aa80000 {
@@ -12565,7 +12526,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x1aa98000 0 0x8000>;
 			reg-names = "base", "inner_base", "dmatop_base", "inner_dmatop_base";
 			mediatek,cam-id = <2>;
-#if 0
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBC>;
 			mediatek,larbs = <&smi_larb35>;
 			clocks = <&camsys_yuvc_clk CLK_CAM_YC_LARBX_CAMRAWC>,
@@ -12574,7 +12534,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clock-names = "camsys_yuvc_larbx_cgpdn",
 				"camsys_yuvc_cam_cgpdn",
 				"camsys_yuvc_camtg_cgpdn";
-#endif
 			iommus = <&mdp_iommu M4U_L35_P0_YUVO_R1>,
 					<&mdp_iommu M4U_L35_P1_YUVO_R3>,
 					<&mdp_iommu M4U_L35_P2_YUVO_R2>,
