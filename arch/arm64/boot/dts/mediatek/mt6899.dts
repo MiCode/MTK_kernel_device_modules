@@ -6782,6 +6782,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			operating-points-v2 = <&gpu_mali_opp>;
 			#cooling-cells = <2>;
 			ged-supply = <&ged>;
+			l2-hash-values = <0xb 0xe 0x0>;
 			firmware-idle-hysteresis-time-us = <5000>;
 			gpu-frame-base-optimize = <1>;
 		};
