@@ -514,9 +514,9 @@
 	gpufreq_wrapper: gpufreq-wrapper {
 		compatible = "mediatek,gpufreq_wrapper";
 		gpufreq-version = <2>;
-		dual-buck = <0>;
-		gpueb-support = <0>;
-		gpufreq-bringup = <1>;
+		dual-buck = <1>;
+		gpueb-support = <1>;
+		gpufreq-bringup = <0>;
 		ghpm-supply = <&ghpm>;
 	};
 

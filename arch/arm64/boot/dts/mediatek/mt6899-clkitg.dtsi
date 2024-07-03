@@ -99,8 +99,6 @@
 			<&apmixedsys_clk CLK_APMIXED_IMGPLL>,
 			<&apmixedsys_clk CLK_APMIXED_TVDPLL>,
 			<&apmixedsys_clk CLK_APMIXED_ADSPPLL>,
-			<&mfgpll_pll_ctrl_clk CLK_MFG_AO_MFGPLL>,
-			<&mfgscpll_pll_ctrl_clk CLK_MFGSC_AO_MFGSCPLL>,
 			<&vlp_cksys_clk CLK_VLP_CK_PWM_VLP_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_SSPM_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_IPS_SEL>,
