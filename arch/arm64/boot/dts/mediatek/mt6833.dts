@@ -2092,12 +2092,6 @@
 			"DPE_CLK_IPE_LARB19","DPE_CLK_IPE_LARB20";
 		};
 
-		vcp: vcp@1ec00000 {
-			compatible = "mediatek,vcp";
-			vcp-support = <0>;
-			status = "okay";
-		};
-
 		vcu: vcu@16000000 {
 			compatible = "mediatek-vcu";
 			mediatek,vcuid = <0>;
@@ -2105,8 +2099,7 @@
 			mediatek,vcu-off  = <0>;
 			mediatek,iommu-padding;
 			reg = <0 0x16000000 0 0x40000>,	/* VDEC_BASE */
-				 <0 0x17020000 0 0x10000>,	/* VENC_BASE */
-				 <0 0x17820000 0 0x10000>;	/* VENC_C1_BASE */
+				 <0 0x17020000 0 0x10000>;	/* VENC_BASE */
 			iommus = <&iommu0 M4U_PORT_L4_VDEC_MC_EXT>,
 				<&iommu0 M4U_PORT_L4_VDEC_UFO_EXT>,
 				<&iommu0 M4U_PORT_L4_VDEC_PP_EXT>,
@@ -2339,11 +2332,9 @@
 			mediatek,platform = "platform:mt6833";
 			mediatek,ipm = <1>;
 			venc-core-count = <1>;
-			reg = <0 0x17020000 0 0x2000>,
-				  <0 0x17820000 0 0x20000>;
+			reg = <0 0x17020000 0 0x2000>;
 			reg-names =
-				"VENC_SYS",
-				"VENC_C1_SYS";
+				"VENC_SYS";
 			iommus = <&iommu0 M4U_PORT_L7_VENC_RCPU>,
 				<&iommu0 M4U_PORT_L7_VENC_REC>,
 				<&iommu0 M4U_PORT_L7_VENC_BSDMA>,
