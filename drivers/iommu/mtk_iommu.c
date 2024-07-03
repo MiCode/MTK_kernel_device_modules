@@ -3970,7 +3970,7 @@ static const struct mtk_iommu_plat_data mt6899_data_disp = {
 	.flags          = OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
 			  NOT_STD_AXI_MODE | TLB_SYNC_EN | IOMMU_SEC_EN |
 			  SKIP_CFG_PORT | IOVA_34_EN | IOMMU_CLK_AO_EN | IOMMU_EN_PRE |
-			  /*HAS_BCLK |*/ HAS_SMI_SUB_COMM | SAME_SUBSYS/* | PGTABLE_PA_35_EN*/,
+			  /*HAS_BCLK |*/ HAS_SMI_SUB_COMM | SAME_SUBSYS | PGTABLE_PA_35_EN,
 	.hw_list        = &mm_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= DISP_IOMMU,
@@ -3987,7 +3987,7 @@ static const struct mtk_iommu_plat_data mt6899_data_mdp = {
 	.flags          = OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
 			  NOT_STD_AXI_MODE | TLB_SYNC_EN | IOMMU_SEC_EN |
 			  SKIP_CFG_PORT | IOVA_34_EN | IOMMU_CLK_AO_EN | IOMMU_EN_PRE |
-			  /*HAS_BCLK | */HAS_SMI_SUB_COMM | SAME_SUBSYS/* | PGTABLE_PA_35_EN*/,
+			  /*HAS_BCLK | */HAS_SMI_SUB_COMM | SAME_SUBSYS | PGTABLE_PA_35_EN,
 	.hw_list        = &mm_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= MDP_IOMMU,
@@ -4001,9 +4001,9 @@ static const struct mtk_iommu_plat_data mt6899_data_mdp = {
 
 static const struct mtk_iommu_plat_data mt6899_data_apu0 = {
 	.m4u_plat	= M4U_MT6899,
-	.flags          = TLB_SYNC_EN | /*IOMMU_SEC_EN |*/
-			  GET_DOM_ID_LEGACY | IOVA_34_EN | /*LINK_WITH_APU | PGTABLE_PA_35_EN |*/
-			  PM_OPS_SKIP | IOMMU_CLK_AO_EN,
+	.flags          = TLB_SYNC_EN | /*IOMMU_SEC_EN |*/PGTABLE_PA_35_EN |
+			  GET_DOM_ID_LEGACY | IOVA_34_EN | /*LINK_WITH_APU |*/PM_OPS_SKIP |
+			  IOMMU_CLK_AO_EN,
 	.hw_list        = &apu_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= APU_IOMMU0,
@@ -4017,9 +4017,9 @@ static const struct mtk_iommu_plat_data mt6899_data_apu0 = {
 
 static const struct mtk_iommu_plat_data mt6899_data_apu1 = {
 	.m4u_plat	= M4U_MT6899,
-	.flags          = TLB_SYNC_EN | /*IOMMU_SEC_EN |*/
-			  GET_DOM_ID_LEGACY | IOVA_34_EN | /*LINK_WITH_APU | PGTABLE_PA_35_EN |*/
-			  PM_OPS_SKIP | IOMMU_CLK_AO_EN,
+	.flags          = TLB_SYNC_EN | /*IOMMU_SEC_EN |*/ PGTABLE_PA_35_EN |
+			  GET_DOM_ID_LEGACY | IOVA_34_EN | /*LINK_WITH_APU |*/PM_OPS_SKIP |
+			  IOMMU_CLK_AO_EN,
 	.hw_list        = &apu_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= APU_IOMMU1,
