@@ -9649,6 +9649,7 @@ static int mtk_drm_mml_ctrl_caps(struct mtk_drm_mml_caps_info *mml_caps, struct 
 		priv->data->mmsys_id == MMSYS_MT6765 ||
 		priv->data->mmsys_id == MMSYS_MT6761 ||
 		priv->data->mmsys_id == MMSYS_MT6781 ||
+		priv->data->mmsys_id == MMSYS_MT6853 ||
 		priv->data->mmsys_id == MMSYS_MT6885 ||
 		priv->data->mmsys_id == MMSYS_MT6833 ||
 		priv->data->mmsys_id == MMSYS_MT6877) {
