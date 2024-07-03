@@ -444,6 +444,10 @@
 		compatible = "mediatek,mtk_composite_v4l2_1";
 	};
 
+	mtk_composite_v4l2_2: mtk-composite-v4l2-2 {
+		compatible = "mediatek,mtk_composite_v4l2_2";
+	};
+
 	mtk_ctd: mtk-ctd {
 		compatible = "mediatek,mtk_ctd";
 		nr-port = <1>;

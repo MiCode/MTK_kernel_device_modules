@@ -358,6 +358,35 @@
 };
 /* CAMERA GPIO end */
 
+&mtk_composite_v4l2_2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	port@0 {
+		reg = <0>;
+		main_af_endpoint: endpoint {
+			remote-endpoint = <&main_af>;
+		};
+	};
+	port@1 {
+		reg = <1>;
+		main_af_cam1_endpoint: endpoint {
+			remote-endpoint = <&main_af_cam1>;
+		};
+	};
+	port@2 {
+		reg = <2>;
+		main_af_cam2_endpoint: endpoint {
+			remote-endpoint = <&main_af_cam2>;
+		};
+	};
+	port@3 {
+		reg = <3>;
+		main_af_cam3_endpoint: endpoint {
+			remote-endpoint = <&main_af_cam3>;
+		};
+	};
+};
+
 &i2c2 {
 	status = "okay";
 	clock-frequency = <1000000>;
@@ -421,6 +450,17 @@
 	#address-cells = <1>;
 	#size-cells = <2>;
 	status = "okay";
+
+	camera-af-main@c {
+		compatible = "mediatek,main_vcm";
+		reg = <0x0c 0 0>;
+		vin-supply = <&rt5133_gpio1>;
+		port {
+			main_af: endpoint {
+				remote-endpoint = <&main_af_endpoint>;
+			};
+		};
+	};
 
 	sensor0: sensor0@36 {
 		compatible = "mediatek,imgsensor";
@@ -533,6 +573,17 @@
 	status = "okay";
 	clock-frequency = <1000000>;
 
+	camera-af-main-three@c {
+		compatible = "mediatek,main3_vcm";
+		reg = <0x0c>;
+		vin-supply = <&rt5133_gpio1>;
+		port {
+			main_af_cam2: endpoint {
+				remote-endpoint = <&main_af_cam2_endpoint>;
+			};
+		};
+	};
+
 	sensor6: sensor6@10 {
 		compatible = "mediatek,imgsensor";
 		sensor-names = "ov64b_mipi_raw";
@@ -595,6 +646,17 @@
 	status = "okay";
 	clock-frequency = <1000000>;
 
+	camera-af-main-two@b {
+		compatible = "mediatek,main2_vcm";
+		reg = <0x0b>;
+		vin-supply = <&rt5133_ldo2>;
+		port {
+			main_af_cam1: endpoint {
+				remote-endpoint = <&main_af_cam1_endpoint>;
+			};
+		};
+	};
+
 	sensor4: sensor4@10 {
 		compatible = "mediatek,imgsensor";
 		sensor-names = "imx758_mipi_raw";
@@ -656,6 +718,17 @@
 &i2c9 {
 	status = "okay";
 	clock-frequency = <1000000>;
+
+	camera-af-main-four@d {
+		compatible = "mediatek,main4_vcm";
+		reg = <0x0d>;
+		vin-supply = <&rt5133_ldo2>;
+		port {
+			main_af_cam3: endpoint {
+				remote-endpoint = <&main_af_cam3_endpoint>;
+			};
+		};
+	};
 
 	sensor2: sensor2@10 {
 		compatible = "mediatek,imgsensor";
