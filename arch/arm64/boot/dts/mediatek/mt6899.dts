@@ -16472,6 +16472,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				regulator-max-microvolt = <1193750>;
 				regulator-enable-ramp-delay = <256>;
 				regulator-allowed-modes = <0 1 2>;
+				regulator-always-on;
 			};
 			mt6319_6_vbuck3: 6-vbuck3 {
 				regulator-compatible = "vbuck3";
