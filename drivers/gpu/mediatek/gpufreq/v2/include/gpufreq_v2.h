@@ -487,6 +487,7 @@ struct gpufreq_shared_status {
 	unsigned int aging_margin;
 	unsigned int avs_enable;
 	unsigned int avs_margin;
+	unsigned int chip_type;
 	unsigned int sb_version;
 	unsigned int ptp_version;
 	unsigned int dbg_version;
