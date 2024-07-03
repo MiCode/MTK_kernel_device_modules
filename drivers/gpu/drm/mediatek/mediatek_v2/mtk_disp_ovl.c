@@ -4292,8 +4292,8 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 	}
 	if (src_on & 0x1) {
 		layer_addr = read_phy_layer_addr(comp, 0);
-		if (priv->data->mmsys_id == MMSYS_MT6989 &&
-			priv->data->mmsys_id == MMSYS_MT6899 &&
+		if ((priv->data->mmsys_id == MMSYS_MT6989 ||
+			priv->data->mmsys_id == MMSYS_MT6899) &&
 			comp->id == DDP_COMPONENT_OVL0_2L) {
 			DDPMSG("%s, replace mva same as pa %pad\n", __func__, &layer_addr);
 			domain = iommu_get_domain_for_dev(comp->dev);
@@ -4315,8 +4315,8 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 
 	if (src_on & 0x2) {
 		layer_addr = read_phy_layer_addr(comp, 1);
-		if (priv->data->mmsys_id == MMSYS_MT6989 &&
-			priv->data->mmsys_id == MMSYS_MT6899 &&
+		if ((priv->data->mmsys_id == MMSYS_MT6989 ||
+			priv->data->mmsys_id == MMSYS_MT6899) &&
 			comp->id == DDP_COMPONENT_OVL0_2L) {
 			DDPMSG("%s, replace mva same as pa %pad\n", __func__, &layer_addr);
 			write_phy_layer_addr_cmdq(comp, handle, 1, layer_addr);
