@@ -9464,16 +9464,45 @@
 			interrupts = <GIC_SPI 795 IRQ_TYPE_NONE 0>;
 		};
 
-		jpgdec@17040000 {
+		jpgdec0@17040000 {
 			compatible = "mediatek,jpgdec";
-			reg = <0 0x17040000 0 0x10000>;
-			interrupts = <GIC_SPI 796 IRQ_TYPE_NONE 0>;
-		};
-
-		jpgdec-c1@17050000 {
-			compatible = "mediatek,jpgdec_c1";
-			reg = <0 0x17050000 0 0x10000>;
-			interrupts = <GIC_SPI 791 IRQ_TYPE_NONE 0>;
+			reg = <0 0x17040000 0 0x10000>,
+				<0 0x17050000 0 0x10000>;
+			interrupts = <GIC_SPI 796 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 797 IRQ_TYPE_LEVEL_HIGH 0>;
+			mediatek,larbs = <&smi_larb7>;
+			operating-points-v2 = <&opp_table_venc>;
+			clocks = <&venc_gcon_clk CLK_VEN1_CKE3_JPGDEC_JPGDEC>,
+				<&venc_gcon_clk CLK_VEN1_CKE4_JPGDEC_C1_JPGDEC>;
+				// <&mmdvfs_mux MMDVFS_USER_JPEGDEC>;
+			clock-names = "MT_CG_VENC_JPGDEC", "MT_CG_VENC_JPGDEC_C1";
+				// "mmdvfs_clk";
+			power-domains = <&scpsys MT6899_POWER_DOMAIN_VEN0>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&disp_iommu M4U_L7_P17_JPGDEC_WDMA_0_U0>,
+				 <&disp_iommu M4U_L7_P18_JPGDEC_BSDMA_0_U0>,
+				 <&disp_iommu M4U_L7_P27_JPGDEC_WDMA_1_U0>,
+				 <&disp_iommu M4U_L7_P28_JPGDEC_BSDMA_1_U0>,
+				 <&disp_iommu M4U_L7_P29_JPGDEC_HUFF_OFFSET_1_U0>,
+				 <&disp_iommu M4U_L7_P30_JPGDEC_HUFF_OFFSET_0_U0>;
+			interconnects = <&mmqos MASTER_LARB_PORT(M4U_L7_P17_JPGDEC_WDMA_0_U0)
+							&mmqos SLAVE_COMMON(0)>,
+						<&mmqos MASTER_LARB_PORT(M4U_L7_P18_JPGDEC_BSDMA_0_U0)
+							&mmqos SLAVE_COMMON(0)>,
+						<&mmqos MASTER_LARB_PORT(M4U_L7_P30_JPGDEC_HUFF_OFFSET_0_U0)
+							&mmqos SLAVE_COMMON(0)>,
+						<&mmqos MASTER_LARB_PORT(M4U_L7_P27_JPGDEC_WDMA_1_U0)
+							&mmqos SLAVE_COMMON(0)>,
+						<&mmqos MASTER_LARB_PORT(M4U_L7_P28_JPGDEC_BSDMA_1_U0)
+							&mmqos SLAVE_COMMON(0)>,
+						<&mmqos MASTER_LARB_PORT(M4U_L7_P29_JPGDEC_HUFF_OFFSET_1_U0)
+							&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "path_jpegdec0_wdma",
+						"path_jpegdec0_bsdma",
+						"path_jpegdec0_huff_offset",
+						"path_jpegdec1_wdma",
+						"path_jpegdec1_bsdma",
+						"path_jpegdec1_huff_offset";
 		};
 
 		mbist@17060000 {
@@ -9491,9 +9520,30 @@
 			reg = <0 0x17830000 0 0x10000>;
 		};
 
-		jpgdec@17840000 {
-			compatible = "mediatek,jpgdec";
+		jpgdec1@17840000 {
+			compatible = "mediatek,jpgdec_c1";
 			reg = <0 0x17840000 0 0x10000>;
+			interrupts = <GIC_SPI 791 IRQ_TYPE_LEVEL_HIGH 0>;
+			mediatek,larbs = <&smi_larb8>;
+			operating-points-v2 = <&opp_table_venc>;
+			clocks = <&venc_gcon_core1_clk CLK_VEN1_CKE3_JPGDEC_JPGDEC>;
+				// <&mmdvfs_mux MMDVFS_USER_JPEGDEC>;
+			clock-names = "MT_CG_VENC_JPGDEC_C2";
+				// "mmdvfs_clk";
+			power-domains = <&scpsys MT6899_POWER_DOMAIN_VEN1>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&mdp_iommu M4U_L8_P17_JPGDEC_WDMA_0_U0>,
+				 <&mdp_iommu M4U_L8_P18_JPGDEC_BSDMA_0_U0>,
+				 <&mdp_iommu M4U_L8_P30_JPGDEC_HUFF_OFFSET_0_U0>;
+			interconnects = <&mmqos MASTER_LARB_PORT(M4U_L8_P17_JPGDEC_WDMA_0_U0)
+							&mmqos SLAVE_COMMON(1)>,
+						<&mmqos MASTER_LARB_PORT(M4U_L8_P18_JPGDEC_BSDMA_0_U0)
+							&mmqos SLAVE_COMMON(1)>,
+						<&mmqos MASTER_LARB_PORT(M4U_L8_P30_JPGDEC_HUFF_OFFSET_0_U0)
+							&mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "path_jpegdec2_wdma",
+						"path_jpegdec2_bsdma",
+						"path_jpegdec2_huff_offset";
 		};
 
 		mbist@17860000 {
