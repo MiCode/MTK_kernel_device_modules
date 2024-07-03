@@ -14,6 +14,7 @@
 #include <dt-bindings/spmi/spmi.h>
 #include <dt-bindings/gce/mt6899-gce.h>
 #include <dt-bindings/clock/mmdvfs-clk.h>
+#include <dt-bindings/interconnect/mtk,mmqos.h>
 #include <dt-bindings/memory/mt6899-larb-port.h>
 #include <dt-bindings/memory/mtk-smi-user.h>
 #include <dt-bindings/pinctrl/mt6899-pinfunc.h>
@@ -2594,6 +2595,45 @@
 					<0x000007d0>,
 					<0x0000003c>;
 		};
+	};
+	mmqos-wrapper {
+			compatible = "mediatek,mt6899-mmqos-wrapper";
+	};
+
+	mmqos: interconnect {
+		compatible = "mediatek,mt6899-mmqos";
+		#mtk-interconnect-cells = <1>;
+		mediatek,larbs-supply = <&smi_larb0 &smi_larb1 &smi_larb2
+					&smi_larb3 &smi_larb4 &smi_larb5
+					&smi_larb7 &smi_larb8 &smi_larb9
+					&smi_larb11 &smi_larb12 &smi_larb13
+					&smi_larb14 &smi_larb15 &smi_larb16
+					&smi_larb17 &smi_larb18 &smi_larb19
+					&smi_larb20 &smi_larb21 &smi_larb22
+					&smi_larb23 &smi_larb25 &smi_larb26
+					&smi_larb27 &smi_larb28 &smi_larb29
+					&smi_larb30 &smi_larb32 &smi_larb33
+					&smi_larb34 &smi_larb35 &smi_larb36
+					&smi_larb37 &smi_larb38>;
+		mediatek,commons-supply = <&smi_disp_common>, <&smi_mdp_common>;
+		mediatek,mmqos-met-not-freerun;
+		mmqos-state = <0x0>;
+		mmqos-log-level = <0>;
+		clocks = <&topckgen_clk CLK_TOP_MMINFRA_SEL>,
+			<&topckgen_clk CLK_TOP_MMINFRA_SEL>;
+		clock-names = "mm", "mdp";
+		interconnects = <&dvfsrc MT6873_MASTER_MMSYS &dvfsrc MT6873_SLAVE_DDR_EMI>,
+				<&dvfsrc MT6873_MASTER_HRT_MMSYS
+				&dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
+		interconnect-names = "icc-bw", "icc-hrt-bw";
+		vmmrc-base = <0x1ec00000>;
+		vmmrc-mask = <0x2e814>;
+		vmmrc-mask-bit = <8>;
+		vmmrc-on-table = <0x2e788>;
+		vmmrc-off-table = <0x2e7a8>;
+		mminfra-base = <0x1e800000>;
+		r-hrt-ostdl = <1>;
+		w-hrt-ostdl = <1>;
 	};
 
 	gpio_keys: gpio-keys {
