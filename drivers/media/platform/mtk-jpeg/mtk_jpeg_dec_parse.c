@@ -139,6 +139,7 @@ static bool mtk_jpeg_do_parse(struct mtk_jpeg_dec_param *param, u8 *src_addr_va,
 			break;
 		case EOI:
 			file_end = true;
+			param->eoi_exist = 1;
 			break;
 		case DHT:
 			param->huffman_tb_exist = 1;

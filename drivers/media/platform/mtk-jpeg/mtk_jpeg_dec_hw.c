@@ -155,8 +155,8 @@ static int mtk_jpeg_calc_dst_size(struct mtk_jpeg_dec_param *param)
 		param->comp_w[i] = padding_w >> brz_w[i];
 		param->comp_w[i] = round_up(param->comp_w[i],
 					    MTK_JPEG_DCTSIZE);
-		param->img_stride[i] = i ? round_up(param->comp_w[i], 16)
-					: round_up(param->comp_w[i], 32);
+		param->img_stride[i] = round_up(param->comp_w[i], 16);
+
 		ds_row_h[i] = (MTK_JPEG_DCTSIZE * param->sampling_h[i]);
 	}
 	param->dec_w = param->img_stride[0];
@@ -238,6 +238,12 @@ void mtk_jpeg_dec_reset(void __iomem *base)
 {
 	mtk_jpeg_dec_soft_reset(base);
 	mtk_jpeg_dec_hard_reset(base);
+}
+
+void mtk_jpeg_dec_set_eoi(void __iomem *base, u8 eoi_exist)
+{
+	if (!eoi_exist)
+		writel(0x0, base + 0x35C);
 }
 
 static void mtk_jpeg_dec_set_brz_factor(void __iomem *base, u8 yscale_w,
@@ -411,6 +417,7 @@ void mtk_jpeg_dec_set_config(void __iomem *base,
 			     struct mtk_jpeg_bs *bs,
 			     struct mtk_jpeg_fb *fb)
 {
+	mtk_jpeg_dec_set_eoi(base, config->eoi_exist);
 	mtk_jpeg_dec_set_brz_factor(base, 0, 0, config->uv_brz_w, 0);
 	mtk_jpeg_dec_set_dec_mode(base, 0);
 	mtk_jpeg_dec_set_comp0_du(base, config->unit_num);
