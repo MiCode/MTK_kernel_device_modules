@@ -686,12 +686,11 @@ initcall_debug=1 \
 	flavor-bin = "dx3";
 };
 
-#include "mediatek/cust_mt6989_camera_v4l2.dtsi"
-
 #endif
 
 #include "mediatek/cust_mt6899_touch_1080x2400.dtsi"
 #include "mediatek/cust_k6899_connfem.dtsi"
+#include "mediatek/cust_mt6899_camera_v4l2.dtsi"
 #include <k6899v1_64/cust.dtsi>
 
 /*End of this file, DO NOT ADD ANYTHING HERE*/
