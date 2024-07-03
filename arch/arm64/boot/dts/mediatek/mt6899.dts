@@ -10573,18 +10573,18 @@
 			awake-timeout = <10000>; /* 100 ms */
 		};
 
-		sap: sap@1c710000 {
+		sap: sap@1c610000 {
 		compatible = "mediatek,sap";
 		status = "okay";
 		core-id = /bits/8 <0x02>;
-		l2tcm-offset = <0x0b0000>;
+		l2tcm-offset = <0x210000>;
 		secure-dump-size = <0x24000>;
 		reg = <0 0x1cb3a000 0 0x1000>,
 			<0 0x1cbc0000 0 0x20000>,
-			<0 0x1cbff000 0 0x100>, /* mbox0 base, using mbox5's hw */
-			<0 0x1cbff100 0 0x4>, /* mbox0 set, using mbox5's hw */
-			<0 0x1cbff108 0 0x4>, /* mbox0 clr, using mbox5's hw */
-			<0 0x1cba5030 0 0x4>; /* mbox0 init, using mbox5's hw */
+			<0 0x1cbff000 0 0x100>, /* mbox0 base, using mbox4's hw */
+			<0 0x1cbff100 0 0x4>, /* mbox0 set, using mbox4's hw */
+			<0 0x1cbff10c 0 0x4>, /* mbox0 clr, using mbox4's hw */
+			<0 0x1cba5030 0 0x4>; /* mbox0 init, using mbox4's hw */
 		reg-names = "sap_cfg_reg",
 			"sap_l1cache",
 			"mbox0_base",
