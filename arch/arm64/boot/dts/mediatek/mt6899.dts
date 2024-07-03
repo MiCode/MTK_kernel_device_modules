@@ -4812,20 +4812,64 @@
 
 		hcp: hcp@15001000 {
 			compatible = "mediatek,hcp8";
-			//dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			reg = <0 0x15001000 0 0x4000>;
-			//mtk,smmu-shared = <&mm_smmu_cam>;
+			iommus = <&mdp_iommu M4U_L15_P0_VIPI_D1>;
 		};
 
 		imgsys_cmdq: imgsys-cmdq@15002000 {
 			compatible = "mediatek,imgsys-cmdq-8";
-			//dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			reg = <0 0x15002000 0 0x4000>;
+			iommus = <&mdp_iommu M4U_L15_P0_VIPI_D1>;
 		};
+
+		imgsys_acp: imgsys-acp@15003000 {
+			compatible = "mediatek,imgsys-isp8-acp-mt6899";
+			reg = <0 0x15003000 0 0x4000>;
+			mediatek,imgsys-coherent = "disable";
+		};
+
+		img_frm_sync: img-frm-sync@15004000 {
+			compatible = "mediatek,imgsys-frm-sync-isp8";
+			//dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			reg = <0 0x15003000 0 0x4000>;
+			//mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			dpe-sw-sync-token-pool-1 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+			dpe-sw-sync-token-pool-2 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_2>;
+			dpe-sw-sync-token-pool-3 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_3>;
+			dpe-sw-sync-token-pool-4 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_4>;
+			dpe-sw-sync-token-pool-5 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_5>;
+			dpe-sw-sync-token-pool-6 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_6>;
+			dpe-sw-sync-token-pool-7 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_7>;
+			dpe-sw-sync-token-pool-8 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_8>;
+			dpe-sw-sync-token-pool-9 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_9>;
+			dpe-sw-sync-token-pool-10 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_10>;
+			dpe-sw-sync-token-pool-11 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_11>;
+			dpe-sw-sync-token-pool-12 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_12>;
+			dpe-sw-sync-token-pool-13 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_13>;
+			dpe-sw-sync-token-pool-14 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_14>;
+			dpe-sw-sync-token-pool-15 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_15>;
+			dpe-sw-sync-token-pool-16 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_16>;
+		};
+
 
 		imgsys_fw: imgsys-fw@15000000 {
 			compatible = "mediatek,imgsys-isp8-mt6899";
-			//dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			reg = <0 0x15000000 0 0x4000>,	/* 0 IMGSYS_TOP */
 					<0 0x15700000 0 0x10000>,	/* 1 IMGSYS_TRAW */
 					<0 0x15040000 0 0x10000>,	/* 2 IMGSYS_LTRAW */
@@ -4851,12 +4895,12 @@
 					<0 0x15710000 0 0x00100>,	/* 22 IMGSYS_TRAW_DIP1 */
 					<0 0x15080000 0 0x10000>,	/* 23 IMGSYS_ME_MMG */
 					<0 0x15780000 0 0x00100>;	/* 24 IMGSYS_VCORE */
-			#if 0
+#if 0
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
-			#endif
+#endif
 			mediatek,hcp = <&hcp>;
-			#if 0
 			mediatek,img-frm-sync = <&img_frm_sync>;
+#if 0
 			mediatek,larbs = <&smi_larb15>,
 					<&smi_larb9>,
 					<&smi_larb39>,
@@ -4867,13 +4911,12 @@
 					<&smi_larb10>,
 					<&smi_larb22>,
 					<&smi_larb23>;
-			#endif
+#endif
 			mediatek,imgsys-cmdq = <&imgsys_cmdq>;
-			mediatek,imgsys-ddr-en = <4>;
-			#if 0
-			mtk,smmu-shared = <&mm_smmu_cam>;
+			iommus = <&disp_iommu M4U_L28_P0_IMGI_T1_A>;
+#if 0
 			imgsys-supply = <&gce_m_sec>;
-			#endif
+#endif
 			mboxes =
 					/* normal thread */
 					<&gce_m 0 3000 CMDQ_THR_PRIO_2>,
@@ -4897,9 +4940,10 @@
 					<&gce_m 31 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 					/* qos thread */
 					<&gce_m 6 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
-				#if 0
+#if 0
 					/* secure thread */
 					<&gce_m_sec 10 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
+#endif
 					/* thread list end */
 				traw-cq-thread0-frame-done =
 					/bits/ 16 <CMDQ_EVENT_IMG_TRAW0_CQ_THR_DONE_TRAW0_0>;
@@ -5671,7 +5715,7 @@
 				sw-sync-token-camsys-pool-10 =
 					/bits/ 16 <CMDQ_SYNC_TOKEN_CAMSYS_POOL_10>;
 #endif
-
+#if 0
 			clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP_CAMERA_P2>,
 				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
 				<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_CAMERA_P2>,
@@ -5807,13 +5851,10 @@
 				"TRAW_CAP_DIP1_TRAW_CAP",
 				"mmdvfs_mux";
 			operating-points-v2 = <&opp_table_img>;
-			mediatek,imgsys-dvfs-pix-mode = <4>;
-			mediatek,imgsys-hwqos-support;
-			hwqos-sync-token =
-					/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_QOS_LOCK>;
+			mediatek,imgsys-dvfs-pix-mode = <2>;
 			mmqos-supply = <&mmqos>;
-			mediatek,imgsys-qof-ver = <31>;
-			#endif
+#endif
+			mediatek,imgsys-qof-ver = <0>;
 			mediatek,imgsys-ver = <1>;
 		};
 
