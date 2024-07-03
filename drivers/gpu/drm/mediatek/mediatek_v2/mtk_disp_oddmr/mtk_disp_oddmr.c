@@ -5141,7 +5141,7 @@ int mtk_oddmr_hrt_cal_notify(int *oddmr_hrt)
 	int temp_hrt = 0;
 
 	ODDMRAPI_LOG("+\n");
-	if (!default_comp || !g_oddmr_priv)
+	if (!default_comp || !g_oddmr_priv || !default_comp->mtk_crtc || !default_comp->mtk_crtc->base.dev)
 		return 0;
 	struct mtk_drm_private *priv = default_comp->mtk_crtc->base.dev->dev_private;
 
@@ -10792,6 +10792,24 @@ static const struct mtk_disp_oddmr_data mt6897_oddmr_driver_data = {
 	.irq_handler = mtk_oddmr_check_framedone,
 };
 
+static const struct mtk_disp_oddmr_data mt6899_oddmr_driver_data = {
+	.need_bypass_shadow = true,
+	.is_od_support_table_update = false,
+	.is_support_rtff = false,
+	.is_od_support_hw_skip_first_frame = false,
+	.is_od_need_crop_garbage = false,
+	.is_od_need_force_clk = false,
+	.is_od_support_sec = false,
+	.is_od_merge_lines = true,
+	.is_od_4_table = true,
+	.p_num = 2,
+	.tile_overhead = 8,
+	.dmr_buffer_size = 458,
+	.odr_buffer_size = 960,
+	.odw_buffer_size = 960,
+	.irq_handler = mtk_oddmr_check_framedone,
+};
+
 static const struct mtk_disp_oddmr_data mt6989_oddmr_driver_data = {
 	.need_bypass_shadow = true,
 	.is_od_support_table_update = false,
@@ -10841,6 +10859,8 @@ static const struct of_device_id mtk_disp_oddmr_driver_dt_match[] = {
 	  .data = &mt6989_oddmr_driver_data},
 	{ .compatible = "mediatek,mt6991-disp-oddmr",
 	  .data = &mt6991_oddmr_driver_data},
+	{ .compatible = "mediatek,mt6899-disp-oddmr",
+	  .data = &mt6899_oddmr_driver_data},
 	{},
 };
 

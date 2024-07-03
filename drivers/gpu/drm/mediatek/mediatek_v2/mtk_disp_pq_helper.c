@@ -124,6 +124,7 @@ void disp_pq_path_sel_set(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle
 	case MMSYS_MT6989:
 	case MMSYS_MT6991:
 	case MMSYS_MT6897:
+	case MMSYS_MT6899:
 		addr = DISP_REG_PQ_PATH_SEL;
 		value = pq_path_sel > 0 ? pq_path_sel : 1;
 		value = value | value << 8;
@@ -137,6 +138,7 @@ void disp_pq_path_sel_set(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base, config_regs_pa + DISP_REG_PQ_PATH_SEL, value, ~0);
 	else
 		writel(value, config_regs + DISP_REG_PQ_PATH_SEL);
+
 	if (mtk_crtc->is_dual_pipe && handle)
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base, side_config_regs_pa + DISP_REG_PQ_PATH_SEL, value, ~0);
 	else if (mtk_crtc->is_dual_pipe)
