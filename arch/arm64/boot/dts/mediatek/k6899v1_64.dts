@@ -216,10 +216,11 @@
 		};
 	};
 	panel2@1 {
-		compatible = "jdi,nt36672e,vdo,60hz";
-		reg = <0>;
+		compatible = "nt37801,cmd,120hz";
+		reg = <1>;
 		pm-enable-gpios = <&pio 64 0>;
 		reset-gpios = <&pio 41 0>;
+		// res-switch = <2>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
@@ -230,7 +231,7 @@
 	};
 	panel3@2 {
 		compatible = "truly,td4330,cmd";
-		reg = <0>;
+		reg = <2>;
 		pm-enable-gpios = <&pio 64 0>;
 		reset-gpios = <&pio 41 0>;
 		gate-ic = <4831>;
