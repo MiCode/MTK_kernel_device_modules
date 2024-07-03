@@ -9524,6 +9524,7 @@
 	};
 };
 
+#include "mediatek/mt6685.dtsi"
 #include "mediatek/trusty.dtsi"
 #include "mediatek/cust_mt6899_connfem.dtsi"
 #include "mediatek/mt6899-clkitg.dtsi"
@@ -9673,6 +9674,10 @@
 			compatible = "richtek,rt6160-dbg";
 		};
 	};
+};
+
+&mt6685_rtc {
+	status = "okay";
 };
 
 #if 0
