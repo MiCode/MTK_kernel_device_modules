@@ -26,8 +26,10 @@
 
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #include <dt-bindings/clock/mmdvfs-clk.h>
+#include <dt-bindings/memory/mtk-smi-user.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include "mtk-mmdvfs-v3-memory.h"
+#include "mtk-smi-dbg.h"
 
 #include "mtk_dpc_v1.h"
 #include "mtk_dpc_mmp.h"
@@ -67,18 +69,6 @@ module_param(dbg_vlp_backtrace, int, 0644);
 
 #define DPC_DEBUG_RTFF_CNT 10
 static void __iomem *debug_rtff[DPC_DEBUG_RTFF_CNT];
-
-enum mtk_base_id {
-	DPC_BASE,
-	VLP_BASE,
-	SPM_BASE,
-	HW_VOTE_STATE,
-	VDISP_DVFSRC_DEBUG,
-	VDISP_DVFSRC_EN,
-	VCORE_DVFSRC_DEBUG,
-	MMINFRA_HANG_FREE,
-	DPC_SYS_REGS_CNT,
-};
 
 #define MTK_DPC_MMDVFS_MAX_COUNT   2
 static unsigned int mtk_dpc_mmdvfs_settings_dirty;
@@ -138,47 +128,6 @@ static const char *mtk_dpc_idle_name[DPC_IDLE_ID_MAX] = {
 	"WINDOW_VIDLE",
 };
 
-enum mtk_dpc_state {
-	DPC_STATE_NULL,
-	DPC_STATE_ON,
-	DPC_STATE_OFF,
-};
-
-struct mtk_dpc {
-	struct platform_device *pdev;
-	struct device *dev;
-	struct device *pd_dev;
-	struct notifier_block pm_nb;
-	int disp_irq;
-	int mml_irq;
-	unsigned int vidle_mask;
-	resource_size_t dpc_pa;
-	resource_size_t vlp_pa;
-	void __iomem *sys_va[DPC_SYS_REGS_CNT];
-	struct cmdq_client *cmdq_client;
-	atomic_t dpc_en_cnt;
-	bool skip_force_power;
-	spinlock_t skip_force_power_lock;
-	wait_queue_head_t dpc_state_wq;
-	atomic_t dpc_state;
-#if IS_ENABLED(CONFIG_DEBUG_FS)
-	struct dentry *fs;
-#endif
-	struct mtk_dpc_dvfs_bw dvfs_bw;
-	unsigned int mmsys_id;
-	struct mtk_dpc_dt_usage *disp_cmd_dt_usage;
-	struct mtk_dpc_dt_usage *mml_cmd_dt_usage;
-	struct mtk_dpc_dt_usage *disp_vdo_dt_usage;
-	struct mtk_dpc_dt_usage *mml_vdo_dt_usage;
-	struct timer_list dpc_timer;
-	wait_queue_head_t dpc_mtcmos_wq;
-	atomic_t dpc_mtcmos_timeout;
-	bool mmdvfs_power_sync;
-	unsigned int mmdvfs_settings_count;
-	unsigned int *mmdvfs_settings_addr;
-	unsigned int mtcmos_mask;
-	unsigned int (*get_sys_status)(enum dpc_sys_status_id, unsigned int *status);
-};
 static struct mtk_dpc *g_priv;
 static unsigned int g_vidle_events;
 static atomic_t g_vidle_window;
@@ -195,6 +144,7 @@ static atomic_t is_mminfra_ctrl_by_dpc;
 static unsigned int g_idle_ratio_debug;
 static unsigned long long g_idle_period[DPC_IDLE_ID_MAX] = {0};
 static unsigned long long g_idle_start[DPC_IDLE_ID_MAX] = {0};
+static atomic_t g_smi_user_cnt;
 
 #define mtk_dpc_support_cap(id) (g_priv && (g_priv->vidle_mask & (0x1 << id)))
 
@@ -4070,6 +4020,39 @@ static int dpc_pm_notifier(struct notifier_block *notifier, unsigned long pm_eve
 	return NOTIFY_DONE;
 }
 
+static int dpc_smi_user_pwr_get(void *data)
+{
+	atomic_inc(&g_smi_user_cnt);
+	if (atomic_read(&g_smi_user_cnt) > 1 || g_priv->vidle_mask == 0)
+		return 0;
+
+	dpc_vidle_power_keep_v1(DISP_VIDLE_USER_SMI_DUMP);
+	g_priv->vidle_mask_bk = g_priv->vidle_mask;
+	g_priv->vidle_mask = 0;
+	return 0;
+}
+static int dpc_smi_user_pwr_put(void *data)
+{
+	if (atomic_read(&g_smi_user_cnt) == 0)
+		return 0;
+
+	atomic_dec(&g_smi_user_cnt);
+	if (atomic_read(&g_smi_user_cnt) > 0 || g_priv->vidle_mask_bk == 0)
+		return 0;
+
+	g_priv->vidle_mask = g_priv->vidle_mask_bk;
+	g_priv->vidle_mask_bk = 0;
+	dpc_vidle_power_release_v1(DISP_VIDLE_USER_SMI_DUMP);
+	return 0;
+}
+static struct smi_user_pwr_ctrl dpc_smi_user_pwr_funcs = {
+	 .name = "disp_dpc",
+	 .data = NULL,
+	 .smi_user_id =  MTK_SMI_DISP,
+	 .smi_user_get = dpc_smi_user_pwr_get,
+	 .smi_user_put = dpc_smi_user_pwr_put,
+};
+
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 static void process_dbg_opt(const char *opt)
 {
@@ -4421,6 +4404,7 @@ static int mtk_dpc_probe_v1(struct platform_device *pdev)
 	mtk_vidle_register(&funcs_v1, DPC_VER1);
 	mml_dpc_register(&funcs_v1, DPC_VER1);
 	mdp_dpc_register(&funcs_v1, DPC_VER1);
+	mtk_smi_dbg_register_pwr_ctrl_cb(&dpc_smi_user_pwr_funcs);
 
 	if (priv->mmdvfs_settings_count > 0)
 		mmdvfs_rc_enable_set_fp(&mtk_dpc_mmdvfs_notifier);
@@ -4451,6 +4435,7 @@ static int mtk_dpc_probe_v1(struct platform_device *pdev)
 	atomic_set(&g_disp_group_auto, 0);
 	atomic_set(&g_mml_group_auto, 0);
 	atomic_set(&is_mminfra_ctrl_by_dpc, 0);
+	atomic_set(&g_smi_user_cnt, 0);
 	if (dbg_runtime_ctrl) {
 		dbg_mmp = 0;
 		dbg_irq = 0;
