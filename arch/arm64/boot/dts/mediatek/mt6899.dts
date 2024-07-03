@@ -16011,10 +16011,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				      <&mt6375_auxadc MT6375_AUXADC_BATSNS_DBG>;
 			io-channel-names = "chg_vbat", "auxadc_vbat";
 			charger = <&mt6375_chg>;
-			//isink-load-supply = <&mt6363_isink_load>;
-			imix-r {
-				val = <90>;
-			};
 		};
 		mtk_gauge: mtk-gauge {
 			compatible = "mediatek,mt6375-gauge";
