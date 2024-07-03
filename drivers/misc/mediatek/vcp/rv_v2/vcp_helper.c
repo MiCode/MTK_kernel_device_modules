@@ -699,6 +699,7 @@ static const char *get_module_by_taskname(const char *taskname)
 void trigger_vcp_dump(enum vcp_core_id core_id, char *user)
 {
 	int i, j;
+	int timeout = 50000; /* max wait 0.5s */
 
 	i = 0;
 	while (!mutex_trylock(&vcp_pw_clk_mutex)) {
@@ -721,7 +722,14 @@ void trigger_vcp_dump(enum vcp_core_id core_id, char *user)
 		/* trigger vcp dump */
 		if (vcpreg.core_nums == 2) {
 			writel(GIPC_MMUP_DUMP, R_GIPC_IN_SET);
-			udelay(1);
+			while ((readl(R_GIPC_IN_SET) & GIPC_MMUP_DUMP)) {
+				if (timeout == 0) {
+					pr_notice("[MMUP] %s failed %x\n", __func__, readl(R_GIPC_IN_SET));
+					break;
+				}
+				timeout --;
+				udelay(10);
+			}
 		}
 		writel(GIPC_VCP_HART0_DUMP, R_GIPC_IN_SET);
 		for (j = 0; j < NUM_FEATURE_ID; j++)
