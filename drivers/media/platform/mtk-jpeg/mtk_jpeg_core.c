@@ -19,6 +19,7 @@
 #include <linux/spinlock.h>
 #include <linux/pm_opp.h>
 #include <linux/regulator/consumer.h>
+#include <linux/jiffies.h>
 #include <media/v4l2-event.h>
 #include <media/v4l2-mem2mem.h>
 #include <media/v4l2-ioctl.h>
@@ -1449,6 +1450,7 @@ static void mtk_jpeg_enc_device_run(void *priv)
 	mtk_jpeg_set_enc_src(ctx, jpeg->reg_base, &src_buf->vb2_buf);
 	mtk_jpeg_set_enc_dst(ctx, jpeg->reg_base, &dst_buf->vb2_buf);
 	mtk_jpeg_set_enc_params(ctx, jpeg->reg_base);
+	ctx->time_start = jiffies_to_nsecs(jiffies);
 	mtk_jpeg_enc_start(jpeg->reg_base);
 	ctx->state = MTK_JPEG_RUNNING;
 	spin_unlock_irqrestore(&jpeg->hw_lock, flags);
@@ -1652,7 +1654,7 @@ static irqreturn_t mtk_jpeg_enc_done(struct mtk_jpeg_dev *jpeg)
 		v4l2_err(&jpeg->v4l2_dev, "Context is NULL\n");
 		return IRQ_HANDLED;
 	}
-
+	ctx->time_end = jiffies_to_nsecs(jiffies);
 
 	src_buf = v4l2_m2m_src_buf_remove(ctx->fh.m2m_ctx);
 	dst_buf = v4l2_m2m_dst_buf_remove(ctx->fh.m2m_ctx);
@@ -1667,6 +1669,7 @@ static irqreturn_t mtk_jpeg_enc_done(struct mtk_jpeg_dev *jpeg)
 
 	dst_buf->vb2_buf.timestamp = src_buf->vb2_buf.timestamp;
 	result_size = mtk_jpeg_enc_get_file_size(jpeg->reg_base, jpeg->support_34bits);
+	ctx->size_output = result_size;
 	vb2_set_plane_payload(&dst_buf->vb2_buf, 0, result_size);
 
 	buf_state = VB2_BUF_STATE_DONE;
@@ -1874,6 +1877,10 @@ static int mtk_jpeg_release(struct file *file)
 	#endif
 		pm_runtime_put(ctx->jpeg->dev);
 	}
+	if ((ctx->size_output != 0) && (ctx->time_end != 0))
+		pr_info("%s  time(ms) %lld outsize %d\n", __func__,
+			NS_TO_MS(ctx->time_end - ctx->time_start),
+			ctx->size_output);
 	mutex_lock(&jpeg->lock);
 	v4l2_m2m_ctx_release(ctx->fh.m2m_ctx);
 	v4l2_ctrl_handler_free(&ctx->ctrl_hdl);
