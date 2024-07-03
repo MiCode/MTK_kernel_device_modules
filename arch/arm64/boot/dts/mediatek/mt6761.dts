@@ -4191,10 +4191,10 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		interconnect-names = "fpsgo-perf-bw";
 		required-opps = <&dvfsrc_freq_opp0>;
 
-		adj_count = <30>;
-		gcc_enable = <0>;
-		fbt_cpu_mask = <15 15 15 15>;
-		sbe_resceue_enable = <1>;
+		gcc-enable = <0>;
+		fbt-cpu-mask = <15 15 15 15>;
+		sbe-resceue-enable = <1>;
+		boost-dram = <2>;
 	};
 
 	dram_ctrl {
