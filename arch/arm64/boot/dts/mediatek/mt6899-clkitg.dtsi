@@ -722,14 +722,7 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x1d>;
 		clocks =
-			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SYS_UFS>,
-			<&ufscfg_ao_clk CLK_UFSAO_U_PHY_SAP_UFS>,
-			<&ufscfg_ao_clk CLK_UFSAO_U_PHY_TOP_AHB_S_BUSCK_UFS>,
 			<&ufscfg_ao_clk CLK_UFSAO_U_AO_FREE_26M_UFS>,
-			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_UFS_UFS>,
-			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_AES_UFS>,
-			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_U_AHB_UFS>,
-			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_U_AXI_UFS>,
 			<&ufscfg_pdn_clk CLK_UFSPDN_U_FREE_26M_UFS>;
 	};
 

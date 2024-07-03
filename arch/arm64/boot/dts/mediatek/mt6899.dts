@@ -18,12 +18,14 @@
 #include <dt-bindings/memory/mt6899-larb-port.h>
 #include <dt-bindings/memory/mtk-smi-user.h>
 #include <dt-bindings/pinctrl/mt6899-pinfunc.h>
+#include <dt-bindings/reset/ti-syscon.h>
 #include <dt-bindings/iio/adc/mediatek,mt6375_auxadc.h>
 #include <dt-bindings/iio/adc/mediatek,mt6375_adc.h>
 #include <dt-bindings/mfd/mt6375.h>
 #include <dt-bindings/power/mt6375-gauge.h>
 #include <dt-bindings/power/mtk-charger.h>
 #include <dt-bindings/interconnect/mtk,emi.h>
+
 
 / {
 	model = "MT6899";
@@ -836,15 +838,45 @@
 	};
 
 	ufscfg_ao_clk: syscon@112b8000 {
-		compatible = "mediatek,mt6899-ufscfg_ao", "syscon";
+		compatible = "mediatek,mt6899-ufscfg_ao", "syscon", "simple-mfd";
 		reg = <0 0x112b8000 0 0x1000>;
 		#clock-cells = <1>;
+
+		ufscfgao_rst: reset-controller {
+			compatible = "ti,syscon-reset";
+			#reset-cells = <1>;
+
+			ti,reset-bits = <
+				/* ufs mphy reset */
+				/* 0: mphy */
+				0x48   9 0x4c   9 0 0
+				(ASSERT_SET | DEASSERT_SET | STATUS_NONE)
+				>;
+		};
 	};
 
 	ufscfg_pdn_clk: syscon@112bb000 {
-		compatible = "mediatek,mt6899-ufscfg_pdn", "syscon";
+		compatible = "mediatek,mt6899-ufscfg_pdn", "syscon", "simple-mfd";
 		reg = <0 0x112bb000 0 0x1000>;
 		#clock-cells = <1>;
+
+		ufscfgpdn_rst: reset-controller {
+			compatible = "ti,syscon-reset";
+			#reset-cells = <1>;
+
+			ti,reset-bits = <
+				/* ufs hci / crypto / unipro reset */
+				/* 0: unipro */
+				0x48  0 0x4c  0 0 0
+				(ASSERT_SET | DEASSERT_SET | STATUS_NONE)
+				/* 1: ufs-crypto */
+				0x48  1 0x4c  1 0 0
+				(ASSERT_SET | DEASSERT_SET | STATUS_NONE)
+				/* 2: ufshci */
+				0x48  2 0x4c  2 0 0
+				(ASSERT_SET | DEASSERT_SET | STATUS_NONE)
+				>;
+		};
 	};
 
 	imp_iic_wrap_en_clk: syscon@11b71000 {
@@ -12131,6 +12163,7 @@
 			compatible = "mediatek,mt8183-ufshci";
 			reg = <0 0x112b0000 0 0x2a00>;
 			phys = <&ufsphy>;
+
 			interrupts = <GIC_SPI 707 IRQ_TYPE_LEVEL_HIGH 0>,
 				     <GIC_SPI 716 IRQ_TYPE_LEVEL_HIGH 0>,
 				     <GIC_SPI 717 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -12140,7 +12173,6 @@
 				     <GIC_SPI 721 IRQ_TYPE_LEVEL_HIGH 0>,
 				     <GIC_SPI 722 IRQ_TYPE_LEVEL_HIGH 0>,
 				     <GIC_SPI 723 IRQ_TYPE_LEVEL_HIGH 0>;
-#if 0 /* UFS owenr */
 
 			clocks =
 				<&topckgen_clk CLK_TOP_U_SEL>,
@@ -12149,17 +12181,13 @@
 				<&topckgen_clk CLK_TOP_AES_UFSFDE_SEL>,
 				<&topckgen_clk CLK_TOP_UNIVPLL_D6>,
 				<&topckgen_clk CLK_TOP_MAINPLL_D4>,
-				<&topckgen_clk CLK_TOP_U_MBIST_SEL>,
-				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_TX_SYM>,
-				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM0>,
-				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM1>,
-				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SYS>,
-				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_PHY_SAP>,
-				<&ufscfg_ao_clk CLK_UFSAO_PERI2UFS_BRIDGE_H>,
-				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_UFS>,
-				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_AES>,
-				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_U_AHB>,
-				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_U_AXI>;
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SYS_UFS>,
+				<&ufscfg_ao_clk CLK_UFSAO_U_PHY_SAP_UFS>,
+				<&ufscfg_ao_clk CLK_UFSAO_U_PHY_TOP_AHB_S_BUSCK_UFS>,
+				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_UFS_UFS>,
+				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_AES_UFS>,
+				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_U_AHB_UFS>,
+				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_U_AXI_UFS>;
 
 			clock-names =
 				"ufs_sel",
@@ -12168,17 +12196,13 @@
 				"ufs_fde",
 				"ufs_fde_min_src",
 				"ufs_fde_max_src",
-				"ufs_mbist",
-				"unipro_tx_sym",
-				"unipro_rx_sym0",
-				"unipro_rx_sym1",
 				"unipro_sys",
-				"unipro_phy_sap",
-				"prei2ufs_bridge",
+				"phy_sap",
+				"phy_top_ahb_s_busck",
 				"ufshci_ufs",
 				"ufshci_aes",
-				"ufshci_ufs_ahb",
-				"ufshci_aes_axi";
+				"ufshci_u_ahb",
+				"ufshci_u_axi";
 
 			freq-table-hz =
 				<273000000 499200000>,
@@ -12193,18 +12217,7 @@
 				<0 0>,
 				<0 0>,
 				<0 0>,
-				<0 0>,
-				<0 0>,
-				<0 0>,
-				<0 0>,
 				<0 0>;
-
-			/* for clock scaling bind vcore */
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-			/* 0.65V for clock scale up */
-			clk-scale-up-vcore-min = <650000>;
-
-			vcc-supply = <&mt6363_vemc>;
 
 			resets =	<&ufscfgpdn_rst 0>,
 					<&ufscfgpdn_rst 1>,
@@ -12212,19 +12225,26 @@
 			reset-names =	"unipro_rst",
 					"crypto_rst",
 					"hci_rst";
+
+			vcc-supply = <&mt6363_vemc>;
+
+#if 0 /* UFS owenr */
+
+			/* for clock scaling bind vcore */
+			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			/* 0.65V for clock scale up */
+			clk-scale-up-vcore-min = <650000>;
+
 			/*
 			 * Control mtcmos with rtff flow by ufs driver,
 			 * Instead of scpsys by PM flow.
 			 */
 			mediatek,ufs-rtff-mtcmos;
 #endif
-
 			mediatek,ufs-qos;
 			mediatek,ufs-pmc-via-fastauto;
 			mediatek,ufs-mphy-debug;
 			mediatek,ufs-tx-skew-fix;
-			mediatek,ufs-disable-mcq;
-			mediatek,ufs-disable-ah8;
 
 			bootmode = <&chosen>;
 		};
@@ -14572,10 +14592,6 @@
 };
 
 &mt6363_vufs12 {
-	regulator-always-on;
-};
-
-&mt6363_vemc {
 	regulator-always-on;
 };
 
