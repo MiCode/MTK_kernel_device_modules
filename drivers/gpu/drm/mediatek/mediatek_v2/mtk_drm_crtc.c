@@ -5879,10 +5879,7 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	if (priv->data->respective_ostdl) {
 		if (bw_base == 0)
 			bw_base = mtk_drm_primary_frame_bw(crtc);
-		if (priv->data->ovl_exdma_rule)
-			mtk_disp_set_module_hrt(mtk_crtc, bw_base, cmdq_handle, PMQOS_SET_HRT_BW_DELAY);
-		else
-			mtk_disp_set_module_hrt(mtk_crtc, bw_base, cmdq_handle, PMQOS_SET_HRT_BW);
+		mtk_disp_set_module_hrt(mtk_crtc, bw_base, cmdq_handle, PMQOS_SET_HRT_BW_DELAY);
 	}
 
 	CRTC_MMP_MARK(0, atomic_begin, (unsigned long)cmdq_handle, __LINE__);
@@ -8097,7 +8094,7 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 	if (crtc_idx == 0)
 		wake_up(&mtk_crtc->qos_ctx->hrt_cond_wq);
 
-	if (priv->data->respective_ostdl && priv->data->ovl_exdma_rule)
+	if (priv->data->respective_ostdl)
 		mtk_disp_set_module_hrt(mtk_crtc, 0, NULL, PMQOS_SET_HRT_BW_DELAY_POST);
 
 	cur_hrt_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_HRT_LEVEL);

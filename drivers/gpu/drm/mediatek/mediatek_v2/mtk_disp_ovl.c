@@ -937,6 +937,7 @@ static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
 	unsigned int lye_id = plane_state->comp_state.lye_id;
 	unsigned int ext_lye_id = plane_state->comp_state.ext_lye_id;
+	int crtc_idx = drm_crtc_index(&mtk_crtc->base);
 	unsigned int fmt;
 	unsigned int phy_id = 0;
 
@@ -947,19 +948,33 @@ static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
 				plane_state->comp_state.ext_lye_id);
 		return;
 	}
-	DDPINFO("%s ovl:%d,lye:%d,ext:%d,fmt:0x%x, addr:0x%llx\n", __func__,
+	DDPINFO("%s ovl:%d,lye:%d,ext:%d,fmt:0x%x, addr:0x%llx,comp:%d\n", __func__,
 			plane_state->comp_state.comp_id,
 			plane_state->comp_state.lye_id,
 			plane_state->comp_state.ext_lye_id,
 			plane_state->base.fb->format->format,
-			mtk_fb_get_dma(plane_state->base.fb));
+			mtk_fb_get_dma(plane_state->base.fb),
+			 plane_state->prop_val[PLANE_PROP_COMPRESS]);
 
 	fmt = plane_state->base.fb->format->format;
 
 	if (ovl->data->ovl_phy_mapping) {
 		phy_id = ovl->data->ovl_phy_mapping(comp);
-		if (ext_lye_id == 0)
+		if (ext_lye_id == 0) {
+			if ((plane_state->mml_mode == MML_MODE_RACING) ||
+				(plane_state->mml_mode == MML_MODE_DIRECT_LINK)) {
+				DDPINFO("%s,ignore mml m:%d-%d,crtc:%u,ovl:%u,l:%u,fmt:0x%x,bpp:%u\n",
+					__func__, plane_state->mml_mode,
+					plane_state->pending.mml_mode,
+					crtc_idx, comp->id, phy_id + lye_id,
+					fmt, mtk_crtc->usage_ovl_fmt[(phy_id + lye_id)]);
+				return;
+			}
+
 			mtk_crtc->usage_ovl_fmt[(phy_id + lye_id)] = mtk_get_format_bpp(fmt);
+			mtk_crtc->usage_ovl_compr[(phy_id + lye_id)] =
+					plane_state->prop_val[PLANE_PROP_COMPRESS];
+		}
 	}
 }
 
@@ -4501,37 +4516,225 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	case PMQOS_SET_HRT_BW: {
 		u32 bw_val = *(unsigned int *)params;
 		struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
-		unsigned int phy_id = 0;
+		unsigned int phy_id = 0, port_bw = bw_val, total_bw = 0, hdr_bw = 0;
 		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
 			break;
-		if (priv->data->respective_ostdl) {
-			if (ovl->data->ovl_phy_mapping)
-				phy_id = ovl->data->ovl_phy_mapping(comp);
 
-			if (mtk_crtc->usage_ovl_fmt[phy_id])
-				__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, bw_val,
-					priv->data->respective_ostdl);
-			else
-				__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, 0,
-					priv->data->respective_ostdl);
-
-			if (!IS_ERR(comp->hrt_qos_req_other)) {
-				if(mtk_crtc->usage_ovl_fmt[phy_id + 1])
-					__mtk_disp_set_module_hrt(comp->hrt_qos_req_other, comp->id, bw_val,
-						priv->data->respective_ostdl);
-				else
-					__mtk_disp_set_module_hrt(comp->hrt_qos_req_other, comp->id, 0,
-						priv->data->respective_ostdl);
-			}
-		} else {
+		if (!priv->data->respective_ostdl) {
 			__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, bw_val,
 				priv->data->respective_ostdl);
 			if (!IS_ERR(comp->hrt_qos_req_other))
 				__mtk_disp_set_module_hrt(comp->hrt_qos_req_other, comp->id, bw_val,
 					priv->data->respective_ostdl);
+			ret = OVL_REQ_HRT;
+			break;
+		}
+
+		if (ovl->data->ovl_phy_mapping)
+			phy_id = ovl->data->ovl_phy_mapping(comp);
+
+		if (!IS_ERR_OR_NULL(comp->hrt_qos_req)) {
+			port_bw = (bw_val * mtk_crtc->usage_ovl_fmt[phy_id]) >> 2;
+			if (comp->last_hrt_bw != port_bw) {
+				DDPQOS("%s/%u,layer:%u update:%u->%u compress:%d bw:%u\n",
+					mtk_dump_comp_str_id(comp->id), comp->id, phy_id, comp->last_hrt_bw,
+					port_bw, mtk_crtc->usage_ovl_compr[phy_id], bw_val);
+				__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, port_bw,
+					priv->data->respective_ostdl);
+				comp->last_hrt_bw = port_bw;
+			}
+			if (port_bw && mtk_crtc->usage_ovl_compr[phy_id])
+				total_bw += port_bw;
+		}
+		if (!IS_ERR_OR_NULL(comp->hrt_qos_req_other)) {
+			port_bw = (bw_val * mtk_crtc->usage_ovl_fmt[phy_id + 1]) >> 2;
+			if (comp->last_hrt_bw_other != port_bw) {
+				DDPQOS("%s/%u,layer:%u update:%u->%u compress:%d bw:%u\n",
+					mtk_dump_comp_str_id(comp->id), comp->id, phy_id, comp->last_hrt_bw_other,
+					port_bw, mtk_crtc->usage_ovl_compr[phy_id + 1], bw_val);
+				__mtk_disp_set_module_hrt(comp->hrt_qos_req_other, comp->id, port_bw,
+					priv->data->respective_ostdl);
+				comp->last_hrt_bw_other = port_bw;
+			}
+			if (port_bw && mtk_crtc->usage_ovl_compr[phy_id + 1])
+				total_bw += port_bw;
+		}
+
+		if (!IS_ERR_OR_NULL(comp->hdr_qos_req)) {
+			if (total_bw)
+				hdr_bw = (total_bw > 32) ? total_bw / 32 : 1;
+
+			if (comp->last_hdr_bw != hdr_bw) {
+				DDPQOS("%s/%u,layer:%u update hdr:%u->%u compress:%d/%d total:%u bw:%u\n",
+					mtk_dump_comp_str_id(comp->id), comp->id, phy_id,
+					comp->last_hdr_bw, hdr_bw, mtk_crtc->usage_ovl_compr[phy_id],
+					mtk_crtc->usage_ovl_compr[phy_id + 1], total_bw, bw_val);
+				__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, hdr_bw,
+					priv->data->respective_ostdl);
+				comp->last_hdr_bw = hdr_bw;
+			}
+		}
+
+		ret = OVL_REQ_HRT;
+		break;
+	}
+	case PMQOS_SET_HRT_BW_DELAY: {
+		u32 bw_val = *(unsigned int *)params;
+		struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
+		unsigned int phy_id = 0, port_bw = bw_val, total_bw = 0, hdr_bw = 0;
+		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+
+		if (!mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_MMQOS_SUPPORT))
+			break;
+
+		if (!priv->data->respective_ostdl)
+			break;
+
+		if (!handle) {
+			DDPPR_ERR("no cmdq handle\n");
+			break;
+		}
+
+		if (ovl->data->ovl_phy_mapping)
+			phy_id = ovl->data->ovl_phy_mapping(comp);
+
+		if (!IS_ERR_OR_NULL(comp->hrt_qos_req)) {
+			port_bw = (bw_val * mtk_crtc->usage_ovl_fmt[phy_id]) >> 2;
+			if (port_bw > comp->last_hrt_bw) {
+				DDPQOS("%s/%u,layer:%u fast up:%u->%u compress:%d\n",
+					mtk_dump_comp_str_id(comp->id), comp->id, phy_id,
+					comp->last_hrt_bw, port_bw, mtk_crtc->usage_ovl_compr[phy_id]);
+				__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, port_bw,
+					priv->data->respective_ostdl);
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_BW_VAL(phy_id)),
+					NO_PENDING_HRT, ~0);
+			} else if (port_bw < comp->last_hrt_bw) {
+				DDPQOS("%s/%u,layer:%u slow down:%u->%u compress:%d\n",
+					mtk_dump_comp_str_id(comp->id), comp->id, phy_id,
+					comp->last_hrt_bw, port_bw, mtk_crtc->usage_ovl_compr[phy_id]);
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_BW_VAL(phy_id)),
+					port_bw, ~0);
+			}
+			comp->last_hrt_bw = port_bw;
+			if (port_bw && mtk_crtc->usage_ovl_compr[phy_id])
+				total_bw += port_bw;
+		}
+
+		if (!IS_ERR_OR_NULL(comp->hrt_qos_req_other)) {
+			port_bw = (bw_val * mtk_crtc->usage_ovl_fmt[phy_id + 1]) >> 2;
+			if (port_bw > comp->last_hrt_bw_other) {
+				DDPQOS("%s/%u,layer:%u fast up:%u->%u compress:%d\n",
+					mtk_dump_comp_str_id(comp->id), comp->id, phy_id + 1,
+					comp->last_hrt_bw_other, port_bw, mtk_crtc->usage_ovl_compr[phy_id + 1]);
+				__mtk_disp_set_module_hrt(comp->hrt_qos_req_other, comp->id, port_bw,
+					priv->data->respective_ostdl);
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_BW_VAL(phy_id + 1)),
+					NO_PENDING_HRT, ~0);
+			} else if (port_bw < comp->last_hrt_bw_other) {
+				DDPQOS("%s/%u,layer:%u slow down:%u->%u compress:%d\n",
+					mtk_dump_comp_str_id(comp->id), comp->id, phy_id + 1,
+					comp->last_hrt_bw_other, port_bw, mtk_crtc->usage_ovl_compr[phy_id + 1]);
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_BW_VAL(phy_id + 1)),
+					port_bw, ~0);
+			}
+			comp->last_hrt_bw_other = port_bw;
+			if (port_bw && mtk_crtc->usage_ovl_compr[phy_id + 1])
+				total_bw += port_bw;
+		}
+
+		if (!IS_ERR_OR_NULL(comp->hdr_qos_req)) {
+			if (total_bw)
+				hdr_bw = (total_bw > 32) ? total_bw / 32 : 1;
+
+			if (hdr_bw > comp->last_hdr_bw) {
+				DDPQOS("%s/%u,layer:%u hdr fast up:%u->%u compress:%d/%d total:%u bw:%u\n",
+					mtk_dump_comp_str_id(comp->id), comp->id, phy_id,
+					comp->last_hdr_bw, hdr_bw, mtk_crtc->usage_ovl_compr[phy_id],
+					mtk_crtc->usage_ovl_compr[phy_id + 1], total_bw, bw_val);
+				__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, hdr_bw,
+					priv->data->respective_ostdl);
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HDR_BW_VAL(phy_id)),
+					NO_PENDING_HRT, ~0);
+			} else if (hdr_bw < comp->last_hdr_bw) {
+				DDPQOS("%s/%u,layer:%u hdr slow down:%u->%u compress:%d/%d total:%u bw:%u\n",
+					mtk_dump_comp_str_id(comp->id), comp->id, phy_id,
+					comp->last_hdr_bw, hdr_bw, mtk_crtc->usage_ovl_compr[phy_id],
+					mtk_crtc->usage_ovl_compr[phy_id + 1], total_bw, bw_val);
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HDR_BW_VAL(phy_id)),
+					hdr_bw, ~0);
+			}
+			comp->last_hdr_bw = hdr_bw;
+		}
+
+		ret = OVL_REQ_HRT;
+		break;
+	}
+	case PMQOS_SET_HRT_BW_DELAY_POST: {
+		struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
+		unsigned int phy_id = 0, port_bw = 0, hdr_bw = 0;
+		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+
+		if (!mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_MMQOS_SUPPORT))
+			break;
+
+		if (!priv->data->respective_ostdl) {
+			DDPPR_ERR("respective_ostdl do not set\n");
+			break;
+		}
+
+		if (ovl->data->ovl_phy_mapping)
+			phy_id = ovl->data->ovl_phy_mapping(comp);
+
+		if (!IS_ERR_OR_NULL(comp->hrt_qos_req)) {
+			port_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_CUR_BW_VAL(phy_id));
+			if (port_bw != NO_PENDING_HRT && port_bw <= comp->last_hrt_bw) {
+				DDPQOS("%s/%u,layer:%u final down:%u slot:%u\n",
+					mtk_dump_comp_str_id(comp->id), comp->id, phy_id,
+					comp->last_hrt_bw, port_bw);
+				__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, comp->last_hrt_bw,
+					priv->data->respective_ostdl);
+				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+					DISP_SLOT_CUR_BW_VAL(phy_id)) =	NO_PENDING_HRT;
+			}
+		}
+		if (!IS_ERR_OR_NULL(comp->hrt_qos_req_other)) {
+			port_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_CUR_BW_VAL(phy_id + 1));
+			if (port_bw != NO_PENDING_HRT && port_bw <= comp->last_hrt_bw_other) {
+				DDPQOS("%s/%u,layer:%u final down:%u slot:%u\n",
+					mtk_dump_comp_str_id(comp->id), comp->id, phy_id + 1,
+					comp->last_hrt_bw_other, port_bw);
+				__mtk_disp_set_module_hrt(comp->hrt_qos_req_other, comp->id, comp->last_hrt_bw_other,
+					priv->data->respective_ostdl);
+				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+					DISP_SLOT_CUR_BW_VAL(phy_id + 1)) =	NO_PENDING_HRT;
+			}
+		}
+
+		if (!IS_ERR_OR_NULL(comp->hdr_qos_req)) {
+			hdr_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_CUR_HDR_BW_VAL(phy_id));
+			if (hdr_bw != NO_PENDING_HRT && hdr_bw <= comp->last_hdr_bw) {
+				DDPQOS("%s/%u,layer:%u hdr final down:%u slot:%u\n",
+					mtk_dump_comp_str_id(comp->id), comp->id, phy_id,
+					comp->last_hdr_bw, hdr_bw);
+				__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, comp->last_hdr_bw,
+					priv->data->respective_ostdl);
+				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+					DISP_SLOT_CUR_HDR_BW_VAL(phy_id)) = NO_PENDING_HRT;
+			}
 		}
 
 		ret = OVL_REQ_HRT;
@@ -4569,11 +4772,9 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		}
 
 		/* process normal */
-		if (!force_update && comp->last_qos_bw == comp->qos_bw &&
-			comp->last_hrt_bw == comp->hrt_bw) {
-			if (IS_ERR(comp->qos_req_other) ||
-			    ((comp->last_qos_bw_other == comp->qos_bw_other) &&
-				    (comp->last_hrt_bw_other == comp->hrt_bw_other)))
+		if (!force_update && comp->last_qos_bw == comp->qos_bw) {
+			if (IS_ERR_OR_NULL(comp->qos_req_other) ||
+			    (comp->last_qos_bw_other == comp->qos_bw_other))
 				break;
 			goto other;
 		}
@@ -4586,15 +4787,8 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (!force_update)
 			mtk_crtc->total_srt += comp->qos_bw;
 
-		if ((comp->last_hrt_bw <= comp->hrt_bw) ||
-				(update_pending && comp->last_hrt_bw > comp->hrt_bw)) {
-			__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw, comp->hrt_bw,
-						    DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
-			comp->last_qos_bw = comp->qos_bw;
-			comp->last_hrt_bw = comp->hrt_bw;
-		}
 other:
-		if (!IS_ERR(comp->qos_req_other)) {
+		if (!IS_ERR_OR_NULL(comp->qos_req_other)) {
 			if ((comp->last_qos_bw_other <= comp->qos_bw_other) || force_update) {
 				__mtk_disp_set_module_srt(comp->qos_req_other, comp->id, comp->qos_bw_other, 0,
 					DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
@@ -4602,18 +4796,9 @@ other:
 			}
 			if (!force_update)
 				mtk_crtc->total_srt += comp->qos_bw_other;
-
-			if ((comp->last_hrt_bw_other <= comp->hrt_bw_other) || (update_pending &&
-					comp->last_hrt_bw_other > comp->hrt_bw_other)) {
-				__mtk_disp_set_module_srt(comp->qos_req_other,
-					comp->id, comp->qos_bw_other, comp->hrt_bw_other, DISP_BW_NORMAL_MODE,
-					priv->data->real_srt_ostdl);
-				comp->last_qos_bw_other = comp->qos_bw_other;
-				comp->last_hrt_bw_other = comp->hrt_bw_other;
-			}
 		}
-		DDPINFO("update ovl qos bw to %u, %u peak %u %u\n",
-			comp->qos_bw, comp->qos_bw_other, comp->hrt_bw, comp->hrt_bw_other);
+		DDPINFO("update ovl qos bw to %u, %u\n",
+			comp->qos_bw, comp->qos_bw_other);
 		break;
 	}
 	case OVL_REPLACE_BOOTUP_MVA: {
@@ -5547,6 +5732,12 @@ static int mtk_disp_ovl_bind(struct device *dev, struct device *master,
 						&priv->ddp_comp, "hrt_qos_other");
 		priv->ddp_comp.hrt_qos_req_other = of_mtk_icc_get(dev, buf);
 		if (!IS_ERR(priv->ddp_comp.hrt_qos_req_other))
+			DDPMSG("%s, %s create success, dev:%s\n", __func__, buf, dev_name(dev));
+
+		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
+						&priv->ddp_comp, "hdr_qos");
+		priv->ddp_comp.hdr_qos_req = of_mtk_icc_get(dev, buf);
+		if (!IS_ERR(priv->ddp_comp.hdr_qos_req))
 			DDPMSG("%s, %s create success, dev:%s\n", __func__, buf, dev_name(dev));
 	}
 
