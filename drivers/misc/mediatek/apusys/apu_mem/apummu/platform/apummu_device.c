@@ -34,11 +34,18 @@ static struct apummu_plat mt6991_drv = {
 	.alloc_DRAM_FB_in_session_create = false,
 };
 
+static struct apummu_plat mt6899_drv = {
+	.slb_wait_time                   = 0,
+	.is_general_SLB_support          = false,
+	.alloc_DRAM_FB_in_session_create = false,
+};
+
 static const struct of_device_id apummu_of_match[] = {
 	{ .compatible = "mediatek,rv-apummu",        .data = &mt6897_drv },
 	{ .compatible = "mediatek,rv-apummu-mt6989", .data = &mt6989_drv },
 	{ .compatible = "mediatek,rv-apummu-mt6878", .data = &mt6878_drv },
 	{ .compatible = "mediatek,rv-apummu-mt6991", .data = &mt6991_drv },
+	{ .compatible = "mediatek,rv-apummu-mt6899", .data = &mt6899_drv },
 	{ /* end of list */ },
 };
 
