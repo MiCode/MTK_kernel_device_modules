@@ -7044,6 +7044,9 @@ cpus {
 			mdp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			isp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			dre30-hist-sram-start = /bits/ 16 <1536>;
+			pq-rb-thread-id = /bits/ 16 <22>;
+			pq-rb-event-lock = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_MDP_WAIT>;
+			pq-rb-event-unlock = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_MDP_SET>;
 		};
 
 		mdp_mutex: mdp-mutex@1f001000 {
