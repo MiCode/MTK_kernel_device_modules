@@ -108,7 +108,8 @@ int (*fstb_get_target_fps_fp)(int pid, unsigned long long bufID, int tgid,
 	int *target_fps_margin, int *ctrl_fps_tid, int *ctrl_fps_flag,
 	unsigned long long cur_queue_end_ts, int eara_is_active, int detect_mode);
 EXPORT_SYMBOL(fstb_get_target_fps_fp);
-void (*fstb_check_render_info_status_fp)(int clear, unsigned long long cur_ts);
+void (*fstb_check_render_info_status_fp)(int clear, int *r_pid_arr,
+	unsigned long long *r_bufid_arr, int r_num);
 EXPORT_SYMBOL(fstb_check_render_info_status_fp);
 int (*fpsgo2msync_hint_frameinfo_fp)(unsigned int render_tid, unsigned int reader_bufID,
 		unsigned int target_fps, unsigned long q2q_time, unsigned long q2q_time2);
@@ -562,20 +563,18 @@ int fpsgo_other2fstb_get_fps(int pid, unsigned long long bufID,
 	return 0;
 }
 
-static int fstb_enter_delete_render_info(int clear)
+static int fstb_enter_delete_render_info(int clear, int *r_pid_arr,
+	unsigned long long *r_bufid_arr, int r_num)
 {
 	int ret = 1;
-	unsigned long long ts = fpsgo_get_time();
 
 	mutex_lock(&fstb_ko_lock);
-
 	if (fstb_check_render_info_status_fp)
-		fstb_check_render_info_status_fp(clear, ts);
+		fstb_check_render_info_status_fp(clear, r_pid_arr, r_bufid_arr, r_num);
 	else {
 		ret = -ENOENT;
 		mtk_fstb_dprintk_always("fstb_check_render_info_status_fp is NULL\n");
 	}
-
 	mutex_unlock(&fstb_ko_lock);
 
 	return ret;
@@ -772,7 +771,7 @@ int fpsgo_ctrl2fstb_switch_fstb(int enable)
 	mutex_unlock(&fstb_lock);
 
 	if (!enable) {
-		fstb_enter_delete_render_info(1);
+		fstb_enter_delete_render_info(1, NULL, NULL, 0);
 		fstb_check_app_time_info_status(1);
 	}
 
@@ -801,7 +800,7 @@ static int is_exceed_max_fstb_frame_info_num(void)
 		num++;
 	}
 
-	return (num > FPSGO_MAX_RENDER_INFO_SIZE);
+	return (num >= FPSGO_MAX_RENDER_INFO_SIZE);
 }
 
 static struct FSTB_FRAME_INFO *add_new_frame_info(int pid, unsigned long long bufID,
@@ -1574,6 +1573,7 @@ static void fstb_notifier_wq_cb(struct work_struct *psWork)
 void fpsgo_comp2fstb_prepare_calculate_target_fps(int pid, unsigned long long bufID,
 	unsigned long long cur_queue_end_ts)
 {
+	int clear = 0;
 	int local_tfps_hint = 0;
 	struct FSTB_FRAME_INFO *iter = NULL;
 	struct FSTB_NOTIFIER_PUSH_TAG *vpPush = NULL;
@@ -1588,9 +1588,10 @@ void fpsgo_comp2fstb_prepare_calculate_target_fps(int pid, unsigned long long bu
 	if (!iter || !iter->self_ctrl_fps_enable)
 		goto out;
 
-	if (iter->magt_target_fps > 0)
+	if (iter->magt_target_fps > 0) {
 		local_tfps_hint = iter->magt_target_fps;
-	else if (iter->notify_target_fps > 0)
+		clear = 1;
+	} else if (iter->notify_target_fps > 0)
 		local_tfps_hint = iter->notify_target_fps;
 
 	if (local_tfps_hint)
@@ -1620,6 +1621,10 @@ void fpsgo_comp2fstb_prepare_calculate_target_fps(int pid, unsigned long long bu
 
 out:
 	mutex_unlock(&fstb_lock);
+
+	// workaround, need to separate out different mode completely
+	if (clear)
+		fstb_record_app_self_ctrl_time(pid, bufID, NULL, 0, 0, 0, cur_queue_end_ts);
 }
 
 void fpsgo_comp2fstb_detect_app_self_ctrl(int tgid, int pid,
@@ -2212,14 +2217,8 @@ static void fstb_fps_stats(struct work_struct *work)
 				FPSGO_TARGET_FPS,
 				(iter->self_ctrl_fps_enable ? iter->target_fps_v2 : iter->target_fps),
 				0, 0, 0);
-		} else {
+		} else
 			iter->render_idle_cnt++;
-			if (iter->render_idle_cnt < FSTB_IDLE_DBNC) {
-				iter->target_fps = fstb_arbitrate_target_fps(iter->target_fps,
-							&iter->target_fps_margin, iter);
-				continue;
-			}
-		}
 	}
 
 	fstb_cal_powerhal_fps();
@@ -2270,8 +2269,17 @@ static void fstb_fps_stats(struct work_struct *work)
 int fpsgo_comp2fstb_do_recycle(void)
 {
 	int ret = 0;
+	int *r_pid_arr = NULL;
+	int r_num = 0;
+	unsigned long long *r_bufid_arr = NULL;
 	struct FSTB_FRAME_INFO *iter;
 	struct hlist_node *h;
+
+	r_pid_arr = kcalloc(FPSGO_MAX_RENDER_INFO_SIZE, sizeof(int), GFP_KERNEL);
+	r_bufid_arr = kcalloc(FPSGO_MAX_RENDER_INFO_SIZE,
+		sizeof(unsigned long long), GFP_KERNEL);
+	if (!r_pid_arr || !r_bufid_arr)
+		goto out;
 
 	mutex_lock(&fstb_lock);
 
@@ -2281,7 +2289,12 @@ int fpsgo_comp2fstb_do_recycle(void)
 	}
 
 	hlist_for_each_entry_safe(iter, h, &fstb_frame_infos, hlist) {
-		if (iter->render_idle_cnt >= FSTB_IDLE_DBNC) {
+		if (iter->render_idle_cnt) {
+			if (r_num < FPSGO_MAX_RENDER_INFO_SIZE) {
+				r_pid_arr[r_num] = iter->pid;
+				r_bufid_arr[r_num] = iter->bufid;
+				r_num++;
+			}
 			hlist_del(&iter->hlist);
 			vfree(iter);
 		}
@@ -2290,8 +2303,12 @@ int fpsgo_comp2fstb_do_recycle(void)
 out:
 	mutex_unlock(&fstb_lock);
 
-	fstb_enter_delete_render_info(0);
+	if (r_num)
+		fstb_enter_delete_render_info(0, r_pid_arr, r_bufid_arr, r_num);
 	fstb_check_app_time_info_status(0);
+
+	kfree(r_bufid_arr);
+	kfree(r_pid_arr);
 
 	return ret;
 }
