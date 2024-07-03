@@ -12,15 +12,6 @@
 #include <dt-bindings/power/mtk-charger.h>
 #include <dt-bindings/phy/phy.h>
 
-
-&mtkheap_region_svp {
-	status = "ok";
-};
-
-&mtkheap_region_wfd {
-	status = "ok";
-};
-
 &gpio_usage_mapping {
 	GPIO_FDD_BAND_SUPPORT_DETECT_1ST_PIN = <&pio 37 0>;
 	GPIO_FDD_BAND_SUPPORT_DETECT_2ND_PIN = <&pio 38 0>;
