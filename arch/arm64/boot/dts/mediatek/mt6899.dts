@@ -1387,6 +1387,31 @@
 		};
 	};
 
+	spmi: spmi@1cc04000 {
+		compatible = "mediatek,mt6899-spmi";
+		reg = <0 0x1cc04000 0 0x0008ff>,
+		      <0 0x1cc01000 0 0x000100>,
+		      <0 0x1c020000 0 0x0008ff>,
+		      <0 0x1cc01800 0 0x000100>;
+		reg-names = "pmif", "spmimst","pmif-p","spmimst-p";
+		interrupts-extended = <&pio 253 IRQ_TYPE_LEVEL_HIGH>,
+				<&pio 255 IRQ_TYPE_LEVEL_HIGH>,
+				<&gic GIC_SPI 833 IRQ_TYPE_LEVEL_HIGH 0>,
+				<&gic GIC_SPI 832 IRQ_TYPE_LEVEL_HIGH 0>,
+				<&gic GIC_SPI 957 IRQ_TYPE_LEVEL_HIGH 0>,
+				<&gic GIC_SPI 958 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupt-names = "rcs_irq","rcs_irq_p","pmif_irq","spmi_nack_irq","pmif_p_irq","spmi_p_nack_irq";
+		interrupt-controller;
+		#interrupt-cells = <1>;
+		irq-event-en = <0x40000000 0x0 0x0 0x00 0x0>;
+		irq-event-en-p = <0x40000000 0x0 0x0 0x0 0x0>;
+		spmi-dev-mask = <0x1000>;
+		#address-cells = <2>;
+		#size-cells = <0>;
+		hwinf-err-irq-idx = <0x20 0x2c>;
+		swinf-err-irq-idx = <0x61 0x66>;
+	};
+
 	firmware: firmware {
 		scmi: scmi {
 			compatible = "arm,scmi";
