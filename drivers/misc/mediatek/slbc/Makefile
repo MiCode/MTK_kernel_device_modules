@@ -54,6 +54,10 @@ ifneq ($(wildcard $(srctree)/$(src)/slbc_mt6897.c),)
 obj-${CONFIG_MTK_SLBC_MT6897} += slbc_mt6897.o
 endif
 
+ifneq ($(wildcard $(srctree)/$(src)/slbc_mt6899.c),)
+obj-${CONFIG_MTK_SLBC_MT6899} += slbc_mt6899.o
+endif
+
 ifneq ($(wildcard $(srctree)/$(src)/slbc_mt6989.c),)
 obj-${CONFIG_MTK_SLBC_MT6989} += slbc_mt6989.o
 endif
