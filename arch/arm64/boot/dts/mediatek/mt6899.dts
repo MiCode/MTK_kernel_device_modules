@@ -7574,8 +7574,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0>, /*MTK_DRM_OPT_MML_PQ*/
 				<0>, /*MTK_DRM_OPT_MML_IR*/
 				<0>, /*MTK_DRM_OPT_DUAL_TE*/
-				<0>, /*MTK_DRM_OPT_RES_SWITCH*/
-				<0>, /*MTK_DRM_OPT_RES_SWITCH_ON_AP*/
+				<1>, /*MTK_DRM_OPT_RES_SWITCH*/
+				<1>, /*MTK_DRM_OPT_RES_SWITCH_ON_AP*/
 				<0>, /*MTK_DRM_OPT_PREFETCH_TE*/
 				<0>, /*MTK_DRM_OPT_VIDLE_APSRC_OFF*/
 				<0>, /*MTK_DRM_OPT_VIDLE_DSI_PLL_OFF*/
@@ -7598,6 +7598,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0>, /*MTK_DRM_OPT_SLC_ALL_CACHE*/
 				<0>, /*MTK_DRM_OPT_OVL_WCG_BY_COLOR_MODE*/
 				<0>; /*"MTK_DRM_OPT_OVLSYS_CASCADE"*/
+		};
+
+		disp-sec {
+			compatible = "mediatek,disp-sec-aidctl";
 		};
 
 		disp-mutex0@14001000 {

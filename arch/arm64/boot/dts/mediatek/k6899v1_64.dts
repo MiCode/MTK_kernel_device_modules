@@ -215,7 +215,7 @@
 		reg = <0>;
 		pm-enable-gpios = <&pio 64 0>;
 		reset-gpios = <&pio 41 0>;
-		//res-switch = <2>;
+		res-switch = <2>;
 		gate-ic = <4831>;
 		//rc-enable = <1>;
 		pinctrl-names = "default";
