@@ -814,7 +814,7 @@ static int mt6899_dev_power_get(struct snd_kcontrol *kcontrol,
 static int mt6899_dev_power_set(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
 {
-	int power = 0;
+	int power __maybe_unused = 0;
 
 	power = ucontrol->value.integer.value[0];
 
