@@ -139,6 +139,7 @@
 			    disable_dma32=on \
 			    transparent_hugepage=never \
 			    maxcpus=4";
+			    mkp_panic="on";
 	};
 
 	cpus {
@@ -1333,6 +1334,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
+
+		mkp_mem: mkp-kernel-code-protection-memory {
+			compatible = "mkp-kernel-protection";
+			size = <0 0x10000>;
+			alloc-ranges = <0 0x40000000 0 0x10000>;
+		};
 
 		dpmaif_resv_cache_mem: ccci-dpmaif-cache-memory {
 			compatible = "mediatek,dpmaif-resv-cache-mem";
@@ -14184,6 +14191,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		/* ATF logger */
 		atf_logger: atf_logger {
 			compatible = "mediatek,tfa_debug";
+		};
+
+		mkp {
+			compatible = "mediatek,mkp-drv";
+			memory-region = <&mkp_mem>;
 		};
 
 		mmc1: mmc@11240000 {
