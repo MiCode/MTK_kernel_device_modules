@@ -10940,6 +10940,11 @@
 			interrupts = <GIC_SPI 434 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
+		mtkheap-slc {
+			compatible = "mediatek,dmaheap-mtk-slc";
+			heap-name = "mtk_slc";
+		};
+
 		mtkheap-page-prot {
 			compatible = "mediatek,dmaheap-mtk-sec-page";
 			heap-name = "mtk_prot_page-uncached";
