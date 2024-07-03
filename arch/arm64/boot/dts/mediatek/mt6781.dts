@@ -324,7 +324,7 @@
 		idle-states {
 			entry-method = "arm,psci";
 			cpuoff_l: cpuoff_l {
-				compatible = "mediatek,idle-state";
+				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00010001>;
 				local-timer-stop;
 				entry-latency-us = <50>;
@@ -332,7 +332,7 @@
 				min-residency-us = <1600>;
 			};
 			cpuoff_b: cpuoff_b {
-				compatible = "mediatek,idle-state";
+				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00010001>;
 				local-timer-stop;
 				entry-latency-us = <50>;
@@ -340,7 +340,7 @@
 				min-residency-us = <1400>;
 			};
 			clusteroff_l: clusteroff_l {
-				compatible = "mediatek,idle-state";
+				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010001>;
 				local-timer-stop;
 				entry-latency-us = <100>;
@@ -348,7 +348,7 @@
 				min-residency-us = <2100>;
 			};
 			clusteroff_b: clusteroff_b {
-				compatible = "mediatek,idle-state";
+				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010001>;
 				local-timer-stop;
 				entry-latency-us = <100>;
@@ -356,7 +356,7 @@
 				min-residency-us = <1900>;
 			};
 			mcusysoff: mcusysoff {
-				compatible = "mediatek,idle-state";
+				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010002>;
 				local-timer-stop;
 				entry-latency-us = <300>;
@@ -364,7 +364,7 @@
 				min-residency-us = <2600>;
 			};
 			s2idle: s2idle {
-				compatible = "mediatek,idle-state";
+				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010100>;
 				local-timer-stop;
 				entry-latency-us = <500>;
@@ -379,9 +379,13 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
-		suspend-method = "s2idle";
+
+		lpm-kernel-suspend = <0>;
+		suspend-method = "enable";
 		cpupm-method = "mcu";
 
+		logger-enable-states = "mcusysoff";
+		mcusys-cnt-chk = <1>;
 		irq-remain = <&edge_keypad &edge_mdwdt>,
 				<&level_btif_tx &level_btif_rx>;
 
@@ -389,6 +393,9 @@
 				<&dram_s0 &dram_s1>;
 
 		constraints = <&rc_bus26m &rc_syspll &rc_dram>;
+		spm-cond = <&spm_cond_cg &spm_cond_pll>;
+		cg-shift = <0>; /* cg blocking index */
+		pll-shift = <16>; /* pll blocking index */
 
 		cpupm_sysram: cpupm-sysram@0011b000 {
 			compatible = "mediatek,cpupm-sysram";
@@ -449,16 +456,45 @@
 
 		constraint-list {
 			rc_bus26m: rc_bus26m {
+				rc-name = "bus26m";
 				id = <0x00000000>;
 				value = <1>;
+				cond-info = <1>;
 			};
 			rc_syspll: rc_syspll {
+				rc-name = "syspll";
 				id = <0x00000001>;
 				value = <1>;
+				cond-info = <1>;
 			};
 			rc_dram: rc_dram {
+				rc-name = "dram";
 				id = <0x00000002>;
 				value = <1>;
+				cond-info = <1>;
+			};
+		};
+
+		spm-cond-list {
+			spm_cond_cg: spm_cond_cg {
+				cg-name = "MTCMOS_0",
+					"INFRA_0",
+					"INFRA_1",
+					"INFRA_2",
+					"INFRA_3",
+					"INFRA_4",
+					"INFRA_5",
+					"MMSYS_0",
+					"MMSYS_1",
+					"MMSYS_2",
+					"MMSYS_3";
+			};
+			spm_cond_pll: spm_cond_pll {
+				pll-name = "UNIVPLL",
+					"MFGPLL",
+					"MSDCPLL",
+					"TVPLL",
+					"MMPLL";
 			};
 		};
 	};
