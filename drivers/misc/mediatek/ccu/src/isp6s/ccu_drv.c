@@ -1136,7 +1136,7 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 
 	case CCU_IOCTL_GET_CURRENT_FPS:
 	{
-		int32_t current_fps_list[IMGSENSOR_SENSOR_IDX_MAX_NUM];
+		int32_t current_fps_list[IMGSENSOR_SENSOR_IDX_MAX_NUM] = {0};
 
 		ccu_get_current_fps(current_fps_list);
 
@@ -1322,6 +1322,9 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 		int ret = 0;
 		dma_addr_t dma_addr;
 		struct dma_buf *buf;
+
+		if (iova_buf_count >= CCU_IOVA_BUFFER_MAX)
+			return -EFAULT;
 
 		ret = copy_from_user(&fd,
 			(void *)arg, sizeof(int));
