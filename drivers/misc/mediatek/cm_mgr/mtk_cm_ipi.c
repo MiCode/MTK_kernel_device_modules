@@ -88,8 +88,13 @@ void cm_ipi_init(void)
 
 	_tinfo = get_scmi_tinysys_info();
 
-	ret = of_property_read_u32(_tinfo->sdev->dev.of_node, "scmi-cm",
+	if (_tinfo) {
+		ret = of_property_read_u32(_tinfo->sdev->dev.of_node, "scmi-cm",
 				   &scmi_cm_id);
+	} else {
+		pr_info("cm_scmi_tinsys error\n");
+		ret = -ENOMEM;
+	}
 	if (ret) {
 		pr_info("get scmi-cm fail, ret %d\n", ret);
 		cm_ipi_enable = 0;
