@@ -459,7 +459,7 @@ module_param(underrun_cnt, uint, 0644);
 struct mtk_panel_ext *mtk_dsi_get_panel_ext(struct mtk_ddp_comp *comp);
 static void mtk_dsi_set_targetline(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle, unsigned int hactive);
-static void DSI_MIPI_deskew(struct mtk_dsi *dsi);
+static int DSI_MIPI_deskew(struct mtk_dsi *dsi);
 
 static inline struct mtk_dsi *encoder_to_dsi(struct drm_encoder *e)
 {
@@ -4506,12 +4506,13 @@ static int mtk_dsi_trigger(struct mtk_ddp_comp *comp, void *handle)
 	return 0;
 }
 
-static void DSI_MIPI_deskew(struct mtk_dsi *dsi)
+static int DSI_MIPI_deskew(struct mtk_dsi *dsi)
 {
 	unsigned int timeout = 0;
 	unsigned int status = 0;
 	unsigned int phy_syncon = 0;
 	unsigned int value = 0, mask = 0;
+	int ret = 0;
 
 	phy_syncon = readl(dsi->regs + DSI_PHY_SYNCON(dsi->driver_data));
 	writel(0x00aaffff, dsi->regs + DSI_PHY_SYNCON(dsi->driver_data));
@@ -4545,14 +4546,18 @@ static void DSI_MIPI_deskew(struct mtk_dsi *dsi)
 		timeout--;
 	}
 
-	if (timeout == 0)
+	if (timeout == 0) {
 		DDPMSG("%s, dsi wait idle timeout!\n", __func__);
+		ret = -1;
+	}
 
 	writel(phy_syncon, dsi->regs + DSI_PHY_SYNCON(dsi->driver_data));
 	value = 0;
 	mask = 0;
 	SET_VAL_MASK(value, mask, 1, FLD_DA_HS_SYNC);
 	mtk_dsi_mask(dsi, DSI_PHY_TIMECON2(dsi->driver_data), mask, value);
+
+	return ret;
 }
 
 void mtk_mipi_dsi_write_6382(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
@@ -7174,29 +7179,28 @@ static void mtk_dsi_enter_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
 		mtk_dsi_poweroff(dsi);
 }
 
-static void mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
+static int mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
 {
-	int ret;
+	int ret = 0;
 	struct mtk_panel_ext *ext = NULL;
 	struct mtk_drm_crtc *mtk_crtc =	NULL;
 
 	if (!dsi || !dsi->driver_data) {
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
-		return;
+		return -1;
 	}
 
 	mtk_crtc = dsi->is_slave ?
 				dsi->master_dsi->ddp_comp.mtk_crtc : dsi->ddp_comp.mtk_crtc;
 	if (!mtk_crtc) {
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
-		return;
+		return -1;
 	}
 
 	ret = mtk_dsi_poweron(dsi);
-
 	if (ret < 0) {
 		DDPPR_ERR("failed to power on dsi\n");
-		return;
+		return -2;
 	}
 
 	mtk_dsi_enable(dsi);
@@ -7210,7 +7214,7 @@ static void mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
 			ext = mtk_dsi_get_panel_ext(&dsi->ddp_comp);
 			if (!ext) {
 				DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
-				return;
+				return -1;
 			}
 			// cmd mode
 			if (ext->params->lp_perline_en) {
@@ -7261,8 +7265,10 @@ static void mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
 		mtk_dsi_clk_hs_mode(dsi, 1);
 
 		if (mtk_dsi_default_rate(dsi) > 1500) // data rate > 1.5Gbsp, skew calibration
-			DSI_MIPI_deskew(dsi);
+			ret = DSI_MIPI_deskew(dsi);
 	}
+
+	return ret;
 }
 
 static void mtk_dsi_clk_change(struct mtk_dsi *dsi, int en)
@@ -10859,6 +10865,7 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 	unsigned int check_panel_cmd = 0;
 	unsigned int check_ms_work = 0;
 	struct drm_display_mode *old_mode, *adjust_mode;
+	int ret = 0;
 
 	if (!dsi) {
 		DDPPR_ERR("%s, %d, invalid parameter\n", __func__, __LINE__);
@@ -10970,24 +10977,31 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 		goto skip_change_mipi;
 	}
 
-	/* Power off DSI */
+	/* ref cnt backup and decrease to 1 */
 	clk_cnt  = dsi->clk_refcnt;
 	while (dsi->clk_refcnt != 1)
 		mtk_dsi_ddp_unprepare(&dsi->ddp_comp);
-	mtk_dsi_enter_idle(dsi, 1, false);
 
-	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 3);
+	for (i = 0; i < 3; i++) {
+		/* Power off DSI */
+		mtk_dsi_enter_idle(dsi, 1, false);
+		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 3);
 
-	if (dsi->mipi_hopping_sta && dsi->ext->params->dyn.switch_en)
-		mtk_mipi_tx_pll_rate_set_adpt(dsi->phy,
-			dsi->ext->params->dyn.data_rate);
-	else
-		mtk_mipi_tx_pll_rate_set_adpt(dsi->phy, 0);
+		if (dsi->mipi_hopping_sta && dsi->ext->params->dyn.switch_en)
+			mtk_mipi_tx_pll_rate_set_adpt(dsi->phy, dsi->ext->params->dyn.data_rate);
+		else
+			mtk_mipi_tx_pll_rate_set_adpt(dsi->phy, 0);
 
-	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 4);
+		/* Power on DSI */
+		ret = mtk_dsi_leave_idle(dsi, 1, false);
+		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 4);
+		if (ret == 0)
+			break;
+	}
+	if (ret < 0)
+		mtk_dsi_dump(&dsi->ddp_comp);
 
-	/* Power on DSI */
-	mtk_dsi_leave_idle(dsi, 1, false);
+	/* ref cnt restore */
 	while (dsi->clk_refcnt != clk_cnt)
 		mtk_dsi_ddp_prepare(&dsi->ddp_comp);
 
