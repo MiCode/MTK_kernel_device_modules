@@ -11814,6 +11814,16 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		*mode = list_first_entry(&dsi->conn.modes,
 				struct drm_display_mode, head);
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+		if (*mode) {
+			DDPINFO("%s, %d width_mm:%d, height_mm:%d\n",
+					__func__, __LINE__,
+					dsi->conn.display_info.width_mm,
+					dsi->conn.display_info.height_mm);
+			(*mode)->width_mm = dsi->conn.display_info.width_mm;
+			(*mode)->height_mm = dsi->conn.display_info.height_mm;
+		}
+#endif
 		break;
 
 	case DSI_GET_MODE_BY_MAX_VREFRESH:
