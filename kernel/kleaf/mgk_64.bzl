@@ -1129,25 +1129,6 @@ def get_overlay_modules_list():
         mgk_64_kleaf_eng_modules.append("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase_fpga")
         mgk_64_kleaf_userdebug_modules.append("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase_fpga")
 
-    if "wifionly.config" in DEFCONFIG_OVERLAYS:
-        mgk_64_device_modules.remove("drivers/misc/mediatek/ccci_util/ccci_util_lib.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/ccmni/ccmni.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/ccci_auxadc.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/ccci_md_all.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/fsm/ccci_fsm_scp.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_ccif.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_cldma.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_dpmaif.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/mddp/mddp.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/power_throttling/mtk_md_power_throttling.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_atc.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_ets.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_modem.ko")
-        mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
-
-        mgk_64_device_modules.append("drivers/misc/mediatek/pmic_tia/pmic_tia.ko")
-
     if "thinmodem.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/wwan/tmi3:tmi3")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpio_sap_ctrl:gpio_sap_ctrl")
@@ -1792,8 +1773,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/backlight_cooling.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/board_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/charger_cooling.ko")
-        if "drivers/thermal/mediatek/md_cooling_all.ko" in mgk_64_device_modules:
-            mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/pmic_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/soc_temp_lvts.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_interface.ko")
@@ -3585,5 +3565,25 @@ def get_overlay_modules_list():
 
     if "mt8786p2_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_device_modules.append("drivers/video/backlight/sgm37604a.ko")
+
+    if "wifionly.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_device_modules.remove("drivers/misc/mediatek/ccci_util/ccci_util_lib.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/ccmni/ccmni.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/ccci_auxadc.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/ccci_md_all.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/fsm/ccci_fsm_scp.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_ccif.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_cldma.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_dpmaif.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/mddp/mddp.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/power_throttling/mtk_md_power_throttling.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_atc.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_ets.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_modem.ko")
+        if "drivers/thermal/mediatek/md_cooling_all.ko" in mgk_64_device_modules:
+            mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
+
+        mgk_64_device_modules.append("drivers/misc/mediatek/pmic_tia/pmic_tia.ko")
 
 get_overlay_modules_list()
