@@ -64,7 +64,6 @@
 			<&apmixedsys_clk CLK_APMIXED_ADSPPLL>,
 			<&vlp_cksys_clk CLK_VLP_CK_PWM_VLP_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_SSPM_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_IPS_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG1_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG2_SEL>,
