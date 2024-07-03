@@ -25,8 +25,6 @@
 			<&topckgen_clk CLK_TOP_U_SEL>,
 			<&topckgen_clk CLK_TOP_U_MBIST_SEL>,
 			<&topckgen_clk CLK_TOP_PEXTP_MBIST_SEL>,
-			<&topckgen_clk CLK_TOP_ADSP_SEL>,
-			<&topckgen_clk CLK_TOP_ADPS_UARTHUB_BCLK_SEL>,
 			<&topckgen_clk CLK_TOP_DPMAIF_MAIN_SEL>,
 			<&topckgen_clk CLK_TOP_MSDC30_2_HCLK_SEL>,
 			<&topckgen_clk CLK_TOP_SENINF0_SEL>,
@@ -58,7 +56,6 @@
 			<&apmixedsys_clk CLK_APMIXED_EMIPLL2>,
 			<&apmixedsys_clk CLK_APMIXED_IMGPLL>,
 			<&apmixedsys_clk CLK_APMIXED_TVDPLL>,
-			<&apmixedsys_clk CLK_APMIXED_ADSPPLL>,
 			<&vlp_cksys_clk CLK_VLP_CK_SSPM_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG1_SEL>,
@@ -466,24 +463,6 @@
 		clocks =
 			<&ufscfg_ao_clk CLK_UFSAO_U_AO_FREE_26M_UFS>,
 			<&ufscfg_pdn_clk CLK_UFSPDN_U_FREE_26M_UFS>;
-	};
-
-	bring-up-pd-adsp-top-dormant@23 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x23>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ADSP_TOP_DORMANT>;
-	};
-
-	bring-up-pd-adsp-infra@24 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x24>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ADSP_INFRA>;
-	};
-
-	bring-up-pd-adsp-ao@25 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x25>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ADSP_AO>;
 	};
 
 	bring-up-pd-isp-traw@26 {
