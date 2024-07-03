@@ -13311,6 +13311,7 @@ static const struct mtk_dsi_driver_data mt6899_dsi_driver_data = {
 	.need_bypass_shadow = false,
 	.need_wait_fifo = false,
 	.dsi_buffer = true,
+	.support_pre_urgent = true,
 	.smi_dbg_disable = true,
 	.buffer_unit = 32,
 	.sram_unit = 32,
