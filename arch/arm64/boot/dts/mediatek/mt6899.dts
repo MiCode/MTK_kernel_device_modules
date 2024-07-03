@@ -16567,7 +16567,24 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 };
 
 &spmi {
-	/* TODO: add mt6363_dynamic_loading_throttling after bring up*/
+	pmic: pmic@4 {
+		mt6363_dynamic_loading_throttling: mtk-dynamic-loading-throttling {
+			compatible = "mediatek,mt6363-dynamic_loading_throttling";
+			/* charger: mtk_charger_thread */
+			mediatek,charger = <&lk_charger>;
+			/* 2000~2900mV, one gear per 100mV */
+			uvlo-level = <2400>;
+			vbb-uvlo-level = <2500>;
+			io-channels = <&mt6375_auxadc MT6375_AUXADC_IMP>,
+				      <&mt6375_auxadc MT6375_AUXADC_IMIX_R>,
+				      <&mt6375_auxadc MT6375_AUXADC_BATSNS>;
+			io-channel-names = "pmic_ptim",
+					   "pmic_imix_r",
+					   "pmic_batadc";
+			bootmode = <&chosen>;
+		};
+	};
+
 	mt6319_6: mt6319@6 {
 		compatible = "mediatek,mt6319";
 		reg = <0x6 SPMI_USID>;
@@ -16779,7 +16796,17 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 /delete-node/ &mt6363_vbuck4_sshub;
 /delete-node/ &mt6368_vmch_eint_low;
 /delete-node/ &mt6368_vmch;
-/* TODO: add pmic-lvsys-notify after bring up */
+
+&main_pmic {
+	pmic-lvsys-notify {
+		compatible = "mediatek,mt6363-lvsys-notify";
+		thd-volts-l = <2900>;
+		thd-volts-h = <3100>;
+		lv-deb-sel = <0>;
+		hv-deb-sel = <2>;
+		vio18-switch-reg = <0x53 0x58>;
+	};
+};
 
 /* AUDIO GPIO standardization start */
 &pio {
