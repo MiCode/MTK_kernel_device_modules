@@ -1891,7 +1891,7 @@
 			operating-points-v2 = <&opp_table_vdec>;
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			throughput-op-rate-thresh = <120>;
-			throughput-min = <250000000>;
+			throughput-min = <218000000>;
 			throughput-normal-max = <546000000>;
 			max-op-rate-table =
 				<877088845 921600 60 2228224 60 3686400 1>, /* MPEG4 */
@@ -1995,7 +1995,7 @@
 			clock-names =
 				"MT_CG_VENC";
 			operating-points-v2 = <&opp_table_venc>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			venc-disable-hw-break = <1>;
 			interconnects = <&mmqos MASTER_LARB_PORT(M4U_PORT_L7_VENC_RCPU)
 						&mmqos SLAVE_COMMON(0)>,
@@ -2024,21 +2024,21 @@
 						"path_venc_ref_chroma", "path_larb7";
 			interconnect-num = <10>;
 			throughput-op-rate-thresh = <120>;
-			throughput-min = <250000000>;
+			throughput-min = <249000000>;
 			throughput-normal-max = <546000000>;
 			throughput-config-offset = <2>;
 			throughput-table =
-					<875967048 4 561 561 416000000 601>, /* H264 4k 30fps */
-					<875967048 5 855 855 250000000 325>, /* H264 1080p 60fps */
-					<875967048 6 962 962 250000000 289>, /* H264 720p 120fps */
-					<1129727304 2 427 427 416000000 189>, /* HEVC 4k 30fps */
-					<1129727304 4 855 855 250000000 140>, /* HEVC 1080p 60fps */
-					<1129727304 6 962 962 250000000 100>, /* HEVC 720p 120fps */
-					<892744264 2 427 427 416000000 189>, /* H265 4k 30fps */
-					<892744264 4 855 855 250000000 140 >, /* H265 1080p 60fps */
-					<892744264 6 962 962 250000000 100>, /* H265 720p 120fps */
-					<1179206984 2 427 427 416000000 189>, /* HEIF 4k 30fps*/
-					<1179206984 4 1711 1711 250000000 189>; /* HEIF 1080p 30fps*/
+					<875967048 4 561 561 458000000 601>, /* H264 4k 30fps */
+					<875967048 5 855 855 249000000 325>, /* H264 1080p 60fps */
+					<875967048 6 962 962 249000000 289>, /* H264 720p 120fps */
+					<1129727304 2 427 427 458000000 189>, /* HEVC 4k 30fps */
+					<1129727304 4 855 855 249000000 140>, /* HEVC 1080p 60fps */
+					<1129727304 6 962 962 249000000 100>, /* HEVC 720p 120fps */
+					<892744264 2 427 427 458000000 189>, /* H265 4k 30fps */
+					<892744264 4 855 855 249000000 140 >, /* H265 1080p 60fps */
+					<892744264 6 962 962 249000000 100>, /* H265 720p 120fps */
+					<1179206984 2 427 427 458000000 189>, /* HEIF 4k 30fps*/
+					<1179206984 4 1711 1711 249000000 189>; /* HEIF 1080p 30fps*/
 			config-table =
 					<875967048 972000 4 4>, /* H264 4k 30fps */
 					<875967048 486000 5 5>, /* H264 1080p 60fps */
