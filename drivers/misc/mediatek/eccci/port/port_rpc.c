@@ -1345,9 +1345,9 @@ static void ccci_rpc_work_helper(struct port_t *port, struct rpc_pkt *pkt,
 
 			op_id = *(unsigned int *)(pkt[0].buf);
 			if (op_id == 1)
-				val = 0; //ufs_mtk_cali_hold();  //replace ufs api block io
+				val = ufs_mtk_cali_hold();  //replace ufs api block io
 			else if (op_id == 0)
-				val = 0;// ufs_mtk_cali_release();  //replace ufs api relase io
+				val = ufs_mtk_cali_release();  //replace ufs api relase io
 			else
 				CCCI_ERROR_LOG(0, RPC, "invalid op_id: %d!\n", op_id);
 			tmp_data[1] = val;
