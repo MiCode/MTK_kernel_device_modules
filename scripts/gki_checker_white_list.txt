@@ -1,3 +1,4 @@
+s gki_unprotected_symbols
 s __kvm_nvhe_ffa_host_share_ranges
 s __kvm_nvhe_ffa_host_unshare_ranges
 s __kvm_nvhe_ffa_mem_xfer
