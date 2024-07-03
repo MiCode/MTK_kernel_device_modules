@@ -16255,6 +16255,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			oc-thd = <6000 7000 8000>;
 		};
 	};
+
+	fpsgo: fpsgo {
+		compatible = "mediatek,fpsgo";
+		fbt-cpu-mask = <255 128 15 127 240 112>;
+		sbe-resceue-enable = <1>;
+		ux-scroll-general-policy = <0>;
+		ux-smart-launch-enable = <1>;
+	};
 };
 
 
