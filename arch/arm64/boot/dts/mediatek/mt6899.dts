@@ -22,6 +22,7 @@
 #include <dt-bindings/mfd/mt6375.h>
 #include <dt-bindings/power/mt6375-gauge.h>
 #include <dt-bindings/power/mtk-charger.h>
+#include <dt-bindings/interconnect/mtk,emi.h>
 
 / {
 	model = "MT6899";
@@ -9885,6 +9886,78 @@
 				mode-ddr-reserve = <BOOT_DDR_RSVD>;
 				mode-meta = <BOOT_META>;
 				mode-rpmbpk = <BOOT_RPMBPK>;
+			};
+		};
+
+		dvfsrc: dvfsrc@1c00f000 {
+			compatible = "mediatek,mt6899-dvfsrc";
+			reg = <0 0x1c00f000 0 0x1000>,
+				<0 0x1c001000 0 0x1000>;
+			reg-names = "dvfsrc", "spm";
+			#interconnect-cells = <1>;
+			dvfsrc-bringup = <1>;
+			dvfsrc-flag = <0x3>;
+
+			dvfsrc_vcore: dvfsrc-vcore {
+				regulator-name = "dvfsrc-vcore";
+				regulator-min-microvolt = <575000>;
+				regulator-max-microvolt = <875000>;
+				regulator-always-on;
+			};
+
+			dvfsrc_freq_opp9: opp9 {
+				opp-peak-KBps = <0>;
+			};
+			dvfsrc_freq_opp8: opp8 {
+				opp-peak-KBps = <4800000>;
+			};
+			dvfsrc_freq_opp7: opp7 {
+				opp-peak-KBps = <9800000>;
+			};
+			dvfsrc_freq_opp6: opp6 {
+				opp-peak-KBps = <13200000>;
+			};
+			dvfsrc_freq_opp5: opp5 {
+				opp-peak-KBps = <19700000>;
+			};
+			dvfsrc_freq_opp4: opp4 {
+				opp-peak-KBps = <24900000>;
+			};
+			dvfsrc_freq_opp3: opp3 {
+				opp-peak-KBps = <32400000>;
+			};
+			dvfsrc_freq_opp2: opp2 {
+				opp-peak-KBps = <37600000>;
+			};
+			dvfsrc_freq_opp1: opp1 {
+				opp-peak-KBps = <44300000>;
+			};
+			dvfsrc_freq_opp0: opp0 {
+				opp-peak-KBps = <50400000>;
+			};
+
+			dvfsrc-helper {
+				compatible = "mediatek,dvfsrc-helper";
+				vcore-supply = <&mt6363_vbuck2>;
+				rc-vcore-supply = <&dvfsrc_vcore>;
+
+				interconnects = <&dvfsrc MT6873_MASTER_DBGIF
+							&dvfsrc MT6873_SLAVE_DDR_EMI>,
+						<&dvfsrc MT6873_MASTER_DBGIF
+							&dvfsrc MT6873_SLAVE_DDR_EMI>,
+						<&dvfsrc MT6873_MASTER_HRT_DBGIF
+							&dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
+				interconnect-names = "icc-bw", "icc-perf-bw", "icc-hrt-bw";
+				required-opps = <&dvfsrc_freq_opp0>,
+						<&dvfsrc_freq_opp1>,
+						<&dvfsrc_freq_opp2>,
+						<&dvfsrc_freq_opp3>,
+						<&dvfsrc_freq_opp4>,
+						<&dvfsrc_freq_opp5>,
+						<&dvfsrc_freq_opp6>,
+						<&dvfsrc_freq_opp7>,
+						<&dvfsrc_freq_opp8>;
+				ceil-ddr-support;
 			};
 		};
 
