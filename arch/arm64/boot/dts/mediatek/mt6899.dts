@@ -2145,6 +2145,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		cm-perf-mode-thd = <5>;
 	};
 
+	fpsgo: fpsgo {
+		compatible = "mediatek,fpsgo";
+		fbt-cpu-mask = <255 128 15 127 240 112>;
+		sbe-resceue-enable = <1>;
+		ux-scroll-general-policy = <0>;
+		ux-smart-launch-enable = <1>;
+	};
+
 	ptppll_pll_ctrl_clk: syscon@c034000 {
 		compatible = "mediatek,mt6899-ptppll_pll_ctrl", "syscon";
 		reg = <0 0xc034000 0 0x1000>;
@@ -16268,14 +16276,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupt-names = "fg_cur_h", "fg_cur_l";
 			oc-thd = <6000 7000 8000>;
 		};
-	};
-
-	fpsgo: fpsgo {
-		compatible = "mediatek,fpsgo";
-		fbt-cpu-mask = <255 128 15 127 240 112>;
-		sbe-resceue-enable = <1>;
-		ux-scroll-general-policy = <0>;
-		ux-smart-launch-enable = <1>;
 	};
 };
 
