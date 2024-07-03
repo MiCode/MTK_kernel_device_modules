@@ -11113,3 +11113,6 @@
 	};
 };
 /* AUDIO GPIO standardization end */
+
+#include "mediatek/mt6363.dtsi"
+#include "mediatek/mt6368.dtsi"
