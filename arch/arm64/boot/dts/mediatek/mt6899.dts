@@ -12113,9 +12113,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<GIC_SPI 373 IRQ_TYPE_LEVEL_HIGH 0>, // adlrd
 					<GIC_SPI 379 IRQ_TYPE_LEVEL_HIGH 0>; // qof
 			interrupt-names = "adlrd_rdone", "adlrd", "qoftop";
-#if 0
 			operating-points-v2 = <&opp_table_cam>;
-#endif
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAMTG_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_ADLRD_CAMRAWA>,
@@ -12127,11 +12125,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS_CAMRAWA>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMRAWA>;
-/**
- * TODO: enable MMDVFS when porting done
- *				    <&mmdvfs_mux MMDVFS_USER_CAM>;
- */
+					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMRAWA>,
+				    <&mmdvfs_mux MMDVFS_USER_CAM>;
 			clock-names = "camsys_cam_cgpdn",
 				"camsys_camtg_cgpdn",
 				"camsys_adlrd_cgpdn",
