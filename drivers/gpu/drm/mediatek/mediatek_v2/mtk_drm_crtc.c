@@ -11632,6 +11632,50 @@ static void mtk_crtc_disable_plane_setting(struct mtk_drm_crtc *mtk_crtc)
 			plane_state->pending.enable = 0;
 	}
 }
+static void clr_set_dirty_cmdq_cb(struct cmdq_cb_data data)
+{
+	struct mtk_cmdq_cb_data *cb_data = data.data;
+
+	CRTC_MMP_MARK(0, set_dirty, CLR_SET_DIRTY_CB, (unsigned long)cb_data->cmdq_handle);
+	cmdq_pkt_destroy(cb_data->cmdq_handle);
+	kfree(cb_data);
+}
+
+void mtk_crtc_clr_set_dirty(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct cmdq_pkt *cmdq_handle;
+	struct mtk_cmdq_cb_data *cb_data;
+
+	if (!mtk_crtc->is_mml_dl)
+		return;
+
+	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
+	if (!cb_data) {
+		DDPINFO("%s:%d, cb data creation failed\n",
+			__func__, __LINE__);
+		return;
+	}
+
+	drm_trace_tag_mark("crtc_clr_set_dirty");
+
+	mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
+		mtk_crtc->gce_obj.client[CLIENT_CFG]);
+
+	if (!cmdq_handle) {
+		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		return;
+	}
+
+	CRTC_MMP_MARK(0, set_dirty, CLR_SET_DIRTY, (unsigned long)cmdq_handle);
+
+	cmdq_pkt_clear_event(cmdq_handle,
+		mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+
+	cb_data->cmdq_handle = cmdq_handle;
+	if (cmdq_pkt_flush_threaded(cmdq_handle,
+	    clr_set_dirty_cmdq_cb, cb_data) < 0)
+		DDPPR_ERR("failed to flush clr_set_dirty\n");
+}
 
 static void set_dirty_cmdq_cb(struct cmdq_cb_data data)
 {
@@ -14512,14 +14556,8 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 
 	/* mml need to power on InlineRotate and sync with mml */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_PRIMARY) &&
-		need_sync_mml) {
-		if (mtk_crtc->is_mml_dl) {
-			cmdq_pkt_clear_event(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
-			CRTC_MMP_MARK(0, set_dirty, 0xFFFFFFFF , (unsigned long)cmdq_handle);
-		}
+		need_sync_mml)
 		mml_cmdq_pkt_init(crtc, cmdq_handle);
-	}
 
 	/*Msync 2.0 change to check vfp period token instead of EOF*/
 	if (!mtk_crtc_is_frame_trigger_mode(crtc) &&

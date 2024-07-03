@@ -720,6 +720,8 @@ enum SET_DIRTY_INDEX {
 	CRTC_ENABLE,
 	FIRST_ENABLE_DDP_CONFIG,
 	TEST_SHOW,
+	CLR_SET_DIRTY = 0xfffffff,
+	CLR_SET_DIRTY_CB = 0x1000,
 	INDEX_MAX,
 };
 
@@ -1490,6 +1492,7 @@ int mtk_drm_crtc_wait_blank(struct mtk_drm_crtc *mtk_crtc);
 void mtk_drm_crtc_init_para(struct drm_crtc *crtc);
 void trigger_without_cmdq(struct drm_crtc *crtc);
 void mtk_crtc_set_dirty(struct mtk_drm_crtc *mtk_crtc);
+void mtk_crtc_clr_set_dirty(struct mtk_drm_crtc *mtk_crtc);
 void mtk_drm_layer_dispatch_to_dual_pipe(
 	struct mtk_drm_crtc *mtk_crtc, unsigned int mmsys_id,
 	struct mtk_plane_state *plane_state,
