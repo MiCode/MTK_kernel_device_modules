@@ -1774,6 +1774,8 @@ static int mtk_pcie_probe(struct platform_device *pdev)
 
 	if (port->rpm)
 		mtk_pcie_enable_host_bridge_rpm(port);
+	else if (port->pcidev->bridge_d3)
+		port->pcidev->bridge_d3 = false;
 
 	return 0;
 
