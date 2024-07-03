@@ -125,6 +125,7 @@ static const struct of_device_id adspsys_of_ids[] = {
 	{ .compatible = "mediatek,mt6897-adspsys", .data = &mt6983_adspsys_desc},
 	{ .compatible = "mediatek,mt6989-adspsys", .data = &mt6983_adspsys_desc},
 	{ .compatible = "mediatek,mt6991-adspsys", .data = &mt6991_adspsys_desc},
+	{ .compatible = "mediatek,mt6899-adspsys", .data = &mt6983_adspsys_desc},
 	{}
 };
 
@@ -143,6 +144,8 @@ static const struct of_device_id adsp_core_of_ids[] = {
 	{ .compatible = "mediatek,mt6989-adsp_core_1", .data = &mt6983_adsp_c1_desc},
 	{ .compatible = "mediatek,mt6991-adsp_core_0", .data = &mt6983_adsp_c0_desc},
 	{ .compatible = "mediatek,mt6991-adsp_core_1", .data = &mt6983_adsp_c1_desc},
+	{ .compatible = "mediatek,mt6899-adsp_core_0", .data = &mt6983_adsp_c0_desc},
+	{ .compatible = "mediatek,mt6899-adsp_core_1", .data = &mt6983_adsp_c1_desc},
 	{}
 };
 
@@ -150,6 +153,7 @@ static const struct of_device_id adsp_qos_scene_of_ids[] = {
 	{ .compatible = "mediatek,mt6897-audio-dsp-hrt-bw"},
 	{ .compatible = "mediatek,mt6989-audio-dsp-hrt-bw"},
 	{ .compatible = "mediatek,mt6991-audio-dsp-hrt-bw"},
+	{ .compatible = "mediatek,mt6899-audio-dsp-hrt-bw"},
 	{},
 };
 
