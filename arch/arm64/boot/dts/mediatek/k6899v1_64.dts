@@ -9,13 +9,11 @@
 #include <dt-bindings/phy/phy.h>
 
 &chosen {
-	bootargs = "console=tty0 console=ttyS0,921600n1 root=/dev/ram vmalloc=400M cma=64M \
-8250.nr_uarts=4 kmemleak=off kasan=off \
-initrd=0x46000000,0x05000000 \
+	bootargs_ext = "\
 loglevel=8 androidboot.selinux=permissive \
-androidboot.hardware=mt6899 \
 earlycon=uart8250,mmio32,0x11001000 \
-initcall_debug=1";
+initcall_debug=1 \
+";
 };
 
 &mtk_leds {
