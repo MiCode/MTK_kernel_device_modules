@@ -11070,28 +11070,28 @@
 			compatible = "mediatek,common-disp-iommu-bank1";
 			mediatek,bank-id = <1>;
 			reg = <0 0x1e817000 0 0x1000>;
-			interrupts = <GIC_SPI 668 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 673 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		disp_iommu_bank2: iommu@1e818000 {
 			compatible = "mediatek,common-disp-iommu-bank2";
 			mediatek,bank-id = <2>;
 			reg = <0 0x1e818000 0 0x1000>;
-			interrupts = <GIC_SPI 669 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 674 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		disp_iommu_bank3: iommu@1e819000 {
 			compatible = "mediatek,common-disp-iommu-bank3";
 			mediatek,bank-id = <3>;
 			reg = <0 0x1e819000 0 0x1000>;
-			interrupts = <GIC_SPI 670 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 675 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		disp_iommu_bank4: iommu@1e81a000 {
 			compatible = "mediatek,common-disp-iommu-bank4";
 			mediatek,bank-id = <4>;
 			reg = <0 0x1e81a000 0 0x1000>;
-			interrupts = <GIC_SPI 671 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 676 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		disp_iommu: iommu@1e816000 {
@@ -11100,7 +11100,7 @@
 			table-id = <0>;
 			mediatek,iommu-banks = <&disp_iommu_bank1 &disp_iommu_bank2
 						&disp_iommu_bank3 &disp_iommu_bank4>;
-			interrupts = <GIC_SPI 667 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 672 IRQ_TYPE_LEVEL_HIGH 0>;
 			clock-names = "bclk";
 			#iommu-cells = <1>;
 		};
@@ -11109,28 +11109,28 @@
 			compatible = "mediatek,common-mdp-iommu-bank1";
 			mediatek,bank-id = <1>;
 			reg = <0 0x1e81c000 0 0x1000>;
-			interrupts = <GIC_SPI 673 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 668 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		mdp_iommu_bank2: iommu@1e81d000 {
 			compatible = "mediatek,common-mdp-iommu-bank2";
 			mediatek,bank-id = <2>;
 			reg = <0 0x1e81d000 0 0x1000>;
-			interrupts = <GIC_SPI 674 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 669 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		mdp_iommu_bank3: iommu@1e81e000 {
 			compatible = "mediatek,common-mdp-iommu-bank3";
 			mediatek,bank-id = <3>;
 			reg = <0 0x1e81e000 0 0x1000>;
-			interrupts = <GIC_SPI 675 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 670 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		mdp_iommu_bank4: iommu@1e81f000 {
 			compatible = "mediatek,common-mdp-iommu-bank4";
 			mediatek,bank-id = <4>;
 			reg = <0 0x1e81f000 0 0x1000>;
-			interrupts = <GIC_SPI 676 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 671 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		mdp_iommu: iommu@1e81b000 {
@@ -11139,7 +11139,7 @@
 			table-id = <0>;
 			mediatek,iommu-banks = <&mdp_iommu_bank1 &mdp_iommu_bank2
 						&mdp_iommu_bank3 &mdp_iommu_bank4>;
-			interrupts = <GIC_SPI 672 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 667 IRQ_TYPE_LEVEL_HIGH 0>;
 			clock-names = "bclk";
 			#iommu-cells = <1>;
 		};
