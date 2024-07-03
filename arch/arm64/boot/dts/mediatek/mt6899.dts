@@ -6392,6 +6392,31 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			token-timeout = /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MML_LOCK>;
 		};
 
+		mminfra-imax {
+			compatible = "mediatek,mminfra-imax";
+			reg = <0 0x14400000 0 0x1000>, /* dispsys */
+				<0 0x1f000000 0 0x1000>, /* mdpsys */
+				<0 0x1f800000 0 0x1000>, /* mdpsys1 */
+				<0 0x1440c000 0 0x1000>, /* disp_larb_0 */
+				<0 0x1440d000 0 0x1000>, /* disp_larb_1 */
+				<0 0x1f002000 0 0x1000>, /* mdp_larb_0 */
+				<0 0x1f802000 0 0x1000>; /* mdp_larb_1 */
+			disp-larb0-fake-port = <4>;
+			disp-larb1-fake-port = <3>;
+			mdp-larb0-fake-port = <7>;
+			mdp-larb1-fake-port = <7>;
+
+			mm-sram-base = <0x0f000000>;
+
+			reg-names = "dispsys",
+				"mdpsys",
+				"mdpsys1",
+				"disp_larb_0",
+				"disp_larb_1",
+				"mdp_larb_0",
+				"mdp_larb_1";
+		};
+
 		pwrmcu-partition-0@10400000 {
 			compatible = "mediatek,pwrmcu_partition_0";
 			reg = <0 0x10400000 0 0x100000>;
