@@ -145,7 +145,7 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 			... CMDQ_EVENT_IMG_IMG_EVENT_127:
 			return "MM_IMGSYS";
 		case CMDQ_EVENT_CAM_CAM_SUBA_SW_PASS1_DONE
-			...CMDQ_EVENT_CAM_SENINF_CAM17_FIFO_FULL:
+			...CMDQ_EVENT_CAM_SENINF_CFG_DONE_EVENT_0:
 			return "MM_CAM";
 		case CMDQ_SYNC_TOKEN_DIP_POWER_CTRL
 			... CMDQ_SYNC_TOKEN_TRAW_PWR_HAND_SHAKE:
