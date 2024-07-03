@@ -429,8 +429,8 @@
 	cam4_pin_mclk = "mclk";
 	cam4_pin_pdn = "gpio";
 	cam4_pin_rst = "gpio";
-	cam4_pin_vcama = "gpio";
-	cam4_pin_vcamd = "gpio";
+	cam4_pin_vcama = "regulator";
+	cam4_pin_vcamd = "regulator";
 	cam4_pin_vcamio = "regulator";
 	cam4_pin_vcamaf = "regulator";
 
