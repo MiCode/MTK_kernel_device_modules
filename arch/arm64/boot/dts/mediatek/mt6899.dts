@@ -8520,6 +8520,74 @@
 			#iommu-cells = <1>;
 		};
 
+		infra2vcp: infra2vcp@11400000 {
+			compatible = "mediatek,infra2vcp";
+			infra2vcp-support = <0>;
+			reg = <0 0x11400000 0 0x60000>, /* tcm */
+				<0 0x11624000 0 0x1000>, /* cfg */
+				<0 0x11630000 0 0x1000>, /* cfg core0 */
+				<0 0x11632000 0 0x1000>, /* intc core0 */
+				<0 0x11637000 0 0x1000>, /* pwr ctrl */
+				<0 0x11640000 0 0x1000>, /* cfg core1 */
+				<0 0x11651000 0 0x1000>, /* bus dbg */
+				<0 0x11652000 0 0x1000>, /* bus tracker */
+				<0 0x11660000 0 0x40000>, /* llc dbg */
+				<0 0x116a5000 0 0x4>, /* cfg_sec dbg */
+				<0 0x116a5450 0 0x40>, /* bus prot */
+				<0 0x116fb000 0 0x100>, /* mbox0 base */
+				<0 0x116fb100 0 0x4>, /* mbox0 set */
+				<0 0x116fb10c 0 0x4>, /* mbox0 clr */
+				<0 0x116a5020 0 0x4>, /* mbox0 init */
+				<0 0x116fc000 0 0x100>, /* mbox1 base */
+				<0 0x116fc100 0 0x4>, /* mbox1 set */
+				<0 0x116fc10c 0 0x4>, /* mbox1 clr */
+				<0 0x116a5024 0 0x4>, /* mbox1 init */
+				<0 0x116fd000 0 0x100>, /* mbox2 base */
+				<0 0x116fd100 0 0x4>, /* mbox2 set */
+				<0 0x116fd10c 0 0x4>, /* mbox2 clr */
+				<0 0x116a5028 0 0x4>, /* mbox2 init */
+				<0 0x116fe000 0 0x100>, /* mbox3 base */
+				<0 0x116fe100 0 0x4>, /* mbox3 set */
+				<0 0x116fe10c 0 0x4>, /* mbox3 clr */
+				<0 0x116a502c 0 0x4>, /* mbox3 init */
+				<0 0x116ff000 0 0x100>, /* mbox4 base */
+				<0 0x116ff100 0 0x4>, /* mbox4 set */
+				<0 0x116ff10c 0 0x4>, /* mbox4 clr */
+				<0 0x116a5030 0 0x4>; /* mbox4 init */
+
+			reg-names = "vcp_sram_base",
+					"vcp_cfgreg",
+					"vcp_cfgreg_core0",
+					"vcp_intc_core0",
+					"vcp_pwr_ctl",
+					"vcp_cfgreg_core1",
+					"vcp_bus_debug",
+					"vcp_bus_tracker",
+					"vcp_l1creg",
+					"vcp_cfgreg_sec",
+					"vcp_bus_prot",
+					"mbox0_base",
+					"mbox0_set",
+					"mbox0_clr",
+					"mbox0_init",
+					"mbox1_base",
+					"mbox1_set",
+					"mbox1_clr",
+					"mbox1_init",
+					"mbox2_base",
+					"mbox2_set",
+					"mbox2_clr",
+					"mbox2_init",
+					"mbox3_base",
+					"mbox3_set",
+					"mbox3_clr",
+					"mbox3_init",
+					"mbox4_base",
+					"mbox4_set",
+					"mbox4_clr",
+					"mbox4_init";
+		};
+
 		smart_pa: smart-pa {
 		};
 
