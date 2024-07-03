@@ -720,24 +720,39 @@ static int mtk_iommu_get_tf_port_idx(int tf_id, u32 type, int id)
 	return port_nr;
 }
 
-static int mtk_iommu_port_idx(int id, enum mtk_iommu_type type)
+static int mtk_iommu_port_idx(int id, enum mtk_iommu_type type, int *idx_list)
 {
-	int i;
-	u32 port_nr = m4u_data->plat_data->port_nr[type];
+	int  i, larb_id = -1;
+	u32 port_nr;
 	const struct mtk_iommu_port *port_list;
 
-	if (type < MM_IOMMU || type >= TYPE_NUM) {
-		pr_info("%s fail, invalid type %d\n", __func__, type);
-		return m4u_data->plat_data->port_nr[MM_IOMMU];
+	if (type < MM_IOMMU || type >= TYPE_NUM || idx_list == NULL) {
+		pr_info("%s, invalid parameter, type=%d\n", __func__, type);
+		return -1;
 	}
 
+	/* some larb port connected to both MDP and DISP SMMU will use 2nd idx */
+	idx_list[0] = -1;
+	idx_list[1] = -1;
+	port_nr = m4u_data->plat_data->port_nr[type];
 	port_list = m4u_data->plat_data->port_list[type];
 	for (i = 0; i < port_nr; i++) {
 		if ((port_list[i].larb_id == MTK_M4U_TO_LARB(id)) &&
-		     (port_list[i].port_id == MTK_M4U_TO_PORT(id)))
-			return i;
+		     (port_list[i].port_id == MTK_M4U_TO_PORT(id))) {
+			if (idx_list[0] == -1) {
+				idx_list[0] = i;
+				larb_id = port_list[i].larb_id;
+			} else {
+				idx_list[1]  = i;
+				break;
+			}
+		}
+
+		if (larb_id != -1 && port_list[i].larb_id > larb_id)
+			break;
 	}
-	return port_nr;
+
+	return idx_list[0] >= 0 ? 0 : -1;
 }
 
 static void report_custom_fault(
@@ -812,17 +827,24 @@ int mtk_iommu_register_fault_callback(int port,
 	void *cb_data, bool is_vpu)
 {
 	enum mtk_iommu_type type = is_vpu ? APU_IOMMU : MM_IOMMU;
-	int idx = mtk_iommu_port_idx(port, type);
+	int i, idx, idx_list[] = {-1, -1};
 
-	if (idx >= m4u_data->plat_data->port_nr[type]) {
+	if (mtk_iommu_port_idx(port, type, idx_list)) {
 		pr_info("%s fail, port=%d\n", __func__, port);
 		return -1;
 	}
-	if (is_vpu)
-		idx += m4u_data->plat_data->port_nr[type];
-	m4u_data->m4u_cb[idx].port = port;
-	m4u_data->m4u_cb[idx].fault_fn = fn;
-	m4u_data->m4u_cb[idx].fault_data = cb_data;
+
+	for (i = 0; i < ARRAY_SIZE(idx_list); i++) {
+		idx = idx_list[i];
+		if (idx >= 0) {
+			if (is_vpu)
+				idx += m4u_data->plat_data->port_nr[type];
+
+			m4u_data->m4u_cb[idx].port = port;
+			m4u_data->m4u_cb[idx].fault_fn = fn;
+			m4u_data->m4u_cb[idx].fault_data = cb_data;
+		}
+	}
 
 	return 0;
 }
@@ -831,17 +853,24 @@ EXPORT_SYMBOL_GPL(mtk_iommu_register_fault_callback);
 int mtk_iommu_unregister_fault_callback(int port, bool is_vpu)
 {
 	enum mtk_iommu_type type = is_vpu ? APU_IOMMU : MM_IOMMU;
-	int idx = mtk_iommu_port_idx(port, type);
+	int i, idx, idx_list[] = {-1, -1};
 
-	if (idx >= m4u_data->plat_data->port_nr[type]) {
+	if (mtk_iommu_port_idx(port, type, idx_list)) {
 		pr_info("%s fail, port=%d\n", __func__, port);
 		return -1;
 	}
-	if (is_vpu)
-		idx += m4u_data->plat_data->port_nr[type];
-	m4u_data->m4u_cb[idx].port = -1;
-	m4u_data->m4u_cb[idx].fault_fn = NULL;
-	m4u_data->m4u_cb[idx].fault_data = NULL;
+
+	for (i = 0; i < ARRAY_SIZE(idx_list); i++) {
+		idx = idx_list[i];
+		if (idx > 0) {
+			if (is_vpu)
+				idx += m4u_data->plat_data->port_nr[type];
+
+			m4u_data->m4u_cb[idx].port = -1;
+			m4u_data->m4u_cb[idx].fault_fn = NULL;
+			m4u_data->m4u_cb[idx].fault_data = NULL;
+		}
+	}
 
 	return 0;
 }
