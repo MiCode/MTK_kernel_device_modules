@@ -103,6 +103,11 @@ obj-$(CONFIG_MTK_MML) += mtk-mml-mt6897.o
 mtk-mml-mt6897-objs := mtk-mml-tp-mt6897.o
 endif
 
+ifneq ($(wildcard $(srctree)/$(src)/mtk-mml-tp-mt6899.c),)
+obj-$(CONFIG_MTK_MML) += mtk-mml-mt6899.o
+mtk-mml-mt6899-objs := mtk-mml-tp-mt6899.o
+endif
+
 ifneq ($(wildcard $(srctree)/$(src)/mtk-mml-tp-mt6989.c),)
 obj-$(CONFIG_MTK_MML) += mtk-mml-mt6989.o
 mtk-mml-mt6989-objs := mtk-mml-tp-mt6989.o

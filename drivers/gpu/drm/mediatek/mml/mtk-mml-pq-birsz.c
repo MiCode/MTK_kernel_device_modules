@@ -537,6 +537,14 @@ const struct of_device_id mml_pq_birsz_driver_dt_match[] = {
 		.data = &mt6985_birsz_data,
 	},
 	{
+		.compatible = "mediatek,mt6899-mml0_birsz",
+		.data = &mt6985_birsz_data,
+	},
+	{
+		.compatible = "mediatek,mt6899-mml1_birsz",
+		.data = &mt6985_birsz_data,
+	},
+	{
 		.compatible = "mediatek,mt6989-mml_birsz",
 		.data = &mt6985_birsz_data,
 	},

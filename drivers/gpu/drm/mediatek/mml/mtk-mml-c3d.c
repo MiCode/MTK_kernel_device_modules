@@ -118,13 +118,6 @@ static const struct c3d_data mt6991_mmlt_c3d_data = {
 	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
 };
 
-static const struct c3d_data mt6991_mmlf_c3d_data = {
-	.reg_table = c3d_reg_table_mt6989,
-	.sram_start_addr = 0,
-	.sram_end_addr = 2912,
-	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
-};
-
 struct mml_comp_c3d {
 	struct mml_comp comp;
 	const struct c3d_data *data;
@@ -579,10 +572,18 @@ const struct of_device_id mml_c3d_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6991-mml1_c3d0",
-		.data = &mt6991_mmlf_c3d_data,
+		.data = &mt6989_c3d_data,
 	},
 	{
 		.compatible = "mediatek,mt6991-mml0_c3d0",
+		.data = &mt6991_mmlt_c3d_data,
+	},
+	{
+		.compatible = "mediatek,mt6899-mml1_c3d0",
+		.data = &mt6989_c3d_data,
+	},
+	{
+		.compatible = "mediatek,mt6899-mml0_c3d0",
 		.data = &mt6991_mmlt_c3d_data,
 	},
 	{},

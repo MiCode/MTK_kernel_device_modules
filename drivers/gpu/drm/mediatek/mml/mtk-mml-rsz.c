@@ -172,14 +172,6 @@ static const struct rsz_data mt6991_mmlt_rsz_data = {
 	.alpha_rsz_crop = true,
 };
 
-static const struct rsz_data mt6991_mmlt_rsz2_data = {
-	.tile_width = 544,
-	.rsz_dbg = RSZ_DBG_MT6989,
-	.px_per_tick = 2,
-	.wrot_pending = true,
-	.alpha_rsz_crop = true,
-};
-
 static const struct rsz_data mt6991_mmlf_rsz_data = {
 	.tile_width = 3872,
 	.rsz_dbg = RSZ_DBG_MT6989,
@@ -936,6 +928,18 @@ const struct of_device_id mml_rsz_driver_dt_match[] = {
 		.data = &mt6897_rsz2_data,
 	},
 	{
+		.compatible = "mediatek,mt6899-mml0_rsz",
+		.data = &mt6989_rsz2_data,
+	},
+	{
+		.compatible = "mediatek,mt6899-mml1_rsz",
+		.data = &mt6989_rsz_data,
+	},
+	{
+		.compatible = "mediatek,mt6899-mml1_rsz2",
+		.data = &mt6989_rsz2_data,
+	},
+	{
 		.compatible = "mediatek,mt6989-mml_rsz",
 		.data = &mt6989_rsz_data,
 	},
@@ -953,7 +957,7 @@ const struct of_device_id mml_rsz_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6991-mml0_rsz2",
-		.data = &mt6991_mmlt_rsz2_data,
+		.data = &mt6989_rsz2_data,
 	},
 	{
 		.compatible = "mediatek,mt6991-mml1_rsz",

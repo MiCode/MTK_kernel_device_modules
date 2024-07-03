@@ -1867,6 +1867,14 @@ const struct of_device_id mml_hdr_driver_dt_match[] = {
 		.data = &mt6985_hdr_data,
 	},
 	{
+		.compatible = "mediatek,mt6899-mml0_hdr",
+		.data = &mt6991_mmlt_hdr_data,
+	},
+	{
+		.compatible = "mediatek,mt6899-mml1_hdr",
+		.data = &mt6991_mmlf_hdr_data,
+	},
+	{
 		.compatible = "mediatek,mt6989-mml_hdr",
 		.data = &mt6985_hdr_data,
 	},

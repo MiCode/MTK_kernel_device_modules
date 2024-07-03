@@ -2661,6 +2661,15 @@ const struct of_device_id mml_aal_driver_dt_match[] = {
 		.data = &mt6897_aal_data
 	},
 	{
+		.compatible = "mediatek,mt6899-mml0_aal",
+		.data = &mt6991_mmlt_aal_data
+	},
+	{
+		.compatible = "mediatek,mt6899-mml1_aal",
+		.data = &mt6989_aal_data
+
+	},
+	{
 		.compatible = "mediatek,mt6989-mml_aal",
 		.data = &mt6989_aal_data
 	},
