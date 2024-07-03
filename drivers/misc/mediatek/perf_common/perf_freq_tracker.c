@@ -6,9 +6,13 @@
 #include <linux/kallsyms.h>
 #include <linux/hashtable.h>
 #include <linux/slab.h>
+#include <linux/stacktrace.h>
 #include <perf_tracker_internal.h>
 #include <perf_tracker_trace.h>
 
+
+#define CALLER_START_IDX 4
+#define CALL_STACK_SIZE 2
 
 struct h_node {
 	unsigned long addr;
@@ -53,28 +57,38 @@ static const char *find_and_get_symobls(unsigned long caller_addr)
 static int freq_qos_max_notifier_call(struct notifier_block *nb,
 					unsigned long freq_limit_max, void *ptr)
 {
+	unsigned long entries[CALL_STACK_SIZE];
+	unsigned int nr_entries;
 	int cid = nb - freq_qos_max_notifier;
-	const char *caller_info = find_and_get_symobls(
-		(unsigned long)__builtin_return_address(3));
-	const char *caller_info2 = find_and_get_symobls(
-		(unsigned long)__builtin_return_address(4));
-	if (caller_info && caller_info2)
-		trace_freq_qos_user_setting(cid, FREQ_QOS_MAX, freq_limit_max,
-			caller_info, caller_info2);
+
+	nr_entries = stack_trace_save(entries, ARRAY_SIZE(entries), CALLER_START_IDX);
+	if (nr_entries == CALL_STACK_SIZE) {
+		const char *caller_info = find_and_get_symobls(entries[0]);
+		const char *caller_info2 = find_and_get_symobls(entries[1]);
+
+		if (caller_info && caller_info2)
+			trace_freq_qos_user_setting(cid, FREQ_QOS_MAX, freq_limit_max,
+				caller_info, caller_info2);
+	}
 	return 0;
 }
 
 static int freq_qos_min_notifier_call(struct notifier_block *nb,
 					unsigned long freq_limit_min, void *ptr)
 {
+	unsigned long entries[CALL_STACK_SIZE];
+	unsigned int nr_entries;
 	int cid = nb - freq_qos_min_notifier;
-	const char *caller_info = find_and_get_symobls(
-		(unsigned long)__builtin_return_address(3));
-	const char *caller_info2 = find_and_get_symobls(
-		(unsigned long)__builtin_return_address(4));
-	if (caller_info && caller_info2)
-		trace_freq_qos_user_setting(cid, FREQ_QOS_MIN, freq_limit_min,
-			caller_info, caller_info2);
+
+	nr_entries = stack_trace_save(entries, ARRAY_SIZE(entries), CALLER_START_IDX);
+	if (nr_entries == CALL_STACK_SIZE) {
+		const char *caller_info = find_and_get_symobls(entries[0]);
+		const char *caller_info2 = find_and_get_symobls(entries[1]);
+
+		if (caller_info && caller_info2)
+			trace_freq_qos_user_setting(cid, FREQ_QOS_MIN, freq_limit_min,
+				caller_info, caller_info2);
+	}
 	return 0;
 }
 
