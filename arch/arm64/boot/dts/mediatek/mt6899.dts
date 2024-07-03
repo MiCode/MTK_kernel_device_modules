@@ -15252,32 +15252,43 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		compatible = "mediatek,low_battery_throttling";
 		lvsys-thd-enable = <1>;
 		vbat-thd-enable = <1>;
-		thd-volts-l = <
+		bat0-thd-volts-l = <
 			3550 3100 2900
 			3800 3100 2900
 			4300 3400 3100
 			4400 3400 3100>;
-		thd-volts-h = <
+		bat0-thd-volts-h = <
 			3600 3550 3100
 			3900 3800 3100
 			4500 4300 3400
 			4500 4400 3400>;
-		thd-volts-l-2s = <
+		bat1-thd-volts-l = <
 			3550 3100 2900
 			3800 3100 2900
 			4300 3400 3100
 			4400 3400 3100>;
-		thd-volts-h-2s = <
+		bat1-thd-volts-h = <
 			3600 3550 3100
 			3900 3800 3100
 			4500 4300 3400
 			4500 4400 3400>;
 		lvsys-thd-volt-l = <2900>;
 		lvsys-thd-volt-h = <3100>;
-		temperature-max-stage = <3>;
 		temperature-stage-threshold = <25 10 0>;
-		lbat1-max-throttle-level = <3>;
-		lbat1-throttle-level = <0 1 2 3>,
+
+		bat0-aging-threshold = <500 1000>;
+		bat0-aging-volts-t0 =  <0 0>;
+		bat0-aging-volts-t1 =  <0 0>;
+		bat0-aging-volts-t2 =  <0 0>;
+		bat0-aging-volts-t3 =  <0 0>;
+		bat1-aging-threshold = <500 1000>;
+		bat1-aging-volts-t0 =  <0 0>;
+		bat1-aging-volts-t1 =  <0 0>;
+		bat1-aging-volts-t2 =  <0 0>;
+		bat1-aging-volts-t3 =  <0 0>;
+
+		pt-shutdown-enable = <1>;
+		throttle-level = <0 1 2 3>,
 					<0 1 2 3>,
 					<0 1 2 3>,
 					<0 1 2 3>;
