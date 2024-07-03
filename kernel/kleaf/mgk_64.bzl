@@ -1038,8 +1038,6 @@ mgk_64_platform_device_modules = {
     "sound/soc/mediatek/mt6886/snd-soc-mt6886-afe.ko": "mt6886",
     "sound/soc/mediatek/mt6897/mt6897-mt6368.ko": "mt6897",
     "sound/soc/mediatek/mt6897/snd-soc-mt6897-afe.ko": "mt6897",
-    "sound/soc/mediatek/mt6899/mt6899-mt6368.ko": "mt6899",
-    "sound/soc/mediatek/mt6899/snd-soc-mt6899-afe.ko": "mt6899",
     "sound/soc/mediatek/mt6983/mt6983-mt6338.ko": "mt6983",
     "sound/soc/mediatek/mt6983/snd-soc-mt6983-afe.ko": "mt6983",
     "sound/soc/mediatek/mt6985/mt6985-mt6338.ko": "mt6985",
