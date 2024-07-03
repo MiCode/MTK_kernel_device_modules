@@ -2929,8 +2929,10 @@ static int mtk_edp_resume(struct device *dev)
 		mtk_edp_hwirq_enable(mtk_edp, true);
 	mtk_edp_power_enable(mtk_edp);
 
-	if (mtk_edp->next_bridge)
+	if (mtk_edp->next_bridge) {
 		mtk_edp->train_info.cable_plugged_in = true;
+		mtk_edp->next_bridge->funcs->pre_enable(mtk_edp->next_bridge);
+	}
 
 	mtk_edp->suspend = false;
 
