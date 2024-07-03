@@ -35,6 +35,10 @@
 #define STD_VENC_FREQ 250000000
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_TASK_TURBO)
+#include "task_turbo_v.h"
+#endif
+
 //#define VENC_PRINT_DTS_INFO
 int venc_smi_monitor_mode = 1; // 0: disable, 1: enable, 2: debug mode
 int venc_max_mon_frm = 8;
@@ -479,13 +483,19 @@ void mtk_venc_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 	dev->venc_dvfs_params.target_freq = inst->vsi->config.target_freq;
 	dev->venc_dvfs_params.target_bw_factor = inst->vsi->config.target_bw_factor;
 	mtk_vcodec_cpu_adaptive_ctrl(ctx, inst->vsi->config.cpu_hint);
+#if IS_ENABLED(CONFIG_MTK_TASK_TURBO)
 	if (inst->vsi->config.cpu_hint) {
-		mtk_v4l2_debug(0, "[VENC] enable ct to TA");
-		enforce_ct_to_vip(1, 3);
+		if (enforce_ct_to_vip(1, VIDEO) != 0)
+			mtk_v4l2_debug(0, "[VENC] enable ct to TA Fail");
+		else
+			mtk_v4l2_debug(8, "[VENC] enable ct to TA");
 	} else {
-		mtk_v4l2_debug(0, "[VENC] disable ct to TA");
-		enforce_ct_to_vip(0, 3);
+		if (enforce_ct_to_vip(0, VIDEO) != 0)
+			mtk_v4l2_debug(0, "[VENC] disable ct to TA Fail");
+		else
+			mtk_v4l2_debug(8, "[VENC] disable ct to TA");
 	}
+#endif
 }
 
 void mtk_venc_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx)
