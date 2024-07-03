@@ -9299,8 +9299,8 @@
 			interrupts = <GIC_SPI 783 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 786 IRQ_TYPE_LEVEL_HIGH 0>;
 
-			power-domains = <&scpsys MT6899_POWER_DOMAIN_VDE0>,
-				<&scpsys MT6899_POWER_DOMAIN_VDE1>;
+			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VDE0>,
+				<&hfrpsys MT6899_POWER_DOMAIN_VDE1>;
 			//mediatek,vcu = <&vcu>;
 			clocks = <&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_CKEN>,
 					<&vdec_soc_gcon_base_clk CLK_VDE1_LAT_CKEN>,
@@ -9383,8 +9383,8 @@
 			mediatek,larbs = <&smi_larb7 &smi_larb8>;
 			interrupts = <GIC_SPI 789 IRQ_TYPE_LEVEL_HIGH 0>,
 					<GIC_SPI 794 IRQ_TYPE_LEVEL_HIGH 0>;
-			power-domains = <&scpsys MT6899_POWER_DOMAIN_VEN0>,
-							<&scpsys MT6899_POWER_DOMAIN_VEN1>;
+			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VEN0>,
+							<&hfrpsys MT6899_POWER_DOMAIN_VEN1>;
 			//mediatek,vcu = <&vcu>;
 			clocks = <&venc_gcon_clk CLK_VEN1_CKE1_VENC>,
 				<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC>;
