@@ -60,15 +60,12 @@
 			<&topckgen_clk CLK_TOP_SENINF3_SEL>,
 			<&topckgen_clk CLK_TOP_SENINF4_SEL>,
 			<&topckgen_clk CLK_TOP_SENINF5_SEL>,
-			<&topckgen_clk CLK_TOP_CCU_AHB_SEL>,
 			<&topckgen_clk CLK_TOP_IMG1_SEL>,
 			<&topckgen_clk CLK_TOP_IPE_SEL>,
 			<&topckgen_clk CLK_TOP_CAM_SEL>,
 			<&topckgen_clk CLK_TOP_CAMTM_SEL>,
 			<&topckgen_clk CLK_TOP_DPE_SEL>,
 			<&topckgen_clk CLK_TOP_VDEC_SEL>,
-			<&topckgen_clk CLK_TOP_CCUSYS_SEL>,
-			<&topckgen_clk CLK_TOP_CCUTM_SEL>,
 			<&topckgen_clk CLK_TOP_VENC_SEL>,
 			<&topckgen_clk CLK_TOP_DP_CORE_SEL>,
 			<&topckgen_clk CLK_TOP_DP_SEL>,
@@ -253,16 +250,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_SSUSB0_FRMCNT_USB>;
 	};
 
-	bring-up-ccu@3 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x3>;
-		clocks =
-			<&ccu_main_clk CLK_CCU_LARB19_CON_CCU>,
-			<&ccu_main_clk CLK_CCU2INFRA_GALS_CON_CCU>,
-			<&ccu_main_clk CLK_CCU2MM0_GALS_CON_CCU>,
-			<&cam_vcore_r1a_clk CLK_CAMV_CV_MM0_SC_DCM_DIS_CCU>;
-	};
-
 	bring-up-camraw@4 {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x4>;
@@ -342,7 +329,6 @@
 			<&cam_main_r1a_clk CLK_CAM_MAIN_LARB14_SMI>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_LARB27_SMI>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_SMI>,
-			<&ccu_main_clk CLK_CCU_LARB19_CON_SMI>,
 			<&camsys_mraw_clk CLK_CAM_MR_LARBX_SMI>,
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19_SMI>,
 			<&camsys_rawa_clk CLK_CAM_RA_LARBX_SMI>,
@@ -697,13 +683,6 @@
 			<&mminfra_ao_config_clk CLK_MMINFRA_AO_GCE_26M_CMDQ>;
 	};
 
-	bring-up-ccu0@16 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x16>;
-		clocks =
-			<&ccu_main_clk CLK_CCUSYS_CCU0_CON_CCU0>;
-	};
-
 	bring-up-msdc1@17 {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x17>;
@@ -965,18 +944,6 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x33>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_VCORE>;
-	};
-
-	bring-up-pd-cam-ccu@34 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x34>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_CCU>;
-	};
-
-	bring-up-pd-cam-ccu-ao@35 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x35>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_CCU_AO>;
 	};
 
 	bring-up-pd-disp-vcore@36 {
