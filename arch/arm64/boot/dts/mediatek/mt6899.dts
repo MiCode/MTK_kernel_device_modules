@@ -11824,6 +11824,12 @@
 	status = "okay";
 };
 
+&mt6685_mfd {
+	mt6685_consys: mt6685-consys {
+		compatible = "mediatek,mt6685-consys";
+	};
+};
+
 &mddriver {
 	/* for md pmic voltage setting*/
 	md-vmodem-supply = <&mt6363_vbuck6>;
