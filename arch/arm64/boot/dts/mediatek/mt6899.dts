@@ -8308,6 +8308,32 @@
 			bootmode = <&chosen>;
 		};
 
+		gps: gps@18c00000 {
+			compatible = "mediatek,mt6899-gps";
+			reg = <0 0x18000000 0 0x100000>,
+					<0 0x18c00000 0 0x100000>,
+					<0 0x1c000000 0 0x4>,
+					<0 0x1cc00028 0 0x4>,
+					<0 0x1cc00030 0 0x4>,
+					<0 0x1cc000cc 0 0x28>;
+			reg-names = "conn_infra_base", "conn_gps_base",
+				"status_dummy_cr", "tia2_gps_on", "tia2_gps_rc_sel",
+				"tia2_gps_debug";
+			interrupts = <GIC_SPI 419 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 420 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 421 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 422 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 423 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 424 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 425 IRQ_TYPE_LEVEL_HIGH 0>;
+			emi-connac-ver = <2>;
+			emi-addr = <0>;
+			emi-size = <0x100000>;
+			emi-alignment = <0x100000>;
+			emi-max-addr = <0xc0000000>;
+			b13b14-status-addr = <0x1c000008>;
+		};
+
 		scp_clk_ctrl: scp-clk-ctrl@1cb21000 {
 			compatible = "mediatek,scp-clk-ctrl", "syscon";
 			reg = <0 0x1cb21000 0 0x1000>;

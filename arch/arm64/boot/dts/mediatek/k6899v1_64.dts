@@ -467,42 +467,42 @@ initcall_debug=1 \
 };
 #endif
 
-#if 0
+#if 1
 /* GPS GPIO standardization start */
 &pio {
 	gps_pins_default: gps_default {
 	};
 	gps_l1_lna_pins_ol: gps-l1-lna0 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO12__FUNC_GPIO12>;
+			pinmux = <PINMUX_GPIO190__FUNC_GPIO12>;
 			output-low;
 		};
 	};
 	gps_l1_lna_pins_dsp_ctrl: gps-l1-lna1 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO12__FUNC_GPS_L1_ELNA_EN>;
+			pinmux = <PINMUX_GPIO190__FUNC_GPS_L1_ELNA_EN>;
 		};
 	};
 	gps_l1_lna_pins_oh: gps-l1-lna2 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO12__FUNC_GPIO12>;
+			pinmux = <PINMUX_GPIO190__FUNC_GPIO12>;
 			output-high;
 		};
 	};
 	gps_l5_lna_pins_ol: gps-l5-lna0 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO13__FUNC_GPIO13>;
+			pinmux = <PINMUX_GPIO191__FUNC_GPIO13>;
 			output-low;
 		};
 	};
 	gps_l5_lna_pins_dsp_ctrl: gps-l5-lna1 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO13__FUNC_GPS_L5_ELNA_EN>;
+			pinmux = <PINMUX_GPIO191__FUNC_GPS_L5_ELNA_EN>;
 		};
 	};
 	gps_l5_lna_pins_oh: gps-l5-lna2 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO13__FUNC_GPIO13>;
+			pinmux = <PINMUX_GPIO191__FUNC_GPIO13>;
 			output-high;
 		};
 	};
