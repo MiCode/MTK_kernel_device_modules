@@ -10674,6 +10674,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			power-domains = <&hfrpsys  MT6899_POWER_DOMAIN_VEN0>;
 			mediatek,larb = <&smi_larb7>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			mmqos-supply = <&mmqos>;
 			iommus = <&disp_iommu  M4U_L7_P7_JPGENC_Y_RDMA_U0>,
 				 <&disp_iommu M4U_L7_P8_JPGENC_C_RDMA_U0>,
 				 <&disp_iommu M4U_L7_P9_JPGENC_Q_TABLE_U0>,
@@ -10760,6 +10761,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larb = <&smi_larb7 &smi_larb8>;
 			operating-points-v2 = <&opp_table_venc>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			mmqos-supply = <&mmqos>;
 			iommus = <&mdp_iommu  M4U_L8_P7_JPGENC_Y_RDMA_U0>,
 				 <&mdp_iommu M4U_L8_P8_JPGENC_C_RDMA_U0>,
 				 <&mdp_iommu M4U_L8_P9_JPGENC_Q_TABLE_U0>,
