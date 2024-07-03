@@ -527,6 +527,16 @@
 		version = "v2.0";
 	};
 
+	efuse: efuse@11f10000 {
+		compatible = "mediatek,devinfo";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		efuse_segment: segment@78 {
+			reg = <0x78 0x4>;
+		};
+	};
+
 	bus-parity@c000900 {
 		compatible = "mediatek,bus-parity";
 		reg = <0 0x0c000900 0 0x20>,       /* MST_EMI0_CH0 */
