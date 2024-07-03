@@ -78,6 +78,8 @@ ifneq ($(wildcard $(srctree)/$(src)/k6991v1_64_alpha),)
 obj-$(CONFIG_DRM_PANEL_RM692H5_ALPHA_CMD_SPR) += k6991v1_64_alpha/panel-rm692h5-alpha-cmd-spr.o
 obj-$(CONFIG_DRM_PANEL_NT37707_BOE_FHDPLUS_CMD) += k6991v1_64_alpha/panel-nt37707-boe-fhdplus-cmd.o
 obj-$(CONFIG_DRM_PANEL_RM692K0_VISIONOX_FHDPLUS_CMD) += k6991v1_64_alpha/panel-rm692k0-visionox-fhdplus-cmd.o
+obj-$(CONFIG_DRM_PANEL_NT37707_BOE_FHDPLUS_CMD_LTPS) += k6991v1_64_alpha/panel-nt37707-boe-fhdplus-cmd-ltps.o
+obj-$(CONFIG_DRM_PANEL_RM692K0_VSN_FHDPLUS_CMD_LTPS) += k6991v1_64_alpha/panel-rm692k0-vsn-fhdplus-cmd-ltps.o
 endif
 obj-$(CONFIG_DRM_PANEL_MAXIAM_MAX96851) += panel-maxiam-max96851.o
 obj-$(CONFIG_DRM_PANEL_SERDES) += panel-serdes-max96789.o bridge-serdes-max96789.o
