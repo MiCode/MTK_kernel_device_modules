@@ -15,6 +15,7 @@ struct mvpu_platdata mvpu_mt6879_platdata;
 struct mvpu_platdata mvpu_mt6886_platdata;
 struct mvpu_platdata mvpu_mt6895_platdata;
 struct mvpu_platdata mvpu_mt6897_platdata;
+struct mvpu_platdata mvpu_mt6899_platdata;
 struct mvpu_platdata mvpu_mt6983_platdata;
 struct mvpu_platdata mvpu_mt6985_platdata;
 struct mvpu_platdata mvpu_mt6989_platdata;
@@ -42,6 +43,10 @@ static const struct of_device_id mvpu_of_match[] = {
 	{
 	.compatible = "mediatek, mt6879-mvpu",
 	.data = &mvpu_mt6879_platdata
+	},
+	{
+	.compatible = "mediatek, mt6899-mvpu",
+	.data = &mvpu_mt6899_platdata
 	},
 	{
 	.compatible = "mediatek, mt6983-mvpu",

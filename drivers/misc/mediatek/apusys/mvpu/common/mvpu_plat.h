@@ -76,6 +76,7 @@ extern struct mvpu_platdata mvpu_mt6895_platdata;
 extern struct mvpu_platdata mvpu_mt6985_platdata;
 extern struct mvpu_platdata mvpu_mt6886_platdata;
 extern struct mvpu_platdata mvpu_mt6897_platdata;
+extern struct mvpu_platdata mvpu_mt6899_platdata;
 extern struct mvpu_platdata mvpu_mt6989_platdata;
 extern struct mvpu_platdata mvpu_mt6991_platdata;
 
