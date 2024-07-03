@@ -349,15 +349,6 @@
 			<&venc_gcon_core1_clk CLK_VEN2_CKE6_GALS_SRAM_VENC>;
 	};
 
-	bring-up-jpgdec@8 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x8>;
-		clocks =
-			<&venc_gcon_clk CLK_VEN1_CKE3_JPGDEC_JPGDEC>,
-			<&venc_gcon_clk CLK_VEN1_CKE4_JPGDEC_C1_JPGDEC>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE3_JPGDEC_JPGDEC>;
-	};
-
 	bring-up-camera-p2@a {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0xa>;
