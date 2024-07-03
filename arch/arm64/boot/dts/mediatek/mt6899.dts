@@ -1971,9 +1971,73 @@
 			buf-addr-max = <0xffffffff>;
 		};
 
-		emi@10219000 {
-			compatible = "mediatek,emi";
-			reg = <0 0x10219000 0 0x1000>;
+		emicen: emicen@10219000 {
+			compatible = "mediatek,mt6877-emicen";
+			reg = <0 0x10219000 0 0x1000>,
+				<0 0x1021d000 0 0x1000>;
+			mediatek,emi-reg = <&emichn>;
+		};
+
+		emichn: emichn@10235000 {
+			compatible = "mediatek,common-emichn";
+			reg = <0 0x10235000 0 0x1000>,
+				<0 0x10245000 0 0x1000>,
+				<0 0x10255000 0 0x1000>,
+				<0 0x10265000 0 0x1000>;
+		};
+
+		emimpu: emimpu@10226000 {
+			compatible = "mediatek,common-emimpu";
+			reg = <0 0x10226000 0 0x1000>,
+				  <0 0x10225000 0 0x1000>;
+			mediatek,emi-reg = <&emicen>;
+			interrupts = <GIC_SPI 926 IRQ_TYPE_LEVEL_HIGH 0>;
+			dump = <0x1f0 0x1f8 0x1fc>;
+			clear = <0x1f0 0x80000000 1>,
+				<0x160 0xffffffff 16>,
+				<0x200 0x00000003 16>;
+			clear-md = <0x1fc 0x80000000 1>;
+			smc-clear = <1>;
+		};
+
+		emi-fake-eng@1026c000 {
+			compatible = "mediatek,emi-fake-engine";
+			reg = <0 0x1026c000 0 0x1000>,   /* FAKE_ENG_0 */
+					<0 0x10310000 0 0x1000>, /* FAKE_ENG_1 */
+					<0 0x1026d000 0 0x1000>, /* FAKE_ENG_2 */
+					<0 0x10311000 0 0x1000>; /* FAKE_ENG_3 */
+			mediatek,emi-reg = <&emicen>;
+			pre-setting {
+				setting1 {
+					reg-name = "SLEEP_PROT_EN_8";
+					addr = <0x1002c100>;
+					mask-value = <0x1800>;
+					set-value = <0x0>;
+				};
+				setting2 {
+					reg-name = "SLEEP_PROT_EN_9";
+					addr = <0x1002c120>;
+					mask-value = <0x1800>;
+					set-value = <0x0>;
+				};
+				setting3 {
+					reg-name = "N_DCM_FR";
+					addr = <0x10270300>;
+					mask-value = <0x0>;
+					set-value = <0xff>;
+				};
+				setting4 {
+					reg-name = "S_DCM_FR";
+					addr = <0x1030e300>;
+					mask-value = <0x0>;
+					set-value = <0xff>;
+				};
+			};
+		};
+
+		emiisu {
+			compatible = "mediatek,common-emiisu";
+			ctrl-intf = <1>;
 		};
 
 		infra-device-mpu@1021a000 {
@@ -2398,6 +2462,29 @@
 		emi-m7-m-apb@1032a000 {
 			compatible = "mediatek,emi_m7_m_apb";
 			reg = <0 0x1032a000 0 0x1000>;
+		};
+
+		emislb: emislb@10342000 {
+			compatible = "mediatek,common-emislb";
+			reg = <0 0x10342000 0 0x1000>,
+				  <0 0x10343000 0 0x1000>;
+			interrupts = <GIC_SPI 903 IRQ_TYPE_LEVEL_HIGH 0>;
+			dump = <0xd14 0xd18 0xd1c 0xd20 0xd24 0xd60 0xd64 0xd68 0xd6c>;
+			clear = <0x540 0x1 1>,
+				<0x540 0x0 1>;
+			mpu-base-clear = <1>;
+		};
+
+		slc-parity@10342000 {
+			compatible = "mediatek,common-slc-parity";
+			reg = <0 0x10342000 0 0x1000>,
+				<0 0x10343000 0 0x1000>;
+			interrupts = <GIC_SPI 904 IRQ_TYPE_LEVEL_HIGH 0>;
+			dump = <0xc00 0xd80 0xc04 0xd70>;
+			port-num = <10>;
+			cs-num = <2>;
+			chn-num = <2>;
+			clear = <0x014>;
 		};
 
 		infra-bus-hre-apb@1032c000 {
