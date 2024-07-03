@@ -32,23 +32,9 @@ static inline int tcpci_alert_vsafe0v(struct tcpc_device *tcpc)
 	return 0;
 }
 
-static inline void tcpci_vbus_level_init_v10(
-	struct tcpc_device *tcpc, uint16_t power_status)
+void tcpci_vbus_level_refresh(struct tcpc_device *tcpc)
 {
 	mutex_lock(&tcpc->access_lock);
-	tcpc->vbus_level = power_status & TCPC_REG_POWER_STATUS_VBUS_PRES ?
-			   TCPC_VBUS_VALID : TCPC_VBUS_INVALID;
-	if (power_status & TCPC_REG_POWER_STATUS_EXT_VSAFE0V) {
-		if (tcpc->vbus_level == TCPC_VBUS_INVALID)
-			tcpc->vbus_level = TCPC_VBUS_SAFE0V;
-		else
-			TCPC_INFO("ps_confused: 0x%04x\n", power_status);
-	}
-	mutex_unlock(&tcpc->access_lock);
-}
-
-static void __tcpci_vbus_level_refresh(struct tcpc_device *tcpc)
-{
 	tcpc->vbus_level = tcpc->vbus_present ? TCPC_VBUS_VALID :
 						TCPC_VBUS_INVALID;
 	if (tcpc->vbus_safe0v) {
@@ -57,25 +43,6 @@ static void __tcpci_vbus_level_refresh(struct tcpc_device *tcpc)
 		else
 			TCPC_INFO("ps_confused: %d\n", tcpc->vbus_level);
 	}
-}
-
-static inline void tcpci_vbus_level_refresh(struct tcpc_device *tcpc)
-{
-	mutex_lock(&tcpc->access_lock);
-	__tcpci_vbus_level_refresh(tcpc);
-	mutex_unlock(&tcpc->access_lock);
-}
-
-void tcpci_vbus_level_init(struct tcpc_device *tcpc, uint16_t power_status)
-{
-	if (tcpc->tcpc_flags & TCPC_FLAGS_ALERT_V10) {
-		tcpci_vbus_level_init_v10(tcpc, power_status);
-		return;
-	}
-
-	mutex_lock(&tcpc->access_lock);
-	tcpc->vbus_present = !!(power_status & TCPC_REG_POWER_STATUS_VBUS_PRES);
-	__tcpci_vbus_level_refresh(tcpc);
 	mutex_unlock(&tcpc->access_lock);
 }
 
@@ -106,9 +73,8 @@ static int tcpci_vbus_level_changed(struct tcpc_device *tcpc)
 static int tcpci_alert_power_status_changed(struct tcpc_device *tcpc)
 {
 	int rv = 0;
-	uint16_t power_status = 0;
 
-	rv = tcpci_get_power_status(tcpc, &power_status);
+	rv = tcpci_get_power_status(tcpc);
 	if (rv < 0)
 		return rv;
 
@@ -129,11 +95,9 @@ static int tcpci_alert_tx_success(struct tcpc_device *tcpc)
 	};
 
 	mutex_lock(&tcpc->access_lock);
-#if PD_DYNAMIC_SENDER_RESPONSE
-	tcpc->t[1] = local_clock();
-	tcpc->tx_time_diff = (tcpc->t[1] - tcpc->t[0]) / NSEC_PER_USEC;
-	pd_dbg_info("%s, diff = %llu\n", __func__, tcpc->tx_time_diff);
-#endif /* PD_DYNAMIC_SENDER_RESPONSE */
+	tcpc->io_time_diff = (local_clock() - tcpc->io_time_start) /
+			      NSEC_PER_USEC;
+	TCPC_DBG("%s io_time_diff = %lluus\n", __func__, tcpc->io_time_diff);
 	tx_state = tcpc->pd_transmit_state;
 	tcpc->pd_transmit_state = PD_TX_STATE_GOOD_CRC;
 	mutex_unlock(&tcpc->access_lock);
@@ -151,9 +115,7 @@ static int tcpci_alert_tx_failed(struct tcpc_device *tcpc)
 	uint8_t tx_state = PD_TX_STATE_GOOD_CRC;
 
 	mutex_lock(&tcpc->access_lock);
-#if PD_DYNAMIC_SENDER_RESPONSE
-	tcpc->tx_time_diff = 0;
-#endif
+	tcpc->io_time_diff = 0;
 	tx_state = tcpc->pd_transmit_state;
 	tcpc->pd_transmit_state = PD_TX_STATE_NO_GOOD_CRC;
 	mutex_unlock(&tcpc->access_lock);
@@ -175,9 +137,7 @@ static int tcpci_alert_tx_discard(struct tcpc_device *tcpc)
 	TCPC_INFO("Discard\n");
 
 	mutex_lock(&tcpc->access_lock);
-#if PD_DYNAMIC_SENDER_RESPONSE
-	tcpc->tx_time_diff = 0;
-#endif
+	tcpc->io_time_diff = 0;
 	tx_state = tcpc->pd_transmit_state;
 	tcpc->pd_transmit_state = PD_TX_STATE_DISCARD;
 	mutex_unlock(&tcpc->access_lock);
@@ -202,29 +162,32 @@ static int tcpci_alert_tx_discard(struct tcpc_device *tcpc)
 	return 0;
 }
 
-static int tcpci_alert_recv_msg(struct tcpc_device *tcpc)
+static void tcpci_alert_recv_msg(struct tcpc_device *tcpc)
 {
 	int rv = 0;
 	struct pd_msg *pd_msg = NULL;
 
+	tcpc->curr_pd_msg = NULL;
+
 	pd_msg = pd_alloc_msg(tcpc);
-	if (pd_msg == NULL) {
-		rv = -ENOMEM;
-		goto out;
-	}
+	if (pd_msg == NULL)
+		return;
 
 	rv = tcpci_get_message(tcpc, pd_msg->payload, &pd_msg->msg_hdr,
 			       &pd_msg->frame_type);
 	if (rv < 0 || pd_msg->msg_hdr == 0) {
 		TCPC_INFO("recv_msg failed: %d\n", rv);
 		pd_free_msg(tcpc, pd_msg);
-		goto out;
+		return;
 	}
-	pd_put_pd_msg_event(tcpc, pd_msg);
-out:
-	tcpci_alert_status_clear(tcpc, TCPC_REG_ALERT_RX_MASK);
+	tcpc->curr_pd_msg = pd_msg;
+}
 
-	return rv;
+static int tcpci_alert_recv_msg_put_event(struct tcpc_device *tcpc)
+{
+	if (tcpc->curr_pd_msg)
+		pd_put_pd_msg_event(tcpc, tcpc->curr_pd_msg);
+	return 0;
 }
 
 static int tcpci_alert_rx_overflow(struct tcpc_device *tcpc)
@@ -289,7 +252,7 @@ static const struct tcpci_alert_handler tcpci_alert_handlers[] = {
 	DECL_TCPCI_ALERT_HANDLER(4, tcpci_alert_tx_failed),
 	DECL_TCPCI_ALERT_HANDLER(5, tcpci_alert_tx_discard),
 	DECL_TCPCI_ALERT_HANDLER(6, tcpci_alert_tx_success),
-	DECL_TCPCI_ALERT_HANDLER(2, tcpci_alert_recv_msg),
+	DECL_TCPCI_ALERT_HANDLER(2, tcpci_alert_recv_msg_put_event),
 	DECL_TCPCI_ALERT_HANDLER(3, tcpci_alert_recv_hard_reset),
 	DECL_TCPCI_ALERT_HANDLER(10, tcpci_alert_rx_overflow),
 #endif /* CONFIG_USB_POWER_DELIVERY */
@@ -323,18 +286,20 @@ static inline bool tcpci_check_hard_reset_complete(
 }
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 
-int tcpci_alert(struct tcpc_device *tcpc)
+int tcpci_alert(struct tcpc_device *tcpc, bool masked)
 {
 	int rv = 0, i = 0;
 	uint32_t alert_status = 0, alert_mask = 0;
 	const uint8_t typec_role = tcpc->typec_role,
 		      vbus_level = tcpc->vbus_level;
 
-	rv = tcpci_get_alert_status(tcpc, &alert_status);
-	if (rv < 0)
-		return rv;
+#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+	mutex_lock(&tcpc->access_lock);
+	tcpc->io_time_start = local_clock();
+	mutex_unlock(&tcpc->access_lock);
+#endif	/* CONFIG_USB_POWER_DELIVERY */
 
-	rv = tcpci_get_alert_mask(tcpc, &alert_mask);
+	rv = tcpci_get_alert_status_and_mask(tcpc, &alert_status, &alert_mask);
 	if (rv < 0)
 		return rv;
 
@@ -349,22 +314,27 @@ int tcpci_alert(struct tcpc_device *tcpc)
 	}
 
 	/* mask all alert */
-	rv = tcpci_set_alert_mask(tcpc, 0);
-	if (rv < 0)
-		return tcpci_alert_status_clear(tcpc, alert_status);
+	if (masked) {
+		rv = tcpci_set_alert_mask(tcpc, 0);
+		if (rv < 0)
+			return tcpci_alert_status_clear(tcpc, alert_status);
+	}
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
-	if (alert_status & TCPC_REG_ALERT_RX_STATUS)
+	if (alert_status & TCPC_REG_ALERT_RX_STATUS) {
 		mutex_lock(&tcpc->rxbuf_lock);
+		tcpci_alert_recv_msg(tcpc);
+	}
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 
-	tcpci_alert_status_clear(tcpc, alert_status & ~TCPC_REG_ALERT_RX_MASK);
-
-	if ((tcpc->tcpc_flags & TCPC_FLAGS_ALERT_V10) &&
-	    (alert_status & TCPC_REG_ALERT_EXT_VBUS_80))
-		alert_status |= TCPC_REG_ALERT_POWER_STATUS;
+	tcpci_alert_status_clear(tcpc, alert_status);
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+	if (alert_status & TCPC_REG_ALERT_RX_STATUS) {
+		mutex_unlock(&tcpc->rxbuf_lock);
+		tcpc_event_thread_wake_up(tcpc);
+	}
+
 	if (tcpc->pd_transmit_state == PD_TX_STATE_WAIT_HARD_RESET) {
 		if (tcpci_check_hard_reset_complete(tcpc, &alert_status))
 			atomic_dec_if_positive(&tcpc->tx_pending);
@@ -378,18 +348,15 @@ int tcpci_alert(struct tcpc_device *tcpc)
 		wake_up(&tcpc->tx_wait_que);
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 
+	if ((tcpc->tcpc_flags & TCPC_FLAGS_ALERT_V10) &&
+	    (alert_status & TCPC_REG_ALERT_EXT_VBUS_80))
+		alert_status |= TCPC_REG_ALERT_POWER_STATUS;
+
 	for (i = 0; i < ARRAY_SIZE(tcpci_alert_handlers); i++)
 		if (tcpci_alert_handlers[i].bit_mask & alert_status)
 			tcpci_alert_handlers[i].handler(tcpc);
 
-#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
-	if (alert_status & TCPC_REG_ALERT_RX_STATUS) {
-		mutex_unlock(&tcpc->rxbuf_lock);
-		tcpc_event_thread_wake_up(tcpc);
-	}
-#endif	/* CONFIG_USB_POWER_DELIVERY */
-
-	if (!(alert_status & TCPC_REG_ALERT_RX_HARD_RST))
+	if (masked && !(alert_status & TCPC_REG_ALERT_RX_HARD_RST))
 		rv = tcpci_set_alert_mask(tcpc, alert_mask);
 
 	if (tcpc->tcpc_flags & TCPC_FLAGS_ALERT_V10)

@@ -540,21 +540,21 @@ static void pd_core_power_flags_init(struct pd_port *pd_port)
 
 	src_flag = 0;
 	if (pd_port->dpm_caps & DPM_CAP_LOCAL_DR_POWER)
-		src_flag |= PDO_FIXED_DUAL_ROLE;
-
-	if (pd_port->dpm_caps & DPM_CAP_LOCAL_DR_DATA)
-		src_flag |= PDO_FIXED_DATA_SWAP;
+		src_flag |= PDO_FIXED_DUAL_ROLE_POWER;
 
 	if (pd_port->dpm_caps & DPM_CAP_LOCAL_EXT_POWER)
-		src_flag |= PDO_FIXED_EXTERNAL;
+		src_flag |= PDO_FIXED_UNCONSTRAINED_POWER;
 
 	if (pd_port->dpm_caps & DPM_CAP_LOCAL_USB_COMM)
-		src_flag |= PDO_FIXED_COMM_CAP;
+		src_flag |= PDO_FIXED_USB_COMM;
+
+	if (pd_port->dpm_caps & DPM_CAP_LOCAL_DR_DATA)
+		src_flag |= PDO_FIXED_DUAL_ROLE_DATA;
 
 	snk_flag = src_flag;
 
 	if (pd_port->dpm_caps & DPM_CAP_LOCAL_USB_SUSPEND)
-		src_flag |= PDO_FIXED_SUSPEND;
+		src_flag |= PDO_FIXED_USB_SUSPEND;
 
 	if (pd_port->dpm_caps & DPM_CAP_LOCAL_HIGH_CAP)
 		snk_flag |= PDO_FIXED_HIGH_CAP;
@@ -981,6 +981,10 @@ int pd_reset_local_hw(struct pd_port *pd_port)
 	pe_data->explicit_contract = false;
 	pe_data->pe_ready = false;
 
+#if CONFIG_USB_PD_REV30
+	pe_data->pd_traffic_idle = false;
+#endif	/* CONFIG_USB_PD_REV30 */
+
 #if CONFIG_USB_PD_VCONN_SAFE5V_ONLY
 	pe_data->vconn_highv_prot = false;
 	pe_data->vconn_highv_prot_role = PD_ROLE_VCONN_OFF;
@@ -1084,14 +1088,12 @@ int pd_send_message(struct pd_port *pd_port, uint8_t sop_type,
 		tcpc->pd_retry_count = PD_RETRY_COUNT;
 
 	msg_id = pe_data->msg_id_tx[sop_type];
+	pe_data->msg_id_tx[sop_type] = (msg_id+1) % PD_MSG_ID_MAX;
 	msg_hdr = PD_HEADER_COMMON(
 		msg, pd_rev, msg_id, count, ext, msg_hdr_private);
 
 	if (count > 0 && !ext && msg == PD_DATA_VENDOR_DEF)
 		type = PD_TX_STATE_WAIT_CRC_VDM;
-
-	pe_data->msg_id_tx[sop_type] = (msg_id+1) % PD_MSG_ID_MAX;
-
 	pd_notify_pe_transmit_msg(pd_port, type);
 	ret = tcpci_transmit(pd_port->tcpc, sop_type, msg_hdr, data);
 	if (ret < 0)
@@ -1291,7 +1293,7 @@ int pd_reply_svdm_request(struct pd_port *pd_port,
 	else
 		PE_INFO("VDM_ACK\n");
 
-	VDM_STATE_REPLY_SVDM_REQUEST(pd_port);
+	VDM_STATE_REPLY_VDM_REQUEST(pd_port);
 
 	return pd_send_sop_data_msg(pd_port,
 			PD_DATA_VENDOR_DEF, 1+cnt, payload);
@@ -1307,7 +1309,7 @@ int pd_send_custom_vdm(struct pd_port *pd_port, uint8_t sop_type)
 int pd_reply_custom_vdm(struct pd_port *pd_port, uint8_t sop_type,
 	uint8_t cnt, uint32_t *payload)
 {
-	VDM_STATE_REPLY_SVDM_REQUEST(pd_port);
+	VDM_STATE_REPLY_VDM_REQUEST(pd_port);
 
 	return pd_send_data_msg(pd_port,
 		sop_type, PD_DATA_VENDOR_DEF, cnt, payload);

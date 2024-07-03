@@ -77,11 +77,50 @@ int tcpm_shutdown(struct tcpc_device *tcpc)
 
 	if (tcpc->ops->deinit)
 		tcpc->ops->deinit(tcpc);
+	tcpc->pd_inited_flag = 0;
 	tcpci_unlock_typec(tcpc);
 
 	return 0;
 }
 EXPORT_SYMBOL(tcpm_shutdown);
+
+int tcpm_suspend(struct tcpc_device *tcpc)
+{
+	int ret = 0;
+
+	/*
+	 * the following 3 if statements are lockless solutions
+	 * for preventing some race conditions
+	 */
+	if (atomic_read(&tcpc->suspend_pending) > 0)
+		return -EBUSY;
+
+	if (atomic_read(&tcpc->pending_event) > 0 ||
+	    tcpc_get_timer_tick(tcpc))
+		return -EBUSY;
+
+	if (atomic_read(&tcpc->suspend_pending) > 0)
+		return -EBUSY;
+
+#if CONFIG_TYPEC_SNK_ONLY_WHEN_SUSPEND
+	tcpci_lock_typec(tcpc);
+	ret = tcpc_typec_suspend(tcpc);
+	tcpci_unlock_typec(tcpc);
+#endif	/* CONFIG_TYPEC_SNK_ONLY_WHEN_SUSPEND */
+
+	return ret;
+}
+EXPORT_SYMBOL(tcpm_suspend);
+
+void tcpm_resume(struct tcpc_device *tcpc)
+{
+#if CONFIG_TYPEC_SNK_ONLY_WHEN_SUSPEND
+	tcpci_lock_typec(tcpc);
+	tcpc_typec_resume(tcpc);
+	tcpci_unlock_typec(tcpc);
+#endif	/* CONFIG_TYPEC_SNK_ONLY_WHEN_SUSPEND */
+}
+EXPORT_SYMBOL(tcpm_resume);
 
 int tcpm_inquire_remote_cc(struct tcpc_device *tcpc,
 	uint8_t *cc1, uint8_t *cc2, bool from_ic)
@@ -123,11 +162,10 @@ EXPORT_SYMBOL(tcpm_inquire_typec_remote_rp_curr);
 int tcpm_inquire_vbus_level(struct tcpc_device *tcpc, bool from_ic)
 {
 	int rv = 0;
-	uint16_t power_status = 0;
 
 	tcpci_lock_typec(tcpc);
 	if (from_ic) {
-		rv = tcpci_get_power_status(tcpc, &power_status);
+		rv = tcpci_get_power_status(tcpc);
 		if (rv < 0)
 			return rv;
 	}
@@ -503,7 +541,7 @@ int tcpm_inquire_pd_partner_svids(
 	if (svdm_list->cnt) {
 		list->cnt = svdm_list->cnt;
 		memcpy(list->svids, svdm_list->svids,
-			sizeof(uint16_t) * svdm_list->cnt);
+			sizeof(uint16_t) * list->cnt);
 	} else
 		ret = TCPM_ERROR_NO_PARTNER_INFORM;
 	mutex_unlock(&pd_port->pd_lock);
@@ -675,12 +713,12 @@ int tcpm_inquire_select_source_cap(
 	int ret;
 	struct pd_port *pd_port = &tcpc->pd_port;
 
-	if (cap_val == NULL)
-		return TCPM_ERROR_PARAMETER;
-
 	ret = tcpm_check_pd_attached(tcpc);
 	if (ret != TCPM_SUCCESS)
 		return ret;
+
+	if (cap_val == NULL)
+		return TCPM_ERROR_PARAMETER;
 
 	mutex_lock(&pd_port->pd_lock);
 	ret = __tcpm_inquire_select_source_cap(pd_port, cap_val);

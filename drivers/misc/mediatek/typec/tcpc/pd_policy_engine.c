@@ -1241,15 +1241,16 @@ static inline uint8_t pd_try_get_active_event(
 	uint8_t ret;
 	uint8_t from_pe = PD_TCP_FROM_PE;
 	struct pd_port *pd_port = &tcpc->pd_port;
+	struct pe_data *pe_data = &pd_port->pe_data;
 
 	if (!pd_check_tx_ready(pd_port))
 		return PE_NEW_EVT_NULL;
 
 #if CONFIG_USB_PD_DISCARD_AND_UNEXPECT_MSG
-	if (pd_port->pe_data.pd_unexpected_event_pending) {
-		pd_port->pe_data.pd_unexpected_event_pending = false;
-		*pd_event = pd_port->pe_data.pd_unexpected_event;
-		pd_port->pe_data.pd_unexpected_event.pd_msg = NULL;
+	if (pe_data->pd_unexpected_event_pending) {
+		pe_data->pd_unexpected_event_pending = false;
+		*pd_event = pe_data->pd_unexpected_event;
+		pe_data->pd_unexpected_event.pd_msg = NULL;
 		PE_INFO("##$$120\n");
 		DPM_INFO("Re-Run Unexpected Msg");
 		return PE_NEW_EVT_PD;
@@ -1264,10 +1265,9 @@ static inline uint8_t pd_try_get_active_event(
 	}
 
 #if DPM_DBG_ENABLE
-	if ((ret != 0) && (ret != DPM_READY_REACTION_BUSY)) {
+	if ((ret != 0) && (ret != DPM_READY_REACTION_BUSY))
 		DPM_DBG("from_pe: %d, evt:%d, reaction:0x%x\n",
-			from_pe, ret, pd_port->pe_data.dpm_reaction_id);
-	}
+			from_pe, ret, pe_data->dpm_reaction_id);
 #endif	/* DPM_DBG_ENABLE */
 
 	if (ret == DPM_READY_REACTION_BUSY)
@@ -1282,7 +1282,7 @@ static inline uint8_t pd_try_get_active_event(
 		return PE_NEW_EVT_VDM;
 
 #if CONFIG_USB_PD_DISCARD_AND_UNEXPECT_MSG
-	pd_port->pe_data.pd_sent_ams_init_cmd = false;
+	pe_data->pd_sent_ams_init_cmd = false;
 #endif	/* CONFIG_USB_PD_DISCARD_AND_UNEXPECT_MSG */
 
 	return PE_NEW_EVT_PD;

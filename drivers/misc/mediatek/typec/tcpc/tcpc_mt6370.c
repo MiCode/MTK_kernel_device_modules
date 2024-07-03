@@ -19,7 +19,7 @@
 #include "inc/mt6370.h"
 #include "inc/tcpci_typec.h"
 
-#define MT6370_DRV_VERSION	"1.0.2_U_MTK"
+#define MT6370_DRV_VERSION	"1.0.3_V_MTK"
 
 struct mt6370_tcpc_data {
 	struct device *dev;
@@ -28,6 +28,10 @@ struct mt6370_tcpc_data {
 	struct gpio_desc *irq_gpio;
 	int irq;
 	int did;
+
+	struct mutex irq_lock;
+	bool is_suspended;
+	bool irq_while_suspended;
 };
 
 static inline int mt6370_write8(struct mt6370_tcpc_data *ddata, u32 reg, u8 data)
@@ -114,13 +118,7 @@ static inline int mt6370_command(struct mt6370_tcpc_data *ddata, u8 cmd)
 	return mt6370_write8(ddata, TCPC_V10_REG_COMMAND, cmd);
 }
 
-static inline int mt6370_init_power_status_mask(struct mt6370_tcpc_data *ddata)
-{
-	return mt6370_write8(ddata, TCPC_V10_REG_POWER_STATUS_MASK,
-			     TCPC_V10_REG_POWER_STATUS_VBUS_PRES);
-}
-
-static inline int mt6370_init_fault_status_mask(struct mt6370_tcpc_data *ddata)
+static int mt6370_init_fault_status_mask(struct mt6370_tcpc_data *ddata)
 {
 	return mt6370_write8(ddata, TCPC_V10_REG_FAULT_STATUS_MASK,
 			     TCPC_V10_REG_FAULT_STATUS_VCONN_OV |
@@ -133,10 +131,13 @@ static inline int mt6370_init_mt_mask(struct mt6370_tcpc_data *ddata)
 			     MT6370_REG_M_WAKEUP | MT6370_REG_M_VBUS_80);
 }
 
-static int mt6370_init_alert_mask(struct mt6370_tcpc_data *ddata)
+static inline int mt6370_init_alert_mask(struct mt6370_tcpc_data *ddata)
 {
-	u16 mask = TCPC_V10_REG_ALERT_CC_STATUS | TCPC_V10_REG_ALERT_POWER_STATUS |
-		   TCPC_REG_ALERT_FAULT;
+	u16 mask = TCPC_V10_REG_ALERT_CC_STATUS |
+		   TCPC_V10_REG_ALERT_POWER_STATUS |
+		   TCPC_V10_REG_ALERT_FAULT;
+	u8 masks[3] = {0x00, 0x00,
+		       TCPC_V10_REG_POWER_STATUS_VBUS_PRES};
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	/* Need to handle RX overflow */
@@ -146,18 +147,29 @@ static int mt6370_init_alert_mask(struct mt6370_tcpc_data *ddata)
 			| TCPC_V10_REG_ALERT_RX_STATUS
 			| TCPC_V10_REG_RX_OVERFLOW;
 #endif
-
-	return mt6370_write16(ddata, TCPC_V10_REG_ALERT_MASK, mask);
+	*(u16 *)masks = cpu_to_le16(mask);
+	return mt6370_bulk_write(ddata, TCPC_V10_REG_ALERT_MASK,
+				 masks, sizeof(masks));
 }
 
 static irqreturn_t mt6370_intr_handler(int irq, void *data)
 {
 	struct mt6370_tcpc_data *ddata = data;
 
+	mutex_lock(&ddata->irq_lock);
+	if (ddata->is_suspended) {
+		dev_notice(ddata->dev, "%s irq while suspended\n", __func__);
+		ddata->irq_while_suspended = true;
+		disable_irq_nosync(ddata->irq);
+		mutex_unlock(&ddata->irq_lock);
+		return IRQ_NONE;
+	}
+	mutex_unlock(&ddata->irq_lock);
+
 	MT6370_INFO("++\n");
 	pm_stay_awake(ddata->dev);
 	tcpci_lock_typec(ddata->tcpc);
-	tcpci_alert(ddata->tcpc);
+	tcpci_alert(ddata->tcpc, false);
 	tcpci_unlock_typec(ddata->tcpc);
 	pm_relax(ddata->dev);
 	MT6370_INFO("--\n");
@@ -206,6 +218,7 @@ static int mt6370_init_alert(struct mt6370_tcpc_data *ddata)
 	if (ret) {
 		dev_err(ddata->dev, "%s, Failed to request irq%d (ret = %d)\n",
 			__func__, ddata->irq, ret);
+		device_init_wakeup(ddata->dev, false);
 		return -EINVAL;
 	}
 	enable_irq_wake(ddata->irq);
@@ -240,13 +253,11 @@ static int mt6370_alert_status_clear(struct tcpc_device *tcpc, u32 mask)
 
 static int mt6370_set_clock_gating(struct mt6370_tcpc_data *ddata, bool en)
 {
-	int ret;
-
+	int ret = 0;
 #if CONFIG_TCPC_CLOCK_GATING
-	u8 clk2 = MT6370_REG_CLK_DIV_600K_EN | MT6370_REG_CLK_DIV_300K_EN |
-		  MT6370_REG_CLK_CK_300K_EN;
-	u8 clk3 = MT6370_REG_CLK_DIV_2P4M_EN;
 	int i = 0;
+	u8 clks[2] = {MT6370_REG_CLK_DIV_600K_EN | MT6370_REG_CLK_DIV_300K_EN |
+		      MT6370_REG_CLK_CK_300K_EN, MT6370_REG_CLK_DIV_2P4M_EN};
 
 	if (en) {
 		for (i = 0; i < 2; i++) {
@@ -255,19 +266,14 @@ static int mt6370_set_clock_gating(struct mt6370_tcpc_data *ddata, bool en)
 				return ret;
 		}
 	} else {
-		clk2 |= MT6370_REG_CLK_BCLK2_EN | MT6370_REG_CLK_BCLK_EN;
-		clk3 |= MT6370_REG_CLK_CK_24M_EN | MT6370_REG_CLK_PCLK_EN;
+		clks[0] |= MT6370_REG_CLK_BCLK2_EN | MT6370_REG_CLK_BCLK_EN;
+		clks[1] |= MT6370_REG_CLK_CK_24M_EN | MT6370_REG_CLK_PCLK_EN;
 	}
 
-	ret = mt6370_write8(ddata, MT6370_REG_CLK_CTRL2, clk2);
-	if (ret) {
-		dev_err(ddata->dev, "%s, Failed to write MT6370_REG_CLK_CTRL2\n", __func__);
-		return ret;
-	}
-
-	ret = mt6370_write8(ddata, MT6370_REG_CLK_CTRL3, clk3);
+	ret = mt6370_bulk_write(ddata, MT6370_REG_CLK_CTRL2,
+				clks, sizeof(clks));
 	if (ret)
-		dev_err(ddata->dev, "%s, Failed to write MT6370_REG_CLK_CTRL3\n", __func__);
+		dev_notice(ddata->dev, "%s, Failed to write MT6370_REG_CLK_CTRL2\n", __func__);
 #endif	/* CONFIG_TCPC_CLOCK_GATING */
 
 	return ret;
@@ -411,7 +417,6 @@ static int mt6370_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 
 	mt6370_alert_status_clear(tcpc, 0xffffffff);
 
-	mt6370_init_power_status_mask(ddata);
 	mt6370_init_fault_status_mask(ddata);
 	mt6370_init_mt_mask(ddata);
 	mt6370_init_alert_mask(ddata);
@@ -458,6 +463,18 @@ static int mt6370_fault_status_clear(struct tcpc_device *tcpc, u8 status)
 	return mt6370_write8(ddata, TCPC_V10_REG_FAULT_STATUS, status);
 }
 
+static int mt6370_set_alert_mask(struct tcpc_device *tcpc, u32 mask)
+{
+	struct mt6370_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
+	int ret = 0;
+
+	ret = mt6370_write16(ddata, TCPC_V10_REG_ALERT_MASK, mask);
+	if (ret < 0)
+		return ret;
+
+	return mt6370_write8(ddata, MT6370_REG_MT_MASK, mask >> 16);
+}
+
 static int mt6370_get_alert_mask(struct tcpc_device *tcpc, u32 *mask)
 {
 	struct mt6370_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
@@ -479,28 +496,29 @@ static int mt6370_get_alert_mask(struct tcpc_device *tcpc, u32 *mask)
 	return 0;
 }
 
-static int mt6370_get_alert_status(struct tcpc_device *tcpc, u32 *alert)
+static int mt6370_get_alert_status_and_mask(struct tcpc_device *tcpc,
+					    u32 *alert, u32 *mask)
 {
 	struct mt6370_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
-	u16 alert_val;
 	int ret;
-	u8 v2;
+	u8 buf[4] = {0};
 
-	ret = mt6370_read16(ddata, TCPC_V10_REG_ALERT, &alert_val);
+	ret = mt6370_bulk_read(ddata, TCPC_V10_REG_ALERT, buf, 4);
 	if (ret)
 		return ret;
-	*alert = alert_val;
+	*alert = le16_to_cpu(*(u16 *)&buf[0]);
+	*mask = le16_to_cpu(*(u16 *)&buf[2]);
 
-	ret = mt6370_read8(ddata, MT6370_REG_MT_INT, &v2);
+	ret = mt6370_bulk_read(ddata, MT6370_REG_MT_INT, buf, 2);
 	if (ret)
 		return ret;
-
-	*alert |= v2 << 16;
+	*alert |= buf[0] << 16;
+	*mask |= buf[1] << 16;
 
 	return 0;
 }
 
-static int mt6370_get_power_status(struct tcpc_device *tcpc, u16 *pwr_status)
+static int mt6370_get_power_status(struct tcpc_device *tcpc)
 {
 	struct mt6370_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
 	u8 status;
@@ -509,19 +527,12 @@ static int mt6370_get_power_status(struct tcpc_device *tcpc, u16 *pwr_status)
 	ret = mt6370_read8(ddata, TCPC_V10_REG_POWER_STATUS, &status);
 	if (ret)
 		return ret;
-
-	*pwr_status = 0;
-
-	if (status & TCPC_V10_REG_POWER_STATUS_VBUS_PRES)
-		*pwr_status |= TCPC_REG_POWER_STATUS_VBUS_PRES;
+	tcpc->vbus_present = !!(status & TCPC_V10_REG_POWER_STATUS_VBUS_PRES);
 
 	ret = mt6370_read8(ddata, MT6370_REG_MT_STATUS, &status);
 	if (ret)
 		return ret;
-
-	if (status & MT6370_REG_VBUS_80)
-		*pwr_status |= TCPC_REG_POWER_STATUS_EXT_VSAFE0V;
-
+	tcpc->vbus_safe0v = !!(status & MT6370_REG_VBUS_80);
 	return 0;
 }
 
@@ -543,18 +554,17 @@ static int mt6370_get_cc(struct tcpc_device *tcpc, int *cc1, int *cc2)
 	if (ret)
 		return ret;
 
-	ret = mt6370_read8(ddata, TCPC_V10_REG_ROLE_CTRL, &role_ctrl);
-	if (ret)
-		return ret;
-
 	if (status & TCPC_V10_REG_CC_STATUS_DRP_TOGGLING) {
 		*cc1 = TYPEC_CC_DRP_TOGGLING;
 		*cc2 = TYPEC_CC_DRP_TOGGLING;
 		return 0;
 	}
-
 	*cc1 = TCPC_V10_REG_CC_STATUS_CC1(status);
 	*cc2 = TCPC_V10_REG_CC_STATUS_CC2(status);
+
+	ret = mt6370_read8(ddata, TCPC_V10_REG_ROLE_CTRL, &role_ctrl);
+	if (ret)
+		return ret;
 
 	act_as_drp = TCPC_V10_REG_ROLE_CTRL_DRP & role_ctrl;
 
@@ -656,19 +666,6 @@ static int mt6370_set_vconn(struct tcpc_device *tcpc, int enable)
 	return ret;
 }
 
-static int mt6370_is_vsafe0v(struct tcpc_device *tcpc)
-{
-	struct mt6370_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
-	u8 data;
-	int ret;
-
-	ret = mt6370_read8(ddata, MT6370_REG_MT_STATUS, &data);
-	if (ret)
-		return ret;
-
-	return (data & MT6370_REG_VBUS_80) != 0;
-}
-
 static int mt6370_set_low_power_mode(struct tcpc_device *tcpc, bool en, int pull)
 {
 	struct mt6370_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
@@ -728,7 +725,7 @@ static int mt6370_protocol_reset(struct tcpc_device *tcpc)
 	if (ret)
 		return ret;
 
-	mdelay(1);
+	udelay(20);
 	return mt6370_write8(ddata, MT6370_REG_PRL_FSM_RESET, 1);
 }
 
@@ -759,10 +756,11 @@ static int mt6370_get_message(struct tcpc_device *tcpc, u32 *payload, u16 *msg_h
 			      enum tcpm_transmit_type *frame_type)
 {
 	struct mt6370_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
-	u8 cnt = 0, buf[4];
+	u8 cnt = 0, buf[32];
 	int ret;
 
-	ret = mt6370_bulk_read(ddata, TCPC_V10_REG_RX_BYTE_CNT, buf, 4);
+	ret = mt6370_bulk_read(ddata, TCPC_V10_REG_RX_BYTE_CNT,
+			       buf, sizeof(buf));
 	if (ret)
 		return ret;
 
@@ -777,7 +775,9 @@ static int mt6370_get_message(struct tcpc_device *tcpc, u32 *payload, u16 *msg_h
 	/* TCPC 1.0 ==> no need to subtract the size of msg_head */
 	if (cnt > 3) {
 		cnt -= 3; /* MSG_HDR */
-		ret = mt6370_bulk_read(ddata, TCPC_V10_REG_RX_DATA, payload, cnt);
+		if (cnt > sizeof(buf) - 4)
+			cnt = sizeof(buf) - 4;
+		memcpy(payload, buf + 4, cnt);
 	}
 
 	return ret;
@@ -854,8 +854,9 @@ static struct tcpc_ops mt6370_tcpc_ops = {
 	.init = mt6370_tcpc_init,
 	.alert_status_clear = mt6370_alert_status_clear,
 	.fault_status_clear = mt6370_fault_status_clear,
+	.set_alert_mask = mt6370_set_alert_mask,
 	.get_alert_mask = mt6370_get_alert_mask,
-	.get_alert_status = mt6370_get_alert_status,
+	.get_alert_status_and_mask = mt6370_get_alert_status_and_mask,
 	.get_power_status = mt6370_get_power_status,
 	.get_fault_status = mt6370_get_fault_status,
 	.get_cc = mt6370_get_cc,
@@ -863,7 +864,6 @@ static struct tcpc_ops mt6370_tcpc_ops = {
 	.set_polarity = mt6370_set_polarity,
 	.set_vconn = mt6370_set_vconn,
 	.deinit = mt6370_tcpc_deinit,
-	.is_vsafe0v = mt6370_is_vsafe0v,
 	.set_low_power_mode = mt6370_set_low_power_mode,
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
@@ -1019,16 +1019,20 @@ static int mt6370_tcpc_probe(struct platform_device *pdev)
 	ddata->dev = &pdev->dev;
 	dev = ddata->dev;
 	platform_set_drvdata(pdev, ddata);
+	mutex_init(&ddata->irq_lock);
+	ddata->is_suspended = false;
+	ddata->irq_while_suspended = false;
 
 	ddata->rmap = dev_get_regmap(dev->parent, NULL);
 	if (!ddata->rmap) {
 		dev_err(dev, "Failed to get regmap\n");
-		return -ENODEV;
+		ret = -ENODEV;
+		goto err_regmap_init;
 	}
 
 	ret = mt6370_check_revision(ddata);
 	if (ret)
-		return ret;
+		goto err_regmap_init;
 
 	ret = mt6370_register_tcpcdev(ddata);
 	if (ret < 0) {
@@ -1047,6 +1051,8 @@ static int mt6370_tcpc_probe(struct platform_device *pdev)
 
 err_tcpc_reg:
 	tcpc_device_unregister(dev, ddata->tcpc);
+err_regmap_init:
+	mutex_destroy(&ddata->irq_lock);
 	return ret;
 }
 
@@ -1055,8 +1061,9 @@ static int mt6370_tcpc_remove(struct platform_device *pdev)
 	struct mt6370_tcpc_data *ddata = platform_get_drvdata(pdev);
 
 	if (ddata) {
+		device_init_wakeup(ddata->dev, false);
 		tcpc_device_unregister(ddata->dev, ddata->tcpc);
-		device_init_wakeup(&pdev->dev, false);
+		mutex_destroy(&ddata->irq_lock);
 	}
 
 	return 0;
@@ -1072,6 +1079,47 @@ static void mt6370_tcpc_shutdown(struct platform_device *pdev)
 	tcpm_shutdown(ddata->tcpc);
 }
 
+static int mt6370_tcpc_suspend(struct device *dev)
+{
+	struct mt6370_tcpc_data *ddata = dev_get_drvdata(dev);
+
+	dev_info(dev, "%s irq_gpio = %d\n",
+		      __func__, gpiod_get_value(ddata->irq_gpio));
+
+	mutex_lock(&ddata->irq_lock);
+	ddata->is_suspended = true;
+	mutex_unlock(&ddata->irq_lock);
+
+	synchronize_irq(ddata->irq);
+
+	return tcpm_suspend(ddata->tcpc);
+}
+
+static int mt6370_tcpc_resume(struct device *dev)
+{
+	struct mt6370_tcpc_data *ddata = dev_get_drvdata(dev);
+
+	dev_info(dev, "%s irq_gpio = %d\n",
+		      __func__, gpiod_get_value(ddata->irq_gpio));
+
+	tcpm_resume(ddata->tcpc);
+
+	mutex_lock(&ddata->irq_lock);
+	if (ddata->irq_while_suspended) {
+		enable_irq(ddata->irq);
+		ddata->irq_while_suspended = false;
+	}
+	ddata->is_suspended = false;
+	mutex_unlock(&ddata->irq_lock);
+
+	return 0;
+}
+
+static const struct dev_pm_ops mt6370_tcpc_pm_ops = {
+	.suspend = mt6370_tcpc_suspend,
+	.resume = mt6370_tcpc_resume,
+};
+
 static const struct of_device_id __maybe_unused mt6370_tcpc_of_match[] = {
 	{.compatible = "mediatek,mt6370-tcpc",},
 	{},
@@ -1080,6 +1128,7 @@ static const struct of_device_id __maybe_unused mt6370_tcpc_of_match[] = {
 static struct platform_driver mt6370_tcpc_driver = {
 	.driver = {
 		.name = "mt6370-tcpc",
+		.pm = &mt6370_tcpc_pm_ops,
 		.of_match_table = mt6370_tcpc_of_match,
 	},
 	.probe = mt6370_tcpc_probe,
@@ -1093,6 +1142,11 @@ MODULE_DESCRIPTION("MT6370 TCPC Driver");
 MODULE_VERSION(MT6370_DRV_VERSION);
 
 /**** Release Note ****
+ * 1.0.3_V_MTK
+ * (1) Decrease the I2C/IO transactions
+ * (2) Remove the old way of get_power_status()
+ * (3) Add CONFIG_TYPEC_SNK_ONLY_WHEN_SUSPEND
+ *
  * 1.0.2_U_MTK
  * (1) Revise IRQ handling
  * (1) Do refactoring

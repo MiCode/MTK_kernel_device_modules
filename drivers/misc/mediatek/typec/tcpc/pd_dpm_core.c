@@ -63,20 +63,23 @@ static void pd_dpm_update_pdos_flags(struct pd_port *pd_port, uint32_t pdo,
 
 	/* Only update PDO flags if pdo's type is fixed */
 	if ((pdo & PDO_TYPE_MASK) == PDO_TYPE_FIXED) {
-		if (pdo & PDO_FIXED_DUAL_ROLE)
+		if (pdo & PDO_FIXED_DUAL_ROLE_POWER)
 			dpm_flags |= DPM_FLAGS_PARTNER_DR_POWER;
 
-		if (pdo & PDO_FIXED_DATA_SWAP)
-			dpm_flags |= DPM_FLAGS_PARTNER_DR_DATA;
+		if (src && pdo & PDO_FIXED_USB_SUSPEND)
+			dpm_flags |= DPM_FLAGS_PARTNER_USB_SUSPEND;
 
-		if (pdo & PDO_FIXED_EXTERNAL)
+		if (!src && pdo & PDO_FIXED_HIGH_CAP)
+			dpm_flags |= DPM_FLAGS_PARTNER_HIGH_CAP;
+
+		if (pdo & PDO_FIXED_UNCONSTRAINED_POWER)
 			dpm_flags |= DPM_FLAGS_PARTNER_EXTPOWER;
 
-		if (pdo & PDO_FIXED_COMM_CAP)
+		if (pdo & PDO_FIXED_USB_COMM)
 			dpm_flags |= DPM_FLAGS_PARTNER_USB_COMM;
 
-		if (src && pdo & PDO_FIXED_SUSPEND)
-			dpm_flags |= DPM_FLAGS_PARTNER_USB_SUSPEND;
+		if (pdo & PDO_FIXED_DUAL_ROLE_DATA)
+			dpm_flags |= DPM_FLAGS_PARTNER_DR_DATA;
 	}
 
 	pd_port->pe_data.dpm_flags = dpm_flags;
@@ -317,7 +320,7 @@ static bool dpm_build_request_info_pdo(
 		}
 	}
 
-	return max_uw > 0;
+	return max_uw >= 0;
 }
 
 static bool dpm_build_request_info(
@@ -1071,7 +1074,7 @@ static inline void dpm_dfp_update_svid_data_exist(
 		svid_data = &pd_port->svid_data[k];
 
 		if (svid_data->svid == svid)
-			svid_data->exist = 1;
+			svid_data->exist = true;
 	}
 }
 
@@ -1441,10 +1444,7 @@ void pd_dpm_drs_evaluate_swap(struct pd_port *pd_port, uint8_t role)
 
 void pd_dpm_drs_change_role(struct pd_port *pd_port, uint8_t role)
 {
-	if (role == PD_ROLE_DFP)
-		dpm_reaction_set(pd_port, DPM_REACTION_CAP_RESET_CABLE);
-
-	pd_set_data_role(pd_port, role);
+	uint32_t set = 0, clear = 0;
 
 	pd_port->pe_data.pe_ready = false;
 
@@ -1452,25 +1452,33 @@ void pd_dpm_drs_change_role(struct pd_port *pd_port, uint8_t role)
 	pd_port->pe_data.pd_traffic_idle = false;
 #endif	/* CONFIG_USB_PD_REV30 */
 
+	pd_set_data_role(pd_port, role);
+
+	if (role == PD_ROLE_DFP)
+		set |= DPM_REACTION_CAP_RESET_CABLE;
+
 #if CONFIG_USB_PD_DFP_FLOW_DELAY_DRSWAP
-	dpm_reaction_set(pd_port, DPM_REACTION_DFP_FLOW_DELAY);
+	set |= DPM_REACTION_DFP_FLOW_DELAY;
 #else
-	dpm_reaction_clear(pd_port, DPM_REACTION_DFP_FLOW_DELAY);
+	clear |= DPM_REACTION_DFP_FLOW_DELAY;
 #endif	/* CONFIG_USB_PD_DFP_FLOW_DELAY_DRSWAP */
 
+	svdm_reset_state(pd_port);
+
 	if (pd_port->dpm_caps & DPM_CAP_ATTEMPT_ENTER_DP_MODE) {
-		svdm_reset_state(pd_port);
 		if (role == PD_ROLE_DFP) {
-			dpm_reaction_set(pd_port, DPM_REACTION_DISCOVER_ID);
 			svdm_notify_pe_startup(pd_port);
+			set |= DPM_REACTION_DISCOVER_ID;
 		} else
-			dpm_reaction_clear(pd_port, DPM_REACTION_DISCOVER_ID |
-					   DPM_REACTION_DISCOVER_SVIDS);
+			clear |= DPM_REACTION_DISCOVER_ID |
+				 DPM_REACTION_DISCOVER_SVIDS;
 	}
 
 	if (pd_port->dpm_caps & DPM_CAP_ATTEMPT_DISCOVER_ID_DFP &&
 	    role == PD_ROLE_DFP)
-		dpm_reaction_set(pd_port, DPM_REACTION_DISCOVER_ID);
+		set |= DPM_REACTION_DISCOVER_ID;
+
+	dpm_reaction_set_clear(pd_port, set, clear);
 
 	PE_STATE_DPM_INFORMED(pd_port);
 }
@@ -1579,12 +1587,14 @@ void pd_dpm_prs_enable_power_source(struct pd_port *pd_port, bool en)
 
 void pd_dpm_prs_change_role(struct pd_port *pd_port, uint8_t role)
 {
+	pd_port->pe_data.pe_ready = false;
+
 #if CONFIG_USB_PD_REV30
 	pd_port->pe_data.pd_traffic_idle = false;
 #endif	/* CONFIG_USB_PD_REV30 */
 
-	dpm_reaction_clear(pd_port, DPM_REACTION_REQUEST_PR_SWAP);
 	pd_set_power_role(pd_port, role);
+	dpm_reaction_clear(pd_port, DPM_REACTION_REQUEST_PR_SWAP);
 	pd_put_dpm_ack_event(pd_port);
 }
 
@@ -2149,38 +2159,26 @@ int pd_dpm_notify_pe_startup(struct pd_port *pd_port)
 	if (pd_port->dpm_caps & DPM_CAP_ATTEMPT_DISCOVER_SVIDS)
 		reactions |= DPM_REACTION_DISCOVER_SVIDS;
 
-	dpm_reaction_set(pd_port, reactions);
-
 	svdm_reset_state(pd_port);
 	svdm_notify_pe_startup(pd_port);
+	dpm_reaction_set(pd_port, reactions);
 	return 0;
 
 }
 
 int pd_dpm_notify_pe_hardreset(struct pd_port *pd_port)
 {
-	struct pe_data *pe_data = &pd_port->pe_data;
-
 	svdm_reset_state(pd_port);
 
-#if CONFIG_USB_PD_REV30
-	pe_data->pd_traffic_idle = false;
-#endif	/* CONFIG_USB_PD_REV30 */
-
-	if (pe_data->dpm_svdm_retry_cnt >= CONFIG_USB_PD_DPM_SVDM_RETRY)
-		return 0;
-
-	pe_data->dpm_svdm_retry_cnt++;
-
 	if (pd_port->dpm_caps & DPM_CAP_ATTEMPT_ENTER_DP_MODE) {
-		if (pd_port->data_role == PD_ROLE_DFP)
+		if (pd_port->data_role == PD_ROLE_DFP) {
+			svdm_notify_pe_startup(pd_port);
 			dpm_reaction_set(pd_port, DPM_REACTION_DISCOVER_ID);
-		else
+		} else
 			dpm_reaction_clear(pd_port, DPM_REACTION_DISCOVER_ID |
 					   DPM_REACTION_DISCOVER_SVIDS);
 	}
 
-	svdm_notify_pe_startup(pd_port);
 	return 0;
 }
 

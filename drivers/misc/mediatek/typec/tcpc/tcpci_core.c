@@ -25,7 +25,7 @@
 #endif /* CONFIG_USB_POWER_DELIVERY */
 #include "inc/rt-regmap.h"
 
-#define TCPC_CORE_VERSION		"2.0.29_MTK"
+#define TCPC_CORE_VERSION		"2.0.30_MTK"
 
 static ssize_t tcpc_show_property(struct device *dev,
 				  struct device_attribute *attr, char *buf);
@@ -197,15 +197,10 @@ static ssize_t tcpc_show_property(struct device *dev,
 		break;
 	case TCPC_DESC_PE_READY:
 		pd_port = &tcpc->pd_port;
-		if (pd_port->pe_data.pe_ready) {
-			ret = snprintf(buf, 256, "%s\n", "yes");
-			if (ret < 0)
-				break;
-		} else {
-			ret = snprintf(buf, 256, "%s\n", "no");
-			if (ret < 0)
-				break;
-		}
+		ret = snprintf(buf, 256, "%s\n",
+			       pd_port->pe_data.pe_ready ? "yes" : "no");
+		if (ret < 0)
+			break;
 		break;
 #endif /* CONFIG_USB_POWER_DELIVERY */
 	default:
@@ -857,6 +852,14 @@ MODULE_VERSION(TCPC_CORE_VERSION);
 MODULE_LICENSE("GPL");
 
 /* Release Version
+ * 2.0.30_MTK
+ * (1) Decrease the I2C/IO transactions
+ * (2) Remove the old way of get_power_status()
+ * (3) Revise struct pe_data
+ * (4) Add CONFIG_TYPEC_SNK_ONLY_WHEN_SUSPEND
+ * (5) Spread PD_DYNAMIC_SENDER_RESPONSE to all of TCPC chips
+ * (6) Spread suspend_pending to all of TCPC chips
+ *
  * 2.0.29_MTK
  * (1) Revise wakeup source of pps_request
  * (2) Unlock typec_lock in tcpm_shutdown()

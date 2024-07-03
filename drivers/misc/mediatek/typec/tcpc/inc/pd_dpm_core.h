@@ -322,15 +322,17 @@ extern uint8_t pd_dpm_get_ready_reaction(struct pd_port *pd_port);
 
 static inline void dpm_reaction_clear(struct pd_port *pd_port, uint32_t mask)
 {
-	pd_port->pe_data.dpm_ready_reactions &= ~mask;
+	struct pe_data *pe_data = &pd_port->pe_data;
+
+	pe_data->dpm_ready_reactions &= ~mask;
+	if (pe_data->dpm_reaction_id & mask)
+		pe_data->dpm_reaction_try = 0;
 }
 
 static inline void dpm_reaction_set(struct pd_port *pd_port, uint32_t mask)
 {
-	struct tcpc_device *tcpc = pd_port->tcpc;
-
 	pd_port->pe_data.dpm_ready_reactions |= mask;
-	tcpc_event_thread_wake_up(tcpc);
+	tcpc_event_thread_wake_up(pd_port->tcpc);
 }
 
 static inline void dpm_reaction_set_ready_once(struct pd_port *pd_port)
@@ -342,11 +344,13 @@ static inline void dpm_reaction_set_ready_once(struct pd_port *pd_port)
 static inline void dpm_reaction_set_clear(
 	struct pd_port *pd_port, uint32_t set, uint32_t clear)
 {
-	struct tcpc_device *tcpc = pd_port->tcpc;
-	uint32_t val = pd_port->pe_data.dpm_ready_reactions | set;
+	struct pe_data *pe_data = &pd_port->pe_data;
+	uint32_t val = pe_data->dpm_ready_reactions | set;
 
-	pd_port->pe_data.dpm_ready_reactions = val & (~clear);
-	tcpc_event_thread_wake_up(tcpc);
+	pe_data->dpm_ready_reactions = val & (~clear);
+	if (pe_data->dpm_reaction_id & clear)
+		pe_data->dpm_reaction_try = 0;
+	tcpc_event_thread_wake_up(pd_port->tcpc);
 }
 
 static inline uint32_t dpm_reaction_check(
