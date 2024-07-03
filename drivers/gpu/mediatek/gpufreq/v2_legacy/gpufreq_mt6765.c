@@ -1404,7 +1404,7 @@ static int __gpufreq_freq_scale_gpu(unsigned int freq_old, unsigned int freq_new
 	 * MFGPLL_CON1[26:24]: MFGPLL_POSDIV
 	 * MFGPLL_CON1[21:0] : MFGPLL_SDM_PCW (DDS)
 	 */
-	freq_new = 650000;
+	//freq_new = 650000;
 	cur_posdiv = __gpufreq_get_real_posdiv_gpu();
 	target_posdiv = __gpufreq_get_posdiv_by_fgpu(freq_new);
 	/* compute PCW based on target Freq */
@@ -1459,7 +1459,7 @@ static int __gpufreq_volt_scale_gpu(
 	unsigned int vsram_old, unsigned int vsram_new)
 {
 	int ret = GPUFREQ_SUCCESS;
-	vgpu_new = 80000;
+	//vgpu_new = 80000;
 	//GPUFREQ_LOGI("force VGPU to 0.8V");
 	GPUFREQ_TRACE_START("vgpu_old=%d, vgpu_new=%d, vsram_old=%d, vsram_new=%d",
 		vgpu_old, vgpu_new, vsram_old, vsram_new);
