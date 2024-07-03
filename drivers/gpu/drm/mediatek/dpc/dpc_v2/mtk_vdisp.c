@@ -102,6 +102,10 @@ static DEFINE_MUTEX(g_mtcmos_cnt_lock);
 static struct dpc_funcs disp_dpc_driver;
 struct wakeup_source *g_vdisp_wake_lock;
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+atomic_t g_vdisp_wakelock_cnt;
+#endif
+
 static bool vcp_warmboot_support;
 
 static void __iomem *g_smi_disp_dram_sub_comm[4];
@@ -352,6 +356,23 @@ fail:
 }
 
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+static void mtk_vdisp_wk_lock(u32 crtc_index, bool get, const char *func, int line)
+{
+	if (get) {
+		__pm_stay_awake(g_vdisp_wake_lock);
+		atomic_inc(&g_vdisp_wakelock_cnt);
+	} else {
+		__pm_relax(g_vdisp_wake_lock);
+		atomic_dec(&g_vdisp_wakelock_cnt);
+	}
+
+	VDISPDBG("CRTC%d %s wakelock %s %d cnt(%u)",
+		crtc_index, (get ? "hold" : "release"),
+		func, line, atomic_read(&g_vdisp_wakelock_cnt));
+}
+#endif
+
 static int genpd_event_notifier(struct notifier_block *nb,
 			  unsigned long event, void *data)
 {
@@ -363,7 +384,9 @@ static int genpd_event_notifier(struct notifier_block *nb,
 		mutex_lock(&g_mtcmos_cnt_lock);
 
 		if (priv->pd_id == DISP_PD_DISP_VCORE) {
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 			__pm_stay_awake(g_vdisp_wake_lock);
+#endif
 			vdisp_set_aod_scp_semaphore(1); //protect AOD SCP flow
 		}
 		mminfra_hwv_pwr_ctrl(priv, true);
@@ -468,7 +491,9 @@ static int genpd_event_notifier(struct notifier_block *nb,
 
 		if (priv->pd_id == DISP_PD_DISP_VCORE) {
 			vdisp_set_aod_scp_semaphore(0); //protect AOD SCP flow
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 			__pm_relax(g_vdisp_wake_lock);
+#endif
 		}
 		atomic_and(~BIT(priv->pd_id), &g_mtcmos_cnt);
 		mutex_unlock(&g_mtcmos_cnt_lock);
@@ -506,6 +531,9 @@ static const struct mtk_vdisp_funcs funcs = {
 	.poll_power_cnt = mtk_vdisp_poll_power_cnt,
 	.sent_aod_scp_sema = mtk_sent_aod_scp_sema,
 	.query_aging_val = mtk_vdisp_query_aging_val,
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	.wk_lock = mtk_vdisp_wk_lock,
+#endif
 };
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
