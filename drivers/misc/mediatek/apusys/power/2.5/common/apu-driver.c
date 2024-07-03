@@ -20,6 +20,9 @@
 #include "apu_plat.h"
 #include "apu_dbg.h"
 
+static struct mutex apucb_lock;
+static int apucb_user_cnt;
+
 int apu_device_power_suspend(enum DVFS_USER user, int is_suspend)
 {
 	int ret = 0;
@@ -36,14 +39,27 @@ int apu_device_power_suspend(enum DVFS_USER user, int is_suspend)
 		ret = -EFAULT;
 		goto out;
 	}
-	apower_info(ad->dev, "[%s] called by %s\n",
-		__func__, apu_dev_string(ori_usr));
 
-	ret = pm_runtime_put_sync(ad->dev);
+	if (user == APUCB) {
+		mutex_lock(&apucb_lock);
+		apucb_user_cnt--;
+		apower_warn(ad->dev, "[%s] apucb_user_cnt:%d\n",
+				__func__, apucb_user_cnt);
+	}
+
+	if (user != APUCB || (user == APUCB && apucb_user_cnt == 0))
+		ret = pm_runtime_put_sync(ad->dev);
+
+	apu_get_power_info(0);
+
 	if (ret)
 		apower_err(ad->dev, "[%s] suspend fail, ret %d\n", __func__, ret);
 
+	if (user == APUCB)
+		mutex_unlock(&apucb_lock);
 out:
+	apower_warn(ad->dev, "[%s] called by %s\n",
+		__func__, apu_dev_string(ori_usr));
 	return ret;
 }
 EXPORT_SYMBOL(apu_device_power_suspend);
@@ -64,15 +80,32 @@ int apu_device_power_on(enum DVFS_USER user)
 		ret = -EFAULT;
 		goto out;
 	}
-	apower_info(ad->dev, "[%s] called by %s\n", __func__, apu_dev_string(ori_usr));
-	ret = pm_runtime_get_sync(ad->dev);
+
+	if (user == APUCB) {
+		mutex_lock(&apucb_lock);
+		apucb_user_cnt++;
+		apower_warn(ad->dev, "[%s] apucb_user_cnt:%d\n",
+				__func__, apucb_user_cnt);
+	}
+
+	if (user != APUCB || (user == APUCB && apucb_user_cnt == 1))
+		ret = pm_runtime_get_sync(ad->dev);
+
+	apu_get_power_info(0);
+
 	/* Ignore suppliers with disabled runtime PM. */
 	if (ret < 0 && ret != -EACCES) {
 		apower_err(ad->dev, "[%s] fail, ret %d\n", __func__, ret);
-		pm_runtime_put_noidle(ad->dev);
+		if (user != APUCB || (user == APUCB && apucb_user_cnt == 1)) {
+			pm_runtime_put_noidle(ad->dev);
+			mutex_unlock(&apucb_lock);
+		}
 		goto out;
 	}
 
+	if (user == APUCB)
+		mutex_unlock(&apucb_lock);
+	apower_warn(ad->dev, "[%s] call by %s end\n", __func__, apu_dev_string(ori_usr));
 	return 0;
 out:
 	return ret;
@@ -301,6 +334,8 @@ static int apusys_power_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	int err = 0;
+
+	mutex_init(&apucb_lock);
 
 	dev_info(&pdev->dev, "%s\n", __func__);
 	/* initial run time power management */
