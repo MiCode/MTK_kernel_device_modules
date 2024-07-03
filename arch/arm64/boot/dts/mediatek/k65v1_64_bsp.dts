@@ -12,10 +12,6 @@
 /dts-v1/;
 /plugin/;
 
-&mtkheap_region_svp {
-	status = "ok";
-};
-
 /* chosen */
 &chosen {
 
