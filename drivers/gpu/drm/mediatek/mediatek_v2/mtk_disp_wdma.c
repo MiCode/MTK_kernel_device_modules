@@ -2314,14 +2314,14 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		unsigned int ostdl_bw = 0;
 		struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
 
+		if (!wdma || !mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_MMQOS_SUPPORT))
+			break;
+
 		if (wdma->info_data->force_ostdl_bw)
 			ostdl_bw = wdma->info_data->force_ostdl_bw;
 		else
 			ostdl_bw = bw;
-
-		if (!wdma || !mtk_drm_helper_get_opt(priv->helper_opt,
-				MTK_DRM_OPT_MMQOS_SUPPORT))
-			break;
 
 		if (comp->last_hrt_bw == ostdl_bw)
 			break;

@@ -309,7 +309,8 @@ fail2:
 	end = sched_clock();
 
 	DDPINFO("%s, %d, prop:0x%x time:%lluns, ret:%d, size:%lluByte\n",
-		__func__, __LINE__, prop, end - start, ret, mtk_lcm_total_size);
+		__func__, __LINE__, prop, (unsigned long long)(end - start),
+		ret, mtk_lcm_total_size);
 	return ret;
 }
 

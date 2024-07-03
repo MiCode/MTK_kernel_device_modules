@@ -960,6 +960,12 @@ static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
 
 	if (ovl->data->ovl_phy_mapping) {
 		phy_id = ovl->data->ovl_phy_mapping(comp);
+		if (phy_id + lye_id >= ARRAY_SIZE(mtk_crtc->usage_ovl_fmt)) {
+			DDPINFO("%s, invalid layer:%u+%u\n", __func__,
+				phy_id, lye_id);
+			return;
+		}
+
 		if (ext_lye_id == 0) {
 			if ((plane_state->mml_mode == MML_MODE_RACING) ||
 				(plane_state->mml_mode == MML_MODE_DIRECT_LINK)) {
@@ -4536,6 +4542,11 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (ovl->data->ovl_phy_mapping)
 			phy_id = ovl->data->ovl_phy_mapping(comp);
 
+		if (phy_id >= MAX_LAYER_NR) {
+			DDPINFO("%s, invalid layer:%u\n", __func__, phy_id);
+			break;
+		}
+
 		if (!IS_ERR_OR_NULL(comp->hrt_qos_req)) {
 			port_bw = (bw_val * mtk_crtc->usage_ovl_fmt[phy_id]) >> 2;
 			if (comp->last_hrt_bw != port_bw) {
@@ -4549,7 +4560,13 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			if (port_bw && mtk_crtc->usage_ovl_compr[phy_id])
 				total_bw += port_bw;
 		}
+
 		if (!IS_ERR_OR_NULL(comp->hrt_qos_req_other)) {
+			if (phy_id + 1 >= MAX_LAYER_NR) {
+				DDPINFO("%s,invalid layer:%u\n", __func__, (unsigned int)(phy_id + 1));
+				break;
+			}
+
 			port_bw = (bw_val * mtk_crtc->usage_ovl_fmt[phy_id + 1]) >> 2;
 			if (comp->last_hrt_bw_other != port_bw) {
 				DDPQOS("%s/%u,layer:%u update:%u->%u compress:%d bw:%u\n",
@@ -4568,10 +4585,9 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				hdr_bw = (total_bw > 32) ? total_bw / 32 : 1;
 
 			if (comp->last_hdr_bw != hdr_bw) {
-				DDPQOS("%s/%u,layer:%u update hdr:%u->%u compress:%d/%d total:%u bw:%u\n",
+				DDPQOS("%s/%u,layer:%u update hdr:%u->%u total:%u bw:%u\n",
 					mtk_dump_comp_str_id(comp->id), comp->id, phy_id,
-					comp->last_hdr_bw, hdr_bw, mtk_crtc->usage_ovl_compr[phy_id],
-					mtk_crtc->usage_ovl_compr[phy_id + 1], total_bw, bw_val);
+					comp->last_hdr_bw, hdr_bw, total_bw, bw_val);
 				__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, hdr_bw,
 					priv->data->respective_ostdl);
 				comp->last_hdr_bw = hdr_bw;
@@ -4602,6 +4618,11 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (ovl->data->ovl_phy_mapping)
 			phy_id = ovl->data->ovl_phy_mapping(comp);
 
+		if (phy_id >= MAX_LAYER_NR) {
+			DDPINFO("%s,invalid layer:%u\n", __func__, phy_id);
+			break;
+		}
+
 		if (!IS_ERR_OR_NULL(comp->hrt_qos_req)) {
 			port_bw = (bw_val * mtk_crtc->usage_ovl_fmt[phy_id]) >> 2;
 			if (port_bw > comp->last_hrt_bw) {
@@ -4627,6 +4648,11 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		}
 
 		if (!IS_ERR_OR_NULL(comp->hrt_qos_req_other)) {
+			if (phy_id + 1 >= MAX_LAYER_NR) {
+				DDPINFO("%s,invalid layer:%u\n", __func__, (unsigned int)(phy_id + 1));
+				break;
+			}
+
 			port_bw = (bw_val * mtk_crtc->usage_ovl_fmt[phy_id + 1]) >> 2;
 			if (port_bw > comp->last_hrt_bw_other) {
 				DDPQOS("%s/%u,layer:%u fast up:%u->%u compress:%d\n",
@@ -4655,20 +4681,18 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				hdr_bw = (total_bw > 32) ? total_bw / 32 : 1;
 
 			if (hdr_bw > comp->last_hdr_bw) {
-				DDPQOS("%s/%u,layer:%u hdr fast up:%u->%u compress:%d/%d total:%u bw:%u\n",
+				DDPQOS("%s/%u,layer:%u hdr fast up:%u->%u total:%u bw:%u\n",
 					mtk_dump_comp_str_id(comp->id), comp->id, phy_id,
-					comp->last_hdr_bw, hdr_bw, mtk_crtc->usage_ovl_compr[phy_id],
-					mtk_crtc->usage_ovl_compr[phy_id + 1], total_bw, bw_val);
+					comp->last_hdr_bw, hdr_bw, total_bw, bw_val);
 				__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, hdr_bw,
 					priv->data->respective_ostdl);
 				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 					mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HDR_BW_VAL(phy_id)),
 					NO_PENDING_HRT, ~0);
 			} else if (hdr_bw < comp->last_hdr_bw) {
-				DDPQOS("%s/%u,layer:%u hdr slow down:%u->%u compress:%d/%d total:%u bw:%u\n",
+				DDPQOS("%s/%u,layer:%u hdr slow down:%u->%u total:%u bw:%u\n",
 					mtk_dump_comp_str_id(comp->id), comp->id, phy_id,
-					comp->last_hdr_bw, hdr_bw, mtk_crtc->usage_ovl_compr[phy_id],
-					mtk_crtc->usage_ovl_compr[phy_id + 1], total_bw, bw_val);
+					comp->last_hdr_bw, hdr_bw, total_bw, bw_val);
 				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 					mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HDR_BW_VAL(phy_id)),
 					hdr_bw, ~0);
@@ -4696,6 +4720,11 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (ovl->data->ovl_phy_mapping)
 			phy_id = ovl->data->ovl_phy_mapping(comp);
 
+		if (phy_id >= MAX_LAYER_NR) {
+			DDPINFO("%s,invalid layer:%u\n", __func__, phy_id);
+			break;
+		}
+
 		if (!IS_ERR_OR_NULL(comp->hrt_qos_req)) {
 			port_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_CUR_BW_VAL(phy_id));
@@ -4710,6 +4739,11 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			}
 		}
 		if (!IS_ERR_OR_NULL(comp->hrt_qos_req_other)) {
+			if (phy_id + 1 >= MAX_LAYER_NR) {
+				DDPINFO("%s,invalid layer:%u\n", __func__, (unsigned int)(phy_id + 1));
+				break;
+			}
+
 			port_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_CUR_BW_VAL(phy_id + 1));
 			if (port_bw != NO_PENDING_HRT && port_bw <= comp->last_hrt_bw_other) {

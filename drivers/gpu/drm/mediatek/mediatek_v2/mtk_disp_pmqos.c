@@ -1118,8 +1118,8 @@ unsigned int mtk_disp_set_per_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 {
 	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_private *priv = NULL;
-	unsigned int crtc_idx = 0, max_channel_bw = 0;
-	unsigned int last_ch_bw = 0;
+	unsigned int last_ch_bw = 0, max_channel_bw = 0;
+	int crtc_idx = 0;
 
 	if (IS_ERR_OR_NULL(mtk_crtc) || ch_idx >= BW_CHANNEL_NR )
 		goto out;
@@ -1142,7 +1142,7 @@ unsigned int mtk_disp_set_per_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 	/* ch bw slow down */
 	if (!force && priv->req_hrt_channel_bw[crtc_idx][ch_idx] > bw) {
 		if (debug_mmqos)
-			DDPMSG("%s, CRTC%u SLOW-DOWN channel:%u(%u->%u) max:%u(%u,%u,%u,%u) force:%d\n",
+			DDPMSG("%s, CRTC%d SLOW-DOWN channel:%u(%u->%u) max:%u(%u,%u,%u,%u) force:%d\n",
 				IS_ERR_OR_NULL(master) ? "unknown" : master,
 				crtc_idx, ch_idx, last_ch_bw, bw,
 				priv->last_max_channel_req,
@@ -1158,7 +1158,7 @@ unsigned int mtk_disp_set_per_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 	CRTC_MMP_MARK(crtc_idx, channel_bw, ch_idx, bw);
 	max_channel_bw = mtk_disp_calc_max_channel_bw(mtk_crtc);
 	if (debug_mmqos)
-		DDPMSG("%s, CRTC%u %s channel:%u(%u->%u) max:%u->%u(%u,%u,%u,%u) force:%d\n",
+		DDPMSG("%s, CRTC%d %s channel:%u(%u->%u) max:%u->%u(%u,%u,%u,%u) force:%d\n",
 			IS_ERR_OR_NULL(master) ? "unknown" : master,
 			crtc_idx, force ? "FINAL-DOWN" : "FAST-UP",
 			ch_idx, last_ch_bw, bw,
@@ -1186,20 +1186,20 @@ unsigned int mtk_disp_set_max_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 {
 	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_private *priv = NULL;
-	unsigned int crtc_idx = 0, max_channel_bw = 0, i;
+	unsigned int max_channel_bw = 0, i;
+	int crtc_idx = 0;
 
-	if (IS_ERR_OR_NULL(mtk_crtc) ||
-		size > BW_CHANNEL_NR || size == 0 || IS_ERR_OR_NULL(bw))
-		goto out;
+	if (IS_ERR_OR_NULL(mtk_crtc))
+		return 0;
 
 	crtc = &mtk_crtc->base;
 	crtc_idx = drm_crtc_index(crtc);
 	if (IS_ERR_OR_NULL(crtc->dev) || IS_ERR_OR_NULL(crtc->dev->dev_private))
-		goto out;
+		return 0;
 
 	priv = crtc->dev->dev_private;
-	if (!priv ||
-		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT))
+	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT) ||
+		size > BW_CHANNEL_NR || size == 0 || IS_ERR_OR_NULL(bw))
 		goto out;
 
 	/* update all channel hrt bw */
@@ -1212,7 +1212,7 @@ unsigned int mtk_disp_set_max_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 	max_channel_bw = mtk_disp_calc_max_channel_bw(mtk_crtc);
 
 	if (debug_mmqos)
-		DDPMSG("%s, CRTC%u UPDATE channel max:%u->%u(%u,%u,%u,%u) size:%u\n",
+		DDPMSG("%s, CRTC%d UPDATE channel max:%u->%u(%u,%u,%u,%u) size:%u\n",
 			IS_ERR_OR_NULL(master) ? "unknown" : master, crtc_idx,
 			priv->last_max_channel_req, max_channel_bw,
 			priv->req_hrt_channel_bw[crtc_idx][0],

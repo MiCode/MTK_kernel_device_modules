@@ -1640,9 +1640,10 @@ static void mtk_atomic_mml(struct drm_device *dev,
 	enum mml_mode new_mode = MML_MODE_UNKNOWN;
 	struct mtk_drm_private *priv = dev->dev_private;
 	bool need_update_plane = false;
+	int crtc_idx = 0;
 
 	for_each_oldnew_crtc_in_state(state, crtc, old_cs, new_cs, i) {
-		if (drm_crtc_index(crtc) == 0)
+		if (drm_crtc_index(crtc)== 0)
 			break;
 		else
 			return;
@@ -1718,17 +1719,17 @@ static void mtk_atomic_mml(struct drm_device *dev,
 				MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
 		if (mtk_crtc->mml_link_state == MML_DIRECT_LINKING &&
 		    !mtk_vidle_is_ff_enabled()) {
-			CRTC_MMP_MARK((int)drm_crtc_index(crtc), enter_vidle,
+			CRTC_MMP_MARK(crtc_idx, enter_vidle,
 				mtk_crtc->mml_link_state, new_mode);
 			mtk_vidle_enable(true, priv);
-			CRTC_MMP_MARK(drm_crtc_index(crtc), enter_vidle, 0xd1, mtk_crtc->mml_link_state);
+			CRTC_MMP_MARK(crtc_idx, enter_vidle, 0xd1, mtk_crtc->mml_link_state);
 			mtk_vidle_config_ff(true);
 		} else if ((mtk_crtc->mml_link_state == MML_STOP_LINKING ||
 			   mtk_crtc->mml_link_state == MML_STOP_DC) &&
 			   mtk_vidle_is_ff_enabled()) {
-			CRTC_MMP_MARK((int)drm_crtc_index(crtc), leave_vidle,
+			CRTC_MMP_MARK(crtc_idx, leave_vidle,
 				mtk_crtc->mml_link_state, new_mode);
-			CRTC_MMP_MARK(drm_crtc_index(crtc), leave_vidle, 0xd1, mtk_crtc->mml_link_state);
+			CRTC_MMP_MARK(crtc_idx, leave_vidle, 0xd1, mtk_crtc->mml_link_state);
 			mtk_vidle_config_ff(false);
 			mtk_vidle_enable(false, priv);
 		}
@@ -7151,6 +7152,7 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 	int ret;
 	unsigned long flags = 0;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
+	int crtc_idx = drm_crtc_index(crtc);
 
 	if (priv->top_clk_num <= 0)
 		return;
@@ -7179,17 +7181,17 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 
 			mtk_vidle_enable(true, priv);
 			/* turn on ff only when crtc0 exsit */
-			if (drm_crtc_index(crtc) == 0) {
-				CRTC_MMP_MARK(drm_crtc_index(crtc), enter_vidle,
+			if (crtc_idx == 0) {
+				CRTC_MMP_MARK(crtc_idx, enter_vidle,
 					(0xc10c | 0x10000000), atomic_read(&top_clk_ref));
 				mtk_vidle_config_ff(true);
 			} else {
-				CRTC_MMP_MARK(drm_crtc_index(crtc), leave_vidle,
+				CRTC_MMP_MARK(crtc_idx, leave_vidle,
 					(0xc10c | 0x20000000), atomic_read(&top_clk_ref));
 				mtk_vidle_config_ff(false);
 			}
 		} else if (atomic_read(&top_clk_ref) > 1) {
-			CRTC_MMP_MARK(drm_crtc_index(crtc), leave_vidle,
+			CRTC_MMP_MARK(crtc_idx, leave_vidle,
 				(0xc10c | 0x30000000), atomic_read(&top_clk_ref));
 			mtk_vidle_config_ff(false);
 		}
@@ -7203,7 +7205,7 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 			if (mtk_crtc &&
 				mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DECOUPLE_MODE))
 				mtk_crtc->is_mml_dc = false;
-			CRTC_MMP_MARK(drm_crtc_index(crtc), leave_vidle,
+			CRTC_MMP_MARK(crtc_idx, leave_vidle,
 				(0xc10c | 0x40000000), atomic_read(&top_clk_ref));
 			mtk_vidle_config_ff(false);
 			mtk_vidle_enable(mtk_vidle_is_ff_enabled(), priv);
