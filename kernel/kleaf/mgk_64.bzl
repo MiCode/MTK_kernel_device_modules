@@ -71,6 +71,8 @@ mgk_64_kleaf_modules = [
     #"//vendor/mediatek/kernel_modules/mtk_input/GT9886:gt9886",
     "//vendor/mediatek/kernel_modules/mtk_input/GT9916:gt9916",
     "//vendor/mediatek/kernel_modules/mtk_input/NT36672C:nt36672c",
+    "//vendor/mediatek/kernel_modules/mtk_input/NT36672C_144HZ:nt36672c_144hz",
+    "//vendor/mediatek/kernel_modules/mtk_input/NT36672C_120HZ:nt36672c_120hz",
     "//vendor/mediatek/kernel_modules/mtk_input/nt36xxx_no_flash_spi:nt36xxx_no_flash_spi",
     "//vendor/mediatek/kernel_modules/mtk_input/hxchipset_hx83102p:hxchipset_hx83102p",
     "//vendor/mediatek/kernel_modules/mtk_input/TD4320:td4320",
