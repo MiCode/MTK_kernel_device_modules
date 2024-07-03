@@ -344,8 +344,10 @@ static noinline int __get_bin_raise_from_dts(struct apu_dev *ad, char *name, int
 		return -ENODEV;
 
 	count = prop->length / sizeof(u32);
-	if (idx > count)
-		goto out;
+
+	/* if idx is out of bound, change it as no bin/raise */
+	if (idx > (count - 1))
+		idx = 0;
 
 	tmp = kmalloc_array(count, sizeof(*tmp), GFP_KERNEL);
 	if (!tmp)
@@ -360,7 +362,6 @@ static noinline int __get_bin_raise_from_dts(struct apu_dev *ad, char *name, int
 
 free_mem:
 	kfree(tmp);
-out:
 	return ret;
 }
 
