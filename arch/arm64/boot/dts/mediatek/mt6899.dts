@@ -7988,7 +7988,7 @@
 			reg = <0 0x11201000 0 0x2e00>,
 				<0 0x11203e00 0 0x0100>;
 			reg-names = "mac", "ippc";
-			/* vusb33-supply = <&mt6368_vusb>; */
+			vusb33-supply = <&mt6368_vusb>;
 			interrupts = <GIC_SPI 697 IRQ_TYPE_LEVEL_HIGH 0>;
 			phy-cells = <1>;
 			phys = <&u2port0 PHY_TYPE_USB2>,
@@ -8007,7 +8007,7 @@
 			mediatek,clk-mgr;
 			mediatek,noise-still-tr;
 			mediatek,gen1-txdeemph;
-			/* mediatek,hwrscs-vers = <1>; */
+			/* mediatek,hwrscs-vers = <2>; */
 			usb-role-switch;
 			cdp-block;
 			port {
@@ -8039,7 +8039,6 @@
 				clocks = <&clk26m>;
 				clock-names = "ref";
 				#phy-cells = <1>;
-				/* usb2jtag = <&infracfg_ao_clk 1>; */
 				usb2uart;
 			};
 
