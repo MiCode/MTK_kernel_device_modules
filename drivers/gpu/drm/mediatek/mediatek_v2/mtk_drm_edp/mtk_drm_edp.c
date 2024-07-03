@@ -604,27 +604,6 @@ static void mtk_edp_pg_enable(struct mtk_edp *mtk_edp, bool enable)
 			   PGEN_PATTERN_SEL_VAL << 4, PGEN_PATTERN_SEL_MASK);
 }
 
-static void mtk_dp_sdp_trigger_aui(struct mtk_edp *mtk_edp)
-{
-	mtk_edp_update_bits(mtk_edp, MTK_DP_ENC1_P0_3280,
-			   MTK_DP_SDP_AUI, SDP_PACKET_TYPE_DP_ENC1_P0_MASK);
-	mtk_edp_update_bits(mtk_edp, MTK_DP_ENC1_P0_3280,
-			   SDP_PACKET_W_DP_ENC1_P0, SDP_PACKET_W_DP_ENC1_P0);
-}
-
-static void mtk_edp_sdp_set_data(struct mtk_edp *mtk_edp, u8 *data_bytes)
-{
-	mtk_edp_bulk_16bit_write(mtk_edp, MTK_DP_ENC1_P0_3200,
-				data_bytes, 0x10);
-}
-
-static void mtk_dp_sdp_set_header_aui(struct mtk_edp *mtk_edp,
-				      struct dp_sdp_header *header)
-{
-	u32 db_addr = MTK_DP_ENC0_P0_30D8 + (MTK_DP_SDP_AUI - 1) * 8;
-
-	mtk_edp_bulk_16bit_write(mtk_edp, db_addr, (u8 *)header, 4);
-}
 
 static void mtk_edp_aux_irq_clear(struct mtk_edp *mtk_edp)
 {
@@ -986,17 +965,13 @@ static void mtk_edp_initialize_aux_settings(struct mtk_edp *mtk_edp)
 
 	/* Con Thd = 1.5ms+Vx0.1ms */
 	mtk_edp_update_bits(mtk_edp, REG_367C_AUX_TX_4P,
-				HPD_CONN_THD_AUX_TX_P0_FLDMASK_POS << 8,
+				HPD_CONN_THD_AUX_TX_P0_FLDMASK_POS << 6,
 				HPD_CONN_THD_AUX_TX_P0_FLDMASK);
 
 	/* DisCon Thd = 1.5ms+Vx0.1ms */
 	mtk_edp_update_bits(mtk_edp, REG_37A0_AUX_TX_P0,
 				HPD_DISC_THD_AUX_TX_P0_FLDMASK_POS << 4,
 				HPD_DISC_THD_AUX_TX_P0_FLDMASK);
-
-	mtk_edp_update_bits(mtk_edp, MTK_DP_AUX_4P_3690,
-				RX_REPLY_COMPLETE_MODE_AUX_TX_4P,
-				RX_REPLY_COMPLETE_MODE_AUX_TX_4P);
 
 	mtk_edp_update_bits(mtk_edp, REG_3FF8_DP_ENC_4P_3,
 				XTAL_FREQ_FOR_PSR_DP_ENC_4P_3_VALUE << 9,
