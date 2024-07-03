@@ -291,6 +291,7 @@ extern const struct mtk_apu_platdata mt6886_platdata;
 extern const struct mtk_apu_platdata mt6893_platdata;
 extern const struct mtk_apu_platdata mt6895_platdata;
 extern const struct mtk_apu_platdata mt6897_platdata;
+extern const struct mtk_apu_platdata mt6899_platdata;
 extern const struct mtk_apu_platdata mt6983_platdata;
 extern const struct mtk_apu_platdata mt6985_platdata;
 extern const struct mtk_apu_platdata mt6989_platdata;

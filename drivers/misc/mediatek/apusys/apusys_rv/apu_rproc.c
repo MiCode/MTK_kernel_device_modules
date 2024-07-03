@@ -92,7 +92,7 @@ static int __apu_run(struct rproc *rproc)
 		if ((apu->platdata->flags & F_BRINGUP) == 0)
 			apu_regdump();
 		apu->bypass_pwr_off_chk = true;
-		apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
+		// apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
 		goto stop;
 	}
 	if (ret == -ERESTARTSYS)
@@ -633,6 +633,9 @@ const struct mtk_apu_platdata mt6895_platdata;
 #ifndef MT6897_APUSYS_RV_PLAT_DATA
 const struct mtk_apu_platdata mt6897_platdata;
 #endif
+#ifndef MT6899_APUSYS_RV_PLAT_DATA
+const struct mtk_apu_platdata mt6899_platdata;
+#endif
 #ifndef MT6983_APUSYS_RV_PLAT_DATA
 const struct mtk_apu_platdata mt6983_platdata;
 #endif
@@ -656,6 +659,7 @@ static const struct of_device_id mtk_apu_of_match[] = {
 	{ .compatible = "mediatek,mt6893-apusys_rv", .data = &mt6893_platdata},
 	{ .compatible = "mediatek,mt6895-apusys_rv", .data = &mt6895_platdata},
 	{ .compatible = "mediatek,mt6897-apusys_rv", .data = &mt6897_platdata},
+	{ .compatible = "mediatek,mt6899-apusys_rv", .data = &mt6899_platdata},
 	{ .compatible = "mediatek,mt6983-apusys_rv", .data = &mt6983_platdata},
 	{ .compatible = "mediatek,mt6985-apusys_rv", .data = &mt6985_platdata},
 	{ .compatible = "mediatek,mt6989-apusys_rv", .data = &mt6989_platdata},
