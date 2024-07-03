@@ -11,6 +11,7 @@
 #endif
 
 #define MMSYS_MT6989  0x6989
+#define MMSYS_MT6899  0x6899
 #define MMSYS_MT6878  0x6878
 #define MMSYS_MT6991  0x6991
 

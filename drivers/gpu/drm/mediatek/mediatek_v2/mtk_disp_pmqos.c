@@ -694,7 +694,7 @@ unsigned int mtk_disp_get_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc)
 	unsigned int tmp = NO_PENDING_HRT, bw_base = 0;
 
 	bw_base = mtk_drm_primary_frame_bw(crtc);
-	if (priv->data->mmsys_id == MMSYS_MT6989) {
+	if (priv->data->mmsys_id == MMSYS_MT6989 || priv->data->mmsys_id == MMSYS_MT6899) {
 		if (bw_base != MAX_MMCLK)
 			tmp = mtk_disp_larb_hrt_bw_MT6989(mtk_crtc, MAX_MMCLK, bw_base);
 		else
@@ -827,6 +827,7 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 				__func__, crtc_idx, total, tmp, mtk_crtc->is_dual_pipe);
 		} else if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DSI &&
 				(priv->data->mmsys_id != MMSYS_MT6989) &&
+				(priv->data->mmsys_id != MMSYS_MT6899) &&
 				(priv->data->mmsys_id != MMSYS_MT6991)) {
 			if (total > 0) {
 				bw_base = mtk_drm_primary_frame_bw(crtc);
@@ -897,7 +898,7 @@ int mtk_disp_set_per_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 
 	if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DSI) {
 		if (total > 0) {
-			if (priv->data->mmsys_id == MMSYS_MT6989) {
+			if (priv->data->mmsys_id == MMSYS_MT6989 || priv->data->mmsys_id == MMSYS_MT6899) {
 				if (bw != MAX_MMCLK)
 					tmp1 = mtk_disp_larb_hrt_bw_MT6989(mtk_crtc, total, bw_base);
 				else
@@ -938,7 +939,8 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 		mtk_crtc->usage_ovl_fmt[0] = 4;
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_BY_LARB) &&
-		priv->data->mmsys_id == MMSYS_MT6989)
+		(priv->data->mmsys_id == MMSYS_MT6989 ||
+		priv->data->mmsys_id == MMSYS_MT6899))
 		mtk_disp_set_per_larb_hrt_bw(mtk_crtc, bw);
 
 	if (priv->data->update_channel_hrt) {

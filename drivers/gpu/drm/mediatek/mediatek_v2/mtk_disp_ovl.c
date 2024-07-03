@@ -640,6 +640,60 @@ unsigned int ovl_comp_frame_done_event_MT6989(struct mtk_ddp_comp *comp)
 	}
 }
 
+resource_size_t mtk_ovl_mmsys_mapping_MT6899(struct mtk_ddp_comp *comp)
+{
+	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+
+	switch (comp->id) {
+	case DDP_COMPONENT_OVL0_2L:
+	case DDP_COMPONENT_OVL1_2L:
+	case DDP_COMPONENT_OVL2_2L:
+	case DDP_COMPONENT_OVL3_2L:
+		return priv->ovlsys0_regs_pa;
+	default:
+		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
+		return 0;
+	}
+}
+
+unsigned int mtk_ovl_sys_mapping_MT6899(struct mtk_ddp_comp *comp)
+{
+	switch (comp->id) {
+	case DDP_COMPONENT_OVL0_2L:
+	case DDP_COMPONENT_OVL1_2L:
+	case DDP_COMPONENT_OVL2_2L:
+	case DDP_COMPONENT_OVL3_2L:
+		return 0;
+	default:
+		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
+		return -1;
+	}
+}
+
+unsigned int ovl_comp_frame_done_event_MT6899(struct mtk_ddp_comp *comp)
+{
+
+#define CMDQ_EVENT_OVL0_DISP_OVL3_2L_FRAME_DONE 215
+#define CMDQ_EVENT_OVL0_DISP_OVL2_2L_FRAME_DONE 216
+#define CMDQ_EVENT_OVL0_DISP_OVL1_2L_FRAME_DONE 217
+#define CMDQ_EVENT_OVL0_DISP_OVL0_2L_FRAME_DONE 218
+
+	switch (comp->id) {
+	case DDP_COMPONENT_OVL0_2L:
+		return CMDQ_EVENT_OVL0_DISP_OVL0_2L_FRAME_DONE;
+	case DDP_COMPONENT_OVL1_2L:
+		return CMDQ_EVENT_OVL0_DISP_OVL1_2L_FRAME_DONE;
+	case DDP_COMPONENT_OVL2_2L:
+		return CMDQ_EVENT_OVL0_DISP_OVL2_2L_FRAME_DONE;
+	case DDP_COMPONENT_OVL3_2L:
+		return CMDQ_EVENT_OVL0_DISP_OVL3_2L_FRAME_DONE;
+	default:
+		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
+		return 0;
+	}
+}
+
+
 resource_size_t mtk_ovl_mmsys_mapping_MT6886(struct mtk_ddp_comp *comp)
 {
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
@@ -751,6 +805,22 @@ unsigned int mtk_ovl_aid_sel_MT6989(struct mtk_ddp_comp *comp)
 	}
 }
 
+unsigned int mtk_ovl_aid_sel_MT6899(struct mtk_ddp_comp *comp)
+{
+	switch (comp->id) {
+	case DDP_COMPONENT_OVL0_2L:
+		return MT6989_OVL0_2L_AID_SEL;
+	case DDP_COMPONENT_OVL1_2L:
+		return MT6989_OVL1_2L_AID_SEL;
+	case DDP_COMPONENT_OVL2_2L:
+		return MT6989_OVL2_2L_AID_SEL;
+	case DDP_COMPONENT_OVL3_2L:
+		return MT6989_OVL3_2L_AID_SEL;
+	default:
+		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
+		return 0;
+	}
+}
 
 unsigned int mtk_ovl_aid_sel_MT6886(struct mtk_ddp_comp *comp)
 {
@@ -838,6 +908,23 @@ static unsigned int mtk_ovl_phy_mapping_MT6989(struct mtk_ddp_comp *comp)
 		return 8;
 	case DDP_COMPONENT_OVL5_2L:
 		return 10;
+	default:
+		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
+		return 0;
+	}
+}
+
+static unsigned int mtk_ovl_phy_mapping_MT6899(struct mtk_ddp_comp *comp)
+{
+	switch (comp->id) {
+	case DDP_COMPONENT_OVL0_2L:
+		return 0;
+	case DDP_COMPONENT_OVL1_2L:
+		return 2;
+	case DDP_COMPONENT_OVL2_2L:
+		return 4;
+	case DDP_COMPONENT_OVL3_2L:
+		return 6;
 	default:
 		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
 		return 0;
@@ -1194,7 +1281,7 @@ static void mtk_ovl_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 
 
 	SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_BURST16_EN);
-	if (priv->data->mmsys_id == MMSYS_MT6989) {
+	if (priv->data->mmsys_id == MMSYS_MT6989 || priv->data->mmsys_id == MMSYS_MT6899) {
 		/* golden setting */
 		SET_VAL_MASK(value, mask, 0, FLD_RDMA_BURST_CON1_DDR_EN);
 		SET_VAL_MASK(value, mask, 0, FLD_RDMA_BURST_CON1_DDR_ACK_EN);
@@ -1213,7 +1300,7 @@ static void mtk_ovl_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		       comp->regs_pa + DISP_REG_OVL_DATAPATH_CON,
 		       value, mask);
 
-	if (priv->data->mmsys_id == MMSYS_MT6989) {
+	if (priv->data->mmsys_id == MMSYS_MT6989 || priv->data->mmsys_id == MMSYS_MT6899) {
 		/* golden setting */
 		value = 0;
 		mask = 0;
@@ -2702,7 +2789,8 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 	}
 	if (ovl->ovl_dis == true && pending->enable == true) {
 		if ((priv->data->mmsys_id == MMSYS_MT6985 ||
-			priv->data->mmsys_id == MMSYS_MT6989) &&
+			priv->data->mmsys_id == MMSYS_MT6989 ||
+			priv->data->mmsys_id == MMSYS_MT6899) &&
 			mtk_crtc_is_frame_trigger_mode(crtc))
 			pending->enable = false;
 
@@ -2805,7 +2893,8 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 
 		/* ext layer is the same as attached phy layer */
 		if (!IS_ERR_OR_NULL(comp->qos_req_other) &&
-			priv->data->mmsys_id != MMSYS_MT6989) {
+			priv->data->mmsys_id != MMSYS_MT6989 &&
+			priv->data->mmsys_id != MMSYS_MT6899) {
 			int val = (lye_idx % 2);
 
 			cmdq_pkt_write(handle, comp->cmdq_base,
@@ -2834,7 +2923,8 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		 * layer2 --> larb0, layer3 --> larb1
 		 */
 		if (!IS_ERR_OR_NULL(comp->qos_req_other) &&
-			priv->data->mmsys_id != MMSYS_MT6989) {
+			priv->data->mmsys_id != MMSYS_MT6989 &&
+			priv->data->mmsys_id != MMSYS_MT6899) {
 			int val = (lye_idx % 2);
 
 			cmdq_pkt_write(handle, comp->cmdq_base,
@@ -2962,7 +3052,8 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 			(crtc_idx == 0) && (pending->prop_val[PLANE_PROP_COMPRESS]) &&
-			(priv->data->mmsys_id != MMSYS_MT6989)) {
+			(priv->data->mmsys_id != MMSYS_MT6989 &&
+			priv->data->mmsys_id != MMSYS_MT6899)) {
 			uint64_t key = 0;
 			int fbt_layer_id = -1;
 			unsigned long long temp_bw_old = temp_bw;
@@ -4187,6 +4278,7 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 	if (src_on & 0x1) {
 		layer_addr = read_phy_layer_addr(comp, 0);
 		if (priv->data->mmsys_id == MMSYS_MT6989 &&
+			priv->data->mmsys_id == MMSYS_MT6899 &&
 			comp->id == DDP_COMPONENT_OVL0_2L) {
 			DDPMSG("%s, replace mva same as pa %pad\n", __func__, &layer_addr);
 			domain = iommu_get_domain_for_dev(comp->dev);
@@ -4209,6 +4301,7 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 	if (src_on & 0x2) {
 		layer_addr = read_phy_layer_addr(comp, 1);
 		if (priv->data->mmsys_id == MMSYS_MT6989 &&
+			priv->data->mmsys_id == MMSYS_MT6899 &&
 			comp->id == DDP_COMPONENT_OVL0_2L) {
 			DDPMSG("%s, replace mva same as pa %pad\n", __func__, &layer_addr);
 			write_phy_layer_addr_cmdq(comp, handle, 1, layer_addr);
@@ -4348,7 +4441,8 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			inten = REG_FLD_VAL(INTEN_FLD_FME_UND_INTEN, 1) |
 					REG_FLD_VAL(INTEN_FLD_FME_CPL_INTEN, 1) |
 					REG_FLD_VAL(INIEN_ROI_TIMING_0, 1);
-		else if (priv->data->mmsys_id == MMSYS_MT6989)
+		else if (priv->data->mmsys_id == MMSYS_MT6989 ||
+				priv->data->mmsys_id == MMSYS_MT6899)
 			inten = REG_FLD_VAL(INTEN_FLD_FME_UND_INTEN, 1) |
 					REG_FLD_VAL(INTEN_FLD_FME_CPL_INTEN, 1);
 		else
@@ -4527,7 +4621,8 @@ other:
 			(struct mtk_ddp_fb_info *)params;
 
 		mtk_ovl_replace_bootup_mva(comp, handle, params, fb_info);
-		if (priv->data->mmsys_id == MMSYS_MT6989)
+		if (priv->data->mmsys_id == MMSYS_MT6989 ||
+			priv->data->mmsys_id == MMSYS_MT6899)
 			iommu_dev_disable_feature(comp->dev, IOMMU_DEV_FEAT_BYPASS_S1);
 		break;
 	}
@@ -5818,6 +5913,11 @@ static const struct compress_info compr_info_mt6989 = {
 	.l_config = &compr_l_config_AFBC_V1_2,
 };
 
+static const struct compress_info compr_info_mt6899 = {
+	.name = "AFBC_V1_2_MTK_1",
+	.l_config = &compr_l_config_AFBC_V1_2,
+};
+
 static const struct mtk_disp_ovl_data mt6989_ovl_driver_data = {
 	.addr = DISP_REG_OVL_ADDR_BASE,
 	.el_addr_offset = 0x10,
@@ -5848,6 +5948,38 @@ static const struct mtk_disp_ovl_data mt6989_ovl_driver_data = {
 	.frame_done_event = &ovl_comp_frame_done_event_MT6989,
 	.ovlsys_mapping = &mtk_ovl_sys_mapping_MT6989,
 	.ovl_phy_mapping = &mtk_ovl_phy_mapping_MT6989,
+};
+
+static const struct mtk_disp_ovl_data mt6899_ovl_driver_data = {
+	.addr = DISP_REG_OVL_ADDR_BASE,
+	.el_addr_offset = 0x10,
+	.el_hdr_addr = 0xfb4,
+	.el_hdr_addr_offset = 0x10,
+	.fmt_rgb565_is_0 = true,
+	.fmt_uyvy = 4U << 12,
+	.fmt_yuyv = 5U << 12,
+	.compr_info = &compr_info_mt6899,
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.preultra_th_dc = 0x3c0,
+	.fifo_size = 1536,
+	.issue_req_th_dl = 511,
+	.issue_req_th_dc = 31,
+	.issue_req_th_urg_dl = 255,
+	.issue_req_th_urg_dc = 31,
+	.greq_num_dl = 0xFFFF,
+	.stash_en = 0x73,
+	.stash_cfg = 0x10080400,
+	.is_support_34bits = true,
+	.aid_sel_mapping = &mtk_ovl_aid_sel_MT6899,
+	.aid_per_layer_setting = true,
+	.mmsys_mapping = &mtk_ovl_mmsys_mapping_MT6899,
+	.source_bpc = 10,
+	.support_pq_selfloop = true, /* pq in out self loop */
+	//.is_right_ovl_comp = &is_right_ovl_comp_MT6985,
+	.frame_done_event = &ovl_comp_frame_done_event_MT6899,
+	.ovlsys_mapping = &mtk_ovl_sys_mapping_MT6899,
+	.ovl_phy_mapping = &mtk_ovl_phy_mapping_MT6899,
 };
 
 static const struct compress_info compr_info_mt6897  = {
@@ -6119,6 +6251,8 @@ static const struct of_device_id mtk_disp_ovl_driver_dt_match[] = {
 	 .data = &mt6985_ovl_driver_data},
 	{.compatible = "mediatek,mt6989-disp-ovl",
 	 .data = &mt6989_ovl_driver_data},
+	{.compatible = "mediatek,mt6899-disp-ovl",
+	 .data = &mt6899_ovl_driver_data},
 	{.compatible = "mediatek,mt6897-disp-ovl",
 	 .data = &mt6897_ovl_driver_data},
 	{.compatible = "mediatek,mt6895-disp-ovl",

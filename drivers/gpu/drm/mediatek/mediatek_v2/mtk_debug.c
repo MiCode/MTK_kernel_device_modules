@@ -2399,6 +2399,7 @@ void mtk_wakeup_pf_wq(unsigned int m_id)
 
 	mtk_crtc->sof_time = ktime_get();
 	drm_priv = mtk_crtc->base.dev->dev_private;
+#ifndef DRM_CMDQ_DISABLE
 
 	if (drm_priv &&
 		mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
@@ -2409,6 +2410,7 @@ void mtk_wakeup_pf_wq(unsigned int m_id)
 		atomic_set(&mtk_crtc->pf_event, 1);
 		wake_up_interruptible(&mtk_crtc->present_fence_wq);
 	}
+#endif
 }
 
 void mtk_drm_cwb_backup_copy_size(void)

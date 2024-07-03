@@ -1344,6 +1344,7 @@ CONFIG_REG:
 	if (priv->data->mmsys_id == MMSYS_MT6983 ||
 		priv->data->mmsys_id == MMSYS_MT6985 ||
 		priv->data->mmsys_id == MMSYS_MT6989 ||
+		priv->data->mmsys_id == MMSYS_MT6899 ||
 		priv->data->mmsys_id == MMSYS_MT6991 ||
 		priv->data->mmsys_id == MMSYS_MT6897 ||
 		priv->data->mmsys_id == MMSYS_MT6895 ||
@@ -1539,6 +1540,7 @@ unsigned int mtk_dsi_default_rate(struct mtk_dsi *dsi)
 		(priv->data->mmsys_id == MMSYS_MT6983 ||
 		priv->data->mmsys_id == MMSYS_MT6985 ||
 		priv->data->mmsys_id == MMSYS_MT6989 ||
+		priv->data->mmsys_id == MMSYS_MT6899 ||
 		priv->data->mmsys_id == MMSYS_MT6991 ||
 		priv->data->mmsys_id == MMSYS_MT6897 ||
 		priv->data->mmsys_id == MMSYS_MT6895 ||
@@ -2074,7 +2076,8 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 				} else if (priv->data->mmsys_id == MMSYS_MT6897) {
 					mtk_mipi_tx_cphy_lane_config_mt6897(dsi->phy, dsi->ext,
 								     !dsi->is_slave, mtk_crtc);
-				} else if (priv->data->mmsys_id == MMSYS_MT6989) {
+				} else if (priv->data->mmsys_id == MMSYS_MT6989 ||
+							priv->data->mmsys_id == MMSYS_MT6899) {
 					mtk_mipi_tx_cphy_lane_config_mt6989(dsi->phy, dsi->ext,
 								     !dsi->is_slave, mtk_crtc);
 				} else if (priv->data->mmsys_id == MMSYS_MT6991) {
@@ -2095,7 +2098,8 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 				} else if (priv->data->mmsys_id == MMSYS_MT6897) {
 					mtk_mipi_tx_dphy_lane_config_mt6897(dsi->phy, dsi->ext,
 								     !dsi->is_slave, mtk_crtc);
-				} else if (priv->data->mmsys_id == MMSYS_MT6989) {
+				} else if (priv->data->mmsys_id == MMSYS_MT6989 ||
+							priv->data->mmsys_id == MMSYS_MT6899) {
 					mtk_mipi_tx_dphy_lane_config_mt6989(dsi->phy, dsi->ext,
 								     !dsi->is_slave, mtk_crtc);
 				} else if (priv->data->mmsys_id == MMSYS_MT6991) {
@@ -2206,6 +2210,7 @@ static void mtk_dsi_clk_hs_mode(struct mtk_dsi *dsi, bool enter)
 	if (priv->data->mmsys_id == MMSYS_MT6983 ||
 		priv->data->mmsys_id == MMSYS_MT6985 ||
 		priv->data->mmsys_id == MMSYS_MT6989 ||
+		priv->data->mmsys_id == MMSYS_MT6899 ||
 		priv->data->mmsys_id == MMSYS_MT6991 ||
 		priv->data->mmsys_id == MMSYS_MT6897 ||
 		priv->data->mmsys_id == MMSYS_MT6895 ||
@@ -2551,7 +2556,8 @@ static int mtk_dsi_calculate_rw_times(struct mtk_dsi *dsi,
 
 	if (!IS_ERR_OR_NULL(priv) && !IS_ERR_OR_NULL(priv->data)
 		&& (priv->data->mmsys_id == MMSYS_MT6989 ||
-		priv->data->mmsys_id == MMSYS_MT6991))
+			priv->data->mmsys_id == MMSYS_MT6899 ||
+			priv->data->mmsys_id == MMSYS_MT6991))
 		in_width = DSI_IPM_1_8_0_0_IN_WIDTH;
 	else
 		in_width = DSI_IPM_1_6_0_1_IN_WIDTH;
@@ -2647,10 +2653,12 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 
 	if (!IS_ERR_OR_NULL(priv) && !IS_ERR_OR_NULL(priv->data)
 		&& (priv->data->mmsys_id == MMSYS_MT6989 ||
+			priv->data->mmsys_id == MMSYS_MT6899 ||
 			priv->data->mmsys_id == MMSYS_MT6991)) {
 		dli_relay_1tnp = 2;
 
-		if (priv->data->mmsys_id == MMSYS_MT6989) {
+		if (priv->data->mmsys_id == MMSYS_MT6989 ||
+			priv->data->mmsys_id == MMSYS_MT6899) {
 			if (comp->id == DDP_COMPONENT_DSI2)
 				buf_con = 1036;
 			else if ((comp->id == DDP_COMPONENT_DSI0) ||
@@ -3187,7 +3195,8 @@ static void mtk_dsi_set_interrupt_enable(struct mtk_dsi *dsi)
 		inten |= FRAME_DONE_INT_FLAG;
 		priv = mtk_crtc->base.dev->dev_private;
 		if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
-						priv->data->mmsys_id == MMSYS_MT6991))
+					priv->data->mmsys_id == MMSYS_MT6899 ||
+					priv->data->mmsys_id == MMSYS_MT6991))
 			inten |= TARGET_LINE_INT_FLAG;
 
 		if (mtk_dsi_is_LTPO_VM_Enable(dsi)) {
@@ -3252,6 +3261,7 @@ u16 mtk_get_gpr(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	case MMSYS_MT6983:
 	case MMSYS_MT6985:
 	case MMSYS_MT6989:
+	case MMSYS_MT6899:
 	case MMSYS_MT6991:
 	case MMSYS_MT6897:
 	case MMSYS_MT6879:
@@ -3911,6 +3921,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 					 comp->id == DDP_COMPONENT_DSI1 ||
 					 comp->id == DDP_COMPONENT_DSI2) &&
 					(priv->data->mmsys_id == MMSYS_MT6989 ||
+					 priv->data->mmsys_id == MMSYS_MT6899 ||
 					 priv->data->mmsys_id == MMSYS_MT6991)) {
 					CRTC_MMP_MARK(index, target_time, comp->id, 0xffff0001);
 					atomic_set(&mtk_crtc->esd_ctx->target_time, 1);
@@ -6976,6 +6987,7 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 		if (priv && priv->data && priv->data->mmsys_id != MMSYS_MT6985
 			&& priv->data->mmsys_id != MMSYS_MT6897
 			&& priv->data->mmsys_id != MMSYS_MT6989
+			&& priv->data->mmsys_id != MMSYS_MT6899
 			&& priv->data->mmsys_id != MMSYS_MT6991
 			&& priv->data->mmsys_id != MMSYS_MT6765)
 			cmdq_pkt_write(handle, comp->cmdq_base,
@@ -11894,6 +11906,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 			inten |= FRAME_DONE_INT_FLAG;
 			if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
+						priv->data->mmsys_id == MMSYS_MT6899 ||
 						priv->data->mmsys_id == MMSYS_MT6991))
 				inten |= TARGET_LINE_INT_FLAG;
 			if (mtk_dsi_is_LTPO_VM_Enable(dsi)) {
@@ -11945,7 +11958,8 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 			inten |= FRAME_DONE_INT_FLAG;
 			if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
-							priv->data->mmsys_id == MMSYS_MT6991))
+						priv->data->mmsys_id == MMSYS_MT6899 ||
+						priv->data->mmsys_id == MMSYS_MT6991))
 				inten |= TARGET_LINE_INT_FLAG;
 			if (mtk_dsi_is_LTPO_VM_Enable(dsi)) {
 				inten |= TE_RDY_INT_FLAG | LTPO_VSYNC_INT_FLAG | INTERNAL_SOF_INT_FLAG;
@@ -13260,6 +13274,33 @@ static const struct mtk_dsi_driver_data mt6989_dsi_driver_data = {
 	.dsi_ltpo_vdo_sq0 = 0xB4,
 };
 
+static const struct mtk_dsi_driver_data mt6899_dsi_driver_data = {
+	.reg_cmdq0_ofs = 0xd00,
+	.reg_cmdq1_ofs = 0xd04,
+	.reg_vm_cmd_con_ofs = 0x200,
+	.reg_vm_cmd_data0_ofs = 0x208,
+	.reg_vm_cmd_data10_ofs = 0x218,
+	.reg_vm_cmd_data20_ofs = 0x228,
+	.reg_vm_cmd_data30_ofs = 0x238,
+	.poll_for_idle = mtk_dsi_poll_for_idle,
+	.irq_handler = mtk_dsi_irq_status,
+	.esd_eint_compat = "mediatek, DSI_TE-eint",
+	.support_shadow = false,
+	.need_bypass_shadow = false,
+	.need_wait_fifo = false,
+	.dsi_buffer = true,
+	.smi_dbg_disable = true,
+	.buffer_unit = 32,
+	.sram_unit = 32,
+	.urgent_lo_fifo_us = 14,
+	.urgent_hi_fifo_us = 15,
+	.max_vfp = 0xffe,
+	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
+	.bubble_rate = 115,
+	.n_verion = VER_N4,
+	.require_phy_reset = true,
+};
+
 static const struct mtk_dsi_driver_data mt6991_dsi_driver_data = {
 	.reg_cmdq0_ofs = 0x400,
 	.reg_cmdq1_ofs = 0x404,
@@ -13559,6 +13600,7 @@ static const struct of_device_id mtk_dsi_of_match[] = {
 	{.compatible = "mediatek,mt6983-dsi", .data = &mt6983_dsi_driver_data},
 	{.compatible = "mediatek,mt6985-dsi", .data = &mt6985_dsi_driver_data},
 	{.compatible = "mediatek,mt6989-dsi", .data = &mt6989_dsi_driver_data},
+	{.compatible = "mediatek,mt6899-dsi", .data = &mt6899_dsi_driver_data},
 	{.compatible = "mediatek,mt6991-dsi", .data = &mt6991_dsi_driver_data},
 	{.compatible = "mediatek,mt6897-dsi", .data = &mt6897_dsi_driver_data},
 	{.compatible = "mediatek,mt6895-dsi", .data = &mt6895_dsi_driver_data},

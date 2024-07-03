@@ -2869,7 +2869,8 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 			return DDP_COMPONENT_OVL0;
 		if (priv->data->mmsys_id == MMSYS_MT6985 ||
 			priv->data->mmsys_id == MMSYS_MT6897 ||
-			priv->data->mmsys_id == MMSYS_MT6989) {
+			priv->data->mmsys_id == MMSYS_MT6989 ||
+			priv->data->mmsys_id == MMSYS_MT6899) {
 			if (HRT_GET_FIRST_SET_BIT(ovl_mapping_tb -
 				HRT_GET_FIRST_SET_BIT(ovl_mapping_tb)) >=
 				layer_map_idx) {
@@ -3377,7 +3378,8 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 		if (mml_comp && (mml_comp == rpo_comp)) {
 			if (exclusive_chance && (mml_comp != comp_id_list[comp_id_nr - 1]) &&
 				(priv->data->mmsys_id != MMSYS_MT6897) &&
-				(priv->data->mmsys_id != MMSYS_MT6989)) {
+				(priv->data->mmsys_id != MMSYS_MT6989) &&
+				(priv->data->mmsys_id != MMSYS_MT6899)) {
 				DDPMSG("MML RPO use the same OVL, got exclusive_chance\n");
 				layer_map |= (layer_map_idx << 1);
 				i--;
