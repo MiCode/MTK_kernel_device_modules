@@ -8583,7 +8583,7 @@
 		};
 
 		spi0: spi0@11010800 {
-			compatible = "mediatek,mt6991-spi";
+			compatible = "mediatek,mt6899-spi";
 			mediatek,pad-select = <0>;
 			mediatek,tickdly = <20>, <0>;
 			reg = <0 0x11010800 0 0x100>;
@@ -8596,7 +8596,7 @@
 		};
 
 		spi1: spi1@11011800 {
-			compatible = "mediatek,mt6991-spi";
+			compatible = "mediatek,mt6899-spi";
 			mediatek,pad-select = <0>;
 			mediatek,tickdly = <20>, <0>;
 			reg = <0 0x11011800 0 0x100>;
@@ -8609,7 +8609,7 @@
 		};
 
 		spi2: spi2@11012800 {
-			compatible = "mediatek,mt6991-spi";
+			compatible = "mediatek,mt6899-spi";
 			mediatek,pad-select = <0>;
 			mediatek,tickdly = <20>, <0>;
 			reg = <0 0x11012800 0 0x100>;
@@ -8622,7 +8622,7 @@
 		};
 
 		spi3: spi3@11013800 {
-			compatible = "mediatek,mt6991-spi";
+			compatible = "mediatek,mt6899-spi";
 			mediatek,pad-select = <0>;
 			mediatek,tickdly = <20>, <0>;
 			reg = <0 0x11013800 0 0x100>;
@@ -8635,7 +8635,7 @@
 		};
 
 		spi4: spi4@11014800 {
-			compatible = "mediatek,mt6991-spi";
+			compatible = "mediatek,mt6899-spi";
 			mediatek,pad-select = <0>;
 			mediatek,tickdly = <20>, <0>;
 			reg = <0 0x11014800 0 0x100>;
@@ -8648,7 +8648,7 @@
 		};
 
 		spi5: spi5@11015800 {
-			compatible = "mediatek,mt6991-spi";
+			compatible = "mediatek,mt6899-spi";
 			mediatek,pad-select = <0>;
 			mediatek,tickdly = <20>, <20>;
 			reg = <0 0x11015800 0 0x100>;
@@ -8661,7 +8661,7 @@
 		};
 
 		spi6: spi6@11016800 {
-			compatible = "mediatek,mt6991-spi";
+			compatible = "mediatek,mt6899-spi";
 			mediatek,pad-select = <0>;
 			mediatek,tickdly = <20>, <20>;
 			reg = <0 0x11016800 0 0x100>;
@@ -8674,7 +8674,7 @@
 		};
 
 		spi7: spi7@11017800 {
-			compatible = "mediatek,mt6991-spi";
+			compatible = "mediatek,mt6899-spi";
 			mediatek,pad-select = <0>;
 			mediatek,tickdly = <20>, <20>;
 			reg = <0 0x11017800 0 0x100>;
