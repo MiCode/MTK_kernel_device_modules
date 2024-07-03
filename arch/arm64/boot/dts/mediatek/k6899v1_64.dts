@@ -9,7 +9,11 @@
 #include <dt-bindings/phy/phy.h>
 
 &chosen {
-	bootargs_ext = "";
+	bootargs_ext = "\
+loglevel=8 androidboot.selinux=permissive \
+earlycon=uart8250,mmio32,0x11001000 \
+initcall_debug=1 \
+";
 };
 
 &mtk_leds {
