@@ -7806,6 +7806,15 @@
 			/* secure-sspm-md2spm-clr = <1>; */
 		};
 
+		slbc: slbc@117800 {
+			compatible = "mediatek,mtk-slbc";
+			reg = <0 0x00117800 0 0x400>;
+			slbc-enable = <1>;
+			slbc-all-cache-enable = <1>;
+			trace-dram-base = <0x0>;
+			trace-dram-size = <0x0>;
+		};
+
 		/* ATF logger */
 		atf_logger: atf_logger {
 			compatible = "mediatek,tfa_debug";
