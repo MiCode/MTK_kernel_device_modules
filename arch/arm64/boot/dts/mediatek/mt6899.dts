@@ -3162,7 +3162,7 @@
 		};
 
 		dcm: dcm@c000010 {
-			//compatible = "mediatek,mt6899-dcm";
+			compatible = "mediatek,mt6899-dcm";
 			reg = <0 0xc000010 0 0x1f0220>,
 				<0 0x10022000 0 0x50>,
 				<0 0x11035000 0 0x70>,
