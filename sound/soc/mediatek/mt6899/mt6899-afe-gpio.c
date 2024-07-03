@@ -127,7 +127,7 @@ static int mt6899_afe_gpio_adda_dl(struct mtk_base_afe *afe, bool enable)
 
 static int mt6899_afe_gpio_adda_ul(struct mtk_base_afe *afe, bool enable)
 {
-	int ret;
+	int ret = 0;
 
 	if (mt6899_afe_gpio_is_prepared(MT6899_AFE_GPIO_DAT_MISO0_ON)) {
 		ret = mt6899_afe_gpio_select(afe, enable ?
