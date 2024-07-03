@@ -15291,6 +15291,36 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,mml = <&mmlsys1_config>;
 	};
 
+	peak_power_budget:peak-power-budget@117780 {
+		compatible = "mediatek,peak_power_budget";
+		bootmode = <&chosen>;
+		gauge = <&mtk_gauge>;
+		reg = <0 0x00117700 0 0x100>;
+		reg-names = "ppb_sram";
+
+		ppb-version = <2>;
+		soc-error = <2500>;
+		battery-circult-rdc = <40>;
+		battery0-path-rac-t0 = <65>;
+		battery0-path-rac-t1 = <65>;
+		battery0-path-rac-t2 = <65>;
+		battery0-path-rac-t3 = <65>;
+		battery1-path-rac-t0 = <65>;
+		battery1-path-rac-t1 = <65>;
+		battery1-path-rac-t2 = <65>;
+		battery1-path-rac-t3 = <65>;
+		battery2-path-rac-t0 = <65>;
+		battery2-path-rac-t1 = <65>;
+		battery2-path-rac-t2 = <65>;
+		battery2-path-rac-t3 = <65>;
+		max-temperature-stage = <3>;
+		temperature-threshold = <25 10 0>;
+		system-ocp = <13000>;
+		system-uvlo = <2400>;
+
+		bat-ocv-table-num = <0>;
+	};
+
 	low-battery-throttling {
 		compatible = "mediatek,low_battery_throttling";
 		lvsys-thd-enable = <1>;
