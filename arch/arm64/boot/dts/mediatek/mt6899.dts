@@ -1357,9 +1357,9 @@
 		reg = <0 0x1e804000 0 0x1000>;
 		mediatek,common-id = <3>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_MM_INFRA>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MM_INFRA>;
 		skip-rpm-cb;
-		// mediatek,vcp-supply = <&vcp>;
+		mediatek,vcp-supply = <&vcp>;
 		smi-user-id = <MTK_SMI_MMINFRA>;
 	};
 
@@ -1369,9 +1369,9 @@
 		reg = <0 0x1e805000 0 0x1000>;
 		mediatek,common-id = <4>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_MM_INFRA>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MM_INFRA>;
 		skip-rpm-cb;
-		// mediatek,vcp-supply = <&vcp>;
+		mediatek,vcp-supply = <&vcp>;
 		smi-user-id = <MTK_SMI_MMINFRA>;
 	};
 
@@ -1381,9 +1381,9 @@
 		reg = <0 0x1e80c000 0 0x1000>;
 		mediatek,common-id = <5>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_MM_INFRA>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MM_INFRA>;
 		skip-rpm-cb;
-		// mediatek,vcp-supply = <&vcp>;
+		mediatek,vcp-supply = <&vcp>;
 		smi-user-id = <MTK_SMI_MMINFRA>;
 	};
 
@@ -1393,9 +1393,9 @@
 		reg = <0 0x1e80d000 0 0x1000>;
 		mediatek,common-id = <6>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_MM_INFRA>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MM_INFRA>;
 		skip-rpm-cb;
-		// mediatek,vcp-supply = <&vcp>;
+		mediatek,vcp-supply = <&vcp>;
 		smi-user-id = <MTK_SMI_MMINFRA>;
 	};
 
@@ -1405,9 +1405,9 @@
 		reg = <0 0x1e807000 0 0x1000>;
 		mediatek,common-id = <7>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_MM_INFRA>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MM_INFRA>;
 		skip-rpm-cb;
-		// mediatek,vcp-supply = <&vcp>;
+		mediatek,vcp-supply = <&vcp>;
 		smi-user-id = <MTK_SMI_MMINFRA>;
 	};
 
@@ -1417,9 +1417,9 @@
 		reg = <0 0x1e808000 0 0x1000>;
 		mediatek,common-id = <8>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_MM_INFRA>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MM_INFRA>;
 		skip-rpm-cb;
-		// mediatek,vcp-supply = <&vcp>;
+		mediatek,vcp-supply = <&vcp>;
 		smi-user-id = <MTK_SMI_MMINFRA>;
 	};
 
@@ -1432,7 +1432,7 @@
 		// mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		// operating-points-v2 = <&opp_table_mminfra>;
 		smi-common;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_MM_INFRA>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MM_INFRA>;
 		skip-rpm-cb;
 		smi-user-id = <MTK_SMI_MMINFRA>;
 	};
@@ -1446,7 +1446,7 @@
 		// mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		// operating-points-v2 = <&opp_table_mminfra>;
 		smi-common;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_MM_INFRA>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MM_INFRA>;
 		skip-rpm-cb;
 		smi-user-id = <MTK_SMI_MMINFRA>;
 	};
@@ -1458,7 +1458,7 @@
 		mediatek,smi-supply = <&mmsram_smi_2x1_sub_comm3 0 &mmsram_smi_2x1_sub_comm4 0>;
 		mediatek,common-id = <2>;
 		smi-common;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_MM_INFRA>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MM_INFRA>;
 		skip-rpm-cb;
 		smi-user-id = <MTK_SMI_MMINFRA>;
 	};
@@ -1470,7 +1470,7 @@
 		mediatek,smi-supply = <&smi_disp_common 1>;
 		mediatek,common-id = <9>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
 		clocks = <&dispsys1_config_clk  CLK_MM1_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
 		smi-user-id = <MTK_SMI_DISP MTK_SMI_MML0>;
@@ -1483,7 +1483,7 @@
 		mediatek,smi-supply = <&smi_disp_common 1>;
 		mediatek,common-id = <10>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
 		clocks = <&dispsys1_config_clk  CLK_MM1_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
 		smi-user-id = <MTK_SMI_DISP>;
@@ -1496,7 +1496,7 @@
 		mediatek,smi-supply = <&smi_mdp_common 1>;
 		mediatek,common-id = <11>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
 		clocks = <&dispsys1_config_clk  CLK_MM1_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
 		smi-user-id = <MTK_SMI_DISP>;
@@ -1509,7 +1509,7 @@
 		mediatek,smi-supply = <&smi_mdp_common 1>;
 		mediatek,common-id = <12>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
 		clocks = <&dispsys1_config_clk  CLK_MM1_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
 		smi-user-id = <MTK_SMI_DISP MTK_SMI_MML1>;
@@ -1522,7 +1522,7 @@
 		mediatek,smi-supply = <&smi_sysram_common 1>;
 		mediatek,common-id = <13>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
 		clocks = <&dispsys1_config_clk  CLK_MM1_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
 		smi-user-id = <MTK_SMI_DISP MTK_SMI_MML0>;
@@ -1535,7 +1535,7 @@
 		mediatek,smi-supply = <&smi_sysram_common 1>;
 		mediatek,common-id = <14>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
 		clocks = <&dispsys1_config_clk  CLK_MM1_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
 		smi-user-id = <MTK_SMI_DISP MTK_SMI_MML1>;
@@ -1548,7 +1548,7 @@
 		mediatek,smi-supply = <&smi_disp_dram_sub_comm0 0 &smi_sram_disp_sub_comm0 0>;
 		mediatek,larb-id = <0>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_OVL0_SHUTDOWN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_OVL0_SHUTDOWN>;
 		clocks = <&ovlsys_config_clk CLK_OVL_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1564,7 +1564,7 @@
 		mediatek,smi-supply = <&smi_disp_dram_sub_comm1 0 &smi_sram_disp_sub_comm1 0>;
 		mediatek,larb-id = <1>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_OVL0_SHUTDOWN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_OVL0_SHUTDOWN>;
 		clocks = <&ovlsys_config_clk CLK_OVL_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1580,7 +1580,7 @@
 		mediatek,smi-supply = <&smi_disp_dram_sub_comm2 0 &smi_sram_disp_sub_comm1 0>;
 		mediatek,larb-id = <20>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_OVL0_SHUTDOWN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_OVL0_SHUTDOWN>;
 		clocks = <&ovlsys_config_clk CLK_OVL_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1596,7 +1596,7 @@
 		mediatek,smi-supply = <&smi_disp_dram_sub_comm3 0 &smi_sram_disp_sub_comm0 0>;
 		mediatek,larb-id = <21>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_OVL0_SHUTDOWN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_OVL0_SHUTDOWN>;
 		clocks = <&ovlsys_config_clk CLK_OVL_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1612,7 +1612,7 @@
 		mediatek,smi-supply = <&smi_disp_dram_sub_comm2 0 &smi_sram_disp_sub_comm0 0>;
 		mediatek,larb-id = <32>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_DIS0_SHUTDOWN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_DIS0_SHUTDOWN>;
 		clocks = <&dispsys_config_clk CLK_MM_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1628,7 +1628,7 @@
 		mediatek,smi-supply = <&smi_disp_dram_sub_comm1 0 &smi_sram_disp_sub_comm1 0>;
 		mediatek,larb-id = <33>;
 		init-power-on;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
 		clocks = <&dispsys1_config_clk  CLK_MM1_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1643,7 +1643,7 @@
 		reg = <0 0x1f002000 0 0x1000>;
 		mediatek,smi-supply = <&smi_disp_dram_sub_comm0 0 &smi_sram_disp_sub_comm0 0>;
 		mediatek,larb-id = <2>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_MML0_SHUTDOWN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MML0_SHUTDOWN>;
 		clocks = <&mdpsys_config_clk CLK_MDP_SMI0_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1658,7 +1658,7 @@
 		reg = <0 0x1f802000 0 0x1000>;
 		mediatek,smi-supply = <&smi_disp_dram_sub_comm3 0 &smi_sram_disp_sub_comm1 0>;
 		mediatek,larb-id = <3>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_MML1_SHUTDOWN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MML1_SHUTDOWN>;
 		clocks = <&mdpsys1_config_clk CLK_MDP1_SMI0_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1674,7 +1674,7 @@
 		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,common-id = <19>;
 		master-ostd-bits = <7>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ISP_VCORE>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_VCORE>;
 		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_SMI>;
 		clock-names = "apb";
 	};
@@ -1686,7 +1686,7 @@
 		mediatek,smi-supply = <&smi_mdp_common 0>;
 		mediatek,common-id = <20>;
 		master-ostd-bits = <7>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ISP_VCORE>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_VCORE>;
 		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1_SMI>;
 		clock-names = "apb";
 	};
@@ -1698,7 +1698,7 @@
 		mediatek,smi-supply = <&smi_img_vcore_sub_comm0 0>;
 		mediatek,common-id = <21>;
 		master-ostd-bits = <7>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
 		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON0_SMI>;
 		clock-names = "apb";
 	};
@@ -1710,7 +1710,7 @@
 		mediatek,smi-supply = <&smi_img_vcore_sub_comm0 0>;
 		mediatek,common-id = <22>;
 		master-ostd-bits = <7>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
 		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON3_SMI>;
 		clock-names = "apb";
 	};
@@ -1722,7 +1722,7 @@
 		mediatek,smi-supply = <&smi_img_vcore_sub_comm1 0>;
 		mediatek,common-id = <23>;
 		master-ostd-bits = <7>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
 		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON1_SMI>;
 		clock-names = "apb";
 	};
@@ -1734,7 +1734,7 @@
 		mediatek,smi-supply = <&smi_img_vcore_sub_comm1 0>;
 		mediatek,common-id = <24>;
 		master-ostd-bits = <7>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
 		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON4_SMI>;
 		clock-names = "apb";
 	};
@@ -1746,7 +1746,7 @@
 		mediatek,smi-supply = <&smi_sysram_common 0>;
 		mediatek,common-id = <25>;
 		master-ostd-bits = <7>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
 		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON2_SMI>;
 		clock-names = "apb";
 	};
@@ -1757,7 +1757,7 @@
 		reg = <0 0x15001000 0 0x1000>;
 		mediatek,smi-supply = <&smi_img_sub_comm4 0>;
 		mediatek,larb-id = <9>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
 		clocks = <&imgsys_main_clk CLK_IMG_LARB9_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1771,7 +1771,7 @@
 		reg = <0 0x15230000 0 0x1000>;
 		mediatek,smi-supply = <&smi_img_sub_comm0 0>;
 		mediatek,larb-id = <11>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ISP_DIP1>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_DIP1>;
 		clocks = <&wpe1_dip1_clk CLK_WPE1_DIP1_LARB11_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1785,7 +1785,7 @@
 		reg = <0 0x15320000 0 0x1000>;
 		mediatek,smi-supply = <&smi_img_sub_comm2 0 &smi_img_sub_comm3 0>;
 		mediatek,larb-id = <12>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
 		clocks = <&imgsys_main_clk CLK_IMG_LARB12_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1799,7 +1799,7 @@
 		reg = <0 0x15140000 0 0x1000>;
 		mediatek,smi-supply = <&smi_img_sub_comm1 0>;
 		mediatek,larb-id = <15>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ISP_DIP1>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_DIP1>;
 		clocks = <&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB15_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1813,7 +1813,7 @@
 		reg = <0 0x15006000 0 0x1000>;
 		mediatek,smi-supply = <&smi_img_sub_comm1 0 &smi_img_sub_comm2 0>;
 		mediatek,larb-id = <18>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
 		clocks =  <&imgsys_main_clk CLK_IMG_ADL_LARB_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1827,7 +1827,7 @@
 		reg = <0 0x15530000 0 0x1000>;
 		mediatek,smi-supply = <&smi_img_sub_comm1 0>;
 		mediatek,larb-id = <22>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ISP_DIP1>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_DIP1>;
 		clocks = <&wpe2_dip1_clk CLK_WPE2_DIP1_LARB11_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1841,7 +1841,7 @@
 		reg = <0 0x15630000 0 0x1000>;
 		mediatek,smi-supply = <&smi_img_sub_comm4 0>;
 		mediatek,larb-id = <23>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ISP_DIP1>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_DIP1>;
 		clocks = <&wpe3_dip1_clk CLK_WPE3_DIP1_LARB11_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1855,7 +1855,7 @@
 		reg = <0 0x15720000 0 0x1000>;
 		mediatek,smi-supply = <&smi_img_sub_comm0 0>;
 		mediatek,larb-id = <28>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ISP_TRAW>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_TRAW>;
 		clocks = <&traw_dip1_clk CLK_TRAW_DIP1_LARB28_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1869,7 +1869,7 @@
 		reg = <0 0x15190000 0 0x1000>;
 		mediatek,smi-supply = <&smi_img_sub_comm3 0>;
 		mediatek,larb-id = <38>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_ISP_DIP1>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_DIP1>;
 		clocks = <&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB38_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1883,7 +1883,7 @@
 		reg = <0 0x1b804000 0 0x1000>;
 		mediatek,smi-supply = <&smi_mdp_common 0>;
 		mediatek,common-id = <28>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_VCORE>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_VCORE>;
 		clocks = <&cam_vcore_r1a_clk CLK_CAMV_CV_MM0_SC_DCM_DIS_SMI>;
 		clock-names = "apb";
 	};
@@ -1894,7 +1894,7 @@
 		reg = <0 0x1a005000 0 0x1000>;
 		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,common-id = <26>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_SMI>;
 		clock-names = "apb";
 	};
@@ -1905,7 +1905,7 @@
 		reg = <0 0x1a006000 0 0x1000>;
 		mediatek,smi-supply = <&smi_mdp_common 0>;
 		mediatek,common-id = <27>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_LARB13_SMI>;
 		clock-names = "apb";
 	};
@@ -1916,7 +1916,7 @@
 		reg = <0 0x1b802000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_vcore_sub_comm 0>;
 		mediatek,common-id = <29>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_CCU>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_CCU>;
 		clocks =  <&ccu_main_clk CLK_CCU_LARB19_CON_SMI>;
 		clock-names = "apb";
 	};
@@ -1927,7 +1927,7 @@
 		reg = <0 0x1a001000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0 &smi_cam_sub_comm2 0>;
 		mediatek,larb-id = <13>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_LARB13_SMI>;
 		clock-names = "apb";
 		// is-two-dram-path-ostdl;
@@ -1942,7 +1942,7 @@
 		reg = <0 0x1a002000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0 &smi_cam_vcore_sub_comm 0>;
 		mediatek,larb-id = <14>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_LARB14_SMI>;
 		clock-names = "apb";
 		// is-two-dram-path-ostdl;
@@ -1957,7 +1957,7 @@
 		reg = <0 0x1a003000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm2 0 &smi_sysram_common 0>;
 		mediatek,larb-id = <27>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_LARB27_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -1971,7 +1971,7 @@
 		reg = <0 0x1a004000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0 &smi_cam_sub_comm2 0>;
 		mediatek,larb-id = <29>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_SMI>;
 		clock-names = "apb";
 		// is-two-dram-path-ostdl;
@@ -1986,7 +1986,7 @@
 		reg = <0 0x1a010000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
 		mediatek,larb-id = <16>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_SUBA>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBA>;
 		clocks =  <&camsys_rawa_clk CLK_CAM_RA_LARBX_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -2000,7 +2000,7 @@
 		reg = <0 0x1a011000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm2 0>;
 		mediatek,larb-id = <17>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_SUBA>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBA>;
 		clocks = <&camsys_yuva_clk CLK_CAM_YA_LARBX_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -2014,7 +2014,7 @@
 		reg = <0 0x1a012000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm2 0>;
 		mediatek,larb-id = <36>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_SUBB>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBB>;
 		clocks = <&camsys_rawb_clk CLK_CAM_RB_LARBX_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -2028,7 +2028,7 @@
 		reg = <0 0x1a013000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
 		mediatek,larb-id = <37>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_SUBB>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBB>;
 		clocks = <&camsys_yuvb_clk CLK_CAM_YB_LARBX_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -2042,7 +2042,7 @@
 		reg = <0 0x1a014000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
 		mediatek,larb-id = <34>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_SUBC>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBC>;
 		clocks = <&camsys_rawc_clk CLK_CAM_RC_LARBX_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -2056,7 +2056,7 @@
 		reg = <0 0x1a015000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm2 0>;
 		mediatek,larb-id = <35>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_SUBC>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBC>;
 		clocks = <&camsys_yuvc_clk CLK_CAM_YC_LARBX_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -2070,7 +2070,7 @@
 		reg = <0 0x1a016000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
 		mediatek,larb-id = <25>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_MRAW>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MRAW>;
 		clocks = <&camsys_mraw_clk CLK_CAM_MR_LARBX_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -2084,7 +2084,7 @@
 		reg = <0 0x1a017000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm2 0>;
 		mediatek,larb-id = <26>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_MRAW>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MRAW>;
 		clocks = <&camsys_mraw_clk CLK_CAM_MR_LARBX_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -2098,7 +2098,7 @@
 		reg = <0 0x1a018000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
 		mediatek,larb-id = <19>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_MRAW>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MRAW>;
 		clocks = <&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -2112,7 +2112,7 @@
 		reg = <0 0x1b801000 0 0x1000>;
 		mediatek,smi-supply = <&smi_ccu_sub_comm0 0>;
 		mediatek,larb-id = <30>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_CAM_CCU>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_CCU>;
 		clocks = <&ccu_main_clk CLK_CCU_LARB19_CON_SMI>;
 		clock-names = "apb";
 		// is-default-ostdl;
@@ -2126,7 +2126,7 @@
 		reg = <0 0x1602e000 0 0x1000>;
 		mediatek,smi-supply = <&smi_mdp_common 0>;
 		mediatek,larb-id = <4>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_VDE1>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VDE1>;
 		skip-busy-check;
 		skip-rpm-cb;
 		// is-default-ostdl;
@@ -2141,7 +2141,7 @@
 		reg = <0 0x1600d000 0 0x1000>;
 		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,larb-id = <5>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_VDE0>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VDE0>;
 		skip-busy-check;
 		skip-rpm-cb;
 		// is-default-ostdl;
@@ -2156,7 +2156,7 @@
 		reg = <0 0x17010000 0 0x1000>;
 		mediatek,smi-supply = <&smi_disp_common 0 &smi_sysram_common 0>;
 		mediatek,larb-id = <7>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_VEN0>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VEN0>;
 		clocks = <&venc_gcon_clk CLK_VEN1_CKE0_LARB_SMI>,
 			<&venc_gcon_clk CLK_VEN1_CKE5_GALS_SMI>,
 			<&venc_gcon_clk CLK_VEN1_CKE6_GALS_SRAM_SMI>;
@@ -2174,7 +2174,7 @@
 		reg = <0 0x17810000 0 0x1000>;
 		mediatek,smi-supply = <&smi_mdp_common 0 &smi_sysram_common 0>;
 		mediatek,larb-id = <8>;
-		power-domains = <&scpsys MT6899_POWER_DOMAIN_VEN1>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VEN1>;
 		clocks = <&venc_gcon_core1_clk CLK_VEN2_CKE0_LARB_SMI>,
 			<&venc_gcon_core1_clk CLK_VEN2_CKE5_GALS_SMI>,
 			<&venc_gcon_core1_clk CLK_VEN2_CKE6_GALS_SRAM_SMI>;
