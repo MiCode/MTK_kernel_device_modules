@@ -9468,11 +9468,15 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	comp = mtk_crtc_get_comp_with_index(mtk_crtc, state);
+	if (!comp) {
+		DDPMSG("%s invalid comp\n", __func__);
+		return -EINVAL;
+	}
+
 	state->comp_state.comp_id = comp->id;
 #else
 	state->comp_state.comp_id = DDP_COMPONENT_OVL_EXDMA3;
 #endif
-	DDPINFO("%s %d state->comp_state.comp_id:%d", __func__, __LINE__, state->comp_state.comp_id);
 
 #ifdef CONFIG_MTK_ULTRARVC_SUPPORT
 		/*{ultrarvc +*/
