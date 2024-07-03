@@ -665,10 +665,8 @@ static void mtk_wdma_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 				   MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ))
 			mtk_ddp_write(comp, 0, DISP_REG_UFBC_WDMA_INTEN, handle);
 		comp->qos_bw = 0;
-		comp->qos_bw_other = 0;
 		comp->fbdc_bw = 0;
 		comp->hrt_bw = 0;
-		comp->hrt_bw_other = 0;
 	} else {
 		mtk_ddp_write(comp, 0x0, DISP_REG_WDMA_INTEN, handle);
 		mtk_ddp_write(comp, 0x0, DISP_REG_WDMA_EN, handle);
@@ -1696,6 +1694,11 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 		return;
 	}
 
+	if (wdma->info_data->is_support_ufbc) {
+		mtk_ufbc_wdma_config(comp, addon_config, handle);
+		goto golden_setting;
+	}
+
 	// WDMA bandwidth setting
 	bpp = mtk_get_format_bpp(comp->fb->format->format);
 	hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
@@ -1709,11 +1712,6 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 
 	DDPINFO("%s WDMA config iommu, CRTC%d\n", __func__, crtc_idx);
 	mtk_ddp_comp_iommu_enable(comp, handle);
-
-	if (wdma->info_data->is_support_ufbc) {
-		mtk_ufbc_wdma_config(comp, addon_config, handle);
-		goto golden_setting;
-	}
 
 	write_dst_addr(comp, handle, 0, addr);
 
@@ -2287,6 +2285,30 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		mtk_ddp_write(comp, inten, offset, handle);
 		break;
 	}
+	case PMQOS_GET_LARB_PORT_HRT_BW: {
+		struct mtk_larb_port_bw *data = (struct mtk_larb_port_bw *)params;
+
+		data->larb_id = -1;
+		data->bw = 0;
+		if (data->type != CHANNEL_HRT_RW)
+			break;
+
+		if (comp->larb_num == 1)
+			data->larb_id = comp->larb_id;
+		else if (comp->larb_num > 1)
+			data->larb_id = comp->larb_ids[0];
+
+		if (data->larb_id < 0) {
+			DDPMSG("%s, comp:%d, invalid larb id:%d, num:%d\n",
+				__func__, comp->id, data->larb_id, comp->larb_num);
+			break;
+		}
+		data->bw = comp->hrt_bw;
+		if (data->bw > 0)
+			DDPMSG("%s, wdma comp:%d, larb:%d, bw:%d\n",
+				__func__, comp->id, data->larb_id, data->bw);
+		break;
+	}
 	case PMQOS_SET_HRT_BW: {
 		unsigned int bw = *(unsigned int *)params;
 		unsigned int ostdl_bw = 0;
@@ -2301,10 +2323,18 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
 			break;
 
+		if (comp->last_hrt_bw == ostdl_bw)
+			break;
+
 		if (priv->data->respective_ostdl) {
-			if (!IS_ERR(comp->hrt_qos_req))
+			if (!IS_ERR_OR_NULL(comp->hrt_qos_req)) {
 				__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, ostdl_bw,
 					priv->data->respective_ostdl);
+				DDPINFO("%s: %s:%d update port hrt BW:%u->%u/%u\n", __func__,
+					mtk_dump_comp_str(comp), comp->id,
+					comp->last_hrt_bw, comp->hrt_bw, ostdl_bw);
+				comp->last_hrt_bw = ostdl_bw;
+			}
 			if (wdma->data->hrt_channel)
 				mtk_vidle_channel_bw_set(bw, wdma->data->hrt_channel(comp));
 		}
@@ -2331,11 +2361,6 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		mtk_crtc = comp->mtk_crtc;
 		crtc = &mtk_crtc->base;
 
-		/* process FBDC */
-		/* qos BW only has one port for one device, no need to separate */
-		//__mtk_disp_set_module_srt(comp->fbdc_qos_req, comp->id, comp->fbdc_bw,
-		//			    DISP_BW_FBDC_MODE);
-
 		if (params) {
 			force_update = *(unsigned int *)params;
 			/* tricky way use variable force update */
@@ -2345,31 +2370,19 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		if (!force_update && !update_pending) {
 			mtk_crtc->total_srt += comp->qos_bw;
-			if (!IS_ERR_OR_NULL(comp->qos_req_other))
-				mtk_crtc->total_srt += comp->qos_bw_other;
 		}
 
 		/* process normal */
-		if (!force_update && comp->last_qos_bw == comp->qos_bw) {
-			if (IS_ERR(comp->qos_req_other) ||
-			    (comp->last_qos_bw_other == comp->qos_bw_other))
-				break;
-			goto other;
-		}
-		__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw, 0,
-					  DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
-		comp->last_qos_bw = comp->qos_bw;
-		comp->last_hrt_bw = comp->hrt_bw;
-other:
-		if (!IS_ERR_OR_NULL(comp->qos_req_other)) {
-			__mtk_disp_set_module_srt(comp->qos_req_other,
-						  comp->id, comp->qos_bw_other, 0,
+		if (!force_update && comp->last_qos_bw == comp->qos_bw)
+			break;
+
+		if (!IS_ERR_OR_NULL(comp->qos_req)) {
+			__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw, 0,
 						  DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
-			comp->last_qos_bw_other = comp->qos_bw_other;
-			comp->last_hrt_bw_other = comp->hrt_bw_other;
+			DDPINFO("%s: %s:%d update port srt BW:%u->%u\n", __func__,
+				mtk_dump_comp_str(comp), comp->id, comp->last_qos_bw, comp->qos_bw);
+			comp->last_qos_bw = comp->qos_bw;
 		}
-		DDPINFO("update wdma %s qos %u %u, peak %u %u\n", mtk_dump_comp_str(comp),
-			comp->qos_bw, comp->qos_bw_other, comp->hrt_bw, comp->hrt_bw_other);
 		break;
 	}
 	default:
@@ -2396,7 +2409,7 @@ static int mtk_disp_wdma_bind(struct device *dev, struct device *master,
 	struct drm_device *drm_dev = data;
 	struct mtk_drm_private *private = drm_dev->dev_private;
 	int ret;
-	char buf[50];
+	char buf[64];
 
 	ret = mtk_ddp_comp_register(drm_dev, &priv->ddp_comp);
 	if (ret < 0) {
@@ -2409,13 +2422,19 @@ static int mtk_disp_wdma_bind(struct device *dev, struct device *master,
 		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf), &priv->ddp_comp, "qos");
 		priv->ddp_comp.qos_req = of_mtk_icc_get(dev, buf);
 		if (!IS_ERR(priv->ddp_comp.qos_req))
-			DDPMSG("%s, %s create success, dev:%s\n", __func__, buf, dev_name(dev));
+			DDPMSG("%s,%s create success, dev:%s\n", __func__, buf, dev_name(dev));
+		else
+			DDPMSG("%s,%d, comp:%u failed to create qos_req, name:%s\n",
+				__func__, __LINE__, priv->ddp_comp.id, buf);
 
 		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
 				&priv->ddp_comp, "hrt_qos");
 		priv->ddp_comp.hrt_qos_req = of_mtk_icc_get(dev, buf);
 		if (!IS_ERR(priv->ddp_comp.hrt_qos_req))
-			DDPMSG("%s, %s create success, dev:%s\n", __func__, buf, dev_name(dev));
+			DDPMSG("%s,%s create success, dev:%s\n", __func__, buf, dev_name(dev));
+		else
+			DDPMSG("%s,%d comp:%u failed to create hrt_qos_req, name:%s\n",
+				__func__, __LINE__, priv->ddp_comp.id, buf);
 	}
 	return 0;
 }

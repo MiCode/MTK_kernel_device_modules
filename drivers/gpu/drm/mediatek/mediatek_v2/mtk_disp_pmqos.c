@@ -37,8 +37,8 @@ module_param(debug_vidle_bw, int, 0644);
 int debug_channel_bw[4];
 module_param_array(debug_channel_bw, int, NULL, 0644);
 
-int debug_ostdl;
-module_param(debug_ostdl, int, 0644);
+int debug_mmqos;
+module_param(debug_mmqos, int, 0644);
 
 int debug_deteriorate;
 module_param(debug_deteriorate, int, 0644);
@@ -234,7 +234,8 @@ int __mtk_disp_set_module_srt(struct icc_path *request, int comp_id,
 
 	mtk_icc_set_bw(request, MBps_to_icc(bandwidth), MBps_to_icc(peak_bw));
 
-	DRM_MMP_MARK(pmqos, (comp_id << 16) | bandwidth,  (comp_id << 16) | peak_bw);
+	if (debug_mmqos)
+		DRM_MMP_MARK(pmqos, (comp_id << 16) | bandwidth,  (comp_id << 16) | peak_bw);
 
 	return 0;
 }
@@ -253,8 +254,8 @@ void __mtk_disp_set_module_hrt(struct icc_path *request, int comp_id,
 		icc = 0;
 
 	mtk_icc_set_bw(request, 0, icc);
-	if (debug_ostdl)
-		DRM_MMP_MARK(ostdl, (comp_id << 16) | bandwidth, icc);
+	if (debug_mmqos)
+		DRM_MMP_MARK(ostdl, (comp_id << 16) | bandwidth, respective_ostdl);
 }
 
 static bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc,
@@ -307,50 +308,228 @@ static bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc,
 	return ret;
 }
 
-static unsigned int mtk_disp_getMaxBW(unsigned int arr[], int size,
-						unsigned int total_bw)
+int mtk_disp_get_port_hrt_bw(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE type)
 {
-	unsigned int maxVal = arr[0];
+	struct mtk_larb_port_bw port_bw = { 0 };
+	int ret = 0;
 
-	for (int i = 1; i < size; i++) {
-		if (arr[i] > maxVal)
-			maxVal = arr[i];
-	}
+	if (IS_ERR_OR_NULL(comp))
+		return -EINVAL;
 
-	DDPINFO("%s maxVal = %d, total_bw = %d\n",__func__, maxVal, total_bw);
+	port_bw.larb_id = -1;
+	port_bw.bw = 0;
+	port_bw.type = type;
+	ret = mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_GET_LARB_PORT_HRT_BW, &port_bw);
+	if (port_bw.larb_id >= 0)
+		return port_bw.bw;
 
-	if (maxVal > total_bw)
-		return total_bw;
-	else
-		return maxVal;
+	return 0;
 }
 
-static unsigned int mtk_disp_larb_hrt_bw_MT6989(struct mtk_drm_crtc *mtk_crtc,
-						unsigned int total_bw, unsigned int bw_base)
+static unsigned int mtk_disp_calc_max_channel_bw(struct mtk_drm_crtc *mtk_crtc)
 {
-	int i = 0;
-	int max_sub_comm = 4; // 6989 sub common num
-	int max_ovl_phy_layer = 12; // 6989 phy ovl layer num
-	unsigned int subcomm_bw_sum[4] = {0};
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned int crtc_idx = drm_crtc_index(crtc);
+	unsigned int ch_bw[BW_CHANNEL_NR] = { 0 };
+	unsigned int i, max_ch_bw = 0;
+
+	for (i = 0 ; i < BW_CHANNEL_NR ; i++) {
+		for (crtc_idx = 0; crtc_idx < MAX_CRTC; crtc_idx++)
+			ch_bw[i] += priv->req_hrt_channel_bw[crtc_idx][i];
+	}
+
+	for (int i = 0; i < BW_CHANNEL_NR; i++) {
+		if (ch_bw[i] > max_ch_bw)
+			max_ch_bw = ch_bw[i];
+	}
+
+	DDPDBG("%s max_ch_bw:%u, ch:%u,%u,%u,%u\n",
+		__func__, max_ch_bw, ch_bw[0], ch_bw[1], ch_bw[2], ch_bw[3]);
+
+	return max_ch_bw;
+}
+
+void mtk_disp_update_channel_bw_by_layer_MT6989(unsigned int layer, unsigned int bpp,
+		unsigned int *subcomm_bw_sum, unsigned int size,
+		unsigned int bw_base, enum CHANNEL_TYPE type)
+{
 	/* sub_comm0: layer0 + layer4 + layer9
 	 * sub_comm1: layer1 + layer5 + layer8
 	 * sub_comm2: layer2 + layer7 + layer11
 	 * sub_comm3: layer3 + layer6 + layer10
 	 */
-	for (i = 0; i < max_ovl_phy_layer; i++) {
-		if (mtk_crtc->usage_ovl_fmt[i]) {
-			if (i == 0 || i == 4 || i == 9)
-				subcomm_bw_sum[0] += bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
-			else if (i == 1 || i == 5 || i == 8)
-				subcomm_bw_sum[1] += bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
-			else if (i == 2 || i == 7 || i == 11)
-				subcomm_bw_sum[2] += bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
-			else if (i == 3 || i == 6 || i == 10)
-				subcomm_bw_sum[3] += bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
+	if (!bpp || IS_ERR_OR_NULL(subcomm_bw_sum) || size < 4)
+		return;
+
+	if (layer == 0 || layer == 4 || layer == 9)
+		subcomm_bw_sum[0] += bw_base * bpp / 4;
+	else if (layer == 1 || layer == 5 || layer == 8)
+		subcomm_bw_sum[1] += bw_base * bpp / 4;
+	else if (layer == 2 || layer == 7 || layer == 11)
+		subcomm_bw_sum[2] += bw_base * bpp / 4;
+	else if (layer == 3 || layer == 6 || layer == 10)
+		subcomm_bw_sum[3] += bw_base * bpp / 4;
+}
+
+void mtk_disp_update_channel_bw_by_larb_MT6989(struct mtk_larb_port_bw *port_bw,
+	unsigned int *subcomm_bw_sum, unsigned int size, enum CHANNEL_TYPE type)
+{
+	if (IS_ERR_OR_NULL(port_bw) || IS_ERR_OR_NULL(subcomm_bw_sum) || size < 4)
+		return;
+
+	if (port_bw->larb_id == 0 || port_bw->larb_id == 37)
+		subcomm_bw_sum[0] += port_bw->bw;
+	if (port_bw->larb_id == 1 || port_bw->larb_id == 32 || port_bw->larb_id == 36)
+		subcomm_bw_sum[1] += port_bw->bw;
+	if (port_bw->larb_id == 20 || port_bw->larb_id == 33 || port_bw->larb_id == 35)
+		subcomm_bw_sum[2] += port_bw->bw;
+	if (port_bw->larb_id == 21 || port_bw->larb_id == 34)
+		subcomm_bw_sum[3] += port_bw->bw;
+}
+
+static void mtk_disp_get_channel_bw_of_ovl(struct mtk_drm_crtc *mtk_crtc,
+		unsigned int *subcomm_bw_sum, unsigned int size,
+		unsigned int bw_base, enum CHANNEL_TYPE type)
+{
+	unsigned int crtc_idx = drm_crtc_index(&mtk_crtc->base);
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	int i = 0;
+
+	if (!priv || IS_ERR_OR_NULL(priv->data->update_channel_bw_by_layer) ||
+		IS_ERR_OR_NULL(subcomm_bw_sum))
+		return;
+
+	for (i = 0; i < MAX_LAYER_NR; i++)
+		priv->data->update_channel_bw_by_layer(i, mtk_crtc->usage_ovl_fmt[i],
+				subcomm_bw_sum, size, bw_base, type);
+
+	if (size >= 4)
+		DDPQOS("%s, crtc:%d, OVL channel BW:%u,%u,%u,%u, type:%d\n",
+			__func__, crtc_idx, subcomm_bw_sum[0], subcomm_bw_sum[1],
+			subcomm_bw_sum[2], subcomm_bw_sum[3], type);
+}
+
+static void mtk_disp_get_channel_bw_of_pq(struct mtk_drm_crtc *mtk_crtc,
+		unsigned int *subcomm_bw_sum, unsigned int size, enum CHANNEL_TYPE type)
+{
+	unsigned int crtc_idx = drm_crtc_index(&mtk_crtc->base);
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	struct mtk_larb_port_bw port_bw;
+	struct mtk_ddp_comp *comp = NULL;
+	int i = 0, j = 0, ret = 0;
+
+	if (!priv || IS_ERR_OR_NULL(priv->data->update_channel_bw_by_larb) ||
+		IS_ERR_OR_NULL(subcomm_bw_sum))
+		return;
+
+	for (i = 0; i < DDP_PATH_NR; i++) {
+		if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
+			continue;
+
+		for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
+			port_bw.larb_id = -1;
+			port_bw.bw = 0;
+			port_bw.type = CHANNEL_HRT_RW;
+			ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_GET_LARB_PORT_HRT_BW,&port_bw);
+			if (port_bw.larb_id >= 0 && port_bw.bw > 0)
+				priv->data->update_channel_bw_by_larb(&port_bw, subcomm_bw_sum,
+						size, type);
 		}
 	}
 
-	return mtk_disp_getMaxBW(subcomm_bw_sum, max_sub_comm, total_bw);
+	if (size >= 4)
+		DDPQOS("%s, crtc:%d, PQ channel BW:%u,%u,%u,%u type:%d ret:%d\n",
+			__func__, crtc_idx, subcomm_bw_sum[0], subcomm_bw_sum[1],
+			subcomm_bw_sum[2], subcomm_bw_sum[3], type, ret);
+}
+
+static void mtk_disp_get_channel_bw_of_iwb(struct mtk_drm_crtc *mtk_crtc,
+		unsigned int *subcomm_bw_sum, unsigned int size, enum CHANNEL_TYPE type)
+{
+	unsigned int crtc_idx = drm_crtc_index(&mtk_crtc->base);
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	const struct mtk_addon_scenario_data *addon_data = NULL;
+	const struct mtk_addon_module_data *addon_module = NULL;
+	const struct mtk_addon_path_data *path_data = NULL;
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	struct mtk_larb_port_bw port_bw;
+	struct mtk_ddp_comp *comp = NULL;
+	int ret = 0;
+
+	if (!priv || IS_ERR_OR_NULL(priv->data->update_channel_bw_by_larb) ||
+		IS_ERR_OR_NULL(subcomm_bw_sum))
+		return;
+
+	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLEMGR_BY_WB) ||
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLEMGR_BY_REPAINT))
+		return;
+
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+	/* only vdo panel support IWB*/
+	if (!comp || mtk_dsi_is_cmd_mode(comp))
+		return;
+
+	addon_data = mtk_addon_get_scenario_data(__func__, crtc, IDLE_WDMA_WRITE_BACK);
+	if (!addon_data)
+		return;
+
+	addon_module = &addon_data->module_data[0];
+	path_data = mtk_addon_module_get_path(addon_module->module);
+	comp = priv->ddp_comp[path_data->path[path_data->path_len - 1]];
+
+	port_bw.larb_id = -1;
+	port_bw.bw = 0;
+	port_bw.type = CHANNEL_HRT_RW;
+	ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_GET_LARB_PORT_HRT_BW,&port_bw);
+	if (port_bw.larb_id >= 0 && port_bw.bw > 0)
+		priv->data->update_channel_bw_by_larb(&port_bw, subcomm_bw_sum,
+					size, type);
+
+	if (size >= 4)
+		DDPQOS("%s, crtc:%d, IWB channel BW:%u,%u,%u,%u type:%d ret:%d\n",
+			__func__, crtc_idx, subcomm_bw_sum[0], subcomm_bw_sum[1],
+			subcomm_bw_sum[2], subcomm_bw_sum[3], type, ret);
+}
+
+static void __mtk_disp_get_channel_hrt_bw_by_scope(struct mtk_drm_crtc *mtk_crtc,
+			unsigned int scope, unsigned int *result, unsigned int size)
+{
+	unsigned int crtc_idx = drm_crtc_index(&mtk_crtc->base);
+	unsigned int ovl_bw = 0, i;
+	unsigned int bw_base = mtk_drm_primary_frame_bw(&mtk_crtc->base);
+	unsigned int subcomm_bw_sum[BW_CHANNEL_NR] = { 0 };
+
+	if (size < BW_CHANNEL_NR)
+		return;
+
+	if (bw_base == MAX_MMCLK) {
+		result[0] = MAX_MMCLK;
+		return;
+	}
+
+	if (scope & CHANNEL_BW_OF_OVL) {
+		mtk_disp_get_channel_bw_of_ovl(mtk_crtc, subcomm_bw_sum,
+					ARRAY_SIZE(subcomm_bw_sum), bw_base, CHANNEL_HRT_RW);
+	} else {
+		/*only layer0 works at home screen idle*/
+		ovl_bw =  bw_base * 125 / 100;
+		subcomm_bw_sum[0] += ovl_bw;
+		DDPQOS("%s, crtc:%d, OVL channel BW:%u,%u,%u,%u\n",
+			__func__, crtc_idx, subcomm_bw_sum[0], subcomm_bw_sum[1],
+			subcomm_bw_sum[2], subcomm_bw_sum[3]);
+	}
+
+	if (crtc_idx == 0 && (scope & CHANNEL_BW_OF_PQ))
+		mtk_disp_get_channel_bw_of_pq(mtk_crtc, subcomm_bw_sum,
+					ARRAY_SIZE(subcomm_bw_sum), CHANNEL_HRT_RW);
+
+	if (crtc_idx == 0 && (scope & CHANNEL_BW_OF_WDMA_IWB))
+		mtk_disp_get_channel_bw_of_iwb(mtk_crtc, subcomm_bw_sum,
+					ARRAY_SIZE(subcomm_bw_sum), CHANNEL_HRT_RW);
+
+	for (i = 0 ; i < BW_CHANNEL_NR ; i++)
+		result[i] = subcomm_bw_sum[i];
 }
 
 unsigned int mtk_disp_get_channel_idx_MT6991(enum CHANNEL_TYPE type, unsigned int i)
@@ -453,10 +632,13 @@ void mtk_disp_update_channel_hrt_MT6991(struct mtk_drm_crtc *mtk_crtc,
 		}
 	}
 
-	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
-		mtk_ddp_comp_io_cmd(comp, NULL, ODDMR_SUM_HRT, &oddmr_hrt);
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR)
+			oddmr_hrt += mtk_disp_get_port_hrt_bw(comp, CHANNEL_HRT_RW);
+	}
 
-	subcomm_bw_sum[2] += bw_base * oddmr_hrt / 400;
+	if (oddmr_hrt > 0)
+		subcomm_bw_sum[2] += oddmr_hrt;
 
 	//TODO: consider discrete path
 	/* channel_bw[0]: comm0_ch0: sub_comm0
@@ -687,22 +869,6 @@ void mtk_disp_hrt_mmclk_request_mt6765(struct mtk_drm_crtc *mtk_crtc, unsigned i
 }
 #endif
 
-unsigned int mtk_disp_get_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc)
-{
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
-	unsigned int tmp = NO_PENDING_HRT, bw_base = 0;
-
-	bw_base = mtk_drm_primary_frame_bw(crtc);
-	if (priv->data->mmsys_id == MMSYS_MT6989 || priv->data->mmsys_id == MMSYS_MT6899) {
-		if (bw_base != MAX_MMCLK)
-			tmp = mtk_disp_larb_hrt_bw_MT6989(mtk_crtc, MAX_MMCLK, bw_base);
-		else
-			tmp = bw_base;
-	}
-	return tmp;
-}
-
 void mtk_disp_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;
@@ -803,12 +969,13 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	else if (priv->data->mmsys_id == MMSYS_MT6765)
 		mtk_disp_hrt_mmclk_request_mt6765(mtk_crtc, tmp);
 #else
-	if ((priv->data->mmsys_id == MMSYS_MT6897) &&
-		(mtk_disp_check_segment(mtk_crtc, priv) == false))
-		mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(1));
-	else
-		mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(total));
-
+	if (!IS_ERR_OR_NULL(priv->hrt_bw_request)) {
+		if ((priv->data->mmsys_id == MMSYS_MT6897) &&
+			(mtk_disp_check_segment(mtk_crtc, priv) == false))
+			mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(1));
+		else
+			mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(total));
+	}
 	if (debug_vidle_bw)
 		total = debug_vidle_bw;
 
@@ -821,10 +988,12 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 		comp = mtk_ddp_comp_request_output(mtk_crtc);
 
 		if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DISP_DPTX) {
-			tmp = tmp / (mtk_crtc->is_dual_pipe + 1);
-			mtk_icc_set_bw(priv->dp_hrt_by_larb, 0, MBps_to_icc(tmp));
-			DDPINFO("%s, CRTC%d(DP) HRT total=%u larb bw=%u dual=%d\n",
-				__func__, crtc_idx, total, tmp, mtk_crtc->is_dual_pipe);
+			if (!IS_ERR_OR_NULL(priv->dp_hrt_by_larb)) {
+				tmp = tmp / (mtk_crtc->is_dual_pipe + 1);
+				mtk_icc_set_bw(priv->dp_hrt_by_larb, 0, MBps_to_icc(tmp));
+				DDPINFO("%s, CRTC%d(DP) HRT total=%u larb bw=%u dual=%d\n",
+					__func__, crtc_idx, total, tmp, mtk_crtc->is_dual_pipe);
+			}
 		} else if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DSI &&
 				(priv->data->mmsys_id != MMSYS_MT6989) &&
 				(priv->data->mmsys_id != MMSYS_MT6899) &&
@@ -837,11 +1006,13 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 					bw_base : (bw_base * 3 / 2);
 			}
 
-			if ((priv->data->mmsys_id == MMSYS_MT6897) &&
-				(mtk_disp_check_segment(mtk_crtc, priv) == false))
-				mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(1));
-			else
-				mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(tmp1));
+			if (!IS_ERR_OR_NULL(priv->hrt_by_larb)) {
+				if ((priv->data->mmsys_id == MMSYS_MT6897) &&
+					(mtk_disp_check_segment(mtk_crtc, priv) == false))
+					mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(1));
+				else
+					mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(tmp1));
+			}
 
 			mtk_vidle_dvfs_bw_set(tmp1);
 			mtk_crtc->qos_ctx->last_larb_hrt_req = tmp1;
@@ -869,52 +1040,159 @@ void mtk_aod_scp_set_BW(void)
 }
 EXPORT_SYMBOL(mtk_aod_scp_set_BW);
 
-int mtk_disp_set_per_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
+void mtk_disp_get_channel_hrt_bw_by_scope(struct mtk_drm_crtc *mtk_crtc,
+		unsigned int scope, unsigned int *result, unsigned int size)
 {
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct drm_crtc *crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
 	struct mtk_ddp_comp *comp;
-	unsigned int total = 0xFFFFFFFF, tmp1 = 0, bw_base  = 0;
-	unsigned int crtc_idx = drm_crtc_index(crtc);
-	int ret = 0;
+	unsigned int crtc_idx = 0;
 
-	if (mtk_crtc == NULL)
-		return 0;
+	if (IS_ERR_OR_NULL(mtk_crtc) ||
+		mtk_crtc->ddp_mode >= DDP_MODE_NR ||
+		IS_ERR_OR_NULL(result) || size == 0)
+		return;
 
-	if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
-		return 0;
-
-	if (!mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_HRT_BY_LARB))
-		return 0;
-
-	if (bw == 0) {
-		bw_base = bw;
-		total = bw;
-	} else
-		bw_base = mtk_drm_primary_frame_bw(crtc);
+	crtc = &mtk_crtc->base;
+	crtc_idx = drm_crtc_index(crtc);
+	priv = crtc->dev->dev_private;
+	if (!priv ||
+		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT))
+		return;
 
 	comp = mtk_ddp_comp_request_output(mtk_crtc);
 
-	if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DSI) {
-		if (total > 0) {
-			if (priv->data->mmsys_id == MMSYS_MT6989 || priv->data->mmsys_id == MMSYS_MT6899) {
-				if (bw != MAX_MMCLK)
-					tmp1 = mtk_disp_larb_hrt_bw_MT6989(mtk_crtc, total, bw_base);
-				else
-					tmp1 = bw;
-			}
-		} else
-			tmp1 = bw;
+	if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DSI ||
+		mtk_ddp_comp_get_type(comp->id) == MTK_DISP_DPTX))
+		__mtk_disp_get_channel_hrt_bw_by_scope(mtk_crtc, scope, result, size);
 
-		mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(tmp1));
+	return;
+}
 
-		mtk_vidle_dvfs_bw_set(tmp1);
-		DDPINFO("%s, CRTC%d larb bw=%u bw_base=%d\n",
-			__func__, crtc_idx, tmp1, bw_base);
+void mtk_disp_get_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
+		unsigned int *result, unsigned int size)
+{
+	mtk_disp_get_channel_hrt_bw_by_scope(mtk_crtc, CHANNEL_BW_DEFAULT, result, size);
+}
+
+unsigned int mtk_disp_set_per_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
+		unsigned int bw, unsigned int ch_idx, bool force, const char *master)
+{
+	struct drm_crtc *crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+	unsigned int crtc_idx = 0, max_channel_bw = 0;
+	unsigned int last_ch_bw = 0;
+
+	if (IS_ERR_OR_NULL(mtk_crtc) || ch_idx >= BW_CHANNEL_NR )
+		goto out;
+
+	crtc = &mtk_crtc->base;
+	crtc_idx = drm_crtc_index(crtc);
+	if (IS_ERR_OR_NULL(crtc->dev) || IS_ERR_OR_NULL(crtc->dev->dev_private))
+		goto out;
+
+	priv = crtc->dev->dev_private;
+	if (!priv ||
+		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT))
+		goto out;
+
+	/* ch bw keep unchanged */
+	if (priv->req_hrt_channel_bw[crtc_idx][ch_idx] == bw)
+		goto out;
+
+	last_ch_bw = priv->req_hrt_channel_bw[crtc_idx][ch_idx];
+	/* ch bw slow down */
+	if (!force && priv->req_hrt_channel_bw[crtc_idx][ch_idx] > bw) {
+		if (debug_mmqos)
+			DDPMSG("%s, CRTC%u SLOW-DOWN channel:%u(%u->%u) max:%u(%u,%u,%u,%u) force:%d\n",
+				IS_ERR_OR_NULL(master) ? "unknown" : master,
+				crtc_idx, ch_idx, last_ch_bw, bw,
+				priv->last_max_channel_req,
+				priv->req_hrt_channel_bw[crtc_idx][0],
+				priv->req_hrt_channel_bw[crtc_idx][1],
+				priv->req_hrt_channel_bw[crtc_idx][2],
+				priv->req_hrt_channel_bw[crtc_idx][3], force);
+		return bw;
 	}
 
-	return 0;
+	/* ch bw fast up or final down */
+	priv->req_hrt_channel_bw[crtc_idx][ch_idx] = bw;
+	CRTC_MMP_MARK(crtc_idx, channel_bw, ch_idx, bw);
+	max_channel_bw = mtk_disp_calc_max_channel_bw(mtk_crtc);
+	if (debug_mmqos)
+		DDPMSG("%s, CRTC%u %s channel:%u(%u->%u) max:%u->%u(%u,%u,%u,%u) force:%d\n",
+			IS_ERR_OR_NULL(master) ? "unknown" : master,
+			crtc_idx, force ? "FINAL-DOWN" : "FAST-UP",
+			ch_idx, last_ch_bw, bw,
+			priv->last_max_channel_req, max_channel_bw,
+			priv->req_hrt_channel_bw[crtc_idx][0],
+			priv->req_hrt_channel_bw[crtc_idx][1],
+			priv->req_hrt_channel_bw[crtc_idx][2],
+			priv->req_hrt_channel_bw[crtc_idx][3], force);
+
+	/* max channel bw keep unchanged */
+	if (priv->last_max_channel_req == max_channel_bw)
+		goto out;
+
+	/* max channel bw fast up or final down */
+	DRM_MMP_MARK(channel_bw, max_channel_bw, crtc_idx);
+	mtk_vidle_dvfs_bw_set(max_channel_bw);
+	priv->last_max_channel_req = max_channel_bw;
+
+out:
+	return NO_PENDING_HRT;
+}
+
+unsigned int mtk_disp_set_max_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
+		unsigned int *bw, unsigned int size, const char *master)
+{
+	struct drm_crtc *crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+	unsigned int crtc_idx = 0, max_channel_bw = 0, i;
+
+	if (IS_ERR_OR_NULL(mtk_crtc) ||
+		size > BW_CHANNEL_NR || size == 0 || IS_ERR_OR_NULL(bw))
+		goto out;
+
+	crtc = &mtk_crtc->base;
+	crtc_idx = drm_crtc_index(crtc);
+	if (IS_ERR_OR_NULL(crtc->dev) || IS_ERR_OR_NULL(crtc->dev->dev_private))
+		goto out;
+
+	priv = crtc->dev->dev_private;
+	if (!priv ||
+		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT))
+		goto out;
+
+	/* update all channel hrt bw */
+	for (i = 0; i< size; i++) {
+		if (priv->req_hrt_channel_bw[crtc_idx][i] != bw[i]) {
+			priv->req_hrt_channel_bw[crtc_idx][i] = bw[i];
+			CRTC_MMP_MARK(crtc_idx, channel_bw, (i | 0xf0ce0000), bw[i]);
+		}
+	}
+	max_channel_bw = mtk_disp_calc_max_channel_bw(mtk_crtc);
+
+	if (debug_mmqos)
+		DDPMSG("%s, CRTC%u UPDATE channel max:%u->%u(%u,%u,%u,%u) size:%u\n",
+			IS_ERR_OR_NULL(master) ? "unknown" : master, crtc_idx,
+			priv->last_max_channel_req, max_channel_bw,
+			priv->req_hrt_channel_bw[crtc_idx][0],
+			priv->req_hrt_channel_bw[crtc_idx][1],
+			priv->req_hrt_channel_bw[crtc_idx][2],
+			priv->req_hrt_channel_bw[crtc_idx][3], size);
+
+	/* max channel bw keep unchanged */
+	if (priv->last_max_channel_req == max_channel_bw)
+		goto out;
+
+	/* max channel force update */
+	DRM_MMP_MARK(channel_bw, max_channel_bw, (crtc_idx | 0xf0ce0000));
+	mtk_vidle_dvfs_bw_set(max_channel_bw);
+	priv->last_max_channel_req = max_channel_bw;
+
+out:
+	return priv->last_max_channel_req;
 }
 
 void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
@@ -923,6 +1201,7 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 	struct drm_display_mode *mode;
 	unsigned int bw = 0, bw_base = 0, i;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
 
 	dev_crtc = crtc;
 	mtk_crtc = to_mtk_crtc(dev_crtc);
@@ -935,17 +1214,17 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 	/* FIXME: this value is zero when booting, will be assigned in exdma_layer_config */
 	if (priv->data->mmsys_id == MMSYS_MT6991)
 		mtk_crtc->usage_ovl_fmt[1] = 4;
-	else if (priv->data->mmsys_id == MMSYS_MT6989)
-		mtk_crtc->usage_ovl_fmt[0] = 4;
 
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_BY_LARB) &&
-		(priv->data->mmsys_id == MMSYS_MT6989 ||
-		priv->data->mmsys_id == MMSYS_MT6899))
-		mtk_disp_set_per_larb_hrt_bw(mtk_crtc, bw);
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
+		mtk_crtc->usage_ovl_fmt[0] = 4;
+		mtk_disp_get_channel_hrt_bw(mtk_crtc, channel_hrt, ARRAY_SIZE(channel_hrt));
+		mtk_disp_set_max_channel_hrt_bw(mtk_crtc, channel_hrt,
+					ARRAY_SIZE(channel_hrt), __func__);
+		for (i = 0 ; i < ARRAY_SIZE(channel_hrt); i++)
+			mtk_crtc->qos_ctx->last_channel_req[i] = channel_hrt[i];
+	}
 
 	if (priv->data->update_channel_hrt) {
-		unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
-
 		priv->data->update_channel_hrt(mtk_crtc, bw, channel_hrt);
 		DDPINFO("%s channel[%u][%u][%u][%u]", __func__,
 			channel_hrt[0], channel_hrt[1], channel_hrt[2], channel_hrt[3]);

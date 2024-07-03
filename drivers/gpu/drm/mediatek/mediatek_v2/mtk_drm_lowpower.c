@@ -2277,11 +2277,9 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		mtk_disp_set_hrt_bw(mtk_crtc,
 			mtk_crtc->qos_ctx->last_hrt_req);
 
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_BY_LARB) &&
-		(priv->data->mmsys_id == MMSYS_MT6989 ||
-		priv->data->mmsys_id == MMSYS_MT6899)) {
-		mtk_disp_set_per_larb_hrt_bw(mtk_crtc,
-				mtk_crtc->qos_ctx->last_larb_hrt_req);
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
+		mtk_disp_set_max_channel_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_channel_req,
+			ARRAY_SIZE(mtk_crtc->qos_ctx->last_channel_req), __func__);
 	}
 
 	if (priv->data->update_channel_hrt) {
@@ -2437,35 +2435,90 @@ static int mtk_drm_idlemgr_wb_get_fb(struct mtk_drm_crtc *mtk_crtc, unsigned int
 	return 0;
 }
 
+static void mtk_drm_idlemgr_update_wb_bw(struct mtk_iwb_cb_data *cb_data)
+{
+	struct drm_crtc *crtc = cb_data->crtc;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned int bw_base = mtk_drm_primary_frame_bw(crtc);
+	unsigned int max_channel_bw = 0, total_bw = 0;
+	struct mtk_ddp_comp *comp = NULL;
+	unsigned int flag = DISP_BW_FORCE_UPDATE;
+	int i = 0, port_bw = 0;
+	unsigned int crtc_id = drm_crtc_index(crtc);
+	unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
+
+	/*clear ovl port BW*/
+	if (priv->data->mmsys_id == MMSYS_MT6989) {
+		for_each_comp_in_crtc_target_path(comp, mtk_crtc, i, DDP_FIRST_PATH) {
+			if (cb_data->ovl && comp->id == cb_data->ovl->id) {
+				total_bw += bw_base * 125 / 100; //consider eff
+				continue;
+			}
+
+			if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL) {
+				port_bw = 0;
+				mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
+				mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &port_bw);
+				continue;
+			}
+
+			port_bw = mtk_disp_get_port_hrt_bw(comp, CHANNEL_HRT_RW);
+			if (port_bw > 0)
+				total_bw += port_bw;
+		}
+	} else
+		total_bw = bw_base * 125 / 100; //consider eff
+
+	/* report total hrt BW */
+	mtk_crtc->qos_ctx->last_hrt_req = total_bw;
+	mtk_disp_set_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_hrt_req);
+
+	/* report channel hrt BW */
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
+		mtk_disp_get_channel_hrt_bw_by_scope(mtk_crtc,
+			CHANNEL_BW_HSIDLE_DL, channel_hrt, ARRAY_SIZE(channel_hrt));
+		mtk_disp_set_max_channel_hrt_bw(mtk_crtc, channel_hrt,
+				ARRAY_SIZE(channel_hrt), "hsidle-dl");
+		for (i = 0; i < BW_CHANNEL_NR; i++)
+			mtk_crtc->qos_ctx->last_channel_req[i] = channel_hrt[i];
+	}
+
+	/*clear wdma port BW*/
+	if (cb_data->wdma) {
+		port_bw = 0;
+		mtk_ddp_comp_io_cmd(cb_data->wdma, NULL, PMQOS_UPDATE_BW, &flag);
+		mtk_ddp_comp_io_cmd(cb_data->wdma, NULL, PMQOS_SET_HRT_BW, &port_bw);
+	}
+	if (cb_data->wdma_dual) {
+		port_bw = 0;
+		mtk_ddp_comp_io_cmd(cb_data->wdma_dual, NULL, PMQOS_UPDATE_BW, &flag);
+		mtk_ddp_comp_io_cmd(cb_data->wdma_dual, NULL, PMQOS_SET_HRT_BW, &port_bw);
+	}
+
+	CRTC_MMP_MARK((int)drm_crtc_index(crtc), enter_idle,
+		priv->last_max_channel_req | 0xcb000000,
+		mtk_crtc->qos_ctx->last_hrt_req | 0xcb000000);
+
+	DDPINFO("%s,update BW channel:%u,total:%u, base:%u\n",
+		__func__, priv->last_max_channel_req,
+		mtk_crtc->qos_ctx->last_hrt_req, bw_base);
+}
+
 static void mtk_drm_idlemgr_wb_cmdq_cb(struct cmdq_cb_data data)
 {
 	struct mtk_iwb_cb_data *cb_data = data.data;
+	unsigned int *trace;
 	struct drm_crtc *crtc = cb_data->crtc;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	unsigned int *trace;
-	unsigned int bw_base, wdma_bw = 0;
-	unsigned int flag = DISP_BW_FORCE_UPDATE;
 
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	trace = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_IDLEMGR_BY_WB_TRACE);
 	DDPINFO("after enter IDLEMGR_BY_WB_TRACE:0x%x\n", *trace);
 
-	if (*trace & BIT(4)) {
-		bw_base = mtk_drm_primary_frame_bw(crtc);
-		mtk_disp_set_hrt_bw(mtk_crtc, bw_base);
-		mtk_crtc->qos_ctx->last_hrt_req = bw_base;
-		if (cb_data->comp) {
-			DDPINFO("%s,comp:%d clear BW request\n", __func__, cb_data->comp->id);
-			mtk_ddp_comp_io_cmd(cb_data->comp, NULL, PMQOS_UPDATE_BW, &flag);
-			mtk_ddp_comp_io_cmd(cb_data->comp, NULL, PMQOS_SET_HRT_BW, &wdma_bw);
-		}
-		if (cb_data->comp_dual) {
-			DDPINFO("%s,comp:%d clear BW request\n", __func__, cb_data->comp_dual->id);
-			mtk_ddp_comp_io_cmd(cb_data->comp_dual, NULL, PMQOS_UPDATE_BW, &flag);
-			mtk_ddp_comp_io_cmd(cb_data->comp_dual, NULL, PMQOS_SET_HRT_BW, &wdma_bw);
-		}
-	}
+	if (*trace & BIT(4))
+		mtk_drm_idlemgr_update_wb_bw(cb_data);
 
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
 	kfree(cb_data);
@@ -2496,7 +2549,7 @@ bool mtk_drm_idlemgr_wb_is_using(struct mtk_drm_crtc *mtk_crtc)
 }
 
 void mtk_drm_idlemgr_wb_capture(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle,
-		struct mtk_ddp_comp **comp, struct mtk_ddp_comp **comp_dual)
+		struct mtk_ddp_comp **wdma, struct mtk_ddp_comp **wdma_dual)
 {
 	const struct mtk_addon_scenario_data *addon_data;
 	const struct mtk_addon_scenario_data *addon_data_dual;
@@ -2510,6 +2563,11 @@ void mtk_drm_idlemgr_wb_capture(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *
 	int gce_event, i;
 	unsigned int fmt = DRM_FORMAT_XBGR2101010;//DRM_FORMAT_XBGR2101010,DRM_FORMAT_XBGR8888;
 	unsigned int flag = DISP_BW_FORCE_UPDATE;
+	unsigned int wdma_bw = 0, wdma_dual_bw = 0, max_channel_bw = 0;
+	unsigned int bw_base = mtk_drm_primary_frame_bw(crtc);
+	struct mtk_ddp_comp *comp = NULL;
+	unsigned int crtc_id = drm_crtc_index(crtc);
+	unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
 
 	addon_data = mtk_addon_get_scenario_data(__func__, crtc, IDLE_WDMA_WRITE_BACK);
 	if (!addon_data)
@@ -2588,27 +2646,63 @@ void mtk_drm_idlemgr_wb_capture(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *
 		}
 	}
 	cmdq_pkt_write_value_addr(cmdq_handle, status_pad, MTK_DRM_IDLEMGR_BY_WB_ATTACHED, ~0);
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
+		mtk_disp_get_channel_hrt_bw_by_scope(mtk_crtc,
+			CHANNEL_BW_HSIDLE_DC, channel_hrt, ARRAY_SIZE(channel_hrt));
+		mtk_disp_set_max_channel_hrt_bw(mtk_crtc, channel_hrt,
+			ARRAY_SIZE(channel_hrt), "hsidle-dc");
+		for (i = 0; i < ARRAY_SIZE(channel_hrt); i++)
+			mtk_crtc->qos_ctx->last_channel_req[i] = channel_hrt[i];
+	}
 
-	/* 2.1 wait WDMA done */
+	/* 2.1 update wdma port bw && wait wdma done*/
 	addon_module = &addon_data->module_data[0];
 	path_data = mtk_addon_module_get_path(addon_module->module);
-	gce_event = get_comp_wait_event(mtk_crtc, priv->ddp_comp[path_data->path[path_data->path_len - 1]]);
+	comp = priv->ddp_comp[path_data->path[path_data->path_len - 1]];
 
-	mtk_ddp_comp_io_cmd(priv->ddp_comp[path_data->path[path_data->path_len - 1]], NULL, PMQOS_UPDATE_BW, &flag);
-	if (comp)
-		*comp = priv->ddp_comp[path_data->path[path_data->path_len - 1]];
+	/*set wdma port bw*/
+	wdma_bw = mtk_disp_get_port_hrt_bw(comp, CHANNEL_HRT_RW);
+	if (wdma_bw <= 0)
+		wdma_bw = bw_base;
+	mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
+	mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &wdma_bw);
+	if (wdma)
+		*wdma = comp;
+
+	/*wait wdma done*/
+	gce_event = get_comp_wait_event(mtk_crtc, comp);
 	cmdq_pkt_wfe(cmdq_handle, gce_event);
+
 	if (mtk_crtc->is_dual_pipe) {
 		addon_module = &addon_data_dual->module_data[0];
 		path_data = mtk_addon_module_get_path(addon_module->module);
-		gce_event = get_comp_wait_event(mtk_crtc, priv->ddp_comp[path_data->path[path_data->path_len - 1]]);
+		comp = priv->ddp_comp[path_data->path[path_data->path_len - 1]];
 
-		mtk_ddp_comp_io_cmd(priv->ddp_comp[path_data->path[path_data->path_len - 1]],
-				    NULL, PMQOS_UPDATE_BW, &flag);
-		if (comp_dual)
-			*comp_dual = priv->ddp_comp[path_data->path[path_data->path_len - 1]];
+		/*set wdma_dual port bw*/
+		wdma_dual_bw = mtk_disp_get_port_hrt_bw(comp, CHANNEL_HRT_RW);
+		if (wdma_dual_bw <= 0)
+			wdma_dual_bw = bw_base;
+		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
+		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &wdma_dual_bw);
+		if (wdma_dual)
+			*wdma_dual = comp;
+
+		/*wait wdma_dual done*/
+		gce_event = get_comp_wait_event(mtk_crtc, comp);
 		cmdq_pkt_wfe(cmdq_handle, gce_event);
 	}
+
+	/* hrt bw add wdma part */
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT)) {
+		unsigned int orig_bw = mtk_crtc->qos_ctx->last_hrt_req;
+
+		mtk_crtc->qos_ctx->last_hrt_req += wdma_bw + wdma_dual_bw;
+		DDPINFO("%s, update total BW:%u->%u wdma_bw:%u/%u\n",
+			__func__, orig_bw, mtk_crtc->qos_ctx->last_hrt_req,
+			wdma_bw, wdma_dual_bw);
+		mtk_disp_set_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_hrt_req);
+	}
+
 	mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 1);
 
 	cmdq_pkt_write_value_addr(cmdq_handle,
@@ -2640,7 +2734,8 @@ void mtk_drm_idlemgr_wb_capture(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *
 }
 
 
-void mtk_drm_idlemgr_wb_reconfig(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle)
+void mtk_drm_idlemgr_wb_reconfig(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle,
+		struct mtk_ddp_comp **ovl, struct mtk_ddp_comp **ovl_dual)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
@@ -2688,6 +2783,8 @@ void mtk_drm_idlemgr_wb_reconfig(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL) {
 			ovl_comp = comp;
+			if (ovl)
+				*ovl = ovl_comp;
 			break;
 		}
 	}
@@ -2727,6 +2824,8 @@ void mtk_drm_idlemgr_wb_reconfig(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt 
 	for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
 		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL) {
 			ovl_comp = comp;
+			if (ovl_dual)
+				*ovl_dual = ovl_comp;
 			break;
 		}
 	}
@@ -2764,16 +2863,10 @@ void mtk_drm_idlemgr_wb_enter(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cm
 	unsigned int *status, *wb_break, *trace;
 	dma_addr_t status_pad, break_pad;
 	bool seprated_pkt = cmdq_handle ? false : true;
-	unsigned int bw_base;
 	struct mtk_iwb_cb_data *cb_data = NULL;
 
 	GCE_COND_DECLARE;
 	struct cmdq_operand lop, rop;
-
-	/* hrt bw add wdma part */
-	bw_base = mtk_drm_primary_frame_bw(crtc);
-	mtk_crtc->qos_ctx->last_hrt_req += bw_base;
-	mtk_disp_set_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_hrt_req);
 
 	if (seprated_pkt) {
 		cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
@@ -2781,8 +2874,10 @@ void mtk_drm_idlemgr_wb_enter(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cm
 			DDPPR_ERR("%s:%d, cb data creation failed\n", __func__, __LINE__);
 			return;
 		}
-		cb_data->comp = NULL;
-		cb_data->comp_dual = NULL;
+		cb_data->ovl = NULL;
+		cb_data->wdma = NULL;
+		cb_data->ovl_dual = NULL;
+		cb_data->wdma_dual = NULL;
 	}
 
 	if (!cmdq_handle)
@@ -2817,10 +2912,11 @@ void mtk_drm_idlemgr_wb_enter(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cm
 		 BIT(1), BIT(1));
 
 	if (cb_data)
-		mtk_drm_idlemgr_wb_capture(mtk_crtc, cmdq_handle, &cb_data->comp, &cb_data->comp_dual);
+		mtk_drm_idlemgr_wb_capture(mtk_crtc, cmdq_handle, &cb_data->wdma,
+				&cb_data->wdma_dual);
 	else
 		mtk_drm_idlemgr_wb_capture(mtk_crtc, cmdq_handle, NULL, NULL);
-	mtk_drm_idlemgr_wb_reconfig(mtk_crtc, cmdq_handle);
+	mtk_drm_idlemgr_wb_reconfig(mtk_crtc, cmdq_handle, &cb_data->ovl, &cb_data->ovl_dual);
 
 	GCE_ELSE;
 	/* if the value of DISP_SLOT_IDLEMGR_BY_WB_BREAK is not 0 */
@@ -2835,10 +2931,10 @@ void mtk_drm_idlemgr_wb_enter(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cm
 	if (seprated_pkt && cb_data) {
 		unsigned int comp_id = 0x0;
 
-		if (cb_data->comp)
-			comp_id |= cb_data->comp->id;
-		if (cb_data->comp_dual)
-			comp_id |= (cb_data->comp_dual->id << 16);
+		if (cb_data->ovl)
+			comp_id |= cb_data->ovl->id;
+		if (cb_data->wdma)
+			comp_id |= (cb_data->wdma->id << 16);
 		CRTC_MMP_MARK((int)drm_crtc_index(crtc), enter_idle, (unsigned long long)cmdq_handle, comp_id);
 
 		cb_data->cmdq_handle = cmdq_handle;

@@ -5478,6 +5478,35 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		}
 		break;
 	}
+	case PMQOS_GET_LARB_PORT_HRT_BW: {
+		struct mtk_larb_port_bw *data = (struct mtk_larb_port_bw *)params;
+		int weight = 0;
+		unsigned int bw_base = 0;
+
+		data->larb_id = -1;
+		data->bw = 0;
+		if (data->type != CHANNEL_HRT_RW)
+			break;
+
+		if (comp->larb_num == 1)
+			data->larb_id = comp->larb_id;
+		else if (comp->larb_num > 1)
+			data->larb_id = comp->larb_ids[0];
+
+		if (data->larb_id < 0) {
+			DDPMSG("%s, comp:%d, invalid larb id:%d, num:%d\n",
+				__func__, comp->id, data->larb_id, comp->larb_num);
+			break;
+		}
+		mtk_oddmr_sum_hrt(comp, &weight);
+		if (weight > 0) {
+			bw_base = mtk_drm_primary_frame_bw(&comp->mtk_crtc->base);
+			data->bw = bw_base * weight / 400;
+			DDPINFO("%s, oddmr comp:%d, larb:%d, bw:%d, weight:%d\n",
+				__func__, comp->id, data->larb_id, data->bw, weight);
+		}
+		break;
+	}
 	case PMQOS_UPDATE_BW:
 	{
 		struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
@@ -5757,13 +5786,6 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_CUR_HRT_VAL_ODRW) =	NO_PENDING_HRT;
 		}
-	}
-		break;
-	case ODDMR_SUM_HRT:
-	{
-		int *oddmr_hrt = params;
-
-		mtk_oddmr_sum_hrt(comp, oddmr_hrt);
 	}
 		break;
 	case GET_VALID_PARTIAL_ROI:
