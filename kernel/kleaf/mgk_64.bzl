@@ -2010,6 +2010,19 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6991.ko")
 
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/backlight_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/board_temp.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/charger_cooling.ko")
+        if "drivers/thermal/mediatek/md_cooling_all.ko" in mgk_64_device_modules:
+            mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/pmic_temp.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/soc_temp_lvts.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_interface.ko")
+        #mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_jatm.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+
         mgk_64_device_modules.append("drivers/misc/mediatek/thermal/thermal_monitor.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/hps_v3/mtk_cpuhp.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/power_gs_v1/mtk_power_gs_v1.ko")
