@@ -1102,7 +1102,7 @@ bool binder_start_vip_inherit(struct task_struct *from,
 	to_turbo_data->vip_prio_backup = ori_to_vip_prio;
 	to_turbo_data->throttle_time_backup = ori_throttle_time;
 	binder_start_vip_inherit_hook(to_pid, ori_to_vip_prio,
-				desired_vip_prio, desired_throttle_time);
+				desired_vip_prio, desired_throttle_time/1000000);
 	return true;
 done:
 	return false;
@@ -1128,9 +1128,9 @@ void binder_stop_vip_inherit(struct task_struct *p)
 	now_throttle_time = vts->throttle_time;
 
 	trace_binder_vip_restore(pid, now_prio, now_throttle_time, back_prio, back_throttle_time);
-	binder_stop_vip_inherit_hook(pid, back_prio, now_prio, back_throttle_time);
+	binder_stop_vip_inherit_hook(pid, back_prio, now_prio, back_throttle_time/1000000);
 	turbo_data->vip_prio_backup = -2;
-	turbo_data->throttle_time_backup = 12;
+	turbo_data->throttle_time_backup = 12000000;
 }
 
 static void probe_android_vh_binder_set_priority(void *ignore, struct binder_transaction *t,
@@ -1140,9 +1140,8 @@ static void probe_android_vh_binder_set_priority(void *ignore, struct binder_tra
 			t->from->task : NULL, task)) {
 		t->android_vendor_data1 = (u64)task;
 	}
-	if (binder_vip_inheritance_enable && binder_start_vip_inherit_hook) {
+	if (binder_vip_inheritance_enable && tt_vip_enable && binder_start_vip_inherit_hook)
 		binder_start_vip_inherit(t->from ? t->from->task : NULL, task);
-	}
 }
 
 static void probe_android_vh_binder_restore_priority(void *ignore,
@@ -1780,7 +1779,7 @@ static void init_turbo_attr(struct task_struct *p)
 	atomic_set(&(turbo_data->inherit_types), 0);
 	turbo_data->inherit_cnt = 0;
 	turbo_data->vip_prio_backup = -2;
-	turbo_data->throttle_time_backup = 12;
+	turbo_data->throttle_time_backup = 12000000;
 }
 
 int get_turbo_feats(void)
