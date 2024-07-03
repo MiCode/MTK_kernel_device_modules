@@ -27,6 +27,15 @@
 
 #define MIN(x, y)   ((x) <= (y) ? (x) : (y))
 
+/* If it is 64bit use __pa_nodebug, otherwise use __pa_symbol_nodebug or __pa */
+#ifndef __pa_nodebug
+#ifdef __pa_symbol_nodebug
+#define __pa_nodebug __pa_symbol_nodebug
+#else
+#define __pa_nodebug __pa
+#endif
+#endif
+
 static int bmme_init_buffer;
 
 static struct mme_header_t mme_header = {
