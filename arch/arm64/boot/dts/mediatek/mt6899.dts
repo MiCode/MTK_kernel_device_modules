@@ -430,6 +430,17 @@
 		adapter-name = "pd_adapter";
 	};
 
+	flashlight_core: flashlight-core {
+		compatible = "mediatek,flashlight_core";
+		low-battery-level = <2>;
+		battery-percent-level = <1>;
+		battery-oc-level = <2>;
+	};
+
+	mtk_composite_v4l2_1: mtk-composite-v4l2-1 {
+		compatible = "mediatek,mtk_composite_v4l2_1";
+	};
+
 	mtk_ctd: mtk-ctd {
 		compatible = "mediatek,mtk_ctd";
 		nr-port = <1>;
