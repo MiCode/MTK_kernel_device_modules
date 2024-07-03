@@ -205,6 +205,7 @@ mgk_64_device_modules = [
     "drivers/gpu/drm/panel/panel-tianma-nt36672e-vdo-120hz-vfp.ko",
     "drivers/gpu/drm/panel/panel-tianma-r66451-cmd-120hz.ko",
     "drivers/gpu/drm/panel/panel-tianma-r66451-cmd-120hz-wa.ko",
+    "drivers/gpu/drm/panel/panel-tianma-r66451-cmd-120hz-no-mipi-switch.ko",
     "drivers/gpu/drm/panel/panel-truly-ili9882n-rt4801-vdo-90hz.ko",
     "drivers/gpu/drm/panel/panel-truly-ft8756-vdo.ko",
     "drivers/gpu/drm/panel/panel-nt36672a-rt4801-vdo.ko",
