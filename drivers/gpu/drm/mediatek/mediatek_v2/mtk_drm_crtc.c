@@ -8747,7 +8747,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 				(*(display_compress_ratio_table[i].average_ratio) == 0 ||
 				*(display_compress_ratio_table[i].peak_ratio) == 0) &&
 				priv->data->mmsys_id == MMSYS_MT6991) {
-				DDPMSG("%s ratio is 0, i:%d,frame_idx:%d,key value:%d avg%d peak%d\n",
+				DDPMSG("%s ratio is 0, i:%d,frame_idx:%d,key value:%llu avg%d peak%d\n",
 				__func__, i, display_compress_ratio_table[i].frame_idx,
 				display_compress_ratio_table[i].key_value,
 				*(display_compress_ratio_table[i].average_ratio),
