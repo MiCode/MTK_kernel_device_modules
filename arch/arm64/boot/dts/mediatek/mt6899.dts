@@ -3200,11 +3200,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	};
 
 	mmdvfs_mux: mmdvfs-mux {
-		//compatible = "mediatek,mtk-mmdvfs-mux";
-		//clocks = <&topckgen_clk CLK_TOP_DISP_SEL>, <&topckgen_clk CLK_TOP_MDP_SEL>,
-		//<&topckgen_clk CLK_TOP_MDP_SEL>, <&topckgen_clk CLK_TOP_MMINFRA_SEL>,
-		//<&topckgen_clk CLK_TOP_VENC_SEL>, <&topckgen_clk CLK_TOP_VDEC_SEL>,
-		//<&topckgen_clk CLK_TOP_IMG1_SEL>, <&topckgen_clk CLK_TOP_CAM_SEL>;
+		compatible = "mediatek,mtk-mmdvfs-mux";
+		clocks = <&topckgen_clk CLK_TOP_DISP_SEL>, <&topckgen_clk CLK_TOP_MDP_SEL>,
+		<&topckgen_clk CLK_TOP_MDP_SEL>, <&topckgen_clk CLK_TOP_MMINFRA_SEL>,
+		<&topckgen_clk CLK_TOP_VENC_SEL>, <&topckgen_clk CLK_TOP_VDEC_SEL>,
+		<&topckgen_clk CLK_TOP_IMG1_SEL>, <&topckgen_clk CLK_TOP_CAM_SEL>;
 		clock-names = "mux-dis", "mux-mdp", "mux-mml", "mux-smi", "mux-ven",
 				"mux-vde", "mux-img", "mux-cam";
 		mediatek,mmdvfs-opp-table =
@@ -3230,12 +3230,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"dummy-dis", "dummy-mdp", "dummy-mml", "dummy-smi",
 			"dummy-ven", "dummy-vde", "dummy-img", "dummy-cam",
 			"user-img-smi", "user-vcp-smi";
-		mediatek,free-run;
+		//mediatek,free-run;
 		mediatek,restore-step;
 	};
 
 	mmdvfs-user {
-		//compatible = "mediatek,mtk-mmdvfs-user";
+		compatible = "mediatek,mtk-mmdvfs-user";
 		clocks = <&mmdvfs_mux MMDVFS_USER_VCORE>, <&mmdvfs_mux MMDVFS_USER_VMM>,
 			 <&mmdvfs_mux MMDVFS_USER_VDISP>, <&mmdvfs_mux MMDVFS_USER_VDEC>,
 			 <&mmdvfs_mux DUMMY_USER_DIS>, <&mmdvfs_mux DUMMY_USER_MDP>,
@@ -3248,7 +3248,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	};
 
 	mmdvfs_debug: mmdvfs-debug {
-		//compatible = "mediatek,mmdvfs-debug";
+		compatible = "mediatek,mmdvfs-debug";
 		debug-version = <2>; /* OR operation of (1 << MMDVFS_DBG_VERx) */
 		fmeter-id =	/bits/ 8 <8 9 10 12 13 16 19 20 21>;
 		fmeter-type =	/bits/ 8 < 5  5  5  5  5  5  5  5  5>;
