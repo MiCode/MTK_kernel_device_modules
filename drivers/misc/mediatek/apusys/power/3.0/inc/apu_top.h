@@ -82,6 +82,7 @@ extern int fpga_type;
 extern const struct apupwr_plat_data mt6983_plat_data;
 extern const struct apupwr_plat_data mt6879_plat_data;
 extern const struct apupwr_plat_data mt6897_plat_data;
+extern const struct apupwr_plat_data mt6899_plat_data;
 extern const struct apupwr_plat_data mt6895_plat_data;
 extern const struct apupwr_plat_data mt6985_plat_data;
 extern const struct apupwr_plat_data mt6886_plat_data;
