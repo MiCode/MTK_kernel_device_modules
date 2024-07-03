@@ -7988,10 +7988,16 @@
 			reg = <0 0x11201000 0 0x2e00>,
 				<0 0x11203e00 0 0x0100>;
 			reg-names = "mac", "ippc";
+			/* vusb33-supply = <&mt6368_vusb>; */
 			interrupts = <GIC_SPI 697 IRQ_TYPE_LEVEL_HIGH 0>;
 			phy-cells = <1>;
 			phys = <&u2port0 PHY_TYPE_USB2>,
 				 <&u3port0 PHY_TYPE_USB3>;
+			clocks = <&topckgen_clk CLK_TOP_USB_TOP_SEL>,
+				<&topckgen_clk CLK_TOP_USB_XHCI_SEL>,
+				<&pericfg_ao_clk CLK_PERAOP_SSUSB0_FRMCNT_USB>;
+			clock-names = "sys_ck", "host_ck", "frmcnt_ck";
+			power-domains = <&scpsys MT6899_POWER_DOMAIN_PERI_USB0>;
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
@@ -7999,27 +8005,48 @@
 			maximum-speed = "high-speed";
 			mediatek,force-vbus;
 			mediatek,clk-mgr;
-			mediatek,usb3-drd;
 			mediatek,noise-still-tr;
 			mediatek,gen1-txdeemph;
+			/* mediatek,hwrscs-vers = <1>; */
 			usb-role-switch;
 			cdp-block;
+			port {
+				mtu3_drd_switch: endpoint {
+					remote-endpoint = <&usb_role>;
+				};
+			};
+			usb_host: xhci0@11200000 {
+				compatible = "mediatek,mtk-xhci";
+				reg = <0 0x11200000 0 0x1000>;
+				reg-names = "mac";
+				interrupts = <GIC_SPI 698 IRQ_TYPE_LEVEL_HIGH 0>;
+				clocks = <&clk26m>;
+				clock-names = "sys_ck";
+				status = "okay";
+			};
 		};
 
 		u3phy: usb-phy0@11c90000 {
-			compatible = "mediatek,xsphy", "mediatek,xsphy";
+			compatible = "mediatek,xsphy";
 			reg = <0 0x11c93000 0 0x200>;
+			/* tx-chirpk-capable; */
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
 
 			u2port0: usb2-phy0@11c90000 {
 				reg = <0 0x11c90000 0 0x400>;
+				clocks = <&clk26m>;
+				clock-names = "ref";
 				#phy-cells = <1>;
+				/* usb2jtag = <&infracfg_ao_clk 1>; */
+				usb2uart;
 			};
 
 			u3port0: usb3-phy0@11c93000 {
 				reg = <0 0x11c93400 0 0x500>;
+				clocks = <&clk26m>;
+				clock-names = "ref";
 				#phy-cells = <1>;
 			};
 		};
@@ -9238,6 +9265,25 @@
 			ecid =  /bits/ 16 <0 0 0 0 0 0 0 0>;
 			slvid = <12>;
 		};
+	};
+	extcon_usb: extcon-usb {
+		compatible = "mediatek,extcon-usb";
+		vbus-supply = <&mt6375_otg_vbus>;
+		vbus-voltage = <5000000>;
+		vbus-current = <1800000>;
+		charger = <&mt6375_chg>;
+		tcpc = "type_c_port0";
+		mediatek,bypss-typec-sink = <1>;
+		port {
+			usb_role: endpoint {
+				remote-endpoint = <&mtu3_drd_switch>;
+			};
+		};
+	};
+
+	usb_meta: usb-meta {
+		compatible = "mediatek,usb-meta";
+		udc = <&ssusb>;
 	};
 };
 
