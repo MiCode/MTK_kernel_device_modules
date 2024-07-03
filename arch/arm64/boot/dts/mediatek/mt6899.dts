@@ -5850,10 +5850,10 @@
 				"TRAW_DIP1_GALS",
 				"TRAW_CAP_DIP1_TRAW_CAP",
 				"mmdvfs_mux";
-			operating-points-v2 = <&opp_table_img>;
-			mediatek,imgsys-dvfs-pix-mode = <2>;
 			mmqos-supply = <&mmqos>;
 #endif
+			operating-points-v2 = <&opp_table_img>;
+			mediatek,imgsys-dvfs-pix-mode = <2>;
 			mediatek,imgsys-qof-ver = <0>;
 			mediatek,imgsys-ver = <1>;
 		};
