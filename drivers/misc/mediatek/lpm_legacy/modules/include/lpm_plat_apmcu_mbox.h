@@ -7,10 +7,45 @@
 #define __LPM_PLAT_APMCU_MBOX_H__
 
 enum {
+#if IS_ENABLED(CONFIG_MTK_LPM_MT6781)
+	MBOX_SSPM,
+#endif
 	MBOX_MCUPM,
 
 	NF_MBOX,
 };
+
+#if IS_ENABLED(CONFIG_MTK_LPM_MT6781)
+
+enum APMCU_PM_IPI_UID {
+	APMCU_PM_IPI_PMSR = 0,
+	APMCU_PM_IPI_UID_LPM,
+	APMCU_PM_IPI_UID_MCDI,
+	APMCU_PM_IPI_UID_MAX,
+};
+
+/* mcdi ipi id definition */
+enum MCDI_IPI_ID_TLB {
+	MCDI_IPI_SHARE_SRAM_INFO_GET = 0,
+	MCDI_IPI_ID_MAX
+};
+
+#define MCDI_IPI_MAGIC_NUM	0x4d
+
+/* SSPM Mbox */
+#define APMCU_SSPM_MBOX_ID           3
+#define APMCU_SSPM_MBOX_SPM_CMD_SIZE 8
+
+#define APMCU_SSPM_MBOX_SPM_CMD      0
+#define APMCU_SSPM_MBOX_SPM_ARGS1    1
+#define APMCU_SSPM_MBOX_SPM_ARGS2    2
+#define APMCU_SSPM_MBOX_SPM_ARGS3    3
+#define APMCU_SSPM_MBOX_SPM_ARGS4    4
+#define APMCU_SSPM_MBOX_SPM_ARGS5    5
+#define APMCU_SSPM_MBOX_SPM_ARGS6    6
+#define APMCU_SSPM_MBOX_SPM_ARGS7    7
+#define APMCU_SSPM_MBOX_AP_READY     17
+#endif
 
 /* MCUPM Mbox */
 #define APMCU_MCUPM_MBOX_ID             3
@@ -59,10 +94,13 @@ enum {
 #define MCUPM_TASK_RUN                  4
 #define MCUPM_TASK_PAUSE                5
 
-#if IS_ENABLED(CONFIG_MTK_LPM_MT6833)
-bool mtk_mcupm_is_ready(void);
+#if IS_ENABLED(CONFIG_MTK_LPM_MT6781)
+void mtk_set_lp_apmcu_pll_mode(unsigned int mode);
+void mtk_set_lp_apmcu_buck_mode(unsigned int mode);
+bool mtk_lp_apmcu_is_ready(void);
 void mtk_wait_mbox_init_done(void);
 void mtk_notify_subsys_ap_ready(void);
+int mtk_apmcu_mbox_init(void);
 #endif
 
 #endif

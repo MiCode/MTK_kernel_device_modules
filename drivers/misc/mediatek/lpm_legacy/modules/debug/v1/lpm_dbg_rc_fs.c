@@ -239,10 +239,30 @@ static ssize_t lpm_rc_block_info(int rc_id,
 static ssize_t lpm_rc_state(int rc_id, char *ToUserBuf, size_t sz)
 {
 	ssize_t len = 0;
-
+#if IS_ENABLED(CONFIG_MTK_LPM_MT6781)
+	unsigned long gpio200_datain = 0;
+#endif
 	if (rc_id < 0)
 		return 0;
 
+#if IS_ENABLED(CONFIG_MTK_LPM_MT6781)
+	if (rc_id == MT_RM_CONSTRAINT_ID_BUS26M ||
+		rc_id == MT_RM_CONSTRAINT_ID_SYSPLL) {
+		gpio200_datain = LPM_DBG_SMC(MT_SPM_DBG_SMC_UID_RC_GPIO200_DATAIN,
+				MT_LPM_SMC_ACT_GET, 0, 0);
+
+		lpm_rc_log(ToUserBuf, sz, len,
+			"enable=%lu(gpio200=%lu), count=%lu, rc-id=%d\n",
+		LPM_DBG_SMC(MT_SPM_DBG_SMC_UID_RC_SWITCH,
+					MT_LPM_SMC_ACT_GET, rc_id, 0)
+					& MT_SPM_RC_VALID_SW,
+					gpio200_datain,
+		LPM_DBG_SMC(MT_SPM_DBG_SMC_UID_RC_CNT,
+					MT_LPM_SMC_ACT_GET, rc_id, 0),
+					rc_id);
+		return len;
+	}
+#endif
 	lpm_rc_log(ToUserBuf, sz, len,
 		"enable=%lu, count=%lu, rc-id=%d\n",
 		LPM_DBG_SMC(MT_SPM_DBG_SMC_UID_RC_SWITCH,
