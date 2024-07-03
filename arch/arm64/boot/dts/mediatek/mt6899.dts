@@ -9205,86 +9205,257 @@
 			reg = <0 0x15789000 0 0x7d000>;
 		};
 
-		vdec-gcon@16000000 {
-			compatible = "mediatek,vdec_gcon";
-			reg = <0 0x16000000 0 0x9000>;
+		vcu: vcu@16000000 {
+			compatible = "mediatek-vcu";
+			mediatek,vcuid = <0>;
+			mediatek,vcuname = "vcu";
+			mediatek,vcp-support = <3>;
+			reg = <0 0x16000000 0 0x40000>,	    /* VDEC_BASE */
+				<0 0x17020000 0 0x10000>,  /* VENC_BASE */
+				<0 0x17820000 0 0x10000>,  /* VENC_C1_BASE */
+				<0 0x17000000 0 0x1000>,  /* VENC_C0_GCON_BASE */
+				<0 0x17800000 0 0x1000>,  /* VENC_C1_GCON_BASE */
+				<0 0x14006000 0 0x1000>,  /* DISP_WDMA0_BASE */
+				<0 0x14106000 0 0x1000>;  /* DISP_WDMA1_BASE */
+			iommus = <&disp_iommu M4U_L5_P0_HW_VDEC_LAT0_VLD_EXT>,
+				<&disp_iommu M4U_L5_P1_HW_VDEC_LAT0_VLD2_EXT>,
+				<&disp_iommu M4U_L5_P2_HW_VDEC_MC_EXT>,
+				<&disp_iommu M4U_L5_P3_HW_VDEC_UFO_ENC_EXT>,
+				<&disp_iommu M4U_L5_P4_HW_VDEC_LAT0_AVC_MV_EXT>,
+				<&disp_iommu M4U_L5_P5_HW_VDEC_LAT0_TILE_EXT>,
+				<&disp_iommu M4U_L5_P6_HW_VDEC_LAT0_WDMA_EXT>,
+				<&disp_iommu M4U_L5_P7_HW_VDEC_LAT0_UNIWARP_EXT>,
+				<&disp_iommu M4U_L5_P8_HW_VDEC_UNIWRAP_EXT>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		};
 
-		vdec@16009000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x16009000 0 0x1000>;
+		vcu-iommu-venc {
+			compatible =  "mediatek,vcu-io-venc";
+			mediatek,vcuid = <0>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&disp_iommu M4U_L7_P0_VENC_RCPU_U0>,
+				<&disp_iommu M4U_L7_P1_VENC_REC_U0>,
+				<&disp_iommu M4U_L7_P2_VENC_BSDMA_U0>,
+				<&disp_iommu M4U_L7_P3_VENC_SV_COMV_U0>,
+				<&disp_iommu M4U_L7_P4_VENC_RD_COMV_U0>,
+				<&disp_iommu M4U_L7_P5_VENC_NBM_RDMA_U0>,
+				<&disp_iommu M4U_L7_P6_VENC_NBM_RDMA_LITE_U0>,
+				<&disp_iommu M4U_L7_P10_VENC_SUB_W_LUMA_U0>,
+				<&disp_iommu M4U_L7_P11_VENC_FCS_NBM_RDMA_U0>,
+				<&disp_iommu M4U_L7_P12_VENC_EC_WPP_BSDMA_U0>,
+				<&disp_iommu M4U_L7_P13_VENC_EC_WPP_RDMA_U0>,
+				<&disp_iommu M4U_L7_P14_VENC_DB_SYSRAM_WDMA_U0>,
+				<&disp_iommu M4U_L7_P15_VENC_DB_SYSRAM_RDMA_U0>,
+				<&disp_iommu M4U_L7_P19_VENC_NBM_WDMA_U0>,
+				<&disp_iommu M4U_L7_P20_VENC_NBM_WDMA_LITE_U0>,
+				<&disp_iommu M4U_L7_P21_VENC_CUR_LUMA_U0>,
+				<&disp_iommu M4U_L7_P22_VENC_CUR_CHROMA_U0>,
+				<&disp_iommu M4U_L7_P23_VENC_REF_LUMA_U0>,
+				<&disp_iommu M4U_L7_P24_VENC_REF_CHROMA_U0>,
+				<&disp_iommu M4U_L7_P25_VENC_SUB_R_LUMA_U0>,
+				<&disp_iommu M4U_L7_P26_VENC_FCS_NBM_WDMA_U0>,
+				<&disp_iommu M4U_L7_P31_VENC_EC_WPP_BSDMA_SYSRAM_U0>;
 		};
 
-		vdec-gcon@1600a000 {
-			compatible = "mediatek,vdec_gcon";
-			reg = <0 0x1600a000 0 0x3000>;
-		};
+		vdec@16000000 {
+			compatible = "mediatek,mt6899-vcodec-dec";
+			mediatek,platform = "platform:mt6899";
+			mediatek,ipm = <2>;
+			//mediatek,slc = <1>;
+			support-acp = <0>;
+			reg = <0 0x16000000 0 0x1000>,	/* VDEC_BASE */
+				<0 0x1602f000 0 0x1000>,	/* VDEC_SYS */
+				<0 0x16020000 0 0x1000>,	/* VDEC_VLD */
+				<0 0x16021000 0 0x1000>,	/* VDEC_MC */
+				<0 0x16023000 0 0x1000>,	/* VDEC_MV */
+				<0 0x16025000 0 0x4000>,	/* VDEC_MISC */
+				<0 0x16010000 0 0x1000>,	/* VDEC_LAT_MISC */
+				<0 0x16011000 0 0x400>,		/* VDEC_LAT_VLD */
+				<0 0x1600f000 0 0x1000>,	/* VDEC_SOC_GCON */
+				<0 0x16004000 0 0x1000>,	/* VDEC_RACING_CTRL */
+				<0 0x16012000 0 0x1000>,	/* VDEC_LAT_AVC_VLD */
+				<0 0x16022000 0 0x1000>;	/* VDEC_AVC_VLD */
+			reg-names = "VDEC_BASE",
+				"VDEC_SYS",
+				"VDEC_VLD",
+				"VDEC_MC",
+				"VDEC_MV",
+				"VDEC_MISC",
+				"VDEC_LAT_MISC",
+				"VDEC_LAT_VLD",
+				"VDEC_SOC_GCON",
+				"VDEC_RACING_CTRL",
+				"VDEC_LAT_AVC_VLD",
+				"VDEC_AVC_VLD";
+			iommus = <&mdp_iommu M4U_L4_P0_HW_VDEC_UFO_EXT>,
+				<&mdp_iommu M4U_L4_P1_HW_VDEC_PP_EXT>,
+				<&mdp_iommu M4U_L4_P2_HW_VDEC_MC_PORT2_EXT>,
+				<&mdp_iommu M4U_L4_P3_HW_VDEC_VLD_EXT>,
+				<&mdp_iommu M4U_L4_P4_HW_VDEC_VLD2_EXT>,
+				<&mdp_iommu M4U_L4_P5_HW_VDEC_AVC_MV_EXT>,
+				<&mdp_iommu M4U_L4_P6_HW_VDEC_TILE_EXT>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			mediatek,larbs = <&smi_larb4 &smi_larb5>;
+			interrupts = <GIC_SPI 783 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 786 IRQ_TYPE_LEVEL_HIGH 0>;
 
-		vdec@1600d000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1600d000 0 0x1000>;
-		};
-
-		vdec@1600f000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1600f000 0 0x800>;
-		};
-
-		vdec@1600f800 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1600f800 0 0x400>;
-		};
-
-		vdec@16010000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x16010000 0 0x8000>;
-		};
-
-		vdec@16020000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x16020000 0 0xd000>;
-		};
-
-		vdec@1602e000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1602e000 0 0x1000>;
-		};
-
-		vdec-gcon@1602f000 {
-			compatible = "mediatek,vdec_gcon";
-			reg = <0 0x1602f000 0 0x800>;
-		};
-
-		vdec@1602f800 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1602f800 0 0x400>;
-		};
-
-		vdec@160a0000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x160a0000 0 0x10000>;
-		};
-
-		vdec@160b0000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x160b0000 0 0x10000>;
-		};
-
-		venc-gcon@17000000 {
-			compatible = "mediatek,venc_gcon";
-			reg = <0 0x17000000 0 0x10000>;
-		};
-
-		smi-larb7@17010000 {
-			compatible = "mediatek,smi_larb7";
-			reg = <0 0x17010000 0 0x10000>;
-			interrupts = <GIC_SPI 793 IRQ_TYPE_NONE 0>;
+			power-domains = <&scpsys MT6899_POWER_DOMAIN_VDE0>,
+				<&scpsys MT6899_POWER_DOMAIN_VDE1>;
+			//mediatek,vcu = <&vcu>;
+			clocks = <&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_CKEN>,
+					<&vdec_soc_gcon_base_clk CLK_VDE1_LAT_CKEN>,
+					<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN>;
+			clock-names = "SOC_MT_CG_SOC",
+					"LAT_MT_CG_VDEC1",
+					"CORE_MT_CG_VDEC0";
+			mediatek,clock-parents = <4 3>;
+			m4u-ports =
+				<M4U_L4_P0_HW_VDEC_UFO_EXT>,
+				<M4U_L4_P1_HW_VDEC_PP_EXT>,
+				<M4U_L4_P2_HW_VDEC_MC_PORT2_EXT>,
+				<M4U_L4_P3_HW_VDEC_VLD_EXT>,
+				<M4U_L4_P4_HW_VDEC_VLD2_EXT>,
+				<M4U_L4_P5_HW_VDEC_AVC_MV_EXT>,
+				<M4U_L4_P6_HW_VDEC_TILE_EXT>,
+				<M4U_L5_P0_HW_VDEC_LAT0_VLD_EXT>,
+				<M4U_L5_P1_HW_VDEC_LAT0_VLD2_EXT>,
+				<M4U_L5_P2_HW_VDEC_MC_EXT>,
+				<M4U_L5_P3_HW_VDEC_UFO_ENC_EXT>,
+				<M4U_L5_P4_HW_VDEC_LAT0_AVC_MV_EXT>,
+				<M4U_L5_P5_HW_VDEC_LAT0_TILE_EXT>,
+				<M4U_L5_P6_HW_VDEC_LAT0_WDMA_EXT>,
+				<M4U_L5_P7_HW_VDEC_LAT0_UNIWARP_EXT>,
+				<M4U_L5_P8_HW_VDEC_UNIWRAP_EXT>,
+				<M4U_PORT_L41_VIDEO_UP0>,
+				<M4U_PORT_L41_VIDEO_UP1>;
+			m4u-port-names =
+				"M4U_PORT_VDEC_UFO",
+				"M4U_PORT_VDEC_PP",
+				"M4U_PORT_VDEC_MC",
+				"M4U_PORT_VDEC_VLD",
+				"M4U_PORT_VDEC_VLD2",
+				"M4U_PORT_VDEC_AVC_MV",
+				"M4U_PORT_VDEC_TILE",
+				"M4U_PORT_VDEC_LAT0_VLD",
+				"M4U_PORT_VDEC_LAT0_VLD2",
+				"M4U_PORT_VDEC_LAT0_MC",
+				"M4U_PORT_VDEC_LAT0_UFO_ENC",
+				"M4U_PORT_VDEC_LAT0_AVC_MV",
+				"M4U_PORT_VDEC_LAT0_TILE",
+				"M4U_PORT_VDEC_LAT0_WDMA",
+				"M4U_PORT_VDEC_LAT0_UNIWRAP",
+				"M4U_PORT_VDEC_UNIWRAP",
+				"M4U_PORT_VDEC_VIDEO_UP_NOR",
+				"M4U_PORT_VDEC_VIDEO_UP_SEC";
+			vdec-power-in-vcp = <1>;
 		};
 
 		venc@17020000 {
-			compatible = "mediatek,venc";
-			reg = <0 0x17020000 0 0x10000>;
-			interrupts = <GIC_SPI 794 IRQ_TYPE_NONE 0>;
+			compatible = "mediatek,mt6899-vcodec-enc";
+			mediatek,platform = "platform:mt6899";
+			mediatek,ipm = <2>;
+			reg = <0 0x17020000 0 0x6000>,
+				<0 0x17820000 0 0x6000>;
+			reg-names = "VENC_SYS",
+				"VENC_C1_SYS";
+			iommus = <&mdp_iommu M4U_L8_P0_VENC_RCPU_U0>,
+				<&mdp_iommu M4U_L8_P1_VENC_REC_U0>,
+				<&mdp_iommu M4U_L8_P2_VENC_BSDMA_U0>,
+				<&mdp_iommu M4U_L8_P3_VENC_SV_COMV_U0>,
+				<&mdp_iommu M4U_L8_P4_VENC_RD_COMV_U0>,
+				<&mdp_iommu M4U_L8_P5_VENC_NBM_RDMA_U0>,
+				<&mdp_iommu M4U_L8_P6_VENC_NBM_RDMA_LITE_U0>,
+				<&mdp_iommu M4U_L8_P10_VENC_SUB_W_LUMA_U0>,
+				<&mdp_iommu M4U_L8_P11_VENC_FCS_NBM_RDMA_U0>,
+				<&mdp_iommu M4U_L8_P12_VENC_EC_WPP_BSDMA_U0>,
+				<&mdp_iommu M4U_L8_P13_VENC_EC_WPP_RDMA_U0>,
+				<&mdp_iommu M4U_L8_P14_VENC_DB_SYSRAM_WDMA_U0>,
+				<&mdp_iommu M4U_L8_P15_VENC_DB_SYSRAM_RDMA_U0>,
+				<&mdp_iommu M4U_L8_P19_VENC_NBM_WDMA_U0>,
+				<&mdp_iommu M4U_L8_P20_VENC_NBM_WDMA_LITE_U0>,
+				<&mdp_iommu M4U_L8_P21_VENC_CUR_LUMA_U0>,
+				<&mdp_iommu M4U_L8_P22_VENC_CUR_CHROMA_U0>,
+				<&mdp_iommu M4U_L8_P23_VENC_REF_LUMA_U0>,
+				<&mdp_iommu M4U_L8_P24_VENC_REF_CHROMA_U0>,
+				<&mdp_iommu M4U_L8_P25_VENC_SUB_R_LUMA_U0>,
+				<&mdp_iommu M4U_L8_P26_VENC_FCS_NBM_WDMA_U0>,
+				<&mdp_iommu M4U_L8_P31_VENC_EC_WPP_BSDMA_SYSRAM_U0>;
+			mediatek,larbs = <&smi_larb7 &smi_larb8>;
+			interrupts = <GIC_SPI 789 IRQ_TYPE_LEVEL_HIGH 0>,
+					<GIC_SPI 794 IRQ_TYPE_LEVEL_HIGH 0>;
+			power-domains = <&scpsys MT6899_POWER_DOMAIN_VEN0>,
+							<&scpsys MT6899_POWER_DOMAIN_VEN1>;
+			//mediatek,vcu = <&vcu>;
+			clocks = <&venc_gcon_clk CLK_VEN1_CKE1_VENC>,
+				<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC>;
+			clock-names = "MT_CG_VENC0",
+				"MT_CG_VENC1";
+			venc-power-in-vcp = <1>;
+			port-arg-num = <3>;
+			port-def = <0 M4U_L7_P0_VENC_RCPU_U0 0>,
+				<0 M4U_L7_P1_VENC_REC_U0 0>,
+				<0 M4U_L7_P2_VENC_BSDMA_U0 0>,
+				<0 M4U_L7_P3_VENC_SV_COMV_U0 0>,
+				<0 M4U_L7_P4_VENC_RD_COMV_U0 0>,
+				<0 M4U_L7_P5_VENC_NBM_RDMA_U0 1>,
+				<0 M4U_L7_P6_VENC_NBM_RDMA_LITE_U0 1>,
+				<0 M4U_L7_P7_JPGENC_Y_RDMA_U0 0>,
+				<0 M4U_L7_P8_JPGENC_C_RDMA_U0 0>,
+				<0 M4U_L7_P9_JPGENC_Q_TABLE_U0 0>,
+				<0 M4U_L7_P10_VENC_SUB_W_LUMA_U0 0>,
+				<0 M4U_L7_P11_VENC_FCS_NBM_RDMA_U0 1>,
+				<0 M4U_L7_P12_VENC_EC_WPP_BSDMA_U0 0>,
+				<0 M4U_L7_P13_VENC_EC_WPP_RDMA_U0 2>,
+				<0 M4U_L7_P14_VENC_DB_SYSRAM_WDMA_U0 1>,
+				<0 M4U_L7_P15_VENC_DB_SYSRAM_RDMA_U0 1>,
+				<0 M4U_L7_P16_JPGENC_BSDMA_U0 0>,
+				<0 M4U_L7_P17_JPGDEC_WDMA_0_U0 0>,
+				<0 M4U_L7_P18_JPGDEC_BSDMA_0_U0 0>,
+				<0 M4U_L7_P19_VENC_NBM_WDMA_U0 1>,
+				<0 M4U_L7_P20_VENC_NBM_WDMA_LITE_U0 1>,
+				<0 M4U_L7_P21_VENC_CUR_LUMA_U0 0>,
+				<0 M4U_L7_P22_VENC_CUR_CHROMA_U0 0>,
+				<0 M4U_L7_P23_VENC_REF_LUMA_U0 0>,
+				<0 M4U_L7_P24_VENC_REF_CHROMA_U0 0>,
+				<0 M4U_L7_P25_VENC_SUB_R_LUMA_U0 0>,
+				<0 M4U_L7_P26_VENC_FCS_NBM_WDMA_U0 1>,
+				<0 M4U_L7_P27_JPGDEC_WDMA_1_U0 0>,
+				<0 M4U_L7_P28_JPGDEC_BSDMA_1_U0 0>,
+				<0 M4U_L7_P29_JPGDEC_HUFF_OFFSET_1_U0 0>,
+				<0 M4U_L7_P30_JPGDEC_HUFF_OFFSET_0_U0 0>,
+				<0 M4U_L7_P31_VENC_EC_WPP_BSDMA_SYSRAM_U0 1>,
+				<1 M4U_L8_P0_VENC_RCPU_U0 0>,
+				<1 M4U_L8_P1_VENC_REC_U0 0>,
+				<1 M4U_L8_P2_VENC_BSDMA_U0 0>,
+				<1 M4U_L8_P3_VENC_SV_COMV_U0 0>,
+				<1 M4U_L8_P4_VENC_RD_COMV_U0 0>,
+				<1 M4U_L8_P5_VENC_NBM_RDMA_U0 1>,
+				<1 M4U_L8_P6_VENC_NBM_RDMA_LITE_U0 1>,
+				<1 M4U_L8_P7_JPGENC_Y_RDMA_U0 0>,
+				<1 M4U_L8_P8_JPGENC_C_RDMA_U0 0>,
+				<1 M4U_L8_P9_JPGENC_Q_TABLE_U0 0>,
+				<1 M4U_L8_P10_VENC_SUB_W_LUMA_U0 0>,
+				<1 M4U_L8_P11_VENC_FCS_NBM_RDMA_U0 1>,
+				<1 M4U_L8_P12_VENC_EC_WPP_BSDMA_U0 0>,
+				<1 M4U_L8_P13_VENC_EC_WPP_RDMA_U0 2>,
+				<1 M4U_L8_P14_VENC_DB_SYSRAM_WDMA_U0 1>,
+				<1 M4U_L8_P15_VENC_DB_SYSRAM_RDMA_U0 1>,
+				<1 M4U_L8_P16_JPGENC_BSDMA_U0 0>,
+				<1 M4U_L8_P17_JPGDEC_WDMA_0_U0 0>,
+				<1 M4U_L8_P18_JPGDEC_BSDMA_0_U0 0>,
+				<1 M4U_L8_P19_VENC_NBM_WDMA_U0 1>,
+				<1 M4U_L8_P20_VENC_NBM_WDMA_LITE_U0 1>,
+				<1 M4U_L8_P21_VENC_CUR_LUMA_U0 0>,
+				<1 M4U_L8_P22_VENC_CUR_CHROMA_U0 0>,
+				<1 M4U_L8_P23_VENC_REF_LUMA_U0 0>,
+				<1 M4U_L8_P24_VENC_REF_CHROMA_U0 0>,
+				<1 M4U_L8_P25_VENC_SUB_R_LUMA_U0 0>,
+				<1 M4U_L8_P26_VENC_FCS_NBM_WDMA_U0 1>,
+				<1 M4U_L8_P27_JPGDEC_WDMA_1_U0 0>,
+				<1 M4U_L8_P28_JPGDEC_BSDMA_1_U0 0>,
+				<1 M4U_L8_P29_JPGDEC_HUFF_OFFSET_1_U0 0>,
+				<1 M4U_L8_P30_JPGDEC_HUFF_OFFSET_0_U0 0>,
+				<1 M4U_L8_P31_VENC_EC_WPP_BSDMA_SYSRAM_U0 1>;
 		};
 
 		jpgenc@17030000 {
@@ -9310,20 +9481,9 @@
 			reg = <0 0x17060000 0 0x10000>;
 		};
 
-		venc-gcon@17800000 {
-			compatible = "mediatek,venc_gcon";
-			reg = <0 0x17800000 0 0x10000>;
-		};
-
 		smi-larb8-0@17810000 {
 			compatible = "mediatek,smi_larb8_0";
 			reg = <0 0x17810000 0 0x10000>;
-		};
-
-		venc-c1@17820000 {
-			compatible = "mediatek,venc_c1";
-			reg = <0 0x17820000 0 0x10000>;
-			interrupts = <GIC_SPI 789 IRQ_TYPE_NONE 0>;
 		};
 
 		jpgenc@17830000 {
