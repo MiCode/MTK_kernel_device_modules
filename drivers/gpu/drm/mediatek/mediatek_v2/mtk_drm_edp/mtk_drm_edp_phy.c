@@ -325,6 +325,6 @@ struct platform_driver mtk_dp_phy_driver = {
 	},
 };
 
-MODULE_AUTHOR("Markus Schneider-Pargmann <msp@baylibre.com>");
-MODULE_DESCRIPTION("MediaTek DP PHY Driver");
+MODULE_AUTHOR("Jie-h.Hu <jie-h.hu@mediatek.com>");
+MODULE_DESCRIPTION("MediaTek Embedded DisplayPort PHY Driver");
 MODULE_LICENSE("GPL");
