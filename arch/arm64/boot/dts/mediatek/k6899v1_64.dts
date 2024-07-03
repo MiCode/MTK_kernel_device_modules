@@ -26,9 +26,6 @@ initcall_debug=1 \
 	};
 };
 
-&timer {
-		clock-frequency = <150000000>;
-};
 &ssusb {
 	phys = <&u3fpgaport0 PHY_TYPE_USB3>;
 	plat-type = <1>; /* FPGA */
