@@ -1403,13 +1403,14 @@ static int __gpufreq_freq_scale_gpu(unsigned int freq_old, unsigned int freq_new
 
 	GPUFREQ_TRACE_START("freq_old=%d, freq_new=%d", freq_old, freq_new);
 
-	GPUFREQ_LOGI("begin to scale Fgpu: (%d->%d)", freq_old, freq_new);
+	GPUFREQ_LOGD("begin to scale Fgpu: (%d->%d)", freq_old, freq_new);
 
 	/*
 	 * MFGPLL_CON1[31:31]: MFGPLL_SDM_PCW_CHG
 	 * MFGPLL_CON1[26:24]: MFGPLL_POSDIV
 	 * MFGPLL_CON1[21:0] : MFGPLL_SDM_PCW (DDS)
 	 */
+	freq_new = g_gpu.working_table[0].freq;  //TODO: Need to remove this hardcoded maxfreq
 	cur_posdiv = __gpufreq_get_real_posdiv_gpu();
 	target_posdiv = __gpufreq_get_posdiv_by_fgpu(freq_new);
 	/* compute PCW based on target Freq */
@@ -1563,7 +1564,7 @@ static int __gpufreq_volt_scale_gpu(unsigned int vgpu_old, unsigned int vgpu_new
 	unsigned int t_settle_vsram = 0;
 	unsigned int t_settle = 0;
 	int ret = GPUFREQ_SUCCESS;
-
+	vgpu_new = g_gpu.working_table[0].volt; //TODO: Need to remove this hardcoded maxvolt
 	GPUFREQ_TRACE_START("vgpu_old=%d, vgpu_new=%d, vsram_old=%d, vsram_new=%d",
 			    vgpu_old, vgpu_new, vsram_old, vsram_new);
 
