@@ -388,6 +388,44 @@ void mtk_disp_update_channel_bw_by_larb_MT6989(struct mtk_larb_port_bw *port_bw,
 		subcomm_bw_sum[3] += port_bw->bw;
 }
 
+void mtk_disp_update_channel_bw_by_layer_MT6899(unsigned int layer, unsigned int bpp,
+		unsigned int *subcomm_bw_sum, unsigned int size,
+		unsigned int bw_base, enum CHANNEL_TYPE type)
+{
+	/* sub_comm0: layer0 + layer4
+	 * sub_comm1: layer1 + layer5
+	 * sub_comm2: layer2 + layer6
+	 * sub_comm3: layer3 + layer7
+	 */
+	if (!bpp || IS_ERR_OR_NULL(subcomm_bw_sum) || size < 4)
+		return;
+
+	if (layer == 0 || layer == 4)
+		subcomm_bw_sum[0] += bw_base * bpp / 4;
+	else if (layer == 1 || layer == 5)
+		subcomm_bw_sum[1] += bw_base * bpp / 4;
+	else if (layer == 2 || layer == 6)
+		subcomm_bw_sum[2] += bw_base * bpp / 4;
+	else if (layer == 3 || layer == 7)
+		subcomm_bw_sum[3] += bw_base * bpp / 4;
+}
+
+void mtk_disp_update_channel_bw_by_larb_MT6899(struct mtk_larb_port_bw *port_bw,
+	unsigned int *subcomm_bw_sum, unsigned int size, enum CHANNEL_TYPE type)
+{
+	if (IS_ERR_OR_NULL(port_bw) || IS_ERR_OR_NULL(subcomm_bw_sum) || size < 4)
+		return;
+
+	if (port_bw->larb_id == 0 || port_bw->larb_id == 2)
+		subcomm_bw_sum[0] += port_bw->bw;
+	if (port_bw->larb_id == 1 || port_bw->larb_id == 33)
+		subcomm_bw_sum[1] += port_bw->bw;
+	if (port_bw->larb_id == 20 || port_bw->larb_id == 32)
+		subcomm_bw_sum[2] += port_bw->bw;
+	if (port_bw->larb_id == 21 || port_bw->larb_id == 3)
+		subcomm_bw_sum[3] += port_bw->bw;
+}
+
 static void mtk_disp_get_channel_bw_of_ovl(struct mtk_drm_crtc *mtk_crtc,
 		unsigned int *subcomm_bw_sum, unsigned int size,
 		unsigned int bw_base, enum CHANNEL_TYPE type)

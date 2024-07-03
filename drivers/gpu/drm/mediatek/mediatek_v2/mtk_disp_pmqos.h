@@ -100,7 +100,12 @@ void mtk_disp_total_srt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw);
 void mtk_disp_update_channel_bw_by_layer_MT6989(unsigned int layer, unsigned int bpp,
 	unsigned int *subcomm_bw_sum, unsigned int size,
 	unsigned int bw_base, enum CHANNEL_TYPE type);
+void mtk_disp_update_channel_bw_by_layer_MT6899(unsigned int layer, unsigned int bpp,
+	unsigned int *subcomm_bw_sum, unsigned int size,
+	unsigned int bw_base, enum CHANNEL_TYPE type);
 void mtk_disp_update_channel_bw_by_larb_MT6989(struct mtk_larb_port_bw *port_bw,
+	unsigned int *subcomm_bw_sum, unsigned int size, enum CHANNEL_TYPE type);
+void mtk_disp_update_channel_bw_by_larb_MT6899(struct mtk_larb_port_bw *port_bw,
 	unsigned int *subcomm_bw_sum, unsigned int size, enum CHANNEL_TYPE type);
 
 int mtk_disp_get_port_hrt_bw(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE type);

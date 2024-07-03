@@ -6543,6 +6543,8 @@ static const struct mtk_mmsys_driver_data mt6899_mmsys_driver_data = {
 	.disable_merge_irq = mtk_ddp_disable_merge_irq,
 	.pf_ts_type = IRQ_CMDQ_CB,
 	.respective_ostdl = true,
+	.update_channel_bw_by_layer = mtk_disp_update_channel_bw_by_layer_MT6899,
+	.update_channel_bw_by_larb = mtk_disp_update_channel_bw_by_larb_MT6899,
 };
 
 static const struct mtk_mmsys_driver_data mt6991_mmsys_driver_data = {
