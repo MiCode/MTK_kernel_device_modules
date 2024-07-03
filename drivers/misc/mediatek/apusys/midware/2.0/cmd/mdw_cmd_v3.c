@@ -66,6 +66,9 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 			ret = -EIO;
 
 		mdw_cmd_check_rets(c, ret);
+	} else if (ret == -EBUSY) {
+		mdw_exception("uP busy:%s:ret(%d/0x%llx)pid(%d/%d)\n",
+			c->comm, ret, c->einfos->c.sc_rets, c->pid, c->tgid);
 	}
 	c->einfos->c.ret = ret;
 
