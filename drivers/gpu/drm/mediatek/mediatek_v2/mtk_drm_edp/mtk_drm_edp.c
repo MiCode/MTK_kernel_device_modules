@@ -155,6 +155,9 @@ struct mtk_edp {
 	struct device *codec_dev;
 	/* protect the plugged_cb as it's used in both bridge ops and audio */
 	struct mutex update_plugged_status_lock;
+
+	bool suspend;
+	struct notifier_block nb;	/* Kernel suspend and resume event */
 };
 
 struct mtk_edp_data {
@@ -2278,7 +2281,6 @@ static enum drm_connector_status mtk_edp_bdg_detect(struct drm_bridge *bridge)
 
 	pr_info("[eDPTX] %s\n", __func__);
 
-
 	if (!mtk_edp->train_info.cable_plugged_in)
 		return ret;
 
@@ -3076,6 +3078,28 @@ bool mtk_edp_get_lk_display(void)
 #endif
 }
 
+static int mtk_edp_suspend(struct device *dev);
+static int mtk_edp_resume(struct device *dev);
+
+static int mtk_drm_edp_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
+{
+	struct mtk_edp *mtk_edp = container_of(notifier, struct mtk_edp, nb);
+	struct device *dev = mtk_edp->dev;
+
+	pr_info("%s pm_event %d dev %s usage_count %d\n",
+	       __func__, pm_event, dev_name(dev), atomic_read(&dev->power.usage_count));
+
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		mtk_edp_suspend(dev);
+		return NOTIFY_OK;
+	case PM_POST_SUSPEND:
+		mtk_edp_resume(dev);
+		return NOTIFY_OK;
+	}
+	return NOTIFY_DONE;
+}
+
 static int mtk_edp_probe(struct platform_device *pdev)
 {
 	struct mtk_edp *mtk_edp;
@@ -3199,19 +3223,33 @@ static int mtk_edp_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	/* unregister pm notifier */
+	mtk_edp->nb.notifier_call = mtk_drm_edp_notifier;
+	ret = register_pm_notifier(&mtk_edp->nb);
+	if (ret)
+		pr_info("[eDPTX] register_pm_notifier failed %d", ret);
+
 	pm_runtime_enable(dev);
 	pm_runtime_get_sync(dev);
 
-	dev_info(dev, "[eDPTX] %s-\n",__func__);
+	dev_info(dev, "[eDPTX] %s power.usage_count %d-\n",
+		 __func__, atomic_read(&dev->power.usage_count));
 	return 0;
 }
 
 static void mtk_edp_remove(struct platform_device *pdev)
 {
 	struct mtk_edp *mtk_edp = platform_get_drvdata(pdev);
+	int ret = 0;
 
 	pm_runtime_put(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
+
+	/* unregister pm notifier */
+	ret = unregister_pm_notifier(&mtk_edp->nb);
+	if (ret)
+		pr_info("[eDPTX] unregister_pm_notifier failed %d", ret);
+
 	if (mtk_edp->data->bridge_type != DRM_MODE_CONNECTOR_eDP)
 		del_timer_sync(&mtk_edp->debounce_timer);
 	platform_device_unregister(mtk_edp->phy_dev);
@@ -3265,14 +3303,26 @@ static int mtk_edp_suspend(struct device *dev)
 {
 	struct mtk_edp *mtk_edp = dev_get_drvdata(dev);
 
-	dev_info(mtk_edp->dev, "[eDPTX] %s+\n", __func__);
+	if (mtk_edp->suspend) {
+		dev_info(mtk_edp->dev, "[eDPTX] %s already suspend\n", __func__);
+		return 0;
+	}
+
+	dev_info(mtk_edp->dev, "[eDPTX] %s usage_count %d +\n", __func__, atomic_read(&dev->power.usage_count));
+
+	if (mtk_edp_plug_state(mtk_edp) && mtk_edp->external_monitor) {
+		drm_dp_dpcd_writeb(&mtk_edp->aux, DP_SET_POWER, DP_SET_POWER_D3);
+		usleep_range(2000, 3000);
+	}
 
 	mtk_edp_power_disable(mtk_edp);
 	if (mtk_edp->use_hpd)
 		mtk_edp_hwirq_enable(mtk_edp, false);
 	pm_runtime_put_sync(dev);
 
-	dev_info(mtk_edp->dev, "[eDPTX] %s-\n", __func__);
+	mtk_edp->suspend = true;
+
+	dev_info(mtk_edp->dev, "[eDPTX] %s usage_count %d -\n", __func__, atomic_read(&dev->power.usage_count));
 
 	return 0;
 }
@@ -3281,7 +3331,12 @@ static int mtk_edp_resume(struct device *dev)
 {
 	struct mtk_edp *mtk_edp = dev_get_drvdata(dev);
 
-	dev_info(mtk_edp->dev, "[eDPTX] %s+\n", __func__);
+	if (!mtk_edp->suspend) {
+		dev_info(mtk_edp->dev, "[eDPTX] %s already resume\n", __func__);
+		return 0;
+	}
+
+	dev_info(mtk_edp->dev, "[eDPTX] %s usage_count %d +\n", __func__, atomic_read(&dev->power.usage_count));
 
 	pm_runtime_get_sync(dev);
 	mtk_edp_init_port(mtk_edp);
@@ -3289,7 +3344,12 @@ static int mtk_edp_resume(struct device *dev)
 		mtk_edp_hwirq_enable(mtk_edp, true);
 	mtk_edp_power_enable(mtk_edp);
 
-	dev_info(mtk_edp->dev, "[eDPTX] %s-\n", __func__);
+	if (mtk_edp->next_bridge)
+		mtk_edp->train_info.cable_plugged_in = true;
+
+	mtk_edp->suspend = false;
+
+	dev_info(mtk_edp->dev, "[eDPTX] %s usage_count %d -\n", __func__, atomic_read(&dev->power.usage_count));
 
 	return 0;
 }
