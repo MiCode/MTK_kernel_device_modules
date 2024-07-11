@@ -14184,6 +14184,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,clk-mgr;
 			mediatek,noise-still-tr;
 			mediatek,gen1-txdeemph;
+			mediatek,syscon-wakeup = <&pericfg_ao_clk 0x290 105>;
+			wakeup-source;
 			mediatek,hwrscs-vers = <3>;
 			mediatek,uds = <&usb_dp_selector 19>;
 			usb-role-switch;
