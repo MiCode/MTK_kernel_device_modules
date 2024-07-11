@@ -13151,13 +13151,14 @@ static void mtk_drm_crtc_wk_lock(struct drm_crtc *crtc, bool get,
 		__pm_stay_awake(mtk_crtc->wk_lock);
 		atomic_inc(&priv->kernel_pm.wakelock_cnt);
 	} else {
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 		if ((atomic_read(&priv->kernel_pm.status) != KERNEL_SHUTDOWN) &&
 		    (atomic_read(&priv->kernel_pm.wakelock_cnt) == 1) &&
 		    vdisp_func.poll_power_cnt && (vdisp_func.poll_power_cnt(0) < 0)) {
 			DDPAEE_FATAL("poll_power_cnt timeout, skip wakelock release\n");
 			return;
 		}
-
+#endif
 		__pm_relax(mtk_crtc->wk_lock);
 		atomic_dec(&priv->kernel_pm.wakelock_cnt);
 	}

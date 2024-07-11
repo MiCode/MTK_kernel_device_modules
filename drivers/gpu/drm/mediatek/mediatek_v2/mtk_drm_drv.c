@@ -8846,6 +8846,7 @@ static int mtk_drm_init_emi_eff_table(struct drm_device *drm_dev)
 	}
 }
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
 {
 	struct mtk_drm_kernel_pm *kernel_pm = container_of(notifier, typeof(*kernel_pm), nb);
@@ -8864,6 +8865,25 @@ static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm
 	}
 	return NOTIFY_DONE;
 }
+#else
+static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
+{
+	struct mtk_drm_kernel_pm *kernel_pm = container_of(notifier, typeof(*kernel_pm), nb);
+
+	DDPMSG("%s pm_event %d set pm status(%d)\n",
+	       __func__, pm_event, atomic_read(&kernel_pm->status));
+
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		wake_up_interruptible(&kernel_pm->wq);
+		return NOTIFY_OK;
+	case PM_POST_SUSPEND:
+		wake_up_interruptible(&kernel_pm->wq);
+		return NOTIFY_OK;
+	}
+	return NOTIFY_DONE;
+}
+#endif
 
 static void mtk_drm_kms_lateinit(struct kthread_work *work)
 {
