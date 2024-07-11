@@ -5430,7 +5430,10 @@ static int etdm_parse_dt(struct mtk_base_afe *afe)
 
 		memset(val, 0, sizeof(val));
 
-		snprintf(prop, sizeof(prop), "%s-clk-always-on", of_be_table[i].name);
+		ret = snprintf(prop, sizeof(prop), "%s-clk-always-on", of_be_table[i].name);
+		if (ret < 0 || ret >= sizeof(prop))
+			return ret;
+
 		ret = of_property_read_u32_array(afe->dev->of_node, prop, &val[0], 5);
 		if (ret)
 			continue;
