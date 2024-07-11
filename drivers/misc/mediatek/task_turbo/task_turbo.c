@@ -1529,12 +1529,20 @@ static void rwsem_list_add(struct task_struct *task,
 		struct list_head *pos = NULL;
 		struct list_head *n = NULL;
 		struct rwsem_waiter *waiter = NULL;
+		struct rwsem_waiter *entry_waiter;
 
-		/* insert turbo task pior to first non-turbo task */
+		/*
+		 * Insert turbo task prior to first non-turbo task.
+		 * Make sure only the first waiter can have its handoff_set
+		 * set here.
+		 */
+		entry_waiter = list_entry(entry, struct rwsem_waiter, list);
 		list_for_each_safe(pos, n, head) {
 			waiter = list_entry(pos,
 					struct rwsem_waiter, list);
 			if (!is_turbo_task(waiter->task)) {
+				entry_waiter->handoff_set = waiter->handoff_set;
+				waiter->handoff_set = false;
 				list_add(entry, waiter->list.prev);
 				return;
 			}
