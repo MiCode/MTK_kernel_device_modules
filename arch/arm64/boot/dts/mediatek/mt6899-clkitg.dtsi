@@ -17,7 +17,6 @@
 			<&topckgen_clk CLK_TOP_U_MBIST_SEL>,
 			<&topckgen_clk CLK_TOP_MSDC30_2_HCLK_SEL>,
 			<&topckgen_clk CLK_TOP_VDEC_SEL>,
-			<&topckgen_clk CLK_TOP_VENC_SEL>,
 			<&topckgen_clk CLK_TOP_MMINFRA_SEL>,
 			<&topckgen_clk CLK_TOP_MMUP_SEL>;
 	};
@@ -28,27 +27,7 @@
 		clocks =
 			<&vdec_gcon_base_clk CLK_VDE2_LARB1_CKEN_SMI>,
 			<&vdec_soc_gcon_base_clk CLK_VDE1_LARB1_CKEN_SMI>,
-			<&venc_gcon_clk CLK_VEN1_CKE0_LARB_SMI>,
-			<&venc_gcon_clk CLK_VEN1_CKE5_GALS_SMI>,
-			<&venc_gcon_clk CLK_VEN1_CKE6_GALS_SRAM_SMI>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE0_LARB_SMI>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE5_GALS_SMI>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE6_GALS_SRAM_SMI>,
 			<&dispsys1_config_clk CLK_MM1_SMI_SUB_COMM0_SMI>;
-
-	};
-
-	bring-up-venc@7 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x7>;
-		clocks =
-			<&venc_gcon_clk CLK_VEN1_CKE1_VENC_VENC>,
-			<&venc_gcon_clk CLK_VEN1_CKE5_GALS_VENC>,
-			<&venc_gcon_clk CLK_VEN1_CKE6_GALS_SRAM_VENC>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE0_LARB_VENC>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC_VENC>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE5_GALS_VENC>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE6_GALS_SRAM_VENC>;
 	};
 
 	bring-up-vdec@f {
@@ -95,18 +74,6 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x2b>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VDE1>;
-	};
-
-	bring-up-pd-ven0@2c {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x2c>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VEN0>;
-	};
-
-	bring-up-pd-ven1@2d {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x2d>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VEN1>;
 	};
 
 	bring-up-pd-mm-infra@3c {
