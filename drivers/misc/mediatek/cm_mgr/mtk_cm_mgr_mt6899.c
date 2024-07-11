@@ -60,10 +60,203 @@ static struct cm_mgr_hook local_hk;
 u32 *cm_mgr_perfs;
 
 void __iomem *csram_base;
+u32 cm_vendor_id, cm_mem_info, cm_num_opp, nr_vc0, nr_vc1, nr_bound;
+u32 *cm_mem_support, *cm_mem_dynamic, *cm_mem_capacity, *cm_mem_bound;
 
 /*****************************************************************************
  *  Platform functions
  *****************************************************************************/
+static void cm_hw_update(void)
+{
+	unsigned int opp, offset, type, value,i, l;
+	//Dynamic Table
+	if (cm_mem_dynamic) {
+		type = 1;
+		l = cm_num_opp * nr_vc0;
+		for(i=l * cm_vendor_id; i< l * (cm_vendor_id + 1); i++) {
+			opp = (i - l * cm_vendor_id) / nr_vc0;
+			offset = i % nr_vc0;
+			value = (type << 30) | ((opp & 0xF) << 26) | ((offset & 0x7) << 23) | *(cm_mem_dynamic + i);
+			cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_THD, value);
+		}
+		kfree(cm_mem_dynamic);
+	}
+	//Capacity Table
+	if (cm_mem_capacity) {
+		type = 2;
+		l = cm_num_opp * nr_vc1;
+		for(i = 0; i< l; i++) {
+			opp = i / nr_vc1;
+			offset = i % nr_vc1;
+			value = (type << 30) | ((opp & 0xF) << 26) | ((offset & 0x7) << 23) | *(cm_mem_capacity + i);
+			cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_THD, value);
+		}
+		kfree(cm_mem_capacity);
+	}
+	//Bound Table
+	if (cm_mem_bound) {
+		type = 3;
+		l = nr_bound / cm_num_opp;
+		for (i = 0; i<nr_bound; i++) {
+			opp = i / l;
+			if (i % l == cm_vendor_id) {
+				offset = 0;
+			} else {
+				if (i % l == l-1)
+					offset = 1;
+			}
+			if (offset == 0 || offset ==1) {
+				value = (type << 30) | ((opp & 0xF) << 26) |
+					((offset & 0x7) << 23) | *(cm_mem_bound + i);
+				cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_THD, value);
+			}
+		}
+		kfree(cm_mem_bound);
+	}
+	//Finish Table
+	value = (0xF << 26) | (0x7 << 23) | (0xbabe + i);
+	cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_THD, value);
+}
+
+static int cm_hw_setting(struct platform_device *pdev)
+{
+	int ret = 0;
+	int i = 0;
+	unsigned int tmp, nr_vendor, nr_support;
+	struct device_node *node = pdev->dev.of_node;
+	/*Read Support Vendoint ret = 0, i = 0;r*/
+	nr_vendor = of_property_count_elems_of_size(node,  "cm_mem_support", sizeof(u32));
+	if (nr_vendor > 0) {
+		ret = of_property_read_u32_array(node, "cm_mem_support", cm_mem_support, nr_vendor);
+		if (ret) {
+			kfree(cm_mem_support);
+			pr_info("Find cm_mem_support failed!\n");
+			goto ERROR;
+		}
+	} else {
+		pr_info("Find cm_mem_support size !\n");
+		ret = -ENOMEM;
+		goto ERROR;
+	}
+	for(i = 0; i < nr_vendor; i++) {
+		if (cm_mem_info == cm_mem_support[i]) {
+			cm_vendor_id = i;
+			break;
+		}
+	}
+	kfree(cm_mem_support);
+
+	/*Read Knot Information*/
+	nr_support = of_property_count_elems_of_size(node,  "cm_mem_vc", sizeof(u32));
+	if (nr_support <= 0) {
+		pr_info("Find cm_mem_vc size !\n");
+		ret = -ENOMEM;
+		goto ERROR;
+	} else {
+		ret = of_property_read_u32_index(node, "cm_mem_vc", cm_vendor_id, &nr_vc0);
+		if (ret) {
+			pr_info("Find cm_mem_vc failed !\n");
+			goto ERROR;
+		}
+		ret = of_property_read_u32_index(node, "cm_mem_vc", nr_support, &nr_vc1);
+		if (ret) {
+			pr_info("Find cm_mem_vc of capcity failed !\n");
+			goto ERROR;
+		}
+	}
+
+	/*Read Dynamic */
+	tmp = of_property_count_elems_of_size(node,  "cm_mem_dynamic", sizeof(u32));
+	if (tmp >0){
+		ret = of_property_read_u32_array(node, "cm_mem_dynamic", cm_mem_dynamic, tmp);
+		if (ret) {
+			kfree(cm_mem_dynamic);
+			pr_info("Find cm_mem_dynamic failed !\n");
+			goto ERROR;
+		}
+	} else {
+		pr_info("Find cm_mem_dynamic failed !\n");
+		ret = -ENOMEM;
+		goto ERROR;
+	}
+
+	/*Read Capacity*/
+	tmp = of_property_count_elems_of_size(node,  "cm_mem_capacity", sizeof(u32));
+	if (tmp >0){
+		ret = of_property_read_u32_array(node, "cm_mem_capacity", cm_mem_capacity, tmp);
+		if (ret) {
+			kfree(cm_mem_capacity);
+			pr_info("Find cm_mem_capacity failed !\n");
+			goto ERROR;
+		}
+	} else {
+		pr_info("Find cm_mem_capacity failed !\n");
+		ret = -ENOMEM;
+		goto ERROR;
+	}
+
+	/*Read Bound*/
+	nr_bound = of_property_count_elems_of_size(node,  "cm_mem_bound", sizeof(u32));
+	if (nr_bound >0){
+		ret = of_property_read_u32_array(node, "cm_mem_bound", cm_mem_bound, nr_bound);
+		if (ret) {
+			kfree(cm_mem_bound);
+			pr_info("Find cm_mem_bound failed !\n");
+			goto ERROR;
+		}
+	} else {
+		pr_info("Find cm_mem_bound failed !\n");
+		ret = -ENOMEM;
+		goto ERROR;
+	}
+
+	/*Send Finish Signal*/
+	cm_hw_update();
+ERROR:
+	return ret;
+}
+
+static int cm_get_dram_info(void)
+{
+	int ret = 0, i;
+	struct device_node *dn = NULL;
+	struct platform_device *pdev = NULL;
+	struct dramc_dev_t *dramc_dev_ptr;
+	struct mr_info_t *mr_info_ptr;
+	/* get dram info node */
+	//0. find node
+	dn = of_find_node_by_name(NULL, "dramc");
+	if (!dn) {
+		ret = -ENOMEM;
+		pr_info("Find dramc node failed!\n");
+		goto ERROR;
+	}
+	pdev = of_find_device_by_node(dn);
+	of_node_put(dn);
+	if (!pdev) {
+		ret = -ENODEV;
+		pr_info("dramc is not ready\n");
+		goto ERROR;
+	}
+
+	//1. get dramc dev info
+	dramc_dev_ptr = (struct dramc_dev_t *)platform_get_drvdata(pdev);
+	if (!dramc_dev_ptr){
+		ret = -ENOMEM;
+		pr_info("find dramc dev ptr failed\n");
+		goto ERROR;
+	}
+	mr_info_ptr = dramc_dev_ptr->mr_info_ptr;
+	for (ret = 0, i = 0; i < dramc_dev_ptr->mr_cnt; i++) {
+		if (mr_info_ptr[i].mr_index == 5)
+			cm_mem_info = (u32) mr_info_ptr[i].mr_value;
+		pr_info("mr %d: 0x%x\n", mr_info_ptr[i].mr_index, mr_info_ptr[i].mr_value);
+	}
+
+ERROR:
+	return ret;
+}
+
 static int cm_get_base_addr(void)
 {
 	int ret = 0;
@@ -155,7 +348,7 @@ static int cm_mgr_check_dram_type(void)
 }
 
 static void check_cm_mgr_status_mt6899(unsigned int cluster, unsigned int freq,
-				       unsigned int idx)
+					unsigned int idx)
 {
 	unsigned int bcpu_opp_max;
 	unsigned long spinlock_save_flag;
@@ -182,7 +375,7 @@ static void cm_mgr_thermal_hint(int is_thermal)
 	pr_info("%s(%d): is_thermal %d.\n", __func__, __LINE__, is_thermal);
 	cm_mgr_set_perf_mode_enable(!is_thermal);
 	cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_ENABLE,
-			       cm_mgr_get_perf_mode_enable());
+				cm_mgr_get_perf_mode_enable());
 }
 
 static int cm_mgr_check_dts_setting_mt6899(struct platform_device *pdev)
@@ -200,6 +393,7 @@ static int cm_mgr_check_dts_setting_mt6899(struct platform_device *pdev)
 		cm_mgr_set_num_perf(ret);
 		pr_info("%s(%d): required_opps count %d\n", __func__, __LINE__,
 			ret);
+		cm_num_opp = ret;
 	} else {
 		ret = -1;
 		pr_info("%s(%d): fail to get required_opps count from dts.\n",
@@ -314,6 +508,18 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 		goto ERROR;
 	}
 
+	ret = cm_get_dram_info();
+	if (ret) {
+		pr_info("%s(%d): fail to check dram info. ret %d\n", __func__,
+			__LINE__, ret);
+	}
+
+	ret = cm_hw_setting(pdev);
+	if (ret) {
+		pr_info("%s(%d): fail to update hw param. ret %d\n", __func__,
+			__LINE__, ret);
+	}
+
 	ret = cm_get_base_addr();
 	if (ret) {
 		pr_info("%s(%d): fail to get cm csram base. ret %d\n", __func__,
@@ -332,11 +538,11 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 	cm_mgr_get_sspm_version();
 
 	cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_ENABLE,
-			       cm_mgr_get_perf_mode_enable());
+				cm_mgr_get_perf_mode_enable());
 	cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_CEILING_OPP,
-			       cm_mgr_get_perf_mode_ceiling_opp());
+				cm_mgr_get_perf_mode_ceiling_opp());
 	cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_THD,
-			       cm_mgr_get_perf_mode_thd());
+				cm_mgr_get_perf_mode_thd());
 	cm_mgr_to_sspm_command(IPI_CM_MGR_ENABLE, cm_mgr_get_enable());
 
 	pr_info("%s(%d): platform-cm_mgr_probe Done.\n", __func__, __LINE__);
