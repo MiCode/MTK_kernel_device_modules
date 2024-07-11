@@ -158,12 +158,11 @@ static void mtk_sync_timeline_fence_release(struct dma_fence *fence)
 	struct sync_timeline *parent = dma_fence_parent(fence);
 	unsigned long flags;
 
-	if (pt) {
+	if (pt && (!list_empty(&pt->link))) {
 		spin_lock_irqsave(fence->lock, flags);
 		if (!list_empty(&pt->link)) {
 			list_del(&pt->link);
 			rb_erase(&pt->node, &parent->pt_tree);
-
 		}
 		spin_unlock_irqrestore(fence->lock, flags);
 	}
