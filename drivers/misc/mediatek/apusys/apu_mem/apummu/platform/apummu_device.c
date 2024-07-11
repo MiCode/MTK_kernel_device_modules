@@ -36,7 +36,7 @@ static struct apummu_plat mt6991_drv = {
 
 static struct apummu_plat mt6899_drv = {
 	.slb_wait_time                   = 0,
-	.is_general_SLB_support          = false,
+	.is_general_SLB_support          = true,
 	.alloc_DRAM_FB_in_session_create = false,
 };
 
