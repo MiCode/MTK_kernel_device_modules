@@ -274,6 +274,8 @@ static struct xhci_mbrain_hash_node *add_to_hash_table(struct usb_device *udev)
 
 static void xhci_mtk_mbrain_action(struct urb *urb)
 {
+	return;
+
 	if (urb->setup_packet) {
 		struct usb_device *udev = urb->dev;
 		u16 bcdDevice = le16_to_cpu(udev->descriptor.bcdDevice);
@@ -325,6 +327,8 @@ static void xhci_mtk_mbrain_cleanup(struct device *dev)
 	struct xhci_mbrain_hash_node *item;
 	struct hlist_node *tmp;
 	int bkt;
+
+	return;
 
 	dev_info(dev, "mbrain: cleanup hash\n");
 	hash_for_each_safe(mbrain_hash, bkt, tmp, item, node) {
