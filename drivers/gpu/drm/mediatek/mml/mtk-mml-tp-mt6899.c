@@ -83,6 +83,7 @@ struct path_node {
  */
 enum topology_scenario {
 	PATH_MML1_NOPQ = 0,
+	PATH_MML1_NOPQ_DL,
 	PATH_MML1_NOPQ_DD,
 	PATH_MML1_PQ,
 	PATH_MML1_PQ_DL,
@@ -101,6 +102,13 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML1_RDMA0, MML1_DMA0_SEL,},
 		{MML1_DMA0_SEL, MML1_WROT0,},
 		{MML1_WROT0,},
+	},
+	[PATH_MML1_NOPQ_DL] = {
+		{MML1_MMLSYS,},
+		{MML1_MUTEX,},
+		{MML1_RDMA0, MML1_DMA0_SEL,},
+		{MML1_DMA0_SEL, MML1_DLO0,},
+		{MML1_DLO0,},
 	},
 	[PATH_MML1_NOPQ_DD] = {
 		{MML1_MMLSYS,},
@@ -221,6 +229,11 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 	},
 };
 
+static u8 mode_dc2_dispatch[] = {
+	[PATH_MML1_NOPQ]	= PATH_MML0_NOPQ,
+	[PATH_MML1_PQ]		= PATH_MML0_PQ,
+};
+
 /* reset bit to each engine,
  * reverse of MMSYS_SW0_RST_B and MMSYS_SW1_RST_B
  */
@@ -245,12 +258,15 @@ static u8 engine_reset_bit[MML_ENGINE_TOTAL] = {
 	[MML0_MUTEX] = 0,
 	[MML0_MMLSYS] = 1,
 	[MML0_RDMA0] = 3,
+	[MML0_RDMA2] = 4,
 	[MML0_HDR0] = 5,
 	[MML0_AAL0] = 6,
 	[MML0_RSZ0] = 7,
 	[MML0_TDSHP0] = 8,
 	[MML0_COLOR0] = 9,
 	[MML0_WROT0] = 10,
+	[MML0_BIRSZ0] = 35,
+	[MML0_C3D0] = 43,
 };
 /* !!Above code generate by topology parser (tpparser.py)!! */
 
@@ -269,13 +285,13 @@ static inline bool engine_wrot(u32 id)
 /* check if engine is input region pq rdma engine */
 static inline bool engine_pq_rdma(u32 id)
 {
-	return id == MML1_RDMA2 || id == MML0_BIRSZ0;
+	return id == MML1_RDMA2 || id == MML0_RDMA2;
 }
 
 /* check if engine is input region pq birsz engine */
 static inline bool engine_pq_birsz(u32 id)
 {
-	return id == MML1_BIRSZ0;
+	return id == MML1_BIRSZ0 || id == MML0_BIRSZ0;
 }
 
 /* check if engine is region pq engine */
@@ -288,13 +304,24 @@ static inline bool engine_region_pq(u32 id)
 /* check if engine is dma engine */
 static inline bool engine_dma(u32 id)
 {
-	return id == MML1_RDMA0 || id == MML1_RDMA2 ||
-		id == MML1_FG0 || id == MML1_WROT0 || id == MML1_WROT2;
+	return engine_input(id) || engine_wrot(id);
 }
 
 static inline bool engine_tdshp(u32 id)
 {
-	return id == MML1_TDSHP0;
+	return id == MML1_TDSHP0 || id == MML0_TDSHP0;
+}
+
+static inline bool scene_is_dc2(enum topology_scenario scene)
+{
+	return scene >= PATH_MML0_NOPQ && scene < PATH_MML_MAX;
+}
+
+static inline u32 engine_id_to_sys(u32 id)
+{
+	if (id >= MML1_MMLSYS && id <= MML1_ENGINE_TOTAL)
+		return mml_sys_frame;
+	return mml_sys_tile;
 }
 
 enum cmdq_clt_usage {
@@ -410,6 +437,7 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 
 	for (i = 0; i < MML_MAX_PATH_NODES; i++) {
 		const u8 eng = route[i].eng;
+		const u8 sysid = engine_id_to_sys(eng);
 
 		if (!route[i].eng) {
 			path->node_cnt = i;
@@ -423,11 +451,17 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 			mml_err("[topology]no comp idx:%u engine:%u", i, eng);
 
 		/* assign reset bits for this path */
-		path->reset_bits |= 1LL << engine_reset_bit[eng];
+		path->reset_bits_sys[sysid] |= 1LL << engine_reset_bit[eng];
 
-		if (eng == MML1_MMLSYS || eng == MML0_MMLSYS) {
+		if (eng == MML1_MMLSYS) {
 			path->mmlsys = path->nodes[i].comp;
 			path->mmlsys_idx = i;
+			path->sys_en[mml_sys_frame] = true;
+			continue;
+		} else if (eng == MML0_MMLSYS) {
+			path->mmlsys = path->nodes[i].comp;
+			path->mmlsys_idx = i;
+			path->sys_en[mml_sys_tile] = true;
 			continue;
 		} else if (eng == MML1_MUTEX || eng == MML0_MUTEX) {
 			path->mutex = path->nodes[i].comp;
@@ -454,7 +488,7 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 
 		/* for svp aid binding */
 		if (engine_dma(eng) && path->aid_eng_cnt < MML_MAX_AID_COMPS)
-			path->aid_engine_ids[path->aid_eng_cnt++] = eng;
+			path->aid_engine_sys[sysid].ids[path->aid_engine_sys[sysid].cnt++] = eng;
 	}
 	path->node_cnt = i;
 
@@ -462,8 +496,10 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 	 * 1: not reset
 	 * so we need to reverse the bits
 	 */
-	path->reset_bits = ~path->reset_bits;
-	mml_msg("[topology]reset bits %#llx", path->reset_bits);
+	for (i = 0; i < mml_max_sys; i++)
+		path->reset_bits_sys[i] = ~path->reset_bits_sys[i];
+	mml_msg("[topology]reset bits sys0 %#llx sys1 %#llx engine %#018llx",
+		path->reset_bits_sys[0], path->reset_bits_sys[1], path->engine_flags);
 
 	/* collect tile engines */
 	tile_idx = 0;
@@ -518,6 +554,7 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 static s32 tp_init_cache(struct mml_dev *mml, struct mml_topology_cache *cache,
 	struct cmdq_client **clts, u32 clt_cnt)
 {
+	struct mml_comp *comp;
 	u32 i;
 
 	if (clt_cnt < MML_CLT_MAX) {
@@ -531,9 +568,26 @@ static s32 tp_init_cache(struct mml_dev *mml, struct mml_topology_cache *cache,
 		return -ECHILD;
 	}
 
+	/* assign sys id for mmlsys/mutex compse different behavior */
+	for (i = MML1_MMLSYS; i < MML1_ENGINE_TOTAL; i++) {
+		comp = mml_dev_get_comp_by_id(mml, i);
+		if (comp)
+			comp->sysid = mml_sys_frame;
+		else
+			return -EAGAIN;
+	}
+	for (i = MML0_MMLSYS; i < MML0_ENGINE_TOTAL; i++) {
+		comp = mml_dev_get_comp_by_id(mml, i);
+		if (comp)
+			comp->sysid = mml_sys_tile;
+		else
+			return -EAGAIN;
+	}
+
 	for (i = 0; i < PATH_MML_MAX; i++) {
 		struct mml_topology_path *path = &cache->paths[i];
 
+		path->path_id = i;
 		tp_parse_path(mml, path, path_map[i]);
 		if (mtk_mml_msg) {
 			mml_log("[topology]dump path %u count %u clt id %u",
@@ -594,9 +648,10 @@ static void tp_select_path(struct mml_topology_cache *cache,
 	struct mml_topology_path **path)
 {
 	enum topology_scenario scene = 0;
-	bool en_rsz, en_pq, can_binning = false;
+	bool en_rsz, en_pq, hdrvp, aipq, can_binning = false;
 	enum mml_color dest_fmt = cfg->info.dest[0].data.format;
 
+	cfg->shadow = true;
 	if (cfg->info.mode == MML_MODE_RACING) {
 		/* always rdma to wrot for racing case */
 		scene = PATH_MML1_NOPQ;
@@ -606,11 +661,16 @@ static void tp_select_path(struct mml_topology_cache *cache,
 		goto done;
 	}
 
-	en_rsz = tp_need_resize(&cfg->info, &can_binning);
-	if (mml_force_rsz)
-		en_rsz = true;
-	en_pq = en_rsz || cfg->info.dest[0].pq_config.en ||
-		(MML_FMT_ALPHA(dest_fmt) && MML_FMT_IS_YUV(dest_fmt));
+	en_rsz = tp_need_resize(&cfg->info, &can_binning) || mml_force_rsz;
+	en_pq = cfg->info.dest[0].pq_config.en ||
+		(MML_FMT_ALPHA(dest_fmt) && MML_FMT_IS_YUV(dest_fmt)) ||
+		mml_force_rsz == 2;
+	hdrvp = en_pq && cfg->info.dest[0].pq_config.en_hdr &&
+		!cfg->info.dest[0].pq_config.en_region_pq;
+	aipq = en_pq && cfg->info.dest[0].pq_config.en_hdr &&
+		cfg->info.dest[0].pq_config.en_region_pq;
+	mml_msg("%s hdrvp %d, aipq %d", __func__, hdrvp, aipq);
+    /* TODO: no aipd and HDR path could choose */
 
 	if (cfg->info.mode == MML_MODE_DDP_ADDON) {
 		/* direct-link in/out for addon case */
@@ -621,28 +681,32 @@ static void tp_select_path(struct mml_topology_cache *cache,
 			scene = PATH_MML1_PQ_DD;
 		}
 	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
-		/* TODO: pq or not pq in direct link mode */
-		scene = PATH_MML1_PQ_DL;
-	} else if (!en_pq) {
-		/* rdma to wrot */
-		scene = PATH_MML1_NOPQ;
-	} else if (cfg->info.dest_cnt == 2) {
-		if (cfg->info.dest[0].pq_config.en_region_pq) {
-			scene = PATH_MML1_2IN_2OUT;
-		} else {
-			mml_err("[topology]dest 2 out but no region pq, back to 1in1out");
-			scene = PATH_MML1_PQ;
-		}
-	} else if (mml_force_rsz == 2) {
-		scene = PATH_MML1_PQ;
+		if (en_pq || en_rsz)
+			scene = PATH_MML1_PQ_DL;
+		else
+			scene = PATH_MML1_NOPQ_DL;
 	} else {
-		if (cfg->info.dest[0].pq_config.en_region_pq) {
-			mml_err("[topology]not support 2 in 1 out, back to 1in1out");
-			cfg->info.dest[0].pq_config.en_region_pq = false;
+		/* following code for DC and DC2 */
+		if (en_pq || en_rsz)
 			scene = PATH_MML1_PQ;
-		} else {
-			/* 1 in 1 out with PQs */
-			scene = PATH_MML1_PQ;
+		else
+			scene = PATH_MML1_NOPQ;
+
+		if (cfg->info.mode == MML_MODE_MML_DECOUPLE2) {
+			enum topology_scenario scene_dc2;
+
+			if (scene < ARRAY_SIZE(mode_dc2_dispatch))
+				scene_dc2 = mode_dc2_dispatch[scene];
+			else
+				scene_dc2 = PATH_MML0_PQ;
+
+			if (!scene_is_dc2(scene_dc2)) {
+				scene_dc2 = PATH_MML0_PQ;
+				mml_err("[topology]fail to dispatch scene %u and reset to %u",
+					scene, scene_dc2);
+			}
+			scene = scene_dc2;
+			cfg->shadow = false;
 		}
 	}
 
@@ -661,7 +725,6 @@ static s32 tp_select(struct mml_topology_cache *cache,
 	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		cfg->framemode = true;
 	}
-	cfg->shadow = true;
 
 	tp_select_path(cache, cfg, &path);
 
@@ -934,6 +997,12 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 	if (info->mode == MML_MODE_MML_DECOUPLE ||
 		info->mode == MML_MODE_MDP_DECOUPLE) {
 		*reason = mml_query_userdc;
+		goto decouple_user;
+	}
+
+	/* skip all couple mode check if use prefer dc2 */
+	if (info->mode == MML_MODE_MML_DECOUPLE2) {
+		*reason = mml_query_userdc2;
 		goto decouple_user;
 	}
 
