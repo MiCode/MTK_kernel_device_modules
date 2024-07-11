@@ -16,6 +16,10 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu \
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/virtio
 
+ifeq ($(CONFIG_VHOST_CMDQ),m)
+ccflags-y += -I$(KERNEL_SRC)/include/
+endif
+
 ifneq ($(CONFIG_VIRTIO_CMDQ),m)
 ccflags-$(CONFIG_DEBUG_FS) += -DCONFIG_CMDQ_MMPROFILE_SUPPORT
 endif

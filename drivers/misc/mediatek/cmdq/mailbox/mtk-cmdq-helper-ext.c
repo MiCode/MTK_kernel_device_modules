@@ -3133,11 +3133,13 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 
 	if (data.err == -EINVAL) {
 		cmdq_pkt_err_irq_dump(pkt);
+#if !IS_ENABLED(CONFIG_VHOST_CMDQ)
 #if !IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 		if (error_irq_bug_on)
 			BUG_ON(1);
 #else
 		BUG_ON(1);
+#endif
 #endif
 	}
 
