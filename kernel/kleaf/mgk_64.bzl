@@ -1413,8 +1413,6 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpu:gpu_mt6781")
         mgk_64_platform_device_modules.update({"drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_mt6781.ko":"mt6781"})
         #mgk_64_device_modules.append("drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_mt6781.ko")
-        mgk_64_device_modules.remove("drivers/char/rpmb/rpmb.ko")
-        mgk_64_device_modules.remove("drivers/char/rpmb/rpmb-mtk.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/adsp/adsp.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/adsp/v1/adsp-v1.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/adsp/v2/adsp-v2.ko")
