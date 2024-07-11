@@ -445,7 +445,7 @@ static void __exit platform_cm_mgr_exit(void)
 }
 
 #if IS_BUILTIN(CONFIG_MTK_CM_MGR_MT6768)
-late_initcall(platform_cm_mgr_init);
+late_initcall_sync(platform_cm_mgr_init);
 #else
 subsys_initcall(platform_cm_mgr_init);
 #endif
