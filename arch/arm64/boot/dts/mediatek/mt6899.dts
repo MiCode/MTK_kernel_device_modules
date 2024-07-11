@@ -7518,9 +7518,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				 <&ovlsys_config_clk CLK_OVL_DISP_DL0_ASYNC3_DISP>,
 				 <&ovlsys_config_clk CLK_OVL_DISP_DL0_ASYNC4_DISP>,
 				 <&ovlsys_config_clk CLK_OVL_DISP_DL0_ASYNC5_DISP>,
-				 <&ovlsys_config_clk CLK_OVL_DISP_DL0_ASYNC6_DISP>;
-				 //<&mmdvfs_mux MMDVFS_USER_DISP>;
-			clock-num = <35>;
+				 <&ovlsys_config_clk CLK_OVL_DISP_DL0_ASYNC6_DISP>,
+				 <&mmdvfs_mux MMDVFS_USER_DISP>;
+			clock-num = <36>;
 			condition-num = <2>;
 			operating-points-v2 = <&opp_table_disp>;
 			vdisp-dvfs-opp = /bits/ 8 <3>;
@@ -7756,7 +7756,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<1>, /*MTK_DRM_OPT_USE_CMDQ*/
 				<1>, /*MTK_DRM_OPT_USE_M4U*/
 				<1>, /*MTK_DRM_OPT_MMQOS_SUPPORT*/
-				<0>, /*MTK_DRM_OPT_MMDVFS_SUPPORT*/
+				<1>, /*MTK_DRM_OPT_MMDVFS_SUPPORT*/
 				<0>, /*MTK_DRM_OPT_SODI_SUPPORT*/
 				<1>, /*MTK_DRM_OPT_IDLE_MGR*/
 				<0>, /*MTK_DRM_OPT_IDLEMGR_SWTCH_DECOUPLE*/
@@ -7816,6 +7816,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0>, /*MTK_DRM_OPT_SPHRT*/
 				<0>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
 				<0>, /*MTK_DRM_OPT_HRT_BY_LARB*/
+				<1>, /*MTK_DRM_OPT_MAX_CHANNEL_HRT*/
 				<0>, /*MTK_DRM_OPT_TILE_OVERHEAD*/
 				<0>, /*MTK_DRM_OPT_VIDLE_TOP_EN*/
 				<0>, /*MTK_DRM_OPT_VIDLE_MTCMOS_DT_EN*/
