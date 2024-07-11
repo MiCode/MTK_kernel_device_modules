@@ -938,11 +938,20 @@ static int get_cpu_opp_info(int **opp_cnt, unsigned int ***opp_tbl)
 		return -1;
 
 	for (i = 0; i < policy_num; i++) {
+		if(opp_count[i] <= 0) {
+			pr_info("%s, opp cnt[%d]=%d\n", __func__, i, opp_count[i]);
+			kvfree(*opp_cnt);
+			kvfree(*opp_tbl);
+			return -1;
+		}
+
 		(*opp_cnt)[i] = opp_count[i];
 		(*opp_tbl)[i] = kcalloc(opp_count[i], sizeof(unsigned int), GFP_KERNEL);
 
 		for (j = 0; j < opp_count[i]; j++)
 			(*opp_tbl)[i][j] = opp_table[i][j];
+
+		pr_info("%s, opp cnt[%d]=%d\n", __func__, i, (*opp_cnt)[i]);
 	}
 
 	return 0;
