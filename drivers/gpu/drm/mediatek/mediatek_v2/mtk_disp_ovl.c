@@ -1469,8 +1469,11 @@ static void mtk_ovl_config(struct mtk_ddp_comp *comp,
 		else
 			fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
 
-		if (cfg->w <= 1080) {
-			if (fps <= 60) {
+		if (crtc->state->adjusted_mode.hdisplay <= 1080) {
+			if (fps == 30) {
+				bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 4);
+				ovl_win_size = 5;
+			} else if (fps <= 60) {
 				bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 8);
 				ovl_win_size = 9;
 			} else {
@@ -1478,7 +1481,10 @@ static void mtk_ovl_config(struct mtk_ddp_comp *comp,
 				ovl_win_size = 18;
 			}
 		} else {
-			if (fps <= 60) {
+			if (fps == 30) {
+				bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 4);
+				ovl_win_size = 5;
+			} else if (fps <= 60) {
 				bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 11);
 				ovl_win_size = 12;
 			} else {

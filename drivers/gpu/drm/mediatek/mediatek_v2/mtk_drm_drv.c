@@ -8908,7 +8908,8 @@ static void mtk_drm_kms_lateinit(struct kthread_work *work)
 	if ((private->data->mmsys_id == MMSYS_MT6897) ||
 		(private->data->mmsys_id == MMSYS_MT6989) ||
 		(private->data->mmsys_id == MMSYS_MT6899) ||
-		(private->data->mmsys_id == MMSYS_MT6991))
+		(private->data->mmsys_id == MMSYS_MT6991) ||
+		(private->data->mmsys_id == MMSYS_MT6899))
 		mtk_drm_init_emi_eff_table(drm);
 
 	mtk_drm_first_enable(drm);

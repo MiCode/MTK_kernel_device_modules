@@ -5511,7 +5511,8 @@ SKIP_WAIT_FRAME_DONE:
 		mtk_dsi_dual_enable(dsi, false);
 
 	if (priv && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
-			priv->data->mmsys_id == MMSYS_MT6991 && crtc_idx == 0)
+			(priv->data->mmsys_id == MMSYS_MT6991 ||
+			priv->data->mmsys_id == MMSYS_MT6899) && crtc_idx == 0)
 		mtk_crtc_stop_bwm_ratio_loop(crtc);
 
 	if (mtk_crtc_with_trigger_loop(dsi->encoder.crtc))

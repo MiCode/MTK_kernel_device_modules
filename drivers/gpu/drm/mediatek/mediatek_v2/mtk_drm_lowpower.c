@@ -2231,7 +2231,8 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		mtk_crtc_hw_block_ready(crtc);
 	}
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
-		priv->data->mmsys_id == MMSYS_MT6991 && crtc_id == 0)
+		(priv->data->mmsys_id == MMSYS_MT6991 ||
+		priv->data->mmsys_id == MMSYS_MT6899) && crtc_id == 0)
 		mtk_crtc_start_bwm_ratio_loop(crtc);
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,

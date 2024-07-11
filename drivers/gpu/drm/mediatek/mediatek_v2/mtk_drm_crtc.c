@@ -173,6 +173,7 @@ unchanged_compress_ratio_table[MAX_LAYER_RATIO_NUMBER];
 struct layer_compress_ratio_item
 fbt_compress_ratio_table[MAX_FRAME_RATIO_NUMBER];
 #define MT6991_MAX_EXDMA_NUM 8
+#define MT6899_MAIN_DISP_OVL_NUM 3
 #define BWM_CAPS_MASK (MTK_HWC_UNCHANGED_LAYER |          \
 			MTK_HWC_INACTIVE_LAYER | MTK_HWC_UNCHANGED_FBT_LAYER)
 
@@ -2743,7 +2744,8 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 		if (mtk_crtc_with_trigger_loop(crtc))
 			mtk_crtc_start_trig_loop(crtc);
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
-			priv->data->mmsys_id == MMSYS_MT6991 && crtc_id == 0)
+			(priv->data->mmsys_id == MMSYS_MT6991 ||
+			priv->data->mmsys_id == MMSYS_MT6899) && crtc_id == 0)
 			mtk_crtc_start_bwm_ratio_loop(crtc);
 
 		mtk_ddp_comp_io_cmd(output_comp, NULL, CONNECTOR_ENABLE, NULL);
@@ -2806,7 +2808,8 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 
 	if (!mtk_crtc->enabled) {
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
-			priv->data->mmsys_id == MMSYS_MT6991 && crtc_id == 0)
+			(priv->data->mmsys_id == MMSYS_MT6991 ||
+			priv->data->mmsys_id == MMSYS_MT6899) && crtc_id == 0)
 			mtk_crtc_stop_bwm_ratio_loop(crtc);
 
 		if (mtk_crtc_with_trigger_loop(crtc))
@@ -8458,7 +8461,16 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 				comp_idx = plane_state->comp_state.comp_id -
 					DDP_COMPONENT_OVL_EXDMA2;
 				pre_avg_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
-					DISP_SLOT_EXT_LAYER_PRE_AVG_RATIO((comp_idx + 1) * 3 +
+					DISP_SLOT_EXT_LAYER_PRE_AVG_RATIO(comp_idx * 3 +
+					ext_lye_id - 1));
+
+				cmdq_pkt_read(state->cmdq_handle, NULL,
+					pre_avg_slot, CMDQ_THR_SPR_IDX1);
+			} else if (priv->data->mmsys_id == MMSYS_MT6899) {
+				comp_idx = plane_state->comp_state.comp_id -
+					DDP_COMPONENT_OVL0_2L;
+				pre_avg_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_EXT_LAYER_PRE_AVG_RATIO(comp_idx * 3 +
 					ext_lye_id - 1));
 
 				cmdq_pkt_read(state->cmdq_handle, NULL,
@@ -8520,11 +8532,20 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 				comp_idx = plane_state->comp_state.comp_id -
 					DDP_COMPONENT_OVL_EXDMA2;
 				pre_peak_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
-					DISP_SLOT_EXT_LAYER_PRE_PEAK_RATIO((comp_idx + 1) * 3 +
+					DISP_SLOT_EXT_LAYER_PRE_PEAK_RATIO(comp_idx * 3 +
 					ext_lye_id - 1));
 
 				cmdq_pkt_read(state->cmdq_handle, NULL,
-					pre_avg_slot, CMDQ_THR_SPR_IDX1);
+					pre_peak_slot, CMDQ_THR_SPR_IDX1);
+			} else if (priv->data->mmsys_id == MMSYS_MT6899) {
+				comp_idx = plane_state->comp_state.comp_id -
+					DDP_COMPONENT_OVL0_2L;
+				pre_peak_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_EXT_LAYER_PRE_PEAK_RATIO(comp_idx * 3 +
+					ext_lye_id - 1));
+
+				cmdq_pkt_read(state->cmdq_handle, NULL,
+					pre_peak_slot, CMDQ_THR_SPR_IDX1);
 			} else {
 				cmdq_pkt_read(state->cmdq_handle, NULL,
 					comp->regs_pa +
@@ -8582,11 +8603,18 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 
 		} else if (plane_state->pending.enable && (!need_skip)) {
 			if (priv->data->mmsys_id == MMSYS_MT6991) {
-				/* (phy_lye + ext_lye * 3) * (evg + peak) */
 				comp_idx = plane_state->comp_state.comp_id -
 					DDP_COMPONENT_OVL_EXDMA2;
 				pre_avg_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
 					DISP_SLOT_LAYER_PRE_AVG_RATIO(comp_idx));
+
+				cmdq_pkt_read(state->cmdq_handle, NULL,
+					pre_avg_slot, CMDQ_THR_SPR_IDX1);
+			} else if (priv->data->mmsys_id == MMSYS_MT6899) {
+				comp_idx = plane_state->comp_state.comp_id -
+					DDP_COMPONENT_OVL0_2L;
+				pre_avg_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_LAYER_PRE_AVG_RATIO(comp_idx * 2 + lye_id));
 
 				cmdq_pkt_read(state->cmdq_handle, NULL,
 					pre_avg_slot, CMDQ_THR_SPR_IDX1);
@@ -8649,6 +8677,14 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 					DDP_COMPONENT_OVL_EXDMA2;
 				pre_peak_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
 					DISP_SLOT_LAYER_PRE_PEAK_RATIO(comp_idx));
+
+				cmdq_pkt_read(state->cmdq_handle, NULL,
+					pre_peak_slot, CMDQ_THR_SPR_IDX1);
+			} else if (priv->data->mmsys_id == MMSYS_MT6899) {
+				comp_idx = plane_state->comp_state.comp_id -
+					DDP_COMPONENT_OVL0_2L;
+				pre_peak_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_LAYER_PRE_PEAK_RATIO(comp_idx * 2 + lye_id));
 
 				cmdq_pkt_read(state->cmdq_handle, NULL,
 					pre_peak_slot, CMDQ_THR_SPR_IDX1);
@@ -8857,20 +8893,44 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 
 static void bwm_trig_done_cb(struct cmdq_cb_data data)
 {
-	int k = 0;
+	int idx = 0, layer_idx = 0;
 	unsigned int *avg = NULL;
 	unsigned int *peak = NULL;
 	struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *)data.data;
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 
-	for (k = 0;k < 7;k++) {
-		avg =
-			(unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
-			DISP_SLOT_LAYER_PRE_AVG_RATIO(k)));
-		peak =
-			(unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
-			DISP_SLOT_LAYER_PRE_PEAK_RATIO(k)));
-		CRTC_MMP_MARK(0, bwm_loop_done, *avg, *peak);
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
+		for (layer_idx = 0; layer_idx < MT6991_MAX_EXDMA_NUM; layer_idx++) {
+			avg = (unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_LAYER_PRE_AVG_RATIO(layer_idx)));
+			peak = (unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_LAYER_PRE_PEAK_RATIO(layer_idx)));
+			CRTC_MMP_MARK(0, bwm_loop_done,
+				*avg + (layer_idx << 24), *peak + (layer_idx << 24));
+		}
+	} else if (priv->data->mmsys_id == MMSYS_MT6899) {
+		for(idx = 0; idx < MT6899_MAIN_DISP_OVL_NUM; idx++) {
+			/*physical layer*/
+			for (layer_idx = 0; layer_idx < 2; layer_idx++) {
+				avg = (unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
+					DISP_SLOT_LAYER_PRE_AVG_RATIO(idx * 2 + layer_idx)));
+				peak = (unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
+					DISP_SLOT_LAYER_PRE_PEAK_RATIO(idx * 2 + layer_idx)));
+				CRTC_MMP_MARK(0, bwm_loop_done,
+					*avg + (layer_idx << 24), *peak + (layer_idx << 24));
+			}
+			/*ext layer*/
+			for (layer_idx = 0; layer_idx < 3; layer_idx++) {
+				avg = (unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
+					DISP_SLOT_EXT_LAYER_PRE_AVG_RATIO(idx * 3 + layer_idx)));
+				peak = (unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
+					DISP_SLOT_EXT_LAYER_PRE_PEAK_RATIO(idx * 3 + layer_idx)));
+				CRTC_MMP_MARK(0, bwm_loop_done,
+					*avg + (layer_idx << 24), *peak + (layer_idx << 24));
+			}
+		}
 	}
+
 	drm_trace_tag_mark("bwm_trig_loop_done");
 }
 
@@ -8910,14 +8970,23 @@ void mtk_crtc_start_bwm_ratio_loop(struct drm_crtc *crtc)
 			mtk_crtc->gce_obj.client[CLIENT_BWM_LOOP]);
 	bwm_handle = mtk_crtc->bwm_loop_cmdq_handle;
 
-	cmdq_pkt_clear_event(bwm_handle,
-		mtk_crtc->gce_obj.event[EVENT_MUTEX0_SOF]);
-	cmdq_pkt_wait_no_clear(bwm_handle,
-		mtk_crtc->gce_obj.event[EVENT_MUTEX0_SOF]);
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
+		cmdq_pkt_clear_event(bwm_handle,
+			mtk_crtc->gce_obj.event[EVENT_MUTEX0_SOF]);
+		cmdq_pkt_wait_no_clear(bwm_handle,
+			mtk_crtc->gce_obj.event[EVENT_MUTEX0_SOF]);
 
-	cmdq_pkt_wait_no_clear(bwm_handle,
-		mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+		cmdq_pkt_wait_no_clear(bwm_handle,
+			mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+	} else if (priv->data->mmsys_id == MMSYS_MT6899) {
+		cmdq_pkt_clear_event(bwm_handle,
+			mtk_crtc->gce_obj.event[EVENT_DSI_SOF]);
+		cmdq_pkt_wait_no_clear(bwm_handle,
+			mtk_crtc->gce_obj.event[EVENT_DSI_SOF]);
 
+		cmdq_pkt_wait_no_clear(bwm_handle,
+			mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+	}
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		type = mtk_ddp_comp_get_type(comp->id);
 		if (type == MTK_OVL_EXDMA &&
@@ -8951,6 +9020,42 @@ void mtk_crtc_start_bwm_ratio_loop(struct drm_crtc *crtc)
 							comp->regs_pa +
 							DISP_REG_OVL_ELX_BURST_ACC_WIN_MAX(lye_idx)
 							+ index * 0x10000,
+							ext_peak_slot, CMDQ_THR_SPR_IDX1);
+				}
+			}
+		} else if (type == MTK_DISP_OVL) {
+			for (index = 0; index < MT6899_MAIN_DISP_OVL_NUM; index++) {
+				/*physical layer*/
+				for (lye_idx = 0; lye_idx < 2; lye_idx++) {
+					avg_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
+						DISP_SLOT_LAYER_PRE_AVG_RATIO(index * 2 + lye_idx));
+					peak_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
+						DISP_SLOT_LAYER_PRE_PEAK_RATIO(index * 2 + lye_idx));
+
+					cmdq_pkt_mem_move(bwm_handle, mtk_crtc->gce_obj.base,
+						comp->regs_pa + DISP_REG_OVL_LX_BURST_ACC(lye_idx)
+						+ index * 0x1000, avg_slot, CMDQ_THR_SPR_IDX1);
+					cmdq_pkt_mem_move(bwm_handle, mtk_crtc->gce_obj.base,
+						comp->regs_pa + DISP_REG_OVL_LX_BURST_ACC_WIN_MAX(lye_idx)
+						+ index * 0x1000, peak_slot, CMDQ_THR_SPR_IDX1);
+				}
+				/*ext layer*/
+				for (lye_idx = 0; lye_idx < 3; lye_idx++){
+					ext_avg_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
+							DISP_SLOT_EXT_LAYER_PRE_AVG_RATIO(lye_idx +
+							index * 3));
+					ext_peak_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
+							DISP_SLOT_EXT_LAYER_PRE_PEAK_RATIO(lye_idx +
+							index * 3));
+					cmdq_pkt_mem_move(bwm_handle, mtk_crtc->gce_obj.base,
+							comp->regs_pa +
+							DISP_REG_OVL_ELX_BURST_ACC(lye_idx)
+							+ index * 0x1000,
+							ext_avg_slot, CMDQ_THR_SPR_IDX1);
+					cmdq_pkt_mem_move(bwm_handle, mtk_crtc->gce_obj.base,
+							comp->regs_pa +
+							DISP_REG_OVL_ELX_BURST_ACC_WIN_MAX(lye_idx)
+							+ index * 0x1000,
 							ext_peak_slot, CMDQ_THR_SPR_IDX1);
 				}
 			}
@@ -13027,7 +13132,8 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	}
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
-		priv->data->mmsys_id == MMSYS_MT6991 && crtc_id == 0)
+		(priv->data->mmsys_id == MMSYS_MT6991 ||
+		priv->data->mmsys_id == MMSYS_MT6899) && crtc_id == 0)
 		mtk_crtc_start_bwm_ratio_loop(crtc);
 
 	if (mtk_crtc_is_mem_mode(crtc) || mtk_crtc_is_dc_mode(crtc)) {
@@ -14286,7 +14392,8 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 		mtk_vidle_config_ff(false);
 	}
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
-		priv->data->mmsys_id == MMSYS_MT6991 && crtc_id == 0)
+		(priv->data->mmsys_id == MMSYS_MT6991 ||
+		priv->data->mmsys_id == MMSYS_MT6899) && crtc_id == 0)
 		mtk_crtc_start_bwm_ratio_loop(crtc);
 
 	/* move power off mtcmos to kms init flow for multiple display in LK */
@@ -22220,7 +22327,8 @@ int mtk_crtc_enter_tui(struct drm_crtc *crtc)
 			mtk_crtc_start_trig_loop(crtc);
 		}
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
-			priv->data->mmsys_id == MMSYS_MT6991 && crtc_id == 0) {
+			(priv->data->mmsys_id == MMSYS_MT6991 ||
+			priv->data->mmsys_id == MMSYS_MT6899) && crtc_id == 0) {
 			mtk_crtc_stop_bwm_ratio_loop(crtc);
 			mtk_crtc_start_bwm_ratio_loop(crtc);
 		}
@@ -22304,7 +22412,8 @@ int mtk_crtc_exit_tui(struct drm_crtc *crtc)
 			mtk_crtc_start_trig_loop(crtc);
 		}
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
-			priv->data->mmsys_id == MMSYS_MT6991 && crtc_id == 0) {
+			(priv->data->mmsys_id == MMSYS_MT6991 ||
+			priv->data->mmsys_id == MMSYS_MT6899) && crtc_id == 0) {
 			mtk_crtc_stop_bwm_ratio_loop(crtc);
 			mtk_crtc_start_bwm_ratio_loop(crtc);
 		}
@@ -22519,7 +22628,8 @@ void mtk_crtc_start_for_pm(struct drm_crtc *crtc)
 	if (mtk_crtc_with_trigger_loop(crtc))
 		mtk_crtc_start_trig_loop(crtc);
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
-		priv->data->mmsys_id == MMSYS_MT6991 && crtc_id == 0)
+		(priv->data->mmsys_id == MMSYS_MT6991 ||
+		priv->data->mmsys_id == MMSYS_MT6899) && crtc_id == 0)
 		mtk_crtc_start_bwm_ratio_loop(crtc);
 
 	mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
@@ -22614,7 +22724,8 @@ skip:
 	cmdq_pkt_flush(cmdq_handle);
 	cmdq_pkt_destroy(cmdq_handle);
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
-		priv->data->mmsys_id == MMSYS_MT6991 && crtc_id == 0)
+		(priv->data->mmsys_id == MMSYS_MT6991 ||
+		priv->data->mmsys_id == MMSYS_MT6899) && crtc_id == 0)
 		mtk_crtc_stop_bwm_ratio_loop(crtc);
 
 	/* 3. stop trig loop  */
