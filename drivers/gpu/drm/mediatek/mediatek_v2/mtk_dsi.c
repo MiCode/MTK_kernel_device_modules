@@ -5442,11 +5442,14 @@ static int mtk_dsi_wait_cmd_frame_done(struct mtk_dsi *dsi,
 	 * frame updating and wait for the latest frame done.
 	 */
 	if (new_doze_state && !force_lcm_update) {
-		CRTC_MMP_MARK(0, set_dirty, WAIT_CMD_FRAME_DONE, __LINE__);
-		cmdq_pkt_set_event(handle,
-			mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+		//CRTC_MMP_MARK(0, set_dirty, WAIT_CMD_FRAME_DONE, __LINE__);
+		//cmdq_pkt_set_event(handle,
+		//	mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+		//cmdq_pkt_wait_no_clear(handle,
+		//	mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+		cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(16600), CMDQ_GPR_R06);
 		cmdq_pkt_wait_no_clear(handle,
-			mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+			mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
 		cmdq_pkt_clear_event(handle,
 			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
 	}
