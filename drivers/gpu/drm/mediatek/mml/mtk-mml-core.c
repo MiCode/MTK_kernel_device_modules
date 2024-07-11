@@ -1190,15 +1190,15 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 	ktime_get_real_ts64(&curr_time);
 	if (cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		mml_msg_qos(
-			"task dvfs begin %p pipe %u cur %2u.%03llu act_time %u clt id %hhu dur %u fps %u",
-			task, pipe,
+			"task dvfs begin %p job %u pipe %u cur %2u.%03llu act_time %u clt id %hhu dur %u fps %u",
+			task, task->job.jobid, pipe,
 			(u32)curr_time.tv_sec, div_u64(curr_time.tv_nsec, 1000000),
 			cfg->info.act_time,
 			cfg->path[pipe]->clt_id, cfg->duration, cfg->fps);
 	} else {
 		mml_msg_qos(
-			"task dvfs begin %p pipe %u cur %2u.%03llu end %2u.%03llu clt id %hhu dur %u fps %u",
-			task, pipe,
+			"task dvfs begin %p job %u pipe %u cur %2u.%03llu end %2u.%03llu clt id %hhu dur %u fps %u",
+			task, task->job.jobid, pipe,
 			(u32)curr_time.tv_sec, div_u64(curr_time.tv_nsec, 1000000),
 			(u32)task->end_time.tv_sec, div_u64(task->end_time.tv_nsec, 1000000),
 			cfg->path[pipe]->clt_id, cfg->duration, cfg->fps);
@@ -1337,8 +1337,8 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 		mml_trace_tag_start(MML_TTAG_OVERDUE);
 	}
 
-	mml_msg_qos("task dvfs end %p pipe %u cur %2u.%03llu end %2u.%03llu clt id %hhu%s",
-		task, pipe,
+	mml_msg_qos("task dvfs end %p job %i pipe %u cur %2u.%03llu end %2u.%03llu clt id %hhu%s",
+		task, task->job.jobid, pipe,
 		(u32)curr_time.tv_sec, div_u64(curr_time.tv_nsec, 1000000),
 		(u32)task->end_time.tv_sec, div_u64(task->end_time.tv_nsec, 1000000),
 		cfg->path[pipe]->clt_id,
@@ -1384,7 +1384,11 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 
 		/* for racing mode, use throughput from act time directly */
 		if (racing_mode) {
-			throughput = task_pipe_cur->throughput;
+			throughput = 0;
+			list_for_each_entry(task_pipe_tmp, &path_clt->tasks, entry_clt) {
+				/* find the max between tasks on same client */
+				throughput = max(throughput, task_pipe_tmp->throughput);
+			}
 			goto done;
 		}
 
@@ -1425,8 +1429,8 @@ done:
 	if (cfg->dpc)
 		tp->dpc_qos_ref--;
 
-	mml_msg_qos("%s task dvfs end %s %s task %p throughput %u bandwidth %u pixel %u",
-		__func__, racing_mode ? "racing" : "update",
+	mml_msg_qos("task dvfs end %s %s task %p throughput %u bandwidth %u pixel %u",
+		racing_mode ? "racing" : "update",
 		task_pipe_cur ? "new" : "last",
 		task_pipe_cur ? task_pipe_cur->task : task,
 		throughput, bandwidth, max_pixel);
@@ -1654,6 +1658,7 @@ static void core_taskdone(struct work_struct *work)
 
 	mml_trace_begin("%s", __func__);
 	mml_mmp(taskdone, MMPROFILE_FLAG_START, jobid, 0);
+	mml_msg("%s job %u", __func__, jobid);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	mml_dump_output(cfg->mml, path->mmlsys->sysid, task);
@@ -1679,7 +1684,7 @@ static void core_taskdone(struct work_struct *work)
 			CMDQ_TICK_TO_US(hw_time);
 		}
 	}
-	mml_mmp(exec, MMPROFILE_FLAG_END, task->job.jobid, hw_time);
+	mml_mmp(exec, MMPROFILE_FLAG_END, jobid, hw_time);
 
 	if (task->pkts[0])
 		core_taskdone_comp(task, 0);
