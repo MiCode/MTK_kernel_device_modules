@@ -10,7 +10,6 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x0>;
 		clocks =
-			<&topckgen_clk CLK_TOP_DSP_SEL>,
 			<&topckgen_clk CLK_TOP_SPI0_BCLK_SEL>,
 			<&topckgen_clk CLK_TOP_SPI1_BCLK_SEL>,
 			<&topckgen_clk CLK_TOP_SPI2_BCLK_SEL>,
@@ -24,7 +23,6 @@
 			<&topckgen_clk CLK_TOP_MSDC30_1_HCLK_SEL>,
 			<&topckgen_clk CLK_TOP_U_SEL>,
 			<&topckgen_clk CLK_TOP_U_MBIST_SEL>,
-			<&topckgen_clk CLK_TOP_PEXTP_MBIST_SEL>,
 			<&topckgen_clk CLK_TOP_MSDC30_2_HCLK_SEL>,
 			<&topckgen_clk CLK_TOP_DPE_SEL>,
 			<&topckgen_clk CLK_TOP_VDEC_SEL>,
@@ -32,8 +30,7 @@
 			<&topckgen_clk CLK_TOP_DP_CORE_SEL>,
 			<&topckgen_clk CLK_TOP_DP_SEL>,
 			<&topckgen_clk CLK_TOP_MMINFRA_SEL>,
-			<&topckgen_clk CLK_TOP_MMUP_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_SSPM_SEL>;
+			<&topckgen_clk CLK_TOP_MMUP_SEL>;
 	};
 
 	bring-up-smi@6 {
@@ -124,14 +121,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_MSDC2_MSDC2>,
 			<&pericfg_ao_clk CLK_PERAOP_MSDC2_F_MSDC2>,
 			<&pericfg_ao_clk CLK_PERAOP_MSDC2_H_MSDC2>;
-	};
-
-	bring-up-ufs@1d {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x1d>;
-		clocks =
-			<&ufscfg_ao_clk CLK_UFSAO_U_AO_FREE_26M_UFS>,
-			<&ufscfg_pdn_clk CLK_UFSPDN_U_FREE_26M_UFS>;
 	};
 
 	bring-up-mml@1e {

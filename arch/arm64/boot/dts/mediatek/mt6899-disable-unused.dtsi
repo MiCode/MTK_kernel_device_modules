@@ -75,7 +75,7 @@
 			<&cam_vcore_r1a_clk CLK_CAMV_CV_MM0_SC_DCM_DIS_CAMRAW>,
 			<&cam_vcore_r1a_clk CLK_CAMV_CV_MM0_SC_DCM_DIS_CAM_SENINF>,
 			<&cam_vcore_r1a_clk CLK_CAMV_CV_MM0_SC_DCM_DIS_SMI>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_VCORE>;
 	};
 
 	disable-unused-clk-ccu@68 {
@@ -88,7 +88,7 @@
 			<&ccu_main_clk CLK_CCU2INFRA_GALS_CON_CCU>,
 			<&ccu_main_clk CLK_CCUSYS_CCU0_CON_CCU0>,
 			<&ccu_main_clk CLK_CCU2MM0_GALS_CON_CCU>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_VCORE>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_CCU>;
 	};
 
 	disable-unused-clk-camsys-yuvc@69 {
@@ -100,7 +100,7 @@
 			<&camsys_yuvc_clk CLK_CAM_YC_LARBX_GENPD>,
 			<&camsys_yuvc_clk CLK_CAM_YC_CAM_CAMRAWC>,
 			<&camsys_yuvc_clk CLK_CAM_YC_CAMTG_CAMRAWC>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBC>;
 	};
 
 	disable-unused-clk-camsys-rmsc@6a {
@@ -111,7 +111,7 @@
 			<&camsys_rmsc_clk CLK_CAMSYS_RMSC_LARBX_SMI>,
 			<&camsys_rmsc_clk CLK_CAMSYS_RMSC_CAM_CAMRAWC>,
 			<&camsys_rmsc_clk CLK_CAMSYS_RMSC_CAMTG_CAMRAWC>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBC>;
 	};
 
 	disable-unused-clk-camsys-rawc@6b {
@@ -125,7 +125,7 @@
 			<&camsys_rawc_clk CLK_CAM_RC_CAMTG_CAMRAWC>,
 			<&camsys_rawc_clk CLK_CAM_RC_RAW2MM_GALS_CAMRAWC>,
 			<&camsys_rawc_clk CLK_CAM_RC_YUV2RAW2MM_GALS_CAMRAWC>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBC>;
 	};
 
 	disable-unused-clk-camsys-yuvb@6c {
@@ -137,7 +137,7 @@
 			<&camsys_yuvb_clk CLK_CAM_YB_LARBX_GENPD>,
 			<&camsys_yuvb_clk CLK_CAM_YB_CAM_CAMRAWB>,
 			<&camsys_yuvb_clk CLK_CAM_YB_CAMTG_CAMRAWB>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBB>;
 	};
 
 	disable-unused-clk-camsys-rmsb@6d {
@@ -148,7 +148,7 @@
 			<&camsys_rmsb_clk CLK_CAMSYS_RMSB_LARBX_SMI>,
 			<&camsys_rmsb_clk CLK_CAMSYS_RMSB_CAM_CAMRAWB>,
 			<&camsys_rmsb_clk CLK_CAMSYS_RMSB_CAMTG_CAMRAWB>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBB>;
 	};
 
 	disable-unused-clk-camsys-rawb@6e {
@@ -162,7 +162,7 @@
 			<&camsys_rawb_clk CLK_CAM_RB_CAMTG_CAMRAWB>,
 			<&camsys_rawb_clk CLK_CAM_RB_RAW2MM_GALS_CAMRAWB>,
 			<&camsys_rawb_clk CLK_CAM_RB_YUV2RAW2MM_GALS_CAMRAWB>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBB>;
 	};
 
 	disable-unused-clk-camsys-yuva@6f {
@@ -174,7 +174,7 @@
 			<&camsys_yuva_clk CLK_CAM_YA_LARBX_GENPD>,
 			<&camsys_yuva_clk CLK_CAM_YA_CAM_CAMRAWA>,
 			<&camsys_yuva_clk CLK_CAM_YA_CAMTG_CAMRAWA>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBA>;
 	};
 
 	disable-unused-clk-camsys-rmsa@70 {
@@ -185,7 +185,7 @@
 			<&camsys_rmsa_clk CLK_CAMSYS_RMSA_LARBX_SMI>,
 			<&camsys_rmsa_clk CLK_CAMSYS_RMSA_CAM_CAMRAWA>,
 			<&camsys_rmsa_clk CLK_CAMSYS_RMSA_CAMTG_CAMRAWA>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBA>;
 	};
 
 	disable-unused-clk-camsys-rawa@71 {
@@ -199,7 +199,7 @@
 			<&camsys_rawa_clk CLK_CAM_RA_CAMTG_CAMRAWA>,
 			<&camsys_rawa_clk CLK_CAM_RA_RAW2MM_GALS_CAMRAWA>,
 			<&camsys_rawa_clk CLK_CAM_RA_YUV2RAW2MM_GALS_CAMRAWA>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBA>;
 	};
 
 	disable-unused-clk-camsys-ipe@72 {
@@ -212,7 +212,7 @@
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_DPE_CAMERA_P2>,
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_FUS_CAMERA_P2>,
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_GALS_CAMERA_P2>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MRAW>;
 	};
 
 	disable-unused-clk-camsys-mraw@73 {
@@ -229,7 +229,7 @@
 			<&camsys_mraw_clk CLK_CAM_MR_MRAW2_PDAF>,
 			<&camsys_mraw_clk CLK_CAM_MR_PDA0_PDAF>,
 			<&camsys_mraw_clk CLK_CAM_MR_PDA1_PDAF>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MRAW>;
 	};
 
 	disable-unused-clk-cam-main-r1a@74 {
@@ -311,7 +311,7 @@
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_SUB_COMMON_DCM_DIS_CAMRAW>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_SUB_COMMON_DCM_DIS_CAMRAW>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_SUB_COMMON_DCM_DIS_CAMRAW>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_VCORE>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 	};
 
 	disable-unused-clk-vencsys-c1@75 {
@@ -356,7 +356,7 @@
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN_VDEC>,
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_ACTIVE_VDEC>,
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN_ENG_VDEC>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VDE0>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VDE1>;
 	};
 
 	disable-unused-clk-vdecsys-soc@78 {
@@ -371,7 +371,7 @@
 			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_CKEN_VDEC>,
 			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_ACTIVE_VDEC>,
 			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_CKEN_ENG_VDEC>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VDE1>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VDE0>;
 	};
 
 	disable-unused-clk-img-vcore-d1a@79 {
@@ -735,8 +735,7 @@
 			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_UFS_UFS>,
 			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_AES_UFS>,
 			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_U_AHB_UFS>,
-			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_U_AXI_UFS>,
-			<&ufscfg_pdn_clk CLK_UFSPDN_U_FREE_26M_UFS>;
+			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_U_AXI_UFS>;
 	};
 
 	disable-unused-clk-ufscfg-ao@8d {
@@ -745,8 +744,7 @@
 		clocks =
 			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SYS_UFS>,
 			<&ufscfg_ao_clk CLK_UFSAO_U_PHY_SAP_UFS>,
-			<&ufscfg_ao_clk CLK_UFSAO_U_PHY_TOP_AHB_S_BUSCK_UFS>,
-			<&ufscfg_ao_clk CLK_UFSAO_U_AO_FREE_26M_UFS>;
+			<&ufscfg_ao_clk CLK_UFSAO_U_PHY_TOP_AHB_S_BUSCK_UFS>;
 	};
 
 	disable-unused-clk-imp-iic-wrap-c@8e {
@@ -881,7 +879,6 @@
 		clocks =
 			<&vlp_cksys_clk CLK_VLP_CK_SCP_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_PWM_VLP_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_SSPM_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_IPS_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG1_SEL>,
@@ -912,7 +909,6 @@
 			<&topckgen_clk CLK_TOP_APLL12_CK_DIV_FMI2S>,
 			<&topckgen_clk CLK_TOP_APLL12_CK_DIV_TDMOUT_M>,
 			<&topckgen_clk CLK_TOP_APLL12_CK_DIV_TDMOUT_B>,
-			<&topckgen_clk CLK_TOP_DSP_SEL>,
 			<&topckgen_clk CLK_TOP_UART_SEL>,
 			<&topckgen_clk CLK_TOP_SPI0_BCLK_SEL>,
 			<&topckgen_clk CLK_TOP_SPI1_BCLK_SEL>,
@@ -933,7 +929,6 @@
 			<&topckgen_clk CLK_TOP_AUD_ENGEN2_SEL>,
 			<&topckgen_clk CLK_TOP_U_SEL>,
 			<&topckgen_clk CLK_TOP_U_MBIST_SEL>,
-			<&topckgen_clk CLK_TOP_PEXTP_MBIST_SEL>,
 			<&topckgen_clk CLK_TOP_AUD_1_SEL>,
 			<&topckgen_clk CLK_TOP_AUD_2_SEL>,
 			<&topckgen_clk CLK_TOP_AUDIO_H_SEL>,
