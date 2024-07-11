@@ -641,12 +641,6 @@ static int mt6899_irq_affin_unset(struct mtk_apu *apu)
 	return 0;
 }
 
-static int mt6899_check_apu_exp_irq(struct mtk_apu *apu, char *ce_module)
-{
-	return 1;
-}
-
-
 static int mt6899_apu_memmap_init(struct mtk_apu *apu)
 {
 	struct platform_device *pdev = apu->pdev;
@@ -789,7 +783,8 @@ static void mt6899_rv_cachedump(struct mtk_apu *apu)
 
 const struct mtk_apu_platdata mt6899_platdata = {
 	.flags		= F_PRELOAD_FIRMWARE | F_AUTO_BOOT | F_DEBUG_LOG_ON |
-				F_APUSYS_RV_TAG_SUPPORT | F_SECURE_BOOT | F_SECURE_COREDUMP,
+				F_APUSYS_RV_TAG_SUPPORT | F_SECURE_BOOT | F_SECURE_COREDUMP |
+				F_CE_EXCEPTION_ON,
 	.ops		= {
 		.init	= mt6899_rproc_init,
 		.exit	= mt6899_rproc_exit,
@@ -807,6 +802,5 @@ const struct mtk_apu_platdata mt6899_platdata = {
 		.irq_affin_init = mt6899_irq_affin_init,
 		.irq_affin_set = mt6899_irq_affin_set,
 		.irq_affin_unset = mt6899_irq_affin_unset,
-		.check_apu_exp_irq = mt6899_check_apu_exp_irq,
 	},
 };

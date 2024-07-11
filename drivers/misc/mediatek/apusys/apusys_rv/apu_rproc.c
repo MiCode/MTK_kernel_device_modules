@@ -482,6 +482,12 @@ static int apu_probe(struct platform_device *pdev)
 	if (ret)
 		goto remove_apu_timesync;
 
+	if (data->flags & F_CE_EXCEPTION_ON) {
+		ret = apu_ce_excep_init(pdev, apu);
+		if (ret < 0)
+			goto remove_apu_ce_excep;
+	}
+
 	ret = apu_procfs_init(pdev);
 	if (ret)
 		goto remove_apu_procfs;
@@ -493,12 +499,6 @@ static int apu_probe(struct platform_device *pdev)
 	ret = aov_recovery_ipi_init(pdev, apu);
 	if (ret < 0)
 		goto remove_apu_aov_recovery;
-
-	if (data->flags & F_CE_EXCEPTION_ON) {
-		ret = apu_ce_excep_init(pdev, apu);
-		if (ret < 0)
-			goto remove_apu_ce_excep;
-	}
 
 	if (data->flags & F_PRELOAD_FIRMWARE)
 		rproc->state = RPROC_DETACHED;

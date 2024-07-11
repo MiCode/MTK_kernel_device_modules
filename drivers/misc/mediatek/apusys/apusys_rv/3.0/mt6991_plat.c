@@ -28,7 +28,6 @@
 #include "../apu_hw.h"
 #include "../apu_excep.h"
 #include "../apu_ipi.h"
-#include "../apu_ce_excep.h"
 
 
 #include "apummu_tbl.h"
@@ -826,9 +825,6 @@ static int mt6991_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 					if (id == APU_IPI_SCP_NP_RECOVER && rpc_state == 1)
 						is_under_lp_scp_recovery_flow = true;
 
-					if (apu->ce_dbg_polling_dump_mode)
-						apu_ce_start_timer_dump_reg();
-
 					if (apu->pwr_on_polling_dbg_mode)
 						queue_delayed_work(apu_workq,
 							&apu_polling_on_work,
@@ -853,8 +849,6 @@ static int mt6991_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 			apu->local_pwr_ref_cnt--;
 			mt6991_apu_pwr_wake_unlock(apu, id);
 			apu->sub_latency[0] = profile_end(&ts, &te);
-			if (apu->ce_dbg_polling_dump_mode)
-				apu_ce_stop_timer_dump_reg();
 
 			if (apu->local_pwr_ref_cnt == 0) {
 				profile_start(&ts);
@@ -1046,12 +1040,6 @@ static int mt6991_irq_affin_clear(struct mtk_apu *apu)
 
 	return 0;
 }
-
-static int mt6991_check_apu_exp_irq(struct mtk_apu *apu, char *ce_module)
-{
-	return 1;
-}
-
 
 static int mt6991_apu_memmap_init(struct mtk_apu *apu)
 {
@@ -1312,6 +1300,5 @@ const struct mtk_apu_platdata mt6991_platdata = {
 		.irq_affin_set = mt6991_irq_affin_set,
 		.irq_affin_unset = mt6991_irq_affin_unset,
 		.irq_affin_clear = mt6991_irq_affin_clear,
-		.check_apu_exp_irq = mt6991_check_apu_exp_irq,
 	},
 };

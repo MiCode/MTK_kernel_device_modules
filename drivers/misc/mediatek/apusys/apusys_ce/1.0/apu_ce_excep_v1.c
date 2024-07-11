@@ -3,22 +3,24 @@
  * Copyright (c) 2020 MediaTek Inc.
  */
 
-#include <linux/of_irq.h>
-#include <linux/interrupt.h>
-#include <linux/workqueue.h>
-#include <linux/iommu.h>
-#include <linux/delay.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/timer.h>
+#include <linux/interrupt.h>
+#include <linux/platform_device.h>
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
 
 #include <mt-plat/aee.h>
 
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+#include <mt-plat/mrdump.h>
+#endif
+
 #include "apu.h"
 #include "apu_ce_excep.h"
+#include "apu_ce_excep_v1.h"
 #include "apu_config.h"
 #include "apusys_secure.h"
-#include "hw_logger.h"
 #include "apu_regdump.h"
 
 enum CE_JOB_ID {
@@ -110,16 +112,14 @@ struct apu_coredump_work_struct {
 
 static int burst_intr_cnt;
 static int exception_job_id = -1;
-static struct delayed_work timeout_work;
-static struct workqueue_struct *apu_workq;
-static struct mtk_apu *ce_apu;
+static struct apu_ce_ops *g_apu_ce_ops;
+static struct platform_device *g_apu_pdev;
 
 static struct apu_coredump_work_struct apu_ce_coredump_work;
 #define APU_CE_DUMP_TIMEOUT_MS (1)
 #define CHECK_BIT(var, pos) ((var) & (1<<(pos)))
 #define CE_EXP_INTR_THRESHOLD 5
-
-static void apu_ce_timer_dump_reg(struct work_struct *work);
+#define PROC_WRITE_TEMP_BUFF_SIZE (16)
 
 static uint32_t apusys_rv_smc_call(struct device *dev, uint32_t smc_id,
 	uint32_t param0, uint32_t param1, uint32_t *ret0, uint32_t *ret1, uint32_t *ret2)
@@ -155,14 +155,13 @@ static const char *get_ce_job_name_by_id(uint32_t job_id)
 		return "APUSYS_CE_UNDEFINED";
 }
 
-uint32_t apu_ce_reg_dump(struct device *dev)
+uint32_t apu_ce_reg_dump_v1(struct device *dev)
 {
 	return apusys_rv_smc_call(dev,
-		MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP,
-		(unsigned int)exception_job_id, 0, NULL, NULL, NULL);
+		MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP, 0, 0, NULL, NULL, NULL);
 }
 
-uint32_t apu_ce_sram_dump(struct device *dev)
+uint32_t apu_ce_sram_dump_v1(struct device *dev)
 {
 	return apusys_rv_smc_call(dev,
 		MTK_APUSYS_KERNEL_OP_APUSYS_CE_SRAM_DUMP, 0, 0, NULL, NULL, NULL);
@@ -376,18 +375,12 @@ static irqreturn_t apu_ce_isr(int irq, void *private_data)
 {
 	struct mtk_apu *apu = (struct mtk_apu *) private_data;
 	struct device *dev = apu->dev;
-	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
 	bool by_pass = false;
 	int ret;
 
 	dev_info(dev, "%s ,are_abnormal_irq bottom\n", __func__);
 
-	if (!hw_ops->check_apu_exp_irq) {
-		dev_info(dev, "%s ,not support handle apu exception\n", __func__);
-		return IRQ_HANDLED;
-	}
-
-	if (hw_ops->check_apu_exp_irq(apu, "are_abnormal_irq")) {
+	if (g_apu_ce_ops->check_apu_exp_irq(apu)) {
 
 		/* find exception job id */
 		ret = get_exception_job_id(dev, &exception_job_id, &by_pass);
@@ -419,9 +412,8 @@ static irqreturn_t apu_ce_isr(int irq, void *private_data)
 		log_ce_register(dev);
 
 		/* dump ce register to apusys_ce_fw_sram buffer */
-		if (apusys_rv_smc_call(
-				dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP,
-				(unsigned int)exception_job_id, 0, NULL, NULL, NULL) == 0) {
+		if (apusys_rv_smc_call(dev,
+			MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP, 0, 0, NULL, NULL, NULL) == 0) {
 			dev_info(dev, "Dump CE register to apusys_ce_fw_sram\n");
 		}
 
@@ -434,39 +426,6 @@ static irqreturn_t apu_ce_isr(int irq, void *private_data)
 		schedule_work(&(apu_ce_coredump_work.work));
 	}
 	return IRQ_HANDLED;
-}
-
-void apu_ce_start_timer_dump_reg(void)
-{
-	/* init delay worker for power off detection */
-	queue_delayed_work(apu_workq,
-							&timeout_work,
-							msecs_to_jiffies(APU_CE_DUMP_TIMEOUT_MS));
-}
-
-void apu_ce_stop_timer_dump_reg(void)
-{
-	cancel_delayed_work_sync(&timeout_work);
-}
-
-void apu_ce_timer_dump_reg_init(void)
-{
-	/* init delay worker for power off detection */
-	INIT_DELAYED_WORK(&timeout_work, apu_ce_timer_dump_reg);
-	apu_workq = alloc_ordered_workqueue("apusys_ce_timer", WQ_MEM_RECLAIM);
-}
-
-void apu_ce_timer_dump_reg(struct work_struct *work)
-{
-	if (ce_apu != NULL) {
-		struct device *dev = ce_apu->dev;
-
-		dev_info(dev, "%s +\n", __func__);
-
-		apusys_rv_smc_call(dev,
-			MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP,
-			(unsigned int)exception_job_id, 0, NULL, NULL, NULL);
-	}
 }
 
 static int apu_ce_irq_register(struct platform_device *pdev,
@@ -491,11 +450,213 @@ static int apu_ce_irq_register(struct platform_device *pdev,
 	return ret;
 }
 
-int apu_ce_excep_init(struct platform_device *pdev, struct mtk_apu *apu)
+void apu_ce_mrdump_register_v1(struct mtk_apu *apu)
 {
+	struct device *dev = apu->dev;
+	int ret = 0;
+	unsigned long base_va = 0;
+	unsigned long base_pa = 0;
+	unsigned long size = 0;
+
+	//CE FW + CE sram start addr & total size
+	base_pa = apu->apusys_aee_coredump_mem_start +
+			apu->apusys_aee_coredump_info->ce_bin_ofs;
+	base_va = (unsigned long) apu->apu_aee_coredump_mem_base +
+			apu->apusys_aee_coredump_info->ce_bin_ofs;
+
+	size = apu->apusys_aee_coredump_info->ce_bin_sz +
+		apu->apusys_aee_coredump_info->are_sram_sz;
+	dev_info(dev, "%s: ce_bin_sz = 0x%x, are_sram_sz = 0x%x\n", __func__,
+		apu->apusys_aee_coredump_info->ce_bin_sz,
+		apu->apusys_aee_coredump_info->are_sram_sz);
+
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+	ret = mrdump_mini_add_extra_file(base_va, base_pa, size,
+		"APUSYS_CE_FW_SRAM");
+#endif
+	if (ret)
+		dev_info(dev, "%s: APUSYS_CE_FW_SRAM add fail(%d)\n",
+			__func__, ret);
+}
+
+static ssize_t dump_ce_fw_sram_write(struct file *file,
+		const char __user *buffer, size_t count, loff_t *pos)
+{
+	char tmp[PROC_WRITE_TEMP_BUFF_SIZE] = {0};
+	int ret;
+	unsigned int input = 0;
+
+	if (count >= PROC_WRITE_TEMP_BUFF_SIZE - 1)
+		return -ENOMEM;
+
+	ret = copy_from_user(tmp, buffer, count);
+	if (ret) {
+		dev_info(&g_apu_pdev->dev, "%s: copy_from_user failed (%d)\n", __func__, ret);
+		goto out;
+	}
+
+	tmp[count] = '\0';
+	ret = kstrtouint(tmp, PROC_WRITE_TEMP_BUFF_SIZE, &input);
+	if (ret) {
+		dev_info(&g_apu_pdev->dev, "%s: kstrtouint failed (%d)\n", __func__, ret);
+		goto out;
+	}
+
+	dev_info(&g_apu_pdev->dev, "%s: dump ops (0x%x)\n", __func__, input);
+
+	if (input & (0x1)) {
+		if (apu_ce_reg_dump(&g_apu_pdev->dev) == 0)
+			dev_info(&g_apu_pdev->dev, "%s: dump ce register success\n", __func__);
+		else
+			dev_info(&g_apu_pdev->dev, "%s: dump ce register smc call fail\n", __func__);
+	}
+	if (input & (0x2)) {
+		if (apu_ce_sram_dump(&g_apu_pdev->dev) == 0)
+			dev_info(&g_apu_pdev->dev, "%s: dump are sram success\n", __func__);
+		else
+			dev_info(&g_apu_pdev->dev, "%s: dump are sram call fail\n", __func__);
+	}
+out:
+	return count;
+}
+
+static int ce_fw_sram_show(struct seq_file *s, void *v)
+{
+	uint32_t *ce_reg_addr = NULL;
+	uint32_t *ce_sram_addr = NULL;
+	uint32_t start, end, size, offset = 0;
+	struct mtk_apu *apu = (struct mtk_apu *)platform_get_drvdata(g_apu_pdev);
+
+	ce_reg_addr = (uint32_t *)((unsigned long)apu->apu_aee_coredump_mem_base +
+		(unsigned long)apu->apusys_aee_coredump_info->ce_bin_ofs);
+
+	while (ce_reg_addr[offset++] == CE_REG_DUMP_MAGIC_NUM) {
+		start = ce_reg_addr[offset++];
+		end = ce_reg_addr[offset++];
+		size = end - start;
+
+		seq_printf(s, "---- dump ce register from 0x%08x to 0x%08x ----\n",
+			start, end - 4);
+
+		seq_hex_dump(s, "", DUMP_PREFIX_OFFSET, 16, 4, ce_reg_addr + offset, size, false);
+		offset += size / 4;
+	}
+
+	seq_printf(s, "---- dump ce sram start from 0x%08x ----\n", APU_ARE_SRAMBASE);
+	ce_sram_addr = (uint32_t *)((unsigned long)apu->apu_aee_coredump_mem_base +
+		(unsigned long)apu->apusys_aee_coredump_info->are_sram_ofs);
+	size = apu->apusys_aee_coredump_info->are_sram_sz;
+
+	seq_hex_dump(s, "", DUMP_PREFIX_OFFSET, 16, 4, ce_sram_addr, size, false);
+
+	return 0;
+}
+
+static int ce_fw_sram_sqopen(struct inode *inode, struct file *file)
+{
+	return single_open(file, ce_fw_sram_show, NULL);
+}
+
+static const struct proc_ops ce_fw_sram_file_ops = {
+	.proc_open		= ce_fw_sram_sqopen,
+	.proc_write     = dump_ce_fw_sram_write,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release
+};
+
+void apu_ce_procfs_init_v1(struct platform_device *pdev,
+	struct proc_dir_entry *procfs_root)
+{
+	int ret;
+	struct proc_dir_entry *ce_fw_sram_seqlog;
+
+	ce_fw_sram_seqlog = proc_create("apusys_ce_fw_sram", 0440,
+		procfs_root, &ce_fw_sram_file_ops);
+
+	ret = IS_ERR_OR_NULL(ce_fw_sram_seqlog);
+	if (ret)
+		dev_info(&pdev->dev,
+			"(%d)failed to create apusys_rv node(apusys_ce_fw_sram)\n", ret);
+
+}
+
+void apu_ce_procfs_remove_v1(struct platform_device *pdev,
+	struct proc_dir_entry *procfs_root)
+{
+	remove_proc_entry("apusys_ce_fw_sram", procfs_root);
+}
+
+
+static int gernel_check_apu_exp_irq(struct mtk_apu *apu)
+{
+	return 1;
+}
+
+static int mt6897_check_apu_exp_irq(struct mtk_apu *apu)
+{
+	struct device *dev = apu->dev;
 	int ret = 0;
 
+	ret = apusys_rv_smc_call(dev,
+			MTK_APUSYS_KERNEL_OP_APUSYS_RV_OP_DECODE_APU_EXP_IRQ,
+			0, 0, NULL, NULL, NULL);
+
+	dev_info(dev, "%s: apu_exp_id: %x\n", __func__, ret);
+
+	if (CHECK_BIT(ret, MT6878_ARE_ABNORMAL_IRQ_BIT) != 0)
+		return 1;
+	else
+		return 0;
+}
+
+
+const struct apu_ce_ops gernel_apu_ce_ops = {
+	.check_apu_exp_irq = gernel_check_apu_exp_irq,
+};
+
+const struct apu_ce_ops mt6897_apu_ce_ops = {
+	.check_apu_exp_irq = mt6897_check_apu_exp_irq,
+};
+
+static const struct of_device_id apu_ce_of_match[] = {
+	{ .compatible = "mediatek,mt6878-apusys_rv", .data = &gernel_apu_ce_ops},
+	{ .compatible = "mediatek,mt6897-apusys_rv", .data = &mt6897_apu_ce_ops},
+	{ .compatible = "mediatek,mt6899-apusys_rv", .data = &gernel_apu_ce_ops},
+	{ .compatible = "mediatek,mt6989-apusys_rv", .data = &gernel_apu_ce_ops},
+	{ .compatible = "mediatek,mt6991-apusys_rv", .data = &gernel_apu_ce_ops},
+	{},
+};
+
+int apu_ce_excep_is_compatible_v1(struct platform_device *pdev)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(apu_ce_of_match); i++)
+		if (of_device_is_compatible(
+				pdev->dev.of_node, apu_ce_of_match[i].compatible))
+			return 1;
+
+	return 0;
+}
+
+int apu_ce_excep_init_v1(struct platform_device *pdev, struct mtk_apu *apu)
+{
+	int i, ret = 0;
 	struct device *dev = apu->dev;
+
+	g_apu_pdev = pdev;
+	dev_info(dev, "%s +\n", __func__);
+
+	for (i = 0; i < ARRAY_SIZE(apu_ce_of_match); i++)
+		if (of_device_is_compatible(
+				pdev->dev.of_node, apu_ce_of_match[i].compatible)) {
+			g_apu_ce_ops = (struct apu_ce_ops *)apu_ce_of_match[i].data;
+			break;
+		}
+
+	if (g_apu_ce_ops == NULL)
+		return -ENODEV;
 
 	apusys_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_MASK_INIT,
 		0, 0, NULL, NULL, NULL);
@@ -505,25 +666,24 @@ int apu_ce_excep_init(struct platform_device *pdev, struct mtk_apu *apu)
 	ret = apu_ce_irq_register(pdev, apu);
 	if (ret < 0)
 		return ret;
-	ce_apu = apu;
-	apu_ce_timer_dump_reg_init();
 
 	return ret;
 }
 
-void apu_ce_excep_remove(struct platform_device *pdev, struct mtk_apu *apu)
+void apu_ce_excep_remove_v1(struct platform_device *pdev, struct mtk_apu *apu)
 {
 	struct device *dev = apu->dev;
-	ce_apu = NULL;
+
 	disable_irq(apu->ce_exp_irq_number);
 	dev_info(dev, "%s: disable ce_exp_irq (%d)\n", __func__,
 		apu->ce_exp_irq_number);
 
 	cancel_work_sync(&(apu_ce_coredump_work.work));
+	g_apu_ce_ops = NULL;
+	g_apu_pdev = NULL;
 }
 
-int is_apu_ce_excep_init(void)
+int is_apu_ce_excep_init_v1(void)
 {
-	return ce_apu != NULL;
+	return g_apu_pdev != NULL;
 }
-

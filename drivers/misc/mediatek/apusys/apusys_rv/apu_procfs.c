@@ -84,79 +84,6 @@ static int regdump_seq_show(struct seq_file *s, void *v)
 	return 0;
 }
 
-static ssize_t dump_ce_fw_sram_write(struct file *file,
-		const char __user *buffer, size_t count, loff_t *pos)
-{
-	char tmp[PROC_WRITE_TEMP_BUFF_SIZE] = {0};
-	int ret;
-	unsigned int input = 0;
-
-	if (count >= PROC_WRITE_TEMP_BUFF_SIZE - 1)
-		return -ENOMEM;
-
-	ret = copy_from_user(tmp, buffer, count);
-	if (ret) {
-		dev_info(&g_apu_pdev->dev, "%s: copy_from_user failed (%d)\n", __func__, ret);
-		goto out;
-	}
-
-	tmp[count] = '\0';
-	ret = kstrtouint(tmp, PROC_WRITE_TEMP_BUFF_SIZE, &input);
-	if (ret) {
-		dev_info(&g_apu_pdev->dev, "%s: kstrtouint failed (%d)\n", __func__, ret);
-		goto out;
-	}
-
-	dev_info(&g_apu_pdev->dev, "%s: dump ops (0x%x)\n", __func__, input);
-
-	if (input & (0x1)) {
-		if (apu_ce_reg_dump(&g_apu_pdev->dev) == 0)
-			dev_info(&g_apu_pdev->dev, "%s: dump ce register success\n", __func__);
-		else
-			dev_info(&g_apu_pdev->dev, "%s: dump ce register smc call fail\n", __func__);
-	}
-	if (input & (0x2)) {
-		if (apu_ce_sram_dump(&g_apu_pdev->dev) == 0)
-			dev_info(&g_apu_pdev->dev, "%s: dump are sram success\n", __func__);
-		else
-			dev_info(&g_apu_pdev->dev, "%s: dump are sram call fail\n", __func__);
-	}
-out:
-	return count;
-}
-
-static int ce_fw_sram_show(struct seq_file *s, void *v)
-{
-	uint32_t *ce_reg_addr = NULL;
-	uint32_t *ce_sram_addr = NULL;
-	uint32_t start, end, size, offset = 0;
-	struct mtk_apu *apu = (struct mtk_apu *)platform_get_drvdata(g_apu_pdev);
-
-	ce_reg_addr = (uint32_t *)((unsigned long)apu->apu_aee_coredump_mem_base +
-		(unsigned long)apu->apusys_aee_coredump_info->ce_bin_ofs);
-
-	while (ce_reg_addr[offset++] == CE_REG_DUMP_MAGIC_NUM) {
-		start = ce_reg_addr[offset++];
-		end = ce_reg_addr[offset++];
-		size = end - start;
-
-		seq_printf(s, "---- dump ce register from 0x%08x to 0x%08x ----\n",
-			start, end - 4);
-
-		seq_hex_dump(s, "", DUMP_PREFIX_OFFSET, 16, 4, ce_reg_addr + offset, size, false);
-		offset += size / 4;
-	}
-
-	seq_printf(s, "---- dump ce sram start from 0x%08x ----\n", APU_ARE_SRAMBASE);
-	ce_sram_addr = (uint32_t *)((unsigned long)apu->apu_aee_coredump_mem_base +
-		(unsigned long)apu->apusys_aee_coredump_info->are_sram_ofs);
-	size = apu->apusys_aee_coredump_info->are_sram_sz;
-
-	seq_hex_dump(s, "", DUMP_PREFIX_OFFSET, 16, 4, ce_sram_addr, size, false);
-
-	return 0;
-}
-
 static int coredump_sqopen(struct inode *inode, struct file *file)
 {
 	return single_open(file, coredump_seq_show, NULL);
@@ -175,11 +102,6 @@ static int regdump_sqopen(struct inode *inode, struct file *file)
 		apu_regdump();
 
 	return single_open(file, regdump_seq_show, NULL);
-}
-
-static int ce_fw_sram_sqopen(struct inode *inode, struct file *file)
-{
-	return single_open(file, ce_fw_sram_show, NULL);
 }
 
 static ssize_t debug_ctrl_write(struct file *file,
@@ -268,14 +190,6 @@ static const struct proc_ops xfile_file_ops = {
 
 static const struct proc_ops regdump_file_ops = {
 	.proc_open		= regdump_sqopen,
-	.proc_read		= seq_read,
-	.proc_lseek		= seq_lseek,
-	.proc_release	= single_release
-};
-
-static const struct proc_ops ce_fw_sram_file_ops = {
-	.proc_open		= ce_fw_sram_sqopen,
-	.proc_write     = dump_ce_fw_sram_write,
 	.proc_read		= seq_read,
 	.proc_lseek		= seq_lseek,
 	.proc_release	= single_release
@@ -376,28 +290,6 @@ static void apu_mrdump_register(struct mtk_apu *apu)
 				__func__, ret);
 	}
 
-	if (apu->platdata->flags & F_CE_EXCEPTION_ON) {
-
-		//CE FW + CE sram start addr & total size
-		base_pa = apu->apusys_aee_coredump_mem_start +
-				apu->apusys_aee_coredump_info->ce_bin_ofs;
-		base_va = (unsigned long) apu->apu_aee_coredump_mem_base +
-				apu->apusys_aee_coredump_info->ce_bin_ofs;
-
-		size = apu->apusys_aee_coredump_info->ce_bin_sz +
-			apu->apusys_aee_coredump_info->are_sram_sz;
-		dev_info(dev, "%s: ce_bin_sz = 0x%x, are_sram_sz = 0x%x\n", __func__,
-			apu->apusys_aee_coredump_info->ce_bin_sz,
-			apu->apusys_aee_coredump_info->are_sram_sz);
-	}
-
-#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
-	ret = mrdump_mini_add_extra_file(base_va, base_pa, size, "APUSYS_CE_FW_SRAM");
-#endif
-	if (ret)
-		dev_info(dev, "%s: APUSYS_CE_FW_SRAM add fail(%d)\n",
-			__func__, ret);
-
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 	ret = mrdump_mini_add_extra_file((unsigned long)apu, __pa_nodebug(apu),
 		sizeof(struct mtk_apu), "APUSYS_RV_INFO");
@@ -405,6 +297,8 @@ static void apu_mrdump_register(struct mtk_apu *apu)
 		dev_info(dev, "%s: APUSYS_RV_DEBUG_INFO_DUMP add fail(%d)\n",
 			__func__, ret);
 #endif
+
+	apu_ce_mrdump_register(apu);
 }
 #else
 static void apu_mrdump_register(struct mtk_apu *apu)
@@ -418,7 +312,6 @@ int apu_procfs_init(struct platform_device *pdev)
 	struct proc_dir_entry *coredump_seqlog;
 	struct proc_dir_entry *xfile_seqlog;
 	struct proc_dir_entry *regdump_seqlog;
-	struct proc_dir_entry *ce_fw_sram_seqlog;
 	struct proc_dir_entry *debug_ctrl_seqlog;
 	struct proc_dir_entry *debug_info_dump_seqlog;
 
@@ -460,18 +353,6 @@ int apu_procfs_init(struct platform_device *pdev)
 		goto out;
 	}
 
-	if (apu->platdata->flags & F_CE_EXCEPTION_ON) {
-
-		ce_fw_sram_seqlog = proc_create("apusys_ce_fw_sram", 0440,
-			procfs_root, &ce_fw_sram_file_ops);
-		ret = IS_ERR_OR_NULL(ce_fw_sram_seqlog);
-		if (ret) {
-			dev_info(&pdev->dev, "(%d)failed to create apusys_rv node(apusys_ce_fw_sram)\n",
-				ret);
-			goto out;
-		}
-	}
-
 	debug_ctrl_seqlog = proc_create("apusys_debug_ctrl", 0440,
 		procfs_root, &debug_ctrl_file_ops);
 	ret = IS_ERR_OR_NULL(debug_ctrl_seqlog);
@@ -492,6 +373,8 @@ int apu_procfs_init(struct platform_device *pdev)
 		goto out;
 	}
 
+	apu_ce_procfs_init(pdev, procfs_root);
+
 	apu_mrdump_register(apu);
 out:
 	return ret;
@@ -499,7 +382,7 @@ out:
 
 void apu_procfs_remove(struct platform_device *pdev)
 {
-	remove_proc_entry("apusys_ce_fw_sram", procfs_root);
+	apu_ce_procfs_remove(pdev, procfs_root);
 	remove_proc_entry("apusys_debug_ctrl", procfs_root);
 	remove_proc_entry("apusys_rv_debug_info_dump", procfs_root);
 	remove_proc_entry("apusys_regdump", procfs_root);
