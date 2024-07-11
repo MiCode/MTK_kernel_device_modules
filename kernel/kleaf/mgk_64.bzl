@@ -2295,9 +2295,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/power/supply/ufcs/ufcs_class.ko")
         mgk_64_device_modules.remove("drivers/power/supply/ufcs/ufcs_mt6379.ko")
 
-        mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6899/mt6899-mt6368.ko")
-        mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6899/snd-soc-mt6899-afe.ko")
-
     if "mt6893_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpu:gpu_mt6893")
