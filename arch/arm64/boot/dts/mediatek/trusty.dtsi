@@ -27,7 +27,7 @@
 			irq-supply = <&trusty_irq>;
 		};
 
-		mtee {
+		mtee:mtee {
 			compatible = "mediatek,trusty-mtee-v1";
 			tz-supply = <&tz_system>;
 		};
