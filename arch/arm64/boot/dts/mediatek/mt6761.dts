@@ -4192,7 +4192,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		required-opps = <&dvfsrc_freq_opp0>;
 
 		gcc-enable = <0>;
-		fbt-cpu-mask = <15 15 15 15>;
+		fbt-cpu-mask = <15 15 15 15 15 15>;
 		sbe-resceue-enable = <1>;
 		boost-dram = <2>;
 	};
