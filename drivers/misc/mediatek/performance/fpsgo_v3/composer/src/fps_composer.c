@@ -1755,6 +1755,8 @@ static void fpsgo_user_boost(int render_tid, unsigned long long buffer_id,
 		goto out;
 
 	fpsgo_thread_lock(&iter->thr_mlock);
+	if (!iter->p_blc)
+		fpsgo_base2fbt_node_init(iter);
 	iter->enqueue_length = 0;
 	iter->enqueue_length_real = 0;
 	iter->dequeue_length = 0;
@@ -1853,6 +1855,7 @@ void fpsgo_ctrl2comp_user_close(int tgid, int render_tid, unsigned long long buf
 
 	fpsgo_render_tree_lock(__func__);
 	fpsgo_delete_render_info(render_tid, buffer_id, buffer_id);
+	delete_attr_by_tid(render_tid);
 	fpsgo_render_tree_unlock(__func__);
 
 	fpsgo_systrace_c_fbt(render_tid, buffer_id, 1, "user_close");
@@ -1866,6 +1869,7 @@ int fpsgo_ctrl2comp_user_create(int tgid, int render_tid, unsigned long long buf
 	int ret = 0;
 	unsigned long local_master_type = 0;
 	struct render_info *iter = NULL;
+	struct fpsgo_attr_by_pid *attr_iter = NULL;
 
 	if (!dep_arr)
 		return -EFAULT;
@@ -1894,10 +1898,17 @@ int fpsgo_ctrl2comp_user_create(int tgid, int render_tid, unsigned long long buf
 		iter->frame_type = NON_VSYNC_ALIGNED_TYPE;
 		set_bit(USER_TYPE, &local_master_type);
 		iter->master_type = local_master_type;
-		if (!iter->p_blc)
-			fpsgo_base2fbt_node_init(iter);
 		fpsgo_thread_unlock(&iter->thr_mlock);
 	} else {
+		fpsgo_other2xgf_set_critical_tasks(tgid, render_tid, buffer_id, NULL, 0, -1);
+		fpsgo_other2fstb_set_target_time(tgid, render_tid, buffer_id, 0, -1);
+	}
+
+	attr_iter = fpsgo_find_attr_by_tid(render_tid, 1);
+	if (attr_iter) {
+		attr_iter->attr.rescue_enable_by_pid = 1;
+	} else {
+		fpsgo_delete_render_info(render_tid, buffer_id, buffer_id);
 		fpsgo_other2xgf_set_critical_tasks(tgid, render_tid, buffer_id, NULL, 0, -1);
 		fpsgo_other2fstb_set_target_time(tgid, render_tid, buffer_id, 0, -1);
 	}
