@@ -85,14 +85,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_MSDC2_H_MSDC2>;
 	};
 
-	bring-up-mml@1e {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x1e>;
-		clocks =
-			<&mdpsys_config_clk CLK_MDP_F26M_SLOW_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_F26M_SLOW_MML>;
-	};
-
 	bring-up-pd-vde0@2a {
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x2a>;
