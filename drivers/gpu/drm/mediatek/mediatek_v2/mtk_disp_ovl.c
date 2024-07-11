@@ -948,13 +948,13 @@ static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
 				plane_state->comp_state.ext_lye_id);
 		return;
 	}
-	DDPINFO("%s ovl:%d,lye:%d,ext:%d,fmt:0x%x, addr:0x%llx,comp:%d\n", __func__,
+	DDPINFO("%s ovl:%d,lye:%d,ext:%d,fmt:0x%x, addr:0x%llx,comp:0x%llx\n", __func__,
 			plane_state->comp_state.comp_id,
 			plane_state->comp_state.lye_id,
 			plane_state->comp_state.ext_lye_id,
 			plane_state->base.fb->format->format,
 			mtk_fb_get_dma(plane_state->base.fb),
-			 plane_state->prop_val[PLANE_PROP_COMPRESS]);
+			plane_state->prop_val[PLANE_PROP_COMPRESS]);
 
 	fmt = plane_state->base.fb->format->format;
 
