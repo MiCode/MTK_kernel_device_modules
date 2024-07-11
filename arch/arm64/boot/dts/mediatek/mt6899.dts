@@ -7522,14 +7522,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				 //<&mmdvfs_mux MMDVFS_USER_DISP>;
 			clock-num = <35>;
 			condition-num = <2>;
-			//operating-points-v2 = <&opp_table_disp>;
-			//vdisp-dvfs-opp = /bits/ 8 <3>;
-			//interconnects = <&mmqos SLAVE_LARB(51) &mmqos SLAVE_COMMON(0)>,
-			//		<&mmqos SLAVE_LARB(52) &mmqos SLAVE_COMMON(1)>,
-			//		<&mmqos SLAVE_LARB(53) &mmqos SLAVE_COMMON(1)>;
-			//interconnect-names = "disp_hrt_qos",
-			//		"disp_hrt_by_larb",
-			//		"disp_dp_hrt_by_larb";
+			operating-points-v2 = <&opp_table_disp>;
+			vdisp-dvfs-opp = /bits/ 8 <3>;
 			//pre-define-bw = <0xffffffff>, <4200>, <0>, <2700>;
 			//crtc-ovl-usage = <0xe0>, <0x2>, <0x2>, <0x4>;
 			default-emi-eff = <8800>;
