@@ -5365,48 +5365,36 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	disp-vcore-vdisp-ctrl@0 {
 		compatible = "mediatek,mt6899-vdisp-ctrl-v1";
 		power-domains = <&hfrpsys  MT6899_POWER_DOMAIN_DISP_VCORE>;
-		reg = <0 0x1c000000 0 0x1000>;
-		reg-names = "VLP_BASE";
 		disp-pd-id = <0>;
 	};
 
 	disp1-vdisp-ctrl@1 {
 		compatible = "mediatek,mt6899-vdisp-ctrl-v1";
 		power-domains = <&hfrpsys  MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
-		reg = <0 0x1c000000 0 0x1000>;
-		reg-names = "VLP_BASE";
 		disp-pd-id = <1>;
 	};
 
 	disp0-vdisp-ctrl@2 {
 		compatible = "mediatek,mt6899-vdisp-ctrl-v1";
 		power-domains = <&hfrpsys  MT6899_POWER_DOMAIN_DIS0_SHUTDOWN>;
-		reg = <0 0x1c000000 0 0x1000>;
-		reg-names = "VLP_BASE";
 		disp-pd-id = <2>;
 	};
 
 	ovl0-vdisp-ctrl@4 {
 		compatible = "mediatek,mt6899-vdisp-ctrl-v1";
 		power-domains = <&hfrpsys  MT6899_POWER_DOMAIN_OVL0_SHUTDOWN>;
-		reg = <0 0x1c000000 0 0x1000>;
-		reg-names = "VLP_BASE";
 		disp-pd-id = <4>;
 	};
 
 	mml1-vdisp-ctrl@5 {
 		compatible = "mediatek,mt6899-vdisp-ctrl-v1";
 		power-domains = <&hfrpsys  MT6899_POWER_DOMAIN_MML1_SHUTDOWN>;
-		reg = <0 0x1c000000 0 0x1000>;
-		reg-names = "VLP_BASE";
 		disp-pd-id = <5>;
 	};
 
 	mml0-vdisp-ctrl@6 {
 		compatible = "mediatek,mt6899-vdisp-ctrl-v1";
 		power-domains = <&hfrpsys  MT6899_POWER_DOMAIN_MML0_SHUTDOWN>;
-		reg = <0 0x1c000000 0 0x1000>;
-		reg-names = "VLP_BASE";
 		disp-pd-id = <6>;
 	};
 
