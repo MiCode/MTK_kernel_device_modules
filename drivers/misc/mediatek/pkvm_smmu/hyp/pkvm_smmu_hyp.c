@@ -442,6 +442,7 @@ void mtk_smmu_unsecure_v2(struct user_pt_regs *regs)
 	uint32_t count;
 	void *pglist_pa;
 	int ret = 0;
+	void *secure_page_va = NULL;
 
 	regs->regs[0] = SMCCC_RET_SUCCESS;
 	pglist_pfn = regs->regs[1];
@@ -476,6 +477,22 @@ void mtk_smmu_unsecure_v2(struct user_pt_regs *regs)
 			 *	| VM 0 (rwx)   | VM 1 (ro)  |
 			 *	|___________________________|
 			 */
+
+			/*
+			 * Clear secure page content and flush data into dram,
+			 * before return the page to host.
+			 */
+			secure_page_va = pkvm_smmu_ops->hyp_va((phys_addr_t)(pfn * ONE_PAGE_SIZE));
+			if (!secure_page_va) {
+				pkvm_smmu_ops->puts("secure_page_va translate fail\n");
+				pkvm_smmu_ops->puts("secure_page_va fail pfn:");
+				pkvm_smmu_ops->putx64(pfn);
+			} else {
+				memset(secure_page_va, 0, ONE_PAGE_SIZE * (1 << order));
+				smmu_flush_dcache(secure_page_va, ONE_PAGE_SIZE * (1 << order));
+			}
+
+			/* Return secure page to host */
 			ret = pkvm_smmu_ops->hyp_donate_host(pfn, 1 << order);
 		}
 		mtk_smmu_sync();
