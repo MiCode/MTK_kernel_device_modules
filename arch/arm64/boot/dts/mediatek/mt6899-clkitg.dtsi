@@ -10,34 +10,8 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x0>;
 		clocks =
-			<&topckgen_clk CLK_TOP_VDEC_SEL>,
 			<&topckgen_clk CLK_TOP_MMINFRA_SEL>,
 			<&topckgen_clk CLK_TOP_MMUP_SEL>;
-	};
-
-	bring-up-vdec@f {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0xf>;
-		clocks =
-			<&vdec_gcon_base_clk CLK_VDE2_LAT_CKEN_VDEC>,
-			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN_VDEC>,
-			<&vdec_gcon_base_clk CLK_VDE2_VDEC_ACTIVE_VDEC>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_LAT_CKEN_VDEC>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_LAT_ACTIVE_VDEC>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_CKEN_VDEC>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_ACTIVE_VDEC>;
-	};
-
-	bring-up-pd-vde0@2a {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x2a>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VDE0>;
-	};
-
-	bring-up-pd-vde1@2b {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x2b>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VDE1>;
 	};
 
 	bring-up-pd-mm-infra@3c {
