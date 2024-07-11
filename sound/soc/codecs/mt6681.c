@@ -54,10 +54,14 @@
 /* #define MT6681_ACCDET_DEBUG */
 #define MT6681_GAIN_DEBUG
 /* #define NLE_IMP */
-#define ALIGN_SWING
+//#define ALIGN_SWING
 /* timeout 500 ms for debug */
 #define RG_RW_TIMEOUT 500000000
 
+
+static int mtk_calculate_hwgain_formula(struct mt6681_priv *priv,
+						int amp_cal,
+						long gain_ratio);
 
 static ssize_t mt6681_codec_sysfs_read(struct file *filep, struct kobject *kobj,
 				       struct bin_attribute *attr, char *buf,
@@ -270,8 +274,32 @@ static void mt6681_get_hw_ver(struct mt6681_priv *priv)
 	priv->hw_ver = id;
 	priv->hw_ecid = ecid << 31 | ecid2;
 
+	efuse_val = 0;
+
+	/*[424:431] HPR_VOL_LP / [444:451] HPR_VOL_LP */
+	/* [452:459] HPL_VOL_HIFI /  [452:459] HPR_VOL_HIFI*/
+	ret = nvmem_device_read(priv->hp_efuse, 0x35, 1, &efuse_val);
+	priv->hw_l_vol_lp = efuse_val & 0xff;
+	ret = nvmem_device_read(priv->hp_efuse, 0x37, 3, &efuse_val);
+	priv->hw_r_vol_lp = efuse_val >> 4 & 0xff;
+	priv->hw_l_vol_hifi = (efuse_val >> 12) & 0xff;
+	ret = nvmem_device_read(priv->hp_efuse, 0x40, 2, &efuse_val);
+	priv->hw_r_vol_hifi = efuse_val >> 4 & 0xff;
+
+	if (priv->hp_hifi_mode) {
+		priv->l_trim_gain = (unsigned int)mtk_calculate_hwgain_formula(priv, priv->hw_l_vol_hifi, 100000);
+		priv->r_trim_gain = (unsigned int)mtk_calculate_hwgain_formula(priv, priv->hw_r_vol_hifi, 100000);
+	} else {
+		priv->l_trim_gain = (unsigned int)mtk_calculate_hwgain_formula(priv, priv->hw_l_vol_lp, 100000);
+		priv->r_trim_gain = (unsigned int)mtk_calculate_hwgain_formula(priv, priv->hw_r_vol_lp, 100000);
+	}
+
 	pr_info("MT6681_ID : %s() mt6681 hw_id =%d, hw_ver= %d, ecid = %lx%lx  (%llx), ret %d\n",
 		__func__, priv->hw_ver, ver, ecid, ecid2, priv->hw_ecid, ret);
+	pr_info("MT6681_ID : %s() mt6681 hw_lp: L 0x%x, R 0x%x, hw_hifi: L 0x%x, R 0x%x\n",
+		__func__, priv->hw_l_vol_lp, priv->hw_r_vol_lp, priv->hw_l_vol_hifi, priv->hw_r_vol_hifi);
+	pr_info("MT6681_ID : %s() mt6681 hifi_mode(0x%x): L 0x%x, R 0x%x\n",
+		__func__, priv->hp_hifi_mode, priv->l_trim_gain, priv->r_trim_gain);
 }
 
 #ifdef NLE_IMP
@@ -691,6 +719,16 @@ static void mt6681_set_sdm_fifo(struct mt6681_priv *priv, bool enable, bool forc
 			regmap_update_bits(
 				priv->regmap, MT6681_AFUNC_AUD_CON0_L,
 				ENABLE_PWM_MASK_SFT, 0x0 << ENABLE_PWM_SFT);
+			/* sdm audio fifo clock power off */
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON2_L, 0x0);
+			/* 2ND DL scrambler disable */
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_L, 0x20);
+			/* 2ND DL scrambler clock on disable */
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_H, 0xd8);
+			/* 2ND DL sdm power off */
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_L, 0x40);
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_H, 0x00);
+
 			/*
 			 * Step 15:
 			 * DEM 544scm path setting
@@ -699,32 +737,15 @@ static void mt6681_set_sdm_fifo(struct mt6681_priv *priv, bool enable, bool forc
 			 * 1: Enable scrambler PA
 			 * [0] clk on
 			 */
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON19_H,
-					   CCI_AUDIO_FIFO_WPTR_544_MASK_SFT,
-					   0x5 << CCI_AUDIO_FIFO_WPTR_544_SFT);
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON19_H,
-					   CCI_SCRAMBLER_CG_EN_544_MASK_SFT,
-					   0x0 << CCI_SCRAMBLER_CG_EN_544_SFT);
-			regmap_update_bits(
-				priv->regmap, MT6681_AFUNC_AUD_CON19_H,
-				CCI_SPLT_SCRMB_CLK_ON_544_MASK_SFT,
-				0x1 << CCI_SPLT_SCRMB_CLK_ON_544_SFT);
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_H, 0xd1);
+
 			/*
 			 * Step 16:
 			 * DEM 544scm path setting
 			 * [7] scram on
 			 * [5] zero padding disable
 			 */
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON19_L,
-					   CCI_SPLT_SCRMB_ON_544_MASK_SFT,
-					   0x1 << CCI_SPLT_SCRMB_ON_544_SFT);
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON19_L,
-					   CCI_ZERO_PAD_DISABLE_544_MASK_SFT,
-					   0x1 << CCI_ZERO_PAD_DISABLE_544_SFT);
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_L, 0xa0);
 			/*
 			 * Step 17:
 			 * DEM 544scm path setting
@@ -732,14 +753,7 @@ static void mt6681_set_sdm_fifo(struct mt6681_priv *priv, bool enable, bool forc
 			 * [0] 0: no round
 			 * 1: round
 			 */
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON20_H,
-					   SCRAMBLER_EN_HIFI_544_MASK_SFT,
-					   0x7 << SCRAMBLER_EN_HIFI_544_SFT);
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON20_H,
-					   R_SPLITTER_TRUNC_RND_544_MASK_SFT,
-					   0x0 << R_SPLITTER_TRUNC_RND_544_SFT);
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_H, 0x70);
 			/*
 			 * Step 18:
 			 * DEM 544scm path setting
@@ -753,22 +767,7 @@ static void mt6681_set_sdm_fifo(struct mt6681_priv *priv, bool enable, bool forc
 			 * [0] 0: Reset
 			 * 1: Released
 			 */
-			regmap_update_bits(
-				priv->regmap, MT6681_AFUNC_AUD_CON20_L,
-				CCI_AUD_DAC_ANA_RSTB_SEL_544_MASK_SFT,
-				0x1 << CCI_AUD_DAC_ANA_RSTB_SEL_544_SFT);
-			regmap_update_bits(
-				priv->regmap, MT6681_AFUNC_AUD_CON20_L,
-				CCI_AUDIO_FIFO_ENABLE_544_MASK_SFT,
-				0x1 << CCI_AUDIO_FIFO_ENABLE_544_SFT);
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON20_L,
-					   CCI_AFIFO_CLK_PWDB_544_MASK_SFT,
-					   0x1 << CCI_AFIFO_CLK_PWDB_544_SFT);
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON20_L,
-					   CCI_ACD_FUNC_RSTB_544_MASK_SFT,
-					   0x1 << CCI_ACD_FUNC_RSTB_544_SFT);
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_L, 0x4b);
 		} else {
 			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON2_L,
 				     0x6);
@@ -840,7 +839,7 @@ static void mt6681_set_sdm_fifo(struct mt6681_priv *priv, bool enable, bool forc
 			/* 2ND DL scrambler disable */
 			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_L, 0x20);
 			/* 2ND DL scrambler clock on disable */
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_H, 0xd8);
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_H, 0xd0);
 			/* 2ND DL sdm power off */
 			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_L, 0x40);
 			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_H, 0x00);
@@ -853,7 +852,7 @@ static void mt6681_set_dl_src(struct mt6681_priv *priv, bool enable, bool force)
 {
 	unsigned int rate;
 
-	dev_info(priv->dev, "%s() enable = %d (%d)\n", __func__, enable, false);
+	dev_info(priv->dev, "%s() enable = %d (%d)\n", __func__, enable, force);
 	if (priv->dl_rate[0] != 0)
 		rate = mt6681_dlsrc_rate_transform(priv->dl_rate[0]);
 	else
@@ -870,12 +869,17 @@ static void mt6681_set_dl_src(struct mt6681_priv *priv, bool enable, bool force)
 				priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0_H,
 				AFE_DL_CH1_SATURATION_EN_CTL_MASK_SFT
 					| AFE_DL_CH2_SATURATION_EN_CTL_MASK_SFT,
-				0x0 << AFE_DL_CH2_SATURATION_EN_CTL_SFT);
+				0x3 << AFE_DL_CH2_SATURATION_EN_CTL_SFT);
+			regmap_update_bits(
+				priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0_H,
+				AFE_DL_OUTPUT_SEL_CTL_MASK_SFT,
+				0x3 << AFE_DL_OUTPUT_SEL_CTL_SFT);
+
 			regmap_update_bits(
 				priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0_L,
 				AFE_DL_MUTE_CH1_OFF_CTL_PRE_MASK_SFT
 					| AFE_DL_MUTE_CH2_OFF_CTL_PRE_MASK_SFT,
-				0x3 << AFE_DL_MUTE_CH2_OFF_CTL_PRE_SFT);
+				0x0 << AFE_DL_MUTE_CH2_OFF_CTL_PRE_SFT);
 			/* nedd check D&A */
 			regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0,
 					   AFE_DL_VOICE_MODE_CTL_PRE_MASK_SFT,
@@ -893,15 +897,6 @@ static void mt6681_set_dl_src(struct mt6681_priv *priv, bool enable, bool force)
 			regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0,
 					   AFE_DL_SRC_ON_TMP_CTL_PRE_MASK_SFT,
 					   0x1 << AFE_DL_SRC_ON_TMP_CTL_PRE_SFT);
-		} else {
-#ifdef ALIGN_SWING
-			regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0,
-					   AFE_DL_GAIN_ON_CTL_PRE_MASK_SFT,
-					   0x0 << AFE_DL_GAIN_ON_CTL_PRE_SFT);
-#endif
-			regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0,
-					   AFE_DL_SRC_ON_TMP_CTL_PRE_MASK_SFT,
-					   0x0 << AFE_DL_SRC_ON_TMP_CTL_PRE_SFT);
 		}
 		/* MTKAIFV4 */
 		if (priv->dl_rate[0] != 0)
@@ -933,6 +928,11 @@ static void mt6681_set_dl_src(struct mt6681_priv *priv, bool enable, bool force)
 					   AFE_DL_GAIN_ON_CTL_PRE_MASK_SFT,
 					   0x0 << AFE_DL_GAIN_ON_CTL_PRE_SFT);
 #endif
+			regmap_write(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0_H,
+				     0x0);
+			regmap_write(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0_L,
+				     0x0);
+
 			regmap_update_bits(priv->regmap,
 					   MT6681_AFE_ADDA_MTKAIFV4_RX_CFG0,
 					   MT6681_MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
@@ -1663,6 +1663,115 @@ void mt6681_set_mtkaif_calibration_phase(struct snd_soc_component *cmpnt,
 }
 EXPORT_SYMBOL_GPL(mt6681_set_mtkaif_calibration_phase);
 
+static void mtk_nle_toggle(struct mt6681_priv *priv)
+{
+	/*dev_dbg(priv->dev, "%s() successfully starts\n", __func__); */
+	/* Toggle bit for update NLE RG */
+	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
+			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
+			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
+			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+}
+static void mtk_clh_toggle(struct mt6681_priv *priv)
+{
+	/*dev_dbg(priv->dev, "%s() successfully starts\n", __func__); */
+	/* Toggle class-H dynamic RGs */
+	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
+			   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
+			   0x0 << RG_CLH_DYN_DYNRG_SYNC_SFT);
+	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
+			   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
+			   0x1 << RG_CLH_DYN_DYNRG_SYNC_SFT);
+	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
+			   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
+			   0x0 << RG_CLH_DYN_DYNRG_SYNC_SFT);
+
+}
+
+static void nle_outstg_ramp(struct mt6681_priv *priv, bool up)
+{
+	int i = 0, stage = 0;
+	int target = 7;
+
+	/* Enable/Reduce HPL/R main output stage step by step */
+	for (i = 1; i <= target; i++) {
+		stage = up ? i : target - i;
+		if (priv->hp_hifi_mode == 0) {
+			regmap_update_bits(priv->regmap,
+					   MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
+					   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
+					   stage << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
+					   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
+					   stage << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
+		} else {
+			/* Enable HPR main output stage step by step */
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
+					   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
+					   stage << RG_DA_HP_OUTSTG_RCH_SFT);
+			/* Enable HPL main output stage step by step */
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
+					   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
+					   stage << RG_DA_HP_OUTSTG_LCH_SFT);
+		}
+
+		mtk_nle_toggle(priv);
+		if ((!priv->dc_trim.calibrated) || (priv->hp_hifi_mode == 2))
+			usleep_range(600, 650);
+		else
+			usleep_range(100, 120);
+	}
+}
+
+static void hp_lngain_ramp(struct mt6681_priv *priv, bool up)
+{
+	int i = 0, stage = 0;
+	int target = 7;
+
+	/* Enable/Reduce HPL/R main output stage step by step */
+	for (i = 1; i <= target; i++) {
+		stage = up ? i : target - i;
+		if (!(!up && stage == 0)) {
+			/*  LN gain stage step by step */
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_H,
+					   RG_DA_ANA_HP_LNGAIN_ATT_RCH_MASK_SFT,
+					   stage << RG_DA_ANA_HP_LNGAIN_ATT_RCH_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_L,
+					   RG_DA_ANA_HP_LNGAIN_ATT_LCH_MASK_SFT,
+					   stage << RG_DA_ANA_HP_LNGAIN_ATT_LCH_SFT);
+		}
+		if (!up && (i == 1)) {
+			/* digital gain output debug mode */
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_IMP_LCH_CFG0_H,
+					   RG_DG_OUTPUT_DEBUG_MODE_RCH_MASK_SFT,
+					   0x1 << RG_DG_OUTPUT_DEBUG_MODE_RCH_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_IMP_RCH_CFG0_H,
+					   RG_DG_OUTPUT_DEBUG_MODE_LCH_MASK_SFT,
+					   0x1 << RG_DG_OUTPUT_DEBUG_MODE_LCH_SFT);
+		}
+
+		if (up && (i == 7)) {
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_IMP_LCH_CFG0_H,
+					   RG_DG_OUTPUT_DEBUG_MODE_LCH_MASK_SFT,
+					   0x0 << RG_DG_OUTPUT_DEBUG_MODE_LCH_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_IMP_RCH_CFG0_H,
+					   RG_DG_OUTPUT_DEBUG_MODE_RCH_MASK_SFT,
+					   0x0 << RG_DG_OUTPUT_DEBUG_MODE_RCH_SFT);
+		}
+		mtk_nle_toggle(priv);
+		if ((!priv->dc_trim.calibrated) || (priv->hp_hifi_mode == 2))
+			usleep_range(600, 650);
+		else
+			usleep_range(100, 120);
+	}
+
+}
+
 static void hp_aux_feedback_loop_gain_ramp(struct mt6681_priv *priv, bool up)
 {
 	unsigned int i = 0, stage = 0;
@@ -1679,6 +1788,21 @@ static void hp_aux_feedback_loop_gain_ramp(struct mt6681_priv *priv, bool up)
 			usleep_range(600, 650);
 		else
 			usleep_range(100, 120);
+	}
+}
+
+static void hp_in_pair_current(struct mt6681_priv *priv, bool increase)
+{
+	int i = 0, stage = 0;
+	int target = 0x3;
+
+	/* Reduce HP aux feedback loop gain step by step */
+	for (i = 1; i <= target; i++) {
+		stage = increase ? i : target - i;
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
+				   RG_AUDHPDIFFINPBIASADJ_VAUDP18_MASK_SFT,
+				   stage << RG_AUDHPDIFFINPBIASADJ_VAUDP18_SFT);
+		usleep_range(100, 120);
 	}
 }
 
@@ -2973,17 +3097,20 @@ static int mt_sgen_event(struct snd_soc_dapm_widget *w,
 
 static void mtk_hp_enable(struct mt6681_priv *priv)
 {
-	dev_info(priv->dev, "%s() successfully starts\n", __func__);
+	dev_info(priv->dev, "%s() successfully starts, priv->hwgain_enable %d\n",
+		 __func__, priv->hwgain_enable);
 
-	regmap_write(priv->regmap, MT6681_AFE_TOP_DEBUG0, 0x11);
-	if (priv->hp_hifi_mode == 0) {
-		regmap_update_bits(priv->regmap, MT6681_AFE_TOP_DEBUG0,
-				   DL34_DEBUG_SOURCE_SEL_MASK_SFT,
-				   0x1 << DL34_DEBUG_SOURCE_SEL_SFT);
-	}
 	if (priv->hwgain_enable && (priv->hp_hifi_mode != 0)) {
 		regmap_write(priv->regmap, MT6681_AFE_TOP_DEBUG0, 0x0);
+	} else {
+		regmap_write(priv->regmap, MT6681_AFE_TOP_DEBUG0, 0x11);
+		if (priv->hp_hifi_mode == 0) {
+			regmap_update_bits(priv->regmap, MT6681_AFE_TOP_DEBUG0,
+					   DL34_DEBUG_SOURCE_SEL_MASK_SFT,
+					   0x1 << DL34_DEBUG_SOURCE_SEL_SFT);
+		}
 	}
+	regmap_write(priv->regmap, MT6681_AFE_STF_CON1, 0x30);
 	if (priv->mux_select[MUX_HP_L] == HP_MUX_HPSPK) {
 		/* Disable handset short-circuit protection */
 		// todo
@@ -2996,6 +3123,14 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 	if (priv->hp_hifi_mode) {
 		/* Step 108: Enable HP mute */
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x3);
+		if (priv->hp_hifi_mode == 2) {
+			regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_H, 0x80);
+			regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_L, 0x80);
+			regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M, 0x17);
+			regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG, 0x17);
+			regmap_write(priv->regmap, MT6681_AFE_NLE_CFG, 0x1);
+			mtk_nle_toggle(priv);
+		}
 		usleep_range(100, 120);
 		/* Step 110: Pull-down HPL/R to AVSS30_AUD */
 		hp_pull_down(priv, true);
@@ -3037,19 +3172,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPR_TRIM_MODE_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPR_TRIM_MODE_VAUDP18_SFT);
 		/* Step 128: Set HPL trim code */
-		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON34,
-				   RG_AUDHPLFINETRIM_VAUDP18_MASK_SFT,
-				   0x0 << RG_AUDHPLFINETRIM_VAUDP18_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON34,
-				   RG_AUDHPLTRIM_VAUDP18_MASK_SFT,
-				   0x0 << RG_AUDHPLTRIM_VAUDP18_SFT);
 		/* Step 129: Set HPR trim code */
-		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON35,
-				   RG_AUDHPRFINETRIM_VAUDP18_MASK_SFT,
-				   0x0 << RG_AUDHPRFINETRIM_VAUDP18_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON35,
-				   RG_AUDHPRTRIM_VAUDP18_MASK_SFT,
-				   0x0 << RG_AUDHPRTRIM_VAUDP18_SFT);
 		/* Step 130: Enable HPTRIM */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_AUDHPTRIM_EN_VAUDP18_MASK_SFT,
@@ -3092,23 +3215,27 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 		/* Step 135: digital gain output debug mode */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_IMP_LCH_CFG0_H,
 				   RG_DG_OUTPUT_DEBUG_MODE_LCH_MASK_SFT,
-				   0x0 << RG_DG_OUTPUT_DEBUG_MODE_LCH_SFT);
+				   0x1 << RG_DG_OUTPUT_DEBUG_MODE_LCH_SFT);
 		/* Step 136: digital gain output debug mode */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_IMP_RCH_CFG0_H,
 				   RG_DG_OUTPUT_DEBUG_MODE_RCH_MASK_SFT,
 				   0x1 << RG_DG_OUTPUT_DEBUG_MODE_RCH_SFT);
-		/* Step 137: Set NLE DA signal to debug mode (controlled by RG setting) */
-		regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_H, 0x80);
-		/* Step 138: Set NLE DA signal to debug mode (controlled by RG setting) */
-		regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_L, 0x80);
+		if (priv->hp_hifi_mode == 2) {
+			/* LN 0dB for enable HP */
+			regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_H, 0x81);
+			regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_L, 0x81);
+			regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M, 0x40);
+			regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG, 0x40);
+
+		} else {
+			/* Step 137: Set NLE DA signal to debug mode (controlled by RG setting) */
+			regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_H, 0x80);
+			/* Step 138: Set NLE DA signal to debug mode (controlled by RG setting) */
+			regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_L, 0x80);
+		}
 		/* Step 139: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 140: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		mtk_nle_toggle(priv);
+
 		/*
 		 * Step 141:
 		 * Set HPP/N STB enhance circuits
@@ -3158,22 +3285,18 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 		regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
 				   DA_AUDHPRNEGR_EN_VAUDP18_MASK_SFT,
 				   0x1 << DA_AUDHPRNEGR_EN_VAUDP18_SFT);
-		/* Step 151: Enable HPR main output stage to min */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
-				   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
-				   0x0 << RG_DA_HP_OUTSTG_RCH_SFT);
-		/* Step 152: Enable HPL main output stage to min */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
-				   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
-				   0x0 << RG_DA_HP_OUTSTG_LCH_SFT);
-		/* Step 153: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 154: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		if (priv->hp_hifi_mode != 2) {
+			/* Step 151: Enable HPR main output stage to min */
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
+					   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
+					   0x0 << RG_DA_HP_OUTSTG_RCH_SFT);
+			/* Step 152: Enable HPL main output stage to min */
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
+					   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
+					   0x0 << RG_DA_HP_OUTSTG_LCH_SFT);
+			/* Step 153: Toggle bit for update NLE RG */
+			mtk_nle_toggle(priv);
+		}
 		/*
 		 * Step 155:
 		 * Damping adjustment select. (Hi-Fi: 14kohm; LP: 3.5kohm)
@@ -3222,161 +3345,36 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xfc);
 		usleep_range(100, 120);
 		/* Step 166: Set input diff pair bias step by step */
-		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-				   RG_AUDHPDIFFINPBIASADJ_VAUDP18_MASK_SFT,
-				   0x1 << RG_AUDHPDIFFINPBIASADJ_VAUDP18_SFT);
-		usleep_range(100, 120);
-		/* Step 168: Set input diff pair bias step by step */
-		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-				   RG_AUDHPDIFFINPBIASADJ_VAUDP18_MASK_SFT,
-				   0x2 << RG_AUDHPDIFFINPBIASADJ_VAUDP18_SFT);
-		usleep_range(100, 120);
-		/* Step 170: Set input diff pair bias select (Hi-Fi: 5uA x 32 = 160uA) */
-		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-				   RG_AUDHPDIFFINPBIASADJ_VAUDP18_MASK_SFT,
-				   0x3 << RG_AUDHPDIFFINPBIASADJ_VAUDP18_SFT);
-		usleep_range(100, 120);
-		/* Step 172: Enable HP main CMFB loop */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
-				   RG_DA_HPCMFB_EN_RCH_MASK_SFT,
-				   0x1 << RG_DA_HPCMFB_EN_RCH_SFT);
-		/* Step 173: Enable HP main CMFB loop */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
-				   RG_DA_HPCMFB_EN_LCH_MASK_SFT,
-				   0x1 << RG_DA_HPCMFB_EN_LCH_SFT);
+		hp_in_pair_current(priv, true);
+		if (priv->hp_hifi_mode == 2) {
+			/* Step 172: Enable HP main CMFB loop */
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
+					   RG_DA_HPCMFB_LN_EN_RCH_MASK_SFT,
+					   0x1 << RG_DA_HPCMFB_LN_EN_RCH_SFT);
+			/* Step 173: Enable HP main CMFB loop */
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
+					   RG_DA_HPCMFB_LN_EN_LCH_MASK_SFT,
+					   0x1 << RG_DA_HPCMFB_LN_EN_LCH_SFT);
+		} else {
+			/* Step 172: Enable HP main CMFB loop */
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
+					   RG_DA_HPCMFB_EN_RCH_MASK_SFT,
+					   0x1 << RG_DA_HPCMFB_EN_RCH_SFT);
+			/* Step 173: Enable HP main CMFB loop */
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
+					   RG_DA_HPCMFB_EN_LCH_MASK_SFT,
+					   0x1 << RG_DA_HPCMFB_EN_LCH_SFT);
+		}
 		/* Step 174: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 175: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		mtk_nle_toggle(priv);
+
 		/* Step 176: Disable Aux-loop CMFB */
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x3);
-		usleep_range(600, 620);
+		usleep_range(100, 120);
 		/* Step 178: Enable HP main output stage */
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xff);
-		usleep_range(600, 620);
 		/* Step 180: Enable HPR main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
-				   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
-				   0x1 << RG_DA_HP_OUTSTG_RCH_SFT);
-		/* Step 181: Enable HPL main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
-				   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
-				   0x1 << RG_DA_HP_OUTSTG_LCH_SFT);
-		/* Step 182: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 183: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		usleep_range(600, 620);
-		/* Step 185: Enable HPR main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
-				   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
-				   0x2 << RG_DA_HP_OUTSTG_RCH_SFT);
-		/* Step 186: Enable HPL main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
-				   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
-				   0x2 << RG_DA_HP_OUTSTG_LCH_SFT);
-		/* Step 187: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 188: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		usleep_range(600, 620);
-		/* Step 190: Enable HPR main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
-				   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
-				   0x3 << RG_DA_HP_OUTSTG_RCH_SFT);
-		/* Step 191: Enable HPL main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
-				   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
-				   0x3 << RG_DA_HP_OUTSTG_LCH_SFT);
-		/* Step 192: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 193: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		usleep_range(600, 620);
-		/* Step 195: Enable HPR main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
-				   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
-				   0x4 << RG_DA_HP_OUTSTG_RCH_SFT);
-		/* Step 196: Enable HPL main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
-				   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
-				   0x4 << RG_DA_HP_OUTSTG_LCH_SFT);
-		/* Step 197: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 198: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		usleep_range(600, 620);
-		/* Step 200: Enable HPR main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
-				   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
-				   0x5 << RG_DA_HP_OUTSTG_RCH_SFT);
-		/* Step 201: Enable HPL main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
-				   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
-				   0x5 << RG_DA_HP_OUTSTG_LCH_SFT);
-		/* Step 202: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 203: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		usleep_range(600, 620);
-		/* Step 205: Enable HPR main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
-				   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
-				   0x6 << RG_DA_HP_OUTSTG_RCH_SFT);
-		/* Step 206: Enable HPL main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
-				   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
-				   0x6 << RG_DA_HP_OUTSTG_LCH_SFT);
-		/* Step 207: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 208: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		usleep_range(600, 620);
-		/* Step 210: Enable HPR main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
-				   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
-				   0x7 << RG_DA_HP_OUTSTG_RCH_SFT);
-		/* Step 211: Enable HPL main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
-				   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
-				   0x7 << RG_DA_HP_OUTSTG_LCH_SFT);
-		/* Step 212: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 213: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		usleep_range(600, 620);
+		nle_outstg_ramp(priv, true);
 		/* Step 215: Reduce HP aux feedback loop gain step by step */
 		hp_aux_feedback_loop_gain_ramp(priv, true);
 
@@ -3391,40 +3389,38 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_DA_NLE_ZCD_HPRGAIN_MASK_SFT,
 				   0x3 << RG_DA_NLE_ZCD_HPRGAIN_SFT);
 		/* Step 248: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 249: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		mtk_nle_toggle(priv);
 		/* Step 250: Disable HP mute */
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x0);
-		usleep_range(600, 620);
+		usleep_range(100, 120);
 		/*
 		 * Step 252:
 		 * Increase HPL gain to normal gain step by step, 5'h2 :+3dB
 		 * (32ohm, HPgain=6dB, 16ohm HPgain=3dB)
 		 */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN,
-				   RG_DA_NLE_ZCD_HPLGAIN_MASK_SFT,
-				   0x1 << RG_DA_NLE_ZCD_HPLGAIN_SFT);
+
 		/*
 		 * Step 253:
 		 * Increase HPR gain to normal gain step by step, 5'h2 :+3dB
 		 * (32ohm, HPgain=6dB, 16ohm HPgain=3dB)
 		 */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPRGAIN,
-				   RG_DA_NLE_ZCD_HPRGAIN_MASK_SFT,
-				   0x1 << RG_DA_NLE_ZCD_HPRGAIN_SFT);
+		if ((priv->hp_impedance != 0) && (priv->hp_impedance < 30)) {
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN,
+					   RG_DA_NLE_ZCD_HPLGAIN_MASK_SFT,
+					   0x2 << RG_DA_NLE_ZCD_HPLGAIN_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPRGAIN,
+					   RG_DA_NLE_ZCD_HPRGAIN_MASK_SFT,
+					   0x2 << RG_DA_NLE_ZCD_HPRGAIN_SFT);
+		} else {
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN,
+					   RG_DA_NLE_ZCD_HPLGAIN_MASK_SFT,
+					   0x1 << RG_DA_NLE_ZCD_HPLGAIN_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPRGAIN,
+					   RG_DA_NLE_ZCD_HPRGAIN_MASK_SFT,
+					   0x1 << RG_DA_NLE_ZCD_HPRGAIN_SFT);
+		}
 		/* Step 254: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 255: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		mtk_nle_toggle(priv);
 		usleep_range(100, 120);
 		/* Step 257: open HP output to AUX output */
 		/* Step 258: Disable Aux-output */
@@ -3432,7 +3428,6 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 		/* Step 259: Set HPP/N STB enhance circuits */
 		/* Step 260: Set HPP/N STB enhance circuits */
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON28, 0x33);
-		usleep_range(600, 620);
 		/* Step 262: Pull-down HPL/R to AVSS30_AUD */
 		hp_pull_down(priv, false);
 		/* Step 276: Enable 2nd order damp circuit for Hi-Fi mode */
@@ -3479,12 +3474,18 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   0x1 << RG_HP_DAMP2ND_SELBYNLE_VAUDP18_SFT);
 		/* Step 284: Enable HPRL LN path feedback Rwell modulation */
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0xf0);
+		usleep_range(100, 120);
+		if (priv->hp_hifi_mode == 2) {
+			nle_outstg_ramp(priv, false);
+			hp_lngain_ramp(priv, true);
+		}
 		/*
 		 * Step 285:
 		 * [0]: Enable NVREG LC IBIAS2
 		 *      (Set after HPBUF enabled -> Avoid unstable NVREG-LC at no load)
 		 */
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON73, 0x7);
+		usleep_range(100, 120);
 		/* Step 286: Enable HP DAC Current Trim Function */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON12,
 				   RG_AUDDACHPL_TRIM_EN_VAUDP18_MASK_SFT,
@@ -3733,6 +3734,16 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 		 * 111: HSP/HSN (test input with external R)
 		 */
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON26, 0x22);
+		if (priv->hp_hifi_mode == 2) {
+			/* Release NLE SW Debug mode */
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_H,
+					   RG_D2A_SIGNAL_SW_DEBUG_MODE_RCH_MASK_SFT,
+					   0x0 << RG_D2A_SIGNAL_SW_DEBUG_MODE_RCH_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_L,
+					   RG_D2A_SIGNAL_SW_DEBUG_MODE_LCH_MASK_SFT,
+					   0x0 << RG_D2A_SIGNAL_SW_DEBUG_MODE_LCH_SFT);
+			mtk_nle_toggle(priv);
+		}
 	} else {
 		regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_H, 0x0);
 		regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_L, 0x0);
@@ -3923,13 +3934,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
 				   0x0 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
 		/* Step 152: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 153: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		mtk_nle_toggle(priv);
 		/*
 		 * Step 154:
 		 * [0]: Enable active-zero compensation circuit in HPBUF
@@ -3970,14 +3975,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 		 * Set input diff pair bias to min (ULP: 2uA x 16 = 32uA)
 		 * 00: 8x ibias; 01: 16x ibias; 10: 24x ibias; 11: 32x ibias
 		 */
-		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-				   RG_AUDHPDIFFINPBIASADJ_VAUDP18_MASK_SFT,
-				   0x1 << RG_AUDHPDIFFINPBIASADJ_VAUDP18_SFT);
-		usleep_range(100, 120);
-		/* Step 168: Set input diff pair bias step by step */
-		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-				   RG_AUDHPDIFFINPBIASADJ_VAUDP18_MASK_SFT,
-				   0x2 << RG_AUDHPDIFFINPBIASADJ_VAUDP18_SFT);
+		hp_in_pair_current(priv, true);
 
 		/* Step 160: Enable Aux-output */
 		/* Step 161: Enable Aux-loop feedback SW */
@@ -4010,144 +4008,15 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_HSLO_DA_HPCMFB_EN_LCH_MASK_SFT,
 				   0x1 << RG_HSLO_DA_HPCMFB_EN_LCH_SFT);
 		/* Step 168: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 169: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		mtk_nle_toggle(priv);
+
 		/* Step 170: Disable Aux-loop CMFB */
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x3);
 		/* Step 171: Enable HP main output stage */
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xff);
 		usleep_range(600, 620);
 		/* Step 173: Enable HPR main output stage step by step */
-		regmap_update_bits(priv->regmap,
-				   MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-				   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-				   0x1 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-		/* Step 174: Enable HPL main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-				   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-				   0x1 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-		/* Step 175: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 176: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		usleep_range(600, 620);
-		/* Step 178: Enable HPR main output stage step by step */
-		regmap_update_bits(priv->regmap,
-				   MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-				   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-				   0x2 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-		/* Step 179: Enable HPL main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-				   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-				   0x2 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-		/* Step 180: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 181: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		usleep_range(600, 620);
-		/* Step 183: Enable HPR main output stage step by step */
-		regmap_update_bits(priv->regmap,
-				   MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-				   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-				   0x3 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-		/* Step 184: Enable HPL main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-				   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-				   0x3 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-		/* Step 185: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 186: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		usleep_range(600, 620);
-		/* Step 188: Enable HPR main output stage step by step */
-		regmap_update_bits(priv->regmap,
-				   MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-				   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-				   0x4 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-		/* Step 189: Enable HPL main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-				   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-				   0x4 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-		/* Step 190: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 191: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		usleep_range(600, 620);
-		/* Step 193: Enable HPR main output stage step by step */
-		regmap_update_bits(priv->regmap,
-				   MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-				   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-				   0x5 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-		/* Step 194: Enable HPL main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-				   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-				   0x5 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-		/* Step 195: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 196: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		usleep_range(600, 620);
-		/* Step 198: Enable HPR main output stage step by step */
-		regmap_update_bits(priv->regmap,
-				   MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-				   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-				   0x6 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-		/* Step 199: Enable HPL main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-				   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-				   0x6 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-		/* Step 200: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 201: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		usleep_range(600, 620);
-		/* Step 203: Enable HPR main output stage step by step */
-		regmap_update_bits(priv->regmap,
-				   MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-				   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-				   0x7 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-		/* Step 204: Enable HPL main output stage step by step */
-		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-				   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-				   0x7 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-		/* Step 205: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 206: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		usleep_range(600, 620);
+		nle_outstg_ramp(priv, true);
 		/* Step 208: Reduce HP aux feedback loop gain step by step */
 		hp_aux_feedback_loop_gain_ramp(priv, true);
 		/* Step 238: Disable Aux-loop feedback SW */
@@ -4167,13 +4036,8 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_DA_NLE_ZCD_HPRGAIN_MASK_SFT,
 				   0x3 << RG_DA_NLE_ZCD_HPRGAIN_SFT);
 		/* Step 241: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 242: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		mtk_nle_toggle(priv);
+
 		/* Step 243: Disable HP mute */
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x0);
 		usleep_range(600, 620);
@@ -4183,26 +4047,30 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 		 * (LP/ULP)
 		 * (32ohm, HPgain=6dB, 16ohm HPgain=3dB)
 		 */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN,
-				   RG_DA_NLE_ZCD_HPLGAIN_MASK_SFT,
-				   0x0 << RG_DA_NLE_ZCD_HPLGAIN_SFT);
 		/*
 		 * Step 246:
 		 * Increase HPR gain to normal gain step by step, 5'h1 :+6dB
 		 * (LP/ULP)
 		 * (32ohm, HPgain=6dB, 16ohm HPgain=3dB)
 		 */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPRGAIN,
+		if ((priv->hp_impedance != 0) && (priv->hp_impedance < 30)) {
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN,
+				   RG_DA_NLE_ZCD_HPLGAIN_MASK_SFT,
+				   0x1 << RG_DA_NLE_ZCD_HPLGAIN_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPRGAIN,
+				   RG_DA_NLE_ZCD_HPRGAIN_MASK_SFT,
+				   0x1 << RG_DA_NLE_ZCD_HPRGAIN_SFT);
+		} else {
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN,
+				   RG_DA_NLE_ZCD_HPLGAIN_MASK_SFT,
+				   0x0 << RG_DA_NLE_ZCD_HPLGAIN_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPRGAIN,
 				   RG_DA_NLE_ZCD_HPRGAIN_MASK_SFT,
 				   0x0 << RG_DA_NLE_ZCD_HPRGAIN_SFT);
+		}
 		/* Step 247: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 248: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		mtk_nle_toggle(priv);
+
 		usleep_range(100, 120);
 		/* Step 250: open HP output to AUX output */;
 		/* Step 251: Disable Aux-output */
@@ -4401,32 +4269,61 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 
 static void mtk_hp_disable(struct mt6681_priv *priv)
 {
-	/* Step 3: Gain2 Lch target gain setting for 0dB */
-	regmap_update_bits(priv->regmap, MT6681_AFE_GAIN2_CON1_3,
-			   GAIN2_TARGET_H_MASK_SFT, 0x00 << GAIN2_TARGET_H_SFT);
-	/* Step 4: Gain2 Lch target gain setting for 0dB */
-	regmap_update_bits(priv->regmap, MT6681_AFE_GAIN2_CON1_2,
-			   GAIN2_TARGET_M_MASK_SFT, 0x08 << GAIN2_TARGET_M_SFT);
-	/* Step 5: Gain2 Lch target gain setting for 0dB */
-	regmap_update_bits(priv->regmap, MT6681_AFE_GAIN2_CON1_1,
-			   GAIN2_TARGET_M2_MASK_SFT,
-			   0x00 << GAIN2_TARGET_M2_SFT);
-	/* Step 6: Gain2 Lch target gain setting for 0dB */
-	regmap_update_bits(priv->regmap, MT6681_AFE_GAIN2_CON1_0,
-			   GAIN2_TARGET_L_MASK_SFT, 0x00 << GAIN2_TARGET_L_SFT);
-	/* Step 7: Gain7 Rch target gain setting for 0dB */
-	regmap_update_bits(priv->regmap, MT6681_AFE_GAIN7_CON1_3,
-			   GAIN7_TARGET_H_MASK_SFT, 0x00 << GAIN7_TARGET_H_SFT);
-	/* Step 8: Gain7 Rch target gain setting for 0dB */
-	regmap_update_bits(priv->regmap, MT6681_AFE_GAIN7_CON1_2,
-			   GAIN7_TARGET_M_MASK_SFT, 0x08 << GAIN7_TARGET_M_SFT);
-	/* Step 9: Gain7 Rch target gain setting for 0dB */
-	regmap_update_bits(priv->regmap, MT6681_AFE_GAIN7_CON1_1,
-			   GAIN7_TARGET_M2_MASK_SFT,
-			   0x00 << GAIN7_TARGET_M2_SFT);
-	/* Step 10: Gain7 Rch target gain setting for 0dB */
-	regmap_update_bits(priv->regmap, MT6681_AFE_GAIN7_CON1_0,
-			   GAIN7_TARGET_L_MASK_SFT, 0x00 << GAIN7_TARGET_L_SFT);
+	if (priv->hp_hifi_mode == 0) {
+		/* Step 3: Gain2 Lch target gain setting for 0dB */
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN2_CON1_3,
+				   GAIN2_TARGET_H_MASK_SFT, 0x00 << GAIN2_TARGET_H_SFT);
+		/* Step 4: Gain2 Lch target gain setting for 0dB */
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN2_CON1_2,
+				   GAIN2_TARGET_M_MASK_SFT, 0x08 << GAIN2_TARGET_M_SFT);
+		/* Step 5: Gain2 Lch target gain setting for 0dB */
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN2_CON1_1,
+				   GAIN2_TARGET_M2_MASK_SFT,
+				   0x00 << GAIN2_TARGET_M2_SFT);
+		/* Step 6: Gain2 Lch target gain setting for 0dB */
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN2_CON1_0,
+				   GAIN2_TARGET_L_MASK_SFT, 0x00 << GAIN2_TARGET_L_SFT);
+		/* Step 7: Gain7 Rch target gain setting for 0dB */
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN7_CON1_3,
+				   GAIN7_TARGET_H_MASK_SFT, 0x00 << GAIN7_TARGET_H_SFT);
+		/* Step 8: Gain7 Rch target gain setting for 0dB */
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN7_CON1_2,
+				   GAIN7_TARGET_M_MASK_SFT, 0x08 << GAIN7_TARGET_M_SFT);
+		/* Step 9: Gain7 Rch target gain setting for 0dB */
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN7_CON1_1,
+				   GAIN7_TARGET_M2_MASK_SFT,
+				   0x00 << GAIN7_TARGET_M2_SFT);
+		/* Step 10: Gain7 Rch target gain setting for 0dB */
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN7_CON1_0,
+				   GAIN7_TARGET_L_MASK_SFT, 0x00 << GAIN7_TARGET_L_SFT);
+	} else {
+		/* Step 3: Gain1 Lch target gain setting for 0dB */
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN1_CON1_3,
+				   GAIN1_TARGET_H_MASK_SFT, 0x0 << GAIN1_TARGET_H_SFT);
+		/* Step 4: Gain1 Lch target gain setting for 0dB */
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN1_CON1_2,
+				   GAIN1_TARGET_M_MASK_SFT, 0x8 << GAIN1_TARGET_M_SFT);
+		/* Step 5: Gain1 Lch target gain setting for 0dB */
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN1_CON1_1,
+				   GAIN1_TARGET_M2_MASK_SFT,
+				   0x0 << GAIN1_TARGET_M2_SFT);
+		/* Step 6: Gain1 Lch target gain setting for 0dB */
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN1_CON1_0,
+				   GAIN1_TARGET_L_MASK_SFT, 0x0 << GAIN1_TARGET_L_SFT);
+		/* Step 7: Gain6 Rch target gain setting for 0dB */
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN6_CON1_3,
+				   GAIN6_TARGET_H_MASK_SFT, 0x0 << GAIN6_TARGET_H_SFT);
+		/* Step 8: Gain6 Rch target gain setting for 0dB */
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN6_CON1_2,
+				   GAIN6_TARGET_M_MASK_SFT, 0x8 << GAIN6_TARGET_M_SFT);
+		/* Step 9: Gain6 Rch target gain setting for 0dB */
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN6_CON1_1,
+				   GAIN6_TARGET_M2_MASK_SFT,
+				   0x0 << GAIN6_TARGET_M2_SFT);
+		/* Step 10: Gain6 Rch target gain setting for 0dB */
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN6_CON1_0,
+				   GAIN6_TARGET_L_MASK_SFT, 0x0 << GAIN6_TARGET_L_SFT);
+	}
 	usleep_range(100, 120);
 	/*
 	 * Step 12:
@@ -4454,25 +4351,85 @@ static void mtk_hp_disable(struct mt6681_priv *priv)
 	 */
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON26, 0x0);
 	usleep_range(100, 120);
-	/* Step 15: Enable LP_GAIN_MSB for HP depop on/off */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPL_LP_GAIN_MSB_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPL_LP_GAIN_MSB_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPR_LP_GAIN_MSB_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPR_LP_GAIN_MSB_VAUDP18_SFT);
+	if (priv->hp_hifi_mode == 0) {
+		/* Step 15: Enable LP_GAIN_MSB for HP depop on/off */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
+				   RG_AUDHPL_LP_GAIN_MSB_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPL_LP_GAIN_MSB_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
+				   RG_AUDHPR_LP_GAIN_MSB_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPR_LP_GAIN_MSB_VAUDP18_SFT);
+	}
 	/* Step 16: AVDD30_DAC power switch select to LDO16 */
 	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON5,
 			   RG_AUDPMU_IDAC_IBIAS_SEL_VA32_VAUDP18_MASK_SFT,
 			   0x0 << RG_AUDPMU_IDAC_IBIAS_SEL_VA32_VAUDP18_SFT);
 	/* Step 17: Disable Audio NMDAC  */
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON0, 0x0);
+	if (priv->hp_hifi_mode != 0) {
+		/* Step 20: Feedback resistor with modulation Rwell level */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
+				   RG_HPL_RFB_OPAMPIN_SHORT_VAUDP18_MASK_SFT,
+				   0x1 << RG_HPL_RFB_OPAMPIN_SHORT_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
+				   RG_HPR_RFB_OPAMPIN_SHORT_VAUDP18_MASK_SFT,
+				   0x1 << RG_HPR_RFB_OPAMPIN_SHORT_VAUDP18_SFT);
+		/* Disable DAC VCG Buffer */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON2,
+				   RG_AUDDAC_L_VCG_BUF_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDDAC_L_VCG_BUF_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON2,
+				   RG_AUDDAC_R_VCG_BUF_EN_VAUDP18_SFT,
+				   0x0 << RG_AUDDAC_R_VCG_BUF_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON2,
+				   RG_AUDDAC_VCG_BUF_SHARE_SEL_VAUDP18_SFT,
+				   0x0 << RG_AUDDAC_VCG_BUF_SHARE_SEL_VAUDP18_SFT);
+		/* Disable DAC Noise Filter */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON7, 0x3);
+		/* Disable DAC Noise Filter */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON8, 0x3);
+		/* Disable DAC Noise Filter */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON9, 0x0);
+		/* Disable DAC TRIM function */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON12,
+				   RG_AUDDACHPL_TRIM_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDDACHPL_TRIM_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON12,
+				   RG_AUDDACHPR_TRIM_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDDACHPR_TRIM_EN_VAUDP18_SFT);
+		/* Disable ISI-free Switch */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON1, 0xa0);
+		/* Disable Fix DAC SW transient current */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON5,
+				   RG_AUDDAC_OPAMP_STBENH_EN_VA32_MASK_SFT,
+				   0x0 << RG_AUDDAC_OPAMP_STBENH_EN_VA32_SFT);
+	}
 	/*
 	 * Step 18:
 	 * [0]: Disable NVREG LC IBIAS2
 	 * (Set after HPBUF enabled -> Avoid unstable NVREG-LC at no load)
 	 */
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON73, 0x6);
+	if (priv->hp_hifi_mode == 2) {
+		/* Set NLE SW Debug mode for off depop flow */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_H,
+				   RG_D2A_SIGNAL_SW_DEBUG_MODE_RCH_MASK_SFT,
+				   0x1 << RG_D2A_SIGNAL_SW_DEBUG_MODE_RCH_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_L,
+				   RG_D2A_SIGNAL_SW_DEBUG_MODE_LCH_MASK_SFT,
+				   0x1 << RG_D2A_SIGNAL_SW_DEBUG_MODE_LCH_SFT);
+		hp_lngain_ramp(priv, false);
+		nle_outstg_ramp(priv, true);
+
+		/* Disable LN output */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
+				   RG_DA_HP_OUTSTG_LN_RCH_MASK_SFT,
+				   0x0 << RG_DA_HP_OUTSTG_LN_RCH_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
+				   RG_DA_HP_OUTSTG_LN_LCH_MASK_SFT,
+				   0x0 << RG_DA_HP_OUTSTG_LN_LCH_SFT);
+		mtk_nle_toggle(priv);
+	}
 	/* Step 19: CMFB resistor with modulation Rwell level */
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x30);
 	/* Step 20: Feedback resistor with modulation Rwell level */
@@ -4482,13 +4439,22 @@ static void mtk_hp_disable(struct mt6681_priv *priv)
 	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
 			   RG_AUDHPRHPFB_RNWSEL_VAUDP18_MASK_SFT,
 			   0x0 << RG_AUDHPRHPFB_RNWSEL_VAUDP18_SFT);
-	/* Step 21: Disable HP feedback SW source-tie */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
-			   RG_HP_LPZEROGEN_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_HP_LPZEROGEN_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
-			   RG_AUDHPHIFISWST_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPHIFISWST_EN_VAUDP18_SFT);
+	if (priv->hp_hifi_mode != 0) {
+		/* Disable HP feedback SW source-tie */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
+				   RG_AUDHPHIFISWST_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDHPHIFISWST_EN_VAUDP18_SFT);
+	}
+	/*
+	 * Disable HD removed SW when turn on sequence
+	 * LPpath mode would not enable after HP on
+	 */
+	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON32,
+			   RG_HPLHDRMSW_ST_EN_VAUDP18_MASK_SFT,
+			   0x0 << RG_HPLHDRMSW_ST_EN_VAUDP18_SFT);
+	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON32,
+			   RG_HPRHDRMSW_ST_EN_VAUDP18_MASK_SFT,
+			   0x0 << RG_HPRHDRMSW_ST_EN_VAUDP18_SFT);
 
 	/* Step 22: Disable CMFB SW source-tie */
 	regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
@@ -4500,7 +4466,7 @@ static void mtk_hp_disable(struct mt6681_priv *priv)
 	/* Step 23: Disable HP input MUX SW source-tie */
 	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
 			   RG_HPMUXST_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_HPMUXST_EN_VAUDP18_SFT);
+			   0x0 << RG_HPMUXST_EN_VAUDP18_SFT);
 	/* Step 24: Disable 2nd order damp circuit for Hi-Fi mode */
 	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
 			   RG_DAMP2ND_EN_VAUDP18_MASK_SFT,
@@ -4515,6 +4481,31 @@ static void mtk_hp_disable(struct mt6681_priv *priv)
 	/* Step 42: Short HP output to AUX output */
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xcf);
 	/* Step 43: Increase HPL gain to normal gain step by step, 5'h3 :+0dB */
+	/* Step 44: Increase HPR gain to normal gain step by step, 5'h3 :+0dB */
+	if (priv->hp_hifi_mode == 0) {
+		if ((priv->hp_impedance == 0) || (priv->hp_impedance > 30)) {
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN,
+				   RG_DA_NLE_ZCD_HPLGAIN_MASK_SFT,
+				   0x1 << RG_DA_NLE_ZCD_HPLGAIN_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPRGAIN,
+				   RG_DA_NLE_ZCD_HPRGAIN_MASK_SFT,
+				   0x1 << RG_DA_NLE_ZCD_HPRGAIN_SFT);
+		}
+	}
+	/* Step 45: Toggle bit for update NLE RG */
+	mtk_nle_toggle(priv);
+	/* Step 43: Increase HPL gain to normal gain step by step, 5'h3 :+0dB */
+	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN,
+			   RG_DA_NLE_ZCD_HPLGAIN_MASK_SFT,
+			   0x2 << RG_DA_NLE_ZCD_HPLGAIN_SFT);
+	/* Step 44: Increase HPR gain to normal gain step by step, 5'h3 :+0dB */
+	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPRGAIN,
+			   RG_DA_NLE_ZCD_HPRGAIN_MASK_SFT,
+			   0x2 << RG_DA_NLE_ZCD_HPRGAIN_SFT);
+
+	/* Step 45: Toggle bit for update NLE RG */
+	mtk_nle_toggle(priv);
+		/* Step 43: Increase HPL gain to normal gain step by step, 5'h3 :+0dB */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN,
 			   RG_DA_NLE_ZCD_HPLGAIN_MASK_SFT,
 			   0x3 << RG_DA_NLE_ZCD_HPLGAIN_SFT);
@@ -4524,13 +4515,8 @@ static void mtk_hp_disable(struct mt6681_priv *priv)
 			   0x3 << RG_DA_NLE_ZCD_HPRGAIN_SFT);
 
 	/* Step 45: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 46: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+	mtk_nle_toggle(priv);
+
 	/* Step 47: HP mute */
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x33);
 	/* Step 48: Enable Aux-loop feedback SW */
@@ -4539,144 +4525,45 @@ static void mtk_hp_disable(struct mt6681_priv *priv)
 	/* Step 50: Reduce HP aux feedback loop gain step by step */
 	hp_aux_feedback_loop_gain_ramp(priv, false);
 	/* Step 80: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x6 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 81: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x6 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 82: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 83: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 85: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x5 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 86: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x5 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 87: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 88: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 90: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x4 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 91: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x4 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 92: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 93: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 95: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x3 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 96: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x3 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 97: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 98: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 100: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x2 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 101: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x2 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 102: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 103: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 105: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x1 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 106: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x1 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 107: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 108: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 110: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x0 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 111: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x0 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 112: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 113: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
+	nle_outstg_ramp(priv, false);
+
 	/* Step 115: Disable HP main output stage */
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xfc);
 	/* Step 116: Disable Aux-loop CMFB */
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x3f);
-	/* Step 117: Disable HP main CMFB loop */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HPCMFB_EN_RCH_MASK_SFT,
-			   0x0 << RG_HSLO_DA_HPCMFB_EN_RCH_SFT);
-	/* Step 118: Disable HP main CMFB loop */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HPCMFB_EN_LCH_MASK_SFT,
-			   0x0 << RG_HSLO_DA_HPCMFB_EN_LCH_SFT);
+	if (priv->hp_hifi_mode == 0) {
+		/* Step 117: Disable HP main CMFB loop */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
+				   RG_HSLO_DA_HPCMFB_EN_RCH_MASK_SFT,
+				   0x0 << RG_HSLO_DA_HPCMFB_EN_RCH_SFT);
+		/* Step 118: Disable HP main CMFB loop */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
+				   RG_HSLO_DA_HPCMFB_EN_LCH_MASK_SFT,
+				   0x0 << RG_HSLO_DA_HPCMFB_EN_LCH_SFT);
+	} else if (priv->hp_hifi_mode == 2) {
+
+		/* Step 117: Disable HP main CMFB loop */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
+				   RG_DA_HPCMFB_LN_EN_RCH_MASK_SFT,
+				   0x0 << RG_DA_HPCMFB_LN_EN_RCH_SFT);
+		/* Step 118: Disable HP main CMFB loop */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
+				   RG_DA_HPCMFB_LN_EN_LCH_MASK_SFT,
+				   0x0 << RG_DA_HPCMFB_LN_EN_LCH_SFT);
+	} else {
+		/* Step 117: Disable HP main CMFB loop */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
+				   RG_DA_HPCMFB_EN_RCH_MASK_SFT,
+				   0x0 << RG_DA_HPCMFB_EN_RCH_SFT);
+		/* Step 118: Disable HP main CMFB loop */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
+				   RG_DA_HPCMFB_EN_LCH_MASK_SFT,
+				   0x0 << RG_DA_HPCMFB_EN_LCH_SFT);
+	}
 	/* Step 119: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 120: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+	mtk_nle_toggle(priv);
+	hp_in_pair_current(priv, false);
+
 	/* Step 121: Short HP output to AUX output */
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0x3c);
 	/* Step 122: Disable HP driver core circuits */
@@ -4698,45 +4585,80 @@ static void mtk_hp_disable(struct mt6681_priv *priv)
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0x0);
 	/* Step 126: Disable Aux-loop CMFB */
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x33);
-	/* Step 127: Disable HP damping ckt.  */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
-			   RG_AUDHPDAMP_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPDAMP_EN_VAUDP18_SFT);
-	/*
-	 * Step 128:
-	 * LPZEROGEN: Nulling Resistor
-	 * 0: 1kohm
-	 * 1: 7.5kohm (1k + 6.5k)
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
-			   RG_HP_LPZEROGEN_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_HP_LPZEROGEN_EN_VAUDP18_SFT);
-	/*
-	 * Step 129:
-	 * [0]: Disable active-zero compensation circuit in HPBUF
-	 * [3:2]: Select active zero's Cz
-	 * (00) 1pF, (01) 2pF, (10) 2pF, (11) 3pF
-	 * [5:4]: Select active zero's RL
-	 * (00) 50lohm, (01) 100kohm, (10) 150kohm, (11) 200kohm
-	 */
-	/* Step 130: Halve CMFB's Tail Current */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON40, 0x0);
-	/* Step 131: Enable HPR main output stage to min */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x0 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 132: Enable HPL main output stage to min */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x0 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 133: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 134: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+	/* Disable HD removed SW when turn on sequence */
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON32, 0x0);
+
+	if (priv->hp_hifi_mode != 0) {
+		/* Disable Neg R when turn on sequence */
+		regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
+				   DA_AUDHPLNEGR_EN_VAUDP18_MASK_SFT,
+				   0x0 << DA_AUDHPLNEGR_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
+				   DA_AUDHPRNEGR_EN_VAUDP18_MASK_SFT,
+				   0x0 << DA_AUDHPRNEGR_EN_VAUDP18_SFT);
+
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
+				   RG_HP_NREG_STAGE_VAUDP18_MASK_SFT,
+				   0x0 << RG_HP_NREG_STAGE_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
+				   RG_NREGPRESET_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_NREGPRESET_EN_VAUDP18_SFT);
+
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON39,
+				   RG_AUDHPHFOP_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDHPHFOP_EN_VAUDP18_SFT);
+
+		/* Step 127: Disable HP damping ckt.  */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
+				   RG_AUDHPDAMP_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDHPDAMP_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
+				   RG_AUDHPDAMP_ADJ_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDHPDAMP_ADJ_VAUDP18_SFT);
+		if (priv->hp_hifi_mode != 2) {
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
+					   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
+					   0x0 << RG_DA_HP_OUTSTG_RCH_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
+					   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
+					   0x0 << RG_DA_HP_OUTSTG_LCH_SFT);
+			mtk_nle_toggle(priv);
+		}
+	} else {
+		/* Step 127: Disable HP damping ckt.  */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
+				   RG_AUDHPDAMP_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDHPDAMP_EN_VAUDP18_SFT);
+		/*
+		 * Step 128:
+		 * LPZEROGEN: Nulling Resistor
+		 * 0: 1kohm
+		 * 1: 7.5kohm (1k + 6.5k)
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
+				   RG_HP_LPZEROGEN_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_HP_LPZEROGEN_EN_VAUDP18_SFT);
+		/*
+		 * Step 129:
+		 * [0]: Disable active-zero compensation circuit in HPBUF
+		 * [3:2]: Select active zero's Cz
+		 * (00) 1pF, (01) 2pF, (10) 2pF, (11) 3pF
+		 * [5:4]: Select active zero's RL
+		 * (00) 50lohm, (01) 100kohm, (10) 150kohm, (11) 200kohm
+		 */
+		/* Step 130: Halve CMFB's Tail Current */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON40, 0x0);
+		/* Step 131: Enable HPR main output stage to min */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
+				   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
+				   0x0 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
+		/* Step 132: Enable HPL main output stage to min */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
+				   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
+				   0x0 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
+		/* Step 133: Toggle bit for update NLE RG */
+		mtk_nle_toggle(priv);
+	}
 	/* Step 135: Disable HP De-CMgain circuits */
 	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON39,
 			   RG_AUDHPDECMGAIN_EN_VAUDP18_MASK_SFT,
@@ -4753,123 +4675,99 @@ static void mtk_hp_disable(struct mt6681_priv *priv)
 	 * HPL_LP_EN
 	 * HPR_LP_EN
 	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPL_LP_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPL_LP_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPR_LP_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPR_LP_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPL_LP_GAIN_MSB_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPL_LP_GAIN_MSB_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPR_LP_GAIN_MSB_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPR_LP_GAIN_MSB_VAUDP18_SFT);
-	/* Step 139: Set NLE DA signal to debug mode (controlled by RG setting)
-	 */
-	regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_H, 0x0);
-	/* Step 140: Set NLE DA signal to debug mode (controlled by RG setting)
-	 */
-	regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_L, 0x0);
-	/* Step 141: digital gain output debug mode */
-	regmap_update_bits(priv->regmap,
-			   MT6681_AFE_HSLO_NLE_GAIN_IMP_LCH_CFG0_H,
-			   RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_LCH_MASK_SFT,
-			   0x0 << RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_LCH_SFT);
-	/* Step 142: digital gain output debug mode */
-	regmap_update_bits(priv->regmap,
-			   MT6681_AFE_HSLO_NLE_GAIN_IMP_RCH_CFG0_H,
-			   RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_RCH_MASK_SFT,
-			   0x0 << RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_RCH_SFT);
+	/* Disable HPN 4Kohm  */
+	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON39,
+			   RG_HPN4KTONSIDE_EN_VAUDP18_MASK_SFT,
+			   0x0 << RG_HPN4KTONSIDE_EN_VAUDP18_SFT);
+
+	if (priv->hp_hifi_mode == 0) {
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
+				   RG_AUDHPL_LP_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDHPL_LP_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
+				   RG_AUDHPR_LP_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDHPR_LP_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
+				   RG_AUDHPL_LP_GAIN_MSB_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDHPL_LP_GAIN_MSB_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
+				   RG_AUDHPR_LP_GAIN_MSB_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDHPR_LP_GAIN_MSB_VAUDP18_SFT);
+
+		/* Step 139: Set NLE DA signal to debug mode (controlled by RG setting)
+		 */
+		regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_H, 0x0);
+		/* Step 140: Set NLE DA signal to debug mode (controlled by RG setting)
+		 */
+		regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_L, 0x0);
+		/* Step 141: digital gain output debug mode */
+		regmap_update_bits(priv->regmap,
+				   MT6681_AFE_HSLO_NLE_GAIN_IMP_LCH_CFG0_H,
+				   RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_LCH_MASK_SFT,
+				   0x0 << RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_LCH_SFT);
+		/* Step 142: digital gain output debug mode */
+		regmap_update_bits(priv->regmap,
+				   MT6681_AFE_HSLO_NLE_GAIN_IMP_RCH_CFG0_H,
+				   RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_RCH_MASK_SFT,
+				   0x0 << RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_RCH_SFT);
+	} else {
+		if (priv->hp_hifi_mode != 2) {
+			/* Step 139: Set NLE DA signal to debug mode (controlled by RG setting) */
+			regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_H, 0x0);
+			/* Step 140: Set NLE DA signal to debug mode (controlled by RG setting) */
+			regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_L, 0x0);
+		}
+		/* Step 141: digital gain output debug mode */
+		regmap_update_bits(priv->regmap,
+				   MT6681_AFE_NLE_GAIN_IMP_LCH_CFG0_H,
+				   RG_DG_OUTPUT_DEBUG_MODE_LCH_MASK_SFT,
+				   0x0 << RG_DG_OUTPUT_DEBUG_MODE_LCH_SFT);
+		/* Step 142: digital gain output debug mode */
+		regmap_update_bits(priv->regmap,
+				   MT6681_AFE_NLE_GAIN_IMP_RCH_CFG0_H,
+				   RG_DG_OUTPUT_DEBUG_MODE_RCH_MASK_SFT,
+				   0x0 << RG_DG_OUTPUT_DEBUG_MODE_RCH_SFT);
+		if (priv->hp_hifi_mode == 2) {
+			regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_H, 0x0);
+			regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_L, 0x0);
+			regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M, 0x0);
+			regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG, 0x0);
+			regmap_write(priv->regmap, MT6681_AFE_NLE_CFG, 0x0);
+			//mtk_nle_toggle(priv);
+		}
+	}
 	/* Step 143: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 144: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+	mtk_nle_toggle(priv);
 	/* Step 145: Disable IBIST */
 	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON54,
 			   RG_AUDIBIASPWRDN_VAUDP18_MASK_SFT,
 			   0x1 << RG_AUDIBIASPWRDN_VAUDP18_SFT);
 	usleep_range(100, 120);
+
 	/* Step 147: Pull-down HPL/R to AVSS30_AUD */
 	hp_pull_down(priv, false);
-
-	/* Disable low-noise mode of DAC */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON1, 0x0);
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON2, 0x0);
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON5, 0x0);
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON7, 0x3);
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON8, 0x3);
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON9, 0x0);
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON12, 0x0);
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON31, 0x30);
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON32, 0x0);
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON36, 0x0);
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON37, 0x0);
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON38, 0x0);
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON39, 0xc);
-
-	regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_H, 0x0);
-	regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_L, 0x0);
-	regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M, 0x0);
-	regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG, 0x0);
+	if (priv->hp_hifi_mode != 0) {
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
+				   RG_HPLFB_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_HPLFB_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
+				   RG_HPRFB_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_HPRFB_EN_VAUDP18_SFT);
+	}
 }
 
 static int mtk_hp_impedance_enable(struct mt6681_priv *priv)
 {
 	dev_info(priv->dev, "%s() successfully starts\n", __func__);
-
-	regmap_write(priv->regmap, MT6681_TOP_DIG_WPK, 0x81);
-	regmap_write(priv->regmap, MT6681_TOP_DIG_WPK_H, 0x66);
-	regmap_write(priv->regmap, MT6681_TOP_TMA_KEY, 0x7E);
-	regmap_write(priv->regmap, MT6681_TOP_TMA_KEY_H, 0x99);
-	regmap_write(priv->regmap, MT6681_LDO_VAUD18_CON0, 0x01);
-	regmap_write(priv->regmap, MT6681_CLKSQ_PMU_CON0, 0x0A);
-	regmap_write(priv->regmap, MT6681_AUD_TOP_CKPDN_CON0, 0x00);
-	regmap_write(priv->regmap, MT6681_AUD_TOP_SRAM_CON, 0x01);
-	usleep_range(250, 270);
-	regmap_write(priv->regmap, MT6681_AUDIO_TOP_CON0, 0x00);
-	usleep_range(250, 270);
-	regmap_write(priv->regmap, MT6681_AUDIO_TOP_CON2, 0x00);
-	regmap_write(priv->regmap, MT6681_AUDIO_TOP_CON3, 0x01);
-	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON0_L, 0x00);
-	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_H, 0xD1);
-	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_L, 0xA0);
-	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_H, 0x70);
-	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_L, 0x4B);
-	regmap_write(priv->regmap, MT6681_AFE_ADDA_DL_SDM_DCCOMP_CON_H, 0x80);
-	regmap_write(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0_H, 0x8F);
-	regmap_write(priv->regmap, MT6681_AFE_NLE_CFG_H, 0x01);
-	regmap_write(priv->regmap, MT6681_AFE_NLE_CFG_H, 0x81);
-	regmap_write(priv->regmap, MT6681_AFE_NLE_PRE_BUF_CFG_H, 0x04);
-	regmap_write(priv->regmap, MT6681_AFE_NLE_CFG_H, 0x81);
-	regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_CFG_H, 0x86);
-	regmap_write(priv->regmap, MT6681_CLH_COM_CON0, 0x00);
-	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON2, 0x00);
-	regmap_write(priv->regmap, MT6681_CLH_LUT_SEL, 0x00);
-	regmap_write(priv->regmap, MT6681_CLH_COM_CON1, 0x01);
-	regmap_write(priv->regmap, MT6681_CLH_V18N_CON0, 0x18);
-	regmap_write(priv->regmap, MT6681_CLH_V18N_CON1, 0x01);
-	regmap_write(priv->regmap, MT6681_CLH_TONREF_CON0, 0x07);
-	regmap_write(priv->regmap, MT6681_CLH_TONREF_CON1, 0x16);
-	regmap_write(priv->regmap, MT6681_CLH_TONEND_CON0, 0x02);
-	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON0, 0xFC);
-	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON1, 0x07);
-	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON7, 0x50);
-	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON8, 0x00);
-	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON9, 0x0F);
-	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON10, 0x0C);
-	regmap_write(priv->regmap, MT6681_CLH_COM_CON0, 0x00);
-	regmap_write(priv->regmap, MT6681_CLH_COM_CON0, 0x40);
-	regmap_write(priv->regmap, MT6681_AFE_CLH_HP_FIFO_CON0, 0x3E);
-	regmap_write(priv->regmap, MT6681_AFE_CLH_HP_FIFO_CON0, 0x3D);
-	regmap_write(priv->regmap, MT6681_AFE_TOP_CON0, 0x01);
-	regmap_write(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0, 0x01);
+	regmap_write(priv->regmap, MT6681_AFE_TOP_DEBUG0, 0x11);
+	if (priv->hp_hifi_mode == 0) {
+		regmap_update_bits(priv->regmap, MT6681_AFE_TOP_DEBUG0,
+				   DL34_DEBUG_SOURCE_SEL_MASK_SFT,
+				   0x1 << DL34_DEBUG_SOURCE_SEL_SFT);
+	}
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON39, 0x04);
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON57, 0x00);
+	/* Enable AUDGLB */
+	mt6681_set_aud_global_bias(priv, true);
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON60, 0xC0);
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON61, 0x0F);
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON58, 0x00);
@@ -4895,11 +4793,15 @@ static int mtk_hp_impedance_enable(struct mt6681_priv *priv)
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON84, 0x03);
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON89, 0x0C);
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON77, 0x0F);
-	regmap_write(priv->regmap, MT6681_CLH_COM_CON0, 0x41);
+	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
+			   RG_CLH_DYN_EN_MASK_SFT, 0x1 << RG_CLH_DYN_EN_SFT);
 	usleep_range(200, 220);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON64, 0x3F);
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON33, 0x80);
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON69, 0x02);
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON2, 0x08);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x3);
+	usleep_range(100, 120);
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON25, 0x30);
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON33, 0x80);
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON31, 0x00);
@@ -4928,10 +4830,7 @@ static int mtk_hp_impedance_enable(struct mt6681_priv *priv)
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON7, 0x17);
 	usleep_range(100, 120);
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON7, 0x16);
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON52, 0xA1);
-
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x0);
-
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON52, 0xa1);
 	return 0;
 }
 
@@ -4942,6 +4841,14 @@ static int mtk_hp_impedance_disable(struct mt6681_priv *priv)
 	/* from accdet request */
 	mt6681_accdet_modify_vref_volt();
 #endif
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON51, 0x0);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON52, 0x0);
+	/* [5]: Enable discharge paths of V18N, PVDD, and PVSS */
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON79, 0x20);
+	usleep_range(100, 120);
+	/* [5]: Disable discharge paths of V18N, PVDD, and PVSS */
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON79, 0x0);
+	regmap_write(priv->regmap, MT6681_AFE_TOP_DEBUG0, 0x0);
 
 	return 0;
 }
@@ -5033,8 +4940,69 @@ static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 			mt6681_set_sdm_fifo(priv, true, false);
 			mt6681_set_dl_src(priv, true, false);
 			mt6681_set_2nd_dl_src(priv, true, true);
+			/*
+			 * Step :
+			 * Disable Ch1/2 NLE
+			 * bit3: use ZCD mode
+			 * bit2: use LO mode
+			 * bit1: use HS mode
+			 * bit0: use HP mode
+			 */
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+					   RG_ZCD_LO_HS_HP_SEL_MASK_SFT,
+					   0x0 << RG_ZCD_LO_HS_HP_SEL_SFT);
+			/* Step : Toggle class-H dynamic RGs */
+			regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
+					   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
+					   0x0 << RG_CLH_DYN_DYNRG_SYNC_SFT);
+			/* Step : Select preview data source based from
+			 * 0: HPpath or
+			 * 1: HSLO path
+			 */
+			regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
+					   RG_CLH_DYN_LOAD_MASK_SFT,
+					   0x1 << RG_CLH_DYN_LOAD_SFT);
+			/* Step : Set Lch Again MIN (for HS ZCD min=0, max=18)
+			 */
+			regmap_update_bits(
+					   priv->regmap,
+					   MT6681_AFE_HSLO_NLE_GAIN_ADJ_LCH_CFG0,
+					   RG_HSLO_NLE_AG_MAX_LCH_MASK_SFT,
+					   0x7 << RG_HSLO_NLE_AG_MAX_LCH_SFT);
+			regmap_update_bits(
+					   priv->regmap,
+					   MT6681_AFE_HSLO_NLE_GAIN_ADJ_RCH_CFG0,
+					   RG_HSLO_NLE_AG_MAX_RCH_MASK_SFT,
+					   0x7 << RG_HSLO_NLE_AG_MAX_RCH_SFT);
+			/*
+			 * Step :
+			 * [7] Set IL-charging path to single path in bypass
+			 * mode or
+			 * class-AB state
+			 * [6:0] Set PVDDref = 1.85V in bypass mode or class-AB
+			 * state
+			 */
+			regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON0, 0xf8);
+			/*
+			 * Step :
+			 * Turn on class-H HSLO-path FIFO
+			 * If HP, turn on HP-path FIFO -> Set BYPASS to 0 and ON
+			 * to 1
+			 * If HSLO, turn off HP-path FIFO -> Set BYPASS to 1 and
+			 * ON to 0
+			 */
+			regmap_write(priv->regmap, MT6681_AFE_CLH_HP_FIFO_CON0,0xa);
+			regmap_write(priv->regmap, MT6681_AFE_CLH_HSLO_FIFO_CON0, 0x3d);
+			/*
+			 * Step :
+			 * DACSW NVREG enable 2 feedforward paths in parallel
+			 * 0: Only 1 FF path (ULP)
+			 * 1: Enable 2 FF paths in parallel
+			 */
+			regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON65,
+					   RG_NVREG_DACSW_FF_PLUS_VAUDP18_MASK_SFT,
+					   0x0 << RG_NVREG_DACSW_FF_PLUS_VAUDP18_SFT);
 		}
-
 		/* 3:hwgain1/2 swap & bypass HWgain1/2 */
 		regmap_write(priv->regmap, MT6681_AFE_TOP_DEBUG0, 0x31);
 		regmap_write(priv->regmap, MT6681_AFE_STF_CON1, 0x30);
@@ -5084,13 +5052,7 @@ static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 				   RG_DA_NLE_ZCD_HSGAIN_MASK_SFT,
 				   0x1 << RG_DA_NLE_ZCD_HSGAIN_SFT);
 		/* Step 100: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 101: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		mtk_nle_toggle(priv);
 		/* Step 102: Enable HS driver bias circuits */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON43,
 				   RG_AUDHSPWRUP_IBIAS_VAUDP18_MASK_SFT,
@@ -5124,39 +5086,11 @@ static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 				   RG_HSLO_NLE_AFE_NLE_ON_MASK_SFT,
 				   0x1 << RG_HSLO_NLE_AFE_NLE_ON_SFT);
 		/* Step 110: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 111: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		mtk_nle_toggle(priv);
 		/* Step 112: Switch HS MUX to audio DAC (HSDAC ,CH3) */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON45,
 				   RG_AUDHSMUXINPUTSEL_VAUDP18_MASK_SFT,
 				   0x2 << RG_AUDHSMUXINPUTSEL_VAUDP18_SFT);
-		/*
-		* Step 113:
-		* Disable Ch1/2 NLE
-		* bit3: use ZCD mode
-		* bit2: use LO mode
-		* bit1: use HS mode
-		* bit0: use HP mode
-		*/
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_ZCD_LO_HS_HP_SEL_MASK_SFT,
-				   0x0 << RG_ZCD_LO_HS_HP_SEL_SFT);
-		/* Step 114: Toggle class-H dynamic RGs */
-		regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-				   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
-				   0x0 << RG_CLH_DYN_DYNRG_SYNC_SFT);
-		/* Step 115: Select preview data source based from
-		* 0: HPpath or
-		* 1: HSLO path
-		*/
-		regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-				   RG_CLH_DYN_LOAD_MASK_SFT,
-				   0x1 << RG_CLH_DYN_LOAD_SFT);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		priv->dev_counter[device]--;
@@ -5206,6 +5140,9 @@ static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 			mt6681_set_dl_src(priv, false, false);
 			mt6681_set_2nd_dl_src(priv, false, true);
 			mt6681_set_sdm_fifo(priv, false, false);
+			regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_GAIN_ADJ_LCH_CFG0, 0x0);
+			regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_GAIN_ADJ_RCH_CFG0, 0x0);
+			regmap_write(priv->regmap, MT6681_AFE_CLH_HSLO_FIFO_CON0, 0xa);
 		}
 		break;
 	default:
@@ -5279,13 +5216,7 @@ static int mt_lo_event(struct snd_soc_dapm_widget *w,
 				   RG_DA_NLE_ZCD_LOGAIN_MASK_SFT,
 				   0x1 << RG_DA_NLE_ZCD_LOGAIN_SFT);
 		/* Step 99: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 100: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		mtk_nle_toggle(priv);
 		/* Step 101: Enable LO driver bias circuits */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON47,
 				   RG_AUDLOPWRUP_IBIAS_VAUDP18_MASK_SFT,
@@ -5319,13 +5250,7 @@ static int mt_lo_event(struct snd_soc_dapm_widget *w,
 				   RG_HSLO_NLE_AFE_NLE_ON_MASK_SFT,
 				   0x1 << RG_HSLO_NLE_AFE_NLE_ON_SFT);
 		/* Step 109: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 110: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		mtk_nle_toggle(priv);
 		/* Step 111: Switch LOL MUX to audio DAC (LODAC) */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON49,
 				   RG_AUDLOMUXINPUTSEL_VAUDP18_MASK_SFT,
@@ -6486,16 +6411,8 @@ static int mt_clksq_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		/* NLE enable */
-		if (priv->hp_hifi_mode == 2) {
-			regmap_write(priv->regmap, MT6681_AFE_NLE_CFG_H, 0x0);
-			regmap_write(priv->regmap, MT6681_AFE_NLE_CFG_H, 0x80);
-		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		if (priv->hp_hifi_mode == 2) {
-			regmap_write(priv->regmap, MT6681_AFE_NLE_CFG_H, 0x81);
-			regmap_write(priv->regmap, MT6681_AFE_NLE_CFG_H, 0x91);
-		}
 		break;
 	default:
 		break;
@@ -11830,7 +11747,7 @@ static int mt_ldo_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		/* Disnable for V32REFGEN */
-		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON60, 0x0);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON60, 0xc0);
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON58, 0x0);
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON62, 0x0);
 		break;
@@ -11868,20 +11785,38 @@ static int mt_zcd_event(struct snd_soc_dapm_widget *w,
 			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 					   SW_RSTB_MASK_SFT,
 					   0x1 << SW_RSTB_SFT);
-			/*
-			 * Step 23:
-			 * [2] bypass delay (don't need toggle)
-			 * bypass NLE pre-view buffer
-			 * (enable when woNLE)
-			 * turn off NLE SRAM
-			 */
-			regmap_update_bits(
-				priv->regmap, MT6681_AFE_NLE_PRE_BUF_CFG_H,
-				BYPASS_DELAY_MASK_SFT, 0x1 << BYPASS_DELAY_SFT);
-			regmap_update_bits(priv->regmap,
+			if (priv->hp_hifi_mode == 2) {
+				/*
+				 * Step 23:
+				 * [2] bypass delay (don't need toggle)
+				 * bypass NLE pre-view buffer(enable when woNLE)
+				 * turn on NLE SRAM"
+				 */
+				regmap_update_bits(
+					priv->regmap, MT6681_AFE_NLE_PRE_BUF_CFG_H,
+					BYPASS_DELAY_MASK_SFT, 0x0 << BYPASS_DELAY_SFT);
+				regmap_update_bits(priv->regmap,
 					   MT6681_AFE_NLE_PRE_BUF_CFG_H,
 					   RG_HPLR_NLE_SRAM_ON_MASK_SFT,
-					   0x0 << RG_HPLR_NLE_SRAM_ON_SFT);
+					   0x1 << RG_HPLR_NLE_SRAM_ON_SFT);
+			} else {
+				/*
+				 * Step 23:
+				 * [2] bypass delay (don't need toggle)
+				 * bypass NLE pre-view buffer
+				 * (enable when woNLE)
+				 * turn off NLE SRAM
+				 */
+				regmap_update_bits(
+					priv->regmap, MT6681_AFE_NLE_PRE_BUF_CFG_H,
+					BYPASS_DELAY_MASK_SFT, 0x1 << BYPASS_DELAY_SFT);
+				regmap_update_bits(priv->regmap,
+						   MT6681_AFE_NLE_PRE_BUF_CFG_H,
+						   RG_HPLR_NLE_SRAM_ON_MASK_SFT,
+						   0x0 << RG_HPLR_NLE_SRAM_ON_SFT);
+			}
+			regmap_write(priv->regmap,
+				     MT6681_AFE_HSLO_NLE_PRE_BUF_CFG_H, 0x4);
 			/*
 			 * Step 24:
 			 * 1/2ch NLE mode (priority High must disable when 3/4ch
@@ -12002,21 +11937,34 @@ static int mt_zcd_event(struct snd_soc_dapm_widget *w,
 				RG_HSLO_NLE_AG_MAX_RCH_MASK_SFT,
 				0x7 << RG_HSLO_NLE_AG_MAX_RCH_SFT);
 			/* Step 33: Toggle bit for update NLE RG */
-			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-					   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-					   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-			/* Step 34: Toggle bit for update NLE RG */
-			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-					   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-					   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+			mtk_nle_toggle(priv);
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+				   RG_ZCD_LO_HS_HP_SEL_MASK_SFT,
+				   0x0 << RG_ZCD_LO_HS_HP_SEL_SFT);
 		if (priv->hp_hifi_mode == 0) {
 			regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_GAIN_ADJ_LCH_CFG0,
 			     0x0);
 			regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_GAIN_ADJ_RCH_CFG0,
 			     0x0);
+		}
+		if (priv->hp_hifi_mode == 2) {
+			/*
+			 * Step 23:
+			 * [2] bypass delay (don't need toggle)
+			 * bypass NLE pre-view buffer(enable when woNLE)
+			 * turn on NLE SRAM"
+			 */
+			regmap_update_bits(
+				priv->regmap, MT6681_AFE_NLE_PRE_BUF_CFG_H,
+				BYPASS_DELAY_MASK_SFT, 0x1 << BYPASS_DELAY_SFT);
+			regmap_update_bits(priv->regmap,
+				   MT6681_AFE_NLE_PRE_BUF_CFG_H,
+				   RG_HPLR_NLE_SRAM_ON_MASK_SFT,
+				   0x0 << RG_HPLR_NLE_SRAM_ON_SFT);
+			mtk_nle_toggle(priv);
 		}
 		break;
 	default:
@@ -12107,14 +12055,7 @@ static int mt_clh_post_disable(struct mt6681_priv *priv)
 	/* Step 169: [0]: Disable class-H converter */
 	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
 			   RG_CLH_DYN_EN_MASK_SFT, 0x0 << RG_CLH_DYN_EN_SFT);
-	/* Step 170: Toggle class-H dynamic RGs */
-	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-			   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
-			   0x1 << RG_CLH_DYN_DYNRG_SYNC_SFT);
-	/* Step 171: Toggle class-H dynamic RGs */
-	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-			   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
-			   0x0 << RG_CLH_DYN_DYNRG_SYNC_SFT);
+	mtk_clh_toggle(priv);
 	/* Step 172: [3]: Disable class-H power stage */
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON77, 0x7);
 	/* Step 173: Disable DA_CLH_CLK26M (= 0) */
@@ -12147,6 +12088,11 @@ static int mt_clh_post_disable(struct mt6681_priv *priv)
 	 * [5]: Disable class-H ZCD
 	 */
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON75, 0x0);
+	/* [5]: Enable discharge paths of V18N, PVDD, and PVSS */
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON79, 0x20);
+	usleep_range(100, 120);
+	/* [5]: Disable discharge paths of V18N, PVDD, and PVSS */
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON79, 0x0);
 
 	return 0;
 }
@@ -12160,10 +12106,8 @@ static int mt_clh_post_event(struct snd_soc_dapm_widget *w,
 	dev_dbg(priv->dev, "%s() successfully starts\n", __func__);
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		mt_clh_post_enable(priv);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		mt_clh_post_disable(priv);
 		break;
 	default:
 		break;
@@ -12246,6 +12190,7 @@ static int mt_nvreg_event(struct snd_soc_dapm_widget *w,
 		 * [2]: Enable NVREG SW IBIAS2
 		 */
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON73, 0x6);
+		mt_clh_post_enable(priv);
 		/* Step 96: Enable for all NVREGs */
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON64, 0x3f);
 		/*
@@ -12309,6 +12254,7 @@ static int mt_nvreg_event(struct snd_soc_dapm_widget *w,
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON73, 0x0);
 		/* Step 165: Disable for all NVREGs */
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON64, 0x0);
+		mt_clh_post_disable(priv);
 		break;
 	default:
 		break;
@@ -12333,12 +12279,9 @@ static int mt_sdm_event(struct snd_soc_dapm_widget *w,
 			     0x80);
 		/* To do :64tap dither */
 		regmap_write(priv->regmap, MT6681_AFE_ADDA_DL_SDM_DITHER_CON_M,
-			     0x11);
+			     0x0);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0_H,
-				   AFE_DL_INPUT_MODE_CTL_MASK_SFT,
-				   0x0 << AFE_DL_INPUT_MODE_CTL_SFT);
 		regmap_write(priv->regmap, MT6681_AFE_ADDA_DL_SDM_DITHER_CON_M,
 			     0x0);
 		break;
@@ -12423,31 +12366,6 @@ static int mt_sdm_3rd_event(struct snd_soc_dapm_widget *w,
 
 	return 0;
 }
-static int mt_top_event(struct snd_soc_dapm_widget *w,
-			struct snd_kcontrol *kcontrol, int event)
-{
-	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
-	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
-
-	switch (event) {
-	case SND_SOC_DAPM_PRE_PMU:
-		if (priv->hp_hifi_mode == 2) {
-			regmap_write(priv->regmap, MT6681_AFE_GAIN1_CON1_2,
-				     0x0);
-			regmap_write(priv->regmap, MT6681_AFE_GAIN1_CON1_1,
-				     0x0);
-			regmap_write(priv->regmap, MT6681_AFE_GAIN1_CON1_0,
-				     0x1);
-			regmap_write(priv->regmap, MT6681_AFE_GAIN1_CON0_0,
-				     0xa0);
-		}
-		break;
-	default:
-		break;
-	}
-	return 0;
-}
-
 static int mt_nle_event(struct snd_soc_dapm_widget *w,
 			struct snd_kcontrol *kcontrol, int event)
 {
@@ -12614,46 +12532,51 @@ static int mt_nle_event(struct snd_soc_dapm_widget *w,
 				     MT6681_AFE_NLE_LNGAIN_COMP_RCH_G7, 0xa9);
 
 			/* preview window */
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFE_NLE_PRE_BUF_CFG_H,
-					   BYPASS_DELAY_MASK_SFT, 0x0);
+			//regmap_update_bits(priv->regmap,
+			//		   MT6681_AFE_NLE_PRE_BUF_CFG_H,
+			//		   BYPASS_DELAY_MASK_SFT, 0x0);
 			regmap_write(priv->regmap, MT6681_AFE_NLE_PRE_BUF_CFG_M,
-				     0x3b);
+				     0x4b);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AFE_NLE_PRE_BUF_CFG_L,
-					   POINT_END_H_MASK_SFT, 0x3);
+					   POINT_END_H_MASK_SFT, 0x4);
 			regmap_write(priv->regmap, MT6681_AFE_NLE_PRE_BUF_CFG,
 				     0xb0);
 			/* NLE hold time 22ms must larger than preview window */
 			regmap_write(priv->regmap,
-				     MT6681_AFE_NLE_PWR_DET_LCH_CFG_H, 0x1c);
+				     MT6681_AFE_NLE_PWR_DET_LCH_CFG_H, 0x1f);
 			regmap_write(priv->regmap,
-				     MT6681_AFE_NLE_PWR_DET_RCH_CFG_H, 0x1c);
+				     MT6681_AFE_NLE_PWR_DET_RCH_CFG_H, 0x1f);
 
 			/* power detect -45dB */
 			regmap_write(priv->regmap,
 				     MT6681_AFE_NLE_PWR_DET_LCH_CFG_M, 0x0);
 			regmap_write(priv->regmap,
-				     MT6681_AFE_NLE_PWR_DET_LCH_CFG_L, 0xb8);
+				     MT6681_AFE_NLE_PWR_DET_LCH_CFG_L, 0x67);
 			regmap_write(priv->regmap,
-				     MT6681_AFE_NLE_PWR_DET_LCH_CFG, 0x45);
+				     MT6681_AFE_NLE_PWR_DET_LCH_CFG, 0x9f);
 			regmap_write(priv->regmap,
 				     MT6681_AFE_NLE_PWR_DET_RCH_CFG_M, 0x0);
 			regmap_write(priv->regmap,
-				     MT6681_AFE_NLE_PWR_DET_RCH_CFG_L, 0xb8);
+				     MT6681_AFE_NLE_PWR_DET_RCH_CFG_L, 0x67);
 			regmap_write(priv->regmap,
-				     MT6681_AFE_NLE_PWR_DET_RCH_CFG, 0x45);
+				     MT6681_AFE_NLE_PWR_DET_RCH_CFG, 0x9f);
 
 			/* ZCD detect HW check */
 			regmap_write(priv->regmap, MT6681_AFE_NLE_ZCD_LCH_CFG,
-				     0x2);
+				     0x3);
 			regmap_write(priv->regmap, MT6681_AFE_NLE_ZCD_RCH_CFG,
-				     0x2);
+				     0x3);
 			/* NLE gain setting time out 22ms */
 			regmap_write(priv->regmap,
-				     MT6681_AFE_NLE_GAIN_ADJ_LCH_CFG0_H, 0x16);
+				     MT6681_AFE_NLE_GAIN_ADJ_LCH_CFG0_H, 0x1e);
 			regmap_write(priv->regmap,
-				     MT6681_AFE_NLE_GAIN_ADJ_RCH_CFG0_H, 0x16);
+				     MT6681_AFE_NLE_GAIN_ADJ_RCH_CFG0_H, 0x1e);
+			/* AG delay time to analog domain 19T */
+			regmap_write(priv->regmap,
+				     MT6681_AFE_NLE_GAIN_IMP_LCH_CFG0_M, 0x13);
+			regmap_write(priv->regmap,
+				     MT6681_AFE_NLE_GAIN_IMP_RCH_CFG0_M, 0x13);
 			/* Set AG gain min & max */
 			regmap_update_bits(priv->regmap,
 					   MT6681_AFE_NLE_GAIN_ADJ_LCH_CFG0,
@@ -12672,23 +12595,22 @@ static int mt_nle_event(struct snd_soc_dapm_widget *w,
 					   RG_AG_MIN_RCH_MASK_SFT,
 					   0x7 << RG_AG_MIN_RCH_SFT);
 
-			/* AG delay time to analog domain 19T */
-			regmap_write(priv->regmap,
-				     MT6681_AFE_NLE_GAIN_IMP_LCH_CFG0_M, 0x13);
-			regmap_write(priv->regmap,
-				     MT6681_AFE_NLE_GAIN_IMP_RCH_CFG0_M, 0x13);
-
 			/* Set Dgain & Again in debug mode */
 			regmap_write(priv->regmap,
-				     MT6681_AFE_NLE_GAIN_IMP_LCH_CFG0_L, 0x7);
+				     MT6681_AFE_NLE_GAIN_ADJ_LCH_CFG0_L, 0x0);
 			regmap_write(priv->regmap,
-				     MT6681_AFE_NLE_GAIN_IMP_LCH_CFG0, 0x0);
+				     MT6681_AFE_NLE_GAIN_ADJ_LCH_CFG0, 0x7);
 
 			regmap_write(priv->regmap,
-				     MT6681_AFE_NLE_GAIN_IMP_RCH_CFG0_L, 0x7);
+				     MT6681_AFE_NLE_GAIN_ADJ_RCH_CFG0_L, 0x0);
 			regmap_write(priv->regmap,
-				     MT6681_AFE_NLE_GAIN_IMP_RCH_CFG0, 0x0);
+				     MT6681_AFE_NLE_GAIN_ADJ_RCH_CFG0, 0x7);
 
+			regmap_write(priv->regmap,
+				     MT6681_AFE_NLE_ZCD_COUNT_TH_LCH, 0x9);
+			regmap_write(priv->regmap,
+				     MT6681_AFE_NLE_ZCD_COUNT_TH_RCH, 0x9);
+			mtk_nle_toggle(priv);
 			regmap_update_bits(
 				priv->regmap,
 				MT6681_AFE_NLE_GAIN_ADJ_LCH_CFG0_M,
@@ -12772,8 +12694,10 @@ static int mt_clh_event(struct snd_soc_dapm_widget *w,
 			 * Select LUT (including PVDDref & TONref)
 			 * 0: LUT0 (HP32 and HS32), 1: LUT1 (HP16)
 			 */
-			regmap_write(priv->regmap, MT6681_CLH_LUT_SEL, 0x0);
-
+			if ((priv->hp_impedance != 0) && (priv->hp_impedance < 30))
+				regmap_write(priv->regmap, MT6681_CLH_LUT_SEL, 0x1);
+			else
+				regmap_write(priv->regmap, MT6681_CLH_LUT_SEL, 0x0);
 			/* Step 54: Enable DA_CLH_CLK26M = 010101*/
 			regmap_write(priv->regmap, MT6681_CLH_COM_CON1, 0x1);
 			/* Step 55: Set V18Nref to -1.587V */
@@ -12790,7 +12714,10 @@ static int mt_clh_event(struct snd_soc_dapm_widget *w,
 			/* Step 58: Set Tonref = 13.5T in bypass mode or
 			 * class-AB state
 			 */
-			regmap_write(priv->regmap, MT6681_CLH_TONREF_CON1, 0x16);
+			if ((priv->hp_impedance != 0) && (priv->hp_impedance < 30))
+				regmap_write(priv->regmap, MT6681_CLH_TONREF_CON1, 0x1c);
+			else
+				regmap_write(priv->regmap, MT6681_CLH_TONREF_CON1, 0x16);
 			/*
 			 * Step 59:
 			 * [4] Set DA_CLH_TONENDA = 0
@@ -12806,7 +12733,10 @@ static int mt_clh_event(struct snd_soc_dapm_widget *w,
 			 * [6:0] Set PVDDref = 1.95V in bypass mode or class-AB
 			 * state
 			 */
-			regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON0, 0xfc);
+			if ((priv->hp_impedance != 0) && (priv->hp_impedance < 30))
+				regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON0, 0xf8);
+			else
+				regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON0, 0xfc);
 
 			/* Step 61: Set preview 8 data (after up-sampling) in
 			 * each channel
@@ -12817,7 +12747,10 @@ static int mt_clh_event(struct snd_soc_dapm_widget *w,
 			 * (VS1 to VP)
 			 * based on Rload
 			 */
-			regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON7, 0x50);
+			if ((priv->hp_impedance != 0) && (priv->hp_impedance < 30))
+				regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON7, 0x70);
+			else
+				regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON7, 0x50);
 			/* Step 63: Set PVDDref-path delay 1 for fs = 48kHz */
 			regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON8, 0x0);
 
@@ -12826,14 +12759,7 @@ static int mt_clh_event(struct snd_soc_dapm_widget *w,
 
 			/* Step 65: Set PVDDref-path delay 3 for fs = 48kHz */
 			regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON10, 0xc);
-			/* Step 66: Toggle class-H dynamic RGs */
-			regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-					   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
-					   0x0 << RG_CLH_DYN_DYNRG_SYNC_SFT);
-			/* Step 67: Toggle class-H dynamic RGs */
-			regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-					   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
-					   0x1 << RG_CLH_DYN_DYNRG_SYNC_SFT);
+			mtk_clh_toggle(priv);
 			/*
 			 * Step 68:
 			 * Set class-H HP-path FIFO read-starting point: delay
@@ -12858,9 +12784,6 @@ static int mt_clh_event(struct snd_soc_dapm_widget *w,
 			regmap_update_bits(priv->regmap, MT6681_AFE_DAC_CHOP_CLK_CON0,
 					   AFE_DAC_CHOP_CLK_DIV_SEL_MASK_SFT,
 					   0x1F << AFE_DAC_CHOP_CLK_DIV_SEL_SFT);
-			regmap_update_bits(priv->regmap, MT6681_AFE_DAC_CHOP_CLK_CON0,
-					   AFE_DAC_CHOP_CLK_DIV_EN_MASK_SFT,
-					   0x1 << AFE_DAC_CHOP_CLK_DIV_EN_SFT);
 		} else {
 			/* Step 40: Select preview data source based from 0: HP
 			 * path or
@@ -12924,14 +12847,7 @@ static int mt_clh_event(struct snd_soc_dapm_widget *w,
 			/* Step 53: Set PVDDref-path delay 3 for fs = 48kHz */
 			regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON10, 0xc);
 
-			/* Step 54: Toggle class-H dynamic RGs */
-			regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-					   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
-					   0x1 << RG_CLH_DYN_DYNRG_SYNC_SFT);
-			/* Step 55: Toggle class-H dynamic RGs */
-			regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-					   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
-					   0x0 << RG_CLH_DYN_DYNRG_SYNC_SFT);
+			mtk_clh_toggle(priv);
 			/*
 			 * Step 56:
 			 * Set class-H HSLO-path FIFO read-starting point: delay
@@ -12950,17 +12866,14 @@ static int mt_clh_event(struct snd_soc_dapm_widget *w,
 			 * ON to 0
 			 */
 			regmap_write(priv->regmap, MT6681_AFE_CLH_HSLO_FIFO_CON0, 0x3d);
-
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		regmap_write(priv->regmap, MT6681_CLH_COM_CON0, 0x0);
 		/* Step 189: Turn off DL HSLO-path FIFO */
-		if (priv->hp_hifi_mode) {
-			regmap_write(priv->regmap, MT6681_AFE_CLH_HP_FIFO_CON0,0xa);
-		} else {
+		if (priv->hp_hifi_mode != 0)
+			regmap_write(priv->regmap, MT6681_AFE_CLH_HP_FIFO_CON0, 0x3e);
+		else
 			regmap_write(priv->regmap, MT6681_AFE_CLH_HSLO_FIFO_CON0, 0xa);
-		}
 		break;
 	default:
 		break;
@@ -12973,22 +12886,9 @@ static int mt_clh_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-
-static int mt_hwgain_event(struct snd_soc_dapm_widget *w,
-			struct snd_kcontrol *kcontrol, int event)
+static int set_hwgain(struct mt6681_priv *priv, int rate)
 {
-	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
-	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
-	unsigned int rate;
-	unsigned long long t_start = get_current_time(), t_consume = 0;
-
-	if (priv->dl_rate[0] != 0)
-		rate = mt6681_etdm_rate_transform(priv->dl_rate[0]);
-	else
-		rate = MT6681_AFE_ETDM_48000HZ;
-
-	switch (event) {
-	case SND_SOC_DAPM_PRE_PMU:
+	if (priv->hp_hifi_mode) {
 		regmap_update_bits(priv->regmap,
 				   MT6681_AFE_GAIN1_CON0_0,
 				   GAIN1_MODE_MASK_SFT,
@@ -13012,16 +12912,16 @@ static int mt_hwgain_event(struct snd_soc_dapm_widget *w,
 		/* LCH target gain -3dB (0x5a9e0) */
 		regmap_write(priv->regmap,
 			     MT6681_AFE_GAIN1_CON1_3,
-			     (priv->dl_hwgain >> 24 & 0xff));
+			     (priv->l_trim_gain >> 24 & 0xff));
 		regmap_write(priv->regmap,
 			     MT6681_AFE_GAIN1_CON1_2,
-			     (priv->dl_hwgain >> 16 & 0xff));
+			     (priv->l_trim_gain >> 16 & 0xff));
 		regmap_write(priv->regmap,
 			     MT6681_AFE_GAIN1_CON1_1,
-			     (priv->dl_hwgain >> 8 & 0xff));
+			     (priv->l_trim_gain >> 8 & 0xff));
 		regmap_write(priv->regmap,
 			     MT6681_AFE_GAIN1_CON1_0,
-			     (priv->dl_hwgain & 0xff));
+			     (priv->l_trim_gain & 0xff));
 		/* RCH cur gain 0dB */
 		regmap_write(priv->regmap,
 			     MT6681_AFE_GAIN6_CON0_1, 0x4);
@@ -13036,78 +12936,43 @@ static int mt_hwgain_event(struct snd_soc_dapm_widget *w,
 		/* LCH target gain -3dB  (0x5a9e0) */
 		regmap_write(priv->regmap,
 			     MT6681_AFE_GAIN6_CON1_3,
-			     (priv->dl_hwgain >> 24 & 0xff));
+			     (priv->r_trim_gain >> 24 & 0xff));
 		regmap_write(priv->regmap,
 			     MT6681_AFE_GAIN6_CON1_2,
-			     (priv->dl_hwgain >> 16 & 0xff));
+			     (priv->r_trim_gain >> 16 & 0xff));
 		regmap_write(priv->regmap,
 			     MT6681_AFE_GAIN6_CON1_1,
-			     (priv->dl_hwgain >> 8 & 0xff));
+			     (priv->r_trim_gain >> 8 & 0xff));
 		regmap_write(priv->regmap,
 			     MT6681_AFE_GAIN6_CON1_0,
-			     (priv->dl_hwgain & 0xff));
-		regmap_update_bits(priv->regmap,
-				   MT6681_AFE_GAIN1_CON0_0,
-				   GAIN1_ON_MASK_SFT,
-				   0x1 << GAIN1_ON_SFT);
-		regmap_update_bits(priv->regmap,
-				   MT6681_AFE_GAIN6_CON0_0,
-				   GAIN6_ON_MASK_SFT,
-				   0x1 << GAIN6_ON_SFT);
+			     (priv->r_trim_gain & 0xff));
+	}
+	return 0;
+}
+
+static int mt_hwgain_event(struct snd_soc_dapm_widget *w,
+			struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+	unsigned int rate;
+
+	if (priv->dl_rate[0] != 0)
+		rate = mt6681_etdm_rate_transform(priv->dl_rate[0]);
+	else
+		rate = MT6681_AFE_ETDM_48000HZ;
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		set_hwgain(priv, rate);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		/* LCH cur gain 0dB */
-		regmap_write(priv->regmap,
-			     MT6681_AFE_GAIN1_CUR_3, 0x0);
-		regmap_write(priv->regmap,
-			     MT6681_AFE_GAIN1_CUR_2, 0x8);
-		regmap_write(priv->regmap,
-			     MT6681_AFE_GAIN1_CUR_1, 0x0);
-		regmap_write(priv->regmap,
-			     MT6681_AFE_GAIN1_CUR_0, 0x0);
-		/* LCH target gain 0dB  */
-		regmap_write(priv->regmap,
-			     MT6681_AFE_GAIN1_CON1_3, 0x0);
-		regmap_write(priv->regmap,
-			     MT6681_AFE_GAIN1_CON1_2, 0x8);
-		regmap_write(priv->regmap,
-			     MT6681_AFE_GAIN1_CON1_1, 0x0);
-		regmap_write(priv->regmap,
-			     MT6681_AFE_GAIN1_CON1_0, 0x0);
-		/* RCH cur gain 0dB */
-		regmap_write(priv->regmap,
-			     MT6681_AFE_GAIN6_CUR_3, 0x0);
-		regmap_write(priv->regmap,
-			     MT6681_AFE_GAIN6_CUR_2, 0x8);
-		regmap_write(priv->regmap,
-			     MT6681_AFE_GAIN6_CUR_1, 0x0);
-		regmap_write(priv->regmap,
-			     MT6681_AFE_GAIN6_CUR_0, 0x0);
-		/* LCH target gain 0dB  */
-		regmap_write(priv->regmap,
-			     MT6681_AFE_GAIN6_CON1_3, 0x0);
-		regmap_write(priv->regmap,
-			     MT6681_AFE_GAIN6_CON1_2, 0x8);
-		regmap_write(priv->regmap,
-			     MT6681_AFE_GAIN6_CON1_1, 0x0);
-		regmap_write(priv->regmap,
-			     MT6681_AFE_GAIN6_CON1_0, 0x0);
-		regmap_update_bits(priv->regmap,
-				   MT6681_AFE_GAIN1_CON0_0,
-				   GAIN1_ON_MASK_SFT,
-				   0x0 << GAIN1_ON_SFT);
-		regmap_update_bits(priv->regmap,
-				   MT6681_AFE_GAIN6_CON0_0,
-				   GAIN6_ON_MASK_SFT,
-				   0x0 << GAIN6_ON_SFT);
 		break;
 	default:
 		break;
 	}
-
-	t_consume = get_current_time() - t_start;
-	if (t_consume >= RG_RW_TIMEOUT)
-		dev_info(priv->dev, "%s(), function cost %llu time(ns)", __func__, t_consume);
+	pr_info("MT6681_ID : %s() mt6681 hifi_mode(0x%x): L 0x%x, R 0x%x\n",
+		__func__, priv->hp_hifi_mode, priv->l_trim_gain, priv->r_trim_gain);
 
 	return 0;
 }
@@ -13265,16 +13130,15 @@ static const struct snd_soc_dapm_widget mt6681_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY_S("PLL18 EN", SUPPLY_SEQ_PLL_208M, SND_SOC_NOPM, 0,
 			      0, mt_vpll18_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_SUPPLY_S("CLKSQ Audio", SUPPLY_SEQ_CLKSQ,
+			      MT6681_CLKSQ_PMU_CON0, RG_CLKSQ_EN_SFT,
+			      0, NULL, 0),
 	SND_SOC_DAPM_SUPPLY_S("CLKSQ DL Audio", SUPPLY_SEQ_CLKSQ,
 			      MT6681_CLKSQ_PMU_CON0, RG_CLKSQ_AUDDEC_EN_SFT,
 			      0, mt_clksq_event, SND_SOC_DAPM_PRE_PMU|SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_SUPPLY_S("CLKSQ UL Audio", SUPPLY_SEQ_CLKSQ,
 			      MT6681_CLKSQ_PMU_CON0, RG_CLKSQ_AUDENC_EN_SFT,
 			      0, NULL, 0),
-/*
-	SND_SOC_DAPM_SUPPLY_S("CLKSQ Audio", SUPPLY_SEQ_CLKSQ, SND_SOC_NOPM, 0,
-			      0, mt_clksq_event, SND_SOC_DAPM_PRE_PMU),
-*/
 
 	// SND_SOC_DAPM_SUPPLY_S("AUDNCP_CK", SUPPLY_SEQ_TOP_CK,
 	//		      MT6681_AUD_TOP_CKPDN_CON0,
@@ -13350,6 +13214,10 @@ static const struct snd_soc_dapm_widget mt6681_dapm_widgets[] = {
 			      SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_SUPPLY_S("AUDIO_TOP_PDN_OTHERS", SUPPLY_SEQ_AUD_TOP,
 			      SND_SOC_NOPM, 0, 0, NULL, 0),
+	/* ch123 share SDM FIFO CLK */
+	SND_SOC_DAPM_SUPPLY_S("SDM_FIFO_CLK", SUPPLY_SEQ_DL_SDM_FIFO_CLK,
+			      SND_SOC_NOPM, 0, 0, mt_sdm_fifo_event,
+			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_SUPPLY_S("SDM", SUPPLY_SEQ_DL_SDM, SND_SOC_NOPM, 0, 0,
 			      mt_sdm_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
@@ -13358,19 +13226,23 @@ static const struct snd_soc_dapm_widget mt6681_dapm_widgets[] = {
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_SUPPLY_S("NLE", SUPPLY_SEQ_DL_NLE, SND_SOC_NOPM, 0, 0,
 			      mt_nle_event, SND_SOC_DAPM_PRE_PMU),
+	SND_SOC_DAPM_SUPPLY_S("ZCD", SUPPLY_SEQ_DL_ZCD, SND_SOC_NOPM, 0, 0,
+			      mt_zcd_event,
+			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_SUPPLY_S("HW_Gain", SUPPLY_SEQ_DL_HWGAIN, SND_SOC_NOPM, 0, 0,
 			      mt_hwgain_event, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
-
-	/* ch123 share SDM FIFO CLK */
-	SND_SOC_DAPM_SUPPLY_S("SDM_FIFO_CLK", SUPPLY_SEQ_DL_SDM_FIFO_CLK,
-			      SND_SOC_NOPM, 0, 0, mt_sdm_fifo_event,
+	SND_SOC_DAPM_SUPPLY_S("CLH", SUPPLY_SEQ_DL_CLH, MT6681_AFE_DAC_CHOP_CLK_CON0,
+			      AFE_DAC_CHOP_CLK_DIV_EN_SFT, 0,
+			      mt_clh_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_SUPPLY_S("NCP", SUPPLY_SEQ_DL_NCP, SND_SOC_NOPM, 0, 0,
 			      NULL, SND_SOC_DAPM_PRE_PMU),
-	SND_SOC_DAPM_SUPPLY_S("CLH", SUPPLY_SEQ_DL_CLH, SND_SOC_NOPM, 0, 0,
-			      mt_clh_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+
+	SND_SOC_DAPM_SUPPLY_S("HW_Gain1_EN", SUPPLY_SEQ_DL_HWGAIN_EN, MT6681_AFE_GAIN1_CON0_0,
+			      GAIN1_ON_SFT, 0, NULL, 0),
+	SND_SOC_DAPM_SUPPLY_S("HW_Gain6_EN", SUPPLY_SEQ_DL_HWGAIN_EN, MT6681_AFE_GAIN6_CON0_0,
+			      GAIN6_ON_SFT, 0, NULL, 0),
 
 	SND_SOC_DAPM_SUPPLY("DL Digital Clock", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_SUPPLY("DL Digital Clock CH_1_2", SND_SOC_NOPM, 0, 0, NULL,
@@ -13380,8 +13252,7 @@ static const struct snd_soc_dapm_widget mt6681_dapm_widgets[] = {
 
 	/* AFE ON */
 	SND_SOC_DAPM_SUPPLY_S("AFE_ON", SUPPLY_SEQ_AFE, MT6681_AFE_TOP_CON0,
-			      AFE_ON_SFT, 0, mt_top_event,
-			      SND_SOC_DAPM_PRE_PMU),
+			      AFE_ON_SFT, 0, NULL, 0),
 	/* GPIO */
 	SND_SOC_DAPM_SUPPLY_S("DL_GPIO", SUPPLY_SEQ_DL_GPIO, SND_SOC_NOPM, 0, 0,
 			      mt_dl_gpio_event,
@@ -13410,13 +13281,11 @@ static const struct snd_soc_dapm_widget mt6681_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY("DL Power Supply", SND_SOC_NOPM, 0, 0, NULL, 0),
 
 	SND_SOC_DAPM_SUPPLY_S("ESD_RESIST", SUPPLY_SEQ_DL_ESD_RESIST,
-			      SND_SOC_NOPM, 0, 0, mt_esd_resist_event,
+			      MT6681_AUDDEC_PMU_CON57, RG_AUDGLB_PWRDN_VA32_SFT,
+			      1, mt_esd_resist_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_SUPPLY_S("LDO", SUPPLY_SEQ_DL_LDO, SND_SOC_NOPM, 0, 0,
 			      mt_ldo_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_SUPPLY_S("ZCD", SUPPLY_SEQ_DL_ZCD, SND_SOC_NOPM, 0, 0,
-			      mt_zcd_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_SUPPLY_S("CLH_POST", SUPPLY_SEQ_DL_CLH_POST, SND_SOC_NOPM,
 			      0, 0, mt_clh_post_event,
@@ -13831,7 +13700,7 @@ static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 	{"AIFTX_Supply", NULL, "UL_GPIO"},
 	{"AIFTX_Supply", NULL, "ADC_INIT"},
 	{"AIFTX_Supply", NULL, "CLK_BUF"},
-	{"AIFTX_Supply", NULL, "AUDGLB"},
+	{"AIFTX_Supply", NULL, "CLKSQ Audio"},
 	{"AIFTX_Supply", NULL, "CLKSQ UL Audio"},
 	{"AIFTX_Supply", NULL, "PLL18 EN", is_need_pll_208M},
 	{"AIFTX_Supply", NULL, "PLL18 Audio", is_need_pll_208M},
@@ -14079,6 +13948,7 @@ static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 	{"DL Power Supply", NULL, "NCP_CK"},
 	{"DL Power Supply", NULL, "NCP_CK_208"},
 	{"DL Power Supply", NULL, "LDO_VAUD18"},
+	{"DL Power Supply", NULL, "CLKSQ Audio"},
 	{"DL Power Supply", NULL, "CLKSQ DL Audio"},
 	{"DL Power Supply", NULL, "PLL18 EN", is_need_pll_208M},
 	{"DL Power Supply", NULL, "PLL18 Audio", is_need_pll_208M},
@@ -14108,8 +13978,9 @@ static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 	{"DL Digital Clock CH_1_2", NULL, "AFE_2ND_DL_SRC", is_hp_lowpower},
 	{"DL Digital Clock CH_1_2", NULL, "NLE"},
 	{"DL Digital Clock CH_1_2", NULL, "HW_Gain", is_hwgain_enable},
+	{"DL Digital Clock CH_1_2", NULL, "HW_Gain1_EN", is_hwgain_enable},
+	{"DL Digital Clock CH_1_2", NULL, "HW_Gain6_EN", is_hwgain_enable},
 	{"DL Digital Clock CH_1_2", NULL, "ESD_RESIST"},
-	{"DL Digital Clock CH_1_2", NULL, "AUDGLB"},
 	{"DL Digital Clock CH_1_2", NULL, "LDO"},
 	{"DL Digital Clock CH_1_2", NULL, "ZCD"},
 
@@ -14120,7 +13991,6 @@ static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 	{"DL Digital Clock CH_3_4", NULL, "AFE_2ND_DL_SRC"},
 	{"DL Digital Clock CH_3_4", NULL, "NLE"}, // TODO: Necessary?
 	{"DL Digital Clock CH_3_4", NULL, "ESD_RESIST"},
-	{"DL Digital Clock CH_3_4", NULL, "AUDGLB"},
 	{"DL Digital Clock CH_3_4", NULL, "LDO"},
 	{"DL Digital Clock CH_3_4", NULL, "ZCD"},
 
@@ -14692,9 +14562,8 @@ static void start_trim_hardware(struct mt6681_priv *priv)
 	int status = 0;
 #endif
 
-	dev_info(priv->dev, "%s(), trim start\n", __func__);
-	/* Set playback gpio (mosi/clk/sync) */
-	regmap_write(priv->regmap, MT6681_AFE_TOP_DEBUG0, 0x11);
+	dev_info(priv->dev, "%s(), trim start hp_hifi_mode = %d\n", __func__, priv->hp_hifi_mode);
+
 	regmap_write(priv->regmap, MT6681_TOP_CKTST_CON0, 0xc);
 	mt6681_set_playback_gpio(priv);
 	mt6681_set_dcxo(priv, true);
@@ -14745,7 +14614,7 @@ static void start_trim_hardware(struct mt6681_priv *priv)
 	 * SRAM  power on
 	 * AUDIO_CO_MEM_PDN_SEL(default=1'b0 use CO_MEM_PDN)
 	 */
-	regmap_write(priv->regmap, MT6681_AUD_TOP_SRAM_CON, 0x0);
+	regmap_write(priv->regmap, MT6681_AUD_TOP_SRAM_CON, 0x1);
 	usleep_range(250, 270);
 	/*
 	 * Step 10:
@@ -14756,969 +14625,1101 @@ static void start_trim_hardware(struct mt6681_priv *priv)
 	usleep_range(250, 270);
 	/* Step 12: Audio system digital clock power down release */
 	regmap_write(priv->regmap, MT6681_AUDIO_TOP_CON2, 0x0);
+	/* Step 13: Audio system digital clock power down release */
 	regmap_write(priv->regmap, MT6681_AUDIO_TOP_CON3, 0x1);
 
-	/*
-	 * Step 14:
-	 * DEM normal path setting
-	 * [6] 0: aud_dac_ana reset by global rstb
-	 * 1: aud_dac_ana reset by global rstb and cci_acd_func_rstb
-	 */
-	/*
-	 * Step 15:
-	 * DEM normal path setting
-	 * [1] 0: Power down for normal path scrambler ana 6.5M
-	 * 1: Power on
-	 */
-	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_L, 0x42);
-	/*
-	 * Step 16:
-	 * DEM normal path setting
-	 * [6:4] normal fifo wptr
-	 * [3] 0: Disable scrambler PA
-	 * 1: Enable scrambler PA
-	 * [0] clk on
-	 */
-	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_H, 0xd1);
-	/*
-	 * Step 17:
-	 * DEM normal path setting
-	 * [7] scram on
-	 * [5] zero padding disable
-	 * [0] 0: scrambler disable
-	 * 1: scrambler enable
-	 */
-	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_L, 0xa1);
-	/*
-	 * Step 18:
-	 * DEM normal path setting
-	 * [0] 0: Disable
-	 * 1: Enable
-	 */
-	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_H, 0x0);
+	if (priv->hp_hifi_mode != 0)
+		regmap_write(priv->regmap, MT6681_AFE_TOP_DEBUG0, 0x0);
+	else
+		regmap_write(priv->regmap, MT6681_AFE_TOP_DEBUG0, 0x11);
+	regmap_write(priv->regmap, MT6681_AFE_STF_CON1, 0x30);
 
-	/*
-	 * Step 19:
-	 * DEM normal path setting
-	 * [0] 0: Reset
-	 * 1: Released
-	 */
-	/*
-	 * Step 20:
-	 * DEM normal path setting
-	 * [3] 0: Disable
-	 * 1: Enable
-	 */
-	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_L, 0x4b);
+	if (priv->hp_hifi_mode != 0) {
+		regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON0_L, 0x0);
+		/* Audio SDM and scrambler enable (1/2 ch) */
+		regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_H, 0xd1);
+		regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_L, 0xa0);
+		regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_H, 0x70);
+		regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_L, 0x4b);
 
-	/*
-	 * Step 21:
-	 * [6] 0: use 2nd old 8bit sdm
-	 * 1: use 2nd new 8bit sdm
-	 */
-	regmap_update_bits(priv->regmap,
-			   MT6681_AFE_ADDA_2ND_DL_SDM_DCCOMP_CON_H,
-			   AFE_2ND_DL_USE_NEW_2ND_SDM_MASK_SFT,
-			   0x1 << AFE_2ND_DL_USE_NEW_2ND_SDM_SFT);
-	/*
-	 * Step 22:
-	 * [7] 0: use 2nd old 8bit sdm
-	 * 1: use 2nd new 12bit sdm
-	 */
-	regmap_update_bits(priv->regmap,
-			   MT6681_AFE_ADDA_2ND_DL_SDM_DCCOMP_CON_H,
-			   AFE_2ND_DL_USE_NEW_2ND_12BIT_SDM_MASK_SFT,
-			   0x0 << AFE_2ND_DL_USE_NEW_2ND_12BIT_SDM_SFT);
-	/*
-	 * Step 23:
-	 * [7:4] select FS = 48KHz
-	 * 0: 8k
-	 * 1: 11.025k
-	 * 2: 12k
-	 * 3: 16k
-	 * 4: 22.05k
-	 * 5: 24k
-	 * 6: 32k
-	 * 7: 44.1k
-	 * 8: 48k
-	 * 9: 96k
-	 * 10: 192k
-	 * 11: 384k
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0_H,
-			   AFE_2ND_DL_INPUT_MODE_CTL_MASK_SFT,
-			   0x8 << AFE_2ND_DL_INPUT_MODE_CTL_SFT);
-	/*
-	 * Step 24:
-	 * afe nle sw reset
-	 * 0: reset  1: no reset
-	 */
-	regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_CFG_H, 0x46);
-	/*
-	 * Step 25:
-	 * afe nle sw reset
-	 * 0: reset  1: no reset
-	 */
-	regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_CFG_H, 0xc6);
-	/*
-	 * Step 26:
-	 * [2] bypass delay (don't need toggle)
-	 * bypass NLE pre-view buffer
-	 * (enable when woNLE)
-	 * turn off NLE SRAM
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_PRE_BUF_CFG_H,
-			   RG_HSLO_NLE_BYPASS_DELAY_MASK_SFT,
-			   0x1 << RG_HSLO_NLE_BYPASS_DELAY_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_PRE_BUF_CFG_H,
-			   RG_HSLO_NLE_SRAM_ON_MASK_SFT,
-			   0x0 << RG_HSLO_NLE_SRAM_ON_SFT);
-	/*
-	 * Step 27:
-	 * Disable Ch1/2 NLE
-	 * bit0: use HP mode
-	 * bit1: use HS mode
-	 * bit2: use LO mode
-	 * bit3: use ZCD mode
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_ZCD_LO_HS_HP_SEL_MASK_SFT,
-			   0x0 << RG_ZCD_LO_HS_HP_SEL_SFT);
-	/*
-	 * Step 28:
-	 * bit0: use HP mode
-	 * bit1: use HS mode
-	 * bit2: use LO mode
-	 * bit3: use ZCD mode
-	 */
+		regmap_write(priv->regmap, MT6681_AFE_ADDA_DL_SDM_DCCOMP_CON_H, 0x80);
 
-	regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_CFG_H, 0xc1);
-	/*
-	 * Step 29:
-	 * HP gain Select NLE_ZCD mode
-	 * 0: NLE ZCD mode (gain RG from 0x27F1 & 0x27F2)
-	 * 1: AUD_ZCD mode (gain RG from 0x360A & 0x360B)
-	 */
-	regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_CFG_H, 0x81);
+		regmap_write(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0_H, 0x8f);
+		/* reset NLE */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+				   SW_RSTB_MASK_SFT,
+				   0x0 << SW_RSTB_SFT);
 
-	/* Step 55: Select preview data source based from 0: HP path or 1: HSLO
-	 * path
-	 */
-	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-			   RG_CLH_DYN_LOAD_MASK_SFT,
-			   0x1 << RG_CLH_DYN_LOAD_SFT);
-	/*
-	 * Step 56:
-	 * Select LUT (including PVDDref & TONref) based on Rload
-	 * LO Rload > 32 Ohm -> Select LUT0 -> Set to 1'b0
-	 */
-	regmap_write(priv->regmap, MT6681_CLH_LUT_SEL, 0x0);
-	/* Step 57: Enable DA_CLH_CLK26M = 010101...*/
-	regmap_write(priv->regmap, MT6681_CLH_COM_CON1, 0x1);
-	/* Step 58: Set V18Nref to -1.587V */
-	regmap_write(priv->regmap, MT6681_CLH_V18N_CON0, 0x18);
-	/* Step 59: Set V18N power-good debounce time = 500ns */
-	regmap_write(priv->regmap, MT6681_CLH_V18N_CON1, 0x1);
-	/* Step 60: Set Tonref = 6T in V18N-startup state */
-	regmap_write(priv->regmap, MT6681_CLH_TONREF_CON0, 0x7);
-	/* Step 61: Set Tonref = 13.5T in bypass mode or class-AB state */
-	regmap_write(priv->regmap, MT6681_CLH_TONREF_CON1, 0x16);
-	/* Step 62: Set delay from DA_CLH_TONEND to DA_CLH_TONEND2 = 2T */
-	regmap_write(priv->regmap, MT6681_CLH_TONEND_CON0, 0x2);
-	/*
-	 * Step 63:
-	 * [7] Set IL-charging path to single path in bypass mode or class-AB
-	 * state
-	 * [6:0] Set PVDDref = 1.85V in bypass mode or class-AB state
-	 */
-	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON0, 0xfc);
-	/* Step 64: Set preview 8 data (after up-sampling) in each channel */
-	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON1, 0x7);
-	/* Step 65: Set upper-bound of Vaudmax for bypass mode (VS1 to VP) based
-	 * on Rload
-	 */
-	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON7, 0x50);
-	/* Step 66: Set PVDDref-path delay 1 for fs = 48kHz */
-	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON8, 0x0);
-	/* Step 67: Set PVDDref-path delay 2 for fs = 48kHz */
-	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON9, 0xf);
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+				   SW_RSTB_MASK_SFT,
+				   0x1 << SW_RSTB_SFT);
+		/* Audio SDM and scrambler enable (1/2 ch) */
+		regmap_write(priv->regmap, MT6681_AFE_NLE_PRE_BUF_CFG_H, 0x4);
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+				   RG_ZCD_LO_HS_HP_SEL_MASK_SFT,
+				   0x1 << RG_ZCD_LO_HS_HP_SEL_SFT);
+		regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_CFG_H, 0x86);
+		set_hwgain(priv, MT6681_AFE_ETDM_48000HZ);
 
-	/* Step 68: Set PVDDref-path delay 3 for fs = 48kHz */
-	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON10, 0xc);
+		/* Audio CLH digital part enable (Need to set CLH look-up table of CLH_LUT0_LUT1 first) */
+		regmap_write(priv->regmap, MT6681_CLH_COM_CON0, 0x0);
+		regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON2, 0x0);
+		regmap_write(priv->regmap, MT6681_CLH_LUT_SEL, 0x0);
+		regmap_write(priv->regmap, MT6681_CLH_COM_CON1, 0x1);
+		regmap_write(priv->regmap, MT6681_CLH_V18N_CON0, 0x18);
+		regmap_write(priv->regmap, MT6681_CLH_V18N_CON1, 0x1);
+		regmap_write(priv->regmap, MT6681_CLH_TONREF_CON0, 0x7);
+		regmap_write(priv->regmap, MT6681_CLH_TONREF_CON1, 0x16);
+		regmap_write(priv->regmap, MT6681_CLH_TONEND_CON0, 0x2);
+		regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON0, 0xfc);
+		regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON1, 0x7);
+		regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON7, 0x50);
+		regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON8, 0x0);
+		regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON9, 0xf);
+		regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON10, 0xc);
 
-	/* Step 69: Toggle class-H dynamic RGs */
-	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-			   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
-			   0x1 << RG_CLH_DYN_DYNRG_SYNC_SFT);
-	/* Step 70: Toggle class-H dynamic RGs */
-	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-			   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
-			   0x0 << RG_CLH_DYN_DYNRG_SYNC_SFT);
-	/*
-	 * Step 71:
-	 * Set class-H HSLO-path FIFO read-starting point: delay 16 samples
-	 * (Notice : Setting must = 2x preview size of CLH
-	 * (RG_CLH_DYN_PRVERAMESIZE))
-	 */
-	regmap_write(priv->regmap, MT6681_AFE_CLH_HSLO_FIFO_CON0, 0x3e);
-	/*
-	 * Step 72:
-	 * Turn on class-H HSLO-path FIFO
-	 * If HP, turn on HP-path FIFO -> Set BYPASS to 0 and ON to 1
-	 * If HSLO, turn off HP-path FIFO -> Set BYPASS to 1 and ON to 0
-	 */
-	regmap_write(priv->regmap, MT6681_AFE_CLH_HSLO_FIFO_CON0, 0x3d);
-	/* Step 73: Turn on AFE */
-	regmap_write(priv->regmap, MT6681_AFE_TOP_CON0, 0x1);
-	/* Step 74: Turn on DL HSLO-path SRC */
-	regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
-			   AFE_2ND_DL_SRC_ON_TMP_CTL_PRE_MASK_SFT,
-			   0x1 << AFE_2ND_DL_SRC_ON_TMP_CTL_PRE_SFT);
-	/* Step 75: Gain2 48k, enable */
-	regmap_write(priv->regmap, MT6681_AFE_GAIN2_CON0_0, 0xa1);
-	/* Step 76: Gain7 48k, enable */
-	regmap_write(priv->regmap, MT6681_AFE_GAIN7_CON0_0, 0xa1);
-	/* Step 77: Reduce ESD resistance of AU_REFN */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON39,
-			   RG_AUDREFN_DERES_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDREFN_DERES_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON39,
-			   RG_AUDREFN_PLL0V_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDREFN_PLL0V_EN_VAUDP18_SFT);
-	/* Step 78: Enable AUDGLB */
-	mt6681_set_aud_global_bias(priv, true);
+		mtk_clh_toggle(priv);
+		regmap_write(priv->regmap, MT6681_AFE_CLH_HP_FIFO_CON0, 0x3e);
+		regmap_write(priv->regmap, MT6681_AFE_CLH_HP_FIFO_CON0, 0x3d);
+		regmap_write(priv->regmap, MT6681_AFE_DAC_CHOP_CLK_CON0, 0xf9);
+		/* Audio digital AFE/DL_SRC enable (1/2 ch) */
+		regmap_write(priv->regmap, MT6681_AFE_TOP_CON0, 0x1);
+		regmap_write(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0, 0x1);
 
-	/*
-	 * Step 79:
-	 * Enable LCLDO-BUF-L power-down discharge function
-	 * Enable LCLDO-BUF-R power-down discharge function
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON60, 0xc0);
-	/*
-	 * Step 80:
-	 * Enable HCLDO-BUF-L power-down discharge function
-	 * Enable HCLDO-BUF-R power-down discharge function
-	 * Enable LCLDO-DACSW-L power-down discharge function
-	 * Enable LCLDO-DACSW-R power-down discharge function
-	 */
-
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON61, 0xf);
-
-	/*
-	 * Step 81:
-	 * LDO dual vout selection to min
-	 * 000: 1.607V
-	 * 001: 1.657V
-	 * 010: 1.205V
-	 * 011: 1.356V
-	 * 100: 1.406V
-	 * 101: 1.456V
-	 * 110: 1.506V
-	 * 111: 1.556V
-	 */
-	 //TF MT6681_AUDDEC_PMU_CON58 =0x0
-	/*
-	 * Step 84:
-	 * Selects LCLDO_BUF_L remote sense function
-	 * Selects LCLDO_BUF_R remote sense function
-	 */
-	/*
-	 * Step 85:
-	 * Selects HCLDO_BUF_L remote sense function
-	 * Selects HCLDO_BUF_R remote sense function
-	 */
-	/*
-	 * Step 86:
-	 * Selects LCLDO_DACSW_L remote sense function
-	 * Selects LCLDO_DACSW_R remote sense function
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON62, 0x3f);
-	/* Step 87: Enable for V32REFGEN */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON58, 0x7);
-	/* Step 88: Enable for L/R all LDOs */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON60, 0xff);
-
-	/*
-	 * Step 89:
-	 * NVREG_DACSW vout selection
-	 * 000: -1.3V
-	 * 001: -1.231V
-	 * 010: -1.169V
-	 * 011: -1.108V
-	 * 100: -1.538V
-	 * 101: -1.477V
-	 * 110: -1.415V
-	 * 111: -1.354V
-	 */
-	/* Step 90: NVREG_HCBUF vout selection */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON56, 0x0);
-	/* Step 91: NVREG_LCBUF vout selection */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON57,
-			   RG_AUDGLB_NVREG_LCBUF_VREF_SEL_VA32_MASK_SFT,
-			   0x0 << RG_AUDGLB_NVREG_LCBUF_VREF_SEL_VA32_SFT);
-	/*
-	 * Step 92:
-	 * DACSW NVREG feedforward path select
-	 * 0: FF gain = 16x, extra 16uA/DACSW_NVREG
-	 * 1: FF gain = 4x
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON65,
-			   RG_NVREG_DACSW_FF_MODE_SEL_VAUDP18_MASK_SFT,
-			   0x1 << RG_NVREG_DACSW_FF_MODE_SEL_VAUDP18_SFT);
-	/*
-	 * Step 93:
-	 * DACSW NVREG enable 2 feedforward paths in parallel
-	 * 0: Only 1 FF path (ULP)
-	 * 1: Enable 2 FF paths in parallel
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON65,
-			   RG_NVREG_DACSW_FF_PLUS_VAUDP18_MASK_SFT,
-			   0x0 << RG_NVREG_DACSW_FF_PLUS_VAUDP18_SFT);
-	/* Step 94: Select NVREG class-AB output stage */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON65,
-			   RG_NVREG_LC_MODE_SEL_VAUDP18_MASK_SFT,
-			   0x1 << RG_NVREG_LC_MODE_SEL_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON65,
-			   RG_NVREG_HC_MODE_SEL_VAUDP18_MASK_SFT,
-			   0x1 << RG_NVREG_HC_MODE_SEL_VAUDP18_SFT);
-	/*
-	 * Step 95:
-	 * [1]: Enable NVREG HC IBIAS2
-	 * [2]: Enable NVREG SW IBIAS2
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON73, 0x6);
-	/* Step 96: Enable for all NVREGs */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON64, 0x3f);
-	/*
-	 * Step 97:
-	 * [4-0]: Set class-H ZCD offset & delay trim code to default value
-	 * (ADVT only) (Must be removed in FT!)
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON85,
-			   RG_CLH_ZCD_TRIM_VOS_VAL_VA32_MASK_SFT,
-			   0xc << RG_CLH_ZCD_TRIM_VOS_VAL_VA32_SFT);
-	/*
-	 * Step 98:
-	 * [0]: Turn on pull-low NMOS in some class-H ESD clampers
-	 * [1]: Enable class-H Vref buffer
-	 * [2]: Enable class-H Ibias circuit
-	 * [3]: Enable class-H reference DAC
-	 * [5]: Enable class-H ZCD
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON75, 0x2f);
-
-	/*
-	 * Step 99:
-	 * [3]: Turn on pull-low NMOS in some class-H ESD clampers
-	 * [4]: Enable class-H switch controller (SWC)
-	 * [5]: Enable class-H IL energy release to V18N
-	 * [6]: Enable class-H IL energy release to PVDD
-	 * [7]: Enable class-H IL energy release to PVSS
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON76, 0xf8);
-	/*
-	 * Step 100:
-	 * [0]: Enable class-H IL-reuse path
-	 * [1] Select dual IL-charging paths
-	 * [2]: Enable class-H bypass mode
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON77, 0x7);
-	/*
-	 * Step 101:
-	 * [0]: Enable class-H PVSS feedback RDIV
-	 * [1]: Enable class-H V18N feedback RDIV
-	 * [2]: Select class-H operating in DCM
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON83, 0x7);
-	/*
-	 * Step 102:
-	 * [0]: Enable class-H PVDD feedback RDIV
-	 * [1]: Enable class-H V18N, PVDD, and PVSS comparators
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON84, 0x3);
-	/*
-	 * Step 103:
-	 * [2]: Enable class-H auto-transition from error state to
-	 * IL-freewheeling state
-	 * [3]: Enable class-H error-state detector
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON89, 0xc);
-	/* Step 104: [3]: Enable class-H power stage */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON77, 0xf);
-	/* Step 105: [0]: Enable class-H converter */
-	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN1_CON0_0,
+			   GAIN1_ON_MASK_SFT, 0x1 << GAIN1_ON_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AFE_GAIN6_CON0_0,
+			   GAIN6_ON_MASK_SFT, 0x1 << GAIN6_ON_SFT);
+		/*  Audio analog AUDREFN + GLB (HP) */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON39, 0x4);
+		/* Enable AUDGLB */
+		mt6681_set_aud_global_bias(priv, true);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON60, 0xc0);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON61, 0xf);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON58, 0x0);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON59, 0x0);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON62, 0x3f);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON58, 0x7);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON60, 0xff);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON56, 0x0);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON57, 0x0);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON65, 0x10);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON65, 0x30);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON65, 0xf0);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON73, 0x6);
+		/* Audio analog PMU (LDO>CLH>NVREG) */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON85, 0xc);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON75, 0x2f);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON76, 0xf8);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON77, 0x7);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON83, 0x7);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON84, 0x3);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON89, 0xC);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON77, 0xf);
+		regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
 			   RG_CLH_DYN_EN_MASK_SFT, 0x1 << RG_CLH_DYN_EN_SFT);
-	usleep_range(200, 220);
-	/*
-	 * Step 107:
-	 * Power down control for VMAXVMIN comparator in PAD logics
-	 * 0: Power down; VDD = AVDD18_AUD, VSS = AU_V18N
-	 * 1: Enable; VDD = max(AVDD18_AUD, AU_VP), VSS = min(AU_V18N, AU_VN)
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON33, 0x80);
-	/*
-	 * Step 108:
-	 * Enable AUD_CLK (6.5MHz mode)
-	 * (RG_ABIDEC_SEL_DECODER_VA18 need mapping to DA_355_CLK_SEL)
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON69, 0x2);
-	/*
-	 * Step 109:
-	 * HiFiDAC LVSH Enable
-	 * 0: disable
-	 * 1: enable
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON2,
-			   RG_AUDDAC_LVSH_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDDAC_LVSH_EN_VAUDP18_SFT);
-	/* Step 110: Enable HP mute */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x3);
-	usleep_range(100, 120);
-	/* Step 112: Pull-down HPL/R to AVSS30_AUD */
-	hp_pull_down(priv, true);
-	/*
-	 * Step 126:
-	 * HPL Rfb opamp input short enable
-	 * HPR Rfb opamp input short enable
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
-			   RG_HPL_RFB_OPAMPIN_SHORT_VAUDP18_MASK_SFT,
-			   0x1 << RG_HPL_RFB_OPAMPIN_SHORT_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
-			   RG_HPR_RFB_OPAMPIN_SHORT_VAUDP18_MASK_SFT,
-			   0x1 << RG_HPR_RFB_OPAMPIN_SHORT_VAUDP18_SFT);
-	/*
-	 * Step 127:
-	 * HPL FB Enable
-	 * HPR FB Enable
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
-			   RG_HPLFB_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_HPLFB_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
-			   RG_HPRFB_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_HPRFB_EN_VAUDP18_SFT);
-	/* Step 128: HP NREG segmentation */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
-			   RG_HP_NREG_STAGE_VAUDP18_MASK_SFT,
-			   0x0 << RG_HP_NREG_STAGE_VAUDP18_SFT);
-	/*
-	 * Step 129:
-	 * HPL_LP_EN
-	 * HPR_LP_EN
-	 * Enable LP_GAIN_MSB for depop-on/off
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPL_LP_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPL_LP_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPR_LP_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPR_LP_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPL_LP_GAIN_MSB_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPL_LP_GAIN_MSB_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPR_LP_GAIN_MSB_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPR_LP_GAIN_MSB_VAUDP18_SFT);
-	/*
-	 * Step 130:
-	 * LPZEROGEN: Nulling Resistor
-	 * 0: 1kohm
-	 * 1: 7.5kohm (1k + 6.5k)
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
-			   RG_HP_LPZEROGEN_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_HP_LPZEROGEN_EN_VAUDP18_SFT);
-	/*
-	 * Step 131:
-	 * HPL_Trim_mode(1'b0: old version)
-	 * HPR_Trim_mode(1'b0: old version)
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
-			   RG_AUDHPL_TRIM_MODE_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPL_TRIM_MODE_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
-			   RG_AUDHPR_TRIM_MODE_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPR_TRIM_MODE_VAUDP18_SFT);
-	/* Step 134: Enable HPTRIM */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
-			   RG_AUDHPTRIM_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPTRIM_EN_VAUDP18_SFT);
-	/* Step 135: Disable headphone short-ckt protection. */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
-			   RG_AUDHPRSCDISABLE_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPRSCDISABLE_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
-			   RG_AUDHPLSCDISABLE_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPLSCDISABLE_VAUDP18_SFT);
-	/* Step 136: Enable IBIST */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON54,
-			   RG_AUDIBIASPWRDN_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDIBIASPWRDN_VAUDP18_SFT);
-	/*
-	 * Step 137:
-	 * [2:0] Headphone Left/Right DR bias current setting
-	 * 000: 2uA (ULP)
-	 * 001: 3uA
-	 * 010: 4uA (LP)
-	 * 011: 5uA
-	 * 100: 6uA (HiFi)
-	 * 101: 7uA
-	 * 110: 8uA
-	 * 111: 9uA
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON53,
-			   RG_AUDBIASADJ_0_HP_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDBIASADJ_0_HP_VAUDP18_SFT);
-	/*
-	 * Step 138:
-	 * Set HP & ZCD bias current optimization
-	 * [7:6] 01: ZCD: 4uA, [5:4]: LO; [3:2]: HS; [1:0]: HP
-	 * LO/HS/HP: 00:2uA, 01:3uA, 10: 4uA, 11:5uA
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON55,
-			   RG_AUDBIASADJ_1_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDBIASADJ_1_VAUDP18_SFT);
-	/* Step 139: digital gain output debug mode */
-	regmap_update_bits(priv->regmap,
-			   MT6681_AFE_HSLO_NLE_GAIN_IMP_LCH_CFG0_H,
-			   RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_LCH_MASK_SFT,
-			   0x1 << RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_LCH_SFT);
-	/* Step 140: digital gain output debug mode */
-	regmap_update_bits(priv->regmap,
-			   MT6681_AFE_HSLO_NLE_GAIN_IMP_RCH_CFG0_H,
-			   RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_RCH_MASK_SFT,
-			   0x1 << RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_RCH_SFT);
-	/* Step 141: Set NLE DA signal to debug mode (controlled by RG setting)
-	 */
-	regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_H, 0x80);
-	/* Step 142: Set NLE DA signal to debug mode (controlled by RG setting)
-	 */
-	regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_L, 0x80);
-	/*
-	 * Step 143:
-	 * Set HPP/N STB enhance circuits
-	 * enable lpstbenh when turn on sequence
-	 */
-	/* Step 144: Set HPP/N STB enhance circuits */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON28, 0x77);
-	/*
-	 * Step 145:
-	 * HP Feedback Cap select 2'b00: 15pF
-	 * for >=96KHz sampling rate: 2'b01: 10.5pF
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPHFCOMPBUFGAINSEL_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPHFCOMPBUFGAINSEL_VAUDP18_SFT);
-	/* Step 146: Enable HP De-CMgain circuits */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON39,
-			   RG_AUDHPDECMGAIN_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPDECMGAIN_EN_VAUDP18_SFT);
-	/* Step 147: Disable 2nd order damp circuit when turn on sequence */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
-			   RG_DAMP2ND_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_DAMP2ND_EN_VAUDP18_SFT);
-	/*
-	 * Step 148:
-	 * Disable HD removed SW when turn on sequence
-	 * LPpath mode would not enable after HP on
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON32,
-			   RG_HPLHDRM_PFL_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_HPLHDRM_PFL_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON32,
-			   RG_HPRHDRM_PFL_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_HPRHDRM_PFL_EN_VAUDP18_SFT);
-	/*
-	 * Step 149:
-	 * Disable Neg R when turn on sequence
-	 * LP/LPpath mode would not enable after HP on
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
-			   DA_AUDHPLNEGR_EN_VAUDP18_MASK_SFT,
-			   0x0 << DA_AUDHPLNEGR_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
-			   DA_AUDHPRNEGR_EN_VAUDP18_MASK_SFT,
-			   0x0 << DA_AUDHPRNEGR_EN_VAUDP18_SFT);
-	/* Step 150: Enable HPR main output stage to min */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x0 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 151: Enable HPL main output stage to min */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x0 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 152: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 153: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/*
-	 * Step 154:
-	 * [0]: Enable active-zero compensation circuit in HPBUF
-	 * [3:2]: Select active zero's Cz
-	 * (00) 1pF, (01) 2pF, (10) 2pF, (11) 3pF
-	 * [5:4]: Select active zero's RL
-	 * (00) 50lohm, (01) 100kohm, (10) 150kohm, (11) 200kohm
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON40, 0x2d);
-	/*
-	 * Step 155:
-	 * Damping adjustment select. (Hi-Fi: 14kohm; LP: 3.5kohm)
-	 * (000) 20kohm, (001) 40kohm, (010) 60kohm, (011) 100kohm
-	 * (100) 14kohm, (101) 7kohm, (110) 3.5kohm
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
-			   RG_AUDHPDAMP_ADJ_VAUDP18_MASK_SFT,
-			   0x6 << RG_AUDHPDAMP_ADJ_VAUDP18_SFT);
-	/* Step 156: Enable HP damping ckt.  */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
-			   RG_AUDHPDAMP_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPDAMP_EN_VAUDP18_SFT);
-	/*
-	 * Step 157:
-	 * Enable HFOP circuits for Hi-Fi mode
-	 * LPpath mode would not enable after HP on
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON39,
-			   RG_AUDHPHFOP_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPHFOP_EN_VAUDP18_SFT);
-	/* Step 158: Disable Halve CMFB's Tail Current */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON40,
-			   RG_HPCMFB_BIASHALF_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_HPCMFB_BIASHALF_EN_VAUDP18_SFT);
-	/*
-	 * Step 159:
-	 * Set input diff pair bias to min (ULP: 2uA x 16 = 32uA)
-	 * 00: 8x ibias; 01: 16x ibias; 10: 24x ibias; 11: 32x ibias
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPDIFFINPBIASADJ_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPDIFFINPBIASADJ_VAUDP18_SFT);
-	/* Step 160: Enable Aux-output */
-	/* Step 161: Enable Aux-loop feedback SW */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xc);
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0x3c);
-	/* Step 162: Enable Aux-loop CMFB */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0xf);
-	/* Step 163: Enable HP driver bias circuits */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
-			   RG_AUDHPLPWRUP_IBIAS_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPLPWRUP_IBIAS_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
-			   RG_AUDHPRPWRUP_IBIAS_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPRPWRUP_IBIAS_VAUDP18_SFT);
-	/* Step 164: Enable HP driver core circuits */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
-			   RG_AUDHPLPWRUP_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPLPWRUP_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
-			   RG_AUDHPRPWRUP_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPRPWRUP_VAUDP18_SFT);
-	/* Step 165: Short HP output to AUX output */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xfc);
-	/* Step 166: Enable HP main CMFB loop */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HPCMFB_EN_RCH_MASK_SFT,
-			   0x1 << RG_HSLO_DA_HPCMFB_EN_RCH_SFT);
-	/* Step 167: Enable HP main CMFB loop */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HPCMFB_EN_LCH_MASK_SFT,
-			   0x1 << RG_HSLO_DA_HPCMFB_EN_LCH_SFT);
-	/* Step 168: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 169: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 170: Disable Aux-loop CMFB */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x3);
-	/* Step 171: Enable HP main output stage */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xff);
-	usleep_range(600, 620);
-	/* Step 173: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x1 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 174: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x1 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 175: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 176: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 178: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x2 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 179: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x2 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 180: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 181: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 183: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x3 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 184: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x3 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 185: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 186: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 188: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x4 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 189: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x4 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 190: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 191: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 193: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x5 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 194: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x5 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 195: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 196: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 198: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x6 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 199: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x6 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 200: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 201: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 203: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x7 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 204: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x7 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 205: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 206: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 208: Reduce HP aux feedback loop gain step by step */
-	hp_aux_feedback_loop_gain_ramp(priv, true);
+		usleep_range(200, 220);
 
-	/* Step 238: Disable Aux-loop feedback SW */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xcf);
-	/* Step 239: Set HPL gain to min 0dB (11: 0dB, 10: 3dB, 01: 6dB, 00:
-	 * 9dB)
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN,
-			   RG_DA_NLE_ZCD_HPLGAIN_MASK_SFT,
-			   0x3 << RG_DA_NLE_ZCD_HPLGAIN_SFT);
-	/* Step 240: Set HPR gain to min 0dB (11: 0dB, 10: 3dB, 01: 6dB, 00:
-	 * 9dB)
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPRGAIN,
-			   RG_DA_NLE_ZCD_HPRGAIN_MASK_SFT,
-			   0x3 << RG_DA_NLE_ZCD_HPRGAIN_SFT);
-	/* Step 241: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 242: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 243: Disable HP mute */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x0);
-	usleep_range(600, 620);
-	/*
-	 * Step 245:
-	 * Increase HPL gain to normal gain step by step, 5'h1 :+6dB (LP/ULP)
-	 * (32ohm, HPgain=6dB, 16ohm HPgain=3dB)
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN,
-			   RG_DA_NLE_ZCD_HPLGAIN_MASK_SFT,
-			   0x1 << RG_DA_NLE_ZCD_HPLGAIN_SFT);
-	/*
-	 * Step 246:
-	 * Increase HPR gain to normal gain step by step, 5'h1 :+6dB (LP/ULP)
-	 * (32ohm, HPgain=6dB, 16ohm HPgain=3dB)
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPRGAIN,
-			   RG_DA_NLE_ZCD_HPRGAIN_MASK_SFT,
-			   0x1 << RG_DA_NLE_ZCD_HPRGAIN_SFT);
-	/* Step 247: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 248: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(100, 120);
-	/* Step 250: open HP output to AUX output */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xf);
-	/* Step 251: Disable Aux-output */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0x3);
-	/* Step 252: Set HPP/N STB enhance circuits */
-	/* Step 253: Set HPP/N STB enhance circuits */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON28, 0x33);
-	usleep_range(600, 620);
-	/* Step 255: Pull-down HPL/R to AVSS30_AUD */
-	hp_pull_down(priv, false);
-	/* Step 269: CMFB resistor with modulation Rwell level */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0xc0);
-	/* Step 270: Feedback resistor with modulation Rwell level */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
-			   RG_AUDHPLHPFB_RNWSEL_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPLHPFB_RNWSEL_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
-			   RG_AUDHPRHPFB_RNWSEL_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPRHPFB_RNWSEL_VAUDP18_SFT);
-	/* Step 271: Enable HP feedback SW source-tie */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
-			   RG_AUDHPHIFISWST_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPHIFISWST_EN_VAUDP18_SFT);
-	/* Step 272: Enable CMFB SW source-tie */
-	regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
-			   DA_HPLCMFBSWST_EN_VAUDP18_MASK_SFT,
-			   0x1 << DA_HPLCMFBSWST_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
-			   DA_HPRCMFBSWST_EN_VAUDP18_MASK_SFT,
-			   0x1 << DA_HPRCMFBSWST_EN_VAUDP18_SFT);
-	/* Step 273: Enable HP input MUX SW source-tie */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
-			   RG_HPMUXST_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_HPMUXST_EN_VAUDP18_SFT);
-	/* Step 274: HP damp adjustmention control and 2nd order damp control
-	 * automatically select by NLE
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
-			   RG_HP_PDAMP_SELBYNLE_VAUDP18_MASK_SFT,
-			   0x1 << RG_HP_PDAMP_SELBYNLE_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
-			   RG_HP_DAMP2ND_SELBYNLE_VAUDP18_MASK_SFT,
-			   0x1 << RG_HP_DAMP2ND_SELBYNLE_VAUDP18_SFT);
-	/* Step 275: Enable HPRL LN path feedback Rwell modulation */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0xf0);
-	/*
-	 * Step 276:
-	 * [0]: Enable NVREG LC IBIAS2
-	 * (Set after HPBUF enabled -> Avoid unstable NVREG-LC at no load)
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON73, 0x7);
-	/*
-	 * Step 277:
-	 * Disable HS/LO DAC Current Trim Function
-	 * HS DAC Current Trim enable
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON12,
-			   RG_AUDDACHS_TRIM_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDDACHS_TRIM_EN_VAUDP18_SFT);
-	/*
-	 * Step 278:
-	 * Disable HS/LO DAC Current Trim Function
-	 * LO DAC Current Trim enable
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON12,
-			   RG_AUDDACLO_TRIM_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDDACLO_TRIM_EN_VAUDP18_SFT);
-	/* Step 279: Enable Audio HS&LO DAC  */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON0, 0xcc);
-	usleep_range(100, 120);
-	/* Step 281: AVDD30_DAC power switch select to AVDD30_AUD */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON5,
-			   RG_AUDPMU_IDAC_IBIAS_SEL_VA32_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDPMU_IDAC_IBIAS_SEL_VA32_VAUDP18_SFT);
-	/* Step 282: Disable LP_GAIN_MSB after HP fully turn on */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPL_LP_GAIN_MSB_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPL_LP_GAIN_MSB_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPR_LP_GAIN_MSB_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPR_LP_GAIN_MSB_VAUDP18_SFT);
-	/*
-	 * Step 283:
-	 * Switch HPL MUX to audio HS DAC
-	 * 000: Open/Open
-	 * 001: LOLP/LOLN
-	 * 010: IDACLP/IDACLN
-	 * 011: HSP/HSN (test mode)
-	 * 100: Open/Open
-	 * 101: IDAC_HSP/IDAC_HSN
-	 * 110: IDAC_LOP/IDAC_LON
-	 * 111: HSP/HSN (test input with external R)
-	 */
-	/*
-	 * Step 284:
-	 * Switch HPR MUX to audio LO DAC
-	 * 000: Open/Open
-	 * 001: LOLP/LOLN
-	 * 010: IDACRP/IDACRN
-	 * 011: HSP/HSN (test mode)
-	 * 100: Open/Open
-	 * 101: IDAC_HSP/IDAC_HSN
-	 * 110: IDAC_LOP/IDAC_LON
-	 * 111: LOP/LON (test input with external R)
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON26, 0x65);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON64, 0x3f);
+		/* Audio analog power setting (VMAX/DAC_LVSH) + DL_CLK enable */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON33, 0x80);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON69, 0x2);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON2, 0x8);
+		/* Audio analog HP buffer enable (de-pop on wo NLE) */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x3);
+		usleep_range(100, 120);
+		/*Pull-down HPL/R to AVSS30_AUD */
+		hp_pull_down(priv, true);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON31, 0x33);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON38, 0x00);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON33, 0xb7);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON33, 0xf7);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON25, 0x30);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON54, 0x02);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON53, 0x24);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON55, 0x57);
+
+		regmap_write(priv->regmap, MT6681_AFE_NLE_GAIN_IMP_LCH_CFG0_H, 0x40);
+		regmap_write(priv->regmap, MT6681_AFE_NLE_GAIN_IMP_RCH_CFG0_H, 0x40);
+		regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_H, 0x80);
+		regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_L, 0x80);
+		mtk_nle_toggle(priv);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON28, 0x77);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON39, 0x14);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON36, 0x00);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON39, 0x16);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON37, 0x00);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON32, 0x03);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON38, 0x17);
+		regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON12_H, 0xC0);
+		regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M, 0x00);
+		regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG, 0x00);
+		mtk_nle_toggle(priv);
+
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON37, 0x14);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON39, 0x17);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON36, 0x00);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0x0C);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0x3C);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x0f);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON25, 0x3f);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xfC);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON36, 0x3);
+		regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M, 0x10);
+		regmap_write(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG, 0x10);
+		mtk_nle_toggle(priv);
+
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x3);
+		usleep_range(100, 120);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xff);
+		/* Enable HPR main output stage step by step */
+		nle_outstg_ramp(priv, true);
+
+		/* Reduce HP aux feedback loop gain step by step */
+		hp_aux_feedback_loop_gain_ramp(priv, true);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xcf);
+		regmap_write(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN, 0x3);
+		regmap_write(priv->regmap, MT6681_AFE_NLE_ZCD_HPRGAIN, 0x3);
+		mtk_nle_toggle(priv);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x0);
+		usleep_range(100, 120);
+		regmap_write(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN, 0x1);
+		regmap_write(priv->regmap, MT6681_AFE_NLE_ZCD_HPRGAIN, 0x1);
+		mtk_nle_toggle(priv);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0x03);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON28, 0x33);
+		hp_pull_down(priv, false);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON37, 0x34);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0xc0);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON31, 0x3f);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON38, 0x17);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON32, 0x3);
+		regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON12_H, 0xf0);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON38, 0x17);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON37, 0xf4);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0xf0);
+		usleep_range(100, 120);
+		/* Audio analog NVREG LC ibias2 */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON73, 0x07);
+		usleep_range(100, 120);
+		/*Audio analog HiFi-DAC enable */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON12, 0x01);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON12, 0x03);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON1, 0x00);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON1, 0x03);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON31, 0x0F);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON3, 0x44);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON4, 0xA4);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON2, 0x08);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON2, 0x0B);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON1, 0xF3);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON5, 0x02);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON5, 0x03);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON7, 0x30);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON9, 0x00);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON10, 0x05);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON10, 0x55);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON11, 0x05);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON11, 0x55);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON9, 0x0F);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON8, 0x03);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON0, 0x33);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON5, 0x83);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON7, 0x3F);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON7, 0x3C);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON8, 0x04);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON26, 0x02);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON26, 0x22);
+	} else {
+		/*
+		 * Step 14:
+		 * DEM normal path setting
+		 * [6] 0: aud_dac_ana reset by global rstb
+		 * 1: aud_dac_ana reset by global rstb and cci_acd_func_rstb
+		 */
+		/*
+		 * Step 15:
+		 * DEM normal path setting
+		 * [1] 0: Power down for normal path scrambler ana 6.5M
+		 * 1: Power on
+		 */
+		regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_L, 0x42);
+		/*
+		 * Step 16:
+		 * DEM normal path setting
+		 * [6:4] normal fifo wptr
+		 * [3] 0: Disable scrambler PA
+		 * 1: Enable scrambler PA
+		 * [0] clk on
+		 */
+		regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_H, 0xd1);
+		/*
+		 * Step 17:
+		 * DEM normal path setting
+		 * [7] scram on
+		 * [5] zero padding disable
+		 * [0] 0: scrambler disable
+		 * 1: scrambler enable
+		 */
+		regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_L, 0xa1);
+		/*
+		 * Step 18:
+		 * DEM normal path setting
+		 * [0] 0: Disable
+		 * 1: Enable
+		 */
+		regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_H, 0x0);
+
+		/*
+		 * Step 19:
+		 * DEM normal path setting
+		 * [0] 0: Reset
+		 * 1: Released
+		 */
+		/*
+		 * Step 20:
+		 * DEM normal path setting
+		 * [3] 0: Disable
+		 * 1: Enable
+		 */
+		regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_L, 0x4b);
+		/*
+		 * Step 21:
+		 * [6] 0: use 2nd old 8bit sdm
+		 * 1: use 2nd new 8bit sdm
+		 */
+		regmap_update_bits(priv->regmap,
+				   MT6681_AFE_ADDA_2ND_DL_SDM_DCCOMP_CON_H,
+				   AFE_2ND_DL_USE_NEW_2ND_SDM_MASK_SFT,
+				   0x1 << AFE_2ND_DL_USE_NEW_2ND_SDM_SFT);
+		/*
+		 * Step 22:
+		 * [7] 0: use 2nd old 8bit sdm
+		 * 1: use 2nd new 12bit sdm
+		 */
+		regmap_update_bits(priv->regmap,
+				   MT6681_AFE_ADDA_2ND_DL_SDM_DCCOMP_CON_H,
+				   AFE_2ND_DL_USE_NEW_2ND_12BIT_SDM_MASK_SFT,
+				   0x0 << AFE_2ND_DL_USE_NEW_2ND_12BIT_SDM_SFT);
+		/*
+		 * Step 23:
+		 * [7:4] select FS = 48KHz
+		 * 0: 8k
+		 * 1: 11.025k
+		 * 2: 12k
+		 * 3: 16k
+		 * 4: 22.05k
+		 * 5: 24k
+		 * 6: 32k
+		 * 7: 44.1k
+		 * 8: 48k
+		 * 9: 96k
+		 * 10: 192k
+		 * 11: 384k
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0_H,
+				   AFE_2ND_DL_INPUT_MODE_CTL_MASK_SFT,
+				   0x8 << AFE_2ND_DL_INPUT_MODE_CTL_SFT);
+		/*
+		 * Step 24:
+		 * afe nle sw reset
+		 * 0: reset  1: no reset
+		 */
+		regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_CFG_H, 0x46);
+		/*
+		 * Step 25:
+		 * afe nle sw reset
+		 * 0: reset  1: no reset
+		 */
+		regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_CFG_H, 0xc6);
+		/*
+		 * Step 26:
+		 * [2] bypass delay (don't need toggle)
+		 * bypass NLE pre-view buffer
+		 * (enable when woNLE)
+		 * turn off NLE SRAM
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_PRE_BUF_CFG_H,
+				   RG_HSLO_NLE_BYPASS_DELAY_MASK_SFT,
+				   0x1 << RG_HSLO_NLE_BYPASS_DELAY_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_PRE_BUF_CFG_H,
+				   RG_HSLO_NLE_SRAM_ON_MASK_SFT,
+				   0x0 << RG_HSLO_NLE_SRAM_ON_SFT);
+
+		/*
+		 * Step 27:
+		 * Disable Ch1/2 NLE
+		 * bit0: use HP mode
+		 * bit1: use HS mode
+		 * bit2: use LO mode
+		 * bit3: use ZCD mode
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+				   RG_ZCD_LO_HS_HP_SEL_MASK_SFT,
+				   0x0 << RG_ZCD_LO_HS_HP_SEL_SFT);
+		/*
+		 * Step 28:
+		 * bit0: use HP mode
+		 * bit1: use HS mode
+		 * bit2: use LO mode
+		 * bit3: use ZCD mode
+		 */
+
+		regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_CFG_H, 0xc1);
+		/*
+		 * Step 29:
+		 * HP gain Select NLE_ZCD mode
+		 * 0: NLE ZCD mode (gain RG from 0x27F1 & 0x27F2)
+		 * 1: AUD_ZCD mode (gain RG from 0x360A & 0x360B)
+		 */
+		regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_CFG_H, 0x81);
+
+		/* Step 55: Select preview data source based from 0: HP path or 1: HSLO
+		 * path
+		 */
+		regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
+				   RG_CLH_DYN_LOAD_MASK_SFT,
+				   0x1 << RG_CLH_DYN_LOAD_SFT);
+		/*
+		 * Step 56:
+		 * Select LUT (including PVDDref & TONref) based on Rload
+		 * LO Rload > 32 Ohm -> Select LUT0 -> Set to 1'b0
+		 */
+		regmap_write(priv->regmap, MT6681_CLH_LUT_SEL, 0x0);
+		/* Step 57: Enable DA_CLH_CLK26M = 010101...*/
+		regmap_write(priv->regmap, MT6681_CLH_COM_CON1, 0x1);
+		/* Step 58: Set V18Nref to -1.587V */
+		regmap_write(priv->regmap, MT6681_CLH_V18N_CON0, 0x18);
+		/* Step 59: Set V18N power-good debounce time = 500ns */
+		regmap_write(priv->regmap, MT6681_CLH_V18N_CON1, 0x1);
+		/* Step 60: Set Tonref = 6T in V18N-startup state */
+		regmap_write(priv->regmap, MT6681_CLH_TONREF_CON0, 0x7);
+		/* Step 61: Set Tonref = 13.5T in bypass mode or class-AB state */
+		regmap_write(priv->regmap, MT6681_CLH_TONREF_CON1, 0x16);
+		/* Step 62: Set delay from DA_CLH_TONEND to DA_CLH_TONEND2 = 2T */
+		regmap_write(priv->regmap, MT6681_CLH_TONEND_CON0, 0x2);
+		/*
+		 * Step 63:
+		 * [7] Set IL-charging path to single path in bypass mode or class-AB
+		 * state
+		 * [6:0] Set PVDDref = 1.85V in bypass mode or class-AB state
+		 */
+		regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON0, 0xfc);
+		/* Step 64: Set preview 8 data (after up-sampling) in each channel */
+		regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON1, 0x7);
+		/* Step 65: Set upper-bound of Vaudmax for bypass mode (VS1 to VP) based
+		 * on Rload
+		 */
+		regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON7, 0x50);
+		/* Step 66: Set PVDDref-path delay 1 for fs = 48kHz */
+		regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON8, 0x0);
+		/* Step 67: Set PVDDref-path delay 2 for fs = 48kHz */
+		regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON9, 0xf);
+
+		/* Step 68: Set PVDDref-path delay 3 for fs = 48kHz */
+		regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON10, 0xc);
+
+		mtk_clh_toggle(priv);
+		/*
+		 * Step 71:
+		 * Set class-H HSLO-path FIFO read-starting point: delay 16 samples
+		 * (Notice : Setting must = 2x preview size of CLH
+		 * (RG_CLH_DYN_PRVERAMESIZE))
+		 */
+		regmap_write(priv->regmap, MT6681_AFE_CLH_HSLO_FIFO_CON0, 0x3e);
+		/*
+		 * Step 72:
+		 * Turn on class-H HSLO-path FIFO
+		 * If HP, turn on HP-path FIFO -> Set BYPASS to 0 and ON to 1
+		 * If HSLO, turn off HP-path FIFO -> Set BYPASS to 1 and ON to 0
+		 */
+		regmap_write(priv->regmap, MT6681_AFE_CLH_HSLO_FIFO_CON0, 0x3d);
+		/* Step 73: Turn on AFE */
+		regmap_write(priv->regmap, MT6681_AFE_TOP_CON0, 0x1);
+		/* Step 74: Turn on DL HSLO-path SRC */
+		regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
+				   AFE_2ND_DL_SRC_ON_TMP_CTL_PRE_MASK_SFT,
+				   0x1 << AFE_2ND_DL_SRC_ON_TMP_CTL_PRE_SFT);
+		/* Step 75: Gain2 48k, enable */
+		regmap_write(priv->regmap, MT6681_AFE_GAIN2_CON0_0, 0xa1);
+		/* Step 76: Gain7 48k, enable */
+		regmap_write(priv->regmap, MT6681_AFE_GAIN7_CON0_0, 0xa1);
+		/* Step 77: Reduce ESD resistance of AU_REFN */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON39,
+				   RG_AUDREFN_DERES_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDREFN_DERES_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON39,
+				   RG_AUDREFN_PLL0V_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDREFN_PLL0V_EN_VAUDP18_SFT);
+		/* Step 78: Enable AUDGLB */
+		mt6681_set_aud_global_bias(priv, true);
+
+		/*
+		 * Step 79:
+		 * Enable LCLDO-BUF-L power-down discharge function
+		 * Enable LCLDO-BUF-R power-down discharge function
+		 */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON60, 0xc0);
+		/*
+		 * Step 80:
+		 * Enable HCLDO-BUF-L power-down discharge function
+		 * Enable HCLDO-BUF-R power-down discharge function
+		 * Enable LCLDO-DACSW-L power-down discharge function
+		 * Enable LCLDO-DACSW-R power-down discharge function
+		 */
+
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON61, 0xf);
+
+		/*
+		 * Step 81:
+		 * LDO dual vout selection to min
+		 * 000: 1.607V
+		 * 001: 1.657V
+		 * 010: 1.205V
+		 * 011: 1.356V
+		 * 100: 1.406V
+		 * 101: 1.456V
+		 * 110: 1.506V
+		 * 111: 1.556V
+		 */
+		 //TF MT6681_AUDDEC_PMU_CON58 =0x0
+		/*
+		 * Step 84:
+		 * Selects LCLDO_BUF_L remote sense function
+		 * Selects LCLDO_BUF_R remote sense function
+		 */
+		/*
+		 * Step 85:
+		 * Selects HCLDO_BUF_L remote sense function
+		 * Selects HCLDO_BUF_R remote sense function
+		 */
+		/*
+		 * Step 86:
+		 * Selects LCLDO_DACSW_L remote sense function
+		 * Selects LCLDO_DACSW_R remote sense function
+		 */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON62, 0x3f);
+		/* Step 87: Enable for V32REFGEN */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON58, 0x7);
+		/* Step 88: Enable for L/R all LDOs */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON60, 0xff);
+
+		/*
+		 * Step 89:
+		 * NVREG_DACSW vout selection
+		 * 000: -1.3V
+		 * 001: -1.231V
+		 * 010: -1.169V
+		 * 011: -1.108V
+		 * 100: -1.538V
+		 * 101: -1.477V
+		 * 110: -1.415V
+		 * 111: -1.354V
+		 */
+		/* Step 90: NVREG_HCBUF vout selection */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON56, 0x0);
+		/* Step 91: NVREG_LCBUF vout selection */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON57,
+				   RG_AUDGLB_NVREG_LCBUF_VREF_SEL_VA32_MASK_SFT,
+				   0x0 << RG_AUDGLB_NVREG_LCBUF_VREF_SEL_VA32_SFT);
+		/*
+		 * Step 92:
+		 * DACSW NVREG feedforward path select
+		 * 0: FF gain = 16x, extra 16uA/DACSW_NVREG
+		 * 1: FF gain = 4x
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON65,
+				   RG_NVREG_DACSW_FF_MODE_SEL_VAUDP18_MASK_SFT,
+				   0x1 << RG_NVREG_DACSW_FF_MODE_SEL_VAUDP18_SFT);
+		/*
+		 * Step 93:
+		 * DACSW NVREG enable 2 feedforward paths in parallel
+		 * 0: Only 1 FF path (ULP)
+		 * 1: Enable 2 FF paths in parallel
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON65,
+				   RG_NVREG_DACSW_FF_PLUS_VAUDP18_MASK_SFT,
+				   0x0 << RG_NVREG_DACSW_FF_PLUS_VAUDP18_SFT);
+		/* Step 94: Select NVREG class-AB output stage */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON65,
+				   RG_NVREG_LC_MODE_SEL_VAUDP18_MASK_SFT,
+				   0x1 << RG_NVREG_LC_MODE_SEL_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON65,
+				   RG_NVREG_HC_MODE_SEL_VAUDP18_MASK_SFT,
+				   0x1 << RG_NVREG_HC_MODE_SEL_VAUDP18_SFT);
+		/*
+		 * Step 95:
+		 * [1]: Enable NVREG HC IBIAS2
+		 * [2]: Enable NVREG SW IBIAS2
+		 */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON73, 0x6);
+		/* Step 96: Enable for all NVREGs */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON64, 0x3f);
+		/*
+		 * Step 97:
+		 * [4-0]: Set class-H ZCD offset & delay trim code to default value
+		 * (ADVT only) (Must be removed in FT!)
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON85,
+				   RG_CLH_ZCD_TRIM_VOS_VAL_VA32_MASK_SFT,
+				   0xc << RG_CLH_ZCD_TRIM_VOS_VAL_VA32_SFT);
+		/*
+		 * Step 98:
+		 * [0]: Turn on pull-low NMOS in some class-H ESD clampers
+		 * [1]: Enable class-H Vref buffer
+		 * [2]: Enable class-H Ibias circuit
+		 * [3]: Enable class-H reference DAC
+		 * [5]: Enable class-H ZCD
+		 */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON75, 0x2f);
+
+		/*
+		 * Step 99:
+		 * [3]: Turn on pull-low NMOS in some class-H ESD clampers
+		 * [4]: Enable class-H switch controller (SWC)
+		 * [5]: Enable class-H IL energy release to V18N
+		 * [6]: Enable class-H IL energy release to PVDD
+		 * [7]: Enable class-H IL energy release to PVSS
+		 */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON76, 0xf8);
+		/*
+		 * Step 100:
+		 * [0]: Enable class-H IL-reuse path
+		 * [1] Select dual IL-charging paths
+		 * [2]: Enable class-H bypass mode
+		 */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON77, 0x7);
+		/*
+		 * Step 101:
+		 * [0]: Enable class-H PVSS feedback RDIV
+		 * [1]: Enable class-H V18N feedback RDIV
+		 * [2]: Select class-H operating in DCM
+		 */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON83, 0x7);
+		/*
+		 * Step 102:
+		 * [0]: Enable class-H PVDD feedback RDIV
+		 * [1]: Enable class-H V18N, PVDD, and PVSS comparators
+		 */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON84, 0x3);
+		/*
+		 * Step 103:
+		 * [2]: Enable class-H auto-transition from error state to
+		 * IL-freewheeling state
+		 * [3]: Enable class-H error-state detector
+		 */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON89, 0xc);
+		/* Step 104: [3]: Enable class-H power stage */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON77, 0xf);
+		/* Step 105: [0]: Enable class-H converter */
+		regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
+				   RG_CLH_DYN_EN_MASK_SFT, 0x1 << RG_CLH_DYN_EN_SFT);
+		usleep_range(200, 220);
+		/*
+		 * Step 107:
+		 * Power down control for VMAXVMIN comparator in PAD logics
+		 * 0: Power down; VDD = AVDD18_AUD, VSS = AU_V18N
+		 * 1: Enable; VDD = max(AVDD18_AUD, AU_VP), VSS = min(AU_V18N, AU_VN)
+		 */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON33, 0x80);
+		/*
+		 * Step 108:
+		 * Enable AUD_CLK (6.5MHz mode)
+		 * (RG_ABIDEC_SEL_DECODER_VA18 need mapping to DA_355_CLK_SEL)
+		 */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON69, 0x2);
+		/*
+		 * Step 109:
+		 * HiFiDAC LVSH Enable
+		 * 0: disable
+		 * 1: enable
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON2,
+				   RG_AUDDAC_LVSH_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDDAC_LVSH_EN_VAUDP18_SFT);
+		/* Step 110: Enable HP mute */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x3);
+		usleep_range(100, 120);
+		/* Step 112: Pull-down HPL/R to AVSS30_AUD */
+		hp_pull_down(priv, true);
+		/*
+		 * Step 126:
+		 * HPL Rfb opamp input short enable
+		 * HPR Rfb opamp input short enable
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
+				   RG_HPL_RFB_OPAMPIN_SHORT_VAUDP18_MASK_SFT,
+				   0x1 << RG_HPL_RFB_OPAMPIN_SHORT_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
+				   RG_HPR_RFB_OPAMPIN_SHORT_VAUDP18_MASK_SFT,
+				   0x1 << RG_HPR_RFB_OPAMPIN_SHORT_VAUDP18_SFT);
+		/*
+		 * Step 127:
+		 * HPL FB Enable
+		 * HPR FB Enable
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
+				   RG_HPLFB_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_HPLFB_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
+				   RG_HPRFB_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_HPRFB_EN_VAUDP18_SFT);
+		/* Step 128: HP NREG segmentation */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
+				   RG_HP_NREG_STAGE_VAUDP18_MASK_SFT,
+				   0x0 << RG_HP_NREG_STAGE_VAUDP18_SFT);
+		/*
+		 * Step 129:
+		 * HPL_LP_EN
+		 * HPR_LP_EN
+		 * Enable LP_GAIN_MSB for depop-on/off
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
+				   RG_AUDHPL_LP_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPL_LP_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
+				   RG_AUDHPR_LP_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPR_LP_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
+				   RG_AUDHPL_LP_GAIN_MSB_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPL_LP_GAIN_MSB_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
+				   RG_AUDHPR_LP_GAIN_MSB_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPR_LP_GAIN_MSB_VAUDP18_SFT);
+		/*
+		 * Step 130:
+		 * LPZEROGEN: Nulling Resistor
+		 * 0: 1kohm
+		 * 1: 7.5kohm (1k + 6.5k)
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
+				   RG_HP_LPZEROGEN_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_HP_LPZEROGEN_EN_VAUDP18_SFT);
+		/*
+		 * Step 131:
+		 * HPL_Trim_mode(1'b0: old version)
+		 * HPR_Trim_mode(1'b0: old version)
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
+				   RG_AUDHPL_TRIM_MODE_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPL_TRIM_MODE_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
+				   RG_AUDHPR_TRIM_MODE_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPR_TRIM_MODE_VAUDP18_SFT);
+		/* Step 134: Enable HPTRIM */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
+				   RG_AUDHPTRIM_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPTRIM_EN_VAUDP18_SFT);
+		/* Step 135: Disable headphone short-ckt protection. */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
+				   RG_AUDHPRSCDISABLE_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPRSCDISABLE_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
+				   RG_AUDHPLSCDISABLE_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPLSCDISABLE_VAUDP18_SFT);
+		/* Step 136: Enable IBIST */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON54,
+				   RG_AUDIBIASPWRDN_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDIBIASPWRDN_VAUDP18_SFT);
+		/*
+		 * Step 137:
+		 * [2:0] Headphone Left/Right DR bias current setting
+		 * 000: 2uA (ULP)
+		 * 001: 3uA
+		 * 010: 4uA (LP)
+		 * 011: 5uA
+		 * 100: 6uA (HiFi)
+		 * 101: 7uA
+		 * 110: 8uA
+		 * 111: 9uA
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON53,
+				   RG_AUDBIASADJ_0_HP_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDBIASADJ_0_HP_VAUDP18_SFT);
+		/*
+		 * Step 138:
+		 * Set HP & ZCD bias current optimization
+		 * [7:6] 01: ZCD: 4uA, [5:4]: LO; [3:2]: HS; [1:0]: HP
+		 * LO/HS/HP: 00:2uA, 01:3uA, 10: 4uA, 11:5uA
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON55,
+				   RG_AUDBIASADJ_1_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDBIASADJ_1_VAUDP18_SFT);
+		/* Step 139: digital gain output debug mode */
+		regmap_update_bits(priv->regmap,
+				   MT6681_AFE_HSLO_NLE_GAIN_IMP_LCH_CFG0_H,
+				   RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_LCH_MASK_SFT,
+				   0x1 << RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_LCH_SFT);
+		/* Step 140: digital gain output debug mode */
+		regmap_update_bits(priv->regmap,
+				   MT6681_AFE_HSLO_NLE_GAIN_IMP_RCH_CFG0_H,
+				   RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_RCH_MASK_SFT,
+				   0x1 << RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_RCH_SFT);
+		/* Step 141: Set NLE DA signal to debug mode (controlled by RG setting)
+		 */
+		regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_H, 0x80);
+		/* Step 142: Set NLE DA signal to debug mode (controlled by RG setting)
+		 */
+		regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_L, 0x80);
+		/*
+		 * Step 143:
+		 * Set HPP/N STB enhance circuits
+		 * enable lpstbenh when turn on sequence
+		 */
+		/* Step 144: Set HPP/N STB enhance circuits */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON28, 0x77);
+		/*
+		 * Step 145:
+		 * HP Feedback Cap select 2'b00: 15pF
+		 * for >=96KHz sampling rate: 2'b01: 10.5pF
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
+				   RG_AUDHPHFCOMPBUFGAINSEL_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDHPHFCOMPBUFGAINSEL_VAUDP18_SFT);
+		/* Step 146: Enable HP De-CMgain circuits */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON39,
+				   RG_AUDHPDECMGAIN_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPDECMGAIN_EN_VAUDP18_SFT);
+		/* Step 147: Disable 2nd order damp circuit when turn on sequence */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
+				   RG_DAMP2ND_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_DAMP2ND_EN_VAUDP18_SFT);
+		/*
+		 * Step 148:
+		 * Disable HD removed SW when turn on sequence
+		 * LPpath mode would not enable after HP on
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON32,
+				   RG_HPLHDRM_PFL_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_HPLHDRM_PFL_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON32,
+				   RG_HPRHDRM_PFL_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_HPRHDRM_PFL_EN_VAUDP18_SFT);
+		/*
+		 * Step 149:
+		 * Disable Neg R when turn on sequence
+		 * LP/LPpath mode would not enable after HP on
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
+				   DA_AUDHPLNEGR_EN_VAUDP18_MASK_SFT,
+				   0x0 << DA_AUDHPLNEGR_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
+				   DA_AUDHPRNEGR_EN_VAUDP18_MASK_SFT,
+				   0x0 << DA_AUDHPRNEGR_EN_VAUDP18_SFT);
+		/* Step 150: Enable HPR main output stage to min */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
+				   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
+				   0x0 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
+		/* Step 151: Enable HPL main output stage to min */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
+				   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
+				   0x0 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
+		/* Step 152: Toggle bit for update NLE RG */
+		mtk_nle_toggle(priv);
+		/*
+		 * Step 154:
+		 * [0]: Enable active-zero compensation circuit in HPBUF
+		 * [3:2]: Select active zero's Cz
+		 * (00) 1pF, (01) 2pF, (10) 2pF, (11) 3pF
+		 * [5:4]: Select active zero's RL
+		 * (00) 50lohm, (01) 100kohm, (10) 150kohm, (11) 200kohm
+		 */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON40, 0x2d);
+		/*
+		 * Step 155:
+		 * Damping adjustment select. (Hi-Fi: 14kohm; LP: 3.5kohm)
+		 * (000) 20kohm, (001) 40kohm, (010) 60kohm, (011) 100kohm
+		 * (100) 14kohm, (101) 7kohm, (110) 3.5kohm
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
+				   RG_AUDHPDAMP_ADJ_VAUDP18_MASK_SFT,
+				   0x6 << RG_AUDHPDAMP_ADJ_VAUDP18_SFT);
+		/* Step 156: Enable HP damping ckt.  */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
+				   RG_AUDHPDAMP_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPDAMP_EN_VAUDP18_SFT);
+		/*
+		 * Step 157:
+		 * Enable HFOP circuits for Hi-Fi mode
+		 * LPpath mode would not enable after HP on
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON39,
+				   RG_AUDHPHFOP_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDHPHFOP_EN_VAUDP18_SFT);
+		/* Step 158: Disable Halve CMFB's Tail Current */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON40,
+				   RG_HPCMFB_BIASHALF_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_HPCMFB_BIASHALF_EN_VAUDP18_SFT);
+		/*
+		 * Step 159:
+		 * Set input diff pair bias to min (ULP: 2uA x 16 = 32uA)
+		 * 00: 8x ibias; 01: 16x ibias; 10: 24x ibias; 11: 32x ibias
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
+				   RG_AUDHPDIFFINPBIASADJ_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPDIFFINPBIASADJ_VAUDP18_SFT);
+		/* Step 160: Enable Aux-output */
+		/* Step 161: Enable Aux-loop feedback SW */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xc);
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0x3c);
+		/* Step 162: Enable Aux-loop CMFB */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0xf);
+		/* Step 163: Enable HP driver bias circuits */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
+				   RG_AUDHPLPWRUP_IBIAS_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPLPWRUP_IBIAS_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
+				   RG_AUDHPRPWRUP_IBIAS_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPRPWRUP_IBIAS_VAUDP18_SFT);
+		/* Step 164: Enable HP driver core circuits */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
+				   RG_AUDHPLPWRUP_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPLPWRUP_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
+				   RG_AUDHPRPWRUP_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPRPWRUP_VAUDP18_SFT);
+		/* Step 165: Short HP output to AUX output */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xfc);
+		/* Step 166: Enable HP main CMFB loop */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
+				   RG_HSLO_DA_HPCMFB_EN_RCH_MASK_SFT,
+				   0x1 << RG_HSLO_DA_HPCMFB_EN_RCH_SFT);
+		/* Step 167: Enable HP main CMFB loop */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
+				   RG_HSLO_DA_HPCMFB_EN_LCH_MASK_SFT,
+				   0x1 << RG_HSLO_DA_HPCMFB_EN_LCH_SFT);
+		/* Step 168: Toggle bit for update NLE RG */
+		mtk_nle_toggle(priv);
+		/* Step 170: Disable Aux-loop CMFB */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x3);
+		/* Step 171: Enable HP main output stage */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xff);
+		usleep_range(600, 620);
+		/* Step 173: Enable HPR main output stage step by step */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
+				   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
+				   0x1 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
+		/* Step 174: Enable HPL main output stage step by step */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
+				   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
+				   0x1 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
+		/* Step 175: Toggle bit for update NLE RG */
+		mtk_nle_toggle(priv);
+		usleep_range(600, 620);
+		/* Step 178: Enable HPR main output stage step by step */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
+				   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
+				   0x2 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
+		/* Step 179: Enable HPL main output stage step by step */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
+				   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
+				   0x2 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
+		/* Step 180: Toggle bit for update NLE RG */
+		mtk_nle_toggle(priv);
+		usleep_range(600, 620);
+		/* Step 183: Enable HPR main output stage step by step */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
+				   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
+				   0x3 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
+		/* Step 184: Enable HPL main output stage step by step */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
+				   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
+				   0x3 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
+		/* Step 185: Toggle bit for update NLE RG */
+		mtk_nle_toggle(priv);
+		usleep_range(600, 620);
+		/* Step 188: Enable HPR main output stage step by step */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
+				   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
+				   0x4 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
+		/* Step 189: Enable HPL main output stage step by step */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
+				   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
+				   0x4 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
+		/* Step 190: Toggle bit for update NLE RG */
+		mtk_nle_toggle(priv);
+		usleep_range(600, 620);
+		/* Step 193: Enable HPR main output stage step by step */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
+				   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
+				   0x5 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
+		/* Step 194: Enable HPL main output stage step by step */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
+				   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
+				   0x5 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
+		/* Step 195: Toggle bit for update NLE RG */
+		mtk_nle_toggle(priv);
+		usleep_range(600, 620);
+		/* Step 198: Enable HPR main output stage step by step */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
+				   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
+				   0x6 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
+		/* Step 199: Enable HPL main output stage step by step */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
+				   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
+				   0x6 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
+		/* Step 200: Toggle bit for update NLE RG */
+		mtk_nle_toggle(priv);
+		usleep_range(600, 620);
+		/* Step 203: Enable HPR main output stage step by step */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
+				   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
+				   0x7 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
+		/* Step 204: Enable HPL main output stage step by step */
+		regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
+				   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
+				   0x7 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
+		/* Step 205: Toggle bit for update NLE RG */
+		mtk_nle_toggle(priv);
+		usleep_range(600, 620);
+		/* Step 208: Reduce HP aux feedback loop gain step by step */
+		hp_aux_feedback_loop_gain_ramp(priv, true);
+
+		/* Step 238: Disable Aux-loop feedback SW */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xcf);
+		/* Step 239: Set HPL gain to min 0dB (11: 0dB, 10: 3dB, 01: 6dB, 00:
+		 * 9dB)
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN,
+				   RG_DA_NLE_ZCD_HPLGAIN_MASK_SFT,
+				   0x3 << RG_DA_NLE_ZCD_HPLGAIN_SFT);
+		/* Step 240: Set HPR gain to min 0dB (11: 0dB, 10: 3dB, 01: 6dB, 00:
+		 * 9dB)
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPRGAIN,
+				   RG_DA_NLE_ZCD_HPRGAIN_MASK_SFT,
+				   0x3 << RG_DA_NLE_ZCD_HPRGAIN_SFT);
+		/* Step 241: Toggle bit for update NLE RG */
+		mtk_nle_toggle(priv);
+		/* Step 243: Disable HP mute */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x0);
+		usleep_range(600, 620);
+		/*
+		 * Step 245:
+		 * Increase HPL gain to normal gain step by step, 5'h1 :+6dB (LP/ULP)
+		 * (32ohm, HPgain=6dB, 16ohm HPgain=3dB)
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN,
+				   RG_DA_NLE_ZCD_HPLGAIN_MASK_SFT,
+				   0x1 << RG_DA_NLE_ZCD_HPLGAIN_SFT);
+		/*
+		 * Step 246:
+		 * Increase HPR gain to normal gain step by step, 5'h1 :+6dB (LP/ULP)
+		 * (32ohm, HPgain=6dB, 16ohm HPgain=3dB)
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPRGAIN,
+				   RG_DA_NLE_ZCD_HPRGAIN_MASK_SFT,
+				   0x1 << RG_DA_NLE_ZCD_HPRGAIN_SFT);
+		/* Step 247: Toggle bit for update NLE RG */
+		mtk_nle_toggle(priv);
+		usleep_range(100, 120);
+		/* Step 250: open HP output to AUX output */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xf);
+		/* Step 251: Disable Aux-output */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0x3);
+		/* Step 252: Set HPP/N STB enhance circuits */
+		/* Step 253: Set HPP/N STB enhance circuits */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON28, 0x33);
+		usleep_range(600, 620);
+		/* Step 255: Pull-down HPL/R to AVSS30_AUD */
+		hp_pull_down(priv, false);
+		/* Step 269: CMFB resistor with modulation Rwell level */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0xc0);
+		/* Step 270: Feedback resistor with modulation Rwell level */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
+				   RG_AUDHPLHPFB_RNWSEL_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPLHPFB_RNWSEL_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
+				   RG_AUDHPRHPFB_RNWSEL_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPRHPFB_RNWSEL_VAUDP18_SFT);
+		/* Step 271: Enable HP feedback SW source-tie */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
+				   RG_AUDHPHIFISWST_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDHPHIFISWST_EN_VAUDP18_SFT);
+		/* Step 272: Enable CMFB SW source-tie */
+		regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
+				   DA_HPLCMFBSWST_EN_VAUDP18_MASK_SFT,
+				   0x1 << DA_HPLCMFBSWST_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
+				   DA_HPRCMFBSWST_EN_VAUDP18_MASK_SFT,
+				   0x1 << DA_HPRCMFBSWST_EN_VAUDP18_SFT);
+		/* Step 273: Enable HP input MUX SW source-tie */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
+				   RG_HPMUXST_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_HPMUXST_EN_VAUDP18_SFT);
+		/* Step 274: HP damp adjustmention control and 2nd order damp control
+		 * automatically select by NLE
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
+				   RG_HP_PDAMP_SELBYNLE_VAUDP18_MASK_SFT,
+				   0x1 << RG_HP_PDAMP_SELBYNLE_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
+				   RG_HP_DAMP2ND_SELBYNLE_VAUDP18_MASK_SFT,
+				   0x1 << RG_HP_DAMP2ND_SELBYNLE_VAUDP18_SFT);
+		/* Step 275: Enable HPRL LN path feedback Rwell modulation */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0xf0);
+		/*
+		 * Step 276:
+		 * [0]: Enable NVREG LC IBIAS2
+		 * (Set after HPBUF enabled -> Avoid unstable NVREG-LC at no load)
+		 */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON73, 0x7);
+		/*
+		 * Step 277:
+		 * Disable HS/LO DAC Current Trim Function
+		 * HS DAC Current Trim enable
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON12,
+				   RG_AUDDACHS_TRIM_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDDACHS_TRIM_EN_VAUDP18_SFT);
+		/*
+		 * Step 278:
+		 * Disable HS/LO DAC Current Trim Function
+		 * LO DAC Current Trim enable
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON12,
+				   RG_AUDDACLO_TRIM_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDDACLO_TRIM_EN_VAUDP18_SFT);
+		/* Step 279: Enable Audio HS&LO DAC  */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON0, 0xcc);
+		usleep_range(100, 120);
+		/* Step 281: AVDD30_DAC power switch select to AVDD30_AUD */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON5,
+				   RG_AUDPMU_IDAC_IBIAS_SEL_VA32_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDPMU_IDAC_IBIAS_SEL_VA32_VAUDP18_SFT);
+		/* Step 282: Disable LP_GAIN_MSB after HP fully turn on */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
+				   RG_AUDHPL_LP_GAIN_MSB_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDHPL_LP_GAIN_MSB_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
+				   RG_AUDHPR_LP_GAIN_MSB_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDHPR_LP_GAIN_MSB_VAUDP18_SFT);
+		/*
+		 * Step 283:
+		 * Switch HPL MUX to audio HS DAC
+		 * 000: Open/Open
+		 * 001: LOLP/LOLN
+		 * 010: IDACLP/IDACLN
+		 * 011: HSP/HSN (test mode)
+		 * 100: Open/Open
+		 * 101: IDAC_HSP/IDAC_HSN
+		 * 110: IDAC_LOP/IDAC_LON
+		 * 111: HSP/HSN (test input with external R)
+		 */
+		/*
+		 * Step 284:
+		 * Switch HPR MUX to audio LO DAC
+		 * 000: Open/Open
+		 * 001: LOLP/LOLN
+		 * 010: IDACRP/IDACRN
+		 * 011: HSP/HSN (test mode)
+		 * 100: Open/Open
+		 * 101: IDAC_HSP/IDAC_HSN
+		 * 110: IDAC_LOP/IDAC_LON
+		 * 111: LOP/LON (test input with external R)
+		 */
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON26, 0x65);
+	}
 	dev_dbg(priv->dev, "%s(), --\n", __func__);
 }
 
@@ -15729,383 +15730,9 @@ static void stop_trim_hardware(struct mt6681_priv *priv)
 #endif
 
 	dev_info(priv->dev, "%s(), trim off\n", __func__);
-	/*
-	 * Step 12:
-	 * Switch HPL MUX to Open
-	 * 000: Open/Open
-	 * 001: LOLP/LOLN
-	 * 010: IDACLP/IDACLN
-	 * 011: HSP/HSN (test mode)
-	 * 100: Open/Open
-	 * 101: IDAC_HSP/IDAC_HSN
-	 * 110: IDAC_LOP/IDAC_LON
-	 * 111: HSP/HSN (test input with external R)
-	 */
-	/*
-	 * Step 13:
-	 * Switch HPR MUX to Open
-	 * 000: Open/Open
-	 * 001: LOLP/LOLN
-	 * 010: IDACRP/IDACRN
-	 * 011: HSP/HSN (test mode)
-	 * 100: Open/Open
-	 * 101: IDAC_HSP/IDAC_HSN
-	 * 110: IDAC_LOP/IDAC_LON
-	 * 111: HSP/HSN (test input with external R)
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON26, 0x0);
-	usleep_range(100, 120);
-	/* Step 15: Enable LP_GAIN_MSB for HP depop on/off */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPL_LP_GAIN_MSB_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPL_LP_GAIN_MSB_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPR_LP_GAIN_MSB_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPR_LP_GAIN_MSB_VAUDP18_SFT);
-	/* Step 16: AVDD30_DAC power switch select to LDO16 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON5,
-			   RG_AUDPMU_IDAC_IBIAS_SEL_VA32_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDPMU_IDAC_IBIAS_SEL_VA32_VAUDP18_SFT);
-	/* Step 17: Disable Audio NMDAC  */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON0, 0x0);
-	/*
-	 * Step 18:
-	 * [0]: Disable NVREG LC IBIAS2
-	 * (Set after HPBUF enabled -> Avoid unstable NVREG-LC at no load)
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON73, 0x6);
-	/* Step 19: CMFB resistor with modulation Rwell level */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x30);
-	/* Step 20: Feedback resistor with modulation Rwell level */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
-			   RG_AUDHPLHPFB_RNWSEL_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPLHPFB_RNWSEL_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
-			   RG_AUDHPRHPFB_RNWSEL_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPRHPFB_RNWSEL_VAUDP18_SFT);
-	/* Step 21: Disable HP feedback SW source-tie */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
-			   RG_AUDHPHIFISWST_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPHIFISWST_EN_VAUDP18_SFT);
-	/* Step 22: Disable CMFB SW source-tie */
-	regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
-			   DA_HPLCMFBSWST_EN_VAUDP18_MASK_SFT,
-			   0x0 << DA_HPLCMFBSWST_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
-			   DA_HPRCMFBSWST_EN_VAUDP18_MASK_SFT,
-			   0x0 << DA_HPRCMFBSWST_EN_VAUDP18_SFT);
-	/* Step 23: Disable HP input MUX SW source-tie */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
-			   RG_HPMUXST_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_HPMUXST_EN_VAUDP18_SFT);
-	/* Step 24: Disable 2nd order damp circuit for Hi-Fi mode */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
-			   RG_DAMP2ND_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_DAMP2ND_EN_VAUDP18_SFT);
-	usleep_range(100, 120);
-	/* Step 26: Pull-down HPL/R to AVSS30_AUD */
-	hp_pull_down(priv, true);
-	/* Step 39: Set HPP/N STB enhance circuits */
-	/* Step 40: Set HPP/N STB enhance circuits */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON28, 0x77);
-	/* Step 41: Enable Aux-output */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xf);
-	/* Step 42: Short HP output to AUX output */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xcf);
-	/* Step 43: Increase HPL gain to normal gain step by step, 5'h3 :+0dB */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN,
-			   RG_DA_NLE_ZCD_HPLGAIN_MASK_SFT,
-			   0x3 << RG_DA_NLE_ZCD_HPLGAIN_SFT);
-	/* Step 44: Increase HPR gain to normal gain step by step, 5'h3 :+0dB */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPRGAIN,
-			   RG_DA_NLE_ZCD_HPRGAIN_MASK_SFT,
-			   0x3 << RG_DA_NLE_ZCD_HPRGAIN_SFT);
-	/* Step 45: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 46: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 47: HP mute */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x33);
-	/* Step 48: Enable Aux-loop feedback SW */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xff);
-	usleep_range(100, 120);
-	/* Step 50: Reduce HP aux feedback loop gain step by step */
-	hp_aux_feedback_loop_gain_ramp(priv, false);
 
-	/* Step 80: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x6 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 81: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x6 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 82: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 83: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 85: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x5 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 86: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x5 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 87: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 88: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 90: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x4 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 91: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x4 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 92: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 93: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 95: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x3 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 96: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x3 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 97: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 98: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 100: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x2 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 101: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x2 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 102: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 103: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 105: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x1 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 106: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x1 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 107: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 108: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 110: Enable HPR main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x0 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 111: Enable HPL main output stage step by step */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x0 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 112: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 113: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	usleep_range(600, 620);
-	/* Step 115: Disable HP main output stage */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0xfc);
-	/* Step 116: Disable Aux-loop CMFB */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x3f);
-	/* Step 117: Disable HP main CMFB loop */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HPCMFB_EN_RCH_MASK_SFT,
-			   0x0 << RG_HSLO_DA_HPCMFB_EN_RCH_SFT);
-	/* Step 118: Disable HP main CMFB loop */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HPCMFB_EN_LCH_MASK_SFT,
-			   0x0 << RG_HSLO_DA_HPCMFB_EN_LCH_SFT);
-	/* Step 119: [Toggle] bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 120: [Toggle] bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 121: Short HP output to AUX output */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0x3c);
-	/* Step 122: Disable HP driver core circuits */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
-			   RG_AUDHPLPWRUP_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPLPWRUP_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
-			   RG_AUDHPRPWRUP_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPRPWRUP_VAUDP18_SFT);
-	/* Step 123: Disable HP driver bias circuits */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
-			   RG_AUDHPLPWRUP_IBIAS_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPLPWRUP_IBIAS_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
-			   RG_AUDHPRPWRUP_IBIAS_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPRPWRUP_IBIAS_VAUDP18_SFT);
-	/* Step 124: Disable Aux-output */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27, 0x30);
-	/* Step 125: Disable Aux-loop feedback SW */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON27,0x0);
-	/* Step 126: Disable Aux-loop CMFB */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x33);
-	/* Step 127: Disable HP damping ckt.  */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
-			   RG_AUDHPDAMP_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPDAMP_EN_VAUDP18_SFT);
-	/*
-	 * Step 128:
-	 * LPZEROGEN: Nulling Resistor
-	 * 0: 1kohm
-	 * 1: 7.5kohm (1k + 6.5k)
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
-			   RG_HP_LPZEROGEN_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_HP_LPZEROGEN_EN_VAUDP18_SFT);
-	/*
-	 * Step 129:
-	 * [0]: Disable active-zero compensation circuit in HPBUF
-	 * [3:2]: Select active zero's Cz
-	 * (00) 1pF, (01) 2pF, (10) 2pF, (11) 3pF
-	 * [5:4]: Select active zero's RL
-	 * (00) 50lohm, (01) 100kohm, (10) 150kohm, (11) 200kohm
-	 */
-	/* Step 130: Halve CMFB's Tail Current */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON40, 0x0);
-	/* Step 131: Enable HPR main output stage to min */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_M,
-			   RG_HSLO_DA_HSLO_OUTSTG_RCH_MASK_SFT,
-			   0x0 << RG_HSLO_DA_HSLO_OUTSTG_RCH_SFT);
-	/* Step 132: Enable HPL main output stage to min */
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG,
-			   RG_HSLO_DA_HSLO_OUTSTG_LCH_MASK_SFT,
-			   0x0 << RG_HSLO_DA_HSLO_OUTSTG_LCH_SFT);
-	/* Step 133: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 134: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 135: Disable HP De-CMgain circuits */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON39,
-			   RG_AUDHPDECMGAIN_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPDECMGAIN_EN_VAUDP18_SFT);
-	/*
-	 * Step 136:
-	 * Set HPP/N STB enhance circuits
-	 * enable lpstbenh when turn on sequence
-	 */
-	/* Step 137: Set HPP/N STB enhance circuits */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON28, 0x33);
-	/*
-	 * Step 138:
-	 * HPL_LP_EN
-	 * HPR_LP_EN
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPL_LP_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPL_LP_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPR_LP_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPR_LP_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPL_LP_GAIN_MSB_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPL_LP_GAIN_MSB_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
-			   RG_AUDHPR_LP_GAIN_MSB_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDHPR_LP_GAIN_MSB_VAUDP18_SFT);
-	/* Step 139: Set NLE DA signal to debug mode (controlled by RG setting)
-	 */
-	regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_H, 0x0);
-	/* Step 140: Set NLE DA signal to debug mode (controlled by RG setting)
-	 */
-	regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_D2A_DEBUG_L, 0x0);
-	/* Step 141: digital gain output debug mode */
-	regmap_update_bits(priv->regmap,
-			   MT6681_AFE_HSLO_NLE_GAIN_IMP_LCH_CFG0_H,
-			   RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_LCH_MASK_SFT,
-			   0x0 << RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_LCH_SFT);
-	/* Step 142: digital gain output debug mode */
-	regmap_update_bits(priv->regmap,
-			   MT6681_AFE_HSLO_NLE_GAIN_IMP_RCH_CFG0_H,
-			   RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_RCH_MASK_SFT,
-			   0x0 << RG_HSLO_NLE_DG_OUTPUT_DEBUG_MODE_RCH_SFT);
-	/* Step 143: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 144: Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	/* Step 145: Disable IBIST */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON54,
-			   RG_AUDIBIASPWRDN_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDIBIASPWRDN_VAUDP18_SFT);
-	usleep_range(100, 120);
-	/* Step 147: Pull-down HPL/R to AVSS30_AUD */
-	hp_pull_down(priv, false);
-	/*
-	 * Step 160:
-	 * HPL FB Enable
-	 * HPR FB Enable
-	 */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
-			   RG_HPLFB_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_HPLFB_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
-			   RG_HPRFB_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_HPRFB_EN_VAUDP18_SFT);
+	mtk_hp_disable(priv);
+
 	/*
 	 * Step 161:
 	 * HiFiDAC LVSH Enable
@@ -16139,103 +15766,48 @@ static void stop_trim_hardware(struct mt6681_priv *priv)
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON73, 0x0);
 	/* Step 165: Disable for all NVREGs */
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON64, 0x0);
-	/*
-	 * Step 166:
-	 * [6]: Disable class-H IL energy release to PVDD
-	 * [7]: Disable class-H IL energy release to PVSS
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON76, 0x18);
-	usleep_range(100, 120);
-	/* Step 169: [0]: Disable class-H converter */
-	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-			   RG_CLH_DYN_EN_MASK_SFT, 0x0 << RG_CLH_DYN_EN_SFT);
-	/* Step 170: Toggle class-H dynamic RGs */
-	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-			   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
-			   0x1 << RG_CLH_DYN_DYNRG_SYNC_SFT);
-	/* Step 171: Toggle class-H dynamic RGs */
-	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-			   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
-			   0x0 << RG_CLH_DYN_DYNRG_SYNC_SFT);
-	/* Step 172: [3]: Disable class-H power stage */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON77, 0x7);
-	/* Step 173: Disable DA_CLH_CLK26M (= 0) */
-	regmap_write(priv->regmap, MT6681_CLH_COM_CON1, 0x0);
 
-	/*
-	 * Step 174:
-	 * [3]: Turn off pull-low NMOS in some class-H ESD clampers
-	 * [4]: Disable class-H switch controller (SWC)
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON76, 0x0);
-	/*
-	 * Step 175:
-	 * [0]: Disable class-H PVSS feedback RDIV
-	 * [1]: Disable class-H V18N feedback RDIV
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON83, 0x4);
-	/*
-	 * Step 176:
-	 * [0]: Disable class-H PVDD feedback RDIV
-	 * [1]: Disable class-H V18N, PVDD, and PVSS comparators
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON84, 0x0);
-	/*
-	 * Step 177:
-	 * [0]: Turn off pull-low NMOS in some class-H ESD clampers
-	 * [1]: Disable class-H Vref buffer
-	 * [2]: Disable class-H Ibias circuit
-	 * [3]: Disable class-H reference DAC
-	 * [5]: Disable class-H ZCD
-	 */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON75, 0x0);
-	/* Step 178: Disable for all LDOs */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON60, 0x0);
-	/* Step 179: Disable for V32REFGEN */
+	mt_clh_post_disable(priv);
+
+	/* Disnable for V32REFGEN */
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON60, 0xc0);
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON58, 0x0);
-	/*
-	 * Step 180:
-	 * Selects LCLDO_BUF_L remote sense function
-	 * Selects LCLDO_BUF_R remote sense function
-	 */
-	/*
-	 * Step 181:
-	 * Selects HCLDO_BUF_L remote sense function
-	 * Selects HCLDO_BUF_R remote sense function
-	 */
-	/*
-	 * Step 182:
-	 * Selects LCLDO_DACSW_L remote sense function
-	 * Selects LCLDO_DACSW_R remote sense function
-	 */
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON62, 0x0);
 	/* Step 183: Disable AUDGLB */
 	mt6681_set_aud_global_bias(priv, false);
 
 	/* Step 184: Reduce ESD resistance of AU_REFN */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON39,
-			   RG_AUDREFN_DERES_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDREFN_DERES_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON39,
-			   RG_AUDREFN_PLL0V_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDREFN_PLL0V_EN_VAUDP18_SFT);
-	/* Step 185: turn off DL */
-	regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
-			   AFE_2ND_DL_SRC_ON_TMP_CTL_PRE_MASK_SFT,
-			   0x0 << AFE_2ND_DL_SRC_ON_TMP_CTL_PRE_SFT);
-	/* Step 186: Gain2 48k, disable */
-	regmap_write(priv->regmap, MT6681_AFE_GAIN2_CON0_0, 0x0);
-	/* Step 187: Gain7 48k, disable */
-	regmap_write(priv->regmap, MT6681_AFE_GAIN7_CON0_0, 0x0);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON39, 0xc);
+	if (priv->hp_hifi_mode != 0) {
+		/* Audio digital AFE/DL_SRC disable (1/2 ch) */
+		regmap_write(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0, 0x0);
+		regmap_write(priv->regmap, MT6681_AFE_GAIN1_CON0_0, 0xa0);
+		regmap_write(priv->regmap, MT6681_AFE_GAIN6_CON0_0, 0xa0);
+	} else {
+		/* Step 185: turn off DL */
+		regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
+				   AFE_2ND_DL_SRC_ON_TMP_CTL_PRE_MASK_SFT,
+				   0x0 << AFE_2ND_DL_SRC_ON_TMP_CTL_PRE_SFT);
+		/* Step 186: Gain2 48k, disable */
+		regmap_write(priv->regmap, MT6681_AFE_GAIN2_CON0_0, 0xa0);
+		/* Step 187: Gain7 48k, disable */
+		regmap_write(priv->regmap, MT6681_AFE_GAIN7_CON0_0, 0xa0);
+	}
 	/* Step 188: afe off */
 	regmap_write(priv->regmap, MT6681_AFE_TOP_CON0, 0x0);
+	regmap_write(priv->regmap, MT6681_AFE_DAC_CHOP_CLK_CON0, 0xf8);
 	/* Step 189: Turn off DL HSLO-path FIFO */
-	regmap_write(priv->regmap, MT6681_AFE_CLH_HSLO_FIFO_CON0, 0xa);
+	regmap_write(priv->regmap, MT6681_AFE_CLH_HP_FIFO_CON0,0x3e);
+	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_L, 0x40);
+	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_H, 0x0);
+	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_L, 0x20);
+	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_H, 0xd0);
 
+	regmap_write(priv->regmap, MT6681_AFE_CLH_HSLO_FIFO_CON0, 0xa);
 	/* scrambler disable */
 	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_L, 0x20);
 	/* 2ND DL scrambler clock on disable */
-	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_H, 0xd8);
+	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_H, 0xd1);
 	/* 2ND DL sdm power off */
 	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_L, 0x40);
 	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_H, 0x00);
@@ -17249,8 +16821,6 @@ static void *get_vow_coeff_by_name(struct mt6681_priv *priv, const char *name)
 		return &(priv->reg_afe_vow_vad_cfg5);
 	else if (strcmp(name, "Audio_VOW_Periodic") == 0)
 		return &(priv->reg_afe_vow_periodic);
-	else if (strcmp(name, "Audio_VOW_Periodic_Param") == 0)
-		return (void *)&(priv->vow_periodic_param);
 	else
 		return NULL;
 }
@@ -17366,35 +16936,6 @@ static int audio_hpdet_set(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int audio_vow_periodic_parm_set(struct snd_kcontrol *kcontrol,
-				       const unsigned int __user *data,
-				       unsigned int size)
-{
-	int ret = 0;
-	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
-	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
-	struct mt6681_vow_periodic_on_off_data *vow_param_cfg;
-
-	dev_dbg(priv->dev, "%s(), size = %d\n", __func__, size);
-	if (size > sizeof(struct mt6681_vow_periodic_on_off_data))
-		return -EINVAL;
-	vow_param_cfg =
-		(struct mt6681_vow_periodic_on_off_data *)get_vow_coeff_by_name(
-			priv, kcontrol->id.name);
-	if (!vow_param_cfg) {
-		dev_info(priv->dev, "%s(), vow_param_cfg == NULL\n", __func__);
-		return -EINVAL;
-	}
-	if (copy_from_user(vow_param_cfg, data,
-			   sizeof(struct mt6681_vow_periodic_on_off_data))) {
-		dev_info(priv->dev, "%s(),Fail copy to user Ptr:%p,r_sz:%zu\n",
-			 __func__, data,
-			 sizeof(struct mt6681_vow_periodic_on_off_data));
-		ret = -EFAULT;
-	}
-	return ret;
-}
-
 static const struct snd_kcontrol_new mt6681_snd_vow_controls[] = {
 	SOC_SINGLE_EXT("Audio VOWCFG0 Data", SND_SOC_NOPM, 0, 0x80000, 0,
 		       audio_vow_cfg_get, audio_vow_cfg_set),
@@ -17410,9 +16951,6 @@ static const struct snd_kcontrol_new mt6681_snd_vow_controls[] = {
 		       audio_vow_cfg_get, audio_vow_cfg_set),
 	SOC_SINGLE_EXT("Audio_VOW_Periodic", SND_SOC_NOPM, 0, 0x80000, 0,
 		       audio_vow_cfg_get, audio_vow_cfg_set),
-	SND_SOC_BYTES_TLV("Audio_VOW_Periodic_Param",
-			  sizeof(struct mt6681_vow_periodic_on_off_data), NULL,
-			  audio_vow_periodic_parm_set),
 	SOC_SINGLE_EXT("DC_TRIM_DEBUG", SND_SOC_NOPM, 0, 0x80000, 0,
 		       audio_dctrim_get, audio_dctrim_set),
 };
@@ -17467,8 +17005,11 @@ static int hwgain_enable_set(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	}
 
+#ifdef ALIGN_SWING
 	priv->hwgain_enable = ucontrol->value.integer.value[0];
-
+#else
+	priv->hwgain_enable = 1;
+#endif
 	return 0;
 }
 
@@ -17595,22 +17136,23 @@ static int mt6681_mtkaif_stress_set(struct snd_kcontrol *kcontrol,
 	scp_wake_request(adap);
 
 	if (enable) {
-		dev_info(
-			priv->dev,
-			"Config MT6681_AFE_MTKAIFV4_TX_CFG --> enable bypass src mode, 32K,enable loopback test 2\n");
-		regmap_write(priv->regmap, MT6681_AFE_MTKAIFV4_TX_CFG, 0x34);
+		dev_info(priv->dev, "Config MT6681_AFE_MTKAIFV4_TX_CFG --> enable bypass src mode, 48K, protocol_1, enable loopback test 2\n");
+		regmap_write(priv->regmap, MT6681_AFE_MTKAIFV4_TX_CFG, 0x30);
+		regmap_write(priv->regmap, MT6681_AFE_ADDA_MTKAIFV4_RX_CFG0, 0x29);
+		regmap_write(priv->regmap, MT6681_AFE_ADDA6_MTKAIFV4_RX_CFG0, 0x29);
 		regmap_write(priv->regmap, MT6681_AFE_ADDA_UL_SRC_CON0_0, 0x3);
 		regmap_write(priv->regmap, MT6681_AFE_ADDA6_UL_SRC_CON0_0, 0x3);
 	} else {
-		dev_info(
-			priv->dev,
-			"Config MT6681_AFE_MTKAIFV4_TX_CFG --> disable bypass src mode, 32K, disable loopback test 2\n");
-		regmap_write(priv->regmap, MT6681_AFE_MTKAIFV4_TX_CFG, 0x14);
+		dev_info(priv->dev, "Config MT6681_AFE_MTKAIFV4_TX_CFG --> disable bypass src mode, 48K, protocol_1, disable loopback test 2\n");
+		regmap_write(priv->regmap, MT6681_AFE_MTKAIFV4_TX_CFG, 0x10);
+		regmap_write(priv->regmap, MT6681_AFE_ADDA_MTKAIFV4_RX_CFG0, 0x0);
+		regmap_write(priv->regmap, MT6681_AFE_ADDA6_MTKAIFV4_RX_CFG0, 0x0);
+
 		regmap_write(priv->regmap, MT6681_AFE_ADDA_UL_SRC_CON0_0, 0x0);
 		regmap_write(priv->regmap, MT6681_AFE_ADDA6_UL_SRC_CON0_0, 0x0);
 	}
 	regmap_read(priv->regmap, MT6681_AFE_MTKAIFV4_TX_CFG, &value);
-	dev_info(priv->dev, "%s(), MT6359_AFE_ADDA_MTKAIF_CFG0 = 0x%x\n",
+	dev_info(priv->dev, "%s(), MT6681_AFE_MTKAIFV4_TX_CFG = 0x%x\n",
 		 __func__, value);
 	scp_wake_release(adap);
 	dev_info(priv->dev, "%s(),	done\n", __func__);
@@ -17655,6 +17197,42 @@ static int mt6681_clh_lut0_1_set(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
+
+static int mtk_calculate_hwgain_formula(struct mt6681_priv *priv, int amp_cal, long gain_ratio)
+{
+	/* The formula is from DE programming guide */
+	/* should be mantain by pmic owner */
+	/* R < 30 => 16ohm Group */
+	/* R = 16ohm, Gain = (256 + amp_cal) * 1024 * R_Ratio * HwgainRatio */
+	/* R = 32ohm, Gain = (256 + amp_cal) * 1024 * HwgainRatio */
+	/* R_Ratio : (hp_impedance_enable)? 1 : 1.25893 */
+
+	/* Old efuse... Gain = Gain * 0.77504 */
+	long long val = 0;
+	long R_Ratio = 0;
+
+	if (priv->hp_impedance == 0)
+		R_Ratio = 100000;
+	else
+		R_Ratio = (priv->hp_impedance < 30)? 125893 : 100000;
+
+	val = (256 + amp_cal) * 1024 * gain_ratio * R_Ratio;
+	dev_info(priv->dev, "%s(), val = %lld, val = %lld\n",
+		 __func__, val, DIV_ROUND_CLOSEST(val, 10000000000));
+
+	if (amp_cal > 176) {
+		val = DIV_ROUND_CLOSEST(val, 100000);
+		val = val * 77504;
+	}
+	dev_info(priv->dev, "%s(), amp_cal = %d, gain_ratio = %ld, R_Ratio = %ld\n",
+			 __func__, amp_cal, gain_ratio, R_Ratio);
+
+	dev_info(priv->dev, "%s(), val = %lld, val = %lld\n",
+		 __func__, val, DIV_ROUND_CLOSEST(val, 10000000000));
+
+	return (int)DIV_ROUND_CLOSEST(val, 10000000000);
+
+}
 static int mt6681_hwgain_get(struct snd_kcontrol *kcontrol,
 			    struct snd_ctl_elem_value *ucontrol)
 {
@@ -17673,15 +17251,34 @@ static int mt6681_hwgain_set(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
-	int gain = ucontrol->value.integer.value[0];
+	int gain = 0;
 
-	dev_info(priv->dev, "%s(), gain_index = %d\n", __func__, gain);
+	dev_info(priv->dev, "%s(), DB = %ld\n",
+	 __func__, ucontrol->value.integer.value[0]);
+
+	gain = ucontrol->value.integer.value[0] + 128;
 
 	if (gain >= ARRAY_SIZE(kHWGainMap)) {
 		dev_info(priv->dev, "%s(), return -EINVAL\n", __func__);
 		return -EINVAL;
 	}
 	priv->dl_hwgain = kHWGainMap[gain];
+
+	if (gain >= ARRAY_SIZE(kHWGainRatioMAP)) {
+		dev_info(priv->dev, "%s(), return -EINVAL\n", __func__);
+		return -EINVAL;
+	}
+	if (priv->hp_hifi_mode) {
+		priv->l_trim_gain = (unsigned int)mtk_calculate_hwgain_formula(
+			priv, priv->hw_l_vol_hifi, kHWGainRatioMAP[gain]);
+		priv->r_trim_gain = (unsigned int)mtk_calculate_hwgain_formula(
+			priv, priv->hw_r_vol_hifi, kHWGainRatioMAP[gain]);
+	} else {
+		priv->l_trim_gain = (unsigned int)mtk_calculate_hwgain_formula(
+			priv, priv->hw_l_vol_lp, kHWGainRatioMAP[gain]);
+		priv->r_trim_gain = (unsigned int)mtk_calculate_hwgain_formula(
+			priv, priv->hw_r_vol_lp, kHWGainRatioMAP[gain]);
+	}
 
 	return 0;
 }
@@ -17781,8 +17378,6 @@ static void keylock_reset(struct mt6681_priv *priv)
 	regmap_write(priv->regmap, MT6681_TSBG_PMU_CON2, 0x0);
 	regmap_write(priv->regmap, MT6681_STRUP_ELR_3, 0x1);
 
-	// regmap_write(priv->regmap, MT6681_LDO_VAUD18_MULTI_SW_0, 0x0);
-	// regmap_write(priv->regmap, MT6681_LDO_VAUD18_MULTI_SW_1, 0x0);
 }
 
 int mt6681_get_adda_hifi_mode(struct snd_soc_component *cmpnt, bool isDL)
@@ -17875,36 +17470,6 @@ static void codec_gpio_init(struct mt6681_priv *priv)
 	// GPIO_MODE3[2:0] : 0x2, choose TDMOUT_DATA0
 	regmap_update_bits(priv->regmap, MT6681_GPIO_MODE3, 0x3, 0x2);
 #endif
-}
-
-static void mtk_nle_toggle(struct mt6681_priv *priv)
-{
-	/*dev_dbg(priv->dev, "%s() successfully starts\n", __func__); */
-	/* Toggle bit for update NLE RG */
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-}
-static void mtk_clh_toggle(struct mt6681_priv *priv)
-{
-	/*dev_dbg(priv->dev, "%s() successfully starts\n", __func__); */
-	/* Toggle class-H dynamic RGs */
-	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-			   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
-			   0x0 << RG_CLH_DYN_DYNRG_SYNC_SFT);
-	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-			   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
-			   0x1 << RG_CLH_DYN_DYNRG_SYNC_SFT);
-	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-			   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
-			   0x0 << RG_CLH_DYN_DYNRG_SYNC_SFT);
-
 }
 
 static void mt6681_clh_lut_init(struct mt6681_priv *priv)
@@ -18038,6 +17603,7 @@ static void mt6681_clh_lut_init(struct mt6681_priv *priv)
 	regmap_write(priv->regmap, MT6681_AFE_NLE_ZCD_COUNT_TH_LCH, 0x9);
 	regmap_write(priv->regmap, MT6681_AFE_NLE_ZCD_COUNT_TH_RCH, 0x9);
 	mtk_nle_toggle(priv);
+
 	/* Class-H LUT1 for HP 16Ohm */
 	regmap_write(priv->regmap, MT6681_CLH_LUT1_MSB_0, 0x00);
 	regmap_write(priv->regmap, MT6681_CLH_LUT1_MSB_1, 0x00);
@@ -18570,9 +18136,21 @@ static void mt6681_clh_lut_init(struct mt6681_priv *priv)
 static void mt6681_adc_init(struct mt6681_priv *priv)
 {
 	unsigned long long t_start = get_current_time(), t_consume = 0;
+	unsigned int val = 0;
+	unsigned int val2 = 0;
 
 	dev_info(priv->dev, "%s() %d\n", __func__, priv->mic_hifi_mode);
 
+	regmap_read(priv->regmap, MT6681_AUDENC_2_PMU_CON42,
+		    &val);
+	regmap_read(priv->regmap, MT6681_AUDENC_2_PMU_CON43,
+		    &val2);
+	if ((val == 0x55) && (val2 == 0x5)) {
+		dev_info(priv->dev, "%s() already init, bypass.\n", __func__);
+		//return;
+	}
+
+	dev_dbg(priv->dev, "%s() %d\n", __func__, priv->mic_hifi_mode);
 	if (priv->vow_setup) {
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON21,
 				   RG_AUD5ADC1STSTAGEIDDTEST_MASK_SFT,
@@ -18803,7 +18381,6 @@ static void mt6681_adc_init(struct mt6681_priv *priv)
 	t_consume = get_current_time() - t_start;
 	if (t_consume >= RG_RW_TIMEOUT)
 		dev_info(priv->dev, "%s(), function cost %llu time(ns)", __func__, t_consume);
-
 }
 
 static int mt6681_codec_init_reg(struct mt6681_priv *priv)

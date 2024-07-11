@@ -188,6 +188,7 @@ enum {
 	SUPPLY_SEQ_AFE,
 	/* playback */
 	SUPPLY_SEQ_DL_SRC,
+	SUPPLY_SEQ_DL_HWGAIN_EN,
 	SUPPLY_SEQ_DL_ZCD,
 	SUPPLY_SEQ_DL_ESD_RESIST,
 	SUPPLY_SEQ_HP_DAMPING_OFF_RESET_CMFB,
@@ -536,6 +537,8 @@ struct mt6681_priv {
 	unsigned int hwgain_enable;
 	unsigned int dl_hwgain;
 	unsigned int ldo_counter;
+	unsigned int l_trim_gain;
+	unsigned int r_trim_gain;
 
 	/* hw version */
 	int hw_ver;
@@ -555,7 +558,10 @@ struct mt6681_priv {
 
 	/* NLE */
 	struct nle_trim_data nle_trim;
-
+	unsigned int hw_l_vol_hifi;
+	unsigned int hw_l_vol_lp;
+	unsigned int hw_r_vol_hifi;
+	unsigned int hw_r_vol_lp;
 	/* debugfs */
 	struct dentry *debugfs;
 
