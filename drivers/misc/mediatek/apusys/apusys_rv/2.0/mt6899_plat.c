@@ -15,7 +15,6 @@
 #include <linux/workqueue.h>
 
 #include "mt-plat/aee.h"
-
 #include "iommu_debug.h"
 #include "apusys_power.h"
 #include "apusys_secure.h"
@@ -337,6 +336,32 @@ static int mt6899_apu_power_init(struct mtk_apu *apu)
 	apu->apu_iommu0 = &pdev->dev;
 	of_node_put(np);
 
+
+	/* apu iommu 1 */
+	np = of_parse_phandle(dev->of_node, "apu-iommu1", 0);
+	if (!np) {
+		dev_info(dev, "failed to parse apu-iommu1 node\n");
+		return -EINVAL;
+	}
+
+	if (!of_device_is_available(np)) {
+		dev_info(dev, "unable to find apu-iommu1 node\n");
+		of_node_put(np);
+		return -ENODEV;
+	}
+
+	pdev = of_find_device_by_node(np);
+	if (!pdev) {
+		dev_info(dev, "apu-iommu1 is not ready yet\n");
+		of_node_put(np);
+		return -EPROBE_DEFER;
+	}
+
+	dev_info(dev, "%s: get apu-iommu1 device, name=%s\n", __func__, pdev->name);
+
+	apu->apu_iommu1 = &pdev->dev;
+	of_node_put(np);
+
 	/* init delay worker for power off detection */
 	INIT_DELAYED_WORK(&timeout_work, apu_timeout_work);
 	apu_workq = alloc_ordered_workqueue("apupwr", WQ_MEM_RECLAIM);
@@ -355,6 +380,7 @@ static int mt6899_apu_power_on(struct mtk_apu *apu)
 
 	/* set_apu_pm_status - power on */
 	mtk_iommu_update_pm_status(1, 0, true);
+	mtk_iommu_update_pm_status(1, 1, true);
 
 	if (ret < 0) {
 		dev_info(dev,
@@ -383,6 +409,25 @@ static int mt6899_apu_power_on(struct mtk_apu *apu)
 
 	} while (ret < 0);
 
+	i = 0;
+	/* workaround possible nested disable issue */
+	do {
+		ret = pm_runtime_get_sync(apu->apu_iommu1);
+		/*try atmost 7 times since disable_depth is 3-bit wide */
+		if (ret == -EACCES && i <= 7) {
+			pm_runtime_enable(apu->apu_iommu1);
+			pm_runtime_put_sync(apu->apu_iommu1);
+			i++;
+			dev_info(apu->dev,
+				 "%s: %s is disabled. Enable and retry(%d)\n",
+				 __func__,
+				 to_platform_device(apu->apu_iommu1)->name, i);
+			continue;
+		} else if (ret < 0)
+			pm_runtime_put_sync(apu->apu_iommu0);
+
+	} while (ret < 0);
+
 iommu_get_error:
 	if (ret < 0) {
 		dev_info(apu->dev,
@@ -394,7 +439,8 @@ iommu_get_error:
 
 	/* polling IOMMU rpm state till active */
 	timeout = 50000;
-	while (!pm_runtime_active(apu->apu_iommu0) && timeout-- > 0)
+	while ((!pm_runtime_active(apu->apu_iommu0) ||
+	       !pm_runtime_active(apu->apu_iommu1)) && timeout-- > 0)
 		usleep_range(100, 200);
 	if (timeout <= 0) {
 		dev_info(apu->dev, "%s: polling iommu on timeout!!\n",
@@ -421,6 +467,7 @@ iommu_get_error:
 	return 0;
 
 error_put_iommu_dev:
+	pm_runtime_put_sync(apu->apu_iommu1);
 	pm_runtime_put_sync(apu->apu_iommu0);
 
 error_put_power_dev:
@@ -447,6 +494,23 @@ static int mt6899_apu_power_off(struct mtk_apu *apu)
 	/* workaround possible nested disable issue */
 	i = 0;
 	do {
+		ret = pm_runtime_put_sync(apu->apu_iommu1);
+		/*try atmost 7 times since disable_depth is 3-bit wide */
+		if (ret == -EACCES && i <= 7) {
+			pm_runtime_enable(apu->apu_iommu1);
+			pm_runtime_get_sync(apu->apu_iommu1);
+			i++;
+			dev_info(apu->dev,
+				 "%s: %s is disabled. Enable and retry(%d)\n",
+				 __func__,
+				 to_platform_device(apu->apu_iommu1)->name, i);
+		} else if (ret < 0)
+			goto iommu_put_error;
+
+	} while (ret < 0);
+
+	i = 0;
+	do {
 		ret = pm_runtime_put_sync(apu->apu_iommu0);
 		/*try atmost 7 times since disable_depth is 3-bit wide */
 		if (ret == -EACCES && i <= 7) {
@@ -457,9 +521,12 @@ static int mt6899_apu_power_off(struct mtk_apu *apu)
 				 "%s: %s is disabled. Enable and retry(%d)\n",
 				 __func__,
 				 to_platform_device(apu->apu_iommu0)->name, i);
-		}
+		} else if (ret < 0)
+			pm_runtime_get_sync(apu->apu_iommu1);
+
 	} while (ret < 0);
 
+iommu_put_error:
 	if (ret < 0) {
 		dev_info(apu->dev,
 			 "%s: call to put_sync(iommu) failed, ret=%d\n",
@@ -470,7 +537,8 @@ static int mt6899_apu_power_off(struct mtk_apu *apu)
 
 	/* polling IOMMU rpm state till suspended */
 	timeout = 50000;
-	while (!pm_runtime_suspended(apu->apu_iommu0) && timeout-- > 0)
+	while ((!pm_runtime_suspended(apu->apu_iommu0) ||
+	       !pm_runtime_suspended(apu->apu_iommu1)) && timeout-- > 0)
 		usleep_range(100, 200);
 	if (timeout <= 0) {
 		dev_info(apu->dev, "%s: polling iommu off timeout!!\n",
@@ -482,6 +550,7 @@ static int mt6899_apu_power_off(struct mtk_apu *apu)
 	}
 
 	/* set_apu_pm_status - power off */
+	mtk_iommu_update_pm_status(1, 1, false);
 	mtk_iommu_update_pm_status(1, 0, false);
 
 	/* to force apu top power off synchronously */
@@ -517,6 +586,7 @@ error_get_power_dev:
 	pm_runtime_get_sync(apu->power_dev);
 error_get_iommu_dev:
 	pm_runtime_get_sync(apu->apu_iommu0);
+	pm_runtime_get_sync(apu->apu_iommu1);
 error_get_rv_dev:
 	pm_runtime_get_sync(apu->dev);
 
@@ -718,7 +788,7 @@ static void mt6899_rv_cachedump(struct mtk_apu *apu)
 }
 
 const struct mtk_apu_platdata mt6899_platdata = {
-	.flags		= F_PRELOAD_FIRMWARE | F_AUTO_BOOT | F_DEBUG_LOG_ON | F_BRINGUP |
+	.flags		= F_PRELOAD_FIRMWARE | F_AUTO_BOOT | F_DEBUG_LOG_ON |
 				F_APUSYS_RV_TAG_SUPPORT | F_SECURE_BOOT | F_SECURE_COREDUMP,
 	.ops		= {
 		.init	= mt6899_rproc_init,
