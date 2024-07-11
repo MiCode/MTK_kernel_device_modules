@@ -7644,7 +7644,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			condition-num = <2>;
 			operating-points-v2 = <&opp_table_disp>;
 			vdisp-dvfs-opp = /bits/ 8 <3>;
-			//pre-define-bw = <0xffffffff>, <4200>, <0>, <2700>;
+			pre-define-bw = <0xffffffff>, <4200>, <0>, <2700>;
 			//crtc-ovl-usage = <0xe0>, <0x2>, <0x2>, <0x4>;
 			default-emi-eff = <8800>;
 			emi-eff-lp5-table =
@@ -7881,12 +7881,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0>, /*MTK_DRM_OPT_SODI_SUPPORT*/
 				<1>, /*MTK_DRM_OPT_IDLE_MGR*/
 				<0>, /*MTK_DRM_OPT_IDLEMGR_SWTCH_DECOUPLE*/
-				<0>, /*MTK_DRM_OPT_IDLEMGR_BY_REPAINT*/
+				<1>, /*MTK_DRM_OPT_IDLEMGR_BY_REPAINT*/
 				<0>, /*MTK_DRM_OPT_IDLEMGR_ENTER_ULPS*/
 				<0>, /*MTK_DRM_OPT_IDLEMGR_KEEP_LP11*/
 				<0>, /*MTK_DRM_OPT_DYNAMIC_RDMA_GOLDEN_SETTING*/
-				<0>, /*MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ*/
-				<0>, /*MTK_DRM_OPT_IDLEMGR_ASYNC*/
+				<1>, /*MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ*/
+				<1>, /*MTK_DRM_OPT_IDLEMGR_ASYNC*/
 				<0>, /*MTK_DRM_OPT_MET_LOG*/
 				<1>, /*MTK_DRM_OPT_USE_PQ*/
 				<1>, /*MTK_DRM_OPT_ESD_CHECK_RECOVERY*/
@@ -7934,7 +7934,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0>, /*MTK_DRM_OPT_VIRTUAL_DISP*/
 				<1>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
 				<0>, /*MTK_DRM_OPT_GPU_CACHE*/
-				<0>, /*MTK_DRM_OPT_SPHRT*/
+				<1>, /*MTK_DRM_OPT_SPHRT*/
 				<0>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
 				<0>, /*MTK_DRM_OPT_HRT_BY_LARB*/
 				<1>, /*MTK_DRM_OPT_MAX_CHANNEL_HRT*/
