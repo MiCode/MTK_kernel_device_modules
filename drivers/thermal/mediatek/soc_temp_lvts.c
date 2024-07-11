@@ -1410,17 +1410,22 @@ static void tc_irq_handler(struct lvts_data *lvts_data, int tc_id, char thermint
 		tc_id, ret, temp);
 
 	if (ret & THERMAL_HIGH_OFFSET_INTERRUPT_0)
-		dev_info(dev, "[Thermal IRQ]: Thermal high offset0 interrupt triggered, Thermal sw reset\n");
+		dev_info(dev,
+		"[Thermal IRQ]: Thermal high offset0 interrupt triggered, Thermal sw reset\n");
 	if (ret & THERMAL_HIGH_OFFSET_INTERRUPT_1)
-		dev_info(dev, "[Thermal IRQ]: Thermal high offset1 interrupt triggered, Thermal sw reset\n");
+		dev_info(dev,
+		"[Thermal IRQ]: Thermal high offset1 interrupt triggered, Thermal sw reset\n");
 	if (ret & THERMAL_HIGH_OFFSET_INTERRUPT_2)
-		dev_info(dev, "[Thermal IRQ]: Thermal high offset2 interrupt triggered, Thermal sw reset\n");
+		dev_info(dev,
+		"[Thermal IRQ]: Thermal high offset2 interrupt triggered, Thermal sw reset\n");
 	if (ret & THERMAL_HIGH_OFFSET_INTERRUPT_3)
-		dev_info(dev, "[Thermal IRQ]: Thermal high offset3 interrupt triggered, Thermal sw reset\n");
+		dev_info(dev,
+		"[Thermal IRQ]: Thermal high offset3 interrupt triggered, Thermal sw reset\n");
 
 
 	if (ret & THERMAL_PROTECTION_STAGE_3)
-		dev_info(dev, "[Thermal IRQ]: Thermal protection stage 3 interrupt triggered, Thermal HW reboot\n");
+		dev_info(dev,
+	"[Thermal IRQ]: Thermal protection stage 3 interrupt triggered, Thermal HW reboot\n");
 
 	BUG();
 }
@@ -7112,7 +7117,7 @@ static struct tc_settings mt6899_tc_settings[] = {
 		.num_sensor = 4,
 		.sensor_map = {MT6899_TS1_0, MT6899_TS1_1, MT6899_TS1_2, MT6899_TS1_3},
 		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
-		.tc_speed = SET_TC_SPEED_IN_US(10, 2460, 10, 10),
+		.tc_speed = SET_TC_SPEED_IN_US(10, 1440, 10, 10),
 		.hw_filter = LVTS_FILTER_1,
 		.dominator_sensing_point = ALL_SENSING_POINTS,
 		.hw_reboot_trip_point = 119000,
@@ -7157,7 +7162,7 @@ static struct tc_settings mt6899_tc_settings[] = {
 		.num_sensor = 4,
 		.sensor_map = {MT6899_TS4_0, MT6899_TS4_1, MT6899_TS4_2, MT6899_TS4_3},
 		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
-		.tc_speed = SET_TC_SPEED_IN_US(10, 2460, 10, 10),
+		.tc_speed = SET_TC_SPEED_IN_US(10, 1440, 10, 10),
 		.hw_filter = LVTS_FILTER_1,
 		.dominator_sensing_point = ALL_SENSING_POINTS,
 		.hw_reboot_trip_point = 119000,
@@ -7172,7 +7177,7 @@ static struct tc_settings mt6899_tc_settings[] = {
 		.num_sensor = 4,
 		.sensor_map = {MT6899_TS5_0, MT6899_TS5_1, MT6899_TS5_2, MT6899_TS5_3},
 		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
-		.tc_speed = SET_TC_SPEED_IN_US(10, 10230, 10, 10),
+		.tc_speed = SET_TC_SPEED_IN_US(10, 327670, 10, 10),
 		.hw_filter = LVTS_FILTER_1,
 		.dominator_sensing_point = ALL_SENSING_POINTS,
 		.hw_reboot_trip_point = 119000,
@@ -7187,7 +7192,7 @@ static struct tc_settings mt6899_tc_settings[] = {
 		.num_sensor = 4,
 		.sensor_map = {MT6899_TS6_0, MT6899_TS6_1, MT6899_TS6_2, MT6899_TS6_3},
 		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
-		.tc_speed = SET_TC_SPEED_IN_US(10, 10230, 10, 10),
+		.tc_speed = SET_TC_SPEED_IN_US(10, 327670, 10, 10),
 		.hw_filter = LVTS_FILTER_1,
 		.dominator_sensing_point = ALL_SENSING_POINTS,
 		.hw_reboot_trip_point = 119000,
@@ -7202,7 +7207,7 @@ static struct tc_settings mt6899_tc_settings[] = {
 		.num_sensor = 1,
 		.sensor_map = {MT6899_TS8_0},
 		.sensor_on_off = {SEN_ON},
-		.tc_speed = SET_TC_SPEED_IN_US(10, 1950, 10, 10),
+		.tc_speed = SET_TC_SPEED_IN_US(10, 870, 10, 10),
 		.hw_filter = LVTS_FILTER_1,
 		.dominator_sensing_point = ALL_SENSING_POINTS,
 		.hw_reboot_trip_point = 119000,
@@ -7260,6 +7265,7 @@ static struct lvts_data mt6899_lvts_data = {
 	.clock_gate_no_need = true,
 	.reset_no_need = true,
 	.spm_lvts = true,
+	.dump_wo_pause = true,
 };
 
 /*==================================================
