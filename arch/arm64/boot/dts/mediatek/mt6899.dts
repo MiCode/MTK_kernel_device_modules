@@ -10705,7 +10705,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"M4U_PORT_VDEC_UNIWRAP",
 				"M4U_PORT_VDEC_VIDEO_UP_NOR",
 				"M4U_PORT_VDEC_VIDEO_UP_SEC";
+			mmqos-supply = <&mmqos>;
 			vdec-power-in-vcp = <1>;
+			vdec-mmdvfs-in-vcp = <1>;
+			vdec-mmdvfs-in-adaptive = <1>;
 		};
 
 		venc@17020000 {
@@ -10748,7 +10751,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC>;
 			clock-names = "MT_CG_VENC0",
 				"MT_CG_VENC1";
+			mmqos-supply = <&mmqos>;
 			venc-power-in-vcp = <1>;
+			venc-mmdvfs-in-vcp = <1>;
+			venc-mmdvfs-in-adaptive = <1>;
 			port-arg-num = <3>;
 			port-def = <0 M4U_L7_P0_VENC_RCPU_U0 0>,
 				<0 M4U_L7_P1_VENC_REC_U0 0>,
