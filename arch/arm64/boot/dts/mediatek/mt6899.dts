@@ -875,13 +875,13 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-61 = "SSPM_SLBC_SLOT",
 				"buffer_used,cached_used";
 			node-62 = "SSPM_SLBC_REF",
-				"aov_dc,sh_p1,sh_apu,venc_8k,venc,aov_apu,ainr,apu";
+				"mml,disp,venc,ainr,apu";
 			node-63 = "SSPM_SLBC_BW",
 				"mm,apu,mm_est";
 			node-64 = "SSPM_SLBC_PMU",
 				"hit,miss,apu_r,apu_w,mm_r,mm_w";
 			node-65 = "SSPM_SLBC_WAY",
-				"aov_dc,sh_p1,sh_apu,venc_8k,venc,aov_apu,ainr,apu,",
+				"mml,disp,venc,ainr,apu,",
 				"slb,slc,left";
 			node-66 = "SSPM_SWPM_CPU__DSU_PMU",
 				 "dsu_cycles";
@@ -1029,23 +1029,19 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"gid_32_to_35,gid_36_to_39,gid_40_to_43,gid_44_to_47,",
 				"gid_48_to_51,gid_52_to_55,gid_56_to_59,gid_60_to_63,";
 			node-96 = "SSPM_SLBC_CACHE_QUOTA",
-				"gid0,md,adsp,cpu,gpu,vdec_frame,vdec_ube,smmu,aov,",
-				"img,cam,mae,null,";
+				"gid0,md,cpu,gpu,vdec_frame,vdec_ube,img,cam,mae,";
 			node-97 = "SSPM_SLBC_CACHE_HIT",
-				"gid0,md,adsp,cpu,gpu,vdec_frame,vdec_ube,smmu,aov,",
-				"img,cam,mae,null,";
+				"gid0,md,cpu,gpu,vdec_frame,vdec_ube,img,cam,mae,";
 			node-98 = "SSPM_SLBC_CACHE_TOTAL",
-				"gid0,md,adsp,cpu,gpu,vdec_frame,vdec_ube,smmu,aov,",
-				"img,cam,mae,null,";
+				"gid0,md,cpu,gpu,vdec_frame,vdec_ube,img,cam,mae,";
 			node-99 = "SSPM_SLBC_CACHE_STATUS",
-				"pd,md,adsp,cpu,gpu,vdec_frame,vdec_ube,smmu,aov,",
-				"img,cam,mae,null,force,ceil,window_cg,dcc_count";
+				"pd,md,cpu,gpu,vdec_frame,vdec_ube,img,cam,mae,";
 			node-100 = "SSPM_SLBC_CACHE_SIZE",
-				"pd,md,adsp,cpu,gpu,vdec_frame,vdec_ube,smmu,aov,",
-				"img,cam,mae,null,total,valid";
+				"pd,md,cpu,gpu,vdec_frame,vdec_ube,img,cam,mae,",
+				"total,valid";
 			node-101 = "SSPM_SLBC_CACHE_WAY",
-				"pd,md,adsp,cpu,gpu,vdec_frame,vdec_ube,smmu,aov,",
-				"img,cam,mae,null,total,buf_unused";
+				"pd,md,cpu,gpu,vdec_frame,vdec_ube,img,cam,mae,",
+				"total,buf_unused";
 			node-102 = "SSPM_VCORE_DVFS__DDR_DETAIL",
 				"EMI_MON,QOS_B,HR_BW,SW_R1,SW_R2,",
 				"SW_R3,MD,MD2,ADSP,DSS,MAXBW_RECORD";
