@@ -952,8 +952,12 @@ int log_store_late_init(void)
 	unsigned int boot_mode;
 
 	logstore_pm_nb.notifier_call = logstore_pm_notify;
-	register_pm_notifier(&logstore_pm_nb);
-	register_reboot_notifier(&logstore_reboot_notify);
+	if (register_pm_notifier(&logstore_pm_nb))
+		pr_warn("Failed to register PM notifier for logstore\n");
+
+	if (register_reboot_notifier(&logstore_reboot_notify))
+		pr_warn("Failed to register reboot notifier for logstore\n");
+
 	set_boot_phase(BOOT_PHASE_KERNEL);
 	if (sram_dram_buff == NULL) {
 		pr_notice("log_store: sram header DRAM buff is null.\n");
