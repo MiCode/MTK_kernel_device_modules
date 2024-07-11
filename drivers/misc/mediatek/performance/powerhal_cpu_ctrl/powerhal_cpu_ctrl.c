@@ -301,7 +301,8 @@ static ssize_t perfmgr_perfserv_freq_proc_write(
 		struct file *filp, const char *ubuf,
 		size_t cnt, loff_t *_data)
 {
-	int i = 0, j, policy, cpu = 0, data;
+	int i = 0, j = 0, cluster = 0, policy = 0, cpu = 0, data = 0;
+	int min_freq = 0, max_freq = 0;
 	unsigned int arg_num = 3;
 	char *tok, *tmp;
 	char *buf = perfmgr_copy_from_user_for_proc(ubuf, cnt);
@@ -329,23 +330,43 @@ static ssize_t perfmgr_perfserv_freq_proc_write(
 			pr_debug("@%s: invalid input: %s\n", __func__, tok);
 			goto out;
 		} else {
-			if (i == 0)
+			if (i == 0) {
+				if (data < 0 || data >= CORE_MAX) {
+					pr_debug("@%s: invalid input: %d\n", __func__, data);
+					goto out;
+				}
 				cpu = data;
-			else if (i == 1) { /* min */
 				policy = cpu_mapping_policy[cpu];
-				for(j=0; j<CORE_MAX; j++) {
-					if(cpu_mapping_policy[j] == policy)
-						core_freq_to_set[j].min = data;
+				cluster = cpu_mapping_cluster[cpu];
+			} else if (i == 1) { /* min */
+				if (opp_count == NULL || cluster >= policy_num ||
+				data < cpu_opp_tbl[cluster][opp_count[cluster]-1] ||
+				data > cpu_opp_tbl[cluster][0]) {
+					pr_debug("@%s: invalid input: %d %d %d\n",
+					__func__, data, cpu_opp_tbl[cluster][0],
+					cpu_opp_tbl[cluster][opp_count[cluster]-1]);
+					goto out;
 				}
+				min_freq = data;
 			} else { /* max */
-				policy = cpu_mapping_policy[cpu];
-				for(j=0; j<CORE_MAX; j++) {
-					if(cpu_mapping_policy[j] == policy)
-						core_freq_to_set[j].max =
-							(data != 0) ? data : cpu_opp_tbl[cpu_mapping_policy[j]][0];
+				if (opp_count == NULL || cluster >= policy_num ||
+				data < cpu_opp_tbl[cluster][opp_count[cluster]-1] ||
+				data > cpu_opp_tbl[cluster][0]) {
+					pr_debug("@%s: invalid input: %d %d %d\n",
+					__func__, data, cpu_opp_tbl[cluster][0],
+					cpu_opp_tbl[cluster][opp_count[cluster]-1]);
+					goto out;
 				}
+				max_freq = data;
 			}
 			i++;
+		}
+	}
+
+	for(j=0; j<CORE_MAX; j++) {
+		if(cpu_mapping_policy[j] == policy) {
+			core_freq_to_set[j].min = min_freq;
+			core_freq_to_set[j].max = max_freq;
 		}
 	}
 
@@ -855,7 +876,7 @@ static int __init powerhal_cpu_ctrl_init(void)
 	int cpu_num = 0;
 	int num = 0;
 	int cpu;
-	int i, j, ret = 0;
+	int i, j, ret = 0, cluster = 0;
 	struct proc_dir_entry *lt_dir = NULL;
 	struct proc_dir_entry *parent = NULL;
 	struct cpufreq_policy *policy;
@@ -915,12 +936,13 @@ static int __init powerhal_cpu_ctrl_init(void)
 	}
 
 	for (i = 0; i < policy_num; i++) {
-		freq_to_set[i].min = 0;
+		freq_to_set[i].min = cpu_opp_tbl[i][opp_count[i]-1];
 		freq_to_set[i].max = cpu_opp_tbl[i][0];
 	}
 
 	for (i = 0; i < CORE_MAX; i++) {
-		core_freq_to_set[i].min = 0;
+		cluster = cpu_mapping_cluster[i];
+		core_freq_to_set[i].min = cpu_opp_tbl[cpu_mapping_policy[i]][opp_count[cluster]-1];
 		core_freq_to_set[i].max = cpu_opp_tbl[cpu_mapping_policy[i]][0];
 	}
 
