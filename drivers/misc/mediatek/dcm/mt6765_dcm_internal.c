@@ -50,17 +50,6 @@ short is_dcm_bringup(void)
  * following is implementation per DCM module.
  * 1. per-DCM function is 1-argu with ON/OFF/MODE option.
  *****************************************/
-static int dcm_topckg_is_on(void)
-{
-	int ret = 1;
-
-	return ret;
-}
-
-int dcm_topckg(int on)
-{
-	return 0;
-}
 
 void dcm_infracfg_ao_emi_indiv(int on)
 {
@@ -75,13 +64,11 @@ static int dcm_infra_is_on(void)
 {
 	bool ret = true;
 
-	ret &= dcm_infracfg_ao_infra_peri_is_on();
-	ret &= dcm_infracfg_ao_infra_mem_is_on();
-	ret &= dcm_infracfg_ao_p2p_dsi_csi_is_on();
-
 	ret &= dcm_infracfg_ao_audio_is_on();
 	ret &= dcm_infracfg_ao_icusb_is_on();
 	ret &= dcm_infracfg_ao_ssusb_is_on();
+	ret &= dcm_infracfg_ao_infra_mem_is_on();
+	ret &= dcm_infracfg_ao_infra_peri_is_on();
 
 	return ret;
 }
@@ -98,7 +85,6 @@ int dcm_infra(int on)
 	/*
 	 * dcm_infracfg_ao_infra_rx_p2p_dcm(on);
 	 */
-	dcm_infracfg_ao_p2p_dsi_csi(on);
 	/*
 	 * dcm_infracfg_ao_peri_bus_dcm(on);
 	 */
@@ -113,17 +99,6 @@ int dcm_infra(int on)
 	return 0;
 }
 
-static int dcm_peri_is_on(void)
-{
-	int ret = 1;
-
-	return ret;
-}
-
-int dcm_peri(int on)
-{
-	return 0;
-}
 
 static int dcm_armcore_is_on(void)
 {
@@ -181,17 +156,6 @@ int dcm_big_core_preset(void)
 	return 0;
 }
 
-static int dcm_big_core_is_on(void)
-{
-	int ret = 1;
-
-	return ret;
-}
-
-int dcm_big_core(int on)
-{
-	return 0;
-}
 
 int dcm_stall_preset(int on)
 {
@@ -235,18 +199,6 @@ int dcm_gic_sync(int on)
 	return 0;
 }
 
-static int dcm_last_core_is_on(void)
-{
-	int ret = 1;
-
-	return ret;
-}
-
-int dcm_last_core(int on)
-{
-	return 0;
-}
-
 static int dcm_rgu_is_on(void)
 {
 	bool ret = true;
@@ -264,71 +216,7 @@ int dcm_rgu(int on)
 	return 0;
 }
 
-static int dcm_dramc_ao_is_on(void)
-{
-	int ret = 1;
 
-	return ret;
-}
-
-int dcm_dramc_ao(int on)
-{
-	/* Not gen'd, Check why
-	 * dcm_dramc_ch0_top1_dramc_dcm(on);
-	 * dcm_dramc_ch1_top1_dramc_dcm(on);
-	 */
-
-	return 0;
-}
-
-static int dcm_ddrphy_is_on(void)
-{
-	int ret = 1;
-
-	return ret;
-}
-
-int dcm_ddrphy(int on)
-{
-	/* Not gen'd, Check why
-	 * dcm_dramc_ch0_top0_ddrphy(on);
-	 * dcm_dramc_ch1_top0_ddrphy(on);
-	 */
-
-	return 0;
-}
-
-static int dcm_emi_is_on(void)
-{
-	int ret = 1;
-
-	ret &= dcm_chn0_emi_dcm_emi_group_is_on();
-	ret &= dcm_chn1_emi_dcm_emi_group_is_on();
-	return ret;
-}
-
-int dcm_emi(int on)
-{
-	/* Not gen'd, Check why
-	 * dcm_emi_dcm_emi_group(on);
-	 */
-	dcm_chn0_emi_dcm_emi_group(on);
-	dcm_chn1_emi_dcm_emi_group(on);
-
-	return 0;
-}
-
-static int dcm_lpdma_is_on(void)
-{
-	int ret = 1;
-
-	return ret;
-}
-
-int dcm_lpdma(int on)
-{
-	return 0;
-}
 
 int dcm_pwrap(int on)
 {
@@ -378,60 +266,18 @@ struct DCM dcm_array[] = {
 	 .default_state = INFRA_DCM_ON,
 	 },
 	{
-	 .typeid = PERI_DCM_TYPE,
-	 .name = "PERI_DCM",
-	 .func = (DCM_FUNC) dcm_peri,
-	 .is_on_func = dcm_peri_is_on,
-	 .default_state = PERI_DCM_ON,
-	 },
-	{
-	 .typeid = EMI_DCM_TYPE,
-	 .name = "EMI_DCM",
-	 .func = (DCM_FUNC) dcm_emi,
-	 .is_on_func = dcm_emi_is_on,
-	 .default_state = EMI_DCM_ON,
-	 },
-	{
-	 .typeid = DRAMC_DCM_TYPE,
-	 .name = "DRAMC_DCM",
-	 .func = (DCM_FUNC) dcm_dramc_ao,
-	 .is_on_func = dcm_dramc_ao_is_on,
-	 .default_state = DRAMC_AO_DCM_ON,
-	 },
-	{
-	 .typeid = DDRPHY_DCM_TYPE,
-	 .name = "DDRPHY_DCM",
-	 .func = (DCM_FUNC) dcm_ddrphy,
-	 .is_on_func = dcm_ddrphy_is_on,
-	 .default_state = DDRPHY_DCM_ON,
-	 },
-	{
 	 .typeid = STALL_DCM_TYPE,
 	 .name = "STALL_DCM",
 	 .func = (DCM_FUNC) dcm_stall,
 	 .is_on_func = dcm_stall_is_on,
 	 .default_state = STALL_DCM_ON,
 	 },
-	{
-	 .typeid = BIG_CORE_DCM_TYPE,
-	 .name = "BIG_CORE_DCM",
-	 .func = (DCM_FUNC) dcm_big_core,
-	 .is_on_func = dcm_big_core_is_on,
-	 .default_state = BIG_CORE_DCM_ON,
-	 },
-	{
+{
 	 .typeid = GIC_SYNC_DCM_TYPE,
 	 .name = "GIC_SYNC_DCM",
 	 .func = (DCM_FUNC) dcm_gic_sync,
 	 .is_on_func = dcm_gic_sync_is_on,
 	 .default_state = GIC_SYNC_DCM_ON,
-	 },
-	{
-	 .typeid = LAST_CORE_DCM_TYPE,
-	 .name = "LAST_CORE_DCM",
-	 .func = (DCM_FUNC) dcm_last_core,
-	 .is_on_func = dcm_last_core_is_on,
-	 .default_state = LAST_CORE_DCM_ON,
 	 },
 	{
 	 .typeid = RGU_DCM_TYPE,
@@ -440,20 +286,7 @@ struct DCM dcm_array[] = {
 	 .is_on_func = dcm_rgu_is_on,
 	 .default_state = RGU_DCM_ON,
 	 },
-	{
-	 .typeid = TOPCKG_DCM_TYPE,
-	 .name = "TOPCKG_DCM",
-	 .func = (DCM_FUNC) dcm_topckg,
-	 .is_on_func = dcm_topckg_is_on,
-	 .default_state = TOPCKG_DCM_ON,
-	 },
-	{
-	 .typeid = LPDMA_DCM_TYPE,
-	 .name = "LPDMA_DCM",
-	 .func = (DCM_FUNC) dcm_lpdma,
-	 .is_on_func = dcm_lpdma_is_on,
-	 .default_state = LPDMA_DCM_ON,
-	 },
+
 	{
 	 .typeid = MCSI_DCM_TYPE,
 	 .name = "MCSI_DCM",
