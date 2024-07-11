@@ -1093,15 +1093,7 @@ static int mtu3_hw_init(struct mtu3 *mtu)
 		mtu->gen2cp = 0;
 		dev_info(mtu->dev, "force gen2cp to be 0 ");
 	} else {
-		switch (mtu3_readl(mtu->ippc_base, U3D_SSUSB_IP_MAC_CAP)) {
-		case SSUSB_IP_MAC_U3_SPEED_GEN2X2:
-		case SSUSB_IP_MAC_U3_SPEED_GEN2X1:
-			mtu->gen2cp = 1;
-			break;
-		default:
-			mtu->gen2cp = 0;
-			break;
-		}
+		mtu->gen2cp = !!(mtu->hw_version >= MTU3_TRUNK_VERS_1003);
 	}
 
 	value = mtu3_readl(mtu->ippc_base, U3D_SSUSB_IP_DEV_CAP);
@@ -1163,6 +1155,36 @@ static int mtu3_set_dma_mask(struct mtu3 *mtu)
 	return ret;
 }
 
+static void ssusb_get_host_speed_max(struct mtu3 *mtu)
+{
+	u32 cap_val, host_u3p_num;
+
+	if (mtu == NULL || mtu->ippc_base == NULL)
+		return;
+
+	cap_val = mtu3_readl(mtu->ippc_base, U3D_SSUSB_IP_XHCI_CAP);
+	host_u3p_num = SSUSB_IP_XHCI_U3_PORT_NUM(cap_val);
+
+	if (host_u3p_num) {
+		cap_val = (mtu3_readl(mtu->ippc_base, U3D_SSUSB_IP_MAC_CAP) &
+			  SSUSB_IP_MAC_U3_SPEED_CAP_MSK) >> SSUSB_IP_MAC_U3_SPEED_CAP_OFST;
+		switch (cap_val) {
+		case SSUSB_IP_MAC_U3_SPEED_GEN2X2:
+		case SSUSB_IP_MAC_U3_SPEED_GEN2X1:
+			mtu->max_speed_host = USB_SPEED_SUPER_PLUS;
+			break;
+		case SSUSB_IP_MAC_U3_SPEED_GEN1X2:
+		case SSUSB_IP_MAC_U3_SPEED_GEN1X1:
+			mtu->max_speed_host = USB_SPEED_SUPER;
+			break;
+		default:
+			mtu->max_speed_host = USB_SPEED_HIGH;
+			break;
+		}
+	} else
+		mtu->max_speed_host = USB_SPEED_HIGH;
+}
+
 int ssusb_gadget_init(struct ssusb_mtk *ssusb)
 {
 	struct device *dev = ssusb->dev;
@@ -1219,14 +1241,9 @@ int ssusb_gadget_init(struct ssusb_mtk *ssusb)
 		dev_err(dev, "mtu3 hw init failed:%d\n", ret);
 		return ret;
 	}
-	if (of_property_read_u32(dev->of_node, "maximum-speed-host", &mtu->max_speed_host) < 0) {
-		if (mtu->gen2cp)
-			mtu->max_speed_host = USB_SPEED_SUPER_PLUS;
-		else if (mtu->u3_capable)
-			mtu->max_speed_host = USB_SPEED_SUPER;
-		else
-			mtu->max_speed_host = USB_SPEED_HIGH;
-	}
+	if (of_property_read_u32(dev->of_node, "maximum-speed-host", &mtu->max_speed_host) < 0)
+		ssusb_get_host_speed_max(mtu);
+
 	dev_info(dev, "max_speed_host: %s\n", usb_speed_string(mtu->max_speed_host));
 
 
