@@ -217,6 +217,7 @@ int DW9718GAF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 {
 	LOG_INF("Start\n");
 
+	spin_lock(g_pAF_SpinLock);
 	if (*g_pAF_Opened == 2) {
 		int i4RetValue = 0;
 		char puSendCmd[2] = {0x00, 0x01};
@@ -231,11 +232,9 @@ int DW9718GAF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 	if (*g_pAF_Opened) {
 		LOG_INF("Free\n");
 
-		spin_lock(g_pAF_SpinLock);
 		*g_pAF_Opened = 0;
-		spin_unlock(g_pAF_SpinLock);
 	}
-
+	spin_unlock(g_pAF_SpinLock);
 	LOG_INF("End\n");
 
 	return 0;
@@ -244,10 +243,11 @@ int DW9718GAF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 int DW9718GAF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
 			  spinlock_t *pAF_SpinLock, int *pAF_Opened)
 {
+	spin_lock(g_pAF_SpinLock);
 	g_pstAF_I2Cclient = pstAF_I2Cclient;
 	g_pAF_SpinLock = pAF_SpinLock;
 	g_pAF_Opened = pAF_Opened;
-
+	spin_unlock(g_pAF_SpinLock);
 	initAF();
 
 	return 1;
