@@ -262,14 +262,12 @@ const char * const *get_mt6899_all_clk_names(void)
 		"ufsao_unipro_sys",
 		"ufsao_u_phy_sap",
 		"ufsao_u_phy_ahb_s_busck",
-		"ufsao_u_ao_26m_ck",
 
 		/* ufscfg_pdn */
 		"ufspdn_ufshci_ufs",
 		"ufspdn_ufshci_aes",
 		"ufspdn_ufshci_u_ahb",
 		"ufspdn_ufshci_u_axi",
-		"ufspdn_u_26m_ck",
 
 		/* imp_iic_wrap_en */
 		"impen_i3c2",

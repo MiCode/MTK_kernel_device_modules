@@ -524,10 +524,6 @@ static const struct mtk_gate ufsao_clks[] = {
 			"ufs_faxi_ck"/* parent */, 9),
 	GATE_UFSAO_V(CLK_UFSAO_U_PHY_TOP_AHB_S_BUSCK_UFS, "ufsao_u_phy_ahb_s_busck_ufs",
 			"ufsao_u_phy_ahb_s_busck"/* parent */),
-	GATE_UFSAO(CLK_UFSAO_U_AO_FREE_26M, "ufsao_u_ao_26m_ck",
-			"vlp_infra_26m_ck"/* parent */, 24),
-	GATE_UFSAO_V(CLK_UFSAO_U_AO_FREE_26M_UFS, "ufsao_u_ao_26m_ck_ufs",
-			"ufsao_u_ao_26m_ck"/* parent */),
 };
 
 static const struct mtk_clk_desc ufsao_mcd = {
@@ -573,10 +569,6 @@ static const struct mtk_gate ufspdn_clks[] = {
 			"ufs_fmem_sub_ck"/* parent */, 5),
 	GATE_UFSPDN_V(CLK_UFSPDN_UFSHCI_U_AXI_UFS, "ufspdn_ufshci_u_axi_ufs",
 			"ufspdn_ufshci_u_axi"/* parent */),
-	GATE_UFSPDN(CLK_UFSPDN_U_FREE_26M, "ufspdn_u_26m_ck",
-			"vlp_infra_26m_ck"/* parent */, 6),
-	GATE_UFSPDN_V(CLK_UFSPDN_U_FREE_26M_UFS, "ufspdn_u_26m_ck_ufs",
-			"ufspdn_u_26m_ck"/* parent */),
 };
 
 static const struct mtk_clk_desc ufspdn_mcd = {
