@@ -583,7 +583,7 @@ static ssize_t swpm_psp_test_read(char *ToUser, size_t sz, void *priv)
 	ret = get_res_group_id(
 			SWPM_PSP_SEL_SIG_VCORE_ADSP,
 			SWPM_PSP_SEL_SIG_VCORE_PCIE0,
-			SWPM_PSP_SEL_SIG_VCORE_PCIE1,
+			SWPM_PSP_SEL_SIG_UNUSE,
 			&out1, &out2, &out3);
 	if (ret)
 		pr_info("[SWPM] get_res_group_id fail (%d)\n", ret);
@@ -592,8 +592,8 @@ static ssize_t swpm_psp_test_read(char *ToUser, size_t sz, void *priv)
 		out2, out3, ret);
 
 	ret = get_res_group_id(
-			SWPM_PSP_SEL_SIG_VCORE_MMPROC,
-			SWPM_PSP_SEL_SIG_VCORE_UARTHUB,
+			SWPM_PSP_SEL_SIG_UNUSE,
+			SWPM_PSP_SEL_SIG_UNUSE,
 			SWPM_PSP_SEL_SIG_UNUSE,
 			&out1, &out2, &out3);
 	if (ret)
