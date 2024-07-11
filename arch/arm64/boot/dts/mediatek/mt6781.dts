@@ -768,8 +768,12 @@
 			 <&topckgen TOP_MUX_IMG1>,
 			 <&topckgen TOP_MUX_IPE>,
 			 <&topckgen TOP_MUX_VENC>,
-			 <&topckgen TOP_MUX_VDEC>;
-		clock-names = "disp","mfg","cam","isp", "ipe", "ven", "vde";
+			 <&topckgen TOP_MUX_VDEC>,
+			 <&ipesys CLK_IPE_LARB19>,
+			 <&ipesys CLK_IPE_LARB20>,
+			 <&ipesys CLK_IPE_SMI_SUBCOM>,
+			 <&ipesys CLK_IPE_GALS>;
+		clock-names = "disp","mfg","cam","isp", "ipe", "ven", "vde","ipe-0","ipe-1", "ipe-2", "ipe-3";
 		infracfg = <&infracfg_ao>;
 	};
 
