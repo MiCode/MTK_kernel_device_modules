@@ -740,6 +740,8 @@ char *cmdq_dump_pkt_usage(u32 hwid, char *buf_start, char *buf_end)
 	uint i, j;
 
 	cmdq = g_cmdq[hwid];
+	if (!cmdq)
+		return buf_start;
 
 	for (i = 0; i < ARRAY_SIZE(cmdq->thread); i++) {
 		for (j = 0; j < CMDQ_THRD_PKT_ARR_MAX; j++) {
