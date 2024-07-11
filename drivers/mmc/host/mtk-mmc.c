@@ -3951,19 +3951,25 @@ static const struct mmc_host_ops mt_msdc_ops = {
 	.init_card = msdc_ops_init_card,
 };
 
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_CQHCI_DEBUG)
+extern void mt_irq_dump_status(unsigned int irq);
 void msdc_dumpregs(struct mmc_host *mmc)
 {
 	struct msdc_host *host = mmc_priv(mmc);
 
 	msdc_dump_info(NULL, 0, NULL, host);
+	mt_irq_dump_status(host->irq);
 }
+#endif
 
 static const struct cqhci_host_ops msdc_cmdq_ops = {
 	.enable         = msdc_cqe_enable,
 	.disable        = msdc_cqe_disable,
 	.pre_enable = msdc_cqe_pre_enable,
 	.post_disable = msdc_cqe_post_disable,
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_CQHCI_DEBUG)
 	.dumpregs = msdc_dumpregs,
+#endif
 };
 
 static irqreturn_t sdio_eint_irq(int irq, void *dev_id)

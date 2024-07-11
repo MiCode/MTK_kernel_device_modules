@@ -76,3 +76,20 @@ config DEVICE_MODULES_MMC_MTK_SW_CQHCI_DEBUG
 		on userdebug and eng load.
 
 		If unsure, say N.
+
+config DEVICE_MODULES_MMC_CQHCI_DEBUG
+	tristate "Command Queue Host Controller Interface Debug"
+	depends on DEVICE_MODULES_MMC_CQHCI
+	help
+	  This option enables debug support for the Command Queue Host
+	  Controller Interface (CQHCI) in MMC (MultiMediaCard) host devices.
+	  Enabling this option will allow you to obtain additional diagnostic
+	  information useful for developing or troubleshooting CQHCI
+	  implementations. This information is provided through debugfs and
+	  can include detailed command queue state, error logs, and other
+	  low-level operational details.
+
+	  If you are a developer working on MMC host drivers or if you need
+	  to troubleshoot issues with CQHCI, you may want to enable this.
+	  Otherwise, it is safe to say N to avoid the overhead that comes
+	  with enabling debug features.

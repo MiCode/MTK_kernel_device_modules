@@ -921,7 +921,9 @@ static bool cqhci_timeout(struct mmc_host *mmc, struct mmc_request *mrq,
 		pr_err("%s: cqhci: timeout for tag %d, qcnt %d\n",
 		       mmc_hostname(mmc), tag, cq_host->qcnt);
 		cqhci_dumpregs(cq_host);
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_CQHCI_DEBUG)
 		BUG_ON(1);
+#endif
 	}
 
 	return timed_out;
