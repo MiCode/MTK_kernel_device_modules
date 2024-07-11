@@ -1650,8 +1650,10 @@ static void core_taskdone(struct work_struct *work)
 	struct mml_frame_config *cfg = task->config;
 	const struct mml_topology_path *path = cfg->path[0];
 	u32 *perf, hw_time = 0;
+	u32 jobid = task->job.jobid;
 
 	mml_trace_begin("%s", __func__);
+	mml_mmp(taskdone, MMPROFILE_FLAG_START, jobid, 0);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	mml_dump_output(cfg->mml, path->mmlsys->sysid, task);
@@ -1716,6 +1718,7 @@ static void core_taskdone(struct work_struct *work)
 	else
 		cfg->task_ops->frame_done(task);
 
+	mml_mmp(taskdone, MMPROFILE_FLAG_END, jobid, 0);
 	mml_trace_end();
 }
 

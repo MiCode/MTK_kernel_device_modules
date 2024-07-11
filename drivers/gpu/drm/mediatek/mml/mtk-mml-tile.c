@@ -18,6 +18,7 @@ int dump_tile;
 module_param(dump_tile, int, 0644);
 
 static DEFINE_MUTEX(tile_dump_mutex);
+#endif
 
 enum tile_mmp_mark {
 	mmp_tile_convert_func,
@@ -30,7 +31,6 @@ enum tile_mmp_mark {
 	mmp_tile_mode_close,
 	mmp_destroy_tile_working,
 };
-#endif
 
 static const struct mml_topology_path *get_topology_path(
 	struct mml_task *task, u32 pipe)
