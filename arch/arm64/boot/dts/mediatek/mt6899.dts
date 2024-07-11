@@ -356,6 +356,13 @@
 		method = "smc";
 	};
 
+	fdvfs: fdvfs@c068200 {
+		compatible = "mediatek,fdvfs";
+		reg = <0 0x0c068200 0 0x20>,
+			  <0 0x0c068220 0 0x4>,
+			  <0 0x0c0de474 0 0x4>;
+	};
+
 	mcupm: mcupm@c070000 {
 		compatible = "mediatek,mcupm";
 		mbox-extend = <16>;
