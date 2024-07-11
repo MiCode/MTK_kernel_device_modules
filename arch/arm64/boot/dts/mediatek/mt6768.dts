@@ -4317,49 +4317,48 @@ transparent_hugepage=never";
 		compatible = "mediatek,mt6768-vcodec-dec";
 		mediatek,platform = "platform:mt6768";
 		mediatek,ipm = <1>;
-		reg = <0 0x16000000 0 0x1000>,		/* VDEC_SYS */
-				<0 0x16020000 0 0x400>,		/* VDEC_VLD */
-				<0 0x16025000 0 0x1000>;	/* VDEC_MISC */
+		reg = <0 0x16000000 0 0x1000>,	/* VDEC_SYS */
+			<0 0x16020000 0 0x400>,		/* VDEC_VLD */
+			<0 0x16025000 0 0x1000>;	/* VDEC_MISC */
 		reg-names =
-				"VDEC_SYS",
-				"VDEC_VLD",
-				"VDEC_MISC";
+			"VDEC_SYS",
+			"VDEC_VLD",
+			"VDEC_MISC";
 		iommus = <&iommu M4U_PORT_HW_VDEC_MC_EXT>,
-				<&iommu M4U_PORT_HW_VDEC_PP_EXT>,
-				<&iommu M4U_PORT_HW_VDEC_VLD_EXT>,
-				<&iommu M4U_PORT_HW_VDEC_VLD2_EXT>,
-				<&iommu M4U_PORT_HW_VDEC_AVC_MV_EXT>,
-				<&iommu M4U_PORT_HW_VDEC_PRED_RD_EXT>,
-				<&iommu M4U_PORT_HW_VDEC_PRED_WR_EXT>,
-				<&iommu M4U_PORT_HW_VDEC_PPWRAP_EXT>,
-				<&iommu M4U_PORT_HW_VDEC_TILE_EXT>;
+			<&iommu M4U_PORT_HW_VDEC_PP_EXT>,
+			<&iommu M4U_PORT_HW_VDEC_VLD_EXT>,
+			<&iommu M4U_PORT_HW_VDEC_VLD2_EXT>,
+			<&iommu M4U_PORT_HW_VDEC_AVC_MV_EXT>,
+			<&iommu M4U_PORT_HW_VDEC_PRED_RD_EXT>,
+			<&iommu M4U_PORT_HW_VDEC_PRED_WR_EXT>,
+			<&iommu M4U_PORT_HW_VDEC_PPWRAP_EXT>,
+			<&iommu M4U_PORT_HW_VDEC_TILE_EXT>;
 		m4u-ports = <M4U_PORT_HW_VDEC_MC_EXT>,
-				<M4U_PORT_HW_VDEC_PP_EXT>,
-				<M4U_PORT_HW_VDEC_VLD_EXT>,
-				<M4U_PORT_HW_VDEC_VLD2_EXT>,
-				<M4U_PORT_HW_VDEC_AVC_MV_EXT>,
-				<M4U_PORT_HW_VDEC_PRED_RD_EXT>,
-				<M4U_PORT_HW_VDEC_PRED_WR_EXT>,
-				<M4U_PORT_HW_VDEC_PPWRAP_EXT>,
-				<M4U_PORT_HW_VDEC_TILE_EXT>;
+			<M4U_PORT_HW_VDEC_PP_EXT>,
+			<M4U_PORT_HW_VDEC_VLD_EXT>,
+			<M4U_PORT_HW_VDEC_VLD2_EXT>,
+			<M4U_PORT_HW_VDEC_AVC_MV_EXT>,
+			<M4U_PORT_HW_VDEC_PRED_RD_EXT>,
+			<M4U_PORT_HW_VDEC_PRED_WR_EXT>,
+			<M4U_PORT_HW_VDEC_PPWRAP_EXT>,
+			<M4U_PORT_HW_VDEC_TILE_EXT>;
 		m4u-port-names = "M4U_PORT_VDEC_MC",
-				"M4U_PORT_VDEC_PP",
-				"M4U_PORT_VDEC_VLD",
-				"M4U_PORT_VDEC_VLD2",
-				"M4U_PORT_VDEC_AVC_MV",
-				"M4U_PORT_VDEC_PRED_RD",
-				"M4U_PORT_VDEC_PRED_WR",
-				"M4U_PORT_VDEC_PPWRAP",
-				"M4U_PORT_VDEC_TILE";
+			"M4U_PORT_VDEC_PP",
+			"M4U_PORT_VDEC_VLD",
+			"M4U_PORT_VDEC_VLD2",
+			"M4U_PORT_VDEC_AVC_MV",
+			"M4U_PORT_VDEC_PRED_RD",
+			"M4U_PORT_VDEC_PRED_WR",
+			"M4U_PORT_VDEC_PPWRAP",
+			"M4U_PORT_VDEC_TILE";
 		mediatek,larbs = <&smi_larb1>;
 		interrupts = <GIC_SPI 246 IRQ_TYPE_LEVEL_HIGH 0>;
 		mediatek,vcu = <&vcu>;
-		clocks =
-			<&vdec_gcon CLK_VDEC_CKEN>;
-		clock-names =
-			"CORE_MT_CG_VDEC";
+		clocks = <&vdec_gcon CLK_VDEC_CKEN>;
+		clock-names = "CORE_MT_CG_VDEC";
 		operating-points-v2 = <&opp_table_mm>;
 		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		vdec-set-bw-in-min-freq = <1>;
 		throughput-op-rate-thresh = <120>;
 		throughput-min = <228000000>;
 		throughput-normal-max = <312000000>;
@@ -4387,8 +4386,7 @@ transparent_hugepage=never";
 			<&mmqos MASTER_LARB_PORT(M4U_PORT_HW_VDEC_MC_EXT)
 				&mmqos SLAVE_COMMON(0)>,
 			<&mmqos SLAVE_LARB(1) &mmqos SLAVE_COMMON(0)>;
-		interconnect-names = "path_vdec_mc",
-			"path_larb1";
+		interconnect-names = "path_vdec_mc", "path_larb1";
 		interconnect-num = <2>;
 		bandwidth-table =
 			<3 0 949>,
@@ -4440,23 +4438,21 @@ transparent_hugepage=never";
 		reg = <0 0x17020000 0 0x2000>;
 		reg-names = "VENC_SYS";
 		iommus = <&iommu M4U_PORT_VENC_RCPU>,
-				<&iommu M4U_PORT_VENC_REC>,
-				<&iommu M4U_PORT_VENC_BSDMA>,
-				<&iommu M4U_PORT_VENC_SV_COMV>,
-				<&iommu M4U_PORT_VENC_RD_COMV>,
-				<&iommu M4U_PORT_JPGENC_RDMA>,
-				<&iommu M4U_PORT_JPGENC_BSDMA>,
-				<&iommu M4U_PORT_VENC_CUR_LUMA>,
-				<&iommu M4U_PORT_VENC_CUR_CHROMA>,
-				<&iommu M4U_PORT_VENC_REF_LUMA>,
-				<&iommu M4U_PORT_VENC_REF_CHROMA>;
+			<&iommu M4U_PORT_VENC_REC>,
+			<&iommu M4U_PORT_VENC_BSDMA>,
+			<&iommu M4U_PORT_VENC_SV_COMV>,
+			<&iommu M4U_PORT_VENC_RD_COMV>,
+			<&iommu M4U_PORT_JPGENC_RDMA>,
+			<&iommu M4U_PORT_JPGENC_BSDMA>,
+			<&iommu M4U_PORT_VENC_CUR_LUMA>,
+			<&iommu M4U_PORT_VENC_CUR_CHROMA>,
+			<&iommu M4U_PORT_VENC_REF_LUMA>,
+			<&iommu M4U_PORT_VENC_REF_CHROMA>;
 		mediatek,larbs = <&smi_larb4>;
 		interrupts = <GIC_SPI 243 IRQ_TYPE_LEVEL_HIGH 0>;
 		mediatek,vcu = <&vcu>;
-		clocks =
-			<&venc_gcon CLK_VENC_SET1_VENC>;
-		clock-names =
-			"MT_CG_VENC";
+		clocks = <&venc_gcon CLK_VENC_SET1_VENC>;
+		clock-names = "MT_CG_VENC";
 		operating-points-v2 = <&opp_table_venc>;
 		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		venc-disable-hw-break = <1>;
@@ -4465,23 +4461,35 @@ transparent_hugepage=never";
 		throughput-normal-max = <457000000>;
 		throughput-config-offset = <2>;
 		throughput-table =
-			<875967048 2 1283 1283 312000000 100>, /* H.264 */
-			<875967048 4 962 962 416000000 134>,
-			<1129727304 2 1283 1283 312000000 100>, /* HEVC */
-			<1129727304 4 962 962 416000000 134>,
-			<892744264 2 1283 1283 312000000 100>, /* H265*/
-			<892744264 4 962 962 416000000 134>;
-		config-table =
-			<875967048 243000 2 2>, /* H.264 1080p 30fps */
-			<875967048 432000 4 4>, /* 720p 120fps */
-			<1129727304 243000 2 2>, /* HEVC 1080p 30fps */
-			<1129727304 432000 4 4>, /* 720p 120fps */
-			<892744264 243000 2 2>, /* H265 1080p 30fps*/
-			<892744264 432000 4 4>; /* 720p 120fps */
+			/* H.264 */
+			<875967048 4 1194 1194 312000000 88>, /* 1080p30, LP */
+			<875967048 6 962 962 416000000 117>, /* 2K30, LP */
+			<875967048 17 962 962 457000000 128>, /* others, LP */
+			/* HEVC */
+			<1129727304 4 1194 1194 312000000 88>, /* 1080p30, LP */
+			<1129727304 6 962 962 416000000 117>, /* 2K30, LP */
+			<1129727304 17 962 962 457000000 128>, /* others, LP */
+			/* H.265 */
+			<892744264 4 1194 1194 312000000 88>, /* 1080p30, LP */
+			<892744264 6 962 962 416000000 117>, /* 2K30, LP */
+			<892744264 17 962 962 457000000 128>; /* others, LP */
+		config-table = /* codec, mb/s, normal config, high quality config*/
+			/* H.264 */
+			<875967048 261120 4 4>, /* 1080p30 */
+			<875967048 432000 6 6>, /* 2K30 */
+			<875967048 4294967295 17 17>, /* others */
+			/* HEVC */
+			<1129727304 261120 4 4>, /* 1080p30 */
+			<1129727304 432000 6 6>, /* 2K30 */
+			<1129727304 4294967295 17 17>, /* others */
+			/* H.265 */
+			<892744264 261120 4 4>, /* 1080p30 */
+			<892744264 432000 6 6>, /* 2K30 */
+			<892744264 4294967295 17 17>; /* others */
 		interconnects =
-		<&mmqos MASTER_LARB_PORT(M4U_PORT_VENC_RCPU)
-			&mmqos SLAVE_COMMON(0)>,
-		<&mmqos SLAVE_LARB(4) &mmqos SLAVE_COMMON(0)>;
+			<&mmqos MASTER_LARB_PORT(M4U_PORT_VENC_RCPU)
+				&mmqos SLAVE_COMMON(0)>,
+			<&mmqos SLAVE_LARB(4) &mmqos SLAVE_COMMON(0)>;
 		interconnect-names = "path_venc_rcpu",
 			"path_larb4";
 		interconnect-num = <2>;
