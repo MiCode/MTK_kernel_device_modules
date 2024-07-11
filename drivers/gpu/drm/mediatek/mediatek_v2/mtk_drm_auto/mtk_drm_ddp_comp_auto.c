@@ -11,7 +11,7 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 
-#include "mtk_drm_ddp_comp.h"
+#include "../mtk_drm_ddp_comp.h"
 #include "mtk_drm_ddp_comp_auto.h"
 
 const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {

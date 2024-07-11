@@ -80,7 +80,8 @@
 #include <soc/mediatek/mmqos.h>
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-#include "mtk_drm_ddp_comp_auto.h"
+#include "mtk_drm_auto/mtk_drm_ddp_comp_auto.h"
+#include "mtk_drm_auto/mtk_drm_crtc_auto.h"
 #endif
 
 int debug_trigger_loop;
@@ -3558,44 +3559,6 @@ unsigned int mtk_crtc_get_plane_comp_id(struct drm_crtc *crtc, struct mtk_crtc_s
 struct drm_framebuffer *mtk_drm_framebuffer_lookup(struct drm_device *dev,
 	unsigned int id);
 #ifdef MTK_DRM_ADVANCE
-
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,
-						  struct mtk_plane_state *plane_state)
-{
-	struct drm_plane *plane = plane_state->base.plane;
-	struct drm_plane *base_plane = &mtk_crtc->planes[0].base;
-	unsigned int local_index = 0, exdma_idx = 0;
-
-	unsigned int i, j;
-	struct mtk_ddp_comp *comp;
-
-	if (!plane) {
-		local_index = plane_state->comp_state.lye_id;
-	} else {
-
-		local_index = plane->index - base_plane->index;
-
-		DDPINFO("%s plane index %d base %d\n", __func__, plane->index, base_plane->index);
-	}
-
-	DDPINFO("%s crtc %d local_index %d\n", __func__, drm_crtc_index(&mtk_crtc->base), local_index);
-
-	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-		if (mtk_ddp_comp_is_rdma(comp) && !mtk_ddp_comp_is_virt(comp)) {
-			if (exdma_idx == local_index) {
-				DDPINFO("%s get comp %s\n",
-					__func__, mtk_dump_comp_str(comp));
-				return comp;
-			}
-
-			exdma_idx++;
-		}
-	}
-
-	return NULL;
-}
-#endif
 
 struct mtk_ddp_comp *
 mtk_crtc_get_plane_comp(struct drm_crtc *crtc,
@@ -12956,30 +12919,6 @@ static void mtk_set_dpc_dsi_clk(struct mtk_drm_crtc *mtk_crtc, bool enable)
 	DDPMSG("crtc%d %s set %d\n", id, __func__, value);
 }
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-static void mtk_get_output_timing(struct drm_crtc *crtc)
-{
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	unsigned int crtc_id = drm_crtc_index(&mtk_crtc->base);
-	struct mtk_ddp_comp *comp;
-	struct drm_display_mode timing;
-	unsigned int connector_enable = 0;
-	int ret = 0;
-
-	comp = mtk_ddp_comp_request_output(mtk_crtc);
-	if (comp == NULL)
-		return;
-
-	drm_mode_copy(&timing, &crtc->state->adjusted_mode);
-
-	// backup panel timing for android using.
-	mtk_drm_backup_default_timing(mtk_crtc, &timing);
-
-	mtk_ddp_comp_io_cmd(comp, NULL, CONNECTOR_IS_ENABLE, &connector_enable);
-	mtk_drm_connector_notify_guest(mtk_crtc, connector_enable);
-}
-#endif
-
 void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = NULL;
@@ -13763,163 +13702,6 @@ int mtk_drm_crtc_get_panel_original_size(struct drm_crtc *crtc, unsigned int *wi
 
 	return ret;
 }
-
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-#define MT6991_OVL_MDP_RSZ0_DUMMY0 0x10
-#define DSI_HDISPLAY_VALUE	REG_FLD_MSB_LSB(15, 0)
-#define DSI_VDISPLAY_VALUE	REG_FLD_MSB_LSB(31, 16)
-
-#define MT6991_OVL_MDP_RSZ0_DUMMY1 0x14
-#define DSI_HSYNC_START_VALUE	REG_FLD_MSB_LSB(15, 0)
-#define DSI_HSYNC_END_VALUE	REG_FLD_MSB_LSB(31, 16)
-
-#define MT6991_OVL_MDP_RSZ0_DUMMY2 0x40
-#define DSI_VSYNC_START_VALUE	REG_FLD_MSB_LSB(15, 0)
-#define DSI_VSYNC_END_VALUE	REG_FLD_MSB_LSB(31, 16)
-
-#define MT6991_OVL_MDP_RSZ0_DUMMY3 0x54
-#define DSI_HSYNC_TOTAL_VALUE	REG_FLD_MSB_LSB(15, 0)
-#define DSI_VSYNC_TOTAL_VALUE	REG_FLD_MSB_LSB(31, 16)
-
-#define MT6991_OVL_MDP_RSZ0_DUMMY4 0x58
-#define DSI_CLOCK_VALUE	REG_FLD_MSB_LSB(31, 0)
-
-#define MT6991_OVL_MDP_RSZ0_DUMMY5 0x5C
-#define DSI_HEIGHT_MM_VALUE	REG_FLD_MSB_LSB(15, 0)
-#define DSI_WIDTH_MM_VALUE REG_FLD_MSB_LSB(31, 16)
-
-#define MT6991_OVL_MDP_RSZ0_DUMMY6 0x60
-#define DP_HDISPLAY_VALUE	REG_FLD_MSB_LSB(15, 0)
-#define DP_VDISPLAY_VALUE	REG_FLD_MSB_LSB(31, 16)
-
-#define MT6991_OVL_MDP_RSZ0_DUMMY7 0x68
-#define DP_HSYNC_START_VALUE	REG_FLD_MSB_LSB(15, 0)
-#define DP_HSYNC_END_VALUE	REG_FLD_MSB_LSB(31, 16)
-
-#define MT6991_OVL_MDP_RSZ0_DUMMY8 0x70
-#define DP_VSYNC_START_VALUE	REG_FLD_MSB_LSB(15, 0)
-#define DP_VSYNC_END_VALUE	REG_FLD_MSB_LSB(31, 16)
-
-#define MT6991_OVL_MDP_RSZ0_DUMMY9 0x74
-#define DP_HSYNC_TOTAL_VALUE	REG_FLD_MSB_LSB(15, 0)
-#define DP_VSYNC_TOTAL_VALUE	REG_FLD_MSB_LSB(31, 16)
-
-#define MT6991_OVL_MDP_RSZ0_DUMMY10 0x78
-#define DP_CLOCK_VALUE	REG_FLD_MSB_LSB(31, 0)
-
-#define MT6991_OVL_MDP_RSZ0_DUMMY11 0x7C
-#define DP_HEIGHT_MM_VALUE	REG_FLD_MSB_LSB(15, 0)
-#define DP_WIDTH_MM_VALUE	REG_FLD_MSB_LSB(31, 16)
-
-#define MT6991_OVL_MDP_RSZ0_DUMM20 0x104
-#define DP_INTF0_CONNECTOR_READY	REG_FLD_MSB_LSB(1, 0)
-
-
-static void set_value_to_regs_field(u16 in_value, void __iomem *base_addr, int field)
-{
-	u32 val = 0, value = 0, mask = 0;
-
-	SET_VAL_MASK(value, mask,
-		in_value, field);
-
-	val = readl(base_addr);
-	val = (val & ~mask) | (value & mask);
-	writel(val, base_addr);
-}
-
-static void store_timing_to_dummy(struct drm_display_mode *timing,
-	void __iomem *regs_base, enum mtk_ddp_comp_id id)
-{
-	if ((timing != NULL) && (regs_base != NULL)) {
-		if (id == DDP_COMPONENT_DSI0) {
-			set_value_to_regs_field(timing->hdisplay, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY0, DSI_HDISPLAY_VALUE);
-			set_value_to_regs_field(timing->vdisplay, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY0, DSI_VDISPLAY_VALUE);
-			set_value_to_regs_field(timing->hsync_start, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY1, DSI_HSYNC_START_VALUE);
-			set_value_to_regs_field(timing->hsync_end, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY1, DSI_HSYNC_END_VALUE);
-			set_value_to_regs_field(timing->vsync_start, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY2, DSI_VSYNC_START_VALUE);
-			set_value_to_regs_field(timing->vsync_end, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY2, DSI_VSYNC_END_VALUE);
-			set_value_to_regs_field(timing->htotal, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY3, DSI_HSYNC_TOTAL_VALUE);
-			set_value_to_regs_field(timing->vtotal, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY3, DSI_VSYNC_TOTAL_VALUE);
-			writel(timing->clock, regs_base + MT6991_OVL_MDP_RSZ0_DUMMY4);
-			set_value_to_regs_field(timing->height_mm, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY5, DSI_HEIGHT_MM_VALUE);
-			set_value_to_regs_field(timing->width_mm, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY5, DSI_WIDTH_MM_VALUE);
-		} else if (id == DDP_COMPONENT_DP_INTF0) {
-			set_value_to_regs_field(timing->hdisplay, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY6, DP_HDISPLAY_VALUE);
-			set_value_to_regs_field(timing->vdisplay, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY6, DP_VDISPLAY_VALUE);
-			set_value_to_regs_field(timing->hsync_start, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY7, DP_HSYNC_START_VALUE);
-			set_value_to_regs_field(timing->hsync_end, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY7, DP_HSYNC_END_VALUE);
-			set_value_to_regs_field(timing->vsync_start, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY8, DP_VSYNC_START_VALUE);
-			set_value_to_regs_field(timing->vsync_end, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY8, DP_VSYNC_END_VALUE);
-			set_value_to_regs_field(timing->htotal, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY9, DP_HSYNC_TOTAL_VALUE);
-			set_value_to_regs_field(timing->vtotal, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY9, DP_VSYNC_TOTAL_VALUE);
-			writel(timing->clock, regs_base + MT6991_OVL_MDP_RSZ0_DUMMY10);
-			set_value_to_regs_field(timing->height_mm, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY11, DP_HEIGHT_MM_VALUE);
-			set_value_to_regs_field(timing->width_mm, regs_base +
-					MT6991_OVL_MDP_RSZ0_DUMMY11, DP_WIDTH_MM_VALUE);
-		}
-
-		DDPMSG("%s,%d,[%d]DUMMY 0=0x%x, 1=0x%x 2=0x%x, 3=0x%x 4=0x%x, 5=0x%x\n",
-			__func__, __LINE__, id,
-			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY6),
-			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY7),
-			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY8),
-			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY9),
-			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY10),
-			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY11));
-
-	} else {
-		DDPMSG("[E] %s timing or regs_base is error!", __func__);
-	}
-}
-
-void mtk_drm_backup_default_timing(struct mtk_drm_crtc *mtk_crtc,
-	struct drm_display_mode *timing)
-{
-	void __iomem *regs_base = NULL;
-	struct mtk_ddp_comp *comp;
-
-	DDPMSG("%s+, %d\n", __func__, __LINE__);
-
-	comp = mtk_ddp_comp_request_output(mtk_crtc);
-	regs_base = mtk_crtc->ovlsys0_rsz_regs;
-
-	if (timing != NULL)
-		store_timing_to_dummy(timing, regs_base, comp->id);
-}
-
-void mtk_drm_connector_notify_guest(struct mtk_drm_crtc *mtk_crtc,
-	unsigned int connector_enable)
-{
-	void __iomem *regs_base = NULL;
-	struct mtk_ddp_comp *comp;
-
-	comp = mtk_ddp_comp_request_output(mtk_crtc);
-	regs_base = mtk_crtc->ovlsys0_rsz_regs;
-
-	if (comp->id == DDP_COMPONENT_DP_INTF0)
-		set_value_to_regs_field(connector_enable, regs_base +
-				MT6991_OVL_MDP_RSZ0_DUMM20, DP_INTF0_CONNECTOR_READY);
-}
-#endif
 
 void mtk_drm_crtc_init_para(struct drm_crtc *crtc)
 {
@@ -19902,26 +19684,6 @@ static void mtk_pq_data_init(struct mtk_drm_crtc *mtk_crtc)
 	init_waitqueue_head(&pq_data->cfg_done_wq);
 	atomic_set(&pq_data->cfg_done, 1);
 }
-
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-static void mtk_drm_crtc_init_layer_nr(struct mtk_drm_crtc *mtk_crtc, int pipe)
-{
-	unsigned int i, j;
-	struct mtk_ddp_comp *comp;
-
-	mtk_crtc->layer_nr = 0;
-
-	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-		if (mtk_ddp_comp_is_rdma(comp) && !mtk_ddp_comp_is_virt(comp)) {
-			DDPINFO("%s layer %d comp %s\n",
-				__func__, mtk_crtc->layer_nr, mtk_dump_comp_str(comp));
-			mtk_crtc->layer_nr++;
-		}
-	}
-
-	DDPINFO("%s crtc%d layer_nr %d\n", __func__, pipe, mtk_crtc->layer_nr);
-}
-#endif
 
 int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			const struct mtk_crtc_path_data *path_data)

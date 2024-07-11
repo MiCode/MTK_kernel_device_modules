@@ -38,7 +38,7 @@
 #endif
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-#include "mtk_drm_ddp_comp_auto.h"
+#include "mtk_drm_auto/mtk_drm_ddp_comp_auto.h"
 #endif
 
 #define DISP_OD_EN 0x0000
