@@ -12392,6 +12392,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x1a7b0000 0 0x50000>;
 		};
 
+		camera-camsys-ccu {
+			compatible = "mediatek,camera-camsys-ccu";
+			mediatek,ccu-rproc = <&ccu_rproc>;
+		};
 		remoteproc_ccd: remoteproc-ccd {
 			compatible = "mediatek,ccd";
 			iommus = <&disp_iommu M4U_L16_P0_CQI_R1>,
