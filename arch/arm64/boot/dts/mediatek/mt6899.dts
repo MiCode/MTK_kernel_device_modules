@@ -7526,11 +7526,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			//		"disp_dp_hrt_by_larb";
 			//pre-define-bw = <0xffffffff>, <4200>, <0>, <2700>;
 			//crtc-ovl-usage = <0xe0>, <0x2>, <0x2>, <0x4>;
-
-			//default-emi-eff = <8500>;
-			//emi-eff-lp5-table =
-				//<2964 3648 5110 5795 6388 7066 7215 7849
-				//7774 8264 7937 8330 7920 8344 7811 8257>;
+			default-emi-eff = <8800>;
+			emi-eff-lp5-table =
+				<2964 3648 5110 5795 6388 7066 7215 7849
+				7774 8264 7937 8330 7920 8344 7811 8257>;
 
 			/* define threads, see mt6899-gce.h */
 			//mediatek,mailbox-gce = <&gce>;
@@ -7547,7 +7546,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&gce 10 0 CMDQ_THR_PRIO_1>,
 				<&gce 11 0 CMDQ_THR_PRIO_1>,
 				<&gce 12 0 CMDQ_THR_PRIO_1>,
-				<&gce 22 0 CMDQ_THR_PRIO_1>;
+				<&gce 22 0 CMDQ_THR_PRIO_1>,
+				<&gce 27 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_HIGHEST>;
 				// <&gce_sec 8 0 CMDQ_THR_PRIO_3>,
 				// <&gce_sec 9 0 CMDQ_THR_PRIO_3>,
 				// <&gce_sec 9 0 CMDQ_THR_PRIO_3>;
@@ -7565,7 +7565,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"CLIENT_PQ_EOF0",
 				"CLIENT_PQ0",
 				"CLIENT_PQ_EOF1",
-				"CLIENT_PQ1";
+				"CLIENT_PQ1",
+				"CLIENT_BWM_LOOP0";
 				// "CLIENT_SEC_CFG0",
 				// "CLIENT_SEC_CFG1",
 				// "CLIENT_SEC_CFG2";
@@ -7810,7 +7811,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0>, /*MTK_DRM_OPT_VIDLE_DSI_PLL_OFF*/
 				<0>, /*MTK_DRM_OPT_CHECK_TRIGGER_MERGE*/
 				<0>, /*MTK_DRM_OPT_VIRTUAL_DISP*/
-				<0>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
+				<1>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
 				<0>, /*MTK_DRM_OPT_GPU_CACHE*/
 				<0>, /*MTK_DRM_OPT_SPHRT*/
 				<0>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
