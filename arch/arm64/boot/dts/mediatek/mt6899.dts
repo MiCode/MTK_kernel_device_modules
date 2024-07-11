@@ -12773,9 +12773,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			#clock-cells = <1>;
 			clocks = <&mdpsys_config_clk CLK_MDP_APB_BUS_MML>,
-				<&mdpsys_config_clk CLK_MDP_APB_DB_MML>; //,
-				//<&mmdvfs_mux MMDVFS_USER_MDP>;
-			clock-names = "apb_bus", "apb_db"; //, "mmdvfs_clk";
+				<&mdpsys_config_clk CLK_MDP_APB_DB_MML>,
+				<&mmdvfs_mux MMDVFS_USER_MDP>;
+			clock-names = "apb_bus", "apb_db", "mmdvfs_clk";
 
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MM_INFRA>;
 
@@ -12790,12 +12790,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mmlsys-config-supply = <&mmlsys1_config>;
 			mediatek,mml = <&mmlsys1_config>;
 			gce-supply = <&gce>;
-
-			/* as mml device */
-			comp-count = <MML0_ENGINE_TOTAL>;
-			topology = "mt6899";
-			mboxes = <&gce 20 0 CMDQ_THR_PRIO_1>,
-				<&gce 21 0 CMDQ_THR_PRIO_1>;
+			mmqos-supply = <&mmqos>;
 
 			/* !!Following code generate by topology parser (tpparser.py)!! */
 			/* as mmlsys */
@@ -12810,22 +12805,28 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"pq_aal0_sel", "wrot0_sel";
 			/* as sys component */
 			mux-pins = /bits/ 16 <
-				1 MML0_AAL0     MML0_PQ_AAL0_SEL MML_MUX_SLIN MML_PQ_AAL0_SEL_IN
-				1 MML0_AAL0     MML0_PQ_AAL0_SEL MML_MUX_SOUT MML_AAL0_SOUT_SEL
-				0 MML0_DMA0_SEL MML0_DLI0_SEL MML_MUX_SLIN MML_DLI0_SEL_IN
-				0 MML0_DLI0_SEL MML0_HDR0      MML_MUX_MOUT MML_RDMA0_MOUT_EN
-				0 MML0_HDR0     MML0_AAL0     MML_MUX_SLIN MML_AAL0_SEL_IN
-				0 MML0_COLOR0   MML0_WROT0_SEL MML_MUX_SOUT MML_COLOR0_SOUT_SEL
-				0 MML0_PQ_AAL0_SEL MML0_RSZ0     MML_MUX_MOUT MML_AAL0_MOUT_EN
-				1 MML0_COLOR0   MML0_WROT0_SEL MML_MUX_SLIN MML_WROT0_SEL_IN
-				0 MML0_WROT0_SEL MML0_WROT0    MML_MUX_SOUT MML_DLO0_SOUT_SEL
-				0 MML0_DMA0_SEL MML0_WROT0    MML_MUX_MOUT MML_BYP0_MOUT_EN
-				2 MML0_DMA0_SEL MML0_DLI0_SEL MML_MUX_MOUT MML_BYP0_MOUT_EN
-				0 MML0_DMA0_SEL MML0_WROT0    MML_MUX_SLIN MML_BYP0_SEL_IN
-				1 MML0_WROT0_SEL MML0_WROT0    MML_MUX_SLIN MML_BYP0_SEL_IN
-				0 MML0_HDR0     MML0_AAL0     MML_MUX_SOUT MML_HDR0_SOUT_SEL
-				0 MML0_RDMA0    MML0_DMA0_SEL MML_MUX_SOUT MML_RDMA0_SOUT_SEL
-				0 MML0_RDMA0    MML0_DMA0_SEL MML_MUX_SLIN MML_DMA0_SEL_IN
+				1 MML0_AAL0      MML0_C3D0      MML_MUX_SLIN MML_C3D0_SEL_IN
+				0 MML0_C3D0      MML0_PQ_AAL0_SEL MML_MUX_SLIN MML_PQ_AAL0_SEL_IN
+				1 MML0_AAL0      MML0_PQ_AAL0_SEL MML_MUX_SLIN MML_PQ_AAL0_SEL_IN
+				1 MML0_C3D0      MML0_PQ_AAL0_SEL MML_MUX_SOUT MML_C3D0_SOUT_SEL
+				0 MML0_AAL0      MML0_C3D0      MML_MUX_SOUT MML_AAL0_SOUT_SEL
+				1 MML0_AAL0      MML0_PQ_AAL0_SEL MML_MUX_SOUT MML_AAL0_SOUT_SEL
+				0 MML0_DMA0_SEL  MML0_DLI0_SEL  MML_MUX_SLIN MML_DLI0_SEL_IN
+				0 MML0_DLI0_SEL  MML0_HDR0      MML_MUX_MOUT MML_RDMA0_MOUT_EN
+				1 MML0_DLI0_SEL  MML0_WROT0_SEL MML_MUX_MOUT MML_RDMA0_MOUT_EN
+				0 MML0_HDR0      MML0_AAL0      MML_MUX_SLIN MML_AAL0_SEL_IN
+				0 MML0_COLOR0    MML0_WROT0_SEL MML_MUX_SOUT MML_COLOR0_SOUT_SEL
+				0 MML0_PQ_AAL0_SEL MML0_RSZ0      MML_MUX_MOUT MML_AAL0_MOUT_EN
+				0 MML0_DLI0_SEL  MML0_WROT0_SEL MML_MUX_SLIN MML_WROT0_SEL_IN
+				1 MML0_COLOR0    MML0_WROT0_SEL MML_MUX_SLIN MML_WROT0_SEL_IN
+				0 MML0_WROT0_SEL MML0_WROT0     MML_MUX_SOUT MML_DLO0_SOUT_SEL
+				0 MML0_DMA0_SEL  MML0_WROT0     MML_MUX_MOUT MML_BYP0_MOUT_EN
+				2 MML0_DMA0_SEL  MML0_DLI0_SEL  MML_MUX_MOUT MML_BYP0_MOUT_EN
+				0 MML0_DMA0_SEL  MML0_WROT0     MML_MUX_SLIN MML_BYP0_SEL_IN
+				1 MML0_WROT0_SEL MML0_WROT0     MML_MUX_SLIN MML_BYP0_SEL_IN
+				0 MML0_HDR0      MML0_AAL0      MML_MUX_SOUT MML_HDR0_SOUT_SEL
+				0 MML0_RDMA0     MML0_DMA0_SEL  MML_MUX_SOUT MML_RDMA0_SOUT_SEL
+				0 MML0_RDMA0     MML0_DMA0_SEL  MML_MUX_SLIN MML_DMA0_SEL_IN
 				>;
 			/* !!Above code generate by topology parser (tpparser.py)!! */
 
@@ -12922,12 +12923,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			comp-names = "mml0_rdma0";
 			event-frame-done = /bits/ 16
 				<CMDQ_EVENT_MMLSYS0_MDP_RDMA0_FRAME_DONE>;
-#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L2_P0_MDP_RDMA0)
-					&mmqos SLAVE_COMMON(1)>;
+					&mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "mml0_dma";
-#endif
+			mmqos-supply = <&mmqos>;
 		};
 
 		mml0_hdr0: mml0-hdr0@1f005000 {
@@ -12997,12 +12997,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			comp-names = "mml0_wrot0";
 			event-frame-done = /bits/ 16
 				<CMDQ_EVENT_MMLSYS0_MDP_WROT0_FRAME_DONE>;
-#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L2_P1_MDP_WROT0)
-					&mmqos SLAVE_COMMON(1)>;
+					&mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "mml0_dma";
-#endif
+			mmqos-supply = <&mmqos>;
 		};
 
 		mml0_rdma2: mml0-rdma2@1f011000 {
@@ -13018,12 +13017,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			comp-names = "mml0_rdma2";
 			event-frame-done = /bits/ 16
 				<CMDQ_EVENT_MMLSYS0_MDP_RDMA2_FRAME_DONE>;
-#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L2_P4_MDP_RDMA2)
-					&mmqos SLAVE_COMMON(1)>;
+					&mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "mml0_dma";
-#endif
+			mmqos-supply = <&mmqos>;
 		};
 
 		mml0_birsz0: mml0-birsz0@1f018000 {
@@ -13051,9 +13049,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&mdpsys1_config_clk CLK_MDP1_APB_BUS_MML>,
 				<&mdpsys1_config_clk CLK_MDP1_APB_DB_MML>,
 				<&mdpsys1_config_clk CLK_MDP1_MDP_DLI_ASYNC0_MML>,
-				<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC0_MML>; //,
-				// <&mmdvfs_mux MMDVFS_USER_MML>;
-			clock-names = "apb_bus", "apb_db", "dli0", "dlo0"; //, "mmdvfs_clk";
+				<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC0_MML>,
+				<&mmdvfs_mux MMDVFS_USER_MML>;
+			clock-names = "apb_bus", "apb_db", "dli0", "dlo0", "mmdvfs_clk";
 			mmlsys-clock-names = "apb_bus", "apb_db";
 			dli0-clock-names = "dli0";
 			dlo0-clock-names = "dlo0";
@@ -13188,7 +13186,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			dlo0-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY0_SIZE>;
 			operating-points-v2 = <&opp_table_disp>;
 			gce-supply = <&gce>;
-			//mmqos-supply = <&mmqos>;
+			mmqos-supply = <&mmqos>;
 			//event-dpc-prete = /bits/ 16 <CMDQ_EVENT_DPC_DT34_DONE>;
 			//dpc-base = <0x1c000000>;
 		};
@@ -13240,12 +13238,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			comp-names = "mml1_rdma0";
 			event-frame-done = /bits/ 16
 				<CMDQ_EVENT_MMLSYS1_MDP_RDMA0_FRAME_DONE>;
-#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L3_P0_MDP_RDMA0)
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
-#endif
+			mmqos-supply = <&mmqos>;
 		};
 
 		mml1_hdr0: mml1-hdr0@1f805000 {
@@ -13318,14 +13315,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			event-bufa = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUFA>;
 			event-bufb = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUFB>;
 			event-buf-next = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUF_NEXT>;
-#if 0
-			inlinerot = <&inlinerot0>;
+			// inlinerot = <&inlinerot0>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L3_P1_MDP_WROT0)
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 			mmqos-supply = <&mmqos>;
-#endif
 		};
 
 		mml1_rdma2: mml1-rdma2@1f811000 {
@@ -13341,13 +13336,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			comp-names = "mml1_rdma2";
 			event-frame-done = /bits/ 16
 				<CMDQ_EVENT_MMLSYS1_MDP_RDMA2_FRAME_DONE>;
-#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L3_P4_MDP_RDMA2)
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 			mmqos-supply = <&mmqos>;
-#endif
 		};
 
 		mml1_rsz2: mml1-rsz2@1f813000 {
@@ -13372,13 +13365,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			comp-names = "mml1_wrot2";
 			event-frame-done = /bits/ 16
 				<CMDQ_EVENT_MMLSYS1_MDP_WROT2_FRAME_DONE>;
-#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L3_P5_MDP_WROT2)
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 			mmqos-supply = <&mmqos>;
-#endif
 		};
 
 		mml1_birsz0: mml1-birsz0@1f818000 {
