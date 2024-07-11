@@ -433,7 +433,7 @@ static int __init mt_printk_ctrl_init(void)
 		return -ENOMEM;
 
 #if IS_ENABLED(CONFIG_LOG_TOO_MUCH_WARNING)
-	logmuch_entry = proc_create("log_much", 0444, NULL, &log_much_ops);
+	logmuch_entry = proc_create("log_much", 0440, NULL, &log_much_ops);
 	if (!logmuch_entry) {
 		pr_notice("printk: failed to create proc log_much entry\n");
 		return 1;
