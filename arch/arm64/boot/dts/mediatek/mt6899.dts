@@ -7133,7 +7133,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		dfd_mcu: dfd-mcu {
 			compatible = "mediatek,dfd_mcu";
-			enabled = <0>;
+			enabled = <1>;
 			hw-version = <35>;
 			sw-version = <1>;
 			dfd-timeout = <0x2710>;
@@ -7143,11 +7143,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			nr-max-core = <8>;
 			nr-big-core = <4>;
 			nr-rs-entry-little = <16>;
-			nr-rs-entry-big = <32>;
+			nr-rs-entry-big = <16>;
 			nr-header-row = <4>;
 			chip-id-offset = <0x38>;
 			check-pattern-offset = <0x20>;
-			dfd-disable-efuse = <25 12>;
+			dfd-disable-efuse = <25 29>;
 			/* dfd-disable-efuse = <(-1) (-1)>; */
 			dfd_cache: dfd-cache {
 				enabled = <1>;
