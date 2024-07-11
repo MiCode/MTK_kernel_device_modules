@@ -1579,6 +1579,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		version = <650>;
 	};
 
+	flt: flt@c0d4270 {
+		compatible = "mediatek,flt";
+		reg = <0 0xc0d4270 0 0x91c>;
+		mode = <2>;
+	};
+
 	cache-parity {
 		compatible = "mediatek,mt6985-cache-parity";
 		arm-dsu-ecc-hwirq = <48>;
