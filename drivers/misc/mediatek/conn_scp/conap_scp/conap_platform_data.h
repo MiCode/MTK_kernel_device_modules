@@ -13,6 +13,7 @@ struct conap_scp_shm_config {
 	uint32_t conap_scp_shm_offset;
 	uint32_t conap_scp_shm_size;
 	uint32_t conap_scp_ipi_mbox_size;
+	uint32_t conap_scp_max_msg_size;
 };
 
 struct conap_scp_batching_config {
@@ -32,6 +33,8 @@ struct conap_scp_shm_config *conap_scp_get_shm_info(void);
 /* connsys shared buffer */
 uint32_t connsys_scp_shm_get_addr(void);
 uint32_t connsys_scp_shm_get_size(void);
+
+uint32_t connsys_scp_get_max_msg_size(void);
 
 /* flp/batching shared buffer */
 phys_addr_t connsys_scp_shm_get_batching_addr(void);

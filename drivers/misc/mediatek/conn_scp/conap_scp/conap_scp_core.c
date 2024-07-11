@@ -105,8 +105,8 @@ static const msg_opid_func conap_scp_core_opfunc[] = {
 	[CONAP_SCP_OPID_RECV_SHM_MSG] = opfunc_recv_shm_msg,
 };
 
-#define MAX_MSG_SZ		1024
-uint8_t g_msg_buf[MAX_MSG_SZ];
+static uint32_t g_max_msg_size;
+static uint8_t *g_msg_buf;
 
 uint16_t g_cur_msg_drv;
 uint16_t g_cur_msg_id;
@@ -439,7 +439,7 @@ static int opfunc_recv_shm_msg(struct msg_op_data *op)
 	if (msg_drv >= CONAP_SCP_DRV_NUM)
 		return -1;
 
-	if (msg_sz >= MAX_MSG_SZ)
+	if (msg_sz >= g_max_msg_size)
 		return -1;
 
 	ret = conap_scp_shm_read(&(g_msg_buf[0]), msg_oft, msg_sz);
@@ -534,7 +534,7 @@ static void conap_scp_msg_notify(uint16_t drv_type, uint16_t msg_id,
 		}
 	}
 
-	if (total_sz > MAX_MSG_SZ) {
+	if (total_sz > g_max_msg_size) {
 		pr_warn("[%s] invalid size [%d]", __func__, total_sz);
 		return;
 	}
@@ -635,7 +635,7 @@ int conap_scp_send_message(enum conap_scp_drv_type type,
 	if (type == DRV_TYPE_CORE || type >= CONAP_SCP_DRV_NUM)
 		return CONN_INVALID_ARGUMENT;
 
-	if (size > MAX_MSG_SZ || size % 4 > 0)
+	if (size > g_max_msg_size)
 		return CONN_INVALID_ARGUMENT;
 
 	if (_conap_scp_is_scp_ready() != 1)
@@ -846,6 +846,12 @@ int conap_scp_init(void)
 	init_completion(&g_core_ctx.msg_send_comp);
 	init_completion(&g_core_ctx.msg_recv_comp);
 
+	/* max msg size & buffer init */
+	g_max_msg_size = connsys_scp_get_max_msg_size();
+	g_msg_buf = vmalloc(g_max_msg_size);
+	if (g_msg_buf == NULL)
+		pr_notice("[%s] allocate msg buf fail\n", __func__);
+
 	/* init ipi */
 	ipi_cb.conap_scp_ipi_msg_notify = conap_scp_msg_notify;
 	ipi_cb.conap_scp_ipi_ctrl_notify = conap_scp_ipi_ctrl_notify;
@@ -869,6 +875,11 @@ int conap_scp_init(void)
 
 int conap_scp_deinit(void)
 {
+	if (g_msg_buf) {
+		vfree(g_msg_buf);
+		g_msg_buf = NULL;
+	}
+
 	//connectivity_unregister_cmd_handler();
 	connectivity_unregister_dfd_handler();
 	connectivity_unregister_state_notifier(&g_conn_state_notifier);

@@ -30,6 +30,7 @@ enum aoltest_core_opid {
 	AOLTEST_OPID_SEND_MSG  = 3,
 	AOLTEST_OPID_RECV_MSG  = 4,
 	AOLTEST_OPID_SEND_DBG_MSG  = 5,
+	AOLTEST_OPID_SEND_DBG_DATA  = 6,
 
 	AOLTEST_OPID_MAX
 };
@@ -44,6 +45,7 @@ enum aoltest_msg_id {
 	AOLTEST_MSG_ID_WIFI = 1,
 	AOLTEST_MSG_ID_BT = 2,
 	AOLTEST_MSG_ID_GPS = 3,
+	AOLTEST_MSG_ID_SHM_TEST = 4,
 	AOLTEST_MSG_ID_MAX
 };
 
@@ -84,6 +86,7 @@ static int opfunc_scp_unregister(struct msg_op_data *op);
 static int opfunc_send_msg(struct msg_op_data *op);
 static int opfunc_recv_msg(struct msg_op_data *op);
 static int opfunc_send_dbg_msg(struct msg_op_data *op);
+static int opfunc_send_dbg_data(struct msg_op_data *op);
 
 static void aoltest_core_state_change(int state);
 static void aoltest_core_msg_notify(unsigned int msg_id, unsigned int *buf, unsigned int size);
@@ -94,6 +97,7 @@ static const msg_opid_func aoltest_core_opfunc[] = {
 	[AOLTEST_OPID_SEND_MSG] = opfunc_send_msg,
 	[AOLTEST_OPID_RECV_MSG] = opfunc_recv_msg,
 	[AOLTEST_OPID_SEND_DBG_MSG] = opfunc_send_dbg_msg,
+	[AOLTEST_OPID_SEND_DBG_DATA] = opfunc_send_dbg_data,
 };
 
 /*******************************************************************************/
@@ -310,18 +314,65 @@ static int opfunc_send_dbg_msg(struct msg_op_data *op)
 	return ret;
 }
 
+
+static int opfunc_send_dbg_data(struct msg_op_data *op)
+{
+	int ret = 0;
+	struct aoltest_core_ctx *ctx = &g_aoltest_ctx;
+	uint8_t *buf_ptr;
+	uint32_t size;
+
+	if (!g_is_scp_ready) {
+		ret = is_scp_ready();
+		pr_info("[%s] is ready=[%d] ret=[%d]", __func__, g_is_scp_ready, ret);
+		if (ret <= 0)
+			return -1;
+	}
+	ret = opfunc_scp_register(op);
+	if (ret < 0)
+		return ret;
+
+	buf_ptr = (uint8_t *)op->op_data[0];
+	size = (uint32_t)op->op_data[1];
+
+	ret = conap_scp_send_message(ctx->drv_type, AOLTEST_CMD_DBG_DATA,
+					(unsigned char *)buf_ptr, size);
+
+	pr_info("[%s] send dbg msg [%x][%x][%x] ret=[%d]",
+					__func__, (uint32_t)op->op_data[0],
+					(uint32_t)op->op_data[1], (uint32_t)op->op_data[2], ret);
+	return ret;
+
+}
+
 /*******************************************************************************/
 /*      C H R E T E S T     F U N C T I O N S                                  */
 /*******************************************************************************/
 void aoltest_core_msg_notify(unsigned int msg_id, unsigned int *buf, unsigned int size)
 {
 	int ret = 0;
+	int i;
 	struct aoltest_core_ctx *ctx = &g_aoltest_ctx;
 	unsigned int expect_size = 0;
+	uint8_t *buf_ptr = (uint8_t *) buf;
+	uint8_t pat;
 
 	pr_info("[%s] msg_id=[%d]\n", __func__, msg_id);
 	if (ctx->status == AOLTEST_INACTIVE) {
 		pr_info("EM test ctx is inactive\n");
+		return;
+	}
+
+	if (msg_id == AOLTEST_MSG_ID_SHM_TEST) {
+		pat = buf_ptr[0];
+		pr_info("[%s] SHM_TEST size=[%d] pa=[%x]", __func__, size, pat);
+		for (i = 1; i < size; i++) {
+			if (buf_ptr[i] != pat) {
+				pr_info("[%s] incorrect data [%d]", __func__, i);
+				break;
+			}
+		}
+
 		return;
 	}
 
@@ -433,6 +484,19 @@ int aoltest_core_send_dbg_msg(uint32_t param0, uint32_t param1)
 		pr_notice("[%s] send msg fail ret=[%d]", __func__, ret);
 	return 0;
 }
+
+int aoltest_core_send_dbg_data(uint8_t *buf, uint32_t size)
+{
+	int ret;
+	struct aoltest_core_ctx *ctx = &g_aoltest_ctx;
+
+	ret = msg_thread_send_wait_2(&ctx->msg_ctx, AOLTEST_OPID_SEND_DBG_DATA,
+					MSG_OP_TIMEOUT, (size_t)buf, size);
+	if (ret)
+		pr_notice("[%s] send msg fail ret=[%d]", __func__, ret);
+	return 0;
+}
+
 
 int aoltest_core_init(void)
 {

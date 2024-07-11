@@ -25,6 +25,7 @@ static int dfd_dump_trg_ctrl(unsigned int par1, unsigned int par2, unsigned int 
 static int dfd_clr_buf(unsigned int par1, unsigned int par2, unsigned int par3);
 static int dfd_emi_dump(unsigned int par1, unsigned int par2, unsigned int par3);
 static int dfd_value_buf_info(unsigned int par1, unsigned int par2, unsigned int par3);
+static int dbg_data_test(unsigned int par1, unsigned int par2, unsigned int par3);
 
 static const CONN_SCP_DBG_FUNC g_conn_scp_dbg_func[] = {
 	[0x0] = msd_ctrl,
@@ -32,6 +33,7 @@ static const CONN_SCP_DBG_FUNC g_conn_scp_dbg_func[] = {
 	[0x2] = dfd_clr_buf,
 	[0x3] = dfd_emi_dump,
 	[0x4] = dfd_value_buf_info,
+	[0x5] = dbg_data_test,
 };
 
 static struct mutex g_dump_lock;
@@ -163,6 +165,30 @@ static int dfd_value_buf_info(unsigned int par1, unsigned int par2, unsigned int
 	conap_scp_dfd_get_value_info(&addr, &size);
 
 	pr_info("[%s] value buffer addr=[%p] size=[%x]", __func__, (void *)(unsigned long)addr, size);
+	return 0;
+}
+
+#define CONNSCP_TEST_BUFFER_SIZE 2048
+uint8_t g_test_buffer[CONNSCP_TEST_BUFFER_SIZE];
+uint32_t g_test_seq;
+static int dbg_data_test(unsigned int par1, unsigned int par2, unsigned int par3)
+{
+	int i;
+	int ret;
+
+	if (par2 > CONNSCP_TEST_BUFFER_SIZE) {
+		pr_notice("%s: buffer size too large\n", __func__);
+		return 0;
+	}
+
+	for (i = 0; i < par2; i++)
+		g_test_buffer[i] = g_test_seq;
+	g_test_seq++;
+
+	pr_info("[%s] start send data size=[%d]", __func__, par2);
+	ret = aoltest_core_send_dbg_data(&g_test_buffer[0], par2);
+	pr_info("[%s] end ret=[%d]", __func__, ret);
+
 	return 0;
 }
 

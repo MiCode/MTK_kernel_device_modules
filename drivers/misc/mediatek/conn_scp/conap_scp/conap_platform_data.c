@@ -9,6 +9,8 @@
 #include <linux/types.h>
 #include "conap_platform_data.h"
 
+#define CONNSCP_DEFAULT_MAX_MSG_SIZE	1024
+
 /* 6893 */
 #if IS_ENABLED(CONFIG_MTK_COMBO_CHIP_CONSYS_6893)
 
@@ -55,6 +57,11 @@ uint32_t connsys_scp_shm_get_size(void)
 	return 0;
 }
 
+uint32_t connsys_scp_get_max_msg_size(void)
+{
+	return g_adp_shm.conap_scp_max_msg_size;
+}
+
 uint32_t connsys_scp_ipi_mbox_size(void)
 {
 	return g_adp_shm.conap_scp_ipi_mbox_size;
@@ -96,13 +103,21 @@ int connsys_scp_plt_data_init(struct platform_device *pdev)
 	int ret;
 	struct device_node *node;
 	u32 value;
-	u32 ipi_mbox_size = 0;
+	u32 ipi_mbox_size = 0, max_msg_size = 0;
 	u32 batching_buf_sz = 0;
 	u64 value64 = 0, batching_buf_addr = 0;
 	u32 dfd_cmd_sz = 0, dfd_value_sz = 0;
 	u64 dfd_cmd_addr = 0, dfd_value_addr = 0;
 
 	node = pdev->dev.of_node;
+
+	/* ipi mbox setting */
+	ret = of_property_read_u32(node, "max-msg-size", &value);
+	if (ret < 0) {
+		pr_notice("[%s] prop max-msg-size fail %d", __func__, ret);
+		max_msg_size = CONNSCP_DEFAULT_MAX_MSG_SIZE;
+	} else
+		max_msg_size = value;
 
 	/* ipi mbox setting */
 	ret = of_property_read_u32(node, "ipi-mbox-size", &value);
@@ -152,8 +167,9 @@ int connsys_scp_plt_data_init(struct platform_device *pdev)
 	else
 		dfd_value_sz = value;
 
-	pr_info("[%s] ipi_mbox_size=[%x] batching=[%x][%llx] dfd=[%llx][%x]", __func__,
-			ipi_mbox_size, batching_buf_sz, batching_buf_addr,
+	pr_info("[%s] mx_msg_isze=[%x] ipi_mbox_size=[%x] batching=[%x][%llx] dfd=[%llx][%x]", __func__,
+			max_msg_size, ipi_mbox_size,
+			batching_buf_sz, batching_buf_addr,
 			dfd_value_addr, dfd_value_sz);
 
 	memset(&g_adp_shm, 0, sizeof(g_adp_shm));
@@ -162,6 +178,8 @@ int connsys_scp_plt_data_init(struct platform_device *pdev)
 	memset(&g_adp_dfd_value, 0, sizeof(g_adp_dfd_value));
 
 	g_adp_shm.conap_scp_ipi_mbox_size = ipi_mbox_size;
+	g_adp_shm.conap_scp_max_msg_size = max_msg_size;
+
 	g_adp_batching.buff_offset = batching_buf_addr;
 	g_adp_batching.buff_size = batching_buf_sz;
 
