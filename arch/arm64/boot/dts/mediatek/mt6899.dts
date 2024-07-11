@@ -10012,13 +10012,28 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"TRAW_DIP1_GALS",
 				"TRAW_CAP_DIP1_TRAW_CAP",
 				"mmdvfs_mux";
-#if 0
-			mmqos-supply = <&mmqos>;
-#endif
 			operating-points-v2 = <&opp_table_img>;
 			mediatek,imgsys-dvfs-pix-mode = <2>;
 			mediatek,imgsys-qof-ver = <0>;
 			mediatek,imgsys-ver = <1>;
+			mmqos-supply = <&mmqos>;
+			mediatek,imgsys-qos-sc-motr = <2>;
+			mediatek,imgsys-qos-sc-nums = <2>;
+			mediatek,imgsys-qos-sc-id = <19 20>;
+			interconnects =
+				<&mmqos SLAVE_LARB(28)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos SLAVE_LARB(11)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos SLAVE_LARB(9)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos SLAVE_LARB(15)
+					&mmqos SLAVE_COMMON(1)>;
+			interconnect-names =
+				"l10_common_r_0",
+				"l22_common_w_0",
+				"l9_common_r_1",
+				"l15_common_w_1";
 		};
 
 		dvs: dvs@1a770000 {
