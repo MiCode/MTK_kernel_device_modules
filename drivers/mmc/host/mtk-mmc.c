@@ -695,7 +695,9 @@ static const struct mtk_mmc_compatible mt6899_compat = {
 	.new_tx_ver = MSDC_NEW_TX_V2,
 	.new_rx_ver = MSDC_NEW_RX_V1,
 	.infra_check = {
-		.enable = false,
+		.enable = true,
+		.infra_ack_bit = BIT(14),
+		.infra_ack_paddr = 0x1c001104,
 	},
 };
 
