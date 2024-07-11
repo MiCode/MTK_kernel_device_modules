@@ -3287,7 +3287,7 @@ static const enum mtk_ddp_comp_id mt6989_mtk_ddp_mem_dp_wo_tdshp[] = {
 
 static const enum mtk_ddp_comp_id mt6899_mtk_ovlsys_main_bringup[] = {
 	DDP_COMPONENT_OVL0_2L,
-	//DDP_COMPONENT_OVL1_2L,
+	DDP_COMPONENT_OVL1_2L,
 	DDP_COMPONENT_OVL2_2L,
 	DDP_COMPONENT_OVLSYS_DLO_ASYNC3,
 };
