@@ -9922,8 +9922,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&traw_dip1_clk CLK_TRAW_DIP1_LARB40_CAMERA_P2>,
 				<&traw_dip1_clk CLK_TRAW_DIP1_TRAW_CAMERA_P2>,
 				<&traw_dip1_clk CLK_TRAW_DIP1_GALS_CAMERA_P2>,
-				<&traw_cap_dip1_clk CLK_TRAW_CAP_DIP1_TRAW_CAP_CAMERA_P2>;
-				// <&mmdvfs_mux MMDVFS_USER_IMG>;
+				<&traw_cap_dip1_clk CLK_TRAW_CAP_DIP1_TRAW_CAP_CAMERA_P2>,
+				<&mmdvfs_mux MMDVFS_USER_IMG>;
 			clock-names = "VCORE_GALS",
 				"VCORE_MAIN",
 				"VCORE_SUB0",
@@ -9989,8 +9989,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"TRAW_DIP1_LARB40",
 				"TRAW_DIP1_TRAW",
 				"TRAW_DIP1_GALS",
-				"TRAW_CAP_DIP1_TRAW_CAP";
-				// "mmdvfs_mux";
+				"TRAW_CAP_DIP1_TRAW_CAP",
+				"mmdvfs_mux";
 #if 0
 			mmqos-supply = <&mmqos>;
 #endif
