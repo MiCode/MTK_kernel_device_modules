@@ -10,14 +10,6 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x0>;
 		clocks =
-			<&topckgen_clk CLK_TOP_SPI0_BCLK_SEL>,
-			<&topckgen_clk CLK_TOP_SPI1_BCLK_SEL>,
-			<&topckgen_clk CLK_TOP_SPI2_BCLK_SEL>,
-			<&topckgen_clk CLK_TOP_SPI3_BCLK_SEL>,
-			<&topckgen_clk CLK_TOP_SPI4_BCLK_SEL>,
-			<&topckgen_clk CLK_TOP_SPI5_BCLK_SEL>,
-			<&topckgen_clk CLK_TOP_SPI6_BCLK_SEL>,
-			<&topckgen_clk CLK_TOP_SPI7_BCLK_SEL>,
 			<&topckgen_clk CLK_TOP_MSDC30_1_SEL>,
 			<&topckgen_clk CLK_TOP_MSDC30_2_SEL>,
 			<&topckgen_clk CLK_TOP_MSDC30_1_HCLK_SEL>,
@@ -59,20 +51,6 @@
 			<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC_VENC>,
 			<&venc_gcon_core1_clk CLK_VEN2_CKE5_GALS_VENC>,
 			<&venc_gcon_core1_clk CLK_VEN2_CKE6_GALS_SRAM_VENC>;
-	};
-
-	bring-up-spi@b {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0xb>;
-		clocks =
-			<&pericfg_ao_clk CLK_PERAOP_SPI0_B_SPI>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI1_B_SPI>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI2_B_SPI>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI3_B_SPI>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI4_B_SPI>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI5_B_SPI>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI6_B_SPI>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI7_B_SPI>;
 	};
 
 	bring-up-vdec@f {
