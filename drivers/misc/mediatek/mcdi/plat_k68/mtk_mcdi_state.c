@@ -285,6 +285,7 @@ static long mcdi_do_work(void *pData)
 	int cpu;
 	int idx;
 	struct cpuidle_driver *drv;
+	int rcu_flags;
 
 	cpu = smp_processor_id();
 	cpumask_clear(cpu_set_0_mask);
@@ -301,7 +302,8 @@ static long mcdi_do_work(void *pData)
 	drv->states[0].exit_latency_ns =
 			mtk_acao_mcdi_state[0].states[0].exit_latency * NSEC_PER_USEC;
 	for (idx = 1; idx < drv->state_count; ++idx) {
-		pr_info("%s,register cpu idle for cpu %d\n", __func__, cpu);
+		rcu_flags =  drv->states[idx].flags;
+		pr_info("%s,register idle for cpu %d flags = %d\n", __func__, cpu, rcu_flags);
 		drv->states[0].enter = mtk_rgidle_enter;
 		drv->states[idx].enter = mtk_mcidle_enter;
 		drv->states[idx].exit_latency = mtk_acao_mcdi_state[0].states[idx].exit_latency;
