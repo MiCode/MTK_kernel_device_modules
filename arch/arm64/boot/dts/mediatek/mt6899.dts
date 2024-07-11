@@ -913,40 +913,28 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"pd_0_0,pd_0_1,pd_1_0,pd_1_1,",
 				"pd_2_0,pd_2_1,pd_3_0,pd_3_1";
 			node-71 = "SSPM_SPM_RES__DDREN_REQ",
-				"emisys,audio,cg_check,cksys_2,cksys_1,infrasys,ssusb,cksys,dpm,",
-				"spm_s1,pmsr,hwccf,ifr,spu_ise,spu_hwrot,ccu,mcupm,mdp1,mdp0,",
-				"ovl1,pcie1,emi,ssr,ifr_trace,dpmaif,infrasys_cqdma,pextp,peri,ufs,",
-				"img,cam,spm,scp,sspm,venc,vdec,mm_proc,gce,disp1,apu,gpueb,mcu,",
-				"mcusys_idle_to_infra,mcusys_idle_to_emi3,mcusys_idle_to_emi2,",
-				"mcusys_idle_to_emi1,mcusys_idle_to_emi,audio_dsp,mdsys,conn";
+				"md,conn,sspm,scp,audio_dsp,apu,mcupm,gpueb,ufs,",
+				"disp0,disp1,mm_proc,gce,ccu,cam,img,vdec,venc,pcie0,",
+				"dpmaif,perisys,infrasys,emisys,dpm,ssrsys,spu_ise,spu_hwrot,mcu,",
+				"hwccf,vlpcfg_rsv0,vlpcfg_rsv1,cg_check";
 			node-72 = "SSPM_SPM_RES__APSRC_REQ",
-				"hfrp_only,mdp,disp,venc,vdec,img,cam,ccu,mminfra,cg_check,pcie1,",
-				"ssusb,emisys,cksys,hwccf,mcu,spu_hwrot,spu_ise,ssrsys,dpm,ccif,",
-				"infrasys,perisys,dpmaif,pcie0,mm_proc,ufs,gpueb,mcupm,apu,",
-				"audio_dsp,scp,sspm,conn,md,apifr_mem,cksys_1,cksys_2,audio";
+				"md,conn,sspm,scp,audio_dsp,apu,mcupm,gpueb,ufs,",
+				"disp0,disp1,mm_proc,gce,ccu,cam,img,vdec,venc,pcie0,",
+				"dpmaif,perisys,infrasys,emisys,ccif_merge,dpm_merge,ssrsys,mcu,",
+				"hwccf,vlpcfg_rsv0,vlpcfg_rsv1,cg_check";
 			node-73 = "SSPM_SPM_DBG__PWR_OFF",
-				"mcupm,dramc_dpm_vcore,dpm1,dpm2,dpm3,dramc_s0,dramc_s0_plus,",
-				"dramc_s1_cha,dramc_s1_chb,dramc_s1_chc,dramc_s1_chd,disp_vcore,",
-				"dis0,dis1,vdec0_vcore,venc0,venc1,venc2,imgsys_isp_vcore_mtcmos,",
-				"camsys_cam_vcore_mtcmos,mml0,mml1,ovl0,ovl1,audio_vlp,mminfra0,",
-				"mminfra1,mminfra_ao,mm_proc,mm_proc_spm,scp,adsp_infra,adsp_ao,",
-				"north_emi,south_emi,emi_infra,mfg0,mfg_vlp,pextp_mac0_vcore,",
-				"pextp_mac1_vcore,pextp_mac2_vcore,sspm_off,connsys_on_top,",
-				"aputop_power_state,imgsys_isp_traw_mtcmos,imgsys_isp_dip1_mtcmos,",
-				"imgsys_isp_main_mtcmos,imgsys_isp_wpe_eis_mtcmos,",
-				"imgsys_isp_wpe_tnr_mtcmos,imgsys_isp_wpe_lite_mtcmos,",
-				"camsys_cam_mraw_mtcmos,camsys_cam_rawa_mtcmos,",
-				"camsys_cam_rawb_mtcmos,camsys_cam_rawc_mtcmos,",
-				"camsys_cam_rmsa_mtcmos,camsys_cam_rmsb_mtcmos,",
-				"camsys_cam_rmsc_mtcmos,camsys_cam_main_mtcmos,",
-				"camsys_cam_ccu_mtcmos,vmm_buck_on,ufs_vcore,ufs_phy_vlp,peri,",
-				"peri_ether,ssusb_dp_phy_vlp,ssusb_top_p0_vlp,ssusb_top_p1,",
-				"ssusb_top_p2,ssusb_u2_phy_top_p23";
+				"mcusys_plus_mpsys,dramc_dpm_vcore,dramc_s0,dramc_s0_plus,",
+				"dramc_s1,dis0_vdisp,dis1_vdisp,venc0_vcore,venc1_vcore,isp_vcore,",
+				"cam_vcore,mml0_vdisp,mml1_vdisp,ovl0_vdisp,peri,peri_audio,ufs,",
+				"mminfra_vcore,mm_proc,scp,sspm,adsp_infra,",
+				"north_emi,south_emi,pextp_mac0_vcore,peri_usb,ufs_phy_vlp,infra,",
+				"isp_traw,isp_dip1,isp_main,",
+				"cam_mraw,cam_suba,cam_subb,cam_subc,cam_main,cam_ccu,cam_ccu_ao";
 			node-74 = "SSPM_SPM_DBG__PWR_ACT",
 				"scp,adsp,venc0,venc1,audio,cam,img,mminfra,",
 				"sspm,disp0,disp1,ovl0,ovl1,md0,md1,conn";
 			node-75 = "SSPM_SPM_DBG__SYS_STA",
-				"vcore,pmic,26m,infra,vrf18,emi,apsrc,ddren";
+				"26m,pmic,infra,emi,apsrc,vrf18,ddren,vcore";
 			node-76 = "SSPM_SWPM_DRAM__MEM_RAW_IDX",
 				"diff_us,data_rate,ddr_ratio,emi_freq,s1_ratio_0,s1_ratio_1,s1_ratio_2,s1_ratio_3,",
 				"wact_0,wact_1,bact_0,bact_1,bcnt_0,bcnt_1,tact_0,tact_1,",
@@ -965,39 +953,35 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-78 = "SSPM_GPU_BM",
 				"bw,bw_max,predict,ctx,freq,frame,job_id";
 			node-79 = "SSPM_SPM_RES__EMI_REQ",
-				"hfrp_only,mdp,disp,venc,vdec,img,cam,ccu,mminfra,",
-				"sspm_emi_busy_to_emi,cg_check,pcie1,ssusb,emisys,cksys,hwccf,mcu,",
-				"spu_hwrot,spu_ise,ssrsys,dpm,ccif,infrasys,perisys,dpmaif,pcie0,",
-				"mm_proc,ufs,gpueb,mcupm,apu,audio_dsp,scp,sspm,conn,md,apifr_mem,",
-				"cksys_1,cksys_2,audio";
+				"md,conn,sspm,scp,audio_dsp,apu,mcupm,gpueb,ufs,",
+				"disp0,disp1,mm_proc,gce,ccu,cam,img,vdec,venc,pcie0,",
+				"dpmaif,perisys,infrasys,emisys,ccif,dpm,ssrsys,mcu,",
+				"hwccf,vlpcfg_rsv0,vlpcfg_rsv1,cg_check";
 			node-80 = "SSPM_SPM_RES__MAINPLL_REQ",
-				"hfrp_only,mdp,disp,venc,vdec,img,cam,ccu,mminfra,cg_check,pcie1,",
-				"ssusb,emisys,cksys,hwccf,mcu,spu_hwrot,spu_ise,ssrsys,uart_hub,",
-				"dpm,ccif,ipic,infrasys,perisys,dpmaif,pcie0,mm_proc,ufs,gpueb,",
-				"mcupm,apu,audio_dsp,scp,sspm,conn,md,apifr_mem,cksys_1,cksys_2,",
-				"audio";
+				"md,conn,sspm,scp,audio_dsp,apu,mcupm,gpueb,ufs,",
+				"disp0,disp1,mm_proc,gce,ccu,pcie0,",
+				"dpmaif,perisys,infrasys,ipic,ccif_merge,dpm_merge,uart_hub,ssrsys,mcu,",
+				"hwccf,vlpcfg_rsv0,vlpcfg_rsv1,cg_check";
 			node-81 = "SSPM_SPM_RES__INFRA_REQ",
-				"hfrp_only,mdp,disp,venc,vdec,img,cam,ccu,mminfra,cg_check,pcie1,",
-				"ssusb,emisys,cksys,hwccf,mcu,spu_hwrot,spu_ise,ssrsys,uart_hub,",
-				"dpm,ccif,srcclkeni,ipic,infrasys,perisys,dpmaif,pcie0,mm_proc,",
-				"ufs,gpueb,mcupm,apu,audio_dsp,scp,sspm,conn,md,apifr_mem,cksys_1,",
-				"cksys_2,audio";
+				"md,conn,sspm,scp,audio_dsp,apu,mcupm,gpueb,ufs,",
+				"disp0,disp1,mm_proc,gce,ccu,pcie0,",
+				"dpmaif,perisys,infrasys,ipic,ccif_merge,dpm_merge,uart_hub,ssrsys,mcu,",
+				"hwccf,vlpcfg_rsv0,vlpcfg_rsv1,cg_check,srcclkeni_merge";
 			node-82 = "SSPM_SPM_RES__26M_REQ",
-				"hfrp_only,mdp,disp,venc,vdec,img,cam,ccu,mminfra,conn_srcclkenb,",
-				"cg_check,pcie1,ssusb,emisys,cksys,hwccf,mcu,spu_hwrot,spu_ise,",
-				"ssrsys,uart_hub,dpm,ccif,srcclkeni,infrasys,perisys,dpmaif,pcie0,",
-				"mm_proc,ufs,gpueb,mcupm,apu,audio_dsp,scp,sspm,conn,md2,md1,md,",
-				"apifr_mem,cksys_1,cksys_2,audio";
+				"md_a,md_a1,md_a2,conna,connb,sspma,scpa,audio_dspa,apua,mcupma,gpueba,ufs,",
+				"disp0a,disp1a,mm_proca,gcea,pcie0,",
+				"dpmaif,perisys,ccif_merge,dpm_merge,uart_hub,ssrsys,mcu,",
+				"hwccf,vlpcfg_rsv0,vlpcfg_rsv1,cg_check,srcclkeni_srcclkena_merge";
 			node-83 = "SSPM_SPM_RES__VCORE_REQ",
-				"hfrp_only,mdp,disp,venc,vdec,img,cam,ccu,mminfra,cg_check,ssrsys,",
-				"ufs,spu_hwrot,spu_ise,perisys,infrasys,mcu,mm_proc,dpmaif,pcie1,",
-				"ssusb,emisys,cksys,hwccf,uart_hub,dpm,ccif,srcclkeni,pcie0,gpueb,",
-				"mcupm,apu,audio_dsp,scp,conn,md,apifr_mem,cksys_1,cksys_2,audio";
+				"md,conn,scp,audio_dsp,ufs,",
+				"gce,pcie0,",
+				"perisys,dpm_merge,uart_hub,",
+				"hwccf,vlpcfg_rsv0,vlpcfg_rsv1,cg_check";
 			node-84 = "SSPM_SPM_RES__PMIC_REQ",
-				"srcclkeni,cg_check,vlpcfg_rsv1,vlpcfg_rsv0,hwccf,mcu,spu_hwrot,",
-				"spu_ise,ssrsys,uart_hub,dpm,ccif,perisys,dpmaif,pcie0,venc,vdec,",
-				"img,cam,ccu,gce,mm_proc,disp1,disp0,ufs,gpueb,cpu,apu,audio,scp,",
-				"sspm,conn,md";
+				"md,conn,sspm,scp,audio_dsp,apu,mcupm,gpueb,ufs,",
+				"disp0,disp1,mm_proc,gce,pcie0,",
+				"dpmaif,perisys,ccif_merge,dpm_merge,uart_hub,ssrsys,mcu,",
+				"hwccf,vlpcfg_rsv0,vlpcfg_rsv1,cg_check,srcclkeni_merge";
 			node-85 = "WLA_NTH_IDLE_CNT",
 				"wla0,wla1,wla2,wla3,wla4,wla5,wla6,wla7,wla8,wla9,wla10,",
 				"wla11,wla12,wla13,wla14,wla15";
@@ -1212,16 +1196,15 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"RC1_M6_0,RC1_M6_1,RC1_M7_0,RC1_M7_1,",
 				"WD_CH0_0,WD_CH0_1,WD_CH1_0,WD_CH1_1";
 			node-126 = "SSPM_SPM_DBG__RC_REQ",
-				"spm_srclken_fpm_0,srclken_fpm_1,srclken_fpm_2,srclken_fpm_3,",
-				"srclken_fpm_4,srclken_fpm_5,srclken_fpm_6,srclken_fpm_7,",
-				"srclken_fpm_8,srclken_fpm_9,srclken_bblpm_10,nfc_srcclkeni_0_dbc,",
-				"spm_srclken_fpm_2,xoufs_req,dcxo_bblpm,dcxo_lpm,dcxo_fpm,",
-				"srclken_fpm_16,srclken_fpm_17,srclken_fpm_18,srclken_fpm_19,",
-				"srclken_fpm_20,srclken_fpm_21,srclken_fpm_22,srclken_fpm_23,",
-				"srclken_fpm_24,",
-				"mainpll_en,univpll_en,msdcpll,adsppll,emipll,emipll2,mainpll2_en,",
-				"univpll2_en,mmpll2,imgpll,tvdpll1,apll1_en,apll2_en,ulposc1_en,",
-				"ulposc2_en,ulposc3_en";
+				"xoufs_req,srclken_fpm_2,nfc_srcclkeni_0_dbc,srclken_bblpm_10,",
+				"srclken_fpm_9,srclken_fpm_8,srclken_fpm_7,srclken_fpm_6,",
+				"srclken_fpm_5,srclken_fpm_4,srclken_fpm_3,srclken_fpm_2,",
+				"srclken_fpm_1,spm_srclken_fpm_0,dcxo_bblpm,dcxo_lpm,dcxo_fpm,",
+				"mainpll_en,univpll_en,adsppll,mmpll_en,apll1,apll2_en,msdcpll_en,",
+				"emipll_en,emipll2_en,tvdpll_en,imgpll_en,cg_en_axi,cg_en_peri_faxi,",
+				"cg_en_ufs_faxi,cg_en_pextp_faxi,cg_en_bus_aximem,cg_en_mem_sub,",
+				"cg_en_peri_fmem,cg_en_ufs_fmem,cg_en_pexpt_fmem,cg_en_mcu_infra,",
+				"cg_en_mcu_acp,cg_en_mminfra,cg_en_mmup";
 			node-127 = "SSPM_SWPM_SCP__POWER_IDX",
 				"active_0,active_rv33_0,cpu_off_0,wfi_0,sleep_0,off_0,freq";
 		};
