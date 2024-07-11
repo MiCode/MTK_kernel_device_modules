@@ -23,4 +23,5 @@ void logging_stop(void);
 void logging_exit(bool buffer_busy);
 int logging_trace_level_init(void);
 
+void logging_worker(struct kthread_work *work);
 #endif /* MC_LOGGING_H */

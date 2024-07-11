@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2013-2023 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2024 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -322,10 +322,15 @@ static int mcp_cmd(union mcp_message *cmd,
 
 		cmd_info->uuid_str[0] = ' ';
 		for (i = 0; i < sizeof(uuid->value); i++) {
+#ifdef MTK_ADAPTED
 			ret = snprintf(&cmd_info->uuid_str[1 + i * 2], 3, "%02x",
 				 uuid->value[i]);
 			if (ret < 0)
 				return ret;
+#else
+			snprintf(&cmd_info->uuid_str[1 + i * 2], 3, "%02x",
+				 uuid->value[i]);
+#endif
 		}
 	} else {
 		cmd_info->uuid_str[0] = '\0';
@@ -347,8 +352,10 @@ static int mcp_cmd(union mcp_message *cmd,
 	memcpy(msg, cmd, sizeof(*msg));
 
 	/* Send MCP notification, with cmd_id as payload for debug purpose */
-	nq_session_notify(&l_ctx.mcp_session.nq_session, l_ctx.mcp_session.sid,
-			  cmd_id);
+	ret = nq_session_notify(&l_ctx.mcp_session.nq_session,
+				l_ctx.mcp_session.sid, cmd_id);
+	if (ret)
+		goto out;
 
 	/* Update MCP log */
 	mutex_lock(&l_ctx.last_cmds_mutex);

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2013-2022 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2023 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -244,10 +244,15 @@ static int iwp_cmd(struct iwp_session *iwp_session, u32 id,
 		tee_uuid_to_mcuuid(uuid, &cuuid);
 		cmd_info->uuid_str[0] = ' ';
 		for (i = 0; i < sizeof(*uuid); i++) {
+#ifdef MTK_ADAPTED
 			ret = snprintf(&cmd_info->uuid_str[1 + i * 2], 3, "%02x",
 				 cuuid.value[i]);
 			if (ret < 0)
 				return ret;
+#else
+			snprintf(&cmd_info->uuid_str[1 + i * 2], 3, "%02x",
+				 cuuid.value[i]);
+#endif
 		}
 	} else if (id == SID_CANCEL_OPERATION) {
 		struct interworld_session *iws = slot_to_iws(iwp_session->slot);
@@ -351,6 +356,9 @@ int iwp_set_ret(int ret, struct gp_return *gp_ret)
 		break;
 	case -EBUSY:
 		gp_ret->value = TEEC_ERROR_BUSY;
+		break;
+	case -EAGAIN:
+		gp_ret->value = TEEC_TT_ERROR_SYSTEM_BUSY;
 		break;
 	case -ECANCELED:
 		gp_ret->value = TEEC_ERROR_CANCEL;
@@ -622,6 +630,8 @@ static const char *value_to_string(u32 value)
 		return "OUT_OF_MEMORY";
 	case TEEC_ERROR_BUSY:
 		return "BUSY";
+	case TEEC_TT_ERROR_SYSTEM_BUSY:
+		return "SYSTEM_BUSY";
 	case TEEC_ERROR_COMMUNICATION:
 		return "COMMUNICATION";
 	case TEEC_ERROR_SECURITY:
@@ -786,13 +796,7 @@ int iwp_open_session(
 		/* Make sure the daemon had time to at least start */
 		mc_admin_wait_for_daemon();
 	} else if (!protocol_is_fe()) {
-		obj = tee_object_get(uuid, true);
-		if (IS_ERR(obj)) {
-			/* Tell SWd to load TA from SFS as not in registry */
-			if (PTR_ERR(obj) == -ENOENT)
-				obj = tee_object_select(uuid);
-		}
-
+		obj = tee_object_select(uuid);
 		if (IS_ERR(obj))
 			return PTR_ERR(obj);
 
@@ -1091,7 +1095,9 @@ static inline int show_log_entry(struct kasnprintf_buf *buf,
 	const char *state_str = "unknown";
 	const char *value_str = value_to_string(cmd_info->result.value);
 	char value[16];
+#ifdef MTK_ADAPTED
 	int ret;
+#endif
 
 	switch (cmd_info->state) {
 	case UNUSED:
@@ -1112,9 +1118,13 @@ static inline int show_log_entry(struct kasnprintf_buf *buf,
 	}
 
 	if (!value_str) {
+#ifdef MTK_ADAPTED
 		ret = snprintf(value, sizeof(value), "%08x", cmd_info->result.value);
 		if (ret < 0)
 			return ret;
+#else
+		snprintf(value, sizeof(value), "%08x", cmd_info->result.value);
+#endif
 		value_str = value;
 	}
 

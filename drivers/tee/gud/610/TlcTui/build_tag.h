@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2013-2023 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2024 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -16,6 +16,6 @@
 #define BUILD_TAG_H
 #ifndef MOBICORE_COMPONENT_BUILD_TAG
 #define MOBICORE_COMPONENT_BUILD_TAG \
-	"Kinibi-FFA-A-610a-V001-20231109_162318_88934_11840"
+	"Kinibi-FFA-A-610a-V003-20240523_152438_108509_7e976"
 #endif
 #endif /* BUILD_TAG_H */

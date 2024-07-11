@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2014-2022 TRUSTONIC LIMITED
+ * Copyright (c) 2014-2023 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -189,9 +189,9 @@ u32 hal_tui_alloc(
 		}
 		// Use pa to share IOMMU PA, and ffa_handle for ffa_handle
 		allocbuffer[i].ffa_handle = ffa_handle;
-		tui_dev_info("%s(%d):lend_shared_memory OK [%d]: %x\n",
+		tui_dev_info("%s(%d):lend_shared_memory OK [%d]: %llx\n",
 			     __func__, __LINE__, i, ffa_handle);
-		allocbuffer[i].pa = shared_mem.buffer;
+		allocbuffer[i].pa = (u64)shared_mem.buffer;
 	}
 #else
 	for (i = 0; i < number; i++) {

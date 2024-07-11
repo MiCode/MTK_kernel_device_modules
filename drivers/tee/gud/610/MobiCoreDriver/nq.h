@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2013-2020 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2024 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -73,7 +73,7 @@ int nq_start(void);
 void nq_stop(void);
 
 /* Cpu affinity API */
-cpumask_t tee_set_affinity(void);
+int tee_set_affinity(cpumask_t *old_affinity);
 void tee_restore_affinity(cpumask_t old_affinity);
 
 /* Initialisation/cleanup */

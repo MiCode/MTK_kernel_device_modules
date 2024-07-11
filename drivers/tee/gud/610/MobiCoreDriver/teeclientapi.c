@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2013-2022 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2023 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -187,8 +187,10 @@ u32 teec_initialize_context(const char *name, struct teec_context *context)
 
 	mc_dev_devel("== %s() ==============", __func__);
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return TEEC_ERROR_NOT_IMPLEMENTED;
+#endif
 
 	if (!context) {
 		mc_dev_devel("context is NULL");
@@ -223,8 +225,10 @@ void teec_finalize_context(struct teec_context *context)
 {
 	mc_dev_devel("== %s() ==============", __func__);
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return;
+#endif
 
 	/* The parameter context MUST point to an initialized TEE Context */
 	if (!context) {
@@ -260,12 +264,15 @@ u32 teec_open_session(struct teec_context *context,
 	struct tee_client *client = NULL;
 	struct gp_operation gp_op;
 	struct gp_return gp_ret;
-	int ret = 0, timeout;
+	int ret = 0;
+	int retry = MAX_OPEN_SESSION_RETRY;
 
 	mc_dev_devel("== %s() ==============", __func__);
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return TEEC_ERROR_NOT_IMPLEMENTED;
+#endif
 
 	gp_ret.value = TEEC_SUCCESS;
 	if (return_origin)
@@ -303,19 +310,19 @@ u32 teec_open_session(struct teec_context *context,
 
 	identity.login_type = (enum mc_login_type)connection_method;
 
-	/* Wait for GP loading to be possible, maximum 30s */
-	timeout = 30;
+	/* Wait for GP loading to be possible, maximum 5s */
 	do {
 		ret = client_gp_open_session(client, &uuid, NULL, &gp_op,
 					     &identity, &gp_ret,
 					     &session->imp.session_id);
 		if (ret != -ECHILD ||
-		    gp_ret.value != TEEC_ERROR_BUSY ||
+		    gp_ret.value != TEEC_TT_ERROR_SYSTEM_BUSY ||
 		    gp_ret.origin != TEEC_ORIGIN_TEE)
 			break;
 
-		msleep(1000);
-	} while (--timeout);
+		msleep(OPEN_SESSION_RETRY_TIMEOUT_MS);
+		retry--;
+	} while (retry);
 
 	if (ret || gp_ret.value != TEEC_SUCCESS) {
 		mc_dev_devel("client_gp_open_session failed(%08x) %08x", ret,
@@ -350,8 +357,10 @@ u32 teec_invoke_command(struct teec_session *session,
 
 	mc_dev_devel("== %s() ==============", __func__);
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return TEEC_ERROR_NOT_IMPLEMENTED;
+#endif
 
 	gp_ret.value = TEEC_SUCCESS;
 	if (return_origin)
@@ -403,8 +412,10 @@ void teec_close_session(struct teec_session *session)
 
 	mc_dev_devel("== %s() ==============", __func__);
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return;
+#endif
 
 	/* The implementation MUST do nothing if session is NULL */
 	if (!session) {
@@ -492,8 +503,10 @@ u32 teec_register_shared_memory(struct teec_context *context,
 
 	mc_dev_devel("== %s() ==============", __func__);
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return TEEC_ERROR_NOT_IMPLEMENTED;
+#endif
 
 	if (shared_mem->flags & ~allowed_flags) {
 		mc_dev_devel("shared_mem->flags is incorrect");
@@ -524,8 +537,10 @@ u32 teec_allocate_shared_memory(struct teec_context *context,
 	/* No connection to "context"? */
 	mc_dev_devel("== %s() ==============", __func__);
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return TEEC_ERROR_NOT_IMPLEMENTED;
+#endif
 
 	/* The parameter context MUST point to an initialized TEE Context */
 	if (!context) {
@@ -581,8 +596,10 @@ void teec_release_shared_memory(struct teec_shared_memory *shared_mem)
 	/* No connection to "context"? */
 	mc_dev_devel("== %s() ==============", __func__);
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return;
+#endif
 
 	/* The implementation MUST do nothing if shared_mem is NULL */
 	if (!shared_mem) {
@@ -616,8 +633,10 @@ void teec_request_cancellation(struct teec_operation *operation)
 
 	mc_dev_devel("== %s() ==============", __func__);
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return;
+#endif
 
 	ret = wait_event_interruptible(operations_wq, operation->started);
 	if (ret == -ERESTARTSYS) {
@@ -673,8 +692,10 @@ u32 teec_tt_lend_shared_memory(struct teec_context *context,
 
 	mc_dev_devel("== %s() ==============", __func__);
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return TEEC_ERROR_NOT_IMPLEMENTED;
+#endif
 
 	if (shared_mem->flags & ~allowed_flags) {
 		mc_dev_devel("shared_mem->flags is incorrect %x",

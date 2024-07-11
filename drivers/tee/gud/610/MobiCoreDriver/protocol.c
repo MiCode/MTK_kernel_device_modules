@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 TRUSTONIC LIMITED
+ * Copyright (c) 2019-2023 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -17,6 +17,8 @@
 #include "vlx_fe.h"
 #include "xen_be.h"
 #include "xen_fe.h"
+#include "raite_be.h"
+#include "raite_fe.h"
 #include "protocol_common.h"
 #include "protocol.h"
 
@@ -26,6 +28,8 @@ struct tee_protocol_be_call_ops *be_ops;
 typedef struct tee_protocol_ops *(*check_func_t)(void);
 
 static check_func_t check_funcs[] = {
+	raite_be_check,
+	raite_fe_check,
 	vlx_be_check,
 	vlx_fe_check,
 	xen_be_check,

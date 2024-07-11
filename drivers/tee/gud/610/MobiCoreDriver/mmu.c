@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2013-2023 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2024 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -277,8 +277,13 @@ static int tee_mmu_free(struct tee_mmu *mmu)
 
 #ifdef CONFIG_DMA_SHARED_BUFFER
 	if (mmu->dma_buf) {
+#if KERNEL_VERSION(6, 6, 0) <= LINUX_VERSION_CODE
+		dma_buf_unmap_attachment_unlocked(mmu->attach, mmu->sgt,
+						  DMA_BIDIRECTIONAL);
+#else
 		dma_buf_unmap_attachment(mmu->attach, mmu->sgt,
 					 DMA_BIDIRECTIONAL);
+#endif
 		dma_buf_detach(mmu->dma_buf, mmu->attach);
 		dma_buf_put(mmu->dma_buf);
 	}
@@ -361,8 +366,7 @@ static int tee_mmu_free(struct tee_mmu *mmu)
 				unpin_user_page(pte_page(pte));
 #endif
 			}
-			if (mmu->pages_locked > nr_pages)
-				mmu->pages_locked -= nr_pages;
+			mmu->pages_locked -= nr_pages;
 		}
 
 		mc_dev_devel("free PTE #%lu", i);
@@ -498,7 +502,12 @@ static bool mmu_get_dma_buffer(struct tee_mmu *mmu, int va)
 	if (IS_ERR(mmu->attach))
 		goto err_attach;
 
+#if KERNEL_VERSION(6, 6, 0) <= LINUX_VERSION_CODE
+	mmu->sgt = dma_buf_map_attachment_unlocked(mmu->attach,
+						   DMA_BIDIRECTIONAL);
+#else
 	mmu->sgt = dma_buf_map_attachment(mmu->attach, DMA_BIDIRECTIONAL);
+#endif
 	if (IS_ERR(mmu->sgt))
 		goto err_map;
 
@@ -827,8 +836,13 @@ static inline int tee_mmu_register_buffer(struct tee_mmu	*mmu,
 		kfree(all_pages);
 		mmu->all_pages = NULL;
 		if (ret) {
+#ifndef MTK_ADAPTED
 			mc_dev_err(ret, "sharing buffer failed, free mmu %p", mmu);
+#endif
 			tee_mmu_free(mmu);
+#ifdef MTK_ADAPTED
+			mc_dev_err(ret, "sharing buffer failed, free mmu %p", mmu);
+#endif
 		}
 	}
 	return ret;

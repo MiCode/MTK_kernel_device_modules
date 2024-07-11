@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2013-2022 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2024 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -39,11 +39,6 @@
 
 #ifdef MC_TEE_HOTPLUG
 #include <linux/cpuhotplug.h>
-#endif
-
-/* Default entry for our driver in device tree */
-#ifndef MC_DEVICE_PROPNAME
-#define MC_DEVICE_PROPNAME "arm,mcd"
 #endif
 
 /* Define a MobiCore device structure for use with dev_debug() etc */
@@ -263,6 +258,12 @@ static inline int device_user_init(void)
 	}
 
 	main_ctx.user_cdev.owner = THIS_MODULE;
+	/* Create debugfs structs entry */
+	debugfs_create_file("structs", 0400, g_ctx.debug_dir, NULL,
+			    &debug_structs_ops);
+	/* Last action to do: set status and open mobicore-user devnode,
+	 * because once created any CA can then send command to the TEE
+	 */
 	dev = device_create(main_ctx.class, NULL, main_ctx.user_dev, NULL,
 			    MC_USER_DEVNODE);
 	if (IS_ERR(dev)) {
@@ -599,10 +600,12 @@ static int mobicore_probe(struct platform_device *pdev)
 	mc_dev_info("MobiCore %s", MOBICORE_COMPONENT_BUILD_TAG);
 #endif
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv) {
 		mc_dev_info("MobiCore dummy driver");
 		return 0;
 	}
+#endif
 
 #ifdef MC_FFA_FASTCALL
 	ret = ffa_module_probe();
@@ -715,8 +718,10 @@ static struct platform_driver mc_plat_driver = {
 
 static int __init mobicore_init(void)
 {
-	struct device_node *node;
 	int ret;
+#ifdef MTK_ADAPTED
+	struct device_node *node;
+#endif
 
 	dev_set_name(g_ctx.mcd, "TEE");
 	/*
@@ -727,6 +732,7 @@ static int __init mobicore_init(void)
 		    MCDRVMODULEAPI_VERSION_MAJOR,
 		    MCDRVMODULEAPI_VERSION_MINOR);
 
+#ifdef MTK_ADAPTED
 	node = of_find_compatible_node(NULL, NULL, MC_DEVICE_PROPNAME);
 	if (node) {
 		main_ctx.use_platform_driver = true;
@@ -749,6 +755,15 @@ static int __init mobicore_init(void)
 	if (ret)
 		g_ctx.sel2_support = 0;
 	mc_dev_info("support sel2: %d", g_ctx.sel2_support);
+#else
+#ifdef MC_FFA_FASTCALL
+	ret = ffa_register_module();
+	if (ret) {
+		mc_dev_err(ret, "FFA init failed");
+		return ret;
+	}
+#endif
+#endif
 
 	/* In a Xen DomU, just register the front-end */
 	ret = protocol_early_init(mobicore_probe_not_of, mobicore_start_fe);
@@ -761,6 +776,10 @@ static int __init mobicore_init(void)
 		return ret;
 	}
 
+#ifndef MTK_ADAPTED
+	main_ctx.use_platform_driver =
+		of_find_compatible_node(NULL, NULL, MC_DEVICE_PROPNAME);
+#endif
 	if (main_ctx.use_platform_driver) {
 		ret = platform_driver_register(&mc_plat_driver);
 	} else {
@@ -777,11 +796,14 @@ static int __init mobicore_init(void)
 
 static void __exit mobicore_exit(void)
 {
-	if (g_ctx.real_drv) {
-#ifdef MC_FFA_FASTCALL
+#ifdef MTK_ADAPTED
+	if (g_ctx.real_drv)
 		ffa_unregister_module();
+#else
+#ifdef MC_FFA_FASTCALL
+	ffa_unregister_module();
 #endif
-	}
+#endif
 
 	if (main_ctx.use_platform_driver)
 		platform_driver_unregister(&mc_plat_driver);

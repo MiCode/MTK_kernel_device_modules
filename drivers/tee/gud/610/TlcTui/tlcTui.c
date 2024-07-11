@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2013-2019 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2024 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,10 @@
 #include "tui-hal.h"
 
 /* ------------------------------------------------------------- */
+
+#define LOOP_SLEEP 20
+#define COMM_RETRY_MAX 5
+
 /* Globals */
 struct tui_dci_msg_t *dci;
 static DECLARE_COMPLETION(dci_comp);
@@ -105,7 +109,7 @@ static bool tlc_open(void)
 }
 
 /* ------------------------------------------------------------- */
-static void tlc_wait_cmd_from_driver(void)
+static u32 tlc_wait_cmd_from_driver(void)
 {
 	u32 ret = TUI_DCI_ERR_INTERNAL_ERROR;
 
@@ -115,6 +119,8 @@ static void tlc_wait_cmd_from_driver(void)
 		tui_dev_devel("Got a command");
 	else
 		tui_dev_err(ret, "%d mc_wait_notification() failed", __LINE__);
+
+	return ret;
 }
 
 struct mc_session_handle *get_session_handle(void)
@@ -215,7 +221,7 @@ end:
 }
 
 /* ------------------------------------------------------------- */
-static void tlc_process_cmd(void)
+static u32 tlc_process_cmd(void)
 {
 	u32 ret = TUI_DCI_ERR_INTERNAL_ERROR;
 	u32 command_id = CMD_TUI_SW_NONE;
@@ -223,7 +229,8 @@ static void tlc_process_cmd(void)
 	if (!dci) {
 		tui_dev_err(-1, "%d DCI has not been set up properly - exiting",
 			    __LINE__);
-		return;
+		tui_dev_info("Hint: check com.trustonic.teeservice being successfully launched !!");
+		return MC_DRV_ERR_INIT;
 	}
 
 	command_id = dci->cmd_nwd.id;
@@ -235,7 +242,7 @@ static void tlc_process_cmd(void)
 	if (command_id == CMD_TUI_SW_NONE) {
 		tui_dev_err(-1, "%d Notified without command",
 			    __LINE__);
-		return;
+		return MC_DRV_ERR_NOTIFICATION;
 	}
 
 	if (dci->nwd_rsp.id != CMD_TUI_SW_NONE)
@@ -357,6 +364,8 @@ static void tlc_process_cmd(void)
 	ret = mc_notify(&dr_session_handle);
 	if (ret != MC_DRV_OK)
 		tui_dev_err(ret, "%d mc_notify() failed", __LINE__);
+
+	return ret;
 }
 
 /* ------------------------------------------------------------- */
@@ -424,6 +433,9 @@ bool tlc_notify_event(u32 event_type)
  */
 static int main_thread(void *uarg)
 {
+	int retry = COMM_RETRY_MAX;
+	u32 rc = TUI_DCI_ERR_INTERNAL_ERROR;
+
 	tui_dev_devel("TlcTui start!");
 
 	/* Open session on the driver */
@@ -433,9 +445,16 @@ static int main_thread(void *uarg)
 	/* TlcTui main thread loop */
 	for (;;) {
 		/* Wait for a command from the DrTui on DCI */
-		tlc_wait_cmd_from_driver();
-		/* Something has been received, process it. */
-		tlc_process_cmd();
+		rc = tlc_wait_cmd_from_driver();
+		if (rc == MC_DRV_OK) {
+			/* Something has been received, process it. */
+			rc = tlc_process_cmd();
+		} else {
+			msleep(LOOP_SLEEP);
+			retry--;
+		}
+		if (retry == 0)
+			break;
 	}
 
 	/*
