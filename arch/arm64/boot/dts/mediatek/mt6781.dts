@@ -3742,6 +3742,11 @@
 		reg = <0 0x10211000 0 0x1000>;
 	};
 
+	drm_wv: drm_wv {
+		compatible = "mediatek,drm_wv";
+		status = "okay";
+	};
+
 	cqdma-controller@10212000 {
 		compatible = "mediatek,cqdma";
 		reg = <0 0x10212000 0 0x80>,
