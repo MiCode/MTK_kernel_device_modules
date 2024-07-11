@@ -3662,7 +3662,6 @@ static void mdp_readback_aal_virtual(struct cmdqRecStruct *handle,
 
 }
 
-#define MDP_HDR_HIST_DATA 0x0E0
 #define MDP_HDR_LBOX_DET_4 0x104
 #define HDR_TONE_MAP_S14 0x0D0
 #define HDR_GAIN_TABLE_2 0x0F0
@@ -3729,7 +3728,7 @@ static void mdp_readback_hdr_virtual(struct cmdqRecStruct *handle,
 	begin_pa = cmdq_pkt_get_curr_buf_pa(pkt);
 
 	/* read to value gpr */
-	cmdq_pkt_read_addr(pkt, base + MDP_HDR_HIST_DATA, idx_val);
+	cmdq_pkt_read_addr(pkt, base + cmdq_mdp_get_func()->getHdrHistData(), idx_val);
 	/* write value src spr to dst gpr */
 	cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
 
@@ -3787,6 +3786,11 @@ static void mdp_readback_hdr_virtual(struct cmdqRecStruct *handle,
 	CMDQ_LOG_PQ("%s done, handle:%p, engine:%hu, mdp_extension:%x, readback_cnt:%d\n",
 		__func__, handle, engine, handle->mdp_extension, handle->readback_cnt);
 
+}
+
+static s32 mdp_get_hdr_hist_data_virtual(void)
+{
+	return MDP_HDR_HIST_DATA;
 }
 
 static s32 mdp_get_rdma_idx_virtual(u32 eng_base)
@@ -3903,6 +3907,7 @@ void cmdq_mdp_virtual_function_setting(void)
 	pFunc->getEngineBaseCount = mdp_get_engine_base_count_dummy;
 	pFunc->mdpReadbackAal = mdp_readback_aal_virtual;
 	pFunc->mdpReadbackHdr = mdp_readback_hdr_virtual;
+	pFunc->getHdrHistData = mdp_get_hdr_hist_data_virtual;
 	pFunc->getRDMAIndex = mdp_get_rdma_idx_virtual;
 	pFunc->getRegMSBOffset = mdp_get_reg_msb_offset_virtual;
 	pFunc->mdpIsCaminSupport = mdp_check_camin_support_virtual;
