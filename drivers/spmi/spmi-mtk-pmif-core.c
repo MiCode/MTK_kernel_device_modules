@@ -1484,7 +1484,11 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 				assert_flag = (in_spmi_nack_monitor_list(spmi_nack)) ? 1 : 0;
 			} else {
 				flag = 1;
-				assert_flag = (mt6316_revision_check(arb, GET_SPMI_NACK_SLVID(spmi_p_nack)) == MT6316_E4) ? 1 : 0;
+				if ((mt6316_revision_check(arb, GET_SPMI_NACK_SLVID(spmi_p_nack)) == MT6316_E4) && (in_spmi_nack_monitor_list(spmi_p_nack))) {
+					assert_flag = 1;
+				} else {
+					assert_flag = 0;
+				}
 			}
 		}
 		pr_notice("%s spmi transaction fail (Read) irq triggered", __func__);
