@@ -2380,6 +2380,10 @@ initcall_debug=1 clk_ignore_unused=1";
 		isp-opp = <&opp_table_mm>;
 		mdp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		isp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		dre30-hist-sram-start = /bits/ 16 <1536>;
+		pq-rb-thread-id = /bits/ 16 <22>;
+		pq-rb-event-lock = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_MDP_WAIT>;
+		pq-rb-event-unlock = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_MDP_SET>;
 	};
 
 	gce_mbox: gce_mbox@10238000 {
