@@ -101,6 +101,14 @@
 		enable-active-high;
 		gpio = <&pio 174 0x0>;
 	};
+	camera_common_oisvdd: camera-common-oisvdd {
+		compatible = "regulator-fixed";
+		regulator-name = "camera-common-oisvdd";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		enable-active-high;
+		gpio = <&pio 185 0x0>;
+	};
 };
 
 /* CAMERA GPIO standardization */
@@ -399,6 +407,18 @@
 			remote-endpoint = <&main_af_cam3>;
 		};
 	};
+	port@4 {
+		reg = <4>;
+		main_ois_cam1_endpoint: endpoint {
+			remote-endpoint = <&main_ois_cam1>;
+		};
+	};
+	port@5 {
+		reg = <5>;
+		main_ois_cam2_endpoint: endpoint {
+			remote-endpoint = <&main_ois_cam2>;
+		};
+	};
 };
 
 &i2c2 {
@@ -636,6 +656,7 @@
 		avdd-supply = <&rt5133_ldo4>;
 		afvdd1-supply = <&rt5133_gpio1>;
 		dovdd-supply = <&camera_common_dovdd>;
+		oisvdd-supply = <&camera_common_oisvdd>;
 		base-supply = <&rt5133_base>;
 
 		clocks = <&topckgen_clk CLK_TOP_UNIVPLL_192M_D32>,
@@ -661,6 +682,19 @@
 		reg = <0x55>;
 		names = "ov64b_cust_eeprom";
 		status = "okay";
+	};
+
+	/* ois */
+	camera-ois-main2@f {
+		compatible = "mediatek,dw9781d";
+		reg = <0x0f>;
+		vdd-supply = <&camera_common_oisvdd>;
+		rst-supply = <&camera_common_dovdd>;
+		port {
+			main_ois_cam2: endpoint {
+				remote-endpoint = <&main_ois_cam2_endpoint>;
+			};
+		};
 	};
 };
 
@@ -709,6 +743,7 @@
 		avdd-supply = <&rt5133_ldo3>;
 		afvdd-supply = <&rt5133_ldo2>;
 		dovdd-supply = <&camera_common_dovdd>;
+		oisvdd-supply = <&rt5133_ldo1>;
 		base-supply = <&rt5133_base>;
 
 		clocks = <&topckgen_clk CLK_TOP_UNIVPLL_192M_D32>,
@@ -734,6 +769,19 @@
 		reg = <0x56>;
 		names = "imx758_cust_eeprom";
 		status = "okay";
+	};
+
+	/* ois */
+	camera-ois-main@e {
+		compatible = "mediatek,dw9781c";
+		reg = <0x0e>;
+		vdd-supply = <&rt5133_ldo1>;
+		rst-supply = <&camera_common_dovdd>;
+		port {
+			main_ois_cam1: endpoint {
+				remote-endpoint = <&main_ois_cam1_endpoint>;
+			};
+		};
 	};
 };
 
