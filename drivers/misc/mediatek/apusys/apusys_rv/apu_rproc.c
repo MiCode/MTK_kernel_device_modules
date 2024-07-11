@@ -92,7 +92,7 @@ static int __apu_run(struct rproc *rproc)
 		if ((apu->platdata->flags & F_BRINGUP) == 0)
 			apu_regdump();
 		apu->bypass_pwr_off_chk = true;
-		// apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
+		apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
 		goto stop;
 	}
 	if (ret == -ERESTARTSYS)
