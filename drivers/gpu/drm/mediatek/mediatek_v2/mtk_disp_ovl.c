@@ -4055,6 +4055,7 @@ void mtk_ovl_cal_golden_setting(struct mtk_ddp_config *cfg,
 	bool is_dc = cfg->p_golden_setting_context->is_dc;
 	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
 	const struct mtk_disp_ovl_data *data = ovl->data;
+	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
 	DDPDBG("%s,is_dc:%d\n", __func__, is_dc);
 
@@ -4087,9 +4088,12 @@ void mtk_ovl_cal_golden_setting(struct mtk_ddp_config *cfg,
 
 	/* OVL_RDMA_BUF_LOW_TH */
 	gs[GS_OVL_RDMA_ULTRA_LOW_TH] = 0;
-	gs[GS_OVL_RDMA_PRE_ULTRA_LOW_TH] = (!is_dc) ?
-				0 : (gs[GS_OVL_RDMA_FIFO_SIZE] / 8);
-
+	if (priv && priv->data->mmsys_id == MMSYS_MT6877)
+		gs[GS_OVL_RDMA_PRE_ULTRA_LOW_TH] = (!is_dc) ?
+					0 : (gs[GS_OVL_RDMA_FIFO_SIZE] / 12);
+	else
+		gs[GS_OVL_RDMA_PRE_ULTRA_LOW_TH] = (!is_dc) ?
+					0 : (gs[GS_OVL_RDMA_FIFO_SIZE] / 8);
 	/* OVL_RDMA_BUF_HIGH_TH */
 	gs[GS_OVL_RDMA_PRE_ULTRA_HIGH_TH] = (!is_dc) ?
 				0 : (gs[GS_OVL_RDMA_FIFO_SIZE] * 6 / 8);
