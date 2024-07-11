@@ -11633,7 +11633,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"cam_main_cam2sys_gals_con",
 					"cam_main_cam2mm2_gals_con",
 					"cam_main_camsv_a_con";
-#if 0
+			mmqos-supply = <&mmqos>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L14_P0_CAMSV_A_CQI_E1)
 					&mmqos SLAVE_COMMON(0)>,
@@ -11663,7 +11663,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"l14_stg0_mdp_a",
 				"l14_stg1_disp_a",
 				"l14_stg1_mdp_a";
-#endif
 		};
 
 		camsv2@1a510000 {
@@ -11699,7 +11698,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"cam_main_cam2sys_gals_con",
 					"cam_main_cam2mm2_gals_con",
 					"cam_main_camsv_b_con";
-#if 0
+			mmqos-supply = <&mmqos>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L13_P0_CAMSV_B_CQI_E1)
 					&mmqos SLAVE_COMMON(0)>,
@@ -11729,7 +11728,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"l13_stg0_mdp_b",
 				"l13_stg1_disp_b",
 				"l13_stg1_mdp_b";
-#endif
 		};
 
 		camsv3@1a520000 {
@@ -11766,7 +11764,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"cam_main_cam2sys_gals_con",
 					"cam_main_cam2mm2_gals_con",
 					"cam_main_camsv_c_con";
-#if 0
+			mmqos-supply = <&mmqos>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L29_P0_CAMSV_C_CQI_E1)
 					&mmqos SLAVE_COMMON(0)>,
@@ -11778,7 +11776,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"l29_cqi_c",
 				"l29_imgo_c",
 				"l29_stg_c";
-#endif
 		};
 
 		camsv4@1a530000 {
@@ -11815,7 +11812,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"cam_main_cam2sys_gals_con",
 					"cam_main_cam2mm2_gals_con",
 					"cam_main_camsv_d_con";
-#if 0
+			mmqos-supply = <&mmqos>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L29_P1_CAMSV_D_CQI_E1)
 					&mmqos SLAVE_COMMON(0)>,
@@ -11827,7 +11824,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"l29_cqi_d",
 				"l29_imgo_d",
 				"l29_stg_d";
-#endif
 		};
 
 		camsv5@1a540000 {
@@ -11864,7 +11860,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"cam_main_cam2sys_gals_con",
 					"cam_main_cam2mm2_gals_con",
 					"cam_main_camsv_e_con";
-#if 0
+			mmqos-supply = <&mmqos>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L29_P2_CAMSV_E_CQI_E1)
 					&mmqos SLAVE_COMMON(0)>,
@@ -11876,7 +11872,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"l29_cqi_e",
 				"l29_imgo_e",
 				"l29_stg_e";
-#endif
 		};
 
 		mraw1@1a700000 {
@@ -11907,7 +11902,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"camsys_mraw_gals",
 					"camsys_mraw_camtg",
 					"camsys_main_mraw0";
-#if 0
+			mmqos-supply = <&mmqos>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L25_P0_CQI_M1_MRAW0)
 					&mmqos SLAVE_COMMON(0)>,
@@ -11919,7 +11914,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"l25_cqi_m1_0",
 				"l25_imgo_m1_0",
 				"l25_stg_m1_0";
-#endif
 		};
 
 		mraw2@1a710000 {
@@ -11950,19 +11944,18 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"camsys_mraw_gals",
 					"camsys_mraw_camtg",
 					"camsys_main_mraw1";
-#if 0
+			mmqos-supply = <&mmqos>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L26_P0_CQI_M1_MRAW1)
-					&mmqos SLAVE_COMMON(0)>,
+					&mmqos SLAVE_COMMON(1)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L26_P1_IMGO_M1_MRAW1)
-					&mmqos SLAVE_COMMON(0)>,
+					&mmqos SLAVE_COMMON(1)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L26_P11_STG_M1_MRAW1)
-					&mmqos SLAVE_COMMON(0)>;
+					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names =
 				"l26_cqi_m1_1",
 				"l26_imgo_m1_1",
 				"l26_stg_m1_1";
-#endif
 		};
 
 		mraw3@1a720000 {
@@ -11993,7 +11986,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"camsys_mraw_gals",
 					"camsys_mraw_camtg",
 					"camsys_main_mraw2";
-#if 0
+			mmqos-supply = <&mmqos>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L25_P2_CQI_M1_MRAW2)
 					&mmqos SLAVE_COMMON(0)>,
@@ -12005,7 +11998,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"l25_cqi_m1_2",
 				"l25_imgo_m1_2",
 				"l25_stg_m1_2";
-#endif
 		};
 
 		pda: pda@1a750000 {
