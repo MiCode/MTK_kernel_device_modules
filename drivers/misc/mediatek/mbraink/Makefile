@@ -39,7 +39,7 @@ mtk_mbraink-objs += mbraink_power.o mbraink_video.o mbraink_process.o mbraink.o 
 ifeq ($(CONFIG_MTK_MBRAINK_MT8678),m)
 mtk_mbraink-objs += mbraink_auto/mbraink_auto.o mbraink_auto/mbraink_auto_hv.o
 ifeq ($(CONFIG_GRT_HYPERVISOR),m)
-mtk_mbraink-objs += mbraink_auto/mbraink_hypervisor_virtio.o
+mtk_mbraink-objs += mbraink_auto/mbraink_hypervisor_virtio.o mbraink_auto/mbraink_hypervisor.o
 subdir-ccflags-y += -I$(srctree)/kernel/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/vhost/	\
 			 -I$(KERNEL_SRC)/drivers/vhost/

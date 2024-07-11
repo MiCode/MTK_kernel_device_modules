@@ -14,6 +14,7 @@
 
 #if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
 #include "mbraink_hypervisor_virtio.h"
+#include "mbraink_hypervisor.h"
 #endif
 
 static long handle_cpu_loading_info(const void *auto_ioctl_data, void *mbraink_auto_data)
@@ -105,6 +106,51 @@ long mbraink_auto_ioctl(unsigned long arg, void *mbraink_data)
 		kfree(mbraink_auto_data);
 		break;
 	}
+#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+	case HYP_WFE_EXIT_COUNT:
+	{
+		mbraink_auto_data = kzalloc(sizeof(struct mbraink_hyp_wfe_exit_buf),
+									GFP_KERNEL);
+		if (!mbraink_auto_data)
+			goto End;
+		ret = handle_hyp_wfe_exit_count_info(auto_ioctl_buf->auto_ioctl_data,
+										mbraink_auto_data);
+		kfree(mbraink_auto_data);
+		break;
+	}
+	case HYP_IPI_LATENCY:
+	{
+		mbraink_auto_data = kzalloc(sizeof(struct mbraink_hyp_cpu_ipi_data_ringbuffer),
+									GFP_KERNEL);
+		if (!mbraink_auto_data)
+			goto End;
+		ret = handle_hyp_ipi_info(auto_ioctl_buf->auto_ioctl_data, mbraink_auto_data);
+		kfree(mbraink_auto_data);
+		break;
+	}
+	case HYP_VIRQ_INJECT_LATENCY:
+	{
+		mbraink_auto_data = kzalloc(sizeof(struct mbraink_hyp_comcat_trace_buf),
+									GFP_KERNEL);
+		if (!mbraink_auto_data)
+			goto End;
+		ret = handle_hyp_wfe_exit_count_info(auto_ioctl_buf->auto_ioctl_data,
+										mbraink_auto_data);
+		kfree(mbraink_auto_data);
+		break;
+	}
+	case HYP_VCPU_SCHED_LATENCY:
+	{
+		mbraink_auto_data = kzalloc(sizeof(struct mbraink_hyp_vCpu_sched_delay_buf),
+									GFP_KERNEL);
+		if (!mbraink_auto_data)
+			goto End;
+		ret = handle_hyp_wfe_exit_count_info(auto_ioctl_buf->auto_ioctl_data,
+										mbraink_auto_data);
+		kfree(mbraink_auto_data);
+		break;
+	}
+#endif /*end of IS_ENABLED(CONFIG_GRT_HYPERVISOR)*/
 	default:
 		pr_notice("%s:illegal ioctl number %u.\n", __func__,
 			auto_ioctl_buf->auto_ioctl_type);
