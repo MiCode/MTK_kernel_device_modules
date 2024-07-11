@@ -7,53 +7,68 @@
 #define _BLOCKTAG_FUSE_TRACE_H
 
 #include <linux/types.h>
+#include <linux/fuse.h>
 #include "blocktag-internal.h"
 
-#define FUSE_MAX_LOG (512)
+#define MAX_FUSE_REQ_HIST_CNT (512)
 
-struct fuse_log_s {
-	uint64_t ns_time;
-	int pid;
-	int event_type;		/* trace event type */
-	const char *func;
-	int line;
-	struct inode *inode;
-	struct inode *backing;
+struct btag_fuse_entry {
+	unsigned long flags;
+	u64 time;
+	u64 unique;
 	u64 nodeid;
-	u64 nlookup;
-	u64 nlookup_after;
+	u32 uid;
+	u32 gid;
+	u32 pid;
+	u32 opcode;
+	u32 filter;
+	u32 event;
+	u8 cpu;
 };
 
-struct fuse_logs_s {
-	long max;				/* max number of logs */
-	long nr;				/* current number of logs */
-	struct fuse_log_s trace[FUSE_MAX_LOG];
-	int head;
-	int tail;
+struct btag_fuse_req_hist {
+	struct btag_fuse_entry req_hist[MAX_FUSE_REQ_HIST_CNT];
+	u32 next;
+	spinlock_t lock;
+	u8 enable;
+};
+
+struct btag_fuse_req_stat {
+	u64 count;
+	u64 prefilter;
+	u64 postfilter;
+};
+
+/*
+ * periodic fuse request count statistiics
+ * @lock:         protect whole contents in this structure
+ * @accumulator:  fuse request count accumulator for the current ongoing window
+ * @last_cnt:     the fuse request count of the last completed window
+ * @distribution: the distribution function of fuse request count
+ *                index 0 for 0 count
+ *                index 1..32 for [2^(index - 1), 2^index)
+ */
+struct fuse_periodic_stat {
+	u64 accumulator;
+	u64 last_cnt;
+	u64 max_cnt;
+	u64 distribution[33];
 	spinlock_t lock;
 };
 
 enum btag_fuse_event {
-	MTK_FUSE_NLOOKUP = 0,
-	MTK_FUSE_QUEUE_FORGET,
-	MTK_FUSE_FORCE_FORGET,
-	MTK_FUSE_IGET_BACKING,
+	BTAG_FUSE_REQ,
 	NR_BTAG_FUSE_EVENT,
 };
 
-void btag_fuse_nlookup(void *data, const char *func, int line,
-			   struct inode *inode, u64 nodeid,
-			   u64 nlookup, u64 nlookup_after);
-void btag_fuse_queue_forget(void *data, const char *func, int line,
-				u64 nodeid, u64 nlookup);
-void btag_fuse_force_forget(void *data, const char *func, int line,
-				struct inode *inode, u64 nodeid, u64 nlookup);
-void btag_fuse_iget_backing(void *data, const char *func, int line,
-			    struct inode *inode, u64 nodeid, struct inode *b);
+u64 btag_fuse_pstat_get_last(void);
+u64 btag_fuse_pstat_get_max(void);
+u64 btag_fuse_pstat_get_distribution(u32 idx);
 
-void mtk_btag_fuse_show(char **buff, unsigned long *size,
-		struct seq_file *seq);
+void mtk_btag_fuse_req_hist_show(char **buff, unsigned long *size,
+				 struct seq_file *seq);
 
-void mtk_btag_fuse_init(void);
+void mtk_btag_fuse_init(struct proc_dir_entry *btag_root);
+void mtk_btag_fuse_exit(void);
 
 #endif /* _BLOCKTAG_FUSE_TRACE_H */
