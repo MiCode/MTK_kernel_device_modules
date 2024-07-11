@@ -71,6 +71,10 @@ mediatek-drm-y := mtk_drm_drv.o \
 #ccflags-y += -DDRM_CMDQ_DISABLE
 #mediatek-drm-y += mtk_cmdq_dummy.o
 
+ifeq ($(CONFIG_DRM_MEDIATEK_AUTO_YCT), m)
+mediatek-drm-y += mtk_drm_ddp_comp_auto.o
+endif
+
 ifeq ($(CONFIG_DRM_MEDIATEK_DEBUG_FS),y)
 mediatek-drm-y += mtk_drm_debugfs.o
 endif

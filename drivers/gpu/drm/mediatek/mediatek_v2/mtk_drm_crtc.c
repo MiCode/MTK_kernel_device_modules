@@ -79,6 +79,10 @@
 
 #include <soc/mediatek/mmqos.h>
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#include "mtk_drm_ddp_comp_auto.h"
+#endif
+
 int debug_trigger_loop;
 module_param(debug_trigger_loop, int, 0644);
 
@@ -3578,7 +3582,7 @@ struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,
 	DDPINFO("%s crtc %d local_index %d\n", __func__, drm_crtc_index(&mtk_crtc->base), local_index);
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-		if (mtk_ddp_comp_is_rdma(comp)) {
+		if (mtk_ddp_comp_is_rdma(comp) && !mtk_ddp_comp_is_virt(comp)) {
 			if (exdma_idx == local_index) {
 				DDPINFO("%s get comp %s\n",
 					__func__, mtk_dump_comp_str(comp));
@@ -19908,7 +19912,7 @@ static void mtk_drm_crtc_init_layer_nr(struct mtk_drm_crtc *mtk_crtc, int pipe)
 	mtk_crtc->layer_nr = 0;
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-		if (mtk_ddp_comp_is_rdma(comp)) {
+		if (mtk_ddp_comp_is_rdma(comp) && !mtk_ddp_comp_is_virt(comp)) {
 			DDPINFO("%s layer %d comp %s\n",
 				__func__, mtk_crtc->layer_nr, mtk_dump_comp_str(comp));
 			mtk_crtc->layer_nr++;
