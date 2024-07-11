@@ -26,4 +26,8 @@
 #include "mtk_mdpm_platform_6853.h"
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6833)
+#include "mtk_mdpm_platform_6833.h"
+#endif
+
 #endif /* _MTK_MDPM_H_ */

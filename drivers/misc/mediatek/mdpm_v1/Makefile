@@ -44,3 +44,9 @@ obj-$(CONFIG_MTK_MDPM_LEGACY) += mtk_mdpm_v1.o
 mtk_mdpm_v1-y += mtk_mdpm_common_v2.o
 mtk_mdpm_v1-y += mtk_mdpm_platform_6853.o
 endif
+
+ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6833)),)
+obj-$(CONFIG_MTK_MDPM_LEGACY) += mtk_mdpm_v1.o
+mtk_mdpm_v1-y += mtk_mdpm_common_v2.o
+mtk_mdpm_v1-y += mtk_mdpm_platform_6833.o
+endif
