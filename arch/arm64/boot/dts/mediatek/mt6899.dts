@@ -5028,6 +5028,19 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				};
 			};
 		};
+		consys {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&consys>;
+
+			trips {
+				consys_crit: consys-crit {
+					temperature = <119000>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
 
 		pmic6363-vio18 {
 			polling-delay = <0>; /* milliseconds */
