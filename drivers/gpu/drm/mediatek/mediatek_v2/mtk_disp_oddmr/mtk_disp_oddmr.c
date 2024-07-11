@@ -5493,11 +5493,9 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		else if (comp->larb_num > 1)
 			data->larb_id = comp->larb_ids[0];
 
-		if (data->larb_id < 0) {
-			DDPMSG("%s, comp:%d, invalid larb id:%d, num:%d\n",
-				__func__, comp->id, data->larb_id, comp->larb_num);
+		if (data->larb_id < 0)
 			break;
-		}
+
 		mtk_oddmr_sum_hrt(comp, &weight);
 		if (weight > 0) {
 			bw_base = mtk_drm_primary_frame_bw(&comp->mtk_crtc->base);

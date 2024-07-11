@@ -694,6 +694,7 @@ void mtk_layering_rule_init(struct drm_device *dev)
 		path_data = mtk_addon_module_get_path(module_data->module);
 
 		if(private->data->mmsys_id != MMSYS_MT6991 &&
+			private->data->mmsys_id != MMSYS_MT6989 &&
 			private->data->mmsys_id != MMSYS_MT6989) {
 			comp = private->ddp_comp[module_data->attach_comp];
 			if (!comp) {

@@ -634,6 +634,15 @@ void mtk_dump_mminfra_ck(void *_priv)
 			mt_get_fmeter_freq(22, CKGEN_CK2),
 			mt_get_fmeter_freq(20, CKGEN_CK2),
 			mt_get_fmeter_freq(9, ABIST));
+	} else if (priv->data->mmsys_id == MMSYS_MT6899) {
+		static void __iomem *vlp_vote_done;
+
+		if (!vlp_vote_done)
+			vlp_vote_done = ioremap(0x1c00091c, 0x4);
+
+		/* defined in clk-mt6899-fmeter.c */
+		DDPMSG("FM_MMINFRA_CK:%u VLP_VOTE_DONE:%u\n",
+			mt_get_fmeter_freq(21, CKGEN_CK2), readl(vlp_vote_done));
 	}
 }
 
@@ -2206,14 +2215,14 @@ static void mtk_drm_cwb_info_init(struct drm_crtc *crtc)
 	if (crtc_idx == 0) {
 		if (cwb_info->scn == WDMA_WRITE_BACK) {
 			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_WDMA0];
-			if (priv->data->mmsys_id == MMSYS_MT6989)
+			if (priv->data->mmsys_id == MMSYS_MT6989 || priv->data->mmsys_id == MMSYS_MT6899)
 				cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_WDMA1];
 		}
 		else if ((priv->data->mmsys_id == MMSYS_MT6985 ||
 					priv->data->mmsys_id == MMSYS_MT6897)
 			&& cwb_info->scn == WDMA_WRITE_BACK_OVL)
 			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_OVLSYS_WDMA1];
-		else if (priv->data->mmsys_id == MMSYS_MT6989)
+		else if (priv->data->mmsys_id == MMSYS_MT6989 || priv->data->mmsys_id == MMSYS_MT6899)
 			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_OVLSYS_WDMA1];
 	}
 

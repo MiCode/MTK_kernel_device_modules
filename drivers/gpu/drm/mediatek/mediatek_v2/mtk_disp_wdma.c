@@ -1740,7 +1740,8 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 
 	/* WDMA secure memory buffer config */
 	if (is_secure) {
-		if (priv->data->mmsys_id == MMSYS_MT6989) {
+		if (priv->data->mmsys_id == MMSYS_MT6989 ||
+			priv->data->mmsys_id == MMSYS_MT6899) {
 			mtk_ddp_write(comp, 0x0,
 				WDMA_SECURITY_DISABLE, handle);
 			mmsys_reg = priv->side_config_regs_pa;
@@ -1762,7 +1763,8 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 							mmsys_reg + MT6991_DISP1_WDMA1_AID_SETTING, BIT(0), BIT(0));
 		}
 	} else {
-		if (priv->data->mmsys_id == MMSYS_MT6989) {
+		if (priv->data->mmsys_id == MMSYS_MT6989 ||
+			priv->data->mmsys_id == MMSYS_MT6899) {
 			mtk_ddp_write(comp, 0x1,
 				WDMA_SECURITY_DISABLE, handle);
 			mmsys_reg = priv->side_config_regs_pa;
