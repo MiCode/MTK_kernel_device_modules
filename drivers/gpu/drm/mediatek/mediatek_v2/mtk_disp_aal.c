@@ -2404,6 +2404,10 @@ static int disp_aal_act_eventctl(struct mtk_ddp_comp *comp, void *data)
 	if (enable)
 		mtk_crtc_check_trigger(comp->mtk_crtc, delay_trigger, true);
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	disp_aal_set_interrupt(comp, enable, NULL);
+#endif
+
 	atomic_set(&aal_data->primary_data->event_en, enable);
 
 	if (bypass) {
@@ -2438,16 +2442,16 @@ static void disp_aal_wait_hist(struct mtk_ddp_comp *comp)
 		}
 		AALFLOW_LOG("aal0 and aal1 hist_available = 1, waken up, ret = %d\n", ret);
 	} else if (atomic_read(&aal_data->hist_available) == 0) {
-		AALFLOW_LOG("wait_event_interruptible\n");
+		AALFLOW_LOG("comp_id:%d wait_event_interruptible\n", comp->id);
 		ret = wait_event_interruptible(aal_data->primary_data->hist_wq,
 				atomic_read(&aal_data->hist_available) == 1 &&
 				comp->mtk_crtc->enabled &&
 				!atomic_read(&aal_data->primary_data->should_stop));
 		if (ret == -ERESTARTSYS)
 			DDPMSG("%s: interrupted unexpected by signal\n", __func__);
-		AALFLOW_LOG("hist_available = 1, waken up, ret = %d\n", ret);
+		AALFLOW_LOG("comp_id:%d hist_available = 1, waken up, ret = %d\n", comp->id, ret);
 	} else
-		AALFLOW_LOG("hist_available = 0\n");
+		AALFLOW_LOG("comp_id:%d hist_available = 0\n", comp->id);
 }
 
 static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
@@ -2599,8 +2603,8 @@ int disp_aal_act_set_trigger_state(struct mtk_ddp_comp *comp, void *data)
 
 	dre3EnState = trigger_state->dre3_en_state;
 
-	AALFLOW_LOG("dre3EnState: 0x%x, trigger_state: %d, ali: %d, aliThres: %d\n",
-			dre3EnState,
+	AALFLOW_LOG("compid %d, dre3EnState: 0x%x, trigger_state: %d, ali: %d, aliThres: %d\n",
+			comp->id, dre3EnState,
 			trigger_state->dre_frm_trigger,
 			trigger_state->curAli, trigger_state->aliThreshold);
 
@@ -2793,6 +2797,7 @@ static int disp_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 		return -1;
 	}
 	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
+
 	/* Not need to protect g_aal_param, */
 	/* since only AALService can set AAL parameters. */
 	memcpy(&aal_data->primary_data->aal_param, param, sizeof(*param));
@@ -3405,6 +3410,12 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 
 	if (aal_data->primary_data->aal_fo->mtk_dre30_support) {
 		mutex_lock(&aal_data->primary_data->config_lock);
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+		if (aal_data->dre3_curve_need_reset) {
+			disp_aal_dre3_reset_to_linear(comp, 0);
+			aal_data->dre3_curve_need_reset = false;
+		}
+#endif
 		disp_aal_write_dre3_curve_full(comp);
 		mutex_unlock(&aal_data->primary_data->config_lock);
 	}
@@ -3503,10 +3514,13 @@ void disp_aal_first_cfg(struct mtk_ddp_comp *comp,
 		aal_data->primary_data->fps = drm_mode_vrefresh(mode);
 		DDPMSG("%s: first config set fps: %d\n", __func__, aal_data->primary_data->fps);
 	}
+
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	if ((aal_data != NULL) && (aal_data->primary_data != NULL) &&
-			(aal_data->primary_data->aal_fo != NULL) &&
-			(aal_data->primary_data->aal_fo->mtk_dre30_support))
+		(aal_data->primary_data->aal_fo != NULL) &&
+		(aal_data->primary_data->aal_fo->mtk_dre30_support))
 		disp_aal_init_dre3_curve(comp);
+#endif
 
 	disp_aal_config(comp, cfg, handle);
 }
@@ -3659,6 +3673,10 @@ static int disp_aal_probe(struct platform_device *pdev)
 			}
 		}
 	}
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	priv->dre3_curve_need_reset = true;
+#endif
 
 	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
 				&mtk_disp_aal_funcs);

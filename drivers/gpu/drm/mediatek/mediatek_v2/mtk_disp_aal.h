@@ -169,6 +169,10 @@ struct mtk_disp_aal {
 	struct mtk_ddp_comp *comp_dmdp_aal;
 	unsigned int set_partial_update;
 	unsigned int roi_height;
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	bool dre3_curve_need_reset;
+#endif
 };
 
 static inline struct mtk_disp_aal *comp_to_aal(struct mtk_ddp_comp *comp)
