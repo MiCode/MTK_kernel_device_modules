@@ -203,6 +203,7 @@ struct max96851_bridge {
 	bool is_support_touch;
 	bool prepared;
 	bool enabled;
+	bool suspend;
 	bool is_dp;
 
 	char *panel_name;

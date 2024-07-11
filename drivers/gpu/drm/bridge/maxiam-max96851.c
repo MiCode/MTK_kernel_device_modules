@@ -1295,6 +1295,7 @@ static void max96851_pre_enable(struct drm_bridge *bridge)
 	}
 
 	max_bridge->prepared = true;
+	max_bridge->suspend = false;
 	pr_info("[MAX96851] Serdes DP: %d %s-\n", max_bridge->is_dp, __func__);
 }
 
@@ -1330,6 +1331,9 @@ static void max96851_disable(struct drm_bridge *bridge)
 
 	pr_info("[MAX96851] Serdes DP: %d %s+\n", max_bridge->is_dp, __func__);
 
+	if (max_bridge->suspend || !max_bridge->enabled)
+		return;
+
 	/* turn off backlight */
 	if (max_bridge->superframe_support) {
 		turn_on_off_bl(max_bridge, false, 0x01);
@@ -1343,28 +1347,7 @@ static void max96851_disable(struct drm_bridge *bridge)
 		turn_on_off_bl(max_bridge, false, 0x0);
 
 	max_bridge->enabled = false;
-
-	pr_info("[MAX96851] Serdes DP: %d %s-\n", max_bridge->is_dp, __func__);
-}
-
-static void max96851_post_disbale(struct drm_bridge *bridge)
-{
-	struct max96851_bridge *max_bridge = bridge_to_max96851(bridge);
-
-	pr_info("[MAX96851] Serdes DP: %d %s+\n", max_bridge->is_dp, __func__);
-
-
-	if (max_bridge->is_support_hotplug) {
-		if (max_bridge->irq_num <= 0) {
-			atomic_set(&max_bridge->hotplug_event, 0);
-			wake_up_interruptible(&max_bridge->waitq);
-		}
-	}
-
-	gpiod_set_value(max_bridge->gpio_rst_n, 0);
-
 	max_bridge->prepared = false;
-
 	pr_info("[MAX96851] Serdes DP: %d %s-\n", max_bridge->is_dp, __func__);
 }
 
@@ -1440,7 +1423,6 @@ static const struct drm_bridge_funcs max96851_bridge_funcs = {
 	.pre_enable = max96851_pre_enable,
 	.enable = max96851_enable,
 	.disable = max96851_disable,
-	.post_disable = max96851_post_disbale,
 	.attach = max96851_bridge_attach,
 	.get_modes = max96851_bridge_get_modes,
 };
@@ -1482,6 +1464,7 @@ static int max96851_probe(struct i2c_client *client)
 	}
 
 	max_bridge->dev = dev;
+	max_bridge->dev->driver_data = max_bridge;
 	i2c_set_clientdata(client, max_bridge);
 	max_bridge->client = client;
 	max_bridge->max96851_i2c = client;
@@ -1551,6 +1534,60 @@ static void max96851_remove(struct i2c_client *client)
 	drm_bridge_remove(&max_bridge->bridge);
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int maxiam_max96851_suspend(struct device *dev)
+{
+	struct max96851_bridge *max_bridge = dev->driver_data;
+
+	pr_info("[MAX96851] Serdes DP: %d %s+\n", max_bridge->is_dp, __func__);
+	if (max_bridge->suspend)
+		return 0;
+
+	/* turn off backlight */
+	if (max_bridge->enabled) {
+		if (max_bridge->superframe_support) {
+			turn_on_off_bl(max_bridge, false, 0x01);
+			turn_on_off_bl(max_bridge, false, 0x02);
+		} else if(max_bridge->dual_link_support) {
+			turn_on_off_bl(max_bridge, false, 0x0);
+		} else if (max_bridge->is_support_mst) {
+			turn_on_off_bl(max_bridge, false, 0x01);
+			turn_on_off_bl(max_bridge, false, 0x02);
+		} else
+			turn_on_off_bl(max_bridge, false, 0x0);
+	}
+
+	if (max_bridge->is_support_hotplug) {
+		if (max_bridge->irq_num <= 0) {
+			atomic_set(&max_bridge->hotplug_event, 0);
+			wake_up_interruptible(&max_bridge->waitq);
+		}
+	}
+
+	msleep(500);
+	gpiod_set_value(max_bridge->gpio_rst_n, 0);
+	max_bridge->suspend = true;
+	pr_info("[MAX96851] Serdes DP: %d %s-\n", max_bridge->is_dp, __func__);
+
+	return 0;
+}
+
+static int maxiam_max96851_resume(struct device *dev)
+{
+	struct max96851_bridge *max_bridge = dev->driver_data;
+
+	pr_info("[MAX96851] Serdes DP: %d %s+\n", max_bridge->is_dp, __func__);
+
+	reset_ser(max_bridge);
+	max_bridge->suspend = false;
+
+	pr_info("[MAX96851] Serdes DP: %d %s-\n", max_bridge->is_dp, __func__);
+	return 0;
+}
+#endif
+
+static SIMPLE_DEV_PM_OPS(maxiam_max96851_pm_ops, maxiam_max96851_suspend, maxiam_max96851_resume);
+
 static const struct i2c_device_id max96851_edp_i2c_table[] = {
 	{"max96851-dp", 0},
 	{"max96851-edp", 0},
@@ -1575,6 +1612,7 @@ static struct i2c_driver max96851_edp_driver = {
 		.owner = THIS_MODULE,
 		.name = "max96851-serdes",
 		.of_match_table = of_match_ptr(max96851_serdes_match),
+		.pm = &maxiam_max96851_pm_ops,
 	},
 
 };
