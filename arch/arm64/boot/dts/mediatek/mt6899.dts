@@ -7460,6 +7460,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x13f820 0 0x20>;
 		};
 
+		gpu_dvfs_mode: gpu-loading-mode {
+			compatible = "mediatek,gpu_loading_mode";
+			dvfs-loading-mode = <6>;
+			dvfs-workload-mode = <6>;
+		};
+
 		gpueb: gpueb@13c00000 {
 			compatible = "mediatek,gpueb";
 			gpueb-support = <1>;
