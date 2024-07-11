@@ -48,6 +48,10 @@ static const struct usb_audio_quirk_flags_table mtk_snd_quirk_flags_table[] = {
 		{} /* terminator */
 };
 
+
+static xhci_enum_mbrain_callback xhci_enum_mbrain_cb;
+DEFINE_HASHTABLE(mbrain_hash, 3);
+
 static int usb_match_device(struct usb_device *dev, const struct usb_device_id *id)
 {
 	if ((id->match_flags & USB_DEVICE_ID_MATCH_VENDOR) &&
@@ -217,6 +221,118 @@ static bool xhci_mtk_is_usb_audio(struct urb *urb)
 	return false;
 }
 
+int register_xhci_enum_mbrain_cb(xhci_enum_mbrain_callback cb)
+{
+	if (!cb)
+		return -EINVAL;
+
+	xhci_enum_mbrain_cb = cb;
+	return 0;
+}
+EXPORT_SYMBOL(register_xhci_enum_mbrain_cb);
+
+int unregister_xhci_enum_mbrain_cb(void)
+{
+	xhci_enum_mbrain_cb = NULL ;
+	return 0;
+}
+EXPORT_SYMBOL(unregister_xhci_enum_mbrain_cb);
+
+static unsigned long hash_string(const char *str)
+{
+	unsigned long hash = 5381;
+	int c;
+
+	while ((c = *str++))
+		hash = ((hash << 5) + hash) + c;
+
+	return hash;
+}
+
+static struct xhci_mbrain_hash_node *add_to_hash_table(struct usb_device *udev)
+{
+	struct xhci_mbrain_hash_node *item;
+	unsigned long hash = hash_string(dev_name(&udev->dev));
+	struct xhci_mbrain *mbrain_data;
+
+	hash_for_each_possible(mbrain_hash, item, node, hash) {
+		if (strcmp(item->dev_name, dev_name(&udev->dev)) == 0) {
+			mbrain_data = &item->mbrain_data;
+
+			dev_info(&udev->dev, "mbrain: use the exist node: mbrain_data=0x%p\n", mbrain_data);
+			memset(item, 0x00, sizeof(struct xhci_mbrain_hash_node));
+			return item;
+		}
+	}
+
+	item = kzalloc(sizeof(struct xhci_mbrain_hash_node), GFP_ATOMIC);
+	strncpy(item->dev_name, dev_name(&udev->dev), sizeof(item->dev_name));
+	dev_info(&udev->dev, "mbrain: allocate new node: mbrain_data=0x%p\n", &item->mbrain_data);
+	hash_add(mbrain_hash, &item->node, hash);
+	return item;
+}
+
+static void xhci_mtk_mbrain_action(struct urb *urb)
+{
+	if (urb->setup_packet) {
+		struct usb_device *udev = urb->dev;
+		u16 bcdDevice = le16_to_cpu(udev->descriptor.bcdDevice);
+		struct xhci_mbrain_hash_node *hash_node;
+		struct xhci_mbrain *mbrain_data = dev_get_drvdata(&udev->dev);
+
+		if (!mbrain_data) {
+			hash_node = add_to_hash_table(udev);
+			mbrain_data = &hash_node->mbrain_data;
+			dev_set_drvdata(&udev->dev, mbrain_data);
+			dev_info(&udev->dev, "mbrain: dev_set_drvdata: mbrain_data=0x%p\n", mbrain_data);
+		}
+
+		hash_node = container_of(mbrain_data, struct xhci_mbrain_hash_node, mbrain_data);
+		if (hash_node->updated_db)
+			return;
+
+		mbrain_data->vid = le16_to_cpu(udev->descriptor.idVendor);
+		mbrain_data->pid = le16_to_cpu(udev->descriptor.idProduct);
+		mbrain_data->bcd = bcdDevice;
+		mbrain_data->speed= udev->speed;
+
+		if (mbrain_data->state != udev->state) {
+			mbrain_data->state = udev->state;
+			hash_node->jiffies = jiffies;
+			dev_info(&udev->dev,
+				"mbrain: idVendor=%04x, idProduct=%04x, bcdDevice=%2x.%02x, state=%d, speed=%d\n",
+					mbrain_data->vid, mbrain_data->pid,
+					mbrain_data->bcd >> 8, mbrain_data->bcd & 0xff,
+					mbrain_data->state, mbrain_data->speed
+				);
+		}
+
+		if (mbrain_data->state == USB_STATE_CONFIGURED || time_after(jiffies, hash_node->jiffies + 2*HZ)) {
+			hash_node->updated_db = true;
+			dev_info(&udev->dev, "mbrain: configured or already stay in state(%d) over 2s and try to update mbrain db\n",
+									mbrain_data->state);
+			if (xhci_enum_mbrain_cb) {
+				xhci_enum_mbrain_cb(*mbrain_data);
+			}
+		}
+	}
+
+
+}
+
+static void xhci_mtk_mbrain_cleanup(struct device *dev)
+{
+	struct xhci_mbrain_hash_node *item;
+	struct hlist_node *tmp;
+	int bkt;
+
+	dev_info(dev, "mbrain: cleanup hash\n");
+	hash_for_each_safe(mbrain_hash, bkt, tmp, item, node) {
+		hash_del(&item->node);
+		kfree(item);
+	}
+}
+
 static void xhci_trace_ep_urb_enqueue(void *data, struct urb *urb)
 {
 	if (!urb || !urb->setup_packet || !urb->dev)
@@ -239,6 +355,8 @@ static void xhci_trace_ep_urb_giveback(void *data, struct urb *urb)
 		/* apply set sample rate delay */
 		xhci_mtk_usb_set_sample_rate_quirk(urb);
 	}
+
+	xhci_mtk_mbrain_action(urb);
 }
 
 void xhci_mtk_trace_init(struct device *dev)
@@ -251,4 +369,6 @@ void xhci_mtk_trace_deinit(struct device *dev)
 {
 	WARN_ON(unregister_trace_xhci_urb_enqueue_(xhci_trace_ep_urb_enqueue, dev));
 	WARN_ON(unregister_trace_xhci_urb_giveback_(xhci_trace_ep_urb_giveback, dev));
+
+	xhci_mtk_mbrain_cleanup(dev);
 }
