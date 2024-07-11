@@ -19964,13 +19964,13 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			if(mtk_addon_scenario_support(&mtk_crtc->base, WDMA_WRITE_BACK_OVL))
 				mtk_crtc->crtc_caps.wb_caps[0].support = 1;
 			if(mtk_addon_scenario_support(&mtk_crtc->base, WDMA_WRITE_BACK))
-				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
+				mtk_crtc->crtc_caps.wb_caps[2].support = 1;
 			/* HW support cwb dump */
 			if (priv->data->mmsys_id == MMSYS_MT6985 ||
 				priv->data->mmsys_id == MMSYS_MT6989 ||
 				priv->data->mmsys_id == MMSYS_MT6899 ||
 				priv->data->mmsys_id == MMSYS_MT6897)
-				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
+				mtk_crtc->crtc_caps.wb_caps[2].support = 1;
 			if (priv->data->mmsys_id == MMSYS_MT6991) {
 				mtk_crtc->crtc_caps.wb_caps[0].support = 1;
 				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
