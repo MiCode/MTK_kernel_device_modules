@@ -2001,21 +2001,12 @@ static const struct mtk_gate_regs ipe_cg_regs = {
 		.ops = &mtk_clk_gate_ops_setclr,	\
 	}
 
-#define GATE_IPE_DUMMY(_id, _name, _parent, _shift) {	\
-		.id = _id,				\
-		.name = _name,				\
-		.parent_name = _parent,			\
-		.regs = &ipe_cg_regs,			\
-		.shift = _shift,			\
-		.ops = &mtk_clk_gate_ops_dummy,	\
-	}
-
 static const struct mtk_gate ipe_clks[] = {
-	GATE_IPE_DUMMY(CLK_IPE_LARB19, "ipe_larb19",
+	GATE_IPE(CLK_IPE_LARB19, "ipe_larb19",
 			"ipe_sel"/* parent */, 0),
-	GATE_IPE_DUMMY(CLK_IPE_LARB20, "ipe_larb20",
+	GATE_IPE(CLK_IPE_LARB20, "ipe_larb20",
 			"ipe_sel"/* parent */, 1),
-	GATE_IPE_DUMMY(CLK_IPE_SMI_SUBCOM, "ipe_smi_subcom",
+	GATE_IPE(CLK_IPE_SMI_SUBCOM, "ipe_smi_subcom",
 			"ipe_sel"/* parent */, 2),
 	GATE_IPE(CLK_IPE_FD, "ipe_fd",
 			"ipe_sel"/* parent */, 3),
@@ -2025,7 +2016,7 @@ static const struct mtk_gate ipe_clks[] = {
 			"ipe_sel"/* parent */, 5),
 	GATE_IPE(CLK_IPE_DPE, "ipe_dpe",
 			"ipe_sel"/* parent */, 6),
-	GATE_IPE_DUMMY(CLK_IPE_GALS, "ipe_gals",
+	GATE_IPE(CLK_IPE_GALS, "ipe_gals",
 			"img1_sel"/* parent */, 8),
 };
 
