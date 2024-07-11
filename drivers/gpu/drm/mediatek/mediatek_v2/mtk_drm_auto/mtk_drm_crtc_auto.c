@@ -149,33 +149,57 @@ void store_timing_to_dummy(struct drm_display_mode *timing,
 	}
 }
 
-void mtk_drm_backup_default_timing(struct mtk_drm_crtc *mtk_crtc,
-	struct drm_display_mode *timing)
+void mtk_drm_backup_default_timing(struct mtk_drm_crtc *mtk_crtc, struct drm_display_mode *timing)
 {
 	void __iomem *regs_base = NULL;
 	struct mtk_ddp_comp *comp;
 
 	DDPMSG("%s+, %d\n", __func__, __LINE__);
 
-	comp = mtk_ddp_comp_request_output(mtk_crtc);
-	regs_base = mtk_crtc->ovlsys0_rsz_regs;
+	if (timing == NULL) {
+		DDPMSG("[E] %s invalid timing!", __func__);
+		return;
+	}
 
-	if (timing != NULL)
-		store_timing_to_dummy(timing, regs_base, comp->id);
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (comp == NULL) {
+		DDPMSG("[E] %s get comp fail!", __func__);
+		return;
+	}
+
+	regs_base = ioremap(DUMMY_REG_BASE, 0x1000);
+	if (regs_base == NULL) {
+		DDPMSG("[E] %s regs base ioremap fail!", __func__);
+		return;
+	}
+
+	store_timing_to_dummy(timing, regs_base, comp->id);
+
+	iounmap(regs_base);
 }
 
-void mtk_drm_connector_notify_guest(struct mtk_drm_crtc *mtk_crtc,
-	unsigned int connector_enable)
+void mtk_drm_connector_notify_guest(struct mtk_drm_crtc *mtk_crtc, unsigned int connector_enable)
 {
 	void __iomem *regs_base = NULL;
 	struct mtk_ddp_comp *comp;
 
 	comp = mtk_ddp_comp_request_output(mtk_crtc);
-	regs_base = mtk_crtc->ovlsys0_rsz_regs;
+	if (comp == NULL) {
+		DDPMSG("[E] %s get comp fail!", __func__);
+		return;
+	}
+
+	regs_base = ioremap(DUMMY_REG_BASE, 0x1000);
+	if (regs_base == NULL) {
+		DDPMSG("[E] %s regs base ioremap fail!", __func__);
+		return;
+	}
 
 	if (comp->id == DDP_COMPONENT_DP_INTF0)
 		set_value_to_regs_field(connector_enable, regs_base +
 				MT6991_OVL_MDP_RSZ0_DUMM20, DP_INTF0_CONNECTOR_READY);
+
+	iounmap(regs_base);
 }
 
 void mtk_drm_crtc_init_layer_nr(struct mtk_drm_crtc *mtk_crtc, int pipe)

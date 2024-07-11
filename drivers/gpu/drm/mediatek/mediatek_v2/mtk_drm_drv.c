@@ -105,6 +105,11 @@
 #include "mtk_disp_bdg.h"
 
 #include "mtk_disp_vdisp_ao.h"
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#include "mtk_drm_auto/mtk_drm_crtc_auto.h"
+#endif
+
 #define CLKBUF_COMMON_H
 
 #define DRIVER_NAME "mediatek"
