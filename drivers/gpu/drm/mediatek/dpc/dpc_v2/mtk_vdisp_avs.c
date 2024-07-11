@@ -24,6 +24,7 @@
 static void __iomem *g_aging_base;
 static struct clk *g_mmdvfs_clk;
 const struct mtk_vdisp_avs_data *g_vdisp_avs_data;
+static bool aging_force_disable = true;
 
 #define IPI_TIMEOUT_MS	(200U)
 int mtk_vdisp_avs_ipi_send(u32 func_id)
@@ -141,6 +142,9 @@ void mtk_vdisp_avs_query_aging_val(struct device *dev)
 	ktime_t cur_time = ktime_get();
 	ktime_t elapse_time = cur_time - last_time;
 	ktime_t t_ag;
+
+	if (aging_force_disable)
+		return;
 
 	if (!MEM_BASE)
 		return;
