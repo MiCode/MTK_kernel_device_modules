@@ -758,11 +758,11 @@ static int lm3644_ioctl(unsigned int cmd, unsigned long arg)
 		if (scenario & FLASHLIGHT_SCENARIO_CAMERA_MASK) {
 			flashlight_kicker_pbm_by_device_id(
 				&lm3644_flash_data->flash_dev_id[LM3644_LED0],
-				lm3644_flash_data->torch_power);
+				lm3644_flash_data->camera_power);
 		} else {
 			flashlight_kicker_pbm_by_device_id(
 				&lm3644_flash_data->flash_dev_id[LM3644_LED0],
-				lm3644_flash_data->camera_power);
+				lm3644_flash_data->torch_power);
 		}
 #endif
 		break;
