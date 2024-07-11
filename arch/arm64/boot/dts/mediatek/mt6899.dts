@@ -13052,8 +13052,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#clock-cells = <1>;
 			clocks = <&mdpsys_config_clk CLK_MDP_APB_BUS_MML>,
 				<&mdpsys_config_clk CLK_MDP_APB_DB_MML>,
-				<&mmdvfs_mux MMDVFS_USER_MDP>;
-			clock-names = "apb_bus", "apb_db", "mmdvfs_clk";
+				<&mmdvfs_mux MMDVFS_USER_MDP>,
+				<&mdpsys_config_clk CLK_MDP_F26M_SLOW_MML>;
+			clock-names = "apb_bus", "apb_db", "mmdvfs_clk", "mmlsys_26m_clk";
 
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MM_INFRA>;
 
@@ -13328,8 +13329,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&mdpsys1_config_clk CLK_MDP1_APB_DB_MML>,
 				<&mdpsys1_config_clk CLK_MDP1_MDP_DLI_ASYNC0_MML>,
 				<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC0_MML>,
-				<&mmdvfs_mux MMDVFS_USER_MML>;
-			clock-names = "apb_bus", "apb_db", "dli0", "dlo0", "mmdvfs_clk";
+				<&mmdvfs_mux MMDVFS_USER_MML>,
+				<&mdpsys1_config_clk CLK_MDP1_F26M_SLOW_MML>;
+			clock-names = "apb_bus", "apb_db", "dli0", "dlo0",
+				"mmdvfs_clk", "mmlsys_26m_clk";
 			mmlsys-clock-names = "apb_bus", "apb_db";
 			dli0-clock-names = "dli0";
 			dlo0-clock-names = "dlo0";
