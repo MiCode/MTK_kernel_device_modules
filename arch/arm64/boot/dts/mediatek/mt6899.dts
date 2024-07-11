@@ -1453,6 +1453,25 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0x78 0x4>;
 		};
 
+		csi_efuse0: csi-data0@1d4 {
+			reg = <0x1d4 0x4>;
+		};
+		csi_efuse1: csi-data1@1d8 {
+			reg = <0x1d8 0x4>;
+		};
+		csi_efuse2: csi-data2@1dc {
+			reg = <0x1dc 0x4>;
+		};
+		csi_efuse3: csi-data3@140 {
+			reg = <0x140 0x4>;
+		};
+		csi_efuse4: csi-data4@144 {
+			reg = <0x144 0x4>;
+		};
+		csi_efuse5: csi-data5@148 {
+			reg = <0x148 0x4>;
+		};
+
 		lvts_e_data1: data1@310 {
 			reg = <0x310 0x34>;
 		};
