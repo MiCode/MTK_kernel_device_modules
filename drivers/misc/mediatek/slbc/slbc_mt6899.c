@@ -98,6 +98,7 @@ enum slc_gid_list {
 	GID_SMMU_3,
 	GID_MD,
 	GID_ADSP,
+	GID_AOV,
 	GID_IMG_SMT,
 	GID_IMG_MCNR,
 	GID_CAM,
