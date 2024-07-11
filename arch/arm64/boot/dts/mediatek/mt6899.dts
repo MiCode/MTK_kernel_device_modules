@@ -16450,6 +16450,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		usb-audio;
 		small-core = <1250000>;
 	};
+
+	goodix_fp: fingerprint {
+		compatible = "mediatek,goodix-fp";
+	};
 };
 
 &i2c5 {
