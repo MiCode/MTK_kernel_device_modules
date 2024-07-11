@@ -78,6 +78,7 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtk_input/legacy_gt9896s:legacy_gt9896s",
     "//vendor/mediatek/kernel_modules/mtk_input/TD4320:td4320",
     "//vendor/mediatek/kernel_modules/mtk_input/ST61Y:st61y",
+    "//vendor/mediatek/kernel_modules/mtk_input/fingerprint/goodix/4.14:gf_spi_414",
     "//vendor/mediatek/kernel_modules/mtk_input/fingerprint/goodix/5.10:gf_spi",
     "//vendor/mediatek/kernel_modules/mtk_input/synaptics_tcm:synaptics_tcm",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:camsys",
