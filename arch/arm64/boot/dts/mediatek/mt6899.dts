@@ -7233,6 +7233,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			qos-value = <0>;
 		};
 
+		gpu_slc: gpu-slc@13f820 {
+			compatible = "mediatek,gpu_slc";
+			slc-sysram-support = <1>;
+			reg = <0 0x13f820 0 0x20>;
+		};
+
 		gpueb: gpueb@13c00000 {
 			compatible = "mediatek,gpueb";
 			gpueb-support = <1>;
