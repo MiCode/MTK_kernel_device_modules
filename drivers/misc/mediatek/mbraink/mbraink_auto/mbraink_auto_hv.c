@@ -36,7 +36,7 @@ int mbraink_auto_cpuload_init(void)
 
 	return ret;
 
-unmap:
+//unmap:
 	iounmap(tc->buf);
 	return ret;
 }
@@ -49,14 +49,15 @@ void mbraink_auto_cpuload_deinit(void)
 		iounmap(tc->buf);
 }
 
-int mbraink_auto_vcpu_reader(struct nbl_trace *tc, struct nbl_trace_buf_trans *vcpu_loading_buf, void *vcpu_data_buffer)
+int mbraink_auto_vcpu_reader(struct nbl_trace *tc,
+			struct nbl_trace_buf_trans *vcpu_loading_buf, void *vcpu_data_buffer)
 {
 	struct trace_vcpu_ringbuf_hdr *rb_hdr = &tc->buf->exec.rb_hdr;
 	int raw_record_length = vcpu_loading_buf->length;
 	void *vcpu_data_buf = vcpu_data_buffer;
 	u8 *buf;
 	struct timespec64 ts;
-	u64 rd, wr, time_in_ms, cntvct, freq;
+	u64 rd, wr;
 	size_t len, total_len = 0;
 
 	if (!rb_hdr->enable) {
@@ -76,7 +77,9 @@ int mbraink_auto_vcpu_reader(struct nbl_trace *tc, struct nbl_trace_buf_trans *v
 			memcpy(vcpu_data_buf, buf, len);
 			total_len += len;
 		}
-		/* if write_pos not overflow. we only have write_pos to copy. so set raw_record_length to wr */
+		/* if write_pos not overflow. we only have write_pos to copy.
+		 * so set raw_record_length to wr
+		 */
 		raw_record_length = wr;
 	}
 	rd = wr - raw_record_length;
@@ -85,7 +88,7 @@ int mbraink_auto_vcpu_reader(struct nbl_trace *tc, struct nbl_trace_buf_trans *v
 	memcpy(vcpu_data_buf + total_len, buf, len);
 	total_len += len;
 
-end:
+//end:
 	// reset pos
 	rb_hdr->write_pos = 0;
 	vcpu_loading_buf->length = len / rb_hdr->rec_size;
@@ -94,11 +97,13 @@ end:
 	ktime_get_real_ts64(&ts);
 	vcpu_loading_buf->current_time = ts.tv_sec * 1000000LL + ts.tv_nsec / 1000LL;
 
-	pr_notice("%s: read HV cpu loading data. data length %d\n", __func__, vcpu_loading_buf->length);
+	pr_notice("%s: read HV cpu loading data. data length %d\n",
+		__func__, vcpu_loading_buf->length);
 	return 0;
 }
 
-int mbraink_auto_get_vcpu_record(struct nbl_trace_buf_trans *vcpu_loading_buf, void *vcpu_data_buffer)
+int mbraink_auto_get_vcpu_record(struct nbl_trace_buf_trans *vcpu_loading_buf,
+				void *vcpu_data_buffer)
 {
 	struct nbl_trace *tc = &g_nbl_trace;
 

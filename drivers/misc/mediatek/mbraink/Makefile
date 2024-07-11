@@ -16,6 +16,8 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mbraink/bridg
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mbraink/mbraink_auto
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mbraink/mbraink_auto
 
 ifeq ($(CONFIG_MTK_LOW_POWER_MODULE),m)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lpm/modules/debug/v2
@@ -35,5 +37,5 @@ obj-${CONFIG_MTK_MBRAINK} += bridge/
 mtk_mbraink-objs += mbraink_power.o mbraink_video.o mbraink_process.o mbraink.o mbraink_memory.o mbraink_gpu.o mbraink_audio.o mbraink_cpufreq.o mbraink_battery.o mbraink_pmu.o mbraink_gps.o mbraink_wifi.o
 
 ifeq ($(CONFIG_MTK_MBRAINK_MT8678),m)
-mtk_mbraink-objs += mbraink_auto_hv.o
+mtk_mbraink-objs += mbraink_auto/mbraink_auto.o mbraink_auto/mbraink_auto_hv.o
 endif

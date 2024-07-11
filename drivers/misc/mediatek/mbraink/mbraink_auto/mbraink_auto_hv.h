@@ -17,7 +17,7 @@
 #include <linux/ktime.h>
 #include <linux/timekeeping.h>
 
-#include <mbraink_ioctl_struct_def.h>
+#include "mbraink_auto_ioctl_struct_def.h"
 
 // vcpu execution time flag
 enum {
@@ -134,7 +134,7 @@ struct trace_vcpu_thread_delay_header {
 	uint64_t bRun;
 };
 
-struct trace_vcpu_thread_delay{
+struct trace_vcpu_thread_delay {
 	struct trace_vcpu_thread_delay_header delay[TRACE_NEBULA_VMID][NBL_TRACE_VCPU_CNT];
 	bool enable;
 };

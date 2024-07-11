@@ -42,7 +42,7 @@
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
-#include "mbraink_auto_hv.h"
+#include "mbraink_auto.h"
 #endif
 
 static DEFINE_MUTEX(power_lock);
@@ -1058,73 +1058,6 @@ static long handleLpmStateInfo(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
-#if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
-static long handle_cpu_loading_info(unsigned long arg, void *mbraink_data)
-{
-	struct nbl_trace_buf_trans *cpu_loading_buf = (struct nbl_trace_buf_trans *)(mbraink_data);
-	long ret = 0;
-
-	if (copy_from_user(cpu_loading_buf, (struct nbl_trace_buf_trans *) arg,
-			sizeof(struct nbl_trace_buf_trans))) {
-		pr_notice("copy nbl_trace_buf_trans data from user Err!\n");
-		return -EPERM;
-	}
-
-	if (cpu_loading_buf != NULL) {
-		switch (cpu_loading_buf->trans_type) {
-		case 0:
-		{
-			ret = mbraink_auto_set_vcpu_record(0);
-			break;
-		}
-		case 1:
-		{
-			ret = mbraink_auto_set_vcpu_record(1);
-			break;
-		}
-		case 2:
-		{
-			if (cpu_loading_buf->length == 0) {
-				pr_notice("length is 0. no need do anything\n");
-			} else {
-				void *vcpu_buffer = vmalloc(cpu_loading_buf->length *
-								sizeof(struct trace_vcpu_rec));
-
-				if (vcpu_buffer == NULL)
-					return -ENOMEM;
-				ret = mbraink_auto_get_vcpu_record(cpu_loading_buf, vcpu_buffer);
-
-				if (copy_to_user((struct nbl_trace_buf_trans *)arg,
-						cpu_loading_buf,
-						sizeof(struct nbl_trace_buf_trans))) {
-					pr_notice("Copy cpu_loading_buf to user error!\n");
-					vfree(vcpu_buffer);
-					return -EPERM;
-				}
-				if (copy_to_user(cpu_loading_buf->vcpu_data,
-						vcpu_buffer,
-						cpu_loading_buf->length *
-						sizeof(struct trace_vcpu_rec))) {
-					pr_notice("Copy vcpu_data to user error!\n");
-					vfree(vcpu_buffer);
-					return -EPERM;
-				}
-
-				vfree(vcpu_buffer);
-			}
-			break;
-		}
-		default:
-		{
-			pr_info("unknown vcpu type %d\n", cpu_loading_buf->trans_type);
-			ret = -1;
-		}
-		}
-	}
-	return ret;
-}
-#endif
-
 static long handle_ufs_info(unsigned long arg, void *mbraink_data)
 {
 	struct mbraink_ufs_info *ufs_info_buffer =
@@ -1546,13 +1479,13 @@ static long mbraink_ioctl(struct file *filp,
 		break;
 	}
 
-	case RO_AUTO_CPULOAD_INFO:
+	case AUTO_IOCTL_INFO:
 	{
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
-		mbraink_data = kmalloc(sizeof(struct nbl_trace_buf_trans), GFP_KERNEL);
+		mbraink_data = kmalloc(sizeof(struct mbraink_auto_ioctl_info), GFP_KERNEL);
 		if (!mbraink_data)
 			goto End;
-		ret = handle_cpu_loading_info(arg, mbraink_data);
+		ret = mbraink_auto_ioctl(arg, mbraink_data);
 		kfree(mbraink_data);
 #endif
 		break;
@@ -2112,7 +2045,7 @@ static int mbraink_init(void)
 		pr_notice("mbraink wifi init failed.\n");
 
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
-	ret = mbraink_auto_cpuload_init();
+	ret = mbraink_auto_init();
 	if (ret)
 		pr_notice("mbraink auto cpu load init failed.\n");
 #endif
@@ -2171,7 +2104,7 @@ static void mbraink_exit(void)
 	mbraink_gps_deinit();
 	mbraink_wifi_deinit();
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
-	mbraink_auto_cpuload_deinit();
+	mbraink_auto_deinit();
 #endif
 }
 

@@ -12,12 +12,14 @@
 #include <linux/pid.h>
 
 #include "mbraink_ioctl_struct_def.h"
+#include <mbraink_auto_ioctl_struct_def.h>
 
 #define IOC_MAGIC	'k'
 
 #define MAX_BUF_SZ			1024
 
 /*Mbrain Delegate Info List*/
+#define AUTO_IOCTL				'0'
 #define POWER_INFO				'1'
 #define VIDEO_INFO				'2'
 #define POWER_SUSPEND_EN		'3'
@@ -59,11 +61,12 @@
 #define WIFI_LP_INFO			'F'
 #define POWER_THROTTLE_HW_INFO	'G'
 #define LPM_STATE_INFO			'H'
-#define AUTO_CPULOAD_INFO		'I'
 #define UFS_INFO				'J'
 #define WIFI_TXTIMEOUT_INFO		'K'
 
 /*Mbrain Delegate IOCTL List*/
+#define AUTO_IOCTL_INFO			_IOR(IOC_MAGIC, AUTO_IOCTL, \
+							struct mbraink_auto_ioctl_info*)
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
 #define RO_VIDEO				_IOR(IOC_MAGIC, VIDEO_INFO, char*)
 #define WO_SUSPEND_POWER_EN		_IOW(IOC_MAGIC, POWER_SUSPEND_EN, char*)
@@ -156,9 +159,6 @@
 						struct mbraink_power_throttle_hw_data*)
 #define RO_LPM_STATE_INFO		_IOR(IOC_MAGIC, LPM_STATE_INFO, \
 						struct mbraink_lpm_state_data*)
-
-#define RO_AUTO_CPULOAD_INFO	_IOR(IOC_MAGIC, AUTO_CPULOAD_INFO, \
-								struct nbl_trace_buf_trans*)
 
 #define RO_UFS_INFO	_IOR(IOC_MAGIC, UFS_INFO, \
 								struct mbraink_ufs_info*)

@@ -531,25 +531,6 @@ struct mbraink_lpm_state_data {
 	struct mbraink_lpm_state_info lpm_state_info[MAX_LPM_STATE_NUM];
 };
 
-struct trace_vcpu_rec {
-	u64 vmid : 2;
-#define TRACE_YOCTO_VMID      0
-#define TRACE_ANDROID_VMID    1
-	u64 vcpu : 5;
-	u64 pcpu : 5;
-	u64 flag : 2;
-	u64 timestamp : 50;
-};
-
-struct nbl_trace_buf_trans {
-	u32 trans_type;
-	u32 length;
-	u64 current_time;
-	u64 cntcvt;
-	u64 cntfrq;
-	void *vcpu_data;
-};
-
 struct mbraink_ufs_info {
 	unsigned char model[MAX_UFS_INFO_NUM];
 	unsigned char rev[MAX_UFS_INFO_NUM];
