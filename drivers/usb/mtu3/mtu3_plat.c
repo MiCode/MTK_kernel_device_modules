@@ -158,7 +158,7 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 		break;
 	case MTU3_STATE_OFFLOAD:
 		/* Clear req for offload scenario */
-		spm_ctrl &= SSUSB_SPM_REQ_OFFLOAD_MSK;
+		spm_ctrl &= ~(SSUSB_SPM_REQ_OFFLOAD_MSK ^ spm_msk);
 		break;
 	case MTU3_STATE_RESUME:
 		spm_ctrl |= spm_msk;
@@ -166,7 +166,7 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 		break;
 	case MTU3_STATE_SUSPEND:
 		/* Clear req for host suspend scenario */
-		spm_ctrl &= SSUSB_SPM_VCORE_EN;
+		spm_ctrl &= ~(SSUSB_SPM_VCORE_EN ^ spm_msk) ;
 		smc_req = SSUSB_SMC_HWRECS_SUSPEND;
 		break;
 	default:
