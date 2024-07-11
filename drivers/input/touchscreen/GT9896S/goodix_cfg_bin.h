@@ -25,8 +25,8 @@ extern const char *gt9896s_firmware_buf;
 extern const char *gt9896s_config_buf;
 extern int gt9896s_find_touch_node;
 extern int gt9896s_cfg_flag;
-extern char panel_firmware_buf[];
-extern char panel_config_buf[];
+extern char panel_firmware_buf[128];
+extern char panel_config_buf[128];
 
 #define TS_BIN_VERSION_START_INDEX	5
 #define TS_BIN_VERSION_LEN	4

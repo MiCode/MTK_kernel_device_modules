@@ -438,10 +438,27 @@ static int gt9896s_read_cfg_bin(struct device *dev, struct gt9896s_cfg_bin *cfg_
 	/*get cfg_bin_name*/
 	if (gt9896s_find_touch_node == 1) {
 		if (gt9896s_cfg_flag == 0) {
-			strncat(panel_config_buf, ".bin", 4);
-			gt9896s_cfg_flag = 1;
+			/*Check if panel_config_buf has enough space to append ".bin" and a null terminator*/
+			if (strlen(panel_config_buf) + strlen(".bin") < sizeof(panel_config_buf)) {
+				strncat(panel_config_buf, ".bin", strlen(".bin"));
+				gt9896s_cfg_flag = 1;
+			} else {
+				ts_err("No enough space in panel_config_buf to append, len:%lu",
+				strlen(panel_config_buf));
+				r = -ENOMEM;
+				goto exit;
+			}
 		}
-		strncpy(cfg_bin_name, panel_config_buf, sizeof(cfg_bin_name));
+		/*Check if gt9896s_fw_update_ctrl.fw_name has enough space to contain panel_config_buf*/
+		if (strlen(panel_config_buf) < sizeof(cfg_bin_name)) {
+			strscpy(cfg_bin_name, panel_config_buf, strlen(panel_config_buf));
+			cfg_bin_name[strlen(panel_config_buf)] = '\0';
+		} else {
+			ts_err("string in panel_firmware_buf is too long, len:%lu, size:%lu", strlen(
+			panel_config_buf), sizeof(cfg_bin_name));
+			r = -ENOMEM;
+			goto exit;
+		}
 	} else {
 		r = snprintf(cfg_bin_name, sizeof(cfg_bin_name), "%s%s.bin",
 			TS_DEFAULT_CFG_BIN, gt9896s_config_buf);
