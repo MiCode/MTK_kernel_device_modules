@@ -876,14 +876,17 @@ void mcdi_state_pause(unsigned int id, bool pause)
 		set_mcdi_enable_by_pm_qos(!pause);
 }
 
-void idle_refcnt_inc(void)
+void idle_refcnt_inc(bool is_wfi)
 {
 	unsigned long flags;
 	bool enter __maybe_unused = false;
 	struct cpuidle_driver *drv = cpuidle_get_driver();
+	unsigned int state_idx;
 
-	if (!(drv->states[MCDI_STATE_CPU_OFF].flags & CPUIDLE_FLAG_RCU_IDLE))
+	state_idx = is_wfi ? MCDI_STATE_WFI : MCDI_STATE_CPU_OFF;
+	if (!(drv->states[state_idx].flags & CPUIDLE_FLAG_RCU_IDLE))
 		ct_cpuidle_exit();
+
 	spin_lock_irqsave(&all_cpu_idle_spin_lock, flags);
 
 	all_cpu_idle_data.refcnt++;
@@ -894,13 +897,13 @@ void idle_refcnt_inc(void)
 	}
 
 	spin_unlock_irqrestore(&all_cpu_idle_spin_lock, flags);
-	if (!(drv->states[MCDI_STATE_CPU_OFF].flags & CPUIDLE_FLAG_RCU_IDLE))
+	if (!(drv->states[state_idx].flags & CPUIDLE_FLAG_RCU_IDLE))
 		ct_cpuidle_enter();
 	/* if (enter) */
 		/* trace_all_cpu_idle_rcuidle(1); */
 }
 
-void idle_refcnt_dec(void)
+void idle_refcnt_dec(bool is_wfi)
 {
 	unsigned long flags;
 	unsigned long long leave_tick;
@@ -908,7 +911,10 @@ void idle_refcnt_dec(void)
 	unsigned long long temp;
 	struct cpuidle_driver *drv = cpuidle_get_driver();
 	bool leave __maybe_unused = false;
-	if (!(drv->states[MCDI_STATE_CPU_OFF].flags & CPUIDLE_FLAG_RCU_IDLE))
+	unsigned int state_idx;
+
+	state_idx = is_wfi ? MCDI_STATE_WFI : MCDI_STATE_CPU_OFF;
+	if (!(drv->states[state_idx].flags & CPUIDLE_FLAG_RCU_IDLE))
 		ct_cpuidle_exit();
 	spin_lock_irqsave(&all_cpu_idle_spin_lock, flags);
 
@@ -937,7 +943,7 @@ void idle_refcnt_dec(void)
 	}
 
 	spin_unlock_irqrestore(&all_cpu_idle_spin_lock, flags);
-	if (!(drv->states[MCDI_STATE_CPU_OFF].flags & CPUIDLE_FLAG_RCU_IDLE))
+	if (!(drv->states[state_idx].flags & CPUIDLE_FLAG_RCU_IDLE))
 		ct_cpuidle_enter();
 	/* if (leave) */
 		/* trace_all_cpu_idle_rcuidle(0); */

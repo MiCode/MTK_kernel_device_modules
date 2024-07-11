@@ -301,6 +301,8 @@ static long mcdi_do_work(void *pData)
 	drv->states[0].exit_latency = mtk_acao_mcdi_state[0].states[0].exit_latency;
 	drv->states[0].exit_latency_ns =
 			mtk_acao_mcdi_state[0].states[0].exit_latency * NSEC_PER_USEC;
+	rcu_flags =  drv->states[0].flags;
+	pr_info("%s,register idle for cpu %d flags0 = %d\n", __func__, cpu, rcu_flags);
 	for (idx = 1; idx < drv->state_count; ++idx) {
 		rcu_flags =  drv->states[idx].flags;
 		pr_info("%s,register idle for cpu %d flags = %d\n", __func__, cpu, rcu_flags);

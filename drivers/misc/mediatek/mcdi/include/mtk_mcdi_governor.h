@@ -60,8 +60,8 @@ bool is_last_core_in_mcusys(int cpu);
 bool is_last_core_in_cluster(int cpu);
 unsigned int mcdi_get_gov_data_num_mcusys(void);
 
-void idle_refcnt_inc(void);
-void idle_refcnt_dec(void);
+void idle_refcnt_inc(bool is_wfi);
+void idle_refcnt_dec(bool is_wfi);
 int all_cpu_idle_ratio_get(void);
 bool is_all_cpu_idle_criteria(void);
 unsigned int mcdi_get_boot_time_check(void);

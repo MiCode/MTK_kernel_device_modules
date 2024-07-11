@@ -23,9 +23,6 @@
 /* [ByChip] Internal weak functions: implemented in mtk_idle_cond_check.c */
 void __attribute__((weak)) mtk_idle_cg_monitor(int sel) {}
 
-/* External weak functions: implemented in mcdi driver */
-void __attribute__((weak)) idle_refcnt_inc(void) {}
-void __attribute__((weak)) idle_refcnt_dec(void) {}
 
 bool __attribute__((weak)) mtk_spm_arch_type_get(void) { return false; }
 void __attribute__((weak)) mtk_spm_arch_type_set(bool type) {}

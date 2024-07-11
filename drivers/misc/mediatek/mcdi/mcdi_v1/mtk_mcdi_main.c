@@ -599,7 +599,7 @@ void mcdi_heart_beat_log_dump(void)
 
 int wfi_enter(int cpu)
 {
-	idle_refcnt_inc();
+	idle_refcnt_inc(true);
 
 	set_mcdi_idle_state(cpu, MCDI_STATE_WFI);
 
@@ -609,7 +609,7 @@ int wfi_enter(int cpu)
 
 	mcdi_usage_time_stop(cpu);
 
-	idle_refcnt_dec();
+	idle_refcnt_dec(true);
 
 	mcdi_cnt_wfi[cpu]++;
 
@@ -634,7 +634,7 @@ int mcdi_enter(int cpu)
 
 	mcdi_profile_ts(cpu, MCDI_PROFILE_ENTER);
 
-	idle_refcnt_inc();
+	idle_refcnt_inc(false);
 
 	if (likely(mcdi_fw_is_ready())) {
 		state = mcdi_governor_select(cpu, cluster_idx);
@@ -708,7 +708,7 @@ int mcdi_enter(int cpu)
 
 	mcdi_governor_reflect(cpu, state);
 
-	idle_refcnt_dec();
+	idle_refcnt_dec(false);
 
 	mcdi_profile_ts(cpu, MCDI_PROFILE_LEAVE);
 	mcdi_profile_calc(cpu);
