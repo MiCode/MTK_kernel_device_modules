@@ -14212,6 +14212,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			};
 		};
 
+		/* Trustonic Mobicore SW IRQ number 171 = 32 + 139 */
+		mobicore: mobicore {
+			compatible = "trustonic,mobicore";
+			interrupts = <GIC_SPI 139 IRQ_TYPE_EDGE_RISING 0>;
+		};
+
 		tinysys_mbox: tinysys-mbox@1c351000 {
 			compatible = "mediatek,tinysys_mbox";
 			reg = <0 0x1c351000 0 0x1000>,
