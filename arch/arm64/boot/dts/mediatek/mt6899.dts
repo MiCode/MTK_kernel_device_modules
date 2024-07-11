@@ -14035,6 +14035,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,noise-still-tr;
 			mediatek,gen1-txdeemph;
 			mediatek,hwrscs-vers = <3>;
+			mediatek,uds = <&usb_dp_selector 19>;
 			usb-role-switch;
 			cdp-block;
 			port {
@@ -16170,6 +16171,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	usb_meta: usb-meta {
 		compatible = "mediatek,usb-meta";
 		udc = <&ssusb>;
+	};
+	usb_boost: usb-boost-manager {
+		compatible = "mediatek,usb-boost", "mediatek,mt6899-usb-boost";
+		usb-audio;
+		small-core = <1250000>;
 	};
 };
 
