@@ -12,6 +12,10 @@
 #include "mbraink_auto.h"
 #include "mbraink_auto_hv.h"
 
+#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+#include "mbraink_hypervisor_virtio.h"
+#endif
+
 static long handle_cpu_loading_info(const void *auto_ioctl_data, void *mbraink_auto_data)
 {
 	struct nbl_trace_buf_trans *cpu_loading_buf =
@@ -117,6 +121,12 @@ int mbraink_auto_init(void)
 {
 	int ret = 0;
 
+#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+	ret = vhost_mbraink_init();
+	if (ret)
+		pr_notice("mbraink virtio init failed.\n");
+#endif
+
 	ret = mbraink_auto_cpuload_init();
 
 	return ret;
@@ -124,5 +134,8 @@ int mbraink_auto_init(void)
 
 void mbraink_auto_deinit(void)
 {
+#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+	//vhost_mbraink_deinit();
+#endif
 	mbraink_auto_cpuload_deinit();
 }
