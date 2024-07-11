@@ -242,6 +242,20 @@
 			};
 		};
 	};
+	panel4@3 {
+		compatible = "jdi,nt36672e,cphy,vdo";
+		reg = <3>;
+		pm-enable-gpios = <&pio 64 0>;
+		reset-gpios = <&pio 41 0>;
+		res-switch = <2>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel_in4: endpoint {
+				remote-endpoint = <&dsi_out4>;
+			};
+		};
+	};
 	ports {
 		port {
 			dsi_out: endpoint {
@@ -252,6 +266,9 @@
 			};
 			dsi_out3: endpoint3 {
 				remote-endpoint = <&panel_in3>;
+			};
+			dsi_out4: endpoint4 {
+				remote-endpoint = <&panel_in4>;
 			};
 		};
 	};
