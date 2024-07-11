@@ -5737,7 +5737,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x10226000 0 0x1000>,
 				  <0 0x10225000 0 0x1000>;
 			mediatek,emi-reg = <&emicen>;
-			interrupts = <GIC_SPI 926 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 899 IRQ_TYPE_LEVEL_HIGH 0>;
 			dump = <0x1f0 0x1f8 0x1fc>;
 			clear = <0x1f0 0x80000000 1>,
 				<0x160 0xffffffff 16>,
