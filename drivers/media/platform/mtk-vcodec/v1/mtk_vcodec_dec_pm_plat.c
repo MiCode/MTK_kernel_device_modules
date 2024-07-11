@@ -291,10 +291,17 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 		mtk_v4l2_debug(0, "[VDEC] Faile get vdec-mmdvfs-in-vcp, default %d", vdec_req);
 	dev->vdec_dvfs_params.mmdvfs_in_vcp = vdec_req;
 
+	vdec_req = 0;
 	ret = of_property_read_s32(pdev->dev.of_node, "vdec-mmdvfs-in-adaptive", &vdec_req);
 	if (ret)
 		mtk_v4l2_debug(0, "[VDEC] no need vdec-mmdvfs-in-adaptive");
 	dev->vdec_dvfs_params.mmdvfs_in_adaptive = vdec_req;
+
+	vdec_req = 0;
+	ret = of_property_read_s32(pdev->dev.of_node, "vdec-set-bw-in-min-freq", &vdec_req);
+	if (ret)
+		mtk_v4l2_debug(0, "[VDEC] no need vdec-set-bw-in-min-freq, default %d", vdec_req);
+	dev->vdec_dvfs_params.set_bw_in_min_freq = vdec_req;
 
 	ret = of_property_read_s32(pdev->dev.of_node, "vdec-cpu-hint-mode", &flag);
 	if (ret) {
@@ -475,7 +482,8 @@ void mtk_vdec_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 			dev->vdec_dvfs_params.min_freq;
 
 		if (dev->vdec_larb_bw[i].larb_type < VCODEC_LARB_SUM) {
-			if (dev->vdec_dvfs_params.target_freq == dev->vdec_dvfs_params.min_freq) {
+			if (!dev->vdec_dvfs_params.set_bw_in_min_freq &&
+				(dev->vdec_dvfs_params.target_freq == dev->vdec_dvfs_params.min_freq)) {
 				mtk_icc_set_bw(dev->vdec_qos_req[i],
 					MBps_to_icc(0), 0);
 				mtk_v4l2_debug(8, "[VDEC] larb %d bw %u (min opp, no request) MB/s",

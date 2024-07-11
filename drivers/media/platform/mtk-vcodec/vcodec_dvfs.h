@@ -101,6 +101,7 @@ struct dvfs_params {
 	u8 mmdvfs_in_adaptive; /* need send dvfs/mmqos request to vcp*/
 	u8 init_boost;
 	u32 last_boost_time;
+	u8 set_bw_in_min_freq; /* need set bw at min freq*/
 
 };
 
