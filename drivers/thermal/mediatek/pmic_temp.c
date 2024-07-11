@@ -17,7 +17,6 @@
 #include <linux/slab.h>
 #include <linux/thermal.h>
 #include <linux/types.h>
-#include <linux/math64.h>
 /*=============================================================
  *Local variable definition
  *=============================================================
@@ -65,7 +64,7 @@ static int pmic_raw_to_temp(struct pmic_tz_cali_data *cali_data, int tz_id,
 	int y_curr = val;
 
 	t_current = cali_data[tz_id].intercept +
-		div_u64(((uint64_t)cali_data[tz_id].slope1 * y_curr), (cali_data[tz_id].slope2));
+		div_s64(((int64_t)cali_data[tz_id].slope1 * y_curr) ,(cali_data[tz_id].slope2));
 
 	return t_current;
 }
@@ -89,16 +88,16 @@ static void pmic_get_temp_convert_params(struct pmic_temp_info *data)
 		else
 			cali[i].slope2 = -(factor - tz_data->o_slope);
 
-		vbe_t = (-1) * div_u64((((uint64_t)(cali[i].o_vts) * tz_data->pullup_volt)), 4096) * 1000;
+		vbe_t = (-1) * div_s64((((int64_t)(cali[i].o_vts) * tz_data->pullup_volt)), 4096) * 1000;
 
 		if (tz_data->o_slope_sign == 0)
-			cali[i].intercept = div_u64(((uint64_t)vbe_t * 1000), (-(factor + tz_data->o_slope * 10)));
+			cali[i].intercept = div_s64(((int64_t)vbe_t * 1000), (-(factor + tz_data->o_slope * 10)));
 		/*0.001 degree */
 		else
-			cali[i].intercept = div_u64(((uint64_t)vbe_t * 1000), (-(factor - tz_data->o_slope * 10)));
+			cali[i].intercept = div_s64(((int64_t)vbe_t * 1000), (-(factor - tz_data->o_slope * 10)));
 		/*0.001 degree */
 
-		cali[i].intercept = cali[i].intercept + (tz_data->degc_cali * div_u64(1000, 2));
+		cali[i].intercept = cali[i].intercept + (tz_data->degc_cali * div_s64(1000, 2));
 		/* 1000 is for 0.1 degree */
 	}
 }
