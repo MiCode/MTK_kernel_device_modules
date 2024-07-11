@@ -17,7 +17,11 @@
 
 #define DISP_MUTEX_TOTAL (16)
 #define DISP_MUTEX_DDP_FIRST (0)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#define DISP_MUTEX_DDP_LAST (15)
+#else
 #define DISP_MUTEX_DDP_LAST (6)
+#endif
 #define DISP_MUTEX_DDP_COUNT (DISP_MUTEX_DDP_LAST - DISP_MUTEX_DDP_FIRST + 1)
 #define __DISP_MUTEX_INT_MSK ((1 << (DISP_MUTEX_DDP_COUNT)) - 1)
 #define DISP_MUTEX_INT_MSK                                                     \
