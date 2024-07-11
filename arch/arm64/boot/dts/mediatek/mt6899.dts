@@ -11915,29 +11915,29 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L14_P1_CAMSV_A0_WDMA)
 					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L14_P4_CAMSV_A0_STG)
+					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L14_P1_CAMSV_A0_WDMA)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L14_P2_CAMSV_A1_WDMA)
-					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L14_P2_CAMSV_A1_WDMA)
-					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L14_P4_CAMSV_A0_STG)
-					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L14_P4_CAMSV_A0_STG)
 					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L14_P2_CAMSV_A1_WDMA)
+					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L14_P5_CAMSV_A1_STG)
 					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L14_P2_CAMSV_A1_WDMA)
+					&mmqos SLAVE_COMMON(1)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L14_P5_CAMSV_A1_STG)
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names =
 				"l14_cqi_a",
 				"l14_imgo0_disp_a",
-				"l14_imgo0_mdp_a",
-				"l14_imgo1_disp_a",
-				"l14_imgo1_mdp_a",
 				"l14_stg0_disp_a",
+				"l14_imgo0_mdp_a",
 				"l14_stg0_mdp_a",
+				"l14_imgo1_disp_a",
 				"l14_stg1_disp_a",
+				"l14_imgo1_mdp_a",
 				"l14_stg1_mdp_a";
 		};
 
@@ -11980,29 +11980,29 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L13_P1_CAMSV_B0_WDMA)
 					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L13_P5_CAMSV_B0_STG)
+					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L13_P1_CAMSV_B0_WDMA)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L13_P2_CAMSV_B1_WDMA)
-					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L13_P2_CAMSV_B1_WDMA)
-					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L13_P5_CAMSV_B0_STG)
-					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L13_P5_CAMSV_B0_STG)
 					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L13_P2_CAMSV_B1_WDMA)
+					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L13_P6_CAMSV_B1_STG)
 					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L13_P2_CAMSV_B1_WDMA)
+					&mmqos SLAVE_COMMON(1)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L13_P6_CAMSV_B1_STG)
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names =
 				"l13_cqi_b",
 				"l13_imgo0_disp_b",
-				"l13_imgo0_mdp_b",
-				"l13_imgo1_disp_b",
-				"l13_imgo1_mdp_b",
 				"l13_stg0_disp_b",
+				"l13_imgo0_mdp_b",
 				"l13_stg0_mdp_b",
+				"l13_imgo1_disp_b",
 				"l13_stg1_disp_b",
+				"l13_imgo1_mdp_b",
 				"l13_stg1_mdp_b";
 		};
 
