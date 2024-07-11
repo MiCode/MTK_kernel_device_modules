@@ -19,6 +19,7 @@ enum {
 	CMDQ_OPS_DESTROY,
 	CMDQ_OPS_CHAN_STOP,
 	CMDQ_OPS_MBOX_ENABLE,
+	CMDQ_OPS_MBOX_DISABLE,
 };
 
 struct cmdq_flush_request {
@@ -56,6 +57,11 @@ struct cmdq_mbox_enable_request {
 	uint32_t hwid;
 };
 
+struct cmdq_mbox_disable_request {
+	uint32_t thread_id;
+	uint32_t hwid;
+};
+
 struct cmdq_task_complete_event {
 	uint64_t key;
 	int32_t result;
@@ -69,6 +75,7 @@ struct cmdq_request {
 		struct cmdq_destroy_request destroy_req;
 		struct cmdq_chan_stop_request chan_stop_req;
 		struct cmdq_mbox_enable_request mbox_enable_req;
+		struct cmdq_mbox_disable_request mbox_disable_req;
 	};
 };
 
