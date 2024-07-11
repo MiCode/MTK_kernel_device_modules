@@ -1161,7 +1161,7 @@ get_phy:
 	of_property_read_u32(node, "mediatek,ux-exit-lfps-gen2", &ssusb->ux_exit_lfps_gen2);
 	of_property_read_u32(node, "mediatek,polling-scdlfps-time", &ssusb->polling_scdlfps_time);
 
-	ssusb->utmi_8bit = of_property_read_bool(node, "mediatek,utmi-8bit");
+	of_property_read_u32(node, "mediatek,utmi-width", &ssusb->utmi_width);
 	ssusb->keep_ao = of_property_read_bool(node, "mediatek,keep-host-on");
 
 	otg_sx->vbus = devm_regulator_get(dev, "vbus");

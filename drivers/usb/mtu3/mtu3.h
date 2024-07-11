@@ -373,7 +373,7 @@ struct ssusb_mtk {
 	u32 ux_exit_lfps;
 	u32 ux_exit_lfps_gen2;
 	u32 polling_scdlfps_time;
-	bool utmi_8bit;
+	u32 utmi_width;
 	bool smc_req;
 	bool host_dev;
 	bool is_suspended;
