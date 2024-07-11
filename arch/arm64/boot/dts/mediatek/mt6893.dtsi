@@ -7317,6 +7317,12 @@ cpus {
 				&cam_smi_2x1_sub_comm1 &ipe_smi_2x1_sub_comm>;
 		};
 
+
+		smi-test {
+			compatible = "mediatek,smi-testcase";
+			mediatek,larbs = <&smi_larb2>;
+		};
+
 		smi_larb2: smi-larb2@1f003000 {
 			compatible = "mediatek,smi_larb2", "mediatek,mt6893-smi-larb",
 					 "mediatek,smi-larb";

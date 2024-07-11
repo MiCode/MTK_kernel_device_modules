@@ -3824,6 +3824,11 @@ pwrap: pwrap@1000d000 {
 		power-domains = <&scpsys MT6765_POWER_DOMAIN_DIS>;
 	};
 
+	smi-test {
+		compatible = "mediatek,smi-testcase";
+		mediatek,larbs = <&smi_larb2>;
+	};
+
 	smi_larb2: smi-larb2@15021000 {
 		compatible = "mediatek,smi_larb2","mediatek,mt6765-smi-larb","mediatek,smi-larb";
 		reg = <0 0x15021000 0 0x1000>;
