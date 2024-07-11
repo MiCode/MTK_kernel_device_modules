@@ -31,15 +31,6 @@ struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,
 
 		local_index = plane->index - base_plane->index;
 
-		/* dsi0 and dp_intf0 path, primary plane on the top of all plane
-		 * other path, primary plane at the bottom of all plane
-		 */
-		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-		if (output_comp &&
-		    (output_comp->id == DDP_COMPONENT_DSI0 ||
-		     output_comp->id == DDP_COMPONENT_DP_INTF0))
-			local_index = mtk_crtc->layer_nr - 1 - local_index;
-
 		DDPINFO("%s plane index %d base %d\n", __func__, plane->index, base_plane->index);
 	}
 
