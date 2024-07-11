@@ -15963,6 +15963,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		rw-emi-size = <0x480000>;
 		emi-alignment = <0x100000>;
 		emi-max-addr = <0x90000000>;
+		ppb-emi-offset = <0x0089fff0>;
 	};
 
 	connfem: connfem {
