@@ -158,6 +158,10 @@ static const struct snd_soc_dapm_route mtk_dai_hostless_routes[] = {
 	/* Hostelss FM */
 	/* connsys_i2s to hw gain 1*/
 	{"Hostless FM UL", NULL, "Connsys I2S"},
+	{"I2SOUT5_CH1", "CONNSYS_I2S_CH1", "Hostless FM DL"},
+	{"I2SOUT5_CH2", "CONNSYS_I2S_CH2", "Hostless FM DL"},
+	{"I2SOUT4_CH3", "CONNSYS_I2S_CH1", "Hostless FM DL"},
+	{"I2SOUT4_CH4", "CONNSYS_I2S_CH2", "Hostless FM DL"},
 	{"Hostless I2SIN3 UL", NULL, "I2SIN3"},
 	{"I2SOUT5_CH1", "I2SIN3_CH1", "Hostless I2SOUT5 DL"},
 	{"I2SOUT5_CH2", "I2SIN3_CH2", "Hostless I2SOUT5 DL"},
