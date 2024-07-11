@@ -1652,8 +1652,10 @@ static inline void set_scheduler_tuning(struct task_struct *task)
 
 	/* trigger renice for turbo task */
 	set_user_nice(task, 0xbeef);
-	if (tt_vip_enable)
+	if (tt_vip_enable) {
 		set_task_vvip_and_throttle(task_pid_nr(task), 60);
+		trace_turbo_vvip_set(task_pid_nr(task));
+	}
 
 	trace_sched_turbo_nice_set(task, NICE_TO_PRIO(cur_nice), task->prio);
 }
@@ -1668,6 +1670,7 @@ static inline void unset_scheduler_tuning(struct task_struct *task)
 	set_user_nice(task, 0xbeee);
 	unset_task_vvip(task_pid_nr(task));
 
+	trace_turbo_vvip_unset(task_pid_nr(task));
 	trace_sched_turbo_nice_set(task, cur_prio, task->prio);
 }
 
@@ -1870,9 +1873,11 @@ static int set_task_turbo_feats(const char *buf,
 	}
 	spin_unlock(&TURBO_SPIN_LOCK);
 
-	if (!ret)
+	if (!ret) {
 		pr_info("%s: task_turbo_feats is change to %d successfully",
 				TAG, task_turbo_feats);
+		trace_turbo_feats_set(task_turbo_feats);
+	}
 	return ret;
 }
 
