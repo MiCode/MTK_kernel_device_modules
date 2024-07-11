@@ -703,7 +703,7 @@ static int _mtkthermal_tz_read(struct seq_file *m, void *v)
 	struct thermal_zone_device *tz = NULL;
 
 	if (m->private == NULL) {
-		THRML_ERROR_LOG("%s null data\n", __func__);
+		THRML_ERROR_LOG("%s null tz\n", __func__);
 	} else {
 		tz = (struct thermal_zone_device *)m->private;
 		/* TODO: consider the case that tz is unregistered... */
@@ -714,8 +714,10 @@ static int _mtkthermal_tz_read(struct seq_file *m, void *v)
 			int fake_temp = 0;
 
 			tzdata = tz->devdata;
-			if (!tzdata)
-				WARN_ON_ONCE(1);
+			if (!tzdata) {
+				THRML_ERROR_LOG("%s null tzdata\n", __func__);
+				return -ENODEV;
+			}
 
 #if (MAX_STEP_MA_LEN > 1)
 			mutex_lock(&tzdata->ma_lock);
@@ -770,7 +772,7 @@ static ssize_t _mtkthermal_tz_write
 	tz = (struct thermal_zone_device *)pde_data(file_inode(file));
 
 	if (tz == NULL) {
-		THRML_ERROR_LOG("%s null data\n", __func__);
+		THRML_ERROR_LOG("%s null tz\n", __func__);
 		return -EINVAL;
 	}
 
@@ -781,8 +783,10 @@ static ssize_t _mtkthermal_tz_write
 			struct mtk_thermal_tz_data *tzdata = NULL;
 
 			tzdata = tz->devdata;
-			if (!tzdata)
-				WARN_ON_ONCE(1);
+			if (!tzdata) {
+				THRML_ERROR_LOG("%s null tzdata\n", __func__);
+				return -EINVAL;
+			}
 
 			/* THRML_ERROR_LOG(
 			 * "%s trailing=%s\n", __func__, trailing);
