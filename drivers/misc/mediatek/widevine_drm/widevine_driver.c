@@ -192,6 +192,7 @@ static int wv_remove(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_OF)
 static const struct of_device_id wv_of_match[] = {
 	{.compatible = "mediatek,drm_wv",},
+	{.compatible = "mediatek,drm-wv",},
 	{}
 };
 #endif
