@@ -9348,7 +9348,8 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 
 	id = drm_crtc_index(crtc);
 
-	CRTC_MMP_EVENT_START(id, frame_cfg, (unsigned long)cb_data->cmdq_handle, 0);
+	CRTC_MMP_EVENT_START(id, frame_cfg, (unsigned long)cb_data->cmdq_handle,
+		mtk_crtc->skip_check_trigger);
 
 	if (mtk_crtc_is_frame_trigger_mode(crtc) &&
 		msync2_is_on && (id == 0) &&
@@ -9562,6 +9563,8 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		}
 	}
 
+	mtk_crtc->skip_check_trigger = cb_data->is_mml_dl;
+
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLEMGR_BY_WB) &&
 	    !mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLEMGR_BY_REPAINT))
 		mtk_drm_idlemgr_wb_leave_post(mtk_crtc);
@@ -9575,7 +9578,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
 	kfree(cb_data);
 
-	CRTC_MMP_EVENT_END(id, frame_cfg, 0, 0);
+	CRTC_MMP_EVENT_END(id, frame_cfg, 0, mtk_crtc->skip_check_trigger);
 }
 
 #ifdef MTK_DRM_ASYNC_HANDLE
@@ -11773,7 +11776,7 @@ void mtk_crtc_set_dirty(struct mtk_drm_crtc *mtk_crtc)
 	// (CMD mode will enter MML IR by debug command), we don't
 	// have to worry about it will effect the original flow.
 	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
-		(mtk_crtc->is_mml || mtk_crtc->is_mml_dl)) {
+		(mtk_crtc->is_mml || mtk_crtc->is_mml_dl || mtk_crtc->skip_check_trigger)) {
 		return;
 	}
 
@@ -12062,7 +12065,7 @@ void mtk_crtc_check_trigger(struct mtk_drm_crtc *mtk_crtc, bool delay,
 		goto err;
 	}
 
-	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
+	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl || mtk_crtc->skip_check_trigger) {
 		DDPINFO("%s:%d, skip check trigger when MML IR\n", __func__, __LINE__);
 		CRTC_MMP_MARK(index, kick_trigger, 0, 4);
 		goto err;
@@ -18398,6 +18401,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	cb_data->misc = mtk_crtc->ddp_mode;
 	cb_data->msync2_enable = 0;
 	cb_data->is_mml = mtk_crtc->is_mml;
+	cb_data->is_mml_dl = mtk_crtc->is_mml_dl;
 	cb_data->hrt_idx = 0;
 
 	if (mtk_crtc_state->prop_val[CRTC_PROP_LYE_IDX] != (unsigned int)-1)
