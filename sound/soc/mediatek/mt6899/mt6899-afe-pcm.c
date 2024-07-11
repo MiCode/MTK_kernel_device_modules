@@ -6184,6 +6184,15 @@ static ssize_t mt6899_debug_read_reg(char *buffer, int size, struct mtk_base_afe
 	regmap_read(afe->regmap, AFE_GAIN3_CUR_L, &value);
 	n += scnprintf(buffer + n, size - n,
 		"AFE_GAIN3_CUR_L = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_ADDA_DL_SDM_DCCOMP_CON, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_ADDA_DL_SDM_DCCOMP_CON = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_ADDA_DL_DC_COMP_CFG0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_ADDA_DL_DC_COMP_CFG0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_ADDA_DL_DC_COMP_CFG1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_ADDA_DL_DC_COMP_CFG1 = 0x%x\n", value);
 	regmap_read(afe->regmap, AFE_STF_CON0, &value);
 	n += scnprintf(buffer + n, size - n,
 		"AFE_STF_CON0 = 0x%x\n", value);

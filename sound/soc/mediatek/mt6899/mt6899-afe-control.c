@@ -195,8 +195,25 @@ int mt6899_dai_set_priv(struct mtk_base_afe *afe, int id,
 /* DC compensation */
 int mt6899_enable_dc_compensation(bool enable)
 {
+	int ret = 0;
+
 	if (!local_afe)
 		return -EPERM;
+
+	if (pm_runtime_status_suspended(local_afe->dev))
+		dev_info(local_afe->dev, "%s(), status suspended\n", __func__);
+
+
+	ret = pm_runtime_get_sync(local_afe->dev);
+	if (!ret)
+		dev_info(local_afe->dev, "%s(), pm_runtime_get_sync error", __func__);
+	regmap_update_bits(local_afe->regmap,
+			   AFE_ADDA_DL_SDM_DCCOMP_CON,
+			   AFE_DL_AUD_DC_COMP_EN_MASK_SFT,
+			   (enable ? 1 : 0) << AFE_DL_AUD_DC_COMP_EN_SFT);
+	ret = pm_runtime_put(local_afe->dev);
+	if (!ret)
+		dev_info(local_afe->dev, "%s(), pm_runtime_put error", __func__);
 
 	return 0;
 }
@@ -204,8 +221,38 @@ EXPORT_SYMBOL(mt6899_enable_dc_compensation);
 
 int mt6899_set_lch_dc_compensation(int value)
 {
+	int ret = 0;
+
 	if (!local_afe)
 		return -EPERM;
+
+	if (pm_runtime_status_suspended(local_afe->dev))
+		dev_info(local_afe->dev, "%s(), status suspended\n", __func__);
+
+	ret = pm_runtime_get_sync(local_afe->dev);
+	if (!ret)
+		dev_info(local_afe->dev, "%s(), pm_runtime_get_sync error", __func__);
+
+	/* reset toggle bit
+	 * toggle bit only trigger from 0->1
+	 * need to reset to 0 before setting dccomp value
+	 */
+	regmap_update_bits(local_afe->regmap,
+			   AFE_ADDA_DL_SDM_DCCOMP_CON,
+			   AFE_DL_DCCOMP_SYNC_TOGGLE_MASK_SFT,
+			   0x0 << AFE_DL_DCCOMP_SYNC_TOGGLE_SFT);
+	regmap_write(local_afe->regmap,
+		     AFE_ADDA_DL_DC_COMP_CFG0,
+		     value);
+	/* toggle sdm */
+	regmap_update_bits(local_afe->regmap,
+			   AFE_ADDA_DL_SDM_DCCOMP_CON,
+			   AFE_DL_DCCOMP_SYNC_TOGGLE_MASK_SFT,
+			   0x1 << AFE_DL_DCCOMP_SYNC_TOGGLE_SFT);
+
+	ret = pm_runtime_put(local_afe->dev);
+	if (!ret)
+		dev_info(local_afe->dev, "%s(), pm_runtime_put error", __func__);
 
 	return 0;
 }
@@ -213,8 +260,38 @@ EXPORT_SYMBOL(mt6899_set_lch_dc_compensation);
 
 int mt6899_set_rch_dc_compensation(int value)
 {
+	int ret = 0;
+
 	if (!local_afe)
 		return -EPERM;
+
+	if (pm_runtime_status_suspended(local_afe->dev))
+		dev_info(local_afe->dev, "%s(), status suspended\n", __func__);
+
+	ret = pm_runtime_get_sync(local_afe->dev);
+	if (!ret)
+		dev_info(local_afe->dev, "%s(), pm_runtime_get_sync error", __func__);
+
+	/* reset toggle bit
+	 * toggle bit only trigger from 0->1
+	 * need to reset to 0 before setting dccomp value
+	 */
+	regmap_update_bits(local_afe->regmap,
+			   AFE_ADDA_DL_SDM_DCCOMP_CON,
+			   AFE_DL_DCCOMP_SYNC_TOGGLE_MASK_SFT,
+			   0x0 << AFE_DL_DCCOMP_SYNC_TOGGLE_SFT);
+	regmap_write(local_afe->regmap,
+		     AFE_ADDA_DL_DC_COMP_CFG1,
+		     value);
+	/* toggle sdm */
+	regmap_update_bits(local_afe->regmap,
+			   AFE_ADDA_DL_SDM_DCCOMP_CON,
+			   AFE_DL_DCCOMP_SYNC_TOGGLE_MASK_SFT,
+			   0x1 << AFE_DL_DCCOMP_SYNC_TOGGLE_SFT);
+
+	ret = pm_runtime_put(local_afe->dev);
+	if (!ret)
+		dev_info(local_afe->dev, "%s(), pm_runtime_put error", __func__);
 
 	return 0;
 }
