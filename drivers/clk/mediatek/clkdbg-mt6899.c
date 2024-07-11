@@ -267,7 +267,6 @@ const char * const *get_mt6899_all_clk_names(void)
 		"ufspdn_ufshci_ufs",
 		"ufspdn_ufshci_aes",
 		"ufspdn_ufshci_u_ahb",
-		"ufspdn_ufshci_u_axi",
 
 		/* imp_iic_wrap_en */
 		"impen_i3c2",
@@ -508,20 +507,15 @@ const char * const *get_mt6899_all_clk_names(void)
 		"img_vcore_img_26m",
 
 		/* vdec_soc_gcon_base */
-		"vde1_larb1_cken",
 		"vde1_lat_cken",
 		"vde1_lat_active",
-		"vde1_lat_cken_eng",
 		"vde1_vdec_cken",
 		"vde1_vdec_active",
-		"vde1_vdec_cken_eng",
 
 		/* vdec_gcon_base */
-		"vde2_larb1_cken",
 		"vde2_lat_cken",
 		"vde2_vdec_cken",
 		"vde2_vdec_active",
-		"vde2_vdec_cken_eng",
 
 		/* venc_gcon */
 		"ven1_larb",

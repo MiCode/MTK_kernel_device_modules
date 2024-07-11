@@ -26,6 +26,12 @@ static const struct mtk_gate_regs mm10_cg_regs = {
 	.sta_ofs = 0x100,
 };
 
+static const struct mtk_gate_regs mm10_hwv_regs = {
+	.set_ofs = 0x0008,
+	.clr_ofs = 0x000C,
+	.sta_ofs = 0x1C04,
+};
+
 static const struct mtk_gate_regs mm11_cg_regs = {
 	.set_ofs = 0x114,
 	.clr_ofs = 0x118,
@@ -45,6 +51,19 @@ static const struct mtk_gate_regs mm11_cg_regs = {
 		.id = _id,			\
 		.name = _name,			\
 		.parent_name = _parent,		\
+	}
+
+#define GATE_HWV_MM10(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "mm-hw-ccf-regmap",				\
+		.regs = &mm10_cg_regs,			\
+		.hwv_regs = &mm10_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr,			\
+		.flags = CLK_USE_HW_VOTER,	\
 	}
 
 #define GATE_MM11(_id, _name, _parent, _shift) {	\
@@ -140,7 +159,7 @@ static const struct mtk_gate mm1_clks[] = {
 			"disp_ck"/* parent */, 18),
 	GATE_MM10_V(CLK_MM1_DISP_WDMA0_DISP, "mm1_disp_wdma0_disp",
 			"mm1_disp_wdma0"/* parent */),
-	GATE_MM10(CLK_MM1_SMI_SUB_COMM0, "mm1_ssc",
+	GATE_HWV_MM10(CLK_MM1_SMI_SUB_COMM0, "mm1_ssc",
 			"disp_ck"/* parent */, 19),
 	GATE_MM10_V(CLK_MM1_SMI_SUB_COMM0_DISP, "mm1_ssc_disp",
 			"mm1_ssc"/* parent */),

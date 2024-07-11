@@ -367,22 +367,17 @@ struct pd_check_swcg img_vcore_d1a_swcgs[] = {
 };
 /* vdec_soc_gcon_base */
 struct pd_check_swcg vdec_soc_gcon_base_swcgs[] = {
-	SWCG("vde1_larb1_cken"),
 	SWCG("vde1_lat_cken"),
 	SWCG("vde1_lat_active"),
-	SWCG("vde1_lat_cken_eng"),
 	SWCG("vde1_vdec_cken"),
 	SWCG("vde1_vdec_active"),
-	SWCG("vde1_vdec_cken_eng"),
 	SWCG(NULL),
 };
 /* vdec_gcon_base */
 struct pd_check_swcg vdec_gcon_base_swcgs[] = {
-	SWCG("vde2_larb1_cken"),
 	SWCG("vde2_lat_cken"),
 	SWCG("vde2_vdec_cken"),
 	SWCG("vde2_vdec_active"),
-	SWCG("vde2_vdec_cken_eng"),
 	SWCG(NULL),
 };
 /* venc_gcon */
@@ -623,24 +618,24 @@ struct subsys_cgs_check mtk_subsys_check[] = {
 	{MT6899_CHK_PD_ISP_TRAW, MT6899_CHK_PD_ISP_MAIN, traw_dip1_swcgs, traw_dip1},
 	{MT6899_CHK_PD_ISP_TRAW, MT6899_CHK_PD_ISP_MAIN, traw_cap_dip1_swcgs, traw_cap_dip1},
 	{MT6899_CHK_PD_ISP_MAIN, MT6899_CHK_PD_ISP_VCORE, img_vcore_d1a_swcgs, img_v},
-	{MT6899_CHK_PD_VDE1, MT6899_CHK_PD_MM_INFRA, vdec_soc_gcon_base_swcgs, vde1},
-	{MT6899_CHK_PD_VDE0, MT6899_CHK_PD_MM_INFRA, vdec_gcon_base_swcgs, vde2},
+	{MT6899_CHK_PD_VDE0, MT6899_CHK_PD_MM_INFRA, vdec_soc_gcon_base_swcgs, vde1},
+	{MT6899_CHK_PD_VDE1, MT6899_CHK_PD_VDE0, vdec_gcon_base_swcgs, vde2},
 	{MT6899_CHK_PD_VEN0, MT6899_CHK_PD_MM_INFRA, venc_gcon_swcgs, ven1},
 	{MT6899_CHK_PD_VEN1, MT6899_CHK_PD_VEN0, venc_gcon_core1_swcgs, ven2},
-	{MT6899_CHK_PD_CAM_VCORE, MT6899_CHK_PD_MM_INFRA, cam_main_r1a_swcgs, cam_m},
-	{MT6899_CHK_PD_CAM_MAIN, MT6899_CHK_PD_CAM_VCORE, camsys_mraw_swcgs, cam_mr},
-	{MT6899_CHK_PD_CAM_MAIN, MT6899_CHK_PD_CAM_VCORE, camsys_ipe_swcgs, camsys_ipe},
-	{MT6899_CHK_PD_CAM_MAIN, MT6899_CHK_PD_CAM_VCORE, camsys_rawa_swcgs, cam_ra},
-	{MT6899_CHK_PD_CAM_MAIN, MT6899_CHK_PD_CAM_VCORE, camsys_rmsa_swcgs, camsys_rmsa},
-	{MT6899_CHK_PD_CAM_MAIN, MT6899_CHK_PD_CAM_VCORE, camsys_yuva_swcgs, cam_ya},
-	{MT6899_CHK_PD_CAM_MAIN, MT6899_CHK_PD_CAM_VCORE, camsys_rawb_swcgs, cam_rb},
-	{MT6899_CHK_PD_CAM_MAIN, MT6899_CHK_PD_CAM_VCORE, camsys_rmsb_swcgs, camsys_rmsb},
-	{MT6899_CHK_PD_CAM_MAIN, MT6899_CHK_PD_CAM_VCORE, camsys_yuvb_swcgs, cam_yb},
-	{MT6899_CHK_PD_CAM_MAIN, MT6899_CHK_PD_CAM_VCORE, camsys_rawc_swcgs, cam_rc},
-	{MT6899_CHK_PD_CAM_MAIN, MT6899_CHK_PD_CAM_VCORE, camsys_rmsc_swcgs, camsys_rmsc},
-	{MT6899_CHK_PD_CAM_MAIN, MT6899_CHK_PD_CAM_VCORE, camsys_yuvc_swcgs, cam_yc},
-	{MT6899_CHK_PD_CAM_VCORE, MT6899_CHK_PD_MM_INFRA, ccu_main_swcgs, ccu},
-	{MT6899_CHK_PD_CAM_MAIN, MT6899_CHK_PD_CAM_VCORE, cam_vcore_r1a_swcgs, camv},
+	{MT6899_CHK_PD_CAM_MAIN, MT6899_CHK_PD_CAM_VCORE, cam_main_r1a_swcgs, cam_m},
+	{MT6899_CHK_PD_CAM_MRAW, MT6899_CHK_PD_CAM_MAIN, camsys_mraw_swcgs, cam_mr},
+	{MT6899_CHK_PD_CAM_MRAW, MT6899_CHK_PD_CAM_MAIN, camsys_ipe_swcgs, camsys_ipe},
+	{MT6899_CHK_PD_CAM_SUBA, MT6899_CHK_PD_CAM_MAIN, camsys_rawa_swcgs, cam_ra},
+	{MT6899_CHK_PD_CAM_SUBA, MT6899_CHK_PD_CAM_MAIN, camsys_rmsa_swcgs, camsys_rmsa},
+	{MT6899_CHK_PD_CAM_SUBA, MT6899_CHK_PD_CAM_MAIN, camsys_yuva_swcgs, cam_ya},
+	{MT6899_CHK_PD_CAM_SUBB, MT6899_CHK_PD_CAM_MAIN, camsys_rawb_swcgs, cam_rb},
+	{MT6899_CHK_PD_CAM_SUBB, MT6899_CHK_PD_CAM_MAIN, camsys_rmsb_swcgs, camsys_rmsb},
+	{MT6899_CHK_PD_CAM_SUBB, MT6899_CHK_PD_CAM_MAIN, camsys_yuvb_swcgs, cam_yb},
+	{MT6899_CHK_PD_CAM_SUBC, MT6899_CHK_PD_CAM_MAIN, camsys_rawc_swcgs, cam_rc},
+	{MT6899_CHK_PD_CAM_SUBC, MT6899_CHK_PD_CAM_MAIN, camsys_rmsc_swcgs, camsys_rmsc},
+	{MT6899_CHK_PD_CAM_SUBC, MT6899_CHK_PD_CAM_MAIN, camsys_yuvc_swcgs, cam_yc},
+	{MT6899_CHK_PD_CAM_CCU, MT6899_CHK_PD_CAM_VCORE, ccu_main_swcgs, ccu},
+	{MT6899_CHK_PD_CAM_VCORE, MT6899_CHK_PD_MM_INFRA, cam_vcore_r1a_swcgs, camv},
 	{MT6899_CHK_PD_MML0, MT6899_CHK_PD_DIS1, mdpsys_config_swcgs, mdp},
 	{MT6899_CHK_PD_MML1, MT6899_CHK_PD_DIS1, mdpsys1_config_swcgs, mdp1},
 };
@@ -743,6 +738,7 @@ static enum chk_sys_id debug_dump_id[] = {
 	cpu_b,
 	ptp,
 	hwv,
+	mm_hwv,
 	chk_sys_num,
 };
 

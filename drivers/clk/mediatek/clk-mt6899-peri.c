@@ -565,10 +565,6 @@ static const struct mtk_gate ufspdn_clks[] = {
 			"ufs_faxi_ck"/* parent */, 3),
 	GATE_UFSPDN_V(CLK_UFSPDN_UFSHCI_U_AHB_UFS, "ufspdn_ufshci_u_ahb_ufs",
 			"ufspdn_ufshci_u_ahb"/* parent */),
-	GATE_UFSPDN(CLK_UFSPDN_UFSHCI_U_AXI, "ufspdn_ufshci_u_axi",
-			"ufs_fmem_sub_ck"/* parent */, 5),
-	GATE_UFSPDN_V(CLK_UFSPDN_UFSHCI_U_AXI_UFS, "ufspdn_ufshci_u_axi_ufs",
-			"ufspdn_ufshci_u_axi"/* parent */),
 };
 
 static const struct mtk_clk_desc ufspdn_mcd = {
