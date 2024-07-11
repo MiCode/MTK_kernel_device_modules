@@ -23980,6 +23980,50 @@ static int mtk_ddp_disp1_merge_out_cb_MT6991(enum mtk_ddp_comp_id cur,
 	return value;
 }
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+static int mtk_ddp_pq_path_sel_MT6991(enum mtk_ddp_comp_id cur,
+				      enum mtk_ddp_comp_id next,
+				      unsigned int *addr)
+{
+	int value = -1;
+
+	switch (cur) {
+	case DDP_COMPONENT_MDP_RSZ0:
+	case DDP_COMPONENT_MDP_RSZ1:
+		*addr = MT6991_PQ_PATH_SEL;
+		break;
+	default:
+		value = -1;
+		return value;
+	}
+
+	/* set value according to dst comp */
+	switch (next) {
+	case DDP_COMPONENT_TDSHP0:
+		value = 16;
+		break;
+	case DDP_COMPONENT_TDSHP1:
+		value = (16 << 8);
+		break;
+	case DDP_COMPONENT_ID_MAX:
+		value = 0;
+		break;
+
+	default:
+		value = -1;
+		return value;
+	}
+	DDPDBG("%s, cur=%s->next=%s, addr:0x%x, value:0x%x\n",
+		__func__,
+		mtk_dump_comp_str_id(cur),
+		mtk_dump_comp_str_id(next),
+		*addr,
+		value);
+
+	return value;
+}
+#endif
+
 static int mtk_ddp_mout_en_MT6991(const struct mtk_mmsys_reg_data *data,
 			   enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id next,
 			   unsigned int *addr)
@@ -24027,6 +24071,13 @@ static int mtk_ddp_mout_en_MT6991(const struct mtk_mmsys_reg_data *data,
 	value = mtk_ddp_disp0_pq_in_cb_MT6991(cur, next, addr);
 	if (value > 0)
 		return value;
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	if (mtk_ddp_comp_get_type(cur) == MTK_DISP_MDP_RSZ) {
+		value = mtk_ddp_pq_path_sel_MT6991(cur, next, addr);
+		return value;
+	}
+#endif
 
 	/* dispsys0 pq_out_cb */
 	value = mtk_ddp_disp0_pq_out_cb_MT6991(cur, next, addr);
