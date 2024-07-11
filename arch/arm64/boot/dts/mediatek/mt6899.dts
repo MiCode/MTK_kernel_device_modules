@@ -3569,21 +3569,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		w-hrt-ostdl = <1>;
 	};
 
-	gpio_keys: gpio-keys {
-		compatible = "gpio-keys";
-		status = "okay";
-		pinctrl-names = "default";
-		pinctrl-0 = <&key_gpio_default>;
-		volumedown {
-			label = "Volume_Down";
-			linux,code = <114>;
-			linux,input-type = <1>;
-			gpios = <&pio 32 1>;
-			wakeup-source;
-			debounce-interval = <30>;
-		};
-	};
-
 	apusys-apummu {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -15428,18 +15413,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		keypad: kp@1c00e000 {
 			compatible = "mediatek,kp";
-			reg = <0 0x1c00e000 0 0x1000>;
-			interrupts = <GIC_SPI 133 IRQ_TYPE_EDGE_RISING 0>;
-			mediatek,key-debounce-ms = <1024>;
-			mediatek,hw-map-num = <72>;
-			mediatek,hw-init-map = <114 0 0 0 0 0 0 0 0 0 0 0 0
-						0 0 0 0 0 0 0 0 0 0 0 0 0 0
-						0 0 0 0 0 0 0 0 0 0 0 0 0 0
-						0 0 0 0 0 0 0 0 0 0 0 0 0 0
-						0 0 0 0 0 0 0 0 0 0 0 0 0 0
-						0 0 0>;
-			//clocks = <&clk26m>;
-			//clock-names = "kpd";
+			/*
+			 * factory key type
+			 * 0: Keypad IP key
+			 * 1: GPIO key
+			 * 2: HOME2 key
+			 */
+			mediatek,factory-key-type = <2>;
 		};
 	};
 
@@ -16446,18 +16426,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 &hypervisor {
 	status = "okay";
 };
-
-/* KEY GPIO standardization start */
-&pio{
-	key_gpio_default:key-default {
-		pins-cmd1-dat {
-			pinmux = <PINMUX_GPIO32__FUNC_GPIO32>;
-			input-enable;
-			bias-pull-up;
-		};
-	};
-};
-/* KEY GPIO standardization end */
 
 &i2c5 {
 	rt5133: rt5133@18 {

@@ -691,6 +691,24 @@
 
 #endif
 
+&mt6363keys {
+	pinctrl-names = "kpcol0_mode";
+	pinctrl-0 = <&kpcol0_pins_gpio_mode>;
+	home2 {
+		linux,keycodes = <114>;
+		wakeup-source;
+	};
+};
+
+&pio {
+	kpcol0_pins_gpio_mode: gpio-mode {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO32__FUNC_GPIO32>;
+			input-enable;
+		};
+	};
+};
+
 #include "mediatek/cust_mt6899_touch_1080x2400_mult.dtsi"
 #include "mediatek/cust_k6899_connfem.dtsi"
 #include "mediatek/cust_mt6899_camera_v4l2.dtsi"
