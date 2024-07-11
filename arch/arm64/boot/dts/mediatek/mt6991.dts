@@ -16058,6 +16058,10 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		compatible = "mediatek,mmdebug-vcp";
 	};
 
+	vhost_mmdvfs: vhost-mmdvfs {
+		status = "disabled";
+	};
+
 	pmic-oc-debug {
 		compatible = "mediatek,mt6983-oc-debug";
 		status = "okay";
