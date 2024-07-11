@@ -718,7 +718,8 @@ static void mt6899_rv_cachedump(struct mtk_apu *apu)
 }
 
 const struct mtk_apu_platdata mt6899_platdata = {
-	.flags		= F_PRELOAD_FIRMWARE | F_AUTO_BOOT | F_DEBUG_LOG_ON | F_BRINGUP | F_FPGA_EP,
+	.flags		= F_PRELOAD_FIRMWARE | F_AUTO_BOOT | F_DEBUG_LOG_ON | F_BRINGUP |
+				F_APUSYS_RV_TAG_SUPPORT | F_SECURE_BOOT | F_SECURE_COREDUMP,
 	.ops		= {
 		.init	= mt6899_rproc_init,
 		.exit	= mt6899_rproc_exit,
