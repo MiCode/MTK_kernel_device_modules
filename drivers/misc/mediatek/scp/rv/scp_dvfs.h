@@ -258,6 +258,7 @@ struct scp_dvfs_hw {
 	u32 core_online_msk;
 	unsigned int secure_access_scp;
 	bool bypass_pmic_rg_access;
+	bool legacy_support_v1;
 };
 
 #define RES_TYPE_MAX 8
