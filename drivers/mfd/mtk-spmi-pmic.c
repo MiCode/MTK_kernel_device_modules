@@ -86,8 +86,10 @@ static const struct resource mt6363_regulators_resources[] = {
 static const struct resource mt6363_keys_resources[] = {
 	DEFINE_RES_IRQ(MT6363_IRQ_PWRKEY),
 	DEFINE_RES_IRQ(MT6363_IRQ_HOMEKEY),
+	DEFINE_RES_IRQ(MT6363_IRQ_HOMEKEY_2),
 	DEFINE_RES_IRQ(MT6363_IRQ_PWRKEY_R),
 	DEFINE_RES_IRQ(MT6363_IRQ_HOMEKEY_R),
+	DEFINE_RES_IRQ(MT6363_IRQ_HOMEKEY_2_R),
 };
 
 static const struct resource mt6363_lvsys_notify_resources[] = {
