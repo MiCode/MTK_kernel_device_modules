@@ -16819,8 +16819,6 @@ static void *get_vow_coeff_by_name(struct mt6681_priv *priv, const char *name)
 		return &(priv->reg_afe_vow_vad_cfg4);
 	else if (strcmp(name, "Audio VOWCFG5 Data") == 0)
 		return &(priv->reg_afe_vow_vad_cfg5);
-	else if (strcmp(name, "Audio_VOW_Periodic") == 0)
-		return &(priv->reg_afe_vow_periodic);
 	else
 		return NULL;
 }
@@ -16948,8 +16946,6 @@ static const struct snd_kcontrol_new mt6681_snd_vow_controls[] = {
 	SOC_SINGLE_EXT("Audio VOWCFG4 Data", SND_SOC_NOPM, 0, 0x80000, 0,
 		       audio_vow_cfg_get, audio_vow_cfg_set),
 	SOC_SINGLE_EXT("Audio VOWCFG5 Data", SND_SOC_NOPM, 0, 0x80000, 0,
-		       audio_vow_cfg_get, audio_vow_cfg_set),
-	SOC_SINGLE_EXT("Audio_VOW_Periodic", SND_SOC_NOPM, 0, 0x80000, 0,
 		       audio_vow_cfg_get, audio_vow_cfg_set),
 	SOC_SINGLE_EXT("DC_TRIM_DEBUG", SND_SOC_NOPM, 0, 0x80000, 0,
 		       audio_dctrim_get, audio_dctrim_set),

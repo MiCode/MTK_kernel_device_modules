@@ -25,6 +25,8 @@
 #define VOWDRV_DEBUG(format, args...)
 #endif
 
+#define DEBUG_IPI_RX 0
+
 #if IS_ENABLED(CONFIG_MTK_VOW_GVA_SUPPORT)
 #define VOW_GOOGLE_MODEL 1
 #else
