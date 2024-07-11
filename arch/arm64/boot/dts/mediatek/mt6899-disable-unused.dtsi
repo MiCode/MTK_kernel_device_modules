@@ -31,7 +31,8 @@
 			<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC0_MML>,
 			<&mdpsys1_config_clk CLK_MDP1_MDP_BIRSZ0_MML>,
 			<&mdpsys1_config_clk CLK_MDP1_MDP_C3D0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_FG0_MML>;
+			<&mdpsys1_config_clk CLK_MDP1_MDP_FG0_MML>,
+			<&mdpsys1_config_clk CLK_MDP1_F26M_SLOW_MML>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MML1_SHUTDOWN>;
 	};
 
@@ -55,18 +56,9 @@
 			<&mdpsys_config_clk CLK_MDP_FAKE_ENG0_MML>,
 			<&mdpsys_config_clk CLK_MDP_APB_DB_MML>,
 			<&mdpsys_config_clk CLK_MDP_BIRSZ0_MML>,
-			<&mdpsys_config_clk CLK_MDP_C3D0_MML>;
+			<&mdpsys_config_clk CLK_MDP_C3D0_MML>,
+			<&mdpsys_config_clk CLK_MDP_F26M_SLOW_MML>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MML0_SHUTDOWN>;
-	};
-
-	disable-unused-clk-mminfra-ao-config@66 {
-		compatible = "mediatek,clk-disable-unused";
-		reg = <0x66>;
-		clocks =
-			<&mminfra_ao_config_clk CLK_MMINFRA_AO_GCE_D_CMDQ>,
-			<&mminfra_ao_config_clk CLK_MMINFRA_AO_GCE_M_CMDQ>,
-			<&mminfra_ao_config_clk CLK_MMINFRA_AO_GCE_26M_CMDQ>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MM_INFRA>;
 	};
 
 	disable-unused-clk-cam-vcore-r1a@67 {
@@ -361,8 +353,6 @@
 			<&vdec_gcon_base_clk CLK_VDE2_LARB1_CKEN_SMI>,
 			<&vdec_gcon_base_clk CLK_VDE2_LARB1_CKEN_GENPD>,
 			<&vdec_gcon_base_clk CLK_VDE2_LAT_CKEN_VDEC>,
-			<&vdec_gcon_base_clk CLK_VDE2_LAT_ACTIVE_VDEC>,
-			<&vdec_gcon_base_clk CLK_VDE2_LAT_CKEN_ENG_VDEC>,
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN_VDEC>,
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_ACTIVE_VDEC>,
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN_ENG_VDEC>;

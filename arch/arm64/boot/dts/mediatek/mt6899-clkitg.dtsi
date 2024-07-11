@@ -36,22 +36,7 @@
 			<&topckgen_clk CLK_TOP_MMINFRA_SEL>,
 			<&topckgen_clk CLK_TOP_MMUP_SEL>,
 			<&topckgen_clk CLK_TOP_IMG_26M_SEL>,
-			<&apmixedsys_clk CLK_APMIXED_MAINPLL>,
-			<&apmixedsys_clk CLK_APMIXED_UNIVPLL>,
-			<&apmixedsys_clk CLK_APMIXED_MMPLL>,
-			<&apmixedsys_clk CLK_APMIXED_EMIPLL>,
-			<&apmixedsys_clk CLK_APMIXED_APLL1>,
-			<&apmixedsys_clk CLK_APMIXED_APLL2>,
-			<&apmixedsys_clk CLK_APMIXED_MSDCPLL>,
-			<&apmixedsys_clk CLK_APMIXED_EMIPLL2>,
-			<&apmixedsys_clk CLK_APMIXED_IMGPLL>,
-			<&apmixedsys_clk CLK_APMIXED_TVDPLL>,
-			<&vlp_cksys_clk CLK_VLP_CK_SSPM_SEL>,
-			<&ccipll_pll_ctrl_clk CLK_CCIPLL>,
-			<&armpll_ll_pll_ctrl_clk CLK_CPU_LL_ARMPLL_LL>,
-			<&armpll_bl_pll_ctrl_clk CLK_CPU_BL_ARMPLL_BL>,
-			<&armpll_b_pll_ctrl_clk CLK_CPU_B_ARMPLL_B>,
-			<&ptppll_pll_ctrl_clk CLK_PTPPLL>;
+			<&vlp_cksys_clk CLK_VLP_CK_SSPM_SEL>;
 	};
 
 	bring-up-smi@6 {
@@ -225,8 +210,6 @@
 		reg = <0xf>;
 		clocks =
 			<&vdec_gcon_base_clk CLK_VDE2_LAT_CKEN_VDEC>,
-			<&vdec_gcon_base_clk CLK_VDE2_LAT_ACTIVE_VDEC>,
-			<&vdec_gcon_base_clk CLK_VDE2_LAT_CKEN_ENG_VDEC>,
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN_VDEC>,
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_ACTIVE_VDEC>,
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN_ENG_VDEC>,
@@ -236,15 +219,6 @@
 			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_CKEN_VDEC>,
 			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_ACTIVE_VDEC>,
 			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_CKEN_ENG_VDEC>;
-	};
-
-	bring-up-cmdq@15 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x15>;
-		clocks =
-			<&mminfra_ao_config_clk CLK_MMINFRA_AO_GCE_D_CMDQ>,
-			<&mminfra_ao_config_clk CLK_MMINFRA_AO_GCE_M_CMDQ>,
-			<&mminfra_ao_config_clk CLK_MMINFRA_AO_GCE_26M_CMDQ>;
 	};
 
 	bring-up-msdc1@17 {
@@ -271,6 +245,14 @@
 		clocks =
 			<&ufscfg_ao_clk CLK_UFSAO_U_AO_FREE_26M_UFS>,
 			<&ufscfg_pdn_clk CLK_UFSPDN_U_FREE_26M_UFS>;
+	};
+
+	bring-up-mml@1e {
+		compatible = "mediatek,clk-bring-up";
+		reg = <0x1e>;
+		clocks =
+			<&mdpsys_config_clk CLK_MDP_F26M_SLOW_MML>,
+			<&mdpsys1_config_clk CLK_MDP1_F26M_SLOW_MML>;
 	};
 
 	bring-up-pd-isp-traw@26 {

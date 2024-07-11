@@ -1569,21 +1569,22 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 	clkchk {
 		compatible = "mediatek,mt6899-clkchk";
-		// Todo: Un-mark after HWCCF/MMHWCCF enabled
+		// Todo: Un-mark after verified
 		// interrupts = <GIC_SPI 907 IRQ_TYPE_LEVEL_HIGH 0>,
-		//	     <GIC_SPI 539 IRQ_TYPE_LEVEL_HIGH 0>;
+		//			<GIC_SPI 539 IRQ_TYPE_LEVEL_HIGH 0>;
 		// interrupt-names = "hwv_irq", "hfrp_hwv_irq";
 	};
 
 	pdchk {
 		compatible = "mediatek,mt6899-pdchk";
-		// Todo: Un-mark after HWCCF/MMHWCCF enabled
+		// Todo: Un-mark after verified
 		// interrupts = <GIC_SPI 907 IRQ_TYPE_LEVEL_HIGH 0>,
-		//	     <GIC_SPI 539 IRQ_TYPE_LEVEL_HIGH 0>;
+		//			<GIC_SPI 539 IRQ_TYPE_LEVEL_HIGH 0>;
 		// interrupt-names = "hwv_irq", "hfrp_hwv_irq";
 	};
 
 	clocks {
+		compatible = "clk-ftrace";
 		clk_null: clk-null {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
@@ -1611,9 +1612,21 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 	};
 
+	hw_ccf: syscon@10320000 {
+		compatible = "mediatek,mt6899-hw_ccf", "syscon";
+		reg = <0 0x10320000 0 0x2000>;
+	};
+
+	mm_hw_ccf: syscon@1163a000 {
+		compatible = "mediatek,mt6899-mm_hw_ccf", "syscon";
+		reg = <0 0x1163a000 0 0x2000>;
+	};
+
 	topckgen_clk: syscon@10000000 {
 		compatible = "mediatek,mt6899-topckgen", "syscon";
 		reg = <0 0x10000000 0 0x1000>;
+		hw-voter-regmap = <&hw_ccf>;
+		mm-hw-ccf-regmap = <&mm_hw_ccf>;
 		#clock-cells = <1>;
 	};
 
@@ -1626,6 +1639,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	apmixedsys_clk: syscon@1000c000 {
 		compatible = "mediatek,mt6899-apmixedsys", "syscon";
 		reg = <0 0x1000c000 0 0x1000>;
+		hw-voter-regmap = <&hw_ccf>;
 		#clock-cells = <1>;
 	};
 
@@ -1647,6 +1661,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	pericfg_ao_clk: syscon@11036000 {
 		compatible = "mediatek,mt6899-pericfg_ao", "syscon";
 		reg = <0 0x11036000 0 0x1000>;
+		hw-voter-regmap = <&hw_ccf>;
 		#clock-cells = <1>;
 	};
 
@@ -1833,24 +1848,28 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	vdec_soc_gcon_base_clk: syscon@1600f000 {
 		compatible = "mediatek,mt6899-vdecsys_soc", "syscon";
 		reg = <0 0x1600f000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hw_ccf>;
 		#clock-cells = <1>;
 	};
 
 	vdec_gcon_base_clk: syscon@1602f000 {
 		compatible = "mediatek,mt6899-vdecsys", "syscon";
 		reg = <0 0x1602f000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hw_ccf>;
 		#clock-cells = <1>;
 	};
 
 	venc_gcon_clk: syscon@17000000 {
 		compatible = "mediatek,mt6899-vencsys", "syscon";
 		reg = <0 0x17000000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hw_ccf>;
 		#clock-cells = <1>;
 	};
 
 	venc_gcon_core1_clk: syscon@17800000 {
 		compatible = "mediatek,mt6899-vencsys_c1", "syscon";
 		reg = <0 0x17800000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hw_ccf>;
 		#clock-cells = <1>;
 	};
 
@@ -1951,6 +1970,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		emi-nemicfg-ao-mem-prot-reg-bus = <&emi_nemicfg_ao_mem_prot_reg_bus>;
 		emi-semicfg-ao-mem-prot-reg-bus = <&emi_semicfg_ao_mem_prot_reg_bus>;
 		vlpcfg = <&vlpcfg_bus>;
+		mm-hw-ccf-regmap = <&mm_hw_ccf>;
 	};
 
 	vlpcfg_bus: syscon@1c00c000 {
