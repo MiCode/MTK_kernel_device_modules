@@ -14932,6 +14932,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,mt6899-apu-iommu0";
 			reg = <0 0x19010000 0 0x1000>;
 			table-id = <1>;
+			mediatek,apu-power = <&apusys_rv>;
 			mediatek,iommu-banks = <&apu_iommu0_bank1 &apu_iommu0_bank2
 						&apu_iommu0_bank3 &apu_iommu0_bank4>;
 			interrupts = <GIC_SPI 302 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -14970,6 +14971,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,mt6899-apu-iommu1";
 			reg = <0 0x19015000 0 0x1000>;
 			table-id = <1>;
+			mediatek,apu-power = <&apusys_rv>;
 			mediatek,iommu-banks = <&apu_iommu1_bank1 &apu_iommu1_bank2
 						&apu_iommu1_bank3 &apu_iommu1_bank4>;
 			interrupts = <GIC_SPI 307 IRQ_TYPE_LEVEL_HIGH 0>;
