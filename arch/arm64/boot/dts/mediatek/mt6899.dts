@@ -9028,23 +9028,16 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<0 0x15710000 0 0x00100>,	/* 22 IMGSYS_TRAW_DIP1 */
 					<0 0x15080000 0 0x10000>,	/* 23 IMGSYS_ME_MMG */
 					<0 0x15780000 0 0x00100>;	/* 24 IMGSYS_VCORE */
-#if 0
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
-#endif
 			mediatek,hcp = <&hcp>;
 			mediatek,img-frm-sync = <&img_frm_sync>;
-#if 0
 			mediatek,larbs = <&smi_larb15>,
-					<&smi_larb9>,
-					<&smi_larb39>,
-					<&smi_larb11>,
-					<&smi_larb28>,
-					<&smi_larb40>,
-					<&smi_larb38>,
-					<&smi_larb10>,
-					<&smi_larb22>,
-					<&smi_larb23>;
-#endif
+							<&smi_larb9>,
+							<&smi_larb11>,
+							<&smi_larb28>,
+							<&smi_larb38>,
+							<&smi_larb22>,
+							<&smi_larb23>;
 			mediatek,imgsys-cmdq = <&imgsys_cmdq>;
 			iommus = <&disp_iommu M4U_L28_P0_IMGI_T1_A>;
 #if 1
@@ -9848,7 +9841,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				sw-sync-token-camsys-pool-10 =
 					/bits/ 16 <CMDQ_SYNC_TOKEN_CAMSYS_POOL_10>;
 #endif
-#if 0
 			clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP_CAMERA_P2>,
 				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
 				<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_CAMERA_P2>,
@@ -9914,8 +9906,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&traw_dip1_clk CLK_TRAW_DIP1_LARB40_CAMERA_P2>,
 				<&traw_dip1_clk CLK_TRAW_DIP1_TRAW_CAMERA_P2>,
 				<&traw_dip1_clk CLK_TRAW_DIP1_GALS_CAMERA_P2>,
-				<&traw_cap_dip1_clk CLK_TRAW_CAP_DIP1_TRAW_CAP_CAMERA_P2>,
-				<&mmdvfs_mux MMDVFS_USER_IMG>;
+				<&traw_cap_dip1_clk CLK_TRAW_CAP_DIP1_TRAW_CAP_CAMERA_P2>;
+				// <&mmdvfs_mux MMDVFS_USER_IMG>;
 			clock-names = "VCORE_GALS",
 				"VCORE_MAIN",
 				"VCORE_SUB0",
@@ -9981,8 +9973,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"TRAW_DIP1_LARB40",
 				"TRAW_DIP1_TRAW",
 				"TRAW_DIP1_GALS",
-				"TRAW_CAP_DIP1_TRAW_CAP",
-				"mmdvfs_mux";
+				"TRAW_CAP_DIP1_TRAW_CAP";
+				// "mmdvfs_mux";
+#if 0
 			mmqos-supply = <&mmqos>;
 #endif
 			operating-points-v2 = <&opp_table_img>;
@@ -10101,18 +10094,18 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x15310000 0 0x9000>;
 			// dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			// cmdqsec-supply = <&gce_m_sec>;
+			maeplat-supply = <&mtk_mae_plat>;
 			mboxes = <&gce_m 20 0 CMDQ_THR_PRIO_1>;
 			// mboxes = <&gce_m 20 0 CMDQ_THR_PRIO_1>,
 			//		<&gce_m_sec 11 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
-			// mediatek,larb = <&smi_larb12>;
+			mediatek,larb = <&smi_larb12>;
 			// mediatek,aov = <&aov>;
 			fdvt-frame-done = <CMDQ_EVENT_IMG_IMGSYS_IPE_FDVT0_DONE>;
 			// sw-sync-token-tzmp-aie-wait = <CMDQ_SYNC_TOKEN_TZMP_AIE_WAIT>;
 			// sw-sync-token-tzmp-aie-set = <CMDQ_SYNC_TOKEN_TZMP_AIE_SET>;
 			iommus = <&disp_iommu M4U_L12_P0_FDVT_RDA_0>,
 						<&disp_iommu M4U_L12_P1_FDVT_WRA_0>;
-			#if 0
-			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_MAIN>;
+			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
 			clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP_CAMERA_MAE>,
 				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_MAE>,
 				<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_CAMERA_MAE>,
@@ -10137,10 +10130,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"GALS_TRX_IPE0_CAMERA_MAE",
 				"GALS_TRX_IPE1_CAMERA_MAE",
 				"GALS_CAMERA_MAE";
-			#endif
 		};
 
-		mtk-mae-plat@15319000 {
+		mtk_mae_plat: mtk-mae-plat@15319000 {
 			compatible = "mediatek,mtk-mae-plat-isp8-mt6899";
 			reg = <0 0x15319000 0 0x1000>;
 		};

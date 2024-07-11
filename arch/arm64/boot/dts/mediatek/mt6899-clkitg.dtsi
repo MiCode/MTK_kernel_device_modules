@@ -26,8 +26,6 @@
 			<&topckgen_clk CLK_TOP_U_MBIST_SEL>,
 			<&topckgen_clk CLK_TOP_PEXTP_MBIST_SEL>,
 			<&topckgen_clk CLK_TOP_MSDC30_2_HCLK_SEL>,
-			<&topckgen_clk CLK_TOP_IMG1_SEL>,
-			<&topckgen_clk CLK_TOP_IPE_SEL>,
 			<&topckgen_clk CLK_TOP_DPE_SEL>,
 			<&topckgen_clk CLK_TOP_VDEC_SEL>,
 			<&topckgen_clk CLK_TOP_VENC_SEL>,
@@ -35,7 +33,6 @@
 			<&topckgen_clk CLK_TOP_DP_SEL>,
 			<&topckgen_clk CLK_TOP_MMINFRA_SEL>,
 			<&topckgen_clk CLK_TOP_MMUP_SEL>,
-			<&topckgen_clk CLK_TOP_IMG_26M_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_SSPM_SEL>;
 	};
 
@@ -43,30 +40,6 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x6>;
 		clocks =
-			/* Todo: Remove these 6 preclk, Ask SMI to add virtual CG */
-			<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN>,
-			<&imgsys_main_clk CLK_IMG_TRAW0>,
-			<&imgsys_main_clk CLK_IMG_WPE0>,
-			<&imgsys_main_clk CLK_IMG_WPE1>,
-			<&imgsys_main_clk CLK_IMG_WPE2>,
-			<&imgsys_main_clk CLK_IMG_DIP0>,
-
-			<&imgsys_main_clk CLK_IMG_LARB12_SMI>,
-			<&imgsys_main_clk CLK_IMG_LARB9_SMI>,
-			<&imgsys_main_clk CLK_IMG_ADL_LARB_SMI>,
-			<&imgsys_main_clk CLK_IMG_SUB_COMMON0_SMI>,
-			<&imgsys_main_clk CLK_IMG_SUB_COMMON1_SMI>,
-			<&imgsys_main_clk CLK_IMG_SUB_COMMON2_SMI>,
-			<&imgsys_main_clk CLK_IMG_SUB_COMMON3_SMI>,
-			<&imgsys_main_clk CLK_IMG_SUB_COMMON4_SMI>,
-			<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_SMI>,
-			<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1_SMI>,
-			<&traw_dip1_clk CLK_TRAW_DIP1_LARB28_SMI>,
-			<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB15_SMI>,
-			<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB38_SMI>,
-			<&wpe1_dip1_clk CLK_WPE1_DIP1_LARB11_SMI>,
-			<&wpe2_dip1_clk CLK_WPE2_DIP1_LARB11_SMI>,
-			<&wpe3_dip1_clk CLK_WPE3_DIP1_LARB11_SMI>,
 			<&vdec_gcon_base_clk CLK_VDE2_LARB1_CKEN_SMI>,
 			<&vdec_soc_gcon_base_clk CLK_VDE1_LARB1_CKEN_SMI>,
 			<&venc_gcon_clk CLK_VEN1_CKE0_LARB_SMI>,
@@ -98,74 +71,6 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0xa>;
 		clocks =
-			<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP_CAMERA_P2>,
-			<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
-			<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_CAMERA_P2>,
-			<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1_CAMERA_P2>,
-			<&img_vcore_d1a_clk CLK_IMG_VCORE_IMG_26M_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_ME_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_MMG_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_LARB12_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_LARB9_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_TRAW0_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_TRAW1_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_DIP0_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_WPE0_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_IPE_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_WPE1_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_WPE2_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_ADL_LARB_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_ADLRD_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_ADLWR0_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_AVS_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_IPS_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_ADLWR1_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_ROOTCQ_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_BLS_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_SUB_COMMON0_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_SUB_COMMON1_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_SUB_COMMON2_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_SUB_COMMON3_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_SUB_COMMON4_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_GALS_RX_DIP0_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_GALS_RX_DIP1_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_GALS_RX_TRAW0_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_GALS_RX_WPE0_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_GALS_RX_WPE1_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_GALS_RX_WPE2_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_GALS_TRX_IPE0_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_GALS_TRX_IPE1_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG26_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_BWR_CAMERA_P2>,
-			<&imgsys_main_clk CLK_IMG_GALS_CAMERA_P2>,
-			<&traw_dip1_clk CLK_TRAW_DIP1_LARB28_CAMERA_P2>,
-			<&traw_dip1_clk CLK_TRAW_DIP1_LARB40_CAMERA_P2>,
-			<&traw_dip1_clk CLK_TRAW_DIP1_TRAW_CAMERA_P2>,
-			<&traw_dip1_clk CLK_TRAW_DIP1_GALS_CAMERA_P2>,
-			<&traw_cap_dip1_clk CLK_TRAW_CAP_DIP1_TRAW_CAP_CAMERA_P2>,
-			<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_CAMERA_P2>,
-			<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_GALS0_CAMERA_P2>,
-			<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_GALS1_CAMERA_P2>,
-			<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_GALS2_CAMERA_P2>,
-			<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_GALS3_CAMERA_P2>,
-			<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB10_CAMERA_P2>,
-			<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB15_CAMERA_P2>,
-			<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB38_CAMERA_P2>,
-			<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB39_CAMERA_P2>,
-			<&dip_nr1_dip1_clk CLK_DIP_NR1_DIP1_LARB_CAMERA_P2>,
-			<&dip_nr1_dip1_clk CLK_DIP_NR1_DIP1_DIP_NR1_CAMERA_P2>,
-			<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_DIP_NR_CAMERA_P2>,
-			<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB15_CAMERA_P2>,
-			<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB39_CAMERA_P2>,
-			<&wpe1_dip1_clk CLK_WPE1_DIP1_LARB11_CAMERA_P2>,
-			<&wpe1_dip1_clk CLK_WPE1_DIP1_WPE_CAMERA_P2>,
-			<&wpe1_dip1_clk CLK_WPE1_DIP1_GALS0_CAMERA_P2>,
-			<&wpe2_dip1_clk CLK_WPE2_DIP1_LARB11_CAMERA_P2>,
-			<&wpe2_dip1_clk CLK_WPE2_DIP1_WPE_CAMERA_P2>,
-			<&wpe2_dip1_clk CLK_WPE2_DIP1_GALS0_CAMERA_P2>,
-			<&wpe3_dip1_clk CLK_WPE3_DIP1_LARB11_CAMERA_P2>,
-			<&wpe3_dip1_clk CLK_WPE3_DIP1_WPE_CAMERA_P2>,
-			<&wpe3_dip1_clk CLK_WPE3_DIP1_GALS0_CAMERA_P2>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_DPE_CAMERA_P2>,
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19_CAMERA_P2>,
 			<&camsys_ipe_clk CLK_CAMSYS_IPE_DPE_CAMERA_P2>,
@@ -185,24 +90,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_SPI5_B_SPI>,
 			<&pericfg_ao_clk CLK_PERAOP_SPI6_B_SPI>,
 			<&pericfg_ao_clk CLK_PERAOP_SPI7_B_SPI>;
-	};
-
-	bring-up-camera-mae@e {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0xe>;
-		clocks =
-			<&imgsys_main_clk CLK_IMG_FDVT_CAMERA_MAE>,
-			<&imgsys_main_clk CLK_IMG_LARB12_CAMERA_MAE>,
-			<&imgsys_main_clk CLK_IMG_IPE_CAMERA_MAE>,
-			<&imgsys_main_clk CLK_IMG_SUB_COMMON2_CAMERA_MAE>,
-			<&imgsys_main_clk CLK_IMG_SUB_COMMON3_CAMERA_MAE>,
-			<&imgsys_main_clk CLK_IMG_GALS_TRX_IPE0_CAMERA_MAE>,
-			<&imgsys_main_clk CLK_IMG_GALS_TRX_IPE1_CAMERA_MAE>,
-			<&imgsys_main_clk CLK_IMG_GALS_CAMERA_MAE>,
-			<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP_CAMERA_MAE>,
-			<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_MAE>,
-			<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_CAMERA_MAE>,
-			<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1_CAMERA_MAE>;
 	};
 
 	bring-up-vdec@f {
@@ -253,30 +140,6 @@
 		clocks =
 			<&mdpsys_config_clk CLK_MDP_F26M_SLOW_MML>,
 			<&mdpsys1_config_clk CLK_MDP1_F26M_SLOW_MML>;
-	};
-
-	bring-up-pd-isp-traw@26 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x26>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_TRAW>;
-	};
-
-	bring-up-pd-isp-dip1@27 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x27>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_DIP1>;
-	};
-
-	bring-up-pd-isp-main@28 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x28>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
-	};
-
-	bring-up-pd-isp-vcore@29 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x29>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_VCORE>;
 	};
 
 	bring-up-pd-vde0@2a {
