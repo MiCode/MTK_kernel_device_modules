@@ -2136,7 +2136,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<0 0x0011b9c0 0 0x140>,
 			<0 0x0011b920 0 0xa0>;
 		reg-names = "sram", "share_sram", "share_sram_ext";
-		mediatek,enable = <0>;
+		mediatek,enable = <1>;
 	};
 
 	cm_mgr: cm-mgr@c100000 {
