@@ -418,6 +418,9 @@ struct mtk_enc_params {
 	int             qpvbr_upper_enable;
 	int             qpvbr_qp_upper_threshold;
 	int             qpvbr_qp_max_brratio;
+	int             qpvbr_lower_enable;
+	int             qpvbr_qp_lower_threshold;
+	int             qpvbr_qp_min_brratio;
 	int             cb_qp_offset;
 	int             cr_qp_offset;
 	int             mbrc_tk_spd;
@@ -513,6 +516,9 @@ struct venc_enc_param {
 	int qpvbr_upper_enable;
 	int qpvbr_qp_upper_threshold;
 	int qpvbr_qp_max_brratio;
+	int qpvbr_lower_enable;
+	int qpvbr_qp_lower_threshold;
+	int qpvbr_qp_min_brratio;
 	int cb_qp_offset;
 	int cr_qp_offset;
 	int mbrc_tk_spd;

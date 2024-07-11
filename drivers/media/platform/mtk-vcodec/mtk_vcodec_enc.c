@@ -928,11 +928,17 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_MPEG_MTK_ENCODE_QPVBR:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_QPVBR: mode(%d) maxqp(%d) brratio(%d)",
+			"V4L2_CID_MPEG_MTK_ENCODE_QPVBR: upper_enable(%d) maxqp(%d) maxbrratio(%d)",
 			ctrl->p_new.p_s32[0], ctrl->p_new.p_s32[1], ctrl->p_new.p_s32[2]);
+		mtk_v4l2_debug(2,
+			"V4L2_CID_MPEG_MTK_ENCODE_QPVBR: lower_enable(%d) minqp(%d) minbrratio(%d)",
+			ctrl->p_new.p_s32[3], ctrl->p_new.p_s32[4], ctrl->p_new.p_s32[5]);
 		p->qpvbr_upper_enable = ctrl->p_new.p_s32[0];
 		p->qpvbr_qp_upper_threshold = ctrl->p_new.p_s32[1];
 		p->qpvbr_qp_max_brratio = ctrl->p_new.p_s32[2];
+		p->qpvbr_lower_enable = ctrl->p_new.p_s32[3];
+		p->qpvbr_qp_lower_threshold = ctrl->p_new.p_s32[4];
+		p->qpvbr_qp_min_brratio = ctrl->p_new.p_s32[5];
 		break;
 	case V4L2_CID_MPEG_MTK_ENCODE_CHROMA_QP:
 		mtk_v4l2_debug(2,
@@ -1585,6 +1591,9 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->qpvbr_upper_enable = enc_params->qpvbr_upper_enable;
 	param->qpvbr_qp_upper_threshold = enc_params->qpvbr_qp_upper_threshold;
 	param->qpvbr_qp_max_brratio = enc_params->qpvbr_qp_max_brratio;
+	param->qpvbr_lower_enable = enc_params->qpvbr_lower_enable;
+	param->qpvbr_qp_lower_threshold = enc_params->qpvbr_qp_lower_threshold;
+	param->qpvbr_qp_min_brratio = enc_params->qpvbr_qp_min_brratio;
 	param->cb_qp_offset = enc_params->cb_qp_offset;
 	param->cr_qp_offset = enc_params->cr_qp_offset;
 	param->mbrc_tk_spd = enc_params->mbrc_tk_spd;
@@ -4397,6 +4406,9 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	ctx->enc_params.qpvbr_upper_enable = -1;
 	ctx->enc_params.qpvbr_qp_upper_threshold = -1;
 	ctx->enc_params.qpvbr_qp_max_brratio  = -1;
+	ctx->enc_params.qpvbr_lower_enable = -1;
+	ctx->enc_params.qpvbr_qp_lower_threshold = -1;
+	ctx->enc_params.qpvbr_qp_min_brratio  = -1;
 
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_QPVBR;
@@ -4407,7 +4419,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.max = 255;
 	cfg.step = 1;
 	cfg.def = -1;
-	cfg.dims[0] = 3;
+	cfg.dims[0] = 6;
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
