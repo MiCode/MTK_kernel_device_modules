@@ -1382,9 +1382,14 @@ static int system_buf_priv_dump(const struct dma_buf *dmabuf,
 				struct seq_file *s)
 {
 	int k = 0;
-	struct system_heap_buffer *buf = dmabuf->priv;
+	struct system_heap_buffer *buf = NULL;
 	struct list_head *cache_node;
 	struct iova_cache_data *cache_data;
+
+	if (WARN_ON(!dmabuf || !dmabuf->priv))
+		return 0;
+
+	buf = dmabuf->priv;
 
 	dmabuf_dump(s, "\tbuf_priv: uncached:%d alloc_pid:%d(%s)tid:%d(%s) alloc_time:%lluus\n",
 		    !!buf->uncached,
@@ -1403,7 +1408,7 @@ static int system_buf_priv_dump(const struct dma_buf *dmabuf,
 			struct device *dev = cache_data->dev_info[k].dev;
 			struct sg_table *sgt = cache_data->mapped_table[k];
 
-			if (!sgt || !dev || !dev_iommu_fwspec_get(dev))
+			if (!mapped || !sgt || !sgt->sgl || !dev || !dev_iommu_fwspec_get(dev))
 				continue;
 
 			dmabuf_dump(s,
