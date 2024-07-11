@@ -576,6 +576,8 @@ static ssize_t store_sgm41516d_access(struct device *dev,
 			"[%s] use \"cat sgm41516d_access\" to get value\n",
 			__func__);
 		}
+		if (ret < 0)
+			pr_info("%s ret(%d)\n", __func__, ret);
 	}
 	return size;
 }
@@ -754,6 +756,8 @@ void sgm41516d_set_en_hiz(struct sgm41516d_info *info, bool val)
 				       (unsigned char) (CON0_EN_HIZ_MASK),
 				       (unsigned char) (CON0_EN_HIZ_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 void sgm41516d_set_iinlim(struct sgm41516d_info *info, unsigned int val)
@@ -765,6 +769,8 @@ void sgm41516d_set_iinlim(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON0_IINLIM_MASK),
 				       (unsigned char) (CON0_IINLIM_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 void sgm41516d_set_stat_ctrl(struct sgm41516d_info *info, unsigned int val)
@@ -776,6 +782,8 @@ void sgm41516d_set_stat_ctrl(struct sgm41516d_info *info, unsigned int val)
 				   (unsigned char) (CON0_STAT_IMON_CTRL_MASK),
 				   (unsigned char) (CON0_STAT_IMON_CTRL_SHIFT)
 				   );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 /* CON1---------------------------------------------------- */
@@ -789,6 +797,8 @@ void sgm41516d_set_reg_rst(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON11_REG_RST_MASK),
 				       (unsigned char) (CON11_REG_RST_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 void sgm41516d_set_pfm(struct sgm41516d_info *info, unsigned int val)
@@ -800,6 +810,8 @@ void sgm41516d_set_pfm(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON1_PFM_MASK),
 				       (unsigned char) (CON1_PFM_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 void sgm41516d_set_wdt_rst(struct sgm41516d_info *info, bool val)
@@ -812,7 +824,8 @@ void sgm41516d_set_wdt_rst(struct sgm41516d_info *info, bool val)
 				       (unsigned char) (CON1_WDT_RST_MASK),
 				       (unsigned char) (CON1_WDT_RST_SHIFT)
 				      );
-
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 void sgm41516d_set_otg_config(struct sgm41516d_info *info, bool val)
@@ -824,6 +837,8 @@ void sgm41516d_set_otg_config(struct sgm41516d_info *info, bool val)
 				       (unsigned char) (CON1_OTG_CONFIG_MASK),
 				       (unsigned char) (CON1_OTG_CONFIG_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 
@@ -836,6 +851,8 @@ void sgm41516d_set_chg_config(struct sgm41516d_info *info, bool val)
 				       (unsigned char) (CON1_CHG_CONFIG_MASK),
 				       (unsigned char) (CON1_CHG_CONFIG_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 /*BSP:modify for Fix frequent pop ups by jianqiang.ouyang 20220718 start*/
@@ -862,6 +879,8 @@ void sgm41516d_set_sys_min(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON1_SYS_MIN_MASK),
 				       (unsigned char) (CON1_SYS_MIN_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 void sgm41516d_set_batlowv(struct sgm41516d_info *info, unsigned int val)
@@ -873,6 +892,8 @@ void sgm41516d_set_batlowv(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON1_MIN_VBAT_SEL_MASK),
 				       (unsigned char) (CON1_MIN_VBAT_SEL_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 
@@ -887,6 +908,8 @@ void sgm41516d_set_rdson(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON2_Q1_FULLON_MASK),
 				       (unsigned char) (CON2_Q1_FULLON_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 void sgm41516d_set_boost_lim(struct sgm41516d_info *info, unsigned int val)
@@ -898,6 +921,8 @@ void sgm41516d_set_boost_lim(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON2_BOOST_LIM_MASK),
 				       (unsigned char) (CON2_BOOST_LIM_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 void sgm41516e_set_boost_lim(struct sgm41516d_info *info, unsigned int val)
@@ -909,6 +934,8 @@ void sgm41516e_set_boost_lim(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON7_BOOST_CUR_LIMIT_MASK),
 				       (unsigned char) (CON7_BOOST_CUR_LIMIT_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 
@@ -921,6 +948,8 @@ void sgm41516d_set_ichg(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON2_ICHG_MASK),
 				       (unsigned char) (CON2_ICHG_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 /* CON3---------------------------------------------------- */
@@ -934,6 +963,8 @@ void sgm41516d_set_iprechg(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON3_IPRECHG_MASK),
 				       (unsigned char) (CON3_IPRECHG_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 void sgm41516d_set_iterm(struct sgm41516d_info *info, unsigned int val)
@@ -945,6 +976,8 @@ void sgm41516d_set_iterm(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON3_ITERM_MASK),
 				       (unsigned char) (CON3_ITERM_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 unsigned char sgm41516d_get_iterm(struct sgm41516d_info *info)
@@ -957,6 +990,8 @@ unsigned char sgm41516d_get_iterm(struct sgm41516d_info *info)
 				       (unsigned char) (CON3_ITERM_MASK),
 				       (unsigned char) (CON3_ITERM_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 	return val;
 }
 
@@ -972,6 +1007,8 @@ void sgm41516d_set_vreg(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON4_VREG_MASK),
 				       (unsigned char) (CON4_VREG_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 unsigned char sgm41516d_get_vreg(struct sgm41516d_info *info)
@@ -984,6 +1021,8 @@ unsigned char sgm41516d_get_vreg(struct sgm41516d_info *info)
 				       (unsigned char) (CON4_VREG_MASK),
 				       (unsigned char) (CON4_VREG_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 	return val;
 }
 
@@ -996,7 +1035,8 @@ void sgm41516d_set_topoff_timer(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON4_TOPOFF_TIMER_MASK),
 				       (unsigned char) (CON4_TOPOFF_TIMER_SHIFT)
 				      );
-
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 
@@ -1009,6 +1049,8 @@ void sgm41516d_set_vrechg(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON4_VRECHG_MASK),
 				       (unsigned char) (CON4_VRECHG_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 /* CON5---------------------------------------------------- */
@@ -1021,6 +1063,8 @@ void sgm41516d_set_en_term(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON5_EN_TERM_MASK),
 				       (unsigned char) (CON5_EN_TERM_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 
@@ -1034,6 +1078,8 @@ void sgm41516d_set_watchdog(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON5_WATCHDOG_MASK),
 				       (unsigned char) (CON5_WATCHDOG_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 void sgm41516d_set_en_timer(struct sgm41516d_info *info, unsigned int val)
@@ -1045,6 +1091,8 @@ void sgm41516d_set_en_timer(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON5_EN_TIMER_MASK),
 				       (unsigned char) (CON5_EN_TIMER_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 void sgm41516d_set_chg_timer(struct sgm41516d_info *info, unsigned int val)
@@ -1056,6 +1104,8 @@ void sgm41516d_set_chg_timer(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON5_CHG_TIMER_MASK),
 				       (unsigned char) (CON5_CHG_TIMER_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 void sgm41516d_set_chg_thermal(struct sgm41516d_info *info, unsigned int val)
@@ -1067,6 +1117,8 @@ void sgm41516d_set_chg_thermal(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON5_TREG_MASK),
 				       (unsigned char) (CON5_TREG_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 /* CON6---------------------------------------------------- */
@@ -1081,6 +1133,8 @@ void sgm41516d_set_treg(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON6_BOOSTV_MASK),
 				       (unsigned char) (CON6_BOOSTV_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 #endif
 }
 
@@ -1093,6 +1147,8 @@ void sgm41516d_set_vindpm(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON6_VINDPM_MASK),
 				       (unsigned char) (CON6_VINDPM_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 unsigned char sgm41516d_get_vindpm(struct sgm41516d_info *info)
@@ -1105,6 +1161,8 @@ unsigned char sgm41516d_get_vindpm(struct sgm41516d_info *info)
 				       (unsigned char) (CON6_VINDPM_MASK),
 				       (unsigned char) (CON6_VINDPM_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 	return val;
 }
 
@@ -1118,6 +1176,8 @@ void sgm41516d_set_ovp(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON6_OVP_MASK),
 				       (unsigned char) (CON6_OVP_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 
 }
 
@@ -1131,6 +1191,8 @@ void sgm41516d_set_boostv(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON6_BOOSTV_MASK),
 				       (unsigned char) (CON6_BOOSTV_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 
@@ -1146,6 +1208,8 @@ void sgm41516d_set_tmr2x_en(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON7_TMR2X_EN_MASK),
 				       (unsigned char) (CON7_TMR2X_EN_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 void sgm41516d_set_batfet_disable(struct sgm41516d_info *info, unsigned int val)
@@ -1157,6 +1221,8 @@ void sgm41516d_set_batfet_disable(struct sgm41516d_info *info, unsigned int val)
 				(unsigned char) (CON7_BATFET_Disable_MASK),
 				(unsigned char) (CON7_BATFET_Disable_SHIFT)
 				);
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 
@@ -1169,6 +1235,8 @@ void sgm41516d_set_batfet_delay(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON7_BATFET_DLY_MASK),
 				       (unsigned char) (CON7_BATFET_DLY_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 void sgm41516d_set_batfet_reset_enable(struct sgm41516d_info *info, unsigned int val)
@@ -1180,6 +1248,8 @@ void sgm41516d_set_batfet_reset_enable(struct sgm41516d_info *info, unsigned int
 				(unsigned char) (CON7_BATFET_RST_EN_MASK),
 				(unsigned char) (CON7_BATFET_RST_EN_SHIFT)
 				);
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 
@@ -1194,6 +1264,8 @@ unsigned int sgm41516d_get_system_status(struct sgm41516d_info *info)
 				     (&val), (unsigned char) (0xFF),
 				     (unsigned char) (0x0)
 				    );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 	return val;
 }
 
@@ -1217,6 +1289,8 @@ unsigned int sgm41516d_get_vbus_stat(struct sgm41516d_info *info)
 					     (unsigned char) (CON8_VBUS_STAT_MASK),
 					     (unsigned char) (CON8_VBUS_STAT_SHIFT)
 					    );
+		if (ret < 0)
+			pr_info("%s ret(%d)\n", __func__, ret);
 		for (j = 0; j < GETARRAYNUM(sgm41516d_chg_type_record); j++){
 				if (val == sgm41516d_chg_type_record[j].chg_type){
 					sgm41516d_chg_type_record[j].chg_type_count ++;
@@ -1227,8 +1301,8 @@ unsigned int sgm41516d_get_vbus_stat(struct sgm41516d_info *info)
 				}
 		}
 	}
-	
-	
+
+
 	return SGM41516D_CHG_TYPE_NOVBUS;
 }
 
@@ -1242,6 +1316,8 @@ unsigned int sgm41516d_get_chrg_stat(struct sgm41516d_info *info)
 				     (unsigned char) (CON8_CHRG_STAT_MASK),
 				     (unsigned char) (CON8_CHRG_STAT_SHIFT)
 				    );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 	return val;
 }
 
@@ -1255,6 +1331,8 @@ unsigned int sgm41516d_get_vsys_stat(struct sgm41516d_info *info)
 				     (unsigned char) (CON8_VSYS_STAT_MASK),
 				     (unsigned char) (CON8_VSYS_STAT_SHIFT)
 				    );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 	return val;
 }
 
@@ -1268,6 +1346,8 @@ unsigned int sgm41516d_get_pg_stat(struct sgm41516d_info *info)
 				     (unsigned char) (CON8_PG_STAT_MASK),
 				     (unsigned char) (CON8_PG_STAT_SHIFT)
 				    );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 	return val;
 }
 
@@ -1283,6 +1363,8 @@ void sgm41516d_set_int_mask(struct sgm41516d_info *info, unsigned int val)
 				       (unsigned char) (CON10_INT_MASK_MASK),
 				       (unsigned char) (CON10_INT_MASK_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 /*CON13 for SMG41516-----------------------------------------------------*/
@@ -1295,6 +1377,8 @@ void sgm41516d_set_dp(struct sgm41516d_info *info, unsigned int val)
 		(unsigned char) (CON13_REG_DP_VSET_MASK),
 		(unsigned char) (CON13_REG_DP_VSET_SHIFT)
 	);
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 void sgm41516d_set_dm(struct sgm41516d_info *info, unsigned int val)
@@ -1306,6 +1390,8 @@ void sgm41516d_set_dm(struct sgm41516d_info *info, unsigned int val)
 		(unsigned char) (CON13_REG_DM_VSET_MASK),
 		(unsigned char) (CON13_REG_DM_VSET_SHIFT)
 	);
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 /*CON15 for SMG41516-----------------------------------------------------*/
@@ -1318,6 +1404,8 @@ void sgm41516d_set_vindpm_os(struct sgm41516d_info *info, unsigned int val)
 		(unsigned char) (CON15_REG_VINDPM_OS_MASK),
 		(unsigned char) (CON15_REG_VINDPM_OS_SHIFT)
 	);
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 unsigned int sgm41516d_get_vindpm_os(struct sgm41516d_info *info)
@@ -1330,6 +1418,8 @@ unsigned int sgm41516d_get_vindpm_os(struct sgm41516d_info *info)
 				     (unsigned char) (CON15_REG_VINDPM_OS_MASK),
 				     (unsigned char) (CON15_REG_VINDPM_OS_SHIFT)
 				    );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 	return val;
 }
 
@@ -1342,6 +1432,8 @@ void sgm41516d_set_cv_fine_tuning(struct sgm41516d_info *info, unsigned int val)
 		(unsigned char) (CON15_REG_FINE_TUNING_MASK),
 		(unsigned char) (CON15_REG_FINE_TUNING_SHIFT)
 	);
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 unsigned char sgm41516d_get_cv_fine_tuning(struct sgm41516d_info *info)
@@ -1354,6 +1446,8 @@ unsigned char sgm41516d_get_cv_fine_tuning(struct sgm41516d_info *info)
 				       (unsigned char) (CON15_REG_FINE_TUNING_MASK),
 				       (unsigned char) (CON15_REG_FINE_TUNING_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 	return val;
 }
 /**********************************************************
@@ -1518,13 +1612,15 @@ static int battery_get_bat_voltage(void)
 	}
 	if (attr[gp].prop == gp) {
 		ret = attr[gp].get(gauge, &attr[gp], &val);
+		if (ret < 0)
+			pr_info("%s ret(%d)\n", __func__, ret);
 	} else {
 		pr_info("%s gp:%d idx error\n", __func__, gp);
 		return -ENOTSUPP;
 	}
 	pr_info("%s getvbat  = %d\n", __func__, val);
 	return val;
-} 
+}
 
 static int sgm41516d_set_cv_voltage(struct charger_device *chg_dev,
 				  u32 cv)
@@ -1711,6 +1807,8 @@ static int sgm41516d_get_boost_lim(struct sgm41516d_info *info)
 				       (unsigned char) (CON2_BOOST_LIM_MASK),
 				       (unsigned char) (CON2_BOOST_LIM_SHIFT)
 				      );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 	return val;
 }
 
@@ -1763,7 +1861,7 @@ static int sgm41516d_get_mivr_state(struct charger_device *chg_dev, bool *in_loo
 	unsigned char val = 0;
 	const int retry_count = 5;
 	struct sgm41516d_info *info = dev_get_drvdata(&chg_dev->dev);
-	
+
 	pr_info("%s enter!\n", __func__);
 
 	for (i = 0;i < retry_count; i++){
@@ -1775,6 +1873,8 @@ static int sgm41516d_get_mivr_state(struct charger_device *chg_dev, bool *in_loo
 		if (val == 0x1)
 			is_in_vindpm++;
 	}
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 	pr_info("pass value = 0x%x\n", val);
 	if (is_in_vindpm >= retry_count - 1) {
 		*in_loop = true;
@@ -1783,7 +1883,7 @@ static int sgm41516d_get_mivr_state(struct charger_device *chg_dev, bool *in_loo
 		*in_loop = false;
 		return 0;
 	}
-	
+
 }
 
 static int sgm41516d_get_mivr(struct charger_device *chg_dev, u32 *uV)
@@ -1987,24 +2087,27 @@ static int sgm41516d_get_is_safetytimer_enable(struct charger_device
 
 void sgm41516d_force_dpdm_enable(struct sgm41516d_info *info, unsigned int val)
 {
-        unsigned int ret = 0;
+	unsigned int ret = 0;
 
 	ret = sgm41516d_config_interface(info, (unsigned char) (sgm41516d_CON7),
 		(unsigned char) (val),
 		(unsigned char) (CON7_FORCE_DPDM_MASK),
 		(unsigned char) (CON7_FORCE_DPDM_SHIFT)
 	);
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 }
 
 unsigned int sgm41516d_get_iidet_status(struct sgm41516d_info *info)
 {
-        unsigned char val = 0;
-        unsigned int ret = 0;
+	unsigned char val = 0;
+	unsigned int ret = 0;
 
-        ret = sgm41516d_read_byte_verify(info, sgm41516d_CON7, &val);
-        val &= (CON7_FORCE_DPDM_MASK << CON7_FORCE_DPDM_SHIFT);
-        val = (val >> CON7_FORCE_DPDM_SHIFT);
-
+	ret = sgm41516d_read_byte_verify(info, sgm41516d_CON7, &val);
+	val &= (CON7_FORCE_DPDM_MASK << CON7_FORCE_DPDM_SHIFT);
+	val = (val >> CON7_FORCE_DPDM_SHIFT);
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
         return val;
 }
 /*
@@ -2387,6 +2490,8 @@ int sgm41516d_get_dev_id(struct sgm41516d_info *info)
 				     (unsigned char) (CON11_PN_MASK),
 				     (unsigned char) (CON11_PN_SHIFT)
 	    );
+	if (ret < 0)
+		pr_info("%s ret(%d)\n", __func__, ret);
 	return val;
 }
 
