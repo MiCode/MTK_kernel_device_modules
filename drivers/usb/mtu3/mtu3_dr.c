@@ -655,6 +655,8 @@ static ssize_t max_speed_store(struct device *dev,
 	mtu->max_speed = speed;
 	mtu->g.max_speed = speed;
 
+	mtu->g.lpm_capable = mtu->u3_lpm && (mtu->max_speed > USB_SPEED_HIGH);
+
 	return count;
 }
 
