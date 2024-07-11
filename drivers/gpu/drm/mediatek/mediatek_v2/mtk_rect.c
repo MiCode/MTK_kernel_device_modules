@@ -94,7 +94,7 @@ int mtk_rect_intersect(const struct mtk_rect *src,
 	int fRight = dst->x + dst->width - 1;
 	int fBottom = dst->y + dst->height - 1;
 
-	if (left < right && top < bottom && !mtk_rect_is_empty(dst) &&
+	if (left <= right && top <= bottom && !mtk_rect_is_empty(dst) &&
 			fLeft <= right && left <= fRight &&
 			fTop <= bottom && top <= fBottom) {
 		if (fLeft < left)
