@@ -15870,7 +15870,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		lbat-max-level = <3>;
 		lbat-limit-freq-lv1 = < 2147483647 2147483647 2147483647>;
-		lbat-limit-freq-lv2 = < 1200000 1700000 1900000>;
+		lbat-limit-freq-lv2 = < 1200000 1700000 1800000>;
 		lbat-limit-freq-lv3 = < 900000 900000 900000>;
 
 		oc-max-level = <2>;
