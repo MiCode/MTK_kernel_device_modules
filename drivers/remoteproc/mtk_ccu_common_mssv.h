@@ -15,6 +15,8 @@
 #include <linux/remoteproc.h>
 
 // #define SECURE_CCU
+#define CCU_MORE_DEBUG    0
+
 /*
  * devm_request_threaded_irq() may return -EINTR and retry fails too.
  * so can not request_irq/free_irq at ccu boot/shutdown.
@@ -42,6 +44,8 @@
 #define CCU_VER_ISP7SP	73
 #define CCU_VER_ISP7SPL	74
 #define CCU_VER_ISP8    80
+#define CCU_VER_ISP8L   81
+#define CCU_VER_ISP8S   82
 
 #define MTK_CCU_CLK_PWR_NUM 20
 #define MTK_CCU_CLK_NAME_LEN 32
@@ -164,7 +168,9 @@ struct mtk_ccu {
 	uint32_t ccu_exch_pa;
 	void __iomem *ccu_base;
 	void __iomem *ccu_exch_base;
+	void __iomem *ccu1_exch_base;
 	void __iomem *ccu_spare_base;
+	void __iomem *ccu1_spare_base;
 	void __iomem *bin_base;
 	void __iomem *dmem_base;
 	void __iomem *pmem_base;

@@ -11,7 +11,7 @@
 #include <linux/irqflags.h>
 #include <linux/timekeeping.h>
 
-#include "mtk_ccu_common.h"
+#include "mtk_ccu_common_mssv.h"
 
 #define MTK_CCU_TAG "[ccu_rproc]"
 #define LOG_ERR(format, args...) \
@@ -37,6 +37,12 @@ void mtk_ccu_memcpy(void *dst, const void *src, uint32_t len)
 	uint32_t data = 0;
 	uint32_t align_data = 0;
 
+#if (CCU_MORE_DEBUG)
+	int ecount = 0;
+
+	LOG_ERR("dst@0x%llx src@0x%llx len=%d", (uint64_t) dst, (uint64_t) src, len);
+#endif
+
 	for (i = 0; i < len/4; ++i)
 		writel(*((uint32_t *)src+i), (uint32_t *)dst+i);
 
@@ -50,6 +56,15 @@ void mtk_ccu_memcpy(void *dst, const void *src, uint32_t len)
 		}
 		writel(align_data, (uint32_t *)dst + len/4);
 	}
+
+#if (CCU_MORE_DEBUG)
+	for (i = 0; i < (len >> 2); ++i)
+		if (readl((uint32_t *)dst+i) != *((uint32_t *)src+i)) {
+			LOG_ERR("mismatch @ %d-th uint32_t", i);
+			if (++ecount > 16)
+				break;
+		}
+#endif
 }
 
 struct mtk_ccu_mem_info *mtk_ccu_get_meminfo(struct mtk_ccu *ccu,
