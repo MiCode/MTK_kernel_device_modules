@@ -10749,6 +10749,24 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					mtk,iommu-dma-range = <0x1 0x40000000 0x0 0x80000000>;
 					mtk,smmu-mode = "dma";
 				};
+				mm_iommu_group_2: mm-iommu-group-2 {
+					label = "mm_gce_d";
+					#address-cells = <2>;
+					#size-cells = <2>;
+					mtk,iommu-dma-range = <
+						0x0 0x0 0x0 0xfe000000
+						0x0 0xfffff000 0x3 0x00001000>;
+					mtk,smmu-mode = "dma";
+				};
+				mm_iommu_group_3: mm-iommu-group-3 {
+					label = "mm_gce_m";
+					#address-cells = <2>;
+					#size-cells = <2>;
+					mtk,iommu-dma-range = <
+						0x0 0x0 0x0 0xfe000000
+						0x0 0xfffff000 0x3 0x00001000>;
+					mtk,smmu-mode = "dma";
+				};
 			};
 		};
 
@@ -16615,7 +16633,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		label = "mm_smmu_gce_m";
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 183>;
-		mtk,iommu-group = <&mm_iommu_group_0>;
+		mtk,iommu-group = <&mm_iommu_group_3>;
 		dma-mask-bit = <35>;
 		smmu-supply = <&mm_smmu>;
 	};
@@ -16624,7 +16642,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		label = "mm_smmu_gce_d";
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 199>;
-		mtk,iommu-group = <&mm_iommu_group_0>;
+		mtk,iommu-group = <&mm_iommu_group_2>;
 		dma-mask-bit = <35>;
 		smmu-supply = <&mm_smmu>;
 	};
