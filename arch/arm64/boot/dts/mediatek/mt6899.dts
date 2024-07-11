@@ -14564,6 +14564,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				     <GIC_SPI 722 IRQ_TYPE_LEVEL_HIGH 0>,
 				     <GIC_SPI 723 IRQ_TYPE_LEVEL_HIGH 0>;
 
+			/* note: hci mtcmos bus protect needs CLK_UFSPDN_UFSHCI_U_AXI_UFS  */
 			clocks =
 				<&topckgen_clk CLK_TOP_U_SEL>,
 				<&topckgen_clk CLK_TOP_MAINPLL_D4_D2>,
@@ -14571,13 +14572,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&topckgen_clk CLK_TOP_AES_UFSFDE_SEL>,
 				<&topckgen_clk CLK_TOP_UNIVPLL_D6>,
 				<&topckgen_clk CLK_TOP_MAINPLL_D4>,
+				<&topckgen_clk CLK_TOP_U_MBIST_SEL>,
 				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SYS_UFS>,
 				<&ufscfg_ao_clk CLK_UFSAO_U_PHY_SAP_UFS>,
 				<&ufscfg_ao_clk CLK_UFSAO_U_PHY_TOP_AHB_S_BUSCK_UFS>,
 				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_UFS_UFS>,
 				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_AES_UFS>,
-				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_U_AHB_UFS>,
-				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_U_AXI_UFS>;
+				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_U_AHB_UFS>;
 
 			clock-names =
 				"ufs_sel",
@@ -14586,13 +14587,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"ufs_fde",
 				"ufs_fde_min_src",
 				"ufs_fde_max_src",
+				"u_mbist_sel",
 				"unipro_sys",
 				"phy_sap",
 				"phy_top_ahb_s_busck",
 				"ufshci_ufs",
 				"ufshci_aes",
-				"ufshci_u_ahb",
-				"ufshci_u_axi";
+				"ufshci_u_ahb";
 
 			freq-table-hz =
 				<273000000 499200000>,
@@ -14617,9 +14618,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"hci_rst";
 
 			vcc-supply = <&mt6363_vemc>;
-
-#if 0 /* UFS owenr */
-
 			/* for clock scaling bind vcore */
 			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			/* 0.65V for clock scale up */
@@ -14630,7 +14628,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			 * Instead of scpsys by PM flow.
 			 */
 			mediatek,ufs-rtff-mtcmos;
-#endif
 			mediatek,ufs-qos;
 			mediatek,ufs-pmc-via-fastauto;
 			mediatek,ufs-mphy-debug;

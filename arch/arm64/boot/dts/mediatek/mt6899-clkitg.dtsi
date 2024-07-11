@@ -10,11 +10,16 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x0>;
 		clocks =
-			<&topckgen_clk CLK_TOP_U_SEL>,
-			<&topckgen_clk CLK_TOP_U_MBIST_SEL>,
 			<&topckgen_clk CLK_TOP_VDEC_SEL>,
 			<&topckgen_clk CLK_TOP_MMINFRA_SEL>,
 			<&topckgen_clk CLK_TOP_MMUP_SEL>;
+	};
+
+	bring-up-ufs@1d {
+		compatible = "mediatek,clk-bring-up";
+		reg = <0x1d>;
+		clocks =
+			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_U_AXI_UFS>;
 	};
 
 	bring-up-smi@6 {
