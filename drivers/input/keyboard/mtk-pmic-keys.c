@@ -78,7 +78,6 @@ struct mtk_pmic_keys_regs {
 	.intsel_mask		= _intsel_mask,		\
 }
 
-#define RELEASE_IRQ_INTERVAL	3
 struct mtk_pmic_regs {
 	const struct mtk_pmic_keys_regs keys_regs[MTK_PMIC_MAX_KEY_COUNT];
 	bool release_irq;
@@ -484,6 +483,7 @@ static int mtk_pmic_keys_probe(struct platform_device *pdev)
 {
 	int error, index = 0;
 	unsigned int keycount;
+	unsigned int release_irq_interval;
 	struct mt6397_chip *pmic_chip;
 	struct device_node *node = pdev->dev.of_node, *child;
 	struct mtk_pmic_keys *keys;
@@ -525,6 +525,10 @@ static int mtk_pmic_keys_probe(struct platform_device *pdev)
 
 	__set_bit(EV_KEY, input_dev->evbit);
 	keycount = of_get_available_child_count(node);
+	if(strncmp(of_id->compatible, "mediatek,mt6363-keys", 20) == 0)
+		release_irq_interval = 3;
+	else
+		release_irq_interval = 2;
 	ktf_pmic_key = keys;
 	if (keycount > MTK_PMIC_MAX_KEY_COUNT) {
 		dev_err(keys->dev, "too many keys defined (%d)\n", keycount);
@@ -540,7 +544,7 @@ static int mtk_pmic_keys_probe(struct platform_device *pdev)
 		if (mtk_pmic_regs->release_irq) {
 			keys->keys[index].release_irq_num = platform_get_irq(
 						pdev,
-						index + RELEASE_IRQ_INTERVAL);
+						index + release_irq_interval);
 			if (keys->keys[index].release_irq_num < 0)
 				return keys->keys[index].release_irq_num;
 		}
