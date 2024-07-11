@@ -3879,7 +3879,7 @@
 
 	scp_dvfs {
 		compatible = "mediatek,scp-dvfs";
-		scp-dvfs-disable;
+		scp-dvfs-disable = <0>;
 		clocks =
 			<&topckgen_clk CLK_TOP_SCP_SEL>,
 			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
@@ -3918,11 +3918,20 @@
 		dvfsrc-vscp-supply = <&dvfsrc_vscp>;
 
 		do-ulposc-cali;
-		fmeter_clksys = <&topckgen_clk>;
-		ulposc_clksys = <&apmixedsys_clk>;
-		scp_clk_ctrl = <&scp_clk_ctrl>;
+		fmeter-clksys = <&topckgen_clk>;
+		ulposc-clksys = <&apmixedsys_clk>;
+		scp-clk-ctrl = <&scp_clk_ctrl>;
 		scp-clk-hw-ver = "v1";
 		ulposc-cali-ver = "v1";
+		ulposc-cali-alg-ver = <0>;
+		fmeter-args-u2-cali =
+		/* fm_id	fm_type */
+		 < 36		1>; /* OSC2_SYNC_CK (i.e. D2) */
+		fmeter-args-u2-result =
+		/* fm_id	fm_type */
+		 < 36		1>; /* OSC2_CK */
+		fmeter-id-ulposc2 = <36>;
+		fmeter-id-26M = <25>;
 		ulposc-cali-num = <3>;
 		ulposc-cali-target = <250 330 400>;
 		ulposc-cali-config =
@@ -3932,9 +3941,11 @@
 			<0x5ea940	0x2900		0x41>;
 		clk-dbg-ver = "v1";
 		ccf-fmeter-support;
-		secure_access = "enable"; /* enable: need to secure access scp */
 		legacy-support-v1;
+		scp-dvfs-flag = "enable";
+
 	};
+
 
 	sspm@10400000 {
 		compatible = "mediatek,sspm";
