@@ -134,9 +134,7 @@ static const char *bus_list[BUS_TYPE_NUM] = {
 static bool bypass_first_cg_off;
 static BLOCKING_NOTIFIER_HEAD(scpsys_notifier_list);
 
-static void __iomem *hwvdbg_infra_base;
-static void __iomem *hwvdbg_mminfra_base;
-static void __iomem *hwvdbg_hfrp_base;
+static const struct scpsys_plat_ops *scpsys_ops;
 
 static void turn_onoff_infra(enum infra_onoff_enum on);
 static DEFINE_SPINLOCK(hwv_infra_lock);
@@ -1078,26 +1076,6 @@ static int scpsys_apu_power_off(struct generic_pm_domain *genpd)
 	return ret;
 }
 
-static int mtk_check_vcp_is_ready(struct scp_domain *scpd)
-{
-	struct scp *scp = scpd->scp;
-	struct regmap *hwv_regmap;
-	u32 val = 0;
-
-	if (scpd->hwv_regmap)
-		hwv_regmap = scpd->hwv_regmap;
-	else if (scp->hwv_regmap)
-		hwv_regmap = scp->hwv_regmap;
-	else
-		return 0;
-
-	regmap_read(hwv_regmap, scpd->data->hwv_done_ofs, &val);
-	if ((val & scpd->data->vcp_mask) == scpd->data->vcp_mask)
-		return 1;
-
-	return 0;
-}
-
 static int mtk_hwv_is_done(struct scp_domain *scpd)
 {
 	struct scp *scp = scpd->scp;
@@ -1166,6 +1144,22 @@ static int mtk_hwv_is_disable_done(struct scp_domain *scpd)
 	return 0;
 }
 
+static bool mtk_check_vcp_is_ready(struct scp_domain *scpd)
+{
+	if (scpsys_ops == NULL || scpsys_ops->is_vcp_ready == NULL)
+		return true;
+
+	return scpsys_ops->is_vcp_ready(scpd);
+}
+
+static bool mtk_hwv_is_bus_busy(struct scp_domain *scpd)
+{
+	if (scpsys_ops == NULL || scpsys_ops->is_bus_busy == NULL)
+		return false;
+
+	return scpsys_ops->is_bus_busy(scpd);
+}
+
 static int scpsys_hwv_power_on(struct generic_pm_domain *genpd)
 {
 	struct scp_domain *scpd = container_of(genpd, struct scp_domain, genpd);
@@ -1184,12 +1178,11 @@ static int scpsys_hwv_power_on(struct generic_pm_domain *genpd)
 	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_INFRA_REQ_OPT))
 		turn_onoff_infra(INFRA_ON);
 
-	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_WAIT_VCP)) {
-		/* check infra->mminfra->mmup bus state for serror */
-		val = readl(hwvdbg_infra_base + 0x870);
-		val = readl(hwvdbg_mminfra_base + 0x100);
-		val = readl(hwvdbg_hfrp_base + 0xea8);
+	/* check if bus busy */
+	if (mtk_hwv_is_bus_busy(scpd))
+		goto err_busy_busy;
 
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_WAIT_VCP)) {
 		/* wait until vcp is ready, check 0x1c00091c[1] = 1 */
 		ret = readx_poll_timeout_atomic(mtk_check_vcp_is_ready, scpd,
 				tmp, tmp > 0, MTK_POLL_DELAY_US, MTK_POLL_1S_TIMEOUT);
@@ -1252,6 +1245,8 @@ static int scpsys_hwv_power_on(struct generic_pm_domain *genpd)
 
 	return 0;
 
+err_busy_busy:
+	dev_notice(scp->dev, "Failed to keep bus idle %s(%d)\n", genpd->name, ret);
 err_vcp_ready:
 	dev_notice(scp->dev, "Failed to vcp ready timeout %s\n", genpd->name);
 err_hwv_done:
@@ -1746,6 +1741,12 @@ static void turn_onoff_infra(enum infra_onoff_enum on)
 
 }
 
+void set_scpsys_ops(const struct scpsys_plat_ops *ops)
+{
+	scpsys_ops = ops;
+}
+EXPORT_SYMBOL(set_scpsys_ops);
+
 struct scp *init_scp(struct platform_device *pdev,
 			const struct scp_domain_data *scp_domain_data, int num,
 			const struct scp_ctrl_reg *scp_ctrl_reg,
@@ -1914,13 +1915,6 @@ struct scp *init_scp(struct platform_device *pdev,
 				mtk_pd_get_performance;
 		}
 	}
-
-	if (hwvdbg_infra_base == NULL)
-		hwvdbg_infra_base = ioremap(0x10000000, 0x1000);
-	if (hwvdbg_mminfra_base == NULL)
-		hwvdbg_mminfra_base = ioremap(0x1e800000, 0x1000);
-	if (hwvdbg_hfrp_base == NULL)
-		hwvdbg_hfrp_base = ioremap(0x1ec3e000, 0x1000);
 
 	return scp;
 }

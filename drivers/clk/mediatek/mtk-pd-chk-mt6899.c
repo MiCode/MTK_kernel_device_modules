@@ -380,8 +380,6 @@ struct pd_check_swcg vdec_soc_gcon_base_swcgs[] = {
 struct pd_check_swcg vdec_gcon_base_swcgs[] = {
 	SWCG("vde2_larb1_cken"),
 	SWCG("vde2_lat_cken"),
-	SWCG("vde2_lat_active"),
-	SWCG("vde2_lat_cken_eng"),
 	SWCG("vde2_vdec_cken"),
 	SWCG("vde2_vdec_active"),
 	SWCG("vde2_vdec_cken_eng"),
@@ -553,13 +551,6 @@ struct pd_check_swcg cam_vcore_r1a_swcgs[] = {
 	SWCG("camv_cv_mm0_subc_dis"),
 	SWCG(NULL),
 };
-/* mminfra_ao_config */
-struct pd_check_swcg mminfra_ao_config_swcgs[] = {
-	SWCG("mminfra_ao_gce_d"),
-	SWCG("mminfra_ao_gce_m"),
-	SWCG("mminfra_ao_gce_26m"),
-	SWCG(NULL),
-};
 /* mdpsys_config */
 struct pd_check_swcg mdpsys_config_swcgs[] = {
 	SWCG("mdp_mutex0"),
@@ -577,6 +568,7 @@ struct pd_check_swcg mdpsys_config_swcgs[] = {
 	SWCG("mdp_apb_db"),
 	SWCG("mdp_birsz0"),
 	SWCG("mdp_c3d0"),
+	SWCG("mdp_f26m_slow_ck"),
 	SWCG(NULL),
 };
 /* mdpsys1_config */
@@ -601,6 +593,7 @@ struct pd_check_swcg mdpsys1_config_swcgs[] = {
 	SWCG("mdp1_mdp_birsz0"),
 	SWCG("mdp1_mdp_c3d0"),
 	SWCG("mdp1_mdp_fg0"),
+	SWCG("mdp1_f26m_slow_ck"),
 	SWCG(NULL),
 };
 
@@ -648,7 +641,6 @@ struct subsys_cgs_check mtk_subsys_check[] = {
 	{MT6899_CHK_PD_CAM_MAIN, MT6899_CHK_PD_CAM_VCORE, camsys_yuvc_swcgs, cam_yc},
 	{MT6899_CHK_PD_CAM_VCORE, MT6899_CHK_PD_MM_INFRA, ccu_main_swcgs, ccu},
 	{MT6899_CHK_PD_CAM_MAIN, MT6899_CHK_PD_CAM_VCORE, cam_vcore_r1a_swcgs, camv},
-	{MT6899_CHK_PD_MM_INFRA, PD_NULL, mminfra_ao_config_swcgs, mminfra_ao_config},
 	{MT6899_CHK_PD_MML0, MT6899_CHK_PD_DIS1, mdpsys_config_swcgs, mdp},
 	{MT6899_CHK_PD_MML1, MT6899_CHK_PD_DIS1, mdpsys1_config_swcgs, mdp1},
 };

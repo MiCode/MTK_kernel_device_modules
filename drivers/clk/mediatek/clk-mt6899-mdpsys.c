@@ -32,6 +32,12 @@ static const struct mtk_gate_regs mdp11_cg_regs = {
 	.sta_ofs = 0x110,
 };
 
+static const struct mtk_gate_regs mdp12_cg_regs = {
+	.set_ofs = 0x124,
+	.clr_ofs = 0x128,
+	.sta_ofs = 0x120,
+};
+
 #define GATE_MDP10(_id, _name, _parent, _shift) {	\
 		.id = _id,				\
 		.name = _name,				\
@@ -57,6 +63,21 @@ static const struct mtk_gate_regs mdp11_cg_regs = {
 	}
 
 #define GATE_MDP11_V(_id, _name, _parent) {	\
+		.id = _id,			\
+		.name = _name,			\
+		.parent_name = _parent,		\
+	}
+
+#define GATE_MDP12(_id, _name, _parent, _shift) {	\
+		.id = _id,				\
+		.name = _name,				\
+		.parent_name = _parent,			\
+		.regs = &mdp12_cg_regs,			\
+		.shift = _shift,			\
+		.ops = &mtk_clk_gate_ops_setclr,	\
+	}
+
+#define GATE_MDP12_V(_id, _name, _parent) {	\
 		.id = _id,			\
 		.name = _name,			\
 		.parent_name = _parent,		\
@@ -149,6 +170,11 @@ static const struct mtk_gate mdp1_clks[] = {
 			"mdp_ck"/* parent */, 12),
 	GATE_MDP11_V(CLK_MDP1_MDP_FG0_MML, "mdp1_mdp_fg0_mml",
 			"mdp1_mdp_fg0"/* parent */),
+	/* MDP12 */
+	GATE_MDP12(CLK_MDP1_F26M_SLOW, "mdp1_f26m_slow_ck",
+			"mdp_ck"/* parent */, 5),
+	GATE_MDP12_V(CLK_MDP1_F26M_SLOW_MML, "mdp1_f26m_slow_ck_mml",
+			"mdp1_f26m_slow_ck"/* parent */),
 };
 
 static const struct mtk_clk_desc mdp1_mcd = {
@@ -166,6 +192,12 @@ static const struct mtk_gate_regs mdp1_cg_regs = {
 	.set_ofs = 0x114,
 	.clr_ofs = 0x118,
 	.sta_ofs = 0x110,
+};
+
+static const struct mtk_gate_regs mdp2_cg_regs = {
+	.set_ofs = 0x124,
+	.clr_ofs = 0x128,
+	.sta_ofs = 0x120,
 };
 
 #define GATE_MDP0(_id, _name, _parent, _shift) {	\
@@ -193,6 +225,21 @@ static const struct mtk_gate_regs mdp1_cg_regs = {
 	}
 
 #define GATE_MDP1_V(_id, _name, _parent) {	\
+		.id = _id,			\
+		.name = _name,			\
+		.parent_name = _parent,		\
+	}
+
+#define GATE_MDP2(_id, _name, _parent, _shift) {	\
+		.id = _id,				\
+		.name = _name,				\
+		.parent_name = _parent,			\
+		.regs = &mdp2_cg_regs,			\
+		.shift = _shift,			\
+		.ops = &mtk_clk_gate_ops_setclr,	\
+	}
+
+#define GATE_MDP2_V(_id, _name, _parent) {	\
 		.id = _id,			\
 		.name = _name,			\
 		.parent_name = _parent,		\
@@ -265,6 +312,11 @@ static const struct mtk_gate mdp_clks[] = {
 			"mdp_ck"/* parent */, 11),
 	GATE_MDP1_V(CLK_MDP_C3D0_MML, "mdp_c3d0_mml",
 			"mdp_c3d0"/* parent */),
+	/* MDP2 */
+	GATE_MDP2(CLK_MDP_F26M_SLOW, "mdp_f26m_slow_ck",
+			"mdp_ck"/* parent */, 5),
+	GATE_MDP2_V(CLK_MDP_F26M_SLOW_MML, "mdp_f26m_slow_ck_mml",
+			"mdp_f26m_slow_ck"/* parent */),
 };
 
 static const struct mtk_clk_desc mdp_mcd = {

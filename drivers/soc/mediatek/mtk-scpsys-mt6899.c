@@ -162,6 +162,10 @@
 #define MT6899_TOP_AXI_PROT_EN_EMISYS0_MM_INFRA	(BIT(21) | BIT(22))
 #define MT6899_TOP_AXI_PROT_EN_EMISYS1_MM_INFRA	(BIT(21) | BIT(22))
 
+static void __iomem *mminfra_hwv_base;
+#define VCP_READY_CHK_OFS 0x091C
+#define VCP_READY_STA			BIT(1)
+
 enum regmap_type {
 	INVALID_TYPE = 0,
 	IFR_TYPE = 1,
@@ -360,80 +364,68 @@ static const struct scp_domain_data scp_domain_mt6899_hfrp_data[] = {
 	},
 	[MT6899_POWER_DOMAIN_ISP_VCORE] = {
 		.name = "isp-vcore",
-		.ctl_offs = 0xE4C,
-		.bp_table = {
-			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
-				MT6899_TOP_AXI_PROT_EN_MMSYS0_ISP_VCORE),
-			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
-				MT6899_TOP_AXI_PROT_EN_MMSYS0_ISP_VCORE_2ND),
-		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 0,
+		.vcp_mask = VCP_READY_STA,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6899_POWER_DOMAIN_VDE0] = {
 		.name = "vde0",
-		.ctl_offs = 0xE50,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.basic_clk_name = {"vde"},
-		.subsys_clk_prefix = "vde0",
-		.bp_table = {
-			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
-				MT6899_TOP_AXI_PROT_EN_MMSYS0_VDE0),
-			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
-				MT6899_TOP_AXI_PROT_EN_MMSYS0_VDE0_2ND),
-		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 3,
+		.vcp_mask = VCP_READY_STA,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6899_POWER_DOMAIN_VDE1] = {
 		.name = "vde1",
-		.ctl_offs = 0xE54,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.basic_clk_name = {"vde"},
-		.subsys_clk_prefix = "vde1",
-		.bp_table = {
-			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
-				MT6899_TOP_AXI_PROT_EN_MMSYS0_VDE1),
-			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
-				MT6899_TOP_AXI_PROT_EN_MMSYS0_VDE1_2ND),
-		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 4,
+		.vcp_mask = VCP_READY_STA,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6899_POWER_DOMAIN_VEN0] = {
 		.name = "ven0",
-		.ctl_offs = 0xE60,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.basic_clk_name = {"ven"},
-		.bp_table = {
-			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
-				MT6899_TOP_AXI_PROT_EN_MMSYS0_VEN0),
-			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
-				MT6899_TOP_AXI_PROT_EN_MMSYS1_VEN0),
-			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
-				MT6899_TOP_AXI_PROT_EN_MMSYS0_VEN0_2ND),
-			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
-				MT6899_TOP_AXI_PROT_EN_MMSYS1_VEN0_2ND),
-		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 5,
+		.vcp_mask = VCP_READY_STA,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6899_POWER_DOMAIN_VEN1] = {
 		.name = "ven1",
-		.ctl_offs = 0xE64,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.basic_clk_name = {"ven"},
-		.bp_table = {
-			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
-				MT6899_TOP_AXI_PROT_EN_MMSYS0_VEN1),
-			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
-				MT6899_TOP_AXI_PROT_EN_MMSYS1_VEN1),
-			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
-				MT6899_TOP_AXI_PROT_EN_MMSYS0_VEN1_2ND),
-			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
-				MT6899_TOP_AXI_PROT_EN_MMSYS1_VEN1_2ND),
-		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 6,
+		.vcp_mask = VCP_READY_STA,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6899_POWER_DOMAIN_CAM_MRAW] = {
 		.name = "cam-mraw",
@@ -512,21 +504,16 @@ static const struct scp_domain_data scp_domain_mt6899_hfrp_data[] = {
 	},
 	[MT6899_POWER_DOMAIN_CAM_VCORE] = {
 		.name = "cam-vcore",
-		.ctl_offs = 0xE80,
-		.basic_clk_name = {"cam_vcore_0", "cam_vcore_1"},
-		.bp_table = {
-			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
-				MT6899_TOP_AXI_PROT_EN_MMSYS2_CAM_VCORE),
-			BUS_PROT_IGN(IFR_TYPE, 0x264, 0x268, 0x260, 0x26c,
-				MT6899_TOP_AXI_PROT_EN_CCUSYS0_CAM_VCORE),
-			BUS_PROT_IGN(IFR_TYPE, 0x004, 0x008, 0x000, 0x00c,
-				MT6899_TOP_AXI_PROT_EN_INFRASYS0_CAM_VCORE),
-			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
-				MT6899_TOP_AXI_PROT_EN_MMSYS0_CAM_VCORE),
-			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
-				MT6899_TOP_AXI_PROT_EN_MMSYS1_CAM_VCORE),
-		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 1,
+		.vcp_mask = VCP_READY_STA,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6899_POWER_DOMAIN_CAM_CCU] = {
 		.name = "cam-ccu",
@@ -621,27 +608,16 @@ static const struct scp_domain_data scp_domain_mt6899_hfrp_data[] = {
 	},
 	[MT6899_POWER_DOMAIN_DIS1_SHUTDOWN] = {
 		.name = "dis1-shutdown",
-		.ctl_offs = 0xE9C,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.basic_clk_name = {"disp"},
-		.subsys_clk_prefix = "dis1",
-		.bp_table = {
-			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
-				MT6899_TOP_AXI_PROT_EN_MMSYS1_DIS1),
-			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
-				MT6899_TOP_AXI_PROT_EN_MMSYS2_DIS1),
-			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2A0, 0x2ac,
-				MT6899_TOP_AXI_PROT_EN_MMSYS3_DIS1),
-			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
-				MT6899_TOP_AXI_PROT_EN_MMSYS1_DIS1_2ND),
-			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
-				MT6899_TOP_AXI_PROT_EN_MMSYS2_DIS1_2ND),
-			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2A0, 0x2ac,
-				MT6899_TOP_AXI_PROT_EN_MMSYS3_DIS1_2ND),
-		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON
-				| default_cap,
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 7,
+		.vcp_mask = VCP_READY_STA,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6899_POWER_DOMAIN_OVL0_SHUTDOWN] = {
 		.name = "ovl0-shutdown",
@@ -661,34 +637,16 @@ static const struct scp_domain_data scp_domain_mt6899_hfrp_data[] = {
 	},
 	[MT6899_POWER_DOMAIN_MM_INFRA] = {
 		.name = "mm-infra",
-		.ctl_offs = 0xEA8,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.bp_table = {
-			BUS_PROT_IGN(IFR_TYPE, 0x024, 0x028, 0x020, 0x02c,
-				MT6899_TOP_AXI_PROT_EN_INFRASYS1_MM_INFRA),
-			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
-				MT6899_TOP_AXI_PROT_EN_MMSYS0_MM_INFRA),
-			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
-				MT6899_TOP_AXI_PROT_EN_MMSYS1_MM_INFRA),
-			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
-				MT6899_TOP_AXI_PROT_EN_MMSYS2_MM_INFRA),
-			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2A0, 0x2ac,
-				MT6899_TOP_AXI_PROT_EN_MMSYS3_MM_INFRA),
-			BUS_PROT_IGN(IFR_TYPE, 0x004, 0x008, 0x000, 0x00c,
-				MT6899_TOP_AXI_PROT_EN_INFRASYS0_MM_INFRA),
-			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
-				MT6899_TOP_AXI_PROT_EN_MMSYS1_MM_INFRA_2ND),
-			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
-				MT6899_TOP_AXI_PROT_EN_MMSYS2_MM_INFRA_2ND),
-			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2A0, 0x2ac,
-				MT6899_TOP_AXI_PROT_EN_MMSYS3_MM_INFRA_2ND),
-			BUS_PROT_IGN(IFR_TYPE, 0x124, 0x128, 0x120, 0x12c,
-				MT6899_TOP_AXI_PROT_EN_EMISYS0_MM_INFRA),
-			BUS_PROT_IGN(IFR_TYPE, 0x104, 0x108, 0x100, 0x10c,
-				MT6899_TOP_AXI_PROT_EN_EMISYS1_MM_INFRA),
-		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 2,
+		.vcp_mask = VCP_READY_STA,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | MTK_SCPD_IRQ_SAVE | default_cap,
 	},
 	[MT6899_POWER_DOMAIN_DP_TX] = {
 		.name = "dp-tx",
@@ -741,6 +699,21 @@ static const struct scp_soc_data mt6899_hfrp_data = {
 	}
 };
 
+static bool mt6899_vcp_is_ready(struct scp_domain *scpd)
+{
+	u32 val = 0;
+
+	val = readl(mminfra_hwv_base + VCP_READY_CHK_OFS);
+	if ((val & scpd->data->vcp_mask) == scpd->data->vcp_mask)
+		return true;
+
+	return false;
+}
+
+static struct scpsys_plat_ops scpsys_mt6899_ops = {
+	.is_vcp_ready = mt6899_vcp_is_ready,
+};
+
 /*
  * scpsys driver init
  */
@@ -768,6 +741,12 @@ static int mt6899_scpsys_probe(struct platform_device *pdev)
 	soc = of_device_get_match_data(&pdev->dev);
 	if (!soc)
 		return -EINVAL;
+
+	/* setup platform ops */
+	set_scpsys_ops(&scpsys_mt6899_ops);
+
+	if (mminfra_hwv_base == NULL)
+		mminfra_hwv_base = ioremap(0x1c000000, 0x1000);
 
 	scp = init_scp(pdev, soc->domains, soc->num_domains, &soc->regs, bus_list, BUS_TYPE_NUM);
 	if (IS_ERR(scp))

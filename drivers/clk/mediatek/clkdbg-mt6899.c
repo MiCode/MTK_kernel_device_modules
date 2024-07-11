@@ -521,8 +521,6 @@ const char * const *get_mt6899_all_clk_names(void)
 		/* vdec_gcon_base */
 		"vde2_larb1_cken",
 		"vde2_lat_cken",
-		"vde2_lat_active",
-		"vde2_lat_cken_eng",
 		"vde2_vdec_cken",
 		"vde2_vdec_active",
 		"vde2_vdec_cken_eng",
@@ -692,11 +690,6 @@ const char * const *get_mt6899_all_clk_names(void)
 		"camv_cv_cam2mm0_subc_dis",
 		"camv_cv_mm0_subc_dis",
 
-		/* mminfra_ao_config */
-		"mminfra_ao_gce_d",
-		"mminfra_ao_gce_m",
-		"mminfra_ao_gce_26m",
-
 		/* mdpsys_config */
 		"mdp_mutex0",
 		"mdp_apb_bus",
@@ -713,6 +706,7 @@ const char * const *get_mt6899_all_clk_names(void)
 		"mdp_apb_db",
 		"mdp_birsz0",
 		"mdp_c3d0",
+		"mdp_f26m_slow_ck",
 
 		/* mdpsys1_config */
 		"mdp1_mdp_mutex0",
@@ -735,6 +729,7 @@ const char * const *get_mt6899_all_clk_names(void)
 		"mdp1_mdp_birsz0",
 		"mdp1_mdp_c3d0",
 		"mdp1_mdp_fg0",
+		"mdp1_f26m_slow_ck",
 
 		/* ccipll_pll_ctrl */
 		"ccipll",

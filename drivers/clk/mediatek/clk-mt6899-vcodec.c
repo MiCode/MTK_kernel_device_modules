@@ -26,16 +26,34 @@ static const struct mtk_gate_regs vde20_cg_regs = {
 	.sta_ofs = 0x0,
 };
 
+static const struct mtk_gate_regs vde20_hwv_regs = {
+	.set_ofs = 0x0048,
+	.clr_ofs = 0x004C,
+	.sta_ofs = 0x1C24,
+};
+
 static const struct mtk_gate_regs vde21_cg_regs = {
 	.set_ofs = 0x200,
 	.clr_ofs = 0x204,
 	.sta_ofs = 0x200,
 };
 
+static const struct mtk_gate_regs vde21_hwv_regs = {
+	.set_ofs = 0x0040,
+	.clr_ofs = 0x0044,
+	.sta_ofs = 0x1C20,
+};
+
 static const struct mtk_gate_regs vde22_cg_regs = {
 	.set_ofs = 0x8,
 	.clr_ofs = 0xC,
 	.sta_ofs = 0x8,
+};
+
+static const struct mtk_gate_regs vde22_hwv_regs = {
+	.set_ofs = 0x0038,
+	.clr_ofs = 0x003C,
+	.sta_ofs = 0x1C1C,
 };
 
 #define GATE_VDE20(_id, _name, _parent, _shift) {	\
@@ -53,6 +71,19 @@ static const struct mtk_gate_regs vde22_cg_regs = {
 		.parent_name = _parent,		\
 	}
 
+#define GATE_HWV_VDE20(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "mm-hw-ccf-regmap",				\
+		.regs = &vde20_cg_regs,			\
+		.hwv_regs = &vde20_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv_inv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
+		.flags = CLK_USE_HW_VOTER,	\
+	}
+
 #define GATE_VDE21(_id, _name, _parent, _shift) {	\
 		.id = _id,				\
 		.name = _name,				\
@@ -66,6 +97,19 @@ static const struct mtk_gate_regs vde22_cg_regs = {
 		.id = _id,			\
 		.name = _name,			\
 		.parent_name = _parent,		\
+	}
+
+#define GATE_HWV_VDE21(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "mm-hw-ccf-regmap",				\
+		.regs = &vde21_cg_regs,			\
+		.hwv_regs = &vde21_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv_inv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
+		.flags = CLK_USE_HW_VOTER,	\
 	}
 
 #define GATE_VDE22(_id, _name, _parent, _shift) {	\
@@ -83,35 +127,40 @@ static const struct mtk_gate_regs vde22_cg_regs = {
 		.parent_name = _parent,		\
 	}
 
+#define GATE_HWV_VDE22(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "mm-hw-ccf-regmap",				\
+		.regs = &vde22_cg_regs,			\
+		.hwv_regs = &vde22_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv_inv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
+		.flags = CLK_USE_HW_VOTER,	\
+	}
+
 static const struct mtk_gate vde2_clks[] = {
 	/* VDE20 */
-	GATE_VDE20(CLK_VDE2_VDEC_CKEN, "vde2_vdec_cken",
+	GATE_HWV_VDE20(CLK_VDE2_VDEC_CKEN, "vde2_vdec_cken",
 			"vdec_ck"/* parent */, 0),
 	GATE_VDE20_V(CLK_VDE2_VDEC_CKEN_VDEC, "vde2_vdec_cken_vdec",
 			"vde2_vdec_cken"/* parent */),
-	GATE_VDE20(CLK_VDE2_VDEC_ACTIVE, "vde2_vdec_active",
+	GATE_HWV_VDE20(CLK_VDE2_VDEC_ACTIVE, "vde2_vdec_active",
 			"vdec_ck"/* parent */, 4),
 	GATE_VDE20_V(CLK_VDE2_VDEC_ACTIVE_VDEC, "vde2_vdec_active_vdec",
 			"vde2_vdec_active"/* parent */),
-	GATE_VDE20(CLK_VDE2_VDEC_CKEN_ENG, "vde2_vdec_cken_eng",
+	GATE_HWV_VDE20(CLK_VDE2_VDEC_CKEN_ENG, "vde2_vdec_cken_eng",
 			"vdec_ck"/* parent */, 8),
 	GATE_VDE20_V(CLK_VDE2_VDEC_CKEN_ENG_VDEC, "vde2_vdec_cken_eng_vdec",
 			"vde2_vdec_cken_eng"/* parent */),
 	/* VDE21 */
-	GATE_VDE21(CLK_VDE2_LAT_CKEN, "vde2_lat_cken",
+	GATE_HWV_VDE21(CLK_VDE2_LAT_CKEN, "vde2_lat_cken",
 			"vdec_ck"/* parent */, 0),
 	GATE_VDE21_V(CLK_VDE2_LAT_CKEN_VDEC, "vde2_lat_cken_vdec",
 			"vde2_lat_cken"/* parent */),
-	GATE_VDE21(CLK_VDE2_LAT_ACTIVE, "vde2_lat_active",
-			"vdec_ck"/* parent */, 4),
-	GATE_VDE21_V(CLK_VDE2_LAT_ACTIVE_VDEC, "vde2_lat_active_vdec",
-			"vde2_lat_active"/* parent */),
-	GATE_VDE21(CLK_VDE2_LAT_CKEN_ENG, "vde2_lat_cken_eng",
-			"vdec_ck"/* parent */, 8),
-	GATE_VDE21_V(CLK_VDE2_LAT_CKEN_ENG_VDEC, "vde2_lat_cken_eng_vdec",
-			"vde2_lat_cken_eng"/* parent */),
 	/* VDE22 */
-	GATE_VDE22(CLK_VDE2_LARB1_CKEN, "vde2_larb1_cken",
+	GATE_HWV_VDE22(CLK_VDE2_LARB1_CKEN, "vde2_larb1_cken",
 			"vdec_ck"/* parent */, 0),
 	GATE_VDE22_V(CLK_VDE2_LARB1_CKEN_SMI, "vde2_larb1_cken_smi",
 			"vde2_larb1_cken"/* parent */),
@@ -130,16 +179,34 @@ static const struct mtk_gate_regs vde10_cg_regs = {
 	.sta_ofs = 0x0,
 };
 
+static const struct mtk_gate_regs vde10_hwv_regs = {
+	.set_ofs = 0x0060,
+	.clr_ofs = 0x0064,
+	.sta_ofs = 0x1C30,
+};
+
 static const struct mtk_gate_regs vde11_cg_regs = {
 	.set_ofs = 0x200,
 	.clr_ofs = 0x204,
 	.sta_ofs = 0x200,
 };
 
+static const struct mtk_gate_regs vde11_hwv_regs = {
+	.set_ofs = 0x0058,
+	.clr_ofs = 0x005C,
+	.sta_ofs = 0x1C2C,
+};
+
 static const struct mtk_gate_regs vde12_cg_regs = {
 	.set_ofs = 0x8,
 	.clr_ofs = 0xC,
 	.sta_ofs = 0x8,
+};
+
+static const struct mtk_gate_regs vde12_hwv_regs = {
+	.set_ofs = 0x0050,
+	.clr_ofs = 0x0054,
+	.sta_ofs = 0x1C28,
 };
 
 #define GATE_VDE10(_id, _name, _parent, _shift) {	\
@@ -157,6 +224,19 @@ static const struct mtk_gate_regs vde12_cg_regs = {
 		.parent_name = _parent,		\
 	}
 
+#define GATE_HWV_VDE10(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "mm-hw-ccf-regmap",				\
+		.regs = &vde10_cg_regs,			\
+		.hwv_regs = &vde10_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv_inv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
+		.flags = CLK_USE_HW_VOTER,	\
+	}
+
 #define GATE_VDE11(_id, _name, _parent, _shift) {	\
 		.id = _id,				\
 		.name = _name,				\
@@ -170,6 +250,19 @@ static const struct mtk_gate_regs vde12_cg_regs = {
 		.id = _id,			\
 		.name = _name,			\
 		.parent_name = _parent,		\
+	}
+
+#define GATE_HWV_VDE11(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "mm-hw-ccf-regmap",				\
+		.regs = &vde11_cg_regs,			\
+		.hwv_regs = &vde11_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv_inv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
+		.flags = CLK_USE_HW_VOTER,	\
 	}
 
 #define GATE_VDE12(_id, _name, _parent, _shift) {	\
@@ -187,35 +280,48 @@ static const struct mtk_gate_regs vde12_cg_regs = {
 		.parent_name = _parent,		\
 	}
 
+#define GATE_HWV_VDE12(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "mm-hw-ccf-regmap",				\
+		.regs = &vde12_cg_regs,			\
+		.hwv_regs = &vde12_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv_inv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
+		.flags = CLK_USE_HW_VOTER,	\
+	}
+
 static const struct mtk_gate vde1_clks[] = {
 	/* VDE10 */
-	GATE_VDE10(CLK_VDE1_VDEC_CKEN, "vde1_vdec_cken",
+	GATE_HWV_VDE10(CLK_VDE1_VDEC_CKEN, "vde1_vdec_cken",
 			"vdec_ck"/* parent */, 0),
 	GATE_VDE10_V(CLK_VDE1_VDEC_CKEN_VDEC, "vde1_vdec_cken_vdec",
 			"vde1_vdec_cken"/* parent */),
-	GATE_VDE10(CLK_VDE1_VDEC_ACTIVE, "vde1_vdec_active",
+	GATE_HWV_VDE10(CLK_VDE1_VDEC_ACTIVE, "vde1_vdec_active",
 			"vdec_ck"/* parent */, 4),
 	GATE_VDE10_V(CLK_VDE1_VDEC_ACTIVE_VDEC, "vde1_vdec_active_vdec",
 			"vde1_vdec_active"/* parent */),
-	GATE_VDE10(CLK_VDE1_VDEC_CKEN_ENG, "vde1_vdec_cken_eng",
+	GATE_HWV_VDE10(CLK_VDE1_VDEC_CKEN_ENG, "vde1_vdec_cken_eng",
 			"vdec_ck"/* parent */, 8),
 	GATE_VDE10_V(CLK_VDE1_VDEC_CKEN_ENG_VDEC, "vde1_vdec_cken_eng_vdec",
 			"vde1_vdec_cken_eng"/* parent */),
 	/* VDE11 */
-	GATE_VDE11(CLK_VDE1_LAT_CKEN, "vde1_lat_cken",
+	GATE_HWV_VDE11(CLK_VDE1_LAT_CKEN, "vde1_lat_cken",
 			"vdec_ck"/* parent */, 0),
 	GATE_VDE11_V(CLK_VDE1_LAT_CKEN_VDEC, "vde1_lat_cken_vdec",
 			"vde1_lat_cken"/* parent */),
-	GATE_VDE11(CLK_VDE1_LAT_ACTIVE, "vde1_lat_active",
+	GATE_HWV_VDE11(CLK_VDE1_LAT_ACTIVE, "vde1_lat_active",
 			"vdec_ck"/* parent */, 4),
 	GATE_VDE11_V(CLK_VDE1_LAT_ACTIVE_VDEC, "vde1_lat_active_vdec",
 			"vde1_lat_active"/* parent */),
-	GATE_VDE11(CLK_VDE1_LAT_CKEN_ENG, "vde1_lat_cken_eng",
+	GATE_HWV_VDE11(CLK_VDE1_LAT_CKEN_ENG, "vde1_lat_cken_eng",
 			"vdec_ck"/* parent */, 8),
 	GATE_VDE11_V(CLK_VDE1_LAT_CKEN_ENG_VDEC, "vde1_lat_cken_eng_vdec",
 			"vde1_lat_cken_eng"/* parent */),
 	/* VDE12 */
-	GATE_VDE12(CLK_VDE1_LARB1_CKEN, "vde1_larb1_cken",
+	GATE_HWV_VDE12(CLK_VDE1_LARB1_CKEN, "vde1_larb1_cken",
 			"vdec_ck"/* parent */, 0),
 	GATE_VDE12_V(CLK_VDE1_LARB1_CKEN_SMI, "vde1_larb1_cken_smi",
 			"vde1_larb1_cken"/* parent */),
@@ -234,6 +340,12 @@ static const struct mtk_gate_regs ven1_cg_regs = {
 	.sta_ofs = 0x0,
 };
 
+static const struct mtk_gate_regs ven1_hwv_regs = {
+	.set_ofs = 0x0068,
+	.clr_ofs = 0x006C,
+	.sta_ofs = 0x1C34,
+};
+
 #define GATE_VEN1(_id, _name, _parent, _shift) {	\
 		.id = _id,				\
 		.name = _name,				\
@@ -249,12 +361,25 @@ static const struct mtk_gate_regs ven1_cg_regs = {
 		.parent_name = _parent,		\
 	}
 
+#define GATE_HWV_VEN1(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "mm-hw-ccf-regmap",				\
+		.regs = &ven1_cg_regs,			\
+		.hwv_regs = &ven1_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv_inv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
+		.flags = CLK_USE_HW_VOTER,	\
+	}
+
 static const struct mtk_gate ven1_clks[] = {
-	GATE_VEN1(CLK_VEN1_CKE0_LARB, "ven1_larb",
+	GATE_HWV_VEN1(CLK_VEN1_CKE0_LARB, "ven1_larb",
 			"venc_ck"/* parent */, 0),
 	GATE_VEN1_V(CLK_VEN1_CKE0_LARB_SMI, "ven1_larb_smi",
 			"ven1_larb"/* parent */),
-	GATE_VEN1(CLK_VEN1_CKE1_VENC, "ven1_venc",
+	GATE_HWV_VEN1(CLK_VEN1_CKE1_VENC, "ven1_venc",
 			"venc_ck"/* parent */, 4),
 	GATE_VEN1_V(CLK_VEN1_CKE1_VENC_VENC, "ven1_venc_venc",
 			"ven1_venc"/* parent */),
@@ -270,13 +395,13 @@ static const struct mtk_gate ven1_clks[] = {
 			"venc_ck"/* parent */, 16),
 	GATE_VEN1_V(CLK_VEN1_CKE4_JPGDEC_C1_JPGDEC, "ven1_jpgdec_c1_jpgdec",
 			"ven1_jpgdec_c1"/* parent */),
-	GATE_VEN1(CLK_VEN1_CKE5_GALS, "ven1_gals",
+	GATE_HWV_VEN1(CLK_VEN1_CKE5_GALS, "ven1_gals",
 			"venc_ck"/* parent */, 28),
 	GATE_VEN1_V(CLK_VEN1_CKE5_GALS_VENC, "ven1_gals_venc",
 			"ven1_gals"/* parent */),
 	GATE_VEN1_V(CLK_VEN1_CKE5_GALS_SMI, "ven1_gals_smi",
 			"ven1_gals"/* parent */),
-	GATE_VEN1(CLK_VEN1_CKE6_GALS_SRAM, "ven1_gals_sram",
+	GATE_HWV_VEN1(CLK_VEN1_CKE6_GALS_SRAM, "ven1_gals_sram",
 			"venc_ck"/* parent */, 31),
 	GATE_VEN1_V(CLK_VEN1_CKE6_GALS_SRAM_VENC, "ven1_gals_sram_venc",
 			"ven1_gals_sram"/* parent */),
@@ -295,6 +420,12 @@ static const struct mtk_gate_regs ven2_cg_regs = {
 	.sta_ofs = 0x0,
 };
 
+static const struct mtk_gate_regs ven2_hwv_regs = {
+	.set_ofs = 0x0070,
+	.clr_ofs = 0x0074,
+	.sta_ofs = 0x1C38,
+};
+
 #define GATE_VEN2(_id, _name, _parent, _shift) {	\
 		.id = _id,				\
 		.name = _name,				\
@@ -310,14 +441,27 @@ static const struct mtk_gate_regs ven2_cg_regs = {
 		.parent_name = _parent,		\
 	}
 
+#define GATE_HWV_VEN2(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "mm-hw-ccf-regmap",				\
+		.regs = &ven2_cg_regs,			\
+		.hwv_regs = &ven2_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv_inv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
+		.flags = CLK_USE_HW_VOTER,	\
+	}
+
 static const struct mtk_gate ven2_clks[] = {
-	GATE_VEN2(CLK_VEN2_CKE0_LARB, "ven2_larb",
+	GATE_HWV_VEN2(CLK_VEN2_CKE0_LARB, "ven2_larb",
 			"venc_ck"/* parent */, 0),
 	GATE_VEN2_V(CLK_VEN2_CKE0_LARB_VENC, "ven2_larb_venc",
 			"ven2_larb"/* parent */),
 	GATE_VEN2_V(CLK_VEN2_CKE0_LARB_SMI, "ven2_larb_smi",
 			"ven2_larb"/* parent */),
-	GATE_VEN2(CLK_VEN2_CKE1_VENC, "ven2_venc",
+	GATE_HWV_VEN2(CLK_VEN2_CKE1_VENC, "ven2_venc",
 			"venc_ck"/* parent */, 4),
 	GATE_VEN2_V(CLK_VEN2_CKE1_VENC_VENC, "ven2_venc_venc",
 			"ven2_venc"/* parent */),
@@ -329,13 +473,13 @@ static const struct mtk_gate ven2_clks[] = {
 			"venc_ck"/* parent */, 12),
 	GATE_VEN2_V(CLK_VEN2_CKE3_JPGDEC_JPGDEC, "ven2_jpgdec_jpgdec",
 			"ven2_jpgdec"/* parent */),
-	GATE_VEN2(CLK_VEN2_CKE5_GALS, "ven2_gals",
+	GATE_HWV_VEN2(CLK_VEN2_CKE5_GALS, "ven2_gals",
 			"venc_ck"/* parent */, 28),
 	GATE_VEN2_V(CLK_VEN2_CKE5_GALS_VENC, "ven2_gals_venc",
 			"ven2_gals"/* parent */),
 	GATE_VEN2_V(CLK_VEN2_CKE5_GALS_SMI, "ven2_gals_smi",
 			"ven2_gals"/* parent */),
-	GATE_VEN2(CLK_VEN2_CKE6_GALS_SRAM, "ven2_gals_sram",
+	GATE_HWV_VEN2(CLK_VEN2_CKE6_GALS_SRAM, "ven2_gals_sram",
 			"venc_ck"/* parent */, 31),
 	GATE_VEN2_V(CLK_VEN2_CKE6_GALS_SRAM_VENC, "ven2_gals_sram_venc",
 			"ven2_gals_sram"/* parent */),

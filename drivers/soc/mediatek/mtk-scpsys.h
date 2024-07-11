@@ -187,9 +187,15 @@ struct apu_callbacks {
 	int (*apu_power_off)(void);
 };
 
+struct scpsys_plat_ops {
+	bool (*is_bus_busy)(struct scp_domain *scpd);
+	bool (*is_vcp_ready)(struct scp_domain *scpd);
+};
+
 /* register new apu_callbacks and return previous apu_callbacks. */
 extern void register_apu_callback(struct apu_callbacks *apucb);
 
+void set_scpsys_ops(const struct scpsys_plat_ops *ops);
 int register_scpsys_notifier(struct notifier_block *nb);
 int unregister_scpsys_notifier(struct notifier_block *nb);
 
