@@ -2822,6 +2822,22 @@ static const struct mtk_disp_wdma_data mt6989_wdma_driver_data = {
 	.use_larb_control_sec = false,
 };
 
+static const struct mtk_disp_wdma_data mt6899_wdma_driver_data = {
+	.fifo_size_1plane = PARSE_FROM_DTS,
+	.fifo_size_uv_1plane = PARSE_FROM_DTS,
+	.fifo_size_2plane = PARSE_FROM_DTS,
+	.fifo_size_uv_2plane = PARSE_FROM_DTS,
+	.fifo_size_3plane = PARSE_FROM_DTS,
+	.fifo_size_uv_3plane = PARSE_FROM_DTS,
+	.sodi_config = mt6989_mtk_sodi_config,
+	.aid_sel = &mtk_wdma_aid_sel_MT6989,
+	.check_wdma_sec_reg = &mtk_wdma_check_sec_reg_MT6989,
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.is_support_34bits = true,
+	.use_larb_control_sec = false,
+};
+
 static const struct mtk_disp_wdma_data mt6991_wdma_driver_data = {
 	.fifo_size_1plane = PARSE_FROM_DTS,
 	.fifo_size_uv_1plane = 29,
@@ -2899,6 +2915,8 @@ static const struct of_device_id mtk_disp_wdma_driver_dt_match[] = {
 	 .data = &mt6835_wdma_driver_data},
 	{.compatible = "mediatek,mt6989-disp-wdma",
 	 .data = &mt6989_wdma_driver_data},
+	{.compatible = "mediatek,mt6899-disp-wdma",
+	 .data = &mt6899_wdma_driver_data},
 	{.compatible = "mediatek,mt6991-disp-wdma",
 	 .data = &mt6991_wdma_driver_data},
 	{},
