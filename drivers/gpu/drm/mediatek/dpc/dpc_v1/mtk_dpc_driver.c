@@ -38,6 +38,7 @@
 #include "mtk_disp_vidle.h"
 #include "mtk-mml-dpc.h"
 #include "mdp_dpc.h"
+#include "mtk_vdisp.h"
 #include <mt-plat/mtk_irq_mon.h>
 
 int dbg_runtime_ctrl;
@@ -4421,6 +4422,7 @@ static int mtk_dpc_probe_v1(struct platform_device *pdev)
 	mtk_vidle_register(&funcs_v1, DPC_VER1);
 	mml_dpc_register(&funcs_v1, DPC_VER1);
 	mdp_dpc_register(&funcs_v1, DPC_VER1);
+	mtk_vdisp_dpc_register_v1(&funcs_v1);
 	mtk_smi_dbg_register_pwr_ctrl_cb(&dpc_smi_user_pwr_funcs);
 
 	if (priv->mmdvfs_settings_count > 0)
