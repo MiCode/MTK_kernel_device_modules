@@ -4,6 +4,7 @@
  */
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
+#include <linux/pm_runtime.h>
 
 #include "cmdq_reg.h"
 #include "mdp_common.h"
@@ -36,9 +37,10 @@ struct device *larb0;
 int gCmdqRdmaPrebuiltSupport;
 /* support register MSB */
 int gMdpRegMSBSupport;
-#if IS_ENABLED(CONFIG_MTK_SMI)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 static atomic_t mdp_smi_clk_usage;
 #endif
+
 /* use to generate [CMDQ_ENGINE_ENUM_id and name] mapping for status print */
 #define CMDQ_FOREACH_MODULE_PRINT(ACTION)\
 {		\
@@ -78,6 +80,7 @@ struct CmdqMdpModuleBaseVA {
 	long MM_MUTEX;
 };
 static struct CmdqMdpModuleBaseVA gCmdqMdpModuleBaseVA;
+
 struct CmdqMdpModuleClock {
 	struct clk *clk_CAM_MDP;
 	struct clk *clk_IMG_DL_RELAY;
@@ -104,6 +107,7 @@ bool cmdq_mdp_clock_is_enable_##FN_NAME(void)	\
 	return cmdq_dev_device_clock_is_enable(		\
 		gCmdqMdpModuleClock.clk_##HW_NAME);	\
 }
+
 IMP_ENABLE_MDP_HW_CLOCK(CAM_MDP, CAM_MDP);
 IMP_ENABLE_MDP_HW_CLOCK(IMG_DL_RELAY, IMG_DL_RELAY);
 IMP_ENABLE_MDP_HW_CLOCK(IMG_DL_ASYNC_TOP, IMG_DL_ASYNC_TOP);
@@ -128,6 +132,7 @@ IMP_MDP_HW_CLOCK_IS_ENABLE(MDP_TDSHP0, MDP_TDSHP);
 IMP_MDP_HW_CLOCK_IS_ENABLE(MDP_COLOR0, MDP_COLOR);
 #undef IMP_ENABLE_MDP_HW_CLOCK
 #undef IMP_MDP_HW_CLOCK_IS_ENABLE
+
 static const uint64_t gCmdqEngineGroupBits[CMDQ_MAX_GROUP_COUNT] = {
 	CMDQ_ENG_ISP_GROUP_BITS,
 	CMDQ_ENG_MDP_GROUP_BITS,
@@ -282,7 +287,11 @@ void cmdq_mdp_dump_mmsys_config(const struct cmdqRecStruct *handle)
 int32_t cmdq_mdp_reset_with_mmsys(const uint64_t engineToResetAgain)
 {
 	long MMSYS_SW0_RST_B_REG = MMSYS_CONFIG_BASE + (0x140);
-
+#ifdef CMDQ_MDP_COLOR
+	int mdpColorResetBit = CMDQ_ENG_MDP_COLOR0;
+#else
+	int mdpColorResetBit = -1;
+#endif
 	int i = 0;
 	uint32_t reset_bits = 0L;
 	int engineResetBit[32] = {
@@ -298,7 +307,7 @@ int32_t cmdq_mdp_reset_with_mmsys(const uint64_t engineToResetAgain)
 		-1,
 		-1,
 		-1,
-		-1,	/* bit  12 : COLOR0 */
+		mdpColorResetBit,	/* bit  12 : COLOR0 */
 		-1,
 		-1,
 		-1,
@@ -1050,7 +1059,7 @@ struct device *mdp_init_larb(struct platform_device *pdev, u8 idx)
 	return &larb_pdev->dev;
 }
 
-/* Changed by bin because mt6768 just support M4U */
+/* Changed by bin because mt6765 just support M4U */
 void cmdqMdpInitialSetting(struct platform_device *pdev)
 {
 #ifdef MDP_IOMMU_DEBUG
@@ -1155,7 +1164,7 @@ struct device *cmdq_mdp_get_larb_device(void)
 /* new add by bin */
 static void mdp_enable_larb(bool enable, struct device *larb)
 {
-#if IS_ENABLED(CONFIG_MTK_SMI)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 	s32 mdp_clk_usage;
 
 	if (!larb) {
@@ -1163,31 +1172,31 @@ static void mdp_enable_larb(bool enable, struct device *larb)
 		return;
 	}
 
-	if (enable) {
-		int ret = 0;
+	int ret = 0;
 
+	if (enable) {
 		mdp_clk_usage = atomic_inc_return(&mdp_smi_clk_usage);
 
 		if (mdp_clk_usage == 1) {
-			ret = mtk_smi_larb_get(larb);
-			if (ret)
+			ret = pm_runtime_resume_and_get(larb);
+
+			if (ret < 0)
 				CMDQ_ERR("%s enable larb fail ret:%d\n", __func__, ret);
-			//cmdq_mdp_enable_clock_APB(enable);
-			//cmdq_mdp_enable_clock_MDP_MUTEX0(enable);
-			CMDQ_LOG_CLOCK("%s enable, mdp_smi_clk_usage:%d\n",
-				__func__, mdp_clk_usage);
 		}
+		CMDQ_LOG_CLOCK("%s enable, mdp_smi_clk_usage:%d\n",
+			__func__, mdp_clk_usage);
 	} else {
 
 		mdp_clk_usage = atomic_dec_return(&mdp_smi_clk_usage);
 
 		if (mdp_clk_usage == 0) {
-			//cmdq_mdp_enable_clock_MDP_MUTEX0(enable);
-			//cmdq_mdp_enable_clock_APB(enable);
-			mtk_smi_larb_put(larb);
-			CMDQ_LOG_CLOCK("%s disable, mdp_smi_clk_usage:%d\n",
-				__func__, mdp_clk_usage);
+			ret = pm_runtime_put_sync(larb);
+
+			if (ret < 0)
+				CMDQ_ERR("%s disable larb fail ret:%d\n", __func__, ret);
 		}
+		CMDQ_LOG_CLOCK("%s disable, mdp_smi_clk_usage:%d\n",
+			__func__, mdp_clk_usage);
 	}
 #endif
 }
@@ -1411,7 +1420,6 @@ static bool mdp_check_camin_support_virtual(void)
 
 static bool mdp_svp_support_meta_data(void)
 {
-	/* early GKI2.0 about mt6768 not support secure */
 	return true;
 }
 
