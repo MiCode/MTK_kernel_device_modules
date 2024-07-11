@@ -30,6 +30,9 @@
 #include "../mtk_drm_drv.h"
 
 #include "mtk_drm_dp_intf_regs.h"
+#include "mtk_drm_dp_common.h"
+
+extern struct mtk_dp *g_mtk_dp;
 
 enum mtk_dpi_out_bit_num {
 	MTK_DPI_OUT_BIT_NUM_8BITS,
@@ -1307,6 +1310,16 @@ static int mtk_dpintf_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			(unsigned long long *)params;
 
 		*base_bw = mtk_dpintf_get_frame_hrt_bw_base_by_mode(mtk_crtc, dp_intf);
+	}
+		break;
+	case CONNECTOR_IS_ENABLE:
+	{
+		unsigned int *connector_enable =
+			(unsigned int *)params;
+		if (g_mtk_dp) {
+			*connector_enable = g_mtk_dp->dp_ready;
+			DDPMSG("connect status:%d\n", g_mtk_dp->dp_ready);
+		}
 	}
 		break;
 	default:

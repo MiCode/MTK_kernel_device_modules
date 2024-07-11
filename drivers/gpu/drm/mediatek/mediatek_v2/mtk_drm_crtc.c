@@ -12952,6 +12952,30 @@ static void mtk_set_dpc_dsi_clk(struct mtk_drm_crtc *mtk_crtc, bool enable)
 	DDPMSG("crtc%d %s set %d\n", id, __func__, value);
 }
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+static void mtk_get_output_timing(struct drm_crtc *crtc)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	unsigned int crtc_id = drm_crtc_index(&mtk_crtc->base);
+	struct mtk_ddp_comp *comp;
+	struct drm_display_mode timing;
+	unsigned int connector_enable = 0;
+	int ret = 0;
+
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (comp == NULL)
+		return;
+
+	drm_mode_copy(&timing, &crtc->state->adjusted_mode);
+
+	// backup panel timing for android using.
+	mtk_drm_backup_default_timing(mtk_crtc, &timing);
+
+	mtk_ddp_comp_io_cmd(comp, NULL, CONNECTOR_IS_ENABLE, &connector_enable);
+	mtk_drm_connector_notify_guest(mtk_crtc, connector_enable);
+}
+#endif
+
 void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = NULL;
@@ -13239,6 +13263,10 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 end:
 	CRTC_MMP_EVENT_END((int) crtc_id, enable,
 			mtk_crtc->enabled, 0);
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	mtk_get_output_timing(crtc);
+#endif
 	DDP_PROFILE("[PROFILE] %s-\n", __func__);
 }
 
@@ -13779,6 +13807,10 @@ int mtk_drm_crtc_get_panel_original_size(struct drm_crtc *crtc, unsigned int *wi
 #define DP_HEIGHT_MM_VALUE	REG_FLD_MSB_LSB(15, 0)
 #define DP_WIDTH_MM_VALUE	REG_FLD_MSB_LSB(31, 16)
 
+#define MT6991_OVL_MDP_RSZ0_DUMM20 0x104
+#define DP_INTF0_CONNECTOR_READY	REG_FLD_MSB_LSB(1, 0)
+
+
 static void set_value_to_regs_field(u16 in_value, void __iomem *base_addr, int field)
 {
 	u32 val = 0, value = 0, mask = 0;
@@ -13817,9 +13849,7 @@ static void store_timing_to_dummy(struct drm_display_mode *timing,
 					MT6991_OVL_MDP_RSZ0_DUMMY5, DSI_HEIGHT_MM_VALUE);
 			set_value_to_regs_field(timing->width_mm, regs_base +
 					MT6991_OVL_MDP_RSZ0_DUMMY5, DSI_WIDTH_MM_VALUE);
-		}
-
-		if (id == DDP_COMPONENT_DPI0) {
+		} else if (id == DDP_COMPONENT_DP_INTF0) {
 			set_value_to_regs_field(timing->hdisplay, regs_base +
 					MT6991_OVL_MDP_RSZ0_DUMMY6, DP_HDISPLAY_VALUE);
 			set_value_to_regs_field(timing->vdisplay, regs_base +
@@ -13843,48 +13873,47 @@ static void store_timing_to_dummy(struct drm_display_mode *timing,
 					MT6991_OVL_MDP_RSZ0_DUMMY11, DP_WIDTH_MM_VALUE);
 		}
 
-		DDPINFO("%s,%d,DUMMY 0=0x%x, 1=0x%x 2=0x%x, 3=0x%x 4=0x%x, 5=0x%x\n",
-			__func__, __LINE__,
-			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY0),
-			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY1),
-			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY2),
-			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY3),
-			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY4),
-			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY5));
+		DDPMSG("%s,%d,[%d]DUMMY 0=0x%x, 1=0x%x 2=0x%x, 3=0x%x 4=0x%x, 5=0x%x\n",
+			__func__, __LINE__, id,
+			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY6),
+			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY7),
+			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY8),
+			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY9),
+			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY10),
+			readl(regs_base + MT6991_OVL_MDP_RSZ0_DUMMY11));
 
 	} else {
 		DDPMSG("[E] %s timing or regs_base is error!", __func__);
 	}
 }
 
-#define DUMMY_REG_BASE 0x329D0000
-
-static void mtk_drm_backup_default_timing(struct mtk_drm_crtc *mtk_crtc,
+void mtk_drm_backup_default_timing(struct mtk_drm_crtc *mtk_crtc,
 	struct drm_display_mode *timing)
 {
 	void __iomem *regs_base = NULL;
 	struct mtk_ddp_comp *comp;
 
-	DDPINFO("%s+, %d\n", __func__, __LINE__);
+	DDPMSG("%s+, %d\n", __func__, __LINE__);
 
 	comp = mtk_ddp_comp_request_output(mtk_crtc);
-	regs_base = ioremap(DUMMY_REG_BASE, 0x1000);
+	regs_base = mtk_crtc->ovlsys0_rsz_regs;
 
-	if (regs_base == NULL) {
-		DDPMSG("[E] %s regs base ioremap fail!", __func__);
-		return;
-	}
-
-	if (comp == NULL) {
-		DDPMSG("[E] %s get comp fail!", __func__);
-		iounmap(regs_base);
-		return;
-	}
-
-	if (comp->id == DDP_COMPONENT_DSI0 && timing != NULL)
+	if (timing != NULL)
 		store_timing_to_dummy(timing, regs_base, comp->id);
+}
 
-	iounmap(regs_base);
+void mtk_drm_connector_notify_guest(struct mtk_drm_crtc *mtk_crtc,
+	unsigned int connector_enable)
+{
+	void __iomem *regs_base = NULL;
+	struct mtk_ddp_comp *comp;
+
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+	regs_base = mtk_crtc->ovlsys0_rsz_regs;
+
+	if (comp->id == DDP_COMPONENT_DP_INTF0)
+		set_value_to_regs_field(connector_enable, regs_base +
+				MT6991_OVL_MDP_RSZ0_DUMM20, DP_INTF0_CONNECTOR_READY);
 }
 #endif
 

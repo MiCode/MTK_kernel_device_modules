@@ -1640,6 +1640,11 @@ void mtk_crtc_vdisp_ao_config(struct drm_crtc *crtc);
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,
 						  struct mtk_plane_state *plane_state);
+void mtk_drm_backup_default_timing(struct mtk_drm_crtc *mtk_crtc,
+						struct drm_display_mode *timing);
+void mtk_drm_connector_notify_guest(struct mtk_drm_crtc *mtk_crtc,
+	unsigned int connector_enable);
+
 #endif
 
 #endif /* MTK_DRM_CRTC_H */
