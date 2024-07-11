@@ -1614,6 +1614,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 	clkchk {
 		compatible = "mediatek,mt6899-clkchk";
+		mm-hwv-regmap = <&mm_hw_ccf>;
 		// Todo: Un-mark after verified
 		// interrupts = <GIC_SPI 907 IRQ_TYPE_LEVEL_HIGH 0>,
 		//			<GIC_SPI 539 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -1821,6 +1822,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	dispsys1_config_clk: syscon@14200000 {
 		compatible = "mediatek,mt6899-mmsys1", "syscon";
 		reg = <0 0x14200000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hw_ccf>;
 		#clock-cells = <1>;
 	};
 
@@ -1960,10 +1962,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<&topckgen_clk CLK_TOP_DPE_SEL>,
 			/* MML */
 			<&topckgen_clk CLK_TOP_MDP_SEL>,
-			/* vde0 */
-			<&vdec_soc_gcon_base_clk CLK_VDE1_LARB1_CKEN_GENPD>,
-			/* vde1 */
-			<&vdec_gcon_base_clk CLK_VDE2_LARB1_CKEN_GENPD>,
 			/* cam_main */
 			<&cam_main_r1a_clk CLK_CAM_MAIN_LARB13_GENPD>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_LARB14_GENPD>,
@@ -2002,8 +2000,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"ven", "cam_vcore_0", "cam_vcore_1",
 			"isp_main_0", "isp_main_1", "cam",
 			"cam_ccu_0", "cam_ccu_1", "disp", "cam_mraw",
-			"mml",
-			"vde0-0", "vde1-0", "cam_main-0", "cam_main-1",
+			"mml", "cam_main-0", "cam_main-1",
 			"cam_main-2", "cam_main-3", "cam_ccu-0",
 			"dis1-0", "cam_mraw-0", "cam_mraw-1",
 			"cam_mraw-2", "cam_mraw-3", "cam_suba-0",

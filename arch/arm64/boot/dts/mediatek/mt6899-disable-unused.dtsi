@@ -350,12 +350,9 @@
 		compatible = "mediatek,clk-disable-unused";
 		reg = <0x77>;
 		clocks =
-			<&vdec_gcon_base_clk CLK_VDE2_LARB1_CKEN_SMI>,
-			<&vdec_gcon_base_clk CLK_VDE2_LARB1_CKEN_GENPD>,
 			<&vdec_gcon_base_clk CLK_VDE2_LAT_CKEN_VDEC>,
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN_VDEC>,
-			<&vdec_gcon_base_clk CLK_VDE2_VDEC_ACTIVE_VDEC>,
-			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN_ENG_VDEC>;
+			<&vdec_gcon_base_clk CLK_VDE2_VDEC_ACTIVE_VDEC>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VDE1>;
 	};
 
@@ -363,14 +360,10 @@
 		compatible = "mediatek,clk-disable-unused";
 		reg = <0x78>;
 		clocks =
-			<&vdec_soc_gcon_base_clk CLK_VDE1_LARB1_CKEN_SMI>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_LARB1_CKEN_GENPD>,
 			<&vdec_soc_gcon_base_clk CLK_VDE1_LAT_CKEN_VDEC>,
 			<&vdec_soc_gcon_base_clk CLK_VDE1_LAT_ACTIVE_VDEC>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_LAT_CKEN_ENG_VDEC>,
 			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_CKEN_VDEC>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_ACTIVE_VDEC>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_CKEN_ENG_VDEC>;
+			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_ACTIVE_VDEC>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_VDE0>;
 	};
 
@@ -734,8 +727,7 @@
 		clocks =
 			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_UFS_UFS>,
 			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_AES_UFS>,
-			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_U_AHB_UFS>,
-			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_U_AXI_UFS>;
+			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_U_AHB_UFS>;
 	};
 
 	disable-unused-clk-ufscfg-ao@8d {
