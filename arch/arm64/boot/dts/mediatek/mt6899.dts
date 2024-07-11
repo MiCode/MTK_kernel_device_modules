@@ -6779,6 +6779,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			l2-hash-values = <0xb 0xe 0x0>;
 			firmware-idle-hysteresis-time-us = <5000>;
 			gpu-frame-base-optimize = <1>;
+			pbha {
+				propagate-bits = /bits/ 8 <0xf>;
+			};
 		};
 
 		gpu_mali_opp: opp-table0 {
