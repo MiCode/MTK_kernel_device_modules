@@ -18,8 +18,6 @@
 			<&topckgen_clk CLK_TOP_MSDC30_2_HCLK_SEL>,
 			<&topckgen_clk CLK_TOP_VDEC_SEL>,
 			<&topckgen_clk CLK_TOP_VENC_SEL>,
-			<&topckgen_clk CLK_TOP_DP_CORE_SEL>,
-			<&topckgen_clk CLK_TOP_DP_SEL>,
 			<&topckgen_clk CLK_TOP_MMINFRA_SEL>,
 			<&topckgen_clk CLK_TOP_MMUP_SEL>;
 	};
