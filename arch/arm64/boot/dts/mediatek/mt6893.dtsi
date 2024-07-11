@@ -3204,7 +3204,6 @@ cpus {
 				nvmem-cells = <&u2_phy_data>;
 				nvmem-cell-names = "intr_cal";
 				nvmem-cell-masks = <0x1f>;
-				usb2jtag = <&infracfg_ao_clk 1>;
 				mediatek,set-efuse-v1;
 				status = "okay";
 			};
