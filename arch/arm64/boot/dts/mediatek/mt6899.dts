@@ -2181,7 +2181,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&dvfsrc_freq_opp7>,
 				<&dvfsrc_freq_opp8>,
 				<&dvfsrc_freq_opp9>;
-		cm-mgr-enable = <0>;
+		cm-mgr-enable = <1>;
 		cm-mgr-arch = "v1p";
 
 		cm-mgr-num-array = <7>;
