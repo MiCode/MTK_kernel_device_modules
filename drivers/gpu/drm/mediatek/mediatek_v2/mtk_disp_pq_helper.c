@@ -309,9 +309,9 @@ int disp_pq_proxy_virtual_hw_read(struct drm_crtc *crtc, void *data)
 
 	va = ioremap(pa, sizeof(*va));
 
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 	rParams->val = readl(va) & rParams->mask;
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 	DDPINFO("%s, read pa:0x%x(va:0x%lx) = 0x%x (0x%x)\n",
 		__func__, pa, (long)va, rParams->val, rParams->mask);
 
@@ -400,12 +400,12 @@ int disp_pq_proxy_virtual_hw_write(struct drm_crtc *crtc, void *data)
 	cb_data->crtc = crtc;
 	cb_data->cmdq_handle = cmdq_handle;
 
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 	if (cmdq_pkt_flush_threaded(cmdq_handle, frame_cmdq_cb, cb_data) < 0) {
 		DDPPR_ERR("failed to flush %s\n", __func__);
 		kfree(cb_data);
 	}
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 
 	return 0;
 }
@@ -796,7 +796,7 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 		cb_data->misc = need_wait_done;
 
 		if (user_lock)
-			DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+			DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 
 		mtk_drm_trace_begin("mtk_drm_idlemgr_kick");
 		mtk_drm_idlemgr_kick(__func__, crtc, !user_lock);
@@ -807,7 +807,7 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 			cmdq_pkt_destroy(pq_cmdq_handle);
 			kfree(cb_data);
 			if (user_lock)
-				DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+				DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 			if (need_wait_done) {
 				need_wait_done = false;
 				atomic_set(&pq_data->cfg_done, 1);
@@ -837,7 +837,7 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 		mtk_drm_trace_end();
 
 		if (user_lock)
-			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+			DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 
 	}
 	DDPDBG("%s:%d --\n", __func__, __LINE__);
@@ -1110,14 +1110,14 @@ int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data)
 	cb_data->crtc = crtc;
 	cb_data->cmdq_handle = cmdq_handle;
 
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 
 	if (!(mtk_crtc->enabled)) {
 		DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
 		cmdq_pkt_destroy(cmdq_handle);
 		kfree(cb_data);
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 		return 1;
 	}
 
@@ -1127,7 +1127,7 @@ int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data)
 	} else
 		mtk_crtc_check_trigger(mtk_crtc, true, false);
 
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 
 	while (wait_config_done) {
 		if (atomic_read(&pq_data->pq_hw_relay_cfg_done) == 0) {
