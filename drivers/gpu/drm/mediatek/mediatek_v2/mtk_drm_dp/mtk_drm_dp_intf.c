@@ -1344,7 +1344,7 @@ static irqreturn_t mtk_dp_intf_irq_status(int irq, void *dev_id)
 	status &= 0xf;
 	if (status) {
 		mtk_dpi_mask(dpi, DPI_INTSTA, 0, status);
-		if (status & INT_VSYNC_STA)
+		if (mtk_crtc && (status & INT_VSYNC_STA))
 			mtk_crtc_vblank_irq(&mtk_crtc->base);
 
 		if (status & INT_UNDERFLOW_STA)
