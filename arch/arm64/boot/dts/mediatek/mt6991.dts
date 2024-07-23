@@ -9955,6 +9955,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x31bd007c 0 0x4>,             /* hfrp DISP_GENERAL_CTRL_CLR */
 				<0 0x31a912b4 0 0x4>,             /* hfrp_dvfsrc_disp_debug_sta_6 */
 				<0 0x31a80130 0 0x4>,             /* mminfra voter */
+				<0 0x30000250 0 0x4>,             /* mminfra MDP_M0_RFIFO0_THRE, check pwr by read rg */
 				<0 0x1c000918 0 0x4>,             /* done bit, or hfrp sub pm MMINFRA 0x31ac03dc bit1 */
 				<0 0x31ac1e50 0 0x4>,             /* hfrp sub pm DISP_VCORE bit29, or 0x31b50100 bit24*/
 				<0 0x3e800100 0 0x10>,            /* VDISP_AO_CG_CON0 */
@@ -9975,6 +9976,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"vcore_mode_clr",
 				"vdisp_dvfsrc",
 				"mminfra_voter",
+				"mminfra_dummy",
 				"mminfra_pwr_chk",
 				"disp_vcore_pwr_chk",
 				"vdisp_ao_cg_con",
