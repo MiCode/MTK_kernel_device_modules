@@ -60,7 +60,7 @@ aliases {
 		#size-cells = <2>;
 		compatible = "simple-bus";
 		ranges;
-		dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+
 		mtk_leds: mtk_leds {
 			backlight {
 				label = "lcd-backlight";
@@ -278,7 +278,7 @@ aliases {
 		disp_mtee_sec: disp_mtee_sec {
 			compatible = "mediatek,disp_mtee";
 
-			mediatek,mailbox-gce = <&gce>;
+			mediatek,mailbox-gce = <&gce_mbox>;
 			mboxes = <&gce_mbox_sec 8 0 CMDQ_THR_PRIO_3>,
 				<&gce_mbox_sec 9 0 CMDQ_THR_PRIO_3>,
 				<&gce_mbox_sec 9 0 CMDQ_THR_PRIO_3>;
@@ -3558,7 +3558,7 @@ pwrap: pwrap@1000d000 {
 		mediatek,common-id = <0>;
 		smi-common;
 		disable-gals;
-		mmsys_config = <&mmsys_config>;
+		mmsys-config = <&mmsys_config>;
 		operating-points-v2 = <&opp_table_mm>;
 		power-domains = <&scpsys MT6765_POWER_DOMAIN_DIS>;
 		clocks = <&mmsys_config CLK_MM_SMI_COMM0>,
@@ -3917,7 +3917,7 @@ pwrap: pwrap@1000d000 {
 		dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&iommu M4U_PORT_JPGENC_BSDMA>;
 		operating-points-v2 = <&opp_table_mm>;
-		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		interconnects = <&mmqos MASTER_LARB_PORT(M4U_PORT_JPGENC_BSDMA)
 					&mmqos SLAVE_COMMON(0)>;
 		interconnect-names = "path_jpegenc_bsdma";
