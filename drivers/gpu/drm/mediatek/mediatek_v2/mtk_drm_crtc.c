@@ -9290,8 +9290,21 @@ static void mtk_disp_signal_fence_worker_signal(struct drm_crtc *crtc, struct cm
 static void ddp_cmdq_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
-	struct drm_crtc_state *crtc_state = cb_data->state;
-	struct drm_crtc *crtc = crtc_state->crtc;
+	struct drm_crtc_state *crtc_state = NULL;
+	struct drm_crtc *crtc = NULL;
+
+	if (unlikely(!cb_data)) {
+		DDPPR_ERR("%s cb_data is NULL\n", __func__);
+		return;
+	}
+
+	crtc_state = cb_data->state;
+	if (unlikely(!crtc_state)) {
+		DDPPR_ERR("%s crtc_state is NULL\n", __func__);
+		return;
+	}
+
+	crtc = crtc_state->crtc;
 
 	/* debug log */
 	DDPINFO("%s +\n", __func__);

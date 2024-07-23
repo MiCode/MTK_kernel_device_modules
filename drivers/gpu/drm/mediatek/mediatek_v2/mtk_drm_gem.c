@@ -569,6 +569,8 @@ struct sg_table *mtk_gem_prime_get_sg_table(struct drm_gem_object *obj)
 struct drm_gem_object *mtk_gem_prime_import(struct drm_device *dev,
 					    struct dma_buf *dma_buf)
 {
+	if (WARN_ON(!dma_buf || !dma_buf->file))
+		return NULL;
 	return drm_gem_prime_import_dev(dev, dma_buf,
 		mtk_smmu_get_shared_device(dev->dev));
 }
