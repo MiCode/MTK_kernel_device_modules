@@ -38,7 +38,7 @@
 #define ERST_NUMBER						EV_MAX_SEG
 #define USB_OFFLOAD_TRBS_PER_SEGMENT	256
 #define USB_OFFLOAD_TRB_SEGMENT_SIZE	(USB_OFFLOAD_TRBS_PER_SEGMENT*16)
-#define USB_OFFLOAD_XHCI_INTR_TARGET	1
+#define XHCI1_INTR_TARGET	1
 
 struct usb_offload_mem_info {
 	unsigned long long phy_addr;
@@ -251,8 +251,9 @@ struct usb_audio_dev {
  */
 struct usb_offload_dev {
 	struct device *dev;
+	struct usb_device *uac_dev;
 	struct xhci_hcd *xhci;
-	struct xhci_interrupter *ir_2nd;
+	struct xhci_sideband *sb;
 	struct xhci_erst_entry *backup_erst;
 	unsigned char *backup_ev_ring;
 	unsigned int num_entries_in_use;

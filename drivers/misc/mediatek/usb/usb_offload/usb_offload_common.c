@@ -157,7 +157,6 @@ static void print_all_memory(void)
 	USB_OFFLOAD_MEM_DBG("rsv_region:0x%x\n", rsv_region);
 }
 
-static bool ir_lost;
 static struct usb_audio_dev uadev[SNDRV_CARDS];
 struct usb_offload_dev *uodev;
 static struct snd_usb_audio *usb_chip[SNDRV_CARDS];
@@ -178,6 +177,10 @@ static int xhci_mtk_ring_expansion(struct xhci_hcd *xhci,
 static int xhci_mtk_update_erst(struct usb_offload_dev *udev,
 	struct xhci_segment *first,	struct xhci_segment *last, unsigned int num_segs);
 static int xhci_mtk_realloc_isoc_ring(struct snd_usb_substream *subs);
+static int xhci_mtk_create_sideband(struct usb_device *udev);
+static void xhci_mtk_remove_sideband(struct xhci_sideband *sb);
+static union xhci_trb *xhci_mtk_dma_to_trb(struct xhci_ring *ring,
+	struct xhci_segment **segment, dma_addr_t phy);
 static void fake_sram_pwr_ctrl(bool power);
 
 static void memory_cleanup(void)
@@ -187,12 +190,7 @@ static void memory_cleanup(void)
 	mtk_usb_offload_free_allocated(true);
 	mtk_usb_offload_free_allocated(false);
 
-	/* xhci_remove_secondary_interrupter_ would try to hold spinlock and it's
-	 * not allowed during usb_offload_release which may cause KE, so check
-	 * uodev->ir_2nd prior to call it.
-	 */
-	if (uodev->ir_2nd)
-		xhci_remove_secondary_interrupter_(uodev->xhci->main_hcd, uodev->ir_2nd);
+	xhci_mtk_remove_sideband(uodev->sb);
 
 	/* disconnect event may came prior to freeing transfer ring
 	 * check rsv_region before powering off sram
@@ -249,7 +247,7 @@ static void adsp_ee_recovery(void)
 	if (!uodev->xhci)
 		return;
 
-	ir_set = &uodev->xhci->run_regs->ir_set[USB_OFFLOAD_XHCI_INTR_TARGET];
+	ir_set = &uodev->xhci->run_regs->ir_set[XHCI1_INTR_TARGET];
 
 	USB_OFFLOAD_INFO("ADSP EE ++ op:0x%08x, iman:0x%08X, erdp:0x%llX\n",
 			readl(&uodev->xhci->op_regs->status),
@@ -1394,10 +1392,7 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 	else
 		interface = -1;
 
-	info_idx = info_idx_from_ifnum(pcm_card_num, interface,
-		uainfo->enable);
-	USB_OFFLOAD_INFO("info_idx: %d, interface: %d\n",
-			info_idx, interface);
+	info_idx = info_idx_from_ifnum(pcm_card_num, interface, uainfo->enable);
 
 	if (uainfo->enable) {
 		if (info_idx < 0) {
@@ -1893,8 +1888,8 @@ static int xhci_mtk_update_erst(struct usb_offload_dev *udev, struct xhci_segmen
 	struct xhci_segment *last, unsigned int num_segs)
 {
 	struct xhci_segment *segment;
-	struct xhci_ring *event_ring = udev->ir_2nd->event_ring;
-	struct xhci_erst *erst = &udev->ir_2nd->erst;
+	struct xhci_ring *event_ring = udev->sb->ir->event_ring;
+	struct xhci_erst *erst = &udev->sb->ir->erst;
 	struct xhci_erst_entry *entry;
 	unsigned int entries_idx, entries_in_use = udev->num_entries_in_use;
 	unsigned int ev_seg_num = event_ring->num_segs;
@@ -2357,14 +2352,117 @@ static void xhci_mtk_free_interrupter(struct xhci_hcd *xhci, struct xhci_interru
 	ir->event_ring = NULL;
 	kfree(ir);
 
-	/* ir_2nd should be set NULL here to prevent from freeing twice */
-	uodev->ir_2nd = NULL;
-
 	return;
 
 NOT_UNDER_MANAGED:
 	USB_OFFLOAD_MEM_DBG("Free interrupter%d as native way\n", ir->intr_num);
 	xhci_free_interrupter_(xhci, ir);
+}
+
+static int xhci_mtk_create_sideband(struct usb_device *udev)
+{
+	struct xhci_sideband *sb;
+	int ret = 0;
+
+	/* register a sideband for this usb device */
+	sb = xhci_sideband_register_(udev);
+	if (!sb) {
+		USB_OFFLOAD_ERR("fail creating sideband\n");
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	/* 1. allocate a interrupter (including event ring and erst)
+	 * 2. set erst size and erst base in ir_set
+	 */
+	ret = xhci_sideband_create_interrupter_(sb, 1, XHCI1_INTR_TARGET, true);
+	if (ret) {
+		USB_OFFLOAD_ERR("fail creating ir:%d, ret:%d\n", XHCI1_INTR_TARGET, ret);
+		goto error;
+	}
+
+	/* set imod's interval & set iman's IE(interrupter enable) */
+	ret = xhci_sideband_enable_interrupt_(sb, uodev->xhci->imod_interval);
+	if (ret) {
+		USB_OFFLOAD_ERR("fail to enabling ir:%d, ret:%d\n",
+			xhci_sideband_interrupter_id_(sb), ret);
+		xhci_sideband_remove_interrupter_(sb);
+		goto error;
+	}
+
+	USB_OFFLOAD_INFO("create sb:%p ir%d:%p evt_ring:0x%llx erst:0x%llx\n",
+		sb, xhci_sideband_interrupter_id_(sb), sb->ir,
+		sb->ir->event_ring->first_seg->dma,
+		sb->ir->erst.erst_dma_addr);
+
+	uodev->sb = sb;
+error:
+	return ret;
+}
+
+static void xhci_mtk_remove_sideband(struct xhci_sideband *sb)
+{
+	struct xhci_hcd *xhci = uodev->xhci;
+	struct xhci_interrupter *ir;
+	struct xhci_segment *seg;
+	union xhci_trb *deq_trb;
+	u64 erdp_reg;
+	dma_addr_t deq;
+
+	if (sb) {
+		USB_OFFLOAD_INFO("remove sb:%p ir%d:%p\n",
+			sb, xhci_sideband_interrupter_id_(sb), sb->ir);
+		if (sb->ir) {
+			ir = sb->ir;
+			/* clear iman's IE(interrupter enable) */
+			xhci_disable_interrupter_(ir);
+			mdelay(2);
+			/* set skip_events to clean pending event starting from last acked event */
+			ir->skip_events = true;
+			/* last acked event was erdp */
+			erdp_reg = xhci_read_64(xhci, &ir->ir_set->erst_dequeue);
+			deq = (dma_addr_t)(erdp_reg & ERST_PTR_MASK);
+			deq_trb = xhci_mtk_dma_to_trb(ir->event_ring, &seg, deq);
+			USB_OFFLOAD_MEM_DBG("last acked event (phys:0x%llx virt%p\n", deq, deq_trb);
+
+			/* update dequeue pointer on ap side*/
+			ir->event_ring->dequeue = deq_trb;
+			ir->event_ring->deq_seg = seg;
+
+			/* 1. clear iman's IE(interrupter enable)
+			 * 2. cleanup pending event (xhci_skip_sec_intr_events)
+			 * 3. free interrupter (including event ring and erst)
+			 */
+			xhci_sideband_remove_interrupter_(sb);
+		}
+		xhci_sideband_unregister_(sb);
+
+		uodev->sb = NULL;
+	}
+}
+
+static union xhci_trb *xhci_mtk_dma_to_trb(struct xhci_ring *ring,
+	struct xhci_segment **segment, dma_addr_t phy)
+{
+	struct xhci_segment *seg;
+	dma_addr_t seg_start, seg_end;
+	void *virt;
+
+	*segment = NULL;
+
+	seg = ring->first_seg;
+	do {
+		virt = seg->trbs;
+		seg_start = seg->dma;
+		seg_end = seg->dma + (USB_OFFLOAD_TRBS_PER_SEGMENT * sizeof(union xhci_trb));
+		if (phy >= seg_start && phy < seg_end) {
+			*segment = seg;
+			return (union xhci_trb *)(virt + (phy - seg_start));
+		}
+		seg = seg->next;
+	} while (seg && seg != ring->first_seg);
+
+	return NULL;
 }
 
 static struct xhci_ring *xhci_mtk_alloc_event_ring(struct usb_offload_dev *udev)
@@ -2379,10 +2477,6 @@ static struct xhci_ring *xhci_mtk_alloc_event_ring(struct usb_offload_dev *udev)
 		USB_OFFLOAD_ERR("error allocating event ring\n");
 		goto FAIL_ALLOCATE_EV_RING;
 	}
-
-	USB_OFFLOAD_INFO("[event ring] va:%p phy:0x%llx\n",
-		event_ring->first_seg->trbs,
-		(unsigned long long)event_ring->first_seg->dma);
 
 	inc_region(EV_RING);
 	if (sram_version == 0x3) {
@@ -2431,12 +2525,6 @@ static int xhci_mtk_alloc_erst(struct usb_offload_dev *udev,
 
 	udev->num_entries_in_use = evt_ring->num_segs;
 
-	USB_OFFLOAD_INFO("[erst] va:%p phy:0x%llx is_sram:%d is_rsv:%d\n",
-		buf_ev_table->dma_area,
-		(unsigned long long)buf_ev_table->dma_addr,
-		buf_ev_table->is_sram,
-		buf_ev_table->is_rsv);
-
 	inc_region(ERST);
 	if (sram_version == 0x3) {
 		udev->backup_erst = kzalloc(sizeof(struct xhci_erst_entry)
@@ -2455,88 +2543,6 @@ FAIL_TO_ALLOC_XHCI_BACKUP_ERST:
 		USB_OFFLOAD_ERR("Fail to free erst\n");
 FAIL_TO_ALLOC_ERST:
 	return ret;
-}
-
-static int xhci_backup_ir(struct usb_offload_dev *udev)
-{
-	int i;
-	struct xhci_erst_entry *entry, *backup_entry;
-	struct xhci_erst *erst = &udev->ir_2nd->erst;
-	struct xhci_ring *ev_ring = udev->ir_2nd->event_ring;
-	struct xhci_segment *seg;
-	void *ev_src, *ev_des;
-
-	if (!erst || !ev_ring) {
-		USB_OFFLOAD_ERR("erst/ev_ring are NULL\n");
-		return -EINVAL;
-	}
-
-	ir_lost = true;
-	USB_OFFLOAD_MEM_DBG("ir_lost:%d->%d\n", !ir_lost, ir_lost);
-
-	/* backup event ring table */
-	for (i = 0; i < ERST_NUMBER; i++) {
-		entry = &erst->entries[i];
-		backup_entry = &udev->backup_erst[i];
-		memcpy((void *)backup_entry, (void *)entry, ERST_SIZE);
-	}
-
-	seg = ev_ring->first_seg;
-	ev_des = (void *)udev->backup_ev_ring;
-	if (!seg || !ev_des) {
-		USB_OFFLOAD_ERR("seg/ev_des are NULL\n");
-		return -EINVAL;
-	}
-
-	/* backup event ring */
-	for (i = 0; i < ev_ring->num_segs; i++) {
-		ev_src = (void *)seg->trbs;
-		memcpy(ev_des, ev_src, USB_OFFLOAD_TRB_SEGMENT_SIZE);
-		ev_des += USB_OFFLOAD_TRB_SEGMENT_SIZE;
-		seg = seg->next;
-	}
-
-	return 0;
-}
-
-static int xhci_restore_ir(struct usb_offload_dev *udev)
-{
-	int i;
-	struct xhci_erst_entry *entry, *backup_entry;
-	struct xhci_erst *erst = &udev->ir_2nd->erst;
-	struct xhci_ring *ev_ring = udev->ir_2nd->event_ring;
-	struct xhci_segment *seg;
-	void *ev_src, *ev_des;
-
-	if (!erst || !ev_ring) {
-		USB_OFFLOAD_ERR("erst/ev_ring are NULL\n");
-		return -EINVAL;
-	}
-
-	ir_lost = false;
-	USB_OFFLOAD_MEM_DBG("ir_lost:%d->%d\n", !ir_lost, ir_lost);
-
-	for (i = 0; i < ERST_NUMBER; i++) {
-		entry = &erst->entries[i];
-		backup_entry = &udev->backup_erst[i];
-		memcpy((void *)entry, (void *)backup_entry, ERST_SIZE);
-	}
-
-	seg = ev_ring->first_seg;
-	ev_src = (void *)udev->backup_ev_ring;
-	if (!seg || !ev_src) {
-		USB_OFFLOAD_ERR("seg/ev_src are NULL\n");
-		return -EINVAL;
-	}
-
-	for (i = 0; i < ev_ring->num_segs; i++) {
-		ev_des = (void *)seg->trbs;
-		memcpy(ev_des, ev_src, USB_OFFLOAD_TRB_SEGMENT_SIZE);
-		ev_src += USB_OFFLOAD_TRB_SEGMENT_SIZE;
-		seg = seg->next;
-	}
-
-	return 0;
 }
 
 static bool xhci_mtk_is_streaming(struct xhci_hcd *xhci)
@@ -2728,6 +2734,7 @@ static int usb_offload_open(struct inode *ip, struct file *fp)
 				USB_OFFLOAD_INFO("Single UAC - SUPPORT USB OFFLOAD!!\n");
 				uodev->opened = true;
 				uodev->speed = udev->speed;
+				uodev->uac_dev = udev;
 				mutex_unlock(&uodev->dev_lock);
 				return 0;
 			}
@@ -2787,20 +2794,23 @@ static long usb_offload_ioctl(struct file *fp,
 			mtk_offload_get_rsv_mem_info(USB_OFFLOAD_MEM_SRAM_ID,
 				&xhci_mem->xhci_sram_addr, &xhci_mem->xhci_sram_size);
 
-			/* create secondary interrupter */
-			uodev->ir_2nd = xhci_create_secondary_interrupter_(uodev->xhci->main_hcd,
-				1, USB_OFFLOAD_XHCI_INTR_TARGET);
-			if (!uodev->ir_2nd) {
-				USB_OFFLOAD_ERR("error allocating 2nd interrupter\n");
-				kfree(xhci_mem);
-				goto fail;
+			if (sram_version != 0x3) {
+				/* create & enable secondary interrupter */
+				ret = xhci_mtk_create_sideband(uodev->uac_dev);
+				if (ret) {
+					kfree(xhci_mem);
+					goto fail;
+				}
+				evt_ring = uodev->sb->ir->event_ring;
+				erst = &uodev->sb->ir->erst;
+				xhci_mem->erst_table = (unsigned long long)erst->erst_dma_addr;
+				xhci_mem->ev_ring = (unsigned long long)evt_ring->first_seg->dma;
+			} else {
+				/* in version 3, we create ir during enable_stream */
+				xhci_mem->erst_table = 0;
+				xhci_mem->ev_ring = 0;
 			}
-			evt_ring = uodev->ir_2nd->event_ring;
-			erst = &uodev->ir_2nd->erst;
-			xhci_mem->erst_table = (unsigned long long)erst->erst_dma_addr;
-			xhci_mem->ev_ring = (unsigned long long)evt_ring->first_seg->dma;
-			USB_OFFLOAD_INFO("2nd Interrupter%d was created, evt_ring:0x%llx erst:0x%llx\n",
-				uodev->ir_2nd->intr_num, xhci_mem->ev_ring, xhci_mem->erst_table);
+
 		} else {
 			xhci_mem->adv_lowpwr = false;
 			xhci_mem->xhci_dram_addr = 0;
@@ -2824,10 +2834,8 @@ static long usb_offload_ioctl(struct file *fp,
 			uodev->adsp_inited = false;
 		} else {
 			uodev->adsp_inited = true;
-			if (sram_version == 0x3) {
-				xhci_backup_ir(uodev);
+			if (sram_version == 0x3)
 				fake_sram_pwr_ctrl(false);
-			}
 		}
 		kfree(xhci_mem);
 		usb_offload_register_ipi_recv();
@@ -2860,14 +2868,10 @@ static long usb_offload_ioctl(struct file *fp,
 
 		if (uainfo.enable && sram_version == 0x3) {
 			fake_sram_pwr_ctrl(true);
-			USB_OFFLOAD_MEM_DBG("ir_lost:%d\n", ir_lost);
-			if (ir_lost) {
-				/* non-1st time starting stream, but sram power-off before */
-				ret = xhci_restore_ir(uodev);
-				if (ret != 0) {
-					USB_OFFLOAD_ERR("xhci_restore_ir fail\n");
+			if (!uodev->sb) {
+				ret = xhci_mtk_create_sideband(uodev->uac_dev);
+				if (ret)
 					goto fail;
-				}
 			}
 		}
 
@@ -2937,12 +2941,9 @@ static long usb_offload_ioctl(struct file *fp,
 		if (!uainfo.enable && !uodev->is_streaming && sram_version == 0x3) {
 			/* stop offload hid */
 			usb_offload_hid_stop();
+			/* in version 3, remove ir when there's no streaming */
+			xhci_mtk_remove_sideband(uodev->sb);
 			/* power-off sram if no streaming */
-			ret = xhci_backup_ir(uodev);
-			if (ret != 0) {
-				USB_OFFLOAD_ERR("xhci_backup_ir fail\n");
-				goto fail;
-			}
 			fake_sram_pwr_ctrl(false);
 		}
 
@@ -3086,12 +3087,11 @@ static int usb_offload_probe(struct platform_device *pdev)
 	buf_seg = NULL;
 	buf_ev_table = NULL;
 	buf_ev_ring = NULL;
-	uodev->ir_2nd = NULL;
+	uodev->sb = NULL;
 	uodev->num_entries_in_use = 0;
 	is_vcore_hold = false;
 	uodev->backup_erst = NULL;
 	uodev->backup_ev_ring = NULL;
-	ir_lost = false;
 	rsv_region = 0;
 	if (of_property_read_u32(pdev->dev.of_node, "sram-version", &sram_version))
 		sram_version = 0x2;
