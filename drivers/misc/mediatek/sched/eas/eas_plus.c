@@ -775,7 +775,7 @@ void check_for_migration(struct task_struct *p)
 
 		thre_idx = (pd->nr_perf_states >> 3) - 1;
 		if (thre_idx >= 0)
-			thre = pd->table[thre_idx].frequency;
+			thre = pd->em_table->state[thre_idx].frequency;
 
 		policy = cpufreq_cpu_get(cpu);
 		irq_log_store();
@@ -827,7 +827,7 @@ void check_for_migration(struct task_struct *p)
 
 			thre_rot_idx = (pd->nr_perf_states >> 1) - 1;
 			if (thre_rot_idx >= 0)
-				thre_rot = pd->table[thre_rot_idx].frequency;
+				thre_rot = pd->em_table->state[thre_rot_idx].frequency;
 
 			if (opp_curr > thre_rot) {
 				task_check_for_rotation(rq);

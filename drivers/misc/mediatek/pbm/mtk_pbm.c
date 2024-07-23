@@ -168,32 +168,36 @@ static unsigned long hpf_get_power_md1(void)
 
 static u32 cpu_power_to_freq(struct cpu_pbm_policy *pbm_policy, u32 power)
 {
+	struct em_perf_state *table;
 	int i;
 
 	if (!pbm_policy->em)
 		return 0;
 
+	table = em_perf_state_from_pd(pbm_policy->em);
 	for (i = pbm_policy->max_perf_state - 1; i > 0; i--) {
-		if (power >= pbm_policy->em->table[i].power)
+		if (power >= table[i].power)
 			break;
 	}
 
-	return pbm_policy->em->table[i].frequency;
+	return table[i].frequency;
 }
 
 static u32 cpu_freq_to_power(struct cpu_pbm_policy *pbm_policy, u32 freq)
 {
+	struct em_perf_state *table;
 	int i;
 
 	if (!pbm_policy->em)
 		return 0;
 
+	table = em_perf_state_from_pd(pbm_policy->em);
 	for (i = pbm_policy->max_perf_state - 1; i > 0; i--) {
-		if (freq >= pbm_policy->em->table[i].frequency)
+		if (freq >= table[i].frequency)
 			break;
 	}
 
-	return pbm_policy->em->table[i].power;
+	return table[i].power;
 }
 
 static void mtk_cpu_dlpt_set_limit_by_pbm(unsigned int limit_power)

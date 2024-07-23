@@ -1036,7 +1036,7 @@ int init_legacy_capacity_table(void)
 			for (k = cap; k > next_cap; k--) {
 				pd_info->util_opp[k] = j;
 				pd_info->util_freq[k] =
-					pd->table[pd->nr_perf_states - j - 1].frequency;
+					pd->em_table->state[pd->nr_perf_states - j - 1].frequency;
 			}
 
 			count += 1;
@@ -1082,10 +1082,10 @@ int em_opp2freq(int cpu, int opp)
 		return 1;
 	}
 	opp = clamp_val(opp, 0, pd->nr_perf_states - 1);
-	if (pd->table[0].frequency > pd->table[1].frequency)
-		return pd->table[opp].frequency;
+	if (pd->em_table->state[0].frequency > pd->em_table->state[1].frequency)
+		return pd->em_table->state[opp].frequency;
 	else
-		return pd->table[pd->nr_perf_states - 1 - opp].frequency;
+		return pd->em_table->state[pd->nr_perf_states - 1 - opp].frequency;
 }
 
 int em_opp2cap(int cpu, int opp)
@@ -1118,12 +1118,12 @@ int em_opp2cap(int cpu, int opp)
 			return 1;
 		}
 		opp = clamp_val(opp, 0, pd->nr_perf_states - 1);
-		if (pd->table[0].frequency > pd->table[1].frequency) {
-			max_freq = pd->table[0].frequency;
-			opp_freq = pd->table[opp].frequency;
+		if (pd->em_table->state[0].frequency > pd->em_table->state[1].frequency) {
+			max_freq = pd->em_table->state[0].frequency;
+			opp_freq = pd->em_table->state[opp].frequency;
 		} else {
-			max_freq = pd->table[pd->nr_perf_states - 1].frequency;
-			opp_freq = pd->table[pd->nr_perf_states - 1 - opp].frequency;
+			max_freq = pd->em_table->state[pd->nr_perf_states - 1].frequency;
+			opp_freq = pd->em_table->state[pd->nr_perf_states - 1 - opp].frequency;
 		}
 		cap = (opp_freq * per_cpu(cpu_scale, cpu)) / max_freq;
 	}
@@ -1140,10 +1140,10 @@ int em_opp2pwr_eff(int cpu, int opp)
 		return 1;
 	}
 	opp = clamp_val(opp, 0, pd->nr_perf_states - 1);
-	if (pd->table[0].frequency > pd->table[1].frequency)
-		return pd->table[opp].cost;
+	if (pd->em_table->state[0].frequency > pd->em_table->state[1].frequency)
+		return pd->em_table->state[opp].cost;
 	else
-		return pd->table[pd->nr_perf_states - 1 - opp].cost;
+		return pd->em_table->state[pd->nr_perf_states - 1 - opp].cost;
 }
 
 int em_freq2opp(int cpu, int freq)

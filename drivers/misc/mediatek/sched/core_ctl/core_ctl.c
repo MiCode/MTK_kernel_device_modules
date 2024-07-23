@@ -2126,7 +2126,7 @@ static int ppm_data_init(struct cluster_data *cluster)
 
 	/* get power and capacity and calculate efficiency */
 	for (i = 0; i < opp_nr; i++) {
-		ps = &pd->table[opp_nr-1-i];
+		ps = &pd->em_table->state[opp_nr-1-i];
 		ppm_tbl[i].power = ps->power;
 		ppm_tbl[i].freq = ps->frequency;
 		ppm_tbl[i].capacity = pd_get_opp_capacity_legacy(first_cpu, i);
