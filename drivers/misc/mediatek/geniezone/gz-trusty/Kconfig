@@ -37,6 +37,11 @@ config MTK_NEBULA_VM_SUPPORT
 	  Say Y if you would like to enable this feature.
 	  If unsure, say N.
 
+config MTK_GZ_IDLE
+	bool "GZ hypervisor support idle"
+	help
+	  This is used to enable idle feature, if the idle feature doesn't
+	  enable, the CPU usage (%) will be around 99.7~100%.
 endmenu
 
 # GZ Trusty
