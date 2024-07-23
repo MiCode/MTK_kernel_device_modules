@@ -738,8 +738,7 @@ static void tp_select_path(struct mml_topology_cache *cache,
 	}
 
 	en_rsz = tp_need_resize(&cfg->info, &can_binning) || mml_force_rsz;
-	en_pq = cfg->info.dest[0].pq_config.en ||
-		(MML_FMT_ALPHA(dest_fmt) && MML_FMT_IS_YUV(dest_fmt)) ||
+	en_pq = cfg->info.dest[0].pq_config.en || MML_FMT_IS_AYUV(dest_fmt) ||
 		mml_force_rsz == 2;
 	aipq = en_pq && cfg->info.dest[0].pq_config.en_hdr &&
 		cfg->info.dest[0].pq_config.en_region_pq;

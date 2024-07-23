@@ -1062,7 +1062,7 @@ static void rrot_config_stash(struct mml_comp *comp, struct mml_task *task,
 			prefetch_line_cnt[1] = leading_blocks;
 			prefetch_line_cnt[2] = round_up(leading_blocks, block_line) / block_line;
 			prefetch_line_cnt[3] = prefetch_line_cnt[2];
-		} else if (MML_FMT_AFBC(info->src.format) && MML_FMT_IS_YUV(info->src.format)) {
+		} else if (MML_FMT_AFBC_YUV(info->src.format)) {
 			prefetch_line_cnt[0] = leading_blocks;
 			prefetch_line_cnt[1] = 0;
 			prefetch_line_cnt[2] =

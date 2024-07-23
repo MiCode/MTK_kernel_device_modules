@@ -659,7 +659,7 @@ static void get_fmt_str(char *fmt, size_t sz, enum mml_color f)
 	ret = snprintf(fmt, sz, "%u%s%s%s%s%s%s%s%s",
 		MML_FMT_HW_FORMAT(f),
 		MML_FMT_SWAP(f) ? "s" : "",
-		MML_FMT_ALPHA(f) && MML_FMT_IS_YUV(f) ? "y" : "",
+		MML_FMT_IS_AYUV(f) ? "y" : "",
 		MML_FMT_BLOCK(f) ? "b" : "",
 		MML_FMT_INTERLACED(f) ? "i" : "",
 		MML_FMT_UFO(f) ? "u" : "",
