@@ -575,7 +575,7 @@ static long vcodec_unlocked_ioctl(struct file *file, unsigned int cmd,
 				ret);
 			return ret;
 		}
-			pr_info("VCODEC_MVA_ALLOCATION succeed! %lu\n",
+		pr_debug("VCODEC_MVA_ALLOCATION succeed! %lu\n",
 				ret);
 
 	}
@@ -803,7 +803,7 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 				__func__, __LINE__, ret);
 			return ret;
 		}
-		pr_info("%s:%d VCODEC_MVA_ALLOCATION succeed! %lu\n",
+		pr_debug("%s:%d VCODEC_MVA_ALLOCATION succeed! %lu\n",
 			__func__, __LINE__, ret);
 	}
 	break;
