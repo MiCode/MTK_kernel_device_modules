@@ -314,8 +314,8 @@ static inline int dpc_pm_ctrl(bool en)
 		}
 
 		/* read dummy register to make sure it's ready to use */
-		if (g_priv->mminfra_dummy)
-			(void)readl(g_priv->mminfra_dummy);
+		if (g_priv->mminfra_dummy && (readl(g_priv->mminfra_dummy) == 0))
+			DPCAEE("read mminfra dummy failed");
 
 		/* disable devapc power check false alarm, */
 		/* DPC address is bound by power of disp1 on 6989 */
@@ -1362,6 +1362,7 @@ static int dpc_res_init(struct mtk_dpc *priv)
 	get_addr_byname("disp_vcore_pwr_chk", &priv->dispvcore_chk, NULL);
 	get_addr_byname("mminfra_pwr_chk", &priv->mminfra_chk, NULL);
 	get_addr_byname("mminfra_voter", &priv->mminfra_voter, NULL);
+	get_addr_byname("mminfra_dummy", &priv->mminfra_dummy, NULL);
 	get_addr_byname("dis0_pwr_chk",
 			&priv->mtcmos_cfg[DPC_SUBSYS_DIS0].chk_va,
 			&priv->mtcmos_cfg[DPC_SUBSYS_DIS0].chk_pa);
@@ -1389,9 +1390,6 @@ static int dpc_res_init(struct mtk_dpc *priv)
 		/* use for gced, modify for access mmup inside mminfra */
 		priv->voter_set_pa -= 0x800000;
 		priv->voter_clr_pa -= 0x800000;
-
-		/* mminfra dummy register for checking mminfra power */
-		priv->mminfra_dummy = ioremap(0x30a0040c, 0x4);
 
 		/* power check by dpc, instead of subsys_pm */
 		for (subsys = 0; subsys < DPC_SUBSYS_CNT; subsys++)
