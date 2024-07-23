@@ -8011,6 +8011,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,ghpm";
 			reg =
 				<0 0x4b800000 0 0x1000>,
+				<0 0x4b860000 0 0x1000>,
 				<0 0x4b860128 0 0x4>,
 				<0 0x1c004ea8 0 0x4>,
 				<0 0x1c000070 0 0x4>,
@@ -8018,6 +8019,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x1c000078 0 0x4>;
 			reg-names =
 				"mfg_rpc",
+				"mfg_vcore_ao_config",
 				"mfg_mt6991_e2_id_con",
 				"spm_mfg0_pwr_con",
 				"clk_cfg_6",
