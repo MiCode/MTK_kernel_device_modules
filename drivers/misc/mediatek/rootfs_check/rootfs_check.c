@@ -69,7 +69,6 @@ struct ubi_ec_hdr {
 #pragma pack(pop)
 
 #define RSA_LEN 256
-#define RSA_GAP 0x10
 
 #define HASH_LEN 32
 #define CHECK_FAIL -1
@@ -183,6 +182,9 @@ int __init mtd_verity(int mtd_num)
 	int ret = CHECK_PASS;
 	loff_t real_offset, log_offset;
 	size_t readlen;
+	uint8_t pss_sig[RSA_LEN];
+	uint8_t pss_hash[HASH_LEN];
+	int res = 0;
 
 	if (root_mtd == NULL) {
 		ret = CHECK_FAIL;
@@ -302,7 +304,11 @@ int __init mtd_verity(int mtd_num)
 	decrypted_content =
 		rsa_encryptdecrypt(header->rsa_sig, excepted_e, rsa_modulus);
 
-	if (memcmp(calculate_hash, decrypted_content + RSA_GAP, HASH_LEN) != 0)
+	memcpy(pss_sig, decrypted_content, RSA_LEN);
+	memcpy(pss_hash, calculate_hash, HASH_LEN);
+
+	ret = pkcs_1_pss_decode_sha256(pss_hash, 32, pss_sig, RSA_LEN, 32, 2048, &res);
+	if (ret)
 		ret = CHECK_FAIL;
 	else
 		ret = CHECK_PASS;
@@ -354,6 +360,9 @@ int __init bdev_verity(dev_t rootfs_dev)
 	int err;
 	loff_t real_offset, log_offset;
 	size_t readlen;
+	uint8_t pss_sig[RSA_LEN];
+	uint8_t pss_hash[HASH_LEN];
+	int res = 0;
 
 	root_file = filp_open(saved_root_name, O_RDONLY, 0);
 	if (IS_ERR(root_file)) {
@@ -436,7 +445,11 @@ int __init bdev_verity(dev_t rootfs_dev)
 	decrypted_content =
 		rsa_encryptdecrypt(header->rsa_sig, excepted_e, rsa_modulus);
 
-	if (memcmp(calculate_hash, decrypted_content + RSA_GAP, HASH_LEN) != 0)
+	memcpy(pss_sig, decrypted_content, RSA_LEN);
+	memcpy(pss_hash, calculate_hash, HASH_LEN);
+
+	ret = pkcs_1_pss_decode_sha256(pss_hash, 32, pss_sig, RSA_LEN, 32, 2048, &res);
+	if (ret)
 		ret = CHECK_FAIL;
 	else
 		ret = CHECK_PASS;

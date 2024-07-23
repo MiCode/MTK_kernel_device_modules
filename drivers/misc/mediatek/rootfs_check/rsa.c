@@ -4,6 +4,7 @@
  */
 
 #include <asm/byteorder.h>
+#include <crypto/hash.h>
 #include <linux/crypto.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
@@ -29,6 +30,156 @@
 #define TOHIGH(x) ((DIGIT_T)((x) << BITS_PER_HALF_DIGIT))
 
 #define E_LEN 4
+
+#define STORE32H(x, y)                                                                  \
+	{ (y)[0] = (unsigned char)(((x)>>24)&255); (y)[1] = (unsigned char)(((x)>>16)&255); \
+	(y)[2] = (unsigned char)(((x)>>8)&255); (y)[3] = (unsigned char)((x)&255); }
+
+/**
+ * Perform LTC_PKCS #1 MGF1 (internal)
+ * @param seed        The seed for MGF1
+ * @param seedlen     The length of the seed
+ * @param mask        [out] The destination
+ * @param masklen     The length of the mask desired
+ *@return 0 if successful
+ */
+int pkcs_1_mgf1_sha256(const unsigned char *seed, unsigned long seedlen,
+		unsigned char *mask, unsigned long masklen)
+{
+	unsigned long hLen, x;
+	unsigned int  counter;
+	int              err;
+	unsigned char buf[32];
+	struct crypto_shash *tfm;
+	struct shash_desc *desc;
+	int desc_size = 0;
+
+	/* get hash output size */
+	hLen = 32;
+
+	/* start counter */
+	counter = 0;
+
+
+	while (masklen > 0) {
+		/* handle counter */
+		STORE32H(counter, buf);
+		++counter;
+
+		/* get hash of seed || counter */
+		/**/
+		tfm = crypto_alloc_shash("sha256", 0, 0);
+		desc_size = sizeof(struct shash_desc) + crypto_shash_descsize(tfm);
+		desc = kmalloc(desc_size, GFP_KERNEL);
+		if (desc == NULL)
+			return -1;
+
+		desc->tfm = tfm;
+		crypto_shash_init(desc);
+		crypto_shash_update(desc, seed, seedlen);
+		crypto_shash_update(desc, buf, 4);
+		crypto_shash_final(desc, buf);
+
+		/* store it */
+		for (x = 0; x < hLen && masklen > 0; x++, masklen--)
+			*mask++ = buf[x];
+
+	}
+
+	err = 0;
+
+	return err;
+}
+
+/**
+ * LTC_PKCS #1 v2.00 PSS decode, salt len 222, modulus_len 256
+ * @param  msghash            The hash to verify
+ * @param  msghashlen        The length of the hash (octets)
+ * @param  sig                 The signature data (encoded data)
+ * @param  siglen             The length of the signature data (octets)
+ * @param  saltlen            The length of the salt used (octets)
+ * @param  modulus_bitlen  The bit length of the RSA modulus
+ * @param  res                 [out] The result of the comparison, 1==valid, 0==invalid
+ * @return 0 if successful (even if the comparison failed)
+ */
+int pkcs_1_pss_decode_sha256(const unsigned char *msghash, unsigned long msghashlen,
+			     unsigned char *sig, unsigned long siglen, unsigned long saltlen,
+			     unsigned long modulus_bitlen, int *res)
+{
+	unsigned char *DB = kmalloc(1024, GFP_KERNEL);
+	unsigned char *mask = kmalloc(1024, GFP_KERNEL);
+	unsigned char *salt = kmalloc(1024, GFP_KERNEL);
+	unsigned char *hash = kmalloc(1024, GFP_KERNEL);
+	unsigned int hash_xor = 0;
+	unsigned long x, y, hLen, modulus_len;
+	int err;
+	unsigned long i;
+	*res = 0;
+
+	hLen = 32;
+	modulus_len = (modulus_bitlen>>3) + (modulus_bitlen & 7 ? 1 : 0);
+
+	if (sig[siglen-1] != 0xBC) {
+		err = -4;
+		goto error;
+	}
+	if (DB)
+		memset(DB, 0, 256);
+
+	x = 0;
+	memcpy((void *)DB, (void *)(sig + x), modulus_len - hLen - 1);
+	x += modulus_len - hLen - 1;
+	if (hash)
+		memset(hash, 0, 256);
+
+	for (i = 0; i < hLen; i++)
+		hash[i] = sig[x + i];
+
+	x += hLen;
+
+	if ((sig[0] & ~(0xFF >> ((modulus_len<<3) - (modulus_bitlen-1)))) != 0) {
+		err = -5;
+		goto error;
+	}
+	if (mask) {
+		err = pkcs_1_mgf1_sha256(hash, hLen, mask, modulus_len - hLen - 1);
+		if (err != 0)
+			goto error;
+	}
+
+	for (y = 0; y < (modulus_len - hLen - 1); y++)
+		DB[y] ^= mask[y];
+
+	DB[0] &= 0xFF >> ((modulus_len<<3) - (modulus_bitlen-1));
+
+	for (x = 0; x < modulus_len - saltlen - hLen - 2; x++) {
+		if (DB[x] != 0x00) {
+			err = -6;
+			goto error;
+		}
+	}
+
+	if (DB[x++] != 0x01) {
+		err = -7;
+		goto error;
+	}
+
+	memcpy(mask, msghash, msghashlen);
+
+	for (i = 0; i < hLen; i++)
+		hash_xor += mask[i] ^ hash[i];
+	if (hash_xor == 0)
+		*res = 1;
+
+	err = 0;
+
+error:
+	kfree(DB);
+	kfree(mask);
+	kfree(salt);
+	kfree(hash);
+	return err;
+}
 
 static int spMultiply(DIGIT_T p[2], DIGIT_T x, DIGIT_T y)
 {
