@@ -8245,10 +8245,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x14017000 0 0x1000>;
 			interrupts = <GIC_SPI 465 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_POSTMASK0_DISP>;
-			//mediatek,larb = <&smi_larb32>;
-			//mediatek,smi-id = <32>;
+			mediatek,larb = <&smi_larb32>;
+			mediatek,smi-id = <32>;
 			iommus = <&disp_iommu M4U_L32_P0_DISP_POSTMASK0>;
-
+			interconnects = <&mmqos MASTER_LARB_PORT(M4U_L32_P0_DISP_POSTMASK0)
+					 &mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "DDP_COMPONENT_POSTMASK0_hrt_qos";
 		};
 
 		disp_postmask1: disp-postmask1@14018000 {
@@ -8257,8 +8259,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x14018000 0 0x1000>;
 			interrupts = <GIC_SPI 466 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_POSTMASK1_DISP>;
-			//mediatek,larb = <&smi_larb32>;
-			//mediatek,smi-id = <32>;
+			mediatek,larb = <&smi_larb32>;
+			mediatek,smi-id = <32>;
 			iommus = <&disp_iommu M4U_L32_P1_DISP_POSTMASK1>;
 		};
 
