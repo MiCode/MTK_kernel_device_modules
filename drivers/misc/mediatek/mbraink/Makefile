@@ -32,13 +32,18 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/videocodec/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/misc/mediatek/videocodec/
 endif
 
+ccflags-y += -I$(srctree)/sound/usb
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/
+
+
 subdir-ccflags-y += -Wformat
 
 obj-${CONFIG_MTK_MBRAINK} += mtk_mbraink.o
 obj-${CONFIG_MTK_MBRAINK} += modules/
 obj-${CONFIG_MTK_MBRAINK} += bridge/
 
-mtk_mbraink-objs += mbraink_power.o mbraink_video.o mbraink_process.o mbraink.o mbraink_memory.o mbraink_gpu.o mbraink_audio.o mbraink_cpufreq.o mbraink_battery.o mbraink_pmu.o mbraink_gps.o mbraink_wifi.o
+mtk_mbraink-objs += mbraink_power.o mbraink_video.o mbraink_process.o mbraink.o mbraink_memory.o mbraink_gpu.o mbraink_audio.o mbraink_cpufreq.o mbraink_battery.o mbraink_pmu.o mbraink_gps.o mbraink_wifi.o mbraink_usb.o
 
 ifeq ($(CONFIG_MTK_MBRAINK_MT8678),m)
 mtk_mbraink-objs += mbraink_auto/mbraink_auto.o mbraink_auto/mbraink_auto_hv.o

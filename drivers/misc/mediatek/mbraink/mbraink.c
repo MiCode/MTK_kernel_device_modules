@@ -34,6 +34,7 @@
 #include "mbraink_pmu.h"
 #include "mbraink_gps.h"
 #include "mbraink_wifi.h"
+#include "mbraink_usb.h"
 
 #if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE)
 
@@ -2077,6 +2078,10 @@ static int mbraink_init(void)
 	if (ret)
 		pr_notice("mbraink wifi init failed.\n");
 
+	ret = mbraink_usb_init();
+	if (ret)
+		pr_notice("mbraink usb init failed.\n");
+
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
 	ret = mbraink_auto_init();
 	if (ret)
@@ -2136,6 +2141,7 @@ static void mbraink_exit(void)
 	mbraink_power_deinit();
 	mbraink_gps_deinit();
 	mbraink_wifi_deinit();
+	mbraink_usb_deinit();
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
 	mbraink_auto_deinit();
 #endif
