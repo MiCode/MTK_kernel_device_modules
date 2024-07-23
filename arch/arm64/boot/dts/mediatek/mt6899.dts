@@ -16511,7 +16511,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	usb_offload: usb-offload {
 		compatible = "mediatek,usb-offload";
 		xhci-host = <&usb_host>;
-		sram-version = <3>;
+		sram-version = <2>;
 		adv-lowpower;
 		smc-ctrl;
 	};
