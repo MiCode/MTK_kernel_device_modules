@@ -3384,6 +3384,14 @@
 #define MT6989_MUTEX_OVLSYS_EOF_DPI1 (MT6989_MUTEX_OVLSYS_SOF_DPI1 << 6)
 
 #define MT6899_MUTEX_SOF_SINGLE_MODE 0
+#define MT6899_MUTEX_SOF_DSI0 1
+#define MT6899_MUTEX_SOF_DSI1 2
+#define MT6899_MUTEX_SOF_DSI2 3
+#define MT6899_MUTEX_SOF_DPI0 4
+#define MT6899_MUTEX_EOF_DSI0 (MT6899_MUTEX_SOF_DSI0 << 6)
+#define MT6899_MUTEX_EOF_DSI1 (MT6899_MUTEX_SOF_DSI1 << 6)
+#define MT6899_MUTEX_EOF_DSI2 (MT6899_MUTEX_SOF_DSI2 << 6)
+#define MT6899_MUTEX_EOF_DPI0 (MT6899_MUTEX_SOF_DPI0 << 6)
 #define MT6899_MUTEX_OVLSYS_SOF_DSI0 1
 #define MT6899_MUTEX_OVLSYS_SOF_DSI1 3
 #define MT6899_MUTEX_OVLSYS_SOF_DSI2 2
@@ -7658,6 +7666,18 @@ static const unsigned int mt6989_mutex_ovlsys_sof[DDP_MUTEX_SOF_MAX] = {
 			MT6989_MUTEX_OVLSYS_SOF_DPI1 | MT6989_MUTEX_OVLSYS_EOF_DPI1,
 };
 
+static const unsigned int mt6899_mutex_sof[DDP_MUTEX_SOF_MAX] = {
+		[DDP_MUTEX_SOF_SINGLE_MODE] = MT6899_MUTEX_SOF_SINGLE_MODE,
+		[DDP_MUTEX_SOF_DSI0] =
+			MT6899_MUTEX_SOF_DSI0 | MT6899_MUTEX_EOF_DSI0,
+		[DDP_MUTEX_SOF_DSI1] =
+			MT6899_MUTEX_SOF_DSI1 | MT6899_MUTEX_EOF_DSI1,
+		[DDP_MUTEX_SOF_DSI2] =
+			MT6899_MUTEX_SOF_DSI2 | MT6899_MUTEX_EOF_DSI2,
+		[DDP_MUTEX_SOF_DPI0] =
+			MT6899_MUTEX_SOF_DPI0 | MT6899_MUTEX_EOF_DPI0,
+};
+
 static const unsigned int mt6899_mutex_ovlsys_sof[DDP_MUTEX_SOF_MAX] = {
 		[DDP_MUTEX_SOF_SINGLE_MODE] = MT6899_MUTEX_SOF_SINGLE_MODE,
 		[DDP_MUTEX_SOF_DSI0] =
@@ -7881,7 +7901,7 @@ static const struct mtk_disp_ddp_data mt6989_ddp_driver_data = {
 static const struct mtk_disp_ddp_data mt6899_ddp_driver_data = {
 	.mutex_mod = mt6899_mutex_mod,
 	.mutex_ovlsys_mod = mt6899_ovlsys_mutex_mod,
-	.mutex_sof = mt6989_mutex_sof,
+	.mutex_sof = mt6899_mutex_sof,
 	.mutex_ovlsys_sof = mt6899_mutex_ovlsys_sof,
 	.mutex_mod_reg = {MT6983_DISP_MUTEX0_MOD0, DISP_REG_MUTEX_MOD2},
 	.mutex_sof_reg = MT6983_DISP_MUTEX0_SOF,

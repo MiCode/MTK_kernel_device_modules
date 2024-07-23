@@ -3100,7 +3100,10 @@ void mt6989_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 		if (priv->ovlsys0_regs) {
 			v = (readl(priv->ovlsys0_regs + MMSYS_MISC)
 				& (~0x3FFFC));
-			v |= 0x28000;
+			if (priv->data->mmsys_id == MMSYS_MT6899)
+				v |= 0x3C000;
+			else
+				v |= 0x28000;
 			writel_relaxed(v, priv->ovlsys0_regs + MMSYS_MISC);
 
 			v = readl(priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK);
@@ -3134,8 +3137,12 @@ void mt6989_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 		}
 		/* 0xF0/0xF4: config on OVLSYS(HARD CODE) */
 		if (priv->ovlsys0_regs_pa) {
-			cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
-				MMSYS_MISC, 0x28000, 0x3FFFC);
+			if (priv->data->mmsys_id == MMSYS_MT6899)
+				cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
+					MMSYS_MISC, 0x3C000, 0x3FFFC);
+			else
+				cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
+					MMSYS_MISC, 0x28000, 0x3FFFC);
 			cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
 				MMSYS_SODI_REQ_MASK, 0, MT6989_OVL_SODI_REQ_VAL);
 		}

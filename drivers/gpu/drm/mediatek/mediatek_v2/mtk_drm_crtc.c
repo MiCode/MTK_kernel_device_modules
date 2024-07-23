@@ -20064,6 +20064,9 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		priv->data->mmsys_id == MMSYS_MT6899)
 		mtk_crtc->crtc_caps.rpo_support_num = 1;
 
+	if (priv->data->mmsys_id == MMSYS_MT6899 && pipe == 1)
+		mtk_crtc->crtc_caps.crtc_ability |= ABILITY_MML;
+
 	if (check_comp_in_crtc(path_data, MTK_DISP_CCORR) &&
 			check_comp_in_crtc(path_data, MTK_DISP_AAL))
 		mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PQ;
