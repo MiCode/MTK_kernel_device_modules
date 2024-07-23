@@ -58,6 +58,8 @@
 #define PAD_DS_DLY3		(0x1f << 0)	/* RW */
 #define PAD_DELAY_MAX	32 /* PAD delay cells */
 
+#define MSDC_RESET_HW_TIMEOUT 100000
+
 #define MSDC_GPIO_2 "msdc_gpio=2"
 
 static void msdc_request_done(struct msdc_host *host, struct mmc_request *mrq);
@@ -770,18 +772,38 @@ static void sdr_get_field(void __iomem *reg, u32 field, u32 *val)
 static void msdc_reset_hw(struct msdc_host *host)
 {
 	u32 val;
+	int ret;
 
 	sdr_set_bits(host->base + MSDC_CFG, MSDC_CFG_RST);
-	readl_poll_timeout(host->base + MSDC_CFG, val, !(val & MSDC_CFG_RST), 0, 0);
+	ret = readl_poll_timeout_atomic(host->base + MSDC_CFG, val,
+			!(val & MSDC_CFG_RST), 1, MSDC_RESET_HW_TIMEOUT);
+	if (ret) {
+		dev_info(host->dev, "[%s %d]timeout dump\n", __func__, __LINE__);
+		msdc_dump_info(NULL, 0, NULL, host);
+	}
 
 	sdr_set_field(host->base + MSDC_DMA_CTRL, MSDC_DMA_CTRL_STOP, 1);
-	readl_poll_timeout(host->base + MSDC_DMA_CTRL, val,	!(val & MSDC_DMA_CTRL_STOP), 0, 0);
+	ret = readl_poll_timeout_atomic(host->base + MSDC_DMA_CTRL, val,
+			!(val & MSDC_DMA_CTRL_STOP), 1, MSDC_RESET_HW_TIMEOUT);
+	if (ret) {
+		dev_info(host->dev, "[%s %d]timeout dump\n", __func__, __LINE__);
+		msdc_dump_info(NULL, 0, NULL, host);
+	}
 
 	sdr_set_bits(host->base + MSDC_FIFOCS, MSDC_FIFOCS_CLR);
-	readl_poll_timeout(host->base + MSDC_FIFOCS, val,
-			   !(val & MSDC_FIFOCS_CLR), 0, 0);
+	ret = readl_poll_timeout_atomic(host->base + MSDC_FIFOCS, val,
+			!(val & MSDC_FIFOCS_CLR), 1, MSDC_RESET_HW_TIMEOUT);
+	if (ret) {
+		dev_info(host->dev, "[%s %d]timeout dump\n", __func__, __LINE__);
+		msdc_dump_info(NULL, 0, NULL, host);
+	}
 
-	readl_poll_timeout(host->base + MSDC_DMA_CFG, val,	!(val & MSDC_DMA_CFG_STS), 0, 0);
+	ret = readl_poll_timeout_atomic(host->base + MSDC_DMA_CFG, val,
+			!(val & MSDC_DMA_CFG_STS), 1, MSDC_RESET_HW_TIMEOUT);
+	if (ret) {
+		dev_info(host->dev, "[%s %d]timeout dump\n", __func__, __LINE__);
+		msdc_dump_info(NULL, 0, NULL, host);
+	}
 
 	val = readl(host->base + MSDC_INT);
 	writel(val, host->base + MSDC_INT);
@@ -2336,7 +2358,7 @@ static irqreturn_t msdc_irq(int irq, void *dev_id)
 		    (events & MSDC_INT_CMDQ)) {
 			msdc_cmdq_irq(host, events);
 			/* clear interrupts */
-			writel(events & event_mask, host->base + MSDC_INT);
+			writel(events, host->base + MSDC_INT);
 			return IRQ_HANDLED;
 		}
 #if !IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_MTK_SW_CQHCI)
@@ -3691,6 +3713,10 @@ static int msdc_execute_hs400_tuning(struct mmc_host *mmc, struct mmc_card *card
 		host->dvfsrc_vcore_power ?
 		regulator_get_voltage(host->dvfsrc_vcore_power) : -1);
 
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_CQHCI_DEBUG)
+	dump_stack();
+#endif
+
 	if (host->top_base) {
 		sdr_set_bits(host->top_base + EMMC50_PAD_DS_TUNE,
 			     PAD_DS_DLY_SEL);// 1:DS pass through
@@ -3749,11 +3775,12 @@ static int msdc_execute_hs400_tuning(struct mmc_host *mmc, struct mmc_card *card
 	dev_info(host->dev,"[%s]msdc tune pass,opcode=%d,vcore=%d",
 		__func__, MMC_SEND_EXT_CSD, host->autok_vcore);
 	host->is_skip_hs200_tune = 1;
-
+	msdc_reset_hw(host);
 	return 0;
 
 fail:
 	dev_err(host->dev, "Failed to tuning DS pin delay!\n");
+	msdc_reset_hw(host);
 	return -EIO;
 }
 
