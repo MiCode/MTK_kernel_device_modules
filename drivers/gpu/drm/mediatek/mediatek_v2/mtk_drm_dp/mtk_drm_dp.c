@@ -194,6 +194,7 @@ enum dp_disp_state {
 	DP_DISP_STATE_NONE = 0,
 	DP_DISP_STATE_RESUME = 1,
 	DP_DISP_STATE_SUSPEND = 2,
+	DP_DISP_STATE_SUSPENDING = 3,
 };
 
 enum dp_fec_error_count_type {
@@ -1102,6 +1103,10 @@ static ssize_t mtk_dp_aux_transfer(struct drm_dp_aux *mtk_aux,
 	addr = msg->address;
 	length = msg->size;
 	data = msg->buffer;
+
+	if (mtk_dp->disp_state == DP_DISP_STATE_SUSPENDING ||
+		mtk_dp->disp_state == DP_DISP_STATE_SUSPEND)
+		return -EAGAIN;
 
 	switch (cmd) {
 	case DP_AUX_I2C_MOT:
@@ -6854,13 +6859,10 @@ static int mtk_dp_suspend(struct device *dev)
 		return 0;
 	}
 
+	mtk_dp->disp_state = DP_DISP_STATE_SUSPENDING;
+
 	DP_FUNC("%s usage_count %d +\n",
 		dev_name(dev), atomic_read(&dev->power.usage_count));
-
-	if (mtk_dp_hpd_get_pin_level(mtk_dp)) {
-		drm_dp_dpcd_writeb(&mtk_dp->aux, DP_SET_POWER, DP_SET_POWER_D3);
-		usleep_range(2000, 3000);
-	}
 
 	mtk_dp_hpd_interrupt_enable(mtk_dp, false);
 	mtk_dp_disconnect_release(mtk_dp);
