@@ -3526,6 +3526,16 @@ static const struct mtk_pll_data mfgsc_ao_plls[] = {
 		MFGSCPLL_CON1, 0, 22/*pcw*/),
 };
 
+static const struct mtk_hwv_data mminfra_hwv_data = {
+	.name = "clk-mm-infra-pwr",
+	.set_ofs = 0x0404,
+	.clr_ofs = 0x0408,
+	.done_ofs = 0x091C,
+	.en_ofs = 0x0400,
+};
+
+static struct regmap *mminfra_hwv_regmap;
+
 static int clk_mt6899_pll_registration(enum subsys_id id,
 		const struct mtk_pll_data *plls,
 		struct platform_device *pdev,
@@ -3737,6 +3747,31 @@ static int clk_mt6899_vlp_ck_probe(struct platform_device *pdev)
 	return r;
 }
 
+static int clk_mt6899_mminfra_hwv_probe(struct platform_device *pdev)
+{
+	struct device_node *node = pdev->dev.of_node;
+
+#if MT_CCF_BRINGUP
+	pr_notice("%s init begin\n", __func__);
+#endif
+
+	mminfra_hwv_regmap = syscon_node_to_regmap(node);
+	if (IS_ERR(mminfra_hwv_regmap)) {
+		pr_err("Cannot find regmap for %pOF: %ld\n", node,
+				PTR_ERR(mminfra_hwv_regmap));
+		return PTR_ERR(mminfra_hwv_regmap);
+	}
+
+	mtk_clk_register_mminfra_hwv_data(&mminfra_hwv_data,
+			mminfra_hwv_regmap, &pdev->dev);
+
+#if MT_CCF_BRINGUP
+	pr_notice("%s init end\n", __func__);
+#endif
+
+	return 0;
+}
+
 /* for suspend LDVT only */
 static void pll_force_off_internal(const struct mtk_pll_data *plls,
 		void __iomem *base)
@@ -3812,6 +3847,9 @@ static const struct of_device_id of_match_clk_mt6899[] = {
 	}, {
 		.compatible = "mediatek,mt6899-vlp_cksys",
 		.data = clk_mt6899_vlp_ck_probe,
+	}, {
+		.compatible = "mediatek,mt6899-mminfra_hwv",
+		.data = clk_mt6899_mminfra_hwv_probe,
 	}, {
 		/* sentinel */
 	}

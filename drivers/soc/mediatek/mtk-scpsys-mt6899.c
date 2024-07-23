@@ -164,6 +164,7 @@
 
 static void __iomem *mminfra_hwv_base;
 #define VCP_READY_CHK_OFS 0x091C
+#define MMINFRA_DONE_STA		BIT(0)
 #define VCP_READY_STA			BIT(1)
 
 enum regmap_type {
@@ -637,16 +638,16 @@ static const struct scp_domain_data scp_domain_mt6899_hfrp_data[] = {
 	},
 	[MT6899_POWER_DOMAIN_MM_INFRA] = {
 		.name = "mm-infra",
-		.hwv_comp = "mm-hw-ccf-regmap",
-		.hwv_set_ofs = 0x0198,
-		.hwv_clr_ofs = 0x019C,
-		.hwv_done_ofs = 0x141C,
-		.hwv_en_ofs = 0x1410,
-		.hwv_set_sta_ofs = 0x146C,
-		.hwv_clr_sta_ofs = 0x1470,
-		.hwv_shift = 2,
+		.hwv_comp = "mminfra-hwv-regmap",
+		.hwv_ofs = 0x400,
+		.hwv_set_ofs = 0x0404,
+		.hwv_clr_ofs = 0x0408,
+		.hwv_done_ofs = 0x091C,
+		.hwv_shift = 0,
+		.sta_mask = VCP_READY_STA | MMINFRA_DONE_STA,
 		.vcp_mask = VCP_READY_STA,
-		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | MTK_SCPD_IRQ_SAVE | default_cap,
+		.caps = MTK_SCPD_MMINFRA_HWV_OPS | MTK_SCPD_WAIT_VCP | MTK_SCPD_IRQ_SAVE
+				| default_cap,
 	},
 	[MT6899_POWER_DOMAIN_DP_TX] = {
 		.name = "dp-tx",
