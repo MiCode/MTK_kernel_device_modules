@@ -719,6 +719,7 @@ struct mtk_disp_spr_data {
 	enum mtk_spr_version version;
 	bool shrink_cfg;
 	unsigned int mtk_spr_ip_addr_offset;
+	unsigned int is_multi_base_addr;
 };
 
 /**
@@ -2325,23 +2326,21 @@ static int mtk_disp_spr_probe(struct platform_device *pdev)
 			DDPMSG("spr-ip-type read failure\n");
 	} else {
 		DDPMSG("[E] %s %d, get spr ip type failed from dts\n", __func__, __LINE__);
-		return ret;
 	}
 
 	//read SPR base address from dts
-	if (priv->data && priv->data->mtk_spr_ip_addr_offset == 0) {
+	if (priv->data && priv->data->is_multi_base_addr == 1) {
 		res = platform_get_resource_byname(pdev,
 			IORESOURCE_MEM, reg_names[priv->spr_ip_type]);
 		if (res == NULL) {
 			DDPMSG("miss reg in node, spr_ip_type:%d, %s",
 				priv->spr_ip_type, reg_names[priv->spr_ip_type]);
-			return -1;
+		} else {
+			priv->ddp_comp.regs_pa = res->start;
+			priv->ddp_comp.regs = ioremap(res->start, (res->end - res->start + 1));
+			DDPMSG("%s regs_pa:0x%lx, regs:0x%pK\n", __func__,
+				priv->ddp_comp.regs_pa, priv->ddp_comp.regs);
 		}
-		priv->ddp_comp.regs_pa = res->start;
-		priv->ddp_comp.regs = ioremap(res->start, (res->end - res->start + 1));
-		//priv->ddp_comp.regs = ioremap(res->start, resource_size(res));
-		DDPMSG("%s regs_pa:0x%lx, regs:0x%pK, node:%s\n", __func__,
-			priv->ddp_comp.regs_pa, priv->ddp_comp.regs, node->full_name);
 	}
 
 	ret = component_add(dev, &mtk_disp_spr_component_ops);
@@ -2412,6 +2411,7 @@ static const struct mtk_disp_spr_data mt6899_spr_driver_data = {
 	.version = MTK_SPR_V3,
 	.shrink_cfg = true,
 	.mtk_spr_ip_addr_offset = 0x0,
+	.is_multi_base_addr = 1,
 };
 
 static const struct mtk_disp_spr_data mt6886_spr_driver_data = {
