@@ -46,7 +46,7 @@
 /**************************************************
  * Frequency Hopping Setting
  **************************************************/
-#define GPUFREQ_FHCTL_ENABLE            (1)
+#define GPUFREQ_FHCTL_ENABLE            (0)
 #define MFG_PLL_NAME                    "mfgpll"
 /**************************************************
  * Power Domain Setting
