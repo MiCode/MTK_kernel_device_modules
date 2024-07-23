@@ -107,8 +107,10 @@ static struct device *get_dev_by_mem_type(struct venc_inst *inst, struct vcodec_
 			return vcp_get_io_device_ex(VCP_IOMMU_VCP);
 	} else if (mem->type == MEM_TYPE_FOR_SEC_SW)
 		return vcp_get_io_device_ex(VCP_IOMMU_SEC);
-	else if (mem->type == MEM_TYPE_FOR_HW || mem->type == MEM_TYPE_FOR_SEC_HW
-			|| mem->type == MEM_TYPE_FOR_SEC_WFD_HW)
+	else if (mem->type == MEM_TYPE_FOR_HW ||
+		 mem->type == MEM_TYPE_FOR_HW_CACHE ||
+		 mem->type == MEM_TYPE_FOR_SEC_HW ||
+		 mem->type == MEM_TYPE_FOR_SEC_WFD_HW)
 		return inst->vcu_inst.ctx->dev->smmu_dev;
 	else
 		return NULL;
