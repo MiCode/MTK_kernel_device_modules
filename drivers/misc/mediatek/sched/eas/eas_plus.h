@@ -154,7 +154,7 @@ unsigned long get_dsu_pwr(int wl, int dst_cpu, unsigned long task_util,
 extern unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
 		unsigned long pd_freq, unsigned long sum_util,
 		unsigned long scale_cpu, struct energy_env *eenv,
-		unsigned long extern_volt);
+		unsigned long extern_volt, unsigned long max_util);
 extern unsigned int new_idle_balance_interval_ns;
 #if IS_ENABLED(CONFIG_MTK_THERMAL_AWARE_SCHEDULING)
 extern int sort_thermal_headroom(struct cpumask *cpus, int *cpu_order, bool in_irq);
