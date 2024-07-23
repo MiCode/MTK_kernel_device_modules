@@ -1187,12 +1187,6 @@ static int __gpufreq_switch_clksrc(enum gpufreq_clk_src clksrc)
 
 	GPUFREQ_TRACE_START("clksrc=%d", clksrc);
 
-	ret = clk_prepare_enable(g_clk->clk_mux);
-	if (unlikely(ret)) {
-		__gpufreq_abort("fail to enable clk_mux(TOP_MUX_MFG) (%d)", ret);
-		goto done;
-	}
-
 	if (clksrc == CLOCK_MAIN) {
 		ret = clk_set_parent(g_clk->clk_mux, g_clk->clk_main_parent);
 		if (unlikely(ret)) {
@@ -1209,7 +1203,6 @@ static int __gpufreq_switch_clksrc(enum gpufreq_clk_src clksrc)
 		GPUFREQ_LOGE("invalid clock source: %d (EINVAL)", clksrc);
 		goto done;
 	}
-	clk_disable_unprepare(g_clk->clk_mux);
 
 done:
 	GPUFREQ_TRACE_END();
@@ -2348,6 +2341,12 @@ static int __gpufreq_clock_control(enum gpufreq_power_state power)
 	GPUFREQ_LOGI("clock control start power=%d", power);
 
 	if (power == GPU_PWR_ON) {
+		ret = clk_prepare_enable(g_clk->clk_mux);
+		if (unlikely(ret)) {
+			__gpufreq_abort("fail to enable clk_mux (%d)", ret);
+			goto done;
+		}
+		__gpufreq_switch_clksrc(CLOCK_MAIN);
 		ret = clk_prepare_enable(g_clk->subsys_bg3d);
 		if (unlikely(ret)) {
 			__gpufreq_abort("fail to enable subsys_bg3d (%d)", ret);
@@ -2359,6 +2358,8 @@ static int __gpufreq_clock_control(enum gpufreq_power_state power)
 		g_gpu.cg_count++;
 	} else {
 		clk_disable_unprepare(g_clk->subsys_bg3d);
+		__gpufreq_switch_clksrc(CLOCK_SUB);
+		clk_disable_unprepare(g_clk->clk_mux);
 		g_gpu.cg_count--;
 	}
 
@@ -2379,27 +2380,31 @@ static int __gpufreq_mtcmos_control(enum gpufreq_power_state power)
 	shader_present = __gpufreq_init_shader_present();
 
 	if (power == GPU_PWR_ON) {
+		if (clk_prepare_enable(g_clk->clk_ref_mux))
+			GPUFREQ_LOGI("failed when enable clk_ref_mux\n");
+
 		if (shader_present & MFG2_SHADER_STACK0)
-			if (pm_runtime_get_sync(&mfg2Dev->dev) < 0)
+			if (clk_prepare_enable(g_clk->mtcmos_mfg2))
 				GPUFREQ_LOGI("failed when enable mtcmos_mfg2\n");
 
 		if (shader_present & MFG3_SHADER_STACK2)
-			if (pm_runtime_get_sync(&mfg3Dev->dev) < 0)
+			if (clk_prepare_enable(g_clk->mtcmos_mfg3))
 				GPUFREQ_LOGI("failed when enable mtcmos_mfg3\n");
 
 		if (shader_present & MFG5_SHADER_STACK4)
-			if (pm_runtime_get_sync(&mfg5Dev->dev) < 0)
+			if (clk_prepare_enable(g_clk->mtcmos_mfg5))
 				GPUFREQ_LOGI("failed when enable mtcmos_mfg5\n");
 		g_gpu.mtcmos_count++;
 	} else {
 		if (shader_present & MFG5_SHADER_STACK4)
-			pm_runtime_put_sync(&mfg5Dev->dev);
+			clk_disable_unprepare(g_clk->mtcmos_mfg5);
 
 		if (shader_present & MFG3_SHADER_STACK2)
-			pm_runtime_put_sync(&mfg3Dev->dev);
+			clk_disable_unprepare(g_clk->mtcmos_mfg3);
 
 		if (shader_present & MFG2_SHADER_STACK0)
-			pm_runtime_put_sync(&mfg2Dev->dev);
+			clk_disable_unprepare(g_clk->mtcmos_mfg2);
+		clk_disable_unprepare(g_clk->clk_ref_mux);
 		g_gpu.mtcmos_count--;
 	}
 //done:
@@ -2645,6 +2650,12 @@ static int __gpufreq_init_clk(struct platform_device *pdev)
 		return PTR_ERR(g_clk->clk_mux);
 	}
 
+	g_clk->clk_ref_mux = devm_clk_get(&pdev->dev, "clk_ref_mux");
+	if (IS_ERR(g_clk->clk_ref_mux)) {
+		GPUFREQ_LOGE("cannot get clk_ref_mux\n");
+		return PTR_ERR(g_clk->clk_ref_mux);
+	}
+
 	g_clk->clk_main_parent = devm_clk_get(&pdev->dev, "clk_main_parent");
 	if (IS_ERR(g_clk->clk_main_parent)) {
 		GPUFREQ_LOGE("cannot get clk_main_parent\n");
@@ -2661,6 +2672,36 @@ static int __gpufreq_init_clk(struct platform_device *pdev)
 	if (IS_ERR(g_clk->subsys_bg3d)) {
 		GPUFREQ_LOGE("cannot get subsys_bg3d\n");
 		return PTR_ERR(g_clk->subsys_bg3d);
+	}
+
+	g_clk->mtcmos_mfg0 = devm_clk_get(&pdev->dev, "mtcmos_mfg0");
+	if (IS_ERR(g_clk->mtcmos_mfg0)) {
+		GPUFREQ_LOGE("@%s: cannot get mtcmos_mfg0\n", __func__);
+		//return PTR_ERR(g_clk->mtcmos_mfg0);
+	}
+
+	g_clk->mtcmos_mfg1 = devm_clk_get(&pdev->dev, "mtcmos_mfg1");
+	if (IS_ERR(g_clk->mtcmos_mfg1)) {
+		GPUFREQ_LOGE("@%s: cannot get mtcmos_mfg1\n", __func__);
+		//return PTR_ERR(g_clk->mtcmos_mfg1);
+	}
+
+	g_clk->mtcmos_mfg2 = devm_clk_get(&pdev->dev, "mtcmos_mfg2");
+	if (IS_ERR(g_clk->mtcmos_mfg2)) {
+		GPUFREQ_LOGE("@%s: cannot get mtcmos_mfg2\n", __func__);
+		return PTR_ERR(g_clk->mtcmos_mfg2);
+	}
+
+	g_clk->mtcmos_mfg3 = devm_clk_get(&pdev->dev, "mtcmos_mfg3");
+	if (IS_ERR(g_clk->mtcmos_mfg3)) {
+		GPUFREQ_LOGE("@%s: cannot get mtcmos_mfg3\n", __func__);
+		return PTR_ERR(g_clk->mtcmos_mfg3);
+	}
+
+	g_clk->mtcmos_mfg5 = devm_clk_get(&pdev->dev, "mtcmos_mfg5");
+	if (IS_ERR(g_clk->mtcmos_mfg5)) {
+		GPUFREQ_LOGE("@%s: cannot get mtcmos_mfg5\n", __func__);
+		return PTR_ERR(g_clk->mtcmos_mfg5);
 	}
 
 	GPUFREQ_LOGI("gpufreq init clock SUCCESS");
@@ -3014,23 +3055,6 @@ static int __init __gpufreq_init(void)
 
 	GPUFREQ_LOGI("start to init gpufreq platform driver");
 
-	/* register gpufreq platform driver */
-	ret = platform_driver_register(&g_mfg2_pdrv);
-	if (ret != 0) {
-		GPUFREQ_LOGE("Failed to register mfg2 driver\n");
-		return ret;
-	}
-	ret = platform_driver_register(&g_mfg3_pdrv);
-	if (ret != 0) {
-		GPUFREQ_LOGE("Failed to register mfg3 driver\n");
-		return ret;
-	}
-	ret = platform_driver_register(&g_mfg5_pdrv);
-	if (ret != 0) {
-		GPUFREQ_LOGE("Failed to register mfg5 driver\n");
-		return ret;
-	}
-
 	ret = platform_driver_register(&g_gpufreq_pdrv);
 	if (unlikely(ret)) {
 		GPUFREQ_LOGE("fail to register gpufreq platform driver (%d)", ret);
@@ -3048,9 +3072,6 @@ done:
  */
 static void __exit __gpufreq_exit(void)
 {
-	platform_driver_unregister(&g_mfg5_pdrv);
-	platform_driver_unregister(&g_mfg3_pdrv);
-	platform_driver_unregister(&g_mfg2_pdrv);
 	platform_driver_unregister(&g_gpufreq_pdrv);
 }
 

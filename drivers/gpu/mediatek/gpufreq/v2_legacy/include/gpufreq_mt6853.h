@@ -21,7 +21,7 @@
  * (0, 1) -> DVFS disable but init to CUST_INIT_OPPIDX (do DVFS only onces)
  * (0, 0) -> DVFS disable
  */
-#define GPUFREQ_DVFS_ENABLE             (0)
+#define GPUFREQ_DVFS_ENABLE             (1)
 #define GPUFREQ_CUST_INIT_ENABLE        (0)
 #define GPUFREQ_CUST_INIT_OPPIDX        (8) //As K510 has (g_opp_table_segment_1[8].gpufreq_khz)
 #define MT_GPUFREQ_DFD_ENABLE        (0)
@@ -162,9 +162,16 @@ enum gpufreq_clk_src {
  **************************************************/
 struct g_clk_info {
 	struct clk *clk_mux;
+	struct clk *clk_ref_mux;
 	struct clk *clk_main_parent;
 	struct clk *clk_sub_parent;
 	struct clk *subsys_bg3d;
+	struct clk *mtcmos_mfg0;
+	struct clk *mtcmos_mfg1;
+	struct clk *mtcmos_mfg2;
+	struct clk *mtcmos_mfg3;
+	struct clk *mtcmos_mfg4;
+	struct clk *mtcmos_mfg5;
 };
 struct g_pmic_info {
 	struct regulator *reg_vgpu;
