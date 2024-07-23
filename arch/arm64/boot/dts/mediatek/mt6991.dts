@@ -671,6 +671,25 @@
 		lvts_e_data4: data4@478 {
 			reg = <0x478 0x20>;
 		};
+
+		csi_efuse0: csi-data0@140 {
+			reg = <0x140 0x4>;
+		};
+		csi_efuse1: csi-data1@144 {
+			reg = <0x144 0x4>;
+		};
+		csi_efuse2: csi-data2@148 {
+			reg = <0x148 0x4>;
+		};
+		csi_efuse3: csi-data3@14c {
+			reg = <0x14c 0x4>;
+		};
+		csi_efuse4: csi-data4@150 {
+			reg = <0x150 0x4>;
+		};
+		csi_efuse5: csi-data5@154 {
+			reg = <0x154 0x4>;
+		};
 	};
 
 
