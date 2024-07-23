@@ -130,6 +130,11 @@ struct cmdq_util_controller_fp *cmdq_util_controller;
 #define CMDQ_MIN_AGE_VALUE              (5)	/* currently disable age */
 #define CMDQ_INIT_BUF_SIZE		8484
 
+#define CMDQ_MMINFRA_VOTER_OFS	0x120
+#define CMDQ_MMINFRA_VOTER_GCED_MASK	BIT(7)
+#define CMDQ_MMINFRA_VOTER_GCEM_MASK	BIT(8)
+
+
 #define CMDQ_DRIVER_NAME		"mtk_cmdq_mbox"
 
 /* pc and end shift bit for gce, should be config in probe */
@@ -315,6 +320,7 @@ struct cmdq {
 	bool		err_irq;
 	void __iomem	*dram_pwr_base;
 	void __iomem	*mminfra_ao_base;
+	void __iomem	*mminfra_voter_base;
 	bool		error_irq_sw_req;
 	bool		gce_vm;
 	bool		spr3_timer;
@@ -322,6 +328,7 @@ struct cmdq {
 	struct device	*pd_mminfra_1;
 	struct device	*pd_mminfra_ao;
 	bool		gce_ddr_sel_wla;
+	bool		gce_mask_voter;
 	unsigned int	dbg3;
 	bool		gce_res_sw_mode;
 };
@@ -3161,7 +3168,7 @@ static int cmdq_probe(struct platform_device *pdev)
 #if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	int port;
 #endif
-	u32 dram_pwr_pa, mminfra_ao_pa;
+	u32 dram_pwr_pa, mminfra_ao_pa, mminfra_voter_pa;
 
 	plat_data = (struct gce_plat *)of_device_get_match_data(dev);
 	if (!plat_data) {
@@ -3465,6 +3472,14 @@ static int cmdq_probe(struct platform_device *pdev)
 		}
 	}
 
+	if (of_property_read_bool(dev->of_node, "gce-mask-voter")) {
+		cmdq->gce_mask_voter = true;
+		if (!of_property_read_u32(dev->of_node, "mminfra-voter-base", &mminfra_voter_pa)) {
+			cmdq_msg("mminfra-voter-base:%#x", mminfra_voter_pa);
+			cmdq->mminfra_voter_base = ioremap(mminfra_voter_pa, 0x1000);
+		}
+	}
+
 	if (cmdq->hwid == 0 && cmdq_print_debug)
 		cmdq_util_reserved_memory_lookup(dev);
 
@@ -3703,6 +3718,14 @@ void cmdq_mbox_enable(void *chan)
 				cmdq_util_get_bit_feature() &
 				CMDQ_LOG_FEAT_PERF);
 
+		if (cmdq->gce_mask_voter) {
+			writel(readl(cmdq->mminfra_voter_base + CMDQ_MMINFRA_VOTER_OFS) &
+				~(CMDQ_MMINFRA_VOTER_GCED_MASK),
+				cmdq->mminfra_voter_base + CMDQ_MMINFRA_VOTER_OFS);
+			cmdq_log("%s hwid:%d voter:%#x", __func__, cmdq->hwid,
+				readl(cmdq->mminfra_voter_base + CMDQ_MMINFRA_VOTER_OFS));
+		}
+
 		cmdq_mtcmos_by_fast(cmdq, false);
 	}
 
@@ -3822,6 +3845,14 @@ void cmdq_mbox_disable(void *chan)
 			ret = pm_runtime_put_sync(cmdq->pd_mminfra_1);
 			if (ret != 0)
 				cmdq_err("pm_runtime_put_sync err:%d", ret);
+		}
+
+		if (cmdq->gce_mask_voter) {
+			writel(readl(cmdq->mminfra_voter_base + CMDQ_MMINFRA_VOTER_OFS) |
+				CMDQ_MMINFRA_VOTER_GCED_MASK | CMDQ_MMINFRA_VOTER_GCEM_MASK ,
+				cmdq->mminfra_voter_base + CMDQ_MMINFRA_VOTER_OFS);
+			cmdq_log("%s hwid:%d voter:%#x", __func__, cmdq->hwid,
+				readl(cmdq->mminfra_voter_base + CMDQ_MMINFRA_VOTER_OFS));
 		}
 
 		if (cmdq->fast_mtcmos)
