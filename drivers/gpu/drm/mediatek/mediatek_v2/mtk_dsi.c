@@ -5971,6 +5971,30 @@ static void mtk_dsi_encoder_enable(struct drm_encoder *encoder)
 static enum drm_connector_status
 mtk_dsi_connector_detect(struct drm_connector *connector, bool force)
 {
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	struct mtk_dsi *dsi = NULL;
+
+	if (!connector) {
+		DDPMSG("[E] %s invalid connector pointer\n", __func__);
+		return connector_status_disconnected;
+	}
+
+	dsi = connector_to_dsi(connector);
+	if (!dsi) {
+		DDPMSG("[E] %s invalid dsi pointer\n", __func__);
+		return connector_status_disconnected;
+	}
+
+	if ((dsi->ddp_comp.id == DDP_COMPONENT_DSI1) ||
+	    (dsi->ddp_comp.id == DDP_COMPONENT_DSI2)) {
+		DDPMSG("%s %s connect_status %s\n",
+		       __func__,
+		       mtk_dump_comp_str_id(dsi->ddp_comp.id),
+		       drm_get_connector_status_name(dsi->connect_status));
+		return dsi->connect_status;
+	}
+#endif
+
 	return connector_status_connected;
 }
 
@@ -12767,6 +12791,15 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		list_for_each_entry(m, &dsi->conn.modes, head)
 			num++;
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+		if (!panel_ext || !num) {
+			DDPMSG("%s %s connector status %s modes %d\n",
+			       __func__, mtk_dump_comp_str(comp),
+			       drm_get_connector_status_name(dsi->connect_status), num);
+			break;
+		}
+#endif
+
 		avail_modes = vzalloc(sizeof(struct drm_display_mode) * num);
 		panel_params = vzalloc(sizeof(struct mtk_panel_params *) * num);
 
@@ -13625,6 +13658,18 @@ static int mtk_dsi_bind(struct device *dev, struct device *master, void *data)
 		goto err_unregister;
 	}
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	if (dsi && dsi->ext && dsi->ext->funcs && dsi->ext->funcs->get_link_status &&
+	    dsi->panel && (dsi->ext->funcs->get_link_status(dsi->panel) & 0x3))
+		dsi->connect_status = connector_status_connected;
+	else
+		dsi->connect_status = connector_status_disconnected;
+
+	DDPMSG("%s %s connect_status %s\n",
+	       __func__, mtk_dump_comp_str(&dsi->ddp_comp),
+	       drm_get_connector_status_name(dsi->connect_status));
+#endif
+
 	DDPINFO("%s-\n", __func__);
 	return 0;
 
@@ -14403,6 +14448,21 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_ENABLE_DSI_HOTPLUG)
 	dsi->hotplug_task = kthread_create(mtk_dsi_hotplug_kthread, dsi, "hotplug");
 	//wake_up_process(dsi->hotplug_task);
+#endif
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	// need power on panel for connector detect
+	if (dsi->panel) {
+		int prepare_ret;
+
+		prepare_ret = drm_panel_prepare(dsi->panel);
+		if (prepare_ret)
+			DDPMSG("[E] %s %s prepare panel fail\n",
+			       __func__, mtk_dump_comp_str_id(comp_id));
+
+		DDPMSG("%s %s prepare panel ret %d\n",
+		       __func__, mtk_dump_comp_str_id(comp_id), prepare_ret);
+	}
 #endif
 
 	DDPINFO("%s-\n", __func__);
