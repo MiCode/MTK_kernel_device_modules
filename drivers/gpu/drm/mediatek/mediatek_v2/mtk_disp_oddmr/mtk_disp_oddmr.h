@@ -320,6 +320,8 @@ struct mtk_disp_oddmr_data {
 	enum mtk_dbi_version dbi_version;
 	enum mtk_dmr_version dmr_version;
 	enum mtk_od_version od_version;
+	bool is_dmr_support_stash;
+	bool is_dbi_support_stash;
 };
 
 struct mtk_disp_oddmr_od_data {
