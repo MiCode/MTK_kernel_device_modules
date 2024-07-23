@@ -416,7 +416,7 @@ sram_dump:
 	mmdvfs_debug_dump_line(file, "VER3.5: mux controlled by vcp sram:%#lx", (unsigned long)(void *)SRAM_BASE);
 	// usr
 	for (k = 0; k < SRAM_USR_NUM; k++) {
-		i = readl(SRAM_REC_CNT_USR(k));
+		i = readl(SRAM_REC_CNT_USR(k)) % SRAM_REC_CNT;
 		for (j = i; j < SRAM_REC_CNT; j++)
 			mmdvfs_debug_dump_line(file, "[%5u.%3u] usr:%u opp:%u",
 				readl(SRAM_USR_SEC(k, j)), readl(SRAM_USR_USEC(k, j)),
@@ -428,7 +428,7 @@ sram_dump:
 	}
 
 	// mux
-	i = readl(SRAM_REC_CNT_MUX);
+	i = readl(SRAM_REC_CNT_MUX) % SRAM_REC_CNT;
 	for (j = i; j < SRAM_REC_CNT; j++) {
 		val = readl(SRAM_MUX_VAL(j));
 		mmdvfs_debug_dump_line(file, "[%5u.%3u] mux:%lu opp:%lu min:%lu level:%lu",
@@ -446,7 +446,7 @@ sram_dump:
 
 	// pwr
 	for (k = 0; k < SRAM_PWR_CNT; k++) {
-		i = readl(SRAM_REC_CNT_PWR(k));
+		i = readl(SRAM_REC_CNT_PWR(k)) % SRAM_REC_CNT;
 		for (j = i; j < SRAM_REC_CNT; j++)
 			mmdvfs_debug_dump_line(file, "[%5u.%3u] pwr:%u opp:%u",
 				readl(SRAM_PWR_SEC(k, j)), readl(SRAM_PWR_USEC(k, j)),
@@ -459,7 +459,7 @@ sram_dump:
 
 	// clk
 	for (k = 0; k < SRAM_PWR_CNT; k++) {
-		i = readl(SRAM_REC_CNT_CLK(k));
+		i = readl(SRAM_REC_CNT_CLK(k)) % SRAM_REC_CNT;
 		for (j = i; j < SRAM_REC_CNT; j++)
 			mmdvfs_debug_dump_line(file, "[%5u.%3u] clk:%u opp:%u",
 				readl(SRAM_CLK_SEC(k, j)), readl(SRAM_CLK_USEC(k, j)),
@@ -471,7 +471,7 @@ sram_dump:
 	}
 
 	// rate
-	i = readl(SRAM_REC_CNT_RATE);
+	i = readl(SRAM_REC_CNT_RATE) % SRAM_REC_CNT;
 	for (j = i; j < SRAM_REC_CNT; j++)
 		mmdvfs_debug_dump_line(file, "[%5u.%3u] rate:%u",
 			readl(SRAM_RATE_SEC(j)), readl(SRAM_RATE_USEC(j)),readl(SRAM_RATE_VAL(j)));
@@ -480,7 +480,7 @@ sram_dump:
 			readl(SRAM_RATE_SEC(j)), readl(SRAM_RATE_USEC(j)),readl(SRAM_RATE_VAL(j)));
 
 	// ceil
-	i = readl(SRAM_REC_CNT_CEIL);
+	i = readl(SRAM_REC_CNT_CEIL) % SRAM_REC_CNT;
 	for (j = i; j < SRAM_REC_CNT; j++)
 		mmdvfs_debug_dump_line(file, "[%5u.%3u] ceil:%u",
 			readl(SRAM_CEIL_SEC(j)), readl(SRAM_CEIL_USEC(j)),readl(SRAM_CEIL_VAL(j)));
@@ -489,7 +489,7 @@ sram_dump:
 			readl(SRAM_CEIL_SEC(j)), readl(SRAM_CEIL_USEC(j)),readl(SRAM_CEIL_VAL(j)));
 
 	// vmm
-	i = readl(SRAM_REC_CNT_VMM);
+	i = readl(SRAM_REC_CNT_VMM) % SRAM_REC_CNT;
 	for (j = i; j < SRAM_REC_CNT; j++)
 		mmdvfs_debug_dump_line(file, "[%5u.%3u] vmm val:%u hw:%u volt:%u",
 			readl(SRAM_VMM_SEC(j)), readl(SRAM_VMM_USEC(j)),
@@ -501,7 +501,7 @@ sram_dump:
 	mmdvfs_debug_dump_line(file, "vmm efuse high:%u low:%u", readl(SRAM_VMM_EFUSE_HIGH), readl(SRAM_VMM_EFUSE_LOW));
 
 	// vdisp
-	i = readl(SRAM_REC_CNT_VDISP);
+	i = readl(SRAM_REC_CNT_VDISP) % SRAM_REC_CNT;
 	for (j = i; j < SRAM_REC_CNT; j++)
 		mmdvfs_debug_dump_line(file, "[%5u.%3u] vdisp:%u",
 			readl(SRAM_VDISP_SEC(j)), readl(SRAM_VDISP_USEC(j)),readl(SRAM_VDISP_VAL(j)));
