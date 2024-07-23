@@ -124,3 +124,11 @@ config VHOST_MMDVFS
 	  for hypervisor project. The vhost driver is located at virt/grt,
 	  Also used to isolate the conflicting part of the mmdvfs driver
 	  on main project, default is n.
+
+config VHOST_DISP
+	tristate "hypervisor vhost disp driver"
+	help
+	  This extension enable vhost disp driver, vhost disp driver
+	  for hypervisor project. The vhost driver is located at virt/grt,
+	  Also used to isolate the conflicting part of the disp driver
+	  on main project, default is n.
