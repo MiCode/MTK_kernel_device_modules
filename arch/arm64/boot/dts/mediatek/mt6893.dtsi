@@ -4713,7 +4713,7 @@ cpus {
 			mediatek,clock-parents = <4 3>;
 			operating-points-v2 = <&opp_table_vdec>;
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-
+			vdec-set-bw-in-min-freq = <1>;
 			throughput-op-rate-thresh = <120>;
 			throughput-min = <249000000>;
 			throughput-normal-max = <450000000>;
