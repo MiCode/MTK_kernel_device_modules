@@ -248,7 +248,7 @@ static struct xhci_mbrain_hash_node *xhci_mtk_mbrain_get_hash_node(struct usb_de
 
 	hash_for_each_possible(mbrain_hash_table, item, node, hash_key) {
 		if (strcmp(item->dev_name, key) == 0) {
-			dev_dbg(&udev->dev, "mbrain: use the exist node: mbrain_data=0x%p\n", &item->mbrain_data);
+			// dev_dbg(&udev->dev, "mbrain: use the exist node: mbrain_data=0x%p\n", &item->mbrain_data);
 
 			if (udev->state == USB_STATE_DEFAULT) {
 				dev_name_backup = item->dev_name;
