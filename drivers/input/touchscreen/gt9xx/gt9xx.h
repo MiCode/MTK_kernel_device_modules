@@ -102,6 +102,10 @@ struct goodix_ts_platform_data {
 	u32 resume_in_workqueue;
 	u32 pen_suppress_finger;
 	struct goodix_config_data config;
+	u32 touch_id;
+	char touch_name[64];
+	char touch_phys[64];
+	char touch_proc[64];
 };
 
 struct goodix_ts_esd {
