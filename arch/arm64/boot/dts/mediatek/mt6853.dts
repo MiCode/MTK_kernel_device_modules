@@ -616,6 +616,16 @@
 				"APU_0_R,APU_0_W,GPU_0_R,GPU_0_W,APU_1_R,APU_1_W,GPU_1_R,GPU_1_W";
 		};
 	};
+
+	drm_wv: drm_wv {
+		compatible = "mediatek,drm_wv";
+		status = "okay";
+	};
+
+	mtee_svp: mtee_svp {
+		compatible = "medaitek,svp";
+
+	};
 };
 
 
