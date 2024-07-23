@@ -71,6 +71,15 @@ struct reg_save_st reg_save_list[] = {
 	{0x10001B14, 0x10},
 };
 
+const char *scp_dump_dts_str[] = {
+	"scp-dummy",
+	"scp-sram-size",
+	"scp-cache-dump-buf-size",
+	"scp-reg-dump-buf-size",
+	"scp-tbuf-dump-buf-size",
+	"scp-dram-size",
+	"scp-total",
+};
 //static unsigned char *scp_A_dump_buffer;
 struct scp_dump_st scp_dump;
 
@@ -106,17 +115,42 @@ static uint8_t* get_MDUMP_addr(MDUMP_t type)
 
 uint32_t memorydump_size_probe(struct platform_device *pdev)
 {
-	uint32_t i, ret;
+	int ret = 0;
+	bool legacy_probe = false;
+	uint32_t i = 0;
+	uint32_t size = 0;
+
+	scp_dump.prefix[MDUMP_DUMMY] = 0;
 	for (i = MDUMP_L2TCM; i < MDUMP_TOTAL; ++i) {
-		ret = of_property_read_u32_index(pdev->dev.of_node,
-			"memorydump", i - 1, &scp_dump.prefix[i]);
+		ret = of_property_read_u32(pdev->dev.of_node, scp_dump_dts_str[i], &size);
 		if (ret) {
-			pr_notice("[SCP] %s:Cannot get memorydump size(%d)\n", __func__, i - 1);
-			return -1;
+			legacy_probe = true;
+			break;
 		}
-		scp_dump.prefix[i] += scp_dump.prefix[i - 1];
+		scp_dump.prefix[i] = scp_dump.prefix[i -1] + size;
 	}
-	return 0;
+
+	if (legacy_probe) {
+		for (i = MDUMP_L2TCM; i < MDUMP_TOTAL; ++i) {
+			ret = of_property_read_u32_index(pdev->dev.of_node,
+					"memorydump", i - 1, &scp_dump.prefix[i]);
+			if (ret) {
+				pr_notice("[SCP] %s:Cannot get memorydump size(%d)\n", __func__, i - 1);
+				return -1;
+			}
+			scp_dump.prefix[i] += scp_dump.prefix[i - 1];
+		}
+	}
+
+	for (i = MDUMP_L2TCM; i < MDUMP_TOTAL; ++i)
+		pr_notice("scp_dump.prefix[%d] = 0x%08x\n", i, scp_dump.prefix[i]);
+
+	return ret;
+}
+
+uint32_t scp_get_secure_dump_size(void)
+{
+	return get_MDUMP_size_accumulate(MDUMP_TOTAL - 1);
 }
 
 void scp_dump_last_regs(void)

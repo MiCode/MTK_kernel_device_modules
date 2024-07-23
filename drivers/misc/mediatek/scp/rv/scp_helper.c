@@ -1730,9 +1730,7 @@ static int scp_reserve_memory_ioremap(struct platform_device *pdev)
 		/* Probe memory size of feature that user register */
 		if (i == 0 && scpreg.secure_dump) {
 			/* secure_dump */
-			ret = of_property_read_u32(pdev->dev.of_node,
-					"secure-dump-size",
-					&m_size);
+			m_size = scp_get_secure_dump_size();
 			m_size += sap_get_secure_dump_size();
 		} else {
 			ret = of_property_read_u32_index(pdev->dev.of_node,
@@ -3159,6 +3157,10 @@ static int scp_device_probe(struct platform_device *pdev)
 		return -ENODEV;
 
 #if SCP_RESERVED_MEM && defined(CONFIG_OF)
+	/* scp memorydump size probe */
+	ret = memorydump_size_probe(pdev);
+	if (ret)
+		return ret;
 
 	/*scp resvered memory*/
 	pr_notice("[SCP] scp_reserve_memory_ioremap\n");
@@ -3175,10 +3177,6 @@ static int scp_device_probe(struct platform_device *pdev)
 		pr_notice("[SCP] feature_table_probe failed\n");
 		return ret;
 	}
-	/* scp memorydump size probe */
-	ret = memorydump_size_probe(pdev);
-	if (ret)
-		return ret;
 
 	/* scp scpsys remap from infracfg_ao_clk */
 	if (scpreg.scpsys_regmap_en) {
