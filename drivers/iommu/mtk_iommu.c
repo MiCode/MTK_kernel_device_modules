@@ -3607,7 +3607,8 @@ static const struct mtk_iommu_plat_data mt6781_data = {
 	.m4u_plat = M4U_MT6781,
 	.flags         = HAS_SUB_COMM | OUT_ORDER_WR_EN | WR_THROT_EN |
 			 HAS_BCLK | NOT_STD_AXI_MODE | SHARE_PGTABLE | IOMMU_SEC_EN |
-			 IOVA_34_EN | GET_DOM_ID_LEGACY | HAS_SMI_SUB_COMM,
+			 IOVA_34_EN | GET_DOM_ID_LEGACY | HAS_SMI_SUB_COMM |
+			 PGTABLE_PA_35_EN,
 	.inv_sel_reg   = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= DISP_IOMMU,
 	.iommu_type     = MM_IOMMU,
@@ -3623,7 +3624,7 @@ static const struct mtk_iommu_plat_data mt6833_data = {
 	.flags         = HAS_SUB_COMM | OUT_ORDER_WR_EN | WR_THROT_EN |
 			 HAS_BCLK | NOT_STD_AXI_MODE | IOVA_34_EN |
 			 SHARE_PGTABLE | HAS_SMI_SUB_COMM | IOMMU_SEC_EN |
-			 GET_DOM_ID_LEGACY,
+			 GET_DOM_ID_LEGACY | PGTABLE_PA_35_EN,
 	.inv_sel_reg   = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= DISP_IOMMU,
 	.iommu_type     = MM_IOMMU,
@@ -3641,7 +3642,8 @@ static const struct mtk_iommu_plat_data mt6853_data = {
 	.m4u_plat = M4U_MT6853,
 	.flags         = HAS_SUB_COMM | OUT_ORDER_WR_EN | WR_THROT_EN |
 			 HAS_BCLK | NOT_STD_AXI_MODE | IOVA_34_EN | SHARE_PGTABLE |
-			 HAS_SMI_SUB_COMM | IOMMU_SEC_EN | GET_DOM_ID_LEGACY,
+			 HAS_SMI_SUB_COMM | IOMMU_SEC_EN | GET_DOM_ID_LEGACY |
+			 PGTABLE_PA_35_EN,
 	.inv_sel_reg   = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= DISP_IOMMU,
 	.iommu_type     = MM_IOMMU,
@@ -3654,7 +3656,8 @@ static const struct mtk_iommu_plat_data mt6853_data = {
 
 static const struct mtk_iommu_plat_data mt6853_data_apu = {
 	.m4u_plat        = M4U_MT6853,
-	.flags           = LINK_WITH_APU | IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE,
+	.flags           = LINK_WITH_APU | IOVA_34_EN | GET_DOM_ID_LEGACY |
+			 SHARE_PGTABLE | PGTABLE_PA_35_EN,
 	.iommu_id	 = APU_IOMMU0,
 	.iommu_type      = APU_IOMMU,
 	.normal_dom	 = 0,
@@ -3800,7 +3803,8 @@ static const struct mtk_iommu_plat_data mt6893_data_iommu0 = {
 	.m4u_plat        = M4U_MT6893,
 	.flags           = NOT_STD_AXI_MODE | HAS_SUB_COMM | OUT_ORDER_WR_EN | WR_THROT_EN |
 			   HAS_BCLK | IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE |
-			   IOMMU_SEC_EN | HAS_SMI_SUB_COMM | LEGACY_MULTI_LARB,
+			   IOMMU_SEC_EN | HAS_SMI_SUB_COMM | LEGACY_MULTI_LARB |
+			   PGTABLE_PA_35_EN,
 	/* not use larbid_remap */
 	.larbid_remap    = {{0}, {1}, {4, 5}, {7}, {2}, {9, 11, 19, 20},
 			    {0, 14, 16}, {0, 13, 18, 17}},
@@ -3817,7 +3821,7 @@ static const struct mtk_iommu_plat_data mt6893_data_iommu1 = {
 	.flags           = NOT_STD_AXI_MODE | HAS_SUB_COMM | OUT_ORDER_WR_EN |
 			   WR_THROT_EN | HAS_BCLK | IOVA_34_EN | GET_DOM_ID_LEGACY |
 			   SHARE_PGTABLE | IOMMU_SEC_EN | HAS_SMI_SUB_COMM |
-			   LEGACY_MULTI_LARB,
+			   LEGACY_MULTI_LARB | PGTABLE_PA_35_EN,
 	/* not use larbid_remap */
 	.larbid_remap    = {{0}, {1}, {4, 5}, {7}, {2}, {9, 11, 19, 20},
 			    {0, 14, 16}, {0, 13, 18, 17}},
@@ -3831,7 +3835,8 @@ static const struct mtk_iommu_plat_data mt6893_data_iommu1 = {
 
 static const struct mtk_iommu_plat_data mt6893_data_iommu2 = {
 	.m4u_plat        = M4U_MT6893,
-	.flags           = LINK_WITH_APU | IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE,
+	.flags           = LINK_WITH_APU | IOVA_34_EN | GET_DOM_ID_LEGACY |
+			   SHARE_PGTABLE | PGTABLE_PA_35_EN,
 	.iommu_id	 = APU_IOMMU0,
 	.iommu_type      = APU_IOMMU,
 	.normal_dom      = 0,
@@ -3844,7 +3849,8 @@ static const struct mtk_iommu_plat_data mt6893_data_iommu2 = {
 
 static const struct mtk_iommu_plat_data mt6893_data_iommu3 = {
 	.m4u_plat        = M4U_MT6893,
-	.flags           = LINK_WITH_APU | IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE,
+	.flags           = LINK_WITH_APU | IOVA_34_EN | GET_DOM_ID_LEGACY |
+			   SHARE_PGTABLE | PGTABLE_PA_35_EN,
 	.iommu_id	 = APU_IOMMU1,
 	.iommu_type      = APU_IOMMU,
 	.normal_dom	 = 0,
