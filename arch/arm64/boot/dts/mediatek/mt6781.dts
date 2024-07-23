@@ -664,6 +664,10 @@
 		compatible = "mediatek,mt6781-clkchk";
 	};
 
+	disable_unused: disable_unused {
+		compatible = "simple-bus";
+	};
+
 	clocks {
 		clk_null: clk_null {
 			compatible = "fixed-clock";
@@ -6514,6 +6518,7 @@
 #include "mediatek/mt6370.dtsi"
 #include "mediatek/rt5133_for_6781.dtsi"
 #include "mediatek/trusty.dtsi"
+#include "mediatek/mt6781-disable-unused.dtsi"
 
 &mddriver {
 	/* for md pmic voltage setting*/
