@@ -2508,13 +2508,13 @@ static int vdisp_level_set_vcp(const enum mtk_dpc_subsys subsys, const u8 level,
 	if (MTK_DPC_OF_DISP_SUBSYS(subsys)) {
 		g_vdisp_level_disp = level;
 		if (MEM_BASE) /* add vdisp info to met */
-			writel(4 - level, MEM_USR_OPP(VCP_PWR_USR_DISP, false));
+			writel(4 - level, MEM_USR_OPP(MMDVFS_USER_DISP, false));
 		dpc_mmp(vdisp_disp, MMPROFILE_FLAG_PULSE, (level << 16) | addr,
 			readl(dpc_base + addr));
 	} else if (MTK_DPC_OF_MML_SUBSYS(subsys)) {
 		g_vdisp_level_mml = level;
 		if (MEM_BASE) /* add vdisp info to met */
-			writel(4 - level, MEM_USR_OPP(VCP_PWR_USR_MML, false));
+			writel(4 - level, MEM_USR_OPP(MMDVFS_USER_MML, false));
 		dpc_mmp(vdisp_mml, MMPROFILE_FLAG_PULSE, (level << 16) | addr,
 			readl(dpc_base + addr));
 	}
