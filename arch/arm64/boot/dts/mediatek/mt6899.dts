@@ -13843,8 +13843,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x1c001000 0 0x1000>;
 			reg-names = "dvfsrc", "spm";
 			#interconnect-cells = <1>;
-			dvfsrc-bringup = <1>;
-			dvfsrc-flag = <0x3>;
 
 			dvfsrc_vcore: dvfsrc-vcore {
 				regulator-name = "dvfsrc-vcore";
