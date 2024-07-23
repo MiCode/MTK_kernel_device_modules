@@ -7649,8 +7649,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			condition-num = <2>;
 			operating-points-v2 = <&opp_table_disp>;
 			vdisp-dvfs-opp = /bits/ 8 <3>;
-			pre-define-bw = <0xffffffff>, <4200>, <0>, <2700>;
-			//crtc-ovl-usage = <0xe0>, <0x2>, <0x2>, <0x4>;
+			pre-define-bw = <0xffffffff>, <4300>, <0>, <2700>;
+			crtc-ovl-usage = <0x7>, <0x8>, <0x2>, <0x4>;
 			default-emi-eff = <8800>;
 			emi-eff-lp5-table =
 				<2964 3648 5110 5795 6388 7066 7215 7849
