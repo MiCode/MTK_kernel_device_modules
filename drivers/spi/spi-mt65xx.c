@@ -25,7 +25,6 @@
 #include <linux/arm-smccc.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 
-
 #define SPI_CFG0_REG                      0x0000
 #define SPI_CFG1_REG                      0x0004
 #define SPI_TX_SRC_REG                    0x0008
@@ -99,7 +98,6 @@
 #define SPI_CMD_GET_TICKDLY_MASK	GENMASK(24, 22)
 #define SPI_CMD_GET_TICKDLY_SLICE_ON_MASK	GENMASK(28, 22)
 
-
 #define PIN_MODE_CFG(x)	((x) / 2)
 
 #define SPI_CFG3_PIN_MODE_OFFSET		0
@@ -130,8 +128,8 @@
 #define MTK_SPI_PAD_SEL                 0
 #define MTK_SPI_MAX_RESET_BIT           31
 
-
 #define MTK_SPI_PAUSE_INT_STATUS 0x2
+#define MTK_SPI_IDLE_INT_STATUS 0x1
 
 #define MTK_SPI_IDLE 0
 #define MTK_SPI_PAUSED 1
@@ -211,6 +209,9 @@ struct mtk_spi {
 	dma_addr_t rx_dma;
 	int irq;
 	u32 reset_bit;
+	bool err_occur;
+	spinlock_t eh_spi_lock;
+	bool dma_en;
 };
 
 static const struct mtk_spi_compatible mtk_common_compat;
@@ -249,6 +250,7 @@ static const struct mtk_spi_compatible mt6991_compat = {
 	.slice_en = true,
 	.dummy_cycle = false,
 	.infra_req = false,
+	.hw_reset = true,
 };
 
 static const struct mtk_spi_compatible mt6989_compat = {
@@ -470,8 +472,11 @@ static void mtk_spi_error_dump(struct spi_controller *ctlr,
 	struct spi_master *master = ctlr;
 	struct mtk_spi *mdata = spi_master_get_devdata(master);
 	int i = 0;
+	unsigned long flags;
 
 	spi_log_status = LOG_OPEN;
+
+	spin_lock_irqsave(&mdata->eh_spi_lock, flags);
 
 	if (mdata->use_spimem || master->can_dma(master, NULL, mdata->cur_transfer)) {
 		mt_irq_dump_status(mdata->irq);
@@ -499,6 +504,9 @@ static void mtk_spi_error_dump(struct spi_controller *ctlr,
 		writel(0x1 << mdata->reset_bit, reset_base + PERI_SPI_RST_SET);
 		writel(0x1 << mdata->reset_bit, reset_base + PERI_SPI_RST_CLR);
 	}
+
+	mdata->err_occur = true;
+	spin_unlock_irqrestore(&mdata->eh_spi_lock, flags);
 	spi_log_status = LOG_CLOSE;
 }
 
@@ -618,6 +626,18 @@ static int mtk_spi_set_hw_cs_timing(struct spi_device *spi)
 		writel(reg_val, mdata->base + SPI_CFG1_REG);
 	}
 
+	return 0;
+}
+
+static int mtk_spi_unprepare_message(struct spi_master *master,
+				   struct spi_message *msg)
+{
+	struct mtk_spi *mdata = spi_master_get_devdata(master);
+
+	if (mdata->dev_comp->sw_cs) {
+		mdata->state = MTK_SPI_IDLE;
+		mtk_spi_reset(mdata);
+	}
 	return 0;
 }
 
@@ -893,8 +913,6 @@ static void mtk_spi_set_cs(struct spi_device *spi, bool enable)
 		} else {
 			reg_val &= ~SPI_CMD_CS_POL;
 			writel(reg_val, mdata->base + SPI_CMD_REG);
-			mdata->state = MTK_SPI_IDLE;
-			mtk_spi_reset(mdata);
 		}
 	} else {
 		if (!enable) {
@@ -1093,6 +1111,7 @@ static int mtk_spi_fifo_transfer(struct spi_master *master,
 
 	mdata->cur_transfer = xfer;
 	mdata->num_xfered = 0;
+	mdata->dma_en = false;
 	mtk_spi_prepare_transfer(master, xfer->speed_hz);
 
 	//disable irq
@@ -1175,6 +1194,7 @@ static int mtk_spi_dma_transfer(struct spi_master *master,
 	mdata->rx_sgl_len = 0;
 	mdata->cur_transfer = xfer;
 	mdata->num_xfered = 0;
+	mdata->dma_en = true;
 
 	mtk_spi_prepare_transfer(master, xfer->speed_hz);
 
@@ -1242,6 +1262,8 @@ static int mtk_spi_transfer_one(struct spi_master *master,
 		writel(reg_val, mdata->base + SPI_CFG3_REG);
 	}
 
+	mdata->err_occur = false;
+
 	if (master->can_dma(master, spi, xfer))
 		return mtk_spi_dma_transfer(master, spi, xfer);
 	else
@@ -1307,16 +1329,22 @@ static irqreturn_t mtk_spi_interrupt(int irq, void *dev_id)
 	struct mtk_spi *mdata = spi_master_get_devdata(master);
 	struct spi_transfer *trans = mdata->cur_transfer;
 
+	spin_lock(&mdata->eh_spi_lock);
+	if (!mdata->dma_en || mdata->err_occur)
+		goto out;
+
 	reg_val = readl(mdata->base + SPI_STATUS0_REG);
 	if (reg_val & MTK_SPI_PAUSE_INT_STATUS)
 		mdata->state = MTK_SPI_PAUSED;
-	else
+	else if (reg_val & MTK_SPI_IDLE_INT_STATUS)
 		mdata->state = MTK_SPI_IDLE;
+	else
+		goto out;
 
 	/* SPI-MEM ops */
 	if (mdata->use_spimem) {
 		complete(&mdata->spimem_done);
-		return IRQ_HANDLED;
+		goto out;
 	}
 
 	if (mdata->tx_sgl)
@@ -1348,7 +1376,7 @@ static irqreturn_t mtk_spi_interrupt(int irq, void *dev_id)
 
 		spi_finalize_current_transfer(master);
 		spi_debug("The last DMA transfer Done.\n");
-		return IRQ_HANDLED;
+		goto out;
 	}
 
 	spi_debug("One DMA transfer Done.Start Next\n");
@@ -1358,6 +1386,8 @@ static irqreturn_t mtk_spi_interrupt(int irq, void *dev_id)
 	mtk_spi_setup_dma_addr(master, trans);
 	mtk_spi_enable_transfer(master);
 
+out:
+	spin_unlock(&mdata->eh_spi_lock);
 	return IRQ_HANDLED;
 }
 
@@ -1483,6 +1513,8 @@ static int mtk_spi_mem_exec_op(struct spi_mem *mem,
 
 	mdata->use_spimem = true;
 	reinit_completion(&mdata->spimem_done);
+	mdata->err_occur = false;
+	mdata->dma_en = true;
 
 	mtk_spi_reset(mdata);
 	mtk_spi_hw_init(mem->spi->master, mem->spi);
@@ -1673,6 +1705,7 @@ static int mtk_spi_probe(struct platform_device *pdev)
 		master->set_cs = mtk_spi_set_cs;
 
 	master->prepare_message = mtk_spi_prepare_message;
+	master->unprepare_message = mtk_spi_unprepare_message;
 	master->transfer_one = mtk_spi_transfer_one;
 	master->can_dma = mtk_spi_can_dma;
 	master->setup = mtk_spi_setup;
@@ -1821,6 +1854,8 @@ static int mtk_spi_probe(struct platform_device *pdev)
 	}
 
 	mdata->spi_clk_hz = clk_get_rate(mdata->spi_clk);
+
+	spin_lock_init(&mdata->eh_spi_lock);
 
 	ret = of_property_read_string_index(pdev->dev.of_node, "clock-source-type",
 				0, &clk_type);
