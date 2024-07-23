@@ -15155,7 +15155,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,dmaheap-mtk-sec-page";
 			heap-name = "mtk_sapu_page-uncached";
 			trusted-mem-type = <14>;
-			status = "disabled";
 		};
 
 		mtkheap_page_svp: mtkheap-page-svp {
@@ -16834,6 +16833,19 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 #include "mediatek/mt6899-clkitg.dtsi"
 #include "mediatek/mt6899-coresight.dtsi"
 #include "mediatek/mt6899-disable-unused.dtsi"
+
+&trusty {
+	trusty-sapu {
+		compatible = "mediatek,trusty-sapu";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		power-version = <1>;
+		datamem-type = <2>;
+		datamem-size = <0x0 0x0>;
+		iommus = <&apu_iommu0 M4U_PORT_L42_APU_CODE>;
+		status = "okay";
+	};
+};
 
 &hypervisor {
 	status = "okay";
