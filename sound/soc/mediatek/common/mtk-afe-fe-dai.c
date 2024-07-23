@@ -652,23 +652,19 @@ int mtk_afe_fe_hw_free(struct snd_pcm_substream *substream,
 		kfree(substream->runtime->dma_buffer_p);
 		snd_pcm_set_runtime_buffer(substream, NULL);
 #if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
-		unreg_dram_passthrough_shm(memif);
-		unreg_sram_passthrough_shm(memif);
 		return 0;
 #else
 		return mtk_audio_sram_free(afe->sram, substream);
 #endif
 	}
-#if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
-	else if (memif->using_passthrough){
-		unreg_dram_passthrough_shm(memif);
-		unreg_sram_passthrough_shm(memif);
-		return 0;
-	}
-#endif
 	else
 #endif
 	{
+#if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
+		if (memif->using_passthrough)
+			return 0;
+#endif
+
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
 		if (is_adsp_genpool_addr_valid(substream))
 			return mtk_adsp_free_mem(substream);
