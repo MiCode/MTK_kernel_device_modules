@@ -713,7 +713,7 @@ void mtk_vidle_srt_bw_set(const u32 bw_in_mb)
 	vidle_data.srt_bw = bw_in_mb;
 	if (disp_dpc_driver.dpc_srt_bw_set) {
 		if (vidle_data.dpc_version == DPC_VER1)
-			disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, !atomic_read(&g_ff_enabled));
+			disp_dpc_driver.dpc_srt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, !atomic_read(&g_ff_enabled));
 		else
 			disp_dpc_driver.dpc_srt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, true);
 	} else
