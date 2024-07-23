@@ -3450,6 +3450,11 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 				"CG_MM_SMI_COMMON";
 	};
 
+	smi-test {
+		compatible = "mediatek,smi-testcase";
+		mediatek,larbs = <&smi_larb2>;
+	};
+
 	smi_larb2: smi_larb2@15001000 {
 		compatible = "mediatek,smi_larb2", "mediatek,smi-larb",
 			     "mediatek,mt6761-smi-larb";
