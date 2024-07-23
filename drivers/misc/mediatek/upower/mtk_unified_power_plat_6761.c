@@ -73,7 +73,6 @@ static unsigned int _mt_cpufreq_get_cpu_level(void)
 {
 	unsigned int lv = 0;
 	unsigned int efuse_seg;
-	struct platform_device *pdev;
 	struct device_node *node;
 	struct nvmem_cell *efuse_cell;
 	size_t efuse_len;
@@ -86,12 +85,8 @@ static unsigned int _mt_cpufreq_get_cpu_level(void)
 		pr_info("%s fail to get device node\n", __func__);
 		return 0;
 	}
-	pdev = of_device_alloc(node, NULL, NULL);
-	if (!pdev) {
-		pr_info("%s fail to create device node\n", __func__);
-		return 0;
-	}
-	efuse_cell = nvmem_cell_get(&pdev->dev, "efuse_segment_cell");
+
+	efuse_cell = of_nvmem_cell_get(node, "efuse_segment_cell");
 	if (IS_ERR(efuse_cell)) {
 		pr_info("@%s: cannot get efuse_cell\n", __func__);
 		return PTR_ERR(efuse_cell);
@@ -110,12 +105,6 @@ static unsigned int _mt_cpufreq_get_cpu_level(void)
 	if ((efuse_seg == 0x10) || (efuse_seg == 0x11) || (efuse_seg == 0x90)
 			|| (efuse_seg == 0x91))
 		lv = 3;
-
-	/* free pdev */
-	if (pdev != NULL) {
-		of_platform_device_destroy(&pdev->dev, NULL);
-		put_device(&pdev->dev);
-	}
 
 	return lv;
 }
