@@ -25,6 +25,9 @@
 #include <linux/pm_runtime.h>
 #include <linux/module.h>
 #include <linux/version.h>
+#if IS_ENABLED(CONFIG_DEBUG_FS) && IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+#include <linux/debugfs.h>
+#endif
 
 #include "clk-fmeter.h"
 #include "clk-mtk.h"
@@ -1727,6 +1730,15 @@ int clk_dbg_driver_register(struct platform_driver *drv, const char *name)
 
 	if (name)
 		r = platform_driver_register(drv);
+
+#if IS_ENABLED(CONFIG_DEBUG_FS) && IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+	struct dentry *clk_entry = debugfs_lookup("clk", NULL);
+
+	if (clk_entry) {
+		debugfs_lookup_and_remove("clk_summary", clk_entry);
+		dput(clk_entry);
+	}
+#endif
 
 	return r;
 }
