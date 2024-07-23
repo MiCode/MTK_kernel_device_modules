@@ -482,8 +482,10 @@ void mtu3_ep_stall_set(struct mtu3_ep *mep, bool set)
 	}
 
 	if (!set) {
+		mtu3_qmu_stop(mep);
 		mtu3_ep_reset(mep);
 		mep->flags &= ~MTU3_EP_STALL;
+		mtu3_qmu_resume(mep);
 	} else {
 		mep->flags |= MTU3_EP_STALL;
 	}
