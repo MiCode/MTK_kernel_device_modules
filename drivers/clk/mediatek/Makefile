@@ -12,6 +12,7 @@ ifneq ($(wildcard $(srctree)/$(src)/clk-mt6781.c),)
 obj-$(CONFIG_COMMON_CLK_MT6781) += clk-mt6781.o
 obj-$(CONFIG_COMMON_CLK_MT6781) += clk-bringup.o
 obj-$(CONFIG_COMMON_CLK_MT6781) += clkdbg-mt6781.o
+obj-$(CONFIG_COMMON_CLK_MT6781) += clk-fmeter-mt6781.o
 obj-$(CONFIG_COMMON_CLK_MT6781) += clk-chk-mt6781.o
 clk-chk-mt6781-$(CONFIG_COMMON_CLK_MT6781) += clkchk-mt6781.o
 obj-$(CONFIG_COMMON_CLK_MT6781) += clk-mt6781-pg.o
