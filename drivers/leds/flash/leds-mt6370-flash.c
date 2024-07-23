@@ -89,8 +89,8 @@ struct mt6370_priv {
 	struct device *dev;
 	struct regmap *regmap;
 	struct mutex lock;
-	unsigned int fled_strobe_used;
-	unsigned int fled_torch_used;
+	unsigned long fled_strobe_used;
+	unsigned long fled_torch_used;
 	unsigned int leds_active;
 	unsigned int leds_count;
 	struct mt6370_led leds[];
@@ -116,7 +116,7 @@ static int mt6370_torch_brightness_set(struct led_classdev *lcdev,
 	 * and this flag is used to check if 'strobe' is currently being used.
 	 */
 	if (priv->fled_strobe_used) {
-		dev_warn(lcdev->dev, "Please disable strobe first [%d]\n",
+		dev_info(lcdev->dev, "Please disable strobe first [%lu]\n",
 			 priv->fled_strobe_used);
 		ret = -EBUSY;
 		goto unlock;
@@ -230,16 +230,21 @@ static int mt6370_strobe_set(struct led_classdev_flash *fl_cdev, bool state)
 	u32 enable_mask = MT6370_STROBEN_MASK | led_enable_mask;
 	u32 val = state ? led_enable_mask : 0;
 	u32 curr;
-	int ret;
+	int ret = 0, idx = led->led_no;
 
 	mutex_lock(&priv->lock);
+
+	if (!(state ^ test_bit(idx, &priv->fled_strobe_used))) {
+		dev_info(lcdev->dev, "no change for strobe, [%lu]\n", priv->fled_strobe_used);
+		goto unlock;
+	}
 
 	/*
 	 * There is only one set of flash control logic,
 	 * and this flag is used to check if 'torch' is currently being used.
 	 */
 	if (priv->fled_torch_used) {
-		dev_warn(lcdev->dev, "Please disable torch first [0x%x]\n",
+		dev_info(lcdev->dev, "Please disable torch first [%lu]\n",
 				      priv->fled_torch_used);
 		ret = -EBUSY;
 		goto unlock;
@@ -581,9 +586,21 @@ static int mt6370_flash_external_strobe_set(struct v4l2_flash *v4l2_flash,
 	u32 mask = (led->led_no == MT6370_LED_JOINT) ? MT6370_FLCSEN_MASK_ALL :
 		   MT6370_FLCSEN_MASK(led->led_no);
 	u32 val = enable ? mask : 0;
-	int ret;
+	int ret = 0, idx = led->led_no;
 
 	mutex_lock(&priv->lock);
+
+	if (!(enable ^ test_bit(idx, &priv->fled_strobe_used))) {
+		dev_info(priv->dev, "no change for strobe, [%lu]\n", priv->fled_strobe_used);
+		goto unlock;
+	}
+
+	if (priv->fled_torch_used) {
+		ret = -EINVAL;
+		dev_info(priv->dev, "Torch in used [%lu]\n", priv->fled_torch_used);
+		goto unlock;
+	}
+
 	ret = regmap_update_bits(priv->regmap, MT6370_REG_FLEDEN, mask, val);
 	if (ret)
 		goto unlock;
