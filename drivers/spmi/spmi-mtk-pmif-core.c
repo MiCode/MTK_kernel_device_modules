@@ -798,6 +798,19 @@ static struct pmif mt6xxx_pmif_arb[] = {
 	},
 };
 
+static struct pmif mt6989_pmif_arb[] = {
+	{
+		.regs = mt6xxx_regs,
+		.spmimst_regs = mt6853_spmi_regs,
+		.soc_chan = 2,
+		.mstid = SPMI_MASTER_1,
+		.pmifid = PMIF_PMIFID_SPMI0,
+		.read_cmd = pmif_spmi_read_cmd,
+		.write_cmd = pmif_spmi_write_cmd,
+		.caps = 3,
+	},
+};
+
 int (*register_spmi_md_force_assert)(unsigned int id, char *buf, unsigned int len) = NULL;
 EXPORT_SYMBOL(register_spmi_md_force_assert);
 
@@ -2048,7 +2061,7 @@ static const struct of_device_id mtk_spmi_match_table[] = {
 		.data = &mt6xxx_pmif_arb,
 	}, {
 		.compatible = "mediatek,mt6989-spmi",
-		.data = &mt6xxx_pmif_arb,
+		.data = &mt6989_pmif_arb,
 	}, {
 		.compatible = "mediatek,mt6991-spmi",
 		.data = &mt6xxx_pmif_arb,
