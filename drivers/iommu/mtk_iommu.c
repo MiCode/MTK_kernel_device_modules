@@ -228,6 +228,7 @@
 #define HAS_EMI_PM			BIT(25)
 #define LEGACY_MULTI_LARB		BIT(26)
 #define PM_DOMAIN_SKIP			BIT(27)
+#define CHECK_MMINFRA_POWER		BIT(28)
 #define POWER_ON_STA		1
 #define POWER_OFF_STA		0
 
@@ -259,6 +260,7 @@ struct mtk_iommu_domain {
 };
 
 static const struct iommu_ops mtk_iommu_ops;
+static const struct mtk_iommu_mm_pm_ops *mtk_mm_pm_ops;
 
 static bool pd_sta[MM_IOMMU_NUM];
 static bool apu_pm_sta[APU_IOMMU_NUM];
@@ -902,6 +904,25 @@ static bool mtk_iommu_check_pm_domain(struct mtk_iommu_data *data)
 	return !!data->dev->pm_domain;
 }
 
+static bool mtk_iommu_mm_power_get(struct mtk_iommu_data *data, int *pm_sta)
+{
+	*pm_sta = 0;
+
+	if (MTK_IOMMU_HAS_FLAG(data->plat_data, CHECK_MMINFRA_POWER)) {
+		/* mtk_mm_pm_ops is null just in bootup stage, always power on*/
+		if (!mtk_mm_pm_ops)
+			return true;
+
+		*pm_sta = mtk_mm_pm_ops->pm_get();
+		if (*pm_sta == 1)
+			return true;
+	} else if (pd_sta[data->plat_data->iommu_id] == POWER_ON_STA) {
+		*pm_sta = 1;
+		return true;
+	}
+
+	return false;
+}
 /**
  * mtk_iommu_power_get - Get iommu power status,
  * conditionally call pm_runtime_get_if_in_use.
@@ -916,14 +937,15 @@ static __maybe_unused bool mtk_iommu_power_get(struct mtk_iommu_data *data, int 
 {
 	bool has_pm = mtk_iommu_check_pm_domain(data);
 
-	if (has_pm && !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN)) {
-		if ((data->plat_data->iommu_type == MM_IOMMU &&
-			pd_sta[data->plat_data->iommu_id] == POWER_OFF_STA) ||
-			(data->plat_data->iommu_type != MM_IOMMU &&
-			(*pm_sta = pm_runtime_get_if_in_use(data->dev)) <= 0 &&
-			apu_pm_sta[data->plat_data->iommu_id] == POWER_OFF_STA)) {
-			return false;
-		}
+	if (!has_pm || MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN))
+		return true;
+
+	if ((data->plat_data->iommu_type == MM_IOMMU &&
+	     mtk_iommu_mm_power_get(data, pm_sta) == POWER_OFF_STA) ||
+	     (data->plat_data->iommu_type != MM_IOMMU &&
+	     (*pm_sta = pm_runtime_get_if_in_use(data->dev)) <= 0 &&
+	     apu_pm_sta[data->plat_data->iommu_id] == POWER_OFF_STA)) {
+		return false;
 	}
 
 	return true;
@@ -942,9 +964,19 @@ static __maybe_unused void mtk_iommu_power_put(struct mtk_iommu_data *data, int 
 {
 	bool has_pm = mtk_iommu_check_pm_domain(data);
 
-	if (has_pm && !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN) &&
-		data->plat_data->iommu_type != MM_IOMMU && pm_sta > 0)
+	if (!has_pm || MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN))
+		return;
+
+	if (data->plat_data->iommu_type != MM_IOMMU && pm_sta > 0) {
 		pm_runtime_put(data->dev);
+		return;
+	}
+
+	if (!MTK_IOMMU_HAS_FLAG(data->plat_data, CHECK_MMINFRA_POWER))
+		return;
+
+	if (data->plat_data->iommu_type == MM_IOMMU && mtk_mm_pm_ops && pm_sta == 1)
+		mtk_mm_pm_ops->pm_put();
 }
 
 static void mtk_iommu_bk0_intr_en(const struct mtk_iommu_data *data,
@@ -974,21 +1006,16 @@ static void mtk_iommu_bk0_intr_en(const struct mtk_iommu_data *data,
 
 static inline void mtk_iommu_isr_setup(struct mtk_iommu_data *data, unsigned long enable)
 {
-	bool has_pm = mtk_iommu_check_pm_domain(data);
 	int pm_sta = 0;
 
 	pr_info("%s, iommu:(%d,%d), enable:%lu\n", __func__,
 		data->plat_data->iommu_type, data->plat_data->iommu_id, enable);
-	if (has_pm && !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN)) {
-		if ((data->plat_data->iommu_type == MM_IOMMU &&
-			pd_sta[data->plat_data->iommu_id] == POWER_OFF_STA) ||
-			(data->plat_data->iommu_type != MM_IOMMU &&
-			(pm_sta = pm_runtime_get_if_in_use(data->dev)) <= 0 &&
-			apu_pm_sta[data->plat_data->iommu_id] == POWER_OFF_STA)) {
-			pr_info("%s, power off:%s\n", __func__, dev_name(data->dev));
-			return;
-		}
+
+	if (!mtk_iommu_power_get(data, &pm_sta)) {
+		pr_info("%s, power off:%s\n", __func__, dev_name(data->dev));
+		return;
 	}
+
 	mtk_iommu_bk0_intr_en(data, enable);
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
@@ -997,10 +1024,7 @@ static inline void mtk_iommu_isr_setup(struct mtk_iommu_data *data, unsigned lon
 					       data->plat_data->iommu_id,
 					       enable);
 #endif
-
-	if (has_pm && !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN) &&
-		data->plat_data->iommu_type != MM_IOMMU && pm_sta > 0)
-		pm_runtime_put(data->dev);
+	mtk_iommu_power_put(data, pm_sta);
 }
 
 static void mtk_iommu_isr_restart(struct timer_list *t)
@@ -1090,21 +1114,14 @@ static void mtk_iommu_tlb_flush_check(struct mtk_iommu_data *data, bool range)
 /* Notice!!: Before use it, must be ensure mtcmos is on */
 static void mtk_iommu_tlb_flush(struct mtk_iommu_data *data, bool check_pm)
 {
-	bool has_pm = mtk_iommu_check_pm_domain(data);
 	unsigned long flags;
 	int iommu_ids;
 	int pm_sta = 0;
 
 	spin_lock_irqsave(&data->tlb_lock, flags);
-	if (check_pm && has_pm && !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN)) {
-		if ((data->plat_data->iommu_type == MM_IOMMU &&
-			pd_sta[data->plat_data->iommu_id] == POWER_OFF_STA) ||
-			(data->plat_data->iommu_type != MM_IOMMU &&
-			(pm_sta = pm_runtime_get_if_in_use(data->dev)) <= 0 &&
-			apu_pm_sta[data->plat_data->iommu_id] == POWER_OFF_STA)) {
-			spin_unlock_irqrestore(&data->tlb_lock, flags);
-			return;
-		}
+	if (check_pm && !mtk_iommu_power_get(data, &pm_sta)) {
+		spin_unlock_irqrestore(&data->tlb_lock, flags);
+		return;
 	}
 
 	iommu_ids = MTK_IOMMU_ID_FLAG(data->plat_data->iommu_type,
@@ -1138,9 +1155,7 @@ static void mtk_iommu_tlb_flush(struct mtk_iommu_data *data, bool check_pm)
 	}
 
 skip_polling:
-	if (check_pm && has_pm && !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN) &&
-		data->plat_data->iommu_type != MM_IOMMU && pm_sta > 0)
-		pm_runtime_put(data->dev);
+	mtk_iommu_power_put(data, pm_sta);
 	spin_unlock_irqrestore(&data->tlb_lock, flags);
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
@@ -1171,18 +1186,10 @@ static void mtk_iommu_tlb_flush_range_sync(unsigned long iova, size_t size,
 	u32 tmp;
 
 	for_each_m4u(data, head) {
-		bool has_pm = mtk_iommu_check_pm_domain(data);
-
 		spin_lock_irqsave(&data->tlb_lock, flags);
-		if (has_pm && !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN)) {
-			if ((data->plat_data->iommu_type == MM_IOMMU &&
-				pd_sta[data->plat_data->iommu_id] == POWER_OFF_STA) ||
-				(data->plat_data->iommu_type != MM_IOMMU &&
-				(pm_sta = pm_runtime_get_if_in_use(data->dev)) <= 0 &&
-				apu_pm_sta[data->plat_data->iommu_id] == POWER_OFF_STA)) {
-				spin_unlock_irqrestore(&data->tlb_lock, flags);
-				continue;
-			}
+		if (!mtk_iommu_power_get(data, &pm_sta)) {
+			spin_unlock_irqrestore(&data->tlb_lock, flags);
+			continue;
 		}
 
 		iommu_ids |= MTK_IOMMU_ID_FLAG(data->plat_data->iommu_type,
@@ -1211,10 +1218,8 @@ static void mtk_iommu_tlb_flush_range_sync(unsigned long iova, size_t size,
 		}
 		/* Clear the CPE status */
 		writel_relaxed(0, data->base + REG_MMU_CPE_DONE);
+		mtk_iommu_power_put(data, pm_sta);
 		spin_unlock_irqrestore(&data->tlb_lock, flags);
-		if (has_pm && !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN) &&
-			data->plat_data->iommu_type != MM_IOMMU && pm_sta > 0)
-			pm_runtime_put(data->dev);
 	}
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
@@ -3120,7 +3125,8 @@ skip_smi:
 	}
 
 	/* register the notifier for power domain just for mm_iommu */
-	if (data->plat_data->iommu_type == MM_IOMMU) {
+	if (data->plat_data->iommu_type == MM_IOMMU &&
+	    !MTK_IOMMU_HAS_FLAG(data->plat_data, CHECK_MMINFRA_POWER)) {
 		int r, iommu_id = data->plat_data->iommu_id;
 
 		mtk_pd_notifiers[iommu_id].notifier_call = mtk_iommu_pd_callback;
@@ -3525,6 +3531,12 @@ void mtk_iommu_dbg_hang_detect(enum mtk_iommu_type type, int id)
 	pr_info("%s, (%d,%d) no dump\n", __func__, type, id);
 }
 EXPORT_SYMBOL_GPL(mtk_iommu_dbg_hang_detect);
+
+void mtk_iommu_set_pm_ops(const struct mtk_iommu_mm_pm_ops *ops)
+{
+	mtk_mm_pm_ops = ops;
+}
+EXPORT_SYMBOL_GPL(mtk_iommu_set_pm_ops);
 
 static const struct dev_pm_ops mtk_iommu_pm_ops = {
 	SET_RUNTIME_PM_OPS(mtk_iommu_runtime_suspend, mtk_iommu_runtime_resume, NULL)
@@ -3979,8 +3991,9 @@ static const struct mtk_iommu_plat_data mt6899_data_disp = {
 	.m4u_plat	= M4U_MT6899,
 	.flags          = OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
 			  NOT_STD_AXI_MODE | TLB_SYNC_EN | IOMMU_SEC_EN |
-			  SKIP_CFG_PORT | IOVA_34_EN | IOMMU_CLK_AO_EN | IOMMU_EN_PRE |
-			  /*HAS_BCLK |*/ HAS_SMI_SUB_COMM | SAME_SUBSYS | PGTABLE_PA_35_EN,
+			  SKIP_CFG_PORT | IOVA_34_EN | IOMMU_EN_PRE |
+			  HAS_SMI_SUB_COMM | SAME_SUBSYS | PGTABLE_PA_35_EN |
+			  PM_OPS_SKIP | CHECK_MMINFRA_POWER | PM_DOMAIN_SKIP,
 	.hw_list        = &mm_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= DISP_IOMMU,
@@ -3996,8 +4009,9 @@ static const struct mtk_iommu_plat_data mt6899_data_mdp = {
 	.m4u_plat	= M4U_MT6899,
 	.flags          = OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
 			  NOT_STD_AXI_MODE | TLB_SYNC_EN | IOMMU_SEC_EN |
-			  SKIP_CFG_PORT | IOVA_34_EN | IOMMU_CLK_AO_EN | IOMMU_EN_PRE |
-			  /*HAS_BCLK | */HAS_SMI_SUB_COMM | SAME_SUBSYS | PGTABLE_PA_35_EN,
+			  SKIP_CFG_PORT | IOVA_34_EN | IOMMU_EN_PRE |
+			  HAS_SMI_SUB_COMM | SAME_SUBSYS | PGTABLE_PA_35_EN |
+			  PM_OPS_SKIP | CHECK_MMINFRA_POWER | PM_DOMAIN_SKIP,
 	.hw_list        = &mm_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= MDP_IOMMU,
