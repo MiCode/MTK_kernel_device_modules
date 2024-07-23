@@ -379,7 +379,7 @@ void mtk_drm_idlemgr_cpu_control(struct drm_crtc *crtc, int cmd, unsigned int da
 
 	DDPMSG("%s,crtc:%u mask:0x%x, freq:%uMhz, latency:%dus\n", __func__,
 		crtc_id, idlemgr_ctx->priv.cpu_mask,
-		(unsigned int)(idlemgr_ctx->priv.cpu_freq / 1000),
+		(unsigned int)(idlemgr_ctx->priv.cpu_freq / 1000U),
 		idlemgr_ctx->priv.cpu_dma_latency);
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 }
@@ -1807,7 +1807,7 @@ int mtk_drm_idlemgr_init(struct drm_crtc *crtc, int index)
 			__func__, __LINE__, drm_crtc_index(crtc), mode,
 			idlemgr_ctx->priv.hw_async, idlemgr_ctx->priv.vblank_async,
 			idlemgr_ctx->priv.cpu_mask,
-			(unsigned int)(idlemgr_ctx->priv.cpu_freq / 1000),
+			(unsigned int)(idlemgr_ctx->priv.cpu_freq / 1000U),
 			idlemgr_ctx->priv.sram_sleep);
 		mtk_drm_idlemgr_bind_cpu(idlemgr->idlemgr_task, crtc, true);
 		mtk_drm_idlemgr_bind_cpu(idlemgr->kick_task, crtc, true);
@@ -2077,7 +2077,7 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 					"%s:async:%d,cpu:(0x%x,%uMhz,%dus),sram:%d,total:%lluus,detail:%s\n",
 					__func__, atomic_read(&idlemgr->async_enabled),
 					idlemgr_ctx->priv.cpu_mask,
-					(unsigned int)(idlemgr_ctx->priv.cpu_freq / 1000),
+					(unsigned int)(idlemgr_ctx->priv.cpu_freq / 1000U),
 					idlemgr_ctx->priv.cpu_dma_latency,
 					idlemgr_ctx->priv.sram_sleep,
 					cost, perf_string);
@@ -2351,7 +2351,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 					"%s:async:%d,cpu:(0x%x,%uMhz,%dus),sram:%d,total:%lluus,detail:%s\n",
 					__func__, atomic_read(&idlemgr->async_enabled),
 					idlemgr_ctx->priv.cpu_mask,
-					(unsigned int)(idlemgr_ctx->priv.cpu_freq / 1000),
+					(unsigned int)(idlemgr_ctx->priv.cpu_freq / 1000U),
 					idlemgr_ctx->priv.cpu_dma_latency,
 					idlemgr_ctx->priv.sram_sleep,
 					cost, perf_string);
@@ -2359,8 +2359,8 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		}
 
 		if (perf_aee_timeout > 0 && cost > (unsigned long long)perf_aee_timeout * 1000) {
-			DDPAEE("[IDLE] perf drop:%lluus, timeout:%uus\n",
-				cost, (unsigned int)(perf_aee_timeout * 1000));
+			DDPAEE("[IDLE] perf drop:%lluus, timeout:%lluus\n",
+				cost, (unsigned long long)(perf_aee_timeout * 1000U));
 			perf_aee_timeout = 0;
 		}
 	}
