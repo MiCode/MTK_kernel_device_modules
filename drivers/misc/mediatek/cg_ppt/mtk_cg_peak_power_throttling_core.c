@@ -121,6 +121,22 @@ static const struct platform_data default_platform_data = {
 	.peak_power_combo_table_cpu = peak_power_combo_table_cpu,
 };
 
+static const struct platform_data mt6899_platform_data = {
+	/* MT6889-specific settings */
+	.default_cg_ppt_mode = 0,
+	.default_mo_gpu_curr_freq_power_calc = 1,
+	.default_mo_onetime_power_table_calc = 0,
+	.default_mo_gpu_low_freq_power_calc = 0,
+	.default_defer_timer_period_ms = 1000,
+	.default_gacboost_mode = 0,
+
+	/*combo table*/
+	.ip_peak_power_table        = ip_peak_power_table_mt6899,
+	.leakage_scale_table        = leakage_scale_table,
+	.peak_power_combo_table_gpu = peak_power_combo_table_gpu_mt6899,
+	.peak_power_combo_table_cpu = peak_power_combo_table_cpu_mt6899,
+};
+
 static const struct platform_data mt6989_platform_data = {
 	/* MT6989-specific settings */
 	.default_cg_ppt_mode = 0,
@@ -157,6 +173,7 @@ static const struct platform_data mt6991_platform_data = {
 
 
 static const struct of_device_id cgppt_of_ids[] = {
+	{ .compatible = "mediatek,MT6899", .data = &mt6899_platform_data },
 	{ .compatible = "mediatek,MT6989", .data = &mt6989_platform_data },
 	{ .compatible = "mediatek,MT6991", .data = &mt6991_platform_data },
 	{ /* sentinel */ }

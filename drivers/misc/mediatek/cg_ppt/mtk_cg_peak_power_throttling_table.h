@@ -50,6 +50,8 @@ struct ippeakpowertableDataRow {
 extern struct ippeakpowertableDataRow
 	ip_peak_power_table[IP_PEAK_POWER_TABLE_IDX_ROW_COUNT];
 extern struct ippeakpowertableDataRow
+	ip_peak_power_table_mt6899[IP_PEAK_POWER_TABLE_IDX_ROW_COUNT];
+extern struct ippeakpowertableDataRow
 	ip_peak_power_table_mt6991[IP_PEAK_POWER_TABLE_IDX_ROW_COUNT];
 /*
  * -----------------------------------------------
@@ -146,7 +148,10 @@ extern struct peakpowercombotableDataRow
 extern struct peakpowercombotableDataRow
 	peak_power_combo_table_cpu_mt6989_89tt[CPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT];
 
-
+extern struct peakpowercombotableDataRow
+	peak_power_combo_table_gpu_mt6899[GPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT];
+extern struct peakpowercombotableDataRow
+	peak_power_combo_table_cpu_mt6899[CPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT];
 extern struct peakpowercombotableDataRow
 	peak_power_combo_table_gpu_mt6991[GPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT];
 extern struct peakpowercombotableDataRow
