@@ -1450,6 +1450,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0x78 0x4>;
 		};
 
+		u2_phy_data: u2-phy-data@1cc {
+			reg = <0x1cc 0x4>;
+		};
+
 		csi_efuse0: csi-data0@1d4 {
 			reg = <0x1d4 0x4>;
 		};
@@ -14377,6 +14381,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				#phy-cells = <1>;
 				mediatek,lpm-parameter = <0x19 0x1e 0x1e>;
 				usb2uart;
+				nvmem-cells = <&u2_phy_data>, <&u2_phy_data>;
+				nvmem-cell-names = "intr_cal", "term_cal";
+				nvmem-cell-masks = <0x3f 0xf00>;
+				mediatek,efuse-term = <0x9>;
+				mediatek,efuse-intr = <0x26>;
+				mediatek,rx-sqth = <0x3>;
+				mediatek,discth = <0x7>;
 			};
 
 			u3port0: usb3-phy0@11c93000 {
