@@ -2063,6 +2063,10 @@ signed int CmdqDPEHW(struct frame *frame)
 //#endif
 	if (frame == NULL || frame->data == NULL)
 		return -1;
+	if (DPEInfo.UserCount <= 0) {
+		LOG_ERR("usercount is zero!");
+		return -1;
+	}
 	LOG_DBG("%s request sent to CMDQ driver", __func__);
 	pDpeUserConfig = (struct DPE_Config *) frame->data;
 	pDpeConfig = &DpeConfig;
