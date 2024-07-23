@@ -998,6 +998,23 @@ void dpc_mtcmos_auto(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_mtcmos
 	spin_unlock_irqrestore(&g_priv->mtcmos_cfg_lock, flags);
 }
 
+static void dpc_dsi_pll_set(const u32 value)
+{
+	if (g_priv == NULL) {
+		DPCERR("g_priv null\n");
+		return;
+	}
+
+	/* if DSI_PLL_SEL is set, power ON disp1 and set DSI_CK_KEEP_EN */
+	if (g_priv->dsi_ck_keep_mask && (value & BIT(0))) {
+		mtk_disp_vlp_vote(VOTE_SET, DISP_VIDLE_USER_DISP_DPC_CFG);
+		/* will be cleared when ff enable */
+
+		mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS1);
+		writel(g_priv->dsi_ck_keep_mask, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_DIS1].cfg);
+	}
+}
+
 static void dpc_disp_group_enable(bool en)
 {
 	int ret = 0;
@@ -2000,6 +2017,7 @@ static const struct dpc_funcs funcs = {
 	.dpc_mtcmos_auto = dpc_mtcmos_auto,
 	.dpc_duration_update = dpc_duration_update,
 	.dpc_mtcmos_vote = dpc_mtcmos_vote,
+	.dpc_dsi_pll_set = dpc_dsi_pll_set,
 	.dpc_clear_wfe_event = dpc_clear_wfe_event,
 	.dpc_vidle_power_keep = dpc_vidle_power_keep,
 	.dpc_vidle_power_release = dpc_vidle_power_release,
@@ -2028,6 +2046,7 @@ static struct mtk_dpc mt6989_dpc_driver_data = {
 	.total_hrt_unit = 30,
 	.srt_emi_efficiency = 10000,			// CHECK ME
 	.hrt_emi_efficiency = 10000,			// CHECK ME
+	.dsi_ck_keep_mask = BIT(5),
 };
 
 static struct mtk_dpc mt6878_dpc_driver_data = {
@@ -2056,6 +2075,7 @@ static struct mtk_dpc mt6991_dpc_driver_data = {
 	.hrt_emi_efficiency = 8242,			// divide 0.85 * 33/32(TCU) = *100/82.4242
 	.ch_bw_urate = 70,				// divide 0.7
 	.vcp_is_alive = true,
+	.dsi_ck_keep_mask = BIT(2),
 };
 
 static const struct of_device_id mtk_dpc_driver_v2_dt_match[] = {
