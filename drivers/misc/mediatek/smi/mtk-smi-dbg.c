@@ -420,6 +420,7 @@ struct mtk_smi_dbg_v2 {
 	int	user_pwr_stat[MTK_SMI_USER_ID_NR];
 	int	larb_pm_stat[MTK_SMI_NR_MAX];
 	int	comm_pm_stat[MTK_SMI_NR_MAX];
+	spinlock_t lock;
 };
 
 struct mtk_smi_dbg {
@@ -1016,15 +1017,19 @@ static char	*mtk_smi_dbg_comp[] = {
 };
 
 static LIST_HEAD(smi_user_pwr_ctrl_list);
-static DEFINE_MUTEX(smi_pwr_lock);
-
 void call_smi_user_pwr_ctrl(u32 action, char *caller)
 {
 	struct smi_user_pwr_ctrl *entry;
 	struct mtk_smi_dbg	*smi = gsmi;
 	int ret;
+	unsigned long flags;
 
-	mutex_lock(&smi_pwr_lock);
+	if (dbg_version != SMI_DBG_VER_2) {
+		pr_notice("%s: not support\n", __func__);
+		return;
+	}
+
+	spin_lock_irqsave(&smi->v2.lock, flags);
 	list_for_each_entry(entry, &smi_user_pwr_ctrl_list, list) {
 		strscpy(entry->caller, caller, sizeof(entry->caller));
 		switch (action) {
@@ -1055,7 +1060,7 @@ void call_smi_user_pwr_ctrl(u32 action, char *caller)
 			break;
 		}
 	}
-	mutex_unlock(&smi_pwr_lock);
+	spin_unlock_irqrestore(&smi->v2.lock, flags);
 }
 
 void call_smi_pm_get_if_in_use(void)
@@ -1467,6 +1472,8 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 	else
 		dev_notice(dev, "smmu not support or hwccf support\n");
 #endif
+	if (dbg_version == SMI_DBG_VER_2)
+		spin_lock_init(&smi->v2.lock);
 
 	of_property_read_u64_index(dev->of_node, "smi-mminfra-skip-rpm", 0,
 				&smi->subsys[SMI_MMINFRA].larb_skip_rpm);
@@ -1528,6 +1535,14 @@ EXPORT_SYMBOL_GPL(mtk_smi_dbg_unregister_force_on_notifier);
 
 int mtk_smi_dbg_register_pwr_ctrl_cb(struct smi_user_pwr_ctrl *cb)
 {
+	struct mtk_smi_dbg	*smi = gsmi;
+	unsigned long flags;
+
+	if (dbg_version != SMI_DBG_VER_2) {
+		pr_notice("%s: not support\n", __func__);
+		return 0;
+	}
+
 	if (!cb) {
 		pr_notice("%s: cb is NULL\n", __func__);
 		return -EINVAL;
@@ -1546,9 +1561,9 @@ int mtk_smi_dbg_register_pwr_ctrl_cb(struct smi_user_pwr_ctrl *cb)
 	}
 
 	INIT_LIST_HEAD(&cb->list);
-	mutex_lock(&smi_pwr_lock);
+	spin_lock_irqsave(&smi->v2.lock, flags);
 	list_add(&cb->list, &smi_user_pwr_ctrl_list);
-	mutex_unlock(&smi_pwr_lock);
+	spin_unlock_irqrestore(&smi->v2.lock, flags);
 	pr_notice("%s:name:%s user:%d register cb done\n", __func__, cb->name, cb->smi_user_id);
 
 	return 0;
@@ -1558,13 +1573,20 @@ EXPORT_SYMBOL_GPL(mtk_smi_dbg_register_pwr_ctrl_cb);
 int mtk_smi_dbg_unregister_pwr_ctrl_cb(struct smi_user_pwr_ctrl *cb)
 {
 	struct smi_user_pwr_ctrl *entry, *tmp;
+	struct mtk_smi_dbg	*smi = gsmi;
+	unsigned long flags;
+
+	if (dbg_version != SMI_DBG_VER_2) {
+		pr_notice("%s: not support\n", __func__);
+		return 0;
+	}
 
 	if (!cb) {
 		pr_notice("%s: cb is NULL\n", __func__);
 		return -EINVAL;
 	}
 
-	mutex_lock(&smi_pwr_lock);
+	spin_lock_irqsave(&smi->v2.lock, flags);
 	list_for_each_entry_safe(entry, tmp, &smi_user_pwr_ctrl_list, list){
 		if (entry->smi_user_id == cb->smi_user_id) {
 			pr_notice("%s: user:%d unregister cb", __func__, cb->smi_user_id);
@@ -1573,7 +1595,7 @@ int mtk_smi_dbg_unregister_pwr_ctrl_cb(struct smi_user_pwr_ctrl *cb)
 			break;
 		}
 	}
-	mutex_unlock(&smi_pwr_lock);
+	spin_unlock_irqrestore(&smi->v2.lock, flags);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_unregister_pwr_ctrl_cb);
