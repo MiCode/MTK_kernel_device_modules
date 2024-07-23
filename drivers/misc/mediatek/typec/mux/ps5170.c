@@ -482,11 +482,12 @@ static int ps5170_mux_set(struct typec_mux_dev *mux, struct typec_mux_state *sta
 	 *dev_info(ps->dev, "state->mode = %lu\n", state->mode);
 	 */
 
-	ps->dp_data.conf = dp_data->conf;
-	ps->dp_data.status = dp_data->status;
-
-	ps->mode = state->mode;
-	schedule_work(&ps->set_dp_work);
+	if (dp_data->conf != 0) {
+		ps->dp_data.conf = dp_data->conf;
+		ps->dp_data.status = dp_data->status;
+		ps->mode = state->mode;
+		schedule_work(&ps->set_dp_work);
+	}
 	return 0;
 }
 
