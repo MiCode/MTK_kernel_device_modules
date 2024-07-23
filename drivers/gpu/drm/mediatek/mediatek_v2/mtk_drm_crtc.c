@@ -4245,7 +4245,7 @@ static void _mtk_crtc_lye_addon_module_disconnect(
 			if (priv->data->mmsys_id == MMSYS_MT6885) {
 				if (addon_module[1]->type == ADDON_BETWEEN &&
 					(addon_module[1]->module == DISP_RSZ ||
-						addon_module[1]->module == DISP_RSZ_v2))
+						addon_module[1]->module == DISP_RSZ_v3))
 					mtk_addon_disconnect_between(crtc, ddp_mode,
 							addon_module[1],
 							&addon_config, cmdq_handle);
