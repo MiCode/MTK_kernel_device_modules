@@ -14005,6 +14005,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 						<&dvfsrc_freq_opp8>;
 				ceil-ddr-support;
 			};
+
+			dvfsrc-debugfs {
+				compatible = "mediatek,mt6899-dvfsrc-debugfs";
+			};
 		};
 
 		systimer: systimer@1cc10000 {
