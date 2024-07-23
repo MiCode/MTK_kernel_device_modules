@@ -13,6 +13,7 @@
 #if !IS_ENABLED(CONFIG_64BIT)
 #include <asm/div64.h>
 #endif
+#include <linux/math64.h>
 #include <linux/slab.h>
 #include "vcodec_dvfs.h"
 #include <linux/time.h>
@@ -510,7 +511,7 @@ u32 mtk_vcodec_get_bw_factor(struct mtk_vcodec_dev *dev, int codec_type)
 			for (i = 0 ; i < dev->venc_tput_cnt; i++) {
 				if (inst->config == dev->venc_tput[i].config &&
 				    inst->codec_fmt == dev->venc_tput[i].codec_fmt) {
-					freq_scale = (u64)freq_sum*100/dev->venc_tput[i].base_freq;
+					freq_scale = (u32)div64_ul((u64)freq_sum*100, dev->venc_tput[i].base_freq);
 					inst_bw_factor = dev->venc_tput[i].bw_factor * bw_factor_bit
 						* bw_factor_afbc * freq_scale / 100;
 					mtk_v4l2_debug(4, "[VDVFS] %d, %d, %d, %d, %d",

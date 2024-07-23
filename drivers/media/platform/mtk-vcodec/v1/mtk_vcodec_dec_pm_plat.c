@@ -10,6 +10,7 @@
 #include <linux/slab.h>
 #include <linux/types.h>
 #include <linux/list.h>
+#include <linux/math64.h>
 //#include "smi_public.h"
 #include "mtk_vcodec_dec_pm.h"
 #include "mtk_vcodec_dec_pm_plat.h"
@@ -471,15 +472,15 @@ void mtk_vdec_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 {
 	int i;
 	struct mtk_vcodec_dev *dev = 0;
-	u64 target_bw = 0;
+	u32 target_bw = 0;
 
 	dev = ctx->dev;
 	mtk_v4l2_debug(8, "[VDVFS][VDEC] ctx = %p",  ctx);
 
 	for (i = 0; i < dev->vdec_larb_cnt; i++) {
-		target_bw = (u64)dev->vdec_larb_bw[i].larb_base_bw *
-			dev->vdec_dvfs_params.target_freq /
-			dev->vdec_dvfs_params.min_freq;
+		target_bw = (u32)div64_ul((u64)dev->vdec_larb_bw[i].larb_base_bw *
+			dev->vdec_dvfs_params.target_freq,
+			dev->vdec_dvfs_params.min_freq);
 
 		if (dev->vdec_larb_bw[i].larb_type < VCODEC_LARB_SUM) {
 			if (!dev->vdec_dvfs_params.set_bw_in_min_freq &&
@@ -487,12 +488,12 @@ void mtk_vdec_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 				mtk_icc_set_bw(dev->vdec_qos_req[i],
 					MBps_to_icc(0), 0);
 				mtk_v4l2_debug(8, "[VDEC] larb %d bw %u (min opp, no request) MB/s",
-				dev->vdec_larb_bw[i].larb_id, (u32)target_bw);
+				dev->vdec_larb_bw[i].larb_id, target_bw);
 			} else {
 				mtk_icc_set_bw(dev->vdec_qos_req[i],
 					MBps_to_icc((u32)target_bw), 0);
 				mtk_v4l2_debug(8, "[VDEC] larb %d bw %u MB/s",
-				dev->vdec_larb_bw[i].larb_id, (u32)target_bw);
+				dev->vdec_larb_bw[i].larb_id, target_bw);
 			}
 		} else {
 			mtk_v4l2_debug(8, "[VDEC] unknown larb type %d\n",
@@ -505,16 +506,16 @@ void mtk_vdec_pmqos_end_inst(struct mtk_vcodec_ctx *ctx)
 {
 	int i;
 	struct mtk_vcodec_dev *dev = 0;
-	u64 target_bw = 0;
+	u32 target_bw = 0;
 
 	dev = ctx->dev;
 	mtk_v4l2_debug(8, "[VDVFS][VDEC] ctx = %p",  ctx);
 
 
 	for (i = 0; i < dev->vdec_larb_cnt; i++) {
-		target_bw = (u64)dev->vdec_larb_bw[i].larb_base_bw *
-			dev->vdec_dvfs_params.target_freq /
-			dev->vdec_dvfs_params.min_freq;
+		target_bw = (u32)div64_ul((u64)dev->vdec_larb_bw[i].larb_base_bw *
+			dev->vdec_dvfs_params.target_freq,
+			dev->vdec_dvfs_params.min_freq);
 
 		if (list_empty(&dev->vdec_dvfs_inst)) /* no more instances */
 			target_bw = 0;
@@ -524,12 +525,12 @@ void mtk_vdec_pmqos_end_inst(struct mtk_vcodec_ctx *ctx)
 				mtk_icc_set_bw(dev->vdec_qos_req[i],
 					MBps_to_icc(0), 0);
 				mtk_v4l2_debug(8, "[VDEC] larb %d bw %u (min opp, no request) MB/s",
-				dev->vdec_larb_bw[i].larb_id, (u32)target_bw);
+				dev->vdec_larb_bw[i].larb_id, target_bw);
 			} else {
 				mtk_icc_set_bw(dev->vdec_qos_req[i],
 					MBps_to_icc((u32)target_bw), 0);
 				mtk_v4l2_debug(8, "[VDEC] larb %d w %u MB/s",
-				dev->vdec_larb_bw[i].larb_id, (u32)target_bw);
+				dev->vdec_larb_bw[i].larb_id, target_bw);
 			}
 		} else {
 			mtk_v4l2_debug(8, "[VDEC] unknown larb type %d",

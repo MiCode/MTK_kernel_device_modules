@@ -8,6 +8,7 @@
 #include <linux/of_platform.h>
 #include <linux/pm_runtime.h>
 #include <linux/delay.h>
+#include <linux/math64.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include <soc/mediatek/smi.h>
 
@@ -546,8 +547,8 @@ void mtk_venc_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 	mtk_v4l2_debug(4, "[VENC] ctx:%p", ctx);
 
 	for (i = 0; i < dev->venc_larb_cnt; i++) {
-		target_bw = (u64) dev->venc_larb_bw[i].larb_base_bw
-			* dev->venc_dvfs_params.target_bw_factor / BW_FACTOR_DENOMINATOR;
+		target_bw = (u32)div64_ul((u64)dev->venc_larb_bw[i].larb_base_bw
+			* dev->venc_dvfs_params.target_bw_factor, BW_FACTOR_DENOMINATOR);
 		if (dev->venc_larb_bw[i].larb_type < VCODEC_LARB_SUM) {
 			mtk_icc_set_bw(dev->venc_qos_req[i],
 					MBps_to_icc((u32)target_bw), 0);
@@ -573,8 +574,8 @@ void mtk_venc_pmqos_end_inst(struct mtk_vcodec_ctx *ctx)
 	dev = ctx->dev;
 
 	for (i = 0; i < dev->venc_larb_cnt; i++) {
-		target_bw = (u64) dev->venc_larb_bw[i].larb_base_bw
-			* dev->venc_dvfs_params.target_bw_factor / BW_FACTOR_DENOMINATOR;
+		target_bw = (u32)div64_ul((u64)dev->venc_larb_bw[i].larb_base_bw
+			* dev->venc_dvfs_params.target_bw_factor, BW_FACTOR_DENOMINATOR);
 
 		if (list_empty(&dev->venc_dvfs_inst)) /* no more instances */
 			target_bw = 0;
