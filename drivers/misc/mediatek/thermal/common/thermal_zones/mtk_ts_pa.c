@@ -98,28 +98,29 @@ static struct timer_list pa_stats_timer;
 static unsigned long pre_time;
 static unsigned long tx_throughput;
 
-static unsigned long get_tx_bytes(void)
+static unsigned long get_tx_bytes(unsigned long pre_tx_bytes)
 {
 	struct net_device *dev;
 	struct net *net;
 	unsigned long tx_bytes = 0;
 
-	read_lock(&dev_base_lock);
-	for_each_net(net) {
-		for_each_netdev(net, dev) {
-			if (!strncmp(dev->name, "ccmni", 5)) {
-				struct rtnl_link_stats64 temp;
-				const struct rtnl_link_stats64 *stats =
-						dev_get_stats(dev, &temp);
-				/* mtktspa_dprintk("%s tx_bytes: %lu\n",
-				 * dev->name, (unsigned long)stats->tx_bytes);
-				 */
-				if (stats)
-					tx_bytes = tx_bytes + stats->tx_bytes;
+	if (read_trylock(&dev_base_lock)) {
+		for_each_net(net) {
+			for_each_netdev(net, dev) {
+				if (!strncmp(dev->name, "ccmni", 5)) {
+					struct rtnl_link_stats64 temp;
+					const struct rtnl_link_stats64 *stats =
+							dev_get_stats(dev, &temp);
+					if (stats)
+						tx_bytes = tx_bytes + stats->tx_bytes;
+				}
 			}
 		}
+		read_unlock(&dev_base_lock);
+	} else {
+		tx_bytes = pre_tx_bytes;
+		mtktspa_dprintk("[%s] skip get tx bytes for lock is busy!\n", __func__);
 	}
-	read_unlock(&dev_base_lock);
 	return tx_bytes;
 }
 
@@ -139,7 +140,7 @@ static void pa_cal_stats(struct timer_list *t)
 
 
 	if (pre_time != 0 && cur_time.tv_sec > pre_time) {
-		unsigned long tx_bytes = get_tx_bytes();
+		unsigned long tx_bytes = get_tx_bytes(stats_info->pre_tx_bytes);
 
 		if (tx_bytes > stats_info->pre_tx_bytes) {
 
