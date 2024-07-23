@@ -16,6 +16,7 @@
 #include "mtk-mml.h"
 
 #define MML_MAX_COMPONENTS	50
+#define MML_MAX_PORT		18
 
 struct mml_comp;
 struct mml_dev;
@@ -117,9 +118,11 @@ s32 mml_comp_clk_disable(struct mml_comp *comp, bool dpc);
  */
 struct device *mml_smmu_get_shared_device(struct device *dev, const char *name);
 
+void mml_comp_qos_calc(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg, u32 throughput);
 void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 throughput, u32 tput_up);
-void mml_comp_qos_clear(struct mml_comp *comp, bool dpc);
+void mml_comp_qos_clear(struct mml_comp *comp, struct mml_task *task, bool dpc);
 
 s32 mml_dpc_task_cnt_get(struct mml_task *task);
 void mml_dpc_task_cnt_inc(struct mml_task *task);

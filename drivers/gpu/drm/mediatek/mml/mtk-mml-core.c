@@ -986,6 +986,38 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 	return 0;
 }
 
+static void mml_core_qos_reset(struct mml_task *task, u32 pipe)
+{
+	const struct mml_frame_config *cfg = task->config;
+	const struct mml_topology_path *path = cfg->path[pipe];
+	struct mml_comp *comp;
+	u32 i;
+
+	for (i = 0; i < path->node_cnt; i++) {
+		comp = path->nodes[i].comp;
+
+		comp->srt_bw = 0;
+		comp->hrt_bw = 0;
+		comp->stash_srt_bw = 0;
+		comp->stash_hrt_bw = 0;
+	}
+}
+
+static void mml_core_qos_calc(struct mml_task *task, u32 pipe, u32 throughput)
+{
+	struct mml_frame_config *cfg = task->config;
+	const struct mml_topology_path *path = cfg->path[pipe];
+	struct mml_pipe_cache *cache = &cfg->cache[pipe];
+	struct mml_comp *comp;
+	u32 i;
+
+	for (i = 0; i < path->node_cnt; i++) {
+		comp = path->nodes[i].comp;
+		if (comp->hw_ops->qos_set)
+			mml_comp_qos_calc(comp, task, &cache->cfg[i], throughput);
+	}
+}
+
 static void mml_core_qos_set(struct mml_task *task, u32 pipe, u32 throughput, u32 tput_up)
 {
 	struct mml_frame_config *cfg = task->config;
@@ -1002,6 +1034,19 @@ static void mml_core_qos_set(struct mml_task *task, u32 pipe, u32 throughput, u3
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
 		call_hw_op(comp, qos_set, task, &cache->cfg[i], throughput, tput_up);
+	}
+}
+
+static void mml_core_qos_clear(struct mml_task *task, u32 pipe)
+{
+	struct mml_frame_config *cfg = task->config;
+	const struct mml_topology_path *path = cfg->path[pipe];
+	struct mml_comp *comp;
+	u32 i;
+
+	for (i = 0; i < path->node_cnt; i++) {
+		comp = path->nodes[i].comp;
+		call_hw_op(comp, qos_clear, task, cfg->dpc);
 	}
 }
 
@@ -1284,6 +1329,7 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 	/* check running task use sw pipe0 for right sigle pipe */
 	if (task_pipe_tmp->task->config->info.dl_pos == MML_DL_POS_RIGHT)
 		tmp_pipe = 0;
+	mml_core_qos_calc(task, tmp_pipe, throughput);
 	mml_core_qos_set(task_pipe_tmp->task, tmp_pipe, throughput, tput_up);
 	if (cfg->dpc)
 		tp->dpc_qos_ref++;
@@ -1425,8 +1471,19 @@ done:
 		/* check running task use sw pipe0 for right sigle pipe */
 		if (task_pipe_cur->task->config->info.dl_pos == MML_DL_POS_RIGHT)
 			tmp_pipe = 0;
-		mml_core_qos_set(task_pipe_cur->task, tmp_pipe, throughput, tput_up);
+		mml_core_qos_reset(task, tmp_pipe);
+		list_for_each_entry(task_pipe_tmp, &path_clt->tasks, entry_clt) {
+			/* force all comp find max bw after reset */
+			mml_core_qos_calc(task_pipe_tmp->task, tmp_pipe, throughput);
+		}
+		/* update the max bw for each comp for first task in this client */
+		mml_core_qos_set(task, tmp_pipe, throughput, tput_up);
 		bandwidth = task_pipe_cur->bandwidth;
+	} else {
+		if (task->config->info.dl_pos == MML_DL_POS_RIGHT)
+			tmp_pipe = 0;
+		mml_core_qos_reset(task, tmp_pipe);
+		mml_core_qos_clear(task, tmp_pipe);
 	}
 
 	/* update/clear dpc bandwidth */
