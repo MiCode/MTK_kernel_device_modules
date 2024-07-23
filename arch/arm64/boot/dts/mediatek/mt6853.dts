@@ -9,6 +9,7 @@
 #include "mediatek/mt6359p.dtsi"
 #include "mediatek/cust_mt6853_msdc.dtsi"
 #include "mediatek/bat_setting/mt6853_battery_prop.dtsi"
+#include "mediatek/mt6853-disable-unused.dtsi"
 
 / {
 	pmic_temp: pmic_temp {
