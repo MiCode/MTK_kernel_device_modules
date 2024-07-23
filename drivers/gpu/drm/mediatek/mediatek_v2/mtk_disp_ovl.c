@@ -4807,40 +4807,70 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			force_update = (force_update == DISP_BW_FORCE_UPDATE) ? 1 : 0;
 		}
 
+		/* update total srt BW: case1:fast up, case2:slow down*/
 		if (!force_update && !update_pending) {
-			mtk_crtc->total_srt += comp->qos_bw;
-			if (!IS_ERR_OR_NULL(comp->qos_req_other))
+			if (comp->qos_bw) {
+				DDPDBG("ovl:%u, update total srt bw:%u->%u\n",
+					comp->id, mtk_crtc->total_srt,
+					(unsigned int)(mtk_crtc->total_srt + comp->qos_bw));
+				mtk_crtc->total_srt += comp->qos_bw;
+			}
+			if (!IS_ERR_OR_NULL(comp->qos_req_other) && comp->qos_bw_other) {
+				DDPDBG("ovl:%u, update total srt bw other:%u->%u\n",
+					comp->id, mtk_crtc->total_srt,
+					(unsigned int)(mtk_crtc->total_srt + comp->qos_bw_other));
 				mtk_crtc->total_srt += comp->qos_bw_other;
+			}
 		}
 
 		/* process normal */
 		if (!force_update && comp->last_qos_bw == comp->qos_bw) {
-			if (IS_ERR_OR_NULL(comp->qos_req_other) ||
-			    (comp->last_qos_bw_other == comp->qos_bw_other))
+			if (comp->qos_bw)
+				DDPDBG("ovl:%u, IGNORE srt bw:%u->%u @%s\n",
+					comp->id, comp->last_qos_bw, comp->qos_bw,
+					update_pending ? "FINAL DOWN" : "FAST UP");
+			if (IS_ERR_OR_NULL(comp->qos_req_other))
 				break;
+			else if (comp->last_qos_bw_other == comp->qos_bw_other) {
+				if (comp->qos_bw_other)
+					DDPDBG("ovl:%u, IGNORE srt bw other:%u->%u @%s\n",
+						comp->id, comp->last_qos_bw_other, comp->qos_bw_other,
+						update_pending ? "FINAL DOWN" : "FAST UP");
+				break;
+			}
 			goto other;
 		}
 
-		if ((comp->last_qos_bw <= comp->qos_bw) || force_update) {
+		/* update srt bw: case1:force update, case2:fast up, case3:final down */
+		if (force_update ||
+			(comp->last_qos_bw < comp->qos_bw) ||
+			((comp->last_qos_bw > comp->qos_bw) && update_pending)) {
 			__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw, 0,
 					DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
+			DDPQOS("ovl:%u %s srt bw:%u->%u\n", comp->id,
+				force_update ? "FORCE UPDATE" : (update_pending ? "FINAL DOWN" : "FAST UP"),
+				comp->last_qos_bw, comp->qos_bw);
 			comp->last_qos_bw = comp->qos_bw;
-		}
-		if (!force_update)
-			mtk_crtc->total_srt += comp->qos_bw;
+		} else if (comp->last_qos_bw > comp->qos_bw)
+			DDPDBG("ovl:%u, SLOW DOWN srt bw:%u->%u\n",
+				comp->id, comp->last_qos_bw, comp->qos_bw);
 
 other:
+		/* update other srt bw: case1:force update, case2:fast up, case3:final down */
 		if (!IS_ERR_OR_NULL(comp->qos_req_other)) {
-			if ((comp->last_qos_bw_other <= comp->qos_bw_other) || force_update) {
+			if (force_update ||
+				(comp->last_qos_bw_other < comp->qos_bw_other) ||
+				((comp->last_qos_bw_other > comp->qos_bw_other) && update_pending)) {
 				__mtk_disp_set_module_srt(comp->qos_req_other, comp->id, comp->qos_bw_other, 0,
 					DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
+				DDPQOS("ovl:%u %s srt bw other:%u->%u\n", comp->id,
+					force_update ? "FORCE UPDATE" : (update_pending ? "FINAL DOWN" : "FAST UP"),
+					comp->last_qos_bw_other, comp->qos_bw_other);
 				comp->last_qos_bw_other = comp->qos_bw_other;
-			}
-			if (!force_update)
-				mtk_crtc->total_srt += comp->qos_bw_other;
+			} else if (comp->last_qos_bw_other > comp->qos_bw_other)
+				DDPDBG("ovl:%u, SLOW DOWN srt bw other:%u->%u\n",
+					comp->id, comp->last_qos_bw_other, comp->qos_bw_other);
 		}
-		DDPINFO("update ovl qos bw to %u, %u\n",
-			comp->qos_bw, comp->qos_bw_other);
 		break;
 	}
 	case OVL_REPLACE_BOOTUP_MVA: {
