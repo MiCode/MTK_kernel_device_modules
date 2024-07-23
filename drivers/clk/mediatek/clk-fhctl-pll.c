@@ -255,6 +255,87 @@ static struct match mt6768_match = {
 	.domain_list = (struct fh_pll_domain **)mt6768_domain,
 };
 /* 6768 end */
+/* 6781 begin */
+#define SIZE_6781_TOP (sizeof(mt6781_top_data)\
+	/sizeof(struct fh_pll_data))
+#define DATA_6781_TOP(_name) {				\
+		.name = _name,						\
+		.dds_mask = GENMASK(21, 0),			\
+		.slope0_value = 0x6003c97,			\
+		.slope1_value = 0x6003c97,			\
+		.sfstrx_en = BIT(2),				\
+		.frddsx_en = BIT(1),				\
+		.fhctlx_en = BIT(0),				\
+		.tgl_org = BIT(31),					\
+		.dvfs_tri = BIT(31),				\
+		.pcwchg = BIT(31),					\
+		.dt_val = 0x0,						\
+		.df_val = 0x9,						\
+		.updnlmt_shft = 16,					\
+		.msk_frddsx_dys = GENMASK(23, 20),	\
+		.msk_frddsx_dts = GENMASK(19, 16),	\
+	}
+#define OFFSET_6781_TOP(_fhctl, _con_pcw) {	\
+		.offset_fhctl = _fhctl,				\
+		.offset_con_pcw = _con_pcw,			\
+		.offset_hp_en = 0x0,				\
+		.offset_clk_con = 0x8,				\
+		.offset_rst_con = 0xc,				\
+		.offset_slope0 = 0x10,				\
+		.offset_slope1 = 0x14,				\
+		.offset_cfg = 0x0,					\
+		.offset_updnlmt = 0x4,				\
+		.offset_dds = 0x8,					\
+		.offset_dvfs = 0xc,					\
+		.offset_mon = 0x10,					\
+	}
+static struct fh_pll_data mt6781_top_data[] = {
+	DATA_6781_TOP("armpll_ll"),
+	DATA_6781_TOP("armpll_bl"),
+	DATA_6781_TOP("apupll"),
+	DATA_6781_TOP("ccipll"),
+	DATA_6781_TOP("gpupll"),
+	DATA_6781_TOP("mpll"),
+	DATA_6781_TOP("mempll"),
+	DATA_6781_TOP("mainpll"),
+	DATA_6781_TOP("msdcpll"),
+	DATA_6781_TOP("mmpll"),
+	DATA_6781_TOP("adsppll"),
+	DATA_6781_TOP("tvdpll"),
+	{}
+};
+static struct fh_pll_offset mt6781_top_offset[SIZE_6781_TOP] = {
+	OFFSET_6781_TOP(0x0038, 0x0204),/*ARMPLL_LL */
+	OFFSET_6781_TOP(0x004C, 0x0214),/*ARMPLL_BL */
+	OFFSET_6781_TOP(0x0060, 0x02F0), /*APUPLL */
+	OFFSET_6781_TOP(0x0074, 0x02A4), /*CCIPLL */
+	OFFSET_6781_TOP(0x0088, 0x0254), /*GPUPLL */
+	OFFSET_6781_TOP(0x009C, 0x0294), /*MPLL */
+	OFFSET_6781_TOP(0x00B0, 0xffff), /*MEMPLL */
+	OFFSET_6781_TOP(0x00C4, 0x0234), /*MAINPLL */
+	OFFSET_6781_TOP(0x00D8, 0x0264), /*MSDCPLL */
+	OFFSET_6781_TOP(0x00EC, 0x0284), /*MMPLL */
+	OFFSET_6781_TOP(0x0100, 0x02B4), /*ADSPLL */
+	OFFSET_6781_TOP(0x0114, 0x0274), /*TVDPLL */
+	{}
+};
+static struct fh_pll_regs mt6781_top_regs[SIZE_6781_TOP];
+static struct fh_pll_domain mt6781_top = {
+	.name = "top",
+	.data = (struct fh_pll_data *)&mt6781_top_data,
+	.offset = (struct fh_pll_offset *)&mt6781_top_offset,
+	.regs = (struct fh_pll_regs *)&mt6781_top_regs,
+	.init = &init_v1,
+};
+static struct fh_pll_domain *mt6781_domain[] = {
+	&mt6781_top,
+	NULL
+};
+static struct match mt6781_match = {
+	.compatible = "mediatek,mt6781-fhctl",
+	.domain_list = (struct fh_pll_domain **)mt6781_domain,
+};
+/* 6781 end */
 /* 6853 begin */
 #define SIZE_6853_TOP (sizeof(mt6853_top_data)\
 	/sizeof(struct fh_pll_data))
@@ -1872,6 +1953,7 @@ static struct match mt6991_match = {
 static const struct match *matches[] = {
 	&mt6765_match,
 	&mt6768_match,
+	&mt6781_match,
 	&mt6853_match,
 	&mt6877_match,
 	&mt6885_match,
