@@ -352,7 +352,11 @@ struct mtk_disp_oddmr_dbi_data {
 	atomic_t update_table_done;
 	atomic_t enter_scp;
 	struct mtk_drm_gem_obj *dbi_table[2];
+	unsigned int dbi_table_block_h[2];
+	unsigned int dbi_table_block_v[2];
+	unsigned int dbi_table_size[2];
 	unsigned int table_size;
+
 	unsigned int cur_max_time;
 	atomic_t max_time_set_done;
 	atomic_t remap_enable;
