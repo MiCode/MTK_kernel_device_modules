@@ -433,7 +433,8 @@ static struct device *get_dev_by_mem_type(struct vdec_inst *inst, struct vcodec_
 	if (inst->ctx->dec_params.svp_mode) {
 		if (mem->type == MEM_TYPE_FOR_SW)
 			mem->type = MEM_TYPE_FOR_SEC_SW;
-		else if (mem->type == MEM_TYPE_FOR_HW)
+		else if (mem->type == MEM_TYPE_FOR_HW ||
+			 mem->type == MEM_TYPE_FOR_HW_CACHE)
 			mem->type = MEM_TYPE_FOR_SEC_HW;
 		else if (mem->type == MEM_TYPE_FOR_UBE_HW)
 			mem->type = MEM_TYPE_FOR_SEC_UBE_HW;
