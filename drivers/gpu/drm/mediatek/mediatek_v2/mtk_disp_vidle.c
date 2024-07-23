@@ -189,9 +189,10 @@ int mtk_vidle_user_power_keep_v1(enum mtk_vidle_voter_user user)
 	if (disp_dpc_driver.dpc_vidle_power_keep == NULL || vidle_data.drm_priv == NULL)
 		return 0;
 
-	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN ||
-	    atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) == 0)
+	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN)
 		return -1;
+	else if (atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) == 0)
+		user |= VOTER_ONLY;
 
 	return disp_dpc_driver.dpc_vidle_power_keep(user);
 }
@@ -202,9 +203,10 @@ void mtk_vidle_user_power_release_v1(enum mtk_vidle_voter_user user)
 		return;
 
 	irq_log_store();
-	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN ||
-	    atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) == 0)
+	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN)
 		return;
+	else if (atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) == 0)
+		user |= VOTER_ONLY;
 
 	irq_log_store();
 	disp_dpc_driver.dpc_vidle_power_release(user);
@@ -864,3 +866,9 @@ int mtk_vidle_get_power_if_in_use(void)
 	return 0;
 }
 EXPORT_SYMBOL(mtk_vidle_get_power_if_in_use);
+
+void mtk_vidle_put_power(void)
+{
+	mtk_drm_pm_ctrl(vidle_data.drm_priv, DISP_PM_PUT);
+}
+EXPORT_SYMBOL(mtk_vidle_put_power);
