@@ -14,10 +14,7 @@ xhci-mtk-hcd-v2-y += xhci-ring.o xhci-hub.o xhci-dbg.o
 xhci-mtk-hcd-v2-y += xhci-trace.o
 xhci-mtk-hcd-v2-y += xhci-mtk.o xhci-mtk-sch.o
 xhci-mtk-hcd-v2-y += quirks.o
-
-ifneq ($(DEVICE_MODULES_USB_XHCI_SIDEBAND_MTK),)
-	xhci-mtk-hcd-v2-y += xhci-sideband.o
-endif
+xhci-mtk-hcd-v2-y += xhci-sideband.o
 
 ifneq ($(CONFIG_DEBUG_FS),)
 	xhci-mtk-hcd-v2-y		+= xhci-debugfs.o
