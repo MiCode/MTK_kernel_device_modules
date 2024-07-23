@@ -135,6 +135,7 @@ int vdec_if_decode(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_mem *bs,
 {
 	int ret = 0;
 	unsigned int i = 0;
+	struct vdec_inst *inst = NULL;
 
 	vcodec_trace_begin_func();
 
@@ -160,7 +161,16 @@ int vdec_if_decode(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_mem *bs,
 		vcodec_trace_end();
 		return -EIO;
 	}
-
+	inst = (struct vdec_inst *)ctx->drv_handle;
+	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_DECODE_MODE) {
+	/* sw lib needs decode mode to choose sw lib, so need set decode mode before init sw lib */
+		if (inst->vsi != NULL) {
+			inst->vsi->dec_params.decode_mode = ctx->dec_params.decode_mode;
+			inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_DECODE_MODE;
+		} else {
+			mtk_v4l2_err("vsi is NULL, can't set decode mode!!");
+		}
+	}
 	ret = ctx->dec_if->decode(ctx->drv_handle, bs, fb, src_chg);
 
 	vcodec_trace_end();
