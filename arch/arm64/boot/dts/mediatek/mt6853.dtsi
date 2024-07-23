@@ -3788,8 +3788,7 @@
 			mediatek,vcu-off = <0>;
 			mediatek,iommu-padding;
 			reg = <0 0x16000000 0 0x40000>,	/* VDEC_BASE */
-				 <0 0x17020000 0 0x10000>,	/* VENC_BASE */
-				 <0 0x17820000 0 0x10000>;	/* VENC_C1_BASE */
+				<0 0x17020000 0 0x10000>;	/* VENC_BASE */
 			iommus = <&iommu0 M4U_PORT_L4_VDEC_MC_EXT>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			mediatek,mailbox-gce = <&gce>;
@@ -3797,6 +3796,7 @@
 			mediatek,enc-gce-th-num = <2>; /* VDEC GCE HW THREAD NUM*/
 			mboxes = <&gce 7 0 CMDQ_THR_PRIO_1>,
 				<&gce 12 0 CMDQ_THR_PRIO_1>;
+				<&gce_mbox_sec 12 0 CMDQ_THR_PRIO_1>;
 			gce-event-names = "venc_eof",
 				"venc_cmdq_pause_done",
 				"venc_mb_done",
@@ -3862,10 +3862,12 @@
 			compatible = "mediatek,mt6853-vcodec-dec";
 			mediatek,platform = "platform:mt6853";
 			mediatek,ipm = <1>;
-			reg = <0 0x1602f000 0 0x1000>,		/* VDEC_SYS */
+			reg =   <0 0x16000000 0 0x1000>,		/* VDEC_BASE */
+				<0 0x1602f000 0 0x1000>,		/* VDEC_SYS */
 				<0 0x16027000 0 0x400>,			/* VDEC_VLD */
 				<0 0x16025000 0 0x1000>;		/* VDEC_MISC */
 			reg-names =
+				"VDEC_BASE",
 				"VDEC_SYS",
 				"VDEC_VLD",
 				"VDEC_MISC";
@@ -3914,8 +3916,9 @@
 			clock-names =
 				"CORE_MT_CG_VDEC";
 			operating-points-v2 = <&opp_table_vdec>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-			throughput-min = <208000000>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			vdec-set-bw-in-min-freq = <1>;
+			throughput-min = <218000000>;
 			throughput-normal-max = <546000000>;
 			max-op-rate-table =
 				<877088845 921600 60 2228224 60 3686400 1>, /* MPEG4 */
@@ -4019,11 +4022,9 @@
 		venc@17000000 {
 			compatible = "mediatek,mt6853-vcodec-enc";
 			mediatek,platform = "platform:mt6853";
-			mediatek,ipm = <2>;
-			reg = <0 0x17000000 0 0x1000>,	/* VENC_GCON */
-				<0 0x17020000 0 0x2000>;	/* VENC_SYS */
+			mediatek,ipm = <1>;
+			reg = <0 0x17020000 0 0x2000>;	/* VENC_SYS */
 			reg-names =
-				"VENC_GCON",
 				"VENC_SYS";
 			iommus = <&iommu0 M4U_PORT_L7_VENC_RCPU>,
 				<&iommu0 M4U_PORT_L7_VENC_REC>,
@@ -4046,7 +4047,7 @@
 			clock-names =
 				"MT_CG_VENC0";
 			operating-points-v2 = <&opp_table_venc>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			interconnects =
 					<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_VENC_RCPU)
 						&mmqos SLAVE_COMMON(0)>,
@@ -4074,7 +4075,7 @@
 				"path_venc_ref_chroma", "path_larb7";
 			interconnect-num = <10>;
 			throughput-op-rate-thresh = <120>;
-			throughput-min = <250000000>;
+			throughput-min = <249000000>;
 			throughput-normal-max = <546000000>;
 			throughput-config-offset = <2>;
 			throughput-table =
