@@ -518,7 +518,7 @@ static long smi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	return ret;
 }
 
-#if IS_ENABLED(CONFIG_COMPAT_FAKE_TODO)
+#if IS_ENABLED(CONFIG_COMPAT)
 struct MTK_SMI_COMPAT_BWC_CONFIG {
 	compat_int_t scen;
 	compat_int_t b_on;
@@ -650,7 +650,7 @@ static int smi_bwc_info_compat_put(
 static long smi_compat_ioctl(struct file *file, unsigned int cmd,
 	unsigned long arg)
 {
-	int ret = 0;
+	long ret = 0;
 
 	if (!file->f_op || !file->f_op->unlocked_ioctl)
 		return -ENOTTY;
@@ -667,10 +667,12 @@ static long smi_compat_ioctl(struct file *file, unsigned int cmd,
 			return file->f_op->unlocked_ioctl(file, cmd,
 				(unsigned long)data32);
 
-		data = compat_alloc_user_space(
-			sizeof(struct MTK_SMI_BWC_CONF));
-		if (!data)
+		ret = (long)copy_from_user(&data, compat_ptr(arg),
+			(unsigned long)sizeof(struct MTK_SMI_BWC_CONF));
+		if (ret != 0L) {
+			SMIERR("copy data from user fail.\n");
 			return -EFAULT;
+		}
 
 		ret = smi_bwc_config_compat_get(data, data32);
 		if (ret)
@@ -691,10 +693,12 @@ static long smi_compat_ioctl(struct file *file, unsigned int cmd,
 			return file->f_op->unlocked_ioctl(file, cmd,
 				(unsigned long)data32);
 
-		data = compat_alloc_user_space(
-			sizeof(struct MTK_SMI_BWC_INFO_SET));
-		if (!data)
+		ret = (long)copy_from_user(&data, compat_ptr(arg),
+			(unsigned long)sizeof(struct MTK_SMI_BWC_INFO_SET));
+		if (ret != 0L) {
+			SMIERR("copy data from user fail.\n");
 			return -EFAULT;
+		}
 
 		ret = smi_bwc_info_compat_set(data, data32);
 		if (ret)
@@ -715,10 +719,12 @@ static long smi_compat_ioctl(struct file *file, unsigned int cmd,
 			return file->f_op->unlocked_ioctl(file, cmd,
 				(unsigned long)data32);
 
-		data = compat_alloc_user_space(
-			sizeof(struct MTK_SMI_BWC_MM_INFO));
-		if (!data)
+		ret = (long)copy_from_user(&data, compat_ptr(arg),
+			(unsigned long)sizeof(struct MTK_SMI_BWC_MM_INFO));
+		if (ret != 0L) {
+			SMIERR("copy data from user fail.\n");
 			return -EFAULT;
+		}
 
 		ret = smi_bwc_info_compat_get(data, data32);
 		if (ret)
