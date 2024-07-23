@@ -224,8 +224,8 @@ void mhal_DPTx_fec_init_setting(struct mtk_dp *mtk_dp)
 void mhal_DPTx_InitialSetting(struct mtk_dp *mtk_dp)
 {
 	if (mtk_dp->priv && mtk_dp->priv->data &&
-			mtk_dp->priv->data->mmsys_id == MMSYS_MT6991 ||
-			mtk_dp->priv->data->mmsys_id == MMSYS_MT6899) {
+			(mtk_dp->priv->data->mmsys_id == MMSYS_MT6991 ||
+			mtk_dp->priv->data->mmsys_id == MMSYS_MT6899)) {
 		msWrite4ByteMask(mtk_dp, DP_TX_TOP_PWR_STATE,
 				(0x3 << DP_PWR_STATE_FLDMASK_POS), DP_PWR_STATE_FLDMASK);
 
@@ -2812,8 +2812,8 @@ void mhal_DPTx_SSCOnOffSetting(struct mtk_dp *mtk_dp, bool bENABLE)
 void mhal_DPTx_AuxSetting(struct mtk_dp *mtk_dp)
 {
 	if (mtk_dp->priv && mtk_dp->priv->data &&
-			mtk_dp->priv->data->mmsys_id == MMSYS_MT6991 ||
-			mtk_dp->priv->data->mmsys_id == MMSYS_MT6899) {
+			(mtk_dp->priv->data->mmsys_id == MMSYS_MT6991 ||
+			mtk_dp->priv->data->mmsys_id == MMSYS_MT6899)) {
 		// modify timeout threshold = 1595 [12 : 8]
 		msWrite2ByteMask(mtk_dp,
 			REG_360C_AUX_TX_P0,
@@ -2915,8 +2915,8 @@ void mhal_DPTx_DigitalSetting(struct mtk_dp *mtk_dp)
 {
 	DPTXFUNC();
 	if (mtk_dp->priv && mtk_dp->priv->data &&
-			mtk_dp->priv->data->mmsys_id == MMSYS_MT6991 ||
-			mtk_dp->priv->data->mmsys_id == MMSYS_MT6899) {
+			(mtk_dp->priv->data->mmsys_id == MMSYS_MT6991 ||
+			mtk_dp->priv->data->mmsys_id == MMSYS_MT6899)) {
 		mhal_DPTx_spkg_asp_hb32(mtk_dp, FALSE, DPTX_SDP_ASP_HB3_AU02CH, 0x0);
 		// Mengkun suggest: disable reg_sdp_down_cnt_new_mode
 		msWriteByteMask(mtk_dp, REG_304C_DP_ENCODER0_P0, 0,
@@ -3418,8 +3418,8 @@ void mhal_DPTx_AnalogPowerOnOff(struct mtk_dp *mtk_dp, bool enable)
 		msWrite2Byte(mtk_dp, TOP_OFFSET, 0x0);
 		udelay(10);
 		if (mtk_dp->priv && mtk_dp->priv->data &&
-				mtk_dp->priv->data->mmsys_id == MMSYS_MT6991 ||
-				mtk_dp->priv->data->mmsys_id == MMSYS_MT6899) {
+				(mtk_dp->priv->data->mmsys_id == MMSYS_MT6991 ||
+				mtk_dp->priv->data->mmsys_id == MMSYS_MT6899)) {
 			msPhyWrite2Byte(mtk_dp, 0x0034, 0x4AA);
 			msPhyWrite2Byte(mtk_dp, 0x1040, 0x0);
 			msPhyWrite2Byte(mtk_dp, 0x0038, 0x555);
