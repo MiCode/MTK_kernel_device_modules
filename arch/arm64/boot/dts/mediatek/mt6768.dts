@@ -66,6 +66,7 @@ aliases {
 				label = "lcd-backlight";
 				max-brightness = <255>;
 				max-hw-brightness = <1023>;
+				min-hw-brightness = <4>;
 			};
 		};
 
