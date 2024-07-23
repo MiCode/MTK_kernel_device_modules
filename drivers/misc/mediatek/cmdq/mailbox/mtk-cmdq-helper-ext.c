@@ -3157,7 +3157,7 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 	debug_end[debug_cnt++] = sched_clock();
 #endif
 #endif
-	complete(&pkt->cmplt);
+
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 #ifdef CMDQ_SECURE_SUPPORT
 	if (!pkt->sec_data) {
@@ -3167,6 +3167,7 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 	}
 #endif
 #endif
+	complete(&pkt->cmplt);
 }
 #endif
 
