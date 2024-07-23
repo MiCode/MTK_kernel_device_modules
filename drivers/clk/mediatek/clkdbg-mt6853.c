@@ -12,20 +12,16 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 
-#include <dt-bindings/power/mt6853-power.h>
-
-#ifdef CONFIG_MTK_DEVAPC
-#include <mt-plat/devapc_public.h>
-#endif
-
+#include <clk-mux.h>
 #include "clkdbg.h"
 #include "clkchk.h"
+#include "clk-fmeter.h"
+#include "clkchk-mt6853.h"
+const char * const *get_mt6853_all_clk_names(void)
+{
 
-/*
- * clkdbg dump_state
- */
 
-static const char * const clk_names[] = {
+	static const char * const clks[] = {
 	/* topckgen */
 	"axi_sel",
 	"spm_sel",
@@ -442,9 +438,17 @@ static const char * const clk_names[] = {
 	"mdp_img_dl_rel1_as1",
 };
 
-static const char * const *get_all_clk_names(void)
+	return clks;
+}
+static const struct fmeter_clk *get_all_fmeter_clks(void)
+
 {
-	return clk_names;
+	return mt_get_fmeter_clks();
+}
+
+static u32 fmeter_freq_op(const struct fmeter_clk *fclk)
+{
+	return mt_get_fmeter_freq(fclk->id, fclk->type);
 }
 
 /*
@@ -452,11 +456,10 @@ static const char * const *get_all_clk_names(void)
  */
 
 static struct clkdbg_ops clkdbg_mt6853_ops = {
-	.get_all_fmeter_clks = NULL,
+	.get_all_fmeter_clks = get_all_fmeter_clks,
 	.prepare_fmeter = NULL,
 	.unprepare_fmeter = NULL,
-	.fmeter_freq = NULL,
-	.get_all_clk_names = get_all_clk_names,
+	.fmeter_freq = fmeter_freq_op,
 };
 
 static int clk_dbg_mt6853_probe(struct platform_device *pdev)
