@@ -22440,7 +22440,11 @@ static int mtk_ddp_mout_en_MT6899(const struct mtk_mmsys_reg_data *data,
 		return value;
 	}
 
-	if ((cur == DDP_COMPONENT_DLI_ASYNC0 &&
+	if ((cur == DDP_COMPONENT_OVL2_2L &&
+		next == DDP_COMPONENT_OVLSYS_UFBC_WDMA0)) {
+		*addr = MT6989_OVL_BLEND_CROSSBAR2_MOUT_EN;
+		value = MT6989_DISP_OVL2_2L_TO_UFBC_WDMA0;
+	} else if ((cur == DDP_COMPONENT_DLI_ASYNC0 &&
 		next == DDP_COMPONENT_PQ0_OUT_CB4)){
 		/* PQ_IN_CROSSBAR */
 		*addr = MT6989_PQ_IN_CROSSBAR0_MOUT_EN;

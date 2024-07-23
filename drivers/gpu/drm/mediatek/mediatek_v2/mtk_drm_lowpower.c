@@ -2455,7 +2455,7 @@ static void mtk_drm_idlemgr_update_wb_bw(struct mtk_iwb_cb_data *cb_data)
 		priv->data->mmsys_id == MMSYS_MT6899) {
 		for_each_comp_in_crtc_target_path(comp, mtk_crtc, i, DDP_FIRST_PATH) {
 			if (cb_data->ovl && comp->id == cb_data->ovl->id) {
-				total_bw += bw_base * 125 / 100; //consider eff
+				total_bw += bw_base * 120 / 100; //consider eff
 				continue;
 			}
 

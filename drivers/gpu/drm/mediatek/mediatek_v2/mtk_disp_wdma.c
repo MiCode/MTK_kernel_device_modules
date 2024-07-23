@@ -628,13 +628,15 @@ static void mtk_wdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	} else {
 		if (data && data->aid_sel) {
 			aid_sel_offset = data->aid_sel(comp);
-			if (priv->data->mmsys_id == MMSYS_MT6989)
+			if (priv->data->mmsys_id == MMSYS_MT6989 ||
+				priv->data->mmsys_id == MMSYS_MT6899)
 				mmsys_reg = priv->ovlsys1_regs_pa;
 			else if (priv->data->mmsys_id == MMSYS_MT6991)
 				mmsys_reg = priv->ovlsys1_regs_pa + MT6991_OVLSYS_SEC_OFFSET;
 		}
 		if (aid_sel_offset) {
-			if (priv->data->mmsys_id == MMSYS_MT6989)
+			if (priv->data->mmsys_id == MMSYS_MT6989 ||
+				priv->data->mmsys_id == MMSYS_MT6899)
 				cmdq_pkt_write(handle, comp->cmdq_base,
 					mmsys_reg + MT6989_OVLSYS1_WDMA0_AID_MANU, BIT(0), BIT(0));
 			else if (priv->data->mmsys_id == MMSYS_MT6991) {
@@ -1289,6 +1291,7 @@ static int wdma_config_yuv420(struct mtk_ddp_comp *comp,
 		if (wdma->data->aid_sel) {
 			aid_sel_offset = wdma->data->aid_sel(comp);
 			if (priv->data->mmsys_id == MMSYS_MT6989 ||
+				priv->data->mmsys_id == MMSYS_MT6899 ||
 				priv->data->mmsys_id == MMSYS_MT6991)
 				mmsys_reg = priv->ovlsys1_regs_pa;
 		}
@@ -1575,6 +1578,7 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 		if (wdma->data && wdma->data->aid_sel) {
 			aid_sel_offset = wdma->data->aid_sel(comp);
 			if (priv->data->mmsys_id == MMSYS_MT6989 ||
+				priv->data->mmsys_id == MMSYS_MT6899 ||
 				priv->data->mmsys_id == MMSYS_MT6991)
 				mmsys_reg = priv->ovlsys1_regs_pa;
 		}
@@ -2307,7 +2311,7 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		}
 		data->bw = comp->hrt_bw;
 		if (data->bw > 0)
-			DDPMSG("%s, wdma comp:%d, larb:%d, bw:%d\n",
+			DDPDBG("%s, wdma comp:%d, larb:%d, bw:%d\n",
 				__func__, comp->id, data->larb_id, data->bw);
 		break;
 	}
