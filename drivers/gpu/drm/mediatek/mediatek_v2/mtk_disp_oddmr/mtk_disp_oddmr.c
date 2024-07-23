@@ -3254,7 +3254,7 @@ void mtk_oddmr_dump(struct mtk_ddp_comp *comp)
 	if(mtk_crtc->base.dev->dev_private)
 		priv = mtk_crtc->base.dev->dev_private;
 
-	if (priv && (priv->data->mmsys_id == MMSYS_MT6989)) {
+	if (priv && ((priv->data->mmsys_id == MMSYS_MT6989)) || (priv->data->mmsys_id == MMSYS_MT6899)) {
 		DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 		DDPDUMP("-- Start dump oddmr registers --\n");
 		mbaddr = baddr;
