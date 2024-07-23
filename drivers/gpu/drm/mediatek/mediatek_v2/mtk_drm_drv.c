@@ -3328,6 +3328,21 @@ static const enum mtk_ddp_comp_id mt6899_mtk_ddp_main_bringup[] = {
 
 };
 
+/* CRTC1 */
+static const enum mtk_ddp_comp_id mt6899_mtk_ddp_ext_dp[] = {
+	DDP_COMPONENT_OVL3_2L,
+	DDP_COMPONENT_OVLSYS_DLO_ASYNC5,
+	DDP_COMPONENT_DLI_ASYNC2,
+	DDP_COMPONENT_PQ0_OUT_CB5,
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB3,
+	DDP_COMPONENT_DLO_ASYNC3,
+	DDP_COMPONENT_DLI_ASYNC11,		// need check
+	DDP_COMPONENT_COMP0_IN_CB9,
+	DDP_COMPONENT_COMP0_OUT_CB9,
+	DDP_COMPONENT_MERGE0_OUT_CB5,
+	DDP_COMPONENT_DP_INTF0,
+};
+
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 static const enum mtk_ddp_comp_id mt6991_mtk_ovlsys_main_bringup[] = {
 	DDP_COMPONENT_OVL_EXDMA3,
@@ -5426,6 +5441,13 @@ static const struct mtk_crtc_path_data mt6899_mtk_main_path_data = {
 //	.scaling_data_dual = mt6989_scaling_main_dual,
 };
 
+static const struct mtk_crtc_path_data mt6899_mtk_ext_path_data = {
+	.path[DDP_MAJOR][0] = mt6899_mtk_ddp_ext_dp,
+	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6899_mtk_ddp_ext_dp),
+	.path_req_hrt[DDP_MAJOR][0] = true,
+	.addon_data = mt6989_addon_ext,
+};
+
 static const struct mtk_crtc_path_data mt6991_mtk_main_path_data = {
 	.ovl_path[DDP_MAJOR][0] = mt6991_mtk_ovlsys_main_bringup,
 	.ovl_path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ovlsys_main_bringup),
@@ -6548,7 +6570,7 @@ static const struct mtk_mmsys_driver_data mt6989_mmsys_driver_data = {
 static const struct mtk_mmsys_driver_data mt6899_mmsys_driver_data = {
 	.main_path_data = &mt6899_mtk_main_path_data,
 	//.ext_alter_path_data = &mt6989_mtk_main_full_set_data,//temporary solution for OVL full set
-	//.ext_path_data = &mt6989_mtk_ext_path_data,
+	.ext_path_data = &mt6899_mtk_ext_path_data,
 	//.third_path_data = &mt6989_mtk_dp_w_tdshp_path_data,
 	//.third_path_data_wo_tdshp = &mt6989_mtk_dp_wo_tdshp_path_data,
 	//.fourth_path_data_secondary = &mt6989_mtk_secondary_path_data,
@@ -10558,8 +10580,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DP_INTF},
 	{.compatible = "mediatek,mt6989-dp-intf",
 	 .data = (void *)MTK_DP_INTF},
-//	{.compatible = "mediatek,mt6899-dp-intf",
-//	 .data = (void *)MTK_DP_INTF},
+	{.compatible = "mediatek,mt6899-dp-intf",
+	 .data = (void *)MTK_DP_INTF},
 	{.compatible = "mediatek,mt6991-dp-intf",
 	 .data = (void *)MTK_DP_INTF},
 	{.compatible = "mediatek,mt6991-edp-dvo",
@@ -10866,8 +10888,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_DPTX},
 	{.compatible = "mediatek,mt6989-dp_tx",
 	 .data = (void *)MTK_DISP_DPTX},
-	//{.compatible = "mediatek,mt6899-dp_tx",
-	// .data = (void *)MTK_DISP_DPTX},
+	{.compatible = "mediatek,mt6899-dp_tx",
+	 .data = (void *)MTK_DISP_DPTX},
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	{.compatible = "mediatek,mt6991-dp_tx",
 	 .data = (void *)MTK_DISP_DPTX},
