@@ -1647,18 +1647,16 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	clkchk {
 		compatible = "mediatek,mt6899-clkchk";
 		mm-hwv-regmap = <&mm_hw_ccf>;
-		// Todo: Un-mark after verified
-		// interrupts = <GIC_SPI 907 IRQ_TYPE_LEVEL_HIGH 0>,
-		//			<GIC_SPI 539 IRQ_TYPE_LEVEL_HIGH 0>;
-		// interrupt-names = "hwv_irq", "hfrp_hwv_irq";
+		interrupts = <GIC_SPI 907 IRQ_TYPE_LEVEL_HIGH 0>,
+					<GIC_SPI 539 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupt-names = "hwv_irq", "hfrp_hwv_irq";
 	};
 
 	pdchk {
 		compatible = "mediatek,mt6899-pdchk";
-		// Todo: Un-mark after verified
-		// interrupts = <GIC_SPI 907 IRQ_TYPE_LEVEL_HIGH 0>,
-		//			<GIC_SPI 539 IRQ_TYPE_LEVEL_HIGH 0>;
-		// interrupt-names = "hwv_irq", "hfrp_hwv_irq";
+		interrupts = <GIC_SPI 907 IRQ_TYPE_LEVEL_HIGH 0>,
+					<GIC_SPI 539 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupt-names = "hwv_irq", "hfrp_hwv_irq";
 	};
 
 	clocks {
