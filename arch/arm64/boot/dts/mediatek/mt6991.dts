@@ -9143,7 +9143,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&ovlsys_config_clk CLK_OVL_EXDMA2_DISP>;
 			mediatek,larb = <&smi_larb0 SMMU_L0_P2_OVL_RDMA2>;
 			reg = <0 0x32850000 0 0x1000>;
-			interrupts = <GIC_SPI 452 IRQ_TYPE_LEVEL_HIGH 0>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L0_P2_OVL_RDMA2)
@@ -9173,7 +9172,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&ovlsys_config_clk CLK_OVL_EXDMA3_DISP>;
 			mediatek,larb = <&smi_larb1 SMMU_L1_P2_OVL_RDMA3>;
 			reg = <0 0x32860000 0 0x1000>;
-			interrupts = <GIC_SPI 453 IRQ_TYPE_LEVEL_HIGH 0>;
 			iommus = <&mm_smmu 208>;
 			mtk,iommu-group = <&mm_iommu_group_0>;
 			mtk,smmu-dma-mode = "bypass";
@@ -9204,7 +9202,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&ovlsys_config_clk CLK_OVL_EXDMA4_DISP>;
 			mediatek,larb = <&smi_larb20 SMMU_L20_P3_OVL_RDMA4>;
 			reg = <0 0x32870000 0 0x1000>;
-			interrupts = <GIC_SPI 454 IRQ_TYPE_LEVEL_HIGH 0>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L20_P3_OVL_RDMA4)
@@ -9233,7 +9230,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&ovlsys_config_clk CLK_OVL_EXDMA5_DISP>;
 			mediatek,larb = <&smi_larb21 SMMU_L21_P3_OVL_RDMA5>;
 			reg = <0 0x32880000 0 0x1000>;
-			interrupts = <GIC_SPI 455 IRQ_TYPE_LEVEL_HIGH 0>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L21_P3_OVL_RDMA5)
@@ -9262,7 +9258,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&ovlsys_config_clk CLK_OVL_EXDMA6_DISP>;
 			mediatek,larb = <&smi_larb1 SMMU_L1_P3_OVL_RDMA6>;
 			reg = <0 0x32890000 0 0x1000>;
-			interrupts = <GIC_SPI 456 IRQ_TYPE_LEVEL_HIGH 0>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L1_P3_OVL_RDMA6)
@@ -9291,7 +9286,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&ovlsys_config_clk CLK_OVL_EXDMA7_DISP>;
 			mediatek,larb = <&smi_larb0 SMMU_L0_P3_OVL_RDMA7>;
 			reg = <0 0x328a0000 0 0x1000>;
-			interrupts = <GIC_SPI 457 IRQ_TYPE_LEVEL_HIGH 0>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L0_P3_OVL_RDMA7)
@@ -9320,7 +9314,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&ovlsys_config_clk CLK_OVL_EXDMA8_DISP>;
 			mediatek,larb = <&smi_larb21 SMMU_L21_P4_OVL_RDMA8>;
 			reg = <0 0x328b0000 0 0x1000>;
-			interrupts = <GIC_SPI 458 IRQ_TYPE_LEVEL_HIGH 0>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L21_P4_OVL_RDMA8)
@@ -9349,7 +9342,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&ovlsys_config_clk CLK_OVL_EXDMA9_DISP>;
 			mediatek,larb = <&smi_larb20 SMMU_L20_P4_OVL_RDMA9>;
 			reg = <0 0x328c0000 0 0x1000>;
-			interrupts = <GIC_SPI 459 IRQ_TYPE_LEVEL_HIGH 0>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L20_P4_OVL_RDMA9)
@@ -9532,7 +9524,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&ovlsys1_config_clk CLK_OVL1_OVL_EXDMA2_DISP>;
 			mediatek,larb = <&smi_larb34 SMMU_L34_P2_OVL_RDMA2>;
 			reg = <0 0x32c50000 0 0x1000>;
-			interrupts = <GIC_SPI 452 IRQ_TYPE_LEVEL_HIGH 0>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L34_P2_OVL_RDMA2)
@@ -9562,7 +9553,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&ovlsys1_config_clk CLK_OVL1_OVL_EXDMA3_DISP>;
 			mediatek,larb = <&smi_larb35 SMMU_L35_P2_OVL_RDMA3>;
 			reg = <0 0x32c60000 0 0x1000>;
-			interrupts = <GIC_SPI 453 IRQ_TYPE_LEVEL_HIGH 0>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L35_P2_OVL_RDMA3)
@@ -9591,7 +9581,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&ovlsys1_config_clk CLK_OVL1_OVL_EXDMA4_DISP>;
 			mediatek,larb = <&smi_larb36 SMMU_L36_P3_OVL_RDMA4>;
 			reg = <0 0x32c70000 0 0x1000>;
-			interrupts = <GIC_SPI 454 IRQ_TYPE_LEVEL_HIGH 0>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L36_P3_OVL_RDMA4)
@@ -9620,7 +9609,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&ovlsys1_config_clk CLK_OVL1_OVL_EXDMA5_DISP>;
 			mediatek,larb = <&smi_larb37 SMMU_L37_P3_OVL_RDMA5>;
 			reg = <0 0x32c80000 0 0x1000>;
-			interrupts = <GIC_SPI 455 IRQ_TYPE_LEVEL_HIGH 0>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L37_P3_OVL_RDMA5)
@@ -9649,7 +9637,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&ovlsys1_config_clk CLK_OVL1_OVL_EXDMA6_DISP>;
 			mediatek,larb = <&smi_larb35 SMMU_L35_P3_OVL_RDMA6>;
 			reg = <0 0x32c90000 0 0x1000>;
-			interrupts = <GIC_SPI 456 IRQ_TYPE_LEVEL_HIGH 0>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L35_P3_OVL_RDMA6)
@@ -9678,7 +9665,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&ovlsys1_config_clk CLK_OVL1_OVL_EXDMA7_DISP>;
 			mediatek,larb = <&smi_larb34 SMMU_L34_P3_OVL_RDMA7>;
 			reg = <0 0x32ca0000 0 0x1000>;
-			interrupts = <GIC_SPI 457 IRQ_TYPE_LEVEL_HIGH 0>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L34_P3_OVL_RDMA7)
@@ -9707,7 +9693,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&ovlsys1_config_clk CLK_OVL1_OVL_EXDMA8_DISP>;
 			mediatek,larb = <&smi_larb37 SMMU_L37_P4_OVL_RDMA8>;
 			reg = <0 0x32cb0000 0 0x1000>;
-			interrupts = <GIC_SPI 458 IRQ_TYPE_LEVEL_HIGH 0>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L37_P4_OVL_RDMA8)
@@ -9736,7 +9721,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&ovlsys1_config_clk CLK_OVL1_OVL_EXDMA9_DISP>;
 			mediatek,larb = <&smi_larb36 SMMU_L36_P4_OVL_RDMA9>;
 			reg = <0 0x32cc0000 0 0x1000>;
-			interrupts = <GIC_SPI 459 IRQ_TYPE_LEVEL_HIGH 0>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L36_P4_OVL_RDMA9)
