@@ -693,7 +693,7 @@ void mtk_vdec_prepare_vcp_dvfs_data(struct mtk_vcodec_ctx *ctx, unsigned long *i
 	vsi_data->codec_fmt = ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc;
 	vsi_data->is_active = ctx->is_active;
 
-	ctx->last_monitor_op = 0; // for monitor op rate
+	ctx->last_monitor_op = -1; // for monitor op rate
 	ctx->op_rate_adaptive = ctx->dec_params.operating_rate; // for monitor op rate
 	return;
 }
@@ -764,7 +764,7 @@ void mtk_vdec_dvfs_update_dvfs_params(struct mtk_vcodec_ctx *ctx)
  *	Function name: mtk_vdec_dvfs_monitor_op_rate
  *	Description: This function updates the op rate of ctx by monitoring input buffer queued.
  *			1. Montior period: 500 ms
- *			2. Bypass the first interval
+ *			2. Bypass the first interval, compare op rate of 2nd & 3rd interval
  *			3. The monitored rate needs to be stable (<20% compares to prev interval)
  *			4. Diff > 20% than current used op rate
  *	Returns: Boolean, the op rate needs to be updated
@@ -772,7 +772,8 @@ void mtk_vdec_dvfs_update_dvfs_params(struct mtk_vcodec_ctx *ctx)
 bool mtk_vdec_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 {
 	unsigned int cur_in_timestamp, time_diff, threshold = 20;
-	unsigned int prev_op, cur_op, tmp_op;/* monitored op in the prev interval */
+	unsigned int cur_op, tmp_op;/* monitored op in the prev interval */
+	int prev_op;
 	bool update_op = false;
 
 	if (buf_type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE ||
@@ -799,9 +800,14 @@ bool mtk_vdec_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 		mtk_v4l2_debug(4, "[VDVFS][VDEC][ADAPTIVE][%d] prev_op: %d, moni_op: %d, cur_adp_op: %d",
 			ctx->id, prev_op, ctx->last_monitor_op, cur_op);
 
-		if (prev_op <= 0)
+		if (prev_op < 0) {
+			// first interval, bypass
+			ctx->last_monitor_op = 0;
 			return false;
-
+		} else if (prev_op == 0) {
+			// second interval, need compare to 3rd interval value
+			return false;
+		}
 		tmp_op = MAX(ctx->last_monitor_op, prev_op);
 
 		update_op = mtk_dvfs_check_op_diff(prev_op, ctx->last_monitor_op, threshold, 1) &&
