@@ -805,10 +805,21 @@ static int mtk_edp_phy_configure(struct mtk_edp *mtk_edp,
 		memcpy(phy_opts.dp.pre, pre_emphasis, lane_count * sizeof(unsigned int));
 	}
 
+	/* Turn off phy power before phy configure */
+	mtk_edp_update_bits(mtk_edp, REG_3F44_DP_ENC_4P_3,
+			   PHY_PWR_STATE_OW_EN_DP_ENC_4P_3, PHY_PWR_STATE_OW_EN_DP_ENC_4P_3_MASK);
+	mtk_edp_update_bits(mtk_edp, REG_3F44_DP_ENC_4P_3,
+			   BIAS_POWER_ON, PHY_PWR_STATE_OW_VALUE_DP_ENC_4P_3_MASK);
+	mtk_edp_update_bits(mtk_edp, REG_3F44_DP_ENC_4P_3,
+			   0, PHY_PWR_STATE_OW_EN_DP_ENC_4P_3_MASK);
+
 	ret = phy_configure(mtk_edp->phy, &phy_opts);
 	if (ret)
 		return ret;
 
+	/* Turn on phy power after phy configure */
+	mtk_edp_update_bits(mtk_edp, REG_3FF8_DP_ENC_4P_3,
+			   PHY_STATE_W_1_DP_ENC_4P_3, PHY_STATE_W_1_DP_ENC_4P_3_MASK);
 	mtk_edp_update_bits(mtk_edp, MTK_DP_TOP_PWR_STATE,
 			   DP_PWR_STATE_BANDGAP_TPLL_LANE, DP_PWR_STATE_MASK);
 
@@ -1040,8 +1051,8 @@ static void mtk_edp_initialize_digital_settings(struct mtk_edp *mtk_edp)
 
 	/* phy D enable */
 	mtk_edp_update_bits(mtk_edp, REG_3FF8_DP_ENC_4P_3,
-						PHY_STATE_W_1_FLDMASK,
-						PHY_STATE_W_1_FLDMASK);
+						PHY_STATE_W_1_DP_ENC_4P_3,
+						PHY_STATE_W_1_DP_ENC_4P_3_MASK);
 
 	/* reg_dvo_on_ow_en */
 	mtk_edp_update_bits(mtk_edp, REG_3FF8_DP_ENC_4P_3,
