@@ -1046,7 +1046,9 @@ static void devapc_dump_info(bool booting)
 
 	/* There are multiple DEVAPC_PD */
 	for (slave_type = 0; slave_type < slave_type_num; slave_type++) {
+		/* Initialize variables for each slave type */
 		devapc_type = ndevices[slave_type].devapc_type;
+		vio_type = DEVAPC_VIO_ABNORMAL;
 
 		if (booting) {
 			if (!is_devapc_subsys_enabled(devapc_type))
@@ -1176,7 +1178,9 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 
 	/* There are multiple DEVAPC_PD */
 	for (slave_type = 0; slave_type < slave_type_num; slave_type++) {
+		/* Initialize variables for each slave type */
 		devapc_type = ndevices[slave_type].devapc_type;
+		vio_type = DEVAPC_VIO_ABNORMAL;
 
 		/* Only dump the info of subsystem which got violation */
 		if (!is_matched_slave_type(slave_type))
