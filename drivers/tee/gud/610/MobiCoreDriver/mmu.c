@@ -840,9 +840,6 @@ static inline int tee_mmu_register_buffer(struct tee_mmu	*mmu,
 			mc_dev_err(ret, "sharing buffer failed, free mmu %p", mmu);
 #endif
 			tee_mmu_free(mmu);
-#ifdef MTK_ADAPTED
-			mc_dev_err(ret, "sharing buffer failed, free mmu %p", mmu);
-#endif
 		}
 	}
 	return ret;
