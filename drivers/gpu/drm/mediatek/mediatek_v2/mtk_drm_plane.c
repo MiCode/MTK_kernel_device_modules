@@ -565,7 +565,10 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		mtk_plane_state->pending.width = dst_w;
 		mtk_plane_state->pending.height = dst_h;
 
-		if (mtk_plane_state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) {
+		if (priv && (priv->data->mmsys_id != MMSYS_MT6768 &&
+			priv->data->mmsys_id != MMSYS_MT6761 &&
+			priv->data->mmsys_id != MMSYS_MT6877) &&
+			mtk_plane_state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) {
 			mtk_plane_state->pending.dst_roi = crtc_state->rsz_dst_roi.width |
 							   crtc_state->rsz_dst_roi.height << 16;
 			mtk_plane_state->pending.offset = crtc_state->rsz_dst_roi.x |
