@@ -18046,36 +18046,6 @@ static void mtk_drm_crtc_enable_fake_layer(struct drm_crtc *crtc,
 			mtk_ddp_comp_layer_config(comp, plane_state->comp_state.lye_id,
 						plane_state, state->cmdq_handle);
 	}
-
-	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_EXT_LAYER))
-		return;
-
-	for (i = 0 ; i < PRIMARY_OVL_EXT_LAYER_NR ; i++) {
-		plane = &mtk_crtc->planes[i + PRIMARY_OVL_PHY_LAYER_NR].base;
-		plane_state = to_mtk_plane_state(plane->state);
-		pending = &plane_state->pending;
-
-		pending->dirty = 1;
-		pending->enable = false;
-
-		if (i < DO_COMMON_DIV(PRIMARY_OVL_EXT_LAYER_NR, 2)) {
-			comp = priv->ddp_comp[ovl_2l_comp_id];
-			idx = i + 1;
-		} else {
-			comp = priv->ddp_comp[ovl_comp_id];
-			idx = i + 1 - DO_COMMON_DIV(PRIMARY_OVL_EXT_LAYER_NR, 2);
-		}
-		plane_state->comp_state.comp_id = comp->id;
-		plane_state->comp_state.lye_id = 0;
-		plane_state->comp_state.ext_lye_id = idx;
-
-		if (mtk_crtc->is_dual_pipe || mtk_crtc->path_data->is_exdma_dual_layer)
-			mtk_crtc_dual_layer_config(mtk_crtc, comp, plane_state->comp_state.lye_id,
-						plane_state, state->cmdq_handle);
-		else
-			mtk_ddp_comp_layer_config(comp, plane_state->comp_state.lye_id,
-						plane_state, state->cmdq_handle);
-	}
 }
 
 static void mtk_drm_crtc_disable_fake_layer(struct drm_crtc *crtc,
