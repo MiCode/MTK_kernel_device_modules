@@ -16115,6 +16115,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		ppb-emi-offset = <0x0089fff0>;
 	};
 
+	pmsr: pmsr {
+		compatible = "mediatek,mtk-pmsr";
+		dpmsr-count = <4>;
+	};
+
 	connfem: connfem {
 		compatible = "mediatek,connfem";
 	};
