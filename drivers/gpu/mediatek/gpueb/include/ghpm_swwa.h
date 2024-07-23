@@ -7,6 +7,6 @@
 #define __GHPM_SWWA_H__
 
 #define GHPM_IPI_TIMEOUT                   (5000)
-#define GPUEB_WAIT_TIMEOUT                 (5000)
+#define GPUEB_WAIT_TIMEOUT                 (10000)
 
 #endif /* __GHPM_SWWA_H__ */
