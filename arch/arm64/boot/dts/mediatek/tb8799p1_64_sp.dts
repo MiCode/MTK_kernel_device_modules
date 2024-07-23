@@ -605,6 +605,10 @@ bootargs_ext = "rcu_nocbs=0-7";
 	};
 };
 
+&mddriver {
+	ref-args = "md_disable";
+};
+
 #if 0
 &pdc {
 	pd_vbus_upper_bound = <12000000>;
