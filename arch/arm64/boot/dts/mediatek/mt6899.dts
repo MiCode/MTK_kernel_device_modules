@@ -16668,6 +16668,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		compatible = "mediatek,usb-meta";
 		udc = <&ssusb>;
 	};
+
+	usb_logger: usb-logger {
+		compatible = "mediatek,usb-logger";
+	};
+
 	usb_boost: usb-boost-manager {
 		compatible = "mediatek,usb-boost", "mediatek,mt6899-usb-boost";
 		usb-audio;
