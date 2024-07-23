@@ -21,6 +21,10 @@
 #include "mtu3.h"
 #include "mtu3_trace.h"
 
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD)
+#include "usb_offload_trace.h"
+#endif
+
 #define U_LOGGER_CLASS_NAME "usb_logger"
 #define PROC_USB_LOGGER "mtk_usb_logger"
 #define PROC_CMD        "cmd"
@@ -105,6 +109,42 @@ static int xhci_trace_init(struct u_logger *logger)
 	WARN_ON(register_trace_xhci_urb_giveback_(xhci_urb_giveback_dbg, logger));
 	return 0;
 }
+
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD)
+static void usb_offload_trace_trigger_dbg(void *data, void *stream,
+	void *buffer, int length, u16 slot, u16 ep,
+	struct usb_endpoint_descriptor *desc)
+{
+	struct u_logger *logger = (struct u_logger *)data;
+	struct mtk_urb mtk = {0};
+
+	if (!data || !stream || !buffer || !desc)
+		return;
+
+	mtk.addr = stream;
+	mtk.transfer_buffer = buffer;
+	mtk.transfer_buffer_length = length;
+	mtk.actual_length = length;
+	mtk.setup_pkt = NULL;
+	mtk.desc = desc;
+
+	if (is_dumper_enable(logger) &&	is_trace_dequeue(logger) &&
+		check_xfer_type(logger, &mtk))
+		trace_urb_giveback(logger, &mtk); /* trigger log_urb_data */
+}
+
+static int usb_offload_trace_init(struct u_logger *logger)
+{
+	WARN_ON(register_trace_usb_offload_trace_trigger(
+		usb_offload_trace_trigger_dbg, logger));
+	return 0;
+}
+#else
+static int usb_offload_trace_init(struct u_logger *logger)
+{
+	return 0;
+}
+#endif
 
 static void mtu3_gadget_queue_dbg(void *data, struct mtu3_request *mreq)
 {
@@ -289,6 +329,7 @@ static int u_logger_probe(struct platform_device *pdev)
 
 	mtu3_trace_init(logger);
 	xhci_trace_init(logger);
+	usb_offload_trace_init(logger);
 
 	/* create procfs for logger */
 	u_logger_procfs_init(logger);
@@ -296,6 +337,7 @@ static int u_logger_probe(struct platform_device *pdev)
 	if (u_tester_init(logger))
 		dev_info(logger->dev, "fail init tester\n");
 
+	dev_info(dev, "%s probe success\n", __func__);
 exit:
 	return ret;
 }

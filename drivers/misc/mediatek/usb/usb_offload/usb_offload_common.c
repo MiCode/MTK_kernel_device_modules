@@ -676,6 +676,9 @@ int send_disconnect_ipi_msg_to_adsp(void)
 
 	USB_OFFLOAD_INFO("\n");
 
+	/* disable all trace before disconnect */
+	prepare_and_send_trace_ipi_msg(NULL, false, true);
+
 	// Send DISCONNECT msg to ADSP Via IPI
 	for (scene = TASK_SCENE_USB_DL; scene <= TASK_SCENE_USB_UL; scene++) {
 		send_result = audio_send_ipi_msg(
@@ -1509,6 +1512,8 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 				is_vcore_hold = true;
 			}
 		}
+		/* enable trace */
+		prepare_and_send_trace_ipi_msg(&msg, true, false);
 
 	} else {
 		ret = substream->ops->hw_free(substream);
@@ -1526,6 +1531,8 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 				is_vcore_hold = false;
 			}
 		}
+		/* disable trace */
+		prepare_and_send_trace_ipi_msg(&msg, false, false);
 	}
 	mutex_unlock(&uodev->dev_lock);
 
@@ -3177,6 +3184,7 @@ static int usb_offload_probe(struct platform_device *pdev)
 	buf_ev_ring = kzalloc(sizeof(struct usb_offload_buffer), GFP_KERNEL);
 
 	usb_offload_hid_probe();
+	usb_offload_debug_init(uodev);
 
 	USB_OFFLOAD_INFO("Probe Success!!!");
 	return ret;
