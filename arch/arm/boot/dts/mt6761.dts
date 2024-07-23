@@ -1851,7 +1851,7 @@ firmware_class.path=/vendor/firmware clk_ignore_unused=1";
 		iommus = <&iommu M4U_PORT_MDP_RDMA0>,
 			<&iommu M4U_PORT_MDP_WDMA0>,
 			<&iommu M4U_PORT_MDP_WROT0>;
-		dma_mask_bit = <35>;
+		dma-mask-bit = <35>;
 	};
 
 	emimpu@10226000 {
