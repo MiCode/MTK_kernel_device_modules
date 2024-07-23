@@ -2781,10 +2781,6 @@
 				pll-id = <999>;
 				perms = <0x1C>;
 			};
-			mmpll {
-				fh-id = <9>;
-				pll-id = <CLK_APMIXED_MMPLL>;
-			};
 			mainpll {
 				fh-id = <10>;
 				pll-id = <CLK_APMIXED_MAINPLL>;
