@@ -4418,7 +4418,6 @@
 			apuconn: APUCONN {
 				compatible = "mtk6853,apucon";
 				operating-points-v2 = <&conn_opp_table>;
-				vvpu-supply = <&mt6359p_vproc2_reg>;
 				nvmem-cells = <&efuse_segment &apu_pod26 &efuse_fabinfo4>;
 				nvmem-cell-names = "efuse_seg","efuse_bin","efuse_raise";
 				bin = <0xdeadbeef 0xdeadbeef 750000 737500 725000>;

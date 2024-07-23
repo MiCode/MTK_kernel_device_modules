@@ -20,6 +20,10 @@
 	vbus-supply = <&otg_vbus>;
 };
 
+&apuconn {
+	vvpu-supply = <&mt6315_3_vbuck3>;
+};
+
 &mtk_ctd {
 	nr-port = <1>;
 	chg-name-port0 = "primary_chg";
@@ -430,7 +434,5 @@
 	md-vmodem = <800000 800000>;
 	md-vsram-supply = <&mt6315_3_vbuck4>;
 	md-vsram = <800000 800000>;
-	md-vnr-supply = <&mt6315_3_vbuck3>;
-	md-vnr = <800000 800000>;
 };
 
