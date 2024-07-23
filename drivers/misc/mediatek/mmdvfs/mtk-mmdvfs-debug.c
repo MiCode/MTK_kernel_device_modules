@@ -56,6 +56,7 @@ struct mmdvfs_record {
 struct mmdvfs_debug {
 	struct device *dev;
 	struct proc_dir_entry *proc;
+	struct proc_dir_entry *proc_mbrain;
 	u32 debug_version;
 
 	/* MMDVFS_DBG_VER1 */
@@ -547,6 +548,62 @@ static int mmdvfs_debug_opp_open(struct inode *inode, struct file *file)
 
 static const struct proc_ops mmdvfs_debug_opp_fops = {
 	.proc_open = mmdvfs_debug_opp_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+static int mmdvfs_mbrain_test(struct seq_file *file, void *data)
+{
+	struct mmdvfs_res_mbrain_debug_ops *ops = NULL;
+	unsigned int data_size = 0;
+	unsigned char *ptr = NULL, *addr = NULL;
+	u32 i, j;
+
+	struct mmdvfs_res_mbrain_header header;
+	struct mmdvfs_opp_record record[MMDVFS_OPP_RECORD_NUM];
+
+	ops = get_mmdvfs_mbrain_dbg_ops();
+	if (ops && ops->get_length && ops->get_data) {
+		data_size = ops->get_length();
+		seq_printf(file, "data_size:%u\n", data_size);
+
+		if (data_size > 0) {
+			ptr = kmalloc(data_size, GFP_KERNEL);
+			if (!ptr)
+				return 0;
+
+			ops->get_data(ptr, data_size);
+
+			memcpy(&header, ptr, sizeof(header));
+			addr = ptr + sizeof(header);
+			memcpy(&record, addr, sizeof(record));
+
+			kfree(ptr);
+			ptr = NULL;
+
+			seq_printf(file, "header mbrain_module:%u, version:%u ",
+				header.mbrain_module, header.version);
+			seq_printf(file, "data_offset:%u index_data_length:%u\n",
+				header.data_offset, header.index_data_length);
+
+			for (i = 0; i < MMDVFS_OPP_RECORD_NUM; i++)
+				for (j = 0; j < MAX_OPP; j++)
+					seq_printf(file, "pwr:%u opp:%u total_time:%llu\n",
+						i, j, record[i].opp_duration[j]);
+		}
+	}
+
+	return 0;
+}
+
+static int mmdvfs_mbrain_test_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mmdvfs_mbrain_test, inode->i_private);
+}
+
+static const struct proc_ops mmdvfs_mbrain_test_fops = {
+	.proc_open = mmdvfs_mbrain_test_open,
 	.proc_read = seq_read,
 	.proc_lseek = seq_lseek,
 	.proc_release = single_release,
@@ -1112,6 +1169,12 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 		MMDVFS_DBG("proc_create failed:%ld", PTR_ERR(proc));
 	else
 		g_mmdvfs->proc = proc;
+
+	proc = proc_create("mmdvfs_mbrain_test", 0440, dir, &mmdvfs_mbrain_test_fops);
+	if (IS_ERR_OR_NULL(proc))
+		MMDVFS_DBG("proc_create failed:%ld", PTR_ERR(proc));
+	else
+		g_mmdvfs->proc_mbrain = proc;
 
 	ret = of_property_read_u32(
 		g_mmdvfs->dev->of_node, "debug-version", &g_mmdvfs->debug_version);
