@@ -6805,8 +6805,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			dma-mask-bit = <35>;
 			mminfra-ao-base = <0x1e8ff000>;
+			mminfra-voter-base = <0x1ec45000>;
 			gce-ddr-sel-wla;
 			gce-res-sw-mode;
+			gce-mask-voter;
 		};
 
 		gce_sec: gce-mbox-sec@1e980000 {
