@@ -14,6 +14,7 @@
 
 #include <adsp_helper.h>
 #include <audio_ipi_platform.h>
+#include <audio_ipi_platform_auto.h>
 #include <audio_messenger_ipi.h>
 
 #include "mtk-dsp-mem-control.h"
@@ -39,6 +40,8 @@ static uint64_t irq_cnt[TASK_SCENE_SIZE] = {0};
 virt_ipi_cb_func virt_ipi_cb;
 virt_adsp_reg_feature_cb_func virt_adsp_reg_feature_cb;
 virt_adsp_query_status_cb_func virt_adsp_query_status_cb;
+virt_adsp_dump_cb_func virt_adsp_dump_cb;
+
 static int is_guest_dsp_task[AUDIO_TASK_DAI_NUM] = {
 	[AUDIO_TASK_VOIP_ID]        = 0,
 	[AUDIO_TASK_PRIMARY_ID]     = 1,
@@ -140,6 +143,13 @@ void register_virt_adsp_query_status_cb(virt_adsp_query_status_cb_func cb)
 }
 EXPORT_SYMBOL(register_virt_adsp_query_status_cb);
 
+void register_virt_adsp_dump_cb(virt_adsp_dump_cb_func cb)
+{
+	virt_adsp_dump_cb = cb;
+	pr_info("[VADSP] %s() cb: %p\n", __func__, cb);
+}
+EXPORT_SYMBOL(register_virt_adsp_dump_cb);
+
 void guest_adsp_irq_notify(int core_id, int dsp_scene, int xrun)
 {
 	if (dsp_evt_cb.cb) {
@@ -169,6 +179,23 @@ void guest_adsp_task_share_dram_notify(int dsp_scene,
 		data.mem.type = type;
 		data.mem.phy_addr = phy_addr;
 		data.mem.size = size;
+		data.data = dsp_evt_cb.data;
+
+		dsp_evt_cb.cb(&data);
+	}
+}
+
+void guest_adsp_task_ipi_notify(struct vadsp_dump_buffer_info_t *dump_info)
+{
+	if (dsp_evt_cb.cb) {
+		struct adsp_evt_cb_data data;
+
+		data.evt_type = ADSP_EVT_IPI;
+		data.ipi_info.phy_addr = dump_info->phys_addr_base;
+		data.ipi_info.buffer_size = dump_info->buffer_size;
+		data.ipi_info.write_offset = dump_info->write_offset;
+		data.ipi_info.write_size = dump_info->write_size;
+		data.ipi_info.phys_rp_addr = dump_info->phys_rp_addr;
 		data.data = dsp_evt_cb.data;
 
 		dsp_evt_cb.cb(&data);
@@ -693,6 +720,59 @@ static int audio_dsp_query_status_get(struct snd_kcontrol *kcontrol,
 	return ret;
 }
 
+static int audio_dsp_query_memory_size_info(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_info *uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = 1;
+	uinfo->value.integer.min = SHRT_MIN;
+	uinfo->value.integer.max = SHRT_MAX;
+	return 0;
+}
+
+static int audio_dsp_query_memory_size_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	int ret = 0;
+	uint32_t size;
+
+	size = (uint32_t)adsp_get_reserve_mem_size(ADSP_B_IPI_DMA_MEM_ID);
+	if (size == 0) {
+		pr_info("[VADSP] %s() get dsp memory size = 0\n", __func__);
+		size = 0x100000;
+	}
+	ucontrol->value.integer.value[0] = size;
+	pr_info("[VADSP] %s() get dsp memory size: %d\n", __func__, size);
+	return ret;
+}
+
+static int audio_dsp_dump_buffer_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct audio_dump_buffer_info info;
+	int ret = 0;
+
+	info.pa = (uint64_t)ucontrol->value.integer64.value[0];
+	info.bytes = (uint64_t)ucontrol->value.integer64.value[1];
+	info.pra = (uint64_t)ucontrol->value.integer64.value[2];
+	pr_info("[VADSP] %s() phys_addr 0x%llx  size: 0x%llx, phys_read_addr: 0x%llx\n",
+		__func__, info.pa,
+		info.bytes, info.pra);
+	if (virt_adsp_dump_cb)
+		ret = virt_adsp_dump_cb(&info);
+	return ret;
+}
+
+static int audio_dsp_dump_buffer_info(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_info *uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER64;
+	uinfo->count = sizeof(struct audio_dump_buffer_info) / sizeof(uint64_t);
+	uinfo->value.integer64.min = LLONG_MIN;
+	uinfo->value.integer64.max = LLONG_MAX;
+	return 0;
+}
+
 static const struct snd_kcontrol_new virt_adsp_kcontrols[] = {
 	SOC_MULTIPLE_EXT("audio ipi", SND_SOC_NOPM, 0, INT_MIN, INT_MAX, 0,
 		audio_ipi_get,
@@ -706,6 +786,14 @@ static const struct snd_kcontrol_new virt_adsp_kcontrols[] = {
 		audio_dsp_query_status_get,
 		NULL,
 		audio_dsp_query_status_info),
+	SOC_MULTIPLE_EXT("audio dsp get mem size", SND_SOC_NOPM, 0, INT_MIN, INT_MAX, 0,
+		audio_dsp_query_memory_size_get,
+		NULL,
+		audio_dsp_query_memory_size_info),
+	SOC_MULTIPLE_EXT("audio dsp set dump buffer", SND_SOC_NOPM, 0, INT_MIN, INT_MAX, 0,
+		NULL,
+		audio_dsp_dump_buffer_put,
+		audio_dsp_dump_buffer_info),
 };
 
 int vadsp_probe(struct snd_soc_component *component)
@@ -717,6 +805,7 @@ int vadsp_probe(struct snd_soc_component *component)
 					     ARRAY_SIZE(virt_adsp_kcontrols));
 	if (ret)
 		pr_info("%s add_component err ret = %d\n", __func__, ret);
+	vadsp_task_register_callback(guest_adsp_task_ipi_notify);
 
 	return ret;
 }

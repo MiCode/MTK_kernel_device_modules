@@ -248,8 +248,13 @@ static void audio_ipi_msg_dispatcher(int id, void *data, unsigned int len)
 		send_message_ack(get_ipi_queue_handler(p_ipi_msg->task_scene),
 				 p_ipi_msg);
 	} else if (p_ipi_msg->data_type == AUDIO_IPI_DMA &&
-		   p_ipi_msg->target_layer == AUDIO_IPI_LAYER_TO_HAL)
+		   p_ipi_msg->target_layer == AUDIO_IPI_LAYER_TO_HAL) {
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_VHOST_ADSP)
+		audio_ipi_dma_msg_send(p_ipi_msg);
+#else
 		audio_ipi_dma_msg_to_hal(p_ipi_msg);
+#endif
+	}
 	else {
 		if (recv_message_array[p_ipi_msg->task_scene] != NULL)
 			recv_message_array[p_ipi_msg->task_scene](p_ipi_msg);

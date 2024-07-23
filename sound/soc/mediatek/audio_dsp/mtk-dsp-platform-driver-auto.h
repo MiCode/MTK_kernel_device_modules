@@ -16,6 +16,7 @@
 enum {
 	ADSP_EVT_IRQ,
 	ADSP_EVT_MEM,
+	ADSP_EVT_IPI,
 };
 
 enum {
@@ -38,11 +39,21 @@ struct mem_data {
 	int32_t type;
 };
 
+struct adsp_ipi_info {
+	uint64_t phy_addr;
+	uint64_t buffer_size;
+	uint64_t write_offset;
+	uint64_t write_size;
+	uint64_t phys_rp_addr;
+};
+
+
 struct adsp_evt_cb_data {
 	int32_t evt_type;
 	union {
 		struct adsp_irq_data irq;
 		struct mem_data mem;
+		struct adsp_ipi_info ipi_info;
 	};
 	void *data;
 };
@@ -80,18 +91,27 @@ struct audio_dsp_query_status {
 	uint16_t core_id;
 };
 
+struct audio_dump_buffer_info {
+	uint64_t pa;
+	uint64_t bytes;
+	uint64_t pra;
+};
+
 typedef int (*virt_ipi_cb_func)(struct audio_ipi_info *data);
 typedef int (*virt_adsp_reg_feature_cb_func)(struct audio_dsp_reg_feature *data);
 typedef int (*virt_adsp_query_status_cb_func)(struct audio_dsp_query_status *data);
+typedef int (*virt_adsp_dump_cb_func)(struct audio_dump_buffer_info *data);
 
 extern virt_ipi_cb_func virt_ipi_cb;
 extern virt_adsp_reg_feature_cb_func virt_adsp_reg_feature_cb;
 extern virt_adsp_query_status_cb_func virt_adsp_query_status_cb;
+extern virt_adsp_dump_cb_func virt_adsp_dump_cb;
 
 void mtk_dsp_register_event_cb(adsp_evt_cb_func cb, void *data);
 void register_virt_ipi_cb(virt_ipi_cb_func cb);
 void register_virt_adsp_reg_feature_cb(virt_adsp_reg_feature_cb_func cb);
 void register_virt_adsp_query_status_cb(virt_adsp_query_status_cb_func cb);
+void register_virt_adsp_dump_cb(virt_adsp_dump_cb_func cb);
 snd_pcm_uframes_t guest_get_pcm_pointer(int dsp_scene, int *xrun);
 int32_t guest_pcm_copy_dl(int dsp_scene, uint64_t phy_addr, uint64_t copy_size);
 uint64_t get_irq_cnt(int task_scene);
