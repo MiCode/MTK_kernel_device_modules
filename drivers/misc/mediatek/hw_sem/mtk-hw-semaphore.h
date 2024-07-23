@@ -15,8 +15,6 @@ enum sema_type {
 enum master {
 	MASTER_AP = 0,
 	MASTER_VCP,
-	MASTER_UNKNOW,
-	MASTER_SMMU,
 };
 
 #if IS_ENABLED(CONFIG_MTK_HW_SEMAPHORE)
