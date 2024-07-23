@@ -1054,7 +1054,7 @@ static void mtk_edp_initialize_digital_settings(struct mtk_edp *mtk_edp)
 						DP_TX_ENCODER_4P_RESET_SW_DP_ENC0_P0);
 
 	mtk_edp_update_bits(mtk_edp, MTK_DP_ENC0_P0_3004,
-						0, BIT(9));
+						0, DP_TX_ENCODER_4P_RESET_SW_DP_ENC0_P0);
 
 	mtk_edp_update_bits(mtk_edp, REG_3FF8_DP_ENC_4P_3,
 						0xff, 0xff);
@@ -1224,8 +1224,6 @@ static void mtk_edp_aux_panel_poweron(struct mtk_edp *mtk_edp, bool pwron)
 
 static void mtk_edp_power_enable(struct mtk_edp *mtk_edp)
 {
-	pr_info("[eDPTX] %s+\n",__func__);
-
 	mtk_edp_update_bits(mtk_edp, MTK_DP_TOP_RESET_AND_PROBE,
 			   0, SW_RST_B_PHYD);
 
@@ -1234,8 +1232,6 @@ static void mtk_edp_power_enable(struct mtk_edp *mtk_edp)
 
 	mtk_edp_update_bits(mtk_edp, MTK_DP_TOP_RESET_AND_PROBE,
 			   SW_RST_B_PHYD, SW_RST_B_PHYD);
-
-	pr_info("[eDPTX] %s-\n",__func__);
 }
 
 static void mtk_edp_power_disable(struct mtk_edp *mtk_edp)
@@ -2144,8 +2140,6 @@ static int mtk_edp_poweron(struct mtk_edp *mtk_edp)
 {
 	int ret;
 
-	pr_info("[eDPTX] %s+\n",__func__);
-
 	ret = phy_init(mtk_edp->phy);
 	if (ret) {
 		dev_info(mtk_edp->dev, "[eDPTX] Failed to initialize phy: %d\n", ret);
@@ -2158,12 +2152,10 @@ static int mtk_edp_poweron(struct mtk_edp *mtk_edp)
 		goto err_phy_config;
 	}
 
-
 	mtk_edp_init_port(mtk_edp);
 	mtk_edp_power_enable(mtk_edp);
 
-	pr_info("[eDPTX] %s-\n",__func__);
-
+	return ret;
 err_phy_config:
 		phy_exit(mtk_edp->phy);
 
@@ -2180,6 +2172,7 @@ static int mtk_edp_bridge_attach(struct drm_bridge *bridge,
 				enum drm_bridge_attach_flags flags)
 {
 	struct mtk_edp *mtk_edp = mtk_edp_from_bridge(bridge);
+	struct drm_panel *panel = NULL;
 	int ret;
 
 	dev_info(mtk_edp->dev, "[eDPTX] %s+\n", __func__);
@@ -2190,6 +2183,33 @@ static int mtk_edp_bridge_attach(struct drm_bridge *bridge,
 	}
 
 	mtk_edp->drm_dev = bridge->dev;
+
+	if (!mtk_edp->external_monitor) {
+		ret = drm_of_find_panel_or_bridge(mtk_edp->dev->of_node, 1, 0,
+					  &panel, &mtk_edp->next_bridge);
+		if (ret == -ENODEV) {
+			dev_info(mtk_edp->dev, "[eDPTX] No panel connected in devicetree, continuing as external DP\n");
+			mtk_edp->next_bridge = NULL;
+		} else if (ret) {
+			dev_info(mtk_edp->dev, "[eDPTX] Failed to find panel or bridge: %d\n",
+				ret);
+			return ret;
+		}
+
+		if (mtk_edp->next_bridge)
+			dev_info(mtk_edp->dev, "[eDPTX] Found bridge node: %pOF\n", mtk_edp->next_bridge->of_node);
+
+		if (panel) {
+			dev_info(mtk_edp->dev, "[eDPTX] Found panel node: %pOF\n", panel->dev->of_node);
+			mtk_edp->next_bridge =
+				devm_drm_panel_bridge_add(mtk_edp->dev, panel);
+			if (IS_ERR(mtk_edp->next_bridge)) {
+				ret = PTR_ERR(mtk_edp->next_bridge);
+				pr_info("[eDPTX] Failed to create bridge: %d\n", ret);
+				return ret;
+			}
+		}
+	}
 
 	mtk_edp_aux_init(mtk_edp);
 	ret = drm_dp_aux_register(&mtk_edp->aux);
@@ -2701,7 +2721,6 @@ static int mtk_edp_probe(struct platform_device *pdev)
 {
 	struct mtk_edp *mtk_edp;
 	struct device *dev = &pdev->dev;
-	struct drm_panel *panel = NULL;
 	int ret;
 
 	dev_info(dev, "[eDPTX] %s+\n",__func__);
@@ -2751,33 +2770,6 @@ static int mtk_edp_probe(struct platform_device *pdev)
 		mtk_edp->aux.wait_hpd_asserted = mtk_edp_wait_hpd_asserted;
 	}
 
-	if (!mtk_edp->external_monitor) {
-		ret = drm_of_find_panel_or_bridge(dev->of_node, 1, 0,
-					  &panel, &mtk_edp->next_bridge);
-		if (ret == -ENODEV) {
-			dev_info(dev, "[eDPTX] No panel connected in devicetree, continuing as external DP\n");
-			mtk_edp->next_bridge = NULL;
-		} else if (ret) {
-			dev_info(dev, "[eDPTX] Failed to find panel or bridge: %d\n",
-				ret);
-			return ret;
-		}
-
-		if (mtk_edp->next_bridge)
-			dev_info(dev, "[eDPTX] Found bridge node: %pOF\n", mtk_edp->next_bridge->of_node);
-
-		if (panel) {
-			dev_info(dev, "[eDPTX] Found panel node: %pOF\n", panel->dev->of_node);
-			mtk_edp->next_bridge =
-				devm_drm_panel_bridge_add(dev, panel);
-			if (IS_ERR(mtk_edp->next_bridge)) {
-				ret = PTR_ERR(mtk_edp->next_bridge);
-				pr_info("[eDPTX] Failed to create bridge: %d\n", ret);
-				return -EPROBE_DEFER;
-			}
-		}
-	}
-
 	/* notify HWC */
 	edptx_notify_data.name = "edptx";
 	edptx_notify_data.index = 0;
@@ -2818,8 +2810,7 @@ static int mtk_edp_probe(struct platform_device *pdev)
 	pm_runtime_enable(dev);
 	pm_runtime_get_sync(dev);
 
-	dev_info(dev, "[eDPTX] %s power.usage_count %d-\n",
-		 __func__, atomic_read(&dev->power.usage_count));
+	dev_info(dev, "[eDPTX] %s-\n",__func__);
 	return 0;
 }
 

@@ -15,6 +15,8 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/types.h>
+#include <linux/string.h>
+#include <linux/delay.h>
 
 #include <video/videomode.h>
 
@@ -546,7 +548,7 @@ static int mtk_dvo_power_on(struct mtk_dvo *dvo)
 	ret = clk_prepare_enable(dvo->hf_fdvo_clk);
 	if (ret) {
 		dev_info(dvo->dev, "Failed to enable hf_fdvo_clk: %d\n", ret);
-		goto err_refcount;
+		goto err_hf_fdvo;
 	}
 
 	ret = clk_prepare_enable(dvo->pixel_clk);
@@ -572,13 +574,13 @@ static int mtk_dvo_power_on(struct mtk_dvo *dvo)
 
 	return 0;
 
-err_engine:
+err_refcount:
 	clk_disable_unprepare(dvo->tvd_clk);
 err_tvd:
 	clk_disable_unprepare(dvo->pixel_clk);
 err_pixel:
 	clk_disable_unprepare(dvo->hf_fdvo_clk);
-err_refcount:
+err_hf_fdvo:
 	dvo->refcount--;
 	return ret;
 }
@@ -821,7 +823,7 @@ static int mtk_dvo_bridge_attach(struct drm_bridge *bridge,
 				 enum drm_bridge_attach_flags flags)
 {
 	struct mtk_dvo *dvo = bridge_to_dvo(bridge);
-	int ret = 0;
+	int ret = 0, retry = 7;
 
 	ret = clk_prepare_enable(dvo->pixel_clk);
 	if (ret)
@@ -829,6 +831,19 @@ static int mtk_dvo_bridge_attach(struct drm_bridge *bridge,
 
 	/* set DVO switch 26Mhz crystal */
 	clk_set_parent(dvo->pixel_clk, dvo->dvo_clk);
+
+	while (retry) {
+		retry--;
+		dvo->next_bridge = devm_drm_of_get_bridge(dvo->dev, dvo->dev->of_node, 0, 0);
+		if (IS_ERR(dvo->next_bridge)) {
+			pr_info("[eDPTX] Failed to get bridge\n");
+			usleep_range(500, 800);
+			continue;
+		}
+
+		dev_info(dvo->dev, "[eDPTX] Found bridge node: %pOF\n", dvo->next_bridge->of_node);
+		break;
+	}
 
 	ret = drm_bridge_attach(bridge->encoder, dvo->next_bridge,
 				 &dvo->bridge, flags);
@@ -1220,15 +1235,6 @@ static int mtk_dvo_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "failed to request mediatek edp dvo irq\n");
 		return -EPROBE_DEFER;
 	}
-
-
-	dvo->next_bridge = devm_drm_of_get_bridge(dev, dev->of_node, 0, 0);
-	if (IS_ERR(dvo->next_bridge)) {
-		pr_info("[eDPTX] Failed to get bridge\n");
-		return PTR_ERR(dvo->next_bridge);
-	}
-
-	dev_info(dev, "[eDPTX] Found bridge node: %pOF\n", dvo->next_bridge->of_node);
 
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_DVO);
 	if (comp_id < 0) {

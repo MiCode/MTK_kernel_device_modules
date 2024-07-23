@@ -883,6 +883,19 @@ static int get_serdes_setting_from_dts(struct max96851_bridge *max_bridge)
 	int ret = 0;
 	struct device_node *np = max_bridge->dev->of_node;
 	struct device_node *panel_setting_np;
+	const char *panel_name;
+
+	panel_name = of_get_property(np, PANEL_NAME, NULL);
+	if (!panel_name) {
+		pr_info("[MAX96851] Panel name is not provided\n");
+		return -EINVAL;
+	}
+
+	max_bridge->panel_name = devm_kzalloc(max_bridge->dev, PANEL_NAME_SIZE, GFP_KERNEL);
+	if (!max_bridge->panel_name)
+		return -ENOMEM;
+
+	strscpy(max_bridge->panel_name, panel_name, PANEL_NAME_SIZE);
 
 	panel_setting_np = of_get_child_by_name(np, max_bridge->panel_name);
 	if (!panel_setting_np) {
@@ -958,22 +971,15 @@ static int max96851_dt_parse(struct max96851_bridge *max_bridge, struct device *
 	if (!np)
 		return -EINVAL;
 
-	pr_info("[MAX96851] %s+\n", __func__);
-
 	max_bridge->is_dp = of_device_is_compatible(np, "maxiam,max96851-dp") ? true : false;
 	pr_info("[MAX96851] Serdes for: %d [0: eDP, 1: DP]\n", max_bridge->is_dp);
 
 	get_general_info_from_dts(max_bridge);
 
-	ret = get_panel_feature_info_from_dts(max_bridge);
-	if (ret)
-		pr_info("[MAX96851] use default setting\n");
-
 	ret = get_serdes_setting_from_dts(max_bridge);
 	if (ret)
 		return ret;
 
-	pr_info("[MAX96851] %s-\n", __func__);
 	return 0;
 }
 
@@ -1347,12 +1353,41 @@ static int max96851_bridge_attach(struct drm_bridge *bridge,
 				enum drm_bridge_attach_flags flags)
 {
 	struct max96851_bridge *max_bridge = bridge_to_max96851(bridge);
+	struct drm_bridge *panel_bridge = NULL;
 	struct device *dev = NULL;
 	int ret;
 
 	pr_info("[MAX96851] Serdes DP: %d %s+\n", max_bridge->is_dp, __func__);
 
 	dev = &max_bridge->max96851_i2c->dev;
+
+	ret = drm_of_find_panel_or_bridge(dev->of_node, 1, 0, &max_bridge->panel1, NULL);
+	if (!max_bridge->panel1) {
+		pr_info("[MAX96851] Failed to find panel %d\n", ret);
+		return -EINVAL;
+	}
+
+	dev_info(dev, "[MAX96851] Found panel node: %pOF\n", max_bridge->panel1->dev->of_node);
+
+	panel_bridge = devm_drm_panel_bridge_add(dev, max_bridge->panel1);
+	if (IS_ERR(panel_bridge)) {
+		dev_info(dev, "[MAX96851] Failed to create panel bridge\n");
+		return PTR_ERR(panel_bridge);
+	}
+	max_bridge->panel_bridge = panel_bridge;
+
+	if (max_bridge->is_support_mst) {
+		ret = drm_of_find_panel_or_bridge(dev->of_node, 3, 0, &max_bridge->panel2, NULL);
+		if (!max_bridge->panel2) {
+			pr_info("[MAX96851] Failed to find panel2 %d\n", ret);
+			return -EINVAL;
+		}
+		dev_info(dev, "[MAX96851] Found panel2 node: %pOF\n", max_bridge->panel2->dev->of_node);
+	}
+
+	ret = get_panel_feature_info_from_dts(max_bridge);
+	if (ret)
+		pr_info("[MAX96851] use default setting\n");
 
 	ret = drm_bridge_attach(bridge->encoder, max_bridge->panel_bridge,
 					bridge, flags | DRM_BRIDGE_ATTACH_NO_CONNECTOR);
