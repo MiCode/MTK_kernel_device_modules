@@ -6684,7 +6684,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					 /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MDP_LOCK>,
 					 /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MML_LOCK>,
 					 /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_VFMT_LOCK>,
-					 /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_DISP_LOCK>;
+					 /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_DISP_LOCK>,
+					 /bits/ 16 <CMDQ_SYNC_TOKEN_MML_MML_STOP>;
 			mboxes = <&gce 13 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 			mediatek,smi = <&smi_mdp_common &mmsram_smi_2x1_sub_comm4>;
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MM_INFRA>;
@@ -13520,7 +13521,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"DLOUT0_SEL_IN",
 				"MOUT_MASK0", "MOUT_MASK1", "MOUT_MASK2",
 				"DDREN_DEBUG",
-				"DL_OUT_RELAY0_SIZE",
+				"DL_IN_RELAY0_SIZE", "DL_OUT_RELAY0_SIZE",
+				"DLI_ASYNC0_STATUS0", "DLI_ASYNC0_STATUS1",
 				"DLO_ASYNC0_STATUS0", "DLO_ASYNC0_STATUS1",
 				"DL_VALID0", "DL_VALID1", "DL_VALID2", "DL_VALID3",
 				"DL_READY0", "DL_READY1", "DL_READY2", "DL_READY3",
@@ -13545,7 +13547,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<MML_DLOUT0_SEL_IN>,
 				<MML_MOUT_MASK0>, <MML_MOUT_MASK1>, <MML_MOUT_MASK2>,
 				<MML_DDREN_DEBUG>,
-				<MML_DL_OUT_RELAY0_SIZE>,
+				<MML_DL_IN_RELAY0_SIZE>, <MML_DL_OUT_RELAY0_SIZE>,
+				<MML_DLI_ASYNC0_STATUS0>, <MML_DLI_ASYNC0_STATUS1>,
 				<MML_DLO_ASYNC0_STATUS0>, <MML_DLO_ASYNC0_STATUS1>,
 				<MML_DL_VALID0>, <MML_DL_VALID1>, <MML_DL_VALID2>, <MML_DL_VALID3>,
 				<MML_DL_READY0>, <MML_DL_READY1>, <MML_DL_READY2>, <MML_DL_READY3>,
@@ -13557,6 +13560,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				MML1_RDMA2 MML_RDMA2_AIDSEL 0x1 0x3
 				MML1_WROT0 MML_WROT0_AIDSEL 0x1 0x3
 				MML1_WROT2 MML_WROT2_AIDSEL 0x1 0x3>;
+			racing-enable;
 			event-ir-mml-ready = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_IR_MML_READY>;
 			event-ir-disp-ready = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_IR_DISP_READY>;
 			event-ir-mml-stop = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_MML_STOP>;
@@ -13571,8 +13575,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			operating-points-v2 = <&opp_table_disp>;
 			gce-supply = <&gce>;
 			mmqos-supply = <&mmqos>;
-			//event-dpc-prete = /bits/ 16 <CMDQ_EVENT_DPC_DT34_DONE>;
-			//dpc-base = <0x1c000000>;
 		};
 
 		mml1_mutex0: mml1-mutex0@1f801000 {
@@ -13605,8 +13607,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			fg0 = <MML1_FG0 1 4>;
 			/* !!Above code generate by topology parser (tpparser.py)!! */
 
-			mutex-ids = <MML1_RDMA0 0>;
-			//dpc-base = <0x1c000000>;
+			mutex-ids = <MML1_RDMA0 0 MML1_DLI0 1>;
+			event-pipe0-mml = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE0>;
+			event-pipe1-mml = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE1>;
 		};
 
 		mml1_rdma0: mml1-rdma0@1f803000 {
@@ -13699,7 +13702,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			event-bufa = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUFA>;
 			event-bufb = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUFB>;
 			event-buf-next = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUF_NEXT>;
-			// inlinerot = <&inlinerot0>;
+			inlinerot = <&inlinerot0>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L3_P1_MDP_WROT0)
 					&mmqos SLAVE_COMMON(1)>;
