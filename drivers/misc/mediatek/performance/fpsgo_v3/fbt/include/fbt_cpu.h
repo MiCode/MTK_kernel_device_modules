@@ -36,6 +36,7 @@ void fpsgo_base2fbt_item_del(struct fbt_thread_blc *pblc,
 		struct render_info *thr);
 int fpsgo_base2fbt_get_max_blc_pid(int *pid, unsigned long long *buffer_id);
 void fpsgo_base2fbt_check_max_blc(void);
+int fpsgo_base2fbt_get_cluster_num(void);
 void fpsgo_base2fbt_no_one_render(void);
 void fpsgo_base2fbt_only_bypass(void);
 void fpsgo_base2fbt_set_min_cap(struct render_info *thr, int min_cap,
@@ -177,6 +178,7 @@ static inline void fpsgo_base2fbt_item_del(struct fbt_thread_blc *pblc,
 static inline int fpsgo_base2fbt_get_max_blc_pid(int *pid,
 		unsigned long long *buffer_id) { return 0; }
 static inline void fpsgo_base2fbt_check_max_blc(void) { }
+static inline int fpsgo_base2fbt_get_cluster_num(void) { return 0; }
 static inline void fpsgo_base2fbt_no_one_render(void) { }
 static inline int fbt_switch_ceiling(int en) { return 0; }
 static inline void fpsgo_base2fbt_set_min_cap(struct render_info *thr,

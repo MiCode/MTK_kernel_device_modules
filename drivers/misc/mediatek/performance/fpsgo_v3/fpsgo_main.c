@@ -1201,7 +1201,7 @@ void fpsgo_switch_enable(int enable)
 		return;
 	}
 
-	if (fpsgo_arch_nr_clusters() <= 0) {
+	if (fpsgo_base2fbt_get_cluster_num() <= 0) {
 		FPSGO_LOGE("[%s] DON'T ENABLE FPSGO: nr_cluster <= 0", __func__);
 		return;
 	}

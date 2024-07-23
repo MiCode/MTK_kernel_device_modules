@@ -6431,6 +6431,11 @@ int fpsgo_base2fbt_get_max_blc_pid(int *pid, unsigned long long *buffer_id)
 	return 1;
 }
 
+int fpsgo_base2fbt_get_cluster_num(void)
+{
+	return cluster_num;
+}
+
 void fpsgo_base2fbt_check_max_blc(void)
 {
 	if (!fbt_is_enable())
