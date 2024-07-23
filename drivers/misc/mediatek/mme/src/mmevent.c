@@ -25,8 +25,6 @@
 
 #include "mmevent.h"
 
-#define MIN(x, y)   ((x) <= (y) ? (x) : (y))
-
 /* If it is 64bit use __pa_nodebug, otherwise use __pa_symbol_nodebug or __pa */
 #ifndef __pa_nodebug
 #ifdef __pa_symbol_nodebug
@@ -704,12 +702,16 @@ static void get_pid_info(struct mme_unit_t *p_ring_buffer, unsigned int buffer_u
 
 					if (!get_hash_value((unsigned long)p_str))
 						add_hash_entry((unsigned long)p_str, p_str);
+				} else {
+					MMEERR("invalid p_str, index:%d, p_str:%llx, unit_size:%d, i:%d",
+							index, (unsigned long long)p_str, unit_size, i);
 				}
 			}
 
 			if (type == DATA_FLAG_STACK_REGION_STRING) {
 				int max_length = (unit_size - MME_HEADER_UNIT_SIZE) * MME_UNIT_SIZE - data_size;
 
+				max_length = MIN(max_length, MAX_STACK_STR_SIZE);
 				p_str = (char *)p;
 				type_size = sizeof(char *);
 				p_str += type_size;
@@ -719,7 +721,8 @@ static void get_pid_info(struct mme_unit_t *p_ring_buffer, unsigned int buffer_u
 					p_str += 1;
 				}
 				if (type_size == max_length && *p_str != '\0') {
-					MMEERR("invalid stack region string, index:%d, type_size:%d", index, type_size);
+					MMEERR("invalid stack str,index:%d,type_size:%d,unit_size:%d,data_size:%d,i:%d",
+							index, type_size, unit_size, data_size, i);
 					break;
 				}
 				type_size = _ALIGN_4_BYTES(type_size + 1);

@@ -239,9 +239,10 @@
 			is_stack_str = true; \
 		size_data = (is_str_data ? (is_stack_str ? \
 					(_ALIGN_4_BYTES(sizeof(char *) + \
-					(str_len=strlen((char *)(unsigned long)(data))) + 1)) : \
+					(str_len=MIN(strlen((char *)(unsigned long)(data)), \
+					MAX_STACK_STR_SIZE)) + 1)) : \
 					sizeof(char *)): (is_int_pointer_data ? FLAG_INT_POINTER_SIZE : \
-					 sizeof(data))); \
+					sizeof(data))); \
 		flag_data = (is_str_data ? \
 					(is_stack_str ? \
 					DATA_FLAG_STACK_REGION_STRING : DATA_FLAG_CODE_REGION_STRING) : \

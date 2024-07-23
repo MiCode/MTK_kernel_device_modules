@@ -128,6 +128,7 @@ enum data_flag_t {
 	DATA_FLAG_CODE_REGION_STRING = 7
 };
 
+#define MIN(x, y)   ((x) <= (y) ? (x) : (y))
 #define FLAG_INT_POINTER_SIZE 16
 #define POINTER_SIZE 8
 #define U64_POINTER 1
@@ -191,7 +192,9 @@ static inline void save_int_pointer_data(unsigned long long p_buf,
 
 #define MAX_PID_COUNT 480
 
-#define MME_MAX_UNIT_NUM 128
+#define MAX_STACK_STR_SIZE 1015
+
+#define MME_MAX_UNIT_NUM 256
 
 #define _MME_UNIT_NUM(x) ((((x) + 7) >> 3) + MME_HEADER_UNIT_SIZE)
 
