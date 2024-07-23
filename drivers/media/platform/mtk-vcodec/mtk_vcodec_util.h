@@ -93,6 +93,7 @@ enum eos_types {
 enum mtk_instance_type {
 	MTK_INST_DECODER                = 0,
 	MTK_INST_ENCODER                = 1,
+	MTK_INST_MAX,
 };
 
 struct mtk_vcodec_mem {
@@ -360,6 +361,7 @@ enum mtk_put_buffer_type {
 	PUT_BUFFER_CALLBACK = 0,
 };
 
+void mtk_vcodec_set_dev(struct mtk_vcodec_dev *dev, enum mtk_instance_type type);
 int mtk_vcodec_get_chipid(struct mtk_chipid *chip_id);
 bool mtk_vcodec_is_vcp(int type);
 bool mtk_vcodec_is_state(struct mtk_vcodec_ctx *ctx, int state);
@@ -381,6 +383,7 @@ void mtk_vcodec_add_ctx_list(struct mtk_vcodec_ctx *ctx);
 void mtk_vcodec_del_ctx_list(struct mtk_vcodec_ctx *ctx);
 bool mtk_vcodec_ctx_list_empty(struct mtk_vcodec_dev *dev);
 void mtk_vcodec_dump_ctx_list(struct mtk_vcodec_dev *dev, unsigned int debug_level);
+int mtk_vcodec_get_op_by_pid(enum mtk_instance_type type, int pid);
 struct vdec_fb *mtk_vcodec_get_fb(struct mtk_vcodec_ctx *ctx);
 struct mtk_vcodec_mem *mtk_vcodec_get_bs(struct mtk_vcodec_ctx *ctx);
 int mtk_vdec_put_fb(struct mtk_vcodec_ctx *ctx, enum mtk_put_buffer_type type, bool no_need_put);

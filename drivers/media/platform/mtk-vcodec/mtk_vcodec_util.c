@@ -34,6 +34,15 @@ char mtk_venc_tmp_log[LOG_PROPERTY_SIZE];
 char mtk_vdec_tmp_prop[LOG_PROPERTY_SIZE];
 char mtk_venc_tmp_prop[LOG_PROPERTY_SIZE];
 
+static struct mtk_vcodec_dev *dev_ptr[MTK_INST_MAX];
+
+
+void mtk_vcodec_set_dev(struct mtk_vcodec_dev *dev, enum mtk_instance_type type)
+{
+	if (dev && type < MTK_INST_MAX && type >= 0)
+		dev_ptr[type] = dev;
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_set_dev);
 
 void mtk_vcodec_check_alive(struct timer_list *t)
 {
@@ -489,6 +498,37 @@ void mtk_vcodec_dump_ctx_list(struct mtk_vcodec_dev *dev, unsigned int debug_lev
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_dump_ctx_list);
+
+int mtk_vcodec_get_op_by_pid(enum mtk_instance_type type, int pid)
+{
+	struct mtk_vcodec_dev *dev = NULL;
+	struct list_head *p, *q;
+	struct mtk_vcodec_ctx *ctx;
+	int fps = 0;
+
+	if (type < MTK_INST_MAX && type >= 0)
+		dev = dev_ptr[type];
+
+	if (dev == NULL)
+		return 0;
+
+	mutex_lock(&dev->ctx_mutex);
+	list_for_each_safe(p, q, &dev->ctx_list) {
+		ctx = list_entry(p, struct mtk_vcodec_ctx, list);
+		if (ctx != NULL && ctx->cpu_caller_pid == pid) {
+			fps = ctx->op_rate_adaptive;
+			mtk_v4l2_debug(2, "[%d] get fps %d by pid %d", ctx->id, fps, ctx->cpu_caller_pid);
+		} else if (ctx != NULL)
+			mtk_v4l2_debug(8, "[%d] pid %d, fps %d (not found pid %d)",
+				ctx->id, ctx->cpu_caller_pid, ctx->op_rate_adaptive, pid);
+		else
+			mtk_v4l2_err("get NULL ctx in ctx list");
+	}
+	mutex_unlock(&dev->ctx_mutex);
+
+	return fps;
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_get_op_by_pid);
 
 static void mtk_vcodec_set_uclamp(bool enable, int ctx_id, int pid)
 {

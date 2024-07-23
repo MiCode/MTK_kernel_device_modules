@@ -4822,6 +4822,7 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_MPEG_MTK_CALLING_PID:
 		ctx->cpu_caller_pid = ctrl->val;
+		mtk_v4l2_debug(1, "[%d] set caller pid %d", ctx->id, ctx->cpu_caller_pid);
 		break;
 	case V4L2_CID_VDEC_TRICK_MODE:
 	case V4L2_CID_VDEC_NO_REORDER:
