@@ -399,6 +399,11 @@ int drm_show_dal(struct drm_crtc *crtc, bool enable)
 		mtk_crtc->usage_ovl_fmt[6] = 4;
 		mtk_ddp_comp_io_cmd(ovl_comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
 	}
+	if (enable && priv->data->mmsys_id == MMSYS_MT6899) {
+		bw_base = mtk_drm_primary_frame_bw(crtc);
+		mtk_crtc->usage_ovl_fmt[5] = 2;
+		mtk_ddp_comp_io_cmd(ovl_comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
+	}
 
 	if (priv->data->mmsys_id == MMSYS_MT6991)
 		layer_id = 5;

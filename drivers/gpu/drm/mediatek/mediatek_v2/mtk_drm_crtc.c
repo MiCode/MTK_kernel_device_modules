@@ -4355,7 +4355,8 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 		DDPINFO("%s: need handle dal layer\n", __func__);
 		if (priv && priv->data->mmsys_id == MMSYS_MT6991)
 			mtk_crtc->usage_ovl_fmt[6] = 2;
-		if (priv && priv->data->mmsys_id == MMSYS_MT6989)
+		if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
+			priv->data->mmsys_id == MMSYS_MT6899))
 			mtk_crtc->usage_ovl_fmt[5] = 2;
 	}
 
@@ -12697,7 +12698,8 @@ skip:
 		mtk_disp_set_module_hrt(mtk_crtc, 0, NULL, PMQOS_SET_HRT_BW);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
-			priv->data->mmsys_id == MMSYS_MT6991 && crtc_id == 0)
+			(priv->data->mmsys_id == MMSYS_MT6991 ||
+			priv->data->mmsys_id == MMSYS_MT6899) && crtc_id == 0)
 		mtk_crtc_stop_bwm_ratio_loop(crtc);
 
 	/* 6. stop trig loop  */
