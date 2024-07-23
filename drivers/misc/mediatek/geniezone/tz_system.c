@@ -96,7 +96,6 @@ DEFINE_MUTEX(perf_boost_lock);
 struct platform_device *tz_system_dev;
 EXPORT_SYMBOL(tz_system_dev);
 
-struct completion ree_dummy_event;
 struct task_struct *ree_dummy_task;
 
 #if IS_ENABLED(CONFIG_PM_SLEEP)
@@ -695,101 +694,26 @@ void make_64_params_local(union MTEEC_PARAM *dst, uint32_t types)
 	}
 }
 
-
-/* GZ Ree service
- */
-enum GZ_ReeServiceCommand {
-
-	REE_SERVICE_CMD_BASE = 0x0,
-	REE_SERVICE_CMD_ADD,
-	REE_SERVICE_CMD_MUL,
-	REE_SERVICE_CMD_NEW_THREAD,
-	REE_SERVICE_CMD_KICK_SEM,
-	REE_SERVICE_CMD_TEE_INIT_CTX,
-	REE_SERVICE_CMD_TEE_FINAL_CTX,
-	REE_SERVICE_CMD_TEE_OPEN_SE,
-	REE_SERVICE_CMD_TEE_CLOSE_SE,
-	REE_SERVICE_CMD_TEE_INVOK_CMD,
-	REE_SERVICE_CMD_END
-};
-
-
-struct nop_param {
-	uint32_t type; /* 1: new thread, 2: kick semaphore */
-	uint64_t value;
-	uint32_t boost_enabled;
-};
-
-struct nop_param new_param;
-
-int ree_dummy_thread(void *data)
+static int ree_service_threads(uint32_t cmd, uint32_t ree_cpu)
 {
-	/* int curr_cpu = get_cpu(); */
-	/* uint32_t boost_enabled = 0; */
-	struct platform_device *pdev = (struct platform_device *)data;
-	struct device *trusty_dev = NULL;
-	struct sched_param param = { .sched_priority = 1 };
-	struct trusty_nop nop;
-	int ret;
+	unsigned int cpu;
+	struct trusty_nop *nop;
+	unsigned int request_cpu_cluster = topology_cluster_id(ree_cpu);
+	unsigned int cluster_id;
 
-	KREE_DEBUG("%s +++++\n", __func__);
+	for_each_possible_cpu(cpu) {
+		if (cpu == ree_cpu)
+			continue;
 
-	if (!data) {
-		KREE_ERR("%s failed to get data %p\n", __func__, data);
-		return 0;
+		cluster_id = topology_cluster_id(cpu);
+		if (cluster_id != request_cpu_cluster)
+			continue;
+
+		nop = vmalloc(sizeof(struct trusty_nop));
+		trusty_nop_init(nop, cmd, 0, 0);
+		trusty_enqueue_nop(tz_system_dev->dev.parent, nop, cpu);
 	}
 
-	trusty_dev = pdev->dev.parent;
-	if (!pdev) {
-		KREE_ERR("%s failed to get device %p\n", __func__, trusty_dev);
-		return 0;
-	}
-
-	sched_setscheduler(current, SCHED_FIFO, &param);
-	trusty_nop_init(&nop, 0, 0, 0);
-
-	while (1) {
-		ret = wait_for_completion_interruptible(&ree_dummy_event);
-		if (ret != 0)
-			KREE_DEBUG("%s: wait_for_completion failed, ret=%d %p",
-				__func__, ret, get_current());
-
-		/* REE_SERVICE_CMD_KICK_SEM */
-		if (new_param.type == 2)
-			usleep_range(100, 200);
-
-		nop.args[0] = new_param.type;
-		nop.args[1] = (uint32_t)new_param.value;
-		nop.args[2] = (uint32_t)(new_param.value >> 32);
-
-		/* get into GZ through NOP SMC call */
-		preempt_disable();
-		trusty_enqueue_nop(trusty_dev, &nop, smp_processor_id());
-		preempt_enable();
-	}
-	KREE_ERR("%s leave(%d)\n", __func__, ret);
-
-	return 0;
-}
-
-static int ree_service_threads(uint32_t type, uint32_t val_a, uint32_t val_b,
-			       uint32_t param1_val_b)
-{
-	struct cpumask ree_cpumask;
-
-	new_param.type = type;
-	new_param.value = (((uint64_t)val_b) << 32) | val_a;
-	new_param.boost_enabled = (param1_val_b & 0x00ff0000)>>16;
-
-	preempt_disable();
-	cpumask_copy(&ree_cpumask, cpu_all_mask);
-	cpumask_clear_cpu(smp_processor_id(), &ree_cpumask);
-	preempt_enable();
-
-	if (!cpumask_empty(&ree_cpumask))
-		set_cpus_allowed_ptr(ree_dummy_task, &ree_cpumask);
-
-	complete(&ree_dummy_event);
 	return 0;
 }
 
@@ -844,8 +768,6 @@ TZ_RESULT _Gz_KreeServiceCall_body(KREE_SESSION_HANDLE handle, uint32_t command,
 				   uint32_t paramTypes,
 				   union MTEEC_PARAM param[4])
 {
-	int ret;
-
 	/*
 	 * NOTE: Only support VALUE type gp parameters
 	 */
@@ -864,26 +786,15 @@ TZ_RESULT _Gz_KreeServiceCall_body(KREE_SESSION_HANDLE handle, uint32_t command,
 		break;
 
 	case REE_SERVICE_CMD_NEW_THREAD:
-		KREE_DEBUG(
-			"[REE service call] fork threads 0x%x%x, parm1ValB=0x%x\n",
-			param[0].value.b, param[0].value.a, param[1].value.b);
-		ret = ree_service_threads(1, (uint32_t)param[0].value.a,
-					  (uint32_t)param[0].value.b,
-					  (uint32_t)param[1].value.b);
-		param[1].value.a = ret;
-		break;
-
 	case REE_SERVICE_CMD_KICK_SEM:
 		KREE_DEBUG(
 			"[REE service call] kick semaphore 0x%x%x, parm1ValB=0x%x\n",
 			param[0].value.b, param[0].value.a, param[1].value.b);
-		ret = ree_service_threads(2, (uint32_t)param[0].value.a,
-					  (uint32_t)param[0].value.b,
-					  (uint32_t)param[1].value.b);
-		param[1].value.a = ret;
+		ree_service_threads(command, (uint32_t)param[0].value.a);
 		break;
 
 #if IS_ENABLED(CONFIG_TEE)
+	int ret;
 	case REE_SERVICE_CMD_TEE_INIT_CTX:
 		ret = TEEC_InitializeContext(
 			(char *)param[0].mem.buffer,
@@ -1324,18 +1235,6 @@ static int tz_system_probe(struct platform_device *pdev)
 		return TZ_RESULT_ERROR_GENERIC;
 	}
 #endif
-
-	init_completion(&ree_dummy_event);
-
-	ree_dummy_task = kthread_create(ree_dummy_thread, pdev, "ree_dummy_task");
-	if (IS_ERR(ree_dummy_task)) {
-		KREE_ERR("Unable to start kernel thread %s\n",
-			__func__);
-		ret = PTR_ERR(ree_dummy_task);
-	} else {
-		set_user_nice(ree_dummy_task, -20);
-		wake_up_process(ree_dummy_task);
-	}
 
 	tz_system_dev = pdev;
 
