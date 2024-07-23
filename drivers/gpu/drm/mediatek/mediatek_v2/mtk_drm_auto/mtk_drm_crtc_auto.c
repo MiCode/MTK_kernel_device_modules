@@ -51,6 +51,32 @@ struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,
 	return NULL;
 }
 
+int mtk_drm_crtc_init_plane(struct drm_device *drm_dev, struct mtk_drm_crtc *mtk_crtc, int pipe)
+{
+	unsigned int zpos;
+	enum drm_plane_type type;
+	int ret;
+
+	DDPMSG("%s CRTC%d layer_nr %d\n",
+	       __func__, pipe, mtk_crtc->layer_nr);
+
+	for (zpos = 0; zpos < mtk_crtc->layer_nr; zpos++) {
+		if (zpos == 0)
+			type = DRM_PLANE_TYPE_PRIMARY;
+		else
+			type = DRM_PLANE_TYPE_OVERLAY;
+
+		ret = mtk_plane_init(drm_dev, &mtk_crtc->planes[zpos], zpos,
+				     BIT(pipe), type);
+		if (ret) {
+			DDPMSG("[E] %s CRTC%d plane %d init fail!\n", __func__, pipe, zpos);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
 void mtk_get_output_timing(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);

@@ -20127,15 +20127,6 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		if (ret)
 			return ret;
 	}
-#else
-	for (zpos = 0; zpos < mtk_crtc->layer_nr; zpos++) {
-		type = (zpos == 0) ? DRM_PLANE_TYPE_PRIMARY : DRM_PLANE_TYPE_OVERLAY;
-		ret = mtk_plane_init(drm_dev, &mtk_crtc->planes[zpos], zpos,
-				     BIT(pipe), type);
-		if (ret)
-			return ret;
-	}
-#endif
 
 	if (mtk_crtc->layer_nr == 1UL) {
 		ret = mtk_drm_crtc_init(drm_dev, mtk_crtc,
@@ -20147,6 +20138,17 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	}
 	if (ret < 0)
 		return ret;
+#else
+	ret = mtk_drm_crtc_init_plane(drm_dev, mtk_crtc, pipe);
+	if (ret)
+		return ret;
+
+	ret = mtk_drm_crtc_init(drm_dev, mtk_crtc,
+				&mtk_crtc->planes[0].base, NULL, pipe);
+
+	if (ret)
+		return ret;
+#endif
 
 	/*
 	 * Workaround:
