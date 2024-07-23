@@ -12892,6 +12892,8 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 	//cmdq_pkt_wfe(handle,
 		//crtc->gce_obj.event[EVENT_CABC_EOF]);
 
+	CRTC_MMP_MARK(0, pu_ddic_cmd, 0, 0);
+
 	if (comp->id == DDP_COMPONENT_DSI0) {
 		dsi->set_partial_update = enable;
 		dsi->roi_y_offset = partial_roi.y;

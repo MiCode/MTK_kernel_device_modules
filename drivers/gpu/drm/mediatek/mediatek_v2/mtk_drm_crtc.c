@@ -84,6 +84,9 @@
 #include "mtk_drm_auto/mtk_drm_crtc_auto.h"
 #endif
 
+int debug_merge_t = 150;
+module_param(debug_merge_t, int, 0644);
+
 int debug_trigger_loop;
 module_param(debug_trigger_loop, int, 0644);
 
@@ -9918,7 +9921,7 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 	unsigned int dsi_pll_check_off_offset = CMDQ_US_TO_TICK(500);
 	unsigned int skip_merge_trigger_offset = CMDQ_US_TO_TICK(1000);
 	unsigned int v_idle_power_off_offset = CMDQ_US_TO_TICK(300);
-	unsigned int merge_trigger_offset = CMDQ_US_TO_TICK(150);
+	unsigned int merge_trigger_offset = CMDQ_US_TO_TICK(debug_merge_t);
 	unsigned int prefetch_te_offset = CMDQ_US_TO_TICK(150);
 	unsigned int frame_time = 0;
 
@@ -17852,6 +17855,10 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		partial_roi.x, partial_roi.y, partial_roi.width,
 		partial_roi.height, enable, partial_enable);
 
+	CRTC_MMP_MARK(0, pu_final_roi,
+		partial_roi.y << 16 | partial_roi.height,
+		enable << 16 | partial_enable);
+
 	state->ovl_partial_roi = partial_roi;
 
 	/* set ovl_partial_dirty if roi is full lcm */
@@ -17881,8 +17888,12 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		return ret;
 	}
 
+	if (debug_trigger_loop & BIT(4))
+		mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 1);
 	cmdq_pkt_wfe(cmdq_handle,
 		mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+	if (debug_trigger_loop & BIT(4))
+		mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 2);
 
 	/* bypass PQ module if enable partial update */
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
@@ -17912,8 +17923,12 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 			mtk_ddp_comp_partial_update(comp, cmdq_handle, partial_roi, partial_enable);
 	}
 
+	if (debug_trigger_loop & BIT(4))
+		mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 4);
 	cmdq_pkt_set_event(cmdq_handle,
 		mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+	if (debug_trigger_loop & BIT(4))
+		mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 5);
 
 	return ret;
 
