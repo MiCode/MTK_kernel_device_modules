@@ -542,6 +542,12 @@
 		/* reserved for overlay by odm */
 	};
 
+	mbraink_v6899: mbraink-plat {
+		compatible = "mediatek,mbraink-v6899";
+		gauge = <&mtk_gauge>;
+		ufsnotify = <&ufshci>;
+	};
+
 	met {
 		met_emi: met-emi {
 			compatible = "mediatek,met_emi";
@@ -16685,6 +16691,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	goodix_fp: fingerprint {
 		compatible = "mediatek,goodix-fp";
 	};
+
 };
 
 &i2c5 {
