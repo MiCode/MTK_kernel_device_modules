@@ -845,8 +845,10 @@ static ssize_t _mtkthermal_tz_write
 			struct mtk_thermal_tz_data *tzdata = NULL;
 
 			tzdata = tz->devdata;
-			if (!tzdata)
-				WARN_ON_ONCE(1);
+			if (!tzdata) {
+				THRML_ERROR_LOG("%s null tzdata\n", __func__);
+				return -EINVAL;
+			}
 
 			mutex_lock(&tzdata->ma_lock);
 			tzdata->fake_temp = (long)arg_val;

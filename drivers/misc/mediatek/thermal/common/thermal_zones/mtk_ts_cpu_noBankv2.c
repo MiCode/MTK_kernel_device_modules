@@ -2215,8 +2215,7 @@ void tscpu_update_tempinfo(void)
 }
 
 #if defined(FAST_RESPONSE_ATM)
-DEFINE_SPINLOCK(timer_lock);
-int is_worktimer_en = 1;
+atomic_t is_worktimer_en = ATOMIC_INIT(1);
 #endif
 
 void tscpu_workqueue_cancel_timer(void)
@@ -2225,14 +2224,12 @@ void tscpu_workqueue_cancel_timer(void)
 	if (down_trylock(&sem_mutex))
 		return;
 
-	if (is_worktimer_en && thz_dev) {
+	if (atomic_read(&is_worktimer_en) && thz_dev) {
 		cancel_delayed_work(&(thz_dev->poll_queue));
 		isTimerCancelled = 1;
 
 		tscpu_dprintk("[tTimer] workqueue stopping\n");
-		spin_lock(&timer_lock);
-		is_worktimer_en = 0;
-		spin_unlock(&timer_lock);
+		atomic_set(&is_worktimer_en, 0);
 	}
 
 	up(&sem_mutex);
@@ -2259,15 +2256,13 @@ void tscpu_workqueue_start_timer(void)
 	if (down_trylock(&sem_mutex))
 		return;
 
-	if (!is_worktimer_en && thz_dev != NULL && interval != 0) {
+	if (!atomic_read(&is_worktimer_en) && thz_dev != NULL && interval != 0) {
 		mod_delayed_work(system_freezable_power_efficient_wq,
 						&(thz_dev->poll_queue), 0);
 		isTimerCancelled = 0;
 
 		tscpu_dprintk("[tTimer] workqueue starting\n");
-		spin_lock(&timer_lock);
-		is_worktimer_en = 1;
-		spin_unlock(&timer_lock);
+		atomic_set(&is_worktimer_en, 1);
 	}
 
 	up(&sem_mutex);
