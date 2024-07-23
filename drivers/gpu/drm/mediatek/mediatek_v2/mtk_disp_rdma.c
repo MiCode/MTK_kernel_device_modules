@@ -136,7 +136,10 @@ int disp_met_set(void *data, u64 val);
 #define FLD_RG_VDE_BLOCK_URGENT REG_FLD_MSB_LSB(31, 31)
 #define DISP_REG_RDMA_MEM_GMC_S4 0x00ec
 
-
+#define MT6768_DISP_REG_RDMA_IN_P_CNT 0x0f0
+#define MT6768_DISP_REG_RDMA_IN_LINE_CNT 0x0f4
+#define MT6768_DISP_REG_RDMA_OUT_P_CNT 0x0f8
+#define MT6768_DISP_REG_RDMA_OUT_LINE_CNT 0x0fC
 /* TODO: handle pixel/line cnt for other platform */
 #define DISP_REG_RDMA_IN_P_CNT 0x0120
 #define DISP_REG_RDMA_IN_LINE_CNT 0x0124
@@ -376,14 +379,25 @@ static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 		priv->abnormal_cnt++;
 	}
 	if (val & (1 << 4)) {
+		struct mtk_drm_private *drm_priv = NULL;
 		DDPPR_ERR("[IRQ] %s: underflow! cnt=%d\n",
 			  mtk_dump_comp_str(rdma), priv->underflow_cnt);
-
-		DDPMSG("%s: pix(%d,%d,%d,%d)\n", mtk_dump_comp_str(rdma),
-		       readl(DISP_REG_RDMA_IN_P_CNT + rdma->regs),
-		       readl(DISP_REG_RDMA_IN_LINE_CNT + rdma->regs),
-		       readl(DISP_REG_RDMA_OUT_P_CNT + rdma->regs),
-		       readl(DISP_REG_RDMA_OUT_LINE_CNT + rdma->regs));
+		if (mtk_crtc)
+			drm_priv = mtk_crtc->base.dev->dev_private;
+		if (drm_priv && (drm_priv->data->mmsys_id == MMSYS_MT6768
+			|| drm_priv->data->mmsys_id == MMSYS_MT6765
+			|| drm_priv->data->mmsys_id == MMSYS_MT6761))
+			DDPMSG("%s: pix(%d,%d,%d,%d)\n", mtk_dump_comp_str(rdma),
+				readl(MT6768_DISP_REG_RDMA_IN_P_CNT + rdma->regs),
+				readl(MT6768_DISP_REG_RDMA_IN_LINE_CNT + rdma->regs),
+				readl(MT6768_DISP_REG_RDMA_OUT_P_CNT + rdma->regs),
+				readl(MT6768_DISP_REG_RDMA_OUT_LINE_CNT + rdma->regs));
+		else
+			DDPMSG("%s: pix(%d,%d,%d,%d)\n", mtk_dump_comp_str(rdma),
+				readl(DISP_REG_RDMA_IN_P_CNT + rdma->regs),
+				readl(DISP_REG_RDMA_IN_LINE_CNT + rdma->regs),
+				readl(DISP_REG_RDMA_OUT_P_CNT + rdma->regs),
+				readl(DISP_REG_RDMA_OUT_LINE_CNT + rdma->regs));
 		mtk_rdma_analysis(rdma);
 		mtk_rdma_dump(rdma);
 		if (mtk_crtc) {
@@ -399,9 +413,15 @@ static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 				drm_priv->helper_opt,
 				MTK_DRM_OPT_RDMA_UNDERFLOW_AEE)) {
 				disp_met_set(NULL, 1);
+#if IS_ENABLED(CONFIG_ARM64)
+				DDPAEE_FATAL("%s: underflow! cnt=%d\n",
+				       mtk_dump_comp_str(rdma),
+				       priv->underflow_cnt);
+#else
 				DDPAEE("%s: underflow! cnt=%d\n",
 				       mtk_dump_comp_str(rdma),
 				       priv->underflow_cnt);
+#endif
 			}
 		}
 
@@ -1264,6 +1284,8 @@ int mtk_rdma_dump(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr = comp->regs;
 	struct mtk_disp_rdma *rdma = comp_to_rdma(comp);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
 
 	if (!baddr) {
 		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
@@ -1361,14 +1383,29 @@ int mtk_rdma_dump(struct mtk_ddp_comp *comp)
 			readl(DISP_REG_RDMA_MEM_GMC_S3 + baddr));
 		DDPDUMP("(0x0ec)DISP_REG_RDMA_MEM_GMC_SETTING_4=0x%x\n",
 			readl(DISP_REG_RDMA_MEM_GMC_S4 + baddr));
-		DDPDUMP("(0x0f0)R_IN_PXL_CNT=0x%x\n",
-			readl(DISP_REG_RDMA_IN_P_CNT + baddr));
-		DDPDUMP("(0x0f4)R_IN_LINE_CNT=0x%x\n",
-			readl(DISP_REG_RDMA_IN_LINE_CNT + baddr));
-		DDPDUMP("(0x0f8)R_OUT_PXL_CNT=0x%x\n",
-			readl(DISP_REG_RDMA_OUT_P_CNT + baddr));
-		DDPDUMP("(0x0fc)R_OUT_LINE_CNT=0x%x\n",
-			readl(DISP_REG_RDMA_OUT_LINE_CNT + baddr));
+		if (mtk_crtc)
+			priv = mtk_crtc->base.dev->dev_private;
+		if (priv && priv->data && (priv->data->mmsys_id == MMSYS_MT6768
+			|| priv->data->mmsys_id == MMSYS_MT6765
+			|| priv->data->mmsys_id == MMSYS_MT6761)) {
+			DDPDUMP("(0x0f0)R_IN_PXL_CNT=0x%x\n",
+				readl(MT6768_DISP_REG_RDMA_IN_P_CNT + baddr));
+			DDPDUMP("(0x0f4)R_IN_LINE_CNT=0x%x\n",
+				readl(MT6768_DISP_REG_RDMA_IN_LINE_CNT + baddr));
+			DDPDUMP("(0x0f8)R_OUT_PXL_CNT=0x%x\n",
+				readl(MT6768_DISP_REG_RDMA_OUT_P_CNT + baddr));
+			DDPDUMP("(0x0fc)R_OUT_LINE_CNT=0x%x\n",
+				readl(MT6768_DISP_REG_RDMA_OUT_LINE_CNT + baddr));
+		} else {
+			DDPDUMP("(0x120)R_IN_PXL_CNT=0x%x\n",
+				readl(DISP_REG_RDMA_IN_P_CNT + baddr));
+			DDPDUMP("(0x124)R_IN_LINE_CNT=0x%x\n",
+				readl(DISP_REG_RDMA_IN_LINE_CNT + baddr));
+			DDPDUMP("(0x128)R_OUT_PXL_CNT=0x%x\n",
+				readl(DISP_REG_RDMA_OUT_P_CNT + baddr));
+			DDPDUMP("(0x12c)R_OUT_LINE_CNT=0x%x\n",
+				readl(DISP_REG_RDMA_OUT_LINE_CNT + baddr));
+		}
 		DDPDUMP("(0x100)DISP_REG_RDMA_DBG_OUT=0x%x\n",
 			readl(DISP_REG_RDMA_DBG_OUT + baddr));
 		DDPDUMP("(0x10c)DISP_REG_RDMA_DBG_OUT1=0x%x\n",
@@ -1393,6 +1430,8 @@ int mtk_rdma_dump(struct mtk_ddp_comp *comp)
 int mtk_rdma_analysis(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr = comp->regs;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
 	unsigned int global_ctrl;
 	unsigned int bg0;
 	unsigned int bg1;
@@ -1432,15 +1471,30 @@ int mtk_rdma_analysis(struct mtk_ddp_comp *comp)
 		REG_FLD_VAL_GET(FIFO_CON_FLD_FIFO_PSEUDO_SIZE, fifo),
 		REG_FLD_VAL_GET(FIFO_CON_FLD_OUTPUT_VALID_FIFO_THRESHOLD, fifo),
 		readl(DISP_REG_RDMA_FIFO_LOG + baddr));
-	DDPDUMP("pos:in(%d,%d)out(%d,%d),bg(t%d,b%d,l%d,r%d)\n",
-		readl(DISP_REG_RDMA_IN_P_CNT + baddr),
-		readl(DISP_REG_RDMA_IN_LINE_CNT + baddr),
-		readl(DISP_REG_RDMA_OUT_P_CNT + baddr),
-		readl(DISP_REG_RDMA_OUT_LINE_CNT + baddr),
-		REG_FLD_VAL_GET(RDMA_BG_CON_1_TOP, bg1),
-		REG_FLD_VAL_GET(RDMA_BG_CON_1_BOTTOM, bg1),
-		REG_FLD_VAL_GET(RDMA_BG_CON_0_LEFT, bg0),
-		REG_FLD_VAL_GET(RDMA_BG_CON_0_RIGHT, bg0));
+	if (mtk_crtc)
+		priv = mtk_crtc->base.dev->dev_private;
+	if (priv && priv->data && (priv->data->mmsys_id == MMSYS_MT6768
+		|| priv->data->mmsys_id == MMSYS_MT6765
+		|| priv->data->mmsys_id == MMSYS_MT6761))
+		DDPDUMP("pos:in(%d,%d)out(%d,%d),bg(t%d,b%d,l%d,r%d)\n",
+			readl(MT6768_DISP_REG_RDMA_IN_P_CNT + baddr),
+			readl(MT6768_DISP_REG_RDMA_IN_LINE_CNT + baddr),
+			readl(MT6768_DISP_REG_RDMA_OUT_P_CNT + baddr),
+			readl(MT6768_DISP_REG_RDMA_OUT_LINE_CNT + baddr),
+			REG_FLD_VAL_GET(RDMA_BG_CON_1_TOP, bg1),
+			REG_FLD_VAL_GET(RDMA_BG_CON_1_BOTTOM, bg1),
+			REG_FLD_VAL_GET(RDMA_BG_CON_0_LEFT, bg0),
+			REG_FLD_VAL_GET(RDMA_BG_CON_0_RIGHT, bg0));
+	else
+		DDPDUMP("pos:in(%d,%d)out(%d,%d),bg(t%d,b%d,l%d,r%d)\n",
+			readl(DISP_REG_RDMA_IN_P_CNT + baddr),
+			readl(DISP_REG_RDMA_IN_LINE_CNT + baddr),
+			readl(DISP_REG_RDMA_OUT_P_CNT + baddr),
+			readl(DISP_REG_RDMA_OUT_LINE_CNT + baddr),
+			REG_FLD_VAL_GET(RDMA_BG_CON_1_TOP, bg1),
+			REG_FLD_VAL_GET(RDMA_BG_CON_1_BOTTOM, bg1),
+			REG_FLD_VAL_GET(RDMA_BG_CON_0_LEFT, bg0),
+			REG_FLD_VAL_GET(RDMA_BG_CON_0_RIGHT, bg0));
 #ifdef IF_ZERO /* TODO */
 	DDPDUMP("irq cnt:start=%d,end=%d,underflow=%d,targetline=%d\n",
 		rdma_start_irq_cnt[idx], rdma_done_irq_cnt[idx],
