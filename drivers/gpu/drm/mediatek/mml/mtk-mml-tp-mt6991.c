@@ -1000,13 +1000,14 @@ static inline bool tp_need_resize(struct mml_frame_info *info, bool *can_binning
 
 	/* for binning */
 	if (mml_binning && info->mode == MML_MODE_DIRECT_LINK) {
-		if (can_binning && (cw >= w * 2 || ch >= h * 2))
+		if (can_binning && (cw >= w * 2 || ch >= h * 2) &&
+			MML_FMT_YUV420(info->src.format)) {
 			*can_binning = true;
-
-		if (cw >= w * 2)
-			cw = cw / 2;
-		if (ch >= h * 2)
-			ch = ch / 2;
+			if (cw >= w * 2)
+				cw = cw / 2;
+			if (ch >= h * 2)
+				ch = ch / 2;
+		}
 	}
 
 	return info->dest_cnt != 1 ||
