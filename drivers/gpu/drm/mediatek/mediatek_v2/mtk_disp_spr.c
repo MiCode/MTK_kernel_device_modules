@@ -708,6 +708,11 @@ enum mtk_spr_version {
 	MTK_SPR_V3,
 };
 
+static const char *reg_names[2] = {
+	"mtk_spr_base",
+	"nvt_spr_base",
+};
+
 struct mtk_disp_spr_data {
 	bool support_shadow;
 	bool need_bypass_shadow;
@@ -838,7 +843,7 @@ static void mtk_spr_prepare(struct mtk_ddp_comp *comp)
 		DDPMSG("spr_params is null %s %d\n", __func__, __LINE__);
 		return;
 	}
-	if (spr_params->enable == 1	&& spr_params->relay == 0) {
+	if (spr_params->enable == 1 && spr_params->relay == 0) {
 		if (comp->mtk_crtc->spr_is_on)
 			panel_spr_enable = 0xfefe;
 		else
@@ -1295,7 +1300,8 @@ int mtk_spr_check_postalign_status(struct mtk_drm_crtc *mtk_crtc)
 	if(priv == NULL)
 		return -1;
 	if(priv->data->mmsys_id == MMSYS_MT6989 ||
-		priv->data->mmsys_id == MMSYS_MT6991) {
+		priv->data->mmsys_id == MMSYS_MT6991 ||
+		priv->data->mmsys_id == MMSYS_MT6899) {
 		postalign_comp = priv->ddp_comp[DDP_COMPONENT_POSTALIGN0];
 		baddr = postalign_comp->regs;
 		postalign_cfg = readl(baddr + MT6989_DISP_REG_POSTALIGN0_CFG);
@@ -1335,9 +1341,12 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 		return;
 	postalign_comp = priv->ddp_comp[DDP_COMPONENT_POSTALIGN0];
 
+	spr = comp_to_spr(comp);
+	if (spr == NULL || spr->data == NULL)
+		return;
 	if (comp->id == DDP_COMPONENT_SPR0) {
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991) {
+			spr->data->version == MTK_SPR_V3) {
 			postalign_comp = priv->ddp_comp[DDP_COMPONENT_POSTALIGN0];
 			config_regs = postalign_comp->regs;
 			config_regs_pa = postalign_comp->regs_pa;
@@ -1349,9 +1358,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 		config_regs = comp->mtk_crtc->side_config_regs;
 		config_regs_pa = comp->mtk_crtc->side_config_regs_pa;
 	}
-
 	spr_params = &comp->mtk_crtc->panel_ext->params->spr_params;
-	spr = comp_to_spr(comp);
 
 	if (comp->mtk_crtc->is_dual_pipe == true) {
 		postalign_width = cfg->w / 2;
@@ -1404,7 +1411,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 			crop_voffset = comp_overhead_v;
 		}
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991) {
+			spr->data->version == MTK_SPR_V3) {
 			mtk_ddp_write_mask(comp, width << 0,
 				MT6989_DISP_REG_SPR_CROP_SIZE, REG_FLD_MASK(MT6989_CROP_OUT_HSIZE), handle);
 			mtk_ddp_write_mask(comp, out_height << 16,
@@ -1426,7 +1433,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 		DISP_REG_V2_SPR_ROI_SIZE, handle);
 
 	//relay mode: roi size, crop_out_size, spr_en, spr_lut_en
-	if (disp_spr_bypass && priv->data->mmsys_id != MMSYS_MT6991) {
+	if (disp_spr_bypass && spr->data->version < MTK_SPR_V3) {
 		mtk_ddp_write_mask(comp, SPR_EN, DISP_REG_SPR_EN,
 			SPR_EN, handle);
 		mtk_ddp_write_mask(comp, SPR_LUT_EN, DISP_REG_SPR_EN,
@@ -1473,7 +1480,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 	if (spr_params->enable == 1 && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1) {
 		//postalign config
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991) {
+			spr->data->version == MTK_SPR_V3) {
 			mtk_ddp_write_relaxed(postalign_comp, 1, MT6989_DISP_REG_POSTALIGN0_EN,
 				handle);
 			if (spr->data) {
@@ -1564,7 +1571,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 		}
 
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991) {
+			spr->data->version == MTK_SPR_V3) {
 			mtk_ddp_write_relaxed(postalign_comp, reg_val,
 				MT6989_DISP_REG_POSTALIGN0_ARRANGE, handle);
 		} else {
@@ -1614,7 +1621,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 
 		//disable postalign
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991) {
+			spr->data->version == MTK_SPR_V3) {
 			mtk_ddp_write_relaxed(postalign_comp, 1, MT6989_DISP_REG_POSTALIGN0_EN,
 				handle);
 			if (spr->data) {
@@ -2121,7 +2128,7 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 	// SPR & Postallign reg config
 	if (comp->id == DDP_COMPONENT_SPR0) {
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991)
+			spr->data->version == MTK_SPR_V3)
 			postalign_comp = priv->ddp_comp[DDP_COMPONENT_POSTALIGN0];
 		else
 			config_regs_pa = comp->mtk_crtc->config_regs_pa;
@@ -2164,7 +2171,7 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 
 	if (spr->set_partial_update == 1) {
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991) {
+			spr->data->version == MTK_SPR_V3) {
 			mtk_ddp_write_mask(comp, crop_height << 16,
 				MT6989_DISP_REG_SPR_CROP_SIZE,
 				REG_FLD_MASK(MT6989_CROP_OUT_VSIZE), handle);
@@ -2198,7 +2205,7 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 			DISP_REG_SPR_CK_ON, 0xff000000, handle);
 	} else {
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991) {
+			spr->data->version == MTK_SPR_V3) {
 			mtk_ddp_write_mask(comp, full_height << 16,
 				MT6989_DISP_REG_SPR_CROP_SIZE,
 				REG_FLD_MASK(MT6989_CROP_OUT_VSIZE), handle);
@@ -2281,6 +2288,7 @@ static int mtk_disp_spr_probe(struct platform_device *pdev)
 	struct mtk_disp_spr *priv;
 	enum mtk_ddp_comp_id comp_id;
 	struct device_node *node = NULL;
+	struct resource *res = NULL;
 	int val = 0;
 	int ret;
 
@@ -2317,6 +2325,23 @@ static int mtk_disp_spr_probe(struct platform_device *pdev)
 			DDPMSG("spr-ip-type read failure\n");
 	} else {
 		DDPMSG("[E] %s %d, get spr ip type failed from dts\n", __func__, __LINE__);
+		return ret;
+	}
+
+	//read SPR base address from dts
+	if (priv->data && priv->data->mtk_spr_ip_addr_offset == 0) {
+		res = platform_get_resource_byname(pdev,
+			IORESOURCE_MEM, reg_names[priv->spr_ip_type]);
+		if (res == NULL) {
+			DDPMSG("miss reg in node, spr_ip_type:%d, %s",
+				priv->spr_ip_type, reg_names[priv->spr_ip_type]);
+			return -1;
+		}
+		priv->ddp_comp.regs_pa = res->start;
+		priv->ddp_comp.regs = ioremap(res->start, (res->end - res->start + 1));
+		//priv->ddp_comp.regs = ioremap(res->start, resource_size(res));
+		DDPMSG("%s regs_pa:0x%lx, regs:0x%pK, node:%s\n", __func__,
+			priv->ddp_comp.regs_pa, priv->ddp_comp.regs, node->full_name);
 	}
 
 	ret = component_add(dev, &mtk_disp_spr_component_ops);
@@ -2386,7 +2411,7 @@ static const struct mtk_disp_spr_data mt6899_spr_driver_data = {
 	.need_bypass_shadow = true,
 	.version = MTK_SPR_V3,
 	.shrink_cfg = true,
-	.mtk_spr_ip_addr_offset = 0xB000,
+	.mtk_spr_ip_addr_offset = 0x0,
 };
 
 static const struct mtk_disp_spr_data mt6886_spr_driver_data = {
