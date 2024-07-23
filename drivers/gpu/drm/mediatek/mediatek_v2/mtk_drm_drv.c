@@ -9258,15 +9258,17 @@ static int mtk_drm_se_enable(struct drm_device *dev, struct mtk_drm_crtc *mtk_cr
 	}
 
 	crtc = &mtk_crtc->base;
-	DDPMSG("%s crtc%d line%d\n", __func__, drm_crtc_index(crtc), __LINE__);
+	DDPMSG("%s %d crtc%d\n", __func__, __LINE__, drm_crtc_index(crtc));
 
 	if (mtk_crtc->virtual_path && mtk_crtc->phys_mtk_crtc)
 		mtk_drm_se_enable(dev, mtk_crtc->phys_mtk_crtc);
 
 	drm_modeset_acquire_init(&ctx, 0);
 	state = drm_atomic_state_alloc(crtc->dev);
-	if (!state)
+	if (!state) {
+		DDPMSG("%s drm_atomic_state_alloc fail!\n", __func__);
 		return -ENOMEM;
+	}
 
 	state->acquire_ctx = &ctx;
 
@@ -9292,18 +9294,33 @@ static int mtk_drm_se_enable(struct drm_device *dev, struct mtk_drm_crtc *mtk_cr
 	drm_connector_list_iter_end(&conn_iter);
 
 	mutex_lock(&dev->mode_config.mutex);
+	if (!connector) {
+		ret = -EINVAL;
+		mutex_unlock(&dev->mode_config.mutex);
+		DDPMSG("%s connector is not ready!", __func__);
+		goto out;
+	}
+
+	if (connector->funcs->detect(connector, false) != connector_status_connected) {
+		ret = -EINVAL;
+		mutex_unlock(&dev->mode_config.mutex);
+		DDPMSG("%s connector status is not connected(%d)!", __func__, connector->status);
+		goto out;
+	}
+
+	DDPMSG("%s conn:%d, enc:%d, poss crtc:0x%x\n", __func__,
+		connector->base.id, encoder->base.id, encoder->possible_crtcs);
+
 	connector->funcs->fill_modes(connector, dev->mode_config.max_width,
 						dev->mode_config.max_height);
 	mutex_unlock(&dev->mode_config.mutex);
 
 	conn_state = drm_atomic_get_connector_state(state, connector);
-
 	ret = drm_atomic_set_crtc_for_connector(conn_state, crtc);
 
 	mode = list_first_entry(&connector->modes, typeof(*mode), head);
 	drm_mode_debug_printmodeline(mode);
 	drm_mode_set_crtcinfo(mode, 0);
-
 	ret |= drm_atomic_set_mode_for_crtc(crtc_state, mode);
 	ret |= drm_atomic_commit(state);
  out:
@@ -9443,7 +9460,7 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 	struct mtk_plane_state *state;
 	struct mtk_drm_layer_info *layer_info = (struct mtk_drm_layer_info *)data;
 	struct mtk_drm_private *private = dev->dev_private;
-	int i = 0, enable_cnt = 0;
+	int i = 0, enable_cnt = 0, ret = -1;
 	struct mtk_panel_params *params;
 	int index = 0, crtc_id = 0;
 	struct mtk_crtc_se_plane *se_plane;
@@ -9482,8 +9499,12 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 	mtk_crtc = to_mtk_crtc(private->crtc[crtc_id]);
 
 	mutex_lock(&se_lock);
-	mtk_drm_se_enable(dev, mtk_crtc);
+	ret = mtk_drm_se_enable(dev, mtk_crtc);
 	mutex_unlock(&se_lock);
+	if (ret < 0) {
+		DDPMSG("%s connector is not ready, stop config\n", __func__);
+		return ret;
+	}
 
 	index = drm_crtc_index(&mtk_crtc->base);
 
