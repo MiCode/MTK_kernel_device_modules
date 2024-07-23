@@ -155,7 +155,8 @@ static int mtk_jpeg_calc_dst_size(struct mtk_jpeg_dec_param *param)
 		param->comp_w[i] = padding_w >> brz_w[i];
 		param->comp_w[i] = round_up(param->comp_w[i],
 					    MTK_JPEG_DCTSIZE);
-		param->img_stride[i] = round_up(param->comp_w[i], 16);
+		param->img_stride[i] = i ? round_up(param->comp_w[i], 16)
+					: round_up(param->comp_w[i], 32);
 
 		ds_row_h[i] = (MTK_JPEG_DCTSIZE * param->sampling_h[i]);
 	}
