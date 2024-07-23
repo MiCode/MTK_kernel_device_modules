@@ -1148,6 +1148,11 @@ static enum mml_mode support_couple(void)
 	return MML_MODE_DIRECT_LINK;
 }
 
+static bool tp_support_dc2(void)
+{
+	return true;
+}
+
 static enum mml_hw_caps support_hw_caps(void)
 {
 	return MML_HW_ALPHARSZ | MML_HW_PQ_HDR | MML_HW_PQ_MATRIX |
@@ -1162,6 +1167,7 @@ static const struct mml_topology_ops tp_ops_mt6899 = {
 	.get_racing_clt = get_racing_clt,
 	.get_dl_path = tp_get_dl_path,
 	.support_couple = support_couple,
+	.support_dc2 = tp_support_dc2,
 	.support_hw_caps = support_hw_caps,
 };
 
