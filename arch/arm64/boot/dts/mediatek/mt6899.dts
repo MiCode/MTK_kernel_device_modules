@@ -3387,7 +3387,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		vcore-supply = <&mt6363_vbuck2>;
 		vmm-pmic-supply = <&mt6319_6_vbuck1>;
 		vdisp-pmic-supply = <&mt6319_8_vbuck3>;
-		//mediatek,met-freerun;
+		mediatek,met-freerun;
 	};
 
 	mmdebug-vcp {
