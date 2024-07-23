@@ -9321,9 +9321,18 @@ static int mtk_drm_se_enable(struct drm_device *dev, struct mtk_drm_crtc *mtk_cr
 	return ret;
 }
 
+static void mtk_drm_se_cmdq_cb(struct cmdq_cb_data data)
+{
+	struct mtk_cmdq_cb_data *cb_data = data.data;
+
+	cmdq_pkt_destroy(cb_data->cmdq_handle);
+	kfree(cb_data);
+}
+
 static int mtk_drm_se_plane_config(struct mtk_drm_crtc *mtk_crtc)
 {
 	int index = drm_crtc_index(&mtk_crtc->base);
+	struct mtk_cmdq_cb_data *cb_data;
 	struct cmdq_pkt *cmdq_handle;
 	struct mtk_ddp_comp *comp;
 	int i = 0, ret;
@@ -9332,7 +9341,15 @@ static int mtk_drm_se_plane_config(struct mtk_drm_crtc *mtk_crtc)
 
 	DDPINFO("%s line:%d", __func__, __LINE__);
 
-	cmdq_handle = mtk_crtc_gce_commit_begin(&mtk_crtc->base, NULL, NULL, false);
+	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
+	if (!cb_data) {
+		DDPMSG("%s cb data creation failed\n", __func__);
+		return -1;
+	}
+
+	cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	cb_data->cmdq_handle = cmdq_handle;
+	cb_data->crtc = &mtk_crtc->base;
 
 	//disable panel layers
 	if (mtk_crtc->se_state == DISP_SE_START) {
@@ -9408,13 +9425,9 @@ static int mtk_drm_se_plane_config(struct mtk_drm_crtc *mtk_crtc)
 		mtk_crtc->se_state = DISP_SE_STOPPED;
 	}
 
-	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
-	ret = mtk_crtc_gce_flush(&mtk_crtc->base, NULL, cmdq_handle, cmdq_handle);
-	if (!ret) {
-		cmdq_pkt_wait_complete(cmdq_handle);
-		cmdq_pkt_destroy(cmdq_handle);
-	} else {
-		DDPMSG("%s[%d] mtk_crtc_gce_flush failed!\n", __func__, __LINE__);
+	ret = cmdq_pkt_flush_threaded(cmdq_handle, mtk_drm_se_cmdq_cb, cb_data);
+	if (ret < 0) {
+		DDPMSG("%s[%d] cmdq_pkt_flush_threaded failed!\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
