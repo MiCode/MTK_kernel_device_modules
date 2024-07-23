@@ -261,7 +261,8 @@ static void mtk_y2r_addon_config(struct mtk_ddp_comp *comp,
 
 	if (addon_config->config_type.type == ADDON_DISCONNECT)
 		return;
-	if (priv->data->mmsys_id == MMSYS_MT6989 || priv->data->mmsys_id == MMSYS_MT6991)
+	if (priv->data->mmsys_id == MMSYS_MT6989 || priv->data->mmsys_id == MMSYS_MT6991 ||
+			priv->data->mmsys_id == MMSYS_MT6899)
 		mtk_y2r_mt6989_config(mtk_crtc, comp,addon_config, handle);
 	else
 		mtk_y2r_config(mtk_crtc, comp,addon_config, handle);
@@ -279,7 +280,8 @@ void mtk_y2r_dump(struct mtk_ddp_comp *comp)
 		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
 		return;
 	}
-	if (priv->data->mmsys_id == MMSYS_MT6989 || priv->data->mmsys_id == MMSYS_MT6991)
+	if (priv->data->mmsys_id == MMSYS_MT6989 || priv->data->mmsys_id == MMSYS_MT6991 ||
+			priv->data->mmsys_id == MMSYS_MT6899)
 		mtk_mt6989_y2r_dump(comp);
 	else {
 		DDPDUMP("== DISP %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
@@ -494,6 +496,7 @@ static const struct of_device_id mtk_disp_y2r_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6991-disp-y2r",},
 	{.compatible = "mediatek,mt6886-disp-y2r",},
 	{.compatible = "mediatek,mt6897-disp-y2r",},
+	{.compatible = "mediatek,mt6899-disp-y2r",},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_y2r_driver_dt_match);

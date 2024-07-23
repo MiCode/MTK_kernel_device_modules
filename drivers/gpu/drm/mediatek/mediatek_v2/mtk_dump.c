@@ -268,10 +268,12 @@ int mtk_dump_reg(struct mtk_ddp_comp *comp)
 		break;
 	case DDP_COMPONENT_DLO_ASYNC3:
 	case DDP_COMPONENT_DLO_ASYNC7:
+	case DDP_COMPONENT_OVLSYS_DLO_ASYNC0:
 		mtk_dlo_async_dump(comp);
 		break;
 	case DDP_COMPONENT_DLI_ASYNC3:
 	case DDP_COMPONENT_DLI_ASYNC7:
+	case DDP_COMPONENT_OVLSYS_DLI_ASYNC0:
 		mtk_dli_async_dump(comp);
 		break;
 	case DDP_COMPONENT_INLINE_ROTATE0:

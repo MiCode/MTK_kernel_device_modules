@@ -1182,6 +1182,20 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 		}
 	}
 
+	//addon for IR
+	if (!crtc->state)
+		DDPDUMP("%s:%d dump nothing for null state\n", __func__, __LINE__);
+	else {
+		state = to_mtk_crtc_state(crtc->state);
+		if ((state->lye_state.mml_ir_lye && priv->data->mmsys_id == MMSYS_MT6989) ||
+			(state->lye_state.mml_ir_lye && priv->data->mmsys_id == MMSYS_MT6899) ||
+			(state->lye_state.mml_ir_lye && priv->data->mmsys_id == MMSYS_MT6991)){
+			addon_data = mtk_addon_get_scenario_data(__func__, crtc,
+					MML_DL);
+			mtk_drm_crtc_addon_dump(crtc, addon_data);
+		}
+	}
+
 	if (panel_ext && panel_ext->dsc_params.enable) {
 		if (crtc_id == 3)
 			comp = priv->ddp_comp[DDP_COMPONENT_DSC1];
@@ -3815,6 +3829,8 @@ static void mml_addon_module_connect(struct drm_crtc *crtc, unsigned int ddp_mod
 			mtk_addon_connect_between(crtc, ddp_mode, m[i], addon_config, cmdq_handle);
 		} else if (addon_module->type == ADDON_EMBED) {
 			c->is_yuv = (c->submit.info.dest[0].data.format == MML_FMT_YUVA1010102);
+			c->y2r_en = (c->is_yuv) |
+				((c->submit.info.dest[0].data.format == MML_FMT_RGBA8888) & !(c->submit.info.alpha));
 			mtk_addon_connect_embed(crtc, ddp_mode, m[i], addon_config, cmdq_handle);
 		} else if (addon_module->type == ADDON_BEFORE) {
 			c->is_yuv = (c->submit.info.dest[0].data.format == MML_FMT_YUVA1010102);
