@@ -310,7 +310,6 @@ static int panel_get_real_vdo_timing(struct drm_panel *panel, struct drm_display
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 static int panel_get_link_status(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
@@ -319,15 +318,12 @@ static int panel_get_link_status(struct drm_panel *panel)
 	return serdes_get_link_status(ctx->bridge);
 	pr_debug("%s -\n", __func__);
 }
-#endif
 
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
 	.ata_check = panel_ata_check,
 	.get_real_vdo_timing = panel_get_real_vdo_timing,
-#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 	.get_link_status = panel_get_link_status,
-#endif
 };
 
 static int lcm_get_modes(struct drm_panel *panel,

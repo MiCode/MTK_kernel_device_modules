@@ -45,10 +45,8 @@
 #define DES_INIT_CMD_NODE_NAME					"des-init-cmd"
 #define BL_ON_CMD_NODE_NAME						"bl-on-cmd"
 #define BL_OFF_CMD_NODE_NAME					"bl-off-cmd"
-#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 #define DES_LINK_STATUS_CMD_NODE_NAME			"des-link-status-cmd"
 #define DES_LINK_INDICATE_CMD_NODE_NAME			"link-indicate-cmd"
-#endif
 
 #define PANEL_MODE_NODE_NAME					"panel-mode-setting"
 #define PANEL_WIDTH_NODE_NAME					"panel-mode-width"
@@ -84,14 +82,12 @@ enum SLAVE_TYPE {
 	DESB
 };
 
-#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 enum LINK_TYPE {
 	LINK_LINKA_LOCK = 0,
 	LINK_LINKB_LOCK,
 	LINK_LINKA_INDICATE_LOCK,
 	LINK_LINKB_INDICATE_LOCK
 };
-#endif
 
 struct serdes_dual_cmd {
 	enum SLAVE_TYPE slave;
@@ -139,10 +135,8 @@ struct deserializer {
 	struct bl_cmd *bl_on_cmd;
 	u32 bl_off_cmd_num;
 	struct bl_cmd *bl_off_cmd;
-#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 	u32 link_indicate_cmd_num;
 	struct serdes_cmd *link_indicate_cmd;
-#endif
 
 	struct vdo_timing disp_mode;
 };
@@ -170,9 +164,9 @@ struct serdes {
 	struct serdes_cmd *ser_lut_cmd;
 	u32 serdes_dual_setting_cmd_num;
 	struct serdes_dual_cmd *serdes_dual_setting_cmd;
-#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 	u32 link_status_cmd_num;
 	struct serdes_cmd *link_status_cmd;
+#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 	struct task_struct *hotplug_task;
 #endif
 	u32 comp_setting_cmd_num;
@@ -770,7 +764,6 @@ static int serdes_get_compatible_setting_from_dts(struct serdes *ser_des, u8 por
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 static int serdes_get_des_link_indicate_cmd_from_dts(struct serdes *ser_des, u8 port)
 {
 	int num = 0;
@@ -849,7 +842,6 @@ static int serdes_get_link_status_cmd_from_dts(struct serdes *ser_des)
 	kfree(array);
 	return 0;
 }
-#endif
 
 static int serdes_get_timing_cmd_from_dts(struct serdes *ser_des)
 {
@@ -1010,7 +1002,9 @@ int serdes_bl_off(struct serdes *ser_des, u8 port)
 	if (!ser_des)
 		return -1;
 
-	des = ser_des->super_frame ? ((port == 0) ? ser_des->desa : ser_des->desb) : ser_des->desdef;
+	des = ser_des->super_frame ?
+		      ((port == 0) ? ser_des->desa : ser_des->desb) :
+		      ser_des->desdef;
 	if (!des)
 		return -1;
 
@@ -1083,14 +1077,17 @@ static void serdes_init_des(struct serdes *ser_des, u8 port)
 	pr_info("%s +\n", __func__);
 	if (!ser_des)
 		return;
-	des = ser_des->super_frame ? ((port == 0) ? ser_des->desa : ser_des->desb) : ser_des->desdef;
+	des = ser_des->super_frame ?
+		      ((port == 0) ? ser_des->desa : ser_des->desb) :
+		      ser_des->desdef;
 	if (!des)
 		return;
 
 	if (des->des_init_cmd_num) {
 		for (i = 0; i < des->des_init_cmd_num; i++) {
 			i2c_write_byte(des->des_client,
-				des->des_init_cmd[i].addr, des->des_init_cmd[i].data);
+				       des->des_init_cmd[i].addr,
+				       des->des_init_cmd[i].data);
 			if (des->des_init_cmd[i].delay_ms)
 				mdelay(des->des_init_cmd[i].delay_ms);
 		}
@@ -1114,17 +1111,25 @@ static void serdes_get_comp_setting_by_send_comp_cmd(struct serdes *ser_des)
 
 	if (ser_des->comp_setting_cmd_num) {
 		for (i = 0; i < ser_des->comp_setting_cmd_num; i++) {
-			client = i2c_new_dummy_device(ser_des->ser_client->adapter, ser_des->comp_setting_cmd[i].addr);
+			client = i2c_new_dummy_device(
+				ser_des->ser_client->adapter,
+				ser_des->comp_setting_cmd[i].addr);
 			if (IS_ERR(client)) {
-				pr_info("%s: create client[0x%x] fail, used dummy client[0x%x]!\n",
-					__func__, ser_des->comp_setting_cmd[i].addr, DES_DUMMY_IIC_ADDR);
-				client = i2c_new_dummy_device(ser_des->ser_client->adapter, DES_DUMMY_IIC_ADDR);
+				pr_info(
+					"%s: create client[0x%x] fail, used dummy client[0x%x]!\n",
+					__func__,
+					ser_des->comp_setting_cmd[i].addr,
+					DES_DUMMY_IIC_ADDR);
+				client = i2c_new_dummy_device(
+					ser_des->ser_client->adapter,
+					DES_DUMMY_IIC_ADDR);
 				if (IS_ERR(client)) {
 					cmd_ret = 0xFFFF;
 					pr_info("%s: used dummy client error, used default setting\n", __func__);
 					break;
 				}
-				client->addr = ser_des->comp_setting_cmd[i].addr;
+				client->addr =
+					ser_des->comp_setting_cmd[i].addr;
 			}
 
 			if (ser_des->comp_setting_cmd[i].rw == 1) {
@@ -1296,24 +1301,30 @@ static int serdes_get_general_info_from_dts(struct serdes *ser_des)
 		serdes_get_comp_setting_by_send_comp_cmd(ser_des);
 	}
 
-	desdef_node = of_find_node_by_name(ser_des->setting_node, DESDEF_NODE_NAME);
+	desdef_node =
+		of_find_node_by_name(ser_des->setting_node, DESDEF_NODE_NAME);
 	ser_des->desdef->des_node = desdef_node;
 
-	ser_des->desdef->des_iic_addr = serdes_get_des_iic_addr_from_dts(ser_des->desdef->des_node);
+	ser_des->desdef->des_iic_addr =
+		serdes_get_des_iic_addr_from_dts(ser_des->desdef->des_node);
 	if (ser_des->desdef->des_iic_addr == 0xFF) {
 		pr_info("error: get default des iic addr fail\n");
 		return -1;
 	}
-	pr_info("default des iic addr = 0x%x\n", ser_des->desdef->des_iic_addr);
+	pr_info("default des iic addr = 0x%x\n",
+		 ser_des->desdef->des_iic_addr);
 
-	ser_des->desdef->bl_iic_addr = serdes_get_bl_iic_addr_from_dts(ser_des->desdef->des_node);
+	ser_des->desdef->bl_iic_addr =
+		serdes_get_bl_iic_addr_from_dts(ser_des->desdef->des_node);
 	if (ser_des->desdef->bl_iic_addr == 0xFF) {
 		pr_info("error: get default bl iic addr fail, bl not control by mcu?\n");
 		//return -1;
 	}
 	pr_info("default bl iic addr = 0x%x\n", ser_des->desdef->bl_iic_addr);
 
-	ser_des->desdef->bl_dummy_iic_addr = serdes_get_bl_dummy_iic_addr_from_dts(ser_des->desdef->des_node);
+	ser_des->desdef->bl_dummy_iic_addr =
+		serdes_get_bl_dummy_iic_addr_from_dts(
+			ser_des->desdef->des_node);
 	if (ser_des->desdef->bl_dummy_iic_addr == 0xFF) {
 		pr_info("no need dummy iic\n");
 		//return -1;
@@ -1440,10 +1451,8 @@ static int serdes_get_serdes_info_from_dts(struct serdes *ser_des)
 	serdes_get_ser_deinit_cmd_from_dts(ser_des);
 	pr_info("%s 2. get des init cmd\n", __func__);
 	serdes_get_des_init_cmd_from_dts(ser_des, 0);
-#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 	serdes_get_link_status_cmd_from_dts(ser_des);
 	serdes_get_des_link_indicate_cmd_from_dts(ser_des, 0);
-#endif
 	pr_info("%s 3. get bl on cmd\n", __func__);
 	serdes_get_bl_on_cmd_from_dts(ser_des, 0);
 	pr_info("%s 4. get bl off cmd\n", __func__);
@@ -1464,10 +1473,8 @@ static int serdes_get_serdes_info_from_dts(struct serdes *ser_des)
 		serdes_get_dual_setting_cmd_from_dts(ser_des);
 		pr_info("%s 9. super frame, get desb init cmd\n", __func__);
 		serdes_get_des_init_cmd_from_dts(ser_des, 1);
-#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 		serdes_get_link_status_cmd_from_dts(ser_des);
 		serdes_get_des_link_indicate_cmd_from_dts(ser_des, 1);
-#endif
 		pr_info("%s 10. super frame, get desb timing info\n", __func__);
 		serdes_get_timing_info_from_dts(ser_des, 1);
 		pr_info("%s 11 get desb bl on cmd\n", __func__);
@@ -1481,7 +1488,30 @@ static int serdes_get_serdes_info_from_dts(struct serdes *ser_des)
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
+static int serdes_get_des_link_status(struct serdes *ser_des)
+{
+	int ret = 0;
+	u8 val = 0;
+
+	if (ser_des->link_status_cmd_num != 1) {
+		pr_info("%s: ser donot support des link check or cmd error, return link!\n",
+			__func__);
+		return 1;
+	}
+	ret = i2c_write_read_byte(ser_des->ser_client, ser_des->link_status_cmd[0].addr, &val);
+	if (ret) {
+		pr_info("%s: read cmd return error[0x%x]\n", __func__, ret);
+		return 0;
+	}
+
+	// TODO: only for max96789 0x1F
+	pr_info("%s:[i2c%d] linka_status=0x%x\n", __func__,
+		ser_des->ser_client->adapter->nr, (val & 0x8) ? 1 : 0);
+	pr_info("%s:[i2c%d] linkb_status=0x%x\n", __func__,
+		ser_des->ser_client->adapter->nr, (val & 0x10) ? 1 : 0);
+	return (val & ser_des->link_status_cmd[0].data) >> 3;
+}
+
 static int serdes_get_des_init_status(struct serdes *ser_des, u8 port)
 {
 	u8 val = 0;
@@ -1507,31 +1537,10 @@ static int serdes_get_des_init_status(struct serdes *ser_des, u8 port)
 		pr_info("%s: cmd not read, cmd error!\n", __func__);
 		return 1;
 	}
-	pr_info("%s:[i2c%d] des%s init_status=0x%x\n", __func__, ser_des->ser_client->adapter->nr,
+	pr_info("%s:[i2c%d] des%s init_status=0x%x\n", __func__,
+		ser_des->ser_client->adapter->nr,
 		(port == 0) ? "a" : "b", (val == des->link_indicate_cmd[0].data) ? 1 : 0);
 	return (val == des->link_indicate_cmd[0].data) ? 1 : 0;
-}
-
-static int serdes_get_des_link_status(struct serdes *ser_des)
-{
-	int ret = 0;
-	u8 val = 0;
-
-	if (ser_des->link_status_cmd_num != 1) {
-		pr_info("%s: ser donot support des link check or cmd error, return link!\n",
-			__func__);
-		return 1;
-	}
-	ret = i2c_write_read_byte(ser_des->ser_client, ser_des->link_status_cmd[0].addr, &val);
-	if (ret) {
-		pr_info("%s: read cmd return error[0x%x]\n", __func__, ret);
-		return 0;
-	}
-
-	// TODO: only for max96789 0x1F
-	pr_info("%s:[i2c%d] linka_status=0x%x\n", __func__, ser_des->ser_client->adapter->nr, (val & 0x8) ? 1 : 0);
-	pr_info("%s:[i2c%d] linkb_status=0x%x\n", __func__, ser_des->ser_client->adapter->nr, (val & 0x10) ? 1 : 0);
-	return (val & ser_des->link_status_cmd[0].data) >> 3;
 }
 
 int serdes_get_link_status(struct drm_bridge *bridge)
@@ -1562,6 +1571,7 @@ int serdes_get_link_status(struct drm_bridge *bridge)
 }
 EXPORT_SYMBOL(serdes_get_link_status);
 
+#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 #if ENABLE_HOTPLUG_INT
 static irqreturn_t serdes_interrupt_handler(int irq, void *data)
 {
@@ -1595,10 +1605,12 @@ static int serdes_hotplug_kthread(void *data)
 			ser_des->ser_client->adapter->nr);
 		return 0;
 	}
-	while(1) {
+	while (1) {
 #if ENABLE_HOTPLUG_INT
 		if (ser_des->irq_num) {
-			wait_event_interruptible(ser_des->hotplug_wq, atomic_read(&ser_des->hotplug_event));
+			wait_event_interruptible(
+				ser_des->hotplug_wq,
+				atomic_read(&ser_des->hotplug_event));
 			atomic_set(&ser_des->hotplug_event, 0);
 			disable_irq(ser_des->irq_num);
 		} else
@@ -1613,9 +1625,11 @@ static int serdes_hotplug_kthread(void *data)
 		status = serdes_get_link_status(&ser_des->bridge);
 		pr_info("%s: status=0x%x\n", __func__, status);
 
-		if ((status & (1 << LINK_LINKA_LOCK)) && !(status & (1 << LINK_LINKA_INDICATE_LOCK)))
+		if ((status & (1 << LINK_LINKA_LOCK)) &&
+		    !(status & (1 << LINK_LINKA_INDICATE_LOCK)))
 			reset_a = 1;
-		if ((status & (1 << LINK_LINKB_LOCK)) && !(status & (1 << LINK_LINKB_INDICATE_LOCK)))
+		if ((status & (1 << LINK_LINKB_LOCK)) &&
+		    !(status & (1 << LINK_LINKB_INDICATE_LOCK)))
 			reset_b = 1;
 
 		if (ser_des->super_frame && (reset_a || reset_b))
@@ -1754,12 +1768,12 @@ void serdes_get_modes(struct drm_bridge *bridge, struct vdo_timing *disp_mode, u
 	struct serdes *ser_des = bridge_to_serdes(bridge);
 
 	pr_info("%s +\n", __func__);
+	if (!ser_des)
+		return;
 	if (!ser_des->super_frame && port == 1) {
 		memset(disp_mode, 0, sizeof(struct vdo_timing));
 		return;
 	}
-	if (!ser_des)
-		return;
 	des = ser_des->super_frame ?
 		      ((port == 0) ? ser_des->desa : ser_des->desb) :
 		      ser_des->desdef;
