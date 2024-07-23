@@ -4644,6 +4644,10 @@ static void check_is_mml_layer(const int disp_idx,
 				DDPINFO("WA: replace MDP by GPU\n");
 			}
 		}
+		if (priv->data->mmsys_id == MMSYS_MT6899 && !mtk_crtc_is_frame_trigger_mode(crtc)) {
+			c->layer_caps &= ~DISP_MML_CAPS_MASK;
+			c->layer_caps |= MTK_MML_DISP_NOT_SUPPORT;
+		}
 
 		if (MTK_MML_DISP_NOT_SUPPORT & c->layer_caps) {
 			if (mtk_has_layer_cap(c, MTK_CLIENT_CLEAR_LAYER))
