@@ -7,7 +7,6 @@
 #define TAG "PERF_IOCTL_MAGT"
 #define cap_scale(v, s) ((v)*(s) >> SCHED_CAPACITY_SHIFT)
 #define MAX_RENDER_TID 10
-static struct render_frame_info render[MAX_RENDER_TID];
 static struct proc_dir_entry *perfmgr_root;
 static DEFINE_MUTEX(cpu_lock);
 
@@ -337,6 +336,7 @@ static long magt_ioctl(struct file *filp,
 	case MAGT_GET_FPSGO_SUPPORT:
 	{
 		struct fpsgo_pid_support pid_support;
+		struct render_frame_info *render;
 
 		if (perfctl_copy_from_user(&pid_support, (void *)arg,
 			sizeof(struct fpsgo_pid_support))) {
@@ -348,8 +348,13 @@ static long magt_ioctl(struct file *filp,
 			ret = -EAGAIN;
 			goto ret_ioctl;
 		}
-		memset(render, 0, sizeof(struct render_frame_info) * MAX_RENDER_TID);
+
 		query_mask = (1 << GET_FPSGO_PERF_IDX);
+		render = kcalloc(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
+		if (!render) {
+			ret = -ENOMEM;
+			goto ret_ioctl;
+		}
 		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
 		if (ret >= 0) {
 			int i = 0;
@@ -363,11 +368,14 @@ static long magt_ioctl(struct file *filp,
 			perfctl_copy_to_user((void *)arg, &pid_support, sizeof(struct fpsgo_pid_support));
 			ret = 0;
 		}
+		kfree(render);
 		break;
 	}
 	case MAGT_GET_FPSGO_STATUS:
 	{
 		struct fpsgo_render_status render_status;
+		struct render_frame_info *render;
+		const int unitConversion = -1000;
 
 		if (perfctl_copy_from_user(&render_status, (void *)arg,
 			sizeof(struct fpsgo_render_status))) {
@@ -379,9 +387,15 @@ static long magt_ioctl(struct file *filp,
 			ret = -EAGAIN;
 			goto ret_ioctl;
 		}
-		memset(render, 0, sizeof(struct render_frame_info) * MAX_RENDER_TID);
+
 		query_mask = (1 << GET_FPSGO_TARGET_FPS | 1 << GET_FPSGO_QUEUE_FPS
 			| 1 << GET_FRS_TARGET_FPS_DIFF | 1 << GET_GED_GPU_TIME);
+
+		render = kcalloc(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
+		if (!render) {
+			ret = -ENOMEM;
+			goto ret_ioctl;
+		}
 		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
 
 		if (ret >= 0) {
@@ -397,20 +411,23 @@ static long magt_ioctl(struct file *filp,
 
 			if (render_item == -1) {
 				ret = -EINVAL;
+				kfree(render);
 				break;
 			}
 			render_status.curFps = render[render_item].queue_fps;
 			render_status.targetFps = render[render_item].target_fps;
-			render_status.targetFps_diff = render[render_item].target_fps_diff;
+			render_status.targetFps_diff = (render[render_item].target_fps_diff / unitConversion);
 			render_status.t_gpu = render[render_item].t_gpu;
 			perfctl_copy_to_user((void *)arg, &render_status, sizeof(struct fpsgo_render_status));
 			ret = 0;
 		}
+		kfree(render);
 		break;
 	}
 	case MAGT_GET_FPSGO_CRITICAL_THREAD_BG:
 	{
 		struct fpsgo_bg_info bg_info;
+		struct render_frame_info *render;
 
 		if (perfctl_copy_from_user(&bg_info, (void *)arg,
 			sizeof(struct fpsgo_bg_info))) {
@@ -423,8 +440,12 @@ static long magt_ioctl(struct file *filp,
 			goto ret_ioctl;
 		}
 
-		memset(render, 0, sizeof(struct render_frame_info) * MAX_RENDER_TID);
 		query_mask = (1 << GET_FPSGO_MINITOP_LIST);
+		render = kcalloc(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
+		if (!render) {
+			ret = -ENOMEM;
+			goto ret_ioctl;
+		}
 		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
 
 		if (ret >= 0) {
@@ -440,6 +461,7 @@ static long magt_ioctl(struct file *filp,
 
 			if (render_item == -1) {
 				ret = -EINVAL;
+				kfree(render);
 				break;
 			}
 			bg_info.bg_num = render[render_item].non_dep_num;
@@ -452,11 +474,13 @@ static long magt_ioctl(struct file *filp,
 			perfctl_copy_to_user((void *)arg, &bg_info, sizeof(struct fpsgo_bg_info));
 			ret = 0;
 		}
+		kfree(render);
 		break;
 	}
 	case MAGT_GET_FPSGO_CPU_FRAMETIME:
 	{
 		struct fpsgo_cpu_frametime cpu_time_info;
+		struct render_frame_info *render;
 
 		if (perfctl_copy_from_user(&cpu_time_info, (void *)arg,
 			sizeof(struct fpsgo_cpu_frametime))) {
@@ -469,8 +493,12 @@ static long magt_ioctl(struct file *filp,
 			goto ret_ioctl;
 		}
 
-		memset(render, 0, sizeof(struct render_frame_info) * MAX_RENDER_TID);
 		query_mask = (1 << GET_FPSGO_RAW_CPU_TIME | 1 << GET_FPSGO_EMA_CPU_TIME);
+		render = kcalloc(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
+		if (!render) {
+			ret = -ENOMEM;
+			goto ret_ioctl;
+		}
 		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
 
 		if (ret >= 0) {
@@ -486,6 +514,7 @@ static long magt_ioctl(struct file *filp,
 
 			if (render_item == -1) {
 				ret = -EINVAL;
+				kfree(render);
 				break;
 			}
 			cpu_time_info.raw_t_cpu = render[render_item].raw_t_cpu;
@@ -494,11 +523,13 @@ static long magt_ioctl(struct file *filp,
 			perfctl_copy_to_user((void *)arg, &cpu_time_info, sizeof(struct fpsgo_cpu_frametime));
 			ret = 0;
 		}
+		kfree(render);
 		break;
 	}
 	case MAGT_GET_FPSGO_THREAD_LOADING:
 	{
 		struct fpsgo_thread_loading thread_loading;
+		struct render_frame_info *render;
 
 		if (perfctl_copy_from_user(&thread_loading, (void *)arg,
 			sizeof(struct fpsgo_thread_loading))) {
@@ -511,8 +542,12 @@ static long magt_ioctl(struct file *filp,
 			goto ret_ioctl;
 		}
 
-		memset(render, 0, sizeof(struct render_frame_info) * MAX_RENDER_TID);
 		query_mask = (1 << GET_FPSGO_AVG_FRAME_CAP | 1 << GET_FPSGO_DEP_LIST);
+		render = kcalloc(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
+		if (!render) {
+			ret = -ENOMEM;
+			goto ret_ioctl;
+		}
 		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
 
 		if (ret >= 0) {
@@ -528,6 +563,7 @@ static long magt_ioctl(struct file *filp,
 
 			if (render_item == -1) {
 				ret = -EINVAL;
+				kfree(render);
 				break;
 			}
 
@@ -541,11 +577,13 @@ static long magt_ioctl(struct file *filp,
 			perfctl_copy_to_user((void *)arg, &thread_loading, sizeof(struct fpsgo_thread_loading));
 			ret = 0;
 		}
+		kfree(render);
 		break;
 	}
 	case MAGT_GET_FPSGO_RENDER_PERFIDX:
 	{
 		struct fpsgo_render_perf render_perf;
+		struct render_frame_info *render;
 
 		if (perfctl_copy_from_user(&render_perf, (void *)arg,
 			sizeof(struct fpsgo_render_perf))) {
@@ -558,8 +596,12 @@ static long magt_ioctl(struct file *filp,
 			goto ret_ioctl;
 		}
 
-		memset(render, 0, sizeof(struct render_frame_info) * MAX_RENDER_TID);
 		query_mask = (1 << GET_FPSGO_PERF_IDX);
+		render = kcalloc(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
+		if (!render) {
+			ret = -ENOMEM;
+			goto ret_ioctl;
+		}
 		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
 
 		if (ret >= 0) {
@@ -575,12 +617,14 @@ static long magt_ioctl(struct file *filp,
 
 			if (render_item == -1) {
 				ret = -EINVAL;
+				kfree(render);
 				break;
 			}
 			render_perf.perf_idx = render[render_item].blc;
 			perfctl_copy_to_user((void *)arg, &render_perf, sizeof(struct fpsgo_render_perf));
 			ret = 0;
 		}
+		kfree(render);
 		break;
 	}
 	case MAGT_NOTIFY_THREAD_STATUS:
