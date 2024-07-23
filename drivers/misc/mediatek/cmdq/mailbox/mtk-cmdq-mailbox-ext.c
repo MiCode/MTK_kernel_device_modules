@@ -323,6 +323,7 @@ struct cmdq {
 	struct device	*pd_mminfra_ao;
 	bool		gce_ddr_sel_wla;
 	unsigned int	dbg3;
+	bool		gce_res_sw_mode;
 };
 
 struct gce_plat {
@@ -3323,6 +3324,8 @@ static int cmdq_probe(struct platform_device *pdev)
 		of_property_read_bool(dev->of_node, "prebuilt-enable");
 	cmdq->sw_ddr_urgent =
 		of_property_read_bool(dev->of_node, "ddr-urgent");
+	cmdq->gce_res_sw_mode =
+		of_property_read_bool(dev->of_node, "gce-res-sw-mode");
 
 	cmdq->mbox.dev = dev;
 	cmdq->share_dev = mtk_smmu_get_shared_device(dev);
@@ -3673,6 +3676,9 @@ void cmdq_mbox_enable(void *chan)
 		if (cmdq->sw_ddr_urgent)
 			writel(readl(cmdq->base + GCE_GCTL_VALUE) | CMDQ_DDR_URGENT,
 				cmdq->base + GCE_GCTL_VALUE);
+		if(cmdq->gce_res_sw_mode)
+			writel(readl(cmdq->base + GCE_GCTL_VALUE) | ((0x7 << 16) + 0x7),
+				cmdq->base + GCE_GCTL_VALUE);
 		if (cmdq->sw_ddr_en) {
 			writel((0x7 << 16) + 0x7, cmdq->base + GCE_GCTL_VALUE);
 			writel(0, cmdq->base + GCE_DEBUG_START_ADDR);
@@ -3796,7 +3802,7 @@ void cmdq_mbox_disable(void *chan)
 		// core
 		spin_lock_irqsave(&cmdq->lock, flags);
 		writel(0, cmdq->base + CMDQ_TPR_MASK);
-		if (cmdq->sw_ddr_en)
+		if (cmdq->sw_ddr_en || cmdq->gce_res_sw_mode)
 			writel(0x7, cmdq->base + GCE_GCTL_VALUE);
 		spin_unlock_irqrestore(&cmdq->lock, flags);
 
