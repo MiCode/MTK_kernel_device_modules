@@ -56,7 +56,7 @@
 					     compat_uptr_t)
 #endif
 
-#define MAX_ELF_SZ			51200
+#define MAX_ELF_SZ			(100*1024)
 
 #define format_log(p, s, fmt, args...) \
 	(p += scnprintf(p, sizeof(s) - strlen(s), fmt, ##args))
@@ -1042,6 +1042,12 @@ static long filp_send_ioctl(struct file *filp,
 		goto load_shm_args_failed;
 	}
 	dev_dbg(dev, "%s: shm->size 0x%llx\n", __func__, shm->size);
+
+	if (shm->size > MAX_ELF_SZ) {
+		pr_err("%s: size (0x%llx) is over than MAX (0x%x)\n", __func__, shm->size, MAX_ELF_SZ);
+		ret = -ENOMEM;
+		goto load_shm_args_failed;
+	}
 
 	dmabuf = dma_buf_get(shm->fd);
 	if (IS_ERR_OR_NULL(dmabuf)) {
