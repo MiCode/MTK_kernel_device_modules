@@ -964,7 +964,6 @@
 			<&topckgen_clk CLK_TOP_DISP_SEL>,
 			<&topckgen_clk CLK_TOP_MDP_SEL>,
 			<&topckgen_clk CLK_TOP_MMINFRA_SEL>,
-			<&topckgen_clk CLK_TOP_MMUP_SEL>,
 			<&topckgen_clk CLK_TOP_IMG_26M_SEL>,
 			<&topckgen_clk CLK_TOP_CAM_26M_SEL>,
 			<&topckgen_clk CLK_TOP_DSI_OCC_SEL>;

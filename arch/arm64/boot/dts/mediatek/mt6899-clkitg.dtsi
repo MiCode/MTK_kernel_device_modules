@@ -10,8 +10,7 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x0>;
 		clocks =
-			<&topckgen_clk CLK_TOP_MMINFRA_SEL>,
-			<&topckgen_clk CLK_TOP_MMUP_SEL>;
+			<&topckgen_clk CLK_TOP_MMINFRA_SEL>;
 	};
 
 	bring-up-pd-mm-infra@3c {
