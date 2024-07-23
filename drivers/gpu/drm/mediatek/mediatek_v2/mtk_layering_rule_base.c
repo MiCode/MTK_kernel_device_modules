@@ -4803,6 +4803,20 @@ static inline int get_scale_cnt(struct drm_mtk_layering_info *disp_info)
 	return scale_cnt;
 }
 
+int layering_rule_get_available_hrt(struct drm_crtc *crtc)
+{
+	if (IS_ERR_OR_NULL(crtc))
+		return -EINVAL;
+
+	if (l_rule_ops == NULL || l_rule_info == NULL) {
+		DDPPR_ERR("Layering rule has not been initialize:(%p,%p)\n",
+				l_rule_ops, l_rule_info);
+		return -EFAULT;
+	}
+
+	return l_rule_ops->layering_get_valid_hrt(crtc, &layering_info);
+}
+
 static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 			       int debug_mode, struct drm_device *dev)
 {

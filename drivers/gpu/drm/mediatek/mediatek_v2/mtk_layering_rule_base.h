@@ -185,6 +185,8 @@ struct layering_rule_ops {
 				    enum ADJUST_LAYOUT_PURPOSE p);
 	void (*fbdc_rule)(struct drm_device *dev,
 		struct drm_mtk_layering_info *disp_info);
+	int (*layering_get_valid_hrt)(struct drm_crtc *crtc,
+		struct drm_mtk_layering_info *disp_info);
 };
 
 #define HRT_GET_DVFS_LEVEL(hrt_num) (hrt_num & 0xF)
@@ -248,4 +250,5 @@ int mtk_layering_rule_ioctl_compat(struct file *file, unsigned int cmd,
 bool is_triple_disp(struct drm_mtk_layering_info *disp_info);
 
 int get_layering_opt(enum LYE_HELPER_OPT opt);
+int layering_rule_get_available_hrt(struct drm_crtc *crtc);
 #endif

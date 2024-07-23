@@ -904,10 +904,12 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	int i, j;
+	int i, j, avail_hrt = 0;
 	struct cmdq_pkt *handle;
 	struct cmdq_client *client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 	struct mtk_ddp_comp *comp;
+	unsigned int avail_bw = 0, bw_base = 0;
+	unsigned int req_bw = avail_bw + 1;
 
 	mtk_crtc_pkt_create(&handle, crtc, client);
 
@@ -924,7 +926,19 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 		    !mtk_drm_dal_enable() &&
 		    !msync_is_on(priv, mtk_crtc->panel_ext->params,
 				 drm_crtc_index(crtc), state, state)) {
-			mtk_drm_idlemgr_wb_enter(mtk_crtc, NULL);
+			avail_hrt = layering_rule_get_available_hrt(crtc);
+			if (avail_hrt > 0) {
+				bw_base = mtk_drm_primary_frame_bw(crtc);
+				avail_bw = avail_hrt * bw_base / 100;
+				req_bw = mtk_crtc->qos_ctx->last_hrt_req + bw_base * 120 / 100;
+			}
+
+			if (req_bw < avail_bw)
+				mtk_drm_idlemgr_wb_enter(mtk_crtc, NULL);
+			else
+				DDPMSG("%s:[IWB cancel] avail_bw:%u(%d),req_bw:%u(%u+%u)\n",
+					__func__, avail_bw, avail_hrt, req_bw,
+					mtk_crtc->qos_ctx->last_hrt_req, bw_base);
 		}
 	}
 
