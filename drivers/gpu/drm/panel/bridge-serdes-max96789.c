@@ -187,8 +187,10 @@ struct serdes {
 	struct drm_bridge bridge;
 	struct device *dev;
 	struct i2c_client *ser_client;
-	bool enabled;
-	bool pre_enabled;
+	bool port0_enabled;
+	bool port0_pre_enabled;
+	bool port1_enabled;
+	bool port1_pre_enabled;
 };
 
 static DEFINE_MUTEX(i2c_access);
@@ -964,116 +966,71 @@ static int serdes_get_dual_setting_cmd_from_dts(struct serdes *ser_des)
 	kfree(array);
 	return 0;
 }
-
-int serdes_bl_on(struct serdes *ser_des)
+int serdes_bl_on(struct serdes *ser_des, u8 port)
 {
 	int i;
 	int ret = 0;
 
-	mutex_lock(&i2c_access);
+	struct deserializer *des;
+
 	pr_info("%s +\n", __func__);
-	if (!ser_des->super_frame) {
-		if (!ser_des->desdef) {
-			mutex_unlock(&i2c_access);
-			return -1;
-		}
-		if (ser_des->desdef->bl_on_cmd_num && ser_des->desdef->bl_client) {
-			for (i = 0; i < ser_des->desdef->bl_on_cmd_num; i++) {
-				ret = i2c_master_send(ser_des->desdef->bl_client,
-					ser_des->desdef->bl_on_cmd[i].data,
-					ser_des->desdef->bl_on_cmd[i].len);
-				if (ret < 0) {
-					mutex_unlock(&i2c_access);
-					pr_info("%s:%d send cmd error[0x%x]!\n", __func__, __LINE__, ret);
-					return -1;
-				}
-			}
-		}
-	} else {
-		if (ser_des->desa && ser_des->desa->bl_on_cmd_num && ser_des->desa->bl_client) {
-			for (i = 0; i < ser_des->desa->bl_on_cmd_num; i++) {
-				ret = i2c_master_send(ser_des->desa->bl_client,
-					ser_des->desa->bl_on_cmd[i].data,
-					ser_des->desa->bl_on_cmd[i].len);
-				if (ret < 0) {
-					mutex_unlock(&i2c_access);
-					pr_info("%s:%d send cmd error[0x%x]!\n", __func__, __LINE__, ret);
-					return -1;
-				}
-			}
-		}
-		if (ser_des->desb && ser_des->desb->bl_on_cmd_num && ser_des->desb->bl_client) {
-			for (i = 0; i < ser_des->desb->bl_on_cmd_num; i++) {
-				ret = i2c_master_send(ser_des->desb->bl_client,
-					ser_des->desb->bl_on_cmd[i].data,
-					ser_des->desb->bl_on_cmd[i].len);
-				if (ret < 0) {
-					mutex_unlock(&i2c_access);
-					pr_info("%s:%d send cmd error[0x%x]!\n", __func__, __LINE__, ret);
-					return -1;
-				}
+	if (!ser_des)
+		return -1;
+
+	des = ser_des->super_frame ? ((port == 0) ? ser_des->desa : ser_des->desb) : ser_des->desdef;
+	if (!des)
+		return -1;
+
+	mutex_lock(&i2c_access);
+
+	if (des->bl_on_cmd_num && des->bl_client) {
+		for (i = 0; i < des->bl_on_cmd_num; i++) {
+			ret = i2c_master_send(des->bl_client,
+				des->bl_on_cmd[i].data,
+				des->bl_on_cmd[i].len);
+			if (ret < 0) {
+				mutex_unlock(&i2c_access);
+				pr_info("%s: send cmd error!\n", __func__);
+				return -1;
 			}
 		}
 	}
-	pr_info("%s -\n", __func__);
 	mutex_unlock(&i2c_access);
+	pr_info("%s -\n", __func__);
 	return ret;
 }
 
-int serdes_bl_off(struct serdes *ser_des)
+int serdes_bl_off(struct serdes *ser_des, u8 port)
 {
 	int i;
 	int ret = 0;
+	struct deserializer *des;
+
+	pr_info("%s +\n", __func__);
+	if (!ser_des)
+		return -1;
+
+	des = ser_des->super_frame ? ((port == 0) ? ser_des->desa : ser_des->desb) : ser_des->desdef;
+	if (!des)
+		return -1;
 
 	mutex_lock(&i2c_access);
-	pr_info("%s +\n", __func__);
-	if (!ser_des->super_frame) {
-		if (!ser_des->desdef) {
-			mutex_unlock(&i2c_access);
-			return -1;
-		}
 
-		if (ser_des->desdef->bl_off_cmd_num && ser_des->desdef->bl_client) {
-			for (i = 0; i < ser_des->desdef->bl_off_cmd_num; i++) {
-				ret = i2c_master_send(ser_des->desdef->bl_client,
-					ser_des->desdef->bl_off_cmd[i].data,
-					ser_des->desdef->bl_off_cmd[i].len);
-				if (ret < 0) {
-					mutex_unlock(&i2c_access);
-					pr_info("%s: send cmd error!\n", __func__);
-					return -1;
-				}
-			}
-		}
-	} else {
-		if (ser_des->desa && ser_des->desa->bl_off_cmd_num && ser_des->desa->bl_client) {
-			for (i = 0; i < ser_des->desa->bl_off_cmd_num; i++) {
-				ret = i2c_master_send(ser_des->desa->bl_client,
-					ser_des->desa->bl_off_cmd[i].data,
-					ser_des->desa->bl_off_cmd[i].len);
-				if (ret < 0) {
-					mutex_unlock(&i2c_access);
-					pr_info("%s: send cmd error!\n", __func__);
-					return -1;
-				}
-			}
-		}
-		if (ser_des->desb->bl_off_cmd_num && ser_des->desb->bl_client) {
-			for (i = 0; i < ser_des->desb->bl_off_cmd_num; i++) {
-				ret = i2c_master_send(ser_des->desb->bl_client,
-					ser_des->desb->bl_off_cmd[i].data,
-					ser_des->desb->bl_off_cmd[i].len);
-				if (ret < 0) {
-					mutex_unlock(&i2c_access);
-					pr_info("%s: send cmd error!\n", __func__);
-					return -1;
-				}
+	if (des->bl_off_cmd_num && des->bl_client) {
+		for (i = 0; i < des->bl_off_cmd_num; i++) {
+			ret = i2c_master_send(des->bl_client,
+				des->bl_off_cmd[i].data,
+				des->bl_off_cmd[i].len);
+			if (ret < 0) {
+				mutex_unlock(&i2c_access);
+				pr_info("%s: send cmd error!\n", __func__);
+				return -1;
 			}
 		}
 	}
 
-	pr_info("%s +-\n", __func__);
 	mutex_unlock(&i2c_access);
+	pr_info("%s -\n", __func__);
 
 	return ret;
 }
@@ -1219,7 +1176,7 @@ static void serdes_get_comp_setting_by_send_comp_cmd(struct serdes *ser_des)
 	pr_info("%s: setting_node = %s\n", __func__, ser_des->setting_node->name);
 }
 
-void serdes_deinit_serdes(struct serdes *max96789)
+void serdes_deinit_serdes(struct serdes *max96789, u8 port)
 {
 	pr_info("%s +\n", __func__);
 	serdes_deinit_ser(max96789);
@@ -1610,7 +1567,14 @@ static irqreturn_t serdes_interrupt_handler(int irq, void *data)
 {
 	struct serdes *ser_des = (struct serdes *)data;
 
-	pr_info("%s: interrupt!\n", __func__);
+	pr_debug("%s: interrupt!\n", __func__);
+
+	if (!serdes_connect_status(ser_des->ser_client)) {
+		pr_info("%s: error: serdes[i2c%d] not connect!\n", __func__,
+			ser_des->ser_client->adapter->nr);
+		return;
+	}
+
 	atomic_set(&ser_des->hotplug_event, 1);
 	wake_up_interruptible(&ser_des->hotplug_wq);
 	return IRQ_HANDLED;
@@ -1653,18 +1617,18 @@ static int serdes_hotplug_kthread(void *data)
 			reset_a = 1;
 		if ((status & (1 << LINK_LINKB_LOCK)) && !(status & (1 << LINK_LINKB_INDICATE_LOCK)))
 			reset_b = 1;
-		if (reset_a || reset_b)
-			serdes_bl_off(ser_des);
+
 		if (ser_des->super_frame && (reset_a || reset_b))
 			serdes_set_dual_setting(ser_des);
-		if (reset_a)
+		if (reset_a) {
 			serdes_init_des(ser_des, 0);
+			serdes_bl_on(ser_des, 1);
+		}
 
-		if (reset_b)
+		if (reset_b) {
 			serdes_init_des(ser_des, 1);
-
-		if (reset_a || reset_b)
-			serdes_bl_on(ser_des);
+			serdes_bl_on(ser_des, 1);
+		}
 
 #if ENABLE_HOTPLUG_INT
 		if (ser_des->irq_num)
@@ -1676,48 +1640,43 @@ static int serdes_hotplug_kthread(void *data)
 }
 #endif
 
-void serdes_enable(struct drm_bridge *bridge)
+void serdes_enable(struct drm_bridge *bridge, u8 port)
 {
 	struct serdes *ser_des = bridge_to_serdes(bridge);
 
-	pr_info("%s +\n", __func__);
+	pr_debug("%s + %d/%d\n", __func__, ser_des->port0_enabled, ser_des->port1_enabled);
+
 
 	if (!serdes_connect_status(ser_des->ser_client)) {
 		pr_info("%s: error: serdes[i2c%d] not connect!\n", __func__,
 			ser_des->ser_client->adapter->nr);
 		return;
 	}
-
-	if (ser_des->enabled)
+	if (ser_des->port0_enabled && (port == 0))
+		return;
+	if (ser_des->port1_enabled && (port == 1))
 		return;
 
-	if (ser_des->super_frame) {
-		serdes_set_timing(ser_des);
-		serdes_set_dual_setting(ser_des);
-		serdes_set_lut(ser_des);
-		serdes_init_des(ser_des, 1);
-	}
-	serdes_init_des(ser_des, 0);
-	serdes_bl_on(ser_des);
-	ser_des->enabled = true;
-#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
-	ser_des->hotplug_task = kthread_run(serdes_hotplug_kthread, ser_des, "hotplug");
-#if ENABLE_HOTPLUG_INT
-	enable_irq(ser_des->irq_num);
-#endif
-#endif
+	serdes_init_des(ser_des, port);
+	serdes_bl_on(ser_des, port);
+	if (port)
+		ser_des->port1_enabled = true;
+	else
+		ser_des->port0_enabled = true;
 
 	pr_info("%s -\n", __func__);
 }
 EXPORT_SYMBOL(serdes_enable);
 
-void serdes_pre_enable(struct drm_bridge *bridge)
+void serdes_pre_enable(struct drm_bridge *bridge, u8 port)
 {
 	struct serdes *ser_des = bridge_to_serdes(bridge);
 
-	pr_info("%s +\n", __func__);
 
-	if (ser_des->pre_enabled)
+	pr_debug("%s + %d/%d\n", __func__, ser_des->port0_pre_enabled, ser_des->port1_pre_enabled);
+
+
+	if (ser_des->port0_pre_enabled || ser_des->port1_pre_enabled)
 		return;
 
 	// 1. power on ser/des/panel
@@ -1734,12 +1693,27 @@ void serdes_pre_enable(struct drm_bridge *bridge)
 	// 3. init ser and des
 	serdes_init_ser(ser_des);
 
-	ser_des->pre_enabled = true;
+	if (ser_des->super_frame) {
+		serdes_set_timing(ser_des);
+		serdes_set_dual_setting(ser_des);
+		serdes_set_lut(ser_des);
+	}
+
+	if (port == 0)
+		ser_des->port0_pre_enabled = true;
+	if (ser_des->super_frame && port == 1)
+		ser_des->port1_pre_enabled = true;
+#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
+	ser_des->hotplug_task = kthread_run(serdes_hotplug_kthread, ser_des, "hotplug");
+#if ENABLE_HOTPLUG_INT
+	enable_irq(ser_des->irq_num);
+#endif
+#endif
 	pr_info("%s -\n", __func__);
 }
 EXPORT_SYMBOL(serdes_pre_enable);
 
-void serdes_disable(struct drm_bridge *bridge)
+void serdes_disable(struct drm_bridge *bridge, u8 port)
 {
 	struct serdes *ser_des = bridge_to_serdes(bridge);
 
@@ -1750,9 +1724,14 @@ void serdes_disable(struct drm_bridge *bridge)
 			ser_des->ser_client->adapter->nr);
 		return;
 	}
+	if (port == 1) {
+		ser_des->port1_enabled = false;
+		ser_des->port1_pre_enabled = false;
+	} else {
+		ser_des->port0_enabled = false;
+		ser_des->port0_pre_enabled = false;
+	}
 
-	ser_des->enabled = false;
-	ser_des->pre_enabled = false;
 #if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 #if ENABLE_HOTPLUG_INT
 	disable_irq(ser_des->irq_num);
@@ -1760,76 +1739,50 @@ void serdes_disable(struct drm_bridge *bridge)
 	kthread_stop(ser_des->hotplug_task);
 #endif
 
-	serdes_bl_off(ser_des);
+	serdes_bl_off(ser_des, port);
 
-	serdes_deinit_serdes(ser_des);
-	gpiod_set_value(ser_des->reset_gpio, 0);
+	//serdes_deinit_serdes(ser_des, port);
+	if (!ser_des->port1_enabled && !ser_des->port0_enabled)
+		gpiod_set_value(ser_des->reset_gpio, 0);
 	pr_info("%s -\n", __func__);
 }
 EXPORT_SYMBOL(serdes_disable);
 
-void serdes_get_modes(struct drm_bridge *bridge, struct vdo_timing *disp_mode)
+void serdes_get_modes(struct drm_bridge *bridge, struct vdo_timing *disp_mode, u8 port)
 {
+	struct deserializer *des;
 	struct serdes *ser_des = bridge_to_serdes(bridge);
 
+	pr_info("%s +\n", __func__);
+	if (!ser_des->super_frame && port == 1) {
+		memset(disp_mode, 0, sizeof(struct vdo_timing));
+		return;
+	}
+	if (!ser_des)
+		return;
+	des = ser_des->super_frame ?
+		      ((port == 0) ? ser_des->desa : ser_des->desb) :
+		      ser_des->desdef;
+	if (!des)
+		return;
+
+	disp_mode->width = des->disp_mode.width;
+	disp_mode->hfp = des->disp_mode.hfp;
+	disp_mode->hsa = des->disp_mode.hsa;
+	disp_mode->hbp = des->disp_mode.hbp;
+	disp_mode->height = des->disp_mode.height;
+	disp_mode->vfp = des->disp_mode.vfp;
+	disp_mode->vsa = des->disp_mode.vsa;
+	disp_mode->vbp = des->disp_mode.vbp;
+	disp_mode->fps = des->disp_mode.fps;
+	disp_mode->physcial_w = des->disp_mode.physcial_w;
+	disp_mode->physcial_h = des->disp_mode.physcial_h;
 	if (ser_des->super_frame) {
-		disp_mode->width = ser_des->desa->disp_mode.width + ser_des->desb->disp_mode.width;
-		disp_mode->hfp = ser_des->desa->disp_mode.hfp + ser_des->desb->disp_mode.hfp;
-		disp_mode->hsa = ser_des->desa->disp_mode.hsa + ser_des->desb->disp_mode.hsa;
-		disp_mode->hbp = ser_des->desa->disp_mode.hbp + ser_des->desb->disp_mode.hbp;
-		disp_mode->height = (ser_des->desa->disp_mode.height
-			>= ser_des->desb->disp_mode.height) ?
-			ser_des->desa->disp_mode.height : ser_des->desb->disp_mode.height;
-		disp_mode->vfp = (ser_des->desa->disp_mode.height
-			>= ser_des->desb->disp_mode.height) ?
-			ser_des->desa->disp_mode.vfp : ser_des->desb->disp_mode.vfp;
-		disp_mode->vsa = (ser_des->desa->disp_mode.height
-			>= ser_des->desb->disp_mode.height) ?
-			ser_des->desa->disp_mode.vsa : ser_des->desb->disp_mode.vsa;
-		disp_mode->vbp = (ser_des->desa->disp_mode.height
-			>= ser_des->desb->disp_mode.height) ?
-			ser_des->desa->disp_mode.vbp : ser_des->desb->disp_mode.vbp;
-		disp_mode->fps = (ser_des->desa->disp_mode.height
-			>= ser_des->desb->disp_mode.height) ?
-			ser_des->desa->disp_mode.fps : ser_des->desb->disp_mode.fps;
 		disp_mode->pll = 0;
 		disp_mode->lppf = 1;
-		disp_mode->physcial_w = (ser_des->desa->disp_mode.height
-			>= ser_des->desb->disp_mode.height) ?
-			ser_des->desa->disp_mode.physcial_w : ser_des->desb->disp_mode.physcial_w;
-		disp_mode->physcial_h = (ser_des->desa->disp_mode.height
-			>= ser_des->desb->disp_mode.height) ?
-			ser_des->desa->disp_mode.physcial_h : ser_des->desb->disp_mode.physcial_h;
-		disp_mode->crop_width[0] = (ser_des->desa->disp_mode.height
-			>= ser_des->desb->disp_mode.height) ? ser_des->desa->disp_mode.width
-			: ser_des->desb->disp_mode.width;
-		disp_mode->crop_width[1] = (ser_des->desa->disp_mode.height
-			>= ser_des->desb->disp_mode.height) ? ser_des->desb->disp_mode.width
-			: ser_des->desa->disp_mode.width;
-		disp_mode->crop_height[0] = (ser_des->desa->disp_mode.height
-			>= ser_des->desb->disp_mode.height) ? ser_des->desa->disp_mode.height
-			: ser_des->desb->disp_mode.height;
-		disp_mode->crop_height[1] = (ser_des->desa->disp_mode.height
-			>= ser_des->desb->disp_mode.height) ? ser_des->desb->disp_mode.height
-			: ser_des->desa->disp_mode.height;
 	} else {
-		disp_mode->width = ser_des->desdef->disp_mode.width;
-		disp_mode->hfp = ser_des->desdef->disp_mode.hfp;
-		disp_mode->hsa = ser_des->desdef->disp_mode.hsa;
-		disp_mode->hbp = ser_des->desdef->disp_mode.hbp;
-		disp_mode->height = ser_des->desdef->disp_mode.height;
-		disp_mode->vfp = ser_des->desdef->disp_mode.vfp;
-		disp_mode->vsa = ser_des->desdef->disp_mode.vsa;
-		disp_mode->vbp = ser_des->desdef->disp_mode.vbp;
-		disp_mode->fps = ser_des->desdef->disp_mode.fps;
-		disp_mode->pll = ser_des->desdef->disp_mode.pll;
-		disp_mode->lppf = ser_des->desdef->disp_mode.lppf;
-		disp_mode->crop_width[0] =
-			disp_mode->crop_height[0] =
-			disp_mode->crop_width[1] =
-			disp_mode->crop_height[1] = 0;
-		disp_mode->physcial_w = ser_des->desdef->disp_mode.physcial_w;
-		disp_mode->physcial_h = ser_des->desdef->disp_mode.physcial_h;
+		disp_mode->pll = des->disp_mode.pll;
+		disp_mode->lppf = des->disp_mode.lppf;
 	}
 }
 EXPORT_SYMBOL(serdes_get_modes);
@@ -1844,8 +1797,6 @@ static int serdes_bridge_attach(struct drm_bridge *bridge,
 }
 
 static const struct drm_bridge_funcs serdes_bridge_funcs = {
-	.enable = serdes_enable,
-	.disable = serdes_disable,
 	.attach = serdes_bridge_attach,
 };
 
@@ -2030,8 +1981,12 @@ static int serdes_iic_driver_probe(struct i2c_client *client)
 	}
 
 	if (max96789->inited_in_lk) {
-		max96789->enabled = true;
-		max96789->pre_enabled = true;
+		max96789->port0_enabled = true;
+		max96789->port0_pre_enabled = true;
+		if (max96789->super_frame) {
+			max96789->port1_enabled = true;
+			max96789->port1_pre_enabled = true;
+		}
 #if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 		max96789->hotplug_task = kthread_run(serdes_hotplug_kthread, max96789, "hotplug");
 #if ENABLE_HOTPLUG_INT

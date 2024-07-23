@@ -30,9 +30,9 @@ struct vdo_timing {
 	u32 crop_height[2];
 };
 
-void serdes_enable(struct drm_bridge *bridge);
-void serdes_pre_enable(struct drm_bridge *bridge);
-void serdes_disable(struct drm_bridge *bridge);
-void serdes_get_modes(struct drm_bridge *bridge, struct vdo_timing *disp_mode);
+void serdes_enable(struct drm_bridge *bridge, u8 port);
+void serdes_pre_enable(struct drm_bridge *bridge, u8 port);
+void serdes_disable(struct drm_bridge *bridge, u8 port);
+void serdes_get_modes(struct drm_bridge *bridge, struct vdo_timing *disp_mode, u8 port);
 int serdes_get_link_status(struct drm_bridge *bridge);
 

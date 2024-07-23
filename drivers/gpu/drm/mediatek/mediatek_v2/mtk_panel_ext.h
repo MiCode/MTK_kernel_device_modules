@@ -661,6 +661,7 @@ struct mtk_panel_funcs {
 #endif
 	void (*get_switch_mode_delay)(enum SWITCH_MODE_DELAY **switch_mode_delay,
 		unsigned int mode_num);
+	int (*get_real_vdo_timing)(struct drm_panel *panel, struct drm_display_mode *mode);
 	/**
 	 * @doze_enable_start:
 	 *

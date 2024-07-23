@@ -2267,7 +2267,13 @@ int mtk_dsi_get_virtual_heigh(struct mtk_dsi *dsi,
 	struct drm_display_mode adjusted_mode = state->base.adjusted_mode;
 	unsigned int virtual_heigh = adjusted_mode.vdisplay;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct drm_display_mode mode;
 
+	if (dsi->panel && dsi->ext && dsi->ext->funcs &&
+	    dsi->ext->funcs->get_real_vdo_timing) {
+		dsi->ext->funcs->get_real_vdo_timing(dsi->panel, &mode);
+		return mode.vdisplay;
+	}
 	if (mtk_crtc->res_switch == RES_SWITCH_NO_USE) {
 		panel_ext = dsi->ext;
 		if (panel_ext && panel_ext->funcs
@@ -2291,6 +2297,13 @@ int mtk_dsi_get_virtual_width(struct mtk_dsi *dsi,
 	unsigned int virtual_width = adjusted_mode.hdisplay;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 
+	struct drm_display_mode mode;
+
+	if (dsi->panel && dsi->ext && dsi->ext->funcs &&
+	    dsi->ext->funcs->get_real_vdo_timing) {
+		dsi->ext->funcs->get_real_vdo_timing(dsi->panel, &mode);
+		return mode.hdisplay;
+	}
 	if (mtk_crtc->res_switch == RES_SWITCH_NO_USE) {
 		panel_ext = dsi->ext;
 		if (panel_ext && panel_ext->funcs
@@ -5594,12 +5607,29 @@ static void mtk_dsi_mode_set(struct mtk_dsi *dsi,
 			dsi->master_dsi->ddp_comp.mtk_crtc : dsi->ddp_comp.mtk_crtc;
 	struct mtk_ddp_comp *comp = dsi->is_slave ?
 			(&dsi->master_dsi->ddp_comp) : (&dsi->ddp_comp);
+	struct drm_display_mode mode = {0};
 
 	if (mtk_crtc->scaling_ctx.scaling_en)
 		adjusted = mtk_crtc_get_display_mode_by_comp(__func__,
 						&mtk_crtc->base, comp, false);
 	if (adjusted == NULL) {
 		DDPPR_ERR("%s display_mode is NULL\n", __func__);
+		return;
+	}
+
+	if (dsi->panel && dsi->ext && dsi->ext->funcs &&
+	    dsi->ext->funcs->get_real_vdo_timing) {
+		dsi->ext->funcs->get_real_vdo_timing(dsi->panel, &mode);
+		dsi->vm.pixelclock = mode.clock;
+		dsi->vm.hactive = mode.hdisplay;
+		dsi->vm.hback_porch = mode.htotal - mode.hsync_end;
+		dsi->vm.hfront_porch = mode.hsync_start - mode.hdisplay;
+		dsi->vm.hsync_len = mode.hsync_end - mode.hsync_start;
+
+		dsi->vm.vactive = mode.vdisplay;
+		dsi->vm.vback_porch = mode.vtotal - mode.vsync_end;
+		dsi->vm.vfront_porch = mode.vsync_start - mode.vdisplay;
+		dsi->vm.vsync_len = mode.vsync_end - mode.vsync_start;
 		return;
 	}
 
