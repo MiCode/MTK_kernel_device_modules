@@ -310,6 +310,7 @@ struct mdw_fpriv {
 	/* cmd history */
 	struct list_head ch_list;
 	uint32_t cmd_cnt;
+	struct mutex ch_mtx;
 
 	/* cmd execute id counter */
 	uint32_t counter;

@@ -417,6 +417,7 @@ static void mdw_cmd_history_tbl_delete(struct mdw_fpriv *mpriv)
 {
 	struct mdw_cmd_history_tbl *ch_tbl = NULL, *tmp = NULL;
 
+	mutex_lock(&mpriv->ch_mtx);
 	list_for_each_entry_safe(ch_tbl, tmp, &mpriv->ch_list, ch_tbl_node) {
 		list_del(&ch_tbl->ch_tbl_node);
 		mdw_cmd_debug("s(0x%llx) uid(0x%llx) delete ch_tbl\n",
@@ -424,6 +425,8 @@ static void mdw_cmd_history_tbl_delete(struct mdw_fpriv *mpriv)
 		kfree(ch_tbl->h_sc_einfo);
 		kfree(ch_tbl);
 	}
+	mutex_unlock(&mpriv->ch_mtx);
+
 	mdw_cmd_history_reset(mpriv);
 }
 
