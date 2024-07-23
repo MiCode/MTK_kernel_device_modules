@@ -9238,7 +9238,7 @@ static void mtk_drm_kms_deinit(struct drm_device *drm)
 	}
 }
 
-static struct mutex se_lock;
+static DEFINE_MUTEX(se_lock);
 
 static int mtk_drm_se_enable(struct drm_device *dev, struct mtk_drm_crtc *mtk_crtc)
 {
