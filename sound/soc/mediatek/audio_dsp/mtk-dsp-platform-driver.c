@@ -1193,6 +1193,9 @@ static int mtk_dsp_pcm_open(struct snd_soc_component *component,
 	int id = cpu_dai->id;
 	int dsp_feature_id = get_featureid_by_dsp_daiid(id);
 	const char *task_name = get_str_by_dsp_dai_id(id);
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+	int slc_sign = get_dsp_task_attr(id, ADSP_TASK_ATTR_ADSP_SLC_SIGN);
+#endif
 
 	memcpy((void *)(&(runtime->hw)), (void *)dsp->mtk_dsp_hardware,
 	       sizeof(struct snd_pcm_hardware));
@@ -1204,7 +1207,7 @@ static int mtk_dsp_pcm_open(struct snd_soc_component *component,
 	}
 
 #if IS_ENABLED(CONFIG_MTK_SLBC)
-	if ((id == AUDIO_TASK_VOIP_ID || id == AUDIO_TASK_DEEPBUFFER_ID)){
+	if (slc_sign && (id == AUDIO_TASK_VOIP_ID || id == AUDIO_TASK_DEEPBUFFER_ID)){
 		mutex_lock(&slc_mutex);
 		if (get_slc_counter() == 0)
 			request_slc(id);
@@ -1250,10 +1253,13 @@ static int mtk_dsp_pcm_close(struct snd_soc_component *component,
 	int id = cpu_dai->id;
 	int dsp_feature_id = get_featureid_by_dsp_daiid(id);
 	const char *task_name = get_str_by_dsp_dai_id(id);
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+	int slc_sign = get_dsp_task_attr(id, ADSP_TASK_ATTR_ADSP_SLC_SIGN);
+#endif
 
 	pr_info("%s() %s\n", __func__, task_name);
 #if IS_ENABLED(CONFIG_MTK_SLBC)
-	if ((id == AUDIO_TASK_VOIP_ID || id == AUDIO_TASK_DEEPBUFFER_ID)){
+	if (slc_sign && (id == AUDIO_TASK_VOIP_ID || id == AUDIO_TASK_DEEPBUFFER_ID)){
 		mutex_lock(&slc_mutex);
 		if (get_slc_counter() == 1)
 			release_slc(id);
