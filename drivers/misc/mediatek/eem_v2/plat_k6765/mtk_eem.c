@@ -203,7 +203,7 @@ static int get_devinfo(void)
 		return 0;
 	}
 
-	pdev = of_device_alloc(node, NULL, NULL);
+	pdev = of_find_device_by_node(node);
 	if (pdev == NULL) {
 		eem_error("%s failed to get pdev\n", __func__);
 		goto get_devinfo_end;
@@ -352,8 +352,8 @@ static int get_devinfo(void)
 
 get_devinfo_end:
 	if (pdev != NULL) {
-		of_platform_device_destroy(&pdev->dev, NULL);
-		put_device(&pdev->dev);
+		of_node_put(node);
+		platform_device_put(pdev);
 	}
 
 	FUNC_EXIT(FUNC_LV_HELP);

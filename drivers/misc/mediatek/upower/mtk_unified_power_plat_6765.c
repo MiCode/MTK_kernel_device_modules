@@ -223,57 +223,37 @@ int cpu_cluster_mapping(unsigned int cpu)
 
 unsigned int cpufreq_get_cpu_level_upower(void)
 {
-	unsigned int lv = CPU_LEVEL_3;
-	unsigned int efuse_seg;
-	unsigned int efuse_ly;
-	struct platform_device *pdev;
+	int ret, val, efuse_ly, val_ly, fabinfo2;
+	struct nvmem_device *nvmem_dev;
 	struct device_node *node;
-	struct nvmem_cell *efuse_cell;
-	size_t efuse_len;
-	unsigned int *efuse_buf;
-	unsigned int *efuse_ly_buf;
-	int val = 0;
-	int val_ly = 0;
-	unsigned int fabinfo2;
+	unsigned int lv = CPU_LEVEL_0;
 
-	node = of_find_compatible_node(NULL, NULL, "mediatek,mt6765-dvfsp");
-
+	node = of_find_node_by_name(NULL, "eem-fsm");
 	if (!node) {
-		upower_error("%s fail to get device node\n", __func__);
+		upower_info("%s fail to get device node\n", __func__);
 		return 0;
 	}
-	pdev = of_device_alloc(node, NULL, NULL);
-	if (!pdev) {
-		upower_error("%s fail to create device node\n", __func__);
-		return 0;
-	}
-	efuse_cell = nvmem_cell_get(&pdev->dev, "efuse_segment_cell");
-	if (IS_ERR(efuse_cell)) {
-		upower_error("@%s: cannot get efuse_cell, errno %ld\n",
-			__func__, PTR_ERR(efuse_cell));
+	nvmem_dev = of_nvmem_device_get(node, "mtk_efuse");
+	if (IS_ERR_OR_NULL(nvmem_dev)) {
+		of_node_put(node);
+		upower_info("%s fail to get nvmem device, err: %d\n",
+				__func__, (int)PTR_ERR(nvmem_dev));
 		return 0;
 	}
 
-	efuse_buf = (unsigned int *)nvmem_cell_read(efuse_cell, &efuse_len);
-	nvmem_cell_put(efuse_cell);
-	efuse_seg = *efuse_buf;
-	val = efuse_seg;
-	kfree(efuse_buf);
-
-	/* get efuse ly */
-	efuse_cell = nvmem_cell_get(&pdev->dev, "efuse_ly_cell");
-	if (IS_ERR(efuse_cell)) {
-		upower_error("@%s: cannot get efuse_ly_cell, errno %ld\n",
-			__func__, PTR_ERR(efuse_cell));
-		return 0;
+	ret = nvmem_device_read(nvmem_dev, 0x78, sizeof(__u32), &val);
+	if (ret < 0){
+		upower_info("%s fail to read nvmem address 0x78, ret : %d\n", __func__, ret);
+		goto fail;
+	}
+	ret = nvmem_device_read(nvmem_dev, 0x210, sizeof(__u32), &efuse_ly);
+	if (ret < 0){
+		upower_info("%s fail to read nvmem address 0x210, ret : %d\n", __func__, ret);
+		goto fail;
 	}
 
-	efuse_ly_buf = (unsigned int *)nvmem_cell_read(efuse_cell, &efuse_len);
-	nvmem_cell_put(efuse_cell);
-	efuse_ly = *efuse_ly_buf;
 	val_ly = (efuse_ly >> 1) & 0x1;
 	fabinfo2 = (efuse_ly >> 3) & 0x1;
-	kfree(efuse_ly_buf);
 
 	if ((val == 0x2) || (val == 0x5))
 		lv = CPU_LEVEL_2;
@@ -301,20 +281,18 @@ unsigned int cpufreq_get_cpu_level_upower(void)
 	if (val == 0x24)
 		lv = CPU_LEVEL_10;
 
-
 	/* for improve yield MT6765OD */
 	if ((val == 0x3) || (val == 0x4) || (val == 0x12)) {
 		if (fabinfo2 == 1)
 			lv = CPU_LEVEL_9;
 	}
 
-	/* free pdev */
-	if (pdev != NULL) {
-		of_platform_device_destroy(&pdev->dev, NULL);
-		put_device(&pdev->dev);
-	}
-
+fail:
 	upower_info("CPU level: %d\n", lv);
+
+	nvmem_device_put(nvmem_dev);
+	of_node_put(node);
+
 	return lv;
 }
 
