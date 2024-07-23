@@ -6256,7 +6256,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			maximum-speed = "high-speed";
 			mediatek,gen1-txdeemph;
 			mediatek,ux-exit-lfps = <0x1e>;
-			mediatek,polling-scdlfps-time = <0x21>;
+			mediatek,polling-scdlfps-time = <0x31>;
 			mediatek,ux-exit-lfps-gen2 = <0x44>;
 			mediatek,hwrscs-vers = <2>;
 			mediatek,syscon-wakeup = <&usbwkcfg_ao_clk 0x200 105>;
@@ -6461,6 +6461,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				clock-names = "ref";
 				#phy-cells = <1>;
 				mediatek,u3-sw-efuse;
+				mediatek,u1u2-exit-equal;
 				nvmem-cells = <&u3_phy_data1>, <&u3_phy_data1>,
 						<&u3_phy_data2>, <&u3_phy_data2>,
 						<&u3_phy_data2>, <&u3_phy_data2>,
