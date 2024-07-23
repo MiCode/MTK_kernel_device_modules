@@ -25,7 +25,7 @@
 #include "clkchk-mt6853.h"
 
 #define BUG_ON_CHK_ENABLE	1
-#define CHECK_VCORE_FREQ	1
+#define CHECK_VCORE_FREQ	0
 
 /*
  * clkchk dump_regs
