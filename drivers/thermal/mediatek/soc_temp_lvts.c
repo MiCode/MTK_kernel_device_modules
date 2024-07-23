@@ -7266,6 +7266,7 @@ static struct lvts_data mt6899_lvts_data = {
 	.reset_no_need = true,
 	.spm_lvts = true,
 	.dump_wo_pause = true,
+	.ap_domain_no_irq = true,
 };
 
 /*==================================================
