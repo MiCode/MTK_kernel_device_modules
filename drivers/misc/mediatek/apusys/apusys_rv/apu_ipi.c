@@ -1699,7 +1699,7 @@ void apu_ipi_remove(struct mtk_apu *apu)
 	apu_mbox_hw_exit(apu);
 	apu_remove_rpmsg_subdev(apu);
 	apu_ipi_unregister(apu, APU_IPI_INIT);
-	if (hw_ops->irq_affin_clear(apu))
+	if (hw_ops->irq_affin_clear)
 		hw_ops->irq_affin_clear(apu);
 	if (apu->platdata->flags & F_APU_IPI_UT_SUPPORT)
 		apu_ipi_ut_exit();
