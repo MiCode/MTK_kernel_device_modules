@@ -599,6 +599,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/usb/usb_boost/musb_boost.ko",
     "drivers/misc/mediatek/usb/usb_meta/usb_meta.ko",
     "drivers/misc/mediatek/usb/usb_offload/usb_offload.ko",
+    "drivers/misc/mediatek/usb/usb_logger/usb_logger.ko",
     "drivers/misc/mediatek/usb/usb_rndis/mtk_u_ether.ko",
     "drivers/misc/mediatek/usb/usb_rndis/mtk_usb_f_rndis.ko",
     "drivers/misc/mediatek/usb/usb_xhci/xhci-mtk-hcd-v2.ko",
