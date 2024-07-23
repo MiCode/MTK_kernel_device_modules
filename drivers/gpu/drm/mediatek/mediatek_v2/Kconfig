@@ -91,4 +91,13 @@ config MTK_SE_SUPPORT
 	  you should enable this option. Otherwise, it can be left disabled to
 	  reduce the driver's footprint.
 
+config MTK_RECU_FENCE_LOCK
+	bool "enable fence deadlock workarond for img_gpu"
+	help
+	  For IMG GPU, it will attach to display fence
+	  by callback, and it maybe occur deadlock when fence ref is
+	  reduced to zero in fence signal flow because of linux fence
+	  limitation. So the option will control whether display run
+	  workaround flow.
+
 source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/mediatek/mediatek_v2/mtk_drm_edp/Kconfig"
