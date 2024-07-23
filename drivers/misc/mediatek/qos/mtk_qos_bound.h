@@ -86,8 +86,10 @@ struct qos_bound_stat {
 
 
 struct qos_bound {
+#if !IS_ENABLED(CONFIG_MTK_QOS_MT6877)
 	unsigned short ver;
 	unsigned short apu_num;
+#endif
 	unsigned short idx;
 	unsigned short state;
 	struct qos_bound_stat stats[QOS_BOUND_BUF_SIZE];

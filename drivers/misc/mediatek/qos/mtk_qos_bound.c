@@ -68,6 +68,9 @@ void qos_bound_enable(int enable)
 	}
 	smp_mb(); /* init bound before flag enabled */
 
+#if IS_ENABLED(CONFIG_MTK_QOS_BOUND_LEGACY)
+	qos_bound_enabled = enable;
+#else
 	if (bound->ver == QOS_BOUND_VER_TAG) {
 		qos_bound_apu = (unsigned short *)(bound);
 		qos_bound_apu += (sizeof(struct qos_bound)/sizeof(unsigned short));
@@ -80,8 +83,6 @@ void qos_bound_enable(int enable)
 				bound->ver, bound->apu_num);
 		qos_bound_enabled = false;
 	}
-#if IS_ENABLED(CONFIG_MTK_QOS_BOUND_LEGACY)
-	qos_bound_enabled = enable;
 #endif
 	pr_info("mtk_qos: qos_bound_enabled=%d\n",qos_bound_enabled);
 }
