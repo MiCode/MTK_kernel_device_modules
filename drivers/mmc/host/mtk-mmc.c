@@ -773,9 +773,15 @@ static void msdc_reset_hw(struct msdc_host *host)
 
 	sdr_set_bits(host->base + MSDC_CFG, MSDC_CFG_RST);
 	readl_poll_timeout(host->base + MSDC_CFG, val, !(val & MSDC_CFG_RST), 0, 0);
+
+	sdr_set_field(host->base + MSDC_DMA_CTRL, MSDC_DMA_CTRL_STOP, 1);
+	readl_poll_timeout(host->base + MSDC_DMA_CTRL, val,	!(val & MSDC_DMA_CTRL_STOP), 0, 0);
+
 	sdr_set_bits(host->base + MSDC_FIFOCS, MSDC_FIFOCS_CLR);
 	readl_poll_timeout(host->base + MSDC_FIFOCS, val,
 			   !(val & MSDC_FIFOCS_CLR), 0, 0);
+
+	readl_poll_timeout(host->base + MSDC_DMA_CFG, val,	!(val & MSDC_DMA_CFG_STS), 0, 0);
 
 	val = readl(host->base + MSDC_INT);
 	writel(val, host->base + MSDC_INT);
@@ -1693,7 +1699,8 @@ static void msdc_start_command(struct msdc_host *host,
 		return;
 
 	if ((readl(host->base + MSDC_FIFOCS) & MSDC_FIFOCS_TXCNT) >> 16 ||
-	    readl(host->base + MSDC_FIFOCS) & MSDC_FIFOCS_RXCNT) {
+	    readl(host->base + MSDC_FIFOCS) & MSDC_FIFOCS_RXCNT ||
+	    readl(host->base + MSDC_DMA_CFG) & MSDC_DMA_CFG_STS) {
 		dev_err(host->dev, "TX/RX FIFO non-empty before start of IO. Reset\n");
 		msdc_reset_hw(host);
 	}
@@ -2038,6 +2045,13 @@ static bool msdc_data_xfer_done(struct msdc_host *host, u32 events,
 			dev_info(host->dev, "DMA stop timed out\n");
 			return false;
 		}
+
+		sdr_set_bits(host->base + MSDC_FIFOCS, MSDC_FIFOCS_CLR);
+		readl_poll_timeout(host->base + MSDC_FIFOCS, val,
+				   !(val & MSDC_FIFOCS_CLR), 0, 0);
+
+		readl_poll_timeout(host->base + MSDC_DMA_CFG, val, !(val & MSDC_DMA_CFG_STS), 0, 0);
+
 		spin_lock_irqsave(&host->lock, flags);
 		sdr_clr_bits(host->base + MSDC_INTEN, data_ints_mask);
 		spin_unlock_irqrestore(&host->lock, flags);
@@ -3903,14 +3917,9 @@ static void msdc_cqe_disable(struct mmc_host *mmc, bool recovery)
 	/* disable busy check */
 	sdr_clr_bits(host->base + MSDC_PATCH_BIT1, MSDC_PB1_BUSY_CHECK_SEL);
 
-	if (recovery) {
-		sdr_set_field(host->base + MSDC_DMA_CTRL,
-			      MSDC_DMA_CTRL_STOP, 1);
-		if (WARN_ON(readl_poll_timeout(host->base + MSDC_DMA_CFG, val,
-			!(val & MSDC_DMA_CFG_STS), 1, 3000)))
-			return;
+	if (recovery)
 		msdc_reset_hw(host);
-	}
+
 }
 
 static void msdc_cqe_pre_enable(struct mmc_host *mmc)
@@ -4369,6 +4378,8 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	ret = mmc_of_parse(mmc);
 	if (ret)
 		goto host_free;
+
+	mmc->cqe_recovery_reset_always = 1;
 
 	host->base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(host->base)) {
