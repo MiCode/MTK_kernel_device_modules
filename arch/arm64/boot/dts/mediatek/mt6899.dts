@@ -3686,8 +3686,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					&smi_larb34 &smi_larb35 &smi_larb36
 					&smi_larb37 &smi_larb38>;
 		mediatek,commons-supply = <&smi_disp_common>, <&smi_mdp_common>;
-		mediatek,mmqos-met-not-freerun;
-		mmqos-state = <0x0>;
+		mmqos-state = <0x177ed>;
 		mmqos-log-level = <0>;
 		clocks = <&topckgen_clk CLK_TOP_MMINFRA_SEL>,
 			<&topckgen_clk CLK_TOP_MMINFRA_SEL>;
