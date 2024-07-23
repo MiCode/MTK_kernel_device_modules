@@ -292,7 +292,7 @@ static int main3_vcm_set_position(struct main3_vcm_device *main3_vcm, u16 val)
 
 		while (retry-- > 0) {
 			ret = i2c_master_send(client, puSendCmd, nCommNum);
-			if (ret >= 0)
+			if (ret >= 0 || ret == -ETIMEDOUT)
 				break;
 		}
 
