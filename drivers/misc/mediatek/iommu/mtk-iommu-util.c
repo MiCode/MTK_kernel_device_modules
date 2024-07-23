@@ -26,6 +26,14 @@ int mtk_iommu_update_pm_status(u32 type, u32 id, bool pm_sta)
 	return -1;
 }
 EXPORT_SYMBOL_GPL(mtk_iommu_update_pm_status);
+
+void mtk_iommu_set_pm_ops(const struct mtk_iommu_mm_pm_ops *ops)
+{
+	if (iommu_ops && iommu_ops->set_pm_ops)
+		iommu_ops->set_pm_ops(ops);
+}
+EXPORT_SYMBOL_GPL(mtk_iommu_set_pm_ops);
+
 #endif /* CONFIG_DEVICE_MODULES_MTK_IOMMU */
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC) && IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)

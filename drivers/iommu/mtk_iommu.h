@@ -188,13 +188,14 @@ struct mtk_iommu_data {
 	struct mtk_smi_larb_iommu	larb_imu[MTK_LARB_NR_MAX];
 };
 
-struct mtk_iommu_ops {
-	int (*update_pm_status)(u32 type, u32 id, bool pm_sta);
-};
-
 struct mtk_iommu_mm_pm_ops {
 	int (*pm_get)(void);
 	int (*pm_put)(void);
+};
+
+struct mtk_iommu_ops {
+	int (*update_pm_status)(u32 type, u32 id, bool pm_sta);
+	void (*set_pm_ops)(const struct mtk_iommu_mm_pm_ops *ops);
 };
 
 static inline int compare_of(struct device *dev, void *data)
@@ -241,7 +242,6 @@ static inline int dev_is_normal_region(struct device *dev)
 }
 
 void mtk_iommu_dbg_hang_detect(enum mtk_iommu_type type, int id);
-void mtk_iommu_set_pm_ops(const struct mtk_iommu_mm_pm_ops *ops);
 
 uint64_t mtee_iova_to_phys(unsigned long iova, u32 tab_id, u32 *sr_info,
 			   u64 *pa, u32 *type, u32 *lvl);

@@ -2374,6 +2374,11 @@ static int mtk_iommu_pm_status_update(u32 type, u32 id, bool pm_sta)
 	return 0;
 }
 
+static void mtk_iommu_pm_ops_set(const struct mtk_iommu_mm_pm_ops *ops)
+{
+	mtk_mm_pm_ops = ops;
+}
+
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
 static int mtk_iommu_dbg_hang_cb(struct notifier_block *nb,
 				 unsigned long action, void *data)
@@ -2776,6 +2781,7 @@ static void mtk_iommu_mau_init(struct mtk_iommu_data *data)
 
 static const struct mtk_iommu_ops mtk_iommu_export_ops = {
 	.update_pm_status	= mtk_iommu_pm_status_update,
+	.set_pm_ops		= mtk_iommu_pm_ops_set,
 };
 
 static int mtk_iommu_probe(struct platform_device *pdev)
@@ -3531,12 +3537,6 @@ void mtk_iommu_dbg_hang_detect(enum mtk_iommu_type type, int id)
 	pr_info("%s, (%d,%d) no dump\n", __func__, type, id);
 }
 EXPORT_SYMBOL_GPL(mtk_iommu_dbg_hang_detect);
-
-void mtk_iommu_set_pm_ops(const struct mtk_iommu_mm_pm_ops *ops)
-{
-	mtk_mm_pm_ops = ops;
-}
-EXPORT_SYMBOL_GPL(mtk_iommu_set_pm_ops);
 
 static const struct dev_pm_ops mtk_iommu_pm_ops = {
 	SET_RUNTIME_PM_OPS(mtk_iommu_runtime_suspend, mtk_iommu_runtime_resume, NULL)
