@@ -1530,6 +1530,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/sensor/1.0/magnetometer/mag_common.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/sensor/1.0/accelerometer/accelhub/accelhub.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/sensor/1.0/hwmon/hwmon.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/dcm/mt6781_dcm.ko")
+        mgk_64_device_modules.append("drivers/clk/mediatek/clk-fmeter-mt6781.ko")
 
         mgk_64_device_modules.append("drivers/misc/mediatek/scp/cm4/scp.ko")
         mgk_64_device_modules.remove("sound/soc/codecs/mt6338-accdet.ko")
