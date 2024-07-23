@@ -93,7 +93,7 @@
 		if ((module < MME_MODULE_MAX) && (type < MME_BUFFER_INDEX_MAX) && \
 			(g_ring_buffer_units[module][type] > 0)) { \
 			unsigned int mme_format_size = sizeof(char *); \
-			unsigned int mme_data1_size, mme_data1_flag, mme_str_len; \
+			unsigned int mme_data1_size=0, mme_data1_flag=0, mme_str_len=0; \
 			unsigned long long p_mme_buf; \
 			PROCESS_DATA(data1, mme_data1_size, mme_data1_flag, mme_str_len); \
 			p_mme_buf = mmevent_log((mme_format_size + mme_data1_size + MME_PID_SIZE), \
@@ -111,7 +111,7 @@
 		if ((module < MME_MODULE_MAX) && (type < MME_BUFFER_INDEX_MAX) && \
 			(g_ring_buffer_units[module][type] > 0)) { \
 			unsigned int mme_format_size = sizeof(char *); \
-			unsigned int mme_data_size[N], mme_data_flag[N], mme_str_len[N]; \
+			unsigned int mme_data_size[N]={0}, mme_data_flag[N]={0}, mme_str_len[N]={0}; \
 			unsigned int mme_log_length = mme_format_size + MME_PID_SIZE, mme_index; \
 			unsigned long long mme_log_flag = 0, p_mme_buf = 0; \
 			PROCESS_DATA_##N(mme_data_size, mme_data_flag, mme_str_len, ##__VA_ARGS__); \
