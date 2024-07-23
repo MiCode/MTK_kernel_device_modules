@@ -5202,7 +5202,7 @@
 
 		operating-points-v2 = <&opp_table_disp0>;
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-		//_vcore-supply = <&mt6363_vbuck2>;
+		_vcore-supply = <&mt_pmic_vcore_buck_reg>;
 
 		clocks = <&topckgen TOP_MUX_DISP>,	/* 0 */
 			<&topckgen TOP_MUX_CAM>,	/* 1 */
