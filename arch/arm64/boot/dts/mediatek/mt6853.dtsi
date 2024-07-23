@@ -4146,7 +4146,7 @@
 			compatible = "mediatek,mtk-btcvsd-snd";
 			reg=<0 0x18050000 0 0x1000>, /*PKV_PHYSICAL_BASE*/
 			    <0 0x18080000 0 0x14000>; /*SRAM_BANK2*/
-			interrupts = <GIC_SPI 374 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 375 IRQ_TYPE_LEVEL_HIGH 0>;
 			mediatek,infracfg = <&infracfg_ao_clk>;
 			/*INFRA MISC, conn_bt_cvsd_mask*/
 			/*cvsd_mcu_read, write, packet_indicator*/
