@@ -242,7 +242,7 @@
 					(str_len=MIN(strlen((char *)(unsigned long)(data)), \
 					MAX_STACK_STR_SIZE)) + 1)) : \
 					sizeof(char *)): (is_int_pointer_data ? FLAG_INT_POINTER_SIZE : \
-					sizeof(data))); \
+					sizeof(typeof(data)))); \
 		flag_data = (is_str_data ? \
 					(is_stack_str ? \
 					DATA_FLAG_STACK_REGION_STRING : DATA_FLAG_CODE_REGION_STRING) : \
