@@ -12028,6 +12028,11 @@ static void __exit mtk_drm_exit(void)
 }
 module_init(mtk_drm_init);
 module_exit(mtk_drm_exit);
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT)
+MODULE_SOFTDEP("pre: panel-maxiam-max96851");
+MODULE_SOFTDEP("pre: maxiam-max96851");
+MODULE_SOFTDEP("pre: mtk_drm_edp");
+#endif
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 MODULE_SOFTDEP("pre: panel-serdes-max96789");
 #endif
