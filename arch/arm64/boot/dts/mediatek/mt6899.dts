@@ -7659,9 +7659,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			emi-eff-lp5-table =
 				<2964 3648 5110 5795 6388 7066 7215 7849
 				7774 8264 7937 8330 7920 8344 7811 8257>;
-
+			mediatek,vcp-supply = <&vcp>;
 			/* define threads, see mt6899-gce.h */
-			//mediatek,mailbox-gce = <&gce>;
+			mediatek,mailbox-gce = <&gce>;
 			mboxes = <&gce 0 0 CMDQ_THR_PRIO_4>,
 				<&gce 1 0 CMDQ_THR_PRIO_4>,
 				<&gce 2 0 CMDQ_THR_PRIO_4>,
