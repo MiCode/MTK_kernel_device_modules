@@ -20002,7 +20002,9 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		compatible = "pps-gpio";
 	};
 
-	nebula_mbox: nebula-mbox@0 {
+	nebula_mbox0: nebula-mbox@0 {
+		way = <0>;
+		reg = <0 0 0 0>;
 		compatible = "grt,ipc-mbox";
 		#mbox-cells = <1>;
 		status = "disabled";
@@ -20015,13 +20017,14 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		status = "disabled";
 	};
 
-	power_service: power-service {
+	power_service0: power-service@0 {
 		compatible = "grt,power-service";
-		mboxes = <&nebula_mbox 0>, /*channel 0*/
-			<&nebula_mbox 1>, /*channel 1*/
-			<&nebula_mbox 2>, /*channel 2*/
-			<&nebula_mbox 3>, /*channel 3*/
-			<&nebula_mbox 4>; /*channel 4*/
+		reg = <0 0 0 0>;
+		mboxes = <&nebula_mbox0 0>, /*channel 0*/
+			<&nebula_mbox0 1>, /*channel 1*/
+			<&nebula_mbox0 2>, /*channel 2*/
+			<&nebula_mbox0 3>, /*channel 3*/
+			<&nebula_mbox0 4>; /*channel 4*/
 		status = "disabled";
 	};
 
