@@ -14967,6 +14967,11 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		core-0 = "enable";
 		scp-hwvoter = "disable";
 		scp-sram-size = <0x00360000>;
+		scp-dram-size = <0x200000>; /* scp dram image size */
+		scp-cache-dump-buf-size = <0x000c4000>;
+		scp-reg-dump-buf-size = <0x00003c00>;
+		scp-tbuf-dump-buf-size = <0x00000400>;
+
 		core-nums = <2>;	/* core number */
 		twohart = <1>;		/* two hart arch */
 		mbox-count = <5>;
@@ -15055,7 +15060,6 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		scp-dram-region = "enable";   /* enable scp dram region manage */
 		scp-protect = "enable";   /* enable scp protections */
 		secure-dump = "enable";   /* enable dump via secure world*/
-		secure-dump-size = <0x628000>;
 		scp-pm-notify = "enable";
 		scp-thermal-wq = "disable";
 		scp-low-pwr-dbg = "enable";
@@ -15089,11 +15093,6 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			<18 0x8000 0x0>, /* scp chre to */
 			<19 0x200 0x0>;  /* low power debug */
 
-		memorydump = <0x360000>, /* l2tcm, sync with ,<reg> tcm, scp-sram-size*/
-			<0x0c4000>, /* l1c */
-			<0x003c00>, /* regdump */
-			<0x000400>, /* trace buffer */
-			<0x200000>; /* dram */
 #if 0
 		scp-resource-dump = "disable";   /* enable dump scp related resource */
 		/* regulator */
