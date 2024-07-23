@@ -1197,9 +1197,48 @@
 		#clock-cells = <1>;
 	};
 
-	fhctl@1000ce00 {
-		compatible = "mediatek,fhctl";
-		reg = <0 0x1000ce00 0 0x200>;
+	fhctl: fhctl@1000ce00 {
+			compatible = "mediatek,mt6781-fhctl";
+			reg = <0 0x1000ce00 0 0x100>, //AP FHCTL base
+				<0 0x1000c000 0 0xe00>; //APMIX base
+
+			map0 {
+				domain = "top";
+				method = "fhctl-sspm";
+				armpll_ll {
+					fh-id = <0>;
+				};
+				armpll_bl {
+					fh-id = <1>;
+				};
+				apupll {
+					fh-id = <2>;
+				};
+				ccipll {
+					fh-id = <3>;
+				};
+				gpupll {
+					fh-id = <4>;
+				};
+				mpll {
+					fh-id = <5>;
+				};
+				mempll {
+					fh-id = <6>;
+				};
+				mainpll {
+					fh-id = <7>;
+				};
+				msdcpll {
+					fh-id = <8>;
+				};
+				adsppll {
+					fh-id = <9>;
+				};
+				tvdpll {
+					fh-id = <10>;
+				};
+			};
 	};
 
 	pwrap: pwrap@1000d000 {
@@ -1254,11 +1293,30 @@
 						"pmic_ptim_r";
 				nvmem-cells = <&fg_init>, <&fg_soc>;
 				nvmem-cell-names = "initialization", "state-of-charge";
-
 			};
-
+			mt6358_clkbuf: mt6358-clkbuf {
+				compatible = "mediatek,mt6358-clkbuf";
+				XO-SOC {
+					xo-id = <0>;
+				};
+				XO-WCN {
+					xo-id = <1>;
+				};
+				XO-NFC {
+					xo-id = <2>;
+				};
+				XO-CEL {
+					xo-id = <3>;
+				};
+				XO-RSV2 {
+					xo-id = <5>;
+				};
+				XO-EXT {
+					perms = <0x3ffff>;
+					xo-id = <6>;
+				};
+			};
 		};
-
 	};
 
 	pwraph: pwraphal@ {
@@ -5627,10 +5685,10 @@
 	};
 
 	pmic_clock_buffer_ctrl: pmic_clock_buffer_ctrl {
-		compatible = "mediatek,pmic_clock_buffer";
-		mediatek,clkbuf-quantity = <7>;
-		mediatek,clkbuf-config = <2 1 1 2 0 0 0>;
-		mediatek,clkbuf-driving-current = <1 1 1 1 1 1 1>;
+		pmic-supply = <&mt6358_clkbuf>;
+		compatible = "mediatek,mt6781-clkbuf";
+		pmic = <&mt6358_clkbuf>;
+		pmif = <&pwrap 0>;
 	};
 
 	/* ATF logger */
