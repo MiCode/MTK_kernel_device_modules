@@ -606,8 +606,8 @@ efuse_end:
 
 init_end:
 	if (err_flag != 1 && pdev != NULL) {
-		of_platform_device_destroy(&pdev->dev, NULL);
-		put_device(&pdev->dev);
+		of_node_put(node);
+		platform_device_put(pdev);
 	}
 
 	return 0;
