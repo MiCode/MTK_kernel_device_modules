@@ -45,14 +45,13 @@ struct mml_m2m_frame {
 };
 
 struct mml_m2m_param {
+	struct list_head entry;
 	s32 rotation;
 	u32 hflip:1;
 	u32 vflip:1;
 	u32 secure:1;
 	u32 alpha:1;
 	struct v4l2_pq_submit pq_submit;
-
-	struct list_head entry;
 };
 
 struct mml_m2m_ctx {
@@ -82,26 +81,43 @@ struct mml_m2m_ctx {
 	struct kref ref;
 };
 
-static void mml_m2m_process_done(struct mml_m2m_ctx *mctx, enum vb2_buffer_state vb_state)
+static void m2m_ctx_destroy(struct kref *kref);
+
+static void m2m_param_queue(struct mml_m2m_ctx *ctx)
 {
-	struct vb2_v4l2_buffer *src_buf, *dst_buf;
-	struct mml_v4l2_dev *v4l2_dev = mml_get_v4l2_dev(mctx->ctx.mml);
 	struct mml_m2m_param *param;
 
-	mutex_lock(&mctx->param_mutex);
-	param = list_first_entry_or_null(&mctx->params, struct mml_m2m_param, entry);
+	param = kzalloc(sizeof(*param), GFP_KERNEL);
+	*param = ctx->param;
+	mutex_lock(&ctx->param_mutex);
+	list_add_tail(&param->entry, &ctx->params);
+	mutex_unlock(&ctx->param_mutex);
+}
+
+static void m2m_param_remove(struct mml_m2m_ctx *ctx)
+{
+	struct mml_m2m_param *param;
+
+	mutex_lock(&ctx->param_mutex);
+	param = list_first_entry_or_null(&ctx->params, struct mml_m2m_param, entry);
 	if (param) {
 		list_del(&param->entry);
 		kfree(param);
 	}
-	mutex_unlock(&mctx->param_mutex);
+	mutex_unlock(&ctx->param_mutex);
+}
 
-	mutex_lock(&v4l2_dev->m2m_mutex);
+static void mml_m2m_process_done(struct mml_m2m_ctx *mctx, enum vb2_buffer_state vb_state)
+{
+	struct vb2_v4l2_buffer *src_buf, *dst_buf;
+	struct mml_v4l2_dev *v4l2_dev = mml_get_v4l2_dev(mctx->ctx.mml);
+
+	m2m_param_remove(mctx);
+
 	src_buf = v4l2_m2m_src_buf_remove(mctx->m2m_ctx);
 	dst_buf = v4l2_m2m_dst_buf_remove(mctx->m2m_ctx);
 	if (!src_buf ||!dst_buf) {
 		mml_err("[m2m]%s no src or dst buffer found", __func__);
-		mutex_unlock(&v4l2_dev->m2m_mutex);
 		return;
 	}
 	src_buf->sequence = mctx->frame_count[MML_M2M_FRAME_SRC]++;
@@ -111,7 +127,6 @@ static void mml_m2m_process_done(struct mml_m2m_ctx *mctx, enum vb2_buffer_state
 	v4l2_m2m_buf_done(src_buf, vb_state);
 	v4l2_m2m_buf_done(dst_buf, vb_state);
 	v4l2_m2m_job_finish(v4l2_dev->m2m_dev, mctx->m2m_ctx);
-	mutex_unlock(&v4l2_dev->m2m_mutex);
 }
 
 static void m2m_task_frame_done(struct mml_task *task)
@@ -127,6 +142,8 @@ static void m2m_task_frame_done(struct mml_task *task)
 
 	mml_msg("[m2m]frame done task %p state %u job %u",
 		task, task->state, task->job.jobid);
+
+	kref_get(&mctx->ref);
 
 	/* clean up */
 	task_buf_put(task);
@@ -190,6 +207,8 @@ done:
 	/* notice frame done to v4l2 */
 	mml_m2m_process_done(mctx, vb_state);
 
+	kref_put(&mctx->ref, m2m_ctx_destroy);
+
 	mml_lock_wake_lock(mml, false);
 
 	mml_trace_ex_end();
@@ -207,17 +226,6 @@ static const struct mml_config_ops m2m_config_ops = {
 	.put = frame_config_put,
 	.free = frame_config_free,
 };
-
-static void mml_m2m_param_queue(struct mml_m2m_ctx *ctx)
-{
-	struct mml_m2m_param *param;
-
-	param = kzalloc(sizeof(struct mml_m2m_param), GFP_KERNEL);
-	*param = ctx->param;
-	mutex_lock(&ctx->param_mutex);
-	list_add_tail(&param->entry, &ctx->params);
-	mutex_unlock(&ctx->param_mutex);
-}
 
 static struct mml_m2m_frame *ctx_get_frame(struct mml_m2m_ctx *ctx,
 					   enum v4l2_buf_type type)
@@ -373,21 +381,17 @@ static int mml_m2m_start_streaming(struct vb2_queue *q, unsigned int count)
 {
 	struct mml_m2m_ctx *ctx = vb2_get_drv_priv(q);
 	struct mml_frame_dest *dest;
-	struct vb2_queue *vq;
 	int ret;
 	bool out_streaming, cap_streaming;
 
 	if (V4L2_TYPE_IS_OUTPUT(q->type))
 		ctx->frame_count[MML_M2M_FRAME_SRC] = 0;
-
 	if (V4L2_TYPE_IS_CAPTURE(q->type))
 		ctx->frame_count[MML_M2M_FRAME_DST] = 0;
 
 	dest = ctx_get_submit_dest(ctx, 0);
-	vq = v4l2_m2m_get_src_vq(ctx->m2m_ctx);
-	out_streaming = vb2_is_streaming(vq);
-	vq = v4l2_m2m_get_dst_vq(ctx->m2m_ctx);
-	cap_streaming = vb2_is_streaming(vq);
+	out_streaming = vb2_is_streaming(v4l2_m2m_get_src_vq(ctx->m2m_ctx));
+	cap_streaming = vb2_is_streaming(v4l2_m2m_get_dst_vq(ctx->m2m_ctx));
 
 	/* Check to see if scaling ratio is within supported range */
 	if ((V4L2_TYPE_IS_OUTPUT(q->type) && cap_streaming) ||
@@ -410,23 +414,16 @@ static int mml_m2m_start_streaming(struct vb2_queue *q, unsigned int count)
 static struct vb2_v4l2_buffer *mml_m2m_buf_remove(struct mml_m2m_ctx *ctx,
 						  unsigned int type)
 {
-	struct vb2_v4l2_buffer *buf;
-	struct mml_m2m_param *param;
+	struct vb2_v4l2_buffer *vbuf;
 
 	if (V4L2_TYPE_IS_OUTPUT(type)) {
-		buf = v4l2_m2m_src_buf_remove(ctx->m2m_ctx);
-		if (buf) {
-			mutex_lock(&ctx->param_mutex);
-			param = list_first_entry_or_null(&ctx->params, struct mml_m2m_param, entry);
-			if (param) {
-				list_del(&param->entry);
-				kfree(param);
-			}
-			mutex_unlock(&ctx->param_mutex);
-		}
-		return buf;
-	} else
+		vbuf = v4l2_m2m_src_buf_remove(ctx->m2m_ctx);
+		if (vbuf)
+			m2m_param_remove(ctx);
+		return vbuf;
+	} else {
 		return v4l2_m2m_dst_buf_remove(ctx->m2m_ctx);
+	}
 }
 
 static void mml_m2m_stop_streaming(struct vb2_queue *q)
@@ -501,9 +498,9 @@ static void mml_m2m_buf_queue(struct vb2_buffer *vb)
 	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
 
 	vbuf->field = V4L2_FIELD_NONE;
-	v4l2_m2m_buf_queue(ctx->m2m_ctx, to_vb2_v4l2_buffer(vb));
+	v4l2_m2m_buf_queue(ctx->m2m_ctx, vbuf);
 	if (V4L2_TYPE_IS_OUTPUT(vb->type))
-		mml_m2m_param_queue(ctx);
+		m2m_param_queue(ctx);
 }
 
 static const struct vb2_ops mml_m2m_qops = {
@@ -897,23 +894,6 @@ static const struct mml_m2m_format *m2m_try_fmt_mplane(struct v4l2_format *f,
 	return fmt;
 }
 
-static int m2m_param_init(struct mml_m2m_ctx *ctx)
-{
-	struct mml_m2m_frame *frame;
-
-	ctx->limit = &mml_m2m_def_limit;
-
-	frame = &ctx->output;
-	frame->format.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-	frame->mml_fmt = m2m_try_fmt_mplane(&frame->format, ctx);
-
-	frame = &ctx->capture;
-	frame->format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-	frame->mml_fmt = m2m_try_fmt_mplane(&frame->format, ctx);
-
-	return 0;
-}
-
 static int mml_m2m_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct mml_m2m_ctx *ctx = container_of(ctrl->handler, struct mml_m2m_ctx, ctrl_handler);
@@ -1022,48 +1002,45 @@ static const struct v4l2_ctrl_type_ops mml_m2m_type_ops = {
 	.validate = mml_m2m_ctrl_type_op_validate,
 };
 
+static const struct v4l2_ctrl_config m2m_sec_cfg = {
+	.ops = &mml_m2m_ctrl_ops,
+	.id = MML_M2M_CID_SECURE,
+	.name = "Secure Mode",
+	.type = V4L2_CTRL_TYPE_INTEGER,
+	.max = 1,
+	.step = 1,
+	.flags = V4L2_CTRL_FLAG_EXECUTE_ON_WRITE,
+};
+
+static const struct v4l2_ctrl_config m2m_pq_cfg = {
+	.ops = &mml_m2m_ctrl_ops,
+	.type_ops = &mml_m2m_type_ops,
+	.id = MML_M2M_CID_PQPARAM,
+	.name = "MML PQ Parameters",
+	.type = V4L2_CTRL_COMPOUND_TYPES | 0x0300,
+	.step = 1,
+	.elem_size = sizeof(struct v4l2_pq_submit),
+	.flags = V4L2_CTRL_FLAG_HAS_PAYLOAD,
+};
+
 static int m2m_ctrls_create(struct mml_m2m_ctx *ctx)
 {
-	struct v4l2_ctrl_config cfg;
-
 	v4l2_ctrl_handler_init(&ctx->ctrl_handler, MML_M2M_MAX_CTRLS);
 	ctx->ctrls.hflip = v4l2_ctrl_new_std(&ctx->ctrl_handler,
-					     &mml_m2m_ctrl_ops, V4L2_CID_HFLIP,
-					     0, 1, 1, 0);
+		&mml_m2m_ctrl_ops, V4L2_CID_HFLIP, 0, 1, 1, 0);
 	ctx->ctrls.vflip = v4l2_ctrl_new_std(&ctx->ctrl_handler,
-					     &mml_m2m_ctrl_ops, V4L2_CID_VFLIP,
-					     0, 1, 1, 0);
+		&mml_m2m_ctrl_ops, V4L2_CID_VFLIP, 0, 1, 1, 0);
 	ctx->ctrls.rotate = v4l2_ctrl_new_std(&ctx->ctrl_handler,
-					      &mml_m2m_ctrl_ops,
-					      V4L2_CID_ROTATE, 0, 270, 90, 0);
+		&mml_m2m_ctrl_ops, V4L2_CID_ROTATE, 0, 270, 90, 0);
 
 	/* set customer config to handler */
-	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = MML_M2M_CID_SECURE;
-	cfg.type = V4L2_CTRL_TYPE_INTEGER,
-	cfg.flags = V4L2_CTRL_FLAG_EXECUTE_ON_WRITE,
-	cfg.name = "set secure";
-	cfg.step = 1;
-	cfg.def = 0;
-	cfg.min = 0;
-	cfg.max = 1;
-	cfg.ops = &mml_m2m_ctrl_ops;
-	ctx->ctrls.secure = v4l2_ctrl_new_custom(&ctx->ctrl_handler, &cfg, NULL);
+	ctx->ctrls.secure = v4l2_ctrl_new_custom(&ctx->ctrl_handler, &m2m_sec_cfg, NULL);
 	mml_msg("[m2m] set ctrl MML_M2M_CID_SECURE:%x ctrl type:%x, elem_size:%u",
-		MML_M2M_CID_SECURE, cfg.type, cfg.elem_size);
+		MML_M2M_CID_SECURE, m2m_sec_cfg.type, m2m_sec_cfg.elem_size);
 
-	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = MML_M2M_CID_PQPARAM;
-	cfg.type = V4L2_CTRL_COMPOUND_TYPES | 0x0300;
-	cfg.flags = V4L2_CTRL_FLAG_HAS_PAYLOAD;
-	cfg.name = "set pq param";
-	cfg.step = 1;
-	cfg.ops = &mml_m2m_ctrl_ops;
-	cfg.type_ops = &mml_m2m_type_ops;
-	cfg.elem_size = sizeof(ctx->param.pq_submit);
-	ctx->ctrls.pq = v4l2_ctrl_new_custom(&ctx->ctrl_handler, &cfg, NULL);
+	ctx->ctrls.pq = v4l2_ctrl_new_custom(&ctx->ctrl_handler, &m2m_pq_cfg, NULL);
 	mml_msg("[m2m] set ctrl MML_M2M_CID_PQPARAM:%x ctrl type:%x, elem_size:%u",
-		MML_M2M_CID_PQPARAM, cfg.type, cfg.elem_size);
+		MML_M2M_CID_PQPARAM, m2m_pq_cfg.type, m2m_pq_cfg.elem_size);
 
 	if (ctx->ctrl_handler.error) {
 		int err = ctx->ctrl_handler.error;
@@ -1087,33 +1064,25 @@ static void v4l_fill_mtk_fmtdesc(struct v4l2_fmtdesc *fmt)
 {
 	const char *descr = NULL;
 
-	if (fmt == NULL) {
-		mml_err("error, fmt is NULL\n");
-		return;
-	}
-
 	switch (fmt->pixelformat) {
-	case V4L2_PIX_FMT_P010_HYFBC:
-		descr = "MTK 10-bit P010 LSB 6-bit hybryd"; break;
 	case V4L2_PIX_FMT_NV12_HYFBC:
-		descr = "MTK 10-bit NV12 hybryd"; break;
-	case V4L2_PIX_FMT_YVU420A:
-		descr = "YVU 4:2:0 16-pixel stride three planes - Y, Cb, Cr"; break;
+		descr = "Mediatek hybrid compressed NV12 Y/UV 4:2:0"; break;
+	case V4L2_PIX_FMT_P010_HYFBC:
+		descr = "Mediatek hybrid compressed P010 10-bit Y/UV 4:2:0"; break;
 	case V4L2_PIX_FMT_RGB32_AFBC:
-		descr = "MTK 8-bit frame buffer compressed mode,single plane"; break;
+		descr = "Arm compressed 32-bit A/XRGB 8-8-8-8"; break;
 	case V4L2_PIX_FMT_RGBA1010102_AFBC:
-		descr = "MTK 10-bit frame buffer compressed mode, single plane"; break;
+		descr = "Arm compressed 32-bit RGBA 10-10-10-2"; break;
 	case V4L2_PIX_FMT_NV12_AFBC:
-		descr = "MTK 8-bit frame buffer compressed mode, two planes"; break;
+		descr = "Arm compressed NV12 Y/UV 4:2:0"; break;
 	case V4L2_PIX_FMT_NV12_10B_AFBC:
-		descr = "MTK 10-bit frame buffer compressed mode, two planes"; break;
-	default:
-		descr = "common"; break;
-		break;
+		descr = "Arm compressed 10-bit NV12"; break;
+	case V4L2_PIX_FMT_YVU420A:
+		descr = "Planar YVU 4:2:0 16-pixel stride"; break;
 	}
 
 	if (descr)
-		strscpy(fmt->description, descr, sizeof(fmt->description));
+		WARN_ON(strscpy(fmt->description, descr, sizeof(fmt->description)) < 0);
 }
 
 static int mml_m2m_enum_fmt_mplane(struct file *file, void *fh,
@@ -1133,10 +1102,7 @@ static int mml_m2m_enum_fmt_mplane(struct file *file, void *fh,
 			f->flags |= V4L2_FMT_FLAG_CSC_YCBCR_ENC | V4L2_FMT_FLAG_CSC_QUANTIZATION;
 	}
 
-	memset(f->reserved, 0, sizeof(f->reserved));
-	memset(f->description, 0, sizeof(f->description));
 	v4l_fill_mtk_fmtdesc(f);
-
 	return 0;
 }
 
@@ -1370,31 +1336,17 @@ static int mml_m2m_g_selection(struct file *file, void *fh,
 
 	switch (s->target) {
 	case V4L2_SEL_TGT_CROP:
-		if (s->type != V4L2_BUF_TYPE_VIDEO_OUTPUT)
-			return -EINVAL;
 		dest = ctx_get_submit_dest(ctx, 0);
 		mml_rect_to_v4l2_rect(&dest->crop.r, &s->r);
 		return 0;
 	case V4L2_SEL_TGT_COMPOSE:
-		if (s->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
-			return -EINVAL;
 		dest = ctx_get_submit_dest(ctx, 0);
 		mml_rect_to_v4l2_rect(&dest->compose, &s->r);
 		return 0;
 	case V4L2_SEL_TGT_CROP_DEFAULT:
 	case V4L2_SEL_TGT_CROP_BOUNDS:
-		if (s->type != V4L2_BUF_TYPE_VIDEO_OUTPUT)
-			return -EINVAL;
-		frame = ctx_get_frame(ctx, s->type);
-		s->r.left = 0;
-		s->r.top = 0;
-		s->r.width = frame->format.fmt.pix_mp.width;
-		s->r.height = frame->format.fmt.pix_mp.height;
-		return 0;
 	case V4L2_SEL_TGT_COMPOSE_DEFAULT:
 	case V4L2_SEL_TGT_COMPOSE_BOUNDS:
-		if (s->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
-			return -EINVAL;
 		frame = ctx_get_frame(ctx, s->type);
 		s->r.left = 0;
 		s->r.top = 0;
@@ -1474,6 +1426,7 @@ static struct mml_m2m_ctx *m2m_ctx_create(struct mml_dev *mml)
 		NULL, NULL,
 	};
 	struct mml_m2m_ctx *ctx;
+	struct mml_m2m_frame *frame;
 	int ret;
 
 	mml_msg("[m2m]%s on dev %p", __func__, mml);
@@ -1490,11 +1443,17 @@ static struct mml_m2m_ctx *m2m_ctx_create(struct mml_dev *mml)
 
 	ctx->ctx.task_ops = &m2m_task_ops;
 	ctx->ctx.cfg_ops = &m2m_config_ops;
+	ctx->limit = &mml_m2m_def_limit;
+	frame = &ctx->output;
+	frame->format.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+	frame->mml_fmt = m2m_try_fmt_mplane(&frame->format, ctx);
+	frame = &ctx->capture;
+	frame->format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+	frame->mml_fmt = m2m_try_fmt_mplane(&frame->format, ctx);
+	INIT_LIST_HEAD(&ctx->params);
+	mutex_init(&ctx->param_mutex);
 	mutex_init(&ctx->q_mutex);
 	kref_init(&ctx->ref);
-
-	mutex_init(&ctx->param_mutex);
-	INIT_LIST_HEAD(&ctx->params);
 
 	return ctx;
 }
@@ -1546,37 +1505,35 @@ static int mml_m2m_open(struct file *file)
 	ctx = mml_dev_create_m2m_ctx(mml, m2m_ctx_create);
 	if (IS_ERR(ctx)) {
 		mml_err("[m2m] fail to create mml_m2m_ctx");
-		return PTR_ERR(ctx);
+		ret = PTR_ERR(ctx);
+		goto err_ret;
 	}
-
-	if (mutex_lock_interruptible(&v4l2_dev->m2m_mutex)) {
-		ret = -ERESTARTSYS;
-		goto err_free_ctx;
-	}
-
-	v4l2_fh_init(&ctx->fh, vdev);
-	file->private_data = &ctx->fh;
-	ret = m2m_ctrls_create(ctx);
-	if (ret)
-		goto err_exit_fh;
-
-	/* Use separate control handler per file handle */
-	ctx->fh.ctrl_handler = &ctx->ctrl_handler;
-	v4l2_fh_add(&ctx->fh);
 
 	ctx->m2m_ctx = v4l2_m2m_ctx_init(v4l2_dev->m2m_dev, ctx, m2m_queue_init);
 	if (IS_ERR(ctx->m2m_ctx)) {
 		mml_err("Failed to initialize m2m context");
 		ret = PTR_ERR(ctx->m2m_ctx);
+		goto err_free_ctx;
+	}
+
+	/* Use separate control handler per file handle */
+	ret = m2m_ctrls_create(ctx);
+	if (ret)
+		goto err_release_m2m_ctx;
+	ret = v4l2_ctrl_handler_setup(&ctx->ctrl_handler);
+	if (ret)
+		goto err_free_handler;
+
+	if (mutex_lock_interruptible(&v4l2_dev->m2m_mutex)) {
+		ret = -ERESTARTSYS;
 		goto err_free_handler;
 	}
-	ctx->fh.m2m_ctx = ctx->m2m_ctx;
 
-	ret = m2m_param_init(ctx);
-	if (ret) {
-		mml_err("Failed to initialize mml parameter");
-		goto err_release_m2m_ctx;
-	}
+	v4l2_fh_init(&ctx->fh, vdev);
+	file->private_data = &ctx->fh;
+	ctx->fh.m2m_ctx = ctx->m2m_ctx;
+	ctx->fh.ctrl_handler = &ctx->ctrl_handler;
+	v4l2_fh_add(&ctx->fh);
 
 	mutex_unlock(&v4l2_dev->m2m_mutex);
 
@@ -1591,18 +1548,14 @@ static int mml_m2m_open(struct file *file)
 
 	return 0;
 
-err_release_m2m_ctx:
-	v4l2_m2m_ctx_release(ctx->m2m_ctx);
 err_free_handler:
 	v4l2_ctrl_handler_free(&ctx->ctrl_handler);
-	v4l2_fh_del(&ctx->fh);
-err_exit_fh:
-	v4l2_fh_exit(&ctx->fh);
-	mutex_unlock(&v4l2_dev->m2m_mutex);
+err_release_m2m_ctx:
+	v4l2_m2m_ctx_release(ctx->m2m_ctx);
 err_free_ctx:
 	mml_ctx_deinit(&ctx->ctx);
 	kfree(ctx);
-
+err_ret:
 	return ret;
 }
 
@@ -1613,7 +1566,9 @@ static void m2m_ctx_destroy(struct kref *kref)
 	struct mml_m2m_param *param, *tmp;
 	u32 i;
 
-	mml_msg("[m2m]%s on ctx %p", __func__, ctx);
+	mml_msg("[m2m]%s on ctx %p", __func__, mctx);
+	v4l2_ctrl_handler_free(&mctx->ctrl_handler);
+	v4l2_m2m_ctx_release(mctx->m2m_ctx);
 
 	mutex_lock(&mctx->param_mutex);
 	list_for_each_entry_safe(param, tmp, &mctx->params, entry) {
@@ -1632,13 +1587,13 @@ static void m2m_ctx_destroy(struct kref *kref)
 static int mml_m2m_release(struct file *file)
 {
 	struct v4l2_fh *fh = file->private_data;
-	struct mml_m2m_ctx *ctx = fh_to_ctx(fh);
-	struct mml_v4l2_dev *v4l2_dev = mml_get_v4l2_dev(video_drvdata(file));
 
 	if (fh) {
+		struct mml_m2m_ctx *ctx = fh_to_ctx(fh);
+		struct mml_v4l2_dev *v4l2_dev = mml_get_v4l2_dev(video_drvdata(file));
+
 		mutex_lock(&v4l2_dev->m2m_mutex);
-		v4l2_m2m_ctx_release(ctx->m2m_ctx);
-		v4l2_ctrl_handler_free(&ctx->ctrl_handler);
+		file->private_data = NULL;
 		v4l2_fh_del(&ctx->fh);
 		v4l2_fh_exit(&ctx->fh);
 		mutex_unlock(&v4l2_dev->m2m_mutex);
@@ -1824,6 +1779,9 @@ static void mml_m2m_device_run(void *priv)
 
 	mml_trace_begin("%s", __func__);
 
+	/* hold mctx to avoid release from v4l2 before call submit_done */
+	kref_get(&mctx->ref);
+
 	result = m2m_set_submit(mctx, submit);
 	if (result < 0)
 		goto err_buf_exit;
@@ -1960,19 +1918,16 @@ static void mml_m2m_device_run(void *priv)
 	/* kick vdisp power on */
 	mml_pw_kick_idle(task->config->mml);
 
-	/* hold mctx to avoid release from v4l2 before call submit_done */
-	kref_get(&mctx->ref);
-
 	/* config to core */
 	mml_core_submit_task(cfg, task);
-
-	/* note that m2m task is not queued to another thread so we can put mctx here */
-	kref_put(&mctx->ref, m2m_ctx_destroy);
 
 	if (cfg->err) {
 		result = -EINVAL;
 		goto err_buf_exit;
 	}
+
+	/* note that m2m task is not queued to another thread so we can put mctx here */
+	kref_put(&mctx->ref, m2m_ctx_destroy);
 
 	mml_trace_end();
 	return;
@@ -2005,6 +1960,8 @@ err_buf_exit:
 			cfg->cfg_ops->put(cfg);
 	}
 	mml_m2m_process_done(mctx, vb_state);
+
+	kref_put(&mctx->ref, m2m_ctx_destroy);
 }
 
 static const struct v4l2_m2m_ops mml_m2m_ops __maybe_unused = {
@@ -2022,7 +1979,7 @@ static int mml_m2m_device_register(struct device *dev, struct mml_v4l2_dev *v4l2
 	if (!vdev) {
 		dev_err(dev, "Failed to allocate video device\n");
 		ret = -ENOMEM;
-		goto err_video_alloc;
+		goto err_ret;
 	}
 	vdev->device_caps = V4L2_CAP_VIDEO_M2M_MPLANE | V4L2_CAP_STREAMING;
 	vdev->fops = &mml_m2m_fops;
@@ -2031,10 +1988,10 @@ static int mml_m2m_device_register(struct device *dev, struct mml_v4l2_dev *v4l2
 	vdev->lock = &v4l2_dev->m2m_mutex;
 	vdev->vfl_dir = VFL_DIR_M2M;
 	vdev->v4l2_dev = &v4l2_dev->v4l2_dev;
-	if (snprintf(vdev->name, sizeof(vdev->name), "%s:m2m", MML_M2M_MODULE_NAME) <= 0){
+	if (snprintf(vdev->name, sizeof(vdev->name), "%s:m2m", MML_M2M_MODULE_NAME) < 0) {
 		dev_err(dev, "Failed to get the name of video device\n");
-		ret = PTR_ERR(vdev->name);
-		goto err_m2m_init;
+		ret = -EINVAL;
+		goto err_release;
 	}
 	video_set_drvdata(vdev, mml);
 	v4l2_dev->m2m_vdev = vdev;
@@ -2043,24 +2000,24 @@ static int mml_m2m_device_register(struct device *dev, struct mml_v4l2_dev *v4l2
 	if (IS_ERR(v4l2_dev->m2m_dev)) {
 		dev_err(dev, "Failed to initialize v4l2-m2m device\n");
 		ret = PTR_ERR(v4l2_dev->m2m_dev);
-		goto err_m2m_init;
+		goto err_release;
 	}
 
 	ret = video_register_device(vdev, VFL_TYPE_VIDEO, -1);
 	if (ret) {
 		dev_err(dev, "Failed to register video device\n");
-		goto err_register;
+		goto err_m2m;
 	}
 
 	v4l2_info(&v4l2_dev->v4l2_dev, "Driver registered as /dev/video%d",
 		  vdev->num);
 	return 0;
 
-err_register:
+err_m2m:
 	v4l2_m2m_release(v4l2_dev->m2m_dev);
-err_m2m_init:
+err_release:
 	video_device_release(vdev);
-err_video_alloc:
+err_ret:
 	return ret;
 }
 
