@@ -1668,6 +1668,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		reg = <0 0x1163a000 0 0x2000>;
 	};
 
+	mminfra_hwv: syscon@1c000000 {
+		compatible = "mediatek,mt6899-mminfra_hwv", "syscon";
+		reg = <0 0x1c000000 0 0x1000>;
+	};
+
 	topckgen_clk: syscon@10000000 {
 		compatible = "mediatek,mt6899-topckgen", "syscon";
 		reg = <0 0x10000000 0 0x1000>;
@@ -1938,7 +1943,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 	hfrpsys: power-controller@1ec3e000 {
 		compatible = "mediatek,mt6899-hfrpsys", "syscon";
-		reg = <0 0x1ec3e000 0 0x1000>;
+		reg = <0 0x1163e000 0 0x1000>;
 		#power-domain-cells = <1>;
 		clocks =
 			/* VDE */
@@ -2013,6 +2018,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		emi-semicfg-ao-mem-prot-reg-bus = <&emi_semicfg_ao_mem_prot_reg_bus>;
 		vlpcfg = <&vlpcfg_bus>;
 		mm-hw-ccf-regmap = <&mm_hw_ccf>;
+		mminfra-hwv-regmap = <&mminfra_hwv>;
 	};
 
 	vlpcfg_bus: syscon@1c00c000 {
