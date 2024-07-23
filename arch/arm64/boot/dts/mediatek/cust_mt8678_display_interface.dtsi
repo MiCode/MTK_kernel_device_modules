@@ -389,7 +389,8 @@
 		pinctrl-names = "default";
 		reset-gpios = <&pio 70 0>;
 
-		panel-name = "YW-1080";
+		panel-name = "HuaYang";
+		use-default-setting = <1>;
 		ser-support-hotplug = <1>;
 		ser-super-frame = <0>;
 		ser-dual-link = <0>;
@@ -1324,7 +1325,8 @@
 		pinctrl-names = "default";
 		reset-gpios = <&pio 73 0>;
 
-		panel-name = "BoTai";
+		panel-name = "HuaYang";
+		use-default-setting = <1>;
 		ser-support-hotplug = <1>;
 		ser-super-frame = <0>;
 		ser-dual-link = <0>;
@@ -2321,10 +2323,10 @@
 	panel_edp: panel@1 {
 		compatible = "panel-edp";
 		status = "disabled";
-		panel-name = "YW-720";
+		panel-name = "HuaYang";
 		panel-mode = "signal-setting";
 
-		use-default-setting = <0>;
+		use-default-setting = <1>;
 
 		BoTai{
 			signal-setting{
@@ -2468,10 +2470,10 @@
 	panel_dp: panel@2 {
 		compatible = "panel-serdes-dp";
 		status = "disabled";
-		panel-name = "YW-1080";
+		panel-name = "HuaYang";
 		panel-mode = "signal-setting";
 
-		use-default-setting = <0>;
+		use-default-setting = <1>;
 
 		BoTai{
 			signal-setting{
