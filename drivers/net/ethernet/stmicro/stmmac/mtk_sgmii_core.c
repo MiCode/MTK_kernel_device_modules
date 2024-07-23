@@ -191,7 +191,7 @@ int mediatek_sgmii_setup_mode_force(struct mtk_sgmii *ss)
 	regmap_write(ss->regmap, SGMII_SGMII_MODE, 0x31120009);
 
 	/* Disable SGMII AN */
-	regmap_write(ss->regmap, SGMII_PCS_CONTROL_1, 0x00000140);
+	regmap_write(ss->regmap, SGMII_PCS_CONTROL_1, 0x01000140);
 
 	regmap_write(ss->regmap, SGMII_RESERVED, 0x001000FA);
 
