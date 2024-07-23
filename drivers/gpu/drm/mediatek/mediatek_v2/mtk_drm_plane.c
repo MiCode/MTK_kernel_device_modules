@@ -195,7 +195,11 @@ static void mtk_plane_reset(struct drm_plane *plane)
 
 	/* Linux alpha property use 16 bit to convey alpha value, so set default to 0xFFFF */
 	plane->state->alpha = DRM_BLEND_ALPHA_OPAQUE;
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	plane->state->pixel_blend_mode = DRM_MODE_BLEND_PIXEL_NONE;
+#else
+	plane->state->pixel_blend_mode = DRM_MODE_BLEND_PREMULTI;
+#endif
 
 	state->base.plane = plane;
 	state->pending.format = DRM_FORMAT_RGB565;
