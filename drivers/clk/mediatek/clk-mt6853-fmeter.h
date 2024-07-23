@@ -97,7 +97,6 @@
 #define FM_MDPLL_FS26M_CK			25
 #define FM_MGPLL_CK				26
 #define FM_MPLL_CK				27
-#define FM_APLL1_CK				28
 #define FM_MMPLL_D3_CK				29
 #define FM_MSDCPLL_CK				30
 #define FM_RCLRPLL_DIV4_CH2			31
@@ -162,7 +161,6 @@
 #define FM_UNIV_499M_CK				27
 #define FM_UNIV_416M_CK				28
 #define FM_UNIV_356P6M_CK			29
-#define FM_MMPLL_D3_CK				30
 #define FM_MMPLL_D4_CK				31
 #define FM_MMPLL_D5_CK				32
 #define FM_MMPLL_D6_CK				33
