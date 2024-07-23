@@ -192,7 +192,7 @@
 	//cam0_vcamd-supply = <&mt_pmic_vcamd_ldo_reg>;
 	cam1_vcamd-supply = <&mt_pmic_vcamd_ldo_reg>;
 	cam0_vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
-	//cam1_vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
+	cam1_vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
 	cam0_enable_sensor = "gc08a3_mipi_raw ov13b10_mipi_raw ov13b10txd_mipi_raw s5k4h7_mipi_raw";
 	cam1_enable_sensor = "gc08a3sub_mipi_raw s5k4h7sub_mipi_raw";
 	cam0_pin_mclk = "mclk";
