@@ -44,7 +44,6 @@
 #define SKIP_SB_GPIO
 #define SKIP_SB_CLK
 #define SKIP_SB_AUDIO
-#define SKIP_SMCC_SB
 #define SKIP_SB_USB_OFFLOAD
 #define SKIP_SB_SCHED
 #endif
