@@ -786,8 +786,16 @@
 			 <&ipesys CLK_IPE_LARB19>,
 			 <&ipesys CLK_IPE_LARB20>,
 			 <&ipesys CLK_IPE_SMI_SUBCOM>,
-			 <&ipesys CLK_IPE_GALS>;
-		clock-names = "disp","mfg","cam","isp", "ipe", "ven", "vde","ipe-0","ipe-1", "ipe-2", "ipe-3";
+			 <&ipesys CLK_IPE_GALS>,
+			 <&mmsys_config CLK_MM_SMI_COMMON>,
+			 <&mmsys_config CLK_MM_SMI_GALS>,
+			 <&mmsys_config CLK_MM_SMI_INFRA>,
+			 <&mmsys_config CLK_MM_SMI_IOMMU>,
+			 <&mdpsys_config_clk CLK_MDP_SMI0>;
+		clock-names = "disp","mfg","cam","isp", "ipe",
+			 "ven", "vde","ipe-0","ipe-1", "ipe-2",
+			 "ipe-3", "disp-0", "disp-1", "disp-2",
+			 "disp-3", "disp-4";
 		infracfg = <&infracfg_ao>;
 	};
 
