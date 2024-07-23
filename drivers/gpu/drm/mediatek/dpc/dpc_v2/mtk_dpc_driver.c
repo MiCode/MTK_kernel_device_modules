@@ -1761,6 +1761,7 @@ static int dpc_pm_notifier(struct notifier_block *notifier, unsigned long pm_eve
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 static int dpc_vcp_notifier(struct notifier_block *nb, unsigned long vcp_event, void *unused)
 {
+	mtk_vdisp_avs_vcp_notifier(vcp_event, unused);
 	switch (vcp_event) {
 	case VCP_EVENT_READY:
 	case VCP_EVENT_STOP:
@@ -1803,7 +1804,6 @@ static void process_dbg_opt(const char *opt)
 	int ret = 0;
 	u32 v1 = 0, v2 = 0, v3 = 0;
 	u32 mminfra_hangfree_val = 0;
-	u32 handshake_val = 0;
 
 	if (strncmp(opt, "cap:", 4) == 0) {
 		ret = sscanf(opt, "cap:0x%x\n", &v1);
@@ -1814,42 +1814,8 @@ static void process_dbg_opt(const char *opt)
 		DPCDUMP("cap(0x%x->0x%x)", g_priv->vidle_mask, v1);
 		g_priv->vidle_mask = v1;
 	} else if (strncmp(opt, "avs:", 4) == 0) {
-		handshake_val = readl(VDISP_SHRMEM_BITWISE);
-		if (strncmp(opt + 4, "off:", 4) == 0) {
-			ret = sscanf(opt, "avs:off:%u,%u\n", &v1, &v2);
-			/* opp(v1): max 5 level; step(v2) max 32 level; v1(5) is used to toggle AVS */
-			if ((ret != 2)||(v1 > 5 || v2 >= 31)) {
-				DPCDUMP("[Waring] avs:off sscanf not match");
-				goto err;
-			}
-			/*Off avs*/
-			handshake_val |= BIT(VDISP_AVS_DISABLE_BIT);
-			writel(handshake_val, VDISP_SHRMEM_BITWISE);
-			/*Set opp and step*/
-			writel(v2, MEM_VDISP_AVS_STEP(v1));
-			mmdvfs_force_step_by_vcp(2, 4 - v1);
-		} else if (strncmp(opt + 4, "t_ag:", 5) == 0) {
-			ret = sscanf(opt, "avs:t_ag:%u\n", &v3);
-			if (ret != 1) {
-				DPCDUMP("[Waring]avs:t_ag sscanf not match");
-				goto err;
-			}
-			handshake_val &= ~BIT(VDISP_AVS_AGING_FAST_EN_BIT);
-			handshake_val |= (v3 << VDISP_AVS_AGING_FAST_EN_BIT);
-			writel(handshake_val, VDISP_SHRMEM_BITWISE);
-		} else if (strncmp(opt + 4, "on", 2) == 0) {
-			/*On avs*/
-			handshake_val &= ~BIT(VDISP_AVS_DISABLE_BIT);
-			writel(handshake_val, VDISP_SHRMEM_BITWISE);
-		} else if (strncmp(opt + 4, "dbg:on", 6) == 0) {
-			/*On avs debug mode */
-			handshake_val |= BIT(VDISP_AVS_DBG_MODE_BIT);
-			writel(handshake_val, VDISP_SHRMEM_BITWISE);
-		} else if (strncmp(opt + 4, "dbg:off", 7) == 0) {
-			/*Off avs debug mode*/
-			handshake_val &= ~BIT(VDISP_AVS_DBG_MODE_BIT);
-			writel(handshake_val, VDISP_SHRMEM_BITWISE);
-		}
+		if (mtk_vdisp_avs_dbg_opt(opt))
+			goto err;
 	} else if (strncmp(opt, "vote:", 5) == 0) {
 		ret = sscanf(opt, "vote:%u\n", &v1);
 		if (ret != 1) {
