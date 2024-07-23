@@ -1624,6 +1624,18 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		#size-cells = <0>;
 	};
 
+	hw-semaphore {
+		compatible = "mediatek,hw-semaphore";
+		base = <0x1c001000		/* spm */
+			0x1ec24000>;		/* vcp */
+		/* <type offset bit> */
+		master = <0 0x69c 5>,
+			<1 0x18 1>,
+			<1 0x18 3>,
+			<0 0x6a8 5>,	/* for smmu */
+			<1 0x18 0>;		/* for ut */
+	};
+
 	clkchk {
 		compatible = "mediatek,mt6899-clkchk";
 		mm-hwv-regmap = <&mm_hw_ccf>;
@@ -3391,10 +3403,17 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		bkrs-reg = <0x1e800250>;
 		vlp-base = <0x1c000000>;
 		spm-base = <0x1c001000>;
+		hwccf-base = <0x10320000>;
 		mm-voter-base = <0x1ec45130>;
 		mm-mtcmos-base = <0x1c001e90>;
 		mm-mtcmos-mask = <0xc0000000>;
 		mminfra-ao-base;
+		get-if-in-use-ena;
+		hw-voter-set-ofs = <0x404>;
+		hw-voter-clr-ofs = <0x408>;
+		hw-voter-en-ofs = <0x400>;
+		hw-voter-done-bit-ofs = <0x91c>;
+		hw-voter-en-shift-ofs = <0x19>;
 		init-clk-on;
 		mediatek,vcp-supply = <&vcp>;
 		vcp-gipc;
