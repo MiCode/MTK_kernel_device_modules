@@ -39,9 +39,17 @@
 #define SPI_CFG2_REG                      0x0028
 #define SPI_TX_SRC_REG_64                 0x002c
 #define SPI_RX_DST_REG_64                 0x0030
+#define SPI_IRQ_TIME32_REG                0x0038
+#define SPI_IRQ_TIME64_REG                0x003c
 #define SPI_CFG3_REG                      0x0040
+#define SPI_DEBUG0_REG                    0x004c
+#define SPI_DEBUG1_REG                    0x0050
 #define SPI_SLICE_EN_REG                  0x005c
 #define SPI_CFG5_REG                      0x0068
+
+#define PERI_SPI_RST                      0x0000
+#define PERI_SPI_RST_SET                  0x0004
+#define PERI_SPI_RST_CLR                  0x0008
 
 #define SPI_CFG0_SCK_HIGH_OFFSET          0
 #define SPI_CFG0_SCK_LOW_OFFSET           8
@@ -119,7 +127,8 @@
 #define MT8173_SPI_MAX_PAD_SEL          3
 #define MTK_SPI_MAX_TICK_DLY            8
 #define MTK_SPI_SLICE_EN_MAX_TICK_DLY   128
-#define MTK_SPI_PAD_SEL   0
+#define MTK_SPI_PAD_SEL                 0
+#define MTK_SPI_MAX_RESET_BIT           31
 
 
 #define MTK_SPI_PAUSE_INT_STATUS 0x2
@@ -172,6 +181,8 @@ struct mtk_spi_compatible {
 	bool dummy_cycle;
 	/* some plat IP have infra on/off feature,so should req and rel infra*/
 	bool infra_req;
+	/* after a timeout occurs, a global reset is required*/
+	bool hw_reset;
 };
 
 struct mtk_spi {
@@ -198,6 +209,8 @@ struct mtk_spi {
 	struct device *dev;
 	dma_addr_t tx_dma;
 	dma_addr_t rx_dma;
+	int irq;
+	u32 reset_bit;
 };
 
 static const struct mtk_spi_compatible mtk_common_compat;
@@ -220,6 +233,7 @@ static const struct mtk_spi_compatible mt6899_compat = {
 	.slice_en = true,
 	.dummy_cycle = true,
 	.infra_req = true,
+	.hw_reset = true,
 };
 
 static const struct mtk_spi_compatible mt6991_compat = {
@@ -366,6 +380,8 @@ MODULE_DEVICE_TABLE(of, mtk_spi_of_match);
 #define LOG_CLOSE   0
 #define LOG_OPEN    1
 u8 spi_log_status = LOG_CLOSE;
+static uint32_t is_ioremaped;
+static void __iomem *reset_base;
 
 #define spi_debug(fmt, args...) do { \
 	if (spi_log_status == LOG_OPEN) {\
@@ -373,6 +389,7 @@ u8 spi_log_status = LOG_CLOSE;
 			__func__, ##args);\
 	} \
 } while (0)
+
 static ssize_t spi_log_show(struct device *dev, struct device_attribute *attr,
 			char *buf)
 {
@@ -426,8 +443,13 @@ static void spi_dump_reg(struct mtk_spi *mdata, struct spi_master *master)
 	spi_debug("cfg0:0x%.8x\n", readl(mdata->base + SPI_CFG0_REG));
 	spi_debug("cfg1:0x%.8x\n", readl(mdata->base + SPI_CFG1_REG));
 	spi_debug("cfg2:0x%.8x\n", readl(mdata->base + SPI_CFG2_REG));
-	if (mdata->dev_comp->ipm_design)
+	if (mdata->dev_comp->ipm_design) {
 		spi_debug("cfg3:0x%.8x\n", readl(mdata->base + SPI_CFG3_REG));
+		spi_debug("debug0:0x%.8x\n", readl(mdata->base + SPI_DEBUG0_REG));
+		spi_debug("debug1:0x%.8x\n", readl(mdata->base + SPI_DEBUG1_REG));
+		spi_debug("irq_time_32:0x%.8x\n", readl(mdata->base + SPI_IRQ_TIME32_REG));
+		spi_debug("irq_time_64:0x%.8x\n", readl(mdata->base + SPI_IRQ_TIME64_REG));
+	}
 	if (mdata->dev_comp->enhance_packet_len)
 		spi_debug("cfg5:0x%.8x\n", readl(mdata->base + SPI_CFG5_REG));
 	spi_debug("cmd :0x%.8x\n", readl(mdata->base + SPI_CMD_REG));
@@ -440,6 +462,44 @@ static void spi_dump_reg(struct mtk_spi *mdata, struct spi_master *master)
 	if (mdata->dev_comp->slice_en)
 		spi_debug("slice_en:0x%.8x\n", readl(mdata->base + SPI_SLICE_EN_REG));
 	spi_debug("||**************%s end**************||\n", __func__);
+}
+
+static void mtk_spi_error_dump(struct spi_controller *ctlr,
+		struct spi_message *msg)
+{
+	struct spi_master *master = ctlr;
+	struct mtk_spi *mdata = spi_master_get_devdata(master);
+	int i = 0;
+
+	spi_log_status = LOG_OPEN;
+
+	if (mdata->use_spimem || master->can_dma(master, NULL, mdata->cur_transfer)) {
+		mt_irq_dump_status(mdata->irq);
+		/* timeout occurred due to no response to irq, check if IP irq bit is raised.*/
+		spi_debug("status0:0x%.8x\n", readl(mdata->base + SPI_STATUS0_REG));
+	}
+
+	if (mdata->dev_comp->ipm_design)
+		writel(0x0, mdata->base + SPI_DEBUG0_REG);
+
+	spi_dump_reg(mdata, master);
+
+	/* start to write 0x0-0xA to debug 0 for more info */
+	if (mdata->dev_comp->ipm_design) {
+		for (i = 0; i < 11; i++) {
+			spi_debug("then debug0 = 0x%x and dump:\n", i);
+			writel(i, mdata->base + SPI_DEBUG0_REG);
+			spi_debug("debug0:0x%.8x\n", readl(mdata->base + SPI_DEBUG0_REG));
+			spi_debug("debug1:0x%.8x\n", readl(mdata->base + SPI_DEBUG1_REG));
+		}
+		writel(0x0, mdata->base + SPI_DEBUG0_REG);
+	}
+
+	if (mdata->dev_comp->hw_reset) {
+		writel(0x1 << mdata->reset_bit, reset_base + PERI_SPI_RST_SET);
+		writel(0x1 << mdata->reset_bit, reset_base + PERI_SPI_RST_CLR);
+	}
+	spi_log_status = LOG_CLOSE;
 }
 
 static void spi_dump_config(struct spi_master *master, struct spi_message *msg)
@@ -1069,6 +1129,7 @@ static int mtk_spi_fifo_transfer(struct spi_master *master,
 			irq_status, 1, SPI_FIFO_POLLING_TIMEOUT);
 		if (ret) {
 			dev_err(mdata->dev, "SPI PIO polling timeout.\n");
+			mtk_spi_error_dump(spi->controller, NULL);
 			return ret;
 		}
 
@@ -1402,6 +1463,7 @@ static int mtk_spi_transfer_wait(struct spi_mem *mem,
 	if (!wait_for_completion_timeout(&mdata->spimem_done,
 					 msecs_to_jiffies(ms))) {
 		dev_err(mdata->dev, "spi-mem transfer timeout\n");
+		mtk_spi_error_dump(mem->spi->controller, NULL);
 		/* after timeout reset spi controller */
 		mtk_spi_reset(mdata);
 		return -ETIMEDOUT;
@@ -1616,6 +1678,7 @@ static int mtk_spi_probe(struct platform_device *pdev)
 	master->setup = mtk_spi_setup;
 	master->cleanup = mtk_spi_cleanup;
 	master->set_cs_timing = mtk_spi_set_hw_cs_timing;
+	master->handle_err = mtk_spi_error_dump;
 
 	of_id = of_match_node(mtk_spi_of_match, pdev->dev.of_node);
 	mdata = spi_master_get_devdata(master);
@@ -1665,12 +1728,13 @@ static int mtk_spi_probe(struct platform_device *pdev)
 		}
 
 		for (i = 0; i < mdata->pad_num; i++) {
-			of_property_read_u32_index(pdev->dev.of_node,
+			ret = of_property_read_u32_index(pdev->dev.of_node,
 						   "mediatek,pad-select",
 						   i, &mdata->pad_sel[i]);
-			if (mdata->pad_sel[i] > MT8173_SPI_MAX_PAD_SEL) {
-				dev_err(&pdev->dev, "wrong pad-sel[%d]: %u\n",
-					i, mdata->pad_sel[i]);
+			if (ret < 0 || mdata->pad_sel[i] > MT8173_SPI_MAX_PAD_SEL) {
+				dev_err(&pdev->dev,
+					"getting pad_sel fail or wrong pad-sel[%d]: %u, ret = %d\n",
+					i, mdata->pad_sel[i], ret);
 				ret = -EINVAL;
 				goto err_put_master;
 			}
@@ -1684,12 +1748,35 @@ static int mtk_spi_probe(struct platform_device *pdev)
 		goto err_put_master;
 	}
 
+	if (mdata->dev_comp->hw_reset) {
+		if (!is_ioremaped) {
+			reset_base = devm_platform_ioremap_resource(pdev, 1);
+			if (IS_ERR(reset_base)) {
+				ret = PTR_ERR(reset_base);
+				goto err_put_master;
+			} else {
+				is_ioremaped = 1;
+			}
+		}
+		ret = of_property_read_u32(pdev->dev.of_node,
+					"mediatek,reset-bit",
+					&mdata->reset_bit);
+		if (ret < 0 || mdata->reset_bit > MTK_SPI_MAX_RESET_BIT) {
+			dev_err(&pdev->dev,
+				"getting reset_bit fail or wrong reset_bit[%d], ret = %d\n",
+				mdata->reset_bit, ret);
+			ret = -EINVAL;
+			goto err_put_master;
+		}
+	}
+
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0) {
 		ret = irq;
 		goto err_put_master;
 	}
 
+	mdata->irq = irq;
 	if (!pdev->dev.dma_mask)
 		pdev->dev.dma_mask = &pdev->dev.coherent_dma_mask;
 
