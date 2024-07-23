@@ -18,6 +18,7 @@ struct mtk_vdisp_funcs {
 	s32 (*poll_power_cnt)(s32 val);
 	void (*sent_aod_scp_sema)(void __iomem *_SPM_SEMA_AP);
 	void (*query_aging_val)(void);
+	void (*debug_mtcmos_ctrl)(int pd_id, bool on);
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	void (*wk_lock)(u32 crtc_index, bool get, const char *func, int line);
 #endif

@@ -9840,6 +9840,7 @@ int mtk_crtc_comp_is_busy(struct mtk_drm_crtc *mtk_crtc)
 static void trig_done_cb(struct cmdq_cb_data data)
 {
 	CRTC_MMP_MARK((unsigned long)data.data, trig_loop_done, 0, 0);
+	DRM_MMP_EVENT_END(drm, 0, 0);
 	drm_trace_tag_mark("trig_loop_done");
 	// DDPINFO("%s()\n", __func__);
 }

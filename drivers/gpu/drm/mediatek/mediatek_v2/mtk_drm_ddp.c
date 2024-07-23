@@ -32254,6 +32254,7 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 		}
 		if (val & (0x1 << m_id)) {
 			DDPIRQ("[IRQ] mutex%d sof!\n", m_id);
+			DRM_MMP_EVENT_START(drm, 0, 0);
 			DRM_MMP_MARK(mutex[m_id], val, 0);
 			if (m_id == 0)
 				drm_trace_tag_mark("mutex0_sof");

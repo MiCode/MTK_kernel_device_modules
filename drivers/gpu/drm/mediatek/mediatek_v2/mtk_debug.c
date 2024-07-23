@@ -3904,6 +3904,19 @@ static void process_dbg_opt(const char *opt)
 		disp_gamma_debug(crtc, opt + 6);
 	} else if (strncmp(opt, "oddmr:", 4) == 0) {
 		mtk_disp_oddmr_debug(opt + 6);
+	} else if (strncmp(opt, "mtcmos:", 7) == 0) {
+		int ret;
+		unsigned int pd_id, on;
+
+		ret = sscanf(opt, "mtcmos:%u,%u\n", &pd_id, &on);
+		if (ret != 2) {
+			DDPMSG("mtcmos:0,1 for pd_id(0), power on(1)\n");
+			return;
+		}
+		if (vdisp_func.debug_mtcmos_ctrl)
+			vdisp_func.debug_mtcmos_ctrl(pd_id, on);
+	} else if (strncmp(opt, "dpc:", 4) == 0) {
+		mtk_vidle_debug_cmd_adapter(opt + 4);
 	} else if (strncmp(opt, "aee:", 4) == 0) {
 		DDPAEE("trigger aee dump of mmproile\n");
 	} else if (strncmp(opt, "send_ddic_test:", 15) == 0) {

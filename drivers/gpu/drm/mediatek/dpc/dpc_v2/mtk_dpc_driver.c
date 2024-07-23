@@ -69,6 +69,16 @@ module_param(debug_presz, uint, 0644);
 static void __iomem *dpc_base;
 static struct mtk_dpc *g_priv;
 
+static const char trace_buf_mml_on[] = "C|-65536|MML1_power|1\n";
+static const char trace_buf_mml_off[] = "C|-65536|MML1_power|0\n";
+#ifdef CONFIG_TRACING
+static noinline int tracing_mark_write(const char buf[])
+{
+	trace_puts(buf);
+	return 0;
+}
+#endif
+
 static struct mtk_dpc_mtcmos_cfg mt6989_mtcmos_cfg[DPC_SUBSYS_CNT] = {
 /*	cfg     set    clr    pa va */
 	{0x300, 0x320, 0x340, 0, 0, 0},
@@ -550,10 +560,10 @@ static void dpc_enable(const u8 en)
 			}
 
 			if (debug_irq) {
-				writel(BIT(31) | BIT(18),
+				writel(BIT(31) | BIT(18) | BIT(9),
 				       dpc_base + DISP_REG_DPC_DISP_INTEN);
 
-				writel(BIT(12) | BIT(13) | BIT(16) | BIT(17) | BIT(31),
+				writel(BIT(13) | BIT(14) | BIT(17) | BIT(18) | BIT(31),
 				       dpc_base + DISP_REG_DPC_MML_INTEN);
 			}
 
@@ -574,10 +584,6 @@ static void dpc_enable(const u8 en)
 
 		writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG);
 		writel(0, dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG);
-		if (debug_irq) {
-			enable_irq(g_priv->disp_irq);
-			enable_irq(g_priv->mml_irq);
-		}
 
 		writel(0x1f, dpc_base + DISP_REG_DPC_DISP_EXT_INPUT_EN);
 		writel(0x3, dpc_base + DISP_REG_DPC_MML_EXT_INPUT_EN);
@@ -592,11 +598,6 @@ static void dpc_enable(const u8 en)
 		/* disable inten to avoid burst irq */
 		writel(0, dpc_base + DISP_REG_DPC_DISP_INTEN);
 		writel(0, dpc_base + DISP_REG_DPC_MML_INTEN);
-		if (debug_irq) {
-			disable_irq_nosync(g_priv->disp_irq);
-			disable_irq_nosync(g_priv->mml_irq);
-		}
-
 		writel(0, dpc_base + DISP_REG_DPC_EN);
 
 		/* reset dpc to clean counter start and value */
@@ -1153,16 +1154,22 @@ irqreturn_t mt6991_irq_handler(int irq, void *dev_id)
 	struct mtk_dpc *priv = dev_id;
 	u32 disp_sta, mml_sta;
 	irqreturn_t ret = IRQ_NONE;
+	static DEFINE_RATELIMIT_STATE(err_rate, HZ, 1);
+	static bool mml_sof_has_begin;
+	static bool mml1_has_begin;
 
 	if (IS_ERR_OR_NULL(priv))
 		return ret;
 
-	if (!mminfra_is_power_on()) {
-		dpc_mmp(mminfra, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
-		disable_irq_nosync(irq);
-		ret = IRQ_HANDLED;
-		goto out;
+	if (!debug_irq) /* avoid irq from being triggered unexpectedly */
+		return IRQ_HANDLED;
+
+	dpc_mmp(mminfra, MMPROFILE_FLAG_START, 0x77777777, 1);
+	if (dpc_pm_ctrl(true)) {
+		dpc_mmp(mminfra, MMPROFILE_FLAG_END, U32_MAX, U32_MAX);
+		return IRQ_NONE;
 	}
+	dpc_mmp(mminfra, MMPROFILE_FLAG_PULSE, 0x77777777, 2);
 
 	disp_sta = readl(dpc_base + DISP_REG_DPC_DISP_INTSTA);
 	mml_sta =  readl(dpc_base + DISP_REG_DPC_MML_INTSTA);
@@ -1170,23 +1177,24 @@ irqreturn_t mt6991_irq_handler(int irq, void *dev_id)
 		dpc_mmp(folder, MMPROFILE_FLAG_PULSE,
 			readl(priv->vdisp_ao_cg_con), readl(priv->mminfra_chk));
 
-		if (unlikely(irq_aee)) {
-			DPCAEE("irq err clksq(%u) ulposc(%u) vdisp_ao_cg(%#x) dpc_merge(%#x, %#x)",
-			       mt_get_fmeter_freq(47, VLPCK), /* clksq */
-			       mt_get_fmeter_freq(59, VLPCK), /* ulposc */
-			       readl(priv->vdisp_ao_cg_con),
-			       readl(dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG),
-			       readl(dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG));
-		} else {
-			DPCERR("irq err clksq(%u) ulposc(%u) vdisp_ao_cg(%#x) dpc_merge(%#x, %#x)",
-			       mt_get_fmeter_freq(47, VLPCK), /* clksq */
-			       mt_get_fmeter_freq(59, VLPCK), /* ulposc */
-			       readl(priv->vdisp_ao_cg_con),
-			       readl(dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG),
-			       readl(dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG));
+		if (__ratelimit(&err_rate)) {
+			if (unlikely(irq_aee)) {
+				DPCAEE("irq err clksq(%u) ulposc(%u) vdisp_ao_cg(%#x) dpc_merge(%#x, %#x)",
+				mt_get_fmeter_freq(47, VLPCK), /* clksq */
+				mt_get_fmeter_freq(59, VLPCK), /* ulposc */
+				readl(priv->vdisp_ao_cg_con),
+				readl(dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG),
+				readl(dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG));
+			} else {
+				DPCERR("irq err clksq(%u) ulposc(%u) vdisp_ao_cg(%#x) dpc_merge(%#x, %#x)",
+				mt_get_fmeter_freq(47, VLPCK), /* clksq */
+				mt_get_fmeter_freq(59, VLPCK), /* ulposc */
+				readl(priv->vdisp_ao_cg_con),
+				readl(dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG),
+				readl(dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG));
+			}
 		}
 
-		disable_irq_nosync(irq);
 		goto out;
 	}
 
@@ -1198,47 +1206,40 @@ irqreturn_t mt6991_irq_handler(int irq, void *dev_id)
 	if (disp_sta & BIT(31) || mml_sta & BIT(31)) {
 		u32 disp_err_sta = readl(dpc_base + 0x87c);
 		u32 mml_err_sta = readl(dpc_base + 0x880);
+		u32 debug_sta = readl(dpc_base + DISP_REG_DPC_DEBUG_STA);
 
-		dpc_mmp(folder, MMPROFILE_FLAG_PULSE,
-			readl(priv->vdisp_ao_cg_con), readl(priv->mminfra_chk));
+		dpc_mmp(folder, MMPROFILE_FLAG_PULSE, readl(priv->vdisp_ao_cg_con), debug_sta);
 		dpc_mmp(folder, MMPROFILE_FLAG_PULSE, disp_err_sta, mml_err_sta);
-		if (unlikely(irq_aee))
-			DPCAEE("config when mtcmos off disp(%#x) mml(%#x)", disp_err_sta, mml_err_sta);
-		else
-			DPCERR("config when mtcmos off disp(%#x) mml(%#x)", disp_err_sta, mml_err_sta);
 
-		disable_irq_nosync(irq);
+		if (__ratelimit(&err_rate)) {
+			if (unlikely(irq_aee))
+				DPCAEE("irq err disp(%#x) mml(%#x) debug(%#x)",
+					disp_err_sta, mml_err_sta, debug_sta);
+			else
+				DPCERR("irq err disp(%#x) mml(%#x) debug(%#x)",
+					disp_err_sta, mml_err_sta, debug_sta);
+		}
 	}
 
 	/* MML1 */
-	if (mml_sta & BIT(16))
-		dpc_mmp(mml_sof, MMPROFILE_FLAG_PULSE, 0, 0);
-	if (mml_sta & BIT(17))
-		dpc_mmp(mml_rrot_done, MMPROFILE_FLAG_PULSE, 0, 0);
-	if (mml_sta & BIT(14))
+	if (mml_sta & BIT(17) && !mml_sof_has_begin) {
+		dpc_mmp(mml_sof, MMPROFILE_FLAG_START, 0, 0);
+		mml_sof_has_begin = true;
+	}
+	if (mml_sta & BIT(18) && mml_sof_has_begin) {
+		dpc_mmp(mml_sof, MMPROFILE_FLAG_END, 0, 0);
+		mml_sof_has_begin = false;
+	}
+	if (mml_sta & BIT(14) && !mml1_has_begin) {
 		dpc_mmp(mtcmos_mml1, MMPROFILE_FLAG_START, 0, 0);
-	if (mml_sta & BIT(13))
+		tracing_mark_write(trace_buf_mml_on);
+		mml1_has_begin = true;
+	}
+	if (mml_sta & BIT(13) && mml1_has_begin) {
 		dpc_mmp(mtcmos_mml1, MMPROFILE_FLAG_END, 0, 0);
-	if (mml_sta & BIT(1))
-		dpc_mmp(mtcmos_mml1, MMPROFILE_FLAG_PULSE, 0x50F, 1);
-	if (mml_sta & BIT(3))
-		dpc_mmp(mtcmos_mml1, MMPROFILE_FLAG_PULSE, 0x50F, 0);
-
-	/* OVL/DIS0 */
-	if (disp_sta & BIT(0))
-		dpc_mmp(mtcmos_ovl0, MMPROFILE_FLAG_PULSE, 0xE0F, 0);
-	if (disp_sta & BIT(1))
-		dpc_mmp(mtcmos_ovl0, MMPROFILE_FLAG_PULSE, 0x50F, 1);
-	if (disp_sta & BIT(6))
-		dpc_mmp(mtcmos_ovl0, MMPROFILE_FLAG_PULSE, 0x50F, 0);
-
-	/* DIS1 */
-	if (disp_sta & BIT(7))
-		dpc_mmp(mtcmos_disp1, MMPROFILE_FLAG_PULSE, 0xE0F, 0);
-	if (disp_sta & BIT(8))
-		dpc_mmp(mtcmos_disp1, MMPROFILE_FLAG_PULSE, 0x50F, 1);
-	if (disp_sta & BIT(13))
-		dpc_mmp(mtcmos_disp1, MMPROFILE_FLAG_PULSE, 0x50F, 0);
+		tracing_mark_write(trace_buf_mml_off);
+		mml1_has_begin = false;
+	}
 
 	/* Panel TE */
 	if (disp_sta & BIT(18))
@@ -1253,6 +1254,8 @@ irqreturn_t mt6991_irq_handler(int irq, void *dev_id)
 
 	ret = IRQ_HANDLED;
 out:
+	dpc_pm_ctrl(false);
+	dpc_mmp(mminfra, MMPROFILE_FLAG_END, 0x77777777, 3);
 	return ret;
 }
 
@@ -1445,11 +1448,6 @@ static int dpc_irq_init(struct mtk_dpc *priv)
 			DPCERR("devm_request_irq %d fail: %d", priv->mml_irq, ret);
 	}
 	DPCFUNC("disp irq %d, mml irq %d, ret %d", priv->disp_irq, priv->mml_irq, ret);
-
-	if (!debug_irq) {
-		disable_irq_nosync(priv->disp_irq);
-		disable_irq_nosync(priv->mml_irq);
-	}
 
 	/* disable merge irq */
 	writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG);
@@ -1686,7 +1684,7 @@ static void dpc_analysis(void)
 		readl(dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG),
 		readl(dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG),
 		readl(dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG));
-	mtk_dprec_logger_pr(DPREC_LOGGER_STATUS, "%s\n", msg);
+	mtk_dprec_logger_pr(DPREC_LOGGER_DUMP, "%s\n", msg);
 
 	if (g_priv->mmsys_id == MMSYS_MT6991) {
 		int i;
@@ -1706,7 +1704,7 @@ static void dpc_analysis(void)
 			if (g_priv->dpc2_dt_usage[i].en)
 				written += scnprintf(msg + written, 512 - written, "[%d]%u ",
 					i, g_priv->dpc2_dt_usage[i].val);
-		mtk_dprec_logger_pr(DPREC_LOGGER_STATUS, "%s\n", msg);
+		mtk_dprec_logger_pr(DPREC_LOGGER_DUMP, "%s\n", msg);
 	}
 
 	dpc_pm_ctrl(false);
@@ -2038,6 +2036,7 @@ static const struct dpc_funcs funcs = {
 	.dpc_dvfs_trigger = dpc_dvfs_trigger,
 	.dpc_channel_bw_set_by_idx = dpc_channel_bw_set_by_idx,
 	.dpc_analysis = dpc_analysis,
+	.dpc_debug_cmd = process_dbg_opt,
 };
 
 static struct mtk_dpc mt6989_dpc_driver_data = {

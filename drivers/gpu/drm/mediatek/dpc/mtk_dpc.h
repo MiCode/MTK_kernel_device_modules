@@ -149,6 +149,7 @@ struct dpc_funcs {
 	void (*dpc_clear_wfe_event)(struct cmdq_pkt *pkt, enum mtk_vidle_voter_user user, int event);
 	void (*dpc_mtcmos_vote)(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
 	void (*dpc_analysis)(void);
+	void (*dpc_debug_cmd)(const char *opt);
 
 	/* V1 ONLY */
 	void (*dpc_dc_force_enable)(const bool en);
