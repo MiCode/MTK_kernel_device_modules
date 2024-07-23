@@ -2601,9 +2601,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_OVL0_SHUTDOWN>;
 		clocks = <&ovlsys_config_clk CLK_OVL_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <0 0 0 0 1 1 0 0 0 0 1 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <0 0 0 0 0>;
 		smi-user-id = <MTK_SMI_DISP>;
 	};
 
@@ -2617,9 +2617,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_OVL0_SHUTDOWN>;
 		clocks = <&ovlsys_config_clk CLK_OVL_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <0 0 0 0 0 1 0 0 0 0 0 0 1 1 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <0 0 0 0>;
 		smi-user-id = <MTK_SMI_DISP>;
 	};
 
@@ -2633,9 +2633,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_OVL0_SHUTDOWN>;
 		clocks = <&ovlsys_config_clk CLK_OVL_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <0 0 0 0 0 0 1 0 0 0 0 0 0 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <0 0 0 0 0 0>;
 		smi-user-id = <MTK_SMI_DISP>;
 	};
 
@@ -2649,9 +2649,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_OVL0_SHUTDOWN>;
 		clocks = <&ovlsys_config_clk CLK_OVL_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <0 0 0 0 0>;
 		smi-user-id = <MTK_SMI_DISP>;
 	};
 
@@ -2665,9 +2665,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_DIS0_SHUTDOWN>;
 		clocks = <&dispsys_config_clk CLK_MM_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <1 1 1 1 0 0 0 0 1 0>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <0 0 0 0 0 0 0 0 0>;
 		smi-user-id = <MTK_SMI_DISP>;
 	};
 
@@ -2681,9 +2681,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
 		clocks = <&dispsys1_config_clk  CLK_MM1_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <0 1 1 1 0 0 0 1 0 0 0 0 0 0 0 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <0 0 0 0 0 0 0 0>;
 		smi-user-id = <MTK_SMI_DISP>;
 	};
 
@@ -2696,9 +2696,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MML0_SHUTDOWN>;
 		clocks = <&mdpsys_config_clk CLK_MDP_SMI0_SMI>;
 		clock-names = "apb";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <1 1 1 1 1 1 2 1 1 1 1 1 1 1 2 1 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1 0 0 1 1 1 1>;
 		smi-user-id = <MTK_SMI_MML0>;
 	};
 
@@ -2711,9 +2711,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MML1_SHUTDOWN>;
 		clocks = <&mdpsys1_config_clk CLK_MDP1_SMI0_SMI>;
 		clock-names = "apb";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <2 2 1 1 1 1 2 1 1 1 1 2 2 2 1 1 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <2 2 0 0 1 1 1 1>;
 		smi-user-id = <MTK_SMI_DISP MTK_SMI_MML1>;
 	};
 
@@ -2812,9 +2812,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
 		clocks = <&imgsys_main_clk CLK_IMG_LARB9_SMI>;
 		clock-names = "apb";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 >;
 	};
 
 	smi_larb11: smi-larb11@15230000 {
@@ -2828,9 +2828,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&wpe1_dip1_clk CLK_WPE1_DIP1_LARB11_SMI>,
 				<&wpe1_dip1_clk CLK_WPE1_DIP1_WPE_CAMERA_P2>;
 		clock-names = "apb", "smi", "gals0";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
 	};
 
 	smi_larb12: smi-larb12@15320000 {
@@ -2843,9 +2843,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		clocks = <&imgsys_main_clk CLK_IMG_IPE_CAMERA_P2>,
 			<&imgsys_main_clk CLK_IMG_LARB12_SMI>;
 		clock-names = "apb", "smi";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <1 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1>;
 	};
 
 	smi_larb15: smi-larb15@15140000 {
@@ -2860,9 +2860,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_CAMERA_P2>,
 				<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB15_CAMERA_P2>;
 		clock-names = "apb", "smi", "gals", "gals1";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+						1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
 	};
 
 	smi_larb18: smi-larb18@15006000 {
@@ -2874,9 +2875,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
 		clocks =  <&imgsys_main_clk CLK_IMG_ADL_LARB_SMI>;
 		clock-names = "apb";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <1 1 1 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1 1 1 1>;
 	};
 
 	smi_larb22: smi-larb22@15530000 {
@@ -2890,9 +2891,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&wpe2_dip1_clk CLK_WPE2_DIP1_LARB11_SMI>,
 				<&wpe2_dip1_clk CLK_WPE2_DIP1_WPE_CAMERA_P2>;
 		clock-names = "apb", "smi", "gals0";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
 	};
 
 	smi_larb23: smi-larb23@15630000 {
@@ -2906,9 +2907,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&wpe3_dip1_clk CLK_WPE3_DIP1_LARB11_SMI>,
 				<&wpe3_dip1_clk CLK_WPE3_DIP1_WPE_CAMERA_P2>;
 		clock-names = "apb", "smi", "gals0";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
 	};
 
 	smi_larb28: smi-larb28@15720000 {
@@ -2922,9 +2923,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<&traw_dip1_clk CLK_TRAW_DIP1_LARB28_SMI>,
 			<&traw_dip1_clk CLK_TRAW_DIP1_TRAW_CAMERA_P2>;
 		clock-names = "apb", "smi", "gals0";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <1 1 1 1 1 1 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+						1 1 1 1 1 1 1 1 1 1 1>;
 	};
 
 	smi_larb38: smi-larb38@15190000 {
@@ -2936,9 +2938,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_DIP1>;
 		clocks = <&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB38_SMI>;
 		clock-names = "apb";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+						1 1 1 1 1 1 1 1 1 >;
 	};
 
 	smi_cam_vcore_sub_comm: smi-cam-vcore-sub-comm@1b804000 {
@@ -2994,10 +2997,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_LARB13_SMI>;
 		clock-names = "apb";
-		// is-two-dram-path-ostdl;
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <0 0 0 1 1 0 0>;
+		is-two-dram-path-ostdl;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <0 0 0 0 0 0 0>;
 	};
 
 	smi_larb14: smi-larb14@1a002000 {
@@ -3009,10 +3012,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_LARB14_SMI>;
 		clock-names = "apb";
-		// is-two-dram-path-ostdl;
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <0 0 0 1 0 0>;
+		is-two-dram-path-ostdl;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <0 0 0 0 0 0>;
 	};
 
 	smi_larb27: smi-larb27@1a003000 {
@@ -3024,9 +3027,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_LARB27_SMI>;
 		clock-names = "apb";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <2 0 2 3 3 0 0 3 3>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <2 0 2 2 2>;
 	};
 
 	smi_larb29: smi-larb29@1a004000 {
@@ -3038,10 +3041,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_SMI>;
 		clock-names = "apb";
-		// is-two-dram-path-ostdl;
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <0 0 0 0 0 0 0 0 1 1 0 0 0 0>;
+		is-two-dram-path-ostdl;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
 	};
 
 	smi_larb16: smi-larb16@1a010000 {
@@ -3054,9 +3057,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		clocks =  <&camsys_rawa_clk CLK_CAM_RA_LARBX_SMI>,
 				<&camsys_rawa_clk CLK_CAM_RA_CAM_CAMRAWA>;
 		clock-names = "apb", "smi";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2>;
 	};
 
 	smi_larb17: smi-larb17@1a011000 {
@@ -3069,9 +3072,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		clocks = <&camsys_yuva_clk CLK_CAM_YA_LARBX_SMI>,
 				<&camsys_yuva_clk CLK_CAM_YA_CAM_CAMRAWA>;
 		clock-names = "apb", "smi";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <2 2 2 2 2 2 2>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <2 2 2 2 2 2 2>;
 	};
 
 	smi_larb36: smi-larb36@1a012000 {
@@ -3084,9 +3087,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		clocks = <&camsys_rawb_clk CLK_CAM_RB_LARBX_SMI>,
 				<&camsys_rawb_clk CLK_CAM_RB_CAM_CAMRAWB>;
 		clock-names = "apb", "smi";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <2 2 2 2 2 2 2>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2>;
 	};
 
 	smi_larb37: smi-larb37@1a013000 {
@@ -3099,9 +3102,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		clocks = <&camsys_yuvb_clk CLK_CAM_YB_LARBX_SMI>,
 				<&camsys_yuvb_clk CLK_CAM_YB_CAM_CAMRAWB>;
 		clock-names = "apb", "smi";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <2 2 2 2 2 2 2>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2>;
 	};
 
 	smi_larb34: smi-larb34@1a014000 {
@@ -3114,9 +3117,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		clocks = <&camsys_rawc_clk CLK_CAM_RC_LARBX_SMI>,
 				<&camsys_rawc_clk CLK_CAM_RC_CAM_CAMRAWC>;
 		clock-names = "apb", "smi";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <2 2 2 2 2 2 2>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <2 2 2 2 2 2 2>;
 	};
 
 	smi_larb35: smi-larb35@1a015000 {
@@ -3129,9 +3132,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		clocks = <&camsys_yuvc_clk CLK_CAM_YC_LARBX_SMI>,
 				<&camsys_yuvc_clk CLK_CAM_YC_CAM_CAMRAWC>;
 		clock-names = "apb", "smi";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <2 2 2 2 2 2 2>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <2 2 2 2 2 2 2>;
 	};
 
 	smi_larb25: smi-larb25@1a016000 {
@@ -3144,9 +3147,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW_PDAF>,
 				<&camsys_mraw_clk CLK_CAM_MR_LARBX_SMI>;
 		clock-names = "apb", "smi";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <0 0 0 0 1 1 1 1 1 1 1 0 0>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
 	};
 
 	smi_larb26: smi-larb26@1a017000 {
@@ -3159,9 +3162,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW_PDAF>,
 				<&camsys_mraw_clk CLK_CAM_MR_LARBX_SMI>;
 		clock-names = "apb", "smi";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <0 0 0 0 1 1 1 1 1 1 1 0 0>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
 	};
 
 	smi_larb19: smi-larb19@1a018000 {
@@ -3174,9 +3177,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_DPE_CAMERA_P2>,
 				<&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19_SMI>;
 		clock-names = "apb", "smi";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
 	};
 
 	smi_larb30: smi-larb30@1b801000 {
@@ -3188,9 +3191,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_CCU>;
 		clocks = <&ccu_main_clk CLK_CCU_LARB19_CON_SMI>;
 		clock-names = "apb";
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <1 1 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1 1 1>;
 	};
 
 	smi_larb4: smi-larb4@1602e000 {
@@ -3203,9 +3206,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		skip-busy-check;
 		skip-rpm-cb;
 		skip-tcms-check;
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <1 1 1 1 1 1 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <3 3 3 3 3 3 3>;
 		smi-user-id = <MTK_SMI_VDEC_CORE>;
 	};
 
@@ -3219,9 +3222,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		skip-busy-check;
 		skip-rpm-cb;
 		skip-tcms-check;
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <1 1 1 1 1 1 1 1>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <3 3 3 3 3 3 3 3 3>;
 		smi-user-id = <MTK_SMI_VDEC_CORE MTK_SMI_VDEC_LAT>;
 	};
 
@@ -3237,9 +3240,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<&venc_gcon_clk CLK_VEN1_CKE6_GALS_SRAM_SMI>;
 		clock-names = "apb", "smi", "gals0";
 		skip-busy-check;
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <3 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 3 3 1 1 1 1 3>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <3 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 3 3 1 1 1 1 3>;
 		smi-user-id = <MTK_SMI_VENC0 MTK_SMI_JPEGDEC0 MTK_SMI_JPEGENC0>;
 	};
 
@@ -3255,9 +3258,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<&venc_gcon_core1_clk CLK_VEN2_CKE6_GALS_SRAM_SMI>;
 		clock-names = "apb", "smi", "gals0";
 		skip-busy-check;
-		// is-default-ostdl;
-		// is-real-time-perm;
-		// larb-port-real-time-type = <3 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 3 3 1 1 1 1 3>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <3 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 3 3 1 1 1 1 3>;
 		smi-user-id = <MTK_SMI_VENC1 MTK_SMI_JPEGDEC1 MTK_SMI_JEPGENC1>;
 	};
 
