@@ -31415,6 +31415,8 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 			&& drm_crtc_index(&mtk_crtc->base) == 0) {
 			if (priv->data->mmsys_id == MMSYS_MT6768)
 				sof |= MT6768_MUTEX_EOF_DSI0;
+			if (priv->data->mmsys_id == MMSYS_MT6765)
+				sof |= MT6765_MUTEX_EOF_DSI0;
 		}
 		writel_relaxed(
 			sof,
@@ -31666,6 +31668,8 @@ void mtk_disp_mutex_add_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 		&& drm_crtc_index(&mtk_crtc->base) == 0) {
 		if (drm_priv->data->mmsys_id == MMSYS_MT6768)
 			sof |= MT6768_MUTEX_EOF_DSI0;
+		else if (drm_priv->data->mmsys_id == MMSYS_MT6765)
+			sof |= MT6765_MUTEX_EOF_DSI0;
 	}
 	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 		       regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex->id),

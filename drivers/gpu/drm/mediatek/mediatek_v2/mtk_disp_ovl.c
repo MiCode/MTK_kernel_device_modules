@@ -2419,7 +2419,7 @@ static void set_sec_phy_layer_dom_cmdq(struct mtk_ddp_comp *comp,
 	u32 domain_val = 0, domain_mask = 0;
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
-	if (priv->data->mmsys_id == MMSYS_MT6768) {
+	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6765) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + OVL_SECURE,
 				BIT(id), BIT(id));
@@ -2442,7 +2442,7 @@ static void set_sec_ext_layer_dom_cmdq(struct mtk_ddp_comp *comp,
 	u32 domain_val = 0, domain_mask = 0;
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
-	if (priv->data->mmsys_id == MMSYS_MT6768) {
+	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6765) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + OVL_SECURE,
 				BIT(id + EXT_SECURE_OFFSET),
@@ -2462,7 +2462,7 @@ static void clr_sec_phy_layer_dom_cmdq(struct mtk_ddp_comp *comp,
 	u32 domain_val = 0, domain_mask = 0;
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
-	if (priv->data->mmsys_id == MMSYS_MT6768) {
+	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6765) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + OVL_SECURE,
 				0, BIT(id));
@@ -2485,7 +2485,7 @@ static void clr_sec_ext_layer_dom_cmdq(struct mtk_ddp_comp *comp,
 	u32 domain_val = 0, domain_mask = 0;
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
-	if (priv->data->mmsys_id == MMSYS_MT6768) {
+	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6765) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + OVL_SECURE,
 				0, BIT(id + EXT_SECURE_OFFSET));
