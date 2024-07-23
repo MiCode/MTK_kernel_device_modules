@@ -1148,13 +1148,13 @@ static int _mt_cpufreq_target(struct cpufreq_policy *policy,
 #endif
 	p = id_to_cpu_dvfs(_get_cpu_dvfs_id(policy->cpu));
 
+	if (!p)
+		return -EINVAL;
+
 #ifdef POLICY_FREQ_LIMIT_CHECK
 	for_each_cpu(cpu, p->mt_policy->cpus)
 		trace_cpu_frequency(target_freq, cpu);
 #endif
-
-	if (!p)
-		return -EINVAL;
 
 	new_opp_idx = cpufreq_frequency_table_target(policy, target_freq,
 							relation);
