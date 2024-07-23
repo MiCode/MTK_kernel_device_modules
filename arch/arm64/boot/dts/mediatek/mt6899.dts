@@ -3345,7 +3345,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"dummy-dis", "dummy-mdp", "dummy-mml", "dummy-smi",
 			"dummy-ven", "dummy-vde", "dummy-img", "dummy-cam",
 			"user-img-smi", "user-vcp-smi";
-		//mediatek,free-run;
+		mediatek,free-run;
 		mediatek,restore-step;
 	};
 
@@ -3369,9 +3369,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		fmeter-type =	/bits/ 8 < 5  5  5  5  5  5  5  5  5>;
 		clk-base = <0x10000000>;
 		clk-offsets = <0x820>, <0x830>, <0x840>, <0x850>, <0x860>;
-		//vcore-supply = <&mt6363_vbuck2>;
-		//vmm-pmic-supply = <&mt6319_6_vbuck1>;
-		//vdisp-pmic-supply = <&mt6319_8_vbuck3>;
+		vcore-supply = <&mt6363_vbuck2>;
+		vmm-pmic-supply = <&mt6319_6_vbuck1>;
+		vdisp-pmic-supply = <&mt6319_8_vbuck3>;
 		//mediatek,met-freerun;
 	};
 
@@ -3380,7 +3380,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	};
 
 	mmdvfs-v3-start {
-		//compatible = "mediatek,mmdvfs-v3-start";
+		compatible = "mediatek,mmdvfs-v3-start";
 	};
 
 	ktf-mmdvfs-test {
