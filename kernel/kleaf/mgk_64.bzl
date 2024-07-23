@@ -3293,6 +3293,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-dbg-mt6853.ko")
         mgk_64_device_modules.append("drivers/interconnect/mediatek/mmqos-mt6853.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/eemgpu/mtk_eem.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/dcm/mt6853_dcm.ko")
+        mgk_64_device_modules.append("drivers/clk/mediatek/clk-fmeter-mt6853.ko")
 
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6989.ko")
