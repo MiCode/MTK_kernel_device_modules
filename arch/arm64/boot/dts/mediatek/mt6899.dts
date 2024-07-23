@@ -8217,6 +8217,39 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x14015000 0 0x2000>;
 			interrupts = <GIC_SPI 464 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_ODDMR0_DISP>;
+			mediatek,larb-oddmr-dmrr = <0>;
+			mediatek,larb-oddmr-dbir = <0>;
+			mediatek,larb-oddmr-odr = <1>;
+			mediatek,larb-oddmr-odw = <2>;
+			mediatek,larb = <&smi_larb32 M4U_L32_P5_DISP_ODDMR0_DMRR>,
+					<&smi_larb32 M4U_L32_P6_DISP_ODDMR0_ODR>,
+					<&smi_larb32 M4U_L32_P7_DISP_ODDMR0_ODW>;
+			mediatek,smi-id = <32>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(M4U_L32_P5_DISP_ODDMR0_DMRR)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L32_P5_DISP_ODDMR0_DMRR)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L32_P6_DISP_ODDMR0_ODR)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L32_P7_DISP_ODDMR0_ODW)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L32_P5_DISP_ODDMR0_DMRR)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L32_P5_DISP_ODDMR0_DMRR)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L32_P6_DISP_ODDMR0_ODR)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L32_P7_DISP_ODDMR0_ODW)
+						&mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "DDP_COMPONENT_ODDMR0_DMRR",
+						"DDP_COMPONENT_ODDMR0_DBIR",
+						"DDP_COMPONENT_ODDMR0_ODR",
+						"DDP_COMPONENT_ODDMR0_ODW",
+						"DDP_COMPONENT_ODDMR0_DMRR_HRT",
+						"DDP_COMPONENT_ODDMR0_DBIR_HRT",
+						"DDP_COMPONENT_ODDMR0_ODR_HRT",
+						"DDP_COMPONENT_ODDMR0_ODW_HRT";
 		};
 
 		disp_postmask0: disp-postmask0@14017000 {
