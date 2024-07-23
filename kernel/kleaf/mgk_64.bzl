@@ -68,6 +68,7 @@ mgk_64_kleaf_modules = [
     #"//vendor/mediatek/kernel_modules/msync2_frd_cus/build:msync2_frd_cus",
     #"//vendor/mediatek/kernel_modules/msync2_frd_int:msync2_frd_int",
     "//vendor/mediatek/kernel_modules/mtk_input/FT3518U:ft3518u",
+    "//vendor/mediatek/kernel_modules/mtk_input/FT3518:ft3518",
     #"//vendor/mediatek/kernel_modules/mtk_input/GT9886:gt9886",
     "//vendor/mediatek/kernel_modules/mtk_input/GT9916:gt9916",
     "//vendor/mediatek/kernel_modules/mtk_input/NT36672C:nt36672c",
