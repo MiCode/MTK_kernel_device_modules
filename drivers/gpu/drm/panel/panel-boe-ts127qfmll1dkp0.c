@@ -28,12 +28,10 @@
 
 #include "../../../misc/mediatek/gate_ic/gate_i2c.h"
 
-#define RT4831A_SUPPORT 1
-#if RT4831A_SUPPORT
-#include "rt4831a.h"
-#endif
-
 static char bl_tb0[] = {0x51, 0xf, 0xff};
+
+static int current_fps = 144;
+#define SUPPORT_90Hz 0
 
 struct panel_desc {
 	const struct drm_display_mode *modes;
@@ -60,12 +58,14 @@ struct boe {
 	struct drm_panel panel;
 	struct backlight_device *backlight;
 	struct gpio_desc *reset_gpio;
-	//struct gpio_desc *hwen;
+	struct gpio_desc *bias_pos;
+	struct gpio_desc *bias_neg;
 	struct regulator *reg;
 	bool prepared;
 	bool enabled;
 	int error;
 	unsigned int gate_ic;
+	bool display_dual_swap;
 };
 
 #define boe_dcs_write_seq(ctx, seq...)                                     \
@@ -712,15 +712,6 @@ static int boe_disable(struct drm_panel *panel)
 		backlight_update_status(ctx->backlight);
 	}
 
-#if IS_ENABLED(CONFIG_RT4831A_I2C)
-	if (ctx->gate_ic == 4831)
-		_gate_ic_backlight_set(0x0);
-#endif
-
-#if RT4831A_SUPPORT
-	lcd_bl_set_led_brightness(0x0);
-#endif
-
 	ctx->enabled = false;
 
 	pr_info("%s---\n", __func__);
@@ -747,21 +738,26 @@ static int boe_unprepare(struct drm_panel *panel)
 	usleep_range(5 * 1000, 5 * 1000);
 	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 
-	/*
-	 * lcd_set_bias(0);
-	 * ctx->hwen = devm_gpiod_get(ctx->dev, "pm-enable", GPIOD_OUT_HIGH);
-	 * gpiod_set_value(ctx->hwen, 0);
-	 * devm_gpiod_put(ctx->dev, ctx->hwen);
-	 */
+	if (ctx->gate_ic == 0) {
+		ctx->bias_neg =
+			devm_gpiod_get_index(ctx->dev, "bias", 1, GPIOD_OUT_HIGH);
+		gpiod_set_value(ctx->bias_neg, 0);
+		devm_gpiod_put(ctx->dev, ctx->bias_neg);
+
+		usleep_range(2000, 2001);
+
+		ctx->bias_pos =
+			devm_gpiod_get_index(ctx->dev, "bias", 0, GPIOD_OUT_HIGH);
+		gpiod_set_value(ctx->bias_pos, 0);
+		devm_gpiod_put(ctx->dev, ctx->bias_pos);
+	}
 #if IS_ENABLED(CONFIG_RT4831A_I2C)
-	if (ctx->gate_ic == 4831) {
-		pr_info("%s, line=%d\n", __func__, __LINE__);
-		/*this is rt4831a*/
+	else if (ctx->gate_ic == 4831) {
+		pr_info("%s, Using gate-ic 4831\n", __func__);
 		_gate_ic_i2c_panel_bias_enable(0);
 		_gate_ic_Power_off();
 	}
 #endif
-
 	ctx->error = 0;
 	ctx->prepared = false;
 
@@ -778,27 +774,27 @@ static int boe_prepare(struct drm_panel *panel)
 
 	if (ctx->prepared)
 		return 0;
-	pr_info("%s, line=%d\n", __func__, __LINE__);
 
+	if (ctx->gate_ic == 0) {
+		ctx->bias_pos =
+			devm_gpiod_get_index(ctx->dev, "bias", 0, GPIOD_OUT_HIGH);
+		gpiod_set_value(ctx->bias_pos, 1);
+		devm_gpiod_put(ctx->dev, ctx->bias_pos);
+
+		usleep_range(2000, 2001);
+		ctx->bias_neg =
+			devm_gpiod_get_index(ctx->dev, "bias", 1, GPIOD_OUT_HIGH);
+		gpiod_set_value(ctx->bias_neg, 1);
+		devm_gpiod_put(ctx->dev, ctx->bias_neg);
+	}
 #if IS_ENABLED(CONFIG_RT4831A_I2C)
-	if (ctx->gate_ic == 4831) {
-		pr_info("%s, line=%d\n", __func__, __LINE__);
+	else if (ctx->gate_ic == 4831) {
+		pr_info("%s, Using gate-ic 4831\n", __func__);
 		_gate_ic_Power_on();
 		/*rt4831a co-work with leds_i2c*/
 		_gate_ic_i2c_panel_bias_enable(1);
-		pr_info("%s, line=%d\n", __func__, __LINE__);
 	}
 #endif
-
-	/*
-	 * ctx->hwen = devm_gpiod_get(ctx->dev, "pm-enable", GPIOD_OUT_HIGH);
-	 * gpiod_set_value(ctx->hwen, 1);
-	 * devm_gpiod_put(ctx->dev, ctx->hwen);
-	 * usleep_range(5 * 1000, 6 * 1000);
-	 * lcd_set_bias(1);
-	 * usleep_range(5 * 1000, 6 * 1000);
-	 */
-
 	boe_panel_init(ctx);
 	ret = ctx->error;
 	if (ret < 0) {
@@ -829,25 +825,12 @@ static int boe_enable(struct drm_panel *panel)
 
 	if (ctx->enabled)
 		return 0;
-	pr_info("%s, line=%d\n", __func__, __LINE__);
 
 	if (ctx->backlight) {
 		ctx->backlight->props.power = FB_BLANK_UNBLANK;
 		backlight_update_status(ctx->backlight);
 	}
-	pr_info("%s, line=%d\n", __func__, __LINE__);
 
-#if IS_ENABLED(CONFIG_RT4831A_I2C)
-	if (ctx->gate_ic == 4831) {
-		pr_info("%s, line=%d\n", __func__, __LINE__);
-		_gate_ic_backlight_set(0xFFF);
-	}
-#endif
-
-#if RT4831A_SUPPORT
-	lcd_bl_set_led_brightness(0xFF7);
-	pr_info("%s, line=%d\n", __func__, __LINE__);
-#endif
 	ctx->enabled = true;
 
 	pr_info("%s---\n", __func__);
@@ -856,27 +839,80 @@ static int boe_enable(struct drm_panel *panel)
 }
 
 static const struct drm_display_mode default_mode = {
-	.clock = 890914,
+	.clock = 886486,
 	.hdisplay = 2944,
-	.hsync_start = 2944 + 32,
-	.hsync_end = 2944 + 32 + 10,
-	.htotal = 2944 + 32 + 10 + 32,
+	.hsync_start = 2944 + 25,
+	.hsync_end = 2944 + 25 + 10,
+	.htotal = 2944 + 25 + 10 + 24,
 	.vdisplay = 1840,
 	.vsync_start = 1840 + 26,
 	.vsync_end = 1840 + 26 + 2,
 	.vtotal = 1840 + 26 + 2 + 182,
 };
 
+#if SUPPORT_90Hz
+static const struct drm_display_mode performance_mode_90hz = {
+	.clock = 886486,
+	.hdisplay = 2944,
+	.hsync_start = 2944 + 25,
+	.hsync_end = 2944 + 25 + 10,
+	.htotal = 2944 + 25 + 10 + 24,
+	.vdisplay = 1840,
+	.vsync_start = 1840 + 1256,
+	.vsync_end = 1840 + 1256 + 2,
+	.vtotal = 1840 + 1256 + 2 + 182,
+};
+#endif
+
+static const struct drm_display_mode performance_mode_120hz = {
+	.clock = 766044,
+	.hdisplay = 2944,
+	.hsync_start = 2944 + 80,
+	.hsync_end = 2944 + 80 + 10,
+	.htotal = 2944 + 80 + 10 + 80,
+	.vdisplay = 1840,
+	.vsync_start = 1840 + 26,
+	.vsync_end = 1840 + 26 + 2,
+	.vtotal = 1840 + 26 + 2 + 182,
+};
+
+static const struct drm_display_mode performance_mode_60hz = {
+	.clock = 766044,
+	.hdisplay = 2944,
+	.hsync_start = 2944 + 80,
+	.hsync_end = 2944 + 80 + 10,
+	.htotal = 2944 + 80 + 10 + 80,
+	.vdisplay = 1840,
+	.vsync_start = 1840 + 2076,
+	.vsync_end = 1840 + 2076 + 2,
+	.vtotal = 1840 + 2076 + 2 + 182,
+};
+
+static const struct drm_display_mode performance_mode_30hz = {
+	.clock = 766044,
+	.hdisplay = 2944,
+	.hsync_start = 2944 + 80,
+	.hsync_end = 2944 + 80 + 10,
+	.htotal = 2944 + 80 + 10 + 80,
+	.vdisplay = 1840,
+	.vsync_start = 1840 + 6176,
+	.vsync_end = 1840 + 6176 + 2,
+	.vtotal = 1840 + 6176 + 2 + 182,
+};
+
 #if defined(CONFIG_MTK_PANEL_EXT)
 static struct mtk_panel_params ext_params = {
-	.pll_clk = 501,
+	.pll_clk = 491,
+	.data_rate = 982,
+	.data_rate_khz = 976137,
 	.physical_width_um = 273615,
 	.physical_height_um = 171009,
-	.cust_esd_check = 0,
-	.esd_check_enable = 0,
 	.output_mode = MTK_PANEL_DUAL_PORT,
 	.lcm_cmd_if = MTK_PANEL_DUAL_PORT,
+	.dual_swap = false,
 	.vdo_per_frame_lp_enable = 1,
+	.cust_esd_check = 0,
+	.esd_check_enable = 0,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x53,
 		.count = 1,
@@ -926,7 +962,329 @@ static struct mtk_panel_params ext_params = {
 			.range_bpg_ofs = range_bpg_ofs,
 		},
 	},
-	.dual_swap = true,
+	.dyn_fps = {
+		.switch_en = 1,
+		.vact_timing_fps = 144,
+		.dfps_cmd_table[0] = {0, 2, {0xFF, 0x10} },
+		.dfps_cmd_table[1] = {0, 2, {0xFB, 0x01} },
+		.dfps_cmd_table[2] = {0, 2, {0xB2, 0x80} },
+		.dfps_cmd_table[3] = {0, 2, {0xB3, 0x00} },
+	},
+	.dyn = {
+		.switch_en = 1,
+		.vfp = 26,
+		.hfp = 25,
+		.hbp = 24,
+	},
+};
+
+#if SUPPORT_90Hz
+static struct mtk_panel_params ext_params_90hz = {
+	.pll_clk = 491,
+	.data_rate = 982,
+	.data_rate_khz = 976137,
+	.physical_width_um = 273615,
+	.physical_height_um = 171009,
+	.output_mode = MTK_PANEL_DUAL_PORT,
+	.lcm_cmd_if = MTK_PANEL_DUAL_PORT,
+	.dual_swap = false,
+	.vdo_per_frame_lp_enable = 1,
+	.cust_esd_check = 0,
+	.esd_check_enable = 0,
+	.lcm_esd_check_table[0] = {
+		.cmd = 0x53,
+		.count = 1,
+		.para_list[0] = 0x00,
+	},
+	.dsc_params = {
+		.enable = 1,
+		.dual_dsc_enable = 1,
+		.ver = 0x11, /* [7:4] major [3:0] minor */
+		.slice_mode = 1,
+		.rgb_swap = 0,
+		.dsc_cfg = 34,
+		.rct_on = 1,
+		.bit_per_channel = 8,
+		.dsc_line_buf_depth = 9,
+		.bp_enable = 1,
+		.bit_per_pixel = 128,
+		.pic_height = 1840, /* need to check */
+		.pic_width = 1472,  /* need to check */
+		.slice_height = 20,
+		.slice_width = 736,
+		.chunk_size = 736,
+		.xmit_delay = 512,
+		.dec_delay = 656,
+		.scale_value = 32,
+		.increment_interval = 537,
+		.decrement_interval = 10,
+		.line_bpg_offset = 13,
+		.nfl_bpg_offset = 1402,
+		.slice_bpg_offset = 940,
+		.initial_offset = 6144,
+		.final_offset = 4304,
+		.flatness_minqp = 3,
+		.flatness_maxqp = 12,
+		.rc_model_size = 8192,
+		.rc_edge_factor = 6,
+		.rc_quant_incr_limit0 = 11,
+		.rc_quant_incr_limit1 = 11,
+		.rc_tgt_offset_hi = 3,
+		.rc_tgt_offset_lo = 3,
+
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = rc_buf_thresh,
+			.range_min_qp = range_min_qp,
+			.range_max_qp = range_max_qp,
+			.range_bpg_ofs = range_bpg_ofs,
+		},
+	},
+	.dyn_fps = {
+		.switch_en = 1,
+		.vact_timing_fps = 144,
+		.dfps_cmd_table[0] = {0, 2, {0xFF, 0x10} },
+		.dfps_cmd_table[1] = {0, 2, {0xFB, 0x01} },
+		.dfps_cmd_table[2] = {0, 2, {0xB2, 0x80} },
+		.dfps_cmd_table[3] = {0, 2, {0xB3, 0x00} },
+	},
+	.dyn = {
+		.switch_en = 1,
+		.vfp = 1256,
+		.hfp = 25,
+		.hbp = 24,
+	},
+};
+#endif
+
+static struct mtk_panel_params ext_params_120hz = {
+	.pll_clk = 491,
+	.data_rate = 982,
+	.data_rate_khz = 976137,
+	.physical_width_um = 273615,
+	.physical_height_um = 171009,
+	.output_mode = MTK_PANEL_DUAL_PORT,
+	.lcm_cmd_if = MTK_PANEL_DUAL_PORT,
+	.dual_swap = false,
+	.vdo_per_frame_lp_enable = 1,
+	.cust_esd_check = 0,
+	.esd_check_enable = 0,
+	.lcm_esd_check_table[0] = {
+		.cmd = 0x53,
+		.count = 1,
+		.para_list[0] = 0x00,
+	},
+	.dsc_params = {
+		.enable = 1,
+		.dual_dsc_enable = 1,
+		.ver = 0x11, /* [7:4] major [3:0] minor */
+		.slice_mode = 1,
+		.rgb_swap = 0,
+		.dsc_cfg = 34,
+		.rct_on = 1,
+		.bit_per_channel = 8,
+		.dsc_line_buf_depth = 9,
+		.bp_enable = 1,
+		.bit_per_pixel = 128,
+		.pic_height = 1840, /* need to check */
+		.pic_width = 1472,  /* need to check */
+		.slice_height = 20,
+		.slice_width = 736,
+		.chunk_size = 736,
+		.xmit_delay = 512,
+		.dec_delay = 656,
+		.scale_value = 32,
+		.increment_interval = 537,
+		.decrement_interval = 10,
+		.line_bpg_offset = 13,
+		.nfl_bpg_offset = 1402,
+		.slice_bpg_offset = 940,
+		.initial_offset = 6144,
+		.final_offset = 4304,
+		.flatness_minqp = 3,
+		.flatness_maxqp = 12,
+		.rc_model_size = 8192,
+		.rc_edge_factor = 6,
+		.rc_quant_incr_limit0 = 11,
+		.rc_quant_incr_limit1 = 11,
+		.rc_tgt_offset_hi = 3,
+		.rc_tgt_offset_lo = 3,
+
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = rc_buf_thresh,
+			.range_min_qp = range_min_qp,
+			.range_max_qp = range_max_qp,
+			.range_bpg_ofs = range_bpg_ofs,
+		},
+	},
+	.dyn_fps = {
+		.switch_en = 1,
+		.vact_timing_fps = 120,
+		.dfps_cmd_table[0] = {0, 2, {0xFF, 0x10} },
+		.dfps_cmd_table[1] = {0, 2, {0xFB, 0x01} },
+		.dfps_cmd_table[2] = {0, 2, {0xB2, 0x91} },
+		.dfps_cmd_table[3] = {0, 2, {0xB3, 0x40} },
+	},
+	.dyn = {
+		.switch_en = 1,
+		.vfp = 26,
+		.hfp = 80,
+		.hbp = 80,
+	},
+};
+
+static struct mtk_panel_params ext_params_60hz = {
+	.pll_clk = 491,
+	.data_rate = 982,
+	.data_rate_khz = 976137,
+	.physical_width_um = 273615,
+	.physical_height_um = 171009,
+	.output_mode = MTK_PANEL_DUAL_PORT,
+	.lcm_cmd_if = MTK_PANEL_DUAL_PORT,
+	.dual_swap = false,
+	.vdo_per_frame_lp_enable = 1,
+	.cust_esd_check = 0,
+	.esd_check_enable = 0,
+	.lcm_esd_check_table[0] = {
+		.cmd = 0x53,
+		.count = 1,
+		.para_list[0] = 0x00,
+	},
+	.dsc_params = {
+		.enable = 1,
+		.dual_dsc_enable = 1,
+		.ver = 0x11, /* [7:4] major [3:0] minor */
+		.slice_mode = 1,
+		.rgb_swap = 0,
+		.dsc_cfg = 34,
+		.rct_on = 1,
+		.bit_per_channel = 8,
+		.dsc_line_buf_depth = 9,
+		.bp_enable = 1,
+		.bit_per_pixel = 128,
+		.pic_height = 1840, /* need to check */
+		.pic_width = 1472,  /* need to check */
+		.slice_height = 20,
+		.slice_width = 736,
+		.chunk_size = 736,
+		.xmit_delay = 512,
+		.dec_delay = 656,
+		.scale_value = 32,
+		.increment_interval = 537,
+		.decrement_interval = 10,
+		.line_bpg_offset = 13,
+		.nfl_bpg_offset = 1402,
+		.slice_bpg_offset = 940,
+		.initial_offset = 6144,
+		.final_offset = 4304,
+		.flatness_minqp = 3,
+		.flatness_maxqp = 12,
+		.rc_model_size = 8192,
+		.rc_edge_factor = 6,
+		.rc_quant_incr_limit0 = 11,
+		.rc_quant_incr_limit1 = 11,
+		.rc_tgt_offset_hi = 3,
+		.rc_tgt_offset_lo = 3,
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = rc_buf_thresh,
+			.range_min_qp = range_min_qp,
+			.range_max_qp = range_max_qp,
+			.range_bpg_ofs = range_bpg_ofs,
+		},
+	},
+	.dyn_fps = {
+		.switch_en = 1,
+		.vact_timing_fps = 120,
+		.dfps_cmd_table[0] = {0, 2, {0xFF, 0x10} },
+		.dfps_cmd_table[1] = {0, 2, {0xFB, 0x01} },
+		.dfps_cmd_table[2] = {0, 2, {0xB2, 0x91} },
+		.dfps_cmd_table[3] = {0, 2, {0xB3, 0x40} },
+	},
+	.dyn = {
+		.switch_en = 1,
+		.vfp = 2076,
+		.hfp = 80,
+		.hbp = 80,
+	},
+};
+
+static struct mtk_panel_params ext_params_30hz = {
+	.pll_clk = 491,
+	.data_rate = 982,
+	.data_rate_khz = 976137,
+	.physical_width_um = 273615,
+	.physical_height_um = 171009,
+	.output_mode = MTK_PANEL_DUAL_PORT,
+	.lcm_cmd_if = MTK_PANEL_DUAL_PORT,
+	.dual_swap = false,
+	.vdo_per_frame_lp_enable = 1,
+	.cust_esd_check = 0,
+	.esd_check_enable = 0,
+	.lcm_esd_check_table[0] = {
+		.cmd = 0x53,
+		.count = 1,
+		.para_list[0] = 0x00,
+	},
+	.dsc_params = {
+		.enable = 1,
+		.dual_dsc_enable = 1,
+		.ver = 0x11, /* [7:4] major [3:0] minor */
+		.slice_mode = 1,
+		.rgb_swap = 0,
+		.dsc_cfg = 34,
+		.rct_on = 1,
+		.bit_per_channel = 8,
+		.dsc_line_buf_depth = 9,
+		.bp_enable = 1,
+		.bit_per_pixel = 128,
+		.pic_height = 1840, /* need to check */
+		.pic_width = 1472,  /* need to check */
+		.slice_height = 20,
+		.slice_width = 736,
+		.chunk_size = 736,
+		.xmit_delay = 512,
+		.dec_delay = 656,
+		.scale_value = 32,
+		.increment_interval = 537,
+		.decrement_interval = 10,
+		.line_bpg_offset = 13,
+		.nfl_bpg_offset = 1402,
+		.slice_bpg_offset = 940,
+		.initial_offset = 6144,
+		.final_offset = 4304,
+		.flatness_minqp = 3,
+		.flatness_maxqp = 12,
+		.rc_model_size = 8192,
+		.rc_edge_factor = 6,
+		.rc_quant_incr_limit0 = 11,
+		.rc_quant_incr_limit1 = 11,
+		.rc_tgt_offset_hi = 3,
+		.rc_tgt_offset_lo = 3,
+
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = rc_buf_thresh,
+			.range_min_qp = range_min_qp,
+			.range_max_qp = range_max_qp,
+			.range_bpg_ofs = range_bpg_ofs,
+		},
+	},
+	.dyn_fps = {
+		.switch_en = 1,
+		.vact_timing_fps = 120,
+		.dfps_cmd_table[0] = {0, 2, {0xFF, 0x10} },
+		.dfps_cmd_table[1] = {0, 2, {0xFB, 0x01} },
+		.dfps_cmd_table[2] = {0, 2, {0xB2, 0x91} },
+		.dfps_cmd_table[3] = {0, 2, {0xB3, 0x40} },
+	},
+	.dyn = {
+		.switch_en = 1,
+		.vfp = 6176,
+		.hfp = 80,
+		.hbp = 80,
+	},
 };
 
 static int panel_ext_reset(struct drm_panel *panel, int on)
@@ -940,27 +1298,128 @@ static int panel_ext_reset(struct drm_panel *panel, int on)
 	return 0;
 }
 
-static int boe_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle,
-				   unsigned int level)
+static int boe_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
+	void *handle, unsigned int level)
 {
-	if (level > 255)
-		level = 255;
+	char bl_tb[] = {0x51, 0x07, 0xff};
 
-	level = level * 4095 / 255;
-	bl_tb0[1] = ((level >> 8) & 0xf);
-	bl_tb0[2] = (level & 0xff);
+	if (level) {
+		bl_tb0[1] = (level >> 8) & 0xFF;
+		bl_tb0[2] = level & 0xFF;
+	}
+	bl_tb[1] = (level >> 8) & 0xFF;
+	bl_tb[2] = level & 0xFF;
 
 	if (!cb)
 		return -1;
-
-	cb(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
-
+	pr_info("%s %d %d %d\n", __func__, level, bl_tb[1], bl_tb[2]);
+	cb(dsi, handle, bl_tb, ARRAY_SIZE(bl_tb));
 	return 0;
+}
+
+struct drm_display_mode *get_mode_by_id_hfp(struct drm_connector *connector,
+	unsigned int mode)
+{
+	struct drm_display_mode *m;
+	unsigned int i = 0;
+
+	list_for_each_entry(m, &connector->modes, head) {
+		if (i == mode)
+			return m;
+		i++;
+	}
+	return NULL;
+}
+static int mtk_panel_ext_param_set(struct drm_panel *panel,
+			struct drm_connector *connector, unsigned int mode)
+{
+	struct mtk_panel_ext *ext = find_panel_ext(panel);
+	int ret = 0;
+	struct drm_display_mode *m = get_mode_by_id_hfp(connector, mode);
+
+	if (drm_mode_vrefresh(m) == 144) {
+		ext->params = &ext_params;
+		current_fps = 144;
+	}
+#if SUPPORT_90Hz
+	else if (drm_mode_vrefresh(m) == 90) {
+		ext->params = &ext_params_90hz;
+		current_fps = 90;
+	}
+#endif
+	else if (drm_mode_vrefresh(m) == 120) {
+		ext->params = &ext_params_120hz;
+		current_fps = 120;
+	} else if (drm_mode_vrefresh(m) == 60) {
+		ext->params = &ext_params_60hz;
+		current_fps = 60;
+	} else if (drm_mode_vrefresh(m) == 30) {
+		ext->params = &ext_params_30hz;
+		current_fps = 30;
+	} else
+		ret = 1;
+
+	return ret;
+}
+
+static void mode_switch_to_144(struct drm_panel *panel)
+{
+	struct boe *ctx = panel_to_boe(panel);
+
+	boe_dcs_write_seq_static(ctx, 0xFF, 0x10);
+	boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	boe_dcs_write_seq_static(ctx, 0xB2, 0x80);//144hz
+	boe_dcs_write_seq_static(ctx, 0xB3, 0x00);
+}
+
+static void mode_switch_to_120(struct drm_panel *panel)
+{
+	struct boe *ctx = panel_to_boe(panel);
+
+	boe_dcs_write_seq_static(ctx, 0xFF, 0x10);
+	boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	boe_dcs_write_seq_static(ctx, 0xB2, 0x91);//120hz
+	boe_dcs_write_seq_static(ctx, 0xB3, 0x40);
+}
+
+static int mode_switch(struct drm_panel *panel,
+		struct drm_connector *connector, unsigned int cur_mode,
+		unsigned int dst_mode, enum MTK_PANEL_MODE_SWITCH_STAGE stage)
+{
+	int ret = 0;
+	struct drm_display_mode *m = get_mode_by_id_hfp(connector, dst_mode);
+
+	if (!m) {
+		pr_info("ERROR!! drm_display_mode m is null\n");
+		return -ENOMEM;
+	}
+
+	pr_info("%s cur_mode = %d dst_mode %d\n", __func__, cur_mode, dst_mode);
+
+	if (drm_mode_vrefresh(m) == 144)
+		mode_switch_to_144(panel);
+#if SUPPORT_90Hz
+	else if (drm_mode_vrefresh(m) == 90)
+		mode_switch_to_144(panel);
+#endif
+	else if (drm_mode_vrefresh(m) == 120)
+		mode_switch_to_120(panel);
+	else if (drm_mode_vrefresh(m) == 60)
+		mode_switch_to_120(panel);
+	else if (drm_mode_vrefresh(m) == 30)
+		mode_switch_to_120(panel);
+	else
+		ret = 1;
+
+	return ret;
 }
 
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
 	.set_backlight_cmdq = boe_setbacklight_cmdq,
+	.ext_param_set = mtk_panel_ext_param_set,
+	.mode_switch = mode_switch,
+
 };
 #endif
 
@@ -968,6 +1427,12 @@ static int boe_get_modes(struct drm_panel *panel,
 					struct drm_connector *connector)
 {
 	struct drm_display_mode *mode;
+#if SUPPORT_90Hz
+	struct drm_display_mode *mode2;
+#endif
+	struct drm_display_mode *mode3;
+	struct drm_display_mode *mode4;
+	struct drm_display_mode *mode5;
 
 	pr_info("%s+++\n", __func__);
 
@@ -978,14 +1443,58 @@ static int boe_get_modes(struct drm_panel *panel,
 			drm_mode_vrefresh(&default_mode));
 		return -ENOMEM;
 	}
-
 	drm_mode_set_name(mode);
 	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
 	drm_mode_probed_add(connector, mode);
+
+#if SUPPORT_90Hz
+	mode2 = drm_mode_duplicate(connector->dev, &performance_mode_90hz);
+	if (!mode2) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			 performance_mode_90hz.hdisplay, performance_mode_90hz.vdisplay,
+			 drm_mode_vrefresh(&performance_mode_90hz));
+		return -ENOMEM;
+	}
+	drm_mode_set_name(mode2);
+	mode2->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, mode2);
+#endif
+
+	mode3 = drm_mode_duplicate(connector->dev, &performance_mode_120hz);
+	if (!mode3) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			 performance_mode_120hz.hdisplay, performance_mode_120hz.vdisplay,
+			 drm_mode_vrefresh(&performance_mode_120hz));
+		return -ENOMEM;
+	}
+	drm_mode_set_name(mode3);
+	mode3->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, mode3);
+
+	mode4 = drm_mode_duplicate(connector->dev, &performance_mode_60hz);
+	if (!mode4) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			 performance_mode_60hz.hdisplay, performance_mode_60hz.vdisplay,
+			 drm_mode_vrefresh(&performance_mode_60hz));
+		return -ENOMEM;
+	}
+	drm_mode_set_name(mode4);
+	mode4->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, mode4);
+
+	mode5 = drm_mode_duplicate(connector->dev, &performance_mode_30hz);
+	if (!mode5) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			 performance_mode_30hz.hdisplay, performance_mode_30hz.vdisplay,
+			 drm_mode_vrefresh(&performance_mode_30hz));
+		return -ENOMEM;
+	}
+	drm_mode_set_name(mode5);
+	mode5->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, mode5);
+
 	connector->display_info.width_mm = 273;
 	connector->display_info.height_mm = 171;
-
-	pr_info("%s---\n", __func__);
 
 	return 1;
 }
@@ -1026,13 +1535,44 @@ static int boe_probe(struct mipi_dsi_device *dsi)
 			return -EPROBE_DEFER;
 	}
 
+	ctx->display_dual_swap = of_property_read_bool(dev->of_node,
+					      "display-dual-swap");
+	pr_notice("ctx->display_dual_swap=%d\n", ctx->display_dual_swap);
+	if (ctx->display_dual_swap) {
+		ext_params.dual_swap = true;
+#if SUPPORT_90Hz
+		ext_params_90hz.dual_swap = true;
+#endif
+		ext_params_120hz.dual_swap = true;
+		ext_params_60hz.dual_swap = true;
+		ext_params_30hz.dual_swap = true;
+	}
+
 	ret = of_property_read_u32(dev->of_node, "gate-ic", &value);
 	if (ret < 0) {
 		pr_info("%s, Failed to find gate-ic\n", __func__);
 		value = 0;
 	} else {
-		pr_info("%s, line=%d, value=%d\n", __func__, __LINE__, value);
+		pr_info("%s, Find gate-ic, value=%d\n", __func__, value);
 		ctx->gate_ic = value;
+	}
+
+	if (ctx->gate_ic == 0) {
+		ctx->bias_pos = devm_gpiod_get_index(dev, "bias", 0, GPIOD_OUT_HIGH);
+		if (IS_ERR(ctx->bias_pos)) {
+			dev_info(dev, "cannot get bias-gpios 0 %ld\n",
+				 PTR_ERR(ctx->bias_pos));
+			return PTR_ERR(ctx->bias_pos);
+		}
+		devm_gpiod_put(dev, ctx->bias_pos);
+
+		ctx->bias_neg = devm_gpiod_get_index(dev, "bias", 1, GPIOD_OUT_HIGH);
+		if (IS_ERR(ctx->bias_neg)) {
+			dev_info(dev, "cannot get bias-gpios 1 %ld\n",
+				 PTR_ERR(ctx->bias_neg));
+			return PTR_ERR(ctx->bias_neg);
+		}
+		devm_gpiod_put(dev, ctx->bias_neg);
 	}
 
 	ctx->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
