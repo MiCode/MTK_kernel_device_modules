@@ -71,13 +71,13 @@ static struct mtk_dpc *g_priv;
 
 static const char trace_buf_mml_on[] = "C|-65536|MML1_power|1\n";
 static const char trace_buf_mml_off[] = "C|-65536|MML1_power|0\n";
-#ifdef CONFIG_TRACING
 static noinline int tracing_mark_write(const char buf[])
 {
+#ifdef CONFIG_TRACING
 	trace_puts(buf);
+#endif
 	return 0;
 }
-#endif
 
 static struct mtk_dpc_mtcmos_cfg mt6989_mtcmos_cfg[DPC_SUBSYS_CNT] = {
 /*	cfg     set    clr    pa va */
@@ -1143,8 +1143,8 @@ static void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 		mtk_dprec_logger_pr(DPREC_LOGGER_FENCE, "dpc put mminfra\n");
 	}
 
-	/* unvote after all hw mode config done */
-	mtk_disp_vlp_vote(VOTE_CLR, DISP_VIDLE_USER_DISP_DPC_CFG);
+	/* will be unvoted by atomic commit gce pkt, for suspend resuming protection */
+	/* mtk_disp_vlp_vote(VOTE_CLR, DISP_VIDLE_USER_DISP_DPC_CFG); */
 
 	dpc_mmp(config, MMPROFILE_FLAG_PULSE, subsys, en);
 }

@@ -15944,6 +15944,10 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 						mtk_crtc_state->cmdq_handle, partial_enable);
 		}
 	}
+
+	if (crtc_id == 0 && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO))
+		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_DPC_CFG,
+						    mtk_crtc_state->cmdq_handle);
 #endif
 
 	if ((priv->usage[crtc_idx] == DISP_OPENING) &&
