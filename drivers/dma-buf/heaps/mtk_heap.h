@@ -28,8 +28,14 @@ u64 dmabuf_to_secure_handle(const struct dma_buf *dmabuf);
 int is_system_heap_dmabuf(const struct dma_buf *dmabuf);
 int is_mtk_mm_heap_dmabuf(const struct dma_buf *dmabuf);
 int is_uncached_dmabuf(const struct dma_buf *dmabuf);
-#if IS_ENABLED(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM)
+#if IS_ENABLED(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM) && !IS_ENABLED(CONFIG_GRT_HYPERVISOR)
 int is_mtk_sec_heap_dmabuf(const struct dma_buf *dmabuf);
+#endif
+#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+static inline int is_mtk_sec_heap_dmabuf(const struct dma_buf *dmabuf)
+{
+	return 0;
+}
 #endif
 int is_support_secure_handle(const struct dma_buf *dmabuf);
 
