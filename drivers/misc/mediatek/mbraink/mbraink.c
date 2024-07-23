@@ -1099,6 +1099,30 @@ static long handle_wifi_txtimeout_info(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handle_vdec_fps_info(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_vdec_fps *vdec_fps_buffer =
+		(struct mbraink_vdec_fps *)(mbraink_data);
+
+	if (copy_from_user(vdec_fps_buffer,
+		(struct mbraink_vdec_fps *) arg,
+		sizeof(struct mbraink_vdec_fps))) {
+		pr_notice("copy vdec_fps_buffer data from user Err!\n");
+		return -EPERM;
+	}
+	vdec_fps_buffer->vdec_fps = mbraink_get_vdec_fps_info(vdec_fps_buffer->pid);
+
+	if (copy_to_user((struct mbraink_vdec_fps *) arg,
+		vdec_fps_buffer, sizeof(struct mbraink_vdec_fps))) {
+		pr_notice("%s: Copy vdec_fps_buffer to UserSpace error!\n",
+			__func__);
+		return -EPERM;
+	}
+
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -1509,6 +1533,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handle_wifi_txtimeout_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_VDEC_FPS:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_vdec_fps), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_vdec_fps_info(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}

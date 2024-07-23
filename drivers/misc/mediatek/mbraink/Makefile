@@ -27,6 +27,10 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lpm/modules/include
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lpm/modules/include
 endif
 
+ifeq ($(CONFIG_DEVICE_MODULES_VIDEO_MEDIATEK_VCODEC),m)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/videocodec/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/misc/mediatek/videocodec/
+endif
 
 subdir-ccflags-y += -Wformat
 

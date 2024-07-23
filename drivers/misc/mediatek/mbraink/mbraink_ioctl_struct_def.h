@@ -551,4 +551,9 @@ struct mbraink_wifi2mbr_txtimeout_data {
 	u32 idx;
 	struct mbraink_wifi2mbr_txtimeout_struct txtimeout_data[MAX_WIFI_TXTIMEOUT_SZ];
 };
+
+struct mbraink_vdec_fps {
+	unsigned short pid;
+	int vdec_fps;
+};
 #endif
