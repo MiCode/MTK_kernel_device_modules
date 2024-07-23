@@ -110,6 +110,14 @@ struct mac_delay_struct {
 	bool rx_inv;
 };
 
+struct chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
 struct mediatek_dwmac_plat_data {
 	const struct mediatek_dwmac_variant *variant;
 	struct mac_delay_struct mac_delay;
@@ -130,7 +138,8 @@ struct mediatek_dwmac_plat_data {
 struct mediatek_dwmac_variant {
 	int (*dwmac_set_phy_interface)(struct mediatek_dwmac_plat_data *plat);
 	int (*dwmac_set_delay)(struct mediatek_dwmac_plat_data *plat);
-
+	int (*dwmac_set_base_addr)(struct platform_device *pdev,
+				   struct stmmac_resources *stmmac_res);
 	/* clock ids to be requested */
 	const char * const *clk_list;
 	int num_clks;
@@ -1232,9 +1241,39 @@ static int mt8678_set_delay(struct mediatek_dwmac_plat_data *plat)
 	return 0;
 }
 
+int mt8678_set_base_addr(struct platform_device *pdev,
+			 struct stmmac_resources *stmmac_res)
+{
+	struct device_node *dn;
+	struct chipid *chipid;
+	int sw_ver = 0;
+
+	dn = of_find_node_by_path("/chosen");
+	if (!dn)
+		dn = of_find_node_by_path("chosen@0");
+
+	if (dn) {
+		chipid = (struct chipid *)of_get_property(dn, "atag,chipid", NULL);
+		if (!chipid) {
+			dev_err(&pdev->dev, "Failed to get chipid\n");
+			return -EPROBE_DEFER;
+		}
+		sw_ver = (int)chipid->sw_ver;
+	} else {
+		dev_err(&pdev->dev, "Failed to find '/chosen' or 'chosen@0' node\n");
+		return -ENODEV;
+	}
+
+	if(sw_ver)
+		stmmac_res->addr = devm_platform_ioremap_resource_byname(pdev, "b0");
+
+	return 0;
+}
+
 static const struct mediatek_dwmac_variant mt8678_gmac_variant = {
 	.dwmac_set_phy_interface = mt8678_set_interface,
 	.dwmac_set_delay = mt8678_set_delay,
+	.dwmac_set_base_addr = mt8678_set_base_addr,
 	.clk_list = mt8678_dwmac_clk_l,
 	.num_clks = ARRAY_SIZE(mt8678_dwmac_clk_l),
 	.dma_bit_mask = 40,
