@@ -332,7 +332,8 @@ static u8 bw_to_level(const u32 total_bw);
 struct mtk_dpc {
 	struct platform_device *pdev;
 	struct device *dev;
-	struct device *pd_dev;
+	struct device *pd_dev;			/* mminfra mtcmos */
+	struct device *root_dev;		/* disp_vcore mtcmos */
 	struct notifier_block pm_nb;
 	struct notifier_block vcp_nb;
 	int disp_irq;
