@@ -280,6 +280,9 @@ static SOC_VALUE_ENUM_SINGLE_AUTODISABLE_DECL(dptx_virtual_out_mux_map_enum,
 static const struct snd_kcontrol_new dptx_virtual_out_mux_control =
 	SOC_DAPM_ENUM("DPTX_VIRTUAL_OUT_MUX", dptx_virtual_out_mux_map_enum);
 
+static const struct snd_kcontrol_new tdm_virtual_out_mux_control =
+	SOC_DAPM_ENUM("TDM_VIRTUAL_OUT_MUX", dptx_virtual_out_mux_map_enum);
+
 enum {
 	SUPPLY_SEQ_APLL,
 	SUPPLY_SEQ_TDM_MCK_EN,
@@ -398,6 +401,10 @@ static const struct snd_soc_dapm_widget mtk_dai_tdm_widgets[] = {
 	SND_SOC_DAPM_MUX("DPTX_VIRTUAL_OUT_MUX",
 			 SND_SOC_NOPM, 0, 0, &dptx_virtual_out_mux_control),
 	SND_SOC_DAPM_OUTPUT("DPTX_VIRTUAL_OUT"),
+
+	SND_SOC_DAPM_MUX("TDM_VIRTUAL_OUT_MUX",
+			 SND_SOC_NOPM, 0, 0, &tdm_virtual_out_mux_control),
+	SND_SOC_DAPM_OUTPUT("TDM_VIRTUAL_OUT"),
 };
 
 static int mtk_afe_tdm_apll_connect(struct snd_soc_dapm_widget *source,
@@ -523,6 +530,9 @@ static const struct snd_soc_dapm_route mtk_dai_tdm_routes[] = {
 
 	{"DPTX_VIRTUAL_OUT_MUX", "Connect", "TDM_DPTX"},
 	{"DPTX_VIRTUAL_OUT", NULL, "DPTX_VIRTUAL_OUT_MUX"},
+
+	{"TDM_VIRTUAL_OUT_MUX", "Connect", "TDM"},
+	{"TDM_VIRTUAL_OUT", NULL, "TDM_VIRTUAL_OUT_MUX"},
 };
 
 /* dai ops */
@@ -574,9 +584,15 @@ static int mtk_dai_tdm_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* calculate bck */
-	tdm_priv->bck_rate = rate *
-			     channels *
-			     snd_pcm_format_physical_width(format);
+	if (tdm_id == MT6899_DAI_TDM_DPTX) {
+		tdm_priv->bck_rate = rate *
+				     2 *
+				     snd_pcm_format_physical_width(format);
+	} else {
+		tdm_priv->bck_rate = rate *
+				     channels *
+				     snd_pcm_format_physical_width(format);
+	}
 
 	if (tdm_priv->bck_rate > tdm_priv->mclk_rate)
 		AUDIO_AEE("bck_rate > mclk_rate rate");
@@ -595,9 +611,25 @@ static int mtk_dai_tdm_hw_params(struct snd_pcm_substream *substream,
 	tdm_con |= 0 << DELAY_DATA_SFT;
 	tdm_con |= 1 << LEFT_ALIGN_SFT;
 	tdm_con |= get_tdm_wlen(format) << WLEN_SFT;
-	tdm_con |= get_tdm_ch(channels) << CHANNEL_NUM_SFT;
+
+	if (tdm_id == MT6899_DAI_TDM_DPTX) {
+		/* for mt6991 use 0 = 2ch for 4 pin */
+		tdm_con |= 0 << CHANNEL_NUM_SFT;
+	} else {
+		/* for auto n ch = 1pin */
+		tdm_con |= get_tdm_ch(channels) << CHANNEL_NUM_SFT;
+	}
+
 	tdm_con |= get_tdm_channel_bck(format) << CHANNEL_BCK_CYCLES_SFT;
-	tdm_con |= get_tdm_lrck_width(format) << LRCK_TDM_WIDTH_SFT;
+
+	if (tdm_id == MT6899_DAI_TDM_DPTX) {
+		/* for mt6991 use 1T LRCK */
+		tdm_con |= 0 << LRCK_TDM_WIDTH_SFT;
+	} else {
+		/* for auto n ch = 1pin */
+		tdm_con |= get_tdm_lrck_width(format) << LRCK_TDM_WIDTH_SFT;
+	}
+
 	regmap_write(afe->regmap, AFE_TDM_CON1, tdm_con);
 
 	/* set dptx */
@@ -780,11 +812,7 @@ static struct mtk_afe_tdm_priv *init_tdm_priv_data(struct mtk_base_afe *afe,
 	if (!tdm_priv)
 		return NULL;
 
-	if (id == MT6899_DAI_TDM_DPTX)
-		tdm_priv->mclk_multiple = 256;
-	else
-		tdm_priv->mclk_multiple = 128;
-
+	tdm_priv->mclk_multiple = 256;
 	tdm_priv->bck_id = MT6899_TDMOUT_BCK;
 	tdm_priv->mclk_id = MT6899_TDMOUT_MCK;
 
