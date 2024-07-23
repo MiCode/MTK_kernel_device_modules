@@ -11437,10 +11437,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mtk-iomem-ver = "mt6899";
 
 			/* for sentest adjust isp clk used */
-			// operating-points-v2 = <&opp_table_cam>;
+			operating-points-v2 = <&opp_table_cam>;
 
 			/* for clock scaling bind vcore */
-			//dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			/*
 			 * description phy dvfs step <[0] [1]>, <[2] [3]>, <[4]>, <[5] [6]>
 			 * step: 0-N, or modification by dvfs table. (N: step maximum)
@@ -11475,8 +11475,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&topckgen_clk CLK_TOP_UNIVPLL_D4_D2>,
 				<&topckgen_clk CLK_TOP_MAINPLL_D6>,
 				<&topckgen_clk CLK_TOP_UNIVPLL_D6>,
-				<&topckgen_clk CLK_TOP_UNIVPLL_D5>;
-				//<&mmdvfs_mux MMDVFS_USER_CAM>;
+				<&topckgen_clk CLK_TOP_UNIVPLL_D5>,
+				<&mmdvfs_mux MMDVFS_USER_CAM>;
 			clock-names = "clk_cam_vcore_cg0",
 				"clk_cam_seninf",
 				"clk_cam_cam",
@@ -11490,8 +11490,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"clk_top_ap_step0",
 				"clk_top_ap_step1",
 				"clk_top_ap_step2",
-				"clk_top_ap_step3";
-				//"mmdvfs_mux";
+				"clk_top_ap_step3",
+				"mmdvfs_mux";
 
 			clk-fmeter-isp {
 				fmeter-type = "CKGEN_CK2";
