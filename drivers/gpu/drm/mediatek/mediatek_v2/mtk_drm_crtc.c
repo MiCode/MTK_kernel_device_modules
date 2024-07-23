@@ -17881,6 +17881,9 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		return ret;
 	}
 
+	cmdq_pkt_wfe(cmdq_handle,
+		mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+
 	/* bypass PQ module if enable partial update */
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (comp && ((mtk_ddp_comp_get_type(comp->id) == MTK_DISP_POSTMASK &&
@@ -17908,6 +17911,9 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 			(mtk_ddp_comp_get_type(comp->id) != MTK_DISP_MDP_RSZ))
 			mtk_ddp_comp_partial_update(comp, cmdq_handle, partial_roi, partial_enable);
 	}
+
+	cmdq_pkt_set_event(cmdq_handle,
+		mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 
 	return ret;
 

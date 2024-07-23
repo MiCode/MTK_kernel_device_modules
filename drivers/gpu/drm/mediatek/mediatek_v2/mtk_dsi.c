@@ -12889,8 +12889,8 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
-	cmdq_pkt_wfe(handle,
-		crtc->gce_obj.event[EVENT_CABC_EOF]);
+	//cmdq_pkt_wfe(handle,
+		//crtc->gce_obj.event[EVENT_CABC_EOF]);
 
 	if (comp->id == DDP_COMPONENT_DSI0) {
 		dsi->set_partial_update = enable;
@@ -12940,8 +12940,8 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 				comp, true));
 	}
 
-	cmdq_pkt_set_event(handle,
-		crtc->gce_obj.event[EVENT_CABC_EOF]);
+	//cmdq_pkt_set_event(handle,
+		//crtc->gce_obj.event[EVENT_CABC_EOF]);
 
 	return 0;
 }
