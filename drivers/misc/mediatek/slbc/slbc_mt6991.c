@@ -1302,14 +1302,20 @@ int slbc_gid_release(enum slc_ach_uid uid, int gid)
 
 int slbc_roi_update(enum slc_ach_uid uid, int gid, struct slbc_gid_data *data)
 {
+	int ret = 0;
+
 	if (gid >= GID_MAX)
 		return -EINVAL;
 
 	mutex_lock(&slbc_req_lock);
-	_slbc_ach_scmi(IPI_SLBC_ROI_UPDATE_FROM_AP, uid, gid, data);
+	ret = _slbc_ach_scmi(IPI_SLBC_ROI_UPDATE_FROM_AP, uid, gid, data);
+	if (ret) {
+		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, ret, "ach scmi roi update fail, uid:%d, gid:%d", uid, gid);
+		return ret;
+	}
 	mutex_unlock(&slbc_req_lock);
 
-	return 0;
+	return ret;
 }
 
 int slbc_validate(enum slc_ach_uid uid, int gid)
@@ -1397,6 +1403,8 @@ int slbc_invalidate(enum slc_ach_uid uid, int gid)
 int slbc_read_invalidate(enum slc_ach_uid uid, int gid, int enable)
 {
 	struct slbc_gid_data data;
+	int ret = 0;
+
 
 	SLBC_TRACE_REC(LVL_NORM, TYPE_C, uid, 0, "gid:%d", gid);
 	if (gid >= GID_MAX)
@@ -1404,10 +1412,14 @@ int slbc_read_invalidate(enum slc_ach_uid uid, int gid, int enable)
 
 	data.bw = enable;
 	mutex_lock(&slbc_req_lock);
-	_slbc_ach_scmi(IPI_SLBC_GID_READ_INVALID_FROM_AP, uid, gid, &data);
+	ret = _slbc_ach_scmi(IPI_SLBC_GID_READ_INVALID_FROM_AP, uid, gid, &data);
+	if (ret) {
+		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, ret, "ach read invld fail, uid:%d, gid:%d", uid, gid);
+		return ret;
+	}
 	mutex_unlock(&slbc_req_lock);
 
-	return 0;
+	return ret;
 }
 
 int slbc_ceil(enum slc_ach_uid uid, unsigned int ceil)
@@ -1878,7 +1890,7 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 		test_d.type  = TP_BUFFER;
 		ret = slbc_release(&test_d);
 	} else if (!strcmp(cmd, "slbc_gid_request")) {
-		if (val_1 <= UID_ZERO || val_1 >= UID_MAX ||
+		if (val_1 <= ID_PD || val_1 >= ID_MAX ||
 				val_2 >= GID_MAX) {
 			ret = -EPERM;
 			goto out;
@@ -1888,14 +1900,38 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 		test_gid_d.sign = SLC_DATA_MAGIC;
 		slbc_gid_request((enum slc_ach_uid)val_1, &temp, &test_gid_d);
 	} else if (!strcmp(cmd, "slbc_gid_release")) {
+		if (val_1 <= ID_PD || val_1 >= ID_MAX ||
+				val_2 >= GID_MAX) {
+			ret = -EPERM;
+			goto out;
+		}
 		slbc_gid_release((enum slc_ach_uid)val_1, val_2);
 	} else if (!strcmp(cmd, "slbc_validate")) {
+		if (val_1 <= ID_PD || val_1 >= ID_MAX ||
+				val_2 >= GID_MAX) {
+			ret = -EPERM;
+			goto out;
+		}
 		slbc_validate((enum slc_ach_uid)val_1, (int)val_2);
 	} else if (!strcmp(cmd, "slbc_invalidate")) {
+		if (val_1 <= ID_PD || val_1 >= ID_MAX ||
+				val_2 >= GID_MAX) {
+			ret = -EPERM;
+			goto out;
+		}
 		slbc_invalidate((enum slc_ach_uid)val_1, (int)val_2);
 	} else if (!strcmp(cmd, "slbc_read_invalidate")) {
+		if (val_1 <= ID_PD || val_1 >= ID_MAX ||
+				val_2 >= GID_MAX) {
+			ret = -EPERM;
+			goto out;
+		}
 		slbc_read_invalidate((enum slc_ach_uid)val_1, val_2, val_3);
 	} else if (!strcmp(cmd, "slbc_ceil")) {
+		if (val_1 <= ID_PD || val_1 >= ID_MAX) {
+			ret = -EPERM;
+			goto out;
+		}
 		slbc_ceil((enum slc_ach_uid)val_1, val_2);
 	} else if (!strcmp(cmd, "slbc_total_ceil")) {
 		slbc_total_ceil(val_1);
