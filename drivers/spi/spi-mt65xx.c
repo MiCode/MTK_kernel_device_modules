@@ -951,10 +951,10 @@ inline u32 spi_set_nbit(u32 nbit)
 static void mtk_spi_prepare_transfer(struct spi_master *master,
 				     u32 speed_hz)
 {
-	u32 div, sck_time, reg_val;
+	u32 div, sck_time, reg_val, cs_setup_reg_val, cs_setup_time;
 	struct mtk_spi *mdata = spi_master_get_devdata(master);
 
-	if (speed_hz < mdata->spi_clk_hz / 2)
+	if (speed_hz && (speed_hz < mdata->spi_clk_hz / 2))
 		div = DIV_ROUND_UP(mdata->spi_clk_hz, speed_hz);
 	else
 		div = 1;
@@ -970,6 +970,20 @@ static void mtk_spi_prepare_transfer(struct spi_master *master,
 		reg_val |= (((sck_time - 1) & 0xffff)
 			   << SPI_CFG2_SCK_LOW_OFFSET);
 		writel(reg_val, mdata->base + SPI_CFG2_REG);
+		/* setting default value to protect the potential issue
+		 * which caused by user missing to set this value.
+		 */
+		reg_val = readl(mdata->base + SPI_CFG0_REG);
+		cs_setup_reg_val = ((reg_val >> SPI_ADJUST_CFG0_CS_SETUP_OFFSET) & 0xFFFF);
+		if (cs_setup_reg_val == 0) {
+		/* only delay is 0 ,we setting default cs_setup_cnt val */
+			cs_setup_time = sck_time * 2;
+			reg_val = readl(mdata->base + SPI_CFG0_REG);
+			reg_val &= ~(0xffff << SPI_ADJUST_CFG0_CS_SETUP_OFFSET);
+			reg_val |= (((cs_setup_time - 1) & 0xffff)
+			   << SPI_ADJUST_CFG0_CS_SETUP_OFFSET);
+			writel(reg_val, mdata->base + SPI_CFG0_REG);
+		}
 	} else {
 		reg_val = readl(mdata->base + SPI_CFG0_REG);
 		reg_val &= ~(0xff << SPI_CFG0_SCK_HIGH_OFFSET);
