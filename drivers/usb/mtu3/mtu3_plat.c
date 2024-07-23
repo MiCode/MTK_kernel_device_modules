@@ -159,6 +159,11 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 	case MTU3_STATE_OFFLOAD:
 		/* Clear req for offload scenario */
 		spm_ctrl &= ~(SSUSB_SPM_REQ_OFFLOAD_MSK ^ spm_msk);
+
+		/* set apsrc=0 and ddren=1, inform peri not to protect bus */
+		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6899-mtu3"))
+			spm_ctrl |= SSUSB_SPM_DDR_EN;
+
 		break;
 	case MTU3_STATE_RESUME:
 		spm_ctrl |= spm_msk;
