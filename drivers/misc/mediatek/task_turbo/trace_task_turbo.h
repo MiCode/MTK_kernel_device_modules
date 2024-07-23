@@ -34,7 +34,7 @@ TRACE_EVENT(binder_vip_set,
 		__entry->b_vip_prio = b_vip_prio;
 		__entry->b_throttle = b_throttle;
 	),
-	TP_printk("%d -> %d: (%d, %d) / (%d, %d)",
+	TP_printk("%d -> %d: (%d, %d) -> (%d, %d)",
 		__entry->a_pid,
 		__entry->b_pid,
 		__entry->a_vip_prio,
@@ -44,30 +44,20 @@ TRACE_EVENT(binder_vip_set,
 );
 
 TRACE_EVENT(binder_vip_restore,
-	TP_PROTO(pid_t b_pid, int now_vip_prio, unsigned int now_throttle, int back_vip_prio,
-		unsigned int back_throttle),
-	TP_ARGS(b_pid, now_vip_prio, now_throttle, back_vip_prio, back_throttle),
+	TP_PROTO(pid_t b_pid, int restore_vip_prio),
+	TP_ARGS(b_pid, restore_vip_prio),
 
 	TP_STRUCT__entry(
 		__field(pid_t, b_pid)
-		__field(int, now_vip_prio)
-		__field(unsigned int, now_throttle)
-		__field(int, back_vip_prio)
-		__field(unsigned int, back_throttle)
+		__field(int, restore_vip_prio)
 	),
 	TP_fast_assign(
 		__entry->b_pid = b_pid;
-		__entry->now_vip_prio = now_vip_prio;
-		__entry->now_throttle = now_throttle;
-		__entry->back_vip_prio = back_vip_prio;
-		__entry->back_throttle = back_throttle;
+		__entry->restore_vip_prio = restore_vip_prio;
 	),
-	TP_printk("%d: (%d, %d)->(%d, %d)",
+	TP_printk("%d: restore to: %d",
 		__entry->b_pid,
-		__entry->now_vip_prio,
-		__entry->now_throttle,
-		__entry->back_vip_prio,
-		__entry->back_throttle)
+		__entry->restore_vip_prio)
 );
 
 TRACE_EVENT(turbo_feats_set,
