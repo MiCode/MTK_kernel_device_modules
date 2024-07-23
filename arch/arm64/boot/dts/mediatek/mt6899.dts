@@ -15054,6 +15054,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			scp-thermal-wq = "enable";
 			scp-low-pwr-dbg = "enable";
 			scp-cfgreg-ap-en = "enable";
+			scp-bus-tracker-ver = <0x2>;
+			scp-mbrain = "enable";
 
 			//scp_aovmem_key = "mediatek,scp_aov_reserved";
 			scp-mem-key = "mediatek,reserve-memory-scp_share";
