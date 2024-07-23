@@ -1785,6 +1785,8 @@ int mdrv_DPTx_TrainingFlow(struct mtk_dp *mtk_dp, u8 ubLaneRate, u8 ubLaneCount)
 
 	mhal_DPTx_SetTxLane(mtk_dp, ubTargetLaneCount);
 	mhal_DPTx_SetTxRate(mtk_dp, ubTargetLinkRate);
+	if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6899)
+		mhal_DPTx_PHYD_Reset(mtk_dp);
 
 	do {
 		ubTrainRetryTimes++;

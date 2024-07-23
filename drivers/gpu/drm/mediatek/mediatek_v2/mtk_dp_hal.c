@@ -2636,6 +2636,36 @@ void mhal_DPTx_PHYSetting(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 		mhal_DPTx_phyd_power_on(mtk_dp);
 	} else if (mtk_dp->priv && mtk_dp->priv->data &&
 			mtk_dp->priv->data->mmsys_id == MMSYS_MT6899) {
+		/*hqa param*/
+		msPhyWrite4Byte(mtk_dp, 0x1138,0x221C1814);
+		msPhyWrite4Byte(mtk_dp, 0x1238,0x221C1814);
+		msPhyWrite4Byte(mtk_dp, 0x1338,0x221C1814);
+		msPhyWrite4Byte(mtk_dp, 0x1438,0x221C1814);
+
+		msPhyWrite4Byte(mtk_dp, 0x113C,0x24241E18);
+		msPhyWrite4Byte(mtk_dp, 0x123C,0x24241E18);
+		msPhyWrite4Byte(mtk_dp, 0x133C,0x24241E18);
+		msPhyWrite4Byte(mtk_dp, 0x143C,0x24241E18);
+
+		msPhyWrite4Byte(mtk_dp, 0x1140,0x0000302a);
+		msPhyWrite4Byte(mtk_dp, 0x1240,0x0000302a);
+		msPhyWrite4Byte(mtk_dp, 0x1340,0x0000302a);
+		msPhyWrite4Byte(mtk_dp, 0x1440,0x0000302a);
+
+		msPhyWrite4Byte(mtk_dp, 0x1144,0x0e080400);
+		msPhyWrite4Byte(mtk_dp, 0x1244,0x0e080400);
+		msPhyWrite4Byte(mtk_dp, 0x1344,0x0e080400);
+		msPhyWrite4Byte(mtk_dp, 0x1444,0x0e080400);
+
+		msPhyWrite4Byte(mtk_dp, 0x1148,0x000c0600);
+		msPhyWrite4Byte(mtk_dp, 0x1248,0x000c0600);
+		msPhyWrite4Byte(mtk_dp, 0x1348,0x000c0600);
+		msPhyWrite4Byte(mtk_dp, 0x1448,0x000c0600);
+
+		msPhyWrite4Byte(mtk_dp, 0x114C,0x00000006);
+		msPhyWrite4Byte(mtk_dp, 0x124C,0x00000006);
+		msPhyWrite4Byte(mtk_dp, 0x134C,0x00000006);
+		msPhyWrite4Byte(mtk_dp, 0x144C,0x00000006);
 		mhal_DPTx_phyd_power_on(mtk_dp);
 	} else {
 		uint32_t value = 0;
