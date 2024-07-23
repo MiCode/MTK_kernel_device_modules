@@ -48,6 +48,13 @@
 #define WDT_MODE_DUAL_EN	(1 << 6)
 #define WDT_MODE_KEY		0x22000000
 
+#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+#define WDT_STATUS		0x0C
+#define WDT_STATUS_SWWDT_RST	(1 << 30)
+
+#define WDT_NONRST_REG		0x20
+#endif
+
 #define WDT_SWRST		0x14
 #define WDT_SWRST_KEY		0x1209
 
@@ -57,6 +64,9 @@
 #define DRV_NAME		"mtk-wdt"
 #define DRV_VERSION		"1.0"
 
+#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+static void __iomem *toprgu_base;
+#endif
 static bool nowayout = WATCHDOG_NOWAYOUT;
 static unsigned int timeout;
 
@@ -324,6 +334,23 @@ static const struct watchdog_ops mtk_wdt_ops = {
 	.restart	= mtk_wdt_restart,
 };
 
+#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+void mtk_wdt_set_sw_rst_status(void)
+{
+	u32 reg;
+
+	if (!toprgu_base) {
+		pr_info("%s: get toprgu base failed\n", __func__);
+		return;
+	}
+
+	reg = ioread32(toprgu_base + WDT_STATUS);
+	reg |= WDT_STATUS_SWWDT_RST;
+	iowrite32(reg, toprgu_base + WDT_NONRST_REG);
+}
+EXPORT_SYMBOL(mtk_wdt_set_sw_rst_status);
+#endif
+
 static int mtk_wdt_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -340,6 +367,10 @@ static int mtk_wdt_probe(struct platform_device *pdev)
 	mtk_wdt->wdt_base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(mtk_wdt->wdt_base))
 		return PTR_ERR(mtk_wdt->wdt_base);
+
+#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+	toprgu_base = mtk_wdt->wdt_base;
+#endif
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq > 0) {
