@@ -3606,6 +3606,12 @@ def get_overlay_modules_list():
 
     if "mt8786p2_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_device_modules.append("drivers/video/backlight/sgm37604a.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/sensor/1.0/barometer/baro_common.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/sensor/1.0/step_counter/step_counter.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/sensor/1.0/step_counter/stepsignhub/stepsignhub.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/sensor/1.0/barometer/barohub/barohub.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/sensor/1.0/magnetometer/maghub/maghub.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/sensor/1.0/magnetometer/mag_common.ko")
 
     if "wifionly.config" in DEFCONFIG_OVERLAYS:
         mgk_64_device_modules.remove("drivers/misc/mediatek/ccci_util/ccci_util_lib.ko")
