@@ -15961,6 +15961,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		compatible = "mediatek,mt-soc-offload-common";
 	};
 
+	cgppt: cgppt {
+		compatible = "mediatek,cgppt";
+		nvmem-cells = <&efuse_segment>;
+		nvmem-cell-names = "efuse_segment_cell";
+	};
+
 	peak_power_budget:peak-power-budget@117780 {
 		compatible = "mediatek,peak_power_budget";
 		bootmode = <&chosen>;
