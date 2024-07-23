@@ -47,6 +47,9 @@ static struct workqueue_struct *sspm_workqueue;
 static atomic_t sspm_inited = ATOMIC_INIT(0);
 static atomic_t sspm_dev_inited = ATOMIC_INIT(0);
 static unsigned int sspm_ready;
+#ifdef SSPM_EMI_PROTECTION_SUPPORT
+extern int post_sspm_set_emi_mpu(void);
+#endif
 
 /*
  * acquire a hardware semaphore
@@ -266,6 +269,10 @@ static int __init sspm_device_probe(struct platform_device *pdev)
 	pr_info("[SSPM] sspm_pdrv probe Done.\n");
 
 	sspm_module_init();
+
+#ifdef SSPM_EMI_PROTECTION_SUPPORT
+	post_sspm_set_emi_mpu();
+#endif
 
 	return 0;
 }

@@ -7,8 +7,8 @@
 #include "sspm_define.h"
 
 
-#if SSPM_EMI_PROTECTION_SUPPORT
-#include <memory/mediatek/emi.h>
+#ifdef SSPM_EMI_PROTECTION_SUPPORT
+#include <soc/mediatek/emi.h>
 
 static unsigned long long sspm_start;
 static unsigned long long sspm_end;
@@ -19,9 +19,9 @@ void __init sspm_set_emi_mpu(phys_addr_t base, phys_addr_t size)
 	sspm_end = base + size - 1;
 }
 
-static int __init post_sspm_set_emi_mpu(void)
+int  post_sspm_set_emi_mpu(void)
 {
-	struct emimpu_region_t rg_info;
+	struct emimpu_region_t rg_info = {};
 
 	mtk_emimpu_init_region(&rg_info, SSPM_MPU_REGION_ID);
 
@@ -37,6 +37,7 @@ static int __init post_sspm_set_emi_mpu(void)
 	return 0;
 }
 
-late_initcall(post_sspm_set_emi_mpu);
+//late_initcall(post_sspm_set_emi_mpu);
+EXPORT_SYMBOL (post_sspm_set_emi_mpu);
 
 #endif
