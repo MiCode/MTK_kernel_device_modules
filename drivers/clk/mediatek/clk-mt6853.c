@@ -1266,10 +1266,9 @@ static const struct mtk_mux top_muxes[] = {
 		CLK_CFG_3_CLR/* set parent */, 8/* lsb */, 3/* width */,
 		15/* pdn */, CLK_CFG_UPDATE/* upd ofs */,
 		TOP_MUX_DSP1_SHIFT/* upd shift */),
-	MUX_CLR_SET_UPD(CLK_TOP_DSP1_NPUPLL_SEL/* dts */, "dsp1_npupll_sel",
+	MUX_CLR_SET(CLK_TOP_DSP1_NPUPLL_SEL/* dts */, "dsp1_npupll_sel",
 		dsp1_npupll_parents/* parent */, CLK_CFG_3, CLK_CFG_3_SET,
-		CLK_CFG_3_CLR/* set parent */, 11/* lsb */, 1/* width */,
-		INV_OFS/* upd ofs */,	INV_BIT/* upd shift */),
+		CLK_CFG_3_CLR/* set parent */, 11/* lsb */, 1/* width */),
 
 	MUX_GATE_CLR_SET_UPD(CLK_TOP_DSP2_SEL/* dts */, "dsp2_sel",
 		dsp2_parents/* parent */, CLK_CFG_3, CLK_CFG_3_SET,
@@ -1277,10 +1276,9 @@ static const struct mtk_mux top_muxes[] = {
 		23/* pdn */, CLK_CFG_UPDATE/* upd ofs */,
 		TOP_MUX_DSP2_SHIFT/* upd shift */),
 
-	MUX_CLR_SET_UPD(CLK_TOP_DSP2_NPUPLL_SEL/* dts */, "dsp2_npupll_sel",
+	MUX_CLR_SET(CLK_TOP_DSP2_NPUPLL_SEL/* dts */, "dsp2_npupll_sel",
 		dsp2_npupll_parents/* parent */, CLK_CFG_3, CLK_CFG_3_SET,
-		CLK_CFG_3_CLR/* set parent */, 19/* lsb */, 1/* width */,
-		INV_OFS/* upd ofs */,INV_BIT/* upd shift */),
+		CLK_CFG_3_CLR/* set parent */, 19/* lsb */, 1/* width */),
 	/* CLK_CFG_4 */
 	MUX_GATE_CLR_SET_UPD(CLK_TOP_IPU_IF_SEL/* dts */, "ipu_if_sel",
 		ipu_if_parents/* parent */, CLK_CFG_4, CLK_CFG_4_SET,
