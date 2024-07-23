@@ -116,7 +116,7 @@ static int gpueb_create_files(void)
 
 	ret = misc_register(&gpueb_device);
 	if (unlikely(ret != 0)) {
-		gpueb_pr_info(GPUEB_TAG, "misc register failed");
+		gpueb_log_i(GPUEB_TAG, "misc register failed");
 		return ret;
 	}
 
@@ -176,62 +176,62 @@ static int __gpueb_pdrv_probe(struct platform_device *pdev)
 	struct device_node *node;
 	struct resource *res = NULL;
 
-	gpueb_pr_info(GPUEB_TAG, "GPUEB driver probe start");
+	gpueb_log_i(GPUEB_TAG, "GPUEB driver probe start");
 
 	node = of_find_matching_node(NULL, g_gpueb_of_match);
 	if (!node)
-		gpueb_pr_info(GPUEB_TAG, "find GPUEB node failed");
+		gpueb_log_i(GPUEB_TAG, "find GPUEB node failed");
 
 	of_property_read_u32(pdev->dev.of_node, "gpueb-support",
 			&gpueb_support);
 	if (gpueb_support == 0) {
-		gpueb_pr_info(GPUEB_TAG, "Bypass the GPUEB driver probe");
+		gpueb_log_i(GPUEB_TAG, "Bypass the GPUEB driver probe");
 		return 0;
 	}
 
 	/* get gpueb gpr base*/
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "gpueb_gpr_base");
 	if (unlikely(!res)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to get resource GPUEB_GPR_BASE");
+		gpueb_log_i(GPUEB_TAG, "fail to get resource GPUEB_GPR_BASE");
 		goto err;
 	}
 	g_gpueb_gpr_base = devm_ioremap(&pdev->dev, res->start, resource_size(res));
 	if (unlikely(!g_gpueb_gpr_base)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to ioremap gpr base: 0x%llx", (u64) res->start);
+		gpueb_log_i(GPUEB_TAG, "fail to ioremap gpr base: 0x%llx", (u64) res->start);
 		goto err;
 	}
 
 	/* get gpueb_cfgreg_base */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "gpueb_cfgreg_base");
 	if (unlikely(!res)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to get resource GPUEB_CFGREG_BASE");
+		gpueb_log_i(GPUEB_TAG, "fail to get resource GPUEB_CFGREG_BASE");
 		goto err;
 	}
 	g_gpueb_cfgreg_base = devm_ioremap(&pdev->dev, res->start, resource_size(res));
 	if (unlikely(!g_gpueb_cfgreg_base)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to ioremap cfgreg base: 0x%llx", (u64) res->start);
+		gpueb_log_i(GPUEB_TAG, "fail to ioremap cfgreg base: 0x%llx", (u64) res->start);
 		goto err;
 	}
 
 	/* get mfg0_pwr_con */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg0_pwr_con");
 	if (unlikely(!res)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to get resource mfg0_pwr_con");
+		gpueb_log_i(GPUEB_TAG, "fail to get resource mfg0_pwr_con");
 		goto err;
 	}
 	g_mfg0_pwr_con = devm_ioremap(&pdev->dev, res->start, resource_size(res));
 	if (unlikely(!g_mfg0_pwr_con)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to ioremap mfg0_pwr_con: 0x%llx", (u64) res->start);
+		gpueb_log_i(GPUEB_TAG, "fail to ioremap mfg0_pwr_con: 0x%llx", (u64) res->start);
 		goto err;
 	}
 
 	ret = gpueb_ipi_init(pdev);
 	if (ret != 0)
-		gpueb_pr_info(GPUEB_TAG, "ipi init fail");
+		gpueb_log_i(GPUEB_TAG, "ipi init fail");
 
 	ret = gpueb_reserved_mem_init(pdev);
 	if (ret != 0)
-		gpueb_pr_info(GPUEB_TAG, "reserved mem init fail");
+		gpueb_log_i(GPUEB_TAG, "reserved mem init fail");
 
 	of_property_read_u32(pdev->dev.of_node, "gpueb-logger-support",
 			&gpueb_logger_support);
@@ -240,17 +240,17 @@ static int __gpueb_pdrv_probe(struct platform_device *pdev)
 		if (gpueb_logger_init(pdev,
 				gpueb_get_reserve_mem_virt(0),
 				gpueb_get_reserve_mem_size(0)) == -1) {
-			gpueb_pr_info(GPUEB_TAG, "logger init fail");
+			gpueb_log_i(GPUEB_TAG, "logger init fail");
 			goto err;
 		}
 
 		ret = gpueb_create_files();
 		if (unlikely(ret != 0)) {
-			gpueb_pr_info(GPUEB_TAG, "create files fail");
+			gpueb_log_i(GPUEB_TAG, "create files fail");
 			goto err;
 		}
 	} else {
-		gpueb_pr_info(GPUEB_TAG, "gpueb no logger support.");
+		gpueb_log_i(GPUEB_TAG, "gpueb no logger support.");
 	}
 
 	/* init gpufreq debug */
@@ -258,7 +258,7 @@ static int __gpueb_pdrv_probe(struct platform_device *pdev)
 
 	ret = gpueb_timesync_init();
 	if (ret) {
-		gpueb_pr_err(GPUEB_TAG, "GPUEB timesync init fail, ret=%d", ret);
+		gpueb_log_e(GPUEB_TAG, "GPUEB timesync init fail, ret=%d", ret);
 		goto err;
 	}
 
@@ -268,7 +268,7 @@ static int __gpueb_pdrv_probe(struct platform_device *pdev)
 
 	ghpm_wrapper_init(pdev);
 
-	gpueb_pr_info(GPUEB_TAG, "GPUEB driver probe done");
+	gpueb_log_i(GPUEB_TAG, "GPUEB driver probe done");
 
 	return 0;
 
@@ -283,12 +283,12 @@ static int __init __gpueb_init(void)
 {
 	int ret = 0;
 
-	gpueb_pr_debug(GPUEB_TAG, "start to initialize gpueb driver");
+	gpueb_log_d(GPUEB_TAG, "start to initialize gpueb driver");
 
 	// Register platform driver
 	ret = platform_driver_register(&g_gpueb_pdrv);
 	if (ret)
-		gpueb_pr_info(GPUEB_TAG, "fail to register gpueb driver");
+		gpueb_log_i(GPUEB_TAG, "fail to register gpueb driver");
 
 	return ret;
 }

@@ -20,6 +20,7 @@
 #include <linux/proc_fs.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/sched/clock.h>
 #include <uapi/asm-generic/errno-base.h>
 
 #include "gpueb_common.h"
@@ -32,6 +33,9 @@ static struct ghpm_platform_fp *ghpm_fp;
 unsigned int g_ghpm_support;
 EXPORT_SYMBOL(g_ghpm_support);
 
+unsigned long long g_ghpm_profile[PROF_GHPM_TYPE_NUM][PROF_GHPM_IDX_NUM];
+EXPORT_SYMBOL(g_ghpm_profile);
+
 int ghpm_ctrl(enum ghpm_state power, enum mfg0_off_state off_state)
 {
 	int ret = -ENOENT;
@@ -42,7 +46,7 @@ int ghpm_ctrl(enum ghpm_state power, enum mfg0_off_state off_state)
 	if (ghpm_fp && ghpm_fp->ghpm_ctrl)
 		ret = ghpm_fp->ghpm_ctrl(power, off_state);
 	else
-		gpueb_pr_err(GHPM_TAG, "null ghpm platform function pointer (ENOENT)");
+		gpueb_log_e(GHPM_TAG, "null ghpm platform function pointer (ENOENT)");
 
 	return ret;
 }
@@ -58,7 +62,7 @@ int wait_gpueb(enum gpueb_low_power_event event)
 	if (ghpm_fp && ghpm_fp->wait_gpueb)
 		ret = ghpm_fp->wait_gpueb(event);
 	else
-		gpueb_pr_err(GHPM_TAG, "null ghpm platform function pointer (ENOENT)");
+		gpueb_log_e(GHPM_TAG, "null ghpm platform function pointer (ENOENT)");
 
 	return ret;
 }
@@ -74,14 +78,14 @@ int gpueb_ctrl(enum ghpm_state power,
 
 	ret = ghpm_ctrl(power, off_state);
 	if (ret) {
-		gpueb_pr_err(GHPM_TAG, "gpueb ctrl fail, power=%d, off_state=%d, event=%d, ret=%d",
+		gpueb_log_e(GHPM_TAG, "gpueb ctrl fail, power=%d, off_state=%d, event=%d, ret=%d",
 			power, off_state, event, ret);
 		return ret;
 	}
 
 	ret = wait_gpueb(event);
 	if (ret) {
-		gpueb_pr_err(GHPM_TAG, "wait gpueb fail, power=%d, off_state=%d, event=%d, ret=%d",
+		gpueb_log_e(GHPM_TAG, "wait gpueb fail, power=%d, off_state=%d, event=%d, ret=%d",
 			power, off_state, event, ret);
 		return ret;
 	}
@@ -98,19 +102,45 @@ void dump_ghpm_info(void)
 	if (ghpm_fp && ghpm_fp->dump_ghpm_info)
 		ghpm_fp->dump_ghpm_info();
 	else
-		gpueb_pr_err(GHPM_TAG, "null ghpm platform function pointer (ENOENT)");
+		gpueb_log_e(GHPM_TAG, "null ghpm platform function pointer (ENOENT)");
 }
 EXPORT_SYMBOL(dump_ghpm_info);
+
+void ghpm_profile(unsigned int type, unsigned int op)
+{
+	if (g_ghpm_profile_enable == 0)
+		return;
+
+	if (type >= PROF_GHPM_TYPE_NUM) {
+		gpueb_log_e(GHPM_TAG, "incorrect type: %d", type);
+	} else if (op == PROF_GHPM_OP_START) {
+		g_ghpm_profile[type][PROF_GHPM_IDX_START] = sched_clock();
+	} else if (op == PROF_GHPM_OP_END) {
+		g_ghpm_profile[type][PROF_GHPM_IDX_END] = sched_clock();
+		g_ghpm_profile[type][PROF_GHPM_IDX_COUNT]++;
+		g_ghpm_profile[type][PROF_GHPM_IDX_LAST] =
+			(g_ghpm_profile[type][PROF_GHPM_IDX_END] - g_ghpm_profile[type][PROF_GHPM_IDX_START]) / 1000;
+		g_ghpm_profile[type][PROF_GHPM_IDX_TOTAL] += g_ghpm_profile[type][PROF_GHPM_IDX_LAST];
+		g_ghpm_profile[type][PROF_GHPM_IDX_AVG] =
+			g_ghpm_profile[type][PROF_GHPM_IDX_TOTAL] / g_ghpm_profile[type][PROF_GHPM_IDX_COUNT];
+		if (g_ghpm_profile[type][PROF_GHPM_IDX_LAST] > g_ghpm_profile[type][PROF_GHPM_IDX_MAX])
+			g_ghpm_profile[type][PROF_GHPM_IDX_MAX] = g_ghpm_profile[type][PROF_GHPM_IDX_LAST];
+		if (g_ghpm_profile[type][PROF_GHPM_IDX_LAST] < g_ghpm_profile[type][PROF_GHPM_IDX_MIN] ||
+			g_ghpm_profile[type][PROF_GHPM_IDX_MIN] == 0)
+			g_ghpm_profile[type][PROF_GHPM_IDX_MIN] = g_ghpm_profile[type][PROF_GHPM_IDX_LAST];
+	}
+}
+EXPORT_SYMBOL(ghpm_profile);
 
 void ghpm_register_ghpm_fp(struct ghpm_platform_fp *platform_fp)
 {
 	if (!platform_fp) {
-		gpueb_pr_err(GHPM_TAG, "null ghpm platform function pointer (ENOENT)");
+		gpueb_log_e(GHPM_TAG, "null ghpm platform function pointer (ENOENT)");
 		return;
 	}
 
 	ghpm_fp = platform_fp;
-	gpueb_pr_debug(GHPM_TAG, "Hook ghpm platform function pointer done");
+	gpueb_log_d(GHPM_TAG, "Hook ghpm platform function pointer done");
 }
 EXPORT_SYMBOL(ghpm_register_ghpm_fp);
 
@@ -119,7 +149,7 @@ void ghpm_wrapper_init(struct platform_device *pdev)
 	of_property_read_u32(pdev->dev.of_node, "ghpm-support", &g_ghpm_support);
 
 	if (g_ghpm_support == 0)
-		gpueb_pr_info(GHPM_TAG, "no ghpm support");
+		gpueb_log_i(GHPM_TAG, "no ghpm support");
 	else
 		ghpm_debug_init(pdev);
 }

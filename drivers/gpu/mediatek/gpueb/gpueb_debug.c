@@ -71,7 +71,7 @@ void gpueb_dump_status(char *log_buf, int *log_len, int log_size)
 		gpueb_pr_logbuf(GPUEB_TAG, log_buf, log_len, log_size,
 			"GPUEB_CFGREG_DBG_APB_SP: 0x%08x", readl(GPUEB_CFGREG_DBG_APB_SP));
 	} else {
-		gpueb_pr_info(GPUEB_TAG, "skip null g_gpueb_cfgreg_base");
+		gpueb_log_i(GPUEB_TAG, "skip null g_gpueb_cfgreg_base");
 	}
 
 	if (g_gpueb_intc_base) {
@@ -82,7 +82,7 @@ void gpueb_dump_status(char *log_buf, int *log_len, int log_size)
 		gpueb_pr_logbuf(GPUEB_TAG, log_buf, log_len, log_size,
 			"GPUEB_INTC_IRQ_RAW_STA_L: 0x%08x", readl(GPUEB_INTC_IRQ_RAW_STA_L));
 	} else {
-		gpueb_pr_info(GPUEB_TAG, "skip null g_gpueb_intc_base");
+		gpueb_log_i(GPUEB_TAG, "skip null g_gpueb_intc_base");
 	}
 
 	if (g_gpueb_gpr_base) {
@@ -101,21 +101,21 @@ void gpueb_dump_status(char *log_buf, int *log_len, int log_size)
 		gpueb_pr_logbuf(GPUEB_TAG, log_buf, log_len, log_size,
 			"GPUPTP3_BAD_SAMPLE_FOOTPRINT: 0x%08x", readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR30)));
 	} else {
-		gpueb_pr_info(GPUEB_TAG, "skip null g_gpueb_gpr_base");
+		gpueb_log_i(GPUEB_TAG, "skip null g_gpueb_gpr_base");
 	}
 
 	if (g_gpueb_mbox_ipi) {
 		gpueb_pr_logbuf(GPUEB_TAG, log_buf, log_len, log_size,
 			"GPUEB_MBOX_IPI_GPUEB: 0x%08x", readl(g_gpueb_mbox_ipi));
 	} else {
-		gpueb_pr_info(GPUEB_TAG, "skip null g_gpueb_mbox_ipi");
+		gpueb_log_i(GPUEB_TAG, "skip null g_gpueb_mbox_ipi");
 	}
 
 	if (g_gpueb_mbox_sw_int) {
 		gpueb_pr_logbuf(GPUEB_TAG, log_buf, log_len, log_size,
 			"GPUEB_MBOX_SW_INT_STA: 0x%08x", readl(g_gpueb_mbox_sw_int));
 	} else {
-		gpueb_pr_info(GPUEB_TAG, "skip null g_gpueb_mbox_sw_int");
+		gpueb_log_i(GPUEB_TAG, "skip null g_gpueb_mbox_sw_int");
 	}
 }
 EXPORT_SYMBOL(gpueb_dump_status);
@@ -124,7 +124,7 @@ void gpueb_trigger_wdt(const char *name)
 {
 	struct arm_smccc_res res;
 
-	gpueb_pr_info(GPUEB_TAG, "GPUEB WDT is triggered by %s", name);
+	gpueb_log_i(GPUEB_TAG, "GPUEB WDT is triggered by %s", name);
 
 	arm_smccc_smc(
 		MTK_SIP_KERNEL_GPUEB_CONTROL,  /* a0 */
@@ -201,6 +201,8 @@ static int gpueb_status_proc_show(struct seq_file *m, void *v)
 			readl(g_gpueb_mbox_sw_int));
 	else
 		seq_printf(m, "@%s: skip null g_gpueb_mbox_sw_int\n", __func__);
+
+	seq_printf(m, "@%s: mfg0_pwr_con: 0x%08x\n", __func__, get_mfg0_pwr_con());
 
 	return 0;
 }
@@ -291,9 +293,9 @@ static ssize_t gpueb_ipi_test_proc_write(struct file *file,
 	if (sscanf(buf, "%d %d", &ipi_id, &send_msg) == 2) {
 		ret = gpueb_ipi_send_compl_test(ipi_id, send_msg);
 		if (ret < 0)
-			gpueb_pr_info(GPUEB_TAG, "ipi send failed, ret=%d", ret);
+			gpueb_log_i(GPUEB_TAG, "ipi send failed, ret=%d", ret);
 		else
-			gpueb_pr_info(GPUEB_TAG, "ipi send %d, recv %d", send_msg, ret);
+			gpueb_log_i(GPUEB_TAG, "ipi send %d, recv %d", send_msg, ret);
 	}
 
 done:
@@ -330,14 +332,14 @@ static int gpueb_create_procfs(void)
 
 	dir = proc_mkdir("gpueb", NULL);
 	if (!dir) {
-		gpueb_pr_info(GPUEB_TAG, "fail to create /proc/gpueb (ENOMEM)");
+		gpueb_log_i(GPUEB_TAG, "fail to create /proc/gpueb (ENOMEM)");
 		return -1;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(default_entries); i++) {
 		if (!proc_create(default_entries[i].name, 0660,
 			dir, default_entries[i].fops))
-			gpueb_pr_info(GPUEB_TAG, "fail to create /proc/gpueb/%s", default_entries[i].name);
+			gpueb_log_i(GPUEB_TAG, "fail to create /proc/gpueb/%s", default_entries[i].name);
 	}
 
 	return 0;
@@ -355,56 +357,56 @@ void gpueb_debug_init(struct platform_device *pdev)
 #if defined(CONFIG_PROC_FS)
 	ret = gpueb_create_procfs();
 	if (ret)
-		gpueb_pr_info(GPUEB_TAG, "fail to create procfs (%d)", ret);
+		gpueb_log_i(GPUEB_TAG, "fail to create procfs (%d)", ret);
 #endif /* CONFIG_PROC_FS */
 
 	if (unlikely(!gpueb_dev)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to find gpueb device");
+		gpueb_log_i(GPUEB_TAG, "fail to find gpueb device");
 		return;
 	}
 
 	g_gpueb_gpr_base = gpueb_get_gpr_base();
 	if (unlikely(!g_gpueb_gpr_base)) {
-		gpueb_pr_err(GPUEB_TAG, "fail to get g_gpueb_gpr_base");
+		gpueb_log_e(GPUEB_TAG, "fail to get g_gpueb_gpr_base");
 		return;
 	}
 
 	g_gpueb_cfgreg_base = gpueb_get_cfgreg_base();
 	if (unlikely(!g_gpueb_cfgreg_base)) {
-		gpueb_pr_err(GPUEB_TAG, "fail to get g_gpueb_cfgreg_base");
+		gpueb_log_e(GPUEB_TAG, "fail to get g_gpueb_cfgreg_base");
 		return;
 	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "gpueb_intc_base");
 	if (unlikely(!res)) {
-		gpueb_pr_err(GPUEB_TAG, "fail to get resource GPUEB_INTC_BASE");
+		gpueb_log_e(GPUEB_TAG, "fail to get resource GPUEB_INTC_BASE");
 		return;
 	}
 	g_gpueb_intc_base = devm_ioremap(gpueb_dev, res->start, resource_size(res));
 	if (unlikely(!g_gpueb_intc_base)) {
-		gpueb_pr_err(GPUEB_TAG, "fail to ioremap intc base: 0x%llx", (u64) res->start);
+		gpueb_log_e(GPUEB_TAG, "fail to ioremap intc base: 0x%llx", (u64) res->start);
 		return;
 	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mbox0_send");
 	if (unlikely(!res)) {
-		gpueb_pr_err(GPUEB_TAG, "fail to get resource MBOX0_SEND");
+		gpueb_log_e(GPUEB_TAG, "fail to get resource MBOX0_SEND");
 		return;
 	}
 	g_gpueb_mbox_ipi = devm_ioremap(gpueb_dev, res->start, resource_size(res));
 	if (unlikely(!g_gpueb_mbox_ipi)) {
-		gpueb_pr_err(GPUEB_TAG, "fail to ioremap MBOX0_SEND: 0x%llx", (u64) res->start);
+		gpueb_log_e(GPUEB_TAG, "fail to ioremap MBOX0_SEND: 0x%llx", (u64) res->start);
 		return;
 	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mbox0_recv");
 	if (unlikely(!res)) {
-		gpueb_pr_err(GPUEB_TAG, "fail to get resource MBOX0_RECV");
+		gpueb_log_e(GPUEB_TAG, "fail to get resource MBOX0_RECV");
 		return;
 	}
 	g_gpueb_mbox_sw_int = devm_ioremap(gpueb_dev, res->start, resource_size(res));
 	if (unlikely(!g_gpueb_mbox_sw_int)) {
-		gpueb_pr_err(GPUEB_TAG, "fail to ioremap MBOX0_RECV: 0x%llx", (u64) res->start);
+		gpueb_log_e(GPUEB_TAG, "fail to ioremap MBOX0_RECV: 0x%llx", (u64) res->start);
 		return;
 	}
 }
