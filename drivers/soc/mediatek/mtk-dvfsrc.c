@@ -462,6 +462,7 @@ static const int mt6899_regs[] = {
 	[DVFSRC_DEFAULT_OPP_6] =    0xB24,
 	[DVFSRC_DEFAULT_OPP_7] =    0xB28,
 	[DVFSRC_DEFAULT_OPP_8] =    0xB2C,
+	[DVFSRC_SW_EMI_BW]     =    0x96C,
 };
 
 static const int mt6765_regs[] = {
@@ -775,6 +776,9 @@ static void mt6983_set_dram_bw(struct mtk_dvfsrc *dvfsrc, u64 bw)
 	bw = div_u64(kbps_to_mbps(bw), 100);
 	bw = min_t(u64, bw, 0x3FF);
 	dvfsrc_write(dvfsrc, DVFSRC_SW_BW, bw);
+
+	if (dvfsrc->dvd->emi_ddr_bw_en)
+		dvfsrc_write(dvfsrc, DVFSRC_SW_EMI_BW, bw);
 }
 
 static void mt6983_set_dram_peak_bw(struct mtk_dvfsrc *dvfsrc, u64 bw)
@@ -2303,6 +2307,7 @@ static const struct dvfsrc_soc_data mt6899_data = {
 	.query_opp_count = mt6991_get_opp_count,
 	.dis_ddr_check = true,
 	.mem_res_req_en = true,
+	.emi_ddr_bw_en = true,
 };
 
 static int mtk_dvfsrc_remove(struct platform_device *pdev)
