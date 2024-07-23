@@ -3210,7 +3210,7 @@ int mtk_crtc_user_cmd_impl(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 	if ((!crtc) || (!comp)) {
 		DDPPR_ERR("%s:%d, invalid arg:(0x%p,0x%p)\n",
 				__func__, __LINE__,
-				crtc, comp);
+				(void *)crtc, (void *)comp);
 		return -EINVAL;
 	}
 
