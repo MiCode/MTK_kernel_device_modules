@@ -2324,7 +2324,8 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
 			break;
 
-		if (wdma->info_data->force_ostdl_bw)
+		if (wdma->info_data->force_ostdl_bw &&
+			!wdma->info_data->is_support_ufbc)
 			ostdl_bw = wdma->info_data->force_ostdl_bw;
 		else
 			ostdl_bw = bw;
@@ -2336,9 +2337,10 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			if (!IS_ERR_OR_NULL(comp->hrt_qos_req)) {
 				__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, ostdl_bw,
 					priv->data->respective_ostdl);
-				DDPINFO("%s: %s:%d update port hrt BW:%u->%u/%u\n", __func__,
-					mtk_dump_comp_str(comp), comp->id,
-					comp->last_hrt_bw, comp->hrt_bw, ostdl_bw);
+				DDPINFO("%s: %s:%d update port hrt BW:%u->%u/%u,force:%d,bw:%u\n",
+					__func__, mtk_dump_comp_str(comp), comp->id,
+					comp->last_hrt_bw, comp->hrt_bw, ostdl_bw,
+					wdma->info_data->force_ostdl_bw, bw);
 				comp->last_hrt_bw = ostdl_bw;
 			}
 			if (wdma->data->hrt_channel)
