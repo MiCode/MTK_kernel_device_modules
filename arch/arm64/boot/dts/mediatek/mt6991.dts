@@ -9975,6 +9975,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupts =
 				<GIC_SPI 449 IRQ_TYPE_LEVEL_HIGH 0>; /* DISP_VDISP_AO_MERGE_IRQ_BIT */
 			vidle-mask = <0x13>;
+			root-dev = <&disp_vcore_ctrl>;
 		};
 
 		mipi_tx_config0: mipi-tx-config@130b0000 {
@@ -13054,7 +13055,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,mml = <&mmlsys1_config>;
 	};
 
-	disp-vcore-vdisp-ctrl@0 {
+	disp_vcore_ctrl: disp-vcore-vdisp-ctrl@0 {
 		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_VCORE>;
 		clocks =
