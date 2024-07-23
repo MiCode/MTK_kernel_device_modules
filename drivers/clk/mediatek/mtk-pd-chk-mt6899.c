@@ -730,8 +730,7 @@ static enum chk_sys_id debug_dump_id[] = {
 	mfgsc_ao,
 	vlpcfg,
 	vlp_ck,
-	hfrp,
-	hfrp_bus,
+	vlp_ao,
 	cci,
 	cpu_ll,
 	cpu_bl,
@@ -739,6 +738,9 @@ static enum chk_sys_id debug_dump_id[] = {
 	ptp,
 	hwv,
 	mm_hwv,
+	hfrp,
+	hfrp_bus,
+	mminfra_hwvote,
 	chk_sys_num,
 };
 

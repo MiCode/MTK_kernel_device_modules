@@ -185,6 +185,9 @@ static int __cg_enable_hwv(struct clk_hw *hw, bool inv)
 	bool is_done = false;
 	int i = 0;
 
+	if (cg->flags & HWV_CHK_VCP_READY)
+		mtk_clk_polling_vcp_ready();
+
 	if (cg->flags & CLK_EN_MM_INFRA_PWR)
 		mtk_clk_mminfra_hwv_power_ctrl(true);
 
@@ -287,6 +290,9 @@ static void mtk_cg_disable_hwv(struct clk_hw *hw)
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
 	u32 val;
 	int i = 0;
+
+	if (cg->flags & HWV_CHK_VCP_READY)
+		mtk_clk_polling_vcp_ready();
 
 	if (cg->flags & CLK_EN_MM_INFRA_PWR)
 		mtk_clk_mminfra_hwv_power_ctrl(true);

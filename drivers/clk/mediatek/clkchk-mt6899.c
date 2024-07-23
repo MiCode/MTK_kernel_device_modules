@@ -1103,6 +1103,8 @@ static struct regbase rb[] = {
 	[mm_hwv] = REGBASE_V(0x1163a000, mm_hwv, PD_NULL, CLK_NULL),
 	[hfrp] = REGBASE_V(0x1163E000, hfrp, PD_NULL, CLK_NULL),
 	[hfrp_bus] = REGBASE_V(0x116A5000, hfrp_bus, PD_NULL, CLK_NULL),
+	[vlp_ao] = REGBASE_V(0x1C000000, vlp_ao, PD_NULL, CLK_NULL),
+	[mminfra_hwvote] = REGBASE_V(0x11645000, mminfra_hwvote, PD_NULL, CLK_NULL),
 	{},
 };
 
@@ -1915,6 +1917,20 @@ static struct regname rn[] = {
 	REGNAME(mm_hwv, 0x0990, HW_CCF_SSPM_PLL_SET),
 	REGNAME(mm_hwv, 0x0398, HW_CCF_TEE_MTCMOS_SET),
 	REGNAME(mm_hwv, 0x0390, HW_CCF_TEE_PLL_SET),
+	REGNAME(mm_hwv, 0x1f98, HWV_SW_RECORD),
+	/* VLP_AO register */
+	REGNAME(vlp_ao, 0x400, VLP_MMINFRA_VOTE),
+	REGNAME(vlp_ao, 0x410, VLP_DISP_VOTE),
+	REGNAME(vlp_ao, 0x420, HFRP_VLP_CTRL),
+	REGNAME(vlp_ao, 0x91C, VLP_VOTE_DONE),
+	/* MMInfra HWV register */
+	REGNAME(mminfra_hwvote, 0x100, SW_VOTE),
+	REGNAME(mminfra_hwvote, 0x110, HW_VOTE_INTEN),
+	REGNAME(mminfra_hwvote, 0x114, HW_VOTE_INTSTA),
+	REGNAME(mminfra_hwvote, 0x118, IRQ_STATUS),
+	REGNAME(mminfra_hwvote, 0x120, POWER_ON_OFF_MASK_0),
+	REGNAME(mminfra_hwvote, 0X124, POWER_ON_OFF_MASK_1),
+	REGNAME(mminfra_hwvote, 0x140, ALL_VOTE_STATUS),
 	{},
 };
 
@@ -2288,8 +2304,6 @@ void clkchk_debug_dump_mt6899(enum chk_sys_id id[],
 	const struct fmeter_clk *fclks;
 
 	fclks = mt_get_fmeter_clks();
-	set_subsys_reg_dump_mt6899(id);
-	get_subsys_reg_dump_mt6899();
 
 	dump_clk_event();
 	pdchk_dump_trace_evt();
@@ -2299,6 +2313,9 @@ void clkchk_debug_dump_mt6899(enum chk_sys_id id[],
 			pr_notice("[%s] %d khz\n", fclks->name,
 				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}
+
+	set_subsys_reg_dump_mt6899(id);
+	get_subsys_reg_dump_mt6899();
 
 	/* flag set false when trigger by adb cmd to avoid system abnormal */
 	if (clkchk_bug_on_flag) {
@@ -2318,14 +2335,16 @@ EXPORT_SYMBOL_GPL(clkchk_debug_dump_mt6899);
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 static enum chk_sys_id devapc_dump_id[] = {
 	spm,
-	hfrp,
 	emi_nemicfg_ao_mem_prot_reg_bus,
 	emi_semicfg_ao_mem_prot_reg_bus,
 	infra_ifrbus_ao_reg_bus,
 	top,
 	apmixed,
 	vlp_ck,
+	vlp_ao,
 	hwv,
+	hfrp,
+	hfrp_bus,
 	mm_hwv,
 	chk_sys_num,
 };
@@ -2459,15 +2478,16 @@ static void dump_hwv_history(struct regmap *regmap, u32 id)
 static enum chk_sys_id bus_dump_id[] = {
 	top,
 	spm,
-	hfrp,
 	apmixed,
 	vlp_ck,
-	hfrp,
+	vlp_ao,
 	vlpcfg,
 	emi_nemicfg_ao_mem_prot_reg_bus,
 	emi_semicfg_ao_mem_prot_reg_bus,
 	infra_ifrbus_ao_reg_bus,
 	hwv,
+	hfrp,
+	hfrp_bus,
 	mm_hwv,
 	chk_sys_num,
 };
@@ -2480,6 +2500,22 @@ static void get_bus_reg(void)
 static void dump_bus_reg(struct regmap *regmap, u32 ofs)
 {
 	clkchk_debug_dump_mt6899(bus_dump_id, "hwv_cg_timeout", true, true);
+}
+
+static enum chk_sys_id vlp_dump_id[] = {
+	top,
+	spm,
+	apmixed,
+	infra_ifrbus_ao_reg_bus,
+	vlp_ck,
+	vlpcfg,
+	vlp_ao,
+	chk_sys_num,
+};
+
+static void dump_vlp_reg(struct regmap *regmap, u32 shift)
+{
+	clkchk_debug_dump_mt6899(vlp_dump_id, "vcp_ready_timeout", true, true);
 }
 
 static enum chk_sys_id pll_dump_id[] = {
@@ -2526,15 +2562,16 @@ static void check_mm_hwv_irq_sta(void)
 static enum chk_sys_id extern_dump_id[] = {
 	top,
 	spm,
-	hfrp,
 	apmixed,
 	vlp_ck,
-	hfrp,
+	vlp_ao,
 	vlpcfg,
 	emi_nemicfg_ao_mem_prot_reg_bus,
 	emi_semicfg_ao_mem_prot_reg_bus,
 	infra_ifrbus_ao_reg_bus,
 	hwv,
+	hfrp,
+	hfrp_bus,
 	mm_hwv,
 	chk_sys_num,
 };
@@ -2587,6 +2624,7 @@ static void verify_debug_flow(void)
 	check_hwv_irq_sta();
 	check_mm_hwv_irq_sta();
 	external_dump();
+	dump_vlp_reg(NULL, 0);
 	clkchk_bug_on_flag = true;
 }
 
@@ -2611,6 +2649,7 @@ static struct clkchk_ops clkchk_mt6899_ops = {
 	.dump_hwv_history = dump_hwv_history,
 	.get_bus_reg = get_bus_reg,
 	.dump_bus_reg = dump_bus_reg,
+	.dump_vlp_reg = dump_vlp_reg,
 	.dump_pll_reg = dump_pll_reg,
 	.trace_clk_event = trace_clk_event,
 	.check_hwv_irq_sta = check_hwv_irq_sta,

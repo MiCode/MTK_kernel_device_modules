@@ -44,6 +44,8 @@
 #define MAX_SRAM_STEPS	4
 #define MAX_CHILDREN	2
 
+#define MTK_SCPD_CAPS(_scpd, _x)	((_scpd)->data->caps & (_x))
+
 #define _SRAM_CTRL(_offs, _msk, _ack_msk, _wait_ack) {	\
 		.offs = _offs,			\
 		.msk = _msk,			\

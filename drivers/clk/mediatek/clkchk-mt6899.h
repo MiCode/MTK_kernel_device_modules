@@ -73,7 +73,9 @@ enum chk_sys_id {
 	mm_hwv = 62,
 	hfrp = 63,
 	hfrp_bus = 64,
-	chk_sys_num = 65,
+	vlp_ao = 65,
+	mminfra_hwvote = 66,
+	chk_sys_num = 67,
 };
 
 enum chk_pd_id {

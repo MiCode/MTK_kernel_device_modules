@@ -42,8 +42,6 @@
 #define MTK_POLL_HWV_PREPARE_US		2
 #define MTK_PROFILE_TIMEOUT		10
 
-#define MTK_SCPD_CAPS(_scpd, _x)	((_scpd)->data->caps & (_x))
-
 #define SPM_VDE_PWR_CON			0x0210
 #define SPM_MFG_PWR_CON			0x0214
 #define SPM_VEN_PWR_CON			0x0230

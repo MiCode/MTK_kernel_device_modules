@@ -63,7 +63,7 @@ static const struct mtk_gate_regs mm11_cg_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_ops_hwv,				\
 		.dma_ops = &mtk_clk_gate_ops_setclr,			\
-		.flags = CLK_USE_HW_VOTER,	\
+		.flags = CLK_USE_HW_VOTER | HWV_CHK_VCP_READY,	\
 	}
 
 #define GATE_MM11(_id, _name, _parent, _shift) {	\

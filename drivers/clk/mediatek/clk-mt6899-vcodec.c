@@ -69,7 +69,7 @@ static const struct mtk_gate_regs vde21_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_ops_hwv_inv,				\
 		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
-		.flags = CLK_USE_HW_VOTER,	\
+		.flags = CLK_USE_HW_VOTER | HWV_CHK_VCP_READY,	\
 	}
 
 #define GATE_VDE21(_id, _name, _parent, _shift) {	\
@@ -97,7 +97,7 @@ static const struct mtk_gate_regs vde21_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_ops_hwv_inv,				\
 		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
-		.flags = CLK_USE_HW_VOTER,	\
+		.flags = CLK_USE_HW_VOTER | HWV_CHK_VCP_READY,	\
 	}
 
 static const struct mtk_gate vde2_clks[] = {
@@ -171,7 +171,7 @@ static const struct mtk_gate_regs vde11_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_ops_hwv_inv,				\
 		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
-		.flags = CLK_USE_HW_VOTER,	\
+		.flags = CLK_USE_HW_VOTER | HWV_CHK_VCP_READY,	\
 	}
 
 #define GATE_VDE11(_id, _name, _parent, _shift) {	\
@@ -199,7 +199,7 @@ static const struct mtk_gate_regs vde11_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_ops_hwv_inv,				\
 		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
-		.flags = CLK_USE_HW_VOTER,	\
+		.flags = CLK_USE_HW_VOTER | HWV_CHK_VCP_READY,	\
 	}
 
 static const struct mtk_gate vde1_clks[] = {
@@ -265,7 +265,7 @@ static const struct mtk_gate_regs ven1_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_ops_hwv_inv,				\
 		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
-		.flags = CLK_USE_HW_VOTER,	\
+		.flags = CLK_USE_HW_VOTER | HWV_CHK_VCP_READY,	\
 	}
 
 static const struct mtk_gate ven1_clks[] = {
@@ -345,7 +345,7 @@ static const struct mtk_gate_regs ven2_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_ops_hwv_inv,				\
 		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
-		.flags = CLK_USE_HW_VOTER,	\
+		.flags = CLK_USE_HW_VOTER | HWV_CHK_VCP_READY,	\
 	}
 
 static const struct mtk_gate ven2_clks[] = {
