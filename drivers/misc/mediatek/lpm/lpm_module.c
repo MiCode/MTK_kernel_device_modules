@@ -110,6 +110,8 @@ static int lpm_s2idle_state_enter(struct cpuidle_device *dev,
 	return ret;
 }
 
+static struct cpumask cpuidle_cpumask;
+
 static int lpm_cpuidle_state_percpu_set(int cpu, struct lpm_module_reg *p)
 {
 	struct lpm_state_enter_fp *fp = &p->data.fp;
@@ -122,6 +124,12 @@ static int lpm_cpuidle_state_percpu_set(int cpu, struct lpm_module_reg *p)
 	if (!drv || !fp) {
 		pr_info("[name:mtk_lpm][P] - cpuidle state register fail (%s:%d)\n",
 					__func__, __LINE__);
+		return -EINVAL;
+	}
+
+	if (cpumask_test_and_set_cpu(cpu, &cpuidle_cpumask)) {
+		pr_info("[name:mtk_lpm[P] - cpuidle state already registered (%d) (%s:%d)\n",
+					cpu, __func__, __LINE__);
 		return -EINVAL;
 	}
 
@@ -233,6 +241,19 @@ static int lpm_module_register_blockcall(int cpu, void *p)
 	}
 
 	return ret;
+}
+
+static int lpm_module_register_callback(unsigned int cpu)
+{
+	struct lpm_module_reg reg = {
+		.magic = LPM_MODULE_MAGIC,
+		.type = LPM_CPUIDLE_DRIVER,
+		.data.fp.s2idle = lpm_s2idle_state_enter
+	};
+
+	lpm_cpuidle_state_percpu_set(cpu, &reg);
+
+	return 0;
 }
 
 static int __lpm_model_register(const char *name, struct lpm_model *lpm)
@@ -588,14 +609,10 @@ static struct notifier_block lpm_pm_notifier_func = {
 
 static int __init lpm_init(void)
 {
-	int ret;
+	int ret = 0;
 	unsigned long flags;
 	struct device_node *lpm_node;
-	struct lpm_module_reg reg = {
-		.magic = LPM_MODULE_MAGIC,
-		.type = LPM_CPUIDLE_DRIVER,
-		.data.fp.s2idle = lpm_s2idle_state_enter
-	};
+	int cpuhp_state;
 
 	lpm_system.suspend.flag = LPM_REQ_NOSUSPEND;
 
@@ -632,14 +649,25 @@ static int __init lpm_init(void)
 
 	spin_unlock_irqrestore(&lpm_mod_locker, flags);
 
-	lpm_do_work(LPM_REG_PER_CPU,
-			lpm_module_register_blockcall, &reg);
+	cpuidle_pause_and_lock();
+
+	cpuhp_state = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN,
+			"mtk-cpu-lpminit",
+			lpm_module_register_callback,
+			NULL);
+
+	cpuidle_resume_and_unlock();
+
+	if (cpuhp_state == -ENOSPC) {
+		pr_info("[name:mtk_lpm][P] - register cpuhp callback fail\n");
+		goto fail2;
+	}
 
 	if (lpm_system.suspend.flag & LPM_REQ_NOSUSPEND) {
 		lpm_lock = wakeup_source_register(NULL, "lpm_lock");
 		if (!lpm_lock) {
 			pr_info("[name:mtk_lpm][P] - initialize lpm_lock wakeup source fail\n");
-			return -1;
+			goto fail1;
 		}
 		__pm_stay_awake(lpm_lock);
 		pr_info("[name:mtk_lpm][P] - device not support kernel suspend\n");
@@ -653,18 +681,22 @@ static int __init lpm_init(void)
 	ret = register_pm_notifier(&lpm_pm_early_notifier_func);
 	if (ret) {
 		pr_debug("Failed to register PM early notifier.\n");
-		return ret;
+		goto fail1;
 	}
-	ret = 0;
 
 	ret = register_pm_notifier(&lpm_pm_notifier_func);
 	if (ret) {
 		pr_debug("Failed to register PM notifier.\n");
-		return ret;
+		goto fail1;
 	}
 
 	lpm_platform_init();
 	return 0;
+
+fail1:
+	cpuhp_remove_state(cpuhp_state);
+fail2:
+	return ret ? ret : -EPERM;
 }
 
 #ifdef MTK_LPM_MODE_MODULE
