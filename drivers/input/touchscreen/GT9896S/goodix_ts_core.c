@@ -1997,7 +1997,7 @@ static int gt9896s_ts_power_on_reinit(void)
 
 	ts_info("%s start!\n", __func__);
 
-	if (ts_core == NULL) {
+	if (ts_core == NULL || disp_notify_reg_flag == false) {
 		ts_err("ts_core is NULL");
 		return -EINVAL;
 	}
@@ -2611,6 +2611,7 @@ int gt9896s_ts_core_release(struct gt9896s_ts_core *core_data)
 			disp_notify_reg_flag = false;
 	}
 
+	disp_notify_reg_flag = false;
 	platform_driver_unregister(&gt9896s_ts_driver);
 	gt9896s_ts_dev_release();
 	return 0;
