@@ -337,7 +337,7 @@ static s32 sys_init(struct mml_comp *comp, struct mml_task *task,
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 
 	if (cfg->dpc) {
-		if (mml_dl_dpc & MML_DPC_PKT_VOTE)
+		if (mml_dl_dpc & MML_DPC_PKT_VOTE && cfg->info.mode != MML_MODE_DDP_ADDON)
 			mml_dpc_power_keep_gce(comp->sysid, pkt, sys->data->gpr[ccfg->pipe],
 				&task->dpc_reuse_sys);
 	}
@@ -660,13 +660,13 @@ static void sys_insert_begin_loop(struct mml_task *task,
 		}
 	}
 
-	sys_frm->frame_loop_offset = pkt->cmd_buf_size;
-
 	lhs.reg = true;
 	lhs.idx = MML_CMDQ_ROUND_SPR;
 	rhs.reg = false;
 	rhs.value = 1;
 	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, MML_CMDQ_ROUND_SPR, &lhs, &rhs);
+
+	sys_frm->frame_loop_offset = cmdq_pkt_get_curr_offset(pkt);
 
 	if (ccfg->pipe == 0 && cfg->dual && cfg->disp_vdo && likely(mml_ir_loop)) {
 		cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX0, 0);
@@ -993,10 +993,12 @@ static s32 sys_done(struct mml_comp *comp, struct mml_task *task,
 		    struct mml_comp_config *ccfg)
 {
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	struct mml_frame_config *cfg = task->config;
 
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_MISC_REG, 0, GENMASK(21, 12));
 
-	if (task->config->dpc && (mml_dl_dpc & MML_DPC_PKT_VOTE)) {
+	if (task->config->dpc && (mml_dl_dpc & MML_DPC_PKT_VOTE) &&
+	    cfg->info.mode != MML_MODE_DDP_ADDON) {
 #ifndef MML_FPGA
 		mml_dpc_power_release_gce(comp->sysid, pkt);
 #endif

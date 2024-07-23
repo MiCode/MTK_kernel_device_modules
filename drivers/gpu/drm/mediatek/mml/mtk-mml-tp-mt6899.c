@@ -67,7 +67,7 @@ module_param(mml_opp_check, int, 0644);
 int mml_racing_rsz = 1;
 module_param(mml_racing_rsz, int, 0644);
 
-int mml_dpc = 1;
+int mml_dpc;
 module_param(mml_dpc, int, 0644);
 
 /* 0: off
@@ -367,7 +367,7 @@ static const u8 grp_dispatch[PATH_MML_MAX] = {
 	[PATH_MML1_NOPQ_DD] = MUX_SOF_GRP1,
 	[PATH_MML1_PQ] = MUX_SOF_GRP1,
 	[PATH_MML1_PQ_DL] = MUX_SOF_GRP1,
-	[PATH_MML1_PQ_DD] = MUX_SOF_GRP1,
+	[PATH_MML1_PQ_DD] = MUX_SOF_GRP3,
 	[PATH_MML1_2IN_2OUT] = MUX_SOF_GRP1,
 	[PATH_MML0_NOPQ] = MUX_SOF_GRP2,
 	[PATH_MML0_PQ] = MUX_SOF_GRP2,
@@ -1091,17 +1091,22 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 		goto check_dc_tput;
 	}
 
+	if (!MML_FMT_COMPRESS(info->src.format)) {
+		*reason = mml_query_format;
+		mode = MML_MODE_MML_DECOUPLE;
+		goto check_dc_tput;
+	}
+
 	if (info->mode == MML_MODE_APUDC) {
 		*reason = mml_query_apudc;
 		return info->mode;
 	}
 
 	/* rotate go to racing (inline rotate) */
-	if (mml_racing == 1 &&
-		(info->dest[0].rotate == MML_ROT_90 || info->dest[0].rotate == MML_ROT_270))
+	if (info->dest[0].rotate == MML_ROT_90 || info->dest[0].rotate == MML_ROT_270)
 		mode = tp_query_mode_racing(mml, info, reason);
-
-	mode = tp_query_mode_dl(mml, info, reason, panel_width, panel_height);
+	else
+		mode = tp_query_mode_dl(mml, info, reason, panel_width, panel_height);
 
 check_dc_tput:
 	if (mml_isdc(mode)) {

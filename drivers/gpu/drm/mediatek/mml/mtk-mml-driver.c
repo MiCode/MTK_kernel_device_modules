@@ -2186,7 +2186,12 @@ static int mml_probe(struct platform_device *pdev)
 	if (mml->dpc_disable)
 		mml_log("dpc disable by project");
 
+#if defined(MML_IR_SUPPORT)
 	mml->racing_en = of_property_read_bool(dev->of_node, "racing-enable");
+	if (mml->racing_en)
+		mml_log("IR mode enable");
+#endif
+
 	mml->v4l2_en = of_property_read_bool(dev->of_node, "v4l2-enable");
 
 	mml->tablet_ext = of_property_read_bool(dev->of_node, "tablet-ext");
