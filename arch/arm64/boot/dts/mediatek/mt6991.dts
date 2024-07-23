@@ -2489,7 +2489,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-107 = "SSPM_VCORE_DVFS__VCORE",
 				"SW_R3";
 			node-108 = "SSPM_VCORE_DVFS__OPP",
-				"datarate,VOLT";
+				"FREQ,VOLT";
 			node-109 = "SSPM_VCORE_DVFS__MISC",
 				"PS_B0,PS_B1,PS_B2,PS_B3,",
 				"PS_B4,PS_B5,PS_MMPC,PS_B6,",
