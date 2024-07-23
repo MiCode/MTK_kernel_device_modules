@@ -54,6 +54,7 @@ static const struct of_device_id clkbuf_of_match[] = {
 	{ .compatible = "mediatek,mt6761-clkbuf" },
 	{ .compatible = "mediatek,mt6765-clkbuf" },
 	{ .compatible = "mediatek,mt6768-clkbuf" },
+	{ .compatible = "mediatek,mt6781-clkbuf" },
 	{ .compatible = "mediatek,mt6833-clkbuf" },
 	{ .compatible = "mediatek,mt6853-clkbuf" },
 	{ .compatible = "mediatek,mt6877-clkbuf" },
