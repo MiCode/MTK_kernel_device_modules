@@ -6,16 +6,4 @@
 
 &clkitg {
 	status = "okay";
-	bring-up@0 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x0>;
-		clocks =
-			<&topckgen_clk CLK_TOP_MMINFRA_SEL>;
-	};
-
-	bring-up-pd-mm-infra@3c {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x3c>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_MM_INFRA>;
-	};
 };
