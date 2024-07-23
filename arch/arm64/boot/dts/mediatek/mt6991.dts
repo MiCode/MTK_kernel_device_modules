@@ -15806,7 +15806,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		send-table =
 			<33 0  2>,/* IPI_OUT_MMDVFS_MMUP */
 			<13 0  2>,/* IPI_OUT_MMDEBUG */
-			<35 0  1>,/* IPI_OUT_VDISP */
+			<35 0  2>,/* IPI_OUT_VDISP */
 			<30 1  6>,/* IPI_OUT_LOGGER_CTRL_1 */
 			<20 1  2>,/* IPI_OUT_C_SLEEP_1 */
 			<21 1  3>,/* IPI_OUT_TEST_1 */
