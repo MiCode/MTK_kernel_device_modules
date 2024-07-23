@@ -14110,6 +14110,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clock-div = <1>;
 			scl-gpio-id = <147>;
 			sda-gpio-id = <148>;
+			mediatek,fifo-use-polling;
 		};
 
 		i2c6: i2c@11e00000 {
