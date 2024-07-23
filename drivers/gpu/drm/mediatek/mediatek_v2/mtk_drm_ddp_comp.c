@@ -120,6 +120,8 @@
 #define MT6989_OVL_SODI_REQ_SEL (BIT(8))
 #define MT6989_OVL_SODI_REQ_VAL (BIT(12) | BIT(13) | BIT(14) | BIT(15))
 
+#define MT6899_DISP0_DDREN_ACK_CON 0x0
+
 #define MT6879_DVFS_HALT_MASK_SEL_ALL             REG_FLD_MSB_LSB(21, 16)
 	#define MT6879_DVFS_HALT_MASK_SEL_RDMA0       REG_FLD_MSB_LSB(16, 16)
 	#define MT6879_DVFS_HALT_MASK_SEL_RDMA1       REG_FLD_MSB_LSB(17, 17)
@@ -3089,7 +3091,10 @@ void mt6989_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			writel_relaxed(v, priv->side_config_regs +  MMSYS_EMI_REQ_CTL);
 
 		/* DDREN_ACK_CON 0x3F4 */
-		v = MT6989_DISP0_DDREN_ACK_CON;
+		if (priv->data->mmsys_id == MMSYS_MT6899)
+			v = MT6899_DISP0_DDREN_ACK_CON;
+		else
+			v = MT6989_DISP0_DDREN_ACK_CON;
 		writel_relaxed(v, priv->config_regs + DISPSYS0_DDREN_ACK_CON);
 		if (priv->side_config_regs) {
 			v = MT6989_DISP1_DDREN_ACK_CON;
