@@ -8988,7 +8988,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32440000 0 0x1000>;
 			interrupts = <GIC_SPI 464 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DP_INTF1>,
-				<&dispsys1_config_clk CLK_MM1_MOD4>,
+				<&dispsys1_config_clk CLK_MM1_MOD5>,
 				<&cksys_gp2_clk CLK_CK2_DP1_SEL>,
 				<&cksys_gp2_clk CLK_CK2_TVDPLL2_D4>,
 				<&cksys_gp2_clk CLK_CK2_TVDPLL2_D8>,
