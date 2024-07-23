@@ -487,7 +487,9 @@ struct cmdq_client *cmdq_mbox_create(struct device *dev, int index)
 	if (IS_ERR(client->chan)) {
 		cmdq_err("channel request fail:%ld idx:%d",
 			PTR_ERR(client->chan), index);
+#if !IS_ENABLED(CONFIG_VHOST_CMDQ)
 		dump_stack();
+#endif
 		kfree(client);
 		return NULL;
 	}
