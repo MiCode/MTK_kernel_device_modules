@@ -31,10 +31,6 @@ enum dvfsrc_base_id {
 	DVFSRC_FAKE_TEMP,
 };
 
-static const int mt6991_regs[] = {
-	[DVFSRC_FAKE_TEMP]  = 0x314,
-};
-
 static u32 dvfsrc_read(u32 offset)
 {
 	return readl(dvfsrc_golbal->dvfsrc_base + dvfsrc_golbal->dvd->regs[offset]);
@@ -158,15 +154,30 @@ static int mtk_dvfsrc_debugfs_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const int mt6991_regs[] = {
+	[DVFSRC_FAKE_TEMP]  = 0x314,
+};
+
+static const int mt6899_regs[] = {
+	[DVFSRC_FAKE_TEMP]  = 0x28C,
+};
 
 static const struct dvfsrc_dbgfs_data mt6991_dvfsrc_debugfs_data = {
 	.regs = mt6991_regs,
+};
+
+static const struct dvfsrc_dbgfs_data mt6899_dvfsrc_debugfs_data = {
+	.regs = mt6899_regs,
 };
 
 static const struct of_device_id of_mtk_dvfsrc_dbgfs_match_tbl[] = {
 	{
 		.compatible = "mediatek,mt6991-dvfsrc-debugfs",
 		.data = &mt6991_dvfsrc_debugfs_data,
+	},
+	{
+		.compatible = "mediatek,mt6899-dvfsrc-debugfs",
+		.data = &mt6899_dvfsrc_debugfs_data,
 	},
 	{}
 };
