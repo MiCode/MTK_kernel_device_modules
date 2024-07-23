@@ -4716,7 +4716,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	};
 
 	thermal_zones: thermal-zones {
-		soc_max {
+		soc_max: soc_max {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 0>;
