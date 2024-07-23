@@ -616,10 +616,8 @@ int mt_leds_parse_dt(struct mt_led_data *mdev, struct fwnode_handle *fwnode)
 		sizeof(struct led_desp *) * (leds_info->lens + 1),
 		GFP_KERNEL);
 
-	if (!nleds_info) {
-		kfree(nleds_info);
+	if (!nleds_info)
 		return -ENOMEM;
-	}
 	leds_info = nleds_info;
 	leds_info->leds[leds_info->lens] = &mdev->desp;
 	leds_info->lens++;
@@ -699,7 +697,7 @@ int mt_leds_classdev_register(struct device *parent,
 
 	led_dat->last_brightness = 0;
 	mtk_set_hw_brightness(led_dat,
-		brightness_maptolevel(&led_dat->conf, led_dat->last_brightness),
+		brightness_maptolevel(&led_dat->conf, led_dat->conf.cdev.brightness),
 		0, 1 << SET_BACKLIGHT_LEVEL);
 
 	pr_info("%s devm_led_classdev_register end! ", led_dat->conf.cdev.name);
