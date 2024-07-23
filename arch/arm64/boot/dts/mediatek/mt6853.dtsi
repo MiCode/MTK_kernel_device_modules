@@ -1173,6 +1173,15 @@
 			mediatek,eint = <&eint>;
 		};
 
+		scpsys_clk: scpsys@10006000 {
+			compatible = "mediatek,mt6853-scpsys-clk", "syscon";
+			reg = <0 0x10001000 0 0x1000>,	/* infracfg_ao */
+			<0 0x10006000 0 0x1000>,	/* spm */
+			<0 0x1020e000 0 0x1000>,	/* infracfg */
+			<0 0x10215000 0 0x1000>;	/* infracfg_pdn */
+			#clock-cells = <1>;
+		};
+
 		scpsys: power-controller@10006000 {
 			compatible = "mediatek,mt6853-scpsys", "syscon";
 			reg = <0 0x10006000 0 0x1000>;
