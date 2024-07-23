@@ -680,21 +680,13 @@ static int get_panel_feature_info_from_dts(struct max96851_bridge *max_bridge)
 {
 	struct device_node *np = max_bridge->dev->of_node;
 	struct device_node *feature_np = NULL;
-	const char *panel_name;
-	u32 feature_handle_num = 0;
+	u32 feature_handle_num = 0, read_value;
 	int ret = 0;
 
-	panel_name = of_get_property(np, PANEL_NAME, NULL);
-	if (!panel_name) {
-		pr_info("[MAX96851] Panel name is not provided\n");
-		return -EINVAL;
-	}
-
-	max_bridge->panel_name = devm_kzalloc(max_bridge->dev, PANEL_NAME_SIZE, GFP_KERNEL);
-	if (!max_bridge->panel_name)
-		return -ENOMEM;
-
-	strscpy(max_bridge->panel_name, panel_name, PANEL_NAME_SIZE);
+	ret = of_property_read_u32(max_bridge->dev->of_node, USE_DEFAULT_SETTING,
+							&read_value);
+	if (!!read_value)
+		return read_value;
 
 	/* Get child node feature */
 	feature_np = of_get_child_by_name(np, PANEL_FEATURE);
