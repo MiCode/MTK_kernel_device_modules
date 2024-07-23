@@ -751,6 +751,22 @@ bootargs_ext = "rcu_nocbs=0-7";
 	};
 };
 
+&mt6363_vbuck5 {
+	regulator-min-microvolt = <0>;
+};
+
+&mt6363_vsram_digrf {
+	regulator-min-microvolt = <0>;
+};
+
+&mt6363_vrf12 {
+	regulator-min-microvolt = <0>;
+};
+
+&mt6363_vcn15 {
+	regulator-min-microvolt = <0>;
+};
+
 #include <tb8799p1_64_sp/cust.dtsi>
 #include "mediatek/cust_k6991_connfem.dtsi"
 
