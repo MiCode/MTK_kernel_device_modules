@@ -26,6 +26,7 @@ int mtk_scp_ultra_reserved_dram_init(void)
 	struct audio_ultra_dram *ultra_resv_mem = &scp_ultra->ultra_reserve_dram;
 	struct audio_ultra_dram *dump_resv_mem =
 		&scp_ultra->ultra_dump.dump_resv_mem;
+	unsigned int buf_offset = ULTRA_BUF_OFFSET * 2;
 
 	ultra_resv_mem->phy_addr =
 		scp_get_reserve_mem_phys(ULTRA_MEM_ID);
@@ -59,12 +60,11 @@ int mtk_scp_ultra_reserved_dram_init(void)
 		 ultra_resv_mem->size);
 
 	dump_resv_mem->phy_addr =
-		scp_get_reserve_mem_phys(ULTRA_MEM_ID);
+		scp_get_reserve_mem_phys(ULTRA_MEM_ID) + buf_offset;
 	dump_resv_mem->vir_addr =
-		(unsigned char *)scp_get_reserve_mem_virt
-				 (ULTRA_MEM_ID);
+		(unsigned char *)scp_get_reserve_mem_virt(ULTRA_MEM_ID) + buf_offset;
 	dump_resv_mem->size =
-		scp_get_reserve_mem_size(ULTRA_MEM_ID);
+		scp_get_reserve_mem_size(ULTRA_MEM_ID) - buf_offset;
 
 	if (!dump_resv_mem->phy_addr) {
 		pr_err("%s(), dump_resv_mem phy_addr error\n", __func__);
