@@ -3739,7 +3739,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			};
 			dram_s1: dram-s1 {
 				id = <0x00000004>;
-				value = <1>;
+				value = <0>;
 			};
 			spm_vcore: spm-vcore {
 				id = <0x00000005>;
