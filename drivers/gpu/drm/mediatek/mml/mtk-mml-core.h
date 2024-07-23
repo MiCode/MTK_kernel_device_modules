@@ -500,22 +500,31 @@ struct mml_frame_config {
 	struct list_head entry;
 	struct mml_frame_info info;
 	enum mml_sys_id sysid;		/* main mmlsys used for this config */
-	/* frame input pixel size after rrot binning and rotate */
-	struct mml_frame_size frame_in;		/* source size, w/ rrot bin and rrot rotate */
-	struct mml_crop frame_in_crop[MML_MAX_OUTPUTS];	/* frame_in w/ crop */
-	struct mml_frame_size rrot_out[MML_PIPE_CNT];	/* dual rrot to merge split size */
-	struct mml_frame_size frame_in_hdr;	/* hdr/aal input frame size, maybe rsz out in dl */
-	struct mml_frame_size frame_tile_sz;	/* rdma/rrot to downstream tile size */
+
+	/* frame input image size after rrot binning and rotate */
+	struct mml_frame_size frame_in;
+	/* frame input crop size after rrot binning and rotate by output */
+	struct mml_crop frame_in_crop[MML_MAX_OUTPUTS];
+	/* rrot output tile size to merge by pipe */
+	struct mml_frame_size rrot_out[MML_PIPE_CNT];
+	/* hdr, aal, and c3d input size from rdma or rsz */
+	struct mml_frame_size frame_in_hdr;
+	/* frame input pixel size (tile full size) after rrot binning and rotate,
+	 * and crop offset, round up, and alignment.
+	 */
+	struct mml_frame_size frame_tile_sz;
 	/* binning level config by: 2'd0: 1; 2'd1: 2; 2'd2: 4; 2'd3: 8 */
 	u8 bin_x;
 	u8 bin_y;
+	/* frame output rotate/flip on wrot */
 	u8 out_rotate[MML_MAX_OUTPUTS];
 	bool out_flip[MML_MAX_OUTPUTS];
-	/* frame output pixel size */
+	/* frame output image size before wrot rotate */
 	struct mml_frame_size frame_out[MML_MAX_OUTPUTS];
 	/* direct-link input roi offset and output rect */
 	struct mml_rect dl_in[MML_PIPE_CNT];
 	struct mml_rect dl_out[MML_PIPE_CNT];
+
 	struct list_head tasks;
 	struct list_head await_tasks;
 	struct list_head done_tasks;

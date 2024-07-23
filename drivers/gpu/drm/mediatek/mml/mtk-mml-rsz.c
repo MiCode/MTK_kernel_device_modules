@@ -221,24 +221,21 @@ static bool rsz_can_relay(const struct mml_frame_config *cfg,
 			  const struct mml_crop *crop,
 			  const struct mml_frame_size *frame_out)
 {
-	const u32 srcw = cfg->frame_in.width;
-	const u32 srch = cfg->frame_in.height;
+	const u32 in_w = cfg->frame_tile_sz.width;
+	const u32 in_h = cfg->frame_tile_sz.height;
 
 	if (rsz->data->aal_crop_disable && dest->pq_config.en_dre)
 		return false;
 	if (cfg->info.dest_cnt > 1)
 		return false;
 
-	if (crop->r.width == srcw &&
-	    srcw == frame_out->width &&
-	    crop->r.height == srch &&
-	    srch == frame_out->height &&
+	if (crop->r.width == in_w && in_w == frame_out->width &&
+	    crop->r.height == in_h && in_h == frame_out->height &&
 	    crop->x_sub_px == 0 && crop->y_sub_px == 0 &&
 	    crop->w_sub_px == 0 && crop->h_sub_px == 0)
 		return rsz->data->wrot_pending ||
 			(dest->data.width == dest->compose.width &&
 			dest->data.height == dest->compose.height);
-
 	return false;
 }
 

@@ -1283,7 +1283,8 @@ s32 check_setting(struct mml_file_buf *src_buf, struct mml_frame_data *src)
 	return 0;
 }
 
-static void calc_hyfbc(struct mml_file_buf *src_buf, struct mml_frame_data *src,
+static void calc_hyfbc(const struct mml_file_buf *src_buf,
+		       const struct mml_frame_data *src,
 		       u64 *y_header_addr, u64 *y_data_addr,
 		       u64 *c_header_addr, u64 *c_data_addr)
 {
@@ -1317,7 +1318,8 @@ static void calc_hyfbc(struct mml_file_buf *src_buf, struct mml_frame_data *src,
 		*y_header_addr, *y_data_addr, *c_header_addr, *c_data_addr);
 }
 
-static void calc_ufo(struct mml_file_buf *src_buf, struct mml_frame_data *src,
+static void calc_ufo(const struct mml_file_buf *src_buf,
+		     const struct mml_frame_data *src,
 		     u64 *ufo_dec_length_y, u64 *ufo_dec_length_c,
 		     u32 *u4pic_size_bs, u32 *u4pic_size_y_bs)
 {
@@ -1465,8 +1467,8 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	struct mml_frame_config *cfg = task->config;
 	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
-	struct mml_file_buf *src_buf = &task->buf.src;
-	struct mml_frame_data *src = &cfg->info.src;
+	const struct mml_file_buf *src_buf = &task->buf.src;
+	const struct mml_frame_data *src = &cfg->info.src;
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
@@ -2237,8 +2239,8 @@ static s32 rdma_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_frame_config *cfg = task->config;
 	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
-	struct mml_file_buf *src_buf = &task->buf.src;
-	struct mml_frame_data *src = &cfg->info.src;
+	const struct mml_file_buf *src_buf = &task->buf.src;
+	const struct mml_frame_data *src = &cfg->info.src;
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 
 	u64 iova[3];

@@ -408,7 +408,7 @@ static void calc_binning_crop(u32 *crop, u32 *frac)
 	((_start_sub + (sz << MML_SUBPIXEL_BITS) + \
 		sz_sub + (1 << MML_SUBPIXEL_BITS) - 1) >> MML_SUBPIXEL_BITS)
 
-static void calc_binning_rot(struct mml_frame_config *cfg, struct mml_comp_config *ccfg)
+static void calc_binning_rot(struct mml_frame_config *cfg)
 {
 	const struct mml_frame_data *src = &cfg->info.src;
 	const struct mml_frame_dest *dest = &cfg->info.dest[0];
@@ -505,7 +505,7 @@ static s32 rrot_prepare(struct mml_comp *comp, struct mml_task *task,
 
 	/* calculate binning size and set to frame config */
 	if (rrot->pipe == 0)
-		calc_binning_rot(cfg, ccfg);
+		calc_binning_rot(cfg);
 	if (cfg->bin_x || cfg->bin_y) {
 		rrot_frm->binning = true;
 		rrot_msg("%s rrot%s bin %u %u",
@@ -813,7 +813,8 @@ static void rrot_color_fmt(struct mml_frame_config *cfg,
 	}
 }
 
-static void calc_hyfbc(struct mml_file_buf *src_buf, struct mml_frame_data *src,
+static void calc_hyfbc(const struct mml_file_buf *src_buf,
+		       const struct mml_frame_data *src,
 		       u64 *y_header_addr, u64 *y_data_addr,
 		       u64 *c_header_addr, u64 *c_data_addr)
 {
@@ -847,7 +848,8 @@ static void calc_hyfbc(struct mml_file_buf *src_buf, struct mml_frame_data *src,
 		*y_header_addr, *y_data_addr, *c_header_addr, *c_data_addr);
 }
 
-static void calc_ufo(struct mml_file_buf *src_buf, struct mml_frame_data *src,
+static void calc_ufo(const struct mml_file_buf *src_buf,
+		     const struct mml_frame_data *src,
 		     u64 *ufo_dec_length_y, u64 *ufo_dec_length_c,
 		     u32 *u4pic_size_bs, u32 *u4pic_size_y_bs)
 {
@@ -966,7 +968,7 @@ static void rrot_select_threshold_hrt(struct mml_comp_rrot *rrot,
 }
 
 static void rrot_calc_slice(struct mml_frame_config *cfg,
-	struct mml_frame_data *src, const struct mml_frame_dest *dest,
+	const struct mml_frame_data *src, const struct mml_frame_dest *dest,
 	struct rrot_frame_data *rrot_frm)
 {
 	u32 slice_size = 0;
@@ -1130,16 +1132,16 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
 	struct mml_frame_config *cfg = task->config;
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
-	struct mml_file_buf *src_buf = &task->buf.src;
-	struct mml_frame_data *src = &cfg->info.src;
+	const struct mml_file_buf *src_buf = &task->buf.src;
+	const struct mml_frame_data *src = &cfg->info.src;
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
-	struct mml_frame_dest *dest = &cfg->info.dest[0];
-	struct mml_frame_size *frame_in = &cfg->frame_in;
+	const struct mml_frame_dest *dest = &cfg->info.dest[0];
+	const struct mml_frame_size *frame_in = &cfg->frame_in;
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 
 	const phys_addr_t base_pa = comp->base_pa;
-	const u32 dst_fmt = cfg->info.dest[ccfg->node->out_idx].data.format;
+	const u32 dst_fmt = dest->data.format;
 	u8 simple_mode = 1;
 	u8 filter_mode;
 	u8 loose = 0;
@@ -1249,8 +1251,8 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	mml_msg("%s alpha_pq_r2y:%d alpha:%d src:0x%08x dst:0x%08x hdr:%d mode:%d",
 		__func__, rrot->data->alpha_pq_r2y, cfg->info.alpha,
-		src->format, dst_fmt, cfg->info.dest[0].pq_config.en_hdr, cfg->info.mode);
-	if (MML_FMT_IS_RGB(src->format) && cfg->info.dest[0].pq_config.en_hdr &&
+		src->format, dst_fmt, dest->pq_config.en_hdr, cfg->info.mode);
+	if (MML_FMT_IS_RGB(src->format) && dest->pq_config.en_hdr &&
 	    cfg->info.dest_cnt == 1) {
 		rrot_frm->color_tran = 0;
 	} else if (rrot->data->alpha_pq_r2y && cfg->alpharsz && dst_fmt == MML_FMT_YUVA8888) {
@@ -1571,7 +1573,7 @@ static void coord_flip(u16 left, u16 *start, u16 *end, u32 size)
 }
 
 static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml_task *task,
-	struct mml_comp_config *ccfg, struct mml_tile_engine *tile_merge)
+	struct mml_tile_engine *tile_merge)
 {
 	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
 	const struct mml_frame_config *cfg = task->config;
@@ -1836,7 +1838,7 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	u32 tput_w, tput_h;
 
 	/* Following data retrieve from tile calc result */
-	struct mml_tile_engine tile = rrot_config_dual(comp, task, ccfg, tile_merge);
+	struct mml_tile_engine tile = rrot_config_dual(comp, task, tile_merge);
 	u64 in_xs = tile.in.xs;
 	const u32 in_xe = tile.in.xe;
 	u64 in_ys = tile.in.ys;
@@ -2100,8 +2102,8 @@ static s32 rrot_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_frame_config *cfg = task->config;
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
-	struct mml_file_buf *src_buf = &task->buf.src;
-	struct mml_frame_data *src = &cfg->info.src;
+	const struct mml_file_buf *src_buf = &task->buf.src;
+	const struct mml_frame_data *src = &cfg->info.src;
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 
 	u64 iova[3];

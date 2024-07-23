@@ -181,11 +181,10 @@ s32 c3d_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	struct tile_func_block *func,
 	union mml_tile_data *data)
 {
-	struct mml_frame_dest *dest =
-		&task->config->info.dest[ccfg->node->out_idx];
-	struct mml_frame_config *cfg = task->config;
-	struct mml_frame_size *frame_in = &cfg->frame_in;
-	struct mml_crop *crop = &cfg->frame_in_crop[ccfg->node->out_idx];
+	const struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	const struct mml_frame_size *frame_in = &cfg->frame_in;
+	const struct mml_crop *crop = &cfg->frame_in_crop[ccfg->node->out_idx];
 
 	func->enable_flag = dest->pq_config.en_c3d;
 
