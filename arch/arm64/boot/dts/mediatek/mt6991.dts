@@ -5951,7 +5951,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		eth0: ethernet@16570000 {
 			compatible = "mediatek,mt8678-gmac0", "snps,dwmac-5.10a";
-			reg = <0 0x16570000 0 0x4000>;
+			reg = <0 0x16570000 0 0x4000>,
+			      <0 0x165b0000 0 0x4000>;
+			reg-names = "a0","b0";
 			interrupts = <GIC_SPI 913 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names = "macirq";
 			clock-names = "mac_main",
@@ -6031,7 +6033,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		eth1: ethernet@16580000 {
 			compatible = "mediatek,mt8678-gmac1", "snps,dwmac-5.10a";
-			reg = <0 0x16580000 0 0x4000>;
+			reg = <0 0x16580000 0 0x4000>,
+			      <0 0x165c0000 0 0x4000>;
+			reg-names = "a0","b0";
 			interrupts = <GIC_SPI 920 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names = "macirq";
 			clock-names = "mac_main",
