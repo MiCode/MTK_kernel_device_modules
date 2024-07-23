@@ -123,7 +123,7 @@ void mml_dpc_power_release(u32 sysid)
 	mml_dpc_funcs.dpc_vidle_power_release(user);
 }
 
-int mml_dpc_power_keep_gce(u32 sysid, struct cmdq_pkt *pkt, u16 gpr, struct cmdq_reuse *reuse)
+int mml_dpc_power_keep_gce(u32 sysid, struct cmdq_pkt *pkt, u16 gpr, struct cmdq_poll_reuse *reuse)
 {
 	const enum mtk_vidle_voter_user user = mml_sysid_to_dpc_user_cmdq(sysid);
 

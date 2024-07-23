@@ -67,18 +67,9 @@ struct mml_mutex {
 	struct mutex_module modules[MML_MAX_COMPONENTS];
 };
 
-struct mutex_frame_data {
-	u16 label_vlp_sleep;
-};
-
 static inline struct mml_mutex *comp_to_mutex(struct mml_comp *comp)
 {
 	return container_of(comp, struct mml_mutex, comp);
-}
-
-static inline struct mutex_frame_data *mutex_frm_data(struct mml_comp_config *ccfg)
-{
-	return ccfg->data;
 }
 
 static s32 mutex_enable(struct mml_mutex *mutex, struct cmdq_pkt *pkt,
@@ -169,22 +160,6 @@ static s32 mutex_disable(struct mml_mutex *mutex, struct cmdq_pkt *pkt,
 	return 0;
 }
 
-static s32 mutex_prepare(struct mml_comp *comp, struct mml_task *task,
-	struct mml_comp_config *ccfg)
-{
-	ccfg->data = kzalloc(sizeof(struct mutex_frame_data), GFP_KERNEL);
-	if (!ccfg->data)
-		return -ENOMEM;
-
-	return 0;
-}
-
-static u32 mutex_get_label_count(struct mml_comp *comp, struct mml_task *task,
-	struct mml_comp_config *ccfg)
-{
-	return 1;
-}
-
 static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 			 struct mml_comp_config *ccfg)
 {
@@ -225,16 +200,11 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 
 			if (cfg->dpc && (mml_dl_dpc & MML_DPC_MUTEX_VOTE)) {
 #ifndef MML_FPGA
-				struct mutex_frame_data *mutex_frm = mutex_frm_data(ccfg);
-				struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
-
-				mml_add_reuse_label(comp->id, &task->reuse[ccfg->pipe],
-					&mutex_frm->label_vlp_sleep, 0);
 				mml_dpc_power_release_gce(comp->sysid, pkt);
 				cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(cfg->mml));
 				mml_dpc_power_keep_gce(comp->sysid, pkt,
 					mutex->data->gpr[ccfg->pipe],
-					&reuse->labels[mutex_frm->label_vlp_sleep]);
+					&task->dpc_reuse_mutex);
 
 #endif
 			} else {
@@ -271,8 +241,6 @@ static s32 mutex_wait_sof(struct mml_comp *comp, struct mml_task *task,
 }
 
 static const struct mml_comp_config_ops mutex_config_ops = {
-	.prepare = mutex_prepare,
-	.get_label_count = mutex_get_label_count,
 	.mutex = mutex_trigger,
 	.wait_sof = mutex_wait_sof,
 };

@@ -3795,12 +3795,12 @@ static void mtk_disp_vlp_vote_by_cpu_v1(unsigned int vote_set, unsigned int thre
 }
 
 static void dpc_vidle_power_keep_by_gce_v1(struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user,
-				 const u16 gpr, struct cmdq_reuse *reuse)
+				 const u16 gpr, struct cmdq_poll_reuse *reuse)
 {
 	mtk_disp_vlp_vote_by_gce_v1(pkt, VOTE_SET, user);
 	if (gpr)
-		cmdq_pkt_poll_timeout(pkt, 0xb, SUBSYS_NO_SUPPORT,
-				  g_priv->dpc_pa + DISP_REG_DPC_DISP1_DEBUG1, ~0, 0xFFFF, gpr);
+		cmdq_pkt_poll_timeout_reuse(pkt, 0xb, SUBSYS_NO_SUPPORT,
+			g_priv->dpc_pa + DISP_REG_DPC_DISP1_DEBUG1, ~0, 0xFFFF, gpr, reuse);
 }
 
 static void dpc_vidle_power_release_by_gce_v1(struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user)

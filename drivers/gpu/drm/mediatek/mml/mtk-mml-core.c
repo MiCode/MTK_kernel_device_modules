@@ -612,6 +612,7 @@ static s32 command_reuse(struct mml_task *task, u32 pipe)
 	const struct mml_topology_path *path = task->config->path[pipe];
 	struct mml_pipe_cache *cache = &task->config->cache[pipe];
 	struct mml_comp_config *ccfg = cache->cfg;
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	struct mml_comp *comp;
 	u32 label_cnt, i;
 
@@ -633,6 +634,10 @@ static s32 command_reuse(struct mml_task *task, u32 pipe)
 		task->reuse[pipe].label_idx, cache->label_cnt);
 	cmdq_pkt_reuse_buf_va(task->pkts[pipe], task->reuse[pipe].labels,
 		task->reuse[pipe].label_idx);
+	if (task->dpc_reuse_sys.jump_to_begin.va)
+		cmdq_pkt_reuse_poll(pkt, &task->dpc_reuse_sys);
+	if (task->dpc_reuse_mutex.jump_to_begin.va)
+		cmdq_pkt_reuse_poll(pkt, &task->dpc_reuse_mutex);
 	/* make sure this pkt not jump to others */
 	cmdq_pkt_refinalize(task->pkts[pipe]);
 
