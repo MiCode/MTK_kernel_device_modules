@@ -164,7 +164,6 @@ mgk_64_device_modules = [
     "drivers/gpu/drm/mediatek/mediatek_v2/mtk_sync.ko",
     "drivers/gpu/drm/mediatek/mml/mtk-mml.ko",
     "drivers/gpu/drm/panel/bridge-serdes-max96789.ko",
-    "drivers/gpu/drm/panel/rt4831a.ko",
     "drivers/gpu/drm/panel/k6985v1_64_alpha/panel-nt37705-alpha-cmd.ko",
     "drivers/gpu/drm/panel/k6989v1_64_alpha/panel-ili7838e-alpha-cmd.ko",
     "drivers/gpu/drm/panel/k6989v1_64_alpha/panel-ili7838e-dv2-alpha-cmd.ko",
@@ -2451,7 +2450,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-imax.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/gate_ic/rt4831a_drv.ko")
-        mgk_64_device_modules.remove("drivers/gpu/drm/panel/rt4831a.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-120hz-hfp.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-120hz.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-120hz-threshold.ko")
