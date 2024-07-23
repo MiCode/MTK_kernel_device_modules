@@ -422,7 +422,15 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6877 = {
 		.md_speech_bw = { 5272, 5272},
 		.hrt_ratio = {1000, 880, 900, 1000},
 		.blocking = true,
-		.emi_ratio = 1000,
+		.emi_ratio = 740,
+	},
+	.hrt = {
+		.hrt_bw = {5272, 0, 0},
+		.hrt_total_bw = 25600, /* Todo: Use DRAMC API */
+		.md_speech_bw = { 5272, 5272},
+		.hrt_ratio = {1000, 860, 880, 1000},
+		.blocking = true,
+		.emi_ratio = 680,
 	},
 	.comm_port_channels = {
 		{ 0x1, 0x2, 0x2, 0x1, 0x1, 0x2, 0x2, 0x1, 0x3}
