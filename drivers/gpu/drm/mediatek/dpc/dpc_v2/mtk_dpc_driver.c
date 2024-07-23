@@ -2036,7 +2036,9 @@ static const struct dpc_funcs funcs = {
 	.dpc_dvfs_trigger = dpc_dvfs_trigger,
 	.dpc_channel_bw_set_by_idx = dpc_channel_bw_set_by_idx,
 	.dpc_analysis = dpc_analysis,
+#if IS_ENABLED(CONFIG_DEBUG_FS)
 	.dpc_debug_cmd = process_dbg_opt,
+#endif
 };
 
 static struct mtk_dpc mt6989_dpc_driver_data = {
