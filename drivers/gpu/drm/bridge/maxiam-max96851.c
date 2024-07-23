@@ -1457,7 +1457,6 @@ static const struct drm_bridge_funcs max96851_bridge_funcs = {
 static int max96851_probe(struct i2c_client *client)
 {
 	struct device *dev = &client->dev;
-	struct drm_bridge *panel_bridge = NULL;
 	struct max96851_bridge *max_bridge = NULL;
 	int ret;
 
@@ -1466,21 +1465,6 @@ static int max96851_probe(struct i2c_client *client)
 	max_bridge = devm_kzalloc(dev, sizeof(*max_bridge), GFP_KERNEL);
 	if (!max_bridge)
 		return -ENOMEM;
-
-	ret = drm_of_find_panel_or_bridge(dev->of_node, 1, 0, &max_bridge->panel1, NULL);
-	if (!max_bridge->panel1) {
-		pr_info("[MAX96851] Failed to find panel %d\n", ret);
-		return -EPROBE_DEFER;
-	}
-
-	dev_info(dev, "[MAX96851] Found panel node: %pOF\n", max_bridge->panel1->dev->of_node);
-
-	panel_bridge = devm_drm_panel_bridge_add(dev, max_bridge->panel1);
-	if (IS_ERR(panel_bridge)) {
-		dev_info(dev, "[MAX96851] Failed to create panel bridge\n");
-		return PTR_ERR(panel_bridge);
-	}
-	max_bridge->panel_bridge = panel_bridge;
 
 	max_bridge->gpio_rst_n = devm_gpiod_get(dev, "reset",
 							GPIOD_OUT_HIGH);
@@ -1500,17 +1484,6 @@ static int max96851_probe(struct i2c_client *client)
 	if (ret) {
 		dev_info(dev, "[MAX96851] DT parse failed\n");
 		return ret;
-	}
-
-	if (max_bridge->is_support_mst) {
-		ret = drm_of_find_panel_or_bridge(dev->of_node, 3, 0, &max_bridge->panel2, NULL);
-		if (!max_bridge->panel2) {
-			pr_info("[MAX96851] Failed to find panel2 %d\n", ret);
-			return -EPROBE_DEFER;
-		}
-		dev_info(dev, "[MAX96851] Found panel2 node: %pOF\n", max_bridge->panel2->dev->of_node);
-		max_bridge->serdes_enable_index = 0;
-		spin_lock_init(&max_bridge->enable_index_lock);
 	}
 
 	ret = max96851_create_i2c_client(max_bridge);
