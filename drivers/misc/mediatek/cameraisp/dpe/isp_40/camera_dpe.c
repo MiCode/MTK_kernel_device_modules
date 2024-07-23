@@ -3688,7 +3688,7 @@ static int compat_get_DPE_read_register_data(
 	struct DPE_REG_IO_STRUCT *data)
 {
 	long ret = -1;
-	struct compat_DPE_REG_IO_STRUCT data32;
+	struct compat_DPE_REG_IO_STRUCT data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_DPE_REG_IO_STRUCT));
@@ -3710,7 +3710,7 @@ static int compat_put_DPE_read_register_data(
 {	
 	long ret = -1;
 
-	struct compat_DPE_REG_IO_STRUCT data32;
+	struct compat_DPE_REG_IO_STRUCT data32 = {0};
 	data32.Count = (compat_uint_t)(data->Count);
 
 	if (copy_to_user(compat_ptr(arg), &data32,
@@ -3727,7 +3727,7 @@ static int compat_get_DPE_dve_enque_req_data(
 {
 
 	long ret = -1;
-	struct compat_DPE_DVERequest data32;
+	struct compat_DPE_DVERequest data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_DPE_DVERequest));
@@ -3749,7 +3749,7 @@ static int compat_put_DPE_dve_enque_req_data(
 {	
 	long ret = -1;
 
-	struct compat_DPE_DVERequest data32;
+	struct compat_DPE_DVERequest data32 = {0};
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
 
 	if (copy_to_user(compat_ptr(arg), &data32,
@@ -3765,7 +3765,7 @@ static int compat_get_DPE_dve_deque_req_data(
 	struct DPE_DVERequest *data)
 {
 	long ret = -1;
-	struct compat_DPE_DVERequest data32;
+	struct compat_DPE_DVERequest data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_DPE_DVERequest));
@@ -3787,7 +3787,7 @@ static int compat_put_DPE_dve_deque_req_data(
 {	
 	long ret = -1;
 
-	struct compat_DPE_DVERequest data32;
+	struct compat_DPE_DVERequest data32 = {0};
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
 
 	if (copy_to_user(compat_ptr(arg), &data32,
@@ -3804,7 +3804,7 @@ static int compat_get_DPE_wmfe_enque_req_data(
 {
 
 	long ret = -1;
-	struct compat_DPE_WMFERequest data32;
+	struct compat_DPE_WMFERequest data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_DPE_WMFERequest));
@@ -3826,7 +3826,7 @@ static int compat_put_DPE_wmfe_enque_req_data(
 {	
 	long ret = -1;
 
-	struct compat_DPE_WMFERequest data32;
+	struct compat_DPE_WMFERequest data32 = {0};
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
 
 	if (copy_to_user(compat_ptr(arg), &data32,
@@ -3842,7 +3842,7 @@ static int compat_get_DPE_wmfe_deque_req_data(
 	struct DPE_WMFERequest *data)
 {
 	long ret = -1;
-	struct compat_DPE_WMFERequest data32;
+	struct compat_DPE_WMFERequest data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_DPE_WMFERequest));
@@ -3864,7 +3864,7 @@ static int compat_put_DPE_wmfe_deque_req_data(
 {	
 	long ret = -1;
 
-	struct compat_DPE_WMFERequest data32;
+	struct compat_DPE_WMFERequest data32 = {0};
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
 
 	if (copy_to_user(compat_ptr(arg), &data32,
