@@ -13415,9 +13415,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			comp-names = "mml0_birsz0";
 		};
 
-		mml0_c3d0: mml0-c3d0@1f81d000 {
+		mml0_c3d0: mml0-c3d0@1f01d000 {
 			compatible = "mediatek,mt6899-mml0_c3d0";
-			reg = <0 0x1f81d000 0 0x1000>;
+			reg = <0 0x1f01d000 0 0x1000>;
 			comp-ids = <MML0_C3D0>;
 			comp-names = "mml0_c3d0";
 			clocks = <&mdpsys_config_clk CLK_MDP_C3D0_MML>;
