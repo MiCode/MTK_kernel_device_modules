@@ -14094,7 +14094,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,mt6899-spi";
 			mediatek,pad-select = <0>;
 			mediatek,reset-bit = <16>;
-			mediatek,tickdly = <20>, <0>;
+			mediatek,tickdly = <12>, <0>;
 			reg = <0 0x11012800 0 0x100>,
 				<0 0x11036000 0 0x10>;
 			interrupts = <GIC_SPI 754 IRQ_TYPE_LEVEL_HIGH 0>;
