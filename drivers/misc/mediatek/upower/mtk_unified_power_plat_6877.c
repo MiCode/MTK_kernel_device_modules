@@ -288,10 +288,14 @@ int cpu_cluster_mapping(unsigned int cpu)
 
 void get_original_table(void)
 {
-	unsigned short idx = 0; /* default use MT6771T_6785 */
+	unsigned short idx = _mt_cpufreq_get_cpu_level_upower();
 	int i, j;
 
-	idx = _mt_cpufreq_get_cpu_level_upower();
+	if (idx >= NR_UPOWER_TBL_LIST) {
+		upower_info("%s():%d | idx=%d | upower table index out of range\n", __func__, __LINE__, idx);
+		idx = 0; /* default use MT6771T_6785 */
+	}
+
 
 	/* get location of reference table */
 	upower_tbl_infos = &upower_tbl_infos_list[idx][0];
