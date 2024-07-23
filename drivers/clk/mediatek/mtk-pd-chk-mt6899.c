@@ -21,8 +21,8 @@
 #define EVT_LEN				40
 #define PWR_ID_SHIFT			0
 #define PWR_STA_SHIFT			8
-#define HWV_INT_MTCMOS_TRIGGER		0x0008
-#define HWV_IRQ_STATUS			0x0500
+#define HWV_INT_MTCMOS_TRIGGER		0x80000
+#define HWV_IRQ_STATUS			0x1500
 
 static DEFINE_SPINLOCK(pwr_trace_lock);
 static unsigned int pwr_event[EVT_LEN];
@@ -881,13 +881,6 @@ static u32 get_pd_pwr_status(int pd_id)
 }
 
 static int off_mtcmos_id[] = {
-	PD_NULL,
-};
-
-static int notice_mtcmos_id[] = {
-	MT6899_CHK_PD_PERI_USB0,
-	MT6899_CHK_PD_ADSP_INFRA,
-	MT6899_CHK_PD_ADSP_AO,
 	MT6899_CHK_PD_ISP_TRAW,
 	MT6899_CHK_PD_ISP_DIP1,
 	MT6899_CHK_PD_ISP_MAIN,
@@ -913,9 +906,16 @@ static int notice_mtcmos_id[] = {
 	MT6899_CHK_PD_MM_INFRA,
 	MT6899_CHK_PD_DP_TX,
 	MT6899_CHK_PD_CSI_RX,
+	PD_NULL,
+};
+
+static int notice_mtcmos_id[] = {
 	MT6899_CHK_PD_MD1,
 	MT6899_CHK_PD_CONN,
+	MT6899_CHK_PD_PERI_USB0,
 	MT6899_CHK_PD_PERI_AUDIO,
+	MT6899_CHK_PD_ADSP_INFRA,
+	MT6899_CHK_PD_ADSP_AO,
 	MT6899_CHK_PD_ADSP_TOP,
 	PD_NULL,
 };
@@ -973,6 +973,17 @@ static void check_hwv_irq_sta(void)
 		debug_dump(MT6899_CHK_PD_NUM, 0);
 }
 
+static void check_mm_hwv_irq_sta(void)
+{
+	u32 irq_sta;
+
+	irq_sta = get_mt6899_reg_value(mm_hwv, HWV_IRQ_STATUS);
+	pr_notice("mm hwv irq: %x\n", irq_sta);
+
+	if ((irq_sta & HWV_INT_MTCMOS_TRIGGER) == HWV_INT_MTCMOS_TRIGGER)
+		debug_dump(MT6899_CHK_PD_NUM, 0);
+}
+
 /*
  * init functions
  */
@@ -993,6 +1004,7 @@ static struct pdchk_ops pdchk_mt6899_ops = {
 	.dump_power_event = dump_power_event,
 	.is_suspend_retry_stop = pdchk_is_suspend_retry_stop,
 	.check_hwv_irq_sta = check_hwv_irq_sta,
+	.check_mm_hwv_irq_sta = check_mm_hwv_irq_sta,
 };
 
 static int pd_chk_mt6899_probe(struct platform_device *pdev)

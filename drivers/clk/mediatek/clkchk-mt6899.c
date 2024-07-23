@@ -40,11 +40,11 @@
 #define CHECK_VCORE_FREQ		0
 #define CG_CHK_PWRON_ENABLE		0
 
-#define HWV_INT_PLL_TRIGGER		0x0004
-#define HWV_INT_CG_TRIGGER		0x10001
+#define HWV_INT_PLL_TRIGGER		0x40000
+#define HWV_INT_CG_TRIGGER		0x10000
 
 #define HWV_DOMAIN_KEY			0x055C
-#define HWV_IRQ_STATUS			0x0500
+#define HWV_IRQ_STATUS			0x1500
 #define HWV_CG_SET(xpu, id)		((0x0200 * (xpu)) + (id * 0x8))
 #define HWV_CG_STA(id)			(0x1800 + (id * 0x4))
 #define HWV_CG_EN(id)			(0x1900 + (id * 0x4))
@@ -2375,20 +2375,16 @@ static void clkchk_arm64_serror_panic_hook(void *data,
 #endif
 
 static const char * const off_pll_names[] = {
+	"mmpll",
+	"msdcpll",
+	"imgpll",
+	"tvdpll",
+	"mfgpll",
+	"mfgscpll",
 	NULL
 };
 
 static const char * const notice_pll_names[] = {
-	"mainpll",
-	"mmpll",
-	"emipll",
-	"msdcpll",
-	"emipll2",
-	"imgpll",
-	"tvdpll",
-	"adsppll",
-	"mfgpll",
-	"mfgscpll",
 	"adsppll",
 	"apll1",
 	"apll2",
@@ -2653,6 +2649,7 @@ static struct clkchk_ops clkchk_mt6899_ops = {
 	.dump_pll_reg = dump_pll_reg,
 	.trace_clk_event = trace_clk_event,
 	.check_hwv_irq_sta = check_hwv_irq_sta,
+	.check_mm_hwv_irq_sta = check_mm_hwv_irq_sta,
 	.is_suspend_retry_stop = is_suspend_retry_stop,
 	.external_dump = external_dump,
 	.cg_timeout_handle = cg_timeout_handle,
