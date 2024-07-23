@@ -3,6 +3,16 @@
  * Copyright (C) 2022 MediaTek Inc.
  */
 
+&disp_pwm {
+	status = "okay";
+};
+&mtk_leds {
+	status = "disabled";
+};
+&pwmleds {
+	status = "okay";
+};
+
 &pio {
 	edp_gpio_def_cfg: edp-gpio-def-cfg{
 		pins1 {
