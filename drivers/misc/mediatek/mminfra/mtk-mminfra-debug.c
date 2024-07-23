@@ -22,6 +22,8 @@
 #include "vcp_status.h"
 #include "clk-mtk.h"
 #include "mtk-pd-chk.h"
+#include "mtk_iommu.h"
+#include "mtk-iommu-util.h"
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <mt-plat/aee.h>
@@ -35,6 +37,7 @@
 #endif
 
 #include "mtk-mminfra-debug.h"
+#include "mtk-hw-semaphore.h"
 
 #define MMINFRA_MAX_CLK_NUM	(4)
 #define MAX_SMI_COMM_NUM	(3)
@@ -54,6 +57,7 @@ struct mminfra_dbg {
 	void __iomem *vcp_gipc_in_set;
 	void __iomem *mm_cfg_base[MM_PWR_NR];
 	void __iomem *mminfra_devapc_vio_sta;
+	struct mtk_mminfra_pwr_ctrl *mmu_mminfra_pwr_ctrl;
 	ssize_t ctrl_size;
 	struct device *comm_dev[MAX_SMI_COMM_NUM];
 	struct notifier_block nb;
@@ -136,6 +140,114 @@ spinlock_t mm_dapc_lock;
 
 u32 mm_pwr_cnt[MM_PWR_NR];
 u32 voter_cnt[32] = {0};
+
+static int is_mminfra_ready(struct mminfra_hw_voter *hw_voter)
+{
+	if (!hw_voter)
+		return 0;
+
+	return (readl(hw_voter->vlp_base + hw_voter->done_bits_ofs) & MMINFRA_DONE) &&
+		(readl(hw_voter->vlp_base + hw_voter->done_bits_ofs) & VCP_READY);
+}
+
+static int mminfra_hwv_power_ctrl(struct mminfra_hw_voter *hw_voter, bool is_on)
+{
+	uint32_t vote_ofs, vote_mask, vote_ack;
+	uint32_t val = 0, cnt;
+
+	vote_mask = BIT(hw_voter->en_shift);
+	vote_ofs = is_on ? hw_voter->set_ofs : hw_voter->clr_ofs;
+	vote_ack = is_on ? vote_mask : 0x0;
+
+	/* vote on off */
+	cnt = 0;
+	do {
+		writel(vote_mask, hw_voter->vlp_base + vote_ofs);
+		udelay(MTK_POLL_HWV_VOTE_US);
+		val = readl(hw_voter->vlp_base + hw_voter->en_ofs);
+		if ((val & vote_mask) == vote_ack)
+			break;
+		if (cnt > MTK_POLL_HWV_VOTE_CNT) {
+			pr_notice("%s vote mminfra timeout, is_on:%d, 0x%x=0x%x\n",
+				__func__, is_on, hw_voter->vlp_base_pa + hw_voter->en_ofs, val);
+			return -1;
+		}
+		cnt++;
+	} while (1);
+
+	/* confirm done bits */
+	cnt = 0;
+	while (is_on) {
+		if (is_mminfra_ready(hw_voter))
+			break;
+		if (cnt > MTK_POLL_DONE_TIMEOUT) {
+			pr_notice("%s polling mminfra done timeout, 0x%x=0x%x\n",
+				__func__, hw_voter->vlp_base_pa + hw_voter->done_bits_ofs, val);
+			return -1;
+		}
+		cnt++;
+		udelay(MTK_POLL_DONE_DELAY_US);
+	}
+
+	return 0;
+}
+
+static int mtk_mminfra_get_if_in_use(void)
+{
+	int ret, is_on = 0;
+	unsigned long flags;
+	struct mtk_mminfra_pwr_ctrl *pwr_ctrl = dbg->mmu_mminfra_pwr_ctrl;
+
+	if (!pwr_ctrl || !pwr_ctrl->hw_voter.get_if_in_use_ena)
+		return is_on;
+
+	spin_lock_irqsave(&pwr_ctrl->lock, flags);
+	if (atomic_read(&pwr_ctrl->ref_cnt) > 0) {
+		atomic_inc(&pwr_ctrl->ref_cnt);
+		is_on = 1;
+		goto out;
+	}
+
+	ret = mtk_hw_semaphore_ctrl(MASTER_SMMU, true);
+	if (ret < 0)
+		goto err;
+	/* check if mminfra is in use */
+	if (is_mminfra_ready(&pwr_ctrl->hw_voter)) {
+		ret = mminfra_hwv_power_ctrl(&pwr_ctrl->hw_voter, true);
+		if (ret < 0) {
+			pr_notice("%s vote for mminfra fail, ret=%d\n", __func__, ret);
+			goto err;
+		}
+		atomic_inc(&pwr_ctrl->ref_cnt);
+		is_on = 1;
+	} else
+		is_on = 0;
+
+	ret = mtk_hw_semaphore_ctrl(MASTER_SMMU, false);
+	if (ret < 0)
+		goto err;
+out:
+	spin_unlock_irqrestore(&pwr_ctrl->lock, flags);
+	return is_on;
+err:
+	spin_unlock_irqrestore(&pwr_ctrl->lock, flags);
+	return ret;
+}
+
+static int mtk_mminfra_put(void)
+{
+	struct mtk_mminfra_pwr_ctrl *pwr_ctrl = dbg->mmu_mminfra_pwr_ctrl;
+	unsigned long flags;
+
+	spin_lock_irqsave(&pwr_ctrl->lock, flags);
+	if (atomic_dec_return(&pwr_ctrl->ref_cnt) > 0)
+		goto out;
+
+	mminfra_hwv_power_ctrl(&pwr_ctrl->hw_voter, false);
+out:
+	spin_unlock_irqrestore(&pwr_ctrl->lock, flags);
+	return 0;
+}
 
 static bool mminfra_check_scmi_status(void)
 {
@@ -567,12 +679,14 @@ static struct kernel_param_ops scmi_test_ops = {
 module_param_cb(scmi_test, &scmi_test_ops, NULL, 0644);
 MODULE_PARM_DESC(scmi_test, "scmi test");
 
-int mminfra_ut(const char *val, const struct kernel_param *kp)
+static int mminfra_ut(const char *val, const struct kernel_param *kp)
 {
 #if IS_ENABLED(CONFIG_MTK_MMINFRA_DEBUG)
 	int ret, arg0;
 	unsigned int test_case, value;
 	void __iomem *test_base;
+	struct mtk_mminfra_pwr_ctrl *pwr_ctrl = dbg->mmu_mminfra_pwr_ctrl;
+	uint32_t voter_val = 0;
 
 	ret = sscanf(val, "%u %i", &test_case, &arg0);
 	if (ret != 2) {
@@ -631,6 +745,18 @@ int mminfra_ut(const char *val, const struct kernel_param *kp)
 				mminfra_power_mon_thread = NULL;
 			}
 		}
+		break;
+	case 4:
+		ret = mtk_mminfra_get_if_in_use();
+		voter_val = readl(pwr_ctrl->hw_voter.vlp_base + pwr_ctrl->hw_voter.en_ofs);
+		pr_notice("%s mtk_mminfra_get_if_in_use ret:%d voter:%x\n",
+			__func__, ret, voter_val);
+		break;
+	case 5:
+		ret = mtk_mminfra_put();
+		voter_val = readl(pwr_ctrl->hw_voter.vlp_base + pwr_ctrl->hw_voter.en_ofs);
+		pr_notice("%s mtk_mminfra_put ret:%d voter:%x\n",
+			__func__, ret, voter_val);
 		break;
 	default:
 		pr_notice("%s: wrong test_case(%d)\n", __func__, test_case);
@@ -1161,19 +1287,29 @@ struct devapc_excep_callbacks devapc_excep_handle = {
 };
 #endif
 
+static struct mtk_iommu_mm_pm_ops mminfra_pm_ops = {
+	.pm_get = mtk_mminfra_get_if_in_use,
+	.pm_put = mtk_mminfra_put,
+};
+
 static int mminfra_debug_probe(struct platform_device *pdev)
 {
 	struct device_node *node;
 	struct platform_device *comm_pdev;
 	struct property *prop;
 	struct resource *res;
+	struct mtk_mminfra_pwr_ctrl *pwr_ctl;
 	const char *name;
 	struct clk *clk;
-	u32 comm_id, vlp_base_pa, spm_base_pa, tmp;
+	u32 comm_id, vlp_base_pa, spm_base_pa, hwccf_base_pa, tmp;
 	int ret = 0, i = 0, irq, comm_nr = 0, clk_nr = 0;
 
 	dbg = kzalloc(sizeof(*dbg), GFP_KERNEL);
 	if (!dbg)
+		return -ENOMEM;
+
+	pwr_ctl = kzalloc(sizeof(*pwr_ctl), GFP_KERNEL);
+	if(!pwr_ctl)
 		return -ENOMEM;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -1222,6 +1358,15 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	} else
 		dbg->vlp_base = NULL;
 
+	pwr_ctl->hw_voter.vlp_base = dbg->vlp_base;
+	pwr_ctl->hw_voter.vlp_base_pa = vlp_base_pa;
+
+	if (!of_property_read_u32(node, "hwccf-base", &hwccf_base_pa)) {
+		pr_notice("[mminfra] hwccf_pa=%#x\n", hwccf_base_pa);
+		pwr_ctl->hw_voter.hw_ccf_base = ioremap(hwccf_base_pa, 0x1000);
+	} else
+		pwr_ctl->hw_voter.hw_ccf_base = NULL;
+
 	if (!of_property_read_u32(node, "spm-base", &spm_base_pa)) {
 		pr_notice("[mminfra] spm_base_pa=%#x\n", spm_base_pa);
 		dbg->spm_base = ioremap(spm_base_pa, 0x1000);
@@ -1232,7 +1377,21 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	of_property_read_u32(node, "mm-mtcmos-base", &dbg->mm_mtcmos_base);
 	of_property_read_u32(node, "mm-mtcmos-mask", &dbg->mm_mtcmos_mask);
 	of_property_read_u32(node, "mm-devapc-vio-sta-base", &dbg->mm_devapc_vio_sta_base);
+	if (of_property_read_bool(node, "get-if-in-use-ena")) {
+		pwr_ctl->hw_voter.get_if_in_use_ena = true;
+		of_property_read_u32(node, "hw-voter-set-ofs", &pwr_ctl->hw_voter.set_ofs);
+		of_property_read_u32(node, "hw-voter-clr-ofs", &pwr_ctl->hw_voter.clr_ofs);
+		of_property_read_u32(node, "hw-voter-en-ofs", &pwr_ctl->hw_voter.en_ofs);
+		of_property_read_u32(node, "hw-voter-done-bit-ofs", &pwr_ctl->hw_voter.done_bits_ofs);
+		of_property_read_u32(node, "hw-voter-en-shift-ofs", &pwr_ctl->hw_voter.en_shift);
+		pr_notice("%s set_ofs=%x clr_ofs=%x en_ofs=%x done_bits_ofs=%x shift=%d\n",
+			__func__, pwr_ctl->hw_voter.set_ofs, pwr_ctl->hw_voter.clr_ofs,
+			pwr_ctl->hw_voter.en_ofs, pwr_ctl->hw_voter.done_bits_ofs,
+			pwr_ctl->hw_voter.en_shift);
+	} else
+		pwr_ctl->hw_voter.get_if_in_use_ena = false;
 
+	dbg->mmu_mminfra_pwr_ctrl = pwr_ctl;
 	mm_no_scmi = of_property_read_bool(node, "mm-no-scmi");
 	mm_no_cg_ctrl = of_property_read_bool(node, "mm-no-cg-ctrl");
 	of_property_read_u32(node, "mm-pwr-ver", &mm_pwr_ver);
@@ -1376,6 +1535,10 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	register_devapc_power_callback(&devapc_power_handle);
 	register_devapc_exception_callback(&devapc_excep_handle);
 #endif
+	spin_lock_init(&dbg->mmu_mminfra_pwr_ctrl->lock);
+
+	if (pwr_ctl->hw_voter.get_if_in_use_ena)
+		mtk_iommu_set_pm_ops(&mminfra_pm_ops);
 
 	return ret;
 }
