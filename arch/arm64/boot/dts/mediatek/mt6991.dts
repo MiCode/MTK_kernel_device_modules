@@ -5468,8 +5468,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		spi0: spi0@16110000 {
 			compatible = "mediatek,mt6991-spi";
 			mediatek,pad-select = <0>;
+			mediatek,reset-bit = <19>;
 			mediatek,tickdly = <23>, <0>;
-			reg = <0 0x16110000 0 0x100>;
+			reg = <0 0x16110000 0 0x100>,
+				<0 0x16640000 0 0x10>;
 			interrupts = <GIC_SPI 303 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&cksys_clk CLK_CK_UNIVPLL_D6_D2>,
 				<&cksys_clk CLK_CK_SPI0_BCLK_SEL>,
@@ -5481,8 +5483,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		spi1: spi1@16130000 {
 			compatible = "mediatek,mt6991-spi";
 			mediatek,pad-select = <0>;
+			mediatek,reset-bit = <18>;
 			mediatek,tickdly = <23>, <0>;
-			reg = <0 0x16130000 0 0x100>;
+			reg = <0 0x16130000 0 0x100>,
+				<0 0x16640000 0 0x10>;
 			interrupts = <GIC_SPI 304 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&cksys_clk CLK_CK_UNIVPLL_D6_D2>,
 				<&cksys_clk CLK_CK_SPI1_BCLK_SEL>,
@@ -5494,8 +5498,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		spi2: spi2@16150000 {
 			compatible = "mediatek,mt6991-spi";
 			mediatek,pad-select = <0>;
+			mediatek,reset-bit = <17>;
 			mediatek,tickdly = <23>, <23>;
-			reg = <0 0x16150000 0 0x100>;
+			reg = <0 0x16150000 0 0x100>,
+				<0 0x16640000 0 0x10>;
 			interrupts = <GIC_SPI 305 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&cksys_clk CLK_CK_UNIVPLL_D6_D2>,
 				<&cksys_clk CLK_CK_SPI2_BCLK_SEL>,
@@ -5507,8 +5513,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		spi3: spi3@16170000 {
 			compatible = "mediatek,mt6991-spi";
 			mediatek,pad-select = <0>;
+			mediatek,reset-bit = <16>;
 			mediatek,tickdly = <23>, <23>;
-			reg = <0 0x16170000 0 0x100>;
+			reg = <0 0x16170000 0 0x100>,
+				<0 0x16640000 0 0x10>;
 			interrupts = <GIC_SPI 306 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&cksys_clk CLK_CK_UNIVPLL_D6_D2>,
 				<&cksys_clk CLK_CK_SPI3_BCLK_SEL>,
@@ -5520,8 +5528,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		spi4: spi4@16190000 {
 			compatible = "mediatek,mt6991-spi";
 			mediatek,pad-select = <0>;
+			mediatek,reset-bit = <15>;
 			mediatek,tickdly = <23>, <23>;
-			reg = <0 0x16190000 0 0x100>;
+			reg = <0 0x16190000 0 0x100>,
+				<0 0x16640000 0 0x10>;
 			interrupts = <GIC_SPI 307 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&cksys_clk CLK_CK_UNIVPLL_D6_D2>,
 				<&cksys_clk CLK_CK_SPI4_BCLK_SEL>,
@@ -5533,8 +5543,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		spi5: spi5@161b0000 {
 			compatible = "mediatek,mt6991-spi";
 			mediatek,pad-select = <0>;
+			mediatek,reset-bit = <14>;
 			mediatek,tickdly = <23>, <0>;
-			reg = <0 0x161b0000 0 0x100>;
+			reg = <0 0x161b0000 0 0x100>,
+				<0 0x16640000 0 0x10>;
 			interrupts = <GIC_SPI 308 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&cksys_clk CLK_CK_UNIVPLL_D6_D2>,
 				<&cksys_clk CLK_CK_SPI5_BCLK_SEL>,
@@ -5546,8 +5558,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		spi6: spi6@161d0000 {
 			compatible = "mediatek,mt6991-spi";
 			mediatek,pad-select = <1>;
+			mediatek,reset-bit = <13>;
 			mediatek,tickdly = <23>, <23>;
-			reg = <0 0x161d0000 0 0x100>;
+			reg = <0 0x161d0000 0 0x100>,
+				<0 0x16640000 0 0x10>;
 			interrupts = <GIC_SPI 309 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&cksys_clk CLK_CK_UNIVPLL_D6_D2>,
 				<&cksys_clk CLK_CK_SPI6_BCLK_SEL>,
@@ -5559,8 +5573,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		spi7: spi7@161f0000 {
 			compatible = "mediatek,mt6991-spi";
 			mediatek,pad-select = <0>;
+			mediatek,reset-bit = <12>;
 			mediatek,tickdly = <23>, <23>;
-			reg = <0 0x161f0000 0 0x100>;
+			reg = <0 0x161f0000 0 0x100>,
+				<0 0x16640000 0 0x10>;
 			interrupts = <GIC_SPI 310 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&cksys_clk CLK_CK_UNIVPLL_D6_D2>,
 				<&cksys_clk CLK_CK_SPI7_BCLK_SEL>,
