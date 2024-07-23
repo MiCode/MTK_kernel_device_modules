@@ -110,6 +110,13 @@
 			mml-wrot0 = &mml1_wrot0;
 			mml-wrot1 = &mml1_wrot2;
 			mml-wrot2 = &mml0_wrot0;
+			inlinerotate0 = &inlinerot0;
+			dlo-async8 = &ovl_dlo_async0;
+			dli-async12 = &ovl_dli_async0;
+			y2r0 = &disp_y2r0;
+			y2r4 = &ovl_y2r0;
+			mmlsys-cfg = &mmlsys1_config;
+			mml-mutex = &mml1_mutex0;
 	};
 
 	clkbuf_ctrl: clkbuf-ctrl {
@@ -7604,7 +7611,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			//mmqos-supply = <&mmqos>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			iommus = <&disp_iommu M4U_L0_P1_OVL_RDMA0_0>;
-	//		mediatek,larb = <&smi_larb0>;
+			mediatek,larb = <&smi_larb0>;
 	//		fake-engine = <&smi_larb0 M4U_PORT_L0_DISP_FAKE0>,
 	//				<&smi_larb1 M4U_PORT_L1_DISP_FAKE1>;
 			#clock-cells = <1>;
@@ -7928,9 +7935,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0>, /*MTK_DRM_OPT_PRIM_DUAL_PIPE*/
 				<0>, /*MTK_DRM_OPT_MSYNC2_0*/
 				<1>, /*MTK_DRM_OPT_MML_PRIMARY*/
-				<0>, /*MTK_DRM_OPT_MML_SUPPORT_CMD_MODE*/
-				<0>, /*MTK_DRM_OPT_MML_PQ*/
-				<0>, /*MTK_DRM_OPT_MML_IR*/
+				<1>, /*MTK_DRM_OPT_MML_SUPPORT_CMD_MODE*/
+				<1>, /*MTK_DRM_OPT_MML_PQ*/
+				<1>, /*MTK_DRM_OPT_MML_IR*/
 				<0>, /*MTK_DRM_OPT_DUAL_TE*/
 				<1>, /*MTK_DRM_OPT_RES_SWITCH*/
 				<1>, /*MTK_DRM_OPT_RES_SWITCH_ON_AP*/
@@ -8321,11 +8328,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		disp-mmsram-sub-comm0@14022000 {
 			compatible = "mediatek,disp_mmsram_sub_comm0";
 			reg = <0 0x14022000 0 0x1000>;
-		};
-
-		disp-y2r0@14023000 {
-			compatible = "mediatek,disp_y2r0";
-			reg = <0 0x14023000 0 0x1000>;
 		};
 
 		i2c@14025000 {
@@ -9022,10 +9024,39 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			iommus = <&disp_iommu M4U_L1_P2_DISP_WDMA2>;
 		};
 
-		inlinerot0@1440b000 {
-			compatible = "mediatek,inlinerot0";
+		inlinerot0: inlinerot@1440b000 {
+			compatible = "mediatek,inlinerot0",
+				     "mediatek,mt6899-disp-inlinerotate";
+			clocks =  <&ovlsys_config_clk CLK_OVL_INLINEROT0_DISP>;
 			reg = <0 0x1440b000 0 0x1000>;
-			interrupts = <GIC_SPI 689 IRQ_TYPE_NONE 0>;
+		};
+
+		ovl_dlo_async0: ovl-dlo-async0@14400000 {
+			compatible = "mediatek,ovl_dlo_async0",
+				     "mediatek,mt6899-disp-dlo-async";
+			reg = <0 0x14400000 0 0x1000>;
+			clocks = <&ovlsys_config_clk CLK_OVL_DISP_DL0_ASYNC0_DISP>;
+		};
+
+		ovl_dli_async0: ovl-dli-async0@14400000 {
+			compatible = "mediatek,ovl_dli_async0",
+				     "mediatek,mt6899-disp-dli-async";
+			reg = <0 0x14400000 0 0x1000>;
+			clocks = <&ovlsys_config_clk CLK_OVL_DISP_DLI_ASYNC0_DISP>;
+		};
+
+		disp_y2r0: disp-y2r0@14023000 {
+			compatible = "mediatek,disp_y2r0",
+				     "mediatek,mt6899-disp-y2r";
+			reg = <0 0x14023000 0 0x1000>;
+			clocks = <&dispsys_config_clk CLK_MM_DISP_Y2R0_DISP>;
+		};
+
+		ovl_y2r0: ovl-y2r0@14412000 {
+			compatible = "mediatek,ovl_y2r0",
+				     "mediatek,mt6899-disp-y2r";
+			reg = <0 0x14412000 0 0x1000>;
+			clocks = <&ovlsys_config_clk CLK_OVL_DISP_Y2R0_DISP>;
 		};
 
 		ovl-smi-larb0@1440c000 {
@@ -9061,16 +9092,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,ovl_smi_larb21";
 			reg = <0 0x14411000 0 0x1000>;
 			interrupts = <GIC_SPI 696 IRQ_TYPE_NONE 0>;
-		};
-
-		disp-y2r0@14412000 {
-			compatible = "mediatek,disp_y2r0";
-			reg = <0 0x14412000 0 0x1000>;
-		};
-
-		disp-y2r1@14413000 {
-			compatible = "mediatek,disp_y2r1";
-			reg = <0 0x14413000 0 0x1000>;
 		};
 
 		reserved@14415000 {
@@ -9133,12 +9154,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x1460a000 0 0x1000>;
 		};
 
-		inlinerot0@1460b000 {
-			compatible = "mediatek,inlinerot0";
-			reg = <0 0x1460b000 0 0x1000>;
-			interrupts = <GIC_SPI 690 IRQ_TYPE_NONE 0>;
-		};
-
 		ovl-smi-larb0@1460c000 {
 			compatible = "mediatek,ovl_smi_larb0";
 			reg = <0 0x1460c000 0 0x1000>;
@@ -9167,16 +9182,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		ovl-smi-larb21@14611000 {
 			compatible = "mediatek,ovl_smi_larb21";
 			reg = <0 0x14611000 0 0x1000>;
-		};
-
-		disp-y2r0@14612000 {
-			compatible = "mediatek,disp_y2r0";
-			reg = <0 0x14612000 0 0x1000>;
-		};
-
-		disp-y2r1@14613000 {
-			compatible = "mediatek,disp_y2r1";
-			reg = <0 0x14613000 0 0x1000>;
 		};
 
 		reserved@14615000 {
