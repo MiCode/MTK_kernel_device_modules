@@ -1159,7 +1159,7 @@ static bool tp_support_dc2(void)
 
 static enum mml_hw_caps support_hw_caps(void)
 {
-	return MML_HW_ALPHARSZ | MML_HW_PQ_HDR | MML_HW_PQ_MATRIX |
+	return MML_HW_ALPHARSZ | MML_HW_PQ_HDR | MML_HW_PQ_MATRIX | MML_HW_MULTI_LAYER |
 		MML_HW_PQ_HDR10 | MML_HW_PQ_HDR10P | MML_HW_PQ_HLG | MML_HW_PQ_HDRVIVID |
 		MML_HW_PQ_FG;
 }
