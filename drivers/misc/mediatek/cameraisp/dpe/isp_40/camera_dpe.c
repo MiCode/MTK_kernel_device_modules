@@ -2605,9 +2605,17 @@ static inline void DPE_Prepare_Enable_ccf_clock(void)
 	if (ret)
 		LOG_INF("cannot prepare and enable CG_IMGSYS_DPE clock\n");
 
+#ifdef CMDQ_MAIL_BOX
+	cmdq_mbox_enable(dpe_clt->chan);
+#endif
+
 }
 static inline void DPE_Disable_Unprepare_ccf_clock(void)
 {
+#ifdef CMDQ_MAIL_BOX
+	cmdq_mbox_stop(dpe_clt);
+	cmdq_mbox_disable(dpe_clt->chan);
+#endif
 	/* must keep this clk close order: DPE clk -> CG_SCP_SYS_ISP -> */
 	/* CG_MM_SMI_COMMON -> CG_SCP_SYS_DIS */
 	clk_disable_unprepare(dpe_clk.CG_IMGSYS_DPE);
@@ -4127,10 +4135,6 @@ static signed int DPE_open(struct inode *pInode, struct file *pFile)
 	DPEInfo.IrqInfo.DveIrqCnt = 0;
 	DPEInfo.IrqInfo.WmfeIrqCnt = 0;
 
-#ifdef CMDQ_MAIL_BOX
-	cmdq_mbox_enable(dpe_clt->chan);
-#endif
-
 #ifdef KERNEL_LOG
     /* In EP, Add DPE_DBG_WRITE_REG for debug. Should remove it after EP */
 	DPEInfo.DebugMask = (DPE_DBG_INT | DPE_DBG_DBGLOG | DPE_DBG_WRITE_REG);
@@ -4182,7 +4186,9 @@ log_dbg("Curr UserCount(%d),(process, pid, tgid)=(%s, %d, %d), last user",
 #if IS_ENABLED(CONFIG_PM_SLEEP)
 	__pm_stay_awake(dpe_wake_lock);
 #endif
+
 	DPE_EnableClock(MFALSE);
+
 #if IS_ENABLED(CONFIG_PM_SLEEP)
 	__pm_relax(dpe_wake_lock);
 #endif
