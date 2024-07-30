@@ -34512,6 +34512,9 @@ void mmsys_config_dump_reg_mt6989(void __iomem *config_regs)
 	for (off = 0x500; off <= 0x550; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
+	for (off = 0x560; off <= 0x56c; off += 0x10)
+		mtk_serial_dump_reg(config_regs, off, 4);
+
 	for (off = 0x650; off <= 0x670; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
