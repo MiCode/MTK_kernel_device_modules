@@ -567,6 +567,10 @@ static int mt6370_init_proprietary_properties(struct mt6370_led *led,
 		sizeof(led->dev_id.name));
 
 	led->dev_id.decouple = 0;
+
+	if (led->dev_id.channel < 0 ||
+			 led->dev_id.channel >= MT6370_MAX_LEDS)
+		return -EINVAL;
 	mt6370_flash_class[led->dev_id.channel] = &led->flash;
 
 	if (flashlight_dev_register_by_device_id(&led->dev_id, &mt6370_ops))
