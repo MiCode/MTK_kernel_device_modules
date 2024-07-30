@@ -251,7 +251,9 @@
 #define CLK_TOP_DPE					240
 #define CLK_TOP_DISP					241
 #define CLK_TOP_MDP					242
-#define CLK_TOP_NR_CLK					243
+#define CLK_TOP_UNIVPLL_192M_D4				243
+#define CLK_TOP_AUD_2					244
+#define CLK_TOP_NR_CLK					245
 
 /* INFRA_INFRACFG_AO_REG */
 #define CLK_INFRACFG_AO_CCIF1_AP			0
