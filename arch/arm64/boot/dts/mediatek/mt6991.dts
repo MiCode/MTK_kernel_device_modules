@@ -15665,7 +15665,9 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		mbox-count = <3>;
 		vcp-excep-mode = <1>;
 		bus-debug-num-ports = <25>;
-		/*res-req-status = <0x1c00186c>;*/
+		vcp-pwr-status = <0x1c004e60>;
+		vcp-clk-sys = <0x1000c000>;
+
 		/* id, mbox, send_size*/
 		send-table =
 			< 0 0 18>,/* IPI_OUT_VDEC_1 */
