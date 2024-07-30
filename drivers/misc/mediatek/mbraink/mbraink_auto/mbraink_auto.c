@@ -8,78 +8,174 @@
 #include <linux/compat.h>
 #include <linux/errno.h>
 #include <linux/slab.h>
+#include <linux/vmalloc.h>
 
 #include "mbraink_auto.h"
-#include "mbraink_auto_hv.h"
-
+#include "mbraink_auto_ioctl_struct_def.h"
 #if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
 #include "mbraink_hypervisor_virtio.h"
 #include "mbraink_hypervisor.h"
 #endif
 
-static long handle_cpu_loading_info(const void *auto_ioctl_data, void *mbraink_auto_data)
+static long handle_hyp_vcpu_switch_info(const void *auto_ioctl_data, void *mbraink_auto_data)
 {
-	struct nbl_trace_buf_trans *cpu_loading_buf =
-					(struct nbl_trace_buf_trans *)(mbraink_auto_data);
+	struct mbraink_vcpu_buf *mbraink_vcpu_exec_trans_buf =
+					(struct mbraink_vcpu_buf *)(mbraink_auto_data);
 	long ret = 0;
 
-	if (copy_from_user(cpu_loading_buf, (struct nbl_trace_buf_trans *)auto_ioctl_data,
-			sizeof(struct nbl_trace_buf_trans))) {
-		pr_notice("copy nbl_trace_buf_trans data from user Err!\n");
+	if (copy_from_user(mbraink_vcpu_exec_trans_buf, (struct mbraink_vcpu_buf *)auto_ioctl_data,
+			sizeof(struct mbraink_vcpu_buf))) {
+		pr_notice("copy mbraink_vcpu_buf data from user Err!\n");
 		return -EPERM;
 	}
 
-	if (cpu_loading_buf != NULL) {
-		switch (cpu_loading_buf->trans_type) {
+#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+	if (mbraink_vcpu_exec_trans_buf != NULL) {
+		switch (mbraink_vcpu_exec_trans_buf->trans_type) {
 		case 0:
 		{
-			ret = mbraink_auto_set_vcpu_record(0);
+			ret = mbraink_hyp_set_vcpu_switch_info(0);
 			break;
 		}
 		case 1:
 		{
-			ret = mbraink_auto_set_vcpu_record(1);
+			ret = mbraink_hyp_set_vcpu_switch_info(1);
 			break;
 		}
 		case 2:
 		{
-			if (cpu_loading_buf->length == 0) {
+			if (mbraink_vcpu_exec_trans_buf->length == 0) {
 				pr_notice("length is 0. no need do anything\n");
 			} else {
-				void *vcpu_buffer = vmalloc(cpu_loading_buf->length *
-								sizeof(struct trace_vcpu_rec));
+				void *vcpu_switch_info_buffer =
+				 vmalloc(mbraink_vcpu_exec_trans_buf->length
+				 * sizeof(struct vcpu_exec_rec));
 
-				if (vcpu_buffer == NULL)
+				if (vcpu_switch_info_buffer == NULL)
 					return -ENOMEM;
-				ret = mbraink_auto_get_vcpu_record(cpu_loading_buf, vcpu_buffer);
+				ret = mbraink_hyp_get_vcpu_switch_info(mbraink_vcpu_exec_trans_buf,
+						vcpu_switch_info_buffer);
 
-				if (copy_to_user((struct mbraink_auto_ioctl_info *)auto_ioctl_data,
-						cpu_loading_buf,
-						sizeof(struct mbraink_auto_ioctl_info))) {
-					pr_notice("Copy mbraink_auto_ioctl_buf to user error!\n");
-					vfree(vcpu_buffer);
+				if (copy_to_user((struct mbraink_vcpu_buf *)auto_ioctl_data,
+						mbraink_vcpu_exec_trans_buf,
+						sizeof(struct mbraink_vcpu_buf))) {
+					pr_info("Copy mbraink_vcpu_buf to user error!\n");
+					vfree(vcpu_switch_info_buffer);
 					return -EPERM;
 				}
-				if (copy_to_user(cpu_loading_buf->vcpu_data,
-						vcpu_buffer,
-						cpu_loading_buf->length *
-						sizeof(struct trace_vcpu_rec))) {
-					pr_notice("Copy vcpu_data to user error!\n");
-					vfree(vcpu_buffer);
+				if (copy_to_user(mbraink_vcpu_exec_trans_buf->vcpu_data,
+						vcpu_switch_info_buffer,
+						mbraink_vcpu_exec_trans_buf->length *
+						sizeof(struct vcpu_exec_rec))) {
+					pr_info("Copy vcpu_data to user error!\n");
+					vfree(vcpu_switch_info_buffer);
 					return -EPERM;
 				}
 
-				vfree(vcpu_buffer);
+				vfree(vcpu_switch_info_buffer);
 			}
 			break;
 		}
 		default:
 		{
-			pr_info("unknown vcpu type %d\n", cpu_loading_buf->trans_type);
+			pr_info("unknown vcpu type %d\n", mbraink_vcpu_exec_trans_buf->trans_type);
 			ret = -1;
 		}
 		}
 	}
+#else
+	pr_notice("%s: grt hyp vcpu switch info not supported!\n", __func__);
+	ret = -1;
+#endif
+
+	return ret;
+}
+
+static long handle_hyp_wfe_exit_count_info(const void *arg, void *mbraink_data)
+{
+	struct mbraink_hyp_wfe_exit_buf *hyp_wfe_exit_buf =
+		(struct mbraink_hyp_wfe_exit_buf *)(mbraink_data);
+	long ret = 0;
+
+#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+	ret = mbraink_hyp_getWfeExitCountInfo(hyp_wfe_exit_buf);
+	if (copy_to_user((struct mbraink_hyp_wfe_exit_buf *) arg,
+			hyp_wfe_exit_buf,
+			sizeof(struct mbraink_hyp_wfe_exit_buf))) {
+		pr_notice("Copy hyp_wfe_exit_buf to UserSpace error!\n");
+		return -EPERM;
+	}
+#else
+	pr_notice("%s: grt hyp wfe info not supported!\n", __func__);
+	ret = -1;
+#endif
+
+	return ret;
+}
+
+static long handle_hyp_ipi_info(const void *arg, void *mbraink_data)
+{
+	struct mbraink_hyp_cpu_ipi_data_ringbuffer *hyp_cpu_ipi_data_ringbuffer =
+		(struct mbraink_hyp_cpu_ipi_data_ringbuffer *)(mbraink_data);
+	long ret = 0;
+
+#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+	ret = mbraink_hyp_getIpiInfo(hyp_cpu_ipi_data_ringbuffer);
+	if (copy_to_user((struct mbraink_hyp_cpu_ipi_data_ringbuffer *) arg,
+			hyp_cpu_ipi_data_ringbuffer,
+			sizeof(struct mbraink_hyp_cpu_ipi_data_ringbuffer))) {
+		pr_notice("Copy hyp_cpu_ipi_data_ringbuffer to UserSpace error!\n");
+		return -EPERM;
+	}
+#else
+	pr_notice("%s: grt hyp ipi info not supported!\n", __func__);
+	ret = -1;
+#endif
+
+	return ret;
+}
+
+static long handle_hyp_virq_inject_info(const void *arg, void *mbraink_data)
+{
+	struct mbraink_hyp_comcat_trace_buf *hyp_comcat_trace_buf =
+		(struct mbraink_hyp_comcat_trace_buf *)(mbraink_data);
+	long ret = 0;
+
+#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+	ret = mbraink_hyp_getvIrqInjectLatency(hyp_comcat_trace_buf);
+	if (copy_to_user((struct mbraink_hyp_comcat_trace_buf *) arg,
+			hyp_comcat_trace_buf,
+			sizeof(struct mbraink_hyp_comcat_trace_buf))) {
+		pr_notice("Copy hyp_comcat_trace_buf to UserSpace error!\n");
+		return -EPERM;
+	}
+#else
+	pr_notice("%s: grt hyp virq info not supported!\n", __func__);
+	ret = -1;
+#endif
+
+	return ret;
+}
+
+static long handle_hyp_vcpu_sched_info(const void *arg, void *mbraink_data)
+{
+	struct mbraink_hyp_vCpu_sched_delay_buf *hyp_vCpu_sched_delay_buf =
+		(struct mbraink_hyp_vCpu_sched_delay_buf *)(mbraink_data);
+	long ret = 0;
+
+#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+	ret = mbraink_hyp_getvCpuSchedInfo(hyp_vCpu_sched_delay_buf);
+	if (copy_to_user((struct mbraink_hyp_vCpu_sched_delay_buf *) arg,
+			hyp_vCpu_sched_delay_buf,
+			sizeof(struct mbraink_hyp_vCpu_sched_delay_buf))) {
+		pr_notice("Copy hyp_vCpu_sched_delay_buf to UserSpace error!\n");
+		return -EPERM;
+	}
+#else
+	pr_notice("%s: grt hyp vcpu sched info not supported!\n", __func__);
+	ret = -1;
+#endif
+
 	return ret;
 }
 
@@ -97,16 +193,16 @@ long mbraink_auto_ioctl(unsigned long arg, void *mbraink_data)
 	}
 
 	switch (auto_ioctl_buf->auto_ioctl_type) {
-	case AUTO_CPULOAD_INFO:
+	case HYP_VCPU_SWITCH_INFO:
 	{
-		mbraink_auto_data = kmalloc(sizeof(struct nbl_trace_buf_trans), GFP_KERNEL);
+		mbraink_auto_data = kmalloc(sizeof(struct mbraink_vcpu_buf), GFP_KERNEL);
 		if (!mbraink_auto_data)
 			goto End;
-		ret = handle_cpu_loading_info(auto_ioctl_buf->auto_ioctl_data, mbraink_auto_data);
+		ret = handle_hyp_vcpu_switch_info(auto_ioctl_buf->auto_ioctl_data,
+										 mbraink_auto_data);
 		kfree(mbraink_auto_data);
 		break;
 	}
-#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
 	case HYP_WFE_EXIT_COUNT:
 	{
 		mbraink_auto_data = kzalloc(sizeof(struct mbraink_hyp_wfe_exit_buf),
@@ -134,7 +230,7 @@ long mbraink_auto_ioctl(unsigned long arg, void *mbraink_data)
 									GFP_KERNEL);
 		if (!mbraink_auto_data)
 			goto End;
-		ret = handle_hyp_wfe_exit_count_info(auto_ioctl_buf->auto_ioctl_data,
+		ret = handle_hyp_virq_inject_info(auto_ioctl_buf->auto_ioctl_data,
 										mbraink_auto_data);
 		kfree(mbraink_auto_data);
 		break;
@@ -145,12 +241,11 @@ long mbraink_auto_ioctl(unsigned long arg, void *mbraink_data)
 									GFP_KERNEL);
 		if (!mbraink_auto_data)
 			goto End;
-		ret = handle_hyp_wfe_exit_count_info(auto_ioctl_buf->auto_ioctl_data,
+		ret = handle_hyp_vcpu_sched_info(auto_ioctl_buf->auto_ioctl_data,
 										mbraink_auto_data);
 		kfree(mbraink_auto_data);
 		break;
 	}
-#endif /*end of IS_ENABLED(CONFIG_GRT_HYPERVISOR)*/
 	default:
 		pr_notice("%s:illegal ioctl number %u.\n", __func__,
 			auto_ioctl_buf->auto_ioctl_type);
@@ -173,8 +268,6 @@ int mbraink_auto_init(void)
 		pr_notice("mbraink virtio init failed.\n");
 #endif
 
-	ret = mbraink_auto_cpuload_init();
-
 	return ret;
 }
 
@@ -183,5 +276,4 @@ void mbraink_auto_deinit(void)
 #if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
 	//vhost_mbraink_deinit();
 #endif
-	mbraink_auto_cpuload_deinit();
 }

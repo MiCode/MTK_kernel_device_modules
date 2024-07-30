@@ -9,16 +9,13 @@
 #include <linux/types.h>
 
 /*auto ioctl case*/
-#define AUTO_CPULOAD_INFO			0
-
-#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+#define HYP_VCPU_SWITCH_INFO		0
 #define HYP_WFE_EXIT_COUNT			1
 #define HYP_IPI_LATENCY				2
 #define HYP_VIRQ_INJECT_LATENCY		3
 #define HYP_VCPU_SCHED_LATENCY		4
-#endif
 
-struct trace_vcpu_rec {
+struct vcpu_exec_rec {
 	u64 vmid : 2;
 #define TRACE_YOCTO_VMID      0
 #define TRACE_ANDROID_VMID    1
@@ -28,7 +25,7 @@ struct trace_vcpu_rec {
 	u64 timestamp : 50;
 };
 
-struct nbl_trace_buf_trans {
+struct mbraink_vcpu_buf {
 	u32 trans_type;
 	u32 length;
 	u64 current_time;
@@ -37,12 +34,6 @@ struct nbl_trace_buf_trans {
 	void *vcpu_data;
 };
 
-struct mbraink_auto_ioctl_info {
-	u32 auto_ioctl_type;
-	void *auto_ioctl_data;
-};
-
-#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
 /*wfe exit count*/
 #define NBL_TRACE_VCPU_CNT  8
 #define NBL_TRACE_VM_CNT    2
@@ -116,6 +107,10 @@ struct mbraink_hyp_vCpu_sched_delay_buf {
 	struct mbraink_hyp_vCpu_sched_delay_buf_hdr delay[NBL_TRACE_VM_CNT][NBL_TRACE_VCPU_CNT];
 	bool enable;
 };
-#endif /*end of IS_ENABLED(CONFIG_GRT_HYPERVISOR)*/
+
+struct mbraink_auto_ioctl_info {
+	u32 auto_ioctl_type;
+	void *auto_ioctl_data;
+};
 
 #endif
