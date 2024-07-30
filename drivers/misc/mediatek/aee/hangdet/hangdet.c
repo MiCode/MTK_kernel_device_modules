@@ -1205,7 +1205,11 @@ static void kwdt_process_kick(int local_bit, int cpu,
 
 static int kwdt_thread(void *arg)
 {
+#if !IS_ENABLED(CONFIG_GRT_HYPERVISOR)
 	struct sched_param param = {.sched_priority = 99 };
+#else
+	struct sched_param param = {.sched_priority = 50 };
+#endif
 	int cpu = 0;
 	int local_bit = 0;
 	unsigned long curInterval = 0;
