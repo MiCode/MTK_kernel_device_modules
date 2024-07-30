@@ -105,6 +105,12 @@ void mmup_dump_last_regs(void)
 
 	pr_notice("[MMUP] irq wakeup en: %08x,%08x,%08x,%08x\n", readl(R_CORE1_IRQ_SLP0),
 		readl(R_CORE1_IRQ_SLP1), readl(R_CORE1_IRQ_SLP2), readl(R_CORE1_IRQ_SLP3));
+
+	pr_notice("[MMUP] core GPR: %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
+		readl(R_CORE1_GENERAL_REG0), readl(R_CORE1_GENERAL_REG1),
+		readl(R_CORE1_GENERAL_REG2), readl(R_CORE1_GENERAL_REG3),
+		readl(R_CORE1_GENERAL_REG4), readl(R_CORE1_GENERAL_REG5),
+		readl(R_CORE1_GENERAL_REG6), readl(R_CORE1_GENERAL_REG7));
 }
 
 void mmup_do_tbufdump_RV33(void)

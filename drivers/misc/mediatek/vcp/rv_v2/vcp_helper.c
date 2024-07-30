@@ -976,7 +976,7 @@ static int vcp_pm_event(struct notifier_block *notifier
 		mutex_unlock(&vcp_A_notify_mutex);
 
 		mutex_lock(&vcp_pw_clk_mutex);
-		if (!IS_ERR((void const *) VLP_AO_RSVD7))
+		if (!IS_ERR((void const *) vcpreg.vcp_vlp_ao_rsvd7))
 			pr_notice("[VCP] PM_SUSPEND_PREPARE entered %d %d rdy %x\n",
 				pwclkcnt, is_suspending, readl(VLP_AO_RSVD7));
 		else
@@ -1027,7 +1027,7 @@ static int vcp_pm_event(struct notifier_block *notifier
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
 		mutex_lock(&vcp_pw_clk_mutex);
-		if (!IS_ERR((void const *) VLP_AO_RSVD7))
+		if (!IS_ERR((void const *) vcpreg.vcp_vlp_ao_rsvd7))
 			pr_notice("[VCP] PM_POST_SUSPEND entered %d %d rdy %x\n",
 				pwclkcnt, is_suspending, readl(VLP_AO_RSVD7));
 		else
@@ -2294,17 +2294,19 @@ void vcp_wait_rdy_bit(bool rdy)
 {
 	int timeout = 50000; /* max wait 0.5s */
 
-	while (--timeout) {
-		if (rdy && (readl(VLP_AO_RSVD7) & (READY_BIT)))
-			break;
-		else if (!rdy && !(readl(VLP_AO_RSVD7) & (READY_BIT)))
-			break;
+	if (!IS_ERR((void const *) vcpreg.vcp_vlp_ao_rsvd7)) {
+		while (--timeout) {
+			if (rdy && (readl(VLP_AO_RSVD7) & (READY_BIT)))
+				break;
+			else if (!rdy && !(readl(VLP_AO_RSVD7) & (READY_BIT)))
+				break;
 
-		udelay(10);
+			udelay(10);
+		}
+		if (timeout <= 0)
+			pr_notice("[VCP] wait vcp %s timeout 0x%x\n",
+				rdy ? "set rdy bit" : "clr rdy bit", readl(VLP_AO_RSVD7));
 	}
-	if (timeout <= 0)
-		pr_notice("[VCP] wait vcp %s timeout 0x%x\n",
-			rdy ? "set rdy bit" : "clr rdy bit", readl(VLP_AO_RSVD7));
 }
 
 void vcp_wait_core_stop_timeout(enum vcp_core_id core_id)
@@ -2777,6 +2779,7 @@ static int vcp_device_probe(struct platform_device *pdev)
 	struct device_link	*link;
 	struct device_node	*smi_node;
 	struct platform_device	*psmi_com_dev;
+	unsigned int temp_value;
 
 	pr_debug("[VCP] %s", __func__);
 
@@ -2983,8 +2986,28 @@ static int vcp_device_probe(struct platform_device *pdev)
 	vcpreg.vcp_vlp_ao_rsvd7 = devm_ioremap_resource(dev, res);
 	if (IS_ERR((void const *) vcpreg.vcp_vlp_ao_rsvd7))
 		pr_debug("[VCP] vcpreg.vcp_vlp_ao_rsvd7 error\n");
+	else
+		pr_notice("[VCP] VLP_AO_RSVD7 value = 0x%x\n", readl(VLP_AO_RSVD7));
 
-	pr_notice("[VCP] VLP_AO_RSVD7 value = 0x%x\n", readl(VLP_AO_RSVD7));
+	temp_value = 0;
+	of_property_read_u32(pdev->dev.of_node, "vcp-clk-sys", &temp_value);
+	if (!temp_value)
+		pr_notice("[VCP] clk sys register not found\n");
+	else
+		vcpreg.vcp_clk_sys = ioremap(temp_value, 0x1000);
+	if (IS_ERR((void const *) vcpreg.vcp_clk_sys))
+		pr_notice("[VCP] vcpreg.vcp_clk_sys error\n");
+
+	temp_value = 0;
+	of_property_read_u32(pdev->dev.of_node, "vcp-pwr-status", &temp_value);
+	if (!temp_value)
+		pr_notice("[VCP] pwr status register not found\n");
+	else
+		vcpreg.vcp_pwr_ack = ioremap(temp_value, 4);
+	if (IS_ERR((void const *) vcpreg.vcp_pwr_ack))
+		pr_debug("[VCP] vcpreg.vcp_pwr_ack error\n");
+	else
+		pr_debug("[VCP] VCP_PWR_ACK value = %x\n", readl(VCP_PWR_ACK));
 
 	vcpreg.irq0 = platform_get_irq_byname(pdev, "wdt");
 	if (vcpreg.irq0 < 0)

@@ -226,4 +226,12 @@
 /* vcp rdy */
 #define VLP_AO_RSVD7                    (vcpreg.vcp_vlp_ao_rsvd7)
 	#define READY_BIT                   (1U << 1)
+
+/* vcp pwr */
+#define VCP_PWR_ACK                     (vcpreg.vcp_pwr_ack)
+
+/* vcp fenc */
+#define VCP_PDN                         (vcpreg.vcp_clk_sys + 0x0060)
+#define VCP_FENC                        (vcpreg.vcp_clk_sys + 0x0174)
+
 #endif
