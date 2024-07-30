@@ -124,12 +124,20 @@
 	status = "okay";
 };
 
+&disp_ovl0_exdma4{
+	interrupts = <GIC_SPI 462 IRQ_TYPE_LEVEL_HIGH 0>;
+};
+
 &disp_ovl0_exdma5 {
 	interrupts = <GIC_SPI 465 IRQ_TYPE_LEVEL_HIGH 0>;
 };
 
 &disp_ovl0_exdma6 {
 	interrupts = <GIC_SPI 465 IRQ_TYPE_LEVEL_HIGH 0>;
+};
+
+&disp_ovl1_exdma4{
+	interrupts = <GIC_SPI 463 IRQ_TYPE_LEVEL_HIGH 0>;
 };
 
 &ovl_wdma0 {
