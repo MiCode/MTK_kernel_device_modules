@@ -71,7 +71,20 @@
 	_MMEVENT_LOG_CHOICE(N, module, buf_index, log_level, log_type, ##__VA_ARGS__)
 
 #define _MMEVENT_LOG_CHOICE(N, module, buf_index, log_level, log_type, ...) \
-	_MMEVENT_LOG_CHOICE_##N(module, buf_index, log_level, log_type, ##__VA_ARGS__)
+	do { \
+		if (g_print_mme_log[module]) \
+			_MMEVENT_LOG_CHOICE_##N(module, buf_index, log_level, log_type, ##__VA_ARGS__); \
+		else \
+			_print_kernel_log(log_level, ##__VA_ARGS__); \
+	} while(0)
+
+#define _print_kernel_log(log_level, fmt, ...) \
+	do { \
+		if (log_level == LOG_LEVEL_ERROR) \
+			pr_info("ERROR:"fmt, ##__VA_ARGS__);    \
+		else \
+			pr_info(fmt, ##__VA_ARGS__);    \
+	} while(0)
 
 #define _MMEVENT_LOG_CHOICE_1(module, type, log_level, log_type, format) \
 	do { \
@@ -259,9 +272,11 @@
 	do { \
 		switch (flag_data) { \
 		case DATA_FLAG_STACK_REGION_STRING: \
-			*((char **)p) = (char *)(unsigned long)(data); \
-			strscpy((char *)(p+sizeof(char *)), (char *)(unsigned long)(data), \
-					str_len+1); \
+			if (data) { \
+				*((char **)p) = (char *)(unsigned long)(data); \
+				strscpy((char *)(p+sizeof(char *)), (char *)(unsigned long)(data), \
+						str_len+1); \
+			} \
 			break; \
 		case DATA_FLAG_SIZE_1: \
 		case DATA_FLAG_SIZE_2: \

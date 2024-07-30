@@ -204,6 +204,9 @@ EXPORT_SYMBOL(g_ring_buffer_spinlock);
 struct mme_module_t mme_globals[MME_MODULE_MAX] = {0};
 EXPORT_SYMBOL(mme_globals);
 
+bool g_print_mme_log[MME_MODULE_MAX] = {true};
+EXPORT_SYMBOL(g_print_mme_log);
+
 #define MME_MRDUMP_BUFFER_SIZE (3*1024*1024)
 #define MAX_MODULE_BUFFER_SIZE (10*1024*1024)
 
@@ -321,6 +324,7 @@ bool mme_register_buffer(unsigned int module, char *module_buf_name, unsigned in
 	spin_unlock_irqrestore(&g_register_spinlock, flags);
 
 	g_ring_buffer_spinlock[module][type] = t_spinlock;
+	g_print_mme_log[module] = true;
 	mme_globals[module].enable = 1;
 	bmme_init_buffer = 1;
 
@@ -969,6 +973,23 @@ static void process_dbg_cmd(char *cmd)
 		}
 
 		MMEMSG("scale_ring_buffer, module:%lu, scale_value:%lu", module, scale_value);
+	} else if (strncmp(cmd, "switch_kernel_log:", 18) == 0) {
+		char *p = (char *)cmd + 18;
+		char *mme_log_str = NULL;
+		unsigned long is_kernel_log = 0;
+		unsigned long module = 0;
+
+		p += strspn(p, " ");
+		mme_log_str = strchr(p, ' ');
+		MMEMSG("p:%s, mme_log_str:%s", p, mme_log_str);
+		if (mme_log_str) {
+			*mme_log_str = '\0';
+			if (kstrtoul(p, 10, &module) == 0 && module < MME_MODULE_MAX) {
+				if (kstrtoul(mme_log_str + 1, 10, &is_kernel_log) == 0 && is_kernel_log < 100)
+					g_print_mme_log[module] = is_kernel_log ? false : true;
+			}
+		}
+		MMEMSG("switch_kernel_log, module:%lu, is_kernel_log:%lu", module, is_kernel_log);
 	} else {
 		MMEMSG("invalid mme debug command: %s\n",
 			cmd != NULL ? cmd : "(empty)");

@@ -116,6 +116,7 @@ extern unsigned int g_flag_shifts[MME_DATA_MAX];
 
 extern bool debug_log_on;
 extern bool mme_debug_on;
+extern bool g_print_mme_log[MME_MODULE_MAX];
 
 enum data_flag_t {
 	DATA_FLAG_INVALID = 0,
