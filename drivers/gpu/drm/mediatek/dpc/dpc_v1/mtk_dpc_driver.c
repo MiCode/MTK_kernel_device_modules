@@ -2611,7 +2611,7 @@ u8 dpc_dvfs_bw_to_level(const u32 bw_in_mb)
 static void dpc_dvfs_set_v1(const enum mtk_dpc_subsys subsys, const u8 level, bool force)
 {
 	u32 addr = 0, avail = 0;
-	u8 max_level, last_level;
+	u8 max_level, last_level = 0;
 	unsigned long flags = 0;
 	bool mmdvfs_state = true;
 
@@ -2767,7 +2767,7 @@ static void dpc_dvfs_both_set_v1(const enum mtk_dpc_subsys subsys, const u8 leve
 {
 	u32 addr = 0, avail = 0, total_bw = 0;
 	u8 max_level = 0, max_level_subsys = 0, max_level_bw = 0;
-	u8 last_bw_level, last_level;
+	u8 last_bw_level, last_level = 0;
 	unsigned long flags = 0;
 	bool mmdvfs_state = true;
 
