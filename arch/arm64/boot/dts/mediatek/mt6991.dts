@@ -20321,13 +20321,18 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 				     <MT6379_EVT_FL_AICC_DONE>, <MT6379_EVT_FL_PE_DONE>,
 				     <MT6379_EVT_FL_WDT>, <MT6379_EVT_FL_BATPRO_DONE>,
 				     <MT6379_EVT_FL_BC12_DN>, <MT6379_EVT_ADC_VBAT_MON_OV>,
-				     <MT6379_EVT_USBID>;
+				     <MT6379_EVT_USBID>, <MT6379_EVT_OTP0>,
+				     <MT6379_EVT_OTP1>, <MT6379_EVT_OTP2>,
+				     <MT6379_EVT_FL_BUS_CHG_RDY>, <MT6379_EVT_FL_WLIN_CHG_RDY>,
+				     <MT6379_EVT_FL_CHG_SYSOV>;
 			interrupt-names = "fl_pwr_rdy", "fl_detach",
 					  "fl_vbus_ov", "fl_chg_tout",
 					  "fl_aicc_done", "fl_pe_done",
 					  "fl_wdt", "fl_batpro_done",
 					  "fl_bc12_dn", "adc_vbat_mon_ov",
-					  "usbid_evt";
+					  "usbid_evt", "otp0", "otp1", "otp2",
+					  "fl_bus_chg_rdy", "fl_wlin_chg_rdy",
+					  "fl_chg_sysov";
 			io-channels = <&mt6379_adc MT6379_ADC_VBATMON>,
 				      <&mt6379_adc MT6379_ADC_CHGVIN>,
 				      <&mt6379_adc MT6379_ADC_USBDP>,
