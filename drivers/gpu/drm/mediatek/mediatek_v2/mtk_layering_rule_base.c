@@ -4392,6 +4392,7 @@ static void check_is_mml_layer(const int disp_idx,
 	unsigned int mml_duration = 0, fps = 0;
 	int mml_multi_layer = 0;
 	int mml_decouple2 = 0;
+	struct drm_display_mode *mode = NULL;
 
 	mml_decouple2 = (mtk_drm_get_mml_mode_caps() & MTK_MML_DISP_DECOUPLE2_LAYER?1:0);
 	mml_multi_layer =  (mtk_drm_get_mml_hw_caps() & MML_HW_MULTI_LAYER?1:0);
@@ -4464,7 +4465,9 @@ static void check_is_mml_layer(const int disp_idx,
 	}
 
 	if (priv->data->skip_trans && !bypass_skip_trans) {
-		fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+		mode = mtk_drm_crtc_avail_disp_mode(crtc, disp_info->disp_mode_idx[0]);
+		//fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+		fps = drm_mode_vrefresh(mode);
 		if (fps == 0) {
 			DDPPR_ERR("%s invalid vrefresh %u\n", __func__, fps);
 			fps = 60;
