@@ -205,6 +205,42 @@ static int fan_cooling_remove(struct platform_device *pdev)
 
 	return 0;
 }
+static unsigned long saved_cooling_state;
+
+static int fan_cooling_noirq_suspend(struct device *dev)
+{
+	struct fan_cooling_device *fan_cdev = dev_get_drvdata(dev);
+	struct thermal_cooling_device *cdev = fan_cdev->cdev;
+
+	if (cdev->ops->get_cur_state(cdev, &saved_cooling_state)) {
+		dev_info(dev, "Failed to get current cooling state\n");
+		return -EINVAL;
+	}
+	if (saved_cooling_state != FAN_COOLING_UNLIMITED_STATE) {
+		if (cdev->ops->set_cur_state(cdev, FAN_COOLING_UNLIMITED_STATE)) {
+			dev_info(dev, "Failed to release cooling state\n");
+			return -EINVAL;
+		}
+	}
+	return 0;
+}
+
+static int fan_cooling_noirq_resume(struct device *dev)
+{
+	struct fan_cooling_device *fan_cdev = dev_get_drvdata(dev);
+	struct thermal_cooling_device *cdev = fan_cdev->cdev;
+
+	if (cdev->ops->set_cur_state(cdev, saved_cooling_state)) {
+		dev_info(dev, "Failed to restore cooling state\n");
+		return -EINVAL;
+	}
+	return 0;
+}
+
+const struct dev_pm_ops fan_cooling_pm_ops = {
+	.suspend_noirq = fan_cooling_noirq_suspend,
+	.resume_noirq = fan_cooling_noirq_resume,
+};
 
 static struct platform_driver fan_cooling_driver = {
 	.probe = fan_cooling_probe,
@@ -212,6 +248,7 @@ static struct platform_driver fan_cooling_driver = {
 	.driver = {
 		.name = "mtk-fan-cooling",
 		.of_match_table = fan_cooling_of_match,
+		.pm = &fan_cooling_pm_ops,
 	},
 };
 module_platform_driver(fan_cooling_driver);
