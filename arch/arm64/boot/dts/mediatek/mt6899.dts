@@ -3520,6 +3520,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 	};
 
+	swpm: swpm {
+		compatible = "mediatek,mtk-swpm";
+		pmu-boundary-num = <0>;
+		pmu-dsu-support = <1>;
+		pmu-dsu-type = <11>;
+		pmu-ai-support = <0>;
+	};
+
 	sleep@1c001000 {
 		compatible = "mediatek,sleep";
 		reg = <0 0x1c001000 0 0x1000>;
