@@ -97,7 +97,7 @@ int mtk_memtrack_procfs_init(struct kbase_device *kbdev, struct proc_dir_entry *
 	if (IS_ERR_OR_NULL(kbdev))
 		return -1;
 
-	proc_create(PROC_GPU_MEMORY, 0444, parent, &mtk_gpu_memory_proc_ops);
+	proc_create(PROC_GPU_MEMORY, 0440, parent, &mtk_gpu_memory_proc_ops);
 
 	return 0;
 }
