@@ -3348,7 +3348,11 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 		if ((priv->data->mmsys_id == MMSYS_MT6768 ||
 			priv->data->mmsys_id == MMSYS_MT6765 ||
 			priv->data->mmsys_id == MMSYS_MT6761 ||
-			priv->data->mmsys_id == MMSYS_MT6877) &&
+			priv->data->mmsys_id == MMSYS_MT6877 ||
+			priv->data->mmsys_id == MMSYS_MT6781 ||
+			priv->data->mmsys_id == MMSYS_MT6833 ||
+			priv->data->mmsys_id == MMSYS_MT6853 ||
+			priv->data->mmsys_id == MMSYS_MT6885) &&
 			mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER) &&
 			comp_state.comp_id != DDP_COMPONENT_OVL0_2L &&
 			comp_state.comp_id != DDP_COMPONENT_OVL1_2L) {
