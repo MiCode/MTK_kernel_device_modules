@@ -4364,7 +4364,8 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 	if (mtk_crtc && mtk_crtc->crtc_blank) {
 		if (priv && priv->data->mmsys_id == MMSYS_MT6991)
 			mtk_crtc->usage_ovl_fmt[3] = 4;
-		if (priv && priv->data->mmsys_id == MMSYS_MT6989)
+		if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
+			priv->data->mmsys_id == MMSYS_MT6899))
 			mtk_crtc->usage_ovl_fmt[2] = 4;
 	}
 

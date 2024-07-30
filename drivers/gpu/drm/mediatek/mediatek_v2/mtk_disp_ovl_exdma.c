@@ -2656,7 +2656,11 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			comp->id, lye_idx, temp_bw, temp_peak_bw, vtotal, vact);
 
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
-			(crtc_idx == 0) && (priv->data->mmsys_id != MMSYS_MT6989)) {
+			(crtc_idx == 0) && (pending->prop_val[PLANE_PROP_COMPRESS]) &&
+			(priv->data->mmsys_id != MMSYS_MT6989) &&
+			((state->comp_state.layer_caps & MTK_HWC_UNCHANGED_LAYER) ||
+			(state->comp_state.layer_caps & MTK_HWC_INACTIVE_LAYER) ||
+			(state->comp_state.layer_caps & MTK_HWC_UNCHANGED_FBT_LAYER))) {
 			uint64_t key = 0;
 			int fbt_layer_id = -1;
 			unsigned long long temp_bw_old = temp_bw;
