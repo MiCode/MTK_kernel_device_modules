@@ -370,7 +370,7 @@ static irqreturn_t irq_handler(int intr, void *arg)
 
 int tee_set_affinity(cpumask_t *old_affinity)
 {
-	int ret = 0, affinity_tries = 0;
+	int ret = 0;
 	cpumask_t local_old_affinity;
 	unsigned long affinity = get_tee_affinity();
 #if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
@@ -407,24 +407,9 @@ int tee_set_affinity(cpumask_t *old_affinity)
 	 */
 	l_ctx.stat_set_affinity++;
 	if (!cpumask_subset(&local_old_affinity, to_cpumask(&affinity))) {
-		ret = set_cpus_allowed_ptr(current, to_cpumask(&affinity));
-		/* set affinity may fail if CPU has been disconnected.
-		 * may not be fatal, just retry few time before exit...
-		 */
-		while ((ret != 0) && (affinity_tries < AFFINITY_TRIES_MAX)) {
-			mc_dev_err(ret,
-				   "tee set cpus affinity failed, wait and retry...");
-			affinity_tries++;
-			msleep(AFFINTIY_TRIES_SLEEP);
-			ret = set_cpus_allowed_ptr(current,
-						   to_cpumask(&affinity));
-		}
-		if (affinity_tries >= AFFINITY_TRIES_MAX) {
-			mc_dev_err(ret, "no tee cpu available");
-			ret = -EAGAIN;
-		} else {
-			l_ctx.stat_set_cpu_allowed++;
-		}
+		if (set_cpus_allowed_ptr(current, to_cpumask(&affinity)) != 0)
+			mc_dev_devel("set cpus affinity failed");
+		l_ctx.stat_set_cpu_allowed++;
 	}
 
 	*old_affinity = local_old_affinity;
