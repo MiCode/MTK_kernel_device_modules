@@ -543,7 +543,8 @@ void mtk_vdec_pmqos_end_inst(struct mtk_vcodec_ctx *ctx)
 			target_bw = 0;
 
 		if (dev->vdec_larb_bw[i].larb_type < VCODEC_LARB_SUM) {
-			if (dev->vdec_dvfs_params.target_freq == dev->vdec_dvfs_params.min_freq) {
+			if (!dev->vdec_dvfs_params.set_bw_in_min_freq &&
+				dev->vdec_dvfs_params.target_freq == dev->vdec_dvfs_params.min_freq) {
 				mtk_icc_set_bw(dev->vdec_qos_req[i],
 					MBps_to_icc(0), 0);
 				mtk_v4l2_debug(8, "[VDEC] larb %d bw %u (min opp, no request) MB/s",
@@ -628,7 +629,8 @@ void mtk_vdec_pmqos_begin_frame(struct mtk_vcodec_ctx *ctx)
 	dev = ctx->dev;
 
 	if (dev->vdec_dvfs_params.frame_need_update &&
-		(dev->vdec_dvfs_params.target_freq != dev->vdec_dvfs_params.min_freq)) {
+		(dev->vdec_dvfs_params.set_bw_in_min_freq ||
+		(dev->vdec_dvfs_params.target_freq != dev->vdec_dvfs_params.min_freq))) {
 		mtk_vdec_pmqos_begin_inst(ctx);
 	}
 	dev->vdec_dvfs_params.frame_need_update = 0;
@@ -643,7 +645,8 @@ void mtk_vdec_pmqos_end_frame(struct mtk_vcodec_ctx *ctx)
 	dev = ctx->dev;
 
 	if (!dev->vdec_dvfs_params.frame_need_update ||
-		(dev->vdec_dvfs_params.target_freq == dev->vdec_dvfs_params.min_freq))
+		(!dev->vdec_dvfs_params.set_bw_in_min_freq &&
+		dev->vdec_dvfs_params.target_freq == dev->vdec_dvfs_params.min_freq))
 		return;
 
 	for (i = 0; i < dev->vdec_larb_cnt; i++) {
