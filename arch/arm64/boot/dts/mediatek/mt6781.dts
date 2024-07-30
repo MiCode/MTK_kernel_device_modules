@@ -361,7 +361,7 @@
 				local-timer-stop;
 				entry-latency-us = <300>;
 				exit-latency-us = <1200>;
-				min-residency-us = <2600>;
+				min-residency-us = <4000>;
 			};
 			s2idle: s2idle {
 				compatible = "arm,idle-state";
@@ -3720,6 +3720,10 @@
 			     612 31 4 1
 			     560 28 4 1
 			     500 16 4 1 >;
+	};
+
+	pbm: pbm {
+		compatible = "mediatek,pbm";
 	};
 
 	mt_cpufreq: mt_cpufreq {
