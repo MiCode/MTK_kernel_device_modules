@@ -2309,7 +2309,12 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				__func__, comp->id, data->larb_id, comp->larb_num);
 			break;
 		}
-		data->bw = comp->hrt_bw;
+		if (priv->data->mmsys_id == MMSYS_MT6899 &&
+			wdma->info_data->force_ostdl_bw &&
+			!wdma->info_data->is_support_ufbc)
+			data->bw = wdma->info_data->force_ostdl_bw;
+		else
+			data->bw = comp->hrt_bw;
 		if (data->bw > 0)
 			DDPDBG("%s, wdma comp:%d, larb:%d, bw:%d\n",
 				__func__, comp->id, data->larb_id, data->bw);
@@ -2837,7 +2842,7 @@ static const struct mtk_disp_wdma_data mt6899_wdma_driver_data = {
 	.fifo_size_uv_2plane = PARSE_FROM_DTS,
 	.fifo_size_3plane = PARSE_FROM_DTS,
 	.fifo_size_uv_3plane = PARSE_FROM_DTS,
-	.force_ostdl_bw = 7000,
+	.force_ostdl_bw = 3000,
 	.buf_con1_fld_fifo_pseudo_size = REG_FLD_MSB_LSB(11, 0),
 	.buf_con1_fld_fifo_pseudo_size_uv = REG_FLD_MSB_LSB(22, 12),
 	.sodi_config = mt6989_mtk_sodi_config,

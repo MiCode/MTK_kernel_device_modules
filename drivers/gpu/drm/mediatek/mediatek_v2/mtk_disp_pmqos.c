@@ -482,8 +482,8 @@ static void mtk_disp_get_channel_bw_of_pq(struct mtk_drm_crtc *mtk_crtc,
 			subcomm_bw_sum[2], subcomm_bw_sum[3], type, ret);
 }
 
-static void mtk_disp_get_channel_bw_of_iwb(struct mtk_drm_crtc *mtk_crtc,
-		unsigned int *subcomm_bw_sum, unsigned int size, enum CHANNEL_TYPE type)
+static void mtk_disp_get_channel_bw_of_wdma(struct mtk_drm_crtc *mtk_crtc, unsigned int *subcomm_bw_sum,
+		unsigned int size, enum CHANNEL_TYPE type, enum addon_scenario scn)
 {
 	unsigned int crtc_idx = drm_crtc_index(&mtk_crtc->base);
 	struct drm_crtc *crtc = &mtk_crtc->base;
@@ -499,16 +499,17 @@ static void mtk_disp_get_channel_bw_of_iwb(struct mtk_drm_crtc *mtk_crtc,
 		IS_ERR_OR_NULL(subcomm_bw_sum))
 		return;
 
-	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLEMGR_BY_WB) ||
-		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLEMGR_BY_REPAINT))
+	if (scn == IDLE_WDMA_WRITE_BACK &&
+		(!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLEMGR_BY_WB) ||
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLEMGR_BY_REPAINT)))
 		return;
 
 	comp = mtk_ddp_comp_request_output(mtk_crtc);
 	/* only vdo panel support IWB*/
-	if (!comp || mtk_dsi_is_cmd_mode(comp))
+	if (!comp || (scn == IDLE_WDMA_WRITE_BACK && mtk_dsi_is_cmd_mode(comp)))
 		return;
 
-	addon_data = mtk_addon_get_scenario_data(__func__, crtc, IDLE_WDMA_WRITE_BACK);
+	addon_data = mtk_addon_get_scenario_data(__func__, crtc, scn);
 	if (!addon_data)
 		return;
 
@@ -537,6 +538,7 @@ static void __mtk_disp_get_channel_hrt_bw_by_scope(struct mtk_drm_crtc *mtk_crtc
 	unsigned int ovl_bw = 0, i;
 	unsigned int bw_base = mtk_drm_primary_frame_bw(&mtk_crtc->base);
 	unsigned int subcomm_bw_sum[BW_CHANNEL_NR] = { 0 };
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 
 	if (size < BW_CHANNEL_NR)
 		return;
@@ -563,8 +565,12 @@ static void __mtk_disp_get_channel_hrt_bw_by_scope(struct mtk_drm_crtc *mtk_crtc
 					ARRAY_SIZE(subcomm_bw_sum), CHANNEL_HRT_RW);
 
 	if (crtc_idx == 0 && (scope & CHANNEL_BW_OF_WDMA_IWB))
-		mtk_disp_get_channel_bw_of_iwb(mtk_crtc, subcomm_bw_sum,
-					ARRAY_SIZE(subcomm_bw_sum), CHANNEL_HRT_RW);
+		mtk_disp_get_channel_bw_of_wdma(mtk_crtc, subcomm_bw_sum,
+					ARRAY_SIZE(subcomm_bw_sum), CHANNEL_HRT_RW, IDLE_WDMA_WRITE_BACK);
+
+	if (priv->data->mmsys_id == MMSYS_MT6899 && crtc_idx == 0 && (scope & CHANNEL_BW_OF_WDMA_CWB))
+		mtk_disp_get_channel_bw_of_wdma(mtk_crtc, subcomm_bw_sum,
+					ARRAY_SIZE(subcomm_bw_sum), CHANNEL_HRT_RW, WDMA_WRITE_BACK);
 
 	for (i = 0 ; i < BW_CHANNEL_NR ; i++)
 		result[i] = subcomm_bw_sum[i];

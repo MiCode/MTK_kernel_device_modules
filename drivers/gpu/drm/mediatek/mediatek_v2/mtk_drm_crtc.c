@@ -5756,6 +5756,11 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	bool opt_mmdvfs = 0, channel_bw_chk = 0;
 	bool is_force_high_step = atomic_read(&mtk_crtc->force_high_step);
 	unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
+	struct mtk_ddp_comp *cwb_comp;
+	unsigned int wdma_bw = 0;
+	const struct mtk_addon_scenario_data *addon_data = NULL;
+	const struct mtk_addon_module_data *addon_module = NULL;
+	const struct mtk_addon_path_data *path_data = NULL;
 
 
 	if (unlikely(!mtk_crtc || !mtk_crtc->qos_ctx)) {
@@ -5826,6 +5831,23 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 				bw = 3433;
 				DDPINFO("%s CRTC%u dram freq to 2400hz\n",
 					__func__, crtc_idx);
+			}
+		}
+	}
+
+	/* update wdma total bw for cwb */
+	if (priv->data->mmsys_id == MMSYS_MT6899 && crtc_idx == 0) {
+		addon_data = mtk_addon_get_scenario_data(__func__, crtc, WDMA_WRITE_BACK);
+		if (addon_data) {
+			addon_module = &addon_data->module_data[0];
+			path_data = mtk_addon_module_get_path(addon_module->module);
+			cwb_comp = priv->ddp_comp[path_data->path[path_data->path_len - 1]];
+
+			if (cwb_comp) {
+				wdma_bw = mtk_disp_get_port_hrt_bw(cwb_comp, CHANNEL_HRT_RW);
+				if (wdma_bw <= 0)
+					wdma_bw = 0;
+				bw += wdma_bw;
 			}
 		}
 	}
