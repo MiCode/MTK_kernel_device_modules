@@ -614,7 +614,7 @@
 			<&dispsys1_config_clk CLK_MM1_DSI2_DISP>,
 			<&dispsys1_config_clk CLK_MM1_DP_DISP>,
 			<&dispsys1_config_clk CLK_MM1_F26M_DISP>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_DISP_VCORE>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
 	};
 
 	disable-unused-clk-mmsys0@85 {
@@ -672,7 +672,7 @@
 			<&dispsys_config_clk CLK_MM_SMI_SUB_COMM0_GENPD>,
 			<&dispsys_config_clk CLK_MM_DISP_RSZ0_MOUT_RELAY_DISP>,
 			<&dispsys_config_clk CLK_MM_DISP_RSZ1_MOUT_RELAY_DISP>;
-		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_DIS1_SHUTDOWN>;
+		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_DIS0_SHUTDOWN>;
 	};
 
 	disable-unused-clk-imp-iic-wrap-n@86 {
