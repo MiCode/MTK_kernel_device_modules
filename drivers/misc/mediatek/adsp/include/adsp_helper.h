@@ -70,7 +70,8 @@ enum adsp_feature_id {
 	BTDL_FEATURE_ID                 = 29,
 	BTUL_FEATURE_ID                 = 30,
 	SPATIALIZER_FEATURE_ID          = 31,
-	PCIE_FEATURE_ID                 = 32,
+	DYNAMIC_FEATURE_ID	        = 32,
+	PCIE_FEATURE_ID                 = 33,
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
 	HFP_CLIENT_RX_FEATURE_ID,
 #endif

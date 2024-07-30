@@ -19,7 +19,7 @@ enum {
 	TASK_SCENE_VOW                  = 6,
 	TASK_SCENE_PRIMARY              = 7,
 	TASK_SCENE_DEEPBUFFER           = 8,
-	TASK_SCENE_AUDPLAYBACK          = 9,
+	TASK_SCENE_DYNAMIC              = 9,
 	TASK_SCENE_CAPTURE_UL1          = 10,
 	TASK_SCENE_A2DP                 = 11,
 	TASK_SCENE_DATAPROVIDER         = 12,
@@ -45,11 +45,12 @@ enum {
 	/* dtoa_flag only support unsigned long (32bit) currently. */
 	/* so source tasks need to put in 0~31 */
 
-	TASK_SCENE_USB_DL               = 32,
-	TASK_SCENE_USB_UL               = 33,
-	TASK_SCENE_MD_DL                = 34,
-	TASK_SCENE_MD_UL                = 35,
-	TASK_SCENE_RV_SPK_PROCESS       = 36,
+	TASK_SCENE_AUDPLAYBACK          = 32,
+	TASK_SCENE_USB_DL               = 33,
+	TASK_SCENE_USB_UL               = 34,
+	TASK_SCENE_MD_DL                = 35,
+	TASK_SCENE_MD_UL                = 36,
+	TASK_SCENE_RV_SPK_PROCESS       = 37,
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
 	TASK_SCENE_HFP_CLIENT_RX,
 #endif

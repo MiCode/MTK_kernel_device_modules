@@ -485,6 +485,8 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("dsp_spatializer_default_en", SND_SOC_NOPM, 0, 0xff, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_dynamic_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
 	SOC_SINGLE_EXT("dsp_ktv_default_en", SND_SOC_NOPM, 0, 0xff, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
@@ -602,6 +604,8 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 	SOC_SINGLE_EXT("dsp_fast_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("dsp_spatializer_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_dynamic_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("dsp_ktv_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
@@ -1825,6 +1829,7 @@ static int audio_send_reset_event(void)
 
 	for (i = 0; i < TASK_SCENE_SIZE; i++) {
 		if ((i == TASK_SCENE_DEEPBUFFER) ||
+			(i == TASK_SCENE_DYNAMIC) ||
 			(i == TASK_SCENE_VOIP) ||
 			(i == TASK_SCENE_PRIMARY) ||
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
