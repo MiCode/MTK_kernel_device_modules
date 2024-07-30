@@ -2592,6 +2592,7 @@
 			/* Reference clock control mode */
 			/* SW mode: 0, Half-HW mode: 1, HW mode: 2 */
 			mediatek,refclk_ctrl = <2>;
+			mediatek,ufs-qos;
 		};
 
 		efuse: efuse@11c10000 {
