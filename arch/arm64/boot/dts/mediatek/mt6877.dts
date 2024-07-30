@@ -389,10 +389,12 @@
 		logger-enable-states = "mcusysoff";
 
 		irq-remain = <&edge_keypad &edge_mdwdt>,
+				<&level_vpu_core0 &level_vpu_core1>,
+				<&level_mtk_mdla0 &level_edma0>,
 				<&level_mali0 &level_mali1>,
 				<&level_mali2 &level_mali3 &level_mali4>,
-				<&level_mtk_mdla>,
-				<&level_usb_host>,
+				<&level_i2c0>,
+				<&level_btif_tx &level_btif_rx &level_bt>,
 				<&level_cam1 &level_cam2>;
 
 		resource-ctrl = <&bus26m &infra &syspll>,
@@ -422,7 +424,23 @@
 			};
 			edge_mdwdt: edge_mdwdt {
 				target = <&mddriver>;
-				value = <1 0 0 0x02000000>;
+				value = <1 0 0x80000000 0x02000000>;
+			};
+			level_vpu_core0: level_vpu_core0 {
+				target = <&vpu_core0>;
+				value = <0 0 0 0>;
+			};
+			level_vpu_core1: level_vpu_core1 {
+				target = <&vpu_core1>;
+				value = <0 0 0 0>;
+			};
+			level_mtk_mdla0: level_mtk_mdla0 {
+				target = <&mtk_mdla>;
+				value = <0 0 0 0>;
+			};
+			level_edma0: level_edma0 {
+				target = <&edma0>;
+				value = <0 0 0 0>;
 			};
 			level_mali0: level_mali0 {
 				target = <&mali>;
@@ -444,12 +462,20 @@
 				target = <&mali>;
 				value = <0 4 0 0>;
 			};
-			level_mtk_mdla: level_mtk_mdla {
-				target = <&mtk_mdla>;
+			level_i2c0: level_i2c0 {
+				target = <&i2c0>;
 				value = <0 0 0 0>;
 			};
-			level_usb_host: level_usb_host {
-				target = <&usb_host>;
+			level_btif_tx: level_btif_tx {
+				target = <&btif>;
+				value = <0 1 0 0>;
+			};
+			level_btif_rx: level_btif_rx {
+				target = <&btif>;
+				value = <0 2 0 0>;
+			};
+			level_bt: level_bt {
+				target = <&bt>;
 				value = <0 0 0 0>;
 			};
 			level_cam1: level_cam1 {
