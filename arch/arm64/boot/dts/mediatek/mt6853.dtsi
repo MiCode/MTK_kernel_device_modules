@@ -2200,7 +2200,7 @@
 			#clock-cells = <1>;
 		};
 
-		spi0: spi@1100a000 {
+		spi0: spi0@1100a000 {
 			compatible = "mediatek,mt6765-spi";
 			mediatek,pad-select = <0>;
 			reg = <0 0x1100a000 0 0x100>;
@@ -2232,7 +2232,7 @@
 			clock-names = "btifc","apdmac";
 		};
 
-		spi1: spi@11010000 {
+		spi1: spi1@11010000 {
 			compatible = "mediatek,mt6765-spi";
 			mediatek,pad-select = <0>;
 			reg = <0 0x11010000 0 0x100>;
@@ -2243,7 +2243,7 @@
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
 		};
 
-		spi2: spi@11012000 {
+		spi2: spi2@11012000 {
 			compatible = "mediatek,mt6765-spi";
 			mediatek,pad-select = <0>;
 			reg = <0 0x11012000 0 0x100>;
@@ -2254,7 +2254,7 @@
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
 		};
 
-		spi3: spi@11013000 {
+		spi3: spi3@11013000 {
 			compatible = "mediatek,mt6765-spi";
 			mediatek,pad-select = <0>;
 			reg = <0 0x11013000 0 0x100>;
@@ -2296,7 +2296,7 @@
 			mediatek,fifo_only;
 		};
 
-		spi4: spi@11018000 {
+		spi4: spi4@11018000 {
 			compatible = "mediatek,mt6765-spi";
 			mediatek,pad-select = <0>;
 			reg = <0 0x11018000 0 0x100>;
@@ -2307,7 +2307,7 @@
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
 		};
 
-		spi5: spi@11019000 {
+		spi5: spi5@11019000 {
 			compatible = "mediatek,mt6765-spi";
 			mediatek,pad-select = <0>;
 			reg = <0 0x11019000 0 0x100>;
@@ -2318,7 +2318,7 @@
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
 		};
 
-		spi6: spi@1101d000 {
+		spi6: spi6@1101d000 {
 			compatible = "mediatek,mt6765-spi";
 			mediatek,pad-select = <0>;
 			reg = <0 0x1101d000 0 0x100>;
@@ -2329,7 +2329,7 @@
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
 		};
 
-		spi7: spi@1101e000 {
+		spi7: spi7@1101e000 {
 			compatible = "mediatek,mt6765-spi";
 			mediatek,pad-select = <0>;
 			reg = <0 0x1101e000 0 0x100>;
