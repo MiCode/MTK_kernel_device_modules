@@ -605,8 +605,8 @@ struct subsys_cgs_check {
 
 struct subsys_cgs_check mtk_subsys_check[] = {
 	{MT6899_CHK_PD_PERI_AUDIO, PD_NULL, afe_swcgs, afe},
-	{MT6899_CHK_PD_DIS1, MT6899_CHK_PD_DISP_VCORE, dispsys_config_swcgs, mm},
-	{MT6899_CHK_PD_DISP_VCORE, MT6899_CHK_PD_MM_INFRA, dispsys1_config_swcgs, mm1},
+	{MT6899_CHK_PD_DIS0, MT6899_CHK_PD_DIS1, dispsys_config_swcgs, mm},
+	{MT6899_CHK_PD_DIS1, MT6899_CHK_PD_DISP_VCORE, dispsys1_config_swcgs, mm1},
 	{MT6899_CHK_PD_OVL0, MT6899_CHK_PD_DIS1, ovlsys_config_swcgs, ovl},
 	{MT6899_CHK_PD_ISP_MAIN, MT6899_CHK_PD_ISP_VCORE, imgsys_main_swcgs, img},
 	{MT6899_CHK_PD_ISP_DIP1, MT6899_CHK_PD_ISP_MAIN, dip_top_dip1_swcgs, dip_top_dip1},
