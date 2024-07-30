@@ -697,7 +697,7 @@ static void cmdq_mtcmos_by_fast(struct cmdq *cmdq, bool on)
 				cmdq_err("hwid:%hu usage:%d mminfra power not enable",
 					cmdq->hwid, usage);
 			ret = pm_runtime_put_sync(cmdq->pd_mminfra_1);
-			if (ret != 0)
+			if (ret < 0)
 				cmdq_err("pm_runtime_get_sync err:%d", ret);
 		} else if (usage < 0)
 			cmdq_err("hwid:%u usage:%d cannot below zero",
@@ -3606,7 +3606,7 @@ void cmdq_mbox_enable(void *chan)
 		int ret;
 
 		ret = pm_runtime_get_sync(cmdq->pd_mminfra_1);
-		if (ret != 0)
+		if (ret < 0)
 			cmdq_err("pm_runtime_get_sync err:%d", ret);
 		if (mminfra_power_cb && !mminfra_power_cb())
 			cmdq_err("hwid:%hu usage:%d mminfra power not enable",
@@ -3628,7 +3628,7 @@ void cmdq_mbox_enable(void *chan)
 			int ret;
 
 			ret = pm_runtime_get_sync(cmdq->pd_mminfra_1);
-			if (ret != 0)
+			if (ret < 0)
 				cmdq_err("pm_runtime_get_sync err:%d", ret);
 			if (mminfra_power_cb && !mminfra_power_cb())
 				cmdq_err("hwid:%hu usage:%d mminfra power not enable",
