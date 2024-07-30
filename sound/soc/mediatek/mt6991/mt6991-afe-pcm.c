@@ -2796,6 +2796,8 @@ static const struct snd_kcontrol_new memif_ul10_ch1_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN038_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN3_CH1", AFE_CONN038_4,
+				    I_I2SIN3_CH1, 1, 0),
 };
 
 static const struct snd_kcontrol_new memif_ul10_ch2_mix[] = {
@@ -2807,6 +2809,8 @@ static const struct snd_kcontrol_new memif_ul10_ch2_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN039_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN3_CH2", AFE_CONN038_4,
+				    I_I2SIN3_CH2, 1, 0),
 };
 
 static const struct snd_kcontrol_new memif_ul24_ch1_mix[] = {
@@ -4360,10 +4364,12 @@ static const struct snd_soc_dapm_route mt6991_memif_routes[] = {
 	{"UL10_CH1", "ADDA_UL_CH1", "ADDA_UL_Mux"},
 	{"UL10_CH1", "ADDA_UL_CH2", "ADDA_UL_Mux"},
 	{"UL10_CH1", "ADDA_UL_CH3", "ADDA_CH34_UL_Mux"},
+	{"UL10_CH1", "I2SIN3_CH1", "I2SIN3"},
 	{"UL10_CH2", "ADDA_UL_CH1", "ADDA_UL_Mux"},
 	{"UL10_CH2", "ADDA_UL_CH2", "ADDA_UL_Mux"},
 	{"UL10_CH2", "ADDA_UL_CH3", "ADDA_CH34_UL_Mux"},
 	{"UL10_CH2", "ADDA_UL_CH4", "ADDA_CH34_UL_Mux"},
+	{"UL10_CH2", "I2SIN3_CH2", "I2SIN3"},
 
 	{"UL24", NULL, "UL24_CH1"},
 	{"UL24", NULL, "UL24_CH2"},
