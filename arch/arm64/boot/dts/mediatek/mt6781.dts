@@ -2020,6 +2020,11 @@
 			clock-names = "apb", "smi", "gals0", "gals1";
 		};
 
+		smi-test {
+			compatible = "mediatek,smi-testcase";
+			mediatek,larbs = <&smi_larb2>;
+		};
+
 		smi_larb2: smi-larb2@1b002000 {
 			compatible = "mediatek,smi_larb2", "mediatek,mt6781-smi-larb",
 					"mediatek,smi-larb";
