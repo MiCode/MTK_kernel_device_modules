@@ -123,6 +123,7 @@ struct vcp_regs {
 	void __iomem *bus_debug;
 	void __iomem *bus_tracker;
 	void __iomem *bus_prot;
+	void __iomem *cfg_sec_gpr;
 	void __iomem *infra_sram;
 	void __iomem *infra_cfg;
 	void __iomem *infra_cfg_core0;
@@ -133,6 +134,8 @@ struct vcp_regs {
 	void __iomem *infra_bus_debug;
 	void __iomem *infra_bus_tracker;
 	void __iomem *infra_bus_prot;
+	void __iomem *infra_cfg_sec_gpr;
+	void __iomem *vcp_pwr_ack;
 	int irq0;
 	int irq1;
 	unsigned int total_tcmsize;

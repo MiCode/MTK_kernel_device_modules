@@ -186,6 +186,11 @@
 	#define B_CORE0_CACHE_DBG_EN	(1 << 28)
 	#define B_CORE1_CACHE_DBG_EN	(1 << 29)
 
+#define R_GPR0_CFGREG_SEC		(vcpreg.cfg_sec_gpr)
+#define R_GPR1_CFGREG_SEC		(vcpreg.cfg_sec_gpr + 0x0004)
+#define R_GPR2_CFGREG_SEC		(vcpreg.cfg_sec_gpr + 0x0008)
+#define R_GPR3_CFGREG_SEC		(vcpreg.cfg_sec_gpr + 0x000C)
+
 #define VCP_BUS_PROT			(vcpreg.bus_prot)
 
 #define R_CORE0_CACHE_RAM		(vcpreg.l1cctrl + 0x00000)
@@ -193,6 +198,9 @@
 
 #define VCP_GCE_MMU			(vcpreg.cfg_mmu + 0x0000)
 	#define B_MMU_EN		(0x3 << 14)
+
+/* vcp pwr */
+#define VCP_PWR_ACK                     (vcpreg.vcp_pwr_ack)
 
 /************************ infra2vcp ************************/
 #define VCP_INFRA_SYS_CTRL                      (vcpreg.infra_cfg)
@@ -310,6 +318,10 @@
 #define VCP_INFRA_BUS_TRACKER_AW_TRACK0         (vcpreg.infra_bus_tracker + 0x0300)
 
 #define VCP_INFRA_SEC_CTRL                      (vcpreg.infra_cfg_sec + 0x0000)
+#define VCP_INFRA_GPR0_CFGREG_SEC               (vcpreg.infra_cfg_sec_gpr + 0x0000)
+#define VCP_INFRA_GPR1_CFGREG_SEC               (vcpreg.infra_cfg_sec_gpr + 0x0004)
+#define VCP_INFRA_GPR2_CFGREG_SEC               (vcpreg.infra_cfg_sec_gpr + 0x0008)
+#define VCP_INFRA_GPR3_CFGREG_SEC               (vcpreg.infra_cfg_sec_gpr + 0x000C)
 
 #define VCP_INFRA_BUS_PROT                      (vcpreg.infra_bus_prot)
 

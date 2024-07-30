@@ -120,6 +120,9 @@ void vcp_dump_last_regs(int mmup_enable)
 		return;
 	}
 
+	if (!IS_ERR((void const *) vcpreg.vcp_pwr_ack))
+		pr_notice("[VCP] pwr ack = %08x\n", readl(VCP_PWR_ACK));
+
 	if (!infra_vcp_support) {
 		c0_m->status = readl(R_CORE0_STATUS);
 		c0_m->pc = readl(R_CORE0_MON_PC);
@@ -189,6 +192,18 @@ void vcp_dump_last_regs(int mmup_enable)
 
 		pr_notice("[VCP] irq wakeup en: %08x,%08x,%08x\n", readl(VCP_IRQ_SLP0),
 			readl(VCP_IRQ_SLP1), readl(VCP_IRQ_SLP2));
+
+		if (!IS_ERR((void const *) vcpreg.cfg_sec_gpr))
+			pr_notice("[VCP] SEC GPR: %08x,%08x,%08x,%08x\n", readl(R_GPR0_CFGREG_SEC),
+				readl(R_GPR1_CFGREG_SEC), readl(R_GPR2_CFGREG_SEC), readl(R_GPR3_CFGREG_SEC));
+
+		pr_notice("[VCP] core GPR: %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
+			readl(VCP_A_GENERAL_REG0), readl(VCP_A_GENERAL_REG1),
+			readl(VCP_A_GENERAL_REG2), readl(VCP_A_GENERAL_REG3),
+			readl(VCP_A_GENERAL_REG4), readl(VCP_A_GENERAL_REG5),
+			readl(VCP_A_GENERAL_REG6), readl(VCP_A_GENERAL_REG7));
+
+		pr_notice("[VCP] GIPC %x %x\n", readl(R_GIPC_IN_SET), readl(R_GIPC_IN_CLR));
 
 		if (vcp_res_req_status_reg)
 			pr_notice("[VCP] resource request status: %08x\n",
@@ -363,6 +378,20 @@ void vcp_dump_last_regs(int mmup_enable)
 
 		pr_notice("[VCP] irq wakeup en: %08x,%08x,%08x\n", readl(VCP_INFRA_IRQ_SLP0),
 			readl(VCP_INFRA_IRQ_SLP1), readl(VCP_INFRA_IRQ_SLP2));
+
+		if (!IS_ERR((void const *) vcpreg.infra_cfg_sec_gpr))
+			pr_notice("[VCP] SEC GPR: %08x,%08x,%08x,%08x\n",
+				readl(VCP_INFRA_GPR0_CFGREG_SEC), readl(VCP_INFRA_GPR1_CFGREG_SEC),
+				readl(VCP_INFRA_GPR2_CFGREG_SEC), readl(VCP_INFRA_GPR3_CFGREG_SEC));
+
+		pr_notice("[VCP] core GPR: %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
+			readl(VCP_INFRA_GENERAL_REG0), readl(VCP_INFRA_GENERAL_REG1),
+			readl(VCP_INFRA_GENERAL_REG2), readl(VCP_INFRA_GENERAL_REG3),
+			readl(VCP_INFRA_GENERAL_REG4), readl(VCP_INFRA_GENERAL_REG5),
+			readl(VCP_INFRA_GENERAL_REG6), readl(VCP_INFRA_GENERAL_REG7));
+
+		pr_notice("[VCP] GIPC %x %x\n", readl(VCP_INFRA_GIPC_IN_SET),
+			readl(VCP_INFRA_GIPC_IN_CLR));
 
 		if (vcp_res_req_status_reg)
 			pr_notice("[VCP] resource request status: %08x\n",

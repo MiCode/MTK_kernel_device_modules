@@ -3111,6 +3111,14 @@ static int vcp_infra_vcp_probe(struct platform_device *pdev)
 	}
 	pr_debug("[VCP] bus_prot base = 0x%p\n", vcpreg.infra_bus_prot);
 
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_sec_gpr");
+	vcpreg.infra_cfg_sec_gpr = devm_ioremap_resource(dev, res);
+	if (IS_ERR((void const *) vcpreg.infra_cfg_sec_gpr)) {
+		pr_notice("[VCP] vcpreg.infra_cfg_sec_gpr error\n");
+		vcpreg.infra_cfg_sec_gpr = NULL;
+	}
+	pr_debug("[VCP] sec_gpr base = 0x%p\n", vcpreg.infra_cfg_sec_gpr);
+
 	return 0;
 }
 
@@ -3239,6 +3247,14 @@ static int vcp_device_probe(struct platform_device *pdev)
 	}
 	pr_debug("[VCP] bus_prot base = 0x%p\n", vcpreg.bus_prot);
 
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_sec_gpr");
+	vcpreg.cfg_sec_gpr = devm_ioremap_resource(dev, res);
+	if (IS_ERR((void const *) vcpreg.cfg_sec_gpr)) {
+		pr_notice("[VCP] vcpreg.cfg_sec_gpr error\n");
+		vcpreg.cfg_sec_gpr = NULL;
+	}
+	pr_debug("[VCP] sec_gpr base = 0x%p\n", vcpreg.cfg_sec_gpr);
+
 #ifdef VCP_DEBUG_REMOVED
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_l1creg");
 	vcpreg.l1cctrl = devm_ioremap_resource(dev, res);
@@ -3334,6 +3350,17 @@ static int vcp_device_probe(struct platform_device *pdev)
 	if (!vcpreg.bus_debug_num_ports)
 		pr_notice("[VCP] bus debug num ports not found\n");
 	pr_debug("[VCP] vcpreg.bus_debug_num_ports = %d\n", vcpreg.bus_debug_num_ports);
+
+	temp_value = 0;
+	of_property_read_u32(pdev->dev.of_node, "vcp-pwr-status", &temp_value);
+	if (!temp_value)
+		pr_notice("[VCP] pwr status register not found\n");
+	else
+		vcpreg.vcp_pwr_ack = ioremap(temp_value, 4);
+	if (IS_ERR((void const *) vcpreg.vcp_pwr_ack))
+		pr_debug("[VCP] vcpreg.vcp_pwr_ack error\n");
+	else
+		pr_debug("[VCP] VCP_PWR_ACK value = %x\n", readl(VCP_PWR_ACK));
 
 	temp_value = 0;
 	of_property_read_u32(pdev->dev.of_node, "res-req-status", &temp_value);
