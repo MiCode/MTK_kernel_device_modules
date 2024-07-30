@@ -16865,6 +16865,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		compatible = "mediatek,goodix-fp";
 	};
 
+	mme: mtk-mme-enable {
+		compatible = "mediatek,mtk_mme_enable";
+	};
 };
 
 &i2c5 {
