@@ -3431,7 +3431,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		vlp-base = <0x1c000000>;
 		spm-base = <0x1c001000>;
 		hwccf-base = <0x10320000>;
-		mm-voter-base = <0x1ec45130>;
+		mm-voter-base = <0x11645130>;
 		mm-mtcmos-base = <0x1c001e90>;
 		mm-mtcmos-mask = <0xc0000000>;
 		mminfra-ao-base;
@@ -3446,6 +3446,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		vcp-gipc;
 		no-sleep-pd-cb;
 		skip-apsrc;
+		has-infra-hfrp;
 		mm-pwr-ver = <1>;
 	};
 
