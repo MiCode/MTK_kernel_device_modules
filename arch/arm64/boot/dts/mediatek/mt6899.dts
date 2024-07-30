@@ -15678,7 +15678,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x116ff000 0 0x100>, /* mbox4 base */
 				<0 0x116ff100 0 0x4>, /* mbox4 set */
 				<0 0x116ff10c 0 0x4>, /* mbox4 clr */
-				<0 0x116a5030 0 0x4>; /* mbox4 init */
+				<0 0x116a5030 0 0x4>, /* mbox4 init */
+				<0 0x116a5040 0 0x10>; /* cfg sec gpr */
 
 			reg-names = "vcp_sram_base",
 					"vcp_cfgreg",
@@ -15710,7 +15711,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"mbox4_base",
 					"mbox4_set",
 					"mbox4_clr",
-					"mbox4_init";
+					"mbox4_init",
+					"vcp_sec_gpr";
 		};
 
 		vcp: vcp@1ec00000 {
@@ -15749,7 +15751,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x1ecff000 0 0x100>, /* mbox4 base */
 				<0 0x1ecff100 0 0x4>, /* mbox4 set */
 				<0 0x1ecff10c 0 0x4>, /* mbox4 clr */
-				<0 0x1eca5030 0 0x4>; /* mbox4 init */
+				<0 0x1eca5030 0 0x4>, /* mbox4 init */
+				<0 0x1eca5040 0 0x10>; /* cfg sec gpr */
 
 			reg-names = "vcp_sram_base",
 					"vcp_cfgreg",
@@ -15782,7 +15785,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"mbox4_base",
 					"mbox4_set",
 					"mbox4_clr",
-					"mbox4_init";
+					"mbox4_init",
+					"vcp_sec_gpr";
 
 			interrupts = <GIC_SPI 530 IRQ_TYPE_LEVEL_HIGH 0>,
 					<GIC_SPI 531 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -15813,6 +15817,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mbox-count = <5>;
 			vcp-excep-mode = <1>;
 			bus-debug-num-ports = <18>;
+			vcp-pwr-status = <0x1c001e94>;
 			/* id, mbox, send_size*/
 			send-table =
 			< 0 0 18>,/* IPI_OUT_VDEC_1 */
