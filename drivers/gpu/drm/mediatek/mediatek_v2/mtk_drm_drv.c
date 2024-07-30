@@ -12001,7 +12001,6 @@ static struct platform_driver *const mtk_drm_drivers[] = {
 	&mtk_disp_dsc_driver,
 	&mtk_dp_tx_driver,
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT)
-	&mtk_dp_phy_driver,
 	&mtk_dvo_driver,
 #endif
 	&mtk_disp_y2r_driver,
@@ -12049,12 +12048,12 @@ static void __exit mtk_drm_exit(void)
 }
 module_init(mtk_drm_init);
 module_exit(mtk_drm_exit);
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT)
-MODULE_SOFTDEP("pre: panel-maxiam-max96851");
-MODULE_SOFTDEP("pre: maxiam-max96851");
-MODULE_SOFTDEP("pre: mtk_drm_edp");
-#endif
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+
+#if (IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT) && IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT))
+MODULE_SOFTDEP("pre: mtk-drm-edp panel-serdes-max96789");
+#elif IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT)
+MODULE_SOFTDEP("pre: mtk-drm-edp");
+#elif IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 MODULE_SOFTDEP("pre: panel-serdes-max96789");
 #endif
 MODULE_AUTHOR("YT SHEN <yt.shen@mediatek.com>");
