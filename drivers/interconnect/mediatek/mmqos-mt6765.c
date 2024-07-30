@@ -165,6 +165,7 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6765 = {
 	.comm_port_hrt_types = {
 		{ HRT_MAX_BWL, HRT_NONE, HRT_NONE, HRT_NONE, HRT_NONE, HRT_DISP },
 	},
+	.freq_mode = NO_MMINFRA,
 };
 static const struct of_device_id mtk_mmqos_mt6765_of_ids[] = {
 	{
