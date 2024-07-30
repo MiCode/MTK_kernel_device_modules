@@ -25,6 +25,8 @@
 #define DEFAULT_PMIC_UVLO_MV	2000
 #define DPDM_OV_THRESHOLD_MV	3850
 
+#define MT6379_FSW_CONTROL_TIME	10 /* 10s */
+
 unsigned int dbg_log_level = 1;
 module_param(dbg_log_level, uint, 0644);
 
@@ -444,24 +446,24 @@ static int mt6379_otg_regulator_enable(struct regulator_dev *rdev)
 		return -EIO;
 
 	/* disable PP_CV_FLOW_IDLE */
-	ret = mt6379_enable_hm(cdata, true);
+	ret = mt6379_enable_tm(cdata, true);
 	if (ret) {
-		dev_info(cdata->dev, "%s, Failed to enable hm(ret:%d)\n", __func__, ret);
+		dev_info(cdata->dev, "%s, Failed to enable tm(ret:%d)\n", __func__, ret);
 		return ret;
 	}
 
 	ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_PP7, BIT(5), 0);
 	if (ret) {
-		ret = mt6379_enable_hm(cdata, false);
+		ret = mt6379_enable_tm(cdata, false);
 		if (ret)
-			dev_info(cdata->dev, "%s, Failed to disable hm(ret:%d)\n", __func__, ret);
+			dev_info(cdata->dev, "%s, Failed to disable tm(ret:%d)\n", __func__, ret);
 
 		return -EINVAL;
 	}
 
-	ret = mt6379_enable_hm(cdata, false);
+	ret = mt6379_enable_tm(cdata, false);
 	if (ret) {
-		dev_info(cdata->dev, "%s, Failed to disable hm(ret:%d)\n", __func__, ret);
+		dev_info(cdata->dev, "%s, Failed to disable tm(ret:%d)\n", __func__, ret);
 		return ret;
 	}
 
@@ -474,24 +476,24 @@ static int mt6379_otg_regulator_disable(struct regulator_dev *rdev)
 	int ret = 0;
 
 	/* enable PP_CV_FLOW_IDLE */
-	ret = mt6379_enable_hm(cdata, true);
+	ret = mt6379_enable_tm(cdata, true);
 	if (ret) {
-		dev_info(cdata->dev, "%s, Failed to enable hm(ret:%d)\n", __func__, ret);
+		dev_info(cdata->dev, "%s, Failed to enable tm(ret:%d)\n", __func__, ret);
 		return ret;
 	}
 
 	ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_PP7, BIT(5), BIT(5));
 	if (ret) {
-		ret = mt6379_enable_hm(cdata, false);
+		ret = mt6379_enable_tm(cdata, false);
 		if (ret)
-			dev_info(cdata->dev, "%s, Failed to disable hm(ret:%d)\n", __func__, ret);
+			dev_info(cdata->dev, "%s, Failed to disable tm(ret:%d)\n", __func__, ret);
 
 		return -EINVAL;
 	}
 
-	ret = mt6379_enable_hm(cdata, false);
+	ret = mt6379_enable_tm(cdata, false);
 	if (ret) {
-		dev_info(cdata->dev, "%s, Failed to disable hm(ret:%d)\n", __func__, ret);
+		dev_info(cdata->dev, "%s, Failed to disable tm(ret:%d)\n", __func__, ret);
 		return ret;
 	}
 
@@ -1397,6 +1399,165 @@ out:
 	}
 }
 
+int mt6379_charger_set_non_switching_setting(struct mt6379_charger_data *cdata)
+{
+	struct device *dev = cdata->dev;
+	u32 val = 0;
+	int ret = 0;
+
+	mutex_lock(&cdata->ramp_lock);
+	ret = mt6379_enable_tm(cdata, true);
+	if (ret) {
+		dev_info(dev, "%s, Failed to enter tm\n", __func__);
+		goto out;
+
+	}
+	val = FIELD_PREP(MT6379_CHG_RAMPUP_COMP_MSK, 0x3);
+	ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_BUBO5,
+			MT6379_CHG_RAMPUP_COMP_MSK, val);
+	if (ret)
+		dev_info(dev, "%s, Failed to set chg_ramp_up_comp to 240kOhm\n", __func__);
+	ret = mt6379_enable_tm(cdata, false);
+	if (ret)  {
+		dev_info(dev, "%s, Failed to disable tm\n", __func__);
+		goto out;
+	}
+	cdata->non_switching = true;
+out:
+	mutex_unlock(&cdata->ramp_lock);
+	return ret;
+}
+
+int mt6379_charger_fsw_control(struct mt6379_charger_data *cdata)
+{
+	struct device *dev = cdata->dev;
+	int vbus = 0, ibus = 0;
+	u32 val;
+	int ret = 0;
+
+	mutex_lock(&cdata->ramp_lock);
+
+	ret = mt6379_charger_field_get(cdata, F_BUCK_EN, &val);
+	if (ret) {
+		dev_info(dev, "%s, failed to get buck_en\n", __func__);
+		goto out;
+	}
+
+	if (val) { /* if buck en is 1 */
+		ret = mt6379_charger_field_get(cdata, F_IC_STAT, &val);
+		if (ret) {
+			dev_info(dev, "%s, failed to get ic stat\n", __func__);
+			goto out;
+		}
+
+		dev_info(cdata->dev, "%s, IC STAT = %d\n", __func__, val);
+		switch (val) {
+		case CHG_STAT_TRICKLE:
+		case CHG_STAT_PRE:
+		case CHG_STAT_FAST:
+		case CHG_STAT_EOC:
+		case CHG_STAT_BKGND:
+		case CHG_STAT_DONE:
+			cdata->non_switching = false;
+			break;
+		case CHG_STAT_SLEEP:
+		case CHG_STAT_VBUS_RDY:
+		case CHG_STAT_FAULT:
+		case CHG_STAT_OTG:
+		default:
+			break;
+		}
+	}
+
+	if (cdata->non_switching) {
+		dev_info(dev, "%s, non switching case, do not fsw control\n", __func__);
+		goto out;
+	}
+
+	ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_CHGVIN], &vbus);
+	if (ret < 0) {
+		dev_info(dev, "%s, get vbus failed\n", __func__);
+		goto out;
+	}
+
+	ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_IBUS], &ibus);
+	if (ret < 0) {
+		dev_info(dev, "%s, get ibus failed\n", __func__);
+		goto out;
+	}
+
+	dev_info(dev, "%s vbus = %d, ibus = %d\n", __func__, vbus, ibus);
+
+	if (vbus <= 5500 && ibus >=500) {
+		ret = mt6379_enable_tm(cdata, true);
+		if (ret) {
+			dev_info(dev, "%s, Failed to enable tm\n", __func__);
+			goto out;
+		}
+
+		val = FIELD_PREP(MT6379_CHG_RAMPUP_COMP_MSK, 0x3);
+		ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_BUBO5,
+				MT6379_CHG_RAMPUP_COMP_MSK, val);
+		if (ret)
+			dev_info(dev, "%s, Failed to set chg_ramp_up_comp to 240kOhm\n",
+					__func__);
+
+		ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_TRIM6,
+				MT6379_CHG_IEOC_FLOW_RB_MSK, 0);
+		if (ret)
+			dev_info(dev, "%s, Failed to set no fccm in eoc flow\n", __func__);
+
+		ret = mt6379_enable_tm(cdata, false);
+		if (ret) {
+			dev_info(dev, "%s, Failed to disable tm\n", __func__);
+			goto out;
+		}
+	} else {
+		ret = mt6379_enable_tm(cdata, true);
+		if (ret) {
+			dev_info(dev, "%s, Failed to enable tm\n", __func__);
+			goto out;
+		}
+
+		val = FIELD_PREP(MT6379_CHG_RAMPUP_COMP_MSK, 0x1);
+		ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_BUBO5,
+				MT6379_CHG_RAMPUP_COMP_MSK, val);
+		if (ret)
+			dev_info(dev, "%s, Failed to set chg_ramp_up_comp to 400kOhm\n",
+					__func__);
+
+		ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_TRIM6,
+				MT6379_CHG_IEOC_FLOW_RB_MSK,
+				MT6379_CHG_IEOC_FLOW_RB_MSK);
+		if (ret)
+			dev_info(dev, "%s, Failed to set fccm in eoc flow\n", __func__);
+
+		ret = mt6379_enable_tm(cdata, false);
+		if (ret) {
+			dev_info(dev, "%s, Failed to disable tm\n", __func__);
+			goto out;
+		}
+	}
+
+out:
+	mutex_unlock(&cdata->ramp_lock);
+	return ret;
+}
+
+static void mt6379_charger_switching_work_func(struct work_struct *work)
+{
+	struct mt6379_charger_data *cdata = container_of(work, struct mt6379_charger_data,
+							 switching_work.work);
+	int ret = 0;
+
+	mutex_lock(&cdata->ramp_lock);
+	cdata->non_switching = false;
+	mutex_unlock(&cdata->ramp_lock);
+	ret = mt6379_charger_fsw_control(cdata);
+	if (ret)
+		dev_info(cdata->dev, "%s, fsw control failed\n", __func__);
+}
+
 const struct mt6379_charger_dtprop mt6379_charger_dtprops[] = {
 	MT6379_CHG_DTPROP("chg-tmr", chg_tmr, F_CHG_TMR, DTPROP_U32),
 	MT6379_CHG_DTPROP("chg-tmr-en", chg_tmr_en, F_CHG_TMR_EN, DTPROP_BOOL),
@@ -1550,9 +1711,9 @@ static int mt6379_charger_init_setting(struct mt6379_charger_data *cdata)
 	enum mt6379_chip_rev rev;
 	int ret = 0;
 
-	ret = mt6379_enable_hm(cdata, true);
+	ret = mt6379_enable_tm(cdata, true);
 	if (ret) {
-		dev_info(dev, "%s, Failed to enable hm(ret:%d)\n", __func__, ret);
+		dev_info(dev, "%s, Failed to enable tm(ret:%d)\n", __func__, ret);
 		return ret;
 	}
 
@@ -1577,9 +1738,9 @@ static int mt6379_charger_init_setting(struct mt6379_charger_data *cdata)
 			dev_info(dev, "%s, Failed to enable pre-UV vsys_intb\n", __func__);
 	}
 
-	ret = mt6379_enable_hm(cdata, false);
+	ret = mt6379_enable_tm(cdata, false);
 	if (ret) {
-		dev_info(dev, "%s, Failed to disable hm(ret:%d)\n", __func__, ret);
+		dev_info(dev, "%s, Failed to disable tm(ret:%d)\n", __func__, ret);
 		return ret;
 	}
 
@@ -1654,10 +1815,12 @@ static void mt6379_charger_check_pwr_rdy(struct mt6379_charger_data *cdata)
 		return;
 
 	attach_type = val ? ATTACH_TYPE_PWR_RDY : ATTACH_TYPE_NONE;
-	if (attach_type == ATTACH_TYPE_NONE && !cdata->fsw_control) {
-		ret = mt6379_enable_hm(cdata, true);
+	if (attach_type == ATTACH_TYPE_NONE) {
+		mutex_lock(&cdata->ramp_lock);
+		ret = mt6379_enable_tm(cdata, true);
 		if (ret) {
-			dev_info(dev, "%s, Failed to enable hm(ret:%d)\n", __func__, ret);
+			dev_info(dev, "%s, Failed to enable tm(ret:%d)\n", __func__, ret);
+			mutex_unlock(&cdata->ramp_lock);
 			return;
 		}
 
@@ -1672,13 +1835,13 @@ static void mt6379_charger_check_pwr_rdy(struct mt6379_charger_data *cdata)
 		if (ret)
 			dev_info(dev, "%s, Failed to set no fccm in eoc flow\n", __func__);
 
-		ret = mt6379_enable_hm(cdata, false);
+		ret = mt6379_enable_tm(cdata, false);
 		if (ret) {
-			dev_info(dev, "%s, Failed to disable hm(ret:%d)\n", __func__, ret);
+			dev_info(dev, "%s, Failed to disable tm(ret:%d)\n", __func__, ret);
+			mutex_unlock(&cdata->ramp_lock);
 			return;
 		}
-
-		cdata->fsw_control = true;
+		mutex_unlock(&cdata->ramp_lock);
 	}
 
 	ret = mt6379_charger_set_online(cdata, ATTACH_TRIG_PWR_RDY, attach_type);
@@ -1737,25 +1900,42 @@ static irqreturn_t mt6379_fl_ieoc_handler(int irq, void *data)
 static irqreturn_t mt6379_fl_bus_chg_rdy_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
+	int ret = 0;
 
 	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	ret = mt6379_charger_set_non_switching_setting(cdata);
+	if (ret)
+		dev_info(cdata->dev, "%s, set non switching ramp failed\n", __func__);
+	else
+		schedule_delayed_work(&cdata->switching_work, msecs_to_jiffies(1 * 1000));
 	return IRQ_HANDLED;
 }
 
 static irqreturn_t mt6379_fl_wlin_chg_rdy_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
+	int ret = 0;
 
 	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	ret = mt6379_charger_set_non_switching_setting(cdata);
+	if (ret)
+		dev_info(cdata->dev, "%s, set non switching ramp failed\n", __func__);
+	else
+		schedule_delayed_work(&cdata->switching_work, msecs_to_jiffies(1 * 1000));
 	return IRQ_HANDLED;
 }
 
 static irqreturn_t mt6379_fl_vbus_ov_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
+	int ret = 0;
 
 	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	charger_dev_notify(cdata->chgdev, CHARGER_DEV_NOTIFY_VBUS_OVP);
+
+	ret = mt6379_charger_set_non_switching_setting(cdata);
+	if (ret)
+		dev_info(cdata->dev, "%s, set non switching ramp failed\n", __func__);
 	return IRQ_HANDLED;
 }
 
@@ -1770,8 +1950,12 @@ static irqreturn_t mt6379_fl_chg_batov_handler(int irq, void *data)
 static irqreturn_t mt6379_fl_chg_sysov_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
+	int ret = 0;
 
 	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	ret = mt6379_charger_set_non_switching_setting(cdata);
+	if (ret)
+		dev_info(cdata->dev, "%s, set non switching ramp failed\n", __func__);
 	return IRQ_HANDLED;
 }
 
@@ -1980,6 +2164,42 @@ static irqreturn_t mt6379_usbid_evt_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static irqreturn_t mt6379_otp1_handler(int irq, void *data)
+{
+	struct mt6379_charger_data *cdata = data;
+	int ret = 0;
+
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	ret = mt6379_charger_set_non_switching_setting(cdata);
+	if (ret)
+		dev_info(cdata->dev, "%s, set non switching ramp failed\n", __func__);
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t mt6379_otp2_handler(int irq, void *data)
+{
+	struct mt6379_charger_data *cdata = data;
+	int ret = 0;
+
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	ret = mt6379_charger_set_non_switching_setting(cdata);
+	if (ret)
+		dev_info(cdata->dev, "%s, set non switching ramp failed\n", __func__);
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t mt6379_otp0_handler(int irq, void *data)
+{
+	struct mt6379_charger_data *cdata = data;
+	int ret = 0;
+
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	ret = mt6379_charger_set_non_switching_setting(cdata);
+	if (ret)
+		dev_info(cdata->dev, "%s, set non switching ramp failed\n", __func__);
+	return IRQ_HANDLED;
+}
+
 #define DDATA_DEVM_KCALLOC(member)						\
 	(cdata->member = devm_kcalloc(cdata->dev, pdata->nr_port,		\
 				      sizeof(*cdata->member), GFP_KERNEL))	\
@@ -2057,6 +2277,9 @@ static int mt6379_charger_init_irq(struct mt6379_charger_data *cdata)
 		MT6379_CHARGER_IRQ(fl_bc12_dn),
 		MT6379_CHARGER_IRQ(adc_vbat_mon_ov),
 		MT6379_CHARGER_IRQ(usbid_evt),
+		MT6379_CHARGER_IRQ(otp0),
+		MT6379_CHARGER_IRQ(otp1),
+		MT6379_CHARGER_IRQ(otp2),
 	};
 
 	if (ARRAY_SIZE(mt6379_charger_irqs) > MT6379_IRQ_MAX) {
@@ -2110,11 +2333,11 @@ static void mt6379_charger_destroy_cv_lock(void *data)
 	mutex_destroy(cv_lock);
 }
 
-static void mt6379_charger_destroy_hm_lock(void *data)
+static void mt6379_charger_destroy_tm_lock(void *data)
 {
-	struct mutex *hm_lock = data;
+	struct mutex *tm_lock = data;
 
-	mutex_destroy(hm_lock);
+	mutex_destroy(tm_lock);
 }
 
 static void mt6379_charger_destroy_pe_lock(void *data)
@@ -2122,6 +2345,13 @@ static void mt6379_charger_destroy_pe_lock(void *data)
 	struct mutex *pe_lock = data;
 
 	mutex_destroy(pe_lock);
+}
+
+static void mt6379_charger_destroy_ramp_lock(void *data)
+{
+	struct mutex *ramp_lock = data;
+
+	mutex_destroy(ramp_lock);
 }
 
 static int mt6379_charger_init_mutex(struct mt6379_charger_data *cdata)
@@ -2145,10 +2375,10 @@ static int mt6379_charger_init_mutex(struct mt6379_charger_data *cdata)
 		return ret;
 	}
 
-	mutex_init(&cdata->hm_lock);
-	ret = devm_add_action_or_reset(dev, mt6379_charger_destroy_hm_lock, &cdata->hm_lock);
+	mutex_init(&cdata->tm_lock);
+	ret = devm_add_action_or_reset(dev, mt6379_charger_destroy_tm_lock, &cdata->tm_lock);
 	if (ret) {
-		dev_info(dev, "%s, Failed to init hm lock\n", __func__);
+		dev_info(dev, "%s, Failed to init tm lock\n", __func__);
 		return ret;
 	}
 
@@ -2156,6 +2386,13 @@ static int mt6379_charger_init_mutex(struct mt6379_charger_data *cdata)
 	ret = devm_add_action_or_reset(dev, mt6379_charger_destroy_pe_lock, &cdata->pe_lock);
 	if (ret) {
 		dev_info(dev, "%s, Failed to init pe lock\n", __func__);
+		return ret;
+	}
+
+	mutex_init(&cdata->ramp_lock);
+	ret = devm_add_action_or_reset(dev, mt6379_charger_destroy_ramp_lock, &cdata->ramp_lock);
+	if (ret) {
+		dev_info(dev, "%s, Failed to init ramp lock\n", __func__);
 		return ret;
 	}
 
@@ -2199,6 +2436,13 @@ static void mt6379_release_ufcs_port(void *d)
 
 	unregister_ufcs_dev_notifier(cdata->ufcs, &cdata->ufcs_noti);
 	ufcs_port_put(cdata->ufcs);
+}
+
+static void mt6379_charger_destroy_switching_work(void *d)
+{
+	struct delayed_work *work = d;
+
+	cancel_delayed_work(work);
 }
 
 static int mt6379_charger_get_iio_adc(struct mt6379_charger_data *cdata)
@@ -2330,7 +2574,15 @@ static int mt6379_charger_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	cdata->fsw_control = true;
+	INIT_DELAYED_WORK(&cdata->switching_work, mt6379_charger_switching_work_func);
+	ret = devm_add_action_or_reset(dev, mt6379_charger_destroy_switching_work,
+				       &cdata->switching_work);
+	if (ret) {
+		dev_info(dev, "%s, Failed to add fsw control action\n", __func__);
+		return ret;
+	}
+	cdata->non_switching = false;
+
 	mt6379_charger_check_pwr_rdy(cdata);
 	return 0;
 }
