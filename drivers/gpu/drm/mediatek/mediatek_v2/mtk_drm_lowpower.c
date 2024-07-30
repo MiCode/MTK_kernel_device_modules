@@ -990,6 +990,7 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 	struct cmdq_pkt *handle;
 	struct cmdq_client *client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 	struct mtk_ddp_comp *comp;
+	unsigned int *trace;
 
 	mtk_crtc_pkt_create(&handle, crtc, client);
 
@@ -1011,6 +1012,11 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_LTPO_VDO_SET, &en);
 	}
 
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLEMGR_BY_WB) &&
+	    !mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLEMGR_BY_REPAINT)) {
+		trace = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_IDLEMGR_BY_WB_TRACE);
+		*trace |= BIT(31);
+	}
 	cmdq_pkt_flush(handle);
 	cmdq_pkt_destroy(handle);
 }
@@ -2451,7 +2457,7 @@ static int mtk_drm_idlemgr_wb_get_fb(struct mtk_drm_crtc *mtk_crtc, unsigned int
 	return 0;
 }
 
-static void mtk_drm_idlemgr_update_wb_bw(struct mtk_iwb_cb_data *cb_data)
+static void mtk_drm_idlemgr_update_wb_bw(struct mtk_iwb_cb_data *cb_data, bool wdma_only)
 {
 	struct drm_crtc *crtc = cb_data->crtc;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -2464,41 +2470,43 @@ static void mtk_drm_idlemgr_update_wb_bw(struct mtk_iwb_cb_data *cb_data)
 	unsigned int crtc_id = drm_crtc_index(crtc);
 	unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
 
-	/*clear ovl port BW*/
-	if (priv->data->mmsys_id == MMSYS_MT6989 ||
-		priv->data->mmsys_id == MMSYS_MT6899) {
-		for_each_comp_in_crtc_target_path(comp, mtk_crtc, i, DDP_FIRST_PATH) {
-			if (cb_data->ovl && comp->id == cb_data->ovl->id) {
-				total_bw += bw_base * 120 / 100; //consider eff
-				continue;
-			}
+	if (!wdma_only) {
+		/*clear ovl port BW*/
+		if (priv->data->mmsys_id == MMSYS_MT6989 ||
+			priv->data->mmsys_id == MMSYS_MT6899) {
+			for_each_comp_in_crtc_target_path(comp, mtk_crtc, i, DDP_FIRST_PATH) {
+				if (cb_data->ovl && comp->id == cb_data->ovl->id) {
+					total_bw += bw_base * 120 / 100; //consider eff
+					continue;
+				}
 
-			if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL) {
-				port_bw = 0;
-				mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
-				mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &port_bw);
-				continue;
-			}
+				if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL) {
+					port_bw = 0;
+					mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
+					mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &port_bw);
+					continue;
+				}
 
-			port_bw = mtk_disp_get_port_hrt_bw(comp, CHANNEL_HRT_RW);
-			if (port_bw > 0)
-				total_bw += port_bw;
+				port_bw = mtk_disp_get_port_hrt_bw(comp, CHANNEL_HRT_RW);
+				if (port_bw > 0)
+					total_bw += port_bw;
+			}
+		} else
+			total_bw = bw_base * 125 / 100; //consider eff
+
+		/* report total hrt BW */
+		mtk_crtc->qos_ctx->last_hrt_req = total_bw;
+		mtk_disp_set_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_hrt_req);
+
+		/* report channel hrt BW */
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
+			mtk_disp_get_channel_hrt_bw_by_scope(mtk_crtc,
+				CHANNEL_BW_HSIDLE_DL, channel_hrt, ARRAY_SIZE(channel_hrt));
+			mtk_disp_set_max_channel_hrt_bw(mtk_crtc, channel_hrt,
+					ARRAY_SIZE(channel_hrt), "hsidle-dl");
+			for (i = 0; i < BW_CHANNEL_NR; i++)
+				mtk_crtc->qos_ctx->last_channel_req[i] = channel_hrt[i];
 		}
-	} else
-		total_bw = bw_base * 125 / 100; //consider eff
-
-	/* report total hrt BW */
-	mtk_crtc->qos_ctx->last_hrt_req = total_bw;
-	mtk_disp_set_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_hrt_req);
-
-	/* report channel hrt BW */
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
-		mtk_disp_get_channel_hrt_bw_by_scope(mtk_crtc,
-			CHANNEL_BW_HSIDLE_DL, channel_hrt, ARRAY_SIZE(channel_hrt));
-		mtk_disp_set_max_channel_hrt_bw(mtk_crtc, channel_hrt,
-				ARRAY_SIZE(channel_hrt), "hsidle-dl");
-		for (i = 0; i < BW_CHANNEL_NR; i++)
-			mtk_crtc->qos_ctx->last_channel_req[i] = channel_hrt[i];
 	}
 
 	/*clear wdma port BW*/
@@ -2517,9 +2525,9 @@ static void mtk_drm_idlemgr_update_wb_bw(struct mtk_iwb_cb_data *cb_data)
 		priv->last_max_channel_req | 0xcb000000,
 		mtk_crtc->qos_ctx->last_hrt_req | 0xcb000000);
 
-	DDPINFO("%s,update BW channel:%u,total:%u, base:%u\n",
+	DDPINFO("%s,update BW channel:%u,total:%u, base:%u,wdma_only:%d\n",
 		__func__, priv->last_max_channel_req,
-		mtk_crtc->qos_ctx->last_hrt_req, bw_base);
+		mtk_crtc->qos_ctx->last_hrt_req, bw_base, wdma_only);
 }
 
 static void mtk_drm_idlemgr_wb_cmdq_cb(struct cmdq_cb_data data)
@@ -2528,14 +2536,20 @@ static void mtk_drm_idlemgr_wb_cmdq_cb(struct cmdq_cb_data data)
 	unsigned int *trace;
 	struct drm_crtc *crtc = cb_data->crtc;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	bool wdma_only = false;
 
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	trace = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_IDLEMGR_BY_WB_TRACE);
 	DDPINFO("after enter IDLEMGR_BY_WB_TRACE:0x%x\n", *trace);
 
-	if (*trace & BIT(4))
-		mtk_drm_idlemgr_update_wb_bw(cb_data);
+	if (*trace & BIT(4)) {
+		if (*trace & BIT(31))
+			wdma_only = true;
+		mtk_drm_idlemgr_update_wb_bw(cb_data, wdma_only);
+	} else
+		DDPINFO("%s, ignore bw update,trace:0x%x\n",
+			__func__, *trace);
 
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
 	kfree(cb_data);
