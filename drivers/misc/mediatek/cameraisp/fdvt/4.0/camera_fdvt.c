@@ -1520,7 +1520,7 @@ static int compat_FD_get_register_data(
 	FDVTRegIO *data)
 {
 	long ret = -1;
-	compat_FDVTRegIO data32;
+	compat_FDVTRegIO data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(compat_FDVTRegIO));
@@ -1543,7 +1543,7 @@ static int compat_FD_put_register_data(
 {
 	long ret = -1;
 
-	compat_FDVTRegIO data32;
+	compat_FDVTRegIO data32 = {0};
 	data32.u4Count = (compat_uint_t)(data->u4Count);
 
 	if (copy_to_user(compat_ptr(arg), &data32,
