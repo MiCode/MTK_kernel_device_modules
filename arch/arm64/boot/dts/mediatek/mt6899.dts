@@ -8717,6 +8717,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			iommus = <&disp_iommu M4U_L33_P5_DISP1_WDMA0>;
 			mediatek,larb = <&smi_larb33>;
 			mediatek,smi-id = <33>;
+			interconnects = <&mmqos MASTER_LARB_PORT(M4U_L33_P5_DISP1_WDMA0)
+					 &mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "DDP_COMPONENT_WDMA1_hrt_qos";
 		};
 
 		disp1-smi-larb0@1420f000 {
