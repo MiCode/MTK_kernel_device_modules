@@ -17749,28 +17749,28 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		pins-cmd1-dat {
 			pinmux = <PINMUX_GPIO136__FUNC_GPIO136>;
 			input-enable;
-			bias-pull-down;
+			bias-pull-up = <MTK_PULL_SET_RSEL_111>;
 		};
 	};
 	vow_scp_dmic_dat_on: vow-scp-dmic-dat-on {
 		pins-cmd1-dat {
 			pinmux = <PINMUX_GPIO136__FUNC_SCP_DMIC_DAT>;
 			input-schmitt-enable;
-			bias-disable;
+			bias-pull-down = <MTK_PULL_SET_RSEL_000>;
 		};
 	};
 	vow_scp_dmic_clk_off: vow-scp-dmic-clk-off {
 		pins-cmd1-dat {
 			pinmux = <PINMUX_GPIO135__FUNC_GPIO135>;
 			input-enable;
-			bias-pull-down;
+			bias-pull-up = <MTK_PULL_SET_RSEL_111>;
 		};
 	};
 	vow_scp_dmic_clk_on: vow-scp-dmic-clk-on {
 		pins-cmd1-dat {
 			pinmux = <PINMUX_GPIO135__FUNC_SCP_DMIC_CLK>;
 			input-schmitt-enable;
-			bias-disable;
+			bias-pull-down = <MTK_PULL_SET_RSEL_000>;
 		};
 	};
 	aud_nle_mosi_off: aud-nle-mosi-off {
