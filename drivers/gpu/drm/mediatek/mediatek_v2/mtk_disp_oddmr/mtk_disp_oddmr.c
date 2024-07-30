@@ -8329,7 +8329,8 @@ static int mtk_oddmr_dbi_init(struct mtk_drm_dbi_cfg_info *cfg_info)
 		index++;
 	}
 
-
+	g_oddmr_priv->dbi_data.min_block_v = dbi_cfg_data->basic_info.partial_update_scale_factor_v;
+	g_oddmr_priv->dbi_data.min_block_h = dbi_cfg_data->basic_info.partial_update_scale_factor_h;
 	g_oddmr_priv->dbi_state = ODDMR_INIT_DONE;
 
 	return 0;
@@ -8973,8 +8974,9 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 	if (share_mem->dbi_init_done) {
 		width = g_oddmr_priv->dbi_cfg_info.basic_info.panel_width;
 		height = g_oddmr_priv->dbi_cfg_info.basic_info.panel_height;
-		scale_factor_h = g_oddmr_priv->dbi_cfg_info.basic_info.partial_update_scale_factor_h;
-		scale_factor_v = g_oddmr_priv->dbi_cfg_info.basic_info.partial_update_scale_factor_v;
+		scale_factor_h = g_oddmr_priv->dbi_data.min_block_h;
+		scale_factor_v = g_oddmr_priv->dbi_data.min_block_v;
+		DDPMSG("dbi-scp min block %d/%d\n", scale_factor_h, scale_factor_v);
 
 		share_mem->panel_width = width;
 		share_mem->panel_height = height;
@@ -9003,7 +9005,7 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 				return false;
 			}
 			ret = iommu_map(domain, share_mem->pic_addr_pa[0], share_mem->pic_addr_pa[0],
-				ROUNDUP(width*height*3*2 + width*height*4*3/16, PAGE_SIZE),
+				ROUNDUP(width*height*3*2, PAGE_SIZE),
 				IOMMU_READ | IOMMU_WRITE, GFP_KERNEL);
 			if (ret < 0) {
 				DDPPR_ERR("%s, iommu_map fail\n", __func__);
@@ -9017,21 +9019,6 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 	tmp_addr = (unsigned int *)(get_mem_virt(SCP_DBI_MEM_ID) + share_mem->unused_offset);
 
 	if (share_mem->dbi_hw_enable) {
-		//backup table
-		table_addr = (void *)(get_mem_virt(SCP_DBI_MEM_ID) +
-			(share_mem->table_addr_pa - get_mem_phys(SCP_DBI_MEM_ID)));
-
-		DDPMSG("dbi-scp table_addr (0x%llx)\n", (unsigned long long)table_addr);
-		if (atomic_read(&g_oddmr_priv->dbi_data.cur_table_idx)) {
-			memcpy(table_addr,
-				g_oddmr_priv->dbi_data.dbi_table[1]->kvaddr,
-				g_oddmr_priv->dbi_data.table_size);
-		} else {
-			memcpy(table_addr,
-				g_oddmr_priv->dbi_data.dbi_table[0]->kvaddr,
-				g_oddmr_priv->dbi_data.table_size);
-		}
-
 		//top
 		i = 0;
 		*(tmp_addr+(i++)) = DISP_ODDMR_TOP_CTR_1;
@@ -9083,7 +9070,7 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 		memcpy(tmp_addr+i,
 			g_oddmr_priv->dbi_cfg_info.dbv_change_cfg.reg_offset,
 			g_oddmr_priv->dbi_cfg_info.dbv_change_cfg.reg_num * sizeof(unsigned int));
-			i += g_oddmr_priv->dbi_cfg_info.dbv_change_cfg.reg_num;
+		i += g_oddmr_priv->dbi_cfg_info.dbv_change_cfg.reg_num;
 
 		//dbi enable
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_DMR_EN;
@@ -9097,6 +9084,8 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_SPR_REMAP_GAIN;
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_SPR_REMAP_EN;
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_TOP_OD_S2R_BYPASS;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_DBI_UDMA_BASE_ADDR_0;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_DBI_UDMA_BASE_ADDR_1;
 
 		share_mem->backup.size = i;
 		share_mem->unused_offset += i * sizeof(unsigned int);

@@ -356,7 +356,8 @@ struct mtk_disp_oddmr_dbi_data {
 	unsigned int dbi_table_block_v[2];
 	unsigned int dbi_table_size[2];
 	unsigned int table_size;
-
+	unsigned int min_block_v;
+	unsigned int min_block_h;
 	unsigned int cur_max_time;
 	atomic_t max_time_set_done;
 	atomic_t remap_enable;
