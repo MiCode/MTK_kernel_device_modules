@@ -9,6 +9,8 @@
 #include <linux/platform_device.h>
 
 #define GHPM_TIMESTAMP_MONITOR_EN          (1)
+#define GPUEB_WAIT_OFF_FAIL_WRITE_DUMMY    (1)
+#define GPUEB_WAIT_OFF_FAIL_FLAG           (0xBADDEAD)
 
 #define GHPM_IPI_TIMEOUT                   (5000)
 #define GPUEB_WAIT_TIMEOUT                 (10000)
@@ -19,6 +21,7 @@
 #define MFG_RPC_MFG0_PWR_CON               (g_mfg_rpc_base + 0x0504)          /* 0x4B800504 */
 #define MFG_RPC_MFG2_PWR_CON               (g_mfg_rpc_base + 0x0508)          /* 0x4B800508 */
 #define MFG_RPC_MFG37_PWR_CON              (g_mfg_rpc_base + 0x0594)          /* 0x4B800594 */
+#define MFG_RPCTOP_DUMMY_REG_0             (g_mfg_rpc_base + 0x0650)          /* 0x4B800650 */
 #define MFG_RPCTOP_DUMMY_REG_2             (g_mfg_rpc_base + 0x0658)          /* 0x4B800658 */
 #define GHPM_EN_FOR_MT6991_B0              (BIT(0))
 #define MFG_GHPM_CFG0_CON                  (g_mfg_rpc_base + 0x0800)          /* 0x4B800800 */
@@ -58,11 +61,13 @@
 		type == TRIGGER_GHPM_ON ? __stringify(TRIGGER_GHPM_ON) : \
 		type == POLLING_GHPM_ON_START ? __stringify(POLLING_GHPM_ON_START) : \
 		type == POLLING_GHPM_ON_TIMEOUT ? __stringify(POLLING_GHPM_ON_TIMEOUT) : \
+		type == POLLING_GHPM_ON_TIMEOUT_ERR ? __stringify(POLLING_GHPM_ON_TIMEOUT_ERR) : \
 		type == POLLING_GPUEB_RESUME_START ? __stringify(POLLING_GPUEB_RESUME_START) : \
 		type == POLLING_GPUEB_RESUME_TIMEOUT ? __stringify(POLLING_GPUEB_RESUME_TIMEOUT) : \
 		type == GPUEB_ON_DONE ? __stringify(GPUEB_ON_DONE) : \
 		type == IPI_SUSPEND_GPUEB ? __stringify(IPI_SUSPEND_GPUEB) : \
 		type == POLLING_GPUEB_OFF_START ? __stringify(POLLING_GPUEB_OFF_START) : \
+		type == POLLING_GHPM_OFF_TIMEOUT_ERR ? __stringify(POLLING_GHPM_OFF_TIMEOUT_ERR) : \
 		type == POLLING_GPUEB_OFF_TIMEOUT ? __stringify(POLLING_GPUEB_OFF_TIMEOUT) : \
 		type == GPUEB_OFF_DONE ? __stringify(GPUEB_OFF_DONE) : \
 		"UNKNOWN" \
@@ -78,7 +83,7 @@ enum ghpm_timestamp_monitor_point {
 	TRIGGER_GHPM_ON,
 	POLLING_GHPM_ON_START,
 	POLLING_GHPM_ON_TIMEOUT,
-	POLLING_GPUEB_ON_TIMEOUT_ERR,
+	POLLING_GHPM_ON_TIMEOUT_ERR,
 	POLLING_GPUEB_RESUME_START,
 	POLLING_GPUEB_RESUME_TIMEOUT,
 	GPUEB_ON_DONE,
