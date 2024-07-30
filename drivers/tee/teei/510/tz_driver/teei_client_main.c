@@ -276,11 +276,6 @@ void *tz_malloc_shared_mem(size_t size, int flags)
 #endif
 }
 
-void tz_free_shared_mem(void *addr, size_t size)
-{
-	free_pages((unsigned long)addr, get_order(ROUND_UP(size, SZ_4K)));
-}
-
 int teei_move_cpu_context(int target_cpu_id, int original_cpu_id)
 {
 #ifndef TEEI_FFA_SUPPORT
@@ -587,6 +582,7 @@ struct notifier_block ut_smc_nb;
 static int init_teei_framework(void)
 {
 	long retVal = 0;
+	unsigned int order;
 	struct tz_log_state *s = dev_get_platdata(
 				&tz_drv_state->tz_log_pdev->dev);
 #ifndef TEEI_FFA_SUPPORT
@@ -634,7 +630,8 @@ static int init_teei_framework(void)
 
 	TEEI_BOOT_FOOTPRINT("TEEI BOOT Stage1 Completed");
 
-	free_pages(boot_vfs_addr, get_order(ROUND_UP(VFS_SIZE, SZ_4K)));
+	order = get_order(ROUND_UP(VFS_SIZE, SZ_4K));
+	free_pages(boot_vfs_addr, order);
 
 	boot_soter_flag = END_STATUS;
 	if (soter_error_flag == 1)
