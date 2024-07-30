@@ -14,6 +14,22 @@
 #include "mtk_drm_ddp_comp_auto.h"
 #include "mtk_drm_crtc_auto.h"
 
+bool mtk_drm_crtc_layer_need_swap(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_ddp_comp *output_comp;
+
+	/* dsi0 and dp_intf0 path, primary plane on the top of all plane
+	 * other path, primary plane at the bottom of all plane
+	 */
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (output_comp &&
+	    (output_comp->id == DDP_COMPONENT_DSI0 ||
+	     output_comp->id == DDP_COMPONENT_DP_INTF0))
+		return true;
+	else
+		return false;
+}
+
 struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,
 						  struct mtk_plane_state *plane_state)
 {
@@ -23,13 +39,15 @@ struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,
 
 	unsigned int i, j;
 	struct mtk_ddp_comp *comp;
-	struct mtk_ddp_comp *output_comp;
 
 	if (!plane) {
 		local_index = plane_state->comp_state.lye_id;
 	} else {
 
 		local_index = plane->index - base_plane->index;
+
+		if (mtk_drm_crtc_layer_need_swap(mtk_crtc))
+			local_index = mtk_crtc->layer_nr - 1 - local_index;
 
 		DDPINFO("%s plane index %d base %d\n", __func__, plane->index, base_plane->index);
 	}

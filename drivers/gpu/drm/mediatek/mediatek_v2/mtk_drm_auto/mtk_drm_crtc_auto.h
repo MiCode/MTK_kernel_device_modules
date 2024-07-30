@@ -70,6 +70,7 @@
 void mtk_drm_crtc_init_layer_nr(struct mtk_drm_crtc *mtk_crtc, int pipe);
 struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,
 						  struct mtk_plane_state *plane_state);
+bool mtk_crtc_layer_need_swap(struct mtk_drm_crtc *mtk_crtc);
 int mtk_drm_crtc_init_plane(struct drm_device *drm_dev, struct mtk_drm_crtc *mtk_crtc, int pipe);
 
 void mtk_get_output_timing(struct drm_crtc *crtc);
