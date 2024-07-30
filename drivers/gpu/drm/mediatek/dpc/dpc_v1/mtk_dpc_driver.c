@@ -478,7 +478,7 @@ static struct mtk_dpc mt6899_dpc_driver_data = {
 	.disp_vdo_dt_usage = NULL,
 	.mml_vdo_dt_usage = NULL,
 	.get_sys_status = mt6899_get_sys_status,
-	.mmdvfs_power_sync = true,
+	.mmdvfs_power_sync = false,
 	.mmdvfs_settings_addr = NULL,
 	.mmdvfs_settings_count = 0,
 	.mtcmos_mask = 0x1f,
@@ -2128,6 +2128,27 @@ static void dpc_init_panel_type_v1(enum mtk_panel_type type)
 	DPCDUMP("type:%d", g_panel_type);
 }
 
+static int dpc_enable_vcp(bool en, const enum mtk_dpc_subsys subsys)
+{
+	u32 mmdvfs_user;
+
+	/* ignore it to shrink kernel log, since vcp only off after suspend */
+	if (!g_priv->mmdvfs_power_sync)
+		return 0;
+
+	if (MTK_DPC_OF_DISP_SUBSYS(subsys)) {
+		mmdvfs_user = VCP_PWR_USR_DISP;
+	} else if (MTK_DPC_OF_MML_SUBSYS(subsys)) {
+		mmdvfs_user = VCP_PWR_USR_MML;
+	} else {
+		DPCERR("invalid user:%d", subsys);
+		WARN_ON(1);
+		return -EINVAL;
+	}
+
+	return mtk_mmdvfs_enable_vcp(en, mmdvfs_user);
+}
+
 static void dpc_enable_v1(const u8 en)
 {
 	unsigned int dt_mask = 0;
@@ -2145,9 +2166,8 @@ static void dpc_enable_v1(const u8 en)
 	}
 
 	/* enable hfrp before trigger vidle if necessary */
-	if (g_priv->mmdvfs_power_sync && en &&
-		atomic_read(&g_priv->dpc_en_cnt) == 0) {
-		if (mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_DISP) < 0) {
+	if (en && atomic_read(&g_priv->dpc_en_cnt) == 0) {
+		if (dpc_enable_vcp(true, DPC_SUBSYS_DISP) < 0) {
 			DPCERR("failed to enable vcp, en:%d", en);
 			goto out;
 		}
@@ -2263,10 +2283,8 @@ inavail:
 	spin_unlock_irqrestore(&dpc_lock, flags);
 
 	/* disable hfrp after vidle off if necessary */
-	if (g_priv->mmdvfs_power_sync && !en &&
-		atomic_read(&g_priv->dpc_en_cnt) == 0) {
-		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_DISP);
-	}
+	if (!en && atomic_read(&g_priv->dpc_en_cnt) == 0)
+		dpc_enable_vcp(false, DPC_SUBSYS_DISP);
 
 out:
 	dpc_pm_ctrl(false, __func__);
@@ -2593,7 +2611,6 @@ u8 dpc_dvfs_bw_to_level(const u32 bw_in_mb)
 static void dpc_dvfs_set_v1(const enum mtk_dpc_subsys subsys, const u8 level, bool force)
 {
 	u32 addr = 0, avail = 0;
-	u32 mmdvfs_user = U32_MAX;
 	u8 max_level, last_level;
 	unsigned long flags = 0;
 	bool mmdvfs_state = true;
@@ -2605,11 +2622,7 @@ static void dpc_dvfs_set_v1(const enum mtk_dpc_subsys subsys, const u8 level, bo
 		return;
 	}
 
-	if (MTK_DPC_OF_DISP_SUBSYS(subsys)) {
-		mmdvfs_user = VCP_PWR_USR_DISP;
-	} else if (MTK_DPC_OF_MML_SUBSYS(subsys)) {
-		mmdvfs_user = VCP_PWR_USR_MML;
-	} else {
+	if (MTK_DPC_OF_INVALID_SUBSYS(subsys)) {
 		DPCERR("invalid user:%d", subsys);
 		WARN_ON(1);
 		return;
@@ -2659,7 +2672,7 @@ static void dpc_dvfs_set_v1(const enum mtk_dpc_subsys subsys, const u8 level, bo
 			g_priv->dvfs_bw.bw_level, g_priv->dvfs_bw.disp_bw,
 			g_priv->dvfs_bw.mml_bw, force);
 
-	if (mtk_mmdvfs_enable_vcp(true, mmdvfs_user) < 0)
+	if (dpc_enable_vcp(true, subsys) < 0)
 		mmdvfs_state = false;
 
 	spin_lock_irqsave(&dpc_lock, flags);
@@ -2676,7 +2689,7 @@ static void dpc_dvfs_set_v1(const enum mtk_dpc_subsys subsys, const u8 level, bo
 
 	spin_unlock_irqrestore(&dpc_lock, flags);
 	if (mmdvfs_state)
-		mtk_mmdvfs_enable_vcp(false, mmdvfs_user);
+		dpc_enable_vcp(false, subsys);
 
 out:
 	mutex_unlock(&dvfs_lock);
@@ -2687,15 +2700,10 @@ static void dpc_dvfs_bw_set_v1(const enum mtk_dpc_subsys subsys, const u32 bw_in
 {
 	u8 max_bw_level, last_bw_level;
 	u32 total_bw = 0;
-	u32 mmdvfs_user = U32_MAX;
 	unsigned long flags = 0;
 	bool mmdvfs_state = true;
 
-	if (MTK_DPC_OF_DISP_SUBSYS(subsys)) {
-		mmdvfs_user = VCP_PWR_USR_DISP;
-	} else if (MTK_DPC_OF_MML_SUBSYS(subsys)) {
-		mmdvfs_user = VCP_PWR_USR_MML;
-	} else {
+	if (MTK_DPC_OF_INVALID_SUBSYS(subsys)) {
 		DPCERR("invalid user:%d", subsys);
 		WARN_ON(1);
 		return;
@@ -2734,7 +2742,7 @@ static void dpc_dvfs_bw_set_v1(const enum mtk_dpc_subsys subsys, const u32 bw_in
 			g_priv->dvfs_bw.bw_level, g_priv->dvfs_bw.disp_bw,
 			g_priv->dvfs_bw.mml_bw);
 
-	if (mtk_mmdvfs_enable_vcp(true, mmdvfs_user) < 0)
+	if (dpc_enable_vcp(true, subsys) < 0)
 		mmdvfs_state = false;
 
 	spin_lock_irqsave(&dpc_lock, flags);
@@ -2747,7 +2755,7 @@ static void dpc_dvfs_bw_set_v1(const enum mtk_dpc_subsys subsys, const u32 bw_in
 
 	spin_unlock_irqrestore(&dpc_lock, flags);
 	if (mmdvfs_state)
-		mtk_mmdvfs_enable_vcp(false, mmdvfs_user);
+		dpc_enable_vcp(false, subsys);
 
 out:
 	mutex_unlock(&dvfs_lock);
@@ -2758,7 +2766,6 @@ static void dpc_dvfs_both_set_v1(const enum mtk_dpc_subsys subsys, const u8 leve
 	const u32 bw_in_mb)
 {
 	u32 addr = 0, avail = 0, total_bw = 0;
-	u32 mmdvfs_user = U32_MAX;
 	u8 max_level = 0, max_level_subsys = 0, max_level_bw = 0;
 	u8 last_bw_level, last_level;
 	unsigned long flags = 0;
@@ -2770,11 +2777,7 @@ static void dpc_dvfs_both_set_v1(const enum mtk_dpc_subsys subsys, const u8 leve
 		return;
 	}
 
-	if (MTK_DPC_OF_DISP_SUBSYS(subsys))
-		mmdvfs_user = VCP_PWR_USR_DISP;
-	else if (MTK_DPC_OF_MML_SUBSYS(subsys))
-		mmdvfs_user = VCP_PWR_USR_MML;
-	else {
+	if (MTK_DPC_OF_INVALID_SUBSYS(subsys)) {
 		DPCERR("invalid user:%d", subsys);
 		WARN_ON(1);
 		return;
@@ -2835,7 +2838,7 @@ static void dpc_dvfs_both_set_v1(const enum mtk_dpc_subsys subsys, const u8 leve
 			g_priv->dvfs_bw.bw_level, g_priv->dvfs_bw.disp_bw,
 			g_priv->dvfs_bw.mml_bw, force);
 
-	if (mtk_mmdvfs_enable_vcp(true, mmdvfs_user) < 0)
+	if (dpc_enable_vcp(true, subsys) < 0)
 		mmdvfs_state = false;
 
 	spin_lock_irqsave(&dpc_lock, flags);
@@ -2859,7 +2862,7 @@ static void dpc_dvfs_both_set_v1(const enum mtk_dpc_subsys subsys, const u8 leve
 
 	spin_unlock_irqrestore(&dpc_lock, flags);
 	if (mmdvfs_state)
-		mtk_mmdvfs_enable_vcp(false, mmdvfs_user);
+		dpc_enable_vcp(false, subsys);
 
 out:
 	mutex_unlock(&dvfs_lock);
@@ -4355,7 +4358,7 @@ static int mtk_dpc_state_monitor_thread(void *data)
 			mtk_update_dpc_state(DPC_VIDLE_MMINFRA_MASK |
 				DPC_VIDLE_APSRC_MASK | DPC_VIDLE_BW_MASK, off);
 		} else {
-			if (mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_DISP) < 0) {
+			if (dpc_enable_vcp(true, DPC_SUBSYS_DISP) < 0) {
 				mtk_update_dpc_state(DPC_VIDLE_MMINFRA_MASK |
 					DPC_VIDLE_APSRC_MASK | DPC_VIDLE_BW_MASK, off);
 				dpc_mmp(mmdvfs_dead, MMPROFILE_FLAG_PULSE, off, 0xffffffff);
@@ -4363,7 +4366,7 @@ static int mtk_dpc_state_monitor_thread(void *data)
 				mtk_update_dpc_state(DPC_VIDLE_MMINFRA_MASK |
 					DPC_VIDLE_APSRC_MASK | DPC_VIDLE_BW_MASK |
 					DPC_VIDLE_VDISP_MASK, off);
-				mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_DISP);
+				dpc_enable_vcp(false, DPC_SUBSYS_DISP);
 			}
 		}
 	}
