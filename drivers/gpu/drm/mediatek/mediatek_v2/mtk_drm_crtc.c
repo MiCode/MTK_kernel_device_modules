@@ -14544,17 +14544,24 @@ int mtk_crtc_check_out_sec(struct drm_crtc *crtc)
 
 
 /*====for MTEE SVP=====*/
+static int is_tzmp2_enabled = -1;
 bool is_tzmp2_enable(void)
 {
-	struct device_node *dt_tzmp_node;
-	struct device_node *dt_page_base_node;
+	if (is_tzmp2_enabled == -1){
+		struct device_node *dt_tzmp_node;
+		struct device_node *dt_page_base_node;
 
-	dt_tzmp_node = of_find_node_by_name(NULL, TZMP2_DT_NAME);
-	dt_page_base_node = of_find_node_by_name(NULL, PAGE_BASE_NAME);
-	if (!dt_tzmp_node && !dt_page_base_node)
-		return false;
-
-	return true;
+		dt_tzmp_node = of_find_node_by_name(NULL, TZMP2_DT_NAME);
+		dt_page_base_node = of_find_node_by_name(NULL, PAGE_BASE_NAME);
+		if (!dt_tzmp_node && !dt_page_base_node)
+			is_tzmp2_enabled = 0;
+		else
+			is_tzmp2_enabled = 1;
+		DDPINFO("%s: is_tzmp2_enabled = %d", __func__, is_tzmp2_enabled);
+	}
+	if (is_tzmp2_enabled == 1)
+		return true;
+	return false;
 }
 
 static int mtk_mtee_sec_flow_by_cmdq(struct cmdq_pkt *cmdq_handle, struct mtk_ddp_comp *comp,
