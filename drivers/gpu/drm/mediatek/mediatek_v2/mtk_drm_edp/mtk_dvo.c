@@ -607,8 +607,8 @@ static int mtk_dvo_set_display_mode(struct mtk_dvo *dvo,
 	drm_display_mode_to_videomode(mode, &vm);
 
 	pr_notice("[eDPTX] vm.pixelclock=%lu\n", vm.pixelclock);
-	pr_notice("[eDPTX] vm.hactive=%d vm.hfront_porch=%d vm.hback_porch=%d vm.vsync_len=%d\n",
-			vm.hactive, vm.hfront_porch, vm.hback_porch, vm.vsync_len);
+	pr_notice("[eDPTX] vm.hactive=%d vm.hfront_porch=%d vm.hback_porch=%d vm.hsync_len=%d\n",
+			vm.hactive, vm.hfront_porch, vm.hback_porch, vm.hsync_len);
 
 	pr_notice("[eDPTX] vm.vactive=%d vm.vfront_porch=%d vm.vback_porch=%d vm.vsync_len=%d\n",
 			vm.vactive, vm.vfront_porch, vm.vback_porch, vm.vsync_len);
@@ -844,6 +844,9 @@ static int mtk_dvo_bridge_attach(struct drm_bridge *bridge,
 		dev_info(dvo->dev, "[eDPTX] Found bridge node: %pOF\n", dvo->next_bridge->of_node);
 		break;
 	}
+
+	if (!retry)
+		return -EINVAL;
 
 	ret = drm_bridge_attach(bridge->encoder, dvo->next_bridge,
 				 &dvo->bridge, flags);
