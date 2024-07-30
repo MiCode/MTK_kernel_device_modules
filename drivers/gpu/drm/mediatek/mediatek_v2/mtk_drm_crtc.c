@@ -18271,17 +18271,14 @@ static void mtk_atomic_hbm_bypass_pq(struct drm_crtc *crtc,
 	DDPINFO("%s: enter en[%d]\n", __func__, en);
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-		if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_AAL ||
-				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR)) {
+		if (comp && (comp->doze_bypass & HBM_BYPASS_PQ))
 			if (comp->funcs && comp->funcs->bypass)
 				mtk_ddp_comp_bypass(comp, en, PQ_FEATURE_KRN_HBM, handle);
-		}
 	}
 
 	if (mtk_crtc->is_dual_pipe) {
 		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
-			if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_AAL ||
-					mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR)) {
+			if (comp && (comp->doze_bypass & HBM_BYPASS_PQ)) {
 				if (comp->funcs && comp->funcs->bypass)
 					mtk_ddp_comp_bypass(comp, en, PQ_FEATURE_KRN_HBM, handle);
 			}

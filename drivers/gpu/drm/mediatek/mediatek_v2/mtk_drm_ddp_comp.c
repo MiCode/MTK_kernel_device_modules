@@ -1666,6 +1666,11 @@ int mtk_ddp_comp_init(struct device *dev, struct device_node *node,
 		mtk_ddp_ovl_iommu_register(comp);
 #endif
 
+	/*bit0: doze bypass pq; bit16:hbm bypass pq*/
+	comp->doze_bypass= 0;
+	if (of_property_read_u32(node, "doze-bypass", &comp->doze_bypass))
+		DDPINFO("%s, doze-bypass not define, use default:%d\n", __func__, comp->doze_bypass);
+
 	DDPINFO("%s-\n", __func__);
 
 	return 0;

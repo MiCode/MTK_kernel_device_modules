@@ -73,6 +73,9 @@
 #define IF_ONE
 #endif
 
+#define HBM_BYPASS_PQ 0x10000
+#define DOZE_BYPASS_PQ 0x1
+
 /* TODO: BW report module should not hardcode */
 enum DISP_PMQOS_SLOT {
 	DISP_PMQOS_OVL0_BW = 0,
