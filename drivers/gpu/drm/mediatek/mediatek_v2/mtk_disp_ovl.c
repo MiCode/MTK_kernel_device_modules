@@ -967,16 +967,6 @@ static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
 		}
 
 		if (ext_lye_id == 0) {
-			if ((plane_state->mml_mode == MML_MODE_RACING) ||
-				(plane_state->mml_mode == MML_MODE_DIRECT_LINK)) {
-				DDPINFO("%s,ignore mml m:%d-%d,crtc:%u,ovl:%u,l:%u,fmt:0x%x,bpp:%u\n",
-					__func__, plane_state->mml_mode,
-					plane_state->pending.mml_mode,
-					crtc_idx, comp->id, (unsigned int)(phy_id + lye_id),
-					fmt, mtk_crtc->usage_ovl_fmt[(phy_id + lye_id)]);
-				return;
-			}
-
 			mtk_crtc->usage_ovl_fmt[(phy_id + lye_id)] = mtk_get_format_bpp(fmt);
 			mtk_crtc->usage_ovl_compr[(phy_id + lye_id)] =
 					plane_state->prop_val[PLANE_PROP_COMPRESS];
