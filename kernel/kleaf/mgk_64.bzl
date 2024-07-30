@@ -1337,6 +1337,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6877-pg.ko":"mt6877"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/pd-chk-mt6877.ko":"mt6877"})
         mgk_64_platform_device_modules.update({"drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_mt6877.ko":"mt6877"})
+        mgk_64_platform_device_modules.update({"drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_early_init.ko":"mt6877"})
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/eem_v2/mediatek_eem.ko":"mt6877"})
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/eem_v2/mtk_picachu.ko":"mt6877"})
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/ppm_v3/mtk_ppm_v3.ko":"mt6877"})

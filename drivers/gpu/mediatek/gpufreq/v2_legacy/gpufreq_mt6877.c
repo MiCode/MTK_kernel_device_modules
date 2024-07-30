@@ -33,6 +33,7 @@
 #include <gpuppm_legacy.h>
 #include <gpufreq_common_legacy.h>
 #include <gpufreq_mt6877.h>
+#include <gpufreq_early_init.h>
 #include <mtk_gpu_utility.h>
 
 #if IS_ENABLED(CONFIG_MTK_DEVINFO)
@@ -259,13 +260,6 @@ static struct gpufreq_platform_fp platform_ap_fp = {
 
 static struct gpufreq_platform_fp platform_eb_fp = {
 };
-
-//c build error
-/**
- * static struct pwr_status g_mfg_clk_pwr_status =
- * GATE_PWR_STAT(PWR_STATUS_OFS, PWR_STATUS_2ND_OFS,
- * INV_OFS, 0x3F, 0x3F);
- */
 
 /**
  * ===============================================
@@ -1463,8 +1457,7 @@ void __gpufreq_set_timestamp(void)
 void __gpufreq_check_bus_idle(void)
 {
 	u32 val;
-	int i = 0;
-	int timeout = 200;
+
 	/* MFG_QCHANNEL_CON (0x130000b4) bit [1:0] = 0x1 */
 	writel(0x00000001, g_MFG_base + 0xb4);
 	GPUFREQ_LOGD("0x130000b4 val = 0x%x\n", readl(g_MFG_base + 0xb4));
@@ -1479,13 +1472,7 @@ void __gpufreq_check_bus_idle(void)
 	do {
 		val = readl(g_MFG_base + 0x178);
 		GPUFREQ_LOGD("0x13000178 val = 0x%x\n", val);
-		// wait for about 200ms then timeout, GPU can power off directly
-		if(i > 100)
-			udelay(1000); //1ms
-		if(i == timeout)
-			GPUFREQ_LOGE("timeout waiting for 0x13000178 val = 0x%x\n", val);
-		i++;
-	} while ((val & 0x4) != 0x4 && (i <= timeout));
+	} while ((val & 0x4) != 0x4);
 }
 
 void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
@@ -3247,6 +3234,7 @@ static int __gpufreq_pdrv_probe(struct platform_device *pdev)
 		/* never power off if power control is disabled */
 		GPUFREQ_LOGI("power control always on");
 
+	notify_gpufreq_probe_done();
 
 register_fp:
 	/*

@@ -57,6 +57,9 @@ mtk_gpufreq_mt6877-y := \
 	gpuppm_legacy.o \
 	gpufreq_mt6877.o
 
+mtk_gpufreq_early_init-y := \
+	gpufreq_early_init.o
+
 mtk_gpufreq_mt6781-y := \
 	gpufreq_history_mt6781.o \
 	gpuppm_legacy.o \
@@ -96,6 +99,10 @@ ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6877.c),)
 ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6877.c),)
 obj-$(CONFIG_MTK_GPU_MT6877_SUPPORT) += mtk_gpufreq_mt6877.o
 endif
+endif
+
+ifneq ($(wildcard $(srctree)/$(src)/gpufreq_early_init.c),)
+obj-$(CONFIG_MTK_GPU_MT6877_SUPPORT) += mtk_gpufreq_early_init.o
 endif
 
 ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6761.c),)
