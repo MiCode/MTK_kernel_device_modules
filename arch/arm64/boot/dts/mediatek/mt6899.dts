@@ -8452,7 +8452,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,smi-id = <32>;
 			iommus = <&disp_iommu M4U_L32_P0_DISP_POSTMASK0>;
 			interconnects = <&mmqos MASTER_LARB_PORT(M4U_L32_P0_DISP_POSTMASK0)
-					 &mmqos SLAVE_COMMON(0)>;
+					 &mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "DDP_COMPONENT_POSTMASK0_hrt_qos";
 		};
 
