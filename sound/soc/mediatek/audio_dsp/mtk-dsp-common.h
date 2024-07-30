@@ -47,7 +47,7 @@ do { \
 #define aud_wake_lock(ws) __pm_stay_awake(ws)
 #define aud_wake_unlock(ws) __pm_relax(ws)
 
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 static DEFINE_MUTEX(slc_mutex);
 #endif
 
@@ -93,7 +93,7 @@ int afe_pcm_ipi_to_dsp(int command, struct snd_pcm_substream *substream,
 int set_dsp_base(struct mtk_base_dsp *pdsp);
 void *get_dsp_base(void);
 
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 void set_slc_counter(int cnt);
 int get_slc_counter(void);
 int request_slc(int id);

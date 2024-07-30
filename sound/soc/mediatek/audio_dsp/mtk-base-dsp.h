@@ -26,7 +26,7 @@ struct gen_pool;
 #include "audio_task.h"
 #include "mtk-dsp-common.h"
 #include "adsp_helper.h"
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 #include "slbc_ops.h"
 #endif
 
@@ -124,7 +124,7 @@ struct mtk_adsp_task_attr {
 	unsigned int task_property;
 	unsigned int kernel_dynamic_config;
 	struct mtk_adsp_task_latency task_latency;
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 	struct slbc_gid_data slbc_gid_adsp_data;
 #endif
 };

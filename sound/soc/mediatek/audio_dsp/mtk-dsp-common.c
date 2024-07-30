@@ -25,14 +25,14 @@
 //#define DEBUG_VERBOSE
 
 #include "mtk-sp-spk-amp.h"
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 #include "slbc_ops.h"
 #endif
 
 static int adsp_standby_flag;
 static struct wait_queue_head waitq;
 
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 static int slc_counter;
 #endif
 
@@ -174,7 +174,7 @@ static int dsp_task_scence[AUDIO_TASK_DAI_NUM] = {
 #endif
 };
 
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 static int adsp_gid = -1;
 static struct slbc_gid_data slbc_gid_adsp_data = {
 	.sign = 0x0,
@@ -221,7 +221,7 @@ void *get_dsp_base(void)
 }
 EXPORT_SYMBOL(get_dsp_base);
 
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 void set_slc_counter(int cnt)
 {
 	if (cnt)

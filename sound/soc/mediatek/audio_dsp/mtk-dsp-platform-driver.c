@@ -1197,7 +1197,7 @@ static int mtk_dsp_pcm_open(struct snd_soc_component *component,
 	int id = cpu_dai->id;
 	int dsp_feature_id = get_featureid_by_dsp_daiid(id);
 	const char *task_name = get_str_by_dsp_dai_id(id);
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 	int slc_sign = get_dsp_task_attr(id, ADSP_TASK_ATTR_ADSP_SLC_SIGN);
 #endif
 
@@ -1210,7 +1210,7 @@ static int mtk_dsp_pcm_open(struct snd_soc_component *component,
 		return -1;
 	}
 
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 	if (slc_sign && (id == AUDIO_TASK_VOIP_ID || id == AUDIO_TASK_DEEPBUFFER_ID)){
 		mutex_lock(&slc_mutex);
 		if (get_slc_counter() == 0)
@@ -1257,12 +1257,12 @@ static int mtk_dsp_pcm_close(struct snd_soc_component *component,
 	int id = cpu_dai->id;
 	int dsp_feature_id = get_featureid_by_dsp_daiid(id);
 	const char *task_name = get_str_by_dsp_dai_id(id);
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 	int slc_sign = get_dsp_task_attr(id, ADSP_TASK_ATTR_ADSP_SLC_SIGN);
 #endif
 
 	pr_info("%s() %s\n", __func__, task_name);
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 	if (slc_sign && (id == AUDIO_TASK_VOIP_ID || id == AUDIO_TASK_DEEPBUFFER_ID)){
 		mutex_lock(&slc_mutex);
 		if (get_slc_counter() == 1)

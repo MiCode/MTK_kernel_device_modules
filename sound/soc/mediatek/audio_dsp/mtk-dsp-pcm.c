@@ -15,7 +15,7 @@
 #include "mtk-dsp-common.h"
 #include "mtk-dsp-mem-control.h"
 
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 #include "slbc_ops.h"
 #define SND_DSP_SLC_DTS_SIZE (9)
 #endif
@@ -117,7 +117,7 @@ static char *dsp_task_dsp_name[AUDIO_TASK_DAI_NUM] = {
 static int dsp_pcm_taskattr_init(struct platform_device *pdev)
 {
 	struct mtk_adsp_task_attr task_attr;
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 	struct slbc_gid_data slbc_data_tmp = {0};
 #endif
 	struct mtk_base_dsp *dsp = platform_get_drvdata(pdev);
@@ -185,7 +185,7 @@ static int dsp_pcm_taskattr_init(struct platform_device *pdev)
 			task_attr.kernel_dynamic_config = 0;
 		set_task_attr(AUDIO_TASK_PLAYBACK_ID, ADSP_TASK_ATTR_KERNEL_LATENCY_SUPPORT,
 			      task_attr.kernel_dynamic_config);
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 		ret = of_property_read_u32_array(pdev->dev.of_node,
 						 "adsp-slc",
 						 (unsigned int *)&slbc_data_tmp,

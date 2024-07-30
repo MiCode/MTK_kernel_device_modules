@@ -449,3 +449,17 @@ config SND_SOC_MTK_AUTO_AUDIO
           that can be used with other platforms
 	  Select Y if you have such device.
 	  If unsure select "N".
+
+config ADSP_SLB_LEGACY
+	bool "Enable legacy SLB support only for legacy chips"
+	depends on MTK_SLBC
+	default n
+	help
+	  Enable this option to provide support for legacy SLB (System Level Bus) on older chips that do not
+	  support SLC (System Level Cache). Newer architectures support both SLB and SLC, but legacy chips
+	  only support SLB.
+	  If you are unsure, it is safe to select "N".
+
+	  This option is specifically for older Mediatek chips that rely on SLB for system-level bus
+	  management. Enabling this will ensure compatibility and proper functioning of the bus system on
+	  these legacy chips. Note that this is not required for newer chips that have SLC support.

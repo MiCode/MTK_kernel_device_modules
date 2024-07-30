@@ -159,6 +159,13 @@ struct snd_pcm_substream;
 struct mtk_base_irq_data;
 struct clk;
 
+struct mt6885_compress_info {
+	int card;
+	int device;
+	int dir;
+	char id[64];
+};
+
 struct mt6885_afe_private {
 	struct clk **clk;
 	struct regmap *topckgen;

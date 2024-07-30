@@ -355,7 +355,7 @@ static int mtk_compr_offload_open(struct snd_soc_component *component,
 				  struct snd_compr_stream *stream)
 {
 	int ret = 0;
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 	int slc_sign = get_dsp_task_attr(AUDIO_TASK_OFFLOAD_ID, ADSP_TASK_ATTR_ADSP_SLC_SIGN);
 #endif
 
@@ -364,7 +364,7 @@ static int mtk_compr_offload_open(struct snd_soc_component *component,
 #endif
 	snd_compr_use_pause_in_draining(stream);
 
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 	if (slc_sign) {
 		mutex_lock(&slc_mutex);
 		if (get_slc_counter() == 0)
@@ -441,7 +441,7 @@ static int mtk_afe_dloffload_probe(struct snd_soc_component *component)
 static int mtk_compr_offload_free(struct snd_soc_component *component,
 				  struct snd_compr_stream *stream)
 {
-#if IS_ENABLED(CONFIG_MTK_SLBC)
+#if IS_ENABLED(CONFIG_MTK_SLBC) && !IS_ENABLED(CONFIG_ADSP_SLB_LEGACY)
 	int slc_sign = get_dsp_task_attr(AUDIO_TASK_OFFLOAD_ID, ADSP_TASK_ATTR_ADSP_SLC_SIGN);
 
 	if (slc_sign) {
