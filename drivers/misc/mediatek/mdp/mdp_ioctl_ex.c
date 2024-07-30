@@ -295,11 +295,13 @@ static unsigned long translate_fd(struct op_meta *meta,
 	}
 
 	dev = mdpsys_con_ctx.mmu_dev;
-	if (handle->secData.is_secure && mdpsys_con_ctx.mmu_dev_sec)
-		dev = mdpsys_con_ctx.mmu_dev_sec;
-	if (!dev) {
-		CMDQ_ERR("%s mmu_dev not ready\n", __func__);
-		return -EINVAL;
+	if (smmu_v3_enabled()) {
+		if (handle->secData.is_secure && mdpsys_con_ctx.mmu_dev_sec)
+			dev = mdpsys_con_ctx.mmu_dev_sec;
+		if (!dev) {
+			CMDQ_ERR("%s mmu_dev not ready\n", __func__);
+			return -EINVAL;
+		}
 	}
 
 	for (i = 0; i < mapping_job->handle_count; i++)
