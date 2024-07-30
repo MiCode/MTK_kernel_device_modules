@@ -31,8 +31,12 @@ TRACE_EVENT(u_logger_log,
 		__dynamic_array(char, msg, U_LOGGER_MSG_MAX)
 	),
 	TP_fast_assign(
+		int n;
+
 		__assign_str(name, dev_name(dev));
-		vsnprintf(__get_str(msg), U_LOGGER_MSG_MAX, vaf->fmt, *vaf->va);
+		n = vsnprintf(__get_str(msg), U_LOGGER_MSG_MAX, vaf->fmt, *vaf->va);
+		if (!n)
+			dev_info(dev, "weird assignment, n:%d\n", n);
 	),
 	TP_printk("%s: %s", __get_str(name), __get_str(msg))
 );

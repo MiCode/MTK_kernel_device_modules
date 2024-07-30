@@ -60,18 +60,13 @@ static ssize_t test_cmd_store(struct device *dev, struct device_attribute *attr,
 	char *c = cmd, *name;
 	const char * const delim = " \0\n\t";
 
-	if (count > MAX_CMD_NUM) {
-		dev_info(dev, "cmd can't exceed %d\n", MAX_CMD_NUM);
-		goto error;
-	}
-
 	dev_info(dev, "======%s=====\n", __func__);
 	if (count > MAX_CMD_NUM) {
-		dev_info(dev, "wrong size\n");
+		dev_info(dev, "wrong size (%zu>=%d)\n", count, MAX_CMD_NUM);
 		goto error;
 	}
 	strscpy(cmd, buf, sizeof(cmd));
-	cmd[count] = '\0';
+	cmd[count - 1] = '\0';
 	dev_info(dev, "input:%s", cmd);
 	name = strsep(&c, delim);
 	if (!name) {
@@ -189,7 +184,8 @@ static ssize_t test_cmd_store(struct device *dev, struct device_attribute *attr,
 	return count;
 error:
 	cnt = snprintf(tester.output, MAX_RESULT_STR, "none");
-	tester.output[cnt] = '\0';
+	if (cnt > 0)
+		tester.output[cnt] = '\0';
 	dev_info(dev, "status: error\n");
 	return count;
 }
