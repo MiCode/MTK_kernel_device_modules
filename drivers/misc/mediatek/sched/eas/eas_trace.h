@@ -2255,6 +2255,37 @@ TRACE_EVENT(sched_update_thermal_pressure_capacity,
 		__entry->wl)
 );
 
+TRACE_EVENT(sched_skip_user,
+	TP_PROTO(struct task_struct *p, bool skip_user, struct cpumask *user_cpus_ptr,
+		struct cpumask *kernel_allowed_mask, const struct cpumask *new_mask),
+
+	TP_ARGS(p, skip_user, user_cpus_ptr, kernel_allowed_mask, new_mask),
+
+	TP_STRUCT__entry(
+		__field(pid_t, pid)
+		__field(bool, skip_user)
+		__field(unsigned int, user_mask)
+		__field(unsigned int, kernel_allowed_mask)
+		__field(unsigned int, new_mask)
+	),
+
+	TP_fast_assign(
+		__entry->pid = p->pid;
+		__entry->skip_user = skip_user;
+		__entry->user_mask = cpumask_bits(user_cpus_ptr)[0];
+		__entry->kernel_allowed_mask = cpumask_bits(kernel_allowed_mask)[0];
+		__entry->new_mask = cpumask_bits(new_mask)[0];
+	),
+
+	TP_printk("pid=%d, skip_user=%d, user_mask=%d, kernel_allowed_mask=%d, new_mask=%d",
+		__entry->pid,
+		__entry->skip_user,
+		__entry->user_mask,
+		__entry->kernel_allowed_mask,
+		__entry->new_mask
+	)
+);
+
 #endif /* _TRACE_SCHEDULER_H */
 
 #undef TRACE_INCLUDE_PATH

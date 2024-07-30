@@ -389,8 +389,9 @@ static void mtk_set_cpus_allowed_ptr(void *data, struct task_struct *p,
 	struct rq *rq = task_rq(p);
 
 	// not set or invalid cpu mask
-	if (cpumask_empty(kernel_allowed_mask))
+	if (cpumask_empty(kernel_allowed_mask)){
 		return;
+	}
 
 	if (p->user_cpus_ptr &&
 		!(ctx->flags & (SCA_USER | SCA_MIGRATE_ENABLE | SCA_MIGRATE_DISABLE)) &&
@@ -399,7 +400,8 @@ static void mtk_set_cpus_allowed_ptr(void *data, struct task_struct *p,
 		cpumask_copy(rq->scratch_mask, kernel_allowed_mask);
 		ctx->new_mask = rq->scratch_mask;
 		}
-
+	if (trace_sched_skip_user_enabled())
+		trace_sched_skip_user(p, *skip_user_ptr, p->user_cpus_ptr, kernel_allowed_mask, ctx->new_mask);
 }
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
