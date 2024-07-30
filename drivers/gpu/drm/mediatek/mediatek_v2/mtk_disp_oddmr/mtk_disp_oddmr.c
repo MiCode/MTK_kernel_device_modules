@@ -5646,8 +5646,10 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				stash_bw = stash_bw > 17 ? stash_bw : 17; //set low bound
 				bw_val += (stash_bw * dmr_enable);
 			}
-			__mtk_disp_set_module_hrt(oddmr_priv->qos_req_dmrr_hrt, comp->id, bw_val,
-				priv->data->respective_ostdl);
+
+			if (bw_val != oddmr_priv->last_hrt_dmrr)
+				__mtk_disp_set_module_hrt(oddmr_priv->qos_req_dmrr_hrt, comp->id, bw_val,
+					priv->data->respective_ostdl);
 			oddmr_priv->last_hrt_dmrr = bw_val;
 
 			/* DBI outstanding */
@@ -5658,8 +5660,9 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				bw_val += (bw_val / 256 > 17) ? (bw_val / 256) : 17;
 			}
 			bw_val *= (dbi_enable > 0) ? 1 : 0;
-			__mtk_disp_set_module_hrt(oddmr_priv->qos_req_dbir_hrt, comp->id, bw_val,
-				priv->data->respective_ostdl);
+			if (bw_val != oddmr_priv->last_hrt_dbir)
+				__mtk_disp_set_module_hrt(oddmr_priv->qos_req_dbir_hrt, comp->id, bw_val,
+					priv->data->respective_ostdl);
 			oddmr_priv->last_hrt_dbir = bw_val;
 
 			/* OD outstanding */
@@ -5668,10 +5671,12 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			else
 				layer_num = mtk_oddmr_od_bpp(5);
 			bw_val = (layer_num * bw_base / 400) * od_enable;
-			__mtk_disp_set_module_hrt(oddmr_priv->qos_req_odr_hrt, comp->id, bw_val,
-				priv->data->respective_ostdl);
-			__mtk_disp_set_module_hrt(oddmr_priv->qos_req_odw_hrt, comp->id, bw_val,
-				priv->data->respective_ostdl);
+			if (bw_val != oddmr_priv->last_hrt_odrw) {
+				__mtk_disp_set_module_hrt(oddmr_priv->qos_req_odr_hrt, comp->id, bw_val,
+					priv->data->respective_ostdl);
+				__mtk_disp_set_module_hrt(oddmr_priv->qos_req_odw_hrt, comp->id, bw_val,
+					priv->data->respective_ostdl);
+			}
 			oddmr_priv->last_hrt_odrw = bw_val;
 		} else {
 			oddmr_priv->last_hrt_dmrr = dmr_enable;
