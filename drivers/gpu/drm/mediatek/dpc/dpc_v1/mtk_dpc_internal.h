@@ -268,6 +268,8 @@ extern int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 #define DPC_MMINFRA_OFF_MML_MASK                         BIT(6)
 #define DPC_INFRA_OFF_MML_MASK                           BIT(7)
 
+#define DPC_DT_MML_SKIP_RDONE                            BIT(4)
+
 #define VOTE_SET 1
 #define VOTE_CLR 0
 
@@ -437,6 +439,7 @@ struct mtk_dpc {
 	unsigned int mmdvfs_settings_count;
 	unsigned int *mmdvfs_settings_addr;
 	unsigned int mtcmos_mask;
+	unsigned int skip_rdone;
 	unsigned int (*get_sys_status)(enum dpc_sys_status_id, unsigned int *status);
 };
 

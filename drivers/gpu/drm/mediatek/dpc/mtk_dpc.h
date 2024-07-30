@@ -117,7 +117,7 @@ struct dpc_funcs {
 
 	/* mtcmos and resource auto mode control */
 	void (*dpc_pause)(const enum mtk_dpc_subsys subsys, bool en);
-	void (*dpc_config)(const enum mtk_dpc_subsys subsys, bool en);
+	int (*dpc_config)(const enum mtk_dpc_subsys subsys, bool en);
 
 	/* exception power control */
 	int (*dpc_vidle_power_keep)(const enum mtk_vidle_voter_user);

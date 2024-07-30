@@ -14645,7 +14645,7 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 
 	switch (mtk_crtc->mml_link_state) {
 	case MML_IR_ENTERING:
-		DDP_PROFILE("MML_IR_ENTERING\n");
+		DDP_PROFILE("%s: MML IR entering, state:%d\n", __func__, mtk_crtc->mml_link_state);
 		mtk_addon_get_comp(crtc, mtk_crtc_state->lye_state.mml_ir_lye, &c.tgt_comp, &c.tgt_layer);
 		for (; i <= mtk_crtc->is_dual_pipe; ++i) {
 			comp = priv->ddp_comp[id[i]];
@@ -14658,7 +14658,9 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 	case MML_DIRECT_LINKING:
 		if (mtk_vidle_is_ff_enabled() && !mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
-			DDP_PROFILE("MML DL start vidle: %d\n", mtk_crtc->mml_link_state);
+			DDP_PROFILE("%s: MML %s vidle, state:%d\n", __func__,
+				mtk_crtc->is_mml ? "IR start" : "DL start",
+				mtk_crtc->mml_link_state);
 			mtk_vidle_clear_wfe_event(DISP_VIDLE_USER_MML_CMDQ, cmdq_handle,
 				  mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
 			mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
@@ -14668,7 +14670,7 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 	case MML_DC_ENTERING:
 		if (mtk_vidle_is_ff_enabled() && !mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
-			DDP_PROFILE("MML DC start vidle: %d\n", mtk_crtc->mml_link_state);
+			DDP_PROFILE("%s: MML DC:start vidle, state:%u\n", __func__, mtk_crtc->mml_link_state);
 			mtk_vidle_clear_wfe_event(DISP_VIDLE_USER_MML_CMDQ, cmdq_handle,
 				  mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
 			mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
@@ -14676,7 +14678,7 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 		break;
 	case MML_STOP_LINKING:
 		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO))
-			DDP_PROFILE("MML DL stop vidle: %d\n", mtk_crtc->mml_link_state);
+			DDP_PROFILE("%s, MML STOP vidle, state:%u\n", __func__, mtk_crtc->mml_link_state);
 		else
 			DDP_PROFILE("MML_STOP_LINKING\n");
 		mtk_crtc_mml_racing_stop_sync(crtc, cmdq_handle, false);

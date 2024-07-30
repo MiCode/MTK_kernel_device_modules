@@ -1111,7 +1111,7 @@ void dpc_group_enable(const u16 group, bool en)
 	}
 }
 
-static void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
+static int dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 {
 	static bool is_mminfra_ctrl_by_dpc;
 
@@ -1124,7 +1124,7 @@ static void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 	if (!en && is_mminfra_ctrl_by_dpc) {
 		mtk_dprec_logger_pr(DPREC_LOGGER_FENCE, "dpc get mminfra\n");
 		if (dpc_pm_ctrl(true))
-			return;
+			return -EFAULT;
 		is_mminfra_ctrl_by_dpc = false;
 	}
 
@@ -1147,6 +1147,7 @@ static void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 	/* mtk_disp_vlp_vote(VOTE_CLR, DISP_VIDLE_USER_DISP_DPC_CFG); */
 
 	dpc_mmp(config, MMPROFILE_FLAG_PULSE, subsys, en);
+	return 0;
 }
 
 irqreturn_t mt6991_irq_handler(int irq, void *dev_id)

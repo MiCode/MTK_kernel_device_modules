@@ -1719,19 +1719,17 @@ static void mtk_atomic_mml(struct drm_device *dev,
 				MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
 		if (mtk_crtc->mml_link_state == MML_DIRECT_LINKING &&
 		    !mtk_vidle_is_ff_enabled()) {
-			CRTC_MMP_MARK(crtc_idx, enter_vidle,
-				mtk_crtc->mml_link_state, new_mode);
 			mtk_vidle_enable(true, priv);
-			CRTC_MMP_MARK(crtc_idx, enter_vidle, 0xd1, mtk_crtc->mml_link_state);
 			mtk_vidle_config_ff(true);
+			if (mtk_vidle_is_ff_enabled())
+				CRTC_MMP_MARK(crtc_idx, enter_vidle, 0xd1, new_mode);
 		} else if ((mtk_crtc->mml_link_state == MML_STOP_LINKING ||
 			   mtk_crtc->mml_link_state == MML_STOP_DC) &&
 			   mtk_vidle_is_ff_enabled()) {
-			CRTC_MMP_MARK(crtc_idx, leave_vidle,
-				mtk_crtc->mml_link_state, new_mode);
-			CRTC_MMP_MARK(crtc_idx, leave_vidle, 0xd1, mtk_crtc->mml_link_state);
 			mtk_vidle_config_ff(false);
 			mtk_vidle_enable(false, priv);
+			if (!mtk_vidle_is_ff_enabled())
+				CRTC_MMP_MARK(crtc_idx, leave_vidle, 0xd1, new_mode);
 		}
 	}
 }
