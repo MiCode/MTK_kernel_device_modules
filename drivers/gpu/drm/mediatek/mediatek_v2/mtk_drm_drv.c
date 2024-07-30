@@ -7965,6 +7965,102 @@ static int mtk_drm_get_crtc_id(enum MTK_PANEL_ID panel_id, struct mtk_drm_privat
 	return 0;
 }
 
+static DEFINE_MUTEX(se_lock);
+
+static int mtk_drm_se_enable(struct drm_device *dev, struct mtk_drm_crtc *mtk_crtc)
+{
+	struct drm_atomic_state *state;
+	struct drm_crtc_state *crtc_state;
+	struct drm_crtc *crtc;
+	struct drm_modeset_acquire_ctx ctx;
+	struct drm_display_mode *mode;
+	struct drm_connector *connector;
+	struct drm_connector_list_iter conn_iter;
+	struct drm_encoder *encoder;
+	struct drm_connector_state *conn_state;
+	int ret;
+	bool found = false;
+
+	if (mtk_crtc->enabled) {
+		DDPINFO("%s %d crtc already enable\n", __func__, __LINE__);
+		return 0;
+	}
+
+	crtc = &mtk_crtc->base;
+	DDPMSG("%s %d crtc%d\n", __func__, __LINE__, drm_crtc_index(crtc));
+
+	if (mtk_crtc->virtual_path && mtk_crtc->phys_mtk_crtc)
+		mtk_drm_se_enable(dev, mtk_crtc->phys_mtk_crtc);
+
+	drm_modeset_acquire_init(&ctx, 0);
+	state = drm_atomic_state_alloc(crtc->dev);
+	if (!state) {
+		DDPMSG("%s drm_atomic_state_alloc fail!\n", __func__);
+		return -ENOMEM;
+	}
+
+	state->acquire_ctx = &ctx;
+
+	crtc_state = drm_atomic_get_crtc_state(state, crtc);
+	if (IS_ERR(crtc_state)) {
+		ret = PTR_ERR(crtc_state);
+		goto out;
+	}
+	crtc_state->active = true;
+	crtc_state->mode_changed = true;
+
+	drm_connector_list_iter_begin(dev, &conn_iter);
+	drm_for_each_connector_iter(connector, &conn_iter) {
+		drm_connector_for_each_possible_encoder(connector, encoder) {
+			if (encoder->possible_crtcs & drm_crtc_mask(crtc)) {
+				found = true;
+				break;
+			}
+		}
+		if (found)
+			break;
+	}
+	drm_connector_list_iter_end(&conn_iter);
+
+	mutex_lock(&dev->mode_config.mutex);
+	if (!connector) {
+		ret = -EINVAL;
+		mutex_unlock(&dev->mode_config.mutex);
+		DDPMSG("%s connector is not ready!", __func__);
+		goto out;
+	}
+
+	if (connector->funcs->detect(connector, false) != connector_status_connected) {
+		ret = -EINVAL;
+		mutex_unlock(&dev->mode_config.mutex);
+		DDPMSG("%s connector status is not connected(%d)!", __func__, connector->status);
+		goto out;
+	}
+
+	DDPMSG("%s conn:%d, enc:%d, poss crtc:0x%x\n", __func__,
+		connector->base.id, encoder->base.id, encoder->possible_crtcs);
+
+	connector->funcs->fill_modes(connector, dev->mode_config.max_width,
+						dev->mode_config.max_height);
+	mutex_unlock(&dev->mode_config.mutex);
+
+	conn_state = drm_atomic_get_connector_state(state, connector);
+	ret = drm_atomic_set_crtc_for_connector(conn_state, crtc);
+
+	mode = list_first_entry(&connector->modes, typeof(*mode), head);
+	drm_mode_debug_printmodeline(mode);
+	drm_mode_set_crtcinfo(mode, 0);
+	ret |= drm_atomic_set_mode_for_crtc(crtc_state, mode);
+	ret |= drm_atomic_commit(state);
+ out:
+	drm_atomic_state_put(state);
+	drm_modeset_drop_locks(&ctx);
+	drm_modeset_acquire_fini(&ctx);
+	DDPMSG("%s crtc%d ret %d\n", __func__, drm_crtc_index(crtc), ret);
+
+	return ret;
+}
+
 int mtk_drm_get_info_ioctl(struct drm_device *dev, void *data,
 			   struct drm_file *file_priv)
 {
@@ -7977,15 +8073,19 @@ int mtk_drm_get_info_ioctl(struct drm_device *dev, void *data,
 		ret = mtk_drm_get_panel_info(dev, info, 0);
 #else
 		int s_dev = MTK_SESSION_DEV(info->session_id);
+		DDPMSG("%s %d, s_dev:%d ", __func__, __LINE__, s_dev);
 
-		DDPINFO("%s %d, s_dev:%d ", __func__, __LINE__, s_dev);
+		struct mtk_drm_private *priv = dev->dev_private;
+		int crtc_id = mtk_drm_get_crtc_id(s_dev, priv);
+		struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(priv->crtc[crtc_id]);
+
+		mutex_lock(&se_lock);
+		mtk_drm_se_enable(dev, mtk_crtc);
+		mutex_unlock(&se_lock);
 
 		if (s_dev == MTK_PANEL_EDP) {
 			ret = mtk_drm_dvo_get_info(dev, info);
 		} else if ((s_dev == MTK_PANEL_DP0) || (s_dev == MTK_PANEL_DP1)) {
-			struct mtk_drm_private *priv = dev->dev_private;
-			int crtc_id = mtk_drm_get_crtc_id(s_dev, priv);
-			struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(priv->crtc[crtc_id]);
 			struct mtk_ddp_comp *output_comp;
 			int alias_id = 0;
 
@@ -8012,8 +8112,7 @@ int mtk_drm_get_info_ioctl(struct drm_device *dev, void *data,
 			}
 		} else
 			ret = mtk_drm_get_panel_info(dev, info, 0);
-
-		DDPINFO("%s %d get panel w:%d h:%d\n", __func__, __LINE__, info->physical_width, info->physical_height);
+		DDPMSG("%s panel w%d h%d\n", __func__, info->physical_width, info->physical_height);
 #endif
 		return ret;
 	} else if (s_type == MTK_SESSION_EXTERNAL) {
@@ -9033,102 +9132,6 @@ static void mtk_drm_kms_deinit(struct drm_device *drm)
 		mml_drm_put_context(private->mml_ctx);
 		private->mml_ctx = NULL;
 	}
-}
-
-static DEFINE_MUTEX(se_lock);
-
-static int mtk_drm_se_enable(struct drm_device *dev, struct mtk_drm_crtc *mtk_crtc)
-{
-	struct drm_atomic_state *state;
-	struct drm_crtc_state *crtc_state;
-	struct drm_crtc *crtc;
-	struct drm_modeset_acquire_ctx ctx;
-	struct drm_display_mode *mode;
-	struct drm_connector *connector;
-	struct drm_connector_list_iter conn_iter;
-	struct drm_encoder *encoder;
-	struct drm_connector_state *conn_state;
-	int ret;
-	bool found = false;
-
-	if (mtk_crtc->enabled) {
-		DDPINFO("%s %d crtc already enable\n", __func__, __LINE__);
-		return 0;
-	}
-
-	crtc = &mtk_crtc->base;
-	DDPMSG("%s %d crtc%d\n", __func__, __LINE__, drm_crtc_index(crtc));
-
-	if (mtk_crtc->virtual_path && mtk_crtc->phys_mtk_crtc)
-		mtk_drm_se_enable(dev, mtk_crtc->phys_mtk_crtc);
-
-	drm_modeset_acquire_init(&ctx, 0);
-	state = drm_atomic_state_alloc(crtc->dev);
-	if (!state) {
-		DDPMSG("%s drm_atomic_state_alloc fail!\n", __func__);
-		return -ENOMEM;
-	}
-
-	state->acquire_ctx = &ctx;
-
-	crtc_state = drm_atomic_get_crtc_state(state, crtc);
-	if (IS_ERR(crtc_state)) {
-		ret = PTR_ERR(crtc_state);
-		goto out;
-	}
-	crtc_state->active = true;
-	crtc_state->mode_changed = true;
-
-	drm_connector_list_iter_begin(dev, &conn_iter);
-	drm_for_each_connector_iter(connector, &conn_iter) {
-		drm_connector_for_each_possible_encoder(connector, encoder) {
-			if (encoder->possible_crtcs & drm_crtc_mask(crtc)) {
-				found = true;
-				break;
-			}
-		}
-		if (found)
-			break;
-	}
-	drm_connector_list_iter_end(&conn_iter);
-
-	mutex_lock(&dev->mode_config.mutex);
-	if (!connector) {
-		ret = -EINVAL;
-		mutex_unlock(&dev->mode_config.mutex);
-		DDPMSG("%s connector is not ready!", __func__);
-		goto out;
-	}
-
-	if (connector->funcs->detect(connector, false) != connector_status_connected) {
-		ret = -EINVAL;
-		mutex_unlock(&dev->mode_config.mutex);
-		DDPMSG("%s connector status is not connected(%d)!", __func__, connector->status);
-		goto out;
-	}
-
-	DDPMSG("%s conn:%d, enc:%d, poss crtc:0x%x\n", __func__,
-		connector->base.id, encoder->base.id, encoder->possible_crtcs);
-
-	connector->funcs->fill_modes(connector, dev->mode_config.max_width,
-						dev->mode_config.max_height);
-	mutex_unlock(&dev->mode_config.mutex);
-
-	conn_state = drm_atomic_get_connector_state(state, connector);
-	ret = drm_atomic_set_crtc_for_connector(conn_state, crtc);
-
-	mode = list_first_entry(&connector->modes, typeof(*mode), head);
-	drm_mode_debug_printmodeline(mode);
-	drm_mode_set_crtcinfo(mode, 0);
-	ret |= drm_atomic_set_mode_for_crtc(crtc_state, mode);
-	ret |= drm_atomic_commit(state);
- out:
-	drm_atomic_state_put(state);
-	drm_modeset_drop_locks(&ctx);
-	drm_modeset_acquire_fini(&ctx);
-	DDPMSG("%s crtc%d ret %d\n", __func__, drm_crtc_index(crtc), ret);
-
-	return ret;
 }
 
 static void mtk_drm_se_cmdq_cb(struct cmdq_cb_data data)
