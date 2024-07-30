@@ -3,6 +3,7 @@
  * Copyright (c) 2021 MediaTek Inc.
  */
 
+#include "mtk_drm_helper.h"
 #include <linux/clk.h>
 #include <linux/component.h>
 #include <linux/of_device.h>
@@ -573,63 +574,78 @@ static const struct mtk_dp_intf_resolution_cfg mt6991_resolution_cfg[SINK_MAX] =
 static const struct mtk_dp_intf_resolution_cfg mt6899_resolution_cfg[SINK_MAX] = {
 	[SINK_640_480] = {
 					.clksrc = MT6899_TVDPLL_D16,
-					.con1 = 0x840F81F8
+					.con1 = 0x840F81F8,
+					.clk = 37125
 				},
 	[SINK_800_600] = {
-					.clksrc = 0,
-					.con1 = 0
+					.clksrc = MT6899_TCK_26M,
+					.con1 = 0,
+					.clk = 26000
 				},
 	[SINK_1280_720] = {
 					.clksrc = MT6899_TVDPLL_D8,
-					.con1 = 0x8416DFB4
+					.con1 = 0x8416DFB4,
+					.clk = 74250
 				},
 	[SINK_1280_960] = {
-					.clksrc = 0,
-					.con1 = 0
+					.clksrc = MT6899_TCK_26M,
+					.con1 = 0,
+					.clk = 26000
 				},
 	[SINK_1280_1024] = {
-					.clksrc = 0,
-					.con1 = 0
+					.clksrc = MT6899_TCK_26M,
+					.con1 = 0,
+					.clk = 26000
 				},
 	[SINK_1920_1080] = {
 					.clksrc = MT6899_TVDPLL_D16,
-					.con1 = 0x8216D89D
+					.con1 = 0x8216D89D,
+					.clk = 37125
 				},
 	[SINK_1920_1080_120] = {
 					.clksrc = MT6899_TVDPLL_D8,
-					.con1 = 0x8216D89D
+					.con1 = 0x8216D89D,
+					.clk = 74250
 				},
 	[SINK_1080_2460] = {
 					.clksrc = MT6899_TVDPLL_D16,
-					.con1 = 0x821AC941
+					.con1 = 0x821AC941,
+					.clk = 37125
 				},
 	[SINK_1920_1200] = {
 					.clksrc = MT6899_TVDPLL_D16,
-					.con1 = 0x8217B645
+					.con1 = 0x8217B645,
+					.clk = 37125
 				},
 	[SINK_1920_1440] = {
-					.clksrc = 0,
-					.con1 = 0
+					.clksrc = MT6899_TCK_26M,
+					.con1 = 0,
+					.clk = 26000
 				},
 	[SINK_2560_1440] = {
 					.clksrc = MT6899_TVDPLL_D8,
-					.con1 = 0x821293B1
+					.con1 = 0x821293B1,
+					.clk = 74250
 				},
 	[SINK_2560_1600] = {
 					.clksrc = MT6899_TVDPLL_D8,
-					.con1 = 0x8214A762
+					.con1 = 0x8214A762,
+					.clk = 74250
 				},
 	[SINK_3840_2160_30] = {
 					.clksrc = MT6899_TVDPLL_D8,
-					.con1 = 0x8216D89D
+					.con1 = 0x8216D89D,
+					.clk = 74250
 				},
 	[SINK_3840_2160] = {
 					.clksrc = MT6899_TVDPLL_D4,
-					.con1 = 0x8216D89D
+					.con1 = 0x8216D89D,
+					.clk = 148500
 				}, //htotal = 1500  //con1 = 0x83109D89; //htotal = 1600
 	[SINK_7680_4320] = {
-					.clksrc = 0,
-					.con1 = 0
+					.clksrc = MT6899_TCK_26M,
+					.con1 = 0,
+					.clk = 26000
 				},
 };
 
@@ -1759,7 +1775,12 @@ static irqreturn_t mtk_dp_intf_irq_status(int irq, void *dev_id)
 	struct mtk_dp_intf *dp_intf = dev_id;
 	u32 status = 0;
 	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
+	int dpintf_opt = 0;
 	mtk_crtc = dp_intf->ddp_comp.mtk_crtc;
+	priv = mtk_crtc->base.dev->dev_private;
+	dpintf_opt = mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_DPINTF_UNDERFLOW_AEE);
 
 	status = readl(dp_intf->regs + DP_INTSTA);
 
@@ -1788,6 +1809,19 @@ static irqreturn_t mtk_dp_intf_irq_status(int irq, void *dev_id)
 
 	if (irq_intsa == 3)
 		mtk_dp_video_trigger(video_unmute << 16 | dp_intf->res);
+
+	if (dpintf_opt && (status & INTSTA_UNDERFLOW) && (irq_underflowsa == 1)) {
+#if IS_ENABLED(CONFIG_ARM64)
+		DDPAEE("DPINTF underflow 0x%x. TS: 0x%08llx\n",
+			status, arch_timer_read_counter());
+#else
+		DDPAEE("DPINTF underflow 0x%x\n",
+			status);
+#endif
+		mtk_drm_crtc_analysis(&(mtk_crtc->base));
+		mtk_drm_crtc_dump(&(mtk_crtc->base));
+		mtk_smi_dbg_hang_detect("dpintf underflow");
+	}
 
 	return IRQ_HANDLED;
 }

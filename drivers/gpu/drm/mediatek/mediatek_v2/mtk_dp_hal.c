@@ -2636,6 +2636,9 @@ void mhal_DPTx_PHYSetting(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 		mhal_DPTx_phyd_power_on(mtk_dp);
 	} else if (mtk_dp->priv && mtk_dp->priv->data &&
 			mtk_dp->priv->data->mmsys_id == MMSYS_MT6899) {
+		/*980*/
+		msPhyWrite4ByteMask(mtk_dp, 0x8, 0x00 , BIT(0)|BIT(1));
+		msPhyWrite4ByteMask(mtk_dp, 0xc, 0x10 , BIT(4)|BIT(5)|BIT(6));
 		/*hqa param*/
 		msPhyWrite4Byte(mtk_dp, 0x1138,0x221C1814);
 		msPhyWrite4Byte(mtk_dp, 0x1238,0x221C1814);
