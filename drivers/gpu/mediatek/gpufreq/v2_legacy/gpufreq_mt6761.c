@@ -603,7 +603,7 @@ static void __gpufreq_setup_opp_power_table(int num)
 	GPUFREQ_LOGD("@%s: temp = %d\n", __func__, temp);
 
 	if ((temp < -20) || (temp > 125)) {
-		GPUFREQ_LOGI("temp < -20 or temp > 125!\n");
+		GPUFREQ_LOGD("temp < -20 or temp > 125!\n");
 		temp = 65;
 	}
 
@@ -1253,8 +1253,8 @@ void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
 {
 	u32 val = 0;
 
-	GPUFREQ_LOGI("== [GPUFREQ INFRA STATUS] ==");
-	GPUFREQ_LOGI("mfgpll=%d, GPU[%d] Freq: %d, Vgpu: %d, Vsram: %d",
+	GPUFREQ_LOGD("== [GPUFREQ INFRA STATUS] ==");
+	GPUFREQ_LOGD("mfgpll=%d, GPU[%d] Freq: %d, Vgpu: %d, Vsram: %d",
 		mt_get_abist_freq(AD_MFGPLL_CK), g_gpu.cur_oppidx, g_gpu.cur_freq,
 		g_gpu.cur_volt, g_gpu.cur_vsram);
 }
@@ -1379,7 +1379,7 @@ static int __gpufreq_custom_commit_gpu(unsigned int target_freq,
 
 	/* check dvfs state */
 	if (g_dvfs_state & ~key) {
-		GPUFREQ_LOGI("unavailable dvfs state (0x%x)", g_dvfs_state);
+		GPUFREQ_LOGD("unavailable dvfs state (0x%x)", g_dvfs_state);
 		ret = GPUFREQ_SUCCESS;
 		goto done_unlock;
 	}
@@ -1583,7 +1583,7 @@ static int __gpufreq_freq_scale_gpu(unsigned int freq_old, unsigned int freq_new
 	int ret = GPUFREQ_SUCCESS;
 
 	GPUFREQ_TRACE_START("freq_old=%d, freq_new=%d", freq_old, freq_new);
-	GPUFREQ_LOGI("begin to scale Fgpu: (%d->%d)", freq_old, freq_new);
+	GPUFREQ_LOGD("begin to scale Fgpu: (%d->%d)", freq_old, freq_new);
 	/*
 	 * MFGPLL_CON1[31:31]: MFGPLL_SDM_PCW_CHG
 	 * MFGPLL_CON1[26:24]: MFGPLL_POSDIV
@@ -1607,7 +1607,7 @@ static int __gpufreq_freq_scale_gpu(unsigned int freq_old, unsigned int freq_new
 #else
 	/* force parking if FHCTL isn't ready */
 	parking = true;
-	GPUFREQ_LOGI("Fgpu: %d, PCW: 0x%x, CON1: 0x%08x", g_gpu.cur_freq, pcw, pll);
+	GPUFREQ_LOGD("Fgpu: %d, PCW: 0x%x, CON1: 0x%08x", g_gpu.cur_freq, pcw, pll);
 #endif /* CONFIG_COMMON_CLK_MTK_FREQ_HOPPING */
 
 	if (parking) {
@@ -1714,7 +1714,7 @@ done:
 static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 {
 
-	GPUFREQ_LOGI("[TOP] FMETER: %d, CON1: %d",
+	GPUFREQ_LOGD("[TOP] FMETER: %d, CON1: %d",
 		__gpufreq_get_fmeter_fgpu(), __gpufreq_get_real_fgpu());
 
 }
@@ -2045,7 +2045,7 @@ static void __gpufreq_resume_dvfs(void)
 
 	__gpufreq_set_dvfs_state(false, DVFS_AGING_KEEP);
 
-	GPUFREQ_LOGI("resume DVFS, state: 0x%x", g_dvfs_state);
+	GPUFREQ_LOGD("resume DVFS, state: 0x%x", g_dvfs_state);
 
 	GPUFREQ_TRACE_END();
 }
@@ -2238,7 +2238,7 @@ static void __gpufreq_custom_adjustment(void)
 		custom_adj = g_mcl50_adj;
 		adj_num = MCL50_ADJ_NUM;
 		__gpufreq_apply_adjust(custom_adj, adj_num);
-		GPUFREQ_LOGI("MCL50 flavor load");
+		GPUFREQ_LOGD("MCL50 flavor load");
 	}
 #endif
 }
@@ -2287,7 +2287,7 @@ static int __gpufreq_init_opp_table(struct platform_device *pdev)
 
 	GPUFREQ_LOGD("number of signed GPU OPP: %d, upper and lower bound: [%d, %d]",
 		g_gpu.signed_opp_num, g_gpu.segment_upbound, g_gpu.segment_lowbound);
-	GPUFREQ_LOGI("number of working GPU OPP: %d, max and min OPP index: [%d, %d]",
+	GPUFREQ_LOGD("number of working GPU OPP: %d, max and min OPP index: [%d, %d]",
 		g_gpu.opp_num, g_gpu.max_oppidx, g_gpu.min_oppidx);
 
 	// update default opp table, if not default segment
@@ -2446,11 +2446,11 @@ static int __gpufreq_init_clk(struct platform_device *pdev)
 		return PTR_ERR(g_clk->pd_mfg_core0);
 	}
 
-	GPUFREQ_LOGI("@%s: clk_mux is at 0x%p, clk_main_parent is at 0x%p, \t"
+	GPUFREQ_LOGD("@%s: clk_mux is at 0x%p, clk_main_parent is at 0x%p, \t"
 			"clk_sub_parent is at 0x%p\n",
 			__func__, g_clk->clk_mux, g_clk->clk_main_parent, g_clk->clk_sub_parent);
 
-	GPUFREQ_LOGI("@%s: pd_mfg_async is at 0x%p, pd_mfg is at 0x%p, \t"
+	GPUFREQ_LOGD("@%s: pd_mfg_async is at 0x%p, pd_mfg is at 0x%p, \t"
 			"pd_mfg_core0 is at 0x%p\n",
 			__func__, g_clk->pd_mfg_async, g_clk->pd_mfg, g_clk->pd_mfg_core0);
 
@@ -2672,7 +2672,7 @@ static int __init __gpufreq_init(void)
 {
 	int ret = GPUFREQ_SUCCESS;
 
-	GPUFREQ_LOGI("start to init gpufreq platform driver");
+	GPUFREQ_LOGD("start to init gpufreq platform driver");
 
 	/* register gpufreq platform driver */
 	ret = platform_driver_register(&g_gpufreq_pdrv);
@@ -2681,7 +2681,7 @@ static int __init __gpufreq_init(void)
 		goto done;
 	}
 
-	GPUFREQ_LOGI("gpufreq platform driver init done");
+	GPUFREQ_LOGD("gpufreq platform driver init done");
 
 done:
 	return ret;

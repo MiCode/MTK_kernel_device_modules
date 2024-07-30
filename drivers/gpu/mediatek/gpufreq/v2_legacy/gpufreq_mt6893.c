@@ -1246,77 +1246,77 @@ void __gpufreq_check_bus_idle(void)
 
 void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
 {
-	GPUFREQ_LOGI("== [GPUFREQ INFRA STATUS] ==");
-	GPUFREQ_LOGI("[%d] freq: %d, vgpu: %d, vsram: %d",
+	GPUFREQ_LOGD("== [GPUFREQ INFRA STATUS] ==");
+	GPUFREQ_LOGD("[%d] freq: %d, vgpu: %d, vsram: %d",
 		g_gpu.cur_oppidx, g_gpu.cur_freq,
 		g_gpu.cur_volt, g_gpu.cur_vsram);
 
 	// 0x1020E
 	if (g_infracfg_base) {
-		GPUFREQ_LOGI("infra status (0x%x): 0x%08x",
+		GPUFREQ_LOGD("infra status (0x%x): 0x%08x",
 			0x1020E810, readl(g_infracfg_base + 0x810));
 
-		GPUFREQ_LOGI("infra status (0x%x): 0x%08x",
+		GPUFREQ_LOGD("infra status (0x%x): 0x%08x",
 			0x1020E814, readl(g_infracfg_base + 0x814));
 	}
 
 	// 0x1021E
 	if (g_infra_bpi_bsi_slv0) {
-		GPUFREQ_LOGI("infra status (0x%x): 0x%08x",
+		GPUFREQ_LOGD("infra status (0x%x): 0x%08x",
 			0x1021E230, readl(g_infra_bpi_bsi_slv0 + 0x230));
 
-		GPUFREQ_LOGI("infra status (0x%x): 0x%08x",
+		GPUFREQ_LOGD("infra status (0x%x): 0x%08x",
 			0x1021E234, readl(g_infra_bpi_bsi_slv0 + 0x234));
 	}
 
 	// 0x10023000
 	if (g_infra_peri_debug1) {
-		GPUFREQ_LOGI("infra status (0x%x): 0x%08x",
+		GPUFREQ_LOGD("infra status (0x%x): 0x%08x",
 			0x10023000, readl(g_infra_peri_debug1 + 0x000));
 
-		GPUFREQ_LOGI("infra status (0x%x): 0x%08x",
+		GPUFREQ_LOGD("infra status (0x%x): 0x%08x",
 			0x10023440, readl(g_infra_peri_debug1 + 0x440));
 
-		GPUFREQ_LOGI("infra status (0x%x): 0x%08x",
+		GPUFREQ_LOGD("infra status (0x%x): 0x%08x",
 			0x10023444, readl(g_infra_peri_debug1 + 0x444));
 	}
 
 	// 0x10025000
 	if (g_infra_peri_debug2) {
-		GPUFREQ_LOGI("infra status (0x%x): 0x%08x",
+		GPUFREQ_LOGD("infra status (0x%x): 0x%08x",
 			0x10025000, readl(g_infra_peri_debug2 + 0x000));
 
-		GPUFREQ_LOGI("infra status (0x%x): 0x%08x",
+		GPUFREQ_LOGD("infra status (0x%x): 0x%08x",
 			0x1002542C, readl(g_infra_peri_debug2 + 0x42C));
 	}
 
 	// 0x1002B000
 	if (g_infra_peri_debug3) {
-		GPUFREQ_LOGI("infra status (0x%x): 0x%08x",
+		GPUFREQ_LOGD("infra status (0x%x): 0x%08x",
 			0x1002B000, readl(g_infra_peri_debug3 + 0x000));
 	}
 
 	// 0x1002E000
 	if (g_infra_peri_debug4) {
-		GPUFREQ_LOGI("infra status (0x%x): 0x%08x",
+		GPUFREQ_LOGD("infra status (0x%x): 0x%08x",
 			0x1002E000, readl(g_infra_peri_debug4 + 0x000));
 	}
 
 	// 0x10006000
 	if (g_sleep) {
-		GPUFREQ_LOGI("pwr status (0x%x): 0x%08x 0x%08x 0x%08x 0x%08x",
+		GPUFREQ_LOGD("pwr status (0x%x): 0x%08x 0x%08x 0x%08x 0x%08x",
 			0x10006000 + 0x308, readl(g_sleep + 0x308),
 			readl(g_sleep + 0x30C), readl(g_sleep + 0x310),
 			readl(g_sleep + 0x314));
 
-		GPUFREQ_LOGI("pwr status (0x%x) :0x%08x 0x%08x 0x%08x",
+		GPUFREQ_LOGD("pwr status (0x%x) :0x%08x 0x%08x 0x%08x",
 			0x10006000 + 0x318, readl(g_sleep + 0x318),
 			readl(g_sleep + 0x31C), readl(g_sleep + 0x320));
 
-		GPUFREQ_LOGI("pwr status (0x%x): 0x%08x",
+		GPUFREQ_LOGD("pwr status (0x%x): 0x%08x",
 			0x10006000 + 0x16C, readl(g_sleep + 0x16C));
 
-		GPUFREQ_LOGI("pwr status (0x%x): 0x%08x",
+		GPUFREQ_LOGD("pwr status (0x%x): 0x%08x",
 			0x10006000 + 0x170, readl(g_sleep + 0x170));
 	}
 }
@@ -1592,7 +1592,7 @@ static int __gpufreq_custom_commit_gpu(
 
 	/* check dvfs state */
 	if (g_dvfs_state & ~key) {
-		GPUFREQ_LOGI("unavailable dvfs state (0x%x)", g_dvfs_state);
+		GPUFREQ_LOGD("unavailable dvfs state (0x%x)", g_dvfs_state);
 		ret = GPUFREQ_SUCCESS;
 		goto done_unlock;
 	}
@@ -2106,10 +2106,10 @@ static void __gpufreq_dump_bringup_status(void)
 	 * Power ON: 0001 1111 1100 (0x1FC)
 	 * [2]: MFG0, [3]: MFG1, [4]: MFG2, [5]: MFG3, [6]: MFG4, [7]: MFG5, [8]: MFG6
 	 */
-	GPUFREQ_LOGI("[MFG0-6] PWR_STATUS: 0x%08x, PWR_STATUS_2ND: 0x%08x",
+	GPUFREQ_LOGD("[MFG0-6] PWR_STATUS: 0x%08x, PWR_STATUS_2ND: 0x%08x",
 		readl(g_sleep + 0x16C) & 0x1FC,
 		readl(g_sleep + 0x170) & 0x1FC);
-	GPUFREQ_LOGI("[MFGPLL] FMETER: %d CON1: %d",
+	GPUFREQ_LOGD("[MFGPLL] FMETER: %d CON1: %d",
 		__gpufreq_get_fmeter_fgpu(), __gpufreq_get_real_fgpu());
 
 done:
@@ -2637,7 +2637,7 @@ static void __gpufreq_segment_adjustment(struct platform_device *pdev)
 		__gpufreq_adjust_opp_gpu(adj_table, adj_num);
 	}
 
-	GPUFREQ_LOGI("efuse_id: 0x%x, adj_num: %d", efuse_id, adj_num);
+	GPUFREQ_LOGD("efuse_id: 0x%x, adj_num: %d", efuse_id, adj_num);
 }
 
 static void __gpufreq_init_shader_present(void)
@@ -2653,7 +2653,7 @@ static void __gpufreq_init_shader_present(void)
 		break;
 	default:
 		g_shader_present = GPU_SHADER_PRESENT_9;
-		GPUFREQ_LOGI("invalid segment id: %d", segment_id);
+		GPUFREQ_LOGD("invalid segment id: %d", segment_id);
 	}
 	GPUFREQ_LOGD("segment_id: %d, shader_present: %d",
 		segment_id, g_shader_present);
@@ -2716,7 +2716,7 @@ static int __gpufreq_init_opp_table(struct platform_device *pdev)
 	GPUFREQ_LOGD("number of signed OPP: %d, upper and lower bound: [%d, %d]",
 		g_gpu.signed_opp_num,
 		g_gpu.segment_upbound, g_gpu.segment_lowbound);
-	GPUFREQ_LOGI("number of working OPP: %d, max and min OPP index: [%d, %d]",
+	GPUFREQ_LOGD("number of working OPP: %d, max and min OPP index: [%d, %d]",
 		g_gpu.opp_num, g_gpu.max_oppidx, g_gpu.min_oppidx);
 
 	/* init working OPP table = default + adjustment */
@@ -3205,7 +3205,7 @@ static int __init __gpufreq_init(void)
 {
 	int ret = GPUFREQ_SUCCESS;
 
-	GPUFREQ_LOGI("start to init gpufreq platform driver");
+	GPUFREQ_LOGD("start to init gpufreq platform driver");
 
 	/* register gpufreq platform driver */
 	ret = platform_driver_register(&g_gpufreq_pdrv);
@@ -3214,7 +3214,7 @@ static int __init __gpufreq_init(void)
 		goto done;
 	}
 
-	GPUFREQ_LOGI("gpufreq platform driver init done");
+	GPUFREQ_LOGD("gpufreq platform driver init done");
 
 done:
 	return ret;
