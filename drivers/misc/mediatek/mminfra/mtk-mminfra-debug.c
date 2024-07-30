@@ -812,11 +812,13 @@ MODULE_PARM_DESC(mminfra_log, "mminfra log");
 
 int mminfra_dbg_ut(const char *val, const struct kernel_param *kp)
 {
+#if IS_ENABLED(CONFIG_MTK_MMINFRA_DEBUG)
 	int ret, i;
 	unsigned int test_case, arg0, arg1, value;
 	void __iomem *mm_proc_mtcmos;
 	void __iomem *mmpc_src_addr;
 	void __iomem *addr;
+	void __iomem *test_base;
 	u32 *mmpc_rsc_user_num = dbg->mmpc_rsc_user;
 
 	ret = sscanf(val, "%u %u %u", &test_case, &arg0, &arg1);
@@ -882,11 +884,26 @@ int mminfra_dbg_ut(const char *val, const struct kernel_param *kp)
 			}
 		}
 		break;
+	case 3:
+		pr_notice("%s: write test index(%d)(%d)(%d)\n", __func__, test_case, arg0, arg1);
+		test_base = ioremap(arg0, 4);
+		writel(arg1, test_base);
+		value = readl_relaxed(test_base);
+		pr_notice("%s: read %x=0x%x\n", __func__, arg0, value);
+		iounmap(test_base);
+		break;
+	case 4:
+		pr_notice("%s: read test index(%d)(%d)(%d)\n", __func__, test_case, arg0, arg1);
+		test_base = ioremap(arg0, 4);
+		value = readl_relaxed(test_base);
+		pr_notice("%s: read %x=0x%x\n", __func__, arg0, value);
+		iounmap(test_base);
+		break;
 	default:
 		pr_notice("%s: wrong test_case(%d)\n", __func__, test_case);
 		break;
 	}
-
+#endif
 	return 0;
 }
 
