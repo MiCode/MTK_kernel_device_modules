@@ -6,6 +6,9 @@
 #ifndef __DRM_EDRTX_API_H__
 #define __DRM_EDRTX_API_H__
 
+/* edp phy device driver */
+extern struct platform_driver mtk_edp_phy_driver;
+
 /* DVO related APIs */
 int mtk_drm_dvo_get_info(struct drm_device *dev,
 		struct drm_mtk_session_info *info);

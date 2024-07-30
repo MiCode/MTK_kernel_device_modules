@@ -35,6 +35,7 @@
 #include <video/videomode.h>
 
 #include "mtk_drm_edp_regs.h"
+#include "mtk_drm_edp_api.h"
 #include "../mtk_drm_crtc.h"
 
 #define EDP_VIDEO_UNMUTE		0x22
@@ -255,7 +256,6 @@ struct notify_dev {
 	ssize_t (*print_state)(struct notify_dev *sdev, char *buf);
 	ssize_t (*print_crtc)(struct notify_dev *sdev, char *buf);
 };
-
 
 /* staitc global variable define */
 static struct mtk_edp *g_mtk_edp;
@@ -2968,7 +2968,45 @@ static struct platform_driver mtk_edp_driver = {
 	},
 };
 
-module_platform_driver(mtk_edp_driver);
+static struct platform_driver *const mtk_edp_drivers[] = {
+	&mtk_edp_phy_driver,
+	&mtk_edp_driver,
+};
+
+static int __init mtk_edp_init(void)
+{
+	int ret = 0, i = 0;
+
+	for (i = 0; i < ARRAY_SIZE(mtk_edp_drivers); i++) {
+		pr_info("[eDPTX] register %s driver\n", mtk_edp_drivers[i]->driver.name);
+		ret = platform_driver_register(mtk_edp_drivers[i]);
+		if (ret < 0) {
+			pr_info("Failed to register %s driver: %d\n", mtk_edp_drivers[i]->driver.name, ret);
+			goto err;
+		}
+	}
+
+	return 0;
+
+err:
+	while (--i >= 0)
+		platform_driver_unregister(mtk_edp_drivers[i]);
+
+	return ret;
+}
+
+static void __exit mtk_edp_exit(void)
+{
+	int i;
+
+	for (i = ARRAY_SIZE(mtk_edp_drivers) - 1; i >= 0; i--)
+		platform_driver_unregister(mtk_edp_drivers[i]);
+}
+
+module_init(mtk_edp_init);
+module_exit(mtk_edp_exit);
+
+MODULE_SOFTDEP("pre: panel-maxiam-max96851 maxiam-max96851");
 
 MODULE_AUTHOR("Jie-h.Hu <jie-h.hu@mediatek.com>");
 MODULE_DESCRIPTION("MediaTek Embedded DisplayPort Driver");

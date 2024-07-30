@@ -117,8 +117,9 @@ endif
 
 ifeq ($(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT), m)
 mediatek-drm-y += mtk_drm_edp/mtk_dvo.o
-mediatek-drm-y += mtk_drm_edp/mtk_drm_edp_phy.o
-obj-$(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT) += mtk_drm_edp/mtk_drm_edp.o
+mtk-drm-edp-y += mtk_drm_edp/mtk_drm_edp_phy.o
+mtk-drm-edp-y += mtk_drm_edp/mtk_drm_edp.o
+obj-$(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT) += mtk-drm-edp.o
 endif
 
 ifneq ($(findstring $(CONFIG_DRM_MEDIATEK_CEC), y m),)

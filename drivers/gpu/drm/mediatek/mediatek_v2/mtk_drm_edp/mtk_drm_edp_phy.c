@@ -102,7 +102,7 @@
 #define DRIVING_PARAM_8_DEFAULT	(XTP_LN_TX_LCTXCP1_SW2_PRE1_DEFAULT | \
 				 XTP_LN_TX_LCTXCP1_SW3_PRE0_DEFAULT)
 
-struct mtk_dp_phy {
+struct mtk_edp_phy {
 	struct regmap *regs;
 };
 
@@ -140,39 +140,39 @@ enum {
 	DPTX_LANE_COUNT4 = 0x4,
 };
 
-static void mtk_dptx_phyd_reset_swing_pre(struct mtk_dp_phy *dp_phy)
+static void mtk_dptx_phyd_reset_swing_pre(struct mtk_edp_phy *edp_phy)
 {
-	regmap_update_bits(dp_phy->regs, PHYD_DIG_LAN0_OFFSET + DRIVING_FORCE,
+	regmap_update_bits(edp_phy->regs, PHYD_DIG_LAN0_OFFSET + DRIVING_FORCE,
 			 EDP_TX_LN_VOLT_SWING_VAL_FLDMASK | EDP_TX_LN_PRE_EMPH_VAL_FLDMASK, 0x0);
-	regmap_update_bits(dp_phy->regs, PHYD_DIG_LAN1_OFFSET + DRIVING_FORCE,
+	regmap_update_bits(edp_phy->regs, PHYD_DIG_LAN1_OFFSET + DRIVING_FORCE,
 			 EDP_TX_LN_VOLT_SWING_VAL_FLDMASK | EDP_TX_LN_PRE_EMPH_VAL_FLDMASK, 0x0);
-	regmap_update_bits(dp_phy->regs, PHYD_DIG_LAN2_OFFSET + DRIVING_FORCE,
+	regmap_update_bits(edp_phy->regs, PHYD_DIG_LAN2_OFFSET + DRIVING_FORCE,
 			 EDP_TX_LN_VOLT_SWING_VAL_FLDMASK | EDP_TX_LN_PRE_EMPH_VAL_FLDMASK, 0x0);
-	regmap_update_bits(dp_phy->regs, PHYD_DIG_LAN3_OFFSET + DRIVING_FORCE,
+	regmap_update_bits(edp_phy->regs, PHYD_DIG_LAN3_OFFSET + DRIVING_FORCE,
 			 EDP_TX_LN_VOLT_SWING_VAL_FLDMASK | EDP_TX_LN_PRE_EMPH_VAL_FLDMASK, 0x0);
 }
 
 
-static int mtk_dp_phy_init(struct phy *phy)
+static int mtk_edp_phy_init(struct phy *phy)
 {
-	struct mtk_dp_phy *dp_phy = phy_get_drvdata(phy);
+	struct mtk_edp_phy *edp_phy = phy_get_drvdata(phy);
 
 	/* Set IPMUX_CONTROL to eDP Mode */
-	regmap_update_bits(dp_phy->regs, IPMUX_CONTROL,
+	regmap_update_bits(edp_phy->regs, IPMUX_CONTROL,
 						0 << EDPTX_DSI_PHYD_SEL_FLDMASK_POS,
 						EDPTX_DSI_PHYD_SEL_FLDMASK);
 
-	regmap_update_bits(dp_phy->regs, PHYD_DIG_GLB_OFFSET + 0x10,
+	regmap_update_bits(edp_phy->regs, PHYD_DIG_GLB_OFFSET + 0x10,
 						BIT(0) | BIT(1) | BIT(2),
 						BIT(0) | BIT(1) | BIT(2));
 
 	return 0;
 }
 
-static int mtk_dp_phy_configure(struct phy *phy, union phy_configure_opts *opts)
+static int mtk_edp_phy_configure(struct phy *phy, union phy_configure_opts *opts)
 {
-	struct mtk_dp_phy *dp_phy = phy_get_drvdata(phy);
-	u32 val;
+	struct mtk_edp_phy *edp_phy = phy_get_drvdata(phy);
+	u32 val = 0x0;
 
 	if (opts->dp.set_rate) {
 		switch (opts->dp.link_rate) {
@@ -194,12 +194,12 @@ static int mtk_dp_phy_configure(struct phy *phy, union phy_configure_opts *opts)
 			val = BIT_RATE_HBR3;
 			break;
 		}
-		regmap_write(dp_phy->regs, MTK_DP_PHY_DIG_BIT_RATE, val);
+		regmap_write(edp_phy->regs, MTK_DP_PHY_DIG_BIT_RATE, val);
 	}
 
 	if (opts->dp.set_lanes) {
 		for (val = 0; val < 4; val++) {
-			regmap_update_bits(dp_phy->regs, DP_PHY_DIG_TX_CTL_0,
+			regmap_update_bits(edp_phy->regs, DP_PHY_DIG_TX_CTL_0,
 				((1 << (val + 1)) - 1), TX_LN_EN_FLDMASK);
 		}
 	}
@@ -207,7 +207,7 @@ static int mtk_dp_phy_configure(struct phy *phy, union phy_configure_opts *opts)
 	/* set swing and pre */
 	if (opts->dp.set_voltages) {
 		if (opts->dp.lanes >= DPTX_LANE_COUNT1) {
-			regmap_update_bits(dp_phy->regs,
+			regmap_update_bits(edp_phy->regs,
 				PHYD_DIG_LAN0_OFFSET + DRIVING_FORCE,
 				EDP_TX_LN_VOLT_SWING_VAL_FLDMASK |
 				EDP_TX_LN_PRE_EMPH_VAL_FLDMASK,
@@ -215,7 +215,7 @@ static int mtk_dp_phy_configure(struct phy *phy, union phy_configure_opts *opts)
 				opts->dp.pre[DPTX_LANE0] << 3);
 
 			if (opts->dp.lanes >= DPTX_LANE_COUNT2) {
-				regmap_update_bits(dp_phy->regs,
+				regmap_update_bits(edp_phy->regs,
 					PHYD_DIG_LAN1_OFFSET + DRIVING_FORCE,
 					EDP_TX_LN_VOLT_SWING_VAL_FLDMASK |
 					EDP_TX_LN_PRE_EMPH_VAL_FLDMASK,
@@ -223,14 +223,14 @@ static int mtk_dp_phy_configure(struct phy *phy, union phy_configure_opts *opts)
 					opts->dp.pre[DPTX_LANE1] << 3);
 
 				if (opts->dp.lanes == DPTX_LANE_COUNT4) {
-					regmap_update_bits(dp_phy->regs,
+					regmap_update_bits(edp_phy->regs,
 						PHYD_DIG_LAN2_OFFSET + DRIVING_FORCE,
 						EDP_TX_LN_VOLT_SWING_VAL_FLDMASK |
 						EDP_TX_LN_PRE_EMPH_VAL_FLDMASK,
 						opts->dp.voltage[DPTX_LANE2] << 1 |
 						opts->dp.pre[DPTX_LANE2] << 3);
 
-					regmap_update_bits(dp_phy->regs,
+					regmap_update_bits(edp_phy->regs,
 						PHYD_DIG_LAN3_OFFSET + DRIVING_FORCE,
 						EDP_TX_LN_VOLT_SWING_VAL_FLDMASK |
 						EDP_TX_LN_PRE_EMPH_VAL_FLDMASK,
@@ -241,53 +241,54 @@ static int mtk_dp_phy_configure(struct phy *phy, union phy_configure_opts *opts)
 		}
 	}
 
-	regmap_update_bits(dp_phy->regs, MTK_DP_PHY_DIG_PLL_CTL_1,
+	regmap_update_bits(edp_phy->regs, MTK_DP_PHY_DIG_PLL_CTL_1,
 			   TPLL_SSC_EN, opts->dp.ssc ? 0 : TPLL_SSC_EN);
 
 	return 0;
 }
 
-static int mtk_dp_phy_reset(struct phy *phy)
+static int mtk_edp_phy_reset(struct phy *phy)
 {
-	struct mtk_dp_phy *dp_phy = phy_get_drvdata(phy);
-	unsigned int val;
+	struct mtk_edp_phy *edp_phy = phy_get_drvdata(phy);
+	unsigned int val = 0x0;
 
-	regmap_update_bits(dp_phy->regs, MTK_DP_PHY_DIG_SW_RST,
+	regmap_update_bits(edp_phy->regs, MTK_DP_PHY_DIG_SW_RST,
 			   0, DP_GLB_SW_RST_PHYD_MASK);
 	usleep_range(50, 200);
-	regmap_update_bits(dp_phy->regs, MTK_DP_PHY_DIG_SW_RST,
+	regmap_update_bits(edp_phy->regs, MTK_DP_PHY_DIG_SW_RST,
 			   DP_GLB_SW_RST_PHYD, DP_GLB_SW_RST_PHYD_MASK);
 
-	regmap_read(dp_phy->regs,DP_PHY_DIG_TX_CTL_0, &val);
+	regmap_read(edp_phy->regs,DP_PHY_DIG_TX_CTL_0, &val);
 	val = val & TX_LN_EN_FLDMASK;
 	pr_info("[eDPTX] Current lane power %x\n", val);
 
 	while (val > 0) {
 		val >>= 1;
-		regmap_update_bits(dp_phy->regs, DP_PHY_DIG_TX_CTL_0,
+		regmap_update_bits(edp_phy->regs, DP_PHY_DIG_TX_CTL_0,
 			val, TX_LN_EN_FLDMASK);
 	}
 
-	mtk_dptx_phyd_reset_swing_pre(dp_phy);
+	mtk_dptx_phyd_reset_swing_pre(edp_phy);
 
 	return 0;
 }
 
-static const struct phy_ops mtk_dp_phy_dev_ops = {
-	.init = mtk_dp_phy_init,
-	.configure = mtk_dp_phy_configure,
-	.reset = mtk_dp_phy_reset,
+static const struct phy_ops mtk_edp_phy_dev_ops = {
+	.init = mtk_edp_phy_init,
+	.configure = mtk_edp_phy_configure,
+	.reset = mtk_edp_phy_reset,
 	.owner = THIS_MODULE,
 };
 
-static int mtk_dp_phy_probe(struct platform_device *pdev)
+static int mtk_edp_phy_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct mtk_dp_phy *dp_phy;
+	struct mtk_edp_phy *edp_phy;
 	struct phy *phy;
 	struct regmap *regs;
 	void __iomem *regs_base;
 
+	pr_info("[eDPTX] %s+\n", __func__);
 	regs_base = ioremap(EDP_PHYD_BASE_ADDR, 0x1500);
 	if (!regs_base) {
 		pr_info("[eDPTX] Unable to map register.\n");
@@ -300,26 +301,27 @@ static int mtk_dp_phy_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	dp_phy = devm_kzalloc(dev, sizeof(*dp_phy), GFP_KERNEL);
-	if (!dp_phy)
+	edp_phy = devm_kzalloc(dev, sizeof(*edp_phy), GFP_KERNEL);
+	if (!edp_phy)
 		return -ENOMEM;
 
-	dp_phy->regs = regs;
-	phy = devm_phy_create(dev, NULL, &mtk_dp_phy_dev_ops);
+	edp_phy->regs = regs;
+	phy = devm_phy_create(dev, NULL, &mtk_edp_phy_dev_ops);
 	if (IS_ERR(phy)) {
 		pr_info("Failed to create DP PHY\n");
 		return PTR_ERR(phy);
 	}
 
-	phy_set_drvdata(phy, dp_phy);
+	phy_set_drvdata(phy, edp_phy);
 	if (!dev->of_node)
 		phy_create_lookup(phy, "edp", dev_name(dev));
 
+		pr_info("[eDPTX] %s-\n", __func__);
 	return 0;
 }
 
-struct platform_driver mtk_dp_phy_driver = {
-	.probe = mtk_dp_phy_probe,
+struct platform_driver mtk_edp_phy_driver = {
+	.probe = mtk_edp_phy_probe,
 	.driver = {
 		.name = "mediatek-edp-phy",
 	},
