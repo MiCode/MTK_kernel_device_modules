@@ -10,13 +10,6 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/inc/
 ifeq ($(CONFIG_MTK_SWPM_MODULE),$(filter $(CONFIG_MTK_SWPM_MODULE),m))
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/modules/debug/v6991
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/modules/debug/v6991/subsys
-
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mbraink/modules/sys_res
-subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mbraink/modules/sys_res
-include $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mbraink/modules/sys_res/Makefile
-MTK_MBRAINK_SYS_RES = $(mtk_mbraink_sys_res_objs:%.o=../sys_res/%.o)
-MBRAINK_MODULE_DEBUG_COMMON += ${MTK_MBRAINK_SYS_RES}
-
 endif
 
 ifeq ($(CONFIG_MTK_FPSGO_V3),m)
@@ -87,6 +80,5 @@ obj-${CONFIG_MTK_MBRAINK_MT6991} += ${BUILD_MBRAINK_MODULE_NAME}.o
 ${BUILD_MBRAINK_MODULE_NAME}-objs += mbraink_v6991.o mbraink_v6991_memory.o mbraink_v6991_audio.o mbraink_v6991_battery.o mbraink_v6991_power.o mbraink_v6991_gpu.o mbraink_v6991_gps.o mbraink_v6991_wifi.o
 
 ifeq ($(CONFIG_MTK_SWPM_MODULE),$(filter $(CONFIG_MTK_SWPM_MODULE),m))
-${BUILD_MBRAINK_MODULE_NAME}-objs += mbraink_sys_res_plat.o mbraink_sys_res_mbrain_plat.o
-${BUILD_MBRAINK_MODULE_NAME}-objs += ${MBRAINK_MODULE_DEBUG_COMMON}
+${BUILD_MBRAINK_MODULE_NAME}-objs += mbraink_sys_res_plat.o mbraink_sys_res_mbrain_plat.o mbraink_sys_res.o mbraink_sys_res_mbrain_dbg.o
 endif
