@@ -317,9 +317,9 @@
 #define MT6991_DISP_ODDMR_SMI_SB_FLG_ODR_1 (0x0068)
 	#define MT6991_REG_DBI_GUSER_CTRL_1		REG_FLD_MSB_LSB(15, 0)
 
-// MT6991 DDREN
-#define MT6991_DISP_ODDMR_SMI_SB_FLG_ODW_2 0x008C
-#define MT6991_DISP_ODDMR_SMI_SB_FLG_ODW_3 0x0090
+// MT6991 OD DDREN
+#define MT6991_DISP_ODDMR_REG_ODW_DDREN_CTRL 0x008C //CODA: DISP_ODDMR_SMI_SB_FLG_ODW_2
+#define MT6991_DISP_ODDMR_REG_ODR_DDREN_CTRL 0x0090 //CODA: DISP_ODDMR_SMI_SB_FLG_ODW_3
 
 /* OD UDMA R*/
 #define DISP_ODDMR_REG_UDMA_R_BASE 0x1600
@@ -5956,8 +5956,8 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 		if (oddmr_priv->data->od_version == MTK_OD_V2) {
 			mtk_oddmr_write_mask(comp, 1, MT6991_DISP_ODDMR_OD_CTRL_EN, 0x01, handle);
 			mtk_oddmr_write(comp, 0, DISP_ODDMR_TOP_OD_BYASS, handle);
-			mtk_oddmr_write(comp, 4, MT6991_DISP_ODDMR_SMI_SB_FLG_ODW_2, handle);
-			mtk_oddmr_write(comp, 4, MT6991_DISP_ODDMR_SMI_SB_FLG_ODW_3, handle);
+			mtk_oddmr_write(comp, 4, MT6991_DISP_ODDMR_REG_ODW_DDREN_CTRL, handle);
+			mtk_oddmr_write(comp, 4, MT6991_DISP_ODDMR_REG_ODR_DDREN_CTRL, handle);
 		} else {
 			mtk_oddmr_write_mask(comp, 1, DISP_ODDMR_OD_CTRL_EN, 0x01, handle);
 		}
@@ -5965,8 +5965,8 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 		if (oddmr_priv->data->od_version == MTK_OD_V2) {
 			mtk_oddmr_write_mask(comp, 0, MT6991_DISP_ODDMR_OD_CTRL_EN, 0x01, handle);
 			mtk_oddmr_od_bypass(comp, handle);
-			mtk_oddmr_write(comp, 1, MT6991_DISP_ODDMR_SMI_SB_FLG_ODW_2, handle);
-			mtk_oddmr_write(comp, 1, MT6991_DISP_ODDMR_SMI_SB_FLG_ODW_3, handle);
+			mtk_oddmr_write(comp, 9, MT6991_DISP_ODDMR_REG_ODW_DDREN_CTRL, handle);
+			mtk_oddmr_write(comp, 9, MT6991_DISP_ODDMR_REG_ODR_DDREN_CTRL, handle);
 		} else {
 			mtk_oddmr_write_mask(comp, 0, DISP_ODDMR_OD_CTRL_EN, 0x01, handle);
 			mtk_oddmr_od_bypass(comp, handle);
@@ -9827,6 +9827,46 @@ static void mtk_oddmr_dbi_ddren_en(struct mtk_ddp_comp *comp,
 	}
 }
 
+/* OD MT6991 DDREN */
+static void mtk_oddmr_od_ddren_en(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, unsigned int en)
+{
+	GCE_COND_DECLARE;
+	struct cmdq_operand lop, rop;
+	const u16 var1 = CMDQ_THR_SPR_IDX2;
+	const u16 var2 = 0;
+
+	if (en == 1) {
+		GCE_COND_ASSIGN(handle, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
+		/* get od status */
+		lop.reg = true;
+		lop.idx = var1;
+		rop.reg = false;
+		rop.value = 1;
+		cmdq_pkt_read(handle, NULL,
+			comp->regs_pa + MT6991_DISP_ODDMR_OD_CTRL_EN, var1);
+		cmdq_pkt_logic_command(handle, CMDQ_LOGIC_AND, var1, &lop, &rop);
+
+		lop.reg = true;
+		lop.idx = var1;
+		rop.reg = false;
+		rop.idx = var2;
+		rop.value = 1;
+		GCE_IF(lop, R_CMDQ_EQUAL, rop);
+		/* condition true: OD enabled, enable OD ddren */
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + MT6991_DISP_ODDMR_REG_ODW_DDREN_CTRL, 4, ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + MT6991_DISP_ODDMR_REG_ODR_DDREN_CTRL, 4, ~0);
+		GCE_FI;
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + MT6991_DISP_ODDMR_REG_ODW_DDREN_CTRL, 9, ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + MT6991_DISP_ODDMR_REG_ODR_DDREN_CTRL, 9, ~0);
+	}
+}
+
 static void mtk_oddmr_config_trigger(struct mtk_ddp_comp *comp,
 				   struct cmdq_pkt *handle,
 				   enum mtk_ddp_comp_trigger_flag flag)
@@ -9850,6 +9890,8 @@ static void mtk_oddmr_config_trigger(struct mtk_ddp_comp *comp,
 				mtk_oddmr_dbi_ddren_en(comp, handle, 1);
 			if(is_oddmr_dmr_support)
 				mtk_oddmr_dmr_ddren_en(comp, handle, 1);
+			if (is_oddmr_od_support)
+				mtk_oddmr_od_ddren_en(comp, handle, 1);
 		}
 	}
 		break;
@@ -9860,6 +9902,8 @@ static void mtk_oddmr_config_trigger(struct mtk_ddp_comp *comp,
 				mtk_oddmr_dbi_ddren_en(comp, handle, 0);
 			if(is_oddmr_dmr_support)
 				mtk_oddmr_dmr_ddren_en(comp, handle, 0);
+			if (is_oddmr_od_support)
+				mtk_oddmr_od_ddren_en(comp, handle, 0);
 		}
 
 		if (priv && (!mtk_drm_helper_get_opt(priv->helper_opt,
