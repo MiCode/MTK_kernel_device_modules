@@ -1398,6 +1398,10 @@ int DPE_Config_DVS(struct DPE_Config *pDpeConfig,
 	pDpeConfig->Dpe_InBuf_SrcImg_Y_L, pDpeConfig->Dpe_InBuf_SrcImg_Y_R,
 	pDpeConfig->Dpe_InBuf_ValidMap_L, pDpeConfig->Dpe_InBuf_ValidMap_R,
 	pDpeConfig->Dpe_OutBuf_CONF, pDpeConfig->Dpe_OutBuf_OCC);
+	if ((frmWidth == 0) || (frmHeight == 0)) {
+		LOG_ERR("frame width or height is zero w(%d)/h(%d)\n", frmWidth, frmHeight);
+		return -1;
+	}
 	if ((frmWidth % 16 != 0)) {
 		LOG_ERR("frame width is not 16 byte align w(%d)\n", frmWidth);
 		return -1;
