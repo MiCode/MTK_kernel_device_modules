@@ -1548,6 +1548,7 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"ADDA_CH34_UL_Mux", "AP_DMIC", "AP DMIC CH34 Capture"},
 
 	{"ADDA Capture", NULL, "ADDA Enable"},
+	{"ADDA Capture", NULL, "mt6368_vaud18"},
 	{"ADDA Capture", NULL, "ADDA Capture Enable"},
 	{"ADDA Capture", NULL, "AUD_PAD_TOP"},
 	{"ADDA Capture", NULL, "ADDA_MTKAIF_CFG"},
