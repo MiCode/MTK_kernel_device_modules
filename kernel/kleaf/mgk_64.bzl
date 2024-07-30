@@ -1106,7 +1106,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6991-ivi.ko":"mt6991"})
         mgk_64_platform_device_modules.update({"drivers/soc/mediatek/mtk-scpsys-mt6991-ivi.ko":"mt6991"})
         mgk_64_device_modules.append("drivers/gpu/drm/bridge/maxiam-max96851.ko")
-        mgk_64_device_modules.append("drivers/gpu/drm/mediatek/mediatek_v2/mtk_drm_edp/mtk_drm_edp.ko")
+        mgk_64_device_modules.append("drivers/gpu/drm/mediatek/mediatek_v2/mtk-drm-edp.ko")
         mgk_64_device_modules.append("drivers/gpu/drm/panel/panel-maxiam-max96851.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/carevent/carevent.ko")
         mgk_64_device_modules.append("drivers/thermal/mediatek/fan_cooling.ko")
