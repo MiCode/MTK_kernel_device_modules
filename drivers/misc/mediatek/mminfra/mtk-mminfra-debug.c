@@ -92,6 +92,7 @@ static bool mminfra_ao_base;
 static bool vcp_gipc;
 static bool no_sleep_pd_cb;
 static bool skip_apsrc;
+static bool has_infra_hfrp;
 static bool is_mminfra_shutdown;
 static bool mm_no_cg_ctrl;
 static bool mm_no_scmi;
@@ -524,8 +525,10 @@ static int mminfra_voter_mon(void *data)
 		return 0;
 	}
 
-	pr_notice("%s set mm pwr on\n", __func__);
-	pm_runtime_get(dbg->comm_dev[0]);
+	if (!has_infra_hfrp) {
+		pr_notice("%s set mm pwr on\n", __func__);
+		pm_runtime_get(dbg->comm_dev[0]);
+	}
 	voter_addr = ioremap(dbg->mm_voter_base, 0x4);
 	while (!kthread_should_stop()) {
 		val = readl(voter_addr);
@@ -1368,6 +1371,7 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	}
 
 	skip_apsrc = of_property_read_bool(node, "skip-apsrc");
+	has_infra_hfrp = of_property_read_bool(node, "has-infra-hfrp");
 
 	if (!of_property_read_u32(node, "vlp-base", &vlp_base_pa)) {
 		pr_notice("[mminfra] vlp_base_pa=%#x\n", vlp_base_pa);
