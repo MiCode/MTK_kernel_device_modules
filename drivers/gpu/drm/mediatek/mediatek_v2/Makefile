@@ -73,7 +73,8 @@ mediatek-drm-y := mtk_drm_drv.o \
 
 ifeq ($(CONFIG_DRM_MEDIATEK_AUTO_YCT), m)
 mediatek-drm-y += mtk_drm_auto/mtk_drm_ddp_comp_auto.o \
-	mtk_drm_auto/mtk_drm_crtc_auto.o
+	mtk_drm_auto/mtk_drm_crtc_auto.o \
+	mtk_drm_auto/mtk_drm_drv_auto.o
 endif
 
 ifeq ($(CONFIG_DRM_MEDIATEK_DEBUG_FS),y)
