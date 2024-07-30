@@ -7679,6 +7679,7 @@ cpus {
 			reg = <0 0x14007000 0 0x1000>;
 			interrupts = <GIC_SPI 257 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys_config_clk CLK_MM_DISP_COLOR0>;
+			doze-bypass = <1>;
 		};
 
 		disp_ccorr0: disp-ccorr0@14008000 {
@@ -7692,6 +7693,7 @@ cpus {
 			ccorr-linear-per-pipe = <0x01>;
 			ccorr-prim-force-linear = <0x0>;
 			ccorr-linear = <1>;
+			doze-bypass = <0x10001>;
 		};
 
 		disp_aal0: disp-aal0@14009000 {
@@ -7704,6 +7706,7 @@ cpus {
 			mtk-aal-support = <1>;
 			mtk-dre30-support = <0>;
 			mtk-cabc-no-support = <1>;
+			doze-bypass = <0x10001>;
 		};
 
 		disp_gamma0: disp-gamma0@1400a000 {
@@ -7913,6 +7916,7 @@ cpus {
 			reg = <0 0x14107000 0 0x1000>;
 			interrupts = <GIC_SPI 268 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys_config_clk CLK_MM_DISP_COLOR1>;
+			doze-bypass = <1>;
 		};
 
 		disp_ccorr1: disp-ccorr1@14108000 {
@@ -7926,6 +7930,7 @@ cpus {
 			ccorr-linear-per-pipe = <0x01>;
 			ccorr-prim-force-linear = <0x0>;
 			ccorr-linear = <0>;
+			doze-bypass = <0x10001>;
 		};
 
 		disp_aal1: disp-aal1@14109000 {
@@ -7938,6 +7943,7 @@ cpus {
 			mtk-aal-support = <1>;
 			mtk-dre30-support = <0>;
 			mtk-cabc-no-support = <1>;
+			doze-bypass = <0x10001>;
 		};
 
 		disp_gamma1: disp-gamma1@1410a000 {

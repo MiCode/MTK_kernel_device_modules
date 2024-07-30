@@ -10053,6 +10053,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 						"mediatek,mt6991-disp-color";
 			reg = <0 0x320f0000 0 0x1000>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_COLOR0_PQ>;
+			doze-bypass = <1>;
 		};
 
 		disp_color1: disp-color1@32100000 {
@@ -10060,6 +10061,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 						"mediatek,mt6991-disp-color";
 			reg = <0 0x32100000 0 0x1000>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_COLOR1_PQ>;
+			doze-bypass = <1>;
 		};
 
 		disp_ccorr0: disp-ccorr0@32090000 {
@@ -10071,6 +10073,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			ccorr-num-per-pipe = <2>;
 			ccorr-linear-per-pipe = <0x01>;
 			ccorr-linear = <1>;
+			doze-bypass = <0x10001>;
 		};
 
 		disp_ccorr1: disp-ccorr1@320a0000 {
@@ -10082,6 +10085,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			ccorr-num-per-pipe = <2>;
 			ccorr-linear-per-pipe = <0x01>;
 			ccorr-linear = <0>;
+			doze-bypass = <0x10001>;
 		};
 
 		disp_ccorr2: disp-ccorr2@320b0000 {
@@ -10093,6 +10097,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			ccorr-num-per-pipe = <2>;
 			ccorr-linear-per-pipe = <0x01>;
 			ccorr-linear = <1>;
+			doze-bypass = <0x10001>;
 		};
 
 		disp_ccorr3: disp-ccorr3@320c0000 {
@@ -10104,6 +10109,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			ccorr-num-per-pipe = <2>;
 			ccorr-linear-per-pipe = <0x01>;
 			ccorr-linear = <0>;
+			doze-bypass = <0x10001>;
 		};
 
 		disp_c3d0: disp-c3d0@32050000 {
@@ -10148,6 +10154,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mtk-aal-support = <1>;
 			mtk-dre30-support = <1>;
 			mtk-aal-clarity-support = <1>;
+			doze-bypass = <0x10001>;
 		};
 
 		disp_aal1: disp-aal1@32040000 {
@@ -10160,6 +10167,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mtk-aal-support = <1>;
 			mtk-dre30-support = <1>;
 			mtk-aal-clarity-support = <1>;
+			doze-bypass = <0x10001>;
 		};
 
 		disp_mdp_aal0: disp-mdp-aal0@32150000 {
@@ -10168,6 +10176,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32150000 0 0x1000>;
 			clocks = <&dispsys_config_clk CLK_MM_MDP_AAL0_PQ>;
 			clock-names = "DRE3_AAL0";
+			doze-bypass = <1>;
 		};
 
 		disp_mdp_aal1: disp-mdp-aal1@32160000 {
@@ -10176,6 +10185,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32160000 0 0x1000>;
 			clocks = <&dispsys_config_clk CLK_MM_MDP_AAL1_PQ>;
 			clock-names = "DRE3_AAL1";
+			doze-bypass = <1>;
 		};
 
 		disp_gamma0: disp-gamma0@32130000 {
