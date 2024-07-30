@@ -8874,6 +8874,10 @@ static void mtk_drm_kms_lateinit(struct kthread_work *work)
 	mtk_drm_assert_init(drm);
 #endif
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	mtk_drm_crtc_dev_init(drm);
+#endif
+
 	if (is_bdg_supported())
 		bdg_first_init();
 }

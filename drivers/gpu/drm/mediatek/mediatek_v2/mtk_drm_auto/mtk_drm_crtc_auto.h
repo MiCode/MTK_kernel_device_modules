@@ -79,6 +79,8 @@ void mtk_drm_backup_default_timing(struct mtk_drm_crtc *mtk_crtc,
 void mtk_drm_connector_notify_guest(struct mtk_drm_crtc *mtk_crtc,
 	unsigned int connector_enable);
 
+void mtk_drm_crtc_dev_init(struct drm_device *dev);
+
 #endif
 
 #endif /* MTK_DRM_CRTC_AUTO_H */
