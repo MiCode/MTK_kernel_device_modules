@@ -16,6 +16,7 @@
 
 #include <lpm_trace_event.h>
 #include <dbg_fs.h>
+#include <dbg_power_gs.h>
 #include <lpm_logger.h>
 
 static int __init mt6853_dbg_early_initcall(void)
@@ -32,6 +33,9 @@ static int __init mt6853_dbg_device_initcall(void)
 	lpm_dbg_common_fs_init();
 	mt6853_dbg_fs_init();
 	mtk_cpupm_dbg_init();
+#if IS_ENABLED(CONFIG_MTK_LPM_GS_DUMP_SUPPORT)
+	power_gs_init();
+#endif
 	return 0;
 }
 
@@ -65,6 +69,10 @@ int __init mt6853_dbg_init(void)
 
 	if (ret)
 		goto mt6853_dbg_init_fail;
+	ret = lpm_dbg_pm_init();
+
+	if (ret)
+		goto mt6853_dbg_init_fail;
 
 	return 0;
 mt6853_dbg_init_fail:
@@ -73,6 +81,10 @@ mt6853_dbg_init_fail:
 
 void __exit mt6853_dbg_exit(void)
 {
+#if IS_ENABLED(CONFIG_MTK_LPM_GS_DUMP_SUPPORT)
+	power_gs_deinit();
+#endif
+	lpm_dbg_pm_exit();
 	lpm_dbg_common_fs_exit();
 	mt6853_dbg_fs_exit();
 	mtk_cpupm_dbg_exit();

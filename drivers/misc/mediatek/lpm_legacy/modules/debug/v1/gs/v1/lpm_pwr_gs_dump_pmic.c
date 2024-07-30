@@ -220,6 +220,8 @@ int lpm_gs_pmic_cmp(int user)
 			 !strcmp((*_pmic)->pwr_domain, "6315-2")||
 			 !strcmp((*_pmic)->pwr_domain, "6315-3"))
 			regmap = pmic_get_regmap("mt6315");
+		else if (!strcmp((*_pmic)->pwr_domain, "6362"))
+			regmap = pmic_get_regmap("mt6362");
 
 		if (IS_ERR(regmap) || !regmap){
 			pr_info("%s regmap not found : %s",__func__, (*_pmic)->pwr_domain);
