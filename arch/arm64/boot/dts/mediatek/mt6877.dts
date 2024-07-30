@@ -8479,6 +8479,12 @@
 		disable_write_silence = <1>;
 	};
 
+	gpufreq_early_init: gpufreq_early_init {
+		compatible = "mediatek,gpufreq_early_init";
+		vgpu-supply = <&mt6359p_vproc2_reg>;
+		vsram-gpu-supply = <&mt6359p_vsram_md_reg>;
+	};
+
 	gpufreq: gpufreq {
 		compatible = "mediatek,gpufreq";
 		clocks =
