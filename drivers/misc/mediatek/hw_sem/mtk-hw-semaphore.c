@@ -20,7 +20,7 @@
 #define MTCMOS_MAX_NR		(32)
 #define MASTER_CELL_NUM		(3)
 #define POWER_CELL_NUM		(2)
-#define TIMEOUT			(100)
+#define TIMEOUT			(500)
 
 static u32 log_level;
 enum hw_sema_log_level {
@@ -47,7 +47,7 @@ static int __mtk_hw_semaphore_get(void __iomem *addr, u32 set_val)
 {
 	struct hw_semaphore *hw_sema = g_hw_sema;
 	struct device *dev = hw_sema->dev;
-	s32 ret;
+	s32 ret, timeout = TIMEOUT;
 
 	if (!addr) {
 		dev_notice(dev, "%s: Null base addr found\n", __func__);
@@ -58,13 +58,17 @@ static int __mtk_hw_semaphore_get(void __iomem *addr, u32 set_val)
 		return -1;
 	}
 
-	writel_relaxed(set_val, addr);
-	udelay(10);
-	if ((readl_relaxed(addr) & set_val) == set_val)
+	while ((readl_relaxed(addr) & set_val) != set_val) {
+		writel_relaxed(set_val, addr);
+		udelay(10);
 		ret = 1;
-	else {
-		dev_notice(dev, "%s: fail!\n", __func__);
-		ret = -EAGAIN;
+		if (timeout-- < 0) {
+			if ((readl_relaxed(addr) & set_val) == set_val)
+				return 1;
+			dev_notice(dev, "%s: fail!\n", __func__);
+			ret = -EAGAIN;
+			break;
+		}
 	}
 
 	return ret;
