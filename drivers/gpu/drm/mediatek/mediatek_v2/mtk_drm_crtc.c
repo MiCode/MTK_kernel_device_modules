@@ -6231,6 +6231,9 @@ void mtk_crtc_mode_switch_on_ap_config(struct mtk_drm_crtc *mtk_crtc,
 	mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
 				mtk_crtc->gce_obj.client[CLIENT_CFG]);
 
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_PRIMARY))
+		mml_cmdq_pkt_init(crtc, cmdq_handle);
+
 	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
 		/* vdo mode wait frame done */
 		cmdq_pkt_wfe(cmdq_handle,
@@ -14713,7 +14716,10 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 
 	/* mml need to power on InlineRotate and sync with mml */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_PRIMARY) &&
-		need_sync_mml)
+		need_sync_mml && !(crtc->state->adjusted_mode.hdisplay !=
+		old_crtc_state->adjusted_mode.hdisplay &&
+		(old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] !=
+		 crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX])))
 		mml_cmdq_pkt_init(crtc, cmdq_handle);
 
 	/*Msync 2.0 change to check vfp period token instead of EOF*/
