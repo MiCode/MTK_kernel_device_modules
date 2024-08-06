@@ -13821,6 +13821,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<CMDQ_EVENT_MMLSYS1_MDP_RDMA0_FRAME_DONE>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L3_P0_MDP_RDMA0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(MTK_M4U_PORT_ID(MM_TAB, NORMAL_DOM, 39, 0))
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 			mmqos-supply = <&mmqos>;
@@ -13899,6 +13901,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			inlinerot = <&inlinerot0>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L3_P1_MDP_WROT0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(MTK_M4U_PORT_ID(MM_TAB, NORMAL_DOM, 39, 1))
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 			mmqos-supply = <&mmqos>;
@@ -13919,6 +13923,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<CMDQ_EVENT_MMLSYS1_MDP_RDMA2_FRAME_DONE>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L3_P4_MDP_RDMA2)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(MTK_M4U_PORT_ID(MM_TAB, NORMAL_DOM, 39, 4))
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 			mmqos-supply = <&mmqos>;
@@ -13948,6 +13954,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<CMDQ_EVENT_MMLSYS1_MDP_WROT2_FRAME_DONE>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L3_P5_MDP_WROT2)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(MTK_M4U_PORT_ID(MM_TAB, NORMAL_DOM, 39, 5))
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 			mmqos-supply = <&mmqos>;
