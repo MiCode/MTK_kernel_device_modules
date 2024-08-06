@@ -1694,6 +1694,7 @@ static int __gpufreq_init_shader_present(void)
 	default:
 		shader_present = MT_GPU_SHADER_PRESENT_3;
 	}
+	g_shader_present = shader_present;
 	GPUFREQ_LOGD("segment_id: %d, shader_present: %d\n",segment_id, shader_present);
 	return shader_present;
 }
