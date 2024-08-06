@@ -125,7 +125,7 @@ static void md_pt_over_current_cb(enum BATTERY_OC_LEVEL_TAG level, void *data)
 	}
 }
 #endif
-static void __used md_limit_default_setting(struct device *dev, enum md_pt_type type)
+static int __used md_limit_default_setting(struct device *dev, enum md_pt_type type)
 {
 	struct device_node *np = dev->of_node;
 	int i, max_lv, ret;
@@ -140,8 +140,14 @@ static void __used md_limit_default_setting(struct device *dev, enum md_pt_type 
 		max_lv = 0;
 	pt_info_p->max_lv = max_lv;
 	if (!pt_info_p->max_lv)
-		return;
+		return 0;
+
 	pt_info_p->reduce_tx = kcalloc(pt_info_p->max_lv, sizeof(u32), GFP_KERNEL);
+	if (!pt_info_p->reduce_tx) {
+		pt_info_p->max_lv = 0;
+		return -ENOMEM;
+	}
+
 	pt_info_p->reduce_tx[0] = MD_TX_REDUCE;
 	if (type == LBAT_POWER_THROTTLING) {
 		ret = of_property_read_u32(np, "lbat_md_reduce_tx", &pt_info_p->reduce_tx[0]);
@@ -154,6 +160,8 @@ static void __used md_limit_default_setting(struct device *dev, enum md_pt_type 
 	}
 	for (i = 1; i < pt_info_p->max_lv; i++)
 		memcpy(&pt_info_p->reduce_tx[i], &pt_info_p->reduce_tx[0], sizeof(u32));
+
+	return 0;
 }
 static int __used parse_md_limit_table(struct device *dev)
 {
@@ -166,8 +174,10 @@ static int __used parse_md_limit_table(struct device *dev)
 		pt_info_p = &md_pt_info[i];
 		ret = of_property_read_u32(np, pt_info_p->max_lv_name, &num);
 		if (ret < 0) {
-			md_limit_default_setting(dev, i);
-			continue;
+			ret = md_limit_default_setting(dev, i);
+			if (ret)
+				return ret;
+
 		} else if (num <= 0 || num > pt_info_p->max_lv) {
 			pt_info_p->max_lv = 0;
 			continue;
@@ -195,13 +205,18 @@ static int __used parse_md_limit_table(struct device *dev)
 			}
 
 			pt_info_p->threshold = kcalloc(num, sizeof(u32), GFP_KERNEL);
-			if (!pt_info_p->threshold)
+			if (!pt_info_p->threshold) {
+				pt_info_p->max_lv = 0;
+				kfree(pt_info_p->reduce_tx);
 				return -ENOMEM;
+			}
 
 			ret = of_property_read_u32_array(np, "lbat-dedicate-volts",
 				pt_info_p->threshold, num);
 			if (ret) {
 				pr_notice("get lbat-dedicate-volts error %d\n", ret);
+				pt_info_p->max_lv = 0;
+				kfree(pt_info_p->reduce_tx);
 				kfree(pt_info_p->threshold);
 				pt_info_p->threshold = NULL;
 				continue;
@@ -219,6 +234,7 @@ static int mtk_md_power_throttling_probe(struct platform_device *pdev)
 	ret = parse_md_limit_table(&pdev->dev);
 	if (ret != 0)
 		return ret;
+
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
 	if (md_pt_info[LBAT_POWER_THROTTLING].max_lv > 0) {
 		priv = &md_pt_info[LBAT_POWER_THROTTLING];
