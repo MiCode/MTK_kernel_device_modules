@@ -3312,6 +3312,7 @@ void mt6991_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 	} else
 		return;
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if (handle == NULL) {
 		if (priv->ovlsys1_regs) {
 			val = 0;
@@ -3347,6 +3348,24 @@ void mt6991_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 				OVLSYS_EXRDMA_PREULTRA_SEL1, val, ~0);
 		}
 	}
+#else
+	if (priv->ovlsys1_regs) {
+		val = 0;
+		SET_VAL_MASK(val, val_mask, 4, OVL_EXDMA3_SEL);
+		SET_VAL_MASK(val, val_mask, 4, OVL_EXDMA4_SEL);
+		SET_VAL_MASK(val, val_mask, 4, OVL_EXDMA5_SEL);
+		SET_VAL_MASK(val, val_mask, 4, OVL_EXDMA6_SEL);
+		if (handle == NULL) {
+			writel_relaxed(val, priv->ovlsys1_regs + OVLSYS_EXRDMA_ULTRA_SEL0);
+			writel_relaxed(val, priv->ovlsys1_regs + OVLSYS_EXRDMA_PREULTRA_SEL0);
+		} else {
+			cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
+				OVLSYS_EXRDMA_ULTRA_SEL0, val, ~0);
+			cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
+				OVLSYS_EXRDMA_PREULTRA_SEL0, val, ~0);
+		}
+	}
+#endif
 }
 
 void mt6895_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
