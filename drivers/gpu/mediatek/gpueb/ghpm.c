@@ -362,11 +362,13 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 			while (((readl(MFG_GHPM_RO0_CON) & GHPM_STATE) != 0x0) ||
 				((readl(MFG_GHPM_RO0_CON) & GHPM_PWR_STATE) == GHPM_PWR_STATE) ||
 				(mfg0_pwr_sta() != MFG0_PWR_OFF)) {
+#if GHPM_MFG0_OFF_TIMEOUT_KE
 				if ((readl(MFG_GHPM_RO0_CON) & TIMEOUT_ERR_RECORD) == TIMEOUT_ERR_RECORD) {
 					__ghpm_timestamp_monitor(POLLING_GHPM_OFF_TIMEOUT_ERR);
 					gpueb_log_e(GHPM_TAG, "GHPM OFF, timeout error record assert");
 					goto wait_err;
 				}
+#endif
 				udelay(1);
 				if (++i > GPUEB_WAIT_TIMEOUT) {
 					__ghpm_timestamp_monitor(POLLING_GPUEB_OFF_TIMEOUT);
@@ -377,7 +379,11 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 			if ((readl(MFG_GHPM_RO0_CON) & TIMEOUT_ERR_RECORD) == TIMEOUT_ERR_RECORD) {
 				__ghpm_timestamp_monitor(POLLING_GHPM_OFF_TIMEOUT_ERR);
 				gpueb_log_e(GHPM_TAG, "GHPM OFF, timeout error record assert");
+#if GHPM_MFG0_OFF_TIMEOUT_KE
 				goto wait_err;
+#else
+				__dump_ghpm_info();
+#endif
 			}
 			atomic_set(&g_progress_status, NOT_IN_PROGRESS);
 
@@ -431,6 +437,8 @@ static void __dump_ghpm_info(void)
 	gpueb_log_e(GHPM_TAG, "MFG_RPC_MFG0_PWR_CON=0x%x", readl(MFG_RPC_MFG0_PWR_CON));
 	gpueb_log_e(GHPM_TAG, "MFG_RPC_DUMMY_REG=0x%x", readl(g_mfg_vcore_ao_config_base + 0x18));
 	gpueb_log_e(GHPM_TAG, "MFG_RPC_DUMMY_REG_1=0x%x", readl(g_mfg_vcore_ao_config_base + 0x1C));
+	gpueb_log_e(GHPM_TAG, "MFGSYS_PROTECT_EN_SET_0=0x%x", readl(g_mfg_vcore_ao_config_base + 0x80));
+	gpueb_log_e(GHPM_TAG, "MFGSYS_PROTECT_EN_STA_0=0x%x", readl(g_mfg_vcore_ao_config_base + 0x88));
 	gpueb_log_e(GHPM_TAG, "g_progress_status=%d, g_power_count=%d",
 		atomic_read(&g_progress_status), atomic_read(&g_power_count));
 

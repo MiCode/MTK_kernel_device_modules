@@ -10,6 +10,7 @@
 
 #define GHPM_TIMESTAMP_MONITOR_EN          (1)
 #define GPUEB_WAIT_OFF_FAIL_WRITE_DUMMY    (1)
+#define GHPM_MFG0_OFF_TIMEOUT_KE           (0)
 #define GPUEB_WAIT_OFF_FAIL_FLAG           (0xBADDEAD)
 
 #define GHPM_IPI_TIMEOUT                   (5000)
