@@ -272,7 +272,7 @@
 	do { \
 		switch (flag_data) { \
 		case DATA_FLAG_STACK_REGION_STRING: \
-			if (data) { \
+			if ((char *)(unsigned long)(data)) { \
 				*((char **)p) = (char *)(unsigned long)(data); \
 				strscpy((char *)(p+sizeof(char *)), (char *)(unsigned long)(data), \
 						str_len+1); \
