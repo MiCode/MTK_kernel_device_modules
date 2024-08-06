@@ -1469,7 +1469,7 @@ int gpufreq_set_mfgsys_config(enum gpufreq_config_target target, enum gpufreq_co
 	int ret = GPUFREQ_SUCCESS;
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_ready && target < CONFIG_AP_IMPL_BOUNDARY) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_SET_MFGSYS_CONFIG;
 		send_msg.u.mfg_cfg.target = target;

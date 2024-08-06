@@ -70,6 +70,7 @@
 #define MFG_PLL_SC0_FQMTR_CON1                 (g_mfg_pll_sc0_base + 0x044)        /* 0x13FA0444 */
 
 #define MFG_TOP_CFG_BASE                       (0x13FBF000)
+#define MFG_TOP_CG_CON                         (g_mfg_top_base + 0x000)            /* 0x13FBF000 */
 #define MFG_DEFAULT_DELSEL_00                  (g_mfg_top_base + 0xC80)            /* 0x13FBFC80 */
 #define MFG_POWER_TRACKER_SETTING              (g_mfg_top_base + 0xFE0)            /* 0x13FBFFE0 */
 #define MFG_POWER_TRACKER_PDC_STATUS0          (g_mfg_top_base + 0xFE4)            /* 0x13FBFFE4 */

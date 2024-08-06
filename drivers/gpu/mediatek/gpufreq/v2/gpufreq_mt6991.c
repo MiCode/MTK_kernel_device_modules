@@ -41,6 +41,8 @@ static void __gpufreq_dump_bus_tracker_status(char *log_buf, int *log_len, int l
 /* bringup function */
 static unsigned int __gpufreq_bringup(void);
 static void __gpufreq_dump_bringup_status(struct platform_device *pdev);
+/* whitebox function */
+static void __gpufreq_wb_mfg1_slave_stress(void);
 /* get function */
 static unsigned int __gpufreq_get_fmeter_fgpu(void);
 static unsigned int __gpufreq_get_fmeter_fstack0(void);
@@ -104,6 +106,7 @@ static unsigned int g_shader_present;
 static unsigned int g_mcl50_load;
 static unsigned int g_aging_load;
 static unsigned int g_gpufreq_ready;
+static unsigned int g_wb_mfg1_slave_stress;
 static int g_slv_error_count;
 static int g_slv_timeout_count;
 static struct gpufreq_bus_tracker_info g_bus_slv_error[GPUFREQ_MAX_BUSTRK_NUM];
@@ -120,6 +123,7 @@ static struct gpufreq_platform_fp platform_eb_fp = {
 	.get_core_mask_table = __gpufreq_get_core_mask_table,
 	.get_core_num = __gpufreq_get_core_num,
 	.set_shared_status = __gpufreq_set_shared_status,
+	.set_mfgsys_config = __gpufreq_set_mfgsys_config,
 };
 
 /**
@@ -760,11 +764,41 @@ void __gpufreq_set_shared_status(struct gpufreq_shared_status *shared_status)
 	GPUFREQ_LOGI("shared memory addr: 0x%llx", (unsigned long long)shared_status);
 }
 
+void __gpufreq_set_mfgsys_config(enum gpufreq_config_target target, enum gpufreq_config_value val)
+{
+	switch (target) {
+	case CONFIG_WB_TEST_ONCE:
+		/* execute every test case */
+		__gpufreq_wb_mfg1_slave_stress();
+		break;
+	case CONFIG_WB_MFG1_SLAVE_STRESS:
+		g_wb_mfg1_slave_stress = val;
+		GPUFREQ_LOGI("set WB_MFG1_SLAVE_STRESS: %d", g_wb_mfg1_slave_stress);
+		break;
+	default:
+		GPUFREQ_LOGE("invalid config target: %d", target);
+		break;
+	}
+}
+
 /**
  * ===============================================
  * Internal Function Definition
  * ===============================================
  */
+static void __gpufreq_wb_mfg1_slave_stress(void)
+{
+	int i = 0;
+	unsigned int val = 0;
+
+	if (g_wb_mfg1_slave_stress) {
+		for (i = 0; i < 100; i++) {
+			val = DRV_Reg32(MALI_GPU_ID);
+			val = DRV_Reg32(MFG_TOP_CG_CON);
+		}
+	}
+}
+
 static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 {
 	struct device *gpufreq_dev = &pdev->dev;
