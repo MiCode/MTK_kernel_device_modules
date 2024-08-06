@@ -40,6 +40,7 @@
 			io-channel-names = "pmic_accdet";
 			nvmem = <&mt6368_efuse>;
 			nvmem-names = "mt63xx-accdet-efuse";
+			app-wakelock-time = <1000>;
 			status = "okay";
 		};
 
