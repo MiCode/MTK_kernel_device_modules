@@ -1302,7 +1302,8 @@ static bool get_mtcmos_sw_state(struct generic_pm_domain *pd)
 {
 	struct scp_domain *scpd = container_of(pd, struct scp_domain, genpd);
 
-	pr_notice("%s is %s\n", pd->name, scpd->is_on? "on" : "off");
+	if (scpd->is_on)
+		pr_notice("%s is %s\n", pd->name, scpd->is_on? "on" : "off");
 	return scpd->is_on;
 }
 

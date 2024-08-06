@@ -1105,6 +1105,7 @@ static struct regbase rb[] = {
 	[hfrp_bus] = REGBASE_V(0x116A5000, hfrp_bus, PD_NULL, CLK_NULL),
 	[vlp_ao] = REGBASE_V(0x1C000000, vlp_ao, PD_NULL, CLK_NULL),
 	[mminfra_hwvote] = REGBASE_V(0x11645000, mminfra_hwvote, PD_NULL, CLK_NULL),
+	[hfrp_mmbuck] = REGBASE_V(0x11637000, hfrp_mmbuck, PD_NULL, CLK_NULL),
 	{},
 };
 
@@ -1363,6 +1364,7 @@ static struct regname rn[] = {
 	REGNAME(spm, 0xEC8, MFG0_PWR_CON),
 	REGNAME(spm, 0x200, MFG_RPC_MFG_PWR_CON_STATUS),
 	REGNAME(spm, 0x204, MFG_RPC_MFG_PWR_CON_2ND_STATUS),
+	REGNAME(spm, 0xF24, MM_BUCK_ISO_CON),
 	/* VLPCFG_BUS register */
 	REGNAME(vlpcfg, 0x0210, VLP_TOPAXI_PROTECTEN),
 	REGNAME(vlpcfg, 0x0220, VLP_TOPAXI_PROTECTEN_STA1),
@@ -1931,6 +1933,8 @@ static struct regname rn[] = {
 	REGNAME(mminfra_hwvote, 0x120, POWER_ON_OFF_MASK_0),
 	REGNAME(mminfra_hwvote, 0X124, POWER_ON_OFF_MASK_1),
 	REGNAME(mminfra_hwvote, 0x140, ALL_VOTE_STATUS),
+	/* HFRP MM Buck register */
+	REGNAME(hfrp_mmbuck, 0x098, MM_BUCK_ISO_CON),
 	{},
 };
 
@@ -2345,6 +2349,7 @@ static enum chk_sys_id devapc_dump_id[] = {
 	hwv,
 	hfrp,
 	hfrp_bus,
+	hfrp_mmbuck,
 	mm_hwv,
 	chk_sys_num,
 };
@@ -2484,6 +2489,7 @@ static enum chk_sys_id bus_dump_id[] = {
 	hwv,
 	hfrp,
 	hfrp_bus,
+	hfrp_mmbuck,
 	mm_hwv,
 	chk_sys_num,
 };
@@ -2568,6 +2574,7 @@ static enum chk_sys_id extern_dump_id[] = {
 	hwv,
 	hfrp,
 	hfrp_bus,
+	hfrp_mmbuck,
 	mm_hwv,
 	chk_sys_num,
 };
