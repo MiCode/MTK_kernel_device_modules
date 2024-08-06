@@ -228,7 +228,7 @@ static void dump_provider_clk(struct provider_clk *pvdck, struct seq_file *s)
 		pvdck->provider_name != NULL ? pvdck->provider_name : "/ ",
 		clk_hw_get_name(c_hw),
 		clkdbg_pvdck_is_on(pvdck) > 0 ? "ON" : "OFF",
-		clkchk_pvdck_is_prepared(pvdck),
+		clkchk_pvdck_is_enabled(pvdck) ? clkchk_pvdck_is_prepared(pvdck) : -1,
 		clkchk_pvdck_is_enabled(pvdck),
 		clk_hw_get_rate(c_hw),
 		p != NULL ? clk_hw_get_name(p_hw) : "- ");
@@ -510,20 +510,20 @@ void prepare_enable_provider(const char *pvd)
 		if (allpvd || (pvdck->provider_name != NULL &&
 				strcmp(pvd, pvdck->provider_name) == 0)) {
 
-			if (!clkchk_pvdck_is_prepared(pvdck) && !clkchk_pvdck_is_enabled(pvdck))
+			if (!clkchk_pvdck_is_enabled(pvdck) || !clkchk_pvdck_is_prepared(pvdck))
 				continue;
 
 			mdelay(10);
-			pr_dbg("prepare_enable_provider: %s\n", pvdck->ck_name);
+			pr_notice("%s: %s\n", __func__, pvdck->ck_name);
 
 			if (clkdbg_pvdck_is_on(pvdck) > 0) {
-				pr_dbg("clk_prepare_enable: %s\n", pvdck->ck_name);
+				pr_notice("clk_prepare_enable: %s\n", pvdck->ck_name);
 				r = clk_prepare_enable(pvdck->ck);
 			} else
-				pr_dbg("clk %s access without power on\n", pvdck->ck_name);
+				pr_notice("clk %s access without power on\n", pvdck->ck_name);
 
 			if (r != 0)
-				pr_dbg("clk_prepare_enable(): %d\n", r);
+				pr_notice("clk_prepare_enable(): %d\n", r);
 		}
 	}
 }
@@ -536,17 +536,18 @@ void disable_unprepare_provider(const char *pvd)
 	for (; pvdck->ck != NULL; pvdck++) {
 		if (allpvd || (pvdck->provider_name != NULL &&
 				strcmp(pvd, pvdck->provider_name) == 0)) {
-			if (!clkchk_pvdck_is_prepared(pvdck) && !clkchk_pvdck_is_enabled(pvdck))
+
+			if (!clkchk_pvdck_is_enabled(pvdck) || !clkchk_pvdck_is_prepared(pvdck))
 				continue;
 
 			mdelay(10);
-			pr_dbg("disable_unprepare_provider: %s\n", pvdck->ck_name);
+			pr_notice("%s: %s\n", __func__, pvdck->ck_name);
 
 			if (clkdbg_pvdck_is_on(pvdck) > 0) {
-				pr_dbg("disable_unprepare: %s\n", pvdck->ck_name);
+				pr_notice("disable_unprepare: %s\n", pvdck->ck_name);
 				clk_disable_unprepare(pvdck->ck);
 			} else
-				pr_dbg("clk %s disable without power on\n", pvdck->ck_name);
+				pr_notice("clk %s disable without power on\n", pvdck->ck_name);
 		}
 	}
 }
