@@ -13064,6 +13064,8 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_crtc_state *mtk_state = NULL;
 	unsigned int crtc_id;
+	unsigned int bw = 0, bw_base = 0;
+	unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
 #ifndef DRM_CMDQ_DISABLE
 	struct cmdq_client *client;
 #endif
@@ -13299,6 +13301,25 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
 			NULL, PMQOS_SET_BW, NULL);
 	}
+
+	bw = _layering_get_frame_bw(crtc, &crtc->state->adjusted_mode);
+	mtk_disp_set_hrt_bw(mtk_crtc, bw);
+	mtk_crtc->qos_ctx->last_hrt_req = bw;
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
+		mtk_crtc->usage_ovl_fmt[0] = 4;
+		mtk_disp_get_channel_hrt_bw(mtk_crtc, channel_hrt, ARRAY_SIZE(channel_hrt));
+		mtk_disp_set_max_channel_hrt_bw(mtk_crtc, channel_hrt,
+					ARRAY_SIZE(channel_hrt), __func__);
+		for (i = 0 ; i < ARRAY_SIZE(channel_hrt); i++)
+			mtk_crtc->qos_ctx->last_channel_req[i] = channel_hrt[i];
+	}
+
+	if (priv->data->respective_ostdl) {
+		bw_base = mtk_drm_primary_frame_bw(crtc);
+		mtk_disp_set_module_hrt(mtk_crtc, bw_base, NULL, PMQOS_SET_HRT_BW);
+	}
+
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
 
