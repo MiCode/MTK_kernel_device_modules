@@ -10013,9 +10013,9 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 				cur_dbv, NULL)) {
 				atomic_set(&g_oddmr_dmr_hrt_done, 2);
 				drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, default_comp->mtk_crtc->base.dev);
-				if (wait_event_interruptible_timeout(g_oddmr_hrt_wq,
-					atomic_read(&g_oddmr_dmr_hrt_done) == 1,
-					msecs_to_jiffies(200)) <= 0) {
+				ret = wait_event_interruptible_timeout(g_oddmr_hrt_wq,
+					atomic_read(&g_oddmr_dmr_hrt_done) == 1, msecs_to_jiffies(200));
+				if (ret <= 0) {
 					atomic_set(&g_oddmr_dmr_hrt_done, 0);
 					DDPPR_ERR("repaint timeout\n");
 					ret = -1;
