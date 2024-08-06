@@ -4013,6 +4013,7 @@ cpus {
 					 <&mdpsys CLK_MDP_SMI2>,
 					 <&mdpsys CLK_MDP_SMI2>;
 			clock-names = "apb", "smi", "gals0", "gals1";
+			skip-tcms-check;
 		};
 
 		smi_larb0: smi-larb0@14118000 {
@@ -6586,6 +6587,7 @@ cpus {
 			clocks = <&ipesys_clk CLK_IPE_SMI_SUBCOM>,
 					 <&ipesys_clk CLK_IPE_LARB19>;
 			clock-names = "apb", "smi";
+			skip-tcms-check;
 		};
 
 		mdpsys: mdpsys@1f000000 {
