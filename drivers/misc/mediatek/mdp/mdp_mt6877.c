@@ -1674,7 +1674,31 @@ static void mdp_qos_init(struct platform_device *pdev, u32 thread_id)
 
 	/* for isp L9 and L11 */
 	MDP_ICC_GET(l9_img_imgi_d1);
-	//TODO fixme
+	MDP_ICC_GET(l9_img_imgbi_d1);
+	MDP_ICC_GET(l9_img_dmgi_d1);
+	MDP_ICC_GET(l9_img_depi_d1);
+	MDP_ICC_GET(l9_img_ice_d1);
+	MDP_ICC_GET(l9_img_smti_d1);
+	MDP_ICC_GET(l9_img_smto_d1);
+	MDP_ICC_GET(l9_img_smto_d2);
+	MDP_ICC_GET(l9_img_crz_d1);
+	MDP_ICC_GET(l9_img_img3o_d1);
+	MDP_ICC_GET(l9_img_vipi_d1);
+	MDP_ICC_GET(l9_img_smti_d5);
+	MDP_ICC_GET(l9_img_timgo_d1);
+	MDP_ICC_GET(l9_img_ufbc_w0);
+	MDP_ICC_GET(l9_img_ufbc_r0);
+	MDP_ICC_GET(l11_img_wpe_rdma0);
+	MDP_ICC_GET(l11_img_wpe_rdma1);
+	MDP_ICC_GET(l11_img_wpe_wdma);
+	MDP_ICC_GET(l11_img_mfb_rdma0);
+	MDP_ICC_GET(l11_img_mfb_rdma1);
+	MDP_ICC_GET(l11_img_mfb_rdma2);
+	MDP_ICC_GET(l11_img_mfb_rdma3);
+	MDP_ICC_GET(l11_img_mfb_rdma4);
+	MDP_ICC_GET(l11_img_mfb_rdma5);
+	MDP_ICC_GET(l11_img_mfb_wdma0);
+	MDP_ICC_GET(l11_img_mfb_wdma1);
 }
 
 static void *mdp_qos_get_path(u32 thread_id, u32 port)
