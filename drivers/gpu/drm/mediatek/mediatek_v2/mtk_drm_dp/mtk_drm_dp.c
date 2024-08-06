@@ -4396,7 +4396,7 @@ bool mtk_dp_hpd_get_pin_level(struct mtk_dp *mtk_dp)
 		HPD_STATUS_AUX_TX_P0_FLDMASK) >>
 		HPD_STATUS_AUX_TX_P0_FLDMASK_POS);
 
-	return ret | mtk_dp->power_on;
+	return ret;
 }
 
 bool mtk_dp_check_sink_cap(struct mtk_dp *mtk_dp)
@@ -5081,14 +5081,17 @@ static inline struct mtk_dp *encoder_to_dp(struct drm_encoder *encoder)
 	struct mtk_dp_connector *mtk_connector = NULL;
 	struct mtk_dp *mtk_dp = NULL;
 	struct drm_device *dev = encoder->dev;
+	struct drm_connector_list_iter conn_iter;
 
-	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
-		if (connector->encoder == encoder) {
+	drm_connector_list_iter_begin(dev, &conn_iter);
+	drm_for_each_connector_iter(connector, &conn_iter) {
+		if (connector->possible_encoders & drm_encoder_mask(encoder)) {
 			mtk_connector = container_of(connector, struct mtk_dp_connector, connector);
 			mtk_dp = mtk_connector->mtk_dp;
 			break;
 		}
 	}
+	drm_connector_list_iter_end(&conn_iter);
 
 	return mtk_dp;
 }
@@ -5649,6 +5652,8 @@ int mtk_dp_hpd_handle_in_thread(struct mtk_dp *mtk_dp)
 		if (mtk_dp->training_info.cable_plug_in && current_hpd) {
 			DP_MSG("HPD_CON\n");
 			mtk_dp_vsvoter_set(mtk_dp);
+			mtk_dp_initial_setting(mtk_dp);
+			mtk_dp_analog_power_on_off(mtk_dp, true);
 
 			/* check capability */
 			dpcd[0] = mtk_dp->training_info.dp_version;
@@ -5663,9 +5668,6 @@ int mtk_dp_hpd_handle_in_thread(struct mtk_dp *mtk_dp)
 			}
 
 			mtk_dp_connect_attach_encoder(mtk_dp);
-
-			mtk_dp_initial_setting(mtk_dp);
-			mtk_dp_analog_power_on_off(mtk_dp, true);
 		} else {
 			DP_MSG("HPD_DISCON\n");
 			for (encoder_id = 0; encoder_id < DP_ENCODER_ID_MAX; encoder_id++) {
