@@ -2307,7 +2307,7 @@
 				panel-mode-vfp = <24>;
 				panel-mode-vsa = <3>;
 				panel-mode-vbp = <9>;
-				panel-mode-vrefresh = <30>;
+				panel-mode-vrefresh = <60>;
 				panel-mode-lppf = <1>;
 				panel-mode-width-mm = <129>;
 				panel-mode-height-mm = <64>;
@@ -2338,7 +2338,7 @@
 				panel-mode-vfp = <24>;
 				panel-mode-vsa = <3>;
 				panel-mode-vbp = <9>;
-				panel-mode-vrefresh = <30>;
+				panel-mode-vrefresh = <60>;
 				panel-mode-lppf = <1>;
 				panel-mode-width-mm = <129>;
 				panel-mode-height-mm = <64>;
