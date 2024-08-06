@@ -1,5 +1,5 @@
 #For display ESD recovery
-ccflags-$(CONFIG_DRM_MEDIATEK_V2) += -I$(srctree)/drivers/gpu/drm/mediatek/mediatek_v2/
+ccflags-$(CONFIG_DRM_MEDIATEK_V2) += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/
 
 obj-$(CONFIG_TOUCHSCREEN_GOODIX_BRL) += gt9966.o
 gt9966-y := \

@@ -518,7 +518,7 @@ struct goodix_ts_core {
 	struct workqueue_struct *ts_workqueue;
 	struct work_struct resume_work;
 
-#if IS_ENABLED(CONFIG_FB) || IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_FB) || IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	struct notifier_block fb_notifier;
 #endif
 };

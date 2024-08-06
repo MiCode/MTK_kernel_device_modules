@@ -20,7 +20,7 @@
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 #include "mtk_panel_ext.h"
 #include "mtk_disp_notify.h"
 #endif
@@ -1909,7 +1909,7 @@ static void goodix_resume_work(struct work_struct *work)
         goodix_ts_resume(core_data);
 }
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 int goodix_ts_disp_notifier_callback(struct notifier_block *self,
         unsigned long event, void *data)
 {
@@ -1944,7 +1944,7 @@ int goodix_ts_disp_notifier_callback(struct notifier_block *self,
 #endif
 
 #if IS_ENABLED(CONFIG_PM)
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK) && !IS_ENABLED(CONFIG_FB) && \
+#if !IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) && !IS_ENABLED(CONFIG_FB) && \
 	!IS_ENABLED(CONFIG_HAS_EARLYSUSPEND)
 /**
  * goodix_ts_pm_suspend - PM suspend function
@@ -2035,7 +2035,7 @@ int goodix_ts_stage2_init(struct goodix_ts_core *cd)
 	else
 		INIT_WORK(&cd->resume_work, goodix_resume_work);
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
         cd->fb_notifier.notifier_call = goodix_ts_disp_notifier_callback;
         if (mtk_disp_notifier_register("goodix_ts", &cd->fb_notifier))
                 ts_err("Failed to register disp notifier client");
@@ -2315,7 +2315,7 @@ static int goodix_ts_remove(struct platform_device *pdev)
 		gesture_module_exit();
 		inspect_module_exit();
 		hw_ops->irq_enable(core_data, false);
-	#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+	#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 		mtk_disp_notifier_unregister(&core_data->fb_notifier);
 	#elif IS_ENABLED(CONFIG_FB)
 		fb_unregister_client(&core_data->fb_notifier);
@@ -2343,7 +2343,7 @@ static int goodix_ts_remove(struct platform_device *pdev)
 
 #if IS_ENABLED(CONFIG_PM)
 static const struct dev_pm_ops dev_pm_ops = {
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK) && !IS_ENABLED(CONFIG_FB) && \
+#if !IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) && !IS_ENABLED(CONFIG_FB) && \
 	!IS_ENABLED(CONFIG_HAS_EARLYSUSPEND)
 	.suspend = goodix_ts_pm_suspend,
 	.resume = goodix_ts_pm_resume,
