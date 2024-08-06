@@ -1376,12 +1376,6 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 	} else if (!mml_dl_enable(mml))
 		goto decouple;
 
-	/* secure content cannot output to sram */
-	if (info->src.secure || info->dest[0].data.secure) {
-		*reason = mml_query_sec;
-		goto decouple;
-	}
-
 	/* no fg/c3d support for dl mode */
 	if (dest->pq_config.en_fg ||
 		dest->pq_config.en_c3d) {
