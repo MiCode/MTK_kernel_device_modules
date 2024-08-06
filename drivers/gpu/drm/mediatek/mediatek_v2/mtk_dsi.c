@@ -1873,6 +1873,10 @@ static int mtk_dsi_set_LTPO_VM(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	struct mtk_drm_crtc *mtk_crtc;
 	unsigned int refresh_rate;
 
+	if (dsi == NULL) {
+		DDPPR_ERR("%s dsi is null!\n", __func__);
+		return 0;
+	}
 
 	if (dsi->is_slave) {
 		dev_info(dsi->dev, "is slave\n");
@@ -1902,6 +1906,10 @@ static int mtk_dsi_set_LTPO_VM(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 			ltpo_vm_max_skip_num, refresh_rate);
 	}
 
+	if (dsi->driver_data == NULL) {
+		DDPPR_ERR("%s: dsi->driver_data=NULL!\n", __func__);
+		return 0;
+	}
 
 	//first turn off LFR; if support LTPO_VM, no need LFR, we can use LTPO_VM implement all LFR function
 	SET_VAL_MASK(lfr_val, lfr_mask, 0, LFR_CON_FLD_REG_LFR_EN);
