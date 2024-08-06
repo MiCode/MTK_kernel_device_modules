@@ -1098,6 +1098,39 @@ static void mtk_dp_intf_golden_setting(struct mtk_ddp_comp *comp,
 
 }
 
+static void mtk_dp_intf_golden_setting_mt6899(struct mtk_ddp_comp *comp,
+					    struct cmdq_pkt *handle)
+{
+	struct mtk_dp_intf *dp_intf = comp_to_dp_intf(comp);
+	/*mt6899 setting*/
+	u32 dp_buf_sodi_high = 2966;
+	u32 dp_buf_sodi_low = 2089;
+	u32 dp_buf_preultra_high = 2506;
+	u32 dp_buf_preultra_low = 2437;
+	u32 dp_buf_ultra_high = 1810;
+	u32 dp_buf_ultra_low = 1741;
+	u32 dp_buf_urgent_high = 836;
+	u32 dp_buf_urgent_low = 766;
+
+	DPTXDBG("dp_buf_sodi_high=%d, dp_buf_sodi_low=%d, dp_buf_preultra_high=%d, dp_buf_preultra_low=%d\n",
+			dp_buf_sodi_high, dp_buf_sodi_low, dp_buf_preultra_high, dp_buf_preultra_low);
+
+	DPTXDBG("dp_buf_ultra_high=%d, dp_buf_ultra_low=%d dp_buf_urgent_high=%d, dp_buf_urgent_low=%d\n",
+			dp_buf_ultra_high, dp_buf_ultra_low, dp_buf_urgent_high, dp_buf_urgent_low);
+
+	mtk_ddp_write_relaxed(comp, dp_buf_sodi_high, DP_BUF_SODI_HIGH, handle);
+	mtk_ddp_write_relaxed(comp, dp_buf_sodi_low, DP_BUF_SODI_LOW, handle);
+
+	mtk_ddp_write_relaxed(comp, dp_buf_preultra_high, DP_BUF_PREULTRA_HIGH, handle);
+	mtk_ddp_write_relaxed(comp, dp_buf_preultra_low, DP_BUF_PREULTRA_LOW, handle);
+
+	mtk_ddp_write_relaxed(comp, dp_buf_ultra_high, DP_BUF_ULTRA_HIGH, handle);
+	mtk_ddp_write_relaxed(comp, dp_buf_ultra_low, DP_BUF_ULTRA_LOW, handle);
+
+	mtk_ddp_write_relaxed(comp, dp_buf_urgent_high, DP_BUF_URGENT_HIGH, handle);
+	mtk_ddp_write_relaxed(comp, dp_buf_urgent_low, DP_BUF_URGENT_LOW, handle);
+}
+
 void mhal_DPTx_VideoClock(bool enable, int resolution)
 {
 	if (enable) {
@@ -1113,6 +1146,8 @@ static void mtk_dp_intf_config(struct mtk_ddp_comp *comp,
 {
 	/*u32 reg_val;*/
 	struct mtk_dp_intf *dp_intf = comp_to_dp_intf(comp);
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv;
 	unsigned int hsize = 0, vsize = 0;
 	unsigned int hpw = 0;
 	unsigned int hfp = 0, hbp = 0;
@@ -1124,6 +1159,8 @@ static void mtk_dp_intf_config(struct mtk_ddp_comp *comp,
 	unsigned int rw_times = 0;
 	u32 val = 0, line_time;
 	u32 dp_vfp_mutex = 0;
+	mtk_crtc = dp_intf->ddp_comp.mtk_crtc;
+	priv = mtk_crtc->base.dev->dev_private;
 
 	DPTXMSG("%s w %d, h, %d, clock %d, fps %d!\n",
 			__func__, cfg->w, cfg->h, cfg->clock, cfg->vrefresh);
@@ -1279,7 +1316,10 @@ static void mtk_dp_intf_config(struct mtk_ddp_comp *comp,
 			DP_BUF_CON0, BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK, handle);
 	mtk_ddp_write_relaxed(comp, dp_intf->driver_data->np_sel,
 			DP_SW_NP_SEL, handle);
-	mtk_dp_intf_golden_setting(comp, handle);
+	if (priv->data->mmsys_id == MMSYS_MT6899)
+		mtk_dp_intf_golden_setting_mt6899(comp, handle);
+	else
+		mtk_dp_intf_golden_setting(comp, handle);
 	val = BUF_VDE_BLOCK_URGENT | BUF_NON_VDE_FORCE_PREULTRA | BUF_VDE_BLOCK_ULTRA;
 	mtk_ddp_write_relaxed(comp, val, DP_BUF_VDE, handle);
 
