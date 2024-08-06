@@ -314,7 +314,6 @@ EXPORT_SYMBOL(connectivity_export_dump_gpio_info);
 
 void connectivity_export_dump_thread_state(const char *name)
 {
-#ifdef CFG_CONNADP_BUILD_IN
 	static const char stat_nam[] = TASK_STATE_TO_CHAR_STR;
 	struct task_struct *p;
 	int cpu;
@@ -358,10 +357,6 @@ void connectivity_export_dump_thread_state(const char *name)
 		break;
 	}
 	rcu_read_unlock();
-
-#else
-	pr_info("%s not support in connadp.ko\n", __func__);
-#endif
 }
 EXPORT_SYMBOL(connectivity_export_dump_thread_state);
 
