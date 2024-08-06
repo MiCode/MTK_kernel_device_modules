@@ -8927,9 +8927,10 @@ static int mtk_dbi_scp_set_semaphore_noirq(bool lock)
 
 	return 1;
 fail:
-	DDPPR_ERR("%s: %s sema:0x%lx/0x%lx fail(0x%x), retry:%d\n",
-		__func__, lock ? "get" : "put", (unsigned long)SPM_SEMA_AP,
-		(unsigned long)SPM_SEMA_SCP, readl(SPM_SEMA_AP), i);
+	if(SPM_SEMA_SCP != NULL && SPM_SEMA_AP != NULL)
+		DDPPR_ERR("%s: %s sema:0x%lx/0x%lx fail(0x%x), retry:%d\n",
+			__func__, lock ? "get" : "put", (unsigned long)SPM_SEMA_AP,
+			(unsigned long)SPM_SEMA_SCP, readl(SPM_SEMA_AP), i);
 	return 0;
 }
 
