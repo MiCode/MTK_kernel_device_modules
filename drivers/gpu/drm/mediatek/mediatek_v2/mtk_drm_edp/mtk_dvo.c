@@ -34,6 +34,8 @@
 #include "../mtk_drm_ddp_comp.h"
 #include "../mtk_disp_pmqos.h"
 
+#define DVO_COLOR_BAR					0
+
 /* DVO INPUT default value is 1T2P */
 #define MTK_DVO_INPUT_MODE				2
 /* DVO OUTPUT value is 1T4P*/
@@ -121,6 +123,7 @@ struct mtk_dvo {
 	struct pinctrl_state *pins_dvo;
 	u32 output_fmt;
 	int refcount;
+	bool pclk_enable;
 };
 
 static inline struct mtk_dvo *bridge_to_dvo(struct drm_bridge *b)
@@ -537,6 +540,7 @@ static void mtk_dvo_power_off(struct mtk_dvo *dvo)
 	clk_disable_unprepare(dvo->engine_clk);
 	clk_disable_unprepare(dvo->tvd_clk);
 	clk_disable_unprepare(dvo->pixel_clk);
+	dvo->pclk_enable = false;
 	clk_disable_unprepare(dvo->hf_fdvo_clk);
 }
 
@@ -554,10 +558,12 @@ static int mtk_dvo_power_on(struct mtk_dvo *dvo)
 		goto err_hf_fdvo;
 	}
 
-	ret = clk_prepare_enable(dvo->pixel_clk);
-	if (ret) {
-		dev_info(dvo->dev, "Failed to enable pixel clock: %d\n", ret);
-		goto err_pixel;
+	if (!dvo->pclk_enable) {
+		ret = clk_prepare_enable(dvo->pixel_clk);
+		if (ret) {
+			dev_info(dvo->dev, "Failed to enable pixel clock: %d\n", ret);
+			goto err_pixel;
+		}
 	}
 
 	/* set DVO switch 26Mhz crystal */
@@ -832,6 +838,7 @@ static int mtk_dvo_bridge_attach(struct drm_bridge *bridge,
 	if (ret)
 		dev_info(dvo->dev, "[eDPTX]Failed to enable pixel clock: %d\n", ret);
 
+	dvo->pclk_enable = true;
 	/* set DVO switch 26Mhz crystal */
 	clk_set_parent(dvo->pixel_clk, dvo->dvo_clk);
 
@@ -897,6 +904,14 @@ static void mtk_dvo_bridge_enable(struct drm_bridge *bridge)
 
 	mtk_dvo_power_on(dvo);
 	mtk_dvo_set_display_mode(dvo, &dvo->mode);
+
+#if DVO_COLOR_BAR
+	mtk_dvo_mask(dvo, DVO_PATTERN_CTRL, PRE_PAT_EN, PRE_PAT_EN);
+	mtk_dvo_mask(dvo, DVO_PATTERN_CTRL, COLOR_BAR, PRE_PAT_SEL_MASK);
+	mtk_dvo_mask(dvo, DVO_PATTERN_CTRL, PRE_PAT_FORCE_ON, PRE_PAT_FORCE_ON);
+	mtk_dvo_mask(dvo, DVO_PATTERN_COLOR, PAT_G, PAT_G);
+#endif
+
 	mtk_dvo_enable(dvo, true);
 
 	dev_info(dvo->dev, "[eDPTX] %s-\n", __func__);
