@@ -17321,6 +17321,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	ps5170: ps5170@28 {
 		compatible = "parade,ps5170";
 		reg = <0x28>;
+		mediatek,vs-voter = <&pmic 0x189a 0x20 1>;
 		status = "okay";
 	};
 	gate_ic: gate-ic@11 {
