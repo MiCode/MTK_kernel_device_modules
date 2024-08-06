@@ -11380,7 +11380,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		jpgdec0: jpgdec0@38040000 {
 			compatible = "mediatek,jpgdec";
 			reg = <0 0x38040000 0 0x10000>,
-				<0 0x38050000 0 0x10000>;
+				<0 0x38050000 0 0x10000>,
+				<0 0x38000000 0 0x10000>;
 			interrupts = <GIC_SPI 489 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 490 IRQ_TYPE_LEVEL_HIGH 0>;
 			mediatek,larbs = <&smi_larb7>;
@@ -11409,6 +11410,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 						"path_jpegdec1_wdma",
 						"path_jpegdec1_bsdma",
 						"path_jpegdec1_huff_offset";
+			jpeg-set-resource = <2>;
 		};
 
 		jpgdec1: jpgdec1@38840000 {
