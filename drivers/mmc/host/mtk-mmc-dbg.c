@@ -92,6 +92,11 @@ u16 msdc_offsets_top[] = {
 	0xFFFF /*as mark of end */
 };
 
+u32 dump_normal_register[2][0x300];
+u32 dump_top_register[2][0x100];
+u32 dump_debug_register[2][0x100];
+u32 dump_debug2_register[2][0x100];
+
 /*---------------------------------------------------------------------*/
 /* Command dump                                                        */
 /*---------------------------------------------------------------------*/
@@ -319,6 +324,7 @@ void msdc_dump_dbg_register(char **buff, unsigned long *size,
 	u16 i;
 	char buffer[PRINTF_REGISTER_BUFFER_SIZE + 1];
 	char *buffer_cur_ptr = buffer;
+	int ret;
 
 	if (IS_ERR_OR_NULL(host)) {
 		SPREAD_PRINTF(buff, size, m, "%s msdc host null\n", __func__);
@@ -341,8 +347,10 @@ void msdc_dump_dbg_register(char **buff, unsigned long *size,
 			buffer_cur_ptr = buffer;
 		}
 		writel(i, host->base + MSDC_DBG_SEL);
-		snprintf(buffer_cur_ptr, ONE_REGISTER_STRING_SIZE + 1,
+		ret = snprintf(buffer_cur_ptr, ONE_REGISTER_STRING_SIZE + 1,
 			"[%.3hx:%.8x]", i, readl(host->base + MSDC_DBG_OUT));
+		if (ret > ONE_REGISTER_STRING_SIZE)
+			dev_info(host->dev, "buffer was truncated %d\n", ret);
 		buffer_cur_ptr += ONE_REGISTER_STRING_SIZE;
 	}
 	SPREAD_PRINTF(buff, size, m, "%s\n", buffer);
@@ -361,8 +369,10 @@ void msdc_dump_dbg_register(char **buff, unsigned long *size,
 			buffer_cur_ptr = buffer;
 		}
 		writel(i, host->base + EMMC50_CFG4);
-		snprintf(buffer_cur_ptr, ONE_REGISTER_STRING_SIZE + 1,
+		ret = snprintf(buffer_cur_ptr, ONE_REGISTER_STRING_SIZE + 1,
 			"[%.3hx:%.8x]", i, readl(host->base + MSDC_DBG_OUT));
+		if (ret > ONE_REGISTER_STRING_SIZE)
+			dev_info(host->dev, "buffer was truncated %d\n", ret);
 		buffer_cur_ptr += ONE_REGISTER_STRING_SIZE;
 	}
 	SPREAD_PRINTF(buff, size, m, "%s\n", buffer);
@@ -413,6 +423,142 @@ void msdc_dump_info(char **buff, unsigned long *size, struct seq_file *m,
 
 }
 EXPORT_SYMBOL(msdc_dump_info);
+
+void msdc_dump_register_to_buf(struct msdc_host *host, int index)
+{
+	u16 i;
+
+	if (IS_ERR_OR_NULL(host)) {
+		pr_warn("%s msdc host null\n", __func__);
+		return;
+	}
+
+	if (!host->base) {
+		dev_warn(host->dev, "%s illegal host->base addr\n", __func__);
+		return;
+	}
+
+	if (index != 0 && index != 1) {
+		dev_warn(host->dev, "%s index %d error\n", __func__, index);
+		return;
+	}
+
+	for (i = 0; msdc_offsets[i] != (u16)0xFFFF; i++)
+		dump_normal_register[index][msdc_offsets[i]] = readl(host->base + msdc_offsets[i]);
+
+	if (!host->top_base) {
+		dev_warn(host->dev, "%s illegal host->top_base addr\n", __func__);
+		return;
+	}
+
+	for (i = 0;  msdc_offsets_top[i] != (u16)0xFFFF; i++)
+		dump_top_register[index][msdc_offsets_top[i]] = readl(host->top_base + msdc_offsets_top[i]);
+
+	for (i = 0; i < MSDC_DEBUG_REGISTER_COUNT + 1; i++) {
+		writel(i, host->base + MSDC_DBG_SEL);
+		dump_debug_register[index][i] = readl(host->base + MSDC_DBG_OUT);
+	}
+	writel(0x27, host->base + MSDC_DBG_SEL);
+	for (i = 0; i < 12; i++) {
+		writel(i, host->base + EMMC50_CFG4);
+		dump_debug2_register[index][i] = readl(host->base + MSDC_DBG_OUT);
+	}
+	writel(0, host->base + MSDC_DBG_SEL);
+
+}
+EXPORT_SYMBOL(msdc_dump_register_to_buf);
+
+void msdc_dump_register_from_buf(struct msdc_host *host, int index)
+{
+	u32 id = host->id;
+	u32 msg_size = 0;
+	u32 val;
+	u16 offset, i;
+	char buffer[PRINTF_REGISTER_BUFFER_SIZE + 1];
+	char *buffer_cur_ptr = buffer;
+	int ret;
+
+	if (IS_ERR_OR_NULL(host)) {
+		pr_warn("%s msdc host null\n", __func__);
+		return;
+	}
+
+	if (index != 0 && index != 1) {
+		dev_warn(host->dev, "%s index %d error\n", __func__, index);
+		return;
+	}
+
+	memset(buffer, 0, PRINTF_REGISTER_BUFFER_SIZE);
+	dev_info(host->dev, "MSDC%d normal register\n", id);
+	for (i = 0; msdc_offsets[i] != (u16)0xFFFF; i++) {
+		offset = msdc_offsets[i];
+		val = dump_normal_register[index][offset];
+		MSDC_REG_PRINT(offset, val, ONE_REGISTER_STRING_SIZE, msg_size,
+			PRINTF_REGISTER_BUFFER_SIZE, buffer, buffer_cur_ptr, NULL);
+	}
+	dev_info(host->dev, "%s\n", buffer);
+
+	if (!host->top_base) {
+		dev_warn(host->dev, "%s illegal host->top_base addr\n", __func__);
+		return;
+	}
+
+	MSDC_RST_REG_PRINT_BUF(msg_size,
+		PRINTF_REGISTER_BUFFER_SIZE, buffer, buffer_cur_ptr);
+
+	dev_info(host->dev, "MSDC%d top register\n", id);
+
+	for (i = 0;  msdc_offsets_top[i] != (u16)0xFFFF; i++) {
+		offset = msdc_offsets_top[i];
+		val = dump_top_register[index][offset];
+		MSDC_REG_PRINT(offset, val, ONE_REGISTER_STRING_SIZE, msg_size,
+			PRINTF_REGISTER_BUFFER_SIZE, buffer, buffer_cur_ptr, NULL);
+	}
+	dev_info(host->dev, "%s\n", buffer);
+
+
+	msg_size = 0;
+	memset(buffer, 0, PRINTF_REGISTER_BUFFER_SIZE);
+	buffer_cur_ptr = buffer;
+	dev_info(host->dev, "MSDC debug register [set:out]\n");
+	for (i = 0; i < MSDC_DEBUG_REGISTER_COUNT + 1; i++) {
+		msg_size += ONE_REGISTER_STRING_SIZE;
+		if (msg_size >= PRINTF_REGISTER_BUFFER_SIZE) {
+			dev_info(host->dev, "%s\n", buffer);
+			memset(buffer, 0, PRINTF_REGISTER_BUFFER_SIZE);
+			msg_size = ONE_REGISTER_STRING_SIZE;
+			buffer_cur_ptr = buffer;
+		}
+		ret= snprintf(buffer_cur_ptr, ONE_REGISTER_STRING_SIZE + 1,
+			"[%.3hx:%.8x]", i, dump_debug_register[index][i]);
+		if (ret > ONE_REGISTER_STRING_SIZE)
+			dev_info(host->dev, "buffer was truncated %d\n", ret);
+		buffer_cur_ptr += ONE_REGISTER_STRING_SIZE;
+	}
+	dev_info(host->dev, "%s\n", buffer);
+
+	msg_size = 0;
+	memset(buffer, 0, PRINTF_REGISTER_BUFFER_SIZE);
+	buffer_cur_ptr = buffer;
+	dev_info(host->dev, "MSDC debug 0x224 register [set:out]\n");
+	for (i = 0; i < 12; i++) {
+		msg_size += ONE_REGISTER_STRING_SIZE;
+		if (msg_size >= PRINTF_REGISTER_BUFFER_SIZE) {
+			dev_info(host->dev, "%s\n", buffer);
+			memset(buffer, 0, PRINTF_REGISTER_BUFFER_SIZE);
+			msg_size = ONE_REGISTER_STRING_SIZE;
+			buffer_cur_ptr = buffer;
+		}
+		ret = snprintf(buffer_cur_ptr, ONE_REGISTER_STRING_SIZE + 1,
+			"[%.3hx:%.8x]", i, dump_debug2_register[index][i]);
+		if (ret > ONE_REGISTER_STRING_SIZE)
+			dev_info(host->dev, "buffer was truncated %d\n", ret);
+		buffer_cur_ptr += ONE_REGISTER_STRING_SIZE;
+	}
+	dev_info(host->dev, "%s\n", buffer);
+
+}
+EXPORT_SYMBOL(msdc_dump_register_from_buf);
 
 static inline u8 *dbg_get_desc(struct cqhci_host *cq_host, u8 tag)
 {

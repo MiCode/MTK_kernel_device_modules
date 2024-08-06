@@ -29,7 +29,8 @@
 		MSG_ACCU_SZ = MSG_SZ; \
 		BUF_CUR = BUF; \
 	} \
-	snprintf(BUF_CUR, MSG_SZ+1, "[%.3hx:%.8x]", OFFSET, VAL); \
+	if (snprintf(BUF_CUR, MSG_SZ+1, "[%.3hx:%.8x]", OFFSET, VAL) > MSG_SZ)	{ \
+		pr_info("truncated\n");}; \
 	BUF_CUR += MSG_SZ; \
 }
 
@@ -100,6 +101,11 @@ struct err_info_bag {
 #define ERR_CQHCI_DAT_CRC   (0x1 << 18)
 #define ERR_CQHCI_DAT_TMO   (0x1 << 19)
 
+#define ERR_MSDC_FIFOCS_CLR_TIMEOUT_BIT  20
+#define ERR_MSDC_DMA_CFG_STS_TIMEOUT_BIT 21
+#define ERR_MSDC_FIFOCS_CLR_TIMEOUT  (0x1 << ERR_MSDC_FIFOCS_CLR_TIMEOUT_BIT)
+#define ERR_MSDC_DMA_CFG_STS_TIMEOUT (0x1 << ERR_MSDC_DMA_CFG_STS_TIMEOUT_BIT)
+
 #define EARLY_RW 10
 #define RA_FOR_PERF 128
 
@@ -120,9 +126,13 @@ extern void msdc_dump_info(char **buff, unsigned long *size, struct seq_file *m,
 	struct msdc_host *host);
 extern int mmc_dbg_register(struct mmc_host *mmc);
 extern void gpio_dump_regs_range(int start, int end);
+extern void msdc_dump_register_to_buf(struct msdc_host *host, int index);
+extern void msdc_dump_register_from_buf(struct msdc_host *host, int index);
 #else
 #define msdc_dump_info(...)
 #define mmc_dbg_register(...)
+#define msdc_dump_register_to_buf(...)
+#define msdc_dump_register_from_buf(...)
 #endif
 
 #endif  /* _MTK_DBG_H_ */

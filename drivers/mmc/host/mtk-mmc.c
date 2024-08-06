@@ -2069,10 +2069,21 @@ static bool msdc_data_xfer_done(struct msdc_host *host, u32 events,
 		}
 
 		sdr_set_bits(host->base + MSDC_FIFOCS, MSDC_FIFOCS_CLR);
-		readl_poll_timeout(host->base + MSDC_FIFOCS, val,
-				   !(val & MSDC_FIFOCS_CLR), 0, 0);
+		ret = readl_poll_timeout_atomic(host->base + MSDC_FIFOCS, val,
+				!(val & MSDC_FIFOCS_CLR), 1, MSDC_RESET_HW_TIMEOUT);
+		if (ret) {
+			bitmap_set(host->err_bag.err_bitmap, ERR_MSDC_FIFOCS_CLR_TIMEOUT_BIT, 1);
+			msdc_dump_register_to_buf(host, 0);
+			return false;
+		}
 
-		readl_poll_timeout(host->base + MSDC_DMA_CFG, val, !(val & MSDC_DMA_CFG_STS), 0, 0);
+		ret = readl_poll_timeout_atomic(host->base + MSDC_DMA_CFG, val,
+				!(val & MSDC_DMA_CFG_STS), 1, MSDC_RESET_HW_TIMEOUT);
+		if (ret) {
+			bitmap_set(host->err_bag.err_bitmap, ERR_MSDC_DMA_CFG_STS_TIMEOUT_BIT, 1);
+			msdc_dump_register_to_buf(host, 1);
+			return false;
+		}
 
 		spin_lock_irqsave(&host->lock, flags);
 		sdr_clr_bits(host->base + MSDC_INTEN, data_ints_mask);
@@ -2310,6 +2321,18 @@ static irqreturn_t msdc_thread_irq(int irq, void *dev_id)
 				dev_info(host->dev, "At time:%lld dat_tmo happen cmd=%d; blocks=%d; xfer_size=%d;\n",
 					dump_bag.irq_timestamp, dump_bag.cmd_opcode, dump_bag.blocks,
 					dump_bag.bytes_xfered);
+		}
+		if (dump_bag.err_bitmap[0] & (ERR_MSDC_FIFOCS_CLR_TIMEOUT | ERR_MSDC_DMA_CFG_STS_TIMEOUT)) {
+			if (dump_bag.err_bitmap[0] & ERR_MSDC_FIFOCS_CLR_TIMEOUT) {
+				dev_info(host->dev, "At time:%lld ERR_MSDC_FIFOCS_CLR_TIMEOUT happen\n",
+					dump_bag.irq_timestamp);
+				msdc_dump_register_from_buf(host, 0);
+			}
+			if (dump_bag.err_bitmap[0] & ERR_MSDC_DMA_CFG_STS_TIMEOUT) {
+				dev_info(host->dev, "At time:%lld ERR_MSDC_DMA_CFG_STS_TIMEOUT happen\n",
+					dump_bag.irq_timestamp);
+				msdc_dump_register_from_buf(host, 1);
+			}
 		}
 	}
 
