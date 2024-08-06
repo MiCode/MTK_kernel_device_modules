@@ -26,7 +26,6 @@ struct xhci_isr {
 	u8 dir;
 	u16 class;
 	u32 cnt;
-	u32 cnt2;
 };
 
 struct u_tester {
@@ -40,15 +39,33 @@ struct u_tester {
 	atomic_t trace_xhci_irq;
 } tester;
 
+static inline void check_output_end(int cnt)
+{
+	if (cnt > 0 && cnt < MAX_RESULT_STR)
+		tester.output[cnt] = '\0';
+	else if (cnt == 0)
+		dev_info(tester.dev, "not copy any word\n");
+	else
+		dev_info(tester.dev, "error:%d from snprintf\n", cnt);
+}
+
+#define set_output(fmt, args...) do { \
+	cnt = snprintf(tester.output, MAX_RESULT_STR, fmt, ##args);\
+	check_output_end(cnt); \
+} while (0)
+
+#define set_output_none() do { \
+	cnt = snprintf(tester.output, MAX_RESULT_STR, "none");\
+	check_output_end(cnt);\
+} while (0)
+
 static void reset_xhci_isr(struct xhci_isr *done)
 {
-	//memset(done, 0, sizeof(*done));
 	done->slot = 0;
 	done->ep = 0;
 	done->dir = 0;
 	done->class = 0;
 	done->cnt = 0;
-	done->cnt2 = 0;
 }
 
 static ssize_t test_cmd_store(struct device *dev, struct device_attribute *attr,
@@ -58,11 +75,16 @@ static ssize_t test_cmd_store(struct device *dev, struct device_attribute *attr,
 	int i, cnt;
 	char cmd[MAX_CMD_NUM];
 	char *c = cmd, *name;
+	char *status = "error";
 	const char * const delim = " \0\n\t";
 
+	/* set output to none first */
+	set_output_none();
+
+	/* check if input is valid */
 	dev_info(dev, "======%s=====\n", __func__);
 	if (count > MAX_CMD_NUM) {
-		dev_info(dev, "wrong size (%zu>=%d)\n", count, MAX_CMD_NUM);
+		dev_info(dev, "wrong size (%zu>%d)\n", count, MAX_CMD_NUM);
 		goto error;
 	}
 	strscpy(cmd, buf, sizeof(cmd));
@@ -75,6 +97,9 @@ static ssize_t test_cmd_store(struct device *dev, struct device_attribute *attr,
 	}
 	dev_info(dev, "@[%zu]name:%s", strlen(name), name);
 
+	/* start parsing input */
+	status = "success";
+	/* @start: show only */
 	if (!strncmp(name, "start", 5)) {
 		if (atomic_read(&tester.running))
 			dev_info(dev, "tester has already started\n");
@@ -82,7 +107,7 @@ static ssize_t test_cmd_store(struct device *dev, struct device_attribute *attr,
 			atomic_set(&tester.running, 1);
 			dev_info(dev, "tester start\n");
 		}
-		cnt = snprintf(tester.output, MAX_RESULT_STR, "none");
+	/* @stop: show only */
 	} else if (!strncmp(name, "stop", 4)) {
 		if (!atomic_read(&tester.running))
 			dev_info(dev, "tester has already stopped\n");
@@ -90,13 +115,9 @@ static ssize_t test_cmd_store(struct device *dev, struct device_attribute *attr,
 			atomic_set(&tester.running, 0);
 			dev_info(dev, "tester stop\n");
 		}
-		cnt = snprintf(tester.output, MAX_RESULT_STR, "none");
-
+	/* @reset: show only */
 	} else if (!strncmp(name, "reset", 5)) {
-		u16 temp;
-
 		if (!atomic_read(&tester.running)) {
-			temp = tester.in_use;
 			for (i = 0; i < tester.in_use; i++) {
 				done = &tester.done[i];
 				dev_info(tester.dev, "delete done[%d]=>slot%d ep%d dir:%d class:%d\n",
@@ -104,27 +125,35 @@ static ssize_t test_cmd_store(struct device *dev, struct device_attribute *attr,
 				reset_xhci_isr(done);
 			}
 			tester.in_use = 0;
-			dev_info(dev, "tester reset, in_use:%d->%d\n", temp, tester.in_use);
-		}
-		cnt = snprintf(tester.output, MAX_RESULT_STR, "none");
+			dev_info(dev, "tester reset\n");
+		} else
+			dev_info(tester.dev, "please stop tester first\n");
+	/* @done_number: return in_use */
 	} else if (!strncmp(name, "done_number", 11)) {
 		dev_info(dev, "in_use: %d\n", tester.in_use);
-		cnt = snprintf(tester.output, MAX_RESULT_STR, "%d", tester.in_use);
-		tester.output[cnt] = '\0';
+		set_output("%d", tester.in_use);
+	/* @all_done: return infos of all done */
 	} else if (!strncmp(name, "all_done", 8)) {
 		cnt = 0;
 		for (i = 0; i < tester.in_use; i++) {
 			done = &tester.done[i];
 			cnt += snprintf(tester.output + cnt, MAX_RESULT_STR - cnt, "%d:%d-%d-%d ",
 				i, done->slot, done->ep, done->cnt);
+			if (cnt == MAX_RESULT_STR - 1) {
+				dev_info(tester.dev, "output reach max:%d\n", MAX_RESULT_STR);
+				break;
+			}
 		}
-		tester.output[cnt] = '\0';
+		check_output_end(cnt);
+	/* @all_done: return info of specific index */
+	/* [format] result <token1:index>(essential) <toekn2:item>(optional) */
 	} else if (!strncmp(name, "result", 6)) {
 		struct xhci_isr *done;
 		char *token1, *token2;
 		int ret;
 		long idx;
 
+		/* parsing token1 */
 		token1 = strsep(&c, delim);
 		if (token1) {
 			dev_info(dev, "@[%zu]token1:%s", strlen(token1), token1);
@@ -134,7 +163,7 @@ static ssize_t test_cmd_store(struct device *dev, struct device_attribute *attr,
 				goto error;
 			}
 
-			if (idx >= tester.in_use) {
+			if (idx >= tester.in_use || idx >= MAX_TRACE_ISR) {
 				dev_info(dev, "wrong index, idx:%ld in_use:%d\n", idx, tester.in_use);
 				goto error;
 			}
@@ -142,51 +171,47 @@ static ssize_t test_cmd_store(struct device *dev, struct device_attribute *attr,
 			dev_info(dev, "token should follow result\n");
 			goto error;
 		}
-
 		done = &tester.done[idx];
+
+		/* parsing token2 */
 		token2 = strsep(&c, delim);
 		if (token2) {
 			/* get partial info(token2) of token1 */
 			dev_info(dev, "@[%zu]token2:%s\n", strlen(token2), token2);
 			if (!strncmp(token2, "ep", 2))
-				cnt = snprintf(tester.output, MAX_RESULT_STR, "%d", done->ep);
+				set_output("%d", done->ep);
 			else if (!strncmp(token2, "slot", 4))
-				cnt = snprintf(tester.output, MAX_RESULT_STR, "%d", done->slot);
+				set_output("%d", done->slot);
 			else if (!strncmp(token2, "dir", 3))
-				cnt = snprintf(tester.output, MAX_RESULT_STR, "%d", done->dir);
+				set_output("%d", done->dir);
 			else if (!strncmp(token2, "class", 5))
-				cnt = snprintf(tester.output, MAX_RESULT_STR, "%d", done->class);
+				set_output("%d", done->class);
 			else if (!strncmp(token2, "cnt", 3))
-				cnt = snprintf(tester.output, MAX_RESULT_STR, "%d", done->cnt);
-			else
-				cnt = snprintf(tester.output, MAX_RESULT_STR, "none");
-		} else {
-			/* get full info of token1 */
-			cnt = snprintf(tester.output, MAX_RESULT_STR, "slot%d-ep%d-dir%d-class%d-cnt%d",
+				set_output("%d", done->cnt);
+			else {
+				status = "error";
+				dev_info(tester.dev, "unknown token2\n");
+			}
+		} else
+			/* no toekn2, get full info of specific index */
+			set_output("slot%d-ep%d-dir%d-class%d-cnt%d",
 				done->slot, done->ep, done->dir, done->class, done->cnt);
-		}
-		tester.output[cnt] = '\0';
+	/* @enable_trace: show only */
+	/* xHCI IRQ here means ap xhci, about adsp one, please refers to usb_offload.ko */
 	} else if (!strncmp(name, "enable_trace", 12)) {
 		atomic_set(&tester.trace_xhci_irq, 1);
 		dev_info(dev, "start tracing xhci irq\n");
-		cnt = snprintf(tester.output, MAX_RESULT_STR, "none");
+	/* @disable_trace: show only */
 	} else if (!strncmp(name, "disable_trace", 13)) {
 		atomic_set(&tester.trace_xhci_irq, 0);
 		dev_info(dev, "stop tracing xhci irq\n");
-		cnt = snprintf(tester.output, MAX_RESULT_STR, "none");
 	} else {
+		status = "error";
 		dev_info(dev, "unknown command\n");
-		goto error;
 	}
-
-	dev_info(dev, "@output: %s\n", tester.output);
-	dev_info(dev, "status: success\n");
-	return count;
 error:
-	cnt = snprintf(tester.output, MAX_RESULT_STR, "none");
-	if (cnt > 0)
-		tester.output[cnt] = '\0';
-	dev_info(dev, "status: error\n");
+	dev_info(dev, "@output: %s\n", tester.output);
+	dev_info(dev, "status: %s\n", status);
 	return count;
 }
 
@@ -208,7 +233,7 @@ static int u_tester_create_sysfs(struct u_logger *logger)
 	/* test command */
 	attr = &tester.test_attr;
 	attr->attr.name = TEST_CMD_NAME;
-	attr->attr.mode = 0777;
+	attr->attr.mode = 0664;
 	attr->show = test_cmd_show;
 	attr->store = test_cmd_store;
 	ret = device_create_file(tester.dev, attr);
@@ -239,14 +264,18 @@ static inline bool is_match(u16 slot, u16 ep, int *index)
 }
 
 #if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD)
+/* trace interrupters from adsp xhci */
 static void usb_offload_monitor_interrupt(void *data, void *stream,
 	void *buffer, int length, u16 slot, u16 ep,
 	struct usb_endpoint_descriptor *desc)
 {
 	struct xhci_isr *done;
-	int i;
+	int i, idx;
 	bool match = false;
 
+	/* enable of adsp xhci irq was in usb_offload.ko
+	 * here, we only check if tester were running or not
+	 */
 	if (!atomic_read(&tester.running))
 		return;
 
@@ -257,28 +286,25 @@ static void usb_offload_monitor_interrupt(void *data, void *stream,
 	dev_dbg(tester.dev, "%s match:%d i:%d in_use:%d\n", __func__, match, i, tester.in_use);
 
 	if (match) {
-		if (tester.done[i].cnt + 1 > UINT_MAX) {
-			tester.done[i].cnt = 0;
-			if (tester.done[i].cnt2 + 1 > UINT_MAX)
-				tester.done[i].cnt2 = 0;
+		if (i < MAX_TRACE_ISR) {
+			if (tester.done[i].cnt + 1 <= UINT_MAX)
+				tester.done[i].cnt++;
 		} else
-			tester.done[i].cnt++;
+			dev_info(tester.dev, "matched exceed MAX_TRACE_ISR\n");
 	} else {
 		if (tester.in_use + 1 > MAX_TRACE_ISR) {
 			dev_dbg(tester.dev, "not enough space for slot%d ep%d\n", slot, ep);
 		} else {
-			int idx;
-
 			tester.in_use++;
 			idx = tester.in_use - 1;
 			done = &tester.done[idx];
 
-			done->class = USB_CLASS_AUDIO; /* workaround, force it tot USB_CLASS_AUDIO*/
+			/* fix me, consider all interrupts from adsp were UAC */
+			done->class = USB_CLASS_AUDIO;
 			done->slot = slot;
 			done->ep = ep;
 			done->dir = usb_endpoint_dir_in(desc);
 			done->cnt = 1;
-			done->cnt2 = 0;
 			dev_dbg(tester.dev, "create done[%d]=>slot%d ep%d dir:%d class:%d in_use:%d\n",
 				idx, done->slot, done->ep, done->dir, done->class, tester.in_use);
 		}
@@ -286,6 +312,7 @@ static void usb_offload_monitor_interrupt(void *data, void *stream,
 }
 #endif
 
+/* trace interrupts from ap xhci */
 static void xhci_monitor_interrupt(void *data, struct urb *urb)
 {
 	struct xhci_isr *done;
@@ -309,12 +336,11 @@ static void xhci_monitor_interrupt(void *data, struct urb *urb)
 	dev_dbg(tester.dev, "%s match:%d i:%d in_use:%d\n", __func__, match, i, tester.in_use);
 
 	if (match) {
-		if (tester.done[i].cnt + 1 > UINT_MAX) {
-			tester.done[i].cnt = 0;
-			if (tester.done[i].cnt2 + 1 > UINT_MAX)
-				tester.done[i].cnt2 = 0;
+		if (i < MAX_TRACE_ISR) {
+			if (tester.done[i].cnt + 1 <= UINT_MAX)
+				tester.done[i].cnt++;
 		} else
-			tester.done[i].cnt++;
+			dev_info(tester.dev, "matched exceed MAX_TRACE_ISR\n");
 	} else {
 		if (tester.in_use + 1 > MAX_TRACE_ISR) {
 			dev_dbg(tester.dev, "not enough space for slot%d ep%d\n", slot, ep);
@@ -342,7 +368,6 @@ static void xhci_monitor_interrupt(void *data, struct urb *urb)
 			done->ep = ep;
 			done->dir = usb_endpoint_dir_in(&urb->ep->desc);
 			done->cnt = 1;
-			done->cnt2 = 0;
 			dev_dbg(tester.dev, "create done[%d]=>slot%d ep%d dir:%d class:%d in_use:%d\n",
 				idx, done->slot, done->ep, done->dir, done->class, tester.in_use);
 		}
