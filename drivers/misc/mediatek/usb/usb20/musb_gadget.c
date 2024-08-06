@@ -167,7 +167,7 @@ static inline void map_dma_buffer(struct musb_request *request,
 	struct dma_controller *dma = musb->dma_controller;
 #endif
 
-	unsigned int length;
+	size_t length;
 
 	if (request->request.length == 0)
 		return;
@@ -222,7 +222,7 @@ static inline void map_dma_buffer(struct musb_request *request,
 static inline void
 unmap_dma_buffer(struct musb_request *request, struct musb *musb)
 {
-	unsigned int length;
+	size_t length;
 
 	if (request->request.length == 0)
 		return;
