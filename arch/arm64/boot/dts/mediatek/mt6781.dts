@@ -2151,7 +2151,7 @@
 			clock-names = "apb", "smi", "gals0", "gals1";
 		};
 
-		smi_larb18: smi-larb18@1a011000 {
+		smi_larb18: smi-larb18@1a011000 {/* not exist */
 			compatible = "mediatek,smi_larb18", "mediatek,mt6781-smi-larb",
 					"mediatek,smi-larb";
 			mediatek,smi = <&smi_disp_common 0>;
@@ -2163,6 +2163,7 @@
 				 <&camsys_rawb CLK_CAM_RB_LARBX>,
 				 <&camsys_rawb CLK_CAM_RB_LARBX>;
 			clock-names = "apb", "smi", "gals0", "gals1";
+			skip-tcms-check;
 		};
 
 		smi_larb19: smi-larb19@1c10f000 {
