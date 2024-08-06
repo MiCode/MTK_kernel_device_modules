@@ -1179,6 +1179,7 @@ s32 mml_mminfra_pw_enable(struct mml_comp *comp)
 		return ret;
 
 	comp->mminfra_pw_cnt++;
+	mml_mmp(mminfra_enable, MMPROFILE_FLAG_PULSE, comp->id, comp->mminfra_pw_cnt);
 	if (comp->mminfra_pw_cnt > 1)
 		return 0;
 	if (comp->mminfra_pw_cnt <= 0) {
@@ -1213,6 +1214,7 @@ s32 mml_mminfra_pw_disable(struct mml_comp *comp)
 		return ret;
 
 	comp->mminfra_pw_cnt--;
+	mml_mmp(mminfra_disable, MMPROFILE_FLAG_PULSE, comp->id, comp->mminfra_pw_cnt);
 	if (comp->mminfra_pw_cnt > 0)
 		return 0;
 	if (comp->mminfra_pw_cnt < 0) {

@@ -114,6 +114,8 @@ struct mml_mmp_events_t {
 	mmp_event dpc_dvfs;
 
 	/* events for clock */
+	mmp_event mminfra_enable;
+	mmp_event mminfra_disable;
 	mmp_event pw_get;
 	mmp_event pw_put;
 	mmp_event clk_enable;
