@@ -84,12 +84,6 @@ static int panel_edp_disable(struct drm_panel *panel)
 
 	dev_info(edp->dev, "%s %s\n", edp->debug_str, __func__);
 
-	if (edp->backlight) {
-		edp->backlight->props.power = FB_BLANK_POWERDOWN;
-		edp->backlight->props.state |= BL_CORE_FBBLANK;
-		backlight_update_status(edp->backlight);
-	}
-
 	dev_info(edp->dev, "%s %s-\n", edp->debug_str, __func__);
 
 	return 0;
@@ -100,12 +94,6 @@ static int panel_edp_unprepare(struct drm_panel *panel)
 	struct panel_edp *edp = to_panel_edp(panel);
 
 	dev_info(edp->dev, "%s %s+\n", edp->debug_str, __func__);
-
-	if (edp->enable_gpio)
-		gpiod_set_value_cansleep(edp->enable_gpio, 0);
-
-	if (edp->power3v3_gpio)
-		gpiod_set_value_cansleep(edp->power3v3_gpio, 0);
 
 	dev_info(edp->dev, "%s %s-\n", edp->debug_str,  __func__);
 
@@ -118,13 +106,6 @@ static int panel_edp_prepare(struct drm_panel *panel)
 
 	dev_info(edp->dev, "%s %s+\n", edp->debug_str, __func__);
 
-	if (edp->power3v3_gpio)
-		gpiod_set_value_cansleep(edp->power3v3_gpio, 1);
-	msleep(200);
-
-	if (edp->enable_gpio)
-		gpiod_set_value_cansleep(edp->enable_gpio, 1);
-
 	dev_info(edp->dev, "%s %s-\n", edp->debug_str, __func__);
 
 	return 0;
@@ -135,12 +116,6 @@ static int panel_edp_enable(struct drm_panel *panel)
 	struct panel_edp *edp = to_panel_edp(panel);
 
 	dev_info(edp->dev, "%s %s+\n", edp->debug_str, __func__);
-
-	if (edp->backlight) {
-		edp->backlight->props.state &= ~BL_CORE_FBBLANK;
-		edp->backlight->props.power = FB_BLANK_UNBLANK;
-		backlight_update_status(edp->backlight);
-	}
 
 	dev_info(edp->dev, "%s %s-\n", edp->debug_str, __func__);
 
