@@ -1856,8 +1856,14 @@ static int setSDClock(struct snd_soc_component *component, int nSDNo)
 	if (sdv > 4)
 		sdv += 2;	// fs>=512
 
-	dev_info(ak7709->dev, "%s, fs = %d BICKfs = %d BDV=%d, SDV=%d\n",
-		__func__, fs, bickfs, bdv, sdbicktab[sdv]);
+	if (sdv < 7) {
+		dev_info(ak7709->dev, "%s, fs = %d BICKfs = %d BDV=%d, SDV=%d\n",
+			__func__, fs, bickfs, bdv, sdbicktab[sdv]);
+	} else {
+		dev_info(ak7709->dev, "%s: SDV Index out of bounds! SD No = %d, SDV = %d\n",
+			__func__, nSDNo, sdv);
+	}
+
 	bdv--;
 	if (bdv > 255) {
 		dev_info(ak7709->dev, "%s: BDV Error! SD No = %d, bdv bit = %d\n",
@@ -6439,6 +6445,8 @@ static int ak7709_write_ram(
 	unsigned int ckResetReg;
 	u8 *ramdata;
 
+	commandLen = 0;
+
 	if ((upRam[1] & 0x80) == 0) {
 		switch (upRam[0]) {
 		case CTRLIF_FORMAT_NORMAL_4BYTE:
@@ -6477,8 +6485,6 @@ static int ak7709_write_ram(
 		ramdata += AK77DSP_FIRMWARE_INDEX_LENGTH;
 		restLen -= AK77DSP_FIRMWARE_INDEX_LENGTH;
 	}
-
-	ret = 0;
 
 	do {
 		if (restLen < devLen)
@@ -6584,7 +6590,11 @@ static int ak7709_hifi_firmware_write(
 		nRamSize  = hifiBasicRam[sel-1].length;
 		ret = ak7709_write_hifi_ram(component, ram_basic, nRamSize);
 	} else {
-		sprintf(szFileName, "ak7709_%s.bin", ak7709_hifi_firmware[sel]);
+		ret = snprintf(szFileName, sizeof(szFileName), "ak7709_%s.bin", ak7709_hifi_firmware[sel]);
+		if(ret < 0) {
+			dev_info(ak7709->dev, "snprintf %s failed,ret = %d\n", szFileName, ret);
+			return -EINVAL;
+		}
 
 		ret = request_firmware(&fw, szFileName, ak7709->component->dev);
 		if (ret) {
@@ -6728,7 +6738,11 @@ static int ak7709_77dsp_firmware_write(
 		nRamSize  = ak77dspBasicRam[sel-1].length;
 		ret = ak7709_write_77dsp_ram(component, ram_basic, nRamSize);
 	} else {
-		sprintf(szFileName, "ak7709_%s.bin", ak7709_77dsp_firmware[sel]);
+		ret = snprintf(szFileName, sizeof(szFileName), "ak7709_%s.bin", ak7709_77dsp_firmware[sel]);
+		if(ret < 0) {
+			dev_info(ak7709->dev, "snprintf %s failed,ret = %d\n", szFileName, ret);
+			return -EINVAL;
+		}
 
 		ret = request_firmware(&fw, szFileName, ak7709->component->dev);
 		if (ret) {
@@ -51619,8 +51633,11 @@ static int ak7709_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 
 	dev_info(ak7709->dev, "%s(), format(0x%02x), dai(%d)\n", __func__, fmt, dai->id);
 
-	if ((dai->id < AIF_PORT1) && (dai->id >= AIF_PORT_NUM))
+	if ((dai->id < AIF_PORT1) && (dai->id >= AIF_PORT_NUM)) {
+		dev_info(ak7709->dev, "%s: Invalid dai id %d\n",
+			__func__, dai->id);
 		return (-EINVAL);
+	}
 
 	portNo = dai->id - AIF_PORT1;
 
