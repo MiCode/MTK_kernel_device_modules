@@ -13,6 +13,7 @@
 
 #include "mtk-afe-platform-driver.h"
 #include "mtk-afe-external.h"
+#include "mtk-afe-fe-dai.h"
 #include "mt6991-afe-common.h"
 #include "mt6991-afe-clk.h"
 #include "mt6991-afe-gpio.h"
@@ -457,6 +458,7 @@ static int mt6991_mt6681_init(struct snd_soc_pcm_runtime *rtd)
 	afe_priv->audio_r_miso1_enable = priv->audio_r_miso1_enable;
 	afe_priv->miso_only = priv->miso_only;
 	register_get_power_scene_callback(mt6991_aud_get_power_scenario);
+	register_is_vow_bargein_memif_callback(mt6991_is_vow_bargein_memif);
 
 	/* mtkaif calibration */
 	mt6991_mt6681_mtkaif_calibration(rtd);

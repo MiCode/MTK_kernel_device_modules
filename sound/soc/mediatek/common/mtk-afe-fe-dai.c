@@ -65,6 +65,14 @@ int mtk_get_channel_value(void)
 }
 EXPORT_SYMBOL(mtk_get_channel_value);
 
+static bool (*afe_is_vow_memif)(int);
+
+void register_is_vow_bargein_memif_callback(bool (*callback)(int id))
+{
+	afe_is_vow_memif = callback;
+}
+EXPORT_SYMBOL(register_is_vow_bargein_memif_callback);
+
 static bool is_semaphore_control_need(bool is_scp_sema_support)
 {
 	bool is_adsp_active = false;
@@ -1129,7 +1137,9 @@ int mtk_memif_set_addr(struct mtk_base_afe *afe, int id,
 		pr_info("%s memif[%d] is enabled before set_addr, en:0x%x",
 			__func__, id, value);
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-		aee_kernel_exception("[Audio]", "Error: AFE memif enable before set_addr");
+		// For Liber hardcode, ignore VOW CM0 aee
+		if ((void *)afe_is_vow_memif == NULL || afe_is_vow_memif(id) == false)
+			aee_kernel_exception("[Audio]", "Error: AFE memif enable before set_addr");
 #endif
 	}
 
