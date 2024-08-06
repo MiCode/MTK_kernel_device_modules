@@ -5778,10 +5778,6 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		else
 			layer_num = mtk_oddmr_od_bpp(5);
 		bw_val = (layer_num * bw_base / 400) * od_enable;
-		__mtk_disp_set_module_hrt(oddmr_priv->qos_req_odr_hrt, comp->id, bw_val,
-			priv->data->respective_ostdl);
-		__mtk_disp_set_module_hrt(oddmr_priv->qos_req_odw_hrt, comp->id, bw_val,
-			priv->data->respective_ostdl);
 		if (bw_val > oddmr_priv->last_hrt_odrw) {
 			ODDMRLOW_LOG("odrw bw_val fast up %u -> %u\n", oddmr_priv->last_hrt_odrw, bw_val);
 			__mtk_disp_set_module_hrt(oddmr_priv->qos_req_odr_hrt, comp->id, bw_val,
