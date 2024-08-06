@@ -23,6 +23,7 @@ static const struct mtk_device_num mtk6899_devices_num[] = {
 	{SLAVE_TYPE_GPU1, VIO_SLAVE_NUM_GPU1, IRQ_TYPE_GPU, DEVAPC_GET_GPU},
 };
 
+/* Infra bus id table */
 static const struct INFRAAXI_ID_INFO infra_mi_id_to_master[] = {
 	{"MD_AP_M",             { 0, 0, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },
 	{"THERM_M",             { 1, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },
@@ -180,12 +181,7 @@ static const char *adsp_mi_trans(uint32_t bus_id, int mi)
 	}
 	return master;
 }
-/*
- * For VLP slave type parse:
- * 1. Using violation address to determine the
- * transaction come from which MI node(MI1, MI2 and MI3).
- * 2. And then, according axi id to find the master.
- */
+
 static const char *mt6899_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 		int slave_type, int shift_sta_bit, uint32_t domain)
 {
@@ -206,8 +202,16 @@ static const char *mt6899_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 		else
 			return infra_mi_trans(bus_id >> 1);
 	} else if (slave_type == SLAVE_TYPE_VLP) {
-		/* mi3 */
+		/*
+		 * For VLP slave type parse:
+		 * 1. Using violation address to determine the
+		 * transaction come from which MI node(MI1, MI2 and MI3).
+		 * 2. And then, according axi id to find the master.
+		 * 3. The way of bus id detection would be changed by different chips,
+		 * so must update it.
+		 */
 		if ((vio_addr >= VLP_SCP_START_ADDR) && (vio_addr <= VLP_SCP_END_ADDR)) {
+			/* mi3 */
 			if ((bus_id & 0x3) == 0x0)
 				return "SSPM_M";
 			else if ((bus_id & 0x3) == 0x1)
@@ -216,29 +220,24 @@ static const char *mt6899_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 				return infra_mi_trans(bus_id >> 2);
 			else
 				return "UNKNOWN_MASTER_TO_SCP";
-		/* mi1 */
-		} else if ((vio_addr >= VLP_INFRA_START && vio_addr <= VLP_INFRA_END) ||
-			(vio_addr >= VLP_INFRA_1_START)) {
+		} else if (vio_addr <= VLP_INFRA_END || (vio_addr >= VLP_INFRA_1_START)) {
+			/* mi1 */
 			if ((bus_id & 0x3) == 0x0)
 				return "SCP_M";
 			else if ((bus_id & 0x3) == 0x1)
 				return "SSPM_M";
 			else if ((bus_id & 0x3) == 0x2)
-				return "SPM_M";
-			else if ((bus_id & 0x3) == 0x2)
-				return "DPMSR_AHB_M";
+				return "SPM_M or DPMSR_AHB_M";
 			else
 				return "UNKNOWN_MASTER_TO_INFRA";
-		/* mi2 */
 		} else {
+			/* mi2 */
 			if ((bus_id & 0x3) == 0x0)
 				return "SCP_M";
 			else if ((bus_id & 0x3) == 0x1)
 				return "SSPM_M";
 			else if ((bus_id & 0x3) == 0x2)
-				return "SPM_M";
-			else if ((bus_id & 0x3) == 0x2)
-				return "DPMSR_AHB_M";
+				return "SPM_M or DPMSR_AHB_M";
 			else if ((bus_id & 0x3) == 0x3)
 				return infra_mi_trans(bus_id >> 2);
 			else
@@ -448,7 +447,9 @@ const char *index_to_subsys(int slave_type, uint32_t vio_index,
 
 	return "OUT_OF_BOUND";
 }
-/* This function has been removed. Now keep it for common code.
+
+/*
+ * This function has been removed. Now keep it for common code.
  * return only.
  */
 static void mm2nd_vio_handler(void __iomem *infracfg,
@@ -461,7 +462,9 @@ static uint32_t mt6899_shift_group_get(int slave_type, uint32_t vio_idx)
 {
 	return 31;
 }
-/* This function has been removed. Now keep it for common code.
+
+/*
+ * This function has been removed. Now keep it for common code.
  * return only.
  */
 void devapc_catch_illegal_range(phys_addr_t phys_addr, size_t size)

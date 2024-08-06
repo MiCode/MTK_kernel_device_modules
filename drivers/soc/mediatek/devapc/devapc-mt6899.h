@@ -34,6 +34,10 @@ enum DEVAPC_SLAVE_TYPE {
 	SLAVE_TYPE_NUM,
 };
 
+/*
+ * This information means the number of VIO_STA/VIO_MASK registers
+ * in different subsys devapc.
+ */
 enum DEVAPC_VIO_MASK_STA_NUM {
 	VIO_MASK_STA_NUM_INFRA = 15,
 	VIO_MASK_STA_NUM_INFRA1 = 8,
@@ -59,8 +63,11 @@ enum DEVAPC_PD_OFFSET {
 	PD_VIO_DBG3_OFFSET = 0x90C,
 };
 
-#define SRAMROM_SLAVE_TYPE	SLAVE_TYPE_INFRA1	/* Infra1 */
-#define MM2ND_SLAVE_TYPE	SLAVE_TYPE_NUM	/* This define has been removed. Now keep it for common code. */
+/* This information means sramrom violation index is belong in which subsys debapc */
+#define SRAMROM_SLAVE_TYPE	SLAVE_TYPE_INFRA1
+
+/* This define has been removed. Now keep it for common code. */
+#define MM2ND_SLAVE_TYPE	SLAVE_TYPE_NUM
 
 enum OTHER_TYPES_INDEX {
 	SRAMROM_VIO_INDEX = 237,
@@ -145,7 +152,10 @@ enum ADSP_MI_SELECT {
 #define SRAMROM_SEC_VIO_RW_MASK			0x80000000
 #define SRAMROM_SEC_VIO_RW_SHIFT		31
 
-/* For MM 2nd VIO, but These following defines have been removed. Now keep it for common code. */
+/*
+ * For MM 2nd VIO, but These following defines have been removed.
+ * Now keep it for common code.
+ */
 #define INFRACFG_MM2ND_VIO_DOMAIN_MASK		0x00000030
 #define INFRACFG_MM2ND_VIO_DOMAIN_SHIFT		4
 #define INFRACFG_MM2ND_VIO_ID_MASK		0x00FFFF00
