@@ -488,6 +488,8 @@ struct wrot_frame_data {
 	u32 datasize;		/* qos data size in bytes */
 	u32 stash_srt_bw;
 	u32 stash_hrt_bw;
+	u16 tile_last_x;
+	u16 tile_last_y;
 
 	struct {
 		bool eol:1;	/* tile is end of current line */
@@ -2198,12 +2200,13 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	 */
 
 	/* qos accumulate tile pixel */
-	if (dest->rotate == MML_ROT_0 || dest->rotate == MML_ROT_180) {
+	if (wrot_frm->tile_last_x < tile->out.xe) {
 		wrot_frm->max_size.width += wrot_tar_xsize;
-		wrot_frm->max_size.height = wrot_tar_ysize;
-	} else {
-		wrot_frm->max_size.width += wrot_tar_ysize;
-		wrot_frm->max_size.height = wrot_tar_xsize;
+		wrot_frm->tile_last_x = tile->out.xe;
+	}
+	if (wrot_frm->tile_last_y < tile->out.ye) {
+		wrot_frm->max_size.height += wrot_tar_ysize;
+		wrot_frm->tile_last_y = tile->out.ye;
 	}
 
 	/* no bandwidth for racing mode since wrot write to sram */
@@ -2257,8 +2260,9 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 		}
 	}
 
-	mml_msg("%s min block width: %u min buf line num: %u",
-		__func__, setting.main_blk_width, setting.main_buf_line_num);
+	mml_msg("%s min block width:%u min buf line num:%u dvfs size %u %u",
+		__func__, setting.main_blk_width, setting.main_buf_line_num,
+		wrot_frm->max_size.width, wrot_frm->max_size.height);
 
 	return 0;
 }
