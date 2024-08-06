@@ -119,6 +119,7 @@ struct power_budget_t {
 	struct work_struct bat_work;
 	struct power_supply *psy;
 	struct device *dev;
+	unsigned int hpt_exclude_lbat_cg_thl;
 };
 
 struct ocv_table_t {

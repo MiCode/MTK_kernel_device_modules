@@ -1201,6 +1201,9 @@ static int __used read_power_budget_dts(struct platform_device *pdev)
 	if (read_dts_val(np, "soc-error", &pb.soc_err, 1))
 		pb.soc_err = SOC_ERROR;
 
+	if (read_dts_val(np, "hpt-exclude-lbat-cg-throttle", &pb.hpt_exclude_lbat_cg_thl, 1))
+		pb.hpt_exclude_lbat_cg_thl = 0;
+
 	num = of_property_count_u32_elems(np, "temperature-threshold");
 	if (num > 6 || num < 0) {
 		pr_info("wrong temp_max_stage number %d, set to 0\n", num);
@@ -2102,13 +2105,23 @@ static void __used get_md_dbm_info(void)
 
 static void hpt_bp_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
 {
-	int hpt_reg;
+	int hpt_reg, hpt_enable = 0;
 
 	if (level != pb.hpt_cur_lv && level < BATTERY_PERCENT_LEVEL_NUM) {
 		hpt_reg = pb.hpt_lv_t[level];
+		if (hpt_reg)
+			hpt_enable = 1;
+
+		if (!hpt_enable && pb.hpt_exclude_lbat_cg_thl)
+			lbat_set_hpt_mode(hpt_enable);
+
 		hpt_ctrl_write(hpt_reg, HPT_CTRL_SET);
 		hpt_reg = ~hpt_reg & 0x7;
 		hpt_ctrl_write(hpt_reg, HPT_CTRL_CLR);
+
+		if (hpt_enable && pb.hpt_exclude_lbat_cg_thl)
+			lbat_set_hpt_mode(hpt_enable);
+
 		pb.hpt_cur_lv = level;
 	}
 }
@@ -2165,6 +2178,10 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 
 	INIT_WORK(&pb.bat_work, bat_handler);
 	read_power_budget_dts(pdev);
+
+	if (hpt_ctrl_read(HPT_CTRL) && pb.hpt_exclude_lbat_cg_thl)
+		lbat_set_hpt_mode(1);
+
 	ppb_nb.notifier_call = ppb_psy_event;
 	ret = power_supply_reg_notifier(&ppb_nb);
 	if (ret) {
