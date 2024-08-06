@@ -3468,6 +3468,10 @@
 			isp-opp = <&opp_table_img>;
 			mdp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			isp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			dre30-hist-sram-start = /bits/ 16 <1536>;
+			pq-rb-thread-id = /bits/ 16 <22>;
+			pq-rb-event-lock = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_MDP_WAIT>;
+			pq-rb-event-unlock = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_MDP_SET>;
 		};
 
 		aie@1c001000 {
@@ -3749,6 +3753,7 @@
 		#mbox-cells = <3>;
 		#gce-event-cells = <1>;
 		#gce-subsys-cells = <2>;
+		cpr-not-support-cookie;
 		default-tokens = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_0>,
 				 /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_1>,
 				 /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_2>,
@@ -3756,6 +3761,8 @@
 				 /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_4>,
 				 /bits/ 16 <CMDQ_SYNC_RESOURCE_WROT0>,
 				 /bits/ 16 <CMDQ_SYNC_RESOURCE_WROT1>;
+		 mboxes = <&gce_mbox 16 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+		 power-domains = <&scpsys MT6781_POWER_DOMAIN_DIS>;
 		 clocks = <&infracfg_ao INFRACFG_AO_GCE_CG>,
 			 <&infracfg_ao INFRACFG_AO_GCE_26M_CG>;
 		 clock-names = "gce", "gce-timer";
@@ -3775,7 +3782,7 @@
 		mediatek,gce = <&gce_mbox>;
 		mmsys_config = <&mmsys_config>;
 		mediatek,gce-subsys = <99>, <SUBSYS_1400XXXX>;
-		mboxes = <&gce_mbox_sec 11 0 CMDQ_THR_PRIO_1>;
+		/* mboxes = <&gce_mbox_sec 11 0 CMDQ_THR_PRIO_1>; */
 		token_user0 = /bits/ 16 <CMDQ_SYNC_TOKEN_USER_0>;
 		token_gpr_set4 = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_4>;
 	};
