@@ -142,6 +142,14 @@ static const struct hdr_data mt6985_hdr_data = {
 	.rb_mode = RB_EOF_MODE,
 };
 
+static const struct hdr_data mt6899_mmlt_hdr_data = {
+	.min_tile_width = 16,
+	.cpr = {CMDQ_CPR_MML0_PQ0_ADDR, CMDQ_CPR_MML0_PQ1_ADDR},
+	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
+	.reg_table = hdr_reg_table_mt6983,
+	.rb_mode = RB_EOF_MODE,
+};
+
 static const struct hdr_data mt6991_mmlt_hdr_data = {
 	.min_tile_width = 16,
 	.cpr = {CMDQ_CPR_MML0_PQ0_ADDR, CMDQ_CPR_MML0_PQ1_ADDR},
@@ -1868,7 +1876,7 @@ const struct of_device_id mml_hdr_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6899-mml0_hdr",
-		.data = &mt6991_mmlt_hdr_data,
+		.data = &mt6899_mmlt_hdr_data,
 	},
 	{
 		.compatible = "mediatek,mt6899-mml1_hdr",
