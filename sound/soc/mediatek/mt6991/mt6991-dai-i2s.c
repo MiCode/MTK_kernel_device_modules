@@ -230,6 +230,7 @@ struct mtk_afe_i2s_priv {
 	int sync;
 	int ip_mode;
 	int slave_mode;
+	int format;
 	int lpbk_mode;
 };
 
@@ -4763,23 +4764,10 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 		}
 
 		/* 5:  TDM Mode */
-#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
-		if (id == DAI_I2SIN4 || id == DAI_I2SIN5)
-			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
-					       etdm_data.tdm_mode_mask,
-					       0x4,
-					       etdm_data.tdm_mode_shift);// DSP_A mode for multi-channel
-		else
-			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
-					       etdm_data.tdm_mode_mask,
-					       0x0,
-					       etdm_data.tdm_mode_shift);
-#else
 		mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
 				       etdm_data.tdm_mode_mask,
-				       0x0,
+				       i2s_priv->format,
 				       etdm_data.tdm_mode_shift);
-#endif
 
 		/* APLL */
 		mtk_regmap_update_bits(afe->regmap,
@@ -4865,23 +4853,10 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 				       etdm_data.relatch_en_sel_shift);
 
 		/* 5:  TDM Mode */
-#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
-		if (id == DAI_I2SOUT4 || id == DAI_I2SOUT5)
-			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
-					       etdm_data.tdm_mode_mask,
-					       0x4,
-					       etdm_data.tdm_mode_shift);// DSP_A mode for multi-channel
-		else
-			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
-					       etdm_data.tdm_mode_mask,
-					       0x0,
-					       etdm_data.tdm_mode_shift);
-#else
 		mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
 				       etdm_data.tdm_mode_mask,
-				       0x0,
+				       i2s_priv->format,
 				       etdm_data.tdm_mode_shift);
-#endif
 
 		/* APLL */
 		mtk_regmap_update_bits(afe->regmap,
@@ -5317,11 +5292,13 @@ static int etdm_parse_dt(struct mtk_base_afe *afe)
 	unsigned int ch_num_out[I2S_OUT_NUM];
 	unsigned int sync_out[I2S_OUT_NUM];
 	unsigned int slave_mode_out[I2S_OUT_NUM];
+	unsigned int format_out[I2S_OUT_NUM];
 
 	unsigned int ch_num_in[I2S_IN_NUM];
 	unsigned int sync_in[I2S_IN_NUM];
 	unsigned int ip_mode[I2S_IN_NUM];
 	unsigned int slave_mode_in[I2S_IN_NUM];
+	unsigned int format_in[I2S_IN_NUM];
 	struct {
 		char *name;
 		unsigned int val;
@@ -5413,24 +5390,48 @@ static int etdm_parse_dt(struct mtk_base_afe *afe)
 		}
 	}
 
+	ret = of_property_read_u32_array(afe->dev->of_node, "etdm-in-format", format_in, I2S_IN_NUM);
+	if (ret) {
+		dev_info(afe->dev, "%s() failed to read etdm-in-format\n", __func__);
+		//return -EINVAL;
+	} else {
+		for (i = 0; i < I2S_IN_NUM; i++) {
+			i2s_priv = afe_priv->dai_priv[MT6991_DAI_I2S_IN0 + i];
+			i2s_priv->format = format_in[i];
+		}
+	}
+
+	ret = of_property_read_u32_array(afe->dev->of_node, "etdm-out-format", format_out, I2S_OUT_NUM);
+	if (ret) {
+		dev_info(afe->dev, "%s() failed to read etdm-out-format\n", __func__);
+		//return -EINVAL;
+	} else {
+		for (i = 0; i < I2S_OUT_NUM; i++) {
+			i2s_priv = afe_priv->dai_priv[MT6991_DAI_I2S_OUT0 + i];
+			i2s_priv->format = format_out[i];
+		}
+	}
+
 	for (i = 0; i < I2S_IN_NUM; i++) {
 		i2s_priv = afe_priv->dai_priv[MT6991_DAI_I2S_IN0 + i];
-		dev_info(afe->dev, "%s() I2SIN%d (%d), ch_num=%d sync=%d ip_mode=%d slave_mode=%d\n", __func__,
+		dev_dbg(afe->dev, "%s() I2SIN%d (%d), ch_num=%d sync=%d ip_mode=%d slave_mode=%d format=%d\n", __func__,
 				i,
 				MT6991_DAI_I2S_IN0 + i,
 				i2s_priv->ch_num,
 				i2s_priv->sync,
 				i2s_priv->ip_mode,
-				i2s_priv->slave_mode);
+				i2s_priv->slave_mode,
+				i2s_priv->format);
 	}
 	for (i = 0; i < I2S_OUT_NUM; i++) {
 		i2s_priv = afe_priv->dai_priv[MT6991_DAI_I2S_OUT0 + i];
-		dev_info(afe->dev, "%s() I2SOUT%d (%d), ch_num=%d sync=%d slave_mode=%d\n", __func__,
+		dev_dbg(afe->dev, "%s() I2SOUT%d (%d), ch_num=%d sync=%d slave_mode=%d format=%d\n", __func__,
 				i,
 				MT6991_DAI_I2S_OUT0 + i,
 				i2s_priv->ch_num,
 				i2s_priv->sync,
-				i2s_priv->slave_mode);
+				i2s_priv->slave_mode,
+				i2s_priv->format);
 	}
 
 	for (i = 0; i < ARRAY_SIZE(of_be_table); i++) {
@@ -5629,16 +5630,10 @@ static int mt6991_dai_i2s_config(struct mtk_base_afe *afe, int i2s_id,
 		}
 
 		/* 5:  TDM Mode */
-		if (id == DAI_I2SIN4 || id == DAI_I2SIN5)
-			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
-							etdm_data.tdm_mode_mask,
-							0x4,
-							etdm_data.tdm_mode_shift); // DSP_A mode for multi-channel
-		else
-			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
-							etdm_data.tdm_mode_mask,
-							0x0,
-							etdm_data.tdm_mode_shift);
+		mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
+				       etdm_data.tdm_mode_mask,
+				       i2s_priv->format,
+				       etdm_data.tdm_mode_shift);
 
 		/* APLL */
 		mtk_regmap_update_bits(afe->regmap,
@@ -5730,16 +5725,10 @@ static int mt6991_dai_i2s_config(struct mtk_base_afe *afe, int i2s_id,
 				       etdm_data.relatch_en_sel_shift);
 
 		/* 5:  TDM Mode */
-		if (id == DAI_I2SOUT4 || id == DAI_I2SOUT5)
-			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
-					       etdm_data.tdm_mode_mask,
-					       0x4,
-					       etdm_data.tdm_mode_shift); // DSP_A mode for multi-channel
-		else
-			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
-					       etdm_data.tdm_mode_mask,
-					       0x0,
-					       etdm_data.tdm_mode_shift);
+		mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
+				       etdm_data.tdm_mode_mask,
+				       i2s_priv->format,
+				       etdm_data.tdm_mode_shift);
 		/* APLL */
 		mtk_regmap_update_bits(afe->regmap,
 				       etdm_data.relatch_domain_sel_reg,
