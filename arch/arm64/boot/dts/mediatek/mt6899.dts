@@ -6856,6 +6856,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			gce-ddr-sel-wla;
 			gce-res-sw-mode;
 			gce-mask-voter;
+			gce-fast-mtcmos;
 		};
 
 		gce_sec: gce-mbox-sec@1e980000 {
