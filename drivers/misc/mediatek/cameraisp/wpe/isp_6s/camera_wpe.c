@@ -5152,7 +5152,18 @@ static signed int WPE_probe(struct platform_device *pDev)
 	}
 	WPE_devs = _wpe_dev;
 
+	if (nr_WPE_devs <= 0) {
+		LOG_ERR("No device instances available\n");
+		return -ENOMEM;
+	}
+
 	WPE_dev = &(WPE_devs[nr_WPE_devs - 1]);
+
+	if (!WPE_dev) {
+		LOG_ERR("WPE_dev is NULL\n");
+		return -EFAULT;
+	}
+
 	WPE_dev->dev = &pDev->dev;
 
 	/* iomap registers */
