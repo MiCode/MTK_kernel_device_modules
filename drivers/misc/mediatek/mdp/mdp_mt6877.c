@@ -1918,6 +1918,36 @@ static s32 mdp_get_rdma_idx(u32 eng_base)
 	return rdma_idx;
 }
 
+static u32 mdp_get_poll_gpr(u16 engine, u32 reg_addr)
+{
+	u32 gpr;
+
+	switch (engine) {
+	case ENGBASE_MDP_HDR0:
+	case ENGBASE_MDP_AAL0:
+	case ENGBASE_MDP_RSZ0:
+	case ENGBASE_MDP_TDSHP0:
+	case ENGBASE_MDP_COLOR0:
+	case ENGBASE_MDP_WROT0:
+		gpr = CMDQ_GPR_R12;
+		break;
+	case ENGBASE_MDP_RDMA1:
+	case ENGBASE_MDP_AAL1:
+	case ENGBASE_MDP_RSZ1:
+	case ENGBASE_MDP_TDSHP1:
+	case ENGBASE_MDP_WROT1:
+		gpr = CMDQ_GPR_R14;
+		break;
+	default:
+		CMDQ_ERR("%s engine not support:%hu reg_addr:%#x\n",
+			__func__, engine, reg_addr);
+		gpr = CMDQ_GPR_R12;
+		break;
+	}
+
+	return gpr;
+}
+
 bool mdp_eng_support_readback(u16 engine)
 {
 	return ((1ll << engine) & CMDQ_ENG_SUPPORT_READBACK_GROUP_BITS);
@@ -1944,6 +1974,7 @@ void cmdq_mdp_platform_function_setting(void)
 	pFunc->mdpIsModuleSuspend = mdp_is_mod_suspend;
 	pFunc->mdpDumpEngineUsage = mdp_dump_engine_usage;
 	pFunc->mdpIsEngineSupportReadback = mdp_eng_support_readback;
+	pFunc->mdpGetPollGpr = mdp_get_poll_gpr;
 
 	pFunc->mdpIsMtee = mdp_is_mtee;
 	pFunc->mdpIsIspImg = mdp_is_isp_img;
