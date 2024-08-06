@@ -2277,7 +2277,7 @@ TRACE_EVENT(sched_skip_user,
 		__entry->new_mask = cpumask_bits(new_mask)[0];
 	),
 
-	TP_printk("pid=%d, skip_user=%d, user_mask=%d, kernel_allowed_mask=%d, new_mask=%d",
+	TP_printk("pid=%d, skip_user=%d, user_mask=0x%x, kernel_allowed_mask=0x%x, new_mask=0x%x",
 		__entry->pid,
 		__entry->skip_user,
 		__entry->user_mask,
