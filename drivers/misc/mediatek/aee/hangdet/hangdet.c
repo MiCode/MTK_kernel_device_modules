@@ -495,7 +495,11 @@ static void kwdt_time_sync(void)
 	rtc_time64_to_tm(tv.tv_sec, &tm);
 	tv_android.tv_sec -= (uint64_t)sys_tz.tz_minuteswest * 60;
 	rtc_time64_to_tm(tv_android.tv_sec, &tm_android);
+#if !IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE)
 	pr_info("[thread:%d] %d-%02d-%02d %02d:%02d:%02d.%u UTC;"
+#else
+	pr_debug("[thread:%d] %d-%02d-%02d %02d:%02d:%02d.%u UTC;"
+#endif
 		"android time %d-%02d-%02d %02d:%02d:%02d.%03d\n",
 		current->pid, tm.tm_year + 1900, tm.tm_mon + 1,
 		tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
@@ -1114,8 +1118,8 @@ static void kwdt_process_kick(int local_bit, int cpu,
 		g_hang_detected = 0;
 		dump_timeout = 0;
 		local_bit = 0;
-#if !IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE)
 		kwdt_time_sync();
+#if !IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE)
 #if CHK_HWT_IRQ
 		save_irq_info();
 #endif
