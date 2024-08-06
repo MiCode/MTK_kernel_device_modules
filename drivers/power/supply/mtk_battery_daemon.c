@@ -1921,6 +1921,17 @@ void exec_BAT_EC(struct mtk_battery *gm, int cmd, int param)
 				cmd, val);
 		}
 		break;
+	case 811:
+		{
+			bm_err(gm,
+				"exe_BAT_EC cmd %d,change cycle to=%d\n",
+				cmd, param);
+			wakeup_fg_algo_cmd(gm,
+				FG_INTR_KERNEL_CMD,
+				FG_KERNEL_CMD_REQ_CHANGE_BAT_CYCLE,
+				param);
+		}
+		break;
 	default:
 		bm_err(gm,
 			"exe_BAT_EC cmd %d, param %d, default\n",
@@ -4406,6 +4417,14 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 		gm->aging_factor = int_value;
 		bm_debug(gm, "FG_DAEMON_CMD_SET_AGING_FACTOR %d\n",
 		gm->aging_factor);
+	}
+	break;
+	case FG_DAEMON_CMD_SET_SHOW_AGING_FACTOR:
+	{
+		memcpy(&int_value, &msg->data[0], sizeof(int_value));
+		gm->show_ag = int_value;
+		bm_debug(gm, "FG_DAEMON_CMD_SET_SHOW_AGING_FACTOR %d\n",
+		gm->show_ag);
 	}
 	break;
 	case FG_DAEMON_CMD_SET_QMAX:

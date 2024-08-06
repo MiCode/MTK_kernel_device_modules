@@ -325,6 +325,7 @@ enum fg_daemon_cmds {
 	FG_DAEMON_CMD_GET_SD_DATA,
 	FG_DAEMON_CMD_SEND_SD_DATA,
 	FG_DAEMON_CMD_SET_SELECT_ZCV,
+	FG_DAEMON_CMD_SET_SHOW_AGING_FACTOR,
 
 	FG_DAEMON_CMD_FROM_USER_NUMBER
 
@@ -352,6 +353,7 @@ enum Fg_kernel_cmds {
 	FG_KERNEL_CMD_GET_DYNAMIC_GAUGE0,
 	FG_KERNEL_CMD_SEND_SHUTDOWN_DATA,
 	FG_KERNEL_CMD_GET_DYNAMIC_ZCV_TABLE,
+	FG_KERNEL_CMD_REQ_CHANGE_BAT_CYCLE,
 	FG_KERNEL_CMD_FROM_USER_NUMBER
 
 };
@@ -1256,6 +1258,7 @@ struct mtk_battery {
 	/* aging */
 	bool is_reset_aging_factor;
 	int aging_factor;
+	int show_ag;
 
 	/* bootmode */
 	u32 bootmode;
