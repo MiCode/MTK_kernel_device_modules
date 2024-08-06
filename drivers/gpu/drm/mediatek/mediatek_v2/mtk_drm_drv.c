@@ -11572,6 +11572,7 @@ SKIP_OVLSYS_CONFIG:
 			dev_err(&pdev->dev, "Failed to create disp_plat_dbg buf file\n");
 			return ret;
 		}
+		disp_plat_dbg_init();
 	}
 #ifdef CONFIG_MTK_FB_MMDVFS_SUPPORT
 	private->hrt_bw_request =
