@@ -3378,6 +3378,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"user-img-smi", "user-vcp-smi";
 		mediatek,free-run;
 		mediatek,restore-step;
+		mediatek,vcore-check-rg = <0x1c00f2b0>;
+		mediatek,vcore-check-offset = <6>;
 	};
 
 	mmdvfs-user {
