@@ -4901,7 +4901,7 @@ static struct notifier_block fdvt_suspend_pm_notifier_func = {
 	.priority = 0,
 };
 #endif
-
+#if CHECK_SERVICE_IF_0
 static int fdvt_dump_read(struct seq_file *m, void *v)
 {
 	int i, j;
@@ -5114,7 +5114,7 @@ static const struct file_operations fdvt_reg_proc_fops __maybe_unused = {
 	.read = seq_read,
 	.write = fdvt_reg_write,
 };
-
+#endif
 /*****************************************************************************
  *
  *****************************************************************************/
