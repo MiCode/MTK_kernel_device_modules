@@ -7796,7 +7796,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				  <0 0x14400000 0 0x1000>;
 			#address-cells = <2>;
 			#size-cells = <2>;
-			idlemgr-by-wb;
 
 			//mmqos-supply = <&mmqos>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
