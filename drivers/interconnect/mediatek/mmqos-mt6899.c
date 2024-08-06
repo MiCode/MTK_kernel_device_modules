@@ -665,13 +665,15 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6899 = {
 			SLAVE_LARB(7), SLAVE_LARB(42),
 			SLAVE_LARB(5), SLAVE_LARB(41),
 			SLAVE_LARB(4), SLAVE_LARB(40),
-			SLAVE_LARB(8), SLAVE_LARB(43),},
+			SLAVE_LARB(8), SLAVE_LARB(43),
+			SLAVE_LARB(39),},
 	.report_bw_real_larbs = {SLAVE_LARB(11), SLAVE_LARB(28),
 			SLAVE_LARB(9), SLAVE_LARB(15),
 			SLAVE_LARB(7), SLAVE_LARB(42),
 			SLAVE_LARB(5), SLAVE_LARB(41),
 			SLAVE_LARB(4), SLAVE_LARB(40),
-			SLAVE_LARB(8), SLAVE_LARB(43),},
+			SLAVE_LARB(8), SLAVE_LARB(43),
+			SLAVE_LARB(3),},
 	.freq_mode = BY_VMMRC,
 };
 static const struct of_device_id mtk_mmqos_mt6899_of_ids[] = {
