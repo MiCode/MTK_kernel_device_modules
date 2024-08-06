@@ -263,16 +263,17 @@ static long mcdi_do_work(void *pData)
 		return 0;
 	}
 	drv->cpumask = cpu_set_1_mask;
+	drv->states[0].enter = mtk_rgidle_enter;
 	drv->states[0].exit_latency = mtk_acao_mcdi_state[0].states[0].exit_latency;
 	drv->states[0].exit_latency_ns = mtk_acao_mcdi_state[0].states[0].exit_latency * NSEC_PER_USEC;
+
 	for (idx = 1; idx < drv->state_count; ++idx) {
-		pr_info("%s,register cpu idle for cpu %d\n", __func__, cpu);
-		drv->states[0].enter = mtk_rgidle_enter;
 		drv->states[idx].enter = mtk_mcidle_enter;
 		drv->states[idx].exit_latency = mtk_acao_mcdi_state[0].states[idx].exit_latency;
 		drv->states[idx].exit_latency_ns = mtk_acao_mcdi_state[0].states[idx].exit_latency * NSEC_PER_USEC;
 	}
-		return 0;
+	pr_info("%s,register cpu idle for cpu %d\n", __func__, cpu);
+	return 0;
 }
 
 struct cpuidle_driver *mcdi_state_tbl_get(int cpu)
