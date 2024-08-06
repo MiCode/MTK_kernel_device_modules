@@ -1248,9 +1248,13 @@ static void vcu_gce_pkt_destroy(struct cmdq_cb_data data)
 {
 	struct cmdq_pkt *pkt = (struct cmdq_pkt *)data.data;
 
-	if (data.err < 0)
+	if (data.err < 0) {
 		pr_info("%s %d pkt:%p err:%d", __func__, __LINE__, pkt, data.err);
-	cmdq_dump_pkt(pkt, 0, true);
+		cmdq_dump_pkt(pkt, 0, true);
+	} else if (vcu_ptr->enable_vcu_dbg_log) {
+		cmdq_dump_pkt(pkt, 0, true);
+	}
+
 	cmdq_pkt_destroy(pkt);
 	pr_debug("%s: pkt:%p", __func__, pkt);
 }
@@ -1260,15 +1264,17 @@ static void vcu_gce_timeout_callback(struct cmdq_cb_data data)
 {
 	struct gce_callback_data *buff;
 	struct mtk_vcu *vcu;
-	struct list_head *p, *q;
-	struct mtk_vcu_queue *vcu_queue;
-	struct vcu_pa_pages *tmp;
 
 	buff = (struct gce_callback_data *)data.data;
 	vcu = buff->vcu_ptr;
-	vcu_queue = buff->vcu_queue;
 	vcu_dbg_log("%s: buff %p vcu: %p, codec_typ: %d\n",
 		__func__, buff, vcu, buff->cmdq_buff.codec_type);
+
+	/* exit dump when abort */
+	if (vcu->abort == true) {
+		pr_info("[VCU] vpud abort, pid %d tgid %d\n", current->pid, current->tgid);
+		return;
+	}
 
 	if (buff->cmdq_buff.codec_type == VCU_VENC
 		&& vcu->cbf.gce_timeout_dump != NULL)
@@ -1276,15 +1282,6 @@ static void vcu_gce_timeout_callback(struct cmdq_cb_data data)
 	else if (buff->cmdq_buff.codec_type == VCU_VDEC
 		&& vcu->cbf.gce_timeout_dump != NULL)
 		vcu->cbf.gce_timeout_dump(vcu->curr_ctx[VCU_VDEC]);
-
-	mutex_lock(&vcu_queue->mmap_lock);
-	list_for_each_safe(p, q, &vcu_queue->pa_pages.list) {
-		tmp = list_entry(p, struct vcu_pa_pages, list);
-		pr_info("%s: vcu_pa_pages %lx kva %lx data %lx\n",
-			__func__, tmp->pa, tmp->kva,
-			*(unsigned long *)tmp->kva);
-	}
-	mutex_unlock(&vcu_queue->mmap_lock);
 
 }
 
