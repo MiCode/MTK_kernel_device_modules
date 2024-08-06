@@ -14806,7 +14806,7 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 
 	/* mml need to power on InlineRotate and sync with mml */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_PRIMARY) &&
-		need_sync_mml && !(crtc->state->adjusted_mode.hdisplay !=
+		need_sync_mml && old_crtc_state && !(crtc->state->adjusted_mode.hdisplay !=
 		old_crtc_state->adjusted_mode.hdisplay &&
 		(old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] !=
 		 crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX])))
