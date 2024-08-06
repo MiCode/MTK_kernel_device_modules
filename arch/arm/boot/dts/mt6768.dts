@@ -1347,7 +1347,6 @@ transparent_hugepage=never clk_ignore_unused=1";
 				  "mediatek,toprgu",
 				  "syscon", "simple-mfd";
 		reg = <0 0x10007000 0 0x1000>;
-		interrupts = <GIC_SPI 156 IRQ_TYPE_LEVEL_HIGH 0>;
 		mediatek,rg_dfd_timeout = <0xa0>;
 		#reset-cells = <1>;
 		reboot-mode {
