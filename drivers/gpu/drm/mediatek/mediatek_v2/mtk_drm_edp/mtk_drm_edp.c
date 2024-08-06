@@ -38,6 +38,9 @@
 #include "mtk_drm_edp_api.h"
 #include "../mtk_drm_crtc.h"
 
+#define OS_ANDROID				0
+#define EDPTX_COLOR_BAR			0
+
 #define EDP_VIDEO_UNMUTE		0x22
 #define MTK_SIP_DP_CONTROL \
 	(0x82000523 | 0x40000000)
@@ -1514,6 +1517,7 @@ static int mtk_edp_train_cr(struct mtk_edp *mtk_edp, u8 target_lane_count)
 			voltage_retries = 0;
 		}
 		prev_lane_adjust = link_status[4];
+		dev_info(mtk_edp->dev, "[eDPTX] CR training retries: %d\n", voltage_retries);
 	} while (train_retries < MTK_DP_TRAIN_DOWNSCALE_RETRY);
 
 	/* Failed to train CR, and disable pattern. */
@@ -1558,7 +1562,7 @@ static int mtk_edp_train_eq(struct mtk_edp *mtk_edp, u8 target_lane_count)
 			mtk_edp_train_set_pattern(mtk_edp, 0);
 			return 0;
 		}
-		dev_dbg(mtk_edp->dev, "Link train EQ fail\n");
+		dev_info(mtk_edp->dev, "[eDPTX] EQ training retries: %d\n", train_retries);
 	} while (train_retries < MTK_DP_TRAIN_DOWNSCALE_RETRY);
 
 	/* Failed to train EQ, and disable pattern. */
@@ -1756,7 +1760,6 @@ static void mtk_edp_video_enable(struct mtk_edp *mtk_edp, bool enable)
 		mtk_edp_video_mute(mtk_edp, false);
 	} else {
 		mtk_edp_video_mute(mtk_edp, true);
-		mtk_edp_pg_enable(mtk_edp, true);
 		mtk_edp_msa_bypass_enable(mtk_edp, true);
 	}
 }
@@ -1785,14 +1788,29 @@ static void mtk_edp_init_port(struct mtk_edp *mtk_edp)
 			  0x0000000f, 0x0000000f);
 }
 
+static void mtk_edp_pm_ctl(struct mtk_edp *mtk_edp, bool enable)
+{
+	u32 ret = 0;
+
+	/* DISP_EDPTX_PWR_CON */
+	void *address = ioremap(0x31B50074, 0x1);
+
+	if (enable)
+		writel(0xC2FC224D, address);
+	else
+		writel(0xC2FC2372, address);
+
+	if (address)
+		iounmap(address);
+}
+
 static irqreturn_t mtk_edp_hpd_event_thread(int hpd, void *dev)
 {
 	struct mtk_edp *mtk_edp = dev;
 	unsigned long flags;
 	u32 status;
-	int ret = 0;
 
-	pr_info("[eDPTX] %s+\n", __func__);
+	dev_info(mtk_edp->dev, "[eDPTX] %s+\n", __func__);
 	if (mtk_edp->need_debounce && mtk_edp->train_info.cable_plugged_in)
 		msleep(100);
 
@@ -1803,15 +1821,37 @@ static irqreturn_t mtk_edp_hpd_event_thread(int hpd, void *dev)
 
 	if (status & MTK_DP_THREAD_HPD_EVENT) {
 		dev_info(mtk_edp->dev, "[eDPTX] Receive IRQ from sink devices\n");
-		// mtk_edp_hpd_sink_event(mtk_edp);
-		ret = mtk_edp_training(mtk_edp);
-		if (ret)
-			pr_info("[eDPTX] link trainning failed %d\n", ret);
-
-		pr_info("[eDPTX] %s-\n", __func__);
+		/*
+		 * mtk_edp_hpd_sink_event(mtk_edp);
+		 * ret = mtk_edp_training(mtk_edp);
+		 * if (ret)
+		 *	pr_info("[eDPTX] link trainning failed %d\n", ret);
+		 */
+		dev_info(mtk_edp->dev, "[eDPTX] %s-\n", __func__);
 		return IRQ_HANDLED;
 	}
 
+	if (status & MTK_DP_THREAD_CABLE_STATE_CHG) {
+		if (!mtk_edp->train_info.cable_plugged_in) {
+			dev_info(mtk_edp->dev, "[eDPTX] MTK_DP_HPD_DISCONNECT\n");
+			mtk_edp_video_mute(mtk_edp, true);
+			mtk_edp_set_idle_pattern(mtk_edp, true);
+			mtk_edp_update_bits(mtk_edp, MTK_DP_TOP_PWR_STATE,
+					DP_PWR_STATE_BANDGAP_TPLL,
+					DP_PWR_STATE_MASK);
+			mtk_edp->need_debounce = false;
+			mod_timer(&mtk_edp->debounce_timer,
+				  jiffies + msecs_to_jiffies(100) - 1);
+		} else {
+			mtk_edp_pm_ctl(mtk_edp, true);
+			dev_info(mtk_edp->dev, "[eDPTX] MTK_DP_HPD_CONNECT\n");
+		}
+
+		if (mtk_edp->bridge.dev)
+			drm_helper_hpd_irq_event(mtk_edp->bridge.dev);
+	}
+
+#if OS_ANDROID
 	mtk_edp->edp_ui_enable = true;
 	if (mtk_edp->edp_ui_enable) {
 		if (mtk_edp->external_monitor) {
@@ -1835,25 +1875,7 @@ static irqreturn_t mtk_edp_hpd_event_thread(int hpd, void *dev)
 			}
 		}
 	}
-
-	if (status & MTK_DP_THREAD_CABLE_STATE_CHG) {
-		if (mtk_edp->bridge.dev)
-			drm_helper_hpd_irq_event(mtk_edp->bridge.dev);
-
-		if (!mtk_edp->train_info.cable_plugged_in) {
-			dev_info(mtk_edp->dev, "[eDPTX] MTK_DP_HPD_DISCONNECT\n");
-			mtk_edp_video_mute(mtk_edp, true);
-			mtk_edp_set_idle_pattern(mtk_edp, true);
-			mtk_edp_update_bits(mtk_edp, MTK_DP_TOP_PWR_STATE,
-					DP_PWR_STATE_BANDGAP_TPLL,
-					DP_PWR_STATE_MASK);
-			mtk_edp->need_debounce = false;
-			mod_timer(&mtk_edp->debounce_timer,
-				  jiffies + msecs_to_jiffies(100) - 1);
-		} else {
-			dev_info(mtk_edp->dev, "[eDPTX] MTK_DP_HPD_CONNECT\n");
-		}
-	}
+#endif
 
 	pr_info("[eDPTX] %s-\n", __func__);
 
@@ -2003,11 +2025,16 @@ static enum drm_connector_status mtk_edp_bdg_detect(struct drm_bridge *bridge)
 
 	pr_info("[eDPTX] %s\n", __func__);
 
-	if (!mtk_edp->train_info.cable_plugged_in)
+	if (!mtk_edp->train_info.cable_plugged_in) {
+		pr_info("[eDPTX] edp return status : 0x%x\n", ret);
 		return ret;
+	}
 
-	if (mtk_edp->next_bridge)
+
+	if (mtk_edp->next_bridge) {
+		pr_info("[eDPTX] edp return status : 0x%x\n", connector_status_connected);
 		return connector_status_connected;
+	}
 
 	if (!enabled)
 		mtk_edp_aux_panel_poweron(mtk_edp, true);
@@ -2021,7 +2048,7 @@ static enum drm_connector_status mtk_edp_bdg_detect(struct drm_bridge *bridge)
 	 */
 	ret_value = drm_dp_dpcd_readb(&mtk_edp->aux, DP_SINK_COUNT, &sink_count);
 	if (ret_value < 0) {
-		pr_info("[eDPTX] Failed to read sink count 0x%x\n", ret);
+		pr_info("[eDPTX] Failed to read sink count ,status: 0x%x\n", ret);
 		return ret;
 	}
 
@@ -2031,6 +2058,7 @@ static enum drm_connector_status mtk_edp_bdg_detect(struct drm_bridge *bridge)
 	if (!enabled)
 		mtk_edp_aux_panel_poweron(mtk_edp, false);
 
+	pr_info("[eDPTX] edp return status : 0x%x\n", connector_status_connected);
 	return ret;
 }
 
@@ -2314,9 +2342,11 @@ static void mtk_edp_bridge_atomic_enable(struct drm_bridge *bridge,
 	if (ret)
 		goto power_off_aux;
 
-	//eDPTX color bar frame
-
 	mtk_edp_video_enable(mtk_edp, true);
+
+#if EDPTX_COLOR_BAR
+	mtk_edp_pg_enable(mtk_edp, true);
+#endif
 
 	mtk_edp->enabled = true;
 	dev_info(mtk_edp->dev, "[eDPTX] %s-\n", __func__);
