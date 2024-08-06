@@ -494,6 +494,7 @@ static void mtk_disp_get_channel_bw_of_wdma(struct mtk_drm_crtc *mtk_crtc, unsig
 	struct mtk_larb_port_bw port_bw;
 	struct mtk_ddp_comp *comp = NULL;
 	int ret = 0;
+	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
 
 	if (!priv || IS_ERR_OR_NULL(priv->data->update_channel_bw_by_larb) ||
 		IS_ERR_OR_NULL(subcomm_bw_sum))
@@ -507,6 +508,9 @@ static void mtk_disp_get_channel_bw_of_wdma(struct mtk_drm_crtc *mtk_crtc, unsig
 	comp = mtk_ddp_comp_request_output(mtk_crtc);
 	/* only vdo panel support IWB*/
 	if (!comp || (scn == IDLE_WDMA_WRITE_BACK && mtk_dsi_is_cmd_mode(comp)))
+		return;
+
+	if (scn == WDMA_WRITE_BACK && !mtk_crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE])
 		return;
 
 	addon_data = mtk_addon_get_scenario_data(__func__, crtc, scn);

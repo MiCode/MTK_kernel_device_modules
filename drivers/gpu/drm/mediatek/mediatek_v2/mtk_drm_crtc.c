@@ -5846,7 +5846,7 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 			path_data = mtk_addon_module_get_path(addon_module->module);
 			cwb_comp = priv->ddp_comp[path_data->path[path_data->path_len - 1]];
 
-			if (cwb_comp) {
+			if (cwb_comp && crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE]) {
 				wdma_bw = mtk_disp_get_port_hrt_bw(cwb_comp, CHANNEL_HRT_RW);
 				if (wdma_bw <= 0)
 					wdma_bw = 0;
@@ -19698,11 +19698,14 @@ void mtk_drm_fake_vsync_init(struct drm_crtc *crtc)
 	struct mtk_drm_fake_vsync *fake_vsync =
 		kzalloc(sizeof(struct mtk_drm_fake_vsync), GFP_KERNEL);
 	char name[LEN];
+	int name_len;
 
 	if (unlikely(!fake_vsync))
 		return;
 
-	snprintf(name, LEN, "mtk_drm_fake_vsync:%d", drm_crtc_index(crtc));
+	name_len = snprintf(name, LEN, "mtk_drm_fake_vsync:%d", drm_crtc_index(crtc));
+	if (name_len < 0)
+		DDPMSG("%s, snprintf error\n", __func__);
 	fake_vsync->fvsync_task = kthread_create(mtk_drm_fake_vsync_kthread,
 					crtc, name);
 	init_waitqueue_head(&fake_vsync->fvsync_wq);
@@ -23487,6 +23490,7 @@ int mtk_vblank_config_rec_init(struct drm_crtc *crtc)
 	struct mtk_vblank_config_rec *vblank_rec = NULL;
 	char name[30] = {0};
 	static cpumask_t cpumask;
+	int name_len;
 
 	DDPMSG("%s +\n", __func__);
 
@@ -23507,7 +23511,9 @@ int mtk_vblank_config_rec_init(struct drm_crtc *crtc)
 	INIT_LIST_HEAD(&vblank_rec->top_list);
 	mutex_init(&vblank_rec->lock);
 
-	snprintf(name, 30, "mtk_vblank_config_rec-0");
+	name_len = snprintf(name, 30, "mtk_vblank_config_rec-0");
+	if (name_len < 0)
+		DDPMSG("%s, snprintf fail,\n", __func__);
 	vblank_rec->vblank_rec_task =
 			kthread_create(mtk_vblank_config_rec_thread, mtk_crtc, name);
 	init_waitqueue_head(&vblank_rec->vblank_rec_wq);
