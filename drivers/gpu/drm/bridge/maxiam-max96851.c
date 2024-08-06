@@ -487,8 +487,6 @@ static int parse_feature_info_from_dts(struct max96851_bridge *max_bridge, struc
 	char feature_handle_name[64] = {0};
 	struct device_node *feature_handle_np = NULL;
 
-	reset_ser(max_bridge);
-
 	/* feature-handle number process */
 	for (i = 0; i < feature_handle_num; i++) {
 		memset(feature_handle_name, 0, 64);
@@ -1176,6 +1174,11 @@ static void serdes_link_status_handler(struct max96851_bridge *max_bridge)
 
 static void serdes_init_by_dts(struct max96851_bridge *max_bridge)
 {
+	if (max_bridge->inited) {
+		dev_info(max_bridge->dev, "[MAX96851] serdes already init!\n");
+		return;
+	}
+
 	if (max_bridge->superframe_support)
 		serdes_init_by_superframe(max_bridge);
 	else if(max_bridge->dual_link_support)
@@ -1184,6 +1187,8 @@ static void serdes_init_by_dts(struct max96851_bridge *max_bridge)
 		serdes_init_by_mst(max_bridge);
 	else
 		serdes_init_by_signal(max_bridge);
+
+	max_bridge->inited = true;
 }
 
 static int serdes_hotplug_kthread(void *data)
@@ -1266,6 +1271,7 @@ static int serdes_hotplug_handler(struct max96851_bridge *max_bridge)
 static void max96851_pre_enable(struct drm_bridge *bridge)
 {
 	struct max96851_bridge *max_bridge = bridge_to_max96851(bridge);
+	int ret = 0;
 	u8 dev_id = 0x0;
 
 	pr_info("[MAX96851] Serdes DP: %d %s+\n", max_bridge->is_dp, __func__);
@@ -1273,11 +1279,13 @@ static void max96851_pre_enable(struct drm_bridge *bridge)
 	if (max_bridge->prepared)
 		return ;
 
-	reset_ser(max_bridge);
-
-	/* device identifier  0xC4: Without HDCP 0xC5: With HDCP */
-	dev_id = serdes_read_byte(max_bridge->max96851_i2c, DEVICE_IDENTIFIER_ADDR);
-	pr_notice("[MAX96851] Device Identifier = 0x02%x\n", dev_id);
+	dev_id = serdes_read_byte(max_bridge->max96851_i2c, SER_ACTIVE_STATUS_CHECK_REG);
+	if (dev_id != SER_ACTIVE_STATUS_VALUE) {
+		ret = serdes_write_byte(max_bridge->max96851_i2c, SER_ACTIVE_STATUS_CHECK_REG, SER_ACTIVE_STATUS_VALUE);
+		if (ret)
+			dev_info(max_bridge->dev, "[MAX96851] Write ser status failed\n");
+		max_bridge->inited = false;
+	}
 
 	serdes_init_by_dts(max_bridge);
 
@@ -1351,7 +1359,8 @@ static int max96851_bridge_attach(struct drm_bridge *bridge,
 	struct max96851_bridge *max_bridge = bridge_to_max96851(bridge);
 	struct drm_bridge *panel_bridge = NULL;
 	struct device *dev = NULL;
-	int ret;
+	u8 dev_id = 0x0;
+	int ret = 0;
 
 	pr_info("[MAX96851] Serdes DP: %d %s+\n", max_bridge->is_dp, __func__);
 
@@ -1381,6 +1390,15 @@ static int max96851_bridge_attach(struct drm_bridge *bridge,
 		dev_info(dev, "[MAX96851] Found panel2 node: %pOF\n", max_bridge->panel2->dev->of_node);
 	}
 
+	ret = drm_bridge_attach(bridge->encoder, max_bridge->panel_bridge,
+					bridge, flags | DRM_BRIDGE_ATTACH_NO_CONNECTOR);
+	if (ret < 0) {
+		pr_info("[MAX96851] Failed to attach panel_bridge: %d\n", ret);
+		return ret;
+	}
+
+	reset_ser(max_bridge);
+
 	ret = get_panel_feature_info_from_dts(max_bridge);
 	if (ret)
 		pr_info("[MAX96851] use default setting\n");
@@ -1395,12 +1413,16 @@ static int max96851_bridge_attach(struct drm_bridge *bridge,
 		return ret;
 	}
 
-	ret = drm_bridge_attach(bridge->encoder, max_bridge->panel_bridge,
-					bridge, flags | DRM_BRIDGE_ATTACH_NO_CONNECTOR);
-	if (ret < 0) {
-		pr_info("[MAX96851] Failed to attach panel_bridge: %d\n", ret);
-		return ret;
-	}
+	/* device identifier  0xC4: Without HDCP 0xC5: With HDCP */
+	dev_id = serdes_read_byte(max_bridge->max96851_i2c, DEVICE_IDENTIFIER_ADDR);
+	pr_notice("[MAX96851] Device Identifier = 0x%02x\n", dev_id);
+
+	/* use the unoccupied GPIO ID register to store the ser status */
+	ret = serdes_write_byte(max_bridge->max96851_i2c, SER_ACTIVE_STATUS_CHECK_REG, SER_ACTIVE_STATUS_VALUE);
+	if (ret)
+		dev_info(dev, "[MAX96851] Write serdes failed\n");
+
+	serdes_init_by_dts(max_bridge);
 
 	if (!(flags & DRM_BRIDGE_ATTACH_NO_CONNECTOR)) {
 		pr_info("[MAX96851] Driver does not provide a connector\n");
@@ -1567,6 +1589,7 @@ static int maxiam_max96851_suspend(struct device *dev)
 	msleep(500);
 	gpiod_set_value(max_bridge->gpio_rst_n, 0);
 	max_bridge->suspend = true;
+	max_bridge->inited = false;
 	pr_info("[MAX96851] Serdes DP: %d %s-\n", max_bridge->is_dp, __func__);
 
 	return 0;

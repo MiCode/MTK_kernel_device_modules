@@ -42,6 +42,8 @@
 #define I2C_WRITE							0x1
 #define PANEL_NAME_SIZE						64
 #define DEVICE_IDENTIFIER_ADDR				0x0D
+#define SER_ACTIVE_STATUS_VALUE				0xF
+#define SER_ACTIVE_STATUS_CHECK_REG			0x2CE
 
 #define PANEL_NAME							"panel-name"
 #define SERDES_SUPPORT_HOTPLUG				"ser-support-hotplug"
@@ -206,6 +208,7 @@ struct max96851_bridge {
 	bool enabled;
 	bool suspend;
 	bool is_dp;
+	bool inited;
 
 	char *panel_name;
 	u32 des_i2c_addr;
