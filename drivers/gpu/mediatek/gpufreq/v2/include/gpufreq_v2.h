@@ -425,8 +425,10 @@ struct gpufreq_preoc_info {
 };
 
 struct gpufreq_slt2_bmodel {
+	unsigned int vgpu_h1;
 	unsigned int vgpu_h;
 	unsigned int vgpu_l;
+	unsigned int vstack_h1;
 	unsigned int vstack_h;
 	unsigned int vstack_l;
 };
