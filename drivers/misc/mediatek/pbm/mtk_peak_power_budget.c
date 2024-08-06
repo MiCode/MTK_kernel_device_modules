@@ -42,6 +42,7 @@
 #define MBRAIN_NOTIFY_BUDGET_THD    50000
 #define PPB_LOG_DURATION msecs_to_jiffies(20000)
 #define HPT_INIT_SETTING    7
+#define DEFAULT_COMBO0_UISOC MAX_VALUE
 
 static bool mt_ppb_debug;
 static spinlock_t ppb_lock;
@@ -431,10 +432,9 @@ static bool __used ppb_update_table_info(enum ppb_kicker kicker, struct ppb *req
 
 	switch (kicker) {
 	case KR_BUDGET:
-		if (ppb.vsys_budget != req_ppb->vsys_budget) {
-			ppb.vsys_budget = req_ppb->vsys_budget;
-			is_update = true;
-		}
+		ppb.vsys_budget = req_ppb->vsys_budget;
+		ppb.vsys_budget_noerr = req_ppb->vsys_budget_noerr;
+		is_update = true;
 		break;
 	case KR_FLASHLIGHT:
 		if (ppb.loading_flash != req_ppb->loading_flash) {
@@ -510,6 +510,7 @@ void kicker_ppb_request_power(enum ppb_kicker kicker, unsigned int power)
 	switch (kicker) {
 	case KR_BUDGET:
 		ppb.vsys_budget = power;
+		ppb.vsys_budget_noerr = pb.bat_power_noerr;
 		break;
 	case KR_FLASHLIGHT:
 		ppb.loading_flash = power;
@@ -811,10 +812,10 @@ static void bat_handler(struct work_struct *work)
 {
 	struct power_supply *psy = pb.psy, *psy_mtk;
 	union power_supply_propval val;
-	static int last_soc = MAX_VALUE, last_temp = MAX_VALUE;
+	static int last_soc = MAX_VALUE, last_temp = MAX_VALUE, last_uisoc = MAX_VALUE, last_combo0_uisoc = MAX_VALUE;
 	static unsigned int last_aging_stage;
-	unsigned int temp_stage, aging_stage = 0;
-	int ret = 0, soc, temp, volt, qmax, cycle, bat_rdc, i;
+	unsigned int temp_stage, uisoc_stage, aging_stage = 0;
+	int ret = 0, soc, temp, volt, qmax, cycle, bat_rdc, uisoc, i, cb_idx;
 	bool loop;
 
 	if (!pb.psy)
@@ -860,6 +861,12 @@ static void bat_handler(struct work_struct *work)
 			cycle = val.intval;
 	}
 
+	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CAPACITY, &val);
+		if (ret)
+			return;
+	uisoc = val.intval;
+	uisoc_stage = pb.uisoc_cur_stage;
+
 	if (temp != last_temp) {
 		do {
 			loop = false;
@@ -881,6 +888,24 @@ static void bat_handler(struct work_struct *work)
 		update_ocv_table(temp, qmax);
 	}
 
+	if (uisoc != last_uisoc) {
+		do {
+			loop = false;
+			if (uisoc < last_uisoc && uisoc_stage < pb.uisoc_max_stage) {
+				if (uisoc < pb.uisoc_thd[uisoc_stage]) {
+					uisoc_stage++;
+					loop = true;
+				}
+			} else if (uisoc > last_uisoc && uisoc_stage > 0) {
+				if (uisoc >= pb.uisoc_thd[uisoc_stage-1]) {
+					uisoc_stage--;
+					loop = true;
+				}
+			}
+		} while (loop);
+		pb.uisoc_cur_stage = uisoc_stage;
+	}
+
 	if (pb.version >= 2) {
 		for (i = 0; i < pb.aging_max_stage; i++) {
 			if (cycle < pb.aging_thd[i])
@@ -889,7 +914,8 @@ static void bat_handler(struct work_struct *work)
 		aging_stage = i;
 	}
 
-	if (temp != last_temp || soc != last_soc || aging_stage != last_aging_stage) {
+	if (temp != last_temp || soc != last_soc || uisoc != last_uisoc || pb.combo0_uisoc != last_combo0_uisoc
+		|| aging_stage != last_aging_stage) {
 		if (timer_pending(&ppb_dbg_timer)) {
 			del_timer_sync(&ppb_dbg_timer);
 			ppb_print_dbg_log(NULL);
@@ -915,17 +941,26 @@ static void bat_handler(struct work_struct *work)
 			pb.cur_rdc = soc_to_rdc(soc * 100, 0) / 10 + pb.circuit_rdc + pb.aging_rdc;
 
 		pb.ocv_noerr = volt / 10;
-		pb.sys_power_noerr = get_sys_power_budget(pb.ocv_noerr, pb.cur_rdc, pb.cur_rac, pb.ocp, pb.uvlo);
+
+		cb_idx = (pb.uisoc_max_stage + 1) * pb.temp_cur_stage + pb.uisoc_cur_stage;
+		if (pb.version >= 2 && (uisoc >= pb.combo0_uisoc ||
+			(pb.combo0_uisoc == DEFAULT_COMBO0_UISOC && pb.fix_combo0[cb_idx] > 0)) ) {
+			pb.sys_power_noerr = 100000;
+		} else
+			pb.sys_power_noerr = get_sys_power_budget(pb.ocv_noerr, pb.cur_rdc, pb.cur_rac, pb.ocp,
+				pb.uvlo);
+
 		pb.soc = soc;
 		pb.temp = temp;
+		pb.uisoc = uisoc;
 		pb.aging_cur_stage = aging_stage;
 		kicker_ppb_request_power(KR_BUDGET, pb.sys_power);
 #if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
 		notify_gpueb();
 #endif
-		pr_info("%s: update vsys-er[p,v]=%d,%d vsys[p,v]=%d,%d soc=%d R[C,A,dc,ac]=%d,%d,%d,%d T[t,s]=%d,%d A[c,s]=%d,%d\n",
+		pr_info("%s: update vsys-er[p,v]=%d,%d vsys[p,v]=%d,%d SOC[soc,ui,s]=%d,%d,%d R[C,A,dc,ac]=%d,%d,%d,%d T[t,s]=%d,%d A[c,s]=%d,%d\n",
 			__func__, pb.sys_power, pb.ocv, pb.sys_power_noerr,
-			pb.ocv_noerr, soc, pb.circuit_rdc, pb.aging_rdc, pb.cur_rdc,
+			pb.ocv_noerr, soc, uisoc, pb.temp_cur_stage, pb.circuit_rdc, pb.aging_rdc, pb.cur_rdc,
 			pb.cur_rac, temp, pb.temp_cur_stage, cycle, pb.aging_cur_stage);
 
 		if (pb.sys_power_noerr <= MBRAIN_NOTIFY_BUDGET_THD && soc != last_soc && cb_func)
@@ -933,7 +968,9 @@ static void bat_handler(struct work_struct *work)
 
 		last_temp = temp;
 		last_soc = soc;
+		last_uisoc = uisoc;
 		last_aging_stage = aging_stage;
+		last_combo0_uisoc = pb.combo0_uisoc;
 	}
 }
 
@@ -1175,6 +1212,26 @@ static int __used read_power_budget_dts(struct platform_device *pdev)
 
 	pb.temp_max_stage = num;
 
+	num = of_property_count_u32_elems(np, "uisoc-threshold");
+	if (num > 6 || num < 0) {
+		pr_info("wrong temp_max_stage number %d, set to 0\n", num);
+		num = 0;
+	}
+
+	if (num > 0)
+		of_property_read_u32_array(np, "uisoc-threshold", &pb.uisoc_thd[0], num);
+
+	pb.uisoc_max_stage = num;
+
+	num = of_property_count_u32_elems(np, "ppt-fix-cb0");
+	if (num != (pb.temp_max_stage + 1) * (pb.uisoc_max_stage + 1)) {
+		pr_info("wrong ppt-fix-cb0 number %d, set to 0\n", num);
+		num = 0;
+	}
+
+	if (num > 0)
+		of_property_read_u32_array(np, "ppt-fix-cb0", &pb.fix_combo0[0], num);
+
 	if (pb.version >= 2) {
 		if (read_dts_val(np, "battery-circult-rdc", &pb.circuit_rdc, 1))
 			pb.circuit_rdc = BAT_CIRCUIT_DEFAULT_RDC;
@@ -1195,11 +1252,6 @@ static int __used read_power_budget_dts(struct platform_device *pdev)
 			if (read_dts_val(np, str, &pb.hpt_lv_t[i], 1))
 				pb.hpt_lv_t[i] = HPT_INIT_SETTING;
 		}
-#if SOC_DEBUG_LOG
-		pr_info("soc-hpt-ctrl-lv :~~~\n");
-		for (i = 0; i <= pb.hpt_max_lv; i++)
-			pr_info("pb.hpt_lv_t[%d]=%d\n", i, pb.hpt_lv_t[i]);
-#endif
 	} else {
 		for (i = 0; i <= pb.temp_max_stage; i++) {
 			ret = snprintf(str, STR_SIZE, "battery%d-path-rdc-t%d", fg_data.bat_type,
@@ -1902,8 +1954,39 @@ static int mt_xpu_dbg_dump_proc_show(struct seq_file *m, void *v)
 		dbg_data.cpub_th_t, dbg_data.cpum_len, dbg_data.cpum_cnt, dbg_data.cpum_th_t,
 		dbg_data.gpu_len, dbg_data.gpu_cnt, dbg_data.gpu_th_t);
 
+	return 0;
+}
+
+static int mt_combo0_uisoc_proc_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", pb.combo0_uisoc);
 
 	return 0;
+}
+
+static ssize_t mt_combo0_uisoc_proc_write
+(struct file *file, const char __user *buffer, size_t count, loff_t *data)
+{
+	char desc[64], cmd[21];
+	unsigned int len = 0, val = 0;
+
+	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
+	if (copy_from_user(desc, buffer, len))
+		return 0;
+	desc[len] = '\0';
+
+	if (sscanf(desc, "%20s %d", cmd, &val) != 2) {
+		pr_notice("parameter number not correct\n");
+		return -EPERM;
+	}
+
+	if (strncmp(cmd, "uisoc", 5))
+		return -EINVAL;
+
+	pb.combo0_uisoc = val;
+	bat_handler(NULL);
+
+	return count;
 }
 
 #define PROC_FOPS_RW(name)						\
@@ -1947,6 +2030,7 @@ PROC_FOPS_RO(hpt_dump);
 PROC_FOPS_RW(hpt_ctrl);
 PROC_FOPS_RW(hpt_sf_setting);
 PROC_FOPS_RO(xpu_dbg_dump);
+PROC_FOPS_RW(combo0_uisoc);
 
 static int mt_ppb_create_procfs(void)
 {
@@ -1974,6 +2058,7 @@ static int mt_ppb_create_procfs(void)
 		PROC_ENTRY(hpt_ctrl),
 		PROC_ENTRY(hpt_sf_setting),
 		PROC_ENTRY(xpu_dbg_dump),
+		PROC_ENTRY(combo0_uisoc),
 	};
 
 	dir = proc_mkdir("ppb", NULL);
@@ -2075,6 +2160,7 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 	else
 		cpu_dbg_base = addr;
 
+	pb.combo0_uisoc = DEFAULT_COMBO0_UISOC;
 	mt_ppb_create_procfs();
 
 	INIT_WORK(&pb.bat_work, bat_handler);

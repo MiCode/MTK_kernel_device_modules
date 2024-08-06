@@ -260,18 +260,6 @@ static int __used parse_cpu_limit_table(struct device *dev)
 				}
 			}
 		}
-
-#if SOC_DEBUG_LOG
-		for (j = 0; j < pt_info_p->max_lv; j++) {
-			pr_info("%s: ~~~", pt_info_p->freq_limit_name);
-			for (k = 0; k < CLUSTER_NUM; k++)
-				pr_info("freq_limit[%d]=%d\n", k, pt_info_p->freq_limit[j * CLUSTER_NUM + k]);
-
-			pr_info("%s:", pt_info_p->core_onoff_name);
-			for (k = 0; k < CORE_NUM; k++)
-				pr_info("core_onoff[%d]=%d\n", k, pt_info_p->core_onoff[j * CORE_NUM + k]);
-		}
-#endif
 	}
 
 	return 0;
