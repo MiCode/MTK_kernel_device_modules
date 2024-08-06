@@ -27,6 +27,7 @@
 #define IPIR_C_GPU_DVFS_OUT_SIZE       1
 #define IPIR_C_PLATFORM_OUT_SIZE       1
 #define IPIR_C_SLBC_OUT_SIZE           1
+#define IPIS_C_FHCTL_OUT_SIZE          9
 
 /* definition of slot offset for OUT PINs */
 /* the following will use mbox 0 */
@@ -61,6 +62,8 @@
 					+ IPIR_C_GPU_DVFS_OUT_SIZE)
 #define IPIR_C_SLBC_OUT_OFFSET         (IPIR_C_PLATFORM_OUT_OFFSET \
 					+ IPIR_C_PLATFORM_OUT_SIZE)
+/* the following will use mbox 4 */
+#define IPIS_C_FHCTL_OUT_OFFSET        0
 
 /* definition of slot size for IN PINs */
 /* the following will use mbox 2 */
@@ -81,6 +84,7 @@
 #define IPIS_C_CM_IN_SIZE              1
 #define IPIS_C_SLBC_IN_SIZE            1
 #define IPIS_C_SPM_SUSPEND_IN_SIZE     1
+#define IPIS_C_FHCTL_IN_SIZE           1
 
 /* definition of slot offset for IN PINs */
 /* the following will use mbox 2 */
@@ -117,6 +121,9 @@
 					+ IPIS_C_CM_IN_SIZE)
 #define IPIS_C_SPM_SUSPEND_IN_OFFSET   (IPIS_C_SLBC_IN_OFFSET \
 					+ IPIS_C_SLBC_IN_SIZE)
+/* the following will use mbox 4 */
+#define IPIS_C_FHCTL_IN_OFFSET         (IPIS_C_FHCTL_OUT_OFFSET \
+					+ IPIS_C_FHCTL_OUT_SIZE)
 
 #define SHAREMBOX_NO_MCDI              3
 #define SHAREMBOX_OFFSET_MCDI          0

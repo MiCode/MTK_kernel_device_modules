@@ -25,7 +25,8 @@
 #define IPIR_C_GPU_DVFS       14
 #define IPIR_C_PLATFORM       15
 #define IPIR_C_SLBC           16
-#define SSPM_IPI_COUNT        17
+#define IPIS_C_FHCTL          17
+#define SSPM_IPI_COUNT        18
 
 extern struct mtk_mbox_device sspm_mboxdev;
 extern struct mtk_ipi_device sspm_ipidev;

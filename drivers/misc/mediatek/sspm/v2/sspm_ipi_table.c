@@ -96,6 +96,10 @@ struct mtk_mbox_pin_send sspm_mbox_pin_send[] = {
 	{1, IPIR_C_SLBC_OUT_OFFSET, 1, 0, IPIR_C_SLBC_OUT_SIZE,
 	 IPIR_C_SLBC_OUT_OFFSET, IPIR_C_SLBC,
 	 { { 0 } }, { 0 }, { { { { 0 } } } } },
+/* the following will use mbox 4 */
+	{4, IPIS_C_FHCTL_OUT_OFFSET, 1, 0, IPIS_C_FHCTL_OUT_SIZE,
+	 IPIS_C_FHCTL_OUT_OFFSET, IPIS_C_FHCTL,
+	 { { 0 } }, { 0 }, { { { { 0 } } } } },
 };
 
 /*
@@ -185,6 +189,11 @@ struct mtk_mbox_pin_recv sspm_mbox_pin_recv[] = {
 	{2, IPIS_C_SPM_SUSPEND_IN_OFFSET, 1, 0, 1, 0,
 	 IPIS_C_SPM_SUSPEND_IN_SIZE, IPIS_C_SPM_SUSPEND_IN_OFFSET,
 	 IPIS_C_SPM_SUSPEND, { 0 }, 0, 0, 0, { { { { 0 } } } },
+	 { 0, 0, 0, 0, 0, 0 } },
+/* the following will use mbox 4 */
+	{4, IPIS_C_FHCTL_IN_OFFSET, 1, 0, 1, 0,
+	 IPIS_C_FHCTL_IN_SIZE, IPIS_C_FHCTL_IN_OFFSET,
+	 IPIS_C_FHCTL, { 0 }, 0, 0, 0, { { { { 0 } } } },
 	 { 0, 0, 0, 0, 0, 0 } },
 };
 
