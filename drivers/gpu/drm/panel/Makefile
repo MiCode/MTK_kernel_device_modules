@@ -27,6 +27,7 @@ obj-$(CONFIG_DRM_PANEL_TIANMA_NT36672C_VDO_144HZ) += panel-tianma-nt36672c-vdo-1
 obj-$(CONFIG_DRM_PANEL_TIANMA_NT36672E_VDO_120HZ_HFP) += panel-tianma-nt36672e-vdo-120hz-hfp.o
 obj-$(CONFIG_DRM_PANEL_TIANMA_NT36672E_VDO_120HZ_VFP) += panel-tianma-nt36672e-vdo-120hz-vfp.o
 obj-$(CONFIG_DRM_PANEL_TIANMA_NT36672E_VDO_120HZ_VFP_6382) += panel-tianma-nt36672e-vdo-120hz-vfp-6382.o
+obj-$(CONFIG_DRM_PANEL_TIANMA_TL1270100_120HZ) += panel-tianma-tl1270100-120hz.o
 obj-$(CONFIG_DRM_PANEL_ALPHA_JDI_NT36672E_CPHY_VDO) += panel-alpha-jdi-nt36672e-cphy-vdo.o
 obj-$(CONFIG_DRM_PANEL_ALPHA_JDI_NT36672E_VDO_120HZ) += panel-alpha-jdi-nt36672e-vdo-120hz.o
 obj-$(CONFIG_DRM_PANEL_ALPHA_JDI_NT36672E_VDO_120HZ_THRESHOLD) += panel-alpha-jdi-nt36672e-vdo-120hz-threshold.o
