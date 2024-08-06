@@ -1516,6 +1516,12 @@ static int mediatek_dwmac_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	if(priv_plat->variant->dwmac_set_base_addr) {
+		ret = priv_plat->variant->dwmac_set_base_addr(pdev, &stmmac_res);
+		if (ret)
+			return ret;
+	}
+
 	plat_dat = stmmac_probe_config_dt(pdev, stmmac_res.mac);
 	if (IS_ERR(plat_dat))
 		return PTR_ERR(plat_dat);
