@@ -63,6 +63,9 @@
 #define EINT_PLUG_IN			(1)
 #define EINT_MOISTURE_DETECTED	(2)
 
+/* Define the minimum allowed wakelock time in ms */
+#define MIN_APP_WAKELOCK_TIME_MS	(1000)
+
 struct mt63xx_accdet_data {
 	struct snd_soc_jack jack;
 	struct platform_device *pdev;
@@ -1909,7 +1912,7 @@ static void accdet_work_callback(struct work_struct *work)
 {
 	u32 pre_cable_type = accdet->cable_type;
 
-	__pm_stay_awake(accdet->wake_lock);
+	__pm_wakeup_event(accdet->wake_lock, accdet_dts.app_wakelock_time);
 	check_cable_type();
 
 	mutex_lock(&accdet->res_lock);
@@ -1924,7 +1927,6 @@ static void accdet_work_callback(struct work_struct *work)
 		accdet_write(RG_LDO_VUSB_HW0_OP_EN_ADDR, 0x85);
 	}
 
-	__pm_relax(accdet->wake_lock);
 }
 
 static void accdet_queue_work(void)
@@ -2506,6 +2508,14 @@ static int accdet_get_dts_data(void)
 		pr_info("Moisture_INT support water_r=%d, int_r=%d\n",
 		     accdet->water_r, accdet->moisture_int_r);
 	}
+
+	ret = of_property_read_u32(node, "app-wakelock-time",
+		&accdet_dts.app_wakelock_time);
+
+	/* make sure app-wakelock-time >= 1sec to avoid known issue */
+	if (ret || (accdet_dts.app_wakelock_time < MIN_APP_WAKELOCK_TIME_MS))
+		accdet_dts.app_wakelock_time = MIN_APP_WAKELOCK_TIME_MS;
+	pr_notice("(%s) app_wakelock_time=%d ms\n", __func__, accdet_dts.app_wakelock_time);
 	return 0;
 }
 
