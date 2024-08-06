@@ -135,7 +135,7 @@
 			    8250.nr_uarts=4 \
 			    androidboot.hardware=mt6899 \
 			    arm64.nomte \
-			    vmalloc=400M swiotlb=noforce cma=64M \
+			    vmalloc=400M swiotlb=noforce \
 			    firmware_class.path=/vendor/firmware \
 			    cgroup.memory=nosocket,nokmem \
 			    disable_dma32=on \
