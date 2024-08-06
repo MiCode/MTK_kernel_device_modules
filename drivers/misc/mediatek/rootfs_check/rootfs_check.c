@@ -502,9 +502,16 @@ static int get_key_node(char *node, struct device_node *of_chosen)
 static int get_root_name(void)
 {
 	struct device_node *of_chosen = NULL;
+	const char *rootfs_check_enable;
 
 	of_chosen = of_find_node_by_path("/chosen");
 	if (of_chosen) {
+		if (of_property_read_string(of_chosen, "rootfs_check,enable", &rootfs_check_enable) == 0) {
+			if (strncmp(rootfs_check_enable, "yes", 3))
+				goto err;
+		} else {
+			goto err;
+		}
 		if (get_key_node("bootargs_ext", of_chosen))
 			get_key_node("bootargs", of_chosen);
 	} else {
@@ -513,6 +520,10 @@ static int get_root_name(void)
 	}
 
 	return 0;
+
+err:
+	pr_info("%s: rootfs_check not enable\n", __func__);
+	return -1;
 }
 
 static int __init rootfs_check_init(void)
