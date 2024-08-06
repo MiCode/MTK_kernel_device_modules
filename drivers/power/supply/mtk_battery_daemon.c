@@ -3070,7 +3070,7 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 				bm_err(gm, "[%s]bat plug in\n",
 						__func__);
 			}
-		} else if (gm->init_flag == 0){
+		} else if (gm->init_flag == 0 && gm->bm->gm_no == 2){
 			if (is_bat_exist == 0) {
 				gm->bat_plug_out = 1;
 				disable_all_irq(gm);
