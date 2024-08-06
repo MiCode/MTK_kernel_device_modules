@@ -32,6 +32,7 @@
 #include "../mtk_drm_drv.h"
 #include "../mtk_drm_crtc.h"
 #include "../mtk_drm_ddp_comp.h"
+#include "../mtk_disp_pmqos.h"
 
 /* DVO INPUT default value is 1T2P */
 #define MTK_DVO_INPUT_MODE				2
@@ -380,6 +381,8 @@ static void mtk_dvo_sodi_setting(struct mtk_dvo *dvo, struct drm_display_mode *m
 	u64 sodi_high_rem = 0, sodi_low_rem = 0, tmp = 0;
 	u64 sodi_high = 0, sodi_low = 0;
 
+	mtk_drm_set_mmclk_by_pixclk(&dvo->ddp_comp.mtk_crtc->base,
+						mode->clock, __func__);
 	mmsys_clk = mtk_drm_get_mmclk(&dvo->ddp_comp.mtk_crtc->base, __func__) / 1000000;
 	if (!mmsys_clk) {
 		pr_info("[eDPTX] mmclk is zero, use default value\n");
