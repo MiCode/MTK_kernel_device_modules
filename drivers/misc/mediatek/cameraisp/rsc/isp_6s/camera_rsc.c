@@ -2437,7 +2437,7 @@ static long RSC_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 				kRscReq.m_pRscConfig =
 					g_RscDequeReq_Struct.RscFrameConfig;
 				deque_request(&rsc_reqs, &kRscReq.m_ReqNum,
-								&kRscReq);
+					&kRscReq);
 				dequeNum = kRscReq.m_ReqNum;
 				rsc_RscReq.m_ReqNum = dequeNum;
 
@@ -2549,7 +2549,7 @@ static int compat_get_RSC_enque_req_data(
 		(unsigned long)sizeof(struct compat_RSC_Request));
 
 	if (ret != 0L) {
-		LOG_INF("Copy data from user failed!\n");
+		LOG_INF("Copy data from user failed! ret:%ld\n", ret);
 		return ret;
 	}
 
@@ -2564,14 +2564,14 @@ static int compat_put_RSC_enque_req_data(
 	unsigned long arg,
 	struct RSC_Request *data)
 {
-	long ret = -1;
+	long ret = 0;
 	struct compat_RSC_Request data32;
 
-	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
+	data32.m_ReqNum = data->m_ReqNum;
 
 	if (copy_to_user(compat_ptr(arg), &data32,
 			sizeof(struct compat_RSC_Request)) != 0) {
-		LOG_NOTICE("copy_to_user failed");
+		LOG_ERR("copy_to_user failed");
 		ret = -EFAULT;
 	}
 	return ret;
@@ -2604,25 +2604,138 @@ static int compat_put_RSC_deque_req_data(
 	unsigned long arg,
 	struct RSC_Request *data)
 {
-	long ret = -1;
+	long ret = 0;
 
 	struct compat_RSC_Request data32;
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
 
 	if (copy_to_user(compat_ptr(arg), &data32,
 			sizeof(struct compat_RSC_Request)) != 0) {
-		LOG_NOTICE("copy_to_user failed");
+		LOG_ERR("copy_to_user failed");
 		ret = -EFAULT;
 	}
 	return ret;
 }
 
+signed int RSC_Enque_Func_32B(unsigned long Param, struct RSC_USER_INFO_STRUCT *pUserInfo)
+{
+	signed int ret = 0;
+	struct RSC_Request *rsc_RscReq = NULL;
+	spinlock_t *spinlock_lrq_ptr; /* spinlock for irq */
+	unsigned long flags;
+	signed int enqnum __maybe_unused;
+
+	spinlock_lrq_ptr = &(RSCInfo.SpinLockIrq[RSC_IRQ_TYPE_INT_RSC_ST]);
+	rsc_RscReq = (struct RSC_Request *)Param;
+
+	if (rsc_RscReq != NULL) {
+		mutex_lock(&gRscMutex);
+
+		if (rsc_RscReq->m_ReqNum > _SUPPORT_MAX_RSC_FRAME_REQUEST_) {
+			LOG_ERR("RSC Enque Num is bigger than enqueNum:%d\n",
+				rsc_RscReq->m_ReqNum);
+			ret = -EFAULT;
+			mutex_unlock(&gRscMutex);
+			return ret;
+		}
+
+		if (copy_from_user(g_RscEnqueReq_Struct.RscFrameConfig,
+				(void *)rsc_RscReq->m_pRscConfig,
+				rsc_RscReq->m_ReqNum * sizeof(struct RSC_Config)) != 0) {
+			LOG_ERR(
+			"copy RSCConfig from request fail!!\n");
+			ret = -EFAULT;
+			mutex_unlock(&gRscMutex);
+			return ret;
+		}
+
+		spin_lock_irqsave(spinlock_lrq_ptr, flags);
+
+		kRscReq.m_ReqNum = rsc_RscReq->m_ReqNum;
+		kRscReq.m_pRscConfig =
+			g_RscEnqueReq_Struct.RscFrameConfig;
+		enqnum = enque_request(&rsc_reqs,
+			kRscReq.m_ReqNum, &kRscReq, pUserInfo->Pid);
+
+		spin_unlock_irqrestore(spinlock_lrq_ptr, flags);
+		LOG_DBG("Config RSC Request!!\n");
+
+		/* Use a workqueue to set CMDQ to prevent
+		 * HW CMDQ request consuming speed from being
+		 * faster than SW frame-queue update speed.
+		 */
+		if (!request_running(&rsc_reqs)) {
+			LOG_DBG("direct request_handler\n");
+			request_handler(&rsc_reqs,
+				&(RSCInfo.SpinLockIrq[RSC_IRQ_TYPE_INT_RSC_ST]));
+		}
+	} else {
+		LOG_ERR("rsc_RscReq NULL\n");
+		ret = -EFAULT;
+	}
+
+	mutex_unlock(&gRscMutex);
+
+	return ret;
+}
+
+signed int RSC_Deque_Func_32B(unsigned long Param)
+{
+	signed int ret = 0;
+	struct RSC_Request *rsc_RscReq = NULL;
+	spinlock_t *spinlock_lrq_ptr; /* spinlock for irq */
+	unsigned long flags;
+	int dequeNum;
+
+	spinlock_lrq_ptr = &(RSCInfo.SpinLockIrq[RSC_IRQ_TYPE_INT_RSC_ST]);
+	rsc_RscReq = (struct RSC_Request *)Param;
+
+	if (rsc_RscReq != NULL) {
+		mutex_lock(&gRscDequeMutex);
+		spin_lock_irqsave(spinlock_lrq_ptr, flags);
+		kRscReq.m_pRscConfig =
+			g_RscDequeReq_Struct.RscFrameConfig;
+		deque_request(&rsc_reqs, &kRscReq.m_ReqNum, &kRscReq);
+		dequeNum = kRscReq.m_ReqNum;
+		rsc_RscReq->m_ReqNum = dequeNum;
+		spin_unlock_irqrestore(spinlock_lrq_ptr, flags);
+		mutex_unlock(&gRscDequeMutex);
+
+		if (rsc_RscReq->m_pRscConfig == NULL) {
+			LOG_ERR("NULL ptr:RscReq.m_pRscConfig");
+			return -EFAULT;
+		}
+
+		if (copy_to_user((void *)rsc_RscReq->m_pRscConfig,
+				&g_RscDequeReq_Struct.RscFrameConfig[0],
+				dequeNum * sizeof(struct RSC_Config)) != 0) {
+			LOG_ERR("RSC_DEQUE_REQ frmcfg failed\n");
+			return -EFAULT;
+		}
+
+	} else {
+		LOG_ERR("rsc_RscReq NULL\n");
+		ret = -EFAULT;
+	}
+
+	return ret;
+}
 
 static long RSC_ioctl_compat(struct file *filp, unsigned int cmd,
 							unsigned long arg)
 {
 	long ret;
+	struct RSC_USER_INFO_STRUCT *pUserInfo;
 
+	/*  */
+	if (!filp->private_data) {
+		LOG_ERR(
+		"private_data is NULL,(process, pid, tgid)=(%s, %d, %d)",
+		current->comm, current->pid, current->tgid);
+		return -EFAULT;
+	}
+	/*  */
+	pUserInfo = (struct RSC_USER_INFO_STRUCT *)filp->private_data;
 
 	if (!filp->f_op || !filp->f_op->unlocked_ioctl) {
 		LOG_ERR("no f_op !!!\n");
@@ -2672,15 +2785,13 @@ static long RSC_ioctl_compat(struct file *filp, unsigned int cmd,
 
 			err = compat_get_RSC_enque_req_data(arg, &data);
 			if (err) {
-				LOG_ERR("COMPAT_RSC_ENQUE_REQ error!!!\n");
+				LOG_ERR("get COMPAT_RSC_ENQUE_REQ error!!!\n");
 				return err;
 			}
-			ret =
-			    filp->f_op->unlocked_ioctl(filp, RSC_ENQUE_REQ,
-						       (unsigned long)&data);
+			ret = RSC_Enque_Func_32B((unsigned long)&data, pUserInfo);
 			err = compat_put_RSC_enque_req_data(arg, &data);
 			if (err) {
-				LOG_ERR("COMPAT_RSC_ENQUE_REQ error!!!\n");
+				LOG_ERR("put COMPAT_RSC_ENQUE_REQ error!!!\n");
 				return err;
 			}
 			return ret;
@@ -2693,15 +2804,13 @@ static long RSC_ioctl_compat(struct file *filp, unsigned int cmd,
 
 			err = compat_get_RSC_deque_req_data(arg, &data);
 			if (err) {
-				LOG_ERR("COMPAT_RSC_DEQUE_REQ error!!!\n");
+				LOG_ERR("put COMPAT_RSC_DEQUE_REQ error!!!\n");
 				return err;
 			}
-			ret =
-			    filp->f_op->unlocked_ioctl(filp, RSC_DEQUE_REQ,
-						       (unsigned long)&data);
+			ret = RSC_Deque_Func_32B((unsigned long)&data);
 			err = compat_put_RSC_deque_req_data(arg, &data);
 			if (err) {
-				LOG_ERR("COMPAT_RSC_DEQUE_REQ error!!!\n");
+				LOG_ERR("put COMPAT_RSC_DEQUE_REQ error!!!\n");
 				return err;
 			}
 			return ret;
