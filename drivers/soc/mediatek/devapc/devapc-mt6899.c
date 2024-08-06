@@ -231,15 +231,15 @@ static const char *mt6899_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 				return "UNKNOWN_MASTER_TO_INFRA";
 		/* mi2 */
 		} else {
-			if ((bus_id & 0x7) == 0x0)
+			if ((bus_id & 0x3) == 0x0)
 				return "SCP_M";
-			else if ((bus_id & 0x7) == 0x1)
+			else if ((bus_id & 0x3) == 0x1)
 				return "SSPM_M";
-			else if ((bus_id & 0x7) == 0x2)
+			else if ((bus_id & 0x3) == 0x2)
 				return "SPM_M";
-			else if ((bus_id & 0x7) == 0x2)
+			else if ((bus_id & 0x3) == 0x2)
 				return "DPMSR_AHB_M";
-			else if ((bus_id & 0x7) == 0x3)
+			else if ((bus_id & 0x3) == 0x3)
 				return infra_mi_trans(bus_id >> 2);
 			else
 				return "UNKNOWN_MASTER_TO_VLP";
