@@ -2348,6 +2348,22 @@ def get_overlay_modules_list():
         mgk_64_common_userdebug_modules.remove("drivers/perf/arm_dsu_pmu.ko")
         mgk_64_common_user_modules.remove("drivers/perf/arm_dsu_pmu.ko")
 
+    if "tb8768p1_64_bsp_overlay.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/fusb304.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/mux_switch.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/ps5169.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/ps5170.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/ptn36241g.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/usb_dp_selector.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/pd_dbg_info.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/rt_pd_manager.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpc_class.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpci_late_sync.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpc_mt6360.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpc_mt6370.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpc_mt6375.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpc_rt1711h.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpc_mt6379.ko")
 
     if "mt6768_overlay_ref.config" in DEFCONFIG_OVERLAYS:
         mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/fusb304.ko")
