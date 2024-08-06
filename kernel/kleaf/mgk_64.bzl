@@ -3718,4 +3718,8 @@ def get_overlay_modules_list():
 
         mgk_64_device_modules.append("drivers/misc/mediatek/pmic_tia/pmic_tia.ko")
 
+    if "isee400_overlay.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_device_modules.remove("drivers/tee/teei/515/isee.ko")
+        mgk_64_device_modules.append("drivers/tee/teei/400/isee.ko")
+
 get_overlay_modules_list()
