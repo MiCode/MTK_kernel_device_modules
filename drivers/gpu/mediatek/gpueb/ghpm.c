@@ -82,6 +82,9 @@ static enum mfg_mt6991_e2_con g_mfg_mt6991_e2_con;
 #if GHPM_TIMESTAMP_MONITOR_EN
 static unsigned long long g_ghpm_ts64[GHPM_TS_MONITOR_NUM];
 #endif
+#if !GHPM_MFG0_OFF_TIMEOUT_KE
+static int g_dump_once;
+#endif
 
 unsigned int g_ghpm_ready;
 EXPORT_SYMBOL(g_ghpm_ready);
@@ -311,11 +314,13 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 			while (((readl(MFG_GHPM_RO0_CON) & GHPM_STATE) != 0x0) ||
 				((readl(MFG_GHPM_RO0_CON) & GHPM_PWR_STATE) != GHPM_PWR_STATE) ||
 				(mfg0_pwr_sta() != MFG0_PWR_ON)) {
+#if GHPM_MFG0_OFF_TIMEOUT_KE
 				if ((readl(MFG_GHPM_RO0_CON) & TIMEOUT_ERR_RECORD) == TIMEOUT_ERR_RECORD) {
 					__ghpm_timestamp_monitor(POLLING_GHPM_ON_TIMEOUT_ERR);
 					gpueb_log_e(GHPM_TAG, "GHPM ON, timeout error record assert");
 					goto wait_err;
 				}
+#endif
 				udelay(1);
 				if (++i > GPUEB_WAIT_TIMEOUT) {
 					__ghpm_timestamp_monitor(POLLING_GHPM_ON_TIMEOUT);
@@ -323,11 +328,13 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 					goto wait_err;
 				}
 			}
+#if GHPM_MFG0_OFF_TIMEOUT_KE
 			if ((readl(MFG_GHPM_RO0_CON) & TIMEOUT_ERR_RECORD) == TIMEOUT_ERR_RECORD) {
 				__ghpm_timestamp_monitor(POLLING_GHPM_ON_TIMEOUT_ERR);
 				gpueb_log_e(GHPM_TAG, "GHPM ON, timeout error record assert");
 				goto wait_err;
 			}
+#endif
 			/* Polling gpr after mfg0 on in case slave error */
 			__ghpm_timestamp_monitor(POLLING_GPUEB_RESUME_START);
 			while ((readl(g_gpueb_lp_state_gpr) != GPUEB_ON_RESUME)) {
@@ -378,11 +385,16 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 			}
 			if ((readl(MFG_GHPM_RO0_CON) & TIMEOUT_ERR_RECORD) == TIMEOUT_ERR_RECORD) {
 				__ghpm_timestamp_monitor(POLLING_GHPM_OFF_TIMEOUT_ERR);
-				gpueb_log_e(GHPM_TAG, "GHPM OFF, timeout error record assert");
 #if GHPM_MFG0_OFF_TIMEOUT_KE
+				gpueb_log_e(GHPM_TAG, "GHPM OFF, timeout error record assert");
 				goto wait_err;
 #else
-				__dump_ghpm_info();
+				if (g_dump_once == 0) {
+					g_dump_once = 1;
+					gpueb_log_e(GHPM_TAG, "GHPM OFF, timeout error record assert");
+					__dump_ghpm_info();
+					__dump_mfg_pwr_sta();
+				}
 #endif
 			}
 			atomic_set(&g_progress_status, NOT_IN_PROGRESS);
