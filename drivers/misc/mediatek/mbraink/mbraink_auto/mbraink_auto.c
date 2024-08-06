@@ -179,6 +179,29 @@ static long handle_hyp_vcpu_sched_info(const void *arg, void *mbraink_data)
 	return ret;
 }
 
+static long handle_h2c_notify(const void *auto_ioctl_data, void *mbraink_auto_data)
+{
+	struct mbraink_host_notify_client *h2c_msg_info =
+					(struct mbraink_host_notify_client *)(mbraink_auto_data);
+	long ret = 0;
+
+#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
+	if (copy_from_user(h2c_msg_info, (struct mbraink_host_notify_client *)auto_ioctl_data,
+			sizeof(struct mbraink_host_notify_client))) {
+		pr_notice("copy mbraink_host_notify_client data from user Err!\n");
+		return -EPERM;
+	}
+
+	if (h2c_msg_info != NULL)
+		ret = h2c_send_msg(h2c_msg_info->cmdType, h2c_msg_info->cmdData);
+#else
+	pr_notice("%s: grt hyp send msg to client not supported! cmdType: %d\n",
+			 __func__, h2c_msg_info->cmdType);
+	ret = -1;
+#endif
+	return ret;
+}
+
 long mbraink_auto_ioctl(unsigned long arg, void *mbraink_data)
 {
 	long ret = 0;
@@ -243,6 +266,17 @@ long mbraink_auto_ioctl(unsigned long arg, void *mbraink_data)
 			goto End;
 		ret = handle_hyp_vcpu_sched_info(auto_ioctl_buf->auto_ioctl_data,
 										mbraink_auto_data);
+		kfree(mbraink_auto_data);
+		break;
+	}
+	case HOST_NOTIFY_CLIENT_INFO:
+	{
+		mbraink_auto_data = kzalloc(sizeof(struct mbraink_host_notify_client),
+									GFP_KERNEL);
+		if (!mbraink_auto_data)
+			goto End;
+		ret = handle_h2c_notify(auto_ioctl_buf->auto_ioctl_data,
+								mbraink_auto_data);
 		kfree(mbraink_auto_data);
 		break;
 	}

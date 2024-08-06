@@ -14,6 +14,7 @@
 #define HYP_IPI_LATENCY				2
 #define HYP_VIRQ_INJECT_LATENCY		3
 #define HYP_VCPU_SCHED_LATENCY		4
+#define HOST_NOTIFY_CLIENT_INFO		5
 
 struct vcpu_exec_rec {
 	u64 vmid : 2;
@@ -111,6 +112,11 @@ struct mbraink_hyp_vCpu_sched_delay_buf {
 struct mbraink_auto_ioctl_info {
 	u32 auto_ioctl_type;
 	void *auto_ioctl_data;
+};
+
+struct mbraink_host_notify_client {
+	u32 cmdType;
+	void *cmdData;
 };
 
 #endif

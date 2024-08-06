@@ -105,6 +105,8 @@ struct vhost_mbraink {
 	struct llist_head evt_queue;
 };
 
+struct vhost_mbraink *vmbraink;
+
 static void vhost_mbraink_report_evt(struct vhost_virtqueue *vq, const char *data)
 {
 	struct vhost_mbraink *mbraink;
@@ -124,7 +126,24 @@ static void vhost_mbraink_report_evt(struct vhost_virtqueue *vq, const char *dat
 	strscpy(evt->event.data, data, sizeof(evt->event.data));
 
 	vhost_vq_work_queue(vq, &mbraink->work);
+}
 
+static void vhost_send_msg_to_client(const void *data_buf)
+{
+	struct event_buffer_entry *evt;
+	struct llist_node *node;
+
+	spin_lock(&vmbraink->evt_lock);
+	node = llist_del_first(&vmbraink->evt_pool);
+	WARN_ON_ONCE(node == NULL);
+	llist_add(node, &vmbraink->evt_queue);
+	spin_unlock(&vmbraink->evt_lock);
+
+	evt = container_of(node, typeof(*evt), llnode);
+	evt->event.type = VIRTIO_MBRAINK_EVENT_TYPE_NORMAL;
+	strscpy(evt->event.data, data_buf, sizeof(evt->event.data));
+
+	vhost_vq_work_queue(&vmbraink->vq[VIRTIO_MBRAINK_Q_EVENT], &vmbraink->work);
 }
 
 static void vhost_mbraink_report_cb(struct vhost_virtqueue *vq, uint32_t cmd_id,
@@ -369,12 +388,11 @@ static void vhost_mbraink_handle_guest_evt_kick(struct vhost_work *work)
 
 static int vhost_mbraink_open(struct inode *inode, struct file *file)
 {
-	struct vhost_mbraink *mbraink;
 	struct vhost_virtqueue **vqs;
 	int ret = 0;
 
-	mbraink = kvzalloc(sizeof(*mbraink), GFP_KERNEL);
-	if (!mbraink) {
+	vmbraink = kvzalloc(sizeof(*vmbraink), GFP_KERNEL);
+	if (!vmbraink) {
 		ret = -ENOMEM;
 		goto out;
 	}
@@ -385,25 +403,25 @@ static int vhost_mbraink_open(struct inode *inode, struct file *file)
 		goto out_mbraink;
 	}
 
-	spin_lock_init(&mbraink->evt_lock);
-	init_llist_head(&mbraink->evt_pool);
-	init_llist_head(&mbraink->evt_queue);
+	spin_lock_init(&vmbraink->evt_lock);
+	init_llist_head(&vmbraink->evt_pool);
+	init_llist_head(&vmbraink->evt_queue);
 
-	mbraink->vq[VIRTIO_MBRAINK_Q_COMMAND].handle_kick = vhost_mbraink_handle_guest_cmd_kick;
-	mbraink->vq[VIRTIO_MBRAINK_Q_EVENT].handle_kick = vhost_mbraink_handle_guest_evt_kick;
+	vmbraink->vq[VIRTIO_MBRAINK_Q_COMMAND].handle_kick = vhost_mbraink_handle_guest_cmd_kick;
+	vmbraink->vq[VIRTIO_MBRAINK_Q_EVENT].handle_kick = vhost_mbraink_handle_guest_evt_kick;
 
-	vqs[VIRTIO_MBRAINK_Q_COMMAND] = &mbraink->vq[VIRTIO_MBRAINK_Q_COMMAND];
-	vqs[VIRTIO_MBRAINK_Q_EVENT] = &mbraink->vq[VIRTIO_MBRAINK_Q_EVENT];
+	vqs[VIRTIO_MBRAINK_Q_COMMAND] = &vmbraink->vq[VIRTIO_MBRAINK_Q_COMMAND];
+	vqs[VIRTIO_MBRAINK_Q_EVENT] = &vmbraink->vq[VIRTIO_MBRAINK_Q_EVENT];
 
-	vhost_work_init(&mbraink->work, vhost_mbraink_handle_host_kick);
+	vhost_work_init(&vmbraink->work, vhost_mbraink_handle_host_kick);
 
-	vhost_dev_init(&mbraink->dev, vqs, VIRTIO_MBRAINK_Q_COUNT, UIO_MAXIOV,
+	vhost_dev_init(&vmbraink->dev, vqs, VIRTIO_MBRAINK_Q_COUNT, UIO_MAXIOV,
 			VHOST_MBRAINK_PKT_WEIGHT, VHOST_MBRAINK_WEIGHT, true, NULL);
-	file->private_data = mbraink;
+	file->private_data = vmbraink;
 
 	return ret;
 out_mbraink:
-	kvfree(mbraink);
+	kvfree(vmbraink);
 out:
 	return ret;
 }
@@ -539,4 +557,40 @@ int vhost_mbraink_init(void)
 void vhost_mbraink_deinit(void)
 {
 	misc_deregister(&vhost_mbraink_misc);
+}
+
+int h2c_send_msg(u32 cmdType, void *cmdData)
+{
+	int ret = 0;
+	int sptr = 0;
+	void *data_buf = NULL;
+
+	data_buf = kvzalloc(sizeof(uint8_t) * MAX_VIRTIO_SEND_BYTE, GFP_KERNEL);
+	if (!data_buf)
+		return -1;
+
+	switch (cmdType) {
+	case H2C_CMD_StaticInfo:
+		sptr = snprintf(data_buf, sizeof(uint8_t) * MAX_VIRTIO_SEND_BYTE,
+			 "CMD:%c", H2C_CMD_StaticInfo);
+		break;
+	case H2C_CMD_ClientTraceCatch:
+		sptr = snprintf(data_buf, sizeof(uint8_t) * MAX_VIRTIO_SEND_BYTE,
+			 "CMD:%c", H2C_CMD_ClientTraceCatch);
+		break;
+	default:
+		pr_info("%s: unknown command type %d\n", __func__, cmdType);
+		break;
+	}
+
+	if (sptr <= 0 || sptr > sizeof(uint8_t) * MAX_VIRTIO_SEND_BYTE) {
+		pr_info("%s: invalid send byte size %zu.\n", __func__, sptr);
+		ret = -1;
+	} else {
+		vhost_send_msg_to_client(data_buf);
+	}
+
+err:
+	kvfree(data_buf);
+	return ret;
 }
