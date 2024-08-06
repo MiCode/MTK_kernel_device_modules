@@ -48,6 +48,7 @@ struct mtk_vcodec_dev {
 	struct mtk_vcodec_pm pm;
 	struct icc_path *vdec_qos_req[MTK_VDEC_PORT_NUM];
 	struct icc_path *venc_qos_req[MTK_VENC_PORT_NUM];
+	unsigned int svp_mode;
 };
 
 #endif /* _MTK_VCODEC_INTR_H_ */

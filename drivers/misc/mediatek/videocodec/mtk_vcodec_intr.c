@@ -179,6 +179,11 @@ void enc_isr(struct mtk_vcodec_dev *dev)
 irqreturn_t video_intr_dlr(int irq, void *priv)
 {
 	struct mtk_vcodec_dev *dev = priv;
+	if (gVCodecDev->svp_mode) {
+		pr_debug("[VCODEC] svp_mode %d don't handle IRQ here",
+			gVCodecDev->svp_mode);
+		return IRQ_HANDLED;
+	}
 
 	dec_isr(dev);
 	return IRQ_HANDLED;
@@ -195,7 +200,8 @@ irqreturn_t video_intr_dlr2(int irq, void *priv)
 int mtk_vcodec_irq_setup(struct platform_device *pdev, struct mtk_vcodec_dev *dev)
 {
 	if (request_irq(dev->dec_irq, (irq_handler_t)video_intr_dlr,
-			IRQF_TRIGGER_HIGH, VCODEC_DEVNAME, dev) < 0) {
+		IRQF_NO_THREAD | IRQF_SHARED | IRQF_PROBE_SHARED,
+		VCODEC_DEVNAME, dev) < 0) {
 		/* Add one line comment for avoid kernel coding style,
 		 * WARNING:BRACES:
 		 */

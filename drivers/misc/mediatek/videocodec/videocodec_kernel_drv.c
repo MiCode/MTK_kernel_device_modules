@@ -615,6 +615,7 @@ static long vcodec_unlocked_ioctl(struct file *file, unsigned int cmd,
 				ret);
 			return ret;
 		}
+		gVCodecDev->svp_mode = 1;
 	}
 	break;
 	default:
@@ -844,6 +845,7 @@ long vcodec_unlocked_compat_ioctl(struct file *file, unsigned int cmd,
 				__func__, __LINE__, ret);
 			return ret;
 		}
+		gVCodecDev->svp_mode = 1;
 	}
 	break;
 	default:

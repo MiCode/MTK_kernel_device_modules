@@ -628,12 +628,12 @@ static long vcodec_lockhw_vdec(struct VAL_HW_LOCK_T *pHWLock, char *bLockedHW)
 			vdec_power_on(gVCodecDev);
 #endif
 #endif
-			if (pHWLock->bSecureInst == VAL_FALSE) {
+			//if (pHWLock->bSecureInst == VAL_FALSE) {
 				/* Add one line comment for avoid kernel coding
 				 * style, WARNING:BRACES:
 				 */
 				enable_irq(VDEC_IRQ_ID);
-			}
+			//}
 		} else { /* Another one holding dec hw now */
 			pr_info("VDEC_LOCKHW E\n");
 			eVideoGetTimeOfDay(&rCurTime,
@@ -1094,12 +1094,12 @@ long vcodec_unlockhw(unsigned long arg)
 			}
 			mutex_unlock(&VcodecDVFSLock);
 
-			if (rHWLock.bSecureInst == VAL_FALSE) {
+			//if (rHWLock.bSecureInst == VAL_FALSE) {
 				/* Add one line comment for avoid kernel coding
 				 * style, WARNING:BRACES:
 				 */
 				disable_irq(VDEC_IRQ_ID);
-			}
+			//}
 			/* TODO: check if turning power off is ok */
 #if IS_ENABLED(CONFIG_PM)
 			pm_runtime_put_sync(gDrvInitParams->vcodec_device);
