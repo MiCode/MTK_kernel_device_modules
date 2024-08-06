@@ -5012,11 +5012,13 @@ static void process_dbg_opt(const char *opt)
 		mtk_crtc = to_mtk_crtc(crtc);
 
 		node = of_find_node_by_path("dsi0");
-		if (node)
-			if (of_property_read_u32(node, "spr-ip-type", &val))
+		if (node) {
+			if (of_property_read_u32(node, "spr-ip-type", &val)) {
+				val = -1;
 				DDPMSG("[E] %s %d, get spr ip type failed from dts\n", __func__, __LINE__);
-
-		if (priv->data->mmsys_id == MMSYS_MT6991) {
+			}
+		}
+		if (val >= 0) {
 			DDPINFO("%s %d spr-ip-type=%d\n", __func__, __LINE__, val);
 			if (val == 0)
 				spr_ip_params = mtk_crtc->panel_ext->params->spr_params.mtk_spr_ip_params;
