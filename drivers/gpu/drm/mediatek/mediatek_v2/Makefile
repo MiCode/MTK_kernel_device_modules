@@ -207,6 +207,10 @@ endif
 
 ccflags-$(CONFIG_MTK_CMDQ_MBOX_EXT) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox
 
+ifneq ($(filter y m, $(CONFIG_MTK_LCM_PHYSICAL_ROTATION_HW)),)
+ccflags-y += -DMTK_LCM_PHYSICAL_ROTATION_HW
+endif
+
 #ccflags-y += -DDRM_MMPATH
 #ccflags-y += -DNOT_SUPPORT_CABC_HW
 ccflags-y += -DDISP_MDP_COLOR_ON

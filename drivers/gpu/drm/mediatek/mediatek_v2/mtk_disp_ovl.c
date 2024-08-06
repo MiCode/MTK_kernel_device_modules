@@ -2556,7 +2556,10 @@ static void _ovl_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 	if (params && params->rotate == MTK_PANEL_ROTATE_180)
 		if (drm_crtc_index(&comp->mtk_crtc->base) == 0)
 			rotate = 1;
-
+#ifdef MTK_LCM_PHYSICAL_ROTATION_HW
+	if (drm_crtc_index(&comp->mtk_crtc->base) == 0)
+		rotate = 1;
+#endif
 	if (rotate)
 		offset = (src_x + dst_w) * mtk_drm_format_plane_cpp(fmt, 0) +
 			 (src_y + dst_h - 1) * pitch - 1;
@@ -2793,7 +2796,10 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 	if (params && params->rotate == MTK_PANEL_ROTATE_180)
 		if (drm_crtc_index(crtc) == 0)
 			rotate = 1;
-
+#ifdef MTK_LCM_PHYSICAL_ROTATION_HW
+	if (drm_crtc_index(&comp->mtk_crtc->base) == 0)
+		rotate = 1;
+#endif
 	if (state->comp_state.comp_id) {
 		lye_idx = state->comp_state.lye_id;
 		ext_lye_idx = state->comp_state.ext_lye_id;
@@ -3222,7 +3228,10 @@ static bool compr_l_config_PVRIC_V3_1(struct mtk_ddp_comp *comp,
 	if (params && params->rotate == MTK_PANEL_ROTATE_180)
 		if (drm_crtc_index(&comp->mtk_crtc->base) == 0)
 			rotate = 1;
-
+#ifdef MTK_LCM_PHYSICAL_ROTATION_HW
+	if (drm_crtc_index(&comp->mtk_crtc->base) == 0)
+		rotate = 1;
+#endif
 	if (state->comp_state.comp_id) {
 		lye_idx = state->comp_state.lye_id;
 		ext_lye_idx = state->comp_state.ext_lye_id;
@@ -3526,7 +3535,10 @@ bool compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	if (params && params->rotate == MTK_PANEL_ROTATE_180)
 		if (drm_crtc_index(&comp->mtk_crtc->base) == 0)
 			rotate = 1;
-
+#ifdef MTK_LCM_PHYSICAL_ROTATION_HW
+	if (drm_crtc_index(&comp->mtk_crtc->base) == 0)
+		rotate = 1;
+#endif
 	if (state->comp_state.comp_id) {
 		lye_idx = state->comp_state.lye_id;
 		ext_lye_idx = state->comp_state.ext_lye_id;

@@ -100,4 +100,12 @@ config MTK_RECU_FENCE_LOCK
 	  limitation. So the option will control whether display run
 	  workaround flow.
 
+config MTK_LCM_PHYSICAL_ROTATION_HW
+	bool "support LCM phsical rotation"
+	help
+	  For rotating in the right direction, this option should
+	  be set firstly, because the code added in mtk_disp_ovl.c
+	  will use this configuration to change the variable called
+	  rotate to "1".
+
 source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/mediatek/mediatek_v2/mtk_drm_edp/Kconfig"
