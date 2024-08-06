@@ -187,7 +187,6 @@ static int lm3644_mode_ctrl(struct lm3644_flash *flash)
 {
 	int rval = -EINVAL;
 
-	pr_info_ratelimited("%s mode:%d", __func__, flash->led_mode);
 	switch (flash->led_mode) {
 	case V4L2_FLASH_LED_MODE_NONE:
 		rval = regmap_update_bits(flash->regmap,
@@ -215,7 +214,6 @@ static int lm3644_enable_ctrl(struct lm3644_flash *flash,
 		pr_info("led_no error\n");
 		return -1;
 	}
-	pr_info_ratelimited("%s led:%d enable:%d", __func__, led_no, on);
 
 #if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_PT)
 	if (flashlight_pt_is_low()) {
@@ -252,7 +250,6 @@ static int lm3644_torch_brt_ctrl(struct lm3644_flash *flash,
 		pr_info("led_no error\n");
 		return -1;
 	}
-	pr_info_ratelimited("%s %d brt:%u\n", __func__, led_no, brt);
 	if (brt < LM3644_TORCH_BRT_MIN)
 		return lm3644_enable_ctrl(flash, led_no, false);
 
@@ -287,7 +284,6 @@ static int lm3644_flash_brt_ctrl(struct lm3644_flash *flash,
 		pr_info("led_no error\n");
 		return -1;
 	}
-	pr_info("%s %d brt:%u", __func__, led_no, brt);
 	if (brt < LM3644_FLASH_BRT_MIN)
 		return lm3644_enable_ctrl(flash, led_no, false);
 
@@ -314,7 +310,6 @@ static int lm3644_flash_tout_ctrl(struct lm3644_flash *flash,
 	int rval;
 	u8 tout_bits;
 
-	pr_info("%s timeout:%u", __func__, tout);
 	if (tout == 200)
 		tout_bits = 0x04;
 	else
@@ -790,14 +785,14 @@ static int lm3644_set_driver(int set)
 		if (!use_count)
 			ret = lm3644_init(lm3644_flash_data);
 		use_count++;
-		pr_debug("Set driver: %d\n", use_count);
+		pr_info_ratelimited("Set driver: %d\n", use_count);
 	} else {
 		use_count--;
 		if (!use_count)
 			ret = lm3644_uninit(lm3644_flash_data);
 		if (use_count < 0)
 			use_count = 0;
-		pr_debug("Unset driver: %d\n", use_count);
+		pr_info_ratelimited("Unset driver: %d\n", use_count);
 	}
 	mutex_unlock(&lm3644_mutex);
 
