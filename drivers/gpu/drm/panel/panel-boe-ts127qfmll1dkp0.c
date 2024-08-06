@@ -155,14 +155,12 @@ static void boe_panel_init(struct boe *ctx)
 {
 	pr_info("%s +\n", __func__);
 
-	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->reset_gpio, 1);
 	usleep_range(10 * 1000, 15 * 1000);
 	gpiod_set_value(ctx->reset_gpio, 0);
 	usleep_range(10 * 1000, 15 * 1000);
 	gpiod_set_value(ctx->reset_gpio, 1);
 	usleep_range(10 * 1000, 15 * 1000);
-	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 
 	boe_dcs_write_seq_static(ctx, 0xFF, 0x20);
 	boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
@@ -733,23 +731,13 @@ static int boe_unprepare(struct drm_panel *panel)
 	boe_dcs_write_seq_static(ctx, MIPI_DCS_ENTER_SLEEP_MODE);
 	msleep(20);
 
-	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->reset_gpio, 0);
 	usleep_range(5 * 1000, 5 * 1000);
-	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 
 	if (ctx->gate_ic == 0) {
-		ctx->bias_neg =
-			devm_gpiod_get_index(ctx->dev, "bias", 1, GPIOD_OUT_HIGH);
 		gpiod_set_value(ctx->bias_neg, 0);
-		devm_gpiod_put(ctx->dev, ctx->bias_neg);
-
 		usleep_range(2000, 2001);
-
-		ctx->bias_pos =
-			devm_gpiod_get_index(ctx->dev, "bias", 0, GPIOD_OUT_HIGH);
 		gpiod_set_value(ctx->bias_pos, 0);
-		devm_gpiod_put(ctx->dev, ctx->bias_pos);
 	}
 #if IS_ENABLED(CONFIG_RT4831A_I2C)
 	else if (ctx->gate_ic == 4831) {
@@ -776,16 +764,9 @@ static int boe_prepare(struct drm_panel *panel)
 		return 0;
 
 	if (ctx->gate_ic == 0) {
-		ctx->bias_pos =
-			devm_gpiod_get_index(ctx->dev, "bias", 0, GPIOD_OUT_HIGH);
 		gpiod_set_value(ctx->bias_pos, 1);
-		devm_gpiod_put(ctx->dev, ctx->bias_pos);
-
 		usleep_range(2000, 2001);
-		ctx->bias_neg =
-			devm_gpiod_get_index(ctx->dev, "bias", 1, GPIOD_OUT_HIGH);
 		gpiod_set_value(ctx->bias_neg, 1);
-		devm_gpiod_put(ctx->dev, ctx->bias_neg);
 	}
 #if IS_ENABLED(CONFIG_RT4831A_I2C)
 	else if (ctx->gate_ic == 4831) {
@@ -1291,9 +1272,7 @@ static int panel_ext_reset(struct drm_panel *panel, int on)
 {
 	struct boe *ctx = panel_to_boe(panel);
 
-	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->reset_gpio, on);
-	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 
 	return 0;
 }
@@ -1564,7 +1543,6 @@ static int boe_probe(struct mipi_dsi_device *dsi)
 				 PTR_ERR(ctx->bias_pos));
 			return PTR_ERR(ctx->bias_pos);
 		}
-		devm_gpiod_put(dev, ctx->bias_pos);
 
 		ctx->bias_neg = devm_gpiod_get_index(dev, "bias", 1, GPIOD_OUT_HIGH);
 		if (IS_ERR(ctx->bias_neg)) {
@@ -1572,7 +1550,6 @@ static int boe_probe(struct mipi_dsi_device *dsi)
 				 PTR_ERR(ctx->bias_neg));
 			return PTR_ERR(ctx->bias_neg);
 		}
-		devm_gpiod_put(dev, ctx->bias_neg);
 	}
 
 	ctx->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
@@ -1581,7 +1558,6 @@ static int boe_probe(struct mipi_dsi_device *dsi)
 			PTR_ERR(ctx->reset_gpio));
 		return PTR_ERR(ctx->reset_gpio);
 	}
-	devm_gpiod_put(dev, ctx->reset_gpio);
 
 	/*
 	 * ctx->hwen = devm_gpiod_get(dev, "pm-enable", GPIOD_OUT_HIGH);
