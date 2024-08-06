@@ -2000,8 +2000,10 @@ static void mdp_readback_aal_by_engine(struct cmdqRecStruct *handle,
 	}
 
 #ifdef CMDQ_SECURE_PATH_SUPPORT
-	if (handle->secData.is_secure)
+	if (handle->secData.is_secure) {
+		CMDQ_LOG("%s change secure engine\n", __func__);
 		engine = engine - CMDQ_ENG_MDP_AAL0 + CMDQ_SEC_MDP_AAL0;
+	}
 #endif
 
 	cmdq_mdp_get_func()->mdpReadbackAal(handle, engine, base, pa, param, pipe);
@@ -2023,8 +2025,10 @@ static void mdp_readback_hdr_by_engine(struct cmdqRecStruct *handle,
 	}
 
 #ifdef CMDQ_SECURE_PATH_SUPPORT
-	if (handle->secData.is_secure)
+	if (handle->secData.is_secure) {
+		CMDQ_ERR("%s change secure engine\n", __func__);
 		engine = engine - CMDQ_ENG_MDP_HDR0 + CMDQ_SEC_MDP_HDR0;
+	}
 #endif
 
 	cmdq_mdp_get_func()->mdpReadbackHdr(handle, engine, base, pa, param, pipe);
