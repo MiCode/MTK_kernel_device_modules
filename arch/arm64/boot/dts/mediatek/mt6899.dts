@@ -13757,6 +13757,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				MML1_RDMA2 MML_RDMA2_AIDSEL 0x1 0x3
 				MML1_WROT0 MML_WROT0_AIDSEL 0x1 0x3
 				MML1_WROT2 MML_WROT2_AIDSEL 0x1 0x3>;
+			racing-enable;
 			event-ir-mml-ready = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_IR_MML_READY>;
 			event-ir-disp-ready = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_IR_DISP_READY>;
 			event-ir-mml-stop = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_MML_STOP>;
