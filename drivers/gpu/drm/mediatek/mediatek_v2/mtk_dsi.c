@@ -3889,7 +3889,10 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 #if IS_ENABLED(CONFIG_MTK_DRAMC)
 				DDPINFO("DDR: %u Mbps\n", mtk_dramc_get_data_rate());
 #endif
-				if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE)) {
+				if ((priv->data->mmsys_id != MMSYS_MT6899 &&
+					mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE)) ||
+					(priv->data->mmsys_id == MMSYS_MT6899 &&
+					mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE_V2))){
 #if IS_ENABLED(CONFIG_ARM64)
 					DDPAEE_FATAL("[IRQ] %s:buffer underrun. TS: 0x%08x\n",
 						mtk_dump_comp_str(comp), (u32)arch_timer_read_counter());
@@ -3913,7 +3916,10 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			/* could dump SMI register while dsi not attached to CRTC */
 			if (aee_cooldown &&
 			    (!dsi->driver_data->smi_dbg_disable ||
-			    mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE)))
+			    ((priv->data->mmsys_id != MMSYS_MT6899 &&
+				mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE)) ||
+				(priv->data->mmsys_id == MMSYS_MT6899 &&
+				mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE_V2)))))
 				mtk_smi_dbg_hang_detect("dsi-underrun");
 
 			if (!atomic_read(&priv->need_recover)) {
