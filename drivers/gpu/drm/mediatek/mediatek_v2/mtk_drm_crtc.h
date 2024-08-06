@@ -1092,13 +1092,19 @@ struct mtk_drm_crtc {
 	struct task_struct *trigger_event_task;
 	struct task_struct *trigger_delay_task;
 	struct task_struct *trig_cmdq_task;
+	struct task_struct *repaint_task;
 	atomic_t trig_event_act;
 	atomic_t trig_delay_act;
 	atomic_t delayed_trig;
 	atomic_t cmdq_trig;
+	atomic_t repaint_act;
 	wait_queue_head_t trigger_delay;
 	wait_queue_head_t trigger_event;
 	wait_queue_head_t trigger_cmdq;
+	wait_queue_head_t repaint_event;
+
+	atomic_t fence_change;
+	atomic_t mml_trigger;
 
 	unsigned int avail_modes_num;
 	struct drm_display_mode *avail_modes;
