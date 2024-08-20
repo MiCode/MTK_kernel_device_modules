@@ -119,7 +119,7 @@ static int apusys_aov_test_show(struct seq_file *s, void *unused)
 
 	send_msg.cmd = NPU_SCP_SYSTEM;
 	send_msg.act = NPU_SCP_SYSTEM_GET_VERSION;
-	ret = npu_scp_ipi_send(&send_msg, &recv_msg, SCP_IPI_TIMEOUT_MS);
+	ret = npu_scp_ipi_send(&send_msg, &recv_msg, TESTCASE_TIMEOUT_MS);
 	if (ret) {
 		seq_printf(s, "%s failed to send scp ipi, ret %d\n", __func__, ret);
 		return 0;
