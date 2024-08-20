@@ -525,8 +525,11 @@ static void mtk_vdisp_query_aging_val(void)
 	mtk_vdisp_avs_query_aging_val(g_dev[DISP_PD_DISP_VCORE]);
 }
 
-static void mtk_vdisp_debug_mtcmos_ctrl(int pd_id, bool on)
+static void mtk_vdisp_debug_mtcmos_ctrl(u32 pd_id, bool on)
 {
+	if (pd_id >= DISP_PD_NUM)
+		return;
+
 	if (on)
 		pm_runtime_get_sync(g_dev[pd_id]);
 	else
