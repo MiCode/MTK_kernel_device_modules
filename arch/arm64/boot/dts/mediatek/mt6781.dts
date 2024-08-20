@@ -3778,11 +3778,11 @@
 	cmdq-test {
 		compatible = "mediatek,cmdq-test";
 		mediatek,gce = <&gce_mbox>;
-		mmsys_config = <&mmsys_config>;
+		mmsys-config = <&mmsys_config>;
 		mediatek,gce-subsys = <99>, <SUBSYS_1400XXXX>;
-		/* mboxes = <&gce_mbox_sec 11 0 CMDQ_THR_PRIO_1>; */
-		token_user0 = /bits/ 16 <CMDQ_SYNC_TOKEN_USER_0>;
-		token_gpr_set4 = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_4>;
+		mboxes = <&gce_mbox 10 0 CMDQ_THR_PRIO_1>;
+		token-user0 = /bits/ 16 <CMDQ_SYNC_TOKEN_USER_0>;
+		token-gpr-set4 = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_4>;
 	};
 
 	ap_ccif2@1023c000 {
