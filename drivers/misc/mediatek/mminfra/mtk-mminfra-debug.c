@@ -562,7 +562,7 @@ static int mminfra_power_mon(void *data)
 	u32 val;
 	u32 cnt = 0;
 
-	if (mm_pwr_ver == mm_pwr_v2) {
+	if (mm_pwr_ver <= mm_pwr_v2) {
 		if (!dbg || !dbg->mm_mtcmos_base || !dbg->mm_mtcmos_mask) {
 			pr_notice("%s skip\n", __func__);
 			return 0;
