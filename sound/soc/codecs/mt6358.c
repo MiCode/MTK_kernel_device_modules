@@ -538,7 +538,7 @@ static int mt6358_put_volsw(struct snd_kcontrol *kcontrol,
 	struct mt6358_priv *priv = snd_soc_component_get_drvdata(component);
 	struct soc_mixer_control *mc =
 			(struct soc_mixer_control *)kcontrol->private_value;
-	unsigned int reg;
+	unsigned int reg = 0;
 	int index = ucontrol->value.integer.value[0];
 	int ret;
 
@@ -6760,7 +6760,7 @@ static void debug_set_debug_flag(struct file *file, void *arg)
 	char *temp = arg;
 	char delim[] = " ,";
 	int ret __maybe_unused = 0;
-	unsigned int value;
+	unsigned int value = 0;
 
 	token1 = strsep(&temp, delim);
 	dev_info(priv->dev, "%s(), token1 = %s, temp = %s\n",
@@ -7558,6 +7558,7 @@ static ssize_t mt6358_debugfs_write(struct file *f, const char __user *buf,
 		dev_warn(priv->dev, "%s(), copy_from_user fail, count = %zu\n",
 			 __func__, count);
 
+	input[MAX_DEBUG_WRITE_INPUT-1] = '\0';
 	str_begin = kstrndup(input, MAX_DEBUG_WRITE_INPUT - 1,
 			     GFP_KERNEL);
 	if (!str_begin) {
@@ -7639,6 +7640,7 @@ static ssize_t mt6358_codec_sysfs_write(struct file *filp, struct kobject *kobj,
 	memset((void *)input, 0, MAX_DEBUG_WRITE_INPUT);
 	memcpy(input, buf, count);
 
+	input[MAX_DEBUG_WRITE_INPUT-1] = '\0';
 	str_begin = kstrndup(input, MAX_DEBUG_WRITE_INPUT - 1,
 			     GFP_KERNEL);
 	if (!str_begin) {
