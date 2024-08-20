@@ -3,6 +3,10 @@
  * Copyright (C) 2022 MediaTek Inc.
  */
 
+&ivi_dispsys1_config_clk {
+	status = "okay";
+};
+
 &disp_dvo0 {
 	status = "okay";
 };
