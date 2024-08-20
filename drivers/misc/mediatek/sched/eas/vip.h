@@ -10,7 +10,7 @@ extern bool vip_enable;
 
 #define VIP_TIME_SLICE     3000000U
 #define VIP_TIME_LIMIT_DEFAULT     (4 * VIP_TIME_SLICE)
-#define VIP_TIME_LIMIT_MAX         (5 * VIP_TIME_LIMIT_DEFAULT)
+#define VIP_TIME_LIMIT_MAX         (125 * VIP_TIME_LIMIT_DEFAULT)
 
 enum {
 	WORKER_VIP,
