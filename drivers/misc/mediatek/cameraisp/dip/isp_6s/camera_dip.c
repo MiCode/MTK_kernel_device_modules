@@ -3512,6 +3512,17 @@ static signed int DIP_DumpDIPReg(void)
 #endif
 	/*  */
 
+	unsigned int WIF_D2_EN = 0;
+	unsigned int DL_MSS_EN = 0;
+
+	WIF_D2_EN = (DIP_RD32(DIP_A_BASE + 0x1010) & 0x00020000) >> 17;
+	DL_MSS_EN = (DIP_RD32(DIP_A_BASE + 0x1058) & 0x00008000) >> 15;
+
+	cmdq_util_err("RGB_EN1: 0x%x, MISC_SEL: 0x%x, WIF_D2_EN:%d, DL_MSS_EN:%d",
+			DIP_RD32(DIP_A_BASE + 0x1010),
+			DIP_RD32(DIP_A_BASE + 0x1058),
+			WIF_D2_EN, DL_MSS_EN);
+
 	cmdq_util_err("- E.");
 	cmdq_util_err("g_bDumpPhyDIPBuf:(0x%x), g_pPhyDIPBuffer:(0x%p)",
 		g_bDumpPhyDIPBuf, g_pPhyDIPBuffer);
@@ -3555,7 +3566,7 @@ static signed int DIP_DumpDIPReg(void)
 		DIP_RD32(DIP_IMGSYS_CONFIG_BASE + 0x238));
 	DIP_Dump_IMGSYS_DIP_Reg();
 
-	if (dip_clk.DIP_IMG_MFB_DIP != NULL) {
+	if (DL_MSS_EN == 1) {
 		cmdq_util_err("MSS Config Info");
 		cmdq_util_err("MSSTOP_DBG: 0x%x(0x%x)-0x%x(0x%x)",
 			(mss_base_hw + 0x438), DIP_RD32(MSS_BASE + 0x438),
@@ -3834,7 +3845,9 @@ static signed int DIP_DumpDIPReg(void)
 		}
 
 		cmdq_util_err("MSS Config Info End");
+	}
 
+	if (WIF_D2_EN == 1) {
 		cmdq_util_err("MSF Config Info");
 		for (i = 0; i < 32 ; i++) {
 			mfbcmd = i << 24;
