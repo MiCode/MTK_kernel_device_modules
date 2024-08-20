@@ -5625,13 +5625,13 @@ static const unsigned int mt6991_mutex_mod[DDP_COMPONENT_ID_MAX] = {
 	[DDP_COMPONENT_DP_INTF0] = MT6991_MUTEX1_MOD0_DISP_DP_INTF0,
 	[DDP_COMPONENT_DP_INTF1] = MT6991_MUTEX1_MOD0_DISP_DP_INTF1,
 	[DDP_COMPONENT_DSC0] = MT6991_MUTEX1_MOD0_DISP_DSC_WRAP0_CORE0, //DSC WAP0_0
-	[DDP_COMPONENT_DSC1] = MT6991_MUTEX1_MOD0_DISP_DSC_WRAP0_CORE1, //DSC WAP0_1
-	[DDP_COMPONENT_DSC2] = MT6991_MUTEX1_MOD0_DISP_DSC_WRAP1_CORE0, //DSC WAP1_0
-	[DDP_COMPONENT_DSC3] = MT6991_MUTEX1_MOD0_DISP_DSC_WRAP1_CORE1, //DSC WAP1_1
-	[DDP_COMPONENT_DSC4] = MT6991_MUTEX1_MOD0_DISP_DSC_WRAP2_CORE0, //DSC WAP2_0
-	[DDP_COMPONENT_DSC5] = MT6991_MUTEX1_MOD0_DISP_DSC_WRAP2_CORE1, //DSC WAP2_1
+	[DDP_COMPONENT_DSC1] = MT6991_MUTEX1_MOD0_DISP_DSC_WRAP1_CORE0, //DSC WAP1_0
+	[DDP_COMPONENT_DSC2] = MT6991_MUTEX1_MOD0_DISP_DSC_WRAP2_CORE0, //DSC WAP2_0
+	[DDP_COMPONENT_DSC3] = MT6991_MUTEX1_MOD0_DISP_DSC_WRAP3_CORE0, //DSC WAP3_0
+	[DDP_COMPONENT_DSC4] = MT6991_MUTEX1_MOD0_DISP_DSC_WRAP0_CORE1, //DSC WAP0_1
+	[DDP_COMPONENT_DSC5] = MT6991_MUTEX1_MOD0_DISP_DSC_WRAP1_CORE1, //DSC WAP1_1
 	[DDP_COMPONENT_DSC6] = MT6991_MUTEX1_MOD0_DISP_DSC_WRAP2_CORE1, //DSC WAP2_1
-	[DDP_COMPONENT_DSC7] = MT6991_MUTEX1_MOD0_DISP_DSC_WRAP2_CORE1, //DSC WAP2_1
+	[DDP_COMPONENT_DSC7] = MT6991_MUTEX1_MOD0_DISP_DSC_WRAP3_CORE1, //DSC WAP3_1
 	[DDP_COMPONENT_DSI0] = MT6991_MUTEX1_MOD0_DISP_DSI0_MAC0,
 	[DDP_COMPONENT_DSI0_MAC1] = MT6991_MUTEX1_MOD0_DISP_DSI0_MAC1,
 	[DDP_COMPONENT_DSI1] = MT6991_MUTEX1_MOD0_DISP_DSI1_MAC0,
@@ -30698,7 +30698,58 @@ void mtk_ddp_remove_dsc_prim_MT6989(struct mtk_drm_crtc *mtk_crtc,
 void mtk_ddp_insert_dsc_prim_MT6991(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle)
 {
+	struct mtk_panel_params *panel_ext = mtk_drm_get_lcm_ext_params(&mtk_crtc->base);
 	unsigned int addr, value;
+
+	if (panel_ext && panel_ext->dsc_params.dual_dsc_enable) {
+		addr = MT6991_SPLITTER_IN_CB0_MOUT_EN;
+		value = MT6991_DISP_SPLITTER_IN_CB_TO_SPLITTER0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+		/* clear orig SPLITTER_OUT_CB9 */
+		addr = MT6991_SPLITTER_OUT_CB9_MOUT_EN;
+		value = 0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+		addr = MT6991_SPLITTER_OUT_CB0_MOUT_EN;
+		if (panel_ext->dual_swap)
+			value = MT6991_DISP_SPLITTER_OUT_CB_TO_DSC1_0;
+		else
+			value = MT6991_DISP_SPLITTER_OUT_CB_TO_DSC0_0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+		addr = MT6991_COMP_OUT_CB1_MOUT_EN;
+		value = MT6991_DISP_COMP_OUT_CB_TO_MERGE_OUT_CB0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+		/* clear orig COMP_OUT_CB6 */
+		addr = MT6991_COMP_OUT_CB6_MOUT_EN;
+		value = 0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+		addr = MT6991_SPLITTER_OUT_CB1_MOUT_EN;
+		if (panel_ext->dual_swap)
+			value = MT6991_DISP_SPLITTER_OUT_CB_TO_DSC0_0;
+		else
+			value = MT6991_DISP_SPLITTER_OUT_CB_TO_DSC1_0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+		addr = MT6991_COMP_OUT_CB2_MOUT_EN;
+		value = MT6991_DISP_COMP_OUT_CB_TO_MERGE_OUT_CB1;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+		addr = MT6991_MERGE_OUT_CB1_MOUT_EN;
+		value = MT6991_DISP_MERGE_OUT_CB_TO_DSI1_0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+		return;
+	}
 
 	/* SPLITTER_OUT_CROSSBAR9 to DISP_DSC_WRAP0 */
 	addr = MT6991_SPLITTER_OUT_CB9_MOUT_EN;
@@ -31483,8 +31534,9 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 
 	if (ddp->data->dispsys_map && ddp->side_regs) {
 		if (ddp->ovlsys1_regs) {
-			if (val == DDP_MUTEX_SOF_DSI0 &&
-			    panel_ext && panel_ext->output_mode == MTK_PANEL_DUAL_PORT)
+			if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PRIM_DUAL_PIPE) &&
+			    panel_ext && panel_ext->output_mode == MTK_PANEL_DUAL_PORT &&
+			    val == DDP_MUTEX_SOF_DSI0)
 				val = DDP_MUTEX_SOF_DSI1;
 			DDPINFO("%s, disp1 ovlsys1 id:%s, reg:0x%x, val:0x%x\n", __func__,
 				mtk_dump_comp_str_id(id), DISP_REG_MUTEX_SOF(ddp->data, mutex->id),
