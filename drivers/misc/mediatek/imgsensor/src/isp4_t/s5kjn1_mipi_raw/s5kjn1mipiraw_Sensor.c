@@ -638,6 +638,10 @@ static kal_uint16 table_write_cmos_sensor(
 	tosend = 0;
 	IDX = 0;
 	puSendCmd = kmalloc(I2C_BUFFER_LEN, GFP_KERNEL);
+	if(!puSendCmd){
+		LOG_INF("kmalloc fail\\n");
+		return 0;
+	}
 
 	while (len > IDX) {
 		addr = para[IDX];
