@@ -214,15 +214,15 @@ static ssize_t adsp_debug_read(struct file *filp, char __user *buf,
 static ssize_t adsp_debug_write(struct file *filp, const char __user *buffer,
 				size_t count, loff_t *ppos)
 {
-	char buf[64];
+	char buf[64] = {0};
 	struct adsp_priv *pdata = filp->private_data;
 
-	if (copy_from_user(buf, buffer, min(count, sizeof(buf))))
+	if (copy_from_user(buf, buffer, min(count, sizeof(buf) - 1)))
 		return -EFAULT;
 
 	if (_adsp_register_feature(pdata->id, SYSTEM_FEATURE_ID, 0) == 0) {
 		adsp_push_message(ADSP_IPI_ADSP_TIMER,
-				buf, min(count, sizeof(buf)), 0, pdata->id);
+				buf, strnlen(buf, sizeof(buf) - 1) + 1, 0, pdata->id);
 
 		_adsp_deregister_feature(pdata->id, SYSTEM_FEATURE_ID, 0);
 	}
