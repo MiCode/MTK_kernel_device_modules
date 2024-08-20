@@ -914,6 +914,9 @@ static bool cqhci_timeout(struct mmc_host *mmc, struct mmc_request *mrq,
 	struct cqhci_slot *slot = &cq_host->slot[tag];
 	unsigned long flags;
 	bool timed_out;
+	struct mmc_card *card = mmc->card;
+	unsigned int status = 0;
+	int err;
 
 	spin_lock_irqsave(&cq_host->lock, flags);
 	timed_out = slot->mrq == mrq;
@@ -927,10 +930,11 @@ static bool cqhci_timeout(struct mmc_host *mmc, struct mmc_request *mrq,
 	if (timed_out) {
 		pr_err("%s: cqhci: timeout for tag %d, qcnt %d\n",
 		       mmc_hostname(mmc), tag, cq_host->qcnt);
+		if (card) {
+			err = mmc_send_status(card, &status);
+			pr_info("[%s %d]status=0x%08X,err=%d\n", __func__, __LINE__, status, err);
+		}
 		cqhci_dumpregs(cq_host);
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_CQHCI_DEBUG)
-		BUG_ON(1);
-#endif
 	}
 
 	return timed_out;
