@@ -2618,9 +2618,9 @@ static u8 _lanes_to_val(u32 lanes)
 		return val[3];
 }
 
-static void mtk_dsi_rxtx_control(struct mtk_dsi *dsi)
+static void mtk_dsi_rxtx_control(struct mtk_dsi *dsi, bool enable)
 {
-	u32 tmp_reg = _lanes_to_val(dsi->lanes) << 2;
+	u32 tmp_reg = enable ? _lanes_to_val(dsi->lanes) << 2 : 0;
 
 	if (!dsi->driver_data) {
 		pr_info("%s: error! dsi->driver_data=NULL! return!\n", __func__);
@@ -4536,7 +4536,7 @@ static int mtk_preconfig_dsi_enable(struct mtk_dsi *dsi)
 	mtk_dsi_enable(dsi);
 	mtk_dsi_phy_timconfig(dsi, NULL);
 
-	mtk_dsi_rxtx_control(dsi);
+	mtk_dsi_rxtx_control(dsi, true);
 	if (dsi->driver_data->dsi_buffer) {
 		mtk_dsi_tx_buf_rw(dsi);
 	} else {
@@ -7479,7 +7479,8 @@ static int mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
 {
 	int ret = 0;
 	struct mtk_panel_ext *ext = NULL;
-	struct mtk_drm_crtc *mtk_crtc =	NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	bool enable = skip_ulps ? true : false;
 
 	if (!dsi || !dsi->driver_data) {
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
@@ -7502,7 +7503,7 @@ static int mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
 	mtk_dsi_enable(dsi);
 	mtk_dsi_phy_timconfig(dsi, NULL);
 
-	mtk_dsi_rxtx_control(dsi);
+	mtk_dsi_rxtx_control(dsi, enable);
 	if (dsi->driver_data->dsi_buffer) {
 		mtk_dsi_tx_buf_rw(dsi);
 	} else {
