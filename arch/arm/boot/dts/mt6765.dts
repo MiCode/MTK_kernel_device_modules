@@ -464,64 +464,17 @@ aliases {
 			mediatek,smi-id = <0>;
 			iommus = <&iommu M4U_PORT_DISP_WDMA0>;
 		};
-
-		iommu: m4u@10205000 {
-			cell-index = <0>;
-			compatible = "mediatek,mt6765-m4u";
-			reg = <0 0x10205000 0 0x1000>;
-			mediatek,larbs = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb3>;
-			interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH 0>;
-			#iommu-cells = <1>;
-		};
-
-		mtk_iommu_debug {
-			compatible = "mediatek,mt6765-iommu-debug";
-		};
-
-		secure_m4u {
-			compatible = "mediatek,secure_m4u";
-			mediatek,mm_m4u = <&iommu>;
-			interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH 0>; /* sec mm m4u */
-			iommus = <&iommu M4U_PORT_VENC_RCPU>,
-			<&iommu M4U_PORT_DISP_2L_OVL0_LARB0>;
-		};
-
-		mtkheap-region-prot {
-			compatible = "mediatek,dmaheap-mtk-sec-region";
-			heap-name = "mtk_prot_region";
-			trusted-mem-type = <1>;
-			region-heap-align-name = "mtk_prot_region-aligned";
-			iommus = <&iommu M4U_PORT_DISP_OVL0>;
-		};
-
-		mtkheap_region_svp: mtkheap-region-svp {
-			compatible = "mediatek,dmaheap-mtk-sec-region";
-			heap-name = "mtk_svp_region";
-			trusted-mem-type = <0>;
-			region-heap-align-name = "mtk_svp_region-aligned";
-			iommus = <&iommu M4U_PORT_DISP_OVL0>;
-			status = "disabled";
-		};
-
-		mtkheap_region_wfd: mtkheap-region-wfd {
-			compatible = "mediatek,dmaheap-mtk-sec-region";
-			heap-name = "mtk_wfd_region";
-			trusted-mem-type = <2>;
-			region-heap-align-name = "mtk_wfd_region-aligned";
-			iommus = <&iommu M4U_PORT_DISP_OVL0>;
-			status = "disabled";
-		};
 	};
 
 	/* chosen */
 	chosen: chosen {
 		bootargs = "console=tty0 vmalloc=400M \
-		\8250.nr_uarts=2
-swiotlb=noforce androidboot.hardware=mt6765 \
-transparent_hugepage=never \
-maxcpus=8 loop.max_part=7 \
-firmware_class.path=/vendor/firmware \
-initcall_debug=1 clk_ignore_unused=1";
+		8250.nr_uarts=2 \
+		swiotlb=noforce androidboot.hardware=mt6765 \
+		transparent_hugepage=never \
+		maxcpus=8 loop.max_part=7 \
+		firmware_class.path=/vendor/firmware \
+		initcall_debug=1 clk_ignore_unused=1";
 		kaslr-seed = <0 0>;
 	};
 
@@ -1795,6 +1748,76 @@ initcall_debug=1 clk_ignore_unused=1";
 		reg = <0 0x10200000 0 0x4000>;
 	};
 
+	iommu: m4u@10205000  {
+		cell-index = <0>;
+		compatible = "mediatek,mt6765-m4u";
+		reg = <0 0x10205000 0 0x1000>;
+		mediatek,larbs = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb3>;
+		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH 0>;
+		#iommu-cells = <1>;
+	};
+
+	iommu_mtee_pa_mode {
+		compatible = "mediatek,iommu_mtee_pa_mode";
+	};
+
+	mtk_iommu_debug {
+		compatible = "mediatek,mt6765-iommu-debug";
+	};
+
+	secure_m4u {
+		compatible = "mediatek,secure_m4u";
+		mediatek,mm_m4u = <&iommu>;
+		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH 0>; /* sec mm m4u */
+		iommus = <&iommu M4U_PORT_VENC_RCPU>,
+			 <&iommu M4U_PORT_DISP_2L_OVL0_LARB0>;
+	};
+
+	mtk_iommu_tee_debug {
+		compatible = "mediatek,mt6765-iommu-tee-debug";
+	};
+
+	mtkheap-region-prot {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_prot_region";
+		trusted-mem-type = <1>;
+		region-heap-align-name = "mtk_prot_region-aligned";
+		iommus = <&iommu M4U_PORT_DISP_OVL0>;
+	};
+
+	mtkheap_region_svp: mtkheap-region-svp {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_svp_region";
+		trusted-mem-type = <0>;
+		region-heap-align-name = "mtk_svp_region-aligned";
+		iommus = <&iommu M4U_PORT_DISP_OVL0>;
+		status = "disabled";
+	};
+
+	mtkheap_region_wfd: mtkheap-region-wfd {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_wfd_region";
+		trusted-mem-type = <2>;
+		region-heap-align-name = "mtk_wfd_region-aligned";
+		iommus = <&iommu M4U_PORT_DISP_OVL0>;
+		status = "disabled";
+	};
+
+	mtk_dmabufheap_debug0: dmaheap_test0{
+			compatible = "mediatek, mtk_dmabufheap, iommu0";
+			iommus = <&iommu M4U_PORT_DISP_WDMA0>;
+	};
+
+	mtk_dmabufheap_debug1: dmaheap_test1{
+			compatible = "mediatek, mtk_dmabufheap, iommu1";
+			iommus = <&iommu M4U_PORT_DISP_FAKE0>;
+	};
+
+	iommu_test {
+			compatible = "mediatek,ktf-iommu-test";
+			iommus = <&iommu M4U_PORT_DISP_OVL0>;
+	};
+
 	devapc@10207000 {
 		compatible = "mediatek,devapc";
 		reg = <0 0x10207000 0 0x1000>;
@@ -2260,11 +2283,11 @@ initcall_debug=1 clk_ignore_unused=1";
 		mdp-wrot0-sof = <CMDQ_EVENT_MDP_WROT0_SOF>;
 		mdp-tdshp0-sof = <CMDQ_EVENT_MDP_TDSHP0_SOF>;
 		disp-ovl0-sof = <CMDQ_EVENT_DISP_OVL0_SOF>;
-		disp-2l_ovl0-sof = <CMDQ_EVENT_DISP_2L_OVL0_SOF>;
+		disp-2l-ovl0-sof = <CMDQ_EVENT_DISP_2L_OVL0_SOF>;
 		disp-rdma0-sof = <CMDQ_EVENT_DISP_RDMA0_SOF>;
 		disp-wdma0-sof = <CMDQ_EVENT_DISP_WDMA0_SOF>;
 		disp-color0-sof = <CMDQ_EVENT_DISP_COLOR0_SOF>;
-		disp-ccorr0_sof = <CMDQ_EVENT_DISP_CCORR0_SOF>;
+		disp-ccorr0-sof = <CMDQ_EVENT_DISP_CCORR0_SOF>;
 		disp-aal0-sof = <CMDQ_EVENT_DISP_AAL0_SOF>;
 		disp-gamma0-sof = <CMDQ_EVENT_DISP_GAMMA0_SOF>;
 		disp-dither0-sof = <CMDQ_EVENT_DISP_DITHER0_SOF>;
@@ -2347,7 +2370,8 @@ initcall_debug=1 clk_ignore_unused=1";
 			<&infracfg_ao CLK_IFR_GCE_26M>;
 		clock-names = "GCE", "GCE_TIMER";
 		mediatek,mailbox-gce = <&gce_mbox>;
-		mboxes = <&gce_mbox 11 0 CMDQ_THR_PRIO_1>,
+		mboxes = <&gce_mbox_sec 10 0 CMDQ_THR_PRIO_1>,
+			<&gce_mbox 11 0 CMDQ_THR_PRIO_1>,
 			<&gce_mbox 12 0 CMDQ_THR_PRIO_1>;
 		interconnects =
 			<&mmqos MASTER_LARB_PORT(M4U_PORT_MDP_RDMA0)
@@ -2383,10 +2407,6 @@ initcall_debug=1 clk_ignore_unused=1";
 		isp-opp = <&opp_table_mm>;
 		mdp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		isp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-		dre30-hist-sram-start = /bits/ 16 <1536>;
-		pq-rb-thread-id = /bits/ 16 <22>;
-		pq-rb-event-lock = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_MDP_WAIT>;
-		pq-rb-event-unlock = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_MDP_SET>;
 	};
 
 	gce_mbox: gce_mbox@10238000 {
@@ -2429,7 +2449,7 @@ initcall_debug=1 clk_ignore_unused=1";
 		mediatek,gce-subsys = <99>, <SUBSYS_1400XXXX>;
 		/*
 		 *mboxes = <&gce_mbox 9 0 CMDQ_THR_PRIO_1>,
-		 *       <&gce_mbox 10 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+		 *       <&gce_mbox 10 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 		 *       <&gce_mbox_sec 15 0 CMDQ_THR_PRIO_1>;
 		 */
 		token_user0 = /bits/ 16 <CMDQ_SYNC_TOKEN_USER_0>;
@@ -3518,7 +3538,7 @@ initcall_debug=1 clk_ignore_unused=1";
 		mediatek,common-id = <0>;
 		smi-common;
 		disable-gals;
-		mmsys_config = <&mmsys_config>;
+		mmsys-config = <&mmsys_config>;
 		operating-points-v2 = <&opp_table_mm>;
 		power-domains = <&scpsys MT6765_POWER_DOMAIN_DIS>;
 		clocks = <&mmsys_config CLK_MM_SMI_COMM0>,
@@ -3781,9 +3801,13 @@ initcall_debug=1 clk_ignore_unused=1";
 		power-domains = <&scpsys MT6765_POWER_DOMAIN_DIS>;
 	};
 
-	smi_larb2: smi_larb2@15021000 {
-		compatible = "mediatek,smi_larb2","mediatek,mt6765-smi-larb",
-				"mediatek,smi-larb";
+	smi-test {
+		compatible = "mediatek,smi-testcase";
+		mediatek,larbs = <&smi_larb2>;
+	};
+
+	smi_larb2: smi-larb2@15021000 {
+		compatible = "mediatek,smi_larb2","mediatek,mt6765-smi-larb","mediatek,smi-larb";
 		reg = <0 0x15021000 0 0x1000>;
 		mediatek,smi-supply = <&smi_common 0>;
 		power-domains = <&scpsys MT6765_POWER_DOMAIN_ISP>;
@@ -3875,7 +3899,7 @@ initcall_debug=1 clk_ignore_unused=1";
 		dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&iommu M4U_PORT_JPGENC_BSDMA>;
 		operating-points-v2 = <&opp_table_mm>;
-		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		interconnects = <&mmqos MASTER_LARB_PORT(M4U_PORT_JPGENC_BSDMA)
 					&mmqos SLAVE_COMMON(0)>;
 		interconnect-names = "path_jpegenc_bsdma";
