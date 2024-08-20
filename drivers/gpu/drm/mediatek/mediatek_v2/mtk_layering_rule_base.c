@@ -3416,7 +3416,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 				} else {
 					/* for both IR and DL */
 					layer_info->layer_caps &= ~DISP_MML_CAPS_MASK;
-					layer_info->layer_caps |= MTK_MML_DISP_MDP_LAYER;
+					layer_info->layer_caps |= query_transition_mode(mml_decouple2);
 					disp_info->disp_caps[disp_idx] |= MTK_NEED_REPAINT;
 				}
 			}
@@ -3436,7 +3436,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			if ((comp_state.comp_id != last_comp) || (comp_state.lye_id != last_lye)) {
 				DDPMSG("MML IR layer changed\n");
 				layer_info->layer_caps &= ~DISP_MML_CAPS_MASK;
-				layer_info->layer_caps |= MTK_MML_DISP_MDP_LAYER;
+				layer_info->layer_caps |= query_transition_mode(mml_decouple2);
 				disp_info->disp_caps[disp_idx] |= MTK_NEED_REPAINT;
 			}
 		}
