@@ -58,6 +58,9 @@
 				seninf_csi_port_3_in_2: endpoint@2 {
 					remote-endpoint = <&sensor7_out>;
 				};
+				seninf_csi_port_3_in_3: endpoint@3 {
+					remote-endpoint = <&sensor9_out>;
+				};
 			};
 		};
 		seninf_csi_port_4: seninf-csi-port-4 {
@@ -598,6 +601,56 @@
 		port {
 			sensor7_out: endpoint {
 				remote-endpoint = <&seninf_csi_port_3_in_2>;
+			};
+		};
+	};
+
+	sensor9: sensor@10 {
+		compatible = "mediatek,imgsensor";
+		sensor-names = "s5khp3sp_mipi_raw";
+		reindex-match = "s5khp3sp_mipi_raw";
+		reg = <0x10 0 0>;
+		maximum-pmic-delay = <4000>;
+		reindex-to = <0>;
+
+		#thermal-sensor-cells = <0>;
+
+		pinctrl-names = "mclk_off",
+				"mclk_2mA",
+				"mclk_4mA",
+				"mclk_6mA",
+				"mclk_8mA",
+				"rst_low",
+				"rst_high";
+		pinctrl-0 = <&camera_pins_cam0_mclk_off>;
+		pinctrl-1 = <&camera_pins_cam0_mclk_2ma>;
+		pinctrl-2 = <&camera_pins_cam0_mclk_4ma>;
+		pinctrl-3 = <&camera_pins_cam0_mclk_6ma>;
+		pinctrl-4 = <&camera_pins_cam0_mclk_8ma>;
+		pinctrl-5 = <&camera_pins_cam0_rst_0>;
+		pinctrl-6 = <&camera_pins_cam0_rst_1>;
+
+		avdd-supply = <&rt5133_ldo5>;
+		avdd2-supply = <&camera_common_avdd2>;
+		dvdd-supply = <&rt5133_ldo8>;
+		afvdd1-supply = <&rt5133_gpio1>;
+		dovdd-supply = <&camera_common_dovdd>;
+		base-supply = <&rt5133_base>;
+
+		clocks = <&topckgen_clk CLK_TOP_UNIVPLL_192M_D32>,
+			<&topckgen_clk CLK_TOP_UNIVPLL_192M_D16>,
+			<&topckgen_clk CLK_TOP_F26M_CK_D2>,
+			<&topckgen_clk CLK_TOP_UNIVPLL_192M_D10>,
+			<&topckgen_clk CLK_TOP_UNIVPLL_192M_D8>,
+			<&topckgen_clk CLK_TOP_UNIVPLL_D6_D16>,
+			<&topckgen_clk CLK_TOP_UNIVPLL_D6_D8>,
+			<&vlp_cksys_clk CLK_VLP_CK_CAMTG1_SEL>;
+		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+
+		status = "okay";
+		port {
+			sensor9_out: endpoint {
+				remote-endpoint = <&seninf_csi_port_3_in_3>;
 			};
 		};
 	};
