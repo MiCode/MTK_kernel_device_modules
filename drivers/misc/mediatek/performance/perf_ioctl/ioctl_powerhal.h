@@ -61,8 +61,8 @@ struct _POWERHAL_PACKAGE {
 	__u32 value;
 };
 
+#define ADPF_MAX_THREAD  (32)
 #define POWERHAL_SET_ADPF_DATA   _IOW('g', 1, struct _ADPF_PACKAGE)
 #define POWERHAL_GET_ADPF_DATA   _IOW('g', 2, struct _ADPF_PACKAGE)
 
 #define DSU_CCI_SPORT_MODE		 _IOW('g', 3, struct _POWERHAL_PACKAGE)
-

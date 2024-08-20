@@ -8,7 +8,6 @@
 
 #include "ioctl_powerhal.h"
 
-#define ADPF_MAX_THREAD    32
 #define SESSION_UNUSED     0
 #define SESSION_USED       1
 
