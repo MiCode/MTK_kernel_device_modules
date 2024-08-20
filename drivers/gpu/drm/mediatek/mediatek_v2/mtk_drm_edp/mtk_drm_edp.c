@@ -38,6 +38,7 @@
 #include "mtk_drm_edp_api.h"
 #include "../mtk_drm_crtc.h"
 
+#define EDPTX_DEBUG_INFO		"[eDPTX]"
 #define EDPTX_COLOR_BAR			0
 
 #define EDP_VIDEO_UNMUTE		0x22
@@ -63,6 +64,8 @@
 #define MTK_EDP_MODE_EXTERNAL_MONITOR	"external-monitor"
 #define MTK_EDP_MODE_USE_EDID			"use-edid"
 #define MTK_EDP_MODE_USE_HPD			"use-hpd"
+#define MTK_EDP_MAX_LANE_COUNT			"max-lane-count"
+#define MTK_EDP_MAX_LINK_RATE			"max-linkrate-mhz"
 
 enum {
 	MTK_DP_CAL_GLB_BIAS_TRIM = 0,
@@ -131,6 +134,7 @@ struct mtk_edp {
 	struct platform_device *phy_dev;
 	struct phy *phy;
 	struct regmap *regs;
+	struct regmap *phy_regs;
 	struct timer_list debounce_timer;
 
 	/* For eDP attribute */
@@ -240,6 +244,14 @@ static struct regmap_config mtk_edp_regmap_config = {
 	.reg_stride = 4,
 	.max_register = SEC_OFFSET + 0x90,
 	.name = "mtk-edp-registers",
+};
+
+static const struct regmap_config mtk_edp_phy_regmap_config = {
+	.reg_bits = 32,
+	.val_bits = 32,
+	.reg_stride = 4,
+	.max_register = SEC_OFFSET + 0x90,
+	.name = "mtk-edp-phy-registers",
 };
 
 enum DPTX_STATE {
@@ -502,7 +514,7 @@ static int mtk_edp_set_color_format(struct mtk_edp *mtk_edp,
 		val = PIXEL_ENCODE_FORMAT_DP_ENC0_P0_YCBCR420;
 		break;
 	default:
-		pr_info("[eDPTX] Not supported color format: %d\n", color_format);
+		pr_info("%s Not supported color format: %d\n", EDPTX_DEBUG_INFO, color_format);
 		return -EINVAL;
 	}
 
@@ -1082,23 +1094,22 @@ static void mtk_edp_digital_sw_reset(struct mtk_edp *mtk_edp)
 						0, DP_TX_TRANSMITTER_4P_RESET_SW_DP_TRANS_P0);
 }
 
-static void mtk_edp_phyd_wait_aux_ldo_ready(void)
+static void mtk_edp_phyd_wait_aux_ldo_ready(struct mtk_edp *mtk_edp, unsigned long wait_us)
 {
-	int retry = 5;
+	int ret = 0;
 	u32 val = 0x0;
-	void *address = ioremap(0x130A146C, 0x1);
+	u32 mask = RGS_BG_CORE_EN_READY | RGS_AUX_LDO_EN_READY;
 
-	if (!address)
-		return;
+	if (mtk_edp->phy_regs) {
+		ret = regmap_read_poll_timeout(mtk_edp->phy_regs, DP_PHY_DIG_GLB_STATUS_0,
+					val, !!(val & mask), wait_us/100, wait_us);
+	} else {
+		ret = regmap_read_poll_timeout(mtk_edp->regs, DP_PHY_DIG_GLB_STATUS_0,
+					val, !!(val & mask), wait_us/100, wait_us);
+	}
 
-	do {
-		val = readl(address);
-		if ((val & 0x3) == 0x3)
-			break;
-		msleep(100);
-	} while (retry--);
-
-	iounmap(address);
+	if (ret)
+		pr_info("%s %s AUX not ready\n", EDPTX_DEBUG_INFO, __func__);
 }
 
 static void mtk_edp_set_lanes(struct mtk_edp *mtk_edp, int lanes)
@@ -1109,7 +1120,7 @@ static void mtk_edp_set_lanes(struct mtk_edp *mtk_edp, int lanes)
 	mtk_edp_update_bits(mtk_edp, REG_3F44_DP_ENC_4P_3,
 			   BIAS_POWER_ON, PHY_PWR_STATE_OW_VALUE_DP_ENC_4P_3_MASK);
 
-	mtk_edp_phyd_wait_aux_ldo_ready();
+	mtk_edp_phyd_wait_aux_ldo_ready(mtk_edp, 100000);
 
 	mtk_edp_update_bits(mtk_edp, REG_3F44_DP_ENC_4P_3,
 			   0, PHY_PWR_STATE_OW_EN_DP_ENC_4P_3_MASK);
@@ -1291,7 +1302,7 @@ static void mtk_edp_initialize_priv_data(struct mtk_edp *mtk_edp)
 	else
 		mtk_edp->train_info.cable_plugged_in = false;
 
-	pr_info("[eDPTX] cable_plugged_in = %d\n", mtk_edp->train_info.cable_plugged_in);
+	pr_info("%s cable_plugged_in = %d\n", EDPTX_DEBUG_INFO, mtk_edp->train_info.cable_plugged_in);
 	mtk_edp->info.format = DP_PIXELFORMAT_RGB;
 	mtk_edp->has_fec = false;
 	memset(&mtk_edp->info.vm, 0, sizeof(struct videomode));
@@ -1454,7 +1465,7 @@ static int mtk_edp_train_setting(struct mtk_edp *mtk_edp, u8 target_link_rate,
 {
 	int ret;
 
-	pr_info("[eDPTX] %s+\n", __func__);
+	pr_info("%s %s+\n", EDPTX_DEBUG_INFO, __func__);
 	drm_dp_dpcd_writeb(&mtk_edp->aux, DP_LINK_BW_SET, target_link_rate);
 	drm_dp_dpcd_writeb(&mtk_edp->aux, DP_LANE_COUNT_SET,
 			   target_lane_count | DP_LANE_COUNT_ENHANCED_FRAME_EN);
@@ -1473,7 +1484,7 @@ static int mtk_edp_train_setting(struct mtk_edp *mtk_edp, u8 target_link_rate,
 		"Link train target_link_rate = 0x%x, target_lane_count = 0x%x\n",
 		target_link_rate, target_lane_count);
 
-	pr_info("[eDPTX] %s-\n", __func__);
+	pr_info("%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 	return 0;
 }
 
@@ -1601,7 +1612,7 @@ static void mtk_edp_fec_set_capabilities(struct mtk_edp *mtk_edp)
 
 	ret = drm_dp_dpcd_readb(&mtk_edp->aux, DP_FEC_CAPABILITY, &fec_capabilities);
 	if (ret < 0)
-		pr_info("[eDPTX] read FEC capability failed\n");
+		pr_info("%s read FEC capability failed\n", EDPTX_DEBUG_INFO);
 	/* force disable fec
 	 * mtk_edp->has_fec = !!(fec_capabilities & DP_FEC_CAPABLE);
 	 * if (!mtk_edp->has_fec)
@@ -1618,7 +1629,7 @@ static int mtk_edp_parse_capabilities(struct mtk_edp *mtk_edp)
 	u8 val;
 	ssize_t ret;
 
-	pr_info("[eDPTX] %s+\n", __func__);
+	pr_info("%s %s+\n", EDPTX_DEBUG_INFO, __func__);
 	/*
 	 * If we're eDP and capabilities were already parsed we can skip
 	 * reading again because eDP panels aren't hotpluggable hence the
@@ -1670,7 +1681,7 @@ static int mtk_edp_parse_capabilities(struct mtk_edp *mtk_edp)
 		}
 	}
 
-	pr_info("[eDPTX] %s-\n",__func__);
+	pr_info("%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 
 	return 0;
 }
@@ -1686,7 +1697,7 @@ static int mtk_edp_training(struct mtk_edp *mtk_edp)
 	int ret;
 	u8 lane_count, link_rate, train_limit, max_link_rate;
 
-	pr_info("[eDPTX] %s+\n", __func__);
+	pr_info("%s %s+\n", EDPTX_DEBUG_INFO, __func__);
 
 	link_rate = min_t(u8, mtk_edp->max_linkrate,
 			  mtk_edp->rx_cap[DP_MAX_LINK_RATE]);
@@ -1694,7 +1705,7 @@ static int mtk_edp_training(struct mtk_edp *mtk_edp)
 	lane_count = min_t(u8, mtk_edp->max_lanes,
 			   drm_dp_max_lane_count(mtk_edp->rx_cap));
 
-	pr_info("[eDPTX] link rate= 0x%x, lane_count= 0x%x\n",link_rate, lane_count);
+	pr_info("%s link rate= 0x%x, lane_count= 0x%x\n", EDPTX_DEBUG_INFO, link_rate, lane_count);
 	/*
 	 * TPS are generated by the hardware pattern generator. From the
 	 * hardware setting we need to disable this scramble setting before
@@ -1735,7 +1746,7 @@ static int mtk_edp_training(struct mtk_edp *mtk_edp)
 			}
 			continue;
 		}
-		pr_info("[eDPTX] CR training pass\n");
+		pr_info("%s CR training pass\n", EDPTX_DEBUG_INFO);
 
 		ret = mtk_edp_train_eq(mtk_edp, lane_count);
 		if (ret == -ENODEV) {
@@ -1747,7 +1758,7 @@ static int mtk_edp_training(struct mtk_edp *mtk_edp)
 			lane_count /= 2;
 			continue;
 		}
-		pr_info("[eDPTX] EQ training pass\n");
+		pr_info("%s EQ training pass\n", EDPTX_DEBUG_INFO);
 		/* if we can run to this, training is done. */
 		break;
 	}
@@ -1765,7 +1776,7 @@ static int mtk_edp_training(struct mtk_edp *mtk_edp)
 	mtk_edp_training_set_scramble(mtk_edp, true);
 	mtk_edp_set_enhanced_frame_mode(mtk_edp);
 
-	pr_info("[eDPTX] %s-\n", __func__);
+	pr_info("[%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 
 	return 0;
 }
@@ -1811,8 +1822,6 @@ static void mtk_edp_init_port(struct mtk_edp *mtk_edp)
 
 static void mtk_edp_pm_ctl(struct mtk_edp *mtk_edp, bool enable)
 {
-	u32 ret = 0;
-
 	/* DISP_EDPTX_PWR_CON */
 	void *address = ioremap(0x31B50074, 0x1);
 
@@ -1846,15 +1855,15 @@ static irqreturn_t mtk_edp_hpd_event_thread(int hpd, void *dev)
 		 * mtk_edp_hpd_sink_event(mtk_edp);
 		 * ret = mtk_edp_training(mtk_edp);
 		 * if (ret)
-		 *	pr_info("[eDPTX] link trainning failed %d\n", ret);
+		 *	pr_info("%s link trainning failed %d\n", EDPTX_DEBUG_INFO, ret);
 		 */
-		dev_info(mtk_edp->dev, "[eDPTX] %s-\n", __func__);
+		dev_info(mtk_edp->dev, "%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 		return IRQ_HANDLED;
 	}
 
 	if (status & MTK_DP_THREAD_CABLE_STATE_CHG) {
 		if (!mtk_edp->train_info.cable_plugged_in) {
-			dev_info(mtk_edp->dev, "[eDPTX] MTK_DP_HPD_DISCONNECT\n");
+			dev_info(mtk_edp->dev, "%s MTK_DP_HPD_DISCONNECT\n", EDPTX_DEBUG_INFO);
 			mtk_edp_video_mute(mtk_edp, true);
 			mtk_edp_set_idle_pattern(mtk_edp, true);
 			mtk_edp_update_bits(mtk_edp, MTK_DP_TOP_PWR_STATE,
@@ -1865,7 +1874,7 @@ static irqreturn_t mtk_edp_hpd_event_thread(int hpd, void *dev)
 				  jiffies + msecs_to_jiffies(100) - 1);
 		} else {
 			mtk_edp_pm_ctl(mtk_edp, true);
-			dev_info(mtk_edp->dev, "[eDPTX] MTK_DP_HPD_CONNECT\n");
+			dev_info(mtk_edp->dev, "%s MTK_DP_HPD_CONNECT\n", EDPTX_DEBUG_INFO);
 		}
 	}
 
@@ -1898,8 +1907,7 @@ static irqreturn_t mtk_edp_hpd_event_thread(int hpd, void *dev)
 			drm_helper_hpd_irq_event(mtk_edp->bridge.dev);
 #endif
 
-	pr_info("[eDPTX] %s-\n", __func__);
-
+	pr_info("%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 	return IRQ_HANDLED;
 }
 
@@ -1919,7 +1927,6 @@ static irqreturn_t mtk_edp_hpd_event(int hpd, void *dev)
 	if (irq_status & MTK_DP_HPD_INTERRUPT) {
 		mtk_edp->irq_thread_handle |= MTK_DP_THREAD_HPD_EVENT;
 		spin_unlock_irqrestore(&mtk_edp->irq_thread_lock, flags);
-		pr_info("[eDPTX] HPD INTERRUPT.\n");
 		return IRQ_WAKE_THREAD;
 	}
 	/* Cable state is changed */
@@ -1931,13 +1938,10 @@ static irqreturn_t mtk_edp_hpd_event(int hpd, void *dev)
 	spin_unlock_irqrestore(&mtk_edp->irq_thread_lock, flags);
 
 	if (cable_sta_chg) {
-		if (!!(mtk_edp_plug_state(mtk_edp))) {
+		if (!!(mtk_edp_plug_state(mtk_edp)))
 			mtk_edp->train_info.cable_plugged_in = true;
-			pr_info("[eDPTX] HPD CONNECT.\n");
-		} else {
+		else
 			mtk_edp->train_info.cable_plugged_in = false;
-			pr_info("[eDPTX] HPD DISCONNECT.\n");
-		}
 	}
 
 	return IRQ_WAKE_THREAD;
@@ -1949,8 +1953,7 @@ static int mtk_edp_wait_hpd_asserted(struct drm_dp_aux *mtk_aux, unsigned long w
 	u32 val;
 	int ret;
 
-	pr_info("[eDPTX] %s+\n", __func__);
-
+	pr_info("%s %s+\n", EDPTX_DEBUG_INFO, __func__);
 	ret = regmap_read_poll_timeout(mtk_edp->regs, REG_364C_AUX_TX_P0,
 				       val, !!(val & HPD_STATUS_DP_AUX_TX_P0_MASK),
 				       wait_us / 100, wait_us);
@@ -1963,19 +1966,18 @@ static int mtk_edp_wait_hpd_asserted(struct drm_dp_aux *mtk_aux, unsigned long w
 
 	ret = mtk_edp_parse_capabilities(mtk_edp);
 	if (ret) {
-		drm_info(mtk_edp->drm_dev, "Can't parse capabilities\n");
+		drm_info(mtk_edp->drm_dev, "%s Can't parse capabilities\n", EDPTX_DEBUG_INFO);
 		return ret;
 	}
 
 	/* Training */
 	ret = mtk_edp_training(mtk_edp);
 	if (ret) {
-		dev_info(mtk_edp->dev, "[eDPTX] Training failed, %d\n", ret);
+		dev_info(mtk_edp->dev, "%s Training failed, %d\n", EDPTX_DEBUG_INFO, ret);
 		return ret;
 	}
 
-	pr_info("[eDPTX] %s+\n", __func__);
-
+	pr_info("%s %s+\n", EDPTX_DEBUG_INFO, __func__);
 	return 0;
 }
 
@@ -1985,10 +1987,12 @@ static int mtk_edp_dt_parse(struct mtk_edp *mtk_edp,
 	struct device *dev = &pdev->dev;
 	int ret;
 	void __iomem *base;
+	void __iomem *phy_base;
 	u32 linkrate;
 	u32 lane_count;
 	u32 read_value;
 
+	/* eDP MAC ioremap resource */
 	base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(base))
 		return PTR_ERR(base);
@@ -1997,26 +2001,35 @@ static int mtk_edp_dt_parse(struct mtk_edp *mtk_edp,
 	if (IS_ERR(mtk_edp->regs))
 		return PTR_ERR(mtk_edp->regs);
 
-	ret = device_property_read_u32(dev, "max-lane-count", &lane_count);
+	/* eDP PHY ioremap resource */
+	mtk_edp->phy_regs = NULL;
+	phy_base = devm_platform_ioremap_resource(pdev, 1);
+	if (!IS_ERR(phy_base)) {
+		mtk_edp->phy_regs = devm_regmap_init_mmio(dev, phy_base, &mtk_edp_phy_regmap_config);
+		if (IS_ERR(mtk_edp->phy_regs))
+			mtk_edp->phy_regs = NULL;
+	}
+
+	ret = device_property_read_u32(dev, MTK_EDP_MAX_LANE_COUNT, &lane_count);
 
 	if (lane_count == 0 || lane_count == 3 || lane_count > 4) {
-		dev_info(dev, "[eDPTX] Invalid data lane size: %d\n", lane_count);
+		dev_info(dev, "%s Invalid data lane size: %d\n", EDPTX_DEBUG_INFO, lane_count);
 		return -EINVAL;
 	}
 
 	mtk_edp->max_lanes = lane_count;
 
-	/* example:  max-linkrate-mhz = 2700 == 2.7Gbps*/
-	ret = device_property_read_u32(dev, "max-linkrate-mhz", &linkrate);
+	/* example: max-linkrate-mhz = 2700 == 2.7Gbps*/
+	ret = device_property_read_u32(dev, MTK_EDP_MAX_LINK_RATE, &linkrate);
 	if (ret) {
-		dev_info(dev, "[eDPTX] Failed to read max linkrate: %d\n", ret);
+		dev_info(dev, "%s Failed to read max linkrate: %d\n", EDPTX_DEBUG_INFO, ret);
 		return ret;
 	}
 
 	mtk_edp->max_linkrate = drm_dp_link_rate_to_bw_code(linkrate * 100);
 
-	dev_info(dev, "[eDPTX] SoC support max_lanes:%d, max_linkrate:0x%x\n",
-			mtk_edp->max_lanes, mtk_edp->max_linkrate);
+	dev_info(dev, "%s SoC support max_lanes:%d, max_linkrate:0x%x\n",
+			EDPTX_DEBUG_INFO, mtk_edp->max_lanes, mtk_edp->max_linkrate);
 
 	ret = of_property_read_u32(dev->of_node, MTK_EDP_MODE_EXTERNAL_MONITOR, &read_value);
 	mtk_edp->external_monitor = (!ret) ? !!read_value : false;
@@ -2027,10 +2040,8 @@ static int mtk_edp_dt_parse(struct mtk_edp *mtk_edp,
 	ret = of_property_read_u32(dev->of_node, MTK_EDP_MODE_USE_HPD, &read_value);
 	mtk_edp->use_hpd = (!ret) ? !!read_value : false;
 
-	dev_info(dev, "[eDPTX] use external monitor:%d, use edid:%d use hpd:%d\n",
-			mtk_edp->external_monitor,
-			mtk_edp->use_edid,
-			mtk_edp->use_hpd);
+	dev_info(dev, "%s use external monitor:%d, use edid:%d use hpd:%d\n", EDPTX_DEBUG_INFO,
+			mtk_edp->external_monitor, mtk_edp->use_edid, mtk_edp->use_hpd);
 
 	return 0;
 }
@@ -2044,16 +2055,16 @@ static enum drm_connector_status mtk_edp_bdg_detect(struct drm_bridge *bridge)
 	u8 sink_count = 0;
 	int ret_value = 0;
 
-	pr_info("[eDPTX] %s\n", __func__);
+	pr_info("%s %s\n", EDPTX_DEBUG_INFO, __func__);
 
 	if (!mtk_edp->train_info.cable_plugged_in) {
-		pr_info("[eDPTX] edp return status : 0x%x\n", ret);
+		pr_info("%s edp return status : 0x%x\n", EDPTX_DEBUG_INFO, ret);
 		return ret;
 	}
 
 
 	if (mtk_edp->next_bridge) {
-		pr_info("[eDPTX] edp return status : 0x%x\n", connector_status_connected);
+		pr_info("%s edp return status : 0x%x\n", EDPTX_DEBUG_INFO, connector_status_connected);
 		return connector_status_connected;
 	}
 
@@ -2069,7 +2080,7 @@ static enum drm_connector_status mtk_edp_bdg_detect(struct drm_bridge *bridge)
 	 */
 	ret_value = drm_dp_dpcd_readb(&mtk_edp->aux, DP_SINK_COUNT, &sink_count);
 	if (ret_value < 0) {
-		pr_info("[eDPTX] Failed to read sink count ,status: 0x%x\n", ret);
+		pr_info("%s Failed to read sink count ,status: 0x%x\n", EDPTX_DEBUG_INFO, ret);
 		return ret;
 	}
 
@@ -2079,7 +2090,7 @@ static enum drm_connector_status mtk_edp_bdg_detect(struct drm_bridge *bridge)
 	if (!enabled)
 		mtk_edp_aux_panel_poweron(mtk_edp, false);
 
-	pr_info("[eDPTX] edp return status : 0x%x\n", connector_status_connected);
+	pr_info("%s edp return status : 0x%x\n", EDPTX_DEBUG_INFO, connector_status_connected);
 	return ret;
 }
 
@@ -2091,7 +2102,7 @@ static struct edid *mtk_edp_get_edid(struct drm_bridge *bridge,
 	bool enabled = mtk_edp->enabled;
 	struct edid *new_edid = NULL;
 
-	pr_info("[eDPTX] %s+\n", __func__);
+	pr_info("%s %s+\n", EDPTX_DEBUG_INFO, __func__);
 
 	if (!enabled) {
 		drm_atomic_bridge_chain_pre_enable(bridge, connector->state->state);
@@ -2105,7 +2116,7 @@ static struct edid *mtk_edp_get_edid(struct drm_bridge *bridge,
 	 * mode_valid use the capability to calculate sink bitrates.
 	 */
 	if (mtk_edp_parse_capabilities(mtk_edp)) {
-		drm_err(mtk_edp->drm_dev, "Can't parse capabilities\n");
+		drm_err(mtk_edp->drm_dev, " %s Can't parse capabilities\n", EDPTX_DEBUG_INFO);
 		kfree(new_edid);
 		new_edid = NULL;
 	}
@@ -2115,11 +2126,11 @@ static struct edid *mtk_edp_get_edid(struct drm_bridge *bridge,
 		drm_atomic_bridge_chain_post_disable(bridge, connector->state->state);
 	}
 
-	pr_info("[eDPTX] EDID raw data:\n");
+	pr_info("%s EDID raw data:\n", EDPTX_DEBUG_INFO);
 	print_hex_dump(KERN_NOTICE, "\t", DUMP_PREFIX_NONE, 16, 1,
 					new_edid, EDID_LENGTH * (new_edid->extensions + 1), false);
 
-	pr_info("[eDPTX] %s-\n", __func__);
+	pr_info("%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 	return new_edid;
 }
 
@@ -2138,7 +2149,7 @@ static ssize_t mtk_edp_aux_transfer(struct drm_dp_aux *mtk_aux,
 	}
 
 	if (msg == NULL) {
-		pr_info("[eDPTX] msg is null.\n");
+		pr_info("%s msg is null\n", EDPTX_DEBUG_INFO);
 		return -EINVAL;
 	}
 
@@ -2158,8 +2169,7 @@ static ssize_t mtk_edp_aux_transfer(struct drm_dp_aux *mtk_aux,
 		is_read = true;
 		break;
 	default:
-		dev_info(mtk_edp->dev, "invalid aux cmd = %d\n",
-			msg->request);
+		dev_info(mtk_edp->dev, "%s invalid aux cmd = %d\n", EDPTX_DEBUG_INFO, msg->request);
 		ret = -EINVAL;
 		goto err;
 	}
@@ -2174,8 +2184,7 @@ static ssize_t mtk_edp_aux_transfer(struct drm_dp_aux *mtk_aux,
 					     to_access, &msg->reply);
 
 		if (ret) {
-			dev_info(mtk_edp->dev,
-				 "[eDPTX] Failed to do AUX transfer: %d\n", ret);
+			dev_info(mtk_edp->dev, "%s Failed to do AUX transfer: %d\n", EDPTX_DEBUG_INFO, ret);
 			goto err;
 		}
 		accessed_bytes += to_access;
@@ -2202,13 +2211,13 @@ static int mtk_edp_poweron(struct mtk_edp *mtk_edp)
 
 	ret = phy_init(mtk_edp->phy);
 	if (ret) {
-		dev_info(mtk_edp->dev, "[eDPTX] Failed to initialize phy: %d\n", ret);
+		dev_info(mtk_edp->dev, "%s Failed to initialize phy: %d\n", EDPTX_DEBUG_INFO, ret);
 		return ret;
 	}
 
 	ret = mtk_edp_phy_configure(mtk_edp, 0x6, 1, false, NULL, NULL);
 	if (ret) {
-		dev_info(mtk_edp->dev, "[eDPTX] Failed to configure phy: %d\n", ret);
+		dev_info(mtk_edp->dev, "%s Failed to configure phy: %d\n", EDPTX_DEBUG_INFO, ret);
 		goto err_phy_config;
 	}
 
@@ -2235,10 +2244,10 @@ static int mtk_edp_bridge_attach(struct drm_bridge *bridge,
 	struct drm_panel *panel = NULL;
 	int ret;
 
-	dev_info(mtk_edp->dev, "[eDPTX] %s+\n", __func__);
+	dev_info(mtk_edp->dev, "%s %s+\n", EDPTX_DEBUG_INFO, __func__);
 
 	if (!(flags & DRM_BRIDGE_ATTACH_NO_CONNECTOR)) {
-		dev_info(mtk_edp->dev, "[eDPTX] Driver does not provide a connector!");
+		dev_info(mtk_edp->dev, "%s Driver does not provide a connector!", EDPTX_DEBUG_INFO);
 		return -EINVAL;
 	}
 
@@ -2248,24 +2257,26 @@ static int mtk_edp_bridge_attach(struct drm_bridge *bridge,
 		ret = drm_of_find_panel_or_bridge(mtk_edp->dev->of_node, 1, 0,
 					  &panel, &mtk_edp->next_bridge);
 		if (ret == -ENODEV) {
-			dev_info(mtk_edp->dev, "[eDPTX] No panel connected in devicetree, continuing as external DP\n");
+			dev_info(mtk_edp->dev, "%s No panel connected in devicetree, continuing as external DP\n",
+					EDPTX_DEBUG_INFO);
 			mtk_edp->next_bridge = NULL;
 		} else if (ret) {
-			dev_info(mtk_edp->dev, "[eDPTX] Failed to find panel or bridge: %d\n",
-				ret);
+			dev_info(mtk_edp->dev, "%s Failed to find panel or bridge: %d\n",
+					EDPTX_DEBUG_INFO, ret);
 			return ret;
 		}
 
 		if (mtk_edp->next_bridge)
-			dev_info(mtk_edp->dev, "[eDPTX] Found bridge node: %pOF\n", mtk_edp->next_bridge->of_node);
+			dev_info(mtk_edp->dev, "%s Found bridge node: %pOF\n", EDPTX_DEBUG_INFO,
+					mtk_edp->next_bridge->of_node);
 
 		if (panel) {
-			dev_info(mtk_edp->dev, "[eDPTX] Found panel node: %pOF\n", panel->dev->of_node);
+			dev_info(mtk_edp->dev, "%s Found panel node: %pOF\n", EDPTX_DEBUG_INFO, panel->dev->of_node);
 			mtk_edp->next_bridge =
 				devm_drm_panel_bridge_add(mtk_edp->dev, panel);
 			if (IS_ERR(mtk_edp->next_bridge)) {
 				ret = PTR_ERR(mtk_edp->next_bridge);
-				pr_info("[eDPTX] Failed to create bridge: %d\n", ret);
+				pr_info("%s Failed to create bridge: %d\n", EDPTX_DEBUG_INFO, ret);
 				return ret;
 			}
 		}
@@ -2274,8 +2285,7 @@ static int mtk_edp_bridge_attach(struct drm_bridge *bridge,
 	mtk_edp_aux_init(mtk_edp);
 	ret = drm_dp_aux_register(&mtk_edp->aux);
 	if (ret) {
-		dev_info(mtk_edp->dev,
-			"[eDPTX] Failed to register DP AUX channel: %d\n", ret);
+		dev_info(mtk_edp->dev, "%s Failed to register DP AUX channel: %d\n", EDPTX_DEBUG_INFO, ret);
 		return ret;
 	}
 
@@ -2287,8 +2297,7 @@ static int mtk_edp_bridge_attach(struct drm_bridge *bridge,
 		ret = drm_bridge_attach(bridge->encoder, mtk_edp->next_bridge,
 					&mtk_edp->bridge, flags);
 		if (ret) {
-			drm_warn(mtk_edp->drm_dev,
-				 "Failed to attach external bridge: %d\n", ret);
+			drm_warn(mtk_edp->drm_dev, "%s Failed to attach external bridge: %d\n", EDPTX_DEBUG_INFO, ret);
 			goto err_bridge_attach;
 		}
 	}
@@ -2297,7 +2306,6 @@ static int mtk_edp_bridge_attach(struct drm_bridge *bridge,
 	mtk_edp->aux.drm_dev = bridge->dev;
 
 	mtk_edp_hwirq_get_clear(mtk_edp);
-
 	if (mtk_edp->use_hpd) {
 		irq_clear_status_flags(mtk_edp->irq, IRQ_NOAUTOEN);
 		enable_irq(mtk_edp->irq);
@@ -2308,7 +2316,7 @@ static int mtk_edp_bridge_attach(struct drm_bridge *bridge,
 		if ((bridge->encoder->possible_crtcs >> ret) & 0x1)
 			edptx_notify_data.crtc = ret;
 
-	dev_info(mtk_edp->dev, "[eDPTX] %s-\n", __func__);
+	dev_info(mtk_edp->dev, "%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 
 	return 0;
 
@@ -2332,18 +2340,32 @@ static void mtk_edp_bridge_detach(struct drm_bridge *bridge)
 	drm_dp_aux_unregister(&mtk_edp->aux);
 }
 
+static void mtk_edp_bridge_atomic_pre_enable(struct drm_bridge *bridge,
+					struct drm_bridge_state *old_bridge_state)
+{
+	struct mtk_edp *mtk_edp = mtk_edp_from_bridge(bridge);
+
+	dev_info(mtk_edp->dev, "%s %s-\n", EDPTX_DEBUG_INFO, __func__);
+	if (mtk_edp->use_hpd) {
+		irq_clear_status_flags(mtk_edp->irq, IRQ_NOAUTOEN);
+		disable_irq(mtk_edp->irq);
+		mtk_edp_hwirq_enable(mtk_edp, false);
+	}
+
+	dev_info(mtk_edp->dev, "%s %s+\n", EDPTX_DEBUG_INFO, __func__);
+}
+
 static void mtk_edp_bridge_atomic_enable(struct drm_bridge *bridge,
 					struct drm_bridge_state *old_state)
 {
 	struct mtk_edp *mtk_edp = mtk_edp_from_bridge(bridge);
 	int ret;
 
-	dev_info(mtk_edp->dev, "[eDPTX] %s+\n", __func__);
+	dev_info(mtk_edp->dev, "%s %s+\n", EDPTX_DEBUG_INFO, __func__);
 	mtk_edp->conn = drm_atomic_get_new_connector_for_encoder(old_state->base.state,
 								bridge->encoder);
 	if (!mtk_edp->conn) {
-		drm_err(mtk_edp->drm_dev,
-			"Can't enable bridge as connector is missing\n");
+		drm_err(mtk_edp->drm_dev, "%s Can't enable bridge as connector is missing\n", EDPTX_DEBUG_INFO);
 		return;
 	}
 
@@ -2351,7 +2373,7 @@ static void mtk_edp_bridge_atomic_enable(struct drm_bridge *bridge,
 	mtk_edp_parse_capabilities(mtk_edp);
 	ret = mtk_edp_training(mtk_edp);
 	if (ret) {
-		drm_err(mtk_edp->drm_dev, "[eDPTX] Training failed, %d\n", ret);
+		drm_err(mtk_edp->drm_dev, "%s Training failed, %d\n", EDPTX_DEBUG_INFO, ret);
 		goto power_off_aux;
 	}
 
@@ -2365,8 +2387,15 @@ static void mtk_edp_bridge_atomic_enable(struct drm_bridge *bridge,
 	mtk_edp_pg_enable(mtk_edp, true);
 #endif
 
+	mtk_edp_hwirq_get_clear(mtk_edp);
+	if (mtk_edp->use_hpd) {
+		irq_clear_status_flags(mtk_edp->irq, IRQ_NOAUTOEN);
+		enable_irq(mtk_edp->irq);
+		mtk_edp_hwirq_enable(mtk_edp, true);
+	}
+
 	mtk_edp->enabled = true;
-	dev_info(mtk_edp->dev, "[eDPTX] %s-\n", __func__);
+	dev_info(mtk_edp->dev, "%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 
 	return;
 power_off_aux:
@@ -2380,7 +2409,7 @@ static void mtk_edp_bridge_atomic_disable(struct drm_bridge *bridge,
 {
 	struct mtk_edp *mtk_edp = mtk_edp_from_bridge(bridge);
 
-	pr_info("[eDPTX] %s+\n", __func__);
+	pr_info("%s %s+\n", EDPTX_DEBUG_INFO, __func__);
 	mtk_edp->enabled = false;
 	mtk_edp_video_enable(mtk_edp, false);
 
@@ -2394,7 +2423,7 @@ static void mtk_edp_bridge_atomic_disable(struct drm_bridge *bridge,
 			   DP_PWR_STATE_BANDGAP_TPLL,
 			   DP_PWR_STATE_MASK);
 
-	pr_info("[eDPTX] %s-\n", __func__);
+	pr_info("%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 	/* Ensure the sink is muted */
 	msleep(20);
 }
@@ -2410,13 +2439,13 @@ mtk_edp_bridge_mode_valid(struct drm_bridge *bridge,
 				mtk_edp->train_info.lane_count;
 
 	if (rate < mode->clock * bpp / 8) {
-		pr_info("[eDPTX] mode invalid rate = %d mode->clock * bpp/8 = %d\n",
+		pr_info("%s mode invalid rate = %d mode->clock * bpp/8 = %d\n", EDPTX_DEBUG_INFO,
 				rate, (mode->clock * bpp / 8));
 		return MODE_CLOCK_HIGH;
 	}
 
 #ifdef EDPTX_DEBUG
-	pr_info("[eDPTX] %s rate = %d\n", __func__, rate);
+	pr_info("%s %s rate = %d\n", EDPTX_DEBUG_INFO, __func__, rate);
 #endif
 
 	return MODE_OK;
@@ -2439,8 +2468,8 @@ static u32 *mtk_edp_bridge_atomic_get_output_bus_fmts(struct drm_bridge *bridge,
 	output_fmts[0] = MEDIA_BUS_FMT_FIXED;
 
 #ifdef EDPTX_DEBUG
-	pr_info("[eDPTX] %s num_output_fmts:%u output_fmts:0x%04x\n",
-			__func__, *num_output_fmts, output_fmts[0]);
+	pr_info("%s %s num_output_fmts:%u output_fmts:0x%04x\n",
+			EDPTX_DEBUG_INFO, __func__, *num_output_fmts, output_fmts[0]);
 #endif
 
 	return output_fmts;
@@ -2495,7 +2524,7 @@ static u32 *mtk_edp_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 	}
 
 #ifdef EDPTX_DEBUG
-	pr_info("[eDPTX] input_fmts=0x%04x\n", input_fmts[0]);
+	pr_info("%s input_fmts=0x%04x\n", EDPTX_DEBUG_INFO, input_fmts[0]);
 #endif
 
 	return input_fmts;
@@ -2515,8 +2544,8 @@ static int mtk_edp_bridge_atomic_check(struct drm_bridge *bridge,
 	input_bus_format = bridge_state->input_bus_cfg.format;
 
 #ifdef EDPTX_DEBUG
-	dev_info(mtk_edp->dev, "[eDPTX] input format 0x%04x, output format 0x%04x\n",
-		bridge_state->input_bus_cfg.format,
+	dev_info(mtk_edp->dev, "%s input format 0x%04x, output format 0x%04x\n",
+		EDPTX_DEBUG_INFO, bridge_state->input_bus_cfg.format,
 		 bridge_state->output_bus_cfg.format);
 #endif
 
@@ -2539,13 +2568,13 @@ static int mtk_edp_bridge_atomic_check(struct drm_bridge *bridge,
 	}
 
 #ifdef EDPTX_DEBUG
-	dev_info(mtk_edp->dev, "[eDPTX] color depth:%u, color format:%d\n",
-		mtk_edp->color_depth, mtk_edp->info.format);
+	dev_info(mtk_edp->dev, "%s color depth:%u, color format:%d\n",
+		EDPTX_DEBUG_INFO, mtk_edp->color_depth, mtk_edp->info.format);
 #endif
 
 	if (!crtc) {
 		drm_err(mtk_edp->drm_dev,
-			"Can't enable bridge as connector state doesn't have a crtc\n");
+			"%s Can't enable bridge as connector state doesn't have a crtc\n", EDPTX_DEBUG_INFO);
 		return -EINVAL;
 	}
 
@@ -2563,6 +2592,7 @@ static const struct drm_bridge_funcs mtk_edp_bridge_funcs = {
 	.atomic_reset = drm_atomic_helper_bridge_reset,
 	.attach = mtk_edp_bridge_attach,
 	.detach = mtk_edp_bridge_detach,
+	.atomic_pre_enable = mtk_edp_bridge_atomic_pre_enable,
 	.atomic_enable = mtk_edp_bridge_atomic_enable,
 	.atomic_disable = mtk_edp_bridge_atomic_disable,
 	.mode_valid = mtk_edp_bridge_mode_valid,
@@ -2581,12 +2611,18 @@ static int mtk_edp_register_phy(struct mtk_edp *mtk_edp)
 {
 	struct device *dev = mtk_edp->dev;
 
-	mtk_edp->phy_dev = platform_device_register_data(dev, "mediatek-edp-phy",
-							PLATFORM_DEVID_AUTO,
-							&mtk_edp->regs,
+	if (mtk_edp->phy_regs) {
+		mtk_edp->phy_dev = platform_device_register_data(dev, "mediatek-edp-phy",
+							PLATFORM_DEVID_AUTO, &mtk_edp->phy_regs,
 							sizeof(struct regmap *));
+	}else {
+		mtk_edp->phy_dev = platform_device_register_data(dev, "mediatek-edp-phy",
+							PLATFORM_DEVID_AUTO, &mtk_edp->regs,
+							sizeof(struct regmap *));
+	}
+
 	if (IS_ERR(mtk_edp->phy_dev)) {
-		pr_info("[eDPTX] Failed to create device mediatek-dp-phy\n");
+		pr_info("%s Failed to create device mediatek-edp-phy\n", EDPTX_DEBUG_INFO);
 		return PTR_ERR(mtk_edp->phy_dev);
 	}
 
@@ -2595,13 +2631,14 @@ static int mtk_edp_register_phy(struct mtk_edp *mtk_edp)
 	mtk_edp->phy = devm_phy_get(&mtk_edp->phy_dev->dev, "edp");
 	if (IS_ERR(mtk_edp->phy)) {
 		platform_device_unregister(mtk_edp->phy_dev);
-		pr_info("[eDPTX] Failed to get phy\n");
+		pr_info("%s Failed to get phy\n", EDPTX_DEBUG_INFO);
 		return PTR_ERR(mtk_edp->phy);
 	}
 
 	return 0;
 }
 
+#ifdef EDPTX_ANDROID_SUPPORT
 static ssize_t state_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -2670,9 +2707,9 @@ int edptx_uevent_dev_register(struct notify_dev *sdev)
 		ret = create_switch_class();
 
 		if (ret == 0)
-			pr_info("create_switch_class susesess\n");
+			pr_info("%s create_switch_class susesess\n", EDPTX_DEBUG_INFO);
 		else {
-			pr_info("create_switch_class fail\n");
+			pr_info("%s create_switch_class fail\n", EDPTX_DEBUG_INFO);
 			return ret;
 		}
 	}
@@ -2682,33 +2719,30 @@ int edptx_uevent_dev_register(struct notify_dev *sdev)
 			MKDEV(0, sdev->index), NULL, sdev->name);
 
 	if (sdev->dev != NULL) {
-		pr_info("device create ok,index:0x%x\n", sdev->index);
+		pr_info("%s device create ok,index:0x%x\n", EDPTX_DEBUG_INFO, sdev->index);
 		ret = 0;
 	} else {
-		pr_info("device create fail,index:0x%x\n", sdev->index);
+		pr_info("%s device create fail,index:0x%x\n", EDPTX_DEBUG_INFO, sdev->index);
 		return -1;
 	}
 
 	ret = device_create_file(sdev->dev, &dev_attr_state);
 	if (ret < 0) {
 		device_destroy(switch_edp_class, MKDEV(0, sdev->index));
-		pr_info("switch: Failed to register driver %s\n",
-				sdev->name);
+		pr_info("%s switch: Failed to register driver %s\n", EDPTX_DEBUG_INFO, sdev->name);
 	}
 
 	ret = device_create_file(sdev->dev, &dev_attr_name);
 	if (ret < 0) {
 		device_remove_file(sdev->dev, &dev_attr_state);
-		pr_info("switch: Failed to register driver %s\n",
-				sdev->name);
+		pr_info("%s switch: Failed to register driver %s\n", EDPTX_DEBUG_INFO, sdev->name);
 	}
 
 	ret = device_create_file(sdev->dev, &dev_attr_crtc);
 	if (ret < 0) {
 		device_remove_file(sdev->dev, &dev_attr_state);
 		device_remove_file(sdev->dev, &dev_attr_name);
-		pr_info("switch: Failed to register driver %s\n",
-				sdev->name);
+		pr_info("%s switch: Failed to register driver %s\n", EDPTX_DEBUG_INFO, sdev->name);
 	}
 
 	dev_set_drvdata(sdev->dev, sdev);
@@ -2716,6 +2750,7 @@ int edptx_uevent_dev_register(struct notify_dev *sdev)
 
 	return ret;
 }
+#endif
 
 static const char LK_TAG_NAME[] = "mediatek_drm.lkdisplay=";
 
@@ -2766,7 +2801,7 @@ static int mtk_drm_edp_notifier(struct notifier_block *notifier, unsigned long p
 	struct mtk_edp *mtk_edp = container_of(notifier, struct mtk_edp, nb);
 	struct device *dev = mtk_edp->dev;
 
-	pr_info("%s pm_event %d dev %s usage_count %d\n",
+	pr_info("%s %s pm_event %lu dev %s usage_count %d\n", EDPTX_DEBUG_INFO,
 	       __func__, pm_event, dev_name(dev), atomic_read(&dev->power.usage_count));
 
 	switch (pm_event) {
@@ -2786,7 +2821,7 @@ static int mtk_edp_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	int ret;
 
-	dev_info(dev, "[eDPTX] %s+\n",__func__);
+	dev_info(dev, "%s %s+\n", EDPTX_DEBUG_INFO, __func__);
 	mtk_edp = devm_kzalloc(dev, sizeof(*mtk_edp), GFP_KERNEL);
 	if (!mtk_edp)
 		return -ENOMEM;
@@ -2797,7 +2832,7 @@ static int mtk_edp_probe(struct platform_device *pdev)
 
 	ret = mtk_edp_dt_parse(mtk_edp, pdev);
 	if (ret) {
-		pr_info("[eDPTX] Failed to parse dt\n");
+		pr_info("%s Failed to parse dt\n", EDPTX_DEBUG_INFO);
 		return ret;
 	}
 
@@ -2811,7 +2846,7 @@ static int mtk_edp_probe(struct platform_device *pdev)
 	if (mtk_edp->use_hpd) {
 		mtk_edp->irq = platform_get_irq(pdev, 0);
 		if (mtk_edp->irq < 0) {
-			pr_info("[eDPTX] Failed to request dp irq resource\n");
+			pr_info("%s Failed to request dp irq resource\n", EDPTX_DEBUG_INFO);
 			return -EPROBE_DEFER;
 		}
 
@@ -2822,7 +2857,7 @@ static int mtk_edp_probe(struct platform_device *pdev)
 						IRQ_TYPE_LEVEL_HIGH, dev_name(dev),
 						mtk_edp);
 		if (ret) {
-			pr_info("[eDPTX] Failed to request mediatek dptx irq\n");
+			pr_info("%s Failed to request mediatek dptx irq\n", EDPTX_DEBUG_INFO);
 			return ret;
 		}
 
@@ -2833,14 +2868,16 @@ static int mtk_edp_probe(struct platform_device *pdev)
 		mtk_edp->aux.wait_hpd_asserted = mtk_edp_wait_hpd_asserted;
 	}
 
-	/* notify HWC */
+#ifdef EDPTX_ANDROID_SUPPORT
+	/* Andrioid use HWC */
 	edptx_notify_data.name = "edptx";
 	edptx_notify_data.index = 0;
 	edptx_notify_data.state = DPTX_STATE_NO_DEVICE;
 	edptx_notify_data.crtc = -1;
 	ret = edptx_uevent_dev_register(&edptx_notify_data);
 	if (ret)
-		dev_info(dev, "switch_dev_register failed, returned:%d!\n", ret);
+		dev_info(dev, "%s switch_dev_register failed, returned:%d!\n", EDPTX_DEBUG_INFO, ret);
+#endif
 
 	platform_set_drvdata(pdev, mtk_edp);
 
@@ -2860,7 +2897,7 @@ static int mtk_edp_probe(struct platform_device *pdev)
 
 	ret = devm_drm_bridge_add(dev, &mtk_edp->bridge);
 	if (ret) {
-		pr_info("[eDPTX] Failed to add bridge\n");
+		pr_info("%s Failed to add bridge\n", EDPTX_DEBUG_INFO);
 		return ret;
 	}
 
@@ -2868,12 +2905,12 @@ static int mtk_edp_probe(struct platform_device *pdev)
 	mtk_edp->nb.notifier_call = mtk_drm_edp_notifier;
 	ret = register_pm_notifier(&mtk_edp->nb);
 	if (ret)
-		pr_info("[eDPTX] register_pm_notifier failed %d", ret);
+		pr_info("%s register_pm_notifier failed %d", EDPTX_DEBUG_INFO, ret);
 
 	pm_runtime_enable(dev);
 	pm_runtime_get_sync(dev);
 
-	dev_info(dev, "[eDPTX] %s-\n",__func__);
+	dev_info(dev, "%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 	return 0;
 }
 
@@ -2888,7 +2925,7 @@ static void mtk_edp_remove(struct platform_device *pdev)
 	/* unregister pm notifier */
 	ret = unregister_pm_notifier(&mtk_edp->nb);
 	if (ret)
-		pr_info("[eDPTX] unregister_pm_notifier failed %d", ret);
+		pr_info("%s unregister_pm_notifier failed %d", EDPTX_DEBUG_INFO, ret);
 
 	if (mtk_edp->data->bridge_type != DRM_MODE_CONNECTOR_eDP)
 		del_timer_sync(&mtk_edp->debounce_timer);
@@ -2903,16 +2940,16 @@ int mtk_drm_ioctl_enable_edp(struct drm_device *dev, void *data,
 	int event;
 
 	if ((edp_enable == NULL) || (mtk_edp == NULL)) {
-		pr_info("[eDPTX] IOCTL: ERROR!\n");
+		pr_info("%s IOCTL: ERROR!\n", EDPTX_DEBUG_INFO);
 		return -EFAULT;
 	}
 
-	dev_info(mtk_edp->dev, "[eDPTX] %s enable=%d\n", __func__, edp_enable->enable);
+	dev_info(mtk_edp->dev, "%s %s enable=%d\n", EDPTX_DEBUG_INFO, __func__, edp_enable->enable);
 	event = mtk_edp_plug_state(mtk_edp) ? connector_status_connected :
 		connector_status_disconnected;
 	if (edp_enable->enable == true) {
 		if (mtk_edp->edp_ui_enable == true) {
-			dev_info(mtk_edp->dev, "[eDPTX] eDP has already been enabled, return\n");
+			dev_info(mtk_edp->dev, "%s eDP has already been enabled, return\n", EDPTX_DEBUG_INFO);
 			return 0;
 		}
 		mtk_edp->edp_ui_enable = true;
@@ -2925,7 +2962,7 @@ int mtk_drm_ioctl_enable_edp(struct drm_device *dev, void *data,
 		}
 	} else {
 		if (mtk_edp->edp_ui_enable == false) {
-			dev_info(mtk_edp->dev, "[eDPTX] eDP has already been disabled, return\n");
+			dev_info(mtk_edp->dev, "%s eDP has already been disabled, return\n", EDPTX_DEBUG_INFO);
 			return 0;
 		}
 		mtk_edp->edp_ui_enable = false;
@@ -2942,11 +2979,12 @@ static int mtk_edp_suspend(struct device *dev)
 	struct mtk_edp *mtk_edp = dev_get_drvdata(dev);
 
 	if (mtk_edp->suspend) {
-		dev_info(mtk_edp->dev, "[eDPTX] %s already suspend\n", __func__);
+		dev_info(mtk_edp->dev, "%s %s already suspend\n", EDPTX_DEBUG_INFO, __func__);
 		return 0;
 	}
 
-	dev_info(mtk_edp->dev, "[eDPTX] %s usage_count %d +\n", __func__, atomic_read(&dev->power.usage_count));
+	dev_info(mtk_edp->dev, "%s %s usage_count %d +\n", EDPTX_DEBUG_INFO, __func__,
+			atomic_read(&dev->power.usage_count));
 
 	if (mtk_edp_plug_state(mtk_edp) && mtk_edp->external_monitor) {
 		drm_dp_dpcd_writeb(&mtk_edp->aux, DP_SET_POWER, DP_SET_POWER_D3);
@@ -2960,7 +2998,8 @@ static int mtk_edp_suspend(struct device *dev)
 
 	mtk_edp->suspend = true;
 
-	dev_info(mtk_edp->dev, "[eDPTX] %s usage_count %d -\n", __func__, atomic_read(&dev->power.usage_count));
+	dev_info(mtk_edp->dev, "%s %s usage_count %d -\n", EDPTX_DEBUG_INFO,
+			__func__, atomic_read(&dev->power.usage_count));
 
 	return 0;
 }
@@ -2970,11 +3009,12 @@ static int mtk_edp_resume(struct device *dev)
 	struct mtk_edp *mtk_edp = dev_get_drvdata(dev);
 
 	if (!mtk_edp->suspend) {
-		dev_info(mtk_edp->dev, "[eDPTX] %s already resume\n", __func__);
+		dev_info(mtk_edp->dev, "%s %s already resume\n", EDPTX_DEBUG_INFO, __func__);
 		return 0;
 	}
 
-	dev_info(mtk_edp->dev, "[eDPTX] %s usage_count %d +\n", __func__, atomic_read(&dev->power.usage_count));
+	dev_info(mtk_edp->dev, "%s %s usage_count %d +\n", EDPTX_DEBUG_INFO, __func__,
+			atomic_read(&dev->power.usage_count));
 
 	pm_runtime_get_sync(dev);
 	mtk_edp_init_port(mtk_edp);
@@ -2987,7 +3027,8 @@ static int mtk_edp_resume(struct device *dev)
 
 	mtk_edp->suspend = false;
 
-	dev_info(mtk_edp->dev, "[eDPTX] %s usage_count %d -\n", __func__, atomic_read(&dev->power.usage_count));
+	dev_info(mtk_edp->dev, "%s %s usage_count %d -\n", EDPTX_DEBUG_INFO, __func__,
+			atomic_read(&dev->power.usage_count));
 
 	return 0;
 }
@@ -3030,16 +3071,16 @@ static int __init mtk_edp_init(void)
 	int ret = 0, i = 0;
 
 	for (i = 0; i < ARRAY_SIZE(mtk_edp_drivers); i++) {
-		pr_info("[eDPTX] register %s driver\n", mtk_edp_drivers[i]->driver.name);
+		pr_info("%s register %s driver\n", EDPTX_DEBUG_INFO, mtk_edp_drivers[i]->driver.name);
 		ret = platform_driver_register(mtk_edp_drivers[i]);
 		if (ret < 0) {
-			pr_info("Failed to register %s driver: %d\n", mtk_edp_drivers[i]->driver.name, ret);
+			pr_info("%s Failed to register %s driver: %d\n", EDPTX_DEBUG_INFO,
+					mtk_edp_drivers[i]->driver.name, ret);
 			goto err;
 		}
 	}
 
 	return 0;
-
 err:
 	while (--i >= 0)
 		platform_driver_unregister(mtk_edp_drivers[i]);
@@ -3058,7 +3099,7 @@ static void __exit mtk_edp_exit(void)
 module_init(mtk_edp_init);
 module_exit(mtk_edp_exit);
 
-MODULE_SOFTDEP("pre: panel-maxiam-max96851 maxiam-max96851");
+MODULE_SOFTDEP("pre: panel-serdes-dp serdes-dp");
 
 MODULE_AUTHOR("Jie-h.Hu <jie-h.hu@mediatek.com>");
 MODULE_DESCRIPTION("MediaTek Embedded DisplayPort Driver");

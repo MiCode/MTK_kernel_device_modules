@@ -12,9 +12,6 @@
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 
-#define EDP_PHYD_BASE_ADDR		0x130A0000
-
-
 #define PHYD_OFFSET			0x0000
 #define PHYD_DIG_LAN0_OFFSET	0x1000
 #define PHYD_DIG_LAN1_OFFSET	0x1100
@@ -104,12 +101,6 @@
 
 struct mtk_edp_phy {
 	struct regmap *regs;
-};
-
-static const struct regmap_config edp_phyd_regmap_config = {
-	.reg_bits = 32,
-	.val_bits = 32,
-	.reg_stride = 4,
 };
 
 enum {
@@ -286,18 +277,12 @@ static int mtk_edp_phy_probe(struct platform_device *pdev)
 	struct mtk_edp_phy *edp_phy;
 	struct phy *phy;
 	struct regmap *regs;
-	void __iomem *regs_base;
 
 	pr_info("[eDPTX] %s+\n", __func__);
-	regs_base = ioremap(EDP_PHYD_BASE_ADDR, 0x1500);
-	if (!regs_base) {
-		pr_info("[eDPTX] Unable to map register.\n");
-		return -ENOMEM;
-	}
 
-	regs = devm_regmap_init_mmio(dev, regs_base, &edp_phyd_regmap_config);
-	if (IS_ERR(regs)) {
-		pr_info("[eDPTX] No data passed, requires struct regmap\n");
+	regs = *(struct regmap **)dev->platform_data;
+	if (!regs) {
+		pr_info("[eDPTX] regmap is NULL\n");
 		return -EINVAL;
 	}
 
@@ -316,7 +301,7 @@ static int mtk_edp_phy_probe(struct platform_device *pdev)
 	if (!dev->of_node)
 		phy_create_lookup(phy, "edp", dev_name(dev));
 
-		pr_info("[eDPTX] %s-\n", __func__);
+	pr_info("[eDPTX] %s-\n", __func__);
 	return 0;
 }
 

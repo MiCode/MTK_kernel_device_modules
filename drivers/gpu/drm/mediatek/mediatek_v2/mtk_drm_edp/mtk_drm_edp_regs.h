@@ -52,6 +52,11 @@
 #define RG_XTP_GLB_CKDET_EN			BIT(1)
 #define RG_DPAUX_RX_EN				BIT(0)
 
+/* offset: PHY_OFFSET */
+#define DP_PHY_DIG_GLB_STATUS_0		0x146C
+#define RGS_BG_CORE_EN_READY		BIT(0)
+#define RGS_AUX_LDO_EN_READY		BIT(1)
+
 /* offset: TOP_OFFSET (0x2000) */
 #define MTK_DP_TOP_PWR_STATE		0x2000
 #define DP_PWR_STATE_MASK			GENMASK(1, 0)
