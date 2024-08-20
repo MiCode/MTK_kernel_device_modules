@@ -2168,8 +2168,8 @@
 				<&gce CMDQ_EVENT_GCE_CNT_OP_THRESHOLD>;
 
 			gce-gpr = <GCE_GPR_R10>, <GCE_GPR_R11>;
-			gce_norm_token = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_VENC_WAIT>;
-			gce_sec_token = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_VENC_SET>;
+			gce-norm-token = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_VENC_WAIT>;
+			gce-sec-token = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_VENC_SET>;
 		};
 
 		vcu_iommu_venc {
@@ -2292,7 +2292,7 @@
 			vdec-set-bw-in-min-freq = <1>;
 			throughput-op-rate-thresh = <120>;
 			throughput-min = <218000000>;
-			throughput-normal-max = <312000000>;
+			throughput-normal-max = <546000000>;
 			max-op-rate-table =
 				<877088845 921600 60 2228224 60 3686400 1>, /* MPEG4 */
 				<826757197 921600 60 2228224 60 3686400 1>, /* MPEG1 */
@@ -2307,16 +2307,16 @@
 				<809062486 921600 120 2088960 60 3686400 30>; /* VP9 */
 
 			throughput-table =
-				<877088845 0 597 597>, /* MPEG4 FHD30 312MHz*/
-				<826757197 0 597 597>, /* MPEG1 */
-				<843534413 0 597 597>, /* MPEG2 */
+				<877088845 0 643 643>, /* MPEG4 FHD30 312MHz*/
+				<826757197 0 643 643>, /* MPEG1 */
+				<843534413 0 643 643>, /* MPEG2 */
 				<859189832 0 218 218>, /* H.263 */
 				<875967048 0 218 218>, /* H.264 1088p60 312MHz*/
 				<826496577 0 218 218>, /* H.264 */
 				<1129727304 0 218 218>, /* HEVC */
 				<892744264 0 218 218>, /* H.265 */
 				<1179206984 0 218 218>, /* HEIF */
-				<808996950 0 218 218>, /* VP8 */
+				<808996950 0 643 643>, /* VP8 */
 				<809062486 0 218 218>; /* VP9 */
 			bandwidth-table =
 				<4 2 308>,
@@ -2430,15 +2430,15 @@
 					<1179206984 486000 4 4>,
 					<1179206984 4294967295 9 7>;
 			bandwidth-table =
-					<7 2 10>,
-					<7 1 160>, /* FHD60 worst case * 0.7: 256*458/766 * 1.5 * 0.7 */
-					<7 1 20>,
-					<7 2 4>,
-					<7 1 16>,
-					<7 0 194>,
-					<7 0 97>,
+					<7 2 5>,
+					<7 1 105>, /* FHD60 worst case * 0.7: 256*458/766 * 1.5 * 0.7 */
+					<7 1 10>,
+					<7 2 5>,
+					<7 1 10>,
+					<7 0 70>,
+					<7 0 35>,
 					<7 0 0>,
-					<7 0 642>, /* FHD60 worst case * 0.7: 256*458/766 * 1.5 * 4 * 0.7*/
+					<7 0 420>, /* FHD60 worst case * 0.7: 256*458/766 * 1.5 * 4 * 0.7*/
 					<7 0 7>;
 		};
 
