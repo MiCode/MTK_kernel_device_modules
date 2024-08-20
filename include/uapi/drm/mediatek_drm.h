@@ -619,7 +619,11 @@ struct wb_frame_info {
 	__u32 src_width, src_height;
 	__u32 dst_width, dst_height;
 };
+#ifdef MTK_AUTO_PRODUCT
+#define LYE_CRTC 6
+#else
 #define LYE_CRTC 4
+#endif
 struct drm_mtk_layering_info {
 	struct drm_mtk_layer_config *input_config[LYE_CRTC];
 	int disp_mode[LYE_CRTC];
