@@ -38,7 +38,6 @@
 #include "mtk_drm_edp_api.h"
 #include "../mtk_drm_crtc.h"
 
-#define OS_ANDROID				0
 #define EDPTX_COLOR_BAR			0
 
 #define EDP_VIDEO_UNMUTE		0x22
@@ -1846,12 +1845,9 @@ static irqreturn_t mtk_edp_hpd_event_thread(int hpd, void *dev)
 			mtk_edp_pm_ctl(mtk_edp, true);
 			dev_info(mtk_edp->dev, "[eDPTX] MTK_DP_HPD_CONNECT\n");
 		}
-
-		if (mtk_edp->bridge.dev)
-			drm_helper_hpd_irq_event(mtk_edp->bridge.dev);
 	}
 
-#if OS_ANDROID
+#ifdef EDPTX_ANDROID_SUPPORT
 	mtk_edp->edp_ui_enable = true;
 	if (mtk_edp->edp_ui_enable) {
 		if (mtk_edp->external_monitor) {
@@ -1875,6 +1871,9 @@ static irqreturn_t mtk_edp_hpd_event_thread(int hpd, void *dev)
 			}
 		}
 	}
+#else
+		if (mtk_edp->bridge.dev)
+			drm_helper_hpd_irq_event(mtk_edp->bridge.dev);
 #endif
 
 	pr_info("[eDPTX] %s-\n", __func__);
@@ -2327,11 +2326,7 @@ static void mtk_edp_bridge_atomic_enable(struct drm_bridge *bridge,
 	}
 
 	mtk_edp_aux_panel_poweron(mtk_edp, true);
-
-	/* Training */
-
 	mtk_edp_parse_capabilities(mtk_edp);
-
 	ret = mtk_edp_training(mtk_edp);
 	if (ret) {
 		drm_err(mtk_edp->drm_dev, "[eDPTX] Training failed, %d\n", ret);
@@ -2392,15 +2387,16 @@ mtk_edp_bridge_mode_valid(struct drm_bridge *bridge,
 	u32 rate = mtk_edp->train_info.link_rate * 27000 *
 				mtk_edp->train_info.lane_count;
 
-	pr_info("[eDPTX] %s\n", __func__);
-
 	if (rate < mode->clock * bpp / 8) {
 		pr_info("[eDPTX] mode invalid rate = %d mode->clock * bpp/8 = %d\n",
 				rate, (mode->clock * bpp / 8));
 		return MODE_CLOCK_HIGH;
 	}
 
-	pr_info("[eDPTX] mode valid rate = %d\n", rate);
+#ifdef EDPTX_DEBUG
+	pr_info("[eDPTX] %s rate = %d\n", __func__, rate);
+#endif
+
 	return MODE_OK;
 }
 
@@ -2420,8 +2416,10 @@ static u32 *mtk_edp_bridge_atomic_get_output_bus_fmts(struct drm_bridge *bridge,
 	*num_output_fmts = 1;
 	output_fmts[0] = MEDIA_BUS_FMT_FIXED;
 
+#ifdef EDPTX_DEBUG
 	pr_info("[eDPTX] %s num_output_fmts:%u output_fmts:0x%04x\n",
 			__func__, *num_output_fmts, output_fmts[0]);
+#endif
 
 	return output_fmts;
 }
@@ -2446,8 +2444,6 @@ static u32 *mtk_edp_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 		&conn_state->connector->display_info;
 	u32 rate = mtk_edp->train_info.link_rate *
 				mtk_edp->train_info.lane_count;
-
-	pr_info("[eDPTX] %s+\n", __func__);
 	*num_input_fmts = 0;
 
 	/*
@@ -2476,7 +2472,9 @@ static u32 *mtk_edp_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 		memcpy(input_fmts, mt8678_input_fmts, sizeof(mt8678_input_fmts));
 	}
 
+#ifdef EDPTX_DEBUG
 	pr_info("[eDPTX] input_fmts=0x%04x\n", input_fmts[0]);
+#endif
 
 	return input_fmts;
 }
@@ -2492,12 +2490,13 @@ static int mtk_edp_bridge_atomic_check(struct drm_bridge *bridge,
 	struct drm_crtc *crtc = conn_state->crtc;
 	unsigned int input_bus_format;
 
-	pr_info("[eDPTX] %s+\n", __func__);
 	input_bus_format = bridge_state->input_bus_cfg.format;
 
+#ifdef EDPTX_DEBUG
 	dev_info(mtk_edp->dev, "[eDPTX] input format 0x%04x, output format 0x%04x\n",
 		bridge_state->input_bus_cfg.format,
 		 bridge_state->output_bus_cfg.format);
+#endif
 
 	/* set edp output color depth */
 	if (display_info->bpc)
@@ -2517,8 +2516,10 @@ static int mtk_edp_bridge_atomic_check(struct drm_bridge *bridge,
 		break;
 	}
 
+#ifdef EDPTX_DEBUG
 	dev_info(mtk_edp->dev, "[eDPTX] color depth:%u, color format:%d\n",
 		mtk_edp->color_depth, mtk_edp->info.format);
+#endif
 
 	if (!crtc) {
 		drm_err(mtk_edp->drm_dev,
@@ -2527,7 +2528,6 @@ static int mtk_edp_bridge_atomic_check(struct drm_bridge *bridge,
 	}
 
 	drm_display_mode_to_videomode(&crtc_state->adjusted_mode, &mtk_edp->info.vm);
-	pr_info("[eDPTX] %s-\n", __func__);
 
 	return 0;
 }

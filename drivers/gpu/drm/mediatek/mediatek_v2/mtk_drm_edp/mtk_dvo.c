@@ -746,8 +746,6 @@ static u32 *mtk_dvo_bridge_atomic_get_output_bus_fmts(struct drm_bridge *bridge,
 	u32 *output_fmts;
 
 	*num_output_fmts = 0;
-
-	pr_info("[eDPTX] %s\n", __func__);
 	if (!dvo->conf->output_fmts) {
 		dev_info(dvo->dev, "output_fmts should not be null\n");
 		return NULL;
@@ -785,8 +783,10 @@ static u32 *mtk_dvo_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 	*num_input_fmts = 1;
 	input_fmts[0] = MEDIA_BUS_FMT_RGB888_1X24;
 
+#ifdef EDPTX_DEBUG
 	pr_info("[eDPTX] %s num_input_fmts:%d input_fmts:0x%04x\n",
 			__func__, *num_input_fmts, input_fmts[0]);
+#endif
 
 	return input_fmts;
 }
@@ -806,16 +806,20 @@ static int mtk_dvo_bridge_atomic_check(struct drm_bridge *bridge,
 		dvo->color_depth = display_info->bpc;
 	else
 		dvo->color_depth = 8;
-
+#ifdef EDPTX_DEBUG
 	pr_info("[eDPTX] %s+ bridge_state out_bus_format:0x%04x\n", __func__, out_bus_format);
+#endif
+
 	if (out_bus_format == MEDIA_BUS_FMT_FIXED)
 		if (dvo->conf->num_output_fmts)
 			out_bus_format = dvo->conf->output_fmts[0];
 
+#ifdef EDPTX_DEBUG
 	dev_info(dvo->dev, "[eDPTX] %s input format 0x%04x, output format 0x%04x\n",
 		__func__,
 		bridge_state->input_bus_cfg.format,
 		out_bus_format);
+#endif
 
 	dvo->output_fmt = out_bus_format;
 	dvo->bit_num = MTK_DVO_OUT_BIT_NUM_8BITS;
@@ -925,13 +929,15 @@ mtk_dvo_bridge_mode_valid(struct drm_bridge *bridge,
 {
 	struct mtk_dvo *dvo = bridge_to_dvo(bridge);
 
-	pr_info("[eDPTX] %s\n", __func__);
 	if (mode->clock > dvo->conf->max_clock_khz) {
 		pr_info("[eDPTX] Invalid mode mode->clock= %d\n", mode->clock);
 		return MODE_CLOCK_HIGH;
 	}
 
-	pr_info("[eDPTX] Valid mode mode->clock=%d\n", mode->clock);
+#ifdef EDPTX_DEBUG
+	pr_info("[eDPTX] %s mode->clock=%d\n", __func__, mode->clock);
+#endif
+
 	return MODE_OK;
 }
 
