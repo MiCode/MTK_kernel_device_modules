@@ -3153,6 +3153,12 @@ static void dpc_mtcmos_auto_v1(const enum mtk_dpc_subsys subsys, const enum mtk_
 			dpc_mtcmos_vote_v1(DPC_SUBSYS_DIS0, 6, 0);
 			dpc_mtcmos_vote_v1(DPC_SUBSYS_OVL0, 6, 0);
 			dpc_mtcmos_vote_v1(DPC_SUBSYS_OVL1, 6, 0);
+			if (dbg_runtime_ctrl) {
+				dbg_mmp = 1;
+				dbg_irq = 1;
+				dbg_mtcmos_off = 1;
+				dpc_irq_enable(DPC_SUBSYS_DISP, true, false);
+			}
 		}
 	} else if (MTK_DPC_OF_MML_SUBSYS(subsys)) {
 		dpc_update_mtcmos_auto_state(subsys, en, 0x5e1f);
@@ -3164,8 +3170,15 @@ static void dpc_mtcmos_auto_v1(const enum mtk_dpc_subsys subsys, const enum mtk_
 		}
 		dpc_group_enable_func(DPC_MML_VIDLE_MTCMOS, en, false);
 
-		if (en)
+		if (en) {
 			dpc_mtcmos_vote_v1(DPC_SUBSYS_MML1, 6, 0);
+			if (dbg_runtime_ctrl) {
+				dbg_mmp = 1;
+				dbg_irq = 1;
+				dbg_mtcmos_off = 1;
+				dpc_irq_enable(DPC_SUBSYS_MML, true, false);
+			}
+		}
 	} else {
 		DPCERR("invalid subsys:%d", subsys);
 		WARN_ON(1);
