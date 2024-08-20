@@ -7694,7 +7694,7 @@ cpus {
 			ccorr-num-per-pipe = <1>;
 			ccorr-linear-per-pipe = <0x01>;
 			ccorr-prim-force-linear = <0x0>;
-			ccorr-linear = <1>;
+			ccorr-linear = <0>;
 			doze-bypass = <0x10001>;
 		};
 
