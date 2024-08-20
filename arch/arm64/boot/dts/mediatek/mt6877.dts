@@ -490,6 +490,10 @@
 					target = <&cam2_legacy>;
 					value = <0 1 0 0>;
 			};
+			level_dsi0: level-dsi0 {
+				target = <&dsi0>;
+				value = <0 0 0 0>;
+			};
 		};
 
 		resource-ctrl-list {
@@ -5705,8 +5709,8 @@
 			<1>, /*MTK_DRM_OPT_ESD_CHECK_RECOVERY*/
 			<1>, /*MTK_DRM_OPT_ESD_CHECK_SWITCH*/
 			<1>, /*MTK_DRM_OPT_PRESENT_FENCE*/
-			<1>, /*MTK_DRM_OPT_RDMA_UNDERFLOW_AEE*/
-			<1>, /*MTK_DRM_OPT_DSI_UNDERRUN_AEE*/
+			<0>, /*MTK_DRM_OPT_RDMA_UNDERFLOW_AEE*/
+			<0>, /*MTK_DRM_OPT_DSI_UNDERRUN_AEE*/
 			<1>, /*MTK_DRM_OPT_HRT*/
 			<1>, /*MTK_DRM_OPT_HRT_MODE*/
 			<0>, /*MTK_DRM_OPT_DELAYED_TRIGGER*/
