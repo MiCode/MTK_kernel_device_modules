@@ -1597,8 +1597,10 @@ free_pmm_page:
 free_sg_table:
 	sg_free_table(table);
 free_pages:
-	list_for_each_entry_safe(page, tmp_page, &pages, lru)
-		__free_pages(page, compound_order(page));
+	list_for_each_entry_safe(page, tmp_page, &pages, lru) {
+		if (compound_order(page) <= MAX_ORDER)
+			__free_pages(page, compound_order(page));
+	}
 
 	return -ENOMEM;
 }
