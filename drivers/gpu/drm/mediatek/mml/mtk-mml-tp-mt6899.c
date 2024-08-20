@@ -1102,9 +1102,15 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 	}
 
 	/* rotate go to racing (inline rotate) */
-	if (info->dest[0].rotate == MML_ROT_90 || info->dest[0].rotate == MML_ROT_270)
+	if (info->dest[0].rotate == MML_ROT_90 || info->dest[0].rotate == MML_ROT_270) {
 		mode = tp_query_mode_racing(mml, info, reason);
-	else
+		if (mode == MML_MODE_RACING && MML_FMT_IS_YUV(info->src.format) &&
+			(info->dest[0].crop.r.width & 1)) {
+			*reason = mml_query_not_support;
+			mode = MML_MODE_MML_DECOUPLE2;
+			goto check_dc_tput;
+		}
+	} else
 		mode = tp_query_mode_dl(mml, info, reason, panel_width, panel_height);
 
 check_dc_tput:
