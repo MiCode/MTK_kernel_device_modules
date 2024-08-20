@@ -108,6 +108,18 @@ void mt6899_aputop_opp_limit(struct aputop_func_param *aputop,
 {
 	int vpu_max, vpu_min, dla_max, dla_min;
 
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_THERMAL)
+	static int cur_type = -1; // Highest Priority for OPP_LIMIT_THERMAL(type 0)
+
+	if ((cur_type == OPP_LIMIT_THERMAL) && (type != OPP_LIMIT_THERMAL))
+		return;
+
+	if ((type == OPP_LIMIT_THERMAL) && (aputop->param1 == -1))
+		cur_type = -1;
+	else
+		cur_type = type;
+#endif
+
 	vpu_max = aputop->param1;
 	vpu_min = aputop->param2;
 	dla_max = aputop->param3;

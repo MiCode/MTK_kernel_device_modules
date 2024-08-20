@@ -2,6 +2,15 @@
 /*
  * Copyright (c) 2020 MediaTek Inc.
  */
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_THERMAL)
+#include <linux/err.h>
+#include <linux/kernel.h>
+#include <linux/of_device.h>
+#include <linux/slab.h>
+#include <linux/string.h>
+#include <linux/thermal.h>
+#include <linux/types.h>
+#endif
 
 #include <linux/module.h>
 #include <linux/clk.h>
@@ -39,6 +48,107 @@ static struct apu_power apupw = {
 	.env = MP,
 	.rcx = CE_FW,
 };
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_THERMAL)
+/*==================================================
+ * cooler callback functions
+ *==================================================
+ */
+static int apu_throttle(struct apu_cooling_device *apu_cdev, unsigned long state)
+{
+	struct aputop_func_param aputop;
+	struct device *dev = apu_cdev->dev;
+
+	memset(&aputop, -1, sizeof(struct aputop_func_param));
+
+	if (state > APU_COOLING_UNLIMITED_STATE) {
+		aputop.param1 = state; //vpu_max
+		aputop.param3 = state; //dla_max
+	}
+
+	mt6899_aputop_opp_limit(&aputop, OPP_LIMIT_THERMAL);
+	apu_cdev->target_state = state;
+	dev_info(dev, "%s: set state %ld done, para= %d\n", apu_cdev->name, state, aputop.param1);
+	return 0;
+}
+
+static int apu_cooling_get_max_state(struct thermal_cooling_device *cdev,
+	unsigned long *state)
+{
+	struct apu_cooling_device *apu_cdev = cdev->devdata;
+
+	*state = apu_cdev->max_state;
+
+	return 0;
+}
+
+static int apu_cooling_get_cur_state(struct thermal_cooling_device *cdev,
+	unsigned long *state)
+{
+	struct apu_cooling_device *apu_cdev = cdev->devdata;
+
+	*state = apu_cdev->target_state;
+
+	return 0;
+}
+
+static int apu_cooling_set_cur_state(struct thermal_cooling_device *cdev,
+	unsigned long state)
+{
+	struct apu_cooling_device *apu_cdev = cdev->devdata;
+	int ret;
+
+	/* Request state should be less than max_state */
+	if (WARN_ON(state > apu_cdev->max_state || !apu_cdev->throttle))
+		return -EINVAL;
+
+	if (apu_cdev->target_state == state)
+		return 0;
+
+	ret = apu_cdev->throttle(apu_cdev, state);
+
+	return ret;
+}
+
+/*==================================================
+ * platform data and platform driver callbacks
+ *==================================================
+ */
+
+static struct thermal_cooling_device_ops apu_cooling_ops = {
+	.get_max_state		= apu_cooling_get_max_state,
+	.get_cur_state		= apu_cooling_get_cur_state,
+	.set_cur_state		= apu_cooling_set_cur_state,
+};
+
+static int init_apu_cooling_device(struct device *dev, struct apu_cooling_device *apu_cdev)
+{
+	struct thermal_cooling_device *cdev;
+	char *name = "apu_cooler";
+	int ret = 0;
+
+	ret = snprintf(apu_cdev->name, MAX_APU_COOLER_NAME_LEN, "%s", name);
+	if (ret <= 0)
+		goto init_fail;
+	apu_cdev->target_state = APU_COOLING_UNLIMITED_STATE;
+	apu_cdev->max_state = APU_COOLING_MAX_STATE;
+	apu_cdev->throttle = apu_throttle;
+	apu_cdev->dev = dev;
+
+	cdev = thermal_of_cooling_device_register(dev->of_node, apu_cdev->name,
+			apu_cdev, &apu_cooling_ops);
+	if (IS_ERR(cdev))
+		goto init_fail;
+	apu_cdev->cdev = cdev;
+
+	dev_info(dev, "register %s done\n", apu_cdev->name);
+
+	return 0;
+
+init_fail:
+	return -EINVAL;
+}
+#endif
 
 static void aputop_dump_reg(enum apupw_reg idx, uint32_t offset, uint32_t size)
 {
@@ -618,6 +728,22 @@ static int mt6899_apu_top_pb(struct platform_device *pdev)
 {
 
 	int ret = 0;
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_THERMAL)
+	struct device *dev = &pdev->dev;
+	struct apu_cooling_device *apu_cdev;
+
+	apu_cdev = devm_kzalloc(dev, sizeof(*apu_cdev), GFP_KERNEL);
+	if (!apu_cdev)
+		return -ENOMEM;
+
+	ret = init_apu_cooling_device(dev, apu_cdev);
+	if (ret) {
+		dev_notice(dev, "failed to init apu cooler!\n");
+		return ret;
+	}
+
+	platform_set_drvdata(pdev, apu_cdev);
+#endif
 
 	init_reg_base(pdev);
 	if (apupw.env < MP)
@@ -632,6 +758,14 @@ static int mt6899_apu_top_pb(struct platform_device *pdev)
 static int mt6899_apu_top_rm(struct platform_device *pdev)
 {
 	int idx;
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_THERMAL)
+	struct apu_cooling_device *apu_cdev;
+
+	apu_cdev = (struct apu_cooling_device *)platform_get_drvdata(pdev);
+	thermal_cooling_device_unregister(apu_cdev->cdev);
+
+	platform_set_drvdata(pdev, NULL);
+#endif
 
 	pr_info("%s +\n", __func__);
 

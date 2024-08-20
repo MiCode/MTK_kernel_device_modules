@@ -8,6 +8,42 @@
 
 #include "apu_top.h"
 #include "mt6899_apupwr.h"
+#include <linux/thermal.h>
+
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_THERMAL)
+/*===========================================================
+ *  Macro Definitions
+ *===========================================================
+ */
+#define APU_COOLING_UNLIMITED_STATE	(USER_MAX_OPP_VAL + OPP_OFS)
+#define APU_COOLING_MAX_STATE		(USER_MIN_OPP_VAL)
+#define MAX_APU_COOLER_NAME_LEN	(20)
+
+/*==================================================
+ * Type Definitions
+ *==================================================
+ */
+/**
+ * struct apu_cooling_device - data for apu cooling device
+ * @name: naming string for this cooling device
+ * @target_state: target cooling state which is set in set_cur_state()
+ *	callback.
+ * @max_state: maximum state supported for this cooling device
+ * @cdev: thermal_cooling_device pointer to keep track of the
+ *	registered cooling device.
+ * @throttle: callback function to handle throttle request
+ * @dev: device node pointer
+ */
+struct apu_cooling_device {
+	char name[MAX_APU_COOLER_NAME_LEN];
+	unsigned long target_state;
+	unsigned long max_state;
+	struct thermal_cooling_device *cdev;
+	int (*throttle)(struct apu_cooling_device *bl_cdev, unsigned long state);
+	struct device *dev;
+};
+#endif
 
 // mbox offset define (for data exchange with remote)
 #define SPARE_DBG_REG10		0x428	// mbox4_dummy10
