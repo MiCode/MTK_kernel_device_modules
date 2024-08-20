@@ -8139,6 +8139,7 @@ static int mtk_drm_get_crtc_id(enum MTK_PANEL_ID panel_id, struct mtk_drm_privat
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 static DEFINE_MUTEX(se_lock);
 
 static int mtk_drm_se_enable(struct drm_device *dev, struct mtk_drm_crtc *mtk_crtc)
@@ -8234,6 +8235,7 @@ static int mtk_drm_se_enable(struct drm_device *dev, struct mtk_drm_crtc *mtk_cr
 
 	return ret;
 }
+#endif
 
 int mtk_drm_get_info_ioctl(struct drm_device *dev, void *data,
 			   struct drm_file *file_priv)
@@ -9330,6 +9332,7 @@ static void mtk_drm_kms_deinit(struct drm_device *drm)
 	}
 }
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 static void mtk_drm_se_cmdq_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
@@ -9378,8 +9381,8 @@ static int mtk_drm_se_plane_config(struct mtk_drm_crtc *mtk_crtc)
 			//} else {
 			//	mtk_crtc_all_layer_off(mtk_crtc, cmdq_handle, 0);
 			//}
-		} else
-			mtk_crtc_all_layer_off(mtk_crtc, cmdq_handle);
+		} //else
+			//mtk_crtc_all_layer_off(mtk_crtc, cmdq_handle);
 		mtk_crtc->se_state = DISP_SE_RUNNING;
 	}
 
@@ -9465,8 +9468,11 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 	u64 sys_time;
 	struct mtk_ddp_comp *comp = NULL;
 #ifdef CONFIG_MTK_ULTRARVC_SUPPORT
-		static bool ultrarvc_start = true;
+	static bool ultrarvc_start = true;
 #endif
+
+	unsigned int layer_id = 0;
+
 	sys_time = ktime_to_ns(ktime_get_boottime());
 	if(layer_info->pts != 0)
 		DDPINFO("LATENCY_TEST %s %lld sys_time %lld\n",
@@ -9522,12 +9528,17 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 		return 0;
 	}
 
+	if (layer_info->user_type == MTK_USER_NORMAL)
+		layer_id = mtk_crtc->layer_nr - 1;
+	else
+		layer_id = layer_info->layer_id;
+
 	params = mtk_drm_get_lcm_ext_params(&mtk_crtc->base);
 
 	if (layer_info->layer_en)
 		mtk_crtc->se_panel |= 1 << layer_info->panel_id;
 
-	se_plane = &mtk_crtc->se_plane[layer_info->layer_id];
+	se_plane = &mtk_crtc->se_plane[layer_id];
 	se_plane->panel_id = layer_info->panel_id;
 	state = &se_plane->state;
 	state->pending.enable = layer_info->layer_en;
@@ -9553,12 +9564,11 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 		state->pending.prop_val[PLANE_PROP_COMPRESS]);
 
 	state->pending.dirty = true;
-	state->comp_state.lye_id = layer_info->layer_id;
+	state->comp_state.lye_id = layer_id;
 
 	state->comp_state.ext_lye_id = LYE_NORMAL;
 	state->pending.pts = layer_info->pts;
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	comp = mtk_crtc_get_comp_with_index(mtk_crtc, state);
 	if (!comp) {
 		DDPMSG("%s invalid comp\n", __func__);
@@ -9566,9 +9576,7 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 	}
 
 	state->comp_state.comp_id = comp->id;
-#else
-	state->comp_state.comp_id = DDP_COMPONENT_OVL_EXDMA3;
-#endif
+	state->comp_state.lye_id = to_crtc_plane_index(layer_info->layer_id);
 
 #ifdef CONFIG_MTK_ULTRARVC_SUPPORT
 		/*{ultrarvc +*/
@@ -9715,6 +9723,7 @@ static int mtk_drm_unmap_dma_buf(struct drm_device *dev, void *data,
 
 	return 0;
 }
+#endif
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 int mtk_drm_fm_lcm_auto_test(struct drm_device *dev, void *data,
@@ -9966,12 +9975,14 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 					DRM_UNLOCKED),
 	DRM_IOCTL_DEF_DRV(MTK_SEC_HND_TO_GEM_HND, mtk_drm_sec_hnd_to_gem_hnd,
 			DRM_UNLOCKED | DRM_AUTH | DRM_RENDER_ALLOW),
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	DRM_IOCTL_DEF_DRV(MTK_SET_OVL_LAYER, mtk_drm_set_ovl_layer,
 			  DRM_UNLOCKED | DRM_AUTH | DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(MTK_MAP_DMA_BUF, mtk_drm_map_dma_buf,
 			  DRM_UNLOCKED | DRM_AUTH | DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(MTK_UNMAP_DMA_BUF, mtk_drm_unmap_dma_buf,
 			  DRM_UNLOCKED | DRM_AUTH | DRM_RENDER_ALLOW),
+#endif
 };
 
 #if IS_ENABLED(CONFIG_COMPAT)
