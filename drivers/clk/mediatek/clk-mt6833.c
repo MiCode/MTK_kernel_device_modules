@@ -1754,6 +1754,8 @@ static const struct mtk_composite top_composites[] = {
 #define PLL_CFLAGS		(0)
 #endif
 
+#define MFGPLL_PLL_FMAX		(1900UL  * MHZ)
+
 #define PLL(_id, _name, _reg, _en_reg, _en_mask, _pll_en_bit,		\
 			_pwr_reg, _flags, _rst_bar_mask,		\
 			_pd_reg, _pd_shift, _tuner_reg,			\
@@ -1781,6 +1783,42 @@ static const struct mtk_composite top_composites[] = {
 		.pcwibits = MT6833_INTEGER_BITS,			\
 	}
 
+#define PLL_B(_id, _name, _reg, _en_reg, _en_mask, _pll_en_bit,		\
+			_pwr_reg, _flags, _rst_bar_mask,		\
+			_pd_reg, _pd_shift, _tuner_reg,			\
+			_tuner_en_reg, _tuner_en_bit,			\
+			_pcw_reg, _pcw_shift, _pcwbits, _div_table) {					\
+		.id = _id,						\
+		.name = _name,						\
+		.reg = _reg,						\
+		.en_reg = _en_reg,					\
+		.en_mask = _en_mask,					\
+		.pll_en_bit = _pll_en_bit,				\
+		.pwr_reg = _pwr_reg,					\
+		.flags = _flags,				\
+		.rst_bar_mask = _rst_bar_mask,				\
+		.fmax = MT6833_PLL_FMAX,				\
+		.fmin = MT6833_PLL_FMIN,				\
+		.pd_reg = _pd_reg,					\
+		.pd_shift = _pd_shift,					\
+		.tuner_reg = _tuner_reg,				\
+		.tuner_en_reg = _tuner_en_reg,			\
+		.tuner_en_bit = _tuner_en_bit,				\
+		.pcw_reg = _pcw_reg,					\
+		.pcw_shift = _pcw_shift,				\
+		.pcwbits = _pcwbits,	                \
+		.div_table = _div_table,				\
+		.pcwibits = MT6833_INTEGER_BITS,        \
+	}
+
+static const struct mtk_pll_div_table mfgpll_div_table[] = {
+	{ .div = 0, .freq = 1900000000},
+	{ .div = 1, .freq = 1069000000 },
+	{ .div = 2, .freq = 954000000 },
+	{ .div = 3, .freq = 389000000 },
+	{ .div = 4, .freq = 1 },
+	{ /* sentinel */ }
+};
 static const struct mtk_pll_data apmixed_plls[] = {
 	PLL(CLK_APMIXED_ARMPLL_LL, "armpll_ll", ARMPLL_LL_CON0/*base*/,
 		ARMPLL_LL_CON0, 0, 0/*en*/,
@@ -1836,12 +1874,12 @@ static const struct mtk_pll_data apmixed_plls[] = {
 		ADSPPLL_CON1, 24/*pd*/,
 		0, 0, 0/*tuner*/,
 		ADSPPLL_CON1, 0, 22/*pcw*/),
-	PLL(CLK_APMIXED_MFGPLL, "mfgpll", MFGPLL_CON0/*base*/,
+	PLL_B(CLK_APMIXED_MFGPLL, "mfgpll", MFGPLL_CON0/*base*/,
 		MFGPLL_CON0, 0, 0/*en*/,
-		MFGPLL_CON3/*pwr*/, 0, BIT(0)/*rstb*/,
+		MFGPLL_CON3/*pwr*/, CLK_SET_ROUND_RATE, BIT(0)/*rstb*/,
 		MFGPLL_CON1, 24/*pd*/,
 		0, 0, 0/*tuner*/,
-		MFGPLL_CON1, 0, 22/*pcw*/),
+		MFGPLL_CON1,0, 22, mfgpll_div_table),
 	PLL(CLK_APMIXED_TVDPLL, "tvdpll", TVDPLL_CON0/*base*/,
 		TVDPLL_CON0, 0, 0/*en*/,
 		TVDPLL_CON3/*pwr*/, 0, BIT(0)/*rstb*/,
