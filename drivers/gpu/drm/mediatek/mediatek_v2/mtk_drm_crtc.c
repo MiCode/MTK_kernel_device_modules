@@ -78,6 +78,7 @@
 #include "mtk-mml-color.h"
 
 #include <soc/mediatek/mmqos.h>
+#include <soc/mediatek/dramc.h>
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 #include "mtk_drm_auto/mtk_drm_ddp_comp_auto.h"
@@ -5790,6 +5791,41 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		if (opt_mmqos)
 			mtk_disp_set_hrt_bw(mtk_crtc, bw);
 		return;
+	}
+	/* DDR5 can not get BW in camera scenarios, */
+	/* by always requesting ultra workaround solution to temporarily resolve */
+	if (priv->data->mmsys_id == MMSYS_MT6877) {
+		unsigned int dram_type = 0;
+
+		dram_type = mtk_dramc_get_ddr_type();
+		if (dram_type == TYPE_LPDDR5 || dram_type == TYPE_LPDDR5X) {
+			static int last_avail_hrt_bw;
+			int avail_hrt_bw = 0;
+			unsigned int i, j;
+			struct mtk_ddp_comp *comp;
+			struct mtk_ddp_config cfg;
+
+			avail_hrt_bw = mtk_mmqos_get_avail_hrt_bw(HRT_DISP);
+			if (avail_hrt_bw < last_avail_hrt_bw * 7 / 10 ||
+				avail_hrt_bw > last_avail_hrt_bw * 13 / 10) {
+				last_avail_hrt_bw = avail_hrt_bw;
+				cfg.w = crtc->state->adjusted_mode.hdisplay;
+				cfg.h = crtc->state->adjusted_mode.vdisplay;
+				cfg.vrefresh =
+					drm_mode_vrefresh(&crtc->state->adjusted_mode);
+				cfg.bpc = mtk_crtc->bpc;
+				cfg.p_golden_setting_context =
+					__get_golden_setting_context(mtk_crtc);
+				DDPINFO("%s, %d, avail_hrt_bw = %d\n",
+					__func__, __LINE__, avail_hrt_bw);
+				for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+					mtk_ddp_comp_io_cmd(comp, cmdq_handle,
+						MTK_IO_CMD_RDMA_GOLDEN_SETTING, &cfg);
+					mtk_ddp_comp_io_cmd(comp, cmdq_handle,
+						MTK_IO_CMD_OVL_GOLDEN_SETTING, &cfg);
+				}
+			}
+		}
 	}
 
 	if (is_force_high_step)

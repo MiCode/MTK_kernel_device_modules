@@ -44,6 +44,8 @@
 #include "../mml/mtk-mml.h"
 #include <soc/mediatek/smi.h>
 #include "mtk_drm_fb.h"
+#include <soc/mediatek/mmqos.h>
+#include <soc/mediatek/dramc.h>
 
 int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 
@@ -3056,8 +3058,7 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		temp_peak_bw *= mtk_get_format_bpp(fmt);
 
 		/* COMPRESS ratio */
-		if (priv->data->mmsys_id != MMSYS_MT6877 &&
-			pending->prop_val[PLANE_PROP_COMPRESS]) {
+		if (pending->prop_val[PLANE_PROP_COMPRESS]) {
 			temp_bw *= 7;
 			do_div(temp_bw, 10);
 		}
@@ -4134,6 +4135,7 @@ static int mtk_ovl_golden_setting(struct mtk_ddp_comp *comp,
 	unsigned int gs[GS_OVL_FLD_NUM];
 	int i, layer_num;
 	unsigned long Lx_base;
+	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
 	layer_num = mtk_ovl_layer_num(comp);
 
@@ -4188,8 +4190,32 @@ static int mtk_ovl_golden_setting(struct mtk_ddp_comp *comp,
 		       baddr + DISP_REG_OVL_RDMA_ULTRA_SRC, regval, ~0);
 
 	/* DISP_REG_OVL_RDMAn_BUF_LOW */
-	regval = gs[GS_OVL_RDMA_ULTRA_LOW_TH] +
-		 (gs[GS_OVL_RDMA_PRE_ULTRA_LOW_TH] << 12);
+	/* DDR5 can not get BW in camera scenarios, */
+	/* by always requesting ultra workaround solution to temporarily resolve */
+	if (priv->data->mmsys_id == MMSYS_MT6877) {
+		unsigned int dram_type = 0;
+
+		dram_type = mtk_dramc_get_ddr_type();
+		if (dram_type == TYPE_LPDDR5 || dram_type == TYPE_LPDDR5X) {
+			static int is_hrt_throttled;
+			static int last_avail_hrt_bw;
+			int avail_hrt_bw = 0;
+
+			avail_hrt_bw = mtk_mmqos_get_avail_hrt_bw(HRT_DISP);
+			if (avail_hrt_bw < last_avail_hrt_bw * 7 / 10)
+				is_hrt_throttled = 1;
+			else if (avail_hrt_bw > last_avail_hrt_bw * 13 / 10)
+				is_hrt_throttled = 0;
+			last_avail_hrt_bw = avail_hrt_bw;
+
+			if (is_hrt_throttled) {
+				regval = 0xffffffff;
+			} else {
+				regval = gs[GS_OVL_RDMA_ULTRA_LOW_TH] +
+					(gs[GS_OVL_RDMA_PRE_ULTRA_LOW_TH] << 12);
+			}
+		}
+	}
 
 	for (i = 0; i < layer_num; i++)
 		cmdq_pkt_write(handle, comp->cmdq_base,
