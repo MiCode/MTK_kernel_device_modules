@@ -2221,6 +2221,7 @@ static enum power_supply_property gauge_properties[] = {
 	POWER_SUPPLY_PROP_ENERGY_EMPTY,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_TEMP,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 };
 
 static int psy_gauge_get_property(struct power_supply *psy,
@@ -2269,6 +2270,13 @@ static int psy_gauge_get_property(struct power_supply *psy,
 		gm = gauge->gm;
 		if (gm)
 			val->intval = gm->battery_temp * 10;
+		return 0;
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+		if (!gauge || !gauge->gm || gauge->gm->disableGM30)
+			val->intval = 4000 * 1000;
+		else
+			val->intval = gauge_get_int_property(gauge->gm,
+							     GAUGE_PROP_BATTERY_VOLTAGE) * 1000;
 		return 0;
 	default:
 		return -EINVAL;
