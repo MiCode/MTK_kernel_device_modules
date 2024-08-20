@@ -644,6 +644,7 @@
 
 /* U3D_SSUSB_SYS_CK_CTRL */
 #define SSUSB_U2_UTMI_DATABUS_16_8	BIT(3)
+#define SSUSB_U2_UTMI_DATABUS_16_8_1P	BIT(4)
 
 /* U3D_SSUSB_IP_TRUNK_VERS */
 #define IP_TRUNK_VERS(x)		(((x) >> 16) & 0xffff)

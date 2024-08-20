@@ -254,9 +254,12 @@ int mtu3_device_enable(struct mtu3 *mtu)
 				SSUSB_U2_UTMI_DATABUS_16_8);
 	}
 
-	if (mtu->ssusb->utmi_width == 16 ||
-	    of_device_is_compatible(mtu->ssusb->dev->of_node, "mediatek,mt6991-mtu3")) {
+	if (mtu->ssusb->utmi_width == 16) {
 		mtu3_setbits(ibase, U3D_SSUSB_SYS_CK_CTRL, SSUSB_U2_UTMI_DATABUS_16_8);
+		if (SSUSB_IP_XHCI_U2_PORT_NUM(
+		    mtu3_readl(ibase, U3D_SSUSB_IP_XHCI_CAP)) == 2)
+			mtu3_setbits(ibase, U3D_SSUSB_SYS_CK_CTRL,
+					SSUSB_U2_UTMI_DATABUS_16_8_1P);
 		dev_info(mtu->dev, "U3D_SSUSB_SYS_CK_CTRL - value:0x%x\n",
 			mtu3_readl(ibase, U3D_SSUSB_SYS_CK_CTRL));
 	}

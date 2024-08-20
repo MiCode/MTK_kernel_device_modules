@@ -275,9 +275,11 @@ int ssusb_host_enable(struct ssusb_mtk *ssusb)
 		dev_info(ssusb->dev, "U3D_USB20_LPM_TIMING_PARAM - value:0x%x\n", value);
 	}
 
-	if (ssusb->utmi_width == 16 ||
-	    of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6991-mtu3")) {
+	if (ssusb->utmi_width == 16) {
 		mtu3_setbits(ibase, U3D_SSUSB_SYS_CK_CTRL, SSUSB_U2_UTMI_DATABUS_16_8);
+		if (num_u2p == 2)
+			mtu3_setbits(ibase, U3D_SSUSB_SYS_CK_CTRL,
+					SSUSB_U2_UTMI_DATABUS_16_8_1P);
 		value = mtu3_readl(ibase, U3D_SSUSB_SYS_CK_CTRL);
 		dev_info(ssusb->dev, "U3D_SSUSB_SYS_CK_CTRL - value:0x%x\n", value);
 	}
