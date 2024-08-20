@@ -2231,10 +2231,18 @@ static unsigned int __gpufreq_get_real_vsram(void)
 static unsigned int __gpufreq_get_real_vgpu(void)
 {
 	unsigned int volt = 0;
-
+	int ret = 0;
 	if (regulator_is_enabled(g_pmic->reg_vgpu)) {
 		/* regulator_get_voltage prints volt with uV */
 		volt = regulator_get_voltage(g_pmic->reg_vgpu) / 10;
+	} else if(!regulator_is_enabled(g_pmic->reg_vgpu) && g_gpu.power_count) {
+		ret = regulator_enable(g_pmic->reg_vgpu);
+		if (unlikely(ret)) {
+			__gpufreq_abort("fail to enable VGPU (%d)", ret);
+			return 0;
+		}
+		if (regulator_is_enabled(g_pmic->reg_vgpu))
+			volt = regulator_get_voltage(g_pmic->reg_vgpu) / 10;
 	}
 
 	return volt;
