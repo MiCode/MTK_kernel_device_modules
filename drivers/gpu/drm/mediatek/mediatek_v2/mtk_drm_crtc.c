@@ -167,6 +167,9 @@ struct cmdq_instruction {
 #define CMDQ_GET_ARG_C(arg)		((arg) & GENMASK(15, 0))
 #define CMDQ_TPR_TIMEOUT_EN  (0xDC)
 
+#define CT_MIN_FPS 60
+#define CT_PRETE_DUR 1000
+
 /* Overlay bw monitor define */
 struct layer_compress_ratio_data
 display_compress_ratio_table[MAX_LAYER_RATIO_NUMBER];
@@ -11933,9 +11936,10 @@ static int __mtk_check_trigger(struct mtk_drm_crtc *mtk_crtc)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	int index = drm_crtc_index(crtc);
+	struct mtk_drm_private *priv = NULL;
 	struct mtk_crtc_state *mtk_state;
-	ktime_t last_te_time = 0, cur_time = 0;
-	unsigned int pass_time = 0, next_te_duration = 0, te_duration = 0;
+	unsigned int base_t = 0, cur_t = 0, target_t = 0;
+	unsigned int step = 0, step_dur = 0, next_tgt_dur = 0;
 	int vrefresh = 0;
 
 	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
@@ -11949,44 +11953,61 @@ static int __mtk_check_trigger(struct mtk_drm_crtc *mtk_crtc)
 
 	mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
 
-	if (!mtk_crtc_is_frame_trigger_mode(crtc))
-		goto do_set_dirty;
-
-	last_te_time = mtk_crtc->pf_time;
-	cur_time = ktime_get();
-	if (last_te_time >= cur_time)
-		goto do_set_dirty;
-
-	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params
-		&& mtk_crtc->panel_ext->params->real_te_duration)
-		te_duration = mtk_crtc->panel_ext->params->real_te_duration;
-	else {
-		vrefresh = drm_mode_vrefresh(&crtc->state->adjusted_mode);
-		if (vrefresh != 0)
-			te_duration = 1000000 / vrefresh;
-		else
-			DDPPR_ERR("vrefresh is ZERO\n");
+	if (!mtk_crtc_is_frame_trigger_mode(crtc)) {
+		CRTC_MMP_EVENT_END(index, check_trigger, 0, 2);
+		goto out_unlock;
 	}
-	pass_time = (cur_time - last_te_time) / 1000;  //ns to us
-	if (te_duration > pass_time)
-		next_te_duration = te_duration - pass_time;
 
-	if (next_te_duration > 1000) {
-		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, next_te_duration, mtk_crtc->enabled);
-		CRTC_MMP_MARK(index, check_trigger, next_te_duration, 1);
+	priv = mtk_crtc->base.dev->dev_private;
+	base_t = priv->crtc_rel_present_ts[index] / 1000;
 
-		usleep_range(next_te_duration - 1000 , next_te_duration - 900);
+	cur_t = ktime_get() / 1000;
+	if (base_t >= cur_t) {
+		CRTC_MMP_MARK(index, check_trigger, base_t, cur_t);
+		CRTC_MMP_EVENT_END(index, check_trigger, 0, 3);
+		DDPINFO("already flush base_t:%u, cur_t:%u\n", base_t, cur_t);
+		goto out_unlock;
+	}
 
-		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, next_te_duration, mtk_crtc->enabled);
-		CRTC_MMP_MARK(index, check_trigger, next_te_duration, 0);
+	vrefresh = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+	if (vrefresh < CT_MIN_FPS)
+		vrefresh = CT_MIN_FPS;
+	step_dur = 1000000 / vrefresh;
+
+	step = (cur_t - base_t) / step_dur;
+	step += 1;
+	target_t = base_t + step * step_dur;
+	next_tgt_dur = target_t - cur_t;
+
+	DDPINFO("base_t:%u us(%u us), cur_t:%u us, target_t:%u us\n",
+		base_t, step_dur, cur_t, target_t);
+	DDPINFO("next_tgt_dur:%u us\n", next_tgt_dur);
+
+	if (next_tgt_dur > step_dur) {
+		DDPPR_ERR("cal error next_tgt_dur:%u > step_dur:%u\n",
+			next_tgt_dur, step_dur);
+		CRTC_MMP_MARK(index, check_trigger, next_tgt_dur, step_dur);
+		CRTC_MMP_EVENT_END(index, check_trigger, 0, 4);
+		goto out_unlock;
+	}
+
+	if (next_tgt_dur > CT_PRETE_DUR) {
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, next_tgt_dur, mtk_crtc->enabled);
+		CRTC_MMP_MARK(index, check_trigger, next_tgt_dur, base_t);
+
+		usleep_range(next_tgt_dur - CT_PRETE_DUR , next_tgt_dur - (CT_PRETE_DUR - 100));
+
+		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, next_tgt_dur, mtk_crtc->enabled);
+		CRTC_MMP_MARK(index, check_trigger, next_tgt_dur, 0);
 
 		/* Must double check, if crtc is disabled, gce mbox will be disabled too */
 		if (!mtk_crtc->enabled) {
-			CRTC_MMP_EVENT_END(index, check_trigger, 0, 2);
+			CRTC_MMP_EVENT_END(index, check_trigger, 0, 5);
 			goto out_unlock;
 		}
 		mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
-	}
+	} else
+		CRTC_MMP_MARK(index, check_trigger, next_tgt_dur, CT_PRETE_DUR);
 
 do_set_dirty:
 	mtk_state = to_mtk_crtc_state(crtc->state);
@@ -19778,8 +19799,11 @@ static int mtk_drm_pf_release_thread(void *data)
 		fence_idx = atomic_read(&private->crtc_rel_present[crtc_idx]);
 
 		if (mtk_release_present_fence(private->session_id[crtc_idx],
-					  fence_idx, pf_time) == 1)
+					  fence_idx, pf_time) == 1) {
 			private->crtc_last_present_ts[crtc_idx] = pf_time;
+			//TODO:Confirm why can't just use rel or last
+			private->crtc_rel_present_ts[crtc_idx] = pf_time;
+		}
 
 		if (crtc_idx == 0)
 			ktime_get_real_ts64(&rdma_sof_tval);
