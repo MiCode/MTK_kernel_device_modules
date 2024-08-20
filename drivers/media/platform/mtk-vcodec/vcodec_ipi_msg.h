@@ -156,6 +156,14 @@ struct mtk_codec_framesizes {
 	struct	v4l2_frmsize_stepwise	stepwise;
 };
 
+/**
+ * struct mtk_codec_capability - Structure used to store information about capability
+ */
+struct mtk_codec_capability {
+	__u32	max_b;
+	__u32	max_temporal_layer;
+};
+
 struct mtk_tf_info {
 	__u32	hw_id;
 	__u32	port;

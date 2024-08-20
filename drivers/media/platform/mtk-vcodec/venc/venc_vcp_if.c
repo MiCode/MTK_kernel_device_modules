@@ -92,6 +92,10 @@ static void handle_query_cap_ack_msg(struct venc_vcu_ipi_query_cap_ack *msg)
 		memcpy((void *)msg->ap_data_addr, data,
 			size * MTK_MAX_ENC_CODECS_SUPPORT);
 		break;
+	case GET_PARAM_VENC_CAP_COMMON:
+		size = sizeof(struct mtk_codec_capability);
+		memcpy((void *)msg->ap_data_addr, data, size);
+		break;
 	default:
 		break;
 	}
@@ -1605,6 +1609,7 @@ static int venc_vcp_get_param(unsigned long handle,
 	switch (type) {
 	case GET_PARAM_VENC_CAP_FRAME_SIZES:
 	case GET_PARAM_VENC_CAP_SUPPORTED_FORMATS:
+	case GET_PARAM_VENC_CAP_COMMON:
 		memset(&msg, 0, sizeof(msg));
 		msg.msg_id = AP_IPIMSG_ENC_QUERY_CAP;
 		msg.id = type;

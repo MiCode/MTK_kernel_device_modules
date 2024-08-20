@@ -40,6 +40,9 @@ struct mtk_video_fmt
 	mtk_venc_formats[MTK_MAX_ENC_CODECS_SUPPORT] = { {0} };
 struct mtk_codec_framesizes
 	mtk_venc_framesizes[MTK_MAX_ENC_CODECS_SUPPORT] = { {0} };
+struct mtk_codec_capability
+	mtk_venc_cap_common = {0};
+
 static unsigned int default_out_fmt_idx;
 static unsigned int default_cap_fmt_idx;
 static struct vb2_mem_ops venc_dma_contig_memops;
@@ -264,6 +267,19 @@ static void get_supported_framesizes(struct mtk_vcodec_ctx *ctx)
 			}
 		}
 	}
+}
+
+static void get_supported_cap_common(struct mtk_vcodec_ctx *ctx)
+{
+	if (venc_if_get_param(ctx, GET_PARAM_VENC_CAP_COMMON,
+					&mtk_venc_cap_common) != 0) {
+		mtk_v4l2_err("[%d] Error!! Cannot get cap common",
+			ctx->id);
+		return;
+	}
+
+	mtk_v4l2_debug(1, "venc_cap_common %d %d\n", mtk_venc_cap_common.max_b,
+		mtk_venc_cap_common.max_temporal_layer);
 }
 
 static void get_free_buffers(struct mtk_vcodec_ctx *ctx,
@@ -1045,6 +1061,12 @@ static int vidioc_venc_g_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_MPEG_MTK_GET_VCP_PROP:
 		mtk_vcodec_get_log(
 			ctx, ctx->dev, ctrl->p_new.p_char, MTK_VCODEC_LOG_INDEX_PROP, NULL);
+		break;
+	case V4L2_CID_MPEG_MTK_ENCODE_GET_MAX_B_NUM:
+		ctrl->val = mtk_venc_cap_common.max_b;
+		break;
+	case V4L2_CID_MPEG_MTK_ENCODE_GET_MAX_TEMPORAL_LAYER:
+		ctrl->val = mtk_venc_cap_common.max_temporal_layer;
 		break;
 	default:
 		mtk_v4l2_debug(4, "ctrl-id=%d not support!", ctrl->id);
@@ -3758,6 +3780,7 @@ void mtk_vcodec_enc_set_default_params(struct mtk_vcodec_ctx *ctx)
 
 	get_supported_format(ctx);
 	get_supported_framesizes(ctx);
+	get_supported_cap_common(ctx);
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	if (mtk_vcodec_is_vcp(MTK_INST_ENCODER)) {
@@ -4349,6 +4372,30 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.name = "Video Caller Proccess ID";
 	cfg.min = 0;
 	cfg.max = 0x7fffffff;
+	cfg.step = 1;
+	cfg.def = 0;
+	cfg.ops = ops;
+	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_GET_MAX_B_NUM;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
+	cfg.name = "Get Video Encoder Max B Number";
+	cfg.min = 0;
+	cfg.max = 3;
+	cfg.step = 1;
+	cfg.def = 0;
+	cfg.ops = ops;
+	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_GET_MAX_TEMPORAL_LAYER;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
+	cfg.name = "Get Video Encoder Max Temporal Layer";
+	cfg.min = 0;
+	cfg.max = 6;
 	cfg.step = 1;
 	cfg.def = 0;
 	cfg.ops = ops;
