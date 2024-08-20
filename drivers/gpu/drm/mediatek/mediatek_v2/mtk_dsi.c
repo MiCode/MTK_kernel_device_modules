@@ -7936,6 +7936,8 @@ static void mtk_dsi_cmdq(struct mtk_dsi *dsi, const struct mipi_dsi_msg *msg)
 		cmdq_mask = CONFIG | DATA_ID;
 		reg_val = (type << 8) | config;
 	}
+	//clear dsi cmdq ctrl
+	writel(0, dsi->regs + dsi->driver_data->reg_cmdq0_ofs);
 
 	for (i = 0; i < msg->tx_len; i++) {
 		goto_addr = dsi->driver_data->reg_cmdq0_ofs + cmdq_off + i;
