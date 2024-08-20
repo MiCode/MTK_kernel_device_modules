@@ -199,7 +199,7 @@ extern int mml_trace;
 	mml_trace_begin_tid(current->tgid, fmt, ##args)
 
 #define mml_trace_end() \
-	mml_tracing_mark_write("E\n")
+	mml_tracing_mark_write("E|%d\n", current->tgid)
 
 #define mml_trace_c(tag, c) \
 	mml_tracing_mark_write("C|%d|%s|%d\n", current->tgid, tag, c)
