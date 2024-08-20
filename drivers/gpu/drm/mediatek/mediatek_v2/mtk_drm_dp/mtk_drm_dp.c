@@ -71,6 +71,9 @@
 #include "mtk_drm_dp_mst_drv.h"
 #endif
 
+#define YUV422_PRIORITY		0x0
+#define DEPTH_10BIT_PRIORITY		0x0
+
 #define AUX_CMD_I2C_R			0x05
 #define AUX_CMD_I2C_R_MOT0		0x01
 #define AUX_CMD_I2C_W			0x04
@@ -415,23 +418,41 @@ struct drm_display_limit_mode {
 struct mtk_dp *g_mtk_dp;
 static bool fake_cable_in;
 static int fake_res = FAKE_DEFAULT_RES;
-static int fake_bpc = DP_COLOR_DEPTH_8BIT;
 static atomic_t device_count;
+
+#if DEPTH_10BIT_PRIORITY
+static int fake_bpc = DP_COLOR_DEPTH_10BIT;
+#else
+static int fake_bpc = DP_COLOR_DEPTH_8BIT;
+#endif
+
 static const unsigned int dp_cable[] = {
 	EXTCON_DISP_HDMI, /* audio framework not support DP */
 	EXTCON_NONE,
 };
 
 static const u32 mt8678_input_fmts[] = {
+#if	YUV422_PRIORITY
+	MEDIA_BUS_FMT_YUYV8_1X16,
+	MEDIA_BUS_FMT_RGB888_1X24,
+	MEDIA_BUS_FMT_YUV8_1X24,
+#else
 	MEDIA_BUS_FMT_RGB888_1X24,
 	MEDIA_BUS_FMT_YUV8_1X24,
 	MEDIA_BUS_FMT_YUYV8_1X16,
+#endif
 };
 
 static const u32 mt8678_output_fmts[] = {
+#if	YUV422_PRIORITY
+	MEDIA_BUS_FMT_YUYV8_1X16,
+	MEDIA_BUS_FMT_RGB888_1X24,
+	MEDIA_BUS_FMT_YUV8_1X24,
+#else
 	MEDIA_BUS_FMT_RGB888_1X24,
 	MEDIA_BUS_FMT_YUV8_1X24,
 	MEDIA_BUS_FMT_YUYV8_1X16,
+#endif
 };
 
 struct extcon_dev *dp_extcon;
@@ -1406,41 +1427,41 @@ u8 mtk_dp_color_get_bpp(u8 color_format, u8 color_depth)
 
 	switch (color_depth) {
 	case DP_COLOR_DEPTH_6BIT:
-		if (color_format == DP_COLOR_FORMAT_YUV_422)
+		if (color_format == DP_PIXELFORMAT_YUV422)
 			color_bpp = 16;
-		else if (color_format == DP_COLOR_FORMAT_YUV_420)
+		else if (color_format == DP_PIXELFORMAT_YUV420)
 			color_bpp = 12;
 		else
 			color_bpp = 18;
 		break;
 	case DP_COLOR_DEPTH_8BIT:
-		if (color_format == DP_COLOR_FORMAT_YUV_422)
+		if (color_format == DP_PIXELFORMAT_YUV422)
 			color_bpp = 16;
-		else if (color_format == DP_COLOR_FORMAT_YUV_420)
+		else if (color_format == DP_PIXELFORMAT_YUV420)
 			color_bpp = 12;
 		else
 			color_bpp = 24;
 		break;
 	case DP_COLOR_DEPTH_10BIT:
-		if (color_format == DP_COLOR_FORMAT_YUV_422)
+		if (color_format == DP_PIXELFORMAT_YUV422)
 			color_bpp = 20;
-		else if (color_format == DP_COLOR_FORMAT_YUV_420)
+		else if (color_format == DP_PIXELFORMAT_YUV420)
 			color_bpp = 15;
 		else
 			color_bpp = 30;
 		break;
 	case DP_COLOR_DEPTH_12BIT:
-		if (color_format == DP_COLOR_FORMAT_YUV_422)
+		if (color_format == DP_PIXELFORMAT_YUV422)
 			color_bpp = 24;
-		else if (color_format == DP_COLOR_FORMAT_YUV_420)
+		else if (color_format == DP_PIXELFORMAT_YUV420)
 			color_bpp = 18;
 		else
 			color_bpp = 36;
 		break;
 	case DP_COLOR_DEPTH_16BIT:
-		if (color_format == DP_COLOR_FORMAT_YUV_422)
+		if (color_format == DP_PIXELFORMAT_YUV422)
 			color_bpp = 32;
-		else if (color_format == DP_COLOR_FORMAT_YUV_420)
+		else if (color_format == DP_PIXELFORMAT_YUV420)
 			color_bpp = 24;
 		else
 			color_bpp = 48;
@@ -1461,19 +1482,14 @@ void mtk_dp_color_set_format(struct mtk_dp *mtk_dp,
 
 	DP_MSG("Set Color Format:0x%x\n", color_format);
 
-	mtk_dp->info[encoder_id].format = color_format;
-
-	WRITE_BYTE_MASK(mtk_dp, REG_3034_DP_ENCODER0_P0 + reg_offset,
-			(color_format << 0x1), GENMASK(2, 1));
-
-	if (color_format == DP_COLOR_FORMAT_RGB_444 ||
-	    color_format == DP_COLOR_FORMAT_YUV_444)
+	if (color_format == DP_PIXELFORMAT_RGB ||
+	    color_format == DP_PIXELFORMAT_YUV444)
 		WRITE_BYTE_MASK(mtk_dp, REG_303C_DP_ENCODER0_P0 + 1 + reg_offset,
 				(0), GENMASK(6, 4));
-	else if (color_format == DP_COLOR_FORMAT_YUV_422)
+	else if (color_format == DP_PIXELFORMAT_YUV422)
 		WRITE_BYTE_MASK(mtk_dp, REG_303C_DP_ENCODER0_P0 + 1 + reg_offset,
 				(BIT(4)), GENMASK(6, 4));
-	else if (color_format == DP_COLOR_FORMAT_YUV_420)
+	else if (color_format == DP_PIXELFORMAT_YUV420)
 		WRITE_BYTE_MASK(mtk_dp, REG_303C_DP_ENCODER0_P0 + 1 + reg_offset,
 				(BIT(5)), GENMASK(6, 4));
 }
@@ -1484,11 +1500,6 @@ void mtk_dp_color_set_depth(struct mtk_dp *mtk_dp,
 	u32 reg_offset = DP_REG_OFFSET(encoder_id);
 
 	DP_MSG("Set Color Depth:%d (0~4=6/8/10/12/16 bpp)\n", color_depth);
-
-	mtk_dp->info[encoder_id].depth = color_depth;
-
-	WRITE_BYTE_MASK(mtk_dp, REG_3034_DP_ENCODER0_P0 + reg_offset,
-			(color_depth << 0x5), 0xE0);
 
 	switch (color_depth) {
 	case DP_COLOR_DEPTH_6BIT:
@@ -3124,7 +3135,7 @@ static void mtk_dp_phy_clear_lane_pwr(struct mtk_dp *mtk_dp)
 	 * for 4Lane: -> 0x7 -> 0x3 -> 0x1 -> 0x0
 	 * for 2Lane: -> 0x1 -> 0x0
 	 * for 1Lane: -> 0x0
-	 * UINT8 power_bmp; = (1 << lane_count) - 1;
+	 * u8 power_bmp; = (1 << lane_count) - 1;
 	 */
 	u8 power_bmp = (PHY_READ_BYTE(mtk_dp, PHYD_DIG_GLB_OFFSET
 							+ DP_PHY_DIG_TX_CTL_0) &
@@ -3663,7 +3674,7 @@ void mtk_dp_sdp_set_down_cnt_init(struct mtk_dp *mtk_dp, const enum dp_encoder_i
 			* mtk_dp->training_info.link_rate * 2700 * 8)
 			/ mtk_dp->info[encoder_id].dp_output_timing.pixcel_rate;
 
-	if (mtk_dp->info[encoder_id].format == DP_COLOR_FORMAT_YUV_420)
+	if (mtk_dp->info[encoder_id].format == DP_PIXELFORMAT_YUV420)
 		sdp_down_cnt = sdp_down_cnt / 2;
 
 	switch (mtk_dp->training_info.link_lane_count) {
@@ -3710,7 +3721,7 @@ void mtk_dp_sdp_set_down_cnt_init_in_hblanking(struct mtk_dp *mtk_dp,
 		mtk_dp->info[encoder_id].dp_output_timing.pixcel_rate,
 		mtk_dp->info[encoder_id].format);
 
-	if (mtk_dp->info[encoder_id].format == DP_COLOR_FORMAT_YUV_420)
+	if (mtk_dp->info[encoder_id].format == DP_PIXELFORMAT_YUV420)
 		sdp_down_cnt = sdp_down_cnt / 2;
 
 	switch (mtk_dp->training_info.link_lane_count) {
@@ -4025,25 +4036,25 @@ void mtk_dp_set_misc(struct mtk_dp *mtk_dp, const enum dp_encoder_id encoder_id)
 	/* MISC0[3]: 0->RGB, 1->YUV */
 	/* MISC0[2:1]: 01b->4:2:2, 10b->4:4:4 */
 	switch (format) {
-	case DP_COLOR_FORMAT_YUV_444:
+	case DP_PIXELFORMAT_YUV444:
 		DP_MISC.misc.color_format = 0x2;
 		DP_MISC.misc.spec_def1 = 0x1;
 		break;
 
-	case DP_COLOR_FORMAT_YUV_422:
+	case DP_PIXELFORMAT_YUV422:
 		DP_MISC.misc.color_format = 0x1;
 		DP_MISC.misc.spec_def1 = 0x1;
 		break;
 
-	case DP_COLOR_FORMAT_YUV_420:
+	case DP_PIXELFORMAT_YUV420:
 		/* not support */
 		break;
 
-	case DP_COLOR_FORMAT_RAW:
+	case DP_PIXELFORMAT_RAW:
 		DP_MISC.misc.color_format = 0x1;
 		DP_MISC.misc.spec_def2 = 0x1;
 		break;
-	case DP_COLOR_FORMAT_YONLY:
+	case DP_PIXELFORMAT_Y_ONLY:
 		DP_MISC.misc.color_format = 0x0;
 		DP_MISC.misc.spec_def2 = 0x1;
 		break;
@@ -4840,7 +4851,11 @@ void mtk_dp_init_variable(struct mtk_dp *mtk_dp)
 	for (encoder_id = 0; encoder_id < DP_ENCODER_ID_MAX; encoder_id++) {
 		mtk_dp->info[encoder_id].input_src = DP_SRC_DPINTF;
 		mtk_dp->info[encoder_id].format = DP_COLOR_FORMAT_RGB_444;
+#if DEPTH_10BIT_PRIORITY
+		mtk_dp->info[encoder_id].depth = DP_COLOR_DEPTH_10BIT;
+#else
 		mtk_dp->info[encoder_id].depth = DP_COLOR_DEPTH_8BIT;
+#endif
 		if (!mtk_dp->info[encoder_id].pattern_gen)
 			mtk_dp->info[encoder_id].resolution = SINK_1920_1080;
 		mtk_dp->info[encoder_id].set_audio_mute = false;
@@ -4921,10 +4936,10 @@ void mtk_dp_digital_setting(struct mtk_dp *mtk_dp, const enum dp_encoder_id enco
 	WRITE_BYTE_MASK(mtk_dp, REG_304C_DP_ENCODER0_P0 + reg_offset, 0,
 			VBID_VIDEO_MUTE_DP_ENCODER0_P0_FLDMASK);
 	/* MISC0 */
-	mtk_dp_color_set_format(mtk_dp, encoder_id, DP_COLOR_FORMAT_RGB);
+	mtk_dp_color_set_format(mtk_dp, encoder_id, mtk_dp->info[encoder_id].format);
 
 	/* [13 : 12] : = 2b'01 VDE check BS2BS & set min value */
-	mtk_dp_color_set_depth(mtk_dp, encoder_id, DP_COLOR_DEPTH_8BIT);
+	mtk_dp_color_set_depth(mtk_dp, encoder_id, mtk_dp->info[encoder_id].depth);
 	WRITE_4BYTE(mtk_dp, REG_3368_DP_ENCODER1_P0 + reg_offset,
 		    (0x1 << 15) |
 		(0x4 << BS2BS_MODE_DP_ENCODER1_P0_FLDMASK_POS) |
@@ -5111,8 +5126,12 @@ static void mtk_dp_encoder_mode_set(struct drm_encoder *encoder,
 				    struct drm_display_mode *mode,
 				     struct drm_display_mode *adjusted)
 {
-	struct mtk_dp *mtk_dp = encoder_to_dp(encoder);
 	int i;
+	int encoder_id;
+	struct drm_bridge *bridge;
+	unsigned int out_bus_format;
+	struct drm_bridge_state *bridge_state;
+	struct mtk_dp *mtk_dp = encoder_to_dp(encoder);
 
 	if (!mtk_dp) {
 		DP_ERR("can not find the mtk dp by the encoder");
@@ -5121,14 +5140,31 @@ static void mtk_dp_encoder_mode_set(struct drm_encoder *encoder,
 
 	for (i = 0; i < DP_ENCODER_NUM; i++) {
 		if (mtk_dp->mtk_connector[i] && mtk_dp->mtk_connector[i]->encoder == encoder) {
+			encoder_id = i;
 			drm_mode_copy(&mtk_dp->mode[i], adjusted);
 
-			DP_MSG("mode set, Htt:%d, Vtt:%d, Hact:%d, Vact:%d, fps:%d, clk:%d\n",
-			       mtk_dp->mode[i].htotal, mtk_dp->mode[i].vtotal,
+			DP_MSG("[%d] mode set, Htt:%d, Vtt:%d, Hact:%d, Vact:%d, fps:%d, clk:%d\n",
++			       encoder_id, mtk_dp->mode[i].htotal, mtk_dp->mode[i].vtotal,
 			mtk_dp->mode[i].hdisplay, mtk_dp->mode[i].vdisplay,
 			drm_mode_vrefresh(&mtk_dp->mode[i]), mtk_dp->mode[i].clock);
 			break;
 		}
+	}
+
+	bridge = list_first_entry_or_null(&encoder->bridge_chain,
+					  struct drm_bridge, chain_node);
+	if (bridge) {
+		bridge_state = drm_priv_to_bridge_state(bridge->base.state);
+		out_bus_format = bridge_state->output_bus_cfg.format;
+		DP_FUNC("[%d] input format 0x%04x, output format 0x%04x\n",
+			encoder_id,
+			bridge_state->input_bus_cfg.format,
+			bridge_state->output_bus_cfg.format);
+
+		if (out_bus_format == MEDIA_BUS_FMT_YUYV8_1X16)
+			mtk_dp->info[encoder_id].format = DP_PIXELFORMAT_YUV422;
+		else
+			mtk_dp->info[encoder_id].format = DP_PIXELFORMAT_RGB;
 	}
 }
 
@@ -5292,11 +5328,31 @@ static const struct drm_connector_funcs mtk_dp_connector_funcs = {
 static enum drm_mode_status mtk_dp_connector_mode_valid(struct drm_connector *connector,
 							struct drm_display_mode *mode)
 {
-	DP_FUNC("Htt:%d, Vtt:%d, Hact:%d, Vact:%d, fps:%d, clk:%d\n",
-		mode->htotal, mode->vtotal,
-		mode->hdisplay, mode->vdisplay,
-		drm_mode_vrefresh(mode), mode->clock);
+	u32 bpp;
+	u32 rate;
+	u32 lane_count_min;
+	struct mtk_dp *mtk_dp;
+	struct mtk_dp_connector *mtk_connector;
 
+	mtk_connector = container_of(connector, struct mtk_dp_connector, connector);
+	mtk_dp = mtk_connector->mtk_dp;
+
+	DP_DBG("Htt:%d, Vtt:%d, Hact:%d, Vact:%d, fps:%d, clk:%d\n",
+			mode->htotal, mode->vtotal,
+			mode->hdisplay, mode->vdisplay,
+			drm_mode_vrefresh(mode), mode->clock);
+
+	bpp = connector->display_info.color_formats & DRM_COLOR_FORMAT_YCBCR422 ? 16 : 24;
+	lane_count_min = mtk_dp->training_info.link_lane_count;
+	rate = drm_dp_bw_code_to_link_rate(mtk_dp->training_info.link_rate) * lane_count_min;
+
+	if (rate * 97 / 100 < (mode->clock * bpp / 8))
+		return MODE_CLOCK_HIGH;
+
+	DP_DBG("MODE_OK, Htt:%d, Vtt:%d, Hact:%d, Vact:%d, fps:%d, clk:%d\n",
+			mode->htotal, mode->vtotal,
+			mode->hdisplay, mode->vdisplay,
+			drm_mode_vrefresh(mode), mode->clock);
 	return MODE_OK;
 }
 
@@ -5591,12 +5647,9 @@ static u32 *mtk_dp_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 	struct drm_display_mode *mode = &crtc_state->adjusted_mode;
 	struct drm_display_info *display_info =
 		&conn_state->connector->display_info;
-	u32 rate;
-
-	rate = min_t(u32, drm_dp_max_link_rate(mtk_dp->rx_cap) *
-			      drm_dp_max_lane_count(mtk_dp->rx_cap),
-			 drm_dp_bw_code_to_link_rate(mtk_dp->training_info.link_rate) *
-			 mtk_dp->training_info.link_lane_count);
+	u32 lane_count_min = mtk_dp->training_info.link_lane_count;
+	u32 rate = drm_dp_bw_code_to_link_rate(mtk_dp->training_info.link_rate) *
+		lane_count_min;
 
 	*num_input_fmts = 0;
 
@@ -5694,7 +5747,11 @@ int mtk_dp_hpd_handle_in_thread(struct mtk_dp *mtk_dp)
 
 			fake_cable_in = false;
 			fake_res = FAKE_DEFAULT_RES;
+#if DEPTH_10BIT_PRIORITY
+			fake_bpc = DP_COLOR_DEPTH_10BIT;
+#else
 			fake_bpc = DP_COLOR_DEPTH_8BIT;
+#endif
 
 			kfree(mtk_dp->edid);
 			mtk_dp->edid = NULL;

@@ -34,6 +34,8 @@
 
 extern struct mtk_dp *g_mtk_dp;
 
+#define YUV422_PRIORITY		0x0
+
 enum mtk_dpi_out_bit_num {
 	MTK_DPI_OUT_BIT_NUM_8BITS,
 	MTK_DPI_OUT_BIT_NUM_10BITS,
@@ -464,6 +466,8 @@ static void mtk_dpi_config_color_format(struct mtk_dpi *dpi,
 {
 	mtk_dpi_config_channel_swap(dpi, MTK_DPI_OUT_CHANNEL_SWAP_RGB);
 
+	dev_info(dpi->dev, "format:%d", format);
+
 	if (format == MTK_DPI_COLOR_FORMAT_YCBCR_422) {
 		mtk_dpi_config_yuv422_enable(dpi, true);
 
@@ -797,13 +801,32 @@ static u32 *mtk_dpi_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 	return input_fmts;
 }
 
-static int mtk_dpi_bridge_atomic_check(struct drm_bridge *bridge,
-				       struct drm_bridge_state *bridge_state,
-				       struct drm_crtc_state *crtc_state,
-				       struct drm_connector_state *conn_state)
+static int mtk_dpi_bridge_attach(struct drm_bridge *bridge,
+		enum drm_bridge_attach_flags flags)
 {
 	struct mtk_dpi *dpi = bridge_to_dpi(bridge);
+
+	if (dpi->conf->no_next_bridge)
+		return 0;
+
+	return drm_bridge_attach(bridge->encoder, dpi->next_bridge,
+			&dpi->bridge, flags);
+}
+
+static void mtk_dpi_bridge_mode_set(struct drm_bridge *bridge,
+			const struct drm_display_mode *mode,
+			const struct drm_display_mode *adjusted_mode)
+{
 	unsigned int out_bus_format;
+	struct drm_bridge_state *bridge_state;
+	struct mtk_dpi *dpi = bridge_to_dpi(bridge);
+
+	drm_mode_copy(&dpi->mode, adjusted_mode);
+	dev_info(dpi->dev, "dpintf mode set, Htt:%d, Vtt:%d, Hact:%d, Vact:%d, fps:%d\n",
+			dpi->mode.htotal, dpi->mode.vtotal,
+			dpi->mode.hdisplay, dpi->mode.vdisplay, drm_mode_vrefresh(mode));
+
+	bridge_state = drm_priv_to_bridge_state(bridge->base.state);
 
 	out_bus_format = bridge_state->output_bus_cfg.format;
 
@@ -811,8 +834,8 @@ static int mtk_dpi_bridge_atomic_check(struct drm_bridge *bridge,
 		if (dpi->conf->num_output_fmts)
 			out_bus_format = dpi->conf->output_fmts[0];
 
-	dev_dbg(dpi->dev, "dpintf, input format 0x%04x, output format 0x%04x\n",
-		bridge_state->input_bus_cfg.format,
+	dev_info(dpi->dev, "dpintf, input format 0x%04x, output format 0x%04x\n",
+		 bridge_state->input_bus_cfg.format,
 		bridge_state->output_bus_cfg.format);
 
 	dpi->output_fmt = out_bus_format;
@@ -823,32 +846,6 @@ static int mtk_dpi_bridge_atomic_check(struct drm_bridge *bridge,
 		dpi->color_format = MTK_DPI_COLOR_FORMAT_YCBCR_422;
 	else
 		dpi->color_format = MTK_DPI_COLOR_FORMAT_RGB;
-
-	return 0;
-}
-
-static int mtk_dpi_bridge_attach(struct drm_bridge *bridge,
-				 enum drm_bridge_attach_flags flags)
-{
-	struct mtk_dpi *dpi = bridge_to_dpi(bridge);
-
-	if (dpi->conf->no_next_bridge)
-		return 0;
-
-	return drm_bridge_attach(bridge->encoder, dpi->next_bridge,
-				 &dpi->bridge, flags);
-}
-
-static void mtk_dpi_bridge_mode_set(struct drm_bridge *bridge,
-				    const struct drm_display_mode *mode,
-				const struct drm_display_mode *adjusted_mode)
-{
-	struct mtk_dpi *dpi = bridge_to_dpi(bridge);
-
-	drm_mode_copy(&dpi->mode, adjusted_mode);
-	dev_info(dpi->dev, "dpintf, Htt:%d, Vtt:%d, Hact:%d, Vact:%d, fps:%d\n",
-		 dpi->mode.htotal, dpi->mode.vtotal,
-			dpi->mode.hdisplay, dpi->mode.vdisplay, drm_mode_vrefresh(mode));
 }
 
 static void mtk_dpi_bridge_disable(struct drm_bridge *bridge)
@@ -892,7 +889,6 @@ static const struct drm_bridge_funcs mtk_dpi_bridge_funcs = {
 	.mode_valid = mtk_dpi_bridge_mode_valid,
 	.disable = mtk_dpi_bridge_disable,
 	.enable = mtk_dpi_bridge_enable,
-	.atomic_check = mtk_dpi_bridge_atomic_check,
 	.atomic_get_output_bus_fmts = mtk_dpi_bridge_atomic_get_output_bus_fmts,
 	.atomic_get_input_bus_fmts = mtk_dpi_bridge_atomic_get_input_bus_fmts,
 	.atomic_duplicate_state = drm_atomic_helper_bridge_duplicate_state,
@@ -1025,8 +1021,13 @@ static const u32 mt8195_output_fmts[] = {
 };
 
 static const u32 mt8678_output_fmts[] = {
+#if YUV422_PRIORITY
+	MEDIA_BUS_FMT_YUYV8_1X16,
+	MEDIA_BUS_FMT_RGB888_1X24,
+#else
 	MEDIA_BUS_FMT_RGB888_1X24,
 	MEDIA_BUS_FMT_YUYV8_1X16,
+#endif
 };
 
 static const struct mtk_dpi_conf mt8173_conf = {
