@@ -1295,15 +1295,17 @@ static enum power_supply_property gauge_properties[] = {
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_ENERGY_EMPTY,
-
+	POWER_SUPPLY_PROP_CURRENT_NOW,
+	POWER_SUPPLY_PROP_TEMP,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 };
 
 static int psy_gauge_get_property(struct power_supply *psy,
 	enum power_supply_property psp, union power_supply_propval *val)
 {
 	struct mtk_gauge *gauge;
-	//struct mtk_battery *gm;
-
+	struct mtk_battery *gm;
+	int ret = 0, value = 0;
 	gauge = (struct mtk_gauge *)power_supply_get_drvdata(psy);
 
 	switch (psp) {
@@ -1332,6 +1334,26 @@ static int psy_gauge_get_property(struct power_supply *psy,
 		val->intval = 0;
 #endif	/* POWER_MISC_OFF */
 		break;
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+		ret = gauge_get_property(gauge->gm, GAUGE_PROP_BATTERY_CURRENT, &value);
+		if (ret) {
+			bm_err(gauge->gm, "%s, Failed to get CIC1, ret = %d\n", __func__, ret);
+			value = gauge->gm->ibat;
+		}
+		val->intval = value * 100;
+		return 0;
+	case POWER_SUPPLY_PROP_TEMP:
+		gm = gauge->gm;
+		if (gm)
+			val->intval = gm->battery_temp * 10;
+		return 0;
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+		if (!gauge || !gauge->gm || gauge->gm->disableGM30)
+			val->intval = 4000 * 1000;
+		else
+			val->intval = gauge_get_int_property(gauge->gm,
+							     GAUGE_PROP_BATTERY_VOLTAGE) * 1000;
+		return 0;
 	default:
 		return -EINVAL;
 	}
