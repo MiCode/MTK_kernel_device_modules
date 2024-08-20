@@ -86,6 +86,11 @@ static int mbraink_v6899_probe(struct platform_device *pdev)
 	ret = mbraink_v6899_wifi_init();
 	if (ret)
 		pr_notice("[MBK_v6899] mbraink v6899 wifi init failed.\n");
+
+	ret = mbraink_v6899_camera_init();
+	if (ret)
+		pr_notice("[MBK_v6899] mbraink v6899 camera init failed.\n");
+
 	return ret;
 }
 
@@ -102,6 +107,7 @@ static int mbraink_v6899_remove(struct platform_device *pdev)
 	mbraink_v6899_gpu_deinit();
 	mbraink_v6899_gps_deinit();
 	mbraink_v6899_wifi_deinit();
+	mbraink_v6899_camera_deinit();
 
 	return 0;
 }

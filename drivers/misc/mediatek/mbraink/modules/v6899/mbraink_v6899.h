@@ -13,5 +13,6 @@
 #include "mbraink_v6899_gpu.h"
 #include "mbraink_v6899_gps.h"
 #include "mbraink_v6899_wifi.h"
+#include "mbraink_v6899_camera.h"
 
 #endif /*end of MBRAINK_V6899_H*/

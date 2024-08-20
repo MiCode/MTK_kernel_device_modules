@@ -77,7 +77,7 @@ subdir-ccflags-y += -Wformat
 BUILD_MBRAINK_MODULE_NAME=mtk_mbraink_v6899
 obj-${CONFIG_MTK_MBRAINK_MT6899} += ${BUILD_MBRAINK_MODULE_NAME}.o
 
-${BUILD_MBRAINK_MODULE_NAME}-objs += mbraink_v6899.o mbraink_v6899_memory.o mbraink_v6899_audio.o mbraink_v6899_battery.o mbraink_v6899_power.o mbraink_v6899_gpu.o mbraink_v6899_gps.o mbraink_v6899_wifi.o
+${BUILD_MBRAINK_MODULE_NAME}-objs += mbraink_v6899.o mbraink_v6899_memory.o mbraink_v6899_audio.o mbraink_v6899_battery.o mbraink_v6899_power.o mbraink_v6899_gpu.o mbraink_v6899_gps.o mbraink_v6899_wifi.o mbraink_v6899_camera.o
 
 ifeq ($(CONFIG_MTK_SWPM_MODULE),$(filter $(CONFIG_MTK_SWPM_MODULE),m))
 ${BUILD_MBRAINK_MODULE_NAME}-objs += mbraink_sys_res_plat.o mbraink_sys_res_mbrain_plat.o mbraink_sys_res.o mbraink_sys_res_mbrain_dbg.o

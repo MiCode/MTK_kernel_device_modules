@@ -71,13 +71,12 @@ ifeq ($(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK),m)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs/
 endif
 
-
 subdir-ccflags-y += -Wformat
 
 BUILD_MBRAINK_MODULE_NAME=mtk_mbraink_v6991
 obj-${CONFIG_MTK_MBRAINK_MT6991} += ${BUILD_MBRAINK_MODULE_NAME}.o
 
-${BUILD_MBRAINK_MODULE_NAME}-objs += mbraink_v6991.o mbraink_v6991_memory.o mbraink_v6991_audio.o mbraink_v6991_battery.o mbraink_v6991_power.o mbraink_v6991_gpu.o mbraink_v6991_gps.o mbraink_v6991_wifi.o
+${BUILD_MBRAINK_MODULE_NAME}-objs += mbraink_v6991.o mbraink_v6991_memory.o mbraink_v6991_audio.o mbraink_v6991_battery.o mbraink_v6991_power.o mbraink_v6991_gpu.o mbraink_v6991_gps.o mbraink_v6991_wifi.o mbraink_v6991_camera.o
 
 ifeq ($(CONFIG_MTK_SWPM_MODULE),$(filter $(CONFIG_MTK_SWPM_MODULE),m))
 ${BUILD_MBRAINK_MODULE_NAME}-objs += mbraink_sys_res_plat.o mbraink_sys_res_mbrain_plat.o mbraink_sys_res.o mbraink_sys_res_mbrain_dbg.o
