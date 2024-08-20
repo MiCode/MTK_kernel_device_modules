@@ -8044,6 +8044,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x13f800 0 0x20>;
 			qos-mode = <0>;
 			qos-value = <0>;
+			qos-opp-high = <19>;
 		};
 
 		gpueb: gpueb@4b000000 {
