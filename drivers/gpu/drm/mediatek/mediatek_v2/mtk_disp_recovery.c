@@ -487,6 +487,13 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 	mtk_drm_trace_begin("esd recover");
 	mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
 
+	if (mtk_vidle_is_ff_enabled()) {
+		mtk_vidle_config_ff(false);
+		mtk_vidle_enable(false, priv);
+		if (!mtk_vidle_is_ff_enabled())
+			CRTC_MMP_MARK(index, leave_vidle, 0xe5d, 0);
+		CRTC_MMP_MARK(index, esd_recovery, 0, 0x11);
+	}
 	atomic_set(&mtk_crtc->esd_notice_status, 1);
 	wake_up_interruptible(&mtk_crtc->esd_notice_wq);
 
