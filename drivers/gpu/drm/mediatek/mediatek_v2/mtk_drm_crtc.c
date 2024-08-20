@@ -14842,7 +14842,14 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 		cmdq_pkt_wait_no_clear(cmdq_handle,
 				mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_VFP_PERIOD]);
 	} else {
-		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
+		int clear_event = 0;
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+		if (!mtk_crtc_with_trigger_loop(crtc))
+			clear_event = 1;
+#endif
+
+		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, clear_event);
 	}
 
 	/* Record Vblank start timestamp */
