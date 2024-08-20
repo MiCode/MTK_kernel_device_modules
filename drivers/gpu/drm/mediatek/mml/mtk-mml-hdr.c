@@ -538,7 +538,8 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	// for debug ALPS09155466, will remove later :
 	// hdr_regs[HDR_TOP] value that bit 0 (hdr_en) should not be 0
-	if ((regs[1].value & 0x1) == 0 &&
+	if (result->hdr_reg_cnt > 1 &&
+		(regs[1].value & 0x1) == 0 &&
 		regs[1].offset == 0) {
 		mml_pq_err("%s:result_id[%llu] [regs][%x] = %#x mask(%#x)",
 			__func__, task->pq_task->comp_config.job_id,
@@ -1002,7 +1003,8 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 
 	// for debug ALPS09155466, will remove later :
 	// hdr_regs[HDR_TOP] value that bit 0 (hdr_en) should not be 0
-	if ((regs[1].value & 0x1) == 0 &&
+	if (result->hdr_reg_cnt > 1 &&
+		(regs[1].value & 0x1) == 0 &&
 		regs[1].offset == 0) {
 		mml_pq_err("%s:result_id[%llu] [regs][%x] = %#x mask(%#x)",
 			__func__, task->pq_task->comp_config.job_id,

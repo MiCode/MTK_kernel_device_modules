@@ -2104,7 +2104,8 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 
 	// for debug ALPS09155466, will remove later :
 	// hdr_regs[HDR_TOP] value that bit 0 (hdr_en) should not be 0
-	if ((hdr_regs[1].value & 0x1) == 0 &&
+	if (result->hdr_reg_cnt > 1 &&
+		(hdr_regs[1].value & 0x1) == 0 &&
 		hdr_regs[1].offset == 0) {
 		mml_pq_err("%s:result_id[%d] [hdr_regs][%x] = %#x mask(%#x)",
 			__func__,
