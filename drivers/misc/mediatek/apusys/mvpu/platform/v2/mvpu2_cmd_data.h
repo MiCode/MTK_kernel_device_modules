@@ -40,9 +40,6 @@ enum MVPU_SEC_LEVEL {
 };
 #endif
 
-#define MVPU_REQ_FEATURE_HSE_ENABLE     (1ULL << 0)
-#define MVPU_REQ_FEATURE_OSGB_LIMITED   (1ULL << 1)
-
 struct BundleHeader {
 	union {
 		unsigned int dwValue;

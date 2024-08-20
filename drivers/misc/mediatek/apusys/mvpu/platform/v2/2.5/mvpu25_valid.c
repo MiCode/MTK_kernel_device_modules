@@ -178,9 +178,20 @@ int mvpu25_validation(void *hnd)
 	}
 #endif
 
-	if (g_mvpu_platdata->sw_ver == MVPU_SW_VER_MVPU25a) {
+	if (g_mvpu_platdata->sw_ver == MVPU_SW_VER_MVPU25a || g_mvpu_platdata->sw_ver == MVPU_SW_VER_MVPU25b) {
 		if ((mvpu_req->feature_control_mask & MVPU_REQ_FEATURE_OSGB_LIMITED) != MVPU_REQ_FEATURE_OSGB_LIMITED) {
 			pr_info("[MVPU] [ERROR] binary is too old, please regenerate binary with version after SW 4.1 (include OSG patch)\n");
+			strscpy(&mvpu_req->name[31], "\0", sizeof(char));
+			pr_info("[MVPU] algo_name: %s\n", mvpu_req->name);
+			mvpu_aee_exception("MVPU", "MVPU aee");
+			ret = -1;
+			goto END;
+		}
+	}
+
+	if (g_mvpu_platdata->sw_ver == MVPU_SW_VER_MVPU25b) {
+		if ((mvpu_req->feature_control_mask & MVPU_REQ_FEATURE_MVPU250_WA) != MVPU_REQ_FEATURE_MVPU250_WA) {
+			pr_info("[MVPU] [ERROR] binary is too old, please regenerate binary with version after SW 4.5 (include MVPU250 patch)\n");
 			strscpy(&mvpu_req->name[31], "\0", sizeof(char));
 			pr_info("[MVPU] algo_name: %s\n", mvpu_req->name);
 			mvpu_aee_exception("MVPU", "MVPU aee");

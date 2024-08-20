@@ -52,7 +52,7 @@ struct mvpu_platdata mvpu_mt6991_platdata = {
 
 struct mvpu_platdata mvpu_mt6899_platdata = {
 	.sw_preemption_level = 1,
-	.sw_ver = MVPU_SW_VER_MVPU25a,
+	.sw_ver = MVPU_SW_VER_MVPU25b,
 	.ops = &mvpu25a_ops,
 	.sec_ops = &mvpu25_sec_ops
 };

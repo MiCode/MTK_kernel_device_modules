@@ -8,6 +8,10 @@
 
 #include "mvpu2_cmd_data.h"
 
+#define MVPU_REQ_FEATURE_HSE_ENABLE     (1ULL << 0)
+#define MVPU_REQ_FEATURE_OSGB_LIMITED   (1ULL << 1)
+#define MVPU_REQ_FEATURE_MVPU250_WA     (1ULL << 2)  // Workaround for MVPU250 issue
+
 /* MVPU command structure*/
 struct mvpu_request_v25 {
 	struct BundleHeader header;
