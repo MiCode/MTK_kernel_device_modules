@@ -190,6 +190,16 @@ void mml_dpc_srt_bw_set(u32 sysid, const u32 bw_in_mb, bool force_keep)
 		mml_sysid_to_dpc_srt_read_idx(sysid), bw_in_mb);
 }
 
+void mml_dpc_dvfs_bw_set(u32 sysid, const u32 bw_in_mb)
+{
+	if (mml_dpc_funcs.dpc_dvfs_bw_set == NULL) {
+		mml_msg_dpc("%s dpc_dvfs_bw_set not exist", __func__);
+		return;
+	}
+
+	mml_dpc_funcs.dpc_dvfs_bw_set(mml_sysid_to_dpc_subsys(sysid), bw_in_mb);
+}
+
 void mml_dpc_dvfs_set(const u8 level, bool force)
 {
 	if (mml_dpc_funcs.dpc_dvfs_set == NULL) {

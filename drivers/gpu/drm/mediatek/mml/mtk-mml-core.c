@@ -1056,6 +1056,7 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 	struct mml_topology_cache *tp = mml_topology_get_cache(cfg->mml);
 	struct mml_task_pipe *task_pipe;
 	struct mml_task *task;
+	const struct mml_topology_path *path = cfg->path[0];
 	u32 srt_bw[mml_max_sys] = {0}, hrt_bw[mml_max_sys] = {0}, srt_bw_max = 0, hrt_bw_max = 0;
 	u32 stash_srt_bw[mml_max_sys] = {0}, stash_hrt_bw[mml_max_sys] = {0};
 	u32 dpc_dvfs_lv = 0;
@@ -1126,6 +1127,10 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 
 	/* set dpc dvfs (mminfra, bus) */
 	mml_dpc_dvfs_set(dpc_dvfs_lv, true);
+	mml_dpc_dvfs_bw_set(path->mmlsys->id, hrt_bw_max);
+
+	if (path->mmlsys2)
+		mml_dpc_dvfs_bw_set(path->mmlsys2->id, hrt_bw_max);
 
 	/* and update in dvfs end case */
 	if (trigger)

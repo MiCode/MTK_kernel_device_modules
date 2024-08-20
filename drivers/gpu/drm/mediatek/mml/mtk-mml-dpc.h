@@ -42,6 +42,7 @@ int mml_dpc_power_keep_gce(u32 sysid, struct cmdq_pkt *pkt, u16 gpr, struct cmdq
 void mml_dpc_power_release_gce(u32 sysid, struct cmdq_pkt *pkt);
 void mml_dpc_hrt_bw_set(u32 sysid, const u32 bw_in_mb, bool force_keep);
 void mml_dpc_srt_bw_set(u32 sysid, const u32 bw_in_mb, bool force_keep);
+void mml_dpc_dvfs_bw_set(u32 sysid, const u32 bw_in_mb);
 void mml_dpc_dvfs_set(const u8 level, bool force);
 void mml_dpc_dvfs_both_set(u32 sysid, const u8 level, bool force_keep, const u32 bw_in_mb);
 void mml_dpc_dvfs_trigger(void);
