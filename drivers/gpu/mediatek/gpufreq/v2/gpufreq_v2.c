@@ -1891,6 +1891,14 @@ static int gpufreq_gpueb_init(void)
 	struct gpufreq_ipi_data send_msg = {};
 	void __iomem *gpueb_gpr_addr = NULL;
 
+	/* power on GPUEB */
+	ret = gpueb_ctrl(GHPM_ON, MFG1_OFF, SUSPEND_POWER_ON);
+	if (unlikely(ret)) {
+		GPUFREQ_LOGE("fail to power on GPUEB (%d)", ret);
+		gpufreq_abort();
+		goto done;
+	}
+
 	/* init ipi channel */
 	g_ipi_channel = gpueb_get_send_PIN_ID_by_name("IPI_ID_GPUFREQ");
 	if (unlikely(g_ipi_channel < 0)) {
@@ -1918,9 +1926,19 @@ static int gpufreq_gpueb_init(void)
 	send_msg.u.shared_mem.base = g_shared_mem_pa;
 	send_msg.u.shared_mem.size = g_shared_mem_size;
 	ret = gpufreq_ipi_to_gpueb(send_msg);
-	if (unlikely(ret))
+	if (unlikely(ret)) {
 		GPUFREQ_LOGE("fail to init gpufreq shared memory");
+		goto done;
+	}
 	raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_ipi_irq_flags);
+
+	/* power off GPUEB */
+	ret = gpueb_ctrl(GHPM_OFF, MFG1_OFF, SUSPEND_POWER_OFF);
+	if (unlikely(ret)) {
+		GPUFREQ_LOGE("fail to power off GPUEB (%d)", ret);
+		gpufreq_abort();
+		goto done;
+	}
 
 done:
 	return ret;
