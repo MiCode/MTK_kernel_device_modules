@@ -14196,6 +14196,9 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 			cmdq_handle, PMQOS_UPDATE_BW, NULL);
 	}
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+		mtk_ddp_comp_start(comp, cmdq_handle);
+#endif
 		mtk_ddp_comp_first_cfg(comp, &cfg, cmdq_handle);
 		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_USE_PQ)) {
 			mtk_crtc->pq_data->opt_bypass_pq = true;
