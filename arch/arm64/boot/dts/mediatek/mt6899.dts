@@ -7232,6 +7232,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			exception-mask = <0x5>;
 			gpu-frame-base-optimize = <1>;
 			system-coherency = <0>;
+			dbg-force-sync = <0>;
 			pbha {
 				propagate-bits = /bits/ 8 <0xf>;
 			};
