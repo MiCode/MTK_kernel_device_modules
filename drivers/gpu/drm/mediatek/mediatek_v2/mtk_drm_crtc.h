@@ -1255,6 +1255,8 @@ struct mtk_drm_crtc {
 	enum DISP_SE_STATE se_state;
 
 	bool is_plane0_updated;
+
+	struct mutex sol_lock;
 };
 
 enum BL_GAMMA_GAIN {

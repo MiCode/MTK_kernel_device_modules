@@ -9506,10 +9506,10 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 
 	index = drm_crtc_index(&mtk_crtc->base);
 
-	DDP_MUTEX_LOCK_NESTED(&mtk_crtc->lock, index, __func__, __LINE__);
+	DDP_MUTEX_LOCK_NESTED(&mtk_crtc->sol_lock, index, __func__, __LINE__);
 
 	if (!mtk_crtc->enabled) {
-		DDP_MUTEX_UNLOCK_NESTED(&mtk_crtc->lock, index, __func__, __LINE__);
+		DDP_MUTEX_UNLOCK_NESTED(&mtk_crtc->sol_lock, index, __func__, __LINE__);
 		DDPMSG("crtc%d still disable\n", index);
 		return 0;
 	}
@@ -9517,7 +9517,7 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 	if (mtk_crtc->se_state != DISP_SE_START &&
 	    mtk_crtc->se_state != DISP_SE_RUNNING &&
 	    !layer_info->layer_en) {
-		DDP_MUTEX_UNLOCK_NESTED(&mtk_crtc->lock, index, __func__, __LINE__);
+		DDP_MUTEX_UNLOCK_NESTED(&mtk_crtc->sol_lock, index, __func__, __LINE__);
 		DDPMSG("se still stop, not config\n");
 		return 0;
 	}
@@ -9628,7 +9628,7 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 
 	mtk_drm_se_plane_config(mtk_crtc);
 
-	DDP_MUTEX_UNLOCK_NESTED(&mtk_crtc->lock, index, __func__, __LINE__);
+	DDP_MUTEX_UNLOCK_NESTED(&mtk_crtc->sol_lock, index, __func__, __LINE__);
 
 	return 0;
 }

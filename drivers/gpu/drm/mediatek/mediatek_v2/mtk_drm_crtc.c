@@ -19949,6 +19949,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		mtk_crtc->layer_nr = SP_INPUT_LAYER_NR;
 
 	mutex_init(&mtk_crtc->lock);
+	mutex_init(&mtk_crtc->sol_lock);
 	mutex_init(&mtk_crtc->cwb_lock);
 	mutex_init(&mtk_crtc->mml_ir_sram.lock);
 	spin_lock_init(&mtk_crtc->pf_time_lock);
