@@ -722,6 +722,9 @@ int psy_chr_type_set_property(struct power_supply *psy,
 			info->psy_desc.type = POWER_SUPPLY_TYPE_USB;
 			info->type = POWER_SUPPLY_USB_TYPE_UNKNOWN;
 			break;
+		case ATTACH_TYPE_PWR_RDY:
+			info->type = get_charger_type(info);
+			break;
 		case ATTACH_TYPE_TYPEC:
 			info->type = get_charger_type(info);
 			break;
@@ -939,8 +942,9 @@ static int mt6357_charger_type_probe(struct platform_device *pdev)
 			PTR_ERR(info->chan_vbus));
 	}
 
-	if (of_property_read_u32(np, "bc12_active", &info->bc12_active) < 0)
-		pr_notice("%s: no bc12_active\n", __func__);
+	if (of_property_read_u32(np, "bc12-active", &info->bc12_active) < 0)
+		if (of_property_read_u32(np, "bc12_active", &info->bc12_active) < 0)
+			pr_notice("%s: no bc12_active\n", __func__);
 
 	pr_notice("%s: bc12_active:%d\n", __func__, info->bc12_active);
 

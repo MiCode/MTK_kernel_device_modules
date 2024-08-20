@@ -305,6 +305,14 @@ config CHARGER_BQ2589X
 	  bq2589x charger IC Battery Charger. The base name for this driver is
 	  'bq2589x_charger.c'.
 
+config CHARGER_BQ25601
+	tristate "CHARGER_BQ25601"
+	help
+	  Say Yes to enable
+	  TI BQ25601 driver.
+	  It depends on
+	  the config MTK_CHARGER.
+
 config CHARGER_SGM41516D
     tristate "CHARGER_SGM41516D"
     #depends on MTK_CHARGER
