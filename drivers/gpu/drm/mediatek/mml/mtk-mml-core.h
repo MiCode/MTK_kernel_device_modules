@@ -726,6 +726,7 @@ struct mml_task {
 	/* mml pq task */
 	struct mml_pq_task *pq_task;
 
+	bool done;
 	bool err;
 	bool dump_full;
 
