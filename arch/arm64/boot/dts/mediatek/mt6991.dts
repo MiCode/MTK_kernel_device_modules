@@ -10341,7 +10341,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,mt6991-edp-tx",
 						 "mediatek,mt8678-edp-tx";
 			status = "disabled";
-			reg = <0 0x3ec40000 0 0x14000>;
+			reg = <0 0x3ec40000 0 0x4000>,
+					<0 0x130a0000 0 0x1500>;
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_EDPTX_DORMANT>;
 			interrupts = <GIC_SPI 448 IRQ_TYPE_LEVEL_HIGH 0>;
 		};

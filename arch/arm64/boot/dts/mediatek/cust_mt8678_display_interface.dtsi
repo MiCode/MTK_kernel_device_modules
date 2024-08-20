@@ -398,6 +398,7 @@
 		reset-gpios = <&pio 70 0>;
 
 		panel-name = "HuaYang";
+		use-for-dp = <1>;
 		use-default-setting = <1>;
 		ser-support-hotplug = <1>;
 		ser-super-frame = <0>;
@@ -420,7 +421,7 @@
 		};
 
 		BoTai{
-			max96851-signal-settting{
+			serdes-dp-sst-settting{
 				ser-init-cmd = <
 					0 0x0100 0x61 0
 					0 0x7000 0x00 0
@@ -446,7 +447,7 @@
 				>;
 			};
 
-			max96851-superframe-setting{
+			serdes-dp-superframe-setting{
 				asymmetric-multi-view = <0>;
 				symmetric-multi-view-setting{
 					des-i2c-addr = <0x4c>;
@@ -628,10 +629,10 @@
 				};
 			};
 
-			max96851-dual-link-setting{
+			serdes-dp-double-pixel-setting{
 			};
 
-			max96851-dp-mst-setting{
+			serdes-dp-mst-setting{
 				des-i2c-addr = <0x4c>;
 				serdes-init-linka-cmd = <
 					0 0x0028 0x88 0
@@ -712,7 +713,7 @@
 		};
 
 		HuaYang{
-			max96851-signal-settting{
+			serdes-dp-sst-settting{
 				ser-init-cmd = <
 					0 0x0100 0x61 0
 					0 0x7000 0x00 0
@@ -738,7 +739,7 @@
 				>;
 			};
 
-			max96851-superframe-setting{
+			serdes-dp-superframe-setting{
 				asymmetric-multi-view = <0>;
 				symmetric-multi-view-setting{
 					des-i2c-addr = <0x4c>;
@@ -920,10 +921,10 @@
 				};
 			};
 
-			max96851-dual-link-setting{
+			serdes-dp-double-pixel-setting{
 			};
 
-			max96851-dp-mst-setting{
+			serdes-dp-mst-setting{
 				des-i2c-addr = <0x4c>;
 				serdes-init-linka-cmd = <
 					0 0x0028 0x88 0
@@ -1022,7 +1023,7 @@
 		};
 
 		YW-1080{
-			max96851-signal-settting{
+			serdes-dp-sst-settting{
 				ser-init-cmd = <
 					0 0x0100 0x61 0
 					0 0x7000 0x00 0
@@ -1085,7 +1086,7 @@
 				>;
 			};
 
-			max96851-superframe-setting{
+			serdes-dp-superframe-setting{
 				asymmetric-multi-view = <0>;
 				symmetric-multi-view-setting{
 					des-i2c-addr = <0x4a>;
@@ -1117,10 +1118,10 @@
 				};
 			};
 
-			max96851-dual-link-setting{
+			serdes-dp-double-pixel-setting{
 			};
 
-			max96851-dp-mst-setting{
+			serdes-dp-mst-setting{
 				des-i2c-addr = <0x4a>;
 				serdes-init-linka-cmd = <
 					0 0x0028 0x88 0
@@ -1257,7 +1258,7 @@
 		};
 
 		YW-720{
-			max96851-signal-settting{
+			serdes-dp-sst-settting{
 				ser-init-cmd = <
 				>;
 				des-i2c-addr = <0x4a>;
@@ -1273,7 +1274,8 @@
 					0x83 0x00 0x00 0x02 0x00 0x00 0x00 0x00 0x00 0x00 0x85
 				>;
 			};
-			max96851-superframe-setting{
+
+			serdes-dp-superframe-setting{
 				asymmetric-multi-view = <0>;
 				symmetric-multi-view-setting{
 					des-i2c-addr = <0x4c>;
@@ -1304,9 +1306,11 @@
 				asymmetric-multi-view-setting{
 				};
 			};
-			max96851-dual-link-setting{
+
+			serdes-dp-double-pixel-setting{
 			};
-			max96851-dp-mst-setting{
+
+			serdes-dp-mst-setting{
 			};
 		};
 
@@ -1352,6 +1356,7 @@
 		reset-gpios = <&pio 73 0>;
 
 		panel-name = "HuaYang";
+		use-for-dp = <0>;
 		use-default-setting = <1>;
 		ser-support-hotplug = <1>;
 		ser-super-frame = <0>;
@@ -1374,7 +1379,7 @@
 		};
 
 		BoTai{
-			max96851-signal-settting{
+			serdes-dp-sst-settting{
 				ser-init-cmd = <
 					0 0x0100 0x61 0
 					0 0x7000 0x00 0
@@ -1400,7 +1405,7 @@
 				>;
 			};
 
-			max96851-superframe-setting{
+			serdes-dp-superframe-setting{
 				asymmetric-multi-view = <0>;
 				symmetric-multi-view-setting{
 					des-i2c-addr = <0x4c>;
@@ -1582,15 +1587,15 @@
 				};
 			};
 
-			max96851-dual-link-setting{
+			serdes-dp-double-pixel-setting{
 			};
 
-			max96851-dp-mst-setting{
+			serdes-dp-mst-setting{
 			};
 		};
 
 		HuaYang{
-			max96851-signal-settting{
+			serdes-dp-sst-settting{
 				ser-init-cmd = <
 					0 0x0100 0x61 0
 					0 0x7000 0x00 0
@@ -1627,7 +1632,7 @@
 				>;
 			};
 
-			max96851-superframe-setting{
+			serdes-dp-superframe-setting{
 				asymmetric-multi-view = <0>;
 				symmetric-multi-view-setting{
 					des-i2c-addr = <0x4c>;
@@ -1807,15 +1812,15 @@
 				};
 			};
 
-			max96851-dual-link-setting{
+			serdes-dp-double-pixel-setting{
 			};
 
-			max96851-dp-mst-setting{
+			serdes-dp-mst-setting{
 			};
 		};
 
 		YW-1080{
-			max96851-signal-settting{
+			serdes-dp-sst-settting{
 				ser-init-cmd = <
 					0 0x0100 0x61 0
 					0 0x7000 0x00 0
@@ -1877,7 +1882,7 @@
 				>;
 			};
 
-			max96851-superframe-setting{
+			serdes-dp-superframe-setting{
 				asymmetric-multi-view = <0>;
 				symmetric-multi-view-setting{
 					des-i2c-addr = <0x4a>;
@@ -1909,15 +1914,15 @@
 				};
 			};
 
-			max96851-dual-link-setting{
+			serdes-dp-double-pixel-setting{
 			};
 
-			max96851-dp-mst-setting{
+			serdes-dp-mst-setting{
 			};
 		};
 
 		YW-720{
-			max96851-signal-settting{
+			serdes-dp-sst-settting{
 				ser-init-cmd = <
 				>;
 				des-i2c-addr = <0x4a>;
@@ -1933,7 +1938,8 @@
 					0x83 0x00 0x00 0x02 0x00 0x00 0x00 0x00 0x00 0x00 0x85
 				>;
 			};
-			max96851-superframe-setting{
+
+			serdes-dp-superframe-setting{
 				asymmetric-multi-view = <0>;
 				symmetric-multi-view-setting{
 					des-i2c-addr = <0x4c>;
@@ -1964,9 +1970,11 @@
 				asymmetric-multi-view-setting{
 				};
 			};
-			max96851-dual-link-setting{
+
+			serdes-dp-double-pixel-setting{
 			};
-			max96851-dp-mst-setting{
+
+			serdes-dp-mst-setting{
 			};
 		};
 
