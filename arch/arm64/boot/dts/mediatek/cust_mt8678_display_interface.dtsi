@@ -401,7 +401,7 @@
 		use-default-setting = <1>;
 		ser-support-hotplug = <1>;
 		ser-super-frame = <0>;
-		ser-dual-link = <0>;
+		ser-double-pixel = <0>;
 		ser-dp-mst = <1>;
 		support-touch = <1>;
 
@@ -1355,7 +1355,7 @@
 		use-default-setting = <1>;
 		ser-support-hotplug = <1>;
 		ser-super-frame = <0>;
-		ser-dual-link = <0>;
+		ser-double-pixel = <0>;
 		ser-dp-mst = <0>;
 		support-touch = <1>;
 
