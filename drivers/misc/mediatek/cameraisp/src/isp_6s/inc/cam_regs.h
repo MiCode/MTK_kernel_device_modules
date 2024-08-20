@@ -568,6 +568,7 @@ enum{
 #define CAM_REG_RSSO_CON2(module)               (isp_devs[module].regs + 0x475C)
 #define CAM_REG_RSSO_CON3(module)               (isp_devs[module].regs + 0x4760)
 
+#define CAM_REG_LMVO_BASE_ADDR(module)			(isp_devs[module].regs + 0x47B0)
 #define CAM_REG_LMVO_DRS(module)                (isp_devs[module].regs + 0x47B8)
 #define CAM_REG_LMVO_CON(module)                (isp_devs[module].regs + 0x47C8)
 #define CAM_REG_LMVO_CON2(module)               (isp_devs[module].regs + 0x47CC)
