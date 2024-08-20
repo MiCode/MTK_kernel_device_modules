@@ -15,13 +15,12 @@
 #define MOD_NO_IN_1_DEVAPC                  16
 #define DEVAPC_TAG                          "DEVAPC"
 
+#define MTK_SIP_LK_DAPC			0x82000101
+
 /* 1: Force to enable enhanced one-core violation debugging */
 /* 0: Enhanced one-core violation debugging can be enabled dynamically */
-#ifdef DBG_ENABLE
-	#define DEVAPC_ENABLE_ONE_CORE_VIOLATION_DEBUG	1
-#else
-	#define DEVAPC_ENABLE_ONE_CORE_VIOLATION_DEBUG	0
-#endif
+#define DEVAPC_ENABLE_ONE_CORE_VIOLATION_DEBUG	0
+
 
 #define DAPC_INPUT_TYPE_DEBUG_OFF	100
 #define DAPC_INPUT_TYPE_DEBUG_ON	200

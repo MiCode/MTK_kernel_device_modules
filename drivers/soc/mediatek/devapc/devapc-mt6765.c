@@ -28,9 +28,8 @@
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <linux/sched/clock.h>
 #include <linux/sched/debug.h>
-#ifdef DBG_ENABLE
 #include <linux/arm-smccc.h>
-#endif
+
 
 #ifdef CONFIG_MTK_HIBERNATION
 #include <mtk_hibernate_dpm.h>
@@ -49,6 +48,7 @@
 #define DEVAPC_TURN_ON         1
 #define DEVAPC_USE_CCF         1
 #define DEVAPC_VIO_DEBUG       0
+#define DBG_ENABLE             1
 
 /* Debug message event */
 #define DEVAPC_LOG_NONE        0x00000000
@@ -642,7 +642,7 @@ static void execute_aee(unsigned int i, unsigned int dbg0, unsigned int dbg1)
 	unmask_infra_module_irq(i);
 
 }
-#ifndef DBG_ENABLE
+#if !DBG_ENABLE
 static void evaluate_aee_exception(unsigned int i, unsigned int dbg0,
 	unsigned int dbg1)
 {
@@ -821,7 +821,7 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 					i);
 
 #if defined(CONFIG_MTK_AEE_FEATURE) && defined(DEVAPC_ENABLE_AEE)
-	#ifdef DBG_ENABLE
+	#if DBG_ENABLE
 				execute_aee(i, dbg0, dbg1);
 	#else
 				/* Frequency-based Violation AEE Exception */
@@ -933,7 +933,7 @@ static int check_debug_input_type(const char *str)
 		return 0;
 }
 
-#ifdef DBG_ENABLE
+#if DBG_ENABLE
 
 #ifndef mt_secure_call
 #define mt_secure_call(x1, x2, x3, x4, x5) ({\
@@ -957,7 +957,7 @@ static ssize_t devapc_dbg_read(struct file *file, char __user *buffer,
 
 	retval = simple_read_from_buffer(buffer, count, ppos, msg, strlen(msg));
 
-	ret = mt_secure_call(MTK_SIP_KERNEL_DAPC_DUMP, 0, 0, 0, 0);
+	ret = mt_secure_call(MTK_SIP_LK_DAPC, 1, 0, 0, 0);
 	if (ret == 0)
 		pr_info("dump devapc reg success !\n");
 	else
@@ -1018,7 +1018,7 @@ static int devapc_dbg_open(struct inode *inode, struct file *file)
 static const struct proc_ops devapc_dbg_fops = {
 	.proc_open = devapc_dbg_open,
 	.proc_write = devapc_dbg_write,
-#ifdef DBG_ENABLE
+#if DBG_ENABLE
 	.proc_read = devapc_dbg_read,
 #else
 	.proc_read = NULL,
