@@ -1599,8 +1599,6 @@ void mtk_dp_mst_drv_stop(struct mtk_dp *mtk_dp, struct mtk_drm_dp_mst_topology_m
 
 	/* DPTx global variable reset */
 	mtk_dp_mst_drv_init_variable(mtk_dp);
-
-	mtk_dp->mst_enable = false;
 }
 
 #if ENABLE_SERDES_MST
@@ -1644,8 +1642,6 @@ void mtk_dp_mst_stop(struct mtk_dp *mtk_dp)
 
 	/* DPTx global variable reset */
 	mtk_dp_mst_drv_init_variable(mtk_dp);
-
-	mtk_dp->mst_enable = false;
 }
 #endif
 
