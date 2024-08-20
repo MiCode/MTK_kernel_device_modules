@@ -1689,8 +1689,8 @@ static inline void RSC_Reset(void)
 	spin_lock(&(RSCInfo.SpinLockRSCRef));
 
 	if (RSCInfo.UserCount > 1) {
-		spin_unlock(&(RSCInfo.SpinLockRSCRef));
 		LOG_INF("Curr UserCount(%d) users exist", RSCInfo.UserCount);
+		spin_unlock(&(RSCInfo.SpinLockRSCRef));
 	} else {
 		spin_unlock(&(RSCInfo.SpinLockRSCRef));
 
@@ -2525,8 +2525,8 @@ static int compat_put_RSC_read_register_data(
 	unsigned long arg,
 	struct RSC_REG_IO_STRUCT *data)
 {
-	long ret = -1;
-	struct compat_RSC_REG_IO_STRUCT data32;
+	long ret = 0;
+	struct compat_RSC_REG_IO_STRUCT data32 = {0};
 
 	data32.Count = (compat_uint_t)(data->Count);
 
@@ -2565,7 +2565,7 @@ static int compat_put_RSC_enque_req_data(
 	struct RSC_Request *data)
 {
 	long ret = 0;
-	struct compat_RSC_Request data32;
+	struct compat_RSC_Request data32 = {0};
 
 	data32.m_ReqNum = data->m_ReqNum;
 
@@ -2583,7 +2583,7 @@ static int compat_get_RSC_deque_req_data(
 	struct RSC_Request *data)
 {
 	long ret = -1;
-	struct compat_RSC_Request data32;
+	struct compat_RSC_Request data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_RSC_Request));
@@ -2604,9 +2604,10 @@ static int compat_put_RSC_deque_req_data(
 	unsigned long arg,
 	struct RSC_Request *data)
 {
-	long ret = 0;
 
-	struct compat_RSC_Request data32;
+	long ret = 0;
+	struct compat_RSC_Request data32 = {0};
+
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
 
 	if (copy_to_user(compat_ptr(arg), &data32,
@@ -2960,11 +2961,12 @@ static signed int RSC_release(struct inode *pInode, struct file *pFile)
 			RSCInfo.UserCount, current->comm, current->pid,
 								current->tgid);
 		goto EXIT;
-	} else
-		spin_unlock(&(RSCInfo.SpinLockRSCRef));
+	}
 
 	LOG_INF("Curr UsrCnt(%d), (process, pid, tgid)=(%s, %d, %d), last user",
 		RSCInfo.UserCount, current->comm, current->pid, current->tgid);
+
+	spin_unlock(&(RSCInfo.SpinLockRSCRef));
 
 	cmdq_mbox_disable(cmdq_clt->chan);
 	/* Disable clock. */
@@ -3622,10 +3624,12 @@ static int rsc_dump_read(struct seq_file *m, void *v)
 {
 	int i, j;
 
-	if (RSCInfo.UserCount <= 0)
-		return 0;
-
 	spin_lock(&(RSCInfo.SpinLockRSC));
+	if (RSCInfo.UserCount <= 0) {
+		spin_unlock(&(RSCInfo.SpinLockRSC));
+		return 0;
+	}
+
 	if (g_u4EnableClockCount == 0) {
 		spin_unlock(&(RSCInfo.SpinLockRSC));
 		return 0;
@@ -3721,10 +3725,12 @@ static int rsc_reg_read(struct seq_file *m, void *v)
 {
 	unsigned int i;
 
-	if (RSCInfo.UserCount <= 0)
-		return 0;
-
 	spin_lock(&(RSCInfo.SpinLockRSC));
+	if (RSCInfo.UserCount <= 0) {
+		spin_unlock(&(RSCInfo.SpinLockRSC));
+		return 0;
+	}
+
 	if (g_u4EnableClockCount == 0) {
 		spin_unlock(&(RSCInfo.SpinLockRSC));
 		return 0;
