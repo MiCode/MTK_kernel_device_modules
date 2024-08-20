@@ -35,8 +35,6 @@
 #ifdef SHARE_WROT_SRAM
 #include "mdp_event_common.h"
 #endif
-#include <soc/mediatek/mmqos.h>
-#include <soc/mediatek/dramc.h>
 
 int disp_met_set(void *data, u64 val);
 
@@ -863,7 +861,6 @@ static void mtk_rdma_set_ultra_l(struct mtk_ddp_comp *comp,
 	unsigned int gs[GS_RDMA_FLD_NUM] = {0};
 	unsigned int val = 0;
 	struct mtk_disp_rdma *rdma = comp_to_rdma(comp);
-	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
 	if ((comp->id != DDP_COMPONENT_RDMA0)
 		&& (comp->id != DDP_COMPONENT_RDMA1)
@@ -934,32 +931,8 @@ static void mtk_rdma_set_ultra_l(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_REG_RDMA_DVFS_SETTING_PRE, val, ~0);
 
-	/* DDR5 can not get BW in camera scenarios, */
-	/* by always requesting ultra workaround solution to temporarily resolve */
-	if (priv->data->mmsys_id == MMSYS_MT6877) {
-		unsigned int dram_type = 0;
-
-		dram_type = mtk_dramc_get_ddr_type();
-		if (dram_type == TYPE_LPDDR5 || dram_type == TYPE_LPDDR5X) {
-			static int is_hrt_throttled;
-			static int last_avail_hrt_bw;
-			int avail_hrt_bw = 0;
-
-			avail_hrt_bw = mtk_mmqos_get_avail_hrt_bw(HRT_DISP);
-			if (avail_hrt_bw < last_avail_hrt_bw * 7 / 10)
-				is_hrt_throttled = 1;
-			else if (avail_hrt_bw > last_avail_hrt_bw * 13 / 10)
-				is_hrt_throttled = 0;
-			last_avail_hrt_bw = avail_hrt_bw;
-
-			if (is_hrt_throttled) {
-				val = 0xffffffff;
-			} else {
-				val = gs[GS_RDMA_DVFS_ULTRA_TH_LOW] +
-					(gs[GS_RDMA_DVFS_ULTRA_TH_HIGH] << 16);
-			}
-		}
-	}
+	val = gs[GS_RDMA_DVFS_ULTRA_TH_LOW] +
+	      (gs[GS_RDMA_DVFS_ULTRA_TH_HIGH] << 16);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_REG_RDMA_DVFS_SETTING_ULTRA, val,
 		       ~0);
