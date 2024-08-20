@@ -2538,15 +2538,27 @@ static void mtk_drm_idlemgr_wb_cmdq_cb(struct cmdq_cb_data data)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	bool wdma_only = false;
 
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 
 	trace = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_IDLEMGR_BY_WB_TRACE);
 	DDPINFO("after enter IDLEMGR_BY_WB_TRACE:0x%x\n", *trace);
 
-	if (*trace & BIT(4)) {
-		if (*trace & BIT(31))
-			wdma_only = true;
-		mtk_drm_idlemgr_update_wb_bw(cb_data, wdma_only);
+	if (mtk_crtc->enabled) {
+		/* use hsidle bit but not crtc bit, to avoid of crtc timing issue*/
+		mtk_vidle_user_power_keep(DISP_VIDLE_USER_HSIDLE);
+		if (*trace & BIT(4)) {
+			if (*trace & BIT(31))
+				wdma_only = true;
+			mtk_drm_idlemgr_update_wb_bw(cb_data, wdma_only);
+		} else
+			DDPMSG("%s,[IWB] ignore bw update,trace:0x%x,crtc enabled:%d\n",
+				__func__, *trace, mtk_crtc->enabled);
+
+		if (mtk_drm_idlemgr_wb_test_id & BIT(20)) {
+			mtk_drm_crtc_analysis(&mtk_crtc->base);
+			mtk_drm_crtc_dump(&mtk_crtc->base);
+		}
+		mtk_vidle_user_power_release(DISP_VIDLE_USER_HSIDLE);
 	} else
 		DDPINFO("%s, ignore bw update,trace:0x%x\n",
 			__func__, *trace);
@@ -2554,12 +2566,7 @@ static void mtk_drm_idlemgr_wb_cmdq_cb(struct cmdq_cb_data data)
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
 	kfree(cb_data);
 
-	if (mtk_drm_idlemgr_wb_test_id & BIT(20)) {
-		mtk_drm_crtc_analysis(&mtk_crtc->base);
-		mtk_drm_crtc_dump(&mtk_crtc->base);
-	}
-
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 }
 
 bool mtk_drm_idlemgr_wb_is_entered(struct mtk_drm_crtc *mtk_crtc)

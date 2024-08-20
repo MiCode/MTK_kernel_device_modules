@@ -769,6 +769,12 @@ void mtk_vidle_dpc_analysis(void)
 		disp_dpc_driver.dpc_analysis();
 }
 
+void mtk_vidle_dpc_pm_analysis(void)
+{
+	if (disp_dpc_driver.dpc_pm_analysis)
+		disp_dpc_driver.dpc_pm_analysis();
+}
+
 void mtk_vidle_debug_cmd_adapter(const char *opt)
 {
 	if (disp_dpc_driver.dpc_debug_cmd)

@@ -65,6 +65,7 @@ void mtk_vidle_dvfs_trigger(const char *caller);
 void mtk_vidle_register(const struct dpc_funcs *funcs, enum mtk_dpc_version version);
 void mtk_vidle_config_ff(bool en);
 void mtk_vidle_dpc_analysis(void);
+void mtk_vidle_dpc_pm_analysis(void);
 void mtk_vidle_debug_cmd_adapter(const char *opt);
 void mtk_vidle_set_panel_type(enum mtk_panel_type type);
 void mtk_vidle_dsi_pll_set(const u32 value);

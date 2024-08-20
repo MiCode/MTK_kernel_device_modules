@@ -102,6 +102,9 @@ static unsigned int g_vdisp_level_mml;
 static DEFINE_MUTEX(dvfs_lock);
 static unsigned int g_vlp_user_mask;
 
+#define MTK_DPC_PM_USER_COUNT 64
+static struct mtk_dpc_pm_user *g_dpc_pm_user;
+
 static const char *mtk_dpc_vidle_cap_name[DPC_VIDLE_CAP_COUNT] = {
 	"MTCMOS_OFF",
 	"APSRC_OFF",
@@ -146,6 +149,7 @@ static unsigned int g_idle_ratio_debug;
 static unsigned long long g_idle_period[DPC_IDLE_ID_MAX] = {0};
 static unsigned long long g_idle_start[DPC_IDLE_ID_MAX] = {0};
 static atomic_t g_smi_user_cnt;
+static atomic_t g_vlp_user_cnt[32];
 
 #define mtk_dpc_support_cap(id) (g_priv && (g_priv->vidle_mask & (0x1 << id)))
 
@@ -619,6 +623,78 @@ static unsigned int mtk_dpc_get_vidle_mask(const enum mtk_dpc_subsys subsys, boo
 	return mask;
 }
 
+static void dpc_pm_user_dump(bool force)
+{
+	unsigned int i = 0, count = 0;
+
+	if (!force || IS_ERR_OR_NULL(g_dpc_pm_user))
+		return;
+
+	DPCFUNC("     ========= pm user list ==============");
+	for (i = 0; i < MTK_DPC_PM_USER_COUNT; i++) {
+		if (!g_dpc_pm_user[i].valid) {
+			DPCFUNC("     ========= pm user count:%u=========", i);
+			break;
+		}
+		DPCFUNC("     user[%u]:%s,count:%d,max:%d %s",
+			i, g_dpc_pm_user[i].name, g_dpc_pm_user[i].count,
+			g_dpc_pm_user[i].max,
+			g_dpc_pm_user[i].count ? "[ACTIVE]" : ".");
+	}
+
+	DPCFUNC("     ========= vlp user mask:0x%x ==============", g_vlp_user_mask);
+	for (i = 0; i < 32; i++) {
+		if (atomic_read(&g_vlp_user_cnt[i])) {
+			DPCFUNC("     vlp user[%u],count:%u",
+				i, atomic_read(&g_vlp_user_cnt[i]));
+			count++;
+		}
+	}
+	DPCFUNC("     ========= vlp user count:%u ===============", count);
+}
+
+static void dpc_pm_analysis(void)
+{
+	dpc_pm_user_dump(dbg_vlp_backtrace || dbg_dpc_pm);
+}
+
+static inline void dpc_pm_user_update(bool en, const char *source)
+{
+	unsigned int i = 0;
+	int ret = 0;
+
+	if (IS_ERR_OR_NULL(g_dpc_pm_user))
+		return;
+
+	for (i = 0; i < MTK_DPC_PM_USER_COUNT; i++) {
+		if (!g_dpc_pm_user[i].valid)
+			break;
+		if (strcmp(g_dpc_pm_user[i].name, source) == 0)
+			break;
+	}
+
+	if (i >= MTK_DPC_PM_USER_COUNT) {
+		DPCFUNC("invalid i:%u", i);
+		return;
+	}
+
+	if (!g_dpc_pm_user[i].valid) {
+		if (source)
+			ret = snprintf(&g_dpc_pm_user[i].name[0], 127, "%s", source);
+		else
+			ret = snprintf(&g_dpc_pm_user[i].name[0], 127, "unknown");
+		if (ret >= 0 && ret < 128)
+			g_dpc_pm_user[i].valid = true;
+	}
+
+	if (en) {
+		g_dpc_pm_user[i].count++;
+		if (g_dpc_pm_user[i].max < g_dpc_pm_user[i].count)
+			g_dpc_pm_user[i].max = g_dpc_pm_user[i].count;
+	} else
+		g_dpc_pm_user[i].count--;
+}
+
 static inline int dpc_pm_ctrl(bool en, const char *source)
 {
 	int ret = 0, cnt0 = 0;
@@ -661,6 +737,7 @@ static inline int dpc_pm_ctrl(bool en, const char *source)
 			source ? source : "unknown", ret, val, g_vlp_user_mask);
 	}
 
+	dpc_pm_user_update(en, source);
 	return ret;
 }
 
@@ -3832,30 +3909,44 @@ static int dpc_vidle_power_keep_v1(const enum mtk_vidle_voter_user _user)
 	unsigned long flags = 0;
 	unsigned int vote_only = _user & VOTER_ONLY;
 	unsigned int user = _user & DISP_VIDLE_USER_MASK;
+	char name[64] = { 0 };
+	int ret = 0;
 
 	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
 	if (unlikely(g_priv->skip_force_power)) {
 		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
-		DPCFUNC("user %u skip force power", user);
+		DPCFUNC("user:%u skip force power", user);
 		return -1;
 	}
 
 	if (!vote_only) {
-		if (dpc_pm_ctrl(true, __func__)) {
-			spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
-			DPCFUNC("%s: user %u failed to force power", __func__, user);
-			return -1;
-		}
-		g_vlp_user_mask |= BIT(user);
-		if (BIT(user) & dbg_dpc_pm) {
-			DPCFUNC("user:%d, mask:0x%x, only:%u", user, g_vlp_user_mask, vote_only);
-			WARN_ON(dbg_vlp_backtrace);
-		}
+		atomic_inc(&g_vlp_user_cnt[user]);
+		if (atomic_read(&g_vlp_user_cnt[user]) == 1) {
+			ret = snprintf(&name[0], 63, "vlp_user-%u", user);
+			if (ret >= 0 && ret < 64)
+				ret = dpc_pm_ctrl(true, name);
+			else
+				ret = dpc_pm_ctrl(true, "vlp_user-unknown");
+			if (ret) {
+				spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
+				DPCFUNC("%s: vlp_user-%u failed to force power", __func__, user);
+				return -1;
+			}
 
-	}
-	spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
+			g_vlp_user_mask |= BIT(user);
+			if (BIT(user) & dbg_dpc_pm) {
+				DPCFUNC("vlp_user-%d, mask:0x%x, only:%u",
+					user, g_vlp_user_mask, vote_only);
+				WARN_ON(dbg_vlp_backtrace);
+			}
+		}
+	} else if (dbg_vlp_backtrace)
+		DPCFUNC("vlp_user-%d cnt:%u, skip pm ctrl, vote only:%u, user mask:0x%x",
+			user, atomic_read(&g_vlp_user_cnt[user]), vote_only, g_vlp_user_mask);
 
 	mtk_disp_vlp_vote_by_cpu_v1(VOTE_SET, user);
+	spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
+
 	udelay(50);
 	return 0;
 }
@@ -3865,6 +3956,8 @@ static void dpc_vidle_power_release_v1(const enum mtk_vidle_voter_user _user)
 	unsigned long flags = 0;
 	unsigned int vote_only = _user & VOTER_ONLY;
 	unsigned int user = _user & DISP_VIDLE_USER_MASK;
+	char name[64] = { 0 };
+	int ret = 0;
 
 	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
 	if (unlikely(g_priv->skip_force_power)) {
@@ -3872,21 +3965,42 @@ static void dpc_vidle_power_release_v1(const enum mtk_vidle_voter_user _user)
 		DPCFUNC("user %u skip release power", user);
 		return;
 	}
-	spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 
 	irq_log_store();
 	mtk_disp_vlp_vote_by_cpu_v1(VOTE_CLR, user);
 	irq_log_store();
 
-	if (g_vlp_user_mask & BIT(user)) {
-		dpc_pm_ctrl(false, __func__);
+	if (atomic_read(&g_vlp_user_cnt[user]) == 0) {
+		if(g_vlp_user_mask & BIT(user)) {
+			DPCFUNC("vlp_user-%u invalid cnt:%u, vote_only:%u, user mask:0x%x",
+				user, atomic_read(&g_vlp_user_cnt[user]),
+				vote_only, g_vlp_user_mask);
+			//WARN_ON(dbg_vlp_backtrace);
+		}
+		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
+		return;
+	}
+
+	atomic_dec(&g_vlp_user_cnt[user]);
+	if (atomic_read(&g_vlp_user_cnt[user]) == 0) {
+		ret = snprintf(&name[0], 63, "vlp_user-%u", user);
+		if (ret >= 0 && ret < 64)
+			dpc_pm_ctrl(false, name);
+		else
+			dpc_pm_ctrl(false, "vlp_user-unknown");
 		g_vlp_user_mask &= ~BIT(user);
 		if (BIT(user) & dbg_dpc_pm) {
-			DPCFUNC("user:%d, mask:0x%x, only:%u", user, g_vlp_user_mask, vote_only);
+			DPCFUNC("vlp_user-%d, mask:0x%x, vote only:%u",
+				user, g_vlp_user_mask, vote_only);
 			WARN_ON(dbg_vlp_backtrace);
 		}
 
+		if (vote_only && dbg_vlp_backtrace)
+			DPCFUNC("vlp_user-%d cnt:%u, do pm ctrl, vote only:%u, user mask:0x%x",
+				user, atomic_read(&g_vlp_user_cnt[user]), vote_only, g_vlp_user_mask);
+
 	}
+	spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 	irq_log_store();
 }
 
@@ -3925,17 +4039,28 @@ static void _dpc_analysis(bool detail)
 	if (g_priv->get_sys_status)
 		status = g_priv->get_sys_status(SYS_POWER_ACK_DPC, &value);
 	if (!status) {
-		DPCFUNC("power_off:%d, 0x%x", status, value);
+		DPCFUNC("power_off(%d,0x%x),vlp mask:0x%x",
+			status, value, g_vlp_user_mask);
+		dpc_pm_user_dump(true);
 		return;
 	}
 
 	if (dpc_pm_ctrl(true, __func__))
 		return;
 
-	DPCDUMP("========== DPC analysis, base:0x%llx ,panel:%d, window:0x%x, dur:%u=========",
+	DPCDUMP("========== DPC analysis: base:0x%llx,panel:%d,win:0x%x,dur:%u=========",
 		(unsigned long long)g_priv->dpc_pa, g_panel_type,
 		atomic_read(&g_vidle_window), g_te_duration);
 	mtk_dpc_dump_caps();
+
+	if (g_priv->get_sys_status)
+		g_priv->get_sys_status(SYS_STATE_VLP_VOTE, &value);
+	else
+		value = 0xdead;
+	DPCDUMP("VLP: vote:0x%x,cpu user:0x%x,mminfra pm cnt:%u",
+		value, g_vlp_user_mask,
+		atomic_read(&g_priv->pd_dev->power.usage_count));
+	dpc_pm_user_dump(true);
 	DPCDUMP("DT settings: DISP_DT:0x%x,MML_DT:0x%x,DPC_EN:0x%x",
 		readl(dpc_base + DISP_REG_DPC_DISP_DT_EN),
 		readl(dpc_base + DISP_REG_DPC_MML_DT_EN),
@@ -4163,7 +4288,9 @@ static void process_dbg_opt(const char *opt)
 		status2 = g_priv->get_sys_status(SYS_POWER_ACK_DISP1_SUBSYS, &value);
 	}
 	if (!status1 || !status2) {
-		DPCFUNC("power_off:%d,%d, 0x%x", status1, status2, value);
+		DPCFUNC("power_off(%d,%d,0x%x),vlp mask:0x%x",
+			status1, status2, value, g_vlp_user_mask);
+		dpc_pm_user_dump(true);
 		return;
 	}
 
@@ -4293,6 +4420,18 @@ static void process_dbg_opt(const char *opt)
 		mmdvfs_force_step_by_vcp(2, 4 - v1);
 	} else if (strncmp(opt, "vdo", 3) == 0) {
 		writel(DISP_DPC_EN|DISP_DPC_DT_EN|DISP_DPC_VDO_MODE, dpc_base + DISP_REG_DPC_EN);
+	} else if (strncmp(opt, "sta_mminfra", 11) == 0) {
+		if (g_priv) {
+			if (g_priv->get_sys_status)
+				g_priv->get_sys_status(SYS_STATE_VLP_VOTE, &val);
+			else
+				val = 0xdead;
+			DPCFUNC("mminfra_dpc_state: pm cnt:%d, vlp vote:0x%x, vlp user mask:0x%x",
+				atomic_read(&g_priv->pd_dev->power.usage_count),
+				val, g_vlp_user_mask);
+		} else
+			DPCFUNC("mminfra_dpc_state: vlp user mask: 0x%x", g_vlp_user_mask);
+		dpc_pm_user_dump(true);
 	}
 
 	goto end;
@@ -4365,6 +4504,7 @@ static const struct dpc_funcs funcs_v1 = {
 	.dpc_dvfs_bw_set = dpc_dvfs_bw_set_v1,
 	.dpc_dvfs_both_set = dpc_dvfs_both_set_v1,
 	.dpc_analysis = dpc_analysis_v1,
+	.dpc_pm_analysis = dpc_pm_analysis,
 	.dpc_dsi_pll_set = dpc_dsi_pll_set_v1,
 	.dpc_init_panel_type = dpc_init_panel_type_v1,
 };
@@ -4416,7 +4556,7 @@ static int mtk_dpc_probe_v1(struct platform_device *pdev)
 	struct task_struct *task;
 	struct mtk_dpc *priv;
 	const struct of_device_id *of_id;
-	int ret = 0;
+	int ret = 0, i = 0;
 
 	of_id = of_match_device(mtk_dpc_driver_v1_dt_match, dev);
 	if (!of_id) {
@@ -4535,6 +4675,10 @@ static int mtk_dpc_probe_v1(struct platform_device *pdev)
 	atomic_set(&g_mml_group_auto, 0);
 	atomic_set(&is_mminfra_ctrl_by_dpc, 0);
 	atomic_set(&g_smi_user_cnt, 0);
+
+	g_dpc_pm_user = kzalloc(sizeof(struct mtk_dpc_pm_user) * 64, GFP_KERNEL);
+	for (i = 0; i < 32; i++)
+		atomic_set(&g_vlp_user_cnt[i], 0);
 	if (dbg_runtime_ctrl) {
 		dbg_mmp = 0;
 		dbg_irq = 0;
@@ -4547,6 +4691,8 @@ static int mtk_dpc_probe_v1(struct platform_device *pdev)
 static int mtk_dpc_remove_v1(struct platform_device *pdev)
 {
 	DPCFUNC();
+	if (!IS_ERR_OR_NULL(g_dpc_pm_user))
+		kfree(g_dpc_pm_user);
 	return 0;
 }
 

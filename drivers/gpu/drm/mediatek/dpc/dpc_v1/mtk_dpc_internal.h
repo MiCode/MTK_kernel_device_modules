@@ -390,6 +390,13 @@ enum mtk_dpc_state {
 	DPC_STATE_OFF,
 };
 
+struct mtk_dpc_pm_user {
+	char name[128];
+	int count;
+	int max;
+	bool valid;
+};
+
 struct mtk_dpc_dt_usage {
 	s16 index;
 	enum mtk_dpc_sp_type sp;		/* start point */

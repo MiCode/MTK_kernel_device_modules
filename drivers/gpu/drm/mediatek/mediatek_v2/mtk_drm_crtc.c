@@ -14620,6 +14620,8 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 	/* release wakelock */
 	mtk_drm_crtc_wk_lock(crtc, 0, __func__, __LINE__);
 
+	mtk_vidle_dpc_pm_analysis();
+
 	CRTC_MMP_EVENT_END(index, suspend,
 			mtk_crtc->enabled, 0);
 }
