@@ -35,7 +35,6 @@
 #include <linux/interrupt.h>
 #include <linux/wait.h>
 
-#define SERDES_DEBUG						0
 #define SERDES_DEBUG_INFO					"MAX96851"
 #define SERDES_POLL_TIMEOUT_MS				2000
 
@@ -48,7 +47,7 @@
 #define PANEL_NAME							"panel-name"
 #define SERDES_SUPPORT_HOTPLUG				"ser-support-hotplug"
 #define SERDES_SUPER_FRAME					"ser-super-frame"
-#define SERDES_DUAL_LINK					"ser-dual-link"
+#define SERDES_DOUBLE_PIXEL					"ser-double-pixel"
 #define SUPPORT_MST							"ser-dp-mst"
 #define SUPPORT_TOUCH						"support-touch"
 #define USE_DEFAULT_SETTING					"use-default-setting"

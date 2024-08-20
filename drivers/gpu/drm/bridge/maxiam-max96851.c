@@ -56,7 +56,7 @@ static u8 serdes_read_byte(struct i2c_client *client,
 	ret = i2c_master_send(client, read_data, 2);
 	if (ret <= 0) {
 		mutex_unlock(&edp_i2c_access);
-#if SERDES_DEBUG
+#ifdef SERDES_DEBUG
 		pr_info("[MAX96851] Failed to send i2c command, ret = %d\n", ret);
 #endif
 		return 0;
@@ -65,7 +65,7 @@ static u8 serdes_read_byte(struct i2c_client *client,
 	ret = i2c_master_recv(client, &buf, 1);
 	if (ret <= 0) {
 		mutex_unlock(&edp_i2c_access);
-#if SERDES_DEBUG
+#ifdef SERDES_DEBUG
 		pr_info("[MAX96851] Failed to recv i2c data, ret = %d\n", ret);
 #endif
 		return 0;
@@ -96,7 +96,7 @@ static int serdes_write_byte(struct i2c_client *client, u16 addr,
 	ret = i2c_master_send(client, write_data, 3);
 	if (ret <= 0) {
 		mutex_unlock(&edp_i2c_access);
-#if SERDES_DEBUG
+#ifdef SERDES_DEBUG
 		pr_info("[MAX96851] I2C write fail, addr:0x%x val:0x%x ret:%d\n", addr, val, ret);
 #endif
 		return ret;
@@ -171,7 +171,7 @@ static void ser_init_loop(struct max96851_bridge *max_bridge, struct serdes_cmd_
 	for (i = 0; i < cmd_data->length; i++) {
 		ret = serdes_write_byte(max_bridge->max96851_i2c, cmd_data->addr[i], cmd_data->data[i]);
 		if (ret) {
-#if SERDES_DEBUG
+#ifdef SERDES_DEBUG
 			pr_info("[MAX96851] Write ser command failed, addr=0x%x data=0x%x ret: %d\n",
 					cmd_data->addr[i], cmd_data->data[i], ret);
 #endif
@@ -179,7 +179,7 @@ static void ser_init_loop(struct max96851_bridge *max_bridge, struct serdes_cmd_
 
 		if (cmd_data->delay_ms[i])
 			msleep(cmd_data->delay_ms[i]);
-#if SERDES_DEBUG
+#ifdef SERDES_DEBUG
 		pr_info("[MAX96851] i2c client: 0, i2c addr:0x%04x value: 0x%04x delay:%d\n",
 				cmd_data->addr[i], cmd_data->data[i], cmd_data->delay_ms[i]);
 #endif
@@ -193,7 +193,7 @@ static void des_init_loop(struct max96851_bridge *max_bridge, struct serdes_cmd_
 	for (i = 0; i < cmd_data->length; i++) {
 		ret = serdes_write_byte(max_bridge->max96752_i2c, cmd_data->addr[i], cmd_data->data[i]);
 		if (ret) {
-#if SERDES_DEBUG
+#ifdef SERDES_DEBUG
 			pr_info("[MAX96851] Write des command failed, addr=0x%x data=0x%x ret: %d\n",
 					cmd_data->addr[i], cmd_data->data[i], ret);
 #endif
@@ -201,7 +201,7 @@ static void des_init_loop(struct max96851_bridge *max_bridge, struct serdes_cmd_
 
 		if (cmd_data->delay_ms[i])
 			msleep(cmd_data->delay_ms[i]);
-#if SERDES_DEBUG
+#ifdef SERDES_DEBUG
 		pr_info("[MAX96851] i2c client: 1, i2c addr:0x%04x value: 0x%04x delay:%d\n",
 			cmd_data->addr[i], cmd_data->data[i], cmd_data->delay_ms[i]);
 #endif
@@ -234,7 +234,7 @@ static void serdes_init_loop(struct max96851_bridge *max_bridge, struct serdes_c
 		}
 		ret = serdes_write_byte(client, cmd_data->addr[i], cmd_data->data[i]);
 		if (ret) {
-#if SERDES_DEBUG
+#ifdef SERDES_DEBUG
 			pr_info("[MAX96851] Write seres command failed, addr=0x%x data=0x%x ret: %d\n",
 					cmd_data->addr[i], cmd_data->data[i], ret);
 #endif
@@ -242,7 +242,7 @@ static void serdes_init_loop(struct max96851_bridge *max_bridge, struct serdes_c
 
 		if (cmd_data->delay_ms[i])
 			msleep(cmd_data->delay_ms[i]);
-#if SERDES_DEBUG
+#ifdef SERDES_DEBUG
 		pr_info("[MAX96851] i2c client:%d i2c addr:0x%04x value:0x%04x delay_ms:%d\n",
 			cmd_data->obj[i], cmd_data->addr[i], cmd_data->data[i], cmd_data->delay_ms[i]);
 #endif
@@ -370,7 +370,6 @@ static int excute_feature_check_cmd(struct max96851_bridge *max_bridge, struct f
 	client = i2c_new_dummy_device(max_bridge->max96851_i2c->adapter, feature_cmd.i2c_addr);
 	if (IS_ERR(client)) {
 		pr_info("[MAX96851] Failed to create dummy I2C device 0x%x\n", feature_cmd.i2c_addr);
-		devm_kfree(max_bridge->dev, feature_cmd.data);
 		return PTR_ERR(client);
 	}
 
@@ -382,14 +381,11 @@ static int excute_feature_check_cmd(struct max96851_bridge *max_bridge, struct f
 		}
 	}
 
-	devm_kfree(max_bridge->dev, feature_cmd.data);
 	i2c_unregister_device(client);
 	return 0;
 err:
-	devm_kfree(max_bridge->dev, feature_cmd.data);
 	i2c_unregister_device(client);
 	return ret;
-
 }
 
 static int excute_feature_verify_cmd(struct max96851_bridge *max_bridge, struct feature_cmd feature_cmd)
@@ -401,7 +397,6 @@ static int excute_feature_verify_cmd(struct max96851_bridge *max_bridge, struct 
 	client = i2c_new_dummy_device(max_bridge->max96851_i2c->adapter, feature_cmd.i2c_addr);
 	if (IS_ERR(client)) {
 		pr_info("[MAX96851] Failed to create dummy I2C device 0x%x\n", feature_cmd.i2c_addr);
-		devm_kfree(max_bridge->dev, feature_cmd.data);
 		return PTR_ERR(client);
 	}
 
@@ -423,14 +418,11 @@ static int excute_feature_verify_cmd(struct max96851_bridge *max_bridge, struct 
 		}
 	}
 
-	devm_kfree(max_bridge->dev, feature_cmd.data);
 	i2c_unregister_device(client);
 	return 0;
 err:
-	devm_kfree(max_bridge->dev, feature_cmd.data);
 	i2c_unregister_device(client);
 	return ret;
-
 }
 
 static int feature_handle(struct max96851_bridge *max_bridge, struct device_node *feature_handle_np)
@@ -446,6 +438,7 @@ static int feature_handle(struct max96851_bridge *max_bridge, struct device_node
 
 	ret = parse_feature_cmd_by_prop_from_dts(max_bridge, &verify_cmd, FEATURE_VERIFY_CMD, feature_handle_np);
 	if (ret) {
+		devm_kfree(max_bridge->dev, check_cmd.feature_cmd->data);
 		devm_kfree(max_bridge->dev, check_cmd.feature_cmd);
 		return ret;
 	}
@@ -471,11 +464,15 @@ static int feature_handle(struct max96851_bridge *max_bridge, struct device_node
 		}
 	}
 
+	devm_kfree(max_bridge->dev, check_cmd.feature_cmd->data);
 	devm_kfree(max_bridge->dev, check_cmd.feature_cmd);
+	devm_kfree(max_bridge->dev, verify_cmd.feature_cmd->data);
 	devm_kfree(max_bridge->dev, verify_cmd.feature_cmd);
 	return 0;
 err:
+	devm_kfree(max_bridge->dev, check_cmd.feature_cmd->data);
 	devm_kfree(max_bridge->dev, check_cmd.feature_cmd);
+	devm_kfree(max_bridge->dev, verify_cmd.feature_cmd->data);
 	devm_kfree(max_bridge->dev, verify_cmd.feature_cmd);
 	return ret;
 }
@@ -658,7 +655,7 @@ static void get_general_info_from_dts(struct max96851_bridge *max_bridge)
 	ret = of_property_read_u32(np, SERDES_SUPER_FRAME, &read_value);
 	max_bridge->superframe_support = (!ret) ? !!read_value : false;
 
-	ret = of_property_read_u32(np, SERDES_DUAL_LINK, &read_value);
+	ret = of_property_read_u32(np, SERDES_DOUBLE_PIXEL, &read_value);
 	max_bridge->dual_link_support = (!ret) ? !!read_value : false;
 
 	ret = of_property_read_u32(np, SUPPORT_MST, &read_value);
