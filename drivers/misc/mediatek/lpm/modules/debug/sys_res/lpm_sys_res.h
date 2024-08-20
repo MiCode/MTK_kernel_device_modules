@@ -45,7 +45,7 @@ struct sys_res_group_info {
 
 #define SYS_RES_NAME_LEN (10)
 struct sys_res_mapping {
-	unsigned int id;
+	int id;
 	char name[SYS_RES_NAME_LEN];
 };
 

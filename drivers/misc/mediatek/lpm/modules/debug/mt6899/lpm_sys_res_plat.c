@@ -47,29 +47,20 @@ static unsigned int sys_res_last_diff_buffer_index;
 
 struct sys_res_group_info *group_info;
 
-enum sel_sig_ip {
-	SEL_SIG_MD = 1,
-	SEL_SIG_CONN,
-	SEL_SIG_SCP,
-	SEL_SIG_ADSP,
-	SEL_SIG_PCIE,
-	SEL_SIG_UARTHUB,
-
-	SEL_SIG_NUM,
-};
 static struct sys_res_mapping sys_res_mapping[] = {
-	{0, "md"},
-	{0, "conn"},
-	{0, "scp"},
-	{0, "adsp"},
-	{0, "pcie"},
-	{0, "uarthub"},
+	{-1, "md"},
+	{-1, "conn"},
+	{-1, "scp"},
+	{-1, "adsp"},
+	{-1, "pcie0"},
+	{-1, "pcie1"},
+	{-1, "mm_proc"},
+	{-1, "uarthub"},
 };
 
 static int lpm_sys_res_alloc(struct sys_res_record *record)
 {
 	struct res_sig_stats *spm_res_sig_stats_ptr;
-	int i, ret = 0;
 
 	if (!record)
 		return -1;
@@ -80,6 +71,11 @@ static int lpm_sys_res_alloc(struct sys_res_record *record)
 		goto RES_SIG_ALLOC_ERROR;
 
 	get_res_sig_stats(spm_res_sig_stats_ptr);
+	if(!spm_res_sig_stats_ptr->res_sig_num) {
+		pr_info("[name:spm&][SPM] resource signal num is zero\n");
+		goto RES_SIG_ALLOC_TABLE_ERROR;
+	}
+
 	spm_res_sig_stats_ptr->res_sig_tbl =
 	kcalloc(spm_res_sig_stats_ptr->res_sig_num,
 			sizeof(struct res_sig), GFP_KERNEL);
@@ -89,25 +85,6 @@ static int lpm_sys_res_alloc(struct sys_res_record *record)
 	get_res_sig_stats(spm_res_sig_stats_ptr);
 	record->spm_res_sig_stats_ptr = spm_res_sig_stats_ptr;
 
-	group_info =
-	kcalloc(SWPM_MAIN_RES_NUM, sizeof(struct sys_res_group_info), GFP_KERNEL);
-	if (!group_info)
-		goto RES_SIG_ALLOC_ERROR;
-
-	for(i=0; i<SWPM_MAIN_RES_NUM; i++) {
-		ret = get_res_group_info(i,
-					 &group_info[i].sys_index,
-					 &group_info[i].sig_table_index,
-					 &group_info[i].group_num
-					);
-		if (!ret)
-			group_info[i].threshold = DEFAULT_THRESHOLD;
-	}
-	for(i=0; i<SEL_SIG_NUM - 1; i++) {
-		ret = get_res_group_id(i, 0, 0, &sys_res_mapping[i].id, NULL, NULL);
-		if (ret)
-			goto RES_SIG_ALLOC_TABLE_ERROR;
-	}
 	return 0;
 
 RES_SIG_ALLOC_TABLE_ERROR:
@@ -495,15 +472,39 @@ static struct notifier_block lpm_sys_res_pm_notifier_func = {
 
 int lpm_sys_res_plat_init(void)
 {
-	int ret, i, j;
+	int i, j, ret = -1;
+	unsigned int res_mapping_len;
+
+	res_mapping_len = sizeof(sys_res_mapping) / sizeof(struct sys_res_mapping);
+	for(i=0; i<res_mapping_len; i++) {
+		ret = get_res_group_id(i, 0, 0, &sys_res_mapping[i].id, NULL, NULL);
+		if (ret) {
+			pr_info("[name:spm&][SPM] sys_res_mapping init fail\n");
+			return ret;
+		}
+	}
+
+	group_info = kcalloc(SWPM_MAIN_RES_NUM, sizeof(struct sys_res_group_info), GFP_KERNEL);
+	if (!group_info)
+		return ret;
+
+	for(i=0; i<SWPM_MAIN_RES_NUM; i++) {
+		ret = get_res_group_info(i,
+					 &group_info[i].sys_index,
+					 &group_info[i].sig_table_index,
+					 &group_info[i].group_num
+					);
+		if (!ret)
+			group_info[i].threshold = DEFAULT_THRESHOLD;
+	}
 
 	for (i = 0; i < SYS_RES_SCENE_NUM; i++) {
 		ret = lpm_sys_res_alloc(&sys_res_record[i]);
 		if(ret) {
 			for (j = i - 1; j >= 0; j--)
-				lpm_sys_res_free(&sys_res_record[i]);
+				lpm_sys_res_free(&sys_res_record[j]);
 			pr_info("[name:spm&][SPM] sys_res alloc fail\n");
-			return ret;
+			goto SYS_RES_RECORD_ALLOC_FAIL;
 		}
 	}
 
@@ -518,7 +519,7 @@ int lpm_sys_res_plat_init(void)
 	ret = register_lpm_sys_res_ops(&sys_res_ops);
 	if (ret) {
 		pr_debug("[name:spm&][SPM] Failed to register LPM sys_res operations.\n");
-		return ret;
+		goto SYS_PLAT_INIT_ERROR;
 	}
 
 	ret = register_pm_notifier(&lpm_sys_res_pm_notifier_func);
@@ -528,6 +529,14 @@ int lpm_sys_res_plat_init(void)
 	}
 
 	return 0;
+
+SYS_PLAT_INIT_ERROR:
+	for (i=0; i<SYS_RES_SCENE_NUM; i++)
+		lpm_sys_res_free(&sys_res_record[i]);
+
+SYS_RES_RECORD_ALLOC_FAIL:
+	kfree(group_info);
+	return ret;
 }
 
 void lpm_sys_res_plat_deinit(void)

@@ -482,7 +482,8 @@ static ssize_t system_stat_read(char *ToUserBuf, size_t sz, void *priv)
 	struct sys_res_record *sys_res_record;
 	struct lpm_sys_res_ops *sys_res_ops;
 	struct sys_res_mapping *map = NULL;
-	unsigned int res_mapping_len, tmp_active_time, tmp_id;
+	unsigned int res_mapping_len, tmp_active_time;
+	int tmp_id;
 
 	mtk_get_lp_info(&info, SPM_IDLE_STAT);
 	for (i = 0; i < NUM_SPM_STAT; i++) {
@@ -549,7 +550,6 @@ SKIP_REQ_DUMP:
 	sys_res_ops = get_lpm_sys_res_ops();
 	if (!sys_res_ops || !sys_res_ops->get || !sys_res_ops->get_id_name || !sys_res_ops->update)
 		goto SKIP_DUMP;
-
 	if(sys_res_ops->get_id_name(&map, &res_mapping_len) != 0)
 		goto SKIP_DUMP;
 
@@ -559,6 +559,8 @@ SKIP_REQ_DUMP:
 	sys_res_record = sys_res_ops->get(SYS_RES_SCENE_COMMON);
 	for (i = 0; i < res_mapping_len; i++) {
 		tmp_id = map[i].id;
+		if (tmp_id < 0)
+			continue;
 		tmp_active_time = sys_res_record->spm_res_sig_stats_ptr->res_sig_tbl[tmp_id].time;
 		mtk_dbg_spm_log("common(active) %s: %u.%03u\n",
 				map[i].name, tmp_active_time / 1000, tmp_active_time % 1000);
@@ -567,6 +569,8 @@ SKIP_REQ_DUMP:
 	sys_res_record = sys_res_ops->get(SYS_RES_SCENE_SUSPEND);
 	for (i = 0; i < res_mapping_len; i++) {
 		tmp_id = map[i].id;
+		if (tmp_id < 0)
+			continue;
 		tmp_active_time = sys_res_record->spm_res_sig_stats_ptr->res_sig_tbl[tmp_id].time;
 		mtk_dbg_spm_log("Suspend(active) %s: %u.%03u\n",
 				map[i].name, tmp_active_time / 1000, tmp_active_time % 1000);
