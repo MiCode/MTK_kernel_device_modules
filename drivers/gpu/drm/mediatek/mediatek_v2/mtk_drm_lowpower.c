@@ -2403,56 +2403,120 @@ enum MTK_DRM_IDLEMGR_BY_WB_STATUS {
 };
 static int mtk_drm_idlemgr_wb_test_id;
 
-static int mtk_drm_idlemgr_wb_get_fb(struct mtk_drm_crtc *mtk_crtc, unsigned int fmt,
-					 struct mtk_rect *roi, struct mtk_rect *roi_r)
+static unsigned int mtk_drm_idlemgr_wb_alloc_fb(struct mtk_drm_crtc *mtk_crtc,
+		unsigned int width, unsigned int height, unsigned int fmt, bool dual)
 {
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	struct drm_mode_fb_cmd2 mode = {0};
-	struct mtk_drm_gem_obj *mtk_gem;
+	size_t size_header, size_body, size_margin = 4096, size_total = 0;
 	unsigned int w, h, subblock_nr;
-	size_t size_header, size_body;
+	struct drm_mode_fb_cmd2 mode = {0};
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_gem_obj *mtk_gem;
+	struct drm_framebuffer **wb_fb;
+	unsigned int i, ret = 0;
 
-	if (!mtk_crtc->idlemgr->wb_fb) {
-		w = ALIGN(roi->width, 32);
-		h = ALIGN(roi->height, 8);
+	wb_fb = dual ? mtk_crtc->idlemgr->wb_fb_r : mtk_crtc->idlemgr->wb_fb;
+
+	/*find the available frame buffer */
+	for (i = 0; i < MTK_MAX_WB_FB_COUNT; i++) {
+		if (!wb_fb[i]) {
+			ret = i;
+			break;
+		}
+		if (wb_fb[i]->width == width &&
+			wb_fb[i]->height == height) {
+			ret = i;
+			break;
+		}
+	}
+	if (ret >= MTK_MAX_WB_FB_COUNT) {
+		DDPMSG("%s,[IWB] invalid fb index:%u\n", __func__, ret);
+		ret = 0;
+	}
+
+	/*create a new frame buffer if necessary */
+	if (!wb_fb[ret]) {
+		/* calculate frame buffer settings */
+		w = ALIGN(width, 32);
+		h = ALIGN(height, 8);
 		subblock_nr = w * h / 256;
 		size_header = ALIGN(subblock_nr * 16, 1024);
 		size_body = subblock_nr * 1024;
+		size_total = size_header + size_body + size_margin;
+
 		mode.pixel_format = fmt;
 		mode.modifier[0] = DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_32x8 |
 							   AFBC_FORMAT_MOD_SPARSE);
-		mode.width = roi->width;
-		mode.height = roi->height;
+		mode.width = width;
+		mode.height = height;
 		mode.pitches[0] = w * 4;
-		mtk_gem = mtk_drm_gem_create(
-			crtc->dev, size_header + size_body, true);
-		mtk_crtc->idlemgr->wb_fb = mtk_drm_framebuffer_create(
+
+		/* create iova buffer */
+		mtk_gem = mtk_drm_gem_create(crtc->dev, size_total, true);
+		if (IS_ERR_OR_NULL(mtk_gem)) {
+			DDPPR_ERR("%s, failed to create gem\n", __func__);
+			return MTK_MAX_WB_FB_COUNT;
+		}
+		DDPMSG("%s,[IWB] create buf:0x%lx,dual:%d,roi(%u/%u,%u/%u),nr:%u,size:%u(%u,%u)\n",
+			__func__, (unsigned long)mtk_gem->dma_addr, dual, width, w,
+			height, h, subblock_nr, size_total, size_header, size_body);
+
+		/* create frame buffer */
+		wb_fb[ret] = mtk_drm_framebuffer_create(
 			crtc->dev, &mode, &mtk_gem->base);
-		mtk_crtc->idlemgr->wb_buffer_iova = mtk_gem->dma_addr;
+		if (IS_ERR_OR_NULL(wb_fb[ret])) {
+			DDPPR_ERR("%s, failed to create fb\n", __func__);
+			return MTK_MAX_WB_FB_COUNT;
+		}
+		DDPMSG("%s,[IWB] create fb:%u, dual:%d,roi(%u,%u),fmt:0x%x,pitches:%u\n",
+			__func__, ret, dual, wb_fb[ret]->width, wb_fb[ret]->height,
+			wb_fb[ret]->format, wb_fb[ret]->pitches[0]);
 	}
-	if (!mtk_crtc->idlemgr->wb_fb)
+
+	if (dual) {
+		mtk_crtc->idlemgr->fb_r_index = ret;
+		mtk_crtc->idlemgr->wb_buffer_r_iova = mtk_fb_get_dma(wb_fb[ret]);
+		DDPMSG("%s,[IWB] dual switch to fb:%u(%u,%u),fmt:0x%x,buf:0x%lx\n",
+			__func__, mtk_crtc->idlemgr->fb_r_index, width, height, fmt,
+			(unsigned long)mtk_crtc->idlemgr->wb_buffer_r_iova);
+	} else {
+		mtk_crtc->idlemgr->fb_index = ret;
+		mtk_crtc->idlemgr->wb_buffer_iova = mtk_fb_get_dma(wb_fb[ret]);
+		DDPMSG("%s,[IWB] switch to fb:%u(%u,%u),fmt:0x%lx,buf:0x%lx\n",
+			__func__, mtk_crtc->idlemgr->fb_index, width, height, fmt,
+			(unsigned long)mtk_crtc->idlemgr->wb_buffer_iova);
+	}
+
+	return ret;
+}
+
+static int mtk_drm_idlemgr_wb_get_fb(struct mtk_drm_crtc *mtk_crtc, unsigned int fmt,
+					 struct mtk_rect *roi, struct mtk_rect *roi_r)
+{
+	unsigned int fb_index;
+
+	fb_index = mtk_crtc->idlemgr->fb_index;
+	if (fb_index >= MTK_MAX_WB_FB_COUNT ||
+		!mtk_crtc->idlemgr->wb_fb[fb_index] ||
+		mtk_crtc->idlemgr->wb_fb[fb_index]->width != roi->width ||
+		mtk_crtc->idlemgr->wb_fb[fb_index]->height != roi->height)
+		fb_index = mtk_drm_idlemgr_wb_alloc_fb(mtk_crtc,
+					roi->width, roi->height, fmt, false);
+
+	if (fb_index >= MTK_MAX_WB_FB_COUNT || !mtk_crtc->idlemgr->wb_fb[fb_index])
 		return -ENOMEM;
 
 	if (!mtk_crtc->is_dual_pipe)
 		return 0;
 
-	if (!mtk_crtc->idlemgr->wb_fb_r){
-		w = ALIGN(roi_r->width, 32);
-		h = ALIGN(roi_r->height, 8);
-		subblock_nr = w * h / 256;
-		size_header = ALIGN(subblock_nr * 16, 1024);
-		size_body = subblock_nr * 1024;
-		mode.pixel_format = fmt;
-		mode.width = roi_r->width;
-		mode.height = roi_r->height;
-		mode.pitches[0] = w * 4;
-		mtk_gem = mtk_drm_gem_create(
-			crtc->dev, size_header + size_body, true);
-		mtk_crtc->idlemgr->wb_fb_r = mtk_drm_framebuffer_create(
-			crtc->dev, &mode, &mtk_gem->base);
-		mtk_crtc->idlemgr->wb_buffer_r_iova = mtk_gem->dma_addr;
-	}
-	if (!mtk_crtc->idlemgr->wb_fb_r)
+	fb_index = mtk_crtc->idlemgr->fb_r_index;
+	if (fb_index >= MTK_MAX_WB_FB_COUNT ||
+		!mtk_crtc->idlemgr->wb_fb_r[fb_index] ||
+		mtk_crtc->idlemgr->wb_fb_r[fb_index]->width != roi_r->width ||
+		mtk_crtc->idlemgr->wb_fb_r[fb_index]->height != roi_r->height)
+		fb_index = mtk_drm_idlemgr_wb_alloc_fb(mtk_crtc,
+					roi_r->width, roi_r->height, fmt, true);
+
+	if (fb_index >= MTK_MAX_WB_FB_COUNT || !mtk_crtc->idlemgr->wb_fb_r[fb_index])
 		return -ENOMEM;
 	return 0;
 }
@@ -2463,11 +2527,10 @@ static void mtk_drm_idlemgr_update_wb_bw(struct mtk_iwb_cb_data *cb_data, bool w
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	unsigned int bw_base = mtk_drm_primary_frame_bw(crtc);
-	unsigned int max_channel_bw = 0, total_bw = 0;
+	unsigned int total_bw = 0;
 	struct mtk_ddp_comp *comp = NULL;
 	unsigned int flag = DISP_BW_FORCE_UPDATE;
 	int i = 0, port_bw = 0;
-	unsigned int crtc_id = drm_crtc_index(crtc);
 	unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
 
 	if (!wdma_only) {
@@ -2525,7 +2588,7 @@ static void mtk_drm_idlemgr_update_wb_bw(struct mtk_iwb_cb_data *cb_data, bool w
 		priv->last_max_channel_req | 0xcb000000,
 		mtk_crtc->qos_ctx->last_hrt_req | 0xcb000000);
 
-	DDPINFO("%s,update BW channel:%u,total:%u, base:%u,wdma_only:%d\n",
+	DDPINFO("%s,[IWB] update BW channel:%u,total:%u, base:%u,wdma_only:%d\n",
 		__func__, priv->last_max_channel_req,
 		mtk_crtc->qos_ctx->last_hrt_req, bw_base, wdma_only);
 }
@@ -2541,7 +2604,7 @@ static void mtk_drm_idlemgr_wb_cmdq_cb(struct cmdq_cb_data data)
 	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 
 	trace = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_IDLEMGR_BY_WB_TRACE);
-	DDPINFO("after enter IDLEMGR_BY_WB_TRACE:0x%x\n", *trace);
+	DDPINFO("%s,[IWB] trace:0x%x\n", __func__, *trace);
 
 	if (mtk_crtc->enabled) {
 		/* use hsidle bit but not crtc bit, to avoid of crtc timing issue*/
@@ -2560,7 +2623,7 @@ static void mtk_drm_idlemgr_wb_cmdq_cb(struct cmdq_cb_data data)
 		}
 		mtk_vidle_user_power_release(DISP_VIDLE_USER_HSIDLE);
 	} else
-		DDPINFO("%s, ignore bw update,trace:0x%x\n",
+		DDPINFO("%s,[IWB] ignore bw update,trace:0x%x\n",
 			__func__, *trace);
 
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
@@ -2601,10 +2664,9 @@ void mtk_drm_idlemgr_wb_capture(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *
 	int gce_event, i;
 	unsigned int fmt = DRM_FORMAT_XBGR2101010;//DRM_FORMAT_XBGR2101010,DRM_FORMAT_XBGR8888;
 	unsigned int flag = DISP_BW_FORCE_UPDATE;
-	unsigned int wdma_bw = 0, wdma_dual_bw = 0, max_channel_bw = 0;
+	unsigned int wdma_bw = 0, wdma_dual_bw = 0;
 	unsigned int bw_base = mtk_drm_primary_frame_bw(crtc);
 	struct mtk_ddp_comp *comp = NULL;
-	unsigned int crtc_id = drm_crtc_index(crtc);
 	unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
 
 	addon_data = mtk_addon_get_scenario_data(__func__, crtc, IDLE_WDMA_WRITE_BACK);
@@ -2653,7 +2715,8 @@ void mtk_drm_idlemgr_wb_capture(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *
 			addon_config.addon_wdma_config.wdma_src_roi = src_roi_l;
 			addon_config.addon_wdma_config.wdma_dst_roi = dst_roi_l;
 			addon_config.addon_wdma_config.addr = mtk_crtc->idlemgr->wb_buffer_iova;
-			addon_config.addon_wdma_config.fb = mtk_crtc->idlemgr->wb_fb;
+			addon_config.addon_wdma_config.fb =
+					mtk_crtc->idlemgr->wb_fb[mtk_crtc->idlemgr->fb_index];
 			addon_config.addon_wdma_config.p_golden_setting_context->dst_width = dst_roi_l.width;
 			addon_config.addon_wdma_config.p_golden_setting_context->dst_height = dst_roi_l.height;
 			/* connect left pipe */
@@ -2666,7 +2729,8 @@ void mtk_drm_idlemgr_wb_capture(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *
 			addon_config.addon_wdma_config.wdma_src_roi = src_roi_r;
 			addon_config.addon_wdma_config.wdma_dst_roi = dst_roi_r;
 			addon_config.addon_wdma_config.addr = mtk_crtc->idlemgr->wb_buffer_r_iova;
-			addon_config.addon_wdma_config.fb = mtk_crtc->idlemgr->wb_fb_r;
+			addon_config.addon_wdma_config.fb =
+					mtk_crtc->idlemgr->wb_fb_r[mtk_crtc->idlemgr->fb_r_index];
 			addon_config.addon_wdma_config.p_golden_setting_context->dst_width = dst_roi_r.width;
 			addon_config.addon_wdma_config.p_golden_setting_context->dst_height = dst_roi_r.height;
 			/* connect right pipe */
@@ -2677,8 +2741,12 @@ void mtk_drm_idlemgr_wb_capture(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *
 			mtk_drm_idlemgr_wb_get_fb(mtk_crtc, fmt, &dst_roi, NULL);
 			addon_config.addon_wdma_config.wdma_src_roi = src_roi;
 			addon_config.addon_wdma_config.wdma_dst_roi = dst_roi;
-			addon_config.addon_wdma_config.fb = mtk_crtc->idlemgr->wb_fb;
+			addon_config.addon_wdma_config.fb =
+					mtk_crtc->idlemgr->wb_fb[mtk_crtc->idlemgr->fb_index];
 			addon_config.addon_wdma_config.addr = mtk_crtc->idlemgr->wb_buffer_iova;
+			DDPINFO("%s,[IWB] roi(%u,%u),fb:%u,buf:0x%lx\n",
+				__func__, dst_roi.width, dst_roi.height, mtk_crtc->idlemgr->fb_index,
+				(unsigned long)mtk_crtc->idlemgr->wb_buffer_iova);
 			mtk_addon_connect_after(crtc, mtk_crtc->ddp_mode, addon_module,
 						&addon_config, cmdq_handle);
 		}
@@ -2735,7 +2803,7 @@ void mtk_drm_idlemgr_wb_capture(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *
 		unsigned int orig_bw = mtk_crtc->qos_ctx->last_hrt_req;
 
 		mtk_crtc->qos_ctx->last_hrt_req += wdma_bw + wdma_dual_bw;
-		DDPINFO("%s, update total BW:%u->%u wdma_bw:%u/%u\n",
+		DDPINFO("%s,[IWB] update total BW:%u->%u wdma_bw:%u/%u\n",
 			__func__, orig_bw, mtk_crtc->qos_ctx->last_hrt_req,
 			wdma_bw, wdma_dual_bw);
 		mtk_disp_set_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_hrt_req);
@@ -2780,6 +2848,7 @@ void mtk_drm_idlemgr_wb_reconfig(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt 
 	struct mtk_plane_state *mtk_plane_state;
 	struct mtk_ddp_comp *comp, *ovl_comp = NULL;
 	dma_addr_t status_pad, break_pad;
+	struct drm_framebuffer *fb = NULL;
 	int i, j;
 
 	GCE_COND_DECLARE;
@@ -2827,20 +2896,28 @@ void mtk_drm_idlemgr_wb_reconfig(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt 
 		}
 	}
 	if (!ovl_comp) {
-		DDPPR_ERR("%s L%d: No proper ovl module in CRTC %s\n", __func__, __LINE__,
-			mtk_crtc->base.name);
+		DDPPR_ERR("%s,[IWB] L%d: No proper ovl module in CRTC %s\n",
+			__func__, __LINE__, mtk_crtc->base.name);
 		return;
 	}
 
+	if (mtk_crtc->idlemgr->fb_index < MTK_MAX_WB_FB_COUNT)
+		fb = mtk_crtc->idlemgr->wb_fb[mtk_crtc->idlemgr->fb_index];
+	else
+		fb = NULL;
+	if (IS_ERR_OR_NULL(fb)) {
+		DDPPR_ERR("%s,[IWB] invalid fb:%u\n",
+			__func__, mtk_crtc->idlemgr->fb_index);
+		return;
+	}
 	mtk_plane_state = kzalloc(sizeof(*mtk_plane_state), GFP_KERNEL);
-
 	mtk_plane_state->pending.addr = mtk_crtc->idlemgr->wb_buffer_iova;
-	mtk_plane_state->pending.pitch = mtk_crtc->idlemgr->wb_fb->pitches[0];
-	mtk_plane_state->pending.width = mtk_crtc->idlemgr->wb_fb->width;
-	mtk_plane_state->pending.height = mtk_crtc->idlemgr->wb_fb->height;
-	mtk_plane_state->pending.format = mtk_crtc->idlemgr->wb_fb->format->format;
+	mtk_plane_state->pending.pitch = fb->pitches[0];
+	mtk_plane_state->pending.width = fb->width;
+	mtk_plane_state->pending.height = fb->height;
+	mtk_plane_state->pending.format = fb->format->format;
 	mtk_plane_state->pending.prop_val[PLANE_PROP_COMPRESS] = 1;
-	mtk_plane_state->pending.prop_val[PLANE_PROP_VPITCH] = mtk_crtc->idlemgr->wb_fb->height;
+	mtk_plane_state->pending.prop_val[PLANE_PROP_VPITCH] = fb->height;
 	mtk_plane_state->pending.config = 1;
 	mtk_plane_state->pending.dirty = 1;
 	mtk_plane_state->pending.enable = true;
@@ -2868,16 +2945,25 @@ void mtk_drm_idlemgr_wb_reconfig(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt 
 		}
 	}
 	if (!ovl_comp) {
-		DDPPR_ERR("%s L%d: No proper ovl module in CRTC %s\n", __func__, __LINE__,
-			mtk_crtc->base.name);
+		DDPPR_ERR("%s,[IWB] dual L%d: No proper ovl module in CRTC %s\n",
+			__func__, __LINE__, mtk_crtc->base.name);
 		goto out;
 	}
 
+	if (mtk_crtc->idlemgr->fb_r_index < MTK_MAX_WB_FB_COUNT)
+		fb = mtk_crtc->idlemgr->wb_fb_r[mtk_crtc->idlemgr->fb_r_index];
+	else
+		fb = NULL;
+	if (IS_ERR_OR_NULL(fb)) {
+		DDPPR_ERR("%s,[IWB] dual invalid fb:%u\n",
+			__func__, mtk_crtc->idlemgr->fb_r_index);
+		goto out;
+	}
 	mtk_plane_state->pending.addr = mtk_crtc->idlemgr->wb_buffer_r_iova;
-	mtk_plane_state->pending.pitch = mtk_crtc->idlemgr->wb_fb_r->pitches[0];
-	mtk_plane_state->pending.width = mtk_crtc->idlemgr->wb_fb_r->width;
-	mtk_plane_state->pending.height = mtk_crtc->idlemgr->wb_fb_r->height;
-	mtk_plane_state->pending.format = mtk_crtc->idlemgr->wb_fb_r->format->format;
+	mtk_plane_state->pending.pitch = fb->pitches[0];
+	mtk_plane_state->pending.width = fb->width;
+	mtk_plane_state->pending.height = fb->height;
+	mtk_plane_state->pending.format = fb->format->format;
 	mtk_plane_state->comp_state.comp_id = ovl_comp->id;
 	mtk_ddp_comp_layer_config(ovl_comp, 0, mtk_plane_state, cmdq_handle);
 
@@ -2909,7 +2995,7 @@ void mtk_drm_idlemgr_wb_enter(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cm
 	if (seprated_pkt) {
 		cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
 		if (!cb_data) {
-			DDPPR_ERR("%s:%d, cb data creation failed\n", __func__, __LINE__);
+			DDPPR_ERR("%s:[IWB] %d, cb data creation failed\n", __func__, __LINE__);
 			return;
 		}
 		cb_data->ovl = NULL;
@@ -2978,7 +3064,7 @@ void mtk_drm_idlemgr_wb_enter(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cm
 		cb_data->cmdq_handle = cmdq_handle;
 		cb_data->crtc = crtc;
 		if (cmdq_pkt_flush_threaded(cmdq_handle, mtk_drm_idlemgr_wb_cmdq_cb, cb_data) < 0)
-			DDPPR_ERR("%s:%d, failed to flush cmdq pkt\n", __func__, __LINE__);
+			DDPPR_ERR("%s,[IWB] %d, failed to flush cmdq pkt\n", __func__, __LINE__);
 	}
 	mtk_crtc->idlemgr->idlemgr_ctx->wb_entered = true;
 }
@@ -3035,7 +3121,7 @@ void mtk_drm_idlemgr_wb_leave_post(struct mtk_drm_crtc *mtk_crtc)
 		return;
 
 	trace = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_IDLEMGR_BY_WB_TRACE);
-	DDPINFO("after leave IDLEMGR_BY_WB_TRACE:0x%x\n", *trace);
+	DDPINFO("%s,[IWB] trace:0x%x\n", __func__, *trace);
 	*status = MTK_DRM_IDLEMGR_BY_WB_NONE;
 
 	if (mtk_drm_idlemgr_wb_test_id & BIT(21)) {
@@ -3048,20 +3134,31 @@ void mtk_drm_idlemgr_wb_fill_buf(struct drm_crtc *crtc, int value)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_gem_obj *mtk_gem;
+	unsigned int fb_index;
 	int i = 0;
 	int *ptr;
 
-	mtk_gem = (struct mtk_drm_gem_obj *)mtk_fb_get_gem_obj(mtk_crtc->idlemgr->wb_fb);
+	fb_index = mtk_crtc->idlemgr->fb_index;
+	if (fb_index >= MTK_MAX_WB_FB_COUNT ||
+		!mtk_crtc->idlemgr->wb_fb[fb_index]) {
+		DDPMSG("%s,[IWB] invalid fb\n", __func__);
+		return;
+	}
+	mtk_gem = (struct mtk_drm_gem_obj *)mtk_fb_get_gem_obj(
+					mtk_crtc->idlemgr->wb_fb[fb_index]);
 	ptr = mtk_gem->kvaddr;
 	do {
 		*(ptr + i) = value;
 		i++;
 	} while (i * 4 < mtk_gem->size);
 
-	if (!mtk_crtc->idlemgr->wb_fb_r)
+	fb_index = mtk_crtc->idlemgr->fb_r_index;
+	if (fb_index >= MTK_MAX_WB_FB_COUNT ||
+		!mtk_crtc->idlemgr->wb_fb_r[fb_index])
 		return;
 
-	mtk_gem = (struct mtk_drm_gem_obj *)mtk_fb_get_gem_obj(mtk_crtc->idlemgr->wb_fb_r);
+	mtk_gem = (struct mtk_drm_gem_obj *)mtk_fb_get_gem_obj(
+					mtk_crtc->idlemgr->wb_fb_r[fb_index]);
 	ptr = mtk_gem->kvaddr;
 	i = 0;
 	do {
@@ -3073,6 +3170,6 @@ void mtk_drm_idlemgr_wb_fill_buf(struct drm_crtc *crtc, int value)
 void mtk_drm_idlemgr_wb_test(int value)
 {
 	mtk_drm_idlemgr_wb_test_id = value;
-	DDPMSG("mtk_drm_idlemgr_wb_test_id set to:0x%x\n", mtk_drm_idlemgr_wb_test_id);
+	DDPMSG("%s,[IWB] set to:0x%x\n", __func__, mtk_drm_idlemgr_wb_test_id);
 }
 

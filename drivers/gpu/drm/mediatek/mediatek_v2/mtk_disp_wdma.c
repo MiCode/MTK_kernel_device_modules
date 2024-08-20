@@ -1812,8 +1812,9 @@ golden_setting:
 	gsc = addon_config->addon_wdma_config.p_golden_setting_context;
 	mtk_wdma_golden_setting(comp, gsc, handle);
 
-	DDPINFO("[capture] config addr:0x%lx, roi:(%d,%d,%d,%d)\n",
-		(unsigned long)addr, clip_x, clip_y, clip_w, clip_h);
+	DDPINFO("%s:comp:%u,addr:0x%lx,roi:(%d,%d,%d,%d),fmt:0x%x\n",
+		__func__, comp->id, (unsigned long)addr, clip_x, clip_y,
+		clip_w, clip_h, comp->fb->format->format);
 	cfg_info->addr = addr;
 	cfg_info->width = clip_w;
 	cfg_info->height = clip_h;
@@ -2215,16 +2216,12 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	int ret = 0;
 
 	mtk_crtc = comp->mtk_crtc;
-	if (!mtk_crtc) {
-		DDPMSG("%s:%d mtk_crtc is NULL\n", __func__, __LINE__);
+	if (!mtk_crtc)
 		return -1;
-	}
 
 	crtc = &mtk_crtc->base;
-	if (!crtc) {
-		DDPMSG("%s:%d crtc is NULL\n", __func__, __LINE__);
+	if (!crtc)
 		return -1;
-	}
 
 	priv = crtc->dev->dev_private;
 	if (!priv) {

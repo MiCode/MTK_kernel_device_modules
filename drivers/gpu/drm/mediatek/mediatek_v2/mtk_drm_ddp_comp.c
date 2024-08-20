@@ -1515,6 +1515,10 @@ static int mtk_ddp_iommu_callback(int port, dma_addr_t mva, void *data)
 			mtk_dump_analysis(comp);
 			mtk_dump_reg(comp);
 		} else {
+			if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_WDMA) {
+				mtk_dump_analysis(comp);
+				mtk_dump_reg(comp);
+			}
 			crtc = &mtk_crtc->base;
 			mtk_drm_crtc_mini_analysis(crtc);
 			mtk_drm_crtc_mini_dump(crtc);
@@ -1547,8 +1551,8 @@ static void mtk_ddp_comp_iommu_register(struct mtk_ddp_comp *comp)
 			mtk_iommu_register_fault_callback(
 						port, mtk_ddp_iommu_callback,
 						comp, false);
-		DDPINFO("%s, id:%s, register the %d port:0x%x\n",
-			__func__, mtk_dump_comp_str_id(comp->id), index, port);
+		DDPINFO("%s, id:%s-%u, register the %d port:0x%x\n",
+			__func__, mtk_dump_comp_str_id(comp->id), comp->id, index, port);
 		index++;
 	}
 }
@@ -1587,7 +1591,7 @@ int mtk_ddp_comp_init(struct device *dev, struct device_node *node,
 	struct platform_device *comp_pdev = NULL;
 	struct resource res;
 
-	DDPINFO("%s+\n", __func__);
+	DDPINFO("%s+ comp:%u\n", __func__, comp->id);
 
 	if (comp_id < 0 || comp_id >= DDP_COMPONENT_ID_MAX)
 		return -EINVAL;
@@ -1671,7 +1675,7 @@ int mtk_ddp_comp_init(struct device *dev, struct device_node *node,
 	if (of_property_read_u32(node, "doze-bypass", &comp->doze_bypass))
 		DDPINFO("%s, doze-bypass not define, use default:%d\n", __func__, comp->doze_bypass);
 
-	DDPINFO("%s-\n", __func__);
+	DDPINFO("%s- comp:%u\n", __func__, comp->id);
 
 	return 0;
 }
