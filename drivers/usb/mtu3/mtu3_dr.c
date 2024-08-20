@@ -304,6 +304,7 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 		/* register host driver */
 		ssusb_host_register(ssusb, true);
 		ssusb_set_noise_still_tr(ssusb);
+		ssusb_set_ldm_resp_delay(ssusb);
 		ssusb_set_vbus(otg_sx, 1);
 		mtu3_check_params(mtu);
 		ssusb->is_host = true;

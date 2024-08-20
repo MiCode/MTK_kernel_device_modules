@@ -313,6 +313,19 @@ void ssusb_set_noise_still_tr(struct ssusb_mtk *ssusb)
 	mtu3_setbits(ssusb->mac_base, U3D_USB_BUS_PERFORMANCE, SSUSB_SOF_KEEP);
 }
 
+void ssusb_set_ldm_resp_delay(struct ssusb_mtk *ssusb)
+{
+	u32 value;
+
+	/* set ldm response delay */
+	if (ssusb->ldm_resp_delay) {
+		value = mtu3_readl(ssusb->mac_base, U3D_RESPONSER_LDM);
+		value &= ~REG_LDM_RESP_DELAY;
+		value |= LDM_RESP_DELAY(1);
+		mtu3_writel(ssusb->mac_base, U3D_RESPONSER_LDM, value);
+	}
+}
+
 void ssusb_vsvoter_set(struct ssusb_mtk *ssusb)
 {
 	u32 reg, msk, val;
@@ -1177,6 +1190,8 @@ get_phy:
 	ssusb->keep_ao = of_property_read_bool(node, "mediatek,keep-host-on");
 	ssusb->ls_slp_quirk =
 			of_property_read_bool(node, "mediatek,ls-sleep-quirk");
+	ssusb->ldm_resp_delay =
+			of_property_read_bool(node, "mediatek,ldm-resp-delay");
 
 	otg_sx->vbus = devm_regulator_get(dev, "vbus");
 	if (IS_ERR(otg_sx->vbus)) {

@@ -378,6 +378,7 @@ struct ssusb_mtk {
 	bool host_dev;
 	bool is_suspended;
 	bool ls_slp_quirk;
+	bool ldm_resp_delay;
 	int ls_slp_bypass;
 };
 
@@ -568,6 +569,7 @@ void ssusb_set_ux_exit_lfps(struct ssusb_mtk *ssusb);
 void ssusb_set_polling_scdlfps_time(struct ssusb_mtk *ssusb);
 void ssusb_set_txdeemph(struct ssusb_mtk *ssusb);
 void ssusb_set_noise_still_tr(struct ssusb_mtk *ssusb);
+void ssusb_set_ldm_resp_delay(struct ssusb_mtk *ssusb);
 void ssusb_vsvoter_set(struct ssusb_mtk *ssusb);
 void ssusb_vsvoter_clr(struct ssusb_mtk *ssusb);
 void ssusb_set_host_low_speed_bypass(struct ssusb_mtk *ssusb);
