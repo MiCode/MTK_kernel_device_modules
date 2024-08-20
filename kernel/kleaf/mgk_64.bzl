@@ -1111,6 +1111,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/gpu/drm/mediatek/mediatek_v2/mtk-drm-edp.ko")
         mgk_64_device_modules.append("drivers/gpu/drm/panel/panel-maxiam-max96851.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/carevent/carevent.ko")
+        mgk_64_device_modules.append("drivers/tee/optee/tee/optee.ko")
+        mgk_64_device_modules.append("drivers/tee/optee/tee/tee.ko")
         mgk_64_device_modules.append("drivers/thermal/mediatek/fan_cooling.ko")
         mgk_64_device_modules.append("sound/soc/codecs/ak7709/snd-soc-ak7709.ko")
         mgk_64_device_modules.append("sound/soc/codecs/hfda80x/snd-soc-hfda80x.ko")
