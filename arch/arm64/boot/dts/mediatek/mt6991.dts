@@ -7799,6 +7799,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			operating-points-v2 = <&gpu_mali_opp>;
 			#cooling-cells = <2>;
 			system-coherency = <0>;
+			dbg-force-sync = <0>;
 			ged-supply = <&ged>;
 			sleep-mode-enable = <1>;
 			firmware-idle-hysteresis-time-us = <0>;
