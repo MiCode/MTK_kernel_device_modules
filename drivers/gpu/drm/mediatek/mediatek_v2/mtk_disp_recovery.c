@@ -189,8 +189,10 @@ int _mtk_esd_check_read(struct drm_crtc *crtc)
 		return -EINVAL;
 	}
 
-	if (mtk_drm_is_idle(crtc) && mtk_dsi_is_cmd_mode(output_comp))
-		return 0;
+	if (mtk_drm_is_idle(crtc) && mtk_dsi_is_cmd_mode(output_comp)) {
+		DDPINFO("[ESD%u]%s esd check in idle\n", index, __func__);
+		mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, index);
+	}
 
 	mtk_ddp_comp_io_cmd(output_comp, NULL, REQ_PANEL_EXT, &panel_ext);
 	if (unlikely(!(panel_ext && panel_ext->params))) {
