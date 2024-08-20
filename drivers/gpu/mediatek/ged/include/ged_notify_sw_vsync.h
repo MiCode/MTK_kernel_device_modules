@@ -15,6 +15,7 @@ extern unsigned int gpu_av_loading;
 
 #define GED_APO_AUTOSUSPEND_DELAY_MS 10
 #define GED_APO_AUTOSUSPEND_DELAY_HFR_MS 16
+#define GED_APO_AUTOSUSPEND_DELAY_MAX_MS 25
 
 static atomic_t trigger_pm_callback_state = ATOMIC_INIT(0);
 

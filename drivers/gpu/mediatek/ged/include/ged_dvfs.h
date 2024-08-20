@@ -130,6 +130,13 @@ enum ged_loading_type {
 	GED_MCU
 };
 
+enum ged_apo_legacy {
+	GED_APO_LEGACY_INVALID,
+	GED_APO_LEGACY_VER1,
+	GED_APO_LEGACY_VER2,
+	GED_APO_LEGACY_MAX
+};
+
 bool ged_dvfs_cal_gpu_utilization_ex(unsigned int *pui32Loading,
 	unsigned int *pui32Block, unsigned int *pui32Idle,
 	struct GpuUtilization_Ex *Util_Ex);
@@ -202,6 +209,9 @@ int ged_get_apo_hint(void);
 int ged_get_apo_force_hint(void);
 void ged_set_apo_force_hint(int apo_force_hint);
 void ged_set_apo_status(int apo_status);
+void ged_set_apo_legacy(enum ged_apo_legacy apo_legacy);
+enum ged_apo_legacy ged_get_apo_legacy(void);
+
 
 void ged_get_gpu_frame_time(int frame_time);
 void ged_get_active_time(void);
