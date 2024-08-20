@@ -1564,7 +1564,7 @@ int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 			mdrv_DPTx_InitVariable(mtk_dp);
 			mhal_DPTx_PHY_SetIdlePattern(mtk_dp, true);
 			if (mtk_dp->has_fec)
-				mhal_DPTx_EnableFEC(mtk_dp, false);
+				mhal_DPTx_EnableFEC(mtk_dp, true);
 			mdrv_DPTx_StopSentSDP(mtk_dp);
 			mhal_DPTx_AnalogPowerOnOff(mtk_dp, false);
 
