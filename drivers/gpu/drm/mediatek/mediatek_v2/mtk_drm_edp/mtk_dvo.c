@@ -33,6 +33,7 @@
 #include "../mtk_drm_crtc.h"
 #include "../mtk_drm_ddp_comp.h"
 #include "../mtk_disp_pmqos.h"
+#include "../mtk_dump.h"
 
 #define DVO_COLOR_BAR					0
 
@@ -1043,6 +1044,15 @@ static int mtk_dvo_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		*base_bw = mtk_dvo_get_frame_hrt_bw_base_by_datarate(crtc, dvo);
 	}
 		break;
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	case SET_CRTC_ID:
+	{
+		DDPMSG("%s set %s possible crtcs 0x%x\n", __func__,
+			mtk_dump_comp_str(comp), *(unsigned int *)params);
+		dvo->encoder.possible_crtcs = *(unsigned int *)params;
+	}
+		break;
+#endif
 	default:
 		break;
 	}

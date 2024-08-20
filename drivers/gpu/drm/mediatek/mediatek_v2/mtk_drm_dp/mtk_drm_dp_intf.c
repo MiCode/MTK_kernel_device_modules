@@ -1322,6 +1322,15 @@ static int mtk_dpintf_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		}
 	}
 		break;
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	case SET_CRTC_ID:
+	{
+		DDPMSG("%s set %s possible crtcs 0x%x\n", __func__,
+			mtk_dump_comp_str(comp), *(unsigned int *)params);
+		dp_intf->encoder.possible_crtcs = *(unsigned int *)params;
+	}
+		break;
+#endif
 	default:
 		break;
 	}

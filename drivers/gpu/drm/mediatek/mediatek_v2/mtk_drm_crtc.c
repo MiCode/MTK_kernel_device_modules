@@ -20299,9 +20299,25 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		       mtk_crtc->wb_connector.base.connector_type);
 	}
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-	if (output_comp)
+	if (output_comp) {
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+		unsigned int possible_crtcs = 0;
+#endif
+
 		mtk_ddp_comp_io_cmd(output_comp, NULL, REQ_PANEL_EXT,
 				    &mtk_crtc->panel_ext);
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+		possible_crtcs = 1 << pipe;
+		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_CRTC_ID,
+				    &possible_crtcs);
+
+		if (output_comp->id == DDP_COMPONENT_DSI2_VIRTUAL) {
+			mtk_crtc->virtual_path = true;
+			mtk_crtc->offset_x = mtk_crtc->panel_ext->params->crop_width[0];
+		}
+#endif
+	}
 
 	if (mtk_crtc && mtk_crtc->panel_ext &&
 		mtk_crtc->panel_ext->params) {
