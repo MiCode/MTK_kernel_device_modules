@@ -718,7 +718,10 @@
 	};
 
 	hwrng: hwrng {
-		compatible = "mediatek,mt67xx-rng";
+		compatible = "arm,sec-rng";
+		methods = "smc";
+		method-fid = /bits/ 16 <0x26a>;
+		quality = /bits/ 16 <900>;
 	};
 
 	clkitg: clkitg {
@@ -3870,6 +3873,10 @@
 	security_ao@1001a000 {
 		compatible = "mediatek,security_ao";
 		reg = <0 0x1001a000 0 0x1000>;
+	};
+	masp@1000a000 {
+		compatible = "mediatek,masp";
+		reg = <0 0x1000a000 0 0x1000>;
 	};
 
 	topckgen_ao@1001b000 {
