@@ -387,7 +387,8 @@
 		logger-enable-states = "mcusysoff";
 		mcusys-cnt-chk = <1>;
 		irq-remain = <&edge_keypad &edge_mdwdt>,
-				<&level_btif_tx &level_btif_rx>;
+				<&level_btif_tx &level_btif_rx>,
+				<&level_dsi0>;
 
 		resource-ctrl = <&bus26m &infra &syspll>,
 				<&dram_s0 &dram_s1>;
@@ -428,6 +429,10 @@
 			level_btif_rx: level_btif_rx{
 				target = <&btif>;
 				value = <0 2 0 0>;
+			};
+			level_dsi0: level-dsi0 {
+				target = <&dsi0>;
+				value = <0 0 0 0>;
 			};
 		};
 
