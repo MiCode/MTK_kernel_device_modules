@@ -498,7 +498,10 @@ void mdrv_DPTx_InitVariable(struct mtk_dp *mtk_dp)
 	mtk_dp->dsc_enable = false;
 	mtk_dp->fake_comeplete_irq = false;
 
-	if (!mtk_dp->training_info.set_max_linkrate)
+	// for customer requirement(set max link rate)
+	//mtk_dp->training_info.ubSysMaxLinkRate = DP_LINKRATE_HBR;
+
+	if (!mtk_dp->training_info.set_max_linkrate && !mtk_dp->training_info.ubSysMaxLinkRate)
 		mdrv_DPTx_CheckMaxLinkRate(mtk_dp);
 }
 

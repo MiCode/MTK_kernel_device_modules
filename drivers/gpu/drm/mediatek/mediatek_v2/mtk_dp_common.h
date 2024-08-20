@@ -45,7 +45,7 @@
 #define DPTX_PHY_LEVEL_COUNT            10
 #define DPTX_PHY_REG_COUNT              6
 
-#define DPTX_AutoTest_ENABLE		0x0
+#define DPTX_AutoTest_ENABLE		0x1
 #if DPTX_AutoTest_ENABLE
 #define DPTX_TEST_LINK_TRAINING_EN	0x1
 #define DPTX_TEST_PATTERN_EN		0x0
