@@ -6216,7 +6216,8 @@
 			     <&level_mali0 &level_mali1>,
 			     <&level_mali2 &level_mali3 &level_mali4>,
 			     <&level_i2c0>,
-			     <&level_cam1 &level_cam2>;
+			     <&level_cam1 &level_cam2>,
+			<&level_dsi0>;
 
 		resource-ctrl = <&bus26m &infra &syspll>,
 				<&dram_s0 &dram_s1>;
@@ -6283,6 +6284,10 @@
 			level_cam2: level_cam2 {
 				target = <&cam2_legacy>;
 				value = <0 1 0 0>;
+			};
+			level_dsi0: level-dsi0 {
+				target = <&dsi0>;
+				value = <0 0 0 0>;
 			};
 		};
 			resource-ctrl-list {
