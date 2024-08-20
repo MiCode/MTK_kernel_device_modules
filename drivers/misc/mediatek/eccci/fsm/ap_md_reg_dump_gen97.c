@@ -1122,10 +1122,10 @@ void md_dump_register_for_mt6877(struct ccci_modem *md)
 	iounmap(dump_reg0);
 
 	/* ELM reg */
-	dump_reg0 = ioremap_wc(0x20350000, 0x721);
+	dump_reg0 = ioremap_wc(0x20350000, 0xF01);
 	if (dump_reg0 == NULL) {
 		CCCI_MEM_LOG_TAG(0, TAG,
-			"Dump MD failed to ioremap 0x721 bytes from 0x20350000\n");
+			"Dump MD failed to ioremap 0xF01 bytes from 0x20350000\n");
 		return;
 	}
 #if defined(__MD_DEBUG_DUMP__)
@@ -1135,7 +1135,7 @@ void md_dump_register_for_mt6877(struct ccci_modem *md)
 #if defined(__MD_DEBUG_DUMP__)
 	/* This dump might cause bus hang so enable it only when needed */
 	ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
-		(dump_reg0 + 0x00000000), 0x721);
+		(dump_reg0 + 0x00000000), 0xF01);
 #endif
 	iounmap(dump_reg0);
 
