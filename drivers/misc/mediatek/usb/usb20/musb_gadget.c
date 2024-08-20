@@ -167,13 +167,8 @@ static inline void map_dma_buffer(struct musb_request *request,
 	struct dma_controller *dma = musb->dma_controller;
 #endif
 
-	size_t length;
-
 	if (request->request.length == 0)
 		return;
-
-	length = ALIGN(request->request.length, dma_get_cache_alignment());
-
 
 	request->map_state = UN_MAPPED;
 #ifndef CONFIG_MTK_MUSB_QMU_SUPPORT
@@ -199,7 +194,7 @@ static inline void map_dma_buffer(struct musb_request *request,
 
 		dma_addr = dma_map_single(musb->controller,
 						      request->request.buf,
-						      length,
+						      request->request.length,
 						      request->tx
 						      ? DMA_TO_DEVICE
 						      : DMA_FROM_DEVICE);
@@ -212,7 +207,7 @@ static inline void map_dma_buffer(struct musb_request *request,
 	} else {
 		dma_sync_single_for_device(musb->controller,
 					   request->request.dma,
-					   length, request->tx ?
+					   request->request.length, request->tx ?
 					   DMA_TO_DEVICE : DMA_FROM_DEVICE);
 		request->map_state = PRE_MAPPED;
 	}
@@ -222,12 +217,8 @@ static inline void map_dma_buffer(struct musb_request *request,
 static inline void
 unmap_dma_buffer(struct musb_request *request, struct musb *musb)
 {
-	size_t length;
-
 	if (request->request.length == 0)
 		return;
-
-	length = ALIGN(request->request.length, dma_get_cache_alignment());
 
 	if (!is_buffer_mapped(request))
 		return;
@@ -239,13 +230,13 @@ unmap_dma_buffer(struct musb_request *request, struct musb *musb)
 	if (request->map_state == MUSB_MAPPED) {
 		dma_unmap_single(musb->controller,
 				 request->request.dma,
-				 length, request->tx ?
+				 request->request.length, request->tx ?
 				 DMA_TO_DEVICE : DMA_FROM_DEVICE);
 		request->request.dma = DMA_ADDR_INVALID;
 	} else {		/* PRE_MAPPED */
 		dma_sync_single_for_cpu(musb->controller,
 					request->request.dma,
-					length, request->tx ?
+					request->request.length, request->tx ?
 					DMA_TO_DEVICE : DMA_FROM_DEVICE);
 	}
 	request->map_state = UN_MAPPED;
