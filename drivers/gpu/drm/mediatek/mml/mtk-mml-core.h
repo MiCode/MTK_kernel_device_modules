@@ -679,6 +679,12 @@ enum mml_dump_buf_t {
 };
 #endif
 
+enum mml_adaptor_type {
+	MML_ADAPTOR_DRM,
+	MML_ADAPTOR_DLE,
+	MML_ADAPTOR_M2M,
+};
+
 struct mml_task {
 	struct list_head entry;
 	struct mml_job job;
@@ -689,6 +695,7 @@ struct mml_task {
 	struct timespec64 end_time;
 	struct dma_fence *fence;
 	enum mml_task_state state;
+	enum mml_adaptor_type adaptor_type;
 	struct kref ref;
 	struct mml_task_pipe pipe[MML_PIPE_CNT];
 	u32 wrot_crc_idx[MML_PIPE_CNT];

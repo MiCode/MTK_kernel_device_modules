@@ -729,7 +729,8 @@ static void dump_task(struct mml_task *task)
 		task->job.jobid,
 		cfg->info.mode,
 		cfg->disp_vdo ? "vdo" : "cmd",
-		ovlid_str(cfg->info.mode, cfg->info.ovlsys_id),
+		task->adaptor_type == MML_ADAPTOR_M2M ?
+			" m2m" : ovlid_str(cfg->info.mode, cfg->info.ovlsys_id),
 		cfg->info.act_time);
 	if (cfg->info.dest[0].pq_config.en_region_pq) {
 		get_frame_str(frame, sizeof(frame), &cfg->info.seg_map);

@@ -1878,6 +1878,7 @@ static void mml_m2m_device_run(void *priv)
 		goto err_buf_exit;
 	}
 
+	task->adaptor_type = MML_ADAPTOR_M2M;
 	/* update endTime here */
 	task->end_time = ns_to_timespec64(src_buf->vb2_buf.timestamp);
 	/* give default time if empty */
