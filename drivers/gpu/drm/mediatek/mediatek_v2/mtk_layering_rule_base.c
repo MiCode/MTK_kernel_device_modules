@@ -3193,11 +3193,16 @@ static void clear_layer(struct drm_mtk_layering_info *disp_info,
 
 		if (mtk_has_layer_cap(c, MTK_DISP_CLIENT_CLEAR_LAYER)) {
 			*scn_decision_flag |= SCN_CLEAR;
-			if ((*scn_decision_flag & SCN_IDLE)) {
+			DDPMSG("%s add hrt weight\n", __func__);
+			if (priv->data->need_emi_eff)
+				disp_info->hrt_weight += (400 * 10000) / default_emi_eff;
+			else
+				disp_info->hrt_weight += 400;
+			if ((di == 0) && get_layering_opt(LYE_OPT_OVL_BW_MONITOR)) {
 				if (priv->data->need_emi_eff)
-					disp_info->hrt_weight += (400 * 10000) / default_emi_eff;
+					sum_overlap_w_of_bwm += (400 * 10000) / default_emi_eff;
 				else
-					disp_info->hrt_weight += 400;
+					sum_overlap_w_of_bwm += 400;
 			}
 		}
 
