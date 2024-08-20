@@ -2556,12 +2556,18 @@ void set_api_sync_flag(int flag)
 			g_latest_api_sync_ts_ms = div_u64(cur_ts_us, 1000);
 		else
 			g_latest_api_sync_done_ts_us = cur_ts_us;
-	} else if (flag == 3) {
-		dcs_set_fix_num(8);
-		start_mewtwo_timer();
 	} else if (flag == 2) {
 		dcs_set_fix_num(0);
 		cancel_mewtwo_timer();
+	} else if (flag == 3) {
+		dcs_set_fix_num(8);
+		start_mewtwo_timer();
+	} else if (flag == 4) {
+		dcs_set_fix_num(6);
+		start_mewtwo_timer();
+	} else if (flag == 5) {
+		dcs_set_fix_num(4);
+		start_mewtwo_timer();
 #if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
 	} else if ((flag & 0xFFFF0000) == 0x55660000) {
 		// pre-throttle cases
