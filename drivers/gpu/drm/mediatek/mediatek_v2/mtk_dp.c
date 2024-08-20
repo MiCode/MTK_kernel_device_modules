@@ -1106,7 +1106,7 @@ bool mdrv_DPTx_PHY_AutoTest(struct mtk_dp *mtk_dp, BYTE ubDPCD_201)
 	BYTE ubTempBuffer[0x10];
 
 #if DPTX_PHY_TEST_PATTERN_EN
-	BYTE ubDPCD_248;
+	BYTE ubDPCD_248 = 0x0;
 #if (DPTX_TEST_SYMBERR_EN)
 	WORD usSYMERRCNT_N;             // for sym Error Count
 #endif
@@ -1117,8 +1117,8 @@ DPTX_TEST_PHY80B_EN)
 #endif
 #endif
 
-	BYTE ubTEST_LINK_RATE;   // DPCD_219
-	BYTE ubTEST_LANE_COUNT;  // DPCD_220
+	BYTE ubTEST_LINK_RATE = 0x0;   // DPCD_219
+	BYTE ubTEST_LANE_COUNT = 0x0;  // DPCD_220
 
 	memset(ubTempBuffer, 0x0, sizeof(ubTempBuffer));
 	DPTXMSG("PHY_AutoTest Start\n");
