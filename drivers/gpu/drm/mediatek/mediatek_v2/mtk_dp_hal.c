@@ -2519,15 +2519,117 @@ void mhal_DPTx_HPDDetectSetting(struct mtk_dp *mtk_dp)
 	}
 }
 
-void mhal_DPTx_phyd_power_on(struct mtk_dp *mtk_dp)
+void mhal_DPTx_PhyCheckReady(struct mtk_dp *mtk_dp, u8 lane_count)
 {
+	UINT8 i;
+	UINT8 phyd_rdy_status;
+	UINT8 phyd_rdy_bmp = (RGS_BIAS_READY_FLDMASK | RGS_TX_LN0_READY_FLDMASK);
+
+	switch (lane_count) {
+	case 4:
+		phyd_rdy_bmp |= (RGS_TX_LN3_READY_FLDMASK |
+				RGS_TX_LN2_READY_FLDMASK);
+	case 2:
+		phyd_rdy_bmp |= RGS_TX_LN1_READY_FLDMASK;
+	default:
+		break;
+	}
+
+	for (i = 0; i < 100; i++) {
+		phyd_rdy_status = msPhyReadByte(mtk_dp, PHYD_DIG_GLB_OFFSET +
+							DP_PHY_DIG_GLB_STATUS_02);
+		phyd_rdy_status &= phyd_rdy_bmp;
+
+		if (phyd_rdy_status == phyd_rdy_bmp) {
+			DPTXMSG("Polling tx_ln status pass\n");
+			return;
+		}
+		DPTXMSG("Polling tx_ln status %x\n", phyd_rdy_status);
+	}
+	DPTXERR("Polling tx_ln status fail %x\n", phyd_rdy_status);
+}
+
+void mhal_DPTx_PhyDPowerOn(struct mtk_dp *mtk_dp)
+{
+	UINT8 i;
+	UINT8 phyd_rdy_status;
+
 	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
 			0x1 << FORCE_PWR_STATE_EN_FLDMASK_POS, FORCE_PWR_STATE_EN_FLDMASK);
-	mdelay(30);
 	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
 			0x3 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
-	DPTXMSG("DPTX PHYD enable\n");
-	udelay(100);
+
+	for (i = 0; i < 100; i++) {
+		phyd_rdy_status = msPhyReadByte(mtk_dp, PHYD_DIG_GLB_OFFSET +
+							DP_PHY_DIG_GLB_STATUS_02);
+		phyd_rdy_status &= RGS_BIAS_READY_FLDMASK;
+
+		if (phyd_rdy_status == RGS_BIAS_READY_FLDMASK) {
+			DPTXMSG("DPTX PHYD power on\n");
+			return;
+		}
+		DPTXMSG("Polling BIAS status %x\n", phyd_rdy_status);
+	}
+	DPTXERR("Polling BIAS status fail %x\n", phyd_rdy_status);
+}
+
+void mhal_DPTx_PhySetLanePower(struct mtk_dp *mtk_dp, u8 lane_count)
+{
+	// ***===power ON flow===***
+	// for 4Lane: -> 0x8 -> 0xC -> 0xE -> 0xF
+	// for 2Lane: -> 0x2 -> 0x3
+	// for 1Lane: -> 0x1
+	int power_indx = lane_count - 1;
+	UINT8 power_bmp = BIT(power_indx);
+
+	do {
+		power_bmp |= BIT(power_indx);
+		msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_TX_CTL_0,
+				power_bmp << TX_LN_EN_FLDMASK_POS,
+				TX_LN_EN_FLDMASK);
+		DPTXMSG("set lane pwr %x\n", (msPhyReadByte(mtk_dp, PHYD_DIG_GLB_OFFSET
+						+ DP_PHY_DIG_TX_CTL_0) &
+					TX_LN_EN_FLDMASK) >> TX_LN_EN_FLDMASK_POS);
+		DPTXMSG("power_indx =%x\n",power_indx);
+	} while (--power_indx >= 0);
+}
+
+void mhal_DPTx_PhyClearLanePower(struct mtk_dp *mtk_dp)
+{
+	// ***===power OFF flow===***
+	// for 4Lane: -> 0x7 -> 0x3 -> 0x1 -> 0x0
+	// for 2Lane: -> 0x1 -> 0x0
+	// for 1Lane: -> 0x0
+	//UINT8 power_bmp; = (1 << lane_count) - 1;
+	UINT8 power_bmp = (msPhyReadByte(mtk_dp, PHYD_DIG_GLB_OFFSET
+							+ DP_PHY_DIG_TX_CTL_0) &
+						TX_LN_EN_FLDMASK) >> TX_LN_EN_FLDMASK_POS;
+
+	do {
+		power_bmp >>= 1;
+		msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_TX_CTL_0,
+				power_bmp << TX_LN_EN_FLDMASK_POS,
+				TX_LN_EN_FLDMASK);
+		DPTXMSG("clear lane pwr %x\n", (msPhyReadByte(mtk_dp, PHYD_DIG_GLB_OFFSET
+							+ DP_PHY_DIG_TX_CTL_0) &
+						TX_LN_EN_FLDMASK) >> TX_LN_EN_FLDMASK_POS);
+	} while (power_bmp > 0);
+}
+
+void mhal_DPTx_PhyPowerDown(struct mtk_dp *mtk_dp)
+{
+	mhal_DPTx_PhyClearLanePower(mtk_dp);
+
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
+		0x1 << FORCE_PWR_STATE_EN_FLDMASK_POS, FORCE_PWR_STATE_EN_FLDMASK);
+	// power off TPLL and Lane;
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
+		0x1 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
+
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_SW_RST, 0, BIT(1)|BIT(3));
+	msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_SW_RST, BIT(1)|BIT(3), BIT(1)|BIT(3));
+
+	DPTXMSG("DPTX PHYD power down\n");
 }
 
 void mhal_DPTx_phyd_power_off(struct mtk_dp *mtk_dp)
@@ -2633,7 +2735,7 @@ void mhal_DPTx_PHYSetting(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 	if (mtk_dp->priv && mtk_dp->priv->data &&
 			mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
 		mhal_DPTx_hw_phy_set_param(mtk_dp, MAX_LANECOUNT);
-		mhal_DPTx_phyd_power_on(mtk_dp);
+		mhal_DPTx_PhyDPowerOn(mtk_dp);
 	} else if (mtk_dp->priv && mtk_dp->priv->data &&
 			mtk_dp->priv->data->mmsys_id == MMSYS_MT6899) {
 		/*980*/
@@ -2669,7 +2771,7 @@ void mhal_DPTx_PHYSetting(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 		msPhyWrite4Byte(mtk_dp, 0x124C,0x00000006);
 		msPhyWrite4Byte(mtk_dp, 0x134C,0x00000006);
 		msPhyWrite4Byte(mtk_dp, 0x144C,0x00000006);
-		mhal_DPTx_phyd_power_on(mtk_dp);
+		mhal_DPTx_PhyDPowerOn(mtk_dp);
 	} else {
 		uint32_t value = 0;
 		uint8_t mask = 0x3F;
@@ -3004,62 +3106,26 @@ void mhal_DPTx_PHYD_Reset(struct mtk_dp *mtk_dp)
 
 void mhal_DPTx_SetTxLane(struct mtk_dp *mtk_dp, const enum DPTX_LANE_COUNT lane_count)
 {
-	const UINT8 Value = lane_count/2;
 
 	DPTXFUNC();
-	if (mtk_dp->priv && mtk_dp->priv->data &&
-			(mtk_dp->priv->data->mmsys_id == MMSYS_MT6991||
-			mtk_dp->priv->data->mmsys_id == MMSYS_MT6899)) {
-		if (Value == 0)
-			msWriteByteMask(mtk_dp,
-				REG_35F0_DP_TRANS_P0,
-				0,
-				BIT(3)|BIT(2));
-		else
-			msWriteByteMask(mtk_dp,
-				REG_35F0_DP_TRANS_P0,
-				BIT(3),
-				BIT(3)|BIT(2));
+	/*4Lane: 2, 2Lane: 1, 1Lane: 0*/
+	const UINT8 val = (lane_count >> 1);
 
-
-		msWriteByteMask(mtk_dp, REG_3000_DP_ENCODER0_P0,
-		Value << LANE_NUM_DP_ENCODER0_P0_FLDMASK_POS,
-		LANE_NUM_DP_ENCODER0_P0_FLDMASK);
-
-
-		msWriteByteMask(mtk_dp,
-			REG_34A4_DP_TRANS_P0,
-			(Value << 2),
-			BIT(3)|BIT(2));
-
-		msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_TX_CTL_0,
-				((1 << (lane_count)) - 1) << TX_LN_EN_FLDMASK_POS, TX_LN_EN_FLDMASK);
-		DPTXMSG("Current lane power %x\n", ((1 << (lane_count)) - 1));
-
-		msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_SW_RST, 0, 0xFF);
-		msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_SW_RST, 0xFF, 0xFF);
-	} else {
-		if (Value == 0)
-			msWriteByteMask(mtk_dp,
-				REG_35F0_DP_TRANS_P0,
-				0,
-				BIT(3)|BIT(2));
-		else
-			msWriteByteMask(mtk_dp,
-				REG_35F0_DP_TRANS_P0,
-				BIT(3),
-				BIT(3)|BIT(2));
-
-		msWriteByteMask(mtk_dp,
-			REG_3000_DP_ENCODER0_P0,
-			Value,
-			BIT(1)|BIT(0));
-
-		msWriteByteMask(mtk_dp,
-			REG_34A4_DP_TRANS_P0,
-			(Value << 2),
-			BIT(3)|BIT(2));
+	if (val == 0)
+		msWriteByteMask(mtk_dp, REG_35F0_DP_TRANS_P0, 0, (BIT(3) | BIT(2)));
+	else if (val < 4)
+		msWriteByteMask(mtk_dp, REG_35F0_DP_TRANS_P0, BIT(3), (BIT(3) | BIT(2)));
+	else {
+		DPTXMSG("Un-expected lane count %d\n", lane_count);
+		return;
 	}
+
+	msWriteByteMask(mtk_dp, REG_3000_DP_ENCODER0_P0 ,
+	val << LANE_NUM_DP_ENCODER0_P0_FLDMASK_POS,
+	LANE_NUM_DP_ENCODER0_P0_FLDMASK);
+	msWriteByteMask(mtk_dp, REG_34A4_DP_TRANS_P0,
+		val << LANE_NUM_DP_TRANS_P0_FLDMASK_POS,
+		LANE_NUM_DP_TRANS_P0_FLDMASK);
 }
 
 void mhal_DPTx_SetAuxSwap(struct mtk_dp *mtk_dp, bool enable)
@@ -3093,19 +3159,11 @@ void mhal_DPTx_SetAuxSwap(struct mtk_dp *mtk_dp, bool enable)
 	}
 }
 
-void mhal_DPTx_SetTxRate(struct mtk_dp *mtk_dp, int Value)
+void mhal_DPTx_SetTxRate(struct mtk_dp *mtk_dp, u8 Value)
 {
 	DPTXFUNC();
 	if (mtk_dp->priv && mtk_dp->priv->data &&
-			(mtk_dp->priv->data->mmsys_id == MMSYS_MT6991||
-			mtk_dp->priv->data->mmsys_id == MMSYS_MT6899)) {
-		// power off TPLL and Lane;
-		msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
-			0x1 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
-
-		DPTXMSG("Set Tx Rate = 0x%x\n", Value);
-
-		/// Set gear : 0x0 : RBR, 0x1 : HBR, 0x2 : HBR2, 0x3 : HBR3
+			mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
 		switch (Value) {
 		case 0x06:
 			msPhyWrite4Byte(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_BIT_RATE, 0x0);
@@ -3122,12 +3180,84 @@ void mhal_DPTx_SetTxRate(struct mtk_dp *mtk_dp, int Value)
 		default:
 			break;
 		}
+	} else if (mtk_dp->priv && mtk_dp->priv->data &&
+			mtk_dp->priv->data->mmsys_id == MMSYS_MT6899) {
+		uint32_t phyd_rdy_bmp = 0x9;
+		uint32_t phyd_rdy_status;
+		uint32_t i;
 
-		// power on BandGap, TPLL and Lane;
-		msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
-			0x3 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
+		DPTXFUNC();
+
+		//msWrite4Byte(mtk_dp, 0x2000, 0x00000001); // power off TPLL and Lane;
+		msPhyWrite4Byte(mtk_dp, 0x1010, 0x00000003); // power off TPLL and Lane;
+		//msWrite4Byte(mtk_dp, 0x1038, 0x00000001); // reset phy-d;
+		//msWrite4Byte(mtk_dp, 0x1038, 0x00000000); // release reset phy-d;
+		msPhyWriteByteMask(mtk_dp, 0x1038, 0, BIT(0));
+		msPhyWriteByteMask(mtk_dp, 0x1038, BIT(0), BIT(0));
+		mdelay(10);
+
+		/// Set gear : 0x0 : RBR, 0x1 : HBR, 0x2 : HBR2, 0x3 : HBR3
+		msPhyWrite4ByteMask(mtk_dp, 0x003C, 0x001 << 23, BITMASK(23:23));
+		switch (Value) {
+		case 0x06:
+			msPhyWrite4ByteMask(mtk_dp, 0x003C, 0x003 << 24, BITMASK(28:24));
+			msPhyWrite4Byte(mtk_dp,
+				0x103C,
+				0x00000000);
+			break;
+		case 0x0A:
+			msPhyWrite4ByteMask(mtk_dp, 0x003C, 0x005 << 24, BITMASK(28:24));
+			msPhyWrite4Byte(mtk_dp,
+				0x103C,
+				0x00000001);
+			break;
+		case 0x14:
+			msPhyWrite4ByteMask(mtk_dp, 0x003C, 0x005 << 24, BITMASK(28:24));
+			msPhyWrite4Byte(mtk_dp,
+				0x103C,
+				0x00000002);
+			break;
+		case 0x1E:
+			msPhyWrite4ByteMask(mtk_dp, 0x003C, 0x002 << 24, BITMASK(28:24));
+			msPhyWrite4Byte(mtk_dp,
+				0x103C,
+				0x00000003);
+			break;
+		default:
+			break;
+		}
+
+		msPhyWrite4Byte(mtk_dp,
+			0x2000,
+			0x00000003); // power on BandGap, TPLL and Lane;
+		msPhyWrite4Byte(mtk_dp, 0x1010, 0x00000007); // power on TPLL and Lane;
+
+		for (i = 0; i < 10; i++) {
+			phyd_rdy_status = msPhyRead4Byte(mtk_dp, 0x1088);
+			phyd_rdy_status &= phyd_rdy_bmp;
+
+			if (phyd_rdy_status == phyd_rdy_bmp) {
+				DPTXMSG("DPTX PHYD power on\n");
+				return;
+			}
+			DPTXMSG("Polling BIAS status %x\n", phyd_rdy_status);
+		}
+		DPTXERR("Polling BIAS status fail %x\n", phyd_rdy_status);
 	} else {
-		msWrite4Byte(mtk_dp, 0x2000, 0x00000001); // power off TPLL and Lane;
+		uint32_t phyd_rdy_bmp = 0x9;
+		uint32_t phyd_rdy_status;
+		uint32_t i;
+
+		DPTXFUNC();
+
+		//msWrite4Byte(mtk_dp, 0x2000, 0x00000001); // power off TPLL and Lane;
+		msWrite4Byte(mtk_dp, 0x1010, 0x00000003); // power off TPLL and Lane;
+		//msWrite4Byte(mtk_dp, 0x1038, 0x00000001); // reset phy-d;
+		//msWrite4Byte(mtk_dp, 0x1038, 0x00000000); // release reset phy-d;
+		msWriteByteMask(mtk_dp, 0x1038, 0, BIT(0));
+		msWriteByteMask(mtk_dp, 0x1038, BIT(0), BIT(0));
+		mdelay(10);
+
 		/// Set gear : 0x0 : RBR, 0x1 : HBR, 0x2 : HBR2, 0x3 : HBR3
 		msWrite4ByteMask(mtk_dp, 0x003C, 0x001 << 23, BITMASK(23:23));
 		switch (Value) {
@@ -3162,15 +3292,25 @@ void mhal_DPTx_SetTxRate(struct mtk_dp *mtk_dp, int Value)
 		msWrite4Byte(mtk_dp,
 			0x2000,
 			0x00000003); // power on BandGap, TPLL and Lane;
+		msWrite4Byte(mtk_dp, 0x1010, 0x00000007); // power on TPLL and Lane;
+
+		for (i = 0; i < 10; i++) {
+			phyd_rdy_status = msRead4Byte(mtk_dp, 0x1088);
+			phyd_rdy_status &= phyd_rdy_bmp;
+
+			if (phyd_rdy_status == phyd_rdy_bmp) {
+				DPTXMSG("DPTX PHYD power on\n");
+				return;
+			}
+			DPTXMSG("Polling BIAS status %x\n", phyd_rdy_status);
+		}
+		DPTXERR("Polling BIAS status fail %x\n", phyd_rdy_status);
 	}
 }
 
 void mhal_DPTx_SetTxTrainingPattern(struct mtk_dp *mtk_dp, int  Value)
 {
 	DPTXMSG("Set Train Pattern =0x%x\n ", Value);
-
-	if (Value == BIT(4)) // if Set TPS1
-		mhal_DPTx_PHY_SetIdlePattern(mtk_dp, false);
 
 	msWriteByteMask(mtk_dp,
 		REG_3400_DP_TRANS_P0 + 1,
@@ -3433,3 +3573,37 @@ void mhal_DPTx_AnalogPowerOnOff(struct mtk_dp *mtk_dp, bool enable)
 		}
 	}
 }
+
+void mhal_DPTx_PhySSCenable(struct mtk_dp *mtk_dp, bool bENABLE)
+{
+	if (bENABLE) {
+		// Set SSC enable
+		msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_1,
+				0x1 << TPLL_SSC_EN_FLDMASK_POS, TPLL_SSC_EN_FLDMASK);
+	} else
+		msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_1,
+				0x0, TPLL_SSC_EN_FLDMASK);
+
+	DPTXMSG("Phy SSC enable = %d\n", bENABLE);
+}
+
+
+void mhal_DPTx_PhyTrainingConfig(struct mtk_dp *mtk_dp, u8 ubTargetLinkRate, u8 ubTargetLaneCount)
+{
+	mhal_DPTx_ResetSwingtPreEmphasis(mtk_dp);
+	mhal_DPTx_PhySSCenable(mtk_dp, mtk_dp->training_info.bSinkSSC_En);
+
+	//step1: phy-d power down
+	mhal_DPTx_PhyPowerDown(mtk_dp);
+
+	//step2: phy-d set link rate
+	mhal_DPTx_SetTxRate(mtk_dp, ubTargetLinkRate);
+	mhal_DPTx_PhyDPowerOn(mtk_dp);
+
+	//step3: phy-d enable lane
+	mhal_DPTx_PhySetLanePower(mtk_dp, ubTargetLaneCount);
+
+	mhal_DPTx_PhyCheckReady(mtk_dp, ubTargetLaneCount);
+}
+
+

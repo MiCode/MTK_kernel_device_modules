@@ -349,10 +349,11 @@ void mhal_DPTx_Audio_Ch_Status_Set(struct mtk_dp *mtk_dp, BYTE Channel,
 	BYTE Fs, BYTE Wordlength);
 void mhal_DPTx_Audio_SDP_Setting(struct mtk_dp *mtk_dp, BYTE Channel);
 void mhal_DPTx_Audio_M_Divider_Setting(struct mtk_dp *mtk_dp, BYTE Div);
-void mhal_DPTx_SetTxRate(struct mtk_dp *mtk_dp, int Value);
+void mhal_DPTx_SetTxRate(struct mtk_dp *mtk_dp, u8 Value);
 void mhal_DPTx_AnalogPowerOnOff(struct mtk_dp *mtk_dp, bool enable);
 void mhal_DPTx_DataLanePNSwap(struct mtk_dp *mtk_dp, bool bENABLE);
 void mhal_DPTx_SetAuxSwap(struct mtk_dp *mtk_dp, bool enable);
 void mhal_DPTx_Set_BS2BS_Cnt(struct mtk_dp *mtk_dp, bool bEnable, DWORD uiHTT);
+void mhal_DPTx_PhyTrainingConfig(struct mtk_dp *mtk_dp, u8 ubTargetLinkRate, u8 ubTargetLaneCount);
 
 #endif //__DRTX_HAL_H__

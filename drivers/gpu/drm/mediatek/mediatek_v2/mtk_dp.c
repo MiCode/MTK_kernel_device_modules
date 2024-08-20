@@ -445,7 +445,6 @@ void mdrv_DPTx_deinit(struct mtk_dp *mtk_dp)
 	mtk_dp->training_info.ucCheckCapTimes = 0;
 	mtk_dp->video_enable = false;
 	mtk_dp->dp_ready = false;
-	mhal_DPTx_PHY_SetIdlePattern(mtk_dp, true);
 	if (mtk_dp->has_fec) {
 		mhal_DPTx_EnableFEC(mtk_dp, false);
 		mtk_dp->has_fec = false;
@@ -812,9 +811,9 @@ void mdrv_DPTx_CheckSinkESI(struct mtk_dp *mtk_dp, u8 *pDPCD20x, u8 *pDPCD2002)
 #if (DPTX_AutoTest_ENABLE == 1)
 bool mdrv_DPTx_CheckSSC(struct mtk_dp *mtk_dp)
 {
-#if (ENABLE_DPTX_SSC_OUTPUT == 0x1)
 	BYTE ubTempBuffer[0x2] = {0x0};
 
+ #if (ENABLE_DPTX_SSC_OUTPUT == 0x1)
 	drm_dp_dpcd_read(&mtk_dp->aux,
 		DPCD_00003 + DPCD_02200*mtk_dp->training_info.bSinkEXTCAP_En,
 		ubTempBuffer, 0x1);
@@ -825,11 +824,17 @@ bool mdrv_DPTx_CheckSSC(struct mtk_dp *mtk_dp)
 		mtk_dp->info.bSinkSSC_En = true;
 		mhal_DPTx_SSCOnOffSetting(mtk_dp, true);
 	} else {
+		ubTempBuffer[0x0] = 0x0;
+		drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00107, ubTempBuffer, 0x1);
 		mtk_dp->info.bSinkSSC_En = false;
 		mhal_DPTx_SSCOnOffSetting(mtk_dp, false);
 	}
+#else
+	ubTempBuffer[0x0] = 0x0;
+	drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00107, ubTempBuffer, 0x1);
+	mtk_dp->info.bSinkSSC_En = false;
+	mhal_DPTx_SSCOnOffSetting(mtk_dp, false);
 #endif
-
 	return true;
 }
 #endif
@@ -1102,6 +1107,22 @@ void mdrv_DPTx_Audio_PG_AutoTest(struct mtk_dp *mtk_dp)
 	mdrv_DPTx_SPKG_SDP(mtk_dp, 1, 4, SDP_HB, SDP_DB);
 }
 
+u8 mdrv_get_checksum(struct edid *edid)
+{
+	int ext_block;
+	u8 *raw_edid = (u8 *)edid;
+	u8 checksum;
+
+	if (!edid)
+		return 0;
+
+	ext_block = edid->extensions;
+	checksum = raw_edid[ext_block * EDID_LENGTH + 0x7f];
+	DPTXMSG("checksum: 0x%x\n", checksum);
+
+	return checksum;
+}
+
 bool mdrv_DPTx_PHY_AutoTest(struct mtk_dp *mtk_dp, BYTE ubDPCD_201)
 {
 	bool bAutoTestIRQ = false;
@@ -1196,12 +1217,15 @@ DPTX_TEST_PHY80B_EN)
 		case BIT(2): //TEST_EDID_READ
 #if DPTX_TEST_EDID_READ_EN
 			DPTXMSG("TEST_EDID_R\n");
-			if (mtk_dp->edid)
-				kfree(mtk_dp->edid)
 			mtk_dp->edid = mtk_dp_handle_edid(mtk_dp);
-			mdelay(10);
-			ubTempBuffer[0x0] = mtk_dp->edid->checksum;
+			if (!mtk_dp->edid) {
+				DPTXMSG("no edid\n");
+				ubTempBuffer[0x0] = mtk_dp->conn.real_edid_checksum;
+			} else {
+				ubTempBuffer[0x0] = mdrv_get_checksum(mtk_dp->edid);
+			}
 			drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00261,
+				ubTempBuffer, 0x1);
 			ubTempBuffer[0x0] = 0x05;
 			drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00260,
 				ubTempBuffer, 0x1);
@@ -1327,6 +1351,9 @@ DPTX_TEST_PHY80B_EN)
 
 		default:
 			DPTXMSG("DPCD 218 Not support\n");
+			ubTempBuffer[0x0] = 0x01;
+			drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00260,
+				ubTempBuffer, 0x1);
 			return false;
 		}
 	} else {
@@ -1532,6 +1559,7 @@ int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 	int ret = DPTX_NOERR;
 	int pm_ret;
 	void *base;
+	u8 data;
 
 	if (mtk_dp->training_info.bCableStateChange) {
 		bool ubCurrentHPD = mhal_DPTx_GetHPDPinLevel(mtk_dp);
@@ -1543,6 +1571,8 @@ int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 			mtk_dp_vsvoter_set(mtk_dp);
 		} else {
 			DPTXMSG("HPD_DISCON\n");
+			data = 0x2;
+			drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00600, &data, 1);
 			mdrv_DPTx_VideoMute(mtk_dp, true);
 			mdrv_DPTx_AudioMute(mtk_dp, true);
 
@@ -1565,7 +1595,6 @@ int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 #endif
 
 			mdrv_DPTx_InitVariable(mtk_dp);
-			mhal_DPTx_PHY_SetIdlePattern(mtk_dp, true);
 			if (mtk_dp->has_fec)
 				mhal_DPTx_EnableFEC(mtk_dp, true);
 			mdrv_DPTx_StopSentSDP(mtk_dp);
@@ -1782,17 +1811,26 @@ int mdrv_DPTx_TrainingFlow(struct mtk_dp *mtk_dp, u8 ubLaneRate, u8 ubLaneCount)
 	if (mtk_dp->training_info.bSinkSSC_En) {
 		ubTempValue[0x0] = 0x10;
 		drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00107, ubTempValue, 0x1);
+	} else {
+		ubTempValue[0x0] = 0x0;
+		drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00107, ubTempValue, 0x1);
 	}
 
 	ubTrainRetryTimes = 0x0;
 	ubStatusControl = 0x0;
-	ubIterationCount = 0x1;
+	ubIterationCount = 0x0;
 	ubDPCD206 = 0xFF;
 
-	mhal_DPTx_SetTxLane(mtk_dp, ubTargetLaneCount);
-	mhal_DPTx_SetTxRate(mtk_dp, ubTargetLinkRate);
-	if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6899)
-		mhal_DPTx_PHYD_Reset(mtk_dp);
+	// Lane power on flow fix in 6991(n3)
+	if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+		mhal_DPTx_PhyTrainingConfig(mtk_dp, ubTargetLinkRate, ubTargetLaneCount);
+		mhal_DPTx_SetTxLane(mtk_dp, ubTargetLaneCount);
+	} else {
+		mhal_DPTx_SetTxLane(mtk_dp, ubTargetLaneCount);
+		mhal_DPTx_SetTxRate(mtk_dp, ubTargetLinkRate);
+		if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6899)
+			mhal_DPTx_PHYD_Reset(mtk_dp);
+	}
 
 	do {
 		ubTrainRetryTimes++;
@@ -1822,6 +1860,8 @@ int mdrv_DPTx_TrainingFlow(struct mtk_dp *mtk_dp, u8 ubLaneRate, u8 ubLaneCount)
 				drm_dp_dpcd_read(&mtk_dp->aux, DPCD_00206,
 					(ubTempValue+4), 0x2);
 				ubIterationCount++;
+				ubTempValue[4] = 0;
+				ubTempValue[5] = 0;
 
 				mdrv_DPTx_TrainingCheckSwingPre(mtk_dp,
 					ubTargetLaneCount, ubTempValue,
@@ -1853,7 +1893,7 @@ int mdrv_DPTx_TrainingFlow(struct mtk_dp *mtk_dp, u8 ubLaneRate, u8 ubLaneCount)
 				//request swing & emp is the same eith last time
 				if (ubDPCD206 == ubTempValue[0x4]) {
 					ubIterationCount++;
-					if (ubDPCD206&0x3)
+					if ((ubDPCD206&0x3) == 0x3)
 						ubIterationCount =
 						DPTX_TRAIN_MAX_ITERATION;
 				} else {
@@ -2050,6 +2090,12 @@ bool mdrv_DPTx_CheckSinkCap(struct mtk_dp *mtk_dp)
 				bTempBuffer, 0x1);
 	}
 
+	// 4.2.2.7, Read 80 when DOWN_STREAM_PORT were detected
+	// DPCD 00005 or 02205: DOWN_STREAM_PORT_PRESENT
+	// DPCD 00007 or 02207: DFP_COUNT
+	if ((bTempBuffer[0x05]&0x1) && ((bTempBuffer[0x07] & 0x0F) > 0x0))
+		drm_dp_dpcd_read(&mtk_dp->aux, DPCD_00080, bTempBuffer, 0x10);
+
 	drm_dp_dpcd_read(&mtk_dp->aux, DPCD_00600, bTempBuffer, 0x1);
 	if (bTempBuffer[0x0] != 0x1) {
 		bTempBuffer[0x0] = 0x1;
@@ -2190,6 +2236,7 @@ int mdrv_DPTx_SetTrainingStart(struct mtk_dp *mtk_dp)
 	maxLinkRate = ubLinkRate;
 	ubTrainTimeLimits = 0x6;
 #endif
+	ubTrainTimeLimits = 12;
 	do {
 		DPTXMSG("LinkRate:0x%x, LaneCount:%x", ubLinkRate, ubLaneCount);
 
@@ -2248,6 +2295,7 @@ int mdrv_DPTx_SetTrainingStart(struct mtk_dp *mtk_dp)
 int mdrv_DPTx_Training_Handler(struct mtk_dp *mtk_dp)
 {
 	int ret = DPTX_NOERR;
+	BYTE ubTempBuffer[0x10];
 
 	if (!mtk_dp->training_info.bCablePlugIn)
 		return DPTX_PLUG_OUT;
@@ -2305,6 +2353,13 @@ int mdrv_DPTx_Training_Handler(struct mtk_dp *mtk_dp)
 						false);
 				}
 			}
+			mdelay(10);
+			ubTempBuffer[0x0] = mtk_dp->edid->checksum;
+			drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00261,
+				ubTempBuffer, 0x1);
+			ubTempBuffer[0x0] = 0x4;
+			drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00260,
+				ubTempBuffer, 0x1);
 
 			mtk_dp->info.audio_caps
 				= mdrv_DPTx_getAudioCaps(mtk_dp);
@@ -2599,7 +2654,6 @@ void mdrv_DPTx_ISR(struct mtk_dp *mtk_dp)
 
 void mdrv_DPTx_InitPort(struct mtk_dp *mtk_dp)
 {
-	mhal_DPTx_PHY_SetIdlePattern(mtk_dp, true);
 	mdrv_DPTx_InitVariable(mtk_dp);
 
 	mhal_DPTx_InitialSetting(mtk_dp);
@@ -2888,8 +2942,8 @@ static void mdrv_DPTx_main_handle(struct work_struct *data)
 	unsigned long long starttime = sched_clock();
 
 	do {
-		if (abs(sched_clock() - starttime) > 5000000000ULL) {
-			DPTXERR("Handle time over 5s\n");
+		if (abs(sched_clock() - starttime) > 10000000000ULL) {
+			DPTXERR("Handle time over 10s\n");
 			break;
 		}
 
