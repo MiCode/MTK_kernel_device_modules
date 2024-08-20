@@ -10337,6 +10337,21 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupts = <GIC_SPI 448 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
+		panel_edp: panel@1 {
+			compatible = "panel-edp";
+			status = "disabled";
+		};
+
+		panel_dp: panel@2 {
+			compatible = "panel-serdes-dp";
+			status = "disabled";
+		};
+
+		panel_dp_mst_one: panel@3 {
+			compatible = "panel-serdes-dp-mst1";
+			status = "disabled";
+		};
+
 		soc_smmu: iommu@14900000 {
 			compatible = "arm,smmu-v3", "mtk,smmu-v700", "mediatek,mt6991-soc-smmu";
 			reg = <0 0x14900000 0 0x1e0000>,
