@@ -127,6 +127,7 @@ enum SWPM_SCMI_ACT {
 
 extern struct mutex swpm_mutex;
 extern struct timer_list swpm_timer;
+extern struct timer_list swpm_sram_timer;
 extern struct workqueue_struct *swpm_common_wq;
 extern unsigned int swpm_log_interval_ms;
 

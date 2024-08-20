@@ -712,9 +712,12 @@ static int __init swpm_v6899_dbg_late_initcall(void)
 	 * use late init call sync to
 	 * ensure qos module is ready
 	 */
+	int ret;
+
 	swpm_dbg_common_fs_init();
-	swpm_v6899_init();
-	swpm_v6899_ext_init();
+	ret = swpm_v6899_init();
+	if (!ret)
+		swpm_v6899_ext_init();
 	swpm_v6899_dbg_fs_init();
 
 	pr_notice("swpm init success\n");

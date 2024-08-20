@@ -52,6 +52,9 @@ EXPORT_SYMBOL(swpm_mutex);
 struct timer_list swpm_timer;
 EXPORT_SYMBOL(swpm_timer);
 
+struct timer_list swpm_sram_timer;
+EXPORT_SYMBOL(swpm_sram_timer);
+
 struct workqueue_struct *swpm_common_wq;
 EXPORT_SYMBOL(swpm_common_wq);
 

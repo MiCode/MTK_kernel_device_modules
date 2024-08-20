@@ -125,14 +125,13 @@ static void swpm_init_retry(struct work_struct *work)
 	if (!swpm_init_state)
 		swpm_pass_to_sspm();
 #endif
+	/* check swpm_init_state again since it could be changed in swpm_pass_to_sspm() */
+	if (swpm_init_state)
+		swpm_v6899_ext_init();
 }
 
 static void swpm_log_loop(struct timer_list *t)
 {
-	/* initialization retry */
-	if (swpm_init_retry_work_queue && !swpm_init_state)
-		queue_work(swpm_init_retry_work_queue, &swpm_init_retry_work);
-
 	swpm_v6899_power_log();
 
 	swpm_call_event_notifier(SWPM_LOG_DATA_NOTIFY, NULL);
@@ -140,10 +139,25 @@ static void swpm_log_loop(struct timer_list *t)
 	mod_timer(t, jiffies + msecs_to_jiffies(swpm_log_interval_ms));
 }
 
+static void swpm_get_sram_loop(struct timer_list *t)
+{
+	/* initialization retry */
+	if (swpm_init_retry_work_queue && !swpm_init_state)
+		queue_work(swpm_init_retry_work_queue, &swpm_init_retry_work);
+
+	if (!swpm_init_state)
+		mod_timer(t, jiffies + msecs_to_jiffies(swpm_log_interval_ms));
+}
+
 /* critical section function */
 static void swpm_timer_init(void)
 {
 	swpm_lock(&swpm_mutex);
+
+	swpm_sram_timer.function = swpm_get_sram_loop;
+	timer_setup(&swpm_sram_timer, swpm_get_sram_loop, TIMER_DEFERRABLE);
+
+	mod_timer(&swpm_sram_timer, jiffies + msecs_to_jiffies(swpm_log_interval_ms));
 
 	swpm_timer.function = swpm_log_loop;
 	timer_setup(&swpm_timer, swpm_log_loop, TIMER_DEFERRABLE);
@@ -210,6 +224,8 @@ int swpm_v6899_init(void)
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
 	if (!swpm_init_state)
 		swpm_pass_to_sspm();
+	if (!swpm_init_state)
+		ret = -1;
 #endif
 
 	if (!swpm_init_retry_work_queue) {
@@ -230,6 +246,7 @@ void swpm_v6899_exit(void)
 	swpm_lock(&swpm_mutex);
 
 	del_timer_sync(&swpm_timer);
+	del_timer_sync(&swpm_sram_timer);
 	swpm_set_enable(ALL_SWPM_TYPE, 0);
 
 	swpm_unlock(&swpm_mutex);
