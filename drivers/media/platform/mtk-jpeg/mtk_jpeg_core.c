@@ -1764,6 +1764,8 @@ dec_end:
 
 	if (v4l2_m2m_is_last_draining_src_buf(ctx->fh.m2m_ctx, src_buf)) {
 		v4l2_dbg(0, debug, &jpeg->v4l2_dev, "mark stopped\n");
+		dst_buf->flags |= V4L2_BUF_FLAG_LAST;
+		v4l2_m2m_mark_stopped(ctx->fh.m2m_ctx);
 		ctx->early_eos = true;
 	}
 
