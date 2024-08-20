@@ -531,6 +531,21 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 						   crtc_state->mml_dst_roi.width;
 		mtk_plane_state->pending.offset = crtc_state->mml_dst_roi.y << 16 |
 						  crtc_state->mml_dst_roi.x;
+
+		/* For MML IR mode YUV fmt height should be even number */
+		if (priv && (priv->data->mmsys_id == MMSYS_MT6899) && (
+			mtk_plane_state->pending.format == DRM_FORMAT_YUYV ||
+			mtk_plane_state->pending.format == DRM_FORMAT_YVYU ||
+			mtk_plane_state->pending.format == DRM_FORMAT_UYVY ||
+			mtk_plane_state->pending.format == DRM_FORMAT_VYUY)) {
+			if (mtk_plane_state->pending.src_y % 2) {
+				mtk_plane_state->pending.src_y -= 1;
+				mtk_plane_state->pending.height += 1;
+			}
+			if ((mtk_plane_state->pending.src_y +
+				mtk_plane_state->pending.height) % 2)
+				mtk_plane_state->pending.height += 1;
+		}
 	} else if (mtk_plane_state->pending.mml_mode == MML_MODE_DIRECT_LINK) {
 		struct mml_submit *cfg = mtk_plane_state->pending.mml_cfg;
 		uint32_t width, height, pitch;
