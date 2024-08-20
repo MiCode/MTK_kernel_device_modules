@@ -14,6 +14,10 @@
 bootargs_ext = "rcu_nocbs=0-7";
 };
 
+&android {
+	hardware = "mt8799";
+};
+
 &mtk_leds {
 	compatible = "mediatek,i2c-leds";
 
