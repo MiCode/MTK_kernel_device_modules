@@ -46,7 +46,7 @@ static ssize_t vcp_hw_voter_dbg_proc_write(
 					size_t count,
 					loff_t *data)
 {
-	char desc[64];
+	char desc[64], cmd[16];
 	unsigned int len = 0;
 	int ret = 0;
 	int n;
@@ -59,29 +59,68 @@ static ssize_t vcp_hw_voter_dbg_proc_write(
 	desc[len] = '\0';
 	pr_notice("%s: %s\n", __func__, desc);
 
-	n = sscanf(desc, "%c %c %c %hu %hu",
-			&ipi_data.type,
-			&ipi_data.op,
-			&ipi_data.clk_category,
-			&ipi_data.clk_id,
-			&ipi_data.val);
-	if (n != 4 && n != 5) {
-		pr_notice("invalid cmd length %d\n", n);
+	n = sscanf(desc, "%15s %hu", cmd, &ipi_data.val);
+	if (n == 2 && !strncmp(cmd, "hwv_dbg_enable", 16)) {
+		ipi_data.cmd = HW_VOTER_DBG_CMD_ENABLE;
+
+		ret = mtk_ipi_send_compl(
+				&vcp_ipidev,
+				IPI_OUT_C_VCP_HWVOTER_DEBUG,
+				IPI_SEND_WAIT,
+				&ipi_data,
+				PIN_OUT_C_SIZE_HWVOTER,
+				500);
+		if (ret != IPI_ACTION_DONE)
+			pr_notice("[%s]: VCP send IPI failed - %d\n",
+				__func__, ret);
+
+		pr_notice("[%s]: 0. VCP send IPI HWV DBG CMD (%d)\n",
+			__func__, ipi_data.val);
 		return count;
 	}
 
-	ipi_data.cmd = HW_VOTER_DBG_CMD_TEST;
+	n = sscanf(desc, "%hhu %25s %hu",
+			&ipi_data.op,
+			ipi_data.res_name,
+			&ipi_data.val);
+	if (n == 3 && ipi_data.op >= 6) {
+		ipi_data.cmd = HW_VOTER_DBG_CMD_TEST;
 
-	ret = mtk_ipi_send_compl(
-			&vcp_ipidev,
-			IPI_OUT_C_VCP_HWVOTER_DEBUG,
-			IPI_SEND_WAIT,
-			&ipi_data,
-			PIN_OUT_C_SIZE_HWVOTER,
-			500);
-	if (ret != IPI_ACTION_DONE)
-		pr_notice("[%s]: VCP send IPI failed - %d\n",
-			__func__, ret);
+		ret = mtk_ipi_send_compl(
+				&vcp_ipidev,
+				IPI_OUT_C_VCP_HWVOTER_DEBUG,
+				IPI_SEND_WAIT,
+				&ipi_data,
+				PIN_OUT_C_SIZE_HWVOTER,
+				500);
+		if (ret != IPI_ACTION_DONE)
+			pr_notice("[%s]: VCP send IPI failed - %d\n",
+				__func__, ret);
+		pr_notice("[%s]: 1. VCP send IPI HWV DBG CMD\n",
+			__func__);
+		return count;
+	}
+
+	n = sscanf(desc, "%hhu %25s",
+			&ipi_data.op,
+			ipi_data.res_name);
+	if (n == 2 && ipi_data.op < 6) {
+		ipi_data.cmd = HW_VOTER_DBG_CMD_TEST;
+
+		ret = mtk_ipi_send_compl(
+				&vcp_ipidev,
+				IPI_OUT_C_VCP_HWVOTER_DEBUG,
+				IPI_SEND_WAIT,
+				&ipi_data,
+				PIN_OUT_C_SIZE_HWVOTER,
+				500);
+		if (ret != IPI_ACTION_DONE)
+			pr_notice("[%s]: VCP send IPI failed - %d\n",
+				__func__, ret);
+		pr_notice("[%s]: 3. VCP send IPI HWV DBG CMD\n",
+			__func__);
+		return count;
+	}
 
 	return count;
 }
