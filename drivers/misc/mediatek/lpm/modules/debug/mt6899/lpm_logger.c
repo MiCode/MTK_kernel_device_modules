@@ -80,6 +80,15 @@ const char *wakesrc_str[32] = {
 	[31] = " R12_RESERVED_BIT31",
 };
 
+const char *peri_wakesrc_str[6] = {
+	[0] = " (PERI_WAKEUP_AP_CTRL_B)",
+	[1] = " (SSUSB_WAKEUP_EVENT_B_0)",
+	[2] = " (SSUSB_WAKEUP_EVENT_B_1)",
+	[3] = " (AUDIO_IRQ_MCU_B)",
+	[4] = " (AP_UART_WAKEUP_EVENT)",
+	[5] = " (UART2SPM_IRQ_B)",
+};
+
 static char *pwr_ctrl_str[PW_MAX_COUNT] = {
 	[PW_PCM_FLAGS] = "pcm_flags",
 	[PW_PCM_FLAGS_CUST] = "pcm_flags_cust",
@@ -95,6 +104,8 @@ static char *pwr_ctrl_str[PW_MAX_COUNT] = {
 	[PW_TIMER_VAL_RAMP_EN_SEC] = "timer_val_ramp_en_sec",
 	[PW_WAKE_SRC] = "wake_src",
 	[PW_WAKE_SRC_CUST] = "wake_src_cust",
+	[PW_PERI_WAKE_SRC] = "peri_wake_src",
+	[PW_PERI_WAKE_SRC_CUST] = "peri_wake_src_cust",
 	[PW_WAKELOCK_TIMER_VAL] = "wakelock_timer_val",
 	[PW_WDT_DISABLE] = "wdt_disable",
 
@@ -747,6 +758,18 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 						strlen(wakesrc_str[i]));
 
 				wr = WR_WAKE_SRC;
+			}
+		}
+		if (wakesrc->r12 & R12_PERI_MERGED_B) {
+			unsigned int peri_wakeup_ap_mon = (unsigned int)lpm_smc_spm_dbg(
+								MT_SPM_DBG_SMC_PERI_WAKEUP_STA,
+								MT_LPM_SMC_ACT_GET, 0, 0);
+			for (i = 0; i < 6; i++) {
+				/* low active */
+				if (!(peri_wakeup_ap_mon & (1U << i))
+					&& IS_LOGBUF(buf, peri_wakesrc_str[i]))
+					strncat(buf, peri_wakesrc_str[i],
+						strlen(peri_wakesrc_str[i]));
 			}
 		}
 		WARN_ON(strlen(buf) >= LOG_BUF_SIZE);
