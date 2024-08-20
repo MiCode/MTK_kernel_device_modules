@@ -3054,7 +3054,8 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		temp_peak_bw *= mtk_get_format_bpp(fmt);
 
 		/* COMPRESS ratio */
-		if (pending->prop_val[PLANE_PROP_COMPRESS]) {
+		if (priv->data->mmsys_id != MMSYS_MT6877 &&
+			pending->prop_val[PLANE_PROP_COMPRESS]) {
 			temp_bw *= 7;
 			do_div(temp_bw, 10);
 		}
