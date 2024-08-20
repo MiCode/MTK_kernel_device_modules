@@ -1709,12 +1709,9 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 		image_pos_y = spr->partial_roi_y - overhead_v;
 		output_pos_y = spr->partial_roi_y - overhead_v + comp_overhead_v;
 	}
-	DDPMSG("%s %d panel height:%d panel width:%d\n",
-		__func__, __LINE__, cfg->h, cfg->w);
 
 	spr_params = &comp->mtk_crtc->panel_ext->params->spr_params;
 	//SPR type&size config
-	DDPMSG("%s %d: MTK SPR IP\n", __func__, __LINE__);
 	offset = spr->data->mtk_spr_ip_addr_offset;
 	//input size config
 	mtk_ddp_write_relaxed(comp, 0, //position based on input
