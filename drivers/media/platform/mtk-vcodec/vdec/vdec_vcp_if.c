@@ -679,7 +679,7 @@ int vcp_dec_ipi_handler(void *arg)
 	struct vdec_inst *inst = NULL;
 	struct share_obj *obj;
 	int ret = 0;
-	struct mtk_vcodec_msg_node *mq_node;
+	struct mtk_vcodec_msg_node *mq_node = NULL;
 	struct vdec_vcu_ipi_mem_op *shem_msg;
 	unsigned long flags;
 	struct list_head *p, *q;
@@ -701,6 +701,10 @@ int vcp_dec_ipi_handler(void *arg)
 	sched_setscheduler(current, SCHED_FIFO, &sched_p);
 
 	do {
+		if (mq_node != NULL)
+			vdec_vcp_free_mq_node(dev, mq_node);
+
+		mq_node = NULL;
 		ret = wait_event_interruptible(dev->mq.wq, atomic_read(&dev->mq.cnt) > 0);
 		if (ret < 0) {
 			mtk_v4l2_debug(0, "wait event return %d (suspending %d)\n",
@@ -720,7 +724,6 @@ int vcp_dec_ipi_handler(void *arg)
 		if (msg == NULL || (struct vdec_vcu_inst *)msg->ap_inst_addr == NULL) {
 			mtk_v4l2_err(" msg invalid %lx (msg 0x%x)\n",
 				(unsigned long)msg, msg ? msg->msg_id : 0);
-			vdec_vcp_free_mq_node(dev, mq_node);
 			continue;
 		}
 
@@ -755,7 +758,6 @@ int vcp_dec_ipi_handler(void *arg)
 					if (ret != IPI_ACTION_DONE)
 						mtk_v4l2_err("mtk_ipi_send (msg_id %X) fail %d", msg->msg_id, ret);
 				}
-				vdec_vcp_free_mq_node(dev, mq_node);
 				continue;
 			}
 		}
@@ -786,7 +788,6 @@ int vcp_dec_ipi_handler(void *arg)
 				(unsigned long)vcu, (unsigned long)ctx, (unsigned long)inst);
 			mtk_vcodec_dump_ctx_list(dev, 0);
 			mutex_unlock(&dev->ctx_mutex);
-			vdec_vcp_free_mq_node(dev, mq_node);
 			continue;
 		}
 		mutex_unlock(&dev->ctx_mutex);
@@ -795,7 +796,6 @@ int vcp_dec_ipi_handler(void *arg)
 			mtk_vcodec_err(vcu, " msg msg_id %X vcu abort %d %d\n",
 				msg->msg_id, vcu->daemon_pid, vcp_cmd_ex(VDEC_FEATURE_ID, VCP_GET_GEN, "vdec_srv"));
 			mutex_unlock(&ctx->ipi_use_lock);
-			vdec_vcp_free_mq_node(dev, mq_node);
 			continue;
 		}
 		mtk_v4l2_debug(2, "[%d] pop msg_id %X ml_cnt %d, vcu %lx, status %d", vcu->ctx->id,
@@ -1002,7 +1002,6 @@ return_vdec_ipi_ack:
 		}
 		mtk_vcodec_debug(vcu, "- id=%X", msg->msg_id);
 		mutex_unlock(&ctx->ipi_use_lock);
-		vdec_vcp_free_mq_node(dev, mq_node);
 	} while (!kthread_should_stop());
 	mtk_v4l2_debug_leave();
 
