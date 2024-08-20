@@ -5428,7 +5428,7 @@ int bdg_common_init(enum DISP_BDG_ENUM module,
 	TX_CMDQ_REG[0] = (struct DSI_TX_CMDQ_REGS *)(DISPSYS_BDG_TX_DSI0_BASE + 0xd00);
 
 	/* open 26m clk */
-	if (priv->data->mmsys_id == MMSYS_MT6768) {
+	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6833) {
 #if IS_ENABLED(CONFIG_MTK_MT6382_BDG)
 		clkbuf_xo_ctrl("SET_XO_MODE", clk_xo_id, 0);
 		clkbuf_xo_ctrl("SET_XO_EN_M", clk_xo_id, 1);
@@ -5569,7 +5569,7 @@ int bdg_common_deinit(enum DISP_BDG_ENUM module, void *cmdq, struct mtk_dsi *dsi
 	set_mtcmos_off(cmdq);
 	set_LDO_off(cmdq);
 	need_6382_init = 1;
-	if (priv->data->mmsys_id == MMSYS_MT6768) {
+	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6833) {
 #if IS_ENABLED(CONFIG_MTK_MT6382_BDG)
 		clkbuf_xo_ctrl("SET_XO_EN_M", clk_xo_id, 0);
 		clkbuf_xo_ctrl("SET_XO_MODE", clk_xo_id, 0);
