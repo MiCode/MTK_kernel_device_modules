@@ -3868,6 +3868,46 @@ static void mtk_disp_enable_gce_vote(bool enable)
 	dpc_mmp(vlp_vote, MMPROFILE_FLAG_PULSE, dt_mask, enable);
 }
 
+static void mtk_disp_vlp_force_clear(void)
+{
+	u32 val = 0, i = 0;
+
+	if (g_priv->get_sys_status) {
+		g_priv->get_sys_status(SYS_STATE_VLP_VOTE, &val);
+		val &= MTK_DISP_DPC_VLP_MASK;
+	}
+	if (!val) {
+		g_vlp_user_mask &= ~MTK_DISP_DPC_VLP_MASK;
+		return;
+	}
+
+	DPCFUNC("vlp force off,user mask:0x%x, value:0x%x", g_vlp_user_mask, val);
+	writel_relaxed(val, g_priv->sys_va[VLP_BASE] + VLP_DISP_SW_VOTE_CLR);
+	do {
+		writel_relaxed(val, g_priv->sys_va[VLP_BASE] + VLP_DISP_SW_VOTE_CLR);
+		udelay(2);
+
+		if (g_priv->get_sys_status) {
+			g_priv->get_sys_status(SYS_STATE_VLP_VOTE, &val);
+			val &= MTK_DISP_DPC_VLP_MASK;
+		}
+		if (!val)
+			break;
+
+		if (i > 2500) {
+			DPCERR("vlp force off timeout, mask:0x%x", val);
+			g_vlp_user_mask = (g_vlp_user_mask & ~MTK_DISP_DPC_VLP_MASK) | val;
+			return;
+		}
+
+		i++;
+	} while (1);
+
+	g_vlp_user_mask &= ~MTK_DISP_DPC_VLP_MASK;
+	if (dbg_mmp)
+		dpc_mmp(cpu_vote, MMPROFILE_FLAG_PULSE, val, 0xf0ce00ff);
+}
+
 static void mtk_disp_vlp_vote_by_gce_v1(struct cmdq_pkt *pkt, bool vote_set, unsigned int thread)
 {
 	u32 addr = vote_set ? VLP_DISP_SW_VOTE_SET : VLP_DISP_SW_VOTE_CLR;
@@ -3930,6 +3970,11 @@ static void mtk_disp_vlp_vote_by_cpu_v1(unsigned int vote_set, unsigned int thre
 		i++;
 	} while (1);
 
+	if (vote_set == VOTE_SET)
+		g_vlp_user_mask |= BIT(thread);
+	else
+		g_vlp_user_mask &= ~BIT(thread);
+
 	irq_log_store();
 	/* check voter only, later will use another API to power on mminfra */
 	if (dbg_mmp)
@@ -3980,7 +4025,6 @@ static int dpc_vidle_power_keep_v1(const enum mtk_vidle_voter_user _user)
 				return -1;
 			}
 
-			g_vlp_user_mask |= BIT(user);
 			if (BIT(user) & dbg_dpc_pm) {
 				DPCFUNC("vlp_user-%d, mask:0x%x, only:%u",
 					user, g_vlp_user_mask, vote_only);
@@ -4008,8 +4052,9 @@ static void dpc_vidle_power_release_v1(const enum mtk_vidle_voter_user _user)
 
 	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
 	if (unlikely(g_priv->skip_force_power)) {
+		DPCFUNC("user:%u skip release power, user mask:0x%x",
+			user, g_vlp_user_mask);
 		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
-		DPCFUNC("user %u skip release power", user);
 		return;
 	}
 
@@ -4018,12 +4063,6 @@ static void dpc_vidle_power_release_v1(const enum mtk_vidle_voter_user _user)
 	irq_log_store();
 
 	if (atomic_read(&g_vlp_user_cnt[user]) == 0) {
-		if(g_vlp_user_mask & BIT(user)) {
-			DPCFUNC("vlp_user-%u invalid cnt:%u, vote_only:%u, user mask:0x%x",
-				user, atomic_read(&g_vlp_user_cnt[user]),
-				vote_only, g_vlp_user_mask);
-			//WARN_ON(dbg_vlp_backtrace);
-		}
 		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 		return;
 	}
@@ -4035,7 +4074,6 @@ static void dpc_vidle_power_release_v1(const enum mtk_vidle_voter_user _user)
 			dpc_pm_ctrl(false, name);
 		else
 			dpc_pm_ctrl(false, "vlp_user-unknown");
-		g_vlp_user_mask &= ~BIT(user);
 		if (BIT(user) & dbg_dpc_pm) {
 			DPCFUNC("vlp_user-%d, mask:0x%x, vote only:%u",
 				user, g_vlp_user_mask, vote_only);
@@ -4224,7 +4262,7 @@ static void dpc_analysis_v1(void)
 static int dpc_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
 {
 	unsigned long flags;
-	u32 force_release = 0;
+	u32 force_release = 0, i = 0;
 
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
@@ -4242,11 +4280,18 @@ static int dpc_pm_notifier(struct notifier_block *notifier, unsigned long pm_eve
 						atomic_read(&g_priv->pd_dev->power.usage_count),
 						force_release);
 			}
-			g_vlp_user_mask = 0;
+		}
+		mtk_disp_vlp_force_clear();
+		if (unlikely(force_release)) {
+			DPCFUNC("dpc_dev dpc_pm unbalanced(%u)", force_release);
+			for (i = 0; i < 32; i++) {
+				if (atomic_read(&g_vlp_user_cnt[i])) {
+					DPCFUNC("vlp user-%u, cnt:%d", i, atomic_read(&g_vlp_user_cnt[i]));
+					atomic_set(&g_vlp_user_cnt[i], 0);
+				}
+			}
 		}
 		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
-		if (unlikely(force_release))
-			DPCFUNC("dpc_dev dpc_pm unbalanced(%u)", force_release);
 		dpc_mmp(skip_vote, MMPROFILE_FLAG_PULSE, U32_MAX, 1);
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:

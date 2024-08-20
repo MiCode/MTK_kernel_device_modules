@@ -1356,12 +1356,13 @@ int mtk_disp_hrt_cond_change_cb(struct notifier_block *nb, unsigned long value,
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(dev_crtc);
 	unsigned int hrt_idx;
+	bool locked = true;
 
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 
 	/* No need to repaint when display suspend */
 	if (!mtk_crtc->enabled) {
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 
 		return 0;
 	}
@@ -1373,26 +1374,26 @@ int mtk_disp_hrt_cond_change_cb(struct notifier_block *nb, unsigned long value,
 		DDPINFO("CAM trigger repaint\n");
 		hrt_idx = _layering_rule_get_hrt_idx(drm_crtc_index(dev_crtc));
 		hrt_idx++;
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 		mtk_disp_hrt_repaint_blocking(hrt_idx);
 		mtk_disp_mmqos_bw_repaint(dev_crtc->dev->dev_private);
-		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+		locked = false;
 		break;
 	case BW_THROTTLE_END: /* CAM off */
 		DDPMSG("DISP BW Throttle end\n");
 		/* TODO: switch DC */
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 
 		/* bw repaint might hold all crtc's mutex, need unlock current mutex first */
 		mtk_disp_mmqos_bw_repaint(dev_crtc->dev->dev_private);
-
-		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+		locked = false;
 		break;
 	default:
 		break;
 	}
 
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+	if (locked)
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 
 	return 0;
 }
