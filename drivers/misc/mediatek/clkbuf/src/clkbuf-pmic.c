@@ -601,9 +601,6 @@ static int set_capid_lv1(void *data, int capid)
 
 	hw = pd->hw;
 
-	reg = com_regs->_cofst_fpm;
-	ret |= pmic_write(&hw, &reg, 0);
-
 	reg = com_regs->_cdac_fpm;
 	ret |= pmic_write(&hw, &reg, capid);
 
