@@ -106,12 +106,18 @@ struct vhost_mbraink {
 };
 
 struct vhost_mbraink *vmbraink;
+struct mutex mbraink_using_mutex;
 
 static int vhost_send_msg_to_client(const void *data_buf)
 {
 	struct event_buffer_entry *evt;
 	struct llist_node *node;
 	ssize_t length = 0;
+
+	if (vmbraink == NULL) {
+		pr_info("%s ERROR: vmbraink is not initialized\n", __func__);
+		return -EINVAL;
+	}
 
 	spin_lock(&vmbraink->evt_lock);
 	node = llist_del_first(&vmbraink->evt_pool);
@@ -311,6 +317,8 @@ static int vhost_mbraink_open(struct inode *inode, struct file *file)
 	struct vhost_virtqueue **vqs;
 	int ret = 0;
 
+	mutex_lock(&mbraink_using_mutex);
+
 	vmbraink = kvzalloc(sizeof(*vmbraink), GFP_KERNEL);
 	if (!vmbraink) {
 		ret = -ENOMEM;
@@ -339,10 +347,13 @@ static int vhost_mbraink_open(struct inode *inode, struct file *file)
 			VHOST_MBRAINK_PKT_WEIGHT, VHOST_MBRAINK_WEIGHT, true, NULL);
 	file->private_data = vmbraink;
 
+	mutex_unlock(&mbraink_using_mutex);
+
 	return ret;
 out_mbraink:
 	kvfree(vmbraink);
 out:
+	mutex_unlock(&mbraink_using_mutex);
 	return ret;
 }
 
@@ -350,11 +361,16 @@ static int vhost_mbraink_release(struct inode *inode, struct file *f)
 {
 	struct vhost_mbraink *mbraink = f->private_data;
 
+	mutex_lock(&mbraink_using_mutex);
+
 	vhost_dev_stop(&mbraink->dev);
 	vhost_dev_cleanup(&mbraink->dev);
 	kfree(mbraink->dev.vqs);
 	kfree(mbraink->evt_buf);
 	kvfree(mbraink);
+	vmbraink = NULL;
+
+	mutex_unlock(&mbraink_using_mutex);
 
 	return 0;
 }
@@ -471,6 +487,8 @@ static struct miscdevice vhost_mbraink_misc = {
 
 int vhost_mbraink_init(void)
 {
+	mutex_init(&mbraink_using_mutex);
+	vmbraink = NULL;
 	return misc_register(&vhost_mbraink_misc);
 }
 
@@ -507,7 +525,13 @@ int h2c_send_msg(u32 cmdType, void *cmdData)
 		pr_info("%s: invalid send byte size %zu.\n", __func__, sptr);
 		ret = -1;
 	} else {
-		ret = (vhost_send_msg_to_client(data_buf) <= 0) ? -1 : 0;
+		if (mutex_trylock(&mbraink_using_mutex)) {
+			ret = (vhost_send_msg_to_client(data_buf) <= 0) ? -1 : 0;
+			mutex_unlock(&mbraink_using_mutex);
+		} else {
+			ret = -1;
+			pr_info("%s: mutex lock failed.\n", __func__);
+		}
 	}
 
 err:
