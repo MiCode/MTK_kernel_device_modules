@@ -17,17 +17,6 @@
 
 #include "mtk_thermal_typedefs.h"
 
-/* TODO: remove this! */
-#define GPUFREQ_NOT_READY
-#define CFG_THERM_LVTS				(1)
-
-
-struct mt_gpufreq_power_table_info {
-	unsigned int gpufreq_khz;
-	unsigned int gpufreq_volt;
-	unsigned int gpufreq_power;
-};
-
 /*=============================================================
  * LVTS SW Configs
  *=============================================================
@@ -46,8 +35,14 @@ struct mt_gpufreq_power_table_info {
 #else
 #define	CFG_LVTS_DOMINATOR			(0)
 #define	LVTS_THERMAL_CONTROLLER_HW_FILTER	(0)
-#define	LVTS_DEVICE_AUTO_RCK			(1)
+#define	LVTS_DEVICE_AUTO_RCK			(0)
 #endif
+
+struct mt_gpufreq_power_table_info {
+	unsigned int gpufreq_khz;
+	unsigned int gpufreq_volt;
+	unsigned int gpufreq_power;
+};
 
 /*
  *There is no idle code in kernel since mt6885(big sw).

@@ -222,14 +222,14 @@ include $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v1/src/Makefile
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v2_legacy/include
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v1/inc
 
-#thermal_monitor-y += v1/src/mtk_ts_6359vcore.o
-#thermal_monitor-y += v1/src/mtk_ts_6359vproc.o
-#thermal_monitor-y += v1/src/mtk_ts_6359vgpu.o
-#thermal_monitor-y += v1/src/mtk_ts_6359tsx.o
-#thermal_monitor-y += v1/src/mtk_ts_6359dcxo.o
+thermal_monitor-y += v1/src/mtk_ts_6359vcore.o
+thermal_monitor-y += v1/src/mtk_ts_6359vproc.o
+thermal_monitor-y += v1/src/mtk_ts_6359vgpu.o
+thermal_monitor-y += v1/src/mtk_ts_6359tsx.o
+thermal_monitor-y += v1/src/mtk_ts_6359dcxo.o
 thermal_monitor-y += v1/mtk_thermal_monitor.o
 thermal_monitor-y += common/thermal_zones/mtk_ts_imgsensor.o
-#thermal_monitor-y += common/thermal_zones/mtk_ts_btsnrpa.o
+thermal_monitor-y += common/thermal_zones/mtk_ts_btsnrpa.o
 thermal_monitor-y += common/thermal_zones/mtk_ts_dctm.o
 thermal_monitor-y += common/coolers/mtk_cooler_bcct_v1.o
 ifeq ($(CONFIG_MTK_THERMAL_PA_VIA_ATCMD),y)

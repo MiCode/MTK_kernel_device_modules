@@ -2047,9 +2047,10 @@ static int __init thermal_monitor_init(void)
 		mtk_thermal_platform_init();
 		mtk_cooler_shutdown_init();
 #if IS_ENABLED(CONFIG_LEDS_MTK)
-		//mtk_cooler_backlight_init();
+		mtk_cooler_backlight_init();
 #endif
 		mtk_cooler_kshutdown_init();
+	//	mtk_thermal_ipi_init();
 		mtk_cooler_atm_init();
 		mtk_cooler_dtm_init();
 		mtk_cooler_bcct_init();
@@ -2066,24 +2067,21 @@ static int __init thermal_monitor_init(void)
 #endif
 		tscpu_init();
 		mtktspmic_init();
-		//mt6358tsbuck1_init();
-		//mt6358tsbuck2_init();
-		//mt6358tsbuck3_init();
-//mt6359vcore_init();
-//mt6359vproc_init();
-//mt6359vgpu_init();
-//mt6359tsx_init();
-//mt6359dcxo_init();
-//mtkts_btsnrpa_init();
+		mt6359vcore_init();
+		mt6359vproc_init();
+		mt6359vgpu_init();
+		mt6359tsx_init();
+		mt6359dcxo_init();
+		mtkts_btsnrpa_init();
 		mtktsbattery_init();
 		mtkts_bts_init();
 		mtkts_btsmdpa_init();
 		mtktspa_init();
 		mtk_mdm_txpwr_init();
 		mtktscharger_init();
-		//mtk_imgs_init();
+		mtk_imgs_init();
 		mtkts_dctm_init();
-		//wmt_tm_init();
+		wmt_tm_init();
 		tsallts_init();
 		return 0;
 }
@@ -2094,9 +2092,10 @@ static void __exit thermal_monitor_exit(void)
 	mtk_thermal_platform_exit();
 	mtk_cooler_shutdown_exit();
 #if IS_ENABLED(CONFIG_LEDS_MTK)
-	//mtk_cooler_backlight_exit();
+	mtk_cooler_backlight_exit();
 #endif
 	mtk_cooler_kshutdown_exit();
+	//mtk_thermal_ipi_exit();
 	mtk_cooler_atm_exit();
 	mtk_cooler_dtm_exit();
 	mtk_cooler_bcct_exit();
@@ -2109,23 +2108,20 @@ static void __exit thermal_monitor_exit(void)
 #endif
 	tscpu_exit();
 	mtktspmic_exit();
-	//mt6358tsbuck1_exit();
-	//mt6358tsbuck2_exit();
-	//mt6358tsbuck3_exit();
-//mt6359vcore_exit();
-//mt6359vproc_exit();
-//mt6359vgpu_exit();
-//mt6359tsx_exit();
-//mt6359dcxo_exit();
-//mtkts_btsnrpa_exit();
+	mt6359vcore_exit();
+	mt6359vproc_exit();
+	mt6359vgpu_exit();
+	mt6359tsx_exit();
+	mt6359dcxo_exit();
+	mtkts_btsnrpa_exit();
 	mtktsbattery_exit();
 	mtkts_bts_exit();
 	mtkts_btsmdpa_exit();
 	mtk_mdm_txpwr_exit();
 	mtktscharger_exit();
-	//mtk_imgs_exit();
+	mtk_imgs_exit();
 	mtkts_dctm_exit();
-	//wmt_tm_deinit();
+	wmt_tm_deinit();
 	tsallts_exit();
 }
 

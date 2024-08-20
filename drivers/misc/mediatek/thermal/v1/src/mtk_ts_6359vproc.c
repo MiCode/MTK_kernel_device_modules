@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2021 MediaTek Inc.
+ * Copyright (c) 2019 MediaTek Inc.
  */
 #include <linux/version.h>
 #include <linux/kernel.h>
@@ -17,8 +17,7 @@
 #include "mt-plat/mtk_thermal_monitor.h"
 #include "mach/mtk_thermal.h"
 #include "mtk_thermal_timer.h"
-//#include <mt-plat/upmu_common.h>
-//#include <mt-plat/upmu_common.h>
+// #include <mt-plat/upmu_common.h>
 #include <linux/mfd/mt6359p/registers.h>
 #include <linux/mfd/mt6397/core.h>
 #include <tspmic_settings.h>
@@ -31,7 +30,7 @@
  */
 static kuid_t uid = KUIDT_INIT(0);
 static kgid_t gid = KGIDT_INIT(1000);
-static DEFINE_SEMAPHORE(sem_mutex);
+static DEFINE_SEMAPHORE(sem_mutex, 1);
 static int isTimerCancelled;
 
 /**
@@ -56,6 +55,7 @@ static struct thermal_cooling_device *cl_dev_sysrst;
 static int kernelmode;
 
 static int g_THERMAL_TRIP[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static struct thermal_trip trips[10];
 
 static int num_trip = 1;
 static char g_bind0[20] = { 0 };
@@ -71,8 +71,8 @@ static char g_bind9[20] = { 0 };
 
 static long mt6359vproc_cur_temp;
 /*
- *static long mt6359vproc_start_temp;
- *static long mt6359vproc_end_temp;
+ *static long int mt6359vproc_start_temp;
+ *static long int mt6359vproc_end_temp;
  */
 /*=============================================================*/
 
@@ -188,25 +188,10 @@ static int mt6359vproc_unbind(struct thermal_zone_device *thermal,
 	return 0;
 }
 
-
 static int mt6359vproc_change_mode
 (struct thermal_zone_device *thermal, enum thermal_device_mode mode)
 {
 	kernelmode = mode;
-	return 0;
-}
-
-static int mt6359vproc_get_trip_type
-(struct thermal_zone_device *thermal, int trip, enum thermal_trip_type *type)
-{
-	*type = g_THERMAL_TRIP[trip];
-	return 0;
-}
-
-static int mt6359vproc_get_trip_temp
-(struct thermal_zone_device *thermal, int trip, int *temp)
-{
-	*temp = trip_temp[trip];
 	return 0;
 }
 
@@ -223,8 +208,6 @@ static struct thermal_zone_device_ops mt6359vproc_dev_ops = {
 	.unbind = mt6359vproc_unbind,
 	.get_temp = mt6359vproc_get_temp,
 	.change_mode = mt6359vproc_change_mode,
-	.get_trip_type = mt6359vproc_get_trip_type,
-	.get_trip_temp = mt6359vproc_get_trip_temp,
 	.get_crit_temp = mt6359vproc_get_crit_temp,
 };
 
@@ -251,10 +234,6 @@ static int mt6359vproc_sysrst_set_cur_state
 		mtktspmic_info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 		mtktspmic_info("*****************************************");
 		mtktspmic_info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-
-	/* temp marked off to check temperature correctness. */
-	// *(unsigned int *)0x0 = 0xdead;
-	/* To trigger data abort to reset the system for thermal protection. */
 	}
 	return 0;
 }
@@ -456,6 +435,12 @@ static ssize_t mt6359vproc_write
 		mtktspmic_dprintk("[%s] mt6359vproc_register_thermal\n",
 			__func__);
 
+
+		for (i = 0; i < num_trip; i++) {
+			trips[i].temperature = trip_temp[i];
+			trips[i].type = g_THERMAL_TRIP[i];
+		}
+
 		mt6359vproc_register_thermal();
 		up(&sem_mutex);
 		kfree(ptr_mt6359vproc_data);
@@ -514,10 +499,9 @@ static int mt6359vproc_register_cooler(void)
 
 static int mt6359vproc_register_thermal(void)
 {
-
 	/* trips : trip 0~2 */
 	thz_dev = mtk_thermal_zone_device_register(
-			"mt6359vproc", num_trip, NULL,
+			"mt6359vproc", trips, num_trip, NULL,
 			&mt6359vproc_dev_ops, 0, 0, 0, interval * 1000);
 
 	return 0;
@@ -533,7 +517,6 @@ static void mt6359vproc_unregister_cooler(void)
 
 static void mt6359vproc_unregister_thermal(void)
 {
-
 	if (thz_dev) {
 		mtk_thermal_zone_device_unregister(thz_dev);
 		thz_dev = NULL;
@@ -552,13 +535,13 @@ static const struct proc_ops mt6359vproc_fops = {
 	.proc_write = mt6359vproc_write,
 	.proc_release = single_release,
 };
+
 static int mt6359vproc_probe(struct platform_device *pdev)
 {
 	int err = 0;
 
 	struct proc_dir_entry *entry = NULL;
 	struct proc_dir_entry *mt6359vproc_dir = NULL;
-
 
 	err = mt6359vproc_register_cooler();
 	if (err)
@@ -581,6 +564,7 @@ static int mt6359vproc_probe(struct platform_device *pdev)
 
 	return 0;
 }
+
 static const struct of_device_id mt6359vproc_of_match[] = {
 		{.compatible = "mediatek,mt6359vproc",},
 		{},
@@ -593,17 +577,19 @@ static struct platform_driver mt6359vproc_driver = {
 			.of_match_table = mt6359vproc_of_match,
 		},
 };
+
 int mt6359vproc_init(void)
 {
 	platform_driver_register(&mt6359vproc_driver);
 	return 0;
 }
-void  mt6359vproc_exit(void)
+
+void mt6359vproc_exit(void)
 {
 	mt6359vproc_unregister_thermal();
 	mt6359vproc_unregister_cooler();
 	mtkTTimer_unregister("mt6359vproc");
 	platform_driver_unregister(&mt6359vproc_driver);
 }
-//module_init(mt6359vproc_init);
-//module_exit(mt6359vproc_exit);
+// module_init(mt6359vproc_init);
+// module_exit(mt6359vproc_exit);

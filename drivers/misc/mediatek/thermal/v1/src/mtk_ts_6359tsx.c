@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2021 MediaTek Inc.
+ * Copyright (c) 2019 MediaTek Inc.
  */
-
 #include <linux/version.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -18,8 +17,9 @@
 #include "mt-plat/mtk_thermal_monitor.h"
 #include "mach/mtk_thermal.h"
 #include "mtk_thermal_timer.h"
-//#include <mt-plat/upmu_common.h>
-//#include <mt-plat/upmu_common.h>
+// #include <mt-plat/upmu_common.h>
+#include <linux/mfd/mt6359p/registers.h>
+#include <linux/mfd/mt6397/core.h>
 #include <linux/mfd/mt6359p/registers.h>
 #include <linux/mfd/mt6397/core.h>
 #include <tspmic_settings.h>
@@ -32,7 +32,7 @@
  */
 static kuid_t uid = KUIDT_INIT(0);
 static kgid_t gid = KGIDT_INIT(1000);
-static DEFINE_SEMAPHORE(sem_mutex);
+static DEFINE_SEMAPHORE(sem_mutex, 1);
 static int isTimerCancelled;
 
 /**
@@ -57,6 +57,7 @@ static struct thermal_cooling_device *cl_dev_sysrst;
 static int kernelmode;
 
 static int g_THERMAL_TRIP[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static struct thermal_trip trips[10];
 
 static int num_trip = 1;
 static char g_bind0[20] = { 0 };
@@ -195,19 +196,6 @@ static int mt6359tsx_change_mode
 	kernelmode = mode;
 	return 0;
 }
-static int mt6359tsx_get_trip_type
-(struct thermal_zone_device *thermal, int trip, enum thermal_trip_type *type)
-{
-	*type = g_THERMAL_TRIP[trip];
-	return 0;
-}
-
-static int mt6359tsx_get_trip_temp
-(struct thermal_zone_device *thermal, int trip, int *temp)
-{
-	*temp = trip_temp[trip];
-	return 0;
-}
 
 static int mt6359tsx_get_crit_temp
 (struct thermal_zone_device *thermal, int *temperature)
@@ -221,10 +209,7 @@ static struct thermal_zone_device_ops mt6359tsx_dev_ops = {
 	.bind = mt6359tsx_bind,
 	.unbind = mt6359tsx_unbind,
 	.get_temp = mt6359tsx_get_temp,
-
 	.change_mode = mt6359tsx_change_mode,
-	.get_trip_type = mt6359tsx_get_trip_type,
-	.get_trip_temp = mt6359tsx_get_trip_temp,
 	.get_crit_temp = mt6359tsx_get_crit_temp,
 };
 
@@ -251,10 +236,6 @@ static int mt6359tsx_sysrst_set_cur_state
 		mtktspmic_info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 		mtktspmic_info("*****************************************");
 		mtktspmic_info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-
-	/* temp marked off to check temperature correctness. */
-	// *(unsigned int *)0x0 = 0xdead;
-	/* To trigger data abort to reset the system for thermal protection. */
 	}
 	return 0;
 }
@@ -373,7 +354,7 @@ static ssize_t mt6359tsx_write
 		mt6359tsx_unregister_thermal();
 
 		if (num_trip < 0 || num_trip > 10) {
-		#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+			#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 			aee_kernel_warning_api(__FILE__, __LINE__,
 					DB_OPT_DEFAULT, "mt6359tsx_write",
 					"Bad argument");
@@ -449,6 +430,10 @@ static ssize_t mt6359tsx_write
 		mtktspmic_dprintk(
 			"[%s] mt6359tsx_register_thermal\n", __func__);
 
+		for (i = 0; i < num_trip; i++) {
+			trips[i].temperature = trip_temp[i];
+			trips[i].type = g_THERMAL_TRIP[i];
+		}
 		mt6359tsx_register_thermal();
 		up(&sem_mutex);
 		kfree(ptr_mt6359tsx_data);
@@ -508,10 +493,9 @@ static int mt6359tsx_register_cooler(void)
 
 static int mt6359tsx_register_thermal(void)
 {
-
 	/* trips : trip 0~2 */
 	thz_dev = mtk_thermal_zone_device_register(
-			"mt6359tsx", num_trip, NULL,
+			"mt6359tsx", trips, num_trip, NULL,
 			&mt6359tsx_dev_ops, 0, 0, 0, interval * 1000);
 
 	return 0;
@@ -545,6 +529,7 @@ static const struct proc_ops mt6359tsx_fops = {
 	.proc_write = mt6359tsx_write,
 	.proc_release = single_release,
 };
+
 static int mt6359tsx_probe(struct platform_device *pdev)
 {
 	int err = 0;
@@ -573,6 +558,7 @@ static int mt6359tsx_probe(struct platform_device *pdev)
 
 	return 0;
 }
+
 static const struct of_device_id mt6359tsx_of_match[] = {
 		{.compatible = "mediatek,mt6359tsx",},
 		{},
@@ -585,11 +571,13 @@ static struct platform_driver mt6359tsx_driver = {
 			.of_match_table = mt6359tsx_of_match,
 		},
 };
+
 int mt6359tsx_init(void)
 {
 	platform_driver_register(&mt6359tsx_driver);
 	return 0;
 }
+
 void mt6359tsx_exit(void)
 {
 	mt6359tsx_unregister_thermal();
@@ -597,5 +585,5 @@ void mt6359tsx_exit(void)
 	mtkTTimer_unregister("mt6359tsx");
 	platform_driver_unregister(&mt6359tsx_driver);
 }
-//module_init(mt6359tsx_init);
-//module_exit(mt6359tsx_exit);
+// module_init(mt6359tsx_init);
+// module_exit(mt6359tsx_exit);
