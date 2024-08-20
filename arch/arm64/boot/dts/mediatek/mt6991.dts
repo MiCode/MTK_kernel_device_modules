@@ -107,6 +107,7 @@
 			outproc9 = &disp_ovl1_outproc3;
 			outproc10 = &disp_ovl1_outproc4;
 			outproc11 = &disp_ovl1_outproc5;
+			splitter0 = &disp1_splitter0;
 			disp-dvo0 = &disp_dvo0;
 			dsi0 = &dsi0;
 			dsi1 = &dsi1;
@@ -7111,6 +7112,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					&mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "mml_dma", "mml_dma_stash";
 			mmqos-supply = <&mmqos>;
+		};
+
+		disp1_splitter0: disp1-splitter0@32550000 {
+			compatible = "mediatek,disp1_splitter0", "mediatek,mt6991-disp-splitter";
+			reg = <0 0x32550000 0 0x1000>;
+			clocks = <&dispsys1_config_clk CLK_MM1_DISP_SPLITTER0_DISP>;
+			status = "disabled";
 		};
 
 		mml0_birsz0: mml0-birsz0@3e080000 {
