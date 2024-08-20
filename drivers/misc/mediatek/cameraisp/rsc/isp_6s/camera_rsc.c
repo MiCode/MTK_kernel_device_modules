@@ -3624,17 +3624,19 @@ static int rsc_dump_read(struct seq_file *m, void *v)
 {
 	int i, j;
 
-	spin_lock(&(RSCInfo.SpinLockRSC));
+	spin_lock(&(RSCInfo.SpinLockRSCRef));
 	if (RSCInfo.UserCount <= 0) {
-		spin_unlock(&(RSCInfo.SpinLockRSC));
+		spin_unlock(&(RSCInfo.SpinLockRSCRef));
 		return 0;
 	}
+	spin_unlock(&(RSCInfo.SpinLockRSCRef));
 
+	mutex_lock(&gRscClkMutex);
 	if (g_u4EnableClockCount == 0) {
-		spin_unlock(&(RSCInfo.SpinLockRSC));
+		mutex_unlock(&gRscClkMutex);
 		return 0;
 	}
-	spin_unlock(&(RSCInfo.SpinLockRSC));
+	mutex_unlock(&gRscClkMutex);
 
 	seq_puts(m, "\n============ rsc dump register============\n");
 	seq_puts(m, "RSC Config Info\n");
@@ -3725,17 +3727,19 @@ static int rsc_reg_read(struct seq_file *m, void *v)
 {
 	unsigned int i;
 
-	spin_lock(&(RSCInfo.SpinLockRSC));
+	spin_lock(&(RSCInfo.SpinLockRSCRef));
 	if (RSCInfo.UserCount <= 0) {
-		spin_unlock(&(RSCInfo.SpinLockRSC));
+		spin_unlock(&(RSCInfo.SpinLockRSCRef));
 		return 0;
 	}
+	spin_unlock(&(RSCInfo.SpinLockRSCRef));
 
+	mutex_lock(&gRscClkMutex);
 	if (g_u4EnableClockCount == 0) {
-		spin_unlock(&(RSCInfo.SpinLockRSC));
+		mutex_unlock(&gRscClkMutex);
 		return 0;
 	}
-	spin_unlock(&(RSCInfo.SpinLockRSC));
+	mutex_unlock(&gRscClkMutex);
 
 	seq_puts(m, "======== read rsc register ========\n");
 
