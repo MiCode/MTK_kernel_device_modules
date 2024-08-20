@@ -95,18 +95,20 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 			g_shared_status->cur_regulator_vsram_stack);
 
 	seq_printf(m,
-		"%-16s SegmentID: %d, WorkingOPPNum: %2d, SignedOPPNum: %2d\n",
+		"%-16s SegmentID: %d, WorkingOPPNum: %2d, SignedOPPNum: %2d, DACLow: %6d\n",
 		"[GPU   Segment]",
 		g_shared_status->segment_id,
 		g_shared_status->opp_num_gpu,
-		g_shared_status->signed_opp_num_gpu);
+		g_shared_status->signed_opp_num_gpu,
+		g_shared_status->dac_low_vgpu);
 	if (g_dual_buck)
 		seq_printf(m,
-			"%-16s SegmentID: %d, WorkingOPPNum: %2d, SignedOPPNum: %2d\n",
+			"%-16s SegmentID: %d, WorkingOPPNum: %2d, SignedOPPNum: %2d, DACLow: %6d\n",
 			"[STACK Segment]",
 			g_shared_status->segment_id,
 			g_shared_status->opp_num_stack,
-			g_shared_status->signed_opp_num_stack);
+			g_shared_status->signed_opp_num_stack,
+			g_shared_status->dac_low_vstack);
 
 	seq_printf(m,
 		"%-16s LimitIndex: %2d, Limiter: %2d, Priority: %2d\n",
