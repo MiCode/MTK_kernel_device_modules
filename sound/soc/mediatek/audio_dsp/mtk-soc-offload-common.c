@@ -453,6 +453,15 @@ static int mtk_compr_offload_free(struct snd_soc_component *component,
 		mutex_unlock(&slc_mutex);
 	}
 #endif
+	if (afe_offload_block.state != OFFLOAD_STATE_IDLE) {
+		/* stop hw */
+		mtk_scp_ipi_send(get_dspscene_by_dspdaiid(ID),
+					AUDIO_IPI_MSG_ONLY,
+					AUDIO_IPI_MSG_NEED_ACK,
+					AUDIO_DSP_TASK_STOP, 1,
+					0, NULL);
+	}
+
 	offloadservice_setwriteblocked(false);
 
 	if (dsp)
