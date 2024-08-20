@@ -262,6 +262,7 @@ static int vdec_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 		}
 	}
 
+	inst->vsi->dec_params.queued_frame_buf_count = inst->ctx->dec_params.queued_frame_buf_count;
 	inst->vsi->dec.timestamp = inst->ctx->timestamp;
 	memcpy(&inst->vsi->hdr10plus_buf, bs->hdr10plus_buf, sizeof(struct hdr10plus_info));
 
