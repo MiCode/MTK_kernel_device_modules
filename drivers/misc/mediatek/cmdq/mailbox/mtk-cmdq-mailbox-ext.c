@@ -3856,6 +3856,12 @@ void cmdq_mbox_disable(void *chan)
 		clk_disable_unprepare(cmdq->clock_timer);
 		clk_disable_unprepare(cmdq->clock);
 
+		if (cmdq->gce_req_wa) {
+			cmdq_mbox_set_resource_req(GCEM_HWID, true, false, GCE_DDREN_BIT);
+			cmdq_mbox_set_resource_req(GCEM_HWID, true, false, GCE_DDRSRC_BIT);
+			cmdq_mbox_set_resource_req(GCEM_HWID, true, false, GCE_EMI_BIT);
+			cmdq_mbox_set_resource_req(GCED_HWID, false, false, GCE_DDREN_BIT);
+		}
 		cmdq_mtcmos_by_fast(cmdq, false);
 
 		// power
@@ -3871,12 +3877,6 @@ void cmdq_mbox_disable(void *chan)
 		}
 
 
-		if (cmdq->gce_req_wa) {
-			cmdq_mbox_set_resource_req(GCEM_HWID, true, false, GCE_DDREN_BIT);
-			cmdq_mbox_set_resource_req(GCEM_HWID, true, false, GCE_DDRSRC_BIT);
-			cmdq_mbox_set_resource_req(GCEM_HWID, true, false, GCE_EMI_BIT);
-			cmdq_mbox_set_resource_req(GCED_HWID, false, false, GCE_DDREN_BIT);
-		}
 
 		if (cmdq->fast_mtcmos)
 			cmdq_mtcmos_mminfra_ao(cmdq, false);
