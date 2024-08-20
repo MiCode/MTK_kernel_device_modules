@@ -18,6 +18,13 @@
 #include "mtu3.h"
 #include "mtu3_dr.h"
 
+/* mt8678 port2/3 */
+#define PERI_WK_CTRL4	0x10
+#define WCP2_IS_EN	BIT(0) /* port2/3 en bit */
+
+/* mt6991/mt8678 port1 */
+#define WCP1_IS_EN	BIT(7) /* port1 en bit */
+
 /* mt6886 */
 #define PERI_WK_CTRL3	0x14
 #define UWK_V1_4_CTRL0_MASK	0x1
@@ -61,16 +68,13 @@ enum ssusb_uwk_vers {
 	SSUSB_UWK_V1_3,		/* specific revision 1.03 */
 	SSUSB_UWK_V1_4,		/* specific revision 1.04 */
 	SSUSB_UWK_V1_5,		/* specific revision 1.05 */
+	SSUSB_UWK_V1_6,		/* specific revision 1.06 */
+	SSUSB_UWK_V1_7,		/* specific revision 1.07 */
 };
 
-#define USB2_PORT_SC		0x430
+#define USB2_PORT_SC(x)		(0x420 + 0x10 * (x))
 #define DEV_SPEED_MASK		(0xf << 10)
-#define DEV_UNDEFSPEED(p)	(((p) & DEV_SPEED_MASK) == (0x0 << 10))
-#define DEV_FULLSPEED(p)	(((p) & DEV_SPEED_MASK) == (0x1 << 10))
 #define DEV_LOWSPEED(p)		(((p) & DEV_SPEED_MASK) == (0x2 << 10))
-#define DEV_HIGHSPEED(p)	(((p) & DEV_SPEED_MASK) == (0x3 << 10))
-#define DEV_SUPERSPEED(p)	(((p) & DEV_SPEED_MASK) == (0x4 << 10))
-#define DEV_SUPERSPEEDPLUS(p)	(((p) & DEV_SPEED_MASK) == (0x5 << 10))
 
 /*
  * ip-sleep wakeup mode:
@@ -116,6 +120,16 @@ static void ssusb_wakeup_ip_sleep_set(struct ssusb_mtk *ssusb, bool enable)
 		msk = UWK_V1_5_CTRL2_MASK;
 		val = enable ? msk : 0;
 		break;
+	case SSUSB_UWK_V1_6:
+		reg = ssusb->uwk_reg_base + PERI_WK_CTRL2;
+		msk = WCP1_IS_EN;
+		val = enable ? msk : 0;
+		break;
+	case SSUSB_UWK_V1_7:
+		reg = ssusb->uwk_reg_base + PERI_WK_CTRL4;
+		msk = WCP2_IS_EN;
+		val = enable ? msk : 0;
+		break;
 	case SSUSB_UWK_V2:
 		reg = ssusb->uwk_reg_base + PERI_SSUSB_SPM_CTRL;
 		msk = SSC_IP_SLEEP_EN | SSC_SPM_INT_EN;
@@ -153,30 +167,33 @@ int ssusb_wakeup_of_property_parse(struct ssusb_mtk *ssusb,
 	return PTR_ERR_OR_ZERO(ssusb->uwk);
 }
 
-enum usb_device_speed ssusb_host_get_speed(struct ssusb_mtk *ssusb)
+void ssusb_set_host_low_speed_bypass(struct ssusb_mtk *ssusb)
 {
-	enum usb_device_speed speed = USB_SPEED_UNKNOWN;
 	u32 value;
+	int num_u2p = ssusb->u2_ports;
+	int num_u3p = ssusb->u3_ports;
+	int i;
 
-	if (IS_ERR_OR_NULL(ssusb->host_base))
-		goto unknown;
+	if (!ssusb->ls_slp_quirk || IS_ERR_OR_NULL(ssusb->host_base))
+		return;
 
-	value = readl(ssusb->host_base + USB2_PORT_SC);
+	for (i = 0; i < num_u2p; i++) {
+		if ((0x1 << i) & ssusb->u2p_dis_msk)
+			continue;
 
-	if (DEV_LOWSPEED(value))
-		speed = USB_SPEED_LOW;
-	else if (DEV_FULLSPEED(value))
-		speed = USB_SPEED_FULL;
-	else if (DEV_HIGHSPEED(value))
-		speed = USB_SPEED_HIGH;
-	else if (DEV_SUPERSPEED(value))
-		speed = USB_SPEED_SUPER;
-	else if (DEV_SUPERSPEEDPLUS(value))
-		speed = USB_SPEED_SUPER_PLUS;
+		value = readl(ssusb->host_base + USB2_PORT_SC(num_u3p + i));
 
-	dev_dbg(ssusb->dev, "%s %s\n", __func__, usb_speed_string(speed));
-unknown:
-	return speed;
+		if (DEV_LOWSPEED(value))
+			ssusb->ls_slp_bypass |= (0x1 << i);
+		else
+			ssusb->ls_slp_bypass &= ~(0x1 << i);
+	}
+
+}
+
+void ssusb_clear_host_low_speed_bypass(struct ssusb_mtk *ssusb)
+{
+	ssusb->ls_slp_bypass = 0;
 }
 
 void ssusb_wakeup_set(struct ssusb_mtk *ssusb, bool enable)
@@ -468,6 +485,9 @@ static void ssusb_get_platform_driver(struct ssusb_mtk *ssusb)
 	}
 
 	if (pdev) {
+		if (!ssusb->ls_slp_quirk)
+			return;
+
 		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mac");
 		if (res)
 			ssusb->host_base = devm_ioremap(ssusb->dev, res->start,

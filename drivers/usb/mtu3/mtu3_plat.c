@@ -890,6 +890,9 @@ int ssusb_phy_power_on(struct ssusb_mtk *ssusb)
 	int ret;
 
 	for (i = 0; i < ssusb->num_phys; i++) {
+		if ((0x1 << i) & ssusb->ls_slp_bypass)
+			continue;
+
 		ret = phy_power_on(ssusb->phys[i]);
 		if (ret)
 			goto power_off_phy;
@@ -907,8 +910,12 @@ void ssusb_phy_power_off(struct ssusb_mtk *ssusb)
 {
 	unsigned int i;
 
-	for (i = 0; i < ssusb->num_phys; i++)
+	for (i = 0; i < ssusb->num_phys; i++) {
+		if ((0x1 << i) & ssusb->ls_slp_bypass)
+			continue;
+
 		phy_power_off(ssusb->phys[i]);
+	}
 }
 
 void ssusb_phy_set_mode(struct ssusb_mtk *ssusb, enum phy_mode mode)
@@ -1168,6 +1175,8 @@ get_phy:
 
 	of_property_read_u32(node, "mediatek,utmi-width", &ssusb->utmi_width);
 	ssusb->keep_ao = of_property_read_bool(node, "mediatek,keep-host-on");
+	ssusb->ls_slp_quirk =
+			of_property_read_bool(node, "mediatek,ls-sleep-quirk");
 
 	otg_sx->vbus = devm_regulator_get(dev, "vbus");
 	if (IS_ERR(otg_sx->vbus)) {
@@ -1510,7 +1519,6 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 		return 0;
 
 	ssusb->is_suspended = true;
-	ssusb->host_dev_speed = ssusb_host_get_speed(ssusb);
 
 	if (mtu3_readl(ssusb->mac_base, U3D_USB20_OPSTATE) == OPM_A_WRCON)
 		ssusb->host_dev = false;
@@ -1537,6 +1545,7 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 		break;
 	}
 
+	ssusb_set_host_low_speed_bypass(ssusb);
 	switch (ssusb->dr_mode) {
 	case USB_DR_MODE_PERIPHERAL:
 		ret = ssusb_gadget_suspend(ssusb, msg);
@@ -1574,10 +1583,7 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 		PHY_MODE_SUSPEND_NO_DEV);
 	}
 
-	if (!of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6991-mtu3") ||
-		(ssusb->host_dev_speed != USB_SPEED_LOW)) {
-		ssusb_phy_power_off(ssusb);
-	}
+	ssusb_phy_power_off(ssusb);
 
 	ssusb_set_power_state(ssusb, MTU3_STATE_SUSPEND);
 	clk_bulk_disable_unprepare(BULK_CLKS_CNT, ssusb->clks);
@@ -1586,12 +1592,14 @@ suspend:
 	return 0;
 
 sleep_err:
+	ssusb_clear_host_low_speed_bypass(ssusb);
 	resume_ip_and_ports(ssusb, msg);
 	if (ssusb->is_host) {
 		ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_NONE);
 		ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_HOST);
 	}
 err:
+	ssusb_clear_host_low_speed_bypass(ssusb);
 	ssusb->is_suspended = false;
 	return ret;
 }
@@ -1632,12 +1640,9 @@ static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 		goto clks_err;
 
 	ssusb_set_power_state(ssusb, MTU3_STATE_RESUME);
-	if (!of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6991-mtu3") ||
-		(ssusb->host_dev_speed != USB_SPEED_LOW)) {
-		ret = ssusb_phy_power_on(ssusb);
-		if (ret)
-			goto phy_err;
-	}
+	ret = ssusb_phy_power_on(ssusb);
+	if (ret)
+		goto phy_err;
 
 	if (!ssusb->host_dev) {
 		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6991-mtu3")) {
@@ -1650,6 +1655,7 @@ static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 
 resume:
 	ssusb->is_suspended = false;
+	ssusb_clear_host_low_speed_bypass(ssusb);
 	return ret;
 phy_err:
 	clk_bulk_disable_unprepare(BULK_CLKS_CNT, ssusb->clks);
