@@ -22858,9 +22858,11 @@ void mtk_crtc_mml_racing_resubmit(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq_
 	struct mtk_ddp_comp *comp = NULL;
 	const enum mtk_ddp_comp_id id[] = {DDP_COMPONENT_INLINE_ROTATE0,
 					   DDP_COMPONENT_INLINE_ROTATE1};
+	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
+	struct mtk_addon_config_type c;
 
-	if (!mml_ctx || !mtk_crtc->is_mml) {
-		DDPMSG("%s !mml_ctx or !is_mml\n", __func__);
+	if (!mml_ctx || !mtk_crtc->is_mml || !mtk_crtc_state) {
+		DDPMSG("%s !mml_ctx or !is_mml or !crtc state\n", __func__);
 		return;
 	}
 	mml_drm_submit(mml_ctx, mtk_crtc->mml_cfg, &(mtk_crtc->mml_cb));
@@ -22877,10 +22879,12 @@ void mtk_crtc_mml_racing_resubmit(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq_
 		return;
 	}
 
+	mtk_addon_get_comp(crtc, mtk_crtc_state->lye_state.mml_ir_lye, &c.tgt_comp, &c.tgt_layer);
 	for (; i <= mtk_crtc->is_dual_pipe; ++i) {
 		comp = priv->ddp_comp[id[i]];
+		comp->mtk_crtc = mtk_crtc;
 		mtk_ddp_comp_reset(comp, cmdq_handle);
-		mtk_ddp_comp_addon_config(comp, 0, 0, NULL, cmdq_handle);
+		mtk_ddp_comp_io_cmd(comp, cmdq_handle, INLINEROT_CONFIG, &c);
 		mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, id[i], false, cmdq_handle, 0);
 	}
 	/* prepare racing packet */
