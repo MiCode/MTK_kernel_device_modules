@@ -414,6 +414,13 @@ static void __gpuppm_update_gpuppm_info(void)
 void gpuppm_set_stress_test(unsigned int val)
 {
 	g_stress_test = val;
+
+	/* disable CGPPT to make sure traverse all OPP in stress test mode */
+	if (g_stress_test == FEAT_DISABLE)
+		gpuppm_switch_limit(TARGET_DEFAULT, LIMIT_PEAK_POWER, LIMIT_ENABLE, LIMIT_ENABLE, true);
+	else
+		gpuppm_switch_limit(TARGET_DEFAULT, LIMIT_PEAK_POWER, LIMIT_DISABLE, LIMIT_DISABLE, true);
+
 	g_stress_oppidx = 0;
 
 	GPUFREQ_LOGD("stress test mode: %d", g_stress_test);
@@ -581,6 +588,22 @@ int gpuppm_limited_commit(enum gpufreq_target target, int oppidx)
 		/* 0 <-> opp_num-1 */
 		oppidx = g_stress_oppidx;
 		g_stress_oppidx = g_stress_oppidx ? 0 : min_oppidx;
+	} else if (g_stress_test == STRESS_ASCENDING) {
+		/* 0 -> 1 -> ... -> opp_num-2 -> opp_num-1 -> 0 -> 1 -> ... */
+		oppidx = g_stress_oppidx;
+		oppidx = (oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
+		if (oppidx == cur_floor)
+			g_stress_oppidx = 0;
+		else
+			g_stress_oppidx++;
+	} else if (g_stress_test == STRESS_DESCENDING) {
+		/* opp_num-1 -> opp_num-2 -> ... -> 1 -> 0 -> opp_num-1 -> opp_num-2 -> ... */
+		oppidx = g_stress_oppidx;
+		oppidx = cur_floor - (oppidx % (cur_floor - cur_ceiling + 1));
+		if (oppidx == cur_ceiling)
+			g_stress_oppidx = 0;
+		else
+			g_stress_oppidx++;
 	}
 
 	if (oppidx < cur_ceiling)
@@ -650,6 +673,24 @@ int gpuppm_limited_dual_commit(int gpu_oppidx, int stack_oppidx)
 		gpu_oppidx = g_stress_oppidx;
 		stack_oppidx = gpu_oppidx;
 		g_stress_oppidx = g_stress_oppidx ? 0 : min_oppidx;
+	} else if (g_stress_test == STRESS_ASCENDING) {
+		/* 0 -> 1 -> ... -> opp_num-2 -> opp_num-1 -> 0 -> 1 -> ... */
+		gpu_oppidx = g_stress_oppidx;
+		gpu_oppidx = (gpu_oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
+		stack_oppidx = gpu_oppidx;
+		if (gpu_oppidx == cur_floor)
+			g_stress_oppidx = 0;
+		else
+			g_stress_oppidx++;
+	} else if (g_stress_test == STRESS_DESCENDING) {
+		/* opp_num-1 -> opp_num-2 -> ... -> 1 -> 0 -> opp_num-1 -> opp_num-2 -> ... */
+		gpu_oppidx = g_stress_oppidx;
+		gpu_oppidx = cur_floor - (gpu_oppidx % (cur_floor - cur_ceiling + 1));
+		stack_oppidx = gpu_oppidx;
+		if (gpu_oppidx == cur_ceiling)
+			g_stress_oppidx = 0;
+		else
+			g_stress_oppidx++;
 	}
 
 	/* GPU */
