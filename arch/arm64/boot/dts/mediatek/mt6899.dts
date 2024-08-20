@@ -14642,7 +14642,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interconnect-names = "icc-hrt-bw";
 
 			core-num = <2>;    /* core number */
-			adsp-rsv-ipidma-a = <0x100000>;
+			adsp-rsv-ipidma-a = <0x180000>;
 			adsp-rsv-ipidma-b = <0x100000>;
 			adsp-rsv-logger-a = <0x80000>;
 			adsp-rsv-logger-b = <0x80000>;
@@ -14661,7 +14661,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			status = "okay";
 			reg = <0 0x1e050000 0 0x9000>, /* ITCM */
 				<0 0x1e020000 0 0x8000>; /* DTCM */
-			system = <0 0x50000000 0 0xc00000>;
+			system = <0 0x50000000 0 0xa00000>;
 			interrupts = <GIC_SPI 256 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 258 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 260 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -14675,7 +14675,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			status = "okay";
 			reg = <0 0x1e0c0000 0 0x9000>, /* ITCM */
 				<0 0x1e090000 0 0x8000>; /* DTCM */
-			system = <0 0x50c00000 0 0xa00000>;
+			system = <0 0x50a00000 0 0x880000>;
 			interrupts = <GIC_SPI 257 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 259 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 261 IRQ_TYPE_LEVEL_HIGH 0>;
