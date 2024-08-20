@@ -30042,6 +30042,12 @@ struct mtk_ddp_comp *mtk_ddp_get_path_addon_dsc_comp(struct mtk_drm_crtc *mtk_cr
 	if (!(panel_ext && panel_ext->dsc_params.enable))
 		return NULL;
 
+#ifdef MTK_DSI1_SUPPORT_DSC1
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (comp && comp->id == DDP_COMPONENT_DSI1)
+		return NULL;
+#endif
+
 	/* Query current CRTC utilize which DSC component */
 	mtk_addon_get_module(DSC_COMP, mtk_crtc, &addon_module[0], &addon_module[1]);
 	/* Only check first element, */

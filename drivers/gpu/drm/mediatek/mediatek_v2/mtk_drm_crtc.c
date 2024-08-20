@@ -3404,6 +3404,11 @@ void mtk_crtc_ddp_prepare(struct mtk_drm_crtc *mtk_crtc)
 		}
 	}
 	if (panel_ext && panel_ext->dsc_params.enable) {
+#ifdef MTK_DSI1_SUPPORT_DSC1
+		comp = mtk_ddp_comp_request_output(mtk_crtc);
+		if (comp && comp->id == DDP_COMPONENT_DSI1)
+			return;
+#endif
 		if (drm_crtc_index(crtc) == 3)
 			comp = priv->ddp_comp[DDP_COMPONENT_DSC1];
 		else
@@ -3485,6 +3490,11 @@ void mtk_crtc_ddp_unprepare(struct mtk_drm_crtc *mtk_crtc)
 		}
 	}
 	if (panel_ext && panel_ext->dsc_params.enable) {
+#ifdef MTK_DSI1_SUPPORT_DSC1
+		comp = mtk_ddp_comp_request_output(mtk_crtc);
+		if (comp && comp->id == DDP_COMPONENT_DSI1)
+			return;
+#endif
 		if (drm_crtc_index(crtc) == 3)
 			comp = priv->ddp_comp[DDP_COMPONENT_DSC1];
 		else
@@ -6573,6 +6583,11 @@ void mtk_crtc_mode_switch_config(struct mtk_drm_crtc *mtk_crtc,
 
 	if (panel_ext && panel_ext->dsc_params.enable) {
 		struct mtk_ddp_comp *dsc_comp;
+#ifdef MTK_DSI1_SUPPORT_DSC1
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (comp && comp->id == DDP_COMPONENT_DSI1)
+		return;
+#endif
 
 		if (drm_crtc_index(crtc) == 3)
 			dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC1];
@@ -11177,6 +11192,11 @@ int mtk_crtc_attach_ddp_comp(struct drm_crtc *crtc, int ddp_mode,
 
 	if (priv && panel_ext && panel_ext->dsc_params.enable) {
 		struct mtk_ddp_comp *dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
+#ifdef MTK_DSI1_SUPPORT_DSC1
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (comp && comp->id == DDP_COMPONENT_DSI1)
+		return 0;
+#endif
 
 		dsc_comp->mtk_crtc = is_attach ? mtk_crtc : NULL;
 
@@ -11208,6 +11228,12 @@ static void mtk_crtc_addon_connector_disconnect(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 
 	if (panel_ext && panel_ext->dsc_params.enable) {
+#ifdef MTK_DSI1_SUPPORT_DSC1
+		struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output(mtk_crtc);
+
+		if (comp && comp->id == DDP_COMPONENT_DSI1)
+			return;
+#endif
 		if (drm_crtc_index(crtc) == 3)
 			dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC1];
 		else
@@ -11319,6 +11345,13 @@ void mtk_crtc_addon_connector_connect(struct drm_crtc *crtc,
 		struct mtk_ddp_config cfg;
 		bool flush = false;
 		struct cmdq_pkt *handle = NULL;
+
+#ifdef MTK_DSI1_SUPPORT_DSC1
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output(mtk_crtc);
+
+	if (comp && comp->id == DDP_COMPONENT_DSI1)
+		return;
+#endif
 
 		if (_handle) {
 			handle = _handle;
