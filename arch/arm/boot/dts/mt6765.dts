@@ -2222,7 +2222,7 @@ aliases {
 		iommus = <&iommu M4U_PORT_MDP_RDMA0>,
 			<&iommu M4U_PORT_MDP_WDMA0>,
 			<&iommu M4U_PORT_MDP_WROT0>;
-		dma-mask-bit = <35>;
+		dma-mask-bit = <32>;
 	};
 
 	gce: gce@10238000 {
@@ -2370,8 +2370,7 @@ aliases {
 			<&infracfg_ao CLK_IFR_GCE_26M>;
 		clock-names = "GCE", "GCE_TIMER";
 		mediatek,mailbox-gce = <&gce_mbox>;
-		mboxes = <&gce_mbox_sec 10 0 CMDQ_THR_PRIO_1>,
-			<&gce_mbox 11 0 CMDQ_THR_PRIO_1>,
+		mboxes = <&gce_mbox 11 0 CMDQ_THR_PRIO_1>,
 			<&gce_mbox 12 0 CMDQ_THR_PRIO_1>;
 		interconnects =
 			<&mmqos MASTER_LARB_PORT(M4U_PORT_MDP_RDMA0)
@@ -4199,6 +4198,8 @@ aliases {
 			"ccu_g",
 			"ccu_i",
 			"ccu_o";
+		operating-points-v2 = <&opp_table_mm>;
+		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 	};
 
 	lk_charger: lk_charger {
