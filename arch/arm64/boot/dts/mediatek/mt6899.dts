@@ -15911,6 +15911,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<11 1  2>,/* IPI_OUT_MMQOS */
 			<13 1  2>,/* IPI_OUT_MMDEBUG */
 			<15 1  8>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
+			<35 1  2>,/* IPI_OUT_VDISP */
 			<16 2 18>,/* IPI_OUT_VENC_0 */
 			<18 2  4>,/* IPI_OUT_VCP_MPOOL_0 */
 			<20 3  2>,/* IPI_OUT_C_SLEEP_1 */
