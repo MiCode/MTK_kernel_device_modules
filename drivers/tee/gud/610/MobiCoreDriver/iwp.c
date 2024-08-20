@@ -300,7 +300,14 @@ static int iwp_cmd(struct iwp_session *iwp_session, u32 id,
 	 * though.
 	 */
 	if (killable) {
+#if KERNEL_VERSION(6, 1, 0) <= LINUX_VERSION_CODE
+		ret = wait_for_completion_state(
+			&iwp_session->completion,
+			TASK_FREEZABLE | TASK_KILLABLE
+		);
+#else
 		ret = wait_for_completion_killable(&iwp_session->completion);
+#endif
 		if (ret) {
 			iwp_request_cancellation(iwp_session->slot);
 			/* Make sure the SWd did not die in the meantime */
