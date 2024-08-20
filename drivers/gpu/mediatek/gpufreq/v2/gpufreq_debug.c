@@ -171,9 +171,10 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		g_shared_status->temper_comp_norm_stack,
 		g_shared_status->temper_comp_high_stack);
 	seq_printf(m,
-		"%-16s DBGVer: 0x%08x, PTPVer: 0x%04x, SBVer: 0x%04x, CType: %d\n",
+		"%-16s DBGVer: 0x%08x, KDBGVer: 0x%08x, PTPVer: 0x%04x, SBVer: 0x%04x, CType: %d\n",
 		"[MFGSYS Config]",
 		g_shared_status->dbg_version,
+		g_shared_status->kdbg_version,
 		g_shared_status->ptp_version,
 		g_shared_status->sb_version,
 		g_shared_status->chip_type);

@@ -444,6 +444,10 @@ void __gpufreq_set_shared_status(struct gpufreq_shared_status *shared_status)
 	if (shared_status && !g_shared_status)
 		g_shared_status = shared_status;
 
+	/* update current status to shared memory */
+	if (g_shared_status)
+		g_shared_status->kdbg_version = GPUFREQ_KDEBUG_VERSION;
+
 	GPUFREQ_LOGI("shared memory addr: 0x%llx", (unsigned long long)shared_status);
 }
 
