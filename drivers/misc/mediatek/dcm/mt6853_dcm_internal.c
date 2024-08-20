@@ -69,7 +69,6 @@ static int dcm_infra_is_on(void)
 {
 	int ret = 1;
 
-	ret &= dcm_infracfg_ao_infra_conn_bus_dcm_is_on();
 	ret &= dcm_infracfg_ao_infra_rx_p2p_dcm_is_on();
 	ret &= dcm_infracfg_ao_peri_module_dcm_is_on();
 
@@ -166,27 +165,6 @@ int dcm_stall(int on)
 	return 0;
 }
 
-
-static int dcm_ddrphy_is_on(void)
-{
-	int ret = 1;
-
-	ret &= dcm_dramc_ch0_top0_ddrphy_is_on();
-	ret &= dcm_dramc_ch0_top5_ddrphy_is_on();
-	ret &= dcm_dramc_ch1_top0_ddrphy_is_on();
-	ret &= dcm_dramc_ch1_top5_ddrphy_is_on();
-
-	return ret;
-}
-int dcm_ddrphy(int on)
-{
-	dcm_dramc_ch0_top0_ddrphy(on);
-	dcm_dramc_ch0_top5_ddrphy(on);
-	dcm_dramc_ch1_top0_ddrphy(on);
-	dcm_dramc_ch1_top5_ddrphy(on);
-
-	return 0;
-}
 
 static int dcm_emi_is_on(void)
 {
@@ -382,13 +360,6 @@ struct DCM dcm_array[] = {
 	 .func = (DCM_FUNC) dcm_emi,
 	 .is_on_func = dcm_emi_is_on,
 	 .default_state = EMI_DCM_ON,
-	 },
-	{
-	 .typeid = DDRPHY_DCM_TYPE,
-	 .name = "DDRPHY_DCM",
-	 .func = (DCM_FUNC) dcm_ddrphy,
-	 .is_on_func = dcm_ddrphy_is_on,
-	 .default_state = DDRPHY_DCM_ON,
 	 },
 	{
 	 .typeid = STALL_DCM_TYPE,
