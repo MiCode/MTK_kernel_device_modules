@@ -386,6 +386,15 @@ static irqreturn_t mtk_wdma_irq_handler(int irq, void *dev_id)
 	if ((val & BIT(1)) && !ufbc) {
 		DDPPR_ERR("[IRQ] %s: frame underrun!\n",
 			  mtk_dump_comp_str(wdma));
+
+		if (wdma->mtk_crtc)
+			drm_priv = wdma->mtk_crtc->base.dev->dev_private;
+		if (wdma->mtk_crtc && drm_priv &&
+			drm_priv->data->mmsys_id == MMSYS_MT6899) {
+			mtk_dump_analysis(wdma);
+			mtk_dump_reg(wdma);
+		}
+
 		underrun_new_ts = sched_clock();
 		if (wdma->mtk_crtc && &(wdma->mtk_crtc->base)
 			&& (underrun_new_ts - underrun_old_ts > 1000*1000*1000)) { //1s
