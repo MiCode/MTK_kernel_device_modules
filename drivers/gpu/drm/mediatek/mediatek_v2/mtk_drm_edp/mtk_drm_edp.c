@@ -807,14 +807,6 @@ static int mtk_edp_phy_configure(struct mtk_edp *mtk_edp,
 		memcpy(phy_opts.dp.pre, pre_emphasis, lane_count * sizeof(unsigned int));
 	}
 
-	/* Turn off phy power before phy configure */
-	mtk_edp_update_bits(mtk_edp, REG_3F44_DP_ENC_4P_3,
-			   PHY_PWR_STATE_OW_EN_DP_ENC_4P_3, PHY_PWR_STATE_OW_EN_DP_ENC_4P_3_MASK);
-	mtk_edp_update_bits(mtk_edp, REG_3F44_DP_ENC_4P_3,
-			   BIAS_POWER_ON, PHY_PWR_STATE_OW_VALUE_DP_ENC_4P_3_MASK);
-	mtk_edp_update_bits(mtk_edp, REG_3F44_DP_ENC_4P_3,
-			   0, PHY_PWR_STATE_OW_EN_DP_ENC_4P_3_MASK);
-
 	ret = phy_configure(mtk_edp->phy, &phy_opts);
 	if (ret)
 		return ret;
@@ -1090,8 +1082,38 @@ static void mtk_edp_digital_sw_reset(struct mtk_edp *mtk_edp)
 						0, DP_TX_TRANSMITTER_4P_RESET_SW_DP_TRANS_P0);
 }
 
+static void mtk_edp_phyd_wait_aux_ldo_ready(void)
+{
+	int retry = 5;
+	u32 val = 0x0;
+	void *address = ioremap(0x130A146C, 0x1);
+
+	if (!address)
+		return;
+
+	do {
+		val = readl(address);
+		if ((val & 0x3) == 0x3)
+			break;
+		msleep(100);
+	} while (retry--);
+
+	iounmap(address);
+}
+
 static void mtk_edp_set_lanes(struct mtk_edp *mtk_edp, int lanes)
 {
+	/* Turn off phy power before phy configure */
+	mtk_edp_update_bits(mtk_edp, REG_3F44_DP_ENC_4P_3,
+			   PHY_PWR_STATE_OW_EN_DP_ENC_4P_3, PHY_PWR_STATE_OW_EN_DP_ENC_4P_3_MASK);
+	mtk_edp_update_bits(mtk_edp, REG_3F44_DP_ENC_4P_3,
+			   BIAS_POWER_ON, PHY_PWR_STATE_OW_VALUE_DP_ENC_4P_3_MASK);
+
+	mtk_edp_phyd_wait_aux_ldo_ready();
+
+	mtk_edp_update_bits(mtk_edp, REG_3F44_DP_ENC_4P_3,
+			   0, PHY_PWR_STATE_OW_EN_DP_ENC_4P_3_MASK);
+
 	mtk_edp_update_bits(mtk_edp, MTK_DP_TRANS_P0_35F0,
 			   lanes == 0 ? 0 : DP_TRANS_DUMMY_RW_0,
 			   DP_TRANS_DUMMY_RW_0_MASK);
