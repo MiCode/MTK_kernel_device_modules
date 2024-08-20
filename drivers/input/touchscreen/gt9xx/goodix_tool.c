@@ -190,7 +190,7 @@ s32 init_wr_node(struct i2c_client *client)
 	register_i2c_func();
 
 	tool_set_proc_name(procname);
-	goodix_proc_entry = proc_create(procname, 0664, NULL, &gtp_proc_ops);
+	goodix_proc_entry = proc_create(procname, 0660, NULL, &gtp_proc_ops);
 	if (!goodix_proc_entry) {
 		dev_dbg(&gt_client->dev, "Couldn't create proc entry!");
 		return FAIL;
