@@ -16074,7 +16074,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		status = "okay";
 	};
 
-	pmic-ecid {
+	pmic_ecid: pmic-ecid {
 		compatible = "mediatek,mt6363-efuse";
 		mt6363-ecid {
 			ecid = /bits/ 16 <0 0 0 0>;
