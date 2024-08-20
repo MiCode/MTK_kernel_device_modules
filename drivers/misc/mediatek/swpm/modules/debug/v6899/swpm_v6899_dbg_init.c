@@ -13,6 +13,7 @@
 #include <linux/slab.h>
 #include <linux/timer.h>
 #include <linux/types.h>
+#include <linux/ktime.h>
 
 #if IS_ENABLED(CONFIG_MTK_QOS_FRAMEWORK)
 #include <mtk_qos_ipi.h>
@@ -231,7 +232,7 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 	int i;
 	int32_t core_vol_num, xpu_ip_num;
 	int data_update_count = 0;
-
+	int ret;
 	struct ip_stats *xpu_ip_stats_ptr = NULL;
 	struct vol_duration *core_duration_ptr = NULL;
 	struct res_sig_stats *spm_res_sig_stats_ptr = NULL;
@@ -269,7 +270,11 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 			goto End;
 	}
 
-	sync_latest_data();
+	ret = sync_latest_data();
+	if (ret) {
+		swpm_dbg_log("swpm sync latest data fail\n");
+		goto End;
+	}
 
 	get_vcore_vol_duration(core_vol_num, core_duration_ptr);
 	get_xpu_ip_stats(xpu_ip_num, xpu_ip_stats_ptr);
@@ -291,6 +296,10 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 		xpu_ip_stats_ptr[i].times->active_time,
 		xpu_ip_stats_ptr[i].times->idle_time,
 		xpu_ip_stats_ptr[i].times->off_time);
+	}
+	for (i = 0; i < core_vol_num; i++) {
+		swpm_dbg_log("Volt %dV: Time(msec):%lld\n",
+			core_duration_ptr[i].vol, core_duration_ptr[i].duration);
 	}
 End:
 	kfree(core_duration_ptr);
@@ -316,6 +325,10 @@ static ssize_t swpm_sp_ddr_idx_read(char *ToUser, size_t sz, void *priv)
 	int i, j;
 	int32_t ddr_freq_num, ddr_bc_ip_num;
 	int data_update_count = 0;
+	int ret;
+	int sync_time_s;
+	u64 sync_time;
+	int sync_time_ms;
 	struct ddr_act_times *ddr_act_times_ptr = NULL;
 	struct ddr_sr_pd_times *ddr_sr_pd_times_ptr = NULL;
 	struct ddr_ip_bc_stats *ddr_ip_stats_ptr = NULL;
@@ -348,7 +361,16 @@ static ssize_t swpm_sp_ddr_idx_read(char *ToUser, size_t sz, void *priv)
 			goto End;
 	}
 
-	sync_latest_data();
+	ret = sync_latest_data();
+	sync_time = ktime_to_ns(ktime_get());
+	sync_time_s = sync_time / 1000000000;
+	sync_time_ms = (sync_time / 1000) % 1000000;
+	if (!ret) {
+		swpm_dbg_log("[%d.%d] swpm sync latest data finish\n", sync_time_s, sync_time_ms);
+	} else{
+		swpm_dbg_log("swpm sync latest data fail\n");
+		goto End;
+	}
 
 	get_ddr_act_times(ddr_freq_num, ddr_act_times_ptr);
 	get_ddr_sr_pd_times(ddr_sr_pd_times_ptr);
