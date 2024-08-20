@@ -487,9 +487,6 @@ static void mtk_disp_get_channel_bw_of_wdma(struct mtk_drm_crtc *mtk_crtc, unsig
 {
 	unsigned int crtc_idx = drm_crtc_index(&mtk_crtc->base);
 	struct drm_crtc *crtc = &mtk_crtc->base;
-	const struct mtk_addon_scenario_data *addon_data = NULL;
-	const struct mtk_addon_module_data *addon_module = NULL;
-	const struct mtk_addon_path_data *path_data = NULL;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	struct mtk_larb_port_bw port_bw;
 	struct mtk_ddp_comp *comp = NULL;
@@ -513,13 +510,9 @@ static void mtk_disp_get_channel_bw_of_wdma(struct mtk_drm_crtc *mtk_crtc, unsig
 	if (scn == WDMA_WRITE_BACK && !mtk_crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE])
 		return;
 
-	addon_data = mtk_addon_get_scenario_data(__func__, crtc, scn);
-	if (!addon_data)
+	comp = mtk_disp_get_wdma_comp_by_scn(crtc, scn);
+	if (!comp)
 		return;
-
-	addon_module = &addon_data->module_data[0];
-	path_data = mtk_addon_module_get_path(addon_module->module);
-	comp = priv->ddp_comp[path_data->path[path_data->path_len - 1]];
 
 	port_bw.larb_id = -1;
 	port_bw.bw = 0;
@@ -530,9 +523,9 @@ static void mtk_disp_get_channel_bw_of_wdma(struct mtk_drm_crtc *mtk_crtc, unsig
 					size, type);
 
 	if (size >= 4)
-		DDPQOS("%s, crtc:%d, IWB channel BW:%u,%u,%u,%u type:%d ret:%d\n",
-			__func__, crtc_idx, subcomm_bw_sum[0], subcomm_bw_sum[1],
-			subcomm_bw_sum[2], subcomm_bw_sum[3], type, ret);
+		DDPQOS("%s, crtc:%d, wdma:%u scn:%d channel BW:%u,%u,%u,%u type:%d ret:%d\n",
+			__func__, crtc_idx, comp->id, scn, subcomm_bw_sum[0],
+			subcomm_bw_sum[1], subcomm_bw_sum[2], subcomm_bw_sum[3], type, ret);
 }
 
 static void __mtk_disp_get_channel_hrt_bw_by_scope(struct mtk_drm_crtc *mtk_crtc,

@@ -2623,8 +2623,8 @@ static void mtk_drm_idlemgr_wb_cmdq_cb(struct cmdq_cb_data data)
 		}
 		mtk_vidle_user_power_release(DISP_VIDLE_USER_HSIDLE);
 	} else
-		DDPINFO("%s,[IWB] ignore bw update,trace:0x%x\n",
-			__func__, *trace);
+		DDPMSG("%s,[IWB] ignore bw update,trace:0x%x,crtc enabled:%d\n",
+			__func__, *trace, mtk_crtc->enabled);
 
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
 	kfree(cb_data);

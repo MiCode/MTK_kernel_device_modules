@@ -5759,12 +5759,8 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	bool opt_mmdvfs = 0, channel_bw_chk = 0;
 	bool is_force_high_step = atomic_read(&mtk_crtc->force_high_step);
 	unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
-	struct mtk_ddp_comp *cwb_comp;
+	struct mtk_ddp_comp *cwb_comp = NULL;
 	unsigned int wdma_bw = 0;
-	const struct mtk_addon_scenario_data *addon_data = NULL;
-	const struct mtk_addon_module_data *addon_module = NULL;
-	const struct mtk_addon_path_data *path_data = NULL;
-
 
 	if (unlikely(!mtk_crtc || !mtk_crtc->qos_ctx)) {
 		DDPPR_ERR("%s invalid qos_ctx\n", __func__);
@@ -5840,18 +5836,13 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 
 	/* update wdma total bw for cwb */
 	if (priv->data->mmsys_id == MMSYS_MT6899 && crtc_idx == 0) {
-		addon_data = mtk_addon_get_scenario_data(__func__, crtc, WDMA_WRITE_BACK);
-		if (addon_data) {
-			addon_module = &addon_data->module_data[0];
-			path_data = mtk_addon_module_get_path(addon_module->module);
-			cwb_comp = priv->ddp_comp[path_data->path[path_data->path_len - 1]];
-
-			if (cwb_comp && crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE]) {
-				wdma_bw = mtk_disp_get_port_hrt_bw(cwb_comp, CHANNEL_HRT_RW);
-				if (wdma_bw <= 0)
-					wdma_bw = 0;
-				bw += wdma_bw;
-			}
+		if (crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE])
+			cwb_comp = mtk_disp_get_wdma_comp_by_scn(crtc, WDMA_WRITE_BACK);
+		if (cwb_comp) {
+			wdma_bw = mtk_disp_get_port_hrt_bw(cwb_comp, CHANNEL_HRT_RW);
+			if (wdma_bw <= 0)
+				wdma_bw = 0;
+			bw += wdma_bw;
 		}
 	}
 
@@ -12780,6 +12771,19 @@ skip:
 
 	if (priv->data->respective_ostdl)
 		mtk_disp_set_module_hrt(mtk_crtc, 0, NULL, PMQOS_SET_HRT_BW);
+
+	if (crtc_id == 0 && !mtk_crtc_is_frame_trigger_mode(crtc) &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLEMGR_BY_WB) &&
+		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLEMGR_BY_REPAINT)) {
+		unsigned int wdma_bw = 0;
+
+		comp = mtk_disp_get_wdma_comp_by_scn(crtc, IDLE_WDMA_WRITE_BACK);
+		if (comp) {
+			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &wdma_bw);
+			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
+			DDPMSG("%s, clear wdma:%u bw:%u\n", __func__, comp->id, wdma_bw);
+		}
+	}
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 			(priv->data->mmsys_id == MMSYS_MT6991 ||

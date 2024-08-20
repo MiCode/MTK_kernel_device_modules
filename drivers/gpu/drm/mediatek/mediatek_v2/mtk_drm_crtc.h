@@ -1650,5 +1650,6 @@ void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk
 void mtk_crtc_gce_event_config(struct drm_crtc *crtc);
 void mtk_crtc_vdisp_ao_config(struct drm_crtc *crtc);
 void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle);
+struct mtk_ddp_comp *mtk_disp_get_wdma_comp_by_scn(struct drm_crtc *crtc, enum addon_scenario scn);
 
 #endif /* MTK_DRM_CRTC_H */

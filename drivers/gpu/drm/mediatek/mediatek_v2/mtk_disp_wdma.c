@@ -2206,6 +2206,37 @@ int MMPathTraceWDMA(struct mtk_ddp_comp *ddp_comp, char *str,
 	return n;
 }
 
+struct mtk_ddp_comp *mtk_disp_get_wdma_comp_by_scn(struct drm_crtc *crtc, enum addon_scenario scn)
+{
+	const struct mtk_addon_scenario_data *addon_data = NULL;
+	const struct mtk_addon_module_data *addon_module = NULL;
+	const struct mtk_addon_path_data *path_data = NULL;
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_ddp_comp *comp = NULL;
+
+	if (IS_ERR_OR_NULL(crtc))
+		return NULL;
+
+	priv = crtc->dev->dev_private;
+	if (IS_ERR_OR_NULL(priv))
+		return NULL;
+
+	addon_data = mtk_addon_get_scenario_data(__func__, crtc, scn);
+	if (IS_ERR_OR_NULL(addon_data))
+		return NULL;
+
+	addon_module = &addon_data->module_data[0];
+	path_data = mtk_addon_module_get_path(addon_module->module);
+	comp = priv->ddp_comp[path_data->path[path_data->path_len - 1]];
+
+	if (IS_ERR_OR_NULL(comp)) {
+		DDPMSG("%s, invalid wdma comp for scn:%d\n", __func__, scn);
+		return NULL;
+	}
+
+	return comp;
+}
+
 static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			  enum mtk_ddp_io_cmd cmd, void *params)
 {
