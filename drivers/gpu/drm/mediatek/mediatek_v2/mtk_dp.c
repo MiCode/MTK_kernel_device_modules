@@ -24,6 +24,9 @@
 #include <linux/kthread.h>
 #include <linux/errno.h>
 #include <linux/pm_runtime.h>
+#include <linux/module.h>
+#include <linux/pm_domain.h>
+#include <linux/device.h>
 
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc.h>
@@ -3530,6 +3533,47 @@ static int mtk_dp_dt_parse_pdata(struct mtk_dp *mtk_dp,
 	struct resource regs;
 	struct device *dev = &pdev->dev;
 	int ret = 0;
+	int count = 0;
+	const char *pd_name;
+
+	// get power num
+	while (true) {
+		ret = of_property_read_string_index(dev->of_node, "power-domain-names", count, &pd_name);
+		if (ret)
+			break;
+		DPTXMSG("Power domain name: %s", pd_name);
+		count++;
+	}
+	if (count == 0)
+		DPTXMSG("No power domain names found.");
+	else
+		DPTXMSG("Total power domains: %d", count);
+
+	if (count == 2) {
+		// attach device (When power domain is more than one, attach api is necessary)
+		mtk_dp->pd1 = dev_pm_domain_attach_by_name(dev, "mac");
+		if (IS_ERR_OR_NULL(mtk_dp->pd1)) {
+			ret = PTR_ERR(mtk_dp->pd1);
+			DPTXERR("Failed to get power domain 1: %d\n", ret);
+			return ret;
+		}
+		mtk_dp->pd2 = dev_pm_domain_attach_by_name(dev, "phy");
+		if (IS_ERR_OR_NULL(mtk_dp->pd2)) {
+			ret = PTR_ERR(mtk_dp->pd2);
+			DPTXERR("Failed to get power domain 2: %d\n", ret);
+			return ret;
+		}
+		mtk_dp->link1 = device_link_add(dev, mtk_dp->pd1, DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+		if (!mtk_dp->link1) {
+			DPTXERR("Failed to add device link 1\n");
+			return -ENOMEM;
+		}
+		mtk_dp->link2 = device_link_add(dev, mtk_dp->pd2, DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+		if (!mtk_dp->link2) {
+			DPTXERR("Failed to add device link 2\n");
+			return -ENOMEM;
+		}
+	}
 	uint32_t phy_params_int[DPTX_PHY_REG_COUNT] = {
 		0x20181410, 0x20241e18, 0x00003028,
 		0x10080400, 0x000c0600, 0x00000008
