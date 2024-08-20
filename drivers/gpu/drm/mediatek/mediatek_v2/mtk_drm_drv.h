@@ -96,6 +96,7 @@ struct mtk_mmsys_driver_data {
 	bool ovl_exdma_rule;
 	bool real_srt_ostdl;
 	bool skip_trans;
+	bool wb_skip_sec_buf;
 	void (*update_channel_hrt)(struct mtk_drm_crtc *mtk_crtc,
 			unsigned int bw_base, unsigned int channel_bw[]);
 	unsigned int (*get_channel_idx)(enum CHANNEL_TYPE type, unsigned int i);

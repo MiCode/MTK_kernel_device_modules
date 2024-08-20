@@ -6583,6 +6583,7 @@ static const struct mtk_mmsys_driver_data mt6899_mmsys_driver_data = {
 	.pf_ts_type = IRQ_CMDQ_CB,
 	.respective_ostdl = true,
 	.real_srt_ostdl = true,
+	.wb_skip_sec_buf = true,
 	.update_channel_bw_by_layer = mtk_disp_update_channel_bw_by_layer_MT6899,
 	.update_channel_bw_by_larb = mtk_disp_update_channel_bw_by_larb_MT6899,
 };

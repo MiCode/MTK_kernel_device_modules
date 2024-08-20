@@ -3708,7 +3708,7 @@ static void mtk_crtc_cwb_set_sec(struct drm_crtc *crtc)
 	}
 }
 
-/* static bool mtk_crtc_check_fb_secure(struct drm_crtc *crtc)
+static bool mtk_crtc_check_fb_secure(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct drm_framebuffer *fb;
@@ -3725,7 +3725,6 @@ static void mtk_crtc_cwb_set_sec(struct drm_crtc *crtc)
 	}
 	return false;
 }
-*/
 
 static void calc_mml_config(struct drm_crtc *crtc,
 	union mtk_addon_config *addon_config,
@@ -4400,9 +4399,13 @@ _mtk_crtc_wb_addon_module_connect(
 	struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
 	struct total_tile_overhead to_info;
 	enum addon_scenario scn;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	if (index != 0 || mtk_crtc_is_dc_mode(crtc) ||
 		!state->prop_val[CRTC_PROP_OUTPUT_ENABLE])
+		return;
+
+	if (priv->data->wb_skip_sec_buf && mtk_crtc_check_fb_secure(crtc))
 		return;
 
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
@@ -17205,7 +17208,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	int session_id = 0;
 	unsigned int fence_idx;
-	// struct pixel_type_map *pixel_types;
+	struct pixel_type_map *pixel_types;
 
 
 	if (!cmdq_handle) {
@@ -17473,7 +17476,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		}
 
 		/* No need for DBI skip secure */
-		/* if (mtk_crtc_check_fb_secure(crtc)) {
+		if (priv->data->wb_skip_sec_buf && mtk_crtc_check_fb_secure(crtc)) {
 			fence_idx = state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX];
 			session_id = mtk_get_session_id(crtc);
 			if (mtk_crtc->pq_data) {
@@ -17490,7 +17493,6 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			kfree(wb_cb_data);
 			return 0;
 		}
-		*/
 
 		event = mtk_crtc_wb_addon_get_event(crtc);
 		mtk_crtc_pkt_create(&handle, crtc, client);
