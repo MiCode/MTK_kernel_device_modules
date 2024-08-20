@@ -300,12 +300,10 @@ static unsigned long translate_fd(struct op_meta *meta,
 		handle->secData.is_secure && mdpsys_con_ctx.mmu_dev_sec)
 			dev = mdpsys_con_ctx.mmu_dev_sec;
 
-		if (!dev) {
-			CMDQ_ERR("%s mmu_dev not ready\n", __func__);
-			return -EINVAL;
-		}
-	else
-		CMDQ_LOG("%s got dev info\n", __func__);
+	if (!dev) {
+		CMDQ_ERR("%s mmu_dev not ready\n", __func__);
+		return -EINVAL;
+	}
 
 	for (i = 0; i < mapping_job->handle_count; i++)
 		if (mapping_job->fds[i] == meta->fd)
