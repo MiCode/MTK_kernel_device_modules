@@ -415,6 +415,9 @@ static void dump_enabled_clks(struct provider_clk *pvdck)
 					clkchk_pvdck_is_enabled(pvdck),
 					clk_hw_get_rate(c_hw),
 					p_hw ? clk_hw_get_name(p_hw) : "None");
+#if IS_ENABLED(CONFIG_MTK_DUMP_CLK_REFCNT_BY_DEVICE)
+			dump_clk_user_info(c_hw);
+#endif
 			break;
 		}
 	}

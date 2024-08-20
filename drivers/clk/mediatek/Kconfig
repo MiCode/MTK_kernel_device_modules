@@ -189,6 +189,15 @@ config COMMON_CLK_MT6833_VCODEC
 	  If you wish to use clock resources from the vcodec device,
 	  say Y. Otherwise, say N.
 
+config MTK_DUMP_CLK_REFCNT_BY_DEVICE
+	tristate "Mediatek Clock enable debug"
+	depends on COMMON_CLK_MT6768 || COMMON_CLK_MT6877 || COMMON_CLK_MT6761
+	help
+		This config supports to add the logs
+                which can record Clock Enable/Prepare
+		reference count by users, and we can
+                dump it if we need.
+
 config COMMON_CLK_PG_LEGACY
 	bool "Clock Manager supports MediaTek legacy PG"
 	help
