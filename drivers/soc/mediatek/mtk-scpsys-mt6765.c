@@ -290,5 +290,13 @@ static struct platform_driver mt6765_scpsys_drv = {
 	},
 };
 
+#if IS_BUILTIN(CONFIG_DEVICE_MODULES_MTK_SCPSYS)
+static int __init mt6765_scpsys_drv_init(void)
+{
+	return platform_driver_register(&mt6765_scpsys_drv);
+}
+subsys_initcall(mt6765_scpsys_drv_init);
+#else
 module_platform_driver(mt6765_scpsys_drv);
+#endif
 MODULE_LICENSE("GPL");
