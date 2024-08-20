@@ -3316,7 +3316,243 @@ EXIT:
 }
 
 #ifdef CONFIG_COMPAT
+signed int MSS_Enque_Func_32B(struct MFB_MSSRequest *mfb_MssReq, struct MFB_USER_INFO_STRUCT *pUserInfo)
+{
+	struct engine_requests *reqs = NULL;
+	struct MFB_MSSConfig *msscfgs = NULL;
+	signed int Ret = 0;
+	unsigned long flags;
 
+		LOG_DBG("MSS_ENQNUE_NUM:%d, pid:%d\n",
+			mfb_MssReq->m_ReqNum,
+			pUserInfo->Pid);
+		if (mfb_MssReq->m_ReqNum >
+			_SUPPORT_MAX_MFB_FRAME_REQUEST_) {
+			LOG_ERR(
+				"MSS Enque Num is bigger than enqueNum:%d\n",
+				mfb_MssReq->m_ReqNum);
+			Ret = -EFAULT;
+			return Ret;
+		}
+
+		if (mfb_MssReq->m_pMssConfig == NULL) {
+			LOG_ERR("NULL MSS user Config\n");
+			Ret = -EFAULT;
+			return Ret;
+		}
+
+		mutex_lock(&gMfbMssMutex);/* Protect the Multi Process*/
+		switch (mfb_MssReq->exec) {
+		case EXEC_MODE_NORM:
+			msscfgs = g_MssEnqueReq_Struct.MssFrameConfig;
+			break;
+		case EXEC_MODE_VSS:
+			msscfgs = g_MssEnqueReq_Struct.vMssFrameConfig;
+			break;
+		default:
+			msscfgs = g_MssEnqueReq_Struct.MssFrameConfig;
+			LOG_WRN("invalid irq mode\n");
+			break;
+		}
+
+		if (copy_from_user(msscfgs,
+			(void *)mfb_MssReq->m_pMssConfig,
+			mfb_MssReq->m_ReqNum * sizeof(
+				struct MFB_MSSConfig)
+			) != 0) {
+			LOG_ERR(
+				"copy MSSConfig from request is fail!!\n");
+			Ret = -EFAULT;
+			return Ret;
+		}
+
+		pUserInfo->streamtag = mss_get_reqs(mfb_MssReq->exec,
+								&reqs);
+		pUserInfo->reqs = reqs;
+
+		spin_lock_irqsave(
+			&(MFBInfo.SpinLockIrq[MFB_IRQ_TYPE_INT_MSS_ST]),
+			flags);
+		kMssReq.m_ReqNum = mfb_MssReq->m_ReqNum;
+		kMssReq.m_pMssConfig = msscfgs;
+		mfb_enque_request(reqs, kMssReq.m_ReqNum, &kMssReq,
+							pUserInfo->Pid);
+		spin_unlock_irqrestore(
+			&(MFBInfo.SpinLockIrq[MFB_IRQ_TYPE_INT_MSS_ST]),
+			flags);
+		LOG_DBG("ConfigMSS Request!!\n");
+		if (!mfb_request_running(reqs)) {
+			LOG_DBG("direct mfb_request_handler\n");
+			mfb_request_handler(reqs,
+					&(MFBInfo.SpinLockIrq[
+					MFB_IRQ_TYPE_INT_MSS_ST]));
+		}
+		mutex_unlock(&gMfbMssMutex);
+	return Ret;
+}
+
+signed int MSS_Deque_Func_32B(struct MFB_MSSRequest *mfb_MssReq, struct MFB_USER_INFO_STRUCT *pUserInfo)
+{
+	struct engine_requests *reqs = NULL;
+	signed int Ret = 0;
+	unsigned long flags;
+	int dequeNum;
+
+	reqs = pUserInfo->reqs;
+	mutex_lock(&gMfbMssDequeMutex);
+	/* Protect the Multi Process */
+
+	spin_lock_irqsave(&(MFBInfo.SpinLockIrq[
+			MFB_IRQ_TYPE_INT_MSS_ST]),
+				flags);
+	kMssReq.m_pMssConfig =
+		g_MssDequeReq_Struct.MssFrameConfig;
+	mfb_deque_request(reqs, &kMssReq.m_ReqNum,
+		&kMssReq);
+	dequeNum = kMssReq.m_ReqNum;
+	mfb_MssReq->m_ReqNum = dequeNum;
+	spin_unlock_irqrestore(
+		&(MFBInfo.SpinLockIrq[
+			MFB_IRQ_TYPE_INT_MSS_ST]),
+		flags);
+
+	mutex_unlock(&gMfbMssDequeMutex);
+
+	if (mfb_MssReq->m_pMssConfig == NULL) {
+		LOG_ERR("NULL MSS user Config\n");
+		Ret = -EFAULT;
+		return Ret;
+	}
+
+	if (copy_to_user(
+		(void *)mfb_MssReq->m_pMssConfig,
+		&g_MssDequeReq_Struct.MssFrameConfig[0],
+		dequeNum * sizeof(
+			struct MFB_MSSConfig)) != 0) {
+		LOG_ERR(
+			"MFB_CMD_MSS_DEQUE_REQ copy_to_user frameconfig failed\n");
+		Ret = -EFAULT;
+		return Ret;
+	}
+
+	return Ret;
+}
+
+signed int MSF_Enque_Func_32B(struct MFB_MSFRequest *mfb_MsfReq, struct MFB_USER_INFO_STRUCT *pUserInfo)
+{
+	struct engine_requests *reqs = NULL;
+	signed int Ret = 0;
+	unsigned long flags;
+
+	LOG_DBG("MSF_ENQNUE_NUM:%d, pid:%d\n",
+		mfb_MsfReq->m_ReqNum,
+		pUserInfo->Pid);
+	if (mfb_MsfReq->m_ReqNum >
+		_SUPPORT_MAX_MFB_FRAME_REQUEST_) {
+		LOG_ERR(
+			"MSF Enque Num is bigger than enqueNum:%d\n",
+			mfb_MsfReq->m_ReqNum);
+		Ret = -EFAULT;
+		return Ret;
+	}
+
+	if (mfb_MsfReq->m_pMsfConfig == NULL) {
+		LOG_ERR("NULL MSF user Config\n");
+		Ret = -EFAULT;
+		return Ret;
+	}
+
+	/* Protect the Multi Process */
+	mutex_lock(&gMfbMsfMutex);
+
+	if (copy_from_user(
+		g_MsfEnqueReq_Struct.MsfFrameConfig,
+		(void *)mfb_MsfReq->m_pMsfConfig,
+		mfb_MsfReq->m_ReqNum *
+			sizeof(struct MFB_MSFConfig)) != 0) {
+		LOG_ERR(
+			"copy MSFConfig from request is fail!!\n");
+		Ret = -EFAULT;
+		return Ret;
+	}
+	msf_get_reqs(mfb_MsfReq->exec, &reqs);
+	pUserInfo->reqs = reqs;
+
+	spin_lock_irqsave(
+		&(MFBInfo.SpinLockIrq[MFB_IRQ_TYPE_INT_MSF_ST]),
+		flags);
+	kMsfReq.m_ReqNum = mfb_MsfReq->m_ReqNum;
+	kMsfReq.m_pMsfConfig =
+		g_MsfEnqueReq_Struct.MsfFrameConfig;
+	mfb_enque_request(reqs,
+		kMsfReq.m_ReqNum,
+		&kMsfReq, pUserInfo->Pid);
+	spin_unlock_irqrestore(
+		&(MFBInfo.SpinLockIrq[MFB_IRQ_TYPE_INT_MSF_ST]),
+		flags);
+
+	LOG_DBG("ConfigMSF Request!!\n");
+	if (!mfb_request_running(reqs)) {
+		LOG_DBG("direct mfb_request_handler\n");
+		mfb_request_handler(
+			reqs,
+			&(MFBInfo.SpinLockIrq[
+				MFB_IRQ_TYPE_INT_MSF_ST])
+			);
+	}
+	mutex_unlock(&gMfbMsfMutex);
+
+	return Ret;
+}
+
+signed int MSF_Deque_Func_32B(struct MFB_MSFRequest *mfb_MsfReq, struct MFB_USER_INFO_STRUCT *pUserInfo)
+{
+	struct engine_requests *reqs = NULL;
+	signed int Ret = 0;
+	unsigned long flags;
+	int dequeNum;
+
+	reqs = pUserInfo->reqs;
+	mutex_lock(&gMfbMsfDequeMutex);
+	/* Protect the Multi Process */
+	spin_lock_irqsave(
+		&(MFBInfo.SpinLockIrq[
+			MFB_IRQ_TYPE_INT_MSF_ST]),
+		flags);
+	kMsfReq.m_pMsfConfig =
+		g_MsfDequeReq_Struct.MsfFrameConfig;
+	mfb_deque_request(
+		reqs,
+		&kMsfReq.m_ReqNum,
+		&kMsfReq);
+	dequeNum = kMsfReq.m_ReqNum;
+	mfb_MsfReq->m_ReqNum = dequeNum;
+
+	spin_unlock_irqrestore(
+		&(MFBInfo.SpinLockIrq[
+			MFB_IRQ_TYPE_INT_MSF_ST]),
+		flags);
+
+	mutex_unlock(&gMfbMsfDequeMutex);
+
+	if (mfb_MsfReq->m_pMsfConfig == NULL) {
+		LOG_ERR("NULL MSF user Config\n");
+		Ret = -EFAULT;
+		return Ret;
+	}
+
+	if (copy_to_user(
+		(void *)mfb_MsfReq->m_pMsfConfig,
+			&g_MsfDequeReq_Struct.MsfFrameConfig[0],
+			dequeNum *
+		sizeof(struct MFB_MSFConfig)) != 0) {
+		LOG_ERR(
+			"MFB_MSF_DEQUE_REQ copy_to_user frameconfig failed\n");
+		Ret = -EFAULT;
+	}
+
+	return Ret;
+}
 /******************************************************************************
  *
  ******************************************************************************/
@@ -3324,7 +3560,7 @@ static int compat_get_MFB_read_register_data(
 	unsigned long arg,
 	struct MFB_REG_IO_STRUCT *data)
 {
-	long ret = -1;
+	long ret = 0;
 	struct compat_MFB_REG_IO_STRUCT data32;
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
@@ -3345,7 +3581,7 @@ static int compat_put_MFB_read_register_data(
 	unsigned long arg,
 	struct MFB_REG_IO_STRUCT *data)
 {
-	long ret = -1;
+	long ret = 0;
 	struct compat_MFB_REG_IO_STRUCT data32;
 
 	data32.Count = (compat_uint_t)(data->Count);
@@ -3362,7 +3598,7 @@ static int compat_get_MFB_mss_enque_req_data(
 	unsigned long arg,
 	struct MFB_MSSRequest *data)
 {
-	long ret = -1;
+	long ret = 0;
 	struct compat_MFB_MSSRequest data32;
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
@@ -3384,14 +3620,14 @@ static int compat_put_MFB_mss_enque_req_data(
 	unsigned long arg,
 	struct MFB_MSSRequest *data)
 {
-	long ret = -1;
+	long ret = 0;
 	struct compat_MFB_MSSRequest data32 = {0};
 
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
 
 	if (copy_to_user(compat_ptr(arg), &data32,
 			sizeof(struct compat_MFB_MSSRequest)) != 0) {
-		LOG_NOTICE("copy_to_user failed");
+		LOG_INF("copy_to_user failed");
 		ret = -EFAULT;
 	}
 	return ret;
@@ -3402,7 +3638,7 @@ static int compat_get_MFB_mss_deque_req_data(
 	unsigned long arg,
 	struct MFB_MSSRequest *data)
 {
-	long ret = -1;
+	long ret = 0;
 	struct compat_MFB_MSSRequest data32= {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
@@ -3424,7 +3660,7 @@ static int compat_put_MFB_mss_deque_req_data(
 	unsigned long arg,
 	struct MFB_MSSRequest *data)
 {
-	long ret = -1;
+	long ret = 0;
 
 	struct compat_MFB_MSSRequest data32= {0};
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
@@ -3441,7 +3677,7 @@ static int compat_get_MFB_msf_enque_req_data(
 	unsigned long arg,
 	struct MFB_MSFRequest *data)
 {
-	long ret = -1;
+	long ret = 0;
 	struct compat_MFB_MSFRequest data32= {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
@@ -3463,7 +3699,7 @@ static int compat_put_MFB_msf_enque_req_data(
 	unsigned long arg,
 	struct MFB_MSFRequest *data)
 {
-	long ret = -1;
+	long ret = 0;
 	struct compat_MFB_MSFRequest data32 = {0};
 
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
@@ -3481,7 +3717,7 @@ static int compat_get_MFB_msf_deque_req_data(
 	unsigned long arg,
 	struct MFB_MSFRequest *data)
 {
-	long ret = -1;
+	long ret = 0;
 	struct compat_MFB_MSFRequest data32= {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
@@ -3503,7 +3739,7 @@ static int compat_put_MFB_msf_deque_req_data(
 	unsigned long arg,
 	struct MFB_MSFRequest *data)
 {
-	long ret = -1;
+	long ret = 0;
 
 	struct compat_MFB_MSFRequest data32= {0};
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
@@ -3519,8 +3755,19 @@ static int compat_put_MFB_msf_deque_req_data(
 static long MFB_ioctl_compat(struct file *filp,
 	unsigned int cmd, unsigned long arg)
 {
-	long ret;
+	long ret = 0;
 
+	/*unsigned int pid = 0;*/
+	struct MFB_USER_INFO_STRUCT *pUserInfo;
+
+	if (filp->private_data == NULL) {
+		LOG_WRN(
+			"private_data is NULL,(process, pid, tgid)=(%s, %d, %d)",
+			current->comm,
+			current->pid, current->tgid);
+		return -EFAULT;
+	}
+	pUserInfo = (struct MFB_USER_INFO_STRUCT *) (filp->private_data);
 
 	if (!filp->f_op || !filp->f_op->unlocked_ioctl) {
 		LOG_ERR("no f_op !!!\n");
@@ -3610,15 +3857,17 @@ static long MFB_ioctl_compat(struct file *filp,
 
 			err = compat_get_MFB_mss_enque_req_data(arg, &data);
 			if (err) {
-				LOG_INF("COMPAT_MFB_MSS_ENQUE_REQ error!!!\n");
+				LOG_INF("COMPAT_MFB_MSS_ENQUE_REQ 1 error!!!\n");
 				return err;
 			}
-			ret =
-			    filp->f_op->unlocked_ioctl(filp, MFB_MSS_ENQUE_REQ,
-						       (unsigned long)&data);
+
+			ret = MSS_Enque_Func_32B(&data, pUserInfo);
+			if (ret < 0)
+				LOG_INF("MSS_Enque_Func_32B FAIL!!!\n");
+
 			err = compat_put_MFB_mss_enque_req_data(arg, &data);
 			if (err) {
-				LOG_INF("COMPAT_MFB_MSS_ENQUE_REQ error!!!\n");
+				LOG_INF("COMPAT_MFB_MSS_ENQUE_REQ 2 error!!!\n");
 				return err;
 			}
 			return ret;
@@ -3630,15 +3879,17 @@ static long MFB_ioctl_compat(struct file *filp,
 
 			err = compat_get_MFB_mss_deque_req_data(arg, &data);
 			if (err) {
-				LOG_INF("COMPAT_MFB_MSS_DEQUE_REQ error!!!\n");
+				LOG_INF("COMPAT_MFB_MSS_DEQUE_REQ error 1 !!!\n");
 				return err;
 			}
-			ret =
-			    filp->f_op->unlocked_ioctl(filp, MFB_MSS_DEQUE_REQ,
-						       (unsigned long)&data);
+
+			ret = MSS_Deque_Func_32B(&data, pUserInfo);
+			if (ret < 0)
+				LOG_INF("MSS_Deque_Func_32B FAIL!!!\n");
+
 			err = compat_put_MFB_mss_deque_req_data(arg, &data);
 			if (err) {
-				LOG_INF("COMPAT_MFB_MSS_DEQUE_REQ error!!!\n");
+				LOG_INF("COMPAT_MFB_MSS_DEQUE_REQ error 2 !!!\n");
 				return err;
 			}
 			return ret;
@@ -3654,9 +3905,11 @@ static long MFB_ioctl_compat(struct file *filp,
 				LOG_INF("COMPAT_MFB_MSF_ENQUE_REQ error!!!\n");
 				return err;
 			}
-			ret =
-			    filp->f_op->unlocked_ioctl(filp, MFB_MSF_ENQUE_REQ,
-						       (unsigned long)&data);
+
+			ret = MSF_Enque_Func_32B(&data, pUserInfo);
+			if (ret < 0)
+				LOG_INF("MSF_Enque_Func_32B FAIL!!!\n");
+
 			err = compat_put_MFB_msf_enque_req_data(arg, &data);
 			if (err) {
 				LOG_INF("COMPAT_MFB_MSF_ENQUE_REQ error!!!\n");
@@ -3674,9 +3927,11 @@ static long MFB_ioctl_compat(struct file *filp,
 				LOG_INF("COMPAT_MFB_MSF_DEQUE_REQ error!!!\n");
 				return err;
 			}
-			ret =
-			    filp->f_op->unlocked_ioctl(filp, MFB_MSF_DEQUE_REQ,
-						       (unsigned long)&data);
+
+			ret = MSF_Deque_Func_32B(&data, pUserInfo);
+			if (ret < 0)
+				LOG_INF("MSF_Deque_Func_32B FAIL!!!\n");
+
 			err = compat_put_MFB_msf_deque_req_data(arg, &data);
 			if (err) {
 				LOG_INF("COMPAT_MFB_MSF_DEQUE_REQ error!!!\n");
