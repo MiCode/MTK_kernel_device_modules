@@ -1015,6 +1015,9 @@ static irqreturn_t mtu3_u2_common_isr(struct mtu3 *mtu)
 	if (u2comm & RESET_INTR)
 		mtu3_gadget_reset(mtu);
 
+	if (u2comm & LPM_RESUME_INTR)
+		mtu3_gadget_u2_lpm_lock(mtu, U2_LPM_LOCK_TIMEOUT);
+
 	return IRQ_HANDLED;
 }
 

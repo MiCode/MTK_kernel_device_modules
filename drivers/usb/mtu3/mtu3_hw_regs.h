@@ -461,6 +461,7 @@
 #define LPM_RWP			BIT(11)
 #define LPM_HRWE		BIT(10)
 #define LPM_MODE(x)		(((x) & 0x3) << 8)
+#define LPM_MODE_REJECT	LPM_MODE(1)
 #define ISO_UPDATE		BIT(7)
 #define SOFT_CONN		BIT(6)
 #define HS_ENABLE		BIT(5)

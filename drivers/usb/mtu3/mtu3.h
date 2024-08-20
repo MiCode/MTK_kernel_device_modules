@@ -69,6 +69,8 @@ struct mtu3_request;
 
 #define DP_SWITCH_MSK 1
 
+#define U2_LPM_LOCK_TIMEOUT 500
+
 /**
  * IP TRUNK version
  * from 0x1003 version, USB3 Gen2 is supported, two changes affect driver:
@@ -164,6 +166,12 @@ enum mtu3_power_state {
 	MTU3_STATE_SUSPEND,
 	MTU3_STATE_RESUME,
 	MTU3_STATE_OFFLOAD,
+};
+
+enum mtu3_u2_lpm_mode {
+	MTU3_U2_LPM_DEFAULT = 0,
+	MTU3_U2_LPM_REJECT,
+	MTU3_U2_LPM_ACCEPT,
 };
 
 enum mtu3_plat_type {
@@ -487,6 +495,8 @@ struct mtu3 {
 
 	unsigned u3_lpm:1;
 	unsigned u3_u1gou2:1;
+	enum mtu3_u2_lpm_mode u2_lpm_reject;
+	struct timer_list lpm_timer;
 
 	const char *usb_psy_name;
 	struct power_supply *usb_psy;
@@ -598,6 +608,7 @@ void mtu3_gadget_disconnect(struct mtu3 *mtu);
 
 int mtu3_gadget_vbus_draw(struct usb_gadget *g, unsigned int mA);
 int mtu3_is_usb_pd(struct mtu3 *mtu);
+void mtu3_gadget_u2_lpm_lock(struct mtu3 *mtu, unsigned int timeout_ms);
 
 int mtu3_device_enable(struct mtu3 *mtu);
 void mtu3_device_disable(struct mtu3 *mtu);
