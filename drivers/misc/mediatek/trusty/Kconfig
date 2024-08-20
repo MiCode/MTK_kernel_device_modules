@@ -61,4 +61,15 @@ config TRUSTY_BUG_ON_WARN
 	  Select this if you want to enable above facilities.
 	  If unsure, say N.
 
+config TRUSTY_TIPC_FOOTPRINT
+	tristate "Trusty TIPC footprint"
+	depends on TRUSTY_VIRTIO_IPC
+	default n
+	help
+	  The debug feature which enables tipc footprint to trace tipc
+	  flow between REE/iSE.
+
+	  Select this if you want to enable above facilities.
+	  If unsure, say N.
+
 endmenu
