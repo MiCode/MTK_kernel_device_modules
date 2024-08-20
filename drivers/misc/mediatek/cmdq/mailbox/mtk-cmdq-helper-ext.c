@@ -2381,6 +2381,12 @@ s32 cmdq_pkt_poll_sleep(struct cmdq_pkt *pkt, u32 value,
 {
 	s32 err;
 	const u16 reg_idx = CMDQ_THR_SPR_IDX1;
+	bool spr3_timer = pkt->support_spr3_timer;
+
+	if (!spr3_timer) {
+		cmdq_msg("pkt:0x%p skip poll_sleep", pkt);
+		return -EINVAL;
+	}
 
 	if (mask != 0xffffffff) {
 		err = cmdq_pkt_append_command(pkt, CMDQ_GET_ARG_C(~mask),
