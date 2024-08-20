@@ -3128,11 +3128,39 @@ static void dpc_mtcmos_auto_v1(const enum mtk_dpc_subsys subsys, const enum mtk_
 	if (MTK_DPC_OF_DISP_SUBSYS(subsys)) {
 		dpc_update_mtcmos_auto_state(subsys, en, 0x5e1f);
 
+		if (!en) {
+			dpc_mtcmos_vote_v1(DPC_SUBSYS_DIS1, 6, 1);
+			mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS1);
+			dpc_mtcmos_vote_v1(DPC_SUBSYS_DIS0, 6, 1);
+			mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS0);
+			dpc_mtcmos_vote_v1(DPC_SUBSYS_OVL0, 6, 1);
+			mtk_disp_wait_pwr_ack(DPC_SUBSYS_OVL0);
+			dpc_mtcmos_vote_v1(DPC_SUBSYS_OVL1, 6, 1);
+			mtk_disp_wait_pwr_ack(DPC_SUBSYS_OVL1);
+			udelay(30);
+		}
+
 		dpc_group_enable_func(DPC_DISP_VIDLE_MTCMOS, en, false);
 		dpc_group_enable_func(DPC_DISP_VIDLE_MTCMOS_DISP1, en, false);
+
+		if (en) {
+			dpc_mtcmos_vote_v1(DPC_SUBSYS_DIS1, 6, 0);
+			dpc_mtcmos_vote_v1(DPC_SUBSYS_DIS0, 6, 0);
+			dpc_mtcmos_vote_v1(DPC_SUBSYS_OVL0, 6, 0);
+			dpc_mtcmos_vote_v1(DPC_SUBSYS_OVL1, 6, 0);
+		}
 	} else if (MTK_DPC_OF_MML_SUBSYS(subsys)) {
 		dpc_update_mtcmos_auto_state(subsys, en, 0x5e1f);
+
+		if (!en) {
+			dpc_mtcmos_vote_v1(DPC_SUBSYS_MML1, 6, 1);
+			mtk_disp_wait_pwr_ack(DPC_SUBSYS_MML1);
+			udelay(30);
+		}
 		dpc_group_enable_func(DPC_MML_VIDLE_MTCMOS, en, false);
+
+		if (en)
+			dpc_mtcmos_vote_v1(DPC_SUBSYS_MML1, 6, 0);
 	} else {
 		DPCERR("invalid subsys:%d", subsys);
 		WARN_ON(1);
@@ -3270,10 +3298,8 @@ static int dpc_config_v1(const enum mtk_dpc_subsys subsys, bool en)
 		dpc_mtcmos_vote_v1(DPC_SUBSYS_DIS0, 6, 0);
 		dpc_mtcmos_vote_v1(DPC_SUBSYS_OVL0, 6, 0);
 		dpc_mtcmos_vote_v1(DPC_SUBSYS_OVL1, 6, 0);
-		if (readl(dpc_base + DISP_REG_DPC_MML1_MTCMOS_CFG)) {
+		if (readl(dpc_base + DISP_REG_DPC_MML1_MTCMOS_CFG))
 			dpc_mtcmos_vote_v1(DPC_SUBSYS_MML1, 6, 0);
-			mtk_disp_wait_pwr_ack(DPC_SUBSYS_MML1);
-		}
 	}
 
 	writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG);
