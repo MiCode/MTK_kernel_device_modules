@@ -669,7 +669,7 @@ static inline void dpc_pm_user_update(bool en, const char *source)
 	for (i = 0; i < MTK_DPC_PM_USER_COUNT; i++) {
 		if (!g_dpc_pm_user[i].valid)
 			break;
-		if (strcmp(g_dpc_pm_user[i].name, source) == 0)
+		if (source && strcmp(g_dpc_pm_user[i].name, source) == 0)
 			break;
 	}
 
@@ -737,7 +737,10 @@ static inline int dpc_pm_ctrl(bool en, const char *source)
 			source ? source : "unknown", ret, val, g_vlp_user_mask);
 	}
 
-	dpc_pm_user_update(en, source);
+	if (source)
+		dpc_pm_user_update(en, source);
+	else
+		dpc_pm_user_update(en, "unknown");
 	return ret;
 }
 
@@ -3013,7 +3016,7 @@ static void dpc_pause_v1(const enum mtk_dpc_subsys subsys, bool en)
 	if (MTK_DPC_OF_DISP_SUBSYS(subsys)) {
 		if (en && atomic_read(&is_mminfra_ctrl_by_dpc) &&
 			mtk_dpc_support_cap(DPC_VIDLE_MMINFRA_PLL_OFF)) {
-			if (dpc_pm_ctrl(true, "dpc_pause_ctrl_dpc_0") == 0)
+			if (dpc_pm_ctrl(true, "dpc_pause_mminfra") == 0)
 				atomic_set(&is_mminfra_ctrl_by_dpc, 0);
 			//DPCFUNC("en:%d, mminfra_ctrl_by_dpc:%d", en, atomic_read(&is_mminfra_ctrl_by_dpc));
 		}
@@ -3034,7 +3037,7 @@ static void dpc_pause_v1(const enum mtk_dpc_subsys subsys, bool en)
 
 			if (!atomic_read(&is_mminfra_ctrl_by_dpc) &&
 				mtk_dpc_support_cap(DPC_VIDLE_MMINFRA_PLL_OFF)) {
-				dpc_pm_ctrl(false, "dpc_pause_ctrl_dpc_1");
+				dpc_pm_ctrl(false, "dpc_pause_mminfra");
 				atomic_set(&is_mminfra_ctrl_by_dpc, 1);
 				//DPCFUNC("en:%d, mminfra_ctrl_by_dpc:%d", en, atomic_read(&is_mminfra_ctrl_by_dpc));
 			}
@@ -3165,7 +3168,7 @@ static int dpc_config_v1(const enum mtk_dpc_subsys subsys, bool en)
 
 	if (!en && atomic_read(&is_mminfra_ctrl_by_dpc) &&
 		mtk_dpc_support_cap(DPC_VIDLE_MMINFRA_PLL_OFF)) {
-		if (dpc_pm_ctrl(true, "dpc_config_ctrl_dpc_0") == 0)
+		if (dpc_pm_ctrl(true, "dpc_config_mminfra") == 0)
 			atomic_set(&is_mminfra_ctrl_by_dpc, 0);
 	}
 
@@ -3335,7 +3338,7 @@ out:
 	spin_unlock_irqrestore(&dpc_lock, flags);
 	if (en && !atomic_read(&is_mminfra_ctrl_by_dpc) &&
 		mtk_dpc_support_cap(DPC_VIDLE_MMINFRA_PLL_OFF)) {
-		dpc_pm_ctrl(false, "dpc_config_ctrl_dpc_1");
+		dpc_pm_ctrl(false, "dpc_config_mminfra");
 		atomic_set(&is_mminfra_ctrl_by_dpc, 1);
 	}
 
