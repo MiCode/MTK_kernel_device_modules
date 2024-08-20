@@ -34,6 +34,10 @@
 #include "ged_dcs.h"
 #include "ged_async.h"
 
+#if defined(MTK_GPU_BM_2)
+#include <gpu_bm.h>
+#endif /* MTK_GPU_BM_2 */
+
 #if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
 //#include "thermal_interface.h"
 #endif
@@ -2573,6 +2577,10 @@ void set_api_sync_flag(int flag)
 	} else if (flag == 6 || flag == 7) {
 		if (api_sync_flag != flag)
 			api_sync_flag = flag;
+	} else if (flag == 8) {
+		MTKGPUQoS_mode_ratio(0);
+	} else if (flag == 9) {
+		MTKGPUQoS_mode_ratio(6080);
 #if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
 	} else if ((flag & 0xFFFF0000) == 0x55660000) {
 		// pre-throttle cases
