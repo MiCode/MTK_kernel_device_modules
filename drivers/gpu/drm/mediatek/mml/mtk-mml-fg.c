@@ -455,8 +455,8 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 		}
 
 		fg_table_pa[i] = task->pq_task->fg_table[i]->pa;
-		if ((DO_SHIFT_RIGHT(task->pq_task->fg_table[i]->pa, 34)) > 0) {
-			mml_pq_err("%s job_id[%d] fg[%d] pa addr exceed 34 bits [%pad]",
+		if ((DO_SHIFT_RIGHT(task->pq_task->fg_table[i]->pa, 36)) > 0) {
+			mml_pq_err("%s job_id[%d] fg[%d] pa addr exceed 36 bits [%pad]",
 				__func__, task->job.jobid, i, &fg_table_pa[i]);
 			buf_ready = false;
 			break;
@@ -594,17 +594,17 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 			reuse, cache, &fg_frm->labels[FG_TRIGGER_LABEL_0]);
 		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 0 << 0, 1 << 0,
 			reuse, cache, &fg_frm->labels[FG_TRIGGER_LABEL_1]);
+
+		if (fg->data->sram_pp) {
+			cmdq_pkt_poll(pkt, NULL,
+				0x1, base_pa + fg->data->reg_table[FG_SRAM_STATUS], 0x1, gpr);
+		}
 	} else {
 		/* since buffer is not available, we do not trigger FG load table */
 		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 0 << 0, 1 << 0,
 			reuse, cache,  &fg_frm->labels[FG_TRIGGER_LABEL_0]);
 		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 0 << 0, 1 << 0,
 			reuse, cache, &fg_frm->labels[FG_TRIGGER_LABEL_1]);
-	}
-
-	if (fg->data->sram_pp) {
-		cmdq_pkt_poll(pkt, NULL,
-			0x1, base_pa + fg->data->reg_table[FG_SRAM_STATUS], 0x1, gpr);
 	}
 
 exit:
@@ -674,8 +674,8 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 		}
 
 		fg_table_pa[i] = task->pq_task->fg_table[i]->pa;
-		if ((DO_SHIFT_RIGHT(task->pq_task->fg_table[i]->pa, 34)) > 0) {
-			mml_pq_err("%s job_id[%d] fg[%d] pa addr exceed 34 bits [%pad]",
+		if ((DO_SHIFT_RIGHT(task->pq_task->fg_table[i]->pa, 36)) > 0) {
+			mml_pq_err("%s job_id[%d] fg[%d] pa addr exceed 36 bits [%pad]",
 				__func__, task->job.jobid, i, &fg_table_pa[i]);
 			goto buf_err_exit;
 		}
