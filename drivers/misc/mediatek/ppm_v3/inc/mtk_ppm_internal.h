@@ -42,6 +42,8 @@ extern "C" {
 #define UNIFIED_POWER_IS_READY 	(1)
 #define CPUHOTPLUG_IS_READY 	(0)
 
+/* Power Throttling flags */
+#define DISABLE_BATTERY_PERCENT_PROTECT
 
 /* POLICY */
 /* If priority value is the same, it will decide by ppm_policy enum value */
