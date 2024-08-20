@@ -164,6 +164,7 @@ extern struct peakpowercombotableDataRow
  */
 struct cswrunInfo {
 	int cg_sync_enable; /*1:enable*/
+	int gpu_pwr_state;
 	int is_fastdvfs_enabled;
 	int cpu_max_freq_m[CPU_MAX_CLUSTERS];
 	int scaling_factor[3];
