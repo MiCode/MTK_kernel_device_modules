@@ -111,5 +111,6 @@ int ultra_irq_set_enable_hw_sema(struct mtk_base_afe *afe,
 int ultra_irq_set_disable_hw_sema(struct mtk_base_afe *afe,
 				  const struct mtk_base_irq_data *irq_data,
 				  int afe_id);
+int ultra_irq_set_target_hw_sema(int scp_enable);
 #endif
 

@@ -140,9 +140,7 @@ static int usnd_scp_recover_event(struct notifier_block *this,
 			mtk_ultra_clr_irq(afe, irq_data_dl);
 			mtk_ultra_clr_irq(afe, irq_data_ul);
 
-			/* Set dl&ul irq to ap */
-			set_afe_dl_irq_target(false);
-			set_afe_ul_irq_target(false);
+			ultra_irq_set_target_hw_sema(false);
 			pm_runtime_put(afe->dev);
 		}
 		break;
@@ -209,9 +207,7 @@ static int ultra_stop_memif_and_irq(struct mtk_base_scp_ultra *scp_ultra)
 	mtk_ultra_clr_irq(afe, irq_data_dl);
 	mtk_ultra_clr_irq(afe, irq_data_ul);
 
-	// Set dl&ul irq to ap
-	set_afe_dl_irq_target(false);
-	set_afe_ul_irq_target(false);
+	ultra_irq_set_target_hw_sema(false);
 
 	// stop scp
 	if (scp_ultra->usnd_state == SCP_ULTRA_STATE_START) {
@@ -724,9 +720,7 @@ static int mtk_scp_ultra_pcm_start(struct snd_soc_component *component,
 		pr_info("ultra scp reseted, do not start before ultra on\n");
 		return 0;
 	}
-	/* Set dl&ul irq target to scp */
-	set_afe_dl_irq_target(true);
-	set_afe_ul_irq_target(true);
+	ultra_irq_set_target_hw_sema(true);
 
 	/* set dl irq counter */
 	counter = param_config.period_out_size;
@@ -894,7 +888,10 @@ static int mtk_scp_ultra_pcm_new(struct snd_soc_component *component)
 		toggle_clr_irq = true;
 	else
 		toggle_clr_irq = false;
-
+	if (of_property_read_bool(scp_ultra->dev->of_node, "ultra-sema-support"))
+		ultra_sema_support = true;
+	else
+		ultra_sema_support = false;
 	return ret;
 }
 
