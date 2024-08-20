@@ -55,6 +55,7 @@ struct irq_count_period_setting {
 	{"CCIF_AP_DATA0", 0}, /* No limit for MD EE to save debug logs. */
 	{"mtk_uart_apdma", 40000}, /* 25000 irqs per sec*/
 	{"48000000.mali", 71428}, /* 14000 irqs per sec*/
+	{"13000000.mali", 71428}, /* 14000 irqs per sec*/
 };
 
 const char *irq_to_name(int irq)
