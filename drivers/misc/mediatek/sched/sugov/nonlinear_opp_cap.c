@@ -986,6 +986,7 @@ int init_legacy_capacity_table(void)
 	struct pd_capacity_info *pd_info;
 	struct em_perf_domain *pd;
 	struct upower_tbl *tbl = NULL;
+	unsigned long power_res, cost;
 
 	ret = alloc_capacity_table();
 	if (ret)
@@ -1015,6 +1016,10 @@ int init_legacy_capacity_table(void)
 				goto err;
 
 			pd_info->caps[j] = cap;
+			pd->em_table->state[pd_info->nr_caps - j - 1].performance = pd_info->caps[j];
+			power_res = pd->em_table->state[pd_info->nr_caps - j - 1].power * 10;
+			cost = power_res / pd->em_table->state[pd_info->nr_caps - j - 1].performance;
+			pd->em_table->state[pd_info->nr_caps - j - 1].cost = cost;
 
 			if (!pd_info->util_opp) {
 				pd_info->util_opp = kcalloc(cap + 1, sizeof(unsigned int),
@@ -1052,6 +1057,7 @@ int init_legacy_capacity_table(void)
 					cpu, per_cpu(cpu_scale, cpu), tbl->row[tbl->row_num - 1].cap);
 			}
 		}
+
 	}
 
 	if (entry_count != count)
