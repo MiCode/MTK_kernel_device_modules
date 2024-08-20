@@ -327,6 +327,11 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 					gpueb_log_e(GHPM_TAG, "Wait MFG0 on failed");
 					goto wait_err;
 				}
+				if (i == GPUEB_WAIT_CHECK_TIME_1 || i == GPUEB_WAIT_CHECK_TIME_2) {
+					gpueb_log_e(GHPM_TAG, "GHPM ON, i=%d polling timeout dump", i);
+					__dump_ghpm_info();
+					__dump_mfg_pwr_sta();
+				}
 			}
 #if GHPM_MFG0_OFF_TIMEOUT_KE
 			if ((readl(MFG_GHPM_RO0_CON) & TIMEOUT_ERR_RECORD) == TIMEOUT_ERR_RECORD) {
@@ -381,6 +386,11 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 					__ghpm_timestamp_monitor(POLLING_GPUEB_OFF_TIMEOUT);
 					gpueb_log_e(GHPM_TAG, "Wait MFG0 off failed");
 					goto wait_err;
+				}
+				if (i == GPUEB_WAIT_CHECK_TIME_1 || i == GPUEB_WAIT_CHECK_TIME_2) {
+					gpueb_log_e(GHPM_TAG, "GHPM OFF, i=%d polling timeout dump", i);
+					__dump_ghpm_info();
+					__dump_mfg_pwr_sta();
 				}
 			}
 			if ((readl(MFG_GHPM_RO0_CON) & TIMEOUT_ERR_RECORD) == TIMEOUT_ERR_RECORD) {
@@ -447,10 +457,11 @@ static void __dump_ghpm_info(void)
 	gpueb_log_e(GHPM_TAG, "MFG_GHPM_RO1_CON=0x%x", readl(MFG_GHPM_RO1_CON));
 	gpueb_log_e(GHPM_TAG, "MFG_GHPM_RO2_CON=0x%x", readl(MFG_GHPM_RO2_CON));
 	gpueb_log_e(GHPM_TAG, "MFG_RPC_MFG0_PWR_CON=0x%x", readl(MFG_RPC_MFG0_PWR_CON));
-	gpueb_log_e(GHPM_TAG, "MFG_RPC_DUMMY_REG=0x%x", readl(g_mfg_vcore_ao_config_base + 0x18));
-	gpueb_log_e(GHPM_TAG, "MFG_RPC_DUMMY_REG_1=0x%x", readl(g_mfg_vcore_ao_config_base + 0x1C));
-	gpueb_log_e(GHPM_TAG, "MFGSYS_PROTECT_EN_SET_0=0x%x", readl(g_mfg_vcore_ao_config_base + 0x80));
-	gpueb_log_e(GHPM_TAG, "MFGSYS_PROTECT_EN_STA_0=0x%x", readl(g_mfg_vcore_ao_config_base + 0x88));
+	gpueb_log_e(GHPM_TAG, "MFG_RPC_DUMMY_REG=0x%x", readl(MFG_RPC_DUMMY_REG));
+	gpueb_log_e(GHPM_TAG, "MFG_RPC_DUMMY_REG_1=0x%x", readl(MFG_RPC_DUMMY_REG_1));
+	gpueb_log_e(GHPM_TAG, "MFGSYS_PROTECT_EN_SET_0=0x%x", readl(MFGSYS_PROTECT_EN_SET_0));
+	gpueb_log_e(GHPM_TAG, "MFGSYS_PROTECT_EN_STA_0=0x%x", readl(MFGSYS_PROTECT_EN_STA_0));
+	gpueb_log_e(GHPM_TAG, "MFG_SODI_EMI=0x%x", readl(MFG_SODI_EMI));
 	gpueb_log_e(GHPM_TAG, "g_progress_status=%d, g_power_count=%d",
 		atomic_read(&g_progress_status), atomic_read(&g_power_count));
 
