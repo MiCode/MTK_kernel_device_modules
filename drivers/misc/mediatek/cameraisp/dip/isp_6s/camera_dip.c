@@ -6837,7 +6837,7 @@ static signed int DIP_release(
 	struct DIP_USER_INFO_STRUCT *pUserInfo __maybe_unused;
 	unsigned int i = 0;
 
-	spin_unlock(&(IspInfo.SpinLockIspRef));
+	spin_lock(&(IspInfo.SpinLockIspRef));
 	LOG_DBG("- E. UserCount: %d.\n", IspInfo.UserCount);
 	spin_unlock(&(IspInfo.SpinLockIspRef));
 	/*  */
