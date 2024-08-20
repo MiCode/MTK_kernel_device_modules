@@ -95,6 +95,7 @@ static struct genl_family scrn_gnl_family = {
 
 #define CPU_SENSOR_NUM 10
 static int eas_previous_temp[CPU_SENSOR_NUM] = {25000};
+static int pre_temp = 25000;
 
 struct therm_intf_info {
 	int sw_ready;
@@ -487,6 +488,11 @@ int get_dsu_temp(void)
 		temp = therm_intf_read_cputcm_s32(DSU_AVG_TEMP_BASE_ADDR_TCM_OFFSET);
 	else
 		temp = therm_intf_read_csram_s32(DSU_AVG_TEMP_BASE_ADDR_OFFSET);
+
+	if (temp != THERMAL_TEMP_INVALID)
+		pre_temp = temp;
+	else
+		temp = pre_temp ;
 
 	return temp;
 }
