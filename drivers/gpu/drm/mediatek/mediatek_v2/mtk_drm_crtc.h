@@ -1402,7 +1402,7 @@ void mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc);
 bool mtk_crtc_set_status(struct drm_crtc *crtc, bool status);
 int mtk_crtc_attach_addon_path_comp(struct drm_crtc *crtc,
 	const struct mtk_addon_module_data *module_data, bool is_attach);
-void mtk_crtc_connect_addon_module(struct drm_crtc *crtc);
+void mtk_crtc_connect_addon_module(struct drm_crtc *crtc, bool skip_cwb);
 void mtk_crtc_disconnect_addon_module(struct drm_crtc *crtc);
 int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb, void *cb_data,
 			struct cmdq_pkt *cmdq_handle);
@@ -1499,7 +1499,7 @@ void _mtk_crtc_atmoic_addon_module_connect(
 				      struct drm_crtc *crtc,
 				      unsigned int ddp_mode,
 				      struct mtk_lye_ddp_state *lye_state,
-				      struct cmdq_pkt *cmdq_handle);
+				      struct cmdq_pkt *cmdq_handle, bool skip_cwb);
 void _mtk_crtc_atmoic_addon_module_disconnect(
 	struct drm_crtc *crtc, unsigned int ddp_mode,
 	struct mtk_lye_ddp_state *lye_state, struct cmdq_pkt *cmdq_handle);

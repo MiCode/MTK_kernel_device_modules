@@ -2288,8 +2288,13 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	 */
 	if (crtc_state->lye_state.mml_ir_lye || crtc_state->lye_state.mml_dl_lye)
 		mtk_crtc_addon_connector_connect(crtc, NULL);
-	else
-		mtk_crtc_connect_addon_module(crtc);
+	else if ((crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE] == 1) && (crtc_id == 0)) {
+		DDPINFO("%s, is cwb, skip it\n", __func__);
+		mtk_crtc_connect_addon_module(crtc, true);
+	} else {
+		DDPINFO("%s, addon module\n", __func__);
+		mtk_crtc_connect_addon_module(crtc, false);
+	}
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"update_hrt", 15, perf_string, true);
@@ -3102,7 +3107,7 @@ void mtk_drm_idlemgr_wb_leave(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cm
 		 BIT(17), BIT(17));
 	mtk_crtc_all_layer_off(mtk_crtc, cmdq_handle);
 	_mtk_crtc_atmoic_addon_module_connect(crtc, mtk_crtc->ddp_mode,
-				&crtc_state->lye_state, cmdq_handle);
+				&crtc_state->lye_state, cmdq_handle, false);
 	__mtk_crtc_restore_plane_setting(mtk_crtc, cmdq_handle);
 	GCE_FI;
 

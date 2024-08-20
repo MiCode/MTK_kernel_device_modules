@@ -4932,7 +4932,8 @@ void _mtk_crtc_atmoic_addon_module_connect(
 				      struct drm_crtc *crtc,
 				      unsigned int ddp_mode,
 				      struct mtk_lye_ddp_state *lye_state,
-				      struct cmdq_pkt *cmdq_handle)
+				      struct cmdq_pkt *cmdq_handle,
+				      bool skip_cwb)
 {
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -4941,11 +4942,14 @@ void _mtk_crtc_atmoic_addon_module_connect(
 	    priv->need_vds_path_switch)
 		return;
 	DDPINFO("%s +\n", __func__);
-	_mtk_crtc_wb_addon_module_connect(
-				   crtc, ddp_mode, cmdq_handle);
+	if (!skip_cwb) {
+		DDPINFO("%s, connect cwb\n", __func__);
+		_mtk_crtc_wb_addon_module_connect(
+					   crtc, ddp_mode, cmdq_handle);
 
-	_mtk_crtc_cwb_addon_module_connect(
-				   crtc, ddp_mode, cmdq_handle);
+		_mtk_crtc_cwb_addon_module_connect(
+					   crtc, ddp_mode, cmdq_handle);
+	}
 
 	/* reset ovl_pq_in_cb and ovl_pq_out_cb for safety */
 	if (lye_state->rpo_lye || lye_state->mml_ir_lye || lye_state->mml_dl_lye)
@@ -5217,7 +5221,7 @@ static void mtk_crtc_atomic_ddp_config(struct drm_crtc *crtc,
 		mtk_drm_crtc_exdma_path_setting_reset(mtk_crtc, cmdq_handle);
 
 	_mtk_crtc_atmoic_addon_module_connect(crtc, mtk_crtc->ddp_mode,
-					      lye_state, cmdq_handle);
+					      lye_state, cmdq_handle, false);
 }
 
 static void __nocfi mtk_crtc_free_ddpblob_ids(struct drm_crtc *crtc,
@@ -11470,7 +11474,7 @@ void mtk_crtc_addon_connector_connect(struct drm_crtc *crtc,
 
 }
 
-void mtk_crtc_connect_addon_module(struct drm_crtc *crtc)
+void mtk_crtc_connect_addon_module(struct drm_crtc *crtc, bool skip_cwb)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
@@ -11486,7 +11490,7 @@ void mtk_crtc_connect_addon_module(struct drm_crtc *crtc)
 	}
 
 	_mtk_crtc_atmoic_addon_module_connect(crtc, mtk_crtc->ddp_mode,
-					      &crtc_state->lye_state, handle);
+					      &crtc_state->lye_state, handle, skip_cwb);
 
 	mtk_crtc_addon_connector_connect(crtc, handle);
 
@@ -13305,7 +13309,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 #endif
 
 	/* 8. disconnect addon module and config */
-	mtk_crtc_connect_addon_module(crtc);
+	mtk_crtc_connect_addon_module(crtc, false);
 
 	/* 9. restore OVL setting */
 	memset(mtk_crtc->usage_ovl_fmt, 0, sizeof(mtk_crtc->usage_ovl_fmt));
@@ -21319,7 +21323,7 @@ static void __mtk_crtc_prim_path_switch(struct drm_crtc *crtc,
 
 	if (!mtk_crtc_with_sub_path(crtc, ddp_mode))
 		_mtk_crtc_atmoic_addon_module_connect(
-			crtc, ddp_mode, &crtc_state->lye_state, cmdq_handle);
+			crtc, ddp_mode, &crtc_state->lye_state, cmdq_handle, false);
 
 	/* 5. Set composed write back buffer */
 	mtk_crtc_config_wb_path_cmdq(crtc, cmdq_handle, next_path_idx,
@@ -21423,7 +21427,7 @@ static void __mtk_crtc_sub_path_create(
 					 ddp_mode, cfg);
 
 	_mtk_crtc_atmoic_addon_module_connect(
-		crtc, ddp_mode, &crtc_state->lye_state, cmdq_handle);
+		crtc, ddp_mode, &crtc_state->lye_state, cmdq_handle, false);
 
 	cmdq_pkt_flush(cmdq_handle);
 	cmdq_pkt_destroy(cmdq_handle);
