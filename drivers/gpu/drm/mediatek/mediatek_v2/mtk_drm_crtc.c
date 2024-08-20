@@ -17984,6 +17984,12 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	}
 #endif
 
+	/* disable partial update if doze mode is enable*/
+	if (state->prop_val[CRTC_PROP_DOZE_ACTIVE] && partial_enable) {
+		DDPINFO("skip because doze mode is enable\n");
+		partial_enable = 0;
+	}
+
 	if (mtk_crtc->capturing == true) {
 		DDPDBG("skip because cwb is enable\n");
 		partial_enable = 0;
