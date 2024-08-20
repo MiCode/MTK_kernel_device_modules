@@ -662,6 +662,7 @@ int gpufreq_get_oppidx_by_freq(enum gpufreq_target target, unsigned int freq);
 unsigned int gpufreq_get_leakage_power(enum gpufreq_target target, unsigned int volt);
 unsigned int gpufreq_get_dynamic_power(enum gpufreq_target target,
 	unsigned int freq, unsigned int volt);
+int gpufreq_get_cur_temperature(void);
 int gpufreq_set_limit(enum gpufreq_target target,
 	enum gpuppm_limiter limiter, int ceiling_info, int floor_info);
 int gpufreq_get_cur_limit_idx(enum gpufreq_target target,enum gpuppm_limit_type limit);
