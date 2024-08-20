@@ -13645,7 +13645,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clock-names = "c3d0";
 		};
 
-		mmlsys1_config: mmlsys1-config@1f800000 {
+		mmlsys1_config: mmlsys-config@1f800000 {
 			compatible = "mediatek,mt6899-mml1";
 			reg = <0 0x1f800000 0 0x1000>;
 
