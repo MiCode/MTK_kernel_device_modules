@@ -1173,6 +1173,63 @@ static int _mt_cpufreq_target(struct cpufreq_policy *policy,
 	return 0;
 }
 
+static int mtk_cpufreq_get_cpu_power( struct device *dev, unsigned long *uW, unsigned long *KHz)
+{
+	int j;
+	int ret,cpu;
+	int new_opp_idx = -1;
+	enum mt_cpu_dvfs_id cluster;
+	unsigned int lv;
+	u32 cap;
+	u64 tmp, MHz;
+	unsigned long mV;
+	struct opp_tbl_info *opp_tbl_info;
+	struct device_node *np;
+
+	if (!dev)
+		return -ENODEV;
+
+	np = of_node_get(dev->of_node);
+	if (!np)
+		return -EINVAL;
+
+	ret = of_property_read_u32(np, "dynamic-power-coefficient", &cap);
+	if (ret)
+		return -EINVAL;
+
+	cpu = of_cpu_node_to_id(np);
+	if (cpu < 0)
+		return -ENODEV;
+
+	of_node_put(np);
+
+	lv = _mt_cpufreq_get_cpu_level();
+
+	cluster = _get_cpu_dvfs_id(cpu);
+	opp_tbl_info = &opp_tbls[cluster][lv];
+
+	for (j = (opp_tbl_info->size-1); j >= 0; j--) {
+		if (opp_tbl_info->opp_tbl[j].cpufreq_khz > *KHz) {
+			new_opp_idx = j;
+			break;
+		}
+	}
+	*KHz = opp_tbl_info->opp_tbl[new_opp_idx].cpufreq_khz;
+	mV = (opp_tbl_info->opp_tbl[new_opp_idx].cpufreq_volt) / 100;
+
+	if (!mV)
+		return -EINVAL;
+
+	MHz = *KHz;
+	do_div(MHz , 1000);
+	tmp = (u64)cap * mV * mV * MHz;
+	/* Provide micro-Watts value to the Energy Model */
+	do_div(tmp, 1000000);
+	*uW = (unsigned long)tmp;
+	tag_pr_info("Voltage in mV = %lu, Frequency in KHz = %lu, Power in uW = %lu\n", mV, *KHz, *uW);
+	return 0;
+}
+
 #ifndef ONE_CLUSTER
 int cci_is_inited;
 #endif
@@ -1301,21 +1358,20 @@ static int _mt_cpufreq_exit(struct cpufreq_policy *policy)
 	return 0;
 }
 
-
 static void _mt_cpufreq_register_em(struct cpufreq_policy *policy)
 {
+	struct em_data_callback em_cb = EM_DATA_CB(mtk_cpufreq_get_cpu_power);
 	int pd_ret = -EINVAL;
 
 	FUNC_ENTER(FUNC_LV_MODULE);
 
-	pd_ret = dev_pm_opp_of_register_em(get_cpu_device(policy->cpu), policy->cpus);
+	pd_ret = em_dev_register_perf_domain(get_cpu_device(policy->cpu), NR_FREQ, &em_cb, policy->cpus, true);
 	tag_pr_notice("energy model register result %d\n", pd_ret);
 	if (pd_ret)
 		tag_pr_notice("energy model regist fail\n");
 
 	FUNC_EXIT(FUNC_LV_MODULE);
 }
-
 
 static unsigned int _mt_cpufreq_get(unsigned int cpu)
 {
