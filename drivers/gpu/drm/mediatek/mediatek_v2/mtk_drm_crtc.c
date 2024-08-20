@@ -15957,14 +15957,14 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 			}
 		}
 	}
-	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+	if (mtk_crtc->sec_on && (priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
 		priv->data->mmsys_id == MMSYS_MT6885 ||
 		priv->data->mmsys_id == MMSYS_MT6853 ||
 		priv->data->mmsys_id == MMSYS_MT6781 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
 		priv->data->mmsys_id == MMSYS_MT6833 ||
-		priv->data->mmsys_id == MMSYS_MT6761)
+		priv->data->mmsys_id == MMSYS_MT6761))
 		DDPINFO("skip reset ovl for legacy chip\n");
 	else
 		cmdq_pkt_reset_ovl(mtk_crtc_state->cmdq_handle, mtk_crtc);
@@ -18660,13 +18660,13 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 
 	/* backup ovl0 2l status for crtc0 */
 	if (index == 0) {
-		comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL0_2L);
+		comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL0);
 		if (IS_ERR_OR_NULL(comp)) {
-			comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL1_2L);
+			comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL1);
 			if (IS_ERR_OR_NULL(comp)) {
-				comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL0);
+				comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL0_2L);
 				if (IS_ERR_OR_NULL(comp)) {
-					comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL1);
+					comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL1_2L);
 					if (IS_ERR_OR_NULL(comp))
 						comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL_EXDMA3);
 				}
