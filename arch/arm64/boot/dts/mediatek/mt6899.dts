@@ -6835,7 +6835,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 
 		gce: gce@1e980000 {
-			compatible = "mediatek,mt6897-gce";
+			compatible = "mediatek,mt6899-gce";
 			reg = <0 0x1e980000 0 0x4000>;
 			interrupts = <GIC_SPI 666 IRQ_TYPE_LEVEL_HIGH 0>;
 			#mbox-cells = <3>;
@@ -6862,6 +6862,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mminfra-ao-base = <0x1e8ff000>;
 			gce-ddr-sel-wla;
 			gce-fast-mtcmos;
+			cmdq-dump-buf-size = <1>;
+			cmdq-print-debug = <1>;
 		};
 
 		gce_sec: gce-mbox-sec@1e980000 {
@@ -6876,7 +6878,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		gce_m: gce@1e990000 {
-			compatible = "mediatek,mt6897-gce";
+			compatible = "mediatek,mt6899-gce";
 			reg = <0 0x1e990000 0 0x4000>;
 			interrupts = <GIC_SPI 665 IRQ_TYPE_LEVEL_HIGH 0>;
 			#mbox-cells = <3>;
@@ -6902,6 +6904,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mminfra-ao-base = <0x1e8ff000>;
 			gce-ddr-sel-wla;
 			gce-req-wa;
+			cmdq-dump-buf-size = <1>;
+			cmdq-print-debug = <1>;
 		};
 
 		gce_m_sec: gce-mbox-m-sec@1e990000 {
