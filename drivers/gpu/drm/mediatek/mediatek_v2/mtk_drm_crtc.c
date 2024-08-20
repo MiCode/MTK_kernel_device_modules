@@ -13307,6 +13307,8 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
 		mtk_crtc->usage_ovl_fmt[0] = 4;
+		if (priv->data->mmsys_id == MMSYS_MT6899 && mtk_drm_dal_enable())
+			mtk_crtc->usage_ovl_fmt[5] = 2;
 		mtk_disp_get_channel_hrt_bw(mtk_crtc, channel_hrt, ARRAY_SIZE(channel_hrt));
 		mtk_disp_set_max_channel_hrt_bw(mtk_crtc, channel_hrt,
 					ARRAY_SIZE(channel_hrt), __func__);
