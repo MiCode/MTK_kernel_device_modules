@@ -62,6 +62,7 @@ struct mtk_dsi_driver_data {
 	bool dsi_buffer;
 	bool smi_dbg_disable;
 	bool require_phy_reset; /* reset phy before trigger DSI */
+	bool keep_hs_eotp; /* keep HS eotp */
 	bool support_pre_urgent;
 	u32 max_vfp;
 	void (*mmclk_by_datarate)(struct mtk_dsi *dsi,
@@ -76,7 +77,7 @@ struct mtk_dsi_driver_data {
 	const u32 dsi_size_con;
 	const u32 dsi_vfp_early_stop;
 	const u32 dsi_lfr_con;
-	const u32 dsi_cmdq_size;
+	const u32 dsi_cmdq_con;
 	const u32 dsi_type1_hs;
 	const u32 dsi_hstx_ckl_wc;
 	const u32 dsi_mem_conti;
