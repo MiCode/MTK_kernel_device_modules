@@ -3409,7 +3409,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	};
 
 	mmdebug-vcp {
-		//compatible = "mediatek,mmdebug-vcp";
+		compatible = "mediatek,mmdebug-vcp";
 	};
 
 	mmdvfs-v3-start {
