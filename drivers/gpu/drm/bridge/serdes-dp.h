@@ -3,8 +3,8 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
-#ifndef _MAXIAM_MAX96851_H_
-#define _MAXIAM_MAX96851_H_
+#ifndef _MAXIAM_SERDES_DP_H_
+#define _MAXIAM_SERDES_DP_H_
 
 #include <drm/drm_modes.h>
 #include <drm/drm_connector.h>
@@ -35,7 +35,7 @@
 #include <linux/interrupt.h>
 #include <linux/wait.h>
 
-#define SERDES_DEBUG_INFO					"MAX96851"
+#define SERDES_DEBUG_INFO					"[serdes-dp]"
 #define SERDES_POLL_TIMEOUT_MS				2000
 
 #define I2C_WRITE							0x1
@@ -45,6 +45,7 @@
 #define SER_ACTIVE_STATUS_CHECK_REG			0x2CE
 
 #define PANEL_NAME							"panel-name"
+#define USE_FOR_DP							"use-for-dp"
 #define SERDES_SUPPORT_HOTPLUG				"ser-support-hotplug"
 #define SERDES_SUPER_FRAME					"ser-super-frame"
 #define SERDES_DOUBLE_PIXEL					"ser-double-pixel"
@@ -60,14 +61,14 @@
 #define FEATURE_HANDLE_CMD					"handle-cmd"
 #define FEATURE_SETTING						"feature-setting"
 
-#define MAX96851_SIGNAL_SETTING				"max96851-signal-settting"
+#define SERDES_DP_SST_SETTING				"serdes-dp-sst-settting"
 #define DES_I2C_ADDR						"des-i2c-addr"
 #define BL_I2C_ADDR							"bl-i2c-addr"
 #define SER_INIT_CMD_NAME					"ser-init-cmd"
 #define DES_INIT_CMD_NAME					"des-init-cmd"
 #define TOUCH_INIT_CMD_ADDR					"touch-init-cmd"
 
-#define MAX96851_SUPERFRAME_SETTING			"max96851-superframe-setting"
+#define SERDES_DP_SUPERFRAME_SETTING		"serdes-dp-superframe-setting"
 #define ASYMMETRIC_MULTI_VIEW				"asymmetric-multi-view"
 #define SYSMMETRIC_MULTI_VIEW_SETTING		"symmetric-multi-view-setting"
 #define ASYSMMETRIC_MULTI_VIEW_SETTING		"asymmetric-multi-view-setting"
@@ -82,12 +83,12 @@
 #define SER_SUPERFRAME_INIT_CMD				"ser-superframe-init-cmd"
 #define SERDES_SUPERFRAME_TOUCH_INIT_CMD	"serdes-superframe-touch-init-cmd"
 
-#define MAX96851_DUAL_LINK_SETTING			"max96851-dual-link-setting"
+#define SERDES_DP_DOUBLE_PIXEL_SETTING		"serdes-dp-double-pixel-setting"
 
-#define MAX96851_DP_MST_SETTING				"max96851-dp-mst-setting"
+#define SERDES_DP_MST_SETTING				"serdes-dp-mst-setting"
 #define DP_MST_INIT_CMD						"ser-mst-init-cmd"
-#define MAX96851_DP_MST_TOUCH_I2C_ADDR		"dp-mst-touch-i2c-addr"
-#define MAX96851_DP_MST_TOUCH_INIT_CMD		"dp-mst-touch-init-cmd"
+#define serdes_dp_DP_MST_TOUCH_I2C_ADDR		"dp-mst-touch-i2c-addr"
+#define serdes_dp_DP_MST_TOUCH_INIT_CMD		"dp-mst-touch-init-cmd"
 
 #define BL_ON_CMD							"bl-on-cmd"
 #define BL_OFF_CMD							"bl-off-cmd"
@@ -97,7 +98,6 @@
 
 #define SER_REG_0x2A_LINKA_CTRL				0x2A
 #define SER_CMSL_LINKA_LOCKED				BIT(0)
-
 
 #define SER_REG_0x34_LINKB_CTRL				0x34
 #define SER_CMSL_LINKB_LOCKED				BIT(0)
@@ -140,7 +140,7 @@ struct feature_info {
 	struct feature_cmd *feature_cmd;
 };
 
-struct max96851_bridge {
+struct serdes_dp_bridge {
 	struct device *dev;
 	struct drm_connector connector;
 	struct i2c_client *client;
@@ -160,7 +160,7 @@ struct max96851_bridge {
 	atomic_t hotplug_event;
 
 	/* Serdes i2c client */
-	struct i2c_client *max96851_i2c;
+	struct i2c_client *serdes_dp_i2c;
 	struct i2c_client *max96752_i2c;
 	struct i2c_client *bl_i2c;
 	struct i2c_client *max96752_linka_i2c;
@@ -198,7 +198,7 @@ struct max96851_bridge {
 	spinlock_t enable_index_lock;
 
 	bool boot_from_lk;
-	bool dual_link_support;
+	bool double_pixel_support;
 	bool superframe_support;
 	bool asymmetric_multi_view;
 	bool is_support_mst;
