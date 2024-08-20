@@ -285,7 +285,7 @@ static s32 tdshp_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	func->enable_flag = dest->pq_config.en_sharp ||
 			    (cfg->info.mode == MML_MODE_DDP_ADDON ||
 			    cfg->info.mode == MML_MODE_DIRECT_LINK);
-	if (tdshp->data->wrot_pending) {
+	if (tdshp->data->wrot_pending && cfg->info.mode != MML_MODE_DDP_ADDON) {
 		func->full_size_x_in = frame_out->width;
 		func->full_size_y_in = frame_out->height;
 		func->full_size_x_out = frame_out->width;
