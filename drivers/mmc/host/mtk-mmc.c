@@ -2063,10 +2063,8 @@ static bool msdc_data_xfer_done(struct msdc_host *host, u32 events,
 
 		ret = readl_poll_timeout_atomic(host->base + MSDC_DMA_CTRL, val,
 						!(val & MSDC_DMA_CTRL_STOP), 1, 20000);
-		if (ret) {
+		if (ret)
 			dev_info(host->dev, "DMA stop timed out\n");
-			return false;
-		}
 
 		sdr_set_bits(host->base + MSDC_FIFOCS, MSDC_FIFOCS_CLR);
 		ret = readl_poll_timeout_atomic(host->base + MSDC_FIFOCS, val,
@@ -2074,7 +2072,6 @@ static bool msdc_data_xfer_done(struct msdc_host *host, u32 events,
 		if (ret) {
 			bitmap_set(host->err_bag.err_bitmap, ERR_MSDC_FIFOCS_CLR_TIMEOUT_BIT, 1);
 			msdc_dump_register_to_buf(host, 0);
-			return false;
 		}
 
 		ret = readl_poll_timeout_atomic(host->base + MSDC_DMA_CFG, val,
@@ -2082,7 +2079,6 @@ static bool msdc_data_xfer_done(struct msdc_host *host, u32 events,
 		if (ret) {
 			bitmap_set(host->err_bag.err_bitmap, ERR_MSDC_DMA_CFG_STS_TIMEOUT_BIT, 1);
 			msdc_dump_register_to_buf(host, 1);
-			return false;
 		}
 
 		spin_lock_irqsave(&host->lock, flags);
