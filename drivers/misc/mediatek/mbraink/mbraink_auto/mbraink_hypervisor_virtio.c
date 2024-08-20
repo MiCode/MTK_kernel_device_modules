@@ -107,68 +107,41 @@ struct vhost_mbraink {
 
 struct vhost_mbraink *vmbraink;
 
-static void vhost_mbraink_report_evt(struct vhost_virtqueue *vq, const char *data)
-{
-	struct vhost_mbraink *mbraink;
-	struct event_buffer_entry *evt;
-	struct llist_node *node;
-
-	mbraink = container_of(vq->dev, struct vhost_mbraink, dev);
-
-	spin_lock(&mbraink->evt_lock);
-	node = llist_del_first(&mbraink->evt_pool);
-	WARN_ON_ONCE(node == NULL);
-	llist_add(node, &mbraink->evt_queue);
-	spin_unlock(&mbraink->evt_lock);
-
-	evt = container_of(node, typeof(*evt), llnode);
-	evt->event.type = VIRTIO_MBRAINK_EVENT_TYPE_NORMAL;
-	strscpy(evt->event.data, data, sizeof(evt->event.data));
-
-	vhost_vq_work_queue(vq, &mbraink->work);
-}
-
-static void vhost_send_msg_to_client(const void *data_buf)
+static int vhost_send_msg_to_client(const void *data_buf)
 {
 	struct event_buffer_entry *evt;
 	struct llist_node *node;
+	ssize_t length = 0;
 
 	spin_lock(&vmbraink->evt_lock);
 	node = llist_del_first(&vmbraink->evt_pool);
-	WARN_ON_ONCE(node == NULL);
-	llist_add(node, &vmbraink->evt_queue);
+	if (node == NULL) {
+		WARN_ON_ONCE(node == NULL);
+		goto send_err;
+	}
+	if (!llist_add(node, &vmbraink->evt_queue)) {
+		pr_info("%s ERROR: llist add fail!\n", __func__);
+		goto send_err;
+	}
 	spin_unlock(&vmbraink->evt_lock);
 
 	evt = container_of(node, typeof(*evt), llnode);
+	if (evt == NULL) {
+		WARN_ON_ONCE(evt == NULL);
+		return -EINVAL;
+	}
 	evt->event.type = VIRTIO_MBRAINK_EVENT_TYPE_NORMAL;
-	strscpy(evt->event.data, data_buf, sizeof(evt->event.data));
+	length = strscpy(evt->event.data, data_buf, sizeof(evt->event.data));
+	if (length <= 0 || length > sizeof(evt->event.data)) {
+		pr_info("%s ERROR: strscpy failed\n", __func__);
+		return -EINVAL;
+	}
 
-	vhost_vq_work_queue(&vmbraink->vq[VIRTIO_MBRAINK_Q_EVENT], &vmbraink->work);
-}
+	return vhost_vq_work_queue(&vmbraink->vq[VIRTIO_MBRAINK_Q_EVENT], &vmbraink->work);
 
-static void vhost_mbraink_report_cb(struct vhost_virtqueue *vq, uint32_t cmd_id,
-		const char *data)
-{
-	struct vhost_mbraink *mbraink;
-	struct event_buffer_entry *evt;
-	struct llist_node *node;
-
-	mbraink = container_of(vq->dev, struct vhost_mbraink, dev);
-
-	spin_lock(&mbraink->evt_lock);
-	node = llist_del_first(&mbraink->evt_pool);
-	WARN_ON_ONCE(node == NULL);
-	llist_add(node, &mbraink->evt_queue);
-	spin_unlock(&mbraink->evt_lock);
-
-	evt = container_of(node, typeof(*evt), llnode);
-	evt->event.cmd_id = cmd_id;
-	evt->event.type = VIRTIO_MBRAINK_EVENT_TYPE_CB;
-	evt->event.rsp.rc = 0;
-	strscpy(evt->event.rsp.data, data, sizeof(evt->event.rsp.data));
-
-	vhost_vq_work_queue(vq, &mbraink->work);
-
+send_err:
+	spin_unlock(&vmbraink->evt_lock);
+	return -EINVAL;
 }
 
 /* Host kick us for I/O completion */
@@ -238,38 +211,6 @@ static void vhost_mbraink_handle_host_kick(struct vhost_work *work)
 	spin_unlock_irqrestore(&mbraink->evt_lock, flags);
 }
 
-struct test_arg {
-	struct vhost_mbraink *mbraink;
-	struct virtio_mbraink_req req;
-	int count;
-};
-
-static int test_cmd_callback(void *data)
-{
-	struct test_arg *arg = data;
-
-	ssleep(1);
-	vhost_mbraink_report_cb(&arg->mbraink->vq[VIRTIO_MBRAINK_Q_EVENT], arg->req.id,
-			"OK");
-
-	kfree(arg);
-	return 0;
-}
-
-static int test_event(void *data)
-{
-	struct test_arg *arg = data;
-
-	for (int i = 0; i < arg->count; i++) {
-		vhost_mbraink_report_evt(&arg->mbraink->vq[VIRTIO_MBRAINK_Q_EVENT],
-				"Hello World!");
-		ssleep(1);
-	}
-
-	kfree(arg);
-	return 0;
-}
-
 static void handle_mbraink_request(struct vhost_mbraink *mbraink,
 		struct vhost_virtqueue *vq, struct virtio_mbraink_req *req,
 		struct virtio_mbraink_rsp *rsp)
@@ -284,29 +225,8 @@ static void handle_mbraink_request(struct vhost_mbraink *mbraink,
 		rsp->rc = ZX_OK;
 		break;
 	}
-	case VIRTIO_MBRAINK_CMD_ECHO_ASYNC: {
-		struct test_arg *arg = kvzalloc(sizeof(*arg), GFP_KERNEL);
-
-		arg->mbraink = mbraink;
-		arg->req = *req;
-
-		pr_info("ASYNC[BE]MBraink device received command(id:%d cmd:%d data:%s)\n",
-				req->id, req->cmd, req->data);
-
-		kthread_run(test_cmd_callback, arg, "test_cmd_callback");
-		break;
-	}
-	case VIRTIO_MBRAINK_CMD_START_EVENT: {
-		int count = 10;
-		struct test_arg *arg = kvzalloc(sizeof(*arg), GFP_KERNEL);
-
-		arg->mbraink = mbraink;
-		arg->count = count;
-
-		pr_info("[BE]MBraink device start event thread last for %d seconds.\n",
-				count);
-
-		kthread_run(test_event, arg, "test_event");
+	default: {
+		pr_info("%s : unsupported command type: %d\n", __func__, req->cmd);
 		break;
 	}
 	}
@@ -587,7 +507,7 @@ int h2c_send_msg(u32 cmdType, void *cmdData)
 		pr_info("%s: invalid send byte size %zu.\n", __func__, sptr);
 		ret = -1;
 	} else {
-		vhost_send_msg_to_client(data_buf);
+		ret = (vhost_send_msg_to_client(data_buf) <= 0) ? -1 : 0;
 	}
 
 err:
