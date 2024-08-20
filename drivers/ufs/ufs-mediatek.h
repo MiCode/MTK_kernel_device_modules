@@ -214,6 +214,7 @@ enum ufs_mtk_host_caps {
 	UFS_MTK_CAP_MCQ_BROKEN_RTC             = 1 << 10,
 	UFS_MTK_CAP_MPHY_DUMP                  = 1 << 11,
 	UFS_MTK_CAP_UFSHCI_PERF_HURISTIC       = 1 << 12,
+	UFS_MTK_CAP_CLK_SCALE_ONLY_BY_USER     = 1 << 13,
 };
 
 struct ufs_mtk_crypt_cfg {

@@ -714,7 +714,7 @@ static ssize_t clkscale_control_store(struct device *dev,
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	const char *opcode = buf;
-	u32 value;
+	u32 value, value_orig;
 
 	if (!strncmp(buf, "powerhal_set: ", 14))
 		opcode = buf + 14;
@@ -726,10 +726,17 @@ static ssize_t clkscale_control_store(struct device *dev,
 	if (hba->dev_info.wspecversion < 0x0400)
 		return count;
 
-	atomic_set(&host->clkscale_control, value);
+	value_orig = atomic_read((&host->clkscale_control));
 
 	switch (value) {
 	case 0: /* free run */
+		/*
+		 * free run is not allowed in user-only mode
+		 * since related-devfreq is not initialized
+		 */
+		if (host->caps & UFS_MTK_CAP_CLK_SCALE_ONLY_BY_USER)
+			goto out;
+
 		ufs_mtk_dynamic_clock_scaling(hba, CLK_SCALE_FREE_RUN);
 		break;
 
@@ -753,12 +760,24 @@ static ssize_t clkscale_control_store(struct device *dev,
 
 	case 5: /* free run and allow change */
 		host->clk_scale_forbid = false;
-		ufs_mtk_dynamic_clock_scaling(hba, CLK_SCALE_FREE_RUN);
+		if (!(host->caps & UFS_MTK_CAP_CLK_SCALE_ONLY_BY_USER)) {
+			ufs_mtk_dynamic_clock_scaling(hba, CLK_SCALE_FREE_RUN);
+			value = 0;
+		} else {
+			if (value_orig == 3)
+				value = 1;
+			else if (value_orig == 4)
+				value = 2;
+		}
 		break;
 
 	default:
-		break;
+		goto out;
 	}
+
+	atomic_set(&host->clkscale_control, value);
+
+out:
 
 	return count;
 }
@@ -783,7 +802,10 @@ static void init_clk_scaling_sysfs(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-	atomic_set(&host->clkscale_control, 0);
+	if (host->caps & UFS_MTK_CAP_CLK_SCALE_ONLY_BY_USER)
+		atomic_set(&host->clkscale_control, 2);
+	else
+		atomic_set(&host->clkscale_control, 0);
 	if (sysfs_create_group(&hba->dev->kobj, &ufs_mtk_sysfs_clkscale_group))
 		dev_info(hba->dev, "Failed to create sysfs for clkscale_control\n");
 }
@@ -1036,7 +1058,8 @@ void ufs_mtk_init_sysfs(struct ufs_hba *hba)
 	if (sysfs_create_group(&hba->dev->kobj, &ufs_mtk_sysfs_group))
 		dev_info(hba->dev, "Failed to create sysfs for btag\n");
 
-	if (hba->caps & UFSHCD_CAP_CLK_SCALING)
+	if ((hba->caps & UFSHCD_CAP_CLK_SCALING) ||
+	    (host->caps & UFS_MTK_CAP_CLK_SCALE_ONLY_BY_USER))
 		init_clk_scaling_sysfs(hba);
 
 	init_eyemon_sysfs(hba);
@@ -1047,9 +1070,12 @@ EXPORT_SYMBOL_GPL(ufs_mtk_init_sysfs);
 
 void ufs_mtk_remove_sysfs(struct ufs_hba *hba)
 {
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
 	sysfs_remove_group(&hba->dev->kobj, &ufs_mtk_sysfs_group);
 
-	if (hba->caps & UFSHCD_CAP_CLK_SCALING)
+	if ((hba->caps & UFSHCD_CAP_CLK_SCALING) ||
+	    (host->caps & UFS_MTK_CAP_CLK_SCALE_ONLY_BY_USER))
 		remove_clk_scaling_sysfs(hba);
 
 	remove_eyemon_sysfs(hba);

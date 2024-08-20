@@ -795,6 +795,9 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 	if (of_property_read_bool(np, "mediatek,ufs-broken-rtc"))
 		host->caps |= UFS_MTK_CAP_MCQ_BROKEN_RTC;
 
+	if (of_property_read_bool(np, "mediatek,ufs-clkscale-only-by-user"))
+		host->caps |= UFS_MTK_CAP_CLK_SCALE_ONLY_BY_USER;
+
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 	if (of_property_read_bool(np, "mediatek,ufs-mphy-debug"))
 		host->caps |= UFS_MTK_CAP_MPHY_DUMP;
@@ -1263,7 +1266,7 @@ static int _ufshcd_populate_vreg(struct device *dev, const char *name,
 		goto out;
 	}
 
-	snprintf(prop_name, MAX_VCC_NAME, "%s-supply", name);
+	(void)snprintf(prop_name, MAX_VCC_NAME, "%s-supply", name);
 	if (!of_parse_phandle(np, prop_name, 0)) {
 		dev_info(dev, "%s: Unable to find %s regulator, assuming enabled\n",
 				__func__, prop_name);
@@ -1420,12 +1423,16 @@ static void ufs_mtk_fix_ahit(struct ufs_hba *hba)
 
 static void ufs_mtk_fix_clock_scaling(struct ufs_hba *hba)
 {
-	/* UFS version is below 4.0, clock scaling is not necessary */
-	if ((hba->dev_info.wspecversion < 0x0400)  &&
-		ufs_mtk_is_clk_scale_ready(hba)) {
-		hba->caps &= ~UFSHCD_CAP_CLK_SCALING;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-		_ufs_mtk_clk_scale(hba, false);
+	/* UFS version is below 4.0, clock scaling is not necessary */
+	if (hba->dev_info.wspecversion < 0x0400) {
+		host->caps &= ~UFS_MTK_CAP_CLK_SCALE_ONLY_BY_USER;
+
+		if (ufs_mtk_is_clk_scale_ready(hba)) {
+			hba->caps &= ~UFSHCD_CAP_CLK_SCALING;
+			_ufs_mtk_clk_scale(hba, false);
+		}
 	}
 }
 
@@ -1636,9 +1643,11 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	/* Enable WriteBooster */
 	hba->caps |= UFSHCD_CAP_WB_EN;
 
-	/* Enable clk scaling*/
-	hba->caps |= UFSHCD_CAP_CLK_SCALING;
 	host->clk_scale_up = true; /* default is max freq */
+	if (host->caps & UFS_MTK_CAP_CLK_SCALE_ONLY_BY_USER)
+		hba->clk_scaling.min_gear = UFS_HS_G4;
+	else
+		hba->caps |= UFSHCD_CAP_CLK_SCALING;
 
 	/* Set runtime pm delay to replace default */
 	shost->rpm_autosuspend_delay = MTK_RPM_AUTOSUSPEND_DELAY_MS;
@@ -2245,7 +2254,8 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 		scale_allow = false;
 
 	/* Host not support clock scaling or disable by customer */
-	if (!hba->clk_scaling.is_initialized)
+	if (!(host->caps & UFS_MTK_CAP_CLK_SCALE_ONLY_BY_USER) &&
+	    !hba->clk_scaling.is_initialized)
 		scale_allow = false;
 
 	/*

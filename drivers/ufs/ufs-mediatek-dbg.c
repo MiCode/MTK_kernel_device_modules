@@ -1769,8 +1769,10 @@ int ufs_mtk_cali_hold(void)
 	}
 
 	/* To make sure clock scaling isn't work when ref-clk calibration ongoing */
-	queue_work(hba->clk_scaling.workq, &hba->clk_scaling.suspend_work);
-	flush_work(&hba->clk_scaling.suspend_work);
+	if (hba->clk_scaling.workq) {
+		queue_work(hba->clk_scaling.workq, &hba->clk_scaling.suspend_work);
+		flush_work(&hba->clk_scaling.suspend_work);
+	}
 
 	/* Make sure host enter AH8 and clock off */
 	mdelay(15);
