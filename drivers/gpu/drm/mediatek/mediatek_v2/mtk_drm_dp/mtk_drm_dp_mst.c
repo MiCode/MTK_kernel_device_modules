@@ -551,10 +551,8 @@ static void mtk_dp_mst_drv_stream_enable(struct mtk_dp *mtk_dp,
 							       channel, fs, false);
 					mtk_dp_i2s_audio_config(mtk_dp, encoder_id);
 				}
-				mtk_dp_audio_mute(mtk_dp, encoder_id, false);
 			} else {
 				DP_MSG("Audio disable, due to audio_enable is False\n");
-				mtk_dp_audio_mute(mtk_dp, encoder_id, true);
 			}
 		}
 	}
@@ -1090,6 +1088,8 @@ static void mtk_dp_mst_update_payload(struct mtk_dp *mtk_dp)
 	int status = 0;
 	int counter = 5;
 	int payload_idx;
+	enum dp_stream_id stream_id;
+	enum dp_encoder_id encoder_id;
 
 	DP_MSG("===DPCD_001C0===\n\n");
 
@@ -1112,6 +1112,15 @@ static void mtk_dp_mst_update_payload(struct mtk_dp *mtk_dp)
 		if (counter-- <= 0)
 			break;
 	} while (!((status & DP_PAYLOAD_ACT_HANDLED) && (status > 0)));
+
+	for (stream_id = DP_STREAM_ID_0; stream_id < DP_STREAM_MAX; stream_id++) {
+		encoder_id = (enum dp_encoder_id)stream_id;
+		mtk_dp_video_mute(mtk_dp, encoder_id, false);
+		if (mtk_dp->audio_enable)
+			mtk_dp_audio_mute(mtk_dp, encoder_id, false);
+		else
+			mtk_dp_audio_mute(mtk_dp, encoder_id, true);
+	}
 }
 
 int mtk_dp_mst_calc_pbn_mode(struct mtk_dp *mtk_dp, int clock, int bpp, bool dsc)

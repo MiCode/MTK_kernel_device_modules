@@ -4118,10 +4118,7 @@ void mtk_dp_video_enable(struct mtk_dp *mtk_dp, const enum dp_encoder_id encoder
 
 	if (enable) {
 		mtk_dp_set_dp_out(mtk_dp, encoder_id);
-		mtk_dp_video_mute(mtk_dp, encoder_id, false);
 		mtk_dp_verify_clock(mtk_dp, encoder_id);
-	} else {
-		mtk_dp_video_mute(mtk_dp, encoder_id, true);
 	}
 }
 
@@ -5148,8 +5145,10 @@ static void mtk_dp_encoder_disable(struct drm_encoder *encoder)
 	}
 
 	mtk_dp->video_enable = false;
-	for (i = 0; i < DP_ENCODER_NUM; i++)
+	for (i = 0; i < DP_ENCODER_NUM; i++) {
 		mtk_dp_video_enable(mtk_dp, i, false);
+		mtk_dp_video_mute(mtk_dp, i, true);
+	}
 }
 
 static void mtk_dp_encoder_enable(struct drm_encoder *encoder)
@@ -6336,6 +6335,7 @@ int mtk_dp_handle(struct mtk_dp *mtk_dp)
 			for (encoder_id = 0; encoder_id < DP_ENCODER_ID_MAX; encoder_id++) {
 				mtk_dp_video_config(mtk_dp, encoder_id);
 				mtk_dp_video_enable(mtk_dp, encoder_id, true);
+				mtk_dp_video_mute(mtk_dp, encoder_id, false);
 			}
 		}
 
