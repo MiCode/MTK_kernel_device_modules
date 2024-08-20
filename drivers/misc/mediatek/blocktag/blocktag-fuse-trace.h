@@ -71,4 +71,8 @@ void mtk_btag_fuse_req_hist_show(char **buff, unsigned long *size,
 void mtk_btag_fuse_init(struct proc_dir_entry *btag_root);
 void mtk_btag_fuse_exit(void);
 
+void mtk_btag_eara_get_fuse_data(struct eara_iostat *data);
+void mtk_btag_fuse_get_req_cnt(int *total_cnt, int *unlink_cnt);
+void mtk_btag_fuse_clear_req_cnt(void);
+
 #endif /* _BLOCKTAG_FUSE_TRACE_H */
