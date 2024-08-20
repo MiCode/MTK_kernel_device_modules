@@ -14834,11 +14834,13 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 				mtk_crtc->gce_obj.client[CLIENT_CFG]);
 	}
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	if (crtc_id == 0)
 		mtk_vidle_clear_wfe_event(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
 				  mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
 	mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
 					 comp ? mtk_get_gpr(comp, cmdq_handle) : 0);
+#endif
 
 	/* mml need to power on InlineRotate and sync with mml */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_PRIMARY) &&
@@ -18705,7 +18707,9 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	}
 #endif
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
+#endif
 
 	mtk_drm_idlemgr_kick(__func__, crtc, false); /* update kick timestamp */
 
