@@ -49,7 +49,7 @@ module_param(mml_path_mode, int, 0644);
  * 1: force enable
  * 2: force disable
  */
-int mml_racing = 2;
+int mml_racing;
 module_param(mml_racing, int, 0644);
 
 /* debug param
