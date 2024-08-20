@@ -29,6 +29,10 @@
 	#address-cells = <2>;
 	#size-cells = <2>;
 
+	mgm: mgm {
+		compatible = "arm,physical-memory-group-manager";
+	};
+
 aliases {
 		i2c0 = &i2c0;
 		i2c1 = &i2c1;
@@ -3698,6 +3702,7 @@ transparent_hugepage=never";
 	mali: mali@13040000 {
 		compatible = "mediatek,mali", "arm,mali-valhall";
 		reg = <0 0x13040000 0 0x4000>;
+		physical-memory-group-manager = <&mgm>;
 		interrupts =
 			<GIC_SPI 274 IRQ_TYPE_LEVEL_HIGH 0>,
 			<GIC_SPI 275 IRQ_TYPE_LEVEL_HIGH 0>,
