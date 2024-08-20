@@ -1527,11 +1527,11 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 			submit_kernel->info.ovlsys_id = ret;
 		else
 			DDPMSG("%s, %d GET_OVL_SYS_NUM fail\n", __func__, __LINE__);
-
-		ret = mtk_crtc->gce_obj.event[EVENT_MML_DISP_DONE_EVENT];
-		if (ret)
-			submit_kernel->info.disp_done_event = ret;
 	}
+
+	ret = mtk_crtc->gce_obj.event[EVENT_MML_DISP_DONE_EVENT];
+	if (ret)
+		submit_kernel->info.disp_done_event = ret;
 
 	mml_drm_split_info(submit_kernel, submit_pq);
 

@@ -1733,7 +1733,7 @@ static void core_taskdone(struct work_struct *work)
 #endif
 
 	/* dl mode fast on/off during hw run, so enable mminfra and except flow back */
-	if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
+	if (!mml_isdc(cfg->info.mode)) {
 		mml_core_mminfra_enable(cfg->mml, 0, path->mmlsys);
 		mml_dpc_exc_keep_task(task, path);
 	}
@@ -2341,7 +2341,7 @@ static void core_config_task(struct mml_task *task)
 	/* The dl mode fast on/off during hw run, so disable mminfra and except flow
 	 * And addon mode has no taskdone flow, thus release mminfra here to avoid power leak.
 	 */
-	if (mode == MML_MODE_DIRECT_LINK || mode == MML_MODE_DDP_ADDON) {
+	if (!mml_isdc(mode)) {
 		mml_dpc_exc_release_task(task, cfg->path[0]);
 		mml_core_mminfra_disable(cfg->mml, 0, cfg->path[0]->mmlsys);
 	}
