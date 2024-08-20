@@ -2338,6 +2338,11 @@ static int mmdvfs_mux_get_opp(const char *name)
 		return -EINVAL;
 	}
 
+	if (mmdvfs_vcp_stop) {
+		MMDVFS_ERR("vote opp after vcp stop, name:%s id:%d", mmdvfs_mux[id].name, id);
+		return -EINVAL;
+	}
+
 	if (log_level & (1 << log_clk_ops))
 		MMDVFS_DBG("name:%s opp:%d mux:%d name:%s rate:%llu opp:%hhd level:%u",
 			name, opp, id, mmdvfs_mux[id].name, mmdvfs_mux[id].rate, mmdvfs_mux[id].opp,
