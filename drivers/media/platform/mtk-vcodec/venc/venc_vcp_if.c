@@ -865,7 +865,7 @@ static int vcp_venc_notify_callback(struct notifier_block *this,
 	struct mtk_vcodec_ctx *ctx;
 	int timeout = 0;
 	struct venc_inst *inst = NULL;
-	bool need_ipi;
+	bool need_backup;
 
 	if (!mtk_vcodec_is_vcp(MTK_INST_ENCODER))
 		return 0;
@@ -914,10 +914,12 @@ static int vcp_venc_notify_callback(struct notifier_block *this,
 
 		// send backup ipi to vcp by dev_ctx if vcp has inst
 		mutex_lock(&dev->ctx_mutex);
-		need_ipi = has_valid_vcp_inst(dev);
+		need_backup = has_valid_vcp_inst(dev);
 		mutex_unlock(&dev->ctx_mutex);
-		if (need_ipi)
+		if (need_backup) {
 			venc_vcp_backup((struct venc_inst *)dev->dev_ctx.drv_handle);
+			dev->has_backup = true;
+		}
 
 		while (atomic_read(&dev->mq.cnt)) {
 			timeout += 20;
@@ -930,11 +932,10 @@ static int vcp_venc_notify_callback(struct notifier_block *this,
 	break;
 	case VCP_EVENT_RESUME:
 		// send backup ipi to vcp by dev_ctx if vcp has inst
-		mutex_lock(&dev->ctx_mutex);
-		need_ipi = has_valid_vcp_inst(dev);
-		mutex_unlock(&dev->ctx_mutex);
-		if (need_ipi)
+		if (dev->has_backup) {
 			venc_vcp_resume((struct venc_inst *)dev->dev_ctx.drv_handle);
+			dev->has_backup = false;
+		}
 		dev->is_codec_suspending = 0;
 		break;
 	}

@@ -923,6 +923,7 @@ struct mtk_vcodec_dev {
 	struct mtk_vcodec_pm pm;
 	struct notifier_block pm_notifier;
 	bool is_codec_suspending;
+	bool has_backup;
 	bool codec_stop_done;
 
 	int dec_cnt;
