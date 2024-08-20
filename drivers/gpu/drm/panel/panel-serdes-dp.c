@@ -3,23 +3,8 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
-#include <linux/backlight.h>
-#include <linux/gpio/consumer.h>
-#include <linux/module.h>
-#include <linux/of_platform.h>
-#include <linux/platform_device.h>
-#include <linux/regulator/consumer.h>
-#include <linux/slab.h>
-#include <linux/delay.h>
-#include <linux/string.h>
-#include <video/display_timing.h>
-#include <video/of_display_timing.h>
-#include <video/videomode.h>
-#include <drm/drm_crtc.h>
-#include <drm/drm_panel.h>
-
-#include "./panel-maxiam-max96851.h"
-#include "../bridge/maxiam-max96851.h"
+#include "./panel-serdes-dp.h"
+#include "../bridge/serdes-dp.h"
 
 static inline struct panel_edp *to_panel_edp(struct drm_panel *panel)
 {
@@ -205,10 +190,10 @@ static int panel_edp_parse_dt(struct panel_edp *edp)
 		return -EINVAL;
 	}
 
-	memset(edp->panel_name, 0, PANLE_NAME_SIZE);
-	strscpy(edp->panel_name, panel_name, PANLE_NAME_SIZE);
-	memset(edp->panel_mode, 0, PANLE_NAME_SIZE);
-	strscpy(edp->panel_mode, panel_mode, PANLE_NAME_SIZE);
+	memset(edp->panel_name, 0, PANEL_NAME_SIZE);
+	strscpy(edp->panel_name, panel_name, PANEL_NAME_SIZE);
+	memset(edp->panel_mode, 0, PANEL_NAME_SIZE);
+	strscpy(edp->panel_mode, panel_mode, PANEL_NAME_SIZE);
 
 	/* parse timing mode from default panel*/
 	ret = parse_timing_mode(edp, edp->panel_name, edp->panel_mode);
@@ -306,7 +291,6 @@ static int panel_edp_remove(struct platform_device *pdev)
 	struct panel_edp *edp = dev_get_drvdata(&pdev->dev);
 
 	drm_panel_remove(&edp->panel);
-
 	panel_edp_disable(&edp->panel);
 
 	return 0;

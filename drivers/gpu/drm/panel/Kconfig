@@ -52,11 +52,11 @@ config ENABLE_SERDES_HOTPLUG
 		some code only for demo.
 		refer to wiki to how to used it
 
-config DRM_PANEL_MAXIAM_MAX96851
-	tristate "serdes max96851 vdo mode panel"
+config DRM_PANEL_SERDES_DP
+	tristate "serdes dp vdo mode panel"
 	depends on OF
 	help
-		Say Y here if you want to enable support for max96851 Serdes
+		Say Y here if you want to enable support for Serdes dp
 		vdo mode panel. The panel has a 1920x1080
 		resolution and uses 24-bits RGB per pixel. It provides a
 		DP and eDP interface to host.

@@ -83,7 +83,7 @@ obj-$(CONFIG_DRM_PANEL_RM692K0_VSN_FHDPLUS_CMD_LTPS) += k6991v1_64_alpha/panel-r
 obj-$(CONFIG_DRM_PANEL_NT37707_BOE_FHDPLUS_CMD_LTPO) += k6991v1_64_alpha/panel-nt37707-boe-fhdplus-cmd-ltpo.o
 obj-$(CONFIG_DRM_PANEL_RM692J0_TM_FHDPLUS_CMD_LTPO) += k6991v1_64_alpha/panel-rm692j0-tm-fhdplus-cmd-ltpo.o
 endif
-obj-$(CONFIG_DRM_PANEL_MAXIAM_MAX96851) += panel-maxiam-max96851.o
+obj-$(CONFIG_DRM_PANEL_SERDES_DP) += panel-serdes-dp.o
 obj-$(CONFIG_DRM_PANEL_SERDES) += panel-serdes-max96789.o bridge-serdes-max96789.o
 obj-$(CONFIG_DRM_PANEL_NT37707_C2V_ARP) += panel-nt37707-c2v-arp.o
 mediatek-drm-gateic-y := mtk_drm_panel_i2c.o \
