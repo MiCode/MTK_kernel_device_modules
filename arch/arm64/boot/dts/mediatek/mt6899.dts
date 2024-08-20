@@ -3103,9 +3103,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_cam_sub_comm2 0>;
 		mediatek,larb-id = <17>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBA>;
-		clocks = <&camsys_yuva_clk CLK_CAM_YA_LARBX_SMI>,
+		clocks = <&camsys_rawa_clk CLK_CAM_RA_CAM_CAMRAWA>,
+				<&camsys_yuva_clk CLK_CAM_YA_LARBX_SMI>,
 				<&camsys_yuva_clk CLK_CAM_YA_CAM_CAMRAWA>;
-		clock-names = "apb", "smi";
+		clock-names = "apb", "smi", "gals";
 		is-default-ostdl;
 		is-real-time-perm;
 		larb-port-real-time-type = <2 2 2 2 2 2 2>;
@@ -3126,27 +3127,28 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		larb-port-real-time-type = <2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2>;
 	};
 
-	smi_larb37: smi-larb37@1a013000 {
-		compatible = "mediatek,smi_larb37",
+	smi_larb34: smi-larb34@1a013000 {
+		compatible = "mediatek,smi_larb34",
 			"mediatek,mt6899-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a013000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
-		mediatek,larb-id = <37>;
+		mediatek,larb-id = <34>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBB>;
-		clocks = <&camsys_yuvb_clk CLK_CAM_YB_LARBX_SMI>,
+		clocks = <&camsys_rawb_clk CLK_CAM_RB_CAM_CAMRAWB>,
+				<&camsys_yuvb_clk CLK_CAM_YB_LARBX_SMI>,
 				<&camsys_yuvb_clk CLK_CAM_YB_CAM_CAMRAWB>;
-		clock-names = "apb", "smi";
+		clock-names = "apb", "smi", "gals";
 		is-default-ostdl;
 		is-real-time-perm;
 		larb-port-real-time-type = <2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2>;
 	};
 
-	smi_larb34: smi-larb34@1a014000 {
-		compatible = "mediatek,smi_larb34",
+	smi_larb37: smi-larb37@1a014000 {
+		compatible = "mediatek,smi_larb37",
 			"mediatek,mt6899-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a014000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
-		mediatek,larb-id = <34>;
+		mediatek,larb-id = <37>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBC>;
 		clocks = <&camsys_rawc_clk CLK_CAM_RC_LARBX_SMI>,
 				<&camsys_rawc_clk CLK_CAM_RC_CAM_CAMRAWC>;
@@ -3163,9 +3165,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-supply = <&smi_cam_sub_comm2 0>;
 		mediatek,larb-id = <35>;
 		power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBC>;
-		clocks = <&camsys_yuvc_clk CLK_CAM_YC_LARBX_SMI>,
+		clocks = <&camsys_rawc_clk CLK_CAM_RC_CAM_CAMRAWC>,
+				<&camsys_yuvc_clk CLK_CAM_YC_LARBX_SMI>,
 				<&camsys_yuvc_clk CLK_CAM_YC_CAM_CAMRAWC>;
-		clock-names = "apb", "smi";
+		clock-names = "apb", "smi", "gals";
 		is-default-ostdl;
 		is-real-time-perm;
 		larb-port-real-time-type = <2 2 2 2 2 2 2>;
