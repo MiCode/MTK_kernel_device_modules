@@ -4196,7 +4196,7 @@
 		ged-supply = <&ged>;
 	};
 
-	gpufreq: gpufreq {
+gpufreq: gpufreq {
 		compatible = "mediatek,gpufreq";
 		reg =
 			<0 0x13fbf000 0 0x1000>,  /* MFG_TOP_CONFIG (G3D_CONFIG) */
@@ -4235,13 +4235,15 @@
 			<&topckgen_clk CLK_TOP_MFG_REF_SEL>,
 			<&topckgen_clk CLK_TOP_MFGPLL>,
 			<&topckgen_clk CLK_TOP_MFG_REF_SEL_CK>,
-			<&mfg_top_config_clk CLK_MFGCFG_BG3D>;
+			<&mfg_top_config_clk CLK_MFGCFG_BG3D>,
+			<&apmixedsys_clk CLK_APMIXED_MFGPLL>;
 		clock-names =
 			"clk_mux",
 			"clk_ref_mux",
 			"clk_main_parent",
 			"clk_sub_parent",
-			"subsys_bg3d";
+			"subsys_bg3d",
+			"clk_fhctl";
 #if 0
 		power-domains =
 			<&scpsys MT6833_POWER_DOMAIN_MFG0>,
@@ -4258,6 +4260,7 @@
 		_vsram_gpu-supply = <&mt6359p_vsram_md_reg>;
 		nvmem-cells = <&efuse_segment>;
 		nvmem-cell-names = "efuse_segment_cell";
+		fhctl-supply = <&fhctl>;
 		gpufreq_wrapper-supply = <&gpufreq_wrapper>;
 	};
 
