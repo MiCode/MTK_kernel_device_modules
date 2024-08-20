@@ -14,6 +14,16 @@ SRC += 2.5/governor/gov-apusys.o 2.5/governor/gov-user.o 2.5/governor/common.o 2
 SRC += 2.5/devices/dev-freq-core.o 2.5/devices/dev-freq-conn.o 2.5/devices/dev-freq-vpu.o 2.5/devices/dev-freq-mdla.o 2.5/devices/dev-cb.o 2.5/devices/dev-freq-iommu.o 2.5/devices/dev-vb.o
 SRC += 2.5/backward_compatible/apu_power_table.o
 
+ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6893)),)
+subdir-ccflags-y += -DMT6893_APU_PWR_DRV
+endif
+ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6877)),)
+subdir-ccflags-y += -DMT6877_APU_PWR_DRV
+endif
+ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6853)),)
+subdir-ccflags-y += -DMT6853_APU_PWR_DRV
+endif
+
 # apusys power driver v3.0
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/3.0/inc/

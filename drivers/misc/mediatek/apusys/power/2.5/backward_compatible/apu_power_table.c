@@ -8,9 +8,9 @@
 #include "apu_dbg.h"
 #include "apu_power_table.h"
 
-#define APUSYS_VPU_NUM	(3)
-#define APUSYS_MDLA_NUM	(2)
-
+#ifdef MT6877_APU_PWR_DRV
+#define APUSYS_VPU_NUM  (2)
+#define APUSYS_MDLA_NUM (1)
 /* opp, mW */
 struct apu_opp_info vpu_power_table[APU_OPP_NUM] = {
 	{APU_OPP_0, 212},
@@ -30,6 +30,79 @@ struct apu_opp_info mdla_power_table[APU_OPP_NUM] = {
 	{APU_OPP_4, 44},
 };
 EXPORT_SYMBOL(mdla_power_table);
+
+#elif defined(MT6893_APU_PWR_DRV)
+#define APUSYS_VPU_NUM	(3)
+#define APUSYS_MDLA_NUM	(2)
+/* opp, mW */
+struct apu_opp_info vpu_power_table[APU_OPP_NUM] = {
+	{APU_OPP_0, 242},
+	{APU_OPP_1, 188},
+	{APU_OPP_2, 142},
+	{APU_OPP_3, 136},
+	{APU_OPP_4, 127},
+	{APU_OPP_5, 100},
+};
+EXPORT_SYMBOL(vpu_power_table);
+
+/* opp, mW */
+struct apu_opp_info mdla_power_table[APU_OPP_NUM] = {
+	{APU_OPP_0, 200},
+	{APU_OPP_1, 200},
+	{APU_OPP_2, 159},
+	{APU_OPP_3, 157},
+	{APU_OPP_4, 117},
+	{APU_OPP_5, 110},
+};
+EXPORT_SYMBOL(mdla_power_table);
+
+#elif defined(MT6853_APU_PWR_DRV)
+#define APUSYS_VPU_NUM  (2)
+#define APUSYS_MDLA_NUM (0)
+
+/* opp, mW */
+struct apu_opp_info vpu_power_table[APU_OPP_NUM] = {
+	{APU_OPP_0, 212},
+	{APU_OPP_1, 176},
+	{APU_OPP_2, 133},
+	{APU_OPP_3, 98},
+	{APU_OPP_4, 44},
+};
+EXPORT_SYMBOL(vpu_power_table);
+
+/* opp, mW */
+struct apu_opp_info mdla_power_table[APU_OPP_NUM] = {
+	{APU_OPP_0, 0},
+	{APU_OPP_1, 0},
+	{APU_OPP_2, 0},
+	{APU_OPP_3, 0},
+	{APU_OPP_4, 0},
+};
+EXPORT_SYMBOL(mdla_power_table);
+
+#else
+#define APUSYS_VPU_NUM  (0)
+#define APUSYS_MDLA_NUM (0)
+/* opp, mW */
+struct apu_opp_info vpu_power_table[APU_OPP_NUM] = {
+	{APU_OPP_0, 0},
+	{APU_OPP_1, 0},
+	{APU_OPP_2, 0},
+	{APU_OPP_3, 0},
+	{APU_OPP_4, 0},
+};
+EXPORT_SYMBOL(vpu_power_table);
+
+/* opp, mW */
+struct apu_opp_info mdla_power_table[APU_OPP_NUM] = {
+	{APU_OPP_0, 0},
+	{APU_OPP_1, 0},
+	{APU_OPP_2, 0},
+	{APU_OPP_3, 0},
+	{APU_OPP_4, 0},
+};
+EXPORT_SYMBOL(mdla_power_table);
+#endif
 
 static int _thermal_throttle(enum DVFS_USER limit_user, enum APU_OPP_INDEX opp)
 {

@@ -337,7 +337,15 @@ static int apusys_power_probe(struct platform_device *pdev)
 
 	mutex_init(&apucb_lock);
 
-	dev_info(&pdev->dev, "%s\n", __func__);
+#ifdef MT6893_APU_PWR_DRV
+	dev_info(&pdev->dev, "%s this is mt6893 apu pwr driver\n", __func__);
+#elif defined(MT6877_APU_PWR_DRV)
+	dev_info(&pdev->dev, "%s this is mt6877 apu pwr driver\n", __func__);
+#elif defined(MT6853_APU_PWR_DRV)
+	dev_info(&pdev->dev, "%s this is mt6853 apu pwr driver\n", __func__);
+#else
+	dev_info(&pdev->dev, "%s this is unknown apu pwr driver\n", __func__);
+#endif
 	/* initial run time power management */
 	pm_runtime_enable(dev);
 

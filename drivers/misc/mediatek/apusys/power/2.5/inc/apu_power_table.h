@@ -14,6 +14,9 @@ enum APU_OPP_INDEX {
 	APU_OPP_2 = 2,
 	APU_OPP_3 = 3,
 	APU_OPP_4 = 4,
+#if defined(MT6893_APU_PWR_DRV)
+	APU_OPP_5 = 5,
+#endif
 	APU_OPP_NUM,
 	VPU_OPP_NUM = APU_OPP_NUM,
 };
