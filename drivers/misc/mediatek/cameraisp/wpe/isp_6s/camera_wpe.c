@@ -5150,11 +5150,12 @@ static signed int WPE_probe(struct platform_device *pDev)
 		LOG_ERR("[ERROR] Unable to allocate WPE_devs\n");
 		return -ENOMEM;
 	}
+
 	WPE_devs = _wpe_dev;
 
-	if (nr_WPE_devs <= 0) {
+	if (WPE_devs == NULL || nr_WPE_devs <= 0) {
 		LOG_ERR("No device instances available\n");
-		return -ENOMEM;
+		return -EINVAL;
 	}
 
 	WPE_dev = &(WPE_devs[nr_WPE_devs - 1]);
