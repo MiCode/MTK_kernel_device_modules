@@ -15085,6 +15085,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,ufs-pmc-via-fastauto;
 			mediatek,ufs-mphy-debug;
 			mediatek,ufs-tx-skew-fix;
+			mediatek,ufs-clkscale-only-by-user;
 
 			bootmode = <&chosen>;
 		};
