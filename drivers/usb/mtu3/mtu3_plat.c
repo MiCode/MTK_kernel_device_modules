@@ -1708,7 +1708,32 @@ static struct platform_driver mtu3_driver = {
 		.of_match_table = mtu3_of_match,
 	},
 };
-module_platform_driver(mtu3_driver);
+
+static int mtu3_init_thread(void *data)
+{
+	return platform_driver_register(&mtu3_driver);
+}
+
+static int __init mtu3_init(void)
+{
+	struct task_struct *mtu3_init_task = NULL;
+
+	mtu3_init_task = kthread_run(mtu3_init_thread, NULL, "mtu3_init_thread");
+
+	if (!mtu3_init_task) {
+		pr_info("mtu3_init_thread start fail!\n");
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+module_init(mtu3_init);
+
+static void __exit mtu3_exit(void)
+{
+	platform_driver_unregister(&mtu3_driver);
+}
+module_exit(mtu3_exit);
 
 MODULE_AUTHOR("Chunfeng Yun <chunfeng.yun@mediatek.com>");
 MODULE_LICENSE("GPL v2");
