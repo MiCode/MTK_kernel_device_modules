@@ -12897,6 +12897,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x1a848000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <0>;
+			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBA>;
 			clocks = <&camsys_rmsa_clk CLK_CAMSYS_RMSA_LARBX_CAMRAWA>,
 					<&camsys_rmsa_clk CLK_CAMSYS_RMSA_CAM_CAMRAWA>,
 					<&camsys_rmsa_clk CLK_CAMSYS_RMSA_CAMTG_CAMRAWA>;
@@ -13040,6 +13041,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 						<0 0x1a948000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <1>;
+			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBB>;
 			clocks = <&camsys_rmsb_clk CLK_CAMSYS_RMSB_LARBX_CAMRAWB>,
 					<&camsys_rmsb_clk CLK_CAMSYS_RMSB_CAM_CAMRAWB>,
 					<&camsys_rmsb_clk CLK_CAMSYS_RMSB_CAMTG_CAMRAWB>;
@@ -13183,6 +13185,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x1aa48000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <2>;
+			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_SUBC>;
 			clocks = <&camsys_rmsc_clk CLK_CAMSYS_RMSC_LARBX_CAMRAWC>,
 					<&camsys_rmsc_clk CLK_CAMSYS_RMSC_CAM_CAMRAWC>,
 					<&camsys_rmsc_clk CLK_CAMSYS_RMSC_CAMTG_CAMRAWC>;
