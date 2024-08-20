@@ -90,6 +90,8 @@
 #define MAP_IOVA_TIMEOUT_NS		(1000000 * 5) /* 5ms! */
 
 #define IOVA_DUMP_LOG_MAX		(100)
+#define IOVA_LATEST_DUMP_MAX		(50)
+#define IOVA_LATEST_TRACE_MAX		(150)
 
 #define IOVA_DUMP_RS_INTERVAL		(30 * HZ)
 #define IOVA_DUMP_RS_BURST		(1)
@@ -1569,6 +1571,68 @@ u64 mtk_smmu_iova_to_iopte(struct io_pgtable_ops *ops, u64 iova)
 	return arm_lpae_iova_to_iopte(ops, iova);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_iova_to_iopte);
+
+int mtk_smmu_latest_trace_dump(struct seq_file *s, u32 smmu_type)
+{
+	int dump_count = 0, trace_count = 0;
+	int event_id;
+	int i = 0;
+	unsigned int start_idx;
+
+	if (!smmu_v3_enable || smmu_type > APU_SMMU ||
+	    iommu_globals.dump_enable == 0 || iommu_globals.write_pointer == 0)
+		return 0;
+
+	iommu_dump(s, "%-8s %-9s %-11s %-11s %-14s %-12s %-14s %17s %s\n",
+		   "action", "smmu_id", "stream_id", "asid", "iova_start",
+		   "size", "iova_end", "time", "dev");
+
+	start_idx = (atomic_read((atomic_t *)
+		    &(iommu_globals.write_pointer)) - 1)
+		    % IOMMU_EVENT_COUNT_MAX;
+
+	i = start_idx;
+	while (dump_count < IOVA_LATEST_DUMP_MAX && trace_count++ < IOVA_LATEST_TRACE_MAX) {
+		unsigned long end_iova = 0;
+
+		if (i < 0)
+			i = IOMMU_EVENT_COUNT_MAX  - 1;
+
+		if ((iommu_globals.record[i].time_low == 0) &&
+		    (iommu_globals.record[i].time_high == 0))
+			break;
+
+		event_id = iommu_globals.record[i].event_id;
+		if (event_id < 0 || event_id > IOMMU_FREE ||
+		    smmu_tab_id_to_smmu_id(
+		    iommu_globals.record[i].data3) != smmu_type) {
+			i--;
+			continue;
+		}
+
+		end_iova = iommu_globals.record[i].data1 +
+			   iommu_globals.record[i].data2 - 1;
+		iommu_dump(s,
+			   "%-8s 0x%-7x 0x%-9x 0x%-9x 0x%-12lx 0x%-10lx 0x%-12lx %10llu.%06u %s\n",
+			   event_mgr[event_id].name,
+			   smmu_tab_id_to_smmu_id(iommu_globals.record[i].data3),
+			   (iommu_globals.record[i].dev != NULL ?
+			   get_smmu_stream_id(iommu_globals.record[i].dev) : -1),
+			   smmu_tab_id_to_asid(iommu_globals.record[i].data3),
+			   iommu_globals.record[i].data1,
+			   iommu_globals.record[i].data2,
+			   end_iova,
+			   iommu_globals.record[i].time_high,
+			   iommu_globals.record[i].time_low,
+			   (iommu_globals.record[i].dev != NULL ?
+			   dev_name(iommu_globals.record[i].dev) : ""));
+		dump_count++;
+		i--;
+	}
+
+	return dump_count;
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_latest_trace_dump);
 #else /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
 static inline int mtk_smmu_power_get(u32 smmu_type)
 {

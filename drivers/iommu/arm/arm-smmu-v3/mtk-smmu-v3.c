@@ -456,6 +456,34 @@ static void mtk_iotlb_sync(struct iommu_domain *domain,
 #endif
 }
 
+static void mm_smmu_debug_power(struct arm_smmu_domain *smmu_domain,
+				unsigned long iova, int power_status)
+{
+	static DEFINE_RATELIMIT_STATE(dbg_rs, SMMU_FAULT_RS_INTERVAL,
+				      SMMU_FAULT_RS_BURST);
+	struct arm_smmu_device *smmu;
+	struct mtk_smmu_data *data;
+	u32 smmu_id;
+
+	if (!smmu_domain || iova == 0 || power_status != POWER_STA_ON)
+		return;
+
+	smmu = smmu_domain->smmu;
+	data = to_mtk_smmu_data(smmu);
+	smmu_id = data->plat_data->smmu_type;
+	if (smmu_id != MM_SMMU)
+		return;
+
+	if (readq_relaxed(smmu->base + ARM_SMMU_CMDQ_BASE) == 0) {
+		if (!__ratelimit(&dbg_rs))
+			return;
+
+		dev_info(smmu->dev, "[%s] Read cmdq base 0 is unexpected\n",
+			 __func__);
+		mtk_smmu_latest_trace_dump(NULL, smmu_id);
+	}
+}
+
 static void mtk_tlb_flush(struct arm_smmu_domain *smmu_domain,
 			  unsigned long iova, size_t size,
 			  int power_status)
@@ -470,6 +498,7 @@ static void mtk_tlb_flush(struct arm_smmu_domain *smmu_domain,
 
 	mtk_iommu_tlb_sync_trace(iova, size, tab_id);
 #endif
+	mm_smmu_debug_power(smmu_domain, iova, power_status);
 }
 
 static bool mtk_delay_hw_init(struct arm_smmu_device *smmu)
