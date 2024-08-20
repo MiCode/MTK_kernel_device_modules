@@ -916,13 +916,9 @@ static int mtk_compr_offload_pointer(struct snd_soc_component *component,
 	    afe_offload_block.state == OFFLOAD_STATE_DRAIN)
 		offloadservice_tswait(OFFLOAD_PCMCONSUMED);
 
-	if (!afe_offload_service.needdata) {
-		tstamp->copied_total  =
-			afe_offload_block.transferred;
-	} else {
-		tstamp->copied_total  =
-			afe_offload_block.copied_total;
-	}
+	tstamp->copied_total  = afe_offload_block.transferred;
+	//pr_info("%s, tstamp->copied_total = %d\n", __func__, tstamp->copied_total);
+
 	if (afe_offload_service.write_blocked ||  /* Dram full */
 	    afe_offload_block.state == OFFLOAD_STATE_DRAIN) {
 		data = (afe_offload_block.transferred - (8 * USE_PERIODS_MAX));
