@@ -1409,6 +1409,12 @@ static void disp_aal_sof_handle_by_cpu(struct mtk_ddp_comp *comp)
 	AALIRQ_LOG("[SRAM] dre_config(%d) in SOF\n",
 			atomic_read(&aal_data->dre_config));
 	pm_ret = mtk_vidle_pq_power_get(__func__);
+	if (pm_ret < 0) {
+		CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 0xe);
+		mtk_drm_trace_end();
+		AALERR("pm get error %d\n",pm_ret);
+		return;
+	}
 	mutex_lock(&aal_data->primary_data->clk_lock);
 	first_frame = atomic_read(&aal_data->first_frame);
 	if (atomic_read(&aal_data->is_clock_on) != 1) {

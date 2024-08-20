@@ -1087,8 +1087,10 @@ static int disp_chist_read_kthread(void *data)
 		}
 		atomic_set(&(chist_data->primary_data->irq_event), 0);
 		pm_ret = mtk_vidle_pq_power_get(__func__);
-		if (pm_ret < 0)
-			DDPMSG("%s: mtk_vidle_pq_power_get, pm_ret:%d", __func__, pm_ret);
+		if (pm_ret < 0) {
+			DDPPR_ERR("%s: mtk_vidle_pq_power_get error, skip get_hist! pm_ret:%d", __func__, pm_ret);
+			continue;
+		}
 		mtk_drm_trace_begin("disp_chist_get_hist-%d", comp->id);
 		DDPDBG("%s disp_chist_get_hist comp->id:%d\n", __func__, comp->id);
 		disp_chist_get_hist((struct mtk_ddp_comp *)data);
