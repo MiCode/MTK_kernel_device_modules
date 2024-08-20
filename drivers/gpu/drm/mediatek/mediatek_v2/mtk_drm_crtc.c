@@ -67,7 +67,9 @@
 #include "mtk_disp_vidle.h"
 #include "mtk_disp_ovl.h"
 #include "mtk_disp_spr.h"
-
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
+#include "mtk_dp.h"
+#endif
 /* *****Panel_Master*********** */
 #include "mtk_fbconfig_kdebug.h"
 #include "mtk_layering_rule_base.h"
@@ -14594,7 +14596,11 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 			mtk_crtc->enabled, 0);
 
 	mtk_drm_crtc_wait_blank(mtk_crtc);
-
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
+	if (drm_crtc_index(crtc) == 1 && mtk_dp_ready()) {
+		mdelay(60);
+	}
+#endif
 	/* disable engine secure state */
 	if (index == 2 && mtk_crtc->sec_on) {
 		mtk_crtc_disable_secure_state(crtc);

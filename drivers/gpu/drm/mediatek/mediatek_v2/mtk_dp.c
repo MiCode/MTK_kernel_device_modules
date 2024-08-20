@@ -4269,6 +4269,16 @@ void mtk_dp_poweron(void)
 	mutex_unlock(&dp_lock);
 }
 
+bool mtk_dp_ready(void)
+{
+	if (g_mtk_dp == NULL) {
+		DPTXERR("%s: dp not initial\n", __func__);
+		return false;
+	}
+
+	return g_mtk_dp->dp_ready;
+}
+
 static int mtk_dp_create_workqueue(struct mtk_dp *mtk_dp)
 {
 	mtk_dp->dptx_wq = create_singlethread_workqueue("mtk_dptx_wq");
