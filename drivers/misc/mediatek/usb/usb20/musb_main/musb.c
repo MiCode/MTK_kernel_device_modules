@@ -67,10 +67,12 @@ static int musb_probe(struct platform_device *pdev)
 	return status;
 }
 
+#if 0
 static void musb_shutdown_main(struct platform_device *pdev)
 {
 	return musb_shutdown(pdev);
 }
+#endif
 
 static int musb_remove_main(struct platform_device *pdev)
 {
@@ -90,7 +92,9 @@ static struct platform_driver musb_driver = {
 		   },
 	.probe = musb_probe,
 	.remove = musb_remove_main,
+#if 0
 	.shutdown = musb_shutdown_main,
+#endif
 };
 module_platform_driver(musb_driver);
 
