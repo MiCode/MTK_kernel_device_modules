@@ -4243,11 +4243,9 @@ static void resizing_rule(struct drm_device *dev,
 	mtk_rollback_all_resize_layer_to_GPU(disp_info, HRT_PRIMARY);
 }
 
-static enum MTK_LAYERING_CAPS mml_mode_mapping(struct drm_device *drm_dev,
-		struct drm_crtc *crtc, enum mml_mode mode)
+static enum MTK_LAYERING_CAPS mml_mode_mapping(enum mml_mode mode)
 {
 	enum MTK_LAYERING_CAPS ret = MTK_MML_DISP_NOT_SUPPORT;
-	struct mtk_drm_private *priv = drm_dev->dev_private;
 
 	switch (mode) {
 	case MML_MODE_NOT_SUPPORT:
@@ -4258,13 +4256,6 @@ static enum MTK_LAYERING_CAPS mml_mode_mapping(struct drm_device *drm_dev,
 		break;
 	case MML_MODE_RACING:
 			ret = MTK_MML_DISP_DIRECT_DECOUPLE_LAYER;
-			/* TMP: for mt6899 vdo into IR cmd not */
-			if (priv->data->mmsys_id == MMSYS_MT6899) {
-				if (!mtk_crtc_is_frame_trigger_mode(crtc))
-					ret = MTK_MML_DISP_DIRECT_DECOUPLE_LAYER;
-				else
-					ret = MTK_MML_DISP_DECOUPLE_LAYER;
-			}
 		break;
 	case MML_MODE_MML_DECOUPLE:
 			ret = MTK_MML_DISP_DECOUPLE_LAYER;
@@ -4366,7 +4357,7 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 
 	if (unlikely(g_mml_mode != MML_MODE_UNKNOWN)) {
 		mode = g_mml_mode;
-		return mml_mode_mapping(dev, crtc, mode);
+		return mml_mode_mapping(mode);
 	}
 
 	mml_info->act_time = mml_info->dest[0].compose.height * line_time_ns;
@@ -4379,7 +4370,7 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 	} else
 		return ret;
 
-	ret = mml_mode_mapping(dev, crtc, mode);
+	ret = mml_mode_mapping(mode);
 
 	return ret;
 }
@@ -4569,13 +4560,13 @@ static void check_is_mml_layer(const int disp_idx,
 				print_mml_frame_info(*mml_info);
 
 			if (unlikely(g_mml_mode != MML_MODE_UNKNOWN)) {
-				c->layer_caps |= mml_mode_mapping(dev, crtc, g_mml_mode);
+				c->layer_caps |= mml_mode_mapping(g_mml_mode);
 				continue;
 			}
 
 			if (j < mml_cnt) {
 				DDPINFO("%s,L%d,m:%d\n", __func__, i, multi_mml_info[j].mode);
-				c->layer_caps |= mml_mode_mapping(dev, crtc, multi_mml_info[j].mode);
+				c->layer_caps |= mml_mode_mapping(multi_mml_info[j].mode);
 				j ++;
 			} else
 				c->layer_caps |= MTK_MML_DISP_NOT_SUPPORT;
