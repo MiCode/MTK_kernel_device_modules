@@ -6573,6 +6573,8 @@ int mtk_dsi_read_gce(struct mtk_ddp_comp *comp, void *handle,
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + dsi->driver_data->reg_cmdq1_ofs,
 		AS_UINT32(t1), ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_CMDQ_CON(dsi->driver_data),
+		CMDQ_SIZE_SEL, CMDQ_SIZE_SEL);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_CMDQ_CON(dsi->driver_data),
 		0x2, CMDQ_SIZE);
 
 	if (dsi->driver_data->require_phy_reset)
@@ -10052,7 +10054,7 @@ static ssize_t _mtk_dsi_host_transfer(struct mtk_dsi *dsi,
 		}
 
 		/* set cmdq page */
-		writel(0x00030000, dsi->regs + DSI_CMDQ_CON(dsi->driver_data));
+		mtk_dsi_mask(dsi, DSI_CMDQ_CON(dsi->driver_data), CMDQ_PAGE, 0x30000);
 
 		for (i = 0; i < ((recv_cnt + 3) / 4); i++) {
 			j = i * 4;
@@ -10066,7 +10068,7 @@ static ssize_t _mtk_dsi_host_transfer(struct mtk_dsi *dsi,
 				j + 2, read_data[j + 2], j + 3, read_data[j + 3]);
 		}
 
-		writel(0x00000000, dsi->regs + DSI_CMDQ_CON(dsi->driver_data));
+		mtk_dsi_mask(dsi, DSI_CMDQ_CON(dsi->driver_data), CMDQ_PAGE, 0);
 
 		recv_cnt = mtk_dsi_recv_cnt(read_data[0], read_data);
 
