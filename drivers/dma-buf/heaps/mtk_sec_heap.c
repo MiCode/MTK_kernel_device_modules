@@ -1463,8 +1463,11 @@ struct page *alloc_pmm_msg_v2(struct sg_table *table,
 	return head_page;
 
 free_buffer:
-	list_for_each_entry_safe(pmm_page, tmp_page, pmm_msg_list, lru)
-		__free_pages(pmm_page, compound_order(pmm_page));
+	list_for_each_entry_safe(pmm_page, tmp_page, pmm_msg_list, lru) {
+		max_order = compound_order(pmm_page);
+		if (max_order <= MAX_ORDER)
+			__free_pages(pmm_page, max_order);
+	}
 	return NULL;
 }
 
@@ -1592,8 +1595,11 @@ static int page_base_alloc_v2(struct secure_heap_page *sec_heap,
 
 free_pmm_page:
 	list_for_each_entry_safe(pmm_page, tmp_page,
-				  &buffer->ssheap->pmm_msg_list, lru)
-		__free_pages(pmm_page, compound_order(pmm_page));
+				  &buffer->ssheap->pmm_msg_list, lru) {
+		max_order = compound_order(pmm_page);
+		if (max_order <= MAX_ORDER)
+			__free_pages(pmm_page, max_order);
+	}
 free_sg_table:
 	sg_free_table(table);
 free_pages:
