@@ -417,6 +417,7 @@ struct mtk_dpc {
 	struct device *dev;
 	struct device *pd_dev;
 	struct notifier_block pm_nb;
+	struct notifier_block vcp_nb;
 	int disp_irq;
 	int mml_irq;
 	unsigned int vidle_mask;
@@ -426,6 +427,7 @@ struct mtk_dpc {
 	void __iomem *sys_va[DPC_SYS_REGS_CNT];
 	struct cmdq_client *cmdq_client;
 	atomic_t dpc_en_cnt;
+	atomic_t vcp_is_alive;
 	bool skip_force_power;
 	spinlock_t skip_force_power_lock;
 	wait_queue_head_t dpc_state_wq;

@@ -31,6 +31,10 @@
 #include "mtk-mmdvfs-v3-memory.h"
 #include "mtk-smi-dbg.h"
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+#include "vcp_status.h"
+#endif
+
 #include "mtk_dpc_v1.h"
 #include "mtk_dpc_mmp.h"
 #include "mtk_dpc_internal.h"
@@ -486,6 +490,7 @@ static struct mtk_dpc mt6899_dpc_driver_data = {
 	.mmdvfs_settings_count = 0,
 	.mtcmos_mask = 0x1f,
 	.skip_rdone = 1,
+	.vcp_is_alive = ATOMIC_INIT(true),
 };
 
 static void _dpc_analysis(bool detail);
@@ -4250,6 +4255,25 @@ static int dpc_pm_notifier(struct notifier_block *notifier, unsigned long pm_eve
 	return NOTIFY_DONE;
 }
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+static int dpc_vcp_notifier(struct notifier_block *nb, unsigned long vcp_event, void *unused)
+{
+	mtk_vdisp_avs_vcp_notifier_v1(vcp_event, unused);
+	switch (vcp_event) {
+	case VCP_EVENT_READY:
+	case VCP_EVENT_STOP:
+		break;
+	case VCP_EVENT_SUSPEND:
+		atomic_set(&g_priv->vcp_is_alive, false);
+		break;
+	case VCP_EVENT_RESUME:
+		atomic_set(&g_priv->vcp_is_alive, true);
+		break;
+	}
+	return NOTIFY_DONE;
+}
+#endif
+
 static int dpc_smi_user_pwr_get(void *data)
 {
 	atomic_inc(&g_smi_user_cnt);
@@ -4311,6 +4335,13 @@ static void process_dbg_opt(const char *opt)
 	int ret = 0;
 	u32 val = 0, v1 = 0, v2 = 0;
 	u32 status1= 0, status2 = 0, value = 0;
+
+	if (strncmp(opt, "avs:", 4) == 0) {
+		if (mtk_vdisp_avs_dbg_opt_v1(opt)) {
+			DPCERR();
+			return;
+		}
+	}
 
 	if (g_priv->get_sys_status) {
 		status1 = g_priv->get_sys_status(SYS_POWER_ACK_DPC, &value);
@@ -4441,12 +4472,6 @@ static void process_dbg_opt(const char *opt)
 			goto err;
 		DPCFUNC("(%#llx)=(%x)", (u64)(dpc_base + v1), v2);
 		writel(v2, dpc_base + v1);
-	} else if (strncmp(opt, "avs:", 4) == 0) {
-		ret = sscanf(opt, "avs:%u,%u\n", &v1, &v2);
-		if (ret != 2)
-			goto err;
-		writel(v2, MEM_VDISP_AVS_STEP(v1));
-		mmdvfs_force_step_by_vcp(2, 4 - v1);
 	} else if (strncmp(opt, "vdo", 3) == 0) {
 		writel(DISP_DPC_EN|DISP_DPC_DT_EN|DISP_DPC_VDO_MODE, dpc_base + DISP_REG_DPC_EN);
 	} else if (strncmp(opt, "sta_mminfra", 11) == 0) {
@@ -4634,6 +4659,11 @@ static int mtk_dpc_probe_v1(struct platform_device *pdev)
 		DPCERR("register_pm_notifier failed %d", ret);
 		return ret;
 	}
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+	priv->vcp_nb.notifier_call = dpc_vcp_notifier;
+	vcp_A_register_notify_ex(VDISP_FEATURE_ID, &priv->vcp_nb);
+#endif
 
 	/* enable external signal from DSI and TE */
 	writel(0x1F, dpc_base + DISP_REG_DPC_DISP_EXT_INPUT_EN);
