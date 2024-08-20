@@ -60,7 +60,7 @@
 /**************************************************
  * Frequency Hopping Setting
  **************************************************/
-#define GPUFREQ_FHCTL_ENABLE            (0)
+#define GPUFREQ_FHCTL_ENABLE            (1)
 #define MFG_PLL_NAME                    "mfgpll"
 
 /**************************************************
@@ -242,6 +242,7 @@ struct gpufreq_clk_info {
 	struct clk *clk_main_parent;
 	struct clk *clk_sub_parent;
 	struct clk *subsys_bg3d;
+	struct clk *clk_fhctl;
 };
 
 struct gpufreq_mtcmos_info {
