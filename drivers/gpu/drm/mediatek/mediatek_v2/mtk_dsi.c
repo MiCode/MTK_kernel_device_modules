@@ -2943,9 +2943,27 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 	struct videomode *vm = NULL;
 	struct dynamic_mipi_params *dyn = NULL;
 	struct mtk_panel_spr_params *spr_params = NULL;
+	struct mtk_ddp_comp *comp = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
 
 	if (!dsi) {
-		DDPPR_ERR("%s with NULL dsi\n", __func__);
+		pr_info("%s with NULL dsi\n", __func__);
+		return;
+	}
+	comp = &dsi->ddp_comp;
+	if (!comp) {
+		pr_info("%s, comp is NULL\n", __func__);
+		return;
+	}
+	mtk_crtc = comp->mtk_crtc;
+	if (!mtk_crtc) {
+		pr_info("%s, mtk_crtc is NULL\n", __func__);
+		return;
+	}
+	priv = mtk_crtc->base.dev->dev_private;
+	if (!priv) {
+		pr_info("%s, priv is NULL\n", __func__);
 		return;
 	}
 
@@ -3057,16 +3075,33 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 		}
 	} else {
 		if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_SYNC_PULSE) {
-			horizontal_sync_active_byte = t_hsa * dsi_tmp_buf_bpp - 10;
-
-			horizontal_backporch_byte = t_hbp * dsi_tmp_buf_bpp - 10;
+			if (priv->data->mmsys_id == MMSYS_MT6991) {
+				horizontal_sync_active_byte = t_hsa * dsi_tmp_buf_bpp - 10;
+				horizontal_backporch_byte = t_hbp * dsi_tmp_buf_bpp - 10;
+			} else {
+				horizontal_sync_active_byte =
+					ALIGN_TO((t_hsa * dsi_tmp_buf_bpp - 10), 4);
+				horizontal_backporch_byte =
+					ALIGN_TO((t_hbp * dsi_tmp_buf_bpp - 10), 4);
+			}
 		} else {
-			horizontal_sync_active_byte = t_hsa * dsi_tmp_buf_bpp - 4;
-
-			horizontal_backporch_byte = (t_hbp + t_hsa) * dsi_tmp_buf_bpp - 10;
+			if (priv->data->mmsys_id == MMSYS_MT6991) {
+				horizontal_sync_active_byte = t_hsa * dsi_tmp_buf_bpp - 4;
+				horizontal_backporch_byte = (t_hbp + t_hsa) * dsi_tmp_buf_bpp - 10;
+			} else {
+				horizontal_sync_active_byte =
+					ALIGN_TO((t_hsa * dsi_tmp_buf_bpp - 4), 4);
+				horizontal_backporch_byte =
+					ALIGN_TO(((t_hbp + t_hsa) * dsi_tmp_buf_bpp -
+					10), 4);
+			}
 		}
 
-		horizontal_frontporch_byte = t_hfp * dsi_tmp_buf_bpp - 12;
+		if (priv->data->mmsys_id == MMSYS_MT6991)
+			horizontal_frontporch_byte = t_hfp * dsi_tmp_buf_bpp - 12;
+		else
+			horizontal_frontporch_byte =
+				ALIGN_TO((t_hfp * dsi_tmp_buf_bpp - 12), 4);
 	}
 	dsi->vfp = t_vfp;
 	dsi->vbp = t_vbp;
@@ -3101,6 +3136,26 @@ void DSI_Config_VDO_Timing_with_DSC(struct mtk_dsi *dsi)
 	u32 t_hsa = vm->hsync_len;
 	u32 width = mtk_dsi_get_virtual_width(dsi, dsi->encoder.crtc);
 	u32 height = mtk_dsi_get_virtual_heigh(dsi, dsi->encoder.crtc);
+
+	struct mtk_ddp_comp *comp = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+
+	comp = &dsi->ddp_comp;
+	if (!comp) {
+		pr_info("%s, comp is NULL\n", __func__);
+		return;
+	}
+	mtk_crtc = comp->mtk_crtc;
+	if (!mtk_crtc) {
+		pr_info("%s, mtk_crtc is NULL\n", __func__);
+		return;
+	}
+	priv = mtk_crtc->base.dev->dev_private;
+	if (!priv) {
+		pr_info("%s, priv is NULL\n", __func__);
+		return;
+	}
 
 	if (dsi->ext && dsi->ext->params)
 		dyn = &dsi->ext->params->dyn;
@@ -3207,10 +3262,17 @@ void DSI_Config_VDO_Timing_with_DSC(struct mtk_dsi *dsi)
 	"[DISP]-kernel-%s, ap_tx_total_word_cnt=%d, ap_tx_line_cycle=%d, ap_tx_cycle_time=%d\n",
 	__func__, ap_tx_total_word_cnt, ap_tx_line_cycle, ap_tx_cycle_time);
 
-	writel(t_hsa, dsi->regs + DSI_HSA_WC(dsi->driver_data));
-	writel(t_hbp, dsi->regs + DSI_HBP_WC(dsi->driver_data));
-	writel(t_hfp, dsi->regs + DSI_HFP_WC(dsi->driver_data));
-	writel(t_hbllp, dsi->regs + DSI_BLLP_WC(dsi->driver_data));
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
+		writel(t_hsa, dsi->regs + DSI_HSA_WC(dsi->driver_data));
+		writel(t_hbp, dsi->regs + DSI_HBP_WC(dsi->driver_data));
+		writel(t_hfp, dsi->regs + DSI_HFP_WC(dsi->driver_data));
+		writel(t_hbllp, dsi->regs + DSI_BLLP_WC(dsi->driver_data));
+	} else {
+		writel(ALIGN_TO((t_hsa), 4), dsi->regs + DSI_HSA_WC(dsi->driver_data));
+		writel(ALIGN_TO((t_hbp), 4), dsi->regs + DSI_HBP_WC(dsi->driver_data));
+		writel(ALIGN_TO((t_hfp), 4), dsi->regs + DSI_HFP_WC(dsi->driver_data));
+		writel(ALIGN_TO((t_hbllp), 4), dsi->regs + DSI_BLLP_WC(dsi->driver_data));
+	}
 }
 
 static void mtk_dsi_config_vdo_timing(struct mtk_dsi *dsi)
