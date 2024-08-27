@@ -49,13 +49,13 @@ static unsigned int update_interval_ms = DEFAULT_UPDATE_MS;
 unsigned int sp_ret = SWPM_NOT_EXE;
 
 /* core voltage time distribution */
-static struct vol_duration core_vol_duration[NR_CORE_VOLT];
+static struct vol_duration *core_vol_duration;
 
 /* xpu ip stat with time distribution */
 static struct ip_stats xpu_ip_stats[NR_XPU_IP];
 
 /* ddr freq in active time distribution */
-static struct ddr_act_times ddr_act_duration[NR_DDR_FREQ];
+static struct ddr_act_times *ddr_act_duration;
 /* ddr freq in active time distribution */
 static struct ddr_sr_pd_times ddr_sr_pd_duration;
 /* ddr ip stat with bw/freq distribution */
@@ -88,18 +88,63 @@ static char ddr_bc_ip_str[NR_DDR_BC_IP][MAX_IP_NAME_LENGTH] = {
 	"TOTAL_R", "TOTAL_W", "CPU", "GPU", "MM", "OTHERS",
 };
 
+static unsigned int swpm_core_volt;
+static unsigned int swpm_ddr_freq;
+
 static unsigned int retry_cnt;
 /* critical section function */
 static void swpm_sp_internal_update(void)
 {
 	int i, j;
 	struct xpu_ip_pwr_sta *xpu_ip_sta_ptr;
-	struct mem_ip_bc *ddr_ip_bc_ptr;
 	unsigned int word_L, word_H;
 	uint64_t duration_time_temp;
+	unsigned int *share_core_acc_time, *share_mem_acc_time;
+	unsigned int *share_acc_sr_time_ptr, *share_acc_pd_time_ptr;
+	unsigned int *word_L_array, *word_H_array;
 
-	if (share_idx_ref_ext && share_idx_ctrl_ext) {
+	if (share_idx_ref_ext && share_idx_ctrl_ext && share_swpm_sub_data_ptr) {
 
+		share_core_acc_time = (unsigned int *)sspm_sbuf_get(share_swpm_sub_data_ptr->core_acc_time_addr);
+		if (!share_core_acc_time) {
+			sp_ret = SWPM_NOT_EXE;
+			pr_notice("swpm share_core_acc_time is NULL");
+			return;
+		}
+		share_mem_acc_time = (unsigned int *)sspm_sbuf_get(share_swpm_sub_data_ptr->mem_acc_time_addr);
+		if (!share_mem_acc_time) {
+			sp_ret = SWPM_NOT_EXE;
+			pr_notice("swpm share_mem_acc_time is NULL");
+			return;
+		}
+		share_acc_sr_time_ptr = (unsigned int *)sspm_sbuf_get(share_swpm_sub_data_ptr->acc_sr_time_addr);
+		if (!share_acc_sr_time_ptr) {
+			sp_ret = SWPM_NOT_EXE;
+			pr_notice("swpm share_acc_sr_time_ptr is NULL");
+			return;
+		}
+		share_acc_pd_time_ptr = (unsigned int *)sspm_sbuf_get(share_swpm_sub_data_ptr->acc_pd_time_addr);
+		if (!share_acc_pd_time_ptr) {
+			sp_ret = SWPM_NOT_EXE;
+			pr_notice("swpm share_acc_pd_time_ptr is NULL");
+			return;
+		}
+		for (i = 0; i < NR_DDR_BC_IP; i++) {
+			word_L_array = (unsigned int *)
+				sspm_sbuf_get(share_swpm_sub_data_ptr->word_cnt_addr[i].word_cnt_L_addr);
+			word_H_array = (unsigned int *)
+				sspm_sbuf_get(share_swpm_sub_data_ptr->word_cnt_addr[i].word_cnt_H_addr);
+			if (!word_L_array) {
+				sp_ret = SWPM_NOT_EXE;
+				pr_notice("swpm ip %u share word_L addr is NULL\n", i);
+				return;
+			}
+			if (!word_H_array) {
+				sp_ret = SWPM_NOT_EXE;
+				pr_notice("swpm ip %u share word_H addr is NULL\n", i);
+				return;
+			}
+		}
 		if (readl(&share_idx_ctrl_ext->clear_flag)) {
 			sp_ret = SWPM_FLAG_ERR;
 			return;
@@ -111,22 +156,24 @@ static void swpm_sp_internal_update(void)
 			sp_ret = SWPM_LOCK_ERR;
 			return;
 		}
+
 		writel(1, &share_idx_ctrl_ext->read_lock);
 
 		update_count = readl(&(share_idx_ref_ext->update_count));
 
-		for (i = 0; i < NR_CORE_VOLT; i++) {
+		for (i = 0; (i < swpm_core_volt) && core_vol_duration; i++) {
 			core_vol_duration[i].duration +=
-				readl(&CORE_SRAM.acc_time[i]) / 1000;
+				readl(&share_core_acc_time[i]) / 1000;
 		}
-		for (i = 0; i < NR_DDR_FREQ; i++) {
+
+		for (i = 0; (i < swpm_ddr_freq) && ddr_act_duration; i++) {
 			ddr_act_duration[i].active_time +=
-			readl(&DDR_SRAM.acc_time[i]) / 1000;
+			readl(&share_mem_acc_time[i]) / 1000;
 		}
 		ddr_sr_pd_duration.sr_time +=
-			readl(&DDR_SRAM.acc_sr_time) / 1000;
+			readl(share_acc_sr_time_ptr) / 1000;
 		ddr_sr_pd_duration.pd_time +=
-			readl(&DDR_SRAM.acc_pd_time) / 1000;
+			readl(share_acc_pd_time_ptr) / 1000;
 		for (i = 0; i < NR_XPU_IP; i++) {
 			if (!xpu_ip_stats[i].times)
 				continue;
@@ -141,10 +188,13 @@ static void swpm_sp_internal_update(void)
 		for (i = 0; i < NR_DDR_BC_IP; i++) {
 			if (!ddr_ip_stats[i].bc_stats)
 				continue;
-			ddr_ip_bc_ptr = &(DDR_SRAM.data[i]);
-			for (j = 0; j < NR_DDR_FREQ; j++) {
-				word_H = readl(&ddr_ip_bc_ptr->word_cnt_H[j]);
-				word_L = readl(&ddr_ip_bc_ptr->word_cnt_L[j]);
+			word_L_array = (unsigned int *)
+				sspm_sbuf_get(share_swpm_sub_data_ptr->word_cnt_addr[i].word_cnt_L_addr);
+			word_H_array = (unsigned int *)
+				sspm_sbuf_get(share_swpm_sub_data_ptr->word_cnt_addr[i].word_cnt_H_addr);
+			for (j = 0; j < swpm_ddr_freq; j++) {
+				word_H = readl(&word_H_array[j]);
+				word_L = readl(&word_L_array[j]);
 				ddr_ip_stats[i].bc_stats[j].value +=
 				(((uint64_t) word_H << 32) | word_L) * 8;
 			}
@@ -225,10 +275,10 @@ static int32_t swpm_ddr_act_times(int32_t freq_num,
 {
 	unsigned long flags;
 
-	if (ddr_times && freq_num == NR_DDR_FREQ) {
+	if (ddr_times && freq_num == swpm_ddr_freq) {
 		spin_lock_irqsave(&swpm_sp_spinlock, flags);
 		memcpy(ddr_times, ddr_act_duration,
-		       sizeof(struct ddr_act_times) * NR_DDR_FREQ);
+		       sizeof(struct ddr_act_times) * swpm_ddr_freq);
 		spin_unlock_irqrestore(&swpm_sp_spinlock, flags);
 	}
 	return 0;
@@ -253,7 +303,7 @@ static int32_t swpm_ddr_freq_data_ip_stats(int32_t data_ip_num,
 	int i;
 	struct ddr_ip_bc_stats *p = stats;
 
-	if (p && data_ip_num == NR_DDR_BC_IP && freq_num == NR_DDR_FREQ) {
+	if (p && data_ip_num == NR_DDR_BC_IP && freq_num == swpm_ddr_freq) {
 		spin_lock_irqsave(&swpm_sp_spinlock, flags);
 		for (i = 0; i < NR_DDR_BC_IP && p[i].bc_stats; i++) {
 			strscpy(p[i].ip_name,
@@ -261,7 +311,7 @@ static int32_t swpm_ddr_freq_data_ip_stats(int32_t data_ip_num,
 				MAX_IP_NAME_LENGTH - 1);
 			memcpy(p[i].bc_stats,
 			       ddr_ip_stats[i].bc_stats,
-			       sizeof(struct ddr_bc_stats) * NR_DDR_FREQ);
+			       sizeof(struct ddr_bc_stats) * swpm_ddr_freq);
 		}
 		spin_unlock_irqrestore(&swpm_sp_spinlock, flags);
 	}
@@ -295,10 +345,10 @@ static int32_t swpm_vcore_vol_duration(int32_t vol_num,
 {
 	unsigned long flags;
 
-	if (duration && vol_num == NR_CORE_VOLT) {
+	if (duration && vol_num == swpm_core_volt) {
 		spin_lock_irqsave(&swpm_sp_spinlock, flags);
 		memcpy(duration, core_vol_duration,
-		       sizeof(struct vol_duration) * NR_CORE_VOLT);
+		       sizeof(struct vol_duration) * swpm_core_volt);
 		spin_unlock_irqrestore(&swpm_sp_spinlock, flags);
 	}
 	return 0;
@@ -351,12 +401,12 @@ static int32_t swpm_plat_nums(enum swpm_num_type type)
 	case DDR_DATA_IP:
 		return NR_DDR_BC_IP;
 	case DDR_FREQ:
-		return NR_DDR_FREQ;
+		return swpm_ddr_freq;
 	/* TODO: deprecated, it will be returned 0 soon */
 	case CORE_IP:
 		return NR_XPU_IP;
 	case CORE_VOL:
-		return NR_CORE_VOLT;
+		return swpm_core_volt;
 	case XPU_IP:
 		return NR_XPU_IP;
 	default:
@@ -444,10 +494,10 @@ static void subsys_idx_snapshot(void)
 		/* directly copy due to 8 bytes alignment problem */
 		spin_lock_irqsave(&swpm_sub_data_spinlock, flags);
 
-		sub_idx_snap.dram_bw_read =
-			share_swpm_sub_data_ptr->dram_bw_read;
-		sub_idx_snap.dram_bw_write =
-			share_swpm_sub_data_ptr->dram_bw_write;
+		sub_idx_snap.emi_bw_read =
+			share_swpm_sub_data_ptr->emi_bw_read;
+		sub_idx_snap.emi_bw_write =
+			share_swpm_sub_data_ptr->emi_bw_write;
 
 		spin_unlock_irqrestore(&swpm_sub_data_spinlock, flags);
 	}
@@ -475,6 +525,7 @@ static struct notifier_block swpm_sub_data_notifier = {
 void swpm_v6899_ext_init(void)
 {
 	int i, j, k;
+	unsigned int *share_vcore_opp_info, *share_ddr_opp_freq;
 
 	retry_cnt = 0;
 	/* init extension index address */
@@ -505,6 +556,10 @@ void swpm_v6899_ext_init(void)
 		share_swpm_sub_data_ptr = NULL;
 	}
 
+	if (share_swpm_sub_data_ptr) {
+		swpm_core_volt = share_swpm_sub_data_ptr->core_volt_num;
+		swpm_ddr_freq = share_swpm_sub_data_ptr->ddr_freq_num;
+	}
 
 	/* xpu_ip_stats initialize */
 	for (i = 0; i < NR_XPU_IP; i++) {
@@ -518,21 +573,36 @@ void swpm_v6899_ext_init(void)
 			xpu_ip_stats[i].times->off_time = 0;
 		}
 	}
+
+	if (share_swpm_sub_data_ptr) {
+		share_vcore_opp_info = (unsigned int *)
+			sspm_sbuf_get(share_swpm_sub_data_ptr->core_opp_info_addr);
+		share_ddr_opp_freq = (unsigned int *)
+			sspm_sbuf_get(share_swpm_sub_data_ptr->ddr_opp_freq_addr);
+	} else {
+		share_vcore_opp_info = NULL;
+		share_ddr_opp_freq = NULL;
+	}
 	/* core duration initialize */
-	for (i = 0; share_swpm_sub_data_ptr && i < NR_CORE_VOLT; i++) {
+	if (swpm_core_volt) {
+		core_vol_duration = kcalloc(swpm_core_volt,
+			sizeof(struct vol_duration), GFP_KERNEL);
+	}
+	for (i = 0; share_vcore_opp_info && (i < swpm_core_volt) && core_vol_duration; i++) {
 		core_vol_duration[i].duration = 0;
 		core_vol_duration[i].vol =
-			readl(&share_swpm_sub_data_ptr->vcore_opp_info[i]);
-		pr_notice("[%d] vcore opp %u\n", i, core_vol_duration[i].vol);
+			readl(&share_vcore_opp_info[i]);
 	}
 
-
 	/* ddr act duration initialize */
-	for (i = 0; share_swpm_sub_data_ptr && i < NR_DDR_FREQ; i++) {
+	if (swpm_ddr_freq) {
+		ddr_act_duration = kcalloc(swpm_ddr_freq,
+			sizeof(struct ddr_act_times), GFP_KERNEL);
+	}
+	for (i = 0; share_ddr_opp_freq && (i < swpm_ddr_freq) && ddr_act_duration; i++) {
 		ddr_act_duration[i].active_time = 0;
 		ddr_act_duration[i].freq =
-		OPP_FREQ_TO_DDR(readl(&share_swpm_sub_data_ptr->ddr_opp_freq[i]));
-		pr_notice("[%d] ddr opp %u\n", i, ddr_act_duration[i].freq);
+		OPP_FREQ_TO_DDR(readl(&share_ddr_opp_freq[i]));
 	}
 
 	/* ddr sr pd duration initialize */
@@ -544,13 +614,13 @@ void swpm_v6899_ext_init(void)
 		strscpy(ddr_ip_stats[i].ip_name,
 			ddr_bc_ip_str[i], MAX_IP_NAME_LENGTH - 1);
 		ddr_ip_stats[i].bc_stats =
-		kmalloc(sizeof(struct ddr_bc_stats) * NR_DDR_FREQ, GFP_KERNEL);
+		kmalloc(sizeof(struct ddr_bc_stats) * swpm_ddr_freq, GFP_KERNEL);
 		if (ddr_ip_stats[i].bc_stats) {
 			for (j = 0; share_swpm_sub_data_ptr &&
-			     j < NR_DDR_FREQ; j++) {
+			     (j < swpm_ddr_freq); j++) {
 				ddr_ip_stats[i].bc_stats[j].value = 0;
 				ddr_ip_stats[i].bc_stats[j].freq =
-				OPP_FREQ_TO_DDR(readl(&share_swpm_sub_data_ptr->ddr_opp_freq[j]));
+				OPP_FREQ_TO_DDR(readl(&share_ddr_opp_freq[j]));
 			}
 		}
 	}
@@ -592,6 +662,7 @@ void swpm_v6899_ext_init(void)
 	swpm_sp_timer_init();
 	swpm_register_event_notifier(&swpm_sub_data_notifier);
 	mtk_register_swpm_ops(&plat_ops);
+	pr_notice("swpm ext init done\n");
 }
 
 void swpm_v6899_ext_exit(void)

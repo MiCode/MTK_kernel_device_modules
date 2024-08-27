@@ -643,8 +643,8 @@ static ssize_t dram_bw_read(char *ToUser, size_t sz, void *priv)
 
 	spin_lock_irqsave(&swpm_sub_data_spinlock, flags);
 	swpm_dbg_log("DRAM BW R/W=%d/%d\n",
-			sub_idx_snap.dram_bw_read,
-			sub_idx_snap.dram_bw_write);
+			sub_idx_snap.emi_bw_read,
+			sub_idx_snap.emi_bw_write);
 	spin_unlock_irqrestore(&swpm_sub_data_spinlock, flags);
 
 	return p - ToUser;

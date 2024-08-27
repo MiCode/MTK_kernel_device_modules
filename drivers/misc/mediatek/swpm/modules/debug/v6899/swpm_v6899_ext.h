@@ -6,9 +6,6 @@
 #ifndef __MTK_SWPM_SP_PLATFORM_H__
 #define __MTK_SWPM_SP_PLATFORM_H__
 
-#include <swpm_mem_v6899.h>
-#include <swpm_core_v6899.h>
-
 /* numbers of power state (active, idle, off) */
 enum pmsr_power_state {
 	PMSR_ACTIVE,
@@ -63,31 +60,10 @@ enum spm_sig_group {
 	UNSUPPORT_REQ,
 };
 
-/* core extension index structure */
-struct core_index_ext {
-	/* core voltage distribution (us) */
-	unsigned int acc_time[NR_CORE_VOLT];
-};
-
 /* mem extension ip word count (1 word -> 8 bytes @ 64bits) */
-struct mem_ip_bc {
-	unsigned int word_cnt_L[NR_DDR_FREQ];
-	unsigned int word_cnt_H[NR_DDR_FREQ];
-};
-
-/* dram extension structure */
-struct mem_index_ext {
-	/* dram freq in active state distribution (us) */
-	unsigned int acc_time[NR_DDR_FREQ];
-
-	/* dram in self-refresh state (us) */
-	unsigned int acc_sr_time;
-
-	/* dram in power-down state (us) */
-	unsigned int acc_pd_time;
-
-	/* dram ip byte count in freq distribution */
-	struct mem_ip_bc data[NR_DDR_BC_IP];
+struct mem_ip_bc_addr {
+	unsigned int word_cnt_L_addr;
+	unsigned int word_cnt_H_addr;
 };
 
 struct xpu_ip_pwr_sta {
@@ -118,8 +94,6 @@ struct share_spm_sig {
 };
 
 struct share_index_ext {
-	struct core_index_ext core_idx_ext;
-	struct mem_index_ext mem_idx_ext;
 	struct xpu_index_ext xpu_idx_ext;
 	struct suspend_time suspend;
 	struct duration_time duration;
@@ -141,10 +115,17 @@ struct share_ctrl_ext {
 };
 
 struct share_subsys_data {
-	unsigned int dram_bw_read;
-	unsigned int dram_bw_write;
-	unsigned int vcore_opp_info[NR_CORE_VOLT];
-	unsigned int ddr_opp_freq[NR_DDR_FREQ];
+	unsigned int ddr_freq_num;
+	unsigned int ddr_opp_freq_addr;
+	unsigned int mem_acc_time_addr;
+	unsigned int acc_sr_time_addr;
+	unsigned int acc_pd_time_addr;
+	struct mem_ip_bc_addr word_cnt_addr[NR_DDR_BC_IP];
+	unsigned int emi_bw_read;
+	unsigned int emi_bw_write;
+	unsigned int core_volt_num;
+	unsigned int core_opp_info_addr;
+	unsigned int core_acc_time_addr;
 };
 
 extern spinlock_t swpm_sub_data_spinlock;
