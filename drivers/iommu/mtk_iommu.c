@@ -1496,6 +1496,10 @@ static irqreturn_t mtk_iommu_isr(int irq, void *dev_id)
 			layer, (write ? "write" : "read"), dom->cfg.arm_v7s_cfg.ttbr,
 			data->protect_base, readl_relaxed(base + REG_MMU_IVRP_PADDR));
 		mtk_iommu_dump_iova(data, IOMMU_BK0, fault_iova);
+#if IS_ENABLED(CONFIG_COMMON_CLK_MT6877_APU) && IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
+		if (type == APU_IOMMU)
+			mtk_iommu_dbg_hang_detect(APU_IOMMU, APU_IOMMU0);
+#endif
 		report_custom_iommu_fault(fault_iova, fault_pa, regval, type, id);
 #endif
 #else
