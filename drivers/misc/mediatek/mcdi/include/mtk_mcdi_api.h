@@ -20,26 +20,15 @@ enum {
 	NF_MCDI_PAUSE
 };
 
-void __attribute__((weak))
-mcdi_cpu_iso_mask(unsigned int iso_mask)
-{
+void mcdi_cpu_iso_mask(unsigned int iso_mask);
 
-}
 
-bool __attribute__((weak))
-mcdi_task_pause(bool paused)
-{
-	return true;
-}
+bool mcdi_task_pause(bool paused);
 
-bool __attribute__((weak))
-system_idle_hint_request(unsigned int id, bool value)
-{
-	return false;
-}
 
-void __attribute__((weak))
-mcdi_pause(unsigned int id, bool paused)
-{
-}
+bool system_idle_hint_request(unsigned int id, bool value);
+
+
+void mcdi_pause(unsigned int id, bool paused);
+
 #endif /* __MTK_MCDI_COMMON_H__ */

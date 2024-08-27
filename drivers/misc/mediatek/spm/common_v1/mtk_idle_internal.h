@@ -221,6 +221,6 @@ extern void dvfsrc_md_scenario_update(bool suspend);
 /* call uart to sleep and wakeup*/
 extern int mtk8250_request_to_sleep(void);
 extern int mtk8250_request_to_wakeup(void);
-
+void mcdi_task_pause_fun_register(void *fun);
 void mtk_idle_update_time(int IdleModel);
 #endif /* __MTK_IDLE_INTERNAL_H__ */

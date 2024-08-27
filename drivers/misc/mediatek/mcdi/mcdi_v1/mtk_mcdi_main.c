@@ -37,6 +37,7 @@
 #include "mtk_idle_profile.h"
 #endif
 
+#include "mtk_mcdi_api.h"
 #include "mtk_mcdi_governor_hint.h"
 
 #define CREATE_TRACE_POINTS
@@ -837,6 +838,7 @@ static int mcdi_init(void)
 
 	mcdi_prof_init();
 	mtk_cpuidle_register_driver();
+	mcdi_task_pause_fun_register(mcdi_task_pause);
 	return 0;
 }
 static void mcdi_exit(void)

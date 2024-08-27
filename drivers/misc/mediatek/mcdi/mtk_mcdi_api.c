@@ -16,7 +16,7 @@ void mcdi_cpu_iso_mask(unsigned int iso_mask)
 	else
 		mcdi_set_cpu_iso_mbox(iso_mask);
 }
-
+EXPORT_SYMBOL(mcdi_cpu_iso_mask);
 bool mcdi_task_pause(bool paused)
 {
 	if (mcdi_is_cpc_mode())
@@ -24,14 +24,14 @@ bool mcdi_task_pause(bool paused)
 
 	return _mcdi_task_pause(paused);
 }
-
+EXPORT_SYMBOL(mcdi_task_pause);
 bool system_idle_hint_request(unsigned int id, bool value)
 {
 	return _system_idle_hint_request(id, value);
 }
-
+EXPORT_SYMBOL(system_idle_hint_request);
 void mcdi_pause(unsigned int id, bool paused)
 {
 	__mcdi_pause(id, paused);
 }
-
+EXPORT_SYMBOL(mcdi_pause);

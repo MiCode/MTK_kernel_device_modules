@@ -36,6 +36,16 @@ bool slp_dump_subsys_sleep_duration;
 bool slp_dump_ap_awake_duration;
 int slp_dump_golden_setting_type = GS_PMIC;
 
+
+bool (*mcdi_task_pause_fun)(bool paused);
+
+void mcdi_task_pause_fun_register(void *fun)
+{
+	if (fun != NULL)
+		mcdi_task_pause_fun = fun;
+
+}
+EXPORT_SYMBOL(mcdi_task_pause_fun_register);
 static int slp_suspend_ops_valid(suspend_state_t state)
 {
 	if (slp_suspend_ops_valid_on)
@@ -225,7 +235,11 @@ static int slp_suspend_ops_enter(suspend_state_t state)
 	}
 #endif /* CONFIG_FPGA_EARLY_PORTING */
 
-	mcdi_task_pause(true);
+	if (mcdi_task_pause_fun)
+		mcdi_task_pause_fun(true);
+	else
+		pr_info("mcdi task pause fail");
+
 
 	mtk_idle_cond_update_state();
 
@@ -246,7 +260,8 @@ static int slp_suspend_ops_enter(suspend_state_t state)
 		slp_wake_reason = spm_go_to_sleep_ex(0);
 	}
 
-	mcdi_task_pause(false);
+	if (mcdi_task_pause_fun)
+		mcdi_task_pause_fun(false);
 
 LEAVE_SLEEP:
 #if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
