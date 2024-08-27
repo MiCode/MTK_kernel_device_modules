@@ -1564,7 +1564,8 @@ const struct mml_topology_path *mml_drm_query_dl_path(struct mml_drm_ctx *dctx,
 
 void mml_drm_submit_timeout(void)
 {
-	mml_aee("mml", "mml_drm_submit timeout");
+	//mml_aee("mml", "mml_drm_submit timeout");
+	mml_err("mml_drm_submit timeout");
 }
 EXPORT_SYMBOL_GPL(mml_drm_submit_timeout);
 
