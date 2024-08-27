@@ -98,6 +98,8 @@ static int vmm_ceil_step;
 static bool mmdvfs_mux_version;
 static void __iomem *vcore_check_rg;
 static u32 vcore_check_offset;
+static u8 vcore_level_count;
+static u8 *vcore_level;
 
 enum {
 	log_pwr,
@@ -350,6 +352,16 @@ static int mmdvfs_vcp_ipi_send_ex(const u8 func, const u8 idx, const u8 opp, u32
 		else
 			writel(val & ~(1 << idx), MEM_VMM_CEIL_ENABLE);
 		break;
+	case FUNC_VCORE_CEIL_LEVEL:
+		if (!data || *data >= PWR_MMDVFS_NUM) {
+			ret = -EINVAL;
+			goto ipi_lock_end;
+		}
+		val = readl(MEM_CEIL_LEVEL(*data));
+		val &= ~(0xf << (idx * 4)); //clear pre ceil level
+		val |= opp << (idx * 4); //set cur ceil level
+		writel(val, MEM_CEIL_LEVEL(*data));
+		break;
 	case FUNC_VMM_GENPD_NOTIFY:
 		if (idx >= VMM_USR_NUM) {
 			ret = -EINVAL;
@@ -564,6 +576,47 @@ static const struct clk_ops mtk_mmdvfs_req_ops = {
 	.round_rate	= mtk_mmdvfs_round_rate,
 	.recalc_rate	= mtk_mmdvfs_recalc_rate,
 };
+
+int mtk_mmdvfs_force_vcore_notify(const u32 val)
+{
+	u32 pwr = PWR_MMDVFS_VCORE;
+	int ret = 0;
+
+	if (!vcore_level_count || val >= vcore_level_count)
+		return 0;
+
+	ret = mmdvfs_vcp_ipi_send(FUNC_VCORE_CEIL_LEVEL,
+		VCORE_CEIL_USR_VCORE, vcore_level[val], (u32 *)&pwr);
+
+	if (ret || log_level & (1 << log_adb))
+		MMDVFS_DBG("ret:%d force_vcore_level:%u final_vcore_level:%hhu",
+			ret, val, vcore_level[val]);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mtk_mmdvfs_force_vcore_notify);
+
+static int mmdvfs_vcore_ceil_step(const char *val, const struct kernel_param *kp)
+{
+	int result;
+	u32 level;
+	u32 pwr = PWR_MMDVFS_VCORE;
+
+	result = kstrtou32(val, 0, &level);
+	if (result) {
+		MMDVFS_DBG("fail ret:%d\n", result);
+		return result;
+	}
+
+	return mmdvfs_vcp_ipi_send(FUNC_VCORE_CEIL_LEVEL,
+		VCORE_CEIL_USR_ADB, level, (u32 *)&pwr);
+}
+
+static const struct kernel_param_ops mmdvfs_vcore_ceil_ops = {
+	.set = mmdvfs_vcore_ceil_step,
+};
+module_param_cb(vcore_ceil, &mmdvfs_vcore_ceil_ops, NULL, 0644);
+MODULE_PARM_DESC(vcore_ceil, "vcore ceil level");
 
 int mtk_mmdvfs_camera_notify(const bool enable)
 {
@@ -1905,6 +1958,7 @@ static int mmdvfs_vcp_init_thread(void *data)
 		writel_relaxed(MAX_OPP, MEM_PWR_OPP(i));
 		writel_relaxed(MAX_OPP, MEM_PWR_CUR_GEAR(i));
 		writel_relaxed(MAX_OPP, MEM_FORCE_VOL(i));
+		writel_relaxed(UINT_MAX, MEM_CEIL_LEVEL(i));
 	}
 	for (i = 0; i < USER_NUM; i++) {
 		writel_relaxed(MAX_OPP, MEM_VOTE_OPP_USR(i));
@@ -2419,6 +2473,20 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 		if (of_property_read_u32(pdev->dev.of_node,
 			"mediatek,vcore-check-offset", &vcore_check_offset))
 			MMDVFS_ERR("mediatek,vcore-check-offset missing");
+	}
+
+	ret = of_property_count_u8_elems(pdev->dev.of_node, "mediatek,vcore-level");
+	if (ret > 0) {
+		vcore_level_count = ret;
+		vcore_level = kcalloc(vcore_level_count, sizeof(*vcore_level), GFP_KERNEL);
+		if (!vcore_level) {
+			MMDVFS_DBG("vcore-level alloc failed:%d", ret);
+		} else {
+			ret = of_property_read_u8_array(pdev->dev.of_node,
+				"mediatek,vcore-level", vcore_level, vcore_level_count);
+			if (ret)
+				MMDVFS_DBG("read_array vcore-level failed:%d", ret);
+		}
 	}
 
 	for (i = 0; i < ARRAY_SIZE(mmdvfs_mux); i++) {

@@ -36,6 +36,7 @@ struct mmdvfs_res_mbrain_debug_ops {
 struct mmdvfs_res_mbrain_debug_ops *get_mmdvfs_mbrain_dbg_ops(void);
 void mtk_mmdvfs_debug_release_step0(void);
 void mtk_mmdvfs_debug_ulposc_enable(const bool enable);
+int mtk_mmdvfs_debug_force_vcore_notify(const u32 val);
 bool mtk_is_mmdvfs_v3_debug_init_done(void);
 void mmdvfs_debug_status_dump(struct seq_file *file);
 

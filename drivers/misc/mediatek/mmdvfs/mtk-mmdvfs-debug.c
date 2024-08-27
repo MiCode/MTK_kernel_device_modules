@@ -359,6 +359,9 @@ void mmdvfs_debug_status_dump(struct seq_file *file)
 	mmdvfs_debug_dump_line(file, "[%5u.%6u] mux:%lu opp:%lu",
 		readl(MEM_MUX_CB_END_SEC), readl(MEM_MUX_CB_END_USEC), (val >> 8) & GENMASK(7, 0), val & GENMASK(7, 0));
 
+	// vcore ceil
+	mmdvfs_debug_dump_line(file, "vcore ceil:%#x", readl(MEM_CEIL_LEVEL(PWR_MMDVFS_VCORE)));
+
 	// vmm ceil records
 	i = readl(MEM_REC_VMM_CEIL_CNT) % MEM_REC_CNT_MAX;
 	if (readl(MEM_REC_VMM_CEIL_SEC(i)))
@@ -608,6 +611,12 @@ static const struct proc_ops mmdvfs_mbrain_test_fops = {
 	.proc_lseek = seq_lseek,
 	.proc_release = single_release,
 };
+
+int mtk_mmdvfs_debug_force_vcore_notify(const u32 val)
+{
+	return mtk_mmdvfs_force_vcore_notify(val);
+}
+EXPORT_SYMBOL_GPL(mtk_mmdvfs_debug_force_vcore_notify);
 
 bool mtk_is_mmdvfs_v3_debug_init_done(void)
 {

@@ -93,7 +93,9 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 #define MEM_MUX_CB_USEC		(MEM_BASE + 0x58C)
 #define MEM_MUX_CB_END_SEC	(MEM_BASE + 0x590)
 #define MEM_MUX_CB_END_USEC	(MEM_BASE + 0x594)
-/* next start: 0x598 */
+
+#define MEM_CEIL_LEVEL(x)		(MEM_BASE + 0x598 + 0x4 * (x)) // POWER_NUM(3)
+/* next start: 0x5A4 */
 
 #define MEM_REC_CNT_MAX		16
 
