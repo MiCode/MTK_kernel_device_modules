@@ -2818,6 +2818,8 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	render_attr->expected_fps_margin_by_pid = rl_expect_fps_margin;
 	render_attr->quota_v2_diff_clamp_min_by_pid = quota_v2_diff_clamp_min;
 	render_attr->quota_v2_diff_clamp_max_by_pid = quota_v2_diff_clamp_max;
+	render_attr->l2q_enable_by_pid = rl_l2q_enable;
+	render_attr->l2q_exp_us_by_pid = rl_l2q_exp_us;
 	render_attr->limit_min_cap_target_t_by_pid = limit_min_cap_target_t;
 	render_attr->target_time_up_bound_by_pid = target_time_up_bound;
 	render_attr->aa_b_minus_idle_t_by_pid = aa_b_minus_idle_time;
@@ -3003,6 +3005,10 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 		render_attr->quota_v2_diff_clamp_max_by_pid = pid_attr.quota_v2_diff_clamp_max_by_pid;
 	if (pid_attr.limit_cfreq2cap_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->limit_cfreq2cap_by_pid = pid_attr.limit_cfreq2cap_by_pid;
+	if (pid_attr.l2q_enable_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->l2q_enable_by_pid = pid_attr.l2q_enable_by_pid;
+	if (pid_attr.l2q_exp_us_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->l2q_exp_us_by_pid = pid_attr.l2q_exp_us_by_pid;
 	if (pid_attr.limit_rfreq2cap_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->limit_rfreq2cap_by_pid = pid_attr.limit_rfreq2cap_by_pid;
 	if (pid_attr.limit_cfreq2cap_m_by_pid != BY_PID_DEFAULT_VAL)
@@ -5090,6 +5096,7 @@ static int fbt_boost_policy(
 	unsigned long long avg_exp_time_ns = 0;
 	int target_raw_fpks = target_fpks;
 	int limit_min_cap_final = 1;
+	int rl_l2q_enable_final, rl_l2q_exp_us_final;
 
 	if (!thread_info) {
 		FPSGO_LOGE("ERROR %d\n", __LINE__);
@@ -5111,6 +5118,8 @@ static int fbt_boost_policy(
 	quota_v2_diff_clamp_min_final = thread_info->attr.quota_v2_diff_clamp_min_by_pid;
 	quota_v2_diff_clamp_max_final = thread_info->attr.quota_v2_diff_clamp_max_by_pid;
 	limit_min_cap_target_t_final = thread_info->attr.limit_min_cap_target_t_by_pid;
+	rl_l2q_enable_final = thread_info->attr.l2q_enable_by_pid;
+	rl_l2q_exp_us_final = thread_info->attr.l2q_exp_us_by_pid;
 	powerRL_enable_final = thread_info->attr.powerRL_enable_by_pid;
 	powerRL_FPS_margin_final = thread_info->attr.powerRL_FPS_margin_by_pid;
 	powerRL_cap_limit_range_final = thread_info->attr.powerRL_cap_limit_range_by_pid;
@@ -5189,8 +5198,8 @@ static int fbt_boost_policy(
 
 	t2 = target_time;
 
-	if (rl_l2q_exp_us)
-		rl_l2q_exp_ns = (unsigned long long)rl_l2q_exp_us * 1000;
+	if (rl_l2q_exp_us_final)
+		rl_l2q_exp_ns = (unsigned long long)rl_l2q_exp_us_final * 1000;
 	else
 		rl_l2q_exp_ns = (unsigned long long)rl_l2q_exp_times * (unsigned long long)target_time;
 
@@ -5213,7 +5222,7 @@ static int fbt_boost_policy(
 		limit_min_cap_final, target_time_up_bound_final, separate_aa_final,
 		filtered_aa_n, filtered_aa_b, filtered_aa_m,
 		limit_max_cap, limit_cap_b, limit_cap_m,
-		rl_l2q_enable, rl_l2q_exp_ns, l2q_ns, is_logic_head_alive,
+		rl_l2q_enable_final, rl_l2q_exp_ns, l2q_ns, is_logic_head_alive,
 		&t2);
 
 	boost_info->last_target_time_ns = t2;
@@ -7938,6 +7947,16 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 			boost_attr->powerRL_cap_limit_range_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->powerRL_cap_limit_range_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "rl_l2q_enable")) {
+		if ((val <= 1 && val >= 0) && action == 's')
+			boost_attr->l2q_enable_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->l2q_enable_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "rl_l2q_exp_us")) {
+		if ((val <= 1000000 && val >= 0) && action == 's')
+			boost_attr->l2q_exp_us_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->l2q_exp_us_by_pid = BY_PID_DEFAULT_VAL;
 	}
 delete_pid:
 	if (delete) {

@@ -737,6 +737,8 @@ void fpsgo_reset_attr(struct fpsgo_boost_attr *boost_attr)
 		boost_attr->expected_fps_margin_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->quota_v2_diff_clamp_min_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->quota_v2_diff_clamp_max_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->l2q_enable_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->l2q_exp_us_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->limit_min_cap_target_t_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->target_time_up_bound_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->aa_b_minus_idle_t_by_pid = BY_PID_DEFAULT_VAL;
