@@ -532,19 +532,6 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 			regs[i].offset, regs[i].value, regs[i].mask);
 	}
 
-	// for debug ALPS09155466, will remove later :
-	// hdr_regs[HDR_TOP] value that bit 0 (hdr_en) should not be 0
-	if (result->hdr_reg_cnt > 1 &&
-		(regs[1].value & 0x1) == 0 &&
-		regs[1].offset == 0) {
-		mml_pq_err("%s:result_id[%llu] [regs][%x] = %#x mask(%#x)",
-			__func__, task->pq_task->comp_config.job_id,
-			regs[0].offset, regs[0].value, regs[0].mask);
-		mml_pq_err("%s:result_id[%llu] [regs][%x] = %#x mask(%#x)",
-			__func__, task->pq_task->comp_config.job_id,
-			regs[1].offset, regs[1].value, regs[1].mask);
-	}
-
 	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2) {
 		for (i = 0; i < HDR_CURVE_NUM; i += 2) {
 			mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_1],
@@ -995,19 +982,6 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 		memcpy(hdr->gain_curve, &curve[0], sizeof(u32)*HDR_CURVE_NUM);
 		queue_work(hdr->hdr_curve_wq, &hdr->hdr_curve_task);
 		hdr_hist_ctrl(comp, task, ccfg, result);
-	}
-
-	// for debug ALPS09155466, will remove later :
-	// hdr_regs[HDR_TOP] value that bit 0 (hdr_en) should not be 0
-	if (result->hdr_reg_cnt > 1 &&
-		(regs[1].value & 0x1) == 0 &&
-		regs[1].offset == 0) {
-		mml_pq_err("%s:result_id[%llu] [regs][%x] = %#x mask(%#x)",
-			__func__, task->pq_task->comp_config.job_id,
-			regs[0].offset, regs[0].value, regs[0].mask);
-		mml_pq_err("%s:result_id[%llu] [regs][%x] = %#x mask(%#x)",
-			__func__, task->pq_task->comp_config.job_id,
-			regs[1].offset, regs[1].value, regs[1].mask);
 	}
 
 	mml_pq_msg("%s is_hdr_need_readback[%d]",
