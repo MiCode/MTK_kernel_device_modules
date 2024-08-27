@@ -977,7 +977,8 @@ static enum mml_mode tp_query_mode_racing(struct mml_dev *mml, struct mml_frame_
 		info->dest[0].pq_config.en_dre ||
 		info->dest[0].pq_config.en_region_pq ||
 		info->dest[0].pq_config.en_fg ||
-		info->dest[0].pq_config.en_c3d) {
+		info->dest[0].pq_config.en_c3d ||
+		info->dest[0].pq_config.en_sharp) {
 		*reason = mml_query_pqen;
 		goto decouple;
 	}
