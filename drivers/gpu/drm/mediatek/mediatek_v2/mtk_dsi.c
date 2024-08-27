@@ -5770,6 +5770,15 @@ SKIP_WAIT_FRAME_DONE:
 
 	mtk_vidle_force_power_ctrl_by_cpu(false);
 
+	/* vlp release when suspend */
+	if (underrun_cnt > 0) {
+		DDPMSG("%s, underrun force release:%u\n", __func__, underrun_cnt);
+		while (underrun_cnt > 0) {
+			mtk_vidle_force_power_ctrl_by_cpu(false);
+			underrun_cnt--;
+		}
+	}
+
 	DDPINFO("%s-\n", __func__);
 }
 
