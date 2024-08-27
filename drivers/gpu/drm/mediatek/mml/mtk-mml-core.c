@@ -125,6 +125,10 @@ EXPORT_SYMBOL(mml_stash);
 int mml_urate = 110;
 module_param(mml_urate, int, 0644);
 
+/* dc mode reserve time in us */
+int dc_sw_reserve = 300;
+module_param(dc_sw_reserve, int, 0644);
+
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 static bool mml_timeout_dump = true;
 static DEFINE_MUTEX(mml_dump_mutex);
@@ -1192,8 +1196,10 @@ static u64 mml_core_calc_tput(struct mml_task *task, u32 pixel, u32 pipe,
 {
 	u64 duration = mml_core_time_dur_us(end, start);
 
-	if (!duration)
+	if (!duration || duration <= dc_sw_reserve)
 		duration = 1;
+	else
+		duration -= dc_sw_reserve;
 
 	/* truoughput by end time */
 	task->pipe[pipe].throughput = (u32)div_u64(pixel, duration);

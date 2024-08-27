@@ -343,8 +343,8 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *dctx,
 EXPORT_SYMBOL_GPL(mml_drm_query_cap);
 
 /* dc mode reserve time in us */
-int dc_sw_reserve = 1000;
-module_param(dc_sw_reserve, int, 0644);
+int dc_layer_reserve = 1500;
+module_param(dc_layer_reserve, int, 0644);
 
 int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 	struct mml_frame_info *infos, u32 cnt, u32 duration_us)
@@ -363,8 +363,8 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 		duration_us = MML_MAX_DUR;
 	mml_msg("[drm][query]%s duration %u", __func__, duration_us);
 
-	remain[mml_sys_frame] = duration_us -  dc_sw_reserve;
-	remain[mml_sys_tile] = duration_us -  dc_sw_reserve;
+	remain[mml_sys_frame] = duration_us -  dc_layer_reserve;
+	remain[mml_sys_tile] = duration_us -  dc_layer_reserve;
 
 	for (i = 0; i < cnt; i++) {
 		bool balance = false;
