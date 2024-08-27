@@ -392,8 +392,13 @@ static void fpsgo_com_get_l2q_time(int pid, unsigned long long buf_id, int tgid,
 {
 		unsigned long long logic_head_ts = 0;
 		int has_logic_head = 0, is_logic_valid = 0;
+		int l2q_enable_pid_final = 0;
 
-		if (fpsgo_touch_latency_ko_ready && fpsgo_get_rl_l2q_enable()) {
+		if (!f_render)
+			return;
+
+		l2q_enable_pid_final = f_render->attr.l2q_enable_by_pid;
+		if (fpsgo_touch_latency_ko_ready && l2q_enable_pid_final) {
 			is_logic_valid = fpsgo_comp2fstb_get_logic_head(pid, buf_id,
 				tgid, enqueue_end_time, prev_queue_end_ts, pprev_queue_end_ts,
 				dequeue_start_ts, &logic_head_ts, &has_logic_head);
