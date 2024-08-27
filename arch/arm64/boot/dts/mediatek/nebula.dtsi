@@ -4,11 +4,12 @@
  */
 
 / {
-	nebula {
+	grt_thyp: nebula {
 		compatible = "grt,trusty-smc-v1";
 		ranges;
 		#address-cells = <2>;
 		#size-cells = <2>;
+		status = "okay";
 
 		virtio {
 			compatible = "grt,trusty-virtio-v1";
@@ -23,8 +24,9 @@
 		};
 	};
 
-	nebula-vtee {
+	grt_vtee: nebula-vtee {
 		compatible = "grt,vtee-smc-v1";
+		status = "okay";
 
 		virtio {
 			compatible = "grt,vtee-virtio-v1";
