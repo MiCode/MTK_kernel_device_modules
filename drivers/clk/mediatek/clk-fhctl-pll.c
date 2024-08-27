@@ -568,16 +568,12 @@ static struct fh_pll_offset mt6877_top_offset[SIZE_6877_TOP] = {
 	/sizeof(struct fh_pll_data))
 
 static struct fh_pll_data mt6877_gpu_data[] = {
-	DATA_6877_TOP("mfgpll1"),
-	DATA_6877_TOP("mfgpll2"),
-	DATA_6877_TOP("mfgpll3"),
-	DATA_6877_TOP("mfgpll4"),
+	DATA_6877_TOP("mfg_ao_mfgpll1"),
+	DATA_6877_TOP("mfg_ao_mfgpll4"),
 	{}
 };
 static struct fh_pll_offset mt6877_gpu_offset[] = {
 	OFFSET_6877_TOP(0x003C, 0x000C),  // PLL4H_FHCTL0_CFG, PLL4H_PLL1_CON1
-	OFFSET_6877_TOP(0x0050, 0x001C),  // PLL4HPLL_FHCTL1_CFG, PLL4H_PLL2_CON1
-	OFFSET_6877_TOP(0x0064, 0x002C),  // PLL4HPLL_FHCTL2_CFG, PLL4H_PLL3_CON1
 	OFFSET_6877_TOP(0x0078, 0x003C),  // PLL4HPLL_FHCTL3_CFG, PLL4H_PLL4_CON1
 	{}
 };
