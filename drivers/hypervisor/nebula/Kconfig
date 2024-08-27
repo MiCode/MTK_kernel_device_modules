@@ -13,6 +13,16 @@ config NEBULA
 	  Nebula is compatible with ARM and Intel processors.
 	  Say N if unsure.
 
+config NEBULA_CORE
+	tristate "Nebula core driver"
+	depends on NEBULA
+	default n
+	help
+	  Nebula core driver provides the basic function for other
+	  Nebula drivers.
+	  Nebula is compatible with ARM and Intel processors.
+	  Say N if unsure.
+
 config NEBULA_VIRQ_SIMULATION
 	tristate "Nebula Virq Simulation"
 	default n
@@ -24,7 +34,7 @@ config NEBULA_VIRQ_SIMULATION
 
 config NEBULA_LOG
 	tristate
-	depends on NEBULA
+	depends on NEBULA_CORE
 	default y
 	help
 	  It is designed to enable the logging subsystem for the Nebula
@@ -37,7 +47,7 @@ config NEBULA_LOG
 
 config NEBULA_VIRTIO
 	tristate "Nebula virtio support"
-	depends on NEBULA
+	depends on NEBULA_CORE
 	select VIRTIO
 	default y
 	help
@@ -60,7 +70,7 @@ config NEBULA_VIRTIO_IPC
 
 config NEBULA_IPC
 	tristate "Nebula IPC Kernel API"
-	depends on NEBULA_VIRTIO_IPC
+	depends on NEBULA_VIRTIO_IPC || NEBULA_VTEE_VIRTIO_IPC
 	default n
 	help
 	  This module adds APIs for drivers to communicate with Nebula services.
@@ -91,7 +101,7 @@ config NEBULA_LOG_DEV_MAJOR
 
 config NEBULA_RPC_DEV_MAJOR
 	int "Nebula rpc character device major number"
-	depends on NEBULA
+	depends on NEBULA_RPC
 	default 0
 	help
 	  This number will be use as the major number in registering
@@ -111,8 +121,8 @@ config NEBULA_RPC
 	  as if they were local.
 
 config NEBULA_VTEE
-	tristate "Nebula Virtual TEE support"
-	depends on NEBULA
+	tristate "Nebula Virtual TEE support (SMC forwarding mode)"
+	depends on NEBULA_CORE
 	default n
 	help
 	  It is responsible for enabling support for the Nebula Virtual Trusted
@@ -121,9 +131,20 @@ config NEBULA_VTEE
 	  OS if the Nebula Hypervisor is enabled.
 	  Say N if unsure.
 
+config NEBULA_VTEE_LOG
+	tristate "Nebula Virtual TEE log driver"
+	depends on NEBULA_VTEE
+	default n
+	help
+	  It is responsible for enabling log support for the Nebula Virtual Trusted
+	  Execution Environment (TEE) within the kernel.
+	  Nebula virtual TEE log driver is used for collecting Nebula vTEE OS
+	  logs and print to kernel dmesg buffer.
+	  Say N if unsure.
+
 config NEBULA_VTEE_LOG_DEV_MAJOR
 	int "Nebula log character device major number"
-	depends on NEBULA_VTEE
+	depends on NEBULA_VTEE_LOG
 	default 0
 	help
 	  This number will be use as the major number in registering
