@@ -11290,6 +11290,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			vdec-power-in-vcp = <1>;
 			vdec-mmdvfs-in-vcp = <1>;
 			vdec-mmdvfs-in-adaptive = <1>;
+			vdec-cpu-hint-mode = <1>; /* cpu grp awr mode */
+			vdec-clamp-util-val = <500>;
 		};
 
 		venc@17020000 {
@@ -11336,6 +11338,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			venc-power-in-vcp = <1>;
 			venc-mmdvfs-in-vcp = <1>;
 			venc-mmdvfs-in-adaptive = <1>;
+			venc-cpu-hint-mode = <1>; /* cpu grp awr mode */
+			venc-clamp-util-val = <500>;
 			port-arg-num = <3>;
 			port-def = <0 M4U_L7_P0_VENC_RCPU_U0 0>,
 				<0 M4U_L7_P1_VENC_REC_U0 0>,
