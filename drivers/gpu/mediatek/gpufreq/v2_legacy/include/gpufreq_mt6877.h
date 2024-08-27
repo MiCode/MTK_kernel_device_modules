@@ -68,8 +68,7 @@
 /**************************************************
  * Frequency Hopping Setting
  **************************************************/
- //todo disable until CONFIG_COMMON_CLK_MTK_FREQ_HOPPING ready
-#define GPUFREQ_FHCTL_ENABLE            (1)
+#define GPUFREQ_FHCTL_ENABLE            (0)
 #define MFG_PLL_NAME                    "mfgpll1"
 #define MFGPLL_PLL_FMAX		(3800UL  * MHZ)
 
