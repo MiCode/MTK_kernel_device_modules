@@ -795,8 +795,28 @@ static void rrot_color_fmt(struct mml_frame_config *cfg,
 		break;
 	}
 
+	/*
+	 * 4'b0000:  0 RGB to JPEG
+	 * 4'b0001:  1 RGB to FULL709
+	 * 4'b0010:  2 RGB to BT601
+	 * 4'b0011:  3 RGB to BT709
+	 * 4'b0100:  4 JPEG to RGB
+	 * 4'b0101:  5 FULL709 to RGB
+	 * 4'b0110:  6 BT601 to RGB
+	 * 4'b0111:  7 BT709 to RGB
+	 * 4'b1000:  8 JPEG to BT601 / FULL709 to BT709
+	 * 4'b1001:  9 JPEG to BT709
+	 * 4'b1010: 10 BT601 to JPEG / BT709 to FULL709
+	 * 4'b1011: 11 BT709 to JPEG
+	 * 4'b1100: 12 BT709 to BT601
+	 * 4'b1101: 13 BT601 to BT709
+	 * 4'b1110: 14 JPEG to FULL709
+	 * 4'b1111: 15 IDENTITY
+	 *             FULL709 to JPEG
+	 *             FULL709 to BT601
+	 *             BT601 to FULL709
+	 */
 	if (profile_in == MML_YCBCR_PROFILE_BT2020 ||
-	    profile_in == MML_YCBCR_PROFILE_FULL_BT709 ||
 	    profile_in == MML_YCBCR_PROFILE_FULL_BT2020)
 		profile_in = MML_YCBCR_PROFILE_BT709;
 
@@ -807,6 +827,8 @@ static void rrot_color_fmt(struct mml_frame_config *cfg,
 			rrot_frm->matrix_sel = 3;
 		else if (profile_in == MML_YCBCR_PROFILE_FULL_BT601)
 			rrot_frm->matrix_sel = 0;
+		else if (profile_in == MML_YCBCR_PROFILE_FULL_BT709)
+			rrot_frm->matrix_sel = 1;
 		else
 			mml_err("[rrot] unknown color conversion %x",
 				profile_in);
