@@ -3162,7 +3162,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		compatible = "mediatek,mmdvfs-debug";
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		force-step0 = <0>;
-		release-step0 = <0>;
+		release-step0 = <1>;
 	};
 
 	mmdvfs {

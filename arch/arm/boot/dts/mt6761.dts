@@ -3161,7 +3161,7 @@ firmware_class.path=/vendor/firmware clk_ignore_unused=1";
 		compatible = "mediatek,mmdvfs-debug";
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		force-step0 = <0>;
-		release-step0 = <0>;
+		release-step0 = <1>;
 	};
 
 	mmdvfs {
