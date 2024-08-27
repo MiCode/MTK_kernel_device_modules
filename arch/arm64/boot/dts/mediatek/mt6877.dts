@@ -3252,24 +3252,12 @@
 		map1 {
 			domain = "gpu";
 			method = "fhctl-ap";
-			mfgpll1 {
+			mfg_ao_mfgpll1 {
 				fh-id = <0>;
-				pll-id = <13>;
 				perms = <0x3>;
 			};
-			mfgpll2 {
+			mfg_ao_mfgpll4 {
 				fh-id = <1>;
-				pll-id = <14>;
-				perms = <0x3>;
-			};
-			mfgpll3 {
-				fh-id = <2>;
-				pll-id = <15>;
-				perms = <0x3>;
-			};
-			mfgpll4 {
-				fh-id = <3>;
-				pll-id = <16>;
 				perms = <0x3>;
 			};
 		};
