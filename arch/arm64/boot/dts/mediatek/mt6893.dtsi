@@ -5234,6 +5234,7 @@ cpus {
 					"path_jpegenc_q_table",
 					"path_jpegenc_bsdma";
 			interconnect-num = <4>;
+			support-34bits = <0>;
 		};
 
 		jpgdec0@17040000 {
