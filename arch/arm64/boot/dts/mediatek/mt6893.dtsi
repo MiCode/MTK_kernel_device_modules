@@ -5257,6 +5257,24 @@ cpus {
 				 <&iommu0 M4U_PORT_L7_JPGENC_BSDMA1_DISP>,
 				 <&iommu0 M4U_PORT_L7_JPGENC_HUFF_OFFSET1_DISP>,
 				 <&iommu0 M4U_PORT_L7_JPGENC_HUFF_OFFSET0_DISP>;
+			interconnects = <&mmqos MASTER_LARB_PORT(M4U_PORT_L7_JPGENC_WDMA0_DISP)
+							&mmqos SLAVE_COMMON(0)>,
+						<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_JPGENC_BSDMA0_DISP)
+							&mmqos SLAVE_COMMON(0)>,
+						<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_JPGENC_WDMA1_DISP)
+							&mmqos SLAVE_COMMON(0)>,
+						<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_JPGENC_BSDMA1_DISP)
+							&mmqos SLAVE_COMMON(0)>,
+						<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_JPGENC_HUFF_OFFSET1_DISP)
+							&mmqos SLAVE_COMMON(0)>,
+						<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_JPGENC_HUFF_OFFSET0_DISP)
+							&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "path_jpegdec0_wdma",
+						"path_jpegdec0_bsdma",
+						"path_jpegdec1_wdma",
+						"path_jpegdec1_bsdma",
+						"path_jpegdec1_huff_offset",
+						"path_jpegdec0_huff_offset";
 		};
 
 		jpgdec1@17840000 {
@@ -5267,14 +5285,21 @@ cpus {
 			operating-points-v2 = <&opp_table_venc>;
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			clocks = <&venc_c1_gcon_clk  CLK_VEN2_CKE3_JPGDEC>;
-			clock-names = "MT_CG_VENC_C1_JPGDEC";
+			clock-names = "MT_CG_VENC_JPGDEC_C2";
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&iommu1 M4U_PORT_L8_JPGENC_WDMA0_MDP>,
 				 <&iommu1 M4U_PORT_L8_JPGENC_BSDMA0_MDP>,
-				 <&iommu1 M4U_PORT_L8_JPGENC_WDMA1_MDP>,
-				 <&iommu1 M4U_PORT_L8_JPGENC_BSDMA1_MDP>,
-				 <&iommu1 M4U_PORT_L8_JPGENC_HUFF_OFFSET1_MDP>,
 				 <&iommu1 M4U_PORT_L8_JPGENC_HUFF_OFFSET0_MDP>;
+			interconnects = <&mmqos MASTER_LARB_PORT(M4U_PORT_L8_JPGENC_WDMA0_MDP)
+							&mmqos SLAVE_COMMON(1)>,
+						<&mmqos MASTER_LARB_PORT(M4U_PORT_L8_JPGENC_BSDMA0_MDP)
+							&mmqos SLAVE_COMMON(1)>,
+						<&mmqos MASTER_LARB_PORT(M4U_PORT_L8_JPGENC_HUFF_OFFSET0_MDP)
+							&mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "path_jpegdec2_wdma",
+						"path_jpegdec2_bsdma",
+						"path_jpegdec2_huff_offset";
+
 		};
 
 		venc_c1_gcon_clk: syscon@17800000 {
