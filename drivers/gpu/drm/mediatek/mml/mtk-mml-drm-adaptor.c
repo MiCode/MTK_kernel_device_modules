@@ -62,6 +62,7 @@ struct mml_drm_ctx {
 	void *disp_crtc;
 	void (*dispen_cb)(bool enable, void *dispen_param);
 	void *dispen_param;
+	struct completion idle;
 };
 
 static struct mml_drm_ctx *task_ctx_to_drm(struct mml_task *task)
@@ -566,11 +567,37 @@ static void drm_task_move_to_idle(struct mml_task *task)
 		mml_dev_get_couple_cnt(dctx->ctx.mml));
 }
 
+static bool mml_drm_check_configs_idle_locked(struct mml_drm_ctx *dctx, bool warn)
+{
+	struct mml_ctx *ctx = &dctx->ctx;
+	struct mml_frame_config *cfg;
+	bool idle = false;
+
+	list_for_each_entry(cfg, &ctx->configs, entry) {
+		if (!list_empty(&cfg->await_tasks)) {
+			if (warn)
+				mml_log("[drm]%s await_tasks not empty", __func__);
+			goto done;
+		}
+
+		if (!list_empty(&cfg->tasks)) {
+			if (warn)
+				mml_log("[drm]%s tasks not empty", __func__);
+			goto done;
+		}
+	}
+
+	idle = true;
+done:
+	return idle;
+}
+
 static void drm_task_frame_done(struct mml_task *task)
 {
 	struct mml_frame_config *cfg = task->config;
 	struct mml_frame_config *tmp;
 	struct mml_ctx *ctx = task->ctx;
+	struct mml_drm_ctx *dctx = task_ctx_to_drm(task);
 	struct mml_dev *mml = cfg->mml;
 
 	mml_trace_ex_begin("%s", __func__);
@@ -633,6 +660,8 @@ static void drm_task_frame_done(struct mml_task *task)
 	}
 
 done:
+	if (!mml_drm_check_configs_idle_locked(dctx, false))
+		complete(&dctx->idle);
 	mutex_unlock(&ctx->config_mutex);
 
 	mml_lock_wake_lock(mml, false);
@@ -1109,6 +1138,9 @@ static struct mml_drm_ctx *drm_ctx_create(struct mml_dev *mml,
 	/* install kick idle callback to mml driver */
 	mml_pw_set_kick_cb(mml, disp->kick_idle_cb, disp->disp_crtc);
 
+	/* idle complete event to prevent display ignore put context */
+	init_completion(&ctx->idle);
+
 	return ctx;
 }
 
@@ -1129,27 +1161,23 @@ EXPORT_SYMBOL_GPL(mml_drm_get_context);
 bool mml_drm_ctx_idle(struct mml_drm_ctx *dctx)
 {
 	struct mml_ctx *ctx = &dctx->ctx;
-	bool idle = false;
-
-	struct mml_frame_config *cfg;
+	bool idle = true;
 
 	mutex_lock(&ctx->config_mutex);
-	list_for_each_entry(cfg, &ctx->configs, entry) {
-		if (!list_empty(&cfg->await_tasks)) {
-			mml_log("[drm]%s await_tasks not empty", __func__);
-			goto done;
-		}
+	if (!mml_drm_check_configs_idle_locked(dctx, true)) {
+		idle = false;
+		init_completion(&dctx->idle);
+	}
+	mutex_unlock(&ctx->config_mutex);
 
-		if (!list_empty(&cfg->tasks)) {
-			mml_log("[drm]%s tasks not empty", __func__);
-			goto done;
+	if (!idle) {
+		if (!wait_for_completion_timeout(&dctx->idle, jiffies_to_msecs(5000))) {
+			mml_err("[drm]wait idle timed out");
+			return false;
 		}
 	}
 
-	idle = true;
-done:
-	mutex_unlock(&ctx->config_mutex);
-	return idle;
+	return true;
 }
 EXPORT_SYMBOL_GPL(mml_drm_ctx_idle);
 
