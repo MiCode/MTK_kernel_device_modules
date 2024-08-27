@@ -34,6 +34,7 @@
 #include <linux/of_irq.h>
 #include <linux/interrupt.h>
 #include <linux/wait.h>
+#include <linux/pm_runtime.h>
 
 #define SERDES_DEBUG_INFO					"[serdes-dp]"
 #define SERDES_POLL_TIMEOUT_MS				2000
@@ -105,7 +106,7 @@
 #define DES_REG_0x06ff_HOTPLUG_DETECT		0x06FF
 #define DES_HOTPLUG_CHECK_VALUE				0x22
 
-enum serdes_status{
+enum serdes_status {
 	des_link_status_connected = 1,
 	des_link_status_disconnected,
 	des_linka_status_connected,
@@ -150,6 +151,7 @@ struct serdes_dp_bridge {
 	struct drm_bridge *panel_bridge;
 	struct gpio_desc *gpio_pd_n;
 	struct gpio_desc *gpio_rst_n;
+	struct notifier_block nb;
 
 	/* irq handle for hotplug */
 	bool serdes_init_done;
@@ -176,9 +178,9 @@ struct serdes_dp_bridge {
 	struct bl_cmd_info bl_off_cmd;
 
 	/* superframe setting */
-	struct serdes_cmd_info serdes_init_linka_cmd ;
+	struct serdes_cmd_info serdes_init_linka_cmd;
 	struct serdes_cmd_info des_linka_init_cmd;
-	struct serdes_cmd_info serdes_init_linkb_cmd ;
+	struct serdes_cmd_info serdes_init_linkb_cmd;
 	struct serdes_cmd_info des_linkb_init_cmd;
 	struct serdes_cmd_info ser_superframe_init_cmd;
 	struct serdes_cmd_info serdes_superframe_touch_init_cmd;
@@ -186,9 +188,9 @@ struct serdes_dp_bridge {
 	/* dual link setting */
 
 	/* dp mst setting */
-	struct serdes_cmd_info mst_serdes_init_linka_cmd ;
+	struct serdes_cmd_info mst_serdes_init_linka_cmd;
 	struct serdes_cmd_info mst_des_linka_init_cmd;
-	struct serdes_cmd_info mst_serdes_init_linkb_cmd ;
+	struct serdes_cmd_info mst_serdes_init_linkb_cmd;
 	struct serdes_cmd_info mst_des_linkb_init_cmd;
 	struct serdes_cmd_info dp_mst_init_cmd;
 	struct serdes_cmd_info dp_mst_touch_init_cmd;

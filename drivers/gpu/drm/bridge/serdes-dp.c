@@ -1223,7 +1223,7 @@ static void serdes_init_wait_queue(struct serdes_dp_bridge *max_bridge)
 	atomic_set(&max_bridge->hotplug_event, 0);
 	init_waitqueue_head(&max_bridge->waitq);
 	max_bridge->serdes_hotplug_task = kthread_run(serdes_hotplug_kthread,
-									(void *)max_bridge, "serdes_hotplug");
+									(void *)max_bridge, "serdes_dp");
 }
 
 static irqreturn_t serdes_interrupt_handler(int irq, void *data)
@@ -1240,7 +1240,7 @@ static int hotplug_by_interrupt(struct serdes_dp_bridge *max_bridge)
 	int ret = 0;
 
 	ret = request_irq(max_bridge->irq_num, serdes_interrupt_handler,
-					IRQF_TRIGGER_RISING, "serdes_irq", max_bridge);
+					IRQF_TRIGGER_RISING, "serdes_dp_irq", max_bridge);
 	if (ret) {
 		pr_info("%s %s: request irq failed %d\n", SERDES_DEBUG_INFO, __func__, ret);
 		return ret;
@@ -1425,8 +1425,8 @@ static int serdes_dp_bridge_attach(struct drm_bridge *bridge,
 	ret = serdes_write_byte(max_bridge->serdes_dp_i2c, SER_ACTIVE_STATUS_CHECK_REG, SER_ACTIVE_STATUS_VALUE);
 	if (ret)
 		dev_info(dev, "%s Write serdes failed\n", SERDES_DEBUG_INFO);
-
-	serdes_init_by_dts(max_bridge);
+	else
+		serdes_init_by_dts(max_bridge);
 
 	if (!(flags & DRM_BRIDGE_ATTACH_NO_CONNECTOR)) {
 		pr_info("%s Driver does not provide a connector\n", SERDES_DEBUG_INFO);
@@ -1486,13 +1486,35 @@ static const struct drm_bridge_funcs serdes_dp_bridge_funcs = {
 	.get_modes = serdes_dp_bridge_get_modes,
 };
 
+static int serdes_dp_suspend(struct device *dev);
+static int serdes_dp_resume(struct device *dev);
+
+static int serdes_dp_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
+{
+	struct serdes_dp_bridge *max_bridge = container_of(notifier, struct serdes_dp_bridge, nb);
+	struct device *dev = max_bridge->dev;
+
+	pr_info("%s %s pm_event %lu dev %s usage_count %d\n", SERDES_DEBUG_INFO,
+	       __func__, pm_event, dev_name(dev), atomic_read(&dev->power.usage_count));
+
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		serdes_dp_suspend(dev);
+		return NOTIFY_OK;
+	case PM_POST_SUSPEND:
+		serdes_dp_resume(dev);
+		return NOTIFY_OK;
+	}
+	return NOTIFY_DONE;
+}
+
 static int serdes_dp_probe(struct i2c_client *client)
 {
 	struct device *dev = &client->dev;
 	struct serdes_dp_bridge *max_bridge = NULL;
 	int ret;
 
-	dev_info(dev, "[serdes_dp] %s+\n", __func__);
+	dev_info(dev, "%s %s+\n", SERDES_DEBUG_INFO, __func__);
 
 	max_bridge = devm_kzalloc(dev, sizeof(*max_bridge), GFP_KERNEL);
 	if (!max_bridge)
@@ -1502,7 +1524,7 @@ static int serdes_dp_probe(struct i2c_client *client)
 							GPIOD_OUT_HIGH);
 	if (IS_ERR(max_bridge->gpio_rst_n)) {
 		ret = PTR_ERR(max_bridge->gpio_rst_n);
-		dev_info(dev, "[serdes_dp] Cannot get reset gpio %d\n", ret);
+		dev_info(dev, "%s Cannot get reset gpio %d\n", SERDES_DEBUG_INFO, ret);
 		return ret;
 	}
 
@@ -1514,7 +1536,7 @@ static int serdes_dp_probe(struct i2c_client *client)
 
 	ret = serdes_dp_dt_parse(max_bridge, dev);
 	if (ret) {
-		dev_info(dev, "[serdes_dp] DT parse failed\n");
+		dev_info(dev, "%s DT parse failed\n", SERDES_DEBUG_INFO);
 		return ret;
 	}
 
@@ -1535,7 +1557,15 @@ static int serdes_dp_probe(struct i2c_client *client)
 		max_bridge->enabled = true;
 	}
 
-	dev_info(dev, "[serdes_dp] %s-\n", __func__);
+	/* register pm notifier */
+	max_bridge->nb.notifier_call = serdes_dp_notifier;
+	ret = register_pm_notifier(&max_bridge->nb);
+	if (ret)
+		pr_info("%s register_pm_notifier failed %d", SERDES_DEBUG_INFO, ret);
+
+	pm_runtime_enable(max_bridge->dev);
+	pm_runtime_get_sync(max_bridge->dev);
+	dev_info(dev, "%s %s-\n", SERDES_DEBUG_INFO, __func__);
 	return 0;
 }
 
@@ -1561,7 +1591,7 @@ static void serdes_dp_remove(struct i2c_client *client)
 }
 
 #ifdef CONFIG_PM_SLEEP
-static int maxiam_serdes_dp_suspend(struct device *dev)
+static int serdes_dp_suspend(struct device *dev)
 {
 	struct serdes_dp_bridge *max_bridge = dev->driver_data;
 
@@ -1569,29 +1599,8 @@ static int maxiam_serdes_dp_suspend(struct device *dev)
 	if (max_bridge->suspend)
 		return 0;
 
-	/* turn off backlight */
-	if (max_bridge->enabled) {
-		if (max_bridge->superframe_support) {
-			turn_on_off_bl(max_bridge, false, 0x01);
-			turn_on_off_bl(max_bridge, false, 0x02);
-		} else if (max_bridge->double_pixel_support) {
-			turn_on_off_bl(max_bridge, false, 0x0);
-		} else if (max_bridge->is_support_mst) {
-			turn_on_off_bl(max_bridge, false, 0x01);
-			turn_on_off_bl(max_bridge, false, 0x02);
-		} else
-			turn_on_off_bl(max_bridge, false, 0x0);
-	}
-
-	if (max_bridge->is_support_hotplug) {
-		if (max_bridge->irq_num <= 0) {
-			atomic_set(&max_bridge->hotplug_event, 0);
-			wake_up_interruptible(&max_bridge->waitq);
-		}
-	}
-
-	msleep(500);
 	gpiod_set_value(max_bridge->gpio_rst_n, 0);
+	pm_runtime_put_sync(dev);
 	max_bridge->suspend = true;
 	max_bridge->inited = false;
 	pr_info("%s Serdes DP: %d %s-\n", SERDES_DEBUG_INFO, max_bridge->is_dp, __func__);
@@ -1599,14 +1608,13 @@ static int maxiam_serdes_dp_suspend(struct device *dev)
 	return 0;
 }
 
-static int maxiam_serdes_dp_resume(struct device *dev)
+static int serdes_dp_resume(struct device *dev)
 {
 	struct serdes_dp_bridge *max_bridge = dev->driver_data;
 
 	pr_info("%s Serdes DP: %d %s+\n", SERDES_DEBUG_INFO, max_bridge->is_dp, __func__);
-
+	pm_runtime_get_sync(dev);
 	gpiod_set_value(max_bridge->gpio_rst_n, 1);
-	msleep(50);
 	max_bridge->suspend = false;
 
 	pr_info("%s Serdes DP: %d %s-\n", SERDES_DEBUG_INFO, max_bridge->is_dp, __func__);
@@ -1614,11 +1622,11 @@ static int maxiam_serdes_dp_resume(struct device *dev)
 }
 #endif
 
-static SIMPLE_DEV_PM_OPS(maxiam_serdes_dp_pm_ops, maxiam_serdes_dp_suspend, maxiam_serdes_dp_resume);
+static SIMPLE_DEV_PM_OPS(serdes_dp_pm_ops, serdes_dp_suspend, serdes_dp_resume);
 
 static const struct i2c_device_id serdes_dp_edp_i2c_table[] = {
-	{"serdes_dp-dp", 0},
-	{"serdes_dp-edp", 0},
+	{"serdes-dp", 0},
+	{"serdes-edp", 0},
 	{ },
 };
 
@@ -1641,7 +1649,7 @@ static struct i2c_driver serdes_dp_edp_driver = {
 		.owner = THIS_MODULE,
 		.name = "serdes-dp",
 		.of_match_table = of_match_ptr(serdes_dp_serdes_match),
-		.pm = &maxiam_serdes_dp_pm_ops,
+		.pm = &serdes_dp_pm_ops,
 	},
 
 };
