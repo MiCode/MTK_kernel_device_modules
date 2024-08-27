@@ -263,7 +263,7 @@ static const struct scp_domain_data scp_domain_data_mt6853[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0714, 0x0718, 0x0710, 0x0724,
 				MT6853_TOP_AXI_PROT_EN_2_ADSP_DORMANT),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_SRAM_SLP,
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_SRAM_SLP | MTK_SCPD_BYPASS_INIT_ON,
 	},
 	[MT6853_POWER_DOMAIN_CAM] = {
 		.name = "cam",
