@@ -1116,6 +1116,13 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 		return info->mode;
 	}
 
+	/* rgb should not go racing mode */
+	if (MML_FMT_IS_RGB(info->dest[0].data.format)) {
+		*reason = mml_query_format;
+		mode = MML_MODE_MML_DECOUPLE;
+		goto check_dc_tput;
+	}
+
 	/* rotate go to racing (inline rotate) */
 	if (info->dest[0].rotate == MML_ROT_90 || info->dest[0].rotate == MML_ROT_270)
 		mode = tp_query_mode_racing(mml, info, reason);
