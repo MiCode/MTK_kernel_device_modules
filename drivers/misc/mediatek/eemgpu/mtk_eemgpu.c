@@ -1358,6 +1358,10 @@ static void eemg_init_det(struct eemg_det *det, struct eemg_devinfo *devinfo,
 
 	ret = of_property_read_string_index(node, "eemg_detectors", det_id,
 		&domain);
+	if (ret !=0){
+		eemg_error("of_property_read_string_index error! ret: %d\n", ret);
+		return;
+	}
 	np = of_find_node_by_name(node, domain);
 	if (np) {
 		of_property_read_u32_index(np, "MDES", 0, &efuse_offset);
