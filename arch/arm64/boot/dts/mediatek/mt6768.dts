@@ -5158,8 +5158,6 @@ transparent_hugepage=never";
 	};
 
 	pmic_clock_buffer_ctrl: clkbuf-ctrl {
-		pmic-supply = <&mt6358_clkbuf>;
-
 		compatible = "mediatek,mt6768-clkbuf";
 		pmic = <&mt6358_clkbuf>;
 		pmif = <&pwrap 0>;
