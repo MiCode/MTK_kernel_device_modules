@@ -3363,7 +3363,7 @@ static int cmdq_probe(struct platform_device *pdev)
 		of_property_read_bool(dev->of_node, "ddr-urgent");
 	cmdq->gce_res_sw_mode =
 		of_property_read_bool(dev->of_node, "gce-res-sw-mode");
-
+	cmdq->sw_ddr_en = of_property_read_bool(dev->of_node, "sw-ddr-en");
 	cmdq->mbox.dev = dev;
 	cmdq->share_dev = mtk_smmu_get_shared_device(dev);
 	cmdq_genpd_init(dev, cmdq);
