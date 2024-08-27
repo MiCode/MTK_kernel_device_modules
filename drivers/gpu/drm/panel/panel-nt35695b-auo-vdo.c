@@ -3,13 +3,13 @@
  * Copyright (c) 2024 MediaTek Inc.
  */
 
-#include <linux/backlight.h>
 #include <drm/drm_mipi_dsi.h>
 #include <drm/drm_panel.h>
 #include <drm/drm_modes.h>
-#include <linux/delay.h>
 #include <drm/drm_device.h>
 
+#include <linux/backlight.h>
+#include <linux/delay.h>
 #include <linux/gpio/consumer.h>
 #include <linux/regulator/consumer.h>
 
@@ -27,6 +27,8 @@
 #include "../mediatek/mediatek_v2/mtk_panel_ext.h"
 #include "../mediatek/mediatek_v2/mtk_drm_graphics_base.h"
 #endif
+
+#include "../../../misc/mediatek/gate_ic/gate_i2c.h"
 
 #ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
 #include "../mediatek/mediatek_v2/mtk_corner_pattern/mtk_data_hw_roundedpattern.h"
@@ -114,6 +116,7 @@ static void lcm_panel_get_data(struct lcm *ctx)
 }
 #endif
 
+#if !IS_ENABLED(CONFIG_RT4831A_I2C)
 #if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 static struct regulator *disp_bias_pos;
 static struct regulator *disp_bias_neg;
@@ -202,15 +205,7 @@ static int lcm_panel_bias_disable(struct lcm *ctx)
 	return retval;
 }
 #endif
-
-static void udelay_panel(unsigned int del)
-{
-	unsigned int count = del / 1000;
-
-	while (count--)
-		udelay(1000);
-	udelay(del % 1000);
-}
+#endif
 
 static void lcm_panel_init(struct lcm *ctx)
 {
@@ -223,11 +218,11 @@ static void lcm_panel_init(struct lcm *ctx)
 	}
 	gpiod_set_value(ctx->reset_gpio, 0);
 	gpiod_set_value(ctx->reset_gpio, 1);
-	udelay_panel(1 * 1000);
+	usleep_range(1 * 1000, 2 * 1000);
 	gpiod_set_value(ctx->reset_gpio, 0);
-	udelay_panel(10 * 1000);
+	usleep_range(10 * 1000, 11 * 1000);
 	gpiod_set_value(ctx->reset_gpio, 1);
-	udelay_panel(10 * 1000);
+	usleep_range(10 * 1000, 11 * 1000);
 	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 
 	lcm_dcs_write_seq_static(ctx, 0xFF, 0x24);
@@ -793,7 +788,12 @@ static int lcm_unprepare(struct drm_panel *panel)
 
 	ctx->error = 0;
 	ctx->prepared = false;
-#if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
+
+#if IS_ENABLED(CONFIG_RT4831A_I2C)
+	/*this is rt4831a*/
+	_gate_ic_i2c_panel_bias_enable(0);
+	_gate_ic_Power_off();
+#elif IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 	lcm_panel_bias_disable(ctx);
 #else
 	ctx->reset_gpio =
@@ -817,7 +817,7 @@ static int lcm_unprepare(struct drm_panel *panel)
 	gpiod_set_value(ctx->bias_neg, 0);
 	devm_gpiod_put(ctx->dev, ctx->bias_neg);
 
-	udelay_panel(1000);
+	usleep_range(1 * 1000, 2 * 1000);
 
 	ctx->bias_pos = devm_gpiod_get_index(ctx->dev,
 		"bias", 0, GPIOD_OUT_HIGH);
@@ -842,7 +842,11 @@ static int lcm_prepare(struct drm_panel *panel)
 	if (ctx->prepared)
 		return 0;
 
-#if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
+#if IS_ENABLED(CONFIG_RT4831A_I2C)
+	_gate_ic_Power_on();
+	/*rt4831a co-work with leds_i2c*/
+	_gate_ic_i2c_panel_bias_enable(1);
+#elif IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 	lcm_panel_bias_enable(ctx);
 #else
 	ctx->bias_pos = devm_gpiod_get_index(ctx->dev,
@@ -855,7 +859,7 @@ static int lcm_prepare(struct drm_panel *panel)
 	gpiod_set_value(ctx->bias_pos, 1);
 	devm_gpiod_put(ctx->dev, ctx->bias_pos);
 
-	udelay_panel(2000);
+	usleep_range(2 * 1000,3 * 1000);
 
 	ctx->bias_neg = devm_gpiod_get_index(ctx->dev,
 		"bias", 1, GPIOD_OUT_HIGH);
@@ -1173,7 +1177,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	}
 	devm_gpiod_put(dev, ctx->reset_gpio);
 
-#ifndef CONFIG_RT4831A_I2C
+#if !IS_ENABLED(CONFIG_RT4831A_I2C)
 #if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 	lcm_panel_bias_enable(ctx);
 #else
@@ -1194,8 +1198,10 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	devm_gpiod_put(dev, ctx->bias_neg);
 #endif
 #endif
+#ifndef CONFIG_MTK_DISP_NO_LK
 	ctx->prepared = true;
 	ctx->enabled = true;
+#endif
 
 	drm_panel_init(&ctx->panel, dev, &lcm_drm_funcs, DRM_MODE_CONNECTOR_DSI);
 	ctx->panel.dev = dev;
