@@ -5,6 +5,7 @@ endif
 ccflags-y += \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/ \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/ \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs/ \
 
 ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_V0)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v0/

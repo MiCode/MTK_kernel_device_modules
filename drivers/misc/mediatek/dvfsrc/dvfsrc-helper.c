@@ -27,6 +27,7 @@
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <aee.h>
 #endif
+#include <mtk-mmdvfs-debug.h>
 
 static struct mtk_dvfsrc *dvfsrc_drv;
 static struct regmap *dvfsrc_regmap;
@@ -576,13 +577,37 @@ static struct ratelimit_state dvfsrc_ratelimit_force =
 	RATELIMIT_STATE_INIT_FLAGS("dvfsrc_force", HZ, 2, RATELIMIT_MSG_ON_RELEASE);
 static void dvfsrc_force_opp(struct mtk_dvfsrc *dvfsrc, u32 opp)
 {
+	unsigned int max_opp = dvfsrc->opp_desc->num_opp - 1;
+
 	if (dvfsrc->force_opp_idx != opp) {
+		if (opp > max_opp)
+			opp = 0xFF;
+
 		if (__ratelimit(&dvfsrc_ratelimit_force))
 			pr_info("dvfsrc_force_opp\n");
 
+		if (dvfsrc->dvd->mmdvfs_notify && (opp != 0xFF)) {
+			if (dvfsrc->force_opp_idx == 0xFF) {
+				mtk_mmdvfs_debug_force_vcore_notify(
+					dvfsrc->opp_desc->opps[0].vcore_opp);
+			} else if (dvfsrc->opp_desc->opps[max_opp - opp].vcore_opp
+					< dvfsrc->opp_desc->opps[max_opp - dvfsrc->force_opp_idx].vcore_opp)
+				mtk_mmdvfs_debug_force_vcore_notify(
+					dvfsrc->opp_desc->opps[max_opp - opp].vcore_opp);
+		}
+
 		mtk_dvfsrc_send_request(dvfsrc->dev->parent,
-			MTK_DVFSRC_CMD_FORCEOPP_REQUEST,
-			opp);
+			MTK_DVFSRC_CMD_FORCEOPP_REQUEST, opp);
+
+		if (dvfsrc->dvd->mmdvfs_notify && (dvfsrc->force_opp_idx != 0xFF)) {
+			if (opp == 0xFF) {
+				mtk_mmdvfs_debug_force_vcore_notify(
+					dvfsrc->opp_desc->opps[max_opp].vcore_opp);
+			} else if (dvfsrc->opp_desc->opps[max_opp - opp].vcore_opp
+					> dvfsrc->opp_desc->opps[max_opp - dvfsrc->force_opp_idx].vcore_opp)
+				mtk_mmdvfs_debug_force_vcore_notify(
+					dvfsrc->opp_desc->opps[max_opp - opp].vcore_opp);
+		}
 	}
 	dvfsrc->force_opp_idx = opp;
 }
@@ -1340,6 +1365,7 @@ static const struct dvfsrc_debug_data mt6899_data = {
 	.num_opp_desc = 0,
 	.ceiling_support = true,
 	.dump_flag = DVFSRC_EMI_DUMP_FLAG,
+	.mmdvfs_notify = true,
 };
 
 static struct dvfsrc_opp dvfsrc_opp_mt6768[] = {
