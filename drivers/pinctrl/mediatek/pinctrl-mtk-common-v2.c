@@ -846,7 +846,7 @@ int mtk_pinconf_bias_set_combo(struct mtk_pinctrl *hw,
 	else
 		try_all_type = MTK_PULL_TYPE_MASK;
 
-	if (try_all_type & MTK_PULL_RSEL_TYPE) {
+	if ((try_all_type & MTK_PULL_RSEL_TYPE) && hw->soc->reg_cal[PINCTRL_PIN_REG_RSEL].range) {
 		err = mtk_pinconf_bias_set_rsel(hw, desc, pullup, arg);
 		if (!err)
 			return err;
