@@ -1085,7 +1085,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"SW_R3,SW_R4,SW_R5,SW_R7,E_QOS";
 			node-104 = "SSPM_VCORE_DVFS__MISC_DETAIL",
 				"PS_B0,PS_B1,PS_B2,PS_B3,",
-				"PS_B4,PS_B5,PS_DPC,PS_B6,",
+				"PS_B4,PS_B5,PS_DPC,PS_B6,PS_B7",
 				"PS_TOTAL,MD_SCE,MD_STA,EMI_LEVEL,",
 				"HR_DPC,HR_IB,HR_MB,HR_BASE,",
 				"CEIL_MISC,RSV_1,RSV_2,",
