@@ -895,7 +895,8 @@
 			"clk_pll_5";
 		vsram_chk_gpio = <&pio 200 0x0>;
 
-		dvfsrc-opp-num = <5>;
+		pmic = <&main_pmic>;
+		dvfsrc-opp-num = <4>;
 		dvfs-opp =
 			/* vcore    vsram   uv       rc  spm    freq    mux */
 			< 600000    850000  0xff    0x0 0x8     125     0>,
@@ -904,13 +905,16 @@
 			< 700000    850000  1	    0x1 0x102   330     3>,
 			< 800000    900000  0       0x2 0x201   416     5>;
 
-/*		sshub-vcore-supply = <&mt_pmic_vcore_sshub_buck_reg>;*/
-/*		sshub-vsram-supply = <&mt_pmic_vsram_others_sshub_ldo_reg>;*/
+		/*sshub-vcore-supply = <&mt_pmic_vcore_sshub_buck_reg>; */
+		/*sshub-vsram-supply = <&mt_pmic_vsram_others_sshub_ldo_reg>; */
 
 		gpio = <&gpio 1>;
 		gpio-feature = "gpio-mode";
 		gpio-feature-cfg = <1>;
 		gpio-mode-reg = <0x410 0x7 24 1>;
+		/*dvfsrc-vscp-supply = <&dvfsrc_vscp>;*/
+		sshub-vcore-supply = <&mt_pmic_vcore_buck_reg>;
+		sshub-vsram-supply = <&mt_pmic_vsram_others_ldo_reg>;
 	};
 
 	iocfg_lt: iocfg_lt@10002000 {
