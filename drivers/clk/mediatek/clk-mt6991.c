@@ -5451,6 +5451,9 @@ static int clk_mt6991_pll_registration(enum subsys_id id,
 
 	clk_data = mtk_alloc_clk_data(num_plls);
 
+	if (!clk_data)
+		return -ENOMEM;
+
 	mtk_clk_register_plls(node, plls, num_plls,
 			clk_data);
 
@@ -5588,6 +5591,9 @@ static int clk_mt6991_ck_probe(struct platform_device *pdev)
 
 	clk_data = mtk_alloc_clk_data(CLK_CK_NR_CLK);
 
+	if (!clk_data)
+		return -ENOMEM;
+
 	mtk_clk_register_factors(ck_divs, ARRAY_SIZE(ck_divs),
 			clk_data);
 
@@ -5638,6 +5644,9 @@ static int clk_mt6991_ck2_probe(struct platform_device *pdev)
 	}
 
 	clk_data = mtk_alloc_clk_data(CLK_CK2_NR_CLK);
+
+	if (!clk_data)
+		return -ENOMEM;
 
 	mtk_clk_register_factors(ck2_divs, ARRAY_SIZE(ck2_divs),
 			clk_data);
