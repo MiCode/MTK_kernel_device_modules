@@ -225,7 +225,7 @@ s32 mml_dle_config(struct mml_dle_ctx *dctx, struct mml_submit *submit,
 			task->state = MML_TASK_REUSE;
 			mml_msg("[dle]reuse task %p", task);
 		} else {
-			task = mml_core_create_task();
+			task = mml_core_create_task(atomic_read(&ctx->job_serial));
 			if (IS_ERR(task)) {
 				result = PTR_ERR(task);
 				mml_err("%s create task for reuse frame fail", __func__);
@@ -245,7 +245,7 @@ s32 mml_dle_config(struct mml_dle_ctx *dctx, struct mml_submit *submit,
 			mml_err("%s create frame config fail", __func__);
 			goto err_unlock_exit;
 		}
-		task = mml_core_create_task();
+		task = mml_core_create_task(atomic_read(&ctx->job_serial));
 		if (IS_ERR(task)) {
 			list_del_init(&cfg->entry);
 			frame_config_destroy(cfg);

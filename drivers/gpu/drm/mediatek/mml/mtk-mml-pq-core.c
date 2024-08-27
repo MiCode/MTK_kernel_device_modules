@@ -3109,7 +3109,7 @@ static void destroy_ut_task(struct mml_task *task)
 static int run_ut_task_threaded(void *data)
 {
 	struct mml_task *task = data;
-	struct mml_task *task_check = mml_core_create_task();
+	struct mml_task *task_check = mml_core_create_task(0);
 	s32 ret;
 
 	mml_pq_log("start run mml_task for PQ UT [%lld.%lu]\n",
@@ -3146,7 +3146,7 @@ static void create_ut_task(const char *case_name)
 		return;
 	}
 
-	task = mml_core_create_task();
+	task = mml_core_create_task(0);
 	mml_pq_log("start create task for %s\n", case_name);
 	INIT_LIST_HEAD(&task->entry);
 	ktime_get_ts64(&task->end_time);

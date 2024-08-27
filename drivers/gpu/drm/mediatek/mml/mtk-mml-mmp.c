@@ -99,12 +99,14 @@ void mml_mmp_init(void)
 	mml_mmp_events.dpc_dvfs = mmprofile_register_event(parent, "dpc_dvfs");
 
 	parent = mml_mmp_events.clock;
+	mml_mmp_events.wake_lock = mmprofile_register_event(parent, "wake_lock");
+	mml_mmp_events.wake_unlock = mmprofile_register_event(parent, "wake_unlock");
+	mml_mmp_events.mminfra_enable = mmprofile_register_event(parent, "mminfra_enable");
+	mml_mmp_events.mminfra_disable = mmprofile_register_event(parent, "mminfra_disable");
 	mml_mmp_events.pw_get = mmprofile_register_event(parent, "pw_get");
 	mml_mmp_events.pw_put = mmprofile_register_event(parent, "pw_put");
 	mml_mmp_events.clk_enable = mmprofile_register_event(parent, "clk_enable");
 	mml_mmp_events.clk_disable = mmprofile_register_event(parent, "clk_disable");
-	mml_mmp_events.mminfra_enable = mmprofile_register_event(parent, "mminfra_enable");
-	mml_mmp_events.mminfra_disable = mmprofile_register_event(parent, "mminfra_disable");
 
 	mmprofile_enable_event_recursive(mml_mmp_events.mml, 1);
 	mmprofile_start(1);

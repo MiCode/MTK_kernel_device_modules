@@ -36,6 +36,8 @@
 #include "mtk-mml-mmp.h"
 #include "mtk-mml-color.h"
 
+#define MML_WAKE_SAFE_CNT 64
+
 #define CMDQ_GET_ADDR_LOW(addr)		((u16)(addr & GENMASK(15, 0)) | BIT(1))
 
 struct mml_record {
@@ -1603,6 +1605,7 @@ void mml_lock_wake_lock(struct mml_dev *mml, bool lock)
 		mml->wake_ref++;
 		if (mml->wake_ref == 1)
 			__pm_stay_awake(mml->wake_lock);
+		mml_mmp(wake_lock, MMPROFILE_FLAG_PULSE, mml->wake_ref, 0);
 	} else {
 		mml->wake_ref--;
 		if (mml->wake_ref == 0)
@@ -1610,8 +1613,21 @@ void mml_lock_wake_lock(struct mml_dev *mml, bool lock)
 
 		if (mml->wake_ref < 0)
 			mml_err("%s wake_ref < 0", __func__);
+		mml_mmp(wake_unlock, MMPROFILE_FLAG_PULSE, mml->wake_ref, 0);
 	}
 	mutex_unlock(&mml->wake_ref_mutex);
+
+	if (mml->wake_ref > MML_WAKE_SAFE_CNT) {
+		static bool aeeonce;
+
+		mml_err("too many wake lock:%d", mml->wake_ref);
+
+		if (!aeeonce) {
+			aeeonce = true;
+			mml_fatal("mml", "too many wake lock:%d", mml->wake_ref);
+		}
+
+	}
 }
 
 s32 mml_register_comp(struct device *master, struct mml_comp *comp)

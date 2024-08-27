@@ -1826,7 +1826,7 @@ static void mml_m2m_device_run(void *priv)
 			mml_msg("[m2m]reuse task %p pkt %p %p",
 				task, task->pkts[0], task->pkts[1]);
 		} else {
-			task = mml_core_create_task();
+			task = mml_core_create_task(atomic_read(&ctx->job_serial));
 			if (IS_ERR(task)) {
 				result = PTR_ERR(task);
 				mml_err("%s create task for reuse frame fail", __func__);
@@ -1847,7 +1847,7 @@ static void mml_m2m_device_run(void *priv)
 			mml_err("%s create frame config fail", __func__);
 			goto err_unlock_exit;
 		}
-		task = mml_core_create_task();
+		task = mml_core_create_task(atomic_read(&ctx->job_serial));
 		if (IS_ERR(task)) {
 			list_del_init(&cfg->entry);
 			frame_config_destroy(cfg);

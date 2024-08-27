@@ -165,6 +165,10 @@ static char mml_log_record[MML_LOG_SIZE];
 static u32 mml_log_idx;
 static u32 mml_log_end;
 
+static atomic_t mml_task_ref = ATOMIC_INIT(0);
+int mml_task_check_cnt = 16;
+module_param(mml_task_check_cnt, int, 0644);
+
 void mml_save_log_record(const char *fmt, ...)
 {
 	va_list args;
@@ -2395,9 +2399,6 @@ static void core_config_task_work(struct kthread_work *work)
 	core_config_task(task);
 }
 
-#define MML_TASK_SAFE_CNT	512
-static atomic_t mml_task_ref = ATOMIC_INIT(0);
-
 static s32 task_cnt_get(char *buf, const struct kernel_param *kp)
 {
 	s32 len = 0;
@@ -2414,7 +2415,7 @@ static const struct kernel_param_ops task_cnt_param_ops = {
 };
 module_param_cb(task_cnt, &task_cnt_param_ops, NULL, 0644);
 
-struct mml_task *mml_core_create_task(void)
+struct mml_task *mml_core_create_task(u32 jobid)
 {
 	struct mml_task *task;
 	s32 ret;
@@ -2426,8 +2427,19 @@ struct mml_task *mml_core_create_task(void)
 		mml_err("failed to create mml task");
 		return ERR_PTR(-ENOMEM);
 	}
-	if (atomic_inc_return(&mml_task_ref) >= MML_TASK_SAFE_CNT)
-		mml_err("too many mml tasks:%d", atomic_read(&mml_task_ref));
+	if (atomic_inc_return(&mml_task_ref) >= mml_task_check_cnt) {
+		static bool aeeonce;
+
+		mml_err("too many mml tasks:%d job %u",
+			atomic_read(&mml_task_ref), jobid);
+
+		if (!aeeonce) {
+			aeeonce = true;
+			mml_fatal("mml", "too many mml tasks:%d job %u",
+				atomic_read(&mml_task_ref), jobid);
+		}
+
+	}
 	INIT_LIST_HEAD(&task->entry);
 	INIT_LIST_HEAD(&task->pipe[0].entry_clt);
 	INIT_LIST_HEAD(&task->pipe[1].entry_clt);

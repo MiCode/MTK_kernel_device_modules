@@ -155,9 +155,14 @@ do { \
 
 #ifdef MML_FPGA
 #define _aee_api(...)
+#define _fatal_api(...)
 #else
 #define _aee_api(opt, tag, fmt, args...) \
 	(aee_kernel_warning_api(__FILE__, __LINE__, opt, tag, fmt, ##args))
+
+#define _fatal_api(opt, tag, fmt, args...) \
+	(aee_kernel_fatal_api(__FILE__, __LINE__, opt, tag, fmt, ##args))
+
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
@@ -172,6 +177,19 @@ do { \
 		cmdq_util_error_save("[mml][aee] "fmt"\n", ##args); \
 		_aee_api(DB_OPT_MML, tag, fmt, ##args); \
 	} while (0)
+
+#define mml_fatal(key, fmt, args...) \
+	do { \
+		char tag[LINK_MAX]; \
+		int len = snprintf(tag, LINK_MAX, "CRDISPATCH_KEY:%s", key); \
+		if (len >= LINK_MAX) \
+			pr_debug("%s %d len:%d over max:%d\n", \
+				__func__, __LINE__, len, LINK_MAX); \
+		_mml_log("[err][fatal]" fmt, ##args); \
+		_fatal_api(DB_OPT_MML, tag, fmt, ##args); \
+	} while (0)
+
+
 #else
 #define mml_aee(key, fmt, args...) \
 	do { \
@@ -183,6 +201,8 @@ do { \
 		cmdq_aee(fmt" (aee not ready)", ##args); \
 		cmdq_util_error_save("[mml][aee] "fmt"\n", ##args); \
 	} while (0)
+
+#define mml_fatal(args...) mml_aee(##args)
 
 #endif
 
@@ -1053,7 +1073,7 @@ char *mml_core_get_dump_inst(u32 *size, void **raw, u32 *size_raw);
  *
  * Return:
  */
-struct mml_task *mml_core_create_task(void);
+struct mml_task *mml_core_create_task(u32 jobid);
 
 /**
  * mml_core_destroy_task -
