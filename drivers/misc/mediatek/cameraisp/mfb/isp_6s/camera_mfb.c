@@ -3561,7 +3561,7 @@ static int compat_get_MFB_read_register_data(
 	struct MFB_REG_IO_STRUCT *data)
 {
 	long ret = 0;
-	struct compat_MFB_REG_IO_STRUCT data32;
+	struct compat_MFB_REG_IO_STRUCT data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_MFB_REG_IO_STRUCT));
@@ -3582,7 +3582,7 @@ static int compat_put_MFB_read_register_data(
 	struct MFB_REG_IO_STRUCT *data)
 {
 	long ret = 0;
-	struct compat_MFB_REG_IO_STRUCT data32;
+	struct compat_MFB_REG_IO_STRUCT data32 = {0};
 
 	data32.Count = (compat_uint_t)(data->Count);
 
@@ -3599,7 +3599,7 @@ static int compat_get_MFB_mss_enque_req_data(
 	struct MFB_MSSRequest *data)
 {
 	long ret = 0;
-	struct compat_MFB_MSSRequest data32;
+	struct compat_MFB_MSSRequest data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_MFB_MSSRequest));
@@ -3639,7 +3639,7 @@ static int compat_get_MFB_mss_deque_req_data(
 	struct MFB_MSSRequest *data)
 {
 	long ret = 0;
-	struct compat_MFB_MSSRequest data32= {0};
+	struct compat_MFB_MSSRequest data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_MFB_MSSRequest));
@@ -3662,7 +3662,7 @@ static int compat_put_MFB_mss_deque_req_data(
 {
 	long ret = 0;
 
-	struct compat_MFB_MSSRequest data32= {0};
+	struct compat_MFB_MSSRequest data32 = {0};
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
 
 	if (copy_to_user(compat_ptr(arg), &data32,
@@ -3678,7 +3678,7 @@ static int compat_get_MFB_msf_enque_req_data(
 	struct MFB_MSFRequest *data)
 {
 	long ret = 0;
-	struct compat_MFB_MSFRequest data32= {0};
+	struct compat_MFB_MSFRequest data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_MFB_MSFRequest));
@@ -3718,7 +3718,7 @@ static int compat_get_MFB_msf_deque_req_data(
 	struct MFB_MSFRequest *data)
 {
 	long ret = 0;
-	struct compat_MFB_MSFRequest data32= {0};
+	struct compat_MFB_MSFRequest data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_MFB_MSFRequest));
@@ -3741,7 +3741,7 @@ static int compat_put_MFB_msf_deque_req_data(
 {
 	long ret = 0;
 
-	struct compat_MFB_MSFRequest data32= {0};
+	struct compat_MFB_MSFRequest data32 = {0};
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
 
 	if (copy_to_user(compat_ptr(arg), &data32,
