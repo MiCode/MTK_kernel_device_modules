@@ -277,8 +277,10 @@ static int mtk_cpu_power_throttling_probe(struct platform_device *pdev)
 		return ret;
 	for_each_possible_cpu(cpu) {
 		policy = cpufreq_cpu_get(cpu);
-		if (!policy)
+		if (!policy) {
+			pr_info("cpu[%d]: failed to get cpufreq policy\n", cpu);
 			continue;
+		}
 		if (policy->cpu == cpu) {
 			for (i = 0; i < POWER_THROTTLING_TYPE_MAX; i++) {
 				pt_policy = kzalloc(sizeof(*pt_policy), GFP_KERNEL);
