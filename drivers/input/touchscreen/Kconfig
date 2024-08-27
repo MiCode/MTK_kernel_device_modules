@@ -38,6 +38,12 @@ config TOUCHSCREEN_GT9XX
          Set Y or M to select this feature for touch compile,
          and set N to disable.for car serdes touch feature.
 
+config TOUCHSCREEN_FOCALTECH_TOUCH
+       tristate "FOCALTECH TOUCHSCREEN"
+       help
+         Set Y or M to select this feature for touch compile,
+         and set N to disable.for car serdes touch feature.
+
 source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/BoTai_Multi_Touch/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/GT9966/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/gt9xx/Kconfig"
