@@ -515,7 +515,6 @@ struct wrot_frame_data {
 	 * use in reuse command
 	 */
 	u16 labels[WROT_LABEL_TOTAL];
-	u32 crc_inst_offset;
 
 	u32 wdone_cnt;
 };
@@ -2435,14 +2434,14 @@ static void wrot_backup_crc(struct mml_comp *comp, struct mml_task *task,
 {
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
-	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
+	int ret;
 
 	if (likely(!mml_wrot_crc))
 		return;
 
-	wrot_frm->crc_inst_offset = mml_backup_crc(task, ccfg,
-		comp->base_pa + wrot->reg[VIDO_CRC_VALUE], &task->wrot_crc_idx[ccfg->pipe]);
-	if (!wrot_frm->crc_inst_offset) {
+	ret = cmdq_pkt_backup(task->pkts[ccfg->pipe], comp->base_pa + wrot->reg[VIDO_CRC_VALUE],
+		&task->backup_crc_wdma[ccfg->pipe]);
+	if (ret) {
 		mml_err("%s fail to backup CRC", __func__);
 		mml_wrot_crc = 0;
 	}
@@ -2453,13 +2452,10 @@ static void wrot_backup_crc_update(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
-
-	if (!mml_wrot_crc || !wrot_frm->crc_inst_offset)
+	if (!mml_wrot_crc || !task->backup_crc_wdma[ccfg->pipe].inst_offset)
 		return;
 
-	mml_backup_crc_update(task, ccfg, wrot_frm->crc_inst_offset,
-		&task->wrot_crc_idx[ccfg->pipe]);
+	cmdq_pkt_backup_update(task->pkts[ccfg->pipe], &task->backup_crc_wdma[ccfg->pipe]);
 #endif
 }
 
@@ -2647,13 +2643,14 @@ static void wrot_store_crc(struct mml_comp *comp, struct mml_task *task,
 	const u32 pipe = ccfg->pipe;
 	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 
-	if (!mml_wrot_crc)
+	if (!mml_wrot_crc || !task->backup_crc_wdma[pipe].inst_offset)
 		return;
 
-	task->dest_crc[pipe] = mml_backup_crc_get(task, ccfg, task->wrot_crc_idx[pipe]);
-	mml_msg("%s wrot%d component %u job %u pipe %u crc %#010x idx %u",
+	task->dest_crc[pipe] =
+		cmdq_pkt_backup_get(task->pkts[pipe], &task->backup_crc_wdma[pipe]);
+	mml_msg("%s wrot%d component %2u job %u pipe %u crc %#010x idx %u",
 		__func__, wrot->idx, comp->id, task->job.jobid,
-		ccfg->pipe, task->dest_crc[ccfg->pipe], task->wrot_crc_idx[pipe]);
+		ccfg->pipe, task->dest_crc[pipe], task->backup_crc_wdma[pipe].val_idx);
 #endif
 }
 

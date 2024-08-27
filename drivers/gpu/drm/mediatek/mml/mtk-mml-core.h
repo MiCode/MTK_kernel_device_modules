@@ -699,12 +699,16 @@ struct mml_task {
 	enum mml_adaptor_type adaptor_type;
 	struct kref ref;
 	struct mml_task_pipe pipe[MML_PIPE_CNT];
-	u32 wrot_crc_idx[MML_PIPE_CNT];
-	u32 rdma_crc_idx[MML_PIPE_CNT]; /* rdma or rrot0 and rrot0_2nd */
+	struct cmdq_backup backup_crc_rdma[MML_PIPE_CNT]; /* rdma or rrot0 and rrot0_2nd */
+	struct cmdq_backup backup_crc_wdma[MML_PIPE_CNT];
 	u32 dpc_srt_bw[mml_max_sys];
 	u32 dpc_hrt_bw[mml_max_sys];
 	u32 dpc_srt_write_bw[mml_max_sys];
 	u32 dpc_hrt_write_bw[mml_max_sys];
+
+	struct cmdq_backup perf_prete;
+	struct cmdq_backup perf_dispready;
+	struct cmdq_backup perf_sof;
 
 	/* mml context */
 	struct mml_ctx *ctx;

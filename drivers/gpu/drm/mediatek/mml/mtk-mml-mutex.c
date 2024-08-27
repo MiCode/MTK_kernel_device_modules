@@ -30,6 +30,9 @@
 int mml_mutex_dl_sof;
 module_param(mml_mutex_dl_sof, int, 0644);
 
+#define mutex_dl_perf_en	(mml_mutex_dl_sof & BIT(1))
+#define mutex_dl_perf_log	(mml_mutex_dl_sof & BIT(2))
+
 struct mutex_data {
 	/* Count of display mutex HWs */
 	u32 mutex_cnt;
@@ -180,6 +183,9 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 			cmdq_pkt_clear_event(pkt, mutex->event_prete);
 			cmdq_pkt_wait_no_clear(pkt, mutex->event_prete);
 		}
+
+		if (mutex_dl_perf_en && ccfg->pipe == 0 && comp == path->mutex)
+			cmdq_pkt_backup_stamp(pkt, &task->perf_prete);
 	}
 
 	/* DL mode config sof only, other modes enable to trigger directly */
@@ -213,6 +219,12 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 
 			/* make sure mml wait disp frame done in current te */
 			cmdq_pkt_clear_event(pkt, cfg->info.disp_done_event);
+
+			/* Note insert disp ready stamp after disp ready event in last mutex,
+			 * but update and retrieve data in first mutex.
+			 */
+			if (mutex_dl_perf_en)
+				cmdq_pkt_backup_stamp(pkt, &task->perf_dispready);
 		} else {
 			cmdq_pkt_set_event(pkt, mutex->event_pipe1_mml);
 			cmdq_pkt_wfe(pkt, mutex->event_pipe0_mml);
@@ -231,10 +243,28 @@ static s32 mutex_wait_sof(struct mml_comp *comp, struct mml_task *task,
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 
 	if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
-		if (mutex->event_stream_sof)
+		if (mutex->event_stream_sof) {
 			cmdq_pkt_wfe(pkt, mutex->event_stream_sof + path->mux_group);
+			if (mutex_dl_perf_en && comp == path->mutex && ccfg->pipe == 0)
+				cmdq_pkt_backup_stamp(pkt, &task->perf_sof);
+		}
 
 		mutex_disable(mutex, pkt, path);
+	}
+
+	return 0;
+}
+
+static s32 mutex_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg)
+{
+	const struct mml_topology_path *path = task->config->path[ccfg->pipe];
+
+	if (mutex_dl_perf_en && comp == path->mutex && ccfg->pipe == 0 &&
+		task->perf_prete.inst_offset) {
+		cmdq_pkt_backup_update(task->pkts[ccfg->pipe], &task->perf_prete);
+		cmdq_pkt_backup_update(task->pkts[ccfg->pipe], &task->perf_dispready);
+		cmdq_pkt_backup_update(task->pkts[ccfg->pipe], &task->perf_sof);
 	}
 
 	return 0;
@@ -243,6 +273,57 @@ static s32 mutex_wait_sof(struct mml_comp *comp, struct mml_task *task,
 static const struct mml_comp_config_ops mutex_config_ops = {
 	.mutex = mutex_trigger,
 	.wait_sof = mutex_wait_sof,
+	.reframe = mutex_reconfig_frame,
+};
+
+static void mutex_taskdone(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg)
+{
+	const struct mml_topology_path *path = task->config->path[ccfg->pipe];
+
+	if (mutex_dl_perf_en && comp == path->mutex && ccfg->pipe == 0 &&
+		task->perf_prete.inst_offset) {
+		/* Time line of dl mode
+		 * perf[0]   prete    disp_ready  sof      perf[1]
+		 *   |  prete  |   ready   |  sof  |  framedone |
+		 *   |---------|-----------|-------|------------|
+		 */
+
+		const u32 pipe = ccfg->pipe;
+		u32 prete = cmdq_pkt_backup_get(task->pkts[pipe], &task->perf_prete);
+		u32 dispready = cmdq_pkt_backup_get(task->pkts[pipe], &task->perf_dispready);
+		u32 sof = cmdq_pkt_backup_get(task->pkts[pipe], &task->perf_sof);
+		u32 *perf = cmdq_pkt_get_perf_ret(task->pkts[pipe]);
+		u32 cost_ready = CMDQ_TICK_DIFF(prete, dispready);
+		u32 cost_sof = CMDQ_TICK_DIFF(dispready, sof);
+		u32 cost_prete, cost_done;
+
+		CMDQ_TICK_TO_US(cost_ready);
+		CMDQ_TICK_TO_US(cost_sof);
+
+		if (perf) {
+			cost_prete = CMDQ_TICK_DIFF(perf[0], prete);
+			cost_done = CMDQ_TICK_DIFF(sof, perf[1]);
+			CMDQ_TICK_TO_US(cost_prete);
+			CMDQ_TICK_TO_US(cost_done);
+		} else {
+			cost_prete = 0;
+			cost_done = 0;
+		}
+
+		if (mutex_dl_perf_log)
+			mml_log("task cost prete %uus ready %uus sof %uus done %uus",
+				cost_prete, cost_ready, cost_sof, cost_done);
+		else
+			mml_msg("task cost prete %uus ready %uus sof %uus done %uus",
+				cost_prete, cost_ready, cost_sof, cost_done);
+	}
+}
+
+static const struct mml_comp_hw_ops mutex_hw_ops = {
+	.clk_enable = mml_comp_clk_enable,
+	.clk_disable = mml_comp_clk_disable,
+	.task_done = mutex_taskdone,
 };
 
 static void mutex_debug_dump(struct mml_comp *comp)
@@ -590,6 +671,7 @@ static int probe(struct platform_device *pdev)
 	}
 
 	priv->comp.config_ops = &mutex_config_ops;
+	priv->comp.hw_ops = &mutex_hw_ops;
 	priv->comp.debug_ops = &mutex_debug_ops;
 
 	if (!of_property_read_u16(dev->of_node, "event-pipe0-mml", &priv->event_pipe0_mml))

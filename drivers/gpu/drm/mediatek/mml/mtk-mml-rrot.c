@@ -351,7 +351,6 @@ struct rrot_frame_data {
 	 * use in reuse command
 	 */
 	u16 labels[RROT_LABEL_TOTAL];
-	u32 crc_inst_offset;
 };
 
 static s32 rrot_write_addr(u32 comp_id, struct cmdq_pkt *pkt,
@@ -2031,17 +2030,16 @@ static void rrot_backup_crc(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 	const phys_addr_t crc_reg = MML_FMT_COMPRESS(task->config->info.src.format) ?
 		(comp->base_pa + RROT_MON_STA_0 + 16 * 8) : (comp->base_pa + RROT_CHKS_EXTR);
 	const u32 rrot_idx = comp_to_rrot(comp)->pipe;
+	s32 ret;
 
 	if (likely(!mml_rdma_crc))
 		return;
 
-	rrot_frm->crc_inst_offset = mml_backup_crc(task, ccfg,
-		crc_reg, &task->rdma_crc_idx[rrot_idx]);
-	if (!rrot_frm->crc_inst_offset) {
+	ret = cmdq_pkt_backup(task->pkts[ccfg->pipe], crc_reg, &task->backup_crc_rdma[rrot_idx]);
+	if (ret) {
 		mml_err("%s fail to backup CRC", __func__);
 		mml_rdma_crc = 0;
 	}
@@ -2052,14 +2050,12 @@ static void rrot_backup_crc_update(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 	const u32 rrot_idx = comp_to_rrot(comp)->pipe;
 
-	if (!mml_rdma_crc || !rrot_frm->crc_inst_offset)
+	if (!mml_rdma_crc || !task->backup_crc_rdma[rrot_idx].inst_offset)
 		return;
 
-	mml_backup_crc_update(task, ccfg, rrot_frm->crc_inst_offset,
-		&task->rdma_crc_idx[rrot_idx]);
+	cmdq_pkt_backup_update(task->pkts[ccfg->pipe], &task->backup_crc_rdma[rrot_idx]);
 #endif
 }
 
@@ -2405,13 +2401,14 @@ static void rrot_store_crc(struct mml_comp *comp, struct mml_task *task,
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
 
-	if (!mml_rdma_crc)
+	if (!mml_rdma_crc || !task->backup_crc_rdma[rrot->pipe].inst_offset)
 		return;
 
-	task->src_crc[rrot->pipe] = mml_backup_crc_get(task, ccfg, task->rdma_crc_idx[rrot->pipe]);
-	mml_msg("%s rrot0%s component %u job %u pipe %u crc %#010x idx %u",
+	task->src_crc[rrot->pipe] =
+		cmdq_pkt_backup_get(task->pkts[ccfg->pipe], &task->backup_crc_rdma[rrot->pipe]);
+	mml_msg("%s rrot0%s component %2u job %u pipe %u crc %#010x idx %u",
 		__func__, rrot->pipe == 0 ? "    " : "_2nd", comp->id, task->job.jobid,
-		ccfg->pipe, task->src_crc[rrot->pipe], task->rdma_crc_idx[rrot->pipe]);
+		ccfg->pipe, task->src_crc[rrot->pipe], task->backup_crc_rdma[rrot->pipe].val_idx);
 #endif
 }
 
