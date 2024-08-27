@@ -1,6 +1,6 @@
-load("//kernel-6.6:modules.bzl", "get_gki_modules_list")
+load("//kernel-6.6:modules.bzl", "get_gki_modules_list", "get_kunit_modules_list")
 
-COMMON_GKI_MODULES_LIST = get_gki_modules_list("arm64")
+COMMON_GKI_MODULES_LIST = get_gki_modules_list("arm64") + get_kunit_modules_list("arm64")
 
 mgk_module_outs = COMMON_GKI_MODULES_LIST
 
