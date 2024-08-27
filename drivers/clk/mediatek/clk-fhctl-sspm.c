@@ -7,12 +7,17 @@
 #include <linux/slab.h>
 #include "clk-fhctl-pll.h"
 #include "clk-fhctl.h"
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V1) || IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V0)
 #include "sspm_ipi.h"
+#else
+#include "sspm_ipi_id.h"
+#endif
 #include "clk-fhctl-util.h"
 
 #define FHCTL_D_LEN  9
 #define MAX_SSC_RATE 8
 #define FHCTL_TARGET FHCTL_SSPM
+#define IPI_TIMEOUT_MS 10
 
 /* SSPM IPI CMD. Should sync with mt_freqhopping.h in tinysys driver. */
 enum FH_DEVCTL_CMD_ID {
@@ -57,7 +62,7 @@ struct fhctl_ipi_data {
 	} u;
 };
 
-
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V1) || IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V0)
 static int fhctl_to_sspm_command(unsigned int cmd,
 				struct fhctl_ipi_data *ipi_data)
 {
@@ -92,6 +97,43 @@ static int fhctl_to_sspm_command(unsigned int cmd,
 
 	return ack_data;
 }
+#else
+static int fhctl_to_sspm_command(unsigned int cmd,
+				struct fhctl_ipi_data *ipi_data)
+{
+	int ret = 0;
+	unsigned int ack_data = 0;
+
+	pr_debug("send ipi command %x", cmd);
+
+	switch (cmd) {
+	case FH_DCTL_CMD_SSC_ENABLE:
+	case FH_DCTL_CMD_SSC_DISABLE:
+	case FH_DCTL_CMD_GENERAL_DFS:
+	case FH_DCTL_CMD_ARM_DFS:
+	case FH_DCTL_CMD_SSC_TBL_CONFIG:
+	case FH_DCTL_CMD_PLL_PAUSE:
+		ipi_data->cmd = cmd;
+		ret = mtk_ipi_send_compl(&sspm_ipidev, IPIS_C_FHCTL, IPI_SEND_POLLING,
+					ipi_data, FHCTL_D_LEN, IPI_TIMEOUT_MS);
+		if (ret != 0)
+			pr_info("sspm_ipi_send_sync error(%d) ret:%d - %d",
+						cmd, ret, ack_data);
+		else if (ack_data < 0)
+			pr_info("cmd(%d) return error(%d)", cmd, ack_data);
+		break;
+	default:
+		pr_info("[Error]Undefined IPI command");
+		break;
+	} /* switch */
+
+	pr_debug("send ipi command %x, response: ack_data: %d",
+			cmd, ack_data);
+
+	return ack_data;
+}
+
+#endif
 
 static int sspm_init_v1(struct pll_dts *array, struct match *match)
 {
