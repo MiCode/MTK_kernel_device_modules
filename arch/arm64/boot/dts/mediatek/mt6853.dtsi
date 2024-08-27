@@ -1701,6 +1701,7 @@
 			#gce-event-cells = <1>;
 			#gce-subsys-cells = <2>;
 			cpr-not-support-cookie;
+			sw-ddr-en;
 			default-tokens = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_0>,
 				/bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_1>,
 				/bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_2>,
