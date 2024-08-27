@@ -998,6 +998,7 @@ static bool disp_aal_write_dre3_curve(struct mtk_ddp_comp *comp, bool force_writ
 	int gain_offset;
 	int arry_offset = 0;
 	unsigned int write_value;
+	unsigned int sram_waddr, sram_wdata;
 
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	void __iomem *dre3_va = disp_aal_dre3_va(comp);
@@ -1009,16 +1010,23 @@ static bool disp_aal_write_dre3_curve(struct mtk_ddp_comp *comp, bool force_writ
 		AALIRQ_LOG("no need to write dre3\n");
 		return true;
 	}
-	writel(aal_data->data->aal_dre_gain_start, dre3_va + DMDP_AAL_CURVE_SRAM_WADDR);
+	if (aal_data->data->aal_dre3_curve_sram) {
+		sram_waddr = DMDP_AAL_CURVE_SRAM_WADDR;
+		sram_wdata = DMDP_AAL_CURVE_SRAM_WDATA;
+	} else {
+		sram_waddr = DMDP_AAL_SRAM_RW_IF_0;
+		sram_wdata = DMDP_AAL_SRAM_RW_IF_1;
+	}
+	writel(aal_data->data->aal_dre_gain_start, dre3_va + sram_waddr);
 	for (gain_offset = aal_data->data->aal_dre_gain_start;
 		gain_offset <= aal_data->data->aal_dre_gain_end;
 			gain_offset += 4) {
 		if (arry_offset >= AAL_DRE30_GAIN_REGISTER_NUM)
 			return false;
 		write_value = aal_data->primary_data->dre30_gain.dre30_gain[arry_offset++];
-		if (!aal_data->data->aal_dre3_curve_sram)
-			writel(gain_offset, dre3_va + DMDP_AAL_CURVE_SRAM_WADDR);
-		writel(write_value, dre3_va + DMDP_AAL_CURVE_SRAM_WDATA);
+		if (!aal_data->data->aal_dre3_auto_inc)
+			writel(gain_offset, dre3_va + sram_waddr);
+		writel(write_value, dre3_va + sram_wdata);
 	}
 	return true;
 }
