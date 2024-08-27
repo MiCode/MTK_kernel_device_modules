@@ -671,13 +671,16 @@ static struct mtk_panel_params ext_params = {
 	.pll_clk = 525,
 	.vfp_low_power = 750,
 	.cust_esd_check = 0,
-	.esd_check_enable = 1,
+	.esd_check_enable = 0,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0a,
 		.count = 1,
 		.para_list[0] = 0x1c,
 	},
-
+	.dyn = {
+		.switch_en = 1,
+		.pll_clk = 550,
+	},
 };
 
 static struct mtk_panel_funcs ext_funcs = {
