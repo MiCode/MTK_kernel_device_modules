@@ -10351,6 +10351,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<0 0x130a0000 0 0x1500>;
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_EDPTX_DORMANT>;
 			interrupts = <GIC_SPI 448 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&ivi_cksys2_clk	CLK_CK2_DVO_SEL>;
+			clock-names = "power";
 		};
 
 		panel_edp: panel@1 {
