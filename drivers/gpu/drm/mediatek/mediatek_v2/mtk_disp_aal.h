@@ -97,6 +97,7 @@ struct mtk_disp_aal_primary {
 	spinlock_t hist_lock;
 	struct DISP_AAL_HIST hist;
 	atomic_t event_en;
+	atomic_t force_event_en;
 	atomic_t eof_irq_skip;
 	atomic_t sof_irq_available;
 	atomic_t is_init_regs_valid;

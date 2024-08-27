@@ -465,6 +465,7 @@ void disp_aal_refresh_by_kernel(struct mtk_disp_aal *aal_data, int need_lock)
 	if (atomic_read(&aal_data->primary_data->is_init_regs_valid) == 1) {
 		if (need_lock)
 			DDP_MUTEX_LOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
+		atomic_set(&aal_data->primary_data->force_event_en, 1);
 		atomic_set(&aal_data->primary_data->event_en, 1);
 
 		/*
@@ -2432,7 +2433,8 @@ static int disp_aal_act_eventctl(struct mtk_ddp_comp *comp, void *data)
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	disp_aal_set_interrupt(comp, enable, NULL);
 #endif
-
+	if (atomic_read(&aal_data->primary_data->force_event_en))
+		enable = 1;
 	atomic_set(&aal_data->primary_data->event_en, enable);
 	aal_data->primary_data->pre_enable = enable;
 
@@ -2536,6 +2538,7 @@ static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
 		atomic_set(&aal1_data->hist_available, 0);
 		atomic_set(&aal1_data->dre20_hist_is_ready, 0);
 	}
+	atomic_set(&aal_data->primary_data->force_event_en, 0);
 
 	return ret;
 }
@@ -3086,6 +3089,7 @@ static void disp_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	atomic_set(&(aal_data->primary_data->should_stop), 0);
 	atomic_set(&(aal_data->primary_data->dre30_write), 0);
 	atomic_set(&(aal_data->primary_data->event_en), 1);
+	atomic_set(&(aal_data->primary_data->force_event_en), 0);
 	atomic_set(&(aal_data->primary_data->force_delay_check_trig), 0);
 	atomic_set(&(aal_data->primary_data->dre_halt), 0);
 	atomic_set(&(aal_data->primary_data->change_to_dre30), 0);
