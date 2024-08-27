@@ -8510,6 +8510,7 @@
 			<&topckgen_clk CLK_TOP_MFGPLL1>,
 			<&topckgen_clk CLK_TOP_MFG_INTERNAL1>,
 			<&topckgen_clk CLK_TOP_MFGPLL4>,
+			<&gpu_pll_ctrl_clk CLK_MFG_AO_MFGPLL1>,
 			<&mfgcfg_clk CLK_MFGCFG_BG3D>,
 			<&scpsys_clk SCP_SYS_MFG0>,
 			<&scpsys_clk SCP_SYS_MFG1>,
@@ -8522,6 +8523,7 @@
 			"clk_main_parent",  /* main pll freq */
 			"clk_sub_parent",   /* parking clk: 385 MHz */
 			"clk_pll4",
+			"clk_fhctl",
 			"subsys_bg3d",
 			"mtcmos_mfg0",      /* ASYNC */
 			"mtcmos_mfg1",      /* MFG_TOP */
