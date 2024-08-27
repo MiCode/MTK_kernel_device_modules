@@ -707,6 +707,14 @@ static void cmdq_mtcmos_by_fast(struct cmdq *cmdq, bool on)
 	spin_unlock_irqrestore(&cmdq->fast_mtcmos_lock, flags);
 }
 
+void cmdq_mbox_mtcmos_by_fast_chan(struct mbox_chan *chan, bool on)
+{
+	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
+
+	cmdq_mtcmos_by_fast(cmdq, on);
+}
+EXPORT_SYMBOL(cmdq_mbox_mtcmos_by_fast_chan);
+
 void cmdq_mbox_mtcmos_by_fast(void *cmdq_mbox, bool on)
 {
 	struct cmdq *cmdq;

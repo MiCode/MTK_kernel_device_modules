@@ -353,6 +353,7 @@ extern int cmdq_trace;
 void cmdq_print_trace(char *fmt, ...);
 struct cmdq_thread *cmdq_get_thread(u8 thread_idx, u8 hwid);
 char *cmdq_dump_pkt_usage(u32 hwid, char *buf_start, char *buf_end);
+void cmdq_mbox_mtcmos_by_fast_chan(struct mbox_chan *chan, bool on);
 void cmdq_mbox_mtcmos_by_fast(void *cmdq_mbox, bool on);
 void cmdq_mbox_dump_fast_mtcmos(void *cmdq_mbox);
 void cmdq_mbox_dump_gce_req(struct mbox_chan *chan);
