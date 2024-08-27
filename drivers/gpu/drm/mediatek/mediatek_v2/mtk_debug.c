@@ -3829,6 +3829,27 @@ static void process_dbg_opt(const char *opt)
 
 		mtk_crtc = to_mtk_crtc(crtc);
 		mtk_crtc_check_trigger(mtk_crtc, true, true);
+	} else if (strncmp(opt, "trig_type:", 10) == 0) { /* check trigger delay */
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
+		int value, ret = 0;
+
+		/* 0:none, 1:delay, 2:off, 3:repaint */
+		ret = sscanf(opt, "trig_type:%d\n", &value);
+		if (ret != 1) {
+			DDPPR_ERR("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+		/* this debug cmd only for crtc0 */
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPPR_ERR("find crtc fail\n");
+			return;
+		}
+
+		mtk_crtc = to_mtk_crtc(crtc);
+		mtk_crtc_set_check_trigger_type(mtk_crtc, value);
 	} else if (!strncmp(opt, "fake_layer:", 11)) {
 		unsigned int mask;
 		struct drm_crtc *crtc;

@@ -598,7 +598,7 @@ int disp_gamma_set_gain(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			}
 		}
 		mutex_unlock(&gamma->primary_data->data_lock);
-
+		CRTC_MMP_MARK(0, gamma_backlight, gamma->primary_data->sb_param.gain[gain_r], (unsigned long)handle);
 		DDPINFO("%s : gain(r: %d, g: %d, b: %d), range: %d, handle: %p\n", __func__,
 			gamma->primary_data->sb_param.gain[gain_r],
 			gamma->primary_data->sb_param.gain[gain_g],

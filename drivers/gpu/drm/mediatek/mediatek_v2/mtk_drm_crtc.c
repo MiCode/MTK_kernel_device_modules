@@ -2215,6 +2215,10 @@ int mtk_drm_setbacklight_at_te(struct drm_crtc *crtc, unsigned int level,
 	/* Record Vblank start timestamp */
 	mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, SET_BL);
 
+	if ((panel_ext) && (panel_ext->SilkyBrightnessDelay)
+		&& (drm_mode_vrefresh(&crtc->state->adjusted_mode) == 60))
+		cmdq_pkt_sleep(cmdq_handle, CMDQ_US_TO_TICK(panel_ext->SilkyBrightnessDelay), CMDQ_GPR_R06);
+
 	/* set backlight */
 	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
 	mtk_ddp_comp_io_cmd(oddmr_comp, cmdq_handle, ODDMR_BL_CHG, &level);
@@ -2393,12 +2397,12 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 	}
 
+	/* Record Vblank start timestamp */
+	mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, SET_BL);
+
 	if ((panel_ext) && (panel_ext->SilkyBrightnessDelay)
 		&& (drm_mode_vrefresh(&crtc->state->adjusted_mode) == 60))
 		cmdq_pkt_sleep(cmdq_handle, CMDQ_US_TO_TICK(panel_ext->SilkyBrightnessDelay), CMDQ_GPR_R06);
-
-	/* Record Vblank start timestamp */
-	mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, SET_BL);
 
 	/* set backlight */
 	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
@@ -2442,7 +2446,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 		mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, SET_BL);
 	}
 
-	CRTC_MMP_MARK(index, backlight, bl_cnt, 0);
+	CRTC_MMP_MARK(index, backlight, bl_cnt, (unsigned long)cmdq_handle);
 	drm_trace_tag_mark("backlight");
 	bl_cnt++;
 
@@ -12174,19 +12178,35 @@ static void _mtk_crtc_1tnp_setting(struct mtk_drm_crtc *mtk_crtc)
 	}
 }
 
+int mtk_crtc_set_check_trigger_type(struct mtk_drm_crtc *mtk_crtc, int type)
+{
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
+		return -1;
+	}
+	mtk_crtc->check_trigger_type = type;
+	return type;
+}
+
 void mtk_crtc_check_trigger(struct mtk_drm_crtc *mtk_crtc, bool delay,
 		bool need_lock)
 {
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	int index = 0;
+	struct drm_crtc *crtc;
+	int index = 0, type = 0;
 	struct mtk_crtc_state *mtk_state;
 	struct mtk_panel_ext *panel_ext;
 
 	if (!mtk_crtc) {
-		DDPPR_ERR("%s:%d, invalid crtc:0x%p\n",
-				__func__, __LINE__, crtc);
+		DDPPR_ERR("%s:%d, invalid mtk_crtc\n",
+				__func__, __LINE__);
 		return;
 	}
+	crtc = &mtk_crtc->base;
+	if (!crtc) {
+		DDPPR_ERR("%s, crtc is NULL\n", __func__);
+		return;
+	}
+	type = mtk_crtc->check_trigger_type;
 
 	if (need_lock)
 		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
@@ -12221,6 +12241,19 @@ void mtk_crtc_check_trigger(struct mtk_drm_crtc *mtk_crtc, bool delay,
 		panel_ext && panel_ext->params->doze_delay > 1){
 		DDPINFO("%s:%d, doze not to trigger\n", __func__, __LINE__);
 		goto err;
+	}
+
+	if (type) {
+		DDPINFO("%s:%d, trigger type %d\n", __func__, __LINE__, type);
+		CRTC_MMP_MARK(index, kick_trigger, 0xFF, type);
+		if (type == 1)
+			delay = true;
+		else if (type == 2)
+			goto err;
+		else if (type == 3) {
+			drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, crtc->dev);
+			goto err;
+		}
 	}
 
 	if (delay) {
