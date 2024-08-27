@@ -578,6 +578,7 @@ struct mml_frame_config {
 	bool dual:1;
 	bool alpharot:1;
 	bool alpharsz:1;
+	bool rgbrot:1;
 	bool shadow:1;
 	bool framemode:1;
 	bool nocmd:1;

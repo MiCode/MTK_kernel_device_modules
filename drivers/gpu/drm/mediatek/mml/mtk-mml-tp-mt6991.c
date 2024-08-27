@@ -45,6 +45,9 @@ module_param(mml_max_hrt, int, 0644);
 int mml_force_rsz;
 module_param(mml_force_rsz, int, 0644);
 
+int mml_rgbrot;
+module_param(mml_rgbrot, int, 0644);
+
 int mml_path_mode;
 module_param(mml_path_mode, int, 0644);
 
@@ -1273,8 +1276,14 @@ static void tp_select_path(struct mml_topology_cache *cache,
 			scene = PATH_MML1_PQ;
 		else if (en_rsz)
 			scene = PATH_MML1_RSZ;
-		else
+		else {
 			scene = PATH_MML1_NOPQ;
+			if (mml_rgbrot &&
+			    MML_FMT_IS_RGB(cfg->info.src.format) && MML_FMT_IS_RGB(dest_fmt)) {
+				mml_msg("[topology]enable rgb rotate");
+				cfg->rgbrot = true;
+			}
+		}
 
 		if (cfg->info.mode == MML_MODE_MML_DECOUPLE2) {
 			enum topology_scenario scene_dc2;
