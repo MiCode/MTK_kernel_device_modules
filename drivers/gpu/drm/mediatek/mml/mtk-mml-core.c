@@ -1397,7 +1397,7 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 
 	ktime_get_real_ts64(&curr_time);
 
-	if (timespec64_compare(&curr_time, &task->end_time) > 0) {
+	if (mml_isdc(cfg->info.mode) && timespec64_compare(&curr_time, &task->end_time) > 0) {
 		overdue = true;
 		mml_trace_tag_start(MML_TTAG_OVERDUE);
 	}
@@ -1695,10 +1695,8 @@ static void core_taskdone_kt_work(struct kthread_work *work)
 
 	/* before clean up, signal buffer fence */
 	if (task->fence) {
-		dma_fence_signal(task->fence);
 		dma_fence_put(task->fence);
-		mml_mmp(fence_sig, MMPROFILE_FLAG_PULSE, task->job.jobid,
-			mmp_data2_fence(task->fence->context, task->fence->seqno));
+		task->fence = NULL;
 	}
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
@@ -1827,10 +1825,16 @@ static void core_taskdone_check(struct mml_task *task)
 	/* cnt can be 1 or 2, if dual on and count 2 means pipes done */
 	cnt = atomic_inc_return(&task->pipe_done);
 	mml_mmp(taskdone, MMPROFILE_FLAG_PULSE, task->job.jobid, ((cfg->dual << 16) | cnt));
-	if (!cfg->dual || cnt > 1) {
-		task->done = true;
-		kthread_queue_work(cfg->ctx_kt_done, &task->kt_work_done);
+	if (cfg->dual && cnt <= 1)
+		return;
+
+	task->done = true;
+	if (task->fence) {
+		dma_fence_signal(task->fence);
+		mml_mmp(fence_sig, MMPROFILE_FLAG_PULSE, task->job.jobid,
+			mmp_data2_fence(task->fence->context, task->fence->seqno));
 	}
+	kthread_queue_work(cfg->ctx_kt_done, &task->kt_work_done);
 }
 
 static void core_taskdone_cb(struct cmdq_cb_data data)
