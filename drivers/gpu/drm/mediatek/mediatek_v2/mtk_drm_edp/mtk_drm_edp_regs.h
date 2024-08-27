@@ -53,6 +53,7 @@
 #define RG_DPAUX_RX_EN				BIT(0)
 
 /* offset: PHY_OFFSET */
+#define DP_PHY_DIG_AUX_RX_CTL		0x1440
 #define DP_PHY_DIG_GLB_STATUS_0		0x146C
 #define RGS_BG_CORE_EN_READY		BIT(0)
 #define RGS_AUX_LDO_EN_READY		BIT(1)

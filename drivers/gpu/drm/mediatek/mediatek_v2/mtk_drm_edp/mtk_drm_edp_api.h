@@ -6,6 +6,8 @@
 #ifndef __DRM_EDRTX_API_H__
 #define __DRM_EDRTX_API_H__
 
+#include <drm/mediatek_drm.h>
+
 /* edp phy device driver */
 extern struct platform_driver mtk_edp_phy_driver;
 

@@ -1278,17 +1278,31 @@ static void mtk_edp_power_enable(struct mtk_edp *mtk_edp)
 
 	mtk_edp_update_bits(mtk_edp, MTK_DP_TOP_RESET_AND_PROBE,
 			   SW_RST_B_PHYD, SW_RST_B_PHYD);
+	mtk_edp_update_bits(mtk_edp, MTK_DP_TOP_PWR_STATE,
+			   DP_PWR_STATE_BANDGAP_TPLL, DP_PWR_STATE_MASK);
+
+	if (!mtk_edp->phy_regs) {
+		mtk_edp_write(mtk_edp, MTK_DP_1040, RG_DPAUX_RX_EN |
+					RG_XTP_GLB_CKDET_EN | RG_DPAUX_RX_VALID_DEGLITCH_EN);
+		mtk_edp_update_bits(mtk_edp, MTK_DP_0034, 0, DA_CKM_CKTX0_EN_FORCE_EN);
+	} else
+		regmap_write(mtk_edp->phy_regs, DP_PHY_DIG_AUX_RX_CTL,
+					RG_DPAUX_RX_EN | RG_XTP_GLB_CKDET_EN | RG_DPAUX_RX_VALID_DEGLITCH_EN);
 }
 
 static void mtk_edp_power_disable(struct mtk_edp *mtk_edp)
 {
 	mtk_edp_write(mtk_edp, MTK_DP_TOP_PWR_STATE, 0);
 
-	mtk_edp_update_bits(mtk_edp, MTK_DP_0034,
-			   DA_CKM_CKTX0_EN_FORCE_EN, DA_CKM_CKTX0_EN_FORCE_EN);
+		mtk_edp_update_bits(mtk_edp, MTK_DP_0034, 0,
+					DA_CKM_CKTX0_EN_FORCE_EN);
 
-	/* Disable RX */
-	mtk_edp_write(mtk_edp, MTK_DP_1040, 0);
+	// /* Disable RX */
+	if (!mtk_edp->phy_regs)
+		mtk_edp_write(mtk_edp, MTK_DP_1040, 0);
+	else
+		regmap_write(mtk_edp->phy_regs, DP_PHY_DIG_AUX_RX_CTL, 0);
+
 	mtk_edp_write(mtk_edp, MTK_DP_TOP_MEM_PD,
 		     0x550 | FUSE_SEL | MEM_ISO_EN);
 }
@@ -1496,6 +1510,9 @@ static int mtk_edp_train_cr(struct mtk_edp *mtk_edp, u8 target_lane_count)
 	int train_retries = 0;
 	int voltage_retries = 0;
 
+	if (!target_lane_count)
+		return -ENODEV;
+
 	mtk_edp_pattern(mtk_edp, true);
 
 	/* In DP spec 1.4, the retry count of CR is defined as 10. */
@@ -1518,7 +1535,7 @@ static int mtk_edp_train_cr(struct mtk_edp *mtk_edp, u8 target_lane_count)
 		drm_dp_dpcd_read_link_status(&mtk_edp->aux, link_status);
 		if (drm_dp_clock_recovery_ok(link_status,
 					     target_lane_count)) {
-			dev_dbg(mtk_edp->dev, "Link train CR pass\n");
+			dev_dbg(mtk_edp->dev, "%s CR training pass\n", EDPTX_DEBUG_INFO);
 			return 0;
 		}
 
@@ -1566,6 +1583,9 @@ static int mtk_edp_train_eq(struct mtk_edp *mtk_edp, u8 target_lane_count)
 	u8 link_status[DP_LINK_STATUS_SIZE] = {};
 	int train_retries = 0;
 
+	if (!target_lane_count)
+		return -ENODEV;
+
 	mtk_edp_pattern(mtk_edp, false);
 
 	do {
@@ -1586,7 +1606,7 @@ static int mtk_edp_train_eq(struct mtk_edp *mtk_edp, u8 target_lane_count)
 		/* check link status from sink device */
 		drm_dp_dpcd_read_link_status(&mtk_edp->aux, link_status);
 		if (drm_dp_channel_eq_ok(link_status, target_lane_count)) {
-			dev_dbg(mtk_edp->dev, "Link train EQ pass\n");
+			dev_dbg(mtk_edp->dev, "%s EQ training pass\n", EDPTX_DEBUG_INFO);
 
 			/* Training done, and disable pattern. */
 			drm_dp_dpcd_writeb(&mtk_edp->aux, DP_TRAINING_PATTERN_SET,
@@ -1746,7 +1766,6 @@ static int mtk_edp_training(struct mtk_edp *mtk_edp)
 			}
 			continue;
 		}
-		pr_info("%s CR training pass\n", EDPTX_DEBUG_INFO);
 
 		ret = mtk_edp_train_eq(mtk_edp, lane_count);
 		if (ret == -ENODEV) {
@@ -1758,7 +1777,6 @@ static int mtk_edp_training(struct mtk_edp *mtk_edp)
 			lane_count /= 2;
 			continue;
 		}
-		pr_info("%s EQ training pass\n", EDPTX_DEBUG_INFO);
 		/* if we can run to this, training is done. */
 		break;
 	}
@@ -1864,11 +1882,6 @@ static irqreturn_t mtk_edp_hpd_event_thread(int hpd, void *dev)
 	if (status & MTK_DP_THREAD_CABLE_STATE_CHG) {
 		if (!mtk_edp->train_info.cable_plugged_in) {
 			dev_info(mtk_edp->dev, "%s MTK_DP_HPD_DISCONNECT\n", EDPTX_DEBUG_INFO);
-			mtk_edp_video_mute(mtk_edp, true);
-			mtk_edp_set_idle_pattern(mtk_edp, true);
-			mtk_edp_update_bits(mtk_edp, MTK_DP_TOP_PWR_STATE,
-					DP_PWR_STATE_BANDGAP_TPLL,
-					DP_PWR_STATE_MASK);
 			mtk_edp->need_debounce = false;
 			mod_timer(&mtk_edp->debounce_timer,
 				  jiffies + msecs_to_jiffies(100) - 1);
