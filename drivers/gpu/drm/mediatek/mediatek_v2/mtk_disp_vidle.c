@@ -850,14 +850,18 @@ EXPORT_SYMBOL(mtk_vdisp_register);
 
 int mtk_vidle_get_power_if_in_use(void)
 {
+	int ret = 0;
+
 	if (disp_helper_get_stage() != DISP_HELPER_STAGE_NORMAL)
 		return 1;
 
 	/* all disp subsys power on: return 1 */
-	if (mtk_drm_pm_ctrl(vidle_data.drm_priv, DISP_PM_CHECK) == 0)
+	ret = mtk_drm_pm_ctrl(vidle_data.drm_priv, DISP_PM_CHECK);
+	if (ret == 0)
 		return 1;
 
 	/* any disp subsys power off: return 0 */
+	DDPMSG("%s, any disp mtcmos power off, ret:%d\n", __func__, ret);
 	return 0;
 }
 EXPORT_SYMBOL(mtk_vidle_get_power_if_in_use);

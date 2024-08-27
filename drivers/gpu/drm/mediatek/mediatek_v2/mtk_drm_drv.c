@@ -7132,24 +7132,56 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 #endif
 		break;
 	case DISP_PM_CHECK:
-		if (priv->dsi_phy0_dev && pm_runtime_get_if_in_use(priv->dsi_phy0_dev) <= 0)
-			return -1;
-		if (priv->dsi_phy1_dev && pm_runtime_get_if_in_use(priv->dsi_phy1_dev) <= 0)
-			return -1;
+		if (priv->dsi_phy0_dev && pm_runtime_get_if_in_use(priv->dsi_phy0_dev) <= 0) {
+			DDPMSG("%s, dsi phy0 unused,%d", __func__,
+				atomic_read(&priv->dsi_phy0_dev->power.usage_count));
+			ret = -1;
+			goto err_dsi_phy0;
+		}
+		if (priv->dsi_phy1_dev && pm_runtime_get_if_in_use(priv->dsi_phy1_dev) <= 0) {
+			DDPMSG("%s, dsi phy1 unused,%d", __func__,
+				atomic_read(&priv->dsi_phy1_dev->power.usage_count));
+			ret = -2;
+			goto err_dsi_phy1;
+		}
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-		if (priv->dsi_phy2_dev && pm_runtime_get_if_in_use(priv->dsi_phy2_dev) <= 0)
-			return -1;
+		if (priv->dsi_phy2_dev && pm_runtime_get_if_in_use(priv->dsi_phy2_dev) <= 0) {
+			DDPMSG("%s, dsi phy2 unused,%d", __func__,
+				atomic_read(&priv->dsi_phy2_dev->power.usage_count));
+			ret = -3;
+			goto err_dsi_phy2;
+		}
 #endif
-		if (priv->dpc_dev && pm_runtime_get_if_in_use(priv->dpc_dev) <= 0)
+		if (priv->dpc_dev && pm_runtime_get_if_in_use(priv->dpc_dev) <= 0) {
+			DDPMSG("%s, dpc mminfra unused,%d", __func__,
+				atomic_read(&priv->dpc_dev->power.usage_count));
+			ret = -4;
 			goto err_dpc_dev;
-		if (priv->mmsys_dev && pm_runtime_get_if_in_use(priv->mmsys_dev) <= 0)
+		}
+		if (priv->mmsys_dev && pm_runtime_get_if_in_use(priv->mmsys_dev) <= 0) {
+			DDPMSG("%s, mmsys unused,%d", __func__,
+				atomic_read(&priv->mmsys_dev->power.usage_count));
+			ret = -5;
 			goto err_mmsys;
-		if (priv->side_mmsys_dev && pm_runtime_get_if_in_use(priv->side_mmsys_dev) <= 0)
+		}
+		if (priv->side_mmsys_dev && pm_runtime_get_if_in_use(priv->side_mmsys_dev) <= 0) {
+			DDPMSG("%s, side mmsys unused,%d", __func__,
+				atomic_read(&priv->side_mmsys_dev->power.usage_count));
+			ret = -6;
 			goto err_side_mmsys;
-		if (priv->ovlsys_dev && pm_runtime_get_if_in_use(priv->ovlsys_dev) <= 0)
+		}
+		if (priv->ovlsys_dev && pm_runtime_get_if_in_use(priv->ovlsys_dev) <= 0) {
+			DDPMSG("%s, ovlsys unused,%d", __func__,
+				atomic_read(&priv->ovlsys_dev->power.usage_count));
+			ret = -7;
 			goto err_ovlsys;
-		if (priv->side_ovlsys_dev && pm_runtime_get_if_in_use(priv->side_ovlsys_dev) <= 0)
+		}
+		if (priv->side_ovlsys_dev && pm_runtime_get_if_in_use(priv->side_ovlsys_dev) <= 0) {
+			DDPMSG("%s, side_ovlsys unused,%d", __func__,
+				atomic_read(&priv->side_ovlsys_dev->power.usage_count));
+			ret = -8;
 			goto err_side_ovlsys;
+		}
 		break;
 	}
 	return ret;
@@ -7167,15 +7199,18 @@ err_mmsys:
 	if (priv->dpc_dev)
 		pm_runtime_put(priv->dpc_dev);
 err_dpc_dev:
-	if (priv->dsi_phy0_dev)
-		pm_runtime_put_sync(priv->dsi_phy0_dev);
-	if (priv->dsi_phy1_dev)
-		pm_runtime_put_sync(priv->dsi_phy1_dev);
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	if (priv->dsi_phy2_dev)
 		pm_runtime_put_sync(priv->dsi_phy2_dev);
+err_dsi_phy2:
 #endif
-	return -1;
+	if (priv->dsi_phy1_dev)
+		pm_runtime_put_sync(priv->dsi_phy1_dev);
+err_dsi_phy1:
+	if (priv->dsi_phy0_dev)
+		pm_runtime_put_sync(priv->dsi_phy0_dev);
+err_dsi_phy0:
+	return ret;
 }
 
 static void mtk_drm_get_top_clk(struct mtk_drm_private *priv)

@@ -421,7 +421,6 @@ struct mtk_dpc {
 	int disp_irq;
 	int mml_irq;
 	unsigned int vidle_mask;
-	unsigned int vidle_mask_bk;
 	resource_size_t dpc_pa;
 	resource_size_t vlp_pa;
 	void __iomem *sys_va[DPC_SYS_REGS_CNT];

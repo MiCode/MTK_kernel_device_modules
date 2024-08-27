@@ -632,29 +632,38 @@ static unsigned int mtk_dpc_get_vidle_mask(const enum mtk_dpc_subsys subsys, boo
 
 static void dpc_pm_user_dump(bool force)
 {
-	unsigned int i = 0, count = 0;
+	unsigned int i = 0, count = 0, value = 0;
 	unsigned long flags = 0;
 
 	if (!force || IS_ERR_OR_NULL(g_dpc_pm_user))
 		return;
 
 	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
-	DPCFUNC("--------- pm user list,vcp:%d ------------",
+	if (g_priv->get_sys_status)
+		g_priv->get_sys_status(SYS_STATE_VLP_VOTE, &value);
+	else
+		value = 0xdead;
+	DPCDUMP("vlp state:0x%x,mminfra ctrl by %s, vcp state:%u",
+		value, atomic_read(&is_mminfra_ctrl_by_dpc) ? "DPC" : "SW",
 		atomic_read(&g_priv->vcp_is_alive));
+
+	DPCFUNC("--------- mminfra pm user list, ref:%d ------------",
+		atomic_read(&g_priv->pd_dev->power.usage_count));
 
 	for (i = 0; i < MTK_DPC_PM_USER_COUNT; i++) {
 		if (!g_dpc_pm_user[i].valid) {
-			DPCFUNC("--------- pm user count:%u---------", i);
+			DPCFUNC("--------- mminfra pm user count:%u---------", i);
 			break;
 		}
 		if (g_dpc_pm_user[i].count || g_dpc_pm_user[i].max > 1)
 			DPCFUNC("\t pm_user[%u]:%s \t count:%d \t max:%d %s",
 				i, g_dpc_pm_user[i].name,
 				g_dpc_pm_user[i].count, g_dpc_pm_user[i].max,
-				g_dpc_pm_user[i].count ? "[ACTIVE]" : ".");
+				g_dpc_pm_user[i].count > 0 ? "[ACTIVE]" : ".");
 	}
 
-	DPCFUNC("--------- vlp pm mask:0x%x ------------", g_vlp_pm_mask);
+	DPCFUNC("--------- vlp user list, mask:0x%x ------------",
+		g_vlp_pm_mask);
 	for (i = 0; i < 32; i++) {
 		if (atomic_read(&g_vlp_user_cnt[i])) {
 			DPCFUNC("\t vlp_user-%u \t count:%u",
@@ -4193,13 +4202,6 @@ static void _dpc_analysis(bool detail)
 		atomic_read(&g_vidle_window), g_te_duration);
 	mtk_dpc_dump_caps();
 
-	if (g_priv->get_sys_status)
-		g_priv->get_sys_status(SYS_STATE_VLP_VOTE, &value);
-	else
-		value = 0xdead;
-	DPCDUMP("vlp:0x%x,vlp pm user:0x%x,mminfra pm cnt:%u",
-		value, g_vlp_pm_mask,
-		atomic_read(&g_priv->pd_dev->power.usage_count));
 	dpc_pm_user_dump(true);
 	DPCDUMP("DT settings: DISP_DT:0x%x,MML_DT:0x%x,DPC_EN:0x%x",
 		readl(dpc_base + DISP_REG_DPC_DISP_DT_EN),
@@ -4394,24 +4396,28 @@ static int dpc_smi_user_pwr_get(void *data)
 		return 0;
 
 	dpc_vidle_power_keep_v1(DISP_VIDLE_USER_SMI_DUMP);
-	g_priv->vidle_mask_bk = g_priv->vidle_mask;
-	g_priv->vidle_mask = 0;
 	return 0;
 }
 
 static int dpc_smi_user_pwr_get_if_in_use(void *data)
 {
-	int power_status = 0;
+	int power_status = 0, ret = 0;
 
+	if (dpc_pm_ctrl(true, __func__))
+		return 0;
 	power_status = mtk_vidle_get_power_if_in_use();
 	if (power_status == 0) //power off
-		return 0;
+		goto out;
 
 	if (dbg_dpc_pm)
 		DPCFUNC("cnt:%d", atomic_read(&g_smi_user_cnt));
 	dpc_smi_user_pwr_get(data);
 	mtk_vidle_put_power(); //power hold by smi
-	return 1;
+	ret = 1;
+
+out:
+	dpc_pm_ctrl(false, __func__);
+	return ret;
 }
 
 static int dpc_smi_user_pwr_put(void *data)
@@ -4422,11 +4428,9 @@ static int dpc_smi_user_pwr_put(void *data)
 	atomic_dec(&g_smi_user_cnt);
 	if (dbg_dpc_pm)
 		DPCFUNC("cnt:%d", atomic_read(&g_smi_user_cnt));
-	if (atomic_read(&g_smi_user_cnt) > 0 || g_priv->vidle_mask_bk == 0)
+	if (atomic_read(&g_smi_user_cnt) > 0)
 		return 0;
 
-	g_priv->vidle_mask = g_priv->vidle_mask_bk;
-	g_priv->vidle_mask_bk = 0;
 	dpc_vidle_power_release_v1(DISP_VIDLE_USER_SMI_DUMP);
 	return 0;
 }
@@ -4454,10 +4458,42 @@ static void process_dbg_opt(const char *opt)
 		}
 	} else if (strncmp(opt, "vidle_cap:", 10) == 0) {
 		ret = sscanf(opt, "vidle_cap:%u\n", &val);
-		if (ret != 1)
-			goto err;
+		if (ret != 1) {
+			DPCERR();
+			return;
+		}
+		DPCFUNC("update vidle mask 0x%x->0x%x", g_priv->vidle_mask, val);
 		g_priv->vidle_mask = val;
 		mtk_dpc_dump_caps();
+		return;
+	} else if (strncmp(opt, "force_power:", 12) == 0) {
+		ret = sscanf(opt, "force_power:%u\n", &val);
+		if (ret != 1) {
+			DPCERR();
+			return;
+		}
+
+		switch (val) {
+		case 0:
+			ret = dpc_smi_user_pwr_put(NULL);
+			DPCFUNC("allow vidle w/o force power, ret:%s",
+				ret ? "FAIL" : "PASS");
+			break;
+		case 1:
+			ret = dpc_smi_user_pwr_get(NULL);
+			DPCFUNC("force power and forbid vidle, ret:%s",
+				ret ? "FAIL" : "PASS");
+			break;
+		case 2:
+			ret = dpc_smi_user_pwr_get_if_in_use(NULL);
+			DPCFUNC("force power and forbid vidle IF IN USE, ret:%s",
+				ret ? "PASS" : "FAIL");
+			break;
+		default:
+			break;
+		}
+		dpc_pm_user_dump(true);
+		return;
 	}
 
 	if (g_priv->get_sys_status) {
@@ -4725,13 +4761,13 @@ static int mtk_dpc_probe_v1(struct platform_device *pdev)
 
 	of_id = of_match_device(mtk_dpc_driver_v1_dt_match, dev);
 	if (!of_id) {
-		DPCERR("DPC device match failed\n");
+		DPCERR("DPC device match failed");
 		return -EPROBE_DEFER;
 	}
 
 	priv = (struct mtk_dpc *)of_id->data;
 	if (priv == NULL) {
-		DPCERR("invalid priv data\n");
+		DPCERR("invalid priv data");
 		return -EPROBE_DEFER;
 	}
 	priv->pdev = pdev;
