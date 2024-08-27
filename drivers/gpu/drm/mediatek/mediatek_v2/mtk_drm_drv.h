@@ -63,6 +63,7 @@ struct mtk_fake_eng_data {
 
 struct mtk_mmsys_driver_data {
 	const struct mtk_crtc_path_data *main_path_data;
+	const struct mtk_crtc_path_data *main_bypass_pc_path_data;
 	const struct mtk_crtc_path_data *ext_path_data;
 	const struct mtk_crtc_path_data *ext_alter_path_data;
 	const struct mtk_crtc_path_data *third_path_data;
