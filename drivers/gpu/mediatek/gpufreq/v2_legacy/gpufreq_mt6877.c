@@ -210,19 +210,28 @@ static DEFINE_MUTEX(ptpod_lock);
 
 struct gpufreq_opp_info *g_default_gpu;
 
+static const struct mtk_pll_div_table mfgpll_div_table[] = {
+	{ .div = 0, .freq = MFGPLL_PLL_FMAX },
+	{ .div = 1, .freq = 1900000000 },
+	{ .div = 2, .freq = 950000000 },
+	{ .div = 3, .freq = 1 },
+	{ .div = 4, .freq = 1 },
+	{ /* sentinel */ }
+};
+
 static const struct mtk_pll_data g_mfg_plls[] = {
 	PLL_PWR(CLK_MFG_AO_MFGPLL1, "mfg_ao_mfgpll1",
 		MFGPLL1_CON0_OFS/*base*/,
 		MFGPLL1_CON0_OFS, BIT(0)/*en*/,
-		MFGPLL1_CON3_OFS/*pwr*/, 0/*flags*/,
+		MFGPLL1_CON3_OFS/*pwr*/, CLK_SET_ROUND_RATE/*flags*/,
 		MFGPLL1_CON1_OFS, 24/*pd*/,
-		MFGPLL1_CON1_OFS, 0, 22/*pcw*/),
+		MFGPLL1_CON1_OFS, 0, 22/*pcw*/, mfgpll_div_table),
 	PLL_PWR(CLK_MFG_AO_MFGPLL4, "mfg_ao_mfgpll4",
 		MFGPLL4_CON0_OFS/*base*/,
 		MFGPLL4_CON0_OFS, BIT(0)/*en*/,
-		MFGPLL4_CON3_OFS/*pwr*/, 0/*flags*/,
+		MFGPLL4_CON3_OFS/*pwr*/, CLK_SET_ROUND_RATE/*flags*/,
 		MFGPLL4_CON1_OFS, 24/*pd*/,
-		MFGPLL4_CON1_OFS, 0, 22/*pcw*/),
+		MFGPLL4_CON1_OFS, 0, 22/*pcw*/, mfgpll_div_table),
 };
 
 static struct gpufreq_platform_fp platform_ap_fp = {
@@ -1908,17 +1917,18 @@ static int __gpufreq_freq_scale_gpu(unsigned int freq_old, unsigned int freq_new
 #endif
 	} else {
 #if (GPUFREQ_FHCTL_ENABLE && IS_ENABLED(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING))
-		if (unlikely(!mtk_fh_set_rate)) {
-			__gpufreq_abort("null hopping fp");
-			ret = GPUFREQ_ENOENT;
+		GPUFREQ_LOGD("CONFIG_COMMON_CLK_MTK_FREQ_HOPPING clk_set_rate");
+		ret = clk_prepare_enable(g_clk->clk_fhctl);
+		if (unlikely(ret)) {
+			__gpufreq_abort("fail to enable clk_main_parent (%d)", ret);
 			goto done;
 		}
-
-		ret = mtk_fh_set_rate(MFG_PLL_NAME, pcw, target_posdiv);
-		if (unlikely(!ret)) {
-			__gpufreq_abort("fail to hopping pcw: 0x%x (%d)", pcw, ret);
+		ret = clk_set_rate(g_clk->clk_fhctl, freq_new*1000);
+		if (unlikely(ret)) {
+			__gpufreq_abort("fail to clk_set_rate (%d)", ret);
 			goto done;
 		}
+		clk_disable_unprepare(g_clk->clk_fhctl);
 #endif
 	}
 
@@ -2997,6 +3007,12 @@ static int __gpufreq_init_clk(struct platform_device *pdev)
 	#if MT_GPUFREQ_SHADER_PWR_CTL_WA
 		spin_lock_init(&mt_gpufreq_clksrc_parking_lock);
 	#endif
+
+	g_clk->clk_fhctl = devm_clk_get(&pdev->dev, "clk_fhctl");
+	if (IS_ERR(g_clk->clk_fhctl)) {
+		GPUFREQ_LOGE("cannot get clk_fhctl\n");
+		return PTR_ERR(g_clk->clk_fhctl);
+	}
 
 	// 0x1020E000
 	g_infracfg_base = __gpufreq_of_ioremap("mediatek,infracfg", 0);

@@ -69,10 +69,9 @@
  * Frequency Hopping Setting
  **************************************************/
  //todo disable until CONFIG_COMMON_CLK_MTK_FREQ_HOPPING ready
-#define GPUFREQ_FHCTL_ENABLE            (0)
+#define GPUFREQ_FHCTL_ENABLE            (1)
 #define MFG_PLL_NAME                    "mfgpll1"
-//todo will remove when hopping ready
-static int FH_GPU_PLL0  = 13;
+#define MFGPLL_PLL_FMAX		(3800UL  * MHZ)
 
 /**************************************************
  * Power Domain Setting
@@ -182,6 +181,7 @@ struct g_clk_info {
 	struct clk *clk_main_parent;
 	struct clk *clk_sub_parent;
 	struct clk *clk_pll4;
+	struct clk *clk_fhctl;
 	struct clk *subsys_bg3d;
 	struct clk *mtcmos_mfg0;
 	struct clk *mtcmos_mfg1;
