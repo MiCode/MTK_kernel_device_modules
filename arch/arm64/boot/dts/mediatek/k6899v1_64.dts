@@ -194,6 +194,7 @@
 	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
 	pinctrl-1 = <&mtkfb_pins_lcm_dsi1_te>;
 	status = "okay";
+	bypass-pc-path = <1>;
 };
 
 &dsi0 {
