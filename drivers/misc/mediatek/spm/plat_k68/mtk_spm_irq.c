@@ -23,6 +23,7 @@
 #include "mtk_spm_irq.h"
 #include "mtk_spm_internal.h"
 
+#define EDGE_TRIG_IRQ_NUM 3
 
 enum MTK_SPM_CIRQ_SMC_CALL {
 	MTK_SPM_IRQ_SMC_SET_PENDING,
@@ -130,17 +131,23 @@ static int cpu_pm_callback_wakeup_src_restore(
 	struct notifier_block *self, unsigned long cmd, void *v)
 {
 	struct arm_smccc_res smc_res;
+	int i;
 
 	/* Note: cmd will be CPU_PM_ENTER/CPU_PM_EXIT/CPU_PM_ENTER_FAILED.
 	 * Set edge trigger interrupt pending only in case CPU_PM_EXIT
 	 */
 	if (cmd == CPU_PM_EXIT && spm_in_idle) {
-		arm_smccc_smc(MTK_SIP_MTK_LPM_CONTROL,
-			MTK_SPM_IRQ_SMC_SET_PENDING,
-			0, 0, 0, 0, 0, 0, &smc_res);
-		if (smc_res.a0)
-			pr_info("[SPM] fail to set edge irq pending: 0x%lx\n",
-				smc_res.a0);
+		for (i = 0; i < EDGE_TRIG_IRQ_NUM; i++) {
+			if (spm_read(SPM_SW_RSV_0) & list[i].wakesrc) {
+				arm_smccc_smc(MTK_SIP_MTK_LPM_CONTROL,
+					MTK_SPM_IRQ_SMC_SET_PENDING,
+					0, 0, 0, 0, 0, 0, &smc_res);
+				if (smc_res.a0)
+					pr_info("[SPM] fail to set edge irq pending: 0x%lx\n",
+						smc_res.a0);
+			}
+		}
+
 	}
 
 	return NOTIFY_OK;
