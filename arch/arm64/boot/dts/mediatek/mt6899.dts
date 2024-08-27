@@ -13560,7 +13560,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L2_P0_MDP_RDMA0)
 					&mmqos SLAVE_COMMON(0)>;
-			interconnect-names = "mml0_dma";
+			interconnect-names = "mml_dma";
 			mmqos-supply = <&mmqos>;
 		};
 
@@ -13634,7 +13634,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L2_P1_MDP_WROT0)
 					&mmqos SLAVE_COMMON(0)>;
-			interconnect-names = "mml0_dma";
+			interconnect-names = "mml_dma";
 			mmqos-supply = <&mmqos>;
 		};
 
@@ -13654,7 +13654,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L2_P4_MDP_RDMA2)
 					&mmqos SLAVE_COMMON(0)>;
-			interconnect-names = "mml0_dma";
+			interconnect-names = "mml_dma";
 			mmqos-supply = <&mmqos>;
 		};
 
