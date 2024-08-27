@@ -2565,6 +2565,11 @@ static int check_usb_offload_quirk(int vid, int pid)
 		return -1;
 	}
 
+	if (vid == 0x3302 && pid == 0x00c0) {
+		USB_OFFLOAD_INFO("TTGK Audio (GSI) NOT SUPPORT!!\n");
+		return -1;
+	}
+
 	if (vid == 0x0BDA && pid == 0x4BD1) {
 		USB_OFFLOAD_INFO("JOWOYE MH339 NOT SUPPORT!!\n");
 		return -1;
