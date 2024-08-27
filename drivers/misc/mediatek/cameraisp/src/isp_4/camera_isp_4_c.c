@@ -141,6 +141,13 @@
 #define ISP_WORK               1
 #define ISP_NOT_WORK           0
 
+#ifdef ISP_DEBUG
+#define LOG_DBG(format, args...)    pr_info(MyTag "[%s] " format, \
+	 __func__, ##args)
+#else
+#define LOG_DBG(format, args...)
+#endif
+
 #define LOG_INF(format, args...)       pr_info(MyTag "[%s] " format, \
 	 __func__, ##args)
 
@@ -7489,19 +7496,19 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 	case ISP_SET_VIR_CQCNT:
 		if (copy_from_user(&g_virtual_cq_cnt, (void *)Param,
 			sizeof(unsigned int)*2) == 0) {
-			pr_info("From hw_module:%d Virtual CQ count from user land : %d\n",
+			LOG_DBG("From hw_module:%d Virtual CQ count from user land : %d\n",
 				g_virtual_cq_cnt[0], g_virtual_cq_cnt[1]);
 		} else {
-			pr_info(
+			LOG_DBG(
 				"Virtual CQ count copy_from_user failed\n");
 			Ret = -EFAULT;
 		}
 		if (g_virtual_cq_cnt[0] == 0) {
 			g_virtual_cq_cnt_a = g_virtual_cq_cnt[1];
-			pr_info("Update Virtual CQ cnt for hw_module:0\n");
+			LOG_DBG("Update Virtual CQ cnt for hw_module:0\n");
 		} else if (g_virtual_cq_cnt[0] == 1) {
 			g_virtual_cq_cnt_b = g_virtual_cq_cnt[1];
-			pr_info("Update Virtual CQ cnt for hw_module:1\n");
+			LOG_DBG("Update Virtual CQ cnt for hw_module:1\n");
 		}
 		break;
 	default:
