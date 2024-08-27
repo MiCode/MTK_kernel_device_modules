@@ -124,7 +124,6 @@ struct mtk_dvo {
 	struct pinctrl_state *pins_dvo;
 	u32 output_fmt;
 	int refcount;
-	bool pclk_enable;
 };
 
 static inline struct mtk_dvo *bridge_to_dvo(struct drm_bridge *b)
@@ -540,8 +539,6 @@ static void mtk_dvo_power_off(struct mtk_dvo *dvo)
 	mtk_dvo_enable(dvo, false);
 	clk_disable_unprepare(dvo->engine_clk);
 	clk_disable_unprepare(dvo->tvd_clk);
-	clk_disable_unprepare(dvo->pixel_clk);
-	dvo->pclk_enable = false;
 	clk_disable_unprepare(dvo->hf_fdvo_clk);
 }
 
@@ -557,14 +554,6 @@ static int mtk_dvo_power_on(struct mtk_dvo *dvo)
 	if (ret) {
 		dev_info(dvo->dev, "Failed to enable hf_fdvo_clk: %d\n", ret);
 		goto err_hf_fdvo;
-	}
-
-	if (!dvo->pclk_enable) {
-		ret = clk_prepare_enable(dvo->pixel_clk);
-		if (ret) {
-			dev_info(dvo->dev, "Failed to enable pixel clock: %d\n", ret);
-			goto err_pixel;
-		}
 	}
 
 	/* set DVO switch 26Mhz crystal */
@@ -839,11 +828,6 @@ static int mtk_dvo_bridge_attach(struct drm_bridge *bridge,
 	struct mtk_dvo *dvo = bridge_to_dvo(bridge);
 	int ret = 0, retry = 7;
 
-	ret = clk_prepare_enable(dvo->pixel_clk);
-	if (ret)
-		dev_info(dvo->dev, "[eDPTX]Failed to enable pixel clock: %d\n", ret);
-
-	dvo->pclk_enable = true;
 	/* set DVO switch 26Mhz crystal */
 	clk_set_parent(dvo->pixel_clk, dvo->dvo_clk);
 

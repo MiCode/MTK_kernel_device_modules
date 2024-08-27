@@ -114,6 +114,7 @@ struct mtk_edp {
 	int irq;
 	u8 max_lanes;
 	u8 max_linkrate;
+	struct clk *power_clk;
 	u8 rx_cap[DP_RECEIVER_CAP_SIZE];
 	u32 cal_data[MTK_DP_CAL_MAX];
 	u32 irq_thread_handle;
@@ -2892,6 +2893,15 @@ static int mtk_edp_probe(struct platform_device *pdev)
 		dev_info(dev, "%s switch_dev_register failed, returned:%d!\n", EDPTX_DEBUG_INFO, ret);
 #endif
 
+	mtk_edp->power_clk = devm_clk_get(dev, "power");
+	if (IS_ERR(mtk_edp->power_clk)) {
+		pr_info("[eDPTX] Failed to get power clock\n");
+		return PTR_ERR(mtk_edp->power_clk);
+	}
+	ret = clk_prepare_enable(mtk_edp->power_clk);
+	if (ret)
+		dev_info(mtk_edp->dev, "[eDPTX] Failed to enable power clock: %d\n", ret);
+
 	platform_set_drvdata(pdev, mtk_edp);
 
 	ret = mtk_edp_register_phy(mtk_edp);
@@ -3007,6 +3017,8 @@ static int mtk_edp_suspend(struct device *dev)
 	mtk_edp_power_disable(mtk_edp);
 	if (mtk_edp->use_hpd)
 		mtk_edp_hwirq_enable(mtk_edp, false);
+
+	clk_disable_unprepare(mtk_edp->power_clk);
 	pm_runtime_put_sync(dev);
 
 	mtk_edp->suspend = true;
@@ -3030,6 +3042,10 @@ static int mtk_edp_resume(struct device *dev)
 			atomic_read(&dev->power.usage_count));
 
 	pm_runtime_get_sync(dev);
+
+	if (clk_prepare_enable(mtk_edp->power_clk))
+		dev_info(mtk_edp->dev, "[eDPTX] Failed to enable power clock: %d\n");
+
 	mtk_edp_init_port(mtk_edp);
 	if (mtk_edp->use_hpd)
 		mtk_edp_hwirq_enable(mtk_edp, true);
