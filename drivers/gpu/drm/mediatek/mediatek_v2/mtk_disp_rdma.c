@@ -724,12 +724,6 @@ void mtk_rdma_cal_golden_setting(struct mtk_ddp_comp *comp,
 		gs[GS_RDMA_VALID_TH_BLOCK_ULTRA] = 1;
 
 	gs[GS_RDMA_VDE_BLOCK_ULTRA] = 0;
-	if (priv->data->mmsys_id == MMSYS_MT6877) {
-		if (gsc->is_vdo_mode)
-			gs[GS_RDMA_VDE_BLOCK_ULTRA] = 1;
-		else
-			gs[GS_RDMA_VDE_BLOCK_ULTRA] = 0;
-	}
 
 	/* DISP_RDMA_FIFO_CON */
 
