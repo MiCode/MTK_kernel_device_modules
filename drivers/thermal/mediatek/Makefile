@@ -5,7 +5,9 @@ ccflags-y += \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcupm/include \
 	-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/connectivity/power_throttling \
-	-I$(DEVICE_MODULES_PATH)/drivers/leds
+	-I$(DEVICE_MODULES_PATH)/drivers/leds \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/core_ctl
+
 CFLAGS_md_cooling.o := -I$(srctree)/drivers/thermal
 CFLAGS_soc_temp_lvts.o := -I$(srctree)/drivers/thermal
 CFLAGS_thermal_trace.o := -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek
@@ -41,3 +43,5 @@ obj-$(CONFIG_MTK_VTSKIN_THERMAL)	+= vtskin_temp.o
 obj-$(CONFIG_MTK_WIFI_THERMAL) += wifi_cooling.o
 
 obj-$(CONFIG_MTK_FAN_THERMAL) += fan_cooling.o
+
+obj-$(CONFIG_MTK_CPU_ISOLATE_THERMAL) += cpu_isolate_cooling.o

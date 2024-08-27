@@ -741,6 +741,7 @@ mgk_64_device_modules = [
     "drivers/thermal/mediatek/thermal_trace.ko",
     "drivers/thermal/mediatek/vtskin_temp.ko",
     "drivers/thermal/mediatek/wifi_cooling.ko",
+    "drivers/thermal/mediatek/cpu_isolate_cooling.ko",
     "drivers/tty/serial/8250/8250_mtk.ko",
     "drivers/usb/mtu3/mtu3.ko",
     "drivers/watchdog/mtk_wdt.ko",
@@ -1411,6 +1412,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/cpu_isolate_cooling.ko")
 
         mgk_64_device_modules.remove("drivers/gpu/mediatek/gpueb/mtk_gpueb.ko")
         mgk_64_device_modules.remove("drivers/gpu/mediatek/gpueb/mtk_ghpm.ko")
@@ -1562,6 +1564,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/cpu_isolate_cooling.ko")
 
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6878.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6886.ko")
@@ -1849,6 +1852,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/cpu_isolate_cooling.ko")
 
         mgk_64_device_modules.remove("sound/soc/codecs/mt6338-accdet.ko")
         mgk_64_device_modules.remove("sound/soc/codecs/snd-soc-mt6338.ko")
@@ -2220,6 +2224,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/cpu_isolate_cooling.ko")
 
         mgk_64_device_modules.append("drivers/misc/mediatek/thermal/thermal_monitor.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/hps_v3/mtk_cpuhp.ko")
@@ -2566,6 +2571,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/cpu_isolate_cooling.ko")
 
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6878.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6886.ko")
@@ -2892,6 +2898,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/cpu_isolate_cooling.ko")
 
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi-fake-eng.ko")
@@ -3266,6 +3273,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/cpu_isolate_cooling.ko")
 
         mgk_64_device_modules.remove("drivers/regulator/mt6370-regulator.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/gate_ic/rt4831a_drv.ko")
@@ -3528,6 +3536,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/cpu_isolate_cooling.ko")
 
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6878.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6886.ko")
