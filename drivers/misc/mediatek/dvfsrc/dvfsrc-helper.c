@@ -1364,6 +1364,7 @@ static const struct dvfsrc_debug_data mt6899_data = {
 	.opps_desc = dvfsrc_opp_common_desc,
 	.num_opp_desc = 0,
 	.ceiling_support = true,
+	.qos_mm_mode_en = true,
 	.dump_flag = DVFSRC_EMI_DUMP_FLAG,
 	.mmdvfs_notify = true,
 };
