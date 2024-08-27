@@ -293,7 +293,7 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 	int ret;
 	struct dev_pm_opp *opp = 0;
 	unsigned long freq = 0;
-	int i = 0, vdec_req = 0, flag = 0;
+	int i = 0, vdec_req = 0, flag = 0, util_val = 0;
 	struct platform_device *pdev = 0;
 
 	pdev = dev->plat_dev;
@@ -322,6 +322,12 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 	} else
 		dev->cpu_hint_mode = flag;
 
+	ret = of_property_read_u32(pdev->dev.of_node, "vdec-clamp-util-val", &util_val);
+	if (ret) {
+		mtk_v4l2_debug(0, "[VDEC] use default clamp util value 370");
+		dev->uclamp_util_val = 370;
+	} else
+		dev->uclamp_util_val = util_val;
 
 
 	ret = dev_pm_opp_of_add_table(&dev->plat_dev->dev);

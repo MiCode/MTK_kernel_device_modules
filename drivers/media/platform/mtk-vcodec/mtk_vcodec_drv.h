@@ -919,6 +919,7 @@ struct mtk_vcodec_dev {
 	unsigned int cpu_hint_ref_cnt;
 	int cpu_hint_mode;
 	unsigned int cgrp_ref_cnt;
+	unsigned int uclamp_util_val;
 
 	struct mtk_vcodec_pm pm;
 	struct notifier_block pm_notifier;
