@@ -2089,7 +2089,7 @@ static void xhci_mtk_free_erst(struct usb_offload_dev *udev, struct xhci_erst *e
 {
 	USB_OFFLOAD_MEM_DBG("\n");
 
-	if (!erst) {
+	if (erst == NULL || erst->erst_dma_addr == 0) {
 		USB_OFFLOAD_INFO("ERST has already freed\n");
 		return;
 	}
@@ -2098,7 +2098,6 @@ static void xhci_mtk_free_erst(struct usb_offload_dev *udev, struct xhci_erst *e
 		USB_OFFLOAD_ERR("Fail to free erst\n");
 	else {
 		erst->entries = NULL;
-		erst = NULL;
 		udev->num_entries_in_use = 0;
 		dec_region(ERST);
 
@@ -2342,16 +2341,17 @@ static void xhci_mtk_free_interrupter(struct xhci_hcd *xhci, struct xhci_interru
 		return;
 	}
 
-	if (!buf_ev_table->allocated)
+	if (uodev->sb == NULL || uodev->sb->ir == NULL) {
+		USB_OFFLOAD_MEM_DBG("hasn't allocated sideband\n");
 		goto NOT_UNDER_MANAGED;
+	}
 
-	/* Fix me, shall we also check event ring address ?*/
-	USB_OFFLOAD_MEM_DBG("erst:[0x%llx <-> 0x%llx]\n",
-		ir->erst.erst_dma_addr, buf_ev_table->dma_addr);
-	if (ir->erst.erst_dma_addr != buf_ev_table->dma_addr)
+	if (uodev->sb->ir != ir) {
+		USB_OFFLOAD_MEM_DBG("ir:%p wans't under managed\n", ir);
 		goto NOT_UNDER_MANAGED;
+	}
 
-	USB_OFFLOAD_MEM_DBG("Free interrupter%d as vendor way\n", ir->intr_num);
+	USB_OFFLOAD_INFO("free ir%d:%p as vendor way\n", ir->intr_num, ir);
 	/* free erst */
 	xhci_mtk_free_erst(uodev, &ir->erst);
 	/* free event ring */
@@ -2359,10 +2359,15 @@ static void xhci_mtk_free_interrupter(struct xhci_hcd *xhci, struct xhci_interru
 	ir->event_ring = NULL;
 	kfree(ir);
 
+	/* ir might be freed via xhci_mem_cleanup, we should set it to NULL,
+	 * preventing from KE causing by double-free in xhci_mtk_remove_sideand
+	 */
+	uodev->sb->ir = NULL;
+
 	return;
 
 NOT_UNDER_MANAGED:
-	USB_OFFLOAD_MEM_DBG("Free interrupter%d as native way\n", ir->intr_num);
+	USB_OFFLOAD_MEM_DBG("free ir%d as native way\n", ir->intr_num);
 	xhci_free_interrupter_(xhci, ir);
 }
 
@@ -2417,9 +2422,9 @@ static void xhci_mtk_remove_sideband(struct xhci_sideband *sb)
 	dma_addr_t deq;
 
 	if (sb) {
-		USB_OFFLOAD_INFO("remove sb:%p ir%d:%p\n",
-			sb, xhci_sideband_interrupter_id_(sb), sb->ir);
+		/* ir might be freed before, we should check it first */
 		if (sb->ir) {
+			USB_OFFLOAD_INFO("remove ir%d:%p\n", sb->ir->intr_num, sb->ir);
 			ir = sb->ir;
 			/* clear iman's IE(interrupter enable) */
 			xhci_disable_interrupter_(ir);
@@ -2441,11 +2446,15 @@ static void xhci_mtk_remove_sideband(struct xhci_sideband *sb)
 			 * 3. free interrupter (including event ring and erst)
 			 */
 			xhci_sideband_remove_interrupter_(sb);
-		}
+		} else
+			USB_OFFLOAD_INFO("ir has already freed\n");
+
+		USB_OFFLOAD_INFO("remove sb:%p\n", sb);
 		xhci_sideband_unregister_(sb);
 
 		uodev->sb = NULL;
-	}
+	} else
+		USB_OFFLOAD_INFO("sb has already freed\n");
 }
 
 static union xhci_trb *xhci_mtk_dma_to_trb(struct xhci_ring *ring,
@@ -2950,13 +2959,15 @@ static long usb_offload_ioctl(struct file *fp,
 		}
 		uodev->is_streaming = uodev->tx_streaming || uodev->rx_streaming;
 
-		if (!uainfo.enable && !uodev->is_streaming && sram_version == 0x3) {
+		if (!uainfo.enable && !uodev->is_streaming) {
 			/* stop offload hid */
 			usb_offload_hid_stop();
-			/* in version 3, remove ir when there's no streaming */
-			xhci_mtk_remove_sideband(uodev->sb);
-			/* power-off sram if no streaming */
-			fake_sram_pwr_ctrl(false);
+			if (sram_version == 0x3) {
+				/* in version 3, remove ir when there's no streaming */
+				xhci_mtk_remove_sideband(uodev->sb);
+				/* power-off sram if no streaming */
+				fake_sram_pwr_ctrl(false);
+			}
 		}
 
 		if (uodev->is_streaming) {
