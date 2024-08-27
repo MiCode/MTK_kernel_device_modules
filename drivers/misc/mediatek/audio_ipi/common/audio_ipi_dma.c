@@ -430,6 +430,9 @@ int audio_ipi_dma_init_dsp(const uint32_t dsp_id)
 		      0,
 		      &payload);
 
+	if (ret == 0)
+		set_ipi_dma_flag(dsp_id, true);
+
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 	if (is_audio_use_adsp(dsp_id))
 		adsp_deregister_feature(AUDIO_CONTROLLER_FEATURE_ID);
@@ -438,6 +441,15 @@ int audio_ipi_dma_init_dsp(const uint32_t dsp_id)
 	return ret;
 }
 
+bool is_ipi_dma_inited(const uint32_t dsp_id)
+{
+	return g_dsp_init_flag[dsp_id];
+}
+
+void set_ipi_dma_flag(const uint32_t dsp_id, const bool status)
+{
+	g_dsp_init_flag[dsp_id] = status;
+}
 
 void *get_audio_ipi_dma_vir_addr(uint32_t dsp_id,
 				 phys_addr_t phy_addr_val)
@@ -489,10 +501,8 @@ int audio_ipi_dma_alloc(
 		pr_info("arg err, %p, %p, %u", phy_addr, virt_addr, size);
 		return -EINVAL;
 	}
-	if (g_dsp_init_flag[dsp_id] == false) {
-		g_dsp_init_flag[dsp_id] = true;
+	if (g_dsp_init_flag[dsp_id] == false)
 		audio_ipi_dma_init_dsp(dsp_id);
-	}
 
 	new_addr = gen_pool_alloc(g_dma_pool[dsp_id], size);
 	if (new_addr == 0) {
@@ -622,10 +632,8 @@ int audio_ipi_dma_alloc_region(const uint8_t task,
 		return -ENODEV;
 	}
 
-	if (g_dsp_init_flag[dsp_id] == false) {
-		g_dsp_init_flag[dsp_id] = true;
+	if (g_dsp_init_flag[dsp_id] == false)
 		audio_ipi_dma_init_dsp(dsp_id);
-	}
 
 	mutex_lock(&region_lock);
 	if (g_region_reg_flag[task] == true) {

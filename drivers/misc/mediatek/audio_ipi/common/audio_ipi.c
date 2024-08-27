@@ -331,7 +331,10 @@ static int audio_ctrl_event_receive(
 	switch (event) {
 	case ADSP_EVENT_STOP:
 		for (scene = 0; scene < TASK_SCENE_SIZE; scene++) {
-			if (is_audio_use_adsp(audio_get_dsp_id(scene))) {
+			dsp_id = audio_get_dsp_id(scene);
+			if (is_audio_use_adsp(dsp_id)) {
+				set_ipi_dma_flag(dsp_id, false);
+
 				handler = get_ipi_queue_handler(scene);
 				if (handler != NULL)
 					flush_ipi_queue_handler(handler);
@@ -443,6 +446,8 @@ static int audio_ctrl_event_receive_scp(
 		for (scene = 0; scene < TASK_SCENE_SIZE; scene++) {
 			if (audio_get_dsp_id(scene) ==
 			    AUDIO_OPENDSP_USE_RV_A) {
+				set_ipi_dma_flag(AUDIO_OPENDSP_USE_RV_A, false);
+
 				handler = get_ipi_queue_handler(scene);
 				if (handler != NULL)
 					flush_ipi_queue_handler(handler);
