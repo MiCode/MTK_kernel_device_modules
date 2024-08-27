@@ -102,6 +102,10 @@ struct xgf_render_if {
 	int filter_dep_task_enable;
 
 	unsigned long master_type;
+
+	int heavy_logical_pid;
+	unsigned long long prev_check_logical_ts;
+	unsigned long long last_check_logical_ts;
 };
 
 struct xgf_dep {

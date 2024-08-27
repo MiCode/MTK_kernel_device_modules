@@ -710,6 +710,9 @@ static struct xgf_render_if *xgf_get_render_if(int pid, unsigned long long bufID
 	iter->ema2_enable = 0;
 	iter->filter_dep_task_enable = 0;
 	iter->master_type = master_type;
+	iter->heavy_logical_pid = 0;
+	iter->prev_check_logical_ts = 0;
+	iter->last_check_logical_ts = 0;
 
 	hlist_add_head(&iter->hlist, &xgf_render_if_list);
 
@@ -1452,6 +1455,53 @@ int xgf_get_logical_tid(int rpid, int tgid, int *l_tid,
 }
 EXPORT_SYMBOL(xgf_get_logical_tid);
 
+/* add dep to wspid list */
+static void fpsgo_add_wspid_list(int tgid, int rpid, unsigned long long bufid, int tid, int action,
+	int prio, unsigned int timeout, int input_type)
+{
+	struct xgf_spid *new_spid_iter = NULL;
+
+	new_spid_iter = xgf_add_spid(&xgf_wspid_list);
+	if (new_spid_iter) {
+		new_spid_iter->pid = tgid;
+		new_spid_iter->rpid = rpid;
+		new_spid_iter->bufID = bufid;
+		new_spid_iter->tid = tid;
+		new_spid_iter->action = action;
+		new_spid_iter->magt_prio = prio;
+		new_spid_iter->magt_timeout = timeout;
+		new_spid_iter->input_type = input_type;
+	}
+}
+
+static int fpsgo_search_and_add_wspid_list(int rpid, int tgid,  unsigned long long bufid, int tid,
+	int action, int input_type)
+{
+	int ret = 0, exist = 0;
+	struct xgf_spid *spid_iter = NULL;
+	struct hlist_node *h = NULL;
+
+	hlist_for_each_entry_safe(spid_iter, h, &xgf_wspid_list, hlist) {
+		if (spid_iter->rpid == rpid &&
+			spid_iter->bufID == bufid &&
+			spid_iter->tid == tid) {
+			exist = 1;
+			break;
+		}
+	}
+
+	// overwrite the old value "action".
+	if (exist) {
+		spid_iter->action = action;
+		return ret;
+	}
+
+	fpsgo_add_wspid_list(tgid, rpid, bufid, tid, action, 0, 0, input_type);
+
+	return ret;
+}
+
+
 static int xgf_get_spid(struct xgf_render_if *render)
 {
 	int len, ret = 0;
@@ -1517,13 +1567,15 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 	unsigned long long t_enqueue_start, unsigned long long t_enqueue_end,
 	int skip)
 {
-	int ret = 0;
+	int ret = 0, logic_ret = 0, add_wspid_ret = 0;
 	int new_spid;
 	int do_extra_sub = 0;
 	int *local_dep_list = NULL, *raw_dep_list = NULL, *local_magt_dep_list = NULL;
 	int local_dep_list_num = 0, raw_dep_list_num = 0, local_magt_dep_list_num = 0;
 	int max_local_dep_list_num = MAX_DEP_NUM;
 	int max_raw_dep_list_num = 0;
+	int tmp_heavy_logical_pid = 0;
+
 	unsigned long local_master_type = 0;
 	unsigned long long t_dequeue_time = 0;
 	unsigned long long local_raw_t_cpu = 0;
@@ -1548,6 +1600,20 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 	iter = xgf_get_render_if(pid, bufID, local_master_type, t_enqueue_end, 1);
 	if (!iter)
 		goto out;
+
+	if (fpsgo_com_get_mfrc_is_on()) {
+		iter->last_check_logical_ts = iter->cur_queue_end_ts;
+		logic_ret = xgf_get_logical_tid(iter->pid, iter->tgid, &tmp_heavy_logical_pid,
+			iter->prev_check_logical_ts, iter->last_check_logical_ts);
+		if (logic_ret) {
+			iter->prev_check_logical_ts = iter->cur_queue_end_ts;
+			if (tmp_heavy_logical_pid > 0)
+				iter->heavy_logical_pid = tmp_heavy_logical_pid;
+		}
+		add_wspid_ret = fpsgo_search_and_add_wspid_list(iter->pid, iter->tgid, iter->bufid,
+			iter->heavy_logical_pid, XGF_ADD_DEP_FORCE_CPU_TIME, FPSGO_TYPE);
+		xgf_trace("[mfrc] ret=%d logic_pid=%d", add_wspid_ret, iter->heavy_logical_pid);
+	}
 
 	xgf_get_specific_action_spid(XGF_ADD_DEP_FORCE_CPU_TIME, iter);
 
@@ -1684,26 +1750,6 @@ int xgf_split_dep_name(int tgid, char *dep_name, int dep_num, int *out_tid_arr)
 
 	return index;
 }
-
-/* magt add dep to wspid list */
-static void fpsgo_add_wspid_list(int tgid, int rpid, unsigned long long bufid, int tid, int action,
-	int prio, unsigned int timeout, int input_type)
-{
-	struct xgf_spid *new_spid_iter = NULL;
-
-	new_spid_iter = xgf_add_spid(&xgf_wspid_list);
-	if (new_spid_iter) {
-		new_spid_iter->pid = tgid;
-		new_spid_iter->rpid = rpid;
-		new_spid_iter->bufID = bufid;
-		new_spid_iter->tid = tid;
-		new_spid_iter->action = action;
-		new_spid_iter->magt_prio = prio;
-		new_spid_iter->magt_timeout = timeout;
-		new_spid_iter->input_type = input_type;
-	}
-}
-
 
 int fpsgo_other2xgf_set_dep_list(int tgid, int *rtid_arr, unsigned long long *bufID_arr,
 	int rtid_num, char *specific_name, int specific_num, int action)
