@@ -361,9 +361,9 @@ struct arm_smmu_impl {
 			       unsigned long iova, size_t size);
 	void (*iotlb_sync)(struct iommu_domain *domain,
 			   struct iommu_iotlb_gather *gather);
-	void (*tlb_flush)(struct arm_smmu_domain *smmu_domain,
-			  unsigned long iova, size_t size,
-			  int power_status);
+	int (*tlb_flush)(struct arm_smmu_domain *smmu_domain,
+			 unsigned long iova, size_t size,
+			 int power_status);
 	void (*fault_dump)(struct arm_smmu_device *smmu);
 	bool (*skip_shutdown)(struct arm_smmu_device *smmu);
 	bool (*skip_sync_timeout)(struct arm_smmu_device *smmu);

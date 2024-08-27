@@ -1777,7 +1777,8 @@ static void __arm_smmu_tlb_inv_range(struct arm_smmu_cmdq_ent *cmd,
 		return;
 
 	if (smmu->impl && smmu->impl->tlb_flush)
-		smmu->impl->tlb_flush(smmu_domain, iova, size, 0);
+		if (smmu->impl->tlb_flush(smmu_domain, iova, size, 0))
+			return;
 
 	if (smmu->features & ARM_SMMU_FEAT_RANGE_INV) {
 		/* Get the leaf page size */

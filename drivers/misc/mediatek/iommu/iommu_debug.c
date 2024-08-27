@@ -90,8 +90,8 @@
 #define MAP_IOVA_TIMEOUT_NS		(1000000 * 5) /* 5ms! */
 
 #define IOVA_DUMP_LOG_MAX		(100)
-#define IOVA_LATEST_DUMP_MAX		(50)
-#define IOVA_LATEST_TRACE_MAX		(150)
+#define IOVA_LATEST_DUMP_MAX		(100)
+#define IOVA_LATEST_TRACE_MAX		(250)
 
 #define IOVA_DUMP_RS_INTERVAL		(30 * HZ)
 #define IOVA_DUMP_RS_BURST		(1)
