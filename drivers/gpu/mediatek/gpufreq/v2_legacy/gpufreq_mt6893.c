@@ -2061,10 +2061,15 @@ static int __gpufreq_volt_scale_gpu(
 	udelay(t_settle);
 
 	g_gpu.cur_volt = __gpufreq_get_real_vgpu();
-	if (unlikely(g_gpu.cur_volt != vgpu_new))
+	if (unlikely(g_gpu.cur_volt != vgpu_new)) {
+		unsigned int rdata;
+
+		rdata = regulator_get_voltage(g_pmic->reg_vgpu)/10;
+		GPUFREQ_LOGE("regulator_get_voltage = %u,power_count =%d, regulator_is_enabled = %d",
+			rdata,g_gpu.power_count,regulator_is_enabled(g_pmic->reg_vgpu));
 		__gpufreq_abort("inconsistent scaled Vgpu, cur_volt: %d, target_volt: %d, vgpu_old: %d",
 			g_gpu.cur_volt, vgpu_new, vgpu_old);
-
+	}
 	g_gpu.cur_vsram = __gpufreq_get_real_vsram();
 	if (unlikely(g_gpu.cur_vsram != vsram_new))
 		__gpufreq_abort("inconsistent scaled Vsram, cur_vsram: %d, target_vsram: %d, vsram_old: %d",
