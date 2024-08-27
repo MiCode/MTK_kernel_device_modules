@@ -16,6 +16,12 @@
 #define MTK_VDEC_WAIT_GROUP_MS		160
 #define MTK_VDEC_OPEN_CGRP_MS		200
 
+extern int mtk_vdec_lpw_limit;
+extern int mtk_vdec_lpw_timeout;
+extern int mtk_vdec_lpw_start;
+extern int mtk_vdec_lpw_start_limit;
+extern bool mtk_vdec_enable_dynll;
+
 /**
  * struct vdec_fb  - decoder frame buffer
  * @fb_base     : frame buffer plane memory info

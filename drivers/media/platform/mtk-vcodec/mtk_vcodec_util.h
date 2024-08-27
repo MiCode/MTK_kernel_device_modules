@@ -34,7 +34,7 @@
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 #define ABS(x) (((x) >= 0) ? (x) : -(x))
 #define NS_TO_MS(X) (div_u64(X, 1000000))
-#define NS_MOD_MS(X) (do_div(X, 1000000))
+#define NS_MOD_MS(X) ({u64 __X = (X); do_div(__X, 1000000);})
 #define MS_TO_NS(X) ((X) * 1000000)
 // FOURCC_STR: fourcc to string
 #define FOURCC_STR(x) ((const char[]){(x) & 0xFF, ((x) >> 8) & 0xFF, ((x) >> 16) & 0xFF, ((x) >> 24) & 0xFF, 0})
@@ -185,9 +185,6 @@ extern char *mtk_vdec_vcp_log;
 extern char mtk_vdec_vcp_log_prev[LOG_PROPERTY_SIZE];
 extern char *mtk_venc_vcp_log;
 extern char mtk_venc_vcp_log_prev[LOG_PROPERTY_SIZE];
-extern int mtk_vdec_lpw_limit;
-extern int mtk_vdec_lpw_timeout;
-extern bool mtk_vdec_enable_dynll;
 extern int mtk_vdec_open_cgrp_delay;
 extern bool mtk_vdec_slc_enable;
 extern bool mtk_vdec_acp_enable;
