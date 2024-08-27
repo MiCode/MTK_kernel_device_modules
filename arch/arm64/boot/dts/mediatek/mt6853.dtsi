@@ -1729,7 +1729,7 @@
 			mediatek,gce = <&gce>;
 			mmsys-config = <&mmsys_config_clk>;
 			mediatek,gce-subsys = <99>, <SUBSYS_1400XXXX>;
-			mboxes = <&gce 23 0 CMDQ_THR_PRIO_1>;
+			mboxes = <&gce 10 0 CMDQ_THR_PRIO_1>;
 				//<&gce 22 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 				//<&gce 11 0 CMDQ_THR_PRIO_1>,
 				//<&gce_mbox_sec 11 0 CMDQ_THR_PRIO_1>;
@@ -3812,6 +3812,7 @@
 			mediatek,enc-gce-th-num = <2>; /* VDEC GCE HW THREAD NUM*/
 			mboxes = <&gce 7 0 CMDQ_THR_PRIO_1>,
 				<&gce 12 0 CMDQ_THR_PRIO_1>,
+				<&gce 23 0 CMDQ_THR_PRIO_1>,
 				<&gce_mbox_sec 12 0 CMDQ_THR_PRIO_1>;
 			gce-event-names = "venc_eof",
 				"venc_cmdq_pause_done",
@@ -3854,6 +3855,8 @@
 				<&gce CMDQ_EVENT_VDEC_CORE0_ENG_EVENT_7>;
 
 			gce-gpr = <GCE_GPR_R10>, <GCE_GPR_R11>;
+			gce-norm-token = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_VENC_WAIT>;
+			gce-sec-token = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_VENC_SET>;
 		};
 
 		vcu-iommu-venc {
