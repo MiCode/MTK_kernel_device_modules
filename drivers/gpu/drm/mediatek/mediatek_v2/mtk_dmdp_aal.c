@@ -47,6 +47,7 @@
 struct mtk_dmdp_aal_data {
 	bool support_shadow;
 	bool need_bypass_shadow;
+	bool roi_16_bit;
 	u32 block_info_00_mask;
 };
 
@@ -228,12 +229,21 @@ static void disp_mdp_aal_config(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_OUTPUT_SIZE, out_size, ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_OUTPUT_OFFSET, (out_hoffset << 16) | 0, ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_DRE_ROI_00, (out_width - 1) << 16 | 0, ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_DRE_ROI_01, (cfg->h - 1) << 16 | 0, ~0);
-
+	if (data->data->roi_16_bit) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DMDP_AAL_DRE_ROI_00, (out_width - 1) << 16 | 0, ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DMDP_AAL_DRE_ROI_01, (cfg->h - 1) << 16 | 0, ~0);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DMDP_AAL_DRE_ROI_00, (out_width - 1) << 13 | 0, ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DMDP_AAL_DRE_ROI_01, (cfg->h - 1) << 13 | 0, ~0);
+	}
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_DRE_BITPLUS_00, 0, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_Y2R_00, 0, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_R2Y_00, 0, ~0);
+
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_MISC_CTRL, 1, ~0);
 
 	if (data->data->need_bypass_shadow)
@@ -592,48 +602,56 @@ static int disp_mdp_aal_remove(struct platform_device *pdev)
 static const struct mtk_dmdp_aal_data mt6885_dmdp_aal_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = false,
+	.roi_16_bit = false,
 	.block_info_00_mask = 0x3FFFFFF,
 };
 
 static const struct mtk_dmdp_aal_data mt6895_dmdp_aal_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.roi_16_bit = true,
 	.block_info_00_mask = 0xFFFFFFFF,
 };
 
 static const struct mtk_dmdp_aal_data mt6983_dmdp_aal_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.roi_16_bit = true,
 	.block_info_00_mask = 0xFFFFFFFF,
 };
 
 static const struct mtk_dmdp_aal_data mt6985_dmdp_aal_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.roi_16_bit = true,
 	.block_info_00_mask = 0xFFFFFFFF,
 };
 
 static const struct mtk_dmdp_aal_data mt6897_dmdp_aal_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.roi_16_bit = true,
 	.block_info_00_mask = 0xFFFFFFFF,
 };
 
 static const struct mtk_dmdp_aal_data mt6989_dmdp_aal_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.roi_16_bit = true,
 	.block_info_00_mask = 0xFFFFFFFF,
 };
 
 static const struct mtk_dmdp_aal_data mt6991_dmdp_aal_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.roi_16_bit = true,
 	.block_info_00_mask = 0xFFFFFFFF,
 };
 
 static const struct mtk_dmdp_aal_data mt6899_dmdp_aal_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.roi_16_bit = true,
 	.block_info_00_mask = 0xFFFFFFFF,
 };
 
