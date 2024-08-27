@@ -1457,13 +1457,15 @@ static void ccif_set_clk_off(unsigned char hif_id)
 				/* write 1 clear register */
 				regmap_write(ccif_ctrl->plat_val.infra_ao_base,
 					0xBF0, 0xF7FF);
-			} else if (ccif_ctrl->plat_val.md_gen == 6297) {
+			} else if (ccif_ctrl->plat_val.md_gen == 6297 &&
+				   !IS_ERR(ccif_ctrl->pericfg_base)) {
 				/* Clean MD_PCCIF4_SW_READY and MD_PCCIF4_PWR_ON */
-				if (!IS_ERR(ccif_ctrl->pericfg_base)) {
-					CCCI_NORMAL_LOG(0, TAG, "%s:pericfg_base:0x%p\n",
-						__func__, ccif_ctrl->pericfg_base);
+				CCCI_NORMAL_LOG(0, TAG, "%s:pericfg_base:0x%p\n",
+					__func__, ccif_ctrl->pericfg_base);
+				if (ccif_ctrl->plat_val.ap_plat_info == 6877)
+					regmap_write(ccif_ctrl->pericfg_base, 0x200, 0x0);
+				else
 					regmap_write(ccif_ctrl->pericfg_base, 0x30c, 0x0);
-				}
 			} else if (ccif_ctrl->plat_val.md_gen == 6295) {
 				/* set gen95 clock */
 				CCCI_NORMAL_LOG(0, TAG, "%s:infra_ao_base:0x%p\n",
@@ -1643,6 +1645,10 @@ static int ccif_hif_hw_init(struct device *dev, struct md_ccif_ctrl *ccif_ctrl)
 	node = of_find_compatible_node(NULL, NULL, "mediatek,mddriver");
 	of_property_read_u32(node, "mediatek,md-generation",
 		&ccif_ctrl->plat_val.md_gen);
+
+	of_property_read_u32(node, "mediatek,ap-plat-info",
+		&ccif_ctrl->plat_val.ap_plat_info);
+
 	ccif_ctrl->plat_val.infra_ao_base = syscon_regmap_lookup_by_phandle(
 		node, "ccci-infracfg");
 	if (IS_ERR(ccif_ctrl->plat_val.infra_ao_base)) {

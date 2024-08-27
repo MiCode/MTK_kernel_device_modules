@@ -43,6 +43,7 @@ struct  ccci_hif_ccif_val {
 	unsigned int md_gen;
 	unsigned long offset_epof_md1;
 	void __iomem *md_plat_info;
+	unsigned int ap_plat_info;
 };
 
 struct ccif_sram_layout {
