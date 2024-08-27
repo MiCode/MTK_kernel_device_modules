@@ -1285,6 +1285,8 @@ EXPORT_SYMBOL(cmdq_pkt_add_cmd_buffer);
 
 void cmdq_mbox_destroy(struct cmdq_client *client)
 {
+	if (client->backup_va)
+		cmdq_mbox_buf_free(client, client->backup_va, client->backup_pa);
 	mbox_free_channel(client->chan);
 	kfree(client->cl_priv);
 	kfree(client);
@@ -1861,6 +1863,124 @@ s32 cmdq_pkt_write_value_addr_reuse(struct cmdq_pkt *pkt, dma_addr_t addr,
 }
 EXPORT_SYMBOL(cmdq_pkt_write_value_addr_reuse);
 
+s32 cmdq_pkt_backup(struct cmdq_pkt *pkt, dma_addr_t addr, struct cmdq_backup *backup)
+{
+	struct cmdq_client *cl = pkt->cl;
+	dma_addr_t pa_addr;
+
+	if (unlikely(!cl)) {
+		cmdq_err("client is NULL");
+		return -EINVAL;
+	}
+
+	if (!cl->backup_va && !cl->backup_pa) {
+		cl->backup_va = cmdq_mbox_buf_alloc(cl, &cl->backup_pa);
+		cmdq_msg("%s client va %p pa %pa", __func__, cl->backup_va, &cl->backup_pa);
+	}
+
+	if (unlikely(!cl->backup_va) || unlikely(!cl->backup_pa)) {
+		cmdq_err("backup buffer unavailable");
+		return -ENOMEM;
+	}
+
+	pa_addr = cl->backup_pa + cl->backup_idx * 4;
+	backup->val_idx = cl->backup_idx++;
+	if (cl->backup_idx >= CMDQ_BACKUP_CNT)
+		cl->backup_idx = 0;
+
+	/* read reg value to spr : CMDQ_THR_SPR_IDX2*/
+	cmdq_pkt_read_addr(pkt, addr, CMDQ_THR_SPR_IDX2);
+
+	/* write spr to dram pa */
+	cmdq_pkt_write_indriect(pkt, NULL, pa_addr, CMDQ_THR_SPR_IDX2, U32_MAX);
+	backup->inst_offset = pkt->cmd_buf_size - CMDQ_INST_SIZE;
+
+	return 0;
+}
+EXPORT_SYMBOL(cmdq_pkt_backup);
+
+s32 cmdq_pkt_backup_stamp(struct cmdq_pkt *pkt, struct cmdq_backup *backup)
+{
+	struct cmdq_client *cl = pkt->cl;
+	dma_addr_t pa_addr;
+
+	if (unlikely(!cl)) {
+		cmdq_err("client is NULL");
+		return -EINVAL;
+	}
+
+	if (!cl->backup_va && !cl->backup_pa) {
+		cl->backup_va = cmdq_mbox_buf_alloc(cl, &cl->backup_pa);
+		cmdq_msg("%s client va %p pa %pa", __func__, cl->backup_va, &cl->backup_pa);
+	}
+
+	if (unlikely(!cl->backup_va) || unlikely(!cl->backup_pa)) {
+		cmdq_err("backup buffer unavailable");
+		return -ENOMEM;
+	}
+
+	pa_addr = cl->backup_pa + cl->backup_idx * 4;
+	backup->val_idx = cl->backup_idx++;
+	if (cl->backup_idx >= CMDQ_BACKUP_CNT)
+		cl->backup_idx = 0;
+
+	/* TPR value to dram pa */
+	cmdq_pkt_write_indriect(pkt, NULL, pa_addr, CMDQ_TPR_ID, U32_MAX);
+	backup->inst_offset = pkt->cmd_buf_size - CMDQ_INST_SIZE;
+
+	return 0;
+}
+EXPORT_SYMBOL(cmdq_pkt_backup_stamp);
+
+s32 cmdq_pkt_backup_update(struct cmdq_pkt *pkt, struct cmdq_backup *backup)
+{
+	struct cmdq_client *cl = pkt->cl;
+	dma_addr_t pa_addr;
+	u32 *inst;
+
+	if (unlikely(!cl)) {
+		cmdq_err("client is NULL");
+		return -EINVAL;
+	}
+
+	if (unlikely(!cl->backup_va) || unlikely(!cl->backup_pa)) {
+		cmdq_err("backup buffer unavailable");
+		return -EINVAL;
+	}
+
+	pa_addr = cl->backup_pa + cl->backup_idx * 4;
+	backup->val_idx = cl->backup_idx++;
+	if (cl->backup_idx >= CMDQ_BACKUP_CNT)
+		cl->backup_idx = 0;
+
+	inst = (u32 *)cmdq_pkt_get_va_by_offset(pkt, backup->inst_offset);
+	inst[1] = (inst[1] & 0xffff0000) | CMDQ_GET_ADDR_LOW(pa_addr);
+
+	return 0;
+}
+EXPORT_SYMBOL(cmdq_pkt_backup_update);
+
+u32 cmdq_pkt_backup_get(struct cmdq_pkt *pkt, struct cmdq_backup *backup)
+{
+	struct cmdq_client *cl = pkt->cl;
+	u32 *va, value;
+
+	if (unlikely(!cl)) {
+		cmdq_err("client is NULL");
+		return -EINVAL;
+	}
+
+	if (unlikely(!cl->backup_va) || unlikely(!cl->backup_pa)) {
+		cmdq_err("backup buffer unavailabl");
+		return -EINVAL;
+	}
+
+	va = cl->backup_va + backup->val_idx;
+	value = readl(va);
+
+	return value;
+}
+EXPORT_SYMBOL(cmdq_pkt_backup_get);
 
 void cmdq_pkt_reuse_jump(struct cmdq_pkt *pkt, struct cmdq_reuse *reuse)
 {
