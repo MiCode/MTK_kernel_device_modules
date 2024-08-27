@@ -4901,6 +4901,7 @@ gpufreq: gpufreq {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c1: i2c@11d20000 {
@@ -4912,6 +4913,7 @@ gpufreq: gpufreq {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c2: i2c@11d21000 {
@@ -4923,6 +4925,7 @@ gpufreq: gpufreq {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c3: i2c@11cb0000 {
@@ -4934,6 +4937,7 @@ gpufreq: gpufreq {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c4: i2c@11d22000 {
@@ -4945,6 +4949,7 @@ gpufreq: gpufreq {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c5: i2c@11e01000 {
@@ -4957,6 +4962,7 @@ gpufreq: gpufreq {
 		clock-names = "main", "dma";
 		clock-div = <1>;
 		mediatek,data_hold_time;
+		mediatek,control-rs-stop;
 	};
 
 	i2c6: i2c@11f00000 {
@@ -4968,6 +4974,7 @@ gpufreq: gpufreq {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c7: i2c@11e02000 {
@@ -4979,6 +4986,7 @@ gpufreq: gpufreq {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c8: i2c@11d00000 {
@@ -4990,6 +4998,7 @@ gpufreq: gpufreq {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c9: i2c@11d01000 {
@@ -5001,6 +5010,7 @@ gpufreq: gpufreq {
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	pwm: pwm@10048000 {
