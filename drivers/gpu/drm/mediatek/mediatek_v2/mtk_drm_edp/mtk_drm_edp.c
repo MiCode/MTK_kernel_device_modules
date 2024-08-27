@@ -1536,7 +1536,7 @@ static int mtk_edp_train_cr(struct mtk_edp *mtk_edp, u8 target_lane_count)
 		drm_dp_dpcd_read_link_status(&mtk_edp->aux, link_status);
 		if (drm_dp_clock_recovery_ok(link_status,
 					     target_lane_count)) {
-			dev_dbg(mtk_edp->dev, "%s CR training pass\n", EDPTX_DEBUG_INFO);
+			dev_info(mtk_edp->dev, "%s CR training pass\n", EDPTX_DEBUG_INFO);
 			return 0;
 		}
 
@@ -1607,7 +1607,7 @@ static int mtk_edp_train_eq(struct mtk_edp *mtk_edp, u8 target_lane_count)
 		/* check link status from sink device */
 		drm_dp_dpcd_read_link_status(&mtk_edp->aux, link_status);
 		if (drm_dp_channel_eq_ok(link_status, target_lane_count)) {
-			dev_dbg(mtk_edp->dev, "%s EQ training pass\n", EDPTX_DEBUG_INFO);
+			dev_info(mtk_edp->dev, "%s EQ training pass\n", EDPTX_DEBUG_INFO);
 
 			/* Training done, and disable pattern. */
 			drm_dp_dpcd_writeb(&mtk_edp->aux, DP_TRAINING_PATTERN_SET,
@@ -2354,21 +2354,6 @@ static void mtk_edp_bridge_detach(struct drm_bridge *bridge)
 	drm_dp_aux_unregister(&mtk_edp->aux);
 }
 
-static void mtk_edp_bridge_atomic_pre_enable(struct drm_bridge *bridge,
-					struct drm_bridge_state *old_bridge_state)
-{
-	struct mtk_edp *mtk_edp = mtk_edp_from_bridge(bridge);
-
-	dev_info(mtk_edp->dev, "%s %s-\n", EDPTX_DEBUG_INFO, __func__);
-	if (mtk_edp->use_hpd) {
-		irq_clear_status_flags(mtk_edp->irq, IRQ_NOAUTOEN);
-		disable_irq(mtk_edp->irq);
-		mtk_edp_hwirq_enable(mtk_edp, false);
-	}
-
-	dev_info(mtk_edp->dev, "%s %s+\n", EDPTX_DEBUG_INFO, __func__);
-}
-
 static void mtk_edp_bridge_atomic_enable(struct drm_bridge *bridge,
 					struct drm_bridge_state *old_state)
 {
@@ -2400,13 +2385,6 @@ static void mtk_edp_bridge_atomic_enable(struct drm_bridge *bridge,
 #if EDPTX_COLOR_BAR
 	mtk_edp_pg_enable(mtk_edp, true);
 #endif
-
-	mtk_edp_hwirq_get_clear(mtk_edp);
-	if (mtk_edp->use_hpd) {
-		irq_clear_status_flags(mtk_edp->irq, IRQ_NOAUTOEN);
-		enable_irq(mtk_edp->irq);
-		mtk_edp_hwirq_enable(mtk_edp, true);
-	}
 
 	mtk_edp->enabled = true;
 	dev_info(mtk_edp->dev, "%s %s-\n", EDPTX_DEBUG_INFO, __func__);
@@ -2606,7 +2584,6 @@ static const struct drm_bridge_funcs mtk_edp_bridge_funcs = {
 	.atomic_reset = drm_atomic_helper_bridge_reset,
 	.attach = mtk_edp_bridge_attach,
 	.detach = mtk_edp_bridge_detach,
-	.atomic_pre_enable = mtk_edp_bridge_atomic_pre_enable,
 	.atomic_enable = mtk_edp_bridge_atomic_enable,
 	.atomic_disable = mtk_edp_bridge_atomic_disable,
 	.mode_valid = mtk_edp_bridge_mode_valid,
@@ -2895,12 +2872,12 @@ static int mtk_edp_probe(struct platform_device *pdev)
 
 	mtk_edp->power_clk = devm_clk_get(dev, "power");
 	if (IS_ERR(mtk_edp->power_clk)) {
-		pr_info("[eDPTX] Failed to get power clock\n");
+		pr_info("%s Failed to get power clock\n",EDPTX_DEBUG_INFO);
 		return PTR_ERR(mtk_edp->power_clk);
 	}
 	ret = clk_prepare_enable(mtk_edp->power_clk);
 	if (ret)
-		dev_info(mtk_edp->dev, "[eDPTX] Failed to enable power clock: %d\n", ret);
+		dev_info(mtk_edp->dev, "%s Failed to enable power clock: %d\n", EDPTX_DEBUG_INFO, ret);
 
 	platform_set_drvdata(pdev, mtk_edp);
 
@@ -3044,7 +3021,7 @@ static int mtk_edp_resume(struct device *dev)
 	pm_runtime_get_sync(dev);
 
 	if (clk_prepare_enable(mtk_edp->power_clk))
-		dev_info(mtk_edp->dev, "[eDPTX] Failed to enable power clock: %d\n");
+		dev_info(mtk_edp->dev, "%s Failed to enable power clock\n", EDPTX_DEBUG_INFO);
 
 	mtk_edp_init_port(mtk_edp);
 	if (mtk_edp->use_hpd)

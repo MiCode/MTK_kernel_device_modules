@@ -264,8 +264,6 @@ static void mtk_dvo_buffer_ctrl(struct mtk_dvo *dvo)
 
 static void mtk_dvo_pm_ctl(struct mtk_dvo *dvo, bool enable)
 {
-	u32 ret = 0;
-
 	/* DISP_EDPTX_PWR_CON */
 	void *address = ioremap(0x31B50074, 0x1);
 
@@ -561,13 +559,13 @@ static int mtk_dvo_power_on(struct mtk_dvo *dvo)
 
 	ret = clk_prepare_enable(dvo->tvd_clk);
 	if (ret) {
-		dev_info(dvo->dev, "[eDPTX]Failed to enable tvd_clk clock: %d\n", ret);
+		dev_info(dvo->dev, "[eDPTX] Failed to enable tvd_clk clock: %d\n", ret);
 		goto err_tvd;
 	}
 
 	ret = clk_prepare_enable(dvo->engine_clk);
 	if (ret) {
-		dev_info(dvo->dev, "Failed to enable engine clock: %d\n", ret);
+		dev_info(dvo->dev, "[eDPTX] Failed to enable engine clock: %d\n", ret);
 		goto err_refcount;
 	}
 
@@ -576,8 +574,6 @@ static int mtk_dvo_power_on(struct mtk_dvo *dvo)
 err_refcount:
 	clk_disable_unprepare(dvo->tvd_clk);
 err_tvd:
-	clk_disable_unprepare(dvo->pixel_clk);
-err_pixel:
 	clk_disable_unprepare(dvo->hf_fdvo_clk);
 err_hf_fdvo:
 	dvo->refcount--;
@@ -882,11 +878,9 @@ static void mtk_dvo_bridge_disable(struct drm_bridge *bridge)
 
 static void mtk_dvo_bridge_enable(struct drm_bridge *bridge)
 {
-	int i = 0;
 	struct mtk_dvo *dvo = bridge_to_dvo(bridge);
 
 	dev_info(dvo->dev, "[eDPTX] %s+\n", __func__);
-
 	mtk_dvo_pm_ctl(dvo, true);
 	if (dvo->pinctrl && dvo->pins_dvo)
 		pinctrl_select_state(dvo->pinctrl, dvo->pins_dvo);
